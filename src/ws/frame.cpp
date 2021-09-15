@@ -311,7 +311,6 @@ vector <char> awh::Frame::set(const head_t & head, const char * buffer, const si
 	 * rsv[0] должен быть установлен в TRUE для первого сообщения в GZIP,
 	 * и установлен в FALSE для всех остальных сообщений, в рамках одной сессии
 	 */
-	// Результат работы функции
 	vector <char> result = {
 		(
 			char(
