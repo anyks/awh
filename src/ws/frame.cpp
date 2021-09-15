@@ -337,14 +337,14 @@ awh::Frame::mess_t awh::Frame::message(const head_t & head, const vector <char> 
 				// Выводим в лог сообщение
 				this->fmk->log("%s", fmk_t::log_t::CRITICAL, this->logfile, error.what());
 				// Устанавливаем текст ошибки
-				this->mess.text = this->fmk->format("%s error message: %s", GLB_NAME, error.what());
+				this->mess.text = this->fmk->format("%s", error.what());
 			}
 		// Запоминаем размер смещения
 		} else {
 			// Устанавливаем код сообщения
 			this->mess.code = 1006;
 			// Устанавливаем текст ошибки
-			this->mess.text = this->fmk->format("%s error message: %s", GLB_NAME, "no close code frame has been receieved");
+			this->mess.text = this->fmk->format("%s", "no close code frame has been receieved");
 		}
 	}
 	// Выводим результат
