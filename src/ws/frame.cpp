@@ -11,20 +11,63 @@
 #include <ws/frame.hpp>
 
 /**
- * Устанавливаем шаблон функции
+ * head Метод извлечения заголовка фрейма
+ * @param head   объект для извлечения заголовка
+ * @param buffer буфер с данными заголовка
+ * @param size   размер передаваемого буфера
  */
-template <typename T>
+void awh::Frame::head(head_t & head, const char * buffer, const size_t size) const noexcept {
+	// Если данные переданы
+	if((buffer != nullptr) && (size >= 2)){
+		// Получаем наличие маски
+		head.mask = (buffer[1] & 0x80);
+		// Получаем малый размер полезной нагрузки
+		head.payload = (buffer[1] & 0x7F);
+		// Определяем является ли сообщение последним
+		head.fin = (buffer[0] & 0x80);
+		// Определяем байты расширенного протокола
+		head.rsv[0] = (buffer[0] & 0x40);
+		head.rsv[1] = (buffer[0] & 0x20);
+		head.rsv[2] = (buffer[0] & 0x10);
+		// Получаем опкод
+		head.optcode = opcode_t(buffer[0] & 0x0F);
+		// Если размер пересылаемых данных, имеет малый размер
+		if(head.payload < 0x7E)
+			// Получаем общий размер данных
+			head.size = (head.payload + 2);
+		// Если размер пересылаемых данных, имеет более высокий размер
+		else if((head.payload == 0x7E) && (size >= 4)) {
+			// Размер полезной нагрузки
+			u_short size = 0;
+			// Получаем размер данных
+			memcpy(&size, buffer + 2, sizeof(size));
+			// Преобразуем сетевой порядок расположения байтов
+			head.payload = ntohs(size);
+			// Получаем общий размер данных
+			head.size = (head.payload + 4);
+		// Если размер пересылаемых данных, имеет очень большой размер
+		} else if((head.payload == 0x7F) && (size >= 10)) {
+			// Получаем размер данных
+			memcpy(&head.payload, buffer + 2, sizeof(head.payload));
+			// Преобразуем сетевой порядок расположения байтов
+			head.payload = ntohl(head.payload);
+			// Получаем общий размер данных
+			head.size = (head.payload + 10);
+		}
+	}
+}
 /**
  * frame Функция создания бинарного фрейма
  * @param payload бинарный буфер фрейма
- * @param buffer  данные сообщения
+ * @param buffer  бинарные данные полезной нагрузки
+ * @param size    размер передаваемого буфера
  * @param mask    флаг выполнения маскировки сообщения
  */
-void frame(vector <char> & payload, T buffer, bool mask) noexcept {
+void awh::Frame::frame(vector <char> & payload, const char * buffer, const size_t size, const bool mask) const noexcept {
 	// Если данные переданы
-	if(!payload.empty() && !buffer.empty()){
+	if(!payload.empty() && (buffer != nullptr) && (size > 0)){
 		// Размер смещения в буфере и размер передаваемых данных
-		size_t offset = 0, size = buffer.size();
+		size_t offset = 0;
 		// Если размер строки меньше 126 байт, значит строка умещается во второй байт
 		if(size < 0x7E){
 			// Устанавливаем смещение в буфере
@@ -74,11 +117,11 @@ void frame(vector <char> & payload, T buffer, bool mask) noexcept {
 				return dist(engine);
 			};
 			// Выполняем заполнение маски случайными числами
-			generate(begin(mask), end(mask), generatorFn);
+			generate(mask.begin(), mask.end(), generatorFn);
 			// Выполняем перебор всех байт передаваемых данных
-			for(size_t i = 0; i < buffer.size(); i++){
+			for(size_t i = 0; i < size; i++){
 				// Выполняем шифрование данных
-				buffer.at(i) ^= mask[i % 4];
+				buffer[i] ^= mask[i % 4];
 			}
 			// Увеличиваем память ещё на четыре байта
 			payload.resize(offset + 4, 0x0);
@@ -86,79 +129,8 @@ void frame(vector <char> & payload, T buffer, bool mask) noexcept {
 			memcpy(payload.data() + offset, mask.data(), mask.size());
 		}
 		// Выполняем копирования оставшихся данных в буфер
-		payload.insert(payload.end(), buffer.begin(), buffer.end());
+		payload.insert(payload.end(), buffer, buffer + size);
 	}
-}
-/**
- * head Метод извлечения заголовка фрейма
- * @param buffer буфер с данными заголовка
- * @return       данные заголовка фрейма
- */
-awh::Frame::head_t awh::Frame::head(const vector <char> & buffer) const noexcept {
-	// Результат работы функции
-	head_t result;
-	// Если размер буфера составляет два байта
-	if(buffer.size() == 2){
-		// Получаем малый размер передаваемых данных
-		result.size = (buffer.back() & 0x7F);
-		// Получаем наличие маски
-		result.mask = (buffer.back() & 0x80);
-		// Определяем является ли сообщение последним
-		result.fin = (buffer.front() & 0x80);
-		// Определяем байты расширенного протокола
-		result.rsv[0] = (buffer.front() & 0x40);
-		result.rsv[1] = (buffer.front() & 0x20);
-		result.rsv[2] = (buffer.front() & 0x10);
-		// Получаем опкод
-		result.optcode = opcode_t(buffer.front() & 0x0F);
-		// Если размер пересылаемых данных, имеет более высокий размер
-		if(result.size == 0x7E)
-			// Устанавливаем размер смещения
-			result.offset = 2;
-		// Если размер пересылаемых данных, имеет очень большой размер
-		else if(result.size == 0x7F)
-			// Устанавливаем размер смещения
-			result.offset = 8;
-	}
-	// Выводим результат
-	return result;
-}
-/**
- * size Метод получения размера фрейма
- * @param head   заголовки фрейма
- * @param buffer буфер с данными фрейма
- * @return       размер полезной нагрузки фрейма
- */
-uint8_t awh::Frame::size(const head_t & head, const vector <char> & buffer) const noexcept {
-	// Результат работы функции
-	uint8_t result = 0;
-	// Если размер фрейма передан
-	if(head.size > 0){
-		// Если смещение в буфере нулевое
-		if(head.offset == 0)
-			// Запоминаем размер данных
-			result = head.size;
-		// Если заголовок фрейма и буфер данных переданы
-		else if(buffer.size() == head.offset){
-			// Если размер полезной нагрузки умещается в 2 байта
-			if(head.offset == 2){
-				// Размер полезной нагрузки
-				u_short size = 0;
-				// Получаем полезной нагрузки
-				memcpy(&size, buffer.data(), sizeof(size));
-				// Преобразуем сетевой порядок расположения байтов
-				result = ntohs(size);
-			// Если размер полезной нагрузки умещается в 8 байт
-			} else if(head.offset == 8) {
-				// Получаем размер данных
-				memcpy(&result, buffer.data(), sizeof(result));
-				// Преобразуем сетевой порядок расположения байтов
-				result = ntohl(result);
-			}
-		}
-	}
-	// Выводим результат
-	return result;
 }
 /**
  * ping Метод создания фрейма пинга
@@ -170,7 +142,9 @@ vector <char> awh::Frame::ping(const string & mess, const bool mask) const noexc
 	// Создаём тело запроса и устанавливаем первый байт PING с пустой полезной нагрузкой
 	vector <char> result = {(u_char) 0x80 | (0x0F & (u_char) opcode_t::PING), 0x0};
 	// Если сообщение передано
-	if(!mess.empty()) frame(result, mess, mask);
+	if(!mess.empty())
+		// Выполняем формирование фрейма
+		this->frame(result, mess.data(), mess.size(), mask);
 	// Выводим результат
 	return result;
 }
@@ -184,21 +158,28 @@ vector <char> awh::Frame::pong(const string & mess, const bool mask) const noexc
 	// Создаём тело запроса и устанавливаем первый байт PONG с пустой полезной нагрузкой
 	vector <char> result = {(u_char) 0x80 | (0x0F & (u_char) opcode_t::PONG), 0x0};
 	// Если сообщение передано
-	if(!mess.empty()) frame(result, mess, mask);
+	if(!mess.empty())
+		// Выполняем формирование фрейма
+		this->frame(result, mess.data(), mess.size(), mask);
 	// Выводим результат
 	return result;
 }
 /**
  * get Метод извлечения данных фрейма
  * @param head   заголовки фрейма
- * @param buffer бинарные данные фрейма для извлечения (Без учёта заголовков и байтов размера)
+ * @param buffer бинарные данные фрейма для извлечения
+ * @param size   размер передаваемого буфера
  * @return       бинарные данные полезной нагрузки
  */
-vector <char> awh::Frame::get(const head_t & head, const vector <char> & buffer) const noexcept {
+vector <char> awh::Frame::get(head_t & head, const char * buffer, const size_t size) const noexcept {
 	// Результат работы функции
 	vector <char> result;
-	// Если данные переданы
-	if((head.size > 0) && !buffer.empty()){
+	// Выполняем чтение заголовков
+	this->head(head, buffer, size);
+	// Если данные переданы в достаточном объёме
+	if((buffer != nullptr) && (head.size <= size)){
+		// Получаем размер смещения
+		u_short offset = (head.size - head.payload);
 		// Проверяем являются ли данные Пингом
 		const bool isPing = (head.optcode == opcode_t::PING);
 		// Проверяем являются ли данные Понгом
@@ -207,21 +188,21 @@ vector <char> awh::Frame::get(const head_t & head, const vector <char> & buffer)
 		const bool isText = (head.optcode == opcode_t::TEXT);
 		// Проверяем являются ли данные бинарными
 		const bool isBin = (head.optcode == opcode_t::BINARY);
+		// Проверяем является ли сообщение закрытием
+		const bool isMess = (head.optcode == opcode_t::CLOSE);
 		// Если входящие данные не являются мусоромы
-		if(isText || isBin || isPing || isPong){
-			// Смещение в буфере
-			size_t offset = 0;
+		if(isText || isBin || isPing || isPong || isMess){
 			// Бинарные данные маски
 			vector <u_char> mask(4);
 			// Если маска требуется, маскируем данные
 			if(head.mask){
 				// Считываем ключ маски
-				memcpy(mask.data(), buffer.data(), 4);
-				// Устанавливаем размер смещения
-				offset = 4;
+				memcpy(mask.data(), buffer + offset, 4);
+				// Увеличиваем размер смещения
+				offset += 4;
 			}
 			// Получаем оставшиеся данные полезной нагрузки
-			result.assign(buffer.begin() + offset, buffer.end());
+			result.assign(buffer + offset, buffer + head.size);
 			// Если маска требуется, размаскируем данные
 			if(head.mask){
 				// Выполняем перебор всех байт передаваемых данных
@@ -239,9 +220,10 @@ vector <char> awh::Frame::get(const head_t & head, const vector <char> & buffer)
  * set Метод создания данных фрейма
  * @param head   заголовки фрейма
  * @param buffer бинарные данные полезной нагрузки
+ * @param size   размер передаваемого буфера
  * @return       бинарные данные фрейма
  */
-vector <char> awh::Frame::set(const head_t & head, const vector <char> & buffer) const noexcept {
+vector <char> awh::Frame::set(const head_t & head, const char * buffer, const size_t size) const noexcept {
 	/**
 	 * rsv[0] должен быть установлен в TRUE для первого сообщения в GZIP,
 	 * и установлен в FALSE для всех остальных сообщений, в рамках одной сессии
@@ -259,7 +241,9 @@ vector <char> awh::Frame::set(const head_t & head, const vector <char> & buffer)
 		), 0x0
 	};
 	// Если данные переданы
-	if(!buffer.empty()) frame(result, buffer, head.mask);
+	if((buffer != nullptr) && (size > 0))
+		// Выполняем формирование фрейма
+		this->frame(result, buffer, size, head.mask);
 	// Выводим результат
 	return result;
 }
@@ -310,42 +294,38 @@ vector <char> awh::Frame::message(const mess_t & mess) const noexcept {
 }
 /**
  * message Метод извлечения сообщения из фрейма
- * @param head   заголовки фрейма
- * @param buffer бинарные данные фрейма для извлечения (Без учёта заголовков и байтов размера)
+ * @param buffer бинарные данные сообщения
  * @return       сообщение в текстовом виде
  */
-awh::Frame::mess_t awh::Frame::message(const head_t & head, const vector <char> & buffer) const noexcept {
+awh::Frame::mess_t awh::Frame::message(const vector <char> & buffer) const noexcept {
 	// Результат работы функции
 	mess_t result;
 	// Если данные переданы
-	if((buffer.size() >= 2) && (head.optcode == opcode_t::CLOSE)){
+	if(buffer.size() >= sizeof(result.code)){
 		/**
 		 * Коды ошибок: https://github.com/Luka967/websocket-close-codes
 		 */
 		// Считываем код ошибки
 		memcpy(&result.code, buffer.data(), sizeof(result.code));
 		// Преобразуем сетевой порядок расположения байтов
-		result.code = ntohs(result.code);
+		result = ntohs(result.code);
 		// Если коды ошибок соответствуют
 		if((result.code > 0) && (result.code <= 4999)){
 			// Выполняем перехват ошибки
 			try {
-				// Извлекаем текст сообщения
-				if(buffer.size() > 2) result.text.assign(buffer.begin() + sizeof(result.code), buffer.end());
+				// Если текст сообщения существует
+				if(buffer.size() > sizeof(result.code))
+					// Извлекаем текст сообщения
+					result.text.assign(buffer.begin() + sizeof(result.code), buffer.end());
 			// Выполняем прехват ошибки
 			} catch(const exception & error) {
 				// Выводим в лог сообщение
 				this->fmk->log("%s", fmk_t::log_t::CRITICAL, this->logfile, error.what());
 				// Устанавливаем текст ошибки
-				this->mess.text = this->fmk->format("%s", error.what());
+				result = this->fmk->format("%s", error.what());
 			}
 		// Запоминаем размер смещения
-		} else {
-			// Устанавливаем код сообщения
-			this->mess.code = 1006;
-			// Устанавливаем текст ошибки
-			this->mess.text = this->fmk->format("%s", "no close code frame has been receieved");
-		}
+		} else result = 1007;
 	}
 	// Выводим результат
 	return result;
