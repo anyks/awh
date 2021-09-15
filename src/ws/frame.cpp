@@ -33,26 +33,26 @@ void awh::Frame::head(head_t & head, const char * buffer, const size_t size) con
 		head.optcode = opcode_t(buffer[0] & 0x0F);
 		// Если размер пересылаемых данных, имеет малый размер
 		if(head.payload < 0x7E)
-			// Получаем общий размер данных
-			head.size = (head.payload + 2);
+			// Получаем размер блока заголовков
+			head.size = 2;
 		// Если размер пересылаемых данных, имеет более высокий размер
 		else if((head.payload == 0x7E) && (size >= 4)) {
+			// Получаем размер блока заголовков
+			head.size = 4;
 			// Размер полезной нагрузки
 			u_short size = 0;
 			// Получаем размер данных
 			memcpy(&size, buffer + 2, sizeof(size));
 			// Преобразуем сетевой порядок расположения байтов
 			head.payload = ntohs(size);
-			// Получаем общий размер данных
-			head.size = (head.payload + 4);
 		// Если размер пересылаемых данных, имеет очень большой размер
 		} else if((head.payload == 0x7F) && (size >= 10)) {
+			// Получаем размер блока заголовков
+			head.size = 10;
 			// Получаем размер данных
 			memcpy(&head.payload, buffer + 2, sizeof(head.payload));
 			// Преобразуем сетевой порядок расположения байтов
 			head.payload = ntohl(head.payload);
-			// Получаем общий размер данных
-			head.size = (head.payload + 10);
 		}
 	}
 }
@@ -260,9 +260,9 @@ vector <char> awh::Frame::get(head_t & head, const char * buffer, const size_t s
 	// Выполняем чтение заголовков
 	this->head(head, buffer, size);
 	// Если данные переданы в достаточном объёме
-	if((buffer != nullptr) && (head.size <= size)){
+	if((buffer != nullptr) && ((head.size + head.payload) <= size)){
 		// Получаем размер смещения
-		u_short offset = (head.size - head.payload);
+		u_short offset = head.size;
 		// Проверяем являются ли данные Пингом
 		const bool isPing = (head.optcode == opcode_t::PING);
 		// Проверяем являются ли данные Понгом
@@ -285,7 +285,7 @@ vector <char> awh::Frame::get(head_t & head, const char * buffer, const size_t s
 				offset += 4;
 			}
 			// Получаем оставшиеся данные полезной нагрузки
-			result.assign(buffer + offset, buffer + head.size);
+			result.assign(buffer + offset, buffer + (head.size + head.payload));
 			// Если маска требуется, размаскируем данные
 			if(head.mask){
 				// Выполняем перебор всех байт передаваемых данных
