@@ -48,7 +48,7 @@ namespace awh {
 			/**
 			 * Коды сообщений
 			 */
-			map <u_short, pair <string, string>> messType = {
+			map <u_short, pair <string, string>> codes = {
 				{1000, {"CLOSE_NORMAL", "Successful operation/regular socket shutdown"}},
 				{1001, {"CLOSE_GOING_AWAY", "Client is leaving (browser tab closing)"}},
 				{1002, {"CLOSE_PROTOCOL_ERROR", "Endpoint received a malformed frame"}},
@@ -97,9 +97,9 @@ namespace awh {
 						// Если код сообщения передан
 						if(code > 0){
 							// Выполняем поиск типа сообщений
-							auto it = messType.find(this->code);
+							auto it = codes.find(this->code);
 							// Если тип сообщения найден, устанавливаем
-							if(it != messType.end()){
+							if(it != codes.end()){
 								// Устанавливаем тип сообщения
 								this->type = it->second.first;
 								// Устанавливаем текст сообщения
