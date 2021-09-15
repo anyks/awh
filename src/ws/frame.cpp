@@ -260,7 +260,7 @@ vector <char> awh::Frame::get(head_t & head, const char * buffer, const size_t s
 	// Выполняем чтение заголовков
 	this->head(head, buffer, size);
 	// Если данные переданы в достаточном объёме
-	if((buffer != nullptr) && ((head.size + head.payload) <= size)){
+	if((buffer != nullptr) && ((head.payload + head.size) <= size)){
 		// Получаем размер смещения
 		u_short offset = head.size;
 		// Проверяем являются ли данные Пингом
@@ -285,7 +285,7 @@ vector <char> awh::Frame::get(head_t & head, const char * buffer, const size_t s
 				offset += 4;
 			}
 			// Получаем оставшиеся данные полезной нагрузки
-			result.assign(buffer + offset, buffer + (head.size + head.payload));
+			result.assign(buffer + offset, buffer + (head.payload + head.size));
 			// Если маска требуется, размаскируем данные
 			if(head.mask){
 				// Выполняем перебор всех байт передаваемых данных
