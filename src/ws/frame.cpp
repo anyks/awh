@@ -10,99 +10,83 @@
 // Подключаем заголовочный файл
 #include <ws/frame.hpp>
 
-// Устанавливаем шаблон функции
+/**
+ * Устанавливаем шаблон функции
+ */
 template <typename T>
 /**
- * masking Функция маскирования буфера полезной нагрузки
- * @param buffer буфер полезной нагрузки
- * @return       сгенерированная маска
- */
-vector <u_char> masking(T & buffer) noexcept {
-	// Бинарные данные маски
-	vector <u_char> result;
-	// Если буфер данных передан
-	if(!buffer.empty()){
-		// Увеличиваем память до 4 байт
-		result.resize(4, 0x0);
-		// Получаем генератор случайных чисел
-		random_device device;
-		// Подключаем генератор к двигателю
-		mt19937 engine {device()};
-		// Устанавливаем диапазон генератора случайных чисел
-		uniform_int_distribution <u_char> dist {0, 255};
-		/**
-		 * generatorFn Функция генерации случайных чисел
-		 */
-		auto generatorFn = [&dist, &engine]{
-			// Выполняем генерирование случайного числа
-			return dist(engine);
-		};
-		// Выполняем заполнение маски случайными числами
-		generate(begin(result), end(result), generatorFn);
-		// Выполняем перебор всех байт передаваемых данных
-		for(size_t i = 0; i < buffer.size(); i++){
-			// Выполняем шифрование данных
-			buffer.at(i) ^= result[i % 4];
-		}
-	}
-	// Выводим результат
-	return result;
-}
-/**
- * pongPong Метод создания фрейма Пинг-Понга
- * @param buffer  бинарный буфер фрейма
- * @param message данные сообщения
+ * frame Функция создания бинарного фрейма
+ * @param payload бинарный буфер фрейма
+ * @param buffer  данные сообщения
  * @param mask    флаг выполнения маскировки сообщения
  */
-void pongPong(vector <char> & buffer, string message, bool mask) noexcept {
+void frame(vector <char> & payload, T buffer, bool mask) noexcept {
 	// Если данные переданы
-	if(!buffer.empty() && !message.empty()){
-		// Размер смещения в буфере
-		size_t offset = 0;
+	if(!payload.empty() && !buffer.empty()){
 		// Размер смещения в буфере и размер передаваемых данных
-		const size_t size = message.size();
+		size_t offset = 0, size = buffer.size();
 		// Если размер строки меньше 126 байт, значит строка умещается во второй байт
 		if(size < 0x7E){
 			// Устанавливаем смещение в буфере
 			offset = 2;
 			// Устанавливаем размер строки
-			buffer.back() = ((char) (mask ? 0x80 : 0x0) | (0x7F & size));
+			payload.back() = ((char) (mask ? 0x80 : 0x0) | (0x7F & size));
 		// Если строка не помещается во второй байт
 		} else if(size < 0x10000) {
 			// Устанавливаем смещение в буфере
 			offset = 4;
-			// Увеличиваем память ещё на два байта
-			buffer.resize(offset, 0x0);
 			// Заполняем второй байт максимальным значением
-			buffer.at(1) = ((char) (mask ? 0x80 : 0x0) | (0x7F & 0x7E));
+			payload.back() = ((char) (mask ? 0x80 : 0x0) | (0x7F & 0x7E));
+			// Увеличиваем память ещё на два байта
+			payload.resize(offset, 0x0);
 			// Выполняем перерасчёт размера передаваемых данных
 			const u_short length = htons((u_short) size);
 			// Устанавливаем размер строки в следующие 2 байта
-			memcpy(buffer.data() + 2, &length, sizeof(length));
+			memcpy(payload.data() + 2, &length, sizeof(length));
 		// Если сообщение очень большого размера
 		} else {
 			// Устанавливаем смещение в буфере
 			offset = 10;
-			// Увеличиваем память ещё на восемь байт
-			buffer.resize(offset, 0x0);
 			// Заполняем второй байт максимальным значением
-			buffer.at(1) = ((char) (mask ? 0x80 : 0x0) | 0x7F);
+			payload.back() = ((char) (mask ? 0x80 : 0x0) | 0x7F);
+			// Увеличиваем память ещё на восемь байт
+			payload.resize(offset, 0x0);
 			// Выполняем перерасчёт размера передаваемых данных
 			const size_t length = htonl(size);
 			// Устанавливаем размер строки в следующие 8 байт
-			memcpy(buffer.data() + 2, &length, sizeof(length));
+			memcpy(payload.data() + 2, &length, sizeof(length));
 		}
 		// Если нужно выполнить маскировку сообщения
 		if(mask){
-			// Выполняем маскировку сообщения
-			const auto & mask = masking(message);
+			// Получаем генератор случайных чисел
+			random_device device;
+			// Бинарные данные маски
+			vector <u_char> mask(4);
+			// Подключаем генератор к двигателю
+			mt19937 engine {device()};
+			// Устанавливаем диапазон генератора случайных чисел
+			uniform_int_distribution <u_char> dist {0, 255};
+			/**
+			 * generatorFn Функция генерации случайных чисел
+			 */
+			auto generatorFn = [&dist, &engine]{
+				// Выполняем генерирование случайного числа
+				return dist(engine);
+			};
+			// Выполняем заполнение маски случайными числами
+			generate(begin(mask), end(mask), generatorFn);
+			// Выполняем перебор всех байт передаваемых данных
+			for(size_t i = 0; i < buffer.size(); i++){
+				// Выполняем шифрование данных
+				buffer.at(i) ^= mask[i % 4];
+			}
 			// Увеличиваем память ещё на четыре байта
-			buffer.resize(offset + 4, 0x0);
+			payload.resize(offset + 4, 0x0);
 			// Устанавливаем сгенерированную маску
-			memcpy(buffer.data() + offset, mask.data(), mask.size());
+			memcpy(payload.data() + offset, mask.data(), mask.size());
 		}
 		// Выполняем копирования оставшихся данных в буфер
-		buffer.insert(buffer.end(), message.begin(), message.end());
+		payload.insert(payload.end(), buffer.begin(), buffer.end());
 	}
 }
 /**
@@ -186,7 +170,7 @@ vector <char> awh::Frame::ping(const string & mess, const bool mask) const noexc
 	// Создаём тело запроса и устанавливаем первый байт PING с пустой полезной нагрузкой
 	vector <char> result = {(u_char) 0x80 | (0x0F & (u_char) opcode_t::PING), 0x0};
 	// Если сообщение передано
-	if(!mess.empty()) pongPong(result, mess, mask);
+	if(!mess.empty()) frame(result, mess, mask);
 	// Выводим результат
 	return result;
 }
@@ -200,7 +184,7 @@ vector <char> awh::Frame::pong(const string & mess, const bool mask) const noexc
 	// Создаём тело запроса и устанавливаем первый байт PONG с пустой полезной нагрузкой
 	vector <char> result = {(u_char) 0x80 | (0x0F & (u_char) opcode_t::PONG), 0x0};
 	// Если сообщение передано
-	if(!mess.empty()) pongPong(result, mess, mask);
+	if(!mess.empty()) frame(result, mess, mask);
 	// Выводим результат
 	return result;
 }
@@ -258,65 +242,24 @@ vector <char> awh::Frame::get(const head_t & head, const vector <char> & buffer)
  * @return       бинарные данные фрейма
  */
 vector <char> awh::Frame::set(const head_t & head, const vector <char> & buffer) const noexcept {
-	// Результат работы функции
-	vector <char> result = {0x0, 0x0};
 	/**
 	 * rsv[0] должен быть установлен в TRUE для первого сообщения в GZIP,
 	 * и установлен в FALSE для всех остальных сообщений, в рамках одной сессии
 	 */
-	// Устанавливаем первый байт (Тип сообщения текстовое)
-	result.front() = (
-		(char) (head.fin ? 0x80 : 0x0) | (head.rsv[0] ? 0x40 : 0x0) |
-		(head.rsv[1] ? 0x20 : 0x0) | (head.rsv[2] ? 0x10 : 0x0) | (0x0F & (int) head.optcode)
-	);
+	// Результат работы функции
+	vector <char> result = {
+		(
+			char(
+				(head.fin ? 0x80 : 0x0) |
+				(head.rsv[0] ? 0x40 : 0x0) |
+				(head.rsv[1] ? 0x20 : 0x0) |
+				(head.rsv[2] ? 0x10 : 0x0) |
+				(0x0F & (int) head.optcode)
+			)
+		), 0x0
+	};
 	// Если данные переданы
-	if(!buffer.empty()){
-		// Размер смещения в буфере и размер передаваемых данных
-		size_t offset = 0, size = buffer.size();
-		// Если размер строки меньше 126 байт, значит строка умещается во второй байт
-		if(size < 0x7E){
-			// Устанавливаем смещение в буфере
-			offset = 2;
-			// Устанавливаем размер строки
-			// size = (result.at(1) & (~0x80))
-			result.back() = ((char) (head.mask ? 0x80 : 0x0) | (0x7F & size));
-		// Если строка не помещается во второй байт
-		} else if(size < 0x10000) {
-			// Устанавливаем смещение в буфере
-			offset = 4;
-			// Увеличиваем память ещё на два байта
-			result.resize(offset, 0x0);
-			// Заполняем второй байт максимальным значением
-			result.at(1) = ((char) (head.mask ? 0x80 : 0x0) | (0x7F & 0x7E));
-			// Выполняем перерасчёт размера передаваемых данных
-			const u_short length = htons((u_short) size);
-			// Устанавливаем размер строки в следующие 2 байта
-			memcpy(result.data() + 2, &length, sizeof(length));
-		// Если сообщение очень большого размера
-		} else {
-			// Устанавливаем смещение в буфере
-			offset = 10;
-			// Увеличиваем память ещё на восемь байт
-			result.resize(offset, 0x0);
-			// Заполняем второй байт максимальным значением
-			result.at(1) = ((char) (head.mask ? 0x80 : 0x0) | (0x7F & 0x7F));
-			// Выполняем перерасчёт размера передаваемых данных
-			const size_t length = htonl(size);
-			// Устанавливаем размер строки в следующие 8 байт
-			memcpy(result.data() + 2, &length, sizeof(length));
-		}
-		// Если маска требуется, маскируем данные
-		if(head.mask){
-			// Выполняем маскировку сообщения
-			const auto & mask = masking(* const_cast <vector <char> *> (&buffer));
-			// Увеличиваем память ещё на четыре байта
-			result.resize(offset + 4, 0x0);
-			// Устанавливаем сгенерированную маску
-			memcpy(result.data() + offset, mask.data(), mask.size());
-		}
-		// Выполняем копирования оставшихся данных в буфер
-		result.insert(result.end(), buffer.begin(), buffer.end());
-	}
+	if(!buffer.empty()) frame(result, buffer, head.mask);
 	// Выводим результат
 	return result;
 }
