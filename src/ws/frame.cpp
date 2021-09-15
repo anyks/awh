@@ -133,6 +133,89 @@ void awh::Frame::frame(vector <char> & payload, const char * buffer, const size_
 	}
 }
 /**
+ * message Метод создание фрейма сообщения
+ * @param mess данные сообщения
+ * @return     бинарные данные фрейма
+ */
+vector <char> awh::Frame::message(const mess_t & mess) const noexcept {
+	// Результат работы функции
+	vector <char> result;
+	// Если сообщение передано
+	if((mess.code > 0) && !mess.text.empty()){
+		// Размер смещения в буфере и размер передаваемых данных
+		size_t offset = 0, size = mess.text.size();
+		// Увеличиваем память на 4 байта
+		result.resize(4, 0x0);
+		// Устанавливаем первый байт
+		result.front() = ((char) 0x80 | (0x0F & (u_char) opcode_t::CLOSE));
+		// Если размер строки меньше 126 байт, значит строка умещается во второй байт
+		if(size < 0x7E){
+			// Устанавливаем смещение в буфере
+			offset = 2;
+			// Устанавливаем размер строки
+			result.at(1) = ((char) (0x7F & (size + 2)));
+		// Если строка не помещается во второй байт
+		} else if(size < 0x10000) {
+			// Устанавливаем смещение в буфере
+			offset = 4;
+			// Увеличиваем память ещё на два байта
+			result.resize(offset + 2, 0x0);
+			// Заполняем второй байт максимальным значением
+			result.at(1) = ((char) (0x7F & 0x7E));
+			// Выполняем перерасчёт размера передаваемых данных
+			const u_short length = htons((u_short) (size + 2));
+			// Устанавливаем размер строки в следующие 2 байта
+			memcpy(result.data() + 2, &length, sizeof(length));
+		}
+		// Получаем код сообщения
+		const u_short code = htons(mess.code);
+		// Устанавливаем код сообщения
+		memcpy(result.data() + offset, &code, sizeof(code));
+		// Выполняем копирования оставшихся данных в буфер
+		result.insert(result.end(), mess.text.begin(), mess.text.end());
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * message Метод извлечения сообщения из фрейма
+ * @param buffer бинарные данные сообщения
+ * @return       сообщение в текстовом виде
+ */
+awh::Frame::mess_t awh::Frame::message(const vector <char> & buffer) const noexcept {
+	// Результат работы функции
+	mess_t result;
+	// Если данные переданы
+	if(buffer.size() >= sizeof(result.code)){
+		/**
+		 * Коды ошибок: https://github.com/Luka967/websocket-close-codes
+		 */
+		// Считываем код ошибки
+		memcpy(&result.code, buffer.data(), sizeof(result.code));
+		// Преобразуем сетевой порядок расположения байтов
+		result = ntohs(result.code);
+		// Если коды ошибок соответствуют
+		if((result.code > 0) && (result.code <= 4999)){
+			// Выполняем перехват ошибки
+			try {
+				// Если текст сообщения существует
+				if(buffer.size() > sizeof(result.code))
+					// Извлекаем текст сообщения
+					result.text.assign(buffer.begin() + sizeof(result.code), buffer.end());
+			// Выполняем прехват ошибки
+			} catch(const exception & error) {
+				// Выводим в лог сообщение
+				this->fmk->log("%s", fmk_t::log_t::CRITICAL, this->logfile, error.what());
+				// Устанавливаем текст ошибки
+				result = this->fmk->format("%s", error.what());
+			}
+		// Запоминаем размер смещения
+		} else result = 1007;
+	}
+	// Выводим результат
+	return result;
+}
+/**
  * ping Метод создания фрейма пинга
  * @param mess данные сообщения
  * @param mask флаг выполнения маскировки сообщения
@@ -244,89 +327,6 @@ vector <char> awh::Frame::set(const head_t & head, const char * buffer, const si
 	if((buffer != nullptr) && (size > 0))
 		// Выполняем формирование фрейма
 		this->frame(result, buffer, size, head.mask);
-	// Выводим результат
-	return result;
-}
-/**
- * message Метод создание фрейма сообщения
- * @param mess данные сообщения
- * @return     бинарные данные фрейма
- */
-vector <char> awh::Frame::message(const mess_t & mess) const noexcept {
-	// Результат работы функции
-	vector <char> result;
-	// Если сообщение передано
-	if((mess.code > 0) && !mess.text.empty()){
-		// Размер смещения в буфере и размер передаваемых данных
-		size_t offset = 0, size = mess.text.size();
-		// Увеличиваем память на 4 байта
-		result.resize(4, 0x0);
-		// Устанавливаем первый байт
-		result.front() = ((char) 0x80 | (0x0F & (u_char) opcode_t::CLOSE));
-		// Если размер строки меньше 126 байт, значит строка умещается во второй байт
-		if(size < 0x7E){
-			// Устанавливаем смещение в буфере
-			offset = 2;
-			// Устанавливаем размер строки
-			result.at(1) = ((char) (0x7F & (size + 2)));
-		// Если строка не помещается во второй байт
-		} else if(size < 0x10000) {
-			// Устанавливаем смещение в буфере
-			offset = 4;
-			// Увеличиваем память ещё на два байта
-			result.resize(offset + 2, 0x0);
-			// Заполняем второй байт максимальным значением
-			result.at(1) = ((char) (0x7F & 0x7E));
-			// Выполняем перерасчёт размера передаваемых данных
-			const u_short length = htons((u_short) (size + 2));
-			// Устанавливаем размер строки в следующие 2 байта
-			memcpy(result.data() + 2, &length, sizeof(length));
-		}
-		// Получаем код сообщения
-		const u_short code = htons(mess.code);
-		// Устанавливаем код сообщения
-		memcpy(result.data() + offset, &code, sizeof(code));
-		// Выполняем копирования оставшихся данных в буфер
-		result.insert(result.end(), mess.text.begin(), mess.text.end());
-	}
-	// Выводим результат
-	return result;
-}
-/**
- * message Метод извлечения сообщения из фрейма
- * @param buffer бинарные данные сообщения
- * @return       сообщение в текстовом виде
- */
-awh::Frame::mess_t awh::Frame::message(const vector <char> & buffer) const noexcept {
-	// Результат работы функции
-	mess_t result;
-	// Если данные переданы
-	if(buffer.size() >= sizeof(result.code)){
-		/**
-		 * Коды ошибок: https://github.com/Luka967/websocket-close-codes
-		 */
-		// Считываем код ошибки
-		memcpy(&result.code, buffer.data(), sizeof(result.code));
-		// Преобразуем сетевой порядок расположения байтов
-		result = ntohs(result.code);
-		// Если коды ошибок соответствуют
-		if((result.code > 0) && (result.code <= 4999)){
-			// Выполняем перехват ошибки
-			try {
-				// Если текст сообщения существует
-				if(buffer.size() > sizeof(result.code))
-					// Извлекаем текст сообщения
-					result.text.assign(buffer.begin() + sizeof(result.code), buffer.end());
-			// Выполняем прехват ошибки
-			} catch(const exception & error) {
-				// Выводим в лог сообщение
-				this->fmk->log("%s", fmk_t::log_t::CRITICAL, this->logfile, error.what());
-				// Устанавливаем текст ошибки
-				result = this->fmk->format("%s", error.what());
-			}
-		// Запоминаем размер смещения
-		} else result = 1007;
-	}
 	// Выводим результат
 	return result;
 }

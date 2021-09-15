@@ -184,6 +184,19 @@ namespace awh {
 			void frame(vector <char> & payload, const char * buffer, const size_t size, const bool mask) const noexcept;
 		public:
 			/**
+			 * message Метод создание фрейма сообщения
+			 * @param mess данные сообщения
+			 * @return     бинарные данные фрейма
+			 */
+			vector <char> message(const mess_t & mess) const noexcept;
+			/**
+			 * message Метод извлечения сообщения из фрейма
+			 * @param buffer бинарные данные сообщения
+			 * @return       сообщение в текстовом виде
+			 */
+			mess_t message(const vector <char> & buffer) const noexcept;
+		public:
+			/**
 			 * ping Метод создания фрейма пинга
 			 * @param mess данные сообщения
 			 * @param mask флаг выполнения маскировки сообщения
@@ -214,19 +227,6 @@ namespace awh {
 			 * @return       бинарные данные фрейма
 			 */
 			vector <char> set(const head_t & head, const char * buffer, const size_t size) const noexcept;
-		public:
-			/**
-			 * message Метод создание фрейма сообщения
-			 * @param mess данные сообщения
-			 * @return     бинарные данные фрейма
-			 */
-			vector <char> message(const mess_t & mess) const noexcept;
-			/**
-			 * message Метод извлечения сообщения из фрейма
-			 * @param buffer бинарные данные сообщения
-			 * @return       сообщение в текстовом виде
-			 */
-			mess_t message(const vector <char> & buffer) const noexcept;
 		public:
 			/**
 			 * Frame Конструктор
