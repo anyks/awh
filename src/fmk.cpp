@@ -1060,14 +1060,15 @@ void awh::Framework::log(const string & format, log_t flag, const char * filenam
 					// Выводим сообщение так-как оно есть
 					case (u_short) log_t::NONE: this->plot->setLog(string(buffer.begin(), buffer.end())); break;
 					// Выводим информационное сообщение
-					case (u_short) log_t::INFO: this->plot->setLog(this->format("\x1B[32m\x1B[1mInfo\x1B[0m \x1B[32m%s %s :\x1B[0m %s", date, GLB_SHORT_NAME, buffer.data())); break;
+					case (u_short) log_t::INFO: this->plot->setLog(this->format("\x1B[32m\x1B[1mInfo\x1B[0m \x1B[32m%s %s :\x1B[0m %s", date, AWH_SHORT_NAME, buffer.data())); break;
 					// Выводим сообщение об ошибке
-					case (u_short) log_t::CRITICAL: this->plot->setLog(this->format("\x1B[31m\x1B[1mError\x1B[0m \x1B[31m%s %s :\x1B[0m %s", date, GLB_SHORT_NAME, buffer.data())); break;
+					case (u_short) log_t::CRITICAL: this->plot->setLog(this->format("\x1B[31m\x1B[1mError\x1B[0m \x1B[31m%s %s :\x1B[0m %s", date, AWH_SHORT_NAME, buffer.data())); break;
 					// Выводим сообщение предупреждения
-					case (u_short) log_t::WARNING: this->plot->setLog(this->format("\x1B[33m\x1B[1mWarning\x1B[0m \x1B[33m%s %s :\x1B[0m %s", date, GLB_SHORT_NAME, buffer.data())); break;
+					case (u_short) log_t::WARNING: this->plot->setLog(this->format("\x1B[33m\x1B[1mWarning\x1B[0m \x1B[33m%s %s :\x1B[0m %s", date, AWH_SHORT_NAME, buffer.data())); break;
 				}
 			// Иначе выводим стандартное логирование
 			} else {
+			*/
 				// Если тип сообщение не является пустым
 				if((flag != log_t::NONE) && !isFile) out << "*************** START ***************" << endl << endl;
 				// Определяем тип сообщения
@@ -1075,16 +1076,15 @@ void awh::Framework::log(const string & format, log_t flag, const char * filenam
 					// Выводим сообщение так-как оно есть
 					case (u_short) log_t::NONE: out << buffer.data() << (!isEnd ? "\r\n\r\n" : ""); break;
 					// Выводим информационное сообщение
-					case (u_short) log_t::INFO: out << (isFile ? this->format("Info %s %s : %s", date, GLB_SHORT_NAME, buffer.data()) : this->format("\x1B[32m\x1B[1mInfo\x1B[0m \x1B[32m%s %s :\x1B[0m %s", date, GLB_SHORT_NAME, buffer.data())) << (!isEnd ? "\r\n\r\n" : ""); break;
+					case (u_short) log_t::INFO: out << (isFile ? this->format("Info %s %s : %s", date, AWH_SHORT_NAME, buffer.data()) : this->format("\x1B[32m\x1B[1mInfo\x1B[0m \x1B[32m%s %s :\x1B[0m %s", date, AWH_SHORT_NAME, buffer.data())) << (!isEnd ? "\r\n\r\n" : ""); break;
 					// Выводим сообщение об ошибке
-					case (u_short) log_t::CRITICAL: out << (isFile ? this->format("Error %s %s : %s", date, GLB_SHORT_NAME, buffer.data()) : this->format("\x1B[31m\x1B[1mError\x1B[0m \x1B[31m%s %s :\x1B[0m %s", date, GLB_SHORT_NAME, buffer.data())) << (!isEnd ? "\r\n\r\n" : ""); break;
+					case (u_short) log_t::CRITICAL: out << (isFile ? this->format("Error %s %s : %s", date, AWH_SHORT_NAME, buffer.data()) : this->format("\x1B[31m\x1B[1mError\x1B[0m \x1B[31m%s %s :\x1B[0m %s", date, AWH_SHORT_NAME, buffer.data())) << (!isEnd ? "\r\n\r\n" : ""); break;
 					// Выводим сообщение предупреждения
-					case (u_short) log_t::WARNING: out << (isFile ? this->format("Warning %s %s : %s", date, GLB_SHORT_NAME, buffer.data()) : this->format("\x1B[33m\x1B[1mWarning\x1B[0m \x1B[33m%s %s :\x1B[0m %s", date, GLB_SHORT_NAME, buffer.data())) << (!isEnd ? "\r\n\r\n" : ""); break;
+					case (u_short) log_t::WARNING: out << (isFile ? this->format("Warning %s %s : %s", date, AWH_SHORT_NAME, buffer.data()) : this->format("\x1B[33m\x1B[1mWarning\x1B[0m \x1B[33m%s %s :\x1B[0m %s", date, AWH_SHORT_NAME, buffer.data())) << (!isEnd ? "\r\n\r\n" : ""); break;
 				}
 				// Если тип сообщение не является пустым
 				if((flag != log_t::NONE) && !isFile) out << "---------------- END ----------------" << endl << endl;
-			}
-			*/
+			// }
 			// Если был создан файловый поток, удаляем память
 			if(file != nullptr) delete file;
 		}
@@ -1134,14 +1134,15 @@ void awh::Framework::log(const string & format, log_t flag, const char * filenam
 				// Выводим сообщение так-как оно есть
 				case (u_short) log_t::NONE: this->plot->setLog(str); break;
 				// Выводим информационное сообщение
-				case (u_short) log_t::INFO: this->plot->setLog(this->format("\x1B[32m\x1B[1mInfo\x1B[0m \x1B[32m%s %s :\x1B[0m %s", date, GLB_SHORT_NAME, str.c_str())); break;
+				case (u_short) log_t::INFO: this->plot->setLog(this->format("\x1B[32m\x1B[1mInfo\x1B[0m \x1B[32m%s %s :\x1B[0m %s", date, AWH_SHORT_NAME, str.c_str())); break;
 				// Выводим сообщение об ошибке
-				case (u_short) log_t::CRITICAL: this->plot->setLog(this->format("\x1B[31m\x1B[1mError\x1B[0m \x1B[31m%s %s :\x1B[0m %s", date, GLB_SHORT_NAME, str.c_str())); break;
+				case (u_short) log_t::CRITICAL: this->plot->setLog(this->format("\x1B[31m\x1B[1mError\x1B[0m \x1B[31m%s %s :\x1B[0m %s", date, AWH_SHORT_NAME, str.c_str())); break;
 				// Выводим сообщение предупреждения
-				case (u_short) log_t::WARNING: this->plot->setLog(this->format("\x1B[33m\x1B[1mWarning\x1B[0m \x1B[33m%s %s :\x1B[0m %s", date, GLB_SHORT_NAME, str.c_str())); break;
+				case (u_short) log_t::WARNING: this->plot->setLog(this->format("\x1B[33m\x1B[1mWarning\x1B[0m \x1B[33m%s %s :\x1B[0m %s", date, AWH_SHORT_NAME, str.c_str())); break;
 			}
 		// Иначе выводим стандартное логирование
 		} else {
+		*/
 			// Если тип сообщение не является пустым
 			if((flag != log_t::NONE) && !isFile) out << "*************** START ***************" << endl << endl;
 			// Определяем тип сообщения
@@ -1149,16 +1150,15 @@ void awh::Framework::log(const string & format, log_t flag, const char * filenam
 				// Выводим сообщение так-как оно есть
 				case (u_short) log_t::NONE: out << str << (!isEnd ? "\r\n\r\n" : ""); break;
 				// Выводим информационное сообщение
-				case (u_short) log_t::INFO: out << (isFile ? this->format("Info %s %s : %s", date, GLB_SHORT_NAME, str.c_str()) : this->format("\x1B[32m\x1B[1mInfo\x1B[0m \x1B[32m%s %s :\x1B[0m %s", date, GLB_SHORT_NAME, str.c_str())) << (!isEnd ? "\r\n\r\n" : ""); break;
+				case (u_short) log_t::INFO: out << (isFile ? this->format("Info %s %s : %s", date, AWH_SHORT_NAME, str.c_str()) : this->format("\x1B[32m\x1B[1mInfo\x1B[0m \x1B[32m%s %s :\x1B[0m %s", date, AWH_SHORT_NAME, str.c_str())) << (!isEnd ? "\r\n\r\n" : ""); break;
 				// Выводим сообщение об ошибке
-				case (u_short) log_t::CRITICAL: out << (isFile ? this->format("Error %s %s : %s", date, GLB_SHORT_NAME, str.c_str()) : this->format("\x1B[31m\x1B[1mError\x1B[0m \x1B[31m%s %s :\x1B[0m %s", date, GLB_SHORT_NAME, str.c_str())) << (!isEnd ? "\r\n\r\n" : ""); break;
+				case (u_short) log_t::CRITICAL: out << (isFile ? this->format("Error %s %s : %s", date, AWH_SHORT_NAME, str.c_str()) : this->format("\x1B[31m\x1B[1mError\x1B[0m \x1B[31m%s %s :\x1B[0m %s", date, AWH_SHORT_NAME, str.c_str())) << (!isEnd ? "\r\n\r\n" : ""); break;
 				// Выводим сообщение предупреждения
-				case (u_short) log_t::WARNING: out << (isFile ? this->format("Warning %s %s : %s", date, GLB_SHORT_NAME, str.c_str()) : this->format("\x1B[33m\x1B[1mWarning\x1B[0m \x1B[33m%s %s :\x1B[0m %s", date, GLB_SHORT_NAME, str.c_str())) << (!isEnd ? "\r\n\r\n" : ""); break;
+				case (u_short) log_t::WARNING: out << (isFile ? this->format("Warning %s %s : %s", date, AWH_SHORT_NAME, str.c_str()) : this->format("\x1B[33m\x1B[1mWarning\x1B[0m \x1B[33m%s %s :\x1B[0m %s", date, AWH_SHORT_NAME, str.c_str())) << (!isEnd ? "\r\n\r\n" : ""); break;
 			}
 			// Если тип сообщение не является пустым
 			if((flag != log_t::NONE) && !isFile) out << "---------------- END ----------------" << endl << endl;
-		}
-		*/
+		// }
 		// Если был создан файловый поток, удаляем память
 		if(file != nullptr) delete file;
 	}

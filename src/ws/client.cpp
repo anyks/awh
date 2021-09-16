@@ -160,7 +160,7 @@ void awh::Client::request() noexcept {
 				"GET %s %s\r\n"
 				"Host: %s\r\n"
 				"Date: %s\r\n"
-				"Origin: %s\n\n"
+				"Origin: %s\r\n"
 				"User-Agent: %s\r\n"
 				"Connection: Upgrade\r\n"
 				"Upgrade: websocket\r\n"
@@ -587,22 +587,10 @@ void awh::Client::resolve(const uri_t::url_t & url, function <void (const string
 void awh::Client::init(const string & url, const bool gzip){
 	// Если адрес сервера передан
 	if(!url.empty()){
-		try {
-			// Устанавливаем флаг активации сжатия данных
-			this->gzip = gzip;
-			// Выполняем установку URL адреса сервера WebSocket
-			this->url = this->uri->parseUrl(url);
-			// Создаём объект для работы с авторизацией
-			this->auth = new auth_t(this->fmk, this->logfile);
-			// Создаём объект для работы с SSL
-			this->ssl = new ssl_t(this->fmk, this->uri, this->logfile);
-		// Если происходит ошибка то игнорируем её
-		} catch(const bad_alloc&) {
-			// Выводим сообщение об ошибке
-			this->fmk->log("%s", fmk_t::log_t::CRITICAL, this->logfile, "memory could not be allocated");
-			// Выходим из приложения
-			exit(EXIT_FAILURE);
-		}
+		// Устанавливаем флаг активации сжатия данных
+		this->gzip = gzip;
+		// Выполняем установку URL адреса сервера WebSocket
+		this->url = this->uri->parseUrl(url);
 	}
 }
 /**
@@ -734,7 +722,7 @@ void awh::Client::setSubs(const vector <string> & subs) noexcept {
  * @param mode флаг состояния разрешения проверки
  */
 void awh::Client::setVerifySSL(const bool mode) noexcept {
-	// Устанавливаем флаг проверки
+	// Выполняем установку флага проверки домена
 	this->ssl->setVerify(mode);
 }
 /**
@@ -848,11 +836,23 @@ void awh::Client::setAuthType(const auth_t::type_t type, const auth_t::algorithm
  * @param logfile адрес файла для сохранения логов
  */
 awh::Client::Client(const fmk_t * fmk, const uri_t * uri, const network_t * nwk, const char * logfile) noexcept {
-	// Устанавливаем зависимые модули
-	this->fmk     = fmk;
-	this->uri     = uri;
-	this->nwk     = nwk;
-	this->logfile = logfile;
+	try {
+		// Устанавливаем зависимые модули
+		this->fmk     = fmk;
+		this->uri     = uri;
+		this->nwk     = nwk;
+		this->logfile = logfile;
+		// Создаём объект для работы с авторизацией
+		this->auth = new auth_t(this->fmk, this->logfile);
+		// Создаём объект для работы с SSL
+		this->ssl = new ssl_t(this->fmk, this->uri, this->logfile);
+	// Если происходит ошибка то игнорируем её
+	} catch(const bad_alloc&) {
+		// Выводим сообщение об ошибке
+		fmk->log("%s", fmk_t::log_t::CRITICAL, logfile, "memory could not be allocated");
+		// Выходим из приложения
+		exit(EXIT_FAILURE);
+	}
 }
 /**
  * ~Client Деструктор

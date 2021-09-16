@@ -35,6 +35,10 @@ int main(int argc, char * argv[]) noexcept {
 	ws.setVerifySSL(true);
 	// Разрешаем автоматическое восстановление подключения
 	ws.setAutoReconnect(true);
+	// Выполняем инициализацию типа авторизации
+	ws.setAuthType();
+	// Устанавливаем логин и пароль пользователя
+	ws.setUser("user", "password");
 	// Устанавливаем адрес сертификата
 	ws.setCA("./ca/cert.pem");
 	// Выполняем инициализацию WebSocket клиента
