@@ -1,0 +1,26 @@
+From 80cf535763b6199dc6d47bb5e438e559f2428fc0 Mon Sep 17 00:00:00 2001
+From: Artem Shmetakov <55283995+shmetakov@users.noreply.github.com>
+Date: Mon, 23 Aug 2021 21:03:44 +0300
+Subject: [PATCH] Correcting the error on checking the pointer
+
+---
+ event.c | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/event.c b/event.c
+index 7a42b731..7977f7af 100644
+--- a/event.c
++++ b/event.c
+@@ -2918,6 +2918,9 @@ event_active(struct event *ev, int res, short ncalls)
+ void
+ event_active_nolock_(struct event *ev, int res, short ncalls)
+ {
++    if (ev == NULL)
++        return;
++        
+ 	struct event_base *base;
+ 
+ 	event_debug(("event_active: %p (fd "EV_SOCK_FMT"), res %d, callback %p",
+-- 
+2.32.0
+

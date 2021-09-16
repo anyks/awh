@@ -108,17 +108,17 @@ void awh::Client::request() noexcept {
 	// Если подключение установленно
 	if(this->bev != nullptr){
 		// Получаем копию URL данных
-		auto uri = this->url;
+		auto url = this->url;
 		// Удаляем IP адрес если домен существует
-		if(!uri.domain.empty()) uri.ip.clear();
+		if(!url.domain.empty()) url.ip.clear();
 		// Генерируем URL адрес запроса
-		const string & origin = this->uri->createOrigin(uri);
+		const string & origin = this->uri->createOrigin(url);
 		// Получаем путь HTTP запроса
 		const string & path = this->uri->joinPath(this->url.path);
 		// Получаем параметры запроса
 		const string & params = this->uri->joinParams(this->url.params);
 		// Получаем хост запроса
-		const string & host = (!uri.domain.empty() ? uri.domain : uri.ip);
+		const string & host = (!url.domain.empty() ? url.domain : url.ip);
 		// Если хост получен
 		if(!host.empty() && !path.empty()){
 			// Список желаемых подпротоколов и желаемая компрессия

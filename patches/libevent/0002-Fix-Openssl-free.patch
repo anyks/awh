@@ -1,0 +1,58 @@
+From f1ac6b6a6ac1cbf562448a4ac954fb37244cc4ac Mon Sep 17 00:00:00 2001
+From: Artem Shmetakov <55283995+shmetakov@users.noreply.github.com>
+Date: Wed, 25 Aug 2021 17:00:01 +0300
+Subject: [PATCH 2/2] Fix Openssl free
+
+---
+ bufferevent_openssl.c | 14 +++++++-------
+ 1 file changed, 7 insertions(+), 7 deletions(-)
+
+diff --git a/bufferevent_openssl.c b/bufferevent_openssl.c
+index b51b834b..df5f9355 100644
+--- a/bufferevent_openssl.c
++++ b/bufferevent_openssl.c
+@@ -1239,7 +1239,7 @@ be_openssl_destruct(struct bufferevent *bev)
+ 			if (fd >= 0)
+ 				evutil_closesocket(fd);
+ 		}
+-		SSL_free(bev_ssl->ssl);
++//		SSL_free(bev_ssl->ssl);
+ 	}
+ }
+ 
+@@ -1401,8 +1401,8 @@ bufferevent_openssl_new_impl(struct event_base *base,
+ 
+ 	return &bev_ssl->bev.bev;
+ err:
+-	if (options & BEV_OPT_CLOSE_ON_FREE)
+-		SSL_free(ssl);
++//	if (options & BEV_OPT_CLOSE_ON_FREE)
++//		SSL_free(ssl);
+ 	if (bev_ssl) {
+ 		bev_ssl->ssl = NULL;
+ 		bufferevent_free(&bev_ssl->bev.bev);
+@@ -1432,8 +1432,8 @@ bufferevent_openssl_filter_new(struct event_base *base,
+ 	return bev;
+ 
+ err:
+-	if (options & BEV_OPT_CLOSE_ON_FREE)
+-		SSL_free(ssl);
++//	if (options & BEV_OPT_CLOSE_ON_FREE)
++//		SSL_free(ssl);
+ 	return NULL;
+ }
+ 
+@@ -1479,8 +1479,8 @@ bufferevent_openssl_socket_new(struct event_base *base,
+ 		base, NULL, fd, ssl, state, options);
+ 
+ err:
+-	if (options & BEV_OPT_CLOSE_ON_FREE)
+-		SSL_free(ssl);
++//	if (options & BEV_OPT_CLOSE_ON_FREE)
++//		SSL_free(ssl);
+ 	return NULL;
+ }
+ 
+-- 
+2.32.0
+
