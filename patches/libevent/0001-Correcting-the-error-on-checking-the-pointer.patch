@@ -17,10 +17,10 @@ index 7a42b731..7977f7af 100644
  {
 +    if (ev == NULL)
 +        return;
-+        
++
  	struct event_base *base;
- 
+
  	event_debug(("event_active: %p (fd "EV_SOCK_FMT"), res %d, callback %p",
--- 
+--
 2.32.0
 

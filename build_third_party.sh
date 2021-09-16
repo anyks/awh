@@ -163,7 +163,6 @@ if [ ! -f "$src/.stamp_done" ]; then
 
 	cd "$src" || exit 1
 
-	apply_patch "libevent" "0002-Fix-Openssl-free.patch"
 	apply_patch "libevent" "0001-Correcting-the-error-on-checking-the-pointer.patch"
 
 	# Создаём каталог сборки
