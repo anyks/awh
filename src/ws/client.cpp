@@ -221,8 +221,6 @@ const bool awh::Client::connect() noexcept {
 			this->fd = socket.fd;
 			// Выполняем получение контекста сертификата
 			this->sslctx = this->ssl->init(this->url);
-			// Выполняем получение контекста сертификата
-			this->sslctx = this->ssl->init(this->url);
 			// Если SSL клиент разрешен
 			if(this->sslctx.mode){
 				// Создаем буфер событий для сервера зашифрованного подключения
