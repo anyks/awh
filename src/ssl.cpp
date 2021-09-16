@@ -1,0 +1,604 @@
+/**
+ * author:    Yuriy Lobarev
+ * telegram:  @forman
+ * phone:     +7(910)983-95-90
+ * email:     forman@anyks.com
+ * site:      https://anyks.com
+ * copyright: © Yuriy Lobarev
+ */
+
+// Подключаем заголовочный файл
+#include <ssl.hpp>
+
+/**
+ * rawEqual Метод проверки на эквивалентность доменных имен
+ * @param first  первое доменное имя
+ * @param second второе доменное имя
+ * @return       результат проверки
+ */
+const bool awh::ASSL::rawEqual(const string & first, const string & second) const noexcept {
+	// Результат работы функции
+	bool result = false;
+	// Если данные переданы
+	if(!first.empty() && !second.empty())
+		// Проверяем совпадение строки
+		result = (first.compare(second) == 0);
+	// Выводим результат
+	return result;
+}
+/**
+ * rawNequal Метод проверки на не эквивалентность доменных имен
+ * @param first  первое доменное имя
+ * @param second второе доменное имя
+ * @param max    количество начальных символов для проверки
+ * @return       результат проверки
+ */
+const bool awh::ASSL::rawNequal(const string & first, const string & second, const size_t max) const noexcept {
+	// Результат работы функции
+	bool result = false;
+	// Если данные переданы
+	if(!first.empty() && !second.empty()){
+		// Получаем новые значения
+		string first1 = first;
+		string second1 = second;
+		// Получаем новые значения переменных
+		const string & first2 = first1.replace(max, first1.length() - max, "");
+		const string & second2 = second1.replace(max, second1.length() - max, "");
+		// Проверяем совпадение строки
+		result = (first2.compare(second2) == 0);
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * hostmatch Метод проверки эквивалентности доменного имени с учетом шаблона
+ * @param hostname доменное имя
+ * @param pattern  шаблон домена
+ * @return         результат проверки
+ */
+const bool awh::ASSL::hostmatch(const string & hostname, const string & pattern) const noexcept {
+	// Результат работы функции
+	bool result = true;
+	// Если данные переданы
+	if(!hostname.empty() && !pattern.empty()){
+		// Запоминаем шаблон и хоста
+		string patternLabel = pattern;
+		string hostnameLabel = hostname;
+		// Позиция звездочки в шаблоне
+		const size_t patternWildcard = pattern.find('*');
+		// Ищем звездочку в шаблоне не найдена
+		if(patternWildcard == string::npos) return this->rawEqual(pattern, hostname);
+		// Режим активации шаблона
+		bool wildcardEnabled = true;
+		// Определяем конец шаблона
+		const size_t patternLabelEnd = pattern.find('.');
+		// Если это конец тогда запрещаем активацию шаблона
+		if((patternLabelEnd == string::npos)
+		|| (patternWildcard > patternLabelEnd)
+		|| this->rawNequal(pattern, "xn--", 4)) wildcardEnabled = false;
+		// Если шаблон отключен
+		if(!wildcardEnabled) return this->rawEqual(pattern, hostname);
+		// Выполняем поиск точки в название хоста
+		const size_t hostnameLabelEnd = hostname.find('.');
+		// Если хост не найден
+		if((patternLabelEnd != string::npos)
+		&& (hostnameLabelEnd != string::npos)){
+			// Обрезаем строку шаблона
+			const string & p = patternLabel.replace(0, patternLabelEnd, "");
+			const string & h = hostnameLabel.replace(0, hostnameLabelEnd, "");
+			// Выполняем сравнение
+			if(!this->rawEqual(p, h)) return false;
+		// Выходим
+		} else return false;
+		// Если диапазоны точки в шаблоне и хосте отличаются тогда выходим
+		if(hostnameLabelEnd < patternLabelEnd) return false;
+		// Получаем размер префикса и суфикса
+		const size_t prefixlen = patternWildcard;
+		const size_t suffixlen = (patternLabelEnd - (patternWildcard + 1));
+		// Обрезаем строку шаблона
+		const string & pat = patternLabel.replace(0, patternWildcard + 1, "");
+		// Обрезаем строку хоста
+		const string & host = hostnameLabel.replace(0, hostnameLabelEnd - suffixlen, "");
+		// Проверяем эквивалент результата
+		return (this->rawNequal(pattern, hostname, prefixlen) && this->rawNequal(pat, host, suffixlen));
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * certHostcheck Метод проверки доменного имени по шаблону
+ * @param  pattern  шаблон домена
+ * @param  hostname доменное имя
+ * @return          результат проверки
+ */
+const bool awh::ASSL::certHostcheck(const string & pattern, const string & hostname) const noexcept {
+	// Результат работы функции
+	bool result = false;
+	// Если данные переданы
+	if(!hostname.empty() && !pattern.empty())
+		// Проверяем эквивалентны ли домен и шаблон
+		result = (this->rawEqual(hostname, pattern) || this->hostmatch(hostname, pattern));
+	// Выводим результат
+	return result;
+}
+/**
+ * matchesCommonName Метод проверки доменного имени по данным из сертификата
+ * @param hostname доменное имя
+ * @param cert     сертификат
+ * @return         результат проверки
+ */
+const awh::ASSL::validate_t awh::ASSL::matchesCommonName(const string & hostname, const X509 * cert) const noexcept {
+	// Результат работы функции
+	validate_t result = validate_t::MatchNotFound;
+	// Если данные переданы
+	if(!hostname.empty() && (cert != nullptr)){
+		// Получаем индекс имени по NID
+		const int commonNameLoc = X509_NAME_get_index_by_NID(X509_get_subject_name((X509 *) cert), NID_commonName, -1);
+		// Если индекс не получен тогда выходим
+		if(commonNameLoc < 0) return validate_t::Error;
+		// Извлекаем поле CN
+		X509_NAME_ENTRY * commonNameEntry = X509_NAME_get_entry(X509_get_subject_name((X509 *) cert), commonNameLoc);
+		// Если поле не получено тогда выходим
+		if(commonNameEntry == nullptr) return validate_t::Error;
+		// Конвертируем CN поле в C строку
+		ASN1_STRING * commonNameAsn1 = X509_NAME_ENTRY_get_data(commonNameEntry);
+		// Если строка не сконвертирована тогда выходим
+		if(commonNameAsn1 == nullptr) return validate_t::Error;
+		// Извлекаем название в виде строки
+		const string commonName((char *) ASN1_STRING_get0_data(commonNameAsn1), ASN1_STRING_length(commonNameAsn1));
+		// Сравниваем размеры полученных строк
+		if(size_t(ASN1_STRING_length(commonNameAsn1)) != commonName.length()) return validate_t::MalformedCertificate;
+		// Выполняем рукопожатие
+		if(this->certHostcheck(commonName, hostname)) return validate_t::MatchFound;
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * matchSubjectName Метод проверки доменного имени по списку доменных имен из сертификата
+ * @param hostname доменное имя
+ * @param cert     сертификат
+ * @return         результат проверки
+ */
+const awh::ASSL::validate_t awh::ASSL::matchSubjectName(const string & hostname, const X509 * cert) const noexcept {
+	// Результат работы функции
+	validate_t result = validate_t::MatchNotFound;
+	// Если данные переданы
+	if(!hostname.empty() && (cert != nullptr)){
+		// Получаем имена
+		STACK_OF(GENERAL_NAME) * sanNames = reinterpret_cast <STACK_OF(GENERAL_NAME) *> (X509_get_ext_d2i((X509 *) cert, NID_subject_alt_name, nullptr, nullptr));
+		// Если имена не получены тогда выходим
+		if(sanNames == nullptr) return validate_t::NoSANPresent;
+		// Получаем количество имен
+		const int sanNamesNb = sk_GENERAL_NAME_num(sanNames);
+		// Переходим по всему списку
+		for(int i = 0; i < sanNamesNb; i++){
+			// Получаем имя из списка
+			const GENERAL_NAME * currentName = sk_GENERAL_NAME_value(sanNames, i);
+			// Проверяем тип имени
+			if(currentName->type == GEN_DNS){
+				// Получаем dns имя
+				const string dnsName((char *) ASN1_STRING_get0_data(currentName->d.dNSName), ASN1_STRING_length(currentName->d.dNSName));
+				// Если размер имени не совпадает
+				if(size_t(ASN1_STRING_length(currentName->d.dNSName)) != dnsName.length()){
+					// Запоминаем результат
+					result = validate_t::MalformedCertificate;
+					// Выходим из цикла
+					break;
+				// Если размер имени и dns имя совпадает
+				} else if(this->certHostcheck(dnsName, hostname)){
+					// Запоминаем результат что домен найден
+					result = validate_t::MatchFound;
+					// Выходим из цикла
+					break;
+				}
+			}
+		}
+		// Очищаем список имен
+		sk_GENERAL_NAME_pop_free(sanNames, GENERAL_NAME_free);
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * validateHostname Метод проверки доменного имени
+ * @param hostname доменное имя
+ * @param cert     сертификат
+ * @return         результат проверки
+ */
+const awh::ASSL::validate_t awh::ASSL::validateHostname(const string & hostname, const X509 * cert) const noexcept {
+	// Результат работы функции
+	validate_t result = validate_t::Error;
+	// Если данные переданы
+	if(!hostname.empty() && (cert != nullptr)){
+		// Выполняем проверку имени хоста по списку доменов у сертификата
+		result = this->matchSubjectName(hostname, cert);
+		// Если у сертификата только один домен
+		if(result == validate_t::NoSANPresent) result = this->matchesCommonName(hostname, cert);
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * clear Метод очистки контекста
+ * @param ctx контекст для очистки
+ */
+void awh::ASSL::clear(ctx_t & ctx) const noexcept {
+	// Если объект верификации домена создан
+	if(ctx.verify != nullptr){
+		// Удаляем объект верификации
+		delete ctx.verify;
+		// Зануляем объект верификации
+		ctx.verify = nullptr;
+	}
+	// Если контекст SSL сервер был поднят
+	if(ctx.ctx != nullptr){
+		// Очищаем контекст сервера
+		SSL_CTX_free(ctx.ctx);
+		// Зануляем контекст сервера
+		ctx.ctx = nullptr;
+	}
+	// Если контекст SSL создан
+	if(ctx.ssl != nullptr){
+		// Очищаем объект SSL
+		SSL_clear(ctx.ssl);
+		// Освобождаем выделенную память
+		SSL_free(ctx.ssl);
+		// Зануляем контекст сервера
+		ctx.ssl = nullptr;
+	}
+	// Сбрасываем флаг инициализации
+	ctx.mode = false;
+}
+/**
+ * init Метод инициализации контекста
+ * @param url Параметры URL адреса для инициализации
+ */
+awh::ASSL::ctx_t awh::ASSL::init(const uri_t::url_t & url) noexcept {
+	// Результат работы функции
+	ctx_t result;
+	// Если объект фреймворка существует
+	if((this->fmk != nullptr) && !url.domain.empty() && ((url.schema.compare("https") == 0) || (url.schema.compare("wss") == 0))){
+		// Активируем рандомный генератор
+		if(RAND_poll() == 0){
+			// Выводим в лог сообщение
+			this->fmk->log("%s", fmk_t::log_t::CRITICAL, this->logfile, "rand poll is not allow");
+			// Выходим
+			return result;
+		}
+		// Получаем контекст OpenSSL
+		result.ctx = SSL_CTX_new(SSLv23_client_method());
+		// Если контекст не создан
+		if(result.ctx == nullptr){
+			// Выводим в лог сообщение
+			this->fmk->log("%s", fmk_t::log_t::CRITICAL, this->logfile, "context ssl is not initialization");
+			// Выходим
+			return result;
+		}
+		// Устанавливаем опции запроса
+		SSL_CTX_set_options(result.ctx, SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3);
+		// Если CA-файл найден и адрес файла указан
+		if(!this->cafile.empty()) {
+			// Определяем путь где хранятся сертификаты
+			const char * capath = (!this->capath.empty() ? this->capath.c_str() : nullptr);
+			// Выполняем проверку
+			if(SSL_CTX_load_verify_locations(result.ctx, this->cafile.c_str(), capath) != 1){
+				// Выводим в лог сообщение
+				this->fmk->log("%s", fmk_t::log_t::CRITICAL, this->logfile, "ssl verify locations is not allow");
+				// Выходим
+				return result;
+			}
+			// Если каталог получен
+			if(capath != nullptr){
+				// Получаем полный адрес
+				const string & fullPath = fs_t::realPath(this->capath);
+				// Если адрес существует
+				if(fs_t::isdir(fullPath) && !fs_t::isfile(this->cafile)){
+					// Если - это Windows
+					#if defined(_WIN32) || defined(_WIN64)
+						// Выполняем сплит адреса
+						const auto & params = this->uri->split(fullPath);
+						// Если диск получен
+						if(!params.front().empty()){
+							// Выполняем сплит адреса
+							auto path = this->uri->splitPath(params.back(), FS_SEPARATOR);
+							// Добавляем адрес файла в список
+							path.push_back(this->cafile);
+							// Формируем полный адарес файла
+							string filename = this->fmk->format("%s:%s", params.front().c_str(), this->uri->joinPath(path, FS_SEPARATOR).c_str());
+							// Выполняем проверку CA-файла
+							if(!filename.empty()){
+								// Выполняем декодирование адреса файла
+								filename = this->uri->urlDecode(filename);
+								// Если адрес файла существует
+								if(fs_t::isfile(filename))
+									// Выполняем проверку CA-файла
+									SSL_CTX_set_client_CA_list(result.ctx, SSL_load_client_CA_file(filename.c_str()));
+								// Выполняем очистку CA-файла
+								else this->cafile.clear();
+							// Выполняем очистку CA-файла
+							} else this->cafile.clear();
+						// Выполняем очистку CA-файла
+						} else this->cafile.clear();
+					// Если - это Unix
+					#else
+						// Выполняем сплит адреса
+						auto path = this->uri->splitPath(fullPath, FS_SEPARATOR);
+						// Добавляем адрес файла в список
+						path.push_back(this->cafile);
+						// Формируем полный адарес файла
+						string filename = this->uri->joinPath(path, FS_SEPARATOR);
+						// Выполняем проверку CA-файла
+						if(!filename.empty()){
+							// Выполняем декодирование адреса файла
+							filename = this->uri->urlDecode(filename);
+							// Если адрес файла существует
+							if(fs_t::isfile(filename))
+								// Выполняем проверку CA файла
+								SSL_CTX_set_client_CA_list(result.ctx, SSL_load_client_CA_file(filename.c_str()));
+							// Выполняем очистку CA-файла
+							else this->cafile.clear();
+						// Выполняем очистку CA-файла
+						} else this->cafile.clear();
+					#endif
+				// Если адрес файла существует
+				} else if(fs_t::isfile(this->cafile))
+					// Выполняем проверку CA-файла
+					SSL_CTX_set_client_CA_list(result.ctx, SSL_load_client_CA_file(this->cafile.c_str()));
+				// Выполняем очистку CA-файла
+				else this->cafile.clear();
+			// Если адрес файла существует
+			} else if(fs_t::isfile(this->cafile))
+				// Выполняем проверку CA-файла
+				SSL_CTX_set_client_CA_list(result.ctx, SSL_load_client_CA_file(this->cafile.c_str()));
+		}
+		// Если CA-файл не указан
+		if(this->cafile.empty()){
+			// Получаем данные стора
+			X509_STORE * store = SSL_CTX_get_cert_store(result.ctx);
+			// Если - это Windows
+			#if defined(_WIN32) || defined(_WIN64)
+				/**
+				 * addCertToStoreFn Функция проверки параметров сертификата
+				 * @param store стор с сертификатами для работы
+				 * @param name  название параметра сертификата
+				 * @return      результат проверки
+				 */
+				auto addCertToStoreFn = [this](X509_STORE * store = nullptr, const char * name = nullptr) -> int {
+					// Результат работы функции
+					int result = 0;
+					// Если объекты переданы верно
+					if((store != nullptr) && (name != nullptr)){
+						// Контекст сертификата
+						PCCERT_CONTEXT ctx = nullptr;
+						// Получаем данные системного стора
+						HCERTSTORE sys = CertOpenSystemStore(0, name);
+						// Если системный стор не получен
+						if(!sys){
+							// Выводим в лог сообщение
+							this->fmk->log("%s", fmk_t::log_t::CRITICAL, this->logfile, "failed to open system certificate store");
+							// Выходим
+							return -1;
+						}
+						// Перебираем все сертификаты в системном сторе
+						while((ctx = CertEnumCertificatesInStore(sys, ctx))){
+							// Получаем сертификат
+							X509 * cert = d2i_X509(nullptr, (const u_char **) &ctx->pbCertEncoded, ctx->cbCertEncoded);
+							// Если сертификат получен
+							if(cert != nullptr){
+								// Добавляем сертификат в стор
+								X509_STORE_add_cert(store, cert);
+								// Очищаем выделенную память
+								X509_free(cert);
+							// Если сертификат не получен
+							} else {
+								// Формируем результат ответа
+								result = -1;
+								// Выводим в лог сообщение
+								this->fmk->log("%s failed", fmk_t::log_t::CRITICAL, this->logfile, "d2i_X509");
+								// Выходим из цикла
+								break;
+							}
+						}
+						// Закрываем системный стор
+						CertCloseStore(sys, 0);
+					}
+					// Выходим
+					return result;
+				};
+				// Проверяем существует ли путь
+				if((addCertToStoreFn(store, "CA") < 0) || (addCertToStoreFn(store, "AuthRoot") < 0) || (addCertToStoreFn(store, "ROOT") < 0)) return result;
+			#endif
+			// Если стор не устанавливается, тогда выводим ошибку
+			if(X509_STORE_set_default_paths(store) != 1){
+				// Выводим в лог сообщение
+				this->fmk->log("%s", fmk_t::log_t::CRITICAL, this->logfile, "set default paths for x509 store is not allow");
+				// Выходим
+				return result;
+			}
+		}
+		// Если нужно произвести проверку
+		if(this->verify && !url.domain.empty()){
+			/**
+			 * verifyFn Функция обратного вызова для проверки валидности сертификата
+			 * @param x509 данные сертификата
+			 * @param ctx  передаваемый контекст
+			 * @return     результат проверки
+			 */
+			auto verifyFn = [](X509_STORE_CTX * x509 = nullptr, void * ctx = nullptr) -> int {
+				// Если объекты переданы верно
+				if((x509 != nullptr) && (ctx != nullptr)){
+					// Буфер данных сертификатов из хранилища
+					char buffer[256];
+					// Заполняем структуру нулями
+					memset(buffer, 0, sizeof(buffer));
+					// Ошибка проверки сертификата
+					string status = "X509VerifyCertFailed";
+					// Результат проверки домена
+					ssl_t::validate_t validate = ssl_t::validate_t::Error;
+					// Получаем объект подключения
+					const verify_t * obj = reinterpret_cast <const verify_t *> (ctx);
+					// Выполняем проверку сертификата
+					const int ok = X509_verify_cert(x509);
+					// Запрашиваем данные сертификата
+					X509 * cert = X509_STORE_CTX_get_current_cert(x509);
+					// Если проверка сертификата прошла удачно
+					if(ok){
+						// Выполняем проверку на соответствие хоста с данными хостов у сертификата
+						validate = obj->ssl->validateHostname(obj->host, cert);
+						// Определяем полученную ошибку
+						switch((u_short) validate){
+							case (u_short) ssl_t::validate_t::MatchFound:           status = "MatchFound";           break;
+							case (u_short) ssl_t::validate_t::MatchNotFound:        status = "MatchNotFound";        break;
+							case (u_short) ssl_t::validate_t::NoSANPresent:         status = "NoSANPresent";         break;
+							case (u_short) ssl_t::validate_t::MalformedCertificate: status = "MalformedCertificate"; break;
+							case (u_short) ssl_t::validate_t::Error:                status = "Error";                break;
+							default:                                                status = "WTF!";
+						}
+					}
+					// Запрашиваем имя домена
+					X509_NAME_oneline(X509_get_subject_name(cert), buffer, sizeof(buffer));
+					// Очищаем выделенную память
+					X509_free(cert);
+					// Если домен найден в записях сертификата (т.е. сертификат соответствует данному домену)
+					if(validate == ssl_t::validate_t::MatchFound){
+						// Выводим в лог сообщение
+						obj->ssl->fmk->log("https server [%s] has this certificate, which looks good to me: %s", fmk_t::log_t::INFO, obj->ssl->logfile, obj->host, buffer);
+						// Выводим сообщение, что проверка пройдена
+						return 1;
+					// Если ресурс не найден тогда выводим сообщение об ошибке
+					} else obj->ssl->fmk->log("%s for hostname '%s' [%s]", fmk_t::log_t::CRITICAL, obj->ssl->logfile, status.c_str(), obj->host, buffer);
+				}
+				// Выводим сообщение, что проверка не пройдена
+				return 0;
+			};
+			// Создаём объект проверки домена
+			result.verify = new verify_t(this, url.domain.c_str());
+			// Выполняем проверку сертификата
+			SSL_CTX_set_verify(result.ctx, SSL_VERIFY_PEER | SSL_VERIFY_CLIENT_ONCE, nullptr);
+			// Выполняем проверку всех дочерних сертификатов
+			SSL_CTX_set_cert_verify_callback(result.ctx, verifyFn, result.verify);
+		}
+		// Создаем ssl объект
+		result.ssl = SSL_new(result.ctx);
+		// Если объект не создан
+		if(result.ssl == nullptr){
+			// Выводим в лог сообщение
+			this->fmk->log("%s", fmk_t::log_t::CRITICAL, this->logfile, "ssl initialization is not allow");
+			// Выходим
+			return result;
+		}
+		// Если нужно установить TLS расширение
+		#ifdef SSL_CTRL_SET_TLSEXT_HOSTNAME
+			// Устанавливаем имя хоста для SNI расширения
+			if(!url.domain.empty()) SSL_set_tlsext_host_name(result.ssl, url.domain.c_str());
+		#endif
+		// Проверяем рукопожатие
+		if(SSL_do_handshake(result.ssl) <= 0) {
+			// Выполняем проверку рукопожатия
+			const long verify = SSL_get_verify_result(result.ssl);
+			// Если рукопожатие не выполнено
+			if(verify != X509_V_OK){
+				// Выводим в лог сообщение
+				this->fmk->log("certificate chain validation failed: %s", fmk_t::log_t::CRITICAL, this->logfile, X509_verify_cert_error_string(verify));
+				// Выходим
+				return result;
+			}
+		}
+		// Устанавливаем флаг, удачного создания SSL объекта
+		result.mode = true;
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * setVerify Метод разрешающий или запрещающий, выполнять проверку соответствия, сертификата домену
+ * @param mode флаг состояния разрешения проверки
+ */
+void awh::ASSL::setVerify(const bool mode) noexcept {
+	// Устанавливаем флаг проверки
+	this->verify = mode;
+}
+/**
+ * setCA Метод установки CA-файла корневого SSL сертификата
+ * @param cafile адрес CA-файла
+ * @param capath адрес каталога где находится CA-файл
+ */
+void awh::ASSL::setCA(const string & cafile, const string & capath) noexcept {
+	// Если адрес CA-файла передан
+	if(!cafile.empty()){
+		// Устанавливаем адрес CA-файла
+		this->cafile = fs_t::realPath(cafile);
+		// Если адрес каталога с CA-файлом передан, устанавливаем и его
+		if(!capath.empty() && fs_t::isdir(capath))
+			// Устанавливаем адрес каталога с CA-файлами
+			this->capath = fs_t::realPath(capath);
+	}
+}
+/**
+ * ASSL Конструктор
+ * @param fmk     объект фреймворка
+ * @param uri     объект работы с URI
+ * @param logfile адрес файла для сохранения логов
+ */
+awh::ASSL::ASSL(const fmk_t * fmk, const uri_t * uri, const char * logfile) noexcept {
+	// Устанавливаем объект фреймворка
+	this->fmk = fmk;
+	// Устанавливаем объект для работы с URI
+	this->uri = uri;
+	// Устанавливаем адрес файла для сохранения логов
+	this->logfile = logfile;
+	// Выполняем модификацию CA-файла
+	this->cafile = fs_t::realPath(this->cafile);
+	// Если - это Windows
+	#if defined(_WIN32) || defined(_WIN64)
+	{
+		// Объект данных сессии
+		WSADATA wsaData;
+		// Создаём структуру сессии
+		WORD wVersionRequested = MAKEWORD(2, 2);
+		// Выполняем запуск сессии
+		int err = WSAStartup(wVersionRequested, &wsaData);
+		// Если возникла ошибка
+		if(err != 0){
+			// Выводим в лог сообщение
+			this->fmk->log("%s", fmk_t::log_t::CRITICAL, this->logfile, "WSAStartup failed with error: %i", err);
+			// Выходим из приложения
+			exit(EXIT_FAILURE);
+		}
+	}
+	#endif
+	// Если версия OPENSSL старая
+	#if (OPENSSL_VERSION_NUMBER < 0x10100000L) || (defined(LIBRESSL_VERSION_NUMBER) && LIBRESSL_VERSION_NUMBER < 0x20700000L)
+		// Выполняем инициализацию OpenSSL
+		SSL_library_init();
+		ERR_load_crypto_strings();
+		SSL_load_error_strings();
+		OpenSSL_add_all_algorithms();
+	#endif
+}
+/**
+ * ~ASSL Деструктор
+ */
+awh::ASSL::~ASSL() noexcept {
+	// Если версия OPENSSL старая
+	#if (OPENSSL_VERSION_NUMBER < 0x10100000L) || (defined(LIBRESSL_VERSION_NUMBER) && LIBRESSL_VERSION_NUMBER < 0x20700000L)
+		// Выполняем освобождение памяти
+		EVP_cleanup();
+		ERR_free_strings();
+		// Освобождаем объект состояния
+		#if OPENSSL_VERSION_NUMBER < 0x10000000L
+			ERR_remove_state(0);
+		#else
+			ERR_remove_thread_state(nullptr);
+		#endif
+		// Освобождаем оставшиеся данные
+		CRYPTO_cleanup_all_ex_data();
+		sk_SSL_COMP_free(SSL_COMP_get_compression_methods());
+	#endif
+	// Если - это Windows
+	#if defined(_WIN32) || defined(_WIN64)
+		// Очищаем данные сессии
+		WSACleanup();
+	#endif
+}
