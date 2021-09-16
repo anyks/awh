@@ -62,10 +62,10 @@ endif()
 
 if (${ARCHITECTURE} MATCHES "aarch64" OR ${ARCHITECTURE} MATCHES "arm*")
     set(CMAKE_CXX_FLAGS_RELEASE "-O2 -pipe -DNDEBUG")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread -std=c++14 -fno-permissive -Wno-pedantic")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread -std=c++14 -fno-permissive -Wno-pedantic -Wno-deprecated-declarations")
 else()
     set(CMAKE_CXX_FLAGS_RELEASE "-O2 -pipe -mfma -mrdrnd -mf16c -march=core2 -DNDEBUG")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread -std=c++14 -fno-permissive -Wno-pedantic ${WINPARAMS}")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread -std=c++14 -fno-permissive -Wno-pedantic -Wno-deprecated-declarations ${WINPARAMS}")
 endif()
 
 set(CMAKE_CXX_FLAGS_DEBUG "-O0 -DDEBUG_MODE ${DEBUGGER}")
@@ -133,7 +133,7 @@ set(SOURCE_FILES
 )
 
 # Задаем именя библиотеки и бинарника
-set(TOOLS_APP_NAME tools)
+set(CLIENT_APP_NAME client)
 set(CURRENT_LIB_NAME ${PROJECT_NAME})
 set(CURRENT_APP_NAME ${PROJECT_NAME}_bin)
 
@@ -158,16 +158,16 @@ if (ENABLE_CONSOLE_APP)
         SET(CMAKE_RC_COMPILE_OBJECT "<CMAKE_RC_COMPILER> <FLAGS> -O coff <DEFINES> -i <SOURCE> -o <OBJECT>")
     endif(MINGW)
 
-    add_executable(${CURRENT_APP_NAME} samples/client.cpp ${RES_FILES})
+    add_executable(${CLIENT_APP_NAME} samples/client.cpp ${RES_FILES})
 
-    target_link_libraries(${CURRENT_APP_NAME}
+    target_link_libraries(${CLIENT_APP_NAME}
         ${CURRENT_LIB_NAME}
         ${LIBEVENT_LIBRARIES}
         ${ZLIB_LIBRARY}
         ${OPENSSL_LIBRARIES}
         ${WINFLAGS}
     )
-    set_target_properties(${CURRENT_APP_NAME} PROPERTIES OUTPUT_NAME ${PROJECT_NAME})
+    #set_target_properties(${CLIENT_APP_NAME} PROPERTIES OUTPUT_NAME ${PROJECT_NAME})
 endif()
 
 # Устанавливаем адрес установки, запрет установки в /usr/local
@@ -180,7 +180,7 @@ install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/include" DESTINATION "${CMAKE_INS
 # Устанавливаем библиотеку
 install(TARGETS ${CURRENT_LIB_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
 # Устанавливаем исполнительные файлы
-install(TARGETS ${CURRENT_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin")
+install(TARGETS ${CLIENT_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin")
 
 # Устанавливаем стороние библиотеки
 install(FILES ${LIBEVENT_LIBRARIES} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")

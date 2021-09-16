@@ -62,3 +62,32 @@
 // Адреса серверов DNS резолвера
 #define IPV4_RESOLVER {"8.8.8.8", "8.8.4.4"}
 #define IPV6_RESOLVER {"2001:4860:4860::8888", "2001:4860:4860::8844"}
+
+/**
+ * Файловые пути бота
+ */
+// Если операционной системой является Windows
+#if defined(_WIN32) || defined(_WIN64)
+	// Адрес файла корневого сертификата
+	#define SSL_CA_FILE "%ProgramFiles%\\OpenSSL-Win64\\bin\\PEM\\cert.pem"
+// Если операционной системой является MacOS X
+#elif __APPLE__ || __MACH__
+	// Адрес файла корневого сертификата
+	#define SSL_CA_FILE "/usr/local/etc/openssl/cert.pem"
+// Если операционной системой является Linux
+#elif __linux__
+	// Адрес файла корневого сертификата
+	#define SSL_CA_FILE "/etc/ssl/certs/certSIGN_ROOT_CA.pem"
+// Если операционной системой является FreeBSD
+#elif __FreeBSD__
+	// Адрес файла корневого сертификата
+	#define SSL_CA_FILE "/usr/local/openssl/cert.pem"
+// Для всех остальных Unix-подобных операционных систем
+#elif __unix || __unix__
+	// Адрес файла корневого сертификата
+	#define SSL_CA_FILE ""
+// Для всех остальных операционных систем
+#else
+	// Адрес файла корневого сертификата
+	#define SSL_CA_FILE ""
+#endif

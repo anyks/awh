@@ -121,7 +121,7 @@ void awh::Frame::frame(vector <char> & payload, const char * buffer, const size_
 			// Выполняем перебор всех байт передаваемых данных
 			for(size_t i = 0; i < size; i++){
 				// Выполняем шифрование данных
-				buffer[i] ^= mask[i % 4];
+				const_cast <char *> (buffer)[i] ^= mask[i % 4];
 			}
 			// Увеличиваем память ещё на четыре байта
 			payload.resize(offset + 4, 0x0);
@@ -182,7 +182,7 @@ vector <char> awh::Frame::message(const mess_t & mess) const noexcept {
  * @param buffer бинарные данные сообщения
  * @return       сообщение в текстовом виде
  */
-awh::Frame::mess_t awh::Frame::message(const vector <char> & buffer) const noexcept {
+awh::mess_t awh::Frame::message(const vector <char> & buffer) const noexcept {
 	// Результат работы функции
 	mess_t result;
 	// Если данные переданы
@@ -223,7 +223,7 @@ awh::Frame::mess_t awh::Frame::message(const vector <char> & buffer) const noexc
  */
 vector <char> awh::Frame::ping(const string & mess, const bool mask) const noexcept {
 	// Создаём тело запроса и устанавливаем первый байт PING с пустой полезной нагрузкой
-	vector <char> result = {(u_char) 0x80 | (0x0F & (u_char) opcode_t::PING), 0x0};
+	vector <char> result = {(char) 0x80 | (0x0F & (char) opcode_t::PING), 0x0};
 	// Если сообщение передано
 	if(!mess.empty())
 		// Выполняем формирование фрейма
@@ -239,7 +239,7 @@ vector <char> awh::Frame::ping(const string & mess, const bool mask) const noexc
  */
 vector <char> awh::Frame::pong(const string & mess, const bool mask) const noexcept {
 	// Создаём тело запроса и устанавливаем первый байт PONG с пустой полезной нагрузкой
-	vector <char> result = {(u_char) 0x80 | (0x0F & (u_char) opcode_t::PONG), 0x0};
+	vector <char> result = {(char) 0x80 | (0x0F & (char) opcode_t::PONG), 0x0};
 	// Если сообщение передано
 	if(!mess.empty())
 		// Выполняем формирование фрейма

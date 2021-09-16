@@ -41,9 +41,9 @@ using namespace std;
  */
 namespace awh {
 	/**
-	 * Frame Класс для работы с фреймом WebSocket
+	 * Message Структура сообщений удалённой стороны
 	 */
-	typedef class Frame {
+	typedef class Message {
 		private:
 			/**
 			 * Коды сообщений
@@ -67,6 +67,72 @@ namespace awh {
 				{1015, {"CLOSE_TLS_HANDSHAKE_FAIL", "Transport Layer Security handshake failure"}}
 			};
 		public:
+			// Код сообщения
+			u_short code;
+			// Текст и тип сообщения
+			string text, type;
+		private:
+			/**
+			 * find Метод поиска типа сообщения
+			 */
+			void find() noexcept {
+				// Если код сообщения передан
+				if(code > 0){
+					// Выполняем поиск типа сообщений
+					auto it = this->codes.find(this->code);
+					// Если тип сообщения найден, устанавливаем
+					if(it != this->codes.end()){
+						// Устанавливаем тип сообщения
+						this->type = it->second.first;
+						// Устанавливаем текст сообщения
+						this->text = it->second.second;
+					}
+				}
+			}
+		public:
+			/**
+			 * operator= Оператор установки текстового сообщения
+			 * @param text текст сообщения
+			 * @return     ссылка на контекст объекта
+			 */
+			Message & operator=(const string & text) noexcept {
+				// Устанавливаем текст сообщения
+				if(!text.empty()) this->text = text;
+				// Выводим контекст текущего объекта
+				return (* this);
+			}
+			/**
+			 * operator= Оператор установки кода сообщения
+			 * @param code код сообщения
+			 * @return     ссылка на контекст объекта
+			 */
+			Message & operator=(const u_short code) noexcept {
+				// Если код сообщения передан
+				if(code > 0){
+					// Устанавливаем код сообщения
+					this->code = code;
+					// Выполняем поиск сообщения
+					this->find();
+				}
+				// Выводим контекст текущего объекта
+				return (* this);
+			}
+		public:
+			/**
+			 * Message Конструктор
+			 * @param code код сообщения
+			 * @param text текст сообщения
+			 */
+			Message(const u_short code = 0, const string & text = "") noexcept : code(code), text(text), type("") {
+				// Выполняем поиск сообщения
+				this->find();
+			}
+	} mess_t;
+	/**
+	 * Frame Класс для работы с фреймом WebSocket
+	 */
+	typedef class Frame {
+		public:
 			/**
 			 * Опкоды запроса
 			 */
@@ -80,72 +146,6 @@ namespace awh {
 				CONTINUATION  = 0x0, // Работа продолжается в текущем режиме
 				CONTROLUNUSED = 0xB  // Зарезервированы для будущих управляющих фреймов
 			};
-			/**
-			 * Message Структура сообщений удалённой стороны
-			 */
-			typedef class Message {
-				public:
-					// Код сообщения
-					u_short code;
-					// Текст и тип сообщения
-					string text, type;
-				private:
-					/**
-					 * find Метод поиска типа сообщения
-					 */
-					void find() noexcept {
-						// Если код сообщения передан
-						if(code > 0){
-							// Выполняем поиск типа сообщений
-							auto it = codes.find(this->code);
-							// Если тип сообщения найден, устанавливаем
-							if(it != codes.end()){
-								// Устанавливаем тип сообщения
-								this->type = it->second.first;
-								// Устанавливаем текст сообщения
-								this->text = it->second.second;
-							}
-						}
-					}
-				public:
-					/**
-					 * operator= Оператор установки текстового сообщения
-					 * @param text текст сообщения
-					 * @return     ссылка на контекст объекта
-					 */
-					Message & operator=(const string & text) noexcept {
-						// Устанавливаем текст сообщения
-						if(!text.empty()) this->text = text;
-						// Выводим контекст текущего объекта
-						return (* this);
-					}
-					/**
-					 * operator= Оператор установки кода сообщения
-					 * @param code код сообщения
-					 * @return     ссылка на контекст объекта
-					 */
-					Message & operator=(const u_short code) noexcept {
-						// Если код сообщения передан
-						if(code > 0){
-							// Устанавливаем код сообщения
-							this->code = code;
-							// Выполняем поиск сообщения
-							this->find();
-						}
-						// Выводим контекст текущего объекта
-						return (* this);
-					}
-				public:
-					/**
-					 * Message Конструктор
-					 * @param code код сообщения
-					 * @param text текст сообщения
-					 */
-					Message(const u_short code = 0, const string & text = "") noexcept : code(code), text(text), type("") {
-						// Выполняем поиск сообщения
-						this->find();
-					}
-			} mess_t;
 			/**
 			 * Head Структура шапки
 			 */

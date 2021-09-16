@@ -101,7 +101,7 @@ namespace awh {
 				L'u', L'v', L'w', L'x', L'y', L'z'
 			};
 			// Устанавливаем локаль по умолчанию
-			std::locale locale{GLB_LOCALE};
+			std::locale locale{AWH_LOCALE};
 		public:
 			/**
 			 * log_t Флаги логирования
@@ -452,7 +452,7 @@ namespace awh {
 			 * setlocale Метод установки локали
 			 * @param locale локализация приложения
 			 */
-			void setlocale(const string & locale = GLB_LOCALE) noexcept;
+			void setlocale(const string & locale = AWH_LOCALE) noexcept;
 		public:
 			/**
 			 * unixTimestamp Метод получения штампа времени в миллисекундах

@@ -208,7 +208,7 @@ const bool awh::Client::connect() noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Если объект фреймворка существует
-	if((this->fmk != nullptr) && !this->stop){
+	if((this->fmk != nullptr) && !this->halt){
 		// Размер структуры подключения
 		socklen_t size = 0;
 		// Объект подключения
@@ -610,9 +610,9 @@ void awh::Client::init(const string & url, const bool gzip){
  */
 void awh::Client::stop() noexcept {
 	// Если система уже запущена
-	if(this->mode && !this->stop){
+	if(this->mode && !this->halt){
 		// Запоминаем, что работа остановлена
-		this->stop = true;
+		this->halt = true;
 		// Запрещаем работу WebSocket
 		this->mode = false;
 		// Запрещаем запись данных клиенту
@@ -639,7 +639,7 @@ void awh::Client::start() noexcept {
 			// Разрешаем работу WebSocket
 			this->mode = true;
 			// Отключаем флаг остановки работы
-			this->stop = false;
+			this->halt = false;
 			/**
 			 * runFn Функция выполнения запуска системы
 			 * @param ip полученный адрес сервера резолвером
@@ -685,7 +685,7 @@ void awh::Client::start() noexcept {
 			// Очищаем все глобальные переменные
 			libevent_global_shutdown();
 			// Если остановка не выполнена
-			if(this->reconnect && !this->stop){
+			if(this->reconnect && !this->halt){
 				// Останавливаем работу WebSocket
 				this->mode = false;
 				// Выводим в консоль информацию

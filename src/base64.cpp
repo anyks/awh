@@ -19,7 +19,7 @@
  * @param mode режим работы (false - кодирование, true - декодирование)
  * @return     размер полученных данных
  */
-const int glb::Base64::base64(const u_char * in, char * out, u_int lin, u_int lout, const bool mode) const noexcept {
+const int awh::Base64::base64(const u_char * in, char * out, u_int lin, u_int lout, const bool mode) const noexcept {
 	// Результат
 	int result = 0;
 	// Инициализируем объекты
@@ -56,7 +56,7 @@ const int glb::Base64::base64(const u_char * in, char * out, u_int lin, u_int lo
  * @param str входящая строка для кодирования
  * @return    результирующая строка
  */
-const string glb::Base64::encode(const string & str) const noexcept {
+const string awh::Base64::encode(const string & str) const noexcept {
 	// Результирующая строка
 	string result = "";
 	// Если строка передана
@@ -76,7 +76,7 @@ const string glb::Base64::encode(const string & str) const noexcept {
  * @param str входящая строка для декодирования
  * @return    результирующая строка
  */
-const string glb::Base64::decode(const string & str) const noexcept {
+const string awh::Base64::decode(const string & str) const noexcept {
 	// Результирующая строка
 	string result = "";
 	// Если строка передана

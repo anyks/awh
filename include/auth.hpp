@@ -20,6 +20,7 @@
  * Наши модули
  */
 #include <fmk.hpp>
+#include <base64.hpp>
 
 // Подписываемся на стандартное пространство имён
 using namespace std;
@@ -59,7 +60,7 @@ namespace awh {
 				/**
 				 * Digest Конструктор
 				 */
-				Digest() : nc("00000000"), uri(""), qop("auth"), realm(GLB_HOST), nonce(""), opaque(""), cnonce(""), response(""), timestamp(0), algorithm(algorithm_t::MD5) {}
+				Digest() : nc("00000000"), uri(""), qop("auth"), realm(AWH_HOST), nonce(""), opaque(""), cnonce(""), response(""), timestamp(0), algorithm(algorithm_t::MD5) {}
 			} digest_t;
 		private:
 			bool server;     // Флаг работы в режиме сервера

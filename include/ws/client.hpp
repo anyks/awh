@@ -124,7 +124,7 @@ namespace awh {
 			ssl_t::ctx_t sslctx;
 		private:
 			// Флаг остановки работы
-			bool stop = true;
+			bool halt = true;
 			// Флаги работы с сжатыми данными
 			bool gzip = false;
 			// Флаг разрешения работы
@@ -332,7 +332,7 @@ namespace awh {
 			 * @param type      тип авторизации
 			 * @param algorithm алгоритм шифрования для Digest авторизации
 			 */
-			void setAuthType(const auth_t::type_t type = auth_t::type_t::BASIC, const auth_t::algorithm_t algorithm = algorithm_t::MD5) noexcept;
+			void setAuthType(const auth_t::type_t type = auth_t::type_t::BASIC, const auth_t::algorithm_t algorithm = auth_t::algorithm_t::MD5) noexcept;
 		public:
 			/**
 			 * Client Конструктор

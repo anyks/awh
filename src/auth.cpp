@@ -405,7 +405,7 @@ const string awh::Authorization::header() noexcept {
 							// Выполняем создание ключа клиента
 							if(createNonce) this->digest.nonce = this->fmk->md5(to_string(time(nullptr)));
 							// Создаём ключ сервера
-							if(this->digest.opaque.empty()) this->digest.opaque = this->fmk->md5(GLB_SITE);
+							if(this->digest.opaque.empty()) this->digest.opaque = this->fmk->md5(AWH_SITE);
 						} break;
 						// Если алгоритм шифрования SHA1
 						case (u_short) algorithm_t::SHA1: {
@@ -414,7 +414,7 @@ const string awh::Authorization::header() noexcept {
 							// Выполняем создание ключа клиента
 							if(createNonce) this->digest.nonce = this->fmk->sha1(to_string(time(nullptr)));
 							// Создаём ключ сервера
-							if(this->digest.opaque.empty()) this->digest.opaque = this->fmk->sha1(GLB_SITE);
+							if(this->digest.opaque.empty()) this->digest.opaque = this->fmk->sha1(AWH_SITE);
 						} break;
 						// Если алгоритм шифрования SHA256
 						case (u_short) algorithm_t::SHA256: {
@@ -423,7 +423,7 @@ const string awh::Authorization::header() noexcept {
 							// Выполняем создание ключа клиента
 							if(createNonce) this->digest.nonce = this->fmk->sha256(to_string(time(nullptr)));
 							// Создаём ключ сервера
-							if(this->digest.opaque.empty()) this->digest.opaque = this->fmk->sha256(GLB_SITE);
+							if(this->digest.opaque.empty()) this->digest.opaque = this->fmk->sha256(AWH_SITE);
 						} break;
 						// Если алгоритм шифрования SHA512
 						case (u_short) algorithm_t::SHA512: {
@@ -432,7 +432,7 @@ const string awh::Authorization::header() noexcept {
 							// Выполняем создание ключа клиента
 							if(createNonce) this->digest.nonce = this->fmk->sha512(to_string(time(nullptr)));
 							// Создаём ключ сервера
-							if(this->digest.opaque.empty()) this->digest.opaque = this->fmk->sha512(GLB_SITE);
+							if(this->digest.opaque.empty()) this->digest.opaque = this->fmk->sha512(AWH_SITE);
 						} break;
 					}
 					// Создаём строку запроса авторизации
@@ -447,7 +447,7 @@ const string awh::Authorization::header() noexcept {
 				// Если тип авторизации Basic
 				} else if(this->type == type_t::BASIC)
 					// Создаём строку запроса авторизации
-					result = this->fmk->format("WWW-Authenticate: Basic realm=\"%s\"", GLB_HOST);
+					result = this->fmk->format("WWW-Authenticate: Basic realm=\"%s\"", AWH_HOST);
 			// Если система является клиентом
 			} else {
 				// Если логин и пароль установлены
