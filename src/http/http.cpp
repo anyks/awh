@@ -145,62 +145,65 @@ void awh::Http::clear() noexcept {
  */
 bool awh::Http::add(const char * buffer, const size_t size) noexcept {
 	// Результат работы функции
-	bool result = false;
-	// Если буфер данных передан
-	if((this->state != state_t::HANDSHAKE) && (buffer != nullptr) && (size > 0)){
-		// Получаем строку ответа
-		const string data(buffer, size);
-		// Определяем статус режима работы
-		switch((u_short) this->state){
-			// Если - это режим ожидания получения запроса
-			case (u_short) state_t::QUERY: {
-				// Выполняем поиск первого пробела
-				size_t first = data.find(" ");
-				// Если пробел получен
-				if(first == 8){
-					// Получаем версию протокол запроса
-					this->version = stod(data.substr(5, first));
-					// Выполняем поиск второго пробела
-					const size_t second = data.find(" ", first + 1);
+	bool result = (this->state == state_t::HANDSHAKE);
+	// Если рукопожатие не выполнено
+	if(!result){
+		// Если буфер данных передан
+		if((buffer != nullptr) && (size > 0)){
+			// Получаем строку ответа
+			const string data(buffer, size);
+			// Определяем статус режима работы
+			switch((u_short) this->state){
+				// Если - это режим ожидания получения запроса
+				case (u_short) state_t::QUERY: {
+					// Выполняем поиск первого пробела
+					size_t first = data.find(" ");
 					// Если пробел получен
-					if(second != string::npos){
-						// Выполняем смену стейта
-						this->state = state_t::HEADERS;
-						// Получаем сообщение сервера
-						this->message = data.substr(second + 1);
-						// Получаем код ответа
-						this->code = stoi(data.substr(first + 1, second));
+					if(first == 8){
+						// Получаем версию протокол запроса
+						this->version = stod(data.substr(5, first));
+						// Выполняем поиск второго пробела
+						const size_t second = data.find(" ", first + 1);
+						// Если пробел получен
+						if(second != string::npos){
+							// Выполняем смену стейта
+							this->state = state_t::HEADERS;
+							// Получаем сообщение сервера
+							this->message = data.substr(second + 1);
+							// Получаем код ответа
+							this->code = stoi(data.substr(first + 1, second));
+						}
 					}
-				}
-			} break;
-			// Если - это режим получения заголовков
-			case (u_short) state_t::HEADERS: {
-				// Выполняем поиск пробела
-				const size_t pos = data.find(": ");
-				// Если разделитель найден
-				if(pos != string::npos){
-					// Получаем значение заголовка
-					const string & val = data.substr(pos + 2);
-					// Получаем ключ заголовка
-					const string & key = this->fmk->toLower(data.substr(0, pos));
-					// Добавляем заголовок в список заголовков
-					if(!key.empty() && !val.empty())
-						// Добавляем заголовок в список
-						this->headers.emplace(key, val);
-				}
+				} break;
+				// Если - это режим получения заголовков
+				case (u_short) state_t::HEADERS: {
+					// Выполняем поиск пробела
+					const size_t pos = data.find(": ");
+					// Если разделитель найден
+					if(pos != string::npos){
+						// Получаем значение заголовка
+						const string & val = data.substr(pos + 2);
+						// Получаем ключ заголовка
+						const string & key = this->fmk->toLower(data.substr(0, pos));
+						// Добавляем заголовок в список заголовков
+						if(!key.empty() && !val.empty())
+							// Добавляем заголовок в список
+							this->headers.emplace(key, val);
+					}
 
-			} break;
-		}
-	// Если буфер данных не передан
-	} else if(!this->headers.empty()){
-		// Если ключ соответствует
-		if((result = (this->checkKey() && this->checkUpgrade()))){
-			// Выполняем обновление списка расширений
-			this->updateExtensions();
-			// Выполняем обновление списка сабпротоколов
-			this->updateSubProtocol();
-			// Устанавливаем стейт рукопожатия
-			this->state = state_t::HANDSHAKE;
+				} break;
+			}
+		// Если буфер данных не передан
+		} else if(!this->headers.empty()){
+			// Если ключ соответствует
+			if((result = (this->checkKey() && this->checkUpgrade() && this->checkVersion()))){
+				// Выполняем обновление списка расширений
+				this->updateExtensions();
+				// Выполняем обновление списка сабпротоколов
+				this->updateSubProtocol();
+				// Устанавливаем стейт рукопожатия
+				this->state = state_t::HANDSHAKE;
+			}
 		}
 	}
 	// Выводим результат
