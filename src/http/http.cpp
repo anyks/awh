@@ -300,7 +300,7 @@ vector <char> awh::Http::restResponse() const noexcept {
 		// Расширения WebSocket и подпротоколы
 		string extensions = "", sub = "";
 		// Если необходимо активировать сжатие
-		if(this->isGzip()){
+		if(this->gzip){
 			// Получаем размер окна для сжатия
 			const u_short wbit = this->getWbit();
 			// Формируем заголовок расширений
