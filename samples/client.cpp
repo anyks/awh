@@ -42,7 +42,7 @@ int main(int argc, char * argv[]) noexcept {
 	// Устанавливаем адрес сертификата
 	ws.setCA("./ca/cert.pem");
 	// Выполняем инициализацию WebSocket клиента
-	ws.init("wss://stream.binance.com:9443/ws/btc@aggTrade", true);
+	ws.init("wss://stream.binance.com:9443/ws/btcusdt@aggTrade", true);
 	// Выполняем запуск WebSocket клиента
 	ws.start();
 	// Выводим результат

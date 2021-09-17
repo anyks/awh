@@ -17,6 +17,7 @@
 #include <ctime>
 #include <string>
 #include <functional>
+#include <unordered_map>
 #include <event2/util.h>
 #include <event2/event.h>
 #include <event2/buffer.h>
@@ -101,6 +102,126 @@ namespace awh {
 				 */
 				Socket() : fd(-1), client({}), server({}), client6({}), server6({}) {}
 			} socket_t;
+			/**
+			 * Http Класс HTTP ответа сервера
+			 */
+			typedef class Http {
+				public:
+					/**
+					 * Основные стейты работы клиента
+					 */
+					enum class state_t: u_short {
+						HEADERS,  // Режим чтения заголовков
+						RESPONSE, // Режим ожидания ответа сервера
+						HANDSHAKE // Рукопожатие выполнено
+					};
+				public:
+					// Код ответа сервера
+					u_int code;
+					// Версия протокола
+					double version;
+					// Стейт текущего запроса
+					state_t state;
+					// Сабпротокол поддерживаемый сервером
+					string sub;
+					// Сообщение сервера
+					string message;
+					// Подпротоколы поддерживаемые клиентом
+					set <string> subs;
+					// HTTP заголовки полученные от сервера
+					unordered_multimap <string, string> headers;
+				public:
+					/**
+					 * inc Метод инкремента стейта
+					 */
+					void inc() noexcept {
+						// Проверяем состояние текущего стейта
+						switch((u_short) this->state){
+							// Если текущий стейт - ПОЛУЧЕНИЕ ОТВЕТА
+							case (u_short) state_t::RESPONSE: this->state = state_t::HEADERS; break;
+							// Если текущий стейт - ПОЛУЧЕНИЕ ЗАГОЛОВКОВ
+							case (u_short) state_t::HEADERS: this->state = state_t::HANDSHAKE; break;
+						}
+					}
+					/**
+					 * clear Метод очистки собранных данных
+					 */
+					void clear() noexcept {
+						// Выполняем сброс сабпротокола поддерживаемого сервером
+						this->sub = "";
+						// Выполняем установку кода ответа сервера
+						this->code = 0;
+						// Выполняем сброс текстового сообщения сервера
+						this->message = "";
+						// Устанавливаем версию протокола сервера
+						this->version = 0.0;
+						// Устанавливаем текущий стейт запроса
+						this->state = state_t::RESPONSE;
+						// Выполняем очистку списка полученных HTTP заголовков от сервера
+						this->headers.clear();
+					}
+				public:
+					/**
+					 * operator= Оператор установки кода ответа сервера
+					 * @param code код ответа сервера
+					 * @return     ссылка на контекст объекта
+					 */
+					Http & operator=(const u_int code) noexcept {
+						// Устанавливаем код ответа сервера
+						if((code >= 100) && (code <= 599)) this->code = code;
+						// Выводим контекст текущего объекта
+						return (* this);
+					}
+					/**
+					 * operator= Оператор установки версии HTTP протокола сервера
+					 * @param version версия HTTP протокола сервера
+					 * @return        ссылка на контекст объекта
+					 */
+					Http & operator=(const double version) noexcept {
+						// Устанавливаем версию HTTP протокола сервера
+						if((version >= 1.0) && (version <= 3.0)) this->version = version;
+						// Выводим контекст текущего объекта
+						return (* this);
+					}
+					/**
+					 * operator= Оператор установки текущего стейта
+					 * @param state значение текущего стейта для установки
+					 * @return      ссылка на контекст объекта
+					 */
+					Http & operator=(const state_t state) noexcept {
+						// Устанавливаем версию HTTP протокола сервера
+						this->state = state;
+						// Выводим контекст текущего объекта
+						return (* this);
+					}
+					/**
+					 * operator= Оператор установки текстового сообщения сервера
+					 * @param message текст сообщения сервера
+					 * @return        ссылка на контекст объекта
+					 */
+					Http & operator=(const string & message) noexcept {
+						// Устанавливаем текст сообщения
+						if(!message.empty()) this->message = message;
+						// Выводим контекст текущего объекта
+						return (* this);
+					}
+					/**
+					 * operator= Оператор установки HTTP заголовка
+					 * @param header HTTP заголовок для установки
+					 * @return       ссылка на контекст объекта
+					 */
+					Http & operator=(const pair <string, string> & header) noexcept {
+						// Устанавливаем HTTP заголовок
+						this->headers.insert(header);
+						// Выводим контекст текущего объекта
+						return (* this);
+					}
+				public:
+					/**
+					 * Http Конструктор
+					 */
+					Http() : code(0), version(0.0), state(state_t::RESPONSE), sub(""), message("") {}
+			} http_t;
 		private:
 			// Версия протокола WebSocket
 			static constexpr u_short WS_VERSION = 13;
@@ -111,12 +232,12 @@ namespace awh {
 		private:
 			// Сетевые параметры
 			net_t net;
+			// Объект http ответа сервера
+			http_t http;
 			// Таймер для контроля подключения
 			timer_t timer;
 			// Параметры постоянного подключения
 			alive_t alive;
-			// Подпротоколы поддерживаемые сервером
-			set <string> subs;
 		private:
 			// Параметры адреса для запроса
 			uri_t::url_t url;

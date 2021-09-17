@@ -128,11 +128,11 @@ void awh::Client::request() noexcept {
 			// Формируем HTTP запрос
 			const string & query = this->fmk->format("%s%s", path.c_str(), (!params.empty() ? params.c_str() : ""));
 			// Если подпротоколы существуют
-			if(!this->subs.empty()){
+			if(!this->http.subs.empty()){
 				// Если количество подпротоколов больше 5-ти
-				if(this->subs.size() > 5){
+				if(this->http.subs.size() > 5){
 					// Переходим по всему списку подпротоколов
-					for(auto & sub : this->subs){
+					for(auto & sub : this->http.subs){
 						// Если подпротокол уже не пустой, добавляем разделитель
 						if(!subs.empty()) subs.append(", ");
 						// Добавляем в список желаемый подпротокол
@@ -145,7 +145,7 @@ void awh::Client::request() noexcept {
 				// Если подпротоколов слишком много
 				} else {
 					// Переходим по всему списку подпротоколов
-					for(auto & sub : this->subs){
+					for(auto & sub : this->http.subs){
 						// Формируем список подпротоколов
 						subs.append(this->fmk->format("Sec-WebSocket-Protocol: %s\r\n", sub.c_str()));
 					}
@@ -169,7 +169,7 @@ void awh::Client::request() noexcept {
 				"%s%s%s\r\n",
 				query.c_str(), HTTP_VERSION,
 				host.c_str(), this->date().c_str(),
-				origin.c_str(), userAgent.c_str(),
+				origin.c_str(), this->userAgent.c_str(),
 				WS_VERSION, this->key().c_str(),
 				(!compress.empty() ? compress.c_str() : ""),
 				(!subs.empty() ? subs.c_str() : ""),
@@ -460,7 +460,225 @@ const awh::Client::socket_t awh::Client::socket(const string & ip, const u_int p
  * @param ctx передаваемый контекст
  */
 void awh::Client::read(struct bufferevent * bev, void * ctx){
+	// Если данные переданы верные
+	if((bev != nullptr) && (ctx != nullptr)){
+		// Получаем буферы входящих данных
+		struct evbuffer * input = bufferevent_get_input(bev);
+		// Получаем размер входящих данных
+		const size_t size = evbuffer_get_length(input);
+		// Если данные существуют
+		if(size > 0){
+			// Получаем объект подключения
+			client_t * ws = reinterpret_cast <client_t *> (ctx);
+			// Если статус режима работы находится на этапе сборки данных
+			if(ws->http.state != http_t::state_t::HANDSHAKE){
+				// Количество прочитанных байт
+				size_t count = 0;
+				// Если статус режим работы находится на этапе получения ответа
+				if(ws->http.state == http_t::state_t::RESPONSE)
+					// Очищаем выбранный подпротокол
+					ws->http.clear();
+				// Считываем данные из буфера до тех пор пока можешь считать
+				do {
+					// Считываем строки из буфера
+					const char * str = evbuffer_readln(input, &count, EVBUFFER_EOL_CRLF_STRICT);
+					// Если данные не найдены тогда выходим
+					if(str == nullptr) break;
+					// Получаем строку ответа
+					const string response(str, count);
+					// Определяем статус режима работы
+					switch((u_short) ws->http.state){
+						// Если - это режим ожидания ответа сервера
+						case (u_short) http_t::state_t::RESPONSE: {
+							// Выполняем поиск первого пробела
+							size_t first = response.find(" ");
+							// Если пробел получен
+							if(first == 8){
+								// Получаем версию протокол запроса
+								ws->http = stod(response.substr(5, first));
+								// Выполняем поиск второго пробела
+								const size_t second = response.find(" ", first + 1);
+								// Если пробел получен
+								if(second != string::npos){
+									// Выполняем смену стейта
+									ws->http.inc();
+									// Получаем сообщение сервера
+									ws->http = response.substr(second + 1);
+									// Получаем код ответа
+									ws->http = (u_int) stoi(response.substr(first + 1, second));
+								}
+							}
+						} break;
+						// Если - это режим получения заголовков
+						case (u_short) http_t::state_t::HEADERS: {
+							// Выполняем поиск пробела
+							const size_t pos = response.find(": ");
+							// Если разделитель найден
+							if(pos != string::npos){
+								// Получаем значение заголовка
+								const string & val = response.substr(pos + 2);
+								// Получаем ключ заголовка
+								const string & key = ws->fmk->toLower(response.substr(0, pos));
+								// Добавляем заголовок в список заголовков
+								if(!key.empty() && !val.empty())
+									// Добавляем заголовок в список
+									ws->http = make_pair(key, val);
+							}
 
+						} break;
+					}
+				// Если заголовки существуют
+				} while(count > 0);
+
+				/**
+				 * checkUpgradeFn Функция проверки параметров HTTP запроса на легитимность
+				 * @return результат проверки
+				 */
+				auto checkUpgradeFn = [ws]() -> bool {
+					// Результат работы функции
+					bool result = false;
+					// Если список заголовков получен
+					if(!ws->http.headers.empty()){
+						// Выполняем поиск заголовка смены протокола
+						auto it = ws->http.headers.find("upgrade");
+						// Выполняем поиск заголовка с параметрами подключения
+						auto jt = ws->http.headers.find("connection");
+						// Если заголовки расширений найдены
+						if((it != ws->http.headers.end()) && (jt != ws->http.headers.end())){
+							// Получаем значение заголовка Upgrade
+							const string & upgrade = ws->fmk->toLower(it->second);
+							// Получаем значение заголовка Connection
+							const string & connection = ws->fmk->toLower(jt->second);
+							// Если заголовки соответствуют
+							result = ((upgrade.compare("websocket") == 0) && (connection.compare("upgrade") == 0));
+						}
+					}
+					// Выводим результат
+					return result;
+				};
+				/**
+				 * checkExtensionsFn Функция проверки расширений протокола
+				 */
+				auto checkExtensionsFn = [ws]{
+					// Отключаем сжатие ответа с сервера
+					ws->gzip = false;
+					// Список расширений
+					vector <wstring> extensions;
+					// Выполняем поиск расширений
+					auto it = ws->http.headers.find("sec-websocket-extensions");
+					// Если заголовки расширений найдены
+					if(it != ws->http.headers.end()){
+						// Выполняем разделение параметров расширений
+						ws->fmk->split(it->second, ";", extensions);
+						// Если список параметров получен
+						if(!extensions.empty()){
+							// Ищем поддерживаемые заголовки
+							for(auto & val : extensions){
+								// Если получены заголовки требующие сжимать передаваемые фреймы
+								if((val.compare(L"permessage-deflate") == 0) || (val.compare(L"perframe-deflate") == 0))
+									// Устанавливаем требование выполнять компрессию полезной нагрузки
+									ws->gzip = true;
+								// Если размер окна в битах получено
+								// else if(val.find(L"client_max_window_bits") != wstring::npos)
+									// Устанавливаем максимальный размер окна для сжатия в GZIP
+								//	ws->auth->setWbit(stoi(val.substr(23)));
+							}
+						}
+					}
+				};
+				/**
+				 * checkKeyFn Функция проверки ключа сервера
+				 * @return результат проверки
+				 */
+				/*
+				auto checkKeyFn = [ws]() -> bool {
+					// Результат работы функции
+					bool result = false;
+					// Получаем параметры ключа сервера
+					auto it = ws->http.headers.find("sec-websocket-accept");
+					// Если параметры авторизации найдены
+					if(it != ws->http.headers.end()){
+						// Получаем ключ для проверки
+						const string & key = this->generateKey(this->client.key);
+						// Если ключи не соответствуют, запрещаем работу
+						result = (key.compare(it->second) == 0);
+					}
+					// Выводим результат
+					return result;
+				};
+				*/
+				/**
+				 * checkAuthFn Функция проверки авторизации пользователя на сервере
+				 * @return результат проверки авторизации
+				 */
+				auto checkAuthFn = [ws]() -> bool {
+					// Результат работы функции
+					bool result = false;
+					// Если требуется авторизация
+					if(ws->http.code == 401){
+						/**
+						// Получаем параметры авторизации
+						auto it = ws->http.headers.find("www-authenticate");
+						// Если параметры авторизации найдены
+						if(it != ws->http.headers.end())
+							// Устанавливаем заголовок HTTP в параметры авторизации
+							this->client.auth.setHeader(it->second);
+						*/
+					// Иначе разрешаем авторизацию
+					} else result = true;
+					// Выводим результат
+					return result;
+				};
+				/**
+				 * selectSubFn Функция выбора подпротокола для дальнейшей работы
+				 */
+				auto selectSubFn = [ws]{
+					// Ищем подпротокол сервера
+					auto it = ws->http.headers.find("sec-websocket-protocol");
+					// Если подпротокол найден, устанавливаем его
+					if(it != ws->http.headers.end()) ws->http.sub = it->second;
+				};
+				// Если HTTP заголовки переданы правильно
+				if(!checkUpgradeFn()){
+					// Останавливаем работу клиента
+					ws->stop();
+					// Вызываем функцию обратного вызова
+					// callback(this->status, code_t::NOUPGRADE, "Http response is not supported by the client", true);
+					// Выходим из функции
+					return;
+				}
+				// Выполняем проверку расширений протокола
+				checkExtensionsFn();
+				/*
+				// Выполняем проверку на ключ сервера
+				if(!checkKeyFn()){
+					// Вызываем функцию обратного вызова
+					// callback(this->status, code_t::NOKEY, "Server key is invalid", true);
+					// Выходим из функции
+					return;
+				}
+				*/
+				// Если авторизация не прошла
+				if(!checkAuthFn()){
+					// Вызываем функцию обратного вызова
+					// callback(this->status, code_t::NOAUTH, "Login or password not found", true);
+					// Выходим из функции
+					return;
+				}
+				// Выполняем поиск подпротокола для дальнейшей работы
+				selectSubFn();
+				// Выполняем смену стейта
+				ws->http.inc();
+			// Если рукопожатие выполнено
+			} else {
+				cout << " ============ " << ws->http.version << " == " << ws->http.code << " == " << ws->http.message << endl;
+
+				for(auto & item : ws->http.headers){
+					cout << " +++++++++++ " << item.first << " == " << item.second << endl;
+				}
+			}
+		}
+	}
 }
 /**
  * write Метод записи данных в сокет сервера
@@ -702,7 +920,7 @@ void awh::Client::start() noexcept {
  */
 void awh::Client::setSub(const string & sub) noexcept {
 	// Устанавливаем подпротокол
-	if(!sub.empty()) this->subs.emplace(sub);
+	if(!sub.empty()) this->http.subs.emplace(sub);
 }
 /**
  * setSubs Метод установки списка подпротоколов поддерживаемых сервером

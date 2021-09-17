@@ -341,6 +341,14 @@ const vector <char> awh::Hash::decompress(const char * buffer, const size_t size
 	return result;
 }
 /**
+ * setWbit Метод установки размера окна байтов для компрессии
+ * @param wbit размер окна байтов для компрессии
+ */
+void awh::Hash::setWbit(const int wbit) noexcept {
+	// Устанавливаем размер окна байтов для компрессии
+	this->wbit = wbit;
+}
+/**
  * setAES Метод установки размера шифрования
  * @param size размер шифрования (128, 192, 256)
  */

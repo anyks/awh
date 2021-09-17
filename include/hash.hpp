@@ -70,7 +70,7 @@ namespace awh {
 			enum class aes_t : u_short {AES128 = 128, AES192 = 192, AES256 = 256};
 		private:
 			// Размер окна байтов для компрессии
-			short wbit;
+			int wbit;
 			// Устанавливаем количество раундов
 			int roundsAES;
 			// Соль и пароль для шифрования
@@ -129,6 +129,11 @@ namespace awh {
 			 */
 			const vector <char> decompress(const char * buffer, const size_t size) const noexcept;
 		public:
+			/**
+			 * setWbit Метод установки размера окна байтов для компрессии
+			 * @param wbit размер окна байтов для компрессии
+			 */
+			void setWbit(const int wbit) noexcept;
 			/**
 			 * setAES Метод установки размера шифрования
 			 * @param size размер шифрования (128, 192, 256)
