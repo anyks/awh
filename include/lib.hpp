@@ -58,7 +58,7 @@
 
 /** ПАРАМЕТРЫ СЕТИ **/
 // Версия HTTP протокола
-#define HTTP_VERSION "HTTP/1.1"
+#define HTTP_VERSION 1.1
 // Адреса серверов DNS резолвера
 #define IPV4_RESOLVER {"8.8.8.8", "8.8.4.4"}
 #define IPV6_RESOLVER {"2001:4860:4860::8888", "2001:4860:4860::8844"}
