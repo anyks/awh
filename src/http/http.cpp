@@ -195,8 +195,10 @@ bool awh::Http::add(const char * buffer, const size_t size) noexcept {
 			}
 		// Если буфер данных не передан
 		} else if(!this->headers.empty()){
+			// Выполняем проверку авторизации
+			this->stath = this->checkAuthenticate();
 			// Если ключ соответствует
-			if((result = (this->checkKey() && this->checkUpgrade() && this->checkVersion()))){
+			if((result = (this->stath == stath_t::GOOD) && (this->checkKey() && this->checkUpgrade() && this->checkVersion()))){
 				// Выполняем обновление списка расширений
 				this->updateExtensions();
 				// Выполняем обновление списка сабпротоколов
@@ -226,10 +228,18 @@ bool awh::Http::isHandshake() const noexcept {
 	return (this->state == state_t::HANDSHAKE);
 }
 /**
+ * isAuth Метод проверки статуса авторизации
+ * @return результат проверки
+ */
+awh::Http::stath_t awh::Http::isAuth() const noexcept {
+	// Выводим результат проверки
+	return this->stath;
+}
+/**
  * getWbit Метод получения размер окна для сжатия в GZIP
  * @return размер окна для сжатия в GZIP
  */
-u_int awh::Http::getWbit() const noexcept {
+short awh::Http::getWbit() const noexcept {
 	// Выводим размер окна для сжатия в GZIP
 	return this->wbit;
 }

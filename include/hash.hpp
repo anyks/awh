@@ -70,7 +70,7 @@ namespace awh {
 			enum class aes_t : u_short {AES128 = 128, AES192 = 192, AES256 = 256};
 		private:
 			// Размер окна байтов для компрессии
-			int wbit;
+			short wbit;
 			// Устанавливаем количество раундов
 			int roundsAES;
 			// Соль и пароль для шифрования
@@ -130,15 +130,15 @@ namespace awh {
 			const vector <char> decompress(const char * buffer, const size_t size) const noexcept;
 		public:
 			/**
-			 * setWbit Метод установки размера окна байтов для компрессии
-			 * @param wbit размер окна байтов для компрессии
-			 */
-			void setWbit(const int wbit) noexcept;
-			/**
 			 * setAES Метод установки размера шифрования
 			 * @param size размер шифрования (128, 192, 256)
 			 */
 			void setAES(const aes_t size) noexcept;
+			/**
+			 * setWbit Метод установки размера окна байтов для компрессии
+			 * @param wbit размер окна байтов для компрессии
+			 */
+			void setWbit(const short wbit) noexcept;
 			/**
 			 * setRoundAES Метод установки количества раундов шифрования
 			 * @param round количество раундов шифрования
@@ -160,7 +160,7 @@ namespace awh {
 			 * @param fmk     объект фреймворка
 			 * @param logfile адрес файла для сохранения логов
 			 */
-			Hash(const fmk_t * fmk, const char * logfile = nullptr) : fmk(fmk), logfile(logfile), wbit(-MAX_WBITS), roundsAES(5), aesSize(aes_t::AES128), salt(""), password("") {}
+			Hash(const fmk_t * fmk, const char * logfile = nullptr) : fmk(fmk), logfile(logfile), wbit(MAX_WBITS), roundsAES(5), aesSize(aes_t::AES128), salt(""), password("") {}
 	} hash_t;
 };
 

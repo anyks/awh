@@ -115,12 +115,14 @@ namespace awh {
 			// Флаг разрешающий сжатие данных
 			bool gzip = false;
 			// Размер окна сжатия данных
-			u_int wbit = MAX_WBITS;
+			short wbit = MAX_WBITS;
 		protected:
 			// Код ответа сервера
 			u_short code = 0;
 			// Версия протокола
 			double version = HTTP_VERSION;
+			// Стейт проверки авторизации
+			stath_t stath = stath_t::FAULT;
 			// Стейт текущего запроса
 			state_t state = state_t::QUERY;
 		protected:
@@ -190,7 +192,6 @@ namespace awh {
 			 * @return флага переключения протокола
 			 */
 			virtual bool checkUpgrade() const noexcept;
-		public:
 			/**
 			 * checkAuthenticate Метод проверки авторизации
 			 * @return результат проверки авторизации
@@ -219,12 +220,17 @@ namespace awh {
 			 * @return флаг получения рукопожатия
 			 */
 			bool isHandshake() const noexcept;
+			/**
+			 * isAuth Метод проверки статуса авторизации
+			 * @return результат проверки
+			 */
+			stath_t isAuth() const noexcept;
 		public:
 			/**
 			 * getWbit Метод получения размер окна для сжатия в GZIP
 			 * @return размер окна для сжатия в GZIP
 			 */
-			u_int getWbit() const noexcept;
+			short getWbit() const noexcept;
 			/**
 			 * getCode Метод получения кода ответа сервера
 			 * @return код ответа сервера
@@ -310,7 +316,7 @@ namespace awh {
 			/**
 			 * ~Http Деструктор
 			 */
-			~Http() noexcept;
+			virtual ~Http() noexcept;
 	} http_t;
 };
 

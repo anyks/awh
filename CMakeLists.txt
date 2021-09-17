@@ -131,6 +131,7 @@ set(SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/src/ws/frame.cpp"
     "${CMAKE_SOURCE_DIR}/src/ws/client.cpp"
     "${CMAKE_SOURCE_DIR}/src/http/http.cpp"
+    "${CMAKE_SOURCE_DIR}/src/http/client.cpp"
 )
 
 # Задаем именя библиотеки и бинарника
