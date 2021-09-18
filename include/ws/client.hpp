@@ -301,12 +301,11 @@ namespace awh {
 		public:
 			/**
 			 * send Метод отправки сообщения на сервер
-			 * @param message   буфер сообщения в бинарном виде
-			 * @param size      размер сообщения в байтах
-			 * @param utf8      данные передаются в текстовом виде
-			 * @param fragments разбивать сообщение на фрагменты
+			 * @param message буфер сообщения в бинарном виде
+			 * @param size    размер сообщения в байтах
+			 * @param utf8    данные передаются в текстовом виде
 			 */
-			void send(const char * message, const size_t size, const bool utf8 = true, const bool fragments = false) noexcept;
+			void send(const char * message, const size_t size, const bool utf8 = true) noexcept;
 		public:
 			/**
 			 * stop Метод остановки клиента

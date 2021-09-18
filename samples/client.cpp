@@ -66,7 +66,7 @@ int main(int argc, char * argv[]) noexcept {
 			// Получаем параметры запроса в виде строки
 			const string query = data.dump();
 			// Отправляем сообщение на сервер
-			ws->send(query.data(), query.size(), true, false);
+			ws->send(query.data(), query.size(), true);
 		}
 	});
 	// Подписываемся на событие получения ошибки работы клиента

@@ -802,12 +802,11 @@ void awh::Client::on(function <void (const vector <char> &, const bool, Client *
 }
 /**
  * send Метод отправки сообщения на сервер
- * @param message   буфер сообщения в бинарном виде
- * @param size      размер сообщения в байтах
- * @param utf8      данные передаются в текстовом виде
- * @param fragments разбивать сообщение на фрагменты
+ * @param message буфер сообщения в бинарном виде
+ * @param size    размер сообщения в байтах
+ * @param utf8    данные передаются в текстовом виде
  */
-void awh::Client::send(const char * message, const size_t size, const bool utf8, const bool fragments) noexcept {
+void awh::Client::send(const char * message, const size_t size, const bool utf8) noexcept {
 	// Если подключение выполнено
 	if((this->bev != nullptr) && this->mode && !this->halt){
 		// Если рукопожатие выполнено
