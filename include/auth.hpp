@@ -15,6 +15,7 @@
  */
 #include <ctime>
 #include <string>
+#include <unordered_map>
 
 /**
  * Наши модули
@@ -63,11 +64,12 @@ namespace awh {
 				Digest() : nc("00000000"), uri(""), qop("auth"), realm(AWH_HOST), nonce(""), opaque(""), cnonce(""), response(""), timestamp(0), algorithm(algorithm_t::MD5) {}
 			} digest_t;
 		private:
-			bool server;     // Флаг работы в режиме сервера
-			type_t type;     // Тип авторизации
-			digest_t digest; // Параметры Digest авторизации
-			string username; // Логин пользователя
-			string password; // Пароль пользователя
+			bool server;                          // Флаг работы в режиме сервера
+			type_t type;                          // Тип авторизации
+			digest_t digest;                      // Параметры Digest авторизации
+			string username;                      // Логин пользователя
+			string password;                      // Пароль пользователя
+			unordered_map <string, string> users; // Список пользователей для Basic авторизации
 		private:
 			// Создаём объект фреймворка
 			const fmk_t * fmk = nullptr;
@@ -89,13 +91,24 @@ namespace awh {
 			const bool check(const string & username, const string & password) noexcept;
 			/**
 			 * check Метод проверки авторизации
+			 * @param username логин пользователя для проверки
 			 * @param nc       счётчик HTTP запроса
 			 * @param uri      параметры HTTP запроса
 			 * @param cnonce   ключ сгенерированный клиентом
 			 * @param response хэш ответа клиента
 			 * @return         результат проверки авторизации
 			 */
-			const bool check(const string & nc, const string & uri, const string & cnonce, const string & response) noexcept;
+			const bool check(const string & username, const string & nc, const string & uri, const string & cnonce, const string & response) noexcept;
+		public:
+			/**
+			 * clearUsers Метод очистки списка пользователей
+			 */
+			void clearUsers() noexcept;
+			/**
+			 * setUsers Метод добавления списка пользователей
+			 * @param users список пользователей для добавления
+			 */
+			void setUsers(const unordered_map <string, string> & users) noexcept;
 		public:
 			/**
 			 * setUri Метод установки параметров HTTP запроса
@@ -157,16 +170,29 @@ namespace awh {
 			const digest_t & getDigest() const noexcept;
 		public:
 			/**
+			 * getLogin Метод получения имени пользователя
+			 * @return установленное имя пользователя
+			 */
+			const string & getLogin() const noexcept;
+			/**
+			 * getPassword Метод получения пароля пользователя
+			 * @return установленный пароль пользователя
+			 */
+			const string & getPassword() const noexcept;
+		public:
+			/**
 			 * header Метод получения строки авторизации HTTP заголовка
 			 * @return строка авторизации
 			 */
 			const string header() noexcept;
 			/**
 			 * response Метод создания ответа на дайджест авторизацию
-			 * @param digest параметры дайджест авторизации
-			 * @return       ответ в 16-м виде
+			 * @param digest   параметры дайджест авторизации
+			 * @param username логин пользователя для проверки
+			 * @param password пароль пользователя для проверки
+			 * @return         ответ в 16-м виде
 			 */
-			const string response(const digest_t & digest) const noexcept;
+			const string response(const string & username, const string & password, const digest_t & digest) const noexcept;
 		public:
 			/**
 			 * Authorization Конструктор

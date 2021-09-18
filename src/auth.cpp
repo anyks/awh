@@ -21,13 +21,13 @@ const bool awh::Authorization::check(Authorization & auth) noexcept {
 	// Если тип авторизации Basic
 	if(this->type == type_t::BASIC)
 		// Выполняем проверку авторизации
-		return auth.check(this->username, this->password);
+		return this->check(auth.getLogin(), auth.getPassword());
 	// Если тип авторизации Digest
 	else if(this->type == type_t::DIGEST) {
 		// Получаем параметры Digest авторизации у клиента
 		const auto & digest = auth.getDigest();
 		// Выполняем проверку авторизации
-		return this->check(digest.nc, digest.uri, digest.cnonce, digest.response);
+		return this->check(auth.getLogin(), digest.nc, digest.uri, digest.cnonce, digest.response);
 	}
 	// Выводим результат
 	return result;
@@ -43,46 +43,71 @@ const bool awh::Authorization::check(const string & username, const string & pas
 	bool result = false;
 	// Если пользователь и пароль переданы
 	if(!username.empty() && !password.empty() && (this->type == type_t::BASIC)){
-		// Выполняем проверку авторизации
-		result = ((this->username.compare(username) == 0) && (this->password.compare(password) == 0));
+		// Ищем пользователя в списке пользователей
+		auto it = this->users.find(username);
+		// Если пользователь найден, выполняем проверку авторизации
+		if(it != this->users.end()) result = (it->second.compare(password) == 0);
 	}
 	// Выводим результат
 	return result;
 }
 /**
  * check Метод проверки авторизации
+ * @param username логин пользователя для проверки
  * @param nc       счётчик HTTP запроса
  * @param uri      параметры HTTP запроса
  * @param cnonce   ключ сгенерированный клиентом
  * @param response хэш ответа клиента
  * @return         результат проверки авторизации
  */
-const bool awh::Authorization::check(const string & nc, const string & uri, const string & cnonce, const string & response) noexcept {
+const bool awh::Authorization::check(const string & username, const string & nc, const string & uri, const string & cnonce, const string & response) noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Если пользователь и пароль переданы
-	if(!nc.empty() && !uri.empty() && !cnonce.empty() && !response.empty() && !username.empty() && (this->type == type_t::DIGEST)){
+	if(!username.empty() && !nc.empty() && !uri.empty() && !cnonce.empty() && !response.empty() && (this->type == type_t::DIGEST)){
 		// Если на сервере счётчик меньше
 		if(stoi(this->digest.nc) < stoi(nc)){
-			// Параметры проверки дайджест авторизации
-			digest_t digest;
-			// Устанавливаем счётчик клиента
-			this->digest.nc = nc;
-			// Устанавливаем параметры для проверки
-			digest.uri       = uri;
-			digest.cnonce    = cnonce;
-			digest.nc        = this->digest.nc;
-			digest.qop       = this->digest.qop;
-			digest.realm     = this->digest.realm;
-			digest.nonce     = this->digest.nonce;
-			digest.opaque    = this->digest.opaque;
-			digest.algorithm = this->digest.algorithm;
-			// Выполняем проверку авторизации
-			result = (this->response(digest).compare(response) == 0);
+			// Ищем пользователя в списке пользователей
+			auto it = this->users.find(username);
+			// Если пользователь найден
+			if(it != this->users.end()){
+				// Параметры проверки дайджест авторизации
+				digest_t digest;
+				// Устанавливаем счётчик клиента
+				this->digest.nc = nc;
+				// Устанавливаем параметры для проверки
+				digest.uri       = uri;
+				digest.cnonce    = cnonce;
+				digest.nc        = this->digest.nc;
+				digest.qop       = this->digest.qop;
+				digest.realm     = this->digest.realm;
+				digest.nonce     = this->digest.nonce;
+				digest.opaque    = this->digest.opaque;
+				digest.algorithm = this->digest.algorithm;
+				// Выполняем проверку авторизации
+				result = (this->response(username, it->second, digest).compare(response) == 0);
+			}
 		}
 	}
 	// Выводим результат
 	return result;
+}
+/**
+ * clearUsers Метод очистки списка пользователей
+ */
+void awh::Authorization::clearUsers() noexcept {
+	// Очищаем список пользователей
+	this->users.clear();
+}
+/**
+ * setUsers Метод добавления списка пользователей
+ * @param users список пользователей для добавления
+ */
+void awh::Authorization::setUsers(const unordered_map <string, string> & users) noexcept {
+	// Если данные переданы и модуль является сервером
+	if(this->server && !users.empty())
+		// Устанавливаем список пользователей
+		this->users = users;
 }
 /**
  * setUri Метод установки параметров HTTP запроса
@@ -317,7 +342,7 @@ void awh::Authorization::setOpaque(const string & opaque) noexcept {
  */
 void awh::Authorization::setLogin(const string & username) noexcept {
 	// Если пользователь передан
-	if(!username.empty()) this->username = username;
+	if(!this->server && !username.empty()) this->username = username;
 }
 /**
  * setPassword Метод установки пароля пользователя
@@ -325,7 +350,7 @@ void awh::Authorization::setLogin(const string & username) noexcept {
  */
 void awh::Authorization::setPassword(const string & password) noexcept {
 	// Если пароль передан
-	if(!password.empty()) this->password = password;
+	if(!this->server && !password.empty()) this->password = password;
 }
 /**
  * setFramework Метод установки объекта фреймворка
@@ -364,6 +389,22 @@ const awh::Authorization::type_t awh::Authorization::getType() const noexcept {
 const awh::Authorization::digest_t & awh::Authorization::getDigest() const noexcept {
 	// Выводим параметры Digest авторизации
 	return this->digest;
+}
+/**
+ * getLogin Метод получения имени пользователя
+ * @return установленное имя пользователя
+ */
+const string & awh::Authorization::getLogin() const noexcept {
+	// Выводим установленное имя пользователя
+	return this->username;
+}
+/**
+ * getPassword Метод получения пароля пользователя
+ * @return установленный пароль пользователя
+ */
+const string & awh::Authorization::getPassword() const noexcept {
+	// Выводим установленный пароль пользователя
+	return this->password;
 }
 /**
  * header Метод получения строки авторизации HTTP заголовка
@@ -484,7 +525,7 @@ const string awh::Authorization::header() noexcept {
 							digest.cnonce    = this->digest.cnonce;
 							digest.algorithm = this->digest.algorithm;
 							// Формируем ответ серверу
-							const string & response = this->response(digest);
+							const string & response = this->response(this->username, this->password, digest);
 							// Если ответ получен
 							if(!response.empty()){
 								// Создаём строку запроса авторизации
@@ -522,14 +563,16 @@ const string awh::Authorization::header() noexcept {
 }
 /**
  * response Метод создания ответа на дайджест авторизацию
- * @param digest параметры дайджест авторизации
- * @return       ответ в 16-м виде
+ * @param digest   параметры дайджест авторизации
+ * @param username логин пользователя для проверки
+ * @param password пароль пользователя для проверки
+ * @return         ответ в 16-м виде
  */
-const string awh::Authorization::response(const digest_t & digest) const noexcept {
+const string awh::Authorization::response(const string & username, const string & password, const digest_t & digest) const noexcept {
 	// Результат работы функции
 	string result = "";
 	// Если данные пользователя переданы
-	if(!this->username.empty() && !this->password.empty() && !digest.nonce.empty() && !digest.cnonce.empty() && (this->fmk != nullptr)){
+	if(!username.empty() && !password.empty() && !digest.nonce.empty() && !digest.cnonce.empty() && (this->fmk != nullptr)){
 		// Выполняем перехват ошибки
 		try {
 			// Определяем алгоритм шифрования
@@ -537,7 +580,7 @@ const string awh::Authorization::response(const digest_t & digest) const noexcep
 				// Если алгоритм шифрования MD5
 				case (u_short) algorithm_t::MD5: {
 					// Создаем первый этап
-					const string & ha1 = this->fmk->md5(this->fmk->format("%s:%s:%s", this->username.c_str(), digest.realm.c_str(), this->password.c_str()));
+					const string & ha1 = this->fmk->md5(this->fmk->format("%s:%s:%s", username.c_str(), digest.realm.c_str(), password.c_str()));
 					// Если первый этап получен
 					if(!ha1.empty()){
 						// Создаём второй этап
@@ -549,7 +592,7 @@ const string awh::Authorization::response(const digest_t & digest) const noexcep
 				// Если алгоритм шифрования SHA1
 				case (u_short) algorithm_t::SHA1: {
 					// Создаем первый этап
-					const string & ha1 = this->fmk->sha1(this->fmk->format("%s:%s:%s", this->username.c_str(), digest.realm.c_str(), this->password.c_str()));
+					const string & ha1 = this->fmk->sha1(this->fmk->format("%s:%s:%s", username.c_str(), digest.realm.c_str(), password.c_str()));
 					// Если первый этап получен
 					if(!ha1.empty()){
 						// Создаём второй этап
@@ -561,7 +604,7 @@ const string awh::Authorization::response(const digest_t & digest) const noexcep
 				// Если алгоритм шифрования SHA256
 				case (u_short) algorithm_t::SHA256: {
 					// Создаем первый этап
-					const string & ha1 = this->fmk->sha256(this->fmk->format("%s:%s:%s", this->username.c_str(), digest.realm.c_str(), this->password.c_str()));
+					const string & ha1 = this->fmk->sha256(this->fmk->format("%s:%s:%s", username.c_str(), digest.realm.c_str(), password.c_str()));
 					// Если первый этап получен
 					if(!ha1.empty()){
 						// Создаём второй этап
@@ -573,7 +616,7 @@ const string awh::Authorization::response(const digest_t & digest) const noexcep
 				// Если алгоритм шифрования SHA512
 				case (u_short) algorithm_t::SHA512: {
 					// Создаем первый этап
-					const string & ha1 = this->fmk->sha512(this->fmk->format("%s:%s:%s", this->username.c_str(), digest.realm.c_str(), this->password.c_str()));
+					const string & ha1 = this->fmk->sha512(this->fmk->format("%s:%s:%s", username.c_str(), digest.realm.c_str(), password.c_str()));
 					// Если первый этап получен
 					if(!ha1.empty()){
 						// Создаём второй этап
