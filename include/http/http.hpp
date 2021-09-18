@@ -47,6 +47,7 @@ namespace awh {
 			 */
 			enum class stath_t: u_short {
 				GOOD,  // Авторизация прошла успешно
+				EMPTY, // Авторизация не выполнялась
 				RETRY, // Требуется повторить попытку
 				FAULT  // Авторизация не удалась
 			};
@@ -60,7 +61,7 @@ namespace awh {
 				HANDSHAKE // Режим выполненного рукопожатия
 			};
 			// Размер максимального значения окна для сжатия данных GZIP
-			static constexpr int MAX_WBITS = 15;
+			static constexpr int GZIP_MAX_WBITS = 15;
 			// Версия протокола WebSocket
 			static constexpr u_short WS_VERSION = 13;
 		protected:
@@ -115,19 +116,21 @@ namespace awh {
 			// Флаг разрешающий сжатие данных
 			bool gzip = false;
 			// Размер окна сжатия данных
-			short wbit = MAX_WBITS;
+			short wbit = GZIP_MAX_WBITS;
 		protected:
 			// Код ответа сервера
 			u_short code = 0;
 			// Версия протокола
 			double version = HTTP_VERSION;
 			// Стейт проверки авторизации
-			stath_t stath = stath_t::FAULT;
+			stath_t stath = stath_t::EMPTY;
 			// Стейт текущего запроса
 			state_t state = state_t::QUERY;
 		protected:
 			// Поддерживаемый сабпротокол
 			string sub = "";
+			// Заголовок HTTP запроса Origin
+			string origin = "";
 			// Сообщение сервера
 			string message = "";
 			// Ключ клиента
@@ -280,6 +283,12 @@ namespace awh {
 			 * @param subs подпротоколы для установки
 			 */
 			void setSubs(const vector <string> & subs) noexcept;
+		public:
+			/**
+			 * setOrigin Метод установки Origin запроса
+			 * @param origin HTTP заголовок запроса
+			 */
+			void setOrigin(const string & origin) noexcept;
 			/**
 			 * setUserAgent Метод установки User-Agent для HTTP запроса
 			 * @param userAgent агент пользователя для HTTP запроса

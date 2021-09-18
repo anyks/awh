@@ -103,7 +103,7 @@ awh::http_t::stath_t awh::HClient::checkAuthenticate() noexcept {
 		// Запоминаем, что авторизация не выполнена
 		} else this->code = 403;
 	// Иначе разрешаем авторизацию
-	} else if((this->code >= 200) && (this->code <= 206))
+	} else if((this->code >= 100) && (this->code <= 308))
 		// Сообщаем, что авторизация прошла успешно
 		result = http_t::stath_t::GOOD;
 	// Выводим результат

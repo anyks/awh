@@ -35,7 +35,7 @@ void awh::HServer::updateExtensions() noexcept {
 				// Если клиент требует вывода максимального размера окна в битах
 				else if(val.compare(L"client_max_window_bits") == 0)
 					// Устанавливаем максимальный размер окна для сжатия в GZIP
-					this->wbit = MAX_WBITS;
+					this->wbit = GZIP_MAX_WBITS;
 			}
 		}
 	}

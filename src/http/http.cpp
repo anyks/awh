@@ -131,11 +131,13 @@ void awh::Http::clear() noexcept {
 	// Выполняем сброс полученных HTTP заголовков
 	this->headers.clear();
 	// Выполняем сброс размера окна сжатия данных
-	this->wbit = MAX_WBITS;
+	this->wbit = GZIP_MAX_WBITS;
 	// Выполняем сброс версии протокола
 	this->version = HTTP_VERSION;
 	// Выполняем сброс стейта текущего запроса
 	this->state = state_t::QUERY;
+	// Выполняем сброс стейта авторизации
+	this->stath = stath_t::EMPTY;
 }
 /**
  * add Метод добавления данных заголовков
@@ -172,8 +174,10 @@ bool awh::Http::add(const char * buffer, const size_t size) noexcept {
 							this->message = data.substr(second + 1);
 							// Получаем код ответа
 							this->code = stoi(data.substr(first + 1, second));
-						}
-					}
+						// Сообщаем, что произошла ошибка
+						} else this->stath = stath_t::FAULT;
+					// Сообщаем, что произошла ошибка
+					} else this->stath = stath_t::FAULT;
 				} break;
 				// Если - это режим получения заголовков
 				case (u_short) state_t::HEADERS: {
@@ -389,8 +393,6 @@ vector <char> awh::Http::restRequest(const bool gzip) noexcept {
 	if(this->url != nullptr){
 		// Получаем путь HTTP запроса
 		const string & path = this->uri->joinPath(this->url->path);
-		// Генерируем URL адрес запроса
-		const string & origin = this->uri->createOrigin(* this->url);
 		// Получаем параметры запроса
 		const string & params = this->uri->joinParams(this->url->params);
 		// Получаем хост запроса
@@ -429,6 +431,8 @@ vector <char> awh::Http::restRequest(const bool gzip) noexcept {
 			}
 			// Генерируем ключ клиента
 			this->clientKey = this->key();
+			// Если Origin не установлен
+			if(this->origin.empty()) this->origin = this->uri->createOrigin(* this->url);
 			// Устанавливаем параметры желаемой компрессии
 			if(gzip) compress = "Sec-WebSocket-Extensions: permessage-deflate; client_max_window_bits\r\n";
 			// Строка HTTP запроса
@@ -445,7 +449,7 @@ vector <char> awh::Http::restRequest(const bool gzip) noexcept {
 				"%s%s%s\r\n",
 				query.c_str(), this->version,
 				host.c_str(), this->date().c_str(),
-				origin.c_str(), this->userAgent.c_str(),
+				this->origin.c_str(), this->userAgent.c_str(),
 				WS_VERSION, this->clientKey.c_str(),
 				(!compress.empty() ? compress.c_str() : ""),
 				(!subs.empty() ? subs.c_str() : ""),
@@ -478,6 +482,14 @@ void awh::Http::setSubs(const vector <string> & subs) noexcept {
 			// Устанавливаем подпротокол
 			this->setSub(sub);
 	}
+}
+/**
+ * setOrigin Метод установки Origin запроса
+ * @param origin HTTP заголовок запроса
+ */
+void awh::Http::setOrigin(const string & origin) noexcept {
+	// Если заголовок HTTP запроса Origin передан, устанавливаем его
+	if(!origin.empty()) this->origin = origin;
 }
 /**
  * setUserAgent Метод установки User-Agent для HTTP запроса

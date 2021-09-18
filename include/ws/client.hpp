@@ -41,13 +41,12 @@
  * Наши модули
  */
 #include <ssl.hpp>
-#include <uri.hpp>
 #include <dns.hpp>
-#include <auth.hpp>
 #include <hash.hpp>
 #include <timer.hpp>
 #include <socket.hpp>
 #include <ws/frame.hpp>
+#include <http/client.hpp>
 
 // Подписываемся на стандартное пространство имён
 using namespace std;
@@ -102,129 +101,7 @@ namespace awh {
 				 */
 				Socket() : fd(-1), client({}), server({}), client6({}), server6({}) {}
 			} socket_t;
-			/**
-			 * Http Класс HTTP ответа сервера
-			 */
-			typedef class Http {
-				public:
-					/**
-					 * Основные стейты работы клиента
-					 */
-					enum class state_t: u_short {
-						HEADERS,  // Режим чтения заголовков
-						RESPONSE, // Режим ожидания ответа сервера
-						HANDSHAKE // Рукопожатие выполнено
-					};
-				public:
-					// Код ответа сервера
-					u_int code;
-					// Версия протокола
-					double version;
-					// Стейт текущего запроса
-					state_t state;
-					// Сабпротокол поддерживаемый сервером
-					string sub;
-					// Сообщение сервера
-					string message;
-					// Подпротоколы поддерживаемые клиентом
-					set <string> subs;
-					// HTTP заголовки полученные от сервера
-					unordered_multimap <string, string> headers;
-				public:
-					/**
-					 * inc Метод инкремента стейта
-					 */
-					void inc() noexcept {
-						// Проверяем состояние текущего стейта
-						switch((u_short) this->state){
-							// Если текущий стейт - ПОЛУЧЕНИЕ ОТВЕТА
-							case (u_short) state_t::RESPONSE: this->state = state_t::HEADERS; break;
-							// Если текущий стейт - ПОЛУЧЕНИЕ ЗАГОЛОВКОВ
-							case (u_short) state_t::HEADERS: this->state = state_t::HANDSHAKE; break;
-						}
-					}
-					/**
-					 * clear Метод очистки собранных данных
-					 */
-					void clear() noexcept {
-						// Выполняем сброс сабпротокола поддерживаемого сервером
-						this->sub = "";
-						// Выполняем установку кода ответа сервера
-						this->code = 0;
-						// Выполняем сброс текстового сообщения сервера
-						this->message = "";
-						// Устанавливаем версию протокола сервера
-						this->version = 0.0;
-						// Устанавливаем текущий стейт запроса
-						this->state = state_t::RESPONSE;
-						// Выполняем очистку списка полученных HTTP заголовков от сервера
-						this->headers.clear();
-					}
-				public:
-					/**
-					 * operator= Оператор установки кода ответа сервера
-					 * @param code код ответа сервера
-					 * @return     ссылка на контекст объекта
-					 */
-					Http & operator=(const u_int code) noexcept {
-						// Устанавливаем код ответа сервера
-						if((code >= 100) && (code <= 599)) this->code = code;
-						// Выводим контекст текущего объекта
-						return (* this);
-					}
-					/**
-					 * operator= Оператор установки версии HTTP протокола сервера
-					 * @param version версия HTTP протокола сервера
-					 * @return        ссылка на контекст объекта
-					 */
-					Http & operator=(const double version) noexcept {
-						// Устанавливаем версию HTTP протокола сервера
-						if((version >= 1.0) && (version <= 3.0)) this->version = version;
-						// Выводим контекст текущего объекта
-						return (* this);
-					}
-					/**
-					 * operator= Оператор установки текущего стейта
-					 * @param state значение текущего стейта для установки
-					 * @return      ссылка на контекст объекта
-					 */
-					Http & operator=(const state_t state) noexcept {
-						// Устанавливаем версию HTTP протокола сервера
-						this->state = state;
-						// Выводим контекст текущего объекта
-						return (* this);
-					}
-					/**
-					 * operator= Оператор установки текстового сообщения сервера
-					 * @param message текст сообщения сервера
-					 * @return        ссылка на контекст объекта
-					 */
-					Http & operator=(const string & message) noexcept {
-						// Устанавливаем текст сообщения
-						if(!message.empty()) this->message = message;
-						// Выводим контекст текущего объекта
-						return (* this);
-					}
-					/**
-					 * operator= Оператор установки HTTP заголовка
-					 * @param header HTTP заголовок для установки
-					 * @return       ссылка на контекст объекта
-					 */
-					Http & operator=(const pair <string, string> & header) noexcept {
-						// Устанавливаем HTTP заголовок
-						this->headers.insert(header);
-						// Выводим контекст текущего объекта
-						return (* this);
-					}
-				public:
-					/**
-					 * Http Конструктор
-					 */
-					Http() : code(0), version(0.0), state(state_t::RESPONSE), sub(""), message("") {}
-			} http_t;
 		private:
-			// Версия протокола WebSocket
-			static constexpr u_short WS_VERSION = 13;
 			// Минимальный размер сегмента
 			static constexpr size_t MIN_FRAME_SIZE = 0xFA000;
 			// Максимальный размер сегмента
@@ -232,8 +109,6 @@ namespace awh {
 		private:
 			// Сетевые параметры
 			net_t net;
-			// Объект http ответа сервера
-			http_t http;
 			// Таймер для контроля подключения
 			timer_t timer;
 			// Параметры постоянного подключения
@@ -243,6 +118,12 @@ namespace awh {
 			uri_t::url_t url;
 			// Контекст SSL
 			ssl_t::ctx_t sslctx;
+		private:
+			// Сокет сервера для подключения
+			evutil_socket_t fd = -1;
+		private:
+			// Поддерживаемые сабпротоколы
+			vector <string> subs;
 		private:
 			// Флаг остановки работы
 			bool halt = true;
@@ -259,17 +140,12 @@ namespace awh {
 			// Флаг инициализации WinSock
 			mutable bool winSock = false;
 		private:
-			// Сокет сервера для подключения
-			evutil_socket_t fd = -1;
-			// User-Agent для HTTP запроса
-			string userAgent = USER_AGENT;
-		private:
 			// Создаём объект DNS резолвера
 			dns_t * dns = nullptr;
 			// Создаём объект для работы с SSL
 			ssl_t * ssl = nullptr;
-			// Создаём объект для работы с авторизацией
-			auth_t * auth = nullptr;
+			// Создаём объект для работы с HTTP
+			http_t * http = nullptr;
 			// Буфер событий для сервера
 			struct bufferevent * bev = nullptr;
 			// База данных событий
@@ -297,17 +173,6 @@ namespace awh {
 				 */
 				void winSocketClean() const noexcept;
 			#endif
-		private:
-			/**
-			 * key Метод генерации ключа для WebSocket
-			 * @return сгенерированный ключ для WebSocket
-			 */
-			const string key() const noexcept;
-			/**
-			 * date Метод получения текущей даты для HTTP запроса
-			 * @return текущая дата
-			 */
-			const string date() const noexcept;
 		private:
 			/**
 			 * request Метод выполнения HTTP запроса
