@@ -509,21 +509,21 @@ void awh::Client::read(struct bufferevent * bev, void * ctx){
 							// Выполняем реконнект
 							goto Reconnect;
 						}
-						// Если опкоды требуют финального фрейма
-						if(((u_short) head.optcode > 0x07) && ((u_short) head.optcode < 0x0b)){
-							// Создаём сообщение
-							mess_t mess(1002, "FIN must be set");
-							// Выводим сообщение
-							ws->error(mess);
-							// Выполняем реконнект
-							goto Reconnect;
-						}
 						// Если флаг компресси отключён а данные пришли сжатые
 						if(head.rsv[0] && (!ws->gzip ||
 						(head.optcode == frame_t::opcode_t::CONTINUATION) ||
 						(((u_short) head.optcode > 0x07) && ((u_short) head.optcode < 0x0b)))){
 							// Создаём сообщение
 							mess_t mess(1002, "RSV1 must be clear");
+							// Выводим сообщение
+							ws->error(mess);
+							// Выполняем реконнект
+							goto Reconnect;
+						}
+						// Если опкоды требуют финального фрейма
+						if(!head.fin && ((u_short) head.optcode > 0x07) && ((u_short) head.optcode < 0x0b)){
+							// Создаём сообщение
+							mess_t mess(1002, "FIN must be set");
 							// Выводим сообщение
 							ws->error(mess);
 							// Выполняем реконнект
