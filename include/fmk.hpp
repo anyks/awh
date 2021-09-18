@@ -496,7 +496,7 @@ namespace awh {
 			/**
 			 * icon Метод получения иконки
 			 * @param end флаг завершения работы
-			 * @return    иконка напутствия работы бота
+			 * @return    иконка напутствия работы
 			 */
 			string icon(const bool end = false) const noexcept;
 		public:

@@ -1410,7 +1410,7 @@ awh::Framework::os_t awh::Framework::os() const noexcept {
 /**
  * icon Метод получения иконки
  * @param end флаг завершения работы
- * @return    иконка напутствия работы бота
+ * @return    иконка напутствия работы
  */
 string awh::Framework::icon(const bool end) const noexcept {
 	// Список иконок для начала работы

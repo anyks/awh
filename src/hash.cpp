@@ -391,7 +391,7 @@ void awh::Hash::setRoundAES(const int round) noexcept {
  */
 void awh::Hash::setSalt(const string & salt) noexcept {
 	// Если соль передана
-	if(!salt.empty()) this->salt = move(salt);
+	this->salt = salt;
 }
 /**
  * setPassword Метод установки пароля шифрования
@@ -399,5 +399,5 @@ void awh::Hash::setSalt(const string & salt) noexcept {
  */
 void awh::Hash::setPassword(const string & password) noexcept {
 	// Если пароль передан
-	if(!password.empty()) this->password = move(password);
+	this->password = password;
 }

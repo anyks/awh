@@ -8,7 +8,7 @@
  */
 
 /**
- * Подключаем заголовочный файл торгового бота
+ * Подключаем заголовочные файлы проекта
  */
 #include <ws/client.hpp>
 #include <nlohmann/json.hpp>
@@ -45,6 +45,8 @@ int main(int argc, char * argv[]) noexcept {
 	ws.setUser("user", "password");
 	// Устанавливаем адрес сертификата
 	ws.setCA("./ca/cert.pem");
+	// Устанавливаем параметры шифрования
+	// ws.setCrypt("password");
 	// Выполняем инициализацию WebSocket клиента
 	ws.init("wss://stream.binance.com:9443/stream", true);
 	// Подписываемся на событие запуска и остановки сервера

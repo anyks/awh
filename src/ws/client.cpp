@@ -131,16 +131,33 @@ void awh::Client::extraction(const vector <char> & buffer, const bool utf8) cons
 			// Выполняем декомпрессию полученных данных
 			const auto & data = this->hash->decompress(buffer.data(), buffer.size());
 			// Если данные получены
-			if(!data.empty()) this->messageFn(data, utf8, const_cast <Client *> (this));
+			if(!data.empty()){
+				// Если нужно производить дешифрование
+				if(this->crypt){
+					// Выполняем шифрование переданных данных
+					const auto & res = this->hash->decrypt(data.data(), data.size());
+					// Отправляем полученный результат
+					this->messageFn(res, utf8, const_cast <Client *> (this));
+				// Отправляем полученный результат
+				} else this->messageFn(data, utf8, const_cast <Client *> (this));
 			// Выводим сообщение об ошибке
-			else {
+			} else {
 				// Создаём сообщение
 				mess_t mess(1007, "received data decompression error");
 				// Выводим сообщение
 				this->error(mess);
 			}
 		// Если функция обратного вызова установлена, выводим полученное сообщение
-		} else this->messageFn(buffer, utf8, const_cast <Client *> (this));
+		} else {
+			// Если нужно производить дешифрование
+			if(this->crypt){
+				// Выполняем шифрование переданных данных
+				const auto & res = this->hash->decrypt(buffer.data(), buffer.size());
+				// Отправляем полученный результат
+				this->messageFn(res, utf8, const_cast <Client *> (this));
+			// Отправляем полученный результат
+			} else this->messageFn(buffer, utf8, const_cast <Client *> (this));
+		}
 	}
 }
 /**
@@ -821,6 +838,15 @@ void awh::Client::send(const char * message, const size_t size, const bool utf8)
 			head.rsv[0] = this->gzip;
 			// Устанавливаем опкод сообщения
 			head.optcode = (utf8 ? frame_t::opcode_t::TEXT : frame_t::opcode_t::BINARY);
+			// Если нужно производить шифрование
+			if(this->crypt){
+				// Выполняем шифрование переданных данных
+				const auto & res = this->hash->encrypt(message, size);
+				// Заменяем сообщение для передачи
+				message = res.data();
+				// Заменяем размер сообщения
+				(* const_cast <size_t *> (&size)) = res.size();
+			}
 			/**
 			 * sendFn Функция отправки сообщения на сервер
 			 * @param head    объект заголовков фрейма WebSocket
@@ -1091,6 +1117,22 @@ void awh::Client::setNet(const vector <string> & ip, const vector <string> & ns,
 			if(!ns.empty()) this->net.v6.second.assign(ns.cbegin(), ns.cend());
 		} break;
 	}
+}
+/**
+ * setCrypt Метод установки параметров шифрования
+ * @param pass пароль шифрования передаваемых данных
+ * @param salt соль шифрования передаваемых данных
+ * @param aes  размер шифрования передаваемых данных
+ */
+void awh::Client::setCrypt(const string & pass, const string & salt, const hash_t::aes_t aes) noexcept {
+	// Устанавливаем флаг шифрования
+	this->crypt = !pass.empty();
+	// Устанавливаем размер шифрования
+	this->hash->setAES(aes);
+	// Устанавливаем соль шифрования
+	this->hash->setSalt(salt);
+	// Устанавливаем пароль шифрования
+	this->hash->setPassword(pass);
 }
 /**
  * setAuthType Метод установки типа авторизации

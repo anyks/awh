@@ -127,6 +127,8 @@ namespace awh {
 			bool gzip = false;
 			// Флаг разрешения работы
 			bool mode = false;
+			// Флаг шифрования сообщений
+			bool crypt = false;
 			// Флаг фриза работы клиента
 			bool freeze = false;
 			// Флаг автоматического переподключения
@@ -368,6 +370,13 @@ namespace awh {
 			 * @param family тип протокола интернета AF_INET или AF_INET6
 			 */
 			void setNet(const vector <string> & ip = {}, const vector <string> & ns = {}, const int family = AF_INET) noexcept;
+			/**
+			 * setCrypt Метод установки параметров шифрования
+			 * @param pass пароль шифрования передаваемых данных
+			 * @param salt соль шифрования передаваемых данных
+			 * @param aes  размер шифрования передаваемых данных
+			 */
+			void setCrypt(const string & pass, const string & salt = "", const hash_t::aes_t aes = hash_t::aes_t::AES128) noexcept;
 			/**
 			 * setAuthType Метод установки типа авторизации
 			 * @param type      тип авторизации
