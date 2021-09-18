@@ -273,8 +273,10 @@ vector <char> awh::Frame::get(head_t & head, const char * buffer, const size_t s
 		const bool isBin = (head.optcode == opcode_t::BINARY);
 		// Проверяем является ли сообщение закрытием
 		const bool isMess = (head.optcode == opcode_t::CLOSE);
+		// Проверяем является ли сообщение продолжением фрагментированного текста
+		const bool isContinue = (head.optcode == opcode_t::CONTINUATION);
 		// Если входящие данные не являются мусоромы
-		if(isText || isBin || isPing || isPong || isMess){
+		if(isText || isBin || isPing || isPong || isMess || isContinue){
 			// Бинарные данные маски
 			vector <u_char> mask(4);
 			// Если маска требуется, маскируем данные
