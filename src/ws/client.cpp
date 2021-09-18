@@ -463,10 +463,8 @@ void awh::Client::read(struct bufferevent * bev, void * ctx){
 						if(ws->openStopFn != nullptr) ws->openStopFn(true, ws);
 						// Устанавливаем таймер на контроль подключения
 						ws->timerPing.setInterval([ws]{
-
-							cout << " ================= " << "PING" << endl;
 							// Выполняем пинг сервера
-							// ws->ping();
+							ws->ping(to_string(time(nullptr)));
 						}, PING_INTERVAL);
 					}
 					// Если данные не найдены тогда выходим
@@ -722,6 +720,24 @@ void awh::Client::close() noexcept {
 		// Очищаем сетевой контекст
 		this->winSocketClean();
 	#endif
+}
+/**
+ * ping Метод проверки доступности сервера
+ * @param message сообщение для отправки
+ */
+void awh::Client::ping(const string & message) noexcept {
+	// Если подключение выполнено
+	if((this->bev != nullptr) && this->mode && !this->halt){
+		// Если рукопожатие выполнено
+		if(this->http->isHandshake()){
+			// Создаём буфер для отправки
+			const auto & buffer = this->frame->ping(message);
+			// Активируем разрешение на запись и чтение
+			bufferevent_enable(this->bev, EV_WRITE | EV_READ);
+			// Отправляем серверу сообщение
+			bufferevent_write(this->bev, buffer.data(), buffer.size());
+		}
+	}
 }
 /**
  * resolve Метод выполняющая резолвинг хоста http запроса

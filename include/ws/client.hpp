@@ -260,6 +260,11 @@ namespace awh {
 			 */
 			void close() noexcept;
 			/**
+			 * ping Метод проверки доступности сервера
+			 * @param message сообщение для отправки
+			 */
+			void ping(const string & message = "") noexcept;
+			/**
 			 * resolve Метод выполняющая резолвинг хоста http запроса
 			 * @param url      параметры хоста, для которого нужно получить IP адрес
 			 * @param callback функция обратного вызова
@@ -295,8 +300,6 @@ namespace awh {
 			void on(function <void (const vector <char> &, const bool, Client *)> callback) noexcept;
 		public:
 			void send() noexcept;
-
-			void ping() noexcept;
 		public:
 			/**
 			 * stop Метод остановки клиента
