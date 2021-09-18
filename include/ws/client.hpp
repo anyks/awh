@@ -178,11 +178,11 @@ namespace awh {
 			const char * logfile = nullptr;
 		private:
 			// Функция обратного вызова, при запуске или остановки подключения к серверу
-			function <void (bool, Client *)> openStopFn = nullptr;
+			function <void (const bool, Client *)> openStopFn = nullptr;
 			// Функция обратного вызова, при получении ответа от сервера
 			function <void (const string &, Client *)> pongFn = nullptr;
 			// Функция обратного вызова, при получении ошибки работы клиента
-			function <void (u_short, const string &, Client *)> errorFn = nullptr;
+			function <void (const u_short, const string &, Client *)> errorFn = nullptr;
 			// Функция обратного вызова, при получении сообщения с сервера
 			function <void (const vector <char> &, const bool, Client *)> messageFn = nullptr;
 		private:
@@ -217,7 +217,7 @@ namespace awh {
 			/**
 			 * extraction Метод извлечения полученных данных
 			 * @param buffer данные в чистом виде полученные с сервера
-			 * @param utf8   данные передаётся в текстовом виде
+			 * @param utf8   данные передаются в текстовом виде
 			 */
 			void extraction(const vector <char> & buffer, const bool utf8) const noexcept;
 		private:
@@ -282,7 +282,7 @@ namespace awh {
 			 * on Метод установки функции обратного вызова на событие запуска или остановки подключения
 			 * @param callback функция обратного вызова
 			 */
-			void on(function <void (bool, Client *)> callback) noexcept;
+			void on(function <void (const bool, Client *)> callback) noexcept;
 			/**
 			 * on Метод установки функции обратного вызова на событие получения PONG
 			 * @param callback функция обратного вызова
@@ -292,14 +292,21 @@ namespace awh {
 			 * on Метод установки функции обратного вызова на событие получения ошибок
 			 * @param callback функция обратного вызова
 			 */
-			void on(function <void (u_short, const string &, Client *)> callback) noexcept;
+			void on(function <void (const u_short, const string &, Client *)> callback) noexcept;
 			/**
 			 * on Метод установки функции обратного вызова на событие получения сообщений
 			 * @param callback функция обратного вызова
 			 */
 			void on(function <void (const vector <char> &, const bool, Client *)> callback) noexcept;
 		public:
-			void send() noexcept;
+			/**
+			 * send Метод отправки сообщения на сервер
+			 * @param message   буфер сообщения в бинарном виде
+			 * @param size      размер сообщения в байтах
+			 * @param utf8      данные передаются в текстовом виде
+			 * @param fragments разбивать сообщение на фрагменты
+			 */
+			void send(const char * message, const size_t size, const bool utf8 = true, const bool fragments = false) noexcept;
 		public:
 			/**
 			 * stop Метод остановки клиента

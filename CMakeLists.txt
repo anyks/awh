@@ -115,6 +115,7 @@ include_directories(${OPENSSL_INCLUDE_DIR})
 include_directories(${ZLIB_INCLUDE_DIR})
 include_directories(${LIBEVENT_INCLUDE_DIR})
 include_directories(${CMAKE_SOURCE_DIR}/include)
+include_directories(${CMAKE_SOURCE_DIR}/contrib/include)
 
 # Выполняем подключение исходников
 set(SOURCE_FILES

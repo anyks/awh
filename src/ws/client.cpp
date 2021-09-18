@@ -119,7 +119,7 @@ void awh::Client::error(const mess_t & message) const noexcept {
 /**
  * extraction Метод извлечения полученных данных
  * @param buffer данные в чистом виде полученные с сервера
- * @param utf8   данные передаётся в текстовом виде
+ * @param utf8   данные передаются в текстовом виде
  */
 void awh::Client::extraction(const vector <char> & buffer, const bool utf8) const noexcept {
 	// Если буфер данных передан
@@ -772,7 +772,7 @@ void awh::Client::init(const string & url, const bool gzip){
  * on Метод установки функции обратного вызова на событие запуска или остановки подключения
  * @param callback функция обратного вызова
  */
-void awh::Client::on(function <void (bool, Client *)> callback) noexcept {
+void awh::Client::on(function <void (const bool, Client *)> callback) noexcept {
 	// Устанавливаем функцию запуска и остановки
 	this->openStopFn = callback;
 }
@@ -788,7 +788,7 @@ void awh::Client::on(function <void (const string &, Client *)> callback) noexce
  * on Метод установки функции обратного вызова на событие получения ошибок
  * @param callback функция обратного вызова
  */
-void awh::Client::on(function <void (u_short, const string &, Client *)> callback) noexcept {
+void awh::Client::on(function <void (const u_short, const string &, Client *)> callback) noexcept {
 	// Устанавливаем функцию получения ошибок
 	this->errorFn = callback;
 }
@@ -799,6 +799,50 @@ void awh::Client::on(function <void (u_short, const string &, Client *)> callbac
 void awh::Client::on(function <void (const vector <char> &, const bool, Client *)> callback) noexcept {
 	// Устанавливаем функцию получения сообщений с сервера
 	this->messageFn = callback;
+}
+/**
+ * send Метод отправки сообщения на сервер
+ * @param message   буфер сообщения в бинарном виде
+ * @param size      размер сообщения в байтах
+ * @param utf8      данные передаются в текстовом виде
+ * @param fragments разбивать сообщение на фрагменты
+ */
+void awh::Client::send(const char * message, const size_t size, const bool utf8, const bool fragments) noexcept {
+	// Если подключение выполнено
+	if((this->bev != nullptr) && this->mode && !this->halt){
+		// Если рукопожатие выполнено
+		if((message != nullptr) && (size > 0) && this->http->isHandshake()){
+			// Создаём объект заголовка для отправки
+			frame_t::head_t head;
+			// Передаём сообщение одним запросом
+			head.fin = true;
+			// Выполняем маскировку сообщения
+			head.mask = true;
+			// Указываем, что сообщение передаётся в сжатом виде
+			head.rsv[0] = this->gzip;
+			// Устанавливаем опкод сообщения
+			head.optcode = (utf8 ? frame_t::opcode_t::TEXT : frame_t::opcode_t::BINARY);
+			// Активируем разрешение на запись и чтение
+			bufferevent_enable(this->bev, EV_WRITE | EV_READ);
+			// Если необходимо сжимать сообщение перед отправкой
+			if(head.rsv[0]){
+				// Выполняем компрессию данных
+				auto data = this->hash->compress(message, size);
+				// Удаляем хвост в полученных данных
+				this->hash->rmTail(data);
+				// Создаём буфер для отправки
+				const auto & buffer = this->frame->set(head, data.data(), data.size());
+				// Отправляем серверу сообщение
+				bufferevent_write(this->bev, buffer.data(), buffer.size());
+			// Если сообщение перед отправкой сжимать не нужно
+			} else {
+				// Создаём буфер для отправки
+				const auto & buffer = this->frame->set(head, message, size);
+				// Отправляем серверу сообщение
+				bufferevent_write(this->bev, buffer.data(), buffer.size());
+			}
+		}
+	}
 }
 /**
  * stop Метод остановки клиента

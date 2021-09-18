@@ -11,10 +11,14 @@
  * Подключаем заголовочный файл торгового бота
  */
 #include <ws/client.hpp>
+#include <nlohmann/json.hpp>
 
 // Подключаем пространство имён
 using namespace std;
 using namespace awh;
+
+// Активируем json в качестве объекта пространства имён
+using json = nlohmann::json;
 
 /**
  * main Главная функция приложения
@@ -42,11 +46,28 @@ int main(int argc, char * argv[]) noexcept {
 	// Устанавливаем адрес сертификата
 	ws.setCA("./ca/cert.pem");
 	// Выполняем инициализацию WebSocket клиента
-	ws.init("wss://stream.binance.com:9443/ws/btcusdt@aggTrade", true);
+	ws.init("wss://stream.binance.com:9443/stream", true);
 	// Подписываемся на событие запуска и остановки сервера
 	ws.on([](bool mode, client_t * ws){
 		// Выводим сообщение
 		cout << " +++++++++++++ " << (mode ? "Start" : "Stop") << " server" << endl;
+		// Если подключение произошло удачно
+		if(mode){
+			// Создаём объект JSON
+			json data = json::object();
+			// Формируем идентификатор объекта
+			data["id"] = 1;
+			// Формируем метод подписки
+			data["method"] = "SUBSCRIBE";
+			// Формируем параметры запрашиваемых криптовалютных пар
+			data["params"] = json::array();
+			// Формируем параметры криптовалютных пар
+			data["params"][0] = "btcusdt@aggTrade";
+			// Получаем параметры запроса в виде строки
+			const string query = data.dump();
+			// Отправляем сообщение на сервер
+			ws->send(query.data(), query.size(), true, false);
+		}
 	});
 	// Подписываемся на событие получения ошибки работы клиента
 	ws.on([](u_short code, const string & mess, client_t * ws){
