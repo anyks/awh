@@ -48,7 +48,7 @@ int main(int argc, char * argv[]) noexcept {
 	// Выполняем инициализацию WebSocket клиента
 	ws.init("wss://stream.binance.com:9443/stream", true);
 	// Подписываемся на событие запуска и остановки сервера
-	ws.on([](bool mode, client_t * ws){
+	ws.on([](const bool mode, client_t * ws){
 		// Выводим сообщение
 		cout << " +++++++++++++ " << (mode ? "Start" : "Stop") << " server" << endl;
 		// Если подключение произошло удачно
@@ -70,7 +70,7 @@ int main(int argc, char * argv[]) noexcept {
 		}
 	});
 	// Подписываемся на событие получения ошибки работы клиента
-	ws.on([](u_short code, const string & mess, client_t * ws){
+	ws.on([](const u_short code, const string & mess, client_t * ws){
 		// Выводим сообщение об ошибке
 		cout << " +++++++++++++ " << code << " === " << mess << endl;
 	});
