@@ -109,9 +109,11 @@ void awh::Client::error(const mess_t & message) const noexcept {
 		// Если тип сообщения получен
 		if(!message.type.empty())
 			// Выводим в лог сообщение
-			this->fmk->log("%s [%u] - %s", fmk_t::log_t::WARNING, this->logfile, message.text.c_str(), message.code, message.type.c_str());
+			this->fmk->log("%s - %s [%u]", fmk_t::log_t::WARNING, this->logfile, message.type.c_str(), message.text.c_str(), message.code);
 		// Иначе выводим сообщение в упрощёном виде
 		else this->fmk->log("%s [%u]", fmk_t::log_t::WARNING, this->logfile, message.text.c_str(), message.code);
+		// Если функция обратного вызова установлена, выводим полученное сообщение
+		if(this->errorFn != nullptr) this->errorFn(message.code, message.text, const_cast <Client *> (this));
 	}
 }
 /**
@@ -121,7 +123,7 @@ void awh::Client::error(const mess_t & message) const noexcept {
  */
 void awh::Client::extraction(const vector <char> & buffer, const bool utf8) const noexcept {
 	// Если буфер данных передан
-	if(!buffer.empty()){
+	if(!buffer.empty() && !this->freeze && (this->messageFn != nullptr)){
 		// Если данные пришли в сжатом виде
 		if(this->compressed){
 			// Добавляем хвост в полученные данные
@@ -129,7 +131,7 @@ void awh::Client::extraction(const vector <char> & buffer, const bool utf8) cons
 			// Выполняем декомпрессию полученных данных
 			const auto & data = this->hash->decompress(buffer.data(), buffer.size());
 			// Если данные получены
-			if(!data.empty()) cout << " ^^^^^^^^^^^^^11 " << string(data.begin(), data.end()) << endl;
+			if(!data.empty()) this->messageFn(data, utf8, const_cast <Client *> (this));
 			// Выводим сообщение об ошибке
 			else {
 				// Создаём сообщение
@@ -137,12 +139,8 @@ void awh::Client::extraction(const vector <char> & buffer, const bool utf8) cons
 				// Выводим сообщение
 				this->error(mess);
 			}
-		// Если данные пришли не сжатыми
-		} else {
-
-			cout << " ^^^^^^^^^^^^^12 " << string(buffer.begin(), buffer.end()) << endl;
-
-		}
+		// Если функция обратного вызова установлена, выводим полученное сообщение
+		} else this->messageFn(buffer, utf8, const_cast <Client *> (this));
 	}
 }
 /**
@@ -459,12 +457,17 @@ void awh::Client::read(struct bufferevent * bev, void * ctx){
 					} else {
 						// Устанавливаем флаг, что мы работаем с сжатыми данными
 						ws->gzip = ws->http->isGzip();
-
 						// Выводим в лог сообщение
 						ws->fmk->log("%s", fmk_t::log_t::INFO, ws->logfile, "Authorization on the WebSocket server was successful");
+						// Если функция обратного вызова установлена, выполняем
+						if(ws->openStopFn != nullptr) ws->openStopFn(true, ws);
+						// Устанавливаем таймер на контроль подключения
+						ws->timerPing.setInterval([ws]{
 
-						// Сообщаем, что подключение выполнено
-						cout << " !!!!!!!!!!!!!!!!!! " << endl;
+							cout << " ================= " << "PING" << endl;
+							// Выполняем пинг сервера
+							// ws->ping();
+						}, PING_INTERVAL);
 					}
 					// Если данные не найдены тогда выходим
 					if(str == nullptr) break;
@@ -479,9 +482,9 @@ void awh::Client::read(struct bufferevent * bev, void * ctx){
 				// Если нужно выполнить автоматическое переподключение
 				if(ws->reconnect){
 					// Останавливаем таймер
-					ws->timer.stop();
+					ws->timerConnect.stop();
 					// Устанавливаем таймер на контроль подключения
-					ws->timer.setTimeout([bev, ws]{
+					ws->timerConnect.setTimeout([bev, ws]{
 						// Запрещаем запись данных клиенту
 						bufferevent_disable(bev, EV_READ | EV_WRITE);
 						// Завершаем работу базы событий
@@ -544,7 +547,10 @@ void awh::Client::read(struct bufferevent * bev, void * ctx){
 								}
 							} break;
 							// Если ответом является PONG
-							case (u_short) frame_t::opcode_t::PONG: cout << " ++++++++++++ PONG " << string(data.begin(), data.end()) << endl; break;
+							case (u_short) frame_t::opcode_t::PONG: {
+								// Если функция обратного вызова обработки PONG существует
+								if(ws->pongFn != nullptr) ws->pongFn(string(data.begin(), data.end()), ws);
+							} break;
 							// Если ответом является TEXT
 							case (u_short) frame_t::opcode_t::TEXT:
 							// Если ответом является BINARY
@@ -679,10 +685,12 @@ void awh::Client::event(struct bufferevent * bev, const short events, void * ctx
  * close Метод закрытия соединения сервера
  */
 void awh::Client::close() noexcept {
-	// Останавливаем таймер подключения
-	this->timer.stop();
 	// Очищаем буфер фрагментированного сообщения
 	this->fragmes.clear();
+	// Останавливаем таймер пинга сервера
+	this->timerPing.stop();
+	// Останавливаем таймер подключения
+	this->timerConnect.stop();
 	// Если событие сервера существует
 	if(this->bev != nullptr){
 		// Запрещаем чтение запись данных серверу
@@ -745,6 +753,38 @@ void awh::Client::init(const string & url, const bool gzip){
 	}
 }
 /**
+ * on Метод установки функции обратного вызова на событие запуска или остановки подключения
+ * @param callback функция обратного вызова
+ */
+void awh::Client::on(function <void (bool, Client *)> callback) noexcept {
+	// Устанавливаем функцию запуска и остановки
+	this->openStopFn = callback;
+}
+/**
+ * on Метод установки функции обратного вызова на событие получения PONG
+ * @param callback функция обратного вызова
+ */
+void awh::Client::on(function <void (const string &, Client *)> callback) noexcept {
+	// Устанавливаем функцию получения сообщений PONG
+	this->pongFn = callback;
+}
+/**
+ * on Метод установки функции обратного вызова на событие получения ошибок
+ * @param callback функция обратного вызова
+ */
+void awh::Client::on(function <void (u_short, const string &, Client *)> callback) noexcept {
+	// Устанавливаем функцию получения ошибок
+	this->errorFn = callback;
+}
+/**
+ * on Метод установки функции обратного вызова на событие получения сообщений
+ * @param callback функция обратного вызова
+ */
+void awh::Client::on(function <void (const vector <char> &, const bool, Client *)> callback) noexcept {
+	// Устанавливаем функцию получения сообщений с сервера
+	this->messageFn = callback;
+}
+/**
  * stop Метод остановки клиента
  */
 void awh::Client::stop() noexcept {
@@ -760,18 +800,23 @@ void awh::Client::stop() noexcept {
 		event_base_loopbreak(this->base);
 		// Закрываем подключение сервера
 		this->close();
+		// Если функция обратного вызова установлена, выполняем
+		if(this->openStopFn != nullptr) this->openStopFn(false, this);
 	}
 }
 /**
  * pause Метод установки на паузу клиента
  */
 void awh::Client::pause() noexcept {
-
+	// Ставим работу клиента на паузу
+	this->freeze = true;
 }
 /**
  * start Метод запуска клиента
  */
 void awh::Client::start() noexcept {
+	// Снимаем с паузы клиент
+	this->freeze = false;
 	// Если система ещё не запущена
 	if(!this->mode){
 		try {

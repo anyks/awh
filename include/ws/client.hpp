@@ -109,10 +109,12 @@ namespace awh {
 		private:
 			// Сетевые параметры
 			net_t net;
-			// Таймер для контроля подключения
-			timer_t timer;
 			// Параметры постоянного подключения
 			alive_t alive;
+			// Таймер для пинга сервера
+			timer_t timerPing;
+			// Таймер для контроля подключения
+			timer_t timerConnect;
 		private:
 			// Параметры адреса для запроса
 			uri_t::url_t url;
@@ -135,6 +137,8 @@ namespace awh {
 			bool gzip = false;
 			// Флаг разрешения работы
 			bool mode = false;
+			// Флаг фриза работы клиента
+			bool freeze = false;
 			// Флаг автоматического переподключения
 			bool reconnect = false;
 			// Флаг полученных данных в сжатом виде
@@ -172,6 +176,15 @@ namespace awh {
 			const char * wdt = nullptr;
 			// Адрес файла для сохранения логов
 			const char * logfile = nullptr;
+		private:
+			// Функция обратного вызова, при запуске или остановки подключения к серверу
+			function <void (bool, Client *)> openStopFn = nullptr;
+			// Функция обратного вызова, при получении ответа от сервера
+			function <void (const string &, Client *)> pongFn = nullptr;
+			// Функция обратного вызова, при получении ошибки работы клиента
+			function <void (u_short, const string &, Client *)> errorFn = nullptr;
+			// Функция обратного вызова, при получении сообщения с сервера
+			function <void (const vector <char> &, const bool, Client *)> messageFn = nullptr;
 		private:
 			/**
 			 * Если - это Windows
@@ -260,13 +273,30 @@ namespace awh {
 			 */
 			void init(const string & url, const bool gzip = false);
 		public:
-
-			void onOpen() noexcept;
-			void onError() noexcept;
-			void onClose() noexcept;
-			void onMessage() noexcept;
+			/**
+			 * on Метод установки функции обратного вызова на событие запуска или остановки подключения
+			 * @param callback функция обратного вызова
+			 */
+			void on(function <void (bool, Client *)> callback) noexcept;
+			/**
+			 * on Метод установки функции обратного вызова на событие получения PONG
+			 * @param callback функция обратного вызова
+			 */
+			void on(function <void (const string &, Client *)> callback) noexcept;
+			/**
+			 * on Метод установки функции обратного вызова на событие получения ошибок
+			 * @param callback функция обратного вызова
+			 */
+			void on(function <void (u_short, const string &, Client *)> callback) noexcept;
+			/**
+			 * on Метод установки функции обратного вызова на событие получения сообщений
+			 * @param callback функция обратного вызова
+			 */
+			void on(function <void (const vector <char> &, const bool, Client *)> callback) noexcept;
 		public:
 			void send() noexcept;
+
+			void ping() noexcept;
 		public:
 			/**
 			 * stop Метод остановки клиента

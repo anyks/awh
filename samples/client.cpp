@@ -43,6 +43,27 @@ int main(int argc, char * argv[]) noexcept {
 	ws.setCA("./ca/cert.pem");
 	// Выполняем инициализацию WebSocket клиента
 	ws.init("wss://stream.binance.com:9443/ws/btcusdt@aggTrade", true);
+	// Подписываемся на событие запуска и остановки сервера
+	ws.on([](bool mode, client_t * ws){
+		// Выводим сообщение
+		cout << " +++++++++++++ " << (mode ? "Start" : "Stop") << " server" << endl;
+	});
+	// Подписываемся на событие получения ошибки работы клиента
+	ws.on([](u_short code, const string & mess, client_t * ws){
+		// Выводим сообщение об ошибке
+		cout << " +++++++++++++ " << code << " === " << mess << endl;
+	});
+	// Подписываемся на событие ответа сервера PONG
+	ws.on([](const string & mess, client_t * ws){
+		cout << " +++++++++++++ " << "PONG" << " === " << mess << endl;
+	});
+	// Подписываемся на событие получения сообщения с сервера
+	ws.on([](const vector <char> & buffer, const bool utf8, client_t * ws){
+		// Если данные пришли в виде текста, выводим
+		if(utf8) cout << " +++++++++++++ " << string(buffer.begin(), buffer.end()) << endl;
+		// Сообщаем количество полученных байт
+		else cout << " +++++++++++++ " << buffer.size() << " bytes" << endl;
+	});
 	// Выполняем запуск WebSocket клиента
 	ws.start();
 	// Выводим результат
