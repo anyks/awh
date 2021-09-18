@@ -82,6 +82,27 @@ const bool awh::Hash::initAES() const {
 	}
 }
 /**
+ * rmTail Метод удаления хвостовых данных
+ * @param buffer буфер для удаления хвоста
+ */
+void awh::Hash::rmTail(vector <char> & buffer) const noexcept {
+	// Если сообщение является финальным
+	if(buffer.size() > sizeof(this->btype)){
+		// Выполняем поиск хвостового списка байт для удаления
+		auto it = search(buffer.begin(), buffer.end(), this->btype, this->btype + sizeof(this->btype));
+		// Удаляем хвостовой список байт из буфера данных
+		buffer.erase(it, buffer.end());
+	}
+}
+/**
+ * setTail Метод добавления хвостовых данных
+ * @param buffer буфер для добавления хвоста
+ */
+void awh::Hash::setTail(vector <char> & buffer) const noexcept {
+	// Добавляем хвостовой буфер в полезную нагрузку
+	buffer.insert(buffer.end(), this->btype, this->btype + sizeof(this->btype));
+}
+/**
  * encrypt Метод шифрования текста
  * @param buffer буфер данных для шифрования
  * @param size   размер данных для шифрования

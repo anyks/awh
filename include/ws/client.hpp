@@ -146,6 +146,10 @@ namespace awh {
 			ssl_t * ssl = nullptr;
 			// Создаём объект для работы с HTTP
 			http_t * http = nullptr;
+			// Создаём объект для компрессии-декомпрессии данных
+			hash_t * hash = nullptr;
+			// Создаём объект для работы с фреймом WebSocket
+			frame_t * frame = nullptr;
 			// Буфер событий для сервера
 			struct bufferevent * bev = nullptr;
 			// База данных событий
@@ -155,10 +159,13 @@ namespace awh {
 			const fmk_t * fmk = nullptr;
 			// Создаём объект работы с URI
 			const uri_t * uri = nullptr;
-			// Адрес файла для сохранения логов
-			const char * logfile = nullptr;
 			// Создаем объект сети
 			const network_t * nwk = nullptr;
+		private:
+			// Создаём объект данных вебсокета
+			const char * wdt = nullptr;
+			// Адрес файла для сохранения логов
+			const char * logfile = nullptr;
 		private:
 			/**
 			 * Если - это Windows

@@ -76,6 +76,14 @@ namespace awh {
 			// Соль и пароль для шифрования
 			string salt, password;
 		private:
+			// Хвостовой буфер для удаления из финального сообщения
+			const char btype[4] = {
+				static_cast <char> (0x00),
+				static_cast <char> (0x00),
+				static_cast <char> (0xFF),
+				static_cast <char> (0xFF)
+			};
+		private:
 			// Определяем длину шифрования по умолчанию
 			aes_t aesSize;
 			// Ключ шифрования
@@ -98,6 +106,17 @@ namespace awh {
 			 * @return результат инициализации
 			 */
 			const bool initAES() const;
+		public:
+			/**
+			 * rmTail Метод удаления хвостовых данных
+			 * @param buffer буфер для удаления хвоста
+			 */
+			void rmTail(vector <char> & buffer) const noexcept;
+			/**
+			 * setTail Метод добавления хвостовых данных
+			 * @param buffer буфер для добавления хвоста
+			 */
+			void setTail(vector <char> & buffer) const noexcept;
 		public:
 			/**
 			 * encrypt Метод шифрования текста

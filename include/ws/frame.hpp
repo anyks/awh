@@ -85,7 +85,7 @@ namespace awh {
 						// Устанавливаем тип сообщения
 						this->type = it->second.first;
 						// Устанавливаем текст сообщения
-						this->text = it->second.second;
+						if(this->text.empty()) this->text = it->second.second;
 					}
 				}
 			}
