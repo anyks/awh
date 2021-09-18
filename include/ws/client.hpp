@@ -121,9 +121,13 @@ namespace awh {
 		private:
 			// Сокет сервера для подключения
 			evutil_socket_t fd = -1;
+			// Полученный опкод сообщения
+			frame_t::opcode_t opcode = frame_t::opcode_t::TEXT;
 		private:
 			// Поддерживаемые сабпротоколы
 			vector <string> subs;
+			// Данные фрагметрированного сообщения
+			vector <char> fragmes;
 		private:
 			// Флаг остановки работы
 			bool halt = true;
@@ -133,6 +137,8 @@ namespace awh {
 			bool mode = false;
 			// Флаг автоматического переподключения
 			bool reconnect = false;
+			// Флаг полученных данных в сжатом виде
+			bool compressed = false;
 			// Минимальный размер сегмента
 			size_t min = MIN_FRAME_SIZE;
 			// Максимальный размер сегмента
@@ -190,6 +196,17 @@ namespace awh {
 			 * @param seconds количество секунд для фриза потока
 			 */
 			void delay(const size_t seconds) const noexcept;
+			/**
+			 * error Метод вывода сообщений об ошибках работы клиента
+			 * @param message сообщение с описанием ошибки
+			 */
+			void error(const mess_t & message) const noexcept;
+			/**
+			 * extraction Метод извлечения полученных данных
+			 * @param buffer данные в чистом виде полученные с сервера
+			 * @param utf8   данные передаётся в текстовом виде
+			 */
+			void extraction(const vector <char> & buffer, const bool utf8) const noexcept;
 		private:
 			/**
 			 * connect Метод создания сокета для подключения к удаленному серверу

@@ -100,6 +100,52 @@ void awh::Client::delay(const size_t seconds) const noexcept {
 	}
 }
 /**
+ * error Метод вывода сообщений об ошибках работы клиента
+ * @param message сообщение с описанием ошибки
+ */
+void awh::Client::error(const mess_t & message) const noexcept {
+	// Если сообщение об ошибке пришло
+	if(!message.text.empty()){
+		// Если тип сообщения получен
+		if(!message.type.empty())
+			// Выводим в лог сообщение
+			this->fmk->log("%s [%u] - %s", fmk_t::log_t::WARNING, this->logfile, message.text.c_str(), message.code, message.type.c_str());
+		// Иначе выводим сообщение в упрощёном виде
+		else this->fmk->log("%s [%u]", fmk_t::log_t::WARNING, this->logfile, message.text.c_str(), message.code);
+	}
+}
+/**
+ * extraction Метод извлечения полученных данных
+ * @param buffer данные в чистом виде полученные с сервера
+ * @param utf8   данные передаётся в текстовом виде
+ */
+void awh::Client::extraction(const vector <char> & buffer, const bool utf8) const noexcept {
+	// Если буфер данных передан
+	if(!buffer.empty()){
+		// Если данные пришли в сжатом виде
+		if(this->compressed){
+			// Добавляем хвост в полученные данные
+			this->hash->setTail(* const_cast <vector <char> *> (&buffer));
+			// Выполняем декомпрессию полученных данных
+			const auto & data = this->hash->decompress(buffer.data(), buffer.size());
+			// Если данные получены
+			if(!data.empty()) cout << " ^^^^^^^^^^^^^11 " << string(data.begin(), data.end()) << endl;
+			// Выводим сообщение об ошибке
+			else {
+				// Создаём сообщение
+				mess_t mess(1007, "received data decompression error");
+				// Выводим сообщение
+				this->error(mess);
+			}
+		// Если данные пришли не сжатыми
+		} else {
+
+			cout << " ^^^^^^^^^^^^^12 " << string(buffer.begin(), buffer.end()) << endl;
+
+		}
+	}
+}
+/**
  * connect Метод создания сокета для подключения к удаленному серверу
  * @return результат подключения
  */
@@ -364,7 +410,7 @@ void awh::Client::read(struct bufferevent * bev, void * ctx){
 		// Получаем буферы входящих данных
 		struct evbuffer * input = bufferevent_get_input(bev);
 		// Получаем размер входящих данных
-		const size_t size = evbuffer_get_length(input);
+		size_t size = evbuffer_get_length(input);
 		// Если данные существуют
 		if(size > 0){
 			// Получаем объект подключения
@@ -385,16 +431,12 @@ void awh::Client::read(struct bufferevent * bev, void * ctx){
 						switch((u_short) stath){
 							// Если авторизация не выполнена
 							case (u_short) http_t::stath_t::FAULT: {
-								// Получаем код ответа сервера
+								// Получаем код сообщения
 								const u_short code = ws->http->getCode();
-								// Получаем сообщение сервера
-								const string & mess = ws->http->getMessage(code);
-								// Выводим в лог сообщение
-								ws->fmk->log("%s [%u]", fmk_t::log_t::CRITICAL, ws->logfile, code, mess.c_str());
-
-								// Выводим сообщение об ошибке
-								cout << " ==========ERROR " << code << " === " << mess << endl;
-
+								// Создаём сообщение
+								mess_t mess(code, ws->http->getMessage(code));
+								// Выводим сообщение
+								ws->error(mess);
 								// Завершаем работу клиента
 								ws->stop();
 								// Выходим из функции
@@ -415,6 +457,9 @@ void awh::Client::read(struct bufferevent * bev, void * ctx){
 						}
 					// Если инициализация WebSocket произведена успешно
 					} else {
+						// Устанавливаем флаг, что мы работаем с сжатыми данными
+						ws->gzip = ws->http->isGzip();
+
 						// Выводим в лог сообщение
 						ws->fmk->log("%s", fmk_t::log_t::INFO, ws->logfile, "Authorization on the WebSocket server was successful");
 
@@ -431,6 +476,22 @@ void awh::Client::read(struct bufferevent * bev, void * ctx){
 				size_t offset = 0;
 				// Создаём объект шапки фрейма
 				frame_t::head_t head;
+				// Если нужно выполнить автоматическое переподключение
+				if(ws->reconnect){
+					// Останавливаем таймер
+					ws->timer.stop();
+					// Устанавливаем таймер на контроль подключения
+					ws->timer.setTimeout([bev, ws]{
+						// Запрещаем запись данных клиенту
+						bufferevent_disable(bev, EV_READ | EV_WRITE);
+						// Завершаем работу базы событий
+						event_base_loopbreak(ws->base);
+						// Отключаемся от WebSocket
+						ws->close();
+					}, CONNECT_TIMEOUT);
+				}
+				// Выполняем компенсацию размера полученных данных
+				size = (size > BUFFER_CHUNK ? BUFFER_CHUNK : size);
 				// Копируем в буфер полученные данные
 				evbuffer_copyout(input, (void *) ws->wdt, size);
 				// Выполняем перебор полученных данных
@@ -439,6 +500,35 @@ void awh::Client::read(struct bufferevent * bev, void * ctx){
 					const auto & data = ws->frame->get(head, ws->wdt + offset, size - offset);
 					// Если буфер данных получен
 					if(!data.empty()){
+						// Проверяем состояние флагов RSV2 и RSV3
+						if(head.rsv[1] || head.rsv[2]){
+							// Создаём сообщение
+							mess_t mess(1002, "RSV2 and RSV3 must be clear");
+							// Выводим сообщение
+							ws->error(mess);
+							// Выполняем реконнект
+							goto Reconnect;
+						}
+						// Если опкоды требуют финального фрейма
+						if(((u_short) head.optcode > 0x07) && ((u_short) head.optcode < 0x0b)){
+							// Создаём сообщение
+							mess_t mess(1002, "FIN must be set");
+							// Выводим сообщение
+							ws->error(mess);
+							// Выполняем реконнект
+							goto Reconnect;
+						}
+						// Если флаг компресси отключён а данные пришли сжатые
+						if(head.rsv[0] && (!ws->gzip ||
+						(head.optcode == frame_t::opcode_t::CONTINUATION) ||
+						(((u_short) head.optcode > 0x07) && ((u_short) head.optcode < 0x0b)))){
+							// Создаём сообщение
+							mess_t mess(1002, "RSV1 must be clear");
+							// Выводим сообщение
+							ws->error(mess);
+							// Выполняем реконнект
+							goto Reconnect;
+						}
 						// Определяем тип ответа
 						switch((u_short) head.optcode){
 							// Если ответом является PING
@@ -447,9 +537,6 @@ void awh::Client::read(struct bufferevent * bev, void * ctx){
 								const auto & res = ws->frame->pong(string(data.begin(), data.end()));
 								// Если фрейм ответа PONG получен
 								if(!res.empty()){
-
-									cout << " ++++++++++++ SEND PONG " << endl;
-
 									// Активируем разрешение на запись и чтение
 									bufferevent_enable(ws->bev, EV_WRITE | EV_READ);
 									// Отправляем серверу сообщение
@@ -462,41 +549,45 @@ void awh::Client::read(struct bufferevent * bev, void * ctx){
 							case (u_short) frame_t::opcode_t::TEXT:
 							// Если ответом является BINARY
 							case (u_short) frame_t::opcode_t::BINARY: {
-								// Если данные пришли сжатые
-								if(ws->gzip && head.rsv[0]){
-									// Добавляем хвост в полученные данные
-									ws->hash->setTail(* const_cast <vector <char> *> (&data));
-									// Выполняем декомпрессию полученных данных
-									const auto & res = ws->hash->decompress(data.data(), data.size());
-									// Если данные получены
-									if(!res.empty()) cout << " ^^^^^^^^^^^^^11 " << string(res.begin(), res.end()) << endl;
-									// Выводим сообщение об ошибке
-									else {
-										// Создаём сообщение
-										mess_t mess(1007, "received data decompression error");
-										// Выводим в лог сообщение
-										ws->fmk->log("%s [%u]: %s", fmk_t::log_t::WARNING, ws->logfile, mess.type.c_str(), mess.code, mess.text.c_str());
-
-										// Выводим сообщение об ошибке
-										cout << " ==========ERROR " << mess.code << " === " << mess.text << endl;
-									}
-								// Если данные пришли не сжатыми
-								} else {
-
-									cout << " ^^^^^^^^^^^^^12 " << string(data.begin(), data.end()) << endl;
-
+								// Запоминаем полученный опкод
+								ws->opcode = head.optcode;
+								// Запоминаем в каком виде пришли данные, в сжатом или нет
+								ws->compressed = (ws->gzip && head.rsv[0]);
+								// Если список фрагментированных сообщений существует
+								if(!ws->fragmes.empty()){
+									// Создаём сообщение
+									mess_t mess(1002, "opcode for subsequent fragmented messages should not be set");
+									// Выводим сообщение
+									ws->error(mess);
+									// Выполняем реконнект
+									goto Reconnect;
+								// Если сообщение является не последнем
+								} else if(!head.fin)
+									// Заполняем фрагментированное сообщение
+									ws->fragmes.insert(ws->fragmes.end(), data.begin(), data.end());
+								// Если сообщение является последним
+								else ws->extraction(data, (ws->opcode == frame_t::opcode_t::TEXT));
+							} break;
+							// Если ответом является CONTINUATION
+							case (u_short) frame_t::opcode_t::CONTINUATION: {
+								// Если сообщение является не последнем
+								if(!head.fin)
+									// Заполняем фрагментированное сообщение
+									ws->fragmes.insert(ws->fragmes.end(), data.begin(), data.end());
+								// Если сообщение является последним
+								else {
+									// Выполняем извлечение данных
+									ws->extraction(ws->fragmes, (ws->opcode == frame_t::opcode_t::TEXT));
+									// Очищаем список фрагментированных сообщений
+									ws->fragmes.clear();
 								}
 							} break;
 							// Если ответом является CLOSE
 							case (u_short) frame_t::opcode_t::CLOSE: {
 								// Извлекаем сообщение
 								const auto & mess = ws->frame->message(data);
-								// Выводим в лог сообщение
-								ws->fmk->log("%s [%u]: %s", fmk_t::log_t::CRITICAL, ws->logfile, mess.type.c_str(), mess.code, mess.text.c_str());
-
-								// Выводим сообщение об ошибке
-								cout << " ==========ERROR " << mess.code << " === " << mess.text << endl;
-
+								// Выводим сообщение
+								ws->error(mess);
 								// Выполняем реконнект
 								goto Reconnect;
 							} break;
@@ -590,6 +681,8 @@ void awh::Client::event(struct bufferevent * bev, const short events, void * ctx
 void awh::Client::close() noexcept {
 	// Останавливаем таймер подключения
 	this->timer.stop();
+	// Очищаем буфер фрагментированного сообщения
+	this->fragmes.clear();
 	// Если событие сервера существует
 	if(this->bev != nullptr){
 		// Запрещаем чтение запись данных серверу
