@@ -102,11 +102,6 @@ namespace awh {
 				Socket() : fd(-1), client({}), server({}), client6({}), server6({}) {}
 			} socket_t;
 		private:
-			// Минимальный размер сегмента
-			static constexpr size_t MIN_FRAME_SIZE = 0xFA000;
-			// Максимальный размер сегмента
-			static constexpr size_t MAX_FRAME_SIZE = 0x9C4000;
-		private:
 			// Сетевые параметры
 			net_t net;
 			// Параметры постоянного подключения
@@ -120,11 +115,6 @@ namespace awh {
 			uri_t::url_t url;
 			// Контекст SSL
 			ssl_t::ctx_t sslctx;
-		private:
-			// Сокет сервера для подключения
-			evutil_socket_t fd = -1;
-			// Полученный опкод сообщения
-			frame_t::opcode_t opcode = frame_t::opcode_t::TEXT;
 		private:
 			// Поддерживаемые сабпротоколы
 			vector <string> subs;
@@ -143,12 +133,15 @@ namespace awh {
 			bool reconnect = false;
 			// Флаг полученных данных в сжатом виде
 			bool compressed = false;
-			// Минимальный размер сегмента
-			size_t min = MIN_FRAME_SIZE;
-			// Максимальный размер сегмента
-			size_t max = MAX_FRAME_SIZE;
 			// Флаг инициализации WinSock
 			mutable bool winSock = false;
+		private:
+			// Сокет сервера для подключения
+			evutil_socket_t fd = -1;
+			// Минимальный размер сегмента
+			size_t frameSize = 0xFA000;
+			// Полученный опкод сообщения
+			frame_t::opcode_t opcode = frame_t::opcode_t::TEXT;
 		private:
 			// Создаём объект DNS резолвера
 			dns_t * dns = nullptr;
@@ -337,6 +330,11 @@ namespace awh {
 			 */
 			void setVerifySSL(const bool mode) noexcept;
 			/**
+			 * setFrameSize Метод установки размеров сегментов фрейма
+			 * @param size минимальный размер сегмента
+			 */
+			void setFrameSize(const size_t size) noexcept;
+			/**
 			 * setAutoReconnect Метод установки флага автоматического переподключения
 			 * @param mode флаг автоматического переподключения
 			 */
@@ -351,12 +349,6 @@ namespace awh {
 			 * @param userAgent агент пользователя для HTTP запроса
 			 */
 			void setUserAgent(const string & userAgent) noexcept;
-			/**
-			 * setFrameSize Метод установки размеров сегментов фрейма
-			 * @param min минимальный размер сегмента
-			 * @param max максимальный размер сегмента
-			 */
-			void setFrameSize(const size_t min, const size_t max) noexcept;
 			/**
 			 * setUser Метод установки параметров авторизации
 			 * @param login    логин пользователя для авторизации на сервере

@@ -458,7 +458,7 @@ void awh::Client::read(struct bufferevent * bev, void * ctx){
 						// Устанавливаем флаг, что мы работаем с сжатыми данными
 						ws->gzip = ws->http->isGzip();
 						// Выводим в лог сообщение
-						ws->fmk->log("%s", fmk_t::log_t::INFO, ws->logfile, "Authorization on the WebSocket server was successful");
+						ws->fmk->log("%s", fmk_t::log_t::INFO, ws->logfile, "authorization on the WebSocket server was successful");
 						// Если функция обратного вызова установлена, выполняем
 						if(ws->openStopFn != nullptr) ws->openStopFn(true, ws);
 						// Устанавливаем таймер на контроль подключения
@@ -821,25 +821,63 @@ void awh::Client::send(const char * message, const size_t size, const bool utf8)
 			head.rsv[0] = this->gzip;
 			// Устанавливаем опкод сообщения
 			head.optcode = (utf8 ? frame_t::opcode_t::TEXT : frame_t::opcode_t::BINARY);
+			/**
+			 * sendFn Функция отправки сообщения на сервер
+			 * @param head    объект заголовков фрейма WebSocket
+			 * @param message буфер сообщения в бинарном виде
+			 * @param size    размер сообщения в байтах
+			 */
+			auto sendFn = [this](const frame_t::head_t & head, const char * message, const size_t size){
+				// Если все данные переданы
+				if((message != nullptr) && (size > 0)){
+					// Если необходимо сжимать сообщение перед отправкой
+					if(this->gzip){
+						// Выполняем компрессию данных
+						auto data = this->hash->compress(message, size);
+						// Удаляем хвост в полученных данных
+						this->hash->rmTail(data);
+						// Создаём буфер для отправки
+						const auto & buffer = this->frame->set(head, data.data(), data.size());
+						// Отправляем серверу сообщение
+						bufferevent_write(this->bev, buffer.data(), buffer.size());
+					// Если сообщение перед отправкой сжимать не нужно
+					} else {
+						// Создаём буфер для отправки
+						const auto & buffer = this->frame->set(head, message, size);
+						// Отправляем серверу сообщение
+						bufferevent_write(this->bev, buffer.data(), buffer.size());
+					}
+				}
+			};
 			// Активируем разрешение на запись и чтение
 			bufferevent_enable(this->bev, EV_WRITE | EV_READ);
-			// Если необходимо сжимать сообщение перед отправкой
-			if(head.rsv[0]){
-				// Выполняем компрессию данных
-				auto data = this->hash->compress(message, size);
-				// Удаляем хвост в полученных данных
-				this->hash->rmTail(data);
-				// Создаём буфер для отправки
-				const auto & buffer = this->frame->set(head, data.data(), data.size());
-				// Отправляем серверу сообщение
-				bufferevent_write(this->bev, buffer.data(), buffer.size());
-			// Если сообщение перед отправкой сжимать не нужно
-			} else {
-				// Создаём буфер для отправки
-				const auto & buffer = this->frame->set(head, message, size);
-				// Отправляем серверу сообщение
-				bufferevent_write(this->bev, buffer.data(), buffer.size());
-			}
+			// Если требуется фрагментация сообщения
+			if(size > this->frameSize){
+				// Бинарный буфер чанка данных
+				vector <char> chunk(this->frameSize);
+				// Смещение в бинарном буфере
+				size_t start = 0, stop = this->frameSize;
+				// Выполняем разбивку полезной нагрузки на сегменты
+				while(stop < size){
+					// Увеличиваем длину чанка
+					stop += start;
+					// Если длина чанка слишком большая, компенсируем
+					stop = (stop > size ? size : stop);
+					// Устанавливаем флаг финального сообщения
+					head.fin = (stop == size);
+					// Формируем чанк бинарных данных
+					chunk.assign(message + start, message + stop);
+					// Выполняем отправку чанка на сервер
+					sendFn(head, chunk.data(), chunk.size());
+					// Выполняем сброс RSV1
+					head.rsv[0] = false;
+					// Устанавливаем опкод сообщения
+					head.optcode = frame_t::opcode_t::CONTINUATION;
+					// Увеличиваем смещение в буфере
+					start += this->frameSize;
+				}
+			// Если фрагментация сообщения не требуется
+			} else sendFn(head, message, size);
 		}
 	}
 }
@@ -976,6 +1014,14 @@ void awh::Client::setVerifySSL(const bool mode) noexcept {
 	this->ssl->setVerify(mode);
 }
 /**
+ * setFrameSize Метод установки размеров сегментов фрейма
+ * @param size минимальный размер сегмента
+ */
+void awh::Client::setFrameSize(const size_t size) noexcept {
+	// Если размер передан, устанавливаем
+	if(size > 0) this->frameSize = size;
+}
+/**
  * setAutoReconnect Метод установки флага автоматического переподключения
  * @param mode флаг автоматического переподключения
  */
@@ -998,26 +1044,6 @@ void awh::Client::setFamily(const int family) noexcept {
 void awh::Client::setUserAgent(const string & userAgent) noexcept {
 	// Устанавливаем UserAgent
 	if(!userAgent.empty()) this->http->setUserAgent(userAgent);
-}
-/**
- * setFrameSize Метод установки размеров сегментов фрейма
- * @param min минимальный размер сегмента
- * @param max максимальный размер сегмента
- */
-void awh::Client::setFrameSize(const size_t min, const size_t max) noexcept {
-	// Устанавливаем минимальный размер фрейма
-	if((min > 0) && (min < max)) this->min = min;
-	// Устанавливаем максимальный размер фрейма
-	if(max > this->min) this->max = max;
-	// Если максимальное значение меньше минимального, корректируем
-	if(this->max < this->min){
-		// Минимальный размер сегмента
-		this->min = MIN_FRAME_SIZE;
-		// Максимальный размер сегмента
-		this->max = MAX_FRAME_SIZE;
-		// Выводим сообщение об ошибке
-		this->fmk->log("%s", fmk_t::log_t::WARNING, this->logfile, "the set maximum value is less than the set minimum value");
-	}
 }
 /**
  * setUser Метод установки параметров авторизации
