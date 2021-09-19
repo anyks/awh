@@ -262,7 +262,7 @@ awh::ASSL::ctx_t awh::ASSL::init(const uri_t::url_t & url) noexcept {
 		// Активируем рандомный генератор
 		if(RAND_poll() == 0){
 			// Выводим в лог сообщение
-			this->fmk->log("%s", fmk_t::log_t::CRITICAL, this->logfile, "rand poll is not allow");
+			this->log->print("%s", log_t::flag_t::CRITICAL, "rand poll is not allow");
 			// Выходим
 			return result;
 		}
@@ -271,7 +271,7 @@ awh::ASSL::ctx_t awh::ASSL::init(const uri_t::url_t & url) noexcept {
 		// Если контекст не создан
 		if(result.ctx == nullptr){
 			// Выводим в лог сообщение
-			this->fmk->log("%s", fmk_t::log_t::CRITICAL, this->logfile, "context ssl is not initialization");
+			this->log->print("%s", log_t::flag_t::CRITICAL, "context ssl is not initialization");
 			// Выходим
 			return result;
 		}
@@ -284,7 +284,7 @@ awh::ASSL::ctx_t awh::ASSL::init(const uri_t::url_t & url) noexcept {
 			// Выполняем проверку
 			if(SSL_CTX_load_verify_locations(result.ctx, this->cafile.c_str(), capath) != 1){
 				// Выводим в лог сообщение
-				this->fmk->log("%s", fmk_t::log_t::CRITICAL, this->logfile, "ssl verify locations is not allow");
+				this->log->print("%s", log_t::flag_t::CRITICAL, "ssl verify locations is not allow");
 				// Выходим
 				return result;
 			}
@@ -376,7 +376,7 @@ awh::ASSL::ctx_t awh::ASSL::init(const uri_t::url_t & url) noexcept {
 						// Если системный стор не получен
 						if(!sys){
 							// Выводим в лог сообщение
-							this->fmk->log("%s", fmk_t::log_t::CRITICAL, this->logfile, "failed to open system certificate store");
+							this->log->print("%s", log_t::flag_t::CRITICAL, "failed to open system certificate store");
 							// Выходим
 							return -1;
 						}
@@ -395,7 +395,7 @@ awh::ASSL::ctx_t awh::ASSL::init(const uri_t::url_t & url) noexcept {
 								// Формируем результат ответа
 								result = -1;
 								// Выводим в лог сообщение
-								this->fmk->log("%s failed", fmk_t::log_t::CRITICAL, this->logfile, "d2i_X509");
+								this->log->print("%s failed", log_t::flag_t::CRITICAL, "d2i_X509");
 								// Выходим из цикла
 								break;
 							}
@@ -412,7 +412,7 @@ awh::ASSL::ctx_t awh::ASSL::init(const uri_t::url_t & url) noexcept {
 			// Если стор не устанавливается, тогда выводим ошибку
 			if(X509_STORE_set_default_paths(store) != 1){
 				// Выводим в лог сообщение
-				this->fmk->log("%s", fmk_t::log_t::CRITICAL, this->logfile, "set default paths for x509 store is not allow");
+				this->log->print("%s", log_t::flag_t::CRITICAL, "set default paths for x509 store is not allow");
 				// Выходим
 				return result;
 			}
@@ -463,11 +463,11 @@ awh::ASSL::ctx_t awh::ASSL::init(const uri_t::url_t & url) noexcept {
 					// Если домен найден в записях сертификата (т.е. сертификат соответствует данному домену)
 					if(validate == ssl_t::validate_t::MatchFound){
 						// Выводим в лог сообщение
-						obj->ssl->fmk->log("https server [%s] has this certificate, which looks good to me: %s", fmk_t::log_t::INFO, obj->ssl->logfile, obj->host, buffer);
+						obj->ssl->log->print("https server [%s] has this certificate, which looks good to me: %s", log_t::flag_t::INFO, obj->host, buffer);
 						// Выводим сообщение, что проверка пройдена
 						return 1;
 					// Если ресурс не найден тогда выводим сообщение об ошибке
-					} else obj->ssl->fmk->log("%s for hostname '%s' [%s]", fmk_t::log_t::CRITICAL, obj->ssl->logfile, status.c_str(), obj->host, buffer);
+					} else obj->ssl->log->print("%s for hostname '%s' [%s]", log_t::flag_t::CRITICAL, status.c_str(), obj->host, buffer);
 				}
 				// Выводим сообщение, что проверка не пройдена
 				return 0;
@@ -484,7 +484,7 @@ awh::ASSL::ctx_t awh::ASSL::init(const uri_t::url_t & url) noexcept {
 		// Если объект не создан
 		if(result.ssl == nullptr){
 			// Выводим в лог сообщение
-			this->fmk->log("%s", fmk_t::log_t::CRITICAL, this->logfile, "ssl initialization is not allow");
+			this->log->print("%s", log_t::flag_t::CRITICAL, "ssl initialization is not allow");
 			// Выходим
 			return result;
 		}
@@ -500,7 +500,7 @@ awh::ASSL::ctx_t awh::ASSL::init(const uri_t::url_t & url) noexcept {
 			// Если рукопожатие не выполнено
 			if(verify != X509_V_OK){
 				// Выводим в лог сообщение
-				this->fmk->log("certificate chain validation failed: %s", fmk_t::log_t::CRITICAL, this->logfile, X509_verify_cert_error_string(verify));
+				this->log->print("certificate chain validation failed: %s", log_t::flag_t::CRITICAL, X509_verify_cert_error_string(verify));
 				// Выходим
 				return result;
 			}
@@ -537,17 +537,17 @@ void awh::ASSL::setCA(const string & cafile, const string & capath) noexcept {
 }
 /**
  * ASSL Конструктор
- * @param fmk     объект фреймворка
- * @param uri     объект работы с URI
- * @param logfile адрес файла для сохранения логов
+ * @param fmk объект фреймворка
+ * @param log объект для работы с логами
+ * @param uri объект работы с URI
  */
-awh::ASSL::ASSL(const fmk_t * fmk, const uri_t * uri, const char * logfile) noexcept {
+awh::ASSL::ASSL(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcept {
 	// Устанавливаем объект фреймворка
 	this->fmk = fmk;
 	// Устанавливаем объект для работы с URI
 	this->uri = uri;
-	// Устанавливаем адрес файла для сохранения логов
-	this->logfile = logfile;
+	// Устанавливаем объект для работы с логами
+	this->log = log;
 	// Выполняем модификацию CA-файла
 	this->cafile = fs_t::realPath(this->cafile);
 	// Если - это Windows
@@ -562,7 +562,7 @@ awh::ASSL::ASSL(const fmk_t * fmk, const uri_t * uri, const char * logfile) noex
 		// Если возникла ошибка
 		if(err != 0){
 			// Выводим в лог сообщение
-			this->fmk->log("%s", fmk_t::log_t::CRITICAL, this->logfile, "WSAStartup failed with error: %i", err);
+			this->log->print("%s", log_t::flag_t::CRITICAL, "WSAStartup failed with error: %i", err);
 			// Выходим из приложения
 			exit(EXIT_FAILURE);
 		}

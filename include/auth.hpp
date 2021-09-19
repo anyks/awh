@@ -13,14 +13,22 @@
 /**
  * Стандартная библиотека
  */
-#include <ctime>
 #include <string>
 #include <unordered_map>
+
+// Если - это Windows
+#if defined(_WIN32) || defined(_WIN64)
+	#include <time.h>
+// Если - это Unix
+#else
+	#include <ctime>
+#endif
 
 /**
  * Наши модули
  */
 #include <fmk.hpp>
+#include <log.hpp>
 #include <base64.hpp>
 
 // Подписываемся на стандартное пространство имён
@@ -73,8 +81,8 @@ namespace awh {
 		private:
 			// Создаём объект фреймворка
 			const fmk_t * fmk = nullptr;
-			// Адрес файла для сохранения логов
-			const char * logfile = nullptr;
+			// Создаём объект работы с логами
+			const log_t * log = nullptr;
 		public:
 			/**
 			 * check Метод проверки авторизации
@@ -147,10 +155,10 @@ namespace awh {
 			void setPassword(const string & password) noexcept;
 			/**
 			 * setFramework Метод установки объекта фреймворка
-			 * @param fmk     объект фреймворка для установки
-			 * @param logfile адрес файла для сохранения логов
+			 * @param fmk объект фреймворка для установки
+			 * @param log объект для работы с логами
 			 */
-			void setFramework(const fmk_t * fmk, const char * logfile = nullptr) noexcept;
+			void setFramework(const fmk_t * fmk, const log_t * log) noexcept;
 			/**
 			 * setType Метод установки типа авторизации
 			 * @param type      тип авторизации
@@ -196,11 +204,11 @@ namespace awh {
 		public:
 			/**
 			 * Authorization Конструктор
-			 * @param fmk     объект фреймворка
-			 * @param logfile адрес файла для сохранения логов
-			 * @param server  флаг работы в режиме сервера
+			 * @param fmk    объект фреймворка
+			 * @param log    объект для работы с логами
+			 * @param server флаг работы в режиме сервера
 			 */
-			Authorization(const fmk_t * fmk = nullptr, const char * logfile = nullptr, const bool server = false) : fmk(fmk), logfile(logfile), server(server) {}
+			Authorization(const fmk_t * fmk = nullptr, const log_t * log = nullptr, const bool server = false) : fmk(fmk), log(log), server(server) {}
 	} auth_t;
 };
 

@@ -14,7 +14,6 @@
  * Стандартная библиотека
  */
 #include <regex>
-#include <ctime>
 #include <string>
 #include <vector>
 #include <random>
@@ -28,10 +27,12 @@
 
 // Если - это Windows
 #if defined(_WIN32) || defined(_WIN64)
+	#include <time.h>
 	#include <winsock2.h>
 	#include <ws2tcpip.h>
 // Если - это Unix
 #else
+	#include <ctime>
 	#include <sys/socket.h>
 	#include <netinet/in.h>
 #endif
@@ -40,6 +41,7 @@
  * Наши модули
  */
 #include <fmk.hpp>
+#include <log.hpp>
 #include <nwk.hpp>
 
 // Устанавливаем область видимости
@@ -62,13 +64,13 @@ namespace awh {
 				string host;                               // Название искомого домена
 				DNS * dns;                                 // Объект резолвера DNS
 				const fmk_t * fmk;                         // Объект основного фреймворка
-				const char * logfile;                      // Адрес файла для сохранения логов
+				const log_t * log;                         // Объект для работы с логами
 				unordered_map <string, string> * ips;      // Список IP адресов полученных ранее
 				function <void (const string &)> callback; // Функция обратного вызова
 				/**
 				 * Domain Конструктор
 				 */
-				Domain() : family(AF_UNSPEC), host(""), dns(nullptr), fmk(nullptr), logfile(nullptr), ips(nullptr), callback(nullptr) {}
+				Domain() : family(AF_UNSPEC), host(""), dns(nullptr), fmk(nullptr), log(nullptr), ips(nullptr), callback(nullptr) {}
 			} domain_t;
 		private:
 			// Адреса серверов dns
@@ -78,8 +80,8 @@ namespace awh {
 		private:
 			// Создаём объект фреймворка
 			const fmk_t * fmk = nullptr;
-			// Адрес файла для сохранения логов
-			const char * logfile = nullptr;
+			// Создаём объект работы с логами
+			const log_t * log = nullptr;
 			// Создаем объект сети
 			const network_t * nwk = nullptr;
 			// База событий
@@ -111,11 +113,6 @@ namespace awh {
 			struct evdns_base * init(const string & host, const int family, struct event_base * base) const;
 		public:
 			/**
-			 * setLogFile Метод установки файла для сохранения логов
-			 * @param logfile адрес файла для сохранения логов
-			 */
-			void setLogFile(const char * logfile) noexcept;
-			/**
 			 * setBase Метод установки базы событий
 			 * @param base объект базы событий
 			 */
@@ -145,20 +142,20 @@ namespace awh {
 		public:
 			/**
 			 * DNS Конструктор
-			 * @param fmk     объект фреймворка
-			 * @param nwk     объект методов для работы с сетью
-			 * @param logfile адрес файла для сохранения логов
+			 * @param fmk объект фреймворка
+			 * @param log объект для работы с логами
+			 * @param nwk объект методов для работы с сетью
 			 */
-			DNS(const fmk_t * fmk, const network_t * nwk, const char * logfile = nullptr) noexcept;
+			DNS(const fmk_t * fmk, const log_t * log, const network_t * nwk) noexcept;
 			/**
 			 * DNS Конструктор
 			 * @param fmk     объект фреймворка
+			 * @param log     объект для работы с логами
 			 * @param nwk     объект методов для работы с сетью
 			 * @param base    база событий
 			 * @param servers массив dns серверов
-			 * @param logfile адрес файла для сохранения логов
 			 */
-			DNS(const fmk_t * fmk, const network_t * nwk, struct event_base * base, const vector <string> & servers, const char * logfile = nullptr) noexcept;
+			DNS(const fmk_t * fmk, const log_t * log, const network_t * nwk, struct event_base * base, const vector <string> & servers) noexcept;
 			/**
 			 * ~DNS Деструктор
 			 */

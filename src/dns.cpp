@@ -33,7 +33,7 @@ void awh::DNS::createBase() noexcept {
 		// Если база dns не создана
 		if(this->dnsbase == nullptr)
 			// Выводим в лог сообщение
-			this->fmk->log("%s", fmk_t::log_t::CRITICAL, this->logfile, "dns base does not created");
+			this->log->print("%s", log_t::flag_t::CRITICAL, "dns base does not created");
 	}
 }
 /**
@@ -54,7 +54,7 @@ void awh::DNS::callback(const int errcode, struct evutil_addrinfo * addr, void *
 		// Если данные фреймворка существуют
 		if((context != nullptr) && (context->fmk != nullptr)){
 			// Если возникла ошибка, выводим в лог сообщение
-			if(errcode) context->fmk->log("%s %s", fmk_t::log_t::CRITICAL, context->logfile, context->host.c_str(), evutil_gai_strerror(errcode));
+			if(errcode) context->log->print("%s %s", log_t::flag_t::CRITICAL, context->host.c_str(), evutil_gai_strerror(errcode));
 			// Если ошибки не возникало
 			else {
 				// Создаем буфер для получения ip адреса
@@ -153,7 +153,7 @@ struct evdns_base * awh::DNS::init(const string & host, const int family, struct
 			// Если DNS сервер установлен, добавляем его в базу DNS
 			if(!dns.empty() && (evdns_base_nameserver_ip_add(result, dns.c_str()) != 0))
 				// Выводим в лог сообщение
-				this->fmk->log("name server [%s] does not add", fmk_t::log_t::CRITICAL, this->logfile, dns.c_str());
+				this->log->print("name server [%s] does not add", log_t::flag_t::CRITICAL, dns.c_str());
 		}
 		// Отлавливаем ошибку
 		try {
@@ -163,8 +163,8 @@ struct evdns_base * awh::DNS::init(const string & host, const int family, struct
 			domainData->family = family;
 			// Запоминаем объект основного фреймворка
 			domainData->fmk = this->fmk;
-			// Запоминаем адрес файла для логирования
-			domainData->logfile = this->logfile;
+			// Запоминаем объект для работы с логами
+			domainData->log = this->log;
 			// Запоминаем текущий объект
 			domainData->dns = const_cast <dns_t *> (this);
 			// Запоминаем название искомого домена
@@ -182,11 +182,11 @@ struct evdns_base * awh::DNS::init(const string & host, const int family, struct
 			// Выполняем dns запрос
 			struct evdns_getaddrinfo_request * reply = evdns_getaddrinfo(result, host.c_str(), nullptr, &hints, &DNS::callback, domainData);
 			// Выводим в лог сообщение
-			if(reply == nullptr) this->fmk->log("request for %s returned immediately", fmk_t::log_t::CRITICAL, this->logfile, host.c_str());
+			if(reply == nullptr) this->log->print("request for %s returned immediately", log_t::flag_t::CRITICAL, host.c_str());
 		// Если возникает ошибка выделения памяти
 		} catch(const bad_alloc &) {
 			// Выводим сообщение об ошибке
-			this->fmk->log("%s", fmk_t::log_t::CRITICAL, this->logfile, "memory could not be allocated");
+			this->log->print("%s", log_t::flag_t::CRITICAL, "memory could not be allocated");
 			// Выходим из приложения
 			exit(EXIT_FAILURE);
 		}
@@ -194,14 +194,6 @@ struct evdns_base * awh::DNS::init(const string & host, const int family, struct
 	}
 	// Выводим результат
 	return result;
-}
-/**
- * setLogFile Метод установки файла для сохранения логов
- * @param logfile адрес файла для сохранения логов
- */
-void awh::DNS::setLogFile(const char * logfile) noexcept {
-	// Если файл логов передан
-	if(logfile != nullptr) this->logfile = logfile;
 }
 /**
  * setBase Установка базы событий
@@ -236,7 +228,7 @@ void awh::DNS::setNameServer(const string & server) noexcept {
 		// Если DNS сервер установлен, добавляем его в базу DNS
 		if(!dns.empty() && (evdns_base_nameserver_ip_add(this->dnsbase, dns.c_str()) != 0))
 			// Выводим в лог сообщение
-			this->fmk->log("name server [%s] does not add", fmk_t::log_t::CRITICAL, this->logfile, dns.c_str());
+			this->log->print("name server [%s] does not add", log_t::flag_t::CRITICAL, dns.c_str());
 	}
 }
 /**
@@ -301,12 +293,12 @@ void awh::DNS::resolve(const string & host, const int family, function <void (co
 					domainData->family = family;
 					// Запоминаем объект основного фреймворка
 					domainData->fmk = this->fmk;
+					// Запоминаем объект для работы с логами
+					domainData->log = this->log;
 					// Запоминаем объект управления кэшем
 					domainData->ips = &this->ips;
 					// Устанавливаем функцию обратного вызова
 					domainData->callback = callback;
-					// Запоминаем адрес файла для логирования
-					domainData->logfile = this->logfile;
 					// Устанавливаем тип подключения
 					hints.ai_family = AF_UNSPEC;
 					// Устанавливаем что это потоковый сокет
@@ -318,11 +310,11 @@ void awh::DNS::resolve(const string & host, const int family, function <void (co
 					// Выполняем dns запрос
 					this->reply = evdns_getaddrinfo(this->dnsbase, host.c_str(), nullptr, &hints, &DNS::callback, domainData);
 					// Выводим в лог сообщение
-					if(this->reply == nullptr) this->fmk->log("request for %s returned immediately", fmk_t::log_t::CRITICAL, this->logfile, host.c_str());
+					if(this->reply == nullptr) this->log->print("request for %s returned immediately", log_t::flag_t::CRITICAL, host.c_str());
 				// Если возникает ошибка выделения памяти
 				} catch(const bad_alloc &) {
 					// Выводим сообщение об ошибке
-					this->fmk->log("%s", fmk_t::log_t::CRITICAL, this->logfile, "memory could not be allocated");
+					this->log->print("%s", log_t::flag_t::CRITICAL, "memory could not be allocated");
 					// Выходим из приложения
 					exit(EXIT_FAILURE);
 				}
@@ -335,33 +327,33 @@ void awh::DNS::resolve(const string & host, const int family, function <void (co
 }
 /**
  * DNS Конструктор
- * @param fmk     объект фреймворка
- * @param nwk     объект методов для работы с сетью
- * @param logfile адрес файла для сохранения логов
+ * @param fmk объект фреймворка
+ * @param log объект для работы с логами
+ * @param nwk объект методов для работы с сетью
  */
-awh::DNS::DNS(const fmk_t * fmk, const network_t * nwk, const char * logfile) noexcept {
+awh::DNS::DNS(const fmk_t * fmk, const log_t * log, const network_t * nwk) noexcept {
 	// Устанавливаем объект основного фреймворка
 	this->fmk = fmk;
 	// Устанавливаем объект методов для работы с сетью
 	this->nwk = nwk;
-	// Устанавливаем адрес файла для сохранения логов
-	this->logfile = logfile;
+	// Устанавливаем объект для работы с логами
+	this->log = log;
 }
 /**
  * DNS Конструктор
  * @param fmk     объект фреймворка
+ * @param log     объект для работы с логами
  * @param nwk     объект методов для работы с сетью
  * @param base    база событий
  * @param servers массив dns серверов
- * @param logfile адрес файла для сохранения логов
  */
-awh::DNS::DNS(const fmk_t * fmk, const network_t * nwk, struct event_base * base, const vector <string> & servers, const char * logfile) noexcept {
+awh::DNS::DNS(const fmk_t * fmk, const log_t * log, const network_t * nwk, struct event_base * base, const vector <string> & servers) noexcept {
 	// Устанавливаем объект основного фреймворка
 	this->fmk = fmk;
 	// Устанавливаем объект методов для работы с сетью
 	this->nwk = nwk;
-	// Устанавливаем адрес файла для сохранения логов
-	this->logfile = logfile;
+	// Устанавливаем объект для работы с логами
+	this->log = log;
 	// Устанавливаем объект базы
 	this->setBase(base);
 	// Добавляем список нейм-серверов

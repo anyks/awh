@@ -50,6 +50,7 @@
  */
 #include <fs.hpp>
 #include <fmk.hpp>
+#include <log.hpp>
 #include <uri.hpp>
 
 /**
@@ -121,10 +122,10 @@ namespace awh {
 		private:
 			// Создаём объект фреймворка
 			const fmk_t * fmk = nullptr;
+			// Создаём объект работы с логами
+			const log_t * log = nullptr;
 			// Создаём объект работы с URI
 			const uri_t * uri = nullptr;
-			// Адрес файла для сохранения логов
-			const char * logfile = nullptr;
 		private:
 			/**
 			 * rawEqual Метод проверки на эквивалентность доменных имён
@@ -205,11 +206,11 @@ namespace awh {
 		public:
 			/**
 			 * ASSL Конструктор
-			 * @param fmk     объект фреймворка
-			 * @param uri     объект работы с URI
-			 * @param logfile адрес файла для сохранения логов
+			 * @param fmk объект фреймворка
+			 * @param log объект для работы с логами
+			 * @param uri объект работы с URI
 			 */
-			ASSL(const fmk_t * fmk, const uri_t * uri, const char * logfile = nullptr) noexcept;
+			ASSL(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcept;
 			/**
 			 * ~ASSL Деструктор
 			 */

@@ -14,7 +14,6 @@
  * Стандартная библиотека
  */
 #include <set>
-#include <ctime>
 #include <string>
 #include <functional>
 #include <unordered_map>
@@ -22,6 +21,14 @@
 #include <event2/event.h>
 #include <event2/buffer.h>
 #include <event2/bufferevent.h>
+
+// Если - это Windows
+#if defined(_WIN32) || defined(_WIN64)
+	#include <time.h>
+// Если - это Unix
+#else
+	#include <ctime>
+#endif
 
 /**
  * Если операционной системой является Windows
@@ -166,6 +173,8 @@ namespace awh {
 		private:
 			// Создаём объект фреймворка
 			const fmk_t * fmk = nullptr;
+			// Создаём объект работы с логами
+			const log_t * log = nullptr;
 			// Создаём объект работы с URI
 			const uri_t * uri = nullptr;
 			// Создаем объект сети
@@ -173,8 +182,6 @@ namespace awh {
 		private:
 			// Создаём объект данных вебсокета
 			const char * wdt = nullptr;
-			// Адрес файла для сохранения логов
-			const char * logfile = nullptr;
 		private:
 			// Функция обратного вызова, при запуске или остановки подключения к серверу
 			function <void (const bool, Client *)> openStopFn = nullptr;
@@ -406,12 +413,12 @@ namespace awh {
 		public:
 			/**
 			 * Client Конструктор
-			 * @param fmk     объект фреймворка
-			 * @param uri     объект работы с URI
-			 * @param nwk     объект методов для работы с сетью
-			 * @param logfile адрес файла для сохранения логов
+			 * @param fmk объект фреймворка
+			 * @param log объект для работы с логами
+			 * @param uri объект работы с URI
+			 * @param nwk объект методов для работы с сетью
 			 */
-			Client(const fmk_t * fmk, const uri_t * uri, const network_t * nwk, const char * logfile = nullptr) noexcept;
+			Client(const fmk_t * fmk, const log_t * log, const uri_t * uri, const network_t * nwk) noexcept;
 			/**
 			 * ~Client Деструктор
 			 */

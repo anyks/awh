@@ -199,11 +199,10 @@ const string awh::Sockets::ip(const int family, void * ctx) noexcept {
 #else
 	/**
 	 * noSigill Метод блокировки сигнала SIGILL
-	 * @param fmk     объект фреймворка
-	 * @param logfile адрес файла для записи в лог
-	 * @return        результат работы функции
+	 * @param log объект для работы с логами
+	 * @return    результат работы функции
 	 */
-	const int awh::Sockets::noSigill(const fmk_t * fmk, const char * logfile) noexcept {
+	const int awh::Sockets::noSigill(const log_t * log) noexcept {
 		// Создаем структуру активации сигнала
 		struct sigaction act;
 		// Зануляем структуру
@@ -215,7 +214,7 @@ const string awh::Sockets::ip(const int family, void * ctx) noexcept {
 		// Устанавливаем блокировку сигнала
 		if(sigaction(SIGILL, &act, nullptr)){
 			// Выводим в лог информацию
-			if(fmk != nullptr) fmk->log("%s", fmk_t::log_t::CRITICAL, logfile, "cannot set SIG_IGN on signal SIGILL");
+			if(log != nullptr) log->print("%s", log_t::flag_t::CRITICAL, "cannot set SIG_IGN on signal SIGILL");
 			// Выходим
 			return -1;
 		}
@@ -224,12 +223,11 @@ const string awh::Sockets::ip(const int family, void * ctx) noexcept {
 	}
 	/**
 	 * tcpCork Метод активации tcp_cork
-	 * @param fd      файловый дескриптор (сокет)
-	 * @param fmk     объект фреймворка
-	 * @param logfile адрес файла для записи в лог
-	 * @return        результат работы функции
+	 * @param fd  файловый дескриптор (сокет)
+	 * @param log объект для работы с логами
+	 * @return    результат работы функции
 	 */
-	const int awh::Sockets::tcpCork(const evutil_socket_t fd, const fmk_t * fmk, const char * logfile) noexcept {
+	const int awh::Sockets::tcpCork(const evutil_socket_t fd, const log_t * log) noexcept {
 		// Устанавливаем параметр
 		int tcpCork = 1;
 		// Если это Linux
@@ -237,7 +235,7 @@ const string awh::Sockets::ip(const int family, void * ctx) noexcept {
 			// Устанавливаем TCP_CORK
 			if(setsockopt(fd, IPPROTO_TCP, TCP_CORK, &tcpCork, sizeof(tcpCork)) < 0){
 				// Выводим в лог информацию
-				if(fmk != nullptr) fmk->log("cannot set TCP_CORK option on socket %d", fmk_t::log_t::CRITICAL, logfile, fd);
+				if(log != nullptr) log->print("cannot set TCP_CORK option on socket %d", log_t::flag_t::CRITICAL, fd);
 				// Выходим
 				return -1;
 			}
@@ -246,7 +244,7 @@ const string awh::Sockets::ip(const int family, void * ctx) noexcept {
 			// Устанавливаем TCP_NOPUSH
 			if(setsockopt(fd, IPPROTO_TCP, TCP_NOPUSH, &tcpCork, sizeof(tcpCork)) < 0){
 				// Выводим в лог информацию
-				if(fmk != nullptr) fmk->log("cannot set TCP_NOPUSH option on socket %d", fmk_t::log_t::CRITICAL, logfile, fd);
+				if(log != nullptr) log->print("cannot set TCP_NOPUSH option on socket %d", log_t::flag_t::CRITICAL, fd);
 				// Выходим
 				return -1;
 			}
@@ -256,18 +254,17 @@ const string awh::Sockets::ip(const int family, void * ctx) noexcept {
 	}
 	/**
 	 * reuseable Метод разрешающая повторно использовать сокет после его удаления
-	 * @param fd      файловый дескриптор (сокет)
-	 * @param fmk     объект фреймворка
-	 * @param logfile адрес файла для записи в лог
-	 * @return        результат работы функции
+	 * @param fd  файловый дескриптор (сокет)
+	 * @param log объект для работы с логами
+	 * @return    результат работы функции
 	 */
-	const int awh::Sockets::reuseable(const evutil_socket_t fd, const fmk_t * fmk, const char * logfile) noexcept {
+	const int awh::Sockets::reuseable(const evutil_socket_t fd, const log_t * log) noexcept {
 		// Устанавливаем параметр
 		int reuseaddr = 1;
 		// Разрешаем повторно использовать тот же host:port после отключения
 		if(setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &reuseaddr, sizeof(reuseaddr)) < 0){
 			// Выводим в лог информацию
-			if(fmk != nullptr) fmk->log("cannot set SO_REUSEADDR option on socket %d", fmk_t::log_t::CRITICAL, logfile, fd);
+			if(log != nullptr) log->print("cannot set SO_REUSEADDR option on socket %d", log_t::flag_t::CRITICAL, fd);
 			// Выходим
 			return -1;
 		}
@@ -276,12 +273,11 @@ const string awh::Sockets::ip(const int family, void * ctx) noexcept {
 	}
 	/**
 	 * noSigpipe Метод игнорирования отключения сигнала записи в убитый сокет
-	 * @param fd      файловый дескриптор (сокет)
-	 * @param fmk     объект фреймворка
-	 * @param logfile адрес файла для записи в лог
-	 * @return        результат работы функции
+	 * @param fd  файловый дескриптор (сокет)
+	 * @param log объект для работы с логами
+	 * @return    результат работы функции
 	 */
-	const int awh::Sockets::noSigpipe(const evutil_socket_t fd, const fmk_t * fmk, const char * logfile) noexcept {
+	const int awh::Sockets::noSigpipe(const evutil_socket_t fd, const log_t * log) noexcept {
 		// Если это Linux
 		#ifdef __linux__
 			// Создаем структуру активации сигнала
@@ -295,7 +291,7 @@ const string awh::Sockets::ip(const int family, void * ctx) noexcept {
 			// Устанавливаем блокировку сигнала
 			if(sigaction(SIGPIPE, &act, nullptr)){
 				// Выводим в лог информацию
-				if(fmk != nullptr) fmk->log("%s", fmk_t::log_t::CRITICAL, logfile, "cannot set SIG_IGN on signal SIGPIPE");
+				if(log != nullptr) log->print("%s", log_t::flag_t::CRITICAL, "cannot set SIG_IGN on signal SIGPIPE");
 				// Выходим
 				return -1;
 			}
@@ -308,7 +304,7 @@ const string awh::Sockets::ip(const int family, void * ctx) noexcept {
 			// Устанавливаем SO_NOSIGPIPE
 			if(setsockopt(fd, SOL_SOCKET, SO_NOSIGPIPE, &noSigpipe, sizeof(noSigpipe)) < 0){
 				// Выводим в лог информацию
-				if(fmk != nullptr) fmk->log("cannot set SO_NOSIGPIPE option on socket %d", fmk_t::log_t::CRITICAL, logfile, fd);
+				if(log != nullptr) log->print("cannot set SO_NOSIGPIPE option on socket %d", log_t::flag_t::CRITICAL, fd);
 				// Выходим
 				return -1;
 			}
@@ -318,18 +314,17 @@ const string awh::Sockets::ip(const int family, void * ctx) noexcept {
 	}
 	/**
 	 * tcpNodelay Метод отключения алгоритма Нейгла
-	 * @param fd      файловый дескриптор (сокет)
-	 * @param fmk     объект фреймворка
-	 * @param logfile адрес файла для записи в лог
-	 * @return        результат работы функции
+	 * @param fd  файловый дескриптор (сокет)
+	 * @param log объект для работы с логами
+	 * @return    результат работы функции
 	 */
-	const int awh::Sockets::tcpNodelay(const evutil_socket_t fd, const fmk_t * fmk, const char * logfile) noexcept {
+	const int awh::Sockets::tcpNodelay(const evutil_socket_t fd, const log_t * log) noexcept {
 		// Устанавливаем параметр
 		int tcpNodelay = 1;
 		// Устанавливаем TCP_NODELAY
 		if(setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &tcpNodelay, sizeof(tcpNodelay)) < 0){
 			// Выводим в лог информацию
-			if(fmk != nullptr) fmk->log("cannot set TCP_NODELAY option on socket %d", fmk_t::log_t::CRITICAL, logfile, fd);
+			if(log != nullptr) log->print("cannot set TCP_NODELAY option on socket %d", log_t::flag_t::CRITICAL, fd);
 			// Выходим
 			return -1;
 		}
@@ -338,12 +333,11 @@ const string awh::Sockets::ip(const int family, void * ctx) noexcept {
 	}
 	/**
 	 * nonBlocking Метод установки неблокирующего сокета
-	 * @param fd      файловый дескриптор (сокет)
-	 * @param fmk     объект фреймворка
-	 * @param logfile адрес файла для записи в лог
-	 * @return        результат работы функции
+	 * @param fd  файловый дескриптор (сокет)
+	 * @param log объект для работы с логами
+	 * @return    результат работы функции
 	 */
-	const int awh::Sockets::nonBlocking(const evutil_socket_t fd, const fmk_t * fmk, const char * logfile) noexcept {
+	const int awh::Sockets::nonBlocking(const evutil_socket_t fd, const log_t * log) noexcept {
 		// Получаем флаги файлового дескриптора
 		int flags = fcntl(fd, F_GETFL);
 		// Если флаги не установлены, выходим
@@ -353,7 +347,7 @@ const string awh::Sockets::ip(const int family, void * ctx) noexcept {
 		// Устанавливаем неблокирующий режим
 		if(fcntl(fd, F_SETFL, flags) < 0){
 			// Выводим в лог информацию
-			if(fmk != nullptr) fmk->log("cannot set NON_BLOCK option on socket %d", fmk_t::log_t::CRITICAL, logfile, fd);
+			if(log != nullptr) log->print("cannot set NON_BLOCK option on socket %d", log_t::flag_t::CRITICAL, fd);
 			// Выходим
 			return -1;
 		}
@@ -362,19 +356,18 @@ const string awh::Sockets::ip(const int family, void * ctx) noexcept {
 	}
 	/**
 	 * ipV6only Метод включающая или отключающая режим отображения IPv4 на IPv6
-	 * @param fd      файловый дескриптор (сокет)
-	 * @param mode    активация или деактивация режима
-	 * @param fmk     объект фреймворка
-	 * @param logfile адрес файла для записи в лог
-	 * @return        результат работы функции
+	 * @param fd   файловый дескриптор (сокет)
+	 * @param mode активация или деактивация режима
+	 * @param log  объект для работы с логами
+	 * @return     результат работы функции
 	 */
-	const int awh::Sockets::ipV6only(const evutil_socket_t fd, const bool mode, const fmk_t * fmk, const char * logfile) noexcept {
+	const int awh::Sockets::ipV6only(const evutil_socket_t fd, const bool mode, const log_t * log) noexcept {
 		// Устанавливаем параметр
 		int only6 = (mode ? 1 : 0);
 		// Разрешаем повторно использовать тот же host:port после отключения
 		if(setsockopt(fd, IPPROTO_IPV6, IPV6_V6ONLY, &only6, sizeof(only6)) < 0){
 			// Выводим в лог информацию
-			if(fmk != nullptr) fmk->log("cannot set IPV6_V6ONLY option on socket %d", fmk_t::log_t::CRITICAL, logfile, fd);
+			if(log != nullptr) log->print("cannot set IPV6_V6ONLY option on socket %d", log_t::flag_t::CRITICAL, fd);
 			// Выходим
 			return -1;
 		}
@@ -383,28 +376,27 @@ const string awh::Sockets::ip(const int family, void * ctx) noexcept {
 	}
 	/**
 	 * keepAlive Метод устанавливает постоянное подключение на сокет
-	 * @param fd      файловый дескриптор (сокет)
-	 * @param cnt     максимальное количество попыток
-	 * @param idle    время через которое происходит проверка подключения
-	 * @param intvl   время между попытками
-	 * @param fmk     объект фреймворка
-	 * @param logfile адрес файла для записи в лог
-	 * @return        результат работы функции
+	 * @param fd    файловый дескриптор (сокет)
+	 * @param cnt   максимальное количество попыток
+	 * @param idle  время через которое происходит проверка подключения
+	 * @param intvl время между попытками
+	 * @param log   объект для работы с логами
+	 * @return      результат работы функции
 	 */
-	const int awh::Sockets::keepAlive(const evutil_socket_t fd, const int cnt, const int idle, const int intvl, const fmk_t * fmk, const char * logfile) noexcept {
+	const int awh::Sockets::keepAlive(const evutil_socket_t fd, const int cnt, const int idle, const int intvl, const log_t * log) noexcept {
 		// Устанавливаем параметр
 		int keepAlive = 1;
 		// Активация постоянного подключения
 		if(setsockopt(fd, SOL_SOCKET, SO_KEEPALIVE, &keepAlive, sizeof(int))){
 			// Выводим в лог информацию
-			if(fmk != nullptr) fmk->log("cannot set SO_KEEPALIVE option on socket %d", fmk_t::log_t::CRITICAL, logfile, fd);
+			if(log != nullptr) log->print("cannot set SO_KEEPALIVE option on socket %d", log_t::flag_t::CRITICAL, fd);
 			// Выходим
 			return -1;
 		}
 		// Максимальное количество попыток
 		if(setsockopt(fd, IPPROTO_TCP, TCP_KEEPCNT, &cnt, sizeof(int))){
 			// Выводим в лог информацию
-			if(fmk != nullptr) fmk->log("cannot set TCP_KEEPCNT option on socket %d", fmk_t::log_t::CRITICAL, logfile, fd);
+			if(log != nullptr) log->print("cannot set TCP_KEEPCNT option on socket %d", log_t::flag_t::CRITICAL, fd);
 			// Выходим
 			return -1;
 		}
@@ -413,7 +405,7 @@ const string awh::Sockets::ip(const int family, void * ctx) noexcept {
 			// Время через которое происходит проверка подключения
 			if(setsockopt(fd, IPPROTO_TCP, TCP_KEEPALIVE, &idle, sizeof(int))){
 				// Выводим в лог информацию
-				if(fmk != nullptr) fmk->log("cannot set TCP_KEEPALIVE option on socket %d", fmk_t::log_t::CRITICAL, logfile, fd);
+				if(log != nullptr) log->print("cannot set TCP_KEEPALIVE option on socket %d", log_t::flag_t::CRITICAL, fd);
 				// Выходим
 				return -1;
 			}
@@ -422,7 +414,7 @@ const string awh::Sockets::ip(const int family, void * ctx) noexcept {
 			// Время через которое происходит проверка подключения
 			if(setsockopt(fd, IPPROTO_TCP, TCP_KEEPIDLE, &idle, sizeof(int))){
 				// Выводим в лог информацию
-				if(fmk != nullptr) fmk->log("cannot set TCP_KEEPIDLE option on socket %d", fmk_t::log_t::CRITICAL, logfile, fd);
+				if(log != nullptr) log->print("cannot set TCP_KEEPIDLE option on socket %d", log_t::flag_t::CRITICAL, fd);
 				// Выходим
 				return -1;
 			}
@@ -430,7 +422,7 @@ const string awh::Sockets::ip(const int family, void * ctx) noexcept {
 		// Время между попытками
 		if(setsockopt(fd, IPPROTO_TCP, TCP_KEEPINTVL, &intvl, sizeof(int))){
 			// Выводим в лог информацию
-			if(fmk != nullptr) fmk->log("cannot set TCP_KEEPINTVL option on socket %d", fmk_t::log_t::CRITICAL, logfile, fd);
+			if(log != nullptr) log->print("cannot set TCP_KEEPINTVL option on socket %d", log_t::flag_t::CRITICAL, fd);
 			// Выходим
 			return -1;
 		}
@@ -443,11 +435,10 @@ const string awh::Sockets::ip(const int family, void * ctx) noexcept {
 	 * @param read_size  размер буфера на чтение
 	 * @param write_size размер буфера на запись
 	 * @param maxcon     максимальное количество подключений
-	 * @param fmk        объект фреймворка
-	 * @param logfile    адрес файла для записи в лог
+	 * @param log        объект для работы с логами
 	 * @return           результат работы функции
 	 */
-	const int awh::Sockets::bufferSize(const evutil_socket_t fd, const int read_size, const int write_size, const u_int maxcon, const fmk_t * fmk, const char * logfile) noexcept {
+	const int awh::Sockets::bufferSize(const evutil_socket_t fd, const int read_size, const int write_size, const u_int maxcon, const log_t * log) noexcept {
 		// Получаем переданные размеры
 		int readSize  = read_size;
 		int writeSize = write_size;
@@ -472,7 +463,7 @@ const string awh::Sockets::ip(const int family, void * ctx) noexcept {
 		if((getsockopt(fd, SOL_SOCKET, SO_RCVBUF, &readSize, &read_optlen) < 0)
 		|| (getsockopt(fd, SOL_SOCKET, SO_SNDBUF, &writeSize, &write_optlen) < 0)){
 			// Выводим в лог информацию
-			if(fmk != nullptr) fmk->log("get buffer wrong on socket %d", fmk_t::log_t::CRITICAL, logfile, fd);
+			if(log != nullptr) log->print("get buffer wrong on socket %d", log_t::flag_t::CRITICAL, fd);
 			// Выходим
 			return -1;
 		}

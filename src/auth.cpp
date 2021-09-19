@@ -354,14 +354,14 @@ void awh::Authorization::setPassword(const string & password) noexcept {
 }
 /**
  * setFramework Метод установки объекта фреймворка
- * @param fmk     объект фреймворка для установки
- * @param logfile адрес файла для сохранения логов
+ * @param fmk объект фреймворка для установки
+ * @param log объект для работы с логами
  */
-void awh::Authorization::setFramework(const fmk_t * fmk, const char * logfile) noexcept {
+void awh::Authorization::setFramework(const fmk_t * fmk, const log_t * log) noexcept {
 	// Устанавливаем объект фреймворка
 	this->fmk = fmk;
-	// Устанавливаем адрес файла для логирования
-	this->logfile = logfile;
+	// Устанавливаем объект для работы с логами
+	this->log = log;
 }
 /**
  * setType Метод установки типа авторизации
@@ -555,7 +555,7 @@ const string awh::Authorization::header() noexcept {
 		// Выполняем прехват ошибки
 		} catch(const exception & error) {
 			// Выводим в лог сообщение
-			this->fmk->log("%s", fmk_t::log_t::CRITICAL, this->logfile, error.what());
+			this->log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		}
 	}
 	// Выводим результат
@@ -629,7 +629,7 @@ const string awh::Authorization::response(const string & username, const string 
 		// Выполняем прехват ошибки
 		} catch(const exception & error) {
 			// Выводим в лог сообщение
-			if(this->fmk != nullptr) this->fmk->log("%s", fmk_t::log_t::CRITICAL, this->logfile, error.what());
+			if(this->fmk != nullptr) this->log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		}
 	}
 	// Выводим результат

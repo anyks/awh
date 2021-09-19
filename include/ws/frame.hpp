@@ -32,6 +32,7 @@
  * Наши модули
  */
 #include <fmk.hpp>
+#include <log.hpp>
 
 // Подписываемся на стандартное пространство имён
 using namespace std;
@@ -164,8 +165,8 @@ namespace awh {
 		private:
 			// Создаём объект фреймворка
 			const fmk_t * fmk = nullptr;
-			// Адрес файла для сохранения логов
-			const char * logfile = nullptr;
+			// Создаём объект работы с логами
+			const log_t * log = nullptr;
 		private:
 			/**
 			 * head Метод извлечения заголовка фрейма
@@ -230,10 +231,10 @@ namespace awh {
 		public:
 			/**
 			 * Frame Конструктор
-			 * @param fmk     объект фреймворка
-			 * @param logfile адрес файла для сохранения логов
+			 * @param fmk объект фреймворка
+			 * @param log объект для работы с логами
 			 */
-			Frame(const fmk_t * fmk, const char * logfile = nullptr) noexcept : fmk(fmk), logfile(logfile) {}
+			Frame(const fmk_t * fmk, const log_t * log) noexcept : fmk(fmk), log(log) {}
 	} frame_t;
 };
 

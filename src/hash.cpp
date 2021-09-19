@@ -340,7 +340,7 @@ const vector <char> awh::Hash::decompress(const char * buffer, const size_t size
 						// Выполняем сброс фрейма
 						if(inflateReset(&zs) != Z_OK)
 							// Выводим сообщение об ошибке
-							this->fmk->log("inflate reset failed: %d", fmk_t::log_t::CRITICAL, this->logfile, flush);
+							this->log->print("inflate reset failed: %d", log_t::flag_t::CRITICAL, flush);
 						// Пропускаем блок
 						continue;
 					}

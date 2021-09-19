@@ -22,9 +22,7 @@
 #include <string>
 #include <vector>
 #include <limits>
-#include <cstdarg>
 #include <sstream>
-#include <fstream>
 #include <cstring>
 #include <iomanip>
 #include <cstdlib>
@@ -69,7 +67,7 @@ using namespace std;
  */
 namespace awh {
 	/**
-	 * Framework Класс фреймворка GLB
+	 * Framework Класс фреймворка
 	 */
 	typedef class Framework {
 		private:
@@ -103,10 +101,6 @@ namespace awh {
 			// Устанавливаем локаль по умолчанию
 			std::locale locale{AWH_LOCALE};
 		public:
-			/**
-			 * log_t Флаги логирования
-			 */
-			enum class log_t : u_short {NONE, INFO, WARNING, CRITICAL};
 			/**
 			 * os_t Названия поддерживаемых операционных систем
 			 */
@@ -383,22 +377,6 @@ namespace awh {
 			 * @return     список координат с url адресами
 			 */
 			std::map <size_t, size_t> urls(const wstring & text) const noexcept;
-		public:
-			/**
-			 * log Метод вывода текстовой информации в консоль или файл
-			 * @param format   формат строки вывода
-			 * @param flag     флаг типа логирования
-			 * @param filename адрес файла для вывода
-			 */
-			void log(const string & format, log_t flag, const char * filename, ...) const noexcept;
-			/**
-			 * log Метод вывода текстовой информации в консоль или файл
-			 * @param format   формат строки вывода
-			 * @param flag     флаг типа логирования
-			 * @param filename адрес файла для вывода
-			 * @param items    список аргументов для замены
-			 */
-			void log(const string & format, log_t flag, const char * filename, const vector <string> & items) const noexcept;
 		public:
 			/**
 			 * split Метод разделения строк на составляющие

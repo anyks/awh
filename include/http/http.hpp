@@ -15,17 +15,25 @@
  */
 #include <set>
 #include <map>
-#include <ctime>
 #include <string>
 #include <random>
 #include <cstring>
 #include <algorithm>
 #include <unordered_map>
 
+// Если - это Windows
+#if defined(_WIN32) || defined(_WIN64)
+	#include <time.h>
+// Если - это Unix
+#else
+	#include <ctime>
+#endif
+
 /**
  * Наши модули
  */
 #include <fmk.hpp>
+#include <log.hpp>
 #include <uri.hpp>
 #include <auth.hpp>
 #include <base64.hpp>
@@ -147,10 +155,10 @@ namespace awh {
 			auth_t * auth = nullptr;
 			// Создаём объект фреймворка
 			const fmk_t * fmk = nullptr;
+			// Создаём объект работы с логами
+			const log_t * log = nullptr;
 			// Создаём объект работы с URI
 			const uri_t * uri = nullptr;
-			// Адрес файла для сохранения логов
-			const char * logfile = nullptr;
 			// Создаём URL адрес запроса
 			const uri_t::url_t * url = nullptr;
 		protected:
@@ -315,19 +323,19 @@ namespace awh {
 		public:
 			/**
 			 * Http Конструктор
-			 * @param fmk     объект фреймворка
-			 * @param uri     объект работы с URI
-			 * @param logfile адрес файла для сохранения логов
+			 * @param fmk объект фреймворка
+			 * @param log объект для работы с логами
+			 * @param uri объект работы с URI
 			 */
-			Http(const fmk_t * fmk, const uri_t * uri, const char * logfile = nullptr) noexcept;
+			Http(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcept;
 			/**
 			 * Http Конструктор
-			 * @param fmk     объект фреймворка
-			 * @param uri     объект работы с URI
-			 * @param url     объект URL адреса сервера
-			 * @param logfile адрес файла для сохранения логов
+			 * @param fmk объект фреймворка
+			 * @param log объект для работы с логами
+			 * @param uri объект работы с URI
+			 * @param url объект URL адреса сервера
 			 */
-			Http(const fmk_t * fmk, const uri_t * uri, const uri_t::url_t * url, const char * logfile = nullptr) noexcept;
+			Http(const fmk_t * fmk, const log_t * log, const uri_t * uri, const uri_t::url_t * url) noexcept;
 			/**
 			 * ~Http Деструктор
 			 */

@@ -109,7 +109,7 @@ awh::http_t::stath_t awh::HServer::checkAuthenticate() noexcept {
 		// Если параметры авторизации найдены
 		if(it != this->headers.end()){
 			// Создаём объект авторизации для клиента
-			auth_t auth(this->fmk, this->logfile, true);
+			auth_t auth(this->fmk, this->log, true);
 			// Получаем тип алгоритма Дайджест
 			const auto & digest = this->auth->getDigest();
 			// Устанавливаем тип авторизации

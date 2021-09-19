@@ -125,6 +125,7 @@ set(SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/src/dns.cpp"
     "${CMAKE_SOURCE_DIR}/src/ssl.cpp"
     "${CMAKE_SOURCE_DIR}/src/uri.cpp"
+    "${CMAKE_SOURCE_DIR}/src/log.cpp"
     "${CMAKE_SOURCE_DIR}/src/hash.cpp"
     "${CMAKE_SOURCE_DIR}/src/auth.cpp"
     "${CMAKE_SOURCE_DIR}/src/socket.cpp"

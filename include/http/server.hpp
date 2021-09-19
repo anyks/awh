@@ -58,11 +58,11 @@ namespace awh {
 		public:
 			/**
 			 * HServer Конструктор
-			 * @param fmk     объект фреймворка
-			 * @param uri     объект работы с URI
-			 * @param logfile адрес файла для сохранения логов
+			 * @param fmk объект фреймворка
+			 * @param log объект для работы с логами
+			 * @param uri объект работы с URI
 			 */
-			HServer(const fmk_t * fmk, const uri_t * uri, const char * logfile = nullptr) noexcept : http_t(fmk, uri, logfile) {}
+			HServer(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcept : http_t(fmk, log, uri) {}
 			/**
 			 * ~HServer Деструктор
 			 */

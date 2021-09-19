@@ -25,14 +25,14 @@
 			// Выполняем инициализацию сетевого контекста
 			if((error = WSAStartup(MAKEWORD(2, 2), &wsaData)) != 0){ // 0x202
 				// Сообщаем, что сетевой контекст не поднят
-				this->fmk->log("WSAStartup failed with error: %d", fmk_t::log_t::CRITICAL, this->logfile, error);
+				this->log->print("WSAStartup failed with error: %d", log_t::flag_t::CRITICAL, error);
 				// Выходим из приложения
 				exit(EXIT_FAILURE);
 			}
 			// Выполняем проверку версии WinSocket
 			if((2 != LOBYTE(wsaData.wVersion)) || (2 != HIBYTE(wsaData.wVersion))){
 				// Сообщаем, что версия WinSocket не подходит
-				this->fmk->log("%s", fmk_t::log_t::CRITICAL, this->logfile, "WSADATA version is not correct");
+				this->log->print("%s", log_t::flag_t::CRITICAL, "WSADATA version is not correct");
 				// Очищаем сетевой контекст
 				this->winSocketClean();
 				// Выходим из приложения
@@ -109,9 +109,9 @@ void awh::Client::error(const mess_t & message) const noexcept {
 		// Если тип сообщения получен
 		if(!message.type.empty())
 			// Выводим в лог сообщение
-			this->fmk->log("%s - %s [%u]", fmk_t::log_t::WARNING, this->logfile, message.type.c_str(), message.text.c_str(), message.code);
+			this->log->print("%s - %s [%u]", log_t::flag_t::WARNING, message.type.c_str(), message.text.c_str(), message.code);
 		// Иначе выводим сообщение в упрощёном виде
-		else this->fmk->log("%s [%u]", fmk_t::log_t::WARNING, this->logfile, message.text.c_str(), message.code);
+		else this->log->print("%s [%u]", log_t::flag_t::WARNING, message.text.c_str(), message.code);
 		// Если функция обратного вызова установлена, выводим полученное сообщение
 		if(this->errorFn != nullptr) this->errorFn(message.code, message.text, const_cast <Client *> (this));
 	}
@@ -229,7 +229,7 @@ const bool awh::Client::connect() noexcept {
 				// Выполняем подключение к удаленному серверу, если подключение не выполненно то сообщаем об этом
 				if(bufferevent_socket_connect(this->bev, sin, size) < 0){
 					// Выводим в лог сообщение
-					this->fmk->log("connecting to host = %s, port = %u", fmk_t::log_t::CRITICAL, this->logfile, this->url.ip.c_str(), this->url.port);
+					this->log->print("connecting to host = %s, port = %u", log_t::flag_t::CRITICAL, this->url.ip.c_str(), this->url.port);
 					// Если нужно выполнить автоматическое переподключение
 					if(this->reconnect){
 						// Выполняем отключение
@@ -247,13 +247,13 @@ const bool awh::Client::connect() noexcept {
 					}
 				}
 				// Выводим в лог сообщение
-				this->fmk->log("create good connect to host = %s [%s:%d], socket = %d", fmk_t::log_t::INFO, this->logfile, this->url.domain.c_str(), this->url.ip.c_str(), this->url.port, this->fd);
+				this->log->print("create good connect to host = %s [%s:%d], socket = %d", log_t::flag_t::INFO, this->url.domain.c_str(), this->url.ip.c_str(), this->url.port, this->fd);
 				// Сообщаем что все удачно
 				result = true;
 			// Выполняем новую попытку подключения
 			} else {
 				// Выводим в лог сообщение
-				this->fmk->log("connecting to host = %s, port = %u", fmk_t::log_t::CRITICAL, this->logfile, this->url.ip.c_str(), this->url.port);
+				this->log->print("connecting to host = %s, port = %u", log_t::flag_t::CRITICAL, this->url.ip.c_str(), this->url.port);
 				// Если нужно выполнить автоматическое переподключение
 				if(this->reconnect){
 					// Выполняем отключение
@@ -369,7 +369,7 @@ const awh::Client::socket_t awh::Client::socket(const string & ip, const u_int p
 			// Если тип сети не определен
 			default: {
 				// Выводим сообщение в консоль
-				this->fmk->log("network not allow from server = %s, port = %u", fmk_t::log_t::CRITICAL, this->logfile, ip.c_str(), port);
+				this->log->print("network not allow from server = %s, port = %u", log_t::flag_t::CRITICAL, ip.c_str(), port);
 				// Выходим
 				return result;
 			}
@@ -377,24 +377,24 @@ const awh::Client::socket_t awh::Client::socket(const string & ip, const u_int p
 		// Если сокет не создан то выходим
 		if(result.fd < 0){
 			// Выводим сообщение в консоль
-			this->fmk->log("creating socket to server = %s, port = %u", fmk_t::log_t::CRITICAL, this->logfile, ip.c_str(), port);
+			this->log->print("creating socket to server = %s, port = %u", log_t::flag_t::CRITICAL, ip.c_str(), port);
 			// Выходим
 			return result;
 		}
 		// Если - это Unix
 		#if !defined(_WIN32) && !defined(_WIN64)
 			// Выполняем игнорирование сигнала неверной инструкции процессора
-			sockets_t::noSigill(this->fmk, this->logfile);
+			sockets_t::noSigill(this->log);
 			// Устанавливаем разрешение на повторное использование сокета
-			sockets_t::reuseable(result.fd, this->fmk, this->logfile);
+			sockets_t::reuseable(result.fd, this->log);
 			// Отключаем сигнал записи в оборванное подключение
-			sockets_t::noSigpipe(result.fd, this->fmk, this->logfile);
+			sockets_t::noSigpipe(result.fd, this->log);
 			// Отключаем алгоритм Нейгла для сервера и клиента
-			sockets_t::tcpNodelay(result.fd, this->fmk, this->logfile);
+			sockets_t::tcpNodelay(result.fd, this->log);
 			// Разблокируем сокет
-			sockets_t::nonBlocking(result.fd, this->fmk, this->logfile);
+			sockets_t::nonBlocking(result.fd, this->log);
 			// Активируем keepalive
-			sockets_t::keepAlive(result.fd, this->alive.keepcnt, this->alive.keepidle, this->alive.keepintvl, this->fmk, this->logfile);
+			sockets_t::keepAlive(result.fd, this->alive.keepcnt, this->alive.keepidle, this->alive.keepintvl, this->log);
 		// Если - это Windows
 		#else
 			// Выполняем инициализацию WinSock
@@ -408,7 +408,7 @@ const awh::Client::socket_t awh::Client::socket(const string & ip, const u_int p
 		// Выполняем бинд на сокет
 		if(::bind(result.fd, sin, size) < 0){
 			// Выводим в лог сообщение
-			this->fmk->log("bind local network [%s] error", fmk_t::log_t::CRITICAL, this->logfile, host.c_str());
+			this->log->print("bind local network [%s] error", log_t::flag_t::CRITICAL, host.c_str());
 			// Выходим
 			return result;
 		}
@@ -477,7 +477,7 @@ void awh::Client::read(struct bufferevent * bev, void * ctx){
 						// Устанавливаем флаг, что мы работаем с сжатыми данными
 						ws->gzip = ws->http->isGzip();
 						// Выводим в лог сообщение
-						ws->fmk->log("%s", fmk_t::log_t::INFO, ws->logfile, "authorization on the WebSocket server was successful");
+						ws->log->print("%s", log_t::flag_t::INFO, "authorization on the WebSocket server was successful");
 						// Если функция обратного вызова установлена, выполняем
 						if(ws->openStopFn != nullptr) ws->openStopFn(true, ws);
 						// Устанавливаем таймер на контроль подключения
@@ -668,7 +668,7 @@ void awh::Client::event(struct bufferevent * bev, const short events, void * ctx
 			// Если подключение удачное
 			if(events & BEV_EVENT_CONNECTED){
 				// Выводим в лог сообщение
-				ws->fmk->log("connect client to server [%s:%d]", fmk_t::log_t::INFO, ws->logfile, ws->url.ip.c_str(), ws->url.port);
+				ws->log->print("connect client to server [%s:%d]", log_t::flag_t::INFO, ws->url.ip.c_str(), ws->url.port);
 				// Выполняем запрос на сервер
 				ws->request();
 			// Если это ошибка или завершение работы
@@ -676,9 +676,9 @@ void awh::Client::event(struct bufferevent * bev, const short events, void * ctx
 				// Если это ошибка
 				if(events & BEV_EVENT_ERROR)
 					// Выводим в лог сообщение
-					ws->fmk->log("closing server [%s:%d] error: %s", fmk_t::log_t::WARNING, ws->logfile, ws->url.ip.c_str(), ws->url.port, evutil_socket_error_to_string(EVUTIL_SOCKET_ERROR()));
+					ws->log->print("closing server [%s:%d] error: %s", log_t::flag_t::WARNING, ws->url.ip.c_str(), ws->url.port, evutil_socket_error_to_string(EVUTIL_SOCKET_ERROR()));
 				// Если - это таймаут, выводим сообщение в лог
-				else if(events & BEV_EVENT_TIMEOUT) ws->fmk->log("timeout server [%s:%d]", fmk_t::log_t::WARNING, ws->logfile, ws->url.ip.c_str(), ws->url.port);
+				else if(events & BEV_EVENT_TIMEOUT) ws->log->print("timeout server [%s:%d]", log_t::flag_t::WARNING, ws->url.ip.c_str(), ws->url.port);
 				// Если нужно выполнить автоматическое переподключение
 				if(ws->reconnect){
 					// Закрываем подключение
@@ -764,7 +764,7 @@ void awh::Client::close() noexcept {
 	// Зануляем сокет
 	this->fd = -1;
 	// Выводим сообщение об ошибке
-	this->fmk->log("%s", fmk_t::log_t::INFO, this->logfile, "disconnected from the server");
+	this->log->print("%s", log_t::flag_t::INFO, "disconnected from the server");
 	// Если - это Windows
 	#if defined(_WIN32) || defined(_WIN64)
 		// Очищаем сетевой контекст
@@ -978,7 +978,7 @@ void awh::Client::start() noexcept {
 					// Если подключение выполнено
 					if(this->connect()) return;
 					// Сообщаем, что подключение не удалось и выводим сообщение
-					else this->fmk->log("broken connect to host %s", fmk_t::log_t::CRITICAL, this->logfile, this->url.ip.c_str());
+					else this->log->print("broken connect to host %s", log_t::flag_t::CRITICAL, this->url.ip.c_str());
 				}
 				// Останавливаем работу системы
 				this->stop();
@@ -988,9 +988,9 @@ void awh::Client::start() noexcept {
 			// Определяем тип подключения
 			switch(this->net.family){
 				// Резолвер IPv4, создаём резолвер
-				case AF_INET: this->dns = new dns_t(this->fmk, this->nwk, this->base, this->net.v4.second, this->logfile); break;
+				case AF_INET: this->dns = new dns_t(this->fmk, this->log, this->nwk, this->base, this->net.v4.second); break;
 				// Резолвер IPv6, создаём резолвер
-				case AF_INET6: this->dns = new dns_t(this->fmk, this->nwk, this->base, this->net.v6.second, this->logfile); break;
+				case AF_INET6: this->dns = new dns_t(this->fmk, this->log, this->nwk, this->base, this->net.v6.second); break;
 			}
 			// Если IP адрес не получен
 			if(this->url.ip.empty() && !this->url.domain.empty())
@@ -999,7 +999,7 @@ void awh::Client::start() noexcept {
 			// Выполняем запуск системы
 			else if(!this->url.ip.empty()) runFn(this->url.ip);
 			// Выводим в консоль информацию
-			this->fmk->log("[+] start service: pid = %u", fmk_t::log_t::INFO, this->logfile, getpid());
+			this->log->print("[+] start service: pid = %u", log_t::flag_t::INFO, getpid());
 			// Активируем перебор базы событий
 			event_base_loop(this->base, EVLOOP_NO_EXIT_ON_EMPTY);
 			// Удаляем dns резолвер
@@ -1015,15 +1015,15 @@ void awh::Client::start() noexcept {
 				// Останавливаем работу WebSocket
 				this->mode = false;
 				// Выводим в консоль информацию
-				this->fmk->log("[=] restart service: pid = %u", fmk_t::log_t::INFO, this->logfile, getpid());
+				this->log->print("[=] restart service: pid = %u", log_t::flag_t::INFO, getpid());
 				// Выполняем переподключение
 				this->start();
 			// Выводим в консоль информацию
-			} else this->fmk->log("[-] stop service: pid = %u", fmk_t::log_t::INFO, this->logfile, getpid());
+			} else this->log->print("[-] stop service: pid = %u", log_t::flag_t::INFO, getpid());
 		// Если происходит ошибка то игнорируем её
 		} catch(const bad_alloc&) {
 			// Выводим сообщение об ошибке
-			fmk->log("%s", fmk_t::log_t::CRITICAL, this->logfile, "memory could not be allocated");
+			this->log->print("%s", log_t::flag_t::CRITICAL, "memory could not be allocated");
 			// Если нужно выполнять переподключение
 			if(this->reconnect){
 				// Останавливаем работу WebSocket
@@ -1180,32 +1180,32 @@ void awh::Client::setAuthType(const auth_t::type_t type, const auth_t::algorithm
 }
 /**
  * Client Конструктор
- * @param fmk     объект фреймворка
- * @param uri     объект работы с URI
- * @param nwk     объект методов для работы с сетью
- * @param logfile адрес файла для сохранения логов
+ * @param fmk объект фреймворка
+ * @param log объект для работы с логами
+ * @param uri объект работы с URI
+ * @param nwk объект методов для работы с сетью
  */
-awh::Client::Client(const fmk_t * fmk, const uri_t * uri, const network_t * nwk, const char * logfile) noexcept {
+awh::Client::Client(const fmk_t * fmk, const log_t * log, const uri_t * uri, const network_t * nwk) noexcept {
 	try {
 		// Устанавливаем зависимые модули
-		this->fmk     = fmk;
-		this->uri     = uri;
-		this->nwk     = nwk;
-		this->logfile = logfile;
+		this->fmk = fmk;
+		this->log = log;
+		this->uri = uri;
+		this->nwk = nwk;
 		// Резервируем память для работы с данными WebSocket
 		this->wdt = new char[BUFFER_CHUNK];
 		// Создаём объект для работы с компрессией/декомпрессией
-		this->hash = new hash_t(this->fmk, this->logfile);
+		this->hash = new hash_t(this->fmk, this->log);
 		// Создаём объект для работы с фреймом WebSocket
-		this->frame = new frame_t(this->fmk, this->logfile);
+		this->frame = new frame_t(this->fmk, this->log);
 		// Создаём объект для работы с SSL
-		this->ssl = new ssl_t(this->fmk, this->uri, this->logfile);
+		this->ssl = new ssl_t(this->fmk, this->log, this->uri);
 		// Создаём объект для работы с HTTP
-		this->http = new chttp_t(this->fmk, this->uri, &this->url, this->logfile);
+		this->http = new chttp_t(this->fmk, this->log, this->uri, &this->url);
 	// Если происходит ошибка то игнорируем её
 	} catch(const bad_alloc&) {
 		// Выводим сообщение об ошибке
-		fmk->log("%s", fmk_t::log_t::CRITICAL, logfile, "memory could not be allocated");
+		log->print("%s", log_t::flag_t::CRITICAL, "memory could not be allocated");
 		// Выходим из приложения
 		exit(EXIT_FAILURE);
 	}

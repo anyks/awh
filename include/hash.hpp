@@ -13,13 +13,20 @@
 /**
  * Стандартная библиотека
  */
-#include <ctime>
 #include <string>
 #include <vector>
 #include <cstring>
 #include <zlib.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+
+// Если - это Windows
+#if defined(_WIN32) || defined(_WIN64)
+	#include <time.h>
+// Если - это Unix
+#else
+	#include <ctime>
+#endif
 
 /**
  * Подключаем OpenSSL
@@ -32,6 +39,7 @@
  * Наши модули
  */
 #include <fmk.hpp>
+#include <log.hpp>
 
 // Параметры Zlib
 #define MOD_GZIP_ZLIB_CFACTOR 9
@@ -91,8 +99,8 @@ namespace awh {
 		private:
 			// Создаём объект фреймворка
 			const fmk_t * fmk = nullptr;
-			// Адрес файла для сохранения логов
-			const char * logfile = nullptr;
+			// Создаём объект работы с логами
+			const log_t * log = nullptr;
 		private:
 			// Размер чанка в байтах
 			static constexpr u_int CHUNK_SIZE = 0x4000;
@@ -176,10 +184,10 @@ namespace awh {
 		public:
 			/**
 			 * Hash Конструктор
-			 * @param fmk     объект фреймворка
-			 * @param logfile адрес файла для сохранения логов
+			 * @param fmk объект фреймворка
+			 * @param log объект для работы с логами
 			 */
-			Hash(const fmk_t * fmk, const char * logfile = nullptr) : fmk(fmk), logfile(logfile), wbit(MAX_WBITS), roundsAES(5), aesSize(aes_t::AES128), salt(""), password("") {}
+			Hash(const fmk_t * fmk, const log_t * log) : fmk(fmk), log(log), wbit(MAX_WBITS), roundsAES(5), aesSize(aes_t::AES128), salt(""), password("") {}
 	} hash_t;
 };
 

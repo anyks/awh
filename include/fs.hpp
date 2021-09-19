@@ -44,6 +44,7 @@
  * Наши модули
  */
 #include <fmk.hpp>
+#include <log.hpp>
 
 // Устанавливаем область видимости
 using namespace std;
@@ -92,13 +93,14 @@ namespace awh {
 		 * rmdir Функция удаления каталога и всего содержимого
 		 * @param path путь до каталога
 		 * @param fmk  объект фреймворка для работы
+		 * @param log  объект для работы с логами
 		 * @return     количество дочерних элементов
 		 */
-		static const int rmdir(const string & path, const fmk_t * fmk) noexcept {
+		static const int rmdir(const string & path, const fmk_t * fmk, const log_t * log) noexcept {
 			// Результат работы функции
 			int result = -1;
 			// Если путь передан
-			if(!path.empty() && (fmk != nullptr)){
+			if(!path.empty() && (fmk != nullptr) && (log != nullptr)){
 				// Если каталог существует
 				if(isdir(path)){
 					// Открываем указанный каталог
@@ -122,7 +124,7 @@ namespace awh {
 							// Если статистика извлечена
 							if(!stat(dirname.c_str(), &statbuf)){
 								// Если дочерний элемент является дирректорией
-								if(S_ISDIR(statbuf.st_mode)) res = rmdir(dirname, fmk);
+								if(S_ISDIR(statbuf.st_mode)) res = rmdir(dirname, fmk, log);
 								// Если дочерний элемент является файлом то удаляем его
 								else res = ::unlink(dirname.c_str());
 							}
@@ -135,7 +137,7 @@ namespace awh {
 					// Удаляем последний каталог
 					if(!result) result = ::rmdir(path.c_str());
 				// Выводим сообщение об ошибке
-				} else fmk->log("the path name: \"%s\" is not found", fmk_t::log_t::CRITICAL, nullptr, path.c_str());
+				} else log->print("the path name: \"%s\" is not found", log_t::flag_t::CRITICAL, path.c_str());
 			}
 			// Выводим результат
 			return result;
@@ -179,16 +181,17 @@ namespace awh {
 		}
 		/**
 		 * getuid Функция вывода идентификатора пользователя
-		 * @param  name имя пользователя
-		 * @return      полученный идентификатор пользователя
+		 * @param name имя пользователя
+		 * @param log  объект для работы с логами
+		 * @return     полученный идентификатор пользователя
 		 */
-		static const uid_t getuid(const string & name) noexcept {
+		static const uid_t getuid(const string & name, const log_t * log = nullptr) noexcept {
 			// Получаем идентификатор имени пользователя
 			struct passwd * pwd = getpwnam(name.c_str());
 			// Если идентификатор пользователя не найден
 			if(pwd == nullptr){
 				// Выводим сообщение об ошибке
-				printf("failed to get userId from username [%s]\n", name.c_str());
+				if(log != nullptr) log->print("failed to get userId from username [%s]", log_t::flag_t::CRITICAL, name.c_str());
 				// Сообщаем что ничего не найдено
 				return 0;
 			}
@@ -197,16 +200,17 @@ namespace awh {
 		}
 		/**
 		 * getgid Функция вывода идентификатора группы пользователя
-		 * @param  name название группы пользователя
-		 * @return      полученный идентификатор группы пользователя
+		 * @param name название группы пользователя
+		 * @param log  объект для работы с логами
+		 * @return     полученный идентификатор группы пользователя
 		 */
-		static const gid_t getgid(const string & name) noexcept {
+		static const gid_t getgid(const string & name, const log_t * log = nullptr) noexcept {
 			// Получаем идентификатор группы пользователя
 			struct group * grp = getgrnam(name.c_str());
 			// Если идентификатор группы не найден
 			if(grp == nullptr){
 				// Выводим сообщение об ошибке
-				printf("failed to get groupId from groupname [%s]\n", name.c_str());
+				if(log != nullptr) log->print("failed to get groupId from groupname [%s]", log_t::flag_t::CRITICAL, name.c_str());
 				// Сообщаем что ничего не найдено
 				return 0;
 			}
@@ -456,13 +460,14 @@ namespace awh {
 		 * @param path путь для подсчёта
 		 * @param ext  расширение файла по которому идет фильтрация
 		 * @param fmk  объект фреймворка для работы
+		 * @param log  объект для работы с логами
 		 * @return     количество файлов в каталоге
 		 */
-		static const uintmax_t fcount(const string & path, const string & ext, const fmk_t * fmk) noexcept {
+		static const uintmax_t fcount(const string & path, const string & ext, const fmk_t * fmk, const log_t * log) noexcept {
 			// Результат работы функции
 			uintmax_t result = 0;
 			// Если адрес каталога и расширение файлов переданы
-			if(!path.empty() && !ext.empty() && (fmk != nullptr)){
+			if(!path.empty() && !ext.empty() && (fmk != nullptr) && (log != nullptr)){
 				// Если каталог существует
 				if(isdir(path)){
 					// Открываем указанный каталог
@@ -482,7 +487,7 @@ namespace awh {
 							// Если статистика извлечена
 							if(!stat(address.c_str(), &info)){
 								// Если дочерний элемент является дирректорией
-								if(S_ISDIR(info.st_mode)) result += fcount(address, ext, fmk);
+								if(S_ISDIR(info.st_mode)) result += fcount(address, ext, fmk, log);
 								// Если дочерний элемент является файлом то удаляем его
 								else {
 									// Получаем расширение файла
@@ -501,7 +506,7 @@ namespace awh {
 						closedir(dir);
 					}
 				// Выводим сообщение об ошибке
-				} else fmk->log("the path name: \"%s\" is not found", fmk_t::log_t::CRITICAL, nullptr, path.c_str());
+				} else log->print("the path name: \"%s\" is not found", log_t::flag_t::CRITICAL, path.c_str());
 			}
 			// Выводим результат
 			return result;
@@ -511,13 +516,14 @@ namespace awh {
 		 * @param path путь для подсчёта
 		 * @param ext  расширение файла по которому идет фильтрация
 		 * @param fmk  объект фреймворка для работы
+		 * @param log  объект для работы с логами
 		 * @return     размер каталога в байтах
 		 */
-		static const uintmax_t dsize(const string & path, const string & ext, const fmk_t * fmk) noexcept {
+		static const uintmax_t dsize(const string & path, const string & ext, const fmk_t * fmk, const log_t * log) noexcept {
 			// Результат работы функции
 			uintmax_t result = 0;
 			// Если адрес каталога и расширение файлов переданы
-			if(!path.empty() && !ext.empty() && (fmk != nullptr)){
+			if(!path.empty() && !ext.empty() && (fmk != nullptr) && (log != nullptr)){
 				// Если каталог существует
 				if(isdir(path)){
 					// Открываем указанный каталог
@@ -537,7 +543,7 @@ namespace awh {
 							// Если статистика извлечена
 							if(!stat(address.c_str(), &info)){
 								// Если дочерний элемент является дирректорией
-								if(S_ISDIR(info.st_mode)) result += dsize(address, ext, fmk);
+								if(S_ISDIR(info.st_mode)) result += dsize(address, ext, fmk, log);
 								// Если дочерний элемент является файлом то удаляем его
 								else {
 									// Получаем расширение файла
@@ -556,7 +562,7 @@ namespace awh {
 						closedir(dir);
 					}
 				// Выводим сообщение об ошибке
-				} else fmk->log("the path name: \"%s\" is not found", fmk_t::log_t::CRITICAL, nullptr, path.c_str());
+				} else log->print("the path name: \"%s\" is not found", log_t::flag_t::CRITICAL, path.c_str());
 			}
 			// Выводим результат
 			return result;
@@ -602,18 +608,18 @@ namespace awh {
 		/**
 		 * rfile Функция рекурсивного получения всех строк файла
 		 * @param filename адрес файла для чтения
-		 * @param fmk      объект фреймворка для работы
+		 * @param log      объект для работы с логами
 		 * @param callback функция обратного вызова
 		 */
-		static void rfile(const string & filename, const fmk_t * fmk, function <void (const string &, const uintmax_t)> callback) noexcept {
+		static void rfile(const string & filename, const log_t * log, function <void (const string &, const uintmax_t)> callback) noexcept {
 			// Если - это Windows
 			#if defined(_WIN32) || defined(_WIN64)
 				// Вызываем метод рекурсивного получения всех строк файла, старым способом
-				rfile2(filename, fmk, callback);
+				rfile2(filename, log, callback);
 			// Если - это Unix
 			#else
 				// Если адрес файла передан
-				if(!filename.empty() && (fmk != nullptr)){
+				if(!filename.empty() && (log != nullptr)){
 					// Если файл существует
 					if(isfile(filename)){
 						// Файловый дескриптор файла
@@ -623,11 +629,11 @@ namespace awh {
 						// Если файл не открыт
 						if((fd = open(filename.c_str(), O_RDONLY)) < 0)
 							// Выводим сообщение об ошибке
-							fmk->log("the file name: \"%s\" is broken", fmk_t::log_t::CRITICAL, nullptr, filename.c_str());
+							log->print("the file name: \"%s\" is broken", log_t::flag_t::CRITICAL, filename.c_str());
 						// Если файл открыт удачно
 						else if(fstat(fd, &info) < 0)
 							// Выводим сообщение об ошибке
-							fmk->log("the file name: \"%s\" is unknown size", fmk_t::log_t::CRITICAL, nullptr, filename.c_str());
+							log->print("the file name: \"%s\" is unknown size", log_t::flag_t::CRITICAL, filename.c_str());
 						// Иначе продолжаем
 						else {
 							// Буфер входящих данных
@@ -635,7 +641,7 @@ namespace awh {
 							// Выполняем отображение файла в памяти
 							if((buffer = mmap(0, info.st_size, PROT_READ, MAP_SHARED, fd, 0)) == MAP_FAILED)
 								// Выводим сообщение что прочитать файл не удалось
-								fmk->log("the file name: \"%s\" is not read", fmk_t::log_t::CRITICAL, nullptr, filename.c_str());
+								log->print("the file name: \"%s\" is not read", log_t::flag_t::CRITICAL, filename.c_str());
 							// Если файл прочитан удачно
 							else if(buffer != nullptr) {
 								// Значение текущей и предыдущей буквы
@@ -669,19 +675,19 @@ namespace awh {
 						// Если файл открыт, закрываем его
 						if(fd > -1) close(fd);
 					// Выводим сообщение об ошибке
-					} else fmk->log("the file name: \"%s\" is not found", fmk_t::log_t::CRITICAL, nullptr, filename.c_str());
+					} else log->print("the file name: \"%s\" is not found", log_t::flag_t::CRITICAL, filename.c_str());
 				}
 			#endif
 		}
 		/**
 		 * rfile2 Функция рекурсивного получения всех строк файла (стандартным способом)
 		 * @param filename адрес файла для чтения
-		 * @param fmk      объект фреймворка для работы
+		 * @param log      объект для работы с логами
 		 * @param callback функция обратного вызова
 		 */
-		static void rfile2(const string & filename, const fmk_t * fmk, function <void (const string &, const uintmax_t)> callback) noexcept {
+		static void rfile2(const string & filename, const log_t * log, function <void (const string &, const uintmax_t)> callback) noexcept {
 			// Если адрес файла передан
-			if(!filename.empty() && (fmk != nullptr)){
+			if(!filename.empty() && (log != nullptr)){
 				// Если файл существует
 				if(isfile(filename)){
 					// Открываем файл на чтение
@@ -737,7 +743,7 @@ namespace awh {
 						file.close();
 					}
 				// Выводим сообщение об ошибке
-				} else fmk->log("the file name: \"%s\" is not found", fmk_t::log_t::CRITICAL, nullptr, filename.c_str());
+				} else log->print("the file name: \"%s\" is not found", log_t::flag_t::CRITICAL, filename.c_str());
 			}
 		}
 // Если это clang v10 или выше
@@ -747,11 +753,12 @@ namespace awh {
 		 * @param path     путь до каталога
 		 * @param ext      расширение файла по которому идет фильтрация
 		 * @param fmk      объект фреймворка для работы
+		 * @param log      объект для работы с логами
 		 * @param callback функция обратного вызова
 		 */
-		static void rdir(const string & path, const string & ext, const fmk_t * fmk, function <void (const string &, const uintmax_t)> callback) noexcept {
+		static void rdir(const string & path, const string & ext, const fmk_t * fmk, const log_t * log, function <void (const string &, const uintmax_t)> callback) noexcept {
 			// Если адрес каталога и расширение файлов переданы
-			if(!path.empty() && !ext.empty() && (fmk != nullptr)){
+			if(!path.empty() && !ext.empty() && (fmk != nullptr) && (log != nullptr)){
 				// Если каталог существует
 				if(isdir(path)){
 					// Устанавливаем область видимости
@@ -759,7 +766,7 @@ namespace awh {
 					// Устанавливаем путь поиска
 					fs::path dirpath = path;
 					// Получаем полный размер каталога
-					const uintmax_t size = dsize(path, ext);
+					const uintmax_t size = dsize(path, ext, fmk, log);
 					// Если размер каталога получен
 					if(size > 0){
 						// Выполняем рекурсивный переход по всем подкаталогам
@@ -780,7 +787,7 @@ namespace awh {
 					// Сообщаем что каталог пустой
 					} else callback("", 0);
 				// Выводим сообщение об ошибке
-				} else fmk->log("the path name: \"%s\" is not found", fmk_t::log_t::CRITICAL, nullptr, path.c_str());
+				} else log->print("the path name: \"%s\" is not found", log_t::flag_t::CRITICAL, path.c_str());
 			}
 		}
 // Если это gcc
@@ -790,15 +797,16 @@ namespace awh {
 		 * @param path     путь до каталога
 		 * @param ext      расширение файла по которому идет фильтрация
 		 * @param fmk      объект фреймворка для работы
+		 * @param log      объект для работы с логами
 		 * @param callback функция обратного вызова
 		 */
-		static void rdir(const string & path, const string & ext, const fmk_t * fmk, function <void (const string &, const uintmax_t)> callback) noexcept {
+		static void rdir(const string & path, const string & ext, const fmk_t * fmk, const log_t * log, function <void (const string &, const uintmax_t)> callback) noexcept {
 			// Если адрес каталога и расширение файлов переданы
-			if(!path.empty() && !ext.empty() && (fmk != nullptr)){
+			if(!path.empty() && !ext.empty() && (fmk != nullptr) && (log != nullptr)){
 				// Если каталог существует
 				if(isdir(path)){
 					// Получаем полный размер каталога
-					const uintmax_t sizeDir = dsize(path, ext, fmk);
+					const uintmax_t sizeDir = dsize(path, ext, fmk, log);
 					// Если размер каталога получен
 					if(sizeDir > 0){
 						/**
@@ -854,7 +862,7 @@ namespace awh {
 					// Сообщаем что каталог пустой
 					} else callback("", 0);
 				// Выводим сообщение об ошибке
-				} else fmk->log("the path name: \"%s\" is not found", fmk_t::log_t::CRITICAL, nullptr, path.c_str());
+				} else log->print("the path name: \"%s\" is not found", log_t::flag_t::CRITICAL, path.c_str());
 			}
 		}
 #endif
@@ -863,23 +871,24 @@ namespace awh {
 		 * @param path     путь до каталога
 		 * @param ext      расширение файла по которому идет фильтрация
 		 * @param fmk      объект фреймворка для работы
+		 * @param log      объект для работы с логами
 		 * @param callback функция обратного вызова
 		 */
-		static void rfdir(const string & path, const string & ext, const fmk_t * fmk, function <void (const string &, const string &, const uintmax_t, const uintmax_t)> callback) noexcept {
+		static void rfdir(const string & path, const string & ext, const fmk_t * fmk, const log_t * log, function <void (const string &, const string &, const uintmax_t, const uintmax_t)> callback) noexcept {
 			// Если адрес каталога и расширение файлов переданы
-			if(!path.empty() && !ext.empty() && (fmk != nullptr)){
+			if(!path.empty() && !ext.empty() && (fmk != nullptr) && (log != nullptr)){
 				// Если каталог существует
 				if(isdir(path)){
 					// Переходим по всему списку файлов в каталоге
-					rdir(path, ext, fmk, [&](const string & filename, const uintmax_t dirSize){
+					rdir(path, ext, fmk, log, [&](const string & filename, const uintmax_t dirSize){
 						// Выполняем считывание всех строк текста
-						rfile2(filename, fmk, [&](const string & str, const uintmax_t fileSize){
+						rfile2(filename, log, [&](const string & str, const uintmax_t fileSize){
 							// Если текст получен
 							if(!str.empty()) callback(str, filename, fileSize, dirSize);
 						});
 					});
 				// Выводим сообщение об ошибке
-				} else fmk->log("the path name: \"%s\" is not found", fmk_t::log_t::CRITICAL, nullptr, path.c_str());
+				} else log->print("the path name: \"%s\" is not found", log_t::flag_t::CRITICAL, path.c_str());
 			}
 		}
 	} fs_t;

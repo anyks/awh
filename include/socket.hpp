@@ -41,7 +41,7 @@
 /**
  * Наши модули
  */
-#include <fmk.hpp>
+#include <log.hpp>
 
 // Устанавливаем область видимости
 using namespace std;
@@ -87,82 +87,73 @@ namespace awh {
 		#else
 			/**
 			 * noSigill Метод блокировки сигнала SIGILL
-			 * @param fmk     объект фреймворка
-			 * @param logfile адрес файла для записи в лог
-			 * @return        результат работы функции
+			 * @param log объект для работы с логами
+			 * @return    результат работы функции
 			 */
-			static const int noSigill(const fmk_t * fmk = nullptr, const char * logfile = nullptr) noexcept;
+			static const int noSigill(const log_t * log = nullptr) noexcept;
 			/**
 			 * tcpCork Метод активации tcp_cork
-			 * @param fd      файловый дескриптор (сокет)
-			 * @param fmk     объект фреймворка
-			 * @param logfile адрес файла для записи в лог
-			 * @return        результат работы функции
+			 * @param fd  файловый дескриптор (сокет)
+			 * @param log объект для работы с логами
+			 * @return    результат работы функции
 			 */
-			static const int tcpCork(const evutil_socket_t fd = -1, const fmk_t * fmk = nullptr, const char * logfile = nullptr) noexcept;
+			static const int tcpCork(const evutil_socket_t fd = -1, const log_t * log = nullptr) noexcept;
 			/**
 			 * reuseable Метод разрешающая повторно использовать сокет после его удаления
-			 * @param fd      файловый дескриптор (сокет)
-			 * @param fmk     объект фреймворка
-			 * @param logfile адрес файла для записи в лог
-			 * @return        результат работы функции
+			 * @param fd  файловый дескриптор (сокет)
+			 * @param log объект для работы с логами
+			 * @return    результат работы функции
 			 */
-			static const int reuseable(const evutil_socket_t fd = -1, const fmk_t * fmk = nullptr, const char * logfile = nullptr) noexcept;
+			static const int reuseable(const evutil_socket_t fd = -1, const log_t * log = nullptr) noexcept;
 			/**
 			 * noSigpipe Метод игнорирования отключения сигнала записи в убитый сокет
-			 * @param fd      файловый дескриптор (сокет)
-			 * @param fmk     объект фреймворка
-			 * @param logfile адрес файла для записи в лог
-			 * @return        результат работы функции
+			 * @param fd  файловый дескриптор (сокет)
+			 * @param log объект для работы с логами
+			 * @return    результат работы функции
 			 */
-			static const int noSigpipe(const evutil_socket_t fd = -1, const fmk_t * fmk = nullptr, const char * logfile = nullptr) noexcept;
+			static const int noSigpipe(const evutil_socket_t fd = -1, const log_t * log = nullptr) noexcept;
 			/**
 			 * tcpNodelay Метод отключения алгоритма Нейгла
-			 * @param fd      файловый дескриптор (сокет)
-			 * @param fmk     объект фреймворка
-			 * @param logfile адрес файла для записи в лог
-			 * @return        результат работы функции
+			 * @param fd  файловый дескриптор (сокет)
+			 * @param log объект для работы с логами
+			 * @return    результат работы функции
 			 */
-			static const int tcpNodelay(const evutil_socket_t fd = -1, const fmk_t * fmk = nullptr, const char * logfile = nullptr) noexcept;
+			static const int tcpNodelay(const evutil_socket_t fd = -1, const log_t * log = nullptr) noexcept;
 			/**
 			 * nonBlocking Метод установки неблокирующего сокета
-			 * @param fd      файловый дескриптор (сокет)
-			 * @param fmk     объект фреймворка
-			 * @param logfile адрес файла для записи в лог
-			 * @return        результат работы функции
+			 * @param fd  файловый дескриптор (сокет)
+			 * @param log объект для работы с логами
+			 * @return    результат работы функции
 			 */
-			static const int nonBlocking(const evutil_socket_t fd = -1, const fmk_t * fmk = nullptr, const char * logfile = nullptr) noexcept;
+			static const int nonBlocking(const evutil_socket_t fd = -1, const log_t * log = nullptr) noexcept;
 			/**
 			 * ipV6only Метод включающая или отключающая режим отображения IPv4 на IPv6
-			 * @param fd      файловый дескриптор (сокет)
-			 * @param mode    активация или деактивация режима
-			 * @param fmk     объект фреймворка
-			 * @param logfile адрес файла для записи в лог
-			 * @return        результат работы функции
+			 * @param fd   файловый дескриптор (сокет)
+			 * @param mode активация или деактивация режима
+			 * @param log  объект для работы с логами
+			 * @return     результат работы функции
 			 */
-			static const int ipV6only(const evutil_socket_t fd = -1, const bool mode = false, const fmk_t * fmk = nullptr, const char * logfile = nullptr) noexcept;
+			static const int ipV6only(const evutil_socket_t fd = -1, const bool mode = false, const log_t * log = nullptr) noexcept;
 			/**
 			 * keepAlive Метод устанавливает постоянное подключение на сокет
-			 * @param fd      файловый дескриптор (сокет)
-			 * @param cnt     максимальное количество попыток
-			 * @param idle    время через которое происходит проверка подключения
-			 * @param intvl   время между попытками
-			 * @param fmk     объект фреймворка
-			 * @param logfile адрес файла для записи в лог
-			 * @return        результат работы функции
+			 * @param fd    файловый дескриптор (сокет)
+			 * @param cnt   максимальное количество попыток
+			 * @param idle  время через которое происходит проверка подключения
+			 * @param intvl время между попытками
+			 * @param log   объект для работы с логами
+			 * @return      результат работы функции
 			 */
-			static const int keepAlive(const evutil_socket_t fd = -1, const int cnt = 0, const int idle = 0, const int intvl = 0, const fmk_t * fmk = nullptr, const char * logfile = nullptr) noexcept;
+			static const int keepAlive(const evutil_socket_t fd = -1, const int cnt = 0, const int idle = 0, const int intvl = 0, const log_t * log = nullptr) noexcept;
 			/**
 			 * bufferSize Метод установки размеров буфера
 			 * @param fd         файловый дескриптор (сокет)
 			 * @param read_size  размер буфера на чтение
 			 * @param write_size размер буфера на запись
 			 * @param maxcon     максимальное количество подключений
-			 * @param fmk        объект фреймворка
-			 * @param logfile    адрес файла для записи в лог
+			 * @param log        объект для работы с логами
 			 * @return           результат работы функции
 			 */
-			static const int bufferSize(const evutil_socket_t fd = -1, const int read_size = 0, const int write_size = 0, const u_int maxcon = 0, const fmk_t * fmk = nullptr, const char * logfile = nullptr) noexcept;
+			static const int bufferSize(const evutil_socket_t fd = -1, const int read_size = 0, const int write_size = 0, const u_int maxcon = 0, const log_t * log = nullptr) noexcept;
 		#endif
 	} sockets_t;
 };

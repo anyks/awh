@@ -94,8 +94,6 @@ namespace awh {
 		private:
 			// Создаём объект фреймворка
 			const fmk_t * fmk = nullptr;
-			// Адрес файла для сохранения логов
-			const char * logfile = nullptr;
 			// Создаем объект сети
 			const network_t * nwk = nullptr;
 		public:
@@ -181,11 +179,10 @@ namespace awh {
 		public:
 			/**
 			 * URI Конструктор
-			 * @param fmk     объект фреймворка
-			 * @param nwk     объект методов для работы с сетью
-			 * @param logfile адрес файла для сохранения логов
+			 * @param fmk объект фреймворка
+			 * @param nwk объект методов для работы с сетью
 			 */
-			URI(const fmk_t * fmk, const network_t * nwk, const char * logfile = nullptr) noexcept : fmk(fmk), nwk(nwk), logfile(logfile) {}
+			URI(const fmk_t * fmk, const network_t * nwk) noexcept : fmk(fmk), nwk(nwk) {}
 	} uri_t;
 };
 

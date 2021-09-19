@@ -34,7 +34,7 @@ const string awh::Http::key() const noexcept {
 	// Выполняем прехват ошибки
 	} catch(const exception & error) {
 		// Выводим в лог сообщение
-		this->fmk->log("%s", fmk_t::log_t::CRITICAL, this->logfile, error.what());
+		this->log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		// Выполняем повторно генерацию ключа
 		result = this->key();
 	}
@@ -277,6 +277,9 @@ const string & awh::Http::getSub() const noexcept {
  * @return     соответствующее коду HTTP сообщение
  */
 const string & awh::Http::getMessage(const u_short code) const noexcept {
+	/**
+	 * Подробнее: https://developer.mozilla.org/ru/docs/Web/HTTP/Status
+	 */
 	// Результат работы функции
 	static string result = "";
 	// Выполняем поиск кода сообщения
@@ -532,46 +535,46 @@ void awh::Http::setAuthType(const auth_t::type_t type, const auth_t::algorithm_t
 }
 /**
  * Http Конструктор
- * @param fmk     объект фреймворка
- * @param uri     объект работы с URI
- * @param logfile адрес файла для сохранения логов
+ * @param fmk объект фреймворка
+ * @param log объект для работы с логами
+ * @param uri объект работы с URI
  */
-awh::Http::Http(const fmk_t * fmk, const uri_t * uri, const char * logfile) noexcept {
+awh::Http::Http(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcept {
 	try {
 		// Устанавливаем зависимые модули
-		this->fmk     = fmk;
-		this->uri     = uri;
-		this->logfile = logfile;
+		this->fmk = fmk;
+		this->log = log;
+		this->uri = uri;
 		// Создаём объект для работы с авторизацией
-		this->auth = new auth_t(this->fmk, this->logfile);
+		this->auth = new auth_t(this->fmk, this->log);
 	// Если происходит ошибка то игнорируем её
 	} catch(const bad_alloc&) {
 		// Выводим сообщение об ошибке
-		fmk->log("%s", fmk_t::log_t::CRITICAL, logfile, "memory could not be allocated");
+		log->print("%s", log_t::flag_t::CRITICAL, "memory could not be allocated");
 		// Выходим из приложения
 		exit(EXIT_FAILURE);
 	}
 }
 /**
  * Http Конструктор
- * @param fmk     объект фреймворка
- * @param uri     объект работы с URI
- * @param url     объект URL адреса сервера
- * @param logfile адрес файла для сохранения логов
+ * @param fmk объект фреймворка
+ * @param log объект для работы с логами
+ * @param uri объект работы с URI
+ * @param url объект URL адреса сервера
  */
-awh::Http::Http(const fmk_t * fmk, const uri_t * uri, const uri_t::url_t * url, const char * logfile) noexcept {
+awh::Http::Http(const fmk_t * fmk, const log_t * log, const uri_t * uri, const uri_t::url_t * url) noexcept {
 	try {
 		// Устанавливаем зависимые модули
-		this->fmk     = fmk;
-		this->uri     = uri;
-		this->url     = url;
-		this->logfile = logfile;
+		this->fmk = fmk;
+		this->log = log;
+		this->uri = uri;
+		this->url = url;
 		// Создаём объект для работы с авторизацией
-		this->auth = new auth_t(this->fmk, this->logfile);
+		this->auth = new auth_t(this->fmk, this->log);
 	// Если происходит ошибка то игнорируем её
 	} catch(const bad_alloc&) {
 		// Выводим сообщение об ошибке
-		fmk->log("%s", fmk_t::log_t::CRITICAL, logfile, "memory could not be allocated");
+		log->print("%s", log_t::flag_t::CRITICAL, "memory could not be allocated");
 		// Выходим из приложения
 		exit(EXIT_FAILURE);
 	}

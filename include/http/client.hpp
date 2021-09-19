@@ -58,12 +58,12 @@ namespace awh {
 		public:
 			/**
 			 * HClient Конструктор
-			 * @param fmk     объект фреймворка
-			 * @param uri     объект работы с URI
-			 * @param url     объект URL адреса сервера
-			 * @param logfile адрес файла для сохранения логов
+			 * @param fmk объект фреймворка
+			 * @param log объект для работы с логами
+			 * @param uri объект работы с URI
+			 * @param url объект URL адреса сервера
 			 */
-			HClient(const fmk_t * fmk, const uri_t * uri, const uri_t::url_t * url, const char * logfile = nullptr) noexcept : http_t(fmk, uri, url, logfile) {}
+			HClient(const fmk_t * fmk, const log_t * log, const uri_t * uri, const uri_t::url_t * url) noexcept : http_t(fmk, log, uri, url) {}
 			/**
 			 * ~HClient Деструктор
 			 */

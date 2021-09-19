@@ -188,7 +188,7 @@ awh::mess_t awh::Frame::message(const vector <char> & buffer) const noexcept {
 	// Если данные переданы
 	if(buffer.size() >= sizeof(result.code)){
 		/**
-		 * Коды ошибок: https://github.com/Luka967/websocket-close-codes
+		 * Подробнее: https://github.com/Luka967/websocket-close-codes
 		 */
 		// Считываем код ошибки
 		memcpy(&result.code, buffer.data(), sizeof(result.code));
@@ -205,7 +205,7 @@ awh::mess_t awh::Frame::message(const vector <char> & buffer) const noexcept {
 			// Выполняем прехват ошибки
 			} catch(const exception & error) {
 				// Выводим в лог сообщение
-				this->fmk->log("%s", fmk_t::log_t::CRITICAL, this->logfile, error.what());
+				this->log->print("%s", log_t::flag_t::CRITICAL, error.what());
 				// Устанавливаем текст ошибки
 				result = this->fmk->format("%s", error.what());
 			}

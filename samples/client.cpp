@@ -29,12 +29,18 @@ using json = nlohmann::json;
 int main(int argc, char * argv[]) noexcept {
 	// Создаём объект фреймворка
 	fmk_t fmk;
+	// Создаём объект для работы с логами
+	log_t log(&fmk);
 	// Создаём объект сети
 	network_t nwk(&fmk);
 	// Создаём объект URI
 	uri_t uri(&fmk, &nwk);
 	// Создаём объект клиента WebSocket
-	client_t ws(&fmk, &uri, &nwk);
+	client_t ws(&fmk, &log, &uri, &nwk);
+	// Устанавливаем название сервиса
+	log.setLogName("WebSocket Client");
+	// Устанавливаем формат времени
+	log.setLogFormat("%H:%M:%S %d.%m.%Y");
 	// Разрешаем верифицировать доменное имя на которое выдан сертификат
 	ws.setVerifySSL(true);
 	// Разрешаем ожидать входящие сообщения
@@ -51,6 +57,15 @@ int main(int argc, char * argv[]) noexcept {
 	// ws.setCrypt("password");
 	// Выполняем инициализацию WebSocket клиента
 	ws.init("wss://stream.binance.com:9443/stream", true);
+	/*
+	// Выполняем подписку на получение логов
+	log.subscribe([](const log_t::flag_t flag, const string & message){
+		// Выводим сообщение
+		cout << " ============= " << message << endl;
+	});
+	*/
+	// Устанавливаем адрес файла для сохранения логов
+	// log.setLogFilename("./test.log");
 	// Подписываемся на событие запуска и остановки сервера
 	ws.on([](const bool mode, client_t * ws){
 		// Выводим сообщение
