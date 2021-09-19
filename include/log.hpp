@@ -21,6 +21,7 @@
 #include <cstdarg>
 #include <functional>
 #include <sys/types.h>
+#include <zlib.h>
 
 // Если - это Windows
 #if defined(_WIN32) || defined(_WIN64)
@@ -57,6 +58,9 @@ namespace awh {
 			// Флаг разрешения вывода логов в консоль
 			bool consoleMode = true;
 		private:
+			// Максимальный размер файла лога
+			size_t maxFileSize = MAX_SIZE_LOGFILE;
+		private:
 			// Адрес файла для сохранения логов
 			string logFile = "";
 			// Формат даты и времени для вывода лога
@@ -69,6 +73,11 @@ namespace awh {
 		private:
 			// Создаём объект фреймворка
 			const fmk_t * fmk = nullptr;
+		private:
+			/**
+			 * rotate Метод выполнения ротации логов
+			 */
+			void rotate() const noexcept;
 		public:
 			/**
 			 * print Метод вывода текстовой информации в консоль или файл
@@ -100,6 +109,11 @@ namespace awh {
 			 * @param name название сервиса для вывода лога
 			 */
 			void setLogName(const string & name) noexcept;
+			/**
+			 * setLogMaxFileSize Метод установки максимального размера файла логов
+			 * @param size максимальный размер файла логов
+			 */
+			void setLogMaxFileSize(const float size) noexcept;
 			/**
 			 * setLogFormat Метод установки формата даты и времени для вывода лога
 			 * @param format формат даты и времени для вывода лога
