@@ -83,9 +83,13 @@ int main(int argc, char * argv[]) noexcept {
 	// Подписываемся на событие получения сообщения с сервера
 	ws.on([](const vector <char> & buffer, const bool utf8, client_t * ws){
 		// Если данные пришли в виде текста, выводим
-		if(utf8) cout << " +++++++++++++ " << string(buffer.begin(), buffer.end()) << endl;
+		if(utf8){
+			// Создаём объект JSON
+			json data = json::parse(string(buffer.begin(), buffer.end()));
+			// Выводим полученный результат
+			cout << " +++++++++++++ " << data.dump(4) << endl;
 		// Сообщаем количество полученных байт
-		else cout << " +++++++++++++ " << buffer.size() << " bytes" << endl;
+		} else cout << " +++++++++++++ " << buffer.size() << " bytes" << endl;
 	});
 	// Выполняем запуск WebSocket клиента
 	ws.start();
