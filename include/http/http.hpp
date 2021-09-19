@@ -244,6 +244,12 @@ namespace awh {
 			 * @return версия HTTP протокола
 			 */
 			double getVersion() const noexcept;
+		public:
+			/**
+			 * getSub Метод получения выбранного сабпротокола
+			 * @return выбранный сабпротокол
+			 */
+			const string & getSub() const noexcept;
 			/**
 			 * getMessage Метод получения HTTP сообщения
 			 * @param code код сообщения для получение

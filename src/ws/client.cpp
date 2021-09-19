@@ -1035,6 +1035,14 @@ void awh::Client::start() noexcept {
 	}
 }
 /**
+ * getSub Метод получения выбранного сабпротокола
+ * @return выбранный сабпротокол
+ */
+const string & awh::Client::getSub() const noexcept {
+	// Выводим выбранный сабпротокол
+	return this->http->getSub();
+}
+/**
  * setSub Метод установки подпротокола поддерживаемого сервером
  * @param sub подпротокол для установки
  */

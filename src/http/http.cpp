@@ -264,6 +264,14 @@ double awh::Http::getVersion() const noexcept {
 	return this->version;
 }
 /**
+ * getSub Метод получения выбранного сабпротокола
+ * @return выбранный сабпротокол
+ */
+const string & awh::Http::getSub() const noexcept {
+	// Выводим выбранный сабпротокол
+	return this->sub;
+}
+/**
  * getMessage Метод получения HTTP сообщения
  * @param code код сообщения для получение
  * @return     соответствующее коду HTTP сообщение

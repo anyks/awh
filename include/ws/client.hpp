@@ -326,6 +326,11 @@ namespace awh {
 			void start() noexcept;
 		public:
 			/**
+			 * getSub Метод получения выбранного сабпротокола
+			 * @return выбранный сабпротокол
+			 */
+			const string & getSub() const noexcept;
+			/**
 			 * setSub Метод установки подпротокола поддерживаемого сервером
 			 * @param sub подпротокол для установки
 			 */
