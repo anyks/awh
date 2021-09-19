@@ -11,9 +11,6 @@ find_library(LIBEVENT_LIBRARY NAMES event PATHS ${CMAKE_SOURCE_DIR}/third_party/
 find_library(LIBEVENT_CORE NAMES event_core PATHS ${CMAKE_SOURCE_DIR}/third_party/lib NO_DEFAULT_PATH)
 find_library(LIBEVENT_EXTRA NAMES event_extra PATHS ${CMAKE_SOURCE_DIR}/third_party/lib NO_DEFAULT_PATH)
 find_library(LIBEVENT_SSL NAMES event_openssl PATHS ${CMAKE_SOURCE_DIR}/third_party/lib NO_DEFAULT_PATH)
-if (NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
-    find_library(LIBEVENT_THREAD NAMES event_pthreads PATHS ${CMAKE_SOURCE_DIR}/third_party/lib NO_DEFAULT_PATH)
-endif()
 
 # Подключаем 'FindPackageHandle' для использования модуля поиска (find_package(<PackageName>))
 include(FindPackageHandleStandardArgs)
@@ -37,7 +34,6 @@ else()
         LIBEVENT_CORE
         LIBEVENT_EXTRA
         LIBEVENT_SSL
-        LIBEVENT_THREAD
 
         FAIL_MESSAGE "Missing LibEvent2. Run ./build_third_party.sh first"
     )
@@ -47,6 +43,5 @@ else()
         ${LIBEVENT_CORE}
         ${LIBEVENT_EXTRA}
         ${LIBEVENT_SSL}
-        ${LIBEVENT_THREAD}
     )
 endif()

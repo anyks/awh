@@ -185,26 +185,28 @@ const bool awh::Client::connect() noexcept {
 			if(this->sslctx.mode){
 				// Создаем буфер событий для сервера зашифрованного подключения
 				this->bev = bufferevent_openssl_socket_new(this->base, this->fd, this->sslctx.ssl, BUFFEREVENT_SSL_CONNECTING, BEV_OPT_THREADSAFE);
-				// this->bev = bufferevent_openssl_socket_new(this->base, this->fd, this->sslctx.ssl, BUFFEREVENT_SSL_CONNECTING, BEV_OPT_DEFER_CALLBACKS | BEV_OPT_UNLOCK_CALLBACKS);
 				// this->bev = bufferevent_openssl_socket_new(this->base, this->fd, this->sslctx.ssl, BUFFEREVENT_SSL_CONNECTING, BEV_OPT_CLOSE_ON_FREE | BEV_OPT_DEFER_CALLBACKS);
 				// Разрешаем непредвиденное грязное завершение работы
 				bufferevent_openssl_set_allow_dirty_shutdown(this->bev, 1);
 			// Создаем буфер событий для сервера
-			// } else this->bev = bufferevent_socket_new(this->base, this->fd, BEV_OPT_DEFER_CALLBACKS);
 			} else this->bev = bufferevent_socket_new(this->base, this->fd, BEV_OPT_THREADSAFE);
+			// } else this->bev = bufferevent_socket_new(this->base, this->fd, BEV_OPT_CLOSE_ON_FREE | BEV_OPT_DEFER_CALLBACKS);
 			// Если буфер событий создан
 			if(this->bev != nullptr){
-				// Устанавливаем водяной знак на 1 байт (чтобы считывать данные когда они действительно приходят)
-				// bufferevent_setwatermark(this->bev, EV_READ | EV_WRITE, 1, 0);
-				// Устанавливаем таймаут ожидания поступления данных
-				struct timeval timeout = {READ_TIMEOUT, 0};
 				// Устанавливаем коллбеки
-				// bufferevent_setcb(this->bev, &read, &write, &event, this);
 				bufferevent_setcb(this->bev, &read, nullptr, &event, this);
+				// bufferevent_setcb(this->bev, &read, &write, &event, this);
 				// Очищаем буферы событий при завершении работы
 				bufferevent_flush(this->bev, EV_READ | EV_WRITE, BEV_FINISHED);
-				// Устанавливаем таймаут получения данных
-				bufferevent_set_timeouts(this->bev, &timeout, nullptr);
+				// Если флаг ожидания входящих сообщений, активирован
+				if(this->wait){
+					// Устанавливаем таймаут ожидания поступления данных
+					struct timeval timeout = {READ_TIMEOUT, 0};
+					// Устанавливаем таймаут получения данных
+					bufferevent_set_timeouts(this->bev, &timeout, nullptr);
+				}
+				// Устанавливаем водяной знак на 1 байт (чтобы считывать данные когда они действительно приходят)
+				// bufferevent_setwatermark(this->bev, EV_READ | EV_WRITE, 1, 0);
 				// Активируем буферы событий на чтение и запись
 				bufferevent_enable(this->bev, EV_READ | EV_WRITE);
 				// Определяем тип подключения
@@ -494,18 +496,22 @@ void awh::Client::read(struct bufferevent * bev, void * ctx){
 				size_t offset = 0;
 				// Создаём объект шапки фрейма
 				frame_t::head_t head;
-				// Если нужно выполнить автоматическое переподключение
-				if(ws->reconnect){
+				// Если флаг ожидания входящих сообщений, активирован
+				if(ws->wait){
 					// Останавливаем таймер
 					ws->timerConnect.stop();
 					// Устанавливаем таймер на контроль подключения
 					ws->timerConnect.setTimeout([bev, ws]{
-						// Запрещаем запись данных клиенту
-						bufferevent_disable(bev, EV_READ | EV_WRITE);
-						// Завершаем работу базы событий
-						event_base_loopbreak(ws->base);
-						// Отключаемся от WebSocket
-						ws->close();
+						// Если нужно выполнить автоматическое переподключение
+						if(ws->reconnect){
+							// Запрещаем запись данных клиенту
+							bufferevent_disable(bev, EV_READ | EV_WRITE);
+							// Завершаем работу базы событий
+							event_base_loopbreak(ws->base);
+							// Отключаемся от WebSocket
+							ws->close();
+						// Если выполнять автоматическое подключение не требуется, просто выходим
+						} else ws->stop();
 					}, CONNECT_TIMEOUT);
 				}
 				// Выполняем компенсацию размера полученных данных
@@ -584,12 +590,10 @@ void awh::Client::read(struct bufferevent * bev, void * ctx){
 							} break;
 							// Если ответом является CONTINUATION
 							case (u_short) frame_t::opcode_t::CONTINUATION: {
-								// Если сообщение является не последнем
-								if(!head.fin)
-									// Заполняем фрагментированное сообщение
-									ws->fragmes.insert(ws->fragmes.end(), data.begin(), data.end());
+								// Заполняем фрагментированное сообщение
+								ws->fragmes.insert(ws->fragmes.end(), data.begin(), data.end());
 								// Если сообщение является последним
-								else {
+								if(head.fin){
 									// Выполняем извлечение данных
 									ws->extraction(ws->fragmes, (ws->opcode == frame_t::opcode_t::TEXT));
 									// Очищаем список фрагментированных сообщений
@@ -899,7 +903,7 @@ void awh::Client::send(const char * message, const size_t size, const bool utf8)
 				// Выполняем разбивку полезной нагрузки на сегменты
 				while(stop < size){
 					// Увеличиваем длину чанка
-					stop += start;
+					stop += this->frameSize;
 					// Если длина чанка слишком большая, компенсируем
 					stop = (stop > size ? size : stop);
 					// Устанавливаем флаг финального сообщения
@@ -913,7 +917,7 @@ void awh::Client::send(const char * message, const size_t size, const bool utf8)
 					// Устанавливаем опкод сообщения
 					head.optcode = frame_t::opcode_t::CONTINUATION;
 					// Увеличиваем смещение в буфере
-					start += this->frameSize;
+					start = stop;
 				}
 			// Если фрагментация сообщения не требуется
 			} else sendFn(head, message, size);
@@ -1053,6 +1057,14 @@ void awh::Client::setSubs(const vector <string> & subs) noexcept {
 void awh::Client::setVerifySSL(const bool mode) noexcept {
 	// Выполняем установку флага проверки домена
 	this->ssl->setVerify(mode);
+}
+/**
+ * setWaitMessage Метод установки флага ожидания входящих сообщений
+ * @param mode флаг состояния разрешения проверки
+ */
+void awh::Client::setWaitMessage(const bool mode) noexcept {
+	// Устанавливаем флаг ожидания входящих сообщений
+	this->wait = mode;
 }
 /**
  * setFrameSize Метод установки размеров сегментов фрейма

@@ -37,6 +37,8 @@ int main(int argc, char * argv[]) noexcept {
 	client_t ws(&fmk, &uri, &nwk);
 	// Разрешаем верифицировать доменное имя на которое выдан сертификат
 	ws.setVerifySSL(true);
+	// Разрешаем ожидать входящие сообщения
+	ws.setWaitMessage(true);
 	// Разрешаем автоматическое восстановление подключения
 	ws.setAutoReconnect(true);
 	// Выполняем инициализацию типа авторизации
@@ -68,7 +70,7 @@ int main(int argc, char * argv[]) noexcept {
 			// Получаем параметры запроса в виде строки
 			const string query = data.dump();
 			// Отправляем сообщение на сервер
-			ws->send(query.data(), query.size(), true);
+			ws->send(query.data(), query.size());
 		}
 	});
 	// Подписываемся на событие получения ошибки работы клиента

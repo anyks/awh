@@ -198,7 +198,7 @@ bool awh::Http::add(const char * buffer, const size_t size) noexcept {
 				} break;
 			}
 		// Если буфер данных не передан
-		} else if(!this->headers.empty()){
+		} else if(!this->headers.empty()) {
 			// Выполняем проверку авторизации
 			this->stath = this->checkAuthenticate();
 			// Если ключ соответствует

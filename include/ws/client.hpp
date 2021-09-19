@@ -123,6 +123,8 @@ namespace awh {
 		private:
 			// Флаг остановки работы
 			bool halt = true;
+			// Флаг ожидания входящих сообщений
+			bool wait = false;
 			// Флаги работы с сжатыми данными
 			bool gzip = false;
 			// Флаг разрешения работы
@@ -339,6 +341,11 @@ namespace awh {
 			 * @param mode флаг состояния разрешения проверки
 			 */
 			void setVerifySSL(const bool mode) noexcept;
+			/**
+			 * setWaitMessage Метод установки флага ожидания входящих сообщений
+			 * @param mode флаг состояния разрешения проверки
+			 */
+			void setWaitMessage(const bool mode) noexcept;
 			/**
 			 * setFrameSize Метод установки размеров сегментов фрейма
 			 * @param size минимальный размер сегмента
