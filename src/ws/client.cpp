@@ -550,22 +550,15 @@ void awh::Client::read(struct bufferevent * bev, void * ctx){
 						// Определяем тип ответа
 						switch((u_short) head.optcode){
 							// Если ответом является PING
-							case (u_short) frame_t::opcode_t::PING: {
-								// Получаем фрейм для отправки ответа серверу
-								const auto & res = ws->frame->pong(string(data.begin(), data.end()));
-								// Если фрейм ответа PONG получен
-								if(!res.empty()){
-									// Активируем разрешение на запись и чтение
-									bufferevent_enable(ws->bev, EV_WRITE | EV_READ);
-									// Отправляем серверу сообщение
-									bufferevent_write(ws->bev, res.data(), res.size());
-								}
-							} break;
+							case (u_short) frame_t::opcode_t::PING:
+								// Отправляем ответ серверу
+								ws->pong(string(data.begin(), data.end()));
+							break;
 							// Если ответом является PONG
-							case (u_short) frame_t::opcode_t::PONG: {
+							case (u_short) frame_t::opcode_t::PONG:
 								// Если функция обратного вызова обработки PONG существует
 								if(ws->pongFn != nullptr) ws->pongFn(string(data.begin(), data.end()), ws);
-							} break;
+							break;
 							// Если ответом является TEXT
 							case (u_short) frame_t::opcode_t::TEXT:
 							// Если ответом является BINARY
@@ -697,6 +690,42 @@ void awh::Client::event(struct bufferevent * bev, const short events, void * ctx
 	}
 }
 /**
+ * pong Метод ответа на проверку о доступности сервера
+ * @param message сообщение для отправки
+ */
+void awh::Client::pong(const string & message) noexcept {
+	// Если подключение выполнено
+	if((this->bev != nullptr) && this->mode && !this->halt && !this->lock){
+		// Если рукопожатие выполнено
+		if(this->http->isHandshake()){
+			// Создаём буфер для отправки
+			const auto & buffer = this->frame->pong(message);
+			// Активируем разрешение на запись и чтение
+			bufferevent_enable(this->bev, EV_WRITE | EV_READ);
+			// Отправляем серверу сообщение
+			bufferevent_write(this->bev, buffer.data(), buffer.size());
+		}
+	}
+}
+/**
+ * ping Метод проверки доступности сервера
+ * @param message сообщение для отправки
+ */
+void awh::Client::ping(const string & message) noexcept {
+	// Если подключение выполнено
+	if((this->bev != nullptr) && this->mode && !this->halt && !this->lock){
+		// Если рукопожатие выполнено
+		if(this->http->isHandshake()){
+			// Создаём буфер для отправки
+			const auto & buffer = this->frame->ping(message);
+			// Активируем разрешение на запись и чтение
+			bufferevent_enable(this->bev, EV_WRITE | EV_READ);
+			// Отправляем серверу сообщение
+			bufferevent_write(this->bev, buffer.data(), buffer.size());
+		}
+	}
+}
+/**
  * close Метод закрытия соединения сервера
  */
 void awh::Client::close() noexcept {
@@ -737,24 +766,6 @@ void awh::Client::close() noexcept {
 		// Очищаем сетевой контекст
 		this->winSocketClean();
 	#endif
-}
-/**
- * ping Метод проверки доступности сервера
- * @param message сообщение для отправки
- */
-void awh::Client::ping(const string & message) noexcept {
-	// Если подключение выполнено
-	if((this->bev != nullptr) && this->mode && !this->halt){
-		// Если рукопожатие выполнено
-		if(this->http->isHandshake()){
-			// Создаём буфер для отправки
-			const auto & buffer = this->frame->ping(message);
-			// Активируем разрешение на запись и чтение
-			bufferevent_enable(this->bev, EV_WRITE | EV_READ);
-			// Отправляем серверу сообщение
-			bufferevent_write(this->bev, buffer.data(), buffer.size());
-		}
-	}
 }
 /**
  * resolve Метод выполняющая резолвинг хоста http запроса
@@ -825,7 +836,9 @@ void awh::Client::on(function <void (const vector <char> &, const bool, Client *
  */
 void awh::Client::send(const char * message, const size_t size, const bool utf8) noexcept {
 	// Если подключение выполнено
-	if((this->bev != nullptr) && this->mode && !this->halt){
+	if((this->bev != nullptr) && this->mode && !this->halt && !this->lock){
+		// Выполняем блокировку отправки сообщения
+		this->lock = !this->lock;
 		// Если рукопожатие выполнено
 		if((message != nullptr) && (size > 0) && this->http->isHandshake()){
 			// Создаём объект заголовка для отправки
@@ -905,6 +918,8 @@ void awh::Client::send(const char * message, const size_t size, const bool utf8)
 			// Если фрагментация сообщения не требуется
 			} else sendFn(head, message, size);
 		}
+		// Выполняем разблокировку отправки сообщения
+		this->lock = !this->lock;
 	}
 }
 /**

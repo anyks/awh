@@ -127,6 +127,8 @@ namespace awh {
 			bool gzip = false;
 			// Флаг разрешения работы
 			bool mode = false;
+			// Флаг блокировки отправки сообщений
+			bool lock = false;
 			// Флаг шифрования сообщений
 			bool crypt = false;
 			// Флаг фриза работы клиента
@@ -251,14 +253,20 @@ namespace awh {
 			static void event(struct bufferevent * bev, const short events, void * ctx) noexcept;
 		private:
 			/**
-			 * close Метод закрытия соединения сервера
+			 * pong Метод ответа на проверку о доступности сервера
+			 * @param message сообщение для отправки
 			 */
-			void close() noexcept;
+			void pong(const string & message = "") noexcept;
 			/**
 			 * ping Метод проверки доступности сервера
 			 * @param message сообщение для отправки
 			 */
 			void ping(const string & message = "") noexcept;
+		private:
+			/**
+			 * close Метод закрытия соединения сервера
+			 */
+			void close() noexcept;
 			/**
 			 * resolve Метод выполняющая резолвинг хоста http запроса
 			 * @param url      параметры хоста, для которого нужно получить IP адрес
