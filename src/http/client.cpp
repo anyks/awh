@@ -98,8 +98,26 @@ awh::http_t::stath_t awh::HClient::checkAuthenticate() noexcept {
 			}
 		// Запоминаем, что авторизация не выполнена
 		} else this->code = 403;
+	// Если нужно произвести редирект
+	} else if((this->code == 301) || (this->code == 308)) {
+		// Получаем параметры авторизации
+		auto it = this->headers.find("location");
+		// Если адрес перенаправления найден
+		if(it != this->headers.end()){
+			// Выполняем парсинг URL
+			uri_t::url_t tmp = this->uri->parseUrl(it->second);
+			// Если параметры URL существуют
+			if(!this->url->params.empty()){
+				// Переходим по всему списку параметров
+				for(auto & param : this->url->params) tmp.params.emplace(param);
+				// Устанавливаем новый список параметров
+				const_cast <uri_t::url_t *> (this->url)->params = move(tmp.params);
+			}
+			// Просим повторить авторизацию ещё раз
+			result = http_t::stath_t::RETRY;
+		}
 	// Иначе разрешаем авторизацию
-	} else if((this->code >= 100) && (this->code <= 308))
+	} else if(this->code == 101)
 		// Сообщаем, что авторизация прошла успешно
 		result = http_t::stath_t::GOOD;
 	// Выводим результат

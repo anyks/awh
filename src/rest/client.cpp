@@ -942,19 +942,14 @@ const awh::Rest::res_t awh::Rest::REST(const uri_t::url_t & url, evhttp_cmd_type
 							// Выполняем парсинг URL
 							uri_t::url_t tmp = this->uri->parseUrl(it->second);
 							// Если параметры URL существуют
-							if(!url.params.empty())
+							if(!url.params.empty()){
 								// Переходим по всему списку параметров
 								for(auto & param : url.params) tmp.params.emplace(param);
-							// Устанавливаем пользователя запроса
-							tmp.user = url.user;
-							// Устанавливаем пароль запроса
-							tmp.pass = url.pass;
-							// Устанавливаем функцию генерации цифровой подписи запроса
-							tmp.sign = url.sign;
-							// Устанавливаем якорь запроса
-							tmp.anchor = url.anchor;
+								// Устанавливаем новый список параметров
+								const_cast <uri_t::url_t *> (&url)->params = move(tmp.params);
+							}
 							// Выполняем новый запрос
-							return this->REST(tmp, type, headers, body);
+							return this->REST(url, type, headers, body);
 						}
 					} break;
 				}
