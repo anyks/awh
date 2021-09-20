@@ -32,10 +32,14 @@ void awh::HServer::updateExtensions() noexcept {
 				if((val.compare(L"permessage-deflate") == 0) || (val.compare(L"perframe-deflate") == 0))
 					// Устанавливаем требование выполнять компрессию полезной нагрузки
 					this->gzip = true;
-				// Если клиент требует вывода максимального размера окна в битах
+				// Если размер скользящего окна для клиента получен
+				else if(val.find(L"client_max_window_bits=") != wstring::npos)
+					// Устанавливаем размер скользящего окна
+					this->wbitClient = stoi(val.substr(23));
+				// Если разрешено использовать максимальный размер скользящего окна для клиента
 				else if(val.compare(L"client_max_window_bits") == 0)
-					// Устанавливаем максимальный размер окна для сжатия в GZIP
-					this->wbit = GZIP_MAX_WBITS;
+					// Устанавливаем максимальный размер скользящего окна
+					this->wbitClient = GZIP_MAX_WBITS;
 			}
 		}
 	}

@@ -494,11 +494,11 @@ void awh::Hash::setAES(const aes_t size) noexcept {
 	this->aesSize = size;
 }
 /**
- * setWbit Метод установки размера окна байтов для компрессии
- * @param wbit размер окна байтов для компрессии
+ * setWbit Метод установки размера скользящего окна
+ * @param wbit размер скользящего окна
  */
 void awh::Hash::setWbit(const short wbit) noexcept {
-	// Устанавливаем размер окна байтов для компрессии
+	// Устанавливаем размер скользящего окна
 	this->wbit = wbit;
 }
 /**

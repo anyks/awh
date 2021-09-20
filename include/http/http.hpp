@@ -123,8 +123,10 @@ namespace awh {
 		protected:
 			// Флаг разрешающий сжатие данных
 			bool gzip = false;
-			// Размер окна сжатия данных
-			short wbit = GZIP_MAX_WBITS;
+			// Размер скользящего окна клиента
+			short wbitClient = GZIP_MAX_WBITS;
+			// Размер скользящего окна сервера
+			short wbitServer = GZIP_MAX_WBITS;
 		protected:
 			// Код ответа сервера
 			u_short code = 0;
@@ -238,11 +240,6 @@ namespace awh {
 			stath_t isAuth() const noexcept;
 		public:
 			/**
-			 * getWbit Метод получения размер окна для сжатия в GZIP
-			 * @return размер окна для сжатия в GZIP
-			 */
-			short getWbit() const noexcept;
-			/**
 			 * getCode Метод получения кода ответа сервера
 			 * @return код ответа сервера
 			 */
@@ -252,6 +249,16 @@ namespace awh {
 			 * @return версия HTTP протокола
 			 */
 			double getVersion() const noexcept;
+			/**
+			 * getWbitClient Метод получения размер скользящего окна для клиента
+			 * @return размер скользящего окна
+			 */
+			short getWbitClient() const noexcept;
+			/**
+			 * getWbitServer Метод получения размер скользящего окна для сервера
+			 * @return размер скользящего окна
+			 */
+			short getWbitServer() const noexcept;
 		public:
 			/**
 			 * getSub Метод получения выбранного сабпротокола

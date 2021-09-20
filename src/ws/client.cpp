@@ -126,6 +126,8 @@ void awh::Client::extraction(const vector <char> & buffer, const bool utf8) cons
 	if(!buffer.empty() && !this->freeze && (this->messageFn != nullptr)){
 		// Если данные пришли в сжатом виде
 		if(this->compressed){
+			// Устанавливаем размер скользящего окна
+			this->hash->setWbit(this->http->getWbitServer());
 			// Добавляем хвост в полученные данные
 			this->hash->setTail(* const_cast <vector <char> *> (&buffer));
 			// Выполняем декомпрессию полученных данных
@@ -877,11 +879,13 @@ void awh::Client::send(const char * message, const size_t size, const bool utf8)
 			 * @param message буфер сообщения в бинарном виде
 			 * @param size    размер сообщения в байтах
 			 */
-			auto sendFn = [this](const frame_t::head_t & head, const char * message, const size_t size){
+			auto sendFn = [this](const frame_t::head_t & head, const char * message, const size_t size) noexcept {
 				// Если все данные переданы
 				if((message != nullptr) && (size > 0)){
 					// Если необходимо сжимать сообщение перед отправкой
 					if(this->gzip){
+						// Устанавливаем размер скользящего окна
+						this->hash->setWbit(this->http->getWbitClient());
 						// Выполняем компрессию данных
 						auto data = this->hash->compress(message, size);
 						// Удаляем хвост в полученных данных

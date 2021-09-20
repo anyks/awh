@@ -130,14 +130,16 @@ void awh::Http::clear() noexcept {
 	this->subs.clear();
 	// Выполняем сброс полученных HTTP заголовков
 	this->headers.clear();
-	// Выполняем сброс размера окна сжатия данных
-	this->wbit = GZIP_MAX_WBITS;
 	// Выполняем сброс версии протокола
 	this->version = HTTP_VERSION;
 	// Выполняем сброс стейта текущего запроса
 	this->state = state_t::QUERY;
 	// Выполняем сброс стейта авторизации
 	this->stath = stath_t::EMPTY;
+	// Выполняем сброс размера скользящего окна для клиента
+	this->wbitClient = GZIP_MAX_WBITS;
+	// Выполняем сброс размера скользящего окна для сервера
+	this->wbitServer = GZIP_MAX_WBITS;
 }
 /**
  * add Метод добавления данных заголовков
@@ -240,14 +242,6 @@ awh::Http::stath_t awh::Http::isAuth() const noexcept {
 	return this->stath;
 }
 /**
- * getWbit Метод получения размер окна для сжатия в GZIP
- * @return размер окна для сжатия в GZIP
- */
-short awh::Http::getWbit() const noexcept {
-	// Выводим размер окна для сжатия в GZIP
-	return this->wbit;
-}
-/**
  * getCode Метод получения кода ответа сервера
  * @return код ответа сервера
  */
@@ -262,6 +256,22 @@ u_short awh::Http::getCode() const noexcept {
 double awh::Http::getVersion() const noexcept {
 	// Выводим версию HTTP протокола
 	return this->version;
+}
+/**
+ * getWbitClient Метод получения размер скользящего окна для клиента
+ * @return размер скользящего окна
+ */
+short awh::Http::getWbitClient() const noexcept {
+	// Выводим размер скользящего окна
+	return this->wbitClient;
+}
+/**
+ * getWbitServer Метод получения размер скользящего окна для сервера
+ * @return размер скользящего окна
+ */
+short awh::Http::getWbitServer() const noexcept {
+	// Выводим размер скользящего окна
+	return this->wbitServer;
 }
 /**
  * getSub Метод получения выбранного сабпротокола
@@ -326,12 +336,10 @@ vector <char> awh::Http::restResponse() const noexcept {
 		string extensions = "", sub = "";
 		// Если необходимо активировать сжатие
 		if(this->gzip){
-			// Получаем размер окна для сжатия
-			const u_short wbit = this->getWbit();
 			// Формируем заголовок расширений
-			extensions = "Sec-WebSocket-Extensions: permessage-deflate; server_no_context_takeover";
+			extensions = "Sec-WebSocket-Extensions: permessage-deflate; server_no_context_takeover; client_max_window_bits";
 			// Если требуется указать количество байт
-			if(wbit > 0) extensions.append(this->fmk->format("; client_max_window_bits=%u", wbit));
+			if(this->wbitServer > 0) extensions.append(this->fmk->format("; server_max_window_bits=%u", this->wbitServer));
 		}
 		// Ищем адрес сайта с которого выполняется запрос
 		string origin = (this->headers.count("origin") > 0 ? this->headers.find("origin")->second : "");
