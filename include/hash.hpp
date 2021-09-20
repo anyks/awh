@@ -72,6 +72,8 @@ namespace awh {
 				StateAES() : num(0) {}
 			} stateAES;
 		public:
+			// Уровень сжатия
+			u_int levelGzip = Z_DEFAULT_COMPRESSION;
 			/**
 			 * Набор размеров шифрования
 			 */
@@ -155,6 +157,21 @@ namespace awh {
 			 * @return       результат декомпрессии
 			 */
 			const vector <char> decompress(const char * buffer, const size_t size) const noexcept;
+		public:
+			/**
+			 * compressGzip Метод компрессии данных в GZIP
+			 * @param buffer буфер данных для компрессии
+			 * @param size   размер данных для компрессии
+			 * @return       результат компрессии
+			 */
+			const vector <char> compressGzip(const char * buffer, const size_t size) const noexcept;
+			/**
+			 * decompressGzip Метод декомпрессии данных в GZIP
+			 * @param buffer буфер данных для декомпрессии
+			 * @param size   размер данных для декомпрессии
+			 * @return       результат декомпрессии
+			 */
+			const vector <char> decompressGzip(const char * buffer, const size_t size) const noexcept;
 		public:
 			/**
 			 * setAES Метод установки размера шифрования

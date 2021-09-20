@@ -623,13 +623,16 @@ const awh::Rest::res_t awh::Rest::REST(const uri_t::url_t & url, evhttp_cmd_type
 				auto callbackFn = [](struct evhttp_request * req, void * ctx){
 					// Если контекст объекта ответа сервера получен
 					if(ctx != nullptr){
-						// Буфер для получения данных
-						char buffer[256];
-						// Зануляем буфер данных
-						memset(buffer, 0, sizeof(buffer));
 						// Создаём объект ответа сервера
-						res_t * response = reinterpret_cast <res_t *> (ctx);
+						res_t * res = reinterpret_cast <res_t *> (ctx);
+						/**
+						 * Выполняем обработку ошибок
+						 */
 						try {
+							// Буфер для получения данных
+							char buffer[256];
+							// Зануляем буфер данных
+							memset(buffer, 0, sizeof(buffer));
 							// Если параметры получены
 							if((req != nullptr) && evhttp_request_get_response_code(req)){
 								// Количество полученных данных
@@ -641,24 +644,21 @@ const awh::Rest::res_t awh::Rest::REST(const uri_t::url_t & url, evhttp_cmd_type
 								// Перебираем все полученные заголовки
 								while(header){
 									// Собираем все доступные заголовки
-									response->headers.emplace(header->key, header->value);
-
-									cout << " !!!!!!!!!!!! GET " << header->key << " === " << header->value << endl;
-
+									res->headers.emplace(res->ctx->fmk->toLower(header->key), header->value);
 									// Переходим к следующему заголовку
 									header = header->next.tqe_next;
 								}
 								// Получаем код ответа сервера
-								response->code = evhttp_request_get_response_code(req);
+								res->code = evhttp_request_get_response_code(req);
 								// Получаем текст ответа сервера
-								response->mess = evhttp_request_get_response_code_line(req);
+								res->mess = evhttp_request_get_response_code_line(req);
 								// Считываем в буфер тело ответа сервера
 								while((size = evbuffer_remove(evhttp_request_get_input_buffer(req), buffer, sizeof(buffer))) > 0){
 									/**
 									 * Получаем произвольные фрагменты по 256 байт.
 									 * Это не строки, поэтому мы не можем получать их построчно.
 									 */
-									response->body.append(buffer, size);
+									res->body.append(buffer, size);
 								}
 							// Если объект REST запроса не получен
 							} else {
@@ -672,12 +672,12 @@ const awh::Rest::res_t awh::Rest::REST(const uri_t::url_t & url, evhttp_cmd_type
 								 */
 								const int code = EVUTIL_SOCKET_ERROR();
 								// Сообщаем, что на сервере произошла ошибкаа
-								response->ctx->log->print("%s", log_t::flag_t::CRITICAL, "some request failed - no idea which one though!");
+								res->ctx->log->print("%s", log_t::flag_t::CRITICAL, "some request failed - no idea which one though!");
 								/**
 								 * Выводим очередь ошибок OpenSSL,
 								 * которую libevent получил для нас, если такие имеются.
 								 */
-								while((error = bufferevent_get_openssl_error(response->bev))){
+								while((error = bufferevent_get_openssl_error(res->bev))){
 									// Запоминаем, что описание ошибки получено
 									mode = true;
 									// Зануляем буфер данных
@@ -685,20 +685,20 @@ const awh::Rest::res_t awh::Rest::REST(const uri_t::url_t & url, evhttp_cmd_type
 									// Получаем описание ошибки
 									ERR_error_string_n(error, buffer, sizeof(buffer));
 									// Выводим ошибку
-									response->ctx->log->print("%s", log_t::flag_t::CRITICAL, buffer);
+									res->ctx->log->print("%s", log_t::flag_t::CRITICAL, buffer);
 								}
 								/**
 								 * Если очередь ошибок OpenSSL пустая, возможно,
 								 * это была ошибка сокета, попробуем получить описание.
 								 */
-								if(!mode) response->ctx->log->print("socket error = %s (%d)", log_t::flag_t::CRITICAL, evutil_socket_error_to_string(code), code);
+								if(!mode) res->ctx->log->print("socket error = %s (%d)", log_t::flag_t::CRITICAL, evutil_socket_error_to_string(code), code);
 							}
 							// Разблокируем базу событий
-							event_base_loopbreak(bufferevent_get_base(response->bev));
+							event_base_loopbreak(bufferevent_get_base(res->bev));
 						// Если происходит ошибка то игнорируем её
 						} catch(exception & error) {
 							// Выводим сообщение об ошибке
-							response->ctx->log->print("%s", log_t::flag_t::CRITICAL, error.what());
+							res->ctx->log->print("%s", log_t::flag_t::CRITICAL, error.what());
 						}
 					}
 				};
@@ -761,9 +761,9 @@ const awh::Rest::res_t awh::Rest::REST(const uri_t::url_t & url, evhttp_cmd_type
 					// Устанавливаем заголовок запроса
 					evhttp_add_header(store, "Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9");
 				// Если нужно произвести сжатие контента
-				if(this->gzip)
+				if(this->zip != zip_t::NONE)
 					// Устанавливаем заголовок запроса
-					evhttp_add_header(store, "Accept-Encoding", "gzip, deflate, br");
+					evhttp_add_header(store, "Accept-Encoding", "gzip, deflate");
 				// Получаем заголовок авторизации
 				const string & authHeader = this->auth->header();
 				// Если данные авторизации получены
@@ -775,20 +775,47 @@ const awh::Rest::res_t awh::Rest::REST(const uri_t::url_t & url, evhttp_cmd_type
 				}
 				// Если тело запроса существует
 				if(!body.empty()){
+					// Получаем буфер тела запроса
+					struct evbuffer * buffer = evhttp_request_get_output_buffer(req);
+					// Определяем метод сжатия тела сообщения
+					switch((u_short) this->zip){
+						// Если сжимать тело не нужно
+						case (u_short) zip_t::NONE:
+							// Добавляем в буфер, тело запроса
+							evbuffer_add(buffer, body.data(), body.size());
+							// Если передавать тело запроса чанками не нужно, устанавливаем размер тела
+							if(!this->chunked) evhttp_add_header(store, "Content-Length", to_string(body.size()).c_str());
+						break;
+						// Если нужно сжать тело методом GZIP
+						case (u_short) zip_t::GZIP: {
+							// Выполняем сжатие тела сообщения
+							const auto & gzip = this->hash->compressGzip(body.data(), body.size());
+							// Добавляем в буфер, тело запроса
+							evbuffer_add(buffer, gzip.data(), gzip.size());
+							// Указываем метод, которым было выполненно сжатие тела
+							evhttp_add_header(store, "Content-Encoding", "gzip");
+							// Если передавать тело запроса чанками не нужно, устанавливаем размер тела
+							if(!this->chunked) evhttp_add_header(store, "Content-Length", to_string(gzip.size()).c_str());
+						} break;
+						// Если нужно сжать тело методом DEFLATE
+						case (u_short) zip_t::DEFLATE: {
+							// Выполняем сжатие тела сообщения
+							auto deflate = this->hash->compress(body.data(), body.size());
+							// Удаляем хвост в полученных данных
+							this->hash->rmTail(deflate);
+							// Добавляем в буфер, тело запроса
+							evbuffer_add(buffer, deflate.data(), deflate.size());
+							// Указываем метод, которым было выполненно сжатие тела
+							evhttp_add_header(store, "Content-Encoding", "deflate");
+							// Если передавать тело запроса чанками не нужно, устанавливаем размер тела
+							if(!this->chunked) evhttp_add_header(store, "Content-Length", to_string(deflate.size()).c_str());
+						} break;
+					}
 					// Если нужно передавать тело в виде чанков
 					if(this->chunked) evhttp_add_header(store, "Transfer-Encoding", "chunked");
-					// Если передавать тело запроса чанками не нужно
-					else {
-						// Получаем буфер тела запроса
-						struct evbuffer * buffer = evhttp_request_get_output_buffer(req);
-						// Добавляем в буфер, тело запроса
-						evbuffer_add(buffer, body.data(), body.size());
-						// Добавляем заголовок в запрос
-						evhttp_add_header(store, "Content-Length", to_string(body.size()).c_str());
-					}
 				}
 
-
+				
 				// Получаем первый заголовок
 				struct evkeyval * header = store->tqh_first;
 				// Перебираем все полученные заголовки
@@ -799,6 +826,7 @@ const awh::Rest::res_t awh::Rest::REST(const uri_t::url_t & url, evhttp_cmd_type
 					// Переходим к следующему заголовку
 					header = header->next.tqe_next;
 				}
+				
 
 				// Выполняем REST запрос на сервер
 				const int request = evhttp_make_request(evcon, req, type, this->uri->createUrl(url).c_str());
@@ -843,13 +871,38 @@ const awh::Rest::res_t awh::Rest::REST(const uri_t::url_t & url, evhttp_cmd_type
 			this->ssl->clear(sslctx);
 			// Определяем, был ли ответ сервера удачным
 			result.ok = ((result.code > 99) && (result.code < 400));
+			// Если данные получены
+			if(result.ok){
 
-			/*
-			const auto & res = this->hash->decompress(result.body.data(), result.body.size());
 
-			result.body.assign(res.begin(), res.end());
-			*/
+				for(auto & header : result.headers){
+					cout << " !!!!!!!!!!!! GET " << header.first << " === " << header.second << endl;
+				}
 
+
+				// Проверяем пришли ли сжатые данные
+				auto it = result.headers.find("content-encoding");
+				// Если данные пришли зашифрованные
+				if(it != result.headers.end()){
+					// Если данные пришли сжатые методом GZIP
+					if(it->second.compare("gzip") == 0){
+						// Выполняем декомпрессию данных
+						const auto & body = this->hash->decompressGzip(result.body.data(), result.body.size());
+						// Заменяем полученное тело
+						result.body.assign(body.begin(), body.end());
+					// Если данные пришли сжатые методом Deflate
+					} else if(it->second.compare("deflate") == 0) {
+						// Получаем данные тела в бинарном виде
+						vector <char> buffer(result.body.begin(), result.body.end());
+						// Добавляем хвост в полученные данные
+						this->hash->setTail(buffer);
+						// Выполняем декомпрессию данных
+						const auto & body = this->hash->decompress(buffer.data(), buffer.size());
+						// Заменяем полученное тело
+						result.body.assign(body.begin(), body.end());
+					}
+				}
+			}
 		// Если происходит ошибка то игнорируем её
 		} catch(exception & error) {
 			// Выводим сообщение об ошибке
@@ -860,12 +913,12 @@ const awh::Rest::res_t awh::Rest::REST(const uri_t::url_t & url, evhttp_cmd_type
 	return result;
 }
 /**
- * setGzip Метод активации работы с сжатым контентом
- * @param mode флаг активации сжатого контента
+ * setZip Метод активации работы с сжатым контентом
+ * @param method метод установки формата сжатия
  */
-void awh::Rest::setGzip(const bool mode) noexcept {
+void awh::Rest::setZip(const zip_t method) noexcept {
 	// Устанавливаем флаг сжатого контента
-	this->gzip = mode;
+	this->zip = method;
 }
 /**
  * setChunked Метод активации режима передачи тела запроса чанками

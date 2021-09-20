@@ -120,6 +120,10 @@ namespace awh {
 				 */
 				Response() : ok(false), code(500), mess(""), body(""), ctx(nullptr), bev(nullptr), headers({}) {}
 			} res_t;
+			/**
+			 * Формат сжатия тела запроса
+			 */
+			enum class zip_t : u_short {NONE, GZIP, DEFLATE};
 		private:
 			/**
 			 * Типы основных заголовков
@@ -138,11 +142,11 @@ namespace awh {
 			// Параметры постоянного подключения
 			alive_t alive;
 		private:
+			// Флаги работы с сжатыми данными
+			zip_t zip = zip_t::GZIP;
 			// User-Agent для HTTP запроса
 			string userAgent = USER_AGENT;
 		private:
-			// Флаги работы с сжатыми данными
-			bool gzip = true;
 			// Флаг шифрования сообщений
 			bool crypt = false;
 			// Флаг передачи тела запроса чанками
@@ -303,10 +307,10 @@ namespace awh {
 			const res_t REST(const uri_t::url_t & url, evhttp_cmd_type type = EVHTTP_REQ_GET, const unordered_map <string, string> & headers = {}, const string & body = {}) const noexcept;
 		public:
 			/**
-			 * setGzip Метод активации работы с сжатым контентом
-			 * @param mode флаг активации сжатого контента
+			 * setZip Метод активации работы с сжатым контентом
+			 * @param method метод установки формата сжатия
 			 */
-			void setGzip(const bool mode) noexcept;
+			void setZip(const zip_t method) noexcept;
 			/**
 			 * setChunked Метод активации режима передачи тела запроса чанками
 			 * @param mode флаг активации режима передачи тела запроса чанками

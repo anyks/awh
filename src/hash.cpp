@@ -362,6 +362,122 @@ const vector <char> awh::Hash::decompress(const char * buffer, const size_t size
 	return result;
 }
 /**
+ * compressGzip Метод компрессии данных в GZIP
+ * @param buffer буфер данных для компрессии
+ * @param size   размер данных для компрессии
+ * @return       результат компрессии
+ */
+const vector <char> awh::Hash::compressGzip(const char * buffer, const size_t size) const noexcept {
+	// Результирующая строка с данными
+	vector <char> result;
+	// Если буфер для сжатия передан
+	if((buffer != nullptr) && (size > 0)){
+		try {
+			// Результирующий размер данных
+			int ret = 0;
+			// Создаем поток zip
+			z_stream zs;
+			// Заполняем его нулями
+			memset(&zs, 0, sizeof(zs));
+			// Если поток инициализировать не удалось, выходим
+			if(deflateInit2(&zs, this->levelGzip, Z_DEFLATED, MOD_GZIP_ZLIB_WINDOWSIZE + 16, MOD_GZIP_ZLIB_CFACTOR, Z_DEFAULT_STRATEGY) == Z_OK){
+				// Указываем размер входного буфера
+				zs.avail_in = size;
+				// Заполняем входные данные буфера
+				zs.next_in = (u_char *) const_cast <char *> (buffer);
+				// Создаем буфер с сжатыми данными
+				u_char * outbuff = new u_char[(const size_t) zs.avail_in];
+				// Заполняем нулями буфер исходящих данных
+				memset(outbuff, 0, zs.avail_in);
+				// Выполняем сжатие данных
+				do {
+					// Устанавливаем буфер для получения результата
+					zs.next_out = outbuff;
+					// Устанавливаем максимальный размер буфера
+					zs.avail_out = zs.avail_in;
+					// Выполняем сжатие
+					ret = deflate(&zs, Z_FINISH);
+					// Если данные добавлены не полностью
+					if(result.size() < zs.total_out)
+						// Добавляем оставшиеся данные
+						result.insert(result.end(), outbuff, outbuff + (zs.total_out - result.size()));
+				} while(ret == Z_OK);
+				// Удаляем буфер данных
+				delete [] outbuff;
+			}
+			// Завершаем сжатие
+			deflateEnd(&zs);
+			// Если сжатие не удалось то очищаем выходные данные
+			if(ret != Z_STREAM_END) result.clear();
+		// Если происходит ошибка то игнорируем её
+		} catch(const bad_alloc&) {
+			// Выводим сообщение об ошибке
+			this->log->print("%s", log_t::flag_t::WARNING, "memory could not be allocated");
+		}
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * decompressGzip Метод декомпрессии данных в GZIP
+ * @param buffer буфер данных для декомпрессии
+ * @param size   размер данных для декомпрессии
+ * @return       результат декомпрессии
+ */
+const vector <char> awh::Hash::decompressGzip(const char * buffer, const size_t size) const noexcept {
+	// Результирующая строка с данными
+	vector <char> result;
+	// Если буфер для сжатия передан
+	if((buffer != nullptr) && (size > 0)){
+		try {
+			// Результирующий размер данных
+			int ret = 0;
+			// Создаем поток zip
+			z_stream zs;
+			// Заполняем его нулями
+			memset(&zs, 0, sizeof(zs));
+			// Если поток инициализировать не удалось, выходим
+			if(inflateInit2(&zs, MOD_GZIP_ZLIB_WINDOWSIZE + 16) == Z_OK){
+				// Указываем размер входного буфера
+				zs.avail_in = size;
+				// Заполняем входные данные буфера
+				zs.next_in = (u_char *) const_cast <char *> (buffer);
+				// Получаем размер выходных данных
+				const size_t osize = (zs.avail_in * 10);
+				// Создаем буфер с сжатыми данными
+				u_char * outbuff = new u_char[osize];
+				// Заполняем нулями буфер исходящих данных
+				memset(outbuff, 0, osize);
+				// Выполняем расжатие данных
+				do {
+					// Устанавливаем максимальный размер буфера
+					zs.avail_out = osize;
+					// Устанавливаем буфер для получения результата
+					zs.next_out = outbuff;
+					// Выполняем расжатие
+					ret = inflate(&zs, 0);
+					// Если данные добавлены не полностью
+					if(result.size() < zs.total_out)
+						// Добавляем оставшиеся данные
+						result.insert(result.end(), outbuff, outbuff + (zs.total_out - result.size()));
+				} while(ret == Z_OK);
+				// Удаляем буфер данных
+				delete [] outbuff;
+			}
+			// Завершаем расжатие
+			inflateEnd(&zs);
+			// Если сжатие не удалось то очищаем выходные данные
+			if(ret != Z_STREAM_END) result.clear();
+		// Если происходит ошибка то игнорируем её
+		} catch(const bad_alloc&) {
+			// Выводим сообщение об ошибке
+			this->log->print("%s", log_t::flag_t::WARNING, "memory could not be allocated");
+		}
+	}
+	// Выводим результат
+	return result;
+}
+/**
  * setAES Метод установки размера шифрования
  * @param size размер шифрования (128, 192, 256)
  */
