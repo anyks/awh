@@ -135,9 +135,11 @@ set(SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/src/http/http.cpp"
     "${CMAKE_SOURCE_DIR}/src/http/client.cpp"
     "${CMAKE_SOURCE_DIR}/src/http/server.cpp"
+    "${CMAKE_SOURCE_DIR}/src/rest/client.cpp"
 )
 
 # Задаем именя библиотеки и бинарника
+set(REST_APP_NAME rest)
 set(CLIENT_APP_NAME client)
 set(CURRENT_LIB_NAME ${PROJECT_NAME})
 set(CURRENT_APP_NAME ${PROJECT_NAME}_bin)
@@ -163,7 +165,16 @@ if (ENABLE_CONSOLE_APP)
         SET(CMAKE_RC_COMPILE_OBJECT "<CMAKE_RC_COMPILER> <FLAGS> -O coff <DEFINES> -i <SOURCE> -o <OBJECT>")
     endif(MINGW)
 
+    add_executable(${REST_APP_NAME} samples/rest.cpp ${RES_FILES})
     add_executable(${CLIENT_APP_NAME} samples/client.cpp ${RES_FILES})
+
+    target_link_libraries(${REST_APP_NAME}
+        ${CURRENT_LIB_NAME}
+        ${LIBEVENT_LIBRARIES}
+        ${ZLIB_LIBRARY}
+        ${OPENSSL_LIBRARIES}
+        ${WINFLAGS}
+    )
 
     target_link_libraries(${CLIENT_APP_NAME}
         ${CURRENT_LIB_NAME}
