@@ -94,7 +94,7 @@ namespace awh {
 				static_cast <char> (0xFF)
 			};
 		private:
-			// Определяем длину шифрования по умолчанию
+			// Определяем размер шифрования по умолчанию
 			aes_t aesSize;
 			// Ключ шифрования
 			mutable AES_KEY aesKey;
@@ -115,7 +115,13 @@ namespace awh {
 			 * initAES Метод инициализации AES шифрования
 			 * @return результат инициализации
 			 */
-			const bool initAES() const;
+			bool initAES() const;
+		public:
+			/**
+			 * getAES Метод получения размера шифрования
+			 * @return размер шифрования
+			 */
+			aes_t getAES() const;
 		public:
 			/**
 			 * rmTail Метод удаления хвостовых данных

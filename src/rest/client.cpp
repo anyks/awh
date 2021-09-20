@@ -777,6 +777,18 @@ const awh::Rest::res_t awh::Rest::REST(const uri_t::url_t & url, evhttp_cmd_type
 				if(!body.empty()){
 					// Получаем буфер тела запроса
 					struct evbuffer * buffer = evhttp_request_get_output_buffer(req);
+					// Если нужно производить шифрование
+					if(this->crypt){
+						// Выполняем шифрование переданных данных
+						const auto & res = this->hash->encrypt(body.data(), body.size());
+						// Если данные зашифрованы, заменяем тело данных
+						if(!res.empty()){
+							// Заменяем тело запроса на зашифрованное
+							const_cast <string *> (&body)->assign(res.begin(), res.end());
+							// Устанавливаем заголовок шифрования
+							evhttp_add_header(store, "X-AWH-Encryption", to_string((u_int) this->hash->getAES()).c_str());
+						}
+					}
 					// Определяем метод сжатия тела сообщения
 					switch((u_short) this->zip){
 						// Если сжимать тело не нужно
@@ -814,20 +826,6 @@ const awh::Rest::res_t awh::Rest::REST(const uri_t::url_t & url, evhttp_cmd_type
 					// Если нужно передавать тело в виде чанков
 					if(this->chunked) evhttp_add_header(store, "Transfer-Encoding", "chunked");
 				}
-
-				
-				// Получаем первый заголовок
-				struct evkeyval * header = store->tqh_first;
-				// Перебираем все полученные заголовки
-				while(header){
-
-					cout << " !!!!!!!!!!!! SET " << header->key << " === " << header->value << endl;
-
-					// Переходим к следующему заголовку
-					header = header->next.tqe_next;
-				}
-				
-
 				// Выполняем REST запрос на сервер
 				const int request = evhttp_make_request(evcon, req, type, this->uri->createUrl(url).c_str());
 				// Если запрос не выполнен
@@ -869,17 +867,12 @@ const awh::Rest::res_t awh::Rest::REST(const uri_t::url_t & url, evhttp_cmd_type
 			event_base_free(base);
 			// Выполняем удаление контекста SSL
 			this->ssl->clear(sslctx);
+			// Если код ответа не требует авторизации, разрешаем дальнейшие попытки
+			if(result.code != 401) this->checkAuth = false;
 			// Определяем, был ли ответ сервера удачным
-			result.ok = ((result.code > 99) && (result.code < 400));
-			// Если данные получены
+			result.ok = ((result.code >= 200) && (result.code <= 206) || (result.code == 100));
+			// Если запрос выполнен успешно
 			if(result.ok){
-
-
-				for(auto & header : result.headers){
-					cout << " !!!!!!!!!!!! GET " << header.first << " === " << header.second << endl;
-				}
-
-
 				// Проверяем пришли ли сжатые данные
 				auto it = result.headers.find("content-encoding");
 				// Если данные пришли зашифрованные
@@ -901,6 +894,69 @@ const awh::Rest::res_t awh::Rest::REST(const uri_t::url_t & url, evhttp_cmd_type
 						// Заменяем полученное тело
 						result.body.assign(body.begin(), body.end());
 					}
+				}
+				// Выполняем поиск заголовка шифрования
+				it = result.headers.find("x-awh-encryption");
+				// Если данные пришли зашифрованные
+				if(it != result.headers.end()){
+					// Определяем размер шифрования
+					switch(stoi(it->second)){
+						// Если шифрование произведено 128 битным ключём
+						case 128: this->hash->setAES(hash_t::aes_t::AES128); break;
+						// Если шифрование произведено 192 битным ключём
+						case 192: this->hash->setAES(hash_t::aes_t::AES192); break;
+						// Если шифрование произведено 256 битным ключём
+						case 256: this->hash->setAES(hash_t::aes_t::AES256); break;
+					}
+					// Выполняем дешифрование полученных данных
+					const auto & res = this->hash->decrypt(result.body.data(), result.body.size());
+					// Если данные расшифрованны, заменяем тело данных
+					if(!res.empty()) result.body.assign(res.begin(), res.end());
+				}
+			// Если запрос не был выполнен успешно
+			} else {
+				// Определяем код ответа
+				switch(result.code){
+					// Если требуется авторизация
+					case 401: {
+						// Если попытки провести аутентификацию ещё небыло, пробуем ещё раз
+						if(!this->checkAuth && (this->auth->getType() == auth_t::type_t::DIGEST)){
+							// Получаем параметры авторизации
+							auto it = result.headers.find("www-authenticate");
+							// Если параметры авторизации найдены
+							if((this->checkAuth = (it != result.headers.end()))){
+								// Устанавливаем заголовок HTTP в параметры авторизации
+								this->auth->setHeader(it->second);
+								// Просим повторить авторизацию ещё раз
+								return this->REST(url, type, headers, body);
+							}
+						}
+					} break;
+					// Если требуется провести перенаправление
+					case 301:
+					case 308: {
+						// Получаем адрес перенаправления
+						auto it = result.headers.find("location");
+						// Если данные пришли зашифрованные
+						if(it != result.headers.end()){
+							// Выполняем парсинг URL
+							uri_t::url_t tmp = this->uri->parseUrl(it->second);
+							// Если параметры URL существуют
+							if(!url.params.empty())
+								// Переходим по всему списку параметров
+								for(auto & param : url.params) tmp.params.emplace(param);
+							// Устанавливаем пользователя запроса
+							tmp.user = url.user;
+							// Устанавливаем пароль запроса
+							tmp.pass = url.pass;
+							// Устанавливаем функцию генерации цифровой подписи запроса
+							tmp.sign = url.sign;
+							// Устанавливаем якорь запроса
+							tmp.anchor = url.anchor;
+							// Выполняем новый запрос
+							return this->REST(tmp, type, headers, body);
+						}
+					} break;
 				}
 			}
 		// Если происходит ошибка то игнорируем её

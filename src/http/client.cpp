@@ -85,21 +85,17 @@ awh::http_t::stath_t awh::HClient::checkAuthenticate() noexcept {
 	http_t::stath_t result = http_t::stath_t::FAULT;
 	// Если требуется авторизация
 	if(this->code == 401){
-		// Если попытки провести аутентификацию ещё небыло
-		if(!this->checkAuth){
-			// Если авторизация дайджест, то нужно попробовать ещё раз
-			if(this->auth->getType() == auth_t::type_t::DIGEST){
-				// Получаем параметры авторизации
-				auto it = this->headers.find("www-authenticate");
-				// Если параметры авторизации найдены
-				if((this->checkAuth = (it != this->headers.end()))){
-					// Устанавливаем заголовок HTTP в параметры авторизации
-					this->auth->setHeader(it->second);
-					// Просим повторить авторизацию ещё раз
-					result = http_t::stath_t::RETRY;
-				}
-			// Запоминаем, что авторизация не выполнена
-			} else this->code = 403;
+		// Если попытки провести аутентификацию ещё небыло, пробуем ещё раз
+		if(!this->checkAuth && (this->auth->getType() == auth_t::type_t::DIGEST)){
+			// Получаем параметры авторизации
+			auto it = this->headers.find("www-authenticate");
+			// Если параметры авторизации найдены
+			if((this->checkAuth = (it != this->headers.end()))){
+				// Устанавливаем заголовок HTTP в параметры авторизации
+				this->auth->setHeader(it->second);
+				// Просим повторить авторизацию ещё раз
+				result = http_t::stath_t::RETRY;
+			}
 		// Запоминаем, что авторизация не выполнена
 		} else this->code = 403;
 	// Иначе разрешаем авторизацию

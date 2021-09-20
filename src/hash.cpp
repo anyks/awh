@@ -14,7 +14,7 @@
  * initAES Метод инициализации AES шифрования
  * @return результат инициализации
  */
-const bool awh::Hash::initAES() const {
+bool awh::Hash::initAES() const {
 	// Экранируем возможность ошибки памяти
 	try {
 		// Создаем тип шифрования
@@ -80,6 +80,14 @@ const bool awh::Hash::initAES() const {
 		// Выходим из приложения
 		exit(EXIT_FAILURE);
 	}
+}
+/**
+ * getAES Метод получения размера шифрования
+ * @return размер шифрования
+ */
+awh::Hash::aes_t awh::Hash::getAES() const {
+	// Выводим размер шифрования
+	return this->aesSize;
 }
 /**
  * rmTail Метод удаления хвостовых данных

@@ -153,6 +153,8 @@ namespace awh {
 			bool chunked = true;
 			// Флаг инициализации WinSock
 			mutable bool winSock = false;
+			// Флаг проведённой попытки выполнения авторизации
+			mutable bool checkAuth = false;
 		private:
 			// Создаём объект для работы с SSL
 			ssl_t * ssl = nullptr;
