@@ -137,7 +137,9 @@ void awh::Client::extraction(const vector <char> & buffer, const bool utf8) cons
 					// Выполняем шифрование переданных данных
 					const auto & res = this->hash->decrypt(data.data(), data.size());
 					// Отправляем полученный результат
-					this->messageFn(res, utf8, const_cast <Client *> (this));
+					if(!res.empty()) this->messageFn(res, utf8, const_cast <Client *> (this));
+					// Иначе выводим сообщение так - как оно пришло
+					else this->messageFn(data, utf8, const_cast <Client *> (this));
 				// Отправляем полученный результат
 				} else this->messageFn(data, utf8, const_cast <Client *> (this));
 			// Выводим сообщение об ошибке
@@ -154,7 +156,9 @@ void awh::Client::extraction(const vector <char> & buffer, const bool utf8) cons
 				// Выполняем шифрование переданных данных
 				const auto & res = this->hash->decrypt(buffer.data(), buffer.size());
 				// Отправляем полученный результат
-				this->messageFn(res, utf8, const_cast <Client *> (this));
+				if(!res.empty()) this->messageFn(res, utf8, const_cast <Client *> (this));
+				// Иначе выводим сообщение так - как оно пришло
+				else this->messageFn(buffer, utf8, const_cast <Client *> (this));
 			// Отправляем полученный результат
 			} else this->messageFn(buffer, utf8, const_cast <Client *> (this));
 		}
@@ -859,10 +863,13 @@ void awh::Client::send(const char * message, const size_t size, const bool utf8)
 			if(this->crypt){
 				// Выполняем шифрование переданных данных
 				const auto & res = this->hash->encrypt(message, size);
-				// Заменяем сообщение для передачи
-				message = res.data();
-				// Заменяем размер сообщения
-				(* const_cast <size_t *> (&size)) = res.size();
+				// Если данные зашифрованны
+				if(!res.empty()){
+					// Заменяем сообщение для передачи
+					message = res.data();
+					// Заменяем размер сообщения
+					(* const_cast <size_t *> (&size)) = res.size();
+				}
 			}
 			/**
 			 * sendFn Функция отправки сообщения на сервер
