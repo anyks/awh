@@ -132,8 +132,6 @@ namespace awh {
 			bool halt = true;
 			// Флаг ожидания входящих сообщений
 			bool wait = false;
-			// Флаги работы с сжатыми данными
-			bool gzip = false;
 			// Флаг разрешения работы
 			bool mode = false;
 			// Флаг блокировки отправки сообщений
@@ -144,8 +142,6 @@ namespace awh {
 			bool freeze = false;
 			// Флаг автоматического переподключения
 			bool reconnect = false;
-			// Флаг полученных данных в сжатом виде
-			bool compressed = false;
 			// Флаг инициализации WinSock
 			mutable bool winSock = false;
 		private:
@@ -153,6 +149,9 @@ namespace awh {
 			evutil_socket_t fd = -1;
 			// Минимальный размер сегмента
 			size_t frameSize = 0xFA000;
+		public:
+			// Флаги работы с сжатыми данными
+			http_t::zip_t zip = http_t::zip_t::NONE;
 			// Полученный опкод сообщения
 			frame_t::opcode_t opcode = frame_t::opcode_t::TEXT;
 		private:
@@ -285,10 +284,10 @@ namespace awh {
 		public:
 			/**
 			 * init Метод инициализации WebSocket клиента
-			 * @param url  адрес WebSocket сервера
-			 * @param gzip флаг активации сжатия данных
+			 * @param url адрес WebSocket сервера
+			 * @param zip метод сжатия передаваемых сообщений
 			 */
-			void init(const string & url, const bool gzip = false);
+			void init(const string & url, const http_t::zip_t zip = http_t::zip_t::DEFLATE);
 		public:
 			/**
 			 * on Метод установки функции обратного вызова на событие запуска или остановки подключения

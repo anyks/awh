@@ -59,6 +59,10 @@ namespace awh {
 				RETRY, // Требуется повторить попытку
 				FAULT  // Авторизация не удалась
 			};
+			/**
+			 * Формат сжатия тела запроса
+			 */
+			enum class zip_t : u_short {NONE, GZIP, DEFLATE};
 		protected:
 			/**
 			 * Стейты работы модуля
@@ -121,8 +125,8 @@ namespace awh {
 				{505, "HTTP Version Not Supported"}
 			};
 		protected:
-			// Флаг разрешающий сжатие данных
-			bool gzip = false;
+			// Флаги работы с сжатыми данными
+			zip_t zip = zip_t::DEFLATE;
 			// Размер скользящего окна клиента
 			short wbitClient = GZIP_MAX_WBITS;
 			// Размер скользящего окна сервера
@@ -224,20 +228,21 @@ namespace awh {
 			virtual bool add(const char * buffer, const size_t size) noexcept;
 		public:
 			/**
-			 * isGzip Метод получения флага сжатого контента в GZIP
-			 * @return значение флага сжатого контента в GZIP
+			 * getZip Метод получения метода сжатия
+			 * @return метод сжатия сообщений
 			 */
-			bool isGzip() const noexcept;
+			zip_t getZip() const noexcept;
+			/**
+			 * getAuth Метод проверки статуса авторизации
+			 * @return результат проверки
+			 */
+			stath_t getAuth() const noexcept;
+		public:
 			/**
 			 * isHandshake Метод получения флага рукопожатия
 			 * @return флаг получения рукопожатия
 			 */
 			bool isHandshake() const noexcept;
-			/**
-			 * isAuth Метод проверки статуса авторизации
-			 * @return результат проверки
-			 */
-			stath_t isAuth() const noexcept;
 		public:
 			/**
 			 * getCode Метод получения кода ответа сервера
@@ -289,10 +294,10 @@ namespace awh {
 			vector <char> restUnauthorized() const noexcept;
 			/**
 			 * restRequest Метод получения буфера HTML запроса
-			 * @param gzip флаг просьбы предоставить контент в сжатом виде
-			 * @return     собранный HTML буфер
+			 * @param zip метод сжатия сообщений
+			 * @return    собранный HTML буфер
 			 */
-			vector <char> restRequest(const bool gzip = false) noexcept;
+			vector <char> restRequest(const zip_t zip = zip_t::GZIP) noexcept;
 		public:
 			/**
 			 * setSub Метод установки подпротокола поддерживаемого сервером

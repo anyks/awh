@@ -70,8 +70,8 @@ void awh::Client::request() noexcept {
 		const string & origin = this->uri->createOrigin(url);
 		// Устанавливаем Origin запроса
 		this->http->setOrigin(origin);
-		// Строка HTTP запроса
-		const auto & request = this->http->restRequest(this->gzip);
+		// Получаем данные REST запроса
+		const auto & request = this->http->restRequest(this->zip);
 		// Если запрос получен
 		if(!request.empty()){
 			// Активируем разрешение на запись и чтение
@@ -125,13 +125,26 @@ void awh::Client::extraction(const vector <char> & buffer, const bool utf8) cons
 	// Если буфер данных передан
 	if(!buffer.empty() && !this->freeze && (this->messageFn != nullptr)){
 		// Если данные пришли в сжатом виде
-		if(this->compressed){
-			// Устанавливаем размер скользящего окна
-			this->hash->setWbit(this->http->getWbitServer());
-			// Добавляем хвост в полученные данные
-			this->hash->setTail(* const_cast <vector <char> *> (&buffer));
-			// Выполняем декомпрессию полученных данных
-			const auto & data = this->hash->decompress(buffer.data(), buffer.size());
+		if(this->zip != http_t::zip_t::NONE){
+			// Декомпрессионные данные
+			vector <char> data;
+			// Определяем метод компрессии
+			switch((u_short) this->zip){
+				// Если метод компрессии выбран Deflate
+				case (u_short) http_t::zip_t::DEFLATE: {
+					// Устанавливаем размер скользящего окна
+					this->hash->setWbit(this->http->getWbitServer());
+					// Добавляем хвост в полученные данные
+					this->hash->setTail(* const_cast <vector <char> *> (&buffer));
+					// Выполняем декомпрессию полученных данных
+					data = this->hash->decompress(buffer.data(), buffer.size());
+				} break;
+				// Если метод компрессии выбран GZip
+				case (u_short) http_t::zip_t::GZIP:
+					// Выполняем декомпрессию полученных данных
+					data = this->hash->decompressGzip(buffer.data(), buffer.size());
+				break;
+			}
 			// Если данные получены
 			if(!data.empty()){
 				// Если нужно производить дешифрование
@@ -449,7 +462,7 @@ void awh::Client::read(struct bufferevent * bev, void * ctx){
 					// Если данные не добавлены
 					if(!ws->http->add(str, count)){
 						// Проверяем тип ответа сервера
-						http_t::stath_t stath = ws->http->isAuth();
+						http_t::stath_t stath = ws->http->getAuth();
 						// Определяем тип ответа
 						switch((u_short) stath){
 							// Если авторизация не выполнена
@@ -467,8 +480,8 @@ void awh::Client::read(struct bufferevent * bev, void * ctx){
 							} break;
 							// Если нужно попробовать ещё раз
 							case (u_short) http_t::stath_t::RETRY: {
-								// Строка HTTP запроса
-								const auto & request = ws->http->restRequest(ws->gzip);
+								// Получаем данные REST запроса
+								const auto & request = ws->http->restRequest(ws->zip);
 								// Если запрос получен
 								if(!request.empty()){
 									// Активируем разрешение на запись и чтение
@@ -480,8 +493,8 @@ void awh::Client::read(struct bufferevent * bev, void * ctx){
 						}
 					// Если инициализация WebSocket произведена успешно
 					} else {
-						// Устанавливаем флаг, что мы работаем с сжатыми данными
-						ws->gzip = ws->http->isGzip();
+						// Получаем поддерживаемый метод компрессии
+						ws->zip = ws->http->getZip();
 						// Выводим в лог сообщение
 						ws->log->print("%s", log_t::flag_t::INFO, "authorization on the WebSocket server was successful");
 						// Если функция обратного вызова установлена, выполняем
@@ -539,8 +552,8 @@ void awh::Client::read(struct bufferevent * bev, void * ctx){
 							// Выполняем реконнект
 							goto Reconnect;
 						}
-						// Если флаг компресси отключён а данные пришли сжатые
-						if(head.rsv[0] && (!ws->gzip ||
+						// Если флаг компресси включён а данные пришли не сжатые
+						if(head.rsv[0] && ((ws->zip == http_t::zip_t::NONE) ||
 						(head.optcode == frame_t::opcode_t::CONTINUATION) ||
 						(((u_short) head.optcode > 0x07) && ((u_short) head.optcode < 0x0b)))){
 							// Создаём сообщение
@@ -577,8 +590,6 @@ void awh::Client::read(struct bufferevent * bev, void * ctx){
 							case (u_short) frame_t::opcode_t::BINARY: {
 								// Запоминаем полученный опкод
 								ws->opcode = head.optcode;
-								// Запоминаем в каком виде пришли данные, в сжатом или нет
-								ws->compressed = (ws->gzip && head.rsv[0]);
 								// Если список фрагментированных сообщений существует
 								if(!ws->fragmes.empty()){
 									// Создаём сообщение
@@ -794,14 +805,14 @@ void awh::Client::resolve(const uri_t::url_t & url, function <void (const string
 }
 /**
  * init Метод инициализации WebSocket клиента
- * @param url  адрес WebSocket сервера
- * @param gzip флаг активации сжатия данных
+ * @param url адрес WebSocket сервера
+ * @param zip метод сжатия передаваемых сообщений
  */
-void awh::Client::init(const string & url, const bool gzip){
+void awh::Client::init(const string & url, const http_t::zip_t zip){
 	// Если адрес сервера передан
 	if(!url.empty()){
 		// Устанавливаем флаг активации сжатия данных
-		this->gzip = gzip;
+		this->zip = zip;
 		// Выполняем установку URL адреса сервера WebSocket
 		this->url = this->uri->parseUrl(url);
 	}
@@ -858,7 +869,7 @@ void awh::Client::send(const char * message, const size_t size, const bool utf8)
 			// Выполняем маскировку сообщения
 			head.mask = true;
 			// Указываем, что сообщение передаётся в сжатом виде
-			head.rsv[0] = this->gzip;
+			head.rsv[0] = (this->zip != http_t::zip_t::NONE);
 			// Устанавливаем опкод сообщения
 			head.optcode = (utf8 ? frame_t::opcode_t::TEXT : frame_t::opcode_t::BINARY);
 			// Если нужно производить шифрование
@@ -883,13 +894,26 @@ void awh::Client::send(const char * message, const size_t size, const bool utf8)
 				// Если все данные переданы
 				if((message != nullptr) && (size > 0)){
 					// Если необходимо сжимать сообщение перед отправкой
-					if(this->gzip){
-						// Устанавливаем размер скользящего окна
-						this->hash->setWbit(this->http->getWbitClient());
-						// Выполняем компрессию данных
-						auto data = this->hash->compress(message, size);
-						// Удаляем хвост в полученных данных
-						this->hash->rmTail(data);
+					if(this->zip != http_t::zip_t::NONE){
+						// Компрессионные данные
+						vector <char> data;
+						// Определяем метод компрессии
+						switch((u_short) this->zip){
+							// Если метод компрессии выбран Deflate
+							case (u_short) http_t::zip_t::DEFLATE: {
+								// Устанавливаем размер скользящего окна
+								this->hash->setWbit(this->http->getWbitClient());
+								// Выполняем компрессию полученных данных
+								data = this->hash->compress(message, size);
+								// Удаляем хвост в полученных данных
+								this->hash->rmTail(data);
+							} break;
+							// Если метод компрессии выбран GZip
+							case (u_short) http_t::zip_t::GZIP:
+								// Выполняем компрессию полученных данных
+								data = this->hash->compressGzip(message, size);
+							break;
+						}
 						// Создаём буфер для отправки
 						const auto & buffer = this->frame->set(head, data.data(), data.size());
 						// Отправляем серверу сообщение

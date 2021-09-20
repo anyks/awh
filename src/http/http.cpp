@@ -124,12 +124,12 @@ void awh::Http::clear() noexcept {
 	this->message = "";
 	// Выполняем сброс ключа клиента
 	this->clientKey = "";
-	// Выполняем сброс флага разрешающего сжатие данных
-	this->gzip = false;
 	// Выполняем сброс поддерживаемых сабпротоколов
 	this->subs.clear();
 	// Выполняем сброс полученных HTTP заголовков
 	this->headers.clear();
+	// Выполняем сброс метода сжатия сообщений
+	this->zip = zip_t::DEFLATE;
 	// Выполняем сброс версии протокола
 	this->version = HTTP_VERSION;
 	// Выполняем сброс стейта текущего запроса
@@ -218,12 +218,20 @@ bool awh::Http::add(const char * buffer, const size_t size) noexcept {
 	return result;
 }
 /**
- * isGzip Метод получения флага сжатого контента в GZIP
- * @return значение флага сжатого контента в GZIP
+ * getZip Метод получения метода сжатия
+ * @return метод сжатия сообщений
  */
-bool awh::Http::isGzip() const noexcept {
+awh::Http::zip_t awh::Http::getZip() const noexcept {
+	// Выводим метод сжатия сообщений
+	return this->zip;
+}
+/**
+ * getAuth Метод проверки статуса авторизации
+ * @return результат проверки
+ */
+awh::Http::stath_t awh::Http::getAuth() const noexcept {
 	// Выводим результат проверки
-	return this->gzip;
+	return this->stath;
 }
 /**
  * isHandshake Метод получения флага рукопожатия
@@ -232,14 +240,6 @@ bool awh::Http::isGzip() const noexcept {
 bool awh::Http::isHandshake() const noexcept {
 	// Выводрим результат проверки рукопожатия
 	return (this->state == state_t::HANDSHAKE);
-}
-/**
- * isAuth Метод проверки статуса авторизации
- * @return результат проверки
- */
-awh::Http::stath_t awh::Http::isAuth() const noexcept {
-	// Выводим результат проверки
-	return this->stath;
 }
 /**
  * getCode Метод получения кода ответа сервера
@@ -335,11 +335,17 @@ vector <char> awh::Http::restResponse() const noexcept {
 		// Расширения WebSocket и подпротоколы
 		string extensions = "", sub = "";
 		// Если необходимо активировать сжатие
-		if(this->gzip){
-			// Формируем заголовок расширений
-			extensions = "Sec-WebSocket-Extensions: permessage-deflate; server_no_context_takeover; client_max_window_bits";
-			// Если требуется указать количество байт
-			if(this->wbitServer > 0) extensions.append(this->fmk->format("; server_max_window_bits=%u", this->wbitServer));
+		if(this->zip != zip_t::NONE){
+			// Если метод компрессии выбран Deflate
+			if(this->zip == zip_t::DEFLATE){
+				// Формируем заголовок расширений
+				extensions = "Sec-WebSocket-Extensions: permessage-deflate; server_no_context_takeover; client_max_window_bits";
+				// Если требуется указать количество байт
+				if(this->wbitServer > 0) extensions.append(this->fmk->format("; server_max_window_bits=%u", this->wbitServer));
+			// Если метод компрессии выбран GZip
+			} else if(this->zip == zip_t::GZIP)
+				// Формируем заголовок расширений
+				extensions = "Sec-WebSocket-Extensions: permessage-gzip; server_no_context_takeover";
 		}
 		// Ищем адрес сайта с которого выполняется запрос
 		string origin = (this->headers.count("origin") > 0 ? this->headers.find("origin")->second : "");
@@ -401,11 +407,11 @@ vector <char> awh::Http::restUnauthorized() const noexcept {
 	return vector <char> (result.begin(), result.end());
 }
 /**
- * getRequest Метод получения буфера HTML запроса
- * @param gzip флаг просьбы предоставить контент в сжатом виде
- * @return     собранный HTML буфер
+ * restRequest Метод получения буфера HTML запроса
+ * @param zip метод сжатия сообщений
+ * @return    собранный HTML буфер
  */
-vector <char> awh::Http::restRequest(const bool gzip) noexcept {
+vector <char> awh::Http::restRequest(const zip_t zip) noexcept {
 	// Результат работы функции
 	vector <char> result;
 	// Если URL объект передан
@@ -452,8 +458,14 @@ vector <char> awh::Http::restRequest(const bool gzip) noexcept {
 			this->clientKey = this->key();
 			// Если Origin не установлен
 			if(this->origin.empty()) this->origin = this->uri->createOrigin(* this->url);
-			// Устанавливаем параметры желаемой компрессии
-			if(gzip) compress = "Sec-WebSocket-Extensions: permessage-deflate; client_max_window_bits\r\n";
+			// Если метод компрессии выбран Deflate
+			if(zip == zip_t::DEFLATE)
+				// Устанавливаем тип компрессии Deflate
+				compress = "Sec-WebSocket-Extensions: permessage-deflate; client_max_window_bits\r\n";
+			// Если метод компрессии выбран GZip
+			else if(zip == zip_t::GZIP)
+				// Устанавливаем тип компрессии GZip
+				compress = "Sec-WebSocket-Extensions: permessage-gzip\r\n";
 			// Строка HTTP запроса
 			const string & request = this->fmk->format(
 				"GET %s HTTP/%.1f\r\n"
