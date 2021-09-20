@@ -942,12 +942,21 @@ const awh::Rest::res_t awh::Rest::REST(const uri_t::url_t & url, evhttp_cmd_type
 							// Выполняем парсинг URL
 							uri_t::url_t tmp = this->uri->parseUrl(it->second);
 							// Если параметры URL существуют
-							if(!url.params.empty()){
+							if(!url.params.empty())
 								// Переходим по всему списку параметров
 								for(auto & param : url.params) tmp.params.emplace(param);
-								// Устанавливаем новый список параметров
-								const_cast <uri_t::url_t *> (&url)->params = move(tmp.params);
-							}
+							// Меняем IP адрес сервера
+							const_cast <uri_t::url_t *> (&url)->ip = move(tmp.ip);
+							// Меняем порт сервера
+							const_cast <uri_t::url_t *> (&url)->port = move(tmp.port);
+							// Меняем на путь сервере
+							const_cast <uri_t::url_t *> (&url)->path = move(tmp.path);
+							// Меняем доменное имя сервера
+							const_cast <uri_t::url_t *> (&url)->domain = move(tmp.domain);
+							// Меняем протокол запроса сервера
+							const_cast <uri_t::url_t *> (&url)->schema = move(tmp.schema);
+							// Устанавливаем новый список параметров
+							const_cast <uri_t::url_t *> (&url)->params = move(tmp.params);
 							// Выполняем новый запрос
 							return this->REST(url, type, headers, body);
 						}
