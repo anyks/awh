@@ -127,6 +127,11 @@ if [ ! -f "$src/.stamp_done" ]; then
 	printf "\n****** ZLib ******\n"
 	cd "$src" || exit 1
 
+	# Закачиваем все теги
+	git fetch --all --tags
+	# Выполняем переключение на указанную версию
+	git checkout tags/v1.2.11 -b v1.2.11-branch
+
 	# Выполняем конфигурацию проекта
 	if [[ $OS = "Windows" ]]; then
 		# Создаём каталог сборки
@@ -168,6 +173,12 @@ if [ ! -f "$src/.stamp_done" ]; then
 
 	cd "$src" || exit 1
 
+	# Закачиваем все теги
+	git fetch --all --tags
+	# Выполняем переключение на указанную версию
+	git checkout tags/release-2.1.12-stable -b v2.1.12-branch
+
+	# Применяем патч исправления ошибки нулевого указателя
 	apply_patch "libevent" "0001-Correcting-the-error-on-checking-the-pointer.patch"
 
 	# Создаём каталог сборки
