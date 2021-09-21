@@ -71,7 +71,7 @@ void awh::Client::request() noexcept {
 		// Устанавливаем Origin запроса
 		this->http->setOrigin(origin);
 		// Получаем данные REST запроса
-		const auto & request = this->http->restRequest(this->zip);
+		const auto & request = this->http->restRequest(this->zip, this->crypt);
 		// Если запрос получен
 		if(!request.empty()){
 			// Активируем разрешение на запись и чтение
@@ -125,7 +125,7 @@ void awh::Client::extraction(const vector <char> & buffer, const bool utf8) cons
 	// Если буфер данных передан
 	if(!buffer.empty() && !this->freeze && (this->messageFn != nullptr)){
 		// Если данные пришли в сжатом виде
-		if(this->zip != http_t::zip_t::NONE){
+		if(this->compressed && (this->zip != http_t::zip_t::NONE)){
 			// Декомпрессионные данные
 			vector <char> data;
 			// Определяем метод компрессии
@@ -163,6 +163,8 @@ void awh::Client::extraction(const vector <char> & buffer, const bool utf8) cons
 				mess_t mess(1007, "received data decompression error");
 				// Выводим сообщение
 				this->error(mess);
+				// Иначе выводим сообщение так - как оно пришло
+				this->messageFn(buffer, utf8, const_cast <Client *> (this));
 			}
 		// Если функция обратного вызова установлена, выводим полученное сообщение
 		} else {
@@ -481,7 +483,7 @@ void awh::Client::read(struct bufferevent * bev, void * ctx){
 							// Если нужно попробовать ещё раз
 							case (u_short) http_t::stath_t::RETRY: {
 								// Получаем данные REST запроса
-								const auto & request = ws->http->restRequest(ws->zip);
+								const auto & request = ws->http->restRequest(ws->zip, ws->crypt);
 								// Если запрос получен
 								if(!request.empty()){
 									// Активируем разрешение на запись и чтение
@@ -495,6 +497,8 @@ void awh::Client::read(struct bufferevent * bev, void * ctx){
 					} else {
 						// Получаем поддерживаемый метод компрессии
 						ws->zip = ws->http->getZip();
+						// Получаем флаг шифрованных данных
+						ws->crypt = ws->http->isCrypt();
 						// Выводим в лог сообщение
 						ws->log->print("%s", log_t::flag_t::INFO, "authorization on the WebSocket server was successful");
 						// Если функция обратного вызова установлена, выполняем
@@ -590,6 +594,8 @@ void awh::Client::read(struct bufferevent * bev, void * ctx){
 							case (u_short) frame_t::opcode_t::BINARY: {
 								// Запоминаем полученный опкод
 								ws->opcode = head.optcode;
+								// Запоминаем, что данные пришли сжатыми
+								ws->compressed = (head.rsv[0] && (ws->zip != http_t::zip_t::NONE));
 								// Если список фрагментированных сообщений существует
 								if(!ws->fragmes.empty()){
 									// Создаём сообщение

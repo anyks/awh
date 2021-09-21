@@ -134,6 +134,8 @@ namespace awh {
 		protected:
 			// Код ответа сервера
 			u_short code = 0;
+			// Флаг зашифрованных данных
+			bool crypt = false;
 			// Версия протокола
 			double version = HTTP_VERSION;
 			// Стейт проверки авторизации
@@ -239,6 +241,11 @@ namespace awh {
 			stath_t getAuth() const noexcept;
 		public:
 			/**
+			 * isCrypt Метод проверки на зашифрованные данные
+			 * @return флаг проверки на зашифрованные данные
+			 */
+			bool isCrypt() const noexcept;
+			/**
 			 * isHandshake Метод получения флага рукопожатия
 			 * @return флаг получения рукопожатия
 			 */
@@ -294,10 +301,11 @@ namespace awh {
 			vector <char> restUnauthorized() const noexcept;
 			/**
 			 * restRequest Метод получения буфера HTML запроса
-			 * @param zip метод сжатия сообщений
-			 * @return    собранный HTML буфер
+			 * @param zip   метод сжатия сообщений
+			 * @param crypt флаг зашифрованных данных
+			 * @return      собранный HTML буфер
 			 */
-			vector <char> restRequest(const zip_t zip = zip_t::GZIP) noexcept;
+			vector <char> restRequest(const zip_t zip = zip_t::GZIP, const bool crypt = false) noexcept;
 		public:
 			/**
 			 * setSub Метод установки подпротокола поддерживаемого сервером

@@ -234,6 +234,14 @@ awh::Http::stath_t awh::Http::getAuth() const noexcept {
 	return this->stath;
 }
 /**
+ * isCrypt Метод проверки на зашифрованные данные
+ * @return флаг проверки на зашифрованные данные
+ */
+bool awh::Http::isCrypt() const noexcept {
+	// Выводим результат проверки
+	return this->crypt;
+}
+/**
  * isHandshake Метод получения флага рукопожатия
  * @return флаг получения рукопожатия
  */
@@ -346,7 +354,10 @@ vector <char> awh::Http::restResponse() const noexcept {
 			} else if(this->zip == zip_t::GZIP)
 				// Формируем заголовок расширений
 				extensions = "Sec-WebSocket-Extensions: permessage-gzip; server_no_context_takeover";
-		}
+			// Если данные должны быть зашифрованны
+			if(this->crypt) extensions.append("; permessage-encrypt");
+		// Если данные должны быть зашифрованны
+		} else if(this->crypt) extensions = "Sec-WebSocket-Extensions: permessage-encrypt; server_no_context_takeover";
 		// Ищем адрес сайта с которого выполняется запрос
 		string origin = (this->headers.count("origin") > 0 ? this->headers.find("origin")->second : "");
 		// Если Origin передан, формируем заголовок
@@ -368,8 +379,8 @@ vector <char> awh::Http::restResponse() const noexcept {
 			"Upgrade: websocket\r\n"
 			"Connection: upgrade\r\n"
 			"X-Powered-By: %s/%s\r\n"
-			"%sSec-WebSocket-Accept: %s\r\n%s"
-			"%s\r\n\r\n",
+			"%sSec-WebSocket-Accept: %s\r\n"
+			"%s%s\r\n\r\n",
 			this->version, this->date().c_str(),
 			AWH_NAME, AWH_SHORT_NAME, AWH_VERSION,
 			origin.c_str(), hash.c_str(),
@@ -408,10 +419,11 @@ vector <char> awh::Http::restUnauthorized() const noexcept {
 }
 /**
  * restRequest Метод получения буфера HTML запроса
- * @param zip метод сжатия сообщений
- * @return    собранный HTML буфер
+ * @param zip   метод сжатия сообщений
+ * @param crypt флаг зашифрованных данных
+ * @return      собранный HTML буфер
  */
-vector <char> awh::Http::restRequest(const zip_t zip) noexcept {
+vector <char> awh::Http::restRequest(const zip_t zip, const bool crypt) noexcept {
 	// Результат работы функции
 	vector <char> result;
 	// Если URL объект передан
@@ -424,8 +436,8 @@ vector <char> awh::Http::restRequest(const zip_t zip) noexcept {
 		const string & host = (!this->url->domain.empty() ? this->url->domain : this->url->ip);
 		// Если хост получен
 		if(!host.empty() && !path.empty()){
-			// Список желаемых подпротоколов и желаемая компрессия
-			string subs = "", compress = "";
+			// Список желаемых подпротоколов и расширения протокола
+			string subs = "", extensions = "";
 			// Получаем параметры авторизации
 			const string & auth = this->auth->header();
 			// Формируем HTTP запрос
@@ -458,14 +470,22 @@ vector <char> awh::Http::restRequest(const zip_t zip) noexcept {
 			this->clientKey = this->key();
 			// Если Origin не установлен
 			if(this->origin.empty()) this->origin = this->uri->createOrigin(* this->url);
-			// Если метод компрессии выбран Deflate
-			if(zip == zip_t::DEFLATE)
-				// Устанавливаем тип компрессии Deflate
-				compress = "Sec-WebSocket-Extensions: permessage-deflate; client_max_window_bits\r\n";
-			// Если метод компрессии выбран GZip
-			else if(zip == zip_t::GZIP)
-				// Устанавливаем тип компрессии GZip
-				compress = "Sec-WebSocket-Extensions: permessage-gzip\r\n";
+			// Если метод компрессии указан
+			if(zip != zip_t::NONE){
+				// Если метод компрессии выбран Deflate
+				if(zip == zip_t::DEFLATE)
+					// Устанавливаем тип компрессии Deflate
+					extensions = "Sec-WebSocket-Extensions: permessage-deflate; client_max_window_bits";
+				// Если метод компрессии выбран GZip
+				else if(zip == zip_t::GZIP)
+					// Устанавливаем тип компрессии GZip
+					extensions = "Sec-WebSocket-Extensions: permessage-gzip";
+				// Если шифровать данные не нужно
+				if(!crypt) extensions.append("\r\n");
+				// Если данные должны быть зашифрованны
+				else extensions.append("; permessage-encrypt\r\n");
+			// Если метод компрессии не указан но указан режим шифрования
+			} else if(crypt) extensions = "Sec-WebSocket-Extensions: permessage-encrypt\r\n";
 			// Строка HTTP запроса
 			const string & request = this->fmk->format(
 				"GET %s HTTP/%.1f\r\n"
@@ -482,7 +502,7 @@ vector <char> awh::Http::restRequest(const zip_t zip) noexcept {
 				host.c_str(), this->date().c_str(),
 				this->origin.c_str(), this->userAgent.c_str(),
 				WS_VERSION, this->clientKey.c_str(),
-				(!compress.empty() ? compress.c_str() : ""),
+				(!extensions.empty() ? extensions.c_str() : ""),
 				(!subs.empty() ? subs.c_str() : ""),
 				(!auth.empty() ? auth.c_str() : "")
 			);

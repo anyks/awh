@@ -28,8 +28,12 @@ void awh::HClient::updateExtensions() noexcept {
 		if(!extensions.empty()){
 			// Ищем поддерживаемые заголовки
 			for(auto & val : extensions){
+				// Если нужно производить шифрование данных
+				if((val.compare(L"permessage-encrypt") == 0) || (val.compare(L"perframe-encrypt") == 0))
+					// Устанавливаем флаг шифрования данных
+					this->crypt = true;
 				// Если получены заголовки требующие сжимать передаваемые фреймы методом Deflate
-				if((val.compare(L"permessage-deflate") == 0) || (val.compare(L"perframe-deflate") == 0))
+				else if((val.compare(L"permessage-deflate") == 0) || (val.compare(L"perframe-deflate") == 0))
 					// Устанавливаем требование выполнять компрессию полезной нагрузки
 					this->zip = zip_t::DEFLATE;
 				// Если получены заголовки требующие сжимать передаваемые фреймы методом GZip

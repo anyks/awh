@@ -142,6 +142,8 @@ namespace awh {
 			bool freeze = false;
 			// Флаг автоматического переподключения
 			bool reconnect = false;
+			// Флаг переданных сжатых данных
+			bool compressed = false;
 			// Флаг инициализации WinSock
 			mutable bool winSock = false;
 		private:
