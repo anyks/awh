@@ -14,13 +14,13 @@
  * Стандартная библиотека
  */
 #include <regex>
+#include <cstdio>
 #include <string>
 #include <vector>
 #include <random>
+#include <cstdlib>
 #include <functional>
 #include <unordered_map>
-#include <stdio.h>
-#include <stdlib.h>
 #include <event2/dns.h>
 #include <event2/util.h>
 #include <event2/event.h>
