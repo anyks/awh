@@ -97,7 +97,7 @@ if [ ! -f "$src/.stamp_done" ]; then
 	# Закачиваем все теги
 	git fetch --all --tags
 	# Выполняем переключение на указанную версию
-	git checkout tags/openssl-3.0.0 -b v3.0.0-branch
+	git checkout tags/OpenSSL_1_1_1l -b v1.1.1l-branch
 
 	# Выполняем конфигурацию проекта
 	./config \
