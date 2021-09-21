@@ -86,13 +86,18 @@ apply_patch(){
 }
 
 # Инициализируем подпроекты
-git submodule update --init
+git submodule update --init --recursive --remote
 
 # Сборка OpenSSL
 src="$ROOT/submodules/openssl"
 if [ ! -f "$src/.stamp_done" ]; then
 	printf "\n****** OpenSSL ******\n"
 	cd "$src" || exit 1
+
+	# Закачиваем все теги
+	git fetch --all --tags
+	# Выполняем переключение на указанную версию
+	git checkout tags/openssl-3.0.0 -b v3.0.0-branch
 
 	# Выполняем конфигурацию проекта
 	./config \
