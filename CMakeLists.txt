@@ -165,8 +165,8 @@ if (ENABLE_CONSOLE_APP)
         SET(CMAKE_RC_COMPILE_OBJECT "<CMAKE_RC_COMPILER> <FLAGS> -O coff <DEFINES> -i <SOURCE> -o <OBJECT>")
     endif(MINGW)
 
-    add_executable(${REST_APP_NAME} samples/rest.cpp ${RES_FILES})
-    add_executable(${CLIENT_APP_NAME} samples/client.cpp ${RES_FILES})
+    add_executable(${REST_APP_NAME} sample/rest.cpp ${RES_FILES})
+    add_executable(${CLIENT_APP_NAME} sample/client.cpp ${RES_FILES})
 
     target_link_libraries(${REST_APP_NAME}
         ${CURRENT_LIB_NAME}

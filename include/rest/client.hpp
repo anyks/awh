@@ -113,7 +113,7 @@ namespace awh {
 				string mess;                            // Сообщение ответа сервера
 				string body;                            // Тело ответа сервера
 				const Rest * ctx;                       // Контекст родительского объекта
-				struct bufferevent * bev;               // Буфер событий
+				struct bufferevent ** bev;              // Буфер событий
 				unordered_map <string, string> headers; // Заголовки сервера
 				/**
 				 * Response Конструктор
@@ -124,6 +124,10 @@ namespace awh {
 			 * Формат сжатия тела запроса
 			 */
 			enum class zip_t : u_short {NONE, GZIP, DEFLATE};
+			/**
+			 * Тип прокси-сервера
+			 */
+			enum class proxy_t : u_short {NONE, HTTP, SOCKS};
 		private:
 			/**
 			 * Типы основных заголовков
@@ -142,10 +146,41 @@ namespace awh {
 			// Параметры постоянного подключения
 			alive_t alive;
 		private:
+			// Буфер событий SSL
+			ssl_t::ctx_t sslctx;
+
+			ssl_t::ctx_t sslctx2;
+
+			// Данные прокси-сервера
+			uri_t::url_t proxyUrl;
+			// Тип выбранного прокси-сервера
+			proxy_t proxyType = proxy_t::NONE;
+		private:
 			// Флаги работы с сжатыми данными
 			zip_t zip = zip_t::GZIP;
 			// User-Agent для HTTP запроса
 			string userAgent = USER_AGENT;
+		private:
+			// База событий DNS
+			struct evdns_base * dns = nullptr;
+
+			struct evdns_base * dns2 = nullptr;
+
+			// Буфер событий
+			struct bufferevent * bev = nullptr;
+
+			struct bufferevent * bev2 = nullptr;
+
+			struct evhttp_request * req = nullptr;
+
+			struct evhttp_request * req2 = nullptr;
+
+			// База событий
+			struct event_base * base = nullptr;
+			// Событие подключения
+			struct evhttp_connection * evcon = nullptr;
+
+			struct evhttp_connection * evcon2 = nullptr;
 		private:
 			// Флаг шифрования сообщений
 			bool crypt = false;
@@ -192,14 +227,14 @@ namespace awh {
 			 * @param headers список http заголовков
 			 * @return        результат запроса
 			 */
-			const string GET(const uri_t::url_t & url, const unordered_map <string, string> & headers = {}) const noexcept;
+			const string GET(const uri_t::url_t & url, const unordered_map <string, string> & headers = {}) noexcept;
 			/**
 			 * DEL Метод REST запроса
 			 * @param url     адрес запроса
 			 * @param headers список http заголовков
 			 * @return        результат запроса
 			 */
-			const string DEL(const uri_t::url_t & url, const unordered_map <string, string> & headers = {}) const noexcept;
+			const string DEL(const uri_t::url_t & url, const unordered_map <string, string> & headers = {}) noexcept;
 		public:
 			/**
 			 * PUT Метод REST запроса в формате JSON
@@ -208,7 +243,7 @@ namespace awh {
 			 * @param headers список http заголовков
 			 * @return        результат запроса
 			 */
-			const string PUT(const uri_t::url_t & url, const json & body, const unordered_map <string, string> & headers = {}) const noexcept;
+			const string PUT(const uri_t::url_t & url, const json & body, const unordered_map <string, string> & headers = {}) noexcept;
 			/**
 			 * PUT Метод REST запроса в формате JSON
 			 * @param url     адрес запроса
@@ -216,7 +251,7 @@ namespace awh {
 			 * @param headers список http заголовков
 			 * @return        результат запроса
 			 */
-			const string PUT(const uri_t::url_t & url, const string & body, const unordered_map <string, string> & headers = {}) const noexcept;
+			const string PUT(const uri_t::url_t & url, const string & body, const unordered_map <string, string> & headers = {}) noexcept;
 			/**
 			 * PUT Метод REST запроса
 			 * @param url     адрес запроса
@@ -224,7 +259,7 @@ namespace awh {
 			 * @param headers список http заголовков
 			 * @return        результат запроса
 			 */
-			const string PUT(const uri_t::url_t & url, const unordered_multimap <string, string> & body, const unordered_map <string, string> & headers = {}) const noexcept;
+			const string PUT(const uri_t::url_t & url, const unordered_multimap <string, string> & body, const unordered_map <string, string> & headers = {}) noexcept;
 		public:
 			/**
 			 * POST Метод REST запроса в формате JSON
@@ -233,7 +268,7 @@ namespace awh {
 			 * @param headers список http заголовков
 			 * @return        результат запроса
 			 */
-			const string POST(const uri_t::url_t & url, const json & body, const unordered_map <string, string> & headers = {}) const noexcept;
+			const string POST(const uri_t::url_t & url, const json & body, const unordered_map <string, string> & headers = {}) noexcept;
 			/**
 			 * POST Метод REST запроса в формате JSON
 			 * @param url     адрес запроса
@@ -241,7 +276,7 @@ namespace awh {
 			 * @param headers список http заголовков
 			 * @return        результат запроса
 			 */
-			const string POST(const uri_t::url_t & url, const string & body, const unordered_map <string, string> & headers = {}) const noexcept;
+			const string POST(const uri_t::url_t & url, const string & body, const unordered_map <string, string> & headers = {}) noexcept;
 			/**
 			 * POST Метод REST запроса
 			 * @param url     адрес запроса
@@ -249,7 +284,7 @@ namespace awh {
 			 * @param headers список http заголовков
 			 * @return        результат запроса
 			 */
-			const string POST(const uri_t::url_t & url, const unordered_multimap <string, string> & body, const unordered_map <string, string> & headers = {}) const noexcept;
+			const string POST(const uri_t::url_t & url, const unordered_multimap <string, string> & body, const unordered_map <string, string> & headers = {}) noexcept;
 		public:
 			/**
 			 * PATCH Метод REST запроса в формате JSON
@@ -258,7 +293,7 @@ namespace awh {
 			 * @param headers список http заголовков
 			 * @return        результат запроса
 			 */
-			const string PATCH(const uri_t::url_t & url, const json & body, const unordered_map <string, string> & headers = {}) const noexcept;
+			const string PATCH(const uri_t::url_t & url, const json & body, const unordered_map <string, string> & headers = {}) noexcept;
 			/**
 			 * PATCH Метод REST запроса в формате JSON
 			 * @param url     адрес запроса
@@ -266,7 +301,7 @@ namespace awh {
 			 * @param headers список http заголовков
 			 * @return        результат запроса
 			 */
-			const string PATCH(const uri_t::url_t & url, const string & body, const unordered_map <string, string> & headers = {}) const noexcept;
+			const string PATCH(const uri_t::url_t & url, const string & body, const unordered_map <string, string> & headers = {}) noexcept;
 			/**
 			 * PATCH Метод REST запроса
 			 * @param url     адрес запроса
@@ -274,7 +309,7 @@ namespace awh {
 			 * @param headers список http заголовков
 			 * @return        результат запроса
 			 */
-			const string PATCH(const uri_t::url_t & url, const unordered_multimap <string, string> & body, const unordered_map <string, string> & headers = {}) const noexcept;
+			const string PATCH(const uri_t::url_t & url, const unordered_multimap <string, string> & body, const unordered_map <string, string> & headers = {}) noexcept;
 		public:
 			/**
 			 * HEAD Метод REST запроса
@@ -282,31 +317,65 @@ namespace awh {
 			 * @param headers список http заголовков
 			 * @return        результат запроса
 			 */
-			const unordered_map <string, string> HEAD(const uri_t::url_t & url, const unordered_map <string, string> & headers = {}) const noexcept;
+			const unordered_map <string, string> HEAD(const uri_t::url_t & url, const unordered_map <string, string> & headers = {}) noexcept;
 			/**
 			 * TRACE Метод REST запроса
 			 * @param url     адрес запроса
 			 * @param headers список http заголовков
 			 * @return        результат запроса
 			 */
-			const unordered_map <string, string> TRACE(const uri_t::url_t & url, const unordered_map <string, string> & headers = {}) const noexcept;
+			const unordered_map <string, string> TRACE(const uri_t::url_t & url, const unordered_map <string, string> & headers = {}) noexcept;
 			/**
 			 * OPTIONS Метод REST запроса
 			 * @param url     адрес запроса
 			 * @param headers список http заголовков
 			 * @return        результат запроса
 			 */
-			const unordered_map <string, string> OPTIONS(const uri_t::url_t & url, const unordered_map <string, string> & headers = {}) const noexcept;
+			const unordered_map <string, string> OPTIONS(const uri_t::url_t & url, const unordered_map <string, string> & headers = {}) noexcept;
 		public:
+
+			void clear() noexcept;
+
 			/**
-			 * REST Метод выполнения REST запроса на сервер
+			 * callback Функция вывода результата получения данных
+			 * @param req объект REST запроса
+			 * @param ctx контекст родительского объекта
+			 */
+			static void callback(struct evhttp_request * req, void * ctx) noexcept;
+
+			static void makeHeaders(struct evhttp_request * req, const uri_t::url_t & url, const unordered_map <string, string> & headers, void * ctx) noexcept;
+
+			static void makeBody(struct evhttp_request * req, const string & body, void * ctx) noexcept;
+
+			// static bool makeRequest(struct evhttp_connection * evcon, struct evhttp_request * req, const uri_t::url_t & url, evhttp_cmd_type type, const unordered_map <string, string> & headers, const string & body, void * ctx) noexcept;
+
+			/**
+			 * proxy Функция вывода результата получения данных
+			 * @param req объект REST запроса
+			 * @param ctx контекст родительского объекта
+			 */
+			static void proxyFn(struct evhttp_request * req, void * ctx);
+
+			/**
+			 * PROXY Метод выполнения REST запроса на сервер через прокси-сервер
 			 * @param url параметры адреса запроса
 			 * @param type тип REST запроса
 			 * @param headers список заголовков для REST запроса
 			 * @param body    телоо REST запроса
 			 * @return        результат REST запроса
 			 */
-			const res_t REST(const uri_t::url_t & url, evhttp_cmd_type type = EVHTTP_REQ_GET, const unordered_map <string, string> & headers = {}, const string & body = {}) const noexcept;
+			const res_t PROXY(const uri_t::url_t & url, evhttp_cmd_type type = EVHTTP_REQ_GET, const unordered_map <string, string> & headers = {}, const string & body = {}) noexcept;
+
+
+			/**
+			 * REST Метод выполнения REST запроса на сервер
+			 * @param url     параметры адреса запроса
+			 * @param type    тип REST запроса
+			 * @param headers список заголовков для REST запроса
+			 * @param body    телоо REST запроса
+			 * @return        результат REST запроса
+			 */
+			const res_t REST(const uri_t::url_t & url, evhttp_cmd_type type = EVHTTP_REQ_GET, const unordered_map <string, string> & headers = {}, const string & body = {}) noexcept;
 		public:
 			/**
 			 * setZip Метод активации работы с сжатым контентом
@@ -345,6 +414,12 @@ namespace awh {
 			 * @param capath адрес каталога где находится CA-файл
 			 */
 			void setCA(const string & cafile, const string & capath = "") noexcept;
+			/**
+			 * setProxy Метод установки прокси-сервера
+			 * @param uri  параметры подключения к прокси-серверу
+			 * @param type тип используемого прокси-сервера
+			 */
+			void setProxy(const string & uri, const proxy_t type = proxy_t::HTTP) noexcept;
 			/**
 			 * setNet Метод установки параметров сети
 			 * @param ip     список IP адресов компьютера с которых разрешено выходить в интернет

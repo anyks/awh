@@ -492,7 +492,7 @@ const awh::URI::params_t awh::URI::params(const string & uri, const string & sch
 			// Получаем порт
 			const string & port = match[4].str();
 			// Если порт получен
-			if(!port.empty()) result.port = stoul(port);
+			if(!port.empty()) result.port = stoi(port);
 			// Если порт не получен но указана схема
 			else if(!schema.empty()){
 				// Если - это зашифрованный протокол
@@ -509,6 +509,8 @@ const awh::URI::params_t awh::URI::params(const string & uri, const string & sch
 				else if(schema.compare("mqtt") == 0) result.port = 1883;
 				// Если - это Redis
 				else if(schema.compare("redis") == 0) result.port = 6379;
+				// Если - это SOCKS5 прокси
+				else if(schema.compare("socks5") == 0) result.port = 1080;
 				// Если - это PostgreSQL
 				else if(schema.compare("postgresql") == 0) result.port = 5432;
 			// Устанавливаем порт по умолчанию
