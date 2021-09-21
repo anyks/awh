@@ -37,8 +37,8 @@
 #if defined(_WIN32) || defined(_WIN64)
 	#include <winsock2.h>
 	#include <ws2tcpip.h>
-	#define snprintf _snprintf
-	#define strcasecmp _stricmp
+	#define snprintf ::_snprintf
+	#define strcasecmp ::_stricmp
 // Если - это Unix
 #else
 	#include <sys/socket.h>
