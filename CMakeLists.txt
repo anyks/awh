@@ -151,7 +151,7 @@ add_library(${CURRENT_LIB_NAME} STATIC ${SOURCE_FILES})
 if (ENABLE_CONSOLE_APP)
 
     if (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
-        set(WINFLAGS -lws2_32 -lgdi32 -lcrypt32 -lIphlpapi)
+        set(WINFLAGS -lws2_32 -lgdi32 -lcrypt32 -lIphlpapi -lbcrypt)
     else()
         set(WINFLAGS "")
     endif()
