@@ -821,6 +821,13 @@ void awh::Rest::proxyFn(struct evhttp_request * req, void * ctx){
 		header = header->next.tqe_next;
 	}
 
+	// Если объект DNS существует
+	if(http->dns != nullptr){
+		// Удаляем базу dns
+		evdns_base_free(http->dns, 0);
+		// Зануляем базу dns
+		http->dns = nullptr;
+	}
 
 	evutil_socket_t fd = -1;
 	// Создаём DNS резолвер
@@ -832,7 +839,7 @@ void awh::Rest::proxyFn(struct evhttp_request * req, void * ctx){
 			// Добавляем список серверов в резолвер
 			resolver.setNameServers(http->net.v4.second);
 			// Создаём базу событий DNS
-			http->dns2 = resolver.init(obj->url->domain, AF_INET, http->base);
+			http->dns = resolver.init(obj->url->domain, AF_INET, http->base);
 			// Создаем сокет подключения
 			fd = ::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 		} break;
@@ -841,7 +848,7 @@ void awh::Rest::proxyFn(struct evhttp_request * req, void * ctx){
 			// Добавляем список серверов в резолвер
 			resolver.setNameServers(http->net.v6.second);
 			// Создаём базу событий DNS
-			http->dns2 = resolver.init(obj->url->domain, AF_INET6, http->base);
+			http->dns = resolver.init(obj->url->domain, AF_INET6, http->base);
 			// Создаем сокет подключения
 			fd = ::socket(AF_INET6, SOCK_STREAM, IPPROTO_TCP);
 		} break;
@@ -894,7 +901,7 @@ void awh::Rest::proxyFn(struct evhttp_request * req, void * ctx){
 		return;
 	}
 	// Создаём событие подключения
-	http->evcon2 = evhttp_connection_base_bufferevent_new(http->base, http->dns2, http->bev2, (!obj->url->ip.empty() ? obj->url->ip.c_str() : obj->url->domain.c_str()), obj->url->port);
+	http->evcon2 = evhttp_connection_base_bufferevent_new(http->base, http->dns, http->bev2, (!obj->url->ip.empty() ? obj->url->ip.c_str() : obj->url->domain.c_str()), obj->url->port);
 	// Если событие подключения не создан
 	if(http->evcon2 == nullptr){
 		// Очищаем контекст
