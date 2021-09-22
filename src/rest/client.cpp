@@ -553,7 +553,7 @@ const string awh::Rest::GET(const uri_t::url_t & url, const unordered_map <strin
 		 */
 		thread thr([&result, this]{
 			// Выполняем REST запрос
-			this->PROXY2();
+			this->PROXY();
 			// Проверяем на наличие ошибок
 			if(!this->res.ok) this->log->print("request failed: %u %s", log_t::flag_t::WARNING, this->res.code, this->res.mess.c_str());
 			// Если тело ответа получено
@@ -1027,7 +1027,7 @@ void awh::Rest::callback(struct evhttp_request * req, void * ctx) noexcept {
 	// Если контекст объекта ответа сервера получен
 	if(ctx != nullptr){
 
-		cout << " ###################!! " << endl;
+		cout << " ###################!! " << req << endl;
 
 		// Создаём объект ответа сервера
 		rest_t * http = reinterpret_cast <rest_t *> (ctx);
@@ -1673,7 +1673,7 @@ void awh::Rest::proxyFn(struct evhttp_request * req, void * ctx){
 	makeBody(http->req2, * obj->body, (void *) http);
 	*/
 
-
+	/*
 	// Создаём объект выполнения REST запроса
 	req = evhttp_request_new(callback, http);
 	// Если объект REST запроса не создан
@@ -1718,10 +1718,88 @@ void awh::Rest::proxyFn(struct evhttp_request * req, void * ctx){
 		// Завершаем работу функции
 		return;
 	}
-
+	*/
 
 	// Разблокируем базу событий
 	// event_base_loopbreak(bufferevent_get_base(http->bev));
+	// 
+	// 
+	
+
+	// Выполняем получение контекста сертификата
+	http->sslctx = http->ssl->init(* http->req.uri);
+
+	struct bufferevent * bev = evhttp_connection_get_bufferevent(http->evbuf.evcon);
+
+	evutil_socket_t fd = bufferevent_getfd(bev);
+
+	http->evbuf.bev = bufferevent_openssl_socket_new(http->evbuf.base, fd, http->sslctx.ssl, BUFFEREVENT_SSL_CONNECTING, BEV_OPT_THREADSAFE | BEV_OPT_DEFER_CALLBACKS);
+	// Оборачиваем текущее соединение в SSL BIO
+	// http->evbuf.bev = bufferevent_openssl_filter_new(http->evbuf.base, bev, http->sslctx.ssl, BUFFEREVENT_SSL_CONNECTING, BEV_OPT_THREADSAFE | BEV_OPT_DEFER_CALLBACKS);
+	// Если буфер событий не создан
+	if(http->evbuf.bev == nullptr){
+		// Очищаем контекст
+		http->clear();
+		// Сообщаем, что буфер событий не может быть создан
+		http->log->print("%s", log_t::flag_t::CRITICAL, "the event buffer could not be created");
+		// Завершаем работу функции
+		return;
+	}
+	// Разрешаем пересматривать подключение
+	// bufferevent_ssl_renegotiate(http->evbuf.bev);
+
+
+	// Создаём объект выполнения REST запроса
+	struct evhttp_request * req2 = evhttp_request_new(callback, http);
+	// Если объект REST запроса не создан
+	if(req2 == nullptr){
+		// Очищаем контекст
+		http->clear();
+		// Сообщаем, что событие REST запроса не создано
+		http->log->print("%s", log_t::flag_t::CRITICAL, "REST request event is not created");
+		// Завершаем работу функции
+		return;
+	}
+
+	/*
+	// Получаем объект заголовков
+	struct evkeyvalq * store = evhttp_request_get_output_headers(req2);
+
+	evhttp_add_header(store, "Connection", "close");
+	evhttp_add_header(store, "Host", "2ip.ru");
+	evhttp_add_header(store, "Accept", "*//*");
+	evhttp_add_header(store, "User-Agent", "curl/7.64.1");
+
+	evhttp_make_request(http->evbuf.evcon, req2, EVHTTP_REQ_GET, "/");
+	*/
+
+	http->flg = true;
+
+
+
+
+	string request = "GET / HTTP/1.1\r\n"
+		"Connection: close\r\n"
+		"User-Agent: curl/7.64.1\r\n"
+		"Accept: */*\r\n"
+		"Host: 2ip.ru\r\n\r\n";
+
+	// Если запрос получен
+	if(!request.empty()){
+
+		// Устанавливаем коллбеки
+		bufferevent_setcb(http->evbuf.bev, &readProxy, nullptr, &eventProxy, http);
+		// Очищаем буферы событий при завершении работы
+		bufferevent_flush(http->evbuf.bev, EV_READ | EV_WRITE, BEV_FINISHED);
+		// Активируем буферы событий на чтение и запись
+		bufferevent_enable(http->evbuf.bev, EV_READ | EV_WRITE);
+
+		// Активируем разрешение на запись и чтение
+		bufferevent_enable(http->evbuf.bev, EV_WRITE | EV_READ);
+		// Отправляем серверу сообщение
+		bufferevent_write(http->evbuf.bev, request.data(), request.size());
+	}
+
 };
 
 
