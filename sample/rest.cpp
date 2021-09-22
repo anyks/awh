@@ -46,7 +46,7 @@ int main(int argc, char * argv[]) noexcept {
 	// Устанавливаем адрес сертификата
 	rest.setCA("./ca/cert.pem");
 
-	rest.setProxy("https://B80TWR:uRMhnd@196.17.249.64:8000");
+	rest.setProxy("http://B80TWR:uRMhnd@196.17.249.64:8000");
 
 	// Устанавливаем параметры шифрования
 	// rest.setCrypt("password");

@@ -103,6 +103,20 @@ namespace awh {
 				 */
 				Network() : family(AF_INET), v4({{"0.0.0.0"}, IPV4_RESOLVER}), v6({{"[::0]"}, IPV6_RESOLVER}) {}
 			} net_t;
+			/**
+			 * Socket Структура сокета
+			 */
+			typedef struct Socket {
+				evutil_socket_t fd;          // Файловый дескриптор
+				struct sockaddr_in client;   // Параметры подключения клиента IPv4
+				struct sockaddr_in server;   // Параметры подключения сервера IPv4
+				struct sockaddr_in6 client6; // Параметры подключения клиента IPv6
+				struct sockaddr_in6 server6; // Параметры подключения сервера IPv6
+				/**
+				 * Socket Конструктор
+				 */
+				Socket() : fd(-1), client({}), server({}), client6({}), server6({}) {}
+			} socket_t;
 		public:
 			/**
 			 * Response Структура ответа сервера
@@ -112,14 +126,62 @@ namespace awh {
 				u_short code;                           // Код ответа сервера
 				string mess;                            // Сообщение ответа сервера
 				string body;                            // Тело ответа сервера
-				const Rest * ctx;                       // Контекст родительского объекта
-				struct bufferevent ** bev;              // Буфер событий
 				unordered_map <string, string> headers; // Заголовки сервера
 				/**
 				 * Response Конструктор
 				 */
-				Response() : ok(false), code(500), mess(""), body(""), ctx(nullptr), bev(nullptr), headers({}) {}
+				Response() : ok(false), code(500), mess(""), body(""), headers({}) {}
 			} res_t;
+		private:
+			/**
+			 * Request Структура запроса к серверу
+			 */
+			typedef struct Request {
+				evhttp_cmd_type method;                         // Метод выполняемого запроса
+				const string * body;                            // Тело запроса (если требуется)
+				const uri_t::url_t * uri;                       // Параметры запроса
+				const unordered_map <string, string> * headers; // Список заголовков запроса
+			public:
+				/**
+				 * operator= Оператор установки параметров запроса
+				 * @param uri объект параметра запроса
+				 * @return    ссылка на контекст объекта
+				 */
+				Request & operator=(const uri_t::url_t * uri) noexcept {
+					// Устанавливаем текст сообщения
+					if(uri != nullptr){
+						// Устанавливаем параметры запроса
+						this->uri = uri;
+						// Сбрасываем данные тела запроса
+						this->body = nullptr;
+						// Сбрасываем данные заголовков запроса
+						this->headers = nullptr;
+						// Сбрасываем метод выполняемого запроса
+						this->method = EVHTTP_REQ_GET;
+					}
+					// Выводим контекст текущего объекта
+					return (* this);
+				}
+			public:
+				/**
+				 * Request Конструктор
+				 */
+				Request() : method(EVHTTP_REQ_GET), body(nullptr), uri(nullptr), headers(nullptr) {}
+			} req_t;
+			/**
+			 * EvBuffer Структура работы с BufferEvent
+			 */
+			typedef struct EvBuffer {
+				struct evdns_base * dns;          // База событий DNS
+				struct bufferevent * bev;         // Буфер событий
+				struct event_base * base;         // База событий
+				struct evhttp_connection * evcon; // Событие подключения
+				/**
+				 * EvBuffer Конструктор
+				 */
+				EvBuffer() : dns(nullptr), bev(nullptr), base(nullptr), evcon(nullptr) {}
+			} evbuf_t;
+		public:
 			/**
 			 * Формат сжатия тела запроса
 			 */
@@ -141,47 +203,34 @@ namespace awh {
 				ACCEPTLANGUAGE // Accept-Language
 			};
 		private:
+			// Параметры запроса
+			req_t req;
+			// Параметры ответа
+			res_t res;
 			// Сетевые параметры
 			net_t net;
+			// Параметры BufferEvent
+			evbuf_t evbuf;
 			// Параметры постоянного подключения
 			alive_t alive;
 		private:
 			// Буфер событий SSL
 			ssl_t::ctx_t sslctx;
-
-			ssl_t::ctx_t sslctx2;
-
 			// Данные прокси-сервера
 			uri_t::url_t proxyUrl;
 			// Тип выбранного прокси-сервера
 			proxy_t proxyType = proxy_t::NONE;
 		private:
+			// Сокет сервера для подключения
+			evutil_socket_t fd = -1;
 			// Флаги работы с сжатыми данными
 			zip_t zip = zip_t::GZIP;
 			// User-Agent для HTTP запроса
 			string userAgent = USER_AGENT;
 		private:
-			// База событий DNS
-			struct evdns_base * dns = nullptr;
 
-			struct evdns_base * dns2 = nullptr;
+			bool flg = false;
 
-			// Буфер событий
-			struct bufferevent * bev = nullptr;
-
-			struct bufferevent * bev2 = nullptr;
-
-			struct evhttp_request * req = nullptr;
-
-			struct evhttp_request * req2 = nullptr;
-
-			// База событий
-			struct event_base * base = nullptr;
-			// Событие подключения
-			struct evhttp_connection * evcon = nullptr;
-
-			struct evhttp_connection * evcon2 = nullptr;
-		private:
 			// Флаг шифрования сообщений
 			bool crypt = false;
 			// Флаг передачи тела запроса чанками
@@ -191,12 +240,17 @@ namespace awh {
 			// Флаг проведённой попытки выполнения авторизации
 			mutable bool checkAuth = false;
 		private:
+			// Создаём объект DNS резолвера
+			dns_t * dns = nullptr;
 			// Создаём объект для работы с SSL
 			ssl_t * ssl = nullptr;
 			// Создаём объект для работы с авторизацией
 			auth_t * auth = nullptr;
 			// Создаём объект для компрессии-декомпрессии данных
 			hash_t * hash = nullptr;
+		private:
+			// Создаём объект данных вебсокета
+			const char * hdt = nullptr;
 		private:
 			// Создаём объект фреймворка
 			const fmk_t * fmk = nullptr;
@@ -220,6 +274,45 @@ namespace awh {
 				 */
 				void winSocketClean() const noexcept;
 			#endif
+		private:
+			/**
+			 * requestProxy Метод выполнения HTTP запроса к прокси-серверу
+			 */
+			void requestProxy() noexcept;
+			/**
+			 * connectProxy Метод создания подключения к удаленному прокси-серверу
+			 * @return результат подключения
+			 */
+			const bool connectProxy() noexcept;
+			/**
+			 * socket Метод создания сокета
+			 * @param ip     адрес для которого нужно создать сокет
+			 * @param port   порт сервера для которого нужно создать сокет
+			 * @param family тип протокола интернета AF_INET или AF_INET6
+			 * @return       параметры подключения к серверу
+			 */
+			const socket_t socket(const string & ip, const u_int port, const int family = AF_INET) const noexcept;
+		private:
+			/**
+			 * readProxy Метод чтения данных с сокета прокси-сервера
+			 * @param bev буфер события
+			 * @param ctx передаваемый контекст
+			 */
+			static void readProxy(struct bufferevent * bev, void * ctx);
+			/**
+			 * eventProxy Метод обработка входящих событий с прокси-сервера
+			 * @param bev    буфер события
+			 * @param events произошедшее событие
+			 * @param ctx    передаваемый контекст
+			 */
+			static void eventProxy(struct bufferevent * bev, const short events, void * ctx) noexcept;
+		private:
+			/**
+			 * resolve Метод выполняющая резолвинг хоста сервера
+			 * @param url      параметры хоста, для которого нужно получить IP адрес
+			 * @param callback функция обратного вызова
+			 */
+			void resolve(const uri_t::url_t & url, function <void (const string &)> callback) noexcept;
 		public:
 			/**
 			 * GET Метод REST запроса
@@ -356,26 +449,21 @@ namespace awh {
 			 */
 			static void proxyFn(struct evhttp_request * req, void * ctx);
 
+
+
+			void PROXY2() noexcept;
+
+
 			/**
 			 * PROXY Метод выполнения REST запроса на сервер через прокси-сервер
-			 * @param url параметры адреса запроса
-			 * @param type тип REST запроса
-			 * @param headers список заголовков для REST запроса
-			 * @param body    телоо REST запроса
-			 * @return        результат REST запроса
 			 */
-			const res_t PROXY(const uri_t::url_t & url, evhttp_cmd_type type = EVHTTP_REQ_GET, const unordered_map <string, string> & headers = {}, const string & body = {}) noexcept;
+			void PROXY() noexcept;
 
 
 			/**
 			 * REST Метод выполнения REST запроса на сервер
-			 * @param url     параметры адреса запроса
-			 * @param type    тип REST запроса
-			 * @param headers список заголовков для REST запроса
-			 * @param body    телоо REST запроса
-			 * @return        результат REST запроса
 			 */
-			const res_t REST(const uri_t::url_t & url, evhttp_cmd_type type = EVHTTP_REQ_GET, const unordered_map <string, string> & headers = {}, const string & body = {}) noexcept;
+			void REST() noexcept;
 		public:
 			/**
 			 * setZip Метод активации работы с сжатым контентом

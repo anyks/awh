@@ -182,7 +182,7 @@ void awh::Client::extraction(const vector <char> & buffer, const bool utf8) cons
 	}
 }
 /**
- * connect Метод создания сокета для подключения к удаленному серверу
+ * connect Метод создания подключения к удаленному серверу
  * @return результат подключения
  */
 const bool awh::Client::connect() noexcept {
@@ -1233,7 +1233,7 @@ awh::Client::Client(const fmk_t * fmk, const log_t * log, const uri_t * uri, con
 		this->log = log;
 		this->uri = uri;
 		this->nwk = nwk;
-		// Резервируем память для работы с данными WebSocket
+		// Резервируем память для работы с буфером данных WebSocket
 		this->wdt = new char[BUFFER_CHUNK];
 		// Создаём объект для работы с компрессией/декомпрессией
 		this->hash = new hash_t(this->fmk, this->log);
@@ -1267,7 +1267,7 @@ awh::Client::~Client() noexcept {
 	if(this->hash != nullptr) delete this->hash;
 	// Если объект для работы с фреймом WebSocket создан
 	if(this->frame != nullptr) delete this->frame;
-	// Если объект данных WebSocket создан
+	// Если буфер данных WebSocket создан
 	if(this->wdt != nullptr) delete [] this->wdt;
 	// Если - это Windows
 	#if defined(_WIN32) || defined(_WIN64)

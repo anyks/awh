@@ -258,7 +258,7 @@ awh::ASSL::ctx_t awh::ASSL::init(const uri_t::url_t & url) noexcept {
 	// Результат работы функции
 	ctx_t result;
 	// Если объект фреймворка существует
-	if((this->fmk != nullptr) && !url.domain.empty() && ((url.schema.compare("https") == 0) || (url.schema.compare("wss") == 0))){
+	if((this->fmk != nullptr) && (!url.domain.empty() || !url.ip.empty()) && ((url.schema.compare("https") == 0) || (url.schema.compare("wss") == 0))){
 		// Активируем рандомный генератор
 		if(RAND_poll() == 0){
 			// Выводим в лог сообщение
@@ -493,8 +493,16 @@ awh::ASSL::ctx_t awh::ASSL::init(const uri_t::url_t & url) noexcept {
 			// Устанавливаем имя хоста для SNI расширения
 			if(!url.domain.empty()) SSL_set_tlsext_host_name(result.ssl, url.domain.c_str());
 		#endif
+
+		cout << " $$$$$$$$$$$$$ SSL1 " << url.domain << " == " << url.schema << endl;
+
+		// SSL_connect(result.ssl);
+
 		// Проверяем рукопожатие
-		if(SSL_do_handshake(result.ssl) <= 0) {
+		if(SSL_do_handshake(result.ssl) <= 0){
+
+			cout << " $$$$$$$$$$$$$ SSL2 " << endl;
+
 			// Выполняем проверку рукопожатия
 			const long verify = SSL_get_verify_result(result.ssl);
 			// Если рукопожатие не выполнено
@@ -504,6 +512,8 @@ awh::ASSL::ctx_t awh::ASSL::init(const uri_t::url_t & url) noexcept {
 				// Выходим
 				return result;
 			}
+
+			cout << " $$$$$$$$$$$$$ SSL3 " << endl;
 		}
 		// Устанавливаем флаг, удачного создания SSL объекта
 		result.mode = true;

@@ -229,7 +229,7 @@ namespace awh {
 			void extraction(const vector <char> & buffer, const bool utf8) const noexcept;
 		private:
 			/**
-			 * connect Метод создания сокета для подключения к удаленному серверу
+			 * connect Метод создания подключения к удаленному серверу
 			 * @return результат подключения
 			 */
 			const bool connect() noexcept;
