@@ -691,7 +691,7 @@ void awh::Rest::makeHeaders(struct evhttp_request * req, const uri_t::url_t & ur
 		// Устанавливаем Host если не передан
 		if(availableHeaders.count(header_t::HOST) < 1)
 			// Устанавливаем заголовок запроса
-			evhttp_add_header(store, "Host", url.domain.c_str());
+			evhttp_add_header(store, "Host", (!url.domain.empty() ? url.domain : url.ip).c_str());
 		// Устанавливаем Origin если не передан
 		if(availableHeaders.count(header_t::ORIGIN) < 1)
 			// Устанавливаем заголовок запроса
@@ -798,6 +798,42 @@ typedef struct ProxyData {
 } proxyData_t;
 
 /**
+ * write Метод записи данных в сокет сервера
+ * @param bev буфер события
+ * @param ctx передаваемый объект
+ */
+/*
+static void read(struct bufferevent * bev, void * ctx) noexcept {
+
+}
+*/
+
+/**
+ * write Метод записи данных в сокет сервера
+ * @param bev буфер события
+ * @param ctx передаваемый объект
+ */
+/*
+static void write(struct bufferevent * bev, void * ctx) noexcept {
+	// Если подключение передано
+	if(ctx != nullptr){
+		// Получаем буферы входящих данных
+		struct evbuffer * output = bufferevent_get_output(bev);
+		// Получаем размер входящих данных
+		size_t size = evbuffer_get_length(output);
+
+		char * buffer = new char[size];
+		// Копируем в буфер полученные данные
+		evbuffer_copyout(output, buffer, size);
+
+		cout << " @@@@@@@@@@@2 " << string(buffer, size) << " == " << size << endl;
+
+		delete [] buffer;
+	}
+}
+*/
+
+/**
  * proxy Функция вывода результата получения данных
  * @param req объект REST запроса
  * @param ctx контекст родительского объекта
@@ -808,6 +844,7 @@ void awh::Rest::proxyFn(struct evhttp_request * req, void * ctx){
 
 	Rest * http = const_cast <Rest *> (obj->response->ctx);
 
+	cout << " !!!!!!!!!!! " << evhttp_request_get_response_code(req) << endl;
 
 	// Получаем объект заголовков
 	struct evkeyvalq * headers = evhttp_request_get_input_headers(req);
@@ -816,11 +853,12 @@ void awh::Rest::proxyFn(struct evhttp_request * req, void * ctx){
 	// Перебираем все полученные заголовки
 	while(header){
 		// Собираем все доступные заголовки
-		cout << " ************** " << header->key << " == " << header->value << " == " << evhttp_request_get_response_code(req) << endl;
+		cout << " **************!8 " << header->key << " == " << header->value << " == " << evhttp_request_get_response_code(req) << endl;
 		// Переходим к следующему заголовку
 		header = header->next.tqe_next;
 	}
 
+	/*
 	// Если объект DNS существует
 	if(http->dns != nullptr){
 		// Удаляем базу dns
@@ -829,7 +867,7 @@ void awh::Rest::proxyFn(struct evhttp_request * req, void * ctx){
 		http->dns = nullptr;
 	}
 
-	evutil_socket_t fd = -1;
+	
 	// Создаём DNS резолвер
 	dns_t resolver(http->fmk, http->log, http->nwk);
 	// Определяем тип сети
@@ -840,8 +878,6 @@ void awh::Rest::proxyFn(struct evhttp_request * req, void * ctx){
 			resolver.setNameServers(http->net.v4.second);
 			// Создаём базу событий DNS
 			http->dns = resolver.init(obj->url->domain, AF_INET, http->base);
-			// Создаем сокет подключения
-			fd = ::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 		} break;
 		// Если - это IPv6
 		case AF_INET6: {
@@ -849,45 +885,25 @@ void awh::Rest::proxyFn(struct evhttp_request * req, void * ctx){
 			resolver.setNameServers(http->net.v6.second);
 			// Создаём базу событий DNS
 			http->dns = resolver.init(obj->url->domain, AF_INET6, http->base);
-			// Создаем сокет подключения
-			fd = ::socket(AF_INET6, SOCK_STREAM, IPPROTO_TCP);
 		} break;
 	}
-	// Если файловый дескриптор создан
-	if(fd > -1){
-		// Если - это Unix
-		#if !defined(_WIN32) && !defined(_WIN64)
-			// Выполняем игнорирование сигнала неверной инструкции процессора
-			sockets_t::noSigill(http->log);
-			// Устанавливаем разрешение на повторное использование сокета
-			sockets_t::reuseable(fd, http->log);
-			// Отключаем сигнал записи в оборванное подключение
-			sockets_t::noSigpipe(fd, http->log);
-			// Отключаем алгоритм Нейгла для сервера и клиента
-			sockets_t::tcpNodelay(fd, http->log);
-			// Разблокируем сокет
-			sockets_t::nonBlocking(fd, http->log);
-			// Активируем keepalive
-			sockets_t::keepAlive(fd, http->alive.keepcnt, http->alive.keepidle, http->alive.keepintvl, http->log);
-		// Если - это Windows
-		#else
-			// Выполняем инициализацию WinSock
-			http->winSocketInit();
-			// Переводим сокет в блокирующий режим
-			// sockets_t::blocking(fd);
-			evutil_make_socket_nonblocking(fd);
-			// evutil_make_socket_closeonexec(fd);
-			evutil_make_listen_socket_reuseable(fd);
-		#endif
-	}
+	*/
+
+	
+	// Получаем файловый дескриптор
+	// struct evbuffer * output = evhttp_request_get_output_buffer(req);
+	// struct bufferevent * bev = evhttp_connection_get_bufferevent(struct evhttp_connection *evcon)
+	const evutil_socket_t fd = bufferevent_getfd(http->bev);
+
+	/*
 	// Выполняем получение контекста сертификата
-	http->sslctx2 = http->ssl->init(* obj->url);
+	// http->sslctx2 = http->ssl->init(* obj->url);
 	// Если защищённое соединение не нужно, создаём буфер событий
 	if(!http->sslctx2.mode) http->bev2 = bufferevent_socket_new(http->base, fd, BEV_OPT_THREADSAFE | BEV_OPT_DEFER_CALLBACKS);
 	// Если требуется защищённое соединение
 	else {
 		// Создаём буфер событий в защищённом подключении
-		http->bev2 = bufferevent_openssl_socket_new(http->base, fd, http->sslctx2.ssl, BUFFEREVENT_SSL_CONNECTING, BEV_OPT_THREADSAFE | BEV_OPT_DEFER_CALLBACKS);
+		http->bev2 = bufferevent_openssl_socket_new(http->base, fd, http->sslctx.ssl, BUFFEREVENT_SSL_CONNECTING, BEV_OPT_THREADSAFE | BEV_OPT_DEFER_CALLBACKS);
 		// Разрешаем грязное отключение
 		bufferevent_openssl_set_allow_dirty_shutdown(http->bev2, 1);
 	}
@@ -900,8 +916,10 @@ void awh::Rest::proxyFn(struct evhttp_request * req, void * ctx){
 		// Завершаем работу функции
 		return;
 	}
+	*/
+
 	// Создаём событие подключения
-	http->evcon2 = evhttp_connection_base_bufferevent_new(http->base, http->dns, http->bev2, (!obj->url->ip.empty() ? obj->url->ip.c_str() : obj->url->domain.c_str()), obj->url->port);
+	http->evcon2 = evhttp_connection_base_bufferevent_new(http->base, http->dns, http->bev, (!obj->url->ip.empty() ? obj->url->ip.c_str() : obj->url->domain.c_str()), obj->url->port);
 	// Если событие подключения не создан
 	if(http->evcon2 == nullptr){
 		// Очищаем контекст
@@ -931,7 +949,58 @@ void awh::Rest::proxyFn(struct evhttp_request * req, void * ctx){
 		return;
 	}
 
+	
+	// req = evhttp_request_new(callback, NULL);
 
+	/*
+	// Получаем объект заголовков
+	struct evkeyvalq * store = evhttp_request_get_output_headers(req);
+
+	evhttp_add_header(store, "Connection", "close");
+	evhttp_add_header(store, "Host", (!obj->url->domain.empty() ? obj->url->domain : obj->url->ip).c_str());
+	*/
+
+	// Устанавливаем коллбеки
+	// bufferevent_setcb(http->bev, &read, &write, nullptr, http);
+	// Активируем разрешение на запись и чтение
+	// bufferevent_enable(http->bev, EV_WRITE | EV_READ);
+
+	/*
+	const string request = "GET https://anyks.com HTTP/1.1\r\n"
+							"Connection: close\r\n"
+							"Host: anyks.com\r\n\r\n";
+	
+	
+	// Отправляем серверу сообщение
+	bufferevent_write(http->bev, request.data(), request.size());
+	*/
+	/*
+	struct evbuffer * output = evhttp_request_get_output_buffer(req);
+
+	evbuffer_add_printf(output, "%s", request.c_str());
+
+	// Получаем размер входящих данных
+	size_t size = evbuffer_get_length(output);
+
+	char * buffer = new char[size];
+	// Копируем в буфер полученные данные
+	evbuffer_copyout(output, buffer, size);
+
+	cout << " @@@@@@@@@@@1 " << string(buffer, size) << endl;
+
+	
+
+	evbuffer_write(output, bufferevent_getfd(http->bev));
+
+	delete [] buffer;
+	*/
+
+	// evbuffer_add_vprintf (struct evbuffer *buf, const char *fmt, va_list ap)
+
+	// evhttp_make_request(http->evcon, req, EVHTTP_REQ_GET, http->uri->createUrl(* obj->url).c_str());
+
+
+	
 	cout << " ^^^^^^^^^^^^^^^^^^ " << endl;
 
 	makeHeaders(http->req2, * obj->url, * obj->headers, (void *) http);
@@ -949,6 +1018,7 @@ void awh::Rest::proxyFn(struct evhttp_request * req, void * ctx){
 		// Завершаем работу функции
 		return;
 	}
+	
 };
 
 /**
@@ -973,6 +1043,9 @@ const awh::Rest::res_t awh::Rest::PROXY(const uri_t::url_t & url, evhttp_cmd_typ
 			this->base = event_base_new();
 			// Если база событий создана
 			if(this->base != nullptr){
+
+				cout << " _____________ " << this->proxyUrl.domain << " == " << this->proxyUrl.ip << " === " << this->proxyUrl.port << endl;
+
 				// Сокет подключения
 				evutil_socket_t fd = -1;
 				// Создаём DNS резолвер
@@ -984,7 +1057,7 @@ const awh::Rest::res_t awh::Rest::PROXY(const uri_t::url_t & url, evhttp_cmd_typ
 						// Добавляем список серверов в резолвер
 						resolver.setNameServers(this->net.v4.second);
 						// Создаём базу событий DNS
-						this->dns = resolver.init(this->proxyUrl.domain, AF_INET, this->base);
+						this->dns = resolver.init((!this->proxyUrl.domain.empty() ? this->proxyUrl.domain : this->proxyUrl.ip), AF_INET, this->base);
 						// Создаем сокет подключения
 						fd = ::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 					} break;
@@ -993,7 +1066,7 @@ const awh::Rest::res_t awh::Rest::PROXY(const uri_t::url_t & url, evhttp_cmd_typ
 						// Добавляем список серверов в резолвер
 						resolver.setNameServers(this->net.v6.second);
 						// Создаём базу событий DNS
-						this->dns = resolver.init(this->proxyUrl.domain, AF_INET6, this->base);
+						this->dns = resolver.init((!this->proxyUrl.domain.empty() ? this->proxyUrl.domain : this->proxyUrl.ip), AF_INET6, this->base);
 						// Создаем сокет подключения
 						fd = ::socket(AF_INET6, SOCK_STREAM, IPPROTO_TCP);
 					} break;
@@ -1024,7 +1097,8 @@ const awh::Rest::res_t awh::Rest::PROXY(const uri_t::url_t & url, evhttp_cmd_typ
 						// evutil_make_socket_closeonexec(fd);
 						evutil_make_listen_socket_reuseable(fd);
 					#endif
-				}
+				} else return result;
+
 				// Выполняем получение контекста сертификата
 				this->sslctx = this->ssl->init(this->proxyUrl);
 				// Если защищённое соединение не нужно, создаём буфер событий
@@ -1046,7 +1120,10 @@ const awh::Rest::res_t awh::Rest::PROXY(const uri_t::url_t & url, evhttp_cmd_typ
 					return result;
 				}
 				// Создаём событие подключения
-				this->evcon = evhttp_connection_base_bufferevent_new(this->base, this->dns, this->bev, (!this->proxyUrl.ip.empty() ? this->proxyUrl.ip.c_str() : this->proxyUrl.domain.c_str()), this->proxyUrl.port);
+				// this->evcon = evhttp_connection_base_bufferevent_new(this->base, this->dns, this->bev, (!this->proxyUrl.ip.empty() ? this->proxyUrl.ip.c_str() : this->proxyUrl.domain.c_str()), this->proxyUrl.port);
+
+				this->evcon = evhttp_connection_base_new(this->base, nullptr, this->proxyUrl.ip.c_str(), this->proxyUrl.port);
+
 				// Если событие подключения не создан
 				if(this->evcon == nullptr){
 					// Очищаем контекст
@@ -1089,7 +1166,9 @@ const awh::Rest::res_t awh::Rest::PROXY(const uri_t::url_t & url, evhttp_cmd_typ
 				// Устанавливаем режим подключения к прокси-серверу (длительное подключение)
 				evhttp_add_header(store, "Proxy-Connection", "keep-alive");
 				// Устанавливаем хост запрашиваемого удалённого сервера
-				evhttp_add_header(store, "Host", (!url.domain.empty() ? url.domain : url.ip).c_str());
+				// evhttp_add_header(store, "Host", (!url.domain.empty() ? url.domain : url.ip).c_str());
+				evhttp_add_header(store, "Host", "2ip.ru:443");
+
 
 
 				// Создаём объект для работы с авторизацией
@@ -1115,8 +1194,24 @@ const awh::Rest::res_t awh::Rest::PROXY(const uri_t::url_t & url, evhttp_cmd_typ
 					evhttp_add_header(store, "Proxy-Authorization", authHeader.c_str());
 				}
 
+
+
+
+				// Получаем первый заголовок
+				struct evkeyval * header = store->tqh_first;
+				// Перебираем все полученные заголовки
+				while(header){
+					// Собираем все доступные заголовки
+					cout << " **************11 " << header->key << " == " << header->value << endl;
+					// Переходим к следующему заголовку
+					header = header->next.tqe_next;
+				}
+
+				// cout << " **************12 " << this->uri->createUrl(url) << endl;
+
+
 				// Выполняем подключение к прокси-серверу
-				const int request = evhttp_make_request(evcon, this->req, EVHTTP_REQ_CONNECT, this->uri->createUrl(url).c_str());
+				const int request = evhttp_make_request(this->evcon, this->req, EVHTTP_REQ_CONNECT, "2ip.ru:443"); //this->uri->createUrl(url).c_str());
 				// Если запрос не выполнен
 				if(request != 0){
 					// Очищаем контекст
@@ -1273,7 +1368,7 @@ const awh::Rest::res_t awh::Rest::REST(const uri_t::url_t & url, evhttp_cmd_type
 						// Добавляем список серверов в резолвер
 						resolver.setNameServers(this->net.v4.second);
 						// Создаём базу событий DNS
-						this->dns = resolver.init(url.domain, AF_INET, this->base);
+						this->dns = resolver.init((!url.domain.empty() ? url.domain : url.ip), AF_INET, this->base);
 						// Создаем сокет подключения
 						fd = ::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 					} break;
@@ -1282,7 +1377,7 @@ const awh::Rest::res_t awh::Rest::REST(const uri_t::url_t & url, evhttp_cmd_type
 						// Добавляем список серверов в резолвер
 						resolver.setNameServers(this->net.v6.second);
 						// Создаём базу событий DNS
-						this->dns = resolver.init(url.domain, AF_INET6, this->base);
+						this->dns = resolver.init((!url.domain.empty() ? url.domain : url.ip), AF_INET6, this->base);
 						// Создаем сокет подключения
 						fd = ::socket(AF_INET6, SOCK_STREAM, IPPROTO_TCP);
 					} break;
@@ -1313,7 +1408,9 @@ const awh::Rest::res_t awh::Rest::REST(const uri_t::url_t & url, evhttp_cmd_type
 						// evutil_make_socket_closeonexec(fd);
 						evutil_make_listen_socket_reuseable(fd);
 					#endif
-				}
+				} else return result;
+
+
 				// Выполняем получение контекста сертификата
 				this->sslctx = this->ssl->init(url);
 				// Если защищённое соединение не нужно, создаём буфер событий
