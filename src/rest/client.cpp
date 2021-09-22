@@ -1761,18 +1761,32 @@ void awh::Rest::proxyFn(struct evhttp_request * req, void * ctx){
 		return;
 	}
 
+
+	http->evbuf.evcon->bufev = http->evbuf.bev;
+
+	// evhttp_connection_get_bufferevent(http->evbuf.evcon) = move(http->evbuf.bev);
+
 	/*
+	// Получаем буфер данных сервера
+	struct evbuffer * output = bufferevent_get_output(bev);
+	struct evbuffer * input = bufferevent_get_input(http->evbuf.bev);
+	// Выводим ответ сервера
+	evbuffer_add_buffer(output, input);
+	*/
+
+	// bufferevent_setfd(http->evbuf.evcon->bufev, bufferevent_getfd(http->evbuf.bev));
+
 	// Получаем объект заголовков
 	struct evkeyvalq * store = evhttp_request_get_output_headers(req2);
 
 	evhttp_add_header(store, "Connection", "close");
 	evhttp_add_header(store, "Host", "2ip.ru");
-	evhttp_add_header(store, "Accept", "*//*");
+	evhttp_add_header(store, "Accept", "*/*");
 	evhttp_add_header(store, "User-Agent", "curl/7.64.1");
 
 	evhttp_make_request(http->evbuf.evcon, req2, EVHTTP_REQ_GET, "/");
-	*/
 
+	/*
 	http->flg = true;
 
 
@@ -1781,7 +1795,7 @@ void awh::Rest::proxyFn(struct evhttp_request * req, void * ctx){
 	string request = "GET / HTTP/1.1\r\n"
 		"Connection: close\r\n"
 		"User-Agent: curl/7.64.1\r\n"
-		"Accept: */*\r\n"
+		"Accept: *//*\r\n"
 		"Host: 2ip.ru\r\n\r\n";
 
 	// Если запрос получен
@@ -1799,6 +1813,7 @@ void awh::Rest::proxyFn(struct evhttp_request * req, void * ctx){
 		// Отправляем серверу сообщение
 		bufferevent_write(http->evbuf.bev, request.data(), request.size());
 	}
+	*/
 
 };
 
