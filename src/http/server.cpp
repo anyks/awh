@@ -15,7 +15,7 @@
  */
 void awh::HServer::updateExtensions() noexcept {
 	// Отключаем сжатие ответа с сервера
-	this->zip = zip_t::NONE;
+	this->compress = compress_t::NONE;
 	// Список доступных расширений
 	vector <wstring> extensions;
 	// Выполняем поиск расширений
@@ -35,11 +35,11 @@ void awh::HServer::updateExtensions() noexcept {
 				// Если получены заголовки требующие сжимать передаваемые фреймы методом Deflate
 				else if((val.compare(L"permessage-deflate") == 0) || (val.compare(L"perframe-deflate") == 0))
 					// Устанавливаем требование выполнять компрессию полезной нагрузки
-					this->zip = zip_t::DEFLATE;
+					this->compress = compress_t::DEFLATE;
 				// Если получены заголовки требующие сжимать передаваемые фреймы методом GZip
 				else if((val.compare(L"permessage-gzip") == 0) || (val.compare(L"perframe-gzip") == 0))
 					// Устанавливаем требование выполнять компрессию полезной нагрузки
-					this->zip = zip_t::GZIP;
+					this->compress = compress_t::GZIP;
 				// Если размер скользящего окна для клиента получен
 				else if(val.find(L"client_max_window_bits=") != wstring::npos)
 					// Устанавливаем размер скользящего окна
@@ -73,10 +73,10 @@ void awh::HServer::updateSubProtocol() noexcept {
 	}
 }
 /**
- * checkKey Метод проверки ключа сервера
+ * checkKeyWebSocket Метод проверки ключа клиента WebSocket
  * @return результат проверки
  */
-bool awh::HServer::checkKey() noexcept {
+bool awh::HServer::checkKeyWebSocket() noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Получаем параметры ключа клиента
@@ -84,15 +84,15 @@ bool awh::HServer::checkKey() noexcept {
 	// Если параметры авторизации найдены
 	if((result = (it != this->headers.end())))
 		// Устанавливаем ключ клиента
-		this->clientKey = it->second;
+		this->keyWebSocket = it->second;
 	// Выводим результат
 	return result;
 }
 /**
- * checkVersion Метод проверки на версию протокола WebSocket
+ * checkVerWebSocket Метод проверки на версию протокола WebSocket
  * @return результат проверки соответствия
  */
-bool awh::HServer::checkVersion() noexcept {
+bool awh::HServer::checkVerWebSocket() noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Получаем список версий протоколов

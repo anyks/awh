@@ -1722,9 +1722,9 @@ void awh::Rest::proxyFn(struct evhttp_request * req, void * ctx){
 
 	// Разблокируем базу событий
 	// event_base_loopbreak(bufferevent_get_base(http->bev));
-	// 
-	// 
-	
+	//
+	//
+
 
 	// Выполняем получение контекста сертификата
 	http->sslctx = http->ssl->init(* http->req.uri);

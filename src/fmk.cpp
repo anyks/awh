@@ -169,6 +169,48 @@ string awh::Framework::convert(const wstring & str) const noexcept {
 	return result;
 }
 /**
+ * decToHex Метод конвертации 10-го числа в 16-е
+ * @param number число для конвертации
+ * @return       результат конвертации
+ */
+string awh::Framework::decToHex(const size_t number) const noexcept {
+	// Результат работы функции
+	string result = "0";
+	// Если число передано
+	if(number > 0){
+		// Создаём поток для конвертации
+		stringstream stream;
+		// Записываем число в поток
+		stream << hex << number;
+		// Получаем результат в верхнем регистре
+		result = this->toUpper(stream.str());
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * hexToDec Метод конвертации 16-го числа в 10-е
+ * @param number число для конвертации
+ * @return       результат конвертации
+ */
+size_t awh::Framework::hexToDec(const string & number) const noexcept {
+	// Результат работы функции
+	size_t result = 0;
+	// Если 16-е число передано
+	if(!number.empty()){
+		// Создаём поток для конвертации
+		stringstream stream;
+		// Записываем число в поток
+		stream << hex << number;
+		// Получаем результат
+		stream >> result;
+		// Выполняем конвертацию числа
+		// result = stoull(number, nullptr, 16);
+	}
+	// Выводим результат
+	return result;
+}
+/**
  * noexp Метод перевода числа в безэкспоненциальную форму
  * @param number число для перевода
  * @param step   размер шага после запятой

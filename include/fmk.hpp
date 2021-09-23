@@ -184,6 +184,19 @@ namespace awh {
 			string convert(const wstring & str) const noexcept;
 		public:
 			/**
+			 * decToHex Метод конвертации 10-го числа в 16-е
+			 * @param number число для конвертации
+			 * @return       результат конвертации
+			 */
+			string decToHex(const size_t number) const noexcept;
+			/**
+			 * hexToDec Метод конвертации 16-го числа в 10-е
+			 * @param number число для конвертации
+			 * @return       результат конвертации
+			 */
+			size_t hexToDec(const string & number) const noexcept;
+		public:
+			/**
 			 * noexp Метод перевода числа в безэкспоненциальную форму
 			 * @param number число для перевода
 			 * @param step   размер шага после запятой

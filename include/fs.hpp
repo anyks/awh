@@ -661,7 +661,7 @@ namespace awh {
 										// Если это конец файла, корректируем размер последнего байта
 										if(length == 0) length = 1;
 										// Если длина слова получена, выводим полученную строку
-										callback(string((char *) buffer + offset, length), size);
+										callback(realPath(string((char *) buffer + offset, length)), size);
 										// Выполняем смещение
 										offset = (i + 1);
 									}
@@ -717,7 +717,7 @@ namespace awh {
 							// Переходим по всему буферу
 							for(uintmax_t i = 0; i < size; i++){
 								// Получаем значение текущей буквы
-								letter = reinterpret_cast <const char *> (data)[i];
+								letter = data[i];
 								// Если текущая буква является переносом строк
 								if((i > 0) && ((letter == '\n') || (i == (size - 1)))){
 									// Если предыдущая буква была возвратом каретки, уменьшаем длину строки
@@ -725,7 +725,7 @@ namespace awh {
 									// Если это конец файла, корректируем размер последнего байта
 									if(length == 0) length = 1;
 									// Если длина слова получена, выводим полученную строку
-									callback(string((char *) data + offset, length), size);
+									callback(realPath(string(data + offset, length)), size);
 									// Выполняем смещение
 									offset = (i + 1);
 								}
@@ -733,7 +733,7 @@ namespace awh {
 								old = letter;
 							}
 							// Если данные не все прочитаны, выводим как есть
-							if((offset == 0) && (size > 0)) callback(realPath(string((char *) data, size)), size);
+							if((offset == 0) && (size > 0)) callback(realPath(string(data, size)), size);
 							// Очищаем буфер данных
 							buffer.clear();
 							// Освобождаем выделенную память

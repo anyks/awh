@@ -40,16 +40,15 @@ namespace awh {
 			void updateSubProtocol() noexcept;
 		private:
 			/**
-			 * checkKey Метод проверки ключа сервера
+			 * checkKeyWebSocket Метод проверки ключа сервера WebSocket
 			 * @return результат проверки
 			 */
-			bool checkKey() noexcept;
+			bool checkKeyWebSocket() noexcept;
 			/**
-			 * checkVersion Метод проверки на версию протокола WebSocket
+			 * checkVerWebSocket Метод проверки на версию протокола WebSocket
 			 * @return результат проверки соответствия
 			 */
-			bool checkVersion() noexcept;
-		private:
+			bool checkVerWebSocket() noexcept;
 			/**
 			 * checkAuthenticate Метод проверки авторизации
 			 * @return результат проверки авторизации

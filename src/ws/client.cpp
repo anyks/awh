@@ -69,9 +69,9 @@ void awh::Client::request() noexcept {
 		// Генерируем URL адрес запроса
 		const string & origin = this->uri->createOrigin(url);
 		// Устанавливаем Origin запроса
-		this->http->setOrigin(origin);
+		this->http->addHeader("Origin", origin);
 		// Получаем данные REST запроса
-		const auto & request = this->http->restRequest(this->zip, this->crypt);
+		const auto & request = this->http->restRequest(this->compress, this->crypt);
 		// Если запрос получен
 		if(!request.empty()){
 			// Активируем разрешение на запись и чтение
@@ -125,13 +125,13 @@ void awh::Client::extraction(const vector <char> & buffer, const bool utf8) cons
 	// Если буфер данных передан
 	if(!buffer.empty() && !this->freeze && (this->messageFn != nullptr)){
 		// Если данные пришли в сжатом виде
-		if(this->compressed && (this->zip != http_t::zip_t::NONE)){
+		if(this->compressed && (this->compress != http_t::compress_t::NONE)){
 			// Декомпрессионные данные
 			vector <char> data;
 			// Определяем метод компрессии
-			switch((u_short) this->zip){
+			switch((u_short) this->compress){
 				// Если метод компрессии выбран Deflate
-				case (u_short) http_t::zip_t::DEFLATE: {
+				case (u_short) http_t::compress_t::DEFLATE: {
 					// Устанавливаем размер скользящего окна
 					this->hash->setWbit(this->http->getWbitServer());
 					// Добавляем хвост в полученные данные
@@ -140,7 +140,7 @@ void awh::Client::extraction(const vector <char> & buffer, const bool utf8) cons
 					data = this->hash->decompress(buffer.data(), buffer.size());
 				} break;
 				// Если метод компрессии выбран GZip
-				case (u_short) http_t::zip_t::GZIP:
+				case (u_short) http_t::compress_t::GZIP:
 					// Выполняем декомпрессию полученных данных
 					data = this->hash->decompressGzip(buffer.data(), buffer.size());
 				break;
@@ -459,6 +459,7 @@ void awh::Client::read(struct bufferevent * bev, void * ctx){
 				size_t count = 0;
 				// Считываем данные из буфера до тех пор пока можешь считать
 				do {
+					/*
 					// Считываем строки из буфера
 					const char * str = evbuffer_readln(input, &count, EVBUFFER_EOL_CRLF_STRICT);
 					// Если данные не добавлены
@@ -470,7 +471,7 @@ void awh::Client::read(struct bufferevent * bev, void * ctx){
 							// Если авторизация не выполнена
 							case (u_short) http_t::stath_t::FAULT: {
 								// Получаем код сообщения
-								const u_short code = ws->http->getCode();
+								const u_short code = ws->http->getQuery().code;
 								// Создаём сообщение
 								mess_t mess(code, ws->http->getMessage(code));
 								// Выводим сообщение
@@ -511,6 +512,7 @@ void awh::Client::read(struct bufferevent * bev, void * ctx){
 					}
 					// Если данные не найдены тогда выходим
 					if(str == nullptr) break;
+					*/
 				// Если заголовки существуют
 				} while(count > 0);
 			// Если рукопожатие выполнено
@@ -557,7 +559,7 @@ void awh::Client::read(struct bufferevent * bev, void * ctx){
 							goto Reconnect;
 						}
 						// Если флаг компресси включён а данные пришли не сжатые
-						if(head.rsv[0] && ((ws->zip == http_t::zip_t::NONE) ||
+						if(head.rsv[0] && ((ws->compress == http_t::compress_t::NONE) ||
 						(head.optcode == frame_t::opcode_t::CONTINUATION) ||
 						(((u_short) head.optcode > 0x07) && ((u_short) head.optcode < 0x0b)))){
 							// Создаём сообщение
@@ -595,7 +597,7 @@ void awh::Client::read(struct bufferevent * bev, void * ctx){
 								// Запоминаем полученный опкод
 								ws->opcode = head.optcode;
 								// Запоминаем, что данные пришли сжатыми
-								ws->compressed = (head.rsv[0] && (ws->zip != http_t::zip_t::NONE));
+								ws->compressed = (head.rsv[0] && (ws->compress != http_t::compress_t::NONE));
 								// Если список фрагментированных сообщений существует
 								if(!ws->fragmes.empty()){
 									// Создаём сообщение
@@ -811,14 +813,14 @@ void awh::Client::resolve(const uri_t::url_t & url, function <void (const string
 }
 /**
  * init Метод инициализации WebSocket клиента
- * @param url адрес WebSocket сервера
- * @param zip метод сжатия передаваемых сообщений
+ * @param url      адрес WebSocket сервера
+ * @param compress метод сжатия передаваемых сообщений
  */
-void awh::Client::init(const string & url, const http_t::zip_t zip){
+void awh::Client::init(const string & url, const http_t::compress_t compress){
 	// Если адрес сервера передан
 	if(!url.empty()){
 		// Устанавливаем флаг активации сжатия данных
-		this->zip = zip;
+		this->compress = compress;
 		// Выполняем установку URL адреса сервера WebSocket
 		this->url = this->uri->parseUrl(url);
 	}
@@ -875,7 +877,7 @@ void awh::Client::send(const char * message, const size_t size, const bool utf8)
 			// Выполняем маскировку сообщения
 			head.mask = true;
 			// Указываем, что сообщение передаётся в сжатом виде
-			head.rsv[0] = (this->zip != http_t::zip_t::NONE);
+			head.rsv[0] = (this->compress != http_t::compress_t::NONE);
 			// Устанавливаем опкод сообщения
 			head.optcode = (utf8 ? frame_t::opcode_t::TEXT : frame_t::opcode_t::BINARY);
 			// Если нужно производить шифрование
@@ -900,13 +902,13 @@ void awh::Client::send(const char * message, const size_t size, const bool utf8)
 				// Если все данные переданы
 				if((message != nullptr) && (size > 0)){
 					// Если необходимо сжимать сообщение перед отправкой
-					if(this->zip != http_t::zip_t::NONE){
+					if(this->compress != http_t::compress_t::NONE){
 						// Компрессионные данные
 						vector <char> data;
 						// Определяем метод компрессии
-						switch((u_short) this->zip){
+						switch((u_short) this->compress){
 							// Если метод компрессии выбран Deflate
-							case (u_short) http_t::zip_t::DEFLATE: {
+							case (u_short) http_t::compress_t::DEFLATE: {
 								// Устанавливаем размер скользящего окна
 								this->hash->setWbit(this->http->getWbitClient());
 								// Выполняем компрессию полученных данных
@@ -915,7 +917,7 @@ void awh::Client::send(const char * message, const size_t size, const bool utf8)
 								this->hash->rmTail(data);
 							} break;
 							// Если метод компрессии выбран GZip
-							case (u_short) http_t::zip_t::GZIP:
+							case (u_short) http_t::compress_t::GZIP:
 								// Выполняем компрессию полученных данных
 								data = this->hash->compressGzip(message, size);
 							break;
@@ -1145,7 +1147,9 @@ void awh::Client::setFamily(const int family) noexcept {
  */
 void awh::Client::setUserAgent(const string & userAgent) noexcept {
 	// Устанавливаем UserAgent
-	if(!userAgent.empty()) this->http->setUserAgent(userAgent);
+	if(!userAgent.empty())
+		// Устанавливаем User-Agent запроса
+		this->http->addHeader("User-Agent", userAgent);
 }
 /**
  * setUser Метод установки параметров авторизации

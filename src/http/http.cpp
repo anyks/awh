@@ -67,7 +67,7 @@ const string awh::Http::generateHash() const noexcept {
 	// Результат работы функции
 	string result = "";
 	// Если ключ клиента передан
-	if(!this->clientKey.empty()){
+	if(!this->keyWebSocket.empty()){
 		// Создаем контекст
 		SHA_CTX ctx;
 		// Выполняем инициализацию контекста
@@ -75,7 +75,7 @@ const string awh::Http::generateHash() const noexcept {
 		// Массив полученных значений
 		u_char digest[20];
 		// Формируем магический ключ
-		const string text = (this->clientKey + "258EAFA5-E914-47DA-95CA-C5AB0DC85B11");
+		const string text = (this->keyWebSocket + "258EAFA5-E914-47DA-95CA-C5AB0DC85B11");
 		// Выполняем расчет суммы
 		SHA1_Update(&ctx, text.c_str(), text.length());
 		// Копируем полученные данные
@@ -116,22 +116,18 @@ bool awh::Http::checkUpgrade() const noexcept {
  * clear Метод очистки собранных данных
  */
 void awh::Http::clear() noexcept {
-	// Выполняем сброс код ответа сервера
-	this->code = 0;
 	// Выполняем сброс поддерживаемого сабпротокола
-	this->sub = "";
-	// Выполняем сброс сообщения сервера
-	this->message = "";
-	// Выполняем сброс ключа клиента
-	this->clientKey = "";
+	this->sub.clear();
 	// Выполняем сброс поддерживаемых сабпротоколов
 	this->subs.clear();
+	// Выполняем очистку тела HTTP запроса
+	this->body.clear();
 	// Выполняем сброс полученных HTTP заголовков
 	this->headers.clear();
-	// Выполняем сброс метода сжатия сообщений
-	this->zip = zip_t::DEFLATE;
-	// Выполняем сброс версии протокола
-	this->version = HTTP_VERSION;
+	// Выполняем сброс ключа клиента
+	this->keyWebSocket.clear();
+	// Выполняем сброс параметров запроса
+	this->query = query_t();
 	// Выполняем сброс стейта текущего запроса
 	this->state = state_t::QUERY;
 	// Выполняем сброс стейта авторизации
@@ -140,90 +136,337 @@ void awh::Http::clear() noexcept {
 	this->wbitClient = GZIP_MAX_WBITS;
 	// Выполняем сброс размера скользящего окна для сервера
 	this->wbitServer = GZIP_MAX_WBITS;
+	// Выполняем сброс метода сжатия сообщений
+	this->compress = compress_t::DEFLATE;
 }
 /**
- * add Метод добавления данных заголовков
+ * data Метод добавления данных заголовков
  * @param buffer буфер данных с заголовками
  * @param size   размер буфера данных с заголовками
  * @return       результат завершения сбора данных
  */
-bool awh::Http::add(const char * buffer, const size_t size) noexcept {
-	// Результат работы функции
-	bool result = (this->state == state_t::HANDSHAKE);
+void awh::Http::data(const char * buffer, const size_t size) noexcept {
 	// Если рукопожатие не выполнено
-	if(!result){
-		// Если буфер данных передан
-		if((buffer != nullptr) && (size > 0)){
-			// Получаем строку ответа
-			const string data(buffer, size);
+	if((this->state != state_t::HANDSHAKE) && (this->state != state_t::BROKEN)){
+		// Если мы собираем заголовки или стартовый запрос
+		if((this->state == state_t::HEADERS) || (this->state == state_t::QUERY)){
+			// Если все заголовки получены
+			if(strstr(buffer, "\r\n\r\n") != nullptr){
+				// Выполняем чтение полученного буфера
+				readHeader(buffer, size, [this](string data) noexcept {
+					// Определяем статус режима работы
+					switch((u_short) this->state){
+						// Если - это режим ожидания получения запроса
+						case (u_short) state_t::QUERY: {
+							// Выполняем поиск протокола
+							size_t offset = data.find("HTTP/");
+							// Если протокол найден
+							if(offset != string::npos){
+								// Если протокол находится в начае запроса
+								if(offset == 0){
+									// Выполняем поиск разделителя
+									offset = data.find(" ", 5);
+									// Если разделитель найден
+									if(offset != string::npos){
+										// Получаем версию протокол запроса
+										this->query.ver = stod(data.substr(5, offset - 5));
+										// Удаляем лишние символы
+										data.erase(data.begin(), data.begin() + (offset + 1));
+										// Выполняем поиск второго разделителя
+										offset = data.find(" ");
+										// Если пробел получен
+										if(offset != string::npos){
+											// Выполняем смену стейта
+											this->state = state_t::HEADERS;
+											// Получаем сообщение сервера
+											this->query.message = data.substr(offset + 1);
+											// Получаем код ответа
+											this->query.code = stoi(data.substr(0, offset));
+											// Выходим из условия
+											break;
+										}
+									}
+								// Если протокол находится в конце запроса
+								} else {
+									// Получаем версию протокол запроса
+									this->query.ver = stod(data.substr(offset + 5));
+									// Удаляем лишние символы
+									data.erase(data.begin() + (offset - 1), data.end());
+									// Выполняем поиск разделителя
+									offset = data.find(" ");
+									// Если пробел получен
+									if(offset != string::npos){
+										// Выполняем смену стейта
+										this->state = state_t::HEADERS;
+										// Получаем URI запроса
+										this->query.uri = data.substr(offset + 1);
+										// Получаем метод запроса
+										this->query.method = data.substr(0, offset);
+										// Выходим из условия
+										break;
+									}
+								}
+							}
+							// Сообщаем, что произошла ошибка
+							this->stath = stath_t::FAULT;
+						} break;
+						// Если - это режим получения заголовков
+						case (u_short) state_t::HEADERS: {
+							// Выполняем поиск пробела
+							const size_t pos = data.find(": ");
+							// Если разделитель найден
+							if(pos != string::npos){
+								// Получаем значение заголовка
+								const string & val = data.substr(pos + 2);
+								// Получаем ключ заголовка
+								const string & key = this->fmk->toLower(data.substr(0, pos));
+								// Добавляем заголовок в список заголовков
+								if(!key.empty() && !val.empty())
+									// Добавляем заголовок в список
+									this->headers.emplace(key, val);
+							}
+						} break;
+					}
+				});
+				// Если буфер данных не передан
+				if(!this->headers.empty()){
+					// Если запрос не имеет тела
+					if((this->query.code < 200) || (this->query.code == 204) ||
+					(this->query.code == 304) || (this->query.method.compare("HEAD") == 0)){
+						// Завершаем сбор данных
+						this->state = state_t::GOOD;
+						// Продолжаем работу
+						goto end;
+					// Если тело запроса присутствует
+					} else {
+						// Получаем размер тела
+						auto it = this->headers.find("content-length");
+						// Если размер запроса передан
+						if(it != this->headers.end())
+							// Устанавливаем стейт поиска тела запроса
+							this->state = state_t::BODY;
+						// Если тело приходит
+						else {
+							// Получаем размер тела
+							it = this->headers.find("transfer-encoding");
+							// Если размер запроса передан
+							if(it != this->headers.end()){
+								// Если нужно получать размер тела чанками
+								if(it->second.find("chunked") != string::npos){
+									// Устанавливаем стейт поиска тела запроса
+									this->state = state_t::BODY;
+									// Продолжаем работу
+									goto end;
+								}
+							}
+							// Тело в запросе не передано
+							this->state = state_t::GOOD;
+						}
+					}
+					// Устанавливаем метку завершения работы
+					end:
+					// Продолжаем работу
+					this->data(buffer, size);
+				}
+			}
+		// Если мы собираем тело запроса или завершаем работу
+		} else {
 			// Определяем статус режима работы
 			switch((u_short) this->state){
-				// Если - это режим ожидания получения запроса
-				case (u_short) state_t::QUERY: {
-					// Выполняем поиск первого пробела
-					size_t first = data.find(" ");
-					// Если пробел получен
-					if(first == 8){
-						// Получаем версию протокол запроса
-						this->version = stod(data.substr(5, first));
-						// Выполняем поиск второго пробела
-						const size_t second = data.find(" ", first + 1);
-						// Если пробел получен
-						if(second != string::npos){
-							// Выполняем смену стейта
-							this->state = state_t::HEADERS;
-							// Получаем сообщение сервера
-							this->message = data.substr(second + 1);
-							// Получаем код ответа
-							this->code = stoi(data.substr(first + 1, second));
-						// Сообщаем, что произошла ошибка
-						} else this->stath = stath_t::FAULT;
-					// Сообщаем, что произошла ошибка
-					} else this->stath = stath_t::FAULT;
+				// Если - все данные запроса собраны
+				case (u_short) state_t::GOOD: {
+					// Выполняем проверку авторизации
+					this->stath = this->checkAuthenticate();
+					// Если ключ соответствует
+					if(this->stath == stath_t::GOOD){
+					// if((this->stath == stath_t::GOOD) && this->checkKeyWebSocket() && this->checkUpgrade() && this->checkVerWebSocket()){
+						// Выполняем обновление списка расширений
+						this->updateExtensions();
+						// Выполняем обновление списка сабпротоколов
+						this->updateSubProtocol();
+						// Устанавливаем стейт рукопожатия
+						this->state = state_t::HANDSHAKE;
+					// Поменяем данные как бракованные
+					} else this->state = state_t::BROKEN;
+					// Если функция обратного вызова установлена
+					if(this->stopFn != nullptr)
+						// Выводим функцию обратного вызова
+						this->stopFn(this);
 				} break;
-				// Если - это режим получения заголовков
-				case (u_short) state_t::HEADERS: {
-					// Выполняем поиск пробела
-					const size_t pos = data.find(": ");
-					// Если разделитель найден
-					if(pos != string::npos){
-						// Получаем значение заголовка
-						const string & val = data.substr(pos + 2);
-						// Получаем ключ заголовка
-						const string & key = this->fmk->toLower(data.substr(0, pos));
-						// Добавляем заголовок в список заголовков
-						if(!key.empty() && !val.empty())
-							// Добавляем заголовок в список
-							this->headers.emplace(key, val);
+				// Если - это режим получения тела
+				case (u_short) state_t::BODY: {
+					// Если размер данных получен
+					if(size > 0){
+						// Выполняем поиск размера тела сообщения
+						auto it = this->headers.find("content-length");
+						// Если размер тела сообщения получен
+						if(it != this->headers.end()){
+							// Получаем максимальный размер тела сообщения
+							const size_t max = stoull(it->second);
+							// Если размер тела не получен
+							if(max == 0){
+								// Заполняем собранные данные тела
+								this->body.assign(buffer, buffer + size);
+								// Если функция обратного вызова установлена
+								if(this->chunkFn != nullptr)
+									// Выводим функцию обратного вызова
+									this->chunkFn(this->body, this);
+							// Если размер установлен конкретный
+							} else {
+								// Получаем актуальный размер тела
+								size_t actual = (max - this->body.size());
+								// Фиксируем актуальный размер тела
+								actual = (size > actual ? actual : size);
+								// Собираем тело запроса
+								this->body.insert(this->body.end(), buffer, buffer + actual);
+								// Если тело сообщения полностью собранно
+								if(max == this->body.size()){
+									// Тело в запросе не передано
+									this->state = state_t::GOOD;
+									// Продолжаем работу
+									this->data(buffer, size);
+									// Выходим из функции
+									break;
+								}
+							}
+						// Если получение данных ведётся чанками
+						} else {
+							// Формируем данные тела
+							string body(buffer, size);
+							// Если размер чанка не получен
+							if(this->chunk.size == 0){
+								// Ищем размер чанка
+								const size_t pos = body.find("\r\n");
+								// Если размер чанка найден
+								if(pos != string::npos){
+									// Получаем размер чанка
+									this->chunk.size = this->fmk->hexToDec(body.substr(0, pos));
+									// Если это последний чанк
+									if(this->chunk.size == 0){
+										// Тело в запросе не передано
+										this->state = state_t::GOOD;
+										// Продолжаем работу
+										this->data(buffer, size);
+										// Выходим из функции
+										break;
+									}
+									// Удаляем полученные данные
+									body.erase(body.begin(), body.begin() + (pos + 2));
+								}
+							}
+							// Если данные ещё есть, продолжаем собирать
+							if(!body.empty()){
+								// Получаем актуальный размер тела
+								size_t actual = (this->chunk.size - this->chunk.data.size());
+								// Фиксируем актуальный размер тела
+								actual = (body.size() > actual ? actual : body.size());
+								// Собираем тело запроса
+								this->chunk.data.insert(this->chunk.data.end(), body.begin(), body.begin() + actual);
+								// Если весь чанк собран
+								if(this->chunk.size == this->chunk.data.size()){
+									// Если функция обратного вызова установлена
+									if(this->chunkFn != nullptr)
+										// Выводим функцию обратного вызова
+										this->chunkFn(this->chunk.data, this);
+									// Удаляем полученные данные
+									body.erase(body.begin(), body.begin() + actual);
+									// Сбрасываем размер чанка
+									this->chunk.size = 0;
+									// Очинаем собранные данные
+									this->chunk.data.clear();
+									// Если тело запроса ещё не всё прочитано
+									if(!body.empty())
+										// Продолжаем работу
+										this->data(body.data(), body.size());
+								}
+							}
+						}
 					}
-
 				} break;
-			}
-		// Если буфер данных не передан
-		} else if(!this->headers.empty()) {
-			// Выполняем проверку авторизации
-			this->stath = this->checkAuthenticate();
-			// Если ключ соответствует
-			if((result = (this->stath == stath_t::GOOD) && (this->checkKey() && this->checkUpgrade() && this->checkVersion()))){
-				// Выполняем обновление списка расширений
-				this->updateExtensions();
-				// Выполняем обновление списка сабпротоколов
-				this->updateSubProtocol();
-				// Устанавливаем стейт рукопожатия
-				this->state = state_t::HANDSHAKE;
 			}
 		}
+	}
+}
+/**
+ * addBody Метод добавления буфера тела данных запроса
+ * @param buffer буфер данных тела запроса
+ * @param size   размер буфера данных
+ */
+void awh::Http::addBody(const char * buffer, const size_t size) noexcept {
+	// Если даныне переданы
+	if((buffer != nullptr) && (size > 0))
+		// Добавляем данные буфера в буфер тела
+		this->body.insert(this->body.end(), buffer, buffer + size);
+}
+/**
+ * addHeader Метод добавления заголовка
+ * @param key ключ заголовка
+ * @param val значение заголовка
+ */
+void awh::Http::addHeader(const string & key, const string & val) noexcept {
+	// Если даныне заголовка переданы
+	if(!key.empty() && !val.empty())
+		// Выполняем добавление передаваемого заголовка
+		this->headers.emplace(key, val);
+}
+/**
+ * getBody Метод получения данных тела запроса
+ * @return буфер данных тела запроса
+ */
+const vector <char> & awh::Http::getBody() const noexcept {
+	// Выводим данные тела
+	return this->body;
+}
+/**
+ * getHeader Метод получения данных заголовка
+ * @param key ключ заголовка
+ * @return    значение заголовка
+ */
+const string & awh::Http::getHeader(const string & key) const noexcept {
+	// Результат работы функции
+	static string result = "";
+	// Если ключ заголовка передан
+	if(!key.empty()){
+		// Выполняем поиск ключа заголовка
+		auto it = this->headers.find(key);
+		// Если заголовок найден
+		if(it != this->headers.end()) return it->second;
 	}
 	// Выводим результат
 	return result;
 }
 /**
- * getZip Метод получения метода сжатия
- * @return метод сжатия сообщений
+ * readHeader Функция чтения заголовков из буфера данных
+ * @param buffer   буфер данных для чтения
+ * @param size     размер буфера данных для чтения
+ * @param callback функция обратного вызова
  */
-awh::Http::zip_t awh::Http::getZip() const noexcept {
-	// Выводим метод сжатия сообщений
-	return this->zip;
+void awh::Http::readHeader(const char * buffer, const size_t size, function <void (string)> callback) noexcept {
+	// Если файл прочитан удачно
+	if((buffer != nullptr) && (size > 0)){
+		// Значение текущей и предыдущей буквы
+		char letter = 0, old = 0;
+		// Смещение в буфере и длина полученной строки
+		size_t offset = 0, length = 0;
+		// Переходим по всему буферу
+		for(size_t i = 0; i < size; i++){
+			// Получаем значение текущей буквы
+			letter = buffer[i];
+			// Если текущая буква является переносом строк
+			if((i > 0) && ((letter == '\n') || (i == (size - 1)))){
+				// Если предыдущая буква была возвратом каретки, уменьшаем длину строки
+				length = ((old == '\r' ? i - 1 : i) - offset);
+				// Если это конец файла, корректируем размер последнего байта
+				if(length == 0) length = 1;
+				// Если длина слова получена, выводим полученную строку
+				callback(string(buffer + offset, length));
+				// Выполняем смещение
+				offset = (i + 1);
+			}
+			// Запоминаем предыдущую букву
+			old = letter;
+		}
+	}
 }
 /**
  * getAuth Метод проверки статуса авторизации
@@ -232,6 +475,14 @@ awh::Http::zip_t awh::Http::getZip() const noexcept {
 awh::Http::stath_t awh::Http::getAuth() const noexcept {
 	// Выводим результат проверки
 	return this->stath;
+}
+/**
+ * getCompress Метод получения метода сжатия
+ * @return метод сжатия сообщений
+ */
+awh::Http::compress_t awh::Http::getCompress() const noexcept {
+	// Выводим метод сжатия сообщений
+	return this->compress;
 }
 /**
  * isCrypt Метод проверки на зашифрованные данные
@@ -250,22 +501,6 @@ bool awh::Http::isHandshake() const noexcept {
 	return (this->state == state_t::HANDSHAKE);
 }
 /**
- * getCode Метод получения кода ответа сервера
- * @return код ответа сервера
- */
-u_short awh::Http::getCode() const noexcept {
-	// Выводим код ответа сервера
-	return this->code;
-}
-/**
- * getVersion Метод получения версии HTTP протокола
- * @return версия HTTP протокола
- */
-double awh::Http::getVersion() const noexcept {
-	// Выводим версию HTTP протокола
-	return this->version;
-}
-/**
  * getWbitClient Метод получения размер скользящего окна для клиента
  * @return размер скользящего окна
  */
@@ -280,6 +515,22 @@ short awh::Http::getWbitClient() const noexcept {
 short awh::Http::getWbitServer() const noexcept {
 	// Выводим размер скользящего окна
 	return this->wbitServer;
+}
+/**
+ * getQuery Метод получения объекта запроса сервера
+ * @return объект запроса сервера
+ */
+const awh::Http::query_t & awh::Http::getQuery() const noexcept {
+	// Выводим объект запроса сервера
+	return this->query;
+}
+/**
+ * setQuery Метод добавления объекта запроса клиента
+ * @param query объект запроса клиента
+ */
+void awh::Http::setQuery(const query_t & query) noexcept {
+	// Устанавливаем объект запроса клиента
+	this->query = query;
 }
 /**
  * getSub Метод получения выбранного сабпротокола
@@ -323,7 +574,7 @@ vector <char> awh::Http::restReject() const noexcept {
 		"Content-type: text/html; charset=utf-8\r\n"
 		"X-Powered-By: %s/%s\r\n\r\n"
 		"<html><head><title>400 Bad Request</title></head>\r\n<body><h2>400 Bad Request</h2></body></html>",
-		this->version, this->date().c_str(), AWH_NAME,
+		this->query.ver, this->date().c_str(), AWH_NAME,
 		95, WS_VERSION, AWH_SHORT_NAME, AWH_VERSION
 	);
 	// Выводим результат
@@ -343,15 +594,15 @@ vector <char> awh::Http::restResponse() const noexcept {
 		// Расширения WebSocket и подпротоколы
 		string extensions = "", sub = "";
 		// Если необходимо активировать сжатие
-		if(this->zip != zip_t::NONE){
+		if(this->compress != compress_t::NONE){
 			// Если метод компрессии выбран Deflate
-			if(this->zip == zip_t::DEFLATE){
+			if(this->compress == compress_t::DEFLATE){
 				// Формируем заголовок расширений
 				extensions = "Sec-WebSocket-Extensions: permessage-deflate; server_no_context_takeover; client_max_window_bits";
 				// Если требуется указать количество байт
 				if(this->wbitServer > 0) extensions.append(this->fmk->format("; server_max_window_bits=%u", this->wbitServer));
 			// Если метод компрессии выбран GZip
-			} else if(this->zip == zip_t::GZIP)
+			} else if(this->compress == compress_t::GZIP)
 				// Формируем заголовок расширений
 				extensions = "Sec-WebSocket-Extensions: permessage-gzip; server_no_context_takeover";
 			// Если данные должны быть зашифрованны
@@ -381,7 +632,7 @@ vector <char> awh::Http::restResponse() const noexcept {
 			"X-Powered-By: %s/%s\r\n"
 			"%sSec-WebSocket-Accept: %s\r\n"
 			"%s%s\r\n\r\n",
-			this->version, this->date().c_str(),
+			this->query.ver, this->date().c_str(),
 			AWH_NAME, AWH_SHORT_NAME, AWH_VERSION,
 			origin.c_str(), hash.c_str(),
 			sub.c_str(), extensions.c_str()
@@ -410,7 +661,7 @@ vector <char> awh::Http::restUnauthorized() const noexcept {
 		"<body><h2>401 Authentication Required</h2>\r\n"
 		"<h3>Access to requested resource disallowed by administrator or you need valid username/password to use this resource</h3>\r\n"
 		"</body></html>",
-		this->version, this->date().c_str(),
+		this->query.ver, this->date().c_str(),
 		AWH_NAME, 245, AWH_SHORT_NAME,
 		AWH_VERSION, this->auth->header().c_str()
 	);
@@ -419,11 +670,11 @@ vector <char> awh::Http::restUnauthorized() const noexcept {
 }
 /**
  * restRequest Метод получения буфера HTML запроса
- * @param zip   метод сжатия сообщений
- * @param crypt флаг зашифрованных данных
- * @return      собранный HTML буфер
+ * @param compress метод сжатия сообщений
+ * @param crypt    флаг зашифрованных данных
+ * @return         собранный HTML буфер
  */
-vector <char> awh::Http::restRequest(const zip_t zip, const bool crypt) noexcept {
+vector <char> awh::Http::restRequest(const compress_t compress, const bool crypt) noexcept {
 	// Результат работы функции
 	vector <char> result;
 	// Если URL объект передан
@@ -467,17 +718,19 @@ vector <char> awh::Http::restRequest(const zip_t zip, const bool crypt) noexcept
 				}
 			}
 			// Генерируем ключ клиента
-			this->clientKey = this->key();
-			// Если Origin не установлен
-			if(this->origin.empty()) this->origin = this->uri->createOrigin(* this->url);
+			this->keyWebSocket = this->key();
+			// Получаем User-Agent
+			const string userAgent = USER_AGENT;
+			// Генерируем заголовок Origin
+			const string origin = this->uri->createOrigin(* this->url);
 			// Если метод компрессии указан
-			if(zip != zip_t::NONE){
+			if(compress != compress_t::NONE){
 				// Если метод компрессии выбран Deflate
-				if(zip == zip_t::DEFLATE)
+				if(compress == compress_t::DEFLATE)
 					// Устанавливаем тип компрессии Deflate
 					extensions = "Sec-WebSocket-Extensions: permessage-deflate; client_max_window_bits";
 				// Если метод компрессии выбран GZip
-				else if(zip == zip_t::GZIP)
+				else if(compress == compress_t::GZIP)
 					// Устанавливаем тип компрессии GZip
 					extensions = "Sec-WebSocket-Extensions: permessage-gzip";
 				// Если шифровать данные не нужно
@@ -498,10 +751,10 @@ vector <char> awh::Http::restRequest(const zip_t zip, const bool crypt) noexcept
 				"Sec-WebSocket-Version: %u\r\n"
 				"Sec-WebSocket-Key: %s\r\n"
 				"%s%s%s\r\n",
-				query.c_str(), this->version,
+				query.c_str(), this->query.ver,
 				host.c_str(), this->date().c_str(),
-				this->origin.c_str(), this->userAgent.c_str(),
-				WS_VERSION, this->clientKey.c_str(),
+				origin.c_str(), userAgent.c_str(),
+				WS_VERSION, this->keyWebSocket.c_str(),
 				(!extensions.empty() ? extensions.c_str() : ""),
 				(!subs.empty() ? subs.c_str() : ""),
 				(!auth.empty() ? auth.c_str() : "")
@@ -535,20 +788,20 @@ void awh::Http::setSubs(const vector <string> & subs) noexcept {
 	}
 }
 /**
- * setOrigin Метод установки Origin запроса
- * @param origin HTTP заголовок запроса
+ * setStopCallback Метод установки функции обратного вызова для индикации завершения запроса
+ * @param callback функция обратного вызова
  */
-void awh::Http::setOrigin(const string & origin) noexcept {
-	// Если заголовок HTTP запроса Origin передан, устанавливаем его
-	if(!origin.empty()) this->origin = origin;
+void awh::Http::setStopCallback(function <void (const Http *)> callback) noexcept {
+	// Устанавливаем функцию обратного вызова
+	this->stopFn = callback;
 }
 /**
- * setUserAgent Метод установки User-Agent для HTTP запроса
- * @param userAgent агент пользователя для HTTP запроса
+ * setChunkCallback Метод установки функции обратного вызова для получения чанков
+ * @param callback функция обратного вызова
  */
-void awh::Http::setUserAgent(const string & userAgent) noexcept {
-	// Устанавливаем UserAgent
-	if(!userAgent.empty()) this->userAgent = userAgent;
+void awh::Http::setChunkCallback(function <void (const vector <char> &, const Http *)> callback) noexcept {
+	// Устанавливаем функцию обратного вызова
+	this->chunkFn = callback;
 }
 /**
  * setUser Метод установки параметров авторизации

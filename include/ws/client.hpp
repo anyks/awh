@@ -152,10 +152,10 @@ namespace awh {
 			// Минимальный размер сегмента
 			size_t frameSize = 0xFA000;
 		public:
-			// Флаги работы с сжатыми данными
-			http_t::zip_t zip = http_t::zip_t::NONE;
 			// Полученный опкод сообщения
 			frame_t::opcode_t opcode = frame_t::opcode_t::TEXT;
+			// Флаги работы с сжатыми данными
+			http_t::compress_t compress = http_t::compress_t::NONE;
 		private:
 			// Создаём объект DNS резолвера
 			dns_t * dns = nullptr;
@@ -286,10 +286,10 @@ namespace awh {
 		public:
 			/**
 			 * init Метод инициализации WebSocket клиента
-			 * @param url адрес WebSocket сервера
-			 * @param zip метод сжатия передаваемых сообщений
+			 * @param url      адрес WebSocket сервера
+			 * @param compress метод сжатия передаваемых сообщений
 			 */
-			void init(const string & url, const http_t::zip_t zip = http_t::zip_t::DEFLATE);
+			void init(const string & url, const http_t::compress_t compress = http_t::compress_t::DEFLATE);
 		public:
 			/**
 			 * on Метод установки функции обратного вызова на событие запуска или остановки подключения

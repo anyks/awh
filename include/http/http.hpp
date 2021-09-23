@@ -16,6 +16,7 @@
 #include <set>
 #include <map>
 #include <string>
+#include <vector>
 #include <random>
 #include <cstring>
 #include <algorithm>
@@ -62,16 +63,23 @@ namespace awh {
 			/**
 			 * Формат сжатия тела запроса
 			 */
-			enum class zip_t : u_short {NONE, GZIP, DEFLATE};
-		protected:
+			enum class compress_t : u_short {NONE, BR, GZIP, DEFLATE};
+		public:
 			/**
-			 * Стейты работы модуля
+			 * Query Структура запроса
 			 */
-			enum class state_t: u_short {
-				QUERY,    // Режим ожидания получения запроса
-				HEADERS,  // Режим чтения заголовков
-				HANDSHAKE // Режим выполненного рукопожатия
-			};
+			typedef struct Query {
+				u_short code;   // Код ответа сервера
+				double ver;     // Версия протокола
+				string uri;     // Параметры запроса
+				string method;  // Метод запроса
+				string message; // Сообщение сервера
+				/**
+				 * Query Конструктор
+				 */
+				Query() : code(0), ver(HTTP_VERSION), uri(""), method(""), message("") {}
+			} query_t;
+		protected:
 			// Размер максимального значения окна для сжатия данных GZIP
 			static constexpr int GZIP_MAX_WBITS = 15;
 			// Версия протокола WebSocket
@@ -124,20 +132,39 @@ namespace awh {
 				{504, "Gateway Timeout"},
 				{505, "HTTP Version Not Supported"}
 			};
+		private:
+			/**
+			 * Chunk Структура собираемого чанка
+			 */
+			typedef struct Chunk {
+				size_t size;        // Размер чанка
+				vector <char> data; // Данные чанка
+				/**
+				 * Chunk Конструктор
+				 */
+				Chunk() : size(0) {}
+			} chunk_t;
+			/**
+			 * Стейты работы модуля
+			 */
+			enum class state_t: u_short {
+				BODY,     // Режим чтения тела сообщения
+				GOOD,     // Режим завершения сбора данных
+				QUERY,    // Режим ожидания получения запроса
+				BROKEN,   // Режим бракованных данных
+				HEADERS,  // Режим чтения заголовков
+				HANDSHAKE // Режим выполненного рукопожатия
+			};
 		protected:
-			// Флаги работы с сжатыми данными
-			zip_t zip = zip_t::DEFLATE;
 			// Размер скользящего окна клиента
 			short wbitClient = GZIP_MAX_WBITS;
 			// Размер скользящего окна сервера
 			short wbitServer = GZIP_MAX_WBITS;
+			// Флаги работы с сжатыми данными
+			compress_t compress = compress_t::DEFLATE;
 		protected:
-			// Код ответа сервера
-			u_short code = 0;
 			// Флаг зашифрованных данных
 			bool crypt = false;
-			// Версия протокола
-			double version = HTTP_VERSION;
 			// Стейт проверки авторизации
 			stath_t stath = stath_t::EMPTY;
 			// Стейт текущего запроса
@@ -145,19 +172,25 @@ namespace awh {
 		protected:
 			// Поддерживаемый сабпротокол
 			string sub = "";
-			// Заголовок HTTP запроса Origin
-			string origin = "";
-			// Сообщение сервера
-			string message = "";
 			// Ключ клиента
-			string clientKey = "";
-			// User-Agent для HTTP запроса
-			string userAgent = USER_AGENT;
+			string keyWebSocket = "";
+		protected:
+			// Объект параметров запроса
+			query_t query;
+			// Объект собираемого чанка
+			chunk_t chunk;
 		protected:
 			// Поддерживаемые сабпротоколы
 			set <string> subs;
+			// Полученное тело HTTP запроса
+			vector <char> body;
 			// Полученные HTTP заголовки
 			unordered_multimap <string, string> headers;
+		private:
+			// Функция вызова при получении всех данных
+			function <void (const Http *)> stopFn = nullptr;
+			// Функция вызова при получении чанка
+			function <void (const vector <char> &, const Http *)> chunkFn = nullptr;
 		protected:
 			// Создаём объект для работы с авторизацией
 			auth_t * auth = nullptr;
@@ -194,23 +227,22 @@ namespace awh {
 			 * updateSubProtocol Метод извлечения доступного сабпротокола
 			 */
 			virtual void updateSubProtocol() noexcept = 0;
-		protected:
-			/**
-			 * checkKey Метод проверки ключа сервера
-			 * @return результат проверки
-			 */
-			virtual bool checkKey() noexcept = 0;
-			/**
-			 * checkVersion Метод проверки на версию протокола WebSocket
-			 * @return результат проверки соответствия
-			 */
-			virtual bool checkVersion() noexcept = 0;
-		protected:
+		public:
 			/**
 			 * checkUpgrade Метод получения флага переключения протокола
 			 * @return флага переключения протокола
 			 */
 			virtual bool checkUpgrade() const noexcept;
+			/**
+			 * checkKeyWebSocket Метод проверки ключа сервера WebSocket
+			 * @return результат проверки
+			 */
+			virtual bool checkKeyWebSocket() noexcept = 0;
+			/**
+			 * checkVerWebSocket Метод проверки на версию протокола WebSocket
+			 * @return результат проверки соответствия
+			 */
+			virtual bool checkVerWebSocket() noexcept = 0;
 			/**
 			 * checkAuthenticate Метод проверки авторизации
 			 * @return результат проверки авторизации
@@ -221,24 +253,56 @@ namespace awh {
 			 * clear Метод очистки собранных данных
 			 */
 			virtual void clear() noexcept;
-			/**
-			 * add Метод добавления данных заголовков
-			 * @param buffer буфер данных с заголовками
-			 * @param size   размер буфера данных с заголовками
-			 * @return       результат завершения сбора данных
-			 */
-			virtual bool add(const char * buffer, const size_t size) noexcept;
 		public:
 			/**
-			 * getZip Метод получения метода сжатия
-			 * @return метод сжатия сообщений
+			 * data Метод добавления бинарных данных
+			 * @param buffer буфер передаваемых данных
+			 * @param size   размер буфера данных
 			 */
-			zip_t getZip() const noexcept;
+			void data(const char * buffer, const size_t size) noexcept;
+			/**
+			 * addBody Метод добавления буфера тела данных запроса
+			 * @param buffer буфер данных тела запроса
+			 * @param size   размер буфера данных
+			 */
+			void addBody(const char * buffer, const size_t size) noexcept;
+			/**
+			 * addHeader Метод добавления заголовка
+			 * @param key ключ заголовка
+			 * @param val значение заголовка
+			 */
+			void addHeader(const string & key, const string & val) noexcept;
+		public:
+			/**
+			 * getBody Метод получения данных тела запроса
+			 * @return буфер данных тела запроса
+			 */
+			const vector <char> & getBody() const noexcept;
+			/**
+			 * getHeader Метод получения данных заголовка
+			 * @param key ключ заголовка
+			 * @return    значение заголовка
+			 */
+			const string & getHeader(const string & key) const noexcept;
+		private:
+			/**
+			 * readHeader Функция чтения заголовков из буфера данных
+			 * @param buffer   буфер данных для чтения
+			 * @param size     размер буфера данных для чтения
+			 * @param callback функция обратного вызова
+			 */
+			static void readHeader(const char * buffer, const size_t size, function <void (string)> callback) noexcept;
+		public:
 			/**
 			 * getAuth Метод проверки статуса авторизации
 			 * @return результат проверки
 			 */
 			stath_t getAuth() const noexcept;
+			/**
+			 * getCompress Метод получения метода сжатия
+			 * @return метод сжатия сообщений
+			 */
+			compress_t getCompress() const noexcept;
 		public:
 			/**
 			 * isCrypt Метод проверки на зашифрованные данные
@@ -252,16 +316,6 @@ namespace awh {
 			bool isHandshake() const noexcept;
 		public:
 			/**
-			 * getCode Метод получения кода ответа сервера
-			 * @return код ответа сервера
-			 */
-			u_short getCode() const noexcept;
-			/**
-			 * getVersion Метод получения версии HTTP протокола
-			 * @return версия HTTP протокола
-			 */
-			double getVersion() const noexcept;
-			/**
 			 * getWbitClient Метод получения размер скользящего окна для клиента
 			 * @return размер скользящего окна
 			 */
@@ -271,6 +325,17 @@ namespace awh {
 			 * @return размер скользящего окна
 			 */
 			short getWbitServer() const noexcept;
+		public:
+			/**
+			 * getQuery Метод получения объекта запроса сервера
+			 * @return объект запроса сервера
+			 */
+			const query_t & getQuery() const noexcept;
+			/**
+			 * setQuery Метод добавления объекта запроса клиента
+			 * @param query объект запроса клиента
+			 */
+			void setQuery(const query_t & query) noexcept;
 		public:
 			/**
 			 * getSub Метод получения выбранного сабпротокола
@@ -301,11 +366,11 @@ namespace awh {
 			vector <char> restUnauthorized() const noexcept;
 			/**
 			 * restRequest Метод получения буфера HTML запроса
-			 * @param zip   метод сжатия сообщений
-			 * @param crypt флаг зашифрованных данных
-			 * @return      собранный HTML буфер
+			 * @param compress метод сжатия сообщений
+			 * @param crypt    флаг зашифрованных данных
+			 * @return         собранный HTML буфер
 			 */
-			vector <char> restRequest(const zip_t zip = zip_t::GZIP, const bool crypt = false) noexcept;
+			vector <char> restRequest(const compress_t compress = compress_t::GZIP, const bool crypt = false) noexcept;
 		public:
 			/**
 			 * setSub Метод установки подпротокола поддерживаемого сервером
@@ -319,15 +384,16 @@ namespace awh {
 			void setSubs(const vector <string> & subs) noexcept;
 		public:
 			/**
-			 * setOrigin Метод установки Origin запроса
-			 * @param origin HTTP заголовок запроса
+			 * setStopCallback Метод установки функции обратного вызова для индикации завершения запроса
+			 * @param callback функция обратного вызова
 			 */
-			void setOrigin(const string & origin) noexcept;
+			void setStopCallback(function <void (const Http *)> callback) noexcept;
 			/**
-			 * setUserAgent Метод установки User-Agent для HTTP запроса
-			 * @param userAgent агент пользователя для HTTP запроса
+			 * setChunkCallback Метод установки функции обратного вызова для получения чанков
+			 * @param callback функция обратного вызова
 			 */
-			void setUserAgent(const string & userAgent) noexcept;
+			void setChunkCallback(function <void (const vector <char> &, const Http *)> callback) noexcept;
+		public:
 			/**
 			 * setUser Метод установки параметров авторизации
 			 * @param login    логин пользователя для авторизации на сервере

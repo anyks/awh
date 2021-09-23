@@ -56,7 +56,7 @@ int main(int argc, char * argv[]) noexcept {
 	// Устанавливаем параметры шифрования
 	// ws.setCrypt("password");
 	// Выполняем инициализацию WebSocket клиента
-	ws.init("wss://stream.binance.com:9443/stream", http_t::zip_t::DEFLATE);
+	ws.init("wss://stream.binance.com:9443/stream", http_t::compress_t::DEFLATE);
 	/*
 	// Выполняем подписку на получение логов
 	log.subscribe([](const log_t::flag_t flag, const string & message){
