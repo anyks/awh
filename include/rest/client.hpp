@@ -63,6 +63,7 @@
 #include <auth.hpp>
 #include <hash.hpp>
 #include <socket.hpp>
+#include <http/server.hpp>
 
 // Подписываемся на стандартное пространство имён
 using namespace std;
@@ -251,6 +252,8 @@ namespace awh {
 			auth_t * auth = nullptr;
 			// Создаём объект для компрессии-декомпрессии данных
 			hash_t * hash = nullptr;
+			// Создаём объект для работы с HTTP
+			http_t * http = nullptr;
 		private:
 			// Создаём объект данных вебсокета
 			const char * hdt = nullptr;

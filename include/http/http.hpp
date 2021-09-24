@@ -187,8 +187,6 @@ namespace awh {
 			// Полученные HTTP заголовки
 			unordered_multimap <string, string> headers;
 		private:
-			// Функция вызова при получении всех данных
-			function <void (const Http *)> stopFn = nullptr;
 			// Функция вызова при получении чанка
 			function <void (const vector <char> &, const Http *)> chunkFn = nullptr;
 		protected:
@@ -255,11 +253,11 @@ namespace awh {
 			virtual void clear() noexcept;
 		public:
 			/**
-			 * data Метод добавления бинарных данных
-			 * @param buffer буфер передаваемых данных
+			 * parse Метод парсинга сырых данных
+			 * @param buffer буфер данных для обработки
 			 * @param size   размер буфера данных
 			 */
-			void data(const char * buffer, const size_t size) noexcept;
+			void parse(const char * buffer, const size_t size) noexcept;
 			/**
 			 * addBody Метод добавления буфера тела данных запроса
 			 * @param buffer буфер данных тела запроса
@@ -284,6 +282,11 @@ namespace awh {
 			 * @return    значение заголовка
 			 */
 			const string & getHeader(const string & key) const noexcept;
+			/**
+			 * getHeaders Метод получения списка заголовков
+			 * @return список существующих заголовков
+			 */
+			const unordered_multimap <string, string> & getHeaders() const noexcept;
 		private:
 			/**
 			 * readHeader Функция чтения заголовков из буфера данных
@@ -305,6 +308,11 @@ namespace awh {
 			compress_t getCompress() const noexcept;
 		public:
 			/**
+			 * isEnd Метод проверки завершения обработки
+			 * @return результат проверки
+			 */
+			bool isEnd() const noexcept;
+			/**
 			 * isCrypt Метод проверки на зашифрованные данные
 			 * @return флаг проверки на зашифрованные данные
 			 */
@@ -314,6 +322,12 @@ namespace awh {
 			 * @return флаг получения рукопожатия
 			 */
 			bool isHandshake() const noexcept;
+			/**
+			 * isHeader Метод проверки существования заголовка
+			 * @param key ключ заголовка для проверки
+			 * @return    результат проверки
+			 */
+			bool isHeader(const string & key) const noexcept;
 		public:
 			/**
 			 * getWbitClient Метод получения размер скользящего окна для клиента
@@ -384,15 +398,10 @@ namespace awh {
 			void setSubs(const vector <string> & subs) noexcept;
 		public:
 			/**
-			 * setStopCallback Метод установки функции обратного вызова для индикации завершения запроса
+			 * setChunkingFn Метод установки функции обратного вызова для получения чанков
 			 * @param callback функция обратного вызова
 			 */
-			void setStopCallback(function <void (const Http *)> callback) noexcept;
-			/**
-			 * setChunkCallback Метод установки функции обратного вызова для получения чанков
-			 * @param callback функция обратного вызова
-			 */
-			void setChunkCallback(function <void (const vector <char> &, const Http *)> callback) noexcept;
+			void setChunkingFn(function <void (const vector <char> &, const Http *)> callback) noexcept;
 		public:
 			/**
 			 * setUser Метод установки параметров авторизации

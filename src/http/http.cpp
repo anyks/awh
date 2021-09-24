@@ -140,20 +140,23 @@ void awh::Http::clear() noexcept {
 	this->compress = compress_t::DEFLATE;
 }
 /**
- * data Метод добавления данных заголовков
- * @param buffer буфер данных с заголовками
- * @param size   размер буфера данных с заголовками
- * @return       результат завершения сбора данных
+ * parse Метод парсинга сырых данных
+ * @param buffer буфер данных для обработки
+ * @param size   размер буфера данных
  */
-void awh::Http::data(const char * buffer, const size_t size) noexcept {
+void awh::Http::parse(const char * buffer, const size_t size) noexcept {
 	// Если рукопожатие не выполнено
 	if((this->state != state_t::HANDSHAKE) && (this->state != state_t::BROKEN)){
 		// Если мы собираем заголовки или стартовый запрос
 		if((this->state == state_t::HEADERS) || (this->state == state_t::QUERY)){
+			// Позиция найденного разделителя
+			size_t pos = string::npos;
+			// Получаем данные запроса
+			const string http(buffer, size);
 			// Если все заголовки получены
-			if(strstr(buffer, "\r\n\r\n") != nullptr){
+			if((pos = http.find("\r\n\r\n")) != string::npos){
 				// Выполняем чтение полученного буфера
-				readHeader(buffer, size, [this](string data) noexcept {
+				readHeader(http.data(), pos, [this](string data) noexcept {
 					// Определяем статус режима работы
 					switch((u_short) this->state){
 						// Если - это режим ожидания получения запроса
@@ -213,61 +216,50 @@ void awh::Http::data(const char * buffer, const size_t size) noexcept {
 						// Если - это режим получения заголовков
 						case (u_short) state_t::HEADERS: {
 							// Выполняем поиск пробела
-							const size_t pos = data.find(": ");
+							size_t pos = data.find(":");
 							// Если разделитель найден
 							if(pos != string::npos){
-								// Получаем значение заголовка
-								const string & val = data.substr(pos + 2);
 								// Получаем ключ заголовка
-								const string & key = this->fmk->toLower(data.substr(0, pos));
+								const string & key = this->fmk->trim(data.substr(0, pos));
+								// Получаем значение заголовка
+								const string & val = this->fmk->trim(data.substr(pos + 1));
 								// Добавляем заголовок в список заголовков
 								if(!key.empty() && !val.empty())
 									// Добавляем заголовок в список
-									this->headers.emplace(key, val);
+									this->headers.emplace(this->fmk->toLower(key), val);
 							}
 						} break;
 					}
 				});
-				// Если буфер данных не передан
-				if(!this->headers.empty()){
-					// Если запрос не имеет тела
-					if((this->query.code < 200) || (this->query.code == 204) ||
-					(this->query.code == 304) || (this->query.method.compare("HEAD") == 0)){
-						// Завершаем сбор данных
-						this->state = state_t::GOOD;
-						// Продолжаем работу
-						goto end;
-					// Если тело запроса присутствует
-					} else {
-						// Получаем размер тела
-						auto it = this->headers.find("content-length");
-						// Если размер запроса передан
-						if(it != this->headers.end())
+				// Получаем размер тела
+				auto it = this->headers.find("content-length");
+				// Если размер запроса передан
+				if(it != this->headers.end()){
+					// Устанавливаем стейт поиска тела запроса
+					this->state = state_t::BODY;
+					// Продолжаем работу
+					goto end;
+				// Если тело приходит
+				} else {
+					// Получаем размер тела
+					it = this->headers.find("transfer-encoding");
+					// Если размер запроса передан
+					if(it != this->headers.end()){
+						// Если нужно получать размер тела чанками
+						if(it->second.find("chunked") != string::npos){
 							// Устанавливаем стейт поиска тела запроса
 							this->state = state_t::BODY;
-						// Если тело приходит
-						else {
-							// Получаем размер тела
-							it = this->headers.find("transfer-encoding");
-							// Если размер запроса передан
-							if(it != this->headers.end()){
-								// Если нужно получать размер тела чанками
-								if(it->second.find("chunked") != string::npos){
-									// Устанавливаем стейт поиска тела запроса
-									this->state = state_t::BODY;
-									// Продолжаем работу
-									goto end;
-								}
-							}
-							// Тело в запросе не передано
-							this->state = state_t::GOOD;
+							// Продолжаем работу
+							goto end;
 						}
 					}
-					// Устанавливаем метку завершения работы
-					end:
-					// Продолжаем работу
-					this->data(buffer, size);
 				}
+				// Тело в запросе не передано
+				this->state = state_t::GOOD;
+				// Устанавливаем метку завершения работы
+				end:
+				// Продолжаем работу
+				this->parse(http.data() + (pos + 4), http.size() - (pos + 4));
 			}
 		// Если мы собираем тело запроса или завершаем работу
 		} else {
@@ -288,10 +280,6 @@ void awh::Http::data(const char * buffer, const size_t size) noexcept {
 						this->state = state_t::HANDSHAKE;
 					// Поменяем данные как бракованные
 					} else this->state = state_t::BROKEN;
-					// Если функция обратного вызова установлена
-					if(this->stopFn != nullptr)
-						// Выводим функцию обратного вызова
-						this->stopFn(this);
 				} break;
 				// Если - это режим получения тела
 				case (u_short) state_t::BODY: {
@@ -324,7 +312,7 @@ void awh::Http::data(const char * buffer, const size_t size) noexcept {
 									// Тело в запросе не передано
 									this->state = state_t::GOOD;
 									// Продолжаем работу
-									this->data(buffer, size);
+									this->parse(buffer, size);
 									// Выходим из функции
 									break;
 								}
@@ -346,7 +334,7 @@ void awh::Http::data(const char * buffer, const size_t size) noexcept {
 										// Тело в запросе не передано
 										this->state = state_t::GOOD;
 										// Продолжаем работу
-										this->data(buffer, size);
+										this->parse(buffer, size);
 										// Выходим из функции
 										break;
 									}
@@ -375,9 +363,7 @@ void awh::Http::data(const char * buffer, const size_t size) noexcept {
 									// Очинаем собранные данные
 									this->chunk.data.clear();
 									// Если тело запроса ещё не всё прочитано
-									if(!body.empty())
-										// Продолжаем работу
-										this->data(body.data(), body.size());
+									if(!body.empty()) this->parse(body.data(), body.size());
 								}
 							}
 						}
@@ -436,6 +422,14 @@ const string & awh::Http::getHeader(const string & key) const noexcept {
 	return result;
 }
 /**
+ * getHeaders Метод получения списка заголовков
+ * @return список существующих заголовков
+ */
+const unordered_multimap <string, string> & awh::Http::getHeaders() const noexcept {
+	// Выводим список доступных заголовков
+	return this->headers;
+}
+/**
  * readHeader Функция чтения заголовков из буфера данных
  * @param buffer   буфер данных для чтения
  * @param size     размер буфера данных для чтения
@@ -485,6 +479,14 @@ awh::Http::compress_t awh::Http::getCompress() const noexcept {
 	return this->compress;
 }
 /**
+ * isEnd Метод проверки завершения обработки
+ * @return результат проверки
+ */
+bool awh::Http::isEnd() const noexcept {
+	// Выводрим результат проверки
+	return ((this->state == state_t::HANDSHAKE) || (this->state == state_t::BROKEN));
+}
+/**
  * isCrypt Метод проверки на зашифрованные данные
  * @return флаг проверки на зашифрованные данные
  */
@@ -499,6 +501,24 @@ bool awh::Http::isCrypt() const noexcept {
 bool awh::Http::isHandshake() const noexcept {
 	// Выводрим результат проверки рукопожатия
 	return (this->state == state_t::HANDSHAKE);
+}
+/**
+ * isHeader Метод проверки существования заголовка
+ * @param key ключ заголовка для проверки
+ * @return    результат проверки
+ */
+bool awh::Http::isHeader(const string & key) const noexcept {
+	// Результат работы функции
+	bool result = false;
+	// Если ключ передан
+	if(!key.empty()){
+		// Выполняем поиск ключа заголовка
+		auto it = this->headers.find(key);
+		// Выполняем проверку существования заголовка
+		result = (it != this->headers.end());
+	}
+	// Выводим результат
+	return result;
 }
 /**
  * getWbitClient Метод получения размер скользящего окна для клиента
@@ -788,18 +808,10 @@ void awh::Http::setSubs(const vector <string> & subs) noexcept {
 	}
 }
 /**
- * setStopCallback Метод установки функции обратного вызова для индикации завершения запроса
+ * setChunkingFn Метод установки функции обратного вызова для получения чанков
  * @param callback функция обратного вызова
  */
-void awh::Http::setStopCallback(function <void (const Http *)> callback) noexcept {
-	// Устанавливаем функцию обратного вызова
-	this->stopFn = callback;
-}
-/**
- * setChunkCallback Метод установки функции обратного вызова для получения чанков
- * @param callback функция обратного вызова
- */
-void awh::Http::setChunkCallback(function <void (const vector <char> &, const Http *)> callback) noexcept {
+void awh::Http::setChunkingFn(function <void (const vector <char> &, const Http *)> callback) noexcept {
 	// Устанавливаем функцию обратного вызова
 	this->chunkFn = callback;
 }

@@ -150,7 +150,15 @@ awh::http_t::stath_t awh::HClient::checkAuthenticate() noexcept {
 			}
 		} break;
 		// Сообщаем, что авторизация прошла успешно
-		case 101: result = http_t::stath_t::GOOD; break;
+		case 100:
+		case 101:
+		case 200:
+		case 201:
+		case 202:
+		case 203:
+		case 204:
+		case 205:
+		case 206: result = http_t::stath_t::GOOD; break;
 	}
 	// Выводим результат
 	return result;

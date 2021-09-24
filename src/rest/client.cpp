@@ -76,10 +76,10 @@ void awh::Rest::requestProxy() noexcept {
 		// evhttp_add_header(store, "Proxy-Authorization", authHeader.c_str());
 	}
 
-	string request = "CONNECT 2ip.ru:443 HTTP/1.1\r\n"
+	string request = "CONNECT anyks.com:443 HTTP/1.1\r\n"
 				"Connection: keep-alive\r\n"
 				"Proxy-Connection: keep-alive\r\n"
-				"Host: 2ip.ru\r\n";
+				"Host: anyks.com\r\n";
 	request.append(this->fmk->format("Proxy-Authorization: %s\r\n\r\n", authHeader.c_str()));
 
 	// Если запрос получен
@@ -122,9 +122,11 @@ const bool awh::Rest::connectProxy() noexcept {
 			// Если буфер событий создан
 			if(this->evbuf.bev != nullptr){
 				// Устанавливаем таймаут ожидания поступления данных
-				struct timeval timeout = {READ_TIMEOUT, 0};
+				struct timeval readTimeout = {READ_TIMEOUT, 0};
+				// Устанавливаем таймаут ожидания записи данных
+				struct timeval writeTimeout = {WRITE_TIMEOUT, 0};
 				// Устанавливаем таймаут получения данных
-				bufferevent_set_timeouts(this->evbuf.bev, &timeout, nullptr);
+				bufferevent_set_timeouts(this->evbuf.bev, &readTimeout, &writeTimeout);
 				// Устанавливаем коллбеки
 				bufferevent_setcb(this->evbuf.bev, &readProxy, nullptr, &eventProxy, this);
 				// Очищаем буферы событий при завершении работы
@@ -319,15 +321,112 @@ const awh::Rest::socket_t awh::Rest::socket(const string & ip, const u_int port,
 	// Выводим результат
 	return result;
 }
-
-#define BIO_get_data(b) (b)->ptr
-
 /**
  * readProxy Метод чтения данных с сокета прокси-сервера
  * @param bev буфер события
  * @param ctx передаваемый контекст
  */
 void awh::Rest::readProxy(struct bufferevent * bev, void * ctx){
+
+	// Получаем объект подключения
+	rest_t * http = reinterpret_cast <rest_t *> (ctx);
+
+	http->http->setChunkingFn([](const vector <char> & chunks, const http_t * ctx){
+		// Если данные получены
+		if(!chunks.empty()){
+
+			cout << " ***********CHUNKS " << endl;
+
+			const_cast <http_t *> (ctx)->addBody(chunks.data(), chunks.size());
+		}
+	});
+
+	// Получаем буферы входящих данных
+	struct evbuffer * input = bufferevent_get_input(bev);
+	// Получаем размер входящих данных
+	size_t size = evbuffer_get_length(input);
+	// Если данные существуют
+	if(size > 0){
+
+		if(http->flg){
+
+			// Получаем буферы входящих данных
+			struct evbuffer * input = bufferevent_get_input(http->evbuf.bev);
+			// Получаем размер входящих данных
+			size_t size = evbuffer_get_length(input);
+			// Если данные существуют
+			if(size > 0){
+				// Копируем в буфер полученные данные
+				evbuffer_copyout(input, (void *) http->hdt, size);
+
+				http->http->parse(http->hdt, size);
+
+				cout << " ^^^^^^^^^^^^1 SIZE = " << size << endl;
+				cout << " ---------------3 " << string(http->hdt, size) << endl;
+
+				// Удаляем данные из буфера
+				evbuffer_drain(input, size);
+
+				if(http->http->isEnd()){
+					auto query = http->http->getQuery();
+
+					cout << " ------------- STOP " << query.code << " == " << query.message << " == " << query.ver << endl;
+
+					for(auto & header : http->http->getHeaders()) cout << " ^^^^^^^^^^^ Header = " << header.first << " : " << header.second << endl;
+
+					auto body = http->http->getBody();
+
+					cout << " ^^^^^^^^^^^^ Body " << string(body.begin(), body.end()) << endl;
+				}
+			}
+		} else {
+
+			http->flg = true;
+
+			// Выполняем компенсацию размера полученных данных
+			size = (size > BUFFER_CHUNK ? BUFFER_CHUNK : size);
+			// Копируем в буфер полученные данные
+			evbuffer_copyout(input, (void *) http->hdt, size);
+
+			http->http->parse(http->hdt, size);
+
+			cout << " ^^^^^^^^^^^^2 SIZE = " << size << endl;
+			cout << " ---------------2 " << string(http->hdt, size) << " == " << size << endl;
+
+			// Удаляем данные из буфера
+			evbuffer_drain(input, size);
+
+			if(http->http->isEnd()){
+
+				http->http->clear();
+
+				// Выполняем получение контекста сертификата
+				http->sslctx = http->ssl->init(* http->req.uri);
+				evutil_socket_t fd = bufferevent_getfd(bev);
+				http->evbuf.bev = bufferevent_openssl_socket_new(http->evbuf.base, fd, http->sslctx.ssl, BUFFEREVENT_SSL_CONNECTING, BEV_OPT_THREADSAFE | BEV_OPT_DEFER_CALLBACKS);
+				string request = "GET / HTTP/1.1\r\n"
+						"Connection: keep-alive\r\n"
+						"User-Agent: " USER_AGENT "\r\n"
+						"Accept: */*\r\n"
+						"Host: anyks.com\r\n\r\n";
+
+				// Если запрос получен
+				if(!request.empty()){
+					// Активируем разрешение на запись и чтение
+					bufferevent_enable(http->evbuf.bev, EV_WRITE | EV_READ);
+					// Отправляем серверу сообщение
+					bufferevent_write(http->evbuf.bev, request.data(), request.size());
+				}
+			}
+		}
+
+	}
+
+
+
+
+
+	/*
 
 	cout << " ---------------1 " << endl;
 
@@ -357,20 +456,20 @@ void awh::Rest::readProxy(struct bufferevent * bev, void * ctx){
 
 				evutil_socket_t fd = bufferevent_getfd(bev);
 
-				/*
-				BIO *bio;
-				bio = BIO_new_socket((int)fd, 0);
-				SSL_set_bio(http->sslctx.ssl, bio, bio);
-				*/
+				//
+				//BIO *bio;
+				//bio = BIO_new_socket((int)fd, 0);
+				//SSL_set_bio(http->sslctx.ssl, bio, bio);
+				//
 
 				// struct bufferevent * bufev = BIO_get_data(bio);
 
-				/*
-				auto bio = BIO_new_socket(static_cast <int> (fd), BIO_NOCLOSE);
-				BIO_set_nbio(bio, 1);
-				SSL_set_bio(http->sslctx.ssl, bio, bio);
-				BIO_set_nbio(bio, 0);
-				*/
+				//
+				//auto bio = BIO_new_socket(static_cast <int> (fd), BIO_NOCLOSE);
+				//BIO_set_nbio(bio, 1);
+				//SSL_set_bio(http->sslctx.ssl, bio, bio);
+				//BIO_set_nbio(bio, 0);
+				//
 
 				http->evbuf.bev = bufferevent_openssl_socket_new(http->evbuf.base, fd, http->sslctx.ssl, BUFFEREVENT_SSL_CONNECTING, BEV_OPT_THREADSAFE | BEV_OPT_DEFER_CALLBACKS);
 				// Оборачиваем текущее соединение в SSL BIO
@@ -391,7 +490,7 @@ void awh::Rest::readProxy(struct bufferevent * bev, void * ctx){
 				string request = "GET / HTTP/1.1\r\n"
 					"Connection: close\r\n"
 					"User-Agent: curl/7.64.1\r\n"
-					"Accept: */*\r\n"
+					"Accept: *//*\r\n"
 					"Host: 2ip.ru\r\n\r\n";
 
 				// Если запрос получен
@@ -419,6 +518,7 @@ void awh::Rest::readProxy(struct bufferevent * bev, void * ctx){
 
 				}
 			}
+			*/
 
 			/*
 			// Создаём событие подключения
@@ -475,11 +575,11 @@ void awh::Rest::readProxy(struct bufferevent * bev, void * ctx){
 			
 
 			// Удаляем данные из буфера
-			evbuffer_drain(input, size);
+			// evbuffer_drain(input, size);
 
 			// http->clear();
-		}
-	}
+		//}
+	//}
 }
 /**
  * eventProxy Метод обработка входящих событий с прокси-сервера
@@ -510,8 +610,8 @@ void awh::Rest::eventProxy(struct bufferevent * bev, const short events, void * 
 					http->log->print("closing server [%s:%d] error: %s", log_t::flag_t::WARNING, http->proxyUrl.ip.c_str(), http->proxyUrl.port, evutil_socket_error_to_string(EVUTIL_SOCKET_ERROR()));
 				// Если - это таймаут, выводим сообщение в лог
 				else if(events & BEV_EVENT_TIMEOUT) http->log->print("timeout server [%s:%d]", log_t::flag_t::WARNING, http->proxyUrl.ip.c_str(), http->proxyUrl.port);
-					// Закрываем подключение
-					http->clear();
+				// Закрываем подключение
+				http->clear();
 			}
 		}
 	}
@@ -553,7 +653,7 @@ const string awh::Rest::GET(const uri_t::url_t & url, const unordered_map <strin
 		 */
 		thread thr([&result, this]{
 			// Выполняем REST запрос
-			this->PROXY();
+			this->PROXY2();
 			// Проверяем на наличие ошибок
 			if(!this->res.ok) this->log->print("request failed: %u %s", log_t::flag_t::WARNING, this->res.code, this->res.mess.c_str());
 			// Если тело ответа получено
@@ -1360,7 +1460,7 @@ ssl_setup_socket(int sock, SSL_CTX * ctx)
  * @param ctx контекст родительского объекта
  */
 void awh::Rest::proxyFn(struct evhttp_request * req, void * ctx){
-	
+
 
 	rest_t * http = reinterpret_cast <rest_t *> (ctx);
 
@@ -1782,7 +1882,8 @@ void awh::Rest::proxyFn(struct evhttp_request * req, void * ctx){
 	evhttp_add_header(store, "Connection", "close");
 	evhttp_add_header(store, "Host", "2ip.ru");
 	evhttp_add_header(store, "Accept", "*/*");
-	evhttp_add_header(store, "User-Agent", "curl/7.64.1");
+	// evhttp_add_header(store, "User-Agent", "curl/7.64.1");
+	evhttp_add_header(store, "User-Agent", USER_AGENT);
 
 	evhttp_make_request(http->evbuf.evcon, req2, EVHTTP_REQ_GET, "/");
 
@@ -2670,6 +2771,8 @@ awh::Rest::Rest(const fmk_t * fmk, const log_t * log, const uri_t * uri, const n
 		this->auth = new auth_t(this->fmk, this->log);
 		// Создаём объект для работы с SSL
 		this->ssl = new ssl_t(this->fmk, this->log, this->uri);
+		// Создаём объект для работы с HTTP
+		this->http = new shttp_t(this->fmk, this->log, this->uri);
 	// Если происходит ошибка то игнорируем её
 	} catch(const bad_alloc&) {
 		// Выводим сообщение об ошибке
@@ -2688,6 +2791,8 @@ awh::Rest::~Rest() noexcept {
 	if(this->dns != nullptr) delete this->dns;
 	// Если объект для работы с SSL создан
 	if(this->ssl != nullptr) delete this->ssl;
+	// Удаляем объект работы с HTTP
+	if(this->http != nullptr) delete this->http;
 	// Удаляем объект работы с авторизацией
 	if(this->auth != nullptr) delete this->auth;
 	// Если объект для компрессии/декомпрессии создан
