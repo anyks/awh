@@ -294,21 +294,29 @@ void awh::Http::parse(const char * buffer, const size_t size) noexcept {
 							// Если размер тела не получен
 							if(max == 0){
 								// Заполняем собранные данные тела
-								this->body.assign(buffer, buffer + size);
+								this->chunk.data.assign(buffer, buffer + size);
 								// Если функция обратного вызова установлена
-								if(this->chunkFn != nullptr)
+								if(this->chunkingFn != nullptr)
 									// Выводим функцию обратного вызова
-									this->chunkFn(this->body, this);
+									this->chunkingFn(this->chunk.data, this);
 							// Если размер установлен конкретный
 							} else {
 								// Получаем актуальный размер тела
 								size_t actual = (max - this->body.size());
 								// Фиксируем актуальный размер тела
 								actual = (size > actual ? actual : size);
-								// Собираем тело запроса
-								this->body.insert(this->body.end(), buffer, buffer + actual);
+								// Увеличиваем общий размер полученных данных
+								this->chunk.size += actual;
+								// Заполняем собранные данные тела
+								this->chunk.data.assign(buffer, buffer + actual);
+								// Если функция обратного вызова установлена
+								if(this->chunkingFn != nullptr)
+									// Выводим функцию обратного вызова
+									this->chunkingFn(this->chunk.data, this);
 								// Если тело сообщения полностью собранно
-								if(max == this->body.size()){
+								if(max == this->chunk.size){
+									// Очищаем собранные данные
+									this->chunk.clear();
 									// Тело в запросе не передано
 									this->state = state_t::GOOD;
 									// Продолжаем работу
@@ -331,6 +339,8 @@ void awh::Http::parse(const char * buffer, const size_t size) noexcept {
 									this->chunk.size = this->fmk->hexToDec(body.substr(0, pos));
 									// Если это последний чанк
 									if(this->chunk.size == 0){
+										// Очищаем собранные данные
+										this->chunk.clear();
 										// Тело в запросе не передано
 										this->state = state_t::GOOD;
 										// Продолжаем работу
@@ -353,15 +363,13 @@ void awh::Http::parse(const char * buffer, const size_t size) noexcept {
 								// Если весь чанк собран
 								if(this->chunk.size == this->chunk.data.size()){
 									// Если функция обратного вызова установлена
-									if(this->chunkFn != nullptr)
+									if(this->chunkingFn != nullptr)
 										// Выводим функцию обратного вызова
-										this->chunkFn(this->chunk.data, this);
+										this->chunkingFn(this->chunk.data, this);
+									// Очищаем собранные данные
+									this->chunk.clear();
 									// Удаляем полученные данные
 									body.erase(body.begin(), body.begin() + actual);
-									// Сбрасываем размер чанка
-									this->chunk.size = 0;
-									// Очинаем собранные данные
-									this->chunk.data.clear();
 									// Если тело запроса ещё не всё прочитано
 									if(!body.empty()) this->parse(body.data(), body.size());
 								}
@@ -741,8 +749,15 @@ vector <char> awh::Http::restRequest(const compress_t compress, const bool crypt
 			this->keyWebSocket = this->key();
 			// Получаем User-Agent
 			const string userAgent = USER_AGENT;
-			// Генерируем заголовок Origin
-			const string origin = this->uri->createOrigin(* this->url);
+			// Ищем адрес сайта с которого выполняется запрос
+			string origin = (this->headers.count("origin") > 0 ? this->headers.find("origin")->second : this->uri->createOrigin(* this->url));
+			// Если Origin передан, формируем заголовок
+			if(!origin.empty()){
+				// Формируем заголовок
+				origin.insert(0, "Origin: ");
+				// Формируем сепаратор
+				origin.append("\r\n");
+			}
 			// Если метод компрессии указан
 			if(compress != compress_t::NONE){
 				// Если метод компрессии выбран Deflate
@@ -764,8 +779,7 @@ vector <char> awh::Http::restRequest(const compress_t compress, const bool crypt
 				"GET %s HTTP/%.1f\r\n"
 				"Host: %s\r\n"
 				"Date: %s\r\n"
-				"Origin: %s\r\n"
-				"User-Agent: %s\r\n"
+				"%sUser-Agent: %s\r\n"
 				"Connection: Upgrade\r\n"
 				"Upgrade: websocket\r\n"
 				"Sec-WebSocket-Version: %u\r\n"
@@ -782,6 +796,174 @@ vector <char> awh::Http::restRequest(const compress_t compress, const bool crypt
 			// Формируем результат
 			result.assign(request.begin(), request.end());
 		}
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * response Метод создания ответа
+ * @return буфер данных запроса в бинарном виде
+ */
+vector <char> awh::Http::response() const noexcept {
+
+}
+/**
+ * reject Метод создания отрицательного ответа
+ * @param code код ответа
+ * @return     буфер данных запроса в бинарном виде
+ */
+vector <char> awh::Http::reject(const u_short code) const noexcept {
+
+}
+/**
+ * websocket Метод создания запроса для WebSocket
+ * @param url объект параметров REST запроса
+ * @return    буфер данных запроса в бинарном виде
+ */
+vector <char> awh::Http::websocket(const uri_t::url_t & url) const noexcept {
+
+}
+/**
+ * request Метод создания запроса
+ * @param url    объект параметров REST запроса
+ * @param method метод REST запроса
+ * @return       буфер данных запроса в бинарном виде
+ */
+vector <char> awh::Http::request(const uri_t::url_t & url, const method_t method) const noexcept {
+	// Результат работы функции
+	vector <char> result;
+	// Получаем путь HTTP запроса
+	const string & path = this->uri->joinPath(url.path);
+	// Получаем параметры запроса
+	const string & params = this->uri->joinParams(url.params);
+	// Получаем хост запроса
+	const string & host = (!url.domain.empty() ? url.domain : url.ip);
+	// Если хост получен
+	if(!host.empty() && !path.empty()){
+		// Данные REST запроса
+		string request = "";
+		// Размер тела сообщения
+		size_t contentLength = 0;
+		// Список существующих заголовков
+		set <header_t> available;
+		// Устанавливаем параметры REST запроса
+		const_cast <auth_t *> (this->auth)->setUri(this->uri->createUrl(url));
+		// Формируем HTTP запрос
+		const string & query = this->fmk->format("%s%s", path.c_str(), (!params.empty() ? params.c_str() : ""));
+		// Определяем метод запроса
+		switch((u_short) method){
+			// Если метод запроса указан как GET
+			case (u_short) method_t::GET:
+				// Формируем GET запрос
+				request = this->fmk->format("GET %s HTTP/%.1f\r\n", query.c_str(), this->query.ver);
+			break;
+			// Если метод запроса указан как DEL
+			case (u_short) method_t::DEL:
+				// Формируем DEL запрос
+				request = this->fmk->format("DEL %s HTTP/%.1f\r\n", query.c_str(), this->query.ver);
+			break;
+			// Если метод запроса указан как PUT
+			case (u_short) method_t::PUT:
+				// Формируем PUT запрос
+				request = this->fmk->format("PUT %s HTTP/%.1f\r\n", query.c_str(), this->query.ver);
+			break;
+			// Если метод запроса указан как PUT
+			case (u_short) method_t::POST:
+				// Формируем POST запрос
+				request = this->fmk->format("POST %s HTTP/%.1f\r\n", query.c_str(), this->query.ver);
+			break;
+			// Если метод запроса указан как HEAD
+			case (u_short) method_t::HEAD:
+				// Формируем HEAD запрос
+				request = this->fmk->format("HEAD %s HTTP/%.1f\r\n", query.c_str(), this->query.ver);
+			break;
+			// Если метод запроса указан как PATCH
+			case (u_short) method_t::PATCH:
+				// Формируем PATCH запрос
+				request = this->fmk->format("PATCH %s HTTP/%.1f\r\n", query.c_str(), this->query.ver);
+			break;
+			// Если метод запроса указан как TRACE
+			case (u_short) method_t::TRACE:
+				// Формируем TRACE запрос
+				request = this->fmk->format("TRACE %s HTTP/%.1f\r\n", query.c_str(), this->query.ver);
+			break;
+			// Если метод запроса указан как OPTIONS
+			case (u_short) method_t::OPTIONS:
+				// Формируем OPTIONS запрос
+				request = this->fmk->format("OPTIONS %s HTTP/%.1f\r\n", query.c_str(), this->query.ver);
+			break;
+		}
+		// Добавляем заголовок даты в запрос
+		request.append(this->fmk->format("Date: %s\r\n", this->date().c_str()));
+		// Переходим по всему списку заголовков
+		for(auto & header : this->headers){
+			// Получаем анализируемый заголовок
+			const string & head = this->fmk->toLower(header.first);
+			// Если заголовок Host передан, запоминаем , что мы его нашли
+			if(head.compare("host") == 0) available.emplace(header_t::HOST);
+			// Если заголовок Accept передан, запоминаем , что мы его нашли
+			if(head.compare("accept") == 0) available.emplace(header_t::ACCEPT);
+			// Если заголовок Origin перадан, запоминаем, что мы его нашли
+			else if(head.compare("origin") == 0) available.emplace(header_t::ORIGIN);
+			// Если заголовок User-Agent передан, запоминаем, что мы его нашли
+			else if(head.compare("user-agent") == 0) available.emplace(header_t::USERAGENT);
+			// Если заголовок Connection перадан, запоминаем, что мы его нашли
+			else if(head.compare("connection") == 0) available.emplace(header_t::CONNECTION);
+			// Если заголовок Accept-Language передан, запоминаем, что мы его нашли
+			else if(head.compare("accept-language") == 0) available.emplace(header_t::ACCEPTLANGUAGE);
+			// Если заголовок Content-Length перадан, запоминаем, что мы его нашли
+			else if(head.compare("content-length") == 0){
+				// Устанавливаем размер тела сообщения
+				contentLength = stoull(header.second);
+				// Запоминаем, что мы нашли заголовок
+				available.emplace(header_t::CONTENTLENGTH);
+			}
+			// Добавляем заголовок в запрос
+			request.append(this->fmk->format("%s: %s\r\n", header.first.c_str(), header.second.c_str()));
+		}
+		// Устанавливаем Host если не передан
+		if(available.count(header_t::HOST) < 1)
+			// Добавляем заголовок в запрос
+			request.append(this->fmk->format("Host: %s\r\n", (!url.domain.empty() ? url.domain : url.ip).c_str()));
+		// Устанавливаем Origin если не передан
+		if(available.count(header_t::ORIGIN) < 1)
+			// Добавляем заголовок в запрос
+			request.append(this->fmk->format("Origin: %s\r\n", this->uri->createOrigin(url).c_str()));
+		// Устанавливаем User-Agent если не передан
+		if(available.count(header_t::USERAGENT) < 1)
+			// Добавляем заголовок в запрос
+			request.append(this->fmk->format("User-Agent: %s\r\n", this->userAgent.c_str()));
+		// Устанавливаем Connection если не передан
+		if(available.count(header_t::CONNECTION) < 1)
+			// Добавляем заголовок в запрос
+			request.append(this->fmk->format("Connection: %s\r\n", HTTP_HEADER_CONNECTION));
+		// Устанавливаем Accept-Language если не передан
+		if(available.count(header_t::ACCEPTLANGUAGE) < 1)
+			// Добавляем заголовок в запрос
+			request.append(this->fmk->format("Accept-Language: %s\r\n", HTTP_HEADER_ACCEPTLANGUAGE));
+		// Устанавливаем Accept если не передан
+		if(available.count(header_t::ACCEPT) < 1)
+			// Добавляем заголовок в запрос
+			request.append(this->fmk->format("Accept: %s\r\n", HTTP_HEADER_ACCEPT));
+		// Если нужно произвести сжатие контента
+		if(http->zip != zip_t::NONE)
+			// Добавляем заголовок в запрос
+			request.append(this->fmk->format("Accept-Encoding: %s\r\n", HTTP_HEADER_ACCEPTENCODING));
+		// Получаем параметры авторизации
+		const string & auth = this->auth->header();
+		// Если данные авторизации получены
+		if(!auth.empty()) request.append(auth);
+		// Если запрос не является HEAD и тело запроса существует
+		if((method != method_t::HEAD) && !this->body.empty()){
+			// Проверяем нужно ли передать тело разбив на чанки
+			this->chunking = ((available.count(header_t::CONTENTLENGTH) < 1) || (contentLength != this->body.size()));
+			// Устанавливаем Content-Length если не передан
+			if(this->chunking) request.append(this->fmk->format("Transfer-Encoding: %s\r\n", "chunked"));
+		}
+		// Устанавливаем завершающий разделитель
+		request.append("\r\n");
+		// Формируем результат запроса
+		result.assign(result.begin(), result.end());
 	}
 	// Выводим результат
 	return result;
@@ -813,7 +995,7 @@ void awh::Http::setSubs(const vector <string> & subs) noexcept {
  */
 void awh::Http::setChunkingFn(function <void (const vector <char> &, const Http *)> callback) noexcept {
 	// Устанавливаем функцию обратного вызова
-	this->chunkFn = callback;
+	this->chunkingFn = callback;
 }
 /**
  * setUser Метод установки параметров авторизации

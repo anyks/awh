@@ -61,8 +61,20 @@
 #define BUFFER_CHUNK 0x19C00
 // Размер бинарного буфера
 #define BUFFER_SIZE 0x6400000
-// User-Agent для REST запросов
-#define USER_AGENT "Mozilla/5.0 (Macintosh; Intel Mac OS X 11_1_0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4324.192 Safari/537.36"
+
+/**
+ * HTTP заголовки по умолчанию
+ */
+// Заголовок Accept-Language по умолчанию
+#define HTTP_HEADER_ACCEPTLANGUAGE "*"
+// Заголовок Connection по умолчанию
+#define HTTP_HEADER_CONNECTION "keep-alive"
+// Заголовок Accept-Encoding по умолчанию
+#define HTTP_HEADER_ACCEPTENCODING "gzip, deflate, br"
+// Заголовок User-Agent по умолчанию
+#define HTTP_HEADER_AGENT "Mozilla/5.0 (Macintosh; Intel Mac OS X 11_1_0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4324.192 Safari/537.36"
+// Заголовок Accept по умолчанию
+#define HTTP_HEADER_ACCEPT "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9"
 
 /** ПАРАМЕТРЫ СЕТИ **/
 // Версия HTTP протокола

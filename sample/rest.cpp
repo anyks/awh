@@ -51,7 +51,7 @@ int main(int argc, char * argv[]) noexcept {
 	// Устанавливаем параметры шифрования
 	// rest.setCrypt("password");
 	// Выполняем установку URL адреса сервера WebSocket
-	uri_t::url_t url = uri.parseUrl("https://anyks.com"); // ("https://api.binance.com/api/v3/exchangeInfo?symbol=BTCUSDT");
+	uri_t::url_t url = uri.parseUrl("https://anyks.com");// ("https://api.binance.com/api/v3/exchangeInfo?symbol=BTCUSDT");
 	// Выполняем запрос на получение данных
 	const auto & result = rest.GET(url);
 

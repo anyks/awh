@@ -64,6 +64,10 @@ namespace awh {
 			 * Формат сжатия тела запроса
 			 */
 			enum class compress_t : u_short {NONE, BR, GZIP, DEFLATE};
+			/**
+			 * Методы HTTP запроса
+			 */
+			enum class method_t : u_short {GET, DEL, PUT, POST, HEAD, PATCH, TRACE, OPTIONS};
 		public:
 			/**
 			 * Query Структура запроса
@@ -137,13 +141,37 @@ namespace awh {
 			 * Chunk Структура собираемого чанка
 			 */
 			typedef struct Chunk {
-				size_t size;        // Размер чанка
-				vector <char> data; // Данные чанка
-				/**
-				 * Chunk Конструктор
-				 */
-				Chunk() : size(0) {}
+				public:
+					size_t size;        // Размер чанка
+					vector <char> data; // Данные чанка
+				public:
+					/**
+					 * clear Метод очистки данных чанка
+					 */
+					void clear() noexcept {
+						// Обнуляем размер чанка
+						this->size = 0;
+						// Обнуляем буфер данных
+						this->data.clear();
+					}
+				public:
+					/**
+					 * Chunk Конструктор
+					 */
+					Chunk() : size(0) {}
 			} chunk_t;
+			/**
+			 * Типы основных заголовков
+			 */
+			enum class header_t : u_short {
+				HOST,          // Host
+				ACCEPT,        // Accept
+				ORIGIN,        // Origin
+				USERAGENT,     // User-Agent
+				CONNECTION,    // Connection
+				CONTENTLENGTH, // Content-Length
+				ACCEPTLANGUAGE // Accept-Language
+			};
 			/**
 			 * Стейты работы модуля
 			 */
@@ -165,6 +193,9 @@ namespace awh {
 		protected:
 			// Флаг зашифрованных данных
 			bool crypt = false;
+			// Флаг разрешающий передавать тело чанками
+			bool chunking = true;
+		protected:
 			// Стейт проверки авторизации
 			stath_t stath = stath_t::EMPTY;
 			// Стейт текущего запроса
@@ -188,7 +219,7 @@ namespace awh {
 			unordered_multimap <string, string> headers;
 		private:
 			// Функция вызова при получении чанка
-			function <void (const vector <char> &, const Http *)> chunkFn = nullptr;
+			function <void (const vector <char> &, const Http *)> chunkingFn = nullptr;
 		protected:
 			// Создаём объект для работы с авторизацией
 			auth_t * auth = nullptr;
@@ -385,6 +416,31 @@ namespace awh {
 			 * @return         собранный HTML буфер
 			 */
 			vector <char> restRequest(const compress_t compress = compress_t::GZIP, const bool crypt = false) noexcept;
+		public:
+			/**
+			 * response Метод создания ответа
+			 * @return буфер данных запроса в бинарном виде
+			 */
+			vector <char> response() const noexcept;
+			/**
+			 * reject Метод создания отрицательного ответа
+			 * @param code код ответа
+			 * @return     буфер данных запроса в бинарном виде
+			 */
+			vector <char> reject(const u_short code) const noexcept;
+			/**
+			 * websocket Метод создания запроса для WebSocket
+			 * @param url объект параметров REST запроса
+			 * @return    буфер данных запроса в бинарном виде
+			 */
+			vector <char> websocket(const uri_t::url_t & url) const noexcept;
+			/**
+			 * request Метод создания запроса
+			 * @param url    объект параметров REST запроса
+			 * @param method метод REST запроса
+			 * @return       буфер данных запроса в бинарном виде
+			 */
+			vector <char> request(const uri_t::url_t & url, const method_t method) const noexcept;
 		public:
 			/**
 			 * setSub Метод установки подпротокола поддерживаемого сервером

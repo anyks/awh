@@ -328,18 +328,13 @@ const awh::Rest::socket_t awh::Rest::socket(const string & ip, const u_int port,
  */
 void awh::Rest::readProxy(struct bufferevent * bev, void * ctx){
 
+
+
 	// Получаем объект подключения
 	rest_t * http = reinterpret_cast <rest_t *> (ctx);
 
-	http->http->setChunkingFn([](const vector <char> & chunks, const http_t * ctx){
-		// Если данные получены
-		if(!chunks.empty()){
+	cout << " %%%%%%%%% " << endl;
 
-			cout << " ***********CHUNKS " << endl;
-
-			const_cast <http_t *> (ctx)->addBody(chunks.data(), chunks.size());
-		}
-	});
 
 	// Получаем буферы входящих данных
 	struct evbuffer * input = bufferevent_get_input(bev);
@@ -356,13 +351,34 @@ void awh::Rest::readProxy(struct bufferevent * bev, void * ctx){
 			size_t size = evbuffer_get_length(input);
 			// Если данные существуют
 			if(size > 0){
+
+				vector <char> buffer(size);
+
+				/*
+				// Выполняем компенсацию размера полученных данных
+				size = (size > BUFFER_CHUNK ? BUFFER_CHUNK : size);
 				// Копируем в буфер полученные данные
 				evbuffer_copyout(input, (void *) http->hdt, size);
+				*/
 
-				http->http->parse(http->hdt, size);
+				evbuffer_copyout(input, buffer.data(), size);
 
 				cout << " ^^^^^^^^^^^^1 SIZE = " << size << endl;
-				cout << " ---------------3 " << string(http->hdt, size) << endl;
+				cout << " ---------------3 " << string(buffer.begin(), buffer.end()) << endl;
+
+
+				http->http->setChunkingFn([](const vector <char> & chunks, const http_t * ctx){
+					// Если данные получены
+					if(!chunks.empty()){
+
+						cout << " ***********CHUNKS " << endl;
+
+						const_cast <http_t *> (ctx)->addBody(chunks.data(), chunks.size());
+					}
+				});
+
+
+				http->http->parse(buffer.data(), size);
 
 				// Удаляем данные из буфера
 				evbuffer_drain(input, size);
@@ -378,20 +394,26 @@ void awh::Rest::readProxy(struct bufferevent * bev, void * ctx){
 
 					cout << " ^^^^^^^^^^^^ Body " << string(body.begin(), body.end()) << endl;
 				}
+
 			}
 		} else {
 
 			http->flg = true;
 
+			/*
 			// Выполняем компенсацию размера полученных данных
 			size = (size > BUFFER_CHUNK ? BUFFER_CHUNK : size);
 			// Копируем в буфер полученные данные
 			evbuffer_copyout(input, (void *) http->hdt, size);
+			*/
 
-			http->http->parse(http->hdt, size);
+			vector <char> buffer(size);
+			evbuffer_copyout(input, buffer.data(), size);
 
 			cout << " ^^^^^^^^^^^^2 SIZE = " << size << endl;
-			cout << " ---------------2 " << string(http->hdt, size) << " == " << size << endl;
+			cout << " ---------------2 " << string(buffer.begin(), buffer.end()) << " == " << size << endl;
+
+			http->http->parse(buffer.data(), size);
 
 			// Удаляем данные из буфера
 			evbuffer_drain(input, size);
@@ -403,12 +425,14 @@ void awh::Rest::readProxy(struct bufferevent * bev, void * ctx){
 				// Выполняем получение контекста сертификата
 				http->sslctx = http->ssl->init(* http->req.uri);
 				evutil_socket_t fd = bufferevent_getfd(bev);
-				http->evbuf.bev = bufferevent_openssl_socket_new(http->evbuf.base, fd, http->sslctx.ssl, BUFFEREVENT_SSL_CONNECTING, BEV_OPT_THREADSAFE | BEV_OPT_DEFER_CALLBACKS);
+				http->evbuf.bev = bufferevent_openssl_socket_new(http->evbuf.base, fd, http->sslctx.ssl, BUFFEREVENT_SSL_CONNECTING, BEV_OPT_THREADSAFE);
 				string request = "GET / HTTP/1.1\r\n"
 						"Connection: keep-alive\r\n"
 						"User-Agent: " USER_AGENT "\r\n"
 						"Accept: */*\r\n"
 						"Host: anyks.com\r\n\r\n";
+
+				cout << " ---------------3 " << request << endl;
 
 				// Если запрос получен
 				if(!request.empty()){
