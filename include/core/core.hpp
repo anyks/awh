@@ -64,6 +64,27 @@ namespace awh {
 	 * Core Класс ядра для работы с TCP/IP
 	 */
 	typedef class Core {
+		public:
+			/**
+			 * Proxy структура прокси-сервера
+			 */
+			typedef struct Proxy {
+				public:
+					/**
+					 * Типы прокси-сервера
+					 */
+					enum class type_t : u_short {NONE, HTTP, SOCKS};
+				public:
+					// Тип прокси-сервера
+					type_t type;
+					// Параметры сокет-сервера
+					uri_t::url_t url;
+				public:
+					/**
+					 * Proxy Конструктор
+					 */
+					Proxy() noexcept : type(type_t::NONE) {}
+			} proxy_t;
 		protected:
 			/**
 			 * KeepAlive Структура с параметрами для постоянного подключения
@@ -112,6 +133,8 @@ namespace awh {
 			// Параметры постоянного подключения
 			alive_t alive;
 		protected:
+			// Параметры прокси-сервера
+			proxy_t proxy;
 			// Параметры адреса для запроса
 			uri_t::url_t url;
 			// Контекст SSL для работы с защищённым подключением
@@ -259,6 +282,11 @@ namespace awh {
 			 * @param mode флаг автоматического переподключения
 			 */
 			void setAutoReconnect(const bool mode) noexcept;
+			/**
+			 * setProxyServer Метод установки прокси-сервера
+			 * @param proxy параметры прокси-сервера
+			 */
+			void setProxyServer(const proxy_t & proxy) noexcept;
 			/**
 			 * setFamily Метод установки тип протокола интернета
 			 * @param family тип протокола интернета AF_INET или AF_INET6

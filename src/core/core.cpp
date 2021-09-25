@@ -568,6 +568,18 @@ void awh::Core::setAutoReconnect(const bool mode) noexcept {
 	this->reconnect = mode;
 }
 /**
+ * setProxyServer Метод установки прокси-сервера
+ * @param proxy параметры прокси-сервера
+ */
+void awh::Core::setProxyServer(const proxy_t & proxy) noexcept {
+	// Устанавливаем параметры прокси-сервера
+	this->proxy = proxy;
+	// Если прокси-сервер установлен
+	if(this->proxy.type != proxy_t::type_t::NONE)
+		// Устанавливаем адрес прокси-сервера
+		this->url = this->proxy.url;
+}
+/**
  * setFamily Метод установки тип протокола интернета
  * @param family тип протокола интернета AF_INET или AF_INET6
  */
