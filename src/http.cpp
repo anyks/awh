@@ -95,7 +95,7 @@ awh::Http::stath_t awh::Http::checkAuth() noexcept {
 			case 206: result = stath_t::GOOD; break;
 		}
 	// Если активирован режим обработки запроса клиента
-	} else if(this->mode == mode_t::REQUEST){
+	} else if(this->mode == mode_t::REQUEST) {
 		// Если авторизация требуется
 		if(this->auth->getType() != auth_t::type_t::NONE){
 			// Получаем параметры авторизации
