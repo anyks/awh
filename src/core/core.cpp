@@ -568,18 +568,6 @@ void awh::Core::setAutoReconnect(const bool mode) noexcept {
 	this->reconnect = mode;
 }
 /**
- * setProxyServer Метод установки прокси-сервера
- * @param proxy параметры прокси-сервера
- */
-void awh::Core::setProxyServer(const proxy_t & proxy) noexcept {
-	// Устанавливаем параметры прокси-сервера
-	this->proxy = proxy;
-	// Если прокси-сервер установлен
-	if(this->proxy.type != proxy_t::type_t::NONE)
-		// Устанавливаем адрес прокси-сервера
-		this->url = this->proxy.url;
-}
-/**
  * setFamily Метод установки тип протокола интернета
  * @param family тип протокола интернета AF_INET или AF_INET6
  */
@@ -622,6 +610,20 @@ void awh::Core::setUser(const string & login, const string & password) noexcept 
 void awh::Core::setCA(const string & cafile, const string & capath) noexcept {
 	// Устанавливаем адрес CA-файла
 	this->ssl->setCA(cafile, capath);
+}
+/**
+ * setProxyServer Метод установки прокси-сервера
+ * @param uri  параметры прокси-сервера
+ * @param type тип прокси-сервера
+ */
+void awh::Core::setProxyServer(const string & uri, const proxy_t::type_t type) noexcept {
+	// Если URI параметры переданы
+	if(!uri.empty()){
+		// Устанавливаем тип прокси-сервера
+		this->proxy.type = type;
+		// Устанавливаем параметры прокси-сервера
+		this->proxy.url = this->uri->parseUrl(uri);
+	}
 }
 /**
  * setServ Метод установки данных сервиса

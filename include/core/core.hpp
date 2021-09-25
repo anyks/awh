@@ -283,11 +283,6 @@ namespace awh {
 			 */
 			void setAutoReconnect(const bool mode) noexcept;
 			/**
-			 * setProxyServer Метод установки прокси-сервера
-			 * @param proxy параметры прокси-сервера
-			 */
-			void setProxyServer(const proxy_t & proxy) noexcept;
-			/**
 			 * setFamily Метод установки тип протокола интернета
 			 * @param family тип протокола интернета AF_INET или AF_INET6
 			 */
@@ -314,6 +309,12 @@ namespace awh {
 			 * @param capath адрес каталога где находится CA-файл
 			 */
 			void setCA(const string & cafile, const string & capath = "") noexcept;
+			/**
+			 * setProxyServer Метод установки прокси-сервера
+			 * @param uri  параметры прокси-сервера
+			 * @param type тип прокси-сервера
+			 */
+			void setProxyServer(const string & uri, const proxy_t::type_t type) noexcept;
 			/**
 			 * setServ Метод установки данных сервиса
 			 * @param id   идентификатор сервиса
