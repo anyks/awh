@@ -90,7 +90,7 @@ namespace awh {
 			static constexpr u_short WS_VERSION = 13;
 		protected:
 			// Список HTTP сообщений
-			map <u_short, string> messages = {
+			map <u_short, pair <string, string>> messages = {
 				{100, "Continue"},
 				{101, "Switching Protocol"},
 				{102, "Processing"},
@@ -112,7 +112,7 @@ namespace awh {
 				{307, "Temporary Redirect"},
 				{308, "Permanent Redirect"},
 				{400, "Bad Request"},
-				{401, "Unauthorized"},
+				{401, "Authentication Required"},
 				{402, "Payment Required"},
 				{403, "Forbidden"},
 				{404, "Not Found"},
@@ -169,6 +169,7 @@ namespace awh {
 				ORIGIN,        // Origin
 				USERAGENT,     // User-Agent
 				CONNECTION,    // Connection
+				CONTANTTYPE,   // Content-Type
 				CONTENTLENGTH, // Content-Length
 				ACCEPTLANGUAGE // Accept-Language
 			};
@@ -184,6 +185,13 @@ namespace awh {
 				HANDSHAKE // Режим выполненного рукопожатия
 			};
 		protected:
+			// Объект параметров запроса
+			query_t query;
+			// Объект собираемого чанка
+			chunk_t chunk;
+		protected:
+			// Размер одного чанка
+			size_t chunkSize = BUFFER_CHUNK;
 			// Размер скользящего окна клиента
 			short wbitClient = GZIP_MAX_WBITS;
 			// Размер скользящего окна сервера
@@ -204,19 +212,14 @@ namespace awh {
 			// Поддерживаемый сабпротокол
 			string sub = "";
 			// Ключ клиента
-			string keyWebSocket = "";
-		protected:
-			// Объект параметров запроса
-			query_t query;
-			// Объект собираемого чанка
-			chunk_t chunk;
+			mutable string keyWebSocket = "";
 		protected:
 			// Поддерживаемые сабпротоколы
 			set <string> subs;
 			// Полученное тело HTTP запроса
-			vector <char> body;
+			mutable vector <char> body;
 			// Полученные HTTP заголовки
-			unordered_multimap <string, string> headers;
+			mutable unordered_multimap <string, string> headers;
 		private:
 			// Функция вызова при получении чанка
 			function <void (const vector <char> &, const Http *)> chunkingFn = nullptr;
@@ -233,20 +236,20 @@ namespace awh {
 			const uri_t::url_t * url = nullptr;
 		protected:
 			/**
-			 * key Метод генерации ключа для WebSocket
-			 * @return сгенерированный ключ для WebSocket
-			 */
-			const string key() const noexcept;
-			/**
 			 * date Метод получения текущей даты для HTTP запроса
 			 * @return текущая дата
 			 */
 			const string date() const noexcept;
 			/**
-			 * generateHash Метод генерации хэша ключа
+			 * wsKey Метод генерации ключа для WebSocket
+			 * @return сгенерированный ключ для WebSocket
+			 */
+			const string wsKey() const noexcept;
+			/**
+			 * wsHash Метод генерации хэша ключа
 			 * @return сгенерированный хэш ключа клиента
 			 */
-			const string generateHash() const noexcept;
+			const string wsHash() const noexcept;
 		protected:
 			/**
 			 * updateExtensions Метод проверки полученных расширений
@@ -307,6 +310,11 @@ namespace awh {
 			 * @return буфер данных тела запроса
 			 */
 			const vector <char> & getBody() const noexcept;
+			/**
+			 * chunkBody Метод чтения чанка тела запроса
+			 * @return текущий чанк запроса
+			 */
+			const vector <char> chunkBody() const noexcept;
 			/**
 			 * getHeader Метод получения данных заголовка
 			 * @param key ключ заголовка
@@ -395,33 +403,17 @@ namespace awh {
 			const string & getMessage(const u_short code) const noexcept;
 		public:
 			/**
-			 * restReject Метод получения буфера ответа HTML реджекта
-			 * @return собранный HTML буфер
-			 */
-			vector <char> restReject() const noexcept;
-			/**
-			 * restResponse Метод получения буфера HTML ответа
-			 * @return собранный HTML буфер
-			 */
-			vector <char> restResponse() const noexcept;
-			/**
-			 * restUnauthorized Метод получения буфера запроса HTML авторизации
-			 * @return собранный HTML буфер
-			 */
-			vector <char> restUnauthorized() const noexcept;
-			/**
-			 * restRequest Метод получения буфера HTML запроса
-			 * @param compress метод сжатия сообщений
-			 * @param crypt    флаг зашифрованных данных
-			 * @return         собранный HTML буфер
-			 */
-			vector <char> restRequest(const compress_t compress = compress_t::GZIP, const bool crypt = false) noexcept;
-		public:
-			/**
-			 * response Метод создания ответа
+			 * websocket Метод создания ответа для WebSocket
 			 * @return буфер данных запроса в бинарном виде
 			 */
-			vector <char> response() const noexcept;
+			vector <char> websocket() const noexcept;
+			/**
+			 * websocket Метод создания запроса для WebSocket
+			 * @param url объект параметров REST запроса
+			 * @return    буфер данных запроса в бинарном виде
+			 */
+			vector <char> websocket(const uri_t::url_t & url) const noexcept;
+		public:
 			/**
 			 * reject Метод создания отрицательного ответа
 			 * @param code код ответа
@@ -429,11 +421,11 @@ namespace awh {
 			 */
 			vector <char> reject(const u_short code) const noexcept;
 			/**
-			 * websocket Метод создания запроса для WebSocket
-			 * @param url объект параметров REST запроса
-			 * @return    буфер данных запроса в бинарном виде
+			 * response Метод создания ответа
+			 * @param code код ответа
+			 * @return     буфер данных запроса в бинарном виде
 			 */
-			vector <char> websocket(const uri_t::url_t & url) const noexcept;
+			vector <char> response(const u_short code) const noexcept;
 			/**
 			 * request Метод создания запроса
 			 * @param url    объект параметров REST запроса

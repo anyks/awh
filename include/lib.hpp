@@ -69,6 +69,8 @@
 #define HTTP_HEADER_ACCEPTLANGUAGE "*"
 // Заголовок Connection по умолчанию
 #define HTTP_HEADER_CONNECTION "keep-alive"
+// Заголовок Content-Type по умолчанию
+#define HTTP_HEADER_CONTENTTYPE "text/html"
 // Заголовок Accept-Encoding по умолчанию
 #define HTTP_HEADER_ACCEPTENCODING "gzip, deflate, br"
 // Заголовок User-Agent по умолчанию

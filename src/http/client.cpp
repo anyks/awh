@@ -81,7 +81,7 @@ bool awh::HClient::checkKeyWebSocket() noexcept {
 	// Если параметры авторизации найдены
 	if(it != this->headers.end()){
 		// Получаем ключ для проверки
-		const string & key = this->generateHash();
+		const string & key = this->wsHash();
 		// Если ключи не соответствуют, запрещаем работу
 		result = (key.compare(it->second) == 0);
 	}
