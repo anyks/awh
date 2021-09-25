@@ -124,6 +124,8 @@ namespace awh {
 			bool halt = true;
 			// Флаг ожидания входящих сообщений
 			bool wait = false;
+			// Флаг разрешения работы
+			bool mode = false;
 			// Флаг автоматического переподключения
 			bool reconnect = false;
 			// Флаг инициализации WinSock
@@ -219,6 +221,10 @@ namespace awh {
 			 * close Метод закрытия соединения сервера
 			 */
 			virtual void close() noexcept;
+			/**
+			 * start Метод запуска клиента
+			 */
+			virtual void start() noexcept;
 		protected:
 			/**
 			 * resolve Метод выполняющая резолвинг хоста http запроса

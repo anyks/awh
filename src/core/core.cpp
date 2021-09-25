@@ -384,9 +384,11 @@ void awh::Core::event(struct bufferevent * bev, const short events, void * ctx) 
  */
 void awh::Core::stop() noexcept {
 	// Если система уже запущена
-	if(!this->halt){
+	if(this->mode && !this->halt){
 		// Запоминаем, что работа остановлена
 		this->halt = true;
+		// Запрещаем работу WebSocket
+		this->mode = false;
 		// Запрещаем запись данных клиенту
 		bufferevent_disable(this->bev, EV_READ | EV_WRITE);
 		// Завершаем работу базы событий
@@ -430,6 +432,85 @@ void awh::Core::close() noexcept {
 		// Очищаем сетевой контекст
 		this->winSocketClean();
 	#endif
+}
+/**
+ * start Метод запуска клиента
+ */
+void awh::Core::start() noexcept {
+	// Если система ещё не запущена
+	if(!this->mode){
+		try {
+			// Разрешаем работу WebSocket
+			this->mode = true;
+			// Отключаем флаг остановки работы
+			this->halt = false;
+			/**
+			 * runFn Функция выполнения запуска системы
+			 * @param ip полученный адрес сервера резолвером
+			 */
+			auto runFn = [this](const string & ip) noexcept {
+				// Если IP адрес получен
+				if(!ip.empty()){
+					// Запоминаем IP адрес
+					this->url.ip = ip;
+					// Если подключение выполнено
+					if(this->connect()) return;
+					// Сообщаем, что подключение не удалось и выводим сообщение
+					else this->log->print("broken connect to host %s", log_t::flag_t::CRITICAL, this->url.ip.c_str());
+				}
+				// Останавливаем работу системы
+				this->stop();
+			};
+			// Создаем новую базу
+			this->base = event_base_new();
+			// Определяем тип подключения
+			switch(this->net.family){
+				// Резолвер IPv4, создаём резолвер
+				case AF_INET: this->dns = new dns_t(this->fmk, this->log, this->nwk, this->base, this->net.v4.second); break;
+				// Резолвер IPv6, создаём резолвер
+				case AF_INET6: this->dns = new dns_t(this->fmk, this->log, this->nwk, this->base, this->net.v6.second); break;
+			}
+			// Если IP адрес не получен
+			if(this->url.ip.empty() && !this->url.domain.empty())
+				// Выполняем резолвинг домена
+				this->resolve(this->url, runFn);
+			// Выполняем запуск системы
+			else if(!this->url.ip.empty()) runFn(this->url.ip);
+			// Выводим в консоль информацию
+			this->log->print("[+] start service: pid = %u", log_t::flag_t::INFO, getpid());
+			// Активируем перебор базы событий
+			event_base_loop(this->base, EVLOOP_NO_EXIT_ON_EMPTY);
+			// Удаляем dns резолвер
+			delete this->dns;
+			// Зануляем DNS объект
+			this->dns = nullptr;
+			// Удаляем объект базы событий
+			event_base_free(this->base);
+			// Очищаем все глобальные переменные
+			libevent_global_shutdown();
+			// Если остановка не выполнена
+			if(this->reconnect && !this->halt){
+				// Останавливаем работу WebSocket
+				this->mode = false;
+				// Выводим в консоль информацию
+				this->log->print("[=] restart service: pid = %u", log_t::flag_t::INFO, getpid());
+				// Выполняем переподключение
+				this->start();
+			// Выводим в консоль информацию
+			} else this->log->print("[-] stop service: pid = %u", log_t::flag_t::INFO, getpid());
+		// Если происходит ошибка то игнорируем её
+		} catch(const bad_alloc&) {
+			// Выводим сообщение об ошибке
+			this->log->print("%s", log_t::flag_t::CRITICAL, "memory could not be allocated");
+			// Если нужно выполнять переподключение
+			if(this->reconnect){
+				// Останавливаем работу WebSocket
+				this->mode = false;
+				// Выполняем переподключение
+				this->start();
+			}
+		}
+	}
 }
 /**
  * resolve Метод выполняющая резолвинг хоста http запроса
