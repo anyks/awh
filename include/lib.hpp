@@ -12,7 +12,7 @@
 // Короткое название библиотеки
 #define AWH_SHORT_NAME "AWH"
 // Название библиотеки
-#define AWH_NAME "ANYKS - WebSocket/HTTP"
+#define AWH_NAME "ANYKS-WEB"
 // Основной хост системы
 #define AWH_HOST "anyks.com"
 // Адрес сайта автора
