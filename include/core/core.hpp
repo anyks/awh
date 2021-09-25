@@ -347,10 +347,8 @@ namespace awh {
 			 * Core Конструктор
 			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
-			 * @param uri объект работы с URI
-			 * @param nwk объект методов для работы с сетью
 			 */
-			Core(const fmk_t * fmk, const log_t * log, const uri_t * uri, const network_t * nwk) noexcept;
+			Core(const fmk_t * fmk, const log_t * log) noexcept;
 			/**
 			 * ~Core Деструктор
 			 */

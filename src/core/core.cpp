@@ -685,18 +685,18 @@ void awh::Core::setAuthType(const auth_t::type_t type, const auth_t::algorithm_t
  * Core Конструктор
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
- * @param uri объект работы с URI
- * @param nwk объект методов для работы с сетью
  */
-awh::Core::Core(const fmk_t * fmk, const log_t * log, const uri_t * uri, const network_t * nwk) noexcept {
+awh::Core::Core(const fmk_t * fmk, const log_t * log) noexcept {
 	try {
 		// Устанавливаем зависимые модули
 		this->fmk = fmk;
 		this->log = log;
-		this->uri = uri;
-		this->nwk = nwk;
 		// Резервируем память для работы с буфером данных WebSocket
 		this->wdt = new char[BUFFER_CHUNK];
+		// Создаём объект для работы с сетью
+		this->nwk = new network_t(this->fmk);
+		// Создаём объект URI
+		this->uri = new uri_t(this->fmk, this->nwk);
 		// Создаём объект для работы с SSL
 		this->ssl = new ssl_t(this->fmk, this->log, this->uri);
 		// Создаём объект для работы с HTTP
@@ -721,6 +721,10 @@ awh::Core::~Core() noexcept {
 	if(this->dns != nullptr) delete this->dns;
 	// Если объект для работы с SSL создан
 	if(this->ssl != nullptr) delete this->ssl;
+	// Удаляем объект для работы с сетью
+	if(this->nwk != nullptr) delete this->nwk;
+	// Удаляем объект для работы с URI
+	if(this->uri != nullptr) delete this->uri;
 	// Удаляем объект работы с HTTP
 	if(this->http != nullptr) delete this->http;
 	// Если буфер данных WebSocket создан
