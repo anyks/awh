@@ -31,6 +31,7 @@ int main(int argc, char * argv[]) noexcept {
 	network_t nwk(&fmk);
 	// Создаём объект URI
 	uri_t uri(&fmk, &nwk);
+	/*
 	// Создаём объект клиента REST
 	rest_t rest(&fmk, &log, &uri, &nwk);
 	// Устанавливаем название сервиса
@@ -56,7 +57,7 @@ int main(int argc, char * argv[]) noexcept {
 	const auto & result = rest.GET(url);
 
 	cout << " +++++++++++++ " << result << endl;
-
+	*/
 	/*
 	// Создаём объект JSON
 	json data = json::parse(result);

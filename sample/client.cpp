@@ -35,6 +35,7 @@ int main(int argc, char * argv[]) noexcept {
 	network_t nwk(&fmk);
 	// Создаём объект URI
 	uri_t uri(&fmk, &nwk);
+	/*
 	// Создаём объект клиента WebSocket
 	client_t ws(&fmk, &log, &uri, &nwk);
 	// Устанавливаем название сервиса
@@ -57,13 +58,13 @@ int main(int argc, char * argv[]) noexcept {
 	// ws.setCrypt("password");
 	// Выполняем инициализацию WebSocket клиента
 	ws.init("wss://stream.binance.com:9443/stream", http_t::compress_t::DEFLATE);
-	/*
+	//
 	// Выполняем подписку на получение логов
 	log.subscribe([](const log_t::flag_t flag, const string & message){
 		// Выводим сообщение
 		cout << " ============= " << message << endl;
 	});
-	*/
+	//
 	// Устанавливаем адрес файла для сохранения логов
 	// log.setLogFilename("./test.log");
 	// Подписываемся на событие запуска и остановки сервера
@@ -110,6 +111,7 @@ int main(int argc, char * argv[]) noexcept {
 	});
 	// Выполняем запуск WebSocket клиента
 	ws.start();
+	*/
 	// Выводим результат
 	return 0;
 }

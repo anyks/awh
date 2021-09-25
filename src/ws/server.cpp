@@ -8,12 +8,14 @@
  */
 
 // Подключаем заголовочный файл
-#include <http/server.hpp>
+#include <ws/server.hpp>
 
 /**
- * updateExtensions Метод проверки полученных расширений
+ * update Метод обновления входящих данных
  */
-void awh::HServer::updateExtensions() noexcept {
+void awh::WSServer::update() noexcept {
+	// Сбрасываем флаг шифрования
+	this->crypt = false;
 	// Отключаем сжатие ответа с сервера
 	this->compress = compress_t::NONE;
 	// Список доступных расширений
@@ -29,11 +31,20 @@ void awh::HServer::updateExtensions() noexcept {
 			// Ищем поддерживаемые заголовки
 			for(auto & val : extensions){
 				// Если нужно производить шифрование данных
-				if((val.compare(L"permessage-encrypt") == 0) || (val.compare(L"perframe-encrypt") == 0))
+				if(val.find(L"permessage-encrypt=") != wstring::npos){
 					// Устанавливаем флаг шифрования данных
 					this->crypt = true;
+					// Определяем размер шифрования
+					switch(stoi(val.substr(19))){
+						// Если шифрование произведено 128 битным ключём
+						case 128: this->hash->setAES(hash_t::aes_t::AES128); break;
+						// Если шифрование произведено 192 битным ключём
+						case 192: this->hash->setAES(hash_t::aes_t::AES192); break;
+						// Если шифрование произведено 256 битным ключём
+						case 256: this->hash->setAES(hash_t::aes_t::AES256); break;
+					}
 				// Если получены заголовки требующие сжимать передаваемые фреймы методом Deflate
-				else if((val.compare(L"permessage-deflate") == 0) || (val.compare(L"perframe-deflate") == 0))
+				} else if((val.compare(L"permessage-deflate") == 0) || (val.compare(L"perframe-deflate") == 0))
 					// Устанавливаем требование выполнять компрессию полезной нагрузки
 					this->compress = compress_t::DEFLATE;
 				// Если получены заголовки требующие сжимать передаваемые фреймы методом GZip
@@ -51,11 +62,6 @@ void awh::HServer::updateExtensions() noexcept {
 			}
 		}
 	}
-}
-/**
- * updateSubProtocol Метод извлечения доступного сабпротокола
- */
-void awh::HServer::updateSubProtocol() noexcept {
 	// Если протоколы установлены и система является сервером
 	if(!this->subs.empty()){
 		// Получаем список подпротоколов
@@ -73,10 +79,10 @@ void awh::HServer::updateSubProtocol() noexcept {
 	}
 }
 /**
- * checkKeyWebSocket Метод проверки ключа клиента WebSocket
+ * checkKey Метод проверки ключа сервера
  * @return результат проверки
  */
-bool awh::HServer::checkKeyWebSocket() noexcept {
+bool awh::WSServer::checkKey() noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Получаем параметры ключа клиента
@@ -84,15 +90,15 @@ bool awh::HServer::checkKeyWebSocket() noexcept {
 	// Если параметры авторизации найдены
 	if((result = (it != this->headers.end())))
 		// Устанавливаем ключ клиента
-		this->keyWebSocket = it->second;
+		this->key = it->second;
 	// Выводим результат
 	return result;
 }
 /**
- * checkVerWebSocket Метод проверки на версию протокола WebSocket
+ * checkVer Метод проверки на версию протокола
  * @return результат проверки соответствия
  */
-bool awh::HServer::checkVerWebSocket() noexcept {
+bool awh::WSServer::checkVer() noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Получаем список версий протоколов
@@ -108,10 +114,10 @@ bool awh::HServer::checkVerWebSocket() noexcept {
 	return result;
 }
 /**
- * checkAuthenticate Метод проверки авторизации
+ * checkAuth Метод проверки авторизации
  * @return результат проверки авторизации
  */
-awh::http_t::stath_t awh::HServer::checkAuthenticate() noexcept {
+awh::Http::stath_t awh::WSServer::checkAuth() noexcept {
 	// Результат работы функции
 	http_t::stath_t result = http_t::stath_t::FAULT;
 	// Если авторизация требуется

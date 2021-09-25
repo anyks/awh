@@ -128,14 +128,13 @@ set(SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/src/log.cpp"
     "${CMAKE_SOURCE_DIR}/src/hash.cpp"
     "${CMAKE_SOURCE_DIR}/src/auth.cpp"
+    "${CMAKE_SOURCE_DIR}/src/http.cpp"
     "${CMAKE_SOURCE_DIR}/src/socket.cpp"
     "${CMAKE_SOURCE_DIR}/src/base64.cpp"
+    "${CMAKE_SOURCE_DIR}/src/ws/ws.cpp"
     "${CMAKE_SOURCE_DIR}/src/ws/frame.cpp"
     "${CMAKE_SOURCE_DIR}/src/ws/client.cpp"
-    "${CMAKE_SOURCE_DIR}/src/http/http.cpp"
-    "${CMAKE_SOURCE_DIR}/src/http/client.cpp"
-    "${CMAKE_SOURCE_DIR}/src/http/server.cpp"
-    "${CMAKE_SOURCE_DIR}/src/rest/client.cpp"
+    "${CMAKE_SOURCE_DIR}/src/ws/server.cpp"
 )
 
 # Задаем именя библиотеки и бинарника

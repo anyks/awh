@@ -7,8 +7,8 @@
  * copyright: © Yuriy Lobarev
  */
 
-#ifndef __AWH_WS_CLIENT_HTTP__
-#define __AWH_WS_CLIENT_HTTP__
+#ifndef __AWH_WS_SERVER_HTTP__
+#define __AWH_WS_SERVER_HTTP__
 
 /**
  * Наши модули
@@ -23,9 +23,9 @@ using namespace std;
  */
 namespace awh {
 	/**
-	 * WSClient Класс для работы с клиентом WebSocket
+	 * WSServer Класс для работы с сервером WebSocket
 	 */
-	typedef class WSClient : public ws_t {
+	typedef class WSServer : public ws_t {
 		private:
 			/**
 			 * update Метод обновления входящих данных
@@ -49,17 +49,17 @@ namespace awh {
 			stath_t checkAuth() noexcept;
 		public:
 			/**
-			 * WSClient Конструктор
+			 * WSServer Конструктор
 			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
 			 * @param uri объект работы с URI
 			 */
-			WSClient(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcept : ws_t(fmk, log, uri) {}
+			WSServer(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcept : ws_t(fmk, log, uri) {}
 			/**
-			 * ~WSClient Деструктор
+			 * ~WSServer Деструктор
 			 */
-			~WSClient() noexcept {}
-	} wsc_t;
+			~WSServer() noexcept {}
+	} wss_t;
 };
 
-#endif // __AWH_WS_CLIENT_HTTP__
+#endif // __AWH_WS_SERVER_HTTP__

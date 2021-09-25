@@ -8,7 +8,7 @@
  */
 
 // Подключаем заголовочный файл
-#include <http/http.hpp>
+#include <http.hpp>
 
 /**
  * date Метод получения текущей даты для HTTP запроса
@@ -29,115 +29,176 @@ const string awh::Http::date() const noexcept {
 	return buffer;
 }
 /**
- * wsKey Метод генерации ключа для WebSocket
- * @return сгенерированный ключ для WebSocket
+ * checkAuth Метод проверки авторизации
+ * @return результат проверки авторизации
  */
-const string awh::Http::wsKey() const noexcept {
+awh::Http::stath_t awh::Http::checkAuth() noexcept {
 	// Результат работы функции
-	string result = "";
-	// Выполняем перехват ошибки
-	try {
-		// Создаём контейнер
-		string nonce = "";
-		// Адаптер для работы с случайным распределением
-		random_device rd;
-		// Резервируем память
-		nonce.reserve(16);
-		// Формируем равномерное распределение целых чисел в выходном инклюзивно-эксклюзивном диапазоне
-		uniform_int_distribution <u_short> dist(0, 255);
-		// Формируем бинарный ключ из случайных значений
-		for(size_t c = 0; c < 16; c++) nonce += static_cast <char> (dist(rd));
-		// Выполняем создание ключа
-		result = base64_t().encode(nonce);
-	// Выполняем прехват ошибки
-	} catch(const exception & error) {
-		// Выводим в лог сообщение
-		this->log->print("%s", log_t::flag_t::CRITICAL, error.what());
-		// Выполняем повторно генерацию ключа
-		result = this->key();
+	stath_t result = stath_t::FAULT;
+	// Если активирован режим обработки ответа сервера
+	if(this->mode == mode_t::RESPONSE){
+		// Проверяем код ответа
+		switch(this->query.code){
+			// Если требуется авторизация
+			case 401: {
+				// Если попытки провести аутентификацию ещё небыло, пробуем ещё раз
+				if(!this->failAuth && (this->auth->getType() == auth_t::type_t::DIGEST)){
+					// Получаем параметры авторизации
+					auto it = this->headers.find("www-authenticate");
+					// Если параметры авторизации найдены
+					if((this->failAuth = (it != this->headers.end()))){
+						// Устанавливаем заголовок HTTP в параметры авторизации
+						this->auth->setHeader(it->second);
+						// Просим повторить авторизацию ещё раз
+						result = stath_t::RETRY;
+					}
+				}
+			} break;
+			// Если нужно произвести редирект
+			case 301:
+			case 308: {
+				// Получаем параметры авторизации
+				auto it = this->headers.find("location");
+				// Если адрес перенаправления найден
+				if(it != this->headers.end()){
+					// Выполняем парсинг URL
+					uri_t::url_t tmp = this->uri->parseUrl(it->second);
+					// Если параметры URL существуют
+					if(!this->url.params.empty())
+						// Переходим по всему списку параметров
+						for(auto & param : this->url.params) tmp.params.emplace(param);
+					// Меняем IP адрес сервера
+					const_cast <uri_t::url_t *> (&this->url)->ip = move(tmp.ip);
+					// Меняем порт сервера
+					const_cast <uri_t::url_t *> (&this->url)->port = move(tmp.port);
+					// Меняем на путь сервере
+					const_cast <uri_t::url_t *> (&this->url)->path = move(tmp.path);
+					// Меняем доменное имя сервера
+					const_cast <uri_t::url_t *> (&this->url)->domain = move(tmp.domain);
+					// Меняем протокол запроса сервера
+					const_cast <uri_t::url_t *> (&this->url)->schema = move(tmp.schema);
+					// Устанавливаем новый список параметров
+					const_cast <uri_t::url_t *> (&this->url)->params = move(tmp.params);
+					// Просим повторить авторизацию ещё раз
+					result = stath_t::RETRY;
+				}
+			} break;
+			// Сообщаем, что авторизация прошла успешно
+			case 100:
+			case 101:
+			case 200:
+			case 201:
+			case 202:
+			case 203:
+			case 204:
+			case 205:
+			case 206: result = stath_t::GOOD; break;
+		}
+	// Если активирован режим обработки запроса клиента
+	} else if(this->mode == mode_t::REQUEST){
+		// Если авторизация требуется
+		if(this->auth->getType() != auth_t::type_t::NONE){
+			// Получаем параметры авторизации
+			auto it = this->headers.find("authorization");
+			// Если параметры авторизации найдены
+			if(it != this->headers.end()){
+				// Создаём объект авторизации для клиента
+				auth_t auth(this->fmk, this->log, true);
+				// Получаем тип алгоритма Дайджест
+				const auto & digest = this->auth->getDigest();
+				// Устанавливаем тип авторизации
+				auth.setType(this->auth->getType(), digest.algorithm);
+				// Устанавливаем заголовок HTTP в параметры авторизации
+				auth.setHeader(it->second);
+				// Выполняем проверку авторизации
+				if(this->auth->check(auth))
+					// Запоминаем, что авторизация пройдена
+					result = http_t::stath_t::GOOD;
+			}
+		// Сообщаем, что авторизация прошла успешно
+		} else result = http_t::stath_t::GOOD;
 	}
 	// Выводим результат
 	return result;
 }
 /**
- * wsHash Метод генерации хэша ключа
- * @return сгенерированный хэш ключа клиента
+ * update Метод обновления входящих данных
  */
-const string awh::Http::wsHash() const noexcept {
-	// Результат работы функции
-	string result = "";
-	// Если ключ клиента передан
-	if(!this->keyWebSocket.empty()){
-		// Создаем контекст
-		SHA_CTX ctx;
-		// Выполняем инициализацию контекста
-		SHA1_Init(&ctx);
-		// Массив полученных значений
-		u_char digest[20];
-		// Формируем магический ключ
-		const string text = (this->keyWebSocket + "258EAFA5-E914-47DA-95CA-C5AB0DC85B11");
-		// Выполняем расчет суммы
-		SHA1_Update(&ctx, text.c_str(), text.length());
-		// Копируем полученные данные
-		SHA1_Final(digest, &ctx);
-		// Формируем ключ для клиента
-		result = base64_t().encode(string((const char *) digest, 20));
-	}
-	// Выводим результат
-	return result;
-}
-/**
- * checkUpgrade Метод получения флага переключения протокола
- * @return флага переключения протокола
- */
-bool awh::Http::checkUpgrade() const noexcept {
-	// Результат работы функции
-	bool result = false;
-	// Если список заголовков получен
-	if(!this->headers.empty()){
-		// Выполняем поиск заголовка смены протокола
-		auto it = this->headers.find("upgrade");
-		// Выполняем поиск заголовка с параметрами подключения
-		auto jt = this->headers.find("connection");
-		// Если заголовки расширений найдены
-		if((it != this->headers.end()) && (jt != this->headers.end())){
-			// Получаем значение заголовка Upgrade
-			const string & upgrade = this->fmk->toLower(it->second);
-			// Получаем значение заголовка Connection
-			const string & connection = this->fmk->toLower(jt->second);
-			// Если заголовки соответствуют
-			result = ((upgrade.compare("websocket") == 0) && (connection.compare("upgrade") == 0));
+void awh::Http::update() noexcept {
+	// Если тело сообщения получено
+	if(!this->body.empty()){
+		// Отключаем сжатие ответа с сервера
+		this->compress = compress_t::NONE;
+		// Выполняем поиск расширений
+		auto it = this->headers.find("x-awh-encryption");
+		// Если заголовок найден
+		if((this->crypt = (it != this->headers.end()))){
+			// Определяем размер шифрования
+			switch(stoi(it->second)){
+				// Если шифрование произведено 128 битным ключём
+				case 128: this->hash->setAES(hash_t::aes_t::AES128); break;
+				// Если шифрование произведено 192 битным ключём
+				case 192: this->hash->setAES(hash_t::aes_t::AES192); break;
+				// Если шифрование произведено 256 битным ключём
+				case 256: this->hash->setAES(hash_t::aes_t::AES256); break;
+			}
+			// Выполняем дешифрование полученных данных
+			const auto & res = this->hash->decrypt(this->body.data(), this->body.size());
+			// Если данные расшифрованны, заменяем тело данных
+			if(!res.empty()) this->body.assign(res.begin(), res.end());
+		}
+		// Проверяем пришли ли сжатые данные
+		it = this->headers.find("content-encoding");
+		// Если данные пришли сжатые
+		if(it != this->headers.end()){
+			// Если данные пришли сжатые методом GZip
+			if(it->second.compare("gzip") == 0){
+				// Устанавливаем требование выполнять декомпрессию тела сообщения
+				this->compress = compress_t::GZIP;
+				// Выполняем декомпрессию данных
+				const auto & body = this->hash->decompressGzip(this->body.data(), this->body.size());
+				// Заменяем полученное тело
+				if(!body.empty()) this->body.assign(body.begin(), body.end());
+			// Если данные пришли сжатые методом Deflate
+			} else if(it->second.compare("deflate") == 0) {
+				// Устанавливаем требование выполнять декомпрессию тела сообщения
+				this->compress = compress_t::DEFLATE;
+				// Получаем данные тела в бинарном виде
+				vector <char> buffer(this->body.begin(), this->body.end());
+				// Добавляем хвост в полученные данные
+				this->hash->setTail(buffer);
+				// Выполняем декомпрессию данных
+				const auto & body = this->hash->decompress(buffer.data(), buffer.size());
+				// Заменяем полученное тело
+				if(!body.empty()) this->body.assign(body.begin(), body.end());
+			}
 		}
 	}
-	// Выводим результат
-	return result;
 }
 /**
  * clear Метод очистки собранных данных
  */
 void awh::Http::clear() noexcept {
-	// Выполняем сброс поддерживаемого сабпротокола
-	this->sub.clear();
-	// Выполняем сброс поддерживаемых сабпротоколов
-	this->subs.clear();
 	// Выполняем очистку тела HTTP запроса
 	this->body.clear();
 	// Выполняем сброс полученных HTTP заголовков
 	this->headers.clear();
-	// Выполняем сброс ключа клиента
-	this->keyWebSocket.clear();
+	// Выполняем сброс параметров чанка
+	this->chunk = chunk_t();
 	// Выполняем сброс параметров запроса
 	this->query = query_t();
-	// Выполняем сброс стейта текущего запроса
-	this->state = state_t::QUERY;
+	// Выполняем сброс параметров запроса
+	this->url = uri_t::url_t();
+	// Обнуляем флаг проверки авторизации
+	this->failAuth = false;
+	// Выполняем сброс режим работы модуля
+	this->mode = mode_t::NONE;
 	// Выполняем сброс стейта авторизации
 	this->stath = stath_t::EMPTY;
-	// Выполняем сброс размера скользящего окна для клиента
-	this->wbitClient = GZIP_MAX_WBITS;
-	// Выполняем сброс размера скользящего окна для сервера
-	this->wbitServer = GZIP_MAX_WBITS;
-	// Выполняем сброс метода сжатия сообщений
-	this->compress = compress_t::DEFLATE;
+	// Выполняем сброс стейта текущего запроса
+	this->state = state_t::QUERY;
+	// Выполняем сброс метода сжатия данных
+	this->compress = compress_t::GZIP;
 }
 /**
  * parse Метод парсинга сырых данных
@@ -179,6 +240,8 @@ void awh::Http::parse(const char * buffer, const size_t size) noexcept {
 										offset = data.find(" ");
 										// Если пробел получен
 										if(offset != string::npos){
+											// Устанавливаем режим работы (получение ответа от сервера)
+											this->mode = mode_t::RESPONSE;
 											// Выполняем смену стейта
 											this->state = state_t::HEADERS;
 											// Получаем сообщение сервера
@@ -199,6 +262,8 @@ void awh::Http::parse(const char * buffer, const size_t size) noexcept {
 									offset = data.find(" ");
 									// Если пробел получен
 									if(offset != string::npos){
+										// Устанавливаем режим работы (получение запроса от клиента)
+										this->mode = mode_t::REQUEST;
 										// Выполняем смену стейта
 										this->state = state_t::HEADERS;
 										// Получаем URI запроса
@@ -268,14 +333,12 @@ void awh::Http::parse(const char * buffer, const size_t size) noexcept {
 				// Если - все данные запроса собраны
 				case (u_short) state_t::GOOD: {
 					// Выполняем проверку авторизации
-					this->stath = this->checkAuthenticate();
+					this->stath = this->checkAuth();
 					// Если ключ соответствует
 					if(this->stath == stath_t::GOOD){
 					// if((this->stath == stath_t::GOOD) && this->checkKeyWebSocket() && this->checkUpgrade() && this->checkVerWebSocket()){
-						// Выполняем обновление списка расширений
-						this->updateExtensions();
-						// Выполняем обновление списка сабпротоколов
-						this->updateSubProtocol();
+						// Выполняем обновление входящих параметров
+						this->update();
 						// Устанавливаем стейт рукопожатия
 						this->state = state_t::HANDSHAKE;
 					// Поменяем данные как бракованные
@@ -549,6 +612,22 @@ awh::Http::compress_t awh::Http::getCompress() const noexcept {
 	return this->compress;
 }
 /**
+ * setCompress Метод установки метода сжатия
+ * @param метод сжатия сообщений
+ */
+void awh::Http::setCompress(const compress_t compress) noexcept {
+	// Устанавливаем метод сжатия сообщений
+	this->compress = compress;
+}
+/**
+ * getUrl Метод извлечения параметров запроса
+ * @return установленные параметры запроса
+ */
+const awh::uri_t::url_t & awh::Http::getUrl() const noexcept {
+	// Выводим параметры запроса
+	return this->url;
+}
+/**
  * isEnd Метод проверки завершения обработки
  * @return результат проверки
  */
@@ -591,22 +670,6 @@ bool awh::Http::isHeader(const string & key) const noexcept {
 	return result;
 }
 /**
- * getWbitClient Метод получения размер скользящего окна для клиента
- * @return размер скользящего окна
- */
-short awh::Http::getWbitClient() const noexcept {
-	// Выводим размер скользящего окна
-	return this->wbitClient;
-}
-/**
- * getWbitServer Метод получения размер скользящего окна для сервера
- * @return размер скользящего окна
- */
-short awh::Http::getWbitServer() const noexcept {
-	// Выводим размер скользящего окна
-	return this->wbitServer;
-}
-/**
  * getQuery Метод получения объекта запроса сервера
  * @return объект запроса сервера
  */
@@ -621,14 +684,6 @@ const awh::Http::query_t & awh::Http::getQuery() const noexcept {
 void awh::Http::setQuery(const query_t & query) noexcept {
 	// Устанавливаем объект запроса клиента
 	this->query = query;
-}
-/**
- * getSub Метод получения выбранного сабпротокола
- * @return выбранный сабпротокол
- */
-const string & awh::Http::getSub() const noexcept {
-	// Выводим выбранный сабпротокол
-	return this->sub;
 }
 /**
  * getMessage Метод получения HTTP сообщения
@@ -647,119 +702,6 @@ const string & awh::Http::getMessage(const u_short code) const noexcept {
 	if(it != this->messages.end()) return it->second;
 	// Выводим результат
 	return result;
-}
-/**
- * websocket Метод создания ответа для WebSocket
- * @return буфер данных запроса в бинарном виде
- */
-vector <char> awh::Http::websocket() const noexcept {
-	// Результат работы функции
-	vector <char> result;
-	// Выполняем генерацию хеша ключа
-	const string & hash = this->wsHash();
-	// Если хэш ключа сгенерирован
-	if(!hash.empty()){
-		// Если метод компрессии указан
-		if(this->crypt || (this->compress != compress_t::NONE)){
-			// Список расширений протокола
-			string extensions = "";
-			// Если метод компрессии указан
-			if(this->compress != compress_t::NONE){
-				// Если метод компрессии выбран Deflate
-				if(this->compress == compress_t::DEFLATE){
-					// Устанавливаем тип компрессии Deflate
-					extensions = "permessage-deflate; server_no_context_takeover; client_max_window_bits";
-					// Если требуется указать количество байт
-					if(this->wbitServer > 0) extensions.append(this->fmk->format("; server_max_window_bits=%u", this->wbitServer));
-				// Если метод компрессии выбран GZip
-				} else if(this->compress == compress_t::GZIP)
-					// Устанавливаем тип компрессии GZip
-					extensions = "permessage-gzip; server_no_context_takeover";
-				// Если данные должны быть зашифрованны
-				if(this->crypt) extensions.append("; permessage-encrypt");
-			// Если метод компрессии не указан но указан режим шифрования
-			} else if(this->crypt) extensions = "permessage-encrypt; server_no_context_takeover";
-			// Добавляем полученный заголовок
-			this->headers.emplace("Sec-WebSocket-Extensions", extensions);
-		}
-		// Если подпротокол выбран
-		if(!this->sub.empty())
-			// Добавляем заголовок сабпротокола
-			this->headers.emplace("Sec-WebSocket-Protocol", this->sub.c_str());
-		// Добавляем заголовок подключения
-		this->headers.emplace("Connection", "upgrade");
-		// Добавляем заголовок апгрейд
-		this->headers.emplace("Upgrade", "websocket");
-		// Добавляем заголовок хеша ключа
-		this->headers.emplace("Sec-WebSocket-Accept", hash.c_str());
-		// Выводим результат
-		return this->response(101);
-	}
-	// Выводим результат
-	return result;
-}
-/**
- * websocket Метод создания запроса для WebSocket
- * @param url объект параметров REST запроса
- * @return    буфер данных запроса в бинарном виде
- */
-vector <char> awh::Http::websocket(const uri_t::url_t & url) const noexcept {
-	// Если подпротоколы существуют
-	if(!this->subs.empty()){
-		// Если количество подпротоколов больше 5-ти
-		if(this->subs.size() > 5){
-			// Список желаемых подпротоколов
-			string subs = "";
-			// Переходим по всему списку подпротоколов
-			for(auto & sub : this->subs){
-				// Если подпротокол уже не пустой, добавляем разделитель
-				if(!subs.empty()) subs.append(", ");
-				// Добавляем в список желаемый подпротокол
-				subs.append(sub);
-			}
-			// Добавляем полученный заголовок
-			this->headers.emplace("Sec-WebSocket-Protocol", subs);
-		// Если подпротоколов слишком много
-		} else {
-			// Переходим по всему списку подпротоколов
-			for(auto & sub : this->subs)
-				// Добавляем полученный заголовок
-				this->headers.insert({{"Sec-WebSocket-Protocol", sub}});
-		}
-	}
-	// Если метод компрессии указан
-	if(this->crypt || (this->compress != compress_t::NONE)){
-		// Список расширений протокола
-		string extensions = "";
-		// Если метод компрессии указан
-		if(this->compress != compress_t::NONE){
-			// Если метод компрессии выбран Deflate
-			if(this->compress == compress_t::DEFLATE)
-				// Устанавливаем тип компрессии Deflate
-				extensions = "permessage-deflate; client_max_window_bits";
-			// Если метод компрессии выбран GZip
-			else if(this->compress == compress_t::GZIP)
-				// Устанавливаем тип компрессии GZip
-				extensions = "permessage-gzip";
-			// Если данные должны быть зашифрованны
-			if(this->crypt) extensions.append("; permessage-encrypt");
-		// Если метод компрессии не указан но указан режим шифрования
-		} else if(this->crypt) extensions = "permessage-encrypt";
-		// Добавляем полученный заголовок
-		this->headers.emplace("Sec-WebSocket-Extensions", extensions);
-	}
-	// Генерируем ключ клиента
-	this->keyWebSocket = this->wsKey();
-	// Добавляем заголовок подключения
-	this->headers.emplace("Connection", "Upgrade");
-	// Добавляем заголовок апгрейд
-	this->headers.emplace("Upgrade", "websocket");
-	// Добавляем заголовок версии WebSocket
-	this->headers.emplace("Sec-WebSocket-Version", WS_VERSION);
-	// Добавляем заголовок ключ клиента
-	this->headers.emplace("Sec-WebSocket-Key", this->keyWebSocket);
-	// Выводим результат
-	return this->request(url, method_t::GET);
 }
 /**
  * reject Метод создания отрицательного ответа
@@ -812,46 +754,65 @@ vector <char> awh::Http::response(const u_short code) const noexcept {
 	this->query.message = this->getMessage(code);
 	// Если сообщение получено
 	if(!this->query.message.empty()){
+		/**
+		 * Типы основных заголовков
+		 */
+		bool available[6] = {
+			false, // Connection
+			false, // Content-Type
+			false, // Content-Length
+			false, // Content-Encoding
+			false, // Transfer-Encoding
+			false  // X-AWH-Encryption
+		};
+		// Размер тела сообщения
+		size_t length = 0;
 		// Устанавливаем код ответа
 		this->query.code = code;
-		// Размер тела сообщения
-		size_t contentLength = 0;
-		// Список существующих заголовков
-		set <header_t> available;
 		// Данные REST ответа
 		string response = this->fmk->format("HTTP/%.1f %u %s\r\n", this->query.ver, code, this->query.message.c_str());
 		// Добавляем заголовок даты в ответ
 		response.append(this->fmk->format("Date: %s\r\n", this->date().c_str()));
-		// Добавляем название сервера в ответ
-		response.append(this->fmk->format("Server: %s\r\n", AWH_NAME));
-		// Добавляем название рабочей системы в ответ
-		response.append(this->fmk->format("X-Powered-By: %s/%s\r\n", AWH_SHORT_NAME, AWH_VERSION));
 		// Переходим по всему списку заголовков
 		for(auto & header : this->headers){
 			// Получаем анализируемый заголовок
 			const string & head = this->fmk->toLower(header.first);
-			// Если заголовок Connection перадан, запоминаем, что мы его нашли
-			if(head.compare("connection") == 0) available.emplace(header_t::CONNECTION);
-			// Если заголовок Content-Type передан, запоминаем, что мы его нашли
-			else if(head.compare("content-type") == 0) available.emplace(header_t::CONTANTTYPE);
-			// Если заголовок Content-Length перадан, запоминаем, что мы его нашли
-			else if(head.compare("content-length") == 0){
-				// Устанавливаем размер тела сообщения
-				contentLength = stoull(header.second);
-				// Запоминаем, что мы нашли заголовок
-				available.emplace(header_t::CONTENTLENGTH);
+			// Выполняем перебор всех обязательных заголовков
+			for(u_short i = 0; i < 6; i++){
+				// Если заголовок уже найден пропускаем его
+				if(available[i]) continue;
+				// Выполняем првоерку заголовка
+				switch(i){
+					case 0: available[i] = (head.compare("connection") == 0);        break;
+					case 1: available[i] = (head.compare("content-type") == 0);      break;
+					case 3: available[i] = (head.compare("content-encoding") == 0);  break;
+					case 4: available[i] = (head.compare("transfer-encoding") == 0); break;
+					case 5: available[i] = (head.compare("x-awh-encryption") == 0);  break;
+					case 2:
+						// Устанавливаем размер тела сообщения
+						length = stoull(header.second);
+						// Запоминаем, что мы нашли заголовок размера тела
+						available[i] = (head.compare("content-length") == 0);
+					break;
+				}
 			}
-			// Добавляем заголовок в ответ
-			response.append(this->fmk->format("%s: %s\r\n", header.first.c_str(), header.second.c_str()));
+			// Если заголовок не является запрещённым
+			if(!available[2] && !available[4] && !available[5])
+				// Добавляем заголовок в ответ
+				response.append(this->fmk->format("%s: %s\r\n", header.first.c_str(), header.second.c_str()));
 		}
 		// Устанавливаем Connection если не передан
-		if(available.count(header_t::CONNECTION) < 1)
+		if(!available[0])
 			// Добавляем заголовок в ответ
 			response.append(this->fmk->format("Connection: %s\r\n", HTTP_HEADER_CONNECTION));
 		// Устанавливаем Content-Type если не передан
-		if(available.count(header_t::CONTANTTYPE) < 1)
+		if(!available[1])
 			// Добавляем заголовок в ответ
 			response.append(this->fmk->format("Content-Type: %s\r\n", HTTP_HEADER_CONTENTTYPE));
+		// Добавляем название сервера в ответ
+		response.append(this->fmk->format("Server: %s\r\n", this->servName.c_str()));
+		// Добавляем название рабочей системы в ответ
+		response.append(this->fmk->format("X-Powered-By: %s/%s\r\n", this->servId.c_str(), this->servVer.c_str()));
 		// Получаем параметры авторизации
 		const string & auth = this->auth->header();
 		// Если данные авторизации получены
@@ -859,9 +820,58 @@ vector <char> awh::Http::response(const u_short code) const noexcept {
 		// Если запрос должен содержать тело и тело ответа существует
 		if((code >= 200) && (code != 204) && (code != 304) && (code != 308) && !this->body.empty()){
 			// Проверяем нужно ли передать тело разбив на чанки
-			this->chunking = ((available.count(header_t::CONTENTLENGTH) < 1) || (contentLength != this->body.size()));
-			// Устанавливаем Content-Length если не передан
-			if(this->chunking) response.append(this->fmk->format("Transfer-Encoding: %s\r\n", "chunked"));
+			this->chunking = (!available[2] || ((length > 0) && (length != this->body.size())));
+			// Если нужно производить шифрование
+			if(this->crypt){
+				// Выполняем шифрование переданных данных
+				const auto & res = this->hash->encrypt(this->body.data(), this->body.size());
+				// Если данные зашифрованы, заменяем тело данных
+				if(!res.empty()){
+					// Заменяем тело данных
+					this->body.assign(res.begin(), res.end());
+					// Устанавливаем X-AWH-Encryption
+					response.append(this->fmk->format("X-AWH-Encryption: %u\r\n", (u_short) this->hash->getAES()));
+				}
+			}
+			// Определяем метод сжатия тела сообщения
+			switch((u_short) this->compress){
+				// Если нужно сжать тело методом GZIP
+				case (u_short) compress_t::GZIP: {
+					// Выполняем сжатие тела сообщения
+					const auto & gzip = this->hash->compressGzip(this->body.data(), this->body.size());
+					// Если данные сжаты, заменяем тело данных
+					if(!gzip.empty()){
+						// Заменяем тело данных
+						this->body.assign(gzip.begin(), gzip.end());
+						// Заменяем размер тела данных
+						if(!this->chunking) length = this->body.size();
+						// Устанавливаем Content-Encoding если не передан
+						if(!available[3]) response.append(this->fmk->format("Content-Encoding: %s\r\n", "gzip"));
+					}
+				} break;
+				// Если нужно сжать тело методом DEFLATE
+				case (u_short) compress_t::DEFLATE: {
+					// Выполняем сжатие тела сообщения
+					auto deflate = this->hash->compress(this->body.data(), this->body.size());
+					// Удаляем хвост в полученных данных
+					this->hash->rmTail(deflate);
+					// Если данные сжаты, заменяем тело данных
+					if(!deflate.empty()){
+						// Заменяем тело данных
+						this->body.assign(deflate.begin(), deflate.end());
+						// Заменяем размер тела данных
+						if(!this->chunking) length = this->body.size();
+						// Устанавливаем Content-Encoding если не передан
+						if(!available[3]) response.append(this->fmk->format("Content-Encoding: %s\r\n", "deflate"));
+					}
+				} break;
+			}
+			// Если данные необходимо разбивать на чанки
+			if(this->chunking)
+				// Устанавливаем заголовок Transfer-Encoding
+				response.append(this->fmk->format("Transfer-Encoding: %s\r\n", "chunked"));
+			// Устанавливаем размер передаваемого тела Content-Length
+			else response.append(this->fmk->format("Content-Length: %zu\r\n", length));
 		// Очищаем тела сообщения
 		} else this->body.clear();
 		// Устанавливаем завершающий разделитель
@@ -889,12 +899,27 @@ vector <char> awh::Http::request(const uri_t::url_t & url, const method_t method
 	const string & host = (!url.domain.empty() ? url.domain : url.ip);
 	// Если хост получен
 	if(!host.empty() && !path.empty()){
+		/**
+		 * Типы основных заголовков
+		 */
+		bool available[10] = {
+			false, // Host
+			false, // Accept
+			false, // Origin
+			false, // User-Agent
+			false, // Connection
+			false, // Content-Length
+			false, // Accept-Language
+			false, // Content-Encoding
+			false, // Transfer-Encoding
+			false  // X-AWH-Encryption
+		};
+		// Запоминаем параметры запроса
+		this->url = url;
+		// Размер тела сообщения
+		size_t length = 0;
 		// Данные REST запроса
 		string request = "";
-		// Размер тела сообщения
-		size_t contentLength = 0;
-		// Список существующих заголовков
-		set <header_t> available;
 		// Устанавливаем параметры REST запроса
 		const_cast <auth_t *> (this->auth)->setUri(this->uri->createUrl(url));
 		// Формируем HTTP запрос
@@ -948,56 +973,86 @@ vector <char> awh::Http::request(const uri_t::url_t & url, const method_t method
 		for(auto & header : this->headers){
 			// Получаем анализируемый заголовок
 			const string & head = this->fmk->toLower(header.first);
-			// Если заголовок Host передан, запоминаем , что мы его нашли
-			if(head.compare("host") == 0) available.emplace(header_t::HOST);
-			// Если заголовок Accept передан, запоминаем , что мы его нашли
-			else if(head.compare("accept") == 0) available.emplace(header_t::ACCEPT);
-			// Если заголовок Origin перадан, запоминаем, что мы его нашли
-			else if(head.compare("origin") == 0) available.emplace(header_t::ORIGIN);
-			// Если заголовок User-Agent передан, запоминаем, что мы его нашли
-			else if(head.compare("user-agent") == 0) available.emplace(header_t::USERAGENT);
-			// Если заголовок Connection перадан, запоминаем, что мы его нашли
-			else if(head.compare("connection") == 0) available.emplace(header_t::CONNECTION);
-			// Если заголовок Accept-Language передан, запоминаем, что мы его нашли
-			else if(head.compare("accept-language") == 0) available.emplace(header_t::ACCEPTLANGUAGE);
-			// Если заголовок Content-Length перадан, запоминаем, что мы его нашли
-			else if(head.compare("content-length") == 0){
-				// Устанавливаем размер тела сообщения
-				contentLength = stoull(header.second);
-				// Запоминаем, что мы нашли заголовок
-				available.emplace(header_t::CONTENTLENGTH);
+			// Выполняем перебор всех обязательных заголовков
+			for(u_short i = 0; i < 10; i++){
+				// Если заголовок уже найден пропускаем его
+				if(available[i]) continue;
+				// Выполняем првоерку заголовка
+				switch(i){
+					case 0: available[i] = (head.compare("host") == 0);              break;
+					case 1: available[i] = (head.compare("accept") == 0);            break;
+					case 2: available[i] = (head.compare("origin") == 0);            break;
+					case 3: available[i] = (head.compare("user-agent") == 0);        break;
+					case 4: available[i] = (head.compare("connection") == 0);        break;
+					case 6: available[i] = (head.compare("accept-language") == 0);   break;
+					case 7: available[i] = (head.compare("content-encoding") == 0);  break;
+					case 8: available[i] = (head.compare("transfer-encoding") == 0); break;
+					case 9: available[i] = (head.compare("x-awh-encryption") == 0);  break;
+					case 5:
+						// Устанавливаем размер тела сообщения
+						length = stoull(header.second);
+						// Запоминаем, что мы нашли заголовок размера тела
+						available[i] = (head.compare("content-length") == 0);
+					break;
+				}
 			}
-			// Добавляем заголовок в запрос
-			request.append(this->fmk->format("%s: %s\r\n", header.first.c_str(), header.second.c_str()));
+			// Если заголовок не является запрещённым
+			if(!available[5] && !available[8] && !available[9])
+				// Добавляем заголовок в запрос
+				request.append(this->fmk->format("%s: %s\r\n", header.first.c_str(), header.second.c_str()));
 		}
 		// Устанавливаем Host если не передан
-		if(available.count(header_t::HOST) < 1)
+		if(!available[0])
 			// Добавляем заголовок в запрос
 			request.append(this->fmk->format("Host: %s\r\n", (!url.domain.empty() ? url.domain : url.ip).c_str()));
+		// Устанавливаем Accept если не передан
+		if(!available[1])
+			// Добавляем заголовок в запрос
+			request.append(this->fmk->format("Accept: %s\r\n", HTTP_HEADER_ACCEPT));
 		// Устанавливаем Origin если не передан
-		if(available.count(header_t::ORIGIN) < 1)
+		if(!available[2])
 			// Добавляем заголовок в запрос
 			request.append(this->fmk->format("Origin: %s\r\n", this->uri->createOrigin(url).c_str()));
-		// Устанавливаем User-Agent если не передан
-		if(available.count(header_t::USERAGENT) < 1)
-			// Добавляем заголовок в запрос
-			request.append(this->fmk->format("User-Agent: %s\r\n", this->userAgent.c_str()));
 		// Устанавливаем Connection если не передан
-		if(available.count(header_t::CONNECTION) < 1)
+		if(!available[4])
 			// Добавляем заголовок в запрос
 			request.append(this->fmk->format("Connection: %s\r\n", HTTP_HEADER_CONNECTION));
 		// Устанавливаем Accept-Language если не передан
-		if(available.count(header_t::ACCEPTLANGUAGE) < 1)
+		if(!available[6])
 			// Добавляем заголовок в запрос
 			request.append(this->fmk->format("Accept-Language: %s\r\n", HTTP_HEADER_ACCEPTLANGUAGE));
-		// Устанавливаем Accept если не передан
-		if(available.count(header_t::ACCEPT) < 1)
-			// Добавляем заголовок в запрос
-			request.append(this->fmk->format("Accept: %s\r\n", HTTP_HEADER_ACCEPT));
 		// Если нужно произвести сжатие контента
-		if(http->zip != zip_t::NONE)
+		if(this->compress != compress_t::NONE)
 			// Добавляем заголовок в запрос
 			request.append(this->fmk->format("Accept-Encoding: %s\r\n", HTTP_HEADER_ACCEPTENCODING));
+		// Устанавливаем User-Agent если не передан
+		if(!available[3]){
+			// Если User-Agent установлен стандартный
+			if(this->userAgent.compare(HTTP_HEADER_AGENT) == 0){
+				// Название операционной системы
+				const char * nameOs = nullptr;
+				// Определяем название операционной системы
+				switch((u_short) this->fmk->os()){
+					// Если операционной системой является Unix
+					case (u_short) fmk_t::os_t::UNIX: nameOs = "Unix"; break;
+					// Если операционной системой является Linux
+					case (u_short) fmk_t::os_t::LINUX: nameOs = "Linux"; break;
+					// Если операционной системой является неизвестной
+					case (u_short) fmk_t::os_t::NONE: nameOs = "Unknown"; break;
+					// Если операционной системой является Windows
+					case (u_short) fmk_t::os_t::WIND32:
+					case (u_short) fmk_t::os_t::WIND64: nameOs = "Windows"; break;
+					// Если операционной системой является MacOS X
+					case (u_short) fmk_t::os_t::MACOSX: nameOs = "MacOS X"; break;
+					// Если операционной системой является FreeBSD
+					case (u_short) fmk_t::os_t::FREEBSD: nameOs = "FreeBSD"; break;
+				}
+				// Выполняем генерацию Юзер-агента клиента выполняющего HTTP запрос
+				this->userAgent = this->fmk->format("Mozilla/5.0 (%s; %s) %s/%s", nameOs, this->servName.c_str(), this->servId.c_str(), this->servVer.c_str());
+			}
+			// Добавляем заголовок в запрос
+			request.append(this->fmk->format("User-Agent: %s\r\n", this->userAgent.c_str()));
+		}
 		// Получаем параметры авторизации
 		const string & auth = this->auth->header();
 		// Если данные авторизации получены
@@ -1005,9 +1060,58 @@ vector <char> awh::Http::request(const uri_t::url_t & url, const method_t method
 		// Если запрос не является HEAD и тело запроса существует
 		if((method != method_t::HEAD) && !this->body.empty()){
 			// Проверяем нужно ли передать тело разбив на чанки
-			this->chunking = ((available.count(header_t::CONTENTLENGTH) < 1) || (contentLength != this->body.size()));
-			// Устанавливаем Content-Length если не передан
-			if(this->chunking) request.append(this->fmk->format("Transfer-Encoding: %s\r\n", "chunked"));
+			this->chunking = (!available[5] || ((length > 0) && (length != this->body.size())));
+			// Если нужно производить шифрование
+			if(this->crypt){
+				// Выполняем шифрование переданных данных
+				const auto & res = this->hash->encrypt(this->body.data(), this->body.size());
+				// Если данные зашифрованы, заменяем тело данных
+				if(!res.empty()){
+					// Заменяем тело данных
+					this->body.assign(res.begin(), res.end());
+					// Устанавливаем X-AWH-Encryption
+					request.append(this->fmk->format("X-AWH-Encryption: %u\r\n", (u_short) this->hash->getAES()));
+				}
+			}
+			// Определяем метод сжатия тела сообщения
+			switch((u_short) this->compress){
+				// Если нужно сжать тело методом GZIP
+				case (u_short) compress_t::GZIP: {
+					// Выполняем сжатие тела сообщения
+					const auto & gzip = this->hash->compressGzip(this->body.data(), this->body.size());
+					// Если данные сжаты, заменяем тело данных
+					if(!gzip.empty()){
+						// Заменяем тело данных
+						this->body.assign(gzip.begin(), gzip.end());
+						// Заменяем размер тела данных
+						if(!this->chunking) length = this->body.size();
+						// Устанавливаем Content-Encoding если не передан
+						if(!available[7]) request.append(this->fmk->format("Content-Encoding: %s\r\n", "gzip"));
+					}
+				} break;
+				// Если нужно сжать тело методом DEFLATE
+				case (u_short) compress_t::DEFLATE: {
+					// Выполняем сжатие тела сообщения
+					auto deflate = this->hash->compress(this->body.data(), this->body.size());
+					// Удаляем хвост в полученных данных
+					this->hash->rmTail(deflate);
+					// Если данные сжаты, заменяем тело данных
+					if(!deflate.empty()){
+						// Заменяем тело данных
+						this->body.assign(deflate.begin(), deflate.end());
+						// Заменяем размер тела данных
+						if(!this->chunking) length = this->body.size();
+						// Устанавливаем Content-Encoding если не передан
+						if(!available[7]) request.append(this->fmk->format("Content-Encoding: %s\r\n", "deflate"));
+					}
+				} break;
+			}
+			// Если данные необходимо разбивать на чанки
+			if(this->chunking)
+				// Устанавливаем заголовок Transfer-Encoding
+				request.append(this->fmk->format("Transfer-Encoding: %s\r\n", "chunked"));
+			// Устанавливаем размер передаваемого тела Content-Length
+			else request.append(this->fmk->format("Content-Length: %zu\r\n", length));
 		// Очищаем тела сообщения
 		} else this->body.clear();
 		// Устанавливаем завершающий разделитель
@@ -1019,33 +1123,42 @@ vector <char> awh::Http::request(const uri_t::url_t & url, const method_t method
 	return result;
 }
 /**
- * setSub Метод установки подпротокола поддерживаемого сервером
- * @param sub подпротокол для установки
- */
-void awh::Http::setSub(const string & sub) noexcept {
-	// Устанавливаем подпротокол
-	if(!sub.empty()) this->subs.emplace(sub);
-}
-/**
- * setSubs Метод установки списка подпротоколов поддерживаемых сервером
- * @param subs подпротоколы для установки
- */
-void awh::Http::setSubs(const vector <string> & subs) noexcept {
-	// Если список подпротоколов получен
-	if(!subs.empty()){
-		// Переходим по всем подпротоколам
-		for(auto & sub : subs)
-			// Устанавливаем подпротокол
-			this->setSub(sub);
-	}
-}
-/**
  * setChunkingFn Метод установки функции обратного вызова для получения чанков
  * @param callback функция обратного вызова
  */
 void awh::Http::setChunkingFn(function <void (const vector <char> &, const Http *)> callback) noexcept {
 	// Устанавливаем функцию обратного вызова
 	this->chunkingFn = callback;
+}
+/**
+ * setChunkSize Метод установки размера чанка
+ * @param size размер чанка для установки
+ */
+void awh::Http::setChunkSize(const size_t size) noexcept {
+	// Устанавливаем размер чанка
+	if(size >= 100) this->chunkSize = size;
+}
+/**
+ * setUserAgent Метод установки User-Agent для HTTP запроса
+ * @param userAgent агент пользователя для HTTP запроса
+ */
+void awh::Http::setUserAgent(const string & userAgent) noexcept {
+	// Устанавливаем UserAgent
+	if(!userAgent.empty()) this->userAgent = userAgent;
+}
+/**
+ * setServ Метод установки данных сервиса
+ * @param id   идентификатор сервиса
+ * @param name название сервиса
+ * @param ver  версия сервиса
+ */
+void awh::Http::setServ(const string & id, const string & name, const string & ver) noexcept {
+	// Если идентификатор сервиса передан, устанавливаем
+	if(!id.empty()) this->servId = id;
+	// Если версия сервиса передана
+	if(!ver.empty()) this->servVer = ver;
+	// Если название сервиса передано, устанавливаем
+	if(!name.empty()) this->servName = name;
 }
 /**
  * setUser Метод установки параметров авторизации
@@ -1060,6 +1173,22 @@ void awh::Http::setUser(const string & login, const string & password) noexcept 
 		// Устанавливаем пароль пользователя
 		this->auth->setPassword(password);
 	}
+}
+/**
+ * setCrypt Метод установки параметров шифрования
+ * @param pass пароль шифрования передаваемых данных
+ * @param salt соль шифрования передаваемых данных
+ * @param aes  размер шифрования передаваемых данных
+ */
+void awh::Http::setCrypt(const string & pass, const string & salt, const hash_t::aes_t aes) noexcept {
+	// Устанавливаем флаг шифрования
+	this->crypt = !pass.empty();
+	// Устанавливаем размер шифрования
+	this->hash->setAES(aes);
+	// Устанавливаем соль шифрования
+	this->hash->setSalt(salt);
+	// Устанавливаем пароль шифрования
+	this->hash->setPassword(pass);
 }
 /**
  * setAuthType Метод установки типа авторизации
@@ -1084,30 +1213,8 @@ awh::Http::Http(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcep
 		this->uri = uri;
 		// Создаём объект для работы с авторизацией
 		this->auth = new auth_t(this->fmk, this->log);
-	// Если происходит ошибка то игнорируем её
-	} catch(const bad_alloc&) {
-		// Выводим сообщение об ошибке
-		log->print("%s", log_t::flag_t::CRITICAL, "memory could not be allocated");
-		// Выходим из приложения
-		exit(EXIT_FAILURE);
-	}
-}
-/**
- * Http Конструктор
- * @param fmk объект фреймворка
- * @param log объект для работы с логами
- * @param uri объект работы с URI
- * @param url объект URL адреса сервера
- */
-awh::Http::Http(const fmk_t * fmk, const log_t * log, const uri_t * uri, const uri_t::url_t * url) noexcept {
-	try {
-		// Устанавливаем зависимые модули
-		this->fmk = fmk;
-		this->log = log;
-		this->uri = uri;
-		this->url = url;
-		// Создаём объект для работы с авторизацией
-		this->auth = new auth_t(this->fmk, this->log);
+		// Создаём объект для работы с сжатым контентом
+		this->hash = new hash_t(this->fmk, this->log);
 	// Если происходит ошибка то игнорируем её
 	} catch(const bad_alloc&) {
 		// Выводим сообщение об ошибке
@@ -1120,6 +1227,8 @@ awh::Http::Http(const fmk_t * fmk, const log_t * log, const uri_t * uri, const u
  * ~Http Деструктор
  */
 awh::Http::~Http() noexcept {
+	// Удаляем объект работы с сжатым контентом
+	if(this->hash != nullptr) delete this->hash;
 	// Удаляем объект авторизации
 	if(this->auth != nullptr) delete this->auth;
 }

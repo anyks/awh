@@ -14,12 +14,9 @@
  * Стандартная библиотека
  */
 #include <set>
-#include <map>
 #include <string>
 #include <vector>
-#include <random>
 #include <cstring>
-#include <algorithm>
 #include <unordered_map>
 
 // Если - это Windows
@@ -37,7 +34,7 @@
 #include <log.hpp>
 #include <uri.hpp>
 #include <auth.hpp>
-#include <base64.hpp>
+#include <hash.hpp>
 
 // Подписываемся на стандартное пространство имён
 using namespace std;
@@ -84,13 +81,8 @@ namespace awh {
 				Query() : code(0), ver(HTTP_VERSION), uri(""), method(""), message("") {}
 			} query_t;
 		protected:
-			// Размер максимального значения окна для сжатия данных GZIP
-			static constexpr int GZIP_MAX_WBITS = 15;
-			// Версия протокола WebSocket
-			static constexpr u_short WS_VERSION = 13;
-		protected:
 			// Список HTTP сообщений
-			map <u_short, pair <string, string>> messages = {
+			map <u_short, string> messages = {
 				{100, "Continue"},
 				{101, "Switching Protocol"},
 				{102, "Processing"},
@@ -161,19 +153,6 @@ namespace awh {
 					Chunk() : size(0) {}
 			} chunk_t;
 			/**
-			 * Типы основных заголовков
-			 */
-			enum class header_t : u_short {
-				HOST,          // Host
-				ACCEPT,        // Accept
-				ORIGIN,        // Origin
-				USERAGENT,     // User-Agent
-				CONNECTION,    // Connection
-				CONTANTTYPE,   // Content-Type
-				CONTENTLENGTH, // Content-Length
-				ACCEPTLANGUAGE // Accept-Language
-			};
-			/**
 			 * Стейты работы модуля
 			 */
 			enum class state_t: u_short {
@@ -184,38 +163,46 @@ namespace awh {
 				HEADERS,  // Режим чтения заголовков
 				HANDSHAKE // Режим выполненного рукопожатия
 			};
+			/**
+			 * Режимы работы модуля
+			 */
+			enum class mode_t: u_short {NONE, REQUEST, RESPONSE};
 		protected:
 			// Объект параметров запроса
-			query_t query;
+			mutable query_t query;
 			// Объект собираемого чанка
-			chunk_t chunk;
-		protected:
-			// Размер одного чанка
-			size_t chunkSize = BUFFER_CHUNK;
-			// Размер скользящего окна клиента
-			short wbitClient = GZIP_MAX_WBITS;
-			// Размер скользящего окна сервера
-			short wbitServer = GZIP_MAX_WBITS;
-			// Флаги работы с сжатыми данными
-			compress_t compress = compress_t::DEFLATE;
+			mutable chunk_t chunk;
+			// Параметры выполняемого запроса
+			mutable uri_t::url_t url;
 		protected:
 			// Флаг зашифрованных данных
 			bool crypt = false;
+			// Флаг проверки аутентификации
+			mutable bool failAuth = false;
 			// Флаг разрешающий передавать тело чанками
-			bool chunking = true;
+			mutable bool chunking = false;
 		protected:
+			// Размер одного чанка
+			size_t chunkSize = BUFFER_CHUNK;
+		protected:
+			// Название сервиса
+			string servName = AWH_NAME;
+			// Версия сервиса
+			string servVer = AWH_VERSION;
+			// Идентификатор сервиса
+			string servId = AWH_SHORT_NAME;
+			// User-Agent для HTTP запроса
+			mutable string userAgent = HTTP_HEADER_AGENT;
+		protected:
+			// Режим работы модуля
+			mode_t mode = mode_t::NONE;
 			// Стейт проверки авторизации
 			stath_t stath = stath_t::EMPTY;
 			// Стейт текущего запроса
 			state_t state = state_t::QUERY;
+			// Метод сжатия данных запроса/ответа
+			compress_t compress = compress_t::GZIP;
 		protected:
-			// Поддерживаемый сабпротокол
-			string sub = "";
-			// Ключ клиента
-			mutable string keyWebSocket = "";
-		protected:
-			// Поддерживаемые сабпротоколы
-			set <string> subs;
 			// Полученное тело HTTP запроса
 			mutable vector <char> body;
 			// Полученные HTTP заголовки
@@ -226,14 +213,14 @@ namespace awh {
 		protected:
 			// Создаём объект для работы с авторизацией
 			auth_t * auth = nullptr;
+			// Создаём объект для работы с жатыми данными
+			hash_t * hash = nullptr;
 			// Создаём объект фреймворка
 			const fmk_t * fmk = nullptr;
 			// Создаём объект работы с логами
 			const log_t * log = nullptr;
 			// Создаём объект работы с URI
 			const uri_t * uri = nullptr;
-			// Создаём URL адрес запроса
-			const uri_t::url_t * url = nullptr;
 		protected:
 			/**
 			 * date Метод получения текущей даты для HTTP запроса
@@ -241,45 +228,15 @@ namespace awh {
 			 */
 			const string date() const noexcept;
 			/**
-			 * wsKey Метод генерации ключа для WebSocket
-			 * @return сгенерированный ключ для WebSocket
-			 */
-			const string wsKey() const noexcept;
-			/**
-			 * wsHash Метод генерации хэша ключа
-			 * @return сгенерированный хэш ключа клиента
-			 */
-			const string wsHash() const noexcept;
-		protected:
-			/**
-			 * updateExtensions Метод проверки полученных расширений
-			 */
-			virtual void updateExtensions() noexcept = 0;
-			/**
-			 * updateSubProtocol Метод извлечения доступного сабпротокола
-			 */
-			virtual void updateSubProtocol() noexcept = 0;
-		public:
-			/**
-			 * checkUpgrade Метод получения флага переключения протокола
-			 * @return флага переключения протокола
-			 */
-			virtual bool checkUpgrade() const noexcept;
-			/**
-			 * checkKeyWebSocket Метод проверки ключа сервера WebSocket
-			 * @return результат проверки
-			 */
-			virtual bool checkKeyWebSocket() noexcept = 0;
-			/**
-			 * checkVerWebSocket Метод проверки на версию протокола WebSocket
-			 * @return результат проверки соответствия
-			 */
-			virtual bool checkVerWebSocket() noexcept = 0;
-			/**
-			 * checkAuthenticate Метод проверки авторизации
+			 * checkAuth Метод проверки авторизации
 			 * @return результат проверки авторизации
 			 */
-			virtual stath_t checkAuthenticate() noexcept = 0;
+			virtual stath_t checkAuth() noexcept;
+		protected:
+			/**
+			 * update Метод обновления входящих данных
+			 */
+			virtual void update() noexcept;
 		public:
 			/**
 			 * clear Метод очистки собранных данных
@@ -340,11 +297,23 @@ namespace awh {
 			 * @return результат проверки
 			 */
 			stath_t getAuth() const noexcept;
+		public:
 			/**
 			 * getCompress Метод получения метода сжатия
 			 * @return метод сжатия сообщений
 			 */
 			compress_t getCompress() const noexcept;
+			/**
+			 * setCompress Метод установки метода сжатия
+			 * @param метод сжатия сообщений
+			 */
+			void setCompress(const compress_t compress) noexcept;
+		public:
+			/**
+			 * getUrl Метод извлечения параметров запроса
+			 * @return установленные параметры запроса
+			 */
+			const uri_t::url_t & getUrl() const noexcept;
 		public:
 			/**
 			 * isEnd Метод проверки завершения обработки
@@ -369,17 +338,6 @@ namespace awh {
 			bool isHeader(const string & key) const noexcept;
 		public:
 			/**
-			 * getWbitClient Метод получения размер скользящего окна для клиента
-			 * @return размер скользящего окна
-			 */
-			short getWbitClient() const noexcept;
-			/**
-			 * getWbitServer Метод получения размер скользящего окна для сервера
-			 * @return размер скользящего окна
-			 */
-			short getWbitServer() const noexcept;
-		public:
-			/**
 			 * getQuery Метод получения объекта запроса сервера
 			 * @return объект запроса сервера
 			 */
@@ -391,28 +349,11 @@ namespace awh {
 			void setQuery(const query_t & query) noexcept;
 		public:
 			/**
-			 * getSub Метод получения выбранного сабпротокола
-			 * @return выбранный сабпротокол
-			 */
-			const string & getSub() const noexcept;
-			/**
 			 * getMessage Метод получения HTTP сообщения
 			 * @param code код сообщения для получение
 			 * @return     соответствующее коду HTTP сообщение
 			 */
 			const string & getMessage(const u_short code) const noexcept;
-		public:
-			/**
-			 * websocket Метод создания ответа для WebSocket
-			 * @return буфер данных запроса в бинарном виде
-			 */
-			vector <char> websocket() const noexcept;
-			/**
-			 * websocket Метод создания запроса для WebSocket
-			 * @param url объект параметров REST запроса
-			 * @return    буфер данных запроса в бинарном виде
-			 */
-			vector <char> websocket(const uri_t::url_t & url) const noexcept;
 		public:
 			/**
 			 * reject Метод создания отрицательного ответа
@@ -435,21 +376,21 @@ namespace awh {
 			vector <char> request(const uri_t::url_t & url, const method_t method) const noexcept;
 		public:
 			/**
-			 * setSub Метод установки подпротокола поддерживаемого сервером
-			 * @param sub подпротокол для установки
-			 */
-			void setSub(const string & sub) noexcept;
-			/**
-			 * setSubs Метод установки списка подпротоколов поддерживаемых сервером
-			 * @param subs подпротоколы для установки
-			 */
-			void setSubs(const vector <string> & subs) noexcept;
-		public:
-			/**
 			 * setChunkingFn Метод установки функции обратного вызова для получения чанков
 			 * @param callback функция обратного вызова
 			 */
 			void setChunkingFn(function <void (const vector <char> &, const Http *)> callback) noexcept;
+		public:
+			/**
+			 * setChunkSize Метод установки размера чанка
+			 * @param size размер чанка для установки
+			 */
+			void setChunkSize(const size_t size) noexcept;
+			/**
+			 * setUserAgent Метод установки User-Agent для HTTP запроса
+			 * @param userAgent агент пользователя для HTTP запроса
+			 */
+			void setUserAgent(const string & userAgent) noexcept;
 		public:
 			/**
 			 * setUser Метод установки параметров авторизации
@@ -457,6 +398,20 @@ namespace awh {
 			 * @param password пароль пользователя для авторизации на сервере
 			 */
 			void setUser(const string & login, const string & password) noexcept;
+			/**
+			 * setServ Метод установки данных сервиса
+			 * @param id   идентификатор сервиса
+			 * @param name название сервиса
+			 * @param ver  версия сервиса
+			 */
+			void setServ(const string & id, const string & name, const string & ver) noexcept;
+			/**
+			 * setCrypt Метод установки параметров шифрования
+			 * @param pass пароль шифрования передаваемых данных
+			 * @param salt соль шифрования передаваемых данных
+			 * @param aes  размер шифрования передаваемых данных
+			 */
+			void setCrypt(const string & pass, const string & salt = "", const hash_t::aes_t aes = hash_t::aes_t::AES128) noexcept;
 			/**
 			 * setAuthType Метод установки типа авторизации
 			 * @param type      тип авторизации
@@ -471,14 +426,6 @@ namespace awh {
 			 * @param uri объект работы с URI
 			 */
 			Http(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcept;
-			/**
-			 * Http Конструктор
-			 * @param fmk объект фреймворка
-			 * @param log объект для работы с логами
-			 * @param uri объект работы с URI
-			 * @param url объект URL адреса сервера
-			 */
-			Http(const fmk_t * fmk, const log_t * log, const uri_t * uri, const uri_t::url_t * url) noexcept;
 			/**
 			 * ~Http Деструктор
 			 */
