@@ -71,7 +71,7 @@ void awh::WSClient::update() noexcept {
 		}
 	}
 	// Ищем подпротокол сервера
-	auto it = this->headers.find("sec-websocket-protocol");
+	it = this->headers.find("sec-websocket-protocol");
 	// Если подпротокол найден, устанавливаем его
 	if(it != this->headers.end()) this->sub = it->second;
 }
@@ -136,21 +136,21 @@ awh::Http::stath_t awh::WSClient::checkAuth() noexcept {
 				// Выполняем парсинг URL
 				uri_t::url_t tmp = this->uri->parseUrl(it->second);
 				// Если параметры URL существуют
-				if(!this->url->params.empty())
+				if(!this->url.params.empty())
 					// Переходим по всему списку параметров
-					for(auto & param : this->url->params) tmp.params.emplace(param);
+					for(auto & param : this->url.params) tmp.params.emplace(param);
 				// Меняем IP адрес сервера
-				const_cast <uri_t::url_t *> (this->url)->ip = move(tmp.ip);
+				const_cast <uri_t::url_t *> (&this->url)->ip = move(tmp.ip);
 				// Меняем порт сервера
-				const_cast <uri_t::url_t *> (this->url)->port = move(tmp.port);
+				const_cast <uri_t::url_t *> (&this->url)->port = move(tmp.port);
 				// Меняем на путь сервере
-				const_cast <uri_t::url_t *> (this->url)->path = move(tmp.path);
+				const_cast <uri_t::url_t *> (&this->url)->path = move(tmp.path);
 				// Меняем доменное имя сервера
-				const_cast <uri_t::url_t *> (this->url)->domain = move(tmp.domain);
+				const_cast <uri_t::url_t *> (&this->url)->domain = move(tmp.domain);
 				// Меняем протокол запроса сервера
-				const_cast <uri_t::url_t *> (this->url)->schema = move(tmp.schema);
+				const_cast <uri_t::url_t *> (&this->url)->schema = move(tmp.schema);
 				// Устанавливаем новый список параметров
-				const_cast <uri_t::url_t *> (this->url)->params = move(tmp.params);
+				const_cast <uri_t::url_t *> (&this->url)->params = move(tmp.params);
 				// Просим повторить авторизацию ещё раз
 				result = http_t::stath_t::RETRY;
 			}

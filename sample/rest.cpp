@@ -10,11 +10,11 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include <rest/client.hpp>
+// #include <rest/client.hpp>
 
 // Подключаем пространство имён
 using namespace std;
-using namespace awh;
+// using namespace awh;
 
 /**
  * main Главная функция приложения
@@ -23,6 +23,7 @@ using namespace awh;
  * @return     код выхода из приложения
  */
 int main(int argc, char * argv[]) noexcept {
+	/*
 	// Создаём объект фреймворка
 	fmk_t fmk;
 	// Создаём объект для работы с логами
@@ -31,7 +32,6 @@ int main(int argc, char * argv[]) noexcept {
 	network_t nwk(&fmk);
 	// Создаём объект URI
 	uri_t uri(&fmk, &nwk);
-	/*
 	// Создаём объект клиента REST
 	rest_t rest(&fmk, &log, &uri, &nwk);
 	// Устанавливаем название сервиса

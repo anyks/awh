@@ -36,7 +36,7 @@ const string awh::WS::getKey() const noexcept {
 		// Выводим в лог сообщение
 		this->log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		// Выполняем повторно генерацию ключа
-		result = this->key();
+		result = this->getKey();
 	}
 	// Выводим результат
 	return result;
@@ -165,9 +165,9 @@ vector <char> awh::WS::response() const noexcept {
 					// Устанавливаем тип компрессии GZip
 					extensions = "permessage-gzip; server_no_context_takeover";
 				// Если данные должны быть зашифрованны
-				if(this->crypt) extensions.append(this->fmk->format("; permessage-encrypt=%u", (u_short) this->aes));
+				if(this->crypt) extensions.append(this->fmk->format("; permessage-encrypt=%u", (u_short) this->hash->getAES()));
 			// Если метод компрессии не указан но указан режим шифрования
-			} else if(this->crypt) extensions = this->fmk->format("permessage-encrypt=%u; server_no_context_takeover", (u_short) this->aes);
+			} else if(this->crypt) extensions = this->fmk->format("permessage-encrypt=%u; server_no_context_takeover", (u_short) this->hash->getAES());
 			// Добавляем полученный заголовок
 			this->headers.emplace("Sec-WebSocket-Extensions", extensions);
 		}
@@ -231,9 +231,9 @@ vector <char> awh::WS::request(const uri_t::url_t & url) const noexcept {
 				// Устанавливаем тип компрессии GZip
 				extensions = "permessage-gzip";
 			// Если данные должны быть зашифрованны
-			if(this->crypt) extensions.append(this->fmk->format("; permessage-encrypt=%u", (u_short) this->aes));
+			if(this->crypt) extensions.append(this->fmk->format("; permessage-encrypt=%u", (u_short) this->hash->getAES()));
 		// Если метод компрессии не указан но указан режим шифрования
-		} else if(this->crypt) extensions = this->fmk->format("permessage-encrypt=%u", (u_short) this->aes));
+		} else if(this->crypt) extensions = this->fmk->format("permessage-encrypt=%u", (u_short) this->hash->getAES());
 		// Добавляем полученный заголовок
 		this->headers.emplace("Sec-WebSocket-Extensions", extensions);
 	}
@@ -244,7 +244,7 @@ vector <char> awh::WS::request(const uri_t::url_t & url) const noexcept {
 	// Добавляем заголовок апгрейд
 	this->headers.emplace("Upgrade", "websocket");
 	// Добавляем заголовок версии WebSocket
-	this->headers.emplace("Sec-WebSocket-Version", WS_VERSION);
+	this->headers.emplace("Sec-WebSocket-Version", to_string(WS_VERSION));
 	// Добавляем заголовок ключ клиента
 	this->headers.emplace("Sec-WebSocket-Key", this->key);
 	// Выводим результат
