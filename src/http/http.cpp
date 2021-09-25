@@ -771,22 +771,29 @@ vector <char> awh::Http::reject(const u_short code) const noexcept {
 	this->query.message = this->getMessage(code);
 	// Если сообщение получено
 	if(!this->query.message.empty()){
+		// Если требуется ввод авторизационных данных
+		if((code == 401) || (code == 407))
+			// Добавляем заголовок закрытия подключения
+			this->headers.emplace("Connection", "keep-alive");
 		// Добавляем заголовок закрытия подключения
-		this->headers.emplace("Connection", "close");
+		else this->headers.emplace("Connection", "close");
 		// Добавляем заголовок тип контента
 		this->headers.emplace("Content-type", "text/html; charset=utf-8");
-		// Если тело ответа не установлено, устанавливаем своё
-		if(this->body.empty()){
-			// Формируем тело ответа
-			const string & body = this->fmk->format(
-				"<html><head><title>%u %s</title></head>\n<body><h2>%u %s</h2></body></html>",
-				code, this->query.message.c_str(), code, this->query.message.c_str()
-			);
-			// Добавляем тело сообщения
-			this->body.assign(body.begin(), body.end());
+		// Если запрос должен содержать тело сообщения
+		if((code >= 200) && (code != 204) && (code != 304) && (code != 308)){
+			// Если тело ответа не установлено, устанавливаем своё
+			if(this->body.empty()){
+				// Формируем тело ответа
+				const string & body = this->fmk->format(
+					"<html><head><title>%u %s</title></head>\n<body><h2>%u %s</h2></body></html>",
+					code, this->query.message.c_str(), code, this->query.message.c_str()
+				);
+				// Добавляем тело сообщения
+				this->body.assign(body.begin(), body.end());
+			}
+			// Добавляем заголовок тела сообщения
+			this->headers.emplace("Content-Length", to_string(this->body.size()));
 		}
-		// Добавляем заголовок тела сообщения
-		this->headers.emplace("Content-Length", to_string(this->body.size()));
 		// Выводим результат
 		return this->response(code);
 	}
