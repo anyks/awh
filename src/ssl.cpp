@@ -283,6 +283,8 @@ awh::ASSL::ctx_t awh::ASSL::init(const uri_t::url_t & url) noexcept {
 			const char * capath = (!this->capath.empty() ? this->capath.c_str() : nullptr);
 			// Выполняем проверку
 			if(SSL_CTX_load_verify_locations(result.ctx, this->cafile.c_str(), capath) != 1){
+				// Очищаем созданный контекст
+				this->clear(result);
 				// Выводим в лог сообщение
 				this->log->print("%s", log_t::flag_t::CRITICAL, "ssl verify locations is not allow");
 				// Выходим
@@ -411,6 +413,8 @@ awh::ASSL::ctx_t awh::ASSL::init(const uri_t::url_t & url) noexcept {
 			#endif
 			// Если стор не устанавливается, тогда выводим ошибку
 			if(X509_STORE_set_default_paths(store) != 1){
+				// Очищаем созданный контекст
+				this->clear(result);
 				// Выводим в лог сообщение
 				this->log->print("%s", log_t::flag_t::CRITICAL, "set default paths for x509 store is not allow");
 				// Выходим
@@ -482,41 +486,45 @@ awh::ASSL::ctx_t awh::ASSL::init(const uri_t::url_t & url) noexcept {
 		// Создаем ssl объект
 		result.ssl = SSL_new(result.ctx);
 		// Если объект не создан
-		if(result.ssl == nullptr){
+		if(!(result.mode = (result.ssl != nullptr))){
+			// Очищаем созданный контекст
+			this->clear(result);
 			// Выводим в лог сообщение
 			this->log->print("%s", log_t::flag_t::CRITICAL, "ssl initialization is not allow");
 			// Выходим
 			return result;
 		}
-		// Если нужно установить TLS расширение
-		#ifdef SSL_CTRL_SET_TLSEXT_HOSTNAME
-			// Устанавливаем имя хоста для SNI расширения
-			if(!url.domain.empty()) SSL_set_tlsext_host_name(result.ssl, url.domain.c_str());
-		#endif
-
-		cout << " $$$$$$$$$$$$$ SSL1 " << url.domain << " == " << url.schema << endl;
-
-		// SSL_connect(result.ssl);
-
+		// Если нужно произвести проверку
+		if(this->verify && !url.domain.empty()){
+			// Если нужно установить TLS расширение
+			#ifdef SSL_CTRL_SET_TLSEXT_HOSTNAME
+				// Устанавливаем имя хоста для SNI расширения
+				SSL_set_tlsext_host_name(result.ssl, url.domain.c_str());
+			#endif
+			// Активируем верификацию доменного имени
+			if(!X509_VERIFY_PARAM_set1_host(SSL_get0_param(result.ssl), url.domain.c_str(), 0)){
+				// Очищаем созданный контекст
+				this->clear(result);
+				// Выводим в лог сообщение
+				this->log->print("%s", log_t::flag_t::CRITICAL, "domain ssl verification failed");
+				// Выходим
+				return result;
+			}
+		}
 		// Проверяем рукопожатие
 		if(SSL_do_handshake(result.ssl) <= 0){
-
-			cout << " $$$$$$$$$$$$$ SSL2 " << endl;
-
 			// Выполняем проверку рукопожатия
 			const long verify = SSL_get_verify_result(result.ssl);
 			// Если рукопожатие не выполнено
 			if(verify != X509_V_OK){
+				// Очищаем созданный контекст
+				this->clear(result);
 				// Выводим в лог сообщение
 				this->log->print("certificate chain validation failed: %s", log_t::flag_t::CRITICAL, X509_verify_cert_error_string(verify));
 				// Выходим
 				return result;
 			}
-
-			cout << " $$$$$$$$$$$$$ SSL3 " << endl;
 		}
-		// Устанавливаем флаг, удачного создания SSL объекта
-		result.mode = true;
 	}
 	// Выводим результат
 	return result;
