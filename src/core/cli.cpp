@@ -72,12 +72,23 @@ void awh::Client::processing(const size_t size) noexcept {
 				case (u_short) http_t::stath_t::RETRY: {
 					// Если попытка повторить авторизацию ещё не проводилась
 					if(!this->failAuth){
-						// Запоминаем, что попытка выполнена
-						this->failAuth = true;
-						// Выполняем запрос заново
-						this->REST(this->http->getUrl(), this->req.method, * this->req.entity, * this->req.headers);
-						// Завершаем работу
-						return;
+						// Получаем новый адрес запроса
+						this->url = this->http->getUrl();
+						// Если адрес запроса получен
+						if(!this->url.empty()){
+							// Запоминаем, что попытка выполнена
+							this->failAuth = true;
+							// Перезаписываем адрес ресурса
+							this->req.uri = &this->url;
+							// Если производится закрытие подключения
+							if(this->http->getHeader("connection").compare("close") == 0)
+								// Завершаем работу
+								this->close();
+							// Выполняем запрос заново
+							this->resolve(this->url);
+							// Завершаем работу
+							return;
+						}
 					}
 				} break;
 				// Если запрос выполнен удачно

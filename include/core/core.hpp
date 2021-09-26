@@ -259,10 +259,9 @@ namespace awh {
 		protected:
 			/**
 			 * resolve Метод выполняющая резолвинг хоста http запроса
-			 * @param url      параметры хоста, для которого нужно получить IP адрес
-			 * @param callback функция обратного вызова
+			 * @param url параметры хоста, для которого нужно получить IP адрес
 			 */
-			void resolve(const uri_t::url_t & url, function <void (const string &)> callback) noexcept;
+			void resolve(const uri_t::url_t & url) noexcept;
 		public:
 			/**
 			 * setChunkingFn Метод установки функции обратного вызова для получения чанков

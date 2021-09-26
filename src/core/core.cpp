@@ -470,23 +470,6 @@ void awh::Core::start() noexcept {
 			this->mode = true;
 			// Отключаем флаг остановки работы
 			this->halt = false;
-			/**
-			 * runFn Функция выполнения запуска системы
-			 * @param ip полученный адрес сервера резолвером
-			 */
-			auto runFn = [this](const string & ip) noexcept {
-				// Если IP адрес получен
-				if(!ip.empty()){
-					// Запоминаем IP адрес
-					this->url.ip = ip;
-					// Если подключение выполнено
-					if(this->connect()) return;
-					// Сообщаем, что подключение не удалось и выводим сообщение
-					else this->log->print("broken connect to host %s", log_t::flag_t::CRITICAL, this->url.ip.c_str());
-				}
-				// Останавливаем работу системы
-				this->stop();
-			};
 			// Создаем новую базу
 			this->base = event_base_new();
 			// Определяем тип подключения
@@ -496,16 +479,15 @@ void awh::Core::start() noexcept {
 				// Резолвер IPv6, создаём резолвер
 				case AF_INET6: this->dns = new dns_t(this->fmk, this->log, this->nwk, this->base, this->net.v6.second); break;
 			}
-			// Если IP адрес не получен
-			if(this->url.ip.empty() && !this->url.domain.empty())
-				// Выполняем резолвинг домена
-				this->resolve(this->url, runFn);
-			// Выполняем запуск системы
-			else if(!this->url.ip.empty()) runFn(this->url.ip);
 			// Выводим в консоль информацию
 			this->log->print("[+] start service: pid = %u", log_t::flag_t::INFO, getpid());
+			// Выполняем резолвинг домена
+			this->resolve(this->url);
 			// Активируем перебор базы событий
-			event_base_loop(this->base, EVLOOP_NO_EXIT_ON_EMPTY);
+			// event_base_loop(this->base, EVLOOP_NO_EXIT_ON_EMPTY);
+
+			event_base_dispatch(this->base);
+
 			// Удаляем dns резолвер
 			delete this->dns;
 			// Зануляем DNS объект
@@ -540,18 +522,32 @@ void awh::Core::start() noexcept {
 }
 /**
  * resolve Метод выполняющая резолвинг хоста http запроса
- * @param url      параметры хоста, для которого нужно получить IP адрес
- * @param callback функция обратного вызова
+ * @param url параметры хоста, для которого нужно получить IP адрес
  */
-void awh::Core::resolve(const uri_t::url_t & url, function <void (const string &)> callback) noexcept {
-	// Если доменное имя указано
-	if(!url.domain.empty())
+void awh::Core::resolve(const uri_t::url_t & url) noexcept {
+	/**
+	 * runFn Функция выполнения запуска системы
+	 * @param ip полученный адрес сервера резолвером
+	 */
+	auto runFn = [this](const string & ip) noexcept {
+		// Если IP адрес получен
+		if(!ip.empty()){
+			// Запоминаем IP адрес
+			this->url.ip = ip;
+			// Если подключение выполнено
+			if(this->connect()) return;
+			// Сообщаем, что подключение не удалось и выводим сообщение
+			else this->log->print("broken connect to host %s", log_t::flag_t::CRITICAL, this->url.ip.c_str());
+		}
+		// Останавливаем работу системы
+		this->stop();
+	};
+	// Если IP адрес не получен
+	if(url.ip.empty() && !url.domain.empty())
 		// Выполняем резолвинг домена
-		this->dns->resolve(url.domain, url.family, callback);
-	// Если доступен IP адрес
-	else if(!url.ip.empty()) callback(url.ip);
-	// Иначе возвращаем пустоту
-	else callback("");
+		this->dns->resolve(url.domain, url.family, runFn);
+	// Выполняем запуск системы
+	else if(!url.ip.empty()) runFn(url.ip);
 }
 /**
  * setChunkingFn Метод установки функции обратного вызова для получения чанков

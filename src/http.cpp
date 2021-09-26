@@ -40,7 +40,8 @@ awh::Http::stath_t awh::Http::checkAuth() noexcept {
 		// Проверяем код ответа
 		switch(this->query.code){
 			// Если требуется авторизация
-			case 401: {
+			case 401:
+			case 407: {
 				// Если попытки провести аутентификацию ещё небыло, пробуем ещё раз
 				if(!this->failAuth && (this->auth->getType() == auth_t::type_t::DIGEST)){
 					// Получаем параметры авторизации

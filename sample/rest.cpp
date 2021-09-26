@@ -46,9 +46,9 @@ int main(int argc, char * argv[]) noexcept {
 	// Устанавливаем адрес сертификата
 	cli.setCA("./ca/cert.pem");
 	// Выполняем получение URL адреса сервера
-	uri_t::url_t url = uri.parseUrl("https://anyks.com");
+	uri_t::url_t url = uri.parseUrl("https://www.anyks.com");
 	// Выполняем запрос на получение данных
-	const auto & result = cli.GET(url);
+	const auto & result = cli.GET(url, {{"Connection", "close"}});
 
 	cout << " +++++++++++++ " << result << endl;
 
