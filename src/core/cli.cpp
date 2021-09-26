@@ -14,6 +14,8 @@
  * request Метод выполнения HTTP запроса
  */
 void awh::Client::request() noexcept {
+	// Очищаем объект запроса
+	this->http->clear();
 	// Если список заголовков получен
 	if((this->req.headers != nullptr) && !this->req.headers->empty()){
 		// Переходим по всему списку заголовков
@@ -72,14 +74,8 @@ void awh::Client::processing(const size_t size) noexcept {
 					if(!this->failAuth){
 						// Запоминаем, что попытка выполнена
 						this->failAuth = true;
-						// Получаем URL адрес запроса
-						this->url = this->http->getUrl();
-						// Устанавливаем связь с URL запроса
-						this->req.uri = &this->url;
-						// Очищаем объект запроса
-						this->http->clear();
 						// Выполняем запрос заново
-						this->request();
+						this->REST(this->http->getUrl(), this->req.method, * this->req.entity, * this->req.headers);
 						// Завершаем работу
 						return;
 					}
