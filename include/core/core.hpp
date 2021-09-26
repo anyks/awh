@@ -50,8 +50,8 @@
 #include <ssl.hpp>
 #include <dns.hpp>
 #include <hash.hpp>
-#include <http.hpp>
 #include <socket.hpp>
+#include <core/worker.hpp>
 
 // Подписываемся на стандартное пространство имён
 using namespace std;
@@ -61,31 +61,10 @@ using namespace std;
  */
 namespace awh {
 	/**
-	 * Core Класс ядра для работы с TCP/IP
+	 * Core Класс ядра биндинга TCP/IP
 	 */
 	typedef class Core {
-		public:
-			/**
-			 * Proxy структура прокси-сервера
-			 */
-			typedef struct Proxy {
-				public:
-					/**
-					 * Типы прокси-сервера
-					 */
-					enum class type_t : u_short {NONE, HTTP, SOCKS};
-				public:
-					// Тип прокси-сервера
-					type_t type;
-					// Параметры сокет-сервера
-					uri_t::url_t url;
-				public:
-					/**
-					 * Proxy Конструктор
-					 */
-					Proxy() noexcept : type(type_t::NONE) {}
-			} proxy_t;
-		protected:
+		private:
 			/**
 			 * KeepAlive Структура с параметрами для постоянного подключения
 			 */
@@ -127,47 +106,26 @@ namespace awh {
 				 */
 				Socket() : fd(-1), client({}), server({}), client6({}), server6({}) {}
 			} socket_t;
-		protected:
+		private:
 			// Сетевые параметры
 			net_t net;
 			// Параметры постоянного подключения
 			alive_t alive;
-		protected:
-			// Параметры прокси-сервера
-			proxy_t proxy;
-			// Параметры адреса для запроса
-			uri_t::url_t url;
-			// Контекст SSL для работы с защищённым подключением
-			ssl_t::ctx_t sslctx;
-		protected:
-			// Сокет сервера для подключения
-			evutil_socket_t fd = -1;
-		protected:
-			// Флаг остановки работы
-			bool halt = true;
-			// Флаг ожидания входящих сообщений
-			bool wait = false;
+			// Список активных воркеров
+			map <size_t, const worker_t *> workers;
+		private:
 			// Флаг разрешения работы
 			bool mode = false;
-			// Флаг проверки аутентификации
-			bool failAuth = false;
-			// Флаг автоматического переподключения
-			bool reconnect = false;
 			// Флаг инициализации WinSock
 			mutable bool winSock = false;
-		protected:
-			// Буфер событий для сервера
-			struct bufferevent * bev = nullptr;
-			// База данных событий
-			struct event_base * base = nullptr;
-		protected:
-			// Создаём объект DNS резолвера
-			dns_t * dns = nullptr;
+		private:
 			// Создаём объект для работы с SSL
 			ssl_t * ssl = nullptr;
-			// Создаём объект для работы с HTTP
-			http_t * http = nullptr;
-		protected:
+			// Создаём объект DNS IPv4 резолвера
+			dns_t * dns4 = nullptr;
+			// Создаём объект DNS IPv6 резолвера
+			dns_t * dns6 = nullptr;
+		private:
 			// Создаём объект фреймворка
 			const fmk_t * fmk = nullptr;
 			// Создаём объект работы с логами
@@ -176,10 +134,10 @@ namespace awh {
 			const uri_t * uri = nullptr;
 			// Создаем объект сети
 			const network_t * nwk = nullptr;
-		protected:
-			// Создаём объект данных вебсокета
-			const char * wdt = nullptr;
-		protected:
+		private:
+			// База данных событий
+			struct event_base * base = nullptr;
+		private:
 			/**
 			 * Если - это Windows
 			 */
@@ -193,28 +151,39 @@ namespace awh {
 				 */
 				void winSocketClean() const noexcept;
 			#endif
-		protected:
-			/**
-			 * request Метод выполнения HTTP запроса
-			 */
-			virtual void request() noexcept = 0;
-			/**
-			 * processing Метод обработки поступающих данных
-			 * @param size размер полученных данных
-			 */
-			virtual void processing(const size_t size) noexcept = 0;
-		protected:
+		private:
 			/**
 			 * delay Метод фриза потока на указанное количество секунд
 			 * @param seconds количество секунд для фриза потока
 			 */
 			void delay(const size_t seconds) const noexcept;
-		protected:
+		private:
+			/**
+			 * read Метод чтения данных с сокета сервера
+			 * @param bev буфер события
+			 * @param ctx передаваемый контекст
+			 */
+			static void read(struct bufferevent * bev, void * ctx) noexcept;
+			/**
+			 * write Метод записи данных в сокет сервера
+			 * @param bev буфер события
+			 * @param ctx передаваемый контекст
+			 */
+			static void write(struct bufferevent * bev, void * ctx) noexcept;
+			/**
+			 * event Метод обработка входящих событий с сервера
+			 * @param bev    буфер события
+			 * @param events произошедшее событие
+			 * @param ctx    передаваемый контекст
+			 */
+			static void event(struct bufferevent * bev, const short events, void * ctx) noexcept;
+		private:
 			/**
 			 * connect Метод создания подключения к удаленному серверу
-			 * @return результат подключения
+			 * @param worker воркер для подключения
+			 * @return       результат подключения
 			 */
-			const bool connect() noexcept;
+			const bool connect(const worker_t * worker) noexcept;
 			/**
 			 * socket Метод создания сокета
 			 * @param ip     адрес для которого нужно создать сокет
@@ -225,49 +194,64 @@ namespace awh {
 			const socket_t socket(const string & ip, const u_int port, const int family = AF_INET) const noexcept;
 		private:
 			/**
-			 * read Метод чтения данных с сокета сервера
-			 * @param bev буфер события
-			 * @param ctx передаваемый контекст
+			 * close Метод закрытия подключения воркера
+			 * @param worker воркер для закрытия подключения
 			 */
-			static void read(struct bufferevent * bev, void * ctx) noexcept;
-			/**
-			 * chunking Метод обработки получения чанков
-			 * @param chunk бинарный буфер чанка
-			 * @param ctx   контекст объекта http
-			 */
-			static void chunking(const vector <char> & chunk, const http_t * ctx) noexcept;
-			/**
-			 * event Метод обработка входящих событий с сервера
-			 * @param bev    буфер события
-			 * @param events произошедшее событие
-			 * @param ctx    передаваемый контекст
-			 */
-			static void event(struct bufferevent * bev, const short events, void * ctx) noexcept;
-		protected:
+			void close(const worker_t * worker) noexcept;
+		public:
 			/**
 			 * stop Метод остановки клиента
 			 */
-			virtual void stop() noexcept;
-			/**
-			 * close Метод закрытия соединения сервера
-			 */
-			virtual void close() noexcept;
+			void stop() noexcept;
 			/**
 			 * start Метод запуска клиента
 			 */
-			virtual void start() noexcept;
-		protected:
-			/**
-			 * resolve Метод выполняющая резолвинг хоста http запроса
-			 * @param url параметры хоста, для которого нужно получить IP адрес
-			 */
-			void resolve(const uri_t::url_t & url) noexcept;
+			void start() noexcept;
 		public:
 			/**
-			 * setChunkingFn Метод установки функции обратного вызова для получения чанков
-			 * @param callback функция обратного вызова
+			 * isStart Метод проверки на запуск бинда TCP/IP
+			 * @return результат проверки
 			 */
-			void setChunkingFn(function <void (const vector <char> &, const http_t *)> callback) noexcept;
+			bool isStart() const noexcept;
+		public:
+			/**
+			 * add Метод добавления воркера в биндинг
+			 * @param worker воркер для добавления
+			 * @return       идентификатор воркера в биндинге
+			 */
+			size_t add(const worker_t * worker) noexcept;
+		public:
+			/**
+			 * closeAll Метод отключения всех воркеров
+			 */
+			void closeAll() noexcept;
+			/**
+			 * removeAll Метод удаления всех воркеров
+			 */
+			void removeAll() noexcept;
+		public:
+			/**
+			 * open Метод открытия подключения воркером
+			 * @param wid идентификатор воркера
+			 */
+			void open(const size_t wid) noexcept;
+			/**
+			 * close Метод закрытия подключения воркером
+			 * @param wid идентификатор воркера
+			 */
+			void close(const size_t wid) noexcept;
+			/**
+			 * remove Метод удаления воркера из биндинга
+			 * @param wid идентификатор воркера
+			 */
+			void remove(const size_t wid) noexcept;
+			/**
+			 * write Метод записи буфера данных воркером
+			 * @param buffer буфер для записи данных
+			 * @param size   размер записываемых данных
+			 * @param wid    идентификатор воркера
+			 */
+			void write(const char * buffer, const size_t size, const size_t wid) noexcept;
 		public:
 			/**
 			 * setVerifySSL Метод разрешающий или запрещающий, выполнять проверку соответствия, сертификата домену
@@ -275,41 +259,10 @@ namespace awh {
 			 */
 			void setVerifySSL(const bool mode) noexcept;
 			/**
-			 * setChunkSize Метод установки размера чанка
-			 * @param size размер чанка для установки
-			 */
-			void setChunkSize(const size_t size) noexcept;
-			/**
-			 * setWaitMessage Метод установки флага ожидания входящих сообщений
-			 * @param mode флаг состояния разрешения проверки
-			 */
-			void setWaitMessage(const bool mode) noexcept;
-			/**
-			 * setAutoReconnect Метод установки флага автоматического переподключения
-			 * @param mode флаг автоматического переподключения
-			 */
-			void setAutoReconnect(const bool mode) noexcept;
-			/**
 			 * setFamily Метод установки тип протокола интернета
 			 * @param family тип протокола интернета AF_INET или AF_INET6
 			 */
 			void setFamily(const int family = AF_INET) noexcept;
-			/**
-			 * setUserAgent Метод установки User-Agent для HTTP запроса
-			 * @param userAgent агент пользователя для HTTP запроса
-			 */
-			void setUserAgent(const string & userAgent) noexcept;
-			/**
-			 * setCompress Метод установки метода сжатия
-			 * @param метод сжатия сообщений
-			 */
-			void setCompress(const http_t::compress_t compress) noexcept;
-			/**
-			 * setUser Метод установки параметров авторизации
-			 * @param login    логин пользователя для авторизации на сервере
-			 * @param password пароль пользователя для авторизации на сервере
-			 */
-			void setUser(const string & login, const string & password) noexcept;
 			/**
 			 * setCA Метод установки CA-файла корневого SSL сертификата
 			 * @param cafile адрес CA-файла
@@ -317,38 +270,12 @@ namespace awh {
 			 */
 			void setCA(const string & cafile, const string & capath = "") noexcept;
 			/**
-			 * setProxyServer Метод установки прокси-сервера
-			 * @param uri  параметры прокси-сервера
-			 * @param type тип прокси-сервера
-			 */
-			void setProxyServer(const string & uri, const proxy_t::type_t type) noexcept;
-			/**
-			 * setServ Метод установки данных сервиса
-			 * @param id   идентификатор сервиса
-			 * @param name название сервиса
-			 * @param ver  версия сервиса
-			 */
-			void setServ(const string & id, const string & name, const string & ver) noexcept;
-			/**
 			 * setNet Метод установки параметров сети
 			 * @param ip     список IP адресов компьютера с которых разрешено выходить в интернет
 			 * @param ns     список серверов имён, через которые необходимо производить резолвинг доменов
 			 * @param family тип протокола интернета AF_INET или AF_INET6
 			 */
 			void setNet(const vector <string> & ip = {}, const vector <string> & ns = {}, const int family = AF_INET) noexcept;
-			/**
-			 * setCrypt Метод установки параметров шифрования
-			 * @param pass пароль шифрования передаваемых данных
-			 * @param salt соль шифрования передаваемых данных
-			 * @param aes  размер шифрования передаваемых данных
-			 */
-			void setCrypt(const string & pass, const string & salt = "", const hash_t::aes_t aes = hash_t::aes_t::AES128) noexcept;
-			/**
-			 * setAuthType Метод установки типа авторизации
-			 * @param type      тип авторизации
-			 * @param algorithm алгоритм шифрования для Digest авторизации
-			 */
-			void setAuthType(const auth_t::type_t type = auth_t::type_t::BASIC, const auth_t::algorithm_t algorithm = auth_t::algorithm_t::MD5) noexcept;
 		public:
 			/**
 			 * Core Конструктор
@@ -359,7 +286,7 @@ namespace awh {
 			/**
 			 * ~Core Деструктор
 			 */
-			virtual ~Core() noexcept;
+			~Core() noexcept;
 	} core_t;
 };
 

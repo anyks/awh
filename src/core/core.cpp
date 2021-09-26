@@ -71,57 +71,171 @@ void awh::Core::delay(const size_t seconds) const noexcept {
 	}
 }
 /**
- * connect Метод создания подключения к удаленному серверу
- * @return результат подключения
+ * read Метод чтения данных с сокета сервера
+ * @param bev буфер события
+ * @param ctx передаваемый контекст
  */
-const bool awh::Core::connect() noexcept {
+void awh::Core::read(struct bufferevent * bev, void * ctx) noexcept {
+	// Если подключение не передано
+	if((bev != nullptr) && (ctx != nullptr)){
+		// Получаем объект подключения
+		worker_t * wrk = reinterpret_cast <worker_t *> (ctx);
+		// Если функция обратного вызова для вывода записи существует
+		if(wrk->readFn != nullptr){
+			// Получаем буферы входящих данных
+			struct evbuffer * input = bufferevent_get_input(bev);
+			// Получаем размер входящих данных
+			size_t size = evbuffer_get_length(input);
+			// Если данные существуют
+			if((size > 0) && (wrk != nullptr)){
+				// Выполняем компенсацию размера полученных данных
+				size = (size > BUFFER_CHUNK ? BUFFER_CHUNK : size);
+				// Копируем данные из буфера
+				evbuffer_copyout(input, (void *) wrk->buffer, size);
+				// Выводим функцию обратного вызова
+				wrk->readFn(wrk->buffer, size, wrk->wid, const_cast <core_t *> (wrk->core), wrk->context);
+				// Заполняем нулями буфер полученных данных
+				memset((void *) wrk->buffer, 0, BUFFER_CHUNK);
+			}
+			// Удаляем данные из буфера
+			evbuffer_drain(input, size);
+		}
+	}
+}
+/**
+ * write Метод записи данных в сокет сервера
+ * @param bev буфер события
+ * @param ctx передаваемый контекст
+ */
+void awh::Core::write(struct bufferevent * bev, void * ctx) noexcept {
+	// Если подключение не передано
+	if((bev != nullptr) && (ctx != nullptr)){
+		// Получаем объект подключения
+		worker_t * wrk = reinterpret_cast <worker_t *> (ctx);
+		// Если функция обратного вызова для вывода записи существует
+		if(wrk->writeFn != nullptr){
+			// Получаем буферы исходящих данных
+			struct evbuffer * output = bufferevent_get_output(bev);
+			// Получаем размер исходящих данных
+			size_t size = evbuffer_get_length(output);
+			// Если данные существуют
+			if((size > 0) && (wrk != nullptr)){
+				// Выполняем компенсацию размера полученных данных
+				size = (size > BUFFER_CHUNK ? BUFFER_CHUNK : size);
+				// Копируем данные из буфера
+				evbuffer_copyout(output, (void *) wrk->buffer, size);
+				// Выводим функцию обратного вызова
+				wrk->writeFn(wrk->buffer, size, wrk->wid, const_cast <core_t *> (wrk->core), wrk->context);
+				// Заполняем нулями буфер полученных данных
+				memset((void *) wrk->buffer, 0, BUFFER_CHUNK);
+			}
+			// Удаляем данные из буфера
+			// evbuffer_drain(output, size);
+		}
+	}
+}
+/**
+ * event Метод обработка входящих событий с сервера
+ * @param bev    буфер события
+ * @param events произошедшее событие
+ * @param ctx    передаваемый контекст
+ */
+void awh::Core::event(struct bufferevent * bev, const short events, void * ctx) noexcept {
+	// Если подключение не передано
+	if((ctx != nullptr) && (bev != nullptr)){
+		// Получаем объект подключения
+		worker_t * wrk = reinterpret_cast <worker_t *> (ctx);
+		// Если фреймворк получен
+		if(wrk->core->fmk != nullptr){
+			// Получаем текущий сокет
+			const evutil_socket_t socket = bufferevent_getfd(bev);
+			// Если подключение удачное
+			if(events & BEV_EVENT_CONNECTED){
+				// Сбрасываем количество попыток подключений
+				wrk->attempts.first = 0;
+				// Выводим в лог сообщение
+				wrk->core->log->print("connect client to server [%s:%d]", log_t::flag_t::INFO, wrk->url.ip.c_str(), wrk->url.port);
+				// Если функция обратного вызова запуска установлена
+				if(wrk->openFn != nullptr) wrk->openFn(wrk->wid, const_cast <core_t *> (wrk->core), wrk->context);
+			// Если это ошибка или завершение работы
+			} else if(events & (BEV_EVENT_ERROR | BEV_EVENT_EOF | BEV_EVENT_TIMEOUT)) {
+				// Если это ошибка
+				if(events & BEV_EVENT_ERROR)
+					// Выводим в лог сообщение
+					wrk->core->log->print("closing server [%s:%d] error: %s", log_t::flag_t::WARNING, wrk->url.ip.c_str(), wrk->url.port, evutil_socket_error_to_string(EVUTIL_SOCKET_ERROR()));
+				// Если - это таймаут, выводим сообщение в лог
+				else if(events & BEV_EVENT_TIMEOUT) wrk->core->log->print("timeout server [%s:%d]", log_t::flag_t::WARNING, wrk->url.ip.c_str(), wrk->url.port);
+				// Если нужно выполнить автоматическое переподключение
+				if(wrk->alive && (wrk->attempts.first <= wrk->attempts.second)){
+					// Выполняем отключение
+					const_cast <core_t *> (wrk->core)->close(wrk);
+					// Увеличиваем колпичество попыток
+					wrk->attempts.first++;
+					// Выдерживаем паузу в 3 секунды
+					const_cast <core_t *> (wrk->core)->delay(3);
+					// Выполняем новое подключение
+					const_cast <core_t *> (wrk->core)->connect(wrk);
+				// Если автоматическое подключение выполнять не нужно
+				} else const_cast <core_t *> (wrk->core)->close(wrk);
+			}
+		}
+	}
+}
+/**
+ * connect Метод создания подключения к удаленному серверу
+ * @param worker воркер для подключения
+ * @return       результат подключения
+ */
+const bool awh::Core::connect(const worker_t * worker) noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Если объект фреймворка существует
-	if((this->fmk != nullptr) && !this->halt){
+	if((this->fmk != nullptr) && (worker != nullptr)){
 		// Размер структуры подключения
 		socklen_t size = 0;
 		// Объект подключения
 		struct sockaddr * sin = nullptr;
+		// Получаем объект воркера
+		worker_t * wrk = const_cast <worker_t *> (worker);
 		// Получаем сокет для подключения к серверу
-		auto socket = this->socket(this->url.ip, this->url.port, this->net.family);
+		auto socket = this->socket(wrk->url.ip, wrk->url.port, wrk->url.family);
 		// Если сокет создан удачно
 		if(socket.fd > -1){
 			// Устанавливаем сокет подключения
-			this->fd = socket.fd;
+			wrk->fd = socket.fd;
 			// Выполняем получение контекста сертификата
-			this->sslctx = this->ssl->init(this->url);
+			wrk->ssl = this->ssl->init(wrk->url);
 			// Если SSL клиент разрешен
-			if(this->sslctx.mode){
+			if(wrk->ssl.mode){
 				// Создаем буфер событий для сервера зашифрованного подключения
-				this->bev = bufferevent_openssl_socket_new(this->base, this->fd, this->sslctx.ssl, BUFFEREVENT_SSL_CONNECTING, BEV_OPT_THREADSAFE);
-				// this->bev = bufferevent_openssl_socket_new(this->base, this->fd, this->sslctx.ssl, BUFFEREVENT_SSL_CONNECTING, BEV_OPT_CLOSE_ON_FREE | BEV_OPT_DEFER_CALLBACKS);
+				wrk->bev = bufferevent_openssl_socket_new(this->base, wrk->fd, wrk->ssl.ssl, BUFFEREVENT_SSL_CONNECTING, BEV_OPT_THREADSAFE);
+				// this->bev = bufferevent_openssl_socket_new(this->base, wrk->fd, wrk->ssl.ssl, BUFFEREVENT_SSL_CONNECTING, BEV_OPT_CLOSE_ON_FREE | BEV_OPT_DEFER_CALLBACKS);
 				// Разрешаем непредвиденное грязное завершение работы
-				bufferevent_openssl_set_allow_dirty_shutdown(this->bev, 1);
+				bufferevent_openssl_set_allow_dirty_shutdown(wrk->bev, 1);
 			// Создаем буфер событий для сервера
-			} else this->bev = bufferevent_socket_new(this->base, this->fd, BEV_OPT_THREADSAFE);
-			// } else this->bev = bufferevent_socket_new(this->base, this->fd, BEV_OPT_CLOSE_ON_FREE | BEV_OPT_DEFER_CALLBACKS);
+			} else wrk->bev = bufferevent_socket_new(this->base, wrk->fd, BEV_OPT_THREADSAFE);
+			// } else wrk->bev = bufferevent_socket_new(this->base, wrk->fd, BEV_OPT_CLOSE_ON_FREE | BEV_OPT_DEFER_CALLBACKS);
 			// Если буфер событий создан
-			if(this->bev != nullptr){
+			if(wrk->bev != nullptr){
 				// Устанавливаем коллбеки
-				bufferevent_setcb(this->bev, &read, nullptr, &event, this);
+				bufferevent_setcb(wrk->bev, &read, &write, &event, wrk);
 				// Очищаем буферы событий при завершении работы
-				bufferevent_flush(this->bev, EV_READ | EV_WRITE, BEV_FINISHED);
+				bufferevent_flush(wrk->bev, EV_READ | EV_WRITE, BEV_FINISHED);
 				// Если флаг ожидания входящих сообщений, активирован
-				if(this->wait){
+				if(wrk->wait){
 					// Устанавливаем таймаут ожидания поступления данных
-					struct timeval readTimeout = {READ_TIMEOUT, 0};
+					struct timeval readTimeout = {wrk->timeRead, 0};
 					// Устанавливаем таймаут ожидания записи данных
-					struct timeval writeTimeout = {WRITE_TIMEOUT, 0};
+					struct timeval writeTimeout = {wrk->timeWrite, 0};
 					// Устанавливаем таймаут получения данных
-					bufferevent_set_timeouts(this->bev, &readTimeout, &writeTimeout);
+					bufferevent_set_timeouts(wrk->bev, &readTimeout, &writeTimeout);
 				}
 				// Устанавливаем водяной знак на 1 байт (чтобы считывать данные когда они действительно приходят)
-				// bufferevent_setwatermark(this->bev, EV_READ | EV_WRITE, 1, 0);
+				bufferevent_setwatermark(wrk->bev, EV_READ | EV_WRITE, wrk->byteRead, wrk->byteWrite);
 				// Активируем буферы событий на чтение и запись
-				bufferevent_enable(this->bev, EV_READ | EV_WRITE);
+				bufferevent_enable(wrk->bev, EV_READ | EV_WRITE);
 				// Определяем тип подключения
-				switch(this->net.family){
+				switch(wrk->url.family){
 					// Для протокола IPv4
 					case AF_INET: {
 						// Запоминаем размер структуры
@@ -138,43 +252,47 @@ const bool awh::Core::connect() noexcept {
 					} break;
 				}
 				// Выполняем подключение к удаленному серверу, если подключение не выполненно то сообщаем об этом
-				if(bufferevent_socket_connect(this->bev, sin, size) < 0){
+				if(bufferevent_socket_connect(wrk->bev, sin, size) < 0){
 					// Выводим в лог сообщение
-					this->log->print("connecting to host = %s, port = %u", log_t::flag_t::CRITICAL, this->url.ip.c_str(), this->url.port);
+					this->log->print("connecting to host = %s, port = %u", log_t::flag_t::CRITICAL, wrk->url.ip.c_str(), wrk->url.port);
 					// Если нужно выполнить автоматическое переподключение
-					if(this->reconnect){
+					if(wrk->alive && (wrk->attempts.first <= wrk->attempts.second)){
 						// Выполняем отключение
-						this->close();
-						// Выдерживаем паузу в 10 секунд
-						this->delay(10);
+						this->close(wrk);
+						// Увеличиваем колпичество попыток
+						wrk->attempts.first++;
+						// Выдерживаем паузу в 3 секунды
+						this->delay(3);
 						// Выполняем новое подключение
-						return this->connect();
+						return this->connect(wrk);
 					// Если автоматическое подключение выполнять не нужно
 					} else {
 						// Иначе останавливаем работу
-						this->stop();
+						this->close(wrk);
 						// Просто выходим
 						return result;
 					}
 				}
 				// Выводим в лог сообщение
-				this->log->print("create good connect to host = %s [%s:%d], socket = %d", log_t::flag_t::INFO, this->url.domain.c_str(), this->url.ip.c_str(), this->url.port, this->fd);
+				this->log->print("create good connect to host = %s [%s:%d], socket = %d", log_t::flag_t::INFO, wrk->url.domain.c_str(), wrk->url.ip.c_str(), wrk->url.port, wrk->fd);
 				// Сообщаем что все удачно
 				result = true;
 			// Выполняем новую попытку подключения
 			} else {
 				// Выводим в лог сообщение
-				this->log->print("connecting to host = %s, port = %u", log_t::flag_t::CRITICAL, this->url.ip.c_str(), this->url.port);
+				this->log->print("connecting to host = %s, port = %u", log_t::flag_t::CRITICAL, wrk->url.ip.c_str(), wrk->url.port);
 				// Если нужно выполнить автоматическое переподключение
-				if(this->reconnect){
+				if(wrk->alive && (wrk->attempts.first <= wrk->attempts.second)){
 					// Выполняем отключение
-					this->close();
-					// Выдерживаем паузу в 10 секунд
-					this->delay(10);
+					this->close(wrk);
+					// Увеличиваем колпичество попыток
+					wrk->attempts.first++;
+					// Выдерживаем паузу в 3 секунды
+					this->delay(3);
 					// Выполняем новое подключение
-					return this->connect();
+					return this->connect(wrk);
 				// Иначе останавливаем работу
-				} else this->stop();
+				} else this->close(wrk);
 			}
 		}
 	}
@@ -328,80 +446,44 @@ const awh::Core::socket_t awh::Core::socket(const string & ip, const u_int port,
 	return result;
 }
 /**
- * read Метод чтения данных с сокета сервера
- * @param bev буфер события
- * @param ctx передаваемый контекст
+ * close Метод закрытия подключения воркера
+ * @param worker воркер для закрытия подключения
  */
-void awh::Core::read(struct bufferevent * bev, void * ctx) noexcept {
-	// Получаем буферы входящих данных
-	struct evbuffer * input = bufferevent_get_input(bev);
-	// Получаем размер входящих данных
-	size_t size = evbuffer_get_length(input);
-	// Если данные существуют
-	if((size > 0) && (ctx != nullptr)){
-		// Получаем объект подключения
-		core_t * cli = reinterpret_cast <core_t *> (ctx);
-		// Выполняем компенсацию размера полученных данных
-		size = (size > BUFFER_CHUNK ? BUFFER_CHUNK : size);
-		// Копируем данные из буфера
-		evbuffer_copyout(input, (void *) cli->wdt, size);
-		// Выполняем обработку данных
-		cli->processing(size);
-		// Заполняем нулями буфер полученных данных
-		memset((void *) cli->wdt, 0, BUFFER_CHUNK);
-	}
-	// Удаляем данные из буфера
-	evbuffer_drain(input, size);
-}
-/**
- * chunking Метод обработки получения чанков
- * @param chunk бинарный буфер чанка
- * @param ctx   контекст объекта http
- */
-void awh::Core::chunking(const vector <char> & chunk, const http_t * ctx) noexcept {
-	// Если данные получены, формируем тело сообщения
-	if(!chunk.empty()) const_cast <http_t *> (ctx)->addBody(chunk.data(), chunk.size());
-}
-/**
- * event Метод обработка входящих событий с сервера
- * @param bev    буфер события
- * @param events произошедшее событие
- * @param ctx    передаваемый контекст
- */
-void awh::Core::event(struct bufferevent * bev, const short events, void * ctx) noexcept {
-	// Если подключение не передано
-	if(ctx != nullptr){
-		// Получаем объект подключения
-		core_t * core = reinterpret_cast <core_t *> (ctx);
-		// Если фреймворк получен
-		if(core->fmk != nullptr){
-			// Получаем текущий сокет
-			const evutil_socket_t socket = bufferevent_getfd(bev);
-			// Если подключение удачное
-			if(events & BEV_EVENT_CONNECTED){
-				// Выводим в лог сообщение
-				core->log->print("connect client to server [%s:%d]", log_t::flag_t::INFO, core->url.ip.c_str(), core->url.port);
-				// Выполняем запрос на сервер
-				core->request();
-			// Если это ошибка или завершение работы
-			} else if(events & (BEV_EVENT_ERROR | BEV_EVENT_EOF | BEV_EVENT_TIMEOUT)) {
-				// Если это ошибка
-				if(events & BEV_EVENT_ERROR)
-					// Выводим в лог сообщение
-					core->log->print("closing server [%s:%d] error: %s", log_t::flag_t::WARNING, core->url.ip.c_str(), core->url.port, evutil_socket_error_to_string(EVUTIL_SOCKET_ERROR()));
-				// Если - это таймаут, выводим сообщение в лог
-				else if(events & BEV_EVENT_TIMEOUT) core->log->print("timeout server [%s:%d]", log_t::flag_t::WARNING, core->url.ip.c_str(), core->url.port);
-				// Если нужно выполнить автоматическое переподключение
-				if(core->reconnect){
-					// Закрываем подключение
-					core->close();
-					// Выдерживаем паузу на 10 секунд
-					core->delay(10);
-					// Выполняем новое подключение
-					core->connect();
-				// Иначе останавливаем работу
-				} else core->stop();
+void awh::Core::close(const worker_t * worker) noexcept {
+	// Если воркер получен
+	if(worker != nullptr){
+		// Получаем объект воркера
+		worker_t * wrk = const_cast <worker_t *> (worker);
+		// Если сокет существует
+		if(wrk->fd > -1){
+			// Если событие сервера существует
+			if(wrk->bev != nullptr){
+				// Запрещаем чтение запись данных серверу
+				bufferevent_disable(wrk->bev, EV_WRITE | EV_READ);
+				// Если - это Windows
+				#if defined(_WIN32) || defined(_WIN64)
+					// Отключаем подключение для сокета
+					if(wrk->fd > 0) shutdown(wrk->fd, SD_BOTH);
+				// Если - это Unix
+				#else
+					// Отключаем подключение для сокета
+					if(wrk->fd > 0) shutdown(wrk->fd, SHUT_RDWR);
+				#endif
+				// Закрываем подключение
+				if(wrk->fd > 0) evutil_closesocket(wrk->fd);
+				// Удаляем буфер события
+				bufferevent_free(wrk->bev);
+				// Устанавливаем что событие удалено
+				wrk->bev = nullptr;
 			}
+			// Выполняем удаление контекста SSL
+			this->ssl->clear(wrk->ssl);
+			// Выполняем сброс файлового дескриптора
+			wrk->fd = -1;
+			// Выводим сообщение об ошибке
+			this->log->print("%s", log_t::flag_t::INFO, "disconnected from the server");
+			// Выводим функцию обратного вызова
+			if(wrk->closeFn != nullptr) wrk->closeFn(wrk->wid, this, wrk->context);
 		}
 	}
 }
@@ -410,54 +492,21 @@ void awh::Core::event(struct bufferevent * bev, const short events, void * ctx) 
  */
 void awh::Core::stop() noexcept {
 	// Если система уже запущена
-	if(this->mode && !this->halt){
-		// Запоминаем, что работа остановлена
-		this->halt = true;
+	if(this->mode){
 		// Запрещаем работу WebSocket
 		this->mode = false;
-		// Запрещаем запись данных клиенту
-		bufferevent_disable(this->bev, EV_READ | EV_WRITE);
+		// Выполняем отключение всех воркеров
+		this->closeAll();
+		// Выполняем удаление всех воркеров
+		this->removeAll();
 		// Завершаем работу базы событий
 		event_base_loopbreak(this->base);
-		// Закрываем подключение сервера
-		this->close();
-	}
-}
-/**
- * close Метод закрытия соединения сервера
- */
-void awh::Core::close() noexcept {
-	// Если событие сервера существует
-	if(this->bev != nullptr){
-		// Запрещаем чтение запись данных серверу
-		bufferevent_disable(this->bev, EV_WRITE | EV_READ);
 		// Если - это Windows
 		#if defined(_WIN32) || defined(_WIN64)
-			// Отключаем подключение для сокета
-			if(this->fd > 0) shutdown(this->fd, SD_BOTH);
-		// Если - это Unix
-		#else
-			// Отключаем подключение для сокета
-			if(this->fd > 0) shutdown(this->fd, SHUT_RDWR);
+			// Очищаем сетевой контекст
+			this->winSocketClean();
 		#endif
-		// Закрываем подключение
-		if(this->fd > 0) evutil_closesocket(this->fd);
-		// Удаляем буфер события
-		bufferevent_free(this->bev);
-		// Устанавливаем что событие удалено
-		this->bev = nullptr;
 	}
-	// Выполняем удаление контекста SSL
-	this->ssl->clear(this->sslctx);
-	// Зануляем сокет
-	this->fd = -1;
-	// Выводим сообщение об ошибке
-	this->log->print("%s", log_t::flag_t::INFO, "disconnected from the server");
-	// Если - это Windows
-	#if defined(_WIN32) || defined(_WIN64)
-		// Очищаем сетевой контекст
-		this->winSocketClean();
-	#endif
 }
 /**
  * start Метод запуска клиента
@@ -468,94 +517,191 @@ void awh::Core::start() noexcept {
 		try {
 			// Разрешаем работу WebSocket
 			this->mode = true;
-			// Отключаем флаг остановки работы
-			this->halt = false;
 			// Создаем новую базу
 			this->base = event_base_new();
-			// Определяем тип подключения
-			switch(this->net.family){
-				// Резолвер IPv4, создаём резолвер
-				case AF_INET: this->dns = new dns_t(this->fmk, this->log, this->nwk, this->base, this->net.v4.second); break;
-				// Резолвер IPv6, создаём резолвер
-				case AF_INET6: this->dns = new dns_t(this->fmk, this->log, this->nwk, this->base, this->net.v6.second); break;
-			}
+			// Резолвер IPv4, создаём резолвер
+			this->dns4 = new dns_t(this->fmk, this->log, this->nwk, this->base, this->net.v4.second);
+			// Резолвер IPv6, создаём резолвер
+			this->dns6 = new dns_t(this->fmk, this->log, this->nwk, this->base, this->net.v6.second);
 			// Выводим в консоль информацию
 			this->log->print("[+] start service: pid = %u", log_t::flag_t::INFO, getpid());
-			// Выполняем резолвинг домена
-			this->resolve(this->url);
-			// Активируем перебор базы событий
-			// event_base_loop(this->base, EVLOOP_NO_EXIT_ON_EMPTY);
-
-			event_base_dispatch(this->base);
-
-			// Удаляем dns резолвер
-			delete this->dns;
-			// Зануляем DNS объект
-			this->dns = nullptr;
+			// Если список воркеров существует
+			if(!this->workers.empty()){
+				// Переходим по всему списку воркеров
+				for(auto & worker : this->workers){
+					// Если функция обратного вызова установлена
+					if(worker.second->startFn != nullptr)
+						// Выполняем функцию обратного вызова
+						worker.second->startFn(worker.first, this, worker.second->context);
+				}
+			}
+			// Запускаем работу базы событий
+			event_base_loop(this->base, EVLOOP_NO_EXIT_ON_EMPTY);
+			// Удаляем dns IPv4 резолвер
+			delete this->dns4;
+			// Удаляем dns IPv6 резолвер
+			delete this->dns6;
+			// Зануляем DNS IPv4 объект
+			this->dns4 = nullptr;
+			// Зануляем DNS IPv6 объект
+			this->dns6 = nullptr;
 			// Удаляем объект базы событий
 			event_base_free(this->base);
 			// Очищаем все глобальные переменные
 			libevent_global_shutdown();
-			// Если остановка не выполнена
-			if(this->reconnect && !this->halt){
-				// Останавливаем работу WebSocket
-				this->mode = false;
-				// Выводим в консоль информацию
-				this->log->print("[=] restart service: pid = %u", log_t::flag_t::INFO, getpid());
-				// Выполняем переподключение
-				this->start();
 			// Выводим в консоль информацию
-			} else this->log->print("[-] stop service: pid = %u", log_t::flag_t::INFO, getpid());
+			this->log->print("[-] stop service: pid = %u", log_t::flag_t::INFO, getpid());
 		// Если происходит ошибка то игнорируем её
 		} catch(const bad_alloc&) {
 			// Выводим сообщение об ошибке
 			this->log->print("%s", log_t::flag_t::CRITICAL, "memory could not be allocated");
-			// Если нужно выполнять переподключение
-			if(this->reconnect){
-				// Останавливаем работу WebSocket
-				this->mode = false;
-				// Выполняем переподключение
-				this->start();
-			}
 		}
 	}
 }
 /**
- * resolve Метод выполняющая резолвинг хоста http запроса
- * @param url параметры хоста, для которого нужно получить IP адрес
+ * isStart Метод проверки на запуск бинда TCP/IP
+ * @return результат проверки
  */
-void awh::Core::resolve(const uri_t::url_t & url) noexcept {
-	/**
-	 * runFn Функция выполнения запуска системы
-	 * @param ip полученный адрес сервера резолвером
-	 */
-	auto runFn = [this](const string & ip) noexcept {
-		// Если IP адрес получен
-		if(!ip.empty()){
-			// Запоминаем IP адрес
-			this->url.ip = ip;
-			// Если подключение выполнено
-			if(this->connect()) return;
-			// Сообщаем, что подключение не удалось и выводим сообщение
-			else this->log->print("broken connect to host %s", log_t::flag_t::CRITICAL, this->url.ip.c_str());
-		}
-		// Останавливаем работу системы
-		this->stop();
-	};
-	// Если IP адрес не получен
-	if(url.ip.empty() && !url.domain.empty())
-		// Выполняем резолвинг домена
-		this->dns->resolve(url.domain, url.family, runFn);
-	// Выполняем запуск системы
-	else if(!url.ip.empty()) runFn(url.ip);
+bool awh::Core::isStart() const noexcept {
+	// Выводим результат проверки
+	return this->mode;
 }
 /**
- * setChunkingFn Метод установки функции обратного вызова для получения чанков
- * @param callback функция обратного вызова
+ * add Метод добавления воркера в биндинг
+ * @param worker воркер для добавления
+ * @return       идентификатор воркера в биндинге
  */
-void awh::Core::setChunkingFn(function <void (const vector <char> &, const http_t *)> callback) noexcept {
-	// Устанавливаем функцию обработки вызова для получения чанков
-	this->http->setChunkingFn(callback);
+size_t awh::Core::add(const worker_t * worker) noexcept {
+	// Результат работы функции
+	size_t result = 0;
+	// Если воркер передан и URL адрес существует
+	if(worker != nullptr){
+		// Получаем объект воркера
+		worker_t * wrk = const_cast <worker_t *> (worker);
+		// Получаем идентификатор воркера
+		result = (1 + this->workers.size());
+		// Устанавливаем родительский объект
+		wrk->core = this;
+		// Устанавливаем идентификатор воркера
+		wrk->wid = result;
+		// Добавляем воркер в список
+		this->workers.emplace(result, wrk);
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * closeAll Метод отключения всех воркеров
+ */
+void awh::Core::closeAll() noexcept {
+	// Если список воркеров активен
+	if(!this->workers.empty()){
+		// Переходим по всему списку воркеров
+		for(auto & worker : this->workers)
+			// Выполняем закрытие подключения
+			this->close(worker.second);
+	}
+}
+/**
+ * removeAll Метод удаления всех воркеров
+ */
+void awh::Core::removeAll() noexcept {
+	// Выполняем удаление всех воркеров
+	this->workers.clear();
+}
+/**
+ * open Метод открытия подключения воркером
+ * @param wid идентификатор воркера
+ */
+void awh::Core::open(const size_t wid) noexcept {
+	// Если идентификатор воркера передан
+	if((wid > 0) && (this->dns4 != nullptr) && (this->dns6 != nullptr)){
+		// Выполняем поиск воркера
+		auto it = this->workers.find(wid);
+		// Если воркер найден
+		if((it != this->workers.end()) && !it->second->url.empty()){
+			// Получаем объект воркера
+			worker_t * wrk = const_cast <worker_t *> (it->second);
+			/**
+			 * runFn Функция выполнения запуска системы
+			 * @param ip полученный адрес сервера резолвером
+			 */
+			auto runFn = [wrk, this](const string & ip) noexcept {
+				// Если IP адрес получен
+				if(!ip.empty()){
+					// Запоминаем IP адрес
+					wrk->url.ip = ip;
+					// Если подключение выполнено
+					if(this->connect(wrk)) return;
+					// Сообщаем, что подключение не удалось и выводим сообщение
+					else this->log->print("broken connect to host %s", log_t::flag_t::CRITICAL, wrk->url.ip.c_str());
+					// Если файловый дескриптор очищен, зануляем его
+					if(wrk->fd == -1) wrk->fd = 0;
+				}
+				// Отключаем воркер
+				this->close(wrk);
+			};
+			// Если IP адрес не получен
+			if(wrk->url.ip.empty() && !wrk->url.domain.empty()){
+				// Определяем тип подключения
+				switch(wrk->url.family){
+					// Резолвер IPv4, создаём резолвер
+					case AF_INET: this->dns4->resolve(wrk->url.domain, wrk->url.family, runFn); break;
+					// Резолвер IPv6, создаём резолвер
+					case AF_INET6: this->dns6->resolve(wrk->url.domain, wrk->url.family, runFn); break;
+				}
+			// Выполняем запуск системы
+			} else if(!wrk->url.ip.empty()) runFn(wrk->url.ip);
+		}
+	}
+}
+/**
+ * close Метод закрытия подключения воркером
+ * @param wid идентификатор воркера
+ */
+void awh::Core::close(const size_t wid) noexcept {
+	// Если идентификатор воркера передан
+	if(wid > 0){
+		// Выполняем поиск воркера
+		auto it = this->workers.find(wid);
+		// Если воркер найден
+		if(it != this->workers.end()) this->close(it->second);
+	}
+}
+/**
+ * remove Метод удаления воркера из биндинга
+ * @param wid идентификатор воркера
+ */
+void awh::Core::remove(const size_t wid) noexcept {
+	// Если идентификатор воркера передан
+	if(wid > 0){
+		// Выполняем поиск воркера
+		auto it = this->workers.find(wid);
+		// Если воркер найден
+		if(it != this->workers.end()) this->workers.erase(it);
+	}
+}
+/**
+ * write Метод записи буфера данных воркером
+ * @param buffer буфер для записи данных
+ * @param size   размер записываемых данных
+ * @param wid    идентификатор воркера
+ */
+void awh::Core::write(const char * buffer, const size_t size, const size_t wid) noexcept {
+	// Если данные переданы
+	if((buffer != nullptr) && (size > 0) && (wid > 0)){
+		// Выполняем поиск воркера
+		auto it = this->workers.find(wid);
+		// Если воркер найден
+		if(it != this->workers.end()){
+			// Получаем объект воркера
+			worker_t * wrk = const_cast <worker_t *> (it->second);
+			// Активируем разрешение на запись и чтение
+			bufferevent_enable(wrk->bev, EV_WRITE | EV_READ);
+			// Отправляем серверу сообщение
+			bufferevent_write(wrk->bev, buffer, size);
+		}
+	}
 }
 /**
  * setVerifySSL Метод разрешающий или запрещающий, выполнять проверку соответствия, сертификата домену
@@ -566,63 +712,12 @@ void awh::Core::setVerifySSL(const bool mode) noexcept {
 	this->ssl->setVerify(mode);
 }
 /**
- * setChunkSize Метод установки размера чанка
- * @param size размер чанка для установки
- */
-void awh::Core::setChunkSize(const size_t size) noexcept {
-	// Устанавливаем размер чанка
-	this->http->setChunkSize(size);
-}
-/**
- * setWaitMessage Метод установки флага ожидания входящих сообщений
- * @param mode флаг состояния разрешения проверки
- */
-void awh::Core::setWaitMessage(const bool mode) noexcept {
-	// Устанавливаем флаг ожидания входящих сообщений
-	this->wait = mode;
-}
-/**
- * setAutoReconnect Метод установки флага автоматического переподключения
- * @param mode флаг автоматического переподключения
- */
-void awh::Core::setAutoReconnect(const bool mode) noexcept {
-	// Устанавливаем флаг автоматического переподключения
-	this->reconnect = mode;
-}
-/**
  * setFamily Метод установки тип протокола интернета
  * @param family тип протокола интернета AF_INET или AF_INET6
  */
 void awh::Core::setFamily(const int family) noexcept {
 	// Устанавливаем тип активного интернет-подключения
 	this->net.family = family;
-}
-/**
- * setUserAgent Метод установки User-Agent для HTTP запроса
- * @param userAgent агент пользователя для HTTP запроса
- */
-void awh::Core::setUserAgent(const string & userAgent) noexcept {
-	// Устанавливаем UserAgent
-	if(!userAgent.empty()) this->http->setUserAgent(userAgent);
-}
-/**
- * setCompress Метод установки метода сжатия
- * @param метод сжатия сообщений
- */
-void awh::Core::setCompress(const http_t::compress_t compress) noexcept {
-	// Устанавливаем метод сжатия
-	this->http->setCompress(compress);
-}
-/**
- * setUser Метод установки параметров авторизации
- * @param login    логин пользователя для авторизации на сервере
- * @param password пароль пользователя для авторизации на сервере
- */
-void awh::Core::setUser(const string & login, const string & password) noexcept {
-	// Если пользователь и пароль переданы
-	if(!login.empty() && !password.empty())
-		// Устанавливаем логин и пароль пользователя
-		this->http->setUser(login, password);
 }
 /**
  * setCA Метод установки CA-файла корневого SSL сертификата
@@ -632,30 +727,6 @@ void awh::Core::setUser(const string & login, const string & password) noexcept 
 void awh::Core::setCA(const string & cafile, const string & capath) noexcept {
 	// Устанавливаем адрес CA-файла
 	this->ssl->setCA(cafile, capath);
-}
-/**
- * setProxyServer Метод установки прокси-сервера
- * @param uri  параметры прокси-сервера
- * @param type тип прокси-сервера
- */
-void awh::Core::setProxyServer(const string & uri, const proxy_t::type_t type) noexcept {
-	// Если URI параметры переданы
-	if(!uri.empty()){
-		// Устанавливаем тип прокси-сервера
-		this->proxy.type = type;
-		// Устанавливаем параметры прокси-сервера
-		this->proxy.url = this->uri->parseUrl(uri);
-	}
-}
-/**
- * setServ Метод установки данных сервиса
- * @param id   идентификатор сервиса
- * @param name название сервиса
- * @param ver  версия сервиса
- */
-void awh::Core::setServ(const string & id, const string & name, const string & ver) noexcept {
-	// Устанавливаем данные сервиса
-	this->http->setServ(id, name, ver);
 }
 /**
  * setNet Метод установки параметров сети
@@ -685,25 +756,6 @@ void awh::Core::setNet(const vector <string> & ip, const vector <string> & ns, c
 	}
 }
 /**
- * setCrypt Метод установки параметров шифрования
- * @param pass пароль шифрования передаваемых данных
- * @param salt соль шифрования передаваемых данных
- * @param aes  размер шифрования передаваемых данных
- */
-void awh::Core::setCrypt(const string & pass, const string & salt, const hash_t::aes_t aes) noexcept {
-	// Устанавливаем параметры шифрования
-	this->http->setCrypt(pass, salt, aes);
-}
-/**
- * setAuthType Метод установки типа авторизации
- * @param type      тип авторизации
- * @param algorithm алгоритм шифрования для Digest авторизации
- */
-void awh::Core::setAuthType(const auth_t::type_t type, const auth_t::algorithm_t algorithm) noexcept {
-	// Если объект авторизации создан
-	this->http->setAuthType(type, algorithm);
-}
-/**
  * Core Конструктор
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
@@ -713,18 +765,12 @@ awh::Core::Core(const fmk_t * fmk, const log_t * log) noexcept {
 		// Устанавливаем зависимые модули
 		this->fmk = fmk;
 		this->log = log;
-		// Резервируем память для работы с буфером данных WebSocket
-		this->wdt = new char[BUFFER_CHUNK];
 		// Создаём объект для работы с сетью
 		this->nwk = new network_t(this->fmk);
 		// Создаём объект URI
 		this->uri = new uri_t(this->fmk, this->nwk);
 		// Создаём объект для работы с SSL
 		this->ssl = new ssl_t(this->fmk, this->log, this->uri);
-		// Создаём объект для работы с HTTP
-		this->http = new http_t(this->fmk, this->log, this->uri);
-		// Устанавливаем функцию обработки вызова для получения чанков
-		this->http->setChunkingFn(&chunking);
 	// Если происходит ошибка то игнорируем её
 	} catch(const bad_alloc&) {
 		// Выводим сообщение об ошибке
@@ -739,18 +785,16 @@ awh::Core::Core(const fmk_t * fmk, const log_t * log) noexcept {
 awh::Core::~Core() noexcept {
 	// Выполняем остановку сервера
 	this->stop();
-	// Если объект DNS резолвера создан
-	if(this->dns != nullptr) delete this->dns;
 	// Если объект для работы с SSL создан
 	if(this->ssl != nullptr) delete this->ssl;
 	// Удаляем объект для работы с сетью
 	if(this->nwk != nullptr) delete this->nwk;
 	// Удаляем объект для работы с URI
 	if(this->uri != nullptr) delete this->uri;
-	// Удаляем объект работы с HTTP
-	if(this->http != nullptr) delete this->http;
-	// Если буфер данных WebSocket создан
-	if(this->wdt != nullptr) delete [] this->wdt;
+	// Если объект DNS IPv4 резолвера создан
+	if(this->dns4 != nullptr) delete this->dns4;
+	// Если объект DNS IPv6 резолвера создан
+	if(this->dns6 != nullptr) delete this->dns6;
 	// Если - это Windows
 	#if defined(_WIN32) || defined(_WIN64)
 		// Очищаем сетевой контекст

@@ -81,6 +81,11 @@ namespace awh {
 					function <const string (const URL *)> sign; // Функция генерации цифровой подписи запроса
 				public:
 					/**
+					 * clear Метод очистки
+					 */
+					void clear() noexcept;
+				public:
+					/**
 					 * empty Метод проверки на существование данных
 					 * @return результат проверки
 					 */

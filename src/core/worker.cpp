@@ -8,14 +8,27 @@
  */
 
 // Подключаем заголовочный файл
-#include <bind/worker.hpp>
+#include <core/worker.hpp>
 
+/**
+ * clear Метод очистки
+ */
+void awh::Worker::clear() noexcept {
+	// Выполняем сброс файлового дескриптора
+	this->fd = -1;
+	// Выполняем очистку объекта запроса
+	this->url.clear();
+	// Выполняем очистку счётчика попыток
+	this->attempts.first = 0;
+	// Выполняем очистку буфера данных
+	memset((void *) this->buffer, 0, BUFFER_CHUNK);
+}
 /**
  * Worker Конструктор
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
  */
-awh::Worker::Worker(const fmk_t * fmk, const log_t * log) noexcept : fmk(fmk), log(log) {
+awh::Worker::Worker(const fmk_t * fmk, const log_t * log) noexcept : fmk(fmk), log(log), attempts({0,0}) {
 	try {
 		// Резервируем память для работы с буфером данных WebSocket
 		this->buffer = new char[BUFFER_CHUNK];

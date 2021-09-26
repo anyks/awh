@@ -33,9 +33,9 @@ using namespace std;
  */
 namespace awh {
 	/**
-	 * Bind Прототип класса биндинга TCP/IP
+	 * Core Прототип класса ядра биндинга TCP/IP
 	 */
-	class Bind;
+	class Core;
 	/**
 	 * Proxy структура прокси-сервера
 	 */
@@ -92,8 +92,10 @@ namespace awh {
 			evutil_socket_t fd = -1;
 		public:
 			// Количество попыток реконнекта
-			pair <size_t, size_t> attempts;
+			pair <u_short, u_short> attempts;
 		public:
+			// Контекст передаваемый в сообщении
+			void * context = nullptr;
 			// Буфер событий для сервера
 			struct bufferevent * bev = nullptr;
 		public:
@@ -102,20 +104,31 @@ namespace awh {
 			// Создаём объект работы с логами
 			const log_t * log = nullptr;
 			// Создаём объект фреймворка
-			const Bind * bind = nullptr;
+			const Core * core = nullptr;
 			// Создаём объект данных вебсокета
 			const char * buffer = nullptr;
 		public:
 			// Функция обратного вызова при открытии подключения
-			function <void (const size_t, Bind *)> openFn = nullptr;
+			function <void (const size_t, Core *, void *)> openFn = nullptr;
 			// Функция обратного вызова при закрытии подключения
-			function <void (const size_t, Bind *)> closeFn = nullptr;
+			function <void (const size_t, Core *, void *)> closeFn = nullptr;
 			// Функция обратного вызова при запуске подключения
-			function <void (const size_t, Bind *)> startFn = nullptr;
+			function <void (const size_t, Core *, void *)> startFn = nullptr;
+			// Функция обратного вызова при открытии подключения к прокси-серверу
+			function <void (const size_t, Core *, void *)> openProxyFn = nullptr;
 			// Функция обратного вызова при получении данных
-			function <void (const char *, const size_t, const size_t, Bind *)> readFn = nullptr;
+			function <void (const char *, const size_t, const size_t, Core *, void *)> readFn = nullptr;
 			// Функция обратного вызова при записи данных
-			function <void (const char *, const size_t, const size_t, Bind *)> writeFn = nullptr;
+			function <void (const char *, const size_t, const size_t, Core *, void *)> writeFn = nullptr;
+			// Функция обратного вызова при получении данных с прокси-сервера
+			function <void (const char *, const size_t, const size_t, Core *, void *)> readProxyFn = nullptr;
+			// Функция обратного вызова при записи данных с прокси-сервера
+			function <void (const char *, const size_t, const size_t, Core *, void *)> writeProxyFn = nullptr;
+		public:
+			/**
+			 * clear Метод очистки
+			 */
+			void clear() noexcept;
 		public:
 			/**
 			 * Worker Конструктор
