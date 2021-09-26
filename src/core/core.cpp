@@ -81,24 +81,13 @@ void awh::Core::read(struct bufferevent * bev, void * ctx) noexcept {
 		// Получаем объект подключения
 		worker_t * wrk = reinterpret_cast <worker_t *> (ctx);
 		// Если функция обратного вызова для вывода записи существует
-		if(wrk->readFn != nullptr){
-			// Получаем буферы входящих данных
-			struct evbuffer * input = bufferevent_get_input(bev);
-			// Получаем размер входящих данных
-			size_t size = evbuffer_get_length(input);
-			// Если данные существуют
-			if((size > 0) && (wrk != nullptr)){
-				// Выполняем компенсацию размера полученных данных
-				size = (size > BUFFER_CHUNK ? BUFFER_CHUNK : size);
-				// Копируем данные из буфера
-				evbuffer_copyout(input, (void *) wrk->buffer, size);
-				// Выводим функцию обратного вызова
-				wrk->readFn(wrk->buffer, size, wrk->wid, const_cast <core_t *> (wrk->core), wrk->context);
-				// Заполняем нулями буфер полученных данных
-				memset((void *) wrk->buffer, 0, BUFFER_CHUNK);
-			}
-			// Удаляем данные из буфера
-			evbuffer_drain(input, size);
+		if((wrk != nullptr) && (wrk->readFn != nullptr)){
+			// Считываем бинарные данные запроса из буфер
+			const size_t size = bufferevent_read(bev, (void *) wrk->buffer, BUFFER_CHUNK);
+			// Выводим функцию обратного вызова
+			wrk->readFn(wrk->buffer, size, wrk->wid, const_cast <core_t *> (wrk->core), wrk->context);
+			// Заполняем нулями буфер полученных данных
+			memset((void *) wrk->buffer, 0, BUFFER_CHUNK);
 		}
 	}
 }
@@ -230,8 +219,13 @@ const bool awh::Core::connect(const worker_t * worker) noexcept {
 					// Устанавливаем таймаут получения данных
 					bufferevent_set_timeouts(wrk->bev, &readTimeout, &writeTimeout);
 				}
-				// Устанавливаем водяной знак на 1 байт (чтобы считывать данные когда они действительно приходят)
-				bufferevent_setwatermark(wrk->bev, EV_READ | EV_WRITE, wrk->byteRead, wrk->byteWrite);
+				/**
+				 * Водяной знак на N байт (чтобы считывать данные когда они действительно приходят)
+				 */
+				// Устанавливаем размер считываемых данных
+				bufferevent_setwatermark(wrk->bev, EV_READ, wrk->byteRead, 0);
+				// Устанавливаем размер записываемых данных
+				bufferevent_setwatermark(wrk->bev, EV_WRITE, wrk->byteWrite, 0);
 				// Активируем буферы событий на чтение и запись
 				bufferevent_enable(wrk->bev, EV_READ | EV_WRITE);
 				// Определяем тип подключения
@@ -698,6 +692,8 @@ void awh::Core::write(const char * buffer, const size_t size, const size_t wid) 
 			worker_t * wrk = const_cast <worker_t *> (it->second);
 			// Активируем разрешение на запись и чтение
 			bufferevent_enable(wrk->bev, EV_WRITE | EV_READ);
+			// Устанавливаем размер записываемых данных
+			bufferevent_setwatermark(wrk->bev, EV_WRITE, (wrk->byteWrite > 0 ? wrk->byteWrite : size), 0);
 			// Отправляем серверу сообщение
 			bufferevent_write(wrk->bev, buffer, size);
 		}

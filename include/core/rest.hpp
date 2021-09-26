@@ -127,15 +127,6 @@ namespace awh {
 			 */
 			static void readCallback(const char * buffer, const size_t size, const size_t wid, core_t * core, void * ctx) noexcept;
 			/**
-			 * writeCallback Функция обратного вызова при записи сообщения на сервер
-			 * @param buffer бинарный буфер содержащий сообщение
-			 * @param size   размер бинарного буфера содержащего сообщение
-			 * @param wid    идентификатор воркера
-			 * @param core   объект биндинга TCP/IP
-			 * @param ctx    передаваемый контекст модуля
-			 */
-			static void writeCallback(const char * buffer, const size_t size, const size_t wid, core_t * core, void * ctx) noexcept;
-			/**
 			 * readProxyCallback Функция обратного вызова при чтении сообщения с прокси-сервера
 			 * @param buffer бинарный буфер содержащий сообщение
 			 * @param size   размер бинарного буфера содержащего сообщение
@@ -144,15 +135,6 @@ namespace awh {
 			 * @param ctx    передаваемый контекст модуля
 			 */
 			static void readProxyCallback(const char * buffer, const size_t size, const size_t wid, core_t * core, void * ctx) noexcept;
-			/**
-			 * writeProxyCallback Функция обратного вызова при записи сообщения на прокси-сервер
-			 * @param buffer бинарный буфер содержащий сообщение
-			 * @param size   размер бинарного буфера содержащего сообщение
-			 * @param wid    идентификатор воркера
-			 * @param core   объект биндинга TCP/IP
-			 * @param ctx    передаваемый контекст модуля
-			 */
-			static void writeProxyCallback(const char * buffer, const size_t size, const size_t wid, core_t * core, void * ctx) noexcept;
 		public:
 			/**
 			 * GET Метод REST запроса

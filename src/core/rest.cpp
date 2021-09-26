@@ -168,17 +168,6 @@ void awh::Rest::readCallback(const char * buffer, const size_t size, const size_
 	}
 }
 /**
- * writeCallback Функция обратного вызова при записи сообщения на сервер
- * @param buffer бинарный буфер содержащий сообщение
- * @param size   размер бинарного буфера содержащего сообщение
- * @param wid    идентификатор воркера
- * @param core   объект биндинга TCP/IP
- * @param ctx    передаваемый контекст модуля
- */
-void awh::Rest::writeCallback(const char * buffer, const size_t size, const size_t wid, core_t * core, void * ctx) noexcept {
-	cout << " ----------------WRITE " << wid << " == " << string(buffer, size) << endl;
-}
-/**
  * readProxyCallback Функция обратного вызова при чтении сообщения с прокси-сервера
  * @param buffer бинарный буфер содержащий сообщение
  * @param size   размер бинарного буфера содержащего сообщение
@@ -188,17 +177,6 @@ void awh::Rest::writeCallback(const char * buffer, const size_t size, const size
  */
 void awh::Rest::readProxyCallback(const char * buffer, const size_t size, const size_t wid, core_t * core, void * ctx) noexcept {
 	cout << " ----------------READ PROXY " << wid << " == " << string(buffer, size) << endl;
-}
-/**
- * writeProxyCallback Функция обратного вызова при записи сообщения на прокси-сервер
- * @param buffer бинарный буфер содержащий сообщение
- * @param size   размер бинарного буфера содержащего сообщение
- * @param wid    идентификатор воркера
- * @param core   объект биндинга TCP/IP
- * @param ctx    передаваемый контекст модуля
- */
-void awh::Rest::writeProxyCallback(const char * buffer, const size_t size, const size_t wid, core_t * core, void * ctx) noexcept {
-	cout << " ----------------WRITE PROXY " << wid << " == " << string(buffer, size) << endl;
 }
 /**
  * GET Метод REST запроса
@@ -423,8 +401,6 @@ awh::Rest::Rest(const core_t * core, const fmk_t * fmk, const log_t * log) noexc
 		this->worker.openFn = openCallback;
 		// Устанавливаем функцию чтения данных
 		this->worker.readFn = readCallback;
-		// Устанавливаем функцию записи данных
-		this->worker.writeFn = writeCallback;
 		// Устанавливаем событие отключения
 		this->worker.closeFn = closeCallback;
 		// Устанавливаем событие на запуск системы
@@ -433,8 +409,6 @@ awh::Rest::Rest(const core_t * core, const fmk_t * fmk, const log_t * log) noexc
 		this->worker.openProxyFn = openProxyCallback;
 		// Устанавливаем событие на чтение данных с прокси-сервера
 		this->worker.readProxyFn = readProxyCallback;
-		// Устанавливаем событие на запись данных в прокси-сервер
-		this->worker.writeProxyFn = writeProxyCallback;
 		// Добавляем воркер в биндер TCP/IP
 		const_cast <core_t *> (this->core)->add(&this->worker);
 	// Если происходит ошибка то игнорируем её
