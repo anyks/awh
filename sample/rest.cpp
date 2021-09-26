@@ -10,7 +10,7 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include <core/cli.hpp>
+#include <bind/rest.hpp>
 
 // Подключаем пространство имён
 using namespace std;
@@ -31,26 +31,30 @@ int main(int argc, char * argv[]) noexcept {
 	network_t nwk(&fmk);
 	// Создаём объект URI
 	uri_t uri(&fmk, &nwk);
-	// Создаём объект клиента REST
-	cli_t cli(&fmk, &log);
+	// Создаём биндинг
+	bind_t bind(&fmk, &log);
+	// Создаём объект REST запроса
+	rest_t rest(&bind, &fmk, &log);
 	// Устанавливаем название сервиса
 	log.setLogName("REST Client");
 	// Устанавливаем формат времени
 	log.setLogFormat("%H:%M:%S %d.%m.%Y");
 	// Разрешаем верифицировать доменное имя на которое выдан сертификат
-	cli.setVerifySSL(true);
+	bind.setVerifySSL(true);
 	// Выполняем инициализацию типа авторизации
-	cli.setAuthType();
+	rest.setAuthType();
 	// Устанавливаем логин и пароль пользователя
-	cli.setUser("user", "password");
+	rest.setUser("user", "password");
 	// Устанавливаем адрес сертификата
-	cli.setCA("./ca/cert.pem");
+	bind.setCA("./ca/cert.pem");
 	// Выполняем получение URL адреса сервера
-	uri_t::url_t url = uri.parseUrl("https://www.anyks.com");
+	uri_t::url_t url = uri.parseUrl("https://www.anyks.com"); // ("https://ru.wikipedia.org/wiki/HTTP");
 	// Выполняем запрос на получение данных
-	const auto & result = cli.GET(url, {{"Connection", "close"}});
+	const auto & result = rest.GET(url, {{"Connection", "close"}});
 
 	cout << " +++++++++++++ " << result << endl;
+
+	// bind.start();
 
 	/*
 	// Создаём объект сети
