@@ -197,8 +197,6 @@ void awh::Http::clear() noexcept {
 	this->stath = stath_t::EMPTY;
 	// Выполняем сброс стейта текущего запроса
 	this->state = state_t::QUERY;
-	// Выполняем сброс метода сжатия данных
-	this->compress = compress_t::GZIP;
 }
 /**
  * parse Метод парсинга сырых данных
@@ -216,6 +214,8 @@ void awh::Http::parse(const char * buffer, const size_t size) noexcept {
 			const string http(buffer, size);
 			// Если все заголовки получены
 			if((pos = http.find("\r\n\r\n")) != string::npos){
+				// Выполняем сброс всех предыдущих данных
+				this->clear();
 				// Выполняем чтение полученного буфера
 				readHeader(http.data(), pos, [this](string data) noexcept {
 					// Определяем статус режима работы
@@ -269,7 +269,23 @@ void awh::Http::parse(const char * buffer, const size_t size) noexcept {
 										// Получаем URI запроса
 										this->query.uri = data.substr(offset + 1);
 										// Получаем метод запроса
-										this->query.method = data.substr(0, offset);
+										const string & method = this->fmk->toLower(data.substr(0, offset));
+										// Если метод определён как GET
+										if(method.compare("get") == 0) this->query.method = method_t::GET;
+										// Если метод определён как DEL
+										else if(method.compare("del") == 0) this->query.method = method_t::DEL;
+										// Если метод определён как PUT
+										else if(method.compare("put") == 0) this->query.method = method_t::PUT;
+										// Если метод определён как POST
+										else if(method.compare("post") == 0) this->query.method = method_t::POST;
+										// Если метод определён как HEAD
+										else if(method.compare("post") == 0) this->query.method = method_t::HEAD;
+										// Если метод определён как PATCH
+										else if(method.compare("patch") == 0) this->query.method = method_t::PATCH;
+										// Если метод определён как TRACE
+										else if(method.compare("trace") == 0) this->query.method = method_t::TRACE;
+										// Если метод определён как OPTIONS
+										else if(method.compare("options") == 0) this->query.method = method_t::OPTIONS;
 										// Выходим из условия
 										break;
 									}
@@ -583,8 +599,8 @@ void awh::Http::readHeader(const char * buffer, const size_t size, function <voi
 			if((i > 0) && ((letter == '\n') || (i == (size - 1)))){
 				// Если предыдущая буква была возвратом каретки, уменьшаем длину строки
 				length = ((old == '\r' ? i - 1 : i) - offset);
-				// Если это конец файла, корректируем размер последнего байта
-				if(length == 0) length = 1;
+				// Если символ является последним и он не является переносом строки
+				if((i == (size - 1)) && (letter != '\n')) length++;
 				// Если длина слова получена, выводим полученную строку
 				callback(string(buffer + offset, length));
 				// Выполняем смещение
@@ -788,12 +804,12 @@ vector <char> awh::Http::response(const u_short code) const noexcept {
 					case 3: available[i] = (head.compare("content-encoding") == 0);  break;
 					case 4: available[i] = (head.compare("transfer-encoding") == 0); break;
 					case 5: available[i] = (head.compare("x-awh-encryption") == 0);  break;
-					case 2:
-						// Устанавливаем размер тела сообщения
-						length = stoull(header.second);
+					case 2: {
 						// Запоминаем, что мы нашли заголовок размера тела
 						available[i] = (head.compare("content-length") == 0);
-					break;
+						// Устанавливаем размер тела сообщения
+						if(available[i]) length = stoull(header.second);
+					} break;
 				}
 			}
 			// Если заголовок не является запрещённым
@@ -923,50 +939,52 @@ vector <char> awh::Http::request(const uri_t::url_t & url, const method_t method
 		// Устанавливаем параметры REST запроса
 		const_cast <auth_t *> (this->auth)->setUri(this->uri->createUrl(url));
 		// Формируем HTTP запрос
-		const string & query = this->fmk->format("%s%s", path.c_str(), (!params.empty() ? params.c_str() : ""));
+		this->query.uri = this->fmk->format("%s%s", path.c_str(), (!params.empty() ? params.c_str() : ""));
 		// Определяем метод запроса
 		switch((u_short) method){
 			// Если метод запроса указан как GET
 			case (u_short) method_t::GET:
 				// Формируем GET запрос
-				request = this->fmk->format("GET %s HTTP/%.1f\r\n", query.c_str(), this->query.ver);
+				request = this->fmk->format("GET %s HTTP/%.1f\r\n", this->query.uri.c_str(), this->query.ver);
 			break;
 			// Если метод запроса указан как DEL
 			case (u_short) method_t::DEL:
 				// Формируем DEL запрос
-				request = this->fmk->format("DEL %s HTTP/%.1f\r\n", query.c_str(), this->query.ver);
+				request = this->fmk->format("DEL %s HTTP/%.1f\r\n", this->query.uri.c_str(), this->query.ver);
 			break;
 			// Если метод запроса указан как PUT
 			case (u_short) method_t::PUT:
 				// Формируем PUT запрос
-				request = this->fmk->format("PUT %s HTTP/%.1f\r\n", query.c_str(), this->query.ver);
+				request = this->fmk->format("PUT %s HTTP/%.1f\r\n", this->query.uri.c_str(), this->query.ver);
 			break;
 			// Если метод запроса указан как PUT
 			case (u_short) method_t::POST:
 				// Формируем POST запрос
-				request = this->fmk->format("POST %s HTTP/%.1f\r\n", query.c_str(), this->query.ver);
+				request = this->fmk->format("POST %s HTTP/%.1f\r\n", this->query.uri.c_str(), this->query.ver);
 			break;
 			// Если метод запроса указан как HEAD
 			case (u_short) method_t::HEAD:
 				// Формируем HEAD запрос
-				request = this->fmk->format("HEAD %s HTTP/%.1f\r\n", query.c_str(), this->query.ver);
+				request = this->fmk->format("HEAD %s HTTP/%.1f\r\n", this->query.uri.c_str(), this->query.ver);
 			break;
 			// Если метод запроса указан как PATCH
 			case (u_short) method_t::PATCH:
 				// Формируем PATCH запрос
-				request = this->fmk->format("PATCH %s HTTP/%.1f\r\n", query.c_str(), this->query.ver);
+				request = this->fmk->format("PATCH %s HTTP/%.1f\r\n", this->query.uri.c_str(), this->query.ver);
 			break;
 			// Если метод запроса указан как TRACE
 			case (u_short) method_t::TRACE:
 				// Формируем TRACE запрос
-				request = this->fmk->format("TRACE %s HTTP/%.1f\r\n", query.c_str(), this->query.ver);
+				request = this->fmk->format("TRACE %s HTTP/%.1f\r\n", this->query.uri.c_str(), this->query.ver);
 			break;
 			// Если метод запроса указан как OPTIONS
 			case (u_short) method_t::OPTIONS:
 				// Формируем OPTIONS запрос
-				request = this->fmk->format("OPTIONS %s HTTP/%.1f\r\n", query.c_str(), this->query.ver);
+				request = this->fmk->format("OPTIONS %s HTTP/%.1f\r\n", this->query.uri.c_str(), this->query.ver);
 			break;
 		}
+		// Запоминаем метод запроса
+		this->query.method = method;
 		// Добавляем заголовок даты в запрос
 		request.append(this->fmk->format("Date: %s\r\n", this->date().c_str()));
 		// Переходим по всему списку заголовков
@@ -988,12 +1006,12 @@ vector <char> awh::Http::request(const uri_t::url_t & url, const method_t method
 					case 7: available[i] = (head.compare("content-encoding") == 0);  break;
 					case 8: available[i] = (head.compare("transfer-encoding") == 0); break;
 					case 9: available[i] = (head.compare("x-awh-encryption") == 0);  break;
-					case 5:
-						// Устанавливаем размер тела сообщения
-						length = stoull(header.second);
+					case 5: {
 						// Запоминаем, что мы нашли заголовок размера тела
 						available[i] = (head.compare("content-length") == 0);
-					break;
+						// Устанавливаем размер тела сообщения
+						if(available[i]) length = stoull(header.second);
+					} break;
 				}
 			}
 			// Если заголовок не является запрещённым
@@ -1057,8 +1075,8 @@ vector <char> awh::Http::request(const uri_t::url_t & url, const method_t method
 		const string & auth = this->auth->header();
 		// Если данные авторизации получены
 		if(!auth.empty()) request.append(auth);
-		// Если запрос не является HEAD и тело запроса существует
-		if((method != method_t::HEAD) && !this->body.empty()){
+		// Если запрос не является GET, HEAD или TRACE, а тело запроса существует
+		if((method != method_t::GET) && (method != method_t::HEAD) && (method != method_t::TRACE) && !this->body.empty()){
 			// Проверяем нужно ли передать тело разбив на чанки
 			this->chunking = (!available[5] || ((length > 0) && (length != this->body.size())));
 			// Если нужно производить шифрование

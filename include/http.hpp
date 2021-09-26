@@ -53,7 +53,7 @@ namespace awh {
 			 */
 			enum class stath_t: u_short {
 				GOOD,  // Авторизация прошла успешно
-				EMPTY, // Авторизация не выполнялась
+				EMPTY, // Проверка авторизации не проводилась
 				RETRY, // Требуется повторить попытку
 				FAULT  // Авторизация не удалась
 			};
@@ -64,21 +64,21 @@ namespace awh {
 			/**
 			 * Методы HTTP запроса
 			 */
-			enum class method_t : u_short {GET, DEL, PUT, POST, HEAD, PATCH, TRACE, OPTIONS};
+			enum class method_t : u_short {NONE, GET, DEL, PUT, POST, HEAD, PATCH, TRACE, OPTIONS};
 		public:
 			/**
 			 * Query Структура запроса
 			 */
 			typedef struct Query {
-				u_short code;   // Код ответа сервера
-				double ver;     // Версия протокола
-				string uri;     // Параметры запроса
-				string method;  // Метод запроса
-				string message; // Сообщение сервера
+				u_short code;    // Код ответа сервера
+				double ver;      // Версия протокола
+				method_t method; // Метод запроса
+				string uri;      // Параметры запроса
+				string message;  // Сообщение сервера
 				/**
 				 * Query Конструктор
 				 */
-				Query() : code(0), ver(HTTP_VERSION), uri(""), method(""), message("") {}
+				Query() : code(0), ver(HTTP_VERSION), method(method_t::NONE), uri(""), message("") {}
 			} query_t;
 		protected:
 			// Список HTTP сообщений

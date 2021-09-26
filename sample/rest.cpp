@@ -10,11 +10,11 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
-// #include <rest/client.hpp>
+#include <core/cli.hpp>
 
 // Подключаем пространство имён
 using namespace std;
-// using namespace awh;
+using namespace awh;
 
 /**
  * main Главная функция приложения
@@ -23,11 +23,36 @@ using namespace std;
  * @return     код выхода из приложения
  */
 int main(int argc, char * argv[]) noexcept {
-	/*
 	// Создаём объект фреймворка
 	fmk_t fmk;
 	// Создаём объект для работы с логами
 	log_t log(&fmk);
+	// Создаём объект сети
+	network_t nwk(&fmk);
+	// Создаём объект URI
+	uri_t uri(&fmk, &nwk);
+	// Создаём объект клиента REST
+	cli_t cli(&fmk, &log);
+	// Устанавливаем название сервиса
+	log.setLogName("REST Client");
+	// Устанавливаем формат времени
+	log.setLogFormat("%H:%M:%S %d.%m.%Y");
+	// Разрешаем верифицировать доменное имя на которое выдан сертификат
+	cli.setVerifySSL(true);
+	// Выполняем инициализацию типа авторизации
+	cli.setAuthType();
+	// Устанавливаем логин и пароль пользователя
+	cli.setUser("user", "password");
+	// Устанавливаем адрес сертификата
+	cli.setCA("./ca/cert.pem");
+	// Выполняем получение URL адреса сервера
+	uri_t::url_t url = uri.parseUrl("https://anyks.com");
+	// Выполняем запрос на получение данных
+	const auto & result = cli.GET(url);
+
+	cout << " +++++++++++++ " << result << endl;
+
+	/*
 	// Создаём объект сети
 	network_t nwk(&fmk);
 	// Создаём объект URI

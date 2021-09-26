@@ -13,7 +13,6 @@
 /**
  * Стандартная библиотека
  */
-#include <set>
 #include <string>
 #include <functional>
 #include <unordered_map>
@@ -47,6 +46,7 @@
 /**
  * Наши модули
  */
+#include <fmk.hpp>
 #include <ssl.hpp>
 #include <dns.hpp>
 #include <hash.hpp>
@@ -149,6 +149,8 @@ namespace awh {
 			bool wait = false;
 			// Флаг разрешения работы
 			bool mode = false;
+			// Флаг проверки аутентификации
+			bool failAuth = false;
 			// Флаг автоматического переподключения
 			bool reconnect = false;
 			// Флаг инициализации WinSock
@@ -197,6 +199,12 @@ namespace awh {
 			 */
 			virtual void request() noexcept = 0;
 			/**
+			 * processing Метод обработки поступающих данных
+			 * @param size размер полученных данных
+			 */
+			virtual void processing(const size_t size) noexcept = 0;
+		protected:
+			/**
 			 * delay Метод фриза потока на указанное количество секунд
 			 * @param seconds количество секунд для фриза потока
 			 */
@@ -215,13 +223,13 @@ namespace awh {
 			 * @return       параметры подключения к серверу
 			 */
 			const socket_t socket(const string & ip, const u_int port, const int family = AF_INET) const noexcept;
-		protected:
+		private:
 			/**
 			 * read Метод чтения данных с сокета сервера
 			 * @param bev буфер события
 			 * @param ctx передаваемый контекст
 			 */
-			static void read(struct bufferevent * bev, void * ctx);
+			static void read(struct bufferevent * bev, void * ctx) noexcept;
 			/**
 			 * chunking Метод обработки получения чанков
 			 * @param chunk бинарный буфер чанка

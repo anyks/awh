@@ -328,6 +328,32 @@ const awh::Core::socket_t awh::Core::socket(const string & ip, const u_int port,
 	return result;
 }
 /**
+ * read Метод чтения данных с сокета сервера
+ * @param bev буфер события
+ * @param ctx передаваемый контекст
+ */
+void awh::Core::read(struct bufferevent * bev, void * ctx) noexcept {
+	// Получаем буферы входящих данных
+	struct evbuffer * input = bufferevent_get_input(bev);
+	// Получаем размер входящих данных
+	size_t size = evbuffer_get_length(input);
+	// Если данные существуют
+	if((size > 0) && (ctx != nullptr)){
+		// Получаем объект подключения
+		core_t * cli = reinterpret_cast <core_t *> (ctx);
+		// Выполняем компенсацию размера полученных данных
+		size = (size > BUFFER_CHUNK ? BUFFER_CHUNK : size);
+		// Копируем данные из буфера
+		evbuffer_copyout(input, (void *) cli->wdt, size);
+		// Выполняем обработку данных
+		cli->processing(size);
+		// Заполняем нулями буфер полученных данных
+		memset((void *) cli->wdt, 0, BUFFER_CHUNK);
+	}
+	// Удаляем данные из буфера
+	evbuffer_drain(input, size);
+}
+/**
  * chunking Метод обработки получения чанков
  * @param chunk бинарный буфер чанка
  * @param ctx   контекст объекта http

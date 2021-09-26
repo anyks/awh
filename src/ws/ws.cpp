@@ -84,8 +84,6 @@ void awh::WS::clear() noexcept {
 	this->wbitClient = GZIP_MAX_WBITS;
 	// Выполняем сброс размера скользящего окна для сервера
 	this->wbitServer = GZIP_MAX_WBITS;
-	// Выполняем сброс метода сжатия данных
-	this->compress = compress_t::DEFLATE;
 }
 /**
  * checkUpgrade Метод получения флага переключения протокола
