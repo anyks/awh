@@ -149,15 +149,15 @@ void awh::Rest::readCallback(const char * buffer, const size_t size, const size_
 					web->res.mess = web->http->getMessage(web->res.code);
 				} break;
 				// Если запрос выполнен удачно
-				case (u_short) http_t::stath_t::GOOD: {
-					// Запоминаем, что запрос выполнен удачно
-					web->res.ok = true;
+				case (u_short) http_t::stath_t::GOOD: web->res.ok = true;
+				// Если запрос неудачный
+				case (u_short) http_t::stath_t::FAULT: {
 					// Получаем тело запроса
 					const auto & entity = web->http->getBody();
-					// Устанавливаем тело ответа
-					web->res.entity.assign(entity.begin(), entity.end());
 					// Устанавливаем заголовки ответа
 					web->res.headers = web->http->getHeaders();
+					// Устанавливаем тело ответа
+					web->res.entity.assign(entity.begin(), entity.end());
 				} break;
 			}
 			// Выполняем сброс количество попыток
