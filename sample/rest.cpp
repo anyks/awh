@@ -54,7 +54,7 @@ int main(int argc, char * argv[]) noexcept {
 	// Устанавливаем тип авторизации прокси-сервера
 	// rest.setAuthTypeProxy();
 	// Выполняем получение URL адреса сервера
-	uri_t::url_t url = uri.parseUrl("https://apple.com");// ("https://ru.wikipedia.org/wiki/HTTP");// ("https://www.anyks.com");
+	uri_t::url_t url = uri.parseUrl("https://api.binance.com/api/v3/exchangeInfo?symbol=BTCUSDT");// ("https://apple.com");// ("https://ru.wikipedia.org/wiki/HTTP");// ("https://www.anyks.com");
 	// Выполняем запрос на получение данных
 	const auto & result = rest.GET(url);// , {{"Connection", "close"}}); // {{"User-Agent", "curl/7.64.1"}});
 

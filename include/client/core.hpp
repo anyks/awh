@@ -51,7 +51,7 @@
 #include <dns.hpp>
 #include <hash.hpp>
 #include <socket.hpp>
-#include <core/worker.hpp>
+#include <client/worker.hpp>
 
 // Подписываемся на стандартное пространство имён
 using namespace std;

@@ -8,7 +8,7 @@
  */
 
 // Подключаем заголовочный файл
-#include <core/core.hpp>
+#include <client/core.hpp>
 
 // Если - это Windows
 #if defined(_WIN32) || defined(_WIN64)

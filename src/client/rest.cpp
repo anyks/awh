@@ -8,7 +8,7 @@
  */
 
 // Подключаем заголовочный файл
-#include <core/rest.hpp>
+#include <client/rest.hpp>
 
 /**
  * chunking Метод обработки получения чанков

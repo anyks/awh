@@ -8,7 +8,7 @@
  */
 
 // Подключаем заголовочный файл
-#include <core/worker.hpp>
+#include <client/worker.hpp>
 
 /**
  * Proxy Конструктор

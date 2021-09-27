@@ -19,7 +19,7 @@
  * Наши модули
  */
 #include <http.hpp>
-#include <core/core.hpp>
+#include <client/core.hpp>
 
 // Подписываемся на стандартное пространство имён
 using namespace std;
