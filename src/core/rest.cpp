@@ -267,19 +267,325 @@ void awh::Rest::readProxyCallback(const char * buffer, const size_t size, const 
  * @param headers список http заголовков
  * @return        результат запроса
  */
-const string awh::Rest::GET(const uri_t::url_t & url, const unordered_multimap <string, string> & headers) noexcept {
-	// Результат работы функции
-	string result = "";
+const vector <char> & awh::Rest::GET(const uri_t::url_t & url, const unordered_multimap <string, string> & headers) noexcept {
 	// Если данные запроса переданы
 	if(!url.empty()){
+		// Выполняем REST запрос на сервер
+		const auto & res = this->REST(url, http_t::method_t::GET, {}, headers);
+		// Проверяем на наличие ошибок
+		if(!res.ok) this->log->print("request failed: %u %s", log_t::flag_t::WARNING, res.code, res.mess.c_str());
+	}
+	// Выводим результат
+	return this->res.entity;
+}
+/**
+ * DEL Метод запроса в формате HTTP методом DEL
+ * @param url     адрес запроса
+ * @param headers заголовки запроса
+ * @return        результат запроса
+ */
+const vector <char> & awh::Rest::DEL(const uri_t::url_t & url, const unordered_multimap <string, string> & headers) noexcept {
+	// Если данные запроса переданы
+	if(!url.empty()){
+		// Выполняем REST запрос на сервер
+		const auto & res = this->REST(url, http_t::method_t::DELETE, {}, headers);
+		// Проверяем на наличие ошибок
+		if(!res.ok) this->log->print("request failed: %u %s", log_t::flag_t::WARNING, res.code, res.mess.c_str());
+	}
+	// Выводим результат
+	return this->res.entity;
+}
+/**
+ * PUT Метод запроса в формате HTTP методом PUT
+ * @param url     адрес запроса
+ * @param entity  тело запроса
+ * @param headers заголовки запроса
+ * @return        результат запроса
+ */
+const vector <char> & awh::Rest::PUT(const uri_t::url_t & url, const json & entity, const unordered_multimap <string, string> & headers) noexcept {
+	// Если данные запроса переданы
+	if(!url.empty()){
+		// Получаем тело запроса
+		const string body = entity.dump();
+		// Добавляем заголовок типа контента
+		const_cast <unordered_multimap <string, string> *> (&headers)->emplace("Content-Type", "application/json");
+		// Выполняем REST запрос на сервер
+		const auto & res = this->REST(url, http_t::method_t::PUT, vector <char> (body.begin(), body.end()), headers);
+		// Проверяем на наличие ошибок
+		if(!res.ok) this->log->print("request failed: %u %s", log_t::flag_t::WARNING, res.code, res.mess.c_str());
+	}
+	// Выводим результат
+	return this->res.entity;
+}
+/**
+ * PUT Метод запроса в формате HTTP методом PUT
+ * @param url     адрес запроса
+ * @param entity  тело запроса
+ * @param headers заголовки запроса
+ * @return        результат запроса
+ */
+const vector <char> & awh::Rest::PUT(const uri_t::url_t & url, const vector <char> & entity, const unordered_multimap <string, string> & headers) noexcept {
+	// Если данные запроса переданы
+	if(!url.empty()){
+		// Выполняем REST запрос на сервер
+		const auto & res = this->REST(url, http_t::method_t::PUT, entity, headers);
+		// Проверяем на наличие ошибок
+		if(!res.ok) this->log->print("request failed: %u %s", log_t::flag_t::WARNING, res.code, res.mess.c_str());
+	}
+	// Выводим результат
+	return this->res.entity;
+}
+/**
+ * PUT Метод запроса в формате HTTP методом PUT
+ * @param url     адрес запроса
+ * @param entity  тело запроса
+ * @param headers заголовки запроса
+ * @return        результат запроса
+ */
+const vector <char> & awh::Rest::PUT(const uri_t::url_t & url, const unordered_multimap <string, string> & entity, const unordered_multimap <string, string> & headers) noexcept {
+	// Если данные запроса переданы
+	if(!url.empty()){
+		// Тело в формате X-WWW-Form-Urlencoded
+		string body = "";
+		// Переходим по всему списку тела запроса
+		for(auto & param : entity){
+			// Есди данные уже набраны
+			if(!body.empty()) body.append("&");
+			// Добавляем в список набор параметров
+			body.append(this->uri->urlEncode(param.first));
+			// Добавляем разделитель
+			body.append("=");
+			// Добавляем значение
+			body.append(this->uri->urlEncode(param.second));
+		}
+		// Добавляем заголовок типа контента
+		const_cast <unordered_multimap <string, string> *> (&headers)->emplace("Content-Type", "application/x-www-form-urlencoded");
+		// Выполняем REST запрос на сервер
+		const auto & res = this->REST(url, http_t::method_t::PUT, vector <char> (body.begin(), body.end()), headers);
+		// Проверяем на наличие ошибок
+		if(!res.ok) this->log->print("request failed: %u %s", log_t::flag_t::WARNING, res.code, res.mess.c_str());
+	}
+	// Выводим результат
+	return this->res.entity;
+}
+/**
+ * POST Метод запроса в формате HTTP методом POST
+ * @param url     адрес запроса
+ * @param entity  тело запроса
+ * @param headers заголовки запроса
+ * @return        результат запроса
+ */
+const vector <char> & awh::Rest::POST(const uri_t::url_t & url, const json & entity, const unordered_multimap <string, string> & headers) noexcept {
+	// Если данные запроса переданы
+	if(!url.empty()){
+		// Получаем тело запроса
+		const string body = entity.dump();
+		// Добавляем заголовок типа контента
+		const_cast <unordered_multimap <string, string> *> (&headers)->emplace("Content-Type", "application/json");
+		// Выполняем REST запрос на сервер
+		const auto & res = this->REST(url, http_t::method_t::POST, vector <char> (body.begin(), body.end()), headers);
+		// Проверяем на наличие ошибок
+		if(!res.ok) this->log->print("request failed: %u %s", log_t::flag_t::WARNING, res.code, res.mess.c_str());
+	}
+	// Выводим результат
+	return this->res.entity;
+}
+/**
+ * POST Метод запроса в формате HTTP методом POST
+ * @param url     адрес запроса
+ * @param entity  тело запроса
+ * @param headers заголовки запроса
+ * @return        результат запроса
+ */
+const vector <char> & awh::Rest::POST(const uri_t::url_t & url, const vector <char> & entity, const unordered_multimap <string, string> & headers) noexcept {
+	// Если данные запроса переданы
+	if(!url.empty()){
+		// Выполняем REST запрос на сервер
+		const auto & res = this->REST(url, http_t::method_t::POST, entity, headers);
+		// Проверяем на наличие ошибок
+		if(!res.ok) this->log->print("request failed: %u %s", log_t::flag_t::WARNING, res.code, res.mess.c_str());
+	}
+	// Выводим результат
+	return this->res.entity;
+}
+/**
+ * POST Метод запроса в формате HTTP методом POST
+ * @param url     адрес запроса
+ * @param entity  тело запроса
+ * @param headers заголовки запроса
+ * @return        результат запроса
+ */
+const vector <char> & awh::Rest::POST(const uri_t::url_t & url, const unordered_multimap <string, string> & entity, const unordered_multimap <string, string> & headers) noexcept {
+	// Если данные запроса переданы
+	if(!url.empty()){
+		// Тело в формате X-WWW-Form-Urlencoded
+		string body = "";
+		// Переходим по всему списку тела запроса
+		for(auto & param : entity){
+			// Есди данные уже набраны
+			if(!body.empty()) body.append("&");
+			// Добавляем в список набор параметров
+			body.append(this->uri->urlEncode(param.first));
+			// Добавляем разделитель
+			body.append("=");
+			// Добавляем значение
+			body.append(this->uri->urlEncode(param.second));
+		}
+		// Добавляем заголовок типа контента
+		const_cast <unordered_multimap <string, string> *> (&headers)->emplace("Content-Type", "application/x-www-form-urlencoded");
+		// Выполняем REST запрос на сервер
+		const auto & res = this->REST(url, http_t::method_t::POST, vector <char> (body.begin(), body.end()), headers);
+		// Проверяем на наличие ошибок
+		if(!res.ok) this->log->print("request failed: %u %s", log_t::flag_t::WARNING, res.code, res.mess.c_str());
+	}
+	// Выводим результат
+	return this->res.entity;
+}
+/**
+ * PATCH Метод запроса в формате HTTP методом PATCH
+ * @param url     адрес запроса
+ * @param entity  тело запроса
+ * @param headers заголовки запроса
+ * @return        результат запроса
+ */
+const vector <char> & awh::Rest::PATCH(const uri_t::url_t & url, const json & entity, const unordered_multimap <string, string> & headers) noexcept {
+	// Если данные запроса переданы
+	if(!url.empty()){
+		// Получаем тело запроса
+		const string body = entity.dump();
+		// Добавляем заголовок типа контента
+		const_cast <unordered_multimap <string, string> *> (&headers)->emplace("Content-Type", "application/json");
+		// Выполняем REST запрос на сервер
+		const auto & res = this->REST(url, http_t::method_t::PATCH, vector <char> (body.begin(), body.end()), headers);
+		// Проверяем на наличие ошибок
+		if(!res.ok) this->log->print("request failed: %u %s", log_t::flag_t::WARNING, res.code, res.mess.c_str());
+	}
+	// Выводим результат
+	return this->res.entity;
+}
+/**
+ * PATCH Метод запроса в формате HTTP методом PATCH
+ * @param url     адрес запроса
+ * @param entity  тело запроса
+ * @param headers заголовки запроса
+ * @return        результат запроса
+ */
+const vector <char> & awh::Rest::PATCH(const uri_t::url_t & url, const vector <char> & entity, const unordered_multimap <string, string> & headers) noexcept {
+	// Если данные запроса переданы
+	if(!url.empty()){
+		// Выполняем REST запрос на сервер
+		const auto & res = this->REST(url, http_t::method_t::PATCH, entity, headers);
+		// Проверяем на наличие ошибок
+		if(!res.ok) this->log->print("request failed: %u %s", log_t::flag_t::WARNING, res.code, res.mess.c_str());
+	}
+	// Выводим результат
+	return this->res.entity;
+}
+/**
+ * PATCH Метод запроса в формате HTTP методом PATCH
+ * @param url     адрес запроса
+ * @param entity  тело запроса
+ * @param headers заголовки запроса
+ * @return        результат запроса
+ */
+const vector <char> & awh::Rest::PATCH(const uri_t::url_t & url, const unordered_multimap <string, string> & entity, const unordered_multimap <string, string> & headers) noexcept {
+	// Если данные запроса переданы
+	if(!url.empty()){
+		// Тело в формате X-WWW-Form-Urlencoded
+		string body = "";
+		// Переходим по всему списку тела запроса
+		for(auto & param : entity){
+			// Есди данные уже набраны
+			if(!body.empty()) body.append("&");
+			// Добавляем в список набор параметров
+			body.append(this->uri->urlEncode(param.first));
+			// Добавляем разделитель
+			body.append("=");
+			// Добавляем значение
+			body.append(this->uri->urlEncode(param.second));
+		}
+		// Добавляем заголовок типа контента
+		const_cast <unordered_multimap <string, string> *> (&headers)->emplace("Content-Type", "application/x-www-form-urlencoded");
+		// Выполняем REST запрос на сервер
+		const auto & res = this->REST(url, http_t::method_t::PATCH, vector <char> (body.begin(), body.end()), headers);
+		// Проверяем на наличие ошибок
+		if(!res.ok) this->log->print("request failed: %u %s", log_t::flag_t::WARNING, res.code, res.mess.c_str());
+	}
+	// Выводим результат
+	return this->res.entity;
+}
+/**
+ * HEAD Метод запроса в формате HTTP методом HEAD
+ * @param url     адрес запроса
+ * @param headers заголовки запроса
+ * @return        результат запроса
+ */
+const unordered_multimap <string, string> & awh::Rest::HEAD(const uri_t::url_t & url, const unordered_multimap <string, string> & headers) noexcept {
+	// Если данные запроса переданы
+	if(!url.empty()){
+		// Выполняем REST запрос на сервер
+		const auto & res = this->REST(url, http_t::method_t::HEAD, {}, headers);
+		// Проверяем на наличие ошибок
+		if(!res.ok) this->log->print("request failed: %u %s", log_t::flag_t::WARNING, res.code, res.mess.c_str());
+	}
+	// Выводим результат
+	return this->res.headers;
+}
+/**
+ * TRACE Метод запроса в формате HTTP методом TRACE
+ * @param url     адрес запроса
+ * @param headers заголовки запроса
+ * @return        результат запроса
+ */
+const unordered_multimap <string, string> & awh::Rest::TRACE(const uri_t::url_t & url, const unordered_multimap <string, string> & headers) noexcept {
+	// Если данные запроса переданы
+	if(!url.empty()){
+		// Выполняем REST запрос на сервер
+		const auto & res = this->REST(url, http_t::method_t::TRACE, {}, headers);
+		// Проверяем на наличие ошибок
+		if(!res.ok) this->log->print("request failed: %u %s", log_t::flag_t::WARNING, res.code, res.mess.c_str());
+	}
+	// Выводим результат
+	return this->res.headers;
+}
+/**
+ * OPTIONS Метод запроса в формате HTTP методом OPTIONS
+ * @param url     адрес запроса
+ * @param headers заголовки запроса
+ * @return        результат запроса
+ */
+const unordered_multimap <string, string> & awh::Rest::OPTIONS(const uri_t::url_t & url, const unordered_multimap <string, string> & headers) noexcept {
+	// Если данные запроса переданы
+	if(!url.empty()){
+		// Выполняем REST запрос на сервер
+		const auto & res = this->REST(url, http_t::method_t::OPTIONS, {}, headers);
+		// Проверяем на наличие ошибок
+		if(!res.ok) this->log->print("request failed: %u %s", log_t::flag_t::WARNING, res.code, res.mess.c_str());
+	}
+	// Выводим результат
+	return this->res.headers;
+}
+/**
+ * REST Метод запроса в формате HTTP указанным методом
+ * @param url     адрес запроса
+ * @param method  метод запроса
+ * @param entity  тело запроса
+ * @param headers заголовки запроса
+ * @return        результат выполнения запроса
+ */
+const awh::Rest::res_t & awh::Rest::REST(const uri_t::url_t & url, http_t::method_t method, const vector <char> & entity, const unordered_multimap <string, string> & headers) noexcept {
+	// Если параметры и метод запроса переданы
+	if(!url.empty() && (method != http_t::method_t::NONE)){
 		// Выполняем очистку воркера
 		worker.clear();
 		// Устанавливаем URL адрес запроса
 		worker.url = url;
+		// Устанавливаем метод запроса
+		this->method = method;
+		// Устанавливаем тело запроса
+		this->entity = &entity;
 		// Запоминаем переданные заголовки
 		this->headers = &headers;
-		// Устанавливаем метод запроса
-		this->method = http_t::method_t::GET;
 		// Если биндинг не запущен
 		if(!this->core->isStart()){
 			// Выполняем запуск биндинга
@@ -300,13 +606,9 @@ const string awh::Rest::GET(const uri_t::url_t & url, const unordered_multimap <
 				/** ... Продолжаем работу до тех, пор пока не получим ответ ... **/
 			}
 		}
-		// Проверяем на наличие ошибок
-		if(!this->res.ok) this->log->print("request failed: %u %s", log_t::flag_t::WARNING, this->res.code, this->res.mess.c_str());
-		// Если тело ответа получено
-		if(!this->res.entity.empty()) result.assign(this->res.entity.begin(), this->res.entity.end());
 	}
 	// Выводим результат
-	return result;
+	return this->res;
 }
 /**
  * setChunkingFn Метод установки функции обратного вызова для получения чанков

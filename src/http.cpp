@@ -273,20 +273,22 @@ void awh::Http::parse(const char * buffer, const size_t size) noexcept {
 										const string & method = this->fmk->toLower(data.substr(0, offset));
 										// Если метод определён как GET
 										if(method.compare("get") == 0) this->query.method = method_t::GET;
-										// Если метод определён как DEL
-										else if(method.compare("del") == 0) this->query.method = method_t::DEL;
 										// Если метод определён как PUT
 										else if(method.compare("put") == 0) this->query.method = method_t::PUT;
 										// Если метод определён как POST
 										else if(method.compare("post") == 0) this->query.method = method_t::POST;
 										// Если метод определён как HEAD
-										else if(method.compare("post") == 0) this->query.method = method_t::HEAD;
+										else if(method.compare("head") == 0) this->query.method = method_t::HEAD;
 										// Если метод определён как PATCH
 										else if(method.compare("patch") == 0) this->query.method = method_t::PATCH;
 										// Если метод определён как TRACE
 										else if(method.compare("trace") == 0) this->query.method = method_t::TRACE;
+										// Если метод определён как DELETE
+										else if(method.compare("delete") == 0) this->query.method = method_t::DELETE;
 										// Если метод определён как OPTIONS
 										else if(method.compare("options") == 0) this->query.method = method_t::OPTIONS;
+										// Если метод определён как CONNECT
+										else if(method.compare("connect") == 0) this->query.method = method_t::CONNECT;
 										// Выходим из условия
 										break;
 									}
@@ -1005,17 +1007,12 @@ vector <char> awh::Http::request(const uri_t::url_t & url, const method_t method
 					// Формируем GET запрос
 					request = this->fmk->format("GET %s HTTP/%.1f\r\n", this->query.uri.c_str(), this->query.ver);
 				break;
-				// Если метод запроса указан как DEL
-				case (u_short) method_t::DEL:
-					// Формируем DEL запрос
-					request = this->fmk->format("DEL %s HTTP/%.1f\r\n", this->query.uri.c_str(), this->query.ver);
-				break;
 				// Если метод запроса указан как PUT
 				case (u_short) method_t::PUT:
 					// Формируем PUT запрос
 					request = this->fmk->format("PUT %s HTTP/%.1f\r\n", this->query.uri.c_str(), this->query.ver);
 				break;
-				// Если метод запроса указан как PUT
+				// Если метод запроса указан как POST
 				case (u_short) method_t::POST:
 					// Формируем POST запрос
 					request = this->fmk->format("POST %s HTTP/%.1f\r\n", this->query.uri.c_str(), this->query.ver);
@@ -1034,6 +1031,11 @@ vector <char> awh::Http::request(const uri_t::url_t & url, const method_t method
 				case (u_short) method_t::TRACE:
 					// Формируем TRACE запрос
 					request = this->fmk->format("TRACE %s HTTP/%.1f\r\n", this->query.uri.c_str(), this->query.ver);
+				break;
+				// Если метод запроса указан как DELETE
+				case (u_short) method_t::DELETE:
+					// Формируем DELETE запрос
+					request = this->fmk->format("DELETE %s HTTP/%.1f\r\n", this->query.uri.c_str(), this->query.ver);
 				break;
 				// Если метод запроса указан как OPTIONS
 				case (u_short) method_t::OPTIONS:

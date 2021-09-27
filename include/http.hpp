@@ -64,7 +64,7 @@ namespace awh {
 			/**
 			 * Методы HTTP запроса
 			 */
-			enum class method_t : u_short {NONE, GET, DEL, PUT, POST, HEAD, PATCH, TRACE, OPTIONS, CONNECT};
+			enum class method_t : u_short {NONE, GET, PUT, POST, HEAD, PATCH, TRACE, DELETE, OPTIONS, CONNECT};
 		public:
 			/**
 			 * Query Структура запроса

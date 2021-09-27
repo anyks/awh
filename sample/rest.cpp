@@ -58,7 +58,7 @@ int main(int argc, char * argv[]) noexcept {
 	// Выполняем запрос на получение данных
 	const auto & result = rest.GET(url);// , {{"Connection", "close"}}); // {{"User-Agent", "curl/7.64.1"}});
 
-	cout << " +++++++++++++ " << result << endl;
+	cout << " +++++++++++++ " << string(result.begin(), result.end()) << endl;
 
 	// core.start();
 
