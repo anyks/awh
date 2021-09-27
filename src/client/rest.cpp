@@ -53,6 +53,9 @@ void awh::Rest::openCallback(const size_t wid, core_t * core, void * ctx) noexce
 			core->write(rest.data(), rest.size(), wid);
 			// Получаем данные тела запроса
 			while(!(entity = web->http->chunkBody()).empty()){
+
+				cout << " ========== " << string(entity.data(), entity.size()) << endl;
+
 				// Отправляем тело на сервер
 				core->write(entity.data(), entity.size(), wid);
 			}

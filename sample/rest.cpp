@@ -10,7 +10,7 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include <core/rest.hpp>
+#include <client/rest.hpp>
 
 // Подключаем пространство имён
 using namespace std;
@@ -56,7 +56,7 @@ int main(int argc, char * argv[]) noexcept {
 	// Выполняем получение URL адреса сервера
 	uri_t::url_t url = uri.parseUrl("https://api.binance.com/api/v3/exchangeInfo?symbol=BTCUSDT");// ("https://apple.com");// ("https://ru.wikipedia.org/wiki/HTTP");// ("https://www.anyks.com");
 	// Выполняем запрос на получение данных
-	const auto & result = rest.GET(url);// , {{"Connection", "close"}}); // {{"User-Agent", "curl/7.64.1"}});
+	const auto & result = rest.GET(url);//, {{"Connection", "close"}}); // {{"User-Agent", "curl/7.64.1"}});
 
 	cout << " +++++++++++++ " << string(result.begin(), result.end()) << endl;
 
