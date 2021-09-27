@@ -79,14 +79,14 @@ namespace awh {
 			 * Verify Структура параметров для валидации доменов
 			 */
 			typedef struct Verify {
-				const ASSL * ssl;
-				const char * host;
+				const ASSL * ssl;    // Объект для работы с SSL
+				const string & host; // Хост для валидации
 				/**
 				 * Verify Конструктор
 				 * @param ssl  основной родительский объект
 				 * @param host хост для которого производится проверка
 				 */
-				Verify(const ASSL * ssl = nullptr, const char * host = nullptr) : ssl(ssl), host(host) {}
+				Verify(const string & host = "", const ASSL * ssl = nullptr) : host(host), ssl(ssl) {}
 			} verify_t;
 		public:
 			/**

@@ -64,7 +64,7 @@ namespace awh {
 			/**
 			 * Методы HTTP запроса
 			 */
-			enum class method_t : u_short {NONE, GET, DEL, PUT, POST, HEAD, PATCH, TRACE, OPTIONS};
+			enum class method_t : u_short {NONE, GET, DEL, PUT, POST, HEAD, PATCH, TRACE, OPTIONS, CONNECT};
 		public:
 			/**
 			 * Query Структура запроса
@@ -326,6 +326,11 @@ namespace awh {
 			 */
 			bool isCrypt() const noexcept;
 			/**
+			 * isAlive Метод проверки на постоянное подключение
+			 * @return результат проверки
+			 */
+			bool isAlive() const noexcept;
+			/**
 			 * isHandshake Метод получения флага рукопожатия
 			 * @return флаг получения рукопожатия
 			 */
@@ -368,6 +373,12 @@ namespace awh {
 			 */
 			vector <char> response(const u_short code) const noexcept;
 			/**
+			 * proxy Метод создания запроса для авторизации на прокси-сервере
+			 * @param url объект параметров REST запроса
+			 * @return    буфер данных запроса в бинарном виде
+			 */
+			vector <char> proxy(const uri_t::url_t & url) const noexcept;
+			/**
 			 * request Метод создания запроса
 			 * @param url    объект параметров REST запроса
 			 * @param method метод REST запроса
@@ -393,11 +404,32 @@ namespace awh {
 			void setUserAgent(const string & userAgent) noexcept;
 		public:
 			/**
+			 * setRealm Метод установки название сервера
+			 * @param realm название сервера
+			 */
+			void setRealm(const string & realm) noexcept;
+			/**
+			 * setOpaque Метод установки временного ключа сессии сервера
+			 * @param opaque временный ключ сессии сервера
+			 */
+			void setOpaque(const string & opaque) noexcept;
+		public:
+			/**
+			 * clearUsers Метод очистки списка пользователей
+			 */
+			void clearUsers() noexcept;
+			/**
 			 * setUser Метод установки параметров авторизации
 			 * @param login    логин пользователя для авторизации на сервере
 			 * @param password пароль пользователя для авторизации на сервере
 			 */
 			void setUser(const string & login, const string & password) noexcept;
+			/**
+			 * setUsers Метод добавления списка пользователей
+			 * @param users список пользователей для добавления
+			 */
+			void setUsers(const unordered_map <string, string> & users) noexcept;
+		public:
 			/**
 			 * setServ Метод установки данных сервиса
 			 * @param id   идентификатор сервиса

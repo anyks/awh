@@ -167,7 +167,7 @@ const awh::URI::url_t awh::URI::parseUrl(const string & url) const noexcept {
 		// Если список параметров получен
 		if(!split.empty() && (split.size() > 1)){
 			// Устанавливаем протокол запроса
-			result.schema = split.front();
+			result.schema = this->fmk->toLower(split.front());
 			// Определяем сколько элементов мы получили
 			switch(split.size()){
 				// Если количество элементов равно 3
@@ -213,7 +213,7 @@ const awh::URI::url_t awh::URI::parseUrl(const string & url) const noexcept {
 			// Определяем тип домена
 			switch(this->nwk->checkNetworkByIp(params.host)){
 				// Если - это доменное имя
-				case 0: result.domain = params.host; break;
+				case 0: result.domain = this->fmk->toLower(params.host); break;
 				// Если - это IP адрес сети v4
 				case 4: {
 					// Устанавливаем IP адрес
@@ -303,12 +303,10 @@ const string awh::URI::createOrigin(const url_t & url) const noexcept {
 	string result = "";
 	// Если данные получены
 	if(!url.schema.empty()){
-		// Порт сервера для URL запроса
-		u_int port = 0;
 		// Хост URL запроса
-		string host = "";
+		string host = url.domain;
 		// Если IP адрес существует
-		if(!url.ip.empty()){
+		if(host.empty()){
 			// Определяем тип хоста
 			switch(url.family){
 				// Если - это IPv4
@@ -316,22 +314,18 @@ const string awh::URI::createOrigin(const url_t & url) const noexcept {
 				// Если - это IPv6
 				case AF_INET6: host = this->fmk->format("[%s]", url.ip.c_str()); break;
 			}
-		// Устанавливаем доменное имя
-		} else host = url.domain;
-		// Если порт был указан
-		if(url.port > 0){
-			// Определяем указанный порт
-			switch(url.port){
-				// Если указан 80 порт
-				case 80: port = (url.schema.compare("http") == 0 || url.schema.compare("ws") == 0 ? 0 : url.port); break;
-				// Если указан 443 порт
-				case 443: port = (url.schema.compare("https") == 0 || url.schema.compare("wss") == 0 ? 0 : url.port); break;
-				// Если - это, любой другой порт
-				default: port = url.port;
-			}
+		}
+		// Порт сервера для URL запроса
+		u_int port = url.port;
+		// Определяем указанный порт
+		switch(port){
+			// Если указан 80 порт
+			case 80: port = ((url.schema.compare("http") == 0) || (url.schema.compare("ws") == 0) ? 0 : port); break;
+			// Если указан 443 порт
+			case 443: port = ((url.schema.compare("https") == 0) || (url.schema.compare("wss") == 0) ? 0 : port); break;
 		}
 		// Выполняем формирование URL адреса
-		if(port > 0) result = this->fmk->format("%s://%s:%u", url.schema.c_str(), host.c_str(), url.port);
+		if(port > 0) result = this->fmk->format("%s://%s:%u", url.schema.c_str(), host.c_str(), port);
 		// Иначе порт не устанавливаем
 		else result = this->fmk->format("%s://%s", url.schema.c_str(), host.c_str());
 	}
@@ -515,7 +509,7 @@ const awh::URI::params_t awh::URI::params(const string & uri, const string & sch
 			// Получаем пароль пользователя
 			result.pass = match[2].str();
 			// Получаем хост
-			result.host = match[3].str();
+			result.host = this->fmk->toLower(match[3].str());
 			// Получаем порт
 			const string & port = match[4].str();
 			// Если порт получен

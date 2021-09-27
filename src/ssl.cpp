@@ -449,7 +449,7 @@ awh::ASSL::ctx_t awh::ASSL::init(const uri_t::url_t & url) noexcept {
 					// Если проверка сертификата прошла удачно
 					if(ok){
 						// Выполняем проверку на соответствие хоста с данными хостов у сертификата
-						validate = obj->ssl->validateHostname(obj->host, cert);
+						validate = obj->ssl->validateHostname(obj->host.c_str(), cert);
 						// Определяем полученную ошибку
 						switch((u_short) validate){
 							case (u_short) ssl_t::validate_t::MatchFound:           status = "MatchFound";           break;
@@ -467,17 +467,17 @@ awh::ASSL::ctx_t awh::ASSL::init(const uri_t::url_t & url) noexcept {
 					// Если домен найден в записях сертификата (т.е. сертификат соответствует данному домену)
 					if(validate == ssl_t::validate_t::MatchFound){
 						// Выводим в лог сообщение
-						obj->ssl->log->print("https server [%s] has this certificate, which looks good to me: %s", log_t::flag_t::INFO, obj->host, buffer);
+						obj->ssl->log->print("https server [%s] has this certificate, which looks good to me: %s", log_t::flag_t::INFO, obj->host.c_str(), buffer);
 						// Выводим сообщение, что проверка пройдена
 						return 1;
 					// Если ресурс не найден тогда выводим сообщение об ошибке
-					} else obj->ssl->log->print("%s for hostname '%s' [%s]", log_t::flag_t::CRITICAL, status.c_str(), obj->host, buffer);
+					} else obj->ssl->log->print("%s for hostname '%s' [%s]", log_t::flag_t::CRITICAL, status.c_str(), obj->host.c_str(), buffer);
 				}
 				// Выводим сообщение, что проверка не пройдена
 				return 0;
 			};
 			// Создаём объект проверки домена
-			result.verify = new verify_t(this, url.domain.c_str());
+			result.verify = new verify_t(url.domain, this);
 			// Выполняем проверку сертификата
 			SSL_CTX_set_verify(result.ctx, SSL_VERIFY_PEER | SSL_VERIFY_CLIENT_ONCE, nullptr);
 			// Выполняем проверку всех дочерних сертификатов

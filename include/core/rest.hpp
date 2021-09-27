@@ -43,12 +43,12 @@ namespace awh {
 				bool ok;                                     // Флаг удачного ответа
 				u_short code;                                // Код ответа сервера
 				string mess;                                 // Сообщение ответа сервера
-				string entity;                               // Тело ответа сервера
+				vector <char> entity;                        // Тело ответа сервера
 				unordered_multimap <string, string> headers; // Заголовки сервера
 				/**
 				 * Response Конструктор
 				 */
-				Response() : ok(false), code(0), mess(""), entity(""), headers({}) {}
+				Response() : ok(false), code(0), mess("") {}
 			} res_t;
 		private:
 			// Параметры ответа
@@ -64,7 +64,7 @@ namespace awh {
 			bool failAuth = false;
 		private:
 			// Тело запроса (если требуется)
-			const string * entity = nullptr;
+			const vector <char> * entity = nullptr;
 			// Список заголовков запроса (если требуется)
 			const unordered_multimap <string, string> * headers = nullptr;
 		private:
@@ -169,6 +169,11 @@ namespace awh {
 			 */
 			void setUnbind(const bool mode) noexcept;
 			/**
+			 * setProxy Метод установки прокси-сервера
+			 * @param uri параметры прокси-сервера
+			 */
+			void setProxy(const string & uri) noexcept;
+			/**
 			 * setKeepAlive Метод установки флага автоматического поддержания подключения
 			 * @param mode флаг автоматического поддержания подключения
 			 */
@@ -204,12 +209,6 @@ namespace awh {
 			 * @param password пароль пользователя для авторизации на сервере
 			 */
 			void setUser(const string & login, const string & password) noexcept;
-			/**
-			 * setProxyServer Метод установки прокси-сервера
-			 * @param uri  параметры прокси-сервера
-			 * @param type тип прокси-сервера
-			 */
-			void setProxyServer(const string & uri, const proxy_t::type_t type) noexcept;
 			/**
 			 * setServ Метод установки данных сервиса
 			 * @param id   идентификатор сервиса

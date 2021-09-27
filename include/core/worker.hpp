@@ -22,8 +22,7 @@
 #include <fmk.hpp>
 #include <log.hpp>
 #include <ssl.hpp>
-#include <uri.hpp>
-#include <auth.hpp>
+#include <http.hpp>
 
 // Подписываемся на стандартное пространство имён
 using namespace std;
@@ -44,26 +43,45 @@ namespace awh {
 			/**
 			 * Типы прокси-сервера
 			 */
-			enum class type_t : u_short {NONE, HTTP, SOCKS};
+			enum class type_t : u_short {NONE, HTTP, SOCKS5};
 		public:
 			// Тип прокси-сервера
 			type_t type;
 			// Параметры сокет-сервера
 			uri_t::url_t url;
-			// Тип авторизации
-			auth_t::type_t auth;
-			// Алгоритм шифрования для Digest авторизации
-			auth_t::algorithm_t algorithm;
+		public:
+			// Создаём объект для работы с HTTP
+			http_t * http = nullptr;
+		public:
+			// Создаём объект фреймворка
+			const fmk_t * fmk = nullptr;
+			// Создаём объект работы с логами
+			const log_t * log = nullptr;
+			// Создаём объект работы с URI
+			const uri_t * uri = nullptr;
+			// Создаем объект сети
+			const network_t * nwk = nullptr;
 		public:
 			/**
 			 * Proxy Конструктор
+			 * @param fmk объект фреймворка
+			 * @param log объект для работы с логами
 			 */
-			Proxy() noexcept : type(type_t::NONE), auth(auth_t::type_t::BASIC), algorithm(auth_t::algorithm_t::MD5) {}
+			Proxy(const fmk_t * fmk, const log_t * log) noexcept;
+			/**
+			 * ~Proxy Деструктор
+			 */
+			~Proxy() noexcept;
 	} proxy_t;
 	/**
 	 * Worker Структура воркера
 	 */
 	typedef struct Worker {
+		private:
+			/**
+			 * Формат сжатия тела запроса
+			 */
+			enum class connect_t : u_short {SERVER, PROXY};
 		public:
 			// Параметры прокси-сервера
 			proxy_t proxy;
@@ -90,6 +108,9 @@ namespace awh {
 		public:
 			// Сокет сервера для подключения
 			evutil_socket_t fd = -1;
+		private:
+			// Устанавливаем тип подключения
+			connect_t connect = connect_t::SERVER;
 		public:
 			// Количество попыток реконнекта
 			pair <u_short, u_short> attempts;
@@ -129,6 +150,16 @@ namespace awh {
 			 * clear Метод очистки
 			 */
 			void clear() noexcept;
+			/**
+			 * switchConnect Метод переключения типа подключения
+			 */
+			void switchConnect() noexcept;
+		public:
+			/**
+			 * isProxy Метод проверки на подключение к прокси-серверу
+			 * @return результат проверки
+			 */
+			bool isProxy() const noexcept;
 		public:
 			/**
 			 * Worker Конструктор

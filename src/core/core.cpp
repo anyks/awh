@@ -80,10 +80,23 @@ void awh::Core::read(struct bufferevent * bev, void * ctx) noexcept {
 	if((bev != nullptr) && (ctx != nullptr)){
 		// Получаем объект подключения
 		worker_t * wrk = reinterpret_cast <worker_t *> (ctx);
-		// Если функция обратного вызова для вывода записи существует
-		if((wrk != nullptr) && (wrk->readFn != nullptr)){
+		// Если подключение производится через, прокси-сервер
+		if(wrk->isProxy()){
+			// Если функция обратного вызова для вывода записи существует
+			if(wrk->readProxyFn != nullptr){
+				// Получаем объект ядра системы
+				core_t * core = const_cast <core_t *> (wrk->core);
+				// Считываем бинарные данные запроса из буфер
+				const size_t size = bufferevent_read(bev, (void *) wrk->buffer, BUFFER_CHUNK);
+				// Выводим функцию обратного вызова
+				wrk->readProxyFn(wrk->buffer, size, wrk->wid, const_cast <core_t *> (wrk->core), wrk->context);
+				// Заполняем нулями буфер полученных данных
+				memset((void *) wrk->buffer, 0, BUFFER_CHUNK);
+			}
+		// Если прокси-сервер не используется
+		} else if(wrk->readFn != nullptr) {
 			// Считываем бинарные данные запроса из буфер
-			const size_t size = bufferevent_read(bev, (void *) wrk->buffer, BUFFER_CHUNK);
+			const size_t size = bufferevent_read(wrk->bev, (void *) wrk->buffer, BUFFER_CHUNK);
 			// Выводим функцию обратного вызова
 			wrk->readFn(wrk->buffer, size, wrk->wid, const_cast <core_t *> (wrk->core), wrk->context);
 			// Заполняем нулями буфер полученных данных
@@ -101,23 +114,28 @@ void awh::Core::write(struct bufferevent * bev, void * ctx) noexcept {
 	if((bev != nullptr) && (ctx != nullptr)){
 		// Получаем объект подключения
 		worker_t * wrk = reinterpret_cast <worker_t *> (ctx);
-		// Если функция обратного вызова для вывода записи существует
-		if(wrk->writeFn != nullptr){
-			// Получаем буферы исходящих данных
-			struct evbuffer * output = bufferevent_get_output(bev);
-			// Получаем размер исходящих данных
-			size_t size = evbuffer_get_length(output);
-			// Если данные существуют
-			if((size > 0) && (wrk != nullptr)){
-				// Выполняем компенсацию размера полученных данных
-				size = (size > BUFFER_CHUNK ? BUFFER_CHUNK : size);
-				// Копируем данные из буфера
-				evbuffer_copyout(output, (void *) wrk->buffer, size);
+		// Получаем буферы исходящих данных
+		struct evbuffer * output = bufferevent_get_output(bev);
+		// Получаем размер исходящих данных
+		size_t size = evbuffer_get_length(output);
+		// Если данные существуют
+		if(size > 0){
+			// Выполняем компенсацию размера полученных данных
+			size = (size > BUFFER_CHUNK ? BUFFER_CHUNK : size);
+			// Копируем данные из буфера
+			evbuffer_copyout(output, (void *) wrk->buffer, size);
+			// Если подключение производится через, прокси-сервер
+			if(wrk->isProxy()){
+				// Если функция обратного вызова для вывода записи существует
+				if(wrk->writeProxyFn != nullptr)
+					// Выводим функцию обратного вызова
+					wrk->writeProxyFn(wrk->buffer, size, wrk->wid, const_cast <core_t *> (wrk->core), wrk->context);
+			// Если прокси-сервер не используется
+			} else if(wrk->writeFn != nullptr)
 				// Выводим функцию обратного вызова
 				wrk->writeFn(wrk->buffer, size, wrk->wid, const_cast <core_t *> (wrk->core), wrk->context);
-				// Заполняем нулями буфер полученных данных
-				memset((void *) wrk->buffer, 0, BUFFER_CHUNK);
-			}
+			// Заполняем нулями буфер полученных данных
+			memset((void *) wrk->buffer, 0, BUFFER_CHUNK);
 			// Удаляем данные из буфера
 			// evbuffer_drain(output, size);
 		}
@@ -136,24 +154,28 @@ void awh::Core::event(struct bufferevent * bev, const short events, void * ctx) 
 		worker_t * wrk = reinterpret_cast <worker_t *> (ctx);
 		// Если фреймворк получен
 		if(wrk->core->fmk != nullptr){
-			// Получаем текущий сокет
-			const evutil_socket_t socket = bufferevent_getfd(bev);
+			// Получаем URL параметры запроса
+			const uri_t::url_t & url = (wrk->isProxy() ? wrk->proxy.url : wrk->url);
 			// Если подключение удачное
 			if(events & BEV_EVENT_CONNECTED){
 				// Сбрасываем количество попыток подключений
 				wrk->attempts.first = 0;
 				// Выводим в лог сообщение
-				wrk->core->log->print("connect client to server [%s:%d]", log_t::flag_t::INFO, wrk->url.ip.c_str(), wrk->url.port);
-				// Если функция обратного вызова запуска установлена
-				if(wrk->openFn != nullptr) wrk->openFn(wrk->wid, const_cast <core_t *> (wrk->core), wrk->context);
+				wrk->core->log->print("connect client to server [%s:%d]", log_t::flag_t::INFO, url.ip.c_str(), url.port);
+				// Если подключение производится через, прокси-сервер
+				if(wrk->isProxy()){
+					// Выполняем функцию обратного вызова для прокси-сервера
+					if(wrk->openProxyFn != nullptr) wrk->openProxyFn(wrk->wid, const_cast <core_t *> (wrk->core), wrk->context);
+				// Выполняем функцию обратного вызова
+				} else if(wrk->openFn != nullptr) wrk->openFn(wrk->wid, const_cast <core_t *> (wrk->core), wrk->context);
 			// Если это ошибка или завершение работы
 			} else if(events & (BEV_EVENT_ERROR | BEV_EVENT_EOF | BEV_EVENT_TIMEOUT)) {
 				// Если это ошибка
 				if(events & BEV_EVENT_ERROR)
 					// Выводим в лог сообщение
-					wrk->core->log->print("closing server [%s:%d] error: %s", log_t::flag_t::WARNING, wrk->url.ip.c_str(), wrk->url.port, evutil_socket_error_to_string(EVUTIL_SOCKET_ERROR()));
+					wrk->core->log->print("closing server [%s:%d] error: %s", log_t::flag_t::WARNING, url.ip.c_str(), url.port, evutil_socket_error_to_string(EVUTIL_SOCKET_ERROR()));
 				// Если - это таймаут, выводим сообщение в лог
-				else if(events & BEV_EVENT_TIMEOUT) wrk->core->log->print("timeout server [%s:%d]", log_t::flag_t::WARNING, wrk->url.ip.c_str(), wrk->url.port);
+				else if(events & BEV_EVENT_TIMEOUT) wrk->core->log->print("timeout server [%s:%d]", log_t::flag_t::WARNING, url.ip.c_str(), url.port);
 				// Если нужно выполнить автоматическое переподключение
 				if(wrk->alive && (wrk->attempts.first <= wrk->attempts.second)){
 					// Выполняем отключение
@@ -186,14 +208,16 @@ const bool awh::Core::connect(const worker_t * worker) noexcept {
 		struct sockaddr * sin = nullptr;
 		// Получаем объект воркера
 		worker_t * wrk = const_cast <worker_t *> (worker);
+		// Получаем URL параметры запроса
+		const uri_t::url_t & url = (wrk->isProxy() ? wrk->proxy.url : wrk->url);
 		// Получаем сокет для подключения к серверу
-		auto socket = this->socket(wrk->url.ip, wrk->url.port, wrk->url.family);
+		auto socket = this->socket(url.ip, url.port, url.family);
 		// Если сокет создан удачно
 		if(socket.fd > -1){
 			// Устанавливаем сокет подключения
 			wrk->fd = socket.fd;
 			// Выполняем получение контекста сертификата
-			wrk->ssl = this->ssl->init(wrk->url);
+			wrk->ssl = this->ssl->init(url);
 			// Если SSL клиент разрешен
 			if(wrk->ssl.mode){
 				// Создаем буфер событий для сервера зашифрованного подключения
@@ -223,13 +247,13 @@ const bool awh::Core::connect(const worker_t * worker) noexcept {
 				 * Водяной знак на N байт (чтобы считывать данные когда они действительно приходят)
 				 */
 				// Устанавливаем размер считываемых данных
-				bufferevent_setwatermark(wrk->bev, EV_READ, wrk->byteRead, 0);
+				bufferevent_setwatermark(wrk->bev, EV_READ, 0, wrk->byteRead);
 				// Устанавливаем размер записываемых данных
-				bufferevent_setwatermark(wrk->bev, EV_WRITE, wrk->byteWrite, 0);
+				bufferevent_setwatermark(wrk->bev, EV_WRITE, 0, wrk->byteWrite);
 				// Активируем буферы событий на чтение и запись
 				bufferevent_enable(wrk->bev, EV_READ | EV_WRITE);
 				// Определяем тип подключения
-				switch(wrk->url.family){
+				switch(url.family){
 					// Для протокола IPv4
 					case AF_INET: {
 						// Запоминаем размер структуры
@@ -248,7 +272,7 @@ const bool awh::Core::connect(const worker_t * worker) noexcept {
 				// Выполняем подключение к удаленному серверу, если подключение не выполненно то сообщаем об этом
 				if(bufferevent_socket_connect(wrk->bev, sin, size) < 0){
 					// Выводим в лог сообщение
-					this->log->print("connecting to host = %s, port = %u", log_t::flag_t::CRITICAL, wrk->url.ip.c_str(), wrk->url.port);
+					this->log->print("connecting to host = %s, port = %u", log_t::flag_t::CRITICAL, url.ip.c_str(), url.port);
 					// Если нужно выполнить автоматическое переподключение
 					if(wrk->alive && (wrk->attempts.first <= wrk->attempts.second)){
 						// Выполняем отключение
@@ -268,13 +292,13 @@ const bool awh::Core::connect(const worker_t * worker) noexcept {
 					}
 				}
 				// Выводим в лог сообщение
-				this->log->print("create good connect to host = %s [%s:%d], socket = %d", log_t::flag_t::INFO, wrk->url.domain.c_str(), wrk->url.ip.c_str(), wrk->url.port, wrk->fd);
+				this->log->print("create good connect to host = %s [%s:%d], socket = %d", log_t::flag_t::INFO, url.domain.c_str(), url.ip.c_str(), url.port, wrk->fd);
 				// Сообщаем что все удачно
 				result = true;
 			// Выполняем новую попытку подключения
 			} else {
 				// Выводим в лог сообщение
-				this->log->print("connecting to host = %s, port = %u", log_t::flag_t::CRITICAL, wrk->url.ip.c_str(), wrk->url.port);
+				this->log->print("connecting to host = %s, port = %u", log_t::flag_t::CRITICAL, url.ip.c_str(), url.port);
 				// Если нужно выполнить автоматическое переподключение
 				if(wrk->alive && (wrk->attempts.first <= wrk->attempts.second)){
 					// Выполняем отключение
@@ -616,6 +640,8 @@ void awh::Core::open(const size_t wid) noexcept {
 		if((it != this->workers.end()) && !it->second->url.empty()){
 			// Получаем объект воркера
 			worker_t * wrk = const_cast <worker_t *> (it->second);
+			// Получаем URL параметры запроса
+			const uri_t::url_t & url = (wrk->isProxy() ? wrk->proxy.url : wrk->url);
 			/**
 			 * runFn Функция выполнения запуска системы
 			 * @param ip полученный адрес сервера резолвером
@@ -623,12 +649,16 @@ void awh::Core::open(const size_t wid) noexcept {
 			auto runFn = [wrk, this](const string & ip) noexcept {
 				// Если IP адрес получен
 				if(!ip.empty()){
-					// Запоминаем IP адрес
-					wrk->url.ip = ip;
+					// Если прокси-сервер активен
+					if(wrk->isProxy())
+						// Запоминаем полученный IP адрес для прокси-сервера
+						wrk->proxy.url.ip = ip;
+					// Запоминаем полученный IP адрес
+					else wrk->url.ip = ip;
 					// Если подключение выполнено
 					if(this->connect(wrk)) return;
 					// Сообщаем, что подключение не удалось и выводим сообщение
-					else this->log->print("broken connect to host %s", log_t::flag_t::CRITICAL, wrk->url.ip.c_str());
+					else this->log->print("broken connect to host %s", log_t::flag_t::CRITICAL, ip.c_str());
 					// Если файловый дескриптор очищен, зануляем его
 					if(wrk->fd == -1) wrk->fd = 0;
 				}
@@ -636,16 +666,18 @@ void awh::Core::open(const size_t wid) noexcept {
 				this->close(wrk);
 			};
 			// Если IP адрес не получен
-			if(wrk->url.ip.empty() && !wrk->url.domain.empty()){
+			if(url.ip.empty() && !url.domain.empty())
 				// Определяем тип подключения
-				switch(wrk->url.family){
+				switch(url.family){
 					// Резолвер IPv4, создаём резолвер
-					case AF_INET: this->dns4->resolve(wrk->url.domain, wrk->url.family, runFn); break;
+					case AF_INET: this->dns4->resolve(url.domain, url.family, runFn); break;
 					// Резолвер IPv6, создаём резолвер
-					case AF_INET6: this->dns6->resolve(wrk->url.domain, wrk->url.family, runFn); break;
+					case AF_INET6: this->dns6->resolve(url.domain, url.family, runFn); break;
 				}
 			// Выполняем запуск системы
-			} else if(!wrk->url.ip.empty()) runFn(wrk->url.ip);
+			else if(!url.ip.empty()) runFn(url.ip);
+			// Иначе завершаем работу
+			else this->close(wrk);
 		}
 	}
 }
@@ -676,6 +708,37 @@ void awh::Core::remove(const size_t wid) noexcept {
 	}
 }
 /**
+ * switchProxy Метод переключения с прокси-сервера
+ * @param wid идентификатор воркера
+ */
+void awh::Core::switchProxy(const size_t wid) noexcept {
+	// Если идентификатор воркера передан
+	if(wid > 0){
+		// Выполняем поиск воркера
+		auto it = this->workers.find(wid);
+		// Если воркер найден
+		if(it != this->workers.end()){
+			// Получаем объект воркера
+			worker_t * wrk = const_cast <worker_t *> (it->second);
+			// Выполняем переключение типа подключения
+			wrk->switchConnect();
+			// Выполняем получение контекста сертификата
+			wrk->ssl = this->ssl->init(wrk->url);
+			// Если SSL клиент разрешен
+			if(wrk->ssl.mode){
+				// Получаем файловый дескриптор подключения
+				evutil_socket_t fd = bufferevent_getfd(wrk->bev);
+				// Выполняем оберткой сокета подключения на SSL
+				wrk->bev = bufferevent_openssl_socket_new(this->base, fd, wrk->ssl.ssl, BUFFEREVENT_SSL_CONNECTING, BEV_OPT_THREADSAFE);
+				// Разрешаем непредвиденное грязное завершение работы
+				bufferevent_openssl_set_allow_dirty_shutdown(wrk->bev, 1);
+			}
+			// Выполняем функцию обратного вызова
+			if(wrk->openFn != nullptr) wrk->openFn(wrk->wid, this, wrk->context);
+		}
+	}
+}
+/**
  * write Метод записи буфера данных воркером
  * @param buffer буфер для записи данных
  * @param size   размер записываемых данных
@@ -690,10 +753,12 @@ void awh::Core::write(const char * buffer, const size_t size, const size_t wid) 
 		if(it != this->workers.end()){
 			// Получаем объект воркера
 			worker_t * wrk = const_cast <worker_t *> (it->second);
+			// Получаем количество байт для детекции
+			const size_t bytes = (wrk->byteWrite > 0 ? wrk->byteWrite : size);
 			// Активируем разрешение на запись и чтение
 			bufferevent_enable(wrk->bev, EV_WRITE | EV_READ);
 			// Устанавливаем размер записываемых данных
-			bufferevent_setwatermark(wrk->bev, EV_WRITE, (wrk->byteWrite > 0 ? wrk->byteWrite : size), 0);
+			bufferevent_setwatermark(wrk->bev, EV_WRITE, bytes, bytes);
 			// Отправляем серверу сообщение
 			bufferevent_write(wrk->bev, buffer, size);
 		}

@@ -49,10 +49,14 @@ int main(int argc, char * argv[]) noexcept {
 	rest.setUser("user", "password");
 	// Устанавливаем адрес сертификата
 	core.setCA("./ca/cert.pem");
+	// Устанавливаем данные прокси-сервера
+	// rest.setProxy("http://B80TWR:uRMhnd@196.17.249.64:8000");
+	// Устанавливаем тип авторизации прокси-сервера
+	// rest.setAuthTypeProxy();
 	// Выполняем получение URL адреса сервера
-	uri_t::url_t url = uri.parseUrl("https://www.apple.com");// ("https://ru.wikipedia.org/wiki/HTTP");// ("https://www.anyks.com");
+	uri_t::url_t url = uri.parseUrl("https://apple.com");// ("https://ru.wikipedia.org/wiki/HTTP");// ("https://www.anyks.com");
 	// Выполняем запрос на получение данных
-	const auto & result = rest.GET(url);//, {{"Connection", "close"}});
+	const auto & result = rest.GET(url);// , {{"Connection", "close"}}); // {{"User-Agent", "curl/7.64.1"}});
 
 	cout << " +++++++++++++ " << result << endl;
 

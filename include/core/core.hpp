@@ -246,6 +246,11 @@ namespace awh {
 			 */
 			void remove(const size_t wid) noexcept;
 			/**
+			 * switchProxy Метод переключения с прокси-сервера
+			 * @param wid идентификатор воркера
+			 */
+			void switchProxy(const size_t wid) noexcept;
+			/**
 			 * write Метод записи буфера данных воркером
 			 * @param buffer буфер для записи данных
 			 * @param size   размер записываемых данных

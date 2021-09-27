@@ -190,9 +190,10 @@ namespace awh {
 		public:
 			/**
 			 * header Метод получения строки авторизации HTTP заголовка
-			 * @return строка авторизации
+			 * @param mode режим вывода только значения заголовка
+			 * @return     строка авторизации
 			 */
-			const string header() noexcept;
+			const string header(const bool mode = false) noexcept;
 			/**
 			 * response Метод создания ответа на дайджест авторизацию
 			 * @param digest   параметры дайджест авторизации
