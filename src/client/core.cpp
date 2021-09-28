@@ -142,6 +142,40 @@ void awh::Core::write(struct bufferevent * bev, void * ctx) noexcept {
 	}
 }
 /**
+ * tuning Метод тюннинга буфера событий
+ * @param bev буфер события
+ * @param ctx передаваемый контекст
+ */
+void awh::Core::tuning(struct bufferevent * bev, void * ctx) noexcept {
+	// Если подключение не передано
+	if((bev != nullptr) && (ctx != nullptr)){
+		// Получаем объект подключения
+		worker_t * wrk = reinterpret_cast <worker_t *> (ctx);
+		// Устанавливаем коллбеки
+		bufferevent_setcb(wrk->bev, &read, &write, &event, wrk);
+		// Очищаем буферы событий при завершении работы
+		bufferevent_flush(wrk->bev, EV_READ | EV_WRITE, BEV_FINISHED);
+		// Если флаг ожидания входящих сообщений, активирован
+		if(wrk->wait){
+			// Устанавливаем таймаут ожидания поступления данных
+			struct timeval readTimeout = {wrk->timeRead, 0};
+			// Устанавливаем таймаут ожидания записи данных
+			struct timeval writeTimeout = {wrk->timeWrite, 0};
+			// Устанавливаем таймаут получения данных
+			bufferevent_set_timeouts(wrk->bev, &readTimeout, &writeTimeout);
+		}
+		/**
+		 * Водяной знак на N байт (чтобы считывать данные когда они действительно приходят)
+		 */
+		// Устанавливаем размер считываемых данных
+		bufferevent_setwatermark(wrk->bev, EV_READ, 0, wrk->byteRead);
+		// Устанавливаем размер записываемых данных
+		bufferevent_setwatermark(wrk->bev, EV_WRITE, 0, wrk->byteWrite);
+		// Активируем буферы событий на чтение и запись
+		bufferevent_enable(wrk->bev, EV_READ | EV_WRITE);
+	}
+}
+/**
  * event Метод обработка входящих событий с сервера
  * @param bev    буфер события
  * @param events произошедшее событие
@@ -156,12 +190,14 @@ void awh::Core::event(struct bufferevent * bev, const short events, void * ctx) 
 		if(wrk->core->fmk != nullptr){
 			// Получаем URL параметры запроса
 			const uri_t::url_t & url = (wrk->isProxy() ? wrk->proxy.url : wrk->url);
+			// Получаем хост сервера
+			const string & host = (!url.ip.empty() ? url.ip : url.domain);
 			// Если подключение удачное
 			if(events & BEV_EVENT_CONNECTED){
 				// Сбрасываем количество попыток подключений
 				wrk->attempts.first = 0;
 				// Выводим в лог сообщение
-				wrk->core->log->print("connect client to server [%s:%d]", log_t::flag_t::INFO, url.ip.c_str(), url.port);
+				wrk->core->log->print("connect client to server [%s:%d]", log_t::flag_t::INFO, host.c_str(), url.port);
 				// Если подключение производится через, прокси-сервер
 				if(wrk->isProxy()){
 					// Выполняем функцию обратного вызова для прокси-сервера
@@ -173,9 +209,9 @@ void awh::Core::event(struct bufferevent * bev, const short events, void * ctx) 
 				// Если это ошибка
 				if(events & BEV_EVENT_ERROR)
 					// Выводим в лог сообщение
-					wrk->core->log->print("closing server [%s:%d] error: %s", log_t::flag_t::WARNING, url.ip.c_str(), url.port, evutil_socket_error_to_string(EVUTIL_SOCKET_ERROR()));
+					wrk->core->log->print("closing server [%s:%d] error: %s", log_t::flag_t::WARNING, host.c_str(), url.port, evutil_socket_error_to_string(EVUTIL_SOCKET_ERROR()));
 				// Если - это таймаут, выводим сообщение в лог
-				else if(events & BEV_EVENT_TIMEOUT) wrk->core->log->print("timeout server [%s:%d]", log_t::flag_t::WARNING, url.ip.c_str(), url.port);
+				else if(events & BEV_EVENT_TIMEOUT) wrk->core->log->print("timeout server [%s:%d]", log_t::flag_t::WARNING, host.c_str(), url.port);
 				// Если нужно выполнить автоматическое переподключение
 				if(wrk->alive && (wrk->attempts.first <= wrk->attempts.second)){
 					// Выполняем отключение
@@ -230,28 +266,8 @@ const bool awh::Core::connect(const worker_t * worker) noexcept {
 			// } else wrk->bev = bufferevent_socket_new(this->base, wrk->fd, BEV_OPT_CLOSE_ON_FREE | BEV_OPT_DEFER_CALLBACKS);
 			// Если буфер событий создан
 			if(wrk->bev != nullptr){
-				// Устанавливаем коллбеки
-				bufferevent_setcb(wrk->bev, &read, &write, &event, wrk);
-				// Очищаем буферы событий при завершении работы
-				bufferevent_flush(wrk->bev, EV_READ | EV_WRITE, BEV_FINISHED);
-				// Если флаг ожидания входящих сообщений, активирован
-				if(wrk->wait){
-					// Устанавливаем таймаут ожидания поступления данных
-					struct timeval readTimeout = {wrk->timeRead, 0};
-					// Устанавливаем таймаут ожидания записи данных
-					struct timeval writeTimeout = {wrk->timeWrite, 0};
-					// Устанавливаем таймаут получения данных
-					bufferevent_set_timeouts(wrk->bev, &readTimeout, &writeTimeout);
-				}
-				/**
-				 * Водяной знак на N байт (чтобы считывать данные когда они действительно приходят)
-				 */
-				// Устанавливаем размер считываемых данных
-				bufferevent_setwatermark(wrk->bev, EV_READ, 0, wrk->byteRead);
-				// Устанавливаем размер записываемых данных
-				bufferevent_setwatermark(wrk->bev, EV_WRITE, 0, wrk->byteWrite);
-				// Активируем буферы событий на чтение и запись
-				bufferevent_enable(wrk->bev, EV_READ | EV_WRITE);
+				// Выполняем тюннинг буфера событий
+				tuning(wrk->bev, wrk);
 				// Определяем тип подключения
 				switch(url.family){
 					// Для протокола IPv4
@@ -726,12 +742,17 @@ void awh::Core::switchProxy(const size_t wid) noexcept {
 			wrk->ssl = this->ssl->init(wrk->url);
 			// Если SSL клиент разрешен
 			if(wrk->ssl.mode){
-				// Получаем файловый дескриптор подключения
-				evutil_socket_t fd = bufferevent_getfd(wrk->bev);
-				// Выполняем оберткой сокета подключения на SSL
-				wrk->bev = bufferevent_openssl_socket_new(this->base, fd, wrk->ssl.ssl, BUFFEREVENT_SSL_CONNECTING, BEV_OPT_THREADSAFE);
-				// Разрешаем непредвиденное грязное завершение работы
-				bufferevent_openssl_set_allow_dirty_shutdown(wrk->bev, 1);
+				// Выполняем переход на защищённое подключение
+				struct bufferevent * bev = bufferevent_openssl_filter_new(this->base, wrk->bev, wrk->ssl.ssl, BUFFEREVENT_SSL_CONNECTING, BEV_OPT_THREADSAFE);
+				// Если буфер событий создан
+				if(bev != nullptr){
+					// Устанавливаем новый буфер событий
+					wrk->bev = bev;
+					// Разрешаем непредвиденное грязное завершение работы
+					bufferevent_openssl_set_allow_dirty_shutdown(wrk->bev, 1);
+					// Выполняем тюннинг буфера событий
+					tuning(wrk->bev, wrk);
+				}
 			}
 			// Выполняем функцию обратного вызова
 			if(wrk->openFn != nullptr) wrk->openFn(wrk->wid, this, wrk->context);

@@ -53,9 +53,6 @@ void awh::Rest::openCallback(const size_t wid, core_t * core, void * ctx) noexce
 			core->write(rest.data(), rest.size(), wid);
 			// Получаем данные тела запроса
 			while(!(entity = web->http->chunkBody()).empty()){
-
-				cout << " ========== " << string(entity.data(), entity.size()) << endl;
-
 				// Отправляем тело на сервер
 				core->write(entity.data(), entity.size(), wid);
 			}
@@ -75,13 +72,19 @@ void awh::Rest::closeCallback(const size_t wid, core_t * core, void * ctx) noexc
 	if((wid > 0) && (core != nullptr) && (ctx != nullptr)){
 		// Получаем контекст модуля
 		rest_t * web = reinterpret_cast <rest_t *> (ctx);
-		// Если нужно произвести запрос заново
-		if((web->res.code == 301) || (web->res.code == 308) ||
-		   (web->res.code == 401) || (web->res.code == 407))
-			// Выполняем запрос заново
-			core->open(web->worker.wid);
+		// Проверяем работаем ли мы через прокси-сервер
+		if(web->worker.proxy.type == proxy_t::type_t::NONE){
+			// Если нужно произвести запрос заново
+			if((web->res.code == 301) || (web->res.code == 308) ||
+			   (web->res.code == 401) || (web->res.code == 407)){
+				// Выполняем запрос заново
+				core->open(web->worker.wid);
+				// Выходим из функции
+				return;
+			}
+		}
 		// Завершаем работу
-		else if(web->unbind) core->stop();
+		if(web->unbind) core->stop();
 	}
 }
 /**
@@ -242,6 +245,10 @@ void awh::Rest::readProxyCallback(const char * buffer, const size_t size, const 
 				case (u_short) http_t::stath_t::GOOD: {
 					// Выполняем сброс количество попыток
 					web->failAuth = false;
+					// Меняем код ответа на всяккий случай
+					web->res.code = 404;
+					// Устанавливаем сообщение ответа
+					web->res.mess = web->worker.proxy.http->getMessage(web->res.code);
 					// Выполняем переключение на работу с сервером
 					core->switchProxy(web->worker.wid);
 					// Завершаем работу
@@ -660,19 +667,22 @@ void awh::Rest::setProxy(const string & uri) noexcept {
 	if(!uri.empty()){
 		// Устанавливаем параметры прокси-сервера
 		this->worker.proxy.url = this->uri->parseUrl(uri);
-		// Если протокол подключения SOCKS5
-		if(this->worker.proxy.url.schema.compare("socks5") == 0)
-			// Устанавливаем тип прокси-сервера
-			this->worker.proxy.type = proxy_t::type_t::SOCKS5;
-		// Если протокол подключения HTTP
-		else if((this->worker.proxy.url.schema.compare("http") == 0) ||
-		(this->worker.proxy.url.schema.compare("https") == 0))
-			// Устанавливаем тип прокси-сервера
-			this->worker.proxy.type = proxy_t::type_t::HTTP;
-		// Если требуется авторизация на прокси-сервере
-		if(!this->worker.proxy.url.user.empty() && !this->worker.proxy.url.pass.empty())
-			// Устанавливаем данные пользователя
-			this->worker.proxy.http->setUser(this->worker.proxy.url.user, this->worker.proxy.url.pass);
+		// Если данные параметров прокси-сервера получены
+		if(!this->worker.proxy.url.empty()){
+			// Если протокол подключения SOCKS5
+			if(this->worker.proxy.url.schema.compare("socks5") == 0)
+				// Устанавливаем тип прокси-сервера
+				this->worker.proxy.type = proxy_t::type_t::SOCKS5;
+			// Если протокол подключения HTTP
+			else if((this->worker.proxy.url.schema.compare("http") == 0) ||
+			(this->worker.proxy.url.schema.compare("https") == 0))
+				// Устанавливаем тип прокси-сервера
+				this->worker.proxy.type = proxy_t::type_t::HTTP;
+			// Если требуется авторизация на прокси-сервере
+			if(!this->worker.proxy.url.user.empty() && !this->worker.proxy.url.pass.empty())
+				// Устанавливаем данные пользователя
+				this->worker.proxy.http->setUser(this->worker.proxy.url.user, this->worker.proxy.url.pass);
+		}
 	}
 }
 /**

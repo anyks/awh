@@ -413,10 +413,21 @@ void awh::Http::parse(const char * buffer, const size_t size) noexcept {
 							string body(buffer, size);
 							// Если размер чанка не получен
 							if(this->chunk.size == 0){
+								// Устанавливаем метку следующей попытки
+								attempt:
 								// Ищем размер чанка
 								const size_t pos = body.find("\r\n");
 								// Если размер чанка найден
 								if(pos != string::npos){
+									// Если позиция нулевая
+									if(pos == 0){
+										// Удаляем первые два символа
+										body.erase(body.begin(), body.begin() + 2);
+										// Если тело запроса ещё не всё прочитано
+										if(body.empty()) break;
+										// Иначе продолжаем попытку обработать данные
+										else goto attempt;
+									}
 									// Получаем размер чанка
 									this->chunk.size = this->fmk->hexToDec(body.substr(0, pos));
 									// Если это последний чанк

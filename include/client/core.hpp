@@ -171,6 +171,12 @@ namespace awh {
 			 */
 			static void write(struct bufferevent * bev, void * ctx) noexcept;
 			/**
+			 * tuning Метод тюннинга буфера событий
+			 * @param bev буфер события
+			 * @param ctx передаваемый контекст
+			 */
+			static void tuning(struct bufferevent * bev, void * ctx) noexcept;
+			/**
 			 * event Метод обработка входящих событий с сервера
 			 * @param bev    буфер события
 			 * @param events произошедшее событие

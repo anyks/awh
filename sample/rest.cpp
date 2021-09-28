@@ -52,53 +52,26 @@ int main(int argc, char * argv[]) noexcept {
 	// Устанавливаем данные прокси-сервера
 	// rest.setProxy("http://B80TWR:uRMhnd@196.17.249.64:8000");
 	// Устанавливаем тип авторизации прокси-сервера
-	// rest.setAuthTypeProxy();
+	rest.setAuthTypeProxy();
+	// Устанавливаем ожидание входящих сообщений
+	rest.setWaitMessage(true);
 	// Выполняем получение URL адреса сервера
-	uri_t::url_t url = uri.parseUrl("https://api.binance.com/api/v3/exchangeInfo?symbol=BTCUSDT");// ("https://apple.com");// ("https://ru.wikipedia.org/wiki/HTTP");// ("https://www.anyks.com");
-	// Выполняем запрос на получение данных
-	const auto & result = rest.GET(url);//, {{"Connection", "close"}}); // {{"User-Agent", "curl/7.64.1"}});
-
-	cout << " +++++++++++++ " << string(result.begin(), result.end()) << endl;
-
-	// core.start();
-
-	/*
-	// Создаём объект сети
-	network_t nwk(&fmk);
-	// Создаём объект URI
-	uri_t uri(&fmk, &nwk);
-	// Создаём объект клиента REST
-	rest_t rest(&fmk, &log, &uri, &nwk);
-	// Устанавливаем название сервиса
-	log.setLogName("REST Client");
-	// Устанавливаем формат времени
-	log.setLogFormat("%H:%M:%S %d.%m.%Y");
-	// Разрешаем верифицировать доменное имя на которое выдан сертификат
-	rest.setVerifySSL(true);
-	// Выполняем инициализацию типа авторизации
-	rest.setAuthType();
-	// Устанавливаем логин и пароль пользователя
-	rest.setUser("user", "password");
-	// Устанавливаем адрес сертификата
-	rest.setCA("./ca/cert.pem");
-
-	rest.setProxy("http://B80TWR:uRMhnd@196.17.249.64:8000");
-
-	// Устанавливаем параметры шифрования
-	// rest.setCrypt("password");
-	// Выполняем установку URL адреса сервера WebSocket
-	uri_t::url_t url = uri.parseUrl("https://anyks.com");// ("https://api.binance.com/api/v3/exchangeInfo?symbol=BTCUSDT");
-	// Выполняем запрос на получение данных
-	const auto & result = rest.GET(url);
-
-	cout << " +++++++++++++ " << result << endl;
-	*/
-	/*
+	// uri_t::url_t url = uri.parseUrl("https://2ip.ru");
+	// uri_t::url_t url = uri.parseUrl("https://www.anyks.com");
+	// uri_t::url_t url = uri.parseUrl("https://www.apple.com");
+	// uri_t::url_t url = uri.parseUrl("https://ru.wikipedia.org/wiki/HTTP");
+	uri_t::url_t url = uri.parseUrl("https://api.binance.com/api/v3/exchangeInfo?symbol=BTCUSDT");
+	// Выполняем запрос на получение IP адреса
+	const auto & body = rest.GET(url);
+	// const auto & body = rest.GET(url, {{"Connection", "close"}});
+	// const auto & body = rest.GET(url, {{"User-Agent", "curl/7.64.1"}});
+	// Получаем результат
+	const string result(body.begin(), body.end());
 	// Создаём объект JSON
 	json data = json::parse(result);
 	// Выводим полученный результат
+	// cout << " +++++++++++++ " << result << endl;
 	cout << " +++++++++++++ " << data.dump(4) << endl;
-	*/
 	// Выводим результат
 	return 0;
 }
