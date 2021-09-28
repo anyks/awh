@@ -70,6 +70,16 @@ namespace awh {
 	typedef class Core {
 		public:
 			/**
+			 * Основные флаги приложения
+			 */
+			enum class flag_t : u_short {
+				NOTSTOP = 0x01,   // Флаг запрета остановки биндинга
+				WAITMESS = 0x02,  // Флаг ожидания входящих сообщений
+				KEEPALIVE = 0x04, // Флаг автоматического поддержания подключения
+				VERIFYSSL = 0x08  // Флаг выполнения проверки сертификата SSL
+			};
+		public:
+			/**
 			 * CoreClient Устанавливаем дружбу с клиентским классом ядра
 			 */
 			friend class CoreClient;

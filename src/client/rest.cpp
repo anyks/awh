@@ -72,16 +72,17 @@ void awh::Rest::closeCallback(const size_t wid, core_t * core, void * ctx) noexc
 	if((wid > 0) && (core != nullptr) && (ctx != nullptr)){
 		// Получаем контекст модуля
 		rest_t * web = reinterpret_cast <rest_t *> (ctx);
-		// Проверяем работаем ли мы через прокси-сервер
-		if(web->worker.proxy.type == proxy_t::type_t::NONE){
-			// Если нужно произвести запрос заново
-			if((web->res.code == 301) || (web->res.code == 308) ||
-			   (web->res.code == 401) || (web->res.code == 407)){
-				// Выполняем запрос заново
-				core->open(web->worker.wid);
-				// Выходим из функции
-				return;
-			}
+		// Если прокси-сервер активирован но уже переключён на работу с сервером
+		if((web->worker.proxy.type != proxy_t::type_t::NONE) && !web->worker.isProxy())
+			// Выполняем переключение обратно на прокси-сервер
+			reinterpret_cast <ccl_t *> (core)->switchProxy(web->worker.wid);
+		// Если нужно произвести запрос заново
+		if((web->res.code == 301) || (web->res.code == 308) ||
+		   (web->res.code == 401) || (web->res.code == 407)){
+			// Выполняем запрос заново
+			core->open(web->worker.wid);
+			// Выходим из функции
+			return;
 		}
 		// Выполняем разблокировку запроса
 		web->locker = false;
@@ -143,10 +144,8 @@ void awh::Rest::readCallback(const char * buffer, const size_t size, const size_
 			web->res.code = query.code;
 			// Устанавливаем сообщение ответа
 			web->res.message = query.message;
-			// Получаем статус авторизации на сервере
-			const auto stath = web->http->getAuth();
 			// Выполняем проверку авторизации
-			switch((u_short) stath){
+			switch((u_short) web->http->getAuth()){
 				// Если нужно попытаться ещё раз
 				case (u_short) http_t::stath_t::RETRY: {
 					// Если попытка повторить авторизацию ещё не проводилась
@@ -214,10 +213,8 @@ void awh::Rest::readProxyCallback(const char * buffer, const size_t size, const 
 			web->res.code = query.code;
 			// Устанавливаем сообщение ответа
 			web->res.message = query.message;
-			// Получаем статус авторизации на сервере
-			const auto stath = web->worker.proxy.http->getAuth();
 			// Выполняем проверку авторизации
-			switch((u_short) stath){
+			switch((u_short) web->worker.proxy.http->getAuth()){
 				// Если нужно попытаться ещё раз
 				case (u_short) http_t::stath_t::RETRY: {
 					// Если попытка повторить авторизацию ещё не проводилась
@@ -247,10 +244,6 @@ void awh::Rest::readProxyCallback(const char * buffer, const size_t size, const 
 				case (u_short) http_t::stath_t::GOOD: {
 					// Выполняем сброс количество попыток
 					web->failAuth = false;
-					// Меняем код ответа на всяккий случай
-					web->res.code = 404;
-					// Устанавливаем сообщение ответа
-					web->res.message = web->worker.proxy.http->getMessage(web->res.code);
 					// Выполняем переключение на работу с сервером
 					reinterpret_cast <ccl_t *> (core)->switchProxy(web->worker.wid);
 					// Завершаем работу
@@ -588,14 +581,14 @@ const unordered_multimap <string, string> & awh::Rest::OPTIONS(const uri_t::url_
 const awh::Rest::res_t & awh::Rest::REST(const uri_t::url_t & url, http_t::method_t method, const vector <char> & entity, const unordered_multimap <string, string> & headers) noexcept {
 	// Если параметры и метод запроса переданы
 	if(!url.empty() && (method != http_t::method_t::NONE)){
-		// Выполняем очистку воркера
-		worker.clear();
-		// Устанавливаем URL адрес запроса
-		worker.url = url;
 		// Выполняем блокировку ожидания выполнения запроса
 		this->locker = true;
+		// Выполняем очистку воркера
+		this->worker.clear();
 		// Устанавливаем метод запроса
 		this->method = method;
+		// Устанавливаем URL адрес запроса
+		this->worker.url = url;
 		// Устанавливаем тело запроса
 		this->entity = &entity;
 		// Запоминаем переданные заголовки
@@ -660,13 +653,13 @@ void awh::Rest::setWaitTimeDetect(const time_t read, const time_t write) noexcep
  */
 void awh::Rest::setMode(const u_short flag) noexcept {
 	// Устанавливаем флаг анбиндинга
-	this->unbind = !(flag & (u_short) flag_t::NOTSTOP);
+	this->unbind = !(flag & (u_short) core_t::flag_t::NOTSTOP);
 	// Устанавливаем флаг ожидания входящих сообщений
-	this->worker.wait = (flag & (u_short) flag_t::WAITMESS);
+	this->worker.wait = (flag & (u_short) core_t::flag_t::WAITMESS);
 	// Устанавливаем флаг поддержания автоматического подключения
-	this->worker.alive = (flag & (u_short) flag_t::KEEPALIVE);
+	this->worker.alive = (flag & (u_short) core_t::flag_t::KEEPALIVE);
 	// Выполняем установку флага проверки домена
-	const_cast <ccl_t *> (this->core)->setVerifySSL(flag & (u_short) flag_t::VERIFYSSL);
+	const_cast <ccl_t *> (this->core)->setVerifySSL(flag & (u_short) core_t::flag_t::VERIFYSSL);
 }
 /**
  * setProxy Метод установки прокси-сервера
@@ -791,9 +784,6 @@ void awh::Rest::setAuthTypeProxy(const auth_t::type_t type, const auth_t::algori
  */
 awh::Rest::Rest(const ccl_t * core, const fmk_t * fmk, const log_t * log) noexcept : core(core), fmk(fmk), log(log), worker(fmk, log) {
 	try {
-		// Устанавливаем зависимые модули
-		this->fmk = fmk;
-		this->log = log;
 		// Устанавливаем контекст сообщения
 		this->worker.context = this;
 		// Создаём объект для работы с сетью

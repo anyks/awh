@@ -197,13 +197,13 @@ bool awh::CoreClient::connect(const worker_t * worker) noexcept {
 			// Если SSL клиент разрешен
 			if(wrk->ssl.mode){
 				// Создаем буфер событий для сервера зашифрованного подключения
-				wrk->bev = bufferevent_openssl_socket_new(this->base, wrk->fd, wrk->ssl.ssl, BUFFEREVENT_SSL_CONNECTING, BEV_OPT_THREADSAFE);
-				// this->bev = bufferevent_openssl_socket_new(this->base, wrk->fd, wrk->ssl.ssl, BUFFEREVENT_SSL_CONNECTING, BEV_OPT_CLOSE_ON_FREE | BEV_OPT_DEFER_CALLBACKS);
+				// wrk->bev = bufferevent_openssl_socket_new(this->base, wrk->fd, wrk->ssl.ssl, BUFFEREVENT_SSL_CONNECTING, BEV_OPT_THREADSAFE);
+				wrk->bev = bufferevent_openssl_socket_new(this->base, wrk->fd, wrk->ssl.ssl, BUFFEREVENT_SSL_CONNECTING, BEV_OPT_THREADSAFE | BEV_OPT_DEFER_CALLBACKS);
 				// Разрешаем непредвиденное грязное завершение работы
 				bufferevent_openssl_set_allow_dirty_shutdown(wrk->bev, 1);
 			// Создаем буфер событий для сервера
-			} else wrk->bev = bufferevent_socket_new(this->base, wrk->fd, BEV_OPT_THREADSAFE);
-			// } else wrk->bev = bufferevent_socket_new(this->base, wrk->fd, BEV_OPT_CLOSE_ON_FREE | BEV_OPT_DEFER_CALLBACKS);
+			// } else wrk->bev = bufferevent_socket_new(this->base, wrk->fd, BEV_OPT_THREADSAFE);
+			} else wrk->bev = bufferevent_socket_new(this->base, wrk->fd, BEV_OPT_THREADSAFE | BEV_OPT_DEFER_CALLBACKS);
 			// Если буфер событий создан
 			if(wrk->bev != nullptr){
 				// Выполняем тюннинг буфера событий
@@ -492,7 +492,8 @@ void awh::CoreClient::switchProxy(const size_t wid) noexcept {
 			// Если SSL клиент разрешен
 			if(wrk->ssl.mode){
 				// Выполняем переход на защищённое подключение
-				struct bufferevent * bev = bufferevent_openssl_filter_new(this->base, wrk->bev, wrk->ssl.ssl, BUFFEREVENT_SSL_CONNECTING, BEV_OPT_THREADSAFE);
+				// struct bufferevent * bev = bufferevent_openssl_filter_new(this->base, wrk->bev, wrk->ssl.ssl, BUFFEREVENT_SSL_CONNECTING, BEV_OPT_THREADSAFE);
+				struct bufferevent * bev = bufferevent_openssl_filter_new(this->base, wrk->bev, wrk->ssl.ssl, BUFFEREVENT_SSL_CONNECTING, BEV_OPT_THREADSAFE | BEV_OPT_DEFER_CALLBACKS);
 				// Если буфер событий создан
 				if(bev != nullptr){
 					// Устанавливаем новый буфер событий

@@ -43,7 +43,7 @@ int main(int argc, char * argv[]) noexcept {
 	 * 1. Устанавливаем ожидание входящих сообщений
 	 * 2. Устанавливаем валидацию SSL сертификата
 	 */
-	rest.setMode((u_short) rest_t::flag_t::WAITMESS | (u_short) rest_t::flag_t::VERIFYSSL);
+	rest.setMode((u_short) core_t::flag_t::WAITMESS | (u_short) core_t::flag_t::VERIFYSSL);
 	// Устанавливаем адрес сертификата
 	core.setCA("./ca/cert.pem");
 	// Устанавливаем логин и пароль пользователя
@@ -57,7 +57,7 @@ int main(int argc, char * argv[]) noexcept {
 	// Выполняем получение URL адреса сервера
 	// uri_t::url_t url = uri.parseUrl("https://2ip.ru");
 	// uri_t::url_t url = uri.parseUrl("https://www.anyks.com");
-	// uri_t::url_t url = uri.parseUrl("https://www.apple.com");
+	// uri_t::url_t url = uri.parseUrl("https://apple.com");
 	// uri_t::url_t url = uri.parseUrl("https://ru.wikipedia.org/wiki/HTTP");
 	uri_t::url_t url = uri.parseUrl("https://api.binance.com/api/v3/exchangeInfo?symbol=BTCUSDT");
 	// Выполняем запрос на получение IP адреса

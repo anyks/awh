@@ -7,71 +7,70 @@
  * copyright: © Yuriy Lobarev
  */
 
-#ifndef __AWH_REST_CLIENT__
-#define __AWH_REST_CLIENT__
-
-/**
- * Стандартная библиотека
- */
-#include <nlohmann/json.hpp>
+#ifndef __AWH_WEBSOCKET_CLIENT__
+#define __AWH_WEBSOCKET_CLIENT__
 
 /**
  * Наши модули
  */
-#include <http.hpp>
+#include <timer.hpp>
+#include <ws/frame.hpp>
+#include <ws/client.hpp>
 #include <client/core.hpp>
 
 // Подписываемся на стандартное пространство имён
 using namespace std;
-
-// Активируем json в качестве объекта пространства имён
-using json = nlohmann::json;
 
 /*
  * awh пространство имён
  */
 namespace awh {
 	/**
-	 * Rest Класс работы с REST клиентом
+	 * WebSocketClient Класс работы с WebSocket клиентом
 	 */
-	typedef class Rest {
+	typedef class WebSocketClient {
 		private:
-			/**
-			 * Response Структура ответа сервера
-			 */
-			typedef struct Response {
-				bool ok;                                     // Флаг удачного ответа
-				u_short code;                                // Код ответа сервера
-				string message;                              // Сообщение ответа сервера
-				vector <char> entity;                        // Тело ответа сервера
-				unordered_multimap <string, string> headers; // Заголовки сервера
-				/**
-				 * Response Конструктор
-				 */
-				Response() : ok(false), code(0), message("") {}
-			} res_t;
-		private:
-			// Параметры ответа
-			res_t res;
 			// Объект рабочего
 			wrc_t worker;
-			// Метод выполняемого запроса
-			http_t::method_t method;
+			// Таймер для пинга сервера
+			timer_t timerPing;
+			// Таймер для контроля подключения
+			timer_t timerConnect;
 		private:
+			// Поддерживаемые сабпротоколы
+			vector <string> subs;
+			// Данные фрагметрированного сообщения
+			vector <char> fragmes;
+		private:
+			// Флаг шифрования сообщений
+			bool crypt = false;
 			// Выполнять анбиндинг после завершения запроса
 			bool unbind = true;
+			// Флаг фриза работы клиента
+			bool freeze = false;
 			// Локер ожидания завершения запроса
 			bool locker = false;
 			// Флаг проверки аутентификации
 			bool failAuth = false;
+			// Флаг переданных сжатых данных
+			bool compressed = false;
 		private:
-			// Тело запроса (если требуется)
-			const vector <char> * entity = nullptr;
-			// Список заголовков запроса (если требуется)
-			const unordered_multimap <string, string> * headers = nullptr;
+			// Код ответа сервера
+			u_short code = 0;
+			// Минимальный размер сегмента
+			size_t frameSize = 0xFA000;
+		public:
+			// Полученный опкод сообщения
+			frame_t::opcode_t opcode = frame_t::opcode_t::TEXT;
+			// Флаги работы с сжатыми данными
+			http_t::compress_t compress = http_t::compress_t::NONE;
 		private:
 			// Создаём объект для работы с HTTP
-			http_t * http = nullptr;
+			wsc_t * http = nullptr;
+			// Создаём объект для компрессии-декомпрессии данных
+			hash_t * hash = nullptr;
+			// Создаём объект для работы с фреймом WebSocket
+			frame_t * frame = nullptr;
 		private:
 			// Создаём объект фреймворка
 			const fmk_t * fmk = nullptr;
@@ -83,6 +82,15 @@ namespace awh {
 			const ccl_t * core = nullptr;
 			// Создаем объект для работы с сетью
 			const network_t * nwk = nullptr;
+		private:
+			// Функция обратного вызова, при запуске или остановки подключения к серверу
+			function <void (const bool, WebSocketClient *)> openStopFn = nullptr;
+			// Функция обратного вызова, при получении ответа от сервера
+			function <void (const string &, WebSocketClient *)> pongFn = nullptr;
+			// Функция обратного вызова, при получении ошибки работы клиента
+			function <void (const u_short, const string &, WebSocketClient *)> errorFn = nullptr;
+			// Функция обратного вызова, при получении сообщения с сервера
+			function <void (const vector <char> &, const bool, WebSocketClient *)> messageFn = nullptr;
 		private:
 			/**
 			 * chunking Метод обработки получения чанков
@@ -137,128 +145,94 @@ namespace awh {
 			 * @param ctx    передаваемый контекст модуля
 			 */
 			static void readProxyCallback(const char * buffer, const size_t size, const size_t wid, core_t * core, void * ctx) noexcept;
+		private:
+			/**
+			 * error Метод вывода сообщений об ошибках работы клиента
+			 * @param message сообщение с описанием ошибки
+			 */
+			void error(const mess_t & message) const noexcept;
+			/**
+			 * extraction Метод извлечения полученных данных
+			 * @param buffer данные в чистом виде полученные с сервера
+			 * @param utf8   данные передаются в текстовом виде
+			 */
+			void extraction(const vector <char> & buffer, const bool utf8) const noexcept;
+		private:
+			/**
+			 * pong Метод ответа на проверку о доступности сервера
+			 * @param message сообщение для отправки
+			 */
+			void pong(const string & message = "") noexcept;
+			/**
+			 * ping Метод проверки доступности сервера
+			 * @param message сообщение для отправки
+			 */
+			void ping(const string & message = "") noexcept;
 		public:
 			/**
-			 * GET Метод запроса в формате HTTP методом GET
-			 * @param url     адрес запроса
-			 * @param headers заголовки запроса
-			 * @return        результат запроса
+			 * init Метод инициализации WebSocket клиента
+			 * @param url      адрес WebSocket сервера
+			 * @param compress метод сжатия передаваемых сообщений
 			 */
-			const vector <char> & GET(const uri_t::url_t & url, const unordered_multimap <string, string> & headers = {}) noexcept;
-			/**
-			 * DEL Метод запроса в формате HTTP методом DEL
-			 * @param url     адрес запроса
-			 * @param headers заголовки запроса
-			 * @return        результат запроса
-			 */
-			const vector <char> & DEL(const uri_t::url_t & url, const unordered_multimap <string, string> & headers = {}) noexcept;
+			void init(const string & url, const http_t::compress_t compress = http_t::compress_t::DEFLATE) noexcept;
 		public:
 			/**
-			 * PUT Метод запроса в формате HTTP методом PUT
-			 * @param url     адрес запроса
-			 * @param entity  тело запроса
-			 * @param headers заголовки запроса
-			 * @return        результат запроса
+			 * on Метод установки функции обратного вызова на событие запуска или остановки подключения
+			 * @param callback функция обратного вызова
 			 */
-			const vector <char> & PUT(const uri_t::url_t & url, const json & entity, const unordered_multimap <string, string> & headers = {}) noexcept;
+			void on(function <void (const bool, WebSocketClient *)> callback) noexcept;
 			/**
-			 * PUT Метод запроса в формате HTTP методом PUT
-			 * @param url     адрес запроса
-			 * @param entity  тело запроса
-			 * @param headers заголовки запроса
-			 * @return        результат запроса
+			 * on Метод установки функции обратного вызова на событие получения PONG
+			 * @param callback функция обратного вызова
 			 */
-			const vector <char> & PUT(const uri_t::url_t & url, const vector <char> & entity, const unordered_multimap <string, string> & headers = {}) noexcept;
+			void on(function <void (const string &, WebSocketClient *)> callback) noexcept;
 			/**
-			 * PUT Метод запроса в формате HTTP методом PUT
-			 * @param url     адрес запроса
-			 * @param entity  тело запроса
-			 * @param headers заголовки запроса
-			 * @return        результат запроса
+			 * on Метод установки функции обратного вызова на событие получения ошибок
+			 * @param callback функция обратного вызова
 			 */
-			const vector <char> & PUT(const uri_t::url_t & url, const unordered_multimap <string, string> & entity, const unordered_multimap <string, string> & headers = {}) noexcept;
+			void on(function <void (const u_short, const string &, WebSocketClient *)> callback) noexcept;
+			/**
+			 * on Метод установки функции обратного вызова на событие получения сообщений
+			 * @param callback функция обратного вызова
+			 */
+			void on(function <void (const vector <char> &, const bool, WebSocketClient *)> callback) noexcept;
 		public:
 			/**
-			 * POST Метод запроса в формате HTTP методом POST
-			 * @param url     адрес запроса
-			 * @param entity  тело запроса
-			 * @param headers заголовки запроса
-			 * @return        результат запроса
+			 * send Метод отправки сообщения на сервер
+			 * @param message буфер сообщения в бинарном виде
+			 * @param size    размер сообщения в байтах
+			 * @param utf8    данные передаются в текстовом виде
 			 */
-			const vector <char> & POST(const uri_t::url_t & url, const json & entity, const unordered_multimap <string, string> & headers = {}) noexcept;
-			/**
-			 * POST Метод запроса в формате HTTP методом POST
-			 * @param url     адрес запроса
-			 * @param entity  тело запроса
-			 * @param headers заголовки запроса
-			 * @return        результат запроса
-			 */
-			const vector <char> & POST(const uri_t::url_t & url, const vector <char> & entity, const unordered_multimap <string, string> & headers = {}) noexcept;
-			/**
-			 * POST Метод запроса в формате HTTP методом POST
-			 * @param url     адрес запроса
-			 * @param entity  тело запроса
-			 * @param headers заголовки запроса
-			 * @return        результат запроса
-			 */
-			const vector <char> & POST(const uri_t::url_t & url, const unordered_multimap <string, string> & entity, const unordered_multimap <string, string> & headers = {}) noexcept;
+			void send(const char * message, const size_t size, const bool utf8 = true) noexcept;
 		public:
 			/**
-			 * PATCH Метод запроса в формате HTTP методом PATCH
-			 * @param url     адрес запроса
-			 * @param entity  тело запроса
-			 * @param headers заголовки запроса
-			 * @return        результат запроса
+			 * stop Метод остановки клиента
 			 */
-			const vector <char> & PATCH(const uri_t::url_t & url, const json & entity, const unordered_multimap <string, string> & headers = {}) noexcept;
+			void stop() noexcept;
 			/**
-			 * PATCH Метод запроса в формате HTTP методом PATCH
-			 * @param url     адрес запроса
-			 * @param entity  тело запроса
-			 * @param headers заголовки запроса
-			 * @return        результат запроса
+			 * pause Метод установки на паузу клиента
 			 */
-			const vector <char> & PATCH(const uri_t::url_t & url, const vector <char> & entity, const unordered_multimap <string, string> & headers = {}) noexcept;
+			void pause() noexcept;
 			/**
-			 * PATCH Метод запроса в формате HTTP методом PATCH
-			 * @param url     адрес запроса
-			 * @param entity  тело запроса
-			 * @param headers заголовки запроса
-			 * @return        результат запроса
+			 * start Метод запуска клиента
 			 */
-			const vector <char> & PATCH(const uri_t::url_t & url, const unordered_multimap <string, string> & entity, const unordered_multimap <string, string> & headers = {}) noexcept;
+			void start() noexcept;
 		public:
 			/**
-			 * HEAD Метод запроса в формате HTTP методом HEAD
-			 * @param url     адрес запроса
-			 * @param headers заголовки запроса
-			 * @return        результат запроса
+			 * getSub Метод получения выбранного сабпротокола
+			 * @return выбранный сабпротокол
 			 */
-			const unordered_multimap <string, string> & HEAD(const uri_t::url_t & url, const unordered_multimap <string, string> & headers = {}) noexcept;
+			const string & getSub() const noexcept;
 			/**
-			 * TRACE Метод запроса в формате HTTP методом TRACE
-			 * @param url     адрес запроса
-			 * @param headers заголовки запроса
-			 * @return        результат запроса
+			 * setSub Метод установки подпротокола поддерживаемого сервером
+			 * @param sub подпротокол для установки
 			 */
-			const unordered_multimap <string, string> & TRACE(const uri_t::url_t & url, const unordered_multimap <string, string> & headers = {}) noexcept;
+			void setSub(const string & sub) noexcept;
 			/**
-			 * OPTIONS Метод запроса в формате HTTP методом OPTIONS
-			 * @param url     адрес запроса
-			 * @param headers заголовки запроса
-			 * @return        результат запроса
+			 * setSubs Метод установки списка подпротоколов поддерживаемых сервером
+			 * @param subs подпротоколы для установки
 			 */
-			const unordered_multimap <string, string> & OPTIONS(const uri_t::url_t & url, const unordered_multimap <string, string> & headers = {}) noexcept;
-		public:
-			/**
-			 * REST Метод запроса в формате HTTP указанным методом
-			 * @param url     адрес запроса
-			 * @param method  метод запроса
-			 * @param entity  тело запроса
-			 * @param headers заголовки запроса
-			 * @return        результат выполнения запроса
-			 */
-			const res_t & REST(const uri_t::url_t & url, http_t::method_t method, const vector <char> & entity = {}, const unordered_multimap <string, string> & headers = {}) noexcept;
+			void setSubs(const vector <string> & subs) noexcept;
 		public:
 			/**
 			 * setChunkingFn Метод установки функции обратного вызова для получения чанков
@@ -294,6 +268,11 @@ namespace awh {
 			 * @param size размер чанка для установки
 			 */
 			void setChunkSize(const size_t size) noexcept;
+			/**
+			 * setFrameSize Метод установки размеров сегментов фрейма
+			 * @param size минимальный размер сегмента
+			 */
+			void setFrameSize(const size_t size) noexcept;
 			/**
 			 * setAttempts Метод установки количества попыток переподключения
 			 * @param count количество попыток переподключения
@@ -343,17 +322,17 @@ namespace awh {
 			void setAuthTypeProxy(const auth_t::type_t type = auth_t::type_t::BASIC, const auth_t::algorithm_t algorithm = auth_t::algorithm_t::MD5) noexcept;
 		public:
 			/**
-			 * Rest Конструктор
+			 * WebSocketClient Конструктор
 			 * @param core объект биндинга TCP/IP
 			 * @param fmk  объект фреймворка
 			 * @param log  объект для работы с логами
 			 */
-			Rest(const ccl_t * core, const fmk_t * fmk, const log_t * log) noexcept;
+			WebSocketClient(const ccl_t * core, const fmk_t * fmk, const log_t * log) noexcept;
 			/**
-			 * ~Rest Деструктор
+			 * ~WebSocketClient Деструктор
 			 */
-			~Rest() noexcept;
-	} rest_t;
+			~WebSocketClient() noexcept;
+	} wcli_t;
 };
 
-#endif // __AWH_REST_CLIENT__
+#endif // __AWH_WEBSOCKET_CLIENT__

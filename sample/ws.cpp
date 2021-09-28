@@ -10,7 +10,7 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include <ws/client.hpp>
+#include <client/ws.hpp>
 #include <nlohmann/json.hpp>
 
 // Подключаем пространство имён
@@ -35,40 +35,45 @@ int main(int argc, char * argv[]) noexcept {
 	network_t nwk(&fmk);
 	// Создаём объект URI
 	uri_t uri(&fmk, &nwk);
-	/*
-	// Создаём объект клиента WebSocket
-	client_t ws(&fmk, &log, &uri, &nwk);
+	// Создаём биндинг
+	ccl_t core(&fmk, &log);
+	// Создаём объект REST запроса
+	wcli_t ws(&core, &fmk, &log);
 	// Устанавливаем название сервиса
 	log.setLogName("WebSocket Client");
 	// Устанавливаем формат времени
 	log.setLogFormat("%H:%M:%S %d.%m.%Y");
-	// Разрешаем верифицировать доменное имя на которое выдан сертификат
-	ws.setVerifySSL(true);
-	// Разрешаем ожидать входящие сообщения
-	ws.setWaitMessage(true);
-	// Разрешаем автоматическое восстановление подключения
-	ws.setAutoReconnect(true);
-	// Выполняем инициализацию типа авторизации
-	ws.setAuthType();
+	/**
+	 * 1. Устанавливаем ожидание входящих сообщений
+	 * 2. Устанавливаем валидацию SSL сертификата
+	 */
+	ws.setMode(
+		(u_short) core_t::flag_t::NOTSTOP |
+		(u_short) core_t::flag_t::WAITMESS |
+		(u_short) core_t::flag_t::VERIFYSSL |
+		(u_short) core_t::flag_t::KEEPALIVE
+	);
+	// Устанавливаем адрес сертификата
+	core.setCA("./ca/cert.pem");
 	// Устанавливаем логин и пароль пользователя
 	ws.setUser("user", "password");
-	// Устанавливаем адрес сертификата
-	ws.setCA("./ca/cert.pem");
-	// Устанавливаем параметры шифрования
-	// ws.setCrypt("password");
+	// Устанавливаем данные прокси-сервера
+	ws.setProxy("http://B80TWR:uRMhnd@196.17.249.64:8000");
+	// Выполняем инициализацию типа авторизации
+	ws.setAuthType();
+	// Устанавливаем тип авторизации прокси-сервера
+	ws.setAuthTypeProxy();
+	// Устанавливаем время ожидания
+	// ws.setWaitTimeDetect(10, 0);
 	// Выполняем инициализацию WebSocket клиента
 	ws.init("wss://stream.binance.com:9443/stream", http_t::compress_t::DEFLATE);
-	//
 	// Выполняем подписку на получение логов
 	log.subscribe([](const log_t::flag_t flag, const string & message){
 		// Выводим сообщение
-		cout << " ============= " << message << endl;
+		// cout << " ============= " << message << endl;
 	});
-	//
-	// Устанавливаем адрес файла для сохранения логов
-	// log.setLogFilename("./test.log");
 	// Подписываемся на событие запуска и остановки сервера
-	ws.on([](const bool mode, client_t * ws){
+	ws.on([](const bool mode, wcli_t * ws){
 		// Выводим сообщение
 		cout << " +++++++++++++ " << (mode ? "Start" : "Stop") << " server" << endl;
 		// Если подключение произошло удачно
@@ -90,16 +95,16 @@ int main(int argc, char * argv[]) noexcept {
 		}
 	});
 	// Подписываемся на событие получения ошибки работы клиента
-	ws.on([](const u_short code, const string & mess, client_t * ws){
+	ws.on([](const u_short code, const string & mess, wcli_t * ws){
 		// Выводим сообщение об ошибке
 		cout << " +++++++++++++ " << code << " === " << mess << endl;
 	});
 	// Подписываемся на событие ответа сервера PONG
-	ws.on([](const string & mess, client_t * ws){
+	ws.on([](const string & mess, wcli_t * ws){
 		cout << " +++++++++++++ " << "PONG" << " === " << mess << endl;
 	});
 	// Подписываемся на событие получения сообщения с сервера
-	ws.on([](const vector <char> & buffer, const bool utf8, client_t * ws){
+	ws.on([](const vector <char> & buffer, const bool utf8, wcli_t * ws){
 		// Если данные пришли в виде текста, выводим
 		if(utf8){
 			// Создаём объект JSON
@@ -111,7 +116,6 @@ int main(int argc, char * argv[]) noexcept {
 	});
 	// Выполняем запуск WebSocket клиента
 	ws.start();
-	*/
 	// Выводим результат
 	return 0;
 }

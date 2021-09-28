@@ -90,10 +90,26 @@ namespace awh {
 			virtual stath_t checkAuth() noexcept = 0;
 		public:
 			/**
-			 * clear Метод очистки собранных данных
+			 * flush Метод очистки собранных данных
 			 */
-			void clear() noexcept;
+			void flush() noexcept;
 		public:
+			/**
+			 * getCompress Метод получения метода сжатия
+			 * @return метод сжатия сообщений
+			 */
+			compress_t getCompress() const noexcept;
+			/**
+			 * setCompress Метод установки метода сжатия
+			 * @param метод сжатия сообщений
+			 */
+			void setCompress(const compress_t compress) noexcept;
+		public:
+			/**
+			 * isHandshake Метод получения флага рукопожатия
+			 * @return флаг получения рукопожатия
+			 */
+			bool isHandshake() noexcept;
 			/**
 			 * checkUpgrade Метод получения флага переключения протокола
 			 * @return флага переключения протокола
@@ -121,13 +137,13 @@ namespace awh {
 			 * response Метод создания ответа
 			 * @return буфер данных запроса в бинарном виде
 			 */
-			vector <char> response() const noexcept;
+			vector <char> response() noexcept;
 			/**
 			 * request Метод создания запроса
 			 * @param url объект параметров REST запроса
 			 * @return    буфер данных запроса в бинарном виде
 			 */
-			vector <char> request(const uri_t::url_t & url) const noexcept;
+			vector <char> request(const uri_t::url_t & url) noexcept;
 		public:
 			/**
 			 * setSub Метод установки подпротокола поддерживаемого сервером

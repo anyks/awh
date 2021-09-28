@@ -17,6 +17,7 @@
 #include <string>
 #include <vector>
 #include <cstring>
+#include <unordered_set>
 #include <unordered_map>
 
 // Если - это Windows
@@ -153,6 +154,11 @@ namespace awh {
 					Chunk() : size(0) {}
 			} chunk_t;
 			/**
+			 * Режимы работы модуля
+			 */
+			enum class mode_t : u_short {NONE, REQUEST, RESPONSE};
+		protected:
+			/**
 			 * Стейты работы модуля
 			 */
 			enum class state_t : u_short {
@@ -163,10 +169,6 @@ namespace awh {
 				HEADERS,  // Режим чтения заголовков
 				HANDSHAKE // Режим выполненного рукопожатия
 			};
-			/**
-			 * Режимы работы модуля
-			 */
-			enum class mode_t : u_short {NONE, REQUEST, RESPONSE};
 		protected:
 			// Объект параметров запроса
 			mutable query_t query;
@@ -205,6 +207,8 @@ namespace awh {
 		protected:
 			// Полученное тело HTTP запроса
 			mutable vector <char> body;
+			// Чёрный список заголовков
+			mutable unordered_set <string> black;
 			// Полученные HTTP заголовки
 			mutable unordered_multimap <string, string> headers;
 		private:
@@ -243,6 +247,11 @@ namespace awh {
 			 */
 			virtual void clear() noexcept;
 		public:
+			/**
+			 * addBlack Метод добавления заголовка в чёрный список
+			 * @param key ключ заголовка
+			 */
+			void addBlack(const string & key) noexcept;
 			/**
 			 * parse Метод парсинга сырых данных
 			 * @param buffer буфер данных для обработки
@@ -302,12 +311,12 @@ namespace awh {
 			 * getCompress Метод получения метода сжатия
 			 * @return метод сжатия сообщений
 			 */
-			compress_t getCompress() const noexcept;
+			virtual compress_t getCompress() const noexcept;
 			/**
 			 * setCompress Метод установки метода сжатия
 			 * @param метод сжатия сообщений
 			 */
-			void setCompress(const compress_t compress) noexcept;
+			virtual void setCompress(const compress_t compress) noexcept;
 		public:
 			/**
 			 * getUrl Метод извлечения параметров запроса
@@ -334,7 +343,13 @@ namespace awh {
 			 * isHandshake Метод получения флага рукопожатия
 			 * @return флаг получения рукопожатия
 			 */
-			bool isHandshake() const noexcept;
+			virtual bool isHandshake() noexcept;
+			/**
+			 * isBlack Метод проверки существования заголовка в чёрный списоке
+			 * @param key ключ заголовка для проверки
+			 * @return    результат проверки
+			 */
+			bool isBlack(const string & key) const noexcept;
 			/**
 			 * isHeader Метод проверки существования заголовка
 			 * @param key ключ заголовка для проверки
@@ -361,6 +376,12 @@ namespace awh {
 			const string & getMessage(const u_short code) const noexcept;
 		public:
 			/**
+			 * proxy Метод создания запроса для авторизации на прокси-сервере
+			 * @param url объект параметров REST запроса
+			 * @return    буфер данных запроса в бинарном виде
+			 */
+			vector <char> proxy(const uri_t::url_t & url) noexcept;
+			/**
 			 * reject Метод создания отрицательного ответа
 			 * @param code код ответа
 			 * @return     буфер данных запроса в бинарном виде
@@ -372,12 +393,6 @@ namespace awh {
 			 * @return     буфер данных запроса в бинарном виде
 			 */
 			vector <char> response(const u_short code) const noexcept;
-			/**
-			 * proxy Метод создания запроса для авторизации на прокси-сервере
-			 * @param url объект параметров REST запроса
-			 * @return    буфер данных запроса в бинарном виде
-			 */
-			vector <char> proxy(const uri_t::url_t & url) const noexcept;
 			/**
 			 * request Метод создания запроса
 			 * @param url    объект параметров REST запроса

@@ -15,11 +15,8 @@
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
  */
-awh::Proxy::Proxy(const fmk_t * fmk, const log_t * log) noexcept : type(type_t::NONE) {
+awh::Proxy::Proxy(const fmk_t * fmk, const log_t * log) noexcept : fmk(fmk), log(log), type(type_t::NONE) {
 	try {
-		// Устанавливаем зависимые модули
-		this->fmk = fmk;
-		this->log = log;
 		// Создаём объект для работы с сетью
 		this->nwk = new network_t(this->fmk);
 		// Создаём объект URI

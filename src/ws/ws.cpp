@@ -69,9 +69,9 @@ const string awh::WS::getHash() const noexcept {
 	return result;
 }
 /**
- * clear Метод очистки собранных данных
+ * flush Метод очистки собранных данных
  */
-void awh::WS::clear() noexcept {
+void awh::WS::flush() noexcept {
 	// Выполняем очистку родительских данных
 	http_t::clear();
 	// Выполняем сброс ключа клиента
@@ -84,6 +84,45 @@ void awh::WS::clear() noexcept {
 	this->wbitClient = GZIP_MAX_WBITS;
 	// Выполняем сброс размера скользящего окна для сервера
 	this->wbitServer = GZIP_MAX_WBITS;
+}
+/**
+ * getCompress Метод получения метода сжатия
+ * @return метод сжатия сообщений
+ */
+awh::Http::compress_t awh::WS::getCompress() const noexcept {
+	// Выводим метод сжатия сообщений
+	return this->compress;
+}
+/**
+ * setCompress Метод установки метода сжатия
+ * @param метод сжатия сообщений
+ */
+void awh::WS::setCompress(const compress_t compress) noexcept {
+	// Устанавливаем метод сжатия сообщений
+	this->compress = compress;
+}
+/**
+ * isHandshake Метод получения флага рукопожатия
+ * @return флаг получения рукопожатия
+ */
+bool awh::WS::isHandshake() noexcept {
+	// Результат работы функции
+	bool result = (this->state == state_t::HANDSHAKE);
+	// Если рукопожатие не выполнено
+	if(!result){
+		// Выполняем проверку на удачное завершение запроса
+		result = (this->stath == stath_t::GOOD);
+		// Если результат удачный, проверяем версию протокола
+		if(result) result = this->checkVer();
+		// Если результат удачный, проверяем произошло ли переключение протокола
+		if(result) result = this->checkUpgrade();
+		// Если результат удачный, проверяем ключ клиента
+		if(result) result = this->checkKey();
+		// Если рукопожатие выполнено, устанавливаем стейт рукопожатия
+		if(result) this->state = state_t::HANDSHAKE;
+	}
+	// Выводим результат
+	return result;
 }
 /**
  * checkUpgrade Метод получения флага переключения протокола
@@ -139,7 +178,7 @@ const string & awh::WS::getSub() const noexcept {
  * response Метод создания ответа
  * @return буфер данных запроса в бинарном виде
  */
-vector <char> awh::WS::response() const noexcept {
+vector <char> awh::WS::response() noexcept {
 	// Результат работы функции
 	vector <char> result;
 	// Выполняем генерацию хеша ключа
@@ -167,18 +206,20 @@ vector <char> awh::WS::response() const noexcept {
 			// Если метод компрессии не указан но указан режим шифрования
 			} else if(this->crypt) extensions = this->fmk->format("permessage-encrypt=%u; server_no_context_takeover", (u_short) this->hash->getAES());
 			// Добавляем полученный заголовок
-			this->headers.emplace("Sec-WebSocket-Extensions", extensions);
+			this->addHeader("Sec-WebSocket-Extensions", extensions);
 		}
+		// Добавляем в чёрный список заголовок Content-Type
+		this->addBlack("Content-Type");
 		// Если подпротокол выбран
 		if(!this->sub.empty())
 			// Добавляем заголовок сабпротокола
-			this->headers.emplace("Sec-WebSocket-Protocol", this->sub.c_str());
+			this->addHeader("Sec-WebSocket-Protocol", this->sub.c_str());
 		// Добавляем заголовок подключения
-		this->headers.emplace("Connection", "upgrade");
+		this->addHeader("Connection", "upgrade");
 		// Добавляем заголовок апгрейд
-		this->headers.emplace("Upgrade", "websocket");
+		this->addHeader("Upgrade", "websocket");
 		// Добавляем заголовок хеша ключа
-		this->headers.emplace("Sec-WebSocket-Accept", hash.c_str());
+		this->addHeader("Sec-WebSocket-Accept", hash.c_str());
 		// Выводим результат
 		return http_t::response(101);
 	}
@@ -190,7 +231,7 @@ vector <char> awh::WS::response() const noexcept {
  * @param url объект параметров REST запроса
  * @return    буфер данных запроса в бинарном виде
  */
-vector <char> awh::WS::request(const uri_t::url_t & url) const noexcept {
+vector <char> awh::WS::request(const uri_t::url_t & url) noexcept {
 	// Если подпротоколы существуют
 	if(!this->subs.empty()){
 		// Если количество подпротоколов больше 5-ти
@@ -205,7 +246,7 @@ vector <char> awh::WS::request(const uri_t::url_t & url) const noexcept {
 				subs.append(sub);
 			}
 			// Добавляем полученный заголовок
-			this->headers.emplace("Sec-WebSocket-Protocol", subs);
+			this->addHeader("Sec-WebSocket-Protocol", subs);
 		// Если подпротоколов слишком много
 		} else {
 			// Переходим по всему списку подпротоколов
@@ -233,18 +274,24 @@ vector <char> awh::WS::request(const uri_t::url_t & url) const noexcept {
 		// Если метод компрессии не указан но указан режим шифрования
 		} else if(this->crypt) extensions = this->fmk->format("permessage-encrypt=%u", (u_short) this->hash->getAES());
 		// Добавляем полученный заголовок
-		this->headers.emplace("Sec-WebSocket-Extensions", extensions);
+		this->addHeader("Sec-WebSocket-Extensions", extensions);
 	}
 	// Генерируем ключ клиента
 	this->key = this->getKey();
+	// Добавляем в чёрный список заголовок Accept
+	this->addBlack("Accept");
+	// Добавляем в чёрный список заголовок Accept-Language
+	this->addBlack("Accept-Language");
+	// Добавляем в чёрный список заголовок Accept-Encoding
+	this->addBlack("Accept-Encoding");
 	// Добавляем заголовок подключения
-	this->headers.emplace("Connection", "Upgrade");
+	this->addHeader("Connection", "Upgrade");
 	// Добавляем заголовок апгрейд
-	this->headers.emplace("Upgrade", "websocket");
+	this->addHeader("Upgrade", "websocket");
 	// Добавляем заголовок версии WebSocket
-	this->headers.emplace("Sec-WebSocket-Version", to_string(WS_VERSION));
+	this->addHeader("Sec-WebSocket-Version", to_string(WS_VERSION));
 	// Добавляем заголовок ключ клиента
-	this->headers.emplace("Sec-WebSocket-Key", this->key);
+	this->addHeader("Sec-WebSocket-Key", this->key);
 	// Выводим результат
 	return http_t::request(url, method_t::GET);
 }

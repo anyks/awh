@@ -137,6 +137,7 @@ set(SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/src/ws/frame.cpp"
     "${CMAKE_SOURCE_DIR}/src/ws/client.cpp"
     "${CMAKE_SOURCE_DIR}/src/ws/server.cpp"
+    "${CMAKE_SOURCE_DIR}/src/client/ws.cpp"
     "${CMAKE_SOURCE_DIR}/src/client/core.cpp"
     "${CMAKE_SOURCE_DIR}/src/client/rest.cpp"
     "${CMAKE_SOURCE_DIR}/src/client/worker.cpp"
@@ -144,10 +145,10 @@ set(SOURCE_FILES
 
 # Задаем именя библиотеки и бинарника
 
-set(TEST_APP_NAME test)
+#set(TEST_APP_NAME test)
 
 set(REST_APP_NAME rest)
-set(CLIENT_APP_NAME client)
+set(CLIENT_APP_NAME ws)
 set(CURRENT_LIB_NAME ${PROJECT_NAME})
 set(CURRENT_APP_NAME ${PROJECT_NAME}_bin)
 
@@ -172,18 +173,18 @@ if (ENABLE_CONSOLE_APP)
         SET(CMAKE_RC_COMPILE_OBJECT "<CMAKE_RC_COMPILER> <FLAGS> -O coff <DEFINES> -i <SOURCE> -o <OBJECT>")
     endif(MINGW)
 
-    add_executable(${TEST_APP_NAME} sample/http.cpp ${RES_FILES})
+    #add_executable(${TEST_APP_NAME} sample/http.cpp ${RES_FILES})
 
     add_executable(${REST_APP_NAME} sample/rest.cpp ${RES_FILES})
-    add_executable(${CLIENT_APP_NAME} sample/client.cpp ${RES_FILES})
+    add_executable(${CLIENT_APP_NAME} sample/ws.cpp ${RES_FILES})
 
-    target_link_libraries(${TEST_APP_NAME}
-        ${CURRENT_LIB_NAME}
-        ${LIBEVENT_LIBRARIES}
-        ${ZLIB_LIBRARY}
-        ${OPENSSL_LIBRARIES}
-        ${WINFLAGS}
-    )
+    #target_link_libraries(${TEST_APP_NAME}
+    #    ${CURRENT_LIB_NAME}
+    #    ${LIBEVENT_LIBRARIES}
+    #    ${ZLIB_LIBRARY}
+    #    ${OPENSSL_LIBRARIES}
+    #    ${WINFLAGS}
+    #)
 
     target_link_libraries(${REST_APP_NAME}
         ${CURRENT_LIB_NAME}
