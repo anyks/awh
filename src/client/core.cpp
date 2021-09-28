@@ -284,8 +284,6 @@ void awh::CoreClient::close(const worker_t * worker) noexcept {
 		wrc_t * wrk = (wrc_t *) const_cast <worker_t *> (worker);
 		// Если сокет существует
 		if(wrk->fd > -1){
-			// Выполняем блокировку потока
-			this->bloking.lock();
 			// Если событие сервера существует
 			if(wrk->bev != nullptr){
 				// Запрещаем чтение запись данных серверу
@@ -312,8 +310,6 @@ void awh::CoreClient::close(const worker_t * worker) noexcept {
 			wrk->fd = -1;
 			// Выводим сообщение об ошибке
 			this->log->print("%s", log_t::flag_t::INFO, "disconnected from the server");
-			// Выполняем разблокировку потока
-			this->bloking.unlock();
 			// Выводим функцию обратного вызова
 			if(wrk->closeFn != nullptr) wrk->closeFn(wrk->wid, this, wrk->context);
 		}
@@ -506,9 +502,8 @@ void awh::CoreClient::switchProxy(const size_t wid) noexcept {
 					// Выполняем тюннинг буфера событий
 					tuning(wrk->bev, wrk);
 				}
-			}
 			// Выполняем функцию обратного вызова
-			if(wrk->openFn != nullptr) wrk->openFn(wrk->wid, this, wrk->context);
+			} else if(wrk->openFn != nullptr) wrk->openFn(wrk->wid, this, wrk->context);
 		}
 	}
 }
@@ -521,8 +516,6 @@ void awh::CoreClient::switchProxy(const size_t wid) noexcept {
 void awh::CoreClient::write(const char * buffer, const size_t size, const size_t wid) noexcept {
 	// Если данные переданы
 	if((buffer != nullptr) && (size > 0) && (wid > 0)){
-		// Выполняем блокировку потока
-		this->bloking.lock();
 		// Выполняем поиск воркера
 		auto it = this->workers.find(wid);
 		// Если воркер найден
@@ -538,8 +531,6 @@ void awh::CoreClient::write(const char * buffer, const size_t size, const size_t
 			// Отправляем серверу сообщение
 			bufferevent_write(wrk->bev, buffer, size);
 		}
-		// Выполняем разблокировку потока
-		this->bloking.unlock();
 	}
 }
 /**
