@@ -217,46 +217,70 @@ const awh::Core::socket_t awh::Core::socket(const string & ip, const u_int port,
 	return result;
 }
 /**
- * getBase Метод получения базы событий
- * @return база событий установленная в модуле
+ * bind Метод подключения модуля ядра к текущей базе событий
+ * @param core модуль ядра для подключения
  */
-struct event_base * awh::Core::getBase() const noexcept {
-	// Выводим базу событий используемую в модуле
-	return this->base;
+void awh::Core::bind(Core * core) noexcept {
+	// Если модуль ядра передан
+	if(core != nullptr){
+		// Выполняем блокировку потока
+		this->bloking.lock();
+		// Устанавливаем базу событий
+		core->base = this->base;
+		// Выполняем блокировку инициализации базы событий
+		core->locker = (core->base != nullptr);
+		// Если блокировка базы событий выполнена
+		if(core->locker){
+			try {
+				// Резолвер IPv4, создаём резолвер
+				if(core->dns4 != nullptr) core->dns4 = new dns_t(core->fmk, core->log, core->nwk, core->base, core->net.v4.second);
+				// Резолвер IPv6, создаём резолвер
+				if(core->dns6 != nullptr) core->dns6 = new dns_t(core->fmk, core->log, core->nwk, core->base, core->net.v6.second);
+				// Если список воркеров существует
+				if(!core->workers.empty()){
+					// Переходим по всему списку воркеров
+					for(auto & worker : core->workers){
+						// Если функция обратного вызова установлена
+						if(worker.second->startFn != nullptr)
+							// Выполняем функцию обратного вызова
+							worker.second->startFn(worker.first, core, worker.second->context);
+					}
+				}
+				// Если функция обратного вызова установлена, выполняем
+				if(core->startFn != nullptr) core->startFn(core->base, core, core->ctx);
+			// Если происходит ошибка то игнорируем её
+			} catch(const bad_alloc&) {
+				// Выводим сообщение об ошибке
+				core->log->print("%s", log_t::flag_t::CRITICAL, "memory could not be allocated");
+			}
+		}
+		// Выполняем разблокировку потока
+		this->bloking.unlock();
+	}
 }
 /**
- * setBase Метод установки базы событий
- * @param base база событий для установки
+ * unbind Метод отключения модуля ядра от текущей базы событий
+ * @param core модуль ядра для отключения
  */
-void awh::Core::setBase(struct event_base * base) noexcept {
-	// Устанавливаем базу событий
-	this->base = base;
-	// Выполняем блокировку инициализации базы событий
-	this->locker = (this->base != nullptr);
-	// Если блокировка базы событий выполнена
-	if(this->locker){
-		try {
-			// Резолвер IPv4, создаём резолвер
-			if(this->dns4 != nullptr) this->dns4 = new dns_t(this->fmk, this->log, this->nwk, this->base, this->net.v4.second);
-			// Резолвер IPv6, создаём резолвер
-			if(this->dns6 != nullptr) this->dns6 = new dns_t(this->fmk, this->log, this->nwk, this->base, this->net.v6.second);
-			// Если список воркеров существует
-			if(!this->workers.empty()){
-				// Переходим по всему списку воркеров
-				for(auto & worker : this->workers){
-					// Если функция обратного вызова установлена
-					if(worker.second->startFn != nullptr)
-						// Выполняем функцию обратного вызова
-						worker.second->startFn(worker.first, this, worker.second->context);
-				}
-			}
-			// Если функция обратного вызова установлена, выполняем
-			if(this->startFn != nullptr) this->startFn(this->base, this, this->ctx);
-		// Если происходит ошибка то игнорируем её
-		} catch(const bad_alloc&) {
-			// Выводим сообщение об ошибке
-			this->log->print("%s", log_t::flag_t::CRITICAL, "memory could not be allocated");
-		}
+void awh::Core::unbind(Core * core) noexcept {
+	// Если модуль ядра передан
+	if(core != nullptr){
+		// Выполняем блокировку потока
+		this->bloking.lock();
+		// Отключаем всех клиентов
+		if(core->base != nullptr) core->closeAll();
+		// Удаляем DNS сервера IPv4
+		if(core->dns4 != nullptr) delete core->dns4;
+		// Удаляем DNS сервера IPv6
+		if(core->dns6 != nullptr) delete core->dns6;
+		// Зануляем базу событий
+		core->base = nullptr;
+		// Если функция обратного вызова установлена, выполняем
+		if(core->stopFn != nullptr) core->stopFn(core, core->ctx);
+		// Выполняем сброс блокировки базы событий
+		core->locker = false;
+		// Выполняем разблокировку потока
+		this->bloking.unlock();
 	}
 }
 /**
@@ -274,13 +298,6 @@ void awh::Core::setStopCallback(function <void (Core * core, void *)> callback) 
 void awh::Core::setStartCallback(function <void (struct event_base *, Core * core, void *)> callback) noexcept {
 	// Устанавливаем функцию обратного вызова
 	this->startFn = callback;
-}
-/**
- * unlockBase Метод сброса блокировки базы событий
- */
-void awh::Core::unlockBase() noexcept {
-	// Выполняем сброс блокировки базы событий
-	this->locker = false;
 }
 /**
  * isStart Метод проверки на запуск бинда TCP/IP

@@ -13,6 +13,7 @@
 /**
  * Стандартная библиотека
  */
+#include <mutex>
 #include <string>
 #include <functional>
 #include <unordered_map>
@@ -59,12 +60,18 @@ using namespace std;
  * awh пространство имён
  */
 namespace awh {
+	/**
+	 * CoreClient Прототип клиентского класса ядра
+	 */
 	class CoreClient;
 	/**
 	 * Core Класс ядра биндинга TCP/IP
 	 */
 	typedef class Core {
 		public:
+			/**
+			 * CoreClient Устанавливаем дружбу с клиентским классом ядра
+			 */
 			friend class CoreClient;
 		protected:
 			/**
@@ -113,6 +120,8 @@ namespace awh {
 			net_t net;
 			// Параметры постоянного подключения
 			alive_t alive;
+			// Мютекс для блокировки потока
+			mutex bloking;
 			// Список активных воркеров
 			map <size_t, const worker_t *> workers;
 		protected:
@@ -189,17 +198,17 @@ namespace awh {
 			 * @param worker воркер для закрытия подключения
 			 */
 			virtual void close(const worker_t * worker) noexcept = 0;
-		protected:
+		public:
 			/**
-			 * getBase Метод получения базы событий
-			 * @return база событий установленная в модуле
+			 * bind Метод подключения модуля ядра к текущей базе событий
+			 * @param core модуль ядра для подключения
 			 */
-			struct event_base * getBase() const noexcept;
+			void bind(Core * core) noexcept;
 			/**
-			 * setBase Метод установки базы событий
-			 * @param base база событий для установки
+			 * unbind Метод отключения модуля ядра от текущей базы событий
+			 * @param core модуль ядра для отключения
 			 */
-			void setBase(struct event_base * base) noexcept;
+			void unbind(Core * core) noexcept;
 		public:
 			/**
 			 * setStopCallback Метод установки функции обратного вызова при завершении работы модуля
@@ -220,11 +229,6 @@ namespace awh {
 			 * start Метод запуска клиента
 			 */
 			virtual void start() noexcept = 0;
-		public:
-			/**
-			 * unlockBase Метод сброса блокировки базы событий
-			 */
-			void unlockBase() noexcept;
 		public:
 			/**
 			 * isStart Метод проверки на запуск бинда TCP/IP
