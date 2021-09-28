@@ -129,6 +129,7 @@ set(SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/src/hash.cpp"
     "${CMAKE_SOURCE_DIR}/src/auth.cpp"
     "${CMAKE_SOURCE_DIR}/src/http.cpp"
+    "${CMAKE_SOURCE_DIR}/src/core.cpp"
     "${CMAKE_SOURCE_DIR}/src/socket.cpp"
     "${CMAKE_SOURCE_DIR}/src/base64.cpp"
     "${CMAKE_SOURCE_DIR}/src/worker.cpp"

@@ -90,7 +90,7 @@ namespace awh {
 			// Создаём объект работы с URI
 			const uri_t * uri = nullptr;
 			// Создаём объект биндинга TCP/IP
-			const core_t * core = nullptr;
+			const ccl_t * core = nullptr;
 			// Создаем объект сети
 			const network_t * nwk = nullptr;
 		private:
@@ -358,7 +358,7 @@ namespace awh {
 			 * @param fmk  объект фреймворка
 			 * @param log  объект для работы с логами
 			 */
-			Rest(const core_t * core, const fmk_t * fmk, const log_t * log) noexcept;
+			Rest(const ccl_t * core, const fmk_t * fmk, const log_t * log) noexcept;
 			/**
 			 * ~Rest Деструктор
 			 */
