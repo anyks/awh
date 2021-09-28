@@ -35,6 +35,16 @@ namespace awh {
 	 * Rest Класс работы с REST клиентом
 	 */
 	typedef class Rest {
+		public:
+			/**
+			 * Основные флаги приложения
+			 */
+			enum class flag_t : u_short {
+				NOTSTOP = 0x01,   // Флаг запрета остановки биндинга
+				WAITMESS = 0x02,  // Флаг ожидания входящих сообщений
+				KEEPALIVE = 0x04, // Флаг автоматического поддержания подключения
+				VERIFYSSL = 0x08  // Флаг выполнения проверки сертификата SSL
+			};
 		private:
 			/**
 			 * Response Структура ответа сервера
@@ -280,30 +290,20 @@ namespace awh {
 			void setWaitTimeDetect(const time_t read, const time_t write) noexcept;
 		public:
 			/**
-			 * setUnbind Метод установки флага анбиндинга
-			 * @param mode флаг анбиндинга после завершения запроса
+			 * setMode Метод установки флага модуля
+			 * @param flag флаг модуля для установки
 			 */
-			void setUnbind(const bool mode) noexcept;
+			void setMode(const u_short flag) noexcept;
 			/**
 			 * setProxy Метод установки прокси-сервера
 			 * @param uri параметры прокси-сервера
 			 */
 			void setProxy(const string & uri) noexcept;
 			/**
-			 * setKeepAlive Метод установки флага автоматического поддержания подключения
-			 * @param mode флаг автоматического поддержания подключения
-			 */
-			void setKeepAlive(const bool mode) noexcept;
-			/**
 			 * setChunkSize Метод установки размера чанка
 			 * @param size размер чанка для установки
 			 */
 			void setChunkSize(const size_t size) noexcept;
-			/**
-			 * setWaitMessage Метод установки флага ожидания входящих сообщений
-			 * @param mode флаг состояния разрешения проверки
-			 */
-			void setWaitMessage(const bool mode) noexcept;
 			/**
 			 * setAttempts Метод установки количества попыток переподключения
 			 * @param count количество попыток переподключения

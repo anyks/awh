@@ -39,22 +39,21 @@ int main(int argc, char * argv[]) noexcept {
 	log.setLogName("REST Client");
 	// Устанавливаем формат времени
 	log.setLogFormat("%H:%M:%S %d.%m.%Y");
-	// Разрешаем верифицировать доменное имя на которое выдан сертификат
-	core.setVerifySSL(true);
-	// Выполняем инициализацию типа авторизации
-	rest.setAuthType();
-	// Выключаем анбиндинг после завершения запроса
-	// rest.setUnbind(false);
-	// Устанавливаем логин и пароль пользователя
-	rest.setUser("user", "password");
+	/**
+	 * 1. Устанавливаем ожидание входящих сообщений
+	 * 2. Устанавливаем валидацию SSL сертификата
+	 */
+	rest.setMode((u_short) rest_t::flag_t::WAITMESS | (u_short) rest_t::flag_t::VERIFYSSL);
 	// Устанавливаем адрес сертификата
 	core.setCA("./ca/cert.pem");
+	// Устанавливаем логин и пароль пользователя
+	rest.setUser("user", "password");
 	// Устанавливаем данные прокси-сервера
 	rest.setProxy("http://B80TWR:uRMhnd@196.17.249.64:8000");
+	// Выполняем инициализацию типа авторизации
+	rest.setAuthType();
 	// Устанавливаем тип авторизации прокси-сервера
 	rest.setAuthTypeProxy();
-	// Устанавливаем ожидание входящих сообщений
-	rest.setWaitMessage(true);
 	// Выполняем получение URL адреса сервера
 	// uri_t::url_t url = uri.parseUrl("https://2ip.ru");
 	// uri_t::url_t url = uri.parseUrl("https://www.anyks.com");

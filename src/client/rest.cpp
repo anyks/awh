@@ -655,12 +655,18 @@ void awh::Rest::setWaitTimeDetect(const time_t read, const time_t write) noexcep
 	this->worker.timeWrite = write;
 }
 /**
- * setUnbind Метод установки флага анбиндинга
- * @param mode флаг анбиндинга после завершения запроса
+ * setMode Метод установки флага модуля
+ * @param flag флаг модуля для установки
  */
-void awh::Rest::setUnbind(const bool mode) noexcept {
+void awh::Rest::setMode(const u_short flag) noexcept {
 	// Устанавливаем флаг анбиндинга
-	this->unbind = mode;
+	this->unbind = !(flag & (u_short) flag_t::NOTSTOP);
+	// Устанавливаем флаг ожидания входящих сообщений
+	this->worker.wait = (flag & (u_short) flag_t::WAITMESS);
+	// Устанавливаем флаг поддержания автоматического подключения
+	this->worker.alive = (flag & (u_short) flag_t::KEEPALIVE);
+	// Выполняем установку флага проверки домена
+	const_cast <core_t *> (this->core)->setVerifySSL(flag & (u_short) flag_t::VERIFYSSL);
 }
 /**
  * setProxy Метод установки прокси-сервера
@@ -690,28 +696,12 @@ void awh::Rest::setProxy(const string & uri) noexcept {
 	}
 }
 /**
- * setKeepAlive Метод установки флага автоматического поддержания подключения
- * @param mode флаг автоматического поддержания подключения
- */
-void awh::Rest::setKeepAlive(const bool mode) noexcept {
-	// Устанавливаем флаг поддержания автоматического подключения
-	this->worker.alive = mode;
-}
-/**
  * setChunkSize Метод установки размера чанка
  * @param size размер чанка для установки
  */
 void awh::Rest::setChunkSize(const size_t size) noexcept {
 	// Устанавливаем размер чанка
 	this->http->setChunkSize(size);
-}
-/**
- * setWaitMessage Метод установки флага ожидания входящих сообщений
- * @param mode флаг состояния разрешения проверки
- */
-void awh::Rest::setWaitMessage(const bool mode) noexcept {
-	// Устанавливаем флаг ожидания входящих сообщений
-	this->worker.wait = mode;
 }
 /**
  * setAttempts Метод установки количества попыток переподключения

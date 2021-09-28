@@ -522,6 +522,65 @@ void awh::Core::close(const worker_t * worker) noexcept {
 	}
 }
 /**
+ * getBase Метод получения базы событий
+ * @return база событий установленная в модуле
+ */
+struct event_base * awh::Core::getBase() const noexcept {
+	// Выводим базу событий используемую в модуле
+	return this->base;
+}
+/**
+ * setBase Метод установки базы событий
+ * @param base база событий для установки
+ */
+void awh::Core::setBase(struct event_base * base) noexcept {
+	// Устанавливаем базу событий
+	this->base = base;
+	// Выполняем блокировку инициализации базы событий
+	this->locker = (this->base != nullptr);
+	// Если блокировка базы событий выполнена
+	if(this->locker){
+		try {
+			// Резолвер IPv4, создаём резолвер
+			if(this->dns4 != nullptr) this->dns4 = new dns_t(this->fmk, this->log, this->nwk, this->base, this->net.v4.second);
+			// Резолвер IPv6, создаём резолвер
+			if(this->dns6 != nullptr) this->dns6 = new dns_t(this->fmk, this->log, this->nwk, this->base, this->net.v6.second);
+			// Если список воркеров существует
+			if(!this->workers.empty()){
+				// Переходим по всему списку воркеров
+				for(auto & worker : this->workers){
+					// Если функция обратного вызова установлена
+					if(worker.second->startFn != nullptr)
+						// Выполняем функцию обратного вызова
+						worker.second->startFn(worker.first, this, worker.second->context);
+				}
+			}
+			// Если функция обратного вызова установлена, выполняем
+			if(this->startFn != nullptr) this->startFn(this->base, this, this->ctx);
+		// Если происходит ошибка то игнорируем её
+		} catch(const bad_alloc&) {
+			// Выводим сообщение об ошибке
+			this->log->print("%s", log_t::flag_t::CRITICAL, "memory could not be allocated");
+		}
+	}
+}
+/**
+ * setStopCallback Метод установки функции обратного вызова при завершении работы модуля
+ * @param callback функция обратного вызова для установки
+ */
+void awh::Core::setStopCallback(function <void (Core * core, void *)> callback) noexcept {
+	// Устанавливаем функцию обратного вызова
+	this->stopFn = callback;
+}
+/**
+ * setStartCallback Метод установки функции обратного вызова при запуске работы модуля
+ * @param callback функция обратного вызова для установки
+ */
+void awh::Core::setStartCallback(function <void (struct event_base *, Core * core, void *)> callback) noexcept {
+	// Устанавливаем функцию обратного вызова
+	this->startFn = callback;
+}
+/**
  * stop Метод остановки клиента
  */
 void awh::Core::stop() noexcept {
@@ -547,7 +606,7 @@ void awh::Core::stop() noexcept {
  */
 void awh::Core::start() noexcept {
 	// Если система ещё не запущена
-	if(!this->mode){
+	if(!this->mode && !this->locker){
 		try {
 			// Разрешаем работу WebSocket
 			this->mode = true;
@@ -557,8 +616,6 @@ void awh::Core::start() noexcept {
 			this->dns4 = new dns_t(this->fmk, this->log, this->nwk, this->base, this->net.v4.second);
 			// Резолвер IPv6, создаём резолвер
 			this->dns6 = new dns_t(this->fmk, this->log, this->nwk, this->base, this->net.v6.second);
-			// Выводим в консоль информацию
-			this->log->print("[+] start service: pid = %u", log_t::flag_t::INFO, getpid());
 			// Если список воркеров существует
 			if(!this->workers.empty()){
 				// Переходим по всему списку воркеров
@@ -569,6 +626,10 @@ void awh::Core::start() noexcept {
 						worker.second->startFn(worker.first, this, worker.second->context);
 				}
 			}
+			// Если функция обратного вызова установлена, выполняем
+			if(this->startFn != nullptr) this->startFn(this->base, this, this->ctx);
+			// Выводим в консоль информацию
+			this->log->print("[+] start service: pid = %u", log_t::flag_t::INFO, getpid());
 			// Запускаем работу базы событий
 			event_base_loop(this->base, EVLOOP_NO_EXIT_ON_EMPTY);
 			// Удаляем dns IPv4 резолвер
@@ -583,6 +644,8 @@ void awh::Core::start() noexcept {
 			event_base_free(this->base);
 			// Очищаем все глобальные переменные
 			libevent_global_shutdown();
+			// Если функция обратного вызова установлена, выполняем
+			if(this->stopFn != nullptr) this->stopFn(this, this->ctx);
 			// Выводим в консоль информацию
 			this->log->print("[-] stop service: pid = %u", log_t::flag_t::INFO, getpid());
 		// Если происходит ошибка то игнорируем её
@@ -591,6 +654,13 @@ void awh::Core::start() noexcept {
 			this->log->print("%s", log_t::flag_t::CRITICAL, "memory could not be allocated");
 		}
 	}
+}
+/**
+ * unlockBase Метод сброса блокировки базы событий
+ */
+void awh::Core::unlockBase() noexcept {
+	// Выполняем сброс блокировки базы событий
+	this->locker = false;
 }
 /**
  * isStart Метод проверки на запуск бинда TCP/IP

@@ -116,9 +116,13 @@ namespace awh {
 		private:
 			// Флаг разрешения работы
 			bool mode = false;
+			// Флаг блокировку инициализации базы событий
+			bool locker = false;
 			// Флаг инициализации WinSock
 			mutable bool winSock = false;
 		private:
+			// Промежуточный контекст
+			void * ctx = nullptr;
 			// Создаём объект для работы с SSL
 			ssl_t * ssl = nullptr;
 			// Создаём объект DNS IPv4 резолвера
@@ -137,6 +141,11 @@ namespace awh {
 		private:
 			// База данных событий
 			struct event_base * base = nullptr;
+		private:
+			// Функция обратного вызова при остановке модуля
+			function <void (Core * core, void *)> stopFn = nullptr;
+			// Функция обратного вызова при запуске модуля
+			function <void (struct event_base *, Core * core, void *)> startFn = nullptr;
 		private:
 			/**
 			 * Если - это Windows
@@ -206,6 +215,28 @@ namespace awh {
 			void close(const worker_t * worker) noexcept;
 		public:
 			/**
+			 * getBase Метод получения базы событий
+			 * @return база событий установленная в модуле
+			 */
+			struct event_base * getBase() const noexcept;
+			/**
+			 * setBase Метод установки базы событий
+			 * @param base база событий для установки
+			 */
+			void setBase(struct event_base * base) noexcept;
+		public:
+			/**
+			 * setStopCallback Метод установки функции обратного вызова при завершении работы модуля
+			 * @param callback функция обратного вызова для установки
+			 */
+			void setStopCallback(function <void (Core * core, void *)> callback) noexcept;
+			/**
+			 * setStartCallback Метод установки функции обратного вызова при запуске работы модуля
+			 * @param callback функция обратного вызова для установки
+			 */
+			void setStartCallback(function <void (struct event_base *, Core * core, void *)> callback) noexcept;
+		public:
+			/**
 			 * stop Метод остановки клиента
 			 */
 			void stop() noexcept;
@@ -213,6 +244,10 @@ namespace awh {
 			 * start Метод запуска клиента
 			 */
 			void start() noexcept;
+			/**
+			 * unlockBase Метод сброса блокировки базы событий
+			 */
+			void unlockBase() noexcept;
 		public:
 			/**
 			 * isStart Метод проверки на запуск бинда TCP/IP
