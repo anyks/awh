@@ -48,22 +48,16 @@ awh::Proxy::~Proxy() noexcept {
 /**
  * clear Метод очистки
  */
-void awh::Worker::clear() noexcept {
-	// Выполняем сброс файлового дескриптора
-	this->fd = -1;
-	// Выполняем очистку объекта запроса
-	this->url.clear();
-	// Выполняем очистку счётчика попыток
-	this->attempts.first = 0;
-	// Выполняем очистку буфера данных
-	memset((void *) this->buffer, 0, BUFFER_CHUNK);
+void awh::WorkerClient::clear() noexcept {
+	// Очищаем данные вокера
+	worker_t::clear();
 	// Устанавливаем тип подключения
 	this->connect = (this->proxy.type != proxy_t::type_t::NONE ? connect_t::PROXY : connect_t::SERVER);
 }
 /**
  * switchConnect Метод переключения типа подключения
  */
-void awh::Worker::switchConnect() noexcept {
+void awh::WorkerClient::switchConnect() noexcept {
 	// Определяем тип подключения
 	switch((u_short) this->connect){
 		// Если подключение выполняется через прокси-сервер
@@ -76,31 +70,7 @@ void awh::Worker::switchConnect() noexcept {
  * isProxy Метод проверки на подключение к прокси-серверу
  * @return результат проверки
  */
-bool awh::Worker::isProxy() const noexcept {
+bool awh::WorkerClient::isProxy() const noexcept {
 	// Выполняем проверку типа подключения
 	return (this->connect == connect_t::PROXY);
-}
-/**
- * Worker Конструктор
- * @param fmk объект фреймворка
- * @param log объект для работы с логами
- */
-awh::Worker::Worker(const fmk_t * fmk, const log_t * log) noexcept : proxy(fmk, log), fmk(fmk), log(log), attempts({0,0}) {
-	try {
-		// Резервируем память для работы с буфером данных WebSocket
-		this->buffer = new char[BUFFER_CHUNK];
-	// Если происходит ошибка то игнорируем её
-	} catch(const bad_alloc&) {
-		// Выводим сообщение об ошибке
-		log->print("%s", log_t::flag_t::CRITICAL, "memory could not be allocated");
-		// Выходим из приложения
-		exit(EXIT_FAILURE);
-	}
-}
-/**
- * ~Worker Деструктор
- */
-awh::Worker::~Worker() noexcept {
-	// Если буфер данных WebSocket создан
-	if(this->buffer != nullptr) delete [] this->buffer;
 }

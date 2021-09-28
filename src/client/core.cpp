@@ -79,7 +79,7 @@ void awh::Core::read(struct bufferevent * bev, void * ctx) noexcept {
 	// Если подключение не передано
 	if((bev != nullptr) && (ctx != nullptr)){
 		// Получаем объект подключения
-		worker_t * wrk = reinterpret_cast <worker_t *> (ctx);
+		wrc_t * wrk = reinterpret_cast <wrc_t *> (ctx);
 		// Если подключение производится через, прокси-сервер
 		if(wrk->isProxy()){
 			// Если функция обратного вызова для вывода записи существует
@@ -113,7 +113,7 @@ void awh::Core::write(struct bufferevent * bev, void * ctx) noexcept {
 	// Если подключение не передано
 	if((bev != nullptr) && (ctx != nullptr)){
 		// Получаем объект подключения
-		worker_t * wrk = reinterpret_cast <worker_t *> (ctx);
+		wrc_t * wrk = reinterpret_cast <wrc_t *> (ctx);
 		// Получаем буферы исходящих данных
 		struct evbuffer * output = bufferevent_get_output(bev);
 		// Получаем размер исходящих данных
@@ -150,7 +150,7 @@ void awh::Core::tuning(struct bufferevent * bev, void * ctx) noexcept {
 	// Если подключение не передано
 	if((bev != nullptr) && (ctx != nullptr)){
 		// Получаем объект подключения
-		worker_t * wrk = reinterpret_cast <worker_t *> (ctx);
+		wrc_t * wrk = reinterpret_cast <wrc_t *> (ctx);
 		// Устанавливаем коллбеки
 		bufferevent_setcb(wrk->bev, &read, &write, &event, wrk);
 		// Очищаем буферы событий при завершении работы
@@ -185,7 +185,7 @@ void awh::Core::event(struct bufferevent * bev, const short events, void * ctx) 
 	// Если подключение не передано
 	if((ctx != nullptr) && (bev != nullptr)){
 		// Получаем объект подключения
-		worker_t * wrk = reinterpret_cast <worker_t *> (ctx);
+		wrc_t * wrk = reinterpret_cast <wrc_t *> (ctx);
 		// Если фреймворк получен
 		if(wrk->core->fmk != nullptr){
 			// Получаем URL параметры запроса
@@ -243,7 +243,7 @@ const bool awh::Core::connect(const worker_t * worker) noexcept {
 		// Объект подключения
 		struct sockaddr * sin = nullptr;
 		// Получаем объект воркера
-		worker_t * wrk = const_cast <worker_t *> (worker);
+		wrc_t * wrk = (wrc_t *) const_cast <worker_t *> (worker);
 		// Получаем URL параметры запроса
 		const uri_t::url_t & url = (wrk->isProxy() ? wrk->proxy.url : wrk->url);
 		// Получаем сокет для подключения к серверу
@@ -487,7 +487,7 @@ void awh::Core::close(const worker_t * worker) noexcept {
 	// Если воркер получен
 	if(worker != nullptr){
 		// Получаем объект воркера
-		worker_t * wrk = const_cast <worker_t *> (worker);
+		wrc_t * wrk = (wrc_t *) const_cast <worker_t *> (worker);
 		// Если сокет существует
 		if(wrk->fd > -1){
 			// Если событие сервера существует
@@ -681,7 +681,7 @@ size_t awh::Core::add(const worker_t * worker) noexcept {
 	// Если воркер передан и URL адрес существует
 	if(worker != nullptr){
 		// Получаем объект воркера
-		worker_t * wrk = const_cast <worker_t *> (worker);
+		wrc_t * wrk = (wrc_t *) const_cast <worker_t *> (worker);
 		// Получаем идентификатор воркера
 		result = (1 + this->workers.size());
 		// Устанавливаем родительский объект
@@ -725,7 +725,7 @@ void awh::Core::open(const size_t wid) noexcept {
 		// Если воркер найден
 		if((it != this->workers.end()) && !it->second->url.empty()){
 			// Получаем объект воркера
-			worker_t * wrk = const_cast <worker_t *> (it->second);
+			wrc_t * wrk = (wrc_t *) const_cast <worker_t *> (it->second);
 			// Получаем URL параметры запроса
 			const uri_t::url_t & url = (wrk->isProxy() ? wrk->proxy.url : wrk->url);
 			/**
@@ -805,7 +805,7 @@ void awh::Core::switchProxy(const size_t wid) noexcept {
 		// Если воркер найден
 		if(it != this->workers.end()){
 			// Получаем объект воркера
-			worker_t * wrk = const_cast <worker_t *> (it->second);
+			wrc_t * wrk = (wrc_t *) const_cast <worker_t *> (it->second);
 			// Выполняем переключение типа подключения
 			wrk->switchConnect();
 			// Выполняем получение контекста сертификата
@@ -843,7 +843,7 @@ void awh::Core::write(const char * buffer, const size_t size, const size_t wid) 
 		// Если воркер найден
 		if(it != this->workers.end()){
 			// Получаем объект воркера
-			worker_t * wrk = const_cast <worker_t *> (it->second);
+			wrc_t * wrk = (wrc_t *) const_cast <worker_t *> (it->second);
 			// Получаем количество байт для детекции
 			const size_t bytes = (wrk->byteWrite > 0 ? wrk->byteWrite : size);
 			// Активируем разрешение на запись и чтение

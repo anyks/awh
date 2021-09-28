@@ -131,6 +131,7 @@ set(SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/src/http.cpp"
     "${CMAKE_SOURCE_DIR}/src/socket.cpp"
     "${CMAKE_SOURCE_DIR}/src/base64.cpp"
+    "${CMAKE_SOURCE_DIR}/src/worker.cpp"
     "${CMAKE_SOURCE_DIR}/src/ws/ws.cpp"
     "${CMAKE_SOURCE_DIR}/src/ws/frame.cpp"
     "${CMAKE_SOURCE_DIR}/src/ws/client.cpp"

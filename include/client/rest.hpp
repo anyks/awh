@@ -64,7 +64,7 @@ namespace awh {
 			// Параметры ответа
 			res_t res;
 			// Объект рабочего
-			worker_t worker;
+			wrc_t worker;
 			// Метод выполняемого запроса
 			http_t::method_t method;
 		private:
