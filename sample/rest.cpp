@@ -50,7 +50,7 @@ int main(int argc, char * argv[]) noexcept {
 	// Устанавливаем адрес сертификата
 	core.setCA("./ca/cert.pem");
 	// Устанавливаем данные прокси-сервера
-	// rest.setProxy("http://B80TWR:uRMhnd@196.17.249.64:8000");
+	rest.setProxy("http://B80TWR:uRMhnd@196.17.249.64:8000");
 	// Устанавливаем тип авторизации прокси-сервера
 	rest.setAuthTypeProxy();
 	// Устанавливаем ожидание входящих сообщений
