@@ -83,6 +83,8 @@ void awh::Rest::closeCallback(const size_t wid, core_t * core, void * ctx) noexc
 				return;
 			}
 		}
+		// Выполняем разблокировку запроса
+		web->locker = false;
 		// Завершаем работу
 		if(web->unbind) core->stop();
 	}
@@ -140,7 +142,7 @@ void awh::Rest::readCallback(const char * buffer, const size_t size, const size_
 			// Устанавливаем код ответа
 			web->res.code = query.code;
 			// Устанавливаем сообщение ответа
-			web->res.mess = query.message;
+			web->res.message = query.message;
 			// Получаем статус авторизации на сервере
 			const auto stath = web->http->getAuth();
 			// Выполняем проверку авторизации
@@ -168,7 +170,7 @@ void awh::Rest::readCallback(const char * buffer, const size_t size, const size_
 					// Устанавливаем код ответа
 					web->res.code = 403;
 					// Устанавливаем сообщение ответа
-					web->res.mess = web->http->getMessage(web->res.code);
+					web->res.message = web->http->getMessage(web->res.code);
 				} break;
 				// Если запрос выполнен удачно
 				case (u_short) http_t::stath_t::GOOD: web->res.ok = true;
@@ -211,7 +213,7 @@ void awh::Rest::readProxyCallback(const char * buffer, const size_t size, const 
 			// Устанавливаем код ответа
 			web->res.code = query.code;
 			// Устанавливаем сообщение ответа
-			web->res.mess = query.message;
+			web->res.message = query.message;
 			// Получаем статус авторизации на сервере
 			const auto stath = web->worker.proxy.http->getAuth();
 			// Выполняем проверку авторизации
@@ -239,7 +241,7 @@ void awh::Rest::readProxyCallback(const char * buffer, const size_t size, const 
 					// Устанавливаем код ответа
 					web->res.code = 403;
 					// Устанавливаем сообщение ответа
-					web->res.mess = web->worker.proxy.http->getMessage(web->res.code);
+					web->res.message = web->worker.proxy.http->getMessage(web->res.code);
 				} break;
 				// Если запрос выполнен удачно
 				case (u_short) http_t::stath_t::GOOD: {
@@ -248,7 +250,7 @@ void awh::Rest::readProxyCallback(const char * buffer, const size_t size, const 
 					// Меняем код ответа на всяккий случай
 					web->res.code = 404;
 					// Устанавливаем сообщение ответа
-					web->res.mess = web->worker.proxy.http->getMessage(web->res.code);
+					web->res.message = web->worker.proxy.http->getMessage(web->res.code);
 					// Выполняем переключение на работу с сервером
 					core->switchProxy(web->worker.wid);
 					// Завершаем работу
@@ -283,7 +285,7 @@ const vector <char> & awh::Rest::GET(const uri_t::url_t & url, const unordered_m
 		// Выполняем REST запрос на сервер
 		const auto & res = this->REST(url, http_t::method_t::GET, {}, headers);
 		// Проверяем на наличие ошибок
-		if(!res.ok) this->log->print("request failed: %u %s", log_t::flag_t::WARNING, res.code, res.mess.c_str());
+		if(!res.ok) this->log->print("request failed: %u %s", log_t::flag_t::WARNING, res.code, res.message.c_str());
 	}
 	// Выводим результат
 	return this->res.entity;
@@ -300,7 +302,7 @@ const vector <char> & awh::Rest::DEL(const uri_t::url_t & url, const unordered_m
 		// Выполняем REST запрос на сервер
 		const auto & res = this->REST(url, http_t::method_t::DELETE, {}, headers);
 		// Проверяем на наличие ошибок
-		if(!res.ok) this->log->print("request failed: %u %s", log_t::flag_t::WARNING, res.code, res.mess.c_str());
+		if(!res.ok) this->log->print("request failed: %u %s", log_t::flag_t::WARNING, res.code, res.message.c_str());
 	}
 	// Выводим результат
 	return this->res.entity;
@@ -322,7 +324,7 @@ const vector <char> & awh::Rest::PUT(const uri_t::url_t & url, const json & enti
 		// Выполняем REST запрос на сервер
 		const auto & res = this->REST(url, http_t::method_t::PUT, vector <char> (body.begin(), body.end()), headers);
 		// Проверяем на наличие ошибок
-		if(!res.ok) this->log->print("request failed: %u %s", log_t::flag_t::WARNING, res.code, res.mess.c_str());
+		if(!res.ok) this->log->print("request failed: %u %s", log_t::flag_t::WARNING, res.code, res.message.c_str());
 	}
 	// Выводим результат
 	return this->res.entity;
@@ -340,7 +342,7 @@ const vector <char> & awh::Rest::PUT(const uri_t::url_t & url, const vector <cha
 		// Выполняем REST запрос на сервер
 		const auto & res = this->REST(url, http_t::method_t::PUT, entity, headers);
 		// Проверяем на наличие ошибок
-		if(!res.ok) this->log->print("request failed: %u %s", log_t::flag_t::WARNING, res.code, res.mess.c_str());
+		if(!res.ok) this->log->print("request failed: %u %s", log_t::flag_t::WARNING, res.code, res.message.c_str());
 	}
 	// Выводим результат
 	return this->res.entity;
@@ -373,7 +375,7 @@ const vector <char> & awh::Rest::PUT(const uri_t::url_t & url, const unordered_m
 		// Выполняем REST запрос на сервер
 		const auto & res = this->REST(url, http_t::method_t::PUT, vector <char> (body.begin(), body.end()), headers);
 		// Проверяем на наличие ошибок
-		if(!res.ok) this->log->print("request failed: %u %s", log_t::flag_t::WARNING, res.code, res.mess.c_str());
+		if(!res.ok) this->log->print("request failed: %u %s", log_t::flag_t::WARNING, res.code, res.message.c_str());
 	}
 	// Выводим результат
 	return this->res.entity;
@@ -395,7 +397,7 @@ const vector <char> & awh::Rest::POST(const uri_t::url_t & url, const json & ent
 		// Выполняем REST запрос на сервер
 		const auto & res = this->REST(url, http_t::method_t::POST, vector <char> (body.begin(), body.end()), headers);
 		// Проверяем на наличие ошибок
-		if(!res.ok) this->log->print("request failed: %u %s", log_t::flag_t::WARNING, res.code, res.mess.c_str());
+		if(!res.ok) this->log->print("request failed: %u %s", log_t::flag_t::WARNING, res.code, res.message.c_str());
 	}
 	// Выводим результат
 	return this->res.entity;
@@ -413,7 +415,7 @@ const vector <char> & awh::Rest::POST(const uri_t::url_t & url, const vector <ch
 		// Выполняем REST запрос на сервер
 		const auto & res = this->REST(url, http_t::method_t::POST, entity, headers);
 		// Проверяем на наличие ошибок
-		if(!res.ok) this->log->print("request failed: %u %s", log_t::flag_t::WARNING, res.code, res.mess.c_str());
+		if(!res.ok) this->log->print("request failed: %u %s", log_t::flag_t::WARNING, res.code, res.message.c_str());
 	}
 	// Выводим результат
 	return this->res.entity;
@@ -446,7 +448,7 @@ const vector <char> & awh::Rest::POST(const uri_t::url_t & url, const unordered_
 		// Выполняем REST запрос на сервер
 		const auto & res = this->REST(url, http_t::method_t::POST, vector <char> (body.begin(), body.end()), headers);
 		// Проверяем на наличие ошибок
-		if(!res.ok) this->log->print("request failed: %u %s", log_t::flag_t::WARNING, res.code, res.mess.c_str());
+		if(!res.ok) this->log->print("request failed: %u %s", log_t::flag_t::WARNING, res.code, res.message.c_str());
 	}
 	// Выводим результат
 	return this->res.entity;
@@ -468,7 +470,7 @@ const vector <char> & awh::Rest::PATCH(const uri_t::url_t & url, const json & en
 		// Выполняем REST запрос на сервер
 		const auto & res = this->REST(url, http_t::method_t::PATCH, vector <char> (body.begin(), body.end()), headers);
 		// Проверяем на наличие ошибок
-		if(!res.ok) this->log->print("request failed: %u %s", log_t::flag_t::WARNING, res.code, res.mess.c_str());
+		if(!res.ok) this->log->print("request failed: %u %s", log_t::flag_t::WARNING, res.code, res.message.c_str());
 	}
 	// Выводим результат
 	return this->res.entity;
@@ -486,7 +488,7 @@ const vector <char> & awh::Rest::PATCH(const uri_t::url_t & url, const vector <c
 		// Выполняем REST запрос на сервер
 		const auto & res = this->REST(url, http_t::method_t::PATCH, entity, headers);
 		// Проверяем на наличие ошибок
-		if(!res.ok) this->log->print("request failed: %u %s", log_t::flag_t::WARNING, res.code, res.mess.c_str());
+		if(!res.ok) this->log->print("request failed: %u %s", log_t::flag_t::WARNING, res.code, res.message.c_str());
 	}
 	// Выводим результат
 	return this->res.entity;
@@ -519,7 +521,7 @@ const vector <char> & awh::Rest::PATCH(const uri_t::url_t & url, const unordered
 		// Выполняем REST запрос на сервер
 		const auto & res = this->REST(url, http_t::method_t::PATCH, vector <char> (body.begin(), body.end()), headers);
 		// Проверяем на наличие ошибок
-		if(!res.ok) this->log->print("request failed: %u %s", log_t::flag_t::WARNING, res.code, res.mess.c_str());
+		if(!res.ok) this->log->print("request failed: %u %s", log_t::flag_t::WARNING, res.code, res.message.c_str());
 	}
 	// Выводим результат
 	return this->res.entity;
@@ -536,7 +538,7 @@ const unordered_multimap <string, string> & awh::Rest::HEAD(const uri_t::url_t &
 		// Выполняем REST запрос на сервер
 		const auto & res = this->REST(url, http_t::method_t::HEAD, {}, headers);
 		// Проверяем на наличие ошибок
-		if(!res.ok) this->log->print("request failed: %u %s", log_t::flag_t::WARNING, res.code, res.mess.c_str());
+		if(!res.ok) this->log->print("request failed: %u %s", log_t::flag_t::WARNING, res.code, res.message.c_str());
 	}
 	// Выводим результат
 	return this->res.headers;
@@ -553,7 +555,7 @@ const unordered_multimap <string, string> & awh::Rest::TRACE(const uri_t::url_t 
 		// Выполняем REST запрос на сервер
 		const auto & res = this->REST(url, http_t::method_t::TRACE, {}, headers);
 		// Проверяем на наличие ошибок
-		if(!res.ok) this->log->print("request failed: %u %s", log_t::flag_t::WARNING, res.code, res.mess.c_str());
+		if(!res.ok) this->log->print("request failed: %u %s", log_t::flag_t::WARNING, res.code, res.message.c_str());
 	}
 	// Выводим результат
 	return this->res.headers;
@@ -570,7 +572,7 @@ const unordered_multimap <string, string> & awh::Rest::OPTIONS(const uri_t::url_
 		// Выполняем REST запрос на сервер
 		const auto & res = this->REST(url, http_t::method_t::OPTIONS, {}, headers);
 		// Проверяем на наличие ошибок
-		if(!res.ok) this->log->print("request failed: %u %s", log_t::flag_t::WARNING, res.code, res.mess.c_str());
+		if(!res.ok) this->log->print("request failed: %u %s", log_t::flag_t::WARNING, res.code, res.message.c_str());
 	}
 	// Выводим результат
 	return this->res.headers;
@@ -590,6 +592,8 @@ const awh::Rest::res_t & awh::Rest::REST(const uri_t::url_t & url, http_t::metho
 		worker.clear();
 		// Устанавливаем URL адрес запроса
 		worker.url = url;
+		// Выполняем блокировку ожидания выполнения запроса
+		this->locker = true;
 		// Устанавливаем метод запроса
 		this->method = method;
 		// Устанавливаем тело запроса
@@ -605,14 +609,14 @@ const awh::Rest::res_t & awh::Rest::REST(const uri_t::url_t & url, http_t::metho
 				// Устанавливаем код сообщения
 				this->res.code = 404;
 				// Получаем само сообщение
-				this->res.mess = this->http->getMessage(this->res.code);
+				this->res.message = this->http->getMessage(this->res.code);
 			}
 		// Если биндинг уже запущен
 		} else {
 			// Выполняем запрос на сервер
 			const_cast <core_t *> (this->core)->open(this->worker.wid);
 			// Ожидаем появление результата
-			while(this->res.code == 0){
+			while(this->locker){
 				/** ... Продолжаем работу до тех, пор пока не получим ответ ... **/
 			}
 		}

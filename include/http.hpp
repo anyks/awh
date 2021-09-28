@@ -51,7 +51,7 @@ namespace awh {
 			/**
 			 * Статусы проверки авторизации
 			 */
-			enum class stath_t: u_short {
+			enum class stath_t : u_short {
 				GOOD,  // Авторизация прошла успешно
 				EMPTY, // Проверка авторизации не проводилась
 				RETRY, // Требуется повторить попытку
@@ -155,7 +155,7 @@ namespace awh {
 			/**
 			 * Стейты работы модуля
 			 */
-			enum class state_t: u_short {
+			enum class state_t : u_short {
 				BODY,     // Режим чтения тела сообщения
 				GOOD,     // Режим завершения сбора данных
 				QUERY,    // Режим ожидания получения запроса
@@ -166,7 +166,7 @@ namespace awh {
 			/**
 			 * Режимы работы модуля
 			 */
-			enum class mode_t: u_short {NONE, REQUEST, RESPONSE};
+			enum class mode_t : u_short {NONE, REQUEST, RESPONSE};
 		protected:
 			// Объект параметров запроса
 			mutable query_t query;

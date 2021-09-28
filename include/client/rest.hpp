@@ -42,13 +42,13 @@ namespace awh {
 			typedef struct Response {
 				bool ok;                                     // Флаг удачного ответа
 				u_short code;                                // Код ответа сервера
-				string mess;                                 // Сообщение ответа сервера
+				string message;                              // Сообщение ответа сервера
 				vector <char> entity;                        // Тело ответа сервера
 				unordered_multimap <string, string> headers; // Заголовки сервера
 				/**
 				 * Response Конструктор
 				 */
-				Response() : ok(false), code(0), mess("") {}
+				Response() : ok(false), code(0), message("") {}
 			} res_t;
 		private:
 			// Параметры ответа
@@ -60,6 +60,8 @@ namespace awh {
 		private:
 			// Выполнять анбиндинг после завершения запроса
 			bool unbind = true;
+			// Локер ожидания завершения запроса
+			bool locker = false;
 			// Флаг проверки аутентификации
 			bool failAuth = false;
 		private:
