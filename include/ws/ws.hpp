@@ -90,9 +90,9 @@ namespace awh {
 			virtual stath_t checkAuth() noexcept = 0;
 		public:
 			/**
-			 * flush Метод очистки собранных данных
+			 * clean Метод очистки собранных данных
 			 */
-			void flush() noexcept;
+			void clean() noexcept;
 		public:
 			/**
 			 * getCompress Метод получения метода сжатия

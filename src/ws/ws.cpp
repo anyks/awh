@@ -69,9 +69,9 @@ const string awh::WS::getHash() const noexcept {
 	return result;
 }
 /**
- * flush Метод очистки собранных данных
+ * clean Метод очистки собранных данных
  */
-void awh::WS::flush() noexcept {
+void awh::WS::clean() noexcept {
 	// Выполняем очистку родительских данных
 	http_t::clear();
 	// Выполняем сброс ключа клиента
