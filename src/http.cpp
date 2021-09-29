@@ -289,12 +289,12 @@ void awh::Http::parse(const char * buffer, const size_t size) noexcept {
 										else if(method.compare("post") == 0) this->query.method = method_t::POST;
 										// Если метод определён как HEAD
 										else if(method.compare("head") == 0) this->query.method = method_t::HEAD;
+										// Если метод определён как DELETE
+										else if(method.compare("delete") == 0) this->query.method = method_t::DEL;
 										// Если метод определён как PATCH
 										else if(method.compare("patch") == 0) this->query.method = method_t::PATCH;
 										// Если метод определён как TRACE
 										else if(method.compare("trace") == 0) this->query.method = method_t::TRACE;
-										// Если метод определён как DELETE
-										else if(method.compare("delete") == 0) this->query.method = method_t::DELETE;
 										// Если метод определён как OPTIONS
 										else if(method.compare("options") == 0) this->query.method = method_t::OPTIONS;
 										// Если метод определён как CONNECT
@@ -1084,7 +1084,7 @@ vector <char> awh::Http::request(const uri_t::url_t & url, const method_t method
 					request = this->fmk->format("TRACE %s HTTP/%.1f\r\n", this->query.uri.c_str(), this->query.ver);
 				break;
 				// Если метод запроса указан как DELETE
-				case (u_short) method_t::DELETE:
+				case (u_short) method_t::DEL:
 					// Формируем DELETE запрос
 					request = this->fmk->format("DELETE %s HTTP/%.1f\r\n", this->query.uri.c_str(), this->query.ver);
 				break;
