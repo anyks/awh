@@ -64,7 +64,7 @@ int main(int argc, char * argv[]) noexcept {
 	log_t log(&fmk);
 	network_t nwk(&fmk);
 	uri_t uri(&fmk, &nwk);
-	ccl_t core(&fmk, &log);
+	ccli_t core(&fmk, &log);
 	rest_t rest(&core, &fmk, &log);
 
 	log.setLogName("REST Client");
@@ -103,7 +103,7 @@ int main(int argc, char * argv[]) noexcept {
 	log_t log(&fmk);
 	network_t nwk(&fmk);
 	uri_t uri(&fmk, &nwk);
-	ccl_t core(&fmk, &log);
+	ccli_t core(&fmk, &log);
 	wcli_t ws(&core, &fmk, &log);
 
 	log.setLogName("WebSocket Client");

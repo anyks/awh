@@ -52,7 +52,7 @@ void awh::WebSocketClient::closeCallback(const size_t wid, core_t * core, void *
 		// Если прокси-сервер активирован но уже переключён на работу с сервером
 		if((ws->worker.proxy.type != proxy_t::type_t::NONE) && !ws->worker.isProxy())
 			// Выполняем переключение обратно на прокси-сервер
-			reinterpret_cast <ccl_t *> (core)->switchProxy(ws->worker.wid);
+			reinterpret_cast <ccli_t *> (core)->switchProxy(ws->worker.wid);
 		// Очищаем буфер фрагментированного сообщения
 		ws->fragmes.clear();
 		// Останавливаем таймер пинга сервера
@@ -385,7 +385,7 @@ void awh::WebSocketClient::readProxyCallback(const char * buffer, const size_t s
 					// Выполняем сброс количество попыток
 					ws->failAuth = false;
 					// Выполняем переключение на работу с сервером
-					reinterpret_cast <ccl_t *> (core)->switchProxy(ws->worker.wid);
+					reinterpret_cast <ccli_t *> (core)->switchProxy(ws->worker.wid);
 					// Завершаем работу
 					return;
 				} break;
@@ -493,7 +493,7 @@ void awh::WebSocketClient::pong(const string & message) noexcept {
 			// Создаём буфер для отправки
 			const auto & buffer = this->frame->pong(message);
 			// Отправляем серверу сообщение
-			((core_t *) const_cast <ccl_t *> (this->core))->write(buffer.data(), buffer.size(), this->worker.wid);
+			((core_t *) const_cast <ccli_t *> (this->core))->write(buffer.data(), buffer.size(), this->worker.wid);
 		}
 	}
 }
@@ -509,7 +509,7 @@ void awh::WebSocketClient::ping(const string & message) noexcept {
 			// Создаём буфер для отправки
 			const auto & buffer = this->frame->ping(message);
 			// Отправляем серверу сообщение
-			((core_t *) const_cast <ccl_t *> (this->core))->write(buffer.data(), buffer.size(), this->worker.wid);
+			((core_t *) const_cast <ccli_t *> (this->core))->write(buffer.data(), buffer.size(), this->worker.wid);
 		}
 	}
 }
@@ -629,13 +629,13 @@ void awh::WebSocketClient::send(const char * message, const size_t size, const b
 						// Создаём буфер для отправки
 						const auto & buffer = this->frame->set(head, data.data(), data.size());
 						// Отправляем серверу сообщение
-						((core_t *) const_cast <ccl_t *> (this->core))->write(buffer.data(), buffer.size(), this->worker.wid);
+						((core_t *) const_cast <ccli_t *> (this->core))->write(buffer.data(), buffer.size(), this->worker.wid);
 					// Если сообщение перед отправкой сжимать не нужно
 					} else {
 						// Создаём буфер для отправки
 						const auto & buffer = this->frame->set(head, message, size);
 						// Отправляем серверу сообщение
-						((core_t *) const_cast <ccl_t *> (this->core))->write(buffer.data(), buffer.size(), this->worker.wid);
+						((core_t *) const_cast <ccli_t *> (this->core))->write(buffer.data(), buffer.size(), this->worker.wid);
 					}
 				}
 			};
@@ -678,9 +678,9 @@ void awh::WebSocketClient::stop() noexcept {
 	// Если подключение выполнено
 	if(this->core->isStart()){
 		// Завершаем работу, если разрешено остановить
-		if(this->unbind) const_cast <ccl_t *> (this->core)->stop();
+		if(this->unbind) const_cast <ccli_t *> (this->core)->stop();
 		// Если завершать работу запрещено, просто отключаемся
-		else ((core_t *) const_cast <ccl_t *> (this->core))->close(this->worker.wid);
+		else ((core_t *) const_cast <ccli_t *> (this->core))->close(this->worker.wid);
 		// Если функция обратного вызова установлена, выполняем
 		if(this->openStopFn != nullptr) this->openStopFn(false, this);
 	}
@@ -703,9 +703,9 @@ void awh::WebSocketClient::start() noexcept {
 		// Если биндинг не запущен, выполняем запуск биндинга
 		if(!this->core->isStart())
 			// Выполняем запуск биндинга
-			const_cast <ccl_t *> (this->core)->start();
+			const_cast <ccli_t *> (this->core)->start();
 		// Выполняем запрос на сервер
-		else const_cast <ccl_t *> (this->core)->open(this->worker.wid);
+		else const_cast <ccli_t *> (this->core)->open(this->worker.wid);
 	}
 }
 /**
@@ -774,7 +774,7 @@ void awh::WebSocketClient::setMode(const u_short flag) noexcept {
 	// Устанавливаем флаг поддержания автоматического подключения
 	this->worker.alive = (flag & (u_short) core_t::flag_t::KEEPALIVE);
 	// Выполняем установку флага проверки домена
-	const_cast <ccl_t *> (this->core)->setVerifySSL(flag & (u_short) core_t::flag_t::VERIFYSSL);
+	const_cast <ccli_t *> (this->core)->setVerifySSL(flag & (u_short) core_t::flag_t::VERIFYSSL);
 }
 /**
  * setProxy Метод установки прокси-сервера
@@ -911,7 +911,7 @@ void awh::WebSocketClient::setAuthTypeProxy(const auth_t::type_t type, const aut
  * @param fmk  объект фреймворка
  * @param log  объект для работы с логами
  */
-awh::WebSocketClient::WebSocketClient(const ccl_t * core, const fmk_t * fmk, const log_t * log) noexcept : core(core), fmk(fmk), log(log), worker(fmk, log) {
+awh::WebSocketClient::WebSocketClient(const ccli_t * core, const fmk_t * fmk, const log_t * log) noexcept : core(core), fmk(fmk), log(log), worker(fmk, log) {
 	try {
 		// Устанавливаем контекст сообщения
 		this->worker.context = this;
@@ -940,7 +940,7 @@ awh::WebSocketClient::WebSocketClient(const ccl_t * core, const fmk_t * fmk, con
 		// Устанавливаем событие на чтение данных с прокси-сервера
 		this->worker.readProxyFn = readProxyCallback;
 		// Добавляем воркер в биндер TCP/IP
-		const_cast <ccl_t *> (this->core)->add(&this->worker);
+		const_cast <ccli_t *> (this->core)->add(&this->worker);
 	// Если происходит ошибка то игнорируем её
 	} catch(const bad_alloc&) {
 		// Выводим сообщение об ошибке

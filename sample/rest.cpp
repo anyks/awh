@@ -32,7 +32,7 @@ int main(int argc, char * argv[]) noexcept {
 	// Создаём объект URI
 	uri_t uri(&fmk, &nwk);
 	// Создаём биндинг
-	ccl_t core(&fmk, &log);
+	ccli_t core(&fmk, &log);
 	// Создаём объект REST запроса
 	rest_t rest(&core, &fmk, &log);
 	// Устанавливаем название сервиса
