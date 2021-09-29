@@ -293,7 +293,7 @@ const vector <char> & awh::Rest::DEL(const uri_t::url_t & url, const unordered_m
 	// Если данные запроса переданы
 	if(!url.empty()){
 		// Выполняем REST запрос на сервер
-		const auto & res = this->REST(url, http_t::method_t::DELETE, {}, headers);
+		const auto & res = this->REST(url, http_t::method_t::DEL, {}, headers);
 		// Проверяем на наличие ошибок
 		if(!res.ok) this->log->print("request failed: %u %s", log_t::flag_t::WARNING, res.code, res.message.c_str());
 	}
