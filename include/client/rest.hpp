@@ -18,7 +18,7 @@
 /**
  * Наши модули
  */
-#include <http.hpp>
+#include <core/http.hpp>
 #include <client/core.hpp>
 
 // Подписываемся на стандартное пространство имён

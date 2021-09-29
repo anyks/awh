@@ -13,7 +13,7 @@
 /**
  * Наши модули
  */
-#include <core.hpp>
+#include <core/core.hpp>
 #include <client/worker.hpp>
 
 // Подписываемся на стандартное пространство имён

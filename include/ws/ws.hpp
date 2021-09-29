@@ -22,8 +22,8 @@
 /**
  * Наши модули
  */
-#include <http.hpp>
 #include <base64.hpp>
+#include <core/http.hpp>
 
 // Подписываемся на стандартное пространство имён
 using namespace std;

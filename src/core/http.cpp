@@ -8,7 +8,7 @@
  */
 
 // Подключаем заголовочный файл
-#include <http.hpp>
+#include <core/http.hpp>
 
 /**
  * date Метод получения текущей даты для HTTP запроса

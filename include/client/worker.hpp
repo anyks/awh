@@ -13,8 +13,8 @@
 /**
  * Наши модули
  */
-#include <http.hpp>
-#include <worker.hpp>
+#include <core/http.hpp>
+#include <core/worker.hpp>
 
 // Подписываемся на стандартное пространство имён
 using namespace std;

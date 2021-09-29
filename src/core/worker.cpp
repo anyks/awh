@@ -8,7 +8,7 @@
  */
 
 // Подключаем заголовочный файл
-#include <worker.hpp>
+#include <core/worker.hpp>
 
 /**
  * clear Метод очистки
