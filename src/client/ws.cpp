@@ -493,7 +493,7 @@ void awh::WebSocketClient::pong(const string & message) noexcept {
 			// Создаём буфер для отправки
 			const auto & buffer = this->frame->pong(message);
 			// Отправляем серверу сообщение
-			const_cast <ccl_t *> (this->core)->write(buffer.data(), buffer.size(), this->worker.wid);
+			((core_t *) const_cast <ccl_t *> (this->core))->write(buffer.data(), buffer.size(), this->worker.wid);
 		}
 	}
 }
@@ -509,7 +509,7 @@ void awh::WebSocketClient::ping(const string & message) noexcept {
 			// Создаём буфер для отправки
 			const auto & buffer = this->frame->ping(message);
 			// Отправляем серверу сообщение
-			const_cast <ccl_t *> (this->core)->write(buffer.data(), buffer.size(), this->worker.wid);
+			((core_t *) const_cast <ccl_t *> (this->core))->write(buffer.data(), buffer.size(), this->worker.wid);
 		}
 	}
 }
@@ -629,13 +629,13 @@ void awh::WebSocketClient::send(const char * message, const size_t size, const b
 						// Создаём буфер для отправки
 						const auto & buffer = this->frame->set(head, data.data(), data.size());
 						// Отправляем серверу сообщение
-						const_cast <ccl_t *> (this->core)->write(buffer.data(), buffer.size(), this->worker.wid);
+						((core_t *) const_cast <ccl_t *> (this->core))->write(buffer.data(), buffer.size(), this->worker.wid);
 					// Если сообщение перед отправкой сжимать не нужно
 					} else {
 						// Создаём буфер для отправки
 						const auto & buffer = this->frame->set(head, message, size);
 						// Отправляем серверу сообщение
-						const_cast <ccl_t *> (this->core)->write(buffer.data(), buffer.size(), this->worker.wid);
+						((core_t *) const_cast <ccl_t *> (this->core))->write(buffer.data(), buffer.size(), this->worker.wid);
 					}
 				}
 			};
@@ -741,17 +741,6 @@ void awh::WebSocketClient::setChunkingFn(function <void (const vector <char> &, 
 	this->http->setChunkingFn(callback);
 }
 /**
- * setBytesDetect Метод детекции сообщений по количеству байт
- * @param read  количество байт для детекции по чтению
- * @param write количество байт для детекции по записи
- */
-void awh::WebSocketClient::setBytesDetect(const size_t read, const size_t write) noexcept {
-	// Устанавливаем количество байт на чтение
-	this->worker.byteRead = read;
-	// Устанавливаем количество байт на запись
-	this->worker.byteWrite = write;
-}
-/**
  * setWaitTimeDetect Метод детекции сообщений по количеству секунд
  * @param read  количество секунд для детекции по чтению
  * @param write количество секунд для детекции по записи
@@ -761,6 +750,17 @@ void awh::WebSocketClient::setWaitTimeDetect(const time_t read, const time_t wri
 	this->worker.timeRead = read;
 	// Устанавливаем количество секунд на запись
 	this->worker.timeWrite = write;
+}
+/**
+ * setBytesDetect Метод детекции сообщений по количеству байт
+ * @param read  количество байт для детекции по чтению
+ * @param write количество байт для детекции по записи
+ */
+void awh::WebSocketClient::setBytesDetect(const worker_t::mark_t read, const worker_t::mark_t write) noexcept {
+	// Устанавливаем количество байт на чтение
+	this->worker.markRead = read;
+	// Устанавливаем количество байт на запись
+	this->worker.markWrite = write;
 }
 /**
  * setMode Метод установки флага модуля

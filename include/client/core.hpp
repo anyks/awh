@@ -60,28 +60,6 @@ namespace awh {
 			 * @return       результат подключения
 			 */
 			bool connect(const worker_t * worker) noexcept;
-		private:
-			/**
-			 * close Метод закрытия подключения воркера
-			 * @param worker воркер для закрытия подключения
-			 */
-			void close(const worker_t * worker) noexcept;
-		public:
-			/**
-			 * stop Метод остановки клиента
-			 */
-			void stop() noexcept;
-			/**
-			 * start Метод запуска клиента
-			 */
-			void start() noexcept;
-		public:
-			/**
-			 * add Метод добавления воркера в биндинг
-			 * @param worker воркер для добавления
-			 * @return       идентификатор воркера в биндинге
-			 */
-			size_t add(const worker_t * worker) noexcept;
 		public:
 			/**
 			 * open Метод открытия подключения воркером
@@ -93,13 +71,6 @@ namespace awh {
 			 * @param wid идентификатор воркера
 			 */
 			void switchProxy(const size_t wid) noexcept;
-			/**
-			 * write Метод записи буфера данных воркером
-			 * @param buffer буфер для записи данных
-			 * @param size   размер записываемых данных
-			 * @param wid    идентификатор воркера
-			 */
-			void write(const char * buffer, const size_t size, const size_t wid) noexcept;
 		public:
 			/**
 			 * CoreClient Конструктор

@@ -98,19 +98,19 @@ void awh::CoreClient::tuning(struct bufferevent * bev, void * ctx) noexcept {
 		// Если флаг ожидания входящих сообщений, активирован
 		if(wrk->wait){
 			// Устанавливаем таймаут ожидания поступления данных
-			struct timeval readTimeout = {wrk->timeRead, 0};
+			struct timeval read = {wrk->timeRead, 0};
 			// Устанавливаем таймаут ожидания записи данных
-			struct timeval writeTimeout = {wrk->timeWrite, 0};
+			struct timeval write = {wrk->timeWrite, 0};
 			// Устанавливаем таймаут получения данных
-			bufferevent_set_timeouts(wrk->bev, &readTimeout, &writeTimeout);
+			bufferevent_set_timeouts(wrk->bev, &read, &write);
 		}
 		/**
 		 * Водяной знак на N байт (чтобы считывать данные когда они действительно приходят)
 		 */
 		// Устанавливаем размер считываемых данных
-		bufferevent_setwatermark(wrk->bev, EV_READ, 0, wrk->byteRead);
+		bufferevent_setwatermark(wrk->bev, EV_READ, wrk->markRead.min, wrk->markRead.max);
 		// Устанавливаем размер записываемых данных
-		bufferevent_setwatermark(wrk->bev, EV_WRITE, 0, wrk->byteWrite);
+		bufferevent_setwatermark(wrk->bev, EV_WRITE, wrk->markWrite.min, wrk->markWrite.max);
 		// Активируем буферы событий на чтение и запись
 		bufferevent_enable(wrk->bev, EV_READ | EV_WRITE);
 	}
@@ -197,13 +197,13 @@ bool awh::CoreClient::connect(const worker_t * worker) noexcept {
 			// Если SSL клиент разрешен
 			if(wrk->ssl.mode){
 				// Создаем буфер событий для сервера зашифрованного подключения
-				// wrk->bev = bufferevent_openssl_socket_new(this->base, wrk->fd, wrk->ssl.ssl, BUFFEREVENT_SSL_CONNECTING, BEV_OPT_THREADSAFE);
-				wrk->bev = bufferevent_openssl_socket_new(this->base, wrk->fd, wrk->ssl.ssl, BUFFEREVENT_SSL_CONNECTING, BEV_OPT_THREADSAFE | BEV_OPT_DEFER_CALLBACKS);
+				wrk->bev = bufferevent_openssl_socket_new(this->base, wrk->fd, wrk->ssl.ssl, BUFFEREVENT_SSL_CONNECTING, BEV_OPT_THREADSAFE);
+				// wrk->bev = bufferevent_openssl_socket_new(this->base, wrk->fd, wrk->ssl.ssl, BUFFEREVENT_SSL_CONNECTING, BEV_OPT_THREADSAFE | BEV_OPT_DEFER_CALLBACKS);
 				// Разрешаем непредвиденное грязное завершение работы
 				bufferevent_openssl_set_allow_dirty_shutdown(wrk->bev, 1);
 			// Создаем буфер событий для сервера
-			// } else wrk->bev = bufferevent_socket_new(this->base, wrk->fd, BEV_OPT_THREADSAFE);
-			} else wrk->bev = bufferevent_socket_new(this->base, wrk->fd, BEV_OPT_THREADSAFE | BEV_OPT_DEFER_CALLBACKS);
+			} else wrk->bev = bufferevent_socket_new(this->base, wrk->fd, BEV_OPT_THREADSAFE);
+			// } else wrk->bev = bufferevent_socket_new(this->base, wrk->fd, BEV_OPT_THREADSAFE | BEV_OPT_DEFER_CALLBACKS);
 			// Если буфер событий создан
 			if(wrk->bev != nullptr){
 				// Выполняем тюннинг буфера событий
@@ -270,151 +270,6 @@ bool awh::CoreClient::connect(const worker_t * worker) noexcept {
 			}
 		}
 	}
-	// Выводим результат
-	return result;
-}
-/**
- * close Метод закрытия подключения воркера
- * @param worker воркер для закрытия подключения
- */
-void awh::CoreClient::close(const worker_t * worker) noexcept {
-	// Если воркер получен
-	if(worker != nullptr){
-		// Получаем объект воркера
-		wrc_t * wrk = (wrc_t *) const_cast <worker_t *> (worker);
-		// Если сокет существует
-		if(wrk->fd > -1){
-			// Если событие сервера существует
-			if(wrk->bev != nullptr){
-				// Запрещаем чтение запись данных серверу
-				bufferevent_disable(wrk->bev, EV_WRITE | EV_READ);
-				// Если - это Windows
-				#if defined(_WIN32) || defined(_WIN64)
-					// Отключаем подключение для сокета
-					if(wrk->fd > 0) shutdown(wrk->fd, SD_BOTH);
-				// Если - это Unix
-				#else
-					// Отключаем подключение для сокета
-					if(wrk->fd > 0) shutdown(wrk->fd, SHUT_RDWR);
-				#endif
-				// Закрываем подключение
-				if(wrk->fd > 0) evutil_closesocket(wrk->fd);
-				// Удаляем буфер события
-				bufferevent_free(wrk->bev);
-				// Устанавливаем что событие удалено
-				wrk->bev = nullptr;
-			}
-			// Выполняем удаление контекста SSL
-			this->ssl->clear(wrk->ssl);
-			// Выполняем сброс файлового дескриптора
-			wrk->fd = -1;
-			// Выводим сообщение об ошибке
-			this->log->print("%s", log_t::flag_t::INFO, "disconnected from the server");
-			// Выводим функцию обратного вызова
-			if(wrk->closeFn != nullptr) wrk->closeFn(wrk->wid, this, wrk->context);
-		}
-	}
-}
-/**
- * stop Метод остановки клиента
- */
-void awh::CoreClient::stop() noexcept {
-	// Если система уже запущена
-	if(this->mode){
-		// Запрещаем работу WebSocket
-		this->mode = false;
-		// Выполняем отключение всех воркеров
-		this->closeAll();
-		// Выполняем удаление всех воркеров
-		this->removeAll();
-		// Завершаем работу базы событий
-		event_base_loopbreak(this->base);
-		// Если - это Windows
-		#if defined(_WIN32) || defined(_WIN64)
-			// Очищаем сетевой контекст
-			this->winSocketClean();
-		#endif
-	}
-}
-/**
- * start Метод запуска клиента
- */
-void awh::CoreClient::start() noexcept {
-	// Если система ещё не запущена
-	if(!this->mode && !this->locker){
-		try {
-			// Разрешаем работу WebSocket
-			this->mode = true;
-			// Создаем новую базу
-			this->base = event_base_new();
-			// Резолвер IPv4, создаём резолвер
-			this->dns4 = new dns_t(this->fmk, this->log, this->nwk, this->base, this->net.v4.second);
-			// Резолвер IPv6, создаём резолвер
-			this->dns6 = new dns_t(this->fmk, this->log, this->nwk, this->base, this->net.v6.second);
-			// Если список воркеров существует
-			if(!this->workers.empty()){
-				// Переходим по всему списку воркеров
-				for(auto & worker : this->workers){
-					// Если функция обратного вызова установлена
-					if(worker.second->startFn != nullptr)
-						// Выполняем функцию обратного вызова
-						worker.second->startFn(worker.first, this, worker.second->context);
-				}
-			}
-			// Если функция обратного вызова установлена, выполняем
-			if(this->startFn != nullptr) this->startFn(this->base, this, this->ctx);
-			// Выводим в консоль информацию
-			this->log->print("[+] start service: pid = %u", log_t::flag_t::INFO, getpid());
-			// Запускаем работу базы событий
-			event_base_loop(this->base, EVLOOP_NO_EXIT_ON_EMPTY);
-			// Удаляем dns IPv4 резолвер
-			delete this->dns4;
-			// Удаляем dns IPv6 резолвер
-			delete this->dns6;
-			// Зануляем DNS IPv4 объект
-			this->dns4 = nullptr;
-			// Зануляем DNS IPv6 объект
-			this->dns6 = nullptr;
-			// Удаляем объект базы событий
-			event_base_free(this->base);
-			// Очищаем все глобальные переменные
-			libevent_global_shutdown();
-			// Если функция обратного вызова установлена, выполняем
-			if(this->stopFn != nullptr) this->stopFn(this, this->ctx);
-			// Выводим в консоль информацию
-			this->log->print("[-] stop service: pid = %u", log_t::flag_t::INFO, getpid());
-		// Если происходит ошибка то игнорируем её
-		} catch(const bad_alloc&) {
-			// Выводим сообщение об ошибке
-			this->log->print("%s", log_t::flag_t::CRITICAL, "memory could not be allocated");
-		}
-	}
-}
-/**
- * add Метод добавления воркера в биндинг
- * @param worker воркер для добавления
- * @return       идентификатор воркера в биндинге
- */
-size_t awh::CoreClient::add(const worker_t * worker) noexcept {
-	// Результат работы функции
-	size_t result = 0;
-	// Выполняем блокировку потока
-	this->bloking.lock();
-	// Если воркер передан и URL адрес существует
-	if(worker != nullptr){
-		// Получаем объект воркера
-		wrc_t * wrk = (wrc_t *) const_cast <worker_t *> (worker);
-		// Получаем идентификатор воркера
-		result = (1 + this->workers.size());
-		// Устанавливаем родительский объект
-		wrk->core = this;
-		// Устанавливаем идентификатор воркера
-		wrk->wid = result;
-		// Добавляем воркер в список
-		this->workers.emplace(result, wrk);
-	}
-	// Выполняем разблокировку потока
-	this->bloking.unlock();
 	// Выводим результат
 	return result;
 }
@@ -505,32 +360,6 @@ void awh::CoreClient::switchProxy(const size_t wid) noexcept {
 				}
 			// Выполняем функцию обратного вызова
 			} else if(wrk->openFn != nullptr) wrk->openFn(wrk->wid, this, wrk->context);
-		}
-	}
-}
-/**
- * write Метод записи буфера данных воркером
- * @param buffer буфер для записи данных
- * @param size   размер записываемых данных
- * @param wid    идентификатор воркера
- */
-void awh::CoreClient::write(const char * buffer, const size_t size, const size_t wid) noexcept {
-	// Если данные переданы
-	if((buffer != nullptr) && (size > 0) && (wid > 0)){
-		// Выполняем поиск воркера
-		auto it = this->workers.find(wid);
-		// Если воркер найден
-		if(it != this->workers.end()){
-			// Получаем объект воркера
-			wrc_t * wrk = (wrc_t *) const_cast <worker_t *> (it->second);
-			// Получаем количество байт для детекции
-			const size_t bytes = (wrk->byteWrite > 0 ? wrk->byteWrite : size);
-			// Активируем разрешение на запись и чтение
-			bufferevent_enable(wrk->bev, EV_WRITE | EV_READ);
-			// Устанавливаем размер записываемых данных
-			bufferevent_setwatermark(wrk->bev, EV_WRITE, bytes, bytes);
-			// Отправляем серверу сообщение
-			bufferevent_write(wrk->bev, buffer, size);
 		}
 	}
 }

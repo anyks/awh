@@ -241,17 +241,17 @@ namespace awh {
 			void setChunkingFn(function <void (const vector <char> &, const http_t *)> callback) noexcept;
 		public:
 			/**
-			 * setBytesDetect Метод детекции сообщений по количеству байт
-			 * @param read  количество байт для детекции по чтению
-			 * @param write количество байт для детекции по записи
-			 */
-			void setBytesDetect(const size_t read, const size_t write) noexcept;
-			/**
 			 * setWaitTimeDetect Метод детекции сообщений по количеству секунд
 			 * @param read  количество секунд для детекции по чтению
 			 * @param write количество секунд для детекции по записи
 			 */
 			void setWaitTimeDetect(const time_t read, const time_t write) noexcept;
+			/**
+			 * setBytesDetect Метод детекции сообщений по количеству байт
+			 * @param read  количество байт для детекции по чтению
+			 * @param write количество байт для детекции по записи
+			 */
+			void setBytesDetect(const worker_t::mark_t read, const worker_t::mark_t write) noexcept;
 		public:
 			/**
 			 * setMode Метод установки флага модуля

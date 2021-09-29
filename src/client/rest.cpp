@@ -626,17 +626,6 @@ void awh::Rest::setChunkingFn(function <void (const vector <char> &, const http_
 	this->http->setChunkingFn(callback);
 }
 /**
- * setBytesDetect Метод детекции сообщений по количеству байт
- * @param read  количество байт для детекции по чтению
- * @param write количество байт для детекции по записи
- */
-void awh::Rest::setBytesDetect(const size_t read, const size_t write) noexcept {
-	// Устанавливаем количество байт на чтение
-	this->worker.byteRead = read;
-	// Устанавливаем количество байт на запись
-	this->worker.byteWrite = write;
-}
-/**
  * setWaitTimeDetect Метод детекции сообщений по количеству секунд
  * @param read  количество секунд для детекции по чтению
  * @param write количество секунд для детекции по записи
@@ -646,6 +635,17 @@ void awh::Rest::setWaitTimeDetect(const time_t read, const time_t write) noexcep
 	this->worker.timeRead = read;
 	// Устанавливаем количество секунд на запись
 	this->worker.timeWrite = write;
+}
+/**
+ * setBytesDetect Метод детекции сообщений по количеству байт
+ * @param read  количество байт для детекции по чтению
+ * @param write количество байт для детекции по записи
+ */
+void awh::Rest::setBytesDetect(const worker_t::mark_t read, const worker_t::mark_t write) noexcept {
+	// Устанавливаем количество байт на чтение
+	this->worker.markRead = read;
+	// Устанавливаем количество байт на запись
+	this->worker.markWrite = write;
 }
 /**
  * setMode Метод установки флага модуля

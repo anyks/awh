@@ -39,22 +39,36 @@ namespace awh {
 	 */
 	typedef struct Worker {
 		public:
+			/**
+			 * Mark Структура маркера на размер детектируемых байт
+			 */
+			typedef struct Mark {
+				size_t min; // Минимальный размер детектируемых байт
+				size_t max; // Максимальный размер детектируемых байт
+				/**
+				 * Mark Конструктор
+				 */
+				Mark() : min(0), max(0) {}
+			} __attribute__((packed)) mark_t;
+		public:
 			// Параметры адреса для запроса
 			uri_t::url_t url;
 			// Контекст SSL для работы с защищённым подключением
 			ssl_t::ctx_t ssl;
+		public:
+			// Маркера размера детектируемых байт на чтение
+			mark_t markRead;
+			// Маркера размера детектируемых байт на запись
+			mark_t markWrite;
+		public:
+			// Идентификатор воркера
+			size_t wid = 0;
 		public:
 			// Флаг ожидания входящих сообщений
 			bool wait = false;
 			// Флаг автоматического поддержания подключения
 			bool alive = false;
 		public:
-			// Идентификатор воркера
-			size_t wid = 0;
-			// Размер байт на чтение
-			size_t byteRead = 0;
-			// Размер байт на запись
-			size_t byteWrite = 0;
 			// Таймер на чтение в секундах
 			time_t timeRead = READ_TIMEOUT;
 			// Таймер на запись в секундах

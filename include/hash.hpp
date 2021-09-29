@@ -70,7 +70,7 @@ namespace awh {
 				 * StateAES Конструктор
 				 */
 				StateAES() : num(0) {}
-			} stateAES;
+			} __attribute__((packed)) stateAES;
 		public:
 			// Уровень сжатия
 			u_int levelGzip = Z_DEFAULT_COMPRESSION;

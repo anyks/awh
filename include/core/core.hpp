@@ -70,6 +70,10 @@ namespace awh {
 	typedef class Core {
 		public:
 			/**
+			 * Основные методы режимов работы
+			 */
+			enum class method_t : u_short {READ, WRITE};
+			/**
 			 * Основные флаги приложения
 			 */
 			enum class flag_t : u_short {
@@ -95,7 +99,7 @@ namespace awh {
 				 * KeepAlive Конструктор
 				 */
 				KeepAlive() : keepcnt(3), keepidle(1), keepintvl(2) {}
-			} alive_t;
+			} __attribute__((packed)) alive_t;
 			/**
 			 * Network Структура текущих параметров сети
 			 */
@@ -207,7 +211,7 @@ namespace awh {
 			 * close Метод закрытия подключения воркера
 			 * @param worker воркер для закрытия подключения
 			 */
-			virtual void close(const worker_t * worker) noexcept = 0;
+			void close(const worker_t * worker) noexcept;
 		public:
 			/**
 			 * bind Метод подключения модуля ядра к текущей базе событий
@@ -234,11 +238,11 @@ namespace awh {
 			/**
 			 * stop Метод остановки клиента
 			 */
-			virtual void stop() noexcept = 0;
+			virtual void stop() noexcept;
 			/**
 			 * start Метод запуска клиента
 			 */
-			virtual void start() noexcept = 0;
+			virtual void start() noexcept;
 		public:
 			/**
 			 * isStart Метод проверки на запуск бинда TCP/IP
@@ -251,7 +255,7 @@ namespace awh {
 			 * @param worker воркер для добавления
 			 * @return       идентификатор воркера в биндинге
 			 */
-			virtual size_t add(const worker_t * worker) noexcept = 0;
+			size_t add(const worker_t * worker) noexcept;
 		public:
 			/**
 			 * closeAll Метод отключения всех воркеров
@@ -263,6 +267,11 @@ namespace awh {
 			void removeAll() noexcept;
 		public:
 			/**
+			 * open Метод открытия подключения воркером
+			 * @param wid идентификатор воркера
+			 */
+			virtual void open(const size_t wid) noexcept;
+			/**
 			 * close Метод закрытия подключения воркером
 			 * @param wid идентификатор воркера
 			 */
@@ -272,18 +281,36 @@ namespace awh {
 			 * @param wid идентификатор воркера
 			 */
 			virtual void remove(const size_t wid) noexcept;
-			/**
-			 * open Метод открытия подключения воркером
-			 * @param wid идентификатор воркера
-			 */
-			virtual void open(const size_t wid) noexcept = 0;
+		public:
 			/**
 			 * write Метод записи буфера данных воркером
 			 * @param buffer буфер для записи данных
 			 * @param size   размер записываемых данных
 			 * @param wid    идентификатор воркера
 			 */
-			virtual void write(const char * buffer, const size_t size, const size_t wid) noexcept = 0;
+			void write(const char * buffer, const size_t size, const size_t wid) noexcept;
+			/**
+			 * setLockMethod Метод блокировки метода режима работы
+			 * @param method метод режима работы
+			 * @param mode   флаг блокировки метода
+			 * @param wid    идентификатор воркера
+			 */
+			void setLockMethod(const method_t method, const bool mode, const size_t wid) noexcept;
+			/**
+			 * setTimeout Метод установки таймаута ожидания появления данных
+			 * @param method  метод режима работы
+			 * @param seconds время ожидания в секундах
+			 * @param wid     идентификатор воркера
+			 */
+			void setTimeout(const method_t method, const time_t seconds, const size_t wid) noexcept;
+			/**
+			 * setMark Метод установки маркера на размер детектируемых байт
+			 * @param method метод режима работы
+			 * @param min    минимальный размер детектируемых байт
+			 * @param min    максимальный размер детектируемых байт
+			 * @param wid    идентификатор воркера
+			 */
+			void setMark(const method_t method, const size_t min, const size_t max, const size_t wid) noexcept;
 		public:
 			/**
 			 * setVerifySSL Метод разрешающий или запрещающий, выполнять проверку соответствия, сертификата домену
