@@ -84,8 +84,19 @@ void awh::Rest::closeCallback(const size_t wid, core_t * core, void * ctx) noexc
 			// Выходим из функции
 			return;
 		}
-		// Выполняем разблокировку запроса
-		web->locker = false;
+		// Если код пришёл нулевой, восстанавливаем его
+		if(web->res.code == 0){
+			// Устанавливаем код сообщения
+			web->res.code = 404;
+			// Получаем само сообщение
+			web->res.message = web->http->getMessage(web->res.code);
+		}
+		// Если функция обратного вызова установлена, выводим сообщение
+		if(web->messageFn != nullptr)
+			// Выполняем функцию обратного вызова
+			web->messageFn(web->res, web->ctx);
+		// Иначе добавляем результат в промис
+		else web->locker.set_value();
 		// Завершаем работу
 		if(web->unbind) core->stop();
 	}
@@ -581,8 +592,6 @@ const unordered_multimap <string, string> & awh::Rest::OPTIONS(const uri_t::url_
 const awh::Rest::res_t & awh::Rest::REST(const uri_t::url_t & url, http_t::method_t method, const vector <char> & entity, const unordered_multimap <string, string> & headers) noexcept {
 	// Если параметры и метод запроса переданы
 	if(!url.empty() && (method != http_t::method_t::NONE)){
-		// Выполняем блокировку ожидания выполнения запроса
-		this->locker = true;
 		// Выполняем очистку воркера
 		this->worker.clear();
 		// Устанавливаем метод запроса
@@ -594,24 +603,21 @@ const awh::Rest::res_t & awh::Rest::REST(const uri_t::url_t & url, http_t::metho
 		// Запоминаем переданные заголовки
 		this->headers = &headers;
 		// Если биндинг не запущен
-		if(!this->core->isStart()){
+		if(!this->core->isStart())
 			// Выполняем запуск биндинга
 			const_cast <ccli_t *> (this->core)->start();
-			// Если код пришёл нулевой, восстанавливаем его
-			if(this->res.code == 0){
-				// Устанавливаем код сообщения
-				this->res.code = 404;
-				// Получаем само сообщение
-				this->res.message = this->http->getMessage(this->res.code);
-			}
-		// Если биндинг уже запущен
-		} else {
-			// Выполняем запрос на сервер
-			const_cast <ccli_t *> (this->core)->open(this->worker.wid);
-			// Ожидаем появление результата
-			while(this->locker){
-				/** ... Продолжаем работу до тех, пор пока не получим ответ ... **/
-			}
+		// Если биндинг уже запущен, выполняем запрос на сервер
+		else {
+			// Если функция обратного вызова не установлена
+			if(this->messageFn == nullptr){
+				// Создаём модуль ожидания
+				future <void> waiter = this->locker.get_future();
+				// Выполняем запрос на сервер
+				const_cast <ccli_t *> (this->core)->open(this->worker.wid);
+				// Выполняем ожидание получения данных
+				waiter.wait();
+			// Иначе просто, выполняем запрос на сервер
+			} else const_cast <ccli_t *> (this->core)->open(this->worker.wid);
 		}
 	}
 	// Выводим результат
@@ -646,6 +652,17 @@ void awh::Rest::setBytesDetect(const worker_t::mark_t read, const worker_t::mark
 	this->worker.markRead = read;
 	// Устанавливаем количество байт на запись
 	this->worker.markWrite = write;
+}
+/**
+ * setMessageCallback Метод установки функции обратного вызова при получении сообщения
+ * @param ctx      контекст для вывода в сообщении
+ * @param callback функция обратного вызова
+ */
+void awh::Rest::setMessageCallback(void * ctx, function <void (const res_t &, void *)> callback) noexcept {
+	// Устанавливаем контекст передаваемого объекта
+	this->ctx = ctx;
+	// Устанавливаем функцию обратного вызова
+	this->messageFn = callback;
 }
 /**
  * setMode Метод установки флага модуля

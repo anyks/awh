@@ -13,6 +13,9 @@
 /**
  * Стандартная библиотека
  */
+#include <chrono>
+#include <future>
+#include <functional>
 #include <nlohmann/json.hpp>
 
 /**
@@ -58,10 +61,11 @@ namespace awh {
 			// Метод выполняемого запроса
 			http_t::method_t method;
 		private:
+			// Создаём промис ожидания ответа
+			promise <void> locker;
+		private:
 			// Выполнять анбиндинг после завершения запроса
 			bool unbind = true;
-			// Локер ожидания завершения запроса
-			bool locker = false;
 			// Флаг проверки аутентификации
 			bool failAuth = false;
 		private:
@@ -69,6 +73,9 @@ namespace awh {
 			const vector <char> * entity = nullptr;
 			// Список заголовков запроса (если требуется)
 			const unordered_multimap <string, string> * headers = nullptr;
+		private:
+			// Контекст передаваемого объекта
+			void * ctx = nullptr;
 		private:
 			// Создаём объект для работы с HTTP
 			http_t * http = nullptr;
@@ -83,6 +90,9 @@ namespace awh {
 			const ccli_t * core = nullptr;
 			// Создаем объект для работы с сетью
 			const network_t * nwk = nullptr;
+		private:
+			// messageFn Функция обратного вызова, вывода сообщения при его получении
+			function <void (const res_t &, void *)> messageFn = nullptr;
 		private:
 			/**
 			 * chunking Метод обработки получения чанков
@@ -278,6 +288,13 @@ namespace awh {
 			 * @param write количество байт для детекции по записи
 			 */
 			void setBytesDetect(const worker_t::mark_t read, const worker_t::mark_t write) noexcept;
+		public:
+			/**
+			 * setMessageCallback Метод установки функции обратного вызова при получении сообщения
+			 * @param ctx      контекст для вывода в сообщении
+			 * @param callback функция обратного вызова
+			 */
+			void setMessageCallback(void * ctx, function <void (const res_t &, void *)> callback) noexcept;
 		public:
 			/**
 			 * setMode Метод установки флага модуля
