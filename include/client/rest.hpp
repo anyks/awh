@@ -13,7 +13,6 @@
 /**
  * Стандартная библиотека
  */
-#include <chrono>
 #include <future>
 #include <functional>
 #include <nlohmann/json.hpp>
