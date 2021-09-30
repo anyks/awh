@@ -104,7 +104,7 @@ if [ ! -f "$src/.stamp_done" ]; then
 	# Закачиваем все теги
 	git fetch --all --tags
 	# Удаляем старую ветку
-	git branch -d v1.1.1${ver}-branch
+	git branch -D v1.1.1${ver}-branch
 	# Выполняем переключение на указанную версию
 	git checkout tags/OpenSSL_1_1_1${ver} -b v1.1.1${ver}-branch
 
@@ -144,7 +144,7 @@ if [ ! -f "$src/.stamp_done" ]; then
 	# Закачиваем все теги
 	git fetch --all --tags
 	# Удаляем старую ветку
-	git branch -d v${ver}-branch
+	git branch -D v${ver}-branch
 	# Выполняем переключение на указанную версию
 	git checkout tags/v${ver} -b v${ver}-branch
 
@@ -196,7 +196,7 @@ if [ ! -f "$src/.stamp_done" ]; then
 	# Закачиваем все теги
 	git fetch --all --tags
 	# Удаляем старую ветку
-	git branch -d v${ver}-branch
+	git branch -D v${ver}-branch
 	# Выполняем переключение на указанную версию
 	git checkout tags/v${ver} -b v${ver}-branch
 
@@ -255,7 +255,7 @@ if [ ! -f "$src/.stamp_done" ]; then
 	# Закачиваем все теги
 	git fetch --all --tags
 	# Удаляем старую ветку
-	git branch -d v${ver}-branch
+	git branch -D v${ver}-branch
 	# Выполняем переключение на указанную версию
 	git checkout tags/release-${ver}-stable -b v${ver}-branch
 
