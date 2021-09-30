@@ -184,18 +184,18 @@ if (ENABLE_CONSOLE_APP)
     add_executable(${CLIENT_APP_NAME} sample/ws.cpp ${RES_FILES})
 
     target_link_libraries(${REST_APP_NAME}
+        ${CURRENT_LIB_NAME}
         ${ZLIB_LIBRARY}
         ${BROTLI_LIBRARIES}
-        ${CURRENT_LIB_NAME}
         ${OPENSSL_LIBRARIES}
         ${LIBEVENT_LIBRARIES}
         ${WINFLAGS}
     )
 
     target_link_libraries(${CLIENT_APP_NAME}
+        ${CURRENT_LIB_NAME}
         ${ZLIB_LIBRARY}
         ${BROTLI_LIBRARIES}
-        ${CURRENT_LIB_NAME}
         ${OPENSSL_LIBRARIES}
         ${LIBEVENT_LIBRARIES}
         ${WINFLAGS}
