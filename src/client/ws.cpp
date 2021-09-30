@@ -444,6 +444,11 @@ void awh::WebSocketClient::extraction(const vector <char> & buffer, const bool u
 					// Выполняем декомпрессию полученных данных
 					data = this->hash->decompressGzip(buffer.data(), buffer.size());
 				break;
+				// Если метод компрессии выбран Brotli
+				case (u_short) http_t::compress_t::BROTLI:
+					// Выполняем декомпрессию полученных данных
+					data = this->hash->decompressBrotli(buffer.data(), buffer.size());
+				break;
 			}
 			// Если данные получены
 			if(!data.empty()){
@@ -624,6 +629,11 @@ void awh::WebSocketClient::send(const char * message, const size_t size, const b
 							case (u_short) http_t::compress_t::GZIP:
 								// Выполняем компрессию полученных данных
 								data = this->hash->compressGzip(message, size);
+							break;
+							// Если метод компрессии выбран Brotli
+							case (u_short) http_t::compress_t::BROTLI:
+								// Выполняем компрессию полученных данных
+								data = this->hash->compressBrotli(message, size);
 							break;
 						}
 						// Создаём буфер для отправки

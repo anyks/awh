@@ -152,8 +152,16 @@ void awh::Http::update() noexcept {
 		it = this->headers.find("content-encoding");
 		// Если данные пришли сжатые
 		if(it != this->headers.end()){
+			// Если данные пришли сжатые методом Brotli
+			if(it->second.compare("br") == 0){
+				// Устанавливаем требование выполнять декомпрессию тела сообщения
+				this->compress = compress_t::BROTLI;
+				// Выполняем декомпрессию данных
+				const auto & body = this->hash->decompressBrotli(this->body.data(), this->body.size());
+				// Заменяем полученное тело
+				if(!body.empty()) this->body.assign(body.begin(), body.end());
 			// Если данные пришли сжатые методом GZip
-			if(it->second.compare("gzip") == 0){
+			} else if(it->second.compare("gzip") == 0) {
 				// Устанавливаем требование выполнять декомпрессию тела сообщения
 				this->compress = compress_t::GZIP;
 				// Выполняем декомпрессию данных
@@ -947,12 +955,26 @@ vector <char> awh::Http::response(const u_short code) const noexcept {
 					response.append(this->fmk->format("X-AWH-Encryption: %u\r\n", (u_short) this->hash->getAES()));
 				}
 			}
-			// Определяем метод сжатия тела сообщения
-			switch((u_short) this->compress){
-				// Если нужно сжать тело методом GZIP
-				case (u_short) compress_t::GZIP: {
-					// Если заголовок не запрещён
-					if(!this->isBlack("Content-Encoding")){
+			// Если заголовок не запрещён
+			if(!this->isBlack("Content-Encoding")){
+				// Определяем метод сжатия тела сообщения
+				switch((u_short) this->compress){
+					// Если нужно сжать тело методом BROTLI
+					case (u_short) compress_t::BROTLI: {
+						// Выполняем сжатие тела сообщения
+						const auto & brotli = this->hash->compressBrotli(this->body.data(), this->body.size());
+						// Если данные сжаты, заменяем тело данных
+						if(!brotli.empty()){
+							// Заменяем тело данных
+							this->body.assign(brotli.begin(), brotli.end());
+							// Заменяем размер тела данных
+							if(!this->chunking) length = this->body.size();
+							// Устанавливаем Content-Encoding если не передан
+							if(!available[3]) response.append(this->fmk->format("Content-Encoding: %s\r\n", "br"));
+						}
+					} break;
+					// Если нужно сжать тело методом GZIP
+					case (u_short) compress_t::GZIP: {
 						// Выполняем сжатие тела сообщения
 						const auto & gzip = this->hash->compressGzip(this->body.data(), this->body.size());
 						// Если данные сжаты, заменяем тело данных
@@ -964,12 +986,9 @@ vector <char> awh::Http::response(const u_short code) const noexcept {
 							// Устанавливаем Content-Encoding если не передан
 							if(!available[3]) response.append(this->fmk->format("Content-Encoding: %s\r\n", "gzip"));
 						}
-					}
-				} break;
-				// Если нужно сжать тело методом DEFLATE
-				case (u_short) compress_t::DEFLATE: {
-					// Если заголовок не запрещён
-					if(!this->isBlack("Content-Encoding")){
+					} break;
+					// Если нужно сжать тело методом DEFLATE
+					case (u_short) compress_t::DEFLATE: {
 						// Выполняем сжатие тела сообщения
 						auto deflate = this->hash->compress(this->body.data(), this->body.size());
 						// Удаляем хвост в полученных данных
@@ -983,8 +1002,8 @@ vector <char> awh::Http::response(const u_short code) const noexcept {
 							// Устанавливаем Content-Encoding если не передан
 							if(!available[3]) response.append(this->fmk->format("Content-Encoding: %s\r\n", "deflate"));
 						}
-					}
-				} break;
+					} break;
+				}
 			}
 			// Если данные необходимо разбивать на чанки
 			if(this->chunking && !this->isBlack("Transfer-Encoding"))
@@ -1214,12 +1233,26 @@ vector <char> awh::Http::request(const uri_t::url_t & url, const method_t method
 						request.append(this->fmk->format("X-AWH-Encryption: %u\r\n", (u_short) this->hash->getAES()));
 					}
 				}
-				// Определяем метод сжатия тела сообщения
-				switch((u_short) this->compress){
-					// Если нужно сжать тело методом GZIP
-					case (u_short) compress_t::GZIP: {
-						// Если заголовок не запрещён
-						if(!this->isBlack("Content-Encoding")){
+				// Если заголовок не запрещён
+				if(!this->isBlack("Content-Encoding")){
+					// Определяем метод сжатия тела сообщения
+					switch((u_short) this->compress){
+						// Если нужно сжать тело методом BROTLI
+						case (u_short) compress_t::BROTLI: {
+							// Выполняем сжатие тела сообщения
+							const auto & brotli = this->hash->compressBrotli(this->body.data(), this->body.size());
+							// Если данные сжаты, заменяем тело данных
+							if(!brotli.empty()){
+								// Заменяем тело данных
+								this->body.assign(brotli.begin(), brotli.end());
+								// Заменяем размер тела данных
+								if(!this->chunking) length = this->body.size();
+								// Устанавливаем Content-Encoding если не передан
+								if(!available[7]) request.append(this->fmk->format("Content-Encoding: %s\r\n", "br"));
+							}
+						} break;
+						// Если нужно сжать тело методом GZIP
+						case (u_short) compress_t::GZIP: {
 							// Выполняем сжатие тела сообщения
 							const auto & gzip = this->hash->compressGzip(this->body.data(), this->body.size());
 							// Если данные сжаты, заменяем тело данных
@@ -1231,12 +1264,9 @@ vector <char> awh::Http::request(const uri_t::url_t & url, const method_t method
 								// Устанавливаем Content-Encoding если не передан
 								if(!available[7]) request.append(this->fmk->format("Content-Encoding: %s\r\n", "gzip"));
 							}
-						}
-					} break;
-					// Если нужно сжать тело методом DEFLATE
-					case (u_short) compress_t::DEFLATE: {
-						// Если заголовок не запрещён
-						if(!this->isBlack("Content-Encoding")){
+						} break;
+						// Если нужно сжать тело методом DEFLATE
+						case (u_short) compress_t::DEFLATE: {
 							// Выполняем сжатие тела сообщения
 							auto deflate = this->hash->compress(this->body.data(), this->body.size());
 							// Удаляем хвост в полученных данных
@@ -1250,8 +1280,8 @@ vector <char> awh::Http::request(const uri_t::url_t & url, const method_t method
 								// Устанавливаем Content-Encoding если не передан
 								if(!available[7]) request.append(this->fmk->format("Content-Encoding: %s\r\n", "deflate"));
 							}
-						}
-					} break;
+						} break;
+					}
 				}
 				// Если данные необходимо разбивать на чанки
 				if(this->chunking && !this->isBlack("Transfer-Encoding"))

@@ -201,6 +201,10 @@ vector <char> awh::WS::response() noexcept {
 				} else if(this->compress == compress_t::GZIP)
 					// Устанавливаем тип компрессии GZip
 					extensions = "permessage-gzip; server_no_context_takeover";
+				// Если метод компрессии выбран Brotli
+				else if(this->compress == compress_t::BROTLI)
+					// Устанавливаем тип компрессии Brotli
+					extensions = "permessage-br; server_no_context_takeover";
 				// Если данные должны быть зашифрованны
 				if(this->crypt) extensions.append(this->fmk->format("; permessage-encrypt=%u", (u_short) this->hash->getAES()));
 			// Если метод компрессии не указан но указан режим шифрования
@@ -269,6 +273,10 @@ vector <char> awh::WS::request(const uri_t::url_t & url) noexcept {
 			else if(this->compress == compress_t::GZIP)
 				// Устанавливаем тип компрессии GZip
 				extensions = "permessage-gzip";
+			// Если метод компрессии выбран Brotli
+			else if(this->compress == compress_t::BROTLI)
+				// Устанавливаем тип компрессии Brotli
+				extensions = "permessage-br";
 			// Если данные должны быть зашифрованны
 			if(this->crypt) extensions.append(this->fmk->format("; permessage-encrypt=%u", (u_short) this->hash->getAES()));
 		// Если метод компрессии не указан но указан режим шифрования

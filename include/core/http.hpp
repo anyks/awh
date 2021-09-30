@@ -61,7 +61,7 @@ namespace awh {
 			/**
 			 * Формат сжатия тела запроса
 			 */
-			enum class compress_t : u_short {NONE, BR, GZIP, DEFLATE};
+			enum class compress_t : u_short {NONE, BROTLI, GZIP, DEFLATE};
 			/**
 			 * Методы HTTP запроса
 			 */

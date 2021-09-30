@@ -51,6 +51,10 @@ void awh::WSServer::update() noexcept {
 				else if((val.compare(L"permessage-gzip") == 0) || (val.compare(L"perframe-gzip") == 0))
 					// Устанавливаем требование выполнять компрессию полезной нагрузки
 					this->compress = compress_t::GZIP;
+				// Если получены заголовки требующие сжимать передаваемые фреймы методом Brotli
+				else if((val.compare(L"permessage-br") == 0) || (val.compare(L"perframe-br") == 0))
+					// Устанавливаем требование выполнять компрессию полезной нагрузки
+					this->compress = compress_t::BROTLI;
 				// Если размер скользящего окна для клиента получен
 				else if(val.find(L"client_max_window_bits=") != wstring::npos)
 					// Устанавливаем размер скользящего окна
