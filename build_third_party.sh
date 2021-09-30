@@ -155,6 +155,9 @@ if [ ! -f "$src/.stamp_done" ]; then
 		# Переходим в каталог
 		cd "build" || exit 1
 
+		# Удаляем старый файл кэша
+		rm -rf ./CMakeCache.txt
+
 		cmake \
 		 -DCMAKE_C_COMPILER="gcc" \
 		 -DCMAKE_BUILD_TYPE="Release" \
@@ -222,9 +225,6 @@ if [ ! -f "$src/.stamp_done" ]; then
 		 -DBUILD_SHARED_LIBS="NO" \
 		 -G "MinGW Makefiles" \
 		 .. || exit 1
-
-		# Выполняем установку проекта
-		cmake --build . --config Release --target install || exit 1
 	else
 		cmake \
 		 -DCMAKE_BUILD_TYPE="Release" \
@@ -235,12 +235,12 @@ if [ ! -f "$src/.stamp_done" ]; then
 		 -DBROTLI_INCLUDE_DIRS="$PREFIX/include" \
 		 -DBUILD_SHARED_LIBS="NO" \
 		 .. || exit 1
-
-		# Выполняем сборку на всех логических ядрах
-		$MAKE -j"$numproc" || exit 1
-		# Выполняем установку проекта
-		$MAKE install || exit 1
 	fi
+
+	# Выполняем сборку на всех логических ядрах
+	$MAKE -j"$numproc" || exit 1
+	# Выполняем установку проекта
+	$MAKE install || exit 1
 
 	# Помечаем флагом, что сборка и установка произведена
 	touch "$src/.stamp_done"
@@ -272,6 +272,9 @@ if [ ! -f "$src/.stamp_done" ]; then
 	mkdir -p "build" || exit 1
 	# Переходим в каталог
 	cd "build" || exit 1
+
+	# Удаляем старый файл кэша
+	rm -rf ./CMakeCache.txt
 
 	# Выполняем конфигурацию проекта
 	if [[ $OS = "Windows" ]]; then
