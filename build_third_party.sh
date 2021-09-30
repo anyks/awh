@@ -95,10 +95,15 @@ if [ ! -f "$src/.stamp_done" ]; then
 	printf "\n****** OpenSSL ******\n"
 	cd "$src" || exit 1
 
+	# Версия OpenSSL
+	ver="l"
+
 	# Закачиваем все теги
 	git fetch --all --tags
+	# Удаляем старую ветку
+	git branch -d v1.1.1${ver}-branch
 	# Выполняем переключение на указанную версию
-	git checkout tags/OpenSSL_1_1_1l -b v1.1.1l-branch
+	git checkout tags/OpenSSL_1_1_1${ver} -b v1.1.1${ver}-branch
 
 	# Выполняем конфигурацию проекта
 	./config \
@@ -128,10 +133,15 @@ if [ ! -f "$src/.stamp_done" ]; then
 	printf "\n****** ZLib ******\n"
 	cd "$src" || exit 1
 
+	# Версия Zlib
+	ver="1.2.11"
+
 	# Закачиваем все теги
 	git fetch --all --tags
+	# Удаляем старую ветку
+	git branch -d v${ver}-branch
 	# Выполняем переключение на указанную версию
-	git checkout tags/v1.2.11 -b v1.2.11-branch
+	git checkout tags/v${ver} -b v${ver}-branch
 
 	# Выполняем конфигурацию проекта
 	if [[ $OS = "Windows" ]]; then
@@ -173,10 +183,15 @@ if [ ! -f "$src/.stamp_done" ]; then
 	printf "\n****** Brotli ******\n"
 	cd "$src" || exit 1
 
+	# Версия Brotli
+	ver="1.0.9"
+
 	# Закачиваем все теги
 	git fetch --all --tags
+	# Удаляем старую ветку
+	git branch -d v${ver}-branch
 	# Выполняем переключение на указанную версию
-	git checkout tags/v1.0.9 -b v1.0.9-branch
+	git checkout tags/v${ver} -b v${ver}-branch
 
 	# Создаём каталог сборки
 	mkdir -p "out" || exit 1
@@ -223,13 +238,17 @@ fi
 src="$ROOT/submodules/libevent"
 if [ ! -f "$src/.stamp_done" ]; then
 	printf "\n****** LibEvent2 ******\n"
-
 	cd "$src" || exit 1
+
+	# Версия Brotli
+	ver="2.1.12"
 
 	# Закачиваем все теги
 	git fetch --all --tags
+	# Удаляем старую ветку
+	git branch -d v${ver}-branch
 	# Выполняем переключение на указанную версию
-	git checkout tags/release-2.1.12-stable -b v2.1.12-branch
+	git checkout tags/release-${ver}-stable -b v${ver}-branch
 
 	# Применяем патч исправления ошибки нулевого указателя
 	apply_patch "libevent" "0001-Correcting-the-error-on-checking-the-pointer.patch"
