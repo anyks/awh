@@ -182,67 +182,7 @@ if [ ! -f "$src/.stamp_done" ]; then
 	cd "$ROOT" || exit 1
 fi
 
-# Сборка Brotli
-src="$ROOT/submodules/brotli"
-if [ ! -f "$src/.stamp_done" ]; then
-	printf "\n****** Brotli ******\n"
-	cd "$src" || exit 1
 
-	# Версия Brotli
-	ver="1.0.9"
-
-	# Переключаемся на master
-	git checkout master
-	# Закачиваем все теги
-	git fetch --all --tags
-	# Удаляем старую ветку
-	git branch -D v${ver}-branch
-	# Выполняем переключение на указанную версию
-	git checkout tags/v${ver} -b v${ver}-branch
-
-	# Создаём каталог сборки
-	mkdir -p "out" || exit 1
-	# Переходим в каталог
-	cd "out" || exit 1
-
-	# Выполняем конфигурацию проекта
-	if [[ $OS = "Windows" ]]; then
-		cmake \
-		 -DCMAKE_C_COMPILER="gcc" \
-		 -DCMAKE_BUILD_TYPE="Release" \
-		 -DCMAKE_SYSTEM_NAME="Windows" \
-		 -DBROTLI_EMSCRIPTEN="YES" \
-		 -DBROTLI_DISABLE_TESTS="YES" \
-		 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
-		 -DBROTLI_LIBRARIES="$PREFIX/lib" \
-		 -DBROTLI_INCLUDE_DIRS="$PREFIX/include" \
-		 -DBUILD_SHARED_LIBS="NO" \
-		 -G "MinGW Makefiles" \
-		 .. || exit 1
-
-		# Выполняем установку проекта
-		cmake --build . --config Release --target install || exit 1
-	else
-		cmake \
-		 -DCMAKE_BUILD_TYPE="Release" \
-		 -DBROTLI_EMSCRIPTEN="YES" \
-		 -DBROTLI_DISABLE_TESTS="YES" \
-		 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
-		 -DBROTLI_LIBRARIES="$PREFIX/lib" \
-		 -DBROTLI_INCLUDE_DIRS="$PREFIX/include" \
-		 -DBUILD_SHARED_LIBS="NO" \
-		 .. || exit 1
-
-		# Выполняем сборку на всех логических ядрах
-		$MAKE -j"$numproc" || exit 1
-		# Выполняем установку проекта
-		$MAKE install || exit 1
-	fi
-
-	# Помечаем флагом, что сборка и установка произведена
-	touch "$src/.stamp_done"
-	cd "$ROOT" || exit 1
-fi
 
 # Сборка LibEvent2
 src="$ROOT/submodules/libevent"
