@@ -84,6 +84,7 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 # Выполняем поиск нужных библиотек
 find_package(OpenSSL REQUIRED)
 find_package(Zlib REQUIRED)
+find_package(Brotli REQUIRED)
 find_package(LibEvent REQUIRED)
 
 # Провекра OpenSSL
@@ -102,6 +103,14 @@ else()
     message(FATAL_ERROR "ZLib not found")
 endif()
 
+# Провекра Brotli
+if (Brotli_FOUND)
+    message(STATUS "Brotli lib found: " ${BROTLI_LIBRARIES})
+    message(STATUS "Brotli include dir found: " ${BROTLI_INCLUDE_DIRS})
+else()
+    message(FATAL_ERROR "Brotli not found")
+endif()
+
 # Провекра LibEvent2
 if (LibEvent_FOUND)
     message(STATUS "LibEvent2 libs found: " ${LIBEVENT_LIBRARIES})
@@ -111,8 +120,9 @@ else()
 endif()
 
 # Выполняем подключение хидеров
-include_directories(${OPENSSL_INCLUDE_DIR})
 include_directories(${ZLIB_INCLUDE_DIR})
+include_directories(${BROTLI_INCLUDE_DIRS})
+include_directories(${OPENSSL_INCLUDE_DIR})
 include_directories(${LIBEVENT_INCLUDE_DIR})
 include_directories(${CMAKE_SOURCE_DIR}/include)
 include_directories(${CMAKE_SOURCE_DIR}/contrib/include)
@@ -144,9 +154,6 @@ set(SOURCE_FILES
 )
 
 # Задаем именя библиотеки и бинарника
-
-#set(TEST_APP_NAME test)
-
 set(REST_APP_NAME rest)
 set(CLIENT_APP_NAME ws)
 set(CURRENT_LIB_NAME ${PROJECT_NAME})
@@ -173,32 +180,24 @@ if (ENABLE_CONSOLE_APP)
         SET(CMAKE_RC_COMPILE_OBJECT "<CMAKE_RC_COMPILER> <FLAGS> -O coff <DEFINES> -i <SOURCE> -o <OBJECT>")
     endif(MINGW)
 
-    #add_executable(${TEST_APP_NAME} sample/http.cpp ${RES_FILES})
-
     add_executable(${REST_APP_NAME} sample/rest.cpp ${RES_FILES})
     add_executable(${CLIENT_APP_NAME} sample/ws.cpp ${RES_FILES})
 
-    #target_link_libraries(${TEST_APP_NAME}
-    #    ${CURRENT_LIB_NAME}
-    #    ${LIBEVENT_LIBRARIES}
-    #    ${ZLIB_LIBRARY}
-    #    ${OPENSSL_LIBRARIES}
-    #    ${WINFLAGS}
-    #)
-
     target_link_libraries(${REST_APP_NAME}
-        ${CURRENT_LIB_NAME}
-        ${LIBEVENT_LIBRARIES}
         ${ZLIB_LIBRARY}
+        ${BROTLI_LIBRARIES}
+        ${CURRENT_LIB_NAME}
         ${OPENSSL_LIBRARIES}
+        ${LIBEVENT_LIBRARIES}
         ${WINFLAGS}
     )
 
     target_link_libraries(${CLIENT_APP_NAME}
-        ${CURRENT_LIB_NAME}
-        ${LIBEVENT_LIBRARIES}
         ${ZLIB_LIBRARY}
+        ${BROTLI_LIBRARIES}
+        ${CURRENT_LIB_NAME}
         ${OPENSSL_LIBRARIES}
+        ${LIBEVENT_LIBRARIES}
         ${WINFLAGS}
     )
     #set_target_properties(${CLIENT_APP_NAME} PROPERTIES OUTPUT_NAME ${PROJECT_NAME})
@@ -217,6 +216,7 @@ install(TARGETS ${CURRENT_LIB_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
 install(TARGETS ${CLIENT_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin")
 
 # Устанавливаем стороние библиотеки
-install(FILES ${LIBEVENT_LIBRARIES} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
 install(FILES ${ZLIB_LIBRARY} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
+install(FILES ${BROTLI_LIBRARIES} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
 install(FILES ${OPENSSL_LIBRARIES} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
+install(FILES ${LIBEVENT_LIBRARIES} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")

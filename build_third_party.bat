@@ -11,7 +11,7 @@ set PREFIX=%ROOT%\third_party
 :: Создаем директорию установки
 mkdir %PREFIX%
 
-git submodule update --init
+git submodule update --init --recursive --remote
 
 :: *******************************
 :: 		Сборка OpenSSL
@@ -44,9 +44,38 @@ cd build
 
 :: Выполняем конфигурацию проекта
 cmake -G "Visual Studio 16 2019" -A x64 ^
+	-DCMAKE_BUILD_TYPE=Release ^
 	-DCMAKE_INSTALL_PREFIX=%PREFIX% ^
 	-DINSTALL_INC_DIR=%PREFIX%\include\zlib ^
 	-DBUILD_SHARED_LIBS=NO ^
+	..
+:: Выполняем сборку и установку
+cmake --build . --config Release --target install
+
+cd /D %ROOT%
+
+:: *******************************
+:: 		Сборка Brotli
+:: *******************************
+echo ****** Brotli ******
+
+set src=%ROOT%submodules\brotli
+cd /D %src%
+
+:: Создаём каталог сборки
+mkdir out
+cd out
+
+:: Выполняем конфигурацию проекта
+cmake -G "Visual Studio 16 2019" -A x64 ^
+	-DCMAKE_BUILD_TYPE=Release ^
+	-DCMAKE_INSTALL_PREFIX=%PREFIX% ^
+	-DBROTLI_INCLUDE_DIRS=%PREFIX%\include ^
+	-DBROTLI_LIBRARIES=%PREFIX%\lib ^
+	-DBUILD_SHARED_LIBS=NO ^
+	-DBROTLI_BUNDLED_MODE=NO ^
+	-DBROTLI_EMSCRIPTEN=YES ^
+	-DBROTLI_DISABLE_TESTS=YES ^
 	..
 :: Выполняем сборку и установку
 cmake --build . --config Release --target install

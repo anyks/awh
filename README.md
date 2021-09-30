@@ -7,12 +7,13 @@
 - **HTTP/HTTPS**: REST - CLIENT.
 - **WS/WSS**: WebSocket - CLIENT.
 - **Proxy**: HTTP PROXY server support.
-- **Compress**: GZIP/DEFLATE compression support.
+- **Compress**: GZIP/DEFLATE/BROTLI compression support.
 - **Authentication**: BASIC/DIGEST authentication support.
 
 ## Requirements
 
 - [Zlib](http://www.zlib.net)
+- [Brotli](https://github.com/google/brotli)
 - [OpenSSL](https://www.openssl.org)
 - [LibEvent2](https://github.com/libevent/libevent)
 - [NLohmann::json](https://github.com/nlohmann/json)

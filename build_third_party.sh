@@ -27,6 +27,7 @@ if [ -n "$1" ]; then
 		# Очищаем подпроекты
 		clean_submodule "openssl"
 		clean_submodule "zlib"
+		clean_submodule "brotli"
 		clean_submodule "libevent"
 
 		# Удаляем сборочную директорию
@@ -154,6 +155,60 @@ if [ ! -f "$src/.stamp_done" ]; then
 		--libdir="$PREFIX/lib" \
 		--includedir="$PREFIX/include/zlib" \
 		--static || exit 1
+	fi
+
+	# Выполняем сборку на всех логических ядрах
+	$MAKE -j"$numproc" || exit 1
+	# Выполняем установку проекта
+	$MAKE install || exit 1
+
+	# Помечаем флагом, что сборка и установка произведена
+	touch "$src/.stamp_done"
+	cd "$ROOT" || exit 1
+fi
+
+# Сборка Brotli
+src="$ROOT/submodules/brotli"
+if [ ! -f "$src/.stamp_done" ]; then
+	printf "\n****** Brotli ******\n"
+	cd "$src" || exit 1
+
+	# Закачиваем все теги
+	git fetch --all --tags
+	# Выполняем переключение на указанную версию
+	git checkout tags/v1.0.9 -b v1.0.9-branch
+
+	# Создаём каталог сборки
+	mkdir -p "out" || exit 1
+	# Переходим в каталог
+	cd "out" || exit 1
+
+	# Выполняем конфигурацию проекта
+	if [[ $OS = "Windows" ]]; then
+		cmake \
+		 -DCMAKE_C_COMPILER=gcc \
+		 -DCMAKE_BUILD_TYPE=Release \
+		 -DCMAKE_SYSTEM_NAME=Windows \
+		 -DBROTLI_BUNDLED_MODE="NO" \
+		 -DBROTLI_EMSCRIPTEN="YES" \
+		 -DBROTLI_DISABLE_TESTS="YES" \
+		 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
+		 -DBROTLI_LIBRARIES="$PREFIX/lib" \
+		 -DBROTLI_INCLUDE_DIRS="$PREFIX/include" \
+		 -DBUILD_SHARED_LIBS=NO \
+		 -G "MinGW Makefiles" \
+		 .. || exit 1
+	else
+		cmake \
+		 -DCMAKE_BUILD_TYPE=Release \
+		 -DBROTLI_BUNDLED_MODE="NO" \
+		 -DBROTLI_EMSCRIPTEN="YES" \
+		 -DBROTLI_DISABLE_TESTS="YES" \
+		 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
+		 -DBROTLI_LIBRARIES="$PREFIX/lib" \
+		 -DBROTLI_INCLUDE_DIRS="$PREFIX/include" \
+		 -DBUILD_SHARED_LIBS=NO \
+		 .. || exit 1
 	fi
 
 	# Выполняем сборку на всех логических ядрах

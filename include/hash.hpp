@@ -29,6 +29,12 @@
 #endif
 
 /**
+ * Подключаем Brotli
+ */
+#include <brotli/decode.h>
+#include <brotli/encode.h>
+
+/**
  * Подключаем OpenSSL
  */
 #include <openssl/md5.h>
@@ -104,12 +110,17 @@ namespace awh {
 			// Создаём объект работы с логами
 			const log_t * log = nullptr;
 		private:
-			// Размер чанка в байтах
-			static constexpr u_int CHUNK_SIZE = 0x4000;
+			// Стейт для энкодера Brotli
+			BrotliEncoderState * encBrotli = nullptr;
+			// Стейт для декодера Brotli
+			BrotliDecoderState * decBrotli = nullptr;
+			// Флаг результата работы декодера Brotli
+			BrotliDecoderResult resBrotli = BROTLI_DECODER_RESULT_NEEDS_MORE_OUTPUT;
+		private:
 			// Устанавливаем уровень сжатия
 			static constexpr u_short DEFAULT_MEM_LEVEL = 4;
-			// Устанавливаем размер чанка
-			static constexpr u_int ZLIB_CHUNK_SIZE = 0x4000;
+			// Размер буфера чанка в байтах
+			static constexpr u_int CHUNK_BUFFER_SIZE = 0x4000;
 		private:
 			/**
 			 * initAES Метод инициализации AES шифрования
@@ -180,6 +191,22 @@ namespace awh {
 			const vector <char> decompressGzip(const char * buffer, const size_t size) const noexcept;
 		public:
 			/**
+			 * decompressBrotli Метод декомпрессии данных в Brotli
+			 * @param buffer буфер данных для декомпрессии
+			 * @param size   размер данных для декомпрессии
+			 * @return       результат декомпрессии
+			 */
+			const vector <char> decompressBrotli(const char * buffer, const size_t size) noexcept;
+			/**
+			 * compressBrotli Метод компрессии данных в Brotli
+			 * @param buffer буфер данных для компрессии
+			 * @param size   размер данных для компрессии
+			 * @param stop   флаг завершающего блока данных
+			 * @return       результат компрессии
+			 */
+			const vector <char> compressBrotli(const char * buffer, const size_t size, const bool stop = true) noexcept;
+		public:
+			/**
 			 * setAES Метод установки размера шифрования
 			 * @param size размер шифрования (128, 192, 256)
 			 */
@@ -210,7 +237,11 @@ namespace awh {
 			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
 			 */
-			Hash(const fmk_t * fmk, const log_t * log) : fmk(fmk), log(log), wbit(MAX_WBITS), roundsAES(5), aesSize(aes_t::AES128), salt(""), password("") {}
+			Hash(const fmk_t * fmk, const log_t * log) noexcept;
+			/**
+			 * ~Hash Деструктор
+			 */
+			~Hash() noexcept;
 	} hash_t;
 };
 
