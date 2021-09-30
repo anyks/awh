@@ -203,10 +203,13 @@ if [ ! -f "$src/.stamp_done" ]; then
 	# Выполняем переключение на указанную версию
 	git checkout tags/v${ver} -b v${ver}-branch
 
+	# Каталог для сборки
+	build="out"
+
 	# Создаём каталог сборки
-	mkdir -p "out" || exit 1
+	mkdir -p ${build} || exit 1
 	# Переходим в каталог
-	cd "out" || exit 1
+	cd ${build} || exit 1
 
 	# Удаляем старый файл кэша
 	rm -rf ./CMakeCache.txt
@@ -239,8 +242,32 @@ if [ ! -f "$src/.stamp_done" ]; then
 
 	# Выполняем сборку на всех логических ядрах
 	$MAKE -j"$numproc" || exit 1
-	# Выполняем установку проекта
-	$MAKE install || exit 1
+
+	# Выполняем конфигурацию проекта
+	if [[ $OS = "Windows" ]]; then
+		# Устанавливаем команду установки
+		INSTALL_CMD="install -D -m 0644"
+
+		# Производим установку библиотеки по нужному пути
+		echo "Install \"$ROOT/submodules/brotli/${build}/libbrotlicommon-static.a\" to \"$PREFIX/lib/libbrotlicommon-static.a\""
+		${INSTALL_CMD} "$ROOT/submodules/brotli/${build}/libbrotlicommon-static.a" "$PREFIX/lib/libbrotlicommon-static.a" || exit 1
+
+		echo "Install \"$ROOT/submodules/brotli/${build}/libbrotlidec-static.a\" to \"$PREFIX/lib/libbrotlidec-static.a\""
+		${INSTALL_CMD} "$ROOT/submodules/brotli/${build}/libbrotlidec-static.a" "$PREFIX/lib/libbrotlidec-static.a" || exit 1
+
+		echo "Install \"$ROOT/submodules/brotli/${build}/libbrotlienc-static.a\" to \"$PREFIX/lib/libbrotlienc-static.a\""
+		${INSTALL_CMD} "$ROOT/submodules/brotli/${build}/libbrotlienc-static.a" "$PREFIX/lib/libbrotlienc-static.a" || exit 1
+
+		# Производим установку заголовочных файлов по нужному пути
+		for i in $(ls "src" | grep .h$);
+		do
+			echo "Install \"$ROOT/submodules/brotli/c/include/brotli/$i\" to \"$PREFIX/include/brotli/$i\""
+			${INSTALL_CMD} "$ROOT/submodules/brotli/c/include/brotli/$i" "$PREFIX/include/brotli/$i" || exit 1
+		done
+	else
+		# Выполняем установку проекта
+		$MAKE install || exit 1
+	fi
 
 	# Помечаем флагом, что сборка и установка произведена
 	touch "$src/.stamp_done"
