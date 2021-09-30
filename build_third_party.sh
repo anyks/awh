@@ -259,7 +259,7 @@ if [ ! -f "$src/.stamp_done" ]; then
 		${INSTALL_CMD} "$ROOT/submodules/brotli/${build}/libbrotlienc-static.a" "$PREFIX/lib/libbrotlienc-static.a" || exit 1
 
 		# Производим установку заголовочных файлов по нужному пути
-		for i in $(ls "src" | grep .h$);
+		for i in $(ls "$ROOT/submodules/brotli/c/include/brotli" | grep .h$);
 		do
 			echo "Install \"$ROOT/submodules/brotli/c/include/brotli/$i\" to \"$PREFIX/include/brotli/$i\""
 			${INSTALL_CMD} "$ROOT/submodules/brotli/c/include/brotli/$i" "$PREFIX/include/brotli/$i" || exit 1
