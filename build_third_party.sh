@@ -16,6 +16,7 @@ if [ -n "$1" ]; then
 		clean_submodule(){
 			cd "$ROOT/submodules/$1" || exit 1
 			git clean -dfx
+			git stash
 			cd "$ROOT" || exit 1
 		}
 
@@ -98,6 +99,8 @@ if [ ! -f "$src/.stamp_done" ]; then
 	# Версия OpenSSL
 	ver="l"
 
+	# Переключаемся на master
+	git checkout master
 	# Закачиваем все теги
 	git fetch --all --tags
 	# Удаляем старую ветку
@@ -136,6 +139,8 @@ if [ ! -f "$src/.stamp_done" ]; then
 	# Версия Zlib
 	ver="1.2.11"
 
+	# Переключаемся на master
+	git checkout master
 	# Закачиваем все теги
 	git fetch --all --tags
 	# Удаляем старую ветку
@@ -186,6 +191,8 @@ if [ ! -f "$src/.stamp_done" ]; then
 	# Версия Brotli
 	ver="1.0.9"
 
+	# Переключаемся на master
+	git checkout master
 	# Закачиваем все теги
 	git fetch --all --tags
 	# Удаляем старую ветку
@@ -243,6 +250,8 @@ if [ ! -f "$src/.stamp_done" ]; then
 	# Версия Brotli
 	ver="2.1.12"
 
+	# Переключаемся на master
+	git checkout master
 	# Закачиваем все теги
 	git fetch --all --tags
 	# Удаляем старую ветку
