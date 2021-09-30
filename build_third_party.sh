@@ -156,12 +156,12 @@ if [ ! -f "$src/.stamp_done" ]; then
 		cd "build" || exit 1
 
 		cmake \
-		 -DCMAKE_C_COMPILER=gcc \
-		 -DCMAKE_BUILD_TYPE=Release \
-		 -DCMAKE_SYSTEM_NAME=Windows \
+		 -DCMAKE_C_COMPILER="gcc" \
+		 -DCMAKE_BUILD_TYPE="Release" \
+		 -DCMAKE_SYSTEM_NAME="Windows" \
 		 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
 		 -DINSTALL_INC_DIR="$PREFIX/include/zlib" \
-		 -DBUILD_SHARED_LIBS=NO \
+		 -DBUILD_SHARED_LIBS="NO" \
 		 -G "MinGW Makefiles" \
 		 .. || exit 1
 	else
@@ -208,33 +208,36 @@ if [ ! -f "$src/.stamp_done" ]; then
 	# Выполняем конфигурацию проекта
 	if [[ $OS = "Windows" ]]; then
 		cmake \
-		 -DCMAKE_C_COMPILER=gcc \
-		 -DCMAKE_BUILD_TYPE=Release \
-		 -DCMAKE_SYSTEM_NAME=Windows \
+		 -DCMAKE_C_COMPILER="gcc" \
+		 -DCMAKE_BUILD_TYPE="Release" \
+		 -DCMAKE_SYSTEM_NAME="Windows" \
 		 -DBROTLI_EMSCRIPTEN="YES" \
 		 -DBROTLI_DISABLE_TESTS="YES" \
 		 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
 		 -DBROTLI_LIBRARIES="$PREFIX/lib" \
 		 -DBROTLI_INCLUDE_DIRS="$PREFIX/include" \
-		 -DBUILD_SHARED_LIBS=NO \
+		 -DBUILD_SHARED_LIBS="NO" \
 		 -G "MinGW Makefiles" \
 		 .. || exit 1
+
+		# Выполняем установку проекта
+		cmake --build . --config Release --target install || exit 1
 	else
 		cmake \
-		 -DCMAKE_BUILD_TYPE=Release \
+		 -DCMAKE_BUILD_TYPE="Release" \
 		 -DBROTLI_EMSCRIPTEN="YES" \
 		 -DBROTLI_DISABLE_TESTS="YES" \
 		 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
 		 -DBROTLI_LIBRARIES="$PREFIX/lib" \
 		 -DBROTLI_INCLUDE_DIRS="$PREFIX/include" \
-		 -DBUILD_SHARED_LIBS=NO \
+		 -DBUILD_SHARED_LIBS="NO" \
 		 .. || exit 1
-	fi
 
-	# Выполняем сборку на всех логических ядрах
-	$MAKE -j"$numproc" || exit 1
-	# Выполняем установку проекта
-	$MAKE install || exit 1
+		# Выполняем сборку на всех логических ядрах
+		$MAKE -j"$numproc" || exit 1
+		# Выполняем установку проекта
+		$MAKE install || exit 1
+	fi
 
 	# Помечаем флагом, что сборка и установка произведена
 	touch "$src/.stamp_done"
@@ -270,9 +273,9 @@ if [ ! -f "$src/.stamp_done" ]; then
 	# Выполняем конфигурацию проекта
 	if [[ $OS = "Windows" ]]; then
 		cmake \
-		 -DCMAKE_C_COMPILER=gcc \
-		 -DCMAKE_BUILD_TYPE=Release \
-		 -DCMAKE_SYSTEM_NAME=Windows \
+		 -DCMAKE_C_COMPILER="gcc" \
+		 -DCMAKE_BUILD_TYPE="Release" \
+		 -DCMAKE_SYSTEM_NAME="Windows" \
 		 -DEVENT__LIBRARY_TYPE="STATIC" \
 		 -DEVENT__DISABLE_DEBUG_MODE="ON" \
 		 -DEVENT__DISABLE_BENCHMARK="ON" \
