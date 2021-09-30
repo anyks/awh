@@ -205,18 +205,21 @@ if [ ! -f "$src/.stamp_done" ]; then
 	# Переходим в каталог
 	cd "out" || exit 1
 
+	# Удаляем старый файл кэша
+	rm -rf ./CMakeCache.txt
+
 	# Выполняем конфигурацию проекта
 	if [[ $OS = "Windows" ]]; then
 		cmake \
-		 -DCMAKE_C_COMPILER=gcc \
-		 -DCMAKE_BUILD_TYPE=Release \
-		 -DCMAKE_SYSTEM_NAME=Windows \
-		 -DBROTLI_EMSCRIPTEN=YES \
-		 -DBROTLI_DISABLE_TESTS=YES \
-		 -DCMAKE_INSTALL_PREFIX=$PREFIX \
-		 -DBROTLI_LIBRARIES=$PREFIX/lib \
-		 -DBROTLI_INCLUDE_DIRS=$PREFIX/include \
-		 -DBUILD_SHARED_LIBS=NO \
+		 -DCMAKE_C_COMPILER="gcc" \
+		 -DCMAKE_BUILD_TYPE="Release" \
+		 -DCMAKE_SYSTEM_NAME="Windows" \
+		 -DBROTLI_EMSCRIPTEN="YES" \
+		 -DBROTLI_DISABLE_TESTS="YES" \
+		 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
+		 -DBROTLI_LIBRARIES="$PREFIX/lib" \
+		 -DBROTLI_INCLUDE_DIRS="$PREFIX/include" \
+		 -DBUILD_SHARED_LIBS="NO" \
 		 -G "MinGW Makefiles" \
 		 .. || exit 1
 
