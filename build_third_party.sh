@@ -189,7 +189,6 @@ if [ ! -f "$src/.stamp_done" ]; then
 		 -DCMAKE_C_COMPILER=gcc \
 		 -DCMAKE_BUILD_TYPE=Release \
 		 -DCMAKE_SYSTEM_NAME=Windows \
-		 -DBROTLI_BUNDLED_MODE="NO" \
 		 -DBROTLI_EMSCRIPTEN="YES" \
 		 -DBROTLI_DISABLE_TESTS="YES" \
 		 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
@@ -201,7 +200,6 @@ if [ ! -f "$src/.stamp_done" ]; then
 	else
 		cmake \
 		 -DCMAKE_BUILD_TYPE=Release \
-		 -DBROTLI_BUNDLED_MODE="NO" \
 		 -DBROTLI_EMSCRIPTEN="YES" \
 		 -DBROTLI_DISABLE_TESTS="YES" \
 		 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
