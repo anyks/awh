@@ -81,7 +81,7 @@ namespace awh {
 			pair <u_short, u_short> attempts;
 		public:
 			// Контекст передаваемый в сообщении
-			void * context = nullptr;
+			void * ctx = nullptr;
 			// Буфер событий для сервера
 			struct bufferevent * bev = nullptr;
 		public:
@@ -94,12 +94,12 @@ namespace awh {
 			// Создаём объект данных вебсокета
 			const char * buffer = nullptr;
 		public:
+			// Функция обратного вызова при запуске подключения
+			function <void (const size_t, Core *, void *)> runFn = nullptr;
 			// Функция обратного вызова при открытии подключения
 			function <void (const size_t, Core *, void *)> openFn = nullptr;
 			// Функция обратного вызова при закрытии подключения
 			function <void (const size_t, Core *, void *)> closeFn = nullptr;
-			// Функция обратного вызова при запуске подключения
-			function <void (const size_t, Core *, void *)> startFn = nullptr;
 			// Функция обратного вызова при получении данных
 			function <void (const char *, const size_t, const size_t, Core *, void *)> readFn = nullptr;
 			// Функция обратного вызова при записи данных

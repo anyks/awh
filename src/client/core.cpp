@@ -29,7 +29,7 @@ void awh::CoreClient::read(struct bufferevent * bev, void * ctx) noexcept {
 				// Считываем бинарные данные запроса из буфер
 				const size_t size = bufferevent_read(bev, (void *) wrk->buffer, BUFFER_CHUNK);
 				// Выводим функцию обратного вызова
-				wrk->readProxyFn(wrk->buffer, size, wrk->wid, const_cast <core_t *> (wrk->core), wrk->context);
+				wrk->readProxyFn(wrk->buffer, size, wrk->wid, const_cast <core_t *> (wrk->core), wrk->ctx);
 				// Заполняем нулями буфер полученных данных
 				memset((void *) wrk->buffer, 0, BUFFER_CHUNK);
 			}
@@ -38,7 +38,7 @@ void awh::CoreClient::read(struct bufferevent * bev, void * ctx) noexcept {
 			// Считываем бинарные данные запроса из буфер
 			const size_t size = bufferevent_read(wrk->bev, (void *) wrk->buffer, BUFFER_CHUNK);
 			// Выводим функцию обратного вызова
-			wrk->readFn(wrk->buffer, size, wrk->wid, const_cast <core_t *> (wrk->core), wrk->context);
+			wrk->readFn(wrk->buffer, size, wrk->wid, const_cast <core_t *> (wrk->core), wrk->ctx);
 			// Заполняем нулями буфер полученных данных
 			memset((void *) wrk->buffer, 0, BUFFER_CHUNK);
 		}
@@ -69,11 +69,11 @@ void awh::CoreClient::write(struct bufferevent * bev, void * ctx) noexcept {
 				// Если функция обратного вызова для вывода записи существует
 				if(wrk->writeProxyFn != nullptr)
 					// Выводим функцию обратного вызова
-					wrk->writeProxyFn(wrk->buffer, size, wrk->wid, const_cast <core_t *> (wrk->core), wrk->context);
+					wrk->writeProxyFn(wrk->buffer, size, wrk->wid, const_cast <core_t *> (wrk->core), wrk->ctx);
 			// Если прокси-сервер не используется
 			} else if(wrk->writeFn != nullptr)
 				// Выводим функцию обратного вызова
-				wrk->writeFn(wrk->buffer, size, wrk->wid, const_cast <core_t *> (wrk->core), wrk->context);
+				wrk->writeFn(wrk->buffer, size, wrk->wid, const_cast <core_t *> (wrk->core), wrk->ctx);
 			// Заполняем нулями буфер полученных данных
 			memset((void *) wrk->buffer, 0, BUFFER_CHUNK);
 			// Удаляем данные из буфера
@@ -141,9 +141,9 @@ void awh::CoreClient::event(struct bufferevent * bev, const short events, void *
 				// Если подключение производится через, прокси-сервер
 				if(wrk->isProxy()){
 					// Выполняем функцию обратного вызова для прокси-сервера
-					if(wrk->openProxyFn != nullptr) wrk->openProxyFn(wrk->wid, const_cast <core_t *> (wrk->core), wrk->context);
+					if(wrk->openProxyFn != nullptr) wrk->openProxyFn(wrk->wid, const_cast <core_t *> (wrk->core), wrk->ctx);
 				// Выполняем функцию обратного вызова
-				} else if(wrk->openFn != nullptr) wrk->openFn(wrk->wid, const_cast <core_t *> (wrk->core), wrk->context);
+				} else if(wrk->openFn != nullptr) wrk->openFn(wrk->wid, const_cast <core_t *> (wrk->core), wrk->ctx);
 			// Если это ошибка или завершение работы
 			} else if(events & (BEV_EVENT_ERROR | BEV_EVENT_EOF | BEV_EVENT_TIMEOUT)) {
 				// Если это ошибка
@@ -359,7 +359,7 @@ void awh::CoreClient::switchProxy(const size_t wid) noexcept {
 					tuning(wrk->bev, wrk);
 				}
 			// Выполняем функцию обратного вызова
-			} else if(wrk->openFn != nullptr) wrk->openFn(wrk->wid, this, wrk->context);
+			} else if(wrk->openFn != nullptr) wrk->openFn(wrk->wid, this, wrk->ctx);
 		}
 	}
 }

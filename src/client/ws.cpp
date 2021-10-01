@@ -20,6 +20,16 @@ void awh::WebSocketClient::chunking(const vector <char> & chunk, const http_t * 
 	if(!chunk.empty()) const_cast <http_t *> (ctx)->addBody(chunk.data(), chunk.size());
 }
 /**
+ * runCallback Функция обратного вызова при запуске работы
+ * @param wid  идентификатор воркера
+ * @param core объект биндинга TCP/IP
+ * @param ctx  передаваемый контекст модуля
+ */
+void awh::WebSocketClient::runCallback(const size_t wid, core_t * core, void * ctx) noexcept {
+	// Выполняем подключение
+	core->open(wid);
+}
+/**
  * openCallback Функция обратного вызова при подключении к серверу
  * @param wid  идентификатор воркера
  * @param core объект биндинга TCP/IP
@@ -72,16 +82,6 @@ void awh::WebSocketClient::closeCallback(const size_t wid, core_t * core, void *
 		// Завершаем работу
 		if(ws->unbind) core->stop();
 	}
-}
-/**
- * startCallback Функция обратного вызова при запуске работы
- * @param wid  идентификатор воркера
- * @param core объект биндинга TCP/IP
- * @param ctx  передаваемый контекст модуля
- */
-void awh::WebSocketClient::startCallback(const size_t wid, core_t * core, void * ctx) noexcept {
-	// Выполняем подключение
-	core->open(wid);
 }
 /**
  * openProxyCallback Функция обратного вызова при подключении к прокси-серверу
@@ -924,7 +924,7 @@ void awh::WebSocketClient::setAuthTypeProxy(const auth_t::type_t type, const aut
 awh::WebSocketClient::WebSocketClient(const ccli_t * core, const fmk_t * fmk, const log_t * log) noexcept : core(core), fmk(fmk), log(log), worker(fmk, log) {
 	try {
 		// Устанавливаем контекст сообщения
-		this->worker.context = this;
+		this->worker.ctx = this;
 		// Создаём объект для работы с сетью
 		this->nwk = new network_t(this->fmk);
 		// Создаём объект для работы с URI ссылками
@@ -937,14 +937,14 @@ awh::WebSocketClient::WebSocketClient(const ccli_t * core, const fmk_t * fmk, co
 		this->http = new wsc_t(this->fmk, this->log, this->uri);
 		// Устанавливаем функцию обработки вызова для получения чанков
 		this->http->setChunkingFn(&chunking);
+		// Устанавливаем событие на запуск системы
+		this->worker.runFn = runCallback;
 		// Устанавливаем событие подключения
 		this->worker.openFn = openCallback;
 		// Устанавливаем функцию чтения данных
 		this->worker.readFn = readCallback;
 		// Устанавливаем событие отключения
 		this->worker.closeFn = closeCallback;
-		// Устанавливаем событие на запуск системы
-		this->worker.startFn = startCallback;
 		// Устанавливаем событие на подключение к прокси-серверу
 		this->worker.openProxyFn = openProxyCallback;
 		// Устанавливаем событие на чтение данных с прокси-сервера

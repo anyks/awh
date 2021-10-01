@@ -101,6 +101,13 @@ namespace awh {
 			static void chunking(const vector <char> & chunk, const http_t * ctx) noexcept;
 		private:
 			/**
+			 * runCallback Функция обратного вызова при запуске работы
+			 * @param wid  идентификатор воркера
+			 * @param core объект биндинга TCP/IP
+			 * @param ctx  передаваемый контекст модуля
+			 */
+			static void runCallback(const size_t wid, core_t * core, void * ctx) noexcept;
+			/**
 			 * openCallback Функция обратного вызова при подключении к серверу
 			 * @param wid  идентификатор воркера
 			 * @param core объект биндинга TCP/IP
@@ -114,13 +121,6 @@ namespace awh {
 			 * @param ctx  передаваемый контекст модуля
 			 */
 			static void closeCallback(const size_t wid, core_t * core, void * ctx) noexcept;
-			/**
-			 * startCallback Функция обратного вызова при запуске работы
-			 * @param wid  идентификатор воркера
-			 * @param core объект биндинга TCP/IP
-			 * @param ctx  передаваемый контекст модуля
-			 */
-			static void startCallback(const size_t wid, core_t * core, void * ctx) noexcept;
 			/**
 			 * openProxyCallback Функция обратного вызова при подключении к прокси-серверу
 			 * @param wid  идентификатор воркера

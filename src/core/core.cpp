@@ -254,7 +254,7 @@ void awh::Core::close(const worker_t * worker) noexcept {
 			// Выводим сообщение об ошибке
 			this->log->print("%s", log_t::flag_t::INFO, "disconnected from the server");
 			// Выводим функцию обратного вызова
-			if(wrk->closeFn != nullptr) wrk->closeFn(wrk->wid, this, wrk->context);
+			if(wrk->closeFn != nullptr) wrk->closeFn(wrk->wid, this, wrk->ctx);
 		}
 	}
 }
@@ -283,9 +283,9 @@ void awh::Core::bind(Core * core) noexcept {
 					// Переходим по всему списку воркеров
 					for(auto & worker : core->workers){
 						// Если функция обратного вызова установлена
-						if(worker.second->startFn != nullptr)
+						if(worker.second->runFn != nullptr)
 							// Выполняем функцию обратного вызова
-							worker.second->startFn(worker.first, core, worker.second->context);
+							worker.second->runFn(worker.first, core, worker.second->ctx);
 					}
 				}
 				// Если функция обратного вызова установлена, выполняем
@@ -382,9 +382,9 @@ void awh::Core::start() noexcept {
 				// Переходим по всему списку воркеров
 				for(auto & worker : this->workers){
 					// Если функция обратного вызова установлена
-					if(worker.second->startFn != nullptr)
+					if(worker.second->runFn != nullptr)
 						// Выполняем функцию обратного вызова
-						worker.second->startFn(worker.first, this, worker.second->context);
+						worker.second->runFn(worker.first, this, worker.second->ctx);
 				}
 			}
 			// Если функция обратного вызова установлена, выполняем
