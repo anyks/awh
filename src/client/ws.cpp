@@ -66,34 +66,34 @@ void awh::WebSocketClient::closeCallback(const size_t wid, core_t * core, void *
 }
 /**
  * connectCallback Функция обратного вызова при подключении к серверу
- * @param adj  объект текущего адъютанта
+ * @param aid  идентификатор адъютанта
  * @param core объект биндинга TCP/IP
  * @param ctx  передаваемый контекст модуля
  */
-void awh::WebSocketClient::connectCallback(const worker_t::adj_t * adj, core_t * core, void * ctx) noexcept {
+void awh::WebSocketClient::connectCallback(const size_t aid, core_t * core, void * ctx) noexcept {
 	// Если данные переданы верные
-	if((adj != nullptr) && (core != nullptr) && (ctx != nullptr)){
+	if((aid > 0) && (core != nullptr) && (ctx != nullptr)){
 		// Получаем контекст модуля
 		wcli_t * ws = reinterpret_cast <wcli_t *> (ctx);
 		// Запоминаем объект адъютанта
-		ws->adj = adj;
+		ws->aid = aid;
 		// Выполняем сброс состояния HTTP парсера
 		ws->http->clear();
 		// Получаем бинарные данные REST запроса
 		const auto & rest = ws->http->request(ws->worker.url);
 		// Если бинарные данные запроса получены, отправляем на сервер
-		if(!rest.empty()) core->write(rest.data(), rest.size(), adj);
+		if(!rest.empty()) core->write(rest.data(), rest.size(), aid);
 	}
 }
 /**
  * connectProxyCallback Функция обратного вызова при подключении к прокси-серверу
- * @param adj  объект текущего адъютанта
+ * @param aid  идентификатор адъютанта
  * @param core объект биндинга TCP/IP
  * @param ctx  передаваемый контекст модуля
  */
-void awh::WebSocketClient::connectProxyCallback(const worker_t::adj_t * adj, core_t * core, void * ctx) noexcept {
+void awh::WebSocketClient::connectProxyCallback(const size_t aid, core_t * core, void * ctx) noexcept {
 	// Если данные переданы верные
-	if((adj != nullptr) && (core != nullptr) && (ctx != nullptr)){
+	if((aid > 0) && (core != nullptr) && (ctx != nullptr)){
 		// Получаем контекст модуля
 		wcli_t * ws = reinterpret_cast <wcli_t *> (ctx);
 		// Выполняем сброс состояния HTTP парсера
@@ -101,7 +101,7 @@ void awh::WebSocketClient::connectProxyCallback(const worker_t::adj_t * adj, cor
 		// Получаем бинарные данные REST запроса
 		const auto & rest = ws->worker.proxy.http->proxy(ws->worker.url);
 		// Если бинарные данные запроса получены, отправляем на прокси-сервер
-		if(!rest.empty()) core->write(rest.data(), rest.size(), adj);
+		if(!rest.empty()) core->write(rest.data(), rest.size(), aid);
 		// Выполняем сброс состояния HTTP парсера
 		ws->worker.proxy.http->clear();
 	}
@@ -110,13 +110,13 @@ void awh::WebSocketClient::connectProxyCallback(const worker_t::adj_t * adj, cor
  * readCallback Функция обратного вызова при чтении сообщения с сервера
  * @param buffer бинарный буфер содержащий сообщение
  * @param size   размер бинарного буфера содержащего сообщение
- * @param adj    объект текущего адъютанта
+ * @param aid    идентификатор адъютанта
  * @param core   объект биндинга TCP/IP
  * @param ctx    передаваемый контекст модуля
  */
-void awh::WebSocketClient::readCallback(const char * buffer, const size_t size, const worker_t::adj_t * adj, core_t * core, void * ctx) noexcept {
+void awh::WebSocketClient::readCallback(const char * buffer, const size_t size, const size_t aid, core_t * core, void * ctx) noexcept {
 	// Если данные существуют
-	if((buffer != nullptr) && (size > 0)){
+	if((buffer != nullptr) && (size > 0) && (aid > 0)){
 		// Получаем контекст модуля
 		wcli_t * ws = reinterpret_cast <wcli_t *> (ctx);
 		// Если рукопожатие не выполнено
@@ -140,9 +140,9 @@ void awh::WebSocketClient::readCallback(const char * buffer, const size_t size, 
 								// Если соединение является постоянным
 								if(ws->http->isAlive())
 									// Выполняем повторно отправку сообщения на сервер
-									connectCallback(adj, core, ctx);
+									connectCallback(aid, core, ctx);
 								// Завершаем работу
-								else core->close(adj);
+								else core->close(aid);
 								// Завершаем работу
 								return;
 							}
@@ -200,7 +200,7 @@ void awh::WebSocketClient::readCallback(const char * buffer, const size_t size, 
 				// Выполняем сброс количество попыток
 				ws->failAuth = false;
 				// Завершаем работу
-				core->close(adj);
+				core->close(aid);
 			}
 			// Завершаем работу
 			return;
@@ -215,11 +215,11 @@ void awh::WebSocketClient::readCallback(const char * buffer, const size_t size, 
 				// Останавливаем таймер
 				ws->timerConnect.stop();
 				// Устанавливаем таймер на контроль подключения
-				ws->timerConnect.setTimeout([adj, core, ws]{
+				ws->timerConnect.setTimeout([aid, core, ws]{
 					// Если нужно выполнить автоматическое переподключение
 					if(ws->worker.alive)
 						// Завершаем работу
-						core->close(adj);
+						core->close(aid);
 					// Если выполнять автоматическое подключение не требуется, просто выходим
 					else if(ws->unbind) core->stop();
 				}, CONNECT_TIMEOUT);
@@ -327,20 +327,20 @@ void awh::WebSocketClient::readCallback(const char * buffer, const size_t size, 
 		// Устанавливаем метку реконнекта
 		Reconnect:
 		// Завершаем работу
-		core->close(adj);
+		core->close(aid);
 	}
 }
 /**
  * readProxyCallback Функция обратного вызова при чтении сообщения с прокси-сервера
  * @param buffer бинарный буфер содержащий сообщение
  * @param size   размер бинарного буфера содержащего сообщение
- * @param adj    объект текущего адъютанта
+ * @param aid    идентификатор адъютанта
  * @param core   объект биндинга TCP/IP
  * @param ctx    передаваемый контекст модуля
  */
-void awh::WebSocketClient::readProxyCallback(const char * buffer, const size_t size, const worker_t::adj_t * adj, core_t * core, void * ctx) noexcept {
+void awh::WebSocketClient::readProxyCallback(const char * buffer, const size_t size, const size_t aid, core_t * core, void * ctx) noexcept {
 	// Если данные существуют
-	if((buffer != nullptr) && (size > 0)){
+	if((buffer != nullptr) && (size > 0) && (aid > 0)){
 		// Получаем контекст модуля
 		wcli_t * ws = reinterpret_cast <wcli_t *> (ctx);
 		// Выполняем парсинг полученных данных
@@ -368,9 +368,9 @@ void awh::WebSocketClient::readProxyCallback(const char * buffer, const size_t s
 							// Если соединение является постоянным
 							if(ws->http->isAlive())
 								// Выполняем повторно отправку сообщения на сервер
-								connectProxyCallback(adj, core, ctx);
+								connectProxyCallback(aid, core, ctx);
 							// Завершаем работу
-							else core->close(adj);
+							else core->close(aid);
 							// Завершаем работу
 							return;
 						}
@@ -387,7 +387,7 @@ void awh::WebSocketClient::readProxyCallback(const char * buffer, const size_t s
 					// Выполняем сброс количество попыток
 					ws->failAuth = false;
 					// Выполняем переключение на работу с сервером
-					reinterpret_cast <ccli_t *> (core)->switchProxy(adj);
+					reinterpret_cast <ccli_t *> (core)->switchProxy(aid);
 					// Завершаем работу
 					return;
 				} break;
@@ -397,7 +397,7 @@ void awh::WebSocketClient::readProxyCallback(const char * buffer, const size_t s
 			// Выполняем сброс количество попыток
 			ws->failAuth = false;
 			// Завершаем работу
-			core->close(adj);
+			core->close(aid);
 		}
 	}
 }
@@ -496,11 +496,11 @@ void awh::WebSocketClient::pong(const string & message) noexcept {
 	// Если подключение выполнено
 	if(this->core->isStart() && !this->locker){
 		// Если рукопожатие выполнено
-		if(this->http->isHandshake() && (this->adj != nullptr)){
+		if(this->http->isHandshake() && (this->aid > 0)){
 			// Создаём буфер для отправки
 			const auto & buffer = this->frame->pong(message);
 			// Отправляем серверу сообщение
-			((core_t *) const_cast <ccli_t *> (this->core))->write(buffer.data(), buffer.size(), this->adj);
+			((core_t *) const_cast <ccli_t *> (this->core))->write(buffer.data(), buffer.size(), this->aid);
 		}
 	}
 }
@@ -512,11 +512,11 @@ void awh::WebSocketClient::ping(const string & message) noexcept {
 	// Если подключение выполнено
 	if(this->core->isStart() && !this->locker){
 		// Если рукопожатие выполнено
-		if(this->http->isHandshake() && (this->adj != nullptr)){
+		if(this->http->isHandshake() && (this->aid > 0)){
 			// Создаём буфер для отправки
 			const auto & buffer = this->frame->ping(message);
 			// Отправляем серверу сообщение
-			((core_t *) const_cast <ccli_t *> (this->core))->write(buffer.data(), buffer.size(), this->adj);
+			((core_t *) const_cast <ccli_t *> (this->core))->write(buffer.data(), buffer.size(), this->aid);
 		}
 	}
 }
@@ -580,7 +580,7 @@ void awh::WebSocketClient::send(const char * message, const size_t size, const b
 		// Выполняем блокировку отправки сообщения
 		this->locker = !this->locker;
 		// Если рукопожатие выполнено
-		if((message != nullptr) && (size > 0) && this->http->isHandshake() && (this->adj != nullptr)){
+		if((message != nullptr) && (size > 0) && this->http->isHandshake() && (this->aid > 0)){
 			// Создаём объект заголовка для отправки
 			frame_t::head_t head;
 			// Передаём сообщение одним запросом
@@ -641,13 +641,13 @@ void awh::WebSocketClient::send(const char * message, const size_t size, const b
 						// Создаём буфер для отправки
 						const auto & buffer = this->frame->set(head, data.data(), data.size());
 						// Отправляем серверу сообщение
-						((core_t *) const_cast <ccli_t *> (this->core))->write(buffer.data(), buffer.size(), this->adj);
+						((core_t *) const_cast <ccli_t *> (this->core))->write(buffer.data(), buffer.size(), this->aid);
 					// Если сообщение перед отправкой сжимать не нужно
 					} else {
 						// Создаём буфер для отправки
 						const auto & buffer = this->frame->set(head, message, size);
 						// Отправляем серверу сообщение
-						((core_t *) const_cast <ccli_t *> (this->core))->write(buffer.data(), buffer.size(), this->adj);
+						((core_t *) const_cast <ccli_t *> (this->core))->write(buffer.data(), buffer.size(), this->aid);
 					}
 				}
 			};
@@ -692,7 +692,7 @@ void awh::WebSocketClient::stop() noexcept {
 		// Завершаем работу, если разрешено остановить
 		if(this->unbind) const_cast <ccli_t *> (this->core)->stop();
 		// Если завершать работу запрещено, просто отключаемся
-		else ((core_t *) const_cast <ccli_t *> (this->core))->close(this->adj);
+		else ((core_t *) const_cast <ccli_t *> (this->core))->close(this->aid);
 		// Если функция обратного вызова установлена, выполняем
 		if(this->openStopFn != nullptr) this->openStopFn(false, this);
 	}

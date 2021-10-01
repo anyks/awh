@@ -489,24 +489,26 @@ void awh::Core::remove(const size_t wid) noexcept {
 }
 /**
  * close Метод закрытия подключения воркера
- * @param adj объект текущего адъютанта
+ * @param aid идентификатор адъютанта
  */
-void awh::Core::close(const worker_t::adj_t * adj) noexcept {
-	// Если объект адъютанта передан
-	if((adj != nullptr) && (this->adjutants.count(adj) > 0)){
+void awh::Core::close(const size_t aid) noexcept {
+	// Выполняем извлечение адъютанта
+	auto it = this->adjutants.find(aid);
+	// Если адъютант получен
+	if(it != this->adjutants.end()){
 		// Получаем объект воркера
-		worker_t * wrk = const_cast <worker_t *> (adj->parent);
+		worker_t * wrk = const_cast <worker_t *> (it->second->parent);
 		// Если событие сервера существует
-		if(adj->bev != nullptr){
+		if(it->second->bev != nullptr){
 			// Выполняем очистку буфера событий
-			this->clean(adj->bev);
+			this->clean(it->second->bev);
 			// Устанавливаем что событие удалено
-			const_cast <worker_t::adj_t *> (adj)->bev = nullptr;
+			const_cast <worker_t::adj_t *> (it->second)->bev = nullptr;
 		}
-		// Удаляем адъютанта из списка подключений
-		this->adjutants.erase(adj);
 		// Удаляем адъютанта из списка адъютантов
-		wrk->adjutants.erase(adj->aid);
+		wrk->adjutants.erase(aid);
+		// Удаляем адъютанта из списка подключений
+		this->adjutants.erase(aid);
 		// Выводим сообщение об ошибке
 		this->log->print("%s", log_t::flag_t::INFO, "disconnected from the server");
 		// Выводим функцию обратного вызова
@@ -517,32 +519,39 @@ void awh::Core::close(const worker_t::adj_t * adj) noexcept {
  * write Метод записи буфера данных воркером
  * @param buffer буфер для записи данных
  * @param size   размер записываемых данных
- * @param adj    объект текущего адъютанта
+ * @param aid    идентификатор адъютанта
  */
-void awh::Core::write(const char * buffer, const size_t size, const worker_t::adj_t * adj) noexcept {
+void awh::Core::write(const char * buffer, const size_t size, const size_t aid) noexcept {
 	// Если данные переданы
-	if((buffer != nullptr) && (size > 0) && (adj != nullptr) && (this->adjutants.count(adj) > 0)){
-		// Получаем минимальное количество байт для детекции
-		const size_t min = (adj->markWrite.min > 0 ? adj->markWrite.min : size);
-		// Получаем максимальное количество байт для детекции
-		const size_t max = (adj->markWrite.max > 0 ? adj->markWrite.max : size);
-		// Устанавливаем размер записываемых данных
-		bufferevent_setwatermark(adj->bev, EV_WRITE, min, max);
-		// Активируем разрешение на запись и чтение
-		bufferevent_enable(adj->bev, EV_WRITE);
-		// Отправляем серверу сообщение
-		bufferevent_write(adj->bev, buffer, size);
+	if((buffer != nullptr) && (size > 0)){
+		// Выполняем извлечение адъютанта
+		auto it = this->adjutants.find(aid);
+		// Если адъютант получен
+		if(it != this->adjutants.end()){
+			// Получаем минимальное количество байт для детекции
+			const size_t min = (it->second->markWrite.min > 0 ? it->second->markWrite.min : size);
+			// Получаем максимальное количество байт для детекции
+			const size_t max = (it->second->markWrite.max > 0 ? it->second->markWrite.max : size);
+			// Устанавливаем размер записываемых данных
+			bufferevent_setwatermark(it->second->bev, EV_WRITE, min, max);
+			// Активируем разрешение на запись и чтение
+			bufferevent_enable(it->second->bev, EV_WRITE);
+			// Отправляем серверу сообщение
+			bufferevent_write(it->second->bev, buffer, size);
+		}
 	}
 }
 /**
  * setLockMethod Метод блокировки метода режима работы
  * @param method метод режима работы
  * @param mode   флаг блокировки метода
- * @param adj    объект текущего адъютанта
+ * @param aid    идентификатор адъютанта
  */
-void awh::Core::setLockMethod(const method_t method, const bool mode, const worker_t::adj_t * adj) noexcept {
-	// Если объект адъютанта передан
-	if((adj != nullptr) && (this->adjutants.count(adj) > 0)){
+void awh::Core::setLockMethod(const method_t method, const bool mode, const size_t aid) noexcept {
+	// Выполняем извлечение адъютанта
+	auto it = this->adjutants.find(aid);
+	// Если адъютант получен
+	if(it != this->adjutants.end()){
 		// Определяем метод режима работы
 		switch((u_short) method){
 			// Режим работы ЧТЕНИЕ
@@ -550,18 +559,18 @@ void awh::Core::setLockMethod(const method_t method, const bool mode, const work
 				// Если нужно разблокировать метод
 				if(mode)
 					// Активируем разрешение на запись и чтение
-					bufferevent_enable(adj->bev, EV_READ);
+					bufferevent_enable(it->second->bev, EV_READ);
 				// Если нужно заблокировать метод
-				else bufferevent_disable(adj->bev, EV_READ);
+				else bufferevent_disable(it->second->bev, EV_READ);
 			} break;
 			// Режим работы ЗАПИСЬ
 			case (u_short) method_t::WRITE:
 				// Если нужно разблокировать метод
 				if(mode)
 					// Активируем разрешение на запись и чтение
-					bufferevent_enable(adj->bev, EV_WRITE);
+					bufferevent_enable(it->second->bev, EV_WRITE);
 				// Если нужно заблокировать метод
-				else bufferevent_disable(adj->bev, EV_WRITE);
+				else bufferevent_disable(it->second->bev, EV_WRITE);
 			break;
 		}
 	}
@@ -570,27 +579,29 @@ void awh::Core::setLockMethod(const method_t method, const bool mode, const work
  * setTimeout Метод установки таймаута ожидания появления данных
  * @param method  метод режима работы
  * @param seconds время ожидания в секундах
- * @param adj     объект текущего адъютанта
+ * @param aid     идентификатор адъютанта
  */
-void awh::Core::setTimeout(const method_t method, const time_t seconds, const worker_t::adj_t * adj) noexcept {
-	// Если объект адъютанта передан
-	if((adj != nullptr) && (this->adjutants.count(adj) > 0)){
+void awh::Core::setTimeout(const method_t method, const time_t seconds, const size_t aid) noexcept {
+	// Выполняем извлечение адъютанта
+	auto it = this->adjutants.find(aid);
+	// Если адъютант получен
+	if(it != this->adjutants.end()){
 		// Определяем метод режима работы
 		switch((u_short) method){
 			// Режим работы ЧТЕНИЕ
-			case (u_short) method_t::READ: const_cast <worker_t::adj_t *> (adj)->timeRead = seconds; break;
+			case (u_short) method_t::READ: const_cast <worker_t::adj_t *> (it->second)->timeRead = seconds; break;
 			// Режим работы ЗАПИСЬ
-			case (u_short) method_t::WRITE: const_cast <worker_t::adj_t *> (adj)->timeWrite = seconds; break;
+			case (u_short) method_t::WRITE: const_cast <worker_t::adj_t *> (it->second)->timeWrite = seconds; break;
 		}
 		// Устанавливаем таймаут ожидания поступления данных
-		struct timeval readTimeout = {adj->timeRead, 0};
+		struct timeval readTimeout = {it->second->timeRead, 0};
 		// Устанавливаем таймаут ожидания записи данных
-		struct timeval writeTimeout = {adj->timeWrite, 0};
+		struct timeval writeTimeout = {it->second->timeWrite, 0};
 		// Устанавливаем таймаут получения данных
 		bufferevent_set_timeouts(
-			adj->bev,
-			(adj->timeRead > 0 ? &readTimeout : nullptr),
-			(adj->timeWrite > 0 ? &writeTimeout : nullptr)
+			it->second->bev,
+			(it->second->timeRead > 0 ? &readTimeout : nullptr),
+			(it->second->timeWrite > 0 ? &writeTimeout : nullptr)
 		);
 	}
 }
@@ -599,30 +610,32 @@ void awh::Core::setTimeout(const method_t method, const time_t seconds, const wo
  * @param method метод режима работы
  * @param min    минимальный размер детектируемых байт
  * @param min    максимальный размер детектируемых байт
- * @param adj    объект текущего адъютанта
+ * @param aid    идентификатор адъютанта
  */
-void awh::Core::setMark(const method_t method, const size_t min, const size_t max, const worker_t::adj_t * adj) noexcept {
-	// Если объект адъютанта передан
-	if((adj != nullptr) && (this->adjutants.count(adj) > 0)){
+void awh::Core::setMark(const method_t method, const size_t min, const size_t max, const size_t aid) noexcept {
+	// Выполняем извлечение адъютанта
+	auto it = this->adjutants.find(aid);
+	// Если адъютант получен
+	if(it != this->adjutants.end()){
 		// Определяем метод режима работы
 		switch((u_short) method){
 			// Режим работы ЧТЕНИЕ
 			case (u_short) method_t::READ: {
 				// Устанавливаем минимальный размер байт
-				const_cast <worker_t::adj_t *> (adj)->markRead.min = min;
+				const_cast <worker_t::adj_t *> (it->second)->markRead.min = min;
 				// Устанавливаем максимальный размер байт
-				const_cast <worker_t::adj_t *> (adj)->markRead.max = max;
+				const_cast <worker_t::adj_t *> (it->second)->markRead.max = max;
 				// Устанавливаем размер считываемых данных
-				bufferevent_setwatermark(adj->bev, EV_READ, adj->markRead.min, adj->markRead.max);
+				bufferevent_setwatermark(it->second->bev, EV_READ, it->second->markRead.min, it->second->markRead.max);
 			} break;
 			// Режим работы ЗАПИСЬ
 			case (u_short) method_t::WRITE: {
 				// Устанавливаем минимальный размер байт
-				const_cast <worker_t::adj_t *> (adj)->markWrite.min = min;
+				const_cast <worker_t::adj_t *> (it->second)->markWrite.min = min;
 				// Устанавливаем максимальный размер байт
-				const_cast <worker_t::adj_t *> (adj)->markWrite.max = max;
+				const_cast <worker_t::adj_t *> (it->second)->markWrite.max = max;
 				// Устанавливаем размер записываемых данных
-				bufferevent_setwatermark(adj->bev, EV_WRITE, adj->markWrite.min, adj->markWrite.max);
+				bufferevent_setwatermark(it->second->bev, EV_WRITE, it->second->markWrite.min, it->second->markWrite.max);
 			} break;
 		}
 	}

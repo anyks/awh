@@ -57,9 +57,9 @@ namespace awh {
 		private:
 			/**
 			 * tuning Метод тюннинга буфера событий
-			 * @param adj объект текущего адъютанта
+			 * @param aid идентификатор адъютанта
 			 */
-			void tuning(const worker_t::adj_t * adj) noexcept;
+			void tuning(const size_t aid) noexcept;
 		public:
 			/**
 			 * closeAll Метод отключения всех воркеров
@@ -73,14 +73,14 @@ namespace awh {
 			void open(const size_t wid) noexcept;
 			/**
 			 * close Метод закрытия подключения воркера
-			 * @param adj объект текущего адъютанта
+			 * @param aid идентификатор адъютанта
 			 */
-			void close(const worker_t::adj_t * adj) noexcept;
+			void close(const size_t aid) noexcept;
 			/**
 			 * switchProxy Метод переключения с прокси-сервера
-			 * @param adj объект текущего адъютанта
+			 * @param aid идентификатор адъютанта
 			 */
-			void switchProxy(const worker_t::adj_t * adj) noexcept;
+			void switchProxy(const size_t aid) noexcept;
 		public:
 			/**
 			 * CoreClient Конструктор

@@ -71,13 +71,13 @@ void awh::Rest::closeCallback(const size_t wid, core_t * core, void * ctx) noexc
 }
 /**
  * connectCallback Функция обратного вызова при подключении к серверу
- * @param adj  объект текущего адъютанта
+ * @param aid  идентификатор адъютанта
  * @param core объект биндинга TCP/IP
  * @param ctx  передаваемый контекст модуля
  */
-void awh::Rest::connectCallback(const worker_t::adj_t * adj, core_t * core, void * ctx) noexcept {
+void awh::Rest::connectCallback(const size_t aid, core_t * core, void * ctx) noexcept {
 	// Если данные переданы верные
-	if((adj != nullptr) && (core != nullptr) && (ctx != nullptr)){
+	if((aid > 0) && (core != nullptr) && (ctx != nullptr)){
 		// Получаем контекст модуля
 		rest_t * web = reinterpret_cast <rest_t *> (ctx);
 		// Выполняем сброс состояния HTTP парсера
@@ -104,11 +104,11 @@ void awh::Rest::connectCallback(const worker_t::adj_t * adj, core_t * core, void
 			// Тело REST сообщения
 			vector <char> entity;
 			// Отправляем серверу сообщение
-			core->write(rest.data(), rest.size(), adj);
+			core->write(rest.data(), rest.size(), aid);
 			// Получаем данные тела запроса
 			while(!(entity = web->http->chunkBody()).empty()){
 				// Отправляем тело на сервер
-				core->write(entity.data(), entity.size(), adj);
+				core->write(entity.data(), entity.size(), aid);
 			}
 		}
 		// Выполняем сброс состояния HTTP парсера
@@ -117,13 +117,13 @@ void awh::Rest::connectCallback(const worker_t::adj_t * adj, core_t * core, void
 }
 /**
  * connectProxyCallback Функция обратного вызова при подключении к прокси-серверу
- * @param adj  объект текущего адъютанта
+ * @param aid  идентификатор адъютанта
  * @param core объект биндинга TCP/IP
  * @param ctx  передаваемый контекст модуля
  */
-void awh::Rest::connectProxyCallback(const worker_t::adj_t * adj, core_t * core, void * ctx) noexcept {
+void awh::Rest::connectProxyCallback(const size_t aid, core_t * core, void * ctx) noexcept {
 	// Если данные переданы верные
-	if((adj != nullptr) && (core != nullptr) && (ctx != nullptr)){
+	if((aid > 0) && (core != nullptr) && (ctx != nullptr)){
 		// Получаем контекст модуля
 		rest_t * web = reinterpret_cast <rest_t *> (ctx);
 		// Выполняем сброс состояния HTTP парсера
@@ -131,7 +131,7 @@ void awh::Rest::connectProxyCallback(const worker_t::adj_t * adj, core_t * core,
 		// Получаем бинарные данные REST запроса
 		const auto & rest = web->worker.proxy.http->proxy(web->worker.url);
 		// Если бинарные данные запроса получены, отправляем на прокси-сервер
-		if(!rest.empty()) core->write(rest.data(), rest.size(), adj);
+		if(!rest.empty()) core->write(rest.data(), rest.size(), aid);
 		// Выполняем сброс состояния HTTP парсера
 		web->worker.proxy.http->clear();
 	}
@@ -140,13 +140,13 @@ void awh::Rest::connectProxyCallback(const worker_t::adj_t * adj, core_t * core,
  * readCallback Функция обратного вызова при чтении сообщения с сервера
  * @param buffer бинарный буфер содержащий сообщение
  * @param size   размер бинарного буфера содержащего сообщение
- * @param adj    объект текущего адъютанта
+ * @param aid    идентификатор адъютанта
  * @param core   объект биндинга TCP/IP
  * @param ctx    передаваемый контекст модуля
  */
-void awh::Rest::readCallback(const char * buffer, const size_t size, const worker_t::adj_t * adj, core_t * core, void * ctx) noexcept {
+void awh::Rest::readCallback(const char * buffer, const size_t size, const size_t aid, core_t * core, void * ctx) noexcept {
 	// Если данные существуют
-	if((buffer != nullptr) && (size > 0)){
+	if((buffer != nullptr) && (size > 0) && (aid > 0)){
 		// Получаем контекст модуля
 		rest_t * web = reinterpret_cast <rest_t *> (ctx);
 		// Выполняем парсинг полученных данных
@@ -174,9 +174,9 @@ void awh::Rest::readCallback(const char * buffer, const size_t size, const worke
 							// Если соединение является постоянным
 							if(web->http->isAlive())
 								// Выполняем повторно отправку сообщения на сервер
-								connectCallback(adj, core, ctx);
+								connectCallback(aid, core, ctx);
 							// Завершаем работу
-							else core->close(adj);
+							else core->close(aid);
 							// Завершаем работу
 							return;
 						}
@@ -201,7 +201,7 @@ void awh::Rest::readCallback(const char * buffer, const size_t size, const worke
 			// Выполняем сброс количество попыток
 			web->failAuth = false;
 			// Завершаем работу
-			core->close(adj);
+			core->close(aid);
 		}
 	}
 }
@@ -209,13 +209,13 @@ void awh::Rest::readCallback(const char * buffer, const size_t size, const worke
  * readProxyCallback Функция обратного вызова при чтении сообщения с прокси-сервера
  * @param buffer бинарный буфер содержащий сообщение
  * @param size   размер бинарного буфера содержащего сообщение
- * @param adj    объект текущего адъютанта
+ * @param aid    идентификатор адъютанта
  * @param core   объект биндинга TCP/IP
  * @param ctx    передаваемый контекст модуля
  */
-void awh::Rest::readProxyCallback(const char * buffer, const size_t size, const worker_t::adj_t * adj, core_t * core, void * ctx) noexcept {
+void awh::Rest::readProxyCallback(const char * buffer, const size_t size, const size_t aid, core_t * core, void * ctx) noexcept {
 	// Если данные существуют
-	if((buffer != nullptr) && (size > 0)){
+	if((buffer != nullptr) && (size > 0) && (aid > 0)){
 		// Получаем контекст модуля
 		rest_t * web = reinterpret_cast <rest_t *> (ctx);
 		// Выполняем парсинг полученных данных
@@ -243,9 +243,9 @@ void awh::Rest::readProxyCallback(const char * buffer, const size_t size, const 
 							// Если соединение является постоянным
 							if(web->http->isAlive())
 								// Выполняем повторно отправку сообщения на сервер
-								connectProxyCallback(adj, core, ctx);
+								connectProxyCallback(aid, core, ctx);
 							// Завершаем работу
-							else core->close(adj);
+							else core->close(aid);
 							// Завершаем работу
 							return;
 						}
@@ -260,7 +260,7 @@ void awh::Rest::readProxyCallback(const char * buffer, const size_t size, const 
 					// Выполняем сброс количество попыток
 					web->failAuth = false;
 					// Выполняем переключение на работу с сервером
-					reinterpret_cast <ccli_t *> (core)->switchProxy(adj);
+					reinterpret_cast <ccli_t *> (core)->switchProxy(aid);
 					// Завершаем работу
 					return;
 				} break;
@@ -277,7 +277,7 @@ void awh::Rest::readProxyCallback(const char * buffer, const size_t size, const 
 			// Выполняем сброс количество попыток
 			web->failAuth = false;
 			// Завершаем работу
-			core->close(adj);
+			core->close(aid);
 		}
 	}
 }

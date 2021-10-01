@@ -13,7 +13,7 @@
 /**
  * Стандартная библиотека
  */
-#include <set>
+#include <map>
 #include <mutex>
 #include <string>
 #include <functional>
@@ -140,7 +140,7 @@ namespace awh {
 			// Список активных воркеров
 			map <size_t, const worker_t *> workers;
 			// Список подключённых клиентов
-			set <const worker_t::adj_t *> adjutants;
+			map <size_t, const worker_t::adj_t *> adjutants;
 		protected:
 			// Флаг разрешения работы
 			bool mode = false;
@@ -282,39 +282,39 @@ namespace awh {
 		public:
 			/**
 			 * close Метод закрытия подключения воркера
-			 * @param adj объект текущего адъютанта
+			 * @param aid идентификатор адъютанта
 			 */
-			virtual void close(const worker_t::adj_t * adj) noexcept;
+			virtual void close(const size_t aid) noexcept;
 		public:
 			/**
 			 * write Метод записи буфера данных воркером
 			 * @param buffer буфер для записи данных
 			 * @param size   размер записываемых данных
-			 * @param adj    объект текущего адъютанта
+			 * @param aid    идентификатор адъютанта
 			 */
-			void write(const char * buffer, const size_t size, const worker_t::adj_t * adj) noexcept;
+			void write(const char * buffer, const size_t size, const size_t aid) noexcept;
 			/**
 			 * setLockMethod Метод блокировки метода режима работы
 			 * @param method метод режима работы
 			 * @param mode   флаг блокировки метода
-			 * @param adj    объект текущего адъютанта
+			 * @param aid    идентификатор адъютанта
 			 */
-			void setLockMethod(const method_t method, const bool mode, const worker_t::adj_t * adj) noexcept;
+			void setLockMethod(const method_t method, const bool mode, const size_t aid) noexcept;
 			/**
 			 * setTimeout Метод установки таймаута ожидания появления данных
 			 * @param method  метод режима работы
 			 * @param seconds время ожидания в секундах
-			 * @param adj     объект текущего адъютанта
+			 * @param aid     идентификатор адъютанта
 			 */
-			void setTimeout(const method_t method, const time_t seconds, const worker_t::adj_t * adj) noexcept;
+			void setTimeout(const method_t method, const time_t seconds, const size_t aid) noexcept;
 			/**
 			 * setMark Метод установки маркера на размер детектируемых байт
 			 * @param method метод режима работы
 			 * @param min    минимальный размер детектируемых байт
 			 * @param min    максимальный размер детектируемых байт
-			 * @param adj    объект текущего адъютанта
+			 * @param aid    идентификатор адъютанта
 			 */
-			void setMark(const method_t method, const size_t min, const size_t max, const worker_t::adj_t * adj) noexcept;
+			void setMark(const method_t method, const size_t min, const size_t max, const size_t aid) noexcept;
 		public:
 			/**
 			 * setVerifySSL Метод разрешающий или запрещающий, выполнять проверку соответствия, сертификата домену

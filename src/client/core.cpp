@@ -23,7 +23,7 @@ void awh::CoreClient::read(struct bufferevent * bev, void * ctx) noexcept {
 		// Получаем объект подключения
 		wrc_t * wrk = (wrc_t *) const_cast <worker_t *> (adj->parent);
 		// Если подключение ещё существует
-		if((wrk->core->adjutants.count(adj) > 0) && (adj->buffer != nullptr)){
+		if((wrk->core->adjutants.count(adj->aid) > 0) && (adj->buffer != nullptr)){
 			// Если подключение производится через, прокси-сервер
 			if(wrk->isProxy()){
 				// Если функция обратного вызова для вывода записи существует
@@ -33,7 +33,7 @@ void awh::CoreClient::read(struct bufferevent * bev, void * ctx) noexcept {
 					// Считываем бинарные данные запроса из буфер
 					const size_t size = bufferevent_read(bev, (void *) adj->buffer, BUFFER_CHUNK);
 					// Выводим функцию обратного вызова
-					wrk->readProxyFn(adj->buffer, size, adj, const_cast <core_t *> (wrk->core), wrk->ctx);
+					wrk->readProxyFn(adj->buffer, size, adj->aid, const_cast <core_t *> (wrk->core), wrk->ctx);
 				}
 			// Если прокси-сервер не используется
 			} else if((wrk->readFn != nullptr) && (adj->buffer != nullptr)) {
@@ -42,7 +42,7 @@ void awh::CoreClient::read(struct bufferevent * bev, void * ctx) noexcept {
 				// Считываем бинарные данные запроса из буфер
 				const size_t size = bufferevent_read(adj->bev, (void *) adj->buffer, BUFFER_CHUNK);
 				// Выводим функцию обратного вызова
-				wrk->readFn(adj->buffer, size, adj, const_cast <core_t *> (wrk->core), wrk->ctx);
+				wrk->readFn(adj->buffer, size, adj->aid, const_cast <core_t *> (wrk->core), wrk->ctx);
 			}
 		}
 	}
@@ -60,7 +60,7 @@ void awh::CoreClient::write(struct bufferevent * bev, void * ctx) noexcept {
 		// Получаем объект подключения
 		wrc_t * wrk = (wrc_t *) const_cast <worker_t *> (adj->parent);
 		// Если подключение ещё существует
-		if((wrk->core->adjutants.count(adj) > 0) && (adj->buffer != nullptr)){
+		if((wrk->core->adjutants.count(adj->aid) > 0) && (adj->buffer != nullptr)){
 			// Получаем буферы исходящих данных
 			struct evbuffer * output = bufferevent_get_output(bev);
 			// Получаем размер исходящих данных
@@ -78,11 +78,11 @@ void awh::CoreClient::write(struct bufferevent * bev, void * ctx) noexcept {
 					// Если функция обратного вызова для вывода записи существует
 					if(wrk->writeProxyFn != nullptr)
 						// Выводим функцию обратного вызова
-						wrk->writeProxyFn(adj->buffer, size, adj, const_cast <core_t *> (wrk->core), wrk->ctx);
+						wrk->writeProxyFn(adj->buffer, size, adj->aid, const_cast <core_t *> (wrk->core), wrk->ctx);
 				// Если прокси-сервер не используется
 				} else if(wrk->writeFn != nullptr)
 					// Выводим функцию обратного вызова
-					wrk->writeFn(adj->buffer, size, adj, const_cast <core_t *> (wrk->core), wrk->ctx);
+					wrk->writeFn(adj->buffer, size, adj->aid, const_cast <core_t *> (wrk->core), wrk->ctx);
 				// Удаляем данные из буфера
 				// evbuffer_drain(output, size);
 			}
@@ -103,7 +103,7 @@ void awh::CoreClient::event(struct bufferevent * bev, const short events, void *
 		// Получаем объект подключения
 		wrc_t * wrk = (wrc_t *) const_cast <worker_t *> (adj->parent);
 		// Если подключение ещё существует
-		if((wrk->core->adjutants.count(adj) > 0) && (adj->fmk != nullptr)){
+		if((wrk->core->adjutants.count(adj->aid) > 0) && (adj->fmk != nullptr)){
 			// Получаем URL параметры запроса
 			const uri_t::url_t & url = (wrk->isProxy() ? wrk->proxy.url : wrk->url);
 			// Получаем хост сервера
@@ -117,9 +117,9 @@ void awh::CoreClient::event(struct bufferevent * bev, const short events, void *
 				// Если подключение производится через, прокси-сервер
 				if(wrk->isProxy()){
 					// Выполняем функцию обратного вызова для прокси-сервера
-					if(wrk->connectProxyFn != nullptr) wrk->connectProxyFn(adj, const_cast <core_t *> (wrk->core), wrk->ctx);
+					if(wrk->connectProxyFn != nullptr) wrk->connectProxyFn(adj->aid, const_cast <core_t *> (wrk->core), wrk->ctx);
 				// Выполняем функцию обратного вызова
-				} else if(wrk->connectFn != nullptr) wrk->connectFn(adj, const_cast <core_t *> (wrk->core), wrk->ctx);
+				} else if(wrk->connectFn != nullptr) wrk->connectFn(adj->aid, const_cast <core_t *> (wrk->core), wrk->ctx);
 			// Если это ошибка или завершение работы
 			} else if(events & (BEV_EVENT_ERROR | BEV_EVENT_EOF | BEV_EVENT_TIMEOUT)) {
 				// Если это ошибка
@@ -131,7 +131,7 @@ void awh::CoreClient::event(struct bufferevent * bev, const short events, void *
 				// Если нужно выполнить автоматическое переподключение
 				if(wrk->alive && (adj->attempt <= wrk->attempts)){
 					// Выполняем отключение
-					const_cast <core_t *> (wrk->core)->close(adj);
+					const_cast <core_t *> (wrk->core)->close(adj->aid);
 					// Увеличиваем колпичество попыток
 					adj->attempt++;
 					// Выдерживаем паузу в 3 секунды
@@ -139,7 +139,7 @@ void awh::CoreClient::event(struct bufferevent * bev, const short events, void *
 					// Выполняем новое подключение
 					const_cast <core_t *> (wrk->core)->connect(wrk->wid);
 				// Если автоматическое подключение выполнять не нужно
-				} else const_cast <core_t *> (wrk->core)->close(adj);
+				} else const_cast <core_t *> (wrk->core)->close(adj->aid);
 			}
 		}
 	}
@@ -186,12 +186,14 @@ bool awh::CoreClient::connect(const size_t wid) noexcept {
 				} else adj->bev = bufferevent_socket_new(this->base, socket.fd, BEV_OPT_THREADSAFE | BEV_OPT_DEFER_CALLBACKS);
 				// Если буфер событий создан
 				if(adj->bev != nullptr){
+					// Устанавливаем идентификатор адъютанта
+					adj->aid = this->fmk->unixTimestamp();
 					// Добавляем созданного адъютанта в список адъютантов
 					auto ret = wrk->adjutants.emplace(adj->aid, move(adj));
-					// Выполняем тюннинг буфера событий
-					tuning(ret.first->second.get());
 					// Добавляем адъютанта в список подключений
-					this->adjutants.emplace(ret.first->second.get());
+					this->adjutants.emplace(ret.first->second->aid, ret.first->second.get());
+					// Выполняем тюннинг буфера событий
+					tuning(ret.first->second->aid);
 					// Определяем тип подключения
 					switch(url.family){
 						// Для протокола IPv4
@@ -216,7 +218,7 @@ bool awh::CoreClient::connect(const size_t wid) noexcept {
 						// Если нужно выполнить автоматическое переподключение
 						if(wrk->alive && (ret.first->second->attempt <= wrk->attempts)){
 							// Выполняем отключение
-							this->close(ret.first->second.get());
+							this->close(ret.first->second->aid);
 							// Увеличиваем колпичество попыток
 							ret.first->second->attempt++;
 							// Выдерживаем паузу в 3 секунды
@@ -226,7 +228,7 @@ bool awh::CoreClient::connect(const size_t wid) noexcept {
 						// Если автоматическое подключение выполнять не нужно
 						} else {
 							// Иначе останавливаем работу
-							this->close(ret.first->second.get());
+							this->close(ret.first->second->aid);
 							// Просто выходим
 							return result;
 						}
@@ -260,45 +262,47 @@ bool awh::CoreClient::connect(const size_t wid) noexcept {
 }
 /**
  * tuning Метод тюннинга буфера событий
- * @param adj объект текущего адъютанта
+ * @param aid идентификатор адъютанта
  */
-void awh::CoreClient::tuning(const worker_t::adj_t * adj) noexcept {
-	// Если объект адъютанта передан
-	if(adj != nullptr){
+void awh::CoreClient::tuning(const size_t aid) noexcept {
+	// Выполняем извлечение адъютанта
+	auto it = this->adjutants.find(aid);
+	// Если адъютант получен
+	if(it != this->adjutants.end()){
 		// Получаем объект воркера
-		wrc_t * wrk = (wrc_t *) const_cast <worker_t *> (adj->parent);
+		wrc_t * wrk = (wrc_t *) const_cast <worker_t *> (it->second->parent);
 		// Устанавливаем количество попыток
-		const_cast <worker_t::adj_t *> (adj)->attempt = wrk->attempt;
+		const_cast <worker_t::adj_t *> (it->second)->attempt = wrk->attempt;
 		// Устанавливаем время ожидания поступления данных
-		const_cast <worker_t::adj_t *> (adj)->timeRead = wrk->timeRead;
+		const_cast <worker_t::adj_t *> (it->second)->timeRead = wrk->timeRead;
 		// Устанавливаем время ожидания записи данных
-		const_cast <worker_t::adj_t *> (adj)->timeWrite = wrk->timeWrite;
+		const_cast <worker_t::adj_t *> (it->second)->timeWrite = wrk->timeWrite;
 		// Устанавливаем размер детектируемых байт на чтение
-		const_cast <worker_t::adj_t *> (adj)->markRead = wrk->markRead;
+		const_cast <worker_t::adj_t *> (it->second)->markRead = wrk->markRead;
 		// Устанавливаем размер детектируемых байт на запись
-		const_cast <worker_t::adj_t *> (adj)->markWrite = wrk->markWrite;
+		const_cast <worker_t::adj_t *> (it->second)->markWrite = wrk->markWrite;
 		// Устанавливаем коллбеки
-		bufferevent_setcb(adj->bev, &read, &write, &event, (void *) adj);
+		bufferevent_setcb(it->second->bev, &read, &write, &event, (void *) it->second);
 		// Очищаем буферы событий при завершении работы
-		bufferevent_flush(adj->bev, EV_READ | EV_WRITE, BEV_FINISHED);
+		bufferevent_flush(it->second->bev, EV_READ | EV_WRITE, BEV_FINISHED);
 		// Если флаг ожидания входящих сообщений, активирован
 		if(wrk->wait){
 			// Устанавливаем таймаут ожидания поступления данных
-			struct timeval read = {adj->timeRead, 0};
+			struct timeval read = {it->second->timeRead, 0};
 			// Устанавливаем таймаут ожидания записи данных
-			struct timeval write = {adj->timeWrite, 0};
+			struct timeval write = {it->second->timeWrite, 0};
 			// Устанавливаем таймаут получения данных
-			bufferevent_set_timeouts(adj->bev, &read, &write);
+			bufferevent_set_timeouts(it->second->bev, &read, &write);
 		}
 		/**
 		 * Водяной знак на N байт (чтобы считывать данные когда они действительно приходят)
 		 */
 		// Устанавливаем размер считываемых данных
-		bufferevent_setwatermark(adj->bev, EV_READ, adj->markRead.min, adj->markRead.max);
+		bufferevent_setwatermark(it->second->bev, EV_READ, it->second->markRead.min, it->second->markRead.max);
 		// Устанавливаем размер записываемых данных
-		bufferevent_setwatermark(adj->bev, EV_WRITE, adj->markWrite.min, adj->markWrite.max);
+		bufferevent_setwatermark(it->second->bev, EV_WRITE, it->second->markWrite.min, it->second->markWrite.max);
 		// Активируем буферы событий на чтение и запись
-		bufferevent_enable(adj->bev, EV_READ | EV_WRITE);
+		bufferevent_enable(it->second->bev, EV_READ | EV_WRITE);
 	}
 }
 /**
@@ -387,26 +391,28 @@ void awh::CoreClient::open(const size_t wid) noexcept {
 }
 /**
  * close Метод закрытия подключения воркера
- * @param adj объект текущего адъютанта
+ * @param aid идентификатор адъютанта
  */
-void awh::CoreClient::close(const worker_t::adj_t * adj) noexcept {
-	// Если объект адъютанта передан
-	if((adj != nullptr) && (this->adjutants.count(adj) > 0)){
+void awh::CoreClient::close(const size_t aid) noexcept {
+	// Выполняем извлечение адъютанта
+	auto it = this->adjutants.find(aid);
+	// Если адъютант получен
+	if(it != this->adjutants.end()){
 		// Получаем объект воркера
-		wrc_t * wrk = (wrc_t *) const_cast <worker_t *> (adj->parent);
+		wrc_t * wrk = (wrc_t *) const_cast <worker_t *> (it->second->parent);
 		// Если событие сервера существует
-		if(adj->bev != nullptr){
+		if(it->second->bev != nullptr){
 			// Выполняем очистку буфера событий
-			this->clean(adj->bev);
+			this->clean(it->second->bev);
 			// Устанавливаем что событие удалено
-			const_cast <worker_t::adj_t *> (adj)->bev = nullptr;
+			const_cast <worker_t::adj_t *> (it->second)->bev = nullptr;
 		}
 		// Выполняем удаление контекста SSL
 		this->ssl->clear(wrk->ssl);
-		// Удаляем адъютанта из списка подключений
-		this->adjutants.erase(adj);
 		// Удаляем адъютанта из списка адъютантов
-		wrk->adjutants.erase(adj->aid);
+		wrk->adjutants.erase(aid);
+		// Удаляем адъютанта из списка подключений
+		this->adjutants.erase(aid);
 		// Выводим сообщение об ошибке
 		this->log->print("%s", log_t::flag_t::INFO, "disconnected from the server");
 		// Выводим функцию обратного вызова
@@ -415,13 +421,15 @@ void awh::CoreClient::close(const worker_t::adj_t * adj) noexcept {
 }
 /**
  * switchProxy Метод переключения с прокси-сервера
- * @param adj объект текущего адъютанта
+ * @param aid идентификатор адъютанта
  */
-void awh::CoreClient::switchProxy(const worker_t::adj_t * adj) noexcept {
-	// Если объект адъютанта передан
-	if((adj != nullptr) && (this->adjutants.count(adj) > 0)){
+void awh::CoreClient::switchProxy(const size_t aid) noexcept {
+	// Выполняем извлечение адъютанта
+	auto it = this->adjutants.find(aid);
+	// Если адъютант получен
+	if(it != this->adjutants.end()){
 		// Получаем объект воркера
-		wrc_t * wrk = (wrc_t *) const_cast <worker_t *> (adj->parent);
+		wrc_t * wrk = (wrc_t *) const_cast <worker_t *> (it->second->parent);
 		// Выполняем переключение типа подключения
 		wrk->switchConnect();
 		// Выполняем получение контекста сертификата
@@ -429,19 +437,19 @@ void awh::CoreClient::switchProxy(const worker_t::adj_t * adj) noexcept {
 		// Если SSL клиент разрешен
 		if(wrk->ssl.mode){
 			// Выполняем переход на защищённое подключение
-			// struct bufferevent * bev = bufferevent_openssl_filter_new(this->base, adj->bev, wrk->ssl.ssl, BUFFEREVENT_SSL_CONNECTING, BEV_OPT_THREADSAFE);
-			struct bufferevent * bev = bufferevent_openssl_filter_new(this->base, adj->bev, wrk->ssl.ssl, BUFFEREVENT_SSL_CONNECTING, BEV_OPT_THREADSAFE | BEV_OPT_DEFER_CALLBACKS);
+			// struct bufferevent * bev = bufferevent_openssl_filter_new(this->base, it->second->bev, wrk->ssl.ssl, BUFFEREVENT_SSL_CONNECTING, BEV_OPT_THREADSAFE);
+			struct bufferevent * bev = bufferevent_openssl_filter_new(this->base, it->second->bev, wrk->ssl.ssl, BUFFEREVENT_SSL_CONNECTING, BEV_OPT_THREADSAFE | BEV_OPT_DEFER_CALLBACKS);
 			// Если буфер событий создан
 			if(bev != nullptr){
 				// Устанавливаем новый буфер событий
-				const_cast <worker_t::adj_t *> (adj)->bev = bev;
+				const_cast <worker_t::adj_t *> (it->second)->bev = bev;
 				// Разрешаем непредвиденное грязное завершение работы
-				bufferevent_openssl_set_allow_dirty_shutdown(adj->bev, 1);
+				bufferevent_openssl_set_allow_dirty_shutdown(it->second->bev, 1);
 				// Выполняем тюннинг буфера событий
-				this->tuning(adj);
+				this->tuning(aid);
 			}
 		// Выполняем функцию обратного вызова
-		} else if(wrk->connectFn != nullptr) wrk->connectFn(adj, this, wrk->ctx);
+		} else if(wrk->connectFn != nullptr) wrk->connectFn(aid, this, wrk->ctx);
 	}
 }
 /**

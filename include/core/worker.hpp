@@ -14,7 +14,6 @@
  * Стандартная библиотека
  */
 #include <map>
-#include <ctime>
 #include <string>
 #include <event2/bufferevent.h>
 
@@ -140,11 +139,11 @@ namespace awh {
 			// Функция обратного вызова при закрытии подключения
 			function <void (const size_t, Core *, void *)> closeFn = nullptr;
 			// Функция обратного вызова при запуске подключения
-			function <void (const adj_t *, Core *, void *)> connectFn = nullptr;
+			function <void (const size_t, Core *, void *)> connectFn = nullptr;
 			// Функция обратного вызова при получении данных
-			function <void (const char *, const size_t, const adj_t *, Core *, void *)> readFn = nullptr;
+			function <void (const char *, const size_t, const size_t, Core *, void *)> readFn = nullptr;
 			// Функция обратного вызова при записи данных
-			function <void (const char *, const size_t, const adj_t *, Core *, void *)> writeFn = nullptr;
+			function <void (const char *, const size_t, const size_t, Core *, void *)> writeFn = nullptr;
 		public:
 			/**
 			 * clear Метод очистки

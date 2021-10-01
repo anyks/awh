@@ -91,11 +91,11 @@ namespace awh {
 			connect_t connect = connect_t::SERVER;
 		public:
 			// Функция обратного вызова при открытии подключения к прокси-серверу
-			function <void (const adj_t *, Core *, void *)> connectProxyFn = nullptr;
+			function <void (const size_t, Core *, void *)> connectProxyFn = nullptr;
 			// Функция обратного вызова при получении данных с прокси-сервера
-			function <void (const char *, const size_t, const adj_t *, Core *, void *)> readProxyFn = nullptr;
+			function <void (const char *, const size_t, const size_t, Core *, void *)> readProxyFn = nullptr;
 			// Функция обратного вызова при записи данных с прокси-сервера
-			function <void (const char *, const size_t, const adj_t *, Core *, void *)> writeProxyFn = nullptr;
+			function <void (const char *, const size_t, const size_t, Core *, void *)> writeProxyFn = nullptr;
 		public:
 			/**
 			 * clear Метод очистки
