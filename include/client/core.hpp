@@ -41,12 +41,6 @@ namespace awh {
 			 */
 			static void write(struct bufferevent * bev, void * ctx) noexcept;
 			/**
-			 * tuning Метод тюннинга буфера событий
-			 * @param bev буфер события
-			 * @param ctx передаваемый контекст
-			 */
-			static void tuning(struct bufferevent * bev, void * ctx) noexcept;
-			/**
 			 * event Метод обработка входящих событий с сервера
 			 * @param bev    буфер события
 			 * @param events произошедшее событие
@@ -56,10 +50,21 @@ namespace awh {
 		private:
 			/**
 			 * connect Метод создания подключения к удаленному серверу
-			 * @param worker воркер для подключения
-			 * @return       результат подключения
+			 * @param wid идентификатор воркера
+			 * @return    результат подключения
 			 */
-			bool connect(const worker_t * worker) noexcept;
+			bool connect(const size_t wid) noexcept;
+		private:
+			/**
+			 * tuning Метод тюннинга буфера событий
+			 * @param adj объект текущего адъютанта
+			 */
+			void tuning(const worker_t::adj_t * adj) noexcept;
+		public:
+			/**
+			 * closeAll Метод отключения всех воркеров
+			 */
+			void closeAll() noexcept;
 		public:
 			/**
 			 * open Метод открытия подключения воркером
@@ -67,10 +72,15 @@ namespace awh {
 			 */
 			void open(const size_t wid) noexcept;
 			/**
-			 * switchProxy Метод переключения с прокси-сервера
-			 * @param wid идентификатор воркера
+			 * close Метод закрытия подключения воркера
+			 * @param adj объект текущего адъютанта
 			 */
-			void switchProxy(const size_t wid) noexcept;
+			void close(const worker_t::adj_t * adj) noexcept;
+			/**
+			 * switchProxy Метод переключения с прокси-сервера
+			 * @param adj объект текущего адъютанта
+			 */
+			void switchProxy(const worker_t::adj_t * adj) noexcept;
 		public:
 			/**
 			 * CoreClient Конструктор

@@ -71,6 +71,34 @@ void awh::Core::delay(const size_t seconds) const noexcept {
 	}
 }
 /**
+ * clean Метод буфера событий
+ * @param bev буфер событий для очистки
+ */
+void awh::Core::clean(struct bufferevent * bev) noexcept {
+	// Если буфер событий передан
+	if(bev != nullptr){
+		// Получаем файловый дескриптор
+		evutil_socket_t fd = bufferevent_getfd(bev);
+		// Запрещаем чтение запись данных серверу
+		bufferevent_disable(bev, EV_WRITE | EV_READ);
+		// Если - это Windows
+		#if defined(_WIN32) || defined(_WIN64)
+			// Отключаем подключение для сокета
+			if(fd > 0) shutdown(fd, SD_BOTH);
+		// Если - это Unix
+		#else
+			// Отключаем подключение для сокета
+			if(fd > 0) shutdown(fd, SHUT_RDWR);
+		#endif
+		// Закрываем подключение
+		if(fd > 0) evutil_closesocket(fd);
+		// Удаляем буфер события
+		bufferevent_free(bev);
+		// Зануляем буфер событий
+		bev = nullptr;
+	}
+}
+/**
  * socket Метод создания сокета
  * @param ip     адрес для которого нужно создать сокет
  * @param port   порт сервера для которого нужно создать сокет
@@ -217,48 +245,6 @@ const awh::Core::socket_t awh::Core::socket(const string & ip, const u_int port,
 	return result;
 }
 /**
- * close Метод закрытия подключения воркера
- * @param worker воркер для закрытия подключения
- */
-void awh::Core::close(const worker_t * worker) noexcept {
-	// Если воркер получен
-	if(worker != nullptr){
-		// Получаем объект воркера
-		worker_t * wrk = const_cast <worker_t *> (worker);
-		// Если сокет существует
-		if(wrk->fd > -1){
-			// Если событие сервера существует
-			if(wrk->bev != nullptr){
-				// Запрещаем чтение запись данных серверу
-				bufferevent_disable(wrk->bev, EV_WRITE | EV_READ);
-				// Если - это Windows
-				#if defined(_WIN32) || defined(_WIN64)
-					// Отключаем подключение для сокета
-					if(wrk->fd > 0) shutdown(wrk->fd, SD_BOTH);
-				// Если - это Unix
-				#else
-					// Отключаем подключение для сокета
-					if(wrk->fd > 0) shutdown(wrk->fd, SHUT_RDWR);
-				#endif
-				// Закрываем подключение
-				if(wrk->fd > 0) evutil_closesocket(wrk->fd);
-				// Удаляем буфер события
-				bufferevent_free(wrk->bev);
-				// Устанавливаем что событие удалено
-				wrk->bev = nullptr;
-			}
-			// Выполняем удаление контекста SSL
-			this->ssl->clear(wrk->ssl);
-			// Выполняем сброс файлового дескриптора
-			wrk->fd = -1;
-			// Выводим сообщение об ошибке
-			this->log->print("%s", log_t::flag_t::INFO, "disconnected from the server");
-			// Выводим функцию обратного вызова
-			if(wrk->closeFn != nullptr) wrk->closeFn(wrk->wid, this, wrk->ctx);
-		}
-	}
-}
-/**
  * bind Метод подключения модуля ядра к текущей базе событий
  * @param core модуль ядра для подключения
  */
@@ -283,13 +269,13 @@ void awh::Core::bind(Core * core) noexcept {
 					// Переходим по всему списку воркеров
 					for(auto & worker : core->workers){
 						// Если функция обратного вызова установлена
-						if(worker.second->runFn != nullptr)
+						if(worker.second->openFn != nullptr)
 							// Выполняем функцию обратного вызова
-							worker.second->runFn(worker.first, core, worker.second->ctx);
+							worker.second->openFn(worker.first, core, worker.second->ctx);
 					}
 				}
 				// Если функция обратного вызова установлена, выполняем
-				if(core->startFn != nullptr) core->startFn(core->base, core, core->ctx);
+				if(core->startFn != nullptr) core->startFn(core, core->ctx);
 			// Если происходит ошибка то игнорируем её
 			} catch(const bad_alloc&) {
 				// Выводим сообщение об ошибке
@@ -337,7 +323,7 @@ void awh::Core::setStopCallback(function <void (Core * core, void *)> callback) 
  * setStartCallback Метод установки функции обратного вызова при запуске работы модуля
  * @param callback функция обратного вызова для установки
  */
-void awh::Core::setStartCallback(function <void (struct event_base *, Core * core, void *)> callback) noexcept {
+void awh::Core::setStartCallback(function <void (Core * core, void *)> callback) noexcept {
 	// Устанавливаем функцию обратного вызова
 	this->startFn = callback;
 }
@@ -349,8 +335,6 @@ void awh::Core::stop() noexcept {
 	if(this->mode){
 		// Запрещаем работу WebSocket
 		this->mode = false;
-		// Выполняем отключение всех воркеров
-		this->closeAll();
 		// Выполняем удаление всех воркеров
 		this->removeAll();
 		// Завершаем работу базы событий
@@ -382,13 +366,13 @@ void awh::Core::start() noexcept {
 				// Переходим по всему списку воркеров
 				for(auto & worker : this->workers){
 					// Если функция обратного вызова установлена
-					if(worker.second->runFn != nullptr)
+					if(worker.second->openFn != nullptr)
 						// Выполняем функцию обратного вызова
-						worker.second->runFn(worker.first, this, worker.second->ctx);
+						worker.second->openFn(worker.first, this, worker.second->ctx);
 				}
 			}
 			// Если функция обратного вызова установлена, выполняем
-			if(this->startFn != nullptr) this->startFn(this->base, this, this->ctx);
+			if(this->startFn != nullptr) this->startFn(this, this->ctx);
 			// Выводим в консоль информацию
 			this->log->print("[+] start service: pid = %u", log_t::flag_t::INFO, getpid());
 			// Запускаем работу базы событий
@@ -456,81 +440,39 @@ size_t awh::Core::add(const worker_t * worker) noexcept {
  * closeAll Метод отключения всех воркеров
  */
 void awh::Core::closeAll() noexcept {
-	// Если список воркеров активен
+	// Если список подключений активен
 	if(!this->workers.empty()){
-		// Переходим по всему списку воркеров
-		for(auto & worker : this->workers)
-			// Выполняем закрытие подключения
-			this->close(worker.second);
+		// Переходим по всему списку подключений
+		for(auto & worker : this->workers){
+			// Если в воркере есть подключённые клиенты
+			if(!worker.second->adjutants.empty()){
+				// Получаем объект воркера
+				worker_t * wrk = const_cast <worker_t *> (worker.second);
+				// Переходим по всему списку адъютанта
+				for(auto it = wrk->adjutants.begin(); it != wrk->adjutants.end();){
+					// Выполняем очистку буфера событий
+					this->clean(it->second->bev);
+					// Выводим функцию обратного вызова
+					if(wrk->closeFn != nullptr)
+						// Выполняем функцию обратного вызова
+						wrk->closeFn(worker.first, this, wrk->ctx);
+					// Удаляем адъютанта из списка
+					it = wrk->adjutants.erase(it);
+				}
+			}
+		}
 	}
+	// Выполняем очистку списка адъютантов
+	this->adjutants.clear();
 }
 /**
  * removeAll Метод удаления всех воркеров
  */
 void awh::Core::removeAll() noexcept {
+	// Выполняем отключение всех клиентов
+	this->closeAll();
 	// Выполняем удаление всех воркеров
 	this->workers.clear();
-}
-/**
- * open Метод открытия подключения воркером
- * @param wid идентификатор воркера
- */
-void awh::Core::open(const size_t wid) noexcept {
-	// Если идентификатор воркера передан
-	if((wid > 0) && (this->dns4 != nullptr) && (this->dns6 != nullptr)){
-		// Выполняем поиск воркера
-		auto it = this->workers.find(wid);
-		// Если воркер найден
-		if((it != this->workers.end()) && !it->second->url.empty()){
-			// Получаем объект воркера
-			worker_t * wrk = const_cast <worker_t *> (it->second);
-			/**
-			 * runFn Функция выполнения запуска системы
-			 * @param ip полученный адрес сервера резолвером
-			 */
-			auto runFn = [wrk, this](const string & ip) noexcept {
-				// Если IP адрес получен
-				if(!ip.empty()){
-					// Запоминаем полученный IP адрес
-					wrk->url.ip = ip;
-					// Если подключение выполнено
-					if(this->connect(wrk)) return;
-					// Сообщаем, что подключение не удалось и выводим сообщение
-					else this->log->print("broken connect to host %s", log_t::flag_t::CRITICAL, ip.c_str());
-					// Если файловый дескриптор очищен, зануляем его
-					if(wrk->fd == -1) wrk->fd = 0;
-				}
-				// Отключаем воркер
-				this->close(wrk);
-			};
-			// Если IP адрес не получен
-			if(wrk->url.ip.empty() && !wrk->url.domain.empty())
-				// Определяем тип подключения
-				switch(wrk->url.family){
-					// Резолвер IPv4, создаём резолвер
-					case AF_INET: this->dns4->resolve(wrk->url.domain, wrk->url.family, runFn); break;
-					// Резолвер IPv6, создаём резолвер
-					case AF_INET6: this->dns6->resolve(wrk->url.domain, wrk->url.family, runFn); break;
-				}
-			// Выполняем запуск системы
-			else if(!wrk->url.ip.empty()) runFn(wrk->url.ip);
-			// Иначе завершаем работу
-			else this->close(wrk);
-		}
-	}
-}
-/**
- * close Метод закрытия подключения воркером
- * @param wid идентификатор воркера
- */
-void awh::Core::close(const size_t wid) noexcept {
-	// Если идентификатор воркера передан
-	if(wid > 0){
-		// Выполняем поиск воркера
-		auto it = this->workers.find(wid);
-		// Если воркер найден
-		if(it != this->workers.end()) this->close(it->second);
-	}
 }
 /**
  * remove Метод удаления воркера из биндинга
@@ -546,69 +488,81 @@ void awh::Core::remove(const size_t wid) noexcept {
 	}
 }
 /**
+ * close Метод закрытия подключения воркера
+ * @param adj объект текущего адъютанта
+ */
+void awh::Core::close(const worker_t::adj_t * adj) noexcept {
+	// Если объект адъютанта передан
+	if((adj != nullptr) && (this->adjutants.count(adj) > 0)){
+		// Получаем объект воркера
+		worker_t * wrk = const_cast <worker_t *> (adj->parent);
+		// Если событие сервера существует
+		if(adj->bev != nullptr){
+			// Выполняем очистку буфера событий
+			this->clean(adj->bev);
+			// Устанавливаем что событие удалено
+			const_cast <worker_t::adj_t *> (adj)->bev = nullptr;
+		}
+		// Удаляем адъютанта из списка подключений
+		this->adjutants.erase(adj);
+		// Удаляем адъютанта из списка адъютантов
+		wrk->adjutants.erase(adj->aid);
+		// Выводим сообщение об ошибке
+		this->log->print("%s", log_t::flag_t::INFO, "disconnected from the server");
+		// Выводим функцию обратного вызова
+		if(wrk->closeFn != nullptr) wrk->closeFn(wrk->wid, this, wrk->ctx);
+	}
+}
+/**
  * write Метод записи буфера данных воркером
  * @param buffer буфер для записи данных
  * @param size   размер записываемых данных
- * @param wid    идентификатор воркера
+ * @param adj    объект текущего адъютанта
  */
-void awh::Core::write(const char * buffer, const size_t size, const size_t wid) noexcept {
+void awh::Core::write(const char * buffer, const size_t size, const worker_t::adj_t * adj) noexcept {
 	// Если данные переданы
-	if((buffer != nullptr) && (size > 0) && (wid > 0)){
-		// Выполняем поиск воркера
-		auto it = this->workers.find(wid);
-		// Если воркер найден
-		if(it != this->workers.end()){
-			// Получаем объект воркера
-			worker_t * wrk = const_cast <worker_t *> (it->second);
-			// Получаем минимальное количество байт для детекции
-			const size_t min = (wrk->markWrite.min > 0 ? wrk->markWrite.min : size);
-			// Получаем максимальное количество байт для детекции
-			const size_t max = (wrk->markWrite.max > 0 ? wrk->markWrite.max : size);
-			// Устанавливаем размер записываемых данных
-			bufferevent_setwatermark(wrk->bev, EV_WRITE, min, max);
-			// Активируем разрешение на запись и чтение
-			bufferevent_enable(wrk->bev, EV_WRITE);
-			// Отправляем серверу сообщение
-			bufferevent_write(wrk->bev, buffer, size);
-		}
+	if((buffer != nullptr) && (size > 0) && (adj != nullptr) && (this->adjutants.count(adj) > 0)){
+		// Получаем минимальное количество байт для детекции
+		const size_t min = (adj->markWrite.min > 0 ? adj->markWrite.min : size);
+		// Получаем максимальное количество байт для детекции
+		const size_t max = (adj->markWrite.max > 0 ? adj->markWrite.max : size);
+		// Устанавливаем размер записываемых данных
+		bufferevent_setwatermark(adj->bev, EV_WRITE, min, max);
+		// Активируем разрешение на запись и чтение
+		bufferevent_enable(adj->bev, EV_WRITE);
+		// Отправляем серверу сообщение
+		bufferevent_write(adj->bev, buffer, size);
 	}
 }
 /**
  * setLockMethod Метод блокировки метода режима работы
  * @param method метод режима работы
  * @param mode   флаг блокировки метода
- * @param wid    идентификатор воркера
+ * @param adj    объект текущего адъютанта
  */
-void awh::Core::setLockMethod(const method_t method, const bool mode, const size_t wid) noexcept {
-	// Если данные переданы
-	if(wid > 0){
-		// Выполняем поиск воркера
-		auto it = this->workers.find(wid);
-		// Если воркер найден
-		if(it != this->workers.end()){
-			// Получаем объект воркера
-			worker_t * wrk = const_cast <worker_t *> (it->second);
-			// Определяем метод режима работы
-			switch((u_short) method){
-				// Режим работы ЧТЕНИЕ
-				case (u_short) method_t::READ: {
-					// Если нужно разблокировать метод
-					if(mode)
-						// Активируем разрешение на запись и чтение
-						bufferevent_enable(wrk->bev, EV_READ);
-					// Если нужно заблокировать метод
-					else bufferevent_disable(wrk->bev, EV_READ);
-				} break;
-				// Режим работы ЗАПИСЬ
-				case (u_short) method_t::WRITE:
-					// Если нужно разблокировать метод
-					if(mode)
-						// Активируем разрешение на запись и чтение
-						bufferevent_enable(wrk->bev, EV_WRITE);
-					// Если нужно заблокировать метод
-					else bufferevent_disable(wrk->bev, EV_WRITE);
-				break;
-			}
+void awh::Core::setLockMethod(const method_t method, const bool mode, const worker_t::adj_t * adj) noexcept {
+	// Если объект адъютанта передан
+	if((adj != nullptr) && (this->adjutants.count(adj) > 0)){
+		// Определяем метод режима работы
+		switch((u_short) method){
+			// Режим работы ЧТЕНИЕ
+			case (u_short) method_t::READ: {
+				// Если нужно разблокировать метод
+				if(mode)
+					// Активируем разрешение на запись и чтение
+					bufferevent_enable(adj->bev, EV_READ);
+				// Если нужно заблокировать метод
+				else bufferevent_disable(adj->bev, EV_READ);
+			} break;
+			// Режим работы ЗАПИСЬ
+			case (u_short) method_t::WRITE:
+				// Если нужно разблокировать метод
+				if(mode)
+					// Активируем разрешение на запись и чтение
+					bufferevent_enable(adj->bev, EV_WRITE);
+				// Если нужно заблокировать метод
+				else bufferevent_disable(adj->bev, EV_WRITE);
+			break;
 		}
 	}
 }
@@ -616,35 +570,28 @@ void awh::Core::setLockMethod(const method_t method, const bool mode, const size
  * setTimeout Метод установки таймаута ожидания появления данных
  * @param method  метод режима работы
  * @param seconds время ожидания в секундах
- * @param wid     идентификатор воркера
+ * @param adj     объект текущего адъютанта
  */
-void awh::Core::setTimeout(const method_t method, const time_t seconds, const size_t wid) noexcept {
-	// Если данные переданы
-	if(wid > 0){
-		// Выполняем поиск воркера
-		auto it = this->workers.find(wid);
-		// Если воркер найден
-		if(it != this->workers.end()){
-			// Получаем объект воркера
-			worker_t * wrk = const_cast <worker_t *> (it->second);
-			// Определяем метод режима работы
-			switch((u_short) method){
-				// Режим работы ЧТЕНИЕ
-				case (u_short) method_t::READ: wrk->timeRead = seconds; break;
-				// Режим работы ЗАПИСЬ
-				case (u_short) method_t::WRITE: wrk->timeWrite = seconds; break;
-			}
-			// Устанавливаем таймаут ожидания поступления данных
-			struct timeval readTimeout = {wrk->timeRead, 0};
-			// Устанавливаем таймаут ожидания записи данных
-			struct timeval writeTimeout = {wrk->timeWrite, 0};
-			// Устанавливаем таймаут получения данных
-			bufferevent_set_timeouts(
-				wrk->bev,
-				(wrk->timeRead > 0 ? &readTimeout : nullptr),
-				(wrk->timeWrite > 0 ? &writeTimeout : nullptr)
-			);
+void awh::Core::setTimeout(const method_t method, const time_t seconds, const worker_t::adj_t * adj) noexcept {
+	// Если объект адъютанта передан
+	if((adj != nullptr) && (this->adjutants.count(adj) > 0)){
+		// Определяем метод режима работы
+		switch((u_short) method){
+			// Режим работы ЧТЕНИЕ
+			case (u_short) method_t::READ: const_cast <worker_t::adj_t *> (adj)->timeRead = seconds; break;
+			// Режим работы ЗАПИСЬ
+			case (u_short) method_t::WRITE: const_cast <worker_t::adj_t *> (adj)->timeWrite = seconds; break;
 		}
+		// Устанавливаем таймаут ожидания поступления данных
+		struct timeval readTimeout = {adj->timeRead, 0};
+		// Устанавливаем таймаут ожидания записи данных
+		struct timeval writeTimeout = {adj->timeWrite, 0};
+		// Устанавливаем таймаут получения данных
+		bufferevent_set_timeouts(
+			adj->bev,
+			(adj->timeRead > 0 ? &readTimeout : nullptr),
+			(adj->timeWrite > 0 ? &writeTimeout : nullptr)
+		);
 	}
 }
 /**
@@ -652,38 +599,31 @@ void awh::Core::setTimeout(const method_t method, const time_t seconds, const si
  * @param method метод режима работы
  * @param min    минимальный размер детектируемых байт
  * @param min    максимальный размер детектируемых байт
- * @param wid    идентификатор воркера
+ * @param adj    объект текущего адъютанта
  */
-void awh::Core::setMark(const method_t method, const size_t min, const size_t max, const size_t wid) noexcept {
-	// Если данные переданы
-	if(wid > 0){
-		// Выполняем поиск воркера
-		auto it = this->workers.find(wid);
-		// Если воркер найден
-		if(it != this->workers.end()){
-			// Получаем объект воркера
-			worker_t * wrk = const_cast <worker_t *> (it->second);
-			// Определяем метод режима работы
-			switch((u_short) method){
-				// Режим работы ЧТЕНИЕ
-				case (u_short) method_t::READ: {
-					// Устанавливаем минимальный размер байт
-					wrk->markRead.min = min;
-					// Устанавливаем максимальный размер байт
-					wrk->markRead.max = max;
-					// Устанавливаем размер считываемых данных
-					bufferevent_setwatermark(wrk->bev, EV_READ, wrk->markRead.min, wrk->markRead.max);
-				} break;
-				// Режим работы ЗАПИСЬ
-				case (u_short) method_t::WRITE: {
-					// Устанавливаем минимальный размер байт
-					wrk->markWrite.min = min;
-					// Устанавливаем максимальный размер байт
-					wrk->markWrite.max = max;
-					// Устанавливаем размер записываемых данных
-					bufferevent_setwatermark(wrk->bev, EV_WRITE, wrk->markWrite.min, wrk->markWrite.max);
-				} break;
-			}
+void awh::Core::setMark(const method_t method, const size_t min, const size_t max, const worker_t::adj_t * adj) noexcept {
+	// Если объект адъютанта передан
+	if((adj != nullptr) && (this->adjutants.count(adj) > 0)){
+		// Определяем метод режима работы
+		switch((u_short) method){
+			// Режим работы ЧТЕНИЕ
+			case (u_short) method_t::READ: {
+				// Устанавливаем минимальный размер байт
+				const_cast <worker_t::adj_t *> (adj)->markRead.min = min;
+				// Устанавливаем максимальный размер байт
+				const_cast <worker_t::adj_t *> (adj)->markRead.max = max;
+				// Устанавливаем размер считываемых данных
+				bufferevent_setwatermark(adj->bev, EV_READ, adj->markRead.min, adj->markRead.max);
+			} break;
+			// Режим работы ЗАПИСЬ
+			case (u_short) method_t::WRITE: {
+				// Устанавливаем минимальный размер байт
+				const_cast <worker_t::adj_t *> (adj)->markWrite.min = min;
+				// Устанавливаем максимальный размер байт
+				const_cast <worker_t::adj_t *> (adj)->markWrite.max = max;
+				// Устанавливаем размер записываемых данных
+				bufferevent_setwatermark(adj->bev, EV_WRITE, adj->markWrite.min, adj->markWrite.max);
+			} break;
 		}
 	}
 }
@@ -744,11 +684,8 @@ void awh::Core::setNet(const vector <string> & ip, const vector <string> & ns, c
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
  */
-awh::Core::Core(const fmk_t * fmk, const log_t * log) noexcept {
+awh::Core::Core(const fmk_t * fmk, const log_t * log) noexcept : fmk(fmk), log(log) {
 	try {
-		// Устанавливаем зависимые модули
-		this->fmk = fmk;
-		this->log = log;
 		// Создаём объект для работы с сетью
 		this->nwk = new network_t(this->fmk);
 		// Создаём объект URI

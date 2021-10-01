@@ -13,6 +13,8 @@
 /**
  * Стандартная библиотека
  */
+#include <map>
+#include <ctime>
 #include <string>
 #include <event2/bufferevent.h>
 
@@ -38,6 +40,11 @@ namespace awh {
 	 * Worker Структура воркера
 	 */
 	typedef struct Worker {
+		private:
+			// Core Устанавливаем дружбу с классом ядра
+			friend class Core;
+			// CoreClient Устанавливаем дружбу с клиентским классом ядра
+			friend class CoreClient;
 		public:
 			/**
 			 * Mark Структура маркера на размер детектируемых байт
@@ -51,10 +58,48 @@ namespace awh {
 				Mark() : min(0), max(0) {}
 			} __attribute__((packed)) mark_t;
 		public:
-			// Параметры адреса для запроса
-			uri_t::url_t url;
-			// Контекст SSL для работы с защищённым подключением
-			ssl_t::ctx_t ssl;
+			/**
+			 * Adjutant Структура адъютанта
+			 */
+			typedef struct Adjutant {
+				private:
+					// Core Устанавливаем дружбу с классом ядра
+					friend class Core;
+					// Worker Устанавливаем дружбу с родительским объектом
+					friend class Worker;
+					// CoreClient Устанавливаем дружбу с клиентским классом ядра
+					friend class CoreClient;
+				private:
+					size_t aid;      // Идентификатор адъютанта
+					u_short attempt; // Текущее количество попыток
+				private:
+					time_t timeRead;  // Таймер на чтение в секундах
+					time_t timeWrite; // Таймер на запись в секундах
+				private:
+					mark_t markRead;  // Маркера размера детектируемых байт на чтение
+					mark_t markWrite; // Маркера размера детектируемых байт на запись
+				private:
+					const char * buffer;      // Объект буфера данных
+					const Worker * parent;    // Объект родительского воркера
+					struct bufferevent * bev; // Объект буфера событий
+				public:
+					// Создаём объект фреймворка
+					const fmk_t * fmk;
+					// Создаём объект работы с логами
+					const log_t * log;
+				public:
+					/**
+					 * Adjutant Конструктор
+					 * @param parent объект родительского воркера
+					 * @param fmk    объект фреймворка
+					 * @param log    объект для работы с логами
+					 */
+					Adjutant(const Worker * parent, const fmk_t * fmk, const log_t * log) noexcept;
+					/**
+					 * ~Adjutant Деструктор
+					 */
+					~Adjutant() noexcept;
+			} adj_t;
 		public:
 			// Маркера размера детектируемых байт на чтение
 			mark_t markRead;
@@ -69,41 +114,37 @@ namespace awh {
 			// Флаг автоматического поддержания подключения
 			bool alive = false;
 		public:
+			// Общее количество попыток
+			u_short attempts = 0;
+		public:
 			// Таймер на чтение в секундах
 			time_t timeRead = READ_TIMEOUT;
 			// Таймер на запись в секундах
 			time_t timeWrite = WRITE_TIMEOUT;
-		public:
-			// Сокет сервера для подключения
-			evutil_socket_t fd = -1;
-		public:
-			// Количество попыток реконнекта
-			pair <u_short, u_short> attempts;
+		protected:
+			// Список подключённых адъютантов
+			map <size_t, unique_ptr <adj_t>> adjutants;
 		public:
 			// Контекст передаваемый в сообщении
 			void * ctx = nullptr;
-			// Буфер событий для сервера
-			struct bufferevent * bev = nullptr;
-		public:
+		protected:
 			// Создаём объект фреймворка
 			const fmk_t * fmk = nullptr;
 			// Создаём объект работы с логами
 			const log_t * log = nullptr;
 			// Создаём объект фреймворка
 			const Core * core = nullptr;
-			// Создаём объект данных вебсокета
-			const char * buffer = nullptr;
 		public:
-			// Функция обратного вызова при запуске подключения
-			function <void (const size_t, Core *, void *)> runFn = nullptr;
 			// Функция обратного вызова при открытии подключения
 			function <void (const size_t, Core *, void *)> openFn = nullptr;
 			// Функция обратного вызова при закрытии подключения
 			function <void (const size_t, Core *, void *)> closeFn = nullptr;
+			// Функция обратного вызова при запуске подключения
+			function <void (const adj_t *, Core *, void *)> connectFn = nullptr;
 			// Функция обратного вызова при получении данных
-			function <void (const char *, const size_t, const size_t, Core *, void *)> readFn = nullptr;
+			function <void (const char *, const size_t, const adj_t *, Core *, void *)> readFn = nullptr;
 			// Функция обратного вызова при записи данных
-			function <void (const char *, const size_t, const size_t, Core *, void *)> writeFn = nullptr;
+			function <void (const char *, const size_t, const adj_t *, Core *, void *)> writeFn = nullptr;
 		public:
 			/**
 			 * clear Метод очистки
@@ -115,11 +156,11 @@ namespace awh {
 			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
 			 */
-			Worker(const fmk_t * fmk, const log_t * log) noexcept;
+			Worker(const fmk_t * fmk, const log_t * log) noexcept : fmk(fmk), log(log) {}
 			/**
 			 * ~Worker Деструктор
 			 */
-			virtual ~Worker() noexcept;
+			virtual ~Worker() noexcept {}
 	} worker_t;
 };
 

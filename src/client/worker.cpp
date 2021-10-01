@@ -48,6 +48,10 @@ awh::Proxy::~Proxy() noexcept {
 void awh::WorkerClient::clear() noexcept {
 	// Очищаем данные вокера
 	worker_t::clear();
+	// Очищаем количество попыток
+	this->attempt = 0;
+	// Выполняем очистку объекта запроса
+	this->url.clear();
 	// Устанавливаем тип подключения
 	this->connect = (this->proxy.type != proxy_t::type_t::NONE ? connect_t::PROXY : connect_t::SERVER);
 }

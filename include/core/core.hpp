@@ -13,6 +13,7 @@
 /**
  * Стандартная библиотека
  */
+#include <set>
 #include <mutex>
 #include <string>
 #include <functional>
@@ -82,7 +83,7 @@ namespace awh {
 				KEEPALIVE = 0x04, // Флаг автоматического поддержания подключения
 				VERIFYSSL = 0x08  // Флаг выполнения проверки сертификата SSL
 			};
-		public:
+		private:
 			/**
 			 * CoreClient Устанавливаем дружбу с клиентским классом ядра
 			 */
@@ -138,6 +139,8 @@ namespace awh {
 			mutex bloking;
 			// Список активных воркеров
 			map <size_t, const worker_t *> workers;
+			// Список подключённых клиентов
+			set <const worker_t::adj_t *> adjutants;
 		protected:
 			// Флаг разрешения работы
 			bool mode = false;
@@ -170,7 +173,7 @@ namespace awh {
 			// Функция обратного вызова при остановке модуля
 			function <void (Core * core, void *)> stopFn = nullptr;
 			// Функция обратного вызова при запуске модуля
-			function <void (struct event_base *, Core * core, void *)> startFn = nullptr;
+			function <void (Core * core, void *)> startFn = nullptr;
 		protected:
 			/**
 			 * Если - это Windows
@@ -193,11 +196,17 @@ namespace awh {
 			void delay(const size_t seconds) const noexcept;
 		protected:
 			/**
-			 * connect Метод создания подключения к удаленному серверу
-			 * @param worker воркер для подключения
-			 * @return       результат подключения
+			 * clean Метод буфера событий
+			 * @param bev буфер событий для очистки
 			 */
-			virtual bool connect(const worker_t * worker) noexcept = 0;
+			void clean(struct bufferevent * bev) noexcept;
+		protected:
+			/**
+			 * connect Метод создания подключения к удаленному серверу
+			 * @param wid идентификатор воркера
+			 * @return    результат подключения
+			 */
+			virtual bool connect(const size_t wid) noexcept = 0;
 			/**
 			 * socket Метод создания сокета
 			 * @param ip     адрес для которого нужно создать сокет
@@ -206,12 +215,6 @@ namespace awh {
 			 * @return       параметры подключения к серверу
 			 */
 			const socket_t socket(const string & ip, const u_int port, const int family = AF_INET) const noexcept;
-		protected:
-			/**
-			 * close Метод закрытия подключения воркера
-			 * @param worker воркер для закрытия подключения
-			 */
-			void close(const worker_t * worker) noexcept;
 		public:
 			/**
 			 * bind Метод подключения модуля ядра к текущей базе событий
@@ -233,7 +236,7 @@ namespace awh {
 			 * setStartCallback Метод установки функции обратного вызова при запуске работы модуля
 			 * @param callback функция обратного вызова для установки
 			 */
-			void setStartCallback(function <void (struct event_base *, Core * core, void *)> callback) noexcept;
+			void setStartCallback(function <void (Core * core, void *)> callback) noexcept;
 		public:
 			/**
 			 * stop Метод остановки клиента
@@ -260,57 +263,58 @@ namespace awh {
 			/**
 			 * closeAll Метод отключения всех воркеров
 			 */
-			void closeAll() noexcept;
+			virtual void closeAll() noexcept;
 			/**
 			 * removeAll Метод удаления всех воркеров
 			 */
-			void removeAll() noexcept;
+			virtual void removeAll() noexcept;
 		public:
-			/**
-			 * open Метод открытия подключения воркером
-			 * @param wid идентификатор воркера
-			 */
-			virtual void open(const size_t wid) noexcept;
-			/**
-			 * close Метод закрытия подключения воркером
-			 * @param wid идентификатор воркера
-			 */
-			virtual void close(const size_t wid) noexcept;
 			/**
 			 * remove Метод удаления воркера из биндинга
 			 * @param wid идентификатор воркера
 			 */
 			virtual void remove(const size_t wid) noexcept;
+			/**
+			 * open Метод открытия подключения воркером
+			 * @param wid идентификатор воркера
+			 */
+			virtual void open(const size_t wid) noexcept = 0;
+		public:
+			/**
+			 * close Метод закрытия подключения воркера
+			 * @param adj объект текущего адъютанта
+			 */
+			virtual void close(const worker_t::adj_t * adj) noexcept;
 		public:
 			/**
 			 * write Метод записи буфера данных воркером
 			 * @param buffer буфер для записи данных
 			 * @param size   размер записываемых данных
-			 * @param wid    идентификатор воркера
+			 * @param adj    объект текущего адъютанта
 			 */
-			void write(const char * buffer, const size_t size, const size_t wid) noexcept;
+			void write(const char * buffer, const size_t size, const worker_t::adj_t * adj) noexcept;
 			/**
 			 * setLockMethod Метод блокировки метода режима работы
 			 * @param method метод режима работы
 			 * @param mode   флаг блокировки метода
-			 * @param wid    идентификатор воркера
+			 * @param adj    объект текущего адъютанта
 			 */
-			void setLockMethod(const method_t method, const bool mode, const size_t wid) noexcept;
+			void setLockMethod(const method_t method, const bool mode, const worker_t::adj_t * adj) noexcept;
 			/**
 			 * setTimeout Метод установки таймаута ожидания появления данных
 			 * @param method  метод режима работы
 			 * @param seconds время ожидания в секундах
-			 * @param wid     идентификатор воркера
+			 * @param adj     объект текущего адъютанта
 			 */
-			void setTimeout(const method_t method, const time_t seconds, const size_t wid) noexcept;
+			void setTimeout(const method_t method, const time_t seconds, const worker_t::adj_t * adj) noexcept;
 			/**
 			 * setMark Метод установки маркера на размер детектируемых байт
 			 * @param method метод режима работы
 			 * @param min    минимальный размер детектируемых байт
 			 * @param min    максимальный размер детектируемых байт
-			 * @param wid    идентификатор воркера
+			 * @param adj    объект текущего адъютанта
 			 */
-			void setMark(const method_t method, const size_t min, const size_t max, const size_t wid) noexcept;
+			void setMark(const method_t method, const size_t min, const size_t max, const worker_t::adj_t * adj) noexcept;
 		public:
 			/**
 			 * setVerifySSL Метод разрешающий или запрещающий, выполнять проверку соответствия, сертификата домену

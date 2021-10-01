@@ -11,24 +11,12 @@
 #include <core/worker.hpp>
 
 /**
- * clear Метод очистки
+ * Adjutant Конструктор
+ * @param parent объект родительского воркера
+ * @param fmk    объект фреймворка
+ * @param log    объект для работы с логами
  */
-void awh::Worker::clear() noexcept {
-	// Выполняем сброс файлового дескриптора
-	this->fd = -1;
-	// Выполняем очистку объекта запроса
-	this->url.clear();
-	// Выполняем очистку счётчика попыток
-	this->attempts.first = 0;
-	// Выполняем очистку буфера данных
-	memset((void *) this->buffer, 0, BUFFER_CHUNK);
-}
-/**
- * Worker Конструктор
- * @param fmk объект фреймворка
- * @param log объект для работы с логами
- */
-awh::Worker::Worker(const fmk_t * fmk, const log_t * log) noexcept : fmk(fmk), log(log), attempts({0,0}) {
+awh::Worker::Adjutant::Adjutant(const Worker * parent, const fmk_t * fmk, const log_t * log) noexcept : parent(parent), fmk(fmk), log(log), aid(time(nullptr)), attempt(0), timeRead(READ_TIMEOUT), timeWrite(WRITE_TIMEOUT), bev(nullptr) {
 	try {
 		// Резервируем память для работы с буфером данных WebSocket
 		this->buffer = new char[BUFFER_CHUNK];
@@ -41,9 +29,21 @@ awh::Worker::Worker(const fmk_t * fmk, const log_t * log) noexcept : fmk(fmk), l
 	}
 }
 /**
- * ~Worker Деструктор
+ * ~Adjutant Деструктор
  */
-awh::Worker::~Worker() noexcept {
+awh::Worker::Adjutant::~Adjutant() noexcept {
 	// Если буфер данных WebSocket создан
-	if(this->buffer != nullptr) delete [] this->buffer;
+	if(this->buffer != nullptr){
+		// Удаляем выделенную память
+		delete [] this->buffer;
+		// Зануляем буфер данных
+		this->buffer = nullptr;
+	}
+}
+/**
+ * clear Метод очистки
+ */
+void awh::Worker::clear() noexcept {
+	// Выполняем очистку списка адъютантов
+	this->adjutants.clear();
 }
