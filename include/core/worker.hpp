@@ -69,23 +69,33 @@ namespace awh {
 					// CoreClient Устанавливаем дружбу с клиентским классом ядра
 					friend class CoreClient;
 				private:
-					size_t aid;      // Идентификатор адъютанта
-					u_short attempt; // Текущее количество попыток
+					// Маркера размера детектируемых байт на чтение
+					mark_t markRead;
+					// Маркера размера детектируемых байт на запись
+					mark_t markWrite;
 				private:
-					time_t timeRead;  // Таймер на чтение в секундах
-					time_t timeWrite; // Таймер на запись в секундах
+					// Идентификатор адъютанта
+					size_t aid = 0;
+					// Текущее количество попыток
+					u_short attempt = 0;
 				private:
-					mark_t markRead;  // Маркера размера детектируемых байт на чтение
-					mark_t markWrite; // Маркера размера детектируемых байт на запись
+					// Таймер на чтение в секундах
+					time_t timeRead = READ_TIMEOUT;
+					// Таймер на запись в секундах
+					time_t timeWrite = WRITE_TIMEOUT;
 				private:
-					const char * buffer;      // Объект буфера данных
-					const Worker * parent;    // Объект родительского воркера
-					struct bufferevent * bev; // Объект буфера событий
+					// Объект буфера данныхs
+					char buffer[BUFFER_CHUNK];
+				private:
+					// Объект буфера событий
+					struct bufferevent * bev = nullptr;
 				public:
 					// Создаём объект фреймворка
-					const fmk_t * fmk;
+					const fmk_t * fmk = nullptr;
 					// Создаём объект работы с логами
-					const log_t * log;
+					const log_t * log = nullptr;
+					// Объект родительского воркера
+					const Worker * parent = nullptr;
 				public:
 					/**
 					 * Adjutant Конструктор
@@ -93,11 +103,11 @@ namespace awh {
 					 * @param fmk    объект фреймворка
 					 * @param log    объект для работы с логами
 					 */
-					Adjutant(const Worker * parent, const fmk_t * fmk, const log_t * log) noexcept;
+					Adjutant(const Worker * parent, const fmk_t * fmk, const log_t * log) noexcept : parent(parent), fmk(fmk), log(log) {}
 					/**
 					 * ~Adjutant Деструктор
 					 */
-					~Adjutant() noexcept;
+					~Adjutant() noexcept {}
 			} adj_t;
 		public:
 			// Маркера размера детектируемых байт на чтение
@@ -148,7 +158,10 @@ namespace awh {
 			/**
 			 * clear Метод очистки
 			 */
-			virtual void clear() noexcept;
+			virtual void clear() noexcept {
+				// Выполняем очистку списка адъютантов
+				this->adjutants.clear();
+			}
 		public:
 			/**
 			 * Worker Конструктор

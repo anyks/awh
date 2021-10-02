@@ -23,11 +23,11 @@ void awh::CoreClient::read(struct bufferevent * bev, void * ctx) noexcept {
 		// Получаем объект подключения
 		wrc_t * wrk = (wrc_t *) const_cast <worker_t *> (adj->parent);
 		// Если подключение ещё существует
-		if((wrk->core->adjutants.count(adj->aid) > 0) && (adj->buffer != nullptr)){
+		if(wrk->core->adjutants.count(adj->aid) > 0){
 			// Если подключение производится через, прокси-сервер
 			if(wrk->isProxy()){
 				// Если функция обратного вызова для вывода записи существует
-				if((wrk->readProxyFn != nullptr) && (adj->buffer != nullptr)){
+				if(wrk->readProxyFn != nullptr){
 					// Заполняем нулями буфер полученных данных
 					memset((void *) adj->buffer, 0, BUFFER_CHUNK);
 					// Считываем бинарные данные запроса из буфер
@@ -36,7 +36,7 @@ void awh::CoreClient::read(struct bufferevent * bev, void * ctx) noexcept {
 					wrk->readProxyFn(adj->buffer, size, adj->aid, const_cast <core_t *> (wrk->core), wrk->ctx);
 				}
 			// Если прокси-сервер не используется
-			} else if((wrk->readFn != nullptr) && (adj->buffer != nullptr)) {
+			} else if(wrk->readFn != nullptr) {
 				// Заполняем нулями буфер полученных данных
 				memset((void *) adj->buffer, 0, BUFFER_CHUNK);
 				// Считываем бинарные данные запроса из буфер
@@ -60,13 +60,13 @@ void awh::CoreClient::write(struct bufferevent * bev, void * ctx) noexcept {
 		// Получаем объект подключения
 		wrc_t * wrk = (wrc_t *) const_cast <worker_t *> (adj->parent);
 		// Если подключение ещё существует
-		if((wrk->core->adjutants.count(adj->aid) > 0) && (adj->buffer != nullptr)){
+		if(wrk->core->adjutants.count(adj->aid) > 0){
 			// Получаем буферы исходящих данных
 			struct evbuffer * output = bufferevent_get_output(bev);
 			// Получаем размер исходящих данных
 			size_t size = evbuffer_get_length(output);
 			// Если данные существуют
-			if((size > 0) && (adj->buffer != nullptr)){
+			if(size > 0){
 				// Заполняем нулями буфер полученных данных
 				memset((void *) adj->buffer, 0, BUFFER_CHUNK);
 				// Выполняем компенсацию размера полученных данных
