@@ -15,6 +15,7 @@
  */
 #include <core/http.hpp>
 #include <core/worker.hpp>
+#include <client/socks5.hpp>
 
 // Подписываемся на стандартное пространство имён
 using namespace std;
@@ -40,6 +41,8 @@ namespace awh {
 		public:
 			// Создаём объект для работы с HTTP
 			http_t * http = nullptr;
+			// Создаём объект для работы с Socks5
+			s5cli_t * socks5 = nullptr;
 		public:
 			// Создаём объект фреймворка
 			const fmk_t * fmk = nullptr;

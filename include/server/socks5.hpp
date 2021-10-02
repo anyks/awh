@@ -37,26 +37,23 @@ namespace awh {
 		public:
 			/**
 			 * resCmd Метод получения бинарного буфера ответа
-			 * @return бинарный буфер ответа
 			 */
-			vector <char> resCmd() const noexcept;
+			void resCmd() const noexcept;
 			/**
 			 * resAuth Метод получения бинарного буфера ответа на авторизацию клиента
-			 * @return бинарный буфер ответа
 			 */
-			vector <char> resAuth() const noexcept;
+			void resAuth() const noexcept;
 			/**
 			 * resMethod Метод получения бинарного буфера выбора метода подключения
-			 * @return бинарный буфер ответа
 			 */
-			vector <char> resMethod() const noexcept;
+			void resMethod() const noexcept;
 		public:
 			/**
 			 * parse Метод парсинга входящих данных
 			 * @param buffer бинарный буфер входящих данных
 			 * @param size   размер бинарного буфера входящих данных
 			 */
-			void parse(const char * buffer, const size_t size) noexcept;
+			void parse(const char * buffer = nullptr, const size_t size = 0) noexcept;
 		public:
 			/**
 			 * reset Метод сброса собранных данных
@@ -75,11 +72,11 @@ namespace awh {
 		public:
 			/**
 			 * Socks5Server Конструктор
-			 * @param uri объект для работы с URI
 			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
+			 * @param uri объект для работы с URI
 			 */
-			Socks5Server(const uri_t * uri, const fmk_t * fmk, const log_t * log) noexcept : socks5_t(uri, fmk, log) {}
+			Socks5Server(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcept : socks5_t(fmk, log, uri) {}
 			/**
 			 * ~Socks5Server Деструктор
 			 */

@@ -126,14 +126,35 @@ void awh::Rest::connectProxyCallback(const size_t aid, core_t * core, void * ctx
 	if((aid > 0) && (core != nullptr) && (ctx != nullptr)){
 		// Получаем контекст модуля
 		rest_t * web = reinterpret_cast <rest_t *> (ctx);
-		// Выполняем сброс состояния HTTP парсера
-		web->worker.proxy.http->clear();
-		// Получаем бинарные данные REST запроса
-		const auto & rest = web->worker.proxy.http->proxy(web->worker.url);
-		// Если бинарные данные запроса получены, отправляем на прокси-сервер
-		if(!rest.empty()) core->write(rest.data(), rest.size(), aid);
-		// Выполняем сброс состояния HTTP парсера
-		web->worker.proxy.http->clear();
+		// Определяем тип прокси-сервера
+		switch((u_short) web->worker.proxy.type){
+			// Если прокси-сервер является Socks5
+			case (u_short) proxy_t::type_t::SOCKS5: {
+				// Выполняем сброс состояния Socks5 парсера
+				web->worker.proxy.socks5->reset();
+				// Устанавливаем URL адрес запроса
+				web->worker.proxy.socks5->setUrl(web->worker.url);
+				// Выполняем создание буфера запроса
+				web->worker.proxy.socks5->parse();
+				// Получаем данные запроса
+				const auto & socks5 = web->worker.proxy.socks5->get();
+				// Если данные получены
+				if(!socks5.empty()) core->write(socks5.data(), socks5.size(), aid);
+			} break;
+			// Если прокси-сервер является HTTP
+			case (u_short) proxy_t::type_t::HTTP: {
+				// Выполняем сброс состояния HTTP парсера
+				web->worker.proxy.http->clear();
+				// Получаем бинарные данные REST запроса
+				const auto & rest = web->worker.proxy.http->proxy(web->worker.url);
+				// Если бинарные данные запроса получены, отправляем на прокси-сервер
+				if(!rest.empty()) core->write(rest.data(), rest.size(), aid);
+				// Выполняем сброс состояния HTTP парсера
+				web->worker.proxy.http->clear();
+			} break;
+			// Иначе завершаем работу
+			default: core->close(aid);
+		}
 	}
 }
 /**
@@ -218,66 +239,97 @@ void awh::Rest::readProxyCallback(const char * buffer, const size_t size, const 
 	if((buffer != nullptr) && (size > 0) && (aid > 0)){
 		// Получаем контекст модуля
 		rest_t * web = reinterpret_cast <rest_t *> (ctx);
-		// Выполняем парсинг полученных данных
-		web->worker.proxy.http->parse(buffer, size);
-		// Если все данные получены
-		if(web->worker.proxy.http->isEnd()){
-			// Получаем параметры запроса
-			const auto & query = web->worker.proxy.http->getQuery();
-			// Устанавливаем код ответа
-			web->res.code = query.code;
-			// Устанавливаем сообщение ответа
-			web->res.message = query.message;
-			// Выполняем проверку авторизации
-			switch((u_short) web->worker.proxy.http->getAuth()){
-				// Если нужно попытаться ещё раз
-				case (u_short) http_t::stath_t::RETRY: {
-					// Если попытка повторить авторизацию ещё не проводилась
-					if(!web->failAuth){
-						// Получаем новый адрес запроса
-						web->worker.proxy.url = web->worker.proxy.http->getUrl();
-						// Если адрес запроса получен
-						if(!web->worker.proxy.url.empty()){
-							// Запоминаем, что попытка выполнена
-							web->failAuth = true;
-							// Если соединение является постоянным
-							if(web->http->isAlive())
-								// Выполняем повторно отправку сообщения на сервер
-								connectProxyCallback(aid, core, ctx);
-							// Завершаем работу
-							else core->close(aid);
+		// Определяем тип прокси-сервера
+		switch((u_short) web->worker.proxy.type){
+			// Если прокси-сервер является Socks5
+			case (u_short) proxy_t::type_t::SOCKS5: {
+				// Если данные не получены
+				if(!web->worker.proxy.socks5->isEnd()){
+					// Выполняем парсинг входящих данных
+					web->worker.proxy.socks5->parse(buffer, size);
+					// Получаем данные запроса
+					const auto & socks5 = web->worker.proxy.socks5->get();
+					// Если данные получены
+					if(!socks5.empty()) core->write(socks5.data(), socks5.size(), aid);
+					// Если данные все получены
+					else if(web->worker.proxy.socks5->isEnd()) {
+						// Если рукопожатие выполнено
+						if(web->worker.proxy.socks5->isHandshake()){
+							// Выполняем переключение на работу с сервером
+							reinterpret_cast <ccli_t *> (core)->switchProxy(aid);
 							// Завершаем работу
 							return;
-						}
+						// Завершаем работу
+						} else core->close(aid);
 					}
+				}
+			} break;
+			// Если прокси-сервер является HTTP
+			case (u_short) proxy_t::type_t::HTTP: {
+				// Выполняем парсинг полученных данных
+				web->worker.proxy.http->parse(buffer, size);
+				// Если все данные получены
+				if(web->worker.proxy.http->isEnd()){
+					// Получаем параметры запроса
+					const auto & query = web->worker.proxy.http->getQuery();
 					// Устанавливаем код ответа
-					web->res.code = 403;
+					web->res.code = query.code;
 					// Устанавливаем сообщение ответа
-					web->res.message = web->worker.proxy.http->getMessage(web->res.code);
-				} break;
-				// Если запрос выполнен удачно
-				case (u_short) http_t::stath_t::GOOD: {
+					web->res.message = query.message;
+					// Выполняем проверку авторизации
+					switch((u_short) web->worker.proxy.http->getAuth()){
+						// Если нужно попытаться ещё раз
+						case (u_short) http_t::stath_t::RETRY: {
+							// Если попытка повторить авторизацию ещё не проводилась
+							if(!web->failAuth){
+								// Получаем новый адрес запроса
+								web->worker.proxy.url = web->worker.proxy.http->getUrl();
+								// Если адрес запроса получен
+								if(!web->worker.proxy.url.empty()){
+									// Запоминаем, что попытка выполнена
+									web->failAuth = true;
+									// Если соединение является постоянным
+									if(web->http->isAlive())
+										// Выполняем повторно отправку сообщения на сервер
+										connectProxyCallback(aid, core, ctx);
+									// Завершаем работу
+									else core->close(aid);
+									// Завершаем работу
+									return;
+								}
+							}
+							// Устанавливаем код ответа
+							web->res.code = 403;
+							// Устанавливаем сообщение ответа
+							web->res.message = web->worker.proxy.http->getMessage(web->res.code);
+						} break;
+						// Если запрос выполнен удачно
+						case (u_short) http_t::stath_t::GOOD: {
+							// Выполняем сброс количество попыток
+							web->failAuth = false;
+							// Выполняем переключение на работу с сервером
+							reinterpret_cast <ccli_t *> (core)->switchProxy(aid);
+							// Завершаем работу
+							return;
+						} break;
+						// Если запрос неудачный
+						case (u_short) http_t::stath_t::FAULT: {
+							// Получаем тело запроса
+							const auto & entity = web->worker.proxy.http->getBody();
+							// Устанавливаем заголовки ответа
+							web->res.headers = web->worker.proxy.http->getHeaders();
+							// Устанавливаем тело ответа
+							web->res.entity.assign(entity.begin(), entity.end());
+						} break;
+					}
 					// Выполняем сброс количество попыток
 					web->failAuth = false;
-					// Выполняем переключение на работу с сервером
-					reinterpret_cast <ccli_t *> (core)->switchProxy(aid);
 					// Завершаем работу
-					return;
-				} break;
-				// Если запрос неудачный
-				case (u_short) http_t::stath_t::FAULT: {
-					// Получаем тело запроса
-					const auto & entity = web->worker.proxy.http->getBody();
-					// Устанавливаем заголовки ответа
-					web->res.headers = web->worker.proxy.http->getHeaders();
-					// Устанавливаем тело ответа
-					web->res.entity.assign(entity.begin(), entity.end());
-				} break;
-			}
-			// Выполняем сброс количество попыток
-			web->failAuth = false;
-			// Завершаем работу
-			core->close(aid);
+					core->close(aid);
+				}
+			} break;
+			// Иначе завершаем работу
+			default: core->close(aid);
 		}
 	}
 }
@@ -694,18 +746,22 @@ void awh::Rest::setProxy(const string & uri) noexcept {
 		// Если данные параметров прокси-сервера получены
 		if(!this->worker.proxy.url.empty()){
 			// Если протокол подключения SOCKS5
-			if(this->worker.proxy.url.schema.compare("socks5") == 0)
+			if(this->worker.proxy.url.schema.compare("socks5") == 0){
 				// Устанавливаем тип прокси-сервера
 				this->worker.proxy.type = proxy_t::type_t::SOCKS5;
+				// Если требуется авторизация на прокси-сервере
+				if(!this->worker.proxy.url.user.empty() && !this->worker.proxy.url.pass.empty())
+					// Устанавливаем данные пользователя
+					this->worker.proxy.socks5->setUser(this->worker.proxy.url.user, this->worker.proxy.url.pass);
 			// Если протокол подключения HTTP
-			else if((this->worker.proxy.url.schema.compare("http") == 0) ||
-			(this->worker.proxy.url.schema.compare("https") == 0))
+			} else if((this->worker.proxy.url.schema.compare("http") == 0) || (this->worker.proxy.url.schema.compare("https") == 0)) {
 				// Устанавливаем тип прокси-сервера
 				this->worker.proxy.type = proxy_t::type_t::HTTP;
-			// Если требуется авторизация на прокси-сервере
-			if(!this->worker.proxy.url.user.empty() && !this->worker.proxy.url.pass.empty())
-				// Устанавливаем данные пользователя
-				this->worker.proxy.http->setUser(this->worker.proxy.url.user, this->worker.proxy.url.pass);
+				// Если требуется авторизация на прокси-сервере
+				if(!this->worker.proxy.url.user.empty() && !this->worker.proxy.url.pass.empty())
+					// Устанавливаем данные пользователя
+					this->worker.proxy.http->setUser(this->worker.proxy.url.user, this->worker.proxy.url.pass);
+			}
 		}
 	}
 }

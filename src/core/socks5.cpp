@@ -64,14 +64,15 @@ vector <char> awh::Socks5::ipToHex(const string & ip, const int family) const no
 /**
  * hexToIp Метод конвертации бинарного буфера в IP адрес
  * @param buffer бинарный буфер для конвертации
+ * @param size   размер бинарного буфера
  * @param family тип протокола интернета AF_INET или AF_INET6
  * @return       IP адрес в виде строки
  */
-string awh::Socks5::hexToIp(const vector <char> & buffer, const int family) const noexcept {
+string awh::Socks5::hexToIp(const char * buffer, const size_t size, const int family) const noexcept {
 	// Результат работы функции
 	string result = "";
 	// Если бинарный буфер передан
-	if(!buffer.empty()){
+	if((buffer != nullptr) && (size > 0)){
 		// Определяем тип подключения
 		switch(family){
 			// Если тип адреса IPv4
@@ -79,7 +80,7 @@ string awh::Socks5::hexToIp(const vector <char> & buffer, const int family) cons
 				// Создаём буфер строки адреса
 				char str[INET_ADDRSTRLEN];
 				// Выполняем конвертацию
-				if(inet_ntop(family, buffer.data(), str, INET_ADDRSTRLEN) == nullptr)
+				if(inet_ntop(family, buffer, str, INET_ADDRSTRLEN) == nullptr)
 					// Выводим сообщение об ошибке
 					this->log->print("%s", log_t::flag_t::CRITICAL, "ip address could not be obtained");
 				// Получаем IPv4 адрес
@@ -90,7 +91,7 @@ string awh::Socks5::hexToIp(const vector <char> & buffer, const int family) cons
 				// Создаём буфер строки адреса
 				char str[INET6_ADDRSTRLEN];
 				// Выполняем конвертацию
-				if(inet_ntop(family, buffer.data(), str, INET6_ADDRSTRLEN) == nullptr)
+				if(inet_ntop(family, buffer, str, INET6_ADDRSTRLEN) == nullptr)
 					// Выводим сообщение об ошибке
 					this->log->print("%s", log_t::flag_t::CRITICAL, "ip address could not be obtained");
 				// Получаем IPv6 адрес
@@ -102,15 +103,53 @@ string awh::Socks5::hexToIp(const vector <char> & buffer, const int family) cons
 	return result;
 }
 /**
+ * setText Метод установки в буфер текстовых данных
+ * @param text текст для установки
+ * @return     текущее значение смещения
+ */
+u_short awh::Socks5::setText(const string & text) const noexcept {
+	// Результат работы функции
+	u_short result = 0;
+	// Если текст передан
+	if(!text.empty()){
+		// Добавляем в буфер размер текста
+		this->buffer.push_back(static_cast <char> (text.size()));
+		// Добавляем в буфер сам текст
+		this->buffer.insert(this->buffer.end(), text.begin(), text.end());
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * getText Метод извлечения текстовых данных из буфера
+ * @param buffer буфер данных для извлечения текста
+ * @param size   размер буфера данных
+ * @return       текст содержащийся в буфере данных
+ */
+const string awh::Socks5::getText(const char * buffer, const size_t size) const noexcept {
+	// Результат работы функции
+	string result = "";
+	// Если буфер данных передан
+	if((buffer != nullptr) && (size > 0)){
+		// Размер текста
+		uint8_t length = 0;
+		// Извлекаем размер текста
+		memcpy(&length, buffer, sizeof(length));
+		// Если размер текста получен, извлекаем текстовые данные
+		if(length > 0) result.assign(buffer + sizeof(length), length);
+	}
+	// Выводим результат
+	return result;
+}
+/**
  * setOctet Метод установки октета
- * @param buffer сформированный бинарный буфер
  * @param octet  октет для установки
  * @param offset размер смещения в буфере
  * @return       текущее значение смещения
  */
-u_short awh::Socks5::setOctet(vector <char> & buffer, const uint8_t octet, const u_short offset) const noexcept {
+u_short awh::Socks5::setOctet(const uint8_t octet, const u_short offset) const noexcept {
 	// Устанавливаем первый октет
-	memcpy(buffer.data() + offset, &octet, sizeof(octet));
+	memcpy(this->buffer.data() + offset, &octet, sizeof(octet));
 	// Выводим размер смещения
 	return (offset + sizeof(octet));
 }
@@ -119,19 +158,30 @@ u_short awh::Socks5::setOctet(vector <char> & buffer, const uint8_t octet, const
  * @return результат проверки
  */
 bool awh::Socks5::isEnd() const noexcept {
-
+	// Выполняем проверку завершения работы
+	return ((this->state == state_t::HANDSHAKE) || (this->state == state_t::BROKEN));
 }
 /**
  * isHandshake Метод получения флага рукопожатия
  * @return флаг получения рукопожатия
  */
 bool awh::Socks5::isHandshake() const noexcept{
-
+	// Выполняем проверку рукопожатия
+	return (this->state == state_t::HANDSHAKE);
+}
+/**
+ * get Метод извлечения буфера запроса/ответа
+ * @return бинарный буфер
+ */
+const vector <char> & awh::Socks5::get() const noexcept {
+	// Выводим бинарный буфер
+	return this->buffer;
 }
 /**
  * setUrl Метод установки URL параметров REST запроса
  * @param url параметры REST запроса
  */
 void awh::Socks5::setUrl(const uri_t::url_t & url) noexcept {
-
+	// Устанавливаем URL адрес REST запроса
+	if(!url.empty()) this->url = url;
 }

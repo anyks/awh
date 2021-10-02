@@ -31,29 +31,26 @@ namespace awh {
 			string login = "";
 			// Пароль пользователя
 			string password = "";
-		public:
+		private:
 			/**
 			 * reqCmd Метод получения бинарного буфера запроса
-			 * @return бинарный буфер запроса
 			 */
-			vector <char> reqCmd() const noexcept;
+			void reqCmd() const noexcept;
 			/**
 			 * reqAuth Метод получения бинарного буфера авторизации на сервере
-			 * @return бинарный буфер запроса
 			 */
-			vector <char> reqAuth() const noexcept;
+			void reqAuth() const noexcept;
 			/**
 			 * reqMethods Метод получения бинарного буфера опроса методов подключения
-			 * @return бинарный буфер запроса
 			 */
-			vector <char> reqMethods() const noexcept;
+			void reqMethods() const noexcept;
 		public:
 			/**
 			 * parse Метод парсинга входящих данных
 			 * @param buffer бинарный буфер входящих данных
 			 * @param size   размер бинарного буфера входящих данных
 			 */
-			void parse(const char * buffer, const size_t size) noexcept;
+			void parse(const char * buffer = nullptr, const size_t size = 0) noexcept;
 		public:
 			/**
 			 * reset Метод сброса собранных данных
@@ -73,11 +70,11 @@ namespace awh {
 		public:
 			/**
 			 * Socks5Client Конструктор
-			 * @param uri объект для работы с URI
 			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
+			 * @param uri объект для работы с URI
 			 */
-			Socks5Client(const uri_t * uri, const fmk_t * fmk, const log_t * log) noexcept : socks5_t(uri, fmk, log) {}
+			Socks5Client(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcept : socks5_t(fmk, log, uri) {}
 			/**
 			 * ~Socks5Client Деструктор
 			 */

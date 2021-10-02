@@ -49,17 +49,19 @@ int main(int argc, char * argv[]) noexcept {
 	// Устанавливаем логин и пароль пользователя
 	rest.setUser("user", "password");
 	// Устанавливаем данные прокси-сервера
-	rest.setProxy("http://B80TWR:uRMhnd@196.17.249.64:8000");
+	// rest.setProxy("http://B80TWR:uRMhnd@196.17.249.64:8000");
+	rest.setProxy("socks5://rfbPbd:XcCuZH@45.144.169.109:8000");
+	// rest.setProxy("socks5://6S7rAk:g6K8XD@217.29.62.231:30810");
 	// Выполняем инициализацию типа авторизации
 	rest.setAuthType();
 	// Устанавливаем тип авторизации прокси-сервера
 	rest.setAuthTypeProxy();
 	// Выполняем получение URL адреса сервера
 	// uri_t::url_t url = uri.parseUrl("https://2ip.ru");
-	// uri_t::url_t url = uri.parseUrl("https://www.anyks.com");
+	uri_t::url_t url = uri.parseUrl("https://www.anyks.com");
 	// uri_t::url_t url = uri.parseUrl("https://apple.com");
 	// uri_t::url_t url = uri.parseUrl("https://ru.wikipedia.org/wiki/HTTP");
-	uri_t::url_t url = uri.parseUrl("https://api.binance.com/api/v3/exchangeInfo?symbol=BTCUSDT");
+	// uri_t::url_t url = uri.parseUrl("https://api.binance.com/api/v3/exchangeInfo?symbol=BTCUSDT");
 	// Выполняем запрос на получение IP адреса
 	const auto & body = rest.GET(url);
 	// const auto & body = rest.GET(url, {{"Connection", "close"}});
@@ -67,10 +69,10 @@ int main(int argc, char * argv[]) noexcept {
 	// Получаем результат
 	const string result(body.begin(), body.end());
 	// Создаём объект JSON
-	json data = json::parse(result);
+	// json data = json::parse(result);
 	// Выводим полученный результат
-	// cout << " +++++++++++++ " << result << endl;
-	cout << " +++++++++++++ " << data.dump(4) << endl;
+	cout << " +++++++++++++ " << result << endl;
+	// cout << " +++++++++++++ " << data.dump(4) << endl;
 	// Выводим результат
 	return 0;
 }

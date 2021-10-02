@@ -12,23 +12,20 @@
 
 /**
  * resCmd Метод получения бинарного буфера ответа
- * @return бинарный буфер ответа
  */
-vector <char> awh::Socks5Server::resCmd() const noexcept {
+void awh::Socks5Server::resCmd() const noexcept {
 
 }
 /**
  * resAuth Метод получения бинарного буфера ответа на авторизацию клиента
- * @return бинарный буфер ответа
  */
-vector <char> awh::Socks5Server::resAuth() const noexcept {
+void awh::Socks5Server::resAuth() const noexcept {
 
 }
 /**
  * resMethod Метод получения бинарного буфера выбора метода подключения
- * @return бинарный буфер ответа
  */
-vector <char> awh::Socks5Server::resMethod() const noexcept {
+void awh::Socks5Server::resMethod() const noexcept {
 
 }
 /**

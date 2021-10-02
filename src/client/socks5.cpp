@@ -12,25 +12,24 @@
 
 /**
  * reqCmd Метод получения бинарного буфера запроса
- * @return бинарный буфер запроса
  */
-vector <char> awh::Socks5Client::reqCmd() const noexcept {
-	// Результат работы функции
-	vector <char> result;
+void awh::Socks5Client::reqCmd() const noexcept {
+	// Очищаем бинарный буфер данных
+	this->buffer.clear();
 	// Если IP адрес или доменное имя установлены
 	if(!this->url.ip.empty() || !this->url.domain.empty()){
 		// Бинарные данные буфера
 		const char * data = nullptr;
 		// Получаем значение порта
-		const uint16_t port = this->url.port;
+		const uint16_t port = htons(this->url.port);
 		// Увеличиваем память на 4 октета
-		result.resize(sizeof(uint8_t) * 4, 0x0);
+		this->buffer.resize(sizeof(uint8_t) * 4, 0x0);
 		// Устанавливаем версию протокола
-		u_short offset = this->setOctet(result, VER);
+		u_short offset = this->setOctet(VER);
 		// Устанавливаем комманду запроса
-		offset = this->setOctet(result, (uint8_t) cmd_t::CONNECT, offset);
+		offset = this->setOctet((uint8_t) cmd_t::CONNECT, offset);
 		// Устанавливаем RSV октет
-		offset = this->setOctet(result, 0x00, offset);
+		offset = this->setOctet(0x00, offset);
 		// Если IP адрес получен
 		if(!this->url.ip.empty()){
 			// Получаем бинарные буфер IP адреса
@@ -40,88 +39,60 @@ vector <char> awh::Socks5Client::reqCmd() const noexcept {
 				// Определяем тип подключения
 				switch(this->url.family){
 					// Устанавливаем тип адреса [IPv4]
-					case AF_INET: offset = this->setOctet(result, (uint8_t) atyp_t::IPv4, offset); break;
+					case AF_INET: offset = this->setOctet((uint8_t) atyp_t::IPv4, offset); break;
 					// Устанавливаем тип адреса [IPv6]
-					case AF_INET6: offset = this->setOctet(result, (uint8_t) atyp_t::IPv6, offset); break;
+					case AF_INET6: offset = this->setOctet((uint8_t) atyp_t::IPv6, offset); break;
 				}
 				// Устанавливаем полученный буфер IP адреса
-				result.insert(result.end(), ip.begin(), ip.end());
+				this->buffer.insert(this->buffer.end(), ip.begin(), ip.end());
 			}
 		// Устанавливаем доменное имя
 		} else {
 			// Устанавливаем тип адреса [Доменное имя]
-			offset = this->setOctet(result, (uint8_t) atyp_t::DMNAME, offset);
-			// Получаем размер доменного имени
-			const uint8_t size = this->url.domain.size();
-			// Получаем бинарные данные размера домена
-			data = (const char *) &size;
-			// Устанавливаем размер доменного имени
-			result.insert(result.end(), data, data + sizeof(size));
-			// Записываем бинарные данные домена
-			result.insert(result.end(), this->url.domain.begin(), this->url.domain.end());
+			offset = this->setOctet((uint8_t) atyp_t::DMNAME, offset);
+			// Добавляем в буфер доменное имя
+			this->setText(this->url.domain);
 		}
 		// Получаем бинарные данные порта
 		data = (const char *) &port;
 		// Устанавливаем порт запроса
-		result.insert(result.end(), data, data + sizeof(port));
+		this->buffer.insert(this->buffer.end(), data, data + sizeof(port));
 	}
-	// Выводим результат
-	return result;
 }
 /**
  * reqAuth Метод получения бинарного буфера авторизации на сервере
- * @return бинарный буфер запроса
  */
-vector <char> awh::Socks5Client::reqAuth() const noexcept {
-	// Результат работы функции
-	vector <char> result;
+void awh::Socks5Client::reqAuth() const noexcept {
+	// Очищаем бинарный буфер данных
+	this->buffer.clear();
 	// Если логин и пароль переданы
 	if(!this->login.empty() && !this->password.empty()){
-		// Бинарные данные буфера
-		const char * data = nullptr;
 		// Увеличиваем память на 4 октета
-		result.resize(sizeof(uint8_t), 0x0);
+		this->buffer.resize(sizeof(uint8_t), 0x0);
 		// Устанавливаем версию протокола
-		this->setOctet(result, VER);
-		// Получаем размер логина пользователя
-		const uint8_t userSize = this->login.size();
-		// Получаем бинарные данные размера логина пользователя
-		data = (const char *) &userSize;
-		// Устанавливаем размер логина пользователя
-		result.insert(result.end(), data, data + sizeof(userSize));
-		// Устанавливаем логин пользователя
-		result.insert(result.end(), this->login.begin(), this->login.end());
-		// Получаем размер пароля пользователя
-		const uint8_t passwordSize = this->password.size();
-		// Получаем бинарные данные размера пароля пользователя
-		data = (const char *) &passwordSize;
-		// Устанавливаем размер пароля пользователя
-		result.insert(result.end(), data, data + sizeof(passwordSize));
-		// Устанавливаем пароль пользователя
-		result.insert(result.end(), this->password.begin(), this->password.end());
+		this->setOctet(AVER);
+		// Добавляем в буфер логин пользователя
+		this->setText(this->login);
+		// Добавляем в буфер пароль пользователя
+		this->setText(this->password);
 	}
-	// Выводим результат
-	return result;
 }
 /**
  * reqMethods Метод получения бинарного буфера опроса методов подключения
- * @return бинарный буфер запроса
  */
-vector <char> awh::Socks5Client::reqMethods() const noexcept {
-	// Результат работы функции
-	vector <char> result;
+void awh::Socks5Client::reqMethods() const noexcept {
+	// Очищаем бинарный буфер данных
+	this->buffer.clear();
 	// Увеличиваем память на 4 октета
-	result.resize(sizeof(uint8_t) * 4, 0x0);
+	this->buffer.resize(sizeof(uint8_t) * 4, 0x0);
 	// Устанавливаем версию протокола
-	u_short offset = this->setOctet(result, VER);
+	u_short offset = this->setOctet(VER);
 	// Устанавливаем количество методов авторизации
-	offset = this->setOctet(result, 2, offset);
+	offset = this->setOctet(2, offset);
 	// Устанавливаем первый метод авторизации (без авторизации)
-	offset = this->setOctet(result, (uint8_t) method_t::NOAUTH, offset);
+	offset = this->setOctet((uint8_t) method_t::NOAUTH, offset);
 	// Устанавливаем второй метод авторизации (по паролю)
-	offset = this->setOctet(result, (uint8_t) method_t::PASSWD, offset);
-	// Выводим результат
-	return result;
+	offset = this->setOctet((uint8_t) method_t::PASSWD, offset);
 }
 /**
  * parse Метод парсинга входящих данных
@@ -129,13 +100,199 @@ vector <char> awh::Socks5Client::reqMethods() const noexcept {
  * @param size   размер бинарного буфера входящих данных
  */
 void awh::Socks5Client::parse(const char * buffer, const size_t size) noexcept {
-
+	// Очищаем буфер данных
+	this->buffer.clear();
+	// Если данные буфера переданы
+	if((buffer != nullptr) && (size > 0)){
+		// Определяем текущий стейт
+		switch((u_short) this->state){
+			// Если установлен стейт, выбора метода
+			case (u_short) state_t::METHOD: {
+				// Если данных достаточно для получения ответа
+				if(size >= sizeof(resMet_t)){
+					// Создаём объект данных метода
+					resMet_t resp;
+					// Выполняем чтение данных
+					memcpy(&resp, buffer, sizeof(resp));
+					// Если версия протокола соответствует
+					if(resp.ver == (uint8_t) VER){
+						// Если авторизацию производить не нужно
+						if(resp.method == (uint8_t) method_t::NOAUTH){
+							// Устанавливаем статус ожидания ответа
+							this->state = state_t::RESPONSE;
+							// Формируем запрос для доступа к сайту
+							this->reqCmd();
+						// Если сервер требует авторизацию
+						} else if(resp.method == (uint8_t) method_t::PASSWD) {
+							// Проверяем установлен ли логин с паролем
+							if(!this->login.empty() && !this->password.empty()){
+								// Устанавливаем статус ожидания ответа на авторизацию
+								this->state = state_t::AUTH;
+								// Формируем запрос авторизации
+								this->reqAuth();
+							// Если логин и пароль не установлены
+							} else {
+								// Устанавливаем статус ошибки
+								this->state = state_t::BROKEN;
+								// Выводим сообщение об ошибке
+								this->log->print("%s", log_t::flag_t::WARNING, "login or password not set");
+							}
+						// Если пришёл не поддерживаемый метод
+						} else {
+							// Устанавливаем статус ошибки
+							this->state = state_t::BROKEN;
+							// Выводим сообщение об ошибке
+							this->log->print("%s", log_t::flag_t::CRITICAL, "unsupported server command");
+						}
+					// Если версия прокси-сервера не соответствует
+					} else {
+						// Устанавливаем статус ошибки
+						this->state = state_t::BROKEN;
+						// Выводим сообщение об ошибке
+						this->log->print("%s", log_t::flag_t::CRITICAL, "unsupported protocol version");
+					}
+				}
+			} break;
+			// Если установлен стейт, ожидания ответа на авторизацию
+			case (u_short) state_t::AUTH: {
+				// Если данных достаточно для получения ответа
+				if(size >= sizeof(resAuth_t)){
+					// Создаём объект данных ответа
+					resAuth_t resp;
+					// Выполняем чтение данных
+					memcpy(&resp, buffer, sizeof(resp));
+					// Если версия протокола соответствует
+					if(resp.ver == (uint8_t) AVER){
+						// Если авторизация пройдера нуспешно
+						if(resp.status == (uint8_t) rep_t::SUCCESS){
+							// Устанавливаем статус ожидания ответа
+							this->state = state_t::RESPONSE;
+							// Формируем запрос для доступа к сайту
+							this->reqCmd();
+						// Если авторизация не пройдена
+						} else {
+							// Устанавливаем статус ошибки
+							this->state = state_t::BROKEN;
+							// Выводим сообщение об ошибке
+							this->log->print("%s", log_t::flag_t::WARNING, "login or password is incorrect");
+						}
+					// Если версия прокси-сервера не соответствует
+					} else {
+						// Устанавливаем статус ошибки
+						this->state = state_t::BROKEN;
+						// Выводим сообщение об ошибке
+						this->log->print("%s", log_t::flag_t::CRITICAL, "unsupported protocol version");
+					}
+				}
+			} break;
+			// Если установлен стейт, ожидания ответа на запрос
+			case (u_short) state_t::RESPONSE: {
+				// Если данных достаточно для получения ответа
+				if(size > sizeof(res_t)){
+					// Создаём объект данных ответа
+					res_t resp;
+					// Выполняем чтение данных
+					memcpy(&resp, buffer, sizeof(resp));
+					// Если версия протокола соответствует
+					if(resp.ver == (uint8_t) VER){
+						// Если рукопожатие выполнено
+						if(resp.rep == (uint8_t) rep_t::SUCCESS){
+							// Определяем тип адреса
+							switch(resp.atyp){
+								// Получаем адрес IPv4
+								case (uint8_t) atyp_t::IPv4: {
+									// Если буфер пришел достаточного размера
+									if(size >= (sizeof(res_t) + sizeof(ipv4_t))){
+										// Создаём объект данных сервера
+										ipv4_t server;
+										// Копируем в буфер наши данные IP адреса
+										memcpy(&server, buffer + sizeof(res_t), sizeof(server));
+										// Выполняем получение IP адреса
+										const string & ip = this->hexToIp((const char *) &server.host, sizeof(server.host), AF_INET);
+										// Если IP адрес получен
+										if(!ip.empty()){
+											// Заменяем порт сервера
+											server.port = ntohs(server.port);
+											// Выводим сообщение о данных сервера
+											this->log->print("%s %s:%u %s", log_t::flag_t::INFO, "socks5 proxy server", ip.c_str(), server.port, "is accepted");
+											// Устанавливаем стейт рукопожатия
+											this->state = state_t::HANDSHAKE;
+										}
+									}
+								} break;
+								// Получаем адрес IPv6
+								case (uint8_t) atyp_t::IPv6: {
+									// Если буфер пришел достаточного размера
+									if(size >= (sizeof(res_t) + sizeof(ipv6_t))){
+										// Создаём объект данных сервера
+										ipv6_t server;
+										// Копируем в буфер наши данные IP адреса
+										memcpy(&server, buffer + sizeof(res_t), sizeof(server));
+										// Выполняем получение IP адреса
+										const string & ip = this->hexToIp((const char *) &server.host, sizeof(server.host), AF_INET6);
+										// Если IP адрес получен
+										if(!ip.empty()){
+											// Заменяем порт сервера
+											server.port = ntohs(server.port);
+											// Выводим сообщение о данных сервера
+											this->log->print("%s [%s]:%u %s", log_t::flag_t::INFO, "socks5 proxy server", ip.c_str(), server.port, "is accepted");
+											// Устанавливаем стейт рукопожатия
+											this->state = state_t::HANDSHAKE;
+										}
+									}
+								} break;
+								// Получаем адрес DMNAME
+								case (uint8_t) atyp_t::DMNAME: {
+									// Если буфер пришел достаточного размера
+									if(size >= (sizeof(res_t) + sizeof(uint16_t))){
+										// Извлекаем доменное имя
+										const string & domain = this->getText(buffer + sizeof(res_t), size);
+										// Получаем размер смещения
+										u_short offset = (sizeof(res_t) + sizeof(uint8_t) + domain.size());
+										// Если доменное имя получено
+										if(!domain.empty() && (size >= (offset + sizeof(uint16_t)))){
+											// Создаём порт сервера
+											uint16_t port = 0;
+											// Выполняем извлечение порта сервера
+											memcpy(&port, buffer + offset, sizeof(uint16_t));
+											// Заменяем порт сервера
+											port = ntohs(port);
+											// Выводим сообщение о данных сервера
+											this->log->print("%s %s:%u %s", log_t::flag_t::INFO, "socks5 proxy server", domain.c_str(), port, "is accepted");
+											// Устанавливаем стейт рукопожатия
+											this->state = state_t::HANDSHAKE;
+										}
+									}
+								} break;
+							}
+						// Если авторизация не пройдена
+						} else {
+							// Устанавливаем статус ошибки
+							this->state = state_t::BROKEN;
+							// Выводим сообщение об ошибке
+							this->log->print("%s", log_t::flag_t::CRITICAL, "socks5 protocol error");
+						}
+					// Если версия прокси-сервера не соответствует
+					} else {
+						// Устанавливаем статус ошибки
+						this->state = state_t::BROKEN;
+						// Выводим сообщение об ошибке
+						this->log->print("%s", log_t::flag_t::CRITICAL, "unsupported protocol version");
+					}
+				}
+			} break;
+		}
+	// Иначе подготавливаем буфер для запроса доступных методов
+	} else if(this->state == state_t::METHOD) this->reqMethods();
 }
 /**
  * reset Метод сброса собранных данных
  */
 void awh::Socks5Client::reset() noexcept {
-
+	// Выполняем очистку буфера данных
+	this->buffer.clear();
+	// Выполняем сброс стейта
+	this->state = state_t::METHOD;
 }
 /**
  * clearUsers Метод очистки списка пользователей
