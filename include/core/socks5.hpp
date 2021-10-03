@@ -18,7 +18,14 @@
 #include <vector>
 #include <cstring>
 #include <cstdlib>
-#include <arpa/inet.h>
+
+// Если - это Windows
+#if defined(_WIN32) || defined(_WIN64)
+	#include <ws2tcpip.h>
+// Если - это Unix
+#else
+	#include <arpa/inet.h>
+#endif
 
 /**
  * Наши модули
