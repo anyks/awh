@@ -1357,13 +1357,6 @@ void awh::Http::setOpaque(const string & opaque) noexcept {
 	if(!opaque.empty()) this->auth->setOpaque(opaque);
 }
 /**
- * clearUsers Метод очистки списка пользователей
- */
-void awh::Http::clearUsers() noexcept {
-	// Выполняем очистку списка пользователей
-	this->auth->clearUsers();
-}
-/**
  * setUser Метод установки параметров авторизации
  * @param login    логин пользователя для авторизации на сервере
  * @param password пароль пользователя для авторизации на сервере
@@ -1381,9 +1374,9 @@ void awh::Http::setUser(const string & login, const string & password) noexcept 
  * setUsers Метод добавления списка пользователей
  * @param users список пользователей для добавления
  */
-void awh::Http::setUsers(const unordered_map <string, string> & users) noexcept {
+void awh::Http::setUsers(const unordered_map <string, string> * users) noexcept {
 	// Если данные пользователей переданы
-	if(!users.empty()) this->auth->setUsers(users);
+	if((users != nullptr) && !users->empty()) this->auth->setUsers(users);
 }
 /**
  * setCrypt Метод установки параметров шифрования

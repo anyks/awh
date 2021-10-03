@@ -297,9 +297,9 @@ void awh::Socks5Client::reset() noexcept {
 	this->state = state_t::METHOD;
 }
 /**
- * clearUsers Метод очистки списка пользователей
+ * clearUser Метод очистки списка пользователей
  */
-void awh::Socks5Client::clearUsers() noexcept {
+void awh::Socks5Client::clearUser() noexcept {
 	// Выполняем очистку пользователя
 	this->login.clear();
 	// Выполняем очистку пароля пользователя

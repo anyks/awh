@@ -33,7 +33,7 @@ namespace awh {
 	typedef class Socks5Server : public socks5_t {
 		private:
 			// Список пользователей для Basic авторизации
-			unordered_map <string, string> users;
+			const unordered_map <string, string> * users;
 		public:
 			/**
 			 * resCmd Метод получения бинарного буфера ответа
@@ -45,8 +45,9 @@ namespace awh {
 			void resAuth() const noexcept;
 			/**
 			 * resMethod Метод получения бинарного буфера выбора метода подключения
+			 * @param methods методы авторизаций выбранныйе пользователем
 			 */
-			void resMethod() const noexcept;
+			void resMethod(const vector <method_t> & methods) const noexcept;
 		public:
 			/**
 			 * parse Метод парсинга входящих данных
@@ -61,14 +62,10 @@ namespace awh {
 			void reset() noexcept;
 		public:
 			/**
-			 * clearUsers Метод очистки списка пользователей
-			 */
-			void clearUsers() noexcept;
-			/**
 			 * setUsers Метод добавления списка пользователей
 			 * @param users список пользователей для добавления
 			 */
-			void setUsers(const unordered_map <string, string> & users) noexcept;
+			void setUsers(const unordered_map <string, string> * users) noexcept;
 		public:
 			/**
 			 * Socks5Server Конструктор
@@ -76,7 +73,7 @@ namespace awh {
 			 * @param log объект для работы с логами
 			 * @param uri объект для работы с URI
 			 */
-			Socks5Server(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcept : socks5_t(fmk, log, uri) {}
+			Socks5Server(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcept : socks5_t(fmk, log, uri), users(nullptr) {}
 			/**
 			 * ~Socks5Server Деструктор
 			 */

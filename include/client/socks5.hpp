@@ -58,9 +58,9 @@ namespace awh {
 			void reset() noexcept;
 		public:
 			/**
-			 * clearUsers Метод очистки списка пользователей
+			 * clearUser Метод очистки списка пользователей
 			 */
-			void clearUsers() noexcept;
+			void clearUser() noexcept;
 			/**
 			 * setUser Метод установки параметров авторизации
 			 * @param login    логин пользователя для авторизации на сервере

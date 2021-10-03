@@ -42,11 +42,11 @@ const bool awh::Authorization::check(const string & username, const string & pas
 	// Результат работы функции
 	bool result = false;
 	// Если пользователь и пароль переданы
-	if(!username.empty() && !password.empty() && (this->type == type_t::BASIC)){
+	if(!username.empty() && !password.empty() && (this->type == type_t::BASIC) && (this->users != nullptr)){
 		// Ищем пользователя в списке пользователей
-		auto it = this->users.find(username);
+		auto it = this->users->find(username);
 		// Если пользователь найден, выполняем проверку авторизации
-		if(it != this->users.end()) result = (it->second.compare(password) == 0);
+		if(it != this->users->end()) result = (it->second.compare(password) == 0);
 	}
 	// Выводим результат
 	return result;
@@ -66,11 +66,11 @@ const bool awh::Authorization::check(const string & username, const string & nc,
 	// Если пользователь и пароль переданы
 	if(!username.empty() && !nc.empty() && !uri.empty() && !cnonce.empty() && !response.empty() && (this->type == type_t::DIGEST)){
 		// Если на сервере счётчик меньше
-		if(stoi(this->digest.nc) < stoi(nc)){
+		if((stoi(this->digest.nc) < stoi(nc)) && (this->users != nullptr)){
 			// Ищем пользователя в списке пользователей
-			auto it = this->users.find(username);
+			auto it = this->users->find(username);
 			// Если пользователь найден
-			if(it != this->users.end()){
+			if(it != this->users->end()){
 				// Параметры проверки дайджест авторизации
 				digest_t digest;
 				// Устанавливаем счётчик клиента
@@ -93,19 +93,12 @@ const bool awh::Authorization::check(const string & username, const string & nc,
 	return result;
 }
 /**
- * clearUsers Метод очистки списка пользователей
- */
-void awh::Authorization::clearUsers() noexcept {
-	// Очищаем список пользователей
-	this->users.clear();
-}
-/**
  * setUsers Метод добавления списка пользователей
  * @param users список пользователей для добавления
  */
-void awh::Authorization::setUsers(const unordered_map <string, string> & users) noexcept {
+void awh::Authorization::setUsers(const unordered_map <string, string> * users) noexcept {
 	// Если данные переданы и модуль является сервером
-	if(this->server && !users.empty())
+	if(this->server && (users != nullptr) && !users->empty())
 		// Устанавливаем список пользователей
 		this->users = users;
 }

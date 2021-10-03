@@ -430,10 +430,6 @@ namespace awh {
 			void setOpaque(const string & opaque) noexcept;
 		public:
 			/**
-			 * clearUsers Метод очистки списка пользователей
-			 */
-			void clearUsers() noexcept;
-			/**
 			 * setUser Метод установки параметров авторизации
 			 * @param login    логин пользователя для авторизации на сервере
 			 * @param password пароль пользователя для авторизации на сервере
@@ -443,7 +439,7 @@ namespace awh {
 			 * setUsers Метод добавления списка пользователей
 			 * @param users список пользователей для добавления
 			 */
-			void setUsers(const unordered_map <string, string> & users) noexcept;
+			void setUsers(const unordered_map <string, string> * users) noexcept;
 		public:
 			/**
 			 * setServ Метод установки данных сервиса

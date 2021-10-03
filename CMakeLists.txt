@@ -152,6 +152,7 @@ set(SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/src/client/rest.cpp"
     "${CMAKE_SOURCE_DIR}/src/client/worker.cpp"
     "${CMAKE_SOURCE_DIR}/src/client/socks5.cpp"
+    "${CMAKE_SOURCE_DIR}/src/server/socks5.cpp"
 )
 
 # Задаем именя библиотеки и бинарника
