@@ -31,23 +31,42 @@ namespace awh {
 	 * Socks5Server Класс сервера для работы с socks5 прокси-сервером
 	 */
 	typedef class Socks5Server : public socks5_t {
+		public:
+			/**
+			 * Server Структура параметров запрашиваемого сервера
+			 */
+			typedef struct Server {
+				int family;  // Тип хоста сервера IPv4/IPv6
+				u_int port;  // Порт сервера
+				string host; // Хост сервера
+				/**
+				 * Server Конструктор
+				 */
+				Server() : family(AF_INET), port(80), host("") {}
+			} serv_t;
+		private:
+			// Параметры запрашиваемого сервера
+			serv_t server;
 		private:
 			// Внешняя функция проверки авторизации
 			function <bool (const string &, const string &)> authFn = nullptr;
 		public:
 			/**
 			 * resCmd Метод получения бинарного буфера ответа
+			 * @param rep код ответа сервера
 			 */
-			void resCmd() const noexcept;
-			/**
-			 * resAuth Метод получения бинарного буфера ответа на авторизацию клиента
-			 */
-			void resAuth() const noexcept;
+			void resCmd(const uint8_t rep) const noexcept;
 			/**
 			 * resMethod Метод получения бинарного буфера выбора метода подключения
 			 * @param methods методы авторизаций выбранныйе пользователем
 			 */
-			void resMethod(const vector <method_t> & methods) const noexcept;
+			void resMethod(const vector <uint8_t> & methods) const noexcept;
+			/**
+			 * resAuth Метод получения бинарного буфера ответа на авторизацию клиента
+			 * @param login    логин пользователя
+			 * @param password пароль пользователя
+			 */
+			void resAuth(const string & login, const string & password) const noexcept;
 		public:
 			/**
 			 * parse Метод парсинга входящих данных

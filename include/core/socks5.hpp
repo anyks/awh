@@ -113,8 +113,10 @@ namespace awh {
 			 */
 			enum class state_t : uint8_t {
 				AUTH,     // Режим ожидания прохождения аутентификации
+				VERIFY,   // Режим выполнения проверки запрошенных данных клиентом
 				METHOD,   // Режим ожидания получения метода
 				BROKEN,   // Режим бракованных данных
+				REQUEST,  // Режим ожидания получения запроса
 				RESPONSE, // Режим ожидания получения ответа
 				HANDSHAKE // Режим выполненного рукопожатия
 			};
@@ -146,9 +148,22 @@ namespace awh {
 				ResAuth() : ver(0x0), status(0x0) {}
 			} __attribute__((packed)) resAuth_t;
 			/**
+			 * Req Структура запроса
+			 */
+			typedef struct Req {
+				uint8_t ver;  // Версия прокси-протокола
+				uint8_t cmd;  // Код запроса у прокси-сервера
+				uint8_t rsv;  // Зарезервированный октет
+				uint8_t atyp; // Тип подключения
+				/**
+				 * Req Конструктор
+				 */
+				Req() : ver(0x0), cmd(0x0), rsv(0x0), atyp(0x0) {}
+			} __attribute__((packed)) req_t;
+			/**
 			 * Res Структура ответа
 			 */
-			typedef struct Resp {
+			typedef struct Res {
 				uint8_t ver;  // Версия прокси-протокола
 				uint8_t rep;  // Код ответа прокси-сервера
 				uint8_t rsv;  // Зарезервированный октет
@@ -156,7 +171,7 @@ namespace awh {
 				/**
 				 * Resp Конструктор
 				 */
-				Resp() : ver(0x0), rep(0x0), rsv(0x0), atyp(0x0) {}
+				Res() : ver(0x0), rep(0x0), rsv(0x0), atyp(0x0) {}
 			} __attribute__((packed)) res_t;
 			/**
 			 * IP Структура ip адреса сервера
@@ -232,8 +247,13 @@ namespace awh {
 			 */
 			bool isEnd() const noexcept;
 			/**
-			 * isHandshake Метод получения флага рукопожатия
-			 * @return флаг получения рукопожатия
+			 * isVerify Метод проверки запроса клиента
+			 * @return результат проверки
+			 */
+			bool isVerify() const noexcept;
+			/**
+			 * isHandshake Метод проверки рукопожатия
+			 * @return проверка рукопожатия
 			 */
 			bool isHandshake() const noexcept;
 		public:

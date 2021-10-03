@@ -159,11 +159,23 @@ u_short awh::Socks5::setOctet(const uint8_t octet, const u_short offset) const n
  */
 bool awh::Socks5::isEnd() const noexcept {
 	// Выполняем проверку завершения работы
-	return ((this->state == state_t::HANDSHAKE) || (this->state == state_t::BROKEN));
+	return (
+		(this->state == state_t::BROKEN) ||
+		(this->state == state_t::VERIFY) ||
+		(this->state == state_t::HANDSHAKE)
+	);
 }
 /**
- * isHandshake Метод получения флага рукопожатия
- * @return флаг получения рукопожатия
+ * isVerify Метод проверки запроса клиента
+ * @return результат проверки
+ */
+bool awh::Socks5::isVerify() const noexcept {
+	// Выполняем проверку запроса клиента
+	return (this->state == state_t::VERIFY);
+}
+/**
+ * isHandshake Метод проверки рукопожатия
+ * @return проверка рукопожатия
  */
 bool awh::Socks5::isHandshake() const noexcept{
 	// Выполняем проверку рукопожатия

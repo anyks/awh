@@ -709,8 +709,8 @@ bool awh::Http::isAlive() const noexcept {
 	return result;
 }
 /**
- * isHandshake Метод получения флага рукопожатия
- * @return флаг получения рукопожатия
+ * isHandshake Метод проверки рукопожатия
+ * @return проверка рукопожатия
  */
 bool awh::Http::isHandshake() noexcept {
 	// Выполняем проверку на удачное рукопожатие

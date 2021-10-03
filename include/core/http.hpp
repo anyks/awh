@@ -340,8 +340,8 @@ namespace awh {
 			 */
 			bool isAlive() const noexcept;
 			/**
-			 * isHandshake Метод получения флага рукопожатия
-			 * @return флаг получения рукопожатия
+			 * isHandshake Метод проверки рукопожатия
+			 * @return проверка рукопожатия
 			 */
 			virtual bool isHandshake() noexcept;
 			/**

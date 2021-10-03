@@ -190,15 +190,15 @@ void awh::Socks5Client::parse(const char * buffer, const size_t size) noexcept {
 				// Если данных достаточно для получения ответа
 				if(size > sizeof(res_t)){
 					// Создаём объект данных ответа
-					res_t resp;
+					res_t res;
 					// Выполняем чтение данных
-					memcpy(&resp, buffer, sizeof(resp));
+					memcpy(&res, buffer, sizeof(res));
 					// Если версия протокола соответствует
-					if(resp.ver == (uint8_t) VER){
+					if(res.ver == (uint8_t) VER){
 						// Если рукопожатие выполнено
-						if(resp.rep == (uint8_t) rep_t::SUCCESS){
+						if(res.rep == (uint8_t) rep_t::SUCCESS){
 							// Определяем тип адреса
-							switch(resp.atyp){
+							switch(res.atyp){
 								// Получаем адрес IPv4
 								case (uint8_t) atyp_t::IPv4: {
 									// Если буфер пришел достаточного размера
@@ -268,7 +268,7 @@ void awh::Socks5Client::parse(const char * buffer, const size_t size) noexcept {
 						// Если авторизация не пройдена
 						} else {
 							// Устанавливаем код сообщения
-							this->code = resp.rep;
+							this->code = res.rep;
 							// Устанавливаем статус ошибки
 							this->state = state_t::BROKEN;
 						}
