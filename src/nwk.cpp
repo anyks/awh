@@ -1398,7 +1398,7 @@ const awh::Network::url_t awh::Network::parseUri(const string & uri) const noexc
  */
 const awh::Network::type_t awh::Network::parseHost(const string & str) const noexcept {
 	// Результат полученных данных
-	type_t result = type_t::null;
+	type_t result = type_t::NONE;
 	// Если строка передана
 	if(!str.empty()){
 		// Результат работы регулярного выражения
@@ -1437,14 +1437,14 @@ const awh::Network::type_t awh::Network::parseHost(const string & str) const noe
 			const string & address = match[7].str();
 			const string & method = match[8].str();
 			// Определяем тип данных
-			if(!domain.empty())        result = type_t::domain;
-			else if(!mac.empty())      result = type_t::mac;
-			else if(!ip4.empty())      result = type_t::ipv4;
-			else if(!ip6.empty())      result = type_t::ipv6;
-			else if(!network.empty())  result = type_t::network;
-			else if(!address.empty())  result = type_t::address;
-			else if(!httpaddr.empty()) result = type_t::http_address;
-			else if(!method.empty())   result = type_t::http_method;
+			if(!domain.empty())        result = type_t::DOMNAME;
+			else if(!mac.empty())      result = type_t::MAC;
+			else if(!ip4.empty())      result = type_t::IPV4;
+			else if(!ip6.empty())      result = type_t::IPV6;
+			else if(!network.empty())  result = type_t::NETWORK;
+			else if(!address.empty())  result = type_t::ADDRESS;
+			else if(!httpaddr.empty()) result = type_t::HTTPADDRESS;
+			else if(!method.empty())   result = type_t::HTTPMETHOD;
 		}
 	}
 	// Выводим результат

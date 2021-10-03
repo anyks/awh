@@ -170,6 +170,29 @@ bool awh::Socks5::isHandshake() const noexcept{
 	return (this->state == state_t::HANDSHAKE);
 }
 /**
+ * getCode Метод получения кода сообщения
+ * @return код сообщения
+ */
+uint8_t awh::Socks5::getCode() const noexcept {
+	// Выводим код сообщения
+	return this->code;
+}
+/**
+ * getMessage Метод получения сообщения
+ * @param code код сообщения
+ * @return     текстовое значение кода
+ */
+const string & awh::Socks5::getMessage(const uint8_t code) const noexcept {
+	// Результат работы функции
+	static const string result = "";
+	// Выполняем поиск кода сообщения
+	auto it = this->messages.find(code);
+	// Если сообщение получено, выводим его
+	if(it != this->messages.end()) return it->second;
+	// Выводим результат
+	return result;
+}
+/**
  * get Метод извлечения буфера запроса/ответа
  * @return бинарный буфер
  */

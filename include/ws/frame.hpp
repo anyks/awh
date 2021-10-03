@@ -137,7 +137,7 @@ namespace awh {
 			/**
 			 * Опкоды запроса
 			 */
-			enum class opcode_t : u_short {
+			enum class opcode_t : uint8_t {
 				TEXT          = 0x1, // Текстовый фрейм
 				PING          = 0x9, // Проверка подключения от сервера
 				PONG          = 0xA, // Ответ серверу на проверку подключения

@@ -451,12 +451,12 @@ awh::ASSL::ctx_t awh::ASSL::init(const uri_t::url_t & url) noexcept {
 						// Выполняем проверку на соответствие хоста с данными хостов у сертификата
 						validate = obj->ssl->validateHostname(obj->host.c_str(), cert);
 						// Определяем полученную ошибку
-						switch((u_short) validate){
-							case (u_short) ssl_t::validate_t::MatchFound:           status = "MatchFound";           break;
-							case (u_short) ssl_t::validate_t::MatchNotFound:        status = "MatchNotFound";        break;
-							case (u_short) ssl_t::validate_t::NoSANPresent:         status = "NoSANPresent";         break;
-							case (u_short) ssl_t::validate_t::MalformedCertificate: status = "MalformedCertificate"; break;
-							case (u_short) ssl_t::validate_t::Error:                status = "Error";                break;
+						switch((uint8_t) validate){
+							case (uint8_t) ssl_t::validate_t::MatchFound:           status = "MatchFound";           break;
+							case (uint8_t) ssl_t::validate_t::MatchNotFound:        status = "MatchNotFound";        break;
+							case (uint8_t) ssl_t::validate_t::NoSANPresent:         status = "NoSANPresent";         break;
+							case (uint8_t) ssl_t::validate_t::MalformedCertificate: status = "MalformedCertificate"; break;
+							case (uint8_t) ssl_t::validate_t::Error:                status = "Error";                break;
 							default:                                                status = "WTF!";
 						}
 					}

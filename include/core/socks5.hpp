@@ -13,6 +13,7 @@
 /**
  * Стандартная библиотека
  */
+#include <map>
 #include <string>
 #include <vector>
 #include <cstring>
@@ -37,6 +38,26 @@ namespace awh {
 	 * Socks5 Класс работы с socks5 прокси-сервером
 	 */
 	typedef class Socks5 {
+		private:
+			/**
+			 * Список сообщений системы
+			 */
+			map <uint8_t, string> messages = {
+				{0x00, "successful"},
+				{0x01, "SOCKS server error"},
+				{0x02, "connection is prohibited by a set of rules"},
+				{0x03, "network unavailable"},
+				{0x04, "host unreachable"},
+				{0x05, "connection denied"},
+				{0x06, "TTL expiration"},
+				{0x07, "command not supported"},
+				{0x08, "address type not supported"},
+				{0x09, "until X'FF' are undefined"},
+				{0x10, "login or password is not set"},
+				{0x11, "unsupported protocol version"},
+				{0x12, "login or password is not correct"},
+				{0x13, "agreement version not supported"}
+			};
 		protected:
 			/**
 			 * Типы адресации socks5
@@ -131,31 +152,22 @@ namespace awh {
 				Resp() : ver(0x0), rep(0x0), rsv(0x0), atyp(0x0) {}
 			} __attribute__((packed)) res_t;
 			/**
-			 * IPv4 Структура IPv4 хоста сервера
+			 * IP Структура ip адреса сервера
 			 */
-			typedef struct IPv4 {
+			typedef struct IP {
 				uint16_t host; // Хост сервера
 				uint16_t port; // Порт сервера
 				/**
-				 * IPv4 Конструктор
+				 * IP Конструктор
 				 */
-				IPv4() : host(0x0), port(0x0) {}
-			} __attribute__((packed)) ipv4_t;
-			/**
-			 * IPv4 Структура IPv6 хоста сервера
-			 */
-			typedef struct IPv6 {
-				uint16_t host; // Хост сервера
-				uint16_t port; // Порт сервера
-				/**
-				 * IPv6 Конструктор
-				 */
-				IPv6() : host(0x0), port(0x0) {}
-			} ipv6_t;
+				IP() : host(0x0), port(0x0) {}
+			} __attribute__((packed)) ip_t;
 		protected:
 			// URL параметры REST запроса
 			uri_t::url_t url;
 		protected:
+			// Код сообщения
+			uint8_t code = 0x00;
 			// Стейт текущего запроса
 			state_t state = state_t::METHOD;
 		protected:
@@ -217,6 +229,18 @@ namespace awh {
 			 * @return флаг получения рукопожатия
 			 */
 			bool isHandshake() const noexcept;
+		public:
+			/**
+			 * getCode Метод получения кода сообщения
+			 * @return код сообщения
+			 */
+			uint8_t getCode() const noexcept;
+			/**
+			 * getMessage Метод получения сообщения
+			 * @param code код сообщения
+			 * @return     текстовое значение кода
+			 */
+			const string & getMessage(const uint8_t code) const noexcept;
 		public:
 			/**
 			 * get Метод извлечения буфера запроса/ответа

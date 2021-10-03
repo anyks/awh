@@ -36,7 +36,7 @@ namespace awh {
 	typedef class NWT {
 		public:
 			// Типы n-грамм
-			enum class types_t : u_short {
+			enum class types_t : uint8_t {
 				MAC = 0x0,    // MAC адрес
 				IPV4 = 0x1,   // IPv4 адрес
 				IPV6 = 0x2,   // IPv6 адрес

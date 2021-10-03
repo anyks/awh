@@ -46,11 +46,11 @@ namespace awh {
 			/**
 			 * Тип авторизации
 			 */
-			enum class type_t : u_short {NONE, BASIC, DIGEST};
+			enum class type_t : uint8_t {NONE, BASIC, DIGEST};
 			/**
 			 * Алгоритм шифрования для авторизации Digest
 			 */
-			enum class algorithm_t : u_short {MD5, SHA1, SHA256, SHA512};
+			enum class algorithm_t : uint8_t {MD5, SHA1, SHA256, SHA512};
 		private:
 			/**
 			 * Digest Структура параметров дайджест авторизации

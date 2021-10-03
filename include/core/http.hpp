@@ -52,7 +52,7 @@ namespace awh {
 			/**
 			 * Статусы проверки авторизации
 			 */
-			enum class stath_t : u_short {
+			enum class stath_t : uint8_t {
 				GOOD,  // Авторизация прошла успешно
 				EMPTY, // Проверка авторизации не проводилась
 				RETRY, // Требуется повторить попытку
@@ -61,11 +61,11 @@ namespace awh {
 			/**
 			 * Формат сжатия тела запроса
 			 */
-			enum class compress_t : u_short {NONE, BROTLI, GZIP, DEFLATE};
+			enum class compress_t : uint8_t {NONE, BROTLI, GZIP, DEFLATE};
 			/**
 			 * Методы HTTP запроса
 			 */
-			enum class method_t : u_short {NONE, GET, PUT, DEL, POST, HEAD, PATCH, TRACE, OPTIONS, CONNECT};
+			enum class method_t : uint8_t {NONE, GET, PUT, DEL, POST, HEAD, PATCH, TRACE, OPTIONS, CONNECT};
 		public:
 			/**
 			 * Query Структура запроса
@@ -156,12 +156,12 @@ namespace awh {
 			/**
 			 * Режимы работы модуля
 			 */
-			enum class mode_t : u_short {NONE, REQUEST, RESPONSE};
+			enum class mode_t : uint8_t {NONE, REQUEST, RESPONSE};
 		protected:
 			/**
 			 * Стейты работы модуля
 			 */
-			enum class state_t : u_short {
+			enum class state_t : uint8_t {
 				BODY,     // Режим чтения тела сообщения
 				GOOD,     // Режим завершения сбора данных
 				QUERY,    // Режим ожидания получения запроса

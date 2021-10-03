@@ -553,9 +553,9 @@ void awh::Core::setLockMethod(const method_t method, const bool mode, const size
 	// Если адъютант получен
 	if(it != this->adjutants.end()){
 		// Определяем метод режима работы
-		switch((u_short) method){
+		switch((uint8_t) method){
 			// Режим работы ЧТЕНИЕ
-			case (u_short) method_t::READ: {
+			case (uint8_t) method_t::READ: {
 				// Если нужно разблокировать метод
 				if(mode)
 					// Активируем разрешение на запись и чтение
@@ -564,7 +564,7 @@ void awh::Core::setLockMethod(const method_t method, const bool mode, const size
 				else bufferevent_disable(it->second->bev, EV_READ);
 			} break;
 			// Режим работы ЗАПИСЬ
-			case (u_short) method_t::WRITE:
+			case (uint8_t) method_t::WRITE:
 				// Если нужно разблокировать метод
 				if(mode)
 					// Активируем разрешение на запись и чтение
@@ -587,11 +587,11 @@ void awh::Core::setTimeout(const method_t method, const time_t seconds, const si
 	// Если адъютант получен
 	if(it != this->adjutants.end()){
 		// Определяем метод режима работы
-		switch((u_short) method){
+		switch((uint8_t) method){
 			// Режим работы ЧТЕНИЕ
-			case (u_short) method_t::READ: const_cast <worker_t::adj_t *> (it->second)->timeRead = seconds; break;
+			case (uint8_t) method_t::READ: const_cast <worker_t::adj_t *> (it->second)->timeRead = seconds; break;
 			// Режим работы ЗАПИСЬ
-			case (u_short) method_t::WRITE: const_cast <worker_t::adj_t *> (it->second)->timeWrite = seconds; break;
+			case (uint8_t) method_t::WRITE: const_cast <worker_t::adj_t *> (it->second)->timeWrite = seconds; break;
 		}
 		// Устанавливаем таймаут ожидания поступления данных
 		struct timeval readTimeout = {it->second->timeRead, 0};
@@ -618,9 +618,9 @@ void awh::Core::setMark(const method_t method, const size_t min, const size_t ma
 	// Если адъютант получен
 	if(it != this->adjutants.end()){
 		// Определяем метод режима работы
-		switch((u_short) method){
+		switch((uint8_t) method){
 			// Режим работы ЧТЕНИЕ
-			case (u_short) method_t::READ: {
+			case (uint8_t) method_t::READ: {
 				// Устанавливаем минимальный размер байт
 				const_cast <worker_t::adj_t *> (it->second)->markRead.min = min;
 				// Устанавливаем максимальный размер байт
@@ -629,7 +629,7 @@ void awh::Core::setMark(const method_t method, const size_t min, const size_t ma
 				bufferevent_setwatermark(it->second->bev, EV_READ, it->second->markRead.min, it->second->markRead.max);
 			} break;
 			// Режим работы ЗАПИСЬ
-			case (u_short) method_t::WRITE: {
+			case (uint8_t) method_t::WRITE: {
 				// Устанавливаем минимальный размер байт
 				const_cast <worker_t::adj_t *> (it->second)->markWrite.min = min;
 				// Устанавливаем максимальный размер байт

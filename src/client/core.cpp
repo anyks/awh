@@ -128,18 +128,8 @@ void awh::CoreClient::event(struct bufferevent * bev, const short events, void *
 					adj->log->print("closing server [%s:%d] error: %s", log_t::flag_t::WARNING, host.c_str(), url.port, evutil_socket_error_to_string(EVUTIL_SOCKET_ERROR()));
 				// Если - это таймаут, выводим сообщение в лог
 				else if(events & BEV_EVENT_TIMEOUT) adj->log->print("timeout server [%s:%d]", log_t::flag_t::WARNING, host.c_str(), url.port);
-				// Если нужно выполнить автоматическое переподключение
-				if(wrk->alive && (adj->attempt <= wrk->attempts)){
-					// Выполняем отключение
-					const_cast <core_t *> (wrk->core)->close(adj->aid);
-					// Увеличиваем колпичество попыток
-					adj->attempt++;
-					// Выдерживаем паузу в 3 секунды
-					const_cast <core_t *> (wrk->core)->delay(3);
-					// Выполняем новое подключение
-					const_cast <core_t *> (wrk->core)->connect(wrk->wid);
-				// Если автоматическое подключение выполнять не нужно
-				} else const_cast <core_t *> (wrk->core)->close(adj->aid);
+				// Выполняем отключение от сервера
+				const_cast <core_t *> (wrk->core)->close(adj->aid);
 			}
 		}
 	}
@@ -217,43 +207,47 @@ bool awh::CoreClient::connect(const size_t wid) noexcept {
 						this->log->print("connecting to host = %s, port = %u", log_t::flag_t::CRITICAL, url.ip.c_str(), url.port);
 						// Если нужно выполнить автоматическое переподключение
 						if(wrk->alive && (ret.first->second->attempt <= wrk->attempts)){
-							// Выполняем отключение
-							this->close(ret.first->second->aid);
+							// Выполняем очистку буфера событий
+							this->clean(ret.first->second->bev);
+							// Устанавливаем что событие удалено
+							ret.first->second->bev = nullptr;
 							// Увеличиваем колпичество попыток
 							ret.first->second->attempt++;
 							// Выдерживаем паузу в 3 секунды
 							this->delay(3);
 							// Выполняем новое подключение
 							return this->connect(wid);
-						// Если автоматическое подключение выполнять не нужно
+						// Если все попытки исчерпаны
 						} else {
-							// Иначе останавливаем работу
-							this->close(ret.first->second->aid);
-							// Просто выходим
+							// Выводим сообщение об ошибке
+							this->log->print("%s", log_t::flag_t::INFO, "disconnected from the server");
+							// Выводим функцию обратного вызова
+							if(wrk->closeFn != nullptr) wrk->closeFn(wrk->wid, this, wrk->ctx);
+							// Выходим из функции
 							return result;
 						}
 					}
 					// Выводим в лог сообщение
 					this->log->print("create good connect to host = %s [%s:%d], socket = %d", log_t::flag_t::INFO, url.domain.c_str(), url.ip.c_str(), url.port, socket.fd);
-					// Сообщаем что все удачно
-					result = true;
-				// Выполняем новую попытку подключения
-				} else {
-					// Выводим в лог сообщение
-					this->log->print("connecting to host = %s, port = %u", log_t::flag_t::CRITICAL, url.ip.c_str(), url.port);
-					// Если нужно выполнить автоматическое переподключение
-					if(wrk->alive && (wrk->attempt <= wrk->attempts)){
-						// Выводим функцию обратного вызова
-						if(wrk->closeFn != nullptr) wrk->closeFn(wrk->wid, this, wrk->ctx);
-						// Увеличиваем колпичество попыток
-						wrk->attempt++;
-						// Выдерживаем паузу в 3 секунды
-						this->delay(3);
-						// Выполняем новое подключение
-						return this->connect(wid);
-					// Выводим функцию обратного вызова
-					} else if(wrk->closeFn != nullptr) wrk->closeFn(wrk->wid, this, wrk->ctx);
-				}
+					// Сообщаем, что все удачно
+					return true;
+				// Выводим в лог сообщение
+				} else this->log->print("connecting to host = %s, port = %u", log_t::flag_t::CRITICAL, url.ip.c_str(), url.port);
+			}
+			// Если нужно выполнить автоматическое переподключение
+			if(wrk->alive && (wrk->attempt <= wrk->attempts)){
+				// Увеличиваем колпичество попыток
+				wrk->attempt++;
+				// Выдерживаем паузу в 3 секунды
+				this->delay(3);
+				// Выполняем новое подключение
+				return this->connect(wid);
+			// Если все попытки исчерпаны
+			} else {
+				// Выводим сообщение об ошибке
+				this->log->print("%s", log_t::flag_t::INFO, "disconnected from the server");
+				// Выводим функцию обратного вызова
+				if(wrk->closeFn != nullptr) wrk->closeFn(wrk->wid, this, wrk->ctx);
 			}
 		}
 	}
@@ -413,10 +407,19 @@ void awh::CoreClient::close(const size_t aid) noexcept {
 		wrk->adjutants.erase(aid);
 		// Удаляем адъютанта из списка подключений
 		this->adjutants.erase(aid);
-		// Выводим сообщение об ошибке
-		this->log->print("%s", log_t::flag_t::INFO, "disconnected from the server");
-		// Выводим функцию обратного вызова
-		if(wrk->closeFn != nullptr) wrk->closeFn(wrk->wid, this, wrk->ctx);
+		// Если нужно выполнить автоматическое переподключение
+		if(wrk->alive){
+			// Выдерживаем паузу в 3 секунды
+			const_cast <core_t *> (wrk->core)->delay(3);
+			// Выполняем новое подключение
+			const_cast <core_t *> (wrk->core)->connect(wrk->wid);
+		// Если автоматическое подключение выполнять не нужно
+		} else {
+			// Выводим сообщение об ошибке
+			this->log->print("%s", log_t::flag_t::INFO, "disconnected from the server");
+			// Выводим функцию обратного вызова
+			if(wrk->closeFn != nullptr) wrk->closeFn(wrk->wid, this, wrk->ctx);
+		}
 	}
 }
 /**

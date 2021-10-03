@@ -238,9 +238,9 @@ void awh::Http::parse(const char * buffer, const size_t size) noexcept {
 				// Выполняем чтение полученного буфера
 				readHeader(http.data(), pos, [this](string data) noexcept {
 					// Определяем статус режима работы
-					switch((u_short) this->state){
+					switch((uint8_t) this->state){
 						// Если - это режим ожидания получения запроса
-						case (u_short) state_t::QUERY: {
+						case (uint8_t) state_t::QUERY: {
 							// Выполняем поиск протокола
 							size_t offset = data.find("HTTP/");
 							// Если протокол найден
@@ -316,7 +316,7 @@ void awh::Http::parse(const char * buffer, const size_t size) noexcept {
 							this->stath = stath_t::FAULT;
 						} break;
 						// Если - это режим получения заголовков
-						case (u_short) state_t::HEADERS: {
+						case (uint8_t) state_t::HEADERS: {
 							// Выполняем поиск пробела
 							size_t pos = data.find(":");
 							// Если разделитель найден
@@ -366,9 +366,9 @@ void awh::Http::parse(const char * buffer, const size_t size) noexcept {
 		// Если мы собираем тело запроса или завершаем работу
 		} else {
 			// Определяем статус режима работы
-			switch((u_short) this->state){
+			switch((uint8_t) this->state){
 				// Если - все данные запроса собраны
-				case (u_short) state_t::GOOD: {
+				case (uint8_t) state_t::GOOD: {
 					// Выполняем проверку авторизации
 					this->stath = this->checkAuth();
 					// Если ключ соответствует
@@ -379,7 +379,7 @@ void awh::Http::parse(const char * buffer, const size_t size) noexcept {
 					else this->state = state_t::BROKEN;
 				} break;
 				// Если - это режим получения тела
-				case (u_short) state_t::BODY: {
+				case (uint8_t) state_t::BODY: {
 					// Если размер данных получен
 					if(size > 0){
 						// Выполняем поиск размера тела сообщения
@@ -958,9 +958,9 @@ vector <char> awh::Http::response(const u_short code) const noexcept {
 			// Если заголовок не запрещён
 			if(!this->isBlack("Content-Encoding")){
 				// Определяем метод сжатия тела сообщения
-				switch((u_short) this->compress){
+				switch((uint8_t) this->compress){
 					// Если нужно сжать тело методом BROTLI
-					case (u_short) compress_t::BROTLI: {
+					case (uint8_t) compress_t::BROTLI: {
 						// Выполняем сжатие тела сообщения
 						const auto & brotli = this->hash->compressBrotli(this->body.data(), this->body.size());
 						// Если данные сжаты, заменяем тело данных
@@ -974,7 +974,7 @@ vector <char> awh::Http::response(const u_short code) const noexcept {
 						}
 					} break;
 					// Если нужно сжать тело методом GZIP
-					case (u_short) compress_t::GZIP: {
+					case (uint8_t) compress_t::GZIP: {
 						// Выполняем сжатие тела сообщения
 						const auto & gzip = this->hash->compressGzip(this->body.data(), this->body.size());
 						// Если данные сжаты, заменяем тело данных
@@ -988,7 +988,7 @@ vector <char> awh::Http::response(const u_short code) const noexcept {
 						}
 					} break;
 					// Если нужно сжать тело методом DEFLATE
-					case (u_short) compress_t::DEFLATE: {
+					case (uint8_t) compress_t::DEFLATE: {
 						// Выполняем сжатие тела сообщения
 						auto deflate = this->hash->compress(this->body.data(), this->body.size());
 						// Удаляем хвост в полученных данных
@@ -1071,49 +1071,49 @@ vector <char> awh::Http::request(const uri_t::url_t & url, const method_t method
 				// Формируем HTTP запрос
 				this->query.uri = this->fmk->format("%s%s", path.c_str(), (!params.empty() ? params.c_str() : ""));
 			// Определяем метод запроса
-			switch((u_short) method){
+			switch((uint8_t) method){
 				// Если метод запроса указан как GET
-				case (u_short) method_t::GET:
+				case (uint8_t) method_t::GET:
 					// Формируем GET запрос
 					request = this->fmk->format("GET %s HTTP/%.1f\r\n", this->query.uri.c_str(), this->query.ver);
 				break;
 				// Если метод запроса указан как PUT
-				case (u_short) method_t::PUT:
+				case (uint8_t) method_t::PUT:
 					// Формируем PUT запрос
 					request = this->fmk->format("PUT %s HTTP/%.1f\r\n", this->query.uri.c_str(), this->query.ver);
 				break;
 				// Если метод запроса указан как POST
-				case (u_short) method_t::POST:
+				case (uint8_t) method_t::POST:
 					// Формируем POST запрос
 					request = this->fmk->format("POST %s HTTP/%.1f\r\n", this->query.uri.c_str(), this->query.ver);
 				break;
 				// Если метод запроса указан как HEAD
-				case (u_short) method_t::HEAD:
+				case (uint8_t) method_t::HEAD:
 					// Формируем HEAD запрос
 					request = this->fmk->format("HEAD %s HTTP/%.1f\r\n", this->query.uri.c_str(), this->query.ver);
 				break;
 				// Если метод запроса указан как PATCH
-				case (u_short) method_t::PATCH:
+				case (uint8_t) method_t::PATCH:
 					// Формируем PATCH запрос
 					request = this->fmk->format("PATCH %s HTTP/%.1f\r\n", this->query.uri.c_str(), this->query.ver);
 				break;
 				// Если метод запроса указан как TRACE
-				case (u_short) method_t::TRACE:
+				case (uint8_t) method_t::TRACE:
 					// Формируем TRACE запрос
 					request = this->fmk->format("TRACE %s HTTP/%.1f\r\n", this->query.uri.c_str(), this->query.ver);
 				break;
 				// Если метод запроса указан как DELETE
-				case (u_short) method_t::DEL:
+				case (uint8_t) method_t::DEL:
 					// Формируем DELETE запрос
 					request = this->fmk->format("DELETE %s HTTP/%.1f\r\n", this->query.uri.c_str(), this->query.ver);
 				break;
 				// Если метод запроса указан как OPTIONS
-				case (u_short) method_t::OPTIONS:
+				case (uint8_t) method_t::OPTIONS:
 					// Формируем OPTIONS запрос
 					request = this->fmk->format("OPTIONS %s HTTP/%.1f\r\n", this->query.uri.c_str(), this->query.ver);
 				break;
 				// Если метод запроса указан как CONNECT
-				case (u_short) method_t::CONNECT:
+				case (uint8_t) method_t::CONNECT:
 					// Формируем CONNECT запрос
 					request = this->fmk->format("CONNECT %s HTTP/%.1f\r\n", this->query.uri.c_str(), this->query.ver);
 				break;
@@ -1189,20 +1189,20 @@ vector <char> awh::Http::request(const uri_t::url_t & url, const method_t method
 					// Название операционной системы
 					const char * nameOs = nullptr;
 					// Определяем название операционной системы
-					switch((u_short) this->fmk->os()){
+					switch((uint8_t) this->fmk->os()){
 						// Если операционной системой является Unix
-						case (u_short) fmk_t::os_t::UNIX: nameOs = "Unix"; break;
+						case (uint8_t) fmk_t::os_t::UNIX: nameOs = "Unix"; break;
 						// Если операционной системой является Linux
-						case (u_short) fmk_t::os_t::LINUX: nameOs = "Linux"; break;
+						case (uint8_t) fmk_t::os_t::LINUX: nameOs = "Linux"; break;
 						// Если операционной системой является неизвестной
-						case (u_short) fmk_t::os_t::NONE: nameOs = "Unknown"; break;
+						case (uint8_t) fmk_t::os_t::NONE: nameOs = "Unknown"; break;
 						// Если операционной системой является Windows
-						case (u_short) fmk_t::os_t::WIND32:
-						case (u_short) fmk_t::os_t::WIND64: nameOs = "Windows"; break;
+						case (uint8_t) fmk_t::os_t::WIND32:
+						case (uint8_t) fmk_t::os_t::WIND64: nameOs = "Windows"; break;
 						// Если операционной системой является MacOS X
-						case (u_short) fmk_t::os_t::MACOSX: nameOs = "MacOS X"; break;
+						case (uint8_t) fmk_t::os_t::MACOSX: nameOs = "MacOS X"; break;
 						// Если операционной системой является FreeBSD
-						case (u_short) fmk_t::os_t::FREEBSD: nameOs = "FreeBSD"; break;
+						case (uint8_t) fmk_t::os_t::FREEBSD: nameOs = "FreeBSD"; break;
 					}
 					// Выполняем генерацию Юзер-агента клиента выполняющего HTTP запрос
 					this->userAgent = this->fmk->format("Mozilla/5.0 (%s; %s) %s/%s", nameOs, this->servName.c_str(), this->servId.c_str(), this->servVer.c_str());
@@ -1236,9 +1236,9 @@ vector <char> awh::Http::request(const uri_t::url_t & url, const method_t method
 				// Если заголовок не запрещён
 				if(!this->isBlack("Content-Encoding")){
 					// Определяем метод сжатия тела сообщения
-					switch((u_short) this->compress){
+					switch((uint8_t) this->compress){
 						// Если нужно сжать тело методом BROTLI
-						case (u_short) compress_t::BROTLI: {
+						case (uint8_t) compress_t::BROTLI: {
 							// Выполняем сжатие тела сообщения
 							const auto & brotli = this->hash->compressBrotli(this->body.data(), this->body.size());
 							// Если данные сжаты, заменяем тело данных
@@ -1252,7 +1252,7 @@ vector <char> awh::Http::request(const uri_t::url_t & url, const method_t method
 							}
 						} break;
 						// Если нужно сжать тело методом GZIP
-						case (u_short) compress_t::GZIP: {
+						case (uint8_t) compress_t::GZIP: {
 							// Выполняем сжатие тела сообщения
 							const auto & gzip = this->hash->compressGzip(this->body.data(), this->body.size());
 							// Если данные сжаты, заменяем тело данных
@@ -1266,7 +1266,7 @@ vector <char> awh::Http::request(const uri_t::url_t & url, const method_t method
 							}
 						} break;
 						// Если нужно сжать тело методом DEFLATE
-						case (u_short) compress_t::DEFLATE: {
+						case (uint8_t) compress_t::DEFLATE: {
 							// Выполняем сжатие тела сообщения
 							auto deflate = this->hash->compress(this->body.data(), this->body.size());
 							// Удаляем хвост в полученных данных

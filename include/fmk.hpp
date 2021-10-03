@@ -104,7 +104,7 @@ namespace awh {
 			/**
 			 * os_t Названия поддерживаемых операционных систем
 			 */
-			enum class os_t : u_short {NONE, LINUX, MACOSX, FREEBSD, UNIX, WIND32, WIND64};
+			enum class os_t : uint8_t {NONE, LINUX, MACOSX, FREEBSD, UNIX, WIND32, WIND64};
 		public:
 			/**
 			 * Шаблон класса итератора для перечислений

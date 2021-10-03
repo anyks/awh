@@ -32,7 +32,7 @@ namespace awh {
 			/**
 			 * Типы прокси-сервера
 			 */
-			enum class type_t : u_short {NONE, HTTP, SOCKS5};
+			enum class type_t : uint8_t {NONE, HTTP, SOCKS5};
 		public:
 			// Тип прокси-сервера
 			type_t type;
@@ -77,7 +77,7 @@ namespace awh {
 			/**
 			 * Формат сжатия тела запроса
 			 */
-			enum class connect_t : u_short {SERVER, PROXY};
+			enum class connect_t : uint8_t {SERVER, PROXY};
 		public:
 			// Параметры прокси-сервера
 			proxy_t proxy;

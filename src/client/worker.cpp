@@ -64,11 +64,11 @@ void awh::WorkerClient::clear() noexcept {
  */
 void awh::WorkerClient::switchConnect() noexcept {
 	// Определяем тип подключения
-	switch((u_short) this->connect){
+	switch((uint8_t) this->connect){
 		// Если подключение выполняется через прокси-сервер
-		case (u_short) connect_t::PROXY: this->connect = connect_t::SERVER; break;
+		case (uint8_t) connect_t::PROXY: this->connect = connect_t::SERVER; break;
 		// Если подключение выполняется через сервер
-		case (u_short) connect_t::SERVER: this->connect = connect_t::PROXY; break;
+		case (uint8_t) connect_t::SERVER: this->connect = connect_t::PROXY; break;
 	}
 }
 /**

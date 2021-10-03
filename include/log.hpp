@@ -51,7 +51,7 @@ namespace awh {
 			/**
 			 * flag_t Флаги логирования
 			 */
-			enum class flag_t : u_short {NONE, INFO, WARNING, CRITICAL};
+			enum class flag_t : uint8_t {NONE, INFO, WARNING, CRITICAL};
 		private:
 			// Флаг разрешения вывода логов в файл
 			bool fileMode = true;

@@ -105,9 +105,9 @@ void awh::Socks5Client::parse(const char * buffer, const size_t size) noexcept {
 	// Если данные буфера переданы
 	if((buffer != nullptr) && (size > 0)){
 		// Определяем текущий стейт
-		switch((u_short) this->state){
+		switch((uint8_t) this->state){
 			// Если установлен стейт, выбора метода
-			case (u_short) state_t::METHOD: {
+			case (uint8_t) state_t::METHOD: {
 				// Если данных достаточно для получения ответа
 				if(size >= sizeof(resMet_t)){
 					// Создаём объект данных метода
@@ -132,29 +132,29 @@ void awh::Socks5Client::parse(const char * buffer, const size_t size) noexcept {
 								this->reqAuth();
 							// Если логин и пароль не установлены
 							} else {
+								// Устанавливаем код сообщения
+								this->code = 0x10;
 								// Устанавливаем статус ошибки
 								this->state = state_t::BROKEN;
-								// Выводим сообщение об ошибке
-								this->log->print("%s", log_t::flag_t::WARNING, "login or password not set");
 							}
 						// Если пришёл не поддерживаемый метод
 						} else {
+							// Устанавливаем код сообщения
+							this->code = 0x07;
 							// Устанавливаем статус ошибки
 							this->state = state_t::BROKEN;
-							// Выводим сообщение об ошибке
-							this->log->print("%s", log_t::flag_t::CRITICAL, "unsupported server command");
 						}
 					// Если версия прокси-сервера не соответствует
 					} else {
+						// Устанавливаем код сообщения
+						this->code = 0x11;
 						// Устанавливаем статус ошибки
 						this->state = state_t::BROKEN;
-						// Выводим сообщение об ошибке
-						this->log->print("%s", log_t::flag_t::CRITICAL, "unsupported protocol version");
 					}
 				}
 			} break;
 			// Если установлен стейт, ожидания ответа на авторизацию
-			case (u_short) state_t::AUTH: {
+			case (uint8_t) state_t::AUTH: {
 				// Если данных достаточно для получения ответа
 				if(size >= sizeof(resAuth_t)){
 					// Создаём объект данных ответа
@@ -171,22 +171,22 @@ void awh::Socks5Client::parse(const char * buffer, const size_t size) noexcept {
 							this->reqCmd();
 						// Если авторизация не пройдена
 						} else {
+							// Устанавливаем код сообщения
+							this->code = 0x12;
 							// Устанавливаем статус ошибки
 							this->state = state_t::BROKEN;
-							// Выводим сообщение об ошибке
-							this->log->print("%s", log_t::flag_t::WARNING, "login or password is incorrect");
 						}
 					// Если версия прокси-сервера не соответствует
 					} else {
+						// Устанавливаем код сообщения
+						this->code = 0x13;
 						// Устанавливаем статус ошибки
 						this->state = state_t::BROKEN;
-						// Выводим сообщение об ошибке
-						this->log->print("%s", log_t::flag_t::CRITICAL, "unsupported protocol version");
 					}
 				}
 			} break;
 			// Если установлен стейт, ожидания ответа на запрос
-			case (u_short) state_t::RESPONSE: {
+			case (uint8_t) state_t::RESPONSE: {
 				// Если данных достаточно для получения ответа
 				if(size > sizeof(res_t)){
 					// Создаём объект данных ответа
@@ -202,9 +202,9 @@ void awh::Socks5Client::parse(const char * buffer, const size_t size) noexcept {
 								// Получаем адрес IPv4
 								case (uint8_t) atyp_t::IPv4: {
 									// Если буфер пришел достаточного размера
-									if(size >= (sizeof(res_t) + sizeof(ipv4_t))){
+									if(size >= (sizeof(res_t) + sizeof(ip_t))){
 										// Создаём объект данных сервера
-										ipv4_t server;
+										ip_t server;
 										// Копируем в буфер наши данные IP адреса
 										memcpy(&server, buffer + sizeof(res_t), sizeof(server));
 										// Выполняем получение IP адреса
@@ -223,9 +223,9 @@ void awh::Socks5Client::parse(const char * buffer, const size_t size) noexcept {
 								// Получаем адрес IPv6
 								case (uint8_t) atyp_t::IPv6: {
 									// Если буфер пришел достаточного размера
-									if(size >= (sizeof(res_t) + sizeof(ipv6_t))){
+									if(size >= (sizeof(res_t) + sizeof(ip_t))){
 										// Создаём объект данных сервера
-										ipv6_t server;
+										ip_t server;
 										// Копируем в буфер наши данные IP адреса
 										memcpy(&server, buffer + sizeof(res_t), sizeof(server));
 										// Выполняем получение IP адреса
@@ -267,17 +267,17 @@ void awh::Socks5Client::parse(const char * buffer, const size_t size) noexcept {
 							}
 						// Если авторизация не пройдена
 						} else {
+							// Устанавливаем код сообщения
+							this->code = resp.rep;
 							// Устанавливаем статус ошибки
 							this->state = state_t::BROKEN;
-							// Выводим сообщение об ошибке
-							this->log->print("%s", log_t::flag_t::CRITICAL, "socks5 protocol error");
 						}
 					// Если версия прокси-сервера не соответствует
 					} else {
+						// Устанавливаем код сообщения
+						this->code = 0x11;
 						// Устанавливаем статус ошибки
 						this->state = state_t::BROKEN;
-						// Выводим сообщение об ошибке
-						this->log->print("%s", log_t::flag_t::CRITICAL, "unsupported protocol version");
 					}
 				}
 			} break;
@@ -289,6 +289,8 @@ void awh::Socks5Client::parse(const char * buffer, const size_t size) noexcept {
  * reset Метод сброса собранных данных
  */
 void awh::Socks5Client::reset() noexcept {
+	// Выполняем сброс статуса ошибки
+	this->code = 0x00;
 	// Выполняем очистку буфера данных
 	this->buffer.clear();
 	// Выполняем сброс стейта

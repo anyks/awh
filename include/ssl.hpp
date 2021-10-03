@@ -105,7 +105,7 @@ namespace awh {
 			/**
 			 * Типы ошибок валидации
 			 */
-			enum class validate_t : u_short {
+			enum class validate_t : uint8_t {
 				Error,
 				MatchFound,
 				NoSANPresent,

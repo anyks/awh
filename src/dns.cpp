@@ -143,12 +143,12 @@ struct evdns_base * awh::DNS::init(const string & host, const int family, struct
 		// Переходим по всем нейм серверам и добавляем их
 		for(auto & server : this->servers){
 			// Определяем тип передаваемого сервера
-			switch((u_short) this->nwk->parseHost(server)){
+			switch((uint8_t) this->nwk->parseHost(server)){
 				// Если - это домен или IPv4 адрес
-				case (u_short) network_t::type_t::ipv4:
-				case (u_short) network_t::type_t::domain: dns = server; break;
+				case (uint8_t) network_t::type_t::IPV4:
+				case (uint8_t) network_t::type_t::DOMNAME: dns = server; break;
 				// Если - это IPv6 адрес, переводим ip адрес в полную форму
-				case (u_short) network_t::type_t::ipv6: dns = this->nwk->setLowIp6(server); break;
+				case (uint8_t) network_t::type_t::IPV6: dns = this->nwk->setLowIp6(server); break;
 			}
 			// Если DNS сервер установлен, добавляем его в базу DNS
 			if(!dns.empty() && (evdns_base_nameserver_ip_add(result, dns.c_str()) != 0))
@@ -218,12 +218,12 @@ void awh::DNS::setNameServer(const string & server) noexcept {
 		// Адрес dns сервера
 		string dns = "";
 		// Определяем тип передаваемого сервера
-		switch((u_short) this->nwk->parseHost(server)){
+		switch((uint8_t) this->nwk->parseHost(server)){
 			// Если - это домен или IPv4 адрес
-			case (u_short) network_t::type_t::ipv4:
-			case (u_short) network_t::type_t::domain: dns = server; break;
+			case (uint8_t) network_t::type_t::IPV4:
+			case (uint8_t) network_t::type_t::DOMNAME: dns = server; break;
 			// Если - это IPv6 адрес, переводим ip адрес в полную форму
-			case (u_short) network_t::type_t::ipv6: dns = this->nwk->setLowIp6(server); break;
+			case (uint8_t) network_t::type_t::IPV6: dns = this->nwk->setLowIp6(server); break;
 		}
 		// Если DNS сервер установлен, добавляем его в базу DNS
 		if(!dns.empty() && (evdns_base_nameserver_ip_add(this->dnsbase, dns.c_str()) != 0))

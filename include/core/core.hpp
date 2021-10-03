@@ -73,11 +73,11 @@ namespace awh {
 			/**
 			 * Основные методы режимов работы
 			 */
-			enum class method_t : u_short {READ, WRITE};
+			enum class method_t : uint8_t {READ, WRITE};
 			/**
 			 * Основные флаги приложения
 			 */
-			enum class flag_t : u_short {
+			enum class flag_t : uint8_t {
 				NOTSTOP = 0x01,   // Флаг запрета остановки биндинга
 				WAITMESS = 0x02,  // Флаг ожидания входящих сообщений
 				KEEPALIVE = 0x04, // Флаг автоматического поддержания подключения

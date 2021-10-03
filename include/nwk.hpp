@@ -143,16 +143,10 @@ namespace awh {
 			/**
 			 * type_t Флаги типа адреса
 			 */
-			enum class type_t : u_short {
-				mac,
-				ipv4,
-				ipv6,
-				domain,
-				network,
-				address,
-				http_address,
-				http_method,
-				null
+			enum class type_t : uint8_t {
+				NONE, MAC, IPV4, IPV6,
+				DOMNAME, NETWORK, ADDRESS,
+				HTTPADDRESS, HTTPMETHOD
 			};
 		private:
 			// Набор локальных сетей IPv6

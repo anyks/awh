@@ -60,7 +60,7 @@ namespace awh {
 		/**
 		 * Типы файловой системы
 		 */
-		enum class type_t : u_short {NONE, DIR, FILE, SOCKET};
+		enum class type_t : uint8_t {NONE, DIR, FILE, SOCKET};
 		/**
 		 * file Функция извлечения названия и расширения файла
 		 * @param filename адрес файла для извлечения его параметров

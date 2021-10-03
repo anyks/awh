@@ -127,9 +127,9 @@ void awh::Rest::connectProxyCallback(const size_t aid, core_t * core, void * ctx
 		// Получаем контекст модуля
 		rest_t * web = reinterpret_cast <rest_t *> (ctx);
 		// Определяем тип прокси-сервера
-		switch((u_short) web->worker.proxy.type){
+		switch((uint8_t) web->worker.proxy.type){
 			// Если прокси-сервер является Socks5
-			case (u_short) proxy_t::type_t::SOCKS5: {
+			case (uint8_t) proxy_t::type_t::SOCKS5: {
 				// Выполняем сброс состояния Socks5 парсера
 				web->worker.proxy.socks5->reset();
 				// Устанавливаем URL адрес запроса
@@ -142,7 +142,7 @@ void awh::Rest::connectProxyCallback(const size_t aid, core_t * core, void * ctx
 				if(!socks5.empty()) core->write(socks5.data(), socks5.size(), aid);
 			} break;
 			// Если прокси-сервер является HTTP
-			case (u_short) proxy_t::type_t::HTTP: {
+			case (uint8_t) proxy_t::type_t::HTTP: {
 				// Выполняем сброс состояния HTTP парсера
 				web->worker.proxy.http->clear();
 				// Получаем бинарные данные REST запроса
@@ -181,9 +181,9 @@ void awh::Rest::readCallback(const char * buffer, const size_t size, const size_
 			// Устанавливаем сообщение ответа
 			web->res.message = query.message;
 			// Выполняем проверку авторизации
-			switch((u_short) web->http->getAuth()){
+			switch((uint8_t) web->http->getAuth()){
 				// Если нужно попытаться ещё раз
-				case (u_short) http_t::stath_t::RETRY: {
+				case (uint8_t) http_t::stath_t::RETRY: {
 					// Если попытка повторить авторизацию ещё не проводилась
 					if(!web->failAuth){
 						// Получаем новый адрес запроса
@@ -208,9 +208,9 @@ void awh::Rest::readCallback(const char * buffer, const size_t size, const size_
 					web->res.message = web->http->getMessage(web->res.code);
 				} break;
 				// Если запрос выполнен удачно
-				case (u_short) http_t::stath_t::GOOD: web->res.ok = true;
+				case (uint8_t) http_t::stath_t::GOOD: web->res.ok = true;
 				// Если запрос неудачный
-				case (u_short) http_t::stath_t::FAULT: {
+				case (uint8_t) http_t::stath_t::FAULT: {
 					// Получаем тело запроса
 					const auto & entity = web->http->getBody();
 					// Устанавливаем заголовки ответа
@@ -240,9 +240,9 @@ void awh::Rest::readProxyCallback(const char * buffer, const size_t size, const 
 		// Получаем контекст модуля
 		rest_t * web = reinterpret_cast <rest_t *> (ctx);
 		// Определяем тип прокси-сервера
-		switch((u_short) web->worker.proxy.type){
+		switch((uint8_t) web->worker.proxy.type){
 			// Если прокси-сервер является Socks5
-			case (u_short) proxy_t::type_t::SOCKS5: {
+			case (uint8_t) proxy_t::type_t::SOCKS5: {
 				// Если данные не получены
 				if(!web->worker.proxy.socks5->isEnd()){
 					// Выполняем парсинг входящих данных
@@ -259,13 +259,20 @@ void awh::Rest::readProxyCallback(const char * buffer, const size_t size, const 
 							reinterpret_cast <ccli_t *> (core)->switchProxy(aid);
 							// Завершаем работу
 							return;
-						// Завершаем работу
-						} else core->close(aid);
+						// Если рукопожатие не выполнено
+						} else {
+							// Устанавливаем код ответа
+							web->res.code = web->worker.proxy.socks5->getCode();
+							// Устанавливаем сообщение ответа
+							web->res.message = web->worker.proxy.socks5->getMessage(web->res.code);
+							// Завершаем работу
+							core->close(aid);
+						}
 					}
 				}
 			} break;
 			// Если прокси-сервер является HTTP
-			case (u_short) proxy_t::type_t::HTTP: {
+			case (uint8_t) proxy_t::type_t::HTTP: {
 				// Выполняем парсинг полученных данных
 				web->worker.proxy.http->parse(buffer, size);
 				// Если все данные получены
@@ -277,9 +284,9 @@ void awh::Rest::readProxyCallback(const char * buffer, const size_t size, const 
 					// Устанавливаем сообщение ответа
 					web->res.message = query.message;
 					// Выполняем проверку авторизации
-					switch((u_short) web->worker.proxy.http->getAuth()){
+					switch((uint8_t) web->worker.proxy.http->getAuth()){
 						// Если нужно попытаться ещё раз
-						case (u_short) http_t::stath_t::RETRY: {
+						case (uint8_t) http_t::stath_t::RETRY: {
 							// Если попытка повторить авторизацию ещё не проводилась
 							if(!web->failAuth){
 								// Получаем новый адрес запроса
@@ -304,7 +311,7 @@ void awh::Rest::readProxyCallback(const char * buffer, const size_t size, const 
 							web->res.message = web->worker.proxy.http->getMessage(web->res.code);
 						} break;
 						// Если запрос выполнен удачно
-						case (u_short) http_t::stath_t::GOOD: {
+						case (uint8_t) http_t::stath_t::GOOD: {
 							// Выполняем сброс количество попыток
 							web->failAuth = false;
 							// Выполняем переключение на работу с сервером
@@ -313,7 +320,7 @@ void awh::Rest::readProxyCallback(const char * buffer, const size_t size, const 
 							return;
 						} break;
 						// Если запрос неудачный
-						case (u_short) http_t::stath_t::FAULT: {
+						case (uint8_t) http_t::stath_t::FAULT: {
 							// Получаем тело запроса
 							const auto & entity = web->worker.proxy.http->getBody();
 							// Устанавливаем заголовки ответа
@@ -726,13 +733,13 @@ void awh::Rest::setMessageCallback(void * ctx, function <void (const res_t &, vo
  */
 void awh::Rest::setMode(const u_short flag) noexcept {
 	// Устанавливаем флаг анбиндинга
-	this->unbind = !(flag & (u_short) core_t::flag_t::NOTSTOP);
+	this->unbind = !(flag & (uint8_t) core_t::flag_t::NOTSTOP);
 	// Устанавливаем флаг ожидания входящих сообщений
-	this->worker.wait = (flag & (u_short) core_t::flag_t::WAITMESS);
+	this->worker.wait = (flag & (uint8_t) core_t::flag_t::WAITMESS);
 	// Устанавливаем флаг поддержания автоматического подключения
-	this->worker.alive = (flag & (u_short) core_t::flag_t::KEEPALIVE);
+	this->worker.alive = (flag & (uint8_t) core_t::flag_t::KEEPALIVE);
 	// Выполняем установку флага проверки домена
-	const_cast <ccli_t *> (this->core)->setVerifySSL(flag & (u_short) core_t::flag_t::VERIFYSSL);
+	const_cast <ccli_t *> (this->core)->setVerifySSL(flag & (uint8_t) core_t::flag_t::VERIFYSSL);
 }
 /**
  * setProxy Метод установки прокси-сервера
