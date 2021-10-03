@@ -87,7 +87,7 @@ namespace awh {
 			 */
 			enum class rep_t : uint8_t {
 				SUCCESS   = 0x00, // Подключение успешное
-				ERROR     = 0x01, // Ошибка SOCKS-сервера
+				SOCKSERR  = 0x01, // Ошибка SOCKS-сервера
 				FORBIDDEN = 0x02, // Соединение запрещено набором правил
 				UNAVNET   = 0x03, // Сеть недоступна
 				UNAVHOST  = 0x04, // Хост недоступен
