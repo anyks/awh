@@ -40,7 +40,7 @@ void awh::Socks5Server::resMethod(const vector <method_t> & methods) const noexc
 			// Если метод авторизации выбран логин/пароль пользователя
 			if(method == method_t::PASSWD){
 				// Если пользователи установлены
-				if((this->users != nullptr) && !this->users->empty()){
+				if(this->authFn != nullptr){
 					// Устанавливаем метод прокси-сервера
 					response.method = (uint8_t) method;
 					// Выходим из цикла
@@ -49,7 +49,7 @@ void awh::Socks5Server::resMethod(const vector <method_t> & methods) const noexc
 			// Если пользователь выбрал метод без авторизации
 			} else if(method == method_t::NOAUTH) {
 				// Если пользователи не установлены
-				if((this->users == nullptr) || this->users->empty()){
+				if(this->authFn == nullptr){
 					// Устанавливаем метод прокси-сервера
 					response.method = (uint8_t) method;
 					// Выходим из цикла
@@ -85,10 +85,10 @@ void awh::Socks5Server::reset() noexcept {
 	this->state = state_t::METHOD;
 }
 /**
- * setUsers Метод добавления списка пользователей
- * @param users список пользователей для добавления
+ * setAuthCallback Метод добавления функции обработки авторизации
+ * @param callback функция обратного вызова для обработки авторизации
  */
-void awh::Socks5Server::setUsers(const unordered_map <string, string> * users) noexcept {
-	// Устанавливаем список пользователей
-	this->users = users;
+void awh::Socks5Server::setAuthCallback(function <bool (const string &, const string &)> callback) noexcept {
+	// Устанавливаем функцию проверки авторизации
+	this->authFn = callback;
 }

@@ -72,12 +72,16 @@ namespace awh {
 				Digest() : nc("00000000"), uri(""), qop("auth"), realm(AWH_HOST), nonce(""), opaque(""), cnonce(""), response(""), timestamp(0), algorithm(algorithm_t::MD5) {}
 			} digest_t;
 		private:
-			bool server;                                  // Флаг работы в режиме сервера
-			type_t type;                                  // Тип авторизации
-			digest_t digest;                              // Параметры Digest авторизации
-			string username;                              // Логин пользователя
-			string password;                              // Пароль пользователя
-			const unordered_map <string, string> * users; // Список пользователей для Basic авторизации
+			bool server;     // Флаг работы в режиме сервера
+			type_t type;     // Тип авторизации
+			digest_t digest; // Параметры Digest авторизации
+			string username; // Логин пользователя
+			string password; // Пароль пользователя
+		private:
+			// Внешняя функция получения пароля пользователя авторизации Digest
+			function <string (const string &)> extractPasswordFn = nullptr;
+			// Внешняя функция проверки авторизации Basic
+			function <bool (const string &, const string &)> authFn = nullptr;
 		private:
 			// Создаём объект фреймворка
 			const fmk_t * fmk = nullptr;
@@ -109,10 +113,15 @@ namespace awh {
 			const bool check(const string & username, const string & nc, const string & uri, const string & cnonce, const string & response) noexcept;
 		public:
 			/**
-			 * setUsers Метод добавления списка пользователей
-			 * @param users список пользователей для добавления
+			 * setExtractPasswordCallback Метод добавления функции извлечения пароля
+			 * @param callback функция обратного вызова для извлечения пароля
 			 */
-			void setUsers(const unordered_map <string, string> * users) noexcept;
+			void setExtractPasswordCallback(function <string (const string &)> callback) noexcept;
+			/**
+			 * setAuthCallback Метод добавления функции обработки авторизации
+			 * @param callback функция обратного вызова для обработки авторизации
+			 */
+			void setAuthCallback(function <bool (const string &, const string &)> callback) noexcept;
 		public:
 			/**
 			 * setUri Метод установки параметров HTTP запроса
@@ -205,7 +214,7 @@ namespace awh {
 			 * @param log    объект для работы с логами
 			 * @param server флаг работы в режиме сервера
 			 */
-			Authorization(const fmk_t * fmk = nullptr, const log_t * log = nullptr, const bool server = false) : fmk(fmk), log(log), users(nullptr), server(server) {}
+			Authorization(const fmk_t * fmk = nullptr, const log_t * log = nullptr, const bool server = false) : fmk(fmk), log(log), server(server) {}
 	} auth_t;
 };
 

@@ -435,11 +435,17 @@ namespace awh {
 			 * @param password пароль пользователя для авторизации на сервере
 			 */
 			void setUser(const string & login, const string & password) noexcept;
+		public:
 			/**
-			 * setUsers Метод добавления списка пользователей
-			 * @param users список пользователей для добавления
+			 * setExtractPasswordCallback Метод добавления функции извлечения пароля
+			 * @param callback функция обратного вызова для извлечения пароля
 			 */
-			void setUsers(const unordered_map <string, string> * users) noexcept;
+			void setExtractPasswordCallback(function <string (const string &)> callback) noexcept;
+			/**
+			 * setAuthCallback Метод добавления функции обработки авторизации
+			 * @param callback функция обратного вызова для обработки авторизации
+			 */
+			void setAuthCallback(function <bool (const string &, const string &)> callback) noexcept;
 		public:
 			/**
 			 * setServ Метод установки данных сервиса

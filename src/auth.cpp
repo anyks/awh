@@ -41,13 +41,10 @@ const bool awh::Authorization::check(Authorization & auth) noexcept {
 const bool awh::Authorization::check(const string & username, const string & password) noexcept {
 	// Результат работы функции
 	bool result = false;
-	// Если пользователь и пароль переданы
-	if(!username.empty() && !password.empty() && (this->type == type_t::BASIC) && (this->users != nullptr)){
-		// Ищем пользователя в списке пользователей
-		auto it = this->users->find(username);
-		// Если пользователь найден, выполняем проверку авторизации
-		if(it != this->users->end()) result = (it->second.compare(password) == 0);
-	}
+	// Если функция проверки авторизации установлена
+	if((this->type == type_t::BASIC) && (this->authFn != nullptr))
+		// Выполняем проверку авторизации
+		result = this->authFn(username, password);
 	// Выводим результат
 	return result;
 }
@@ -66,11 +63,11 @@ const bool awh::Authorization::check(const string & username, const string & nc,
 	// Если пользователь и пароль переданы
 	if(!username.empty() && !nc.empty() && !uri.empty() && !cnonce.empty() && !response.empty() && (this->type == type_t::DIGEST)){
 		// Если на сервере счётчик меньше
-		if((stoi(this->digest.nc) < stoi(nc)) && (this->users != nullptr)){
-			// Ищем пользователя в списке пользователей
-			auto it = this->users->find(username);
-			// Если пользователь найден
-			if(it != this->users->end()){
+		if((stoi(this->digest.nc) < stoi(nc)) && (this->extractPasswordFn != nullptr)){
+			// Получаем пароль пользователя
+			const string & password = this->extractPasswordFn(username);
+			// Если пароль пользователя получен
+			if(!password.empty()){
 				// Параметры проверки дайджест авторизации
 				digest_t digest;
 				// Устанавливаем счётчик клиента
@@ -85,7 +82,7 @@ const bool awh::Authorization::check(const string & username, const string & nc,
 				digest.opaque    = this->digest.opaque;
 				digest.algorithm = this->digest.algorithm;
 				// Выполняем проверку авторизации
-				result = (this->response(username, it->second, digest).compare(response) == 0);
+				result = (this->response(username, password, digest).compare(response) == 0);
 			}
 		}
 	}
@@ -93,14 +90,20 @@ const bool awh::Authorization::check(const string & username, const string & nc,
 	return result;
 }
 /**
- * setUsers Метод добавления списка пользователей
- * @param users список пользователей для добавления
+ * setExtractPasswordCallback Метод добавления функции извлечения пароля
+ * @param callback функция обратного вызова для извлечения пароля
  */
-void awh::Authorization::setUsers(const unordered_map <string, string> * users) noexcept {
-	// Если данные переданы и модуль является сервером
-	if(this->server && (users != nullptr) && !users->empty())
-		// Устанавливаем список пользователей
-		this->users = users;
+void awh::Authorization::setExtractPasswordCallback(function <string (const string &)> callback) noexcept {
+	// Устанавливаем функцию извлечения пароля
+	this->extractPasswordFn = callback;
+}
+/**
+ * setAuthCallback Метод добавления функции обработки авторизации
+ * @param callback функция обратного вызова для обработки авторизации
+ */
+void awh::Authorization::setAuthCallback(function <bool (const string &, const string &)> callback) noexcept {
+	// Устанавливаем функцию проверки авторизации
+	this->authFn = callback;
 }
 /**
  * setUri Метод установки параметров HTTP запроса

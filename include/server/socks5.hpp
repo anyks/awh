@@ -13,7 +13,7 @@
 /**
  * Стандартная библиотека
  */
-#include <unordered_map>
+#include <functional>
 
 /**
  * Наши модули
@@ -32,8 +32,8 @@ namespace awh {
 	 */
 	typedef class Socks5Server : public socks5_t {
 		private:
-			// Список пользователей для Basic авторизации
-			const unordered_map <string, string> * users;
+			// Внешняя функция проверки авторизации
+			function <bool (const string &, const string &)> authFn = nullptr;
 		public:
 			/**
 			 * resCmd Метод получения бинарного буфера ответа
@@ -62,10 +62,10 @@ namespace awh {
 			void reset() noexcept;
 		public:
 			/**
-			 * setUsers Метод добавления списка пользователей
-			 * @param users список пользователей для добавления
+			 * setAuthCallback Метод добавления функции обработки авторизации
+			 * @param callback функция обратного вызова для обработки авторизации
 			 */
-			void setUsers(const unordered_map <string, string> * users) noexcept;
+			void setAuthCallback(function <bool (const string &, const string &)> callback) noexcept;
 		public:
 			/**
 			 * Socks5Server Конструктор
@@ -73,7 +73,7 @@ namespace awh {
 			 * @param log объект для работы с логами
 			 * @param uri объект для работы с URI
 			 */
-			Socks5Server(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcept : socks5_t(fmk, log, uri), users(nullptr) {}
+			Socks5Server(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcept : socks5_t(fmk, log, uri) {}
 			/**
 			 * ~Socks5Server Деструктор
 			 */

@@ -1371,12 +1371,20 @@ void awh::Http::setUser(const string & login, const string & password) noexcept 
 	}
 }
 /**
- * setUsers Метод добавления списка пользователей
- * @param users список пользователей для добавления
+ * setExtractPasswordCallback Метод добавления функции извлечения пароля
+ * @param callback функция обратного вызова для извлечения пароля
  */
-void awh::Http::setUsers(const unordered_map <string, string> * users) noexcept {
-	// Если данные пользователей переданы
-	if((users != nullptr) && !users->empty()) this->auth->setUsers(users);
+void awh::Http::setExtractPasswordCallback(function <string (const string &)> callback) noexcept {
+	// Устанавливаем внешнюю функцию
+	this->auth->setExtractPasswordCallback(callback);
+}
+/**
+ * setAuthCallback Метод добавления функции обработки авторизации
+ * @param callback функция обратного вызова для обработки авторизации
+ */
+void awh::Http::setAuthCallback(function <bool (const string &, const string &)> callback) noexcept {
+	// Устанавливаем внешнюю функцию
+	this->auth->setAuthCallback(callback);
 }
 /**
  * setCrypt Метод установки параметров шифрования
