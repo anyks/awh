@@ -52,6 +52,12 @@ namespace awh {
 			function <bool (const string &, const string &)> authFn = nullptr;
 		public:
 			/**
+			 * getServer Метод извлечения параметров запрашиваемого сервера
+			 * @return параметры запрашиваемого сервера
+			 */
+			const serv_t & getServer() const noexcept;
+		public:
+			/**
 			 * resCmd Метод получения бинарного буфера ответа
 			 * @param rep код ответа сервера
 			 */

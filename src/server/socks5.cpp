@@ -11,6 +11,14 @@
 #include <server/socks5.hpp>
 
 /**
+ * getServer Метод извлечения параметров запрашиваемого сервера
+ * @return параметры запрашиваемого сервера
+ */
+const awh::Socks5Server::serv_t & awh::Socks5Server::getServer() const noexcept {
+	// Выводим запрашиваемый сервер
+	return this->server;
+}
+/**
  * resCmd Метод получения бинарного буфера ответа
  * @param rep код ответа сервера
  */
