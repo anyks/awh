@@ -34,7 +34,7 @@ int main(int argc, char * argv[]) noexcept {
 	// Создаём биндинг
 	coreCli_t core(&fmk, &log);
 	// Создаём объект REST запроса
-	rest_t rest(&core, &fmk, &log);
+	restCli_t rest(&core, &fmk, &log);
 	// Устанавливаем название сервиса
 	log.setLogName("REST Client");
 	// Устанавливаем формат времени

@@ -369,7 +369,7 @@ namespace awh {
 			 * ~Rest Деструктор
 			 */
 			~Rest() noexcept;
-	} rest_t;
+	} restCli_t;
 };
 
 #endif // __AWH_REST_CLIENT__

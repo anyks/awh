@@ -39,7 +39,7 @@ void awh::Rest::closeCallback(const size_t wid, core_t * core, void * ctx) noexc
 	// Если данные переданы верные
 	if((core != nullptr) && (ctx != nullptr)){
 		// Получаем контекст модуля
-		rest_t * web = reinterpret_cast <rest_t *> (ctx);
+		restCli_t * web = reinterpret_cast <restCli_t *> (ctx);
 		// Если нужно произвести запрос заново
 		if((web->res.code == 301) || (web->res.code == 308) ||
 		   (web->res.code == 401) || (web->res.code == 407)){
@@ -79,7 +79,7 @@ void awh::Rest::connectCallback(const size_t aid, core_t * core, void * ctx) noe
 	// Если данные переданы верные
 	if((aid > 0) && (core != nullptr) && (ctx != nullptr)){
 		// Получаем контекст модуля
-		rest_t * web = reinterpret_cast <rest_t *> (ctx);
+		restCli_t * web = reinterpret_cast <restCli_t *> (ctx);
 		// Выполняем сброс состояния HTTP парсера
 		web->http->clear();
 		// Устанавливаем код сообщения
@@ -125,7 +125,7 @@ void awh::Rest::connectProxyCallback(const size_t aid, core_t * core, void * ctx
 	// Если данные переданы верные
 	if((aid > 0) && (core != nullptr) && (ctx != nullptr)){
 		// Получаем контекст модуля
-		rest_t * web = reinterpret_cast <rest_t *> (ctx);
+		restCli_t * web = reinterpret_cast <restCli_t *> (ctx);
 		// Определяем тип прокси-сервера
 		switch((uint8_t) web->worker.proxy.type){
 			// Если прокси-сервер является Socks5
@@ -169,7 +169,7 @@ void awh::Rest::readCallback(const char * buffer, const size_t size, const size_
 	// Если данные существуют
 	if((buffer != nullptr) && (size > 0) && (aid > 0)){
 		// Получаем контекст модуля
-		rest_t * web = reinterpret_cast <rest_t *> (ctx);
+		restCli_t * web = reinterpret_cast <restCli_t *> (ctx);
 		// Выполняем парсинг полученных данных
 		web->http->parse(buffer, size);
 		// Если все данные получены
@@ -238,7 +238,7 @@ void awh::Rest::readProxyCallback(const char * buffer, const size_t size, const 
 	// Если данные существуют
 	if((buffer != nullptr) && (size > 0) && (aid > 0)){
 		// Получаем контекст модуля
-		rest_t * web = reinterpret_cast <rest_t *> (ctx);
+		restCli_t * web = reinterpret_cast <restCli_t *> (ctx);
 		// Определяем тип прокси-сервера
 		switch((uint8_t) web->worker.proxy.type){
 			// Если прокси-сервер является Socks5

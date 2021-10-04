@@ -66,7 +66,7 @@ int main(int argc, char * argv[]) noexcept {
 	network_t nwk(&fmk);
 	uri_t uri(&fmk, &nwk);
 	coreCli_t core(&fmk, &log);
-	rest_t rest(&core, &fmk, &log);
+	restCli_t rest(&core, &fmk, &log);
 
 	log.setLogName("REST Client");
 	log.setLogFormat("%H:%M:%S %d.%m.%Y");
