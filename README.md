@@ -65,7 +65,7 @@ int main(int argc, char * argv[]) noexcept {
 	log_t log(&fmk);
 	network_t nwk(&fmk);
 	uri_t uri(&fmk, &nwk);
-	ccli_t core(&fmk, &log);
+	coreCli_t core(&fmk, &log);
 	rest_t rest(&core, &fmk, &log);
 
 	log.setLogName("REST Client");
@@ -104,8 +104,8 @@ int main(int argc, char * argv[]) noexcept {
 	log_t log(&fmk);
 	network_t nwk(&fmk);
 	uri_t uri(&fmk, &nwk);
-	ccli_t core(&fmk, &log);
-	wcli_t ws(&core, &fmk, &log);
+	coreCli_t core(&fmk, &log);
+	wsCli_t ws(&core, &fmk, &log);
 
 	log.setLogName("WebSocket Client");
 	log.setLogFormat("%H:%M:%S %d.%m.%Y");
@@ -124,7 +124,7 @@ int main(int argc, char * argv[]) noexcept {
 
 	ws.init("wss://stream.binance.com:9443/stream", http_t::compress_t::DEFLATE);
 
-	ws.on([](const bool mode, wcli_t * ws){
+	ws.on([](const bool mode, wsCli_t * ws){
 		cout << (mode ? "Connect" : "Disconnect") << " on server" << endl;
 
 		if(mode){
@@ -140,15 +140,15 @@ int main(int argc, char * argv[]) noexcept {
 		}
 	});
 
-	ws.on([](const u_short code, const string & mess, wcli_t * ws){
+	ws.on([](const u_short code, const string & mess, wsCli_t * ws){
 		cout << " Error: [" << code << "] " << mess << endl;
 	});
 
-	ws.on([](const string & mess, wcli_t * ws){
+	ws.on([](const string & mess, wsCli_t * ws){
 		cout << " get: [" << "PONG" << "] " << mess << endl;
 	});
 
-	ws.on([](const vector <char> & buffer, const bool utf8, wcli_t * ws){
+	ws.on([](const vector <char> & buffer, const bool utf8, wsCli_t * ws){
 		if(utf8){
 			json data = json::parse(string(buffer.begin(), buffer.end()));
 			cout << " Message: " << data.dump(4) << endl;

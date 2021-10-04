@@ -202,12 +202,6 @@ namespace awh {
 			void clean(struct bufferevent * bev) noexcept;
 		protected:
 			/**
-			 * connect Метод создания подключения к удаленному серверу
-			 * @param wid идентификатор воркера
-			 * @return    результат подключения
-			 */
-			virtual bool connect(const size_t wid) noexcept = 0;
-			/**
 			 * socket Метод создания сокета
 			 * @param ip     адрес для которого нужно создать сокет
 			 * @param port   порт сервера для которого нужно создать сокет
@@ -248,10 +242,10 @@ namespace awh {
 			virtual void start() noexcept;
 		public:
 			/**
-			 * isStart Метод проверки на запуск бинда TCP/IP
+			 * working Метод проверки на запуск работы
 			 * @return результат проверки
 			 */
-			bool isStart() const noexcept;
+			bool working() const noexcept;
 		public:
 			/**
 			 * add Метод добавления воркера в биндинг

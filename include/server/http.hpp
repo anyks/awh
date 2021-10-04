@@ -7,13 +7,13 @@
  * copyright: © Yuriy Lobarev
  */
 
-#ifndef __AWH_WS_SERVER_HTTP__
-#define __AWH_WS_SERVER_HTTP__
+#ifndef __AWH_HTTP_SERVER__
+#define __AWH_HTTP_SERVER__
 
 /**
  * Наши модули
  */
-#include <ws/ws.hpp>
+#include <core/http.hpp>
 #include <server/auth.hpp>
 
 // Подписываемся на стандартное пространство имён
@@ -24,30 +24,9 @@ using namespace std;
  */
 namespace awh {
 	/**
-	 * WSServer Класс для работы с сервером WebSocket
+	 * HttpServer Класс для работы с REST сервером
 	 */
-	typedef class WSServer : public ws_t {
-		private:
-			/**
-			 * update Метод обновления входящих данных
-			 */
-			void update() noexcept;
-		public:
-			/**
-			 * checkKey Метод проверки ключа сервера
-			 * @return результат проверки
-			 */
-			bool checkKey() noexcept;
-			/**
-			 * checkVer Метод проверки на версию протокола
-			 * @return результат проверки соответствия
-			 */
-			bool checkVer() noexcept;
-			/**
-			 * checkAuth Метод проверки авторизации
-			 * @return результат проверки авторизации
-			 */
-			stath_t checkAuth() noexcept;
+	typedef class HttpServer : public http_t {
 		public:
 			/**
 			 * setRealm Метод установки название сервера
@@ -77,17 +56,17 @@ namespace awh {
 			void setAuthCallback(function <bool (const string &, const string &)> callback) noexcept;
 		public:
 			/**
-			 * WSServer Конструктор
+			 * HttpServer Конструктор
 			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
 			 * @param uri объект работы с URI
 			 */
-			WSServer(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcept;
+			HttpServer(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcept;
 			/**
-			 * ~WSServer Деструктор
+			 * ~HttpServer Деструктор
 			 */
-			~WSServer() noexcept;
-	} wss_t;
+			~HttpServer() noexcept;
+	} httpSrv_t;
 };
 
-#endif // __AWH_WS_SERVER_HTTP__
+#endif // __AWH_HTTP_SERVER__

@@ -92,7 +92,7 @@ namespace awh {
 			 * ~CoreClient Деструктор
 			 */
 			~CoreClient() noexcept;
-	} ccli_t;
+	} coreCli_t;
 };
 
 #endif // __AWH_CORE_CLIENT__

@@ -7,14 +7,13 @@
  * copyright: © Yuriy Lobarev
  */
 
-#ifndef __AWH_WS_SERVER_HTTP__
-#define __AWH_WS_SERVER_HTTP__
+#ifndef __AWH_AUTH_SERVER__
+#define __AWH_AUTH_SERVER__
 
 /**
  * Наши модули
  */
-#include <ws/ws.hpp>
-#include <server/auth.hpp>
+#include <core/auth.hpp>
 
 // Подписываемся на стандартное пространство имён
 using namespace std;
@@ -24,30 +23,27 @@ using namespace std;
  */
 namespace awh {
 	/**
-	 * WSServer Класс для работы с сервером WebSocket
+	 * AuthServer Класс работы с авторизацией на сервере
 	 */
-	typedef class WSServer : public ws_t {
+	typedef class AuthServer : public auth_t {
 		private:
-			/**
-			 * update Метод обновления входящих данных
-			 */
-			void update() noexcept;
+			// Логин пользователя
+			string user = "";
+			// Пароль пользователя
+			string pass = "";
+			// Параметры Digest авторизации пользователя
+			digest_t userDigest;
+		private:
+			// Внешняя функция получения пароля пользователя авторизации Digest
+			function <string (const string &)> extractPassFn = nullptr;
+			// Внешняя функция проверки авторизации Basic
+			function <bool (const string &, const string &)> authFn = nullptr;
 		public:
 			/**
-			 * checkKey Метод проверки ключа сервера
-			 * @return результат проверки
-			 */
-			bool checkKey() noexcept;
-			/**
-			 * checkVer Метод проверки на версию протокола
-			 * @return результат проверки соответствия
-			 */
-			bool checkVer() noexcept;
-			/**
-			 * checkAuth Метод проверки авторизации
+			 * check Метод проверки авторизации
 			 * @return результат проверки авторизации
 			 */
-			stath_t checkAuth() noexcept;
+			const bool check() noexcept;
 		public:
 			/**
 			 * setRealm Метод установки название сервера
@@ -77,17 +73,24 @@ namespace awh {
 			void setAuthCallback(function <bool (const string &, const string &)> callback) noexcept;
 		public:
 			/**
-			 * WSServer Конструктор
+			 * setHeader Метод установки параметров авторизации из заголовков
+			 * @param header заголовок HTTP с параметрами авторизации
+			 */
+			void setHeader(const string & header) noexcept;
+			/**
+			 * getHeader Метод получения строки авторизации HTTP заголовка
+			 * @param mode режим вывода только значения заголовка
+			 * @return     строка авторизации
+			 */
+			const string getHeader(const bool mode = false) noexcept;
+		public:
+			/**
+			 * AuthServer Конструктор
 			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
-			 * @param uri объект работы с URI
 			 */
-			WSServer(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcept;
-			/**
-			 * ~WSServer Деструктор
-			 */
-			~WSServer() noexcept;
-	} wss_t;
+			AuthServer(const fmk_t * fmk, const log_t * log) noexcept : auth_t(fmk, log) {}
+	} authSrv_t;
 };
 
-#endif // __AWH_WS_SERVER_HTTP__
+#endif // __AWH_AUTH_SERVER__

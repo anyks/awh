@@ -113,9 +113,9 @@ namespace awh {
 			 */
 			enum class state_t : uint8_t {
 				AUTH,     // Режим ожидания прохождения аутентификации
-				VERIFY,   // Режим выполнения проверки запрошенных данных клиентом
 				METHOD,   // Режим ожидания получения метода
 				BROKEN,   // Режим бракованных данных
+				CONNECT,  // Режим выполнения подключения
 				REQUEST,  // Режим ожидания получения запроса
 				RESPONSE, // Режим ожидания получения ответа
 				HANDSHAKE // Режим выполненного рукопожатия
@@ -247,10 +247,10 @@ namespace awh {
 			 */
 			bool isEnd() const noexcept;
 			/**
-			 * isVerify Метод проверки запроса клиента
+			 * isConnected Метод проверки на подключение клиента
 			 * @return результат проверки
 			 */
-			bool isVerify() const noexcept;
+			bool isConnected() const noexcept;
 			/**
 			 * isHandshake Метод проверки рукопожатия
 			 * @return проверка рукопожатия

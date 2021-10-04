@@ -34,8 +34,9 @@
 #include <fmk.hpp>
 #include <log.hpp>
 #include <uri.hpp>
-#include <auth.hpp>
 #include <hash.hpp>
+#include <client/auth.hpp>
+#include <server/auth.hpp>
 
 // Подписываемся на стандартное пространство имён
 using namespace std;
@@ -45,7 +46,7 @@ using namespace std;
  */
 namespace awh {
 	/**
-	 * Http Класс для работы с REST запросами
+	 * Http Класс для работы с REST
 	 */
 	typedef class Http {
 		public:
@@ -419,35 +420,6 @@ namespace awh {
 			void setUserAgent(const string & userAgent) noexcept;
 		public:
 			/**
-			 * setRealm Метод установки название сервера
-			 * @param realm название сервера
-			 */
-			void setRealm(const string & realm) noexcept;
-			/**
-			 * setOpaque Метод установки временного ключа сессии сервера
-			 * @param opaque временный ключ сессии сервера
-			 */
-			void setOpaque(const string & opaque) noexcept;
-		public:
-			/**
-			 * setUser Метод установки параметров авторизации
-			 * @param login    логин пользователя для авторизации на сервере
-			 * @param password пароль пользователя для авторизации на сервере
-			 */
-			void setUser(const string & login, const string & password) noexcept;
-		public:
-			/**
-			 * setExtractPasswordCallback Метод добавления функции извлечения пароля
-			 * @param callback функция обратного вызова для извлечения пароля
-			 */
-			void setExtractPasswordCallback(function <string (const string &)> callback) noexcept;
-			/**
-			 * setAuthCallback Метод добавления функции обработки авторизации
-			 * @param callback функция обратного вызова для обработки авторизации
-			 */
-			void setAuthCallback(function <bool (const string &, const string &)> callback) noexcept;
-		public:
-			/**
 			 * setServ Метод установки данных сервиса
 			 * @param id   идентификатор сервиса
 			 * @param name название сервиса
@@ -461,12 +433,6 @@ namespace awh {
 			 * @param aes  размер шифрования передаваемых данных
 			 */
 			void setCrypt(const string & pass, const string & salt = "", const hash_t::aes_t aes = hash_t::aes_t::AES128) noexcept;
-			/**
-			 * setAuthType Метод установки типа авторизации
-			 * @param type      тип авторизации
-			 * @param algorithm алгоритм шифрования для Digest авторизации
-			 */
-			void setAuthType(const auth_t::type_t type = auth_t::type_t::BASIC, const auth_t::algorithm_t algorithm = auth_t::algorithm_t::MD5) noexcept;
 		public:
 			/**
 			 * Http Конструктор

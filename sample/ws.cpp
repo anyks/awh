@@ -36,9 +36,9 @@ int main(int argc, char * argv[]) noexcept {
 	// Создаём объект URI
 	uri_t uri(&fmk, &nwk);
 	// Создаём биндинг
-	ccli_t core(&fmk, &log);
+	coreCli_t core(&fmk, &log);
 	// Создаём объект REST запроса
-	wcli_t ws(&core, &fmk, &log);
+	wsCli_t ws(&core, &fmk, &log);
 	// Устанавливаем название сервиса
 	log.setLogName("WebSocket Client");
 	// Устанавливаем формат времени
@@ -75,7 +75,7 @@ int main(int argc, char * argv[]) noexcept {
 		// cout << " ============= " << message << endl;
 	});
 	// Подписываемся на событие запуска и остановки сервера
-	ws.on([](const bool mode, wcli_t * ws){
+	ws.on([](const bool mode, wsCli_t * ws){
 		// Выводим сообщение
 		cout << " +++++++++++++ " << (mode ? "Start" : "Stop") << " server" << endl;
 		// Если подключение произошло удачно
@@ -97,16 +97,16 @@ int main(int argc, char * argv[]) noexcept {
 		}
 	});
 	// Подписываемся на событие получения ошибки работы клиента
-	ws.on([](const u_short code, const string & mess, wcli_t * ws){
+	ws.on([](const u_short code, const string & mess, wsCli_t * ws){
 		// Выводим сообщение об ошибке
 		cout << " +++++++++++++ " << code << " === " << mess << endl;
 	});
 	// Подписываемся на событие ответа сервера PONG
-	ws.on([](const string & mess, wcli_t * ws){
+	ws.on([](const string & mess, wsCli_t * ws){
 		cout << " +++++++++++++ " << "PONG" << " === " << mess << endl;
 	});
 	// Подписываемся на событие получения сообщения с сервера
-	ws.on([](const vector <char> & buffer, const bool utf8, wcli_t * ws){
+	ws.on([](const vector <char> & buffer, const bool utf8, wsCli_t * ws){
 		// Если данные пришли в виде текста, выводим
 		if(utf8){
 			// Создаём объект JSON

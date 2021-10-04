@@ -103,7 +103,7 @@ namespace awh {
 			 * ~Socks5Server Деструктор
 			 */
 			~Socks5Server() noexcept {}
-	} s5srv_t;
+	} socks5Srv_t;
 };
 
 #endif // __AWH_SOCKS5_SERVER__

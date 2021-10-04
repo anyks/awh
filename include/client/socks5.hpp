@@ -79,7 +79,7 @@ namespace awh {
 			 * ~Socks5Client Деструктор
 			 */
 			~Socks5Client() noexcept {}
-	} s5cli_t;
+	} socks5Cli_t;
 };
 
 #endif // __AWH_SOCKS5_CLIENT__

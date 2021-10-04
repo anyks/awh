@@ -256,7 +256,7 @@ void awh::Rest::readProxyCallback(const char * buffer, const size_t size, const 
 						// Если рукопожатие выполнено
 						if(web->worker.proxy.socks5->isHandshake()){
 							// Выполняем переключение на работу с сервером
-							reinterpret_cast <ccli_t *> (core)->switchProxy(aid);
+							reinterpret_cast <coreCli_t *> (core)->switchProxy(aid);
 							// Завершаем работу
 							return;
 						// Если рукопожатие не выполнено
@@ -315,7 +315,7 @@ void awh::Rest::readProxyCallback(const char * buffer, const size_t size, const 
 							// Выполняем сброс количество попыток
 							web->failAuth = false;
 							// Выполняем переключение на работу с сервером
-							reinterpret_cast <ccli_t *> (core)->switchProxy(aid);
+							reinterpret_cast <coreCli_t *> (core)->switchProxy(aid);
 							// Завершаем работу
 							return;
 						} break;
@@ -666,9 +666,9 @@ const awh::Rest::res_t & awh::Rest::REST(const uri_t::url_t & url, http_t::metho
 		// Запоминаем переданные заголовки
 		this->headers = &headers;
 		// Если биндинг не запущен
-		if(!this->core->isStart())
+		if(!this->core->working())
 			// Выполняем запуск биндинга
-			const_cast <ccli_t *> (this->core)->start();
+			const_cast <coreCli_t *> (this->core)->start();
 		// Если биндинг уже запущен, выполняем запрос на сервер
 		else {
 			// Если функция обратного вызова не установлена
@@ -676,11 +676,11 @@ const awh::Rest::res_t & awh::Rest::REST(const uri_t::url_t & url, http_t::metho
 				// Создаём модуль ожидания
 				future <void> waiter = this->locker.get_future();
 				// Выполняем запрос на сервер
-				const_cast <ccli_t *> (this->core)->open(this->worker.wid);
+				const_cast <coreCli_t *> (this->core)->open(this->worker.wid);
 				// Выполняем ожидание получения данных
 				waiter.wait();
 			// Иначе просто, выполняем запрос на сервер
-			} else const_cast <ccli_t *> (this->core)->open(this->worker.wid);
+			} else const_cast <coreCli_t *> (this->core)->open(this->worker.wid);
 		}
 	}
 	// Выводим результат
@@ -739,7 +739,7 @@ void awh::Rest::setMode(const u_short flag) noexcept {
 	// Устанавливаем флаг поддержания автоматического подключения
 	this->worker.alive = (flag & (uint8_t) core_t::flag_t::KEEPALIVE);
 	// Выполняем установку флага проверки домена
-	const_cast <ccli_t *> (this->core)->setVerifySSL(flag & (uint8_t) core_t::flag_t::VERIFYSSL);
+	const_cast <coreCli_t *> (this->core)->setVerifySSL(flag & (uint8_t) core_t::flag_t::VERIFYSSL);
 }
 /**
  * setProxy Метод установки прокси-сервера
@@ -844,21 +844,21 @@ void awh::Rest::setCrypt(const string & pass, const string & salt, const hash_t:
 }
 /**
  * setAuthType Метод установки типа авторизации
- * @param type      тип авторизации
- * @param algorithm алгоритм шифрования для Digest авторизации
+ * @param type тип авторизации
+ * @param alg  алгоритм шифрования для Digest авторизации
  */
-void awh::Rest::setAuthType(const auth_t::type_t type, const auth_t::algorithm_t algorithm) noexcept {
+void awh::Rest::setAuthType(const auth_t::type_t type, const auth_t::alg_t alg) noexcept {
 	// Если объект авторизации создан
-	this->http->setAuthType(type, algorithm);
+	this->http->setAuthType(type, alg);
 }
 /**
  * setAuthTypeProxy Метод установки типа авторизации прокси-сервера
- * @param type      тип авторизации
- * @param algorithm алгоритм шифрования для Digest авторизации
+ * @param type тип авторизации
+ * @param alg  алгоритм шифрования для Digest авторизации
  */
-void awh::Rest::setAuthTypeProxy(const auth_t::type_t type, const auth_t::algorithm_t algorithm) noexcept {
+void awh::Rest::setAuthTypeProxy(const auth_t::type_t type, const auth_t::alg_t alg) noexcept {
 	// Если объект авторизации создан
-	this->worker.proxy.http->setAuthType(type, algorithm);
+	this->worker.proxy.http->setAuthType(type, alg);
 }
 /**
  * Rest Конструктор
@@ -866,7 +866,7 @@ void awh::Rest::setAuthTypeProxy(const auth_t::type_t type, const auth_t::algori
  * @param fmk  объект фреймворка
  * @param log  объект для работы с логами
  */
-awh::Rest::Rest(const ccli_t * core, const fmk_t * fmk, const log_t * log) noexcept : core(core), fmk(fmk), log(log), worker(fmk, log) {
+awh::Rest::Rest(const coreCli_t * core, const fmk_t * fmk, const log_t * log) noexcept : core(core), fmk(fmk), log(log), worker(fmk, log) {
 	try {
 		// Устанавливаем контекст сообщения
 		this->worker.ctx = this;
@@ -875,7 +875,7 @@ awh::Rest::Rest(const ccli_t * core, const fmk_t * fmk, const log_t * log) noexc
 		// Создаём объект URI
 		this->uri = new uri_t(this->fmk, this->nwk);
 		// Создаём объект для работы с HTTP
-		this->http = new http_t(this->fmk, this->log, this->uri);
+		this->http = new httpCli_t(this->fmk, this->log, this->uri);
 		// Устанавливаем функцию обработки вызова для получения чанков
 		this->http->setChunkingFn(&chunking);
 		// Устанавливаем событие на запуск системы
@@ -891,7 +891,7 @@ awh::Rest::Rest(const ccli_t * core, const fmk_t * fmk, const log_t * log) noexc
 		// Устанавливаем событие на подключение к прокси-серверу
 		this->worker.connectProxyFn = connectProxyCallback;
 		// Добавляем воркер в биндер TCP/IP
-		const_cast <ccli_t *> (this->core)->add(&this->worker);
+		const_cast <coreCli_t *> (this->core)->add(&this->worker);
 	// Если происходит ошибка то игнорируем её
 	} catch(const bad_alloc&) {
 		// Выводим сообщение об ошибке

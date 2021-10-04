@@ -161,17 +161,17 @@ bool awh::Socks5::isEnd() const noexcept {
 	// Выполняем проверку завершения работы
 	return (
 		(this->state == state_t::BROKEN) ||
-		(this->state == state_t::VERIFY) ||
+		(this->state == state_t::CONNECT) ||
 		(this->state == state_t::HANDSHAKE)
 	);
 }
 /**
- * isVerify Метод проверки запроса клиента
+ * isConnected Метод проверки на подключение клиента
  * @return результат проверки
  */
-bool awh::Socks5::isVerify() const noexcept {
+bool awh::Socks5::isConnected() const noexcept {
 	// Выполняем проверку запроса клиента
-	return (this->state == state_t::VERIFY);
+	return (this->state == state_t::CONNECT);
 }
 /**
  * isHandshake Метод проверки рукопожатия

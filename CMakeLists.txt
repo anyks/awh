@@ -137,7 +137,6 @@ set(SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/src/uri.cpp"
     "${CMAKE_SOURCE_DIR}/src/log.cpp"
     "${CMAKE_SOURCE_DIR}/src/hash.cpp"
-    "${CMAKE_SOURCE_DIR}/src/auth.cpp"
     "${CMAKE_SOURCE_DIR}/src/socket.cpp"
     "${CMAKE_SOURCE_DIR}/src/base64.cpp"
     "${CMAKE_SOURCE_DIR}/src/ws/ws.cpp"
@@ -146,13 +145,18 @@ set(SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/src/ws/server.cpp"
     "${CMAKE_SOURCE_DIR}/src/core/http.cpp"
     "${CMAKE_SOURCE_DIR}/src/core/core.cpp"
+    "${CMAKE_SOURCE_DIR}/src/core/auth.cpp"
     "${CMAKE_SOURCE_DIR}/src/core/socks5.cpp"
     "${CMAKE_SOURCE_DIR}/src/client/ws.cpp"
+    "${CMAKE_SOURCE_DIR}/src/client/http.cpp"
     "${CMAKE_SOURCE_DIR}/src/client/core.cpp"
+    "${CMAKE_SOURCE_DIR}/src/client/auth.cpp"
     "${CMAKE_SOURCE_DIR}/src/client/rest.cpp"
     "${CMAKE_SOURCE_DIR}/src/client/worker.cpp"
     "${CMAKE_SOURCE_DIR}/src/client/socks5.cpp"
     "${CMAKE_SOURCE_DIR}/src/server/socks5.cpp"
+    "${CMAKE_SOURCE_DIR}/src/server/http.cpp"
+    "${CMAKE_SOURCE_DIR}/src/server/auth.cpp"
 )
 
 # Задаем именя библиотеки и бинарника

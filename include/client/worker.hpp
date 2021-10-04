@@ -13,8 +13,8 @@
 /**
  * Наши модули
  */
-#include <core/http.hpp>
 #include <core/worker.hpp>
+#include <client/http.hpp>
 #include <client/socks5.hpp>
 
 // Подписываемся на стандартное пространство имён
@@ -40,9 +40,9 @@ namespace awh {
 			uri_t::url_t url;
 		public:
 			// Создаём объект для работы с HTTP
-			http_t * http = nullptr;
+			httpCli_t * http = nullptr;
 			// Создаём объект для работы с Socks5
-			s5cli_t * socks5 = nullptr;
+			socks5Cli_t * socks5 = nullptr;
 		public:
 			// Создаём объект фреймворка
 			const fmk_t * fmk = nullptr;
@@ -125,7 +125,7 @@ namespace awh {
 			 * ~WorkerClient Деструктор
 			 */
 			~WorkerClient() noexcept {}
-	} wrc_t;
+	} workCli_t;
 };
 
 #endif // __AWH_WORKER_CLIENT__

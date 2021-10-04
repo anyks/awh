@@ -401,10 +401,10 @@ void awh::Core::start() noexcept {
 	}
 }
 /**
- * isStart Метод проверки на запуск бинда TCP/IP
+ * working Метод проверки на запуск работы
  * @return результат проверки
  */
-bool awh::Core::isStart() const noexcept {
+bool awh::Core::working() const noexcept {
 	// Выводим результат проверки
 	return this->mode;
 }

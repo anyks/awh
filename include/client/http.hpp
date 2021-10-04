@@ -7,13 +7,13 @@
  * copyright: © Yuriy Lobarev
  */
 
-#ifndef __AWH_WS_CLIENT_HTTP__
-#define __AWH_WS_CLIENT_HTTP__
+#ifndef __AWH_HTTP_CLIENT__
+#define __AWH_HTTP_CLIENT__
 
 /**
  * Наши модули
  */
-#include <ws/ws.hpp>
+#include <core/http.hpp>
 #include <client/auth.hpp>
 
 // Подписываемся на стандартное пространство имён
@@ -24,30 +24,9 @@ using namespace std;
  */
 namespace awh {
 	/**
-	 * WSClient Класс для работы с клиентом WebSocket
+	 * HttpClient Класс для работы с REST клиентом
 	 */
-	typedef class WSClient : public ws_t {
-		private:
-			/**
-			 * update Метод обновления входящих данных
-			 */
-			void update() noexcept;
-		public:
-			/**
-			 * checkKey Метод проверки ключа сервера
-			 * @return результат проверки
-			 */
-			bool checkKey() noexcept;
-			/**
-			 * checkVer Метод проверки на версию протокола
-			 * @return результат проверки соответствия
-			 */
-			bool checkVer() noexcept;
-			/**
-			 * checkAuth Метод проверки авторизации
-			 * @return результат проверки авторизации
-			 */
-			stath_t checkAuth() noexcept;
+	typedef class HttpClient : public http_t {
 		public:
 			/**
 			 * setUser Метод установки параметров авторизации
@@ -63,17 +42,17 @@ namespace awh {
 			void setAuthType(const auth_t::type_t type = auth_t::type_t::BASIC, const auth_t::alg_t alg = auth_t::alg_t::MD5) noexcept;
 		public:
 			/**
-			 * WSClient Конструктор
+			 * HttpClient Конструктор
 			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
 			 * @param uri объект работы с URI
 			 */
-			WSClient(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcept;
+			HttpClient(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcept;
 			/**
-			 * ~WSClient Деструктор
+			 * ~HttpClient Деструктор
 			 */
-			~WSClient() noexcept;
-	} wsc_t;
+			~HttpClient() noexcept;
+	} httpCli_t;
 };
 
-#endif // __AWH_WS_CLIENT_HTTP__
+#endif // __AWH_HTTP_CLIENT__

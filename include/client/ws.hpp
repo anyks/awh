@@ -31,7 +31,7 @@ namespace awh {
 	typedef class WebSocketClient {
 		private:
 			// Объект рабочего
-			wrc_t worker;
+			workCli_t worker;
 			// Таймер для пинга сервера
 			timer_t timerPing;
 			// Таймер для контроля подключения
@@ -80,10 +80,10 @@ namespace awh {
 			const log_t * log = nullptr;
 			// Создаём объект работы с URI ссылками
 			const uri_t * uri = nullptr;
-			// Создаём объект биндинга TCP/IP
-			const ccli_t * core = nullptr;
 			// Создаем объект для работы с сетью
 			const network_t * nwk = nullptr;
+			// Создаём объект биндинга TCP/IP
+			const coreCli_t * core = nullptr;
 		private:
 			// Функция обратного вызова, при запуске или остановки подключения к серверу
 			function <void (const bool, WebSocketClient *)> openStopFn = nullptr;
@@ -312,16 +312,16 @@ namespace awh {
 			void setCrypt(const string & pass, const string & salt = "", const hash_t::aes_t aes = hash_t::aes_t::AES128) noexcept;
 			/**
 			 * setAuthType Метод установки типа авторизации
-			 * @param type      тип авторизации
-			 * @param algorithm алгоритм шифрования для Digest авторизации
+			 * @param type тип авторизации
+			 * @param alg  алгоритм шифрования для Digest авторизации
 			 */
-			void setAuthType(const auth_t::type_t type = auth_t::type_t::BASIC, const auth_t::algorithm_t algorithm = auth_t::algorithm_t::MD5) noexcept;
+			void setAuthType(const auth_t::type_t type = auth_t::type_t::BASIC, const auth_t::alg_t alg = auth_t::alg_t::MD5) noexcept;
 			/**
 			 * setAuthTypeProxy Метод установки типа авторизации прокси-сервера
-			 * @param type      тип авторизации
-			 * @param algorithm алгоритм шифрования для Digest авторизации
+			 * @param type тип авторизации
+			 * @param alg  алгоритм шифрования для Digest авторизации
 			 */
-			void setAuthTypeProxy(const auth_t::type_t type = auth_t::type_t::BASIC, const auth_t::algorithm_t algorithm = auth_t::algorithm_t::MD5) noexcept;
+			void setAuthTypeProxy(const auth_t::type_t type = auth_t::type_t::BASIC, const auth_t::alg_t alg = auth_t::alg_t::MD5) noexcept;
 		public:
 			/**
 			 * WebSocketClient Конструктор
@@ -329,12 +329,12 @@ namespace awh {
 			 * @param fmk  объект фреймворка
 			 * @param log  объект для работы с логами
 			 */
-			WebSocketClient(const ccli_t * core, const fmk_t * fmk, const log_t * log) noexcept;
+			WebSocketClient(const coreCli_t * core, const fmk_t * fmk, const log_t * log) noexcept;
 			/**
 			 * ~WebSocketClient Деструктор
 			 */
 			~WebSocketClient() noexcept;
-	} wcli_t;
+	} wsCli_t;
 };
 
 #endif // __AWH_WEBSOCKET_CLIENT__

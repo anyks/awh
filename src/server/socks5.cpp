@@ -304,7 +304,7 @@ void awh::Socks5Server::parse(const char * buffer, const size_t size) noexcept {
 											// Заменяем порт сервера
 											this->server.port = ntohs(server.port);
 											// Устанавливаем стейт выполнения проверки
-											this->state = state_t::VERIFY;
+											this->state = state_t::CONNECT;
 										}
 									}
 								} break;
@@ -323,7 +323,7 @@ void awh::Socks5Server::parse(const char * buffer, const size_t size) noexcept {
 											// Заменяем порт сервера
 											this->server.port = ntohs(server.port);
 											// Устанавливаем стейт выполнения проверки
-											this->state = state_t::VERIFY;
+											this->state = state_t::CONNECT;
 										}
 									}
 								} break;
@@ -344,7 +344,7 @@ void awh::Socks5Server::parse(const char * buffer, const size_t size) noexcept {
 											// Заменяем порт сервера
 											this->server.port = ntohs(port);
 											// Устанавливаем стейт выполнения проверки
-											this->state = state_t::VERIFY;
+											this->state = state_t::CONNECT;
 										}
 									}
 								} break;

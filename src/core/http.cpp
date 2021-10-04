@@ -49,7 +49,7 @@ awh::Http::stath_t awh::Http::checkAuth() noexcept {
 					// Если параметры авторизации найдены
 					if((this->failAuth = (it != this->headers.end()))){
 						// Устанавливаем заголовок HTTP в параметры авторизации
-						this->auth->setHeader(it->second);
+						reinterpret_cast <authCli_t *> (this->auth)->setHeader(it->second);
 						// Просим повторить авторизацию ещё раз
 						result = stath_t::RETRY;
 					}
@@ -103,17 +103,11 @@ awh::Http::stath_t awh::Http::checkAuth() noexcept {
 			auto it = this->headers.find("authorization");
 			// Если параметры авторизации найдены
 			if(it != this->headers.end()){
-				// Создаём объект авторизации для клиента
-				auth_t auth(this->fmk, this->log, true);
-				// Получаем тип алгоритма Дайджест
-				const auto & digest = this->auth->getDigest();
-				// Устанавливаем тип авторизации
-				auth.setType(this->auth->getType(), digest.algorithm);
 				// Устанавливаем заголовок HTTP в параметры авторизации
-				auth.setHeader(it->second);
+				this->auth->setHeader(it->second);
 				// Выполняем проверку авторизации
-				if(this->auth->check(auth))
-					// Запоминаем, что авторизация пройдена
+				if(reinterpret_cast <authSrv_t *> (this->auth)->check())
+					// Устанавливаем успешный результат авторизации
 					result = http_t::stath_t::GOOD;
 			}
 		// Сообщаем, что авторизация прошла успешно
@@ -802,7 +796,7 @@ vector <char> awh::Http::proxy(const uri_t::url_t & url) noexcept {
 			// Добавляем поддержку постоянного подключения для прокси-сервера
 			this->addHeader("Proxy-Connection", "keep-alive");
 			// Получаем параметры авторизации
-			const string & auth = this->auth->header(true);
+			const string & auth = reinterpret_cast <authCli_t *> (this->auth)->getHeader(true);
 			// Если данные авторизации получены
 			if(!auth.empty()) this->addHeader("Proxy-Authorization", auth);
 			// Формируем URI запроса
@@ -935,7 +929,7 @@ vector <char> awh::Http::response(const u_short code) const noexcept {
 		// Если заголовок авторизации не передан
 		if(!available[6] && !this->isBlack("WWW-Authenticate")){
 			// Получаем параметры авторизации
-			const string & auth = this->auth->header();
+			const string & auth = reinterpret_cast <authSrv_t *> (this->auth)->getHeader();
 			// Если данные авторизации получены
 			if(!auth.empty()) response.append(auth);
 		}
@@ -1065,7 +1059,7 @@ vector <char> awh::Http::request(const uri_t::url_t & url, const method_t method
 			// Данные REST запроса
 			string request = "";
 			// Устанавливаем параметры REST запроса
-			const_cast <auth_t *> (this->auth)->setUri(this->uri->createUrl(url));
+			((authCli_t *) const_cast <auth_t *> (this->auth))->setUri(this->uri->createUrl(url));
 			// Если метод не CONNECT или URI не установлен
 			if((method != method_t::CONNECT) || this->query.uri.empty())
 				// Формируем HTTP запрос
@@ -1213,7 +1207,7 @@ vector <char> awh::Http::request(const uri_t::url_t & url, const method_t method
 			// Если заголовок авторизации не передан
 			if(!available[10] && !this->isBlack("Authorization")){
 				// Получаем параметры авторизации
-				const string & auth = this->auth->header();
+				const string & auth = reinterpret_cast <authCli_t *> (this->auth)->getHeader();
 				// Если данные авторизации получены
 				if(!auth.empty()) request.append(auth);
 			}
@@ -1341,52 +1335,6 @@ void awh::Http::setServ(const string & id, const string & name, const string & v
 	if(!name.empty()) this->servName = name;
 }
 /**
- * setRealm Метод установки название сервера
- * @param realm название сервера
- */
-void awh::Http::setRealm(const string & realm) noexcept {
-	// Если название сервера передано
-	if(!realm.empty()) this->auth->setRealm(realm);
-}
-/**
- * setOpaque Метод установки временного ключа сессии сервера
- * @param opaque временный ключ сессии сервера
- */
-void awh::Http::setOpaque(const string & opaque) noexcept {
-	// Если временный ключ сессии сервера передан
-	if(!opaque.empty()) this->auth->setOpaque(opaque);
-}
-/**
- * setUser Метод установки параметров авторизации
- * @param login    логин пользователя для авторизации на сервере
- * @param password пароль пользователя для авторизации на сервере
- */
-void awh::Http::setUser(const string & login, const string & password) noexcept {
-	// Если пользователь и пароль переданы
-	if(!login.empty() && !password.empty()){
-		// Устанавливаем логин пользователя
-		this->auth->setLogin(login);
-		// Устанавливаем пароль пользователя
-		this->auth->setPassword(password);
-	}
-}
-/**
- * setExtractPasswordCallback Метод добавления функции извлечения пароля
- * @param callback функция обратного вызова для извлечения пароля
- */
-void awh::Http::setExtractPasswordCallback(function <string (const string &)> callback) noexcept {
-	// Устанавливаем внешнюю функцию
-	this->auth->setExtractPasswordCallback(callback);
-}
-/**
- * setAuthCallback Метод добавления функции обработки авторизации
- * @param callback функция обратного вызова для обработки авторизации
- */
-void awh::Http::setAuthCallback(function <bool (const string &, const string &)> callback) noexcept {
-	// Устанавливаем внешнюю функцию
-	this->auth->setAuthCallback(callback);
-}
-/**
  * setCrypt Метод установки параметров шифрования
  * @param pass пароль шифрования передаваемых данных
  * @param salt соль шифрования передаваемых данных
@@ -1403,15 +1351,6 @@ void awh::Http::setCrypt(const string & pass, const string & salt, const hash_t:
 	this->hash->setPassword(pass);
 }
 /**
- * setAuthType Метод установки типа авторизации
- * @param type      тип авторизации
- * @param algorithm алгоритм шифрования для Digest авторизации
- */
-void awh::Http::setAuthType(const auth_t::type_t type, const auth_t::algorithm_t algorithm) noexcept {
-	// Если объект авторизации создан
-	if(this->auth != nullptr) this->auth->setType(type, algorithm);
-}
-/**
  * Http Конструктор
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
@@ -1419,8 +1358,6 @@ void awh::Http::setAuthType(const auth_t::type_t type, const auth_t::algorithm_t
  */
 awh::Http::Http(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcept : fmk(fmk), log(log), uri(uri) {
 	try {
-		// Создаём объект для работы с авторизацией
-		this->auth = new auth_t(this->fmk, this->log);
 		// Создаём объект для работы с сжатым контентом
 		this->hash = new hash_t(this->fmk, this->log);
 	// Если происходит ошибка то игнорируем её
@@ -1437,6 +1374,4 @@ awh::Http::Http(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcep
 awh::Http::~Http() noexcept {
 	// Удаляем объект работы с сжатым контентом
 	if(this->hash != nullptr) delete this->hash;
-	// Удаляем объект авторизации
-	if(this->auth != nullptr) delete this->auth;
 }
