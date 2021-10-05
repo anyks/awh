@@ -160,8 +160,8 @@ set(SOURCE_FILES
 )
 
 # Задаем именя библиотеки и бинарника
+set(WS_APP_NAME ws)
 set(REST_APP_NAME rest)
-set(CLIENT_APP_NAME ws)
 set(CURRENT_LIB_NAME ${PROJECT_NAME})
 set(CURRENT_APP_NAME ${PROJECT_NAME}_bin)
 
@@ -186,8 +186,17 @@ if (ENABLE_CONSOLE_APP)
         SET(CMAKE_RC_COMPILE_OBJECT "<CMAKE_RC_COMPILER> <FLAGS> -O coff <DEFINES> -i <SOURCE> -o <OBJECT>")
     endif(MINGW)
 
+    add_executable(${WS_APP_NAME} sample/ws.cpp ${RES_FILES})
     add_executable(${REST_APP_NAME} sample/rest.cpp ${RES_FILES})
-    add_executable(${CLIENT_APP_NAME} sample/ws.cpp ${RES_FILES})
+
+    target_link_libraries(${WS_APP_NAME}
+        ${CURRENT_LIB_NAME}
+        ${ZLIB_LIBRARY}
+        ${BROTLI_LIBRARIES}
+        ${OPENSSL_LIBRARIES}
+        ${LIBEVENT_LIBRARIES}
+        ${WINFLAGS}
+    )
 
     target_link_libraries(${REST_APP_NAME}
         ${CURRENT_LIB_NAME}
@@ -197,16 +206,6 @@ if (ENABLE_CONSOLE_APP)
         ${LIBEVENT_LIBRARIES}
         ${WINFLAGS}
     )
-
-    target_link_libraries(${CLIENT_APP_NAME}
-        ${CURRENT_LIB_NAME}
-        ${ZLIB_LIBRARY}
-        ${BROTLI_LIBRARIES}
-        ${OPENSSL_LIBRARIES}
-        ${LIBEVENT_LIBRARIES}
-        ${WINFLAGS}
-    )
-    #set_target_properties(${CLIENT_APP_NAME} PROPERTIES OUTPUT_NAME ${PROJECT_NAME})
 endif()
 
 # Устанавливаем адрес установки, запрет установки в /usr/local
@@ -219,7 +218,8 @@ install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/include" DESTINATION "${CMAKE_INS
 # Устанавливаем библиотеку
 install(TARGETS ${CURRENT_LIB_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
 # Устанавливаем исполнительные файлы
-install(TARGETS ${CLIENT_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin")
+install(TARGETS ${WS_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin")
+install(TARGETS ${REST_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin")
 
 # Устанавливаем стороние библиотеки
 install(FILES ${ZLIB_LIBRARY} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
