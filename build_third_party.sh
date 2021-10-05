@@ -243,8 +243,17 @@ if [ ! -f "$src/.stamp_done" ]; then
 	# Выполняем сборку на всех логических ядрах
 	$MAKE -j"$numproc" || exit 1
 
-	# Устанавливаем команду установки
-	INSTALL_CMD="install -D -m 0644"
+	if [ $OS = "Darwin" ]; then # MacOS
+		INSTALL_CMD="ditto -v"
+	elif [ $OS = "FreeBSD" ]; then # FreeBSD
+		INSTALL_CMD="install -m 0644"
+		# Создаём каталон назначения заголовочных файлов
+		mkdir -p "$PREFIX/include/brotli"
+	elif [ $OS = "Windows" ]; then # Windows
+		INSTALL_CMD="install -D -m 0644"
+	else # Linux
+		INSTALL_CMD="install -D -m 0644"
+	fi
 
 	# Производим установку библиотеки по нужному пути
 	echo "Install \"$ROOT/submodules/brotli/${build}/libbrotlicommon-static.a\" to \"$PREFIX/lib/libbrotlicommon-static.a\""
