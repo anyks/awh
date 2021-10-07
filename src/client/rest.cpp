@@ -666,7 +666,7 @@ const awh::Rest::res_t & awh::Rest::REST(const uri_t::url_t & url, http_t::metho
 		// Запоминаем переданные заголовки
 		this->headers = &headers;
 		// Если биндинг не запущен
-		if(!this->core->working())
+		if(!this->nobind && !this->core->working())
 			// Выполняем запуск биндинга
 			const_cast <coreCli_t *> (this->core)->start();
 		// Если биндинг уже запущен, выполняем запрос на сервер
@@ -732,6 +732,8 @@ void awh::Rest::setMessageCallback(void * ctx, function <void (const res_t &, vo
  * @param flag флаг модуля для установки
  */
 void awh::Rest::setMode(const u_short flag) noexcept {
+	// Устанавливаем флаг запрета биндинга
+	this->nobind = (flag & (uint8_t) core_t::flag_t::NOTSTART);
 	// Устанавливаем флаг анбиндинга
 	this->unbind = !(flag & (uint8_t) core_t::flag_t::NOTSTOP);
 	// Устанавливаем флаг ожидания входящих сообщений

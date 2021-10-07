@@ -776,7 +776,7 @@ void awh::WebSocketClient::start() noexcept {
 	// Если адрес URL запроса передан
 	if(!this->worker.url.empty()){
 		// Если биндинг не запущен, выполняем запуск биндинга
-		if(!this->core->working())
+		if(!this->nobind && !this->core->working())
 			// Выполняем запуск биндинга
 			const_cast <coreCli_t *> (this->core)->start();
 		// Выполняем запрос на сервер
@@ -842,6 +842,8 @@ void awh::WebSocketClient::setBytesDetect(const worker_t::mark_t read, const wor
  * @param flag флаг модуля для установки
  */
 void awh::WebSocketClient::setMode(const u_short flag) noexcept {
+	// Устанавливаем флаг запрета биндинга
+	this->nobind = (flag & (uint8_t) core_t::flag_t::NOTSTART);
 	// Устанавливаем флаг анбиндинга
 	this->unbind = !(flag & (uint8_t) core_t::flag_t::NOTSTOP);
 	// Устанавливаем флаг ожидания входящих сообщений

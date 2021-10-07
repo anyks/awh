@@ -65,6 +65,8 @@ namespace awh {
 		private:
 			// Выполнять анбиндинг после завершения запроса
 			bool unbind = true;
+			// Не выполнять биндинг при запуске процесса
+			bool nobind = false;
 			// Флаг проверки аутентификации
 			bool failAuth = false;
 		private:

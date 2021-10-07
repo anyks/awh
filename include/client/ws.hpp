@@ -46,6 +46,8 @@ namespace awh {
 			bool crypt = false;
 			// Выполнять анбиндинг после завершения запроса
 			bool unbind = true;
+			// Не выполнять биндинг при запуске процесса
+			bool nobind = false;
 			// Флаг фриза работы клиента
 			bool freeze = false;
 			// Локер ожидания завершения запроса
