@@ -67,6 +67,11 @@ export CXXFLAGS="$CXXFLAGS -fPIC"
 export LDFLAGS="-L$PREFIX/lib"
 export LD_LIBRARY_PATH="$PREFIX/lib"
 
+# Создаём каталоги
+mkdir -p "$PREFIX/bin"
+mkdir -p "$PREFIX/lib"
+mkdir -p "$PREFIX/include"
+
 # Определяем количество логических ядер
 if [ $OS = "Darwin" ]; then
 	numproc=$(sysctl -n hw.logicalcpu)
