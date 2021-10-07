@@ -733,15 +733,15 @@ void awh::Rest::setMessageCallback(void * ctx, function <void (const res_t &, vo
  */
 void awh::Rest::setMode(const u_short flag) noexcept {
 	// Устанавливаем флаг запрета биндинга
-	this->nobind = (flag & (uint8_t) core_t::flag_t::NOTSTART);
+	this->nobind = (flag & (uint8_t) flag_t::NOTSTART);
 	// Устанавливаем флаг анбиндинга
-	this->unbind = !(flag & (uint8_t) core_t::flag_t::NOTSTOP);
+	this->unbind = !(flag & (uint8_t) flag_t::NOTSTOP);
 	// Устанавливаем флаг ожидания входящих сообщений
-	this->worker.wait = (flag & (uint8_t) core_t::flag_t::WAITMESS);
+	this->worker.wait = (flag & (uint8_t) flag_t::WAITMESS);
 	// Устанавливаем флаг поддержания автоматического подключения
-	this->worker.alive = (flag & (uint8_t) core_t::flag_t::KEEPALIVE);
+	this->worker.alive = (flag & (uint8_t) flag_t::KEEPALIVE);
 	// Выполняем установку флага проверки домена
-	const_cast <coreCli_t *> (this->core)->setVerifySSL(flag & (uint8_t) core_t::flag_t::VERIFYSSL);
+	const_cast <coreCli_t *> (this->core)->setVerifySSL(flag & (uint8_t) flag_t::VERIFYSSL);
 }
 /**
  * setProxy Метод установки прокси-сервера

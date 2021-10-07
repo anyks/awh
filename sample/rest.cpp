@@ -43,7 +43,7 @@ int main(int argc, char * argv[]) noexcept {
 	 * 1. Устанавливаем ожидание входящих сообщений
 	 * 2. Устанавливаем валидацию SSL сертификата
 	 */
-	rest.setMode((u_short) core_t::flag_t::WAITMESS | (u_short) core_t::flag_t::VERIFYSSL);
+	rest.setMode((u_short) restCli_t::flag_t::WAITMESS | (u_short) restCli_t::flag_t::VERIFYSSL);
 	// Устанавливаем адрес сертификата
 	core.setCA("./ca/cert.pem");
 	// Устанавливаем логин и пароль пользователя

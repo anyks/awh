@@ -29,6 +29,17 @@ namespace awh {
 	 * WebSocketClient Класс работы с WebSocket клиентом
 	 */
 	typedef class WebSocketClient {
+		public:
+			/**
+			 * Основные флаги приложения
+			 */
+			enum class flag_t : uint8_t {
+				NOTSTOP = 0x01,   // Флаг запрета остановки биндинга
+				NOTSTART = 0x02,  // Флаг запрета запуска биндинга
+				WAITMESS = 0x04,  // Флаг ожидания входящих сообщений
+				KEEPALIVE = 0x08, // Флаг автоматического поддержания подключения
+				VERIFYSSL = 0x10  // Флаг выполнения проверки сертификата SSL
+			};
 		private:
 			// Объект рабочего
 			workCli_t worker;

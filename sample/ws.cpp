@@ -48,10 +48,10 @@ int main(int argc, char * argv[]) noexcept {
 	 * 2. Устанавливаем валидацию SSL сертификата
 	 */
 	ws.setMode(
-		(u_short) core_t::flag_t::NOTSTOP |
-		(u_short) core_t::flag_t::WAITMESS |
-		(u_short) core_t::flag_t::VERIFYSSL |
-		(u_short) core_t::flag_t::KEEPALIVE
+		(u_short) wsCli_t::flag_t::NOTSTOP |
+		(u_short) wsCli_t::flag_t::WAITMESS |
+		(u_short) wsCli_t::flag_t::VERIFYSSL |
+		(u_short) wsCli_t::flag_t::KEEPALIVE
 	);
 	// Устанавливаем адрес сертификата
 	core.setCA("./ca/cert.pem");
