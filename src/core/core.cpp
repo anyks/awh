@@ -275,7 +275,7 @@ void awh::Core::bind(Core * core) noexcept {
 					}
 				}
 				// Если функция обратного вызова установлена, выполняем
-				if(core->startFn != nullptr) core->startFn(core, core->ctx);
+				if(core->callbackFn != nullptr) core->callbackFn(true, core, core->ctx);
 			// Если происходит ошибка то игнорируем её
 			} catch(const bad_alloc&) {
 				// Выводим сообщение об ошибке
@@ -304,7 +304,7 @@ void awh::Core::unbind(Core * core) noexcept {
 		// Зануляем базу событий
 		core->base = nullptr;
 		// Если функция обратного вызова установлена, выполняем
-		if(core->stopFn != nullptr) core->stopFn(core, core->ctx);
+		if(core->callbackFn != nullptr) core->callbackFn(false, core, core->ctx);
 		// Выполняем сброс блокировки базы событий
 		core->locker = false;
 		// Выполняем разблокировку потока
@@ -312,20 +312,15 @@ void awh::Core::unbind(Core * core) noexcept {
 	}
 }
 /**
- * setStopCallback Метод установки функции обратного вызова при завершении работы модуля
+ * setCallback Метод установки функции обратного вызова при запуске/остановки работы модуля
+ * @param ctx      передаваемый объект контекста
  * @param callback функция обратного вызова для установки
  */
-void awh::Core::setStopCallback(function <void (Core * core, void *)> callback) noexcept {
+void awh::Core::setCallback(void * ctx, function <void (const bool, Core * core, void *)> callback) noexcept {
+	// Устанавливаем объект контекста
+	this->ctx = ctx;
 	// Устанавливаем функцию обратного вызова
-	this->stopFn = callback;
-}
-/**
- * setStartCallback Метод установки функции обратного вызова при запуске работы модуля
- * @param callback функция обратного вызова для установки
- */
-void awh::Core::setStartCallback(function <void (Core * core, void *)> callback) noexcept {
-	// Устанавливаем функцию обратного вызова
-	this->startFn = callback;
+	this->callbackFn = callback;
 }
 /**
  * stop Метод остановки клиента
@@ -372,7 +367,7 @@ void awh::Core::start() noexcept {
 				}
 			}
 			// Если функция обратного вызова установлена, выполняем
-			if(this->startFn != nullptr) this->startFn(this, this->ctx);
+			if(this->callbackFn != nullptr) this->callbackFn(true, this, this->ctx);
 			// Выводим в консоль информацию
 			this->log->print("[+] start service: pid = %u", log_t::flag_t::INFO, getpid());
 			// Запускаем работу базы событий
@@ -390,7 +385,7 @@ void awh::Core::start() noexcept {
 			// Очищаем все глобальные переменные
 			libevent_global_shutdown();
 			// Если функция обратного вызова установлена, выполняем
-			if(this->stopFn != nullptr) this->stopFn(this, this->ctx);
+			if(this->callbackFn != nullptr) this->callbackFn(false, this, this->ctx);
 			// Выводим в консоль информацию
 			this->log->print("[-] stop service: pid = %u", log_t::flag_t::INFO, getpid());
 		// Если происходит ошибка то игнорируем её

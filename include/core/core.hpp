@@ -161,10 +161,8 @@ namespace awh {
 			// База данных событий
 			struct event_base * base = nullptr;
 		protected:
-			// Функция обратного вызова при остановке модуля
-			function <void (Core * core, void *)> stopFn = nullptr;
-			// Функция обратного вызова при запуске модуля
-			function <void (Core * core, void *)> startFn = nullptr;
+			// Функция обратного вызова при запуске/остановке модуля
+			function <void (const bool, Core * core, void *)> callbackFn = nullptr;
 		protected:
 			/**
 			 * Если - это Windows
@@ -213,15 +211,11 @@ namespace awh {
 			void unbind(Core * core) noexcept;
 		public:
 			/**
-			 * setStopCallback Метод установки функции обратного вызова при завершении работы модуля
+			 * setCallback Метод установки функции обратного вызова при запуске/остановки работы модуля
+			 * @param ctx      передаваемый объект контекста
 			 * @param callback функция обратного вызова для установки
 			 */
-			void setStopCallback(function <void (Core * core, void *)> callback) noexcept;
-			/**
-			 * setStartCallback Метод установки функции обратного вызова при запуске работы модуля
-			 * @param callback функция обратного вызова для установки
-			 */
-			void setStartCallback(function <void (Core * core, void *)> callback) noexcept;
+			void setCallback(void * ctx, function <void (const bool, Core * core, void *)> callback) noexcept;
 		public:
 			/**
 			 * stop Метод остановки клиента
