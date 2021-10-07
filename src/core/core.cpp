@@ -53,6 +53,31 @@
 	}
 #endif
 /**
+ * run Функция обратного вызова при активации базы событий
+ * @param fd    файловый дескриптор (сокет)
+ * @param event произошедшее событие
+ * @param ctx   передаваемый контекст
+ */
+void awh::Core::run(evutil_socket_t fd, short event, void * ctx) noexcept {
+	// Если контекст модуля передан
+	if(ctx != nullptr){
+		// Получаем объект подключения
+		core_t * core = reinterpret_cast <core_t *> (ctx);
+		// Если список воркеров существует
+		if(!core->workers.empty()){
+			// Переходим по всему списку воркеров
+			for(auto & worker : core->workers){
+				// Если функция обратного вызова установлена
+				if(worker.second->openFn != nullptr)
+					// Выполняем функцию обратного вызова
+					worker.second->openFn(worker.first, core, worker.second->ctx);
+			}
+		}
+		// Если функция обратного вызова установлена, выполняем
+		if(core->callbackFn != nullptr) core->callbackFn(true, core, core->ctx);
+	}
+}
+/**
  * delay Метод фриза потока на указанное количество секунд
  * @param seconds количество секунд для фриза потока
  */
@@ -264,18 +289,14 @@ void awh::Core::bind(Core * core) noexcept {
 				if(core->dns4 != nullptr) core->dns4 = new dns_t(core->fmk, core->log, core->nwk, core->base, core->net.v4.second);
 				// Резолвер IPv6, создаём резолвер
 				if(core->dns6 != nullptr) core->dns6 = new dns_t(core->fmk, core->log, core->nwk, core->base, core->net.v6.second);
-				// Если список воркеров существует
-				if(!core->workers.empty()){
-					// Переходим по всему списку воркеров
-					for(auto & worker : core->workers){
-						// Если функция обратного вызова установлена
-						if(worker.second->openFn != nullptr)
-							// Выполняем функцию обратного вызова
-							worker.second->openFn(worker.first, core, worker.second->ctx);
-					}
-				}
-				// Если функция обратного вызова установлена, выполняем
-				if(core->callbackFn != nullptr) core->callbackFn(true, core, core->ctx);
+				// Создаём событие на активацию базы событий
+				event_assign(&core->timeout, core->base, -1, EV_TIMEOUT, run, core);
+				// Очищаем объект таймаута базы событий
+				evutil_timerclear(&core->basetv);
+				// Устанавливаем таймаут базы событий в 1 секунду
+				core->basetv.tv_sec = 1;
+				// Создаём событие таймаута на активацию базы событий
+				event_add(&core->timeout, &core->basetv);
 			// Если происходит ошибка то игнорируем её
 			} catch(const bad_alloc&) {
 				// Выводим сообщение об ошибке
@@ -356,18 +377,14 @@ void awh::Core::start() noexcept {
 			this->dns4 = new dns_t(this->fmk, this->log, this->nwk, this->base, this->net.v4.second);
 			// Резолвер IPv6, создаём резолвер
 			this->dns6 = new dns_t(this->fmk, this->log, this->nwk, this->base, this->net.v6.second);
-			// Если список воркеров существует
-			if(!this->workers.empty()){
-				// Переходим по всему списку воркеров
-				for(auto & worker : this->workers){
-					// Если функция обратного вызова установлена
-					if(worker.second->openFn != nullptr)
-						// Выполняем функцию обратного вызова
-						worker.second->openFn(worker.first, this, worker.second->ctx);
-				}
-			}
-			// Если функция обратного вызова установлена, выполняем
-			if(this->callbackFn != nullptr) this->callbackFn(true, this, this->ctx);
+			// Создаём событие на активацию базы событий
+			event_assign(&this->timeout, this->base, -1, EV_TIMEOUT, run, this);
+			// Очищаем объект таймаута базы событий
+			evutil_timerclear(&this->basetv);
+			// Устанавливаем таймаут базы событий в 1 секунду
+			this->basetv.tv_sec = 1;
+			// Создаём событие таймаута на активацию базы событий
+			event_add(&this->timeout, &this->basetv);
 			// Выводим в консоль информацию
 			this->log->print("[+] start service: pid = %u", log_t::flag_t::INFO, getpid());
 			// Запускаем работу базы событий

@@ -157,7 +157,7 @@ bool awh::CoreClient::connect(const size_t wid) noexcept {
 			// Получаем URL параметры запроса
 			const uri_t::url_t & url = (wrk->isProxy() ? wrk->proxy.url : wrk->url);
 			// Получаем сокет для подключения к серверу
-			auto socket = this->socket(url.ip, url.port, url.family);
+			auto socket = this->socket(url.ip, url.port, this->net.family);
 			// Если сокет создан удачно
 			if(socket.fd > -1){
 				// Создаём бъект адъютанта
@@ -185,7 +185,7 @@ bool awh::CoreClient::connect(const size_t wid) noexcept {
 					// Выполняем тюннинг буфера событий
 					tuning(ret.first->second->aid);
 					// Определяем тип подключения
-					switch(url.family){
+					switch(this->net.family){
 						// Для протокола IPv4
 						case AF_INET: {
 							// Запоминаем размер структуры
@@ -371,11 +371,11 @@ void awh::CoreClient::open(const size_t wid) noexcept {
 				// Если IP адрес не получен
 				if(url.ip.empty() && !url.domain.empty())
 					// Определяем тип подключения
-					switch(url.family){
+					switch(this->net.family){
 						// Резолвер IPv4, создаём резолвер
-						case AF_INET: this->dns4->resolve(url.domain, url.family, runFn); break;
+						case AF_INET: this->dns4->resolve(url.domain, AF_INET, runFn); break;
 						// Резолвер IPv6, создаём резолвер
-						case AF_INET6: this->dns6->resolve(url.domain, url.family, runFn); break;
+						case AF_INET6: this->dns6->resolve(url.domain, AF_INET6, runFn); break;
 					}
 				// Выполняем запуск системы
 				else if(!url.ip.empty()) runFn(url.ip);

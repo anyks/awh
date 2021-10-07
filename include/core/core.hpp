@@ -22,6 +22,7 @@
 #include <event2/event.h>
 #include <event2/buffer.h>
 #include <event2/bufferevent.h>
+#include <event2/event_struct.h>
 
 // Если - это Windows
 #if defined(_WIN32) || defined(_WIN64)
@@ -128,6 +129,12 @@ namespace awh {
 			alive_t alive;
 			// Мютекс для блокировки потока
 			mutex bloking;
+		protected:
+			// Событие таймаута запуска системы
+			struct event timeout;
+			// Устанавливаем таймаут ожидания активации базы событий
+			struct timeval basetv;
+		protected:
 			// Список активных воркеров
 			map <size_t, const worker_t *> workers;
 			// Список подключённых клиентов
@@ -177,6 +184,14 @@ namespace awh {
 				 */
 				void winSocketClean() const noexcept;
 			#endif
+		private:
+			/**
+			 * run Функция обратного вызова при активации базы событий
+			 * @param fd    файловый дескриптор (сокет)
+			 * @param event произошедшее событие
+			 * @param ctx   передаваемый контекст
+			 */
+			static void run(evutil_socket_t fd, short event, void * ctx) noexcept;
 		protected:
 			/**
 			 * delay Метод фриза потока на указанное количество секунд

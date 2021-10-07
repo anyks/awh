@@ -13,7 +13,6 @@
 /**
  * Стандартная библиотека
  */
-#include <future>
 #include <functional>
 #include <nlohmann/json.hpp>
 
@@ -43,12 +42,10 @@ namespace awh {
 			 */
 			enum class flag_t : uint8_t {
 				NOTSTOP = 0x01,   // Флаг запрета остановки биндинга
-				NOTSTART = 0x02,  // Флаг запрета запуска биндинга
-				WAITMESS = 0x04,  // Флаг ожидания входящих сообщений
-				KEEPALIVE = 0x08, // Флаг автоматического поддержания подключения
-				VERIFYSSL = 0x10  // Флаг выполнения проверки сертификата SSL
+				WAITMESS = 0x02,  // Флаг ожидания входящих сообщений
+				KEEPALIVE = 0x04, // Флаг автоматического поддержания подключения
+				VERIFYSSL = 0x08  // Флаг выполнения проверки сертификата SSL
 			};
-		private:
 			/**
 			 * Response Структура ответа сервера
 			 */
@@ -71,20 +68,15 @@ namespace awh {
 			// Метод выполняемого запроса
 			http_t::method_t method;
 		private:
-			// Создаём промис ожидания ответа
-			promise <void> locker;
-		private:
 			// Выполнять анбиндинг после завершения запроса
 			bool unbind = true;
-			// Не выполнять биндинг при запуске процесса
-			bool nobind = false;
 			// Флаг проверки аутентификации
 			bool failAuth = false;
 		private:
 			// Тело запроса (если требуется)
-			const vector <char> * entity = nullptr;
+			vector <char> entity;
 			// Список заголовков запроса (если требуется)
-			const unordered_multimap <string, string> * headers = nullptr;
+			unordered_multimap <string, string> headers;
 		private:
 			// Контекст передаваемого объекта
 			void * ctx = nullptr;
@@ -280,7 +272,7 @@ namespace awh {
 			 * @param headers заголовки запроса
 			 * @return        результат выполнения запроса
 			 */
-			const res_t & REST(const uri_t::url_t & url, http_t::method_t method, const vector <char> & entity = {}, const unordered_multimap <string, string> & headers = {}) noexcept;
+			const res_t & REST(const uri_t::url_t & url, http_t::method_t method, vector <char> entity = {}, unordered_multimap <string, string> headers = {}) noexcept;
 		public:
 			/**
 			 * setChunkingFn Метод установки функции обратного вызова для получения чанков

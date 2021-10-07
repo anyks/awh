@@ -63,8 +63,6 @@ void awh::Rest::closeCallback(const size_t wid, core_t * core, void * ctx) noexc
 		if(web->messageFn != nullptr)
 			// Выполняем функцию обратного вызова
 			web->messageFn(web->res, web->ctx);
-		// Иначе добавляем результат в промис
-		else web->locker.set_value();
 		// Завершаем работу
 		if(web->unbind) core->stop();
 	}
@@ -87,16 +85,16 @@ void awh::Rest::connectCallback(const size_t aid, core_t * core, void * ctx) noe
 		// Получаем само сообщение
 		web->res.message = web->http->getMessage(web->res.code);
 		// Если список заголовков получен
-		if((web->headers != nullptr) && !web->headers->empty()){
+		if(!web->headers.empty()){
 			// Переходим по всему списку заголовков
-			for(auto & header : * web->headers)
+			for(auto & header : web->headers)
 				// Устанавливаем заголовок
 				web->http->addHeader(header.first, header.second);
 		}
 		// Если тело запроса существует
-		if((web->entity != nullptr) && !web->entity->empty())
+		if(!web->entity.empty())
 			// Устанавливаем тело запроса
-			web->http->addBody(web->entity->data(), web->entity->size());
+			web->http->addBody(web->entity.data(), web->entity.size());
 		// Получаем бинарные данные REST запроса
 		const auto & rest = web->http->request(web->worker.url, web->method);
 		// Если бинарные данные запроса получены
@@ -352,7 +350,7 @@ const vector <char> & awh::Rest::GET(const uri_t::url_t & url, const unordered_m
 		// Выполняем REST запрос на сервер
 		const auto & res = this->REST(url, http_t::method_t::GET, {}, headers);
 		// Проверяем на наличие ошибок
-		if(!res.ok) this->log->print("request failed: %u %s", log_t::flag_t::WARNING, res.code, res.message.c_str());
+		if(!res.ok && (this->messageFn == nullptr)) this->log->print("request failed: %u %s", log_t::flag_t::WARNING, res.code, res.message.c_str());
 	}
 	// Выводим результат
 	return this->res.entity;
@@ -369,7 +367,7 @@ const vector <char> & awh::Rest::DEL(const uri_t::url_t & url, const unordered_m
 		// Выполняем REST запрос на сервер
 		const auto & res = this->REST(url, http_t::method_t::DEL, {}, headers);
 		// Проверяем на наличие ошибок
-		if(!res.ok) this->log->print("request failed: %u %s", log_t::flag_t::WARNING, res.code, res.message.c_str());
+		if(!res.ok && (this->messageFn == nullptr)) this->log->print("request failed: %u %s", log_t::flag_t::WARNING, res.code, res.message.c_str());
 	}
 	// Выводим результат
 	return this->res.entity;
@@ -391,7 +389,7 @@ const vector <char> & awh::Rest::PUT(const uri_t::url_t & url, const json & enti
 		// Выполняем REST запрос на сервер
 		const auto & res = this->REST(url, http_t::method_t::PUT, vector <char> (body.begin(), body.end()), headers);
 		// Проверяем на наличие ошибок
-		if(!res.ok) this->log->print("request failed: %u %s", log_t::flag_t::WARNING, res.code, res.message.c_str());
+		if(!res.ok && (this->messageFn == nullptr)) this->log->print("request failed: %u %s", log_t::flag_t::WARNING, res.code, res.message.c_str());
 	}
 	// Выводим результат
 	return this->res.entity;
@@ -409,7 +407,7 @@ const vector <char> & awh::Rest::PUT(const uri_t::url_t & url, const vector <cha
 		// Выполняем REST запрос на сервер
 		const auto & res = this->REST(url, http_t::method_t::PUT, entity, headers);
 		// Проверяем на наличие ошибок
-		if(!res.ok) this->log->print("request failed: %u %s", log_t::flag_t::WARNING, res.code, res.message.c_str());
+		if(!res.ok && (this->messageFn == nullptr)) this->log->print("request failed: %u %s", log_t::flag_t::WARNING, res.code, res.message.c_str());
 	}
 	// Выводим результат
 	return this->res.entity;
@@ -442,7 +440,7 @@ const vector <char> & awh::Rest::PUT(const uri_t::url_t & url, const unordered_m
 		// Выполняем REST запрос на сервер
 		const auto & res = this->REST(url, http_t::method_t::PUT, vector <char> (body.begin(), body.end()), headers);
 		// Проверяем на наличие ошибок
-		if(!res.ok) this->log->print("request failed: %u %s", log_t::flag_t::WARNING, res.code, res.message.c_str());
+		if(!res.ok && (this->messageFn == nullptr)) this->log->print("request failed: %u %s", log_t::flag_t::WARNING, res.code, res.message.c_str());
 	}
 	// Выводим результат
 	return this->res.entity;
@@ -464,7 +462,7 @@ const vector <char> & awh::Rest::POST(const uri_t::url_t & url, const json & ent
 		// Выполняем REST запрос на сервер
 		const auto & res = this->REST(url, http_t::method_t::POST, vector <char> (body.begin(), body.end()), headers);
 		// Проверяем на наличие ошибок
-		if(!res.ok) this->log->print("request failed: %u %s", log_t::flag_t::WARNING, res.code, res.message.c_str());
+		if(!res.ok && (this->messageFn == nullptr)) this->log->print("request failed: %u %s", log_t::flag_t::WARNING, res.code, res.message.c_str());
 	}
 	// Выводим результат
 	return this->res.entity;
@@ -482,7 +480,7 @@ const vector <char> & awh::Rest::POST(const uri_t::url_t & url, const vector <ch
 		// Выполняем REST запрос на сервер
 		const auto & res = this->REST(url, http_t::method_t::POST, entity, headers);
 		// Проверяем на наличие ошибок
-		if(!res.ok) this->log->print("request failed: %u %s", log_t::flag_t::WARNING, res.code, res.message.c_str());
+		if(!res.ok && (this->messageFn == nullptr)) this->log->print("request failed: %u %s", log_t::flag_t::WARNING, res.code, res.message.c_str());
 	}
 	// Выводим результат
 	return this->res.entity;
@@ -515,7 +513,7 @@ const vector <char> & awh::Rest::POST(const uri_t::url_t & url, const unordered_
 		// Выполняем REST запрос на сервер
 		const auto & res = this->REST(url, http_t::method_t::POST, vector <char> (body.begin(), body.end()), headers);
 		// Проверяем на наличие ошибок
-		if(!res.ok) this->log->print("request failed: %u %s", log_t::flag_t::WARNING, res.code, res.message.c_str());
+		if(!res.ok && (this->messageFn == nullptr)) this->log->print("request failed: %u %s", log_t::flag_t::WARNING, res.code, res.message.c_str());
 	}
 	// Выводим результат
 	return this->res.entity;
@@ -537,7 +535,7 @@ const vector <char> & awh::Rest::PATCH(const uri_t::url_t & url, const json & en
 		// Выполняем REST запрос на сервер
 		const auto & res = this->REST(url, http_t::method_t::PATCH, vector <char> (body.begin(), body.end()), headers);
 		// Проверяем на наличие ошибок
-		if(!res.ok) this->log->print("request failed: %u %s", log_t::flag_t::WARNING, res.code, res.message.c_str());
+		if(!res.ok && (this->messageFn == nullptr)) this->log->print("request failed: %u %s", log_t::flag_t::WARNING, res.code, res.message.c_str());
 	}
 	// Выводим результат
 	return this->res.entity;
@@ -555,7 +553,7 @@ const vector <char> & awh::Rest::PATCH(const uri_t::url_t & url, const vector <c
 		// Выполняем REST запрос на сервер
 		const auto & res = this->REST(url, http_t::method_t::PATCH, entity, headers);
 		// Проверяем на наличие ошибок
-		if(!res.ok) this->log->print("request failed: %u %s", log_t::flag_t::WARNING, res.code, res.message.c_str());
+		if(!res.ok && (this->messageFn == nullptr)) this->log->print("request failed: %u %s", log_t::flag_t::WARNING, res.code, res.message.c_str());
 	}
 	// Выводим результат
 	return this->res.entity;
@@ -588,7 +586,7 @@ const vector <char> & awh::Rest::PATCH(const uri_t::url_t & url, const unordered
 		// Выполняем REST запрос на сервер
 		const auto & res = this->REST(url, http_t::method_t::PATCH, vector <char> (body.begin(), body.end()), headers);
 		// Проверяем на наличие ошибок
-		if(!res.ok) this->log->print("request failed: %u %s", log_t::flag_t::WARNING, res.code, res.message.c_str());
+		if(!res.ok && (this->messageFn == nullptr)) this->log->print("request failed: %u %s", log_t::flag_t::WARNING, res.code, res.message.c_str());
 	}
 	// Выводим результат
 	return this->res.entity;
@@ -605,7 +603,7 @@ const unordered_multimap <string, string> & awh::Rest::HEAD(const uri_t::url_t &
 		// Выполняем REST запрос на сервер
 		const auto & res = this->REST(url, http_t::method_t::HEAD, {}, headers);
 		// Проверяем на наличие ошибок
-		if(!res.ok) this->log->print("request failed: %u %s", log_t::flag_t::WARNING, res.code, res.message.c_str());
+		if(!res.ok && (this->messageFn == nullptr)) this->log->print("request failed: %u %s", log_t::flag_t::WARNING, res.code, res.message.c_str());
 	}
 	// Выводим результат
 	return this->res.headers;
@@ -622,7 +620,7 @@ const unordered_multimap <string, string> & awh::Rest::TRACE(const uri_t::url_t 
 		// Выполняем REST запрос на сервер
 		const auto & res = this->REST(url, http_t::method_t::TRACE, {}, headers);
 		// Проверяем на наличие ошибок
-		if(!res.ok) this->log->print("request failed: %u %s", log_t::flag_t::WARNING, res.code, res.message.c_str());
+		if(!res.ok && (this->messageFn == nullptr)) this->log->print("request failed: %u %s", log_t::flag_t::WARNING, res.code, res.message.c_str());
 	}
 	// Выводим результат
 	return this->res.headers;
@@ -639,7 +637,7 @@ const unordered_multimap <string, string> & awh::Rest::OPTIONS(const uri_t::url_
 		// Выполняем REST запрос на сервер
 		const auto & res = this->REST(url, http_t::method_t::OPTIONS, {}, headers);
 		// Проверяем на наличие ошибок
-		if(!res.ok) this->log->print("request failed: %u %s", log_t::flag_t::WARNING, res.code, res.message.c_str());
+		if(!res.ok && (this->messageFn == nullptr)) this->log->print("request failed: %u %s", log_t::flag_t::WARNING, res.code, res.message.c_str());
 	}
 	// Выводим результат
 	return this->res.headers;
@@ -652,7 +650,7 @@ const unordered_multimap <string, string> & awh::Rest::OPTIONS(const uri_t::url_
  * @param headers заголовки запроса
  * @return        результат выполнения запроса
  */
-const awh::Rest::res_t & awh::Rest::REST(const uri_t::url_t & url, http_t::method_t method, const vector <char> & entity, const unordered_multimap <string, string> & headers) noexcept {
+const awh::Rest::res_t & awh::Rest::REST(const uri_t::url_t & url, http_t::method_t method, vector <char> entity, unordered_multimap <string, string> headers) noexcept {
 	// Если параметры и метод запроса переданы
 	if(!url.empty() && (method != http_t::method_t::NONE)){
 		// Выполняем очистку воркера
@@ -662,26 +660,17 @@ const awh::Rest::res_t & awh::Rest::REST(const uri_t::url_t & url, http_t::metho
 		// Устанавливаем URL адрес запроса
 		this->worker.url = url;
 		// Устанавливаем тело запроса
-		this->entity = &entity;
+		this->entity = move(entity);
 		// Запоминаем переданные заголовки
-		this->headers = &headers;
+		this->headers = move(headers);
 		// Если биндинг не запущен
-		if(!this->nobind && !this->core->working())
+		if(!this->core->working())
 			// Выполняем запуск биндинга
 			const_cast <coreCli_t *> (this->core)->start();
 		// Если биндинг уже запущен, выполняем запрос на сервер
-		else {
-			// Если функция обратного вызова не установлена
-			if(this->messageFn == nullptr){
-				// Создаём модуль ожидания
-				future <void> waiter = this->locker.get_future();
-				// Выполняем запрос на сервер
-				const_cast <coreCli_t *> (this->core)->open(this->worker.wid);
-				// Выполняем ожидание получения данных
-				waiter.wait();
-			// Иначе просто, выполняем запрос на сервер
-			} else const_cast <coreCli_t *> (this->core)->open(this->worker.wid);
-		}
+		else if(this->messageFn != nullptr)
+			// Выполняем запрос на сервер
+			const_cast <coreCli_t *> (this->core)->open(this->worker.wid);
 	}
 	// Выводим результат
 	return this->res;
@@ -732,8 +721,6 @@ void awh::Rest::setMessageCallback(void * ctx, function <void (const res_t &, vo
  * @param flag флаг модуля для установки
  */
 void awh::Rest::setMode(const u_short flag) noexcept {
-	// Устанавливаем флаг запрета биндинга
-	this->nobind = (flag & (uint8_t) flag_t::NOTSTART);
 	// Устанавливаем флаг анбиндинга
 	this->unbind = !(flag & (uint8_t) flag_t::NOTSTOP);
 	// Устанавливаем флаг ожидания входящих сообщений
