@@ -270,15 +270,20 @@ namespace awh {
 			 * @param method  метод запроса
 			 * @param entity  тело запроса
 			 * @param headers заголовки запроса
-			 * @return        результат выполнения запроса
 			 */
-			const res_t & REST(const uri_t::url_t & url, http_t::method_t method, vector <char> entity = {}, unordered_multimap <string, string> headers = {}) noexcept;
+			void REST(const uri_t::url_t & url, http_t::method_t method, vector <char> entity = {}, unordered_multimap <string, string> headers = {}) noexcept;
 		public:
 			/**
 			 * setChunkingFn Метод установки функции обратного вызова для получения чанков
 			 * @param callback функция обратного вызова
 			 */
 			void setChunkingFn(function <void (const vector <char> &, const http_t *)> callback) noexcept;
+			/**
+			 * setMessageCallback Метод установки функции обратного вызова при получении сообщения
+			 * @param ctx      контекст для вывода в сообщении
+			 * @param callback функция обратного вызова
+			 */
+			void setMessageCallback(void * ctx, function <void (const res_t &, void *)> callback) noexcept;
 		public:
 			/**
 			 * setWaitTimeDetect Метод детекции сообщений по количеству секунд
@@ -292,13 +297,6 @@ namespace awh {
 			 * @param write количество байт для детекции по записи
 			 */
 			void setBytesDetect(const worker_t::mark_t read, const worker_t::mark_t write) noexcept;
-		public:
-			/**
-			 * setMessageCallback Метод установки функции обратного вызова при получении сообщения
-			 * @param ctx      контекст для вывода в сообщении
-			 * @param callback функция обратного вызова
-			 */
-			void setMessageCallback(void * ctx, function <void (const res_t &, void *)> callback) noexcept;
 		public:
 			/**
 			 * setMode Метод установки флага модуля

@@ -351,8 +351,6 @@ void awh::Core::stop() noexcept {
 	if(this->mode){
 		// Запрещаем работу WebSocket
 		this->mode = false;
-		// Выполняем удаление всех воркеров
-		this->removeAll();
 		// Завершаем работу базы событий
 		event_base_loopbreak(this->base);
 		// Если - это Windows

@@ -347,10 +347,18 @@ void awh::Rest::readProxyCallback(const char * buffer, const size_t size, const 
 const vector <char> & awh::Rest::GET(const uri_t::url_t & url, const unordered_multimap <string, string> & headers) noexcept {
 	// Если данные запроса переданы
 	if(!url.empty()){
+		// Устанавливаем функцию обратного вызова
+		this->setMessageCallback(this, [](const res_t & res, void * ctx) noexcept {
+			// Проверяем на наличие ошибок
+			if(!res.ok){
+				// Получаем объект работы с REST запросами
+				restCli_t * web = reinterpret_cast <restCli_t *> (ctx);
+				// Выводим сообщение о неудачном запросе
+				web->log->print("request failed: %u %s", log_t::flag_t::WARNING, res.code, res.message.c_str());
+			}
+		});
 		// Выполняем REST запрос на сервер
-		const auto & res = this->REST(url, http_t::method_t::GET, {}, headers);
-		// Проверяем на наличие ошибок
-		if(!res.ok && (this->messageFn == nullptr)) this->log->print("request failed: %u %s", log_t::flag_t::WARNING, res.code, res.message.c_str());
+		this->REST(url, http_t::method_t::GET, {}, headers);
 	}
 	// Выводим результат
 	return this->res.entity;
@@ -364,10 +372,18 @@ const vector <char> & awh::Rest::GET(const uri_t::url_t & url, const unordered_m
 const vector <char> & awh::Rest::DEL(const uri_t::url_t & url, const unordered_multimap <string, string> & headers) noexcept {
 	// Если данные запроса переданы
 	if(!url.empty()){
+		// Устанавливаем функцию обратного вызова
+		this->setMessageCallback(this, [](const res_t & res, void * ctx) noexcept {
+			// Проверяем на наличие ошибок
+			if(!res.ok){
+				// Получаем объект работы с REST запросами
+				restCli_t * web = reinterpret_cast <restCli_t *> (ctx);
+				// Выводим сообщение о неудачном запросе
+				web->log->print("request failed: %u %s", log_t::flag_t::WARNING, res.code, res.message.c_str());
+			}
+		});
 		// Выполняем REST запрос на сервер
-		const auto & res = this->REST(url, http_t::method_t::DEL, {}, headers);
-		// Проверяем на наличие ошибок
-		if(!res.ok && (this->messageFn == nullptr)) this->log->print("request failed: %u %s", log_t::flag_t::WARNING, res.code, res.message.c_str());
+		this->REST(url, http_t::method_t::DEL, {}, headers);
 	}
 	// Выводим результат
 	return this->res.entity;
@@ -386,10 +402,18 @@ const vector <char> & awh::Rest::PUT(const uri_t::url_t & url, const json & enti
 		const string body = entity.dump();
 		// Добавляем заголовок типа контента
 		const_cast <unordered_multimap <string, string> *> (&headers)->emplace("Content-Type", "application/json");
+		// Устанавливаем функцию обратного вызова
+		this->setMessageCallback(this, [](const res_t & res, void * ctx) noexcept {
+			// Проверяем на наличие ошибок
+			if(!res.ok){
+				// Получаем объект работы с REST запросами
+				restCli_t * web = reinterpret_cast <restCli_t *> (ctx);
+				// Выводим сообщение о неудачном запросе
+				web->log->print("request failed: %u %s", log_t::flag_t::WARNING, res.code, res.message.c_str());
+			}
+		});
 		// Выполняем REST запрос на сервер
-		const auto & res = this->REST(url, http_t::method_t::PUT, vector <char> (body.begin(), body.end()), headers);
-		// Проверяем на наличие ошибок
-		if(!res.ok && (this->messageFn == nullptr)) this->log->print("request failed: %u %s", log_t::flag_t::WARNING, res.code, res.message.c_str());
+		this->REST(url, http_t::method_t::PUT, vector <char> (body.begin(), body.end()), headers);
 	}
 	// Выводим результат
 	return this->res.entity;
@@ -404,10 +428,18 @@ const vector <char> & awh::Rest::PUT(const uri_t::url_t & url, const json & enti
 const vector <char> & awh::Rest::PUT(const uri_t::url_t & url, const vector <char> & entity, const unordered_multimap <string, string> & headers) noexcept {
 	// Если данные запроса переданы
 	if(!url.empty()){
+		// Устанавливаем функцию обратного вызова
+		this->setMessageCallback(this, [](const res_t & res, void * ctx) noexcept {
+			// Проверяем на наличие ошибок
+			if(!res.ok){
+				// Получаем объект работы с REST запросами
+				restCli_t * web = reinterpret_cast <restCli_t *> (ctx);
+				// Выводим сообщение о неудачном запросе
+				web->log->print("request failed: %u %s", log_t::flag_t::WARNING, res.code, res.message.c_str());
+			}
+		});
 		// Выполняем REST запрос на сервер
-		const auto & res = this->REST(url, http_t::method_t::PUT, entity, headers);
-		// Проверяем на наличие ошибок
-		if(!res.ok && (this->messageFn == nullptr)) this->log->print("request failed: %u %s", log_t::flag_t::WARNING, res.code, res.message.c_str());
+		this->REST(url, http_t::method_t::PUT, entity, headers);
 	}
 	// Выводим результат
 	return this->res.entity;
@@ -437,10 +469,18 @@ const vector <char> & awh::Rest::PUT(const uri_t::url_t & url, const unordered_m
 		}
 		// Добавляем заголовок типа контента
 		const_cast <unordered_multimap <string, string> *> (&headers)->emplace("Content-Type", "application/x-www-form-urlencoded");
+		// Устанавливаем функцию обратного вызова
+		this->setMessageCallback(this, [](const res_t & res, void * ctx) noexcept {
+			// Проверяем на наличие ошибок
+			if(!res.ok){
+				// Получаем объект работы с REST запросами
+				restCli_t * web = reinterpret_cast <restCli_t *> (ctx);
+				// Выводим сообщение о неудачном запросе
+				web->log->print("request failed: %u %s", log_t::flag_t::WARNING, res.code, res.message.c_str());
+			}
+		});
 		// Выполняем REST запрос на сервер
-		const auto & res = this->REST(url, http_t::method_t::PUT, vector <char> (body.begin(), body.end()), headers);
-		// Проверяем на наличие ошибок
-		if(!res.ok && (this->messageFn == nullptr)) this->log->print("request failed: %u %s", log_t::flag_t::WARNING, res.code, res.message.c_str());
+		this->REST(url, http_t::method_t::PUT, vector <char> (body.begin(), body.end()), headers);
 	}
 	// Выводим результат
 	return this->res.entity;
@@ -459,10 +499,18 @@ const vector <char> & awh::Rest::POST(const uri_t::url_t & url, const json & ent
 		const string body = entity.dump();
 		// Добавляем заголовок типа контента
 		const_cast <unordered_multimap <string, string> *> (&headers)->emplace("Content-Type", "application/json");
+		// Устанавливаем функцию обратного вызова
+		this->setMessageCallback(this, [](const res_t & res, void * ctx) noexcept {
+			// Проверяем на наличие ошибок
+			if(!res.ok){
+				// Получаем объект работы с REST запросами
+				restCli_t * web = reinterpret_cast <restCli_t *> (ctx);
+				// Выводим сообщение о неудачном запросе
+				web->log->print("request failed: %u %s", log_t::flag_t::WARNING, res.code, res.message.c_str());
+			}
+		});
 		// Выполняем REST запрос на сервер
-		const auto & res = this->REST(url, http_t::method_t::POST, vector <char> (body.begin(), body.end()), headers);
-		// Проверяем на наличие ошибок
-		if(!res.ok && (this->messageFn == nullptr)) this->log->print("request failed: %u %s", log_t::flag_t::WARNING, res.code, res.message.c_str());
+		this->REST(url, http_t::method_t::POST, vector <char> (body.begin(), body.end()), headers);
 	}
 	// Выводим результат
 	return this->res.entity;
@@ -477,10 +525,18 @@ const vector <char> & awh::Rest::POST(const uri_t::url_t & url, const json & ent
 const vector <char> & awh::Rest::POST(const uri_t::url_t & url, const vector <char> & entity, const unordered_multimap <string, string> & headers) noexcept {
 	// Если данные запроса переданы
 	if(!url.empty()){
+		// Устанавливаем функцию обратного вызова
+		this->setMessageCallback(this, [](const res_t & res, void * ctx) noexcept {
+			// Проверяем на наличие ошибок
+			if(!res.ok){
+				// Получаем объект работы с REST запросами
+				restCli_t * web = reinterpret_cast <restCli_t *> (ctx);
+				// Выводим сообщение о неудачном запросе
+				web->log->print("request failed: %u %s", log_t::flag_t::WARNING, res.code, res.message.c_str());
+			}
+		});
 		// Выполняем REST запрос на сервер
-		const auto & res = this->REST(url, http_t::method_t::POST, entity, headers);
-		// Проверяем на наличие ошибок
-		if(!res.ok && (this->messageFn == nullptr)) this->log->print("request failed: %u %s", log_t::flag_t::WARNING, res.code, res.message.c_str());
+		this->REST(url, http_t::method_t::POST, entity, headers);
 	}
 	// Выводим результат
 	return this->res.entity;
@@ -510,10 +566,18 @@ const vector <char> & awh::Rest::POST(const uri_t::url_t & url, const unordered_
 		}
 		// Добавляем заголовок типа контента
 		const_cast <unordered_multimap <string, string> *> (&headers)->emplace("Content-Type", "application/x-www-form-urlencoded");
+		// Устанавливаем функцию обратного вызова
+		this->setMessageCallback(this, [](const res_t & res, void * ctx) noexcept {
+			// Проверяем на наличие ошибок
+			if(!res.ok){
+				// Получаем объект работы с REST запросами
+				restCli_t * web = reinterpret_cast <restCli_t *> (ctx);
+				// Выводим сообщение о неудачном запросе
+				web->log->print("request failed: %u %s", log_t::flag_t::WARNING, res.code, res.message.c_str());
+			}
+		});
 		// Выполняем REST запрос на сервер
-		const auto & res = this->REST(url, http_t::method_t::POST, vector <char> (body.begin(), body.end()), headers);
-		// Проверяем на наличие ошибок
-		if(!res.ok && (this->messageFn == nullptr)) this->log->print("request failed: %u %s", log_t::flag_t::WARNING, res.code, res.message.c_str());
+		this->REST(url, http_t::method_t::POST, vector <char> (body.begin(), body.end()), headers);
 	}
 	// Выводим результат
 	return this->res.entity;
@@ -532,10 +596,18 @@ const vector <char> & awh::Rest::PATCH(const uri_t::url_t & url, const json & en
 		const string body = entity.dump();
 		// Добавляем заголовок типа контента
 		const_cast <unordered_multimap <string, string> *> (&headers)->emplace("Content-Type", "application/json");
+		// Устанавливаем функцию обратного вызова
+		this->setMessageCallback(this, [](const res_t & res, void * ctx) noexcept {
+			// Проверяем на наличие ошибок
+			if(!res.ok){
+				// Получаем объект работы с REST запросами
+				restCli_t * web = reinterpret_cast <restCli_t *> (ctx);
+				// Выводим сообщение о неудачном запросе
+				web->log->print("request failed: %u %s", log_t::flag_t::WARNING, res.code, res.message.c_str());
+			}
+		});
 		// Выполняем REST запрос на сервер
-		const auto & res = this->REST(url, http_t::method_t::PATCH, vector <char> (body.begin(), body.end()), headers);
-		// Проверяем на наличие ошибок
-		if(!res.ok && (this->messageFn == nullptr)) this->log->print("request failed: %u %s", log_t::flag_t::WARNING, res.code, res.message.c_str());
+		this->REST(url, http_t::method_t::PATCH, vector <char> (body.begin(), body.end()), headers);
 	}
 	// Выводим результат
 	return this->res.entity;
@@ -550,10 +622,18 @@ const vector <char> & awh::Rest::PATCH(const uri_t::url_t & url, const json & en
 const vector <char> & awh::Rest::PATCH(const uri_t::url_t & url, const vector <char> & entity, const unordered_multimap <string, string> & headers) noexcept {
 	// Если данные запроса переданы
 	if(!url.empty()){
+		// Устанавливаем функцию обратного вызова
+		this->setMessageCallback(this, [](const res_t & res, void * ctx) noexcept {
+			// Проверяем на наличие ошибок
+			if(!res.ok){
+				// Получаем объект работы с REST запросами
+				restCli_t * web = reinterpret_cast <restCli_t *> (ctx);
+				// Выводим сообщение о неудачном запросе
+				web->log->print("request failed: %u %s", log_t::flag_t::WARNING, res.code, res.message.c_str());
+			}
+		});
 		// Выполняем REST запрос на сервер
-		const auto & res = this->REST(url, http_t::method_t::PATCH, entity, headers);
-		// Проверяем на наличие ошибок
-		if(!res.ok && (this->messageFn == nullptr)) this->log->print("request failed: %u %s", log_t::flag_t::WARNING, res.code, res.message.c_str());
+		this->REST(url, http_t::method_t::PATCH, entity, headers);
 	}
 	// Выводим результат
 	return this->res.entity;
@@ -583,10 +663,18 @@ const vector <char> & awh::Rest::PATCH(const uri_t::url_t & url, const unordered
 		}
 		// Добавляем заголовок типа контента
 		const_cast <unordered_multimap <string, string> *> (&headers)->emplace("Content-Type", "application/x-www-form-urlencoded");
+		// Устанавливаем функцию обратного вызова
+		this->setMessageCallback(this, [](const res_t & res, void * ctx) noexcept {
+			// Проверяем на наличие ошибок
+			if(!res.ok){
+				// Получаем объект работы с REST запросами
+				restCli_t * web = reinterpret_cast <restCli_t *> (ctx);
+				// Выводим сообщение о неудачном запросе
+				web->log->print("request failed: %u %s", log_t::flag_t::WARNING, res.code, res.message.c_str());
+			}
+		});
 		// Выполняем REST запрос на сервер
-		const auto & res = this->REST(url, http_t::method_t::PATCH, vector <char> (body.begin(), body.end()), headers);
-		// Проверяем на наличие ошибок
-		if(!res.ok && (this->messageFn == nullptr)) this->log->print("request failed: %u %s", log_t::flag_t::WARNING, res.code, res.message.c_str());
+		this->REST(url, http_t::method_t::PATCH, vector <char> (body.begin(), body.end()), headers);
 	}
 	// Выводим результат
 	return this->res.entity;
@@ -600,10 +688,18 @@ const vector <char> & awh::Rest::PATCH(const uri_t::url_t & url, const unordered
 const unordered_multimap <string, string> & awh::Rest::HEAD(const uri_t::url_t & url, const unordered_multimap <string, string> & headers) noexcept {
 	// Если данные запроса переданы
 	if(!url.empty()){
+		// Устанавливаем функцию обратного вызова
+		this->setMessageCallback(this, [](const res_t & res, void * ctx) noexcept {
+			// Проверяем на наличие ошибок
+			if(!res.ok){
+				// Получаем объект работы с REST запросами
+				restCli_t * web = reinterpret_cast <restCli_t *> (ctx);
+				// Выводим сообщение о неудачном запросе
+				web->log->print("request failed: %u %s", log_t::flag_t::WARNING, res.code, res.message.c_str());
+			}
+		});
 		// Выполняем REST запрос на сервер
-		const auto & res = this->REST(url, http_t::method_t::HEAD, {}, headers);
-		// Проверяем на наличие ошибок
-		if(!res.ok && (this->messageFn == nullptr)) this->log->print("request failed: %u %s", log_t::flag_t::WARNING, res.code, res.message.c_str());
+		this->REST(url, http_t::method_t::HEAD, {}, headers);
 	}
 	// Выводим результат
 	return this->res.headers;
@@ -617,10 +713,18 @@ const unordered_multimap <string, string> & awh::Rest::HEAD(const uri_t::url_t &
 const unordered_multimap <string, string> & awh::Rest::TRACE(const uri_t::url_t & url, const unordered_multimap <string, string> & headers) noexcept {
 	// Если данные запроса переданы
 	if(!url.empty()){
+		// Устанавливаем функцию обратного вызова
+		this->setMessageCallback(this, [](const res_t & res, void * ctx) noexcept {
+			// Проверяем на наличие ошибок
+			if(!res.ok){
+				// Получаем объект работы с REST запросами
+				restCli_t * web = reinterpret_cast <restCli_t *> (ctx);
+				// Выводим сообщение о неудачном запросе
+				web->log->print("request failed: %u %s", log_t::flag_t::WARNING, res.code, res.message.c_str());
+			}
+		});
 		// Выполняем REST запрос на сервер
-		const auto & res = this->REST(url, http_t::method_t::TRACE, {}, headers);
-		// Проверяем на наличие ошибок
-		if(!res.ok && (this->messageFn == nullptr)) this->log->print("request failed: %u %s", log_t::flag_t::WARNING, res.code, res.message.c_str());
+		this->REST(url, http_t::method_t::TRACE, {}, headers);
 	}
 	// Выводим результат
 	return this->res.headers;
@@ -634,10 +738,18 @@ const unordered_multimap <string, string> & awh::Rest::TRACE(const uri_t::url_t 
 const unordered_multimap <string, string> & awh::Rest::OPTIONS(const uri_t::url_t & url, const unordered_multimap <string, string> & headers) noexcept {
 	// Если данные запроса переданы
 	if(!url.empty()){
+		// Устанавливаем функцию обратного вызова
+		this->setMessageCallback(this, [](const res_t & res, void * ctx) noexcept {
+			// Проверяем на наличие ошибок
+			if(!res.ok){
+				// Получаем объект работы с REST запросами
+				restCli_t * web = reinterpret_cast <restCli_t *> (ctx);
+				// Выводим сообщение о неудачном запросе
+				web->log->print("request failed: %u %s", log_t::flag_t::WARNING, res.code, res.message.c_str());
+			}
+		});
 		// Выполняем REST запрос на сервер
-		const auto & res = this->REST(url, http_t::method_t::OPTIONS, {}, headers);
-		// Проверяем на наличие ошибок
-		if(!res.ok && (this->messageFn == nullptr)) this->log->print("request failed: %u %s", log_t::flag_t::WARNING, res.code, res.message.c_str());
+		this->REST(url, http_t::method_t::OPTIONS, {}, headers);
 	}
 	// Выводим результат
 	return this->res.headers;
@@ -648,11 +760,10 @@ const unordered_multimap <string, string> & awh::Rest::OPTIONS(const uri_t::url_
  * @param method  метод запроса
  * @param entity  тело запроса
  * @param headers заголовки запроса
- * @return        результат выполнения запроса
  */
-const awh::Rest::res_t & awh::Rest::REST(const uri_t::url_t & url, http_t::method_t method, vector <char> entity, unordered_multimap <string, string> headers) noexcept {
+void awh::Rest::REST(const uri_t::url_t & url, http_t::method_t method, vector <char> entity, unordered_multimap <string, string> headers) noexcept {
 	// Если параметры и метод запроса переданы
-	if(!url.empty() && (method != http_t::method_t::NONE)){
+	if(!url.empty() && (method != http_t::method_t::NONE) && (this->messageFn != nullptr)){
 		// Выполняем очистку воркера
 		this->worker.clear();
 		// Устанавливаем метод запроса
@@ -668,12 +779,8 @@ const awh::Rest::res_t & awh::Rest::REST(const uri_t::url_t & url, http_t::metho
 			// Выполняем запуск биндинга
 			const_cast <coreCli_t *> (this->core)->start();
 		// Если биндинг уже запущен, выполняем запрос на сервер
-		else if(this->messageFn != nullptr)
-			// Выполняем запрос на сервер
-			const_cast <coreCli_t *> (this->core)->open(this->worker.wid);
+		else const_cast <coreCli_t *> (this->core)->open(this->worker.wid);
 	}
-	// Выводим результат
-	return this->res;
 }
 /**
  * setChunkingFn Метод установки функции обратного вызова для получения чанков
@@ -682,6 +789,17 @@ const awh::Rest::res_t & awh::Rest::REST(const uri_t::url_t & url, http_t::metho
 void awh::Rest::setChunkingFn(function <void (const vector <char> &, const http_t *)> callback) noexcept {
 	// Устанавливаем функцию обработки вызова для получения чанков
 	this->http->setChunkingFn(callback);
+}
+/**
+ * setMessageCallback Метод установки функции обратного вызова при получении сообщения
+ * @param ctx      контекст для вывода в сообщении
+ * @param callback функция обратного вызова
+ */
+void awh::Rest::setMessageCallback(void * ctx, function <void (const res_t &, void *)> callback) noexcept {
+	// Устанавливаем контекст передаваемого объекта
+	this->ctx = ctx;
+	// Устанавливаем функцию обратного вызова
+	this->messageFn = callback;
 }
 /**
  * setWaitTimeDetect Метод детекции сообщений по количеству секунд
@@ -704,17 +822,6 @@ void awh::Rest::setBytesDetect(const worker_t::mark_t read, const worker_t::mark
 	this->worker.markRead = read;
 	// Устанавливаем количество байт на запись
 	this->worker.markWrite = write;
-}
-/**
- * setMessageCallback Метод установки функции обратного вызова при получении сообщения
- * @param ctx      контекст для вывода в сообщении
- * @param callback функция обратного вызова
- */
-void awh::Rest::setMessageCallback(void * ctx, function <void (const res_t &, void *)> callback) noexcept {
-	// Устанавливаем контекст передаваемого объекта
-	this->ctx = ctx;
-	// Устанавливаем функцию обратного вызова
-	this->messageFn = callback;
 }
 /**
  * setMode Метод установки флага модуля
