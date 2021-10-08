@@ -494,22 +494,19 @@ awh::ASSL::ctx_t awh::ASSL::init(const uri_t::url_t & url) noexcept {
 			// Выходим
 			return result;
 		}
-		// Если нужно произвести проверку
-		if(this->verify && !url.domain.empty()){
-			// Если нужно установить TLS расширение
-			#ifdef SSL_CTRL_SET_TLSEXT_HOSTNAME
-				// Устанавливаем имя хоста для SNI расширения
-				SSL_set_tlsext_host_name(result.ssl, url.domain.c_str());
-			#endif
-			// Активируем верификацию доменного имени
-			if(!X509_VERIFY_PARAM_set1_host(SSL_get0_param(result.ssl), url.domain.c_str(), 0)){
-				// Очищаем созданный контекст
-				this->clear(result);
-				// Выводим в лог сообщение
-				this->log->print("%s", log_t::flag_t::CRITICAL, "domain ssl verification failed");
-				// Выходим
-				return result;
-			}
+		// Если нужно установить TLS расширение
+		#ifdef SSL_CTRL_SET_TLSEXT_HOSTNAME
+			// Устанавливаем имя хоста для SNI расширения
+			SSL_set_tlsext_host_name(result.ssl, (!url.domain.empty() ? url.domain : url.ip).c_str());
+		#endif
+		// Активируем верификацию доменного имени
+		if(!X509_VERIFY_PARAM_set1_host(SSL_get0_param(result.ssl), (!url.domain.empty() ? url.domain : url.ip).c_str(), 0)){
+			// Очищаем созданный контекст
+			this->clear(result);
+			// Выводим в лог сообщение
+			this->log->print("%s", log_t::flag_t::CRITICAL, "domain ssl verification failed");
+			// Выходим
+			return result;
 		}
 		// Проверяем рукопожатие
 		if(SSL_do_handshake(result.ssl) <= 0){

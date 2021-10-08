@@ -29,7 +29,7 @@ void awh::CoreClient::read(struct bufferevent * bev, void * ctx) noexcept {
 				// Если функция обратного вызова для вывода записи существует
 				if(wrk->readProxyFn != nullptr){
 					// Заполняем нулями буфер полученных данных
-					memset((void *) adj->buffer, 0, BUFFER_CHUNK);
+					// memset((void *) adj->buffer, 0, BUFFER_CHUNK);
 					// Считываем бинарные данные запроса из буфер
 					const size_t size = bufferevent_read(bev, (void *) adj->buffer, BUFFER_CHUNK);
 					// Выводим функцию обратного вызова
@@ -38,7 +38,7 @@ void awh::CoreClient::read(struct bufferevent * bev, void * ctx) noexcept {
 			// Если прокси-сервер не используется
 			} else if(wrk->readFn != nullptr) {
 				// Заполняем нулями буфер полученных данных
-				memset((void *) adj->buffer, 0, BUFFER_CHUNK);
+				// memset((void *) adj->buffer, 0, BUFFER_CHUNK);
 				// Считываем бинарные данные запроса из буфер
 				const size_t size = bufferevent_read(adj->bev, (void *) adj->buffer, BUFFER_CHUNK);
 				// Выводим функцию обратного вызова
@@ -68,7 +68,7 @@ void awh::CoreClient::write(struct bufferevent * bev, void * ctx) noexcept {
 			// Если данные существуют
 			if(size > 0){
 				// Заполняем нулями буфер полученных данных
-				memset((void *) adj->buffer, 0, BUFFER_CHUNK);
+				// memset((void *) adj->buffer, 0, BUFFER_CHUNK);
 				// Выполняем компенсацию размера полученных данных
 				size = (size > BUFFER_CHUNK ? BUFFER_CHUNK : size);
 				// Копируем данные из буфера
@@ -125,7 +125,7 @@ void awh::CoreClient::event(struct bufferevent * bev, const short events, void *
 				// Если это ошибка
 				if(events & BEV_EVENT_ERROR)
 					// Выводим в лог сообщение
-					adj->log->print("closing server [%s:%d] error: %s", log_t::flag_t::WARNING, host.c_str(), url.port, evutil_socket_error_to_string(EVUTIL_SOCKET_ERROR()));
+					adj->log->print("closing server [%s:%d] %s", log_t::flag_t::WARNING, host.c_str(), url.port, evutil_socket_error_to_string(EVUTIL_SOCKET_ERROR()));
 				// Если - это таймаут, выводим сообщение в лог
 				else if(events & BEV_EVENT_TIMEOUT) adj->log->print("timeout server [%s:%d]", log_t::flag_t::WARNING, host.c_str(), url.port);
 				// Выполняем отключение от сервера

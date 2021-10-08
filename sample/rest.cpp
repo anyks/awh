@@ -43,7 +43,7 @@ int main(int argc, char * argv[]) noexcept {
 	 * 1. Устанавливаем ожидание входящих сообщений
 	 * 2. Устанавливаем валидацию SSL сертификата
 	 */
-	rest.setMode((u_short) restCli_t::flag_t::WAITMESS | (u_short) restCli_t::flag_t::VERIFYSSL);
+	rest.setMode((uint8_t) restCli_t::flag_t::WAITMESS | (uint8_t) restCli_t::flag_t::VERIFYSSL);
 	// Устанавливаем адрес сертификата
 	core.setCA("./ca/cert.pem");
 	// Устанавливаем логин и пароль пользователя
@@ -58,10 +58,12 @@ int main(int argc, char * argv[]) noexcept {
 	rest.setAuthTypeProxy();
 	// Выполняем получение URL адреса сервера
 	// uri_t::url_t url = uri.parseUrl("https://2ip.ru");
-	uri_t::url_t url = uri.parseUrl("https://www.anyks.com");
+	// uri_t::url_t url = uri.parseUrl("https://www.anyks.com");
 	// uri_t::url_t url = uri.parseUrl("https://apple.com");
 	// uri_t::url_t url = uri.parseUrl("https://ru.wikipedia.org/wiki/HTTP");
 	// uri_t::url_t url = uri.parseUrl("https://api.binance.com/api/v3/exchangeInfo?symbol=BTCUSDT");
+	// uri_t::url_t url = uri.parseUrl("https://testnet.binance.vision/api/v3/exchangeInfo");
+	uri_t::url_t url = uri.parseUrl("https://api.coingecko.com/api/v3/coins/list?include_platform=true");
 	// Выполняем запрос на получение IP адреса
 	const auto & body = rest.GET(url);
 	// const auto & body = rest.GET(url, {{"Connection", "close"}});
@@ -69,10 +71,10 @@ int main(int argc, char * argv[]) noexcept {
 	// Получаем результат
 	const string result(body.begin(), body.end());
 	// Создаём объект JSON
-	// json data = json::parse(result);
+	json data = json::parse(result);
 	// Выводим полученный результат
-	cout << " +++++++++++++ " << result << endl;
-	// cout << " +++++++++++++ " << data.dump(4) << endl;
+	// cout << " +++++++++++++ " << result << endl;
+	cout << " +++++++++++++ " << data.dump(4) << endl;
 	// Выводим результат
 	return 0;
 }

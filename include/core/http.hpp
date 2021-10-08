@@ -185,6 +185,8 @@ namespace awh {
 			// Флаг разрешающий передавать тело чанками
 			mutable bool chunking = false;
 		protected:
+			// Размер тела сообщения
+			int64_t bodySize = -1;
 			// Размер одного чанка
 			size_t chunkSize = BUFFER_CHUNK;
 		protected:

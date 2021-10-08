@@ -194,6 +194,8 @@ void awh::Http::clear() noexcept {
 	this->chunk = chunk_t();
 	// Выполняем сброс параметров запроса
 	this->query = query_t();
+	// Выполняем сброс размера тела
+	this->bodySize = -1;
 	// Обнуляем флаг проверки авторизации
 	this->failAuth = false;
 	// Выполняем сброс режим работы модуля
@@ -229,6 +231,8 @@ void awh::Http::parse(const char * buffer, const size_t size) noexcept {
 			if((pos = http.find("\r\n\r\n")) != string::npos){
 				// Выполняем сброс всех предыдущих данных
 				this->clear();
+				// Выполняем сброс размера тела
+				this->bodySize = -1;
 				// Выполняем чтение полученного буфера
 				readHeader(http.data(), pos, [this](string data) noexcept {
 					// Определяем статус режима работы
@@ -331,6 +335,8 @@ void awh::Http::parse(const char * buffer, const size_t size) noexcept {
 				auto it = this->headers.find("content-length");
 				// Если размер запроса передан
 				if(it != this->headers.end()){
+					// Запоминаем размер тела сообщения
+					this->bodySize = stoull(it->second);
 					// Устанавливаем стейт поиска тела запроса
 					this->state = state_t::BODY;
 					// Продолжаем работу
@@ -376,14 +382,10 @@ void awh::Http::parse(const char * buffer, const size_t size) noexcept {
 				case (uint8_t) state_t::BODY: {
 					// Если размер данных получен
 					if(size > 0){
-						// Выполняем поиск размера тела сообщения
-						auto it = this->headers.find("content-length");
 						// Если размер тела сообщения получен
-						if(it != this->headers.end()){
-							// Получаем максимальный размер тела сообщения
-							const size_t max = stoull(it->second);
+						if(this->bodySize > -1){
 							// Если размер тела не получен
-							if(max == 0){
+							if(this->bodySize == 0){
 								// Заполняем собранные данные тела
 								this->chunk.data.assign(buffer, buffer + size);
 								// Если функция обратного вызова установлена
@@ -393,7 +395,7 @@ void awh::Http::parse(const char * buffer, const size_t size) noexcept {
 							// Если размер установлен конкретный
 							} else {
 								// Получаем актуальный размер тела
-								size_t actual = (max - this->body.size());
+								size_t actual = (this->bodySize - this->body.size());
 								// Фиксируем актуальный размер тела
 								actual = (size > actual ? actual : size);
 								// Увеличиваем общий размер полученных данных
@@ -405,7 +407,7 @@ void awh::Http::parse(const char * buffer, const size_t size) noexcept {
 									// Выводим функцию обратного вызова
 									this->chunkingFn(this->chunk.data, this);
 								// Если тело сообщения полностью собранно
-								if(max == this->chunk.size){
+								if(this->bodySize == this->chunk.size){
 									// Очищаем собранные данные
 									this->chunk.clear();
 									// Тело в запросе не передано
@@ -422,25 +424,16 @@ void awh::Http::parse(const char * buffer, const size_t size) noexcept {
 							string body(buffer, size);
 							// Если размер чанка не получен
 							if(this->chunk.size == 0){
-								// Устанавливаем метку следующей попытки
-								attempt:
 								// Ищем размер чанка
 								const size_t pos = body.find("\r\n");
 								// Если размер чанка найден
 								if(pos != string::npos){
-									// Если позиция нулевая
-									if(pos == 0){
-										// Удаляем первые два символа
-										body.erase(body.begin(), body.begin() + 2);
-										// Если тело запроса ещё не всё прочитано
-										if(body.empty()) break;
-										// Иначе продолжаем попытку обработать данные
-										else goto attempt;
-									}
+									// Получаем размер в 16-м виде
+									const string & hex = body.substr(0, pos);
 									// Получаем размер чанка
-									this->chunk.size = this->fmk->hexToDec(body.substr(0, pos));
+									this->chunk.size = (this->fmk->hexToDec(hex) + 2);
 									// Если это последний чанк
-									if(this->chunk.size == 0){
+									if(this->chunk.size == 2){
 										// Очищаем собранные данные
 										this->chunk.clear();
 										// Тело в запросе не передано
@@ -460,20 +453,27 @@ void awh::Http::parse(const char * buffer, const size_t size) noexcept {
 								size_t actual = (this->chunk.size - this->chunk.data.size());
 								// Фиксируем актуальный размер тела
 								actual = (body.size() > actual ? actual : body.size());
-								// Собираем тело запроса
-								this->chunk.data.insert(this->chunk.data.end(), body.begin(), body.begin() + actual);
-								// Если весь чанк собран
-								if(this->chunk.size == this->chunk.data.size()){
-									// Если функция обратного вызова установлена
-									if(this->chunkingFn != nullptr)
-										// Выводим функцию обратного вызова
-										this->chunkingFn(this->chunk.data, this);
-									// Очищаем собранные данные
-									this->chunk.clear();
-									// Удаляем полученные данные
-									body.erase(body.begin(), body.begin() + actual);
-									// Если тело запроса ещё не всё прочитано
-									if(!body.empty()) this->parse(body.data(), body.size());
+								// Если есть данные для обработки
+								if(actual > 0){
+									// Собираем тело запроса
+									this->chunk.data.insert(this->chunk.data.end(), body.begin(), body.begin() + actual);
+									// Если весь чанк собран
+									if(this->chunk.size == this->chunk.data.size()){
+										// Если функция обратного вызова установлена
+										if(this->chunkingFn != nullptr){
+											// Удаляем экранирование
+											this->chunk.data.pop_back();
+											this->chunk.data.pop_back();
+											// Выводим функцию обратного вызова
+											this->chunkingFn(this->chunk.data, this);
+										}
+										// Очищаем собранные данные
+										this->chunk.clear();
+										// Удаляем полученные данные
+										body.erase(body.begin(), body.begin() + actual);
+										// Если тело запроса ещё не всё прочитано
+										if(!body.empty()) this->parse(body.data(), body.size());
+									}
 								}
 							}
 						}
