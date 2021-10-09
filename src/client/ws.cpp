@@ -49,10 +49,6 @@ void awh::WebSocketClient::closeCallback(const size_t wid, core_t * core, void *
 		// Если нужно произвести запрос заново
 		if((ws->code == 301) || (ws->code == 308) ||
 		   (ws->code == 401) || (ws->code == 407)){
-			// Если прокси-сервер активирован но уже переключён на работу с сервером
-			if((ws->worker.proxy.type != proxy_t::type_t::NONE) && !ws->worker.isProxy())
-				// Выполняем переключение обратно на прокси-сервер
-				ws->worker.switchConnect();
 			// Выполняем запрос заново
 			core->open(ws->worker.wid);
 			// Выходим из функции

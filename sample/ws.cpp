@@ -110,7 +110,7 @@ int main(int argc, char * argv[]) noexcept {
 		// Если данные пришли в виде текста, выводим
 		if(utf8){
 			// Создаём объект JSON
-			json data = json::parse(string(buffer.begin(), buffer.end()));
+			json data = json::parse(buffer.begin(), buffer.end());
 			// Выводим полученный результат
 			cout << " +++++++++++++ " << data.dump(4) << endl;
 		// Сообщаем количество полученных байт

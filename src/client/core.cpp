@@ -120,6 +120,19 @@ void awh::CoreClient::event(struct bufferevent * bev, const short events, void *
 					if(wrk->connectProxyFn != nullptr) wrk->connectProxyFn(adj->aid, const_cast <core_t *> (wrk->core), wrk->ctx);
 				// Выполняем функцию обратного вызова
 				} else if(wrk->connectFn != nullptr) wrk->connectFn(adj->aid, const_cast <core_t *> (wrk->core), wrk->ctx);
+				// Если флаг ожидания входящих сообщений, активирован
+				if(wrk->wait){
+					// Устанавливаем таймаут ожидания поступления данных
+					struct timeval read = {adj->timeRead, 0};
+					// Устанавливаем таймаут ожидания записи данных
+					struct timeval write = {adj->timeWrite, 0};
+					// Устанавливаем таймаут на отправку/получение данных
+					bufferevent_set_timeouts(
+						adj->bev,
+						(adj->timeRead > 0 ? &read : nullptr),
+						(adj->timeWrite > 0 ? &write : nullptr)
+					);
+				}
 			// Если это ошибка или завершение работы
 			} else if(events & (BEV_EVENT_ERROR | BEV_EVENT_EOF | BEV_EVENT_TIMEOUT)) {
 				// Если это ошибка
@@ -128,6 +141,8 @@ void awh::CoreClient::event(struct bufferevent * bev, const short events, void *
 					adj->log->print("closing server [%s:%d] %s", log_t::flag_t::WARNING, host.c_str(), url.port, evutil_socket_error_to_string(EVUTIL_SOCKET_ERROR()));
 				// Если - это таймаут, выводим сообщение в лог
 				else if(events & BEV_EVENT_TIMEOUT) adj->log->print("timeout server [%s:%d]", log_t::flag_t::WARNING, host.c_str(), url.port);
+				// Запрещаем чтение запись данных серверу
+				bufferevent_disable(bev, EV_WRITE | EV_READ);
 				// Выполняем отключение от сервера
 				const_cast <core_t *> (wrk->core)->close(adj->aid);
 			}
@@ -279,15 +294,6 @@ void awh::CoreClient::tuning(const size_t aid) noexcept {
 		bufferevent_setcb(it->second->bev, &read, &write, &event, (void *) it->second);
 		// Очищаем буферы событий при завершении работы
 		bufferevent_flush(it->second->bev, EV_READ | EV_WRITE, BEV_FINISHED);
-		// Если флаг ожидания входящих сообщений, активирован
-		if(wrk->wait){
-			// Устанавливаем таймаут ожидания поступления данных
-			struct timeval read = {it->second->timeRead, 0};
-			// Устанавливаем таймаут ожидания записи данных
-			struct timeval write = {it->second->timeWrite, 0};
-			// Устанавливаем таймаут получения данных
-			bufferevent_set_timeouts(it->second->bev, &read, &write);
-		}
 		/**
 		 * Водяной знак на N байт (чтобы считывать данные когда они действительно приходят)
 		 */
@@ -401,6 +407,10 @@ void awh::CoreClient::close(const size_t aid) noexcept {
 			// Устанавливаем что событие удалено
 			const_cast <worker_t::adj_t *> (it->second)->bev = nullptr;
 		}
+		// Если прокси-сервер активирован но уже переключён на работу с сервером
+		if((wrk->proxy.type != proxy_t::type_t::NONE) && !wrk->isProxy())
+			// Выполняем переключение обратно на прокси-сервер
+			wrk->switchConnect();
 		// Выполняем удаление контекста SSL
 		this->ssl->clear(wrk->ssl);
 		// Удаляем адъютанта из списка адъютантов

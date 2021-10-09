@@ -43,10 +43,6 @@ void awh::Rest::closeCallback(const size_t wid, core_t * core, void * ctx) noexc
 		// Если нужно произвести запрос заново
 		if((web->res.code == 301) || (web->res.code == 308) ||
 		   (web->res.code == 401) || (web->res.code == 407)){
-			// Если прокси-сервер активирован но уже переключён на работу с сервером
-			if((web->worker.proxy.type != proxy_t::type_t::NONE) && !web->worker.isProxy())
-				// Выполняем переключение обратно на прокси-сервер
-				web->worker.switchConnect();
 			// Выполняем запрос заново
 			core->open(web->worker.wid);
 			// Выходим из функции
