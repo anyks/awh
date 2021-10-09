@@ -110,13 +110,6 @@ namespace awh {
 			// Создаём объект работы с логами
 			const log_t * log = nullptr;
 		private:
-			// Стейт для энкодера Brotli
-			BrotliEncoderState * encBrotli = nullptr;
-			// Стейт для декодера Brotli
-			BrotliDecoderState * decBrotli = nullptr;
-			// Флаг результата работы декодера Brotli
-			BrotliDecoderResult resBrotli = BROTLI_DECODER_RESULT_NEEDS_MORE_OUTPUT;
-		private:
 			// Устанавливаем уровень сжатия
 			static constexpr u_short DEFAULT_MEM_LEVEL = 4;
 			// Размер буфера чанка в байтах
@@ -191,20 +184,19 @@ namespace awh {
 			const vector <char> decompressGzip(const char * buffer, const size_t size) const noexcept;
 		public:
 			/**
+			 * compressBrotli Метод компрессии данных в Brotli
+			 * @param buffer буфер данных для компрессии
+			 * @param size   размер данных для компрессии
+			 * @return       результат компрессии
+			 */
+			const vector <char> compressBrotli(const char * buffer, const size_t size) noexcept;
+			/**
 			 * decompressBrotli Метод декомпрессии данных в Brotli
 			 * @param buffer буфер данных для декомпрессии
 			 * @param size   размер данных для декомпрессии
 			 * @return       результат декомпрессии
 			 */
 			const vector <char> decompressBrotli(const char * buffer, const size_t size) noexcept;
-			/**
-			 * compressBrotli Метод компрессии данных в Brotli
-			 * @param buffer буфер данных для компрессии
-			 * @param size   размер данных для компрессии
-			 * @param stop   флаг завершающего блока данных
-			 * @return       результат компрессии
-			 */
-			const vector <char> compressBrotli(const char * buffer, const size_t size, const bool stop = true) noexcept;
 		public:
 			/**
 			 * setAES Метод установки размера шифрования
@@ -237,11 +229,11 @@ namespace awh {
 			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
 			 */
-			Hash(const fmk_t * fmk, const log_t * log) noexcept;
+			Hash(const fmk_t * fmk, const log_t * log) noexcept : fmk(fmk), log(log) {}
 			/**
 			 * ~Hash Деструктор
 			 */
-			~Hash() noexcept;
+			~Hash() noexcept {}
 	} hash_t;
 };
 

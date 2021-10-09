@@ -67,6 +67,8 @@ namespace awh {
 			workCli_t worker;
 			// Метод выполняемого запроса
 			http_t::method_t method;
+			// Метод компрессии данных
+			http_t::compress_t compress;
 		private:
 			// Выполнять анбиндинг после завершения запроса
 			bool unbind = true;

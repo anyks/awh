@@ -775,6 +775,8 @@ void awh::WebSocketClient::start() noexcept {
 	this->freeze = false;
 	// Если адрес URL запроса передан
 	if(!this->worker.url.empty()){
+		// Устанавливаем метод сжатия
+		this->http->setCompress(this->compress);
 		// Если биндинг не запущен, выполняем запуск биндинга
 		if(!this->core->working())
 			// Выполняем запуск биндинга
@@ -924,8 +926,8 @@ void awh::WebSocketClient::setUserAgent(const string & userAgent) noexcept {
  * @param метод сжатия сообщений
  */
 void awh::WebSocketClient::setCompress(const http_t::compress_t compress) noexcept {
-	// Устанавливаем метод сжатия
-	this->http->setCompress(compress);
+	// Устанавливаем метод компрессии
+	this->compress = compress;
 }
 /**
  * setUser Метод установки параметров авторизации

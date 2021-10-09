@@ -486,6 +486,58 @@ const vector <char> awh::Hash::decompressGzip(const char * buffer, const size_t 
 	return result;
 }
 /**
+ * compressBrotli Метод компрессии данных в Brotli
+ * @param buffer буфер данных для компрессии
+ * @param size   размер данных для компрессии
+ * @return       результат компрессии
+ */
+const vector <char> awh::Hash::compressBrotli(const char * buffer, const size_t size) noexcept {
+	// Результирующая строка с данными
+	vector <char> result;
+	// Если буфер для сжатия передан
+	if((buffer != nullptr) && (size > 0)){
+		// Получаем размер бинарного буфера входящих данных
+		size_t sizeInput = size;
+		// Создаём временный буфер данных
+		vector <uint8_t> data(CHUNK_BUFFER_SIZE);
+		// Получаем бинарный буфер входящих данных
+		const uint8_t * nextInput = reinterpret_cast <const uint8_t *> (buffer);
+		// Инициализируем стейт энкодера Brotli
+		BrotliEncoderState * encoder = BrotliEncoderCreateInstance(nullptr, nullptr, nullptr);
+		// Выполняем сжатие данных
+		while(true){
+			// Если енкодер закончил работу, выходим
+			if(BrotliEncoderIsFinished(encoder)) break;
+			// Получаем размер буфера закодированных бинарных данных
+			size_t sizeOutput = data.size();
+			// Получаем буфер закодированных бинарных данных
+			uint8_t * nextOutput = data.data();
+			// Если сжатие данных закончено, то завершаем работу
+			if(!BrotliEncoderCompressStream(encoder, BROTLI_OPERATION_FINISH, &sizeInput, &nextInput, &sizeOutput, &nextOutput, nullptr)){
+				// Очищаем результат собранных данных
+				result.clear();
+				// Освобождаем память энкодера
+				BrotliEncoderDestroyInstance(encoder);
+				// Выходим из функции
+				return result;
+			}
+			// Получаем размер полученных данных
+			size_t size = (data.size() - sizeOutput);
+			// Если данные получены, формируем результирующий буфер
+			if(size > 0){
+				// Получаем буфер данных
+				const char * buffer = reinterpret_cast <const char *> (data.data());
+				// Формируем результирующий буфер бинарных данных
+				result.insert(result.end(), buffer, buffer + size);
+			}
+		}
+		// Освобождаем память энкодера
+		BrotliEncoderDestroyInstance(encoder);
+	}
+	// Выводим результат
+	return result;
+}
+/**
  * decompressBrotli Метод декомпрессии данных в Brotli
  * @param buffer буфер данных для декомпрессии
  * @param size   размер данных для декомпрессии
@@ -496,31 +548,32 @@ const vector <char> awh::Hash::decompressBrotli(const char * buffer, const size_
 	vector <char> result;
 	// Если буфер для сжатия передан
 	if((buffer != nullptr) && (size > 0)){
-		// Если произошла ошибка или декомпрессия закончена, выходим
-		if((this->resBrotli == BROTLI_DECODER_RESULT_ERROR) ||
-		(this->resBrotli == BROTLI_DECODER_RESULT_SUCCESS)) return result;
-		// Создаём временный буфер данных
-		vector <uint8_t> data(CHUNK_BUFFER_SIZE);
 		// Полный размер обработанных данных
 		size_t total = 0;
 		// Получаем размер бинарного буфера входящих данных
 		size_t sizeInput = size;
+		// Создаём временный буфер данных
+		vector <uint8_t> data(CHUNK_BUFFER_SIZE);
 		// Получаем бинарный буфер входящих данных
 		const uint8_t * nextInput = reinterpret_cast <const uint8_t *> (buffer);
 		// Активируем работу декодера
-		this->resBrotli = BROTLI_DECODER_RESULT_NEEDS_MORE_OUTPUT;
+		BrotliDecoderResult rbr = BROTLI_DECODER_RESULT_NEEDS_MORE_OUTPUT;
+		// Инициализируем стейт декодера Brotli
+		BrotliDecoderState * decoder = BrotliDecoderCreateInstance(nullptr, nullptr, nullptr);
 		// Если декодеру есть с чем работать
-		while(this->resBrotli == BROTLI_DECODER_RESULT_NEEDS_MORE_OUTPUT){
+		while(rbr == BROTLI_DECODER_RESULT_NEEDS_MORE_OUTPUT){
 			// Получаем размер буфера декодированных бинарных данных
 			size_t sizeOutput = data.size();
 			// Получаем буфер декодированных бинарных данных
 			char * nextOutput = reinterpret_cast <char *> (data.data());
 			// Выполняем декодирование бинарных данных
-			this->resBrotli = BrotliDecoderDecompressStream(this->decBrotli, &sizeInput, &nextInput, &sizeOutput, reinterpret_cast <uint8_t **> (&nextOutput), &total);
+			rbr = BrotliDecoderDecompressStream(decoder, &sizeInput, &nextInput, &sizeOutput, reinterpret_cast <uint8_t **> (&nextOutput), &total);
 			// Если декодирование данных не выполнено
-			if(this->resBrotli == BROTLI_DECODER_RESULT_ERROR){
+			if(rbr == BROTLI_DECODER_RESULT_ERROR){
 				// Выполняем очистку результата
 				result.clear();
+				// Освобождаем память декодера
+				BrotliDecoderDestroyInstance(decoder);
 				// Выводим результат
 				return result;
 			}
@@ -535,62 +588,11 @@ const vector <char> awh::Hash::decompressBrotli(const char * buffer, const size_
 			}
 		}
 		// Если декомпрессия данных выполнена не удачно
-		if((this->resBrotli != BROTLI_DECODER_RESULT_SUCCESS) && (this->resBrotli != BROTLI_DECODER_RESULT_NEEDS_MORE_INPUT))
+		if((rbr != BROTLI_DECODER_RESULT_SUCCESS) && (rbr != BROTLI_DECODER_RESULT_NEEDS_MORE_INPUT))
 			// Выполняем очистку результата
 			result.clear();
-	}
-	// Выводим результат
-	return result;
-}
-/**
- * compressBrotli Метод компрессии данных в Brotli
- * @param buffer буфер данных для компрессии
- * @param size   размер данных для компрессии
- * @param stop   флаг завершающего блока данных
- * @return       результат компрессии
- */
-const vector <char> awh::Hash::compressBrotli(const char * buffer, const size_t size, const bool stop) noexcept {
-	// Результирующая строка с данными
-	vector <char> result;
-	// Если буфер для сжатия передан
-	if((buffer != nullptr) && (size > 0)){
-		// Создаём временный буфер данных
-		vector <uint8_t> data(CHUNK_BUFFER_SIZE);
-		// Получаем размер бинарного буфера входящих данных
-		size_t sizeInput = size;
-		// Получаем бинарный буфер входящих данных
-		const uint8_t * nextInput = reinterpret_cast <const uint8_t *> (buffer);
-		// Получаем флаг операции
-		auto operation = (stop ? BROTLI_OPERATION_FINISH : BROTLI_OPERATION_PROCESS);
-		// Выполняем сжатие данных
-		while(true){
-			// Если передана последняя порция данных
-			if(stop){
-				// Если енкодер закончил работу, выходим
-				if(BrotliEncoderIsFinished(this->encBrotli)) break;
-			// Если данные все обработаны, выходим
-			} else if(!sizeInput) break;
-			// Получаем размер буфера закодированных бинарных данных
-			size_t sizeOutput = data.size();
-			// Получаем буфер закодированных бинарных данных
-			uint8_t * nextOutput = data.data();
-			// Если сжатие данных закончено, то завершаем работу
-			if(!BrotliEncoderCompressStream(this->encBrotli, operation, &sizeInput, &nextInput, &sizeOutput, &nextOutput, nullptr)){
-				// Очищаем результат собранных данных
-				result.clear();
-				// Выходим из функции
-				return result;
-			}
-			// Получаем размер полученных данных
-			size_t size = (data.size() - sizeOutput);
-			// Если данные получены, формируем результирующий буфер
-			if(size > 0){
-				// Получаем буфер данных
-				const char * buffer = reinterpret_cast <const char *> (data.data());
-				// Формируем результирующий буфер бинарных данных
-				result.insert(result.end(), buffer, buffer + size);
-			}
-		}
+		// Освобождаем память декодера
+		BrotliDecoderDestroyInstance(decoder);
 	}
 	// Выводим результат
 	return result;
@@ -634,32 +636,4 @@ void awh::Hash::setSalt(const string & salt) noexcept {
 void awh::Hash::setPassword(const string & password) noexcept {
 	// Если пароль передан
 	this->password = password;
-}
-/**
- * Hash Конструктор
- * @param fmk объект фреймворка
- * @param log объект для работы с логами
- */
-awh::Hash::Hash(const fmk_t * fmk, const log_t * log) noexcept : fmk(fmk), log(log), wbit(MAX_WBITS), roundsAES(5), aesSize(aes_t::AES128), salt(""), password("") {
-	try {
-		// Инициализируем стейт энкодера Brotli
-		this->encBrotli = BrotliEncoderCreateInstance(nullptr, nullptr, nullptr);
-		// Инициализируем стейт декодера Brotli
-		this->decBrotli = BrotliDecoderCreateInstance(nullptr, nullptr, nullptr);
-	// Если происходит ошибка то игнорируем её
-	} catch(const bad_alloc&) {
-		// Выводим сообщение об ошибке
-		log->print("%s", log_t::flag_t::CRITICAL, "memory could not be allocated");
-		// Выходим из приложения
-		exit(EXIT_FAILURE);
-	}
-}
-/**
- * ~Hash Деструктор
- */
-awh::Hash::~Hash() noexcept {
-	// Освобождаем память для стейта энкодера Brotli
-	if(this->encBrotli != nullptr) BrotliEncoderDestroyInstance(this->encBrotli);
-	// Освобождаем память для стейта декодера Brotli
-	if(this->decBrotli != nullptr) BrotliDecoderDestroyInstance(this->decBrotli);
 }

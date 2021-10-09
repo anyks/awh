@@ -764,6 +764,8 @@ const unordered_multimap <string, string> & awh::Rest::OPTIONS(const uri_t::url_
 void awh::Rest::REST(const uri_t::url_t & url, http_t::method_t method, vector <char> entity, unordered_multimap <string, string> headers) noexcept {
 	// Если параметры и метод запроса переданы
 	if(!url.empty() && (method != http_t::method_t::NONE) && (this->messageFn != nullptr)){
+		// Выполняем сброс предыдущего результата
+		this->res = res_t();
 		// Выполняем очистку воркера
 		this->worker.clear();
 		// Устанавливаем метод запроса
@@ -774,6 +776,8 @@ void awh::Rest::REST(const uri_t::url_t & url, http_t::method_t method, vector <
 		this->entity = move(entity);
 		// Запоминаем переданные заголовки
 		this->headers = move(headers);
+		// Устанавливаем метод сжатия
+		this->http->setCompress(this->compress);
 		// Если биндинг не запущен
 		if(!this->core->working())
 			// Выполняем запуск биндинга
@@ -902,8 +906,8 @@ void awh::Rest::setUserAgent(const string & userAgent) noexcept {
  * @param метод сжатия сообщений
  */
 void awh::Rest::setCompress(const http_t::compress_t compress) noexcept {
-	// Устанавливаем метод сжатия
-	this->http->setCompress(compress);
+	// Устанавливаем метод компрессии
+	this->compress = compress;
 }
 /**
  * setUser Метод установки параметров авторизации
@@ -962,7 +966,7 @@ void awh::Rest::setAuthTypeProxy(const auth_t::type_t type, const auth_t::alg_t 
  * @param fmk  объект фреймворка
  * @param log  объект для работы с логами
  */
-awh::Rest::Rest(const coreCli_t * core, const fmk_t * fmk, const log_t * log) noexcept : core(core), fmk(fmk), log(log), worker(fmk, log) {
+awh::Rest::Rest(const coreCli_t * core, const fmk_t * fmk, const log_t * log) noexcept : core(core), fmk(fmk), log(log), worker(fmk, log), compress(http_t::compress_t::NONE) {
 	try {
 		// Устанавливаем контекст сообщения
 		this->worker.ctx = this;
