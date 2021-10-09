@@ -134,6 +134,12 @@ namespace awh {
 			 */
 			const string createUrl(const url_t & url) const noexcept;
 			/**
+			 * createQuery Метод создания строки запроса из параметров
+			 * @param url параметры URL запроса
+			 * @return    URL запрос в виде строки
+			 */
+			const string createQuery(const url_t & url) const noexcept;
+			/**
 			 * createOrigin Метод создания заголовка [origin], для HTTP запроса
 			 * @param url параметры URL запроса
 			 * @return    заголовок [origin]

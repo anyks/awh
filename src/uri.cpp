@@ -252,10 +252,6 @@ const string awh::URI::createUrl(const url_t & url) const noexcept {
 		u_int port = 0;
 		// Хост URL запроса и параметры авторизации
 		string host = "", auth = "";
-		// Выполняем сборку пути запроса
-		const string & path = this->joinPath(url.path);
-		// Выполняем сборку параметров запроса
-		const string & params = this->joinParams(url.params);
 		// Если IP адрес существует
 		if(!url.ip.empty()){
 			// Определяем тип хоста
@@ -283,12 +279,34 @@ const string awh::URI::createUrl(const url_t & url) const noexcept {
 				default: port = url.port;
 			}
 		}
+		// Получаем строку HTTP запроса
+		const string & query = this->createQuery(url);
+		// Если порт не установлен, формируем URL строку запроса без порта
+		if(port == 0) result = this->fmk->format("%s://%s%s%s", url.schema.c_str(), auth.c_str(), host.c_str(), query.c_str());
+		// Если порт установлен, формируем URL строку запроса с указанием порта
+		else result = this->fmk->format("%s://%s%s:%u%s", url.schema.c_str(), auth.c_str(), host.c_str(), url.port, query.c_str());
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * createQuery Метод создания строки запроса из параметров
+ * @param url параметры URL запроса
+ * @return    URL запрос в виде строки
+ */
+const string awh::URI::createQuery(const url_t & url) const noexcept {
+	// Результат работы функции
+	string result = "";
+	// Если данные получены
+	if(!url.empty()){
+		// Выполняем сборку пути запроса
+		const string & path = this->joinPath(url.path);
+		// Выполняем сборку параметров запроса
+		const string & params = this->joinParams(url.params);
 		// Выполняем генерацию сигнатуры
 		const string & signature = (url.sign != nullptr ? this->fmk->format("&%s", url.sign(&url).c_str()) : "");
-		// Выполняем формирование URL адреса
-		if(port > 0) result = this->fmk->format("%s://%s%s:%u%s%s%s%s", url.schema.c_str(), auth.c_str(), host.c_str(), url.port, path.c_str(), params.c_str(), signature.c_str(), url.anchor.c_str());
 		// Иначе порт не устанавливаем
-		else result = this->fmk->format("%s://%s%s%s%s%s%s", url.schema.c_str(), auth.c_str(), host.c_str(), path.c_str(), params.c_str(), signature.c_str(), url.anchor.c_str());
+		result = this->fmk->format("%s%s%s%s", path.c_str(), params.c_str(), signature.c_str(), url.anchor.c_str());
 	}
 	// Выводим результат
 	return result;

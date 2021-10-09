@@ -1028,14 +1028,10 @@ vector <char> awh::Http::request(const uri_t::url_t & url, const method_t method
 	vector <char> result;
 	// Если параметры REST запроса переданы
 	if(!url.empty()){
-		// Получаем путь HTTP запроса
-		const string & path = this->uri->joinPath(url.path);
-		// Получаем параметры запроса
-		const string & params = this->uri->joinParams(url.params);
 		// Получаем хост запроса
 		const string & host = (!url.domain.empty() ? url.domain : url.ip);
 		// Если хост получен
-		if(!host.empty() && !path.empty()){
+		if(!host.empty()){
 			/**
 			 * Типы основных заголовков
 			 */
@@ -1063,7 +1059,7 @@ vector <char> awh::Http::request(const uri_t::url_t & url, const method_t method
 			// Если метод не CONNECT или URI не установлен
 			if((method != method_t::CONNECT) || this->query.uri.empty())
 				// Формируем HTTP запрос
-				this->query.uri = this->fmk->format("%s%s", path.c_str(), (!params.empty() ? params.c_str() : ""));
+				this->query.uri = this->uri->createQuery(url);
 			// Определяем метод запроса
 			switch((uint8_t) method){
 				// Если метод запроса указан как GET
@@ -1155,7 +1151,7 @@ vector <char> awh::Http::request(const uri_t::url_t & url, const method_t method
 			// Устанавливаем Host если не передан
 			if(!available[0] && !this->isBlack("Host"))
 				// Добавляем заголовок в запрос
-				request.append(this->fmk->format("Host: %s\r\n", (!url.domain.empty() ? url.domain : url.ip).c_str()));
+				request.append(this->fmk->format("Host: %s\r\n", host.c_str()));
 			// Устанавливаем Accept если не передан
 			if(!available[1] && (method != method_t::CONNECT) && !this->isBlack("Accept"))
 				// Добавляем заголовок в запрос
