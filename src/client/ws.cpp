@@ -1016,6 +1016,9 @@ void awh::WebSocketClient::setAuthTypeProxy(const auth_t::type_t type, const aut
  * @param log  объект для работы с логами
  */
 awh::WebSocketClient::WebSocketClient(const coreCli_t * core, const fmk_t * fmk, const log_t * log) noexcept : core(core), fmk(fmk), log(log), worker(fmk, log) {
+	/**
+	 * Выполняем отлов ошибок
+	 */
 	try {
 		// Устанавливаем контекст сообщения
 		this->worker.ctx = this;

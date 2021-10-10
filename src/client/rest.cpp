@@ -967,6 +967,9 @@ void awh::Rest::setAuthTypeProxy(const auth_t::type_t type, const auth_t::alg_t 
  * @param log  объект для работы с логами
  */
 awh::Rest::Rest(const coreCli_t * core, const fmk_t * fmk, const log_t * log) noexcept : core(core), fmk(fmk), log(log), worker(fmk, log), compress(http_t::compress_t::NONE) {
+	/**
+	 * Выполняем отлов ошибок
+	 */
 	try {
 		// Устанавливаем контекст сообщения
 		this->worker.ctx = this;

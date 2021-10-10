@@ -57,6 +57,9 @@ void awh::HttpServer::setAuthCallback(function <bool (const string &, const stri
  * @param uri объект работы с URI
  */
 awh::HttpServer::HttpServer(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcept : http_t(fmk, log, uri) {
+	/**
+	 * Выполняем отлов ошибок
+	 */
 	try {
 		// Создаём объект для работы с авторизацией
 		this->auth = new authSrv_t(fmk, log);

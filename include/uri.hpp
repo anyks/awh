@@ -194,6 +194,10 @@ namespace awh {
 			 * @param nwk объект методов для работы с сетью
 			 */
 			URI(const fmk_t * fmk, const network_t * nwk) noexcept : fmk(fmk), nwk(nwk) {}
+			/**
+			 * ~URI Деструктор
+			 */
+			~URI() noexcept {}
 	} uri_t;
 };
 

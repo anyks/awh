@@ -16,6 +16,9 @@
  * @param log объект для работы с логами
  */
 awh::Proxy::Proxy(const fmk_t * fmk, const log_t * log) noexcept : fmk(fmk), log(log), type(type_t::NONE) {
+	/**
+	 * Выполняем отлов ошибок
+	 */
 	try {
 		// Создаём объект для работы с сетью
 		this->nwk = new network_t(this->fmk);

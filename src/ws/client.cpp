@@ -197,6 +197,9 @@ void awh::WSClient::setAuthType(const auth_t::type_t type, const auth_t::alg_t a
  * @param uri объект работы с URI
  */
 awh::WSClient::WSClient(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcept : ws_t(fmk, log, uri) {
+	/**
+	 * Выполняем отлов ошибок
+	 */
 	try {
 		// Создаём объект для работы с авторизацией
 		this->auth = new authCli_t(fmk, log);

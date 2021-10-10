@@ -15,7 +15,9 @@
  * @return результат инициализации
  */
 bool awh::Hash::initAES() const {
-	// Экранируем возможность ошибки памяти
+	/**
+	 * Выполняем отлов ошибок
+	 */
 	try {
 		// Создаем тип шифрования
 		const EVP_CIPHER * cipher = EVP_enc_null();
@@ -125,7 +127,9 @@ const vector <char> awh::Hash::encrypt(const char * buffer, const size_t size) c
 		if(!this->password.empty()){
 			// Выполняем инициализацию
 			this->initAES();
-			// Экранируем возможность ошибки памяти
+			/**
+			 * Выполняем отлов ошибок
+			 */
 			try {
 				// Максимальный размер считываемых данных
 				int chunk = 0;
@@ -178,7 +182,9 @@ const vector <char> awh::Hash::decrypt(const char * buffer, const size_t size) c
 		if(!this->password.empty()){
 			// Выполняем инициализацию
 			this->initAES();
-			// Экранируем возможность ошибки памяти
+			/**
+			 * Выполняем отлов ошибок
+			 */
 			try {
 				// Максимальный размер считываемых данных
 				int chunk = 0;
@@ -380,6 +386,9 @@ const vector <char> awh::Hash::compressGzip(const char * buffer, const size_t si
 	vector <char> result;
 	// Если буфер для сжатия передан
 	if((buffer != nullptr) && (size > 0)){
+		/**
+		 * Выполняем отлов ошибок
+		 */
 		try {
 			// Результирующий размер данных
 			int ret = 0;
@@ -437,6 +446,9 @@ const vector <char> awh::Hash::decompressGzip(const char * buffer, const size_t 
 	vector <char> result;
 	// Если буфер для сжатия передан
 	if((buffer != nullptr) && (size > 0)){
+		/**
+		 * Выполняем отлов ошибок
+		 */
 		try {
 			// Результирующий размер данных
 			int ret = 0;

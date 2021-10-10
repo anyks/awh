@@ -137,6 +137,10 @@ namespace awh {
 			 * @param filename адрес файла для сохранения логов
 			 */
 			Log(const fmk_t * fmk, const string & filename = "") noexcept : fmk(fmk), logFile(filename) {}
+			/**
+			 * ~Log Деструктор
+			 */
+			~Log() noexcept {}
 	} log_t;
 };
 

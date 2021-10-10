@@ -127,7 +127,7 @@ void awh::DNS::callback(const int errcode, struct evutil_addrinfo * addr, void *
  * @param base   объект базы событий
  * @return       база DNS резолвера
  */
-struct evdns_base * awh::DNS::init(const string & host, const int family, struct event_base * base) const {
+struct evdns_base * awh::DNS::init(const string & host, const int family, struct event_base * base) const noexcept {
 	// Результат работы функции
 	struct evdns_base * result = nullptr;
 	// Если база событий передана
@@ -155,7 +155,9 @@ struct evdns_base * awh::DNS::init(const string & host, const int family, struct
 				// Выводим в лог сообщение
 				this->log->print("name server [%s] does not add", log_t::flag_t::CRITICAL, dns.c_str());
 		}
-		// Отлавливаем ошибку
+		/**
+		 * Выполняем отлов ошибок
+		 */
 		try {
 			// Создаем объект домен
 			domain_t * domainData = new domain_t;
@@ -260,7 +262,7 @@ void awh::DNS::replaceServers(const vector <string> & servers) noexcept {
  * @param family   тип интернет протокола IPv4 или IPv6
  * @param callback функция обратного вызова срабатывающая при получении данных
  */
-void awh::DNS::resolve(const string & host, const int family, function <void (const string &)> callback){
+void awh::DNS::resolve(const string & host, const int family, function <void (const string &)> callback) noexcept {
 	// Если домен передан
 	if(!host.empty() && (this->fmk != nullptr)){
 		// Результат работы регулярного выражения
@@ -277,7 +279,9 @@ void awh::DNS::resolve(const string & host, const int family, function <void (co
 			if(!ip.empty()) callback(ip);
 			// Если адрес не найден то запрашиваем его с резолвера
 			else {
-				// Отлавливаем ошибку
+				/**
+				 * Выполняем отлов ошибок
+				 */
 				try {
 					// Структура запроса
 					struct evutil_addrinfo hints;

@@ -513,7 +513,7 @@ namespace awh {
 			 * Network Конструктор
 			 * @param fmk объект фреймворка
 			 */
-			Network(const fmk_t * fmk) : fmk(fmk) {}
+			Network(const fmk_t * fmk) noexcept : fmk(fmk) {}
 	} network_t;
 };
 

@@ -189,6 +189,9 @@ void awh::WSServer::setAuthCallback(function <bool (const string &, const string
  * @param uri объект работы с URI
  */
 awh::WSServer::WSServer(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcept : ws_t(fmk, log, uri) {
+	/**
+	 * Выполняем отлов ошибок
+	 */
 	try {
 		// Создаём объект для работы с авторизацией
 		this->auth = new authSrv_t(fmk, log);

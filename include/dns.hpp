@@ -110,7 +110,7 @@ namespace awh {
 			 * @param base   объект базы событий
 			 * @return       база DNS резолвера
 			 */
-			struct evdns_base * init(const string & host, const int family, struct event_base * base) const;
+			struct evdns_base * init(const string & host, const int family, struct event_base * base) const noexcept;
 		public:
 			/**
 			 * setBase Метод установки базы событий
@@ -138,7 +138,7 @@ namespace awh {
 			 * @param family   тип интернет протокола AF_INET, AF_INET6 или AF_UNSPEC
 			 * @param callback функция обратного вызова срабатывающая при получении данных
 			 */
-			void resolve(const string & host, const int family, function <void (const string &)> callback);
+			void resolve(const string & host, const int family, function <void (const string &)> callback) noexcept;
 		public:
 			/**
 			 * DNS Конструктор

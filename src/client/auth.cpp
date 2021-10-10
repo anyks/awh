@@ -124,7 +124,9 @@ const string awh::AuthClient::getHeader(const bool mode) noexcept {
 	string result = "";
 	// Если фреймворк установлен
 	if(this->fmk != nullptr){
-		// Выполняем перехват ошибки
+		/**
+		 * Выполняем отлов ошибок
+		 */
 		try {
 			// Если логин и пароль установлены
 			if(!this->user.empty() && !this->pass.empty()){

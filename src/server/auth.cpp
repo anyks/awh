@@ -225,7 +225,9 @@ const string awh::AuthServer::getHeader(const bool mode) noexcept {
 	string result = "";
 	// Если фреймворк установлен
 	if(this->fmk != nullptr){
-		// Выполняем перехват ошибки
+		/**
+		 * Выполняем отлов ошибок
+		 */
 		try {
 			// Если тип авторизации Digest
 			if(this->type == type_t::DIGEST){

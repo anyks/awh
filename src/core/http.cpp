@@ -1353,6 +1353,9 @@ void awh::Http::setCrypt(const string & pass, const string & salt, const hash_t:
  * @param uri объект работы с URI
  */
 awh::Http::Http(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcept : fmk(fmk), log(log), uri(uri) {
+	/**
+	 * Выполняем отлов ошибок
+	 */
 	try {
 		// Создаём объект для работы с сжатым контентом
 		this->hash = new hash_t(this->fmk, this->log);

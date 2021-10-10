@@ -196,7 +196,9 @@ awh::mess_t awh::Frame::message(const vector <char> & buffer) const noexcept {
 		result = ntohs(result.code);
 		// Если коды ошибок соответствуют
 		if((result.code > 0) && (result.code <= 4999)){
-			// Выполняем перехват ошибки
+			/**
+			 * Выполняем отлов ошибок
+			 */
 			try {
 				// Если текст сообщения существует
 				if(buffer.size() > sizeof(result.code))

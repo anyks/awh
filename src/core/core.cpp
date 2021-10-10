@@ -284,6 +284,9 @@ void awh::Core::bind(Core * core) noexcept {
 		core->locker = (core->base != nullptr);
 		// Если блокировка базы событий выполнена
 		if(core->locker){
+			/**
+			 * Выполняем отлов ошибок
+			 */
 			try {
 				// Резолвер IPv4, создаём резолвер
 				if(core->dns4 != nullptr) core->dns4 = new dns_t(core->fmk, core->log, core->nwk, core->base, core->net.v4.second);
@@ -366,6 +369,9 @@ void awh::Core::stop() noexcept {
 void awh::Core::start() noexcept {
 	// Если система ещё не запущена
 	if(!this->mode && !this->locker){
+		/**
+		 * Выполняем отлов ошибок
+		 */
 		try {
 			// Разрешаем работу WebSocket
 			this->mode = true;
@@ -708,6 +714,9 @@ void awh::Core::setNet(const vector <string> & ip, const vector <string> & ns, c
  * @param log объект для работы с логами
  */
 awh::Core::Core(const fmk_t * fmk, const log_t * log) noexcept : fmk(fmk), log(log) {
+	/**
+	 * Выполняем отлов ошибок
+	 */
 	try {
 		// Создаём объект для работы с сетью
 		this->nwk = new network_t(this->fmk);

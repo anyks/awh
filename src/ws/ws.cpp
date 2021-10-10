@@ -17,7 +17,9 @@
 const string awh::WS::getKey() const noexcept {
 	// Результат работы функции
 	string result = "";
-	// Выполняем перехват ошибки
+	/**
+	 * Выполняем отлов ошибок
+	 */
 	try {
 		// Создаём контейнер
 		string nonce = "";

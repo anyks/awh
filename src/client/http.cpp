@@ -42,6 +42,9 @@ void awh::HttpClient::setAuthType(const auth_t::type_t type, const auth_t::alg_t
  * @param uri объект работы с URI
  */
 awh::HttpClient::HttpClient(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcept : http_t(fmk, log, uri) {
+	/**
+	 * Выполняем отлов ошибок
+	 */
 	try {
 		// Создаём объект для работы с авторизацией
 		this->auth = new authCli_t(fmk, log);

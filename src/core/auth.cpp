@@ -38,7 +38,9 @@ const string awh::Authorization::response(const string & user, const string & pa
 	string result = "";
 	// Если данные пользователя переданы
 	if(!user.empty() && !pass.empty() && !digest.nonce.empty() && !digest.cnonce.empty() && (this->fmk != nullptr)){
-		// Выполняем перехват ошибки
+		/**
+		 * Выполняем отлов ошибок
+		 */
 		try {
 			// Определяем алгоритм шифрования
 			switch((u_short) this->digest.alg){
