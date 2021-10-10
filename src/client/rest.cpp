@@ -198,13 +198,15 @@ void awh::Rest::readCallback(const char * buffer, const size_t size, const size_
 					}
 					// Устанавливаем код ответа
 					web->res.code = 403;
-					// Устанавливаем сообщение ответа
-					web->res.message = web->http->getMessage(web->res.code);
 				} break;
 				// Если запрос выполнен удачно
 				case (uint8_t) http_t::stath_t::GOOD: web->res.ok = true;
 				// Если запрос неудачный
 				case (uint8_t) http_t::stath_t::FAULT: {
+					// Запрещаем бесконечный редирект при запросе авторизации
+					if((web->res.code == 401) || (web->res.code == 407))
+						// Устанавливаем код ответа
+						web->res.code = 403;
 					// Получаем тело запроса
 					const auto & entity = web->http->getBody();
 					// Устанавливаем заголовки ответа
@@ -301,8 +303,6 @@ void awh::Rest::readProxyCallback(const char * buffer, const size_t size, const 
 							}
 							// Устанавливаем код ответа
 							web->res.code = 403;
-							// Устанавливаем сообщение ответа
-							web->res.message = web->worker.proxy.http->getMessage(web->res.code);
 						} break;
 						// Если запрос выполнен удачно
 						case (uint8_t) http_t::stath_t::GOOD: {
@@ -315,6 +315,10 @@ void awh::Rest::readProxyCallback(const char * buffer, const size_t size, const 
 						} break;
 						// Если запрос неудачный
 						case (uint8_t) http_t::stath_t::FAULT: {
+							// Запрещаем бесконечный редирект при запросе авторизации
+							if((web->res.code == 401) || (web->res.code == 407))
+								// Устанавливаем код ответа
+								web->res.code = 403;
 							// Получаем тело запроса
 							const auto & entity = web->worker.proxy.http->getBody();
 							// Устанавливаем заголовки ответа

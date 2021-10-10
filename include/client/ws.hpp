@@ -77,6 +77,9 @@ namespace awh {
 			// Флаги работы с сжатыми данными
 			http_t::compress_t compress = http_t::compress_t::NONE;
 		private:
+			// Список контекстов передаваемых объектов
+			vector <void *> ctx = {nullptr, nullptr, nullptr, nullptr};
+		private:
 			// Создаём объект для работы с HTTP
 			wsc_t * http = nullptr;
 			// Создаём объект для компрессии-декомпрессии данных
@@ -96,13 +99,13 @@ namespace awh {
 			const coreCli_t * core = nullptr;
 		private:
 			// Функция обратного вызова, при запуске или остановки подключения к серверу
-			function <void (const bool, WebSocketClient *)> openStopFn = nullptr;
+			function <void (const bool, WebSocketClient *, void *)> openStopFn = nullptr;
 			// Функция обратного вызова, при получении ответа от сервера
-			function <void (const string &, WebSocketClient *)> pongFn = nullptr;
+			function <void (const string &, WebSocketClient *, void *)> pongFn = nullptr;
 			// Функция обратного вызова, при получении ошибки работы клиента
-			function <void (const u_short, const string &, WebSocketClient *)> errorFn = nullptr;
+			function <void (const u_short, const string &, WebSocketClient *, void *)> errorFn = nullptr;
 			// Функция обратного вызова, при получении сообщения с сервера
-			function <void (const vector <char> &, const bool, WebSocketClient *)> messageFn = nullptr;
+			function <void (const vector <char> &, const bool, WebSocketClient *, void *)> messageFn = nullptr;
 		private:
 			/**
 			 * chunking Метод обработки получения чанков
@@ -190,24 +193,28 @@ namespace awh {
 		public:
 			/**
 			 * on Метод установки функции обратного вызова на событие запуска или остановки подключения
+			 * @param ctx      контекст для вывода в сообщении
 			 * @param callback функция обратного вызова
 			 */
-			void on(function <void (const bool, WebSocketClient *)> callback) noexcept;
+			void on(void * ctx, function <void (const bool, WebSocketClient *, void *)> callback) noexcept;
 			/**
 			 * on Метод установки функции обратного вызова на событие получения PONG
+			 * @param ctx      контекст для вывода в сообщении
 			 * @param callback функция обратного вызова
 			 */
-			void on(function <void (const string &, WebSocketClient *)> callback) noexcept;
+			void on(void * ctx, function <void (const string &, WebSocketClient *, void *)> callback) noexcept;
 			/**
 			 * on Метод установки функции обратного вызова на событие получения ошибок
+			 * @param ctx      контекст для вывода в сообщении
 			 * @param callback функция обратного вызова
 			 */
-			void on(function <void (const u_short, const string &, WebSocketClient *)> callback) noexcept;
+			void on(void * ctx, function <void (const u_short, const string &, WebSocketClient *, void *)> callback) noexcept;
 			/**
 			 * on Метод установки функции обратного вызова на событие получения сообщений
+			 * @param ctx      контекст для вывода в сообщении
 			 * @param callback функция обратного вызова
 			 */
-			void on(function <void (const vector <char> &, const bool, WebSocketClient *)> callback) noexcept;
+			void on(void * ctx, function <void (const vector <char> &, const bool, WebSocketClient *, void *)> callback) noexcept;
 		public:
 			/**
 			 * send Метод отправки сообщения на сервер

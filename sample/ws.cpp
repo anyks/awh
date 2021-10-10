@@ -75,9 +75,11 @@ int main(int argc, char * argv[]) noexcept {
 		// cout << " ============= " << message << endl;
 	});
 	// Подписываемся на событие запуска и остановки сервера
-	ws.on([](const bool mode, wsCli_t * ws){
-		// Выводим сообщение
-		cout << " +++++++++++++ " << (mode ? "Start" : "Stop") << " server" << endl;
+	ws.on(&log, [](const bool mode, wsCli_t * ws, void * ctx){
+		// Получаем объект логирования
+		log_t * log = reinterpret_cast <log_t *> (ctx);
+		// Выводим информацию в лог
+		log->print("%s server", log_t::flag_t::INFO, (mode ? "Start" : "Stop"));
 		// Если подключение произошло удачно
 		if(mode){
 			// Создаём объект JSON
@@ -97,16 +99,21 @@ int main(int argc, char * argv[]) noexcept {
 		}
 	});
 	// Подписываемся на событие получения ошибки работы клиента
-	ws.on([](const u_short code, const string & mess, wsCli_t * ws){
-		// Выводим сообщение об ошибке
-		cout << " +++++++++++++ " << code << " === " << mess << endl;
+	ws.on(&log, [](const u_short code, const string & mess, wsCli_t * ws, void * ctx){
+		// Получаем объект логирования
+		log_t * log = reinterpret_cast <log_t *> (ctx);
+		// Выводим информацию в лог
+		log->print("%s [%u]", log_t::flag_t::CRITICAL, mess.c_str(), code);
 	});
 	// Подписываемся на событие ответа сервера PONG
-	ws.on([](const string & mess, wsCli_t * ws){
-		cout << " +++++++++++++ " << "PONG" << " === " << mess << endl;
+	ws.on(&log, [](const string & mess, wsCli_t * ws, void * ctx){
+		// Получаем объект логирования
+		log_t * log = reinterpret_cast <log_t *> (ctx);
+		// Выводим информацию в лог
+		log->print("PONG %s", log_t::flag_t::INFO, mess.c_str());
 	});
 	// Подписываемся на событие получения сообщения с сервера
-	ws.on([](const vector <char> & buffer, const bool utf8, wsCli_t * ws){
+	ws.on(nullptr, [](const vector <char> & buffer, const bool utf8, wsCli_t * ws, void * ctx){
 		// Если данные пришли в виде текста, выводим
 		if(utf8){
 			// Создаём объект JSON

@@ -184,7 +184,7 @@ void awh::WebSocketClient::readCallback(const char * buffer, const size_t size, 
 							// Выводим в лог сообщение
 							ws->log->print("%s", log_t::flag_t::INFO, "authorization on the WebSocket server was successful");
 							// Если функция обратного вызова установлена, выполняем
-							if(ws->openStopFn != nullptr) ws->openStopFn(true, ws);
+							if(ws->openStopFn != nullptr) ws->openStopFn(true, ws, ws->ctx.at(0));
 							// Устанавливаем таймер на контроль подключения
 							ws->timerPing.setInterval([ws]{
 								// Выполняем пинг сервера
@@ -210,6 +210,13 @@ void awh::WebSocketClient::readCallback(const char * buffer, const size_t size, 
 						ws->code = query.code;
 						// Создаём сообщение
 						mess_t mess(ws->code, query.message);
+						// Запрещаем бесконечный редирект при запросе авторизации
+						if((ws->code == 401) || (ws->code == 407)){
+							// Устанавливаем код ответа
+							ws->code = 403;
+							// Присваиваем сообщению, новое значение кода
+							mess = ws->code;
+						}
 						// Выводим сообщение
 						ws->error(mess);
 					} break;
@@ -286,7 +293,7 @@ void awh::WebSocketClient::readCallback(const char * buffer, const size_t size, 
 						// Если ответом является PONG
 						case (uint8_t) frame_t::opcode_t::PONG:
 							// Если функция обратного вызова обработки PONG существует
-							if(ws->pongFn != nullptr) ws->pongFn(string(data.begin(), data.end()), ws);
+							if(ws->pongFn != nullptr) ws->pongFn(string(data.begin(), data.end()), ws, ws->ctx.at(1));
 						break;
 						// Если ответом является TEXT
 						case (uint8_t) frame_t::opcode_t::TEXT:
@@ -434,8 +441,6 @@ void awh::WebSocketClient::readProxyCallback(const char * buffer, const size_t s
 							ws->code = 403;
 							// Присваиваем сообщению, новое значение кода
 							mess = ws->code;
-							// Устанавливаем сообщение ответа
-							mess = ws->worker.proxy.http->getMessage(ws->code);
 						} break;
 						// Если запрос выполнен удачно
 						case (uint8_t) http_t::stath_t::GOOD: {
@@ -445,6 +450,16 @@ void awh::WebSocketClient::readProxyCallback(const char * buffer, const size_t s
 							reinterpret_cast <coreCli_t *> (core)->switchProxy(aid);
 							// Завершаем работу
 							return;
+						} break;
+						// Если запрос неудачный
+						case (uint8_t) http_t::stath_t::FAULT: {
+							// Запрещаем бесконечный редирект при запросе авторизации
+							if((ws->code == 401) || (ws->code == 407)){
+								// Устанавливаем код ответа
+								ws->code = 403;
+								// Присваиваем сообщению, новое значение кода
+								mess = ws->code;
+							}
 						} break;
 					}
 					// Выводим сообщение
@@ -474,7 +489,7 @@ void awh::WebSocketClient::error(const mess_t & message) const noexcept {
 		// Иначе выводим сообщение в упрощёном виде
 		else this->log->print("%s [%u]", log_t::flag_t::WARNING, message.text.c_str(), message.code);
 		// Если функция обратного вызова установлена, выводим полученное сообщение
-		if(this->errorFn != nullptr) this->errorFn(message.code, message.text, const_cast <WebSocketClient *> (this));
+		if(this->errorFn != nullptr) this->errorFn(message.code, message.text, const_cast <WebSocketClient *> (this), this->ctx.at(2));
 	}
 }
 /**
@@ -518,11 +533,11 @@ void awh::WebSocketClient::extraction(const vector <char> & buffer, const bool u
 					// Выполняем шифрование переданных данных
 					const auto & res = this->hash->decrypt(data.data(), data.size());
 					// Отправляем полученный результат
-					if(!res.empty()) this->messageFn(res, utf8, const_cast <WebSocketClient *> (this));
+					if(!res.empty()) this->messageFn(res, utf8, const_cast <WebSocketClient *> (this), this->ctx.at(3));
 					// Иначе выводим сообщение так - как оно пришло
-					else this->messageFn(data, utf8, const_cast <WebSocketClient *> (this));
+					else this->messageFn(data, utf8, const_cast <WebSocketClient *> (this), this->ctx.at(3));
 				// Отправляем полученный результат
-				} else this->messageFn(data, utf8, const_cast <WebSocketClient *> (this));
+				} else this->messageFn(data, utf8, const_cast <WebSocketClient *> (this), this->ctx.at(3));
 			// Выводим сообщение об ошибке
 			} else {
 				// Создаём сообщение
@@ -530,7 +545,7 @@ void awh::WebSocketClient::extraction(const vector <char> & buffer, const bool u
 				// Выводим сообщение
 				this->error(mess);
 				// Иначе выводим сообщение так - как оно пришло
-				this->messageFn(buffer, utf8, const_cast <WebSocketClient *> (this));
+				this->messageFn(buffer, utf8, const_cast <WebSocketClient *> (this), this->ctx.at(3));
 			}
 		// Если функция обратного вызова установлена, выводим полученное сообщение
 		} else {
@@ -539,11 +554,11 @@ void awh::WebSocketClient::extraction(const vector <char> & buffer, const bool u
 				// Выполняем шифрование переданных данных
 				const auto & res = this->hash->decrypt(buffer.data(), buffer.size());
 				// Отправляем полученный результат
-				if(!res.empty()) this->messageFn(res, utf8, const_cast <WebSocketClient *> (this));
+				if(!res.empty()) this->messageFn(res, utf8, const_cast <WebSocketClient *> (this), this->ctx.at(3));
 				// Иначе выводим сообщение так - как оно пришло
-				else this->messageFn(buffer, utf8, const_cast <WebSocketClient *> (this));
+				else this->messageFn(buffer, utf8, const_cast <WebSocketClient *> (this), this->ctx.at(3));
 			// Отправляем полученный результат
-			} else this->messageFn(buffer, utf8, const_cast <WebSocketClient *> (this));
+			} else this->messageFn(buffer, utf8, const_cast <WebSocketClient *> (this), this->ctx.at(3));
 		}
 	}
 }
@@ -597,33 +612,45 @@ void awh::WebSocketClient::init(const string & url, const http_t::compress_t com
 }
 /**
  * on Метод установки функции обратного вызова на событие запуска или остановки подключения
+ * @param ctx      контекст для вывода в сообщении
  * @param callback функция обратного вызова
  */
-void awh::WebSocketClient::on(function <void (const bool, WebSocketClient *)> callback) noexcept {
+void awh::WebSocketClient::on(void * ctx, function <void (const bool, WebSocketClient *, void *)> callback) noexcept {
+	// Устанавливаем контекст передаваемого объекта
+	this->ctx.at(0) = ctx;
 	// Устанавливаем функцию запуска и остановки
 	this->openStopFn = callback;
 }
 /**
  * on Метод установки функции обратного вызова на событие получения PONG
+ * @param ctx      контекст для вывода в сообщении
  * @param callback функция обратного вызова
  */
-void awh::WebSocketClient::on(function <void (const string &, WebSocketClient *)> callback) noexcept {
+void awh::WebSocketClient::on(void * ctx, function <void (const string &, WebSocketClient *, void *)> callback) noexcept {
+	// Устанавливаем контекст передаваемого объекта
+	this->ctx.at(1) = ctx;
 	// Устанавливаем функцию получения сообщений PONG
 	this->pongFn = callback;
 }
 /**
  * on Метод установки функции обратного вызова на событие получения ошибок
+ * @param ctx      контекст для вывода в сообщении
  * @param callback функция обратного вызова
  */
-void awh::WebSocketClient::on(function <void (const u_short, const string &, WebSocketClient *)> callback) noexcept {
+void awh::WebSocketClient::on(void * ctx, function <void (const u_short, const string &, WebSocketClient *, void *)> callback) noexcept {
+	// Устанавливаем контекст передаваемого объекта
+	this->ctx.at(2) = ctx;
 	// Устанавливаем функцию получения ошибок
 	this->errorFn = callback;
 }
 /**
  * on Метод установки функции обратного вызова на событие получения сообщений
+ * @param ctx      контекст для вывода в сообщении
  * @param callback функция обратного вызова
  */
-void awh::WebSocketClient::on(function <void (const vector <char> &, const bool, WebSocketClient *)> callback) noexcept {
+void awh::WebSocketClient::on(void * ctx, function <void (const vector <char> &, const bool, WebSocketClient *, void *)> callback) noexcept {
+	// Устанавливаем контекст передаваемого объекта
+	this->ctx.at(3) = ctx;
 	// Устанавливаем функцию получения сообщений с сервера
 	this->messageFn = callback;
 }
@@ -753,7 +780,7 @@ void awh::WebSocketClient::stop() noexcept {
 		// Если завершать работу запрещено, просто отключаемся
 		else ((core_t *) const_cast <coreCli_t *> (this->core))->close(this->aid);
 		// Если функция обратного вызова установлена, выполняем
-		if(this->openStopFn != nullptr) this->openStopFn(false, this);
+		if(this->openStopFn != nullptr) this->openStopFn(false, this, this->ctx.at(0));
 	}
 }
 /**
@@ -767,10 +794,8 @@ void awh::WebSocketClient::pause() noexcept {
  * start Метод запуска клиента
  */
 void awh::WebSocketClient::start() noexcept {
-	// Снимаем с паузы клиент
-	this->freeze = false;
 	// Если адрес URL запроса передан
-	if(!this->worker.url.empty()){
+	if(!this->freeze && !this->worker.url.empty()){
 		// Устанавливаем метод сжатия
 		this->http->setCompress(this->compress);
 		// Если биндинг не запущен, выполняем запуск биндинга
@@ -780,6 +805,8 @@ void awh::WebSocketClient::start() noexcept {
 		// Выполняем запрос на сервер
 		else const_cast <coreCli_t *> (this->core)->open(this->worker.wid);
 	}
+	// Снимаем с паузы клиент
+	this->freeze = false;
 }
 /**
  * getSub Метод получения выбранного сабпротокола
