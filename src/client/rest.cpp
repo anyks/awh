@@ -832,12 +832,14 @@ void awh::Rest::setBytesDetect(const worker_t::mark_t read, const worker_t::mark
  * @param flag флаг модуля для установки
  */
 void awh::Rest::setMode(const u_short flag) noexcept {
-	// Устанавливаем флаг анбиндинга
+	// Устанавливаем флаг анбиндинга ядра сетевого модуля
 	this->unbind = !(flag & (uint8_t) flag_t::NOTSTOP);
 	// Устанавливаем флаг ожидания входящих сообщений
 	this->worker.wait = (flag & (uint8_t) flag_t::WAITMESS);
 	// Устанавливаем флаг поддержания автоматического подключения
 	this->worker.alive = (flag & (uint8_t) flag_t::KEEPALIVE);
+	// Устанавливаем флаг запрещающий вывод информационных сообщений
+	const_cast <coreCli_t *> (this->core)->setNoInfo(flag & (uint8_t) flag_t::NOINFO);
 	// Выполняем установку флага проверки домена
 	const_cast <coreCli_t *> (this->core)->setVerifySSL(flag & (uint8_t) flag_t::VERIFYSSL);
 }

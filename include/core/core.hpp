@@ -144,6 +144,8 @@ namespace awh {
 			bool mode = false;
 			// Флаг блокировку инициализации базы событий
 			bool locker = false;
+			// Флаг запрета вывода информационных сообщений
+			bool noinfo = false;
 			// Флаг инициализации WinSock
 			mutable bool winSock = false;
 		protected:
@@ -310,6 +312,11 @@ namespace awh {
 			 */
 			void setMark(const method_t method, const size_t min, const size_t max, const size_t aid) noexcept;
 		public:
+			/**
+			 * setNoInfo Метод установки флага запрета вывода информационных сообщений
+			 * @param mode флаг запрета вывода информационных сообщений
+			 */
+			void setNoInfo(const bool mode) noexcept;
 			/**
 			 * setVerifySSL Метод разрешающий или запрещающий, выполнять проверку соответствия, сертификата домену
 			 * @param mode флаг состояния разрешения проверки

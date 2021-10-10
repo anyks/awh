@@ -182,7 +182,7 @@ void awh::WebSocketClient::readCallback(const char * buffer, const size_t size, 
 							// Получаем поддерживаемый метод компрессии
 							ws->compress = ws->http->getCompress();
 							// Выводим в лог сообщение
-							ws->log->print("%s", log_t::flag_t::INFO, "authorization on the WebSocket server was successful");
+							if(!ws->noinfo) ws->log->print("%s", log_t::flag_t::INFO, "authorization on the WebSocket server was successful");
 							// Если функция обратного вызова установлена, выполняем
 							if(ws->openStopFn != nullptr) ws->openStopFn(true, ws, ws->ctx.at(0));
 							// Устанавливаем таймер на контроль подключения
@@ -867,12 +867,16 @@ void awh::WebSocketClient::setBytesDetect(const worker_t::mark_t read, const wor
  * @param flag флаг модуля для установки
  */
 void awh::WebSocketClient::setMode(const u_short flag) noexcept {
-	// Устанавливаем флаг анбиндинга
+	// Устанавливаем флаг запрещающий вывод информационных сообщений
+	this->noinfo = (flag & (uint8_t) flag_t::NOINFO);
+	// Устанавливаем флаг анбиндинга ядра сетевого модуля
 	this->unbind = !(flag & (uint8_t) flag_t::NOTSTOP);
 	// Устанавливаем флаг ожидания входящих сообщений
 	this->worker.wait = (flag & (uint8_t) flag_t::WAITMESS);
 	// Устанавливаем флаг поддержания автоматического подключения
 	this->worker.alive = (flag & (uint8_t) flag_t::KEEPALIVE);
+	// Устанавливаем флаг запрещающий вывод информационных сообщений
+	const_cast <coreCli_t *> (this->core)->setNoInfo(flag & (uint8_t) flag_t::NOINFO);
 	// Выполняем установку флага проверки домена
 	const_cast <coreCli_t *> (this->core)->setVerifySSL(flag & (uint8_t) flag_t::VERIFYSSL);
 }

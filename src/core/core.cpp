@@ -390,7 +390,7 @@ void awh::Core::start() noexcept {
 			// Создаём событие таймаута на активацию базы событий
 			event_add(&this->timeout, &this->basetv);
 			// Выводим в консоль информацию
-			this->log->print("[+] start service: pid = %u", log_t::flag_t::INFO, getpid());
+			if(!this->noinfo) this->log->print("[+] start service: pid = %u", log_t::flag_t::INFO, getpid());
 			// Запускаем работу базы событий
 			event_base_loop(this->base, EVLOOP_NO_EXIT_ON_EMPTY);
 			// Удаляем dns IPv4 резолвер
@@ -408,7 +408,7 @@ void awh::Core::start() noexcept {
 			// Если функция обратного вызова установлена, выполняем
 			if(this->callbackFn != nullptr) this->callbackFn(false, this, this->ctx);
 			// Выводим в консоль информацию
-			this->log->print("[-] stop service: pid = %u", log_t::flag_t::INFO, getpid());
+			if(!this->noinfo) this->log->print("[-] stop service: pid = %u", log_t::flag_t::INFO, getpid());
 		// Если происходит ошибка то игнорируем её
 		} catch(const bad_alloc&) {
 			// Выводим сообщение об ошибке
@@ -526,7 +526,7 @@ void awh::Core::close(const size_t aid) noexcept {
 		// Удаляем адъютанта из списка подключений
 		this->adjutants.erase(aid);
 		// Выводим сообщение об ошибке
-		this->log->print("%s", log_t::flag_t::INFO, "disconnected from the server");
+		if(!this->noinfo) this->log->print("%s", log_t::flag_t::INFO, "disconnected from the server");
 		// Выводим функцию обратного вызова
 		if(wrk->closeFn != nullptr) wrk->closeFn(wrk->wid, this, wrk->ctx);
 	}
@@ -655,6 +655,14 @@ void awh::Core::setMark(const method_t method, const size_t min, const size_t ma
 			} break;
 		}
 	}
+}
+/**
+ * setNoInfo Метод установки флага запрета вывода информационных сообщений
+ * @param mode флаг запрета вывода информационных сообщений
+ */
+void awh::Core::setNoInfo(const bool mode) noexcept {
+	// Устанавливаем флаг запрета вывода информационных сообщений
+	this->noinfo = mode;
 }
 /**
  * setVerifySSL Метод разрешающий или запрещающий, выполнять проверку соответствия, сертификата домену

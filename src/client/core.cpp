@@ -113,7 +113,7 @@ void awh::CoreClient::event(struct bufferevent * bev, const short events, void *
 				// Сбрасываем количество попыток подключений
 				adj->attempt = 0;
 				// Выводим в лог сообщение
-				adj->log->print("connect client to server [%s:%d]", log_t::flag_t::INFO, host.c_str(), url.port);
+				if(!wrk->core->noinfo) adj->log->print("connect client to server [%s:%d]", log_t::flag_t::INFO, host.c_str(), url.port);
 				// Если подключение производится через, прокси-сервер
 				if(wrk->isProxy()){
 					// Выполняем функцию обратного вызова для прокси-сервера
@@ -235,7 +235,7 @@ bool awh::CoreClient::connect(const size_t wid) noexcept {
 						// Если все попытки исчерпаны
 						} else {
 							// Выводим сообщение об ошибке
-							this->log->print("%s", log_t::flag_t::INFO, "disconnected from the server");
+							if(!wrk->core->noinfo) this->log->print("%s", log_t::flag_t::INFO, "disconnected from the server");
 							// Выводим функцию обратного вызова
 							if(wrk->closeFn != nullptr) wrk->closeFn(wrk->wid, this, wrk->ctx);
 							// Выходим из функции
@@ -243,7 +243,7 @@ bool awh::CoreClient::connect(const size_t wid) noexcept {
 						}
 					}
 					// Выводим в лог сообщение
-					this->log->print("create good connect to host = %s [%s:%d], socket = %d", log_t::flag_t::INFO, url.domain.c_str(), url.ip.c_str(), url.port, socket.fd);
+					if(!wrk->core->noinfo) this->log->print("create good connect to host = %s [%s:%d], socket = %d", log_t::flag_t::INFO, url.domain.c_str(), url.ip.c_str(), url.port, socket.fd);
 					// Сообщаем, что все удачно
 					return true;
 				// Выводим в лог сообщение
@@ -260,7 +260,7 @@ bool awh::CoreClient::connect(const size_t wid) noexcept {
 			// Если все попытки исчерпаны
 			} else {
 				// Выводим сообщение об ошибке
-				this->log->print("%s", log_t::flag_t::INFO, "disconnected from the server");
+				if(!wrk->core->noinfo) this->log->print("%s", log_t::flag_t::INFO, "disconnected from the server");
 				// Выводим функцию обратного вызова
 				if(wrk->closeFn != nullptr) wrk->closeFn(wrk->wid, this, wrk->ctx);
 			}
@@ -426,7 +426,7 @@ void awh::CoreClient::close(const size_t aid) noexcept {
 		// Если автоматическое подключение выполнять не нужно
 		} else {
 			// Выводим сообщение об ошибке
-			this->log->print("%s", log_t::flag_t::INFO, "disconnected from the server");
+			if(!wrk->core->noinfo) this->log->print("%s", log_t::flag_t::INFO, "disconnected from the server");
 			// Выводим функцию обратного вызова
 			if(wrk->closeFn != nullptr) wrk->closeFn(wrk->wid, this, wrk->ctx);
 		}
