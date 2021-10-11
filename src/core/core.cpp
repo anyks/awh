@@ -288,10 +288,14 @@ void awh::Core::bind(Core * core) noexcept {
 			 * Выполняем отлов ошибок
 			 */
 			try {
-				// Резолвер IPv4, создаём резолвер
-				if(core->dns4 != nullptr) core->dns4 = new dns_t(core->fmk, core->log, core->nwk, core->base, core->net.v4.second);
-				// Резолвер IPv6, создаём резолвер
-				if(core->dns6 != nullptr) core->dns6 = new dns_t(core->fmk, core->log, core->nwk, core->base, core->net.v6.second);
+				// Добавляем базу событий для DNS резолвера IPv4
+				core->dns4->setBase(core->base);
+				// Добавляем базу событий для DNS резолвера IPv6
+				core->dns6->setBase(core->base);
+				// Выполняем установку нейм-серверов для DNS резолвера IPv4
+				core->dns4->replaceServers(core->net.v4.second);
+				// Выполняем установку нейм-серверов для DNS резолвера IPv6
+				core->dns6->replaceServers(core->net.v6.second);
 				// Создаём событие на активацию базы событий
 				event_assign(&core->timeout, core->base, -1, EV_TIMEOUT, run, core);
 				// Очищаем объект таймаута базы событий
@@ -319,14 +323,17 @@ void awh::Core::unbind(Core * core) noexcept {
 	if(core != nullptr){
 		// Выполняем блокировку потока
 		this->bloking.lock();
-		// Отключаем всех клиентов
-		if(core->base != nullptr) core->closeAll();
-		// Удаляем DNS сервера IPv4
-		if(core->dns4 != nullptr) delete core->dns4;
-		// Удаляем DNS сервера IPv6
-		if(core->dns6 != nullptr) delete core->dns6;
-		// Зануляем базу событий
-		core->base = nullptr;
+		// Если база событий подключена
+		if(core->base != nullptr){
+			// Отключаем всех клиентов
+			core->closeAll();
+			// Зануляем базу событий
+			core->base = nullptr;
+		}
+		// Выполняем сброс модуля DNS резолвера IPv4
+		core->dns4->reset();
+		// Выполняем сброс модуля DNS резолвера IPv6
+		core->dns6->reset();
 		// Если функция обратного вызова установлена, выполняем
 		if(core->callbackFn != nullptr) core->callbackFn(false, core, core->ctx);
 		// Выполняем сброс блокировки базы событий
@@ -377,10 +384,14 @@ void awh::Core::start() noexcept {
 			this->mode = true;
 			// Создаем новую базу
 			this->base = event_base_new();
-			// Резолвер IPv4, создаём резолвер
-			this->dns4 = new dns_t(this->fmk, this->log, this->nwk, this->base, this->net.v4.second);
-			// Резолвер IPv6, создаём резолвер
-			this->dns6 = new dns_t(this->fmk, this->log, this->nwk, this->base, this->net.v6.second);
+			// Добавляем базу событий для DNS резолвера IPv4
+			this->dns4->setBase(this->base);
+			// Добавляем базу событий для DNS резолвера IPv6
+			this->dns6->setBase(this->base);
+			// Выполняем установку нейм-серверов для DNS резолвера IPv4
+			this->dns4->replaceServers(this->net.v4.second);
+			// Выполняем установку нейм-серверов для DNS резолвера IPv6
+			this->dns6->replaceServers(this->net.v6.second);
 			// Создаём событие на активацию базы событий
 			event_assign(&this->timeout, this->base, -1, EV_TIMEOUT, run, this);
 			// Очищаем объект таймаута базы событий
@@ -393,14 +404,10 @@ void awh::Core::start() noexcept {
 			if(!this->noinfo) this->log->print("[+] start service: pid = %u", log_t::flag_t::INFO, getpid());
 			// Запускаем работу базы событий
 			event_base_loop(this->base, EVLOOP_NO_EXIT_ON_EMPTY);
-			// Удаляем dns IPv4 резолвер
-			delete this->dns4;
-			// Удаляем dns IPv6 резолвер
-			delete this->dns6;
-			// Зануляем DNS IPv4 объект
-			this->dns4 = nullptr;
-			// Зануляем DNS IPv6 объект
-			this->dns6 = nullptr;
+			// Выполняем сброс модуля DNS резолвера IPv4
+			this->dns4->reset();
+			// Выполняем сброс модуля DNS резолвера IPv6
+			this->dns6->reset();
 			// Удаляем объект базы событий
 			event_base_free(this->base);
 			// Очищаем все глобальные переменные
@@ -732,6 +739,10 @@ awh::Core::Core(const fmk_t * fmk, const log_t * log) noexcept : fmk(fmk), log(l
 		this->uri = new uri_t(this->fmk, this->nwk);
 		// Создаём объект для работы с SSL
 		this->ssl = new ssl_t(this->fmk, this->log, this->uri);
+		// Резолвер IPv4, создаём резолвер
+		this->dns4 = new dns_t(this->fmk, this->log, this->nwk);
+		// Резолвер IPv6, создаём резолвер
+		this->dns6 = new dns_t(this->fmk, this->log, this->nwk);
 	// Если происходит ошибка то игнорируем её
 	} catch(const bad_alloc&) {
 		// Выводим сообщение об ошибке

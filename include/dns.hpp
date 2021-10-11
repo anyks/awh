@@ -13,6 +13,7 @@
 /**
  * Стандартная библиотека
  */
+#include <map>
 #include <regex>
 #include <cstdio>
 #include <string>
@@ -60,23 +61,25 @@ namespace awh {
 			 * Структура доменного имени
 			 */
 			typedef struct Domain {
+				size_t id;                                 // Идентификатор объекта доменного имени
 				int family;                                // Тип протокола интернета AF_INET или AF_INET6
 				string host;                               // Название искомого домена
-				DNS * dns;                                 // Объект резолвера DNS
+				const DNS * dns;                           // Объект резолвера DNS
 				const fmk_t * fmk;                         // Объект основного фреймворка
 				const log_t * log;                         // Объект для работы с логами
-				unordered_map <string, string> * ips;      // Список IP адресов полученных ранее
 				function <void (const string &)> callback; // Функция обратного вызова
 				/**
 				 * Domain Конструктор
 				 */
-				Domain() : family(AF_UNSPEC), host(""), dns(nullptr), fmk(nullptr), log(nullptr), ips(nullptr), callback(nullptr) {}
-			} domain_t;
+				Domain() : id(0), family(AF_UNSPEC), host(""), dns(nullptr), fmk(nullptr), log(nullptr), callback(nullptr) {}
+			} dom_t;
 		private:
 			// Адреса серверов dns
-			vector <string> servers;
+			mutable vector <string> servers;
+			// Список объектов домена
+			mutable map <size_t, dom_t> doms;
 			// Список ранее полученых, IP адресов
-			unordered_map <string, string> ips;
+			mutable unordered_map <string, string> ips;
 		private:
 			// Создаём объект фреймворка
 			const fmk_t * fmk = nullptr;
@@ -84,10 +87,11 @@ namespace awh {
 			const log_t * log = nullptr;
 			// Создаем объект сети
 			const network_t * nwk = nullptr;
+		private:
 			// База событий
 			struct event_base * base = nullptr;
 			// База dns
-			struct evdns_base * dnsbase = nullptr;
+			struct evdns_base * dbase = nullptr;
 			// Объект dns запроса
 			struct evdns_getaddrinfo_request * reply = nullptr;
 		private:
@@ -97,11 +101,11 @@ namespace awh {
 			void createBase() noexcept;
 			/**
 			 * callback Событие срабатывающееся при получении данных с dns сервера
-			 * @param errcode ошибка dns сервера
-			 * @param addr    структура данных с dns сервера
-			 * @param ctx     объект с данными для запроса
+			 * @param error ошибка dns сервера
+			 * @param addr  структура данных с dns сервера
+			 * @param ctx   объект с данными для запроса
 			 */
-			static void callback(const int errcode, struct evutil_addrinfo * addr, void * ctx) noexcept;
+			static void callback(const int error, struct evutil_addrinfo * addr, void * ctx) noexcept;
 		public:
 			/**
 			 * init Метод инициализации DNS резолвера
@@ -111,6 +115,19 @@ namespace awh {
 			 * @return       база DNS резолвера
 			 */
 			struct evdns_base * init(const string & host, const int family, struct event_base * base) const noexcept;
+		public:
+			/**
+			 * reset Метод сброса параметров модуля DNS резолвера
+			 */
+			void reset() noexcept;
+			/**
+			 * clear Метод сброса кэша резолвера
+			 */
+			void clear() noexcept;
+			/**
+			 * updateNameServers Метод обновления списка нейм-серверов
+			 */
+			void updateNameServers() noexcept;
 		public:
 			/**
 			 * setBase Метод установки базы событий

@@ -16,45 +16,35 @@
 void awh::DNS::createBase() noexcept {
 	// Если база событий существует
 	if((this->fmk != nullptr) && (this->base != nullptr)){
-		// Очищаем базу dns
-		if(this->dnsbase != nullptr){
-			// Если объект запроса существует то отменяем его
-			if(this->reply != nullptr){
-				// Выполняем отмену запроса
-				evdns_getaddrinfo_cancel(this->reply);
-				// Обнуляем указатель
-				this->reply = nullptr;
-			}
-			// Очищаем базу dns
-			evdns_base_free(this->dnsbase, 0);
-		}
+		// Выполняем сброс модуля DNS резолвера
+		this->reset();
 		// Создаем базу dns
-		this->dnsbase = evdns_base_new(this->base, 0);
+		this->dbase = evdns_base_new(this->base, 0);
 		// Если база dns не создана
-		if(this->dnsbase == nullptr)
+		if(this->dbase == nullptr)
 			// Выводим в лог сообщение
 			this->log->print("%s", log_t::flag_t::CRITICAL, "dns base does not created");
 	}
 }
 /**
  * callback Событие срабатывающееся при получении данных с dns сервера
- * @param errcode ошибка dns сервера
- * @param addr    структура данных с dns сервера
- * @param ctx     объект с данными для запроса
+ * @param error ошибка dns сервера
+ * @param addr  структура данных с dns сервера
+ * @param ctx   объект с данными для запроса
  */
-void awh::DNS::callback(const int errcode, struct evutil_addrinfo * addr, void * ctx) noexcept {
+void awh::DNS::callback(const int error, struct evutil_addrinfo * addr, void * ctx) noexcept {
 	// Если данные получены
 	if(ctx != nullptr){
-		// Полученные ip адреса
-		vector <string> ips;
-		// Полученный ip адрес
-		const string * ip = nullptr;
 		// Получаем объект доменного имени
-		domain_t * context = reinterpret_cast <domain_t *> (ctx);
+		dom_t * dom = reinterpret_cast <dom_t *> (ctx);
+		// Получаем объект модуля DNS резолвера
+		dns_t * dns = const_cast <dns_t *> (dom->dns);
 		// Если данные фреймворка существуют
-		if((context != nullptr) && (context->fmk != nullptr)){
+		if((dom->fmk != nullptr) && (dom->log != nullptr)){
+			// Полученные ip адреса
+			vector <string> ips;
 			// Если возникла ошибка, выводим в лог сообщение
-			if(errcode) context->log->print("%s %s", log_t::flag_t::CRITICAL, context->host.c_str(), evutil_gai_strerror(errcode));
+			if(error) dom->log->print("%s %s", log_t::flag_t::CRITICAL, dom->host.c_str(), evutil_gai_strerror(error));
 			// Если ошибки не возникало
 			else {
 				// Создаем буфер для получения ip адреса
@@ -68,7 +58,7 @@ void awh::DNS::callback(const int errcode, struct evutil_addrinfo * addr, void *
 					// Заполняем буфер нулями
 					memset(buffer, 0, sizeof(buffer));
 					// Если это искомый тип интернет протокола
-					if((ai->ai_family == context->family) || (context->family == AF_UNSPEC)){
+					if((ai->ai_family == dom->family) || (dom->family == AF_UNSPEC)){
 						// Получаем структуру для указанного интернет протокола
 						switch(ai->ai_family){
 							// Если это IPv4 адрес
@@ -93,6 +83,8 @@ void awh::DNS::callback(const int errcode, struct evutil_addrinfo * addr, void *
 				// Очищаем структуру данных домена
 				evutil_freeaddrinfo(addr);
 			}
+			// Полученный ip адрес
+			const string * ip = nullptr;
 			// Если ip адреса получены, выводим ip адрес в случайном порядке
 			if(!ips.empty()){
 				// Если количество элементов больше 1
@@ -103,21 +95,21 @@ void awh::DNS::callback(const int errcode, struct evutil_addrinfo * addr, void *
 					ip = &ips.at(rand() % ips.size());
 				// Выводим только первый элемент
 				} else ip = &ips.front();
+				// Записываем данные в кэш
+				dns->ips.emplace(dom->host, * ip);
 			}
-			// Записываем данные в кэш
-			context->ips->emplace(context->host, * ip);
 			// Выводим готовый результат
-			if(context->callback != nullptr) context->callback(* ip);
+			if(dom->callback != nullptr) dom->callback(* ip);
 			// Если объект запроса существует
-			if(context->dns->reply != nullptr){
+			if(dns->reply != nullptr){
 				// Выполняем отмену запроса
-				// evdns_getaddrinfo_cancel(context->dns->reply);
+				// evdns_getaddrinfo_cancel(dom->dns->reply);
 				// Обнуляем указатель
-				context->dns->reply = nullptr;
+				dns->reply = nullptr;
 			}
 		}
-		// Удаляем передаваемый объект
-		if(context != nullptr) delete context;
+		// Удаляем домен из списка доменов
+		dns->doms.erase(dom->id);
 	}
 }
 /**
@@ -134,20 +126,16 @@ struct evdns_base * awh::DNS::init(const string & host, const int family, struct
 	if((base != nullptr) && !host.empty() && !this->servers.empty()){
 		// Адрес dns сервера
 		string dns = "";
-		// Структура запроса
-		struct evutil_addrinfo hints;
-		// Заполняем структуру запроса нулями
-		memset(&hints, 0, sizeof(hints));
 		// Создаем базу dns
 		result = evdns_base_new(base, 0);
 		// Переходим по всем нейм серверам и добавляем их
 		for(auto & server : this->servers){
 			// Определяем тип передаваемого сервера
 			switch((uint8_t) this->nwk->parseHost(server)){
-				// Если - это домен или IPv4 адрес
+				// Если хост является доменом или IPv4 адресом
 				case (uint8_t) network_t::type_t::IPV4:
 				case (uint8_t) network_t::type_t::DOMNAME: dns = server; break;
-				// Если - это IPv6 адрес, переводим ip адрес в полную форму
+				// Если хост является IPv6 адресом, переводим ip адрес в полную форму
 				case (uint8_t) network_t::type_t::IPV6: dns = this->nwk->setLowIp6(server); break;
 			}
 			// Если DNS сервер установлен, добавляем его в базу DNS
@@ -160,19 +148,23 @@ struct evdns_base * awh::DNS::init(const string & host, const int family, struct
 		 */
 		try {
 			// Создаем объект домен
-			domain_t * domainData = new domain_t;
-			// Устанавливаем тип протокола интернета
-			domainData->family = family;
-			// Запоминаем объект основного фреймворка
-			domainData->fmk = this->fmk;
-			// Запоминаем объект для работы с логами
-			domainData->log = this->log;
-			// Запоминаем текущий объект
-			domainData->dns = const_cast <dns_t *> (this);
+			dom_t dom;
 			// Запоминаем название искомого домена
-			domainData->host = (this->ips.count(host) > 0 ? this->ips.at(host) : host);
-			// Запоминаем объект управления кэшем
-			domainData->ips = const_cast <unordered_map <string, string> *> (&this->ips);
+			dom.host = host;
+			// Устанавливаем тип протокола интернета
+			dom.family = family;
+			// Запоминаем объект основного фреймворка
+			dom.fmk = this->fmk;
+			// Запоминаем объект для работы с логами
+			dom.log = this->log;
+			// Формируем идентификатор объекта
+			dom.id = this->fmk->unixTimestamp();
+			// Запоминаем текущий объект
+			dom.dns = const_cast <dns_t *> (this);
+			// Структура запроса
+			struct evutil_addrinfo hints;
+			// Заполняем структуру запроса нулями
+			memset(&hints, 0, sizeof(hints));
 			// Устанавливаем тип подключения
 			hints.ai_family = AF_UNSPEC;
 			// Устанавливаем что это потоковый сокет
@@ -181,8 +173,10 @@ struct evdns_base * awh::DNS::init(const string & host, const int family, struct
 			hints.ai_protocol = IPPROTO_TCP;
 			// Устанавливаем флаг подключения что это канонническое имя
 			hints.ai_flags = EVUTIL_AI_CANONNAME;
+			// Добавляем доменное имя в список доменов
+			auto ret = this->doms.emplace(dom.id, move(dom));
 			// Выполняем dns запрос
-			struct evdns_getaddrinfo_request * reply = evdns_getaddrinfo(result, host.c_str(), nullptr, &hints, &DNS::callback, domainData);
+			struct evdns_getaddrinfo_request * reply = evdns_getaddrinfo(result, host.c_str(), nullptr, &hints, &dns_t::callback, &ret.first->second);
 			// Выводим в лог сообщение
 			if(reply == nullptr) this->log->print("request for %s returned immediately", log_t::flag_t::CRITICAL, host.c_str());
 		// Если возникает ошибка выделения памяти
@@ -196,6 +190,44 @@ struct evdns_base * awh::DNS::init(const string & host, const int family, struct
 	}
 	// Выводим результат
 	return result;
+}
+/**
+ * reset Метод сброса параметров модуля DNS резолвера
+ */
+void awh::DNS::reset() noexcept {
+	// Очищаем базу dns
+	if(this->dbase != nullptr){
+		// Если объект запроса существует то отменяем его
+		if(this->reply != nullptr){
+			// Выполняем отмену запроса
+			evdns_getaddrinfo_cancel(this->reply);
+			// Обнуляем указатель
+			this->reply = nullptr;
+		}
+		// Очищаем базу dns
+		evdns_base_free(this->dbase, 0);
+		// Зануляем базу DNS
+		this->dbase = nullptr;
+	}
+}
+/**
+ * clear Метод сброса кэша резолвера
+ */
+void awh::DNS::clear() noexcept {
+	// Выполняем сброс списка IP адресов
+	this->servers.clear();
+}
+/**
+ * updateNameServers Метод обновления списка нейм-серверов
+ */
+void awh::DNS::updateNameServers() noexcept {
+	// Если список DNS серверов не пустой
+	if(!this->servers.empty() && (this->dbase != nullptr)){
+		// Выполняем очистку предыдущих DNS серверов
+		evdns_base_clear_nameservers_and_suspend(this->dbase);
+		// Переходим по всем нейм серверам и добавляем их
+		for(auto & server : this->servers) this->setNameServer(server);
+	}
 }
 /**
  * setBase Установка базы событий
@@ -216,19 +248,19 @@ void awh::DNS::setBase(struct event_base * base) noexcept {
  */
 void awh::DNS::setNameServer(const string & server) noexcept {
 	// Если dns сервер передан
-	if(!server.empty() && (this->fmk != nullptr) && (this->dnsbase != nullptr)){
+	if(!server.empty() && (this->fmk != nullptr) && (this->dbase != nullptr)){
 		// Адрес dns сервера
 		string dns = "";
 		// Определяем тип передаваемого сервера
 		switch((uint8_t) this->nwk->parseHost(server)){
-			// Если - это домен или IPv4 адрес
+			// Если хост является доменом или IPv4 адресом
 			case (uint8_t) network_t::type_t::IPV4:
 			case (uint8_t) network_t::type_t::DOMNAME: dns = server; break;
-			// Если - это IPv6 адрес, переводим ip адрес в полную форму
+			// Если хост является IPv6 адресом, переводим ip адрес в полную форму
 			case (uint8_t) network_t::type_t::IPV6: dns = this->nwk->setLowIp6(server); break;
 		}
 		// Если DNS сервер установлен, добавляем его в базу DNS
-		if(!dns.empty() && (evdns_base_nameserver_ip_add(this->dnsbase, dns.c_str()) != 0))
+		if(!dns.empty() && (evdns_base_nameserver_ip_add(this->dbase, dns.c_str()) != 0))
 			// Выводим в лог сообщение
 			this->log->print("name server [%s] does not add", log_t::flag_t::CRITICAL, dns.c_str());
 	}
@@ -252,9 +284,14 @@ void awh::DNS::setNameServers(const vector <string> & servers) noexcept {
  */
 void awh::DNS::replaceServers(const vector <string> & servers) noexcept {
 	// Если нейм сервера переданы, удаляем все настроенные серверы имён и приостанавливаем все ожидающие решения
-	if(!servers.empty() && evdns_base_clear_nameservers_and_suspend(this->dnsbase))
+	if(!servers.empty()){
+		// Если база DNS созданы
+		if(this->dbase != nullptr)
+			// Выполняем очистку предыдущих DNS серверов
+			evdns_base_clear_nameservers_and_suspend(this->dbase);
 		// Устанавливаем новый список серверов
 		this->setNameServers(servers);
+	}
 }
 /**
  * resolve Метод ресолвинга домена
@@ -283,26 +320,26 @@ void awh::DNS::resolve(const string & host, const int family, function <void (co
 				 * Выполняем отлов ошибок
 				 */
 				try {
+					// Создаем объект домен
+					dom_t dom;
+					// Запоминаем текущий объект
+					dom.dns = this;
+					// Запоминаем название искомого домена
+					dom.host = host;
+					// Устанавливаем тип протокола интернета
+					dom.family = family;
+					// Запоминаем объект основного фреймворка
+					dom.fmk = this->fmk;
+					// Запоминаем объект для работы с логами
+					dom.log = this->log;
+					// Устанавливаем функцию обратного вызова
+					dom.callback = callback;
+					// Формируем идентификатор объекта
+					dom.id = this->fmk->unixTimestamp();
 					// Структура запроса
 					struct evutil_addrinfo hints;
 					// Заполняем структуру запроса нулями
 					memset(&hints, 0, sizeof(hints));
-					// Создаем объект домен
-					domain_t * domainData = new domain_t;
-					// Запоминаем текущий объект
-					domainData->dns = this;
-					// Запоминаем название искомого домена
-					domainData->host = host;
-					// Устанавливаем тип протокола интернета
-					domainData->family = family;
-					// Запоминаем объект основного фреймворка
-					domainData->fmk = this->fmk;
-					// Запоминаем объект для работы с логами
-					domainData->log = this->log;
-					// Запоминаем объект управления кэшем
-					domainData->ips = &this->ips;
-					// Устанавливаем функцию обратного вызова
-					domainData->callback = callback;
 					// Устанавливаем тип подключения
 					hints.ai_family = AF_UNSPEC;
 					// Устанавливаем что это потоковый сокет
@@ -311,8 +348,10 @@ void awh::DNS::resolve(const string & host, const int family, function <void (co
 					hints.ai_protocol = IPPROTO_TCP;
 					// Устанавливаем флаг подключения что это канонническое имя
 					hints.ai_flags = EVUTIL_AI_CANONNAME;
+					// Добавляем доменное имя в список доменов
+					auto ret = this->doms.emplace(dom.id, move(dom));
 					// Выполняем dns запрос
-					this->reply = evdns_getaddrinfo(this->dnsbase, host.c_str(), nullptr, &hints, &DNS::callback, domainData);
+					this->reply = evdns_getaddrinfo(this->dbase, host.c_str(), nullptr, &hints, &dns_t::callback, &ret.first->second);
 					// Выводим в лог сообщение
 					if(this->reply == nullptr) this->log->print("request for %s returned immediately", log_t::flag_t::CRITICAL, host.c_str());
 				// Если возникает ошибка выделения памяти
@@ -367,18 +406,6 @@ awh::DNS::DNS(const fmk_t * fmk, const log_t * log, const network_t * nwk, struc
  * ~DNS Деструктор
  */
 awh::DNS::~DNS() noexcept {
-	// Удаляем базу dns
-	if(this->dnsbase != nullptr){
-		// Если объект запроса существует то отменяем его
-		if(this->reply != nullptr){
-			// Выполняем отмену запроса
-			evdns_getaddrinfo_cancel(this->reply);
-			// Обнуляем указатель
-			this->reply = nullptr;
-		}
-		// Очищаем базу dns
-		evdns_base_free(this->dnsbase, 0);
-		// Обнуляем указатель
-		this->dnsbase = nullptr;
-	}
+	// Выполняем сброс модуля DNS резолвера
+	this->reset();
 }
