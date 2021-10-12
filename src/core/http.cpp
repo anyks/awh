@@ -429,7 +429,14 @@ void awh::Http::parse(const char * buffer, const size_t size) noexcept {
 								// Если размер чанка найден
 								if(pos != string::npos){
 									// Получаем размер в 16-м виде
-									const string & hex = body.substr(0, pos);
+									string hex = body.substr(0, pos);
+									// Если часть размера 16-го числа уже получили ранее
+									if(!this->chunk.data.empty()){
+										// Выполняем сборку всей составляющей 16-го числа размера чанка
+										hex.insert(hex.begin(), this->chunk.data.begin(), this->chunk.data.end());
+										// Очищаем собранные данные
+										this->chunk.clear();
+									}
 									// Получаем размер чанка
 									this->chunk.size = (this->fmk->hexToDec(hex) + 2);
 									// Если это последний чанк
@@ -453,8 +460,12 @@ void awh::Http::parse(const char * buffer, const size_t size) noexcept {
 								size_t actual = (this->chunk.size - this->chunk.data.size());
 								// Фиксируем актуальный размер тела
 								actual = (body.size() > actual ? actual : body.size());
+								// Если данные ещё есть но при этом чанк очищен, значит мы получили часть размера 16-го числа
+								if(!body.empty() && (this->chunk.size == 0))
+									// Записываем часть размера 16-го числа в тело (ну а куда нам ещё его записывать 🤪)
+									this->chunk.data.assign(body.begin(), body.end());
 								// Если есть данные для обработки
-								if(actual > 0){
+								else if(actual > 0){
 									// Собираем тело запроса
 									this->chunk.data.insert(this->chunk.data.end(), body.begin(), body.begin() + actual);
 									// Если весь чанк собран

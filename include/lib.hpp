@@ -58,7 +58,7 @@
 // Максимальный размер файла логов в байтах
 #define MAX_SIZE_LOGFILE 1024000;
 // Размер чанка буфера для чтения из файла
-#define BUFFER_CHUNK 0xFA000
+#define BUFFER_CHUNK 8192 // 0xFA000
 // Размер бинарного буфера
 #define BUFFER_SIZE 0x6400000
 

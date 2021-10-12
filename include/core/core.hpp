@@ -125,8 +125,18 @@ namespace awh {
 		protected:
 			// Сетевые параметры
 			net_t net;
+			// Создаём объект работы с URI
+			uri_t uri;
+			// Создаём объект для работы с SSL
+			ssl_t ssl;
+			// Создаём объект DNS IPv4 резолвера
+			dns_t dns4;
+			// Создаём объект DNS IPv6 резолвера
+			dns_t dns6;
 			// Параметры постоянного подключения
 			alive_t alive;
+			// Создаем объект сети
+			network_t nwk;
 			// Мютекс для блокировки потока
 			mutex bloking;
 		protected:
@@ -151,21 +161,11 @@ namespace awh {
 		protected:
 			// Промежуточный контекст
 			void * ctx = nullptr;
-			// Создаём объект для работы с SSL
-			ssl_t * ssl = nullptr;
-			// Создаём объект DNS IPv4 резолвера
-			dns_t * dns4 = nullptr;
-			// Создаём объект DNS IPv6 резолвера
-			dns_t * dns6 = nullptr;
 		protected:
 			// Создаём объект фреймворка
 			const fmk_t * fmk = nullptr;
 			// Создаём объект работы с логами
 			const log_t * log = nullptr;
-			// Создаём объект работы с URI
-			const uri_t * uri = nullptr;
-			// Создаем объект сети
-			const network_t * nwk = nullptr;
 		protected:
 			// База данных событий
 			struct event_base * base = nullptr;

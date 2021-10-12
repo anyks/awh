@@ -192,7 +192,7 @@ const awh::Core::socket_t awh::Core::socket(const string & ip, const u_int port,
 				// Выводим только первый элемент
 				} else host = ips.front();
 				// Переводим ip адрес в полноценный вид
-				host = move(this->nwk->setLowIp6(host));
+				host = move(this->nwk.setLowIp6(host));
 				// Буфер содержащий адрес IPv6
 				// char hostClient[INET6_ADDRSTRLEN], hostServer[INET6_ADDRSTRLEN];
 				// Очищаем всю структуру для клиента
@@ -289,13 +289,13 @@ void awh::Core::bind(Core * core) noexcept {
 			 */
 			try {
 				// Добавляем базу событий для DNS резолвера IPv4
-				core->dns4->setBase(core->base);
+				core->dns4.setBase(core->base);
 				// Добавляем базу событий для DNS резолвера IPv6
-				core->dns6->setBase(core->base);
+				core->dns6.setBase(core->base);
 				// Выполняем установку нейм-серверов для DNS резолвера IPv4
-				core->dns4->replaceServers(core->net.v4.second);
+				core->dns4.replaceServers(core->net.v4.second);
 				// Выполняем установку нейм-серверов для DNS резолвера IPv6
-				core->dns6->replaceServers(core->net.v6.second);
+				core->dns6.replaceServers(core->net.v6.second);
 				// Создаём событие на активацию базы событий
 				event_assign(&core->timeout, core->base, -1, EV_TIMEOUT, run, core);
 				// Очищаем объект таймаута базы событий
@@ -331,9 +331,9 @@ void awh::Core::unbind(Core * core) noexcept {
 			core->base = nullptr;
 		}
 		// Выполняем сброс модуля DNS резолвера IPv4
-		core->dns4->reset();
+		core->dns4.reset();
 		// Выполняем сброс модуля DNS резолвера IPv6
-		core->dns6->reset();
+		core->dns6.reset();
 		// Если функция обратного вызова установлена, выполняем
 		if(core->callbackFn != nullptr) core->callbackFn(false, core, core->ctx);
 		// Выполняем сброс блокировки базы событий
@@ -385,13 +385,13 @@ void awh::Core::start() noexcept {
 			// Создаем новую базу
 			this->base = event_base_new();
 			// Добавляем базу событий для DNS резолвера IPv4
-			this->dns4->setBase(this->base);
+			this->dns4.setBase(this->base);
 			// Добавляем базу событий для DNS резолвера IPv6
-			this->dns6->setBase(this->base);
+			this->dns6.setBase(this->base);
 			// Выполняем установку нейм-серверов для DNS резолвера IPv4
-			this->dns4->replaceServers(this->net.v4.second);
+			this->dns4.replaceServers(this->net.v4.second);
 			// Выполняем установку нейм-серверов для DNS резолвера IPv6
-			this->dns6->replaceServers(this->net.v6.second);
+			this->dns6.replaceServers(this->net.v6.second);
 			// Создаём событие на активацию базы событий
 			event_assign(&this->timeout, this->base, -1, EV_TIMEOUT, run, this);
 			// Очищаем объект таймаута базы событий
@@ -405,9 +405,9 @@ void awh::Core::start() noexcept {
 			// Запускаем работу базы событий
 			event_base_loop(this->base, EVLOOP_NO_EXIT_ON_EMPTY);
 			// Выполняем сброс модуля DNS резолвера IPv4
-			this->dns4->reset();
+			this->dns4.reset();
 			// Выполняем сброс модуля DNS резолвера IPv6
-			this->dns6->reset();
+			this->dns6.reset();
 			// Удаляем объект базы событий
 			event_base_free(this->base);
 			// Очищаем все глобальные переменные
@@ -677,7 +677,7 @@ void awh::Core::setNoInfo(const bool mode) noexcept {
  */
 void awh::Core::setVerifySSL(const bool mode) noexcept {
 	// Выполняем установку флага проверки домена
-	this->ssl->setVerify(mode);
+	this->ssl.setVerify(mode);
 }
 /**
  * setFamily Метод установки тип протокола интернета
@@ -694,7 +694,7 @@ void awh::Core::setFamily(const int family) noexcept {
  */
 void awh::Core::setCA(const string & cafile, const string & capath) noexcept {
 	// Устанавливаем адрес CA-файла
-	this->ssl->setCA(cafile, capath);
+	this->ssl.setCA(cafile, capath);
 }
 /**
  * setNet Метод установки параметров сети
@@ -728,43 +728,20 @@ void awh::Core::setNet(const vector <string> & ip, const vector <string> & ns, c
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
  */
-awh::Core::Core(const fmk_t * fmk, const log_t * log) noexcept : fmk(fmk), log(log) {
-	/**
-	 * Выполняем отлов ошибок
-	 */
-	try {
-		// Создаём объект для работы с сетью
-		this->nwk = new network_t(this->fmk);
-		// Создаём объект URI
-		this->uri = new uri_t(this->fmk, this->nwk);
-		// Создаём объект для работы с SSL
-		this->ssl = new ssl_t(this->fmk, this->log, this->uri);
-		// Резолвер IPv4, создаём резолвер
-		this->dns4 = new dns_t(this->fmk, this->log, this->nwk);
-		// Резолвер IPv6, создаём резолвер
-		this->dns6 = new dns_t(this->fmk, this->log, this->nwk);
-	// Если происходит ошибка то игнорируем её
-	} catch(const bad_alloc&) {
-		// Выводим сообщение об ошибке
-		log->print("%s", log_t::flag_t::CRITICAL, "memory could not be allocated");
-		// Выходим из приложения
-		exit(EXIT_FAILURE);
-	}
+awh::Core::Core(const fmk_t * fmk, const log_t * log) noexcept : nwk(fmk), uri(fmk, &nwk), ssl(fmk, log, &uri), dns4(fmk, log, &nwk), dns6(fmk, log, &nwk), fmk(fmk), log(log) {
+	// Создаём объект URI
+	this->uri = uri_t(this->fmk, &this->nwk);
+	// Создаём объект для работы с SSL
+	this->ssl = ssl_t(this->fmk, this->log, &this->uri);
+	// Резолвер IPv4, создаём резолвер
+	this->dns4 = dns_t(this->fmk, this->log, &this->nwk);
+	// Резолвер IPv6, создаём резолвер
+	this->dns6 = dns_t(this->fmk, this->log, &this->nwk);
 }
 /**
  * ~Core Деструктор
  */
 awh::Core::~Core() noexcept {
-	// Если объект для работы с SSL создан
-	if(this->ssl != nullptr) delete this->ssl;
-	// Удаляем объект для работы с URI
-	if(this->uri != nullptr) delete this->uri;
-	// Удаляем объект для работы с сетью
-	if(this->nwk != nullptr) delete this->nwk;
-	// Если объект DNS IPv4 резолвера создан
-	if(this->dns4 != nullptr) delete this->dns4;
-	// Если объект DNS IPv6 резолвера создан
-	if(this->dns6 != nullptr) delete this->dns6;
 	// Если - это Windows
 	#if defined(_WIN32) || defined(_WIN64)
 		// Очищаем сетевой контекст

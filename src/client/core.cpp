@@ -178,7 +178,7 @@ bool awh::CoreClient::connect(const size_t wid) noexcept {
 				// Создаём бъект адъютанта
 				unique_ptr <worker_t::adj_t> adj(new worker_t::adj_t(wrk, this->fmk, this->log));
 				// Выполняем получение контекста сертификата
-				wrk->ssl = this->ssl->init(url);
+				wrk->ssl = this->ssl.init(url);
 				// Если SSL клиент разрешен
 				if(wrk->ssl.mode){
 					// Создаем буфер событий для сервера зашифрованного подключения
@@ -322,7 +322,7 @@ void awh::CoreClient::closeAll() noexcept {
 					// Выполняем очистку буфера событий
 					this->clean(it->second->bev);
 					// Выполняем удаление контекста SSL
-					this->ssl->clear(wrk->ssl);
+					this->ssl.clear(wrk->ssl);
 					// Выводим функцию обратного вызова
 					if(wrk->closeFn != nullptr)
 						// Выполняем функцию обратного вызова
@@ -342,7 +342,7 @@ void awh::CoreClient::closeAll() noexcept {
  */
 void awh::CoreClient::open(const size_t wid) noexcept {
 	// Если идентификатор воркера передан
-	if((wid > 0) && (this->dns4 != nullptr) && (this->dns6 != nullptr)){
+	if(wid > 0){
 		// Выполняем поиск воркера
 		auto it = this->workers.find(wid);
 		// Если воркер найден
@@ -379,9 +379,9 @@ void awh::CoreClient::open(const size_t wid) noexcept {
 					// Определяем тип подключения
 					switch(this->net.family){
 						// Резолвер IPv4, создаём резолвер
-						case AF_INET: this->dns4->resolve(url.domain, AF_INET, runFn); break;
+						case AF_INET: this->dns4.resolve(url.domain, AF_INET, runFn); break;
 						// Резолвер IPv6, создаём резолвер
-						case AF_INET6: this->dns6->resolve(url.domain, AF_INET6, runFn); break;
+						case AF_INET6: this->dns6.resolve(url.domain, AF_INET6, runFn); break;
 					}
 				// Выполняем запуск системы
 				else if(!url.ip.empty()) runFn(url.ip);
@@ -412,7 +412,7 @@ void awh::CoreClient::close(const size_t aid) noexcept {
 			// Выполняем переключение обратно на прокси-сервер
 			wrk->switchConnect();
 		// Выполняем удаление контекста SSL
-		this->ssl->clear(wrk->ssl);
+		this->ssl.clear(wrk->ssl);
 		// Удаляем адъютанта из списка адъютантов
 		wrk->adjutants.erase(aid);
 		// Удаляем адъютанта из списка подключений
@@ -446,7 +446,7 @@ void awh::CoreClient::switchProxy(const size_t aid) noexcept {
 		// Выполняем переключение типа подключения
 		wrk->switchConnect();
 		// Выполняем получение контекста сертификата
-		wrk->ssl = this->ssl->init(wrk->url);
+		wrk->ssl = this->ssl.init(wrk->url);
 		// Если SSL клиент разрешен
 		if(wrk->ssl.mode){
 			// Выполняем переход на защищённое подключение

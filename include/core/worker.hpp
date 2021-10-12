@@ -54,7 +54,7 @@ namespace awh {
 				/**
 				 * Mark Конструктор
 				 */
-				Mark() : min(0), max(0) {}
+				Mark() : min(0), max(BUFFER_CHUNK) {}
 			} __attribute__((packed)) mark_t;
 		public:
 			/**
