@@ -132,7 +132,7 @@ namespace awh {
 			time_t timeWrite = WRITE_TIMEOUT;
 		protected:
 			// Список подключённых адъютантов
-			map <size_t, unique_ptr <adj_t>> adjutants;
+			map <size_t, adj_t> adjutants;
 		public:
 			// Контекст передаваемый в сообщении
 			void * ctx = nullptr;

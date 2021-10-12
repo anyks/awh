@@ -171,12 +171,16 @@ namespace awh {
 				HANDSHAKE // Режим выполненного рукопожатия
 			};
 		protected:
+			// Создаём объект для работы с жатыми данными
+			mutable hash_t hash;
 			// Объект параметров запроса
 			mutable query_t query;
 			// Объект собираемого чанка
 			mutable chunk_t chunk;
 			// Параметры выполняемого запроса
 			mutable uri_t::url_t url;
+			// Создаём объект для работы с авторизацией
+			unique_ptr <auth_t> auth;
 		protected:
 			// Флаг зашифрованных данных
 			bool crypt = false;
@@ -218,10 +222,6 @@ namespace awh {
 			// Функция вызова при получении чанка
 			function <void (const vector <char> &, const Http *)> chunkingFn = nullptr;
 		protected:
-			// Создаём объект для работы с авторизацией
-			auth_t * auth = nullptr;
-			// Создаём объект для работы с жатыми данными
-			hash_t * hash = nullptr;
 			// Создаём объект фреймворка
 			const fmk_t * fmk = nullptr;
 			// Создаём объект работы с логами
@@ -442,11 +442,11 @@ namespace awh {
 			 * @param log объект для работы с логами
 			 * @param uri объект работы с URI
 			 */
-			Http(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcept;
+			Http(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcept : hash(fmk, log), fmk(fmk), log(log), uri(uri) {}
 			/**
 			 * ~Http Деструктор
 			 */
-			virtual ~Http() noexcept;
+			virtual ~Http() noexcept {}
 	} http_t;
 };
 

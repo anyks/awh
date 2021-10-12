@@ -41,12 +41,22 @@ namespace awh {
 				VERIFYSSL = 0x10  // Флаг выполнения проверки сертификата SSL
 			};
 		private:
+			// Создаём объект работы с URI ссылками
+			uri_t uri;
+			// Создаём объект для работы с HTTP
+			wsc_t http;
+			// Создаём объект для работы с фреймом WebSocket
+			frame_t frame;
+			// Создаем объект для работы с сетью
+			network_t nwk;
 			// Объект рабочего
 			workCli_t worker;
 			// Таймер для пинга сервера
 			timer_t timerPing;
 			// Таймер для контроля подключения
-			timer_t timerConnect;
+			timer_t timerConn;
+			// Создаём объект для компрессии-декомпрессии данных
+			mutable hash_t hash;
 		private:
 			// Поддерживаемые сабпротоколы
 			vector <string> subs;
@@ -83,21 +93,10 @@ namespace awh {
 			// Список контекстов передаваемых объектов
 			vector <void *> ctx = {nullptr, nullptr, nullptr, nullptr};
 		private:
-			// Создаём объект для работы с HTTP
-			wsc_t * http = nullptr;
-			// Создаём объект для компрессии-декомпрессии данных
-			hash_t * hash = nullptr;
-			// Создаём объект для работы с фреймом WebSocket
-			frame_t * frame = nullptr;
-		private:
 			// Создаём объект фреймворка
 			const fmk_t * fmk = nullptr;
 			// Создаём объект работы с логами
 			const log_t * log = nullptr;
-			// Создаём объект работы с URI ссылками
-			const uri_t * uri = nullptr;
-			// Создаем объект для работы с сетью
-			const network_t * nwk = nullptr;
 			// Создаём объект биндинга TCP/IP
 			const coreCli_t * core = nullptr;
 		private:
@@ -353,7 +352,7 @@ namespace awh {
 			/**
 			 * ~WebSocketClient Деструктор
 			 */
-			~WebSocketClient() noexcept;
+			~WebSocketClient() noexcept {}
 	} wsCli_t;
 };
 

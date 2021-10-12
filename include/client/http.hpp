@@ -51,7 +51,7 @@ namespace awh {
 			/**
 			 * ~HttpClient Деструктор
 			 */
-			~HttpClient() noexcept;
+			~HttpClient() noexcept {}
 	} httpCli_t;
 };
 

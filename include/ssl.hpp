@@ -79,8 +79,8 @@ namespace awh {
 			 * Verify Структура параметров для валидации доменов
 			 */
 			typedef struct Verify {
-				const ASSL * ssl;    // Объект для работы с SSL
-				const string & host; // Хост для валидации
+				string host;      // Хост для валидации
+				const ASSL * ssl; // Объект для работы с SSL
 				/**
 				 * Verify Конструктор
 				 * @param ssl  основной родительский объект

@@ -284,31 +284,22 @@ void awh::Core::bind(Core * core) noexcept {
 		core->locker = (core->base != nullptr);
 		// Если блокировка базы событий выполнена
 		if(core->locker){
-			/**
-			 * Выполняем отлов ошибок
-			 */
-			try {
-				// Добавляем базу событий для DNS резолвера IPv4
-				core->dns4.setBase(core->base);
-				// Добавляем базу событий для DNS резолвера IPv6
-				core->dns6.setBase(core->base);
-				// Выполняем установку нейм-серверов для DNS резолвера IPv4
-				core->dns4.replaceServers(core->net.v4.second);
-				// Выполняем установку нейм-серверов для DNS резолвера IPv6
-				core->dns6.replaceServers(core->net.v6.second);
-				// Создаём событие на активацию базы событий
-				event_assign(&core->timeout, core->base, -1, EV_TIMEOUT, run, core);
-				// Очищаем объект таймаута базы событий
-				evutil_timerclear(&core->basetv);
-				// Устанавливаем таймаут базы событий в 1 секунду
-				core->basetv.tv_sec = 1;
-				// Создаём событие таймаута на активацию базы событий
-				event_add(&core->timeout, &core->basetv);
-			// Если происходит ошибка то игнорируем её
-			} catch(const bad_alloc&) {
-				// Выводим сообщение об ошибке
-				core->log->print("%s", log_t::flag_t::CRITICAL, "memory could not be allocated");
-			}
+			// Добавляем базу событий для DNS резолвера IPv4
+			core->dns4.setBase(core->base);
+			// Добавляем базу событий для DNS резолвера IPv6
+			core->dns6.setBase(core->base);
+			// Выполняем установку нейм-серверов для DNS резолвера IPv4
+			core->dns4.replaceServers(core->net.v4.second);
+			// Выполняем установку нейм-серверов для DNS резолвера IPv6
+			core->dns6.replaceServers(core->net.v6.second);
+			// Создаём событие на активацию базы событий
+			event_assign(&core->timeout, core->base, -1, EV_TIMEOUT, run, core);
+			// Очищаем объект таймаута базы событий
+			evutil_timerclear(&core->basetv);
+			// Устанавливаем таймаут базы событий в 1 секунду
+			core->basetv.tv_sec = 1;
+			// Создаём событие таймаута на активацию базы событий
+			event_add(&core->timeout, &core->basetv);
 		}
 		// Выполняем разблокировку потока
 		this->bloking.unlock();
@@ -376,51 +367,42 @@ void awh::Core::stop() noexcept {
 void awh::Core::start() noexcept {
 	// Если система ещё не запущена
 	if(!this->mode && !this->locker){
-		/**
-		 * Выполняем отлов ошибок
-		 */
-		try {
-			// Разрешаем работу WebSocket
-			this->mode = true;
-			// Создаем новую базу
-			this->base = event_base_new();
-			// Добавляем базу событий для DNS резолвера IPv4
-			this->dns4.setBase(this->base);
-			// Добавляем базу событий для DNS резолвера IPv6
-			this->dns6.setBase(this->base);
-			// Выполняем установку нейм-серверов для DNS резолвера IPv4
-			this->dns4.replaceServers(this->net.v4.second);
-			// Выполняем установку нейм-серверов для DNS резолвера IPv6
-			this->dns6.replaceServers(this->net.v6.second);
-			// Создаём событие на активацию базы событий
-			event_assign(&this->timeout, this->base, -1, EV_TIMEOUT, run, this);
-			// Очищаем объект таймаута базы событий
-			evutil_timerclear(&this->basetv);
-			// Устанавливаем таймаут базы событий в 1 секунду
-			this->basetv.tv_sec = 1;
-			// Создаём событие таймаута на активацию базы событий
-			event_add(&this->timeout, &this->basetv);
-			// Выводим в консоль информацию
-			if(!this->noinfo) this->log->print("[+] start service: pid = %u", log_t::flag_t::INFO, getpid());
-			// Запускаем работу базы событий
-			event_base_loop(this->base, EVLOOP_NO_EXIT_ON_EMPTY);
-			// Выполняем сброс модуля DNS резолвера IPv4
-			this->dns4.reset();
-			// Выполняем сброс модуля DNS резолвера IPv6
-			this->dns6.reset();
-			// Удаляем объект базы событий
-			event_base_free(this->base);
-			// Очищаем все глобальные переменные
-			libevent_global_shutdown();
-			// Если функция обратного вызова установлена, выполняем
-			if(this->callbackFn != nullptr) this->callbackFn(false, this, this->ctx);
-			// Выводим в консоль информацию
-			if(!this->noinfo) this->log->print("[-] stop service: pid = %u", log_t::flag_t::INFO, getpid());
-		// Если происходит ошибка то игнорируем её
-		} catch(const bad_alloc&) {
-			// Выводим сообщение об ошибке
-			this->log->print("%s", log_t::flag_t::CRITICAL, "memory could not be allocated");
-		}
+		// Разрешаем работу WebSocket
+		this->mode = true;
+		// Создаем новую базу
+		this->base = event_base_new();
+		// Добавляем базу событий для DNS резолвера IPv4
+		this->dns4.setBase(this->base);
+		// Добавляем базу событий для DNS резолвера IPv6
+		this->dns6.setBase(this->base);
+		// Выполняем установку нейм-серверов для DNS резолвера IPv4
+		this->dns4.replaceServers(this->net.v4.second);
+		// Выполняем установку нейм-серверов для DNS резолвера IPv6
+		this->dns6.replaceServers(this->net.v6.second);
+		// Создаём событие на активацию базы событий
+		event_assign(&this->timeout, this->base, -1, EV_TIMEOUT, run, this);
+		// Очищаем объект таймаута базы событий
+		evutil_timerclear(&this->basetv);
+		// Устанавливаем таймаут базы событий в 1 секунду
+		this->basetv.tv_sec = 1;
+		// Создаём событие таймаута на активацию базы событий
+		event_add(&this->timeout, &this->basetv);
+		// Выводим в консоль информацию
+		if(!this->noinfo) this->log->print("[+] start service: pid = %u", log_t::flag_t::INFO, getpid());
+		// Запускаем работу базы событий
+		event_base_loop(this->base, EVLOOP_NO_EXIT_ON_EMPTY);
+		// Выполняем сброс модуля DNS резолвера IPv4
+		this->dns4.reset();
+		// Выполняем сброс модуля DNS резолвера IPv6
+		this->dns6.reset();
+		// Удаляем объект базы событий
+		event_base_free(this->base);
+		// Очищаем все глобальные переменные
+		libevent_global_shutdown();
+		// Если функция обратного вызова установлена, выполняем
+		if(this->callbackFn != nullptr) this->callbackFn(false, this, this->ctx);
+		// Выводим в консоль информацию
+		if(!this->noinfo) this->log->print("[-] stop service: pid = %u", log_t::flag_t::INFO, getpid());
 	}
 }
 /**
@@ -474,7 +456,7 @@ void awh::Core::closeAll() noexcept {
 				// Переходим по всему списку адъютанта
 				for(auto it = wrk->adjutants.begin(); it != wrk->adjutants.end();){
 					// Выполняем очистку буфера событий
-					this->clean(it->second->bev);
+					this->clean(it->second.bev);
 					// Выводим функцию обратного вызова
 					if(wrk->closeFn != nullptr)
 						// Выполняем функцию обратного вызова
@@ -722,21 +704,6 @@ void awh::Core::setNet(const vector <string> & ip, const vector <string> & ns, c
 			if(!ns.empty()) this->net.v6.second.assign(ns.cbegin(), ns.cend());
 		} break;
 	}
-}
-/**
- * Core Конструктор
- * @param fmk объект фреймворка
- * @param log объект для работы с логами
- */
-awh::Core::Core(const fmk_t * fmk, const log_t * log) noexcept : nwk(fmk), uri(fmk, &nwk), ssl(fmk, log, &uri), dns4(fmk, log, &nwk), dns6(fmk, log, &nwk), fmk(fmk), log(log) {
-	// Создаём объект URI
-	this->uri = uri_t(this->fmk, &this->nwk);
-	// Создаём объект для работы с SSL
-	this->ssl = ssl_t(this->fmk, this->log, &this->uri);
-	// Резолвер IPv4, создаём резолвер
-	this->dns4 = dns_t(this->fmk, this->log, &this->nwk);
-	// Резолвер IPv6, создаём резолвер
-	this->dns6 = dns_t(this->fmk, this->log, &this->nwk);
 }
 /**
  * ~Core Деструктор

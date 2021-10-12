@@ -143,50 +143,38 @@ struct evdns_base * awh::DNS::init(const string & host, const int family, struct
 				// Выводим в лог сообщение
 				this->log->print("name server [%s] does not add", log_t::flag_t::CRITICAL, dns.c_str());
 		}
-		/**
-		 * Выполняем отлов ошибок
-		 */
-		try {
-			// Создаем объект домен
-			dom_t dom;
-			// Запоминаем название искомого домена
-			dom.host = host;
-			// Устанавливаем тип протокола интернета
-			dom.family = family;
-			// Запоминаем объект основного фреймворка
-			dom.fmk = this->fmk;
-			// Запоминаем объект для работы с логами
-			dom.log = this->log;
-			// Формируем идентификатор объекта
-			dom.id = this->fmk->unixTimestamp();
-			// Запоминаем текущий объект
-			dom.dns = const_cast <dns_t *> (this);
-			// Структура запроса
-			struct evutil_addrinfo hints;
-			// Заполняем структуру запроса нулями
-			memset(&hints, 0, sizeof(hints));
-			// Устанавливаем тип подключения
-			hints.ai_family = AF_UNSPEC;
-			// Устанавливаем что это потоковый сокет
-			hints.ai_socktype = SOCK_STREAM;
-			// Устанавливаем что это tcp подключение
-			hints.ai_protocol = IPPROTO_TCP;
-			// Устанавливаем флаг подключения что это канонническое имя
-			hints.ai_flags = EVUTIL_AI_CANONNAME;
-			// Добавляем доменное имя в список доменов
-			auto ret = this->doms.emplace(dom.id, move(dom));
-			// Выполняем dns запрос
-			struct evdns_getaddrinfo_request * reply = evdns_getaddrinfo(result, host.c_str(), nullptr, &hints, &dns_t::callback, &ret.first->second);
-			// Выводим в лог сообщение
-			if(reply == nullptr) this->log->print("request for %s returned immediately", log_t::flag_t::CRITICAL, host.c_str());
-		// Если возникает ошибка выделения памяти
-		} catch(const bad_alloc &) {
-			// Выводим сообщение об ошибке
-			this->log->print("%s", log_t::flag_t::CRITICAL, "memory could not be allocated");
-			// Выходим из приложения
-			exit(EXIT_FAILURE);
-		}
-
+		// Создаем объект домен
+		dom_t dom;
+		// Запоминаем название искомого домена
+		dom.host = host;
+		// Устанавливаем тип протокола интернета
+		dom.family = family;
+		// Запоминаем объект основного фреймворка
+		dom.fmk = this->fmk;
+		// Запоминаем объект для работы с логами
+		dom.log = this->log;
+		// Формируем идентификатор объекта
+		dom.id = this->fmk->unixTimestamp();
+		// Запоминаем текущий объект
+		dom.dns = const_cast <dns_t *> (this);
+		// Структура запроса
+		struct evutil_addrinfo hints;
+		// Заполняем структуру запроса нулями
+		memset(&hints, 0, sizeof(hints));
+		// Устанавливаем тип подключения
+		hints.ai_family = AF_UNSPEC;
+		// Устанавливаем что это потоковый сокет
+		hints.ai_socktype = SOCK_STREAM;
+		// Устанавливаем что это tcp подключение
+		hints.ai_protocol = IPPROTO_TCP;
+		// Устанавливаем флаг подключения что это канонническое имя
+		hints.ai_flags = EVUTIL_AI_CANONNAME;
+		// Добавляем доменное имя в список доменов
+		auto ret = this->doms.emplace(dom.id, move(dom));
+		// Выполняем dns запрос
+		struct evdns_getaddrinfo_request * reply = evdns_getaddrinfo(result, host.c_str(), nullptr, &hints, &dns_t::callback, &ret.first->second);
+		// Выводим в лог сообщение
+		if(reply == nullptr) this->log->print("request for %s returned immediately", log_t::flag_t::CRITICAL, host.c_str());
 	}
 	// Выводим результат
 	return result;
@@ -316,51 +304,40 @@ void awh::DNS::resolve(const string & host, const int family, function <void (co
 			if(!ip.empty()) callback(ip);
 			// Если адрес не найден то запрашиваем его с резолвера
 			else {
-				/**
-				 * Выполняем отлов ошибок
-				 */
-				try {
-					// Создаем объект домен
-					dom_t dom;
-					// Запоминаем текущий объект
-					dom.dns = this;
-					// Запоминаем название искомого домена
-					dom.host = host;
-					// Устанавливаем тип протокола интернета
-					dom.family = family;
-					// Запоминаем объект основного фреймворка
-					dom.fmk = this->fmk;
-					// Запоминаем объект для работы с логами
-					dom.log = this->log;
-					// Устанавливаем функцию обратного вызова
-					dom.callback = callback;
-					// Формируем идентификатор объекта
-					dom.id = this->fmk->unixTimestamp();
-					// Структура запроса
-					struct evutil_addrinfo hints;
-					// Заполняем структуру запроса нулями
-					memset(&hints, 0, sizeof(hints));
-					// Устанавливаем тип подключения
-					hints.ai_family = AF_UNSPEC;
-					// Устанавливаем что это потоковый сокет
-					hints.ai_socktype = SOCK_STREAM;
-					// Устанавливаем что это tcp подключение
-					hints.ai_protocol = IPPROTO_TCP;
-					// Устанавливаем флаг подключения что это канонническое имя
-					hints.ai_flags = EVUTIL_AI_CANONNAME;
-					// Добавляем доменное имя в список доменов
-					auto ret = this->doms.emplace(dom.id, move(dom));
-					// Выполняем dns запрос
-					this->reply = evdns_getaddrinfo(this->dbase, host.c_str(), nullptr, &hints, &dns_t::callback, &ret.first->second);
-					// Выводим в лог сообщение
-					if(this->reply == nullptr) this->log->print("request for %s returned immediately", log_t::flag_t::CRITICAL, host.c_str());
-				// Если возникает ошибка выделения памяти
-				} catch(const bad_alloc &) {
-					// Выводим сообщение об ошибке
-					this->log->print("%s", log_t::flag_t::CRITICAL, "memory could not be allocated");
-					// Выходим из приложения
-					exit(EXIT_FAILURE);
-				}
+				// Создаем объект домен
+				dom_t dom;
+				// Запоминаем текущий объект
+				dom.dns = this;
+				// Запоминаем название искомого домена
+				dom.host = host;
+				// Устанавливаем тип протокола интернета
+				dom.family = family;
+				// Запоминаем объект основного фреймворка
+				dom.fmk = this->fmk;
+				// Запоминаем объект для работы с логами
+				dom.log = this->log;
+				// Устанавливаем функцию обратного вызова
+				dom.callback = callback;
+				// Формируем идентификатор объекта
+				dom.id = this->fmk->unixTimestamp();
+				// Структура запроса
+				struct evutil_addrinfo hints;
+				// Заполняем структуру запроса нулями
+				memset(&hints, 0, sizeof(hints));
+				// Устанавливаем тип подключения
+				hints.ai_family = AF_UNSPEC;
+				// Устанавливаем что это потоковый сокет
+				hints.ai_socktype = SOCK_STREAM;
+				// Устанавливаем что это tcp подключение
+				hints.ai_protocol = IPPROTO_TCP;
+				// Устанавливаем флаг подключения что это канонническое имя
+				hints.ai_flags = EVUTIL_AI_CANONNAME;
+				// Добавляем доменное имя в список доменов
+				auto ret = this->doms.emplace(dom.id, move(dom));
+				// Выполняем dns запрос
+				this->reply = evdns_getaddrinfo(this->dbase, host.c_str(), nullptr, &hints, &dns_t::callback, &ret.first->second);
+				// Выводим в лог сообщение
+				if(this->reply == nullptr) this->log->print("request for %s returned immediately", log_t::flag_t::CRITICAL, host.c_str());
 			}
 		// Если передан домен то возвращаем его
 		} else callback(match[1].str());

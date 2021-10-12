@@ -11,45 +11,6 @@
 #include <client/worker.hpp>
 
 /**
- * Proxy Конструктор
- * @param fmk объект фреймворка
- * @param log объект для работы с логами
- */
-awh::Proxy::Proxy(const fmk_t * fmk, const log_t * log) noexcept : fmk(fmk), log(log), type(type_t::NONE) {
-	/**
-	 * Выполняем отлов ошибок
-	 */
-	try {
-		// Создаём объект для работы с сетью
-		this->nwk = new network_t(this->fmk);
-		// Создаём объект URI
-		this->uri = new uri_t(this->fmk, this->nwk);
-		// Создаём объект для работы с HTTP
-		this->http = new httpCli_t(this->fmk, this->log, this->uri);
-		// Создаём объект для работы с Socks5
-		this->socks5 = new socks5Cli_t(this->fmk, this->log, this->uri);
-	// Если происходит ошибка то игнорируем её
-	} catch(const bad_alloc&) {
-		// Выводим сообщение об ошибке
-		log->print("%s", log_t::flag_t::CRITICAL, "memory could not be allocated");
-		// Выходим из приложения
-		exit(EXIT_FAILURE);
-	}
-}
-/**
- * ~Proxy Деструктор
- */
-awh::Proxy::~Proxy() noexcept {
-	// Удаляем объект для работы с сетью
-	if(this->nwk != nullptr) delete this->nwk;
-	// Удаляем объект для работы с URI
-	if(this->uri != nullptr) delete this->uri;
-	// Удаляем объект работы с HTTP
-	if(this->http != nullptr) delete this->http;
-	// Удаляем объект для работы с Socks5
-	if(this->socks5 != nullptr) delete this->socks5;
-}
-/**
  * clear Метод очистки
  */
 void awh::WorkerClient::clear() noexcept {

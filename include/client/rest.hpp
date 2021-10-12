@@ -64,6 +64,12 @@ namespace awh {
 		private:
 			// Параметры ответа
 			res_t res;
+			// Создаём объект работы с URI ссылками
+			uri_t uri;
+			// Создаем объект для работы с сетью
+			network_t nwk;
+			// Создаём объект для работы с HTTP
+			httpCli_t http;
 			// Объект рабочего
 			workCli_t worker;
 			// Метод выполняемого запроса
@@ -84,17 +90,10 @@ namespace awh {
 			// Контекст передаваемого объекта
 			void * ctx = nullptr;
 		private:
-			// Создаём объект для работы с HTTP
-			httpCli_t * http = nullptr;
-		private:
 			// Создаём объект фреймворка
 			const fmk_t * fmk = nullptr;
 			// Создаём объект работы с логами
 			const log_t * log = nullptr;
-			// Создаём объект работы с URI ссылками
-			const uri_t * uri = nullptr;
-			// Создаем объект для работы с сетью
-			const network_t * nwk = nullptr;
 			// Создаём объект биндинга TCP/IP
 			const coreCli_t * core = nullptr;
 		private:
@@ -374,7 +373,7 @@ namespace awh {
 			/**
 			 * ~Rest Деструктор
 			 */
-			~Rest() noexcept;
+			~Rest() noexcept {}
 	} restCli_t;
 };
 

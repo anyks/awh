@@ -49,7 +49,7 @@ awh::Http::stath_t awh::Http::checkAuth() noexcept {
 					// Если параметры авторизации найдены
 					if((this->failAuth = (it != this->headers.end()))){
 						// Устанавливаем заголовок HTTP в параметры авторизации
-						reinterpret_cast <authCli_t *> (this->auth)->setHeader(it->second);
+						reinterpret_cast <authCli_t *> (this->auth.get())->setHeader(it->second);
 						// Просим повторить авторизацию ещё раз
 						result = stath_t::RETRY;
 					}
@@ -106,7 +106,7 @@ awh::Http::stath_t awh::Http::checkAuth() noexcept {
 				// Устанавливаем заголовок HTTP в параметры авторизации
 				this->auth->setHeader(it->second);
 				// Выполняем проверку авторизации
-				if(reinterpret_cast <authSrv_t *> (this->auth)->check())
+				if(reinterpret_cast <authSrv_t *> (this->auth.get())->check())
 					// Устанавливаем успешный результат авторизации
 					result = http_t::stath_t::GOOD;
 			}
@@ -131,14 +131,14 @@ void awh::Http::update() noexcept {
 			// Определяем размер шифрования
 			switch(stoi(it->second)){
 				// Если шифрование произведено 128 битным ключём
-				case 128: this->hash->setAES(hash_t::aes_t::AES128); break;
+				case 128: this->hash.setAES(hash_t::aes_t::AES128); break;
 				// Если шифрование произведено 192 битным ключём
-				case 192: this->hash->setAES(hash_t::aes_t::AES192); break;
+				case 192: this->hash.setAES(hash_t::aes_t::AES192); break;
 				// Если шифрование произведено 256 битным ключём
-				case 256: this->hash->setAES(hash_t::aes_t::AES256); break;
+				case 256: this->hash.setAES(hash_t::aes_t::AES256); break;
 			}
 			// Выполняем дешифрование полученных данных
-			const auto & res = this->hash->decrypt(this->body.data(), this->body.size());
+			const auto & res = this->hash.decrypt(this->body.data(), this->body.size());
 			// Если данные расшифрованны, заменяем тело данных
 			if(!res.empty()) this->body.assign(res.begin(), res.end());
 		}
@@ -151,7 +151,7 @@ void awh::Http::update() noexcept {
 				// Устанавливаем требование выполнять декомпрессию тела сообщения
 				this->compress = compress_t::BROTLI;
 				// Выполняем декомпрессию данных
-				const auto & body = this->hash->decompressBrotli(this->body.data(), this->body.size());
+				const auto & body = this->hash.decompressBrotli(this->body.data(), this->body.size());
 				// Заменяем полученное тело
 				if(!body.empty()) this->body.assign(body.begin(), body.end());
 			// Если данные пришли сжатые методом GZip
@@ -159,7 +159,7 @@ void awh::Http::update() noexcept {
 				// Устанавливаем требование выполнять декомпрессию тела сообщения
 				this->compress = compress_t::GZIP;
 				// Выполняем декомпрессию данных
-				const auto & body = this->hash->decompressGzip(this->body.data(), this->body.size());
+				const auto & body = this->hash.decompressGzip(this->body.data(), this->body.size());
 				// Заменяем полученное тело
 				if(!body.empty()) this->body.assign(body.begin(), body.end());
 			// Если данные пришли сжатые методом Deflate
@@ -169,9 +169,9 @@ void awh::Http::update() noexcept {
 				// Получаем данные тела в бинарном виде
 				vector <char> buffer(this->body.begin(), this->body.end());
 				// Добавляем хвост в полученные данные
-				this->hash->setTail(buffer);
+				this->hash.setTail(buffer);
 				// Выполняем декомпрессию данных
-				const auto & body = this->hash->decompress(buffer.data(), buffer.size());
+				const auto & body = this->hash.decompress(buffer.data(), buffer.size());
 				// Заменяем полученное тело
 				if(!body.empty()) this->body.assign(body.begin(), body.end());
 			}
@@ -807,7 +807,7 @@ vector <char> awh::Http::proxy(const uri_t::url_t & url) noexcept {
 			// Добавляем поддержку постоянного подключения для прокси-сервера
 			this->addHeader("Proxy-Connection", "keep-alive");
 			// Получаем параметры авторизации
-			const string & auth = reinterpret_cast <authCli_t *> (this->auth)->getHeader(true);
+			const string & auth = reinterpret_cast <authCli_t *> (this->auth.get())->getHeader(true);
 			// Если данные авторизации получены
 			if(!auth.empty()) this->addHeader("Proxy-Authorization", auth);
 			// Формируем URI запроса
@@ -940,7 +940,7 @@ vector <char> awh::Http::response(const u_short code) const noexcept {
 		// Если заголовок авторизации не передан
 		if(!available[6] && !this->isBlack("WWW-Authenticate")){
 			// Получаем параметры авторизации
-			const string & auth = reinterpret_cast <authSrv_t *> (this->auth)->getHeader();
+			const string & auth = reinterpret_cast <authSrv_t *> (this->auth.get())->getHeader();
 			// Если данные авторизации получены
 			if(!auth.empty()) response.append(auth);
 		}
@@ -951,13 +951,13 @@ vector <char> awh::Http::response(const u_short code) const noexcept {
 			// Если нужно производить шифрование
 			if(this->crypt && !this->isBlack("X-AWH-Encryption")){
 				// Выполняем шифрование переданных данных
-				const auto & res = this->hash->encrypt(this->body.data(), this->body.size());
+				const auto & res = this->hash.encrypt(this->body.data(), this->body.size());
 				// Если данные зашифрованы, заменяем тело данных
 				if(!res.empty()){
 					// Заменяем тело данных
 					this->body.assign(res.begin(), res.end());
 					// Устанавливаем X-AWH-Encryption
-					response.append(this->fmk->format("X-AWH-Encryption: %u\r\n", (u_short) this->hash->getAES()));
+					response.append(this->fmk->format("X-AWH-Encryption: %u\r\n", (u_short) this->hash.getAES()));
 				}
 			}
 			// Если заголовок не запрещён
@@ -967,7 +967,7 @@ vector <char> awh::Http::response(const u_short code) const noexcept {
 					// Если нужно сжать тело методом BROTLI
 					case (uint8_t) compress_t::BROTLI: {
 						// Выполняем сжатие тела сообщения
-						const auto & brotli = this->hash->compressBrotli(this->body.data(), this->body.size());
+						const auto & brotli = this->hash.compressBrotli(this->body.data(), this->body.size());
 						// Если данные сжаты, заменяем тело данных
 						if(!brotli.empty()){
 							// Заменяем тело данных
@@ -981,7 +981,7 @@ vector <char> awh::Http::response(const u_short code) const noexcept {
 					// Если нужно сжать тело методом GZIP
 					case (uint8_t) compress_t::GZIP: {
 						// Выполняем сжатие тела сообщения
-						const auto & gzip = this->hash->compressGzip(this->body.data(), this->body.size());
+						const auto & gzip = this->hash.compressGzip(this->body.data(), this->body.size());
 						// Если данные сжаты, заменяем тело данных
 						if(!gzip.empty()){
 							// Заменяем тело данных
@@ -995,9 +995,9 @@ vector <char> awh::Http::response(const u_short code) const noexcept {
 					// Если нужно сжать тело методом DEFLATE
 					case (uint8_t) compress_t::DEFLATE: {
 						// Выполняем сжатие тела сообщения
-						auto deflate = this->hash->compress(this->body.data(), this->body.size());
+						auto deflate = this->hash.compress(this->body.data(), this->body.size());
 						// Удаляем хвост в полученных данных
-						this->hash->rmTail(deflate);
+						this->hash.rmTail(deflate);
 						// Если данные сжаты, заменяем тело данных
 						if(!deflate.empty()){
 							// Заменяем тело данных
@@ -1066,7 +1066,7 @@ vector <char> awh::Http::request(const uri_t::url_t & url, const method_t method
 			// Данные REST запроса
 			string request = "";
 			// Устанавливаем параметры REST запроса
-			((authCli_t *) const_cast <auth_t *> (this->auth))->setUri(this->uri->createUrl(url));
+			((authCli_t *) const_cast <auth_t *> (this->auth.get()))->setUri(this->uri->createUrl(url));
 			// Если метод не CONNECT или URI не установлен
 			if((method != method_t::CONNECT) || this->query.uri.empty())
 				// Формируем HTTP запрос
@@ -1214,7 +1214,7 @@ vector <char> awh::Http::request(const uri_t::url_t & url, const method_t method
 			// Если заголовок авторизации не передан
 			if(!available[10] && !this->isBlack("Authorization")){
 				// Получаем параметры авторизации
-				const string & auth = reinterpret_cast <authCli_t *> (this->auth)->getHeader();
+				const string & auth = reinterpret_cast <authCli_t *> (this->auth.get())->getHeader();
 				// Если данные авторизации получены
 				if(!auth.empty()) request.append(auth);
 			}
@@ -1225,13 +1225,13 @@ vector <char> awh::Http::request(const uri_t::url_t & url, const method_t method
 				// Если нужно производить шифрование
 				if(this->crypt && !this->isBlack("X-AWH-Encryption")){
 					// Выполняем шифрование переданных данных
-					const auto & res = this->hash->encrypt(this->body.data(), this->body.size());
+					const auto & res = this->hash.encrypt(this->body.data(), this->body.size());
 					// Если данные зашифрованы, заменяем тело данных
 					if(!res.empty()){
 						// Заменяем тело данных
 						this->body.assign(res.begin(), res.end());
 						// Устанавливаем X-AWH-Encryption
-						request.append(this->fmk->format("X-AWH-Encryption: %u\r\n", (u_short) this->hash->getAES()));
+						request.append(this->fmk->format("X-AWH-Encryption: %u\r\n", (u_short) this->hash.getAES()));
 					}
 				}
 				// Если заголовок не запрещён
@@ -1241,7 +1241,7 @@ vector <char> awh::Http::request(const uri_t::url_t & url, const method_t method
 						// Если нужно сжать тело методом BROTLI
 						case (uint8_t) compress_t::BROTLI: {
 							// Выполняем сжатие тела сообщения
-							const auto & brotli = this->hash->compressBrotli(this->body.data(), this->body.size());
+							const auto & brotli = this->hash.compressBrotli(this->body.data(), this->body.size());
 							// Если данные сжаты, заменяем тело данных
 							if(!brotli.empty()){
 								// Заменяем тело данных
@@ -1255,7 +1255,7 @@ vector <char> awh::Http::request(const uri_t::url_t & url, const method_t method
 						// Если нужно сжать тело методом GZIP
 						case (uint8_t) compress_t::GZIP: {
 							// Выполняем сжатие тела сообщения
-							const auto & gzip = this->hash->compressGzip(this->body.data(), this->body.size());
+							const auto & gzip = this->hash.compressGzip(this->body.data(), this->body.size());
 							// Если данные сжаты, заменяем тело данных
 							if(!gzip.empty()){
 								// Заменяем тело данных
@@ -1269,9 +1269,9 @@ vector <char> awh::Http::request(const uri_t::url_t & url, const method_t method
 						// Если нужно сжать тело методом DEFLATE
 						case (uint8_t) compress_t::DEFLATE: {
 							// Выполняем сжатие тела сообщения
-							auto deflate = this->hash->compress(this->body.data(), this->body.size());
+							auto deflate = this->hash.compress(this->body.data(), this->body.size());
 							// Удаляем хвост в полученных данных
-							this->hash->rmTail(deflate);
+							this->hash.rmTail(deflate);
 							// Если данные сжаты, заменяем тело данных
 							if(!deflate.empty()){
 								// Заменяем тело данных
@@ -1351,37 +1351,9 @@ void awh::Http::setCrypt(const string & pass, const string & salt, const hash_t:
 	// Устанавливаем флаг шифрования
 	this->crypt = !pass.empty();
 	// Устанавливаем размер шифрования
-	this->hash->setAES(aes);
+	this->hash.setAES(aes);
 	// Устанавливаем соль шифрования
-	this->hash->setSalt(salt);
+	this->hash.setSalt(salt);
 	// Устанавливаем пароль шифрования
-	this->hash->setPassword(pass);
-}
-/**
- * Http Конструктор
- * @param fmk объект фреймворка
- * @param log объект для работы с логами
- * @param uri объект работы с URI
- */
-awh::Http::Http(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcept : fmk(fmk), log(log), uri(uri) {
-	/**
-	 * Выполняем отлов ошибок
-	 */
-	try {
-		// Создаём объект для работы с сжатым контентом
-		this->hash = new hash_t(this->fmk, this->log);
-	// Если происходит ошибка то игнорируем её
-	} catch(const bad_alloc&) {
-		// Выводим сообщение об ошибке
-		log->print("%s", log_t::flag_t::CRITICAL, "memory could not be allocated");
-		// Выходим из приложения
-		exit(EXIT_FAILURE);
-	}
-}
-/**
- * ~Http Деструктор
- */
-awh::Http::~Http() noexcept {
-	// Удаляем объект работы с сжатым контентом
-	if(this->hash != nullptr) delete this->hash;
+	this->hash.setPassword(pass);
 }

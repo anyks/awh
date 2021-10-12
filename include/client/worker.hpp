@@ -39,30 +39,30 @@ namespace awh {
 			// Параметры сокет-сервера
 			uri_t::url_t url;
 		public:
+			// Создаём объект работы с URI
+			uri_t uri;
+			// Создаем объект сети
+			network_t nwk;
 			// Создаём объект для работы с HTTP
-			httpCli_t * http = nullptr;
+			httpCli_t http;
 			// Создаём объект для работы с Socks5
-			socks5Cli_t * socks5 = nullptr;
+			socks5Cli_t socks5;
 		public:
 			// Создаём объект фреймворка
 			const fmk_t * fmk = nullptr;
 			// Создаём объект работы с логами
 			const log_t * log = nullptr;
-			// Создаём объект работы с URI
-			const uri_t * uri = nullptr;
-			// Создаем объект сети
-			const network_t * nwk = nullptr;
 		public:
 			/**
 			 * Proxy Конструктор
 			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
 			 */
-			Proxy(const fmk_t * fmk, const log_t * log) noexcept;
+			Proxy(const fmk_t * fmk, const log_t * log) noexcept : nwk(fmk), uri(fmk, &nwk), http(fmk, log, &uri), socks5(fmk, log, &uri), fmk(fmk), log(log), type(type_t::NONE) {}
 			/**
 			 * ~Proxy Деструктор
 			 */
-			~Proxy() noexcept;
+			~Proxy() noexcept {}
 	} proxy_t;
 	/**
 	 * WorkerClient Структура клиента воркера

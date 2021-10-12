@@ -65,7 +65,7 @@ namespace awh {
 			/**
 			 * ~HttpServer Деструктор
 			 */
-			~HttpServer() noexcept;
+			~HttpServer() noexcept {}
 	} httpSrv_t;
 };
 

@@ -72,7 +72,7 @@ namespace awh {
 			/**
 			 * ~WSClient Деструктор
 			 */
-			~WSClient() noexcept;
+			~WSClient() noexcept {}
 	} wsc_t;
 };
 

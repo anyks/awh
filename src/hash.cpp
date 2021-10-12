@@ -15,73 +15,46 @@
  * @return результат инициализации
  */
 bool awh::Hash::initAES() const {
-	/**
-	 * Выполняем отлов ошибок
-	 */
-	try {
-		// Создаем тип шифрования
-		const EVP_CIPHER * cipher = EVP_enc_null();
-		// Устанавливаем длину шифрования
-		switch((u_short) this->aesSize){
-			// Устанавливаем шифрование в 128
-			case (u_short) aes_t::AES128: cipher = EVP_aes_128_ecb(); break;
-			// Устанавливаем шифрование в 192
-			case (u_short) aes_t::AES192: cipher = EVP_aes_192_ecb(); break;
-			// Устанавливаем шифрование в 256
-			case (u_short) aes_t::AES256: cipher = EVP_aes_256_ecb(); break;
-			// Если ничего не выбрано, сбрасываем
-			default: return false;
-		}
-		// Создаем контекст
-		EVP_CIPHER_CTX * ctx = EVP_CIPHER_CTX_new();
-		// Привязываем контекст к типу шифрования
-		EVP_EncryptInit_ex(ctx, cipher, nullptr, nullptr, nullptr);
-		// Получаем размеры буферов
-		const int ivlen = EVP_CIPHER_CTX_iv_length(ctx);
-		const int keylen = EVP_CIPHER_CTX_key_length(ctx);
-		// Выделяем нужное количество памяти
-		u_char * iv = new u_char [ivlen];
-		u_char * key = new u_char [keylen];
-		// Выполняем инициализацию ключа
-		const int ok = EVP_BytesToKey(cipher, EVP_sha256(), (this->salt.empty() ? nullptr : (u_char *) this->salt.data()), (u_char *) this->password.data(), this->password.length(), this->roundsAES, key, iv);
-		// Очищаем контекст
-		EVP_CIPHER_CTX_free(ctx);
-		// Если инициализация не произошла
-		if(ok == 0){
-			// Очищаем выделенную память буферов
-			delete [] iv;
-			delete [] key;
-			// Выходим
-			return false;
-		}
-		// Устанавливаем ключ шифрования
-		const int res = AES_set_encrypt_key(key, keylen * 8, &this->aesKey);
-		// Удаляем выделенную память для ключа
-		delete [] key;
-		// Если установка ключа не произошло
-		if(res != 0){
-			// Очищаем выделенную память буферов
-			delete [] iv;
-			// Выходим
-			return false;
-		}
-		// Обнуляем номер
-		this->stateAES.num = 0;
-		// Заполняем половину структуры нулями
-		memset(this->stateAES.ivec, 0, sizeof(this->stateAES.ivec));
-		// Копируем данные шифрования
-		memcpy(this->stateAES.ivec, iv, ivlen);
-		// Выполняем шифрование
-		// AES_encrypt(this->stateAES.ivec, this->stateAES.count, &this->aesKey);
-		// Очищаем выделенную память буферов
-		delete [] iv;
-		// Сообщаем что всё удачно
-		return true;
-	// Если происходит ошибка то игнорируем её
-	} catch(const bad_alloc &) {
-		// Выходим из приложения
-		exit(EXIT_FAILURE);
+	// Создаем тип шифрования
+	const EVP_CIPHER * cipher = EVP_enc_null();
+	// Устанавливаем длину шифрования
+	switch((u_short) this->aesSize){
+		// Устанавливаем шифрование в 128
+		case (u_short) aes_t::AES128: cipher = EVP_aes_128_ecb(); break;
+		// Устанавливаем шифрование в 192
+		case (u_short) aes_t::AES192: cipher = EVP_aes_192_ecb(); break;
+		// Устанавливаем шифрование в 256
+		case (u_short) aes_t::AES256: cipher = EVP_aes_256_ecb(); break;
+		// Если ничего не выбрано, сбрасываем
+		default: return false;
 	}
+	// Создаем контекст
+	EVP_CIPHER_CTX * ctx = EVP_CIPHER_CTX_new();
+	// Привязываем контекст к типу шифрования
+	EVP_EncryptInit_ex(ctx, cipher, nullptr, nullptr, nullptr);
+	// Выделяем нужное количество памяти
+	vector <u_char> iv(EVP_CIPHER_CTX_iv_length(ctx), 0);
+	vector <u_char> key(EVP_CIPHER_CTX_key_length(ctx), 0);
+	// Выполняем инициализацию ключа
+	const int ok = EVP_BytesToKey(cipher, EVP_sha256(), (this->salt.empty() ? nullptr : (u_char *) this->salt.data()), (u_char *) this->password.data(), this->password.length(), this->roundsAES, key.data(), iv.data());
+	// Очищаем контекст
+	EVP_CIPHER_CTX_free(ctx);
+	// Если инициализация не произошла
+	if(ok == 0) return false;
+	// Устанавливаем ключ шифрования
+	const int res = AES_set_encrypt_key(key.data(), key.size() * 8, &this->aesKey);
+	// Если установка ключа не произошло
+	if(res != 0) return false;
+	// Обнуляем номер
+	this->stateAES.num = 0;
+	// Заполняем половину структуры нулями
+	memset(this->stateAES.ivec, 0, sizeof(this->stateAES.ivec));
+	// Копируем данные шифрования
+	memcpy(this->stateAES.ivec, iv.data(), iv.size());
+	// Выполняем шифрование
+	// AES_encrypt(this->stateAES.ivec, this->stateAES.count, &this->aesKey);
+	// Сообщаем что всё удачно
+	return true;
 }
 /**
  * getAES Метод получения размера шифрования
@@ -125,42 +98,31 @@ const vector <char> awh::Hash::encrypt(const char * buffer, const size_t size) c
 	if((buffer != nullptr) && (size > 0)){
 		// Если пароль установлен
 		if(!this->password.empty()){
+			// Максимальный размер считываемых данных
+			int chunk = 0;
+			// Размер буфера полученных данных
+			size_t count = 0;
+			// Определяем размер данных для считывания
+			size_t len = size;
 			// Выполняем инициализацию
 			this->initAES();
-			/**
-			 * Выполняем отлов ошибок
-			 */
-			try {
+			// Выделяем память для буфера данных
+			vector <u_char> output(len, 0);
+			// Входные данные
+			const u_char * input = (u_char *) buffer;
+			// Выполняем извлечение оставшихся данных
+			do {
 				// Максимальный размер считываемых данных
-				int chunk = 0;
-				// Размер буфера полученных данных
-				size_t count = 0;
-				// Определяем размер данных для считывания
-				size_t len = size;
-				// Входные данные
-				const u_char * input = (u_char *) buffer;
-				// Выделяем память для буфера данных
-				u_char * output = new u_char [len];
-				// Выполняем извлечение оставшихся данных
-				do {
-					// Максимальный размер считываемых данных
-					chunk = (len > CHUNK_BUFFER_SIZE ? CHUNK_BUFFER_SIZE : len);
-					// Выполняем сжатие данных
-					AES_cfb128_encrypt(input + count, output + count, chunk, &this->aesKey, this->stateAES.ivec, &this->stateAES.num, AES_ENCRYPT);
-					// Увеличиваем смещение
-					count += chunk;
-					// Вычитаем считанные данные
-					len -= chunk;
-				} while(len > 0);
-				// Запоминаем полученные данные
-				result.insert(result.end(), output, output + count);
-				// Очищаем буфер
-				delete [] output;
-			// Если происходит ошибка то игнорируем её
-			} catch(const bad_alloc &) {
-				// Выходим из приложения
-				exit(EXIT_FAILURE);
-			}
+				chunk = (len > CHUNK_BUFFER_SIZE ? CHUNK_BUFFER_SIZE : len);
+				// Выполняем сжатие данных
+				AES_cfb128_encrypt(input + count, output.data() + count, chunk, &this->aesKey, this->stateAES.ivec, &this->stateAES.num, AES_ENCRYPT);
+				// Увеличиваем смещение
+				count += chunk;
+				// Вычитаем считанные данные
+				len -= chunk;
+			} while(len > 0);
+			// Запоминаем полученные данные
+			result.insert(result.end(), output.data(), output.data() + count);
 		// Выводим тот же самый буфер как он был передан
 		} else result.insert(result.end(), buffer, buffer + size);
 	}
@@ -180,42 +142,31 @@ const vector <char> awh::Hash::decrypt(const char * buffer, const size_t size) c
 	if((buffer != nullptr) && (size > 0)){
 		// Если пароль установлен
 		if(!this->password.empty()){
+			// Максимальный размер считываемых данных
+			int chunk = 0;
+			// Размер буфера полученных данных
+			size_t count = 0;
+			// Определяем размер данных для считывания
+			size_t len = size;
 			// Выполняем инициализацию
 			this->initAES();
-			/**
-			 * Выполняем отлов ошибок
-			 */
-			try {
+			// Выделяем память для буфера данных
+			vector <u_char> output(len, 0);
+			// Входные данные
+			const u_char * input = (u_char *) buffer;
+			// Выполняем извлечение оставшихся данных
+			do {
 				// Максимальный размер считываемых данных
-				int chunk = 0;
-				// Размер буфера полученных данных
-				size_t count = 0;
-				// Определяем размер данных для считывания
-				size_t len = size;
-				// Входные данные
-				const u_char * input = (u_char *) buffer;
-				// Выделяем память для буфера данных
-				u_char * output = new u_char [len];
-				// Выполняем извлечение оставшихся данных
-				do {
-					// Максимальный размер считываемых данных
-					chunk = (len > CHUNK_BUFFER_SIZE ? CHUNK_BUFFER_SIZE : len);
-					// Выполняем сжатие данных
-					AES_cfb128_encrypt(input + count, output + count, chunk, &this->aesKey, this->stateAES.ivec, &this->stateAES.num, AES_DECRYPT);
-					// Увеличиваем смещение
-					count += chunk;
-					// Вычитаем считанные данные
-					len -= chunk;
-				} while(len > 0);
-				// Запоминаем полученные данные
-				result.insert(result.end(), output, output + count);
-				// Очищаем буфер
-				delete [] output;
-			// Если происходит ошибка то игнорируем её
-			} catch(const bad_alloc &) {
-				// Выходим из приложения
-				exit(EXIT_FAILURE);
-			}
+				chunk = (len > CHUNK_BUFFER_SIZE ? CHUNK_BUFFER_SIZE : len);
+				// Выполняем сжатие данных
+				AES_cfb128_encrypt(input + count, output.data() + count, chunk, &this->aesKey, this->stateAES.ivec, &this->stateAES.num, AES_DECRYPT);
+				// Увеличиваем смещение
+				count += chunk;
+				// Вычитаем считанные данные
+				len -= chunk;
+			} while(len > 0);
+			// Запоминаем полученные данные
+			result.insert(result.end(), output.data(), output.data() + count);
 		// Выводим тот же самый буфер как он был передан
 		} else result.insert(result.end(), buffer, buffer + size);
 	}
@@ -386,51 +337,38 @@ const vector <char> awh::Hash::compressGzip(const char * buffer, const size_t si
 	vector <char> result;
 	// Если буфер для сжатия передан
 	if((buffer != nullptr) && (size > 0)){
-		/**
-		 * Выполняем отлов ошибок
-		 */
-		try {
-			// Результирующий размер данных
-			int ret = 0;
-			// Создаем поток zip
-			z_stream zs;
-			// Заполняем его нулями
-			memset(&zs, 0, sizeof(zs));
-			// Если поток инициализировать не удалось, выходим
-			if(deflateInit2(&zs, this->levelGzip, Z_DEFLATED, MOD_GZIP_ZLIB_WINDOWSIZE + 16, MOD_GZIP_ZLIB_CFACTOR, Z_DEFAULT_STRATEGY) == Z_OK){
-				// Указываем размер входного буфера
-				zs.avail_in = size;
-				// Заполняем входные данные буфера
-				zs.next_in = (u_char *) const_cast <char *> (buffer);
-				// Создаем буфер с сжатыми данными
-				u_char * outbuff = new u_char[(const size_t) zs.avail_in];
-				// Заполняем нулями буфер исходящих данных
-				memset(outbuff, 0, zs.avail_in);
-				// Выполняем сжатие данных
-				do {
-					// Устанавливаем буфер для получения результата
-					zs.next_out = outbuff;
-					// Устанавливаем максимальный размер буфера
-					zs.avail_out = zs.avail_in;
-					// Выполняем сжатие
-					ret = deflate(&zs, Z_FINISH);
-					// Если данные добавлены не полностью
-					if(result.size() < zs.total_out)
-						// Добавляем оставшиеся данные
-						result.insert(result.end(), outbuff, outbuff + (zs.total_out - result.size()));
-				} while(ret == Z_OK);
-				// Удаляем буфер данных
-				delete [] outbuff;
-			}
-			// Завершаем сжатие
-			deflateEnd(&zs);
-			// Если сжатие не удалось то очищаем выходные данные
-			if(ret != Z_STREAM_END) result.clear();
-		// Если происходит ошибка то игнорируем её
-		} catch(const bad_alloc&) {
-			// Выводим сообщение об ошибке
-			this->log->print("%s", log_t::flag_t::WARNING, "memory could not be allocated");
+		// Результирующий размер данных
+		int ret = 0;
+		// Создаем поток zip
+		z_stream zs;
+		// Заполняем его нулями
+		memset(&zs, 0, sizeof(zs));
+		// Если поток инициализировать не удалось, выходим
+		if(deflateInit2(&zs, this->levelGzip, Z_DEFLATED, MOD_GZIP_ZLIB_WINDOWSIZE + 16, MOD_GZIP_ZLIB_CFACTOR, Z_DEFAULT_STRATEGY) == Z_OK){
+			// Указываем размер входного буфера
+			zs.avail_in = size;
+			// Заполняем входные данные буфера
+			zs.next_in = (u_char *) const_cast <char *> (buffer);
+			// Создаем буфер с сжатыми данными
+			vector <u_char> output(zs.avail_in, 0);
+			// Выполняем сжатие данных
+			do {
+				// Устанавливаем максимальный размер буфера
+				zs.avail_out = zs.avail_in;
+				// Устанавливаем буфер для получения результата
+				zs.next_out = output.data();
+				// Выполняем сжатие
+				ret = deflate(&zs, Z_FINISH);
+				// Если данные добавлены не полностью
+				if(result.size() < zs.total_out)
+					// Добавляем оставшиеся данные
+					result.insert(result.end(), output.data(), output.data() + (zs.total_out - result.size()));
+			} while(ret == Z_OK);
 		}
+		// Завершаем сжатие
+		deflateEnd(&zs);
+		// Если сжатие не удалось то очищаем выходные данные
+		if(ret != Z_STREAM_END) result.clear();
 	}
 	// Выводим результат
 	return result;
@@ -446,53 +384,40 @@ const vector <char> awh::Hash::decompressGzip(const char * buffer, const size_t 
 	vector <char> result;
 	// Если буфер для сжатия передан
 	if((buffer != nullptr) && (size > 0)){
-		/**
-		 * Выполняем отлов ошибок
-		 */
-		try {
-			// Результирующий размер данных
-			int ret = 0;
-			// Создаем поток zip
-			z_stream zs;
-			// Заполняем его нулями
-			memset(&zs, 0, sizeof(zs));
-			// Если поток инициализировать не удалось, выходим
-			if(inflateInit2(&zs, MOD_GZIP_ZLIB_WINDOWSIZE + 16) == Z_OK){
-				// Указываем размер входного буфера
-				zs.avail_in = size;
-				// Заполняем входные данные буфера
-				zs.next_in = (u_char *) const_cast <char *> (buffer);
-				// Получаем размер выходных данных
-				const size_t osize = (zs.avail_in * 10);
-				// Создаем буфер с сжатыми данными
-				u_char * outbuff = new u_char[osize];
-				// Заполняем нулями буфер исходящих данных
-				memset(outbuff, 0, osize);
-				// Выполняем расжатие данных
-				do {
-					// Устанавливаем максимальный размер буфера
-					zs.avail_out = osize;
-					// Устанавливаем буфер для получения результата
-					zs.next_out = outbuff;
-					// Выполняем расжатие
-					ret = inflate(&zs, 0);
-					// Если данные добавлены не полностью
-					if(result.size() < zs.total_out)
-						// Добавляем оставшиеся данные
-						result.insert(result.end(), outbuff, outbuff + (zs.total_out - result.size()));
-				} while(ret == Z_OK);
-				// Удаляем буфер данных
-				delete [] outbuff;
-			}
-			// Завершаем расжатие
-			inflateEnd(&zs);
-			// Если сжатие не удалось то очищаем выходные данные
-			if(ret != Z_STREAM_END) result.clear();
-		// Если происходит ошибка то игнорируем её
-		} catch(const bad_alloc&) {
-			// Выводим сообщение об ошибке
-			this->log->print("%s", log_t::flag_t::WARNING, "memory could not be allocated");
+		// Результирующий размер данных
+		int ret = 0;
+		// Создаем поток zip
+		z_stream zs;
+		// Заполняем его нулями
+		memset(&zs, 0, sizeof(zs));
+		// Если поток инициализировать не удалось, выходим
+		if(inflateInit2(&zs, MOD_GZIP_ZLIB_WINDOWSIZE + 16) == Z_OK){
+			// Указываем размер входного буфера
+			zs.avail_in = size;
+			// Заполняем входные данные буфера
+			zs.next_in = (u_char *) const_cast <char *> (buffer);
+			// Получаем размер выходных данных
+			const size_t length = (zs.avail_in * 10);
+			// Создаем буфер с сжатыми данными
+			vector <u_char> output(length, 0);
+			// Выполняем расжатие данных
+			do {
+				// Устанавливаем максимальный размер буфера
+				zs.avail_out = length;
+				// Устанавливаем буфер для получения результата
+				zs.next_out = output.data();
+				// Выполняем расжатие
+				ret = inflate(&zs, 0);
+				// Если данные добавлены не полностью
+				if(result.size() < zs.total_out)
+					// Добавляем оставшиеся данные
+					result.insert(result.end(), output.data(), output.data() + (zs.total_out - result.size()));
+			} while(ret == Z_OK);
 		}
+		// Завершаем расжатие
+		inflateEnd(&zs);
+		// Если сжатие не удалось то очищаем выходные данные
+		if(ret != Z_STREAM_END) result.clear();
 	}
 	// Выводим результат
 	return result;

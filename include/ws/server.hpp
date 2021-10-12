@@ -86,7 +86,7 @@ namespace awh {
 			/**
 			 * ~WSServer Деструктор
 			 */
-			~WSServer() noexcept;
+			~WSServer() noexcept {}
 	} wss_t;
 };
 

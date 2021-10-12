@@ -53,7 +53,7 @@ void awh::Rest::closeCallback(const size_t wid, core_t * core, void * ctx) noexc
 			// Устанавливаем код сообщения
 			web->res.code = 404;
 			// Получаем само сообщение
-			web->res.message = web->http->getMessage(web->res.code);
+			web->res.message = web->http.getMessage(web->res.code);
 		}
 		// Если функция обратного вызова установлена, выводим сообщение
 		if(web->messageFn != nullptr)
@@ -75,24 +75,24 @@ void awh::Rest::connectCallback(const size_t aid, core_t * core, void * ctx) noe
 		// Получаем контекст модуля
 		restCli_t * web = reinterpret_cast <restCli_t *> (ctx);
 		// Выполняем сброс состояния HTTP парсера
-		web->http->clear();
+		web->http.clear();
 		// Устанавливаем код сообщения
 		web->res.code = 404;
 		// Получаем само сообщение
-		web->res.message = web->http->getMessage(web->res.code);
+		web->res.message = web->http.getMessage(web->res.code);
 		// Если список заголовков получен
 		if(!web->headers.empty()){
 			// Переходим по всему списку заголовков
 			for(auto & header : web->headers)
 				// Устанавливаем заголовок
-				web->http->addHeader(header.first, header.second);
+				web->http.addHeader(header.first, header.second);
 		}
 		// Если тело запроса существует
 		if(!web->entity.empty())
 			// Устанавливаем тело запроса
-			web->http->addBody(web->entity.data(), web->entity.size());
+			web->http.addBody(web->entity.data(), web->entity.size());
 		// Получаем бинарные данные REST запроса
-		const auto & rest = web->http->request(web->worker.url, web->method);
+		const auto & rest = web->http.request(web->worker.url, web->method);
 		// Если бинарные данные запроса получены
 		if(!rest.empty()){
 			// Тело REST сообщения
@@ -100,13 +100,13 @@ void awh::Rest::connectCallback(const size_t aid, core_t * core, void * ctx) noe
 			// Отправляем серверу сообщение
 			core->write(rest.data(), rest.size(), aid);
 			// Получаем данные тела запроса
-			while(!(entity = web->http->chunkBody()).empty()){
+			while(!(entity = web->http.chunkBody()).empty()){
 				// Отправляем тело на сервер
 				core->write(entity.data(), entity.size(), aid);
 			}
 		}
 		// Выполняем сброс состояния HTTP парсера
-		web->http->clear();
+		web->http.clear();
 	}
 }
 /**
@@ -125,26 +125,26 @@ void awh::Rest::connectProxyCallback(const size_t aid, core_t * core, void * ctx
 			// Если прокси-сервер является Socks5
 			case (uint8_t) proxy_t::type_t::SOCKS5: {
 				// Выполняем сброс состояния Socks5 парсера
-				web->worker.proxy.socks5->reset();
+				web->worker.proxy.socks5.reset();
 				// Устанавливаем URL адрес запроса
-				web->worker.proxy.socks5->setUrl(web->worker.url);
+				web->worker.proxy.socks5.setUrl(web->worker.url);
 				// Выполняем создание буфера запроса
-				web->worker.proxy.socks5->parse();
+				web->worker.proxy.socks5.parse();
 				// Получаем данные запроса
-				const auto & socks5 = web->worker.proxy.socks5->get();
+				const auto & socks5 = web->worker.proxy.socks5.get();
 				// Если данные получены
 				if(!socks5.empty()) core->write(socks5.data(), socks5.size(), aid);
 			} break;
 			// Если прокси-сервер является HTTP
 			case (uint8_t) proxy_t::type_t::HTTP: {
 				// Выполняем сброс состояния HTTP парсера
-				web->worker.proxy.http->clear();
+				web->worker.proxy.http.clear();
 				// Получаем бинарные данные REST запроса
-				const auto & rest = web->worker.proxy.http->proxy(web->worker.url);
+				const auto & rest = web->worker.proxy.http.proxy(web->worker.url);
 				// Если бинарные данные запроса получены, отправляем на прокси-сервер
 				if(!rest.empty()) core->write(rest.data(), rest.size(), aid);
 				// Выполняем сброс состояния HTTP парсера
-				web->worker.proxy.http->clear();
+				web->worker.proxy.http.clear();
 			} break;
 			// Иначе завершаем работу
 			default: core->close(aid);
@@ -165,29 +165,29 @@ void awh::Rest::readCallback(const char * buffer, const size_t size, const size_
 		// Получаем контекст модуля
 		restCli_t * web = reinterpret_cast <restCli_t *> (ctx);
 		// Выполняем парсинг полученных данных
-		web->http->parse(buffer, size);
+		web->http.parse(buffer, size);
 		// Если все данные получены
-		if(web->http->isEnd()){
+		if(web->http.isEnd()){
 			// Получаем параметры запроса
-			const auto & query = web->http->getQuery();
+			const auto & query = web->http.getQuery();
 			// Устанавливаем код ответа
 			web->res.code = query.code;
 			// Устанавливаем сообщение ответа
 			web->res.message = query.message;
 			// Выполняем проверку авторизации
-			switch((uint8_t) web->http->getAuth()){
+			switch((uint8_t) web->http.getAuth()){
 				// Если нужно попытаться ещё раз
 				case (uint8_t) http_t::stath_t::RETRY: {
 					// Если попытка повторить авторизацию ещё не проводилась
 					if(!web->failAuth){
 						// Получаем новый адрес запроса
-						web->worker.url = web->http->getUrl();
+						web->worker.url = web->http.getUrl();
 						// Если адрес запроса получен
 						if(!web->worker.url.empty()){
 							// Запоминаем, что попытка выполнена
 							web->failAuth = true;
 							// Если соединение является постоянным
-							if(web->http->isAlive())
+							if(web->http.isAlive())
 								// Выполняем повторно отправку сообщения на сервер
 								connectCallback(aid, core, ctx);
 							// Завершаем работу
@@ -208,9 +208,9 @@ void awh::Rest::readCallback(const char * buffer, const size_t size, const size_
 						// Устанавливаем код ответа
 						web->res.code = 403;
 					// Получаем тело запроса
-					const auto & entity = web->http->getBody();
+					const auto & entity = web->http.getBody();
 					// Устанавливаем заголовки ответа
-					web->res.headers = web->http->getHeaders();
+					web->res.headers = web->http.getHeaders();
 					// Устанавливаем тело ответа
 					web->res.entity.assign(entity.begin(), entity.end());
 				} break;
@@ -240,17 +240,17 @@ void awh::Rest::readProxyCallback(const char * buffer, const size_t size, const 
 			// Если прокси-сервер является Socks5
 			case (uint8_t) proxy_t::type_t::SOCKS5: {
 				// Если данные не получены
-				if(!web->worker.proxy.socks5->isEnd()){
+				if(!web->worker.proxy.socks5.isEnd()){
 					// Выполняем парсинг входящих данных
-					web->worker.proxy.socks5->parse(buffer, size);
+					web->worker.proxy.socks5.parse(buffer, size);
 					// Получаем данные запроса
-					const auto & socks5 = web->worker.proxy.socks5->get();
+					const auto & socks5 = web->worker.proxy.socks5.get();
 					// Если данные получены
 					if(!socks5.empty()) core->write(socks5.data(), socks5.size(), aid);
 					// Если данные все получены
-					else if(web->worker.proxy.socks5->isEnd()) {
+					else if(web->worker.proxy.socks5.isEnd()) {
 						// Если рукопожатие выполнено
-						if(web->worker.proxy.socks5->isHandshake()){
+						if(web->worker.proxy.socks5.isHandshake()){
 							// Выполняем переключение на работу с сервером
 							reinterpret_cast <coreCli_t *> (core)->switchProxy(aid);
 							// Завершаем работу
@@ -258,9 +258,9 @@ void awh::Rest::readProxyCallback(const char * buffer, const size_t size, const 
 						// Если рукопожатие не выполнено
 						} else {
 							// Устанавливаем код ответа
-							web->res.code = web->worker.proxy.socks5->getCode();
+							web->res.code = web->worker.proxy.socks5.getCode();
 							// Устанавливаем сообщение ответа
-							web->res.message = web->worker.proxy.socks5->getMessage(web->res.code);
+							web->res.message = web->worker.proxy.socks5.getMessage(web->res.code);
 							// Завершаем работу
 							core->close(aid);
 						}
@@ -270,29 +270,29 @@ void awh::Rest::readProxyCallback(const char * buffer, const size_t size, const 
 			// Если прокси-сервер является HTTP
 			case (uint8_t) proxy_t::type_t::HTTP: {
 				// Выполняем парсинг полученных данных
-				web->worker.proxy.http->parse(buffer, size);
+				web->worker.proxy.http.parse(buffer, size);
 				// Если все данные получены
-				if(web->worker.proxy.http->isEnd()){
+				if(web->worker.proxy.http.isEnd()){
 					// Получаем параметры запроса
-					const auto & query = web->worker.proxy.http->getQuery();
+					const auto & query = web->worker.proxy.http.getQuery();
 					// Устанавливаем код ответа
 					web->res.code = query.code;
 					// Устанавливаем сообщение ответа
 					web->res.message = query.message;
 					// Выполняем проверку авторизации
-					switch((uint8_t) web->worker.proxy.http->getAuth()){
+					switch((uint8_t) web->worker.proxy.http.getAuth()){
 						// Если нужно попытаться ещё раз
 						case (uint8_t) http_t::stath_t::RETRY: {
 							// Если попытка повторить авторизацию ещё не проводилась
 							if(!web->failAuth){
 								// Получаем новый адрес запроса
-								web->worker.proxy.url = web->worker.proxy.http->getUrl();
+								web->worker.proxy.url = web->worker.proxy.http.getUrl();
 								// Если адрес запроса получен
 								if(!web->worker.proxy.url.empty()){
 									// Запоминаем, что попытка выполнена
 									web->failAuth = true;
 									// Если соединение является постоянным
-									if(web->http->isAlive())
+									if(web->http.isAlive())
 										// Выполняем повторно отправку сообщения на сервер
 										connectProxyCallback(aid, core, ctx);
 									// Завершаем работу
@@ -320,9 +320,9 @@ void awh::Rest::readProxyCallback(const char * buffer, const size_t size, const 
 								// Устанавливаем код ответа
 								web->res.code = 403;
 							// Получаем тело запроса
-							const auto & entity = web->worker.proxy.http->getBody();
+							const auto & entity = web->worker.proxy.http.getBody();
 							// Устанавливаем заголовки ответа
-							web->res.headers = web->worker.proxy.http->getHeaders();
+							web->res.headers = web->worker.proxy.http.getHeaders();
 							// Устанавливаем тело ответа
 							web->res.entity.assign(entity.begin(), entity.end());
 						} break;
@@ -461,11 +461,11 @@ const vector <char> & awh::Rest::PUT(const uri_t::url_t & url, const unordered_m
 			// Есди данные уже набраны
 			if(!body.empty()) body.append("&");
 			// Добавляем в список набор параметров
-			body.append(this->uri->urlEncode(param.first));
+			body.append(this->uri.urlEncode(param.first));
 			// Добавляем разделитель
 			body.append("=");
 			// Добавляем значение
-			body.append(this->uri->urlEncode(param.second));
+			body.append(this->uri.urlEncode(param.second));
 		}
 		// Добавляем заголовок типа контента
 		const_cast <unordered_multimap <string, string> *> (&headers)->emplace("Content-Type", "application/x-www-form-urlencoded");
@@ -558,11 +558,11 @@ const vector <char> & awh::Rest::POST(const uri_t::url_t & url, const unordered_
 			// Есди данные уже набраны
 			if(!body.empty()) body.append("&");
 			// Добавляем в список набор параметров
-			body.append(this->uri->urlEncode(param.first));
+			body.append(this->uri.urlEncode(param.first));
 			// Добавляем разделитель
 			body.append("=");
 			// Добавляем значение
-			body.append(this->uri->urlEncode(param.second));
+			body.append(this->uri.urlEncode(param.second));
 		}
 		// Добавляем заголовок типа контента
 		const_cast <unordered_multimap <string, string> *> (&headers)->emplace("Content-Type", "application/x-www-form-urlencoded");
@@ -655,11 +655,11 @@ const vector <char> & awh::Rest::PATCH(const uri_t::url_t & url, const unordered
 			// Есди данные уже набраны
 			if(!body.empty()) body.append("&");
 			// Добавляем в список набор параметров
-			body.append(this->uri->urlEncode(param.first));
+			body.append(this->uri.urlEncode(param.first));
 			// Добавляем разделитель
 			body.append("=");
 			// Добавляем значение
-			body.append(this->uri->urlEncode(param.second));
+			body.append(this->uri.urlEncode(param.second));
 		}
 		// Добавляем заголовок типа контента
 		const_cast <unordered_multimap <string, string> *> (&headers)->emplace("Content-Type", "application/x-www-form-urlencoded");
@@ -777,7 +777,7 @@ void awh::Rest::REST(const uri_t::url_t & url, http_t::method_t method, vector <
 		// Запоминаем переданные заголовки
 		this->headers = move(headers);
 		// Устанавливаем метод сжатия
-		this->http->setCompress(this->compress);
+		this->http.setCompress(this->compress);
 		// Если биндинг не запущен
 		if(!this->core->working())
 			// Выполняем запуск биндинга
@@ -792,7 +792,7 @@ void awh::Rest::REST(const uri_t::url_t & url, http_t::method_t method, vector <
  */
 void awh::Rest::setChunkingFn(function <void (const vector <char> &, const http_t *)> callback) noexcept {
 	// Устанавливаем функцию обработки вызова для получения чанков
-	this->http->setChunkingFn(callback);
+	this->http.setChunkingFn(callback);
 }
 /**
  * setMessageCallback Метод установки функции обратного вызова при получении сообщения
@@ -851,7 +851,7 @@ void awh::Rest::setProxy(const string & uri) noexcept {
 	// Если URI параметры переданы
 	if(!uri.empty()){
 		// Устанавливаем параметры прокси-сервера
-		this->worker.proxy.url = this->uri->parseUrl(uri);
+		this->worker.proxy.url = this->uri.parseUrl(uri);
 		// Если данные параметров прокси-сервера получены
 		if(!this->worker.proxy.url.empty()){
 			// Если протокол подключения SOCKS5
@@ -861,7 +861,7 @@ void awh::Rest::setProxy(const string & uri) noexcept {
 				// Если требуется авторизация на прокси-сервере
 				if(!this->worker.proxy.url.user.empty() && !this->worker.proxy.url.pass.empty())
 					// Устанавливаем данные пользователя
-					this->worker.proxy.socks5->setUser(this->worker.proxy.url.user, this->worker.proxy.url.pass);
+					this->worker.proxy.socks5.setUser(this->worker.proxy.url.user, this->worker.proxy.url.pass);
 			// Если протокол подключения HTTP
 			} else if((this->worker.proxy.url.schema.compare("http") == 0) || (this->worker.proxy.url.schema.compare("https") == 0)) {
 				// Устанавливаем тип прокси-сервера
@@ -869,7 +869,7 @@ void awh::Rest::setProxy(const string & uri) noexcept {
 				// Если требуется авторизация на прокси-сервере
 				if(!this->worker.proxy.url.user.empty() && !this->worker.proxy.url.pass.empty())
 					// Устанавливаем данные пользователя
-					this->worker.proxy.http->setUser(this->worker.proxy.url.user, this->worker.proxy.url.pass);
+					this->worker.proxy.http.setUser(this->worker.proxy.url.user, this->worker.proxy.url.pass);
 			}
 		}
 	}
@@ -880,7 +880,7 @@ void awh::Rest::setProxy(const string & uri) noexcept {
  */
 void awh::Rest::setChunkSize(const size_t size) noexcept {
 	// Устанавливаем размер чанка
-	this->http->setChunkSize(size);
+	this->http.setChunkSize(size);
 }
 /**
  * setAttempts Метод установки количества попыток переподключения
@@ -898,9 +898,9 @@ void awh::Rest::setUserAgent(const string & userAgent) noexcept {
 	// Устанавливаем UserAgent
 	if(!userAgent.empty()){
 		// Устанавливаем пользовательского агента
-		this->http->setUserAgent(userAgent);
+		this->http.setUserAgent(userAgent);
 		// Устанавливаем пользовательского агента для прокси-сервера
-		this->worker.proxy.http->setUserAgent(userAgent);
+		this->worker.proxy.http.setUserAgent(userAgent);
 	}
 }
 /**
@@ -920,7 +920,7 @@ void awh::Rest::setUser(const string & login, const string & password) noexcept 
 	// Если пользователь и пароль переданы
 	if(!login.empty() && !password.empty())
 		// Устанавливаем логин и пароль пользователя
-		this->http->setUser(login, password);
+		this->http.setUser(login, password);
 }
 /**
  * setServ Метод установки данных сервиса
@@ -930,9 +930,9 @@ void awh::Rest::setUser(const string & login, const string & password) noexcept 
  */
 void awh::Rest::setServ(const string & id, const string & name, const string & ver) noexcept {
 	// Устанавливаем данные сервиса
-	this->http->setServ(id, name, ver);
+	this->http.setServ(id, name, ver);
 	// Устанавливаем данные сервиса для прокси-сервера
-	this->worker.proxy.http->setServ(id, name, ver);
+	this->worker.proxy.http.setServ(id, name, ver);
 }
 /**
  * setCrypt Метод установки параметров шифрования
@@ -942,7 +942,7 @@ void awh::Rest::setServ(const string & id, const string & name, const string & v
  */
 void awh::Rest::setCrypt(const string & pass, const string & salt, const hash_t::aes_t aes) noexcept {
 	// Устанавливаем параметры шифрования
-	this->http->setCrypt(pass, salt, aes);
+	this->http.setCrypt(pass, salt, aes);
 }
 /**
  * setAuthType Метод установки типа авторизации
@@ -951,7 +951,7 @@ void awh::Rest::setCrypt(const string & pass, const string & salt, const hash_t:
  */
 void awh::Rest::setAuthType(const auth_t::type_t type, const auth_t::alg_t alg) noexcept {
 	// Если объект авторизации создан
-	this->http->setAuthType(type, alg);
+	this->http.setAuthType(type, alg);
 }
 /**
  * setAuthTypeProxy Метод установки типа авторизации прокси-сервера
@@ -960,7 +960,7 @@ void awh::Rest::setAuthType(const auth_t::type_t type, const auth_t::alg_t alg) 
  */
 void awh::Rest::setAuthTypeProxy(const auth_t::type_t type, const auth_t::alg_t alg) noexcept {
 	// Если объект авторизации создан
-	this->worker.proxy.http->setAuthType(type, alg);
+	this->worker.proxy.http.setAuthType(type, alg);
 }
 /**
  * Rest Конструктор
@@ -968,51 +968,23 @@ void awh::Rest::setAuthTypeProxy(const auth_t::type_t type, const auth_t::alg_t 
  * @param fmk  объект фреймворка
  * @param log  объект для работы с логами
  */
-awh::Rest::Rest(const coreCli_t * core, const fmk_t * fmk, const log_t * log) noexcept : core(core), fmk(fmk), log(log), worker(fmk, log), compress(http_t::compress_t::NONE) {
-	/**
-	 * Выполняем отлов ошибок
-	 */
-	try {
-		// Устанавливаем контекст сообщения
-		this->worker.ctx = this;
-		// Создаём объект для работы с сетью
-		this->nwk = new network_t(this->fmk);
-		// Создаём объект URI
-		this->uri = new uri_t(this->fmk, this->nwk);
-		// Создаём объект для работы с HTTP
-		this->http = new httpCli_t(this->fmk, this->log, this->uri);
-		// Устанавливаем функцию обработки вызова для получения чанков
-		this->http->setChunkingFn(&chunking);
-		// Устанавливаем событие на запуск системы
-		this->worker.openFn = openCallback;
-		// Устанавливаем функцию чтения данных
-		this->worker.readFn = readCallback;
-		// Устанавливаем событие отключения
-		this->worker.closeFn = closeCallback;
-		// Устанавливаем событие подключения
-		this->worker.connectFn = connectCallback;
-		// Устанавливаем событие на чтение данных с прокси-сервера
-		this->worker.readProxyFn = readProxyCallback;
-		// Устанавливаем событие на подключение к прокси-серверу
-		this->worker.connectProxyFn = connectProxyCallback;
-		// Добавляем воркер в биндер TCP/IP
-		const_cast <coreCli_t *> (this->core)->add(&this->worker);
-	// Если происходит ошибка то игнорируем её
-	} catch(const bad_alloc&) {
-		// Выводим сообщение об ошибке
-		log->print("%s", log_t::flag_t::CRITICAL, "memory could not be allocated");
-		// Выходим из приложения
-		exit(EXIT_FAILURE);
-	}
-}
-/**
- * ~Rest Деструктор
- */
-awh::Rest::~Rest() noexcept {
-	// Удаляем объект для работы с сетью
-	if(this->nwk != nullptr) delete this->nwk;
-	// Удаляем объект для работы с URI
-	if(this->uri != nullptr) delete this->uri;
-	// Удаляем объект работы с HTTP
-	if(this->http != nullptr) delete this->http;
+awh::Rest::Rest(const coreCli_t * core, const fmk_t * fmk, const log_t * log) noexcept : nwk(fmk), uri(fmk, &nwk), http(fmk, log, &uri), core(core), fmk(fmk), log(log), worker(fmk, log), compress(http_t::compress_t::NONE) {
+	// Устанавливаем контекст сообщения
+	this->worker.ctx = this;
+	// Устанавливаем функцию обработки вызова для получения чанков
+	this->http.setChunkingFn(&chunking);
+	// Устанавливаем событие на запуск системы
+	this->worker.openFn = openCallback;
+	// Устанавливаем функцию чтения данных
+	this->worker.readFn = readCallback;
+	// Устанавливаем событие отключения
+	this->worker.closeFn = closeCallback;
+	// Устанавливаем событие подключения
+	this->worker.connectFn = connectCallback;
+	// Устанавливаем событие на чтение данных с прокси-сервера
+	this->worker.readProxyFn = readProxyCallback;
+	// Устанавливаем событие на подключение к прокси-серверу
+	this->worker.connectProxyFn = connectProxyCallback;
+	// Добавляем воркер в биндер TCP/IP
+	const_cast <coreCli_t *> (this->core)->add(&this->worker);
 }

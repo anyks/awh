@@ -37,11 +37,11 @@ void awh::WSServer::update() noexcept {
 					// Определяем размер шифрования
 					switch(stoi(val.substr(19))){
 						// Если шифрование произведено 128 битным ключём
-						case 128: this->hash->setAES(hash_t::aes_t::AES128); break;
+						case 128: this->hash.setAES(hash_t::aes_t::AES128); break;
 						// Если шифрование произведено 192 битным ключём
-						case 192: this->hash->setAES(hash_t::aes_t::AES192); break;
+						case 192: this->hash.setAES(hash_t::aes_t::AES192); break;
 						// Если шифрование произведено 256 битным ключём
-						case 256: this->hash->setAES(hash_t::aes_t::AES256); break;
+						case 256: this->hash.setAES(hash_t::aes_t::AES256); break;
 					}
 				// Если получены заголовки требующие сжимать передаваемые фреймы методом Deflate
 				} else if((val.compare(L"permessage-deflate") == 0) || (val.compare(L"perframe-deflate") == 0))
@@ -133,7 +133,7 @@ awh::Http::stath_t awh::WSServer::checkAuth() noexcept {
 			// Устанавливаем заголовок HTTP в параметры авторизации
 			this->auth->setHeader(it->second);
 			// Выполняем проверку авторизации
-			if(reinterpret_cast <authSrv_t *> (this->auth)->check())
+			if(reinterpret_cast <authSrv_t *> (this->auth.get())->check())
 				// Устанавливаем успешный результат авторизации
 				result = http_t::stath_t::GOOD;
 		}
@@ -148,7 +148,7 @@ awh::Http::stath_t awh::WSServer::checkAuth() noexcept {
  */
 void awh::WSServer::setRealm(const string & realm) noexcept {
 	// Если название сервера передано
-	if(!realm.empty()) reinterpret_cast <authSrv_t *> (this->auth)->setRealm(realm);
+	if(!realm.empty()) reinterpret_cast <authSrv_t *> (this->auth.get())->setRealm(realm);
 }
 /**
  * setNonce Метод установки уникального ключа клиента выданного сервером
@@ -156,7 +156,7 @@ void awh::WSServer::setRealm(const string & realm) noexcept {
  */
 void awh::WSServer::setNonce(const string & nonce) noexcept {
 	// Если уникальный ключ клиента передан
-	if(!nonce.empty()) reinterpret_cast <authSrv_t *> (this->auth)->setNonce(nonce);
+	if(!nonce.empty()) reinterpret_cast <authSrv_t *> (this->auth.get())->setNonce(nonce);
 }
 /**
  * setOpaque Метод установки временного ключа сессии сервера
@@ -164,7 +164,7 @@ void awh::WSServer::setNonce(const string & nonce) noexcept {
  */
 void awh::WSServer::setOpaque(const string & opaque) noexcept {
 	// Если временный ключ сессии сервера передан
-	if(!opaque.empty()) reinterpret_cast <authSrv_t *> (this->auth)->setOpaque(opaque);
+	if(!opaque.empty()) reinterpret_cast <authSrv_t *> (this->auth.get())->setOpaque(opaque);
 }
 /**
  * setExtractPassCallback Метод добавления функции извлечения пароля
@@ -172,7 +172,7 @@ void awh::WSServer::setOpaque(const string & opaque) noexcept {
  */
 void awh::WSServer::setExtractPassCallback(function <string (const string &)> callback) noexcept {
 	// Устанавливаем внешнюю функцию
-	reinterpret_cast <authSrv_t *> (this->auth)->setExtractPassCallback(callback);
+	reinterpret_cast <authSrv_t *> (this->auth.get())->setExtractPassCallback(callback);
 }
 /**
  * setAuthCallback Метод добавления функции обработки авторизации
@@ -180,7 +180,7 @@ void awh::WSServer::setExtractPassCallback(function <string (const string &)> ca
  */
 void awh::WSServer::setAuthCallback(function <bool (const string &, const string &)> callback) noexcept {
 	// Устанавливаем внешнюю функцию
-	reinterpret_cast <authSrv_t *> (this->auth)->setAuthCallback(callback);
+	reinterpret_cast <authSrv_t *> (this->auth.get())->setAuthCallback(callback);
 }
 /**
  * WSServer Конструктор
@@ -189,24 +189,6 @@ void awh::WSServer::setAuthCallback(function <bool (const string &, const string
  * @param uri объект работы с URI
  */
 awh::WSServer::WSServer(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcept : ws_t(fmk, log, uri) {
-	/**
-	 * Выполняем отлов ошибок
-	 */
-	try {
-		// Создаём объект для работы с авторизацией
-		this->auth = new authSrv_t(fmk, log);
-	// Если происходит ошибка то игнорируем её
-	} catch(const bad_alloc&) {
-		// Выводим сообщение об ошибке
-		log->print("%s", log_t::flag_t::CRITICAL, "memory could not be allocated");
-		// Выходим из приложения
-		exit(EXIT_FAILURE);
-	}
-}
-/**
- * ~WSServer Деструктор
- */
-awh::WSServer::~WSServer() noexcept {
-	// Удаляем объект авторизации
-	if(this->auth != nullptr) delete this->auth;
+	// Создаём объект для работы с авторизацией
+	this->auth = unique_ptr <auth_t> (new authSrv_t(fmk, log));
 }

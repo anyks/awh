@@ -176,29 +176,29 @@ bool awh::CoreClient::connect(const size_t wid) noexcept {
 			// Если сокет создан удачно
 			if(socket.fd > -1){
 				// Создаём бъект адъютанта
-				unique_ptr <worker_t::adj_t> adj(new worker_t::adj_t(wrk, this->fmk, this->log));
+				worker_t::adj_t adj = worker_t::adj_t(wrk, this->fmk, this->log);
 				// Выполняем получение контекста сертификата
 				wrk->ssl = this->ssl.init(url);
 				// Если SSL клиент разрешен
 				if(wrk->ssl.mode){
 					// Создаем буфер событий для сервера зашифрованного подключения
-					// adj->bev = bufferevent_openssl_socket_new(this->base, socket.fd, wrk->ssl.ssl, BUFFEREVENT_SSL_CONNECTING, BEV_OPT_THREADSAFE);
-					adj->bev = bufferevent_openssl_socket_new(this->base, socket.fd, wrk->ssl.ssl, BUFFEREVENT_SSL_CONNECTING, BEV_OPT_THREADSAFE | BEV_OPT_DEFER_CALLBACKS);
+					// adj.bev = bufferevent_openssl_socket_new(this->base, socket.fd, wrk->ssl.ssl, BUFFEREVENT_SSL_CONNECTING, BEV_OPT_THREADSAFE);
+					adj.bev = bufferevent_openssl_socket_new(this->base, socket.fd, wrk->ssl.ssl, BUFFEREVENT_SSL_CONNECTING, BEV_OPT_THREADSAFE | BEV_OPT_DEFER_CALLBACKS);
 					// Разрешаем непредвиденное грязное завершение работы
-					bufferevent_openssl_set_allow_dirty_shutdown(adj->bev, 1);
+					bufferevent_openssl_set_allow_dirty_shutdown(adj.bev, 1);
 				// Создаем буфер событий для сервера
-				// } else adj->bev = bufferevent_socket_new(this->base, socket.fd, BEV_OPT_THREADSAFE);
-				} else adj->bev = bufferevent_socket_new(this->base, socket.fd, BEV_OPT_THREADSAFE | BEV_OPT_DEFER_CALLBACKS);
+				// } else adj.bev = bufferevent_socket_new(this->base, socket.fd, BEV_OPT_THREADSAFE);
+				} else adj.bev = bufferevent_socket_new(this->base, socket.fd, BEV_OPT_THREADSAFE | BEV_OPT_DEFER_CALLBACKS);
 				// Если буфер событий создан
-				if(adj->bev != nullptr){
+				if(adj.bev != nullptr){
 					// Устанавливаем идентификатор адъютанта
-					adj->aid = this->fmk->unixTimestamp();
+					adj.aid = this->fmk->unixTimestamp();
 					// Добавляем созданного адъютанта в список адъютантов
-					auto ret = wrk->adjutants.emplace(adj->aid, move(adj));
+					auto ret = wrk->adjutants.emplace(adj.aid, move(adj));
 					// Добавляем адъютанта в список подключений
-					this->adjutants.emplace(ret.first->second->aid, ret.first->second.get());
+					this->adjutants.emplace(ret.first->second.aid, &ret.first->second);
 					// Выполняем тюннинг буфера событий
-					tuning(ret.first->second->aid);
+					tuning(ret.first->second.aid);
 					// Определяем тип подключения
 					switch(this->net.family){
 						// Для протокола IPv4
@@ -217,17 +217,17 @@ bool awh::CoreClient::connect(const size_t wid) noexcept {
 						} break;
 					}
 					// Выполняем подключение к удаленному серверу, если подключение не выполненно то сообщаем об этом
-					if(bufferevent_socket_connect(ret.first->second->bev, sin, size) < 0){
+					if(bufferevent_socket_connect(ret.first->second.bev, sin, size) < 0){
 						// Выводим в лог сообщение
 						this->log->print("connecting to host = %s, port = %u", log_t::flag_t::CRITICAL, url.ip.c_str(), url.port);
 						// Если нужно выполнить автоматическое переподключение
-						if(wrk->alive && (ret.first->second->attempt <= wrk->attempts)){
+						if(wrk->alive && (ret.first->second.attempt <= wrk->attempts)){
 							// Выполняем очистку буфера событий
-							this->clean(ret.first->second->bev);
+							this->clean(ret.first->second.bev);
 							// Устанавливаем что событие удалено
-							ret.first->second->bev = nullptr;
+							ret.first->second.bev = nullptr;
 							// Увеличиваем колпичество попыток
-							ret.first->second->attempt++;
+							ret.first->second.attempt++;
 							// Выдерживаем паузу в 3 секунды
 							this->delay(3);
 							// Выполняем новое подключение
@@ -320,7 +320,7 @@ void awh::CoreClient::closeAll() noexcept {
 				// Переходим по всему списку адъютанта
 				for(auto it = wrk->adjutants.begin(); it != wrk->adjutants.end();){
 					// Выполняем очистку буфера событий
-					this->clean(it->second->bev);
+					this->clean(it->second.bev);
 					// Выполняем удаление контекста SSL
 					this->ssl.clear(wrk->ssl);
 					// Выводим функцию обратного вызова
