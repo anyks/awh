@@ -67,6 +67,10 @@ namespace awh {
 	 */
 	class CoreClient;
 	/**
+	 * CoreServer Прототип серверного класса ядра
+	 */
+	class CoreServer;
+	/**
 	 * Core Класс ядра биндинга TCP/IP
 	 */
 	typedef class Core {
@@ -80,6 +84,10 @@ namespace awh {
 			 * CoreClient Устанавливаем дружбу с клиентским классом ядра
 			 */
 			friend class CoreClient;
+			/**
+			 * CoreServer Устанавливаем дружбу с серверным классом ядра
+			 */
+			friend class CoreServer;
 		protected:
 			/**
 			 * KeepAlive Структура с параметрами для постоянного подключения
@@ -159,8 +167,8 @@ namespace awh {
 			// Флаг инициализации WinSock
 			mutable bool winSock = false;
 		protected:
-			// Промежуточный контекст
-			void * ctx = nullptr;
+			// Список контекстов передаваемых объектов
+			vector <void *> ctx = {nullptr};
 		protected:
 			// Создаём объект фреймворка
 			const fmk_t * fmk = nullptr;
@@ -270,6 +278,11 @@ namespace awh {
 			 * @param wid идентификатор воркера
 			 */
 			virtual void remove(const size_t wid) noexcept;
+			/**
+			 * run Метод запуска сервера воркером
+			 * @param wid идентификатор воркера
+			 */
+			virtual void run(const size_t wid) noexcept = 0;
 			/**
 			 * open Метод открытия подключения воркером
 			 * @param wid идентификатор воркера

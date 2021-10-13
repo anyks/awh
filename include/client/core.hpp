@@ -67,6 +67,11 @@ namespace awh {
 			void closeAll() noexcept;
 		public:
 			/**
+			 * run Метод запуска сервера воркером
+			 * @param wid идентификатор воркера
+			 */
+			void run(const size_t wid) noexcept;
+			/**
 			 * open Метод открытия подключения воркером
 			 * @param wid идентификатор воркера
 			 */

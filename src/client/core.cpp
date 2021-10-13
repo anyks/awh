@@ -337,6 +337,14 @@ void awh::CoreClient::closeAll() noexcept {
 	this->adjutants.clear();
 }
 /**
+ * run Метод запуска сервера воркером
+ * @param wid идентификатор воркера
+ */
+void awh::CoreClient::run(const size_t wid) noexcept {
+	// Блокируем переданный идентификатор
+	(void) wid;
+}
+/**
  * open Метод открытия подключения воркером
  * @param wid идентификатор воркера
  */

@@ -44,6 +44,8 @@ namespace awh {
 			friend class Core;
 			// CoreClient Устанавливаем дружбу с клиентским классом ядра
 			friend class CoreClient;
+			// CoreServer Устанавливаем дружбу с серверным классом ядра
+			friend class CoreServer;
 		public:
 			/**
 			 * Mark Структура маркера на размер детектируемых байт
@@ -68,11 +70,18 @@ namespace awh {
 					friend class Worker;
 					// CoreClient Устанавливаем дружбу с клиентским классом ядра
 					friend class CoreClient;
+					// CoreServer Устанавливаем дружбу с серверным классом ядра
+					friend class CoreServer;
 				private:
 					// Маркера размера детектируемых байт на чтение
 					mark_t markRead;
 					// Маркера размера детектируемых байт на запись
 					mark_t markWrite;
+				private:
+					// Адрес интернет подключения клиента
+					string ip = "";
+					// Мак адрес подключившегося клиента
+					string mac = "";
 				private:
 					// Идентификатор адъютанта
 					size_t aid = 0;

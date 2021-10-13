@@ -74,7 +74,9 @@ void awh::Core::run(evutil_socket_t fd, short event, void * ctx) noexcept {
 			}
 		}
 		// Если функция обратного вызова установлена, выполняем
-		if(core->callbackFn != nullptr) core->callbackFn(true, core, core->ctx);
+		if(core->callbackFn != nullptr) core->callbackFn(true, core, core->ctx.front());
+		// Выводим в консоль информацию
+		if(!core->noinfo) core->log->print("[+] start service: pid = %u", log_t::flag_t::INFO, getpid());
 	}
 }
 /**
@@ -326,7 +328,7 @@ void awh::Core::unbind(Core * core) noexcept {
 		// Выполняем сброс модуля DNS резолвера IPv6
 		core->dns6.reset();
 		// Если функция обратного вызова установлена, выполняем
-		if(core->callbackFn != nullptr) core->callbackFn(false, core, core->ctx);
+		if(core->callbackFn != nullptr) core->callbackFn(false, core, core->ctx.front());
 		// Выполняем сброс блокировки базы событий
 		core->locker = false;
 		// Выполняем разблокировку потока
@@ -340,7 +342,7 @@ void awh::Core::unbind(Core * core) noexcept {
  */
 void awh::Core::setCallback(void * ctx, function <void (const bool, Core * core, void *)> callback) noexcept {
 	// Устанавливаем объект контекста
-	this->ctx = ctx;
+	this->ctx.front() = ctx;
 	// Устанавливаем функцию обратного вызова
 	this->callbackFn = callback;
 }
@@ -387,20 +389,20 @@ void awh::Core::start() noexcept {
 		this->basetv.tv_sec = 1;
 		// Создаём событие таймаута на активацию базы событий
 		event_add(&this->timeout, &this->basetv);
-		// Выводим в консоль информацию
-		if(!this->noinfo) this->log->print("[+] start service: pid = %u", log_t::flag_t::INFO, getpid());
 		// Запускаем работу базы событий
 		event_base_loop(this->base, EVLOOP_NO_EXIT_ON_EMPTY);
 		// Выполняем сброс модуля DNS резолвера IPv4
 		this->dns4.reset();
 		// Выполняем сброс модуля DNS резолвера IPv6
 		this->dns6.reset();
+		// Выполняем удаление всех воркеров
+		this->removeAll();
 		// Удаляем объект базы событий
 		event_base_free(this->base);
 		// Очищаем все глобальные переменные
 		libevent_global_shutdown();
 		// Если функция обратного вызова установлена, выполняем
-		if(this->callbackFn != nullptr) this->callbackFn(false, this, this->ctx);
+		if(this->callbackFn != nullptr) this->callbackFn(false, this, this->ctx.front());
 		// Выводим в консоль информацию
 		if(!this->noinfo) this->log->print("[-] stop service: pid = %u", log_t::flag_t::INFO, getpid());
 	}
