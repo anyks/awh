@@ -160,9 +160,9 @@ void awh::CoreServer::accept(const evutil_socket_t fd, const short event, void *
 			// Выполняем проверку, разрешено ли клиенту подключиться к серверу
 			if(!core->acceptFn(ip, mac, wrk->wid, const_cast <core_t *> (wrk->core), core->ctx.back())){
 				// Отключаем подключение для сокета
-				shutdown(socket, SHUT_RDWR);
+				::shutdown(socket, SHUT_RDWR);
 				// Закрываем сокет
-				close(socket);
+				::close(socket);
 				// Выводим в лог сообщение
 				core->log->print("broken client, host = %s, mac = %s, socket = %d", log_t::flag_t::WARNING, ip.c_str(), mac.c_str(), socket);
 				// Выходим из функции
