@@ -134,10 +134,10 @@ void awh::CoreServer::accept(const evutil_socket_t fd, const short event, void *
 				socket = ::accept(fd, reinterpret_cast <struct sockaddr *> (&client), &len);
 				// Если сокет не создан тогда выходим
 				if(socket < 0) return;
-				// Получаем данные мак адреса клиента
-				mac = sockets_t::mac(reinterpret_cast <struct sockaddr *> (&client));
 				// Получаем данные подключившегося клиента
 				ip = sockets_t::ip(AF_INET, &client);
+				// Получаем данные мак адреса клиента
+				mac = sockets_t::mac(reinterpret_cast <struct sockaddr *> (&client));
 			} break;
 			// Для протокола IPv6
 			case AF_INET6: {
@@ -149,16 +149,20 @@ void awh::CoreServer::accept(const evutil_socket_t fd, const short event, void *
 				socket = ::accept(fd, reinterpret_cast <struct sockaddr *> (&client), &len);
 				// Если сокет не создан тогда выходим
 				if(socket < 0) return;
-				// Получаем данные мак адреса клиента
-				mac = sockets_t::mac(reinterpret_cast <struct sockaddr *> (&client));
 				// Получаем данные подключившегося клиента
 				ip = sockets_t::ip(AF_INET6, &client);
+				// Получаем данные мак адреса клиента
+				mac = sockets_t::mac(reinterpret_cast <struct sockaddr *> (&client));
 			} break;
 		}
 		// Если функция обратного вызова установлена
 		if(core->acceptFn != nullptr){
 			// Выполняем проверку, разрешено ли клиенту подключиться к серверу
 			if(!core->acceptFn(ip, mac, wrk->wid, const_cast <core_t *> (wrk->core), core->ctx.back())){
+				// Отключаем подключение для сокета
+				shutdown(socket, SHUT_RDWR);
+				// Закрываем сокет
+				close(socket);
 				// Выводим в лог сообщение
 				core->log->print("broken client, host = %s, mac = %s, socket = %d", log_t::flag_t::WARNING, ip.c_str(), mac.c_str(), socket);
 				// Выходим из функции
