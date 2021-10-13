@@ -159,10 +159,8 @@ void awh::CoreServer::accept(const evutil_socket_t fd, const short event, void *
 		if(core->acceptFn != nullptr){
 			// Выполняем проверку, разрешено ли клиенту подключиться к серверу
 			if(!core->acceptFn(ip, mac, wrk->wid, const_cast <core_t *> (wrk->core), core->ctx.back())){
-				// Отключаем подключение для сокета
-				::shutdown(socket, SHUT_RDWR);
-				// Закрываем сокет
-				::close(socket);
+				// Выполняем закрытие сокета
+				core->close(socket);
 				// Выводим в лог сообщение
 				core->log->print("broken client, host = %s, mac = %s, socket = %d", log_t::flag_t::WARNING, ip.c_str(), mac.c_str(), socket);
 				// Выходим из функции
@@ -246,6 +244,23 @@ void awh::CoreServer::tuning(const size_t aid) noexcept {
 	}
 }
 /**
+ * close Метод закрытия сокета
+ * @param fd файловый дескриптор (сокет) для закрытия
+ */
+void awh::CoreServer::close(const evutil_socket_t fd) noexcept {
+	// Если - это Windows
+	#if defined(_WIN32) || defined(_WIN64)
+		// Отключаем подключение для сокета
+		if(fd > 0) shutdown(fd, SD_BOTH);
+	// Если - это Unix
+	#else
+		// Отключаем подключение для сокета
+		if(fd > 0) shutdown(fd, SHUT_RDWR);
+	#endif
+	// Закрываем подключение
+	if(fd > 0) evutil_closesocket(fd);
+}
+/**
  * removeAll Метод удаления всех воркеров
  */
 void awh::CoreServer::removeAll() noexcept {
@@ -269,15 +284,10 @@ void awh::CoreServer::removeAll() noexcept {
 				jt = wrk->adjutants.erase(jt);
 			}
 		}
-		// Если сокет сервера выделен
-		if(wrk->fd > 0){
-			// Отключаем подключение для сокета
-			shutdown(wrk->fd, SHUT_RDWR);
-			// Закрываем сокет
-			close(wrk->fd);
-			// Сбрасываем сокет
-			wrk->fd = -1;
-		}
+		// Выполняем закрытие сокета
+		this->close(wrk->fd);
+		// Сбрасываем сокет
+		wrk->fd = -1;
 		// Если объект событий подключения к серверу создан
 		if(wrk->ev != nullptr){
 			// Удаляем событие
@@ -320,15 +330,10 @@ void awh::CoreServer::remove(const size_t wid) noexcept {
 					jt = wrk->adjutants.erase(jt);
 				}
 			}
-			// Если сокет сервера выделен
-			if(wrk->fd > 0){
-				// Отключаем подключение для сокета
-				shutdown(wrk->fd, SHUT_RDWR);
-				// Закрываем сокет
-				close(wrk->fd);
-				// Сбрасываем сокет
-				wrk->fd = -1;
-			}
+			// Выполняем закрытие сокета
+			this->close(wrk->fd);
+			// Сбрасываем сокет
+			wrk->fd = -1;
 			// Если объект событий подключения к серверу создан
 			if(wrk->ev != nullptr){
 				// Удаляем событие

@@ -104,10 +104,10 @@ void awh::Core::delay(const size_t seconds) const noexcept {
 void awh::Core::clean(struct bufferevent * bev) noexcept {
 	// Если буфер событий передан
 	if(bev != nullptr){
-		// Получаем файловый дескриптор
-		evutil_socket_t fd = bufferevent_getfd(bev);
 		// Запрещаем чтение запись данных серверу
 		bufferevent_disable(bev, EV_WRITE | EV_READ);
+		// Получаем файловый дескриптор
+		evutil_socket_t fd = bufferevent_getfd(bev);
 		// Если - это Windows
 		#if defined(_WIN32) || defined(_WIN64)
 			// Отключаем подключение для сокета
@@ -354,6 +354,8 @@ void awh::Core::stop() noexcept {
 	if(this->mode){
 		// Запрещаем работу WebSocket
 		this->mode = false;
+		// Выполняем отключение всех клиентов
+		this->closeAll();
 		// Завершаем работу базы событий
 		event_base_loopbreak(this->base);
 		// Если - это Windows

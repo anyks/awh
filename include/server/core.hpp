@@ -63,6 +63,11 @@ namespace awh {
 			 * @param aid идентификатор адъютанта
 			 */
 			void tuning(const size_t aid) noexcept;
+			/**
+			 * close Метод закрытия сокета
+			 * @param fd файловый дескриптор (сокет) для закрытия
+			 */
+			void close(const evutil_socket_t fd) noexcept;
 		public:
 			/**
 			 * removeAll Метод удаления всех воркеров
