@@ -97,9 +97,6 @@ void awh::WebSocketServer::readCallback(const char * buffer, const size_t size, 
 							response = ws->http.response();
 							// Если бинарные данные запроса получены, отправляем на сервер
 							if(!response.empty()) core->write(response.data(), response.size(), aid);
-
-							cout << " +++++++++++ GOOD " << string(response.begin(), response.end()) << endl;
-
 							// Завершаем работу
 							return;
 						// Сообщаем, что рукопожатие не выполнено
