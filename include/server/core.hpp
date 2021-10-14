@@ -93,6 +93,11 @@ namespace awh {
 			void close(const size_t aid) noexcept;
 		public:
 			/**
+			 * setIpV6only Метод установки флага использования только сети IPv6
+			 * @param mode флаг для установки
+			 */
+			void setIpV6only(const bool mode) noexcept;
+			/**
 			 * setTotal Метод установки максимального количества одновременных подключений
 			 * @param wid   идентификатор воркера
 			 * @param total максимальное количество одновременных подключений
@@ -111,11 +116,11 @@ namespace awh {
 			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
 			 */
-			CoreServer(const fmk_t * fmk, const log_t * log) noexcept : core_t(fmk, log) {}
+			CoreServer(const fmk_t * fmk, const log_t * log) noexcept;
 			/**
 			 * ~CoreServer Деструктор
 			 */
-			~CoreServer() noexcept {}
+			~CoreServer() noexcept;
 	} coreSrv_t;
 };
 

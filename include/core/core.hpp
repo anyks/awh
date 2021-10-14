@@ -74,6 +74,11 @@ namespace awh {
 	 * Core Класс ядра биндинга TCP/IP
 	 */
 	typedef class Core {
+		protected:
+			/**
+			 * Тип запускаемого ядра
+			 */
+			enum class type_t : uint8_t {CLIENT, SERVER};
 		public:
 			/**
 			 * Основные методы режимов работы
@@ -148,6 +153,9 @@ namespace awh {
 			// Мютекс для блокировки потока
 			mutex bloking;
 		protected:
+			// Тип запускаемого ядра
+			type_t type = type_t::CLIENT;
+		protected:
 			// Событие таймаута запуска системы
 			struct event timeout;
 			// Устанавливаем таймаут ожидания активации базы событий
@@ -166,6 +174,8 @@ namespace awh {
 			bool locker = false;
 			// Флаг запрета вывода информационных сообщений
 			bool noinfo = false;
+			// Флаг разрешающий работу только с IPv6
+			bool ipV6only = false;
 			// Флаг инициализации WinSock
 			mutable bool winSock = false;
 		protected:

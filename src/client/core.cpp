@@ -479,9 +479,18 @@ void awh::CoreClient::switchProxy(const size_t aid) noexcept {
 	}
 }
 /**
+ * CoreClient Конструктор
+ * @param fmk объект фреймворка
+ * @param log объект для работы с логами
+ */
+awh::CoreClient::CoreClient(const fmk_t * fmk, const log_t * log) noexcept : core_t(fmk, log) {
+	// Устанавливаем тип запускаемого ядра
+	this->type = type_t::CLIENT;
+}
+/**
  * ~CoreClient Деструктор
  */
 awh::CoreClient::~CoreClient() noexcept {
-	// Выполняем остановку сервера
+	// Выполняем остановку клиента
 	this->stop();
 }

@@ -86,13 +86,6 @@ namespace awh {
 			const coreSrv_t * core = nullptr;
 		private:
 			/**
-			 * chunking Метод обработки получения чанков
-			 * @param chunk бинарный буфер чанка
-			 * @param ctx   контекст объекта http
-			 */
-			static void chunking(const vector <char> & chunk, const http_t * ctx) noexcept;
-		private:
-			/**
 			 * openCallback Функция обратного вызова при запуске работы
 			 * @param wid  идентификатор воркера
 			 * @param core объект биндинга TCP/IP

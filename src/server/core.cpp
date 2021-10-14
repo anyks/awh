@@ -387,12 +387,13 @@ void awh::CoreServer::run(const size_t wid) noexcept {
 			auto runFn = [wrk, this](const string & ip) noexcept {
 				// Если IP адрес получен
 				if(!ip.empty()){
+					// sudo lsof -i -P | grep 1080
 					// Обновляем хост сервера
 					wrk->host = ip;
 					// Получаем сокет сервера
 					wrk->fd = this->socket(wrk->host, wrk->port, this->net.family).fd;
 					// Выполняем чтение сокета
-					if(listen(wrk->fd, wrk->total) < 0){
+					if(::listen(wrk->fd, wrk->total) < 0){
 						// Выводим в консоль информацию
 						if(!this->noinfo) this->log->print("listen service: pid = %u", log_t::flag_t::CRITICAL, getpid());
 						// Останавливаем работу сервера
@@ -401,7 +402,7 @@ void awh::CoreServer::run(const size_t wid) noexcept {
 						return;
 					}
 					// Добавляем событие в базу
-					wrk->ev = event_new(this->base, wrk->fd, EV_READ | EV_PERSIST, accept, wrk);
+					wrk->ev = event_new(this->base, wrk->fd, EV_READ | EV_PERSIST, &accept, wrk);
 					// Активируем событие
 					event_add(wrk->ev, nullptr);
 					// Выводим сообщение об активации
@@ -461,6 +462,14 @@ void awh::CoreServer::close(const size_t aid) noexcept {
 	}
 }
 /**
+ * setIpV6only Метод установки флага использования только сети IPv6
+ * @param mode флаг для установки
+ */
+void awh::CoreServer::setIpV6only(const bool mode) noexcept {
+	// Устанавливаем флаг использования только сети IPv6
+	this->ipV6only = mode;
+}
+/**
  * setTotal Метод установки максимального количества одновременных подключений
  * @param wid   идентификатор воркера
  * @param total максимальное количество одновременных подключений
@@ -499,4 +508,20 @@ void awh::CoreServer::init(const size_t wid, const u_int port, const string & ho
 			else wrk->host = sockets_t::serverIp(this->net.family);
 		}
 	}
+}
+/**
+ * CoreServer Конструктор
+ * @param fmk объект фреймворка
+ * @param log объект для работы с логами
+ */
+awh::CoreServer::CoreServer(const fmk_t * fmk, const log_t * log) noexcept : core_t(fmk, log) {
+	// Устанавливаем тип запускаемого ядра
+	this->type = type_t::SERVER;
+}
+/**
+ * ~CoreServer Деструктор
+ */
+awh::CoreServer::~CoreServer() noexcept {
+	// Выполняем остановку сервера
+	this->stop();
 }

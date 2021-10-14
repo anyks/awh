@@ -143,81 +143,103 @@ const awh::Core::socket_t awh::Core::socket(const string & ip, const u_int port,
 		socklen_t size = 0;
 		// Объект подключения
 		struct sockaddr * sin = nullptr;
+		// Получаем флаг сервера
+		const bool isServer = (this->type == type_t::SERVER);
 		// Определяем тип подключения
 		switch(family){
 			// Для протокола IPv4
 			case AF_INET: {
-				// Получаем список ip адресов
-				auto ips = this->net.v4.first;
-				// Если количество элементов больше 1
-				if(ips.size() > 1){
-					// рандомизация генератора случайных чисел
-					srand(time(0));
-					// Получаем ip адрес
-					host = ips.at(rand() % ips.size());
-				// Выводим только первый элемент
-				} else host = ips.front();
-				// Очищаем всю структуру для клиента
-				memset(&result.client, 0, sizeof(result.client));
+				// Если ядро является клиентом
+				if(!isServer){
+					// Получаем список ip адресов
+					auto ips = this->net.v4.first;
+					// Если количество элементов больше 1
+					if(ips.size() > 1){
+						// рандомизация генератора случайных чисел
+						srand(time(0));
+						// Получаем ip адрес
+						host = ips.at(rand() % ips.size());
+					// Выводим только первый элемент
+					} else host = ips.front();
+					// Очищаем всю структуру для клиента
+					memset(&result.client, 0, sizeof(result.client));
+					// Устанавливаем протокол интернета
+					result.client.sin_family = AF_INET;
+					// Устанавливаем произвольный порт для локального подключения
+					result.client.sin_port = htons(0);
+					// Устанавливаем адрес для локальго подключения
+					result.client.sin_addr.s_addr = inet_addr(host.c_str());
+					// Запоминаем размер структуры
+					size = sizeof(result.client);
+					// Запоминаем полученную структуру
+					sin = reinterpret_cast <struct sockaddr *> (&result.client);
+				}
 				// Очищаем всю структуру для сервера
 				memset(&result.server, 0, sizeof(result.server));
 				// Устанавливаем протокол интернета
-				result.client.sin_family = AF_INET;
 				result.server.sin_family = AF_INET;
-				// Устанавливаем произвольный порт для локального подключения
-				result.client.sin_port = htons(0);
 				// Устанавливаем порт для локального подключения
 				result.server.sin_port = htons(port);
-				// Устанавливаем адрес для локальго подключения
-				result.client.sin_addr.s_addr = inet_addr(host.c_str());
 				// Устанавливаем адрес для удаленного подключения
 				result.server.sin_addr.s_addr = inet_addr(ip.c_str());
+				// Если ядро является сервером
+				if(isServer){
+					// Запоминаем размер структуры
+					size = sizeof(result.server);
+					// Запоминаем полученную структуру
+					sin = reinterpret_cast <struct sockaddr *> (&result.server);
+				}
 				// Обнуляем серверную структуру
 				memset(&result.server.sin_zero, 0, sizeof(result.server.sin_zero));
-				// Запоминаем размер структуры
-				size = sizeof(result.client);
-				// Запоминаем полученную структуру
-				sin = reinterpret_cast <struct sockaddr *> (&result.client);
 				// Создаем сокет подключения
 				result.fd = ::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 			} break;
 			// Для протокола IPv6
 			case AF_INET6: {
-				// Получаем список ip адресов
-				auto ips = this->net.v6.first;
-				// Если количество элементов больше 1
-				if(ips.size() > 1){
-					// рандомизация генератора случайных чисел
-					srand(time(0));
-					// Получаем ip адрес
-					host = ips.at(rand() % ips.size());
-				// Выводим только первый элемент
-				} else host = ips.front();
-				// Переводим ip адрес в полноценный вид
-				host = move(this->nwk.setLowIp6(host));
-				// Буфер содержащий адрес IPv6
-				// char hostClient[INET6_ADDRSTRLEN], hostServer[INET6_ADDRSTRLEN];
-				// Очищаем всю структуру для клиента
-				memset(&result.client6, 0, sizeof(result.client6));
+				// Если ядро является клиентом
+				if(!isServer){
+					// Получаем список ip адресов
+					auto ips = this->net.v6.first;
+					// Если количество элементов больше 1
+					if(ips.size() > 1){
+						// рандомизация генератора случайных чисел
+						srand(time(0));
+						// Получаем ip адрес
+						host = ips.at(rand() % ips.size());
+					// Выводим только первый элемент
+					} else host = ips.front();
+					// Переводим ip адрес в полноценный вид
+					host = move(this->nwk.setLowIp6(host));
+					// Очищаем всю структуру для клиента
+					memset(&result.client6, 0, sizeof(result.client6));
+					// Устанавливаем протокол интернета
+					result.client6.sin6_family = AF_INET6;
+					// Устанавливаем произвольный порт для локального подключения
+					result.client6.sin6_port = htons(0);
+					// Указываем адрес IPv6 для клиента
+					inet_pton(AF_INET6, host.c_str(), &result.client6.sin6_addr);
+					// inet_ntop(AF_INET6, &result.client6.sin6_addr, hostClient, sizeof(hostClient));
+					// Запоминаем размер структуры
+					size = sizeof(result.client6);
+					// Запоминаем полученную структуру
+					sin = reinterpret_cast <struct sockaddr *> (&result.client6);
+				}
 				// Очищаем всю структуру для сервера
 				memset(&result.server6, 0, sizeof(result.server6));
-				// Неважно, IPv4 или IPv6
-				result.client6.sin6_family = AF_INET6;
+				// Устанавливаем протокол интернета
 				result.server6.sin6_family = AF_INET6;
-				// Устанавливаем произвольный порт для локального подключения
-				result.client6.sin6_port = htons(0);
 				// Устанавливаем порт для локального подключения
 				result.server6.sin6_port = htons(port);
-				// Указываем адреса
-				inet_pton(AF_INET6, host.c_str(), &result.client6.sin6_addr);
+				// Указываем адрес IPv6 для сервера
 				inet_pton(AF_INET6, ip.c_str(), &result.server6.sin6_addr);
-				// Устанавливаем адреса
-				// inet_ntop(AF_INET6, &result.client6.sin6_addr, hostClient, sizeof(hostClient));
 				// inet_ntop(AF_INET6, &result.server6.sin6_addr, hostServer, sizeof(hostServer));
-				// Запоминаем размер структуры
-				size = sizeof(result.client6);
-				// Запоминаем полученную структуру
-				sin = reinterpret_cast <struct sockaddr *> (&result.client6);
+				// Если ядро является сервером
+				if(isServer){
+					// Запоминаем размер структуры
+					size = sizeof(result.server6);
+					// Запоминаем полученную структуру
+					sin = reinterpret_cast <struct sockaddr *> (&result.server6);
+				}
 				// Создаем сокет подключения
 				result.fd = ::socket(AF_INET6, SOCK_STREAM, IPPROTO_TCP);
 			} break;
@@ -234,7 +256,7 @@ const awh::Core::socket_t awh::Core::socket(const string & ip, const u_int port,
 			// Выводим сообщение в консоль
 			this->log->print("creating socket to server = %s, port = %u", log_t::flag_t::CRITICAL, ip.c_str(), port);
 			// Выходим
-			return result;
+			return socket_t();
 		}
 		// Если - это Unix
 		#if !defined(_WIN32) && !defined(_WIN64)
@@ -248,8 +270,12 @@ const awh::Core::socket_t awh::Core::socket(const string & ip, const u_int port,
 			sockets_t::tcpNodelay(result.fd, this->log);
 			// Разблокируем сокет
 			sockets_t::nonBlocking(result.fd, this->log);
+			// Если ядро является сервером
+			if(isServer){
+				// Включаем отображение сети IPv4 в IPv6
+				if(family == AF_INET6) sockets_t::ipV6only(result.fd, this->ipV6only, this->log);
 			// Активируем keepalive
-			sockets_t::keepAlive(result.fd, this->alive.keepcnt, this->alive.keepidle, this->alive.keepintvl, this->log);
+			} else sockets_t::keepAlive(result.fd, this->alive.keepcnt, this->alive.keepidle, this->alive.keepintvl, this->log);
 		// Если - это Windows
 		#else
 			// Выполняем инициализацию WinSock
@@ -263,9 +289,9 @@ const awh::Core::socket_t awh::Core::socket(const string & ip, const u_int port,
 		// Выполняем бинд на сокет
 		if(::bind(result.fd, sin, size) < 0){
 			// Выводим в лог сообщение
-			this->log->print("bind local network [%s] error", log_t::flag_t::CRITICAL, host.c_str());
+			this->log->print("bind local network [%s]", log_t::flag_t::CRITICAL, host.c_str());
 			// Выходим
-			return result;
+			return socket_t();
 		}
 	}
 	// Выводим результат
@@ -721,6 +747,8 @@ void awh::Core::setNet(const vector <string> & ip, const vector <string> & ns, c
  * ~Core Деструктор
  */
 awh::Core::~Core() noexcept {
+	// Выполняем остановку сервиса
+	this->stop();
 	// Если - это Windows
 	#if defined(_WIN32) || defined(_WIN64)
 		// Очищаем сетевой контекст

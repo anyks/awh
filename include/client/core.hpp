@@ -92,7 +92,7 @@ namespace awh {
 			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
 			 */
-			CoreClient(const fmk_t * fmk, const log_t * log) noexcept : core_t(fmk, log) {}
+			CoreClient(const fmk_t * fmk, const log_t * log) noexcept;
 			/**
 			 * ~CoreClient Деструктор
 			 */

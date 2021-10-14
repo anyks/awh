@@ -11,14 +11,6 @@
 #include <server/ws.hpp>
 
 /**
- * chunking Метод обработки получения чанков
- * @param chunk бинарный буфер чанка
- * @param ctx   контекст объекта http
- */
-void awh::WebSocketServer::chunking(const vector <char> & chunk, const http_t * ctx) noexcept {
-
-}
-/**
  * openCallback Функция обратного вызова при запуске работы
  * @param wid  идентификатор воркера
  * @param core объект биндинга TCP/IP
@@ -26,7 +18,7 @@ void awh::WebSocketServer::chunking(const vector <char> & chunk, const http_t * 
  */
 void awh::WebSocketServer::openCallback(const size_t wid, core_t * core, void * ctx) noexcept {
 	// Устанавливаем хост сервера
-	reinterpret_cast <coreSrv_t *> (core)->init(wid, 1080, "127.0.0.1");
+	reinterpret_cast <coreSrv_t *> (core)->init(wid, 2222, "127.0.0.1");
 	// Выполняем запуск сервера
 	core->run(wid);
 }
@@ -197,8 +189,6 @@ void awh::WebSocketServer::setCrypt(const string & pass, const string & salt, co
 awh::WebSocketServer::WebSocketServer(const coreSrv_t * core, const fmk_t * fmk, const log_t * log) noexcept : nwk(fmk), uri(fmk, &nwk), hash(fmk, log), frame(fmk, log), http(fmk, log, &uri), core(core), fmk(fmk), log(log), worker(fmk, log) {
 	// Устанавливаем контекст сообщения
 	this->worker.ctx = this;
-	// Устанавливаем функцию обработки вызова для получения чанков
-	this->http.setChunkingFn(&chunking);
 	// Устанавливаем событие на запуск системы
 	this->worker.openFn = openCallback;
 	// Устанавливаем функцию чтения данных

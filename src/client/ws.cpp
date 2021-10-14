@@ -11,15 +11,6 @@
 #include <client/ws.hpp>
 
 /**
- * chunking Метод обработки получения чанков
- * @param chunk бинарный буфер чанка
- * @param ctx   контекст объекта http
- */
-void awh::WebSocketClient::chunking(const vector <char> & chunk, const http_t * ctx) noexcept {
-	// Если данные получены, формируем тело сообщения
-	if(!chunk.empty()) const_cast <http_t *> (ctx)->addBody(chunk.data(), chunk.size());
-}
-/**
  * openCallback Функция обратного вызова при запуске работы
  * @param wid  идентификатор воркера
  * @param core объект биндинга TCP/IP
@@ -75,6 +66,10 @@ void awh::WebSocketClient::connectCallback(const size_t aid, core_t * core, void
 		ws->aid = aid;
 		// Выполняем сброс состояния HTTP парсера
 		ws->http.clear();
+		// Останавливаем таймер пинга сервера
+		ws->timerPing.stop();
+		// Останавливаем таймер подключения
+		ws->timerConn.stop();
 		// Получаем бинарные данные REST запроса
 		const auto & rest = ws->http.request(ws->worker.url);
 		// Если бинарные данные запроса получены, отправляем на сервер
@@ -1024,8 +1019,6 @@ void awh::WebSocketClient::setAuthTypeProxy(const auth_t::type_t type, const aut
 awh::WebSocketClient::WebSocketClient(const coreCli_t * core, const fmk_t * fmk, const log_t * log) noexcept : nwk(fmk), uri(fmk, &nwk), hash(fmk, log), frame(fmk, log), http(fmk, log, &uri), core(core), fmk(fmk), log(log), worker(fmk, log) {
 	// Устанавливаем контекст сообщения
 	this->worker.ctx = this;
-	// Устанавливаем функцию обработки вызова для получения чанков
-	this->http.setChunkingFn(&chunking);
 	// Устанавливаем событие на запуск системы
 	this->worker.openFn = openCallback;
 	// Устанавливаем функцию чтения данных
