@@ -822,11 +822,12 @@ vector <char> awh::Http::proxy(const uri_t::url_t & url) noexcept {
 /**
  * reject Метод создания отрицательного ответа
  * @param code код ответа
+ * @param mess сообщение ответа
  * @return     буфер данных запроса в бинарном виде
  */
-vector <char> awh::Http::reject(const u_short code) const noexcept {
+vector <char> awh::Http::reject(const u_short code, const string & mess) const noexcept {
 	// Получаем текст сообщения
-	this->query.message = this->getMessage(code);
+	this->query.message = (!mess.empty() ? mess : this->getMessage(code));
 	// Если сообщение получено
 	if(!this->query.message.empty()){
 		// Если требуется ввод авторизационных данных
@@ -853,7 +854,7 @@ vector <char> awh::Http::reject(const u_short code) const noexcept {
 			this->headers.emplace("Content-Length", to_string(this->body.size()));
 		}
 		// Выводим результат
-		return this->response(code);
+		return this->response(code, mess);
 	}
 	// Выводим результат
 	return vector <char> ();
@@ -861,13 +862,14 @@ vector <char> awh::Http::reject(const u_short code) const noexcept {
 /**
  * response Метод создания ответа
  * @param code код ответа
+ * @param mess сообщение ответа
  * @return     буфер данных запроса в бинарном виде
  */
-vector <char> awh::Http::response(const u_short code) const noexcept {
+vector <char> awh::Http::response(const u_short code, const string & mess) const noexcept {
 	// Результат работы функции
 	vector <char> result;
 	// Получаем текст сообщения
-	this->query.message = this->getMessage(code);
+	this->query.message = (!mess.empty() ? mess : this->getMessage(code));
 	// Если сообщение получено
 	if(!this->query.message.empty()){
 		/**

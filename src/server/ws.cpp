@@ -38,7 +38,7 @@ void awh::WebSocketServer::closeCallback(const size_t wid, core_t * core, void *
  * @param ctx  передаваемый контекст модуля
  */
 void awh::WebSocketServer::connectCallback(const size_t aid, core_t * core, void * ctx) noexcept {
-
+	cout << " ------------- " << aid << endl;
 }
 /**
  * readCallback Функция обратного вызова при чтении сообщения с сервера
@@ -49,7 +49,87 @@ void awh::WebSocketServer::connectCallback(const size_t aid, core_t * core, void
  * @param ctx    передаваемый контекст модуля
  */
 void awh::WebSocketServer::readCallback(const char * buffer, const size_t size, const size_t aid, core_t * core, void * ctx) noexcept {
-	cout << " +++++++++++++++++ " << string(buffer, size) << endl;
+	// Если данные существуют
+	if((buffer != nullptr) && (size > 0) && (aid > 0)){
+		// Получаем контекст модуля
+		wsSrv_t * ws = reinterpret_cast <wsSrv_t *> (ctx);
+		// Если рукопожатие не выполнено
+		if(!reinterpret_cast <http_t *> (&ws->http)->isHandshake()){
+			// Выполняем парсинг полученных данных
+			ws->http.parse(buffer, size);
+			// Если все данные получены
+			if(ws->http.isEnd()){
+				// Бинарный буфер ответа сервера
+				vector <char> response;
+				// Выполняем проверку авторизации
+				switch((uint8_t) ws->http.getAuth()){
+					// Если запрос выполнен удачно
+					case (uint8_t) http_t::stath_t::GOOD: {
+						// Если рукопожатие выполнено
+						if(ws->http.isHandshake()){
+							// Проверяем версию протокола
+							if(!ws->http.checkVer()){
+								// Выполняем сброс состояния HTTP парсера
+								ws->http.clear();
+								// Получаем бинарные данные REST запроса
+								response = ws->http.reject(400, "Unsupported protocol version");
+								// Завершаем работу
+								break;
+							}
+							// Проверяем ключ клиента
+							if(!ws->http.checkKey()){
+								// Выполняем сброс состояния HTTP парсера
+								ws->http.clear();
+								// Получаем бинарные данные REST запроса
+								response = ws->http.reject(400, "Wrong client key");
+								// Завершаем работу
+								break;
+							}
+							// Выполняем сброс состояния HTTP парсера
+							ws->http.clear();
+
+							// Получаем флаг шифрованных данных
+							ws->crypt = ws->http.isCrypt();
+							// Получаем поддерживаемый метод компрессии
+							ws->compress = ws->http.getCompress();
+
+							// Получаем бинарные данные REST запроса
+							response = ws->http.response();
+							// Если бинарные данные запроса получены, отправляем на сервер
+							if(!response.empty()) core->write(response.data(), response.size(), aid);
+
+							cout << " +++++++++++ GOOD " << string(response.begin(), response.end()) << endl;
+
+							// Завершаем работу
+							return;
+						// Сообщаем, что рукопожатие не выполнено
+						} else {
+							// Выполняем сброс состояния HTTP парсера
+							ws->http.clear();
+							// Формируем ответ, что страница не найдена
+							response = ws->http.reject(404);
+						}
+					} break;
+					// Если запрос неудачный
+					case (uint8_t) http_t::stath_t::FAULT: {
+						// Выполняем сброс состояния HTTP парсера
+						ws->http.clear();
+						// Формируем запрос авторизации
+						response = ws->http.reject(401);
+					} break;
+				}
+				// Если бинарные данные запроса получены, отправляем на сервер
+				if(!response.empty()) core->write(response.data(), response.size(), aid);
+				// Завершаем работу
+				core->close(aid);
+			}
+			// Завершаем работу
+			return;
+		// Если рукопожатие выполнено
+		} else {
+			cout << " +++++++++++++++++2 " << string(buffer, size) << endl;
+		}
+	}
 }
 /**
  * acceptCallback Функция обратного вызова при проверке подключения клиента
@@ -61,8 +141,7 @@ void awh::WebSocketServer::readCallback(const char * buffer, const size_t size, 
  * @return     результат разрешения к подключению клиента
  */
 bool awh::WebSocketServer::acceptCallback(const string & ip, const string & mac, const size_t wid, core_t * core, void * ctx) noexcept {
-	cout << " --------- " << ip << " == " << mac << endl;
-
+	// Разрешаем подключение клиенту
 	return true;
 }
 /**

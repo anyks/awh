@@ -387,15 +387,17 @@ namespace awh {
 			/**
 			 * reject Метод создания отрицательного ответа
 			 * @param code код ответа
+			 * @param mess сообщение ответа
 			 * @return     буфер данных запроса в бинарном виде
 			 */
-			vector <char> reject(const u_short code) const noexcept;
+			vector <char> reject(const u_short code, const string & mess = "") const noexcept;
 			/**
 			 * response Метод создания ответа
 			 * @param code код ответа
+			 * @param mess сообщение ответа
 			 * @return     буфер данных запроса в бинарном виде
 			 */
-			vector <char> response(const u_short code) const noexcept;
+			vector <char> response(const u_short code, const string & mess = "") const noexcept;
 			/**
 			 * request Метод создания запроса
 			 * @param url    объект параметров REST запроса

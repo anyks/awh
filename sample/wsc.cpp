@@ -60,17 +60,18 @@ int main(int argc, char * argv[]) noexcept {
 	// Устанавливаем логин и пароль пользователя
 	ws.setUser("user", "password");
 	// Устанавливаем данные прокси-сервера
-	ws.setProxy("http://B80TWR:uRMhnd@196.17.249.64:8000");
+	// ws.setProxy("http://B80TWR:uRMhnd@196.17.249.64:8000");
 	// ws.setProxy("socks5://rfbPbd:XcCuZH@45.144.169.109:8000");
 	// ws.setProxy("socks5://6S7rAk:g6K8XD@217.29.62.231:30810");
 	// Выполняем инициализацию типа авторизации
 	ws.setAuthType();
 	// Устанавливаем тип авторизации прокси-сервера
-	ws.setAuthTypeProxy();
+	// ws.setAuthTypeProxy();
 	// Устанавливаем время ожидания
 	// ws.setWaitTimeDetect(10, 0);
 	// Выполняем инициализацию WebSocket клиента
-	ws.init("wss://stream.binance.com:9443/stream", http_t::compress_t::DEFLATE);
+	// ws.init("wss://stream.binance.com:9443/stream", http_t::compress_t::DEFLATE);
+	ws.init("ws://127.0.0.1:2222", http_t::compress_t::DEFLATE);
 	// Выполняем подписку на получение логов
 	log.subscribe([](const log_t::flag_t flag, const string & message){
 		// Выводим сообщение
