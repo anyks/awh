@@ -28,9 +28,6 @@ namespace awh {
 	 */
 	typedef class CoreServer : public core_t {
 		private:
-			// Функция обратного вызова при подключении нового клиента
-			function <bool (const string &, const string &, const size_t, Core *, void *)> acceptFn = nullptr;
-		private:
 			/**
 			 * read Метод чтения данных с сокета сервера
 			 * @param bev буфер события
@@ -85,6 +82,11 @@ namespace awh {
 			 */
 			void run(const size_t wid) noexcept;
 			/**
+			 * open Метод открытия подключения воркером
+			 * @param wid идентификатор воркера
+			 */
+			void open(const size_t wid) noexcept;
+			/**
 			 * close Метод закрытия подключения воркера
 			 * @param aid идентификатор адъютанта
 			 */
@@ -105,13 +107,6 @@ namespace awh {
 			void init(const size_t wid, const u_int port, const string & host = "") noexcept;
 		public:
 			/**
-			 * setAccept Метод установки функции обратного вызова при подключении нового клиента
-			 * @param ctx      передаваемый объект контекста
-			 * @param callback функция обратного вызова для установки
-			 */
-			void setAccept(void * ctx, function <bool (const string &, const string &, const size_t, Core *, void *)> callback) noexcept;
-		public:
-			/**
 			 * CoreServer Конструктор
 			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
@@ -120,7 +115,7 @@ namespace awh {
 			/**
 			 * ~CoreServer Деструктор
 			 */
-			~CoreServer() noexcept;
+			~CoreServer() noexcept {}
 	} coreSrv_t;
 };
 

@@ -158,6 +158,8 @@ namespace awh {
 			// Список подключённых клиентов
 			map <size_t, const worker_t::adj_t *> adjutants;
 		protected:
+			// Флаг отложенных вызовов событий сокета
+			bool defer = true;
 			// Флаг разрешения работы
 			bool mode = false;
 			// Флаг блокировку инициализации базы событий
@@ -325,6 +327,11 @@ namespace awh {
 			 */
 			void setMark(const method_t method, const size_t min, const size_t max, const size_t aid) noexcept;
 		public:
+			/**
+			 * setDefer Метод установки флага отложенных вызовов событий сокета
+			 * @param mode флаг отложенных вызовов событий сокета
+			 */
+			void setDefer(const bool mode) noexcept;
 			/**
 			 * setNoInfo Метод установки флага запрета вывода информационных сообщений
 			 * @param mode флаг запрета вывода информационных сообщений

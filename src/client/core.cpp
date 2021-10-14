@@ -179,16 +179,18 @@ bool awh::CoreClient::connect(const size_t wid) noexcept {
 				worker_t::adj_t adj = worker_t::adj_t(wrk, this->fmk, this->log);
 				// Выполняем получение контекста сертификата
 				wrk->ssl = this->ssl.init(url);
+				// Устанавливаем первоначальное значение
+				u_int mode = BEV_OPT_THREADSAFE;
+				// Если нужно использовать отложенные вызовы событий сокета
+				if(this->defer) mode = (mode | BEV_OPT_DEFER_CALLBACKS);
 				// Если SSL клиент разрешен
 				if(wrk->ssl.mode){
 					// Создаем буфер событий для сервера зашифрованного подключения
-					// adj.bev = bufferevent_openssl_socket_new(this->base, socket.fd, wrk->ssl.ssl, BUFFEREVENT_SSL_CONNECTING, BEV_OPT_THREADSAFE);
-					adj.bev = bufferevent_openssl_socket_new(this->base, socket.fd, wrk->ssl.ssl, BUFFEREVENT_SSL_CONNECTING, BEV_OPT_THREADSAFE | BEV_OPT_DEFER_CALLBACKS);
+					adj.bev = bufferevent_openssl_socket_new(this->base, socket.fd, wrk->ssl.ssl, BUFFEREVENT_SSL_CONNECTING, mode);
 					// Разрешаем непредвиденное грязное завершение работы
 					bufferevent_openssl_set_allow_dirty_shutdown(adj.bev, 1);
 				// Создаем буфер событий для сервера
-				// } else adj.bev = bufferevent_socket_new(this->base, socket.fd, BEV_OPT_THREADSAFE);
-				} else adj.bev = bufferevent_socket_new(this->base, socket.fd, BEV_OPT_THREADSAFE | BEV_OPT_DEFER_CALLBACKS);
+				} else adj.bev = bufferevent_socket_new(this->base, socket.fd, mode);
 				// Если буфер событий создан
 				if(adj.bev != nullptr){
 					// Устанавливаем идентификатор адъютанта
@@ -457,9 +459,12 @@ void awh::CoreClient::switchProxy(const size_t aid) noexcept {
 		wrk->ssl = this->ssl.init(wrk->url);
 		// Если SSL клиент разрешен
 		if(wrk->ssl.mode){
+			// Устанавливаем первоначальное значение
+			u_int mode = BEV_OPT_THREADSAFE;
+			// Если нужно использовать отложенные вызовы событий сокета
+			if(this->defer) mode = (mode | BEV_OPT_DEFER_CALLBACKS);
 			// Выполняем переход на защищённое подключение
-			// struct bufferevent * bev = bufferevent_openssl_filter_new(this->base, it->second->bev, wrk->ssl.ssl, BUFFEREVENT_SSL_CONNECTING, BEV_OPT_THREADSAFE);
-			struct bufferevent * bev = bufferevent_openssl_filter_new(this->base, it->second->bev, wrk->ssl.ssl, BUFFEREVENT_SSL_CONNECTING, BEV_OPT_THREADSAFE | BEV_OPT_DEFER_CALLBACKS);
+			struct bufferevent * bev = bufferevent_openssl_filter_new(this->base, it->second->bev, wrk->ssl.ssl, BUFFEREVENT_SSL_CONNECTING, mode);
 			// Если буфер событий создан
 			if(bev != nullptr){
 				// Устанавливаем новый буфер событий

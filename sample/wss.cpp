@@ -10,7 +10,7 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include <client/ws.hpp>
+#include <server/ws.hpp>
 #include <nlohmann/json.hpp>
 
 // Подключаем пространство имён
@@ -36,44 +36,48 @@ int main(int argc, char * argv[]) noexcept {
 	// Создаём объект URI
 	uri_t uri(&fmk, &nwk);
 	// Создаём биндинг
-	coreCli_t core(&fmk, &log);
+	coreSrv_t core(&fmk, &log);
 	// Создаём объект REST запроса
-	wsCli_t ws(&core, &fmk, &log);
+	wsSrv_t ws(&core, &fmk, &log);
 	// Устанавливаем название сервиса
-	log.setLogName("WebSocket Client");
+	log.setLogName("WebSocket Server");
 	// Устанавливаем формат времени
 	log.setLogFormat("%H:%M:%S %d.%m.%Y");
 	/**
 	 * 1. Устанавливаем ожидание входящих сообщений
-	 * 2. Устанавливаем валидацию SSL сертификата
+	 * 2. Устанавливаем флаг поддержания активным подключение
 	 */
 	ws.setMode(
-		(uint8_t) wsCli_t::flag_t::NOTSTOP |
-		(uint8_t) wsCli_t::flag_t::WAITMESS |
-		(uint8_t) wsCli_t::flag_t::VERIFYSSL |
-		(uint8_t) wsCli_t::flag_t::KEEPALIVE
+		(uint8_t) wsSrv_t::flag_t::WAITMESS |
+		(uint8_t) wsSrv_t::flag_t::KEEPALIVE
 	);
+
+	// Выполняем запуск WebSocket клиента
+	ws.start();
 	// Устанавливаем адрес сертификата
-	core.setCA("./ca/cert.pem");
+	// core.setCA("./ca/cert.pem");
 	// Устанавливаем логин и пароль пользователя
-	ws.setUser("user", "password");
+	// ws.setUser("user", "password");
 	// Устанавливаем данные прокси-сервера
-	ws.setProxy("http://B80TWR:uRMhnd@196.17.249.64:8000");
+	// ws.setProxy("http://B80TWR:uRMhnd@196.17.249.64:8000");
 	// ws.setProxy("socks5://rfbPbd:XcCuZH@45.144.169.109:8000");
 	// ws.setProxy("socks5://6S7rAk:g6K8XD@217.29.62.231:30810");
 	// Выполняем инициализацию типа авторизации
-	ws.setAuthType();
+	// ws.setAuthType();
 	// Устанавливаем тип авторизации прокси-сервера
-	ws.setAuthTypeProxy();
+	// ws.setAuthTypeProxy();
 	// Устанавливаем время ожидания
 	// ws.setWaitTimeDetect(10, 0);
 	// Выполняем инициализацию WebSocket клиента
-	ws.init("wss://stream.binance.com:9443/stream", http_t::compress_t::DEFLATE);
+	// ws.init("wss://stream.binance.com:9443/stream", http_t::compress_t::DEFLATE);
+	/*
 	// Выполняем подписку на получение логов
 	log.subscribe([](const log_t::flag_t flag, const string & message){
 		// Выводим сообщение
 		// cout << " ============= " << message << endl;
 	});
+	*/
+	/*
 	// Подписываемся на событие запуска и остановки сервера
 	ws.on(&log, [](const bool mode, wsCli_t * ws, void * ctx){
 		// Получаем объект логирования
@@ -123,8 +127,9 @@ int main(int argc, char * argv[]) noexcept {
 		// Сообщаем количество полученных байт
 		} else cout << " +++++++++++++ " << buffer.size() << " bytes" << endl;
 	});
+	*/
 	// Выполняем запуск WebSocket клиента
-	ws.start();
+	// ws.start();
 	// Выводим результат
 	return 0;
 }

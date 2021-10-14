@@ -650,6 +650,14 @@ void awh::Core::setMark(const method_t method, const size_t min, const size_t ma
 	}
 }
 /**
+ * setDefer Метод установки флага отложенных вызовов событий сокета
+ * @param mode флаг отложенных вызовов событий сокета
+ */
+void awh::Core::setDefer(const bool mode) noexcept {
+	// Устанавливаем флаг отложенных вызовов событий сокета
+	this->defer = mode;
+}
+/**
  * setNoInfo Метод установки флага запрета вывода информационных сообщений
  * @param mode флаг запрета вывода информационных сообщений
  */

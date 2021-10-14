@@ -156,9 +156,9 @@ void awh::CoreServer::accept(const evutil_socket_t fd, const short event, void *
 			} break;
 		}
 		// Если функция обратного вызова установлена
-		if(core->acceptFn != nullptr){
+		if(wrk->acceptFn != nullptr){
 			// Выполняем проверку, разрешено ли клиенту подключиться к серверу
-			if(!core->acceptFn(ip, mac, wrk->wid, const_cast <core_t *> (wrk->core), core->ctx.back())){
+			if(!wrk->acceptFn(ip, mac, wrk->wid, core, wrk->ctx)){
 				// Выполняем закрытие сокета
 				core->close(socket);
 				// Выводим в лог сообщение
@@ -187,8 +187,12 @@ void awh::CoreServer::accept(const evutil_socket_t fd, const short event, void *
 		#endif
 		// Создаём бъект адъютанта
 		worker_t::adj_t adj = worker_t::adj_t(wrk, core->fmk, core->log);
+		// Устанавливаем первоначальное значение
+		u_int mode = BEV_OPT_THREADSAFE;
+		// Если нужно использовать отложенные вызовы событий сокета
+		if(core->defer) mode = (mode | BEV_OPT_DEFER_CALLBACKS);
 		// Создаем буфер событий для подключившегося клиента
-		adj.bev = bufferevent_socket_new(core->base, socket, BEV_OPT_THREADSAFE | BEV_OPT_DEFER_CALLBACKS);
+		adj.bev = bufferevent_socket_new(core->base, socket, mode);
 		// Если буфер событий создан
 		if(adj.bev != nullptr){
 			// Запоминаем IP адрес
@@ -203,6 +207,21 @@ void awh::CoreServer::accept(const evutil_socket_t fd, const short event, void *
 			core->adjutants.emplace(ret.first->second.aid, &ret.first->second);
 			// Выполняем тюннинг буфера событий
 			core->tuning(ret.first->second.aid);
+			// Выполняем функцию обратного вызова
+			if(wrk->connectFn != nullptr) wrk->connectFn(adj.aid, core, wrk->ctx);
+			// Если флаг ожидания входящих сообщений, активирован
+			if(wrk->wait){
+				// Устанавливаем таймаут ожидания поступления данных
+				struct timeval read = {adj.timeRead, 0};
+				// Устанавливаем таймаут ожидания записи данных
+				struct timeval write = {adj.timeWrite, 0};
+				// Устанавливаем таймаут на отправку/получение данных
+				bufferevent_set_timeouts(
+					adj.bev,
+					(adj.timeRead > 0 ? &read : nullptr),
+					(adj.timeWrite > 0 ? &write : nullptr)
+				);
+			}
 			// Выводим в консоль информацию
 			if(!core->noinfo) core->log->print("client connect to server, host = %s, mac = %s, socket = %d", log_t::flag_t::INFO, ret.first->second.ip.c_str(), ret.first->second.mac.c_str(), socket);
 		// Выводим в лог сообщение
@@ -386,7 +405,7 @@ void awh::CoreServer::run(const size_t wid) noexcept {
 					// Активируем событие
 					event_add(wrk->ev, nullptr);
 					// Выводим сообщение об активации
-					if(!this->noinfo) this->log->print("%s", log_t::flag_t::INFO, "system is activated");
+					if(!this->noinfo) this->log->print("run server [%s:%u]", log_t::flag_t::INFO, wrk->host.c_str(), wrk->port);
 				// Если IP адрес сервера не получен
 				} else {
 					// Выводим в консоль информацию
@@ -404,6 +423,14 @@ void awh::CoreServer::run(const size_t wid) noexcept {
 			}
 		}
 	}
+}
+/**
+ * open Метод открытия подключения воркером
+ * @param wid идентификатор воркера
+ */
+void awh::CoreServer::open(const size_t wid) noexcept {
+	// Блокируем переданный идентификатор
+	(void) wid;
 }
 /**
  * close Метод закрытия подключения воркера
@@ -472,17 +499,4 @@ void awh::CoreServer::init(const size_t wid, const u_int port, const string & ho
 			else wrk->host = sockets_t::serverIp(this->net.family);
 		}
 	}
-}
-/**
- * setAccept Метод установки функции обратного вызова при подключении нового клиента
- * @param ctx      передаваемый объект контекста
- * @param callback функция обратного вызова для установки
- */
-void awh::CoreServer::setAccept(void * ctx, function <bool (const string &, const string &, const size_t, Core *, void *)> callback) noexcept {
-	// Резервируем память для хранения контекста
-	this->ctx.reserve(2);
-	// Устанавливаем контекст
-	this->ctx.back() = ctx;
-	// Устанавливаем функцию обратного вызова
-	this->acceptFn = callback;
 }

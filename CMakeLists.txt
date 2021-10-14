@@ -155,6 +155,7 @@ set(SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/src/client/worker.cpp"
     "${CMAKE_SOURCE_DIR}/src/client/socks5.cpp"
     "${CMAKE_SOURCE_DIR}/src/server/socks5.cpp"
+    "${CMAKE_SOURCE_DIR}/src/server/ws.cpp"
     "${CMAKE_SOURCE_DIR}/src/server/http.cpp"
     "${CMAKE_SOURCE_DIR}/src/server/core.cpp"
     "${CMAKE_SOURCE_DIR}/src/server/auth.cpp"
@@ -162,7 +163,8 @@ set(SOURCE_FILES
 )
 
 # Задаем именя библиотеки и бинарника
-set(WS_APP_NAME ws)
+set(WSC_APP_NAME wsc)
+set(WSS_APP_NAME wss)
 set(REST_APP_NAME rest)
 set(CURRENT_LIB_NAME ${PROJECT_NAME})
 set(CURRENT_APP_NAME ${PROJECT_NAME}_bin)
@@ -188,10 +190,20 @@ if (ENABLE_CONSOLE_APP)
         SET(CMAKE_RC_COMPILE_OBJECT "<CMAKE_RC_COMPILER> <FLAGS> -O coff <DEFINES> -i <SOURCE> -o <OBJECT>")
     endif(MINGW)
 
-    add_executable(${WS_APP_NAME} sample/ws.cpp ${RES_FILES})
+    add_executable(${WSC_APP_NAME} sample/wsc.cpp ${RES_FILES})
+    add_executable(${WSS_APP_NAME} sample/wss.cpp ${RES_FILES})
     add_executable(${REST_APP_NAME} sample/rest.cpp ${RES_FILES})
 
-    target_link_libraries(${WS_APP_NAME}
+    target_link_libraries(${WSC_APP_NAME}
+        ${CURRENT_LIB_NAME}
+        ${ZLIB_LIBRARY}
+        ${BROTLI_LIBRARIES}
+        ${OPENSSL_LIBRARIES}
+        ${LIBEVENT_LIBRARIES}
+        ${WINFLAGS}
+    )
+
+    target_link_libraries(${WSS_APP_NAME}
         ${CURRENT_LIB_NAME}
         ${ZLIB_LIBRARY}
         ${BROTLI_LIBRARIES}
@@ -220,7 +232,8 @@ install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/include" DESTINATION "${CMAKE_INS
 # Устанавливаем библиотеку
 install(TARGETS ${CURRENT_LIB_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
 # Устанавливаем исполнительные файлы
-install(TARGETS ${WS_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
+install(TARGETS ${WSC_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
+install(TARGETS ${WSS_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
 install(TARGETS ${REST_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
 
 # Устанавливаем хидеры сторонних библиотек

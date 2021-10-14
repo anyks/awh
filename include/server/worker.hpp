@@ -44,6 +44,9 @@ namespace awh {
 			// Событие подключения к серверу
 			struct event * ev = nullptr;
 		public:
+			// Функция обратного вызова при подключении нового клиента
+			function <bool (const string &, const string &, const size_t, Core *, void *)> acceptFn = nullptr;
+		public:
 			/**
 			 * clear Метод очистки
 			 */
