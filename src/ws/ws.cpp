@@ -196,7 +196,7 @@ vector <char> awh::WS::response() noexcept {
 				// Если метод компрессии выбран Deflate
 				if(this->compress == compress_t::DEFLATE){
 					// Устанавливаем тип компрессии Deflate
-					extensions = "permessage-deflate; server_no_context_takeover; client_max_window_bits";
+					extensions = "permessage-deflate; server_no_context_takeover";
 					// Если требуется указать количество байт
 					if(this->wbitServer > 0) extensions.append(this->fmk->format("; server_max_window_bits=%u", this->wbitServer));
 				// Если метод компрессии выбран GZip
