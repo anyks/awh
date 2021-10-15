@@ -118,13 +118,6 @@ namespace awh {
 			 */
 			static void openCallback(const size_t wid, core_t * core, void * ctx) noexcept;
 			/**
-			 * closeCallback Функция обратного вызова при отключении от сервера
-			 * @param wid  идентификатор воркера
-			 * @param core объект биндинга TCP/IP
-			 * @param ctx  передаваемый контекст модуля
-			 */
-			static void closeCallback(const size_t wid, core_t * core, void * ctx) noexcept;
-			/**
 			 * connectCallback Функция обратного вызова при подключении к серверу
 			 * @param aid  идентификатор адъютанта
 			 * @param core объект биндинга TCP/IP
@@ -138,6 +131,14 @@ namespace awh {
 			 * @param ctx  передаваемый контекст модуля
 			 */
 			static void connectProxyCallback(const size_t aid, core_t * core, void * ctx) noexcept;
+			/**
+			 * disconnectCallback Функция обратного вызова при отключении от сервера
+			 * @param aid  идентификатор адъютанта
+			 * @param wid  идентификатор воркера
+			 * @param core объект биндинга TCP/IP
+			 * @param ctx  передаваемый контекст модуля
+			 */
+			static void disconnectCallback(const size_t aid, const size_t wid, core_t * core, void * ctx) noexcept;
 			/**
 			 * readCallback Функция обратного вызова при чтении сообщения с сервера
 			 * @param buffer бинарный буфер содержащий сообщение

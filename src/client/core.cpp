@@ -176,7 +176,7 @@ bool awh::CoreClient::connect(const size_t wid) noexcept {
 			// Если сокет создан удачно
 			if(socket.fd > -1){
 				// Создаём бъект адъютанта
-				worker_t::adj_t adj = worker_t::adj_t(wrk, this->fmk, this->log);
+				worker_t::adj_t adj(wrk, this->fmk, this->log);
 				// Выполняем получение контекста сертификата
 				wrk->ssl = this->ssl.init(url);
 				// Устанавливаем первоначальное значение
@@ -198,9 +198,9 @@ bool awh::CoreClient::connect(const size_t wid) noexcept {
 					// Добавляем созданного адъютанта в список адъютантов
 					auto ret = wrk->adjutants.emplace(adj.aid, move(adj));
 					// Добавляем адъютанта в список подключений
-					this->adjutants.emplace(ret.first->second.aid, &ret.first->second);
+					this->adjutants.emplace(ret.first->first, &ret.first->second);
 					// Выполняем тюннинг буфера событий
-					tuning(ret.first->second.aid);
+					tuning(ret.first->first);
 					// Определяем тип подключения
 					switch(this->net.family){
 						// Для протокола IPv4
@@ -239,7 +239,7 @@ bool awh::CoreClient::connect(const size_t wid) noexcept {
 							// Выводим сообщение об ошибке
 							if(!wrk->core->noinfo) this->log->print("%s", log_t::flag_t::INFO, "disconnected from the server");
 							// Выводим функцию обратного вызова
-							if(wrk->closeFn != nullptr) wrk->closeFn(wrk->wid, this, wrk->ctx);
+							if(wrk->disconnectFn != nullptr) wrk->disconnectFn(ret.first->first, wrk->wid, this, wrk->ctx);
 							// Выходим из функции
 							return result;
 						}
@@ -264,7 +264,7 @@ bool awh::CoreClient::connect(const size_t wid) noexcept {
 				// Выводим сообщение об ошибке
 				if(!wrk->core->noinfo) this->log->print("%s", log_t::flag_t::INFO, "disconnected from the server");
 				// Выводим функцию обратного вызова
-				if(wrk->closeFn != nullptr) wrk->closeFn(wrk->wid, this, wrk->ctx);
+				if(wrk->disconnectFn != nullptr) wrk->disconnectFn(0, wrk->wid, this, wrk->ctx);
 			}
 		}
 	}
@@ -326,9 +326,9 @@ void awh::CoreClient::closeAll() noexcept {
 					// Выполняем удаление контекста SSL
 					this->ssl.clear(wrk->ssl);
 					// Выводим функцию обратного вызова
-					if(wrk->closeFn != nullptr)
+					if(wrk->disconnectFn != nullptr)
 						// Выполняем функцию обратного вызова
-						wrk->closeFn(worker.first, this, wrk->ctx);
+						wrk->disconnectFn(it->first, worker.first, this, wrk->ctx);
 					// Удаляем адъютанта из списка
 					it = wrk->adjutants.erase(it);
 				}
@@ -382,7 +382,7 @@ void awh::CoreClient::open(const size_t wid) noexcept {
 						else this->log->print("broken connect to host %s", log_t::flag_t::CRITICAL, ip.c_str());
 					}
 					// Выводим функцию обратного вызова
-					if(wrk->closeFn != nullptr) wrk->closeFn(wrk->wid, this, wrk->ctx);
+					if(wrk->disconnectFn != nullptr) wrk->disconnectFn(0, wrk->wid, this, wrk->ctx);
 				};
 				// Если IP адрес не получен
 				if(url.ip.empty() && !url.domain.empty())
@@ -438,7 +438,7 @@ void awh::CoreClient::close(const size_t aid) noexcept {
 			// Выводим сообщение об ошибке
 			if(!wrk->core->noinfo) this->log->print("%s", log_t::flag_t::INFO, "disconnected from the server");
 			// Выводим функцию обратного вызова
-			if(wrk->closeFn != nullptr) wrk->closeFn(wrk->wid, this, wrk->ctx);
+			if(wrk->disconnectFn != nullptr) wrk->disconnectFn(aid, wrk->wid, this, wrk->ctx);
 		}
 	}
 }

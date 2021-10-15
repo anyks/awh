@@ -47,7 +47,7 @@ namespace awh {
 			 * @param log объект для работы с логами
 			 * @param uri объект работы с URI
 			 */
-			HttpClient(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcept;
+			HttpClient(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcept : http_t(fmk, log, uri) {}
 			/**
 			 * ~HttpClient Деструктор
 			 */

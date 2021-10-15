@@ -82,7 +82,7 @@ namespace awh {
 			 * @param log объект для работы с логами
 			 * @param uri объект работы с URI
 			 */
-			WSServer(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcept;
+			WSServer(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcept : ws_t(fmk, log, uri) {}
 			/**
 			 * ~WSServer Деструктор
 			 */

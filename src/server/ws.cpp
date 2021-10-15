@@ -23,22 +23,35 @@ void awh::WebSocketServer::openCallback(const size_t wid, core_t * core, void * 
 	core->run(wid);
 }
 /**
- * closeCallback Функция обратного вызова при отключении от сервера
- * @param wid  идентификатор воркера
- * @param core объект биндинга TCP/IP
- * @param ctx  передаваемый контекст модуля
- */
-void awh::WebSocketServer::closeCallback(const size_t wid, core_t * core, void * ctx) noexcept {
-
-}
-/**
  * connectCallback Функция обратного вызова при подключении к серверу
  * @param aid  идентификатор адъютанта
  * @param core объект биндинга TCP/IP
  * @param ctx  передаваемый контекст модуля
  */
 void awh::WebSocketServer::connectCallback(const size_t aid, core_t * core, void * ctx) noexcept {
-	cout << " ------------- " << aid << endl;
+	// Если данные существуют
+	if((aid > 0) && (core != nullptr) && (ctx != nullptr)){
+		// Получаем контекст модуля
+		wsSrv_t * ws = reinterpret_cast <wsSrv_t *> (ctx);
+		// Создаём адъютанта
+		ws->worker.createAdj(aid);
+	}
+}
+/**
+ * disconnectCallback Функция обратного вызова при отключении от сервера
+ * @param aid  идентификатор адъютанта
+ * @param wid  идентификатор воркера
+ * @param core объект биндинга TCP/IP
+ * @param ctx  передаваемый контекст модуля
+ */
+void awh::WebSocketServer::disconnectCallback(const size_t aid, const size_t wid, core_t * core, void * ctx) noexcept {
+	// Если данные существуют
+	if((wid > 0) && (core != nullptr) && (ctx != nullptr)){
+		// Получаем контекст модуля
+		wsSrv_t * ws = reinterpret_cast <wsSrv_t *> (ctx);
+		// Выполняем удаление параметров адъютанта
+		ws->worker.removeAdj(aid);
+	}
 }
 /**
  * readCallback Функция обратного вызова при чтении сообщения с сервера
@@ -53,78 +66,81 @@ void awh::WebSocketServer::readCallback(const char * buffer, const size_t size, 
 	if((buffer != nullptr) && (size > 0) && (aid > 0)){
 		// Получаем контекст модуля
 		wsSrv_t * ws = reinterpret_cast <wsSrv_t *> (ctx);
-		// Если рукопожатие не выполнено
-		if(!reinterpret_cast <http_t *> (&ws->http)->isHandshake()){
-			// Выполняем парсинг полученных данных
-			ws->http.parse(buffer, size);
-			// Если все данные получены
-			if(ws->http.isEnd()){
-				// Бинарный буфер ответа сервера
-				vector <char> response;
-				// Выполняем проверку авторизации
-				switch((uint8_t) ws->http.getAuth()){
-					// Если запрос выполнен удачно
-					case (uint8_t) http_t::stath_t::GOOD: {
-						// Если рукопожатие выполнено
-						if(ws->http.isHandshake()){
-							// Проверяем версию протокола
-							if(!ws->http.checkVer()){
+		// Получаем параметры подключения адъютанта
+		workSrvWss_t::adjp_t * adj = const_cast <workSrvWss_t::adjp_t *> (ws->worker.getAdj(aid));
+		// Если параметры подключения адъютанта получены
+		if(adj != nullptr){
+			// Если рукопожатие не выполнено
+			if(!reinterpret_cast <http_t *> (&adj->http)->isHandshake()){
+				// Выполняем парсинг полученных данных
+				adj->http.parse(buffer, size);
+				// Если все данные получены
+				if(adj->http.isEnd()){
+					// Бинарный буфер ответа сервера
+					vector <char> response;
+					// Выполняем проверку авторизации
+					switch((uint8_t) adj->http.getAuth()){
+						// Если запрос выполнен удачно
+						case (uint8_t) http_t::stath_t::GOOD: {
+							// Если рукопожатие выполнено
+							if(adj->http.isHandshake()){
+								// Проверяем версию протокола
+								if(!adj->http.checkVer()){
+									// Выполняем сброс состояния HTTP парсера
+									adj->http.clear();
+									// Получаем бинарные данные REST запроса
+									response = adj->http.reject(400, "Unsupported protocol version");
+									// Завершаем работу
+									break;
+								}
+								// Проверяем ключ клиента
+								if(!adj->http.checkKey()){
+									// Выполняем сброс состояния HTTP парсера
+									adj->http.clear();
+									// Получаем бинарные данные REST запроса
+									response = adj->http.reject(400, "Wrong client key");
+									// Завершаем работу
+									break;
+								}
 								// Выполняем сброс состояния HTTP парсера
-								ws->http.clear();
+								adj->http.clear();
+								// Получаем флаг шифрованных данных
+								adj->crypt = adj->http.isCrypt();
+								// Получаем поддерживаемый метод компрессии
+								adj->compress = adj->http.getCompress();
 								// Получаем бинарные данные REST запроса
-								response = ws->http.reject(400, "Unsupported protocol version");
+								response = adj->http.response();
+								// Если бинарные данные запроса получены, отправляем на сервер
+								if(!response.empty()) core->write(response.data(), response.size(), aid);
 								// Завершаем работу
-								break;
-							}
-							// Проверяем ключ клиента
-							if(!ws->http.checkKey()){
+								return;
+							// Сообщаем, что рукопожатие не выполнено
+							} else {
 								// Выполняем сброс состояния HTTP парсера
-								ws->http.clear();
-								// Получаем бинарные данные REST запроса
-								response = ws->http.reject(400, "Wrong client key");
-								// Завершаем работу
-								break;
+								adj->http.clear();
+								// Формируем ответ, что страница не найдена
+								response = adj->http.reject(404);
 							}
+						} break;
+						// Если запрос неудачный
+						case (uint8_t) http_t::stath_t::FAULT: {
 							// Выполняем сброс состояния HTTP парсера
-							ws->http.clear();
-
-							// Получаем флаг шифрованных данных
-							ws->crypt = ws->http.isCrypt();
-							// Получаем поддерживаемый метод компрессии
-							ws->compress = ws->http.getCompress();
-
-							// Получаем бинарные данные REST запроса
-							response = ws->http.response();
-							// Если бинарные данные запроса получены, отправляем на сервер
-							if(!response.empty()) core->write(response.data(), response.size(), aid);
-							// Завершаем работу
-							return;
-						// Сообщаем, что рукопожатие не выполнено
-						} else {
-							// Выполняем сброс состояния HTTP парсера
-							ws->http.clear();
-							// Формируем ответ, что страница не найдена
-							response = ws->http.reject(404);
-						}
-					} break;
-					// Если запрос неудачный
-					case (uint8_t) http_t::stath_t::FAULT: {
-						// Выполняем сброс состояния HTTP парсера
-						ws->http.clear();
-						// Формируем запрос авторизации
-						response = ws->http.reject(401);
-					} break;
+							adj->http.clear();
+							// Формируем запрос авторизации
+							response = adj->http.reject(401);
+						} break;
+					}
+					// Если бинарные данные запроса получены, отправляем на сервер
+					if(!response.empty()) core->write(response.data(), response.size(), aid);
+					// Завершаем работу
+					core->close(aid);
 				}
-				// Если бинарные данные запроса получены, отправляем на сервер
-				if(!response.empty()) core->write(response.data(), response.size(), aid);
 				// Завершаем работу
-				core->close(aid);
+				return;
+			// Если рукопожатие выполнено
+			} else {
+				cout << " +++++++++++++++++2 " << string(buffer, size) << endl;
 			}
-			// Завершаем работу
-			return;
-		// Если рукопожатие выполнено
-		} else {
-			cout << " +++++++++++++++++2 " << string(buffer, size) << endl;
 		}
 	}
 }
@@ -157,8 +173,6 @@ void awh::WebSocketServer::stop() noexcept {
  * start Метод запуска клиента
  */
 void awh::WebSocketServer::start() noexcept {
-	// Устанавливаем метод сжатия
-	this->http.setCompress(this->compress);
 	// Если биндинг не запущен, выполняем запуск биндинга
 	if(!this->core->working())
 		// Выполняем запуск биндинга
@@ -262,19 +276,19 @@ void awh::WebSocketServer::setCrypt(const string & pass, const string & salt, co
  * @param fmk  объект фреймворка
  * @param log  объект для работы с логами
  */
-awh::WebSocketServer::WebSocketServer(const coreSrv_t * core, const fmk_t * fmk, const log_t * log) noexcept : nwk(fmk), uri(fmk, &nwk), hash(fmk, log), frame(fmk, log), http(fmk, log, &uri), core(core), fmk(fmk), log(log), worker(fmk, log) {
+awh::WebSocketServer::WebSocketServer(const coreSrv_t * core, const fmk_t * fmk, const log_t * log) noexcept : hash(fmk, log), frame(fmk, log), core(core), fmk(fmk), log(log), worker(fmk, log) {
 	// Устанавливаем контекст сообщения
 	this->worker.ctx = this;
 	// Устанавливаем событие на запуск системы
 	this->worker.openFn = openCallback;
 	// Устанавливаем функцию чтения данных
 	this->worker.readFn = readCallback;
-	// Устанавливаем событие отключения
-	this->worker.closeFn = closeCallback;
 	// Добавляем событие аццепта клиента
 	this->worker.acceptFn = acceptCallback;
 	// Устанавливаем событие подключения
 	this->worker.connectFn = connectCallback;
+	// Устанавливаем событие отключения
+	this->worker.disconnectFn = disconnectCallback;
 	// Добавляем воркер в биндер TCP/IP
 	const_cast <coreSrv_t *> (this->core)->add(&this->worker);
 }

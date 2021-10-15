@@ -31,7 +31,7 @@ namespace awh {
 			friend class Core;
 			// CoreServer Устанавливаем дружбу с серверным классом ядра
 			friend class CoreServer;
-		private:
+		protected:
 			// Файловый дескриптор сервера
 			evutil_socket_t fd = -1;
 			// Порт сервера
@@ -40,7 +40,7 @@ namespace awh {
 			string host = SERVER_HOST;
 			// Максимальное количество одновременных подключений
 			u_short total = SERVER_TOTAL_CONNECT;
-		private:
+		protected:
 			// Событие подключения к серверу
 			struct event * ev = nullptr;
 		public:

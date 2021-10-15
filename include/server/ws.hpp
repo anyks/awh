@@ -13,9 +13,7 @@
 /**
  * Наши модули
  */
-#include <timer.hpp>
-#include <ws/frame.hpp>
-#include <ws/server.hpp>
+#include <ws/worker.hpp>
 #include <server/core.hpp>
 
 // Подписываемся на стандартное пространство имён
@@ -40,40 +38,21 @@ namespace awh {
 				KEEPALIVE = 0x08  // Флаг автоматического поддержания подключения
 			};
 		private:
-			// Создаём объект работы с URI ссылками
-			uri_t uri;
-			// Создаём объект для работы с HTTP
-			wss_t http;
 			// Создаём объект для работы с фреймом WebSocket
 			frame_t frame;
-			// Создаем объект для работы с сетью
-			network_t nwk;
 			// Объект рабочего
-			workSrv_t worker;
-			// Таймер для пинга сервера
-			timer_t timerPing;
+			workSrvWss_t worker;
 			// Создаём объект для компрессии-декомпрессии данных
 			mutable hash_t hash;
 		private:
 			// Поддерживаемые сабпротоколы
 			vector <string> subs;
-			// Данные фрагметрированного сообщения
-			vector <char> fragmes;
 		private:
-			// Флаг шифрования сообщений
-			bool crypt = false;
 			// Флаг запрета вывода информационных сообщений
 			bool noinfo = false;
-			// Флаг переданных сжатых данных
-			bool compressed = false;
 		private:
 			// Минимальный размер сегмента
 			size_t frameSize = 0xFA000;
-		public:
-			// Полученный опкод сообщения
-			frame_t::opcode_t opcode = frame_t::opcode_t::TEXT;
-			// Флаги работы с сжатыми данными
-			http_t::compress_t compress = http_t::compress_t::NONE;
 		private:
 			// Список контекстов передаваемых объектов
 			vector <void *> ctx = {nullptr, nullptr, nullptr, nullptr};
@@ -93,19 +72,20 @@ namespace awh {
 			 */
 			static void openCallback(const size_t wid, core_t * core, void * ctx) noexcept;
 			/**
-			 * closeCallback Функция обратного вызова при отключении от сервера
-			 * @param wid  идентификатор воркера
-			 * @param core объект биндинга TCP/IP
-			 * @param ctx  передаваемый контекст модуля
-			 */
-			static void closeCallback(const size_t wid, core_t * core, void * ctx) noexcept;
-			/**
 			 * connectCallback Функция обратного вызова при подключении к серверу
 			 * @param aid  идентификатор адъютанта
 			 * @param core объект биндинга TCP/IP
 			 * @param ctx  передаваемый контекст модуля
 			 */
 			static void connectCallback(const size_t aid, core_t * core, void * ctx) noexcept;
+			/**
+			 * disconnectCallback Функция обратного вызова при отключении от сервера
+			 * @param aid  идентификатор адъютанта
+			 * @param wid  идентификатор воркера
+			 * @param core объект биндинга TCP/IP
+			 * @param ctx  передаваемый контекст модуля
+			 */
+			static void disconnectCallback(const size_t aid, const size_t wid, core_t * core, void * ctx) noexcept;
 			/**
 			 * readCallback Функция обратного вызова при чтении сообщения с сервера
 			 * @param buffer бинарный буфер содержащий сообщение

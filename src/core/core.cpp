@@ -488,9 +488,9 @@ void awh::Core::closeAll() noexcept {
 					// Выполняем очистку буфера событий
 					this->clean(it->second.bev);
 					// Выводим функцию обратного вызова
-					if(wrk->closeFn != nullptr)
+					if(wrk->disconnectFn != nullptr)
 						// Выполняем функцию обратного вызова
-						wrk->closeFn(worker.first, this, wrk->ctx);
+						wrk->disconnectFn(it->first, worker.first, this, wrk->ctx);
 					// Удаляем адъютанта из списка
 					it = wrk->adjutants.erase(it);
 				}
@@ -547,7 +547,7 @@ void awh::Core::close(const size_t aid) noexcept {
 		// Выводим сообщение об ошибке
 		if(!this->noinfo) this->log->print("%s", log_t::flag_t::INFO, "disconnected from the server");
 		// Выводим функцию обратного вызова
-		if(wrk->closeFn != nullptr) wrk->closeFn(wrk->wid, this, wrk->ctx);
+		if(wrk->disconnectFn != nullptr) wrk->disconnectFn(aid, wrk->wid, this, wrk->ctx);
 	}
 }
 /**

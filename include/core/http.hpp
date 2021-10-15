@@ -179,8 +179,11 @@ namespace awh {
 			mutable chunk_t chunk;
 			// Параметры выполняемого запроса
 			mutable uri_t::url_t url;
-			// Создаём объект для работы с авторизацией
-			unique_ptr <auth_t> auth;
+		protected:
+			// Создаём объект для работы с клиентской авторизацией
+			mutable authCli_t authCli;
+			// Создаём объект для работы с серверной авторизацией
+			mutable authSrv_t authSrv;
 		protected:
 			// Флаг зашифрованных данных
 			bool crypt = false;
@@ -249,6 +252,10 @@ namespace awh {
 			 * clear Метод очистки собранных данных
 			 */
 			virtual void clear() noexcept;
+			/**
+			 * reset Метод сброса параметров запроса
+			 */
+			virtual void reset() noexcept;
 		public:
 			/**
 			 * addBlack Метод добавления заголовка в чёрный список
@@ -444,7 +451,7 @@ namespace awh {
 			 * @param log объект для работы с логами
 			 * @param uri объект работы с URI
 			 */
-			Http(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcept : hash(fmk, log), fmk(fmk), log(log), uri(uri) {}
+			Http(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcept : authCli(fmk, log), authSrv(fmk, log), hash(fmk, log), fmk(fmk), log(log), uri(uri) {}
 			/**
 			 * ~Http Деструктор
 			 */

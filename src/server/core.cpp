@@ -294,9 +294,9 @@ void awh::CoreServer::removeAll() noexcept {
 				// Выполняем очистку буфера событий
 				this->clean(jt->second.bev);
 				// Выводим функцию обратного вызова
-				if(wrk->closeFn != nullptr)
+				if(wrk->disconnectFn != nullptr)
 					// Выполняем функцию обратного вызова
-					wrk->closeFn(it->first, this, wrk->ctx);
+					wrk->disconnectFn(jt->first, it->first, this, wrk->ctx);
 				// Удаляем адъютанта из списка подключений
 				this->adjutants.erase(jt->first);
 				// Удаляем адъютанта из списка
@@ -340,9 +340,9 @@ void awh::CoreServer::remove(const size_t wid) noexcept {
 					// Выполняем очистку буфера событий
 					this->clean(jt->second.bev);
 					// Выводим функцию обратного вызова
-					if(wrk->closeFn != nullptr)
+					if(wrk->disconnectFn != nullptr)
 						// Выполняем функцию обратного вызова
-						wrk->closeFn(it->first, this, wrk->ctx);
+						wrk->disconnectFn(jt->first, it->first, this, wrk->ctx);
 					// Удаляем адъютанта из списка подключений
 					this->adjutants.erase(jt->first);
 					// Удаляем адъютанта из списка
@@ -458,7 +458,7 @@ void awh::CoreServer::close(const size_t aid) noexcept {
 		// Выводим сообщение об ошибке
 		if(!wrk->core->noinfo) this->log->print("%s", log_t::flag_t::INFO, "disconnect client from server");
 		// Выводим функцию обратного вызова
-		if(wrk->closeFn != nullptr) wrk->closeFn(wrk->wid, this, wrk->ctx);
+		if(wrk->disconnectFn != nullptr) wrk->disconnectFn(aid, wrk->wid, this, wrk->ctx);
 	}
 }
 /**

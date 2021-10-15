@@ -125,15 +125,15 @@ awh::Http::stath_t awh::WSServer::checkAuth() noexcept {
 	// Результат работы функции
 	http_t::stath_t result = http_t::stath_t::FAULT;
 	// Если авторизация требуется
-	if(this->auth->getType() != auth_t::type_t::NONE){
+	if(this->authSrv.getType() != auth_t::type_t::NONE){
 		// Получаем параметры авторизации
 		auto it = this->headers.find("authorization");
 		// Если параметры авторизации найдены
 		if(it != this->headers.end()){
 			// Устанавливаем заголовок HTTP в параметры авторизации
-			this->auth->setHeader(it->second);
+			this->authSrv.setHeader(it->second);
 			// Выполняем проверку авторизации
-			if(reinterpret_cast <authSrv_t *> (this->auth.get())->check())
+			if(this->authSrv.check())
 				// Устанавливаем успешный результат авторизации
 				result = http_t::stath_t::GOOD;
 		}
@@ -148,7 +148,7 @@ awh::Http::stath_t awh::WSServer::checkAuth() noexcept {
  */
 void awh::WSServer::setRealm(const string & realm) noexcept {
 	// Если название сервера передано
-	if(!realm.empty()) reinterpret_cast <authSrv_t *> (this->auth.get())->setRealm(realm);
+	if(!realm.empty()) this->authSrv.setRealm(realm);
 }
 /**
  * setNonce Метод установки уникального ключа клиента выданного сервером
@@ -156,7 +156,7 @@ void awh::WSServer::setRealm(const string & realm) noexcept {
  */
 void awh::WSServer::setNonce(const string & nonce) noexcept {
 	// Если уникальный ключ клиента передан
-	if(!nonce.empty()) reinterpret_cast <authSrv_t *> (this->auth.get())->setNonce(nonce);
+	if(!nonce.empty()) this->authSrv.setNonce(nonce);
 }
 /**
  * setOpaque Метод установки временного ключа сессии сервера
@@ -164,7 +164,7 @@ void awh::WSServer::setNonce(const string & nonce) noexcept {
  */
 void awh::WSServer::setOpaque(const string & opaque) noexcept {
 	// Если временный ключ сессии сервера передан
-	if(!opaque.empty()) reinterpret_cast <authSrv_t *> (this->auth.get())->setOpaque(opaque);
+	if(!opaque.empty()) this->authSrv.setOpaque(opaque);
 }
 /**
  * setExtractPassCallback Метод добавления функции извлечения пароля
@@ -172,7 +172,7 @@ void awh::WSServer::setOpaque(const string & opaque) noexcept {
  */
 void awh::WSServer::setExtractPassCallback(function <string (const string &)> callback) noexcept {
 	// Устанавливаем внешнюю функцию
-	reinterpret_cast <authSrv_t *> (this->auth.get())->setExtractPassCallback(callback);
+	this->authSrv.setExtractPassCallback(callback);
 }
 /**
  * setAuthCallback Метод добавления функции обработки авторизации
@@ -180,15 +180,5 @@ void awh::WSServer::setExtractPassCallback(function <string (const string &)> ca
  */
 void awh::WSServer::setAuthCallback(function <bool (const string &, const string &)> callback) noexcept {
 	// Устанавливаем внешнюю функцию
-	reinterpret_cast <authSrv_t *> (this->auth.get())->setAuthCallback(callback);
-}
-/**
- * WSServer Конструктор
- * @param fmk объект фреймворка
- * @param log объект для работы с логами
- * @param uri объект работы с URI
- */
-awh::WSServer::WSServer(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcept : ws_t(fmk, log, uri) {
-	// Создаём объект для работы с авторизацией
-	this->auth = unique_ptr <auth_t> (new authSrv_t(fmk, log));
+	this->authSrv.setAuthCallback(callback);
 }

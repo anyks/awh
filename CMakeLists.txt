@@ -129,6 +129,7 @@ include_directories(${CMAKE_SOURCE_DIR}/contrib/include)
 
 # Выполняем подключение исходников
 set(SOURCE_FILES
+    "${CMAKE_SOURCE_DIR}/src/if.cpp"
     "${CMAKE_SOURCE_DIR}/src/fmk.cpp"
     "${CMAKE_SOURCE_DIR}/src/nwt.cpp"
     "${CMAKE_SOURCE_DIR}/src/nwk.cpp"
@@ -143,6 +144,7 @@ set(SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/src/ws/frame.cpp"
     "${CMAKE_SOURCE_DIR}/src/ws/client.cpp"
     "${CMAKE_SOURCE_DIR}/src/ws/server.cpp"
+    "${CMAKE_SOURCE_DIR}/src/ws/worker.cpp"
     "${CMAKE_SOURCE_DIR}/src/core/http.cpp"
     "${CMAKE_SOURCE_DIR}/src/core/core.cpp"
     "${CMAKE_SOURCE_DIR}/src/core/auth.cpp"

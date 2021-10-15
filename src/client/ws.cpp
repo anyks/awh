@@ -21,37 +21,6 @@ void awh::WebSocketClient::openCallback(const size_t wid, core_t * core, void * 
 	core->open(wid);
 }
 /**
- * closeCallback Функция обратного вызова при отключении от сервера
- * @param wid  идентификатор воркера
- * @param core объект биндинга TCP/IP
- * @param ctx  передаваемый контекст модуля
- */
-void awh::WebSocketClient::closeCallback(const size_t wid, core_t * core, void * ctx) noexcept {
-	// Если данные переданы верные
-	if((core != nullptr) && (ctx != nullptr)){
-		// Получаем контекст модуля
-		wsCli_t * ws = reinterpret_cast <wsCli_t *> (ctx);
-		// Очищаем буфер фрагментированного сообщения
-		ws->fragmes.clear();
-		// Останавливаем таймер пинга сервера
-		ws->timerPing.stop();
-		// Останавливаем таймер подключения
-		ws->timerConn.stop();
-		// Если нужно произвести запрос заново
-		if((ws->code == 301) || (ws->code == 308) ||
-		   (ws->code == 401) || (ws->code == 407)){
-			// Выполняем запрос заново
-			core->open(ws->worker.wid);
-			// Выходим из функции
-			return;
-		}
-		// Очищаем код ответа
-		ws->code = 0;
-		// Завершаем работу
-		if(ws->unbind) core->stop();
-	}
-}
-/**
  * connectCallback Функция обратного вызова при подключении к серверу
  * @param aid  идентификатор адъютанта
  * @param core объект биндинга TCP/IP
@@ -65,6 +34,8 @@ void awh::WebSocketClient::connectCallback(const size_t aid, core_t * core, void
 		// Запоминаем объект адъютанта
 		ws->aid = aid;
 		// Выполняем сброс состояния HTTP парсера
+		ws->http.reset();
+		// Выполняем очистку параметров HTTP запроса
 		ws->http.clear();
 		// Останавливаем таймер пинга сервера
 		ws->timerPing.stop();
@@ -105,17 +76,49 @@ void awh::WebSocketClient::connectProxyCallback(const size_t aid, core_t * core,
 			// Если прокси-сервер является HTTP
 			case (uint8_t) proxy_t::type_t::HTTP: {
 				// Выполняем сброс состояния HTTP парсера
+				ws->worker.proxy.http.reset();
+				// Выполняем очистку параметров HTTP запроса
 				ws->worker.proxy.http.clear();
 				// Получаем бинарные данные REST запроса
 				const auto & rest = ws->worker.proxy.http.proxy(ws->worker.url);
 				// Если бинарные данные запроса получены, отправляем на прокси-сервер
 				if(!rest.empty()) core->write(rest.data(), rest.size(), aid);
-				// Выполняем сброс состояния HTTP парсера
-				ws->worker.proxy.http.clear();
 			} break;
 			// Иначе завершаем работу
 			default: core->close(aid);
 		}
+	}
+}
+/**
+ * closeCallback Функция обратного вызова при отключении от сервера
+ * @param aid  идентификатор адъютанта
+ * @param wid  идентификатор воркера
+ * @param core объект биндинга TCP/IP
+ * @param ctx  передаваемый контекст модуля
+ */
+void awh::WebSocketClient::disconnectCallback(const size_t aid, const size_t wid, core_t * core, void * ctx) noexcept {
+	// Если данные переданы верные
+	if((core != nullptr) && (ctx != nullptr)){
+		// Получаем контекст модуля
+		wsCli_t * ws = reinterpret_cast <wsCli_t *> (ctx);
+		// Очищаем буфер фрагментированного сообщения
+		ws->fragmes.clear();
+		// Останавливаем таймер пинга сервера
+		ws->timerPing.stop();
+		// Останавливаем таймер подключения
+		ws->timerConn.stop();
+		// Если нужно произвести запрос заново
+		if((ws->code == 301) || (ws->code == 308) ||
+		   (ws->code == 401) || (ws->code == 407)){
+			// Выполняем запрос заново
+			core->open(ws->worker.wid);
+			// Выходим из функции
+			return;
+		}
+		// Очищаем код ответа
+		ws->code = 0;
+		// Завершаем работу
+		if(ws->unbind) core->stop();
 	}
 }
 /**
@@ -1023,12 +1026,12 @@ awh::WebSocketClient::WebSocketClient(const coreCli_t * core, const fmk_t * fmk,
 	this->worker.openFn = openCallback;
 	// Устанавливаем функцию чтения данных
 	this->worker.readFn = readCallback;
-	// Устанавливаем событие отключения
-	this->worker.closeFn = closeCallback;
 	// Устанавливаем событие подключения
 	this->worker.connectFn = connectCallback;
 	// Устанавливаем событие на чтение данных с прокси-сервера
 	this->worker.readProxyFn = readProxyCallback;
+	// Устанавливаем событие отключения
+	this->worker.disconnectFn = disconnectCallback;
 	// Устанавливаем событие на подключение к прокси-серверу
 	this->worker.connectProxyFn = connectProxyCallback;
 	// Добавляем воркер в биндер TCP/IP

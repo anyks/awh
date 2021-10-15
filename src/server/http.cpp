@@ -16,7 +16,7 @@
  */
 void awh::HttpServer::setRealm(const string & realm) noexcept {
 	// Если название сервера передано
-	if(!realm.empty()) reinterpret_cast <authSrv_t *> (this->auth.get())->setRealm(realm);
+	if(!realm.empty()) this->authSrv.setRealm(realm);
 }
 /**
  * setNonce Метод установки уникального ключа клиента выданного сервером
@@ -24,7 +24,7 @@ void awh::HttpServer::setRealm(const string & realm) noexcept {
  */
 void awh::HttpServer::setNonce(const string & nonce) noexcept {
 	// Если уникальный ключ клиента передан
-	if(!nonce.empty()) reinterpret_cast <authSrv_t *> (this->auth.get())->setNonce(nonce);
+	if(!nonce.empty()) this->authSrv.setNonce(nonce);
 }
 /**
  * setOpaque Метод установки временного ключа сессии сервера
@@ -32,7 +32,7 @@ void awh::HttpServer::setNonce(const string & nonce) noexcept {
  */
 void awh::HttpServer::setOpaque(const string & opaque) noexcept {
 	// Если временный ключ сессии сервера передан
-	if(!opaque.empty()) reinterpret_cast <authSrv_t *> (this->auth.get())->setOpaque(opaque);
+	if(!opaque.empty()) this->authSrv.setOpaque(opaque);
 }
 /**
  * setExtractPassCallback Метод добавления функции извлечения пароля
@@ -40,7 +40,7 @@ void awh::HttpServer::setOpaque(const string & opaque) noexcept {
  */
 void awh::HttpServer::setExtractPassCallback(function <string (const string &)> callback) noexcept {
 	// Устанавливаем внешнюю функцию
-	reinterpret_cast <authSrv_t *> (this->auth.get())->setExtractPassCallback(callback);
+	this->authSrv.setExtractPassCallback(callback);
 }
 /**
  * setAuthCallback Метод добавления функции обработки авторизации
@@ -48,15 +48,5 @@ void awh::HttpServer::setExtractPassCallback(function <string (const string &)> 
  */
 void awh::HttpServer::setAuthCallback(function <bool (const string &, const string &)> callback) noexcept {
 	// Устанавливаем внешнюю функцию
-	reinterpret_cast <authSrv_t *> (this->auth.get())->setAuthCallback(callback);
-}
-/**
- * HttpServer Конструктор
- * @param fmk объект фреймворка
- * @param log объект для работы с логами
- * @param uri объект работы с URI
- */
-awh::HttpServer::HttpServer(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcept : http_t(fmk, log, uri) {
-	// Создаём объект для работы с авторизацией
-	this->auth = unique_ptr <auth_t> (new authSrv_t(fmk, log));
+	this->authSrv.setAuthCallback(callback);
 }

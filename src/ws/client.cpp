@@ -118,13 +118,13 @@ awh::Http::stath_t awh::WSClient::checkAuth() noexcept {
 		// Если требуется авторизация
 		case 401: {
 			// Если попытки провести аутентификацию ещё небыло, пробуем ещё раз
-			if(!this->failAuth && (this->auth->getType() == auth_t::type_t::DIGEST)){
+			if(!this->failAuth && (this->authCli.getType() == auth_t::type_t::DIGEST)){
 				// Получаем параметры авторизации
 				auto it = this->headers.find("www-authenticate");
 				// Если параметры авторизации найдены
 				if((this->failAuth = (it != this->headers.end()))){
 					// Устанавливаем заголовок HTTP в параметры авторизации
-					this->auth->setHeader(it->second);
+					this->authCli.setHeader(it->second);
 					// Просим повторить авторизацию ещё раз
 					result = http_t::stath_t::RETRY;
 				}
@@ -174,9 +174,9 @@ void awh::WSClient::setUser(const string & user, const string & pass) noexcept {
 	// Если пользователь и пароль переданы
 	if(!user.empty() && !pass.empty()){
 		// Устанавливаем логин пользователя
-		reinterpret_cast <authCli_t *> (this->auth.get())->setUser(user);
+		this->authCli.setUser(user);
 		// Устанавливаем пароль пользователя
-		reinterpret_cast <authCli_t *> (this->auth.get())->setPass(pass);
+		this->authCli.setPass(pass);
 	}
 }
 /**
@@ -185,18 +185,6 @@ void awh::WSClient::setUser(const string & user, const string & pass) noexcept {
  * @param alg  алгоритм шифрования для Digest авторизации
  */
 void awh::WSClient::setAuthType(const auth_t::type_t type, const auth_t::alg_t alg) noexcept {
-	// Если объект авторизации создан
-	if(this->auth != nullptr)
-		// Устанавливаем тип авторизации
-		reinterpret_cast <authCli_t *> (this->auth.get())->setType(type, alg);
-}
-/**
- * WSClient Конструктор
- * @param fmk объект фреймворка
- * @param log объект для работы с логами
- * @param uri объект работы с URI
- */
-awh::WSClient::WSClient(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcept : ws_t(fmk, log, uri) {
-	// Создаём объект для работы с авторизацией
-	this->auth = unique_ptr <auth_t> (new authCli_t(fmk, log));
+	// Устанавливаем тип авторизации
+	this->authCli.setType(type, alg);
 }

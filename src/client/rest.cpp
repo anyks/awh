@@ -30,40 +30,6 @@ void awh::Rest::openCallback(const size_t wid, core_t * core, void * ctx) noexce
 	core->open(wid);
 }
 /**
- * closeCallback Функция обратного вызова при отключении от сервера
- * @param wid  идентификатор воркера
- * @param core объект биндинга TCP/IP
- * @param ctx  передаваемый контекст модуля
- */
-void awh::Rest::closeCallback(const size_t wid, core_t * core, void * ctx) noexcept {
-	// Если данные переданы верные
-	if((core != nullptr) && (ctx != nullptr)){
-		// Получаем контекст модуля
-		restCli_t * web = reinterpret_cast <restCli_t *> (ctx);
-		// Если нужно произвести запрос заново
-		if((web->res.code == 301) || (web->res.code == 308) ||
-		   (web->res.code == 401) || (web->res.code == 407)){
-			// Выполняем запрос заново
-			core->open(web->worker.wid);
-			// Выходим из функции
-			return;
-		}
-		// Если код пришёл нулевой, восстанавливаем его
-		if(web->res.code == 0){
-			// Устанавливаем код сообщения
-			web->res.code = 404;
-			// Получаем само сообщение
-			web->res.message = web->http.getMessage(web->res.code);
-		}
-		// Если функция обратного вызова установлена, выводим сообщение
-		if(web->messageFn != nullptr)
-			// Выполняем функцию обратного вызова
-			web->messageFn(web->res, web->ctx);
-		// Завершаем работу
-		if(web->unbind) core->stop();
-	}
-}
-/**
  * connectCallback Функция обратного вызова при подключении к серверу
  * @param aid  идентификатор адъютанта
  * @param core объект биндинга TCP/IP
@@ -75,6 +41,8 @@ void awh::Rest::connectCallback(const size_t aid, core_t * core, void * ctx) noe
 		// Получаем контекст модуля
 		restCli_t * web = reinterpret_cast <restCli_t *> (ctx);
 		// Выполняем сброс состояния HTTP парсера
+		web->http.reset();
+		// Выполняем очистку параметров HTTP запроса
 		web->http.clear();
 		// Устанавливаем код сообщения
 		web->res.code = 404;
@@ -105,8 +73,6 @@ void awh::Rest::connectCallback(const size_t aid, core_t * core, void * ctx) noe
 				core->write(entity.data(), entity.size(), aid);
 			}
 		}
-		// Выполняем сброс состояния HTTP парсера
-		web->http.clear();
 	}
 }
 /**
@@ -138,17 +104,52 @@ void awh::Rest::connectProxyCallback(const size_t aid, core_t * core, void * ctx
 			// Если прокси-сервер является HTTP
 			case (uint8_t) proxy_t::type_t::HTTP: {
 				// Выполняем сброс состояния HTTP парсера
+				web->worker.proxy.http.reset();
+				// Выполняем очистку параметров HTTP запроса
 				web->worker.proxy.http.clear();
 				// Получаем бинарные данные REST запроса
 				const auto & rest = web->worker.proxy.http.proxy(web->worker.url);
 				// Если бинарные данные запроса получены, отправляем на прокси-сервер
 				if(!rest.empty()) core->write(rest.data(), rest.size(), aid);
-				// Выполняем сброс состояния HTTP парсера
-				web->worker.proxy.http.clear();
 			} break;
 			// Иначе завершаем работу
 			default: core->close(aid);
 		}
+	}
+}
+/**
+ * disconnectCallback Функция обратного вызова при отключении от сервера
+ * @param aid  идентификатор адъютанта
+ * @param wid  идентификатор воркера
+ * @param core объект биндинга TCP/IP
+ * @param ctx  передаваемый контекст модуля
+ */
+void awh::Rest::disconnectCallback(const size_t aid, const size_t wid, core_t * core, void * ctx) noexcept {
+	// Если данные переданы верные
+	if((core != nullptr) && (ctx != nullptr)){
+		// Получаем контекст модуля
+		restCli_t * web = reinterpret_cast <restCli_t *> (ctx);
+		// Если нужно произвести запрос заново
+		if((web->res.code == 301) || (web->res.code == 308) ||
+		   (web->res.code == 401) || (web->res.code == 407)){
+			// Выполняем запрос заново
+			core->open(web->worker.wid);
+			// Выходим из функции
+			return;
+		}
+		// Если код пришёл нулевой, восстанавливаем его
+		if(web->res.code == 0){
+			// Устанавливаем код сообщения
+			web->res.code = 404;
+			// Получаем само сообщение
+			web->res.message = web->http.getMessage(web->res.code);
+		}
+		// Если функция обратного вызова установлена, выводим сообщение
+		if(web->messageFn != nullptr)
+			// Выполняем функцию обратного вызова
+			web->messageFn(web->res, web->ctx);
+		// Завершаем работу
+		if(web->unbind) core->stop();
 	}
 }
 /**
@@ -979,12 +980,12 @@ awh::Rest::Rest(const coreCli_t * core, const fmk_t * fmk, const log_t * log) no
 	this->worker.openFn = openCallback;
 	// Устанавливаем функцию чтения данных
 	this->worker.readFn = readCallback;
-	// Устанавливаем событие отключения
-	this->worker.closeFn = closeCallback;
 	// Устанавливаем событие подключения
 	this->worker.connectFn = connectCallback;
 	// Устанавливаем событие на чтение данных с прокси-сервера
 	this->worker.readProxyFn = readProxyCallback;
+	// Устанавливаем событие отключения
+	this->worker.disconnectFn = disconnectCallback;
 	// Устанавливаем событие на подключение к прокси-серверу
 	this->worker.connectProxyFn = connectProxyCallback;
 	// Добавляем воркер в биндер TCP/IP

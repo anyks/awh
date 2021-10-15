@@ -43,13 +43,13 @@ awh::Http::stath_t awh::Http::checkAuth() noexcept {
 			case 401:
 			case 407: {
 				// Если попытки провести аутентификацию ещё небыло, пробуем ещё раз
-				if(!this->failAuth && (this->auth->getType() == auth_t::type_t::DIGEST)){
+				if(!this->failAuth && (this->authCli.getType() == auth_t::type_t::DIGEST)){
 					// Получаем параметры авторизации
 					auto it = this->headers.find("www-authenticate");
 					// Если параметры авторизации найдены
 					if((this->failAuth = (it != this->headers.end()))){
 						// Устанавливаем заголовок HTTP в параметры авторизации
-						reinterpret_cast <authCli_t *> (this->auth.get())->setHeader(it->second);
+						this->authCli.setHeader(it->second);
 						// Просим повторить авторизацию ещё раз
 						result = stath_t::RETRY;
 					}
@@ -98,15 +98,15 @@ awh::Http::stath_t awh::Http::checkAuth() noexcept {
 	// Если активирован режим обработки запроса клиента
 	} else if(this->mode == mode_t::REQUEST) {
 		// Если авторизация требуется
-		if(this->auth->getType() != auth_t::type_t::NONE){
+		if(this->authSrv.getType() != auth_t::type_t::NONE){
 			// Получаем параметры авторизации
 			auto it = this->headers.find("authorization");
 			// Если параметры авторизации найдены
 			if(it != this->headers.end()){
 				// Устанавливаем заголовок HTTP в параметры авторизации
-				this->auth->setHeader(it->second);
+				this->authSrv.setHeader(it->second);
 				// Выполняем проверку авторизации
-				if(reinterpret_cast <authSrv_t *> (this->auth.get())->check())
+				if(this->authSrv.check())
 					// Устанавливаем успешный результат авторизации
 					result = http_t::stath_t::GOOD;
 			}
@@ -194,6 +194,11 @@ void awh::Http::clear() noexcept {
 	this->chunk = chunk_t();
 	// Выполняем сброс параметров запроса
 	this->query = query_t();
+}
+/**
+ * reset Метод сброса параметров запроса
+ */
+void awh::Http::reset() noexcept {
 	// Выполняем сброс размера тела
 	this->bodySize = -1;
 	// Обнуляем флаг проверки авторизации
@@ -229,8 +234,6 @@ void awh::Http::parse(const char * buffer, const size_t size) noexcept {
 			const string http(buffer, size);
 			// Если все заголовки получены
 			if((pos = http.find("\r\n\r\n")) != string::npos){
-				// Выполняем сброс всех предыдущих данных
-				this->clear();
 				// Выполняем сброс размера тела
 				this->bodySize = -1;
 				// Выполняем чтение полученного буфера
@@ -243,6 +246,8 @@ void awh::Http::parse(const char * buffer, const size_t size) noexcept {
 							size_t offset = data.find("HTTP/");
 							// Если протокол найден
 							if(offset != string::npos){
+								// Выполняем очистку всех ранее полученных данных
+								this->clear();
 								// Если протокол находится в начае запроса
 								if(offset == 0){
 									// Выполняем поиск разделителя
@@ -807,7 +812,7 @@ vector <char> awh::Http::proxy(const uri_t::url_t & url) noexcept {
 			// Добавляем поддержку постоянного подключения для прокси-сервера
 			this->addHeader("Proxy-Connection", "keep-alive");
 			// Получаем параметры авторизации
-			const string & auth = reinterpret_cast <authCli_t *> (this->auth.get())->getHeader(true);
+			const string & auth = this->authCli.getHeader(true);
 			// Если данные авторизации получены
 			if(!auth.empty()) this->addHeader("Proxy-Authorization", auth);
 			// Формируем URI запроса
@@ -942,7 +947,7 @@ vector <char> awh::Http::response(const u_short code, const string & mess) const
 		// Если заголовок авторизации не передан
 		if(!available[6] && !this->isBlack("WWW-Authenticate")){
 			// Получаем параметры авторизации
-			const string & auth = reinterpret_cast <authSrv_t *> (this->auth.get())->getHeader();
+			const string & auth = this->authSrv.getHeader();
 			// Если данные авторизации получены
 			if(!auth.empty()) response.append(auth);
 		}
@@ -1068,7 +1073,7 @@ vector <char> awh::Http::request(const uri_t::url_t & url, const method_t method
 			// Данные REST запроса
 			string request = "";
 			// Устанавливаем параметры REST запроса
-			((authCli_t *) const_cast <auth_t *> (this->auth.get()))->setUri(this->uri->createUrl(url));
+			this->authCli.setUri(this->uri->createUrl(url));
 			// Если метод не CONNECT или URI не установлен
 			if((method != method_t::CONNECT) || this->query.uri.empty())
 				// Формируем HTTP запрос
@@ -1216,7 +1221,7 @@ vector <char> awh::Http::request(const uri_t::url_t & url, const method_t method
 			// Если заголовок авторизации не передан
 			if(!available[10] && !this->isBlack("Authorization")){
 				// Получаем параметры авторизации
-				const string & auth = reinterpret_cast <authCli_t *> (this->auth.get())->getHeader();
+				const string & auth = this->authCli.getHeader();
 				// Если данные авторизации получены
 				if(!auth.empty()) request.append(auth);
 			}

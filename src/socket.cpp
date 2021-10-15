@@ -42,7 +42,7 @@ const string awh::Sockets::serverIp(const int family) noexcept {
 				// Если подключение удачное
 				if(conn > -1){
 					// Создаем структуру имени
-					sockaddr_in name;
+					struct sockaddr_in name;
 					// Размер структуры
 					socklen_t namelen = sizeof(name);
 					// Запрашиваем имя сокета
@@ -86,7 +86,7 @@ const string awh::Sockets::serverIp(const int family) noexcept {
 				// Если подключение удачное
 				if(conn > -1){
 					// Создаем структуру имени
-					sockaddr_in6 name;
+					struct sockaddr_in6 name;
 					// Размер структуры
 					socklen_t namelen = sizeof(name);
 					// Запрашиваем имя сокета

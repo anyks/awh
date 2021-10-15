@@ -153,12 +153,12 @@ namespace awh {
 			// Создаём объект фреймворка
 			const Core * core = nullptr;
 		public:
-			// Функция обратного вызова при открытии подключения
+			// Функция обратного вызова при открытии приложения
 			function <void (const size_t, Core *, void *)> openFn = nullptr;
-			// Функция обратного вызова при закрытии подключения
-			function <void (const size_t, Core *, void *)> closeFn = nullptr;
 			// Функция обратного вызова при запуске подключения
 			function <void (const size_t, Core *, void *)> connectFn = nullptr;
+			// Функция обратного вызова при закрытии подключения
+			function <void (const size_t, const size_t, Core *, void *)> disconnectFn = nullptr;
 			// Функция обратного вызова при получении данных
 			function <void (const char *, const size_t, const size_t, Core *, void *)> readFn = nullptr;
 			// Функция обратного вызова при записи данных
