@@ -105,6 +105,31 @@ namespace awh {
 			 * @return     результат разрешения к подключению клиента
 			 */
 			static bool acceptCallback(const string & ip, const string & mac, const size_t wid, core_t * core, void * ctx) noexcept;
+		private:
+			/**
+			 * extraction Метод извлечения полученных данных
+			 * @param adj    параметры подключения адъютанта
+			 * @param aid    идентификатор адъютанта
+			 * @param core   объект биндинга TCP/IP
+			 * @param buffer данные в чистом виде полученные с сервера
+			 * @param utf8   данные передаются в текстовом виде
+			 */
+			void extraction(workSrvWss_t::adjp_t * adj, const size_t aid, core_t * core, const vector <char> & buffer, const bool utf8) const noexcept;
+		private:
+			/**
+			 * pong Метод ответа на проверку о доступности сервера
+			 * @param aid  идентификатор адъютанта
+			 * @param core объект биндинга TCP/IP
+			 * @param      message сообщение для отправки
+			 */
+			void pong(const size_t aid, core_t * core, const string & message = "") noexcept;
+			/**
+			 * ping Метод проверки доступности сервера
+			 * @param aid  идентификатор адъютанта
+			 * @param core объект биндинга TCP/IP
+			 * @param      message сообщение для отправки
+			 */
+			void ping(const size_t aid, core_t * core, const string & message = "") noexcept;
 		public:
 			/**
 			 * stop Метод остановки клиента

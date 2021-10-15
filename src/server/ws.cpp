@@ -70,6 +70,8 @@ void awh::WebSocketServer::readCallback(const char * buffer, const size_t size, 
 		workSrvWss_t::adjp_t * adj = const_cast <workSrvWss_t::adjp_t *> (ws->worker.getAdj(aid));
 		// Если параметры подключения адъютанта получены
 		if(adj != nullptr){
+			// Объект сообщения
+			mess_t mess;
 			// Если рукопожатие не выполнено
 			if(!reinterpret_cast <http_t *> (&adj->http)->isHandshake()){
 				// Выполняем парсинг полученных данных
@@ -139,8 +141,111 @@ void awh::WebSocketServer::readCallback(const char * buffer, const size_t size, 
 				return;
 			// Если рукопожатие выполнено
 			} else {
-				cout << " +++++++++++++++++2 " << string(buffer, size) << endl;
+				// Смещение в буфере данных
+				size_t offset = 0;
+				// Создаём объект шапки фрейма
+				frame_t::head_t head;
+				// Выполняем перебор полученных данных
+				while((size - offset) > 0){
+					// Выполняем чтение фрейма WebSocket
+					const auto & data = ws->frame.get(head, buffer + offset, size - offset);
+					// Если буфер данных получен
+					if(!data.empty()){
+						// Проверяем состояние флагов RSV2 и RSV3
+						if(head.rsv[1] || head.rsv[2]){
+							// Создаём сообщение
+							mess = mess_t(1002, "RSV2 and RSV3 must be clear");
+							// Выполняем отключение клиента
+							goto Stop;
+						}
+						// Если флаг компресси включён а данные пришли не сжатые
+						if(head.rsv[0] && ((adj->compress == http_t::compress_t::NONE) ||
+						(head.optcode == frame_t::opcode_t::CONTINUATION) ||
+						(((uint8_t) head.optcode > 0x07) && ((uint8_t) head.optcode < 0x0b)))){
+							// Создаём сообщение
+							mess = mess_t(1002, "RSV1 must be clear");
+							// Выполняем отключение клиента
+							goto Stop;
+						}
+						// Если опкоды требуют финального фрейма
+						if(!head.fin && ((uint8_t) head.optcode > 0x07) && ((uint8_t) head.optcode < 0x0b)){
+							// Создаём сообщение
+							mess = mess_t(1002, "FIN must be set");
+							// Выполняем отключение клиента
+							goto Stop;
+						}
+						// Определяем тип ответа
+						switch((uint8_t) head.optcode){
+							// Если ответом является PING
+							case (uint8_t) frame_t::opcode_t::PING:
+								// Отправляем ответ серверу
+								ws->pong(aid, core, string(data.begin(), data.end()));
+							break;
+							// Если ответом является PONG
+							case (uint8_t) frame_t::opcode_t::PONG:
+
+								cout << " *********PONG********* " << string(data.begin(), data.end()) << endl;
+
+								// Если функция обратного вызова обработки PONG существует
+								// if(ws->pongFn != nullptr) ws->pongFn(string(data.begin(), data.end()), ws, ws->ctx.at(1));
+							break;
+							// Если ответом является TEXT
+							case (uint8_t) frame_t::opcode_t::TEXT:
+							// Если ответом является BINARY
+							case (uint8_t) frame_t::opcode_t::BINARY: {
+								// Запоминаем полученный опкод
+								adj->opcode = head.optcode;
+								// Запоминаем, что данные пришли сжатыми
+								adj->compressed = (head.rsv[0] && (adj->compress != http_t::compress_t::NONE));
+								// Если список фрагментированных сообщений существует
+								if(!adj->fragmes.empty()){
+									// Создаём сообщение
+									mess = mess_t(1002, "opcode for subsequent fragmented messages should not be set");
+									// Выполняем отключение клиента
+									goto Stop;
+								// Если сообщение является не последнем
+								} else if(!head.fin)
+									// Заполняем фрагментированное сообщение
+									adj->fragmes.insert(adj->fragmes.end(), data.begin(), data.end());
+								// Если сообщение является последним
+								else ws->extraction(adj, aid, core, data, (adj->opcode == frame_t::opcode_t::TEXT));
+							} break;
+							// Если ответом является CONTINUATION
+							case (uint8_t) frame_t::opcode_t::CONTINUATION: {
+								// Заполняем фрагментированное сообщение
+								adj->fragmes.insert(adj->fragmes.end(), data.begin(), data.end());
+								// Если сообщение является последним
+								if(head.fin){
+									// Выполняем извлечение данных
+									ws->extraction(adj, aid, core, adj->fragmes, (adj->opcode == frame_t::opcode_t::TEXT));
+									// Очищаем список фрагментированных сообщений
+									adj->fragmes.clear();
+								}
+							} break;
+							// Если ответом является CLOSE
+							case (uint8_t) frame_t::opcode_t::CLOSE: {
+								// Создаём сообщение
+								mess = ws->frame.message(data);
+								// Выполняем отключение клиента
+								goto Stop;
+							} break;
+						}
+						// Увеличиваем смещение в буфере
+						offset += (head.payload + head.size);
+					// Выходим из цикла, данных в буфере не достаточно
+					} else break;
+				}
+				// Выходим из функции
+				return;
 			}
+			// Устанавливаем метку остановки клиента
+			Stop:
+			// Получаем буфер сообщения
+			const auto & buffer = ws->frame.message(mess);
+			// Отправляем серверу сообщение
+			core->write(buffer.data(), buffer.size(), aid);
+			// Завершаем работу
+			core->close(aid);
 		}
 	}
 }
@@ -156,6 +261,120 @@ void awh::WebSocketServer::readCallback(const char * buffer, const size_t size, 
 bool awh::WebSocketServer::acceptCallback(const string & ip, const string & mac, const size_t wid, core_t * core, void * ctx) noexcept {
 	// Разрешаем подключение клиенту
 	return true;
+}
+/**
+ * extraction Метод извлечения полученных данных
+ * @param adj    параметры подключения адъютанта
+ * @param aid    идентификатор адъютанта
+ * @param core   объект биндинга TCP/IP
+ * @param buffer данные в чистом виде полученные с сервера
+ * @param utf8   данные передаются в текстовом виде
+ */
+void awh::WebSocketServer::extraction(workSrvWss_t::adjp_t * adj, const size_t aid, core_t * core, const vector <char> & buffer, const bool utf8) const noexcept {
+	// Если буфер данных передан
+	// if(!buffer.empty() && (this->messageFn != nullptr)){
+		// Если данные пришли в сжатом виде
+		if(adj->compressed && (adj->compress != http_t::compress_t::NONE)){
+			// Декомпрессионные данные
+			vector <char> data;
+			// Определяем метод компрессии
+			switch((uint8_t) adj->compress){
+				// Если метод компрессии выбран Deflate
+				case (uint8_t) http_t::compress_t::DEFLATE: {
+					// Устанавливаем размер скользящего окна
+					this->hash.setWbit(adj->http.getWbitServer());
+					// Добавляем хвост в полученные данные
+					this->hash.setTail(* const_cast <vector <char> *> (&buffer));
+					// Выполняем декомпрессию полученных данных
+					data = this->hash.decompress(buffer.data(), buffer.size());
+				} break;
+				// Если метод компрессии выбран GZip
+				case (uint8_t) http_t::compress_t::GZIP:
+					// Выполняем декомпрессию полученных данных
+					data = this->hash.decompressGzip(buffer.data(), buffer.size());
+				break;
+				// Если метод компрессии выбран Brotli
+				case (uint8_t) http_t::compress_t::BROTLI:
+					// Выполняем декомпрессию полученных данных
+					data = this->hash.decompressBrotli(buffer.data(), buffer.size());
+				break;
+			}
+			// Если данные получены
+			if(!data.empty()){
+				/*
+				// Если нужно производить дешифрование
+				if(adj->crypt){
+					// Выполняем шифрование переданных данных
+					const auto & res = this->hash.decrypt(data.data(), data.size());
+					// Отправляем полученный результат
+					if(!res.empty()) this->messageFn(res, utf8, const_cast <WebSocketClient *> (this), this->ctx.at(3));
+					// Иначе выводим сообщение так - как оно пришло
+					else this->messageFn(data, utf8, const_cast <WebSocketClient *> (this), this->ctx.at(3));
+				// Отправляем полученный результат
+				} else this->messageFn(data, utf8, const_cast <WebSocketClient *> (this), this->ctx.at(3));
+				*/
+
+				cout << " ^^^^^^^^^MESSAGE^^^^^^^^^1 " << string(data.begin(), data.end()) << endl;
+
+			// Выводим сообщение об ошибке
+			} else {
+				// Создаём сообщение
+				mess_t mess(1007, "received data decompression error");
+				// Получаем буфер сообщения
+				const auto & buffer = this->frame.message(mess);
+				// Отправляем серверу сообщение
+				core->write(buffer.data(), buffer.size(), aid);
+				// Завершаем работу
+				core->close(aid);
+			}
+		// Если функция обратного вызова установлена, выводим полученное сообщение
+		} else {
+			/*
+			// Если нужно производить дешифрование
+			if(adj->crypt){
+				// Выполняем шифрование переданных данных
+				const auto & res = this->hash.decrypt(buffer.data(), buffer.size());
+				// Отправляем полученный результат
+				if(!res.empty()) this->messageFn(res, utf8, const_cast <WebSocketClient *> (this), this->ctx.at(3));
+				// Иначе выводим сообщение так - как оно пришло
+				else this->messageFn(buffer, utf8, const_cast <WebSocketClient *> (this), this->ctx.at(3));
+			// Отправляем полученный результат
+			} else this->messageFn(buffer, utf8, const_cast <WebSocketClient *> (this), this->ctx.at(3));
+			*/
+
+			cout << " ^^^^^^^^^MESSAGE^^^^^^^^^2 " << string(buffer.begin(), buffer.end()) << endl;
+		}
+	// }
+}
+/**
+ * pong Метод ответа на проверку о доступности сервера
+ * @param aid  идентификатор адъютанта
+ * @param core объект биндинга TCP/IP
+ * @param      message сообщение для отправки
+ */
+void awh::WebSocketServer::pong(const size_t aid, core_t * core, const string & message) noexcept {
+	// Если необходимые данные переданы
+	if((aid > 0) && (core != nullptr)){
+		// Создаём буфер для отправки
+		const auto & buffer = this->frame.pong(message);
+		// Отправляем серверу сообщение
+		core->write(buffer.data(), buffer.size(), aid);
+	}
+}
+/**
+ * ping Метод проверки доступности сервера
+ * @param aid  идентификатор адъютанта
+ * @param core объект биндинга TCP/IP
+ * @param      message сообщение для отправки
+ */
+void awh::WebSocketServer::ping(const size_t aid, core_t * core, const string & message) noexcept {
+	// Если необходимые данные переданы
+	if((aid > 0) && (core != nullptr) && core->working()){
+		// Создаём буфер для отправки
+		const auto & buffer = this->frame.ping(message);
+		// Отправляем серверу сообщение
+		core->write(buffer.data(), buffer.size(), aid);
+	}
 }
 /**
  * stop Метод остановки клиента

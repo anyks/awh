@@ -155,7 +155,7 @@ namespace awh {
 				bool mask;        // Маска протокола
 				bool rsv[3];      // Расширения протокола
 				u_short size;     // Размер блока заголовков
-				uint8_t payload;  // Размер полезной нагрузки
+				uint64_t payload; // Размер полезной нагрузки
 				opcode_t optcode; // Опциональные коды
 				/**
 				 * Head Конструктор
