@@ -412,13 +412,6 @@ void awh::WebSocketServer::setSubs(const vector <string> & subs) noexcept {
 
 }
 /**
- * setChunkingFn Метод установки функции обратного вызова для получения чанков
- * @param callback функция обратного вызова
- */
-void awh::WebSocketServer::setChunkingFn(function <void (const vector <char> &, const http_t *)> callback) noexcept {
-
-}
-/**
  * setWaitTimeDetect Метод детекции сообщений по количеству секунд
  * @param read  количество секунд для детекции по чтению
  * @param write количество секунд для детекции по записи

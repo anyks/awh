@@ -152,12 +152,6 @@ namespace awh {
 			void setSubs(const vector <string> & subs) noexcept;
 		public:
 			/**
-			 * setChunkingFn Метод установки функции обратного вызова для получения чанков
-			 * @param callback функция обратного вызова
-			 */
-			void setChunkingFn(function <void (const vector <char> &, const http_t *)> callback) noexcept;
-		public:
-			/**
 			 * setWaitTimeDetect Метод детекции сообщений по количеству секунд
 			 * @param read  количество секунд для детекции по чтению
 			 * @param write количество секунд для детекции по записи

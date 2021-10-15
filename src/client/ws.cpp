@@ -831,14 +831,6 @@ void awh::WebSocketClient::setSubs(const vector <string> & subs) noexcept {
 	if(!subs.empty()) this->subs = subs;
 }
 /**
- * setChunkingFn Метод установки функции обратного вызова для получения чанков
- * @param callback функция обратного вызова
- */
-void awh::WebSocketClient::setChunkingFn(function <void (const vector <char> &, const http_t *)> callback) noexcept {
-	// Устанавливаем функцию обработки вызова для получения чанков
-	this->http.setChunkingFn(callback);
-}
-/**
  * setWaitTimeDetect Метод детекции сообщений по количеству секунд
  * @param read  количество секунд для детекции по чтению
  * @param write количество секунд для детекции по записи
