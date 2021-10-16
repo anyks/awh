@@ -74,10 +74,11 @@ namespace awh {
 			/**
 			 * connectCallback Функция обратного вызова при подключении к серверу
 			 * @param aid  идентификатор адъютанта
+			 * @param wid  идентификатор воркера
 			 * @param core объект биндинга TCP/IP
 			 * @param ctx  передаваемый контекст модуля
 			 */
-			static void connectCallback(const size_t aid, core_t * core, void * ctx) noexcept;
+			static void connectCallback(const size_t aid, const size_t wid, core_t * core, void * ctx) noexcept;
 			/**
 			 * disconnectCallback Функция обратного вызова при отключении от сервера
 			 * @param aid  идентификатор адъютанта
@@ -86,15 +87,6 @@ namespace awh {
 			 * @param ctx  передаваемый контекст модуля
 			 */
 			static void disconnectCallback(const size_t aid, const size_t wid, core_t * core, void * ctx) noexcept;
-			/**
-			 * readCallback Функция обратного вызова при чтении сообщения с сервера
-			 * @param buffer бинарный буфер содержащий сообщение
-			 * @param size   размер бинарного буфера содержащего сообщение
-			 * @param aid    идентификатор адъютанта
-			 * @param core   объект биндинга TCP/IP
-			 * @param ctx    передаваемый контекст модуля
-			 */
-			static void readCallback(const char * buffer, const size_t size, const size_t aid, core_t * core, void * ctx) noexcept;
 			/**
 			 * acceptCallback Функция обратного вызова при проверке подключения клиента
 			 * @param ip   адрес интернет подключения клиента
@@ -105,6 +97,16 @@ namespace awh {
 			 * @return     результат разрешения к подключению клиента
 			 */
 			static bool acceptCallback(const string & ip, const string & mac, const size_t wid, core_t * core, void * ctx) noexcept;
+			/**
+			 * readCallback Функция обратного вызова при чтении сообщения с сервера
+			 * @param buffer бинарный буфер содержащий сообщение
+			 * @param size   размер бинарного буфера содержащего сообщение
+			 * @param aid    идентификатор адъютанта
+			 * @param wid    идентификатор воркера
+			 * @param core   объект биндинга TCP/IP
+			 * @param ctx    передаваемый контекст модуля
+			 */
+			static void readCallback(const char * buffer, const size_t size, const size_t aid, const size_t wid, core_t * core, void * ctx) noexcept;
 		private:
 			/**
 			 * extraction Метод извлечения полученных данных

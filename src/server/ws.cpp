@@ -25,12 +25,13 @@ void awh::WebSocketServer::openCallback(const size_t wid, core_t * core, void * 
 /**
  * connectCallback Функция обратного вызова при подключении к серверу
  * @param aid  идентификатор адъютанта
+ * @param wid  идентификатор воркера
  * @param core объект биндинга TCP/IP
  * @param ctx  передаваемый контекст модуля
  */
-void awh::WebSocketServer::connectCallback(const size_t aid, core_t * core, void * ctx) noexcept {
+void awh::WebSocketServer::connectCallback(const size_t aid, const size_t wid, core_t * core, void * ctx) noexcept {
 	// Если данные существуют
-	if((aid > 0) && (core != nullptr) && (ctx != nullptr)){
+	if((aid > 0) && (wid > 0) && (core != nullptr) && (ctx != nullptr)){
 		// Получаем контекст модуля
 		wsSrv_t * ws = reinterpret_cast <wsSrv_t *> (ctx);
 		// Создаём адъютанта
@@ -54,16 +55,30 @@ void awh::WebSocketServer::disconnectCallback(const size_t aid, const size_t wid
 	}
 }
 /**
+ * acceptCallback Функция обратного вызова при проверке подключения клиента
+ * @param ip   адрес интернет подключения клиента
+ * @param mac  мак-адрес подключившегося клиента
+ * @param wid  идентификатор воркера
+ * @param core объект биндинга TCP/IP
+ * @param ctx  передаваемый контекст модуля
+ * @return     результат разрешения к подключению клиента
+ */
+bool awh::WebSocketServer::acceptCallback(const string & ip, const string & mac, const size_t wid, core_t * core, void * ctx) noexcept {
+	// Разрешаем подключение клиенту
+	return true;
+}
+/**
  * readCallback Функция обратного вызова при чтении сообщения с сервера
  * @param buffer бинарный буфер содержащий сообщение
  * @param size   размер бинарного буфера содержащего сообщение
  * @param aid    идентификатор адъютанта
+ * @param wid    идентификатор воркера
  * @param core   объект биндинга TCP/IP
  * @param ctx    передаваемый контекст модуля
  */
-void awh::WebSocketServer::readCallback(const char * buffer, const size_t size, const size_t aid, core_t * core, void * ctx) noexcept {
+void awh::WebSocketServer::readCallback(const char * buffer, const size_t size, const size_t aid, const size_t wid, core_t * core, void * ctx) noexcept {
 	// Если данные существуют
-	if((buffer != nullptr) && (size > 0) && (aid > 0)){
+	if((buffer != nullptr) && (size > 0) && (aid > 0) && (wid > 0)){
 		// Получаем контекст модуля
 		wsSrv_t * ws = reinterpret_cast <wsSrv_t *> (ctx);
 		// Получаем параметры подключения адъютанта
@@ -248,19 +263,6 @@ void awh::WebSocketServer::readCallback(const char * buffer, const size_t size, 
 			core->close(aid);
 		}
 	}
-}
-/**
- * acceptCallback Функция обратного вызова при проверке подключения клиента
- * @param ip   адрес интернет подключения клиента
- * @param mac  мак-адрес подключившегося клиента
- * @param wid  идентификатор воркера
- * @param core объект биндинга TCP/IP
- * @param ctx  передаваемый контекст модуля
- * @return     результат разрешения к подключению клиента
- */
-bool awh::WebSocketServer::acceptCallback(const string & ip, const string & mac, const size_t wid, core_t * core, void * ctx) noexcept {
-	// Разрешаем подключение клиенту
-	return true;
 }
 /**
  * extraction Метод извлечения полученных данных

@@ -156,13 +156,13 @@ namespace awh {
 			// Функция обратного вызова при открытии приложения
 			function <void (const size_t, Core *, void *)> openFn = nullptr;
 			// Функция обратного вызова при запуске подключения
-			function <void (const size_t, Core *, void *)> connectFn = nullptr;
+			function <void (const size_t, const size_t, Core *, void *)> connectFn = nullptr;
 			// Функция обратного вызова при закрытии подключения
 			function <void (const size_t, const size_t, Core *, void *)> disconnectFn = nullptr;
 			// Функция обратного вызова при получении данных
-			function <void (const char *, const size_t, const size_t, Core *, void *)> readFn = nullptr;
+			function <void (const char *, const size_t, const size_t, const size_t, Core *, void *)> readFn = nullptr;
 			// Функция обратного вызова при записи данных
-			function <void (const char *, const size_t, const size_t, Core *, void *)> writeFn = nullptr;
+			function <void (const char *, const size_t, const size_t, const size_t, Core *, void *)> writeFn = nullptr;
 		public:
 			/**
 			 * clear Метод очистки

@@ -118,17 +118,11 @@ namespace awh {
 			/**
 			 * connectCallback Функция обратного вызова при подключении к серверу
 			 * @param aid  идентификатор адъютанта
+			 * @param wid  идентификатор воркера
 			 * @param core объект биндинга TCP/IP
 			 * @param ctx  передаваемый контекст модуля
 			 */
-			static void connectCallback(const size_t aid, core_t * core, void * ctx) noexcept;
-			/**
-			 * connectProxyCallback Функция обратного вызова при подключении к прокси-серверу
-			 * @param aid  идентификатор адъютанта
-			 * @param core объект биндинга TCP/IP
-			 * @param ctx  передаваемый контекст модуля
-			 */
-			static void connectProxyCallback(const size_t aid, core_t * core, void * ctx) noexcept;
+			static void connectCallback(const size_t aid, const size_t wid, core_t * core, void * ctx) noexcept;
 			/**
 			 * disconnectCallback Функция обратного вызова при отключении от сервера
 			 * @param aid  идентификатор адъютанта
@@ -138,23 +132,33 @@ namespace awh {
 			 */
 			static void disconnectCallback(const size_t aid, const size_t wid, core_t * core, void * ctx) noexcept;
 			/**
+			 * connectProxyCallback Функция обратного вызова при подключении к прокси-серверу
+			 * @param aid  идентификатор адъютанта
+			 * @param wid  идентификатор воркера
+			 * @param core объект биндинга TCP/IP
+			 * @param ctx  передаваемый контекст модуля
+			 */
+			static void connectProxyCallback(const size_t aid, const size_t wid, core_t * core, void * ctx) noexcept;
+			/**
 			 * readCallback Функция обратного вызова при чтении сообщения с сервера
 			 * @param buffer бинарный буфер содержащий сообщение
 			 * @param size   размер бинарного буфера содержащего сообщение
 			 * @param aid    идентификатор адъютанта
+			 * @param wid    идентификатор воркера
 			 * @param core   объект биндинга TCP/IP
 			 * @param ctx    передаваемый контекст модуля
 			 */
-			static void readCallback(const char * buffer, const size_t size, const size_t aid, core_t * core, void * ctx) noexcept;
+			static void readCallback(const char * buffer, const size_t size, const size_t aid, const size_t wid, core_t * core, void * ctx) noexcept;
 			/**
 			 * readProxyCallback Функция обратного вызова при чтении сообщения с прокси-сервера
 			 * @param buffer бинарный буфер содержащий сообщение
 			 * @param size   размер бинарного буфера содержащего сообщение
 			 * @param aid    идентификатор адъютанта
+			 * @param wid    идентификатор воркера
 			 * @param core   объект биндинга TCP/IP
 			 * @param ctx    передаваемый контекст модуля
 			 */
-			static void readProxyCallback(const char * buffer, const size_t size, const size_t aid, core_t * core, void * ctx) noexcept;
+			static void readProxyCallback(const char * buffer, const size_t size, const size_t aid, const size_t wid, core_t * core, void * ctx) noexcept;
 		public:
 			/**
 			 * GET Метод запроса в формате HTTP методом GET

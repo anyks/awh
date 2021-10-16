@@ -33,7 +33,7 @@ void awh::CoreClient::read(struct bufferevent * bev, void * ctx) noexcept {
 					// Считываем бинарные данные запроса из буфер
 					const size_t size = bufferevent_read(bev, (void *) adj->buffer, BUFFER_CHUNK);
 					// Выводим функцию обратного вызова
-					wrk->readProxyFn(adj->buffer, size, adj->aid, const_cast <core_t *> (wrk->core), wrk->ctx);
+					wrk->readProxyFn(adj->buffer, size, adj->aid, wrk->wid, const_cast <core_t *> (wrk->core), wrk->ctx);
 				}
 			// Если прокси-сервер не используется
 			} else if(wrk->readFn != nullptr) {
@@ -42,7 +42,7 @@ void awh::CoreClient::read(struct bufferevent * bev, void * ctx) noexcept {
 				// Считываем бинарные данные запроса из буфер
 				const size_t size = bufferevent_read(adj->bev, (void *) adj->buffer, BUFFER_CHUNK);
 				// Выводим функцию обратного вызова
-				wrk->readFn(adj->buffer, size, adj->aid, const_cast <core_t *> (wrk->core), wrk->ctx);
+				wrk->readFn(adj->buffer, size, adj->aid, wrk->wid, const_cast <core_t *> (wrk->core), wrk->ctx);
 			}
 		}
 	}
@@ -78,11 +78,11 @@ void awh::CoreClient::write(struct bufferevent * bev, void * ctx) noexcept {
 					// Если функция обратного вызова для вывода записи существует
 					if(wrk->writeProxyFn != nullptr)
 						// Выводим функцию обратного вызова
-						wrk->writeProxyFn(adj->buffer, size, adj->aid, const_cast <core_t *> (wrk->core), wrk->ctx);
+						wrk->writeProxyFn(adj->buffer, size, adj->aid, wrk->wid, const_cast <core_t *> (wrk->core), wrk->ctx);
 				// Если прокси-сервер не используется
 				} else if(wrk->writeFn != nullptr)
 					// Выводим функцию обратного вызова
-					wrk->writeFn(adj->buffer, size, adj->aid, const_cast <core_t *> (wrk->core), wrk->ctx);
+					wrk->writeFn(adj->buffer, size, adj->aid, wrk->wid, const_cast <core_t *> (wrk->core), wrk->ctx);
 				// Удаляем данные из буфера
 				// evbuffer_drain(output, size);
 			}
@@ -117,9 +117,9 @@ void awh::CoreClient::event(struct bufferevent * bev, const short events, void *
 				// Если подключение производится через, прокси-сервер
 				if(wrk->isProxy()){
 					// Выполняем функцию обратного вызова для прокси-сервера
-					if(wrk->connectProxyFn != nullptr) wrk->connectProxyFn(adj->aid, const_cast <core_t *> (wrk->core), wrk->ctx);
+					if(wrk->connectProxyFn != nullptr) wrk->connectProxyFn(adj->aid, wrk->wid, const_cast <core_t *> (wrk->core), wrk->ctx);
 				// Выполняем функцию обратного вызова
-				} else if(wrk->connectFn != nullptr) wrk->connectFn(adj->aid, const_cast <core_t *> (wrk->core), wrk->ctx);
+				} else if(wrk->connectFn != nullptr) wrk->connectFn(adj->aid, wrk->wid, const_cast <core_t *> (wrk->core), wrk->ctx);
 				// Если флаг ожидания входящих сообщений, активирован
 				if(wrk->wait){
 					// Устанавливаем таймаут ожидания поступления данных
@@ -475,7 +475,7 @@ void awh::CoreClient::switchProxy(const size_t aid) noexcept {
 				this->tuning(aid);
 			}
 		// Выполняем функцию обратного вызова
-		} else if(wrk->connectFn != nullptr) wrk->connectFn(aid, this, wrk->ctx);
+		} else if(wrk->connectFn != nullptr) wrk->connectFn(aid, wrk->wid, this, wrk->ctx);
 	}
 }
 /**

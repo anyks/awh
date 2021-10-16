@@ -32,12 +32,13 @@ void awh::Rest::openCallback(const size_t wid, core_t * core, void * ctx) noexce
 /**
  * connectCallback Функция обратного вызова при подключении к серверу
  * @param aid  идентификатор адъютанта
+ * @param wid  идентификатор воркера
  * @param core объект биндинга TCP/IP
  * @param ctx  передаваемый контекст модуля
  */
-void awh::Rest::connectCallback(const size_t aid, core_t * core, void * ctx) noexcept {
+void awh::Rest::connectCallback(const size_t aid, const size_t wid, core_t * core, void * ctx) noexcept {
 	// Если данные переданы верные
-	if((aid > 0) && (core != nullptr) && (ctx != nullptr)){
+	if((aid > 0) && (wid > 0) && (core != nullptr) && (ctx != nullptr)){
 		// Получаем контекст модуля
 		restCli_t * web = reinterpret_cast <restCli_t *> (ctx);
 		// Выполняем сброс состояния HTTP парсера
@@ -76,14 +77,50 @@ void awh::Rest::connectCallback(const size_t aid, core_t * core, void * ctx) noe
 	}
 }
 /**
- * connectProxyCallback Функция обратного вызова при подключении к прокси-серверу
+ * disconnectCallback Функция обратного вызова при отключении от сервера
  * @param aid  идентификатор адъютанта
+ * @param wid  идентификатор воркера
  * @param core объект биндинга TCP/IP
  * @param ctx  передаваемый контекст модуля
  */
-void awh::Rest::connectProxyCallback(const size_t aid, core_t * core, void * ctx) noexcept {
+void awh::Rest::disconnectCallback(const size_t aid, const size_t wid, core_t * core, void * ctx) noexcept {
 	// Если данные переданы верные
-	if((aid > 0) && (core != nullptr) && (ctx != nullptr)){
+	if((wid > 0) && (core != nullptr) && (ctx != nullptr)){
+		// Получаем контекст модуля
+		restCli_t * web = reinterpret_cast <restCli_t *> (ctx);
+		// Если нужно произвести запрос заново
+		if((web->res.code == 301) || (web->res.code == 308) ||
+		   (web->res.code == 401) || (web->res.code == 407)){
+			// Выполняем запрос заново
+			core->open(web->worker.wid);
+			// Выходим из функции
+			return;
+		}
+		// Если код пришёл нулевой, восстанавливаем его
+		if(web->res.code == 0){
+			// Устанавливаем код сообщения
+			web->res.code = 404;
+			// Получаем само сообщение
+			web->res.message = web->http.getMessage(web->res.code);
+		}
+		// Если функция обратного вызова установлена, выводим сообщение
+		if(web->messageFn != nullptr)
+			// Выполняем функцию обратного вызова
+			web->messageFn(web->res, web->ctx);
+		// Завершаем работу
+		if(web->unbind) core->stop();
+	}
+}
+/**
+ * connectProxyCallback Функция обратного вызова при подключении к прокси-серверу
+ * @param aid  идентификатор адъютанта
+ * @param wid  идентификатор воркера
+ * @param core объект биндинга TCP/IP
+ * @param ctx  передаваемый контекст модуля
+ */
+void awh::Rest::connectProxyCallback(const size_t aid, const size_t wid, core_t * core, void * ctx) noexcept {
+	// Если данные переданы верные
+	if((aid > 0) && (wid > 0) && (core != nullptr) && (ctx != nullptr)){
 		// Получаем контекст модуля
 		restCli_t * web = reinterpret_cast <restCli_t *> (ctx);
 		// Определяем тип прокси-сервера
@@ -118,51 +155,17 @@ void awh::Rest::connectProxyCallback(const size_t aid, core_t * core, void * ctx
 	}
 }
 /**
- * disconnectCallback Функция обратного вызова при отключении от сервера
- * @param aid  идентификатор адъютанта
- * @param wid  идентификатор воркера
- * @param core объект биндинга TCP/IP
- * @param ctx  передаваемый контекст модуля
- */
-void awh::Rest::disconnectCallback(const size_t aid, const size_t wid, core_t * core, void * ctx) noexcept {
-	// Если данные переданы верные
-	if((core != nullptr) && (ctx != nullptr)){
-		// Получаем контекст модуля
-		restCli_t * web = reinterpret_cast <restCli_t *> (ctx);
-		// Если нужно произвести запрос заново
-		if((web->res.code == 301) || (web->res.code == 308) ||
-		   (web->res.code == 401) || (web->res.code == 407)){
-			// Выполняем запрос заново
-			core->open(web->worker.wid);
-			// Выходим из функции
-			return;
-		}
-		// Если код пришёл нулевой, восстанавливаем его
-		if(web->res.code == 0){
-			// Устанавливаем код сообщения
-			web->res.code = 404;
-			// Получаем само сообщение
-			web->res.message = web->http.getMessage(web->res.code);
-		}
-		// Если функция обратного вызова установлена, выводим сообщение
-		if(web->messageFn != nullptr)
-			// Выполняем функцию обратного вызова
-			web->messageFn(web->res, web->ctx);
-		// Завершаем работу
-		if(web->unbind) core->stop();
-	}
-}
-/**
  * readCallback Функция обратного вызова при чтении сообщения с сервера
  * @param buffer бинарный буфер содержащий сообщение
  * @param size   размер бинарного буфера содержащего сообщение
  * @param aid    идентификатор адъютанта
+ * @param wid    идентификатор воркера
  * @param core   объект биндинга TCP/IP
  * @param ctx    передаваемый контекст модуля
  */
-void awh::Rest::readCallback(const char * buffer, const size_t size, const size_t aid, core_t * core, void * ctx) noexcept {
+void awh::Rest::readCallback(const char * buffer, const size_t size, const size_t aid, const size_t wid, core_t * core, void * ctx) noexcept {
 	// Если данные существуют
-	if((buffer != nullptr) && (size > 0) && (aid > 0)){
+	if((buffer != nullptr) && (size > 0) && (aid > 0) && (wid > 0)){
 		// Получаем контекст модуля
 		restCli_t * web = reinterpret_cast <restCli_t *> (ctx);
 		// Выполняем парсинг полученных данных
@@ -190,7 +193,7 @@ void awh::Rest::readCallback(const char * buffer, const size_t size, const size_
 							// Если соединение является постоянным
 							if(web->http.isAlive())
 								// Выполняем повторно отправку сообщения на сервер
-								connectCallback(aid, core, ctx);
+								connectCallback(aid, wid, core, ctx);
 							// Завершаем работу
 							else core->close(aid);
 							// Завершаем работу
@@ -228,12 +231,13 @@ void awh::Rest::readCallback(const char * buffer, const size_t size, const size_
  * @param buffer бинарный буфер содержащий сообщение
  * @param size   размер бинарного буфера содержащего сообщение
  * @param aid    идентификатор адъютанта
+ * @param wid    идентификатор воркера
  * @param core   объект биндинга TCP/IP
  * @param ctx    передаваемый контекст модуля
  */
-void awh::Rest::readProxyCallback(const char * buffer, const size_t size, const size_t aid, core_t * core, void * ctx) noexcept {
+void awh::Rest::readProxyCallback(const char * buffer, const size_t size, const size_t aid, const size_t wid, core_t * core, void * ctx) noexcept {
 	// Если данные существуют
-	if((buffer != nullptr) && (size > 0) && (aid > 0)){
+	if((buffer != nullptr) && (size > 0) && (aid > 0) && (wid > 0)){
 		// Получаем контекст модуля
 		restCli_t * web = reinterpret_cast <restCli_t *> (ctx);
 		// Определяем тип прокси-сервера
@@ -295,7 +299,7 @@ void awh::Rest::readProxyCallback(const char * buffer, const size_t size, const 
 									// Если соединение является постоянным
 									if(web->http.isAlive())
 										// Выполняем повторно отправку сообщения на сервер
-										connectProxyCallback(aid, core, ctx);
+										connectProxyCallback(aid, wid, core, ctx);
 									// Завершаем работу
 									else core->close(aid);
 									// Завершаем работу

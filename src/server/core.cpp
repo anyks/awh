@@ -31,7 +31,7 @@ void awh::CoreServer::read(struct bufferevent * bev, void * ctx) noexcept {
 				// Считываем бинарные данные запроса из буфер
 				const size_t size = bufferevent_read(adj->bev, (void *) adj->buffer, BUFFER_CHUNK);
 				// Выводим функцию обратного вызова
-				wrk->readFn(adj->buffer, size, adj->aid, const_cast <core_t *> (wrk->core), wrk->ctx);
+				wrk->readFn(adj->buffer, size, adj->aid, wrk->wid, const_cast <core_t *> (wrk->core), wrk->ctx);
 			}
 		}
 	}
@@ -65,7 +65,7 @@ void awh::CoreServer::write(struct bufferevent * bev, void * ctx) noexcept {
 				// Если функция обратного вызова установлена
 				if(wrk->writeFn != nullptr)
 					// Выводим функцию обратного вызова
-					wrk->writeFn(adj->buffer, size, adj->aid, const_cast <core_t *> (wrk->core), wrk->ctx);
+					wrk->writeFn(adj->buffer, size, adj->aid, wrk->wid, const_cast <core_t *> (wrk->core), wrk->ctx);
 				// Удаляем данные из буфера
 				// evbuffer_drain(output, size);
 			}
@@ -208,7 +208,7 @@ void awh::CoreServer::accept(const evutil_socket_t fd, const short event, void *
 			// Выполняем тюннинг буфера событий
 			core->tuning(ret.first->second.aid);
 			// Выполняем функцию обратного вызова
-			if(wrk->connectFn != nullptr) wrk->connectFn(adj.aid, core, wrk->ctx);
+			if(wrk->connectFn != nullptr) wrk->connectFn(adj.aid, wrk->wid, core, wrk->ctx);
 			// Если флаг ожидания входящих сообщений, активирован
 			if(wrk->wait){
 				// Устанавливаем таймаут ожидания поступления данных
