@@ -108,13 +108,6 @@ int main(int argc, char * argv[]) noexcept {
 		// Выводим информацию в лог
 		log->print("%s [%u]", log_t::flag_t::CRITICAL, mess.c_str(), code);
 	});
-	// Подписываемся на событие ответа сервера PONG
-	ws.on(&log, [](const string & mess, wsCli_t * ws, void * ctx){
-		// Получаем объект логирования
-		log_t * log = reinterpret_cast <log_t *> (ctx);
-		// Выводим информацию в лог
-		log->print("PONG %s", log_t::flag_t::INFO, mess.c_str());
-	});
 	// Подписываемся на событие получения сообщения с сервера
 	ws.on(nullptr, [](const vector <char> & buffer, const bool utf8, wsCli_t * ws, void * ctx){
 		// Если данные пришли в виде текста, выводим

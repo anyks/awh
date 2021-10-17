@@ -63,6 +63,8 @@ void awh::Core::run(evutil_socket_t fd, short event, void * ctx) noexcept {
 	if(ctx != nullptr){
 		// Получаем объект подключения
 		core_t * core = reinterpret_cast <core_t *> (ctx);
+		// Выполняем удаление событие таймера
+		event_del(&core->timeout);
 		// Если список воркеров существует
 		if(!core->workers.empty()){
 			// Переходим по всему списку воркеров
@@ -77,24 +79,86 @@ void awh::Core::run(evutil_socket_t fd, short event, void * ctx) noexcept {
 		if(core->callbackFn != nullptr) core->callbackFn(true, core, core->ctx.front());
 		// Выводим в консоль информацию
 		if(!core->noinfo) core->log->print("[+] start service: pid = %u", log_t::flag_t::INFO, getpid());
+		// Создаём событие на активацию базы событий
+		event_assign(&core->pingInterval, core->base, -1, EV_TIMEOUT | EV_PERSIST, ping, core);
+		// Очищаем объект таймаута базы событий
+		evutil_timerclear(&core->tvPingInterval);
+		// Устанавливаем интервал таймаута
+		core->tvPingInterval.tv_sec = (PING_INTERVAL / 1000);
+		// Создаём событие таймаута на активацию базы событий
+		event_add(&core->pingInterval, &core->tvPingInterval);
 	}
 }
 /**
- * delay Метод фриза потока на указанное количество секунд
- * @param seconds количество секунд для фриза потока
+ * ping Функция вызова методов пинга по таймеру
+ * @param fd    файловый дескриптор (сокет)
+ * @param event произошедшее событие
+ * @param ctx   передаваемый контекст
  */
-void awh::Core::delay(const size_t seconds) const noexcept {
-	// Если количество секунд передано
-	if(seconds){
-		// Если операционной системой является Windows
-		#if defined(_WIN32) || defined(_WIN64)
-			// Выполняем фриз потока
-			::Sleep(seconds * 1000);
-		// Для всех остальных операционных систем
-		#else
-			// Выполняем фриз потока
-			::sleep(seconds);
-		#endif
+void awh::Core::ping(evutil_socket_t fd, short event, void * ctx) noexcept {
+	// Если контекст модуля передан
+	if(ctx != nullptr){
+		// Получаем объект подключения
+		core_t * core = reinterpret_cast <core_t *> (ctx);
+		// Если список воркеров существует
+		if(!core->workers.empty()){
+			// Переходим по всему списку воркеров
+			for(auto & worker : core->workers){
+				// Получаем объект воркера
+				worker_t * wrk = const_cast <worker_t *> (worker.second);
+				// Если функция обратного вызова установлена
+				if(wrk->pingFn != nullptr){
+					// Если в воркере есть подключённые клиенты
+					if(!wrk->adjutants.empty()){
+						// Переходим по всему списку адъютантов
+						for(auto & adj : wrk->adjutants){
+							// Выполняем функцию обратного вызова
+							wrk->pingFn(adj.first, worker.first, core, worker.second->ctx);
+						}
+					}
+				}
+			}
+		}
+	}
+}
+/**
+ * reconnect Функция задержки времени на реконнект
+ * @param fd    файловый дескриптор (сокет)
+ * @param event произошедшее событие
+ * @param ctx   передаваемый контекст
+ */
+void awh::Core::reconnect(evutil_socket_t fd, short event, void * ctx) noexcept {
+	// Если контекст модуля передан
+	if(ctx != nullptr){
+		// Получаем объект воркера
+		worker_t * wrk = reinterpret_cast <worker_t *> (ctx);
+		// Получаем объект подключения
+		core_t * core = const_cast <core_t *> (wrk->core);
+		// Выполняем удаление событие таймера
+		event_del(&core->timeout);
+		// Выполняем новое подключение
+		core->connect(wrk->wid);
+	}
+}
+/**
+ * reconnect Метод запуска переподключения
+ * @param wid идентификатор воркера
+ */
+void awh::Core::reconnect(const size_t wid) noexcept {
+	// Выполняем поиск воркера
+	auto it = this->workers.find(wid);
+	// Если воркер найден
+	if(it != this->workers.end()){
+		// Получаем объект воркера
+		worker_t * wrk = const_cast <worker_t *> (it->second);
+		// Создаём событие на активацию базы событий
+		event_assign(&this->timeout, this->base, -1, EV_TIMEOUT, reconnect, wrk);
+		// Очищаем объект таймаута базы событий
+		evutil_timerclear(&this->tvTimeout);
+		// Устанавливаем интервал таймаута
+		this->tvTimeout.tv_sec = 10;
+		// Создаём событие таймаута на активацию базы событий
+		event_add(&this->timeout, &this->tvTimeout);
 	}
 }
 /**
@@ -323,11 +387,11 @@ void awh::Core::bind(Core * core) noexcept {
 			// Создаём событие на активацию базы событий
 			event_assign(&core->timeout, core->base, -1, EV_TIMEOUT, run, core);
 			// Очищаем объект таймаута базы событий
-			evutil_timerclear(&core->basetv);
+			evutil_timerclear(&core->tvTimeout);
 			// Устанавливаем таймаут базы событий в 1 секунду
-			core->basetv.tv_sec = 1;
+			core->tvTimeout.tv_sec = 1;
 			// Создаём событие таймаута на активацию базы событий
-			event_add(&core->timeout, &core->basetv);
+			event_add(&core->timeout, &core->tvTimeout);
 		}
 		// Выполняем разблокировку потока
 		this->bloking.unlock();
@@ -412,11 +476,11 @@ void awh::Core::start() noexcept {
 		// Создаём событие на активацию базы событий
 		event_assign(&this->timeout, this->base, -1, EV_TIMEOUT, run, this);
 		// Очищаем объект таймаута базы событий
-		evutil_timerclear(&this->basetv);
+		evutil_timerclear(&this->tvTimeout);
 		// Устанавливаем таймаут базы событий в 1 секунду
-		this->basetv.tv_sec = 1;
+		this->tvTimeout.tv_sec = 1;
 		// Создаём событие таймаута на активацию базы событий
-		event_add(&this->timeout, &this->basetv);
+		event_add(&this->timeout, &this->tvTimeout);
 		// Запускаем работу базы событий
 		event_base_loop(this->base, EVLOOP_NO_EXIT_ON_EMPTY);
 		// Выполняем сброс модуля DNS резолвера IPv4
@@ -425,6 +489,8 @@ void awh::Core::start() noexcept {
 		this->dns6.reset();
 		// Выполняем удаление всех воркеров
 		this->removeAll();
+		// Удаляем событие пинга
+		event_del(&this->pingInterval);
 		// Удаляем объект базы событий
 		event_base_free(this->base);
 		// Очищаем все глобальные переменные
@@ -563,10 +629,10 @@ void awh::Core::write(const char * buffer, const size_t size, const size_t aid) 
 		auto it = this->adjutants.find(aid);
 		// Если адъютант получен
 		if(it != this->adjutants.end()){
+			// Получаем максимальное количество байт для детекции
+			const size_t max = (it->second->markWrite.max > 0 ? it->second->markWrite.max : 0);
 			// Получаем минимальное количество байт для детекции
 			const size_t min = (it->second->markWrite.min > 0 ? it->second->markWrite.min : size);
-			// Получаем максимальное количество байт для детекции
-			const size_t max = (it->second->markWrite.max > 0 ? it->second->markWrite.max : size);
 			// Устанавливаем размер записываемых данных
 			bufferevent_setwatermark(it->second->bev, EV_WRITE, min, max);
 			// Активируем разрешение на запись и чтение

@@ -21,6 +21,28 @@ void awh::WebSocketClient::openCallback(const size_t wid, core_t * core, void * 
 	core->open(wid);
 }
 /**
+ * pingCallback Метод пинга адъютанта
+ * @param aid  идентификатор адъютанта
+ * @param wid  идентификатор воркера
+ * @param core объект биндинга TCP/IP
+ * @param ctx  передаваемый контекст модуля
+ */
+void awh::WebSocketClient::pingCallback(const size_t aid, const size_t wid, core_t * core, void * ctx) noexcept {
+	// Если данные существуют
+	if((aid > 0) && (wid > 0) && (core != nullptr) && (ctx != nullptr)){
+		// Получаем контекст модуля
+		wsCli_t * ws = reinterpret_cast <wsCli_t *> (ctx);
+		// Получаем текущий штамп времени
+		const time_t stamp = ws->fmk->unixTimestamp();
+		// Если адъютант не ответил на пинг больше двух интервалов, отключаем его
+		if((stamp - ws->checkPoint) >= (PING_INTERVAL * 2))
+			// Завершаем работу
+			core->close(aid);
+		// Отправляем запрос адъютанту
+		else ws->ping(to_string(aid));
+	}
+}
+/**
  * connectCallback Функция обратного вызова при подключении к серверу
  * @param aid  идентификатор адъютанта
  * @param wid  идентификатор воркера
@@ -38,10 +60,6 @@ void awh::WebSocketClient::connectCallback(const size_t aid, const size_t wid, c
 		ws->http.reset();
 		// Выполняем очистку параметров HTTP запроса
 		ws->http.clear();
-		// Останавливаем таймер пинга сервера
-		ws->timerPing.stop();
-		// Останавливаем таймер подключения
-		ws->timerConn.stop();
 		// Получаем бинарные данные REST запроса
 		const auto & rest = ws->http.request(ws->worker.url);
 		// Если бинарные данные запроса получены, отправляем на сервер
@@ -62,10 +80,6 @@ void awh::WebSocketClient::disconnectCallback(const size_t aid, const size_t wid
 		wsCli_t * ws = reinterpret_cast <wsCli_t *> (ctx);
 		// Очищаем буфер фрагментированного сообщения
 		ws->fragmes.clear();
-		// Останавливаем таймер пинга сервера
-		ws->timerPing.stop();
-		// Останавливаем таймер подключения
-		ws->timerConn.stop();
 		// Если нужно произвести запрос заново
 		if((ws->code == 301) || (ws->code == 308) ||
 		   (ws->code == 401) || (ws->code == 407)){
@@ -182,15 +196,12 @@ void awh::WebSocketClient::readCallback(const char * buffer, const size_t size, 
 							ws->crypt = ws->http.isCrypt();
 							// Получаем поддерживаемый метод компрессии
 							ws->compress = ws->http.getCompress();
+							// Обновляем контрольную точку
+							ws->checkPoint = ws->fmk->unixTimestamp();
 							// Выводим в лог сообщение
 							if(!ws->noinfo) ws->log->print("%s", log_t::flag_t::INFO, "authorization on the WebSocket server was successful");
 							// Если функция обратного вызова установлена, выполняем
 							if(ws->openStopFn != nullptr) ws->openStopFn(true, ws, ws->ctx.at(0));
-							// Устанавливаем таймер на контроль подключения
-							ws->timerPing.setInterval([ws]{
-								// Выполняем пинг сервера
-								ws->ping(to_string(time(nullptr)));
-							}, PING_INTERVAL);
 							// Завершаем работу
 							return;
 						// Сообщаем, что рукопожатие не выполнено
@@ -235,20 +246,6 @@ void awh::WebSocketClient::readCallback(const char * buffer, const size_t size, 
 			size_t offset = 0;
 			// Создаём объект шапки фрейма
 			frame_t::head_t head;
-			// Если флаг ожидания входящих сообщений, активирован
-			if(ws->worker.wait){
-				// Останавливаем таймер
-				ws->timerConn.stop();
-				// Устанавливаем таймер на контроль подключения
-				ws->timerConn.setTimeout([aid, core, ws]{
-					// Если нужно выполнить автоматическое переподключение
-					if(ws->worker.alive)
-						// Завершаем работу
-						core->close(aid);
-					// Если выполнять автоматическое подключение не требуется, просто выходим
-					else if(ws->unbind) core->stop();
-				}, CONNECT_TIMEOUT);
-			}
 			// Выполняем перебор полученных данных
 			while((size - offset) > 0){
 				// Выполняем чтение фрейма WebSocket
@@ -293,8 +290,10 @@ void awh::WebSocketClient::readCallback(const char * buffer, const size_t size, 
 						break;
 						// Если ответом является PONG
 						case (uint8_t) frame_t::opcode_t::PONG:
-							// Если функция обратного вызова обработки PONG существует
-							if(ws->pongFn != nullptr) ws->pongFn(string(data.begin(), data.end()), ws, ws->ctx.at(1));
+							// Если идентификатор адъютанта совпадает
+							if(stoull(string(data.begin(), data.end())) == aid)
+								// Обновляем контрольную точку
+								ws->checkPoint = ws->fmk->unixTimestamp();
 						break;
 						// Если ответом является TEXT
 						case (uint8_t) frame_t::opcode_t::TEXT:
@@ -491,7 +490,7 @@ void awh::WebSocketClient::error(const mess_t & message) const noexcept {
 		// Иначе выводим сообщение в упрощёном виде
 		else this->log->print("%s [%u]", log_t::flag_t::WARNING, message.text.c_str(), message.code);
 		// Если функция обратного вызова установлена, выводим полученное сообщение
-		if(this->errorFn != nullptr) this->errorFn(message.code, message.text, const_cast <WebSocketClient *> (this), this->ctx.at(2));
+		if(this->errorFn != nullptr) this->errorFn(message.code, message.text, const_cast <WebSocketClient *> (this), this->ctx.at(1));
 	}
 }
 /**
@@ -535,11 +534,11 @@ void awh::WebSocketClient::extraction(const vector <char> & buffer, const bool u
 					// Выполняем шифрование переданных данных
 					const auto & res = this->hash.decrypt(data.data(), data.size());
 					// Отправляем полученный результат
-					if(!res.empty()) this->messageFn(res, utf8, const_cast <WebSocketClient *> (this), this->ctx.at(3));
+					if(!res.empty()) this->messageFn(res, utf8, const_cast <WebSocketClient *> (this), this->ctx.at(2));
 					// Иначе выводим сообщение так - как оно пришло
-					else this->messageFn(data, utf8, const_cast <WebSocketClient *> (this), this->ctx.at(3));
+					else this->messageFn(data, utf8, const_cast <WebSocketClient *> (this), this->ctx.at(2));
 				// Отправляем полученный результат
-				} else this->messageFn(data, utf8, const_cast <WebSocketClient *> (this), this->ctx.at(3));
+				} else this->messageFn(data, utf8, const_cast <WebSocketClient *> (this), this->ctx.at(2));
 			// Выводим сообщение об ошибке
 			} else {
 				// Создаём сообщение
@@ -547,7 +546,7 @@ void awh::WebSocketClient::extraction(const vector <char> & buffer, const bool u
 				// Выводим сообщение
 				this->error(mess);
 				// Иначе выводим сообщение так - как оно пришло
-				this->messageFn(buffer, utf8, const_cast <WebSocketClient *> (this), this->ctx.at(3));
+				this->messageFn(buffer, utf8, const_cast <WebSocketClient *> (this), this->ctx.at(2));
 			}
 		// Если функция обратного вызова установлена, выводим полученное сообщение
 		} else {
@@ -556,11 +555,11 @@ void awh::WebSocketClient::extraction(const vector <char> & buffer, const bool u
 				// Выполняем шифрование переданных данных
 				const auto & res = this->hash.decrypt(buffer.data(), buffer.size());
 				// Отправляем полученный результат
-				if(!res.empty()) this->messageFn(res, utf8, const_cast <WebSocketClient *> (this), this->ctx.at(3));
+				if(!res.empty()) this->messageFn(res, utf8, const_cast <WebSocketClient *> (this), this->ctx.at(2));
 				// Иначе выводим сообщение так - как оно пришло
-				else this->messageFn(buffer, utf8, const_cast <WebSocketClient *> (this), this->ctx.at(3));
+				else this->messageFn(buffer, utf8, const_cast <WebSocketClient *> (this), this->ctx.at(2));
 			// Отправляем полученный результат
-			} else this->messageFn(buffer, utf8, const_cast <WebSocketClient *> (this), this->ctx.at(3));
+			} else this->messageFn(buffer, utf8, const_cast <WebSocketClient *> (this), this->ctx.at(2));
 		}
 	}
 }
@@ -624,24 +623,13 @@ void awh::WebSocketClient::on(void * ctx, function <void (const bool, WebSocketC
 	this->openStopFn = callback;
 }
 /**
- * on Метод установки функции обратного вызова на событие получения PONG
- * @param ctx      контекст для вывода в сообщении
- * @param callback функция обратного вызова
- */
-void awh::WebSocketClient::on(void * ctx, function <void (const string &, WebSocketClient *, void *)> callback) noexcept {
-	// Устанавливаем контекст передаваемого объекта
-	this->ctx.at(1) = ctx;
-	// Устанавливаем функцию получения сообщений PONG
-	this->pongFn = callback;
-}
-/**
  * on Метод установки функции обратного вызова на событие получения ошибок
  * @param ctx      контекст для вывода в сообщении
  * @param callback функция обратного вызова
  */
 void awh::WebSocketClient::on(void * ctx, function <void (const u_short, const string &, WebSocketClient *, void *)> callback) noexcept {
 	// Устанавливаем контекст передаваемого объекта
-	this->ctx.at(2) = ctx;
+	this->ctx.at(1) = ctx;
 	// Устанавливаем функцию получения ошибок
 	this->errorFn = callback;
 }
@@ -652,7 +640,7 @@ void awh::WebSocketClient::on(void * ctx, function <void (const u_short, const s
  */
 void awh::WebSocketClient::on(void * ctx, function <void (const vector <char> &, const bool, WebSocketClient *, void *)> callback) noexcept {
 	// Устанавливаем контекст передаваемого объекта
-	this->ctx.at(3) = ctx;
+	this->ctx.at(2) = ctx;
 	// Устанавливаем функцию получения сообщений с сервера
 	this->messageFn = callback;
 }
@@ -1020,6 +1008,8 @@ awh::WebSocketClient::WebSocketClient(const coreCli_t * core, const fmk_t * fmk,
 	this->worker.ctx = this;
 	// Устанавливаем событие на запуск системы
 	this->worker.openFn = openCallback;
+	// Устанавливаем функцию пинга клиента
+	this->worker.pingFn = pingCallback;
 	// Устанавливаем функцию чтения данных
 	this->worker.readFn = readCallback;
 	// Устанавливаем событие подключения

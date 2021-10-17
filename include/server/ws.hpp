@@ -34,8 +34,7 @@ namespace awh {
 			enum class flag_t : uint8_t {
 				DEFER     = 0x01, // Флаг отложенных вызовов событий сокета
 				NOINFO    = 0x02, // Флаг запрещающий вывод информационных сообщений
-				WAITMESS  = 0x04, // Флаг ожидания входящих сообщений
-				KEEPALIVE = 0x08  // Флаг автоматического поддержания подключения
+				WAITMESS  = 0x04  // Флаг ожидания входящих сообщений
 			};
 		private:
 			// Создаём объект для работы с фреймом WebSocket
@@ -72,6 +71,14 @@ namespace awh {
 			 */
 			static void openCallback(const size_t wid, core_t * core, void * ctx) noexcept;
 			/**
+			 * pingCallback Метод пинга адъютанта
+			 * @param aid  идентификатор адъютанта
+			 * @param wid  идентификатор воркера
+			 * @param core объект биндинга TCP/IP
+			 * @param ctx  передаваемый контекст модуля
+			 */
+			static void pingCallback(const size_t aid, const size_t wid, core_t * core, void * ctx) noexcept;
+			/**
 			 * connectCallback Функция обратного вызова при подключении к серверу
 			 * @param aid  идентификатор адъютанта
 			 * @param wid  идентификатор воркера
@@ -88,6 +95,15 @@ namespace awh {
 			 */
 			static void disconnectCallback(const size_t aid, const size_t wid, core_t * core, void * ctx) noexcept;
 			/**
+			 * writeCallback Функция обратного вызова при записи сообщения на клиенте
+			 * @param size размер записанных в сокет байт
+			 * @param aid  идентификатор адъютанта
+			 * @param wid  идентификатор воркера
+			 * @param core объект биндинга TCP/IP
+			 * @param ctx  передаваемый контекст модуля
+			 */
+			static void writeCallback(const size_t size, const size_t aid, const size_t wid, core_t * core, void * ctx) noexcept;
+			/**
 			 * acceptCallback Функция обратного вызова при проверке подключения клиента
 			 * @param ip   адрес интернет подключения клиента
 			 * @param mac  мак-адрес подключившегося клиента
@@ -98,7 +114,7 @@ namespace awh {
 			 */
 			static bool acceptCallback(const string & ip, const string & mac, const size_t wid, core_t * core, void * ctx) noexcept;
 			/**
-			 * readCallback Функция обратного вызова при чтении сообщения с сервера
+			 * readCallback Функция обратного вызова при чтении сообщения с клиента
 			 * @param buffer бинарный буфер содержащий сообщение
 			 * @param size   размер бинарного буфера содержащего сообщение
 			 * @param aid    идентификатор адъютанта

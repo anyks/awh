@@ -61,6 +61,11 @@ namespace awh {
 			 */
 			void tuning(const size_t aid) noexcept;
 			/**
+			 * connect Метод создания подключения к удаленному серверу
+			 * @param wid идентификатор воркера
+			 */
+			void connect(const size_t wid) noexcept;
+			/**
 			 * close Метод закрытия сокета
 			 * @param fd файловый дескриптор (сокет) для закрытия
 			 */

@@ -45,13 +45,10 @@ int main(int argc, char * argv[]) noexcept {
 	log.setLogFormat("%H:%M:%S %d.%m.%Y");
 	/**
 	 * 1. Устанавливаем ожидание входящих сообщений
-	 * 2. Устанавливаем флаг поддержания активным подключение
 	 */
-	ws.setMode(
-		(uint8_t) wsSrv_t::flag_t::WAITMESS |
-		(uint8_t) wsSrv_t::flag_t::KEEPALIVE
-	);
-
+	// ws.setMode((uint8_t) wsSrv_t::flag_t::WAITMESS);
+	// Устанавливаем время ожидания
+	// ws.setWaitTimeDetect(0, 0);
 	// Выполняем запуск WebSocket клиента
 	ws.start();
 	// Устанавливаем адрес сертификата

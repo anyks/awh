@@ -27,9 +27,9 @@ void awh::CoreServer::read(struct bufferevent * bev, void * ctx) noexcept {
 			// Если функция обратного вызова установлена
 			if(wrk->readFn != nullptr) {
 				// Заполняем нулями буфер полученных данных
-				// memset((void *) adj->buffer, 0, BUFFER_CHUNK);
+				memset((void *) adj->buffer, 0, BUFFER_CHUNK);
 				// Считываем бинарные данные запроса из буфер
-				const size_t size = bufferevent_read(adj->bev, (void *) adj->buffer, BUFFER_CHUNK);
+				const size_t size = bufferevent_read(bev, (void *) adj->buffer, BUFFER_CHUNK);
 				// Выводим функцию обратного вызова
 				wrk->readFn(adj->buffer, size, adj->aid, wrk->wid, const_cast <core_t *> (wrk->core), wrk->ctx);
 			}
@@ -56,18 +56,12 @@ void awh::CoreServer::write(struct bufferevent * bev, void * ctx) noexcept {
 			size_t size = evbuffer_get_length(output);
 			// Если данные существуют
 			if(size > 0){
-				// Заполняем нулями буфер полученных данных
-				// memset((void *) adj->buffer, 0, BUFFER_CHUNK);
-				// Выполняем компенсацию размера полученных данных
-				size = (size > BUFFER_CHUNK ? BUFFER_CHUNK : size);
-				// Копируем данные из буфера
-				evbuffer_copyout(output, (void *) adj->buffer, size);
 				// Если функция обратного вызова установлена
 				if(wrk->writeFn != nullptr)
 					// Выводим функцию обратного вызова
-					wrk->writeFn(adj->buffer, size, adj->aid, wrk->wid, const_cast <core_t *> (wrk->core), wrk->ctx);
+					wrk->writeFn(size, adj->aid, wrk->wid, const_cast <core_t *> (wrk->core), wrk->ctx);
 				// Удаляем данные из буфера
-				// evbuffer_drain(output, size);
+				evbuffer_drain(output, size);
 			}
 		}
 	}
@@ -261,6 +255,14 @@ void awh::CoreServer::tuning(const size_t aid) noexcept {
 		// Активируем буферы событий на чтение и запись
 		bufferevent_enable(it->second->bev, EV_READ | EV_WRITE);
 	}
+}
+/**
+ * connect Метод создания подключения к удаленному серверу
+ * @param wid идентификатор воркера
+ */
+void awh::CoreServer::connect(const size_t wid) noexcept {
+	// Блокируем переданный идентификатор
+	(void) wid;
 }
 /**
  * close Метод закрытия сокета

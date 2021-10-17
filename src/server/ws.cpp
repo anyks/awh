@@ -23,6 +23,33 @@ void awh::WebSocketServer::openCallback(const size_t wid, core_t * core, void * 
 	core->run(wid);
 }
 /**
+ * pingCallback Метод пинга адъютанта
+ * @param aid  идентификатор адъютанта
+ * @param wid  идентификатор воркера
+ * @param core объект биндинга TCP/IP
+ * @param ctx  передаваемый контекст модуля
+ */
+void awh::WebSocketServer::pingCallback(const size_t aid, const size_t wid, core_t * core, void * ctx) noexcept {
+	// Если данные существуют
+	if((aid > 0) && (wid > 0) && (core != nullptr) && (ctx != nullptr)){
+		// Получаем контекст модуля
+		wsSrv_t * ws = reinterpret_cast <wsSrv_t *> (ctx);
+		// Получаем параметры подключения адъютанта
+		workSrvWss_t::adjp_t * adj = const_cast <workSrvWss_t::adjp_t *> (ws->worker.getAdj(aid));
+		// Если параметры подключения адъютанта получены
+		if(adj != nullptr){
+			// Получаем текущий штамп времени
+			const time_t stamp = ws->fmk->unixTimestamp();
+			// Если адъютант не ответил на пинг больше двух интервалов, отключаем его
+			if((stamp - adj->checkPoint) >= (PING_INTERVAL * 2))
+				// Завершаем работу
+				core->close(aid);
+			// Отправляем запрос адъютанту
+			else ws->ping(aid, core, to_string(aid));
+		}
+	}
+}
+/**
  * connectCallback Функция обратного вызова при подключении к серверу
  * @param aid  идентификатор адъютанта
  * @param wid  идентификатор воркера
@@ -52,6 +79,33 @@ void awh::WebSocketServer::disconnectCallback(const size_t aid, const size_t wid
 		wsSrv_t * ws = reinterpret_cast <wsSrv_t *> (ctx);
 		// Выполняем удаление параметров адъютанта
 		ws->worker.removeAdj(aid);
+
+		cout << " ^^^^^^^^^^^ STOP ADJ " << aid << endl;
+	}
+}
+/**
+ * writeCallback Функция обратного вызова при записи сообщения на клиенте
+ * @param size размер записанных в сокет байт
+ * @param aid  идентификатор адъютанта
+ * @param wid  идентификатор воркера
+ * @param core объект биндинга TCP/IP
+ * @param ctx  передаваемый контекст модуля
+ */
+void awh::WebSocketServer::writeCallback(const size_t size, const size_t aid, const size_t wid, core_t * core, void * ctx) noexcept {
+
+	cout << " ********** WRITE ********** " << size << endl;
+
+	// Если данные существуют
+	if((size > 0) && (aid > 0) && (wid > 0) && (core != nullptr) && (ctx != nullptr)){
+		// Получаем контекст модуля
+		wsSrv_t * ws = reinterpret_cast <wsSrv_t *> (ctx);
+		// Получаем параметры подключения адъютанта
+		workSrvWss_t::adjp_t * adj = const_cast <workSrvWss_t::adjp_t *> (ws->worker.getAdj(aid));
+		// Если параметры подключения адъютанта получены
+		if((adj != nullptr) && (adj->stopBytes > 0)){
+			// Если размер полученных байт соответствует
+			if(adj->stopBytes == size) core->close(aid);
+		}
 	}
 }
 /**
@@ -68,7 +122,7 @@ bool awh::WebSocketServer::acceptCallback(const string & ip, const string & mac,
 	return true;
 }
 /**
- * readCallback Функция обратного вызова при чтении сообщения с сервера
+ * readCallback Функция обратного вызова при чтении сообщения с клиента
  * @param buffer бинарный буфер содержащий сообщение
  * @param size   размер бинарного буфера содержащего сообщение
  * @param aid    идентификатор адъютанта
@@ -127,6 +181,9 @@ void awh::WebSocketServer::readCallback(const char * buffer, const size_t size, 
 								adj->compress = adj->http.getCompress();
 								// Получаем бинарные данные REST запроса
 								response = adj->http.response();
+
+								cout << " =========== RESPONSE " << response.size() << endl;
+
 								// Если бинарные данные запроса получены, отправляем на сервер
 								if(!response.empty()) core->write(response.data(), response.size(), aid);
 								// Завершаем работу
@@ -148,9 +205,13 @@ void awh::WebSocketServer::readCallback(const char * buffer, const size_t size, 
 						} break;
 					}
 					// Если бинарные данные запроса получены, отправляем на сервер
-					if(!response.empty()) core->write(response.data(), response.size(), aid);
+					if(!response.empty()){
+						// Устанавливаем размер стопбайт
+						adj->stopBytes = response.size();
+						// Отправляем ответ клиенту
+						core->write(response.data(), response.size(), aid);
 					// Завершаем работу
-					core->close(aid);
+					} else core->close(aid);
 				}
 				// Завершаем работу
 				return;
@@ -193,17 +254,16 @@ void awh::WebSocketServer::readCallback(const char * buffer, const size_t size, 
 						switch((uint8_t) head.optcode){
 							// Если ответом является PING
 							case (uint8_t) frame_t::opcode_t::PING:
-								// Отправляем ответ серверу
+								// Отправляем ответ клиенту
 								ws->pong(aid, core, string(data.begin(), data.end()));
 							break;
 							// Если ответом является PONG
-							case (uint8_t) frame_t::opcode_t::PONG:
-
-								cout << " *********PONG********* " << string(data.begin(), data.end()) << endl;
-
-								// Если функция обратного вызова обработки PONG существует
-								// if(ws->pongFn != nullptr) ws->pongFn(string(data.begin(), data.end()), ws, ws->ctx.at(1));
-							break;
+							case (uint8_t) frame_t::opcode_t::PONG: {
+								// Если идентификатор адъютанта совпадает
+								if(stoull(string(data.begin(), data.end())) == aid)
+									// Обновляем контрольную точку
+									adj->checkPoint = ws->fmk->unixTimestamp();
+							} break;
 							// Если ответом является TEXT
 							case (uint8_t) frame_t::opcode_t::TEXT:
 							// Если ответом является BINARY
@@ -241,8 +301,11 @@ void awh::WebSocketServer::readCallback(const char * buffer, const size_t size, 
 							case (uint8_t) frame_t::opcode_t::CLOSE: {
 								// Создаём сообщение
 								mess = ws->frame.message(data);
-								// Выполняем отключение клиента
-								goto Stop;
+
+								cout << " ++++++++++++++++++= " << mess.text << endl;
+
+								// Завершаем работу
+								core->close(aid);
 							} break;
 						}
 						// Увеличиваем смещение в буфере
@@ -257,10 +320,14 @@ void awh::WebSocketServer::readCallback(const char * buffer, const size_t size, 
 			Stop:
 			// Получаем буфер сообщения
 			const auto & buffer = ws->frame.message(mess);
-			// Отправляем серверу сообщение
-			core->write(buffer.data(), buffer.size(), aid);
+			// Если данные сообщения получены
+			if(!buffer.empty()){
+				// Устанавливаем размер стопбайт
+				adj->stopBytes = buffer.size();
+				// Отправляем серверу сообщение
+				core->write(buffer.data(), buffer.size(), aid);
 			// Завершаем работу
-			core->close(aid);
+			} else core->close(aid);
 		}
 	}
 }
@@ -324,10 +391,14 @@ void awh::WebSocketServer::extraction(workSrvWss_t::adjp_t * adj, const size_t a
 				mess_t mess(1007, "received data decompression error");
 				// Получаем буфер сообщения
 				const auto & buffer = this->frame.message(mess);
-				// Отправляем серверу сообщение
-				core->write(buffer.data(), buffer.size(), aid);
+				// Если данные сообщения получены
+				if(!buffer.empty()){
+					// Устанавливаем размер стопбайт
+					adj->stopBytes = buffer.size();
+					// Отправляем серверу сообщение
+					core->write(buffer.data(), buffer.size(), aid);
 				// Завершаем работу
-				core->close(aid);
+				} else core->close(aid);
 			}
 		// Если функция обратного вызова установлена, выводим полученное сообщение
 		} else {
@@ -419,7 +490,10 @@ void awh::WebSocketServer::setSubs(const vector <string> & subs) noexcept {
  * @param write количество секунд для детекции по записи
  */
 void awh::WebSocketServer::setWaitTimeDetect(const time_t read, const time_t write) noexcept {
-
+	// Устанавливаем количество секунд на чтение
+	this->worker.timeRead = read;
+	// Устанавливаем количество секунд на запись
+	this->worker.timeWrite = write;
 }
 /**
  * setBytesDetect Метод детекции сообщений по количеству байт
@@ -427,7 +501,10 @@ void awh::WebSocketServer::setWaitTimeDetect(const time_t read, const time_t wri
  * @param write количество байт для детекции по записи
  */
 void awh::WebSocketServer::setBytesDetect(const worker_t::mark_t read, const worker_t::mark_t write) noexcept {
-
+	// Устанавливаем количество байт на чтение
+	this->worker.markRead = read;
+	// Устанавливаем количество байт на запись
+	this->worker.markWrite = write;
 }
 /**
  * setMode Метод установки флага модуля
@@ -438,8 +515,6 @@ void awh::WebSocketServer::setMode(const u_short flag) noexcept {
 	this->noinfo = (flag & (uint8_t) flag_t::NOINFO);
 	// Устанавливаем флаг ожидания входящих сообщений
 	this->worker.wait = (flag & (uint8_t) flag_t::WAITMESS);
-	// Устанавливаем флаг поддержания автоматического подключения
-	this->worker.alive = (flag & (uint8_t) flag_t::KEEPALIVE);
 	// Устанавливаем флаг отложенных вызовов событий сокета
 	const_cast <coreSrv_t *> (this->core)->setDefer(flag & (uint8_t) flag_t::DEFER);
 	// Устанавливаем флаг запрещающий вывод информационных сообщений
@@ -495,8 +570,12 @@ awh::WebSocketServer::WebSocketServer(const coreSrv_t * core, const fmk_t * fmk,
 	this->worker.ctx = this;
 	// Устанавливаем событие на запуск системы
 	this->worker.openFn = openCallback;
+	// Устанавливаем функцию пинга клиента
+	this->worker.pingFn = pingCallback;
 	// Устанавливаем функцию чтения данных
 	this->worker.readFn = readCallback;
+	// Устанавливаем функцию записи данных
+	this->worker.writeFn = writeCallback;
 	// Добавляем событие аццепта клиента
 	this->worker.acceptFn = acceptCallback;
 	// Устанавливаем событие подключения

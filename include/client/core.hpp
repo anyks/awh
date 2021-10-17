@@ -49,17 +49,15 @@ namespace awh {
 			static void event(struct bufferevent * bev, const short events, void * ctx) noexcept;
 		private:
 			/**
-			 * connect Метод создания подключения к удаленному серверу
-			 * @param wid идентификатор воркера
-			 * @return    результат подключения
-			 */
-			bool connect(const size_t wid) noexcept;
-		private:
-			/**
 			 * tuning Метод тюннинга буфера событий
 			 * @param aid идентификатор адъютанта
 			 */
 			void tuning(const size_t aid) noexcept;
+			/**
+			 * connect Метод создания подключения к удаленному серверу
+			 * @param wid идентификатор воркера
+			 */
+			void connect(const size_t wid) noexcept;
 		public:
 			/**
 			 * closeAll Метод отключения всех воркеров

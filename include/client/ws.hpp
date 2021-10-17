@@ -13,7 +13,6 @@
 /**
  * Наши модули
  */
-#include <timer.hpp>
 #include <ws/frame.hpp>
 #include <ws/client.hpp>
 #include <client/core.hpp>
@@ -52,10 +51,6 @@ namespace awh {
 			network_t nwk;
 			// Объект рабочего
 			workCli_t worker;
-			// Таймер для пинга сервера
-			timer_t timerPing;
-			// Таймер для контроля подключения
-			timer_t timerConn;
 			// Создаём объект для компрессии-декомпрессии данных
 			mutable hash_t hash;
 		private:
@@ -83,6 +78,8 @@ namespace awh {
 			size_t aid = 0;
 			// Код ответа сервера
 			u_short code = 0;
+			// Контрольная точка ответа на пинг
+			time_t checkPoint = 0;
 			// Минимальный размер сегмента
 			size_t frameSize = 0xFA000;
 		public:
@@ -92,7 +89,7 @@ namespace awh {
 			http_t::compress_t compress = http_t::compress_t::NONE;
 		private:
 			// Список контекстов передаваемых объектов
-			vector <void *> ctx = {nullptr, nullptr, nullptr, nullptr};
+			vector <void *> ctx = {nullptr, nullptr, nullptr};
 		private:
 			// Создаём объект фреймворка
 			const fmk_t * fmk = nullptr;
@@ -103,8 +100,6 @@ namespace awh {
 		private:
 			// Функция обратного вызова, при запуске или остановки подключения к серверу
 			function <void (const bool, WebSocketClient *, void *)> openStopFn = nullptr;
-			// Функция обратного вызова, при получении ответа от сервера
-			function <void (const string &, WebSocketClient *, void *)> pongFn = nullptr;
 			// Функция обратного вызова, при получении ошибки работы клиента
 			function <void (const u_short, const string &, WebSocketClient *, void *)> errorFn = nullptr;
 			// Функция обратного вызова, при получении сообщения с сервера
@@ -117,6 +112,14 @@ namespace awh {
 			 * @param ctx  передаваемый контекст модуля
 			 */
 			static void openCallback(const size_t wid, core_t * core, void * ctx) noexcept;
+			/**
+			 * pingCallback Метод пинга адъютанта
+			 * @param aid  идентификатор адъютанта
+			 * @param wid  идентификатор воркера
+			 * @param core объект биндинга TCP/IP
+			 * @param ctx  передаваемый контекст модуля
+			 */
+			static void pingCallback(const size_t aid, const size_t wid, core_t * core, void * ctx) noexcept;
 			/**
 			 * connectCallback Функция обратного вызова при подключении к серверу
 			 * @param aid  идентификатор адъютанта
@@ -198,12 +201,6 @@ namespace awh {
 			 * @param callback функция обратного вызова
 			 */
 			void on(void * ctx, function <void (const bool, WebSocketClient *, void *)> callback) noexcept;
-			/**
-			 * on Метод установки функции обратного вызова на событие получения PONG
-			 * @param ctx      контекст для вывода в сообщении
-			 * @param callback функция обратного вызова
-			 */
-			void on(void * ctx, function <void (const string &, WebSocketClient *, void *)> callback) noexcept;
 			/**
 			 * on Метод установки функции обратного вызова на событие получения ошибок
 			 * @param ctx      контекст для вывода в сообщении

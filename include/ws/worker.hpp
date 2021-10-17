@@ -14,12 +14,13 @@
  * Стандартная библиотека
  */
 #include <map>
+#include <ctime>
+#include <vector>
 #include <event2/event.h>
 
 /**
  * Наши модули
  */
-#include <timer.hpp>
 #include <ws/frame.hpp>
 #include <ws/server.hpp>
 #include <server/worker.hpp>
@@ -43,13 +44,22 @@ namespace awh {
 				wss_t http;                  // Создаём объект для работы с HTTP
 				bool crypt;                  // Флаг шифрования сообщений
 				bool compressed;             // Флаг переданных сжатых данных
+				size_t stopBytes;            // Количество байт для закрытия подключения
+				time_t checkPoint;           // Контрольная точка ответа на пинг
 				vector <char> fragmes;       // Данные фрагметрированного сообщения
 				frame_t::opcode_t opcode;    // Полученный опкод сообщения
 				http_t::compress_t compress; // Флаги работы с сжатыми данными
 				/**
 				 * AdjParam Конструктор
 				 */
-				AdjParam(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcept : http(fmk, log, uri), crypt(false), compressed(false), opcode(frame_t::opcode_t::TEXT), compress(http_t::compress_t::NONE) {}
+				AdjParam(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcept :
+					http(fmk, log, uri),
+					crypt(false),
+					compressed(false),
+					stopBytes(0),
+					checkPoint(0),
+					opcode(frame_t::opcode_t::TEXT),
+					compress(http_t::compress_t::NONE) {}
 				/**
 				 * ~AdjParam Деструктор
 				 */
@@ -58,8 +68,6 @@ namespace awh {
 		public:
 			// Создаём объект работы с URI ссылками
 			uri_t uri;
-			// Таймер для пинга сервера
-			timer_t timer;
 			// Создаем объект для работы с сетью
 			network_t nwk;
 		private:

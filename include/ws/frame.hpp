@@ -49,7 +49,7 @@ namespace awh {
 			/**
 			 * Коды сообщений
 			 */
-			map <u_short, pair <string, string>> codes = {
+			map <uint16_t, pair <string, string>> codes = {
 				{1000, {"CLOSE_NORMAL", "Successful operation/regular socket shutdown"}},
 				{1001, {"CLOSE_GOING_AWAY", "Client is leaving (browser tab closing)"}},
 				{1002, {"CLOSE_PROTOCOL_ERROR", "Endpoint received a malformed frame"}},
@@ -69,7 +69,7 @@ namespace awh {
 			};
 		public:
 			// Код сообщения
-			u_short code;
+			uint16_t code;
 			// Текст и тип сообщения
 			string text, type;
 		private:
@@ -107,7 +107,7 @@ namespace awh {
 			 * @param code код сообщения
 			 * @return     ссылка на контекст объекта
 			 */
-			Message & operator=(const u_short code) noexcept {
+			Message & operator=(const uint16_t code) noexcept {
 				// Если код сообщения передан
 				if(code > 0){
 					// Устанавливаем код сообщения
@@ -124,7 +124,7 @@ namespace awh {
 			 * @param code код сообщения
 			 * @param text текст сообщения
 			 */
-			Message(const u_short code = 0, const string & text = "") noexcept : code(code), text(text), type("") {
+			Message(const uint16_t code = 0, const string & text = "") noexcept : code(code), text(text), type("") {
 				// Выполняем поиск сообщения
 				this->find();
 			}
@@ -154,7 +154,7 @@ namespace awh {
 				bool fin;         // Фрейм является финальным
 				bool mask;        // Маска протокола
 				bool rsv[3];      // Расширения протокола
-				u_short size;     // Размер блока заголовков
+				uint8_t size;     // Размер блока заголовков
 				uint64_t payload; // Размер полезной нагрузки
 				opcode_t optcode; // Опциональные коды
 				/**

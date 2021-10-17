@@ -158,8 +158,13 @@ namespace awh {
 		protected:
 			// Событие таймаута запуска системы
 			struct event timeout;
-			// Устанавливаем таймаут ожидания активации базы событий
-			struct timeval basetv;
+			// Событие интервала пинга
+			struct event pingInterval;
+		protected:
+			// Структура интервала таймаута
+			struct timeval tvTimeout;
+			// Структура интервала пинга
+			struct timeval tvPingInterval;
 		protected:
 			// Список активных воркеров
 			map <size_t, const worker_t *> workers;
@@ -214,12 +219,31 @@ namespace awh {
 			 * @param ctx   передаваемый контекст
 			 */
 			static void run(evutil_socket_t fd, short event, void * ctx) noexcept;
+			/**
+			 * ping Функция вызова методов пинга по таймеру
+			 * @param fd    файловый дескриптор (сокет)
+			 * @param event произошедшее событие
+			 * @param ctx   передаваемый контекст
+			 */
+			static void ping(evutil_socket_t fd, short event, void * ctx) noexcept;
+			/**
+			 * reconnect Функция задержки времени на реконнект
+			 * @param fd    файловый дескриптор (сокет)
+			 * @param event произошедшее событие
+			 * @param ctx   передаваемый контекст
+			 */
+			static void reconnect(evutil_socket_t fd, short event, void * ctx) noexcept;
 		protected:
 			/**
-			 * delay Метод фриза потока на указанное количество секунд
-			 * @param seconds количество секунд для фриза потока
+			 * reconnect Метод запуска переподключения
+			 * @param wid идентификатор воркера
 			 */
-			void delay(const size_t seconds) const noexcept;
+			void reconnect(const size_t wid) noexcept;
+			/**
+			 * connect Метод создания подключения к удаленному серверу
+			 * @param wid идентификатор воркера
+			 */
+			virtual void connect(const size_t wid) noexcept = 0;
 		protected:
 			/**
 			 * clean Метод буфера событий

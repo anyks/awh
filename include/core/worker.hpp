@@ -55,8 +55,10 @@ namespace awh {
 				size_t max; // Максимальный размер детектируемых байт
 				/**
 				 * Mark Конструктор
+				 * @param min минимальный размер детектируемых байт
+				 * @param max максимальный размер детектируемых байт
 				 */
-				Mark() : min(0), max(BUFFER_CHUNK) {}
+				Mark(const size_t min = 0, const size_t max = 0) : min(min), max(max) {}
 			} __attribute__((packed)) mark_t;
 		public:
 			/**
@@ -155,14 +157,16 @@ namespace awh {
 		public:
 			// Функция обратного вызова при открытии приложения
 			function <void (const size_t, Core *, void *)> openFn = nullptr;
+			// Функция обратного вызова для пинга клиента
+			function <void (const size_t, const size_t, Core *, void *)> pingFn = nullptr;
 			// Функция обратного вызова при запуске подключения
 			function <void (const size_t, const size_t, Core *, void *)> connectFn = nullptr;
 			// Функция обратного вызова при закрытии подключения
 			function <void (const size_t, const size_t, Core *, void *)> disconnectFn = nullptr;
+			// Функция обратного вызова при записи данных
+			function <void (const size_t, const size_t, const size_t, Core *, void *)> writeFn = nullptr;
 			// Функция обратного вызова при получении данных
 			function <void (const char *, const size_t, const size_t, const size_t, Core *, void *)> readFn = nullptr;
-			// Функция обратного вызова при записи данных
-			function <void (const char *, const size_t, const size_t, const size_t, Core *, void *)> writeFn = nullptr;
 		public:
 			/**
 			 * clear Метод очистки
@@ -177,7 +181,7 @@ namespace awh {
 			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
 			 */
-			Worker(const fmk_t * fmk, const log_t * log) noexcept : fmk(fmk), log(log) {}
+			Worker(const fmk_t * fmk, const log_t * log) noexcept : markRead(0, BUFFER_CHUNK), fmk(fmk), log(log) {}
 			/**
 			 * ~Worker Деструктор
 			 */

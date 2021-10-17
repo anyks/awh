@@ -16,8 +16,6 @@
 void awh::WorkerServerWS::clear() noexcept {
 	// Очищаем данные вокера
 	workSrv_t::clear();
-	// Останавливаем таймер PING
-	this->timer.stop();
 	// Очищаем список параметров адъютантов
 	this->adjParams.clear();
 	// Освобождаем выделенную память
@@ -38,6 +36,8 @@ void awh::WorkerServerWS::createAdj(const size_t aid) noexcept {
 		auto ret = this->adjParams.emplace(aid, move(adjp_t(this->fmk, this->log, &this->uri)));
 		// Устанавливаем метод сжатия
 		ret.first->second.http.setCompress(this->compress);
+		// Устанавливаем контрольную точку
+		ret.first->second.checkPoint = this->fmk->unixTimestamp();
 	}
 }
 /**
