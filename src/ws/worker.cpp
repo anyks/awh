@@ -20,8 +20,6 @@ void awh::WorkerServerWS::clear() noexcept {
 	this->adjParams.clear();
 	// Освобождаем выделенную память
 	map <size_t, adjp_t> ().swap(this->adjParams);
-	// Сбрасываем полученный опкод
-	this->opcode = frame_t::opcode_t::TEXT;
 	// Сбрасываем тип компрессии
 	this->compress = http_t::compress_t::NONE;
 }

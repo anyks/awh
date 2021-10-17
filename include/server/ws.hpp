@@ -32,10 +32,15 @@ namespace awh {
 			 * Основные флаги приложения
 			 */
 			enum class flag_t : uint8_t {
-				DEFER     = 0x01, // Флаг отложенных вызовов событий сокета
-				NOINFO    = 0x02, // Флаг запрещающий вывод информационных сообщений
-				WAITMESS  = 0x04  // Флаг ожидания входящих сообщений
+				DEFER    = 0x01, // Флаг отложенных вызовов событий сокета
+				NOINFO   = 0x02, // Флаг запрещающий вывод информационных сообщений
+				WAITMESS = 0x04  // Флаг ожидания входящих сообщений
 			};
+		private:
+			// Хости сервера
+			string host = "";
+			// Порт сервера
+			u_int port = SERVER_PORT;
 		private:
 			// Создаём объект для работы с фреймом WebSocket
 			frame_t frame;
@@ -44,12 +49,25 @@ namespace awh {
 			// Создаём объект для компрессии-декомпрессии данных
 			mutable hash_t hash;
 		private:
+			// Идентификатор сервера
+			string sid = "";
+			// Название сервера
+			string name = "";
+			// Версия сервера
+			string version = "";
+		private:
+			// Пароль шифрования передаваемых данных
+			string pass = "";
+			// Соль шифрования передаваемых данных
+			string salt = "";
+			// Размер шифрования передаваемых данных
+			hash_t::aes_t aes = hash_t::aes_t::AES128;
+		private:
 			// Поддерживаемые сабпротоколы
 			vector <string> subs;
 		private:
-			// Флаг запрета вывода информационных сообщений
-			bool noinfo = false;
-		private:
+			// Флаг шифрования сообщений
+			bool crypt = false;
 			// Минимальный размер сегмента
 			size_t frameSize = 0xFA000;
 		private:
@@ -62,6 +80,16 @@ namespace awh {
 			const log_t * log = nullptr;
 			// Создаём объект биндинга TCP/IP
 			const coreSrv_t * core = nullptr;
+		private:
+			// Функция обратного вызова, при запуске или остановки подключения к серверу
+			function <void (const size_t, const bool, WebSocketServer *, void *)> openStopFn = nullptr;
+			// Функция обратного вызова, при получении ошибки работы клиента
+			function <void (const size_t, const u_short, const string &, WebSocketServer *, void *)> errorFn = nullptr;
+			// Функция обратного вызова, при получении сообщения с сервера
+			function <void (const size_t, const vector <char> &, const bool, WebSocketServer *, void *)> messageFn = nullptr;
+		private:
+			// Функция разрешения подключения клиента на сервере
+			function <bool (const string &, const string &, WebSocketServer *, void *)> acceptFn = nullptr;
 		private:
 			/**
 			 * openCallback Функция обратного вызова при запуске работы
@@ -125,6 +153,12 @@ namespace awh {
 			static void readCallback(const char * buffer, const size_t size, const size_t aid, const size_t wid, core_t * core, void * ctx) noexcept;
 		private:
 			/**
+			 * error Метод вывода сообщений об ошибках работы клиента
+			 * @param aid     идентификатор адъютанта
+			 * @param message сообщение с описанием ошибки
+			 */
+			void error(const size_t aid, const mess_t & message) const noexcept;
+			/**
 			 * extraction Метод извлечения полученных данных
 			 * @param adj    параметры подключения адъютанта
 			 * @param aid    идентификатор адъютанта
@@ -148,6 +182,74 @@ namespace awh {
 			 * @param      message сообщение для отправки
 			 */
 			void ping(const size_t aid, core_t * core, const string & message = "") noexcept;
+		public:
+			/**
+			 * init Метод инициализации WebSocket клиента
+			 * @param port     порт сервера
+			 * @param host     хост сервера
+			 * @param compress метод сжатия передаваемых сообщений
+			 */
+			void init(const u_int port, const string & host = "", const http_t::compress_t compress = http_t::compress_t::DEFLATE) noexcept;
+		public:
+			/**
+			 * on Метод установки функции обратного вызова на событие запуска или остановки подключения
+			 * @param ctx      контекст для вывода в сообщении
+			 * @param callback функция обратного вызова
+			 */
+			void on(void * ctx, function <void (const size_t, const bool, WebSocketServer *, void *)> callback) noexcept;
+			/**
+			 * on Метод установки функции обратного вызова на событие получения ошибок
+			 * @param ctx      контекст для вывода в сообщении
+			 * @param callback функция обратного вызова
+			 */
+			void on(void * ctx, function <void (const size_t, const u_short, const string &, WebSocketServer *, void *)> callback) noexcept;
+			/**
+			 * on Метод установки функции обратного вызова на событие получения сообщений
+			 * @param ctx      контекст для вывода в сообщении
+			 * @param callback функция обратного вызова
+			 */
+			void on(void * ctx, function <void (const size_t, const vector <char> &, const bool, WebSocketServer *, void *)> callback) noexcept;
+		public:
+			/**
+			 * on Метод установки функции обратного вызова на событие активации клиента на сервере
+			 * @param ctx      контекст для вывода в сообщении
+			 * @param callback функция обратного вызова
+			 */
+			void on(void * ctx, function <bool (const string &, const string &, WebSocketServer *, void *)> callback) noexcept;
+		public:
+			/**
+			 * sendError Метод отправки сообщения об ошибке
+			 * @param aid  идентификатор адъютанта
+			 * @param mess отправляемое сообщение об ошибке
+			 */
+			void sendError(const size_t aid, const mess_t & mess) const noexcept;
+			/**
+			 * send Метод отправки сообщения на сервер
+			 * @param aid     идентификатор адъютанта
+			 * @param message буфер сообщения в бинарном виде
+			 * @param size    размер сообщения в байтах
+			 * @param utf8    данные передаются в текстовом виде
+			 */
+			void send(const size_t aid, const char * message, const size_t size, const bool utf8 = true) noexcept;
+		public:
+			/**
+			 * sub Метод получения выбранного сабпротокола
+			 * @param aid идентификатор адъютанта
+			 * @return    название поддерживаемого сабпротокола
+			 */
+			const string sub(const size_t aid) const noexcept;
+			/**
+			 * ip Метод получения IP адреса адъютанта
+			 * @param aid идентификатор адъютанта
+			 * @return    адрес интернет подключения адъютанта
+			 */
+			const string & ip(const size_t aid) const noexcept;
+			/**
+			 * mac Метод получения MAC адреса адъютанта
+			 * @param aid идентификатор адъютанта
+			 * @return    адрес устройства адъютанта
+			 */
+			const string & mac(const size_t aid) const noexcept;
 		public:
 			/**
 			 * stop Метод остановки клиента
@@ -187,11 +289,6 @@ namespace awh {
 			 * @param flag флаг модуля для установки
 			 */
 			void setMode(const u_short flag) noexcept;
-			/**
-			 * setChunkSize Метод установки размера чанка
-			 * @param size размер чанка для установки
-			 */
-			void setChunkSize(const size_t size) noexcept;
 			/**
 			 * setFrameSize Метод установки размеров сегментов фрейма
 			 * @param size минимальный размер сегмента

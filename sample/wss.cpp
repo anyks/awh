@@ -47,8 +47,41 @@ int main(int argc, char * argv[]) noexcept {
 	 * 1. Устанавливаем ожидание входящих сообщений
 	 */
 	// ws.setMode((uint8_t) wsSrv_t::flag_t::WAITMESS);
-	// Устанавливаем время ожидания
-	// ws.setWaitTimeDetect(0, 0);
+	// Выполняем инициализацию WebSocket сервера
+	ws.init(2222, "127.0.0.1", http_t::compress_t::DEFLATE);
+	// Установливаем функцию обратного вызова на событие активации клиента на сервере
+	ws.on(nullptr, [](const string & ip, const string & mac, wsSrv_t * ws, void * ctx) -> bool {
+
+		cout << " +++++++++++++++ ACCEPT " << ip << " == " << mac << endl;
+
+		// Разрешаем подключение клиенту
+		return true;
+	});
+	// Установливаем функцию обратного вызова на событие запуска или остановки подключения
+	ws.on(&log, [](const size_t aid, const bool mode,  wsSrv_t * ws, void * ctx) noexcept {
+		// Получаем объект логирования
+		log_t * log = reinterpret_cast <log_t *> (ctx);
+		// Выводим информацию в лог
+		log->print("%s client", log_t::flag_t::INFO, (mode ? "Connect" : "Disconnect"));
+	});
+	// Установливаем функцию обратного вызова на событие получения ошибок
+	ws.on(&log, [](const size_t aid, const u_short code, const string & mess,  wsSrv_t * ws, void * ctx) noexcept {
+		// Получаем объект логирования
+		log_t * log = reinterpret_cast <log_t *> (ctx);
+		// Выводим информацию в лог
+		log->print("%s [%u]", log_t::flag_t::CRITICAL, mess.c_str(), code);
+	});
+	/// Установливаем функцию обратного вызова на событие получения сообщений
+	ws.on(nullptr, [](const size_t aid, const vector <char> & buffer, const bool utf8,  wsSrv_t * ws, void * ctx) noexcept {
+		// Если даныне получены
+		if(!buffer.empty()){
+
+			cout << " !!!!!!!!!! " << string(buffer.begin(), buffer.end()) << endl;
+
+			// Отправляем сообщение обратно
+			ws->send(aid, buffer.data(), buffer.size(), utf8);
+		}
+	});
 	// Выполняем запуск WebSocket клиента
 	ws.start();
 	// Устанавливаем адрес сертификата
@@ -105,13 +138,6 @@ int main(int argc, char * argv[]) noexcept {
 		log_t * log = reinterpret_cast <log_t *> (ctx);
 		// Выводим информацию в лог
 		log->print("%s [%u]", log_t::flag_t::CRITICAL, mess.c_str(), code);
-	});
-	// Подписываемся на событие ответа сервера PONG
-	ws.on(&log, [](const string & mess, wsCli_t * ws, void * ctx){
-		// Получаем объект логирования
-		log_t * log = reinterpret_cast <log_t *> (ctx);
-		// Выводим информацию в лог
-		log->print("PONG %s", log_t::flag_t::INFO, mess.c_str());
 	});
 	// Подписываемся на событие получения сообщения с сервера
 	ws.on(nullptr, [](const vector <char> & buffer, const bool utf8, wsCli_t * ws, void * ctx){

@@ -215,6 +215,11 @@ namespace awh {
 			void on(void * ctx, function <void (const vector <char> &, const bool, WebSocketClient *, void *)> callback) noexcept;
 		public:
 			/**
+			 * sendError Метод отправки сообщения об ошибке
+			 * @param mess отправляемое сообщение об ошибке
+			 */
+			void sendError(const mess_t & mess) const noexcept;
+			/**
 			 * send Метод отправки сообщения на сервер
 			 * @param message буфер сообщения в бинарном виде
 			 * @param size    размер сообщения в байтах

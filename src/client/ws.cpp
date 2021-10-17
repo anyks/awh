@@ -149,6 +149,8 @@ void awh::WebSocketClient::connectProxyCallback(const size_t aid, const size_t w
 void awh::WebSocketClient::readCallback(const char * buffer, const size_t size, const size_t aid, const size_t wid, core_t * core, void * ctx) noexcept {
 	// Если данные существуют
 	if((buffer != nullptr) && (size > 0) && (aid > 0) && (wid > 0)){
+		// Объект сообщения
+		mess_t mess;
 		// Получаем контекст модуля
 		wsCli_t * ws = reinterpret_cast <wsCli_t *> (ctx);
 		// Если рукопожатие не выполнено
@@ -182,7 +184,7 @@ void awh::WebSocketClient::readCallback(const char * buffer, const size_t size, 
 						// Устанавливаем код ответа
 						ws->code = 403;
 						// Создаём сообщение
-						mess_t mess(ws->code, ws->http.getMessage(ws->code));
+						mess = mess_t(ws->code, ws->http.getMessage(ws->code));
 						// Выводим сообщение
 						ws->error(mess);
 					} break;
@@ -209,7 +211,7 @@ void awh::WebSocketClient::readCallback(const char * buffer, const size_t size, 
 							// Устанавливаем код ответа
 							ws->code = 404;
 							// Создаём сообщение
-							mess_t mess(ws->code, ws->http.getMessage(ws->code));
+							mess = mess_t(ws->code, ws->http.getMessage(ws->code));
 							// Выводим сообщение
 							ws->error(mess);
 						}
@@ -221,7 +223,7 @@ void awh::WebSocketClient::readCallback(const char * buffer, const size_t size, 
 						// Устанавливаем код ответа
 						ws->code = query.code;
 						// Создаём сообщение
-						mess_t mess(ws->code, query.message);
+						mess = mess_t(ws->code, query.message);
 						// Запрещаем бесконечный редирект при запросе авторизации
 						if((ws->code == 401) || (ws->code == 407)){
 							// Устанавливаем код ответа
@@ -255,7 +257,7 @@ void awh::WebSocketClient::readCallback(const char * buffer, const size_t size, 
 					// Проверяем состояние флагов RSV2 и RSV3
 					if(head.rsv[1] || head.rsv[2]){
 						// Создаём сообщение
-						mess_t mess(1002, "RSV2 and RSV3 must be clear");
+						mess = mess_t(1002, "RSV2 and RSV3 must be clear");
 						// Выводим сообщение
 						ws->error(mess);
 						// Выполняем реконнект
@@ -266,7 +268,7 @@ void awh::WebSocketClient::readCallback(const char * buffer, const size_t size, 
 					(head.optcode == frame_t::opcode_t::CONTINUATION) ||
 					(((uint8_t) head.optcode > 0x07) && ((uint8_t) head.optcode < 0x0b)))){
 						// Создаём сообщение
-						mess_t mess(1002, "RSV1 must be clear");
+						mess = mess_t(1002, "RSV1 must be clear");
 						// Выводим сообщение
 						ws->error(mess);
 						// Выполняем реконнект
@@ -275,7 +277,7 @@ void awh::WebSocketClient::readCallback(const char * buffer, const size_t size, 
 					// Если опкоды требуют финального фрейма
 					if(!head.fin && ((uint8_t) head.optcode > 0x07) && ((uint8_t) head.optcode < 0x0b)){
 						// Создаём сообщение
-						mess_t mess(1002, "FIN must be set");
+						mess = mess_t(1002, "FIN must be set");
 						// Выводим сообщение
 						ws->error(mess);
 						// Выполняем реконнект
@@ -303,10 +305,18 @@ void awh::WebSocketClient::readCallback(const char * buffer, const size_t size, 
 							ws->opcode = head.optcode;
 							// Запоминаем, что данные пришли сжатыми
 							ws->compressed = (head.rsv[0] && (ws->compress != http_t::compress_t::NONE));
-							// Если список фрагментированных сообщений существует
-							if(!ws->fragmes.empty()){
+							// Если сообщение замаскированно
+							if(head.mask){
 								// Создаём сообщение
-								mess_t mess(1002, "opcode for subsequent fragmented messages should not be set");
+								mess = mess_t(1002, "masked frame from server");
+								// Выводим сообщение
+								ws->error(mess);
+								// Выполняем реконнект
+								goto Reconnect;
+							// Если список фрагментированных сообщений существует
+							} else if(!ws->fragmes.empty()) {
+								// Создаём сообщение
+								mess = mess_t(1002, "opcode for subsequent fragmented messages should not be set");
 								// Выводим сообщение
 								ws->error(mess);
 								// Выполняем реконнект
@@ -333,7 +343,7 @@ void awh::WebSocketClient::readCallback(const char * buffer, const size_t size, 
 						// Если ответом является CLOSE
 						case (uint8_t) frame_t::opcode_t::CLOSE: {
 							// Извлекаем сообщение
-							const auto & mess = ws->frame.message(data);
+							mess = ws->frame.message(data);
 							// Выводим сообщение
 							ws->error(mess);
 							// Выполняем реконнект
@@ -350,8 +360,8 @@ void awh::WebSocketClient::readCallback(const char * buffer, const size_t size, 
 		}
 		// Устанавливаем метку реконнекта
 		Reconnect:
-		// Завершаем работу
-		core->close(aid);
+		// Выполняем отправку сообщения об ошибке
+		ws->sendError(mess);
 	}
 }
 /**
@@ -481,16 +491,20 @@ void awh::WebSocketClient::readProxyCallback(const char * buffer, const size_t s
  * @param message сообщение с описанием ошибки
  */
 void awh::WebSocketClient::error(const mess_t & message) const noexcept {
-	// Если сообщение об ошибке пришло
-	if(!message.text.empty()){
-		// Если тип сообщения получен
-		if(!message.type.empty())
-			// Выводим в лог сообщение
-			this->log->print("%s - %s [%u]", log_t::flag_t::WARNING, message.type.c_str(), message.text.c_str(), message.code);
-		// Иначе выводим сообщение в упрощёном виде
-		else this->log->print("%s [%u]", log_t::flag_t::WARNING, message.text.c_str(), message.code);
-		// Если функция обратного вызова установлена, выводим полученное сообщение
-		if(this->errorFn != nullptr) this->errorFn(message.code, message.text, const_cast <WebSocketClient *> (this), this->ctx.at(1));
+	// Если код ошибки указан
+	if(message.code > 0){
+		// Если сообщение об ошибке пришло
+		if(!message.text.empty()){
+			// Если тип сообщения получен
+			if(!message.type.empty())
+				// Выводим в лог сообщение
+				this->log->print("%s - %s [%u]", log_t::flag_t::WARNING, message.type.c_str(), message.text.c_str(), message.code);
+			// Иначе выводим сообщение в упрощёном виде
+			else this->log->print("%s [%u]", log_t::flag_t::WARNING, message.text.c_str(), message.code);
+			// Если функция обратного вызова установлена, выводим полученное сообщение
+			if(this->errorFn != nullptr) this->errorFn(message.code, message.text, const_cast <WebSocketClient *> (this), this->ctx.at(1));
+		// Если функция обратного вызова установлена, выводим только код ошибки
+		} else if(this->errorFn != nullptr) this->errorFn(message.code, "", const_cast <WebSocketClient *> (this), this->ctx.at(1));
 	}
 }
 /**
@@ -547,6 +561,8 @@ void awh::WebSocketClient::extraction(const vector <char> & buffer, const bool u
 				this->error(mess);
 				// Иначе выводим сообщение так - как оно пришло
 				this->messageFn(buffer, utf8, const_cast <WebSocketClient *> (this), this->ctx.at(2));
+				// Выполняем отправку сообщения об ошибке
+				this->sendError(mess);
 			}
 		// Если функция обратного вызова установлена, выводим полученное сообщение
 		} else {
@@ -573,7 +589,7 @@ void awh::WebSocketClient::pong(const string & message) noexcept {
 		// Если рукопожатие выполнено
 		if(this->http.isHandshake() && (this->aid > 0)){
 			// Создаём буфер для отправки
-			const auto & buffer = this->frame.pong(message);
+			const auto & buffer = this->frame.pong(message, true);
 			// Отправляем серверу сообщение
 			((core_t *) const_cast <coreCli_t *> (this->core))->write(buffer.data(), buffer.size(), this->aid);
 		}
@@ -589,7 +605,7 @@ void awh::WebSocketClient::ping(const string & message) noexcept {
 		// Если рукопожатие выполнено
 		if(this->http.isHandshake() && (this->aid > 0)){
 			// Создаём буфер для отправки
-			const auto & buffer = this->frame.ping(message);
+			const auto & buffer = this->frame.ping(message, true);
 			// Отправляем серверу сообщение
 			((core_t *) const_cast <coreCli_t *> (this->core))->write(buffer.data(), buffer.size(), this->aid);
 		}
@@ -643,6 +659,26 @@ void awh::WebSocketClient::on(void * ctx, function <void (const vector <char> &,
 	this->ctx.at(2) = ctx;
 	// Устанавливаем функцию получения сообщений с сервера
 	this->messageFn = callback;
+}
+/**
+ * sendError Метод отправки сообщения об ошибке
+ * @param mess отправляемое сообщение об ошибке
+ */
+void awh::WebSocketClient::sendError(const mess_t & mess) const noexcept {
+	// Если подключение выполнено
+	if(this->core->working() && !this->locker && (this->aid > 0)){
+		// Если код ошибки относится к WebSocket
+		if(mess.code >= 1000){
+			// Получаем буфер сообщения
+			const auto & buffer = this->frame.message(mess);
+			// Если данные сообщения получены
+			if(!buffer.empty())
+				// Отправляем серверу сообщение
+				((core_t *) const_cast <coreCli_t *> (this->core))->write(buffer.data(), buffer.size(), this->aid);
+		}
+		// Завершаем работу
+		const_cast <coreCli_t *> (this->core)->close(this->aid);
+	}
 }
 /**
  * send Метод отправки сообщения на сервер
