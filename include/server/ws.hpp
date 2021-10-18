@@ -74,9 +74,9 @@ namespace awh {
 			// Тип авторизации
 			auth_t::type_t authType = auth_t::type_t::BASIC;
 			// Функция обратного вызова для извлечения пароля
-			function <string (const string &)> extractPassFn = nullptr;
+			function <string (const string &, void *)> extractPassFn = nullptr;
 			// Функция обратного вызова для обработки авторизации
-			function <bool (const string &, const string &)> checkAuthFn = nullptr;
+			function <bool (const string &, const string &, void *)> checkAuthFn = nullptr;
 		private:
 			// Поддерживаемые сабпротоколы
 			vector <string> subs;
@@ -87,7 +87,10 @@ namespace awh {
 			size_t frameSize = 0xFA000;
 		private:
 			// Список контекстов передаваемых объектов
-			vector <void *> ctx = {nullptr, nullptr, nullptr, nullptr};
+			vector <void *> ctx = {
+				nullptr, nullptr, nullptr,
+				nullptr, nullptr, nullptr
+			};
 		private:
 			// Создаём объект фреймворка
 			const fmk_t * fmk = nullptr;
@@ -312,14 +315,16 @@ namespace awh {
 		public:
 			/**
 			 * setExtractPassCallback Метод добавления функции извлечения пароля
+			 * @param ctx      контекст для вывода в сообщении
 			 * @param callback функция обратного вызова для извлечения пароля
 			 */
-			void setExtractPassCallback(function <string (const string &)> callback) noexcept;
+			void setExtractPassCallback(void * ctx, function <string (const string &, void *)> callback) noexcept;
 			/**
 			 * setAuthCallback Метод добавления функции обработки авторизации
+			 * @param ctx      контекст для вывода в сообщении
 			 * @param callback функция обратного вызова для обработки авторизации
 			 */
-			void setAuthCallback(function <bool (const string &, const string &)> callback) noexcept;
+			void setAuthCallback(void * ctx, function <bool (const string &, const string &, void *)> callback) noexcept;
 		public:
 			/**
 			 * setAuthType Метод установки типа авторизации

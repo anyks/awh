@@ -47,14 +47,16 @@ namespace awh {
 		public:
 			/**
 			 * setExtractPassCallback Метод добавления функции извлечения пароля
+			 * @param ctx      контекст для вывода в сообщении
 			 * @param callback функция обратного вызова для извлечения пароля
 			 */
-			void setExtractPassCallback(function <string (const string &)> callback) noexcept;
+			void setExtractPassCallback(void * ctx, function <string (const string &, void *)> callback) noexcept;
 			/**
 			 * setAuthCallback Метод добавления функции обработки авторизации
+			 * @param ctx      контекст для вывода в сообщении
 			 * @param callback функция обратного вызова для обработки авторизации
 			 */
-			void setAuthCallback(function <bool (const string &, const string &)> callback) noexcept;
+			void setAuthCallback(void * ctx, function <bool (const string &, const string &, void *)> callback) noexcept;
 		public:
 			/**
 			 * setAuthType Метод установки типа авторизации

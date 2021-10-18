@@ -22,7 +22,7 @@ const bool awh::AuthServer::check() noexcept {
 		// Если тип авторизации - Базовая
 		case (uint8_t) type_t::BASIC:
 			// Выполняем проверку авторизации
-			result = (this->authFn != nullptr ? this->authFn(this->user, this->pass) : result);
+			result = (this->authFn != nullptr ? this->authFn(this->user, this->pass, this->ctx.at(1)) : result);
 		break;
 		// Если тип авторизации - Дайджест
 		case (uint8_t) type_t::DIGEST: {
@@ -31,7 +31,7 @@ const bool awh::AuthServer::check() noexcept {
 				// Если на сервере счётчик меньше
 				if((stoi(this->digest.nc) < stoi(this->userDigest.nc)) && (this->extractPassFn != nullptr)){
 					// Получаем пароль пользователя
-					const string & pass = this->extractPassFn(this->user);
+					const string & pass = this->extractPassFn(this->user, this->ctx.at(0));
 					// Если пароль пользователя получен
 					if(!pass.empty()){
 						// Параметры проверки дайджест авторизации
@@ -75,17 +75,23 @@ void awh::AuthServer::setOpaque(const string & opaque) noexcept {
 }
 /**
  * setExtractPassCallback Метод добавления функции извлечения пароля
+ * @param ctx      контекст для вывода в сообщении
  * @param callback функция обратного вызова для извлечения пароля
  */
-void awh::AuthServer::setExtractPassCallback(function <string (const string &)> callback) noexcept {
+void awh::AuthServer::setExtractPassCallback(void * ctx, function <string (const string &, void *)> callback) noexcept {
+	// Устанавливаем контекст передаваемого объекта
+	this->ctx.at(0) = ctx;
 	// Устанавливаем функцию извлечения пароля
 	this->extractPassFn = callback;
 }
 /**
  * setAuthCallback Метод добавления функции обработки авторизации
+ * @param ctx      контекст для вывода в сообщении
  * @param callback функция обратного вызова для обработки авторизации
  */
-void awh::AuthServer::setAuthCallback(function <bool (const string &, const string &)> callback) noexcept {
+void awh::AuthServer::setAuthCallback(void * ctx, function <bool (const string &, const string &, void *)> callback) noexcept {
+	// Устанавливаем контекст передаваемого объекта
+	this->ctx.at(1) = ctx;
 	// Устанавливаем функцию проверки авторизации
 	this->authFn = callback;
 }

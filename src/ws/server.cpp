@@ -160,19 +160,21 @@ void awh::WSServer::setOpaque(const string & opaque) noexcept {
 }
 /**
  * setExtractPassCallback Метод добавления функции извлечения пароля
+ * @param ctx      контекст для вывода в сообщении
  * @param callback функция обратного вызова для извлечения пароля
  */
-void awh::WSServer::setExtractPassCallback(function <string (const string &)> callback) noexcept {
+void awh::WSServer::setExtractPassCallback(void * ctx, function <string (const string &, void *)> callback) noexcept {
 	// Устанавливаем внешнюю функцию
-	this->authSrv.setExtractPassCallback(callback);
+	this->authSrv.setExtractPassCallback(ctx, callback);
 }
 /**
  * setAuthCallback Метод добавления функции обработки авторизации
+ * @param ctx      контекст для вывода в сообщении
  * @param callback функция обратного вызова для обработки авторизации
  */
-void awh::WSServer::setAuthCallback(function <bool (const string &, const string &)> callback) noexcept {
+void awh::WSServer::setAuthCallback(void * ctx, function <bool (const string &, const string &, void *)> callback) noexcept {
 	// Устанавливаем внешнюю функцию
-	this->authSrv.setAuthCallback(callback);
+	this->authSrv.setAuthCallback(ctx, callback);
 }
 /**
  * setAuthType Метод установки типа авторизации

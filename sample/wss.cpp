@@ -56,26 +56,29 @@ int main(int argc, char * argv[]) noexcept {
 	// Выполняем инициализацию WebSocket сервера
 	ws.init(2222, "127.0.0.1", http_t::compress_t::DEFLATE);
 	// Устанавливаем функцию извлечения пароля
-	ws.setExtractPassCallback([](const string & user) -> string {
-
-		cout << " @@@@@@@@@@@@@ " << user << endl;
-
+	ws.setExtractPassCallback(&log, [](const string & user, void * ctx) -> string {
+		// Получаем объект логирования
+		log_t * log = reinterpret_cast <log_t *> (ctx);
+		// Выводим информацию в лог
+		log->print("USER: %s, PASS: %s", log_t::flag_t::INFO, user.c_str(), "password");
 		// Выводим пароль
 		return "password";
 	});
 	// Устанавливаем функцию проверки авторизации
-	ws.setAuthCallback([](const string & user, const string & password) -> bool {
-
-		cout << " @@@@@@@@@@@@@ " << user << " == " << password << endl;
-
+	ws.setAuthCallback(&log, [](const string & user, const string & password, void * ctx) -> bool {
+		// Получаем объект логирования
+		log_t * log = reinterpret_cast <log_t *> (ctx);
+		// Выводим информацию в лог
+		log->print("USER: %s, PASS: %s", log_t::flag_t::INFO, user.c_str(), password.c_str());
 		// Разрешаем авторизацию
 		return true;
 	});
 	// Установливаем функцию обратного вызова на событие активации клиента на сервере
-	ws.on(nullptr, [](const string & ip, const string & mac, wsSrv_t * ws, void * ctx) -> bool {
-
-		cout << " +++++++++++++++ ACCEPT " << ip << " == " << mac << endl;
-
+	ws.on(&log, [](const string & ip, const string & mac, wsSrv_t * ws, void * ctx) -> bool {
+		// Получаем объект логирования
+		log_t * log = reinterpret_cast <log_t *> (ctx);
+		// Выводим информацию в лог
+		log->print("ACCEPT: ip = %s, mac = %s", log_t::flag_t::INFO, ip.c_str(), mac.c_str());
 		// Разрешаем подключение клиенту
 		return true;
 	});
