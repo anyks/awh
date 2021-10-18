@@ -251,12 +251,6 @@ namespace awh {
 			void send(const size_t aid, const char * message, const size_t size, const bool utf8 = true) noexcept;
 		public:
 			/**
-			 * sub Метод получения выбранного сабпротокола
-			 * @param aid идентификатор адъютанта
-			 * @return    название поддерживаемого сабпротокола
-			 */
-			const string sub(const size_t aid) const noexcept;
-			/**
 			 * ip Метод получения IP адреса адъютанта
 			 * @param aid идентификатор адъютанта
 			 * @return    адрес интернет подключения адъютанта
@@ -288,6 +282,12 @@ namespace awh {
 			 * @param subs подпротоколы для установки
 			 */
 			void setSubs(const vector <string> & subs) noexcept;
+			/**
+			 * getSub Метод получения выбранного сабпротокола
+			 * @param aid идентификатор адъютанта
+			 * @return    название поддерживаемого сабпротокола
+			 */
+			const string getSub(const size_t aid) const noexcept;
 		public:
 			/**
 			 * setWaitTimeDetect Метод детекции сообщений по количеству секунд

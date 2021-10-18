@@ -72,7 +72,11 @@ int main(int argc, char * argv[]) noexcept {
 	// ws.setWaitTimeDetect(10, 0);
 	// Выполняем инициализацию WebSocket клиента
 	// ws.init("wss://stream.binance.com:9443/stream", http_t::compress_t::DEFLATE);
-	ws.init("ws://127.0.0.1:2222", http_t::compress_t::DEFLATE);
+	ws.init("ws://127.0.0.1:2222", http_t::compress_t::GZIP);
+	// Устанавливаем шифрование
+	ws.setCrypt("PASS", "");
+	// Устанавливаем сабпротоколы
+	ws.setSubs({"test2", "test8", "test9"});
 	// Выполняем подписку на получение логов
 	log.subscribe([](const log_t::flag_t flag, const string & message){
 		// Выводим сообщение
@@ -116,7 +120,7 @@ int main(int argc, char * argv[]) noexcept {
 			// Создаём объект JSON
 			json data = json::parse(buffer.begin(), buffer.end());
 			// Выводим полученный результат
-			cout << " +++++++++++++ " << data.dump(4) << endl;
+			cout << " +++++++++++++ " << data.dump(4) << " == " << ws->getSub() << endl;
 		// Сообщаем количество полученных байт
 		} else cout << " +++++++++++++ " << buffer.size() << " bytes" << endl;
 	});

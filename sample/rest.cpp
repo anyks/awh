@@ -56,6 +56,8 @@ int main(int argc, char * argv[]) noexcept {
 	rest.setAuthType();
 	// Устанавливаем тип авторизации прокси-сервера
 	rest.setAuthTypeProxy();
+	// Устанавливаем тип компрессии
+	rest.setCompress(http_t::compress_t::GZIP);
 	// Выполняем получение URL адреса сервера
 	// uri_t::url_t url = uri.parseUrl("https://2ip.ru");
 	// uri_t::url_t url = uri.parseUrl("https://www.anyks.com");

@@ -61,9 +61,9 @@ void awh::WebSocketClient::connectCallback(const size_t aid, const size_t wid, c
 		// Выполняем очистку параметров HTTP запроса
 		ws->http.clear();
 		// Получаем бинарные данные REST запроса
-		const auto & rest = ws->http.request(ws->worker.url);
+		const auto & request = ws->http.request(ws->worker.url);
 		// Если бинарные данные запроса получены, отправляем на сервер
-		if(!rest.empty()) core->write(rest.data(), rest.size(), aid);
+		if(!request.empty()) core->write(request.data(), request.size(), aid);
 	}
 }
 /**
@@ -128,9 +128,9 @@ void awh::WebSocketClient::connectProxyCallback(const size_t aid, const size_t w
 				// Выполняем очистку параметров HTTP запроса
 				ws->worker.proxy.http.clear();
 				// Получаем бинарные данные REST запроса
-				const auto & rest = ws->worker.proxy.http.proxy(ws->worker.url);
+				const auto & request = ws->worker.proxy.http.proxy(ws->worker.url);
 				// Если бинарные данные запроса получены, отправляем на прокси-сервер
-				if(!rest.empty()) core->write(rest.data(), rest.size(), aid);
+				if(!request.empty()) core->write(request.data(), request.size(), aid);
 			} break;
 			// Иначе завершаем работу
 			default: core->close(aid);
@@ -693,6 +693,8 @@ void awh::WebSocketClient::send(const char * message, const size_t size, const b
 		this->locker = !this->locker;
 		// Если рукопожатие выполнено
 		if((message != nullptr) && (size > 0) && this->http.isHandshake() && (this->aid > 0)){
+			// Буфер сжатых данных
+			vector <char> buffer;
 			// Создаём объект заголовка для отправки
 			frame_t::head_t head;
 			// Передаём сообщение одним запросом
@@ -706,13 +708,13 @@ void awh::WebSocketClient::send(const char * message, const size_t size, const b
 			// Если нужно производить шифрование
 			if(this->crypt){
 				// Выполняем шифрование переданных данных
-				const auto & res = this->hash.encrypt(message, size);
+				buffer = this->hash.encrypt(message, size);
 				// Если данные зашифрованны
-				if(!res.empty()){
+				if(!buffer.empty()){
 					// Заменяем сообщение для передачи
-					message = res.data();
+					message = buffer.data();
 					// Заменяем размер сообщения
-					(* const_cast <size_t *> (&size)) = res.size();
+					(* const_cast <size_t *> (&size)) = buffer.size();
 				}
 			}
 			/**
@@ -750,10 +752,21 @@ void awh::WebSocketClient::send(const char * message, const size_t size, const b
 								data = this->hash.compressBrotli(message, size);
 							break;
 						}
-						// Создаём буфер для отправки
-						const auto & buffer = this->frame.set(head, data.data(), data.size());
-						// Отправляем серверу сообщение
-						((core_t *) const_cast <coreCli_t *> (this->core))->write(buffer.data(), buffer.size(), this->aid);
+						// Если сжатие данных прошло удачно
+						if(!data.empty()){
+							// Создаём буфер для отправки
+							const auto & buffer = this->frame.set(head, data.data(), data.size());
+							// Отправляем серверу сообщение
+							((core_t *) const_cast <coreCli_t *> (this->core))->write(buffer.data(), buffer.size(), this->aid);
+						// Если сжать данные не получилось
+						} else {
+							// Снимаем флаг сжатых данных
+							const_cast <frame_t::head_t *> (&head)->rsv[0] = false;
+							// Создаём буфер для отправки
+							const auto & buffer = this->frame.set(head, message, size);
+							// Отправляем серверу сообщение
+							((core_t *) const_cast <coreCli_t *> (this->core))->write(buffer.data(), buffer.size(), this->aid);
+						}
 					// Если сообщение перед отправкой сжимать не нужно
 					} else {
 						// Создаём буфер для отправки
@@ -848,7 +861,7 @@ const string & awh::WebSocketClient::getSub() const noexcept {
  */
 void awh::WebSocketClient::setSub(const string & sub) noexcept {
 	// Устанавливаем подпротокол
-	if(!sub.empty()) this->subs.push_back(sub);
+	if(!sub.empty()) this->http.setSub(sub);
 }
 /**
  * setSubs Метод установки списка подпротоколов поддерживаемых сервером
@@ -856,7 +869,7 @@ void awh::WebSocketClient::setSub(const string & sub) noexcept {
  */
 void awh::WebSocketClient::setSubs(const vector <string> & subs) noexcept {
 	// Если список подпротоколов получен
-	if(!subs.empty()) this->subs = subs;
+	if(!subs.empty()) this->http.setSubs(subs);
 }
 /**
  * setWaitTimeDetect Метод детекции сообщений по количеству секунд
@@ -1014,6 +1027,8 @@ void awh::WebSocketClient::setCrypt(const string & pass, const string & salt, co
 	this->hash.setSalt(salt);
 	// Устанавливаем пароль шифрования
 	this->hash.setPassword(pass);
+	// Устанавливаем параметры шифрования
+	if(this->crypt) this->http.setCrypt(pass, salt, aes);
 }
 /**
  * setAuthType Метод установки типа авторизации

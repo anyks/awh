@@ -626,6 +626,8 @@ void awh::WebSocketServer::send(const size_t aid, const char * message, const si
 			adj->locker = !adj->locker;
 			// Если рукопожатие выполнено
 			if(adj->http.isHandshake()){
+				// Буфер сжатых данных
+				vector <char> buffer;
 				// Создаём объект заголовка для отправки
 				frame_t::head_t head;
 				// Передаём сообщение одним запросом
@@ -639,13 +641,13 @@ void awh::WebSocketServer::send(const size_t aid, const char * message, const si
 				// Если нужно производить шифрование
 				if(this->crypt){
 					// Выполняем шифрование переданных данных
-					const auto & res = this->hash.encrypt(message, size);
+					buffer = this->hash.encrypt(message, size);
 					// Если данные зашифрованны
-					if(!res.empty()){
+					if(!buffer.empty()){
 						// Заменяем сообщение для передачи
-						message = res.data();
+						message = buffer.data();
 						// Заменяем размер сообщения
-						(* const_cast <size_t *> (&size)) = res.size();
+						(* const_cast <size_t *> (&size)) = buffer.size();
 					}
 				}
 				/**
@@ -683,10 +685,21 @@ void awh::WebSocketServer::send(const size_t aid, const char * message, const si
 									data = this->hash.compressBrotli(message, size);
 								break;
 							}
-							// Создаём буфер для отправки
-							const auto & buffer = this->frame.set(head, data.data(), data.size());
-							// Отправляем серверу сообщение
-							((core_t *) const_cast <coreSrv_t *> (this->core))->write(buffer.data(), buffer.size(), aid);
+							// Если сжатие данных прошло удачно
+							if(!data.empty()){
+								// Создаём буфер для отправки
+								const auto & buffer = this->frame.set(head, data.data(), data.size());
+								// Отправляем серверу сообщение
+								((core_t *) const_cast <coreSrv_t *> (this->core))->write(buffer.data(), buffer.size(), aid);
+							// Если сжать данные не получилось
+							} else {
+								// Снимаем флаг сжатых данных
+								const_cast <frame_t::head_t *> (&head)->rsv[0] = false;
+								// Создаём буфер для отправки
+								const auto & buffer = this->frame.set(head, message, size);
+								// Отправляем серверу сообщение
+								((core_t *) const_cast <coreSrv_t *> (this->core))->write(buffer.data(), buffer.size(), aid);
+							}
 						// Если сообщение перед отправкой сжимать не нужно
 						} else {
 							// Создаём буфер для отправки
@@ -728,24 +741,6 @@ void awh::WebSocketServer::send(const size_t aid, const char * message, const si
 			adj->locker = !adj->locker;
 		}
 	}
-}
-/**
- * sub Метод получения выбранного сабпротокола
- * @param aid идентификатор адъютанта
- * @return    название поддерживаемого сабпротокола
- */
-const string awh::WebSocketServer::sub(const size_t aid) const noexcept {
-	// Результат работы функции
-	string result = "";
-	// Если идентификатор адъютанта передан
-	if(aid > 0){
-		// Получаем параметры подключения адъютанта
-		workSrvWss_t::adjp_t * adj = const_cast <workSrvWss_t::adjp_t *> (this->worker.getAdj(aid));
-		// Если отправка сообщений разблокированна
-		if(adj != nullptr) result = adj->http.getSub();
-	}
-	// Выводим результат
-	return result;
 }
 /**
  * ip Метод получения IP адреса адъютанта
@@ -798,6 +793,24 @@ void awh::WebSocketServer::setSub(const string & sub) noexcept {
 void awh::WebSocketServer::setSubs(const vector <string> & subs) noexcept {
 	// Если список подпротоколов получен
 	if(!subs.empty()) this->subs = subs;
+}
+/**
+ * getSub Метод получения выбранного сабпротокола
+ * @param aid идентификатор адъютанта
+ * @return    название поддерживаемого сабпротокола
+ */
+const string awh::WebSocketServer::getSub(const size_t aid) const noexcept {
+	// Результат работы функции
+	string result = "";
+	// Если идентификатор адъютанта передан
+	if(aid > 0){
+		// Получаем параметры подключения адъютанта
+		workSrvWss_t::adjp_t * adj = const_cast <workSrvWss_t::adjp_t *> (this->worker.getAdj(aid));
+		// Если отправка сообщений разблокированна
+		if(adj != nullptr) result = adj->http.getSub();
+	}
+	// Выводим результат
+	return result;
 }
 /**
  * setWaitTimeDetect Метод детекции сообщений по количеству секунд

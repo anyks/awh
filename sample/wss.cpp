@@ -55,6 +55,10 @@ int main(int argc, char * argv[]) noexcept {
 	ws.setAuthType(auth_t::type_t::DIGEST, auth_t::alg_t::SHA256);
 	// Выполняем инициализацию WebSocket сервера
 	ws.init(2222, "127.0.0.1", http_t::compress_t::DEFLATE);
+	// Устанавливаем шифрование
+	ws.setCrypt("PASS", "");
+	// Устанавливаем сабпротоколы
+	ws.setSubs({"test1", "test2", "test3"});
 	// Устанавливаем функцию извлечения пароля
 	ws.setExtractPassCallback(&log, [](const string & user, void * ctx) -> string {
 		// Получаем объект логирования
@@ -101,7 +105,7 @@ int main(int argc, char * argv[]) noexcept {
 		// Если даныне получены
 		if(!buffer.empty()){
 
-			cout << " !!!!!!!!!! " << string(buffer.begin(), buffer.end()) << endl;
+			cout << " !!!!!!!!!! " << string(buffer.begin(), buffer.end()) << " == " << ws->getSub(aid) << endl;
 
 			// Отправляем сообщение обратно
 			ws->send(aid, buffer.data(), buffer.size(), utf8);

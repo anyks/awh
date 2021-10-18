@@ -61,13 +61,13 @@ void awh::Rest::connectCallback(const size_t aid, const size_t wid, core_t * cor
 			// Устанавливаем тело запроса
 			web->http.addBody(web->entity.data(), web->entity.size());
 		// Получаем бинарные данные REST запроса
-		const auto & rest = web->http.request(web->worker.url, web->method);
+		const auto & request = web->http.request(web->worker.url, web->method);
 		// Если бинарные данные запроса получены
-		if(!rest.empty()){
+		if(!request.empty()){
 			// Тело REST сообщения
 			vector <char> entity;
 			// Отправляем серверу сообщение
-			core->write(rest.data(), rest.size(), aid);
+			core->write(request.data(), request.size(), aid);
 			// Получаем данные тела запроса
 			while(!(entity = web->http.chunkBody()).empty()){
 				// Отправляем тело на сервер

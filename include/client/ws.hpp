@@ -54,8 +54,6 @@ namespace awh {
 			// Создаём объект для компрессии-декомпрессии данных
 			mutable hash_t hash;
 		private:
-			// Поддерживаемые сабпротоколы
-			vector <string> subs;
 			// Данные фрагметрированного сообщения
 			vector <char> fragmes;
 		private:
