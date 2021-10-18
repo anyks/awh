@@ -51,11 +51,6 @@ namespace awh {
 			 */
 			void setRealm(const string & realm) noexcept;
 			/**
-			 * setNonce Метод установки уникального ключа клиента выданного сервером
-			 * @param nonce уникальный ключ клиента
-			 */
-			void setNonce(const string & nonce) noexcept;
-			/**
 			 * setOpaque Метод установки временного ключа сессии сервера
 			 * @param opaque временный ключ сессии сервера
 			 */

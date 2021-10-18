@@ -47,8 +47,30 @@ int main(int argc, char * argv[]) noexcept {
 	 * 1. Устанавливаем ожидание входящих сообщений
 	 */
 	// ws.setMode((uint8_t) wsSrv_t::flag_t::WAITMESS);
+	// Устанавливаем название сервера
+	ws.setRealm("ANYKS");
+	// Устанавливаем временный ключ сессии
+	ws.setOpaque("keySession");
+	// Устанавливаем тип авторизации
+	ws.setAuthType(auth_t::type_t::DIGEST, auth_t::alg_t::SHA256);
 	// Выполняем инициализацию WebSocket сервера
 	ws.init(2222, "127.0.0.1", http_t::compress_t::DEFLATE);
+	// Устанавливаем функцию извлечения пароля
+	ws.setExtractPassCallback([](const string & user) -> string {
+
+		cout << " @@@@@@@@@@@@@ " << user << endl;
+
+		// Выводим пароль
+		return "password";
+	});
+	// Устанавливаем функцию проверки авторизации
+	ws.setAuthCallback([](const string & user, const string & password) -> bool {
+
+		cout << " @@@@@@@@@@@@@ " << user << " == " << password << endl;
+
+		// Разрешаем авторизацию
+		return true;
+	});
 	// Установливаем функцию обратного вызова на событие активации клиента на сервере
 	ws.on(nullptr, [](const string & ip, const string & mac, wsSrv_t * ws, void * ctx) -> bool {
 
@@ -84,75 +106,6 @@ int main(int argc, char * argv[]) noexcept {
 	});
 	// Выполняем запуск WebSocket клиента
 	ws.start();
-	// Устанавливаем адрес сертификата
-	// core.setCA("./ca/cert.pem");
-	// Устанавливаем логин и пароль пользователя
-	// ws.setUser("user", "password");
-	// Устанавливаем данные прокси-сервера
-	// ws.setProxy("http://B80TWR:uRMhnd@196.17.249.64:8000");
-	// ws.setProxy("socks5://rfbPbd:XcCuZH@45.144.169.109:8000");
-	// ws.setProxy("socks5://6S7rAk:g6K8XD@217.29.62.231:30810");
-	// Выполняем инициализацию типа авторизации
-	// ws.setAuthType();
-	// Устанавливаем тип авторизации прокси-сервера
-	// ws.setAuthTypeProxy();
-	// Устанавливаем время ожидания
-	// ws.setWaitTimeDetect(10, 0);
-	// Выполняем инициализацию WebSocket клиента
-	// ws.init("wss://stream.binance.com:9443/stream", http_t::compress_t::DEFLATE);
-	/*
-	// Выполняем подписку на получение логов
-	log.subscribe([](const log_t::flag_t flag, const string & message){
-		// Выводим сообщение
-		// cout << " ============= " << message << endl;
-	});
-	*/
-	/*
-	// Подписываемся на событие запуска и остановки сервера
-	ws.on(&log, [](const bool mode, wsCli_t * ws, void * ctx){
-		// Получаем объект логирования
-		log_t * log = reinterpret_cast <log_t *> (ctx);
-		// Выводим информацию в лог
-		log->print("%s server", log_t::flag_t::INFO, (mode ? "Start" : "Stop"));
-		// Если подключение произошло удачно
-		if(mode){
-			// Создаём объект JSON
-			json data = json::object();
-			// Формируем идентификатор объекта
-			data["id"] = 1;
-			// Формируем метод подписки
-			data["method"] = "SUBSCRIBE";
-			// Формируем параметры запрашиваемых криптовалютных пар
-			data["params"] = json::array();
-			// Формируем параметры криптовалютных пар
-			data["params"][0] = "btcusdt@aggTrade";
-			// Получаем параметры запроса в виде строки
-			const string query = data.dump();
-			// Отправляем сообщение на сервер
-			ws->send(query.data(), query.size());
-		}
-	});
-	// Подписываемся на событие получения ошибки работы клиента
-	ws.on(&log, [](const u_short code, const string & mess, wsCli_t * ws, void * ctx){
-		// Получаем объект логирования
-		log_t * log = reinterpret_cast <log_t *> (ctx);
-		// Выводим информацию в лог
-		log->print("%s [%u]", log_t::flag_t::CRITICAL, mess.c_str(), code);
-	});
-	// Подписываемся на событие получения сообщения с сервера
-	ws.on(nullptr, [](const vector <char> & buffer, const bool utf8, wsCli_t * ws, void * ctx){
-		// Если данные пришли в виде текста, выводим
-		if(utf8){
-			// Создаём объект JSON
-			json data = json::parse(buffer.begin(), buffer.end());
-			// Выводим полученный результат
-			cout << " +++++++++++++ " << data.dump(4) << endl;
-		// Сообщаем количество полученных байт
-		} else cout << " +++++++++++++ " << buffer.size() << " bytes" << endl;
-	});
-	*/
-	// Выполняем запуск WebSocket клиента
-	// ws.start();
 	// Выводим результат
 	return 0;
 }

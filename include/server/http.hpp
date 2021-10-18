@@ -34,11 +34,6 @@ namespace awh {
 			 */
 			void setRealm(const string & realm) noexcept;
 			/**
-			 * setNonce Метод установки уникального ключа клиента выданного сервером
-			 * @param nonce уникальный ключ клиента
-			 */
-			void setNonce(const string & nonce) noexcept;
-			/**
 			 * setOpaque Метод установки временного ключа сессии сервера
 			 * @param opaque временный ключ сессии сервера
 			 */
@@ -54,6 +49,13 @@ namespace awh {
 			 * @param callback функция обратного вызова для обработки авторизации
 			 */
 			void setAuthCallback(function <bool (const string &, const string &)> callback) noexcept;
+		public:
+			/**
+			 * setAuthType Метод установки типа авторизации
+			 * @param type тип авторизации
+			 * @param alg  алгоритм шифрования для Digest авторизации
+			 */
+			void setAuthType(const auth_t::type_t type = auth_t::type_t::BASIC, const auth_t::alg_t alg = auth_t::alg_t::MD5) noexcept;
 		public:
 			/**
 			 * HttpServer Конструктор

@@ -63,6 +63,21 @@ namespace awh {
 			// Размер шифрования передаваемых данных
 			hash_t::aes_t aes = hash_t::aes_t::AES128;
 		private:
+			// Название сервера
+			string realm = "";
+			// Уникальный ключ клиента
+			string nonce = "";
+			// Временный ключ сессии сервера
+			string opaque = "";
+			// Алгоритм шифрования для Digest авторизации
+			auth_t::alg_t authAlg = auth_t::alg_t::MD5;
+			// Тип авторизации
+			auth_t::type_t authType = auth_t::type_t::BASIC;
+			// Функция обратного вызова для извлечения пароля
+			function <string (const string &)> extractPassFn = nullptr;
+			// Функция обратного вызова для обработки авторизации
+			function <bool (const string &, const string &)> checkAuthFn = nullptr;
+		private:
 			// Поддерживаемые сабпротоколы
 			vector <string> subs;
 		private:
@@ -283,6 +298,35 @@ namespace awh {
 			 * @param write количество байт для детекции по записи
 			 */
 			void setBytesDetect(const worker_t::mark_t read, const worker_t::mark_t write) noexcept;
+		public:
+			/**
+			 * setRealm Метод установки название сервера
+			 * @param realm название сервера
+			 */
+			void setRealm(const string & realm) noexcept;
+			/**
+			 * setOpaque Метод установки временного ключа сессии сервера
+			 * @param opaque временный ключ сессии сервера
+			 */
+			void setOpaque(const string & opaque) noexcept;
+		public:
+			/**
+			 * setExtractPassCallback Метод добавления функции извлечения пароля
+			 * @param callback функция обратного вызова для извлечения пароля
+			 */
+			void setExtractPassCallback(function <string (const string &)> callback) noexcept;
+			/**
+			 * setAuthCallback Метод добавления функции обработки авторизации
+			 * @param callback функция обратного вызова для обработки авторизации
+			 */
+			void setAuthCallback(function <bool (const string &, const string &)> callback) noexcept;
+		public:
+			/**
+			 * setAuthType Метод установки типа авторизации
+			 * @param type тип авторизации
+			 * @param alg  алгоритм шифрования для Digest авторизации
+			 */
+			void setAuthType(const auth_t::type_t type = auth_t::type_t::BASIC, const auth_t::alg_t alg = auth_t::alg_t::MD5) noexcept;
 		public:
 			/**
 			 * setMode Метод установки флага модуля

@@ -41,11 +41,11 @@ const bool awh::AuthServer::check() noexcept {
 						// Устанавливаем параметры для проверки
 						digest.nc     = this->digest.nc;
 						digest.alg    = this->digest.alg;
-						digest.qop    = this->digest.qop;
-						digest.realm  = this->digest.realm;
-						digest.nonce  = this->digest.nonce;
-						digest.opaque = this->digest.opaque;
 						digest.uri    = this->userDigest.uri;
+						digest.qop    = this->userDigest.qop;
+						digest.realm  = this->userDigest.realm;
+						digest.nonce  = this->userDigest.nonce;
+						digest.opaque = this->userDigest.opaque;
 						digest.cnonce = this->userDigest.cnonce;
 						// Выполняем проверку авторизации
 						result = (this->response(this->user, pass, digest).compare(this->userDigest.resp) == 0);
@@ -64,14 +64,6 @@ const bool awh::AuthServer::check() noexcept {
 void awh::AuthServer::setRealm(const string & realm) noexcept {
 	// Если название сервера передано
 	if(!realm.empty()) this->digest.realm = realm;
-}
-/**
- * setNonce Метод установки уникального ключа клиента выданного сервером
- * @param nonce уникальный ключ клиента
- */
-void awh::AuthServer::setNonce(const string & nonce) noexcept {
-	// Если уникальный ключ клиента передан
-	if(!nonce.empty()) this->digest.nonce = nonce;
 }
 /**
  * setOpaque Метод установки временного ключа сессии сервера
@@ -310,9 +302,9 @@ const string awh::AuthServer::getHeader(const bool mode) noexcept {
 				// Если нужно вывести только значение заголовка
 				if(mode)
 					// Создаём строку запроса авторизации
-					result = this->fmk->format("Basic realm=\"%s\"", AWH_HOST);
+					result = this->fmk->format("Basic realm=\"%s\", charset=\"UTF-8\"", "Please login for access");
 				// Если нужно вывести полную строку запроса
-				else result = this->fmk->format("WWW-Authenticate: Basic realm=\"%s\"\r\n", AWH_HOST);
+				else result = this->fmk->format("WWW-Authenticate: Basic realm=\"%s\", charset=\"UTF-8\"\r\n", "Please login for access");
 			}
 		// Выполняем прехват ошибки
 		} catch(const exception & error) {

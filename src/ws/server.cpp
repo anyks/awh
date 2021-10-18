@@ -151,14 +151,6 @@ void awh::WSServer::setRealm(const string & realm) noexcept {
 	if(!realm.empty()) this->authSrv.setRealm(realm);
 }
 /**
- * setNonce Метод установки уникального ключа клиента выданного сервером
- * @param nonce уникальный ключ клиента
- */
-void awh::WSServer::setNonce(const string & nonce) noexcept {
-	// Если уникальный ключ клиента передан
-	if(!nonce.empty()) this->authSrv.setNonce(nonce);
-}
-/**
  * setOpaque Метод установки временного ключа сессии сервера
  * @param opaque временный ключ сессии сервера
  */
@@ -181,4 +173,13 @@ void awh::WSServer::setExtractPassCallback(function <string (const string &)> ca
 void awh::WSServer::setAuthCallback(function <bool (const string &, const string &)> callback) noexcept {
 	// Устанавливаем внешнюю функцию
 	this->authSrv.setAuthCallback(callback);
+}
+/**
+ * setAuthType Метод установки типа авторизации
+ * @param type тип авторизации
+ * @param alg  алгоритм шифрования для Digest авторизации
+ */
+void awh::WSServer::setAuthType(const auth_t::type_t type, const auth_t::alg_t alg) noexcept {
+	// Устанавливаем тип авторизации
+	this->authSrv.setType(type, alg);
 }

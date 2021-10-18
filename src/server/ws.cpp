@@ -76,6 +76,30 @@ void awh::WebSocketServer::connectCallback(const size_t aid, const size_t wid, c
 		if(!ws->subs.empty()) adj->http.setSubs(ws->subs);
 		// Устанавливаем параметры шифрования
 		if(ws->crypt) adj->http.setCrypt(ws->pass, ws->salt, ws->aes);
+		// Если сервер требует авторизацию
+		if(ws->authType != auth_t::type_t::NONE){
+			// Определяем тип авторизации
+			switch((uint8_t) ws->authType){
+				// Если тип авторизации Basic
+				case (uint8_t) auth_t::type_t::BASIC: {
+					// Устанавливаем параметры авторизации
+					adj->http.setAuthType(ws->authType);
+					// Устанавливаем функцию проверки авторизации
+					adj->http.setAuthCallback(ws->checkAuthFn);
+				} break;
+				// Если тип авторизации Digest
+				case (uint8_t) auth_t::type_t::DIGEST: {
+					// Устанавливаем название сервера
+					adj->http.setRealm(ws->realm);
+					// Устанавливаем временный ключ сессии сервера
+					adj->http.setOpaque(ws->opaque);
+					// Устанавливаем параметры авторизации
+					adj->http.setAuthType(ws->authType, ws->authAlg);
+					// Устанавливаем функцию извлечения пароля
+					adj->http.setExtractPassCallback(ws->extractPassFn);
+				} break;
+			}
+		}
 	}
 }
 /**
@@ -218,16 +242,27 @@ void awh::WebSocketServer::readCallback(const char * buffer, const size_t size, 
 						case (uint8_t) http_t::stath_t::FAULT: {
 							// Выполняем сброс состояния HTTP парсера
 							adj->http.clear();
+							// Выполняем сброс состояния HTTP парсера
+							adj->http.reset();
 							// Формируем запрос авторизации
 							response = adj->http.reject(401);
 						} break;
 					}
 					// Если бинарные данные запроса получены, отправляем на сервер
 					if(!response.empty()){
+						// Тело REST сообщения
+						vector <char> entity;
 						// Устанавливаем размер стопбайт
-						adj->stopBytes = response.size();
+						if(!adj->http.isAlive()) adj->stopBytes = response.size();
 						// Отправляем ответ клиенту
 						core->write(response.data(), response.size(), aid);
+						// Получаем данные тела запроса
+						while(!(entity = adj->http.chunkBody()).empty()){
+							// Устанавливаем размер стопбайт
+							if(!adj->http.isAlive()) adj->stopBytes += entity.size();
+							// Отправляем тело на сервер
+							core->write(entity.data(), entity.size(), aid);
+						}
 					// Завершаем работу
 					} else core->close(aid);
 				}
@@ -785,6 +820,49 @@ void awh::WebSocketServer::setBytesDetect(const worker_t::mark_t read, const wor
 	this->worker.markRead = read;
 	// Устанавливаем количество байт на запись
 	this->worker.markWrite = write;
+}
+/**
+ * setRealm Метод установки название сервера
+ * @param realm название сервера
+ */
+void awh::WebSocketServer::setRealm(const string & realm) noexcept {
+	// Устанавливаем название сервера
+	this->realm = realm;
+}
+/**
+ * setOpaque Метод установки временного ключа сессии сервера
+ * @param opaque временный ключ сессии сервера
+ */
+void awh::WebSocketServer::setOpaque(const string & opaque) noexcept {
+	// Устанавливаем временный ключ сессии сервера
+	this->opaque = opaque;
+}
+/**
+ * setExtractPassCallback Метод добавления функции извлечения пароля
+ * @param callback функция обратного вызова для извлечения пароля
+ */
+void awh::WebSocketServer::setExtractPassCallback(function <string (const string &)> callback) noexcept {
+	// Устанавливаем функцию обратного вызова для извлечения пароля
+	this->extractPassFn = callback;
+}
+/**
+ * setAuthCallback Метод добавления функции обработки авторизации
+ * @param callback функция обратного вызова для обработки авторизации
+ */
+void awh::WebSocketServer::setAuthCallback(function <bool (const string &, const string &)> callback) noexcept {
+	// Устанавливаем функцию обратного вызова для обработки авторизации
+	this->checkAuthFn = callback;
+}
+/**
+ * setAuthType Метод установки типа авторизации
+ * @param type тип авторизации
+ * @param alg  алгоритм шифрования для Digest авторизации
+ */
+void awh::WebSocketServer::setAuthType(const auth_t::type_t type, const auth_t::alg_t alg) noexcept {
+	// Устанавливаем алгоритм шифрования для Digest авторизации
+	this->authAlg = alg;
+	// Устанавливаем тип авторизации
+	this->authType = type;
 }
 /**
  * setMode Метод установки флага модуля

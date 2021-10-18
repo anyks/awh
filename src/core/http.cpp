@@ -45,7 +45,7 @@ awh::Http::stath_t awh::Http::checkAuth() noexcept {
 				// Если попытки провести аутентификацию ещё небыло, пробуем ещё раз
 				if(!this->failAuth && (this->authCli.getType() == auth_t::type_t::DIGEST)){
 					// Получаем параметры авторизации
-					auto it = this->headers.find("www-authenticate");
+					auto it = this->headers.find(this->query.code == 401 ? "www-authenticate" : "proxy-authenticate");
 					// Если параметры авторизации найдены
 					if((this->failAuth = (it != this->headers.end()))){
 						// Устанавливаем заголовок HTTP в параметры авторизации
@@ -184,8 +184,6 @@ void awh::Http::update() noexcept {
 void awh::Http::clear() noexcept {
 	// Выполняем очистку тела HTTP запроса
 	this->body.clear();
-	// Выполняем сброс параметров запроса
-	this->url.clear();
 	// Выполняем сброс чёрного списка HTTP заголовков
 	this->black.clear();
 	// Выполняем сброс полученных HTTP заголовков
@@ -199,6 +197,8 @@ void awh::Http::clear() noexcept {
  * reset Метод сброса параметров запроса
  */
 void awh::Http::reset() noexcept {
+	// Выполняем сброс параметров запроса
+	this->url.clear();
 	// Выполняем сброс размера тела
 	this->bodySize = -1;
 	// Обнуляем флаг проверки авторизации
@@ -880,14 +880,15 @@ vector <char> awh::Http::response(const u_short code, const string & mess) const
 		/**
 		 * Типы основных заголовков
 		 */
-		bool available[7] = {
+		bool available[8] = {
 			false, // Connection
 			false, // Content-Type
 			false, // Content-Length
 			false, // Content-Encoding
 			false, // Transfer-Encoding
 			false, // X-AWH-Encryption
-			false  // WWW-Authenticate
+			false, // WWW-Authenticate
+			false  // Proxy-Authenticate
 		};
 		// Размер тела сообщения
 		size_t length = 0;
@@ -903,18 +904,21 @@ vector <char> awh::Http::response(const u_short code, const string & mess) const
 		for(auto & header : this->headers){
 			// Получаем анализируемый заголовок
 			const string & head = this->fmk->toLower(header.first);
+			// Флаг разрешающий вывода заголовка
+			bool allow = !this->isBlack(head);
 			// Выполняем перебор всех обязательных заголовков
-			for(u_short i = 0; i < 7; i++){
+			for(u_short i = 0; i < 8; i++){
 				// Если заголовок уже найден пропускаем его
 				if(available[i]) continue;
 				// Выполняем првоерку заголовка
 				switch(i){
-					case 0: available[i] = (head.compare("connection") == 0);        break;
-					case 1: available[i] = (head.compare("content-type") == 0);      break;
-					case 3: available[i] = (head.compare("content-encoding") == 0);  break;
-					case 4: available[i] = (head.compare("transfer-encoding") == 0); break;
-					case 5: available[i] = (head.compare("x-awh-encryption") == 0);  break;
-					case 6: available[i] = (head.compare("www-authenticate") == 0);  break;
+					case 0: available[i] = (head.compare("connection") == 0);         break;
+					case 1: available[i] = (head.compare("content-type") == 0);       break;
+					case 3: available[i] = (head.compare("content-encoding") == 0);   break;
+					case 4: available[i] = (head.compare("transfer-encoding") == 0);  break;
+					case 5: available[i] = (head.compare("x-awh-encryption") == 0);   break;
+					case 6: available[i] = (head.compare("www-authenticate") == 0);   break;
+					case 7: available[i] = (head.compare("proxy-authenticate") == 0); break;
 					case 2: {
 						// Запоминаем, что мы нашли заголовок размера тела
 						available[i] = (head.compare("content-length") == 0);
@@ -922,11 +926,18 @@ vector <char> awh::Http::response(const u_short code, const string & mess) const
 						if(available[i]) length = stoull(header.second);
 					} break;
 				}
+				// Если заголовок разрешён для вывода
+				if(allow){
+					// Выполняем првоерку заголовка
+					switch(i){
+						case 2:
+						case 4:
+						case 5: allow = !available[i]; break;
+					}
+				}
 			}
-			// Если заголовок не является запрещённым
-			if(!available[2] && !available[4] && !available[5] && !this->isBlack(head))
-				// Добавляем заголовок в ответ
-				response.append(this->fmk->format("%s: %s\r\n", header.first.c_str(), header.second.c_str()));
+			// Если заголовок не является запрещённым, добавляем заголовок в ответ
+			if(allow) response.append(this->fmk->format("%s: %s\r\n", header.first.c_str(), header.second.c_str()));
 		}
 		// Устанавливаем Connection если не передан
 		if(!available[0] && !this->isBlack("Connection"))
@@ -945,11 +956,29 @@ vector <char> awh::Http::response(const u_short code, const string & mess) const
 			// Добавляем название рабочей системы в ответ
 			response.append(this->fmk->format("X-Powered-By: %s/%s\r\n", this->servId.c_str(), this->servVer.c_str()));
 		// Если заголовок авторизации не передан
-		if(!available[6] && !this->isBlack("WWW-Authenticate")){
+		if(((code == 401) && !available[6]) || ((code == 407) && !available[7])){
 			// Получаем параметры авторизации
-			const string & auth = this->authSrv.getHeader();
-			// Если данные авторизации получены
-			if(!auth.empty()) response.append(auth);
+			const string & auth = this->authSrv.getHeader(true);
+			// Если параметры авторизации получены
+			if(!auth.empty()){
+				// Определяем код авторизации
+				switch(code){
+					// Если авторизация производится для Web-Сервера
+					case 401: {
+						// Если заголовок не запрещён
+						if(!this->isBlack("WWW-Authenticate"))
+							// Добавляем параметры авторизации
+							response.append(this->fmk->format("WWW-Authenticate: %s\r\n", auth.c_str()));
+					} break;
+					// Если авторизация производится для Прокси-Сервера
+					case 407: {
+						// Если заголовок не запрещён
+						if(!this->isBlack("Proxy-Authenticate"))
+							// Добавляем параметры авторизации
+							response.append(this->fmk->format("Proxy-Authenticate: %s\r\n", auth.c_str()));
+					} break;
+				}
+			}
 		}
 		// Если запрос должен содержать тело и тело ответа существует
 		if((code >= 200) && (code != 204) && (code != 304) && (code != 308) && !this->body.empty()){
@@ -1136,6 +1165,8 @@ vector <char> awh::Http::request(const uri_t::url_t & url, const method_t method
 			for(auto & header : this->headers){
 				// Получаем анализируемый заголовок
 				const string & head = this->fmk->toLower(header.first);
+				// Флаг разрешающий вывода заголовка
+				bool allow = !this->isBlack(head);
 				// Выполняем перебор всех обязательных заголовков
 				for(u_short i = 0; i < 11; i++){
 					// Если заголовок уже найден пропускаем его
@@ -1160,11 +1191,18 @@ vector <char> awh::Http::request(const uri_t::url_t & url, const method_t method
 							if(available[i]) length = stoull(header.second);
 						} break;
 					}
+					// Если заголовок разрешён для вывода
+					if(allow){
+						// Выполняем првоерку заголовка
+						switch(i){
+							case 5:
+							case 8:
+							case 9: allow = !available[i]; break;
+						}
+					}
 				}
-				// Если заголовок не является запрещённым
-				if(!available[5] && !available[8] && !available[9] && !this->isBlack(head))
-					// Добавляем заголовок в запрос
-					request.append(this->fmk->format("%s: %s\r\n", header.first.c_str(), header.second.c_str()));
+				// Если заголовок не является запрещённым, добавляем заголовок в запрос
+				if(allow) request.append(this->fmk->format("%s: %s\r\n", header.first.c_str(), header.second.c_str()));
 			}
 			// Устанавливаем Host если не передан
 			if(!available[0] && !this->isBlack("Host"))
