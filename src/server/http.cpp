@@ -11,6 +11,31 @@
 #include <server/http.hpp>
 
 /**
+ * checkAuth Метод проверки авторизации
+ * @return результат проверки авторизации
+ */
+awh::Http::stath_t awh::HttpServer::checkAuth() noexcept {
+	// Результат работы функции
+	stath_t result = stath_t::FAULT;
+	// Если авторизация требуется
+	if(this->authSrv.getType() != auth_t::type_t::NONE){
+		// Получаем параметры авторизации
+		auto it = this->headers.find("authorization");
+		// Если параметры авторизации найдены
+		if(it != this->headers.end()){
+			// Устанавливаем заголовок HTTP в параметры авторизации
+			this->authSrv.setHeader(it->second);
+			// Выполняем проверку авторизации
+			if(this->authSrv.check())
+				// Устанавливаем успешный результат авторизации
+				result = http_t::stath_t::GOOD;
+		}
+	// Сообщаем, что авторизация прошла успешно
+	} else result = http_t::stath_t::GOOD;
+	// Выводим результат
+	return result;
+}
+/**
  * setRealm Метод установки название сервера
  * @param realm название сервера
  */

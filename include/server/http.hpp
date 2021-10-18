@@ -27,6 +27,12 @@ namespace awh {
 	 * HttpServer Класс для работы с REST сервером
 	 */
 	typedef class HttpServer : public http_t {
+		private:
+			/**
+			 * checkAuth Метод проверки авторизации
+			 * @return результат проверки авторизации
+			 */
+			stath_t checkAuth() noexcept;
 		public:
 			/**
 			 * setRealm Метод установки название сервера

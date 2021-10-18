@@ -27,6 +27,12 @@ namespace awh {
 	 * HttpClient Класс для работы с REST клиентом
 	 */
 	typedef class HttpClient : public http_t {
+		private:
+			/**
+			 * checkAuth Метод проверки авторизации
+			 * @return результат проверки авторизации
+			 */
+			stath_t checkAuth() noexcept;
 		public:
 			/**
 			 * setUser Метод установки параметров авторизации

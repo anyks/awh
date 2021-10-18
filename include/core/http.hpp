@@ -154,10 +154,6 @@ namespace awh {
 					 */
 					Chunk() : size(0) {}
 			} chunk_t;
-			/**
-			 * Режимы работы модуля
-			 */
-			enum class mode_t : uint8_t {NONE, REQUEST, RESPONSE};
 		protected:
 			/**
 			 * Стейты работы модуля
@@ -206,8 +202,6 @@ namespace awh {
 			// User-Agent для HTTP запроса
 			mutable string userAgent = HTTP_HEADER_AGENT;
 		protected:
-			// Режим работы модуля
-			mode_t mode = mode_t::NONE;
 			// Стейт проверки авторизации
 			stath_t stath = stath_t::EMPTY;
 			// Стейт текущего запроса
@@ -233,6 +227,11 @@ namespace awh {
 			const uri_t * uri = nullptr;
 		protected:
 			/**
+			 * update Метод обновления входящих данных
+			 */
+			virtual void update() noexcept;
+		protected:
+			/**
 			 * date Метод получения текущей даты для HTTP запроса
 			 * @return текущая дата
 			 */
@@ -241,12 +240,7 @@ namespace awh {
 			 * checkAuth Метод проверки авторизации
 			 * @return результат проверки авторизации
 			 */
-			virtual stath_t checkAuth() noexcept;
-		protected:
-			/**
-			 * update Метод обновления входящих данных
-			 */
-			virtual void update() noexcept;
+			virtual stath_t checkAuth() noexcept = 0;
 		public:
 			/**
 			 * clear Метод очистки собранных данных

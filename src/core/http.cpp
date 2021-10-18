@@ -11,112 +11,6 @@
 #include <core/http.hpp>
 
 /**
- * date Метод получения текущей даты для HTTP запроса
- * @return текущая дата
- */
-const string awh::Http::date() const noexcept {
-	// Создаём буфер данных
-	char buffer[1000];
-	// Получаем текущее время
-	time_t now = time(nullptr);
-	// Извлекаем текущее время
-	struct tm tm = * gmtime(&now);
-	// Зануляем буфер
-	memset(buffer, 0, sizeof(buffer));
-	// Получаем формат времени
-	strftime(buffer, sizeof(buffer), "%a, %d %b %Y %H:%M:%S %Z", &tm);
-	// Выводим результат
-	return buffer;
-}
-/**
- * checkAuth Метод проверки авторизации
- * @return результат проверки авторизации
- */
-awh::Http::stath_t awh::Http::checkAuth() noexcept {
-	// Результат работы функции
-	stath_t result = stath_t::FAULT;
-	// Если активирован режим обработки ответа сервера
-	if(this->mode == mode_t::RESPONSE){
-		// Проверяем код ответа
-		switch(this->query.code){
-			// Если требуется авторизация
-			case 401:
-			case 407: {
-				// Если попытки провести аутентификацию ещё небыло, пробуем ещё раз
-				if(!this->failAuth && (this->authCli.getType() == auth_t::type_t::DIGEST)){
-					// Получаем параметры авторизации
-					auto it = this->headers.find(this->query.code == 401 ? "www-authenticate" : "proxy-authenticate");
-					// Если параметры авторизации найдены
-					if((this->failAuth = (it != this->headers.end()))){
-						// Устанавливаем заголовок HTTP в параметры авторизации
-						this->authCli.setHeader(it->second);
-						// Просим повторить авторизацию ещё раз
-						result = stath_t::RETRY;
-					}
-				}
-			} break;
-			// Если нужно произвести редирект
-			case 301:
-			case 308: {
-				// Получаем параметры авторизации
-				auto it = this->headers.find("location");
-				// Если адрес перенаправления найден
-				if(it != this->headers.end()){
-					// Выполняем парсинг URL
-					uri_t::url_t tmp = this->uri->parseUrl(it->second);
-					// Если параметры URL существуют
-					if(!this->url.params.empty())
-						// Переходим по всему списку параметров
-						for(auto & param : this->url.params) tmp.params.emplace(param);
-					// Меняем IP адрес сервера
-					const_cast <uri_t::url_t *> (&this->url)->ip = move(tmp.ip);
-					// Меняем порт сервера
-					const_cast <uri_t::url_t *> (&this->url)->port = move(tmp.port);
-					// Меняем на путь сервере
-					const_cast <uri_t::url_t *> (&this->url)->path = move(tmp.path);
-					// Меняем доменное имя сервера
-					const_cast <uri_t::url_t *> (&this->url)->domain = move(tmp.domain);
-					// Меняем протокол запроса сервера
-					const_cast <uri_t::url_t *> (&this->url)->schema = move(tmp.schema);
-					// Устанавливаем новый список параметров
-					const_cast <uri_t::url_t *> (&this->url)->params = move(tmp.params);
-					// Просим повторить авторизацию ещё раз
-					result = stath_t::RETRY;
-				}
-			} break;
-			// Сообщаем, что авторизация прошла успешно
-			case 100:
-			case 101:
-			case 200:
-			case 201:
-			case 202:
-			case 203:
-			case 204:
-			case 205:
-			case 206: result = stath_t::GOOD; break;
-		}
-	// Если активирован режим обработки запроса клиента
-	} else if(this->mode == mode_t::REQUEST) {
-		// Если авторизация требуется
-		if(this->authSrv.getType() != auth_t::type_t::NONE){
-			// Получаем параметры авторизации
-			auto it = this->headers.find("authorization");
-			// Если параметры авторизации найдены
-			if(it != this->headers.end()){
-				// Устанавливаем заголовок HTTP в параметры авторизации
-				this->authSrv.setHeader(it->second);
-				// Выполняем проверку авторизации
-				if(this->authSrv.check())
-					// Устанавливаем успешный результат авторизации
-					result = http_t::stath_t::GOOD;
-			}
-		// Сообщаем, что авторизация прошла успешно
-		} else result = http_t::stath_t::GOOD;
-	}
-	// Выводим результат
-	return result;
-}
-/**
  * update Метод обновления входящих данных
  */
 void awh::Http::update() noexcept {
@@ -179,6 +73,24 @@ void awh::Http::update() noexcept {
 	}
 }
 /**
+ * date Метод получения текущей даты для HTTP запроса
+ * @return текущая дата
+ */
+const string awh::Http::date() const noexcept {
+	// Создаём буфер данных
+	char buffer[1000];
+	// Получаем текущее время
+	time_t now = time(nullptr);
+	// Извлекаем текущее время
+	struct tm tm = * gmtime(&now);
+	// Зануляем буфер
+	memset(buffer, 0, sizeof(buffer));
+	// Получаем формат времени
+	strftime(buffer, sizeof(buffer), "%a, %d %b %Y %H:%M:%S %Z", &tm);
+	// Выводим результат
+	return buffer;
+}
+/**
  * clear Метод очистки собранных данных
  */
 void awh::Http::clear() noexcept {
@@ -203,8 +115,6 @@ void awh::Http::reset() noexcept {
 	this->bodySize = -1;
 	// Обнуляем флаг проверки авторизации
 	this->failAuth = false;
-	// Выполняем сброс режим работы модуля
-	this->mode = mode_t::NONE;
 	// Выполняем сброс стейта авторизации
 	this->stath = stath_t::EMPTY;
 	// Выполняем сброс стейта текущего запроса
@@ -262,8 +172,6 @@ void awh::Http::parse(const char * buffer, const size_t size) noexcept {
 										offset = data.find(" ");
 										// Если пробел получен
 										if(offset != string::npos){
-											// Устанавливаем режим работы (получение ответа от сервера)
-											this->mode = mode_t::RESPONSE;
 											// Выполняем смену стейта
 											this->state = state_t::HEADERS;
 											// Получаем сообщение сервера
@@ -284,8 +192,6 @@ void awh::Http::parse(const char * buffer, const size_t size) noexcept {
 									offset = data.find(" ");
 									// Если пробел получен
 									if(offset != string::npos){
-										// Устанавливаем режим работы (получение запроса от клиента)
-										this->mode = mode_t::REQUEST;
 										// Выполняем смену стейта
 										this->state = state_t::HEADERS;
 										// Получаем URI запроса
