@@ -436,24 +436,6 @@ void awh::Core::setCallback(void * ctx, function <void (const bool, Core * core,
 	// Устанавливаем функцию обратного вызова
 	this->callbackFn = callback;
 }
-
-
-/*
-void awh::Core::endBase(evutil_socket_t fd, short event, void * ctx) noexcept {
-	// Если контекст модуля передан
-	if(ctx != nullptr){
-		// Получаем объект подключения
-		core_t * core = reinterpret_cast <core_t *> (ctx);
-		// Выполняем удаление событие таймера
-		event_del(&core->timeout);
-
-		// Завершаем работу базы событий
-		event_base_loopbreak(core->base);
-
-	}
-}
-*/
-
 /**
  * stop Метод остановки клиента
  */
@@ -471,17 +453,6 @@ void awh::Core::stop() noexcept {
 		#endif
 		// Завершаем работу базы событий
 		event_base_loopbreak(this->base);
-
-		/*
-		// Создаём событие на активацию базы событий
-		event_assign(&this->timeout, this->base, -1, EV_TIMEOUT, endBase, this);
-		// Очищаем объект таймаута базы событий
-		evutil_timerclear(&this->tvTimeout);
-		// Устанавливаем интервал таймаута
-		this->tvTimeout.tv_sec = 60;
-		// Создаём событие таймаута на активацию базы событий
-		event_add(&this->timeout, &this->tvTimeout);
-		*/
 	}
 }
 /**
