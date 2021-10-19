@@ -487,8 +487,8 @@ void awh::Core::start() noexcept {
 		this->dns4.reset();
 		// Выполняем сброс модуля DNS резолвера IPv6
 		this->dns6.reset();
-		// Выполняем удаление всех воркеров
-		this->removeAll();
+		// Выполняем отключение всех адъютантов
+		this->closeAll();
 		// Удаляем событие пинга
 		event_del(&this->pingInterval);
 		// Удаляем объект базы событий
@@ -821,9 +821,4 @@ void awh::Core::setNet(const vector <string> & ip, const vector <string> & ns, c
 awh::Core::~Core() noexcept {
 	// Выполняем остановку сервиса
 	this->stop();
-	// Если - это Windows
-	#if defined(_WIN32) || defined(_WIN64)
-		// Очищаем сетевой контекст
-		this->winSocketClean();
-	#endif
 }
