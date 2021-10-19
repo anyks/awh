@@ -58,25 +58,23 @@ int main(int argc, char * argv[]) noexcept {
 	// Устанавливаем адрес сертификата
 	core.setCA("./ca/cert.pem");
 	// Устанавливаем логин и пароль пользователя
-	ws.setUser("user", "password");
+	// ws.setUser("user", "password");
 	// Устанавливаем данные прокси-сервера
 	// ws.setProxy("http://B80TWR:uRMhnd@196.17.249.64:8000");
 	// ws.setProxy("socks5://rfbPbd:XcCuZH@45.144.169.109:8000");
 	// ws.setProxy("socks5://6S7rAk:g6K8XD@217.29.62.231:30810");
 	// Выполняем инициализацию типа авторизации
 	// ws.setAuthType();
-	ws.setAuthType(auth_t::type_t::DIGEST, auth_t::alg_t::SHA256);
+	// ws.setAuthType(auth_t::type_t::DIGEST, auth_t::alg_t::SHA256);
 	// Устанавливаем тип авторизации прокси-сервера
 	// ws.setAuthTypeProxy();
-	// Устанавливаем время ожидания
-	// ws.setWaitTimeDetect(10, 0);
 	// Выполняем инициализацию WebSocket клиента
-	// ws.init("wss://stream.binance.com:9443/stream", http_t::compress_t::DEFLATE);
-	ws.init("ws://127.0.0.1:2222", http_t::compress_t::GZIP);
+	ws.init("wss://stream.binance.com:9443/stream", http_t::compress_t::DEFLATE);
+	// ws.init("ws://127.0.0.1:2222", http_t::compress_t::DEFLATE);
 	// Устанавливаем шифрование
-	ws.setCrypt("PASS");
+	// ws.setCrypt("PASS");
 	// Устанавливаем сабпротоколы
-	ws.setSubs({"test2", "test8", "test9"});
+	// ws.setSubs({"test2", "test8", "test9"});
 	// Выполняем подписку на получение логов
 	log.subscribe([](const log_t::flag_t flag, const string & message){
 		// Выводим сообщение

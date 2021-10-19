@@ -48,17 +48,18 @@ int main(int argc, char * argv[]) noexcept {
 	 */
 	// ws.setMode((uint8_t) wsSrv_t::flag_t::WAITMESS);
 	// Устанавливаем название сервера
-	ws.setRealm("ANYKS");
+	// ws.setRealm("ANYKS");
 	// Устанавливаем временный ключ сессии
-	ws.setOpaque("keySession");
+	// ws.setOpaque("keySession");
 	// Устанавливаем тип авторизации
-	ws.setAuthType(auth_t::type_t::DIGEST, auth_t::alg_t::SHA256);
+	// ws.setAuthType(auth_t::type_t::DIGEST, auth_t::alg_t::SHA256);
 	// Выполняем инициализацию WebSocket сервера
 	ws.init(2222, "127.0.0.1", http_t::compress_t::DEFLATE);
 	// Устанавливаем шифрование
-	ws.setCrypt("PASS");
+	// ws.setCrypt("PASS");
 	// Устанавливаем сабпротоколы
 	ws.setSubs({"test1", "test2", "test3"});
+	/*
 	// Устанавливаем функцию извлечения пароля
 	ws.setExtractPassCallback(&log, [](const string & user, void * ctx) -> string {
 		// Получаем объект логирования
@@ -77,6 +78,7 @@ int main(int argc, char * argv[]) noexcept {
 		// Разрешаем авторизацию
 		return true;
 	});
+	*/
 	// Установливаем функцию обратного вызова на событие активации клиента на сервере
 	ws.on(&log, [](const string & ip, const string & mac, wsSrv_t * ws, void * ctx) -> bool {
 		// Получаем объект логирования

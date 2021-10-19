@@ -29,7 +29,7 @@ void awh::CoreClient::read(struct bufferevent * bev, void * ctx) noexcept {
 				// Если функция обратного вызова для вывода записи существует
 				if(wrk->readProxyFn != nullptr){
 					// Заполняем нулями буфер полученных данных
-					memset((void *) adj->buffer, 0, BUFFER_CHUNK);
+					// memset((void *) adj->buffer, 0, BUFFER_CHUNK);
 					// Считываем бинарные данные запроса из буфер
 					const size_t size = bufferevent_read(bev, (void *) adj->buffer, BUFFER_CHUNK);
 					// Выводим функцию обратного вызова
@@ -38,7 +38,7 @@ void awh::CoreClient::read(struct bufferevent * bev, void * ctx) noexcept {
 			// Если прокси-сервер не используется
 			} else if(wrk->readFn != nullptr) {
 				// Заполняем нулями буфер полученных данных
-				memset((void *) adj->buffer, 0, BUFFER_CHUNK);
+				// memset((void *) adj->buffer, 0, BUFFER_CHUNK);
 				// Считываем бинарные данные запроса из буфер
 				const size_t size = bufferevent_read(adj->bev, (void *) adj->buffer, BUFFER_CHUNK);
 				// Выводим функцию обратного вызова

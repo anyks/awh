@@ -27,7 +27,7 @@ void awh::CoreServer::read(struct bufferevent * bev, void * ctx) noexcept {
 			// Если функция обратного вызова установлена
 			if(wrk->readFn != nullptr){
 				// Заполняем нулями буфер полученных данных
-				memset((void *) adj->buffer, 0, BUFFER_CHUNK);
+				// memset((void *) adj->buffer, 0, BUFFER_CHUNK);
 				// Считываем бинарные данные запроса из буфер
 				const size_t size = bufferevent_read(bev, (void *) adj->buffer, BUFFER_CHUNK);
 				// Выводим функцию обратного вызова

@@ -72,7 +72,7 @@ namespace awh {
 			// Алгоритм шифрования для Digest авторизации
 			auth_t::alg_t authAlg = auth_t::alg_t::MD5;
 			// Тип авторизации
-			auth_t::type_t authType = auth_t::type_t::BASIC;
+			auth_t::type_t authType = auth_t::type_t::NONE;
 			// Функция обратного вызова для извлечения пароля
 			function <string (const string &, void *)> extractPassFn = nullptr;
 			// Функция обратного вызова для обработки авторизации
