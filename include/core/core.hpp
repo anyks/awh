@@ -280,7 +280,7 @@ namespace awh {
 		public:
 
 
-			static void endBase(evutil_socket_t fd, short event, void * ctx) noexcept;
+			// static void endBase(evutil_socket_t fd, short event, void * ctx) noexcept;
 
 
 			/**
