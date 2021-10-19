@@ -551,8 +551,10 @@ void awh::Core::closeAll() noexcept {
 				worker_t * wrk = const_cast <worker_t *> (worker.second);
 				// Переходим по всему списку адъютанта
 				for(auto it = wrk->adjutants.begin(); it != wrk->adjutants.end();){
+					// Получаем объект адъютанта
+					worker_t::adj_t * adj = const_cast <worker_t::adj_t *> (&it->second);
 					// Выполняем очистку буфера событий
-					this->clean(it->second.bev);
+					this->clean(adj->bev);
 					// Выводим функцию обратного вызова
 					if(wrk->disconnectFn != nullptr)
 						// Выполняем функцию обратного вызова
@@ -597,15 +599,19 @@ void awh::Core::close(const size_t aid) noexcept {
 	auto it = this->adjutants.find(aid);
 	// Если адъютант получен
 	if(it != this->adjutants.end()){
+		// Получаем объект адъютанта
+		worker_t::adj_t * adj = const_cast <worker_t::adj_t *> (it->second);
 		// Получаем объект воркера
-		worker_t * wrk = const_cast <worker_t *> (it->second->parent);
+		worker_t * wrk = const_cast <worker_t *> (adj->parent);
 		// Если событие сервера существует
-		if(it->second->bev != nullptr){
+		if(adj->bev != nullptr){
 			// Выполняем очистку буфера событий
-			this->clean(it->second->bev);
+			this->clean(adj->bev);
 			// Устанавливаем что событие удалено
-			const_cast <worker_t::adj_t *> (it->second)->bev = nullptr;
+			adj->bev = nullptr;
 		}
+		// Выполняем удаление контекста SSL
+		this->ssl.clear(adj->ssl);
 		// Удаляем адъютанта из списка адъютантов
 		wrk->adjutants.erase(aid);
 		// Удаляем адъютанта из списка подключений
