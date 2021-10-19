@@ -84,9 +84,6 @@ namespace awh {
 			// Параметры адреса для запроса
 			uri_t::url_t url;
 		private:
-			// Контекст SSL для работы с защищённым подключением
-			ssl_t::ctx_t ssl;
-		private:
 			// Текущее количество попыток
 			u_short attempt = 0;
 		private:

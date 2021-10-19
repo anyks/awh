@@ -115,6 +115,13 @@ namespace awh {
 			 * @param host хост сервера
 			 */
 			void init(const size_t wid, const u_int port, const string & host = "") noexcept;
+			/**
+			 * setCert Метод установки файлов сертификата
+			 * @param cert  корневой сертификат
+			 * @param key   приватный ключ сертификата
+			 * @param chain файл цепочки сертификатов
+			 */
+			void setCert(const string & cert, const string & key, const string & chain = "") noexcept;
 		public:
 			/**
 			 * CoreServer Конструктор

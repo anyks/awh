@@ -197,12 +197,20 @@ void awh::CoreServer::accept(const evutil_socket_t fd, const short event, void *
 		#endif
 		// Создаём бъект адъютанта
 		worker_t::adj_t adj = worker_t::adj_t(wrk, core->fmk, core->log);
+		// Выполняем получение контекста сертификата
+		adj.ssl = core->ssl.init();
 		// Устанавливаем первоначальное значение
 		u_int mode = BEV_OPT_THREADSAFE;
 		// Если нужно использовать отложенные вызовы событий сокета
 		if(core->defer) mode = (mode | BEV_OPT_DEFER_CALLBACKS);
-		// Создаем буфер событий для подключившегося клиента
-		adj.bev = bufferevent_socket_new(core->base, socket, mode);
+		// Если SSL клиент разрешён
+		if(adj.ssl.mode){
+			// Создаем буфер событий для сервера зашифрованного подключения
+			adj.bev = bufferevent_openssl_socket_new(core->base, socket, adj.ssl.ssl, BUFFEREVENT_SSL_ACCEPTING, mode);
+			// Разрешаем непредвиденное грязное завершение работы
+			bufferevent_openssl_set_allow_dirty_shutdown(adj.bev, 1);
+		// Создаем буфер событий для сервера
+		} else adj.bev = bufferevent_socket_new(core->base, socket, mode);
 		// Если буфер событий создан
 		if(adj.bev != nullptr){
 			// Запоминаем IP адрес
@@ -309,8 +317,12 @@ void awh::CoreServer::removeAll() noexcept {
 		if(!wrk->adjutants.empty()){
 			// Переходим по всему списку адъютанта
 			for(auto jt = wrk->adjutants.begin(); jt != wrk->adjutants.end();){
+				// Получаем объект адъютанта
+				worker_t::adj_t * adj = const_cast <worker_t::adj_t *> (&jt->second);
 				// Выполняем очистку буфера событий
-				this->clean(jt->second.bev);
+				this->clean(adj->bev);
+				// Выполняем удаление контекста SSL
+				this->ssl.clear(adj->ssl);
 				// Выводим функцию обратного вызова
 				if(wrk->disconnectFn != nullptr)
 					// Выполняем функцию обратного вызова
@@ -355,8 +367,12 @@ void awh::CoreServer::remove(const size_t wid) noexcept {
 			if(!wrk->adjutants.empty()){
 				// Переходим по всему списку адъютанта
 				for(auto jt = wrk->adjutants.begin(); jt != wrk->adjutants.end();){
+					// Получаем объект адъютанта
+					worker_t::adj_t * adj = const_cast <worker_t::adj_t *> (&jt->second);
 					// Выполняем очистку буфера событий
-					this->clean(jt->second.bev);
+					this->clean(adj->bev);
+					// Выполняем удаление контекста SSL
+					this->ssl.clear(adj->ssl);
 					// Выводим функцию обратного вызова
 					if(wrk->disconnectFn != nullptr)
 						// Выполняем функцию обратного вызова
@@ -460,15 +476,19 @@ void awh::CoreServer::close(const size_t aid) noexcept {
 	auto it = this->adjutants.find(aid);
 	// Если адъютант получен
 	if(it != this->adjutants.end()){
+		// Получаем объект адъютанта
+		worker_t::adj_t * adj = const_cast <worker_t::adj_t *> (it->second);
 		// Получаем объект воркера
-		workSrv_t * wrk = (workSrv_t *) const_cast <worker_t *> (it->second->parent);
+		workSrv_t * wrk = (workSrv_t *) const_cast <worker_t *> (adj->parent);
 		// Если событие сервера существует
-		if(it->second->bev != nullptr){
+		if(adj->bev != nullptr){
 			// Выполняем очистку буфера событий
-			this->clean(it->second->bev);
+			this->clean(adj->bev);
 			// Устанавливаем что событие удалено
-			const_cast <worker_t::adj_t *> (it->second)->bev = nullptr;
+			adj->bev = nullptr;
 		}
+		// Выполняем удаление контекста SSL
+		this->ssl.clear(adj->ssl);
 		// Удаляем адъютанта из списка адъютантов
 		wrk->adjutants.erase(aid);
 		// Удаляем адъютанта из списка подключений
@@ -526,6 +546,16 @@ void awh::CoreServer::init(const size_t wid, const u_int port, const string & ho
 			else wrk->host = sockets_t::serverIp(this->net.family);
 		}
 	}
+}
+/**
+ * setCert Метод установки файлов сертификата
+ * @param cert  корневой сертификат
+ * @param key   приватный ключ сертификата
+ * @param chain файл цепочки сертификатов
+ */
+void awh::CoreServer::setCert(const string & cert, const string & key, const string & chain) noexcept {
+	// Устанавливаем файлы сертификата
+	this->ssl.setCert(cert, key, chain);
 }
 /**
  * CoreServer Конструктор

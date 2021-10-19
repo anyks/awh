@@ -228,15 +228,15 @@ void awh::CoreClient::connect(const size_t wid) noexcept {
 				// Создаём бъект адъютанта
 				worker_t::adj_t adj(wrk, this->fmk, this->log);
 				// Выполняем получение контекста сертификата
-				wrk->ssl = this->ssl.init(url);
+				adj.ssl = this->ssl.init(url);
 				// Устанавливаем первоначальное значение
 				u_int mode = BEV_OPT_THREADSAFE;
 				// Если нужно использовать отложенные вызовы событий сокета
 				if(this->defer) mode = (mode | BEV_OPT_DEFER_CALLBACKS);
-				// Если SSL клиент разрешен
-				if(wrk->ssl.mode){
+				// Если SSL клиент разрешён
+				if(adj.ssl.mode){
 					// Создаем буфер событий для сервера зашифрованного подключения
-					adj.bev = bufferevent_openssl_socket_new(this->base, socket.fd, wrk->ssl.ssl, BUFFEREVENT_SSL_CONNECTING, mode);
+					adj.bev = bufferevent_openssl_socket_new(this->base, socket.fd, adj.ssl.ssl, BUFFEREVENT_SSL_CONNECTING, mode);
 					// Разрешаем непредвиденное грязное завершение работы
 					bufferevent_openssl_set_allow_dirty_shutdown(adj.bev, 1);
 				// Создаем буфер событий для сервера
@@ -276,6 +276,8 @@ void awh::CoreClient::connect(const size_t wid) noexcept {
 						if(wrk->alive && (ret.first->second.attempt <= wrk->attempts)){
 							// Выполняем очистку буфера событий
 							this->clean(ret.first->second.bev);
+							// Выполняем удаление контекста SSL
+							this->ssl.clear(ret.first->second.ssl);
 							// Устанавливаем что событие удалено
 							ret.first->second.bev = nullptr;
 							// Увеличиваем колпичество попыток
@@ -336,7 +338,7 @@ void awh::CoreClient::closeAll() noexcept {
 					// Выполняем очистку буфера событий
 					this->clean(it->second.bev);
 					// Выполняем удаление контекста SSL
-					this->ssl.clear(wrk->ssl);
+					this->ssl.clear(it->second.ssl);
 					// Выводим функцию обратного вызова
 					if(wrk->disconnectFn != nullptr)
 						// Выполняем функцию обратного вызова
@@ -420,21 +422,23 @@ void awh::CoreClient::close(const size_t aid) noexcept {
 	auto it = this->adjutants.find(aid);
 	// Если адъютант получен
 	if(it != this->adjutants.end()){
+		// Получаем объект адъютанта
+		worker_t::adj_t * adj = const_cast <worker_t::adj_t *> (it->second);
 		// Получаем объект воркера
-		workCli_t * wrk = (workCli_t *) const_cast <worker_t *> (it->second->parent);
+		workCli_t * wrk = (workCli_t *) const_cast <worker_t *> (adj->parent);
 		// Если событие сервера существует
-		if(it->second->bev != nullptr){
+		if(adj->bev != nullptr){
 			// Выполняем очистку буфера событий
-			this->clean(it->second->bev);
+			this->clean(adj->bev);
 			// Устанавливаем что событие удалено
-			const_cast <worker_t::adj_t *> (it->second)->bev = nullptr;
+			adj->bev = nullptr;
 		}
 		// Если прокси-сервер активирован но уже переключён на работу с сервером
 		if((wrk->proxy.type != proxy_t::type_t::NONE) && !wrk->isProxy())
 			// Выполняем переключение обратно на прокси-сервер
 			wrk->switchConnect();
 		// Выполняем удаление контекста SSL
-		this->ssl.clear(wrk->ssl);
+		this->ssl.clear(adj->ssl);
 		// Удаляем адъютанта из списка адъютантов
 		wrk->adjutants.erase(aid);
 		// Удаляем адъютанта из списка подключений
@@ -459,26 +463,28 @@ void awh::CoreClient::switchProxy(const size_t aid) noexcept {
 	auto it = this->adjutants.find(aid);
 	// Если адъютант получен
 	if(it != this->adjutants.end()){
+		// Получаем объект адъютанта
+		worker_t::adj_t * adj = const_cast <worker_t::adj_t *> (it->second);
 		// Получаем объект воркера
-		workCli_t * wrk = (workCli_t *) const_cast <worker_t *> (it->second->parent);
+		workCli_t * wrk = (workCli_t *) const_cast <worker_t *> (adj->parent);
 		// Выполняем переключение типа подключения
 		wrk->switchConnect();
 		// Выполняем получение контекста сертификата
-		wrk->ssl = this->ssl.init(wrk->url);
+		adj->ssl = this->ssl.init(wrk->url);
 		// Если SSL клиент разрешен
-		if(wrk->ssl.mode){
+		if(adj->ssl.mode){
 			// Устанавливаем первоначальное значение
 			u_int mode = BEV_OPT_THREADSAFE;
 			// Если нужно использовать отложенные вызовы событий сокета
 			if(this->defer) mode = (mode | BEV_OPT_DEFER_CALLBACKS);
 			// Выполняем переход на защищённое подключение
-			struct bufferevent * bev = bufferevent_openssl_filter_new(this->base, it->second->bev, wrk->ssl.ssl, BUFFEREVENT_SSL_CONNECTING, mode);
+			struct bufferevent * bev = bufferevent_openssl_filter_new(this->base, adj->bev, adj->ssl.ssl, BUFFEREVENT_SSL_CONNECTING, mode);
 			// Если буфер событий создан
 			if(bev != nullptr){
 				// Устанавливаем новый буфер событий
-				const_cast <worker_t::adj_t *> (it->second)->bev = bev;
+				adj->bev = bev;
 				// Разрешаем непредвиденное грязное завершение работы
-				bufferevent_openssl_set_allow_dirty_shutdown(it->second->bev, 1);
+				bufferevent_openssl_set_allow_dirty_shutdown(adj->bev, 1);
 				// Выполняем тюннинг буфера событий
 				this->tuning(aid);
 			}

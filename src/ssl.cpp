@@ -256,7 +256,7 @@ awh::ASSL::ctx_t awh::ASSL::init() noexcept {
 	// Результат работы функции
 	ctx_t result;
 	// Если объект фреймворка существует
-	if(this->fmk != nullptr){
+	if((this->fmk != nullptr) && !this->key.empty() && !this->cert.empty()){
 		// Получаем контекст OpenSSL
 		result.ctx = SSL_CTX_new(SSLv23_client_method());
 		// Если контекст не создан
@@ -392,7 +392,7 @@ awh::ASSL::ctx_t awh::ASSL::init() noexcept {
 		// Запрашиваем данные сертификата
 		const int cert = (!this->cert.empty() ? SSL_CTX_use_certificate_file(result.ctx, this->cert.c_str(), SSL_FILETYPE_PEM) : 0);
 		// Если какой-то из файлов не получен то выходим
-		if((chain == 0) || (cert == 0) || (prv == 0)){
+		if(!(result.mode = ((chain > 0) && (cert > 0) && (prv > 0)))){
 			// Очищаем созданный контекст
 			this->clear(result);
 			// Выводим в лог сообщение
@@ -726,13 +726,7 @@ void awh::ASSL::setCert(const string & cert, const string & key, const string & 
  * @param log объект для работы с логами
  * @param uri объект работы с URI
  */
-awh::ASSL::ASSL(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcept {
-	// Устанавливаем объект фреймворка
-	this->fmk = fmk;
-	// Устанавливаем объект для работы с URI
-	this->uri = uri;
-	// Устанавливаем объект для работы с логами
-	this->log = log;
+awh::ASSL::ASSL(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcept : fmk(fmk), uri(uri), log(log) {
 	// Выполняем модификацию CA-файла
 	this->cafile = fs_t::realPath(this->cafile);
 	// Если - это Windows
