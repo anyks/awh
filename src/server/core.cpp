@@ -25,7 +25,7 @@ void awh::CoreServer::read(struct bufferevent * bev, void * ctx) noexcept {
 		// Если подключение ещё существует
 		if(wrk->core->adjutants.count(adj->aid) > 0){
 			// Если функция обратного вызова установлена
-			if(wrk->readFn != nullptr) {
+			if(wrk->readFn != nullptr){
 				// Заполняем нулями буфер полученных данных
 				memset((void *) adj->buffer, 0, BUFFER_CHUNK);
 				// Считываем бинарные данные запроса из буфер
@@ -53,13 +53,29 @@ void awh::CoreServer::write(struct bufferevent * bev, void * ctx) noexcept {
 			// Получаем буферы исходящих данных
 			struct evbuffer * output = bufferevent_get_output(bev);
 			// Получаем размер исходящих данных
-			size_t size = evbuffer_get_length(output);
+			const size_t size = evbuffer_get_length(output);
 			// Если данные существуют
 			if(size > 0){
 				// Если функция обратного вызова установлена
-				if(wrk->writeFn != nullptr)
-					// Выводим функцию обратного вызова
-					wrk->writeFn(size, adj->aid, wrk->wid, const_cast <core_t *> (wrk->core), wrk->ctx);
+				if(wrk->writeFn != nullptr){
+					/**
+					 * Выполняем отлов ошибок
+					 */
+					try {
+						// Создаём буфер входящих данных
+						char * buffer = new char[size];
+						// Копируем в буфер полученные данные
+						evbuffer_copyout(output, buffer, size);
+						// Выводим функцию обратного вызова
+						wrk->writeFn(buffer, size, adj->aid, wrk->wid, const_cast <core_t *> (wrk->core), wrk->ctx);
+						// Выполняем удаление буфера
+						delete [] buffer;
+					// Если возникает ошибка
+					} catch(const bad_alloc &) {
+						// Выводим пустое сообщение
+						wrk->writeFn(nullptr, size, adj->aid, wrk->wid, const_cast <core_t *> (wrk->core), wrk->ctx);
+					}
+				}
 				// Удаляем данные из буфера
 				evbuffer_drain(output, size);
 			}

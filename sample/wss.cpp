@@ -56,7 +56,7 @@ int main(int argc, char * argv[]) noexcept {
 	// Выполняем инициализацию WebSocket сервера
 	ws.init(2222, "127.0.0.1", http_t::compress_t::DEFLATE);
 	// Устанавливаем шифрование
-	ws.setCrypt("PASS", "");
+	ws.setCrypt("PASS");
 	// Устанавливаем сабпротоколы
 	ws.setSubs({"test1", "test2", "test3"});
 	// Устанавливаем функцию извлечения пароля

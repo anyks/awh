@@ -95,10 +95,10 @@ namespace awh {
 		public:
 			// Функция обратного вызова при открытии подключения к прокси-серверу
 			function <void (const size_t, const size_t, Core *, void *)> connectProxyFn = nullptr;
-			// Функция обратного вызова при записи данных с прокси-сервера
-			function <void (const size_t, const size_t, const size_t, Core *, void *)> writeProxyFn = nullptr;
 			// Функция обратного вызова при получении данных с прокси-сервера
 			function <void (const char *, const size_t, const size_t, const size_t, Core *, void *)> readProxyFn = nullptr;
+			// Функция обратного вызова при записи данных с прокси-сервера
+			function <void (const char *, const size_t, const size_t, const size_t, Core *, void *)> writeProxyFn = nullptr;
 		public:
 			/**
 			 * clear Метод очистки

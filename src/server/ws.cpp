@@ -121,28 +121,6 @@ void awh::WebSocketServer::disconnectCallback(const size_t aid, const size_t wid
 	}
 }
 /**
- * writeCallback Функция обратного вызова при записи сообщения на клиенте
- * @param size размер записанных в сокет байт
- * @param aid  идентификатор адъютанта
- * @param wid  идентификатор воркера
- * @param core объект биндинга TCP/IP
- * @param ctx  передаваемый контекст модуля
- */
-void awh::WebSocketServer::writeCallback(const size_t size, const size_t aid, const size_t wid, core_t * core, void * ctx) noexcept {
-	// Если данные существуют
-	if((size > 0) && (aid > 0) && (wid > 0) && (core != nullptr) && (ctx != nullptr)){
-		// Получаем контекст модуля
-		wsSrv_t * ws = reinterpret_cast <wsSrv_t *> (ctx);
-		// Получаем параметры подключения адъютанта
-		workSrvWss_t::adjp_t * adj = const_cast <workSrvWss_t::adjp_t *> (ws->worker.getAdj(aid));
-		// Если параметры подключения адъютанта получены
-		if((adj != nullptr) && (adj->stopBytes > 0)){
-			// Если размер полученных байт соответствует
-			if(adj->stopBytes == size) core->close(aid);
-		}
-	}
-}
-/**
  * acceptCallback Функция обратного вызова при проверке подключения клиента
  * @param ip   адрес интернет подключения клиента
  * @param mac  мак-адрес подключившегося клиента
@@ -175,7 +153,7 @@ bool awh::WebSocketServer::acceptCallback(const string & ip, const string & mac,
  */
 void awh::WebSocketServer::readCallback(const char * buffer, const size_t size, const size_t aid, const size_t wid, core_t * core, void * ctx) noexcept {
 	// Если данные существуют
-	if((buffer != nullptr) && (size > 0) && (aid > 0) && (wid > 0)){
+	if((size > 0) && (aid > 0) && (wid > 0) && (buffer != nullptr) && (core != nullptr) && (ctx != nullptr)){
 		// Получаем контекст модуля
 		wsSrv_t * ws = reinterpret_cast <wsSrv_t *> (ctx);
 		// Получаем параметры подключения адъютанта
@@ -378,6 +356,29 @@ void awh::WebSocketServer::readCallback(const char * buffer, const size_t size, 
 			Stop:
 			// Отправляем серверу сообщение
 			ws->sendError(aid, mess);
+		}
+	}
+}
+/**
+ * writeCallback Функция обратного вызова при записи сообщения на клиенте
+ * @param buffer бинарный буфер содержащий сообщение
+ * @param size   размер записанных в сокет байт
+ * @param aid    идентификатор адъютанта
+ * @param wid    идентификатор воркера
+ * @param core   объект биндинга TCP/IP
+ * @param ctx    передаваемый контекст модуля
+ */
+void awh::WebSocketServer::writeCallback(const char * buffer, const size_t size, const size_t aid, const size_t wid, core_t * core, void * ctx) noexcept {
+	// Если данные существуют
+	if((size > 0) && (aid > 0) && (wid > 0) && (core != nullptr) && (ctx != nullptr)){
+		// Получаем контекст модуля
+		wsSrv_t * ws = reinterpret_cast <wsSrv_t *> (ctx);
+		// Получаем параметры подключения адъютанта
+		workSrvWss_t::adjp_t * adj = const_cast <workSrvWss_t::adjp_t *> (ws->worker.getAdj(aid));
+		// Если параметры подключения адъютанта получены
+		if((adj != nullptr) && (adj->stopBytes > 0)){
+			// Если размер полученных байт соответствует
+			if(adj->stopBytes == size) core->close(aid);
 		}
 	}
 }

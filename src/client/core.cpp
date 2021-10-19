@@ -64,19 +64,42 @@ void awh::CoreClient::write(struct bufferevent * bev, void * ctx) noexcept {
 			// Получаем буферы исходящих данных
 			struct evbuffer * output = bufferevent_get_output(bev);
 			// Получаем размер исходящих данных
-			size_t size = evbuffer_get_length(output);
+			const size_t size = evbuffer_get_length(output);
 			// Если данные существуют
 			if(size > 0){
-				// Если подключение производится через, прокси-сервер
-				if(wrk->isProxy()){
-					// Если функция обратного вызова для вывода записи существует
-					if(wrk->writeProxyFn != nullptr)
+				/**
+				 * Выполняем отлов ошибок
+				 */
+				try {
+					// Создаём буфер входящих данных
+					char * buffer = new char[size];
+					// Копируем в буфер полученные данные
+					evbuffer_copyout(output, buffer, size);
+					// Если подключение производится через, прокси-сервер
+					if(wrk->isProxy()){
+						// Если функция обратного вызова для вывода записи существует
+						if(wrk->writeProxyFn != nullptr)
+							// Выводим функцию обратного вызова
+							wrk->writeProxyFn(buffer, size, adj->aid, wrk->wid, const_cast <core_t *> (wrk->core), wrk->ctx);
+					// Если прокси-сервер не используется
+					} else if(wrk->writeFn != nullptr)
 						// Выводим функцию обратного вызова
-						wrk->writeProxyFn(size, adj->aid, wrk->wid, const_cast <core_t *> (wrk->core), wrk->ctx);
-				// Если прокси-сервер не используется
-				} else if(wrk->writeFn != nullptr)
-					// Выводим функцию обратного вызова
-					wrk->writeFn(size, adj->aid, wrk->wid, const_cast <core_t *> (wrk->core), wrk->ctx);
+						wrk->writeFn(buffer, size, adj->aid, wrk->wid, const_cast <core_t *> (wrk->core), wrk->ctx);
+					// Выполняем удаление буфера
+					delete [] buffer;
+				// Если возникает ошибка
+				} catch(const bad_alloc &) {
+					// Если подключение производится через, прокси-сервер
+					if(wrk->isProxy()){
+						// Если функция обратного вызова для вывода записи существует
+						if(wrk->writeProxyFn != nullptr)
+							// Выводим функцию обратного вызова
+							wrk->writeProxyFn(nullptr, size, adj->aid, wrk->wid, const_cast <core_t *> (wrk->core), wrk->ctx);
+					// Если прокси-сервер не используется
+					} else if(wrk->writeFn != nullptr)
+						// Выводим пустое сообщение
+						wrk->writeFn(nullptr, size, adj->aid, wrk->wid, const_cast <core_t *> (wrk->core), wrk->ctx);
+				}
 				// Удаляем данные из буфера
 				evbuffer_drain(output, size);
 			}

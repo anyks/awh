@@ -141,15 +141,6 @@ namespace awh {
 			 */
 			static void disconnectCallback(const size_t aid, const size_t wid, core_t * core, void * ctx) noexcept;
 			/**
-			 * writeCallback Функция обратного вызова при записи сообщения на клиенте
-			 * @param size размер записанных в сокет байт
-			 * @param aid  идентификатор адъютанта
-			 * @param wid  идентификатор воркера
-			 * @param core объект биндинга TCP/IP
-			 * @param ctx  передаваемый контекст модуля
-			 */
-			static void writeCallback(const size_t size, const size_t aid, const size_t wid, core_t * core, void * ctx) noexcept;
-			/**
 			 * acceptCallback Функция обратного вызова при проверке подключения клиента
 			 * @param ip   адрес интернет подключения клиента
 			 * @param mac  мак-адрес подключившегося клиента
@@ -169,6 +160,16 @@ namespace awh {
 			 * @param ctx    передаваемый контекст модуля
 			 */
 			static void readCallback(const char * buffer, const size_t size, const size_t aid, const size_t wid, core_t * core, void * ctx) noexcept;
+			/**
+			 * writeCallback Функция обратного вызова при записи сообщения на клиенте
+			 * @param buffer бинарный буфер содержащий сообщение
+			 * @param size   размер записанных в сокет байт
+			 * @param aid    идентификатор адъютанта
+			 * @param wid    идентификатор воркера
+			 * @param core   объект биндинга TCP/IP
+			 * @param ctx    передаваемый контекст модуля
+			 */
+			static void writeCallback(const char * buffer, const size_t size, const size_t aid, const size_t wid, core_t * core, void * ctx) noexcept;
 		private:
 			/**
 			 * error Метод вывода сообщений об ошибках работы клиента
