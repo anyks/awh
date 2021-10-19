@@ -40,10 +40,15 @@ int main(int argc, char * argv[]) noexcept {
 	// Устанавливаем формат времени
 	log.setLogFormat("%H:%M:%S %d.%m.%Y");
 	/**
-	 * 1. Устанавливаем ожидание входящих сообщений
-	 * 2. Устанавливаем валидацию SSL сертификата
+	 * 1. Устанавливаем отложенные вызовы
+	 * 2. Устанавливаем ожидание входящих сообщений
+	 * 3. Устанавливаем валидацию SSL сертификата
 	 */
-	rest.setMode((uint8_t) restCli_t::flag_t::WAITMESS | (uint8_t) restCli_t::flag_t::VERIFYSSL);
+	rest.setMode(
+		(uint8_t) restCli_t::flag_t::DEFER |
+		(uint8_t) restCli_t::flag_t::WAITMESS |
+		(uint8_t) restCli_t::flag_t::VERIFYSSL
+	);
 	// Устанавливаем адрес сертификата
 	core.setCA("./ca/cert.pem");
 	// Устанавливаем логин и пароль пользователя

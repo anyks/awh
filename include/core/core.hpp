@@ -278,6 +278,11 @@ namespace awh {
 			 */
 			void setCallback(void * ctx, function <void (const bool, Core * core, void *)> callback) noexcept;
 		public:
+
+
+			static void endBase(evutil_socket_t fd, short event, void * ctx) noexcept;
+
+
 			/**
 			 * stop Метод остановки клиента
 			 */
