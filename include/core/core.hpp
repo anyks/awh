@@ -332,6 +332,14 @@ namespace awh {
 			virtual void close(const size_t aid) noexcept;
 		public:
 			/**
+			 * setBandwidth Метод установки пропускной способности сети
+			 * @param aid   идентификатор адъютанта
+			 * @param read  пропускная способность на чтение (bps, kbps, Mbps, Gbps)
+			 * @param write пропускная способность на запись (bps, kbps, Mbps, Gbps)
+			 */
+			virtual void setBandwidth(const size_t aid, const string & read, const string & write) noexcept = 0;
+		public:
+			/**
 			 * write Метод записи буфера данных воркером
 			 * @param buffer буфер для записи данных
 			 * @param size   размер записываемых данных

@@ -61,6 +61,10 @@
 #define BUFFER_CHUNK 0x19000 // 0xFA000
 // Размер бинарного буфера
 #define BUFFER_SIZE 0x6400000
+// Размер буфера на чтение
+#define BUFFER_SIZE_RCV 0x40000000
+// Размер буфера на запись
+#define BUFFER_SIZE_SND 0x40000000
 
 /**
  * HTTP заголовки по умолчанию

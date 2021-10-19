@@ -86,6 +86,14 @@ namespace awh {
 			void switchProxy(const size_t aid) noexcept;
 		public:
 			/**
+			 * setBandwidth Метод установки пропускной способности сети
+			 * @param aid   идентификатор адъютанта
+			 * @param read  пропускная способность на чтение (bps, kbps, Mbps, Gbps)
+			 * @param write пропускная способность на запись (bps, kbps, Mbps, Gbps)
+			 */
+			void setBandwidth(const size_t aid, const string & read, const string & write) noexcept;
+		public:
+			/**
 			 * CoreClient Конструктор
 			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами

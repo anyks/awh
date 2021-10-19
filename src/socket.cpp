@@ -431,37 +431,37 @@ const string awh::Sockets::ip(const int family, void * ctx) noexcept {
 	}
 	/**
 	 * bufferSize Метод установки размеров буфера
-	 * @param fd         файловый дескриптор (сокет)
-	 * @param read_size  размер буфера на чтение
-	 * @param write_size размер буфера на запись
-	 * @param maxcon     максимальное количество подключений
-	 * @param log        объект для работы с логами
-	 * @return           результат работы функции
+	 * @param fd    файловый дескриптор (сокет)
+	 * @param read  размер буфера на чтение
+	 * @param write размер буфера на запись
+	 * @param total максимальное количество подключений
+	 * @param log   объект для работы с логами
+	 * @return      результат работы функции
 	 */
-	const int awh::Sockets::bufferSize(const evutil_socket_t fd, const int read_size, const int write_size, const u_int maxcon, const log_t * log) noexcept {
-		// Получаем переданные размеры
-		int readSize  = read_size;
-		int writeSize = write_size;
+	const int awh::Sockets::bufferSize(const evutil_socket_t fd, const int read, const int write, const u_int total, const log_t * log) noexcept {
 		// Определяем размер массива опции
-		socklen_t read_optlen  = sizeof(readSize);
-		socklen_t write_optlen = sizeof(write_size);
+		socklen_t rlen = sizeof(read);
+		socklen_t wlen = sizeof(write);
+		// Получаем переданные размеры
+		int readSize  = (read > 0 ? read : BUFFER_SIZE_RCV);
+		int writeSize = (write > 0 ? write : BUFFER_SIZE_SND);
 		// Устанавливаем размер буфера для сокета на чтение
 		if(readSize > 0){
 			// Выполняем перерасчет размера буфера
-			readSize = (readSize / maxcon);
+			readSize = (readSize / total);
 			// Устанавливаем размер буфера
-			setsockopt(fd, SOL_SOCKET, SO_RCVBUF, (char *) &readSize, read_optlen);
+			setsockopt(fd, SOL_SOCKET, SO_RCVBUF, (char *) &readSize, rlen);
 		}
 		// Устанавливаем размер буфера для сокета на запись
 		if(writeSize > 0){
 			// Выполняем перерасчет размера буфера
-			writeSize = (writeSize / maxcon);
+			writeSize = (writeSize / total);
 			// Устанавливаем размер буфера
-			setsockopt(fd, SOL_SOCKET, SO_SNDBUF, (char *) &writeSize, write_optlen);
+			setsockopt(fd, SOL_SOCKET, SO_SNDBUF, (char *) &writeSize, wlen);
 		}
 		// Считываем установленный размер буфера
-		if((getsockopt(fd, SOL_SOCKET, SO_RCVBUF, &readSize, &read_optlen) < 0)
-		|| (getsockopt(fd, SOL_SOCKET, SO_SNDBUF, &writeSize, &write_optlen) < 0)){
+		if((getsockopt(fd, SOL_SOCKET, SO_RCVBUF, &readSize, &rlen) < 0) ||
+		   (getsockopt(fd, SOL_SOCKET, SO_SNDBUF, &writeSize, &wlen) < 0)){
 			// Выводим в лог информацию
 			if(log != nullptr) log->print("get buffer wrong on socket %d", log_t::flag_t::CRITICAL, fd);
 			// Выходим

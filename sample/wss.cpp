@@ -100,13 +100,14 @@ int main(int argc, char * argv[]) noexcept {
 		// Выводим информацию в лог
 		log->print("%s [%u]", log_t::flag_t::CRITICAL, mess.c_str(), code);
 	});
-	/// Установливаем функцию обратного вызова на событие получения сообщений
-	ws.on(nullptr, [](const size_t aid, const vector <char> & buffer, const bool utf8,  wsSrv_t * ws, void * ctx) noexcept {
+	// Установливаем функцию обратного вызова на событие получения сообщений
+	ws.on(&log, [](const size_t aid, const vector <char> & buffer, const bool utf8,  wsSrv_t * ws, void * ctx) noexcept {
 		// Если даныне получены
 		if(!buffer.empty()){
-
-			cout << " !!!!!!!!!! " << string(buffer.begin(), buffer.end()) << " == " << ws->getSub(aid) << endl;
-
+			// Получаем объект логирования
+			log_t * log = reinterpret_cast <log_t *> (ctx);
+			// Выводим информацию в лог
+			log->print("message: %s [%s]", log_t::flag_t::INFO, string(buffer.begin(), buffer.end()).c_str(), ws->getSub(aid).c_str());
 			// Отправляем сообщение обратно
 			ws->send(aid, buffer.data(), buffer.size(), utf8);
 		}

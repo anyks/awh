@@ -5,7 +5,7 @@
 ## Project goals and features
 
 - **HTTP/HTTPS**: REST - CLIENT.
-- **WS/WSS**: WebSocket - CLIENT.
+- **WS/WSS**: WebSocket - CLIENT/SERVER.
 - **Proxy**: HTTP/SOCKS5 PROXY server support.
 - **Compress**: GZIP/DEFLATE/BROTLI compression support.
 - **Authentication**: BASIC/DIGEST authentication support.
@@ -153,6 +153,83 @@ int main(int argc, char * argv[]) noexcept {
 			json data = json::parse(string(buffer.begin(), buffer.end()));
 			cout << " Message: " << data.dump(4) << endl;
 		} else cout << " Binary size message: " << buffer.size() << " bytes" << endl;
+	});
+
+	ws.start();
+
+	return 0;
+}
+```
+
+### Example WebSocket Server
+
+```c++
+#include <server/ws.hpp>
+#include <nlohmann/json.hpp>
+
+using namespace std;
+using namespace awh;
+
+using json = nlohmann::json;
+
+int main(int argc, char * argv[]) noexcept {
+	fmk_t fmk;
+	log_t log(&fmk);
+	network_t nwk(&fmk);
+	uri_t uri(&fmk, &nwk);
+	coreSrv_t core(&fmk, &log);
+	wsSrv_t ws(&core, &fmk, &log);
+
+	log.setLogName("WebSocket Server");
+	log.setLogFormat("%H:%M:%S %d.%m.%Y");
+
+	ws.setRealm("ANYKS");
+	ws.setOpaque("keySession");
+	ws.setSubs({"test1", "test2", "test3"});
+	ws.setAuthType(auth_t::type_t::DIGEST, auth_t::alg_t::SHA256);
+
+	ws.init(2222, "127.0.0.1", http_t::compress_t::DEFLATE);
+
+	ws.setExtractPassCallback(&log, [](const string & user, void * ctx) -> string {
+		log_t * log = reinterpret_cast <log_t *> (ctx);
+		log->print("USER: %s, PASS: %s", log_t::flag_t::INFO, user.c_str(), "password");
+
+		return "password";
+	});
+
+	/* For Basic Auth type
+	ws.setAuthCallback(&log, [](const string & user, const string & password, void * ctx) -> bool {
+		log_t * log = reinterpret_cast <log_t *> (ctx);
+		log->print("USER: %s, PASS: %s", log_t::flag_t::INFO, user.c_str(), password.c_str());
+
+		return true;
+	});
+	*/
+
+	ws.on(&log, [](const string & ip, const string & mac, wsSrv_t * ws, void * ctx) -> bool {
+		log_t * log = reinterpret_cast <log_t *> (ctx);
+		log->print("ACCEPT: ip = %s, mac = %s", log_t::flag_t::INFO, ip.c_str(), mac.c_str());
+
+		return true;
+	});
+
+	ws.on(&log, [](const size_t aid, const bool mode,  wsSrv_t * ws, void * ctx) noexcept {
+		log_t * log = reinterpret_cast <log_t *> (ctx);
+		log->print("%s client", log_t::flag_t::INFO, (mode ? "Connect" : "Disconnect"));
+	});
+
+	ws.on(&log, [](const size_t aid, const u_short code, const string & mess,  wsSrv_t * ws, void * ctx) noexcept {
+		log_t * log = reinterpret_cast <log_t *> (ctx);
+		log->print("%s [%u]", log_t::flag_t::CRITICAL, mess.c_str(), code);
+	});
+
+	ws.on(&log, [](const size_t aid, const vector <char> & buffer, const bool utf8,  wsSrv_t * ws, void * ctx) noexcept {
+		if(!buffer.empty()){
+			log_t * log = reinterpret_cast <log_t *> (ctx);
+			log->print("message: %s [%s]", log_t::flag_t::INFO, string(buffer.begin(), buffer.end()).c_str(), ws->getSub(aid).c_str());
+
+			ws->send(aid, buffer.data(), buffer.size(), utf8);
+		}
 	});
 
 	ws.start();

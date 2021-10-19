@@ -98,6 +98,14 @@ namespace awh {
 			void close(const size_t aid) noexcept;
 		public:
 			/**
+			 * setBandwidth Метод установки пропускной способности сети
+			 * @param aid   идентификатор адъютанта
+			 * @param read  пропускная способность на чтение (bps, kbps, Mbps, Gbps)
+			 * @param write пропускная способность на запись (bps, kbps, Mbps, Gbps)
+			 */
+			void setBandwidth(const size_t aid, const string & read, const string & write) noexcept;
+		public:
+			/**
 			 * setIpV6only Метод установки флага использования только сети IPv6
 			 * @param mode флаг для установки
 			 */

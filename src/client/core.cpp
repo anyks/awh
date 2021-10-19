@@ -493,6 +493,37 @@ void awh::CoreClient::switchProxy(const size_t aid) noexcept {
 	}
 }
 /**
+ * setBandwidth Метод установки пропускной способности сети
+ * @param aid   идентификатор адъютанта
+ * @param read  пропускная способность на чтение (bps, kbps, Mbps, Gbps)
+ * @param write пропускная способность на запись (bps, kbps, Mbps, Gbps)
+ */
+void awh::CoreClient::setBandwidth(const size_t aid, const string & read, const string & write) noexcept {
+	// Выполняем извлечение адъютанта
+	auto it = this->adjutants.find(aid);
+	// Если адъютант получен
+	if(it != this->adjutants.end()){
+		// Если - это Unix
+		#if !defined(_WIN32) && !defined(_WIN64)
+			// Получаем объект адъютанта
+			worker_t::adj_t * adj = const_cast <worker_t::adj_t *> (it->second);
+			// Получаем размер буфера на чтение
+			const int rcv = (!read.empty() ? this->fmk->sizeBuffer(read) : 0);
+			// Получаем размер буфера на запись
+			const int snd = (!write.empty() ? this->fmk->sizeBuffer(write) : 0);
+			// Получаем файловый дескриптор
+			evutil_socket_t fd = bufferevent_getfd(adj->bev);
+			// Устанавливаем размер буфера
+			if(fd > 0) sockets_t::bufferSize(fd, rcv, snd, 1, this->log);
+		// Если - это Windows
+		#else
+			// Блокируем вывод переменных
+			(void) read;
+			(void) write;
+		#endif
+	}
+}
+/**
  * CoreClient Конструктор
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
