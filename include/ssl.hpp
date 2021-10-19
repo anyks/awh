@@ -115,6 +115,13 @@ namespace awh {
 		private:
 			// Флаг проверки сертификата доменного имени
 			bool verify = true;
+		private:
+			// Приватный ключ сертификата
+			string key = "";
+			// Корневой сертификат
+			string cert = "";
+			// Файл цепочки сертификатов
+			string chain = "";
 			// Каталог с CA-файлами
 			string capath = "";
 			// Название CA-файла
@@ -145,50 +152,57 @@ namespace awh {
 		private:
 			/**
 			 * hostmatch Метод проверки эквивалентности доменного имени с учетом шаблона
-			 * @param hostname доменное имя
-			 * @param pattern  шаблон домена
-			 * @return         результат проверки
+			 * @param host доменное имя
+			 * @param patt шаблон домена
+			 * @return     результат проверки
 			 */
-			const bool hostmatch(const string & hostname, const string & pattern) const noexcept;
+			const bool hostmatch(const string & host, const string & patt) const noexcept;
 			/**
 			 * certHostcheck Метод проверки доменного имени по шаблону
-			 * @param pattern  шаблон домена
-			 * @param hostname доменное имя
-			 * @return         результат проверки
+			 * @param host доменное имя
+			 * @param patt шаблон домена
+			 * @return     результат проверки
 			 */
-			const bool certHostcheck(const string & pattern, const string & hostname) const noexcept;
+			const bool certHostcheck(const string & host, const string & patt) const noexcept;
 		private:
 			/**
 			 * matchesCommonName Метод проверки доменного имени по данным из сертификата
-			 * @param hostname доменное имя
-			 * @param cert     сертификат
-			 * @return         результат проверки
+			 * @param host доменное имя
+			 * @param cert сертификат
+			 * @return     результат проверки
 			 */
-			const validate_t matchesCommonName(const string & hostname, const X509 * cert = nullptr) const noexcept;
+			const validate_t matchesCommonName(const string & host, const X509 * cert = nullptr) const noexcept;
 			/**
 			 * matchSubjectName Метод проверки доменного имени по списку доменных имён из сертификата
-			 * @param hostname доменное имя
-			 * @param cert     сертификат
-			 * @return         результат проверки
+			 * @param host доменное имя
+			 * @param cert сертификат
+			 * @return     результат проверки
 			 */
-			const validate_t matchSubjectName(const string & hostname, const X509 * cert = nullptr) const noexcept;
+			const validate_t matchSubjectName(const string & host, const X509 * cert = nullptr) const noexcept;
 		public:
 			/**
 			 * validateHostname Метод проверки доменного имени
-			 * @param hostname доменное имя
-			 * @param cert     сертификат
-			 * @return         результат проверки
+			 * @param host доменное имя
+			 * @param cert сертификат
+			 * @return     результат проверки
 			 */
-			const validate_t validateHostname(const string & hostname, const X509 * cert = nullptr) const noexcept;
+			const validate_t validateHostname(const string & host, const X509 * cert = nullptr) const noexcept;
 		public:
 			/**
 			 * clear Метод очистки контекста
 			 * @param ctx контекст для очистки
 			 */
 			void clear(ctx_t & ctx) const noexcept;
+		public:
 			/**
-			 * init Метод инициализации контекста
+			 * init Метод инициализации контекста для сервера
+			 * @return объект SSL контекста
+			 */
+			ctx_t init() noexcept;
+			/**
+			 * init Метод инициализации контекста для сервера
 			 * @param url Параметры URL адреса для инициализации
+			 * @return    объект SSL контекста
 			 */
 			ctx_t init(const uri_t::url_t & url) noexcept;
 		public:
@@ -203,6 +217,13 @@ namespace awh {
 			 * @param capath адрес каталога где находится CA-файл
 			 */
 			void setCA(const string & cafile, const string & capath = "") noexcept;
+			/**
+			 * setCert Метод установки файлов сертификата
+			 * @param cert  корневой сертификат
+			 * @param key   приватный ключ сертификата
+			 * @param chain файл цепочки сертификатов
+			 */
+			void setCert(const string & cert, const string & key, const string & chain = "") noexcept;
 		public:
 			/**
 			 * ASSL Конструктор

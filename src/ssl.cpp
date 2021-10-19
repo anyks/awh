@@ -52,141 +52,139 @@ const bool awh::ASSL::rawNequal(const string & first, const string & second, con
 }
 /**
  * hostmatch Метод проверки эквивалентности доменного имени с учетом шаблона
- * @param hostname доменное имя
- * @param pattern  шаблон домена
- * @return         результат проверки
+ * @param host доменное имя
+ * @param patt шаблон домена
+ * @return     результат проверки
  */
-const bool awh::ASSL::hostmatch(const string & hostname, const string & pattern) const noexcept {
+const bool awh::ASSL::hostmatch(const string & host, const string & patt) const noexcept {
 	// Результат работы функции
 	bool result = true;
 	// Если данные переданы
-	if(!hostname.empty() && !pattern.empty()){
+	if(!host.empty() && !patt.empty()){
 		// Запоминаем шаблон и хоста
-		string patternLabel = pattern;
-		string hostnameLabel = hostname;
+		string hostLabel = host;
+		string pattLabel = patt;
 		// Позиция звездочки в шаблоне
-		const size_t patternWildcard = pattern.find('*');
+		const size_t pattWildcard = patt.find('*');
 		// Ищем звездочку в шаблоне не найдена
-		if(patternWildcard == string::npos) return this->rawEqual(pattern, hostname);
-		// Режим активации шаблона
-		bool wildcardEnabled = true;
+		if(pattWildcard == string::npos)
+			// Выполняем проверку эквивалентности доменных имён
+			return this->rawEqual(patt, host);
 		// Определяем конец шаблона
-		const size_t patternLabelEnd = pattern.find('.');
+		const size_t pattLabelEnd = patt.find('.');
 		// Если это конец тогда запрещаем активацию шаблона
-		if((patternLabelEnd == string::npos)
-		|| (patternWildcard > patternLabelEnd)
-		|| this->rawNequal(pattern, "xn--", 4)) wildcardEnabled = false;
-		// Если шаблон отключен
-		if(!wildcardEnabled) return this->rawEqual(pattern, hostname);
+		if((pattLabelEnd == string::npos) || (pattWildcard > pattLabelEnd) || this->rawNequal(patt, "xn--", 4))
+			// Выполняем проверку эквивалентности доменных имён
+			return this->rawEqual(patt, host);
 		// Выполняем поиск точки в название хоста
-		const size_t hostnameLabelEnd = hostname.find('.');
+		const size_t hostLabelEnd = host.find('.');
 		// Если хост не найден
-		if((patternLabelEnd != string::npos)
-		&& (hostnameLabelEnd != string::npos)){
+		if((pattLabelEnd != string::npos) && (hostLabelEnd != string::npos)){
 			// Обрезаем строку шаблона
-			const string & p = patternLabel.replace(0, patternLabelEnd, "");
-			const string & h = hostnameLabel.replace(0, hostnameLabelEnd, "");
+			const string & p = pattLabel.replace(0, pattLabelEnd, "");
+			// Обрезаем строку хоста
+			const string & h = hostLabel.replace(0, hostLabelEnd, "");
 			// Выполняем сравнение
 			if(!this->rawEqual(p, h)) return false;
 		// Выходим
 		} else return false;
 		// Если диапазоны точки в шаблоне и хосте отличаются тогда выходим
-		if(hostnameLabelEnd < patternLabelEnd) return false;
+		if(hostLabelEnd < pattLabelEnd) return false;
 		// Получаем размер префикса и суфикса
-		const size_t prefixlen = patternWildcard;
-		const size_t suffixlen = (patternLabelEnd - (patternWildcard + 1));
+		const size_t prefixlen = pattWildcard;
+		const size_t suffixlen = (pattLabelEnd - (pattWildcard + 1));
 		// Обрезаем строку шаблона
-		const string & pat = patternLabel.replace(0, patternWildcard + 1, "");
+		const string & p = pattLabel.replace(0, pattWildcard + 1, "");
 		// Обрезаем строку хоста
-		const string & host = hostnameLabel.replace(0, hostnameLabelEnd - suffixlen, "");
+		const string & h = hostLabel.replace(0, hostLabelEnd - suffixlen, "");
 		// Проверяем эквивалент результата
-		return (this->rawNequal(pattern, hostname, prefixlen) && this->rawNequal(pat, host, suffixlen));
+		return (this->rawNequal(patt, host, prefixlen) && this->rawNequal(p, h, suffixlen));
 	}
 	// Выводим результат
 	return result;
 }
 /**
  * certHostcheck Метод проверки доменного имени по шаблону
- * @param  pattern  шаблон домена
- * @param  hostname доменное имя
- * @return          результат проверки
+ * @param host доменное имя
+ * @param patt шаблон домена
+ * @return     результат проверки
  */
-const bool awh::ASSL::certHostcheck(const string & pattern, const string & hostname) const noexcept {
+const bool awh::ASSL::certHostcheck(const string & host, const string & patt) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Если данные переданы
-	if(!hostname.empty() && !pattern.empty())
+	if(!host.empty() && !patt.empty())
 		// Проверяем эквивалентны ли домен и шаблон
-		result = (this->rawEqual(hostname, pattern) || this->hostmatch(hostname, pattern));
+		result = (this->rawEqual(host, patt) || this->hostmatch(host, patt));
 	// Выводим результат
 	return result;
 }
 /**
  * matchesCommonName Метод проверки доменного имени по данным из сертификата
- * @param hostname доменное имя
- * @param cert     сертификат
- * @return         результат проверки
+ * @param host доменное имя
+ * @param cert сертификат
+ * @return     результат проверки
  */
-const awh::ASSL::validate_t awh::ASSL::matchesCommonName(const string & hostname, const X509 * cert) const noexcept {
+const awh::ASSL::validate_t awh::ASSL::matchesCommonName(const string & host, const X509 * cert) const noexcept {
 	// Результат работы функции
 	validate_t result = validate_t::MatchNotFound;
 	// Если данные переданы
-	if(!hostname.empty() && (cert != nullptr)){
+	if(!host.empty() && (cert != nullptr)){
 		// Получаем индекс имени по NID
-		const int commonNameLoc = X509_NAME_get_index_by_NID(X509_get_subject_name((X509 *) cert), NID_commonName, -1);
+		const int cnl = X509_NAME_get_index_by_NID(X509_get_subject_name((X509 *) cert), NID_commonName, -1);
 		// Если индекс не получен тогда выходим
-		if(commonNameLoc < 0) return validate_t::Error;
+		if(cnl < 0) return validate_t::Error;
 		// Извлекаем поле CN
-		X509_NAME_ENTRY * commonNameEntry = X509_NAME_get_entry(X509_get_subject_name((X509 *) cert), commonNameLoc);
+		X509_NAME_ENTRY * cne = X509_NAME_get_entry(X509_get_subject_name((X509 *) cert), cnl);
 		// Если поле не получено тогда выходим
-		if(commonNameEntry == nullptr) return validate_t::Error;
+		if(cne == nullptr) return validate_t::Error;
 		// Конвертируем CN поле в C строку
-		ASN1_STRING * commonNameAsn1 = X509_NAME_ENTRY_get_data(commonNameEntry);
+		ASN1_STRING * cna = X509_NAME_ENTRY_get_data(cne);
 		// Если строка не сконвертирована тогда выходим
-		if(commonNameAsn1 == nullptr) return validate_t::Error;
+		if(cna == nullptr) return validate_t::Error;
 		// Извлекаем название в виде строки
-		const string commonName((char *) ASN1_STRING_get0_data(commonNameAsn1), ASN1_STRING_length(commonNameAsn1));
+		const string cn((char *) ASN1_STRING_get0_data(cna), ASN1_STRING_length(cna));
 		// Сравниваем размеры полученных строк
-		if(size_t(ASN1_STRING_length(commonNameAsn1)) != commonName.length()) return validate_t::MalformedCertificate;
+		if(size_t(ASN1_STRING_length(cna)) != cn.length()) return validate_t::MalformedCertificate;
 		// Выполняем рукопожатие
-		if(this->certHostcheck(commonName, hostname)) return validate_t::MatchFound;
+		if(this->certHostcheck(host, cn)) return validate_t::MatchFound;
 	}
 	// Выводим результат
 	return result;
 }
 /**
  * matchSubjectName Метод проверки доменного имени по списку доменных имен из сертификата
- * @param hostname доменное имя
- * @param cert     сертификат
- * @return         результат проверки
+ * @param host доменное имя
+ * @param cert сертификат
+ * @return     результат проверки
  */
-const awh::ASSL::validate_t awh::ASSL::matchSubjectName(const string & hostname, const X509 * cert) const noexcept {
+const awh::ASSL::validate_t awh::ASSL::matchSubjectName(const string & host, const X509 * cert) const noexcept {
 	// Результат работы функции
 	validate_t result = validate_t::MatchNotFound;
 	// Если данные переданы
-	if(!hostname.empty() && (cert != nullptr)){
+	if(!host.empty() && (cert != nullptr)){
 		// Получаем имена
-		STACK_OF(GENERAL_NAME) * sanNames = reinterpret_cast <STACK_OF(GENERAL_NAME) *> (X509_get_ext_d2i((X509 *) cert, NID_subject_alt_name, nullptr, nullptr));
+		STACK_OF(GENERAL_NAME) * sn = reinterpret_cast <STACK_OF(GENERAL_NAME) *> (X509_get_ext_d2i((X509 *) cert, NID_subject_alt_name, nullptr, nullptr));
 		// Если имена не получены тогда выходим
-		if(sanNames == nullptr) return validate_t::NoSANPresent;
+		if(sn == nullptr) return validate_t::NoSANPresent;
 		// Получаем количество имен
-		const int sanNamesNb = sk_GENERAL_NAME_num(sanNames);
+		const int sanNamesNb = sk_GENERAL_NAME_num(sn);
 		// Переходим по всему списку
 		for(int i = 0; i < sanNamesNb; i++){
 			// Получаем имя из списка
-			const GENERAL_NAME * currentName = sk_GENERAL_NAME_value(sanNames, i);
+			const GENERAL_NAME * cn = sk_GENERAL_NAME_value(sn, i);
 			// Проверяем тип имени
-			if(currentName->type == GEN_DNS){
+			if(cn->type == GEN_DNS){
 				// Получаем dns имя
-				const string dnsName((char *) ASN1_STRING_get0_data(currentName->d.dNSName), ASN1_STRING_length(currentName->d.dNSName));
+				const string dns((char *) ASN1_STRING_get0_data(cn->d.dNSName), ASN1_STRING_length(cn->d.dNSName));
 				// Если размер имени не совпадает
-				if(size_t(ASN1_STRING_length(currentName->d.dNSName)) != dnsName.length()){
+				if(size_t(ASN1_STRING_length(cn->d.dNSName)) != dns.length()){
 					// Запоминаем результат
 					result = validate_t::MalformedCertificate;
 					// Выходим из цикла
 					break;
 				// Если размер имени и dns имя совпадает
-				} else if(this->certHostcheck(dnsName, hostname)){
+				} else if(this->certHostcheck(host, dns)){
 					// Запоминаем результат что домен найден
 					result = validate_t::MatchFound;
 					// Выходим из цикла
@@ -195,26 +193,26 @@ const awh::ASSL::validate_t awh::ASSL::matchSubjectName(const string & hostname,
 			}
 		}
 		// Очищаем список имен
-		sk_GENERAL_NAME_pop_free(sanNames, GENERAL_NAME_free);
+		sk_GENERAL_NAME_pop_free(sn, GENERAL_NAME_free);
 	}
 	// Выводим результат
 	return result;
 }
 /**
  * validateHostname Метод проверки доменного имени
- * @param hostname доменное имя
- * @param cert     сертификат
- * @return         результат проверки
+ * @param host доменное имя
+ * @param cert сертификат
+ * @return     результат проверки
  */
-const awh::ASSL::validate_t awh::ASSL::validateHostname(const string & hostname, const X509 * cert) const noexcept {
+const awh::ASSL::validate_t awh::ASSL::validateHostname(const string & host, const X509 * cert) const noexcept {
 	// Результат работы функции
 	validate_t result = validate_t::Error;
 	// Если данные переданы
-	if(!hostname.empty() && (cert != nullptr)){
+	if(!host.empty() && (cert != nullptr)){
 		// Выполняем проверку имени хоста по списку доменов у сертификата
-		result = this->matchSubjectName(hostname, cert);
+		result = this->matchSubjectName(host, cert);
 		// Если у сертификата только один домен
-		if(result == validate_t::NoSANPresent) result = this->matchesCommonName(hostname, cert);
+		if(result == validate_t::NoSANPresent) result = this->matchesCommonName(host, cert);
 	}
 	// Выводим результат
 	return result;
@@ -251,21 +249,14 @@ void awh::ASSL::clear(ctx_t & ctx) const noexcept {
 	ctx.mode = false;
 }
 /**
- * init Метод инициализации контекста
- * @param url Параметры URL адреса для инициализации
+ * init Метод инициализации контекста для сервера
+ * @return объект SSL контекста
  */
-awh::ASSL::ctx_t awh::ASSL::init(const uri_t::url_t & url) noexcept {
+awh::ASSL::ctx_t awh::ASSL::init() noexcept {
 	// Результат работы функции
 	ctx_t result;
 	// Если объект фреймворка существует
-	if((this->fmk != nullptr) && (!url.domain.empty() || !url.ip.empty()) && ((url.schema.compare("https") == 0) || (url.schema.compare("wss") == 0))){
-		// Активируем рандомный генератор
-		if(RAND_poll() == 0){
-			// Выводим в лог сообщение
-			this->log->print("%s", log_t::flag_t::CRITICAL, "rand poll is not allow");
-			// Выходим
-			return result;
-		}
+	if(this->fmk != nullptr){
 		// Получаем контекст OpenSSL
 		result.ctx = SSL_CTX_new(SSLv23_client_method());
 		// Если контекст не создан
@@ -277,8 +268,39 @@ awh::ASSL::ctx_t awh::ASSL::init(const uri_t::url_t & url) noexcept {
 		}
 		// Устанавливаем опции запроса
 		SSL_CTX_set_options(result.ctx, SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3);
-		// Если CA-файл найден и адрес файла указан
-		if(!this->cafile.empty()) {
+		// Устанавливаем типы шифрования
+		if(!SSL_CTX_set_cipher_list(result.ctx, "ECDHE-RSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-SHA:ECDHE-RSA-AES256-SHA384")){
+			// Очищаем созданный контекст
+			this->clear(result);
+			// Выводим в лог сообщение
+			this->log->print("%s", log_t::flag_t::CRITICAL, "set ssl ciphers");
+			// Выходим
+			return result;
+		}
+		// Устанавливаем поддерживаемые кривые
+		if(!SSL_CTX_set_ecdh_auto(result.ctx, 1)){
+			// Очищаем созданный контекст
+			this->clear(result);
+			// Выводим в лог сообщение
+			this->log->print("%s", log_t::flag_t::CRITICAL, "set ssl ecdh");
+			// Выходим
+			return result;
+		}
+		// Если CA-файл не найден или адрес файла не указан
+		if(this->cafile.empty()){
+			// Получаем данные стора
+			X509_STORE * store = SSL_CTX_get_cert_store(result.ctx);
+			// Если стор не устанавливается, тогда выводим ошибку
+			if(!X509_STORE_set_default_paths(store)){
+				// Очищаем созданный контекст
+				this->clear(result);
+				// Выводим в лог сообщение
+				this->log->print("%s", log_t::flag_t::CRITICAL, "set ssl default paths for x509 store is not allow");
+				// Выходим
+				return result;
+			}
+		// Если CA файл найден
+		} else {
 			// Определяем путь где хранятся сертификаты
 			const char * capath = (!this->capath.empty() ? this->capath.c_str() : nullptr);
 			// Выполняем проверку
@@ -313,15 +335,16 @@ awh::ASSL::ctx_t awh::ASSL::init(const uri_t::url_t & url) noexcept {
 								// Выполняем декодирование адреса файла
 								filename = this->uri->urlDecode(filename);
 								// Если адрес файла существует
-								if(fs_t::isfile(filename))
+								if(fs_t::isfile(filename)){
 									// Выполняем проверку CA-файла
 									SSL_CTX_set_client_CA_list(result.ctx, SSL_load_client_CA_file(filename.c_str()));
-								// Выполняем очистку CA-файла
-								else this->cafile.clear();
-							// Выполняем очистку CA-файла
-							} else this->cafile.clear();
+									// Переходим к следующей итерации
+									goto Next;
+								}
+							}
+						}
 						// Выполняем очистку CA-файла
-						} else this->cafile.clear();
+						this->cafile.clear();
 					// Если - это Unix
 					#else
 						// Выполняем сплит адреса
@@ -335,13 +358,15 @@ awh::ASSL::ctx_t awh::ASSL::init(const uri_t::url_t & url) noexcept {
 							// Выполняем декодирование адреса файла
 							filename = this->uri->urlDecode(filename);
 							// Если адрес файла существует
-							if(fs_t::isfile(filename))
+							if(fs_t::isfile(filename)){
 								// Выполняем проверку CA файла
 								SSL_CTX_set_client_CA_list(result.ctx, SSL_load_client_CA_file(filename.c_str()));
-							// Выполняем очистку CA-файла
-							else this->cafile.clear();
+								// Переходим к следующей итерации
+								goto Next;
+							}
+						}
 						// Выполняем очистку CA-файла
-						} else this->cafile.clear();
+						this->cafile.clear();
 					#endif
 				// Если адрес файла существует
 				} else if(fs_t::isfile(this->cafile))
@@ -354,6 +379,139 @@ awh::ASSL::ctx_t awh::ASSL::init(const uri_t::url_t & url) noexcept {
 				// Выполняем проверку CA-файла
 				SSL_CTX_set_client_CA_list(result.ctx, SSL_load_client_CA_file(this->cafile.c_str()));
 		}
+		// Метка следующей итерации
+		Next:
+		// Устанавливаем флаг quiet shutdown
+		SSL_CTX_set_quiet_shutdown(result.ctx, 1);
+		// Запускаем кэширование
+		SSL_CTX_set_session_cache_mode(result.ctx, SSL_SESS_CACHE_SERVER | SSL_SESS_CACHE_NO_INTERNAL);
+		// Запрашиваем данные цепочки доверия
+		const int chain = (!this->chain.empty() ? SSL_CTX_use_certificate_chain_file(result.ctx, this->chain.c_str()) : 1);
+		// Запрашиваем данные приватного ключа сертификата
+		const int prv = (!this->key.empty() ? SSL_CTX_use_PrivateKey_file(result.ctx, this->key.c_str(), SSL_FILETYPE_PEM) : 0);
+		// Запрашиваем данные сертификата
+		const int cert = (!this->cert.empty() ? SSL_CTX_use_certificate_file(result.ctx, this->cert.c_str(), SSL_FILETYPE_PEM) : 0);
+		// Если какой-то из файлов не получен то выходим
+		if((chain == 0) || (cert == 0) || (prv == 0)){
+			// Очищаем созданный контекст
+			this->clear(result);
+			// Выводим в лог сообщение
+			this->log->print("%s", log_t::flag_t::CRITICAL, "ssl certificates is not load");
+		}
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * init Метод инициализации контекста для сервера
+ * @param url Параметры URL адреса для инициализации
+ * @return    объект SSL контекста
+ */
+awh::ASSL::ctx_t awh::ASSL::init(const uri_t::url_t & url) noexcept {
+	// Результат работы функции
+	ctx_t result;
+	// Если объект фреймворка существует
+	if((this->fmk != nullptr) && (!url.domain.empty() || !url.ip.empty()) && ((url.schema.compare("https") == 0) || (url.schema.compare("wss") == 0))){
+		// Активируем рандомный генератор
+		if(RAND_poll() == 0){
+			// Выводим в лог сообщение
+			this->log->print("%s", log_t::flag_t::CRITICAL, "rand poll is not allow");
+			// Выходим
+			return result;
+		}
+		// Получаем контекст OpenSSL
+		result.ctx = SSL_CTX_new(SSLv23_client_method());
+		// Если контекст не создан
+		if(result.ctx == nullptr){
+			// Выводим в лог сообщение
+			this->log->print("%s", log_t::flag_t::CRITICAL, "context ssl is not initialization");
+			// Выходим
+			return result;
+		}
+		// Устанавливаем опции запроса
+		SSL_CTX_set_options(result.ctx, SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3);
+		// Если CA-файл найден и адрес файла указан
+		if(!this->cafile.empty()){
+			// Определяем путь где хранятся сертификаты
+			const char * capath = (!this->capath.empty() ? this->capath.c_str() : nullptr);
+			// Выполняем проверку
+			if(SSL_CTX_load_verify_locations(result.ctx, this->cafile.c_str(), capath) != 1){
+				// Очищаем созданный контекст
+				this->clear(result);
+				// Выводим в лог сообщение
+				this->log->print("%s", log_t::flag_t::CRITICAL, "ssl verify locations is not allow");
+				// Выходим
+				return result;
+			}
+			// Если каталог получен
+			if(capath != nullptr){
+				// Получаем полный адрес
+				const string & fullPath = fs_t::realPath(this->capath);
+				// Если адрес существует
+				if(fs_t::isdir(fullPath) && !fs_t::isfile(this->cafile)){
+					// Если - это Windows
+					#if defined(_WIN32) || defined(_WIN64)
+						// Выполняем сплит адреса
+						const auto & params = this->uri->split(fullPath);
+						// Если диск получен
+						if(!params.front().empty()){
+							// Выполняем сплит адреса
+							auto path = this->uri->splitPath(params.back(), FS_SEPARATOR);
+							// Добавляем адрес файла в список
+							path.push_back(this->cafile);
+							// Формируем полный адарес файла
+							string filename = this->fmk->format("%s:%s", params.front().c_str(), this->uri->joinPath(path, FS_SEPARATOR).c_str());
+							// Выполняем проверку CA-файла
+							if(!filename.empty()){
+								// Выполняем декодирование адреса файла
+								filename = this->uri->urlDecode(filename);
+								// Если адрес файла существует
+								if(fs_t::isfile(filename)){
+									// Выполняем проверку CA-файла
+									SSL_CTX_set_client_CA_list(result.ctx, SSL_load_client_CA_file(filename.c_str()));
+									// Переходим к следующей итерации
+									goto Next;
+								}
+							}
+						}
+						// Выполняем очистку CA-файла
+						this->cafile.clear();
+					// Если - это Unix
+					#else
+						// Выполняем сплит адреса
+						auto path = this->uri->splitPath(fullPath, FS_SEPARATOR);
+						// Добавляем адрес файла в список
+						path.push_back(this->cafile);
+						// Формируем полный адарес файла
+						string filename = this->uri->joinPath(path, FS_SEPARATOR);
+						// Выполняем проверку CA-файла
+						if(!filename.empty()){
+							// Выполняем декодирование адреса файла
+							filename = this->uri->urlDecode(filename);
+							// Если адрес файла существует
+							if(fs_t::isfile(filename)){
+								// Выполняем проверку CA файла
+								SSL_CTX_set_client_CA_list(result.ctx, SSL_load_client_CA_file(filename.c_str()));
+								// Переходим к следующей итерации
+								goto Next;
+							}
+						}
+						// Выполняем очистку CA-файла
+						this->cafile.clear();
+					#endif
+				// Если адрес файла существует
+				} else if(fs_t::isfile(this->cafile))
+					// Выполняем проверку CA-файла
+					SSL_CTX_set_client_CA_list(result.ctx, SSL_load_client_CA_file(this->cafile.c_str()));
+				// Выполняем очистку CA-файла
+				else this->cafile.clear();
+			// Если адрес файла существует
+			} else if(fs_t::isfile(this->cafile))
+				// Выполняем проверку CA-файла
+				SSL_CTX_set_client_CA_list(result.ctx, SSL_load_client_CA_file(this->cafile.c_str()));
+		}
+		// Метка следующей итерации
+		Next:
 		// Если CA-файл не указан
 		if(this->cafile.empty()){
 			// Получаем данные стора
@@ -518,8 +676,6 @@ awh::ASSL::ctx_t awh::ASSL::init(const uri_t::url_t & url) noexcept {
 				this->clear(result);
 				// Выводим в лог сообщение
 				this->log->print("certificate chain validation failed: %s", log_t::flag_t::CRITICAL, X509_verify_cert_error_string(verify));
-				// Выходим
-				return result;
 			}
 		}
 	}
@@ -551,6 +707,20 @@ void awh::ASSL::setCA(const string & cafile, const string & capath) noexcept {
 	}
 }
 /**
+ * setCert Метод установки файлов сертификата
+ * @param cert  корневой сертификат
+ * @param key   приватный ключ сертификата
+ * @param chain файл цепочки сертификатов
+ */
+void awh::ASSL::setCert(const string & cert, const string & key, const string & chain) noexcept {
+	// Устанавливаем приватный ключ сертификата
+	this->key = key;
+	// Устанавливаем файл сертификата
+	this->cert = cert;
+	// Устанавливаем файл цепочки сертификатов
+	this->chain = chain;
+}
+/**
  * ASSL Конструктор
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
@@ -571,9 +741,9 @@ awh::ASSL::ASSL(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcep
 		// Объект данных сессии
 		WSADATA wsaData;
 		// Создаём структуру сессии
-		WORD wVersionRequested = MAKEWORD(2, 2);
+		WORD vr = MAKEWORD(2, 2);
 		// Выполняем запуск сессии
-		int err = WSAStartup(wVersionRequested, &wsaData);
+		int err = WSAStartup(vr, &wsaData);
 		// Если возникла ошибка
 		if(err != 0){
 			// Выводим в лог сообщение
