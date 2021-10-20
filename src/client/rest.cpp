@@ -13,11 +13,14 @@
 /**
  * chunking Метод обработки получения чанков
  * @param chunk бинарный буфер чанка
- * @param ctx   контекст объекта http
+ * @param http  объект модуля HTTP
+ * @param ctx   передаваемый контекст модуля
  */
-void awh::Rest::chunking(const vector <char> & chunk, const http_t * ctx) noexcept {
+void awh::Rest::chunking(const vector <char> & chunk, const http_t * http, void * ctx) noexcept {
+	// Выполняем блокировку неиспользуемой переменной
+	(void) ctx;
 	// Если данные получены, формируем тело сообщения
-	if(!chunk.empty()) const_cast <http_t *> (ctx)->addBody(chunk.data(), chunk.size());
+	if(!chunk.empty()) const_cast <http_t *> (http)->addBody(chunk.data(), chunk.size());
 }
 /**
  * openCallback Функция обратного вызова при запуске работы
@@ -792,14 +795,6 @@ void awh::Rest::REST(const uri_t::url_t & url, http_t::method_t method, vector <
 	}
 }
 /**
- * setChunkingFn Метод установки функции обратного вызова для получения чанков
- * @param callback функция обратного вызова
- */
-void awh::Rest::setChunkingFn(function <void (const vector <char> &, const http_t *)> callback) noexcept {
-	// Устанавливаем функцию обработки вызова для получения чанков
-	this->http.setChunkingFn(callback);
-}
-/**
  * setMessageCallback Метод установки функции обратного вызова при получении сообщения
  * @param ctx      контекст для вывода в сообщении
  * @param callback функция обратного вызова
@@ -809,6 +804,15 @@ void awh::Rest::setMessageCallback(void * ctx, function <void (const res_t &, vo
 	this->ctx = ctx;
 	// Устанавливаем функцию обратного вызова
 	this->messageFn = callback;
+}
+/**
+ * setChunkingFn Метод установки функции обратного вызова для получения чанков
+ * @param ctx      контекст для вывода в сообщении
+ * @param callback функция обратного вызова
+ */
+void awh::Rest::setChunkingFn(void * ctx, function <void (const vector <char> &, const http_t *, void *)> callback) noexcept {
+	// Устанавливаем функцию обработки вызова для получения чанков
+	this->http.setChunkingFn(ctx, callback);
 }
 /**
  * setWaitTimeDetect Метод детекции сообщений по количеству секунд
@@ -978,8 +982,6 @@ void awh::Rest::setAuthTypeProxy(const auth_t::type_t type, const auth_t::alg_t 
 awh::Rest::Rest(const coreCli_t * core, const fmk_t * fmk, const log_t * log) noexcept : nwk(fmk), uri(fmk, &nwk), http(fmk, log, &uri), core(core), fmk(fmk), log(log), worker(fmk, log), compress(http_t::compress_t::NONE) {
 	// Устанавливаем контекст сообщения
 	this->worker.ctx = this;
-	// Устанавливаем функцию обработки вызова для получения чанков
-	this->http.setChunkingFn(&chunking);
 	// Устанавливаем событие на запуск системы
 	this->worker.openFn = openCallback;
 	// Устанавливаем функцию чтения данных
@@ -992,6 +994,8 @@ awh::Rest::Rest(const coreCli_t * core, const fmk_t * fmk, const log_t * log) no
 	this->worker.disconnectFn = disconnectCallback;
 	// Устанавливаем событие на подключение к прокси-серверу
 	this->worker.connectProxyFn = connectProxyCallback;
+	// Устанавливаем функцию обработки вызова для получения чанков
+	this->http.setChunkingFn(this, &chunking);
 	// Добавляем воркер в биндер TCP/IP
 	const_cast <coreCli_t *> (this->core)->add(&this->worker);
 }

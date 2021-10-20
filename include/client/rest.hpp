@@ -104,9 +104,10 @@ namespace awh {
 			/**
 			 * chunking Метод обработки получения чанков
 			 * @param chunk бинарный буфер чанка
-			 * @param ctx   контекст объекта http
+			 * @param http  объект модуля HTTP
+			 * @param ctx   передаваемый контекст модуля
 			 */
-			static void chunking(const vector <char> & chunk, const http_t * ctx) noexcept;
+			static void chunking(const vector <char> & chunk, const http_t * http, void * ctx) noexcept;
 		private:
 			/**
 			 * openCallback Функция обратного вызова при запуске работы
@@ -282,16 +283,17 @@ namespace awh {
 			void REST(const uri_t::url_t & url, http_t::method_t method, vector <char> entity = {}, unordered_multimap <string, string> headers = {}) noexcept;
 		public:
 			/**
-			 * setChunkingFn Метод установки функции обратного вызова для получения чанков
-			 * @param callback функция обратного вызова
-			 */
-			void setChunkingFn(function <void (const vector <char> &, const http_t *)> callback) noexcept;
-			/**
 			 * setMessageCallback Метод установки функции обратного вызова при получении сообщения
 			 * @param ctx      контекст для вывода в сообщении
 			 * @param callback функция обратного вызова
 			 */
 			void setMessageCallback(void * ctx, function <void (const res_t &, void *)> callback) noexcept;
+			/**
+			 * setChunkingFn Метод установки функции обратного вызова для получения чанков
+			 * @param ctx      контекст для вывода в сообщении
+			 * @param callback функция обратного вызова
+			 */
+			void setChunkingFn(void * ctx, function <void (const vector <char> &, const http_t *, void *)> callback) noexcept;
 		public:
 			/**
 			 * setWaitTimeDetect Метод детекции сообщений по количеству секунд

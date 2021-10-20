@@ -132,11 +132,23 @@ namespace awh {
 			};
 		private:
 			/**
+			 * Стейты работы чанка
+			 */
+			enum class cstate_t : uint8_t {
+				SIZE,    // Ожидание получения размера
+				BODY,    // Ожидание сбора тела данных
+				ENDSIZE, // Ожидание получения перевода строки после получения размера чанка
+				ENDBODY, // Ожидание получения перевода строки после получения тела чанка
+				STOPBODY // Ожидание получения возврата каретки после получения тела чанка
+			};
+			/**
 			 * Chunk Структура собираемого чанка
 			 */
 			typedef struct Chunk {
 				public:
 					size_t size;        // Размер чанка
+					cstate_t state;     // Стейт чанка
+					string hexSize;     // Размер чанка в 16-м виде
 					vector <char> data; // Данные чанка
 				public:
 					/**
@@ -147,12 +159,16 @@ namespace awh {
 						this->size = 0;
 						// Обнуляем буфер данных
 						this->data.clear();
+						// Обнуляем размер чанка в 16-м виде
+						this->hexSize.clear();
+						// Выполняем сброс стейта чанка
+						this->state = cstate_t::SIZE;
 					}
 				public:
 					/**
 					 * Chunk Конструктор
 					 */
-					Chunk() : size(0) {}
+					Chunk() : size(0), state(cstate_t::SIZE), hexSize("") {}
 			} chunk_t;
 		protected:
 			/**
@@ -216,8 +232,10 @@ namespace awh {
 			// Полученные HTTP заголовки
 			mutable unordered_multimap <string, string> headers;
 		private:
+			// Список контекстов передаваемых объектов
+			vector <void *> ctx = {nullptr};
 			// Функция вызова при получении чанка
-			function <void (const vector <char> &, const Http *)> chunkingFn = nullptr;
+			function <void (const vector <char> &, const Http *, void *)> chunkingFn = nullptr;
 		protected:
 			// Создаём объект фреймворка
 			const fmk_t * fmk = nullptr;
@@ -409,9 +427,10 @@ namespace awh {
 		public:
 			/**
 			 * setChunkingFn Метод установки функции обратного вызова для получения чанков
+			 * @param ctx      контекст для вывода в сообщении
 			 * @param callback функция обратного вызова
 			 */
-			void setChunkingFn(function <void (const vector <char> &, const Http *)> callback) noexcept;
+			void setChunkingFn(void * ctx, function <void (const vector <char> &, const Http *, void *)> callback) noexcept;
 		public:
 			/**
 			 * setChunkSize Метод установки размера чанка

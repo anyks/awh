@@ -18,6 +18,7 @@
 	void awh::Core::winSocketInit() const noexcept {
 		// Если winSock ещё не инициализирован
 		if(!this->winSock){
+			/*
 			// Идентификатор ошибки
 			int error = 0;
 			// Объект данных запроса
@@ -38,6 +39,7 @@
 				// Выходим из приложения
 				exit(EXIT_FAILURE);
 			}
+			*/
 			// Запоминаем, что winSock уже инициализирован
 			this->winSock = true;
 		}
@@ -47,7 +49,7 @@
 	 */
 	void awh::Core::winSocketClean() const noexcept {
 		// Очищаем сетевой контекст
-		WSACleanup();
+		// WSACleanup();
 		// Запоминаем, что winSock не инициализирован
 		this->winSock = false;
 	}
