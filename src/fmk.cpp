@@ -1682,7 +1682,6 @@ float awh::Framework::rate(const float a, const float b) const noexcept {
 awh::Framework::Framework() noexcept {
 	// Устанавливаем локализацию системы
 	this->setlocale();
-
 	// Если - это Windows
 	#if defined(_WIN32) || defined(_WIN64)
 		// Идентификатор ошибки
@@ -1691,19 +1690,13 @@ awh::Framework::Framework() noexcept {
 		WSADATA wsaData;
 		// Выполняем инициализацию сетевого контекста
 		if((error = WSAStartup(MAKEWORD(2, 2), &wsaData)) != 0){
-
 			// Очищаем сетевой контекст
 			WSACleanup();
-
-			// Сообщаем, что сетевой контекст не поднят
-			// this->log->print("WSAStartup failed with error: %d", log_t::flag_t::CRITICAL, error);
 			// Выходим из приложения
 			exit(EXIT_FAILURE);
 		}
 		// Выполняем проверку версии WinSocket
 		if((2 != LOBYTE(wsaData.wVersion)) || (2 != HIBYTE(wsaData.wVersion))){
-			// Сообщаем, что версия WinSocket не подходит
-			// this->log->print("%s", log_t::flag_t::CRITICAL, "WSADATA version is not correct");
 			// Очищаем сетевой контекст
 			WSACleanup();
 			// Выходим из приложения
@@ -1718,7 +1711,6 @@ awh::Framework::Framework() noexcept {
 awh::Framework::Framework(const string & locale) noexcept {
 	// Устанавливаем локализацию системы
 	this->setlocale(locale);
-
 	// Если - это Windows
 	#if defined(_WIN32) || defined(_WIN64)
 		// Очищаем сетевой контекст

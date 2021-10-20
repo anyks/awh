@@ -729,28 +729,6 @@ void awh::ASSL::setCert(const string & cert, const string & key, const string & 
 awh::ASSL::ASSL(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcept : fmk(fmk), uri(uri), log(log) {
 	// Выполняем модификацию CA-файла
 	this->cafile = fs_t::realPath(this->cafile);
-	
-	/*
-	// Если - это Windows
-	#if defined(_WIN32) || defined(_WIN64)
-	{
-		// Объект данных сессии
-		WSADATA wsaData;
-		// Создаём структуру сессии
-		WORD vr = MAKEWORD(2, 2);
-		// Выполняем запуск сессии
-		int err = WSAStartup(vr, &wsaData);
-		// Если возникла ошибка
-		if(err != 0){
-			// Выводим в лог сообщение
-			this->log->print("%s", log_t::flag_t::CRITICAL, "WSAStartup failed with error: %i", err);
-			// Выходим из приложения
-			exit(EXIT_FAILURE);
-		}
-	}
-	#endif
-	*/
-
 	// Если версия OPENSSL старая
 	#if (OPENSSL_VERSION_NUMBER < 0x10100000L) || (defined(LIBRESSL_VERSION_NUMBER) && LIBRESSL_VERSION_NUMBER < 0x20700000L)
 		// Выполняем инициализацию OpenSSL
@@ -779,12 +757,4 @@ awh::ASSL::~ASSL() noexcept {
 		CRYPTO_cleanup_all_ex_data();
 		sk_SSL_COMP_free(SSL_COMP_get_compression_methods());
 	#endif
-
-	/*
-	// Если - это Windows
-	#if defined(_WIN32) || defined(_WIN64)
-		// Очищаем данные сессии
-		WSACleanup();
-	#endif
-	*/
 }

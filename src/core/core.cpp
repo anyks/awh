@@ -10,50 +10,6 @@
 // Подключаем заголовочный файл
 #include <core/core.hpp>
 
-// Если - это Windows
-#if defined(_WIN32) || defined(_WIN64)
-	/**
-	 * winSocketInit Метод инициализации WinSock
-	 */
-	void awh::Core::winSocketInit() const noexcept {
-		// Если winSock ещё не инициализирован
-		if(!this->winSock){
-			/*
-			// Идентификатор ошибки
-			int error = 0;
-			// Объект данных запроса
-			WSADATA wsaData;
-			// Выполняем инициализацию сетевого контекста
-			if((error = WSAStartup(MAKEWORD(2, 2), &wsaData)) != 0){ // 0x202
-				// Сообщаем, что сетевой контекст не поднят
-				this->log->print("WSAStartup failed with error: %d", log_t::flag_t::CRITICAL, error);
-				// Выходим из приложения
-				exit(EXIT_FAILURE);
-			}
-			// Выполняем проверку версии WinSocket
-			if((2 != LOBYTE(wsaData.wVersion)) || (2 != HIBYTE(wsaData.wVersion))){
-				// Сообщаем, что версия WinSocket не подходит
-				this->log->print("%s", log_t::flag_t::CRITICAL, "WSADATA version is not correct");
-				// Очищаем сетевой контекст
-				this->winSocketClean();
-				// Выходим из приложения
-				exit(EXIT_FAILURE);
-			}
-			*/
-			// Запоминаем, что winSock уже инициализирован
-			this->winSock = true;
-		}
-	}
-	/**
-	 * winSocketClean Метод очистки WinSock
-	 */
-	void awh::Core::winSocketClean() const noexcept {
-		// Очищаем сетевой контекст
-		// WSACleanup();
-		// Запоминаем, что winSock не инициализирован
-		this->winSock = false;
-	}
-#endif
 /**
  * run Функция обратного вызова при активации базы событий
  * @param fd    файловый дескриптор (сокет)
@@ -344,8 +300,6 @@ const awh::Core::socket_t awh::Core::socket(const string & ip, const u_int port,
 			} else sockets_t::keepAlive(result.fd, this->alive.keepcnt, this->alive.keepidle, this->alive.keepintvl, this->log);
 		// Если - это Windows
 		#else
-			// Выполняем инициализацию WinSock
-			this->winSocketInit();
 			// Переводим сокет в блокирующий режим
 			// sockets_t::blocking(result.fd);
 			evutil_make_socket_nonblocking(result.fd);
@@ -448,11 +402,6 @@ void awh::Core::stop() noexcept {
 		this->mode = false;
 		// Выполняем отключение всех клиентов
 		this->closeAll();
-		// Если - это Windows
-		#if defined(_WIN32) || defined(_WIN64)
-			// Очищаем сетевой контекст
-			this->winSocketClean();
-		#endif
 		// Завершаем работу базы событий
 		event_base_loopbreak(this->base);
 	}

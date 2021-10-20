@@ -197,20 +197,6 @@ namespace awh {
 		protected:
 			// Функция обратного вызова при запуске/остановке модуля
 			function <void (const bool, Core * core, void *)> callbackFn = nullptr;
-		protected:
-			/**
-			 * Если - это Windows
-			 */
-			#if defined(_WIN32) || defined(_WIN64)
-				/**
-				 * winSocketInit Метод инициализации WinSock
-				 */
-				void winSocketInit() const noexcept;
-				/**
-				 * winSocketClean Метод очистки WinSock
-				 */
-				void winSocketClean() const noexcept;
-			#endif
 		private:
 			/**
 			 * run Функция обратного вызова при активации базы событий
