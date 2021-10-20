@@ -98,9 +98,6 @@ namespace awh {
 					// Таймер на запись в секундах
 					time_t timeWrite = WRITE_TIMEOUT;
 				private:
-					// Объект буфера данныхs
-					char buffer[BUFFER_CHUNK];
-				private:
 					// Объект буфера событий
 					struct bufferevent * bev = nullptr;
 				public:

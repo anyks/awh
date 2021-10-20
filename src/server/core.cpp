@@ -23,15 +23,32 @@ void awh::CoreServer::read(struct bufferevent * bev, void * ctx) noexcept {
 		// Получаем объект подключения
 		workSrv_t * wrk = (workSrv_t *) const_cast <worker_t *> (adj->parent);
 		// Если подключение ещё существует
-		if(wrk->core->adjutants.count(adj->aid) > 0){
-			// Если функция обратного вызова установлена
-			if(wrk->readFn != nullptr){
-				// Заполняем нулями буфер полученных данных
-				// memset((void *) adj->buffer, 0, BUFFER_CHUNK);
-				// Считываем бинарные данные запроса из буфер
-				const size_t size = bufferevent_read(bev, (void *) adj->buffer, BUFFER_CHUNK);
-				// Выводим функцию обратного вызова
-				wrk->readFn(adj->buffer, size, adj->aid, wrk->wid, const_cast <core_t *> (wrk->core), wrk->ctx);
+		if((wrk->core->adjutants.count(adj->aid) > 0) && (wrk->readFn != nullptr)){
+			// Получаем буферы входящих данных
+			struct evbuffer * input = bufferevent_get_input(bev);
+			// Получаем размер входящих данных
+			const size_t size = evbuffer_get_length(input);
+			// Если данные существуют
+			if(size > 0){
+				/*
+				 * Выполняем отлов ошибок
+				 */
+				try {
+					// Создаём буфер данных
+					char * buffer = new char [size];
+					// Копируем в буфер полученные данные
+					evbuffer_remove(input, buffer, size);
+					// Выводим функцию обратного вызова
+					wrk->readFn(buffer, size, adj->aid, wrk->wid, const_cast <core_t *> (wrk->core), wrk->ctx);
+					// Удаляем выделенную память буфера
+					delete [] buffer;
+				// Если возникает ошибка
+				} catch(const bad_alloc &) {
+					// Выводим в лог сообщение
+					adj->log->print("%s", log_t::flag_t::CRITICAL, "unable to allocate enough memory");
+					// Выходим из приложения
+					exit(EXIT_FAILURE);
+				}
 			}
 		}
 	}
@@ -49,35 +66,32 @@ void awh::CoreServer::write(struct bufferevent * bev, void * ctx) noexcept {
 		// Получаем объект подключения
 		workSrv_t * wrk = (workSrv_t *) const_cast <worker_t *> (adj->parent);
 		// Если подключение ещё существует
-		if(wrk->core->adjutants.count(adj->aid) > 0){
+		if((wrk->core->adjutants.count(adj->aid) > 0) && (wrk->writeFn != nullptr)){
 			// Получаем буферы исходящих данных
 			struct evbuffer * output = bufferevent_get_output(bev);
 			// Получаем размер исходящих данных
 			const size_t size = evbuffer_get_length(output);
 			// Если данные существуют
 			if(size > 0){
-				// Если функция обратного вызова установлена
-				if(wrk->writeFn != nullptr){
-					/**
-					 * Выполняем отлов ошибок
-					 */
-					try {
-						// Создаём буфер входящих данных
-						char * buffer = new char[size];
-						// Копируем в буфер полученные данные
-						evbuffer_copyout(output, buffer, size);
-						// Выводим функцию обратного вызова
-						wrk->writeFn(buffer, size, adj->aid, wrk->wid, const_cast <core_t *> (wrk->core), wrk->ctx);
-						// Выполняем удаление буфера
-						delete [] buffer;
-					// Если возникает ошибка
-					} catch(const bad_alloc &) {
-						// Выводим пустое сообщение
-						wrk->writeFn(nullptr, size, adj->aid, wrk->wid, const_cast <core_t *> (wrk->core), wrk->ctx);
-					}
+				/**
+				 * Выполняем отлов ошибок
+				 */
+				try {
+					// Создаём буфер входящих данных
+					char * buffer = new char [size];
+					// Копируем в буфер полученные данные
+					evbuffer_remove(output, buffer, size);
+					// Выводим функцию обратного вызова
+					wrk->writeFn(buffer, size, adj->aid, wrk->wid, const_cast <core_t *> (wrk->core), wrk->ctx);
+					// Выполняем удаление буфера
+					delete [] buffer;
+				// Если возникает ошибка
+				} catch(const bad_alloc &) {
+					// Выводим в лог сообщение
+					adj->log->print("%s", log_t::flag_t::WARNING, "unable to allocate enough memory");
+					// Выводим пустое сообщение
+					wrk->writeFn(nullptr, size, adj->aid, wrk->wid, const_cast <core_t *> (wrk->core), wrk->ctx);
 				}
-				// Удаляем данные из буфера
-				evbuffer_drain(output, size);
 			}
 		}
 	}
