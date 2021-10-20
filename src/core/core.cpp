@@ -37,45 +37,16 @@ void awh::Core::run(evutil_socket_t fd, short event, void * ctx) noexcept {
 		if(core->callbackFn != nullptr) core->callbackFn(true, core, core->ctx.front());
 		// Выводим в консоль информацию
 		if(!core->noinfo) core->log->print("[+] start service: pid = %u", log_t::flag_t::INFO, getpid());
-		// Создаём событие на активацию базы событий
-		event_assign(&core->pingInterval, core->base, -1, EV_TIMEOUT | EV_PERSIST, ping, core);
-		// Очищаем объект таймаута базы событий
-		evutil_timerclear(&core->tvPingInterval);
-		// Устанавливаем интервал таймаута
-		core->tvPingInterval.tv_sec = (PING_INTERVAL / 1000);
-		// Создаём событие таймаута на активацию базы событий
-		event_add(&core->pingInterval, &core->tvPingInterval);
-	}
-}
-/**
- * ping Функция вызова методов пинга по таймеру
- * @param fd    файловый дескриптор (сокет)
- * @param event произошедшее событие
- * @param ctx   передаваемый контекст
- */
-void awh::Core::ping(evutil_socket_t fd, short event, void * ctx) noexcept {
-	// Если контекст модуля передан
-	if(ctx != nullptr){
-		// Получаем объект подключения
-		core_t * core = reinterpret_cast <core_t *> (ctx);
-		// Если список воркеров существует
-		if(!core->workers.empty()){
-			// Переходим по всему списку воркеров
-			for(auto & worker : core->workers){
-				// Получаем объект воркера
-				worker_t * wrk = const_cast <worker_t *> (worker.second);
-				// Если функция обратного вызова установлена
-				if(wrk->pingFn != nullptr){
-					// Если в воркере есть подключённые клиенты
-					if(!wrk->adjutants.empty()){
-						// Переходим по всему списку адъютантов
-						for(auto & adj : wrk->adjutants){
-							// Выполняем функцию обратного вызова
-							wrk->pingFn(adj.first, worker.first, core, worker.second->ctx);
-						}
-					}
-				}
-			}
+		// Если таймер периодического запуска коллбека активирован
+		if(core->persist){
+			// Создаём событие на активацию базы событий
+			event_assign(&core->interval, core->base, -1, EV_TIMEOUT | EV_PERSIST, persistent, core);
+			// Очищаем объект таймаута базы событий
+			evutil_timerclear(&core->tvInterval);
+			// Устанавливаем интервал таймаута
+			core->tvInterval.tv_sec = (PERSIST_INTERVAL / 1000);
+			// Создаём событие таймаута на активацию базы событий
+			event_add(&core->interval, &core->tvInterval);
 		}
 	}
 }
@@ -96,6 +67,35 @@ void awh::Core::reconnect(evutil_socket_t fd, short event, void * ctx) noexcept 
 		event_del(&core->timeout);
 		// Выполняем новое подключение
 		core->connect(wrk->wid);
+	}
+}
+/**
+ * persistent Функция персистентного вызова по таймеру
+ * @param fd    файловый дескриптор (сокет)
+ * @param event произошедшее событие
+ * @param ctx   передаваемый контекст
+ */
+void awh::Core::persistent(evutil_socket_t fd, short event, void * ctx) noexcept {
+	// Если контекст модуля передан
+	if(ctx != nullptr){
+		// Получаем объект подключения
+		core_t * core = reinterpret_cast <core_t *> (ctx);
+		// Если список воркеров существует
+		if(!core->workers.empty()){
+			// Переходим по всему списку воркеров
+			for(auto & worker : core->workers){
+				// Получаем объект воркера
+				worker_t * wrk = const_cast <worker_t *> (worker.second);
+				// Если функция обратного вызова установлена и адъютанты существуют
+				if((wrk->persistFn != nullptr) && !wrk->adjutants.empty()){
+					// Переходим по всему списку адъютантов
+					for(auto & adj : wrk->adjutants){
+						// Выполняем функцию обратного вызова
+						wrk->persistFn(adj.first, worker.first, core, worker.second->ctx);
+					}
+				}
+			}
+		}
 	}
 }
 /**
@@ -400,10 +400,18 @@ void awh::Core::stop() noexcept {
 	if(this->mode){
 		// Запрещаем работу WebSocket
 		this->mode = false;
+		// Выполняем удаление событие таймера
+		event_del(&this->timeout);
 		// Выполняем отключение всех клиентов
 		this->closeAll();
-		// Завершаем работу базы событий
-		event_base_loopbreak(this->base);
+		// Если таймер периодического запуска коллбека активирован
+		if(this->persist){
+			// Удаляем событие интервала
+			event_del(&this->interval);
+			// Завершаем работу базы событий
+			event_base_loopbreak(this->base);
+		// Нормально завершаем работу базы событий
+		} else event_base_loopexit(this->base, nullptr);
 	}
 }
 /**
@@ -433,15 +441,13 @@ void awh::Core::start() noexcept {
 		// Создаём событие таймаута на активацию базы событий
 		event_add(&this->timeout, &this->tvTimeout);
 		// Запускаем работу базы событий
-		event_base_loop(this->base, EVLOOP_NO_EXIT_ON_EMPTY);
+		event_base_dispatch(this->base);
 		// Выполняем сброс модуля DNS резолвера IPv4
 		this->dns4.reset();
 		// Выполняем сброс модуля DNS резолвера IPv6
 		this->dns6.reset();
 		// Выполняем отключение всех адъютантов
 		this->closeAll();
-		// Удаляем событие пинга
-		event_del(&this->pingInterval);
 		// Удаляем объект базы событий
 		event_base_free(this->base);
 		// Очищаем все глобальные переменные
@@ -713,6 +719,14 @@ void awh::Core::setDefer(const bool mode) noexcept {
 void awh::Core::setNoInfo(const bool mode) noexcept {
 	// Устанавливаем флаг запрета вывода информационных сообщений
 	this->noinfo = mode;
+}
+/**
+ * setPersist Метод установки персистентного флага
+ * @param mode флаг персистентного запуска каллбека
+ */
+void awh::Core::setPersist(const bool mode) noexcept {
+	// Выполняем установку флага персистентного запуска каллбека
+	this->persist = mode;
 }
 /**
  * setVerifySSL Метод разрешающий или запрещающий, выполнять проверку соответствия, сертификата домену

@@ -21,13 +21,13 @@ void awh::WebSocketClient::openCallback(const size_t wid, core_t * core, void * 
 	core->open(wid);
 }
 /**
- * pingCallback Метод пинга адъютанта
+ * persistCallback Функция персистентного вызова
  * @param aid  идентификатор адъютанта
  * @param wid  идентификатор воркера
  * @param core объект биндинга TCP/IP
  * @param ctx  передаваемый контекст модуля
  */
-void awh::WebSocketClient::pingCallback(const size_t aid, const size_t wid, core_t * core, void * ctx) noexcept {
+void awh::WebSocketClient::persistCallback(const size_t aid, const size_t wid, core_t * core, void * ctx) noexcept {
 	// Если данные существуют
 	if((aid > 0) && (wid > 0) && (core != nullptr) && (ctx != nullptr)){
 		// Получаем контекст модуля
@@ -35,7 +35,7 @@ void awh::WebSocketClient::pingCallback(const size_t aid, const size_t wid, core
 		// Получаем текущий штамп времени
 		const time_t stamp = ws->fmk->unixTimestamp();
 		// Если адъютант не ответил на пинг больше двух интервалов, отключаем его
-		if((stamp - ws->checkPoint) >= (PING_INTERVAL * 2))
+		if((stamp - ws->checkPoint) >= (PERSIST_INTERVAL * 2))
 			// Завершаем работу
 			core->close(aid);
 		// Отправляем запрос адъютанту
@@ -1059,10 +1059,10 @@ awh::WebSocketClient::WebSocketClient(const coreCli_t * core, const fmk_t * fmk,
 	this->worker.ctx = this;
 	// Устанавливаем событие на запуск системы
 	this->worker.openFn = openCallback;
-	// Устанавливаем функцию пинга клиента
-	this->worker.pingFn = pingCallback;
 	// Устанавливаем функцию чтения данных
 	this->worker.readFn = readCallback;
+	// Устанавливаем функцию персистентного вызова
+	this->worker.persistFn = persistCallback;
 	// Устанавливаем событие подключения
 	this->worker.connectFn = connectCallback;
 	// Устанавливаем событие на чтение данных с прокси-сервера
@@ -1071,6 +1071,8 @@ awh::WebSocketClient::WebSocketClient(const coreCli_t * core, const fmk_t * fmk,
 	this->worker.disconnectFn = disconnectCallback;
 	// Устанавливаем событие на подключение к прокси-серверу
 	this->worker.connectProxyFn = connectProxyCallback;
+	// Активируем персистентный запуск для работы пингов
+	const_cast <coreCli_t *> (this->core)->setPersist(true);
 	// Добавляем воркер в биндер TCP/IP
 	const_cast <coreCli_t *> (this->core)->add(&this->worker);
 }

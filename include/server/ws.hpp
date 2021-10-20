@@ -117,13 +117,13 @@ namespace awh {
 			 */
 			static void openCallback(const size_t wid, core_t * core, void * ctx) noexcept;
 			/**
-			 * pingCallback Метод пинга адъютанта
+			 * persistCallback Функция персистентного вызова
 			 * @param aid  идентификатор адъютанта
 			 * @param wid  идентификатор воркера
 			 * @param core объект биндинга TCP/IP
 			 * @param ctx  передаваемый контекст модуля
 			 */
-			static void pingCallback(const size_t aid, const size_t wid, core_t * core, void * ctx) noexcept;
+			static void persistCallback(const size_t aid, const size_t wid, core_t * core, void * ctx) noexcept;
 			/**
 			 * connectCallback Функция обратного вызова при подключении к серверу
 			 * @param aid  идентификатор адъютанта

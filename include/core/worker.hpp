@@ -163,8 +163,8 @@ namespace awh {
 		public:
 			// Функция обратного вызова при открытии приложения
 			function <void (const size_t, Core *, void *)> openFn = nullptr;
-			// Функция обратного вызова для пинга клиента
-			function <void (const size_t, const size_t, Core *, void *)> pingFn = nullptr;
+			// Функция обратного вызова для персистентного вызова
+			function <void (const size_t, const size_t, Core *, void *)> persistFn = nullptr;
 			// Функция обратного вызова при запуске подключения
 			function <void (const size_t, const size_t, Core *, void *)> connectFn = nullptr;
 			// Функция обратного вызова при закрытии подключения

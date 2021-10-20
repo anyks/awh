@@ -159,12 +159,12 @@ namespace awh {
 			// Событие таймаута запуска системы
 			struct event timeout;
 			// Событие интервала пинга
-			struct event pingInterval;
+			struct event interval;
 		protected:
 			// Структура интервала таймаута
 			struct timeval tvTimeout;
 			// Структура интервала пинга
-			struct timeval tvPingInterval;
+			struct timeval tvInterval;
 		protected:
 			// Список активных воркеров
 			map <size_t, const worker_t *> workers;
@@ -179,10 +179,10 @@ namespace awh {
 			bool locker = false;
 			// Флаг запрета вывода информационных сообщений
 			bool noinfo = false;
+			// Флаг персистентного запуска каллбека
+			bool persist = false;
 			// Флаг разрешающий работу только с IPv6
 			bool ipV6only = false;
-			// Флаг инициализации WinSock
-			mutable bool winSock = false;
 		protected:
 			// Список контекстов передаваемых объектов
 			vector <void *> ctx = {nullptr};
@@ -206,19 +206,19 @@ namespace awh {
 			 */
 			static void run(evutil_socket_t fd, short event, void * ctx) noexcept;
 			/**
-			 * ping Функция вызова методов пинга по таймеру
-			 * @param fd    файловый дескриптор (сокет)
-			 * @param event произошедшее событие
-			 * @param ctx   передаваемый контекст
-			 */
-			static void ping(evutil_socket_t fd, short event, void * ctx) noexcept;
-			/**
 			 * reconnect Функция задержки времени на реконнект
 			 * @param fd    файловый дескриптор (сокет)
 			 * @param event произошедшее событие
 			 * @param ctx   передаваемый контекст
 			 */
 			static void reconnect(evutil_socket_t fd, short event, void * ctx) noexcept;
+			/**
+			 * persistent Функция персистентного вызова по таймеру
+			 * @param fd    файловый дескриптор (сокет)
+			 * @param event произошедшее событие
+			 * @param ctx   передаваемый контекст
+			 */
+			static void persistent(evutil_socket_t fd, short event, void * ctx) noexcept;
 		protected:
 			/**
 			 * reconnect Метод запуска переподключения
@@ -365,6 +365,11 @@ namespace awh {
 			 * @param mode флаг запрета вывода информационных сообщений
 			 */
 			void setNoInfo(const bool mode) noexcept;
+			/**
+			 * setPersist Метод установки персистентного флага
+			 * @param mode флаг персистентного запуска каллбека
+			 */
+			void setPersist(const bool mode) noexcept;
 			/**
 			 * setVerifySSL Метод разрешающий или запрещающий, выполнять проверку соответствия, сертификата домену
 			 * @param mode флаг состояния разрешения проверки

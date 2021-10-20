@@ -28,13 +28,13 @@ void awh::WebSocketServer::openCallback(const size_t wid, core_t * core, void * 
 	}
 }
 /**
- * pingCallback Метод пинга адъютанта
+ * persistCallback Функция персистентного вызова
  * @param aid  идентификатор адъютанта
  * @param wid  идентификатор воркера
  * @param core объект биндинга TCP/IP
  * @param ctx  передаваемый контекст модуля
  */
-void awh::WebSocketServer::pingCallback(const size_t aid, const size_t wid, core_t * core, void * ctx) noexcept {
+void awh::WebSocketServer::persistCallback(const size_t aid, const size_t wid, core_t * core, void * ctx) noexcept {
 	// Если данные существуют
 	if((aid > 0) && (wid > 0) && (core != nullptr) && (ctx != nullptr)){
 		// Получаем контекст модуля
@@ -46,7 +46,7 @@ void awh::WebSocketServer::pingCallback(const size_t aid, const size_t wid, core
 			// Получаем текущий штамп времени
 			const time_t stamp = ws->fmk->unixTimestamp();
 			// Если адъютант не ответил на пинг больше двух интервалов, отключаем его
-			if((stamp - adj->checkPoint) >= (PING_INTERVAL * 2))
+			if((stamp - adj->checkPoint) >= (PERSIST_INTERVAL * 2))
 				// Завершаем работу
 				core->close(aid);
 			// Отправляем запрос адъютанту
@@ -960,18 +960,20 @@ awh::WebSocketServer::WebSocketServer(const coreSrv_t * core, const fmk_t * fmk,
 	this->worker.ctx = this;
 	// Устанавливаем событие на запуск системы
 	this->worker.openFn = openCallback;
-	// Устанавливаем функцию пинга клиента
-	this->worker.pingFn = pingCallback;
 	// Устанавливаем функцию чтения данных
 	this->worker.readFn = readCallback;
 	// Устанавливаем функцию записи данных
 	this->worker.writeFn = writeCallback;
 	// Добавляем событие аццепта клиента
 	this->worker.acceptFn = acceptCallback;
+	// Устанавливаем функцию персистентного вызова
+	this->worker.persistFn = persistCallback;
 	// Устанавливаем событие подключения
 	this->worker.connectFn = connectCallback;
 	// Устанавливаем событие отключения
 	this->worker.disconnectFn = disconnectCallback;
+	// Активируем персистентный запуск для работы пингов
+	const_cast <coreSrv_t *> (this->core)->setPersist(true);
 	// Добавляем воркер в биндер TCP/IP
 	const_cast <coreSrv_t *> (this->core)->add(&this->worker);
 }
