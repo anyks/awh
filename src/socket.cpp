@@ -184,14 +184,72 @@ const string awh::Sockets::ip(const int family, void * ctx) noexcept {
  */
 #if defined(_WIN32) || defined(_WIN64)
 	/**
-	 * blocking Функция установки режима блокировки сокета
+	 * nonblocking Метод установки неблокирующего сокета
 	 * @param fd файловый дескриптор (сокет)
 	 */
-	void awh::Sockets::blocking(const SOCKET fd) noexcept {
+	void awh::Sockets::nonblocking(const SOCKET fd) noexcept {
 		// Флаг режима
 		u_long mode = 0;
 		// Отключаем неблокирующий режим у сокета
 		ioctlsocket(fd, FIONBIO, &mode);
+	}
+	/**
+	 * keepAlive Метод устанавливает постоянное подключение на сокет
+	 * @param fd  файловый дескриптор (сокет)
+	 * @param log объект для работы с логами
+	 * @return    результат работы функции
+	 */
+	const int awh::Sockets::keepAlive(const evutil_socket_t fd, const log_t * log) noexcept {
+		// Результат работы функции
+		int result = -1;
+		{
+			// Флаг устанавливаемой опции KeepAlive
+			bool option = false;
+			// Устанавливаем опцию сокета KeepAlive
+			result = setsockopt(fd, SOL_SOCKET, SO_KEEPALIVE, (char *) &option, sizeof(option));
+			// Если мы получили ошибку, выходим сообщение
+			if(result == SOCKET_ERROR){
+				// Выводим в лог информацию
+				if(log != nullptr) log->print("setsockopt for SO_KEEPALIVE failed with error: %u", log_t::flag_t::CRITICAL, WSAGetLastError());
+				// Выходим
+				return -1;
+			}
+		}{
+			// Флаг получения устанавливаемой опции KeepAlive
+			int option = 0;
+			// Размер флага опции KeepAlive
+			int size = sizeof(option);
+			// Получаем опцию сокета KeepAlive
+			result = getsockopt(fd, SOL_SOCKET, SO_KEEPALIVE, (char *) &option, &size);
+			// Если мы получили ошибку, выходим сообщение
+			if(result == SOCKET_ERROR){
+				// Выводим в лог информацию
+				if(log != nullptr) log->print("getsockopt for SO_KEEPALIVE failed with error: %u", log_t::flag_t::CRITICAL, WSAGetLastError());
+				// Выходим
+				return -1;
+			}
+		}
+		// Выводим результат
+		return result;
+	}
+	/**
+	 * tcpNodelay Метод отключения алгоритма Нейгла
+	 * @param fd  файловый дескриптор (сокет)
+	 * @param log объект для работы с логами
+	 * @return    результат работы функции
+	 */
+	const int awh::Sockets::tcpNodelay(const evutil_socket_t fd, const log_t * log) noexcept {
+		// Устанавливаем параметр
+		int tcpNodelay = 1;
+		// Устанавливаем TCP_NODELAY
+		if(setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &tcpNodelay, sizeof(tcpNodelay)) < 0){
+			// Выводим в лог информацию
+			if(log != nullptr) log->print("cannot set TCP_NODELAY option on socket %d", log_t::flag_t::CRITICAL, fd);
+			// Выходим
+			return -1;
+		}
+		// Все удачно
+		return 0;
 	}
 /**
  * Если - это Unix

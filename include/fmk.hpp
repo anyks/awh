@@ -100,6 +100,9 @@ namespace awh {
 			};
 			// Устанавливаем локаль по умолчанию
 			std::locale locale{AWH_LOCALE};
+		private:
+			// Флаг инициализации сокетов OS Windows
+			bool winSock;
 		public:
 			/**
 			 * os_t Названия поддерживаемых операционных систем
@@ -165,6 +168,13 @@ namespace awh {
 			 */
 			string trim(const string & text) const noexcept;
 			/**
+			 * convert Метод конвертирования строки utf-8 в строку
+			 * @param str строка utf-8 для конвертирования
+			 * @return    обычная строка
+			 */
+			string convert(const wstring & str) const noexcept;
+		public:
+			/**
 			 * toLower Метод перевода русских букв в нижний регистр
 			 * @param str строка для перевода
 			 * @return    строка в нижнем регистре
@@ -176,12 +186,6 @@ namespace awh {
 			 * @return    строка в верхнем регистре
 			 */
 			string toUpper(const string & str) const noexcept;
-			/**
-			 * convert Метод конвертирования строки utf-8 в строку
-			 * @param str строка utf-8 для конвертирования
-			 * @return    обычная строка
-			 */
-			string convert(const wstring & str) const noexcept;
 		public:
 			/**
 			 * decToHex Метод конвертации 10-го числа в 16-е
@@ -238,6 +242,7 @@ namespace awh {
 			 * @return    строка в верхнем регистре
 			 */
 			char toUpper(const char letter) const noexcept;
+		public:
 			/**
 			 * toLower Метод перевода русских букв в нижний регистр
 			 * @param str строка для перевода
@@ -263,6 +268,7 @@ namespace awh {
 			 * @return    строка в utf-8
 			 */
 			wstring convert(const string & str) const noexcept;
+		public:
 			/**
 			 * toLower Метод перевода русских букв в нижний регистр
 			 * @param str строка для перевода
@@ -275,6 +281,7 @@ namespace awh {
 			 * @return    строка в верхнем регистре
 			 */
 			wstring toUpper(const wstring & str) const noexcept;
+		public:
 			/**
 			 * arabic2Roman Метод перевода арабских чисел в римские
 			 * @param number арабское число от 1 до 4999
@@ -287,6 +294,7 @@ namespace awh {
 			 * @return     римское число
 			 */
 			wstring arabic2Roman(const wstring & word) const noexcept;
+		public:
 			/**
 			 * replace Метод замены в тексте слово на другое слово
 			 * @param text текст в котором нужно произвести замену
@@ -336,12 +344,20 @@ namespace awh {
 			 * @return       результат проверки
 			 */
 			bool isSpace(const wchar_t letter) const noexcept;
+		public:
 			/**
 			 * isLatian Метод проверки является ли строка латиницей
 			 * @param str строка для проверки
 			 * @return    результат проверки
 			 */
 			bool isLatian(const wstring & str) const noexcept;
+			/**
+			 * checkLatian Метод проверки наличия латинских символов в строке
+			 * @param str строка для проверки
+			 * @return    результат проверки
+			 */
+			bool checkLatian(const wstring & str) const noexcept;
+		public:
 			/**
 			 * isNumber Метод проверки является ли слово числом
 			 * @param word слово для проверки
@@ -355,6 +371,13 @@ namespace awh {
 			 */
 			bool isNumber(const wstring & word) const noexcept;
 			/**
+			 * isANumber Метод проверки является ли косвенно слово числом
+			 * @param word слово для проверки
+			 * @return     результат проверки
+			 */
+			bool isANumber(const wstring & word) const noexcept;
+		public:
+			/**
 			 * isDecimal Метод проверки является ли слово дробным числом
 			 * @param word слово для проверки
 			 * @return     результат проверки
@@ -366,18 +389,6 @@ namespace awh {
 			 * @return     результат проверки
 			 */
 			bool isDecimal(const wstring & word) const noexcept;
-			/**
-			 * isANumber Метод проверки является ли косвенно слово числом
-			 * @param word слово для проверки
-			 * @return     результат проверки
-			 */
-			bool isANumber(const wstring & word) const noexcept;
-			/**
-			 * checkLatian Метод проверки наличия латинских символов в строке
-			 * @param str строка для проверки
-			 * @return    результат проверки
-			 */
-			bool checkLatian(const wstring & str) const noexcept;
 		public:
 			/**
 			 * getzones Метод извлечения списка пользовательских зон интернета
@@ -419,6 +430,7 @@ namespace awh {
 			 * @param v     результирующий вектор
 			 */
 			void split(const string & str, const string & delim, vector <wstring> & v) const noexcept;
+		public:
 			/**
 			 * setzone Метод установки пользовательской зоны
 			 * @param zone пользовательская зона
@@ -429,6 +441,7 @@ namespace awh {
 			 * @param zone пользовательская зона
 			 */
 			void setzone(const wstring & zone) noexcept;
+		public:
 			/**
 			 * setzones Метод установки списка пользовательских зон
 			 * @param zones список доменных зон интернета
@@ -439,6 +452,7 @@ namespace awh {
 			 * @param zones список доменных зон интернета
 			 */
 			void setzones(const std::set <wstring> & zones) noexcept;
+		public:
 			/**
 			 * setlocale Метод установки локали
 			 * @param locale локализация приложения
@@ -564,14 +578,29 @@ namespace awh {
 			float rate(const float a, const float b) const noexcept;
 		public:
 			/**
-			 * Framework Конструктор
+			 * initWinSock Метод инициализации сокетов в OS Windows
 			 */
-			Framework() noexcept;
+			void initWinSock() noexcept;
+			/**
+			 * cleanWinSock Метод деинициализации сокетов в OS Windows
+			 */
+			void cleanWinSock() noexcept;
+		public:
 			/**
 			 * Framework Конструктор
-			 * @param locale локализация приложения
+			 * @param winSock флаг инициализации сокетов в OS Windows
 			 */
-			Framework(const string & locale) noexcept;
+			Framework(const bool winSock = false) noexcept;
+			/**
+			 * Framework Конструктор
+			 * @param locale  локализация приложения
+			 * @param winSock флаг инициализации сокетов в OS Windows
+			 */
+			Framework(const string & locale, const bool winSock = false) noexcept;
+			/**
+			 * ~Framework Деструктор
+			 */
+			~Framework() noexcept;
 	} fmk_t;
 };
 

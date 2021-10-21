@@ -165,14 +165,12 @@ const awh::Core::socket_t awh::Core::socket(const string & ip, const u_int port,
 		socklen_t size = 0;
 		// Объект подключения
 		struct sockaddr * sin = nullptr;
-		// Получаем флаг сервера
-		const bool isServer = (this->type == type_t::SERVER);
 		// Определяем тип подключения
 		switch(family){
 			// Для протокола IPv4
 			case AF_INET: {
 				// Если ядро является клиентом
-				if(!isServer){
+				if(this->type != type_t::SERVER){
 					// Получаем список ip адресов
 					auto ips = this->net.v4.first;
 					// Если количество элементов больше 1
@@ -205,7 +203,7 @@ const awh::Core::socket_t awh::Core::socket(const string & ip, const u_int port,
 				// Устанавливаем адрес для удаленного подключения
 				result.server.sin_addr.s_addr = inet_addr(ip.c_str());
 				// Если ядро является сервером
-				if(isServer){
+				if(this->type == type_t::SERVER){
 					// Запоминаем размер структуры
 					size = sizeof(result.server);
 					// Запоминаем полученную структуру
@@ -219,7 +217,7 @@ const awh::Core::socket_t awh::Core::socket(const string & ip, const u_int port,
 			// Для протокола IPv6
 			case AF_INET6: {
 				// Если ядро является клиентом
-				if(!isServer){
+				if(this->type != type_t::SERVER){
 					// Получаем список ip адресов
 					auto ips = this->net.v6.first;
 					// Если количество элементов больше 1
@@ -256,7 +254,7 @@ const awh::Core::socket_t awh::Core::socket(const string & ip, const u_int port,
 				inet_pton(AF_INET6, ip.c_str(), &result.server6.sin6_addr);
 				// inet_ntop(AF_INET6, &result.server6.sin6_addr, hostServer, sizeof(hostServer));
 				// Если ядро является сервером
-				if(isServer){
+				if(this->type == type_t::SERVER){
 					// Запоминаем размер структуры
 					size = sizeof(result.server6);
 					// Запоминаем полученную структуру
@@ -280,7 +278,7 @@ const awh::Core::socket_t awh::Core::socket(const string & ip, const u_int port,
 			// Выходим
 			return socket_t();
 		}
-		// Если - это Unix
+		// Устанавливаем настройки для *Nix подобных систем
 		#if !defined(_WIN32) && !defined(_WIN64)
 			// Выполняем игнорирование сигнала неверной инструкции процессора
 			sockets_t::noSigill(this->log);
@@ -290,18 +288,23 @@ const awh::Core::socket_t awh::Core::socket(const string & ip, const u_int port,
 			sockets_t::noSigpipe(result.fd, this->log);
 			// Отключаем алгоритм Нейгла для сервера и клиента
 			sockets_t::tcpNodelay(result.fd, this->log);
-			// Разблокируем сокет
+			// Переводим сокет в не блокирующий режим
 			sockets_t::nonBlocking(result.fd, this->log);
 			// Если ядро является сервером
-			if(isServer){
+			if(this->type == type_t::SERVER){
 				// Включаем отображение сети IPv4 в IPv6
 				if(family == AF_INET6) sockets_t::ipV6only(result.fd, this->ipV6only, this->log);
 			// Активируем keepalive
 			} else sockets_t::keepAlive(result.fd, this->alive.keepcnt, this->alive.keepidle, this->alive.keepintvl, this->log);
-		// Если - это Windows
+		// Устанавливаем настройки для OS Windows
 		#else
-			// Переводим сокет в блокирующий режим
-			// sockets_t::blocking(result.fd);
+			// Если ядро не является сервером
+			if(this->type != type_t::SERVER)
+				// Активируем keepalive
+				sockets_t::keepAlive(result.fd, this->log);
+			// Отключаем алгоритм Нейгла для сервера и клиента
+			sockets_t::tcpNodelay(result.fd, this->log);
+			// Переводим сокет в не блокирующий режим
 			evutil_make_socket_nonblocking(result.fd);
 			// evutil_make_socket_closeonexec(result.fd);
 			evutil_make_listen_socket_reuseable(result.fd);

@@ -93,6 +93,36 @@ string awh::Framework::trim(const string & text) const noexcept {
 	return tmp;
 }
 /**
+ * convert Метод конвертирования строки utf-8 в строку
+ * @param str строка utf-8 для конвертирования
+ * @return    обычная строка
+ */
+string awh::Framework::convert(const wstring & str) const noexcept {
+	// Результат работы функции
+	string result = "";
+	// Если строка передана
+	if(!str.empty()){
+// Если используется BOOST
+#ifdef USE_BOOST_CONVERT
+		// Объявляем конвертер
+		using boost::locale::conv::utf_to_utf;
+		// Выполняем конвертирование в utf-8 строку
+		result = utf_to_utf <char> (str.c_str(), str.c_str() + str.size());
+// Если нужно использовать стандартную библиотеку
+#else
+		// Устанавливаем тип для конвертера UTF-8
+		using convert_type = codecvt_utf8 <wchar_t, 0x10ffff, little_endian>;
+		// Объявляем конвертер
+		wstring_convert <convert_type, wchar_t> conv;
+		// wstring_convert <codecvt_utf8 <wchar_t>> conv;
+		// Выполняем конвертирование в utf-8 строку
+		result = conv.to_bytes(str);
+#endif
+	}
+	// Выводим результат
+	return result;
+}
+/**
  * toLower Метод перевода русских букв в нижний регистр
  * @param str строка для перевода
  * @return    строка в нижнем регистре
@@ -134,36 +164,6 @@ string awh::Framework::toUpper(const string & str) const noexcept {
 		});
 		// Конвертируем обратно
 		result = this->convert(tmp);
-	}
-	// Выводим результат
-	return result;
-}
-/**
- * convert Метод конвертирования строки utf-8 в строку
- * @param str строка utf-8 для конвертирования
- * @return    обычная строка
- */
-string awh::Framework::convert(const wstring & str) const noexcept {
-	// Результат работы функции
-	string result = "";
-	// Если строка передана
-	if(!str.empty()){
-// Если используется BOOST
-#ifdef USE_BOOST_CONVERT
-		// Объявляем конвертер
-		using boost::locale::conv::utf_to_utf;
-		// Выполняем конвертирование в utf-8 строку
-		result = utf_to_utf <char> (str.c_str(), str.c_str() + str.size());
-// Если нужно использовать стандартную библиотеку
-#else
-		// Устанавливаем тип для конвертера UTF-8
-		using convert_type = codecvt_utf8 <wchar_t, 0x10ffff, little_endian>;
-		// Объявляем конвертер
-		wstring_convert <convert_type, wchar_t> conv;
-		// wstring_convert <codecvt_utf8 <wchar_t>> conv;
-		// Выполняем конвертирование в utf-8 строку
-		result = conv.to_bytes(str);
-#endif
 	}
 	// Выводим результат
 	return result;
@@ -841,6 +841,33 @@ bool awh::Framework::isLatian(const wstring & str) const noexcept {
 	return result;
 }
 /**
+ * checkLatian Метод проверки наличия латинских символов в строке
+ * @param str строка для проверки
+ * @return    результат проверки
+ */
+bool awh::Framework::checkLatian(const wstring & str) const noexcept {
+	// Результат работы функции
+	bool result = false;
+	// Если строка передана
+	if(!str.empty()){
+		// Длина слова
+		const size_t length = str.length();
+		// Если длина слова больше 1-го символа
+		if(length > 1){
+			// Переходим по всем буквам слова
+			for(size_t i = 0, j = (length - 1); j > ((length / 2) - 1); i++, j--){
+				// Проверяем является ли слово латинским
+				result = (i == j ? (this->latian.count(str.at(i)) > 0) : (this->latian.count(str.at(i)) > 0) || (this->latian.count(str.at(j)) > 0));
+				// Если найдена хотя бы одна латинская буква тогда выходим
+				if(result) break;
+			}
+		// Если символ всего один, проверяем его так
+		} else result = (this->latian.count(str.front()) > 0);
+	}
+	// Выводим результат
+	return result;
+}
+/**
  * isNumber Метод проверки является ли слово числом
  * @param word слово для проверки
  * @return     результат проверки
@@ -878,6 +905,43 @@ bool awh::Framework::isNumber(const wstring & word) const noexcept {
 			}
 		// Если символ всего один, проверяем его так
 		} else result = (this->numsSymbols.arabs.count(word.front()) > 0);
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * isANumber Метод проверки является ли косвенно слово числом
+ * @param word слово для проверки
+ * @return     результат проверки
+ */
+bool awh::Framework::isANumber(const wstring & word) const noexcept {
+	// Результат работы функции
+	bool result = false;
+	// Если слово передано
+	if(!word.empty()){
+		// Проверяем является ли слово числом
+		result = this->isNumber(word);
+		// Если не является то проверяем дальше
+		if(!result){
+			// Длина слова
+			const size_t length = word.length();
+			// Проверяем являются ли первая и последняя буква слова, числом
+			result = (this->isNumber(wstring(1, word.front())) || this->isNumber(wstring(1, word.back())));
+			// Если оба варианта не сработали
+			if(!result && (length > 2)){
+				// Первое слово
+				wstring first = L"";
+				// Переходим по всему списку
+				for(size_t i = 1, j = length - 2; j > ((length / 2) - 1); i++, j--){
+					// Получаем первое слово
+					first.assign(1, word.at(i));
+					// Проверяем является ли слово арабским числом
+					result = (i == j ? this->isNumber(first) : this->isNumber(first) || this->isNumber(wstring(1, word[j])));
+					// Если хоть один символ является числом, выходим
+					if(result) break;
+				}
+			}
+		}
 	}
 	// Выводим результат
 	return result;
@@ -928,70 +992,6 @@ bool awh::Framework::isDecimal(const wstring & word) const noexcept {
 				}
 			}
 		}
-	}
-	// Выводим результат
-	return result;
-}
-/**
- * isANumber Метод проверки является ли косвенно слово числом
- * @param word слово для проверки
- * @return     результат проверки
- */
-bool awh::Framework::isANumber(const wstring & word) const noexcept {
-	// Результат работы функции
-	bool result = false;
-	// Если слово передано
-	if(!word.empty()){
-		// Проверяем является ли слово числом
-		result = this->isNumber(word);
-		// Если не является то проверяем дальше
-		if(!result){
-			// Длина слова
-			const size_t length = word.length();
-			// Проверяем являются ли первая и последняя буква слова, числом
-			result = (this->isNumber(wstring(1, word.front())) || this->isNumber(wstring(1, word.back())));
-			// Если оба варианта не сработали
-			if(!result && (length > 2)){
-				// Первое слово
-				wstring first = L"";
-				// Переходим по всему списку
-				for(size_t i = 1, j = length - 2; j > ((length / 2) - 1); i++, j--){
-					// Получаем первое слово
-					first.assign(1, word.at(i));
-					// Проверяем является ли слово арабским числом
-					result = (i == j ? this->isNumber(first) : this->isNumber(first) || this->isNumber(wstring(1, word[j])));
-					// Если хоть один символ является числом, выходим
-					if(result) break;
-				}
-			}
-		}
-	}
-	// Выводим результат
-	return result;
-}
-/**
- * checkLatian Метод проверки наличия латинских символов в строке
- * @param str строка для проверки
- * @return    результат проверки
- */
-bool awh::Framework::checkLatian(const wstring & str) const noexcept {
-	// Результат работы функции
-	bool result = false;
-	// Если строка передана
-	if(!str.empty()){
-		// Длина слова
-		const size_t length = str.length();
-		// Если длина слова больше 1-го символа
-		if(length > 1){
-			// Переходим по всем буквам слова
-			for(size_t i = 0, j = (length - 1); j > ((length / 2) - 1); i++, j--){
-				// Проверяем является ли слово латинским
-				result = (i == j ? (this->latian.count(str.at(i)) > 0) : (this->latian.count(str.at(i)) > 0) || (this->latian.count(str.at(j)) > 0));
-				// Если найдена хотя бы одна латинская буква тогда выходим
-				if(result) break;
-			}
-		// Если символ всего один, проверяем его так
-		} else result = (this->latian.count(str.front()) > 0);
 	}
 	// Выводим результат
 	return result;
@@ -1677,11 +1677,9 @@ float awh::Framework::rate(const float a, const float b) const noexcept {
 	return ((a > b ? ((a - b) / b * 100) : ((b - a) / b * 100) * -1));
 }
 /**
- * Framework Конструктор
+ * initWinSock Метод инициализации сокетов в OS Windows
  */
-awh::Framework::Framework() noexcept {
-	// Устанавливаем локализацию системы
-	this->setlocale();
+void awh::Framework::initWinSock() noexcept {
 	// Если - это Windows
 	#if defined(_WIN32) || defined(_WIN64)
 		// Идентификатор ошибки
@@ -1705,15 +1703,40 @@ awh::Framework::Framework() noexcept {
 	#endif
 }
 /**
- * Framework Конструктор
- * @param locale локализация приложения
+ * cleanWinSock Метод деинициализации сокетов в OS Windows
  */
-awh::Framework::Framework(const string & locale) noexcept {
-	// Устанавливаем локализацию системы
-	this->setlocale(locale);
+void awh::Framework::cleanWinSock() noexcept {
 	// Если - это Windows
 	#if defined(_WIN32) || defined(_WIN64)
 		// Очищаем сетевой контекст
 		WSACleanup();
 	#endif
+}
+/**
+ * Framework Конструктор
+ * @param winSock флаг инициализации сокетов в OS Windows
+ */
+awh::Framework::Framework(const bool winSock) noexcept : winSock(winSock) {
+	// Устанавливаем локализацию системы
+	this->setlocale();
+	// Выполняем инициализацию сокетов в OS Windows
+	if(winSock) this->initWinSock();
+}
+/**
+ * Framework Конструктор
+ * @param locale  локализация приложения
+ * @param winSock флаг инициализации сокетов в OS Windows
+ */
+awh::Framework::Framework(const string & locale, const bool winSock) noexcept : winSock(winSock) {
+	// Устанавливаем локализацию системы
+	this->setlocale(locale);
+	// Выполняем инициализацию сокетов в OS Windows
+	if(winSock) this->initWinSock();
+}
+/**
+ * ~Framework Деструктор
+ */
+awh::Framework::~Framework() noexcept {
+	// Выполняем деинициализацию сокетов в OS Windows
+	if(this->winSock) this->cleanWinSock();
 }

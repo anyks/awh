@@ -377,8 +377,10 @@ void awh::WebSocketServer::writeCallback(const char * buffer, const size_t size,
 		workSrvWss_t::adjp_t * adj = const_cast <workSrvWss_t::adjp_t *> (ws->worker.getAdj(aid));
 		// Если параметры подключения адъютанта получены
 		if((adj != nullptr) && (adj->stopBytes > 0)){
+			// Запоминаем количество прочитанных байт
+			adj->readBytes += size;
 			// Если размер полученных байт соответствует
-			if(adj->stopBytes == size) core->close(aid);
+			if(adj->stopBytes >= adj->readBytes) core->close(aid);
 		}
 	}
 }

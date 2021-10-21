@@ -10,6 +10,14 @@
 #ifndef __AWH_SOCKETS__
 #define __AWH_SOCKETS__
 
+#ifndef UNICODE
+	#define UNICODE
+#endif
+
+#ifndef WIN32_LEAN_AND_MEAN
+	#define WIN32_LEAN_AND_MEAN
+#endif
+
 /**
  * Стандартная библиотека
  */
@@ -24,6 +32,8 @@
 	#include <winsock2.h>
 	#include <ws2tcpip.h>
 	#include <getopt.h>
+	// Используем библиотеку ws2_32.lib
+	#pragma comment(lib, "Ws2_32.lib")
 // Если - это Unix
 #else
 	#include <vector>
@@ -77,10 +87,24 @@ namespace awh {
 		 */
 		#if defined(_WIN32) || defined(_WIN64)
 			/**
-			 * blocking Функция установки режима блокировки сокета
+			 * nonblocking Метод установки неблокирующего сокета
 			 * @param fd файловый дескриптор (сокет)
 			 */
-			static void blocking(const SOCKET fd = -1) noexcept;
+			static void nonblocking(const SOCKET fd = -1) noexcept;
+			/**
+			 * keepAlive Метод устанавливает постоянное подключение на сокет
+			 * @param fd  файловый дескриптор (сокет)
+			 * @param log объект для работы с логами
+			 * @return    результат работы функции
+			 */
+			static const int keepAlive(const evutil_socket_t fd = -1, const log_t * log = nullptr) noexcept;
+			/**
+			 * tcpNodelay Метод отключения алгоритма Нейгла
+			 * @param fd  файловый дескриптор (сокет)
+			 * @param log объект для работы с логами
+			 * @return    результат работы функции
+			 */
+			static const int tcpNodelay(const evutil_socket_t fd = -1, const log_t * log = nullptr) noexcept;
 		/**
 		 * Если - это Unix
 		 */

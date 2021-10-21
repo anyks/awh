@@ -45,6 +45,7 @@ namespace awh {
 				bool crypt;                  // Флаг шифрования сообщений
 				bool locker;                 // Локер ожидания завершения запроса
 				bool compressed;             // Флаг переданных сжатых данных
+				size_t readBytes;            // Количество полученных байт для закрытия подключения
 				size_t stopBytes;            // Количество байт для закрытия подключения
 				time_t checkPoint;           // Контрольная точка ответа на пинг
 				vector <char> fragmes;       // Данные фрагметрированного сообщения
@@ -58,6 +59,7 @@ namespace awh {
 					crypt(false),
 					locker(false),
 					compressed(false),
+					readBytes(0),
 					stopBytes(0),
 					checkPoint(0),
 					opcode(frame_t::opcode_t::TEXT),
