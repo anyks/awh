@@ -524,26 +524,18 @@ void awh::CoreServer::setBandwidth(const size_t aid, const string & read, const 
 	auto it = this->adjutants.find(aid);
 	// Если адъютант получен
 	if(it != this->adjutants.end()){
-		// Если - это Unix
-		#if !defined(_WIN32) && !defined(_WIN64)
-			// Получаем объект адъютанта
-			worker_t::adj_t * adj = const_cast <worker_t::adj_t *> (it->second);
-			// Получаем объект воркера
-			workSrv_t * wrk = (workSrv_t *) const_cast <worker_t *> (adj->parent);
-			// Получаем размер буфера на чтение
-			const int rcv = (!read.empty() ? this->fmk->sizeBuffer(read) : 0);
-			// Получаем размер буфера на запись
-			const int snd = (!write.empty() ? this->fmk->sizeBuffer(write) : 0);
-			// Получаем файловый дескриптор
-			evutil_socket_t fd = bufferevent_getfd(adj->bev);
-			// Устанавливаем размер буфера
-			if(fd > 0) sockets_t::bufferSize(fd, rcv, snd, wrk->total, this->log);
-		// Если - это Windows
-		#else
-			// Блокируем вывод переменных
-			(void) read;
-			(void) write;
-		#endif
+		// Получаем объект адъютанта
+		worker_t::adj_t * adj = const_cast <worker_t::adj_t *> (it->second);
+		// Получаем объект воркера
+		workSrv_t * wrk = (workSrv_t *) const_cast <worker_t *> (adj->parent);
+		// Получаем размер буфера на чтение
+		const int rcv = (!read.empty() ? this->fmk->sizeBuffer(read) : 0);
+		// Получаем размер буфера на запись
+		const int snd = (!write.empty() ? this->fmk->sizeBuffer(write) : 0);
+		// Получаем файловый дескриптор
+		evutil_socket_t fd = bufferevent_getfd(adj->bev);
+		// Устанавливаем размер буфера
+		if(fd > 0) sockets_t::bufferSize(fd, rcv, snd, wrk->total, this->log);
 	}
 }
 /**

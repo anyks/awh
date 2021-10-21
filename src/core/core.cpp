@@ -282,14 +282,8 @@ const awh::Core::socket_t awh::Core::socket(const string & ip, const u_int port,
 		#if !defined(_WIN32) && !defined(_WIN64)
 			// Выполняем игнорирование сигнала неверной инструкции процессора
 			sockets_t::noSigill(this->log);
-			// Устанавливаем разрешение на повторное использование сокета
-			sockets_t::reuseable(result.fd, this->log);
 			// Отключаем сигнал записи в оборванное подключение
 			sockets_t::noSigpipe(result.fd, this->log);
-			// Отключаем алгоритм Нейгла для сервера и клиента
-			sockets_t::tcpNodelay(result.fd, this->log);
-			// Переводим сокет в не блокирующий режим
-			sockets_t::nonBlocking(result.fd, this->log);
 			// Если ядро является сервером
 			if(this->type == type_t::SERVER){
 				// Включаем отображение сети IPv4 в IPv6
@@ -298,17 +292,19 @@ const awh::Core::socket_t awh::Core::socket(const string & ip, const u_int port,
 			} else sockets_t::keepAlive(result.fd, this->alive.keepcnt, this->alive.keepidle, this->alive.keepintvl, this->log);
 		// Устанавливаем настройки для OS Windows
 		#else
-			// Если ядро не является сервером
-			if(this->type != type_t::SERVER)
-				// Активируем keepalive
-				sockets_t::keepAlive(result.fd, this->log);
-			// Отключаем алгоритм Нейгла для сервера и клиента
-			sockets_t::tcpNodelay(result.fd, this->log);
-			// Переводим сокет в не блокирующий режим
-			evutil_make_socket_nonblocking(result.fd);
-			// evutil_make_socket_closeonexec(result.fd);
-			evutil_make_listen_socket_reuseable(result.fd);
+			// Если ядро является сервером
+			if(this->type == type_t::SERVER){
+				// Включаем отображение сети IPv4 в IPv6
+				if(family == AF_INET6) sockets_t::ipV6only(result.fd, this->ipV6only, this->log);
+			// Активируем keepalive
+			} else sockets_t::keepAlive(result.fd, this->log);
 		#endif
+		// Отключаем алгоритм Нейгла для сервера и клиента
+		sockets_t::tcpNodelay(result.fd, this->log);
+		// Переводим сокет в не блокирующий режим
+		evutil_make_socket_nonblocking(result.fd);
+		// evutil_make_socket_closeonexec(result.fd);
+		evutil_make_listen_socket_reuseable(result.fd);
 		// Выполняем бинд на сокет
 		if(::bind(result.fd, sin, size) < 0){
 			// Выводим в лог сообщение
