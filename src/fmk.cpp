@@ -310,7 +310,7 @@ string awh::Framework::format(const char * format, ...) const noexcept {
 		// Создаем список аргументов
 		va_list args;
 		// Создаем буфер
-		vector <char> buffer(BUFFER_CHUNK);
+		vector <char> buffer(BUFFER_SIZE);
 		// Заполняем буфер нулями
 		memset(buffer.data(), 0, buffer.size());
 		// Устанавливаем начальный список аргументов

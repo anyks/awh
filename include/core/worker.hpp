@@ -216,7 +216,7 @@ namespace awh {
 			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
 			 */
-			Worker(const fmk_t * fmk, const log_t * log) noexcept : markRead(0, BUFFER_CHUNK), fmk(fmk), log(log) {}
+			Worker(const fmk_t * fmk, const log_t * log) noexcept : markRead(0, 0), fmk(fmk), log(log) {}
 			/**
 			 * ~Worker Деструктор
 			 */

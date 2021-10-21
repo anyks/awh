@@ -34,14 +34,6 @@
 	#define AWH_LOCALE "en_US.UTF-8"
 #endif
 
-/** ПАРАМЕТРЫ СЛОВ **/
-// Максимальная длина последовательности в символах
-#define MAX_SEQ_LENGTH 50
-// Максимальная длина слова
-#define MAX_WORD_LENGTH 35
-// Максимальная длина строки 103kb
-#define MAX_STRING_BYTES 0x19C00
-
 /** ПАРАМЕТРЫ ПРОЧИЕ **/
 // Временная зона сервера
 #define TIME_ZONE "UTC"
@@ -51,16 +43,16 @@
 #define READ_TIMEOUT 30
 // Интервал времени для записи данных на сервере в секундах
 #define WRITE_TIMEOUT 0
+// Размер бинарного буфера
+#define BUFFER_SIZE 0xFA000
+// Размер чанка буфера для чтения из файла
+#define BUFFER_CHUNK 0x8000
 // Интервал времени на проверку подключения с сервером в милисекундах
 #define PERSIST_INTERVAL 120000
 // Интервал времени на получение сообщений с сервера в милисекундах
 #define CONNECT_TIMEOUT 1800000
 // Максимальный размер файла логов в байтах
-#define MAX_SIZE_LOGFILE 1024000;
-// Размер чанка буфера для чтения из файла
-#define BUFFER_CHUNK 0xFA000
-// Размер бинарного буфера
-#define BUFFER_SIZE 0x6400000
+#define MAX_SIZE_LOGFILE 0xFA000
 // Размер буфера на чтение
 #define BUFFER_SIZE_RCV 0x40000000
 // Размер буфера на запись

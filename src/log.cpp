@@ -80,7 +80,7 @@ void awh::Log::print(const string & format, flag_t flag, ...) const noexcept {
 		// Устанавливаем начальный список аргументов
 		va_start(args, flag);
 		// Создаем буфер
-		vector <char> buffer(BUFFER_CHUNK);
+		vector <char> buffer(BUFFER_SIZE);
 		// Заполняем буфер нулями
 		memset(buffer.data(), 0, buffer.size());
 		// Выполняем запись в буфер
