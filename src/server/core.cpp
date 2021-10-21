@@ -194,12 +194,12 @@ void awh::CoreServer::accept(const evutil_socket_t fd, const short event, void *
 		// Устанавливаем настройки для *Nix подобных систем
 		#if !defined(_WIN32) && !defined(_WIN64)
 			// Выполняем игнорирование сигнала неверной инструкции процессора
-			sockets_t::noSigill(this->log);
+			sockets_t::noSigill(core->log);
 			// Отключаем сигнал записи в оборванное подключение
-			sockets_t::noSigpipe(socket, this->log);
+			sockets_t::noSigpipe(socket, core->log);
 		#endif
 		// Отключаем алгоритм Нейгла для сервера и клиента
-		sockets_t::tcpNodelay(socket, this->log);
+		sockets_t::tcpNodelay(socket, core->log);
 		// Переводим сокет в не блокирующий режим
 		evutil_make_socket_nonblocking(socket);
 		// Устанавливаем разрешение на повторное использование сокета
