@@ -303,7 +303,9 @@ const awh::Core::socket_t awh::Core::socket(const string & ip, const u_int port,
 		sockets_t::tcpNodelay(result.fd, this->log);
 		// Переводим сокет в не блокирующий режим
 		evutil_make_socket_nonblocking(result.fd);
+		// Устанавливаем разрешение на закрытие сокета при неиспользовании
 		// evutil_make_socket_closeonexec(result.fd);
+		// Устанавливаем разрешение на повторное использование сокета
 		evutil_make_listen_socket_reuseable(result.fd);
 		// Выполняем бинд на сокет
 		if(::bind(result.fd, sin, size) < 0){

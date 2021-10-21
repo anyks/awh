@@ -191,24 +191,19 @@ void awh::CoreServer::accept(const evutil_socket_t fd, const short event, void *
 				return;
 			}
 		}
-		// Если - это Unix
+		// Устанавливаем настройки для *Nix подобных систем
 		#if !defined(_WIN32) && !defined(_WIN64)
-			// Устанавливаем разрешение на повторное использование сокета
-			sockets_t::reuseable(socket, core->log);
+			// Выполняем игнорирование сигнала неверной инструкции процессора
+			sockets_t::noSigill(this->log);
 			// Отключаем сигнал записи в оборванное подключение
-			sockets_t::noSigpipe(socket, core->log);
-			// Отключаем алгоритм Нейгла для сервера и клиента
-			sockets_t::tcpNodelay(socket, core->log);
-			// Устанавливаем неблокирующий режим для сокета
-			sockets_t::nonBlocking(socket, core->log);
-		// Если - это Windows
-		#else
-			// Переводим сокет в блокирующий режим
-			// sockets_t::blocking(socket);
-			evutil_make_socket_nonblocking(socket);
-			// evutil_make_socket_closeonexec(socket);
-			evutil_make_listen_socket_reuseable(socket);
+			sockets_t::noSigpipe(socket, this->log);
 		#endif
+		// Отключаем алгоритм Нейгла для сервера и клиента
+		sockets_t::tcpNodelay(socket, this->log);
+		// Переводим сокет в не блокирующий режим
+		evutil_make_socket_nonblocking(socket);
+		// Устанавливаем разрешение на повторное использование сокета
+		evutil_make_listen_socket_reuseable(socket);
 		// Создаём бъект адъютанта
 		worker_t::adj_t adj = worker_t::adj_t(wrk, core->fmk, core->log);
 		// Выполняем получение контекста сертификата
