@@ -282,8 +282,8 @@ const string awh::Sockets::ip(const int family, void * ctx) noexcept {
 			setsockopt(fd, SOL_SOCKET, SO_SNDBUF, (char *) &writeSize, wlen);
 		}
 		// Считываем установленный размер буфера
-		if((getsockopt(fd, SOL_SOCKET, SO_RCVBUF, &readSize, &rlen) < 0) ||
-		   (getsockopt(fd, SOL_SOCKET, SO_SNDBUF, &writeSize, &wlen) < 0)){
+		if((getsockopt(fd, SOL_SOCKET, SO_RCVBUF, (char *) &readSize, &rlen) < 0) ||
+		   (getsockopt(fd, SOL_SOCKET, SO_SNDBUF, (char *) &writeSize, &wlen) < 0)){
 			// Выводим в лог информацию
 			if(log != nullptr) log->print("get buffer wrong on socket %d", log_t::flag_t::CRITICAL, fd);
 			// Выходим
