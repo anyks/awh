@@ -105,6 +105,16 @@ namespace awh {
 			 * @return    результат работы функции
 			 */
 			static const int tcpNodelay(const evutil_socket_t fd = -1, const log_t * log = nullptr) noexcept;
+			/**
+			 * bufferSize Метод установки размеров буфера
+			 * @param fd    файловый дескриптор (сокет)
+			 * @param read  размер буфера на чтение
+			 * @param write размер буфера на запись
+			 * @param total максимальное количество подключений
+			 * @param log   объект для работы с логами
+			 * @return      результат работы функции
+			 */
+			static const int bufferSize(const evutil_socket_t fd = -1, const int read = 0, const int write = 0, const u_int total = 0, const log_t * log = nullptr) noexcept;
 		/**
 		 * Если - это Unix
 		 */
