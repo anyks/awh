@@ -242,7 +242,7 @@ const string awh::Sockets::ip(const int family, void * ctx) noexcept {
 		// Устанавливаем параметр
 		int tcpNodelay = 1;
 		// Устанавливаем TCP_NODELAY
-		if(setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &tcpNodelay, sizeof(tcpNodelay)) < 0){
+		if(setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, (char *) &tcpNodelay, sizeof(tcpNodelay)) < 0){
 			// Выводим в лог информацию
 			if(log != nullptr) log->print("cannot set TCP_NODELAY option on socket %d", log_t::flag_t::CRITICAL, fd);
 			// Выходим
