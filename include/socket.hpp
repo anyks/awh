@@ -68,20 +68,20 @@ namespace awh {
 		 * serverIp Метод получения основного ip на сервере
 		 * @param family Тип интернет подключения (IPv4 или IPv6)
 		 */
-		static const string serverIp(const int family) noexcept;
+		static string serverIp(const int family) noexcept;
 		/**
 		 * mac Метод определения мак адреса клиента
 		 * @param ctx указатель на объект подключения
 		 * @return    данные мак адреса
 		 */
-		static const string mac(struct sockaddr * ctx = nullptr) noexcept;
+		static string mac(struct sockaddr * ctx = nullptr) noexcept;
 		/**
 		 * ip Метод получения данных ip адреса
 		 * @param family тип интернет протокола
 		 * @param ctx    указатель на объект подключения
 		 * @return       данные ip адреса
 		 */
-		static const string ip(const int family, void * ctx = nullptr) noexcept;
+		static string ip(const int family, void * ctx = nullptr) noexcept;
 /**
  * Методы только для OS Windows
  */
@@ -97,7 +97,7 @@ namespace awh {
 		 * @param log объект для работы с логами
 		 * @return    результат работы функции
 		 */
-		const int keepAlive(const evutil_socket_t fd, const log_t * log) noexcept;
+		static int keepAlive(const evutil_socket_t fd, const log_t * log) noexcept;
 /**
  * Методы только для *Nix
  */
@@ -107,28 +107,28 @@ namespace awh {
 		 * @param log объект для работы с логами
 		 * @return    результат работы функции
 		 */
-		static const int noSigill(const log_t * log = nullptr) noexcept;
+		static int noSigill(const log_t * log = nullptr) noexcept;
 		/**
 		 * tcpCork Метод активации tcp_cork
 		 * @param fd  файловый дескриптор (сокет)
 		 * @param log объект для работы с логами
 		 * @return    результат работы функции
 		 */
-		static const int tcpCork(const evutil_socket_t fd = -1, const log_t * log = nullptr) noexcept;
+		static int tcpCork(const evutil_socket_t fd = -1, const log_t * log = nullptr) noexcept;
 		/**
 		 * noSigpipe Метод игнорирования отключения сигнала записи в убитый сокет
 		 * @param fd  файловый дескриптор (сокет)
 		 * @param log объект для работы с логами
 		 * @return    результат работы функции
 		 */
-		static const int noSigpipe(const evutil_socket_t fd = -1, const log_t * log = nullptr) noexcept;
+		static int noSigpipe(const evutil_socket_t fd = -1, const log_t * log = nullptr) noexcept;
 		/**
 		 * nonBlocking Метод установки неблокирующего сокета
 		 * @param fd  файловый дескриптор (сокет)
 		 * @param log объект для работы с логами
 		 * @return    результат работы функции
 		 */
-		static const int nonBlocking(const evutil_socket_t fd = -1, const log_t * log = nullptr) noexcept;
+		static int nonBlocking(const evutil_socket_t fd = -1, const log_t * log = nullptr) noexcept;
 		/**
 		 * keepAlive Метод устанавливает постоянное подключение на сокет
 		 * @param fd    файловый дескриптор (сокет)
@@ -138,7 +138,7 @@ namespace awh {
 		 * @param log   объект для работы с логами
 		 * @return      результат работы функции
 		 */
-		static const int keepAlive(const evutil_socket_t fd = -1, const int cnt = 0, const int idle = 0, const int intvl = 0, const log_t * log = nullptr) noexcept;
+		static int keepAlive(const evutil_socket_t fd = -1, const int cnt = 0, const int idle = 0, const int intvl = 0, const log_t * log = nullptr) noexcept;
 #endif
 		/**
 		 * reuseable Метод разрешающая повторно использовать сокет после его удаления
@@ -146,14 +146,14 @@ namespace awh {
 		 * @param log объект для работы с логами
 		 * @return    результат работы функции
 		 */
-		static const int reuseable(const evutil_socket_t fd = -1, const log_t * log = nullptr) noexcept;
+		static int reuseable(const evutil_socket_t fd = -1, const log_t * log = nullptr) noexcept;
 		/**
 		 * tcpNodelay Метод отключения алгоритма Нейгла
 		 * @param fd  файловый дескриптор (сокет)
 		 * @param log объект для работы с логами
 		 * @return    результат работы функции
 		 */
-		static const int tcpNodelay(const evutil_socket_t fd = -1, const log_t * log = nullptr) noexcept;
+		static int tcpNodelay(const evutil_socket_t fd = -1, const log_t * log = nullptr) noexcept;
 		/**
 		 * ipV6only Метод включающая или отключающая режим отображения IPv4 на IPv6
 		 * @param fd   файловый дескриптор (сокет)
@@ -161,7 +161,7 @@ namespace awh {
 		 * @param log  объект для работы с логами
 		 * @return     результат работы функции
 		 */
-		static const int ipV6only(const evutil_socket_t fd = -1, const bool mode = false, const log_t * log = nullptr) noexcept;
+		static int ipV6only(const evutil_socket_t fd = -1, const bool mode = false, const log_t * log = nullptr) noexcept;
 		/**
 		 * bufferSize Метод установки размеров буфера
 		 * @param fd    файловый дескриптор (сокет)
@@ -171,7 +171,7 @@ namespace awh {
 		 * @param log   объект для работы с логами
 		 * @return      результат работы функции
 		 */
-		static const int bufferSize(const evutil_socket_t fd = -1, const int read = 0, const int write = 0, const u_int total = 0, const log_t * log = nullptr) noexcept;
+		static int bufferSize(const evutil_socket_t fd = -1, const int read = 0, const int write = 0, const u_int total = 0, const log_t * log = nullptr) noexcept;
 	} sockets_t;
 };
 

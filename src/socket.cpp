@@ -14,7 +14,7 @@
  * serverIp Метод получения основного ip на сервере
  * @param family Тип интернет подключения (IPv4 или IPv6)
  */
-const string awh::Sockets::serverIp(const int family) noexcept {
+string awh::Sockets::serverIp(const int family) noexcept {
 	// Определяем тип интернет протокола
 	switch(family){
 		// Если это IPv4
@@ -112,7 +112,7 @@ const string awh::Sockets::serverIp(const int family) noexcept {
  * @param ctx указатель на объект подключения
  * @return    данные мак адреса
  */
-const string awh::Sockets::mac(struct sockaddr * ctx) noexcept {
+string awh::Sockets::mac(struct sockaddr * ctx) noexcept {
 	// Результат работы функции
 	string result = "";
 	// Если данные переданы
@@ -141,7 +141,7 @@ const string awh::Sockets::mac(struct sockaddr * ctx) noexcept {
  * @param ctx    указатель на объект подключения
  * @return       данные ip адреса
  */
-const string awh::Sockets::ip(const int family, void * ctx) noexcept {
+string awh::Sockets::ip(const int family, void * ctx) noexcept {
 	// Результат работы функции
 	string result = "";
 	// Если данные переданы
@@ -199,7 +199,7 @@ void awh::Sockets::nonBlocking(const evutil_socket_t fd) noexcept {
  * @param log объект для работы с логами
  * @return    результат работы функции
  */
-const int awh::Sockets::keepAlive(const evutil_socket_t fd, const log_t * log) noexcept {
+int awh::Sockets::keepAlive(const evutil_socket_t fd, const log_t * log) noexcept {
 	// Результат работы функции
 	int result = -1;
 	{
@@ -241,7 +241,7 @@ const int awh::Sockets::keepAlive(const evutil_socket_t fd, const log_t * log) n
  * @param log объект для работы с логами
  * @return    результат работы функции
  */
-const int awh::Sockets::noSigill(const log_t * log) noexcept {
+int awh::Sockets::noSigill(const log_t * log) noexcept {
 	// Создаем структуру активации сигнала
 	struct sigaction act;
 	// Зануляем структуру
@@ -266,7 +266,7 @@ const int awh::Sockets::noSigill(const log_t * log) noexcept {
  * @param log объект для работы с логами
  * @return    результат работы функции
  */
-const int awh::Sockets::tcpCork(const evutil_socket_t fd, const log_t * log) noexcept {
+int awh::Sockets::tcpCork(const evutil_socket_t fd, const log_t * log) noexcept {
 	// Устанавливаем параметр
 	int tcpCork = 1;
 	// Если это Linux
@@ -297,7 +297,7 @@ const int awh::Sockets::tcpCork(const evutil_socket_t fd, const log_t * log) noe
  * @param log объект для работы с логами
  * @return    результат работы функции
  */
-const int awh::Sockets::noSigpipe(const evutil_socket_t fd, const log_t * log) noexcept {
+int awh::Sockets::noSigpipe(const evutil_socket_t fd, const log_t * log) noexcept {
 	// Если это Linux
 	#ifdef __linux__
 		// Создаем структуру активации сигнала
@@ -338,7 +338,7 @@ const int awh::Sockets::noSigpipe(const evutil_socket_t fd, const log_t * log) n
  * @param log объект для работы с логами
  * @return    результат работы функции
  */
-const int awh::Sockets::nonBlocking(const evutil_socket_t fd, const log_t * log) noexcept {
+int awh::Sockets::nonBlocking(const evutil_socket_t fd, const log_t * log) noexcept {
 	// Получаем флаги файлового дескриптора
 	int flags = fcntl(fd, F_GETFL);
 	// Если флаги не установлены, выходим
@@ -364,7 +364,7 @@ const int awh::Sockets::nonBlocking(const evutil_socket_t fd, const log_t * log)
  * @param log   объект для работы с логами
  * @return      результат работы функции
  */
-const int awh::Sockets::keepAlive(const evutil_socket_t fd, const int cnt, const int idle, const int intvl, const log_t * log) noexcept {
+int awh::Sockets::keepAlive(const evutil_socket_t fd, const int cnt, const int idle, const int intvl, const log_t * log) noexcept {
 	// Устанавливаем параметр
 	int keepAlive = 1;
 	// Активация постоянного подключения
@@ -417,7 +417,7 @@ const int awh::Sockets::keepAlive(const evutil_socket_t fd, const int cnt, const
  * @param log объект для работы с логами
  * @return    результат работы функции
  */
-const int awh::Sockets::reuseable(const evutil_socket_t fd, const log_t * log) noexcept {
+int awh::Sockets::reuseable(const evutil_socket_t fd, const log_t * log) noexcept {
 	// Устанавливаем параметр
 	int reuseaddr = 1;
 	// Разрешаем повторно использовать тот же host:port после отключения
@@ -436,7 +436,7 @@ const int awh::Sockets::reuseable(const evutil_socket_t fd, const log_t * log) n
  * @param log объект для работы с логами
  * @return    результат работы функции
  */
-const int awh::Sockets::tcpNodelay(const evutil_socket_t fd, const log_t * log) noexcept {
+int awh::Sockets::tcpNodelay(const evutil_socket_t fd, const log_t * log) noexcept {
 	// Устанавливаем параметр
 	int tcpNodelay = 1;
 	// Устанавливаем TCP_NODELAY
@@ -456,7 +456,7 @@ const int awh::Sockets::tcpNodelay(const evutil_socket_t fd, const log_t * log) 
  * @param log  объект для работы с логами
  * @return     результат работы функции
  */
-const int awh::Sockets::ipV6only(const evutil_socket_t fd, const bool mode, const log_t * log) noexcept {
+int awh::Sockets::ipV6only(const evutil_socket_t fd, const bool mode, const log_t * log) noexcept {
 	// Устанавливаем параметр
 	int only6 = (mode ? 1 : 0);
 	// Разрешаем повторно использовать тот же host:port после отключения
@@ -478,7 +478,7 @@ const int awh::Sockets::ipV6only(const evutil_socket_t fd, const bool mode, cons
  * @param log   объект для работы с логами
  * @return      результат работы функции
  */
-const int awh::Sockets::bufferSize(const evutil_socket_t fd, const int read, const int write, const u_int total, const log_t * log) noexcept {
+int awh::Sockets::bufferSize(const evutil_socket_t fd, const int read, const int write, const u_int total, const log_t * log) noexcept {
 	// Определяем размер массива опции
 	socklen_t rlen = sizeof(read);
 	socklen_t wlen = sizeof(write);
