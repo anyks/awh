@@ -299,10 +299,12 @@ const awh::Core::socket_t awh::Core::socket(const string & ip, const u_int port,
 			// Активируем keepalive
 			} else sockets_t::keepAlive(result.fd, this->log);
 		#endif
+		// Если ядро является сервером
+		if(this->type == type_t::SERVER)
+			// Переводим сокет в не блокирующий режим
+			evutil_make_socket_nonblocking(result.fd);
 		// Отключаем алгоритм Нейгла для сервера и клиента
 		sockets_t::tcpNodelay(result.fd, this->log);
-		// Переводим сокет в не блокирующий режим
-		evutil_make_socket_nonblocking(result.fd);
 		// Устанавливаем разрешение на закрытие сокета при неиспользовании
 		// evutil_make_socket_closeonexec(result.fd);
 		// Устанавливаем разрешение на повторное использование сокета
