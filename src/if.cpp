@@ -106,9 +106,6 @@ void awh::IfNet::getHWAddresses() noexcept {
 	char buffer[IF_BUFFER_SIZE];
 	// Заполняем нуляем наши буферы
 	memset(buffer, 0, sizeof(buffer));
-
-	cout << " ^^^^^^^^^1 " << endl;
-
 	// Выделяем сокет для подключения
 	int fd = ::socket(AF_INET, SOCK_DGRAM, 0);
 	// Если файловый дескриптор не создан, выходим
@@ -122,9 +119,6 @@ void awh::IfNet::getHWAddresses() noexcept {
 	ifc.ifc_buf = buffer;
 	// Устанавливаем максимальный размер буфера
 	ifc.ifc_len = IF_BUFFER_SIZE;
-
-	cout << " ^^^^^^^^^2 " << endl;
-
 	// Выполняем получение сетевых параметров
 	if(::ioctl(fd, SIOCGIFCONF, &ifc) < 0){
 		// Закрываем сетевой сокет
@@ -136,18 +130,12 @@ void awh::IfNet::getHWAddresses() noexcept {
 	}
 	// Выполняем смещение в буфере
 	char * cplim = (buffer + ifc.ifc_len);
-
-	cout << " ^^^^^^^^^3 " << endl;
-
 	// Выполняем перебор всех сетевых интерфейсов
 	for(char * cp = buffer; cp < cplim;){
 		// Выполняем получение сетевого интерфейса
 		struct ifreq * ifr = (struct ifreq *) cp;
-
-		cout << " ^^^^^^^^^4 " << ifr->ifr_name << " ||" << (!(ifr->ifr_flags & IFF_LOOPBACK)) << " == " << (ifr->ifr_addr.sa_family == AF_LINK) << endl;
-
-		// Проверяем сетевой интерфейс (не loopback)
-		if(!(ifr->ifr_flags & IFF_LOOPBACK) && (ifr->ifr_addr.sa_family == AF_LINK)){
+		// Нам нужен реальный сетевой интерфейс
+		if(ifr->ifr_addr.sa_family == AF_LINK){
 			// Заполняем нуляем наши буферы
 			memset(temp, 0, sizeof(temp));
 			// Инициализируем все октеты
