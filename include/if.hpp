@@ -11,17 +11,6 @@
 #define __AWH_IFNET__
 
 /**
- * Если операционной системой является MacOS X или FreeBSD
- */
-#if __APPLE__ || __MACH__ || __FreeBSD__
-	#include <netdb.h>
-	#include <net/if_dl.h>
-	#include <net/ethernet.h>
-	#include <netinet/if_ether.h>
-	#include <sys/sockio.h>
-#endif
-
-/**
  * Стандартная библиотека
  */
 #include <cmath>
@@ -38,6 +27,17 @@
 #include <sys/ioctl.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
+
+/**
+ * Если операционной системой является MacOS X или FreeBSD
+ */
+#if __APPLE__ || __MACH__ || __FreeBSD__
+	#include <netdb.h>
+	#include <net/if_dl.h>
+	#include <net/ethernet.h>
+	#include <netinet/if_ether.h>
+	#include <sys/sockio.h>
+#endif
 
 /**
  * Наши модули
