@@ -469,7 +469,7 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 			// Заполняем нулями структуру объекта подключения IPv6
 			memset(&sin6, 0, sizeof(sin6));
 			// Устанавливаем протокол интернета
-			sin6.sin_family = family;
+			sin6.sin6_family = family;
 			// Выполняем копирование IP адреса
 			if(inet_pton(family, ip.c_str(), &sin6.sin6_addr) != 1){
 				// Выводим сообщение об ошибке
@@ -480,7 +480,7 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 			// Заполняем структуру нулями текущего адреса
 			memset(target, 0, sizeof(target));
 			// Заполняем буфер данными текущего адреса IPv6
-			inet_ntop(family, &sin.sin6_addr, target, sizeof(target));
+			inet_ntop(family, &sin6.sin6_addr, target, sizeof(target));
 		// Если запрашиваемый адрес IPv4
 		} else if(family == AF_INET) {
 			// Заполняем нулями структуру объекта подключения IPv4
@@ -532,8 +532,8 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 				memset(ifaddr,  0, sizeof(ifaddr));
 				memset(dstaddr, 0, sizeof(dstaddr));
 				// Заполняем буфер данными сетевых адресов IPv6
-				inet_ntop(family, &((struct sockaddr_in *) ifa->ifa_addr)->sin6_addr, ifaddr, sizeof(ifaddr));
-				inet_ntop(family, &((struct sockaddr_in *) ifa->ifa_dstaddr)->sin6_addr, dstaddr, sizeof(dstaddr));
+				inet_ntop(family, &((struct sockaddr_in6 *) ifa->ifa_addr)->sin6_addr, ifaddr, sizeof(ifaddr));
+				inet_ntop(family, &((struct sockaddr_in6 *) ifa->ifa_dstaddr)->sin6_addr, dstaddr, sizeof(dstaddr));
 				// Если искомый IP адрес найден
 				if(strcmp(dstaddr, target) == 0){
 					// Искомый IP адрес соответствует данному серверу
