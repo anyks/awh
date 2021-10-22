@@ -494,7 +494,7 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 			return;
 		}
 		// Сетевые адреса в цифровом виде
-		uint32_t ifaddr = 0, uint32_t netmask = 0, uint32_t dstaddr = 0;
+		uint32_t ifaddr = 0, netmask = 0, dstaddr = 0;
 		// Переходим по всем сетевым интерфейсам
 		for(struct ifaddrs * ifa = headIfa; ifa != nullptr; ifa = ifa->ifa_next){
 			// Если сетевой интерфейс не соответствует, пропускаем
