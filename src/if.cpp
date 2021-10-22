@@ -292,7 +292,7 @@ void awh::IfNet::getHWAddresses() noexcept {
 					// Выполняем копирование MAC-адреса
 					memcpy(mac, ifrc.ifr_hwaddr.sa_data, 6);
 					// Выполняем получение MAC-адреса
-					sprintf(temp, "%02hhx:%02hhx:%02hhx:%02hhx:%02x:%02hhx", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+					sprintf(temp, "%02X:%02X:%02X:%02X:%02X:%02X", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
 					// Добавляем MAC адрес в список сетевых интерфейсов
 					this->ifs.emplace(it->ifr_name, temp);
 				}
@@ -439,7 +439,7 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 				// Извлекаем MAC адрес
 				const u_char * cp = (u_char *) LLADDR(sdl);
 				// Выполняем получение MAC-адреса
-				sprintf(temp, "%02hhx:%02hhx:%02hhx:%02hhx:%02x:%02hhx", cp[0], cp[1], cp[2], cp[3], cp[4], cp[5]);
+				sprintf(temp, "%02X:%02X:%02X:%02X:%02X:%02X", cp[0], cp[1], cp[2], cp[3], cp[4], cp[5]);
 				// Получаем результат MAC адреса
 				result = move(temp);
 				// Выходим из цикла
