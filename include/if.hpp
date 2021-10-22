@@ -25,6 +25,7 @@
 #include <iostream>
 #include <algorithm>
 #include <unordered_map>
+#include <errno.h>
 #include <unistd.h>
 #include <net/if.h>
 #include <arpa/inet.h>
@@ -44,6 +45,14 @@
 	#include <sys/sockio.h>
 	#include <sys/sysctl.h>
 	#include <net/route.h>
+/**
+ * Если операционной системой является Linux
+ */
+#elif __linux__
+	#include <ifaddrs.h>
+	#include <stddef.h>
+	#include <stdbool.h>
+	#include <net/if_arp.h>
 #endif
 
 /**
