@@ -515,6 +515,8 @@ void awh::Core::closeAll() noexcept {
 					worker_t::adj_t * adj = const_cast <worker_t::adj_t *> (&it->second);
 					// Выполняем очистку буфера событий
 					this->clean(adj->bev);
+					// Выполняем удаление контекста SSL
+					this->ssl.clear(adj->ssl);
 					// Выводим функцию обратного вызова
 					if(wrk->disconnectFn != nullptr)
 						// Выполняем функцию обратного вызова
