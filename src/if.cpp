@@ -491,7 +491,7 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 			// Выводим сообщение об ошибке
 			this->log->print("%s", log_t::flag_t::WARNING, "socket failed");
 			// Выходим из функции
-			return;
+			return result;
 		}
 		// Сетевые адреса в цифровом виде
 		uint32_t ifaddr = 0, netmask = 0, dstaddr = 0;
