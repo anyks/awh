@@ -429,7 +429,7 @@ const string awh::IfNet::mac(const string & ip) const noexcept {
 			// Если искомый IP адрес не совпадает, пропускаем
 			if(strcmp(buffer13, buffer14) != 0) continue;
 
-			
+			cout << " =================2 " << buffer13 << " === " << buffer14 << endl;
 
 			// Если искомый IP адрес не совпадает, пропускаем
 			// if(addr != sin->sin_addr.s_addr) continue;
@@ -444,7 +444,7 @@ const string awh::IfNet::mac(const string & ip) const noexcept {
 				// Получаем результат MAC адреса
 				result = move(buffer);
 
-				cout << " =================2 " << result << endl;
+				cout << " =================3 " << result << endl;
 				// Выходим из цикла
 				break;
 			}
