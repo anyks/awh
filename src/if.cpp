@@ -203,7 +203,7 @@ void awh::IfNet::getHWAddresses() noexcept {
 		// Выполняем подключение к сокету
 		if(::ioctl(fd, SIOCGIFFLAGS, &ifrc) == 0){
 			// Проверяем сетевой интерфейс (не loopback)
-			if(!(ifrc.ifr_flags & IFF_LOOPBACK) && (ifrc.ifr_addr.sa_family == AF_LINK)){
+			if(!(ifrc.ifr_flags & IFF_LOOPBACK)){
 				// Извлекаем аппаратный адрес сетевого интерфейса
 				if(::ioctl(fd, SIOCGIFHWADDR, &ifrc) == 0){
 					// Создаём буфер MAC-адреса
