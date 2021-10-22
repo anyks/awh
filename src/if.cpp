@@ -395,6 +395,14 @@ const string awh::IfNet::mac(const string & ip) const noexcept {
 		// Указываем адрес IPv6 для сервера
 		inet_pton(AF_INET6, ip.c_str(), &sin6.sin6_addr);
 
+
+		// Создаем буфер для получения ip адреса
+		char buffer13[INET6_ADDRSTRLEN];
+		// Заполняем структуру нулями
+		memset(buffer13, 0, sizeof(buffer13));
+
+
+
 		// Переходим по всем сетевым интерфейсам
 		for(it = buffer.data(); it < end; it += rtm->rtm_msglen){
 			// Получаем указатель сетевого интерфейса
@@ -405,10 +413,15 @@ const string awh::IfNet::mac(const string & ip) const noexcept {
 			sdl = (struct sockaddr_dl *) (sin + 1);
 
 			// Если сетевой интерфейс отличается от IPv4 пропускаем
-			if((sin->sin_family != AF_INET) && (reinterpret_cast <struct sockaddr_in6 *> (sin)->sin6_family != AF_INET6)) continue;
+			// if((sin->sin_family != AF_INET) && (reinterpret_cast <struct sockaddr_in6 *> (sin)->sin6_family != AF_INET6)) continue;
 
 			// Если искомый IP адрес не совпадает, пропускаем
-			if(strcmp((const char *) sin6.sin6_addr.s6_addr, (const char *) reinterpret_cast <struct sockaddr_in6 *> (sin)->sin6_addr.s6_addr) == 0) continue;
+			// if(strcmp((const char *) sin6.sin6_addr.s6_addr, (const char *) reinterpret_cast <struct sockaddr_in6 *> (sin)->sin6_addr.s6_addr) == 0) continue;
+
+			// Копируем полученные данные
+			inet_ntop(AF_INET6, &reinterpret_cast <struct sockaddr_in6 *> (sin)->sin6_addr, buffer13, sizeof(buffer13));
+
+			cout << " =================1 " << buffer13 << endl;
 
 			// Если искомый IP адрес не совпадает, пропускаем
 			// if(addr != sin->sin_addr.s_addr) continue;
@@ -422,8 +435,10 @@ const string awh::IfNet::mac(const string & ip) const noexcept {
 				sprintf(buffer, "%02hhx:%02hhx:%02hhx:%02hhx:%02x:%02hhx", cp[0], cp[1], cp[2], cp[3], cp[4], cp[5]);
 				// Получаем результат MAC адреса
 				result = move(buffer);
+
+				cout << " =================2 " << result << endl;
 				// Выходим из цикла
-				break;
+				// break;
 			}
 		}
 /**
