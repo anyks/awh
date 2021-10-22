@@ -439,7 +439,7 @@ void awh::Core::start() noexcept {
 		for(auto & item : hw) cout << " ==== " << item.first << " == " << item.second << endl;
 
 		// 68:a8:6d:33:4c:e2 // 50:64:2b:32:fe:9c
-		cout << " ++++++++= " << net.ip("vtnet0", AF_INET6) << " == " << net.mac(this->nwk.setLowIp6("fe80:1::5c15:97ff:fe60:e6f2"), AF_INET6) << endl;
+		cout << " ++++++++= " << net.ip("vtnet0", AF_INET6) << " == " << net.mac(this->nwk.setLowIp6("fe80::5c15:97ff:fe60:e6f2"), AF_INET6) << endl;
 
 
 		// Разрешаем работу WebSocket
