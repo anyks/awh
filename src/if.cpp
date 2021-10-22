@@ -385,6 +385,16 @@ const string awh::IfNet::mac(const string & ip) const noexcept {
 		end = (buffer.data() + size);
 		// Получаем числовое значение IP адреса
 		const u_long addr = inet_addr(ip.c_str());
+
+
+		struct sockaddr_in6 sin6;
+		// Очищаем всю структуру для сервера
+		memset(&sin6, 0, sizeof(sin6));
+		// Устанавливаем протокол интернета
+		sin6.sin6_family = AF_INET6;
+		// Указываем адрес IPv6 для сервера
+		inet_pton(AF_INET6, ip.c_str(), &sin6.sin6_addr);
+
 		// Переходим по всем сетевым интерфейсам
 		for(it = buffer.data(); it < end; it += rtm->rtm_msglen){
 			// Получаем указатель сетевого интерфейса
@@ -393,8 +403,15 @@ const string awh::IfNet::mac(const string & ip) const noexcept {
 			sin = (struct sockaddr_inarp *) (rtm + 1);
 			// Получаем текущее значение аппаратного сетевого адреса
 			sdl = (struct sockaddr_dl *) (sin + 1);
+
+			// Если сетевой интерфейс отличается от IPv4 пропускаем
+			if((sin->sin_family != AF_INET) && (reinterpret_cast <struct sockaddr_in6 *> (sin)->sin6_family != AF_INET6)) continue;
+
 			// Если искомый IP адрес не совпадает, пропускаем
-			if(addr != sin->sin_addr.s_addr) continue;
+			if(strcmp((const char *) sin6.sin6_addr.s6_addr, (const char *) reinterpret_cast <struct sockaddr_in6 *> (sin)->sin6_addr.s6_addr) == 0) continue;
+
+			// Если искомый IP адрес не совпадает, пропускаем
+			// if(addr != sin->sin_addr.s_addr) continue;
 			// Если сетевой интерфейс получен
 			if(sdl->sdl_alen > 0){
 				// Выделяем память для MAC адреса
