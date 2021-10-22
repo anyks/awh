@@ -166,6 +166,9 @@ void awh::CoreClient::event(struct bufferevent * bev, const short events, void *
 				}
 			// Если это ошибка или завершение работы
 			} else if(events & (BEV_EVENT_ERROR | BEV_EVENT_EOF | BEV_EVENT_TIMEOUT)) {
+
+				cout << " ------------- " << bool(events & BEV_EVENT_ERROR) << " == " << bool(events & BEV_EVENT_EOF) << " == " << bool(events & BEV_EVENT_TIMEOUT) << endl;
+
 				// Если это ошибка
 				if(events & BEV_EVENT_ERROR)
 					// Выводим в лог сообщение

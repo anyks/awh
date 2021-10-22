@@ -13,6 +13,7 @@
 /**
  * Наши модули
  */
+#include <if.hpp>
 #include <core/core.hpp>
 #include <server/worker.hpp>
 
@@ -27,6 +28,14 @@ namespace awh {
 	 * Core Класс клиентского ядра биндинга TCP/IP
 	 */
 	typedef class CoreServer : public core_t {
+		private:
+			/**
+			 * Устанавливаем настройки для *Nix подобных систем
+			 */
+			#if !defined(_WIN32) && !defined(_WIN64)
+				// Объект для работы с сетевым интерфейсом
+				ifnet_t ifnet;
+			#endif
 		private:
 			/**
 			 * read Метод чтения данных с сокета сервера

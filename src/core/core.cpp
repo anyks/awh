@@ -417,31 +417,12 @@ void awh::Core::stop() noexcept {
 		} else event_base_loopexit(this->base, nullptr);
 	}
 }
-
-#include <if.hpp>
-
 /**
  * start Метод запуска клиента
  */
 void awh::Core::start() noexcept {
 	// Если система ещё не запущена
 	if(!this->mode && !this->locker){
-
-
-		ifnet_t net(this->fmk, this->log);
-
-		net.init();
-
-		const auto & hw = net.hws();
-
-		cout << " ********* " << hw.size() << endl;
-
-		for(auto & item : hw) cout << " ==== " << item.first << " == " << item.second << endl;
-
-		// 68:a8:6d:33:4c:e2 // 50:64:2b:32:fe:9c
-		cout << " ++++++++= " << net.ip("vtnet0", AF_INET6) << " == " << net.mac("192.168.1.80") << endl;
-
-
 		// Разрешаем работу WebSocket
 		this->mode = true;
 		// Создаем новую базу

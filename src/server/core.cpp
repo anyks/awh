@@ -160,8 +160,17 @@ void awh::CoreServer::accept(const evutil_socket_t fd, const short event, void *
 				if(socket < 0) return;
 				// Получаем данные подключившегося клиента
 				ip = sockets_t::ip(AF_INET, &client);
-				// Получаем данные мак адреса клиента
-				mac = sockets_t::mac(reinterpret_cast <struct sockaddr *> (&client));
+				// Если IP адрес получен пустой, устанавливаем адрес сервера
+				if(ip.compare("0.0.0.0") == 0) ip = sockets_t::serverIp(AF_INET);
+				// Устанавливаем настройки для *Nix подобных систем
+				#if !defined(_WIN32) && !defined(_WIN64)
+					// Получаем данные мак адреса клиента
+					mac = core->ifnet.mac(ip, AF_INET);
+				// Устанавливаем настройки для OS Windows
+				#else
+					// Получаем данные мак адреса клиента
+					mac = sockets_t::mac(reinterpret_cast <struct sockaddr *> (&client));
+				#endif
 			} break;
 			// Для протокола IPv6
 			case AF_INET6: {
@@ -175,8 +184,17 @@ void awh::CoreServer::accept(const evutil_socket_t fd, const short event, void *
 				if(socket < 0) return;
 				// Получаем данные подключившегося клиента
 				ip = sockets_t::ip(AF_INET6, &client);
-				// Получаем данные мак адреса клиента
-				mac = sockets_t::mac(reinterpret_cast <struct sockaddr *> (&client));
+				// Если IP адрес получен пустой, устанавливаем адрес сервера
+				if(ip.compare("::") == 0) ip = sockets_t::serverIp(AF_INET6);
+				// Устанавливаем настройки для *Nix подобных систем
+				#if !defined(_WIN32) && !defined(_WIN64)
+					// Получаем данные мак адреса клиента
+					mac = core->ifnet.mac(ip, AF_INET6);
+				// Устанавливаем настройки для OS Windows
+				#else
+					// Получаем данные мак адреса клиента
+					mac = sockets_t::mac(reinterpret_cast <struct sockaddr *> (&client));
+				#endif
 			} break;
 		}
 		// Если функция обратного вызова установлена
@@ -592,6 +610,23 @@ void awh::CoreServer::setCert(const string & cert, const string & key, const str
 	this->ssl.setCert(cert, key, chain);
 }
 /**
+ * Устанавливаем настройки для *Nix подобных систем
+ */
+#if !defined(_WIN32) && !defined(_WIN64)
+/**
+ * CoreServer Конструктор
+ * @param fmk объект фреймворка
+ * @param log объект для работы с логами
+ */
+awh::CoreServer::CoreServer(const fmk_t * fmk, const log_t * log) noexcept : core_t(fmk, log), ifnet(fmk, log) {
+	// Устанавливаем тип запускаемого ядра
+	this->type = type_t::SERVER;
+}
+/**
+ * Устанавливаем настройки для OS Windows
+ */
+#else
+/**
  * CoreServer Конструктор
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
@@ -600,6 +635,7 @@ awh::CoreServer::CoreServer(const fmk_t * fmk, const log_t * log) noexcept : cor
 	// Устанавливаем тип запускаемого ядра
 	this->type = type_t::SERVER;
 }
+#endif
 /**
  * ~CoreServer Деструктор
  */
