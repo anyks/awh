@@ -107,10 +107,11 @@ namespace awh {
 		public:
 			/**
 			 * mac Метод получения MAC адреса по IP адресу клиента
-			 * @param ip адрес интернет-подключения клиента
-			 * @return   аппаратный адрес сетевого интерфейса клиента
+			 * @param ip     адрес интернет-подключения клиента
+			 * @param family тип протокола интернета AF_INET или AF_INET6
+			 * @return       аппаратный адрес сетевого интерфейса клиента
 			 */
-			const string mac(const string & ip) const noexcept;
+			const string mac(const string & ip, const int family = AF_INET) const noexcept;
 			/**
 			 * Метод вывода IP адреса соответствующего сетевому интерфейсу
 			 * @param eth    название сетевого интерфейса
