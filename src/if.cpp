@@ -398,9 +398,11 @@ const string awh::IfNet::mac(const string & ip) const noexcept {
 
 		// Создаем буфер для получения ip адреса
 		char buffer13[INET6_ADDRSTRLEN];
+		// Создаем буфер для получения ip адреса
+		char buffer14[INET6_ADDRSTRLEN];
 		// Заполняем структуру нулями
 		memset(buffer13, 0, sizeof(buffer13));
-
+		memset(buffer14, 0, sizeof(buffer14));
 
 
 		// Переходим по всем сетевым интерфейсам
@@ -415,8 +417,9 @@ const string awh::IfNet::mac(const string & ip) const noexcept {
 
 			// Копируем полученные данные
 			inet_ntop(AF_INET6, &reinterpret_cast <struct sockaddr_in6 *> (sin)->sin6_addr, buffer13, sizeof(buffer13));
+			inet_ntop(AF_INET6, ip.c_str(), buffer14, sizeof(buffer14));
 
-			cout << " =================1 " << buffer13 << " === " << ip << endl;
+			cout << " =================1 " << buffer13 << " === " << buffer14 << endl;
 
 			// Если сетевой интерфейс отличается от IPv4 пропускаем
 			if((sin->sin_family != AF_INET) && (reinterpret_cast <struct sockaddr_in6 *> (sin)->sin6_family != AF_INET6)) continue;
