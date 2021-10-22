@@ -199,19 +199,19 @@ void awh::IfNet::getHWAddresses() noexcept {
 	// Переходим по всем сетевым интерфейсам
 	for(; it != end; ++it){
 		// Копируем название сетевого интерфейса
-		strcpy(ifr.ifr_name, it->ifr_name);
+		strcpy(ifrc.ifr_name, it->ifr_name);
 		// Выполняем подключение к сокету
-		if(::ioctl(fd, SIOCGIFFLAGS, &ifr) == 0){
+		if(::ioctl(fd, SIOCGIFFLAGS, &ifrc) == 0){
 			// Проверяем сетевой интерфейс (не loopback)
-			if(!(ifr.ifr_flags & IFF_LOOPBACK) && (ifr.ifr_addr.sa_family == AF_LINK)){
+			if(!(ifrc.ifr_flags & IFF_LOOPBACK) && (ifrc.ifr_addr.sa_family == AF_LINK)){
 				// Извлекаем аппаратный адрес сетевого интерфейса
-				if(::ioctl(fd, SIOCGIFHWADDR, &ifr) == 0){
+				if(::ioctl(fd, SIOCGIFHWADDR, &ifrc) == 0){
 					// Создаём буфер MAC-адреса
 					u_char mac[6];
 					// Заполняем нуляем наши буферы
 					memset(temp, 0, sizeof(temp));
 					// Выполняем копирование MAC-адреса
-					memcpy(mac, ifr.ifr_hwaddr.sa_data, 6);
+					memcpy(mac, ifrc.ifr_hwaddr.sa_data, 6);
 					// Выполняем получение MAC-адреса
 					sprintf(temp, "%02hhx:%02hhx:%02hhx:%02hhx:%02x:%02hhx", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
 					// Добавляем MAC адрес в список сетевых интерфейсов
