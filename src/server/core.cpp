@@ -113,8 +113,12 @@ void awh::CoreServer::event(struct bufferevent * bev, const short events, void *
 		if((wrk->core->adjutants.count(adj->aid) > 0) && (adj->fmk != nullptr)){
 			// Получаем файловый дескриптор
 			evutil_socket_t fd = bufferevent_getfd(bev);
+			// Устанавливаем основные флаги
+			short flags = (BEV_EVENT_ERROR | BEV_EVENT_TIMEOUT);
+			// Если таймер периодического запуска коллбека активирован
+			if(wrk->core->persist) flags = (BEV_EVENT_EOF | flags);
 			// Если это ошибка или завершение работы
-			if(events & (BEV_EVENT_ERROR | BEV_EVENT_EOF | BEV_EVENT_TIMEOUT)) {
+			if(events & flags) {
 				// Если это ошибка
 				if(events & BEV_EVENT_ERROR)
 					// Выводим в лог сообщение

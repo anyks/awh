@@ -135,6 +135,10 @@ void awh::CoreClient::event(struct bufferevent * bev, const short events, void *
 		workCli_t * wrk = (workCli_t *) const_cast <worker_t *> (adj->parent);
 		// Если подключение ещё существует
 		if((wrk->core->adjutants.count(adj->aid) > 0) && (adj->fmk != nullptr)){
+			// Устанавливаем основные флаги
+			short flags = (BEV_EVENT_ERROR | BEV_EVENT_TIMEOUT);
+			// Если таймер периодического запуска коллбека активирован
+			if(wrk->core->persist) flags = (BEV_EVENT_EOF | flags);
 			// Получаем URL параметры запроса
 			const uri_t::url_t & url = (wrk->isProxy() ? wrk->proxy.url : wrk->url);
 			// Получаем хост сервера
@@ -165,10 +169,7 @@ void awh::CoreClient::event(struct bufferevent * bev, const short events, void *
 					);
 				}
 			// Если это ошибка или завершение работы
-			} else if(events & (BEV_EVENT_ERROR | BEV_EVENT_EOF | BEV_EVENT_TIMEOUT)) {
-
-				cout << " ------------- " << bool(events & BEV_EVENT_ERROR) << " == " << bool(events & BEV_EVENT_EOF) << " == " << bool(events & BEV_EVENT_TIMEOUT) << endl;
-
+			} else if(events & flags) {
 				// Если это ошибка
 				if(events & BEV_EVENT_ERROR)
 					// Выводим в лог сообщение
