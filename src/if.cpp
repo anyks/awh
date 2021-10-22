@@ -416,14 +416,11 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 			// Если запрашиваемый адрес IPv6
 			if(family == AF_INET6){
 				// Если сетевой интерфейс отличается от IPv4 пропускаем
-				// if(reinterpret_cast <struct sockaddr_in6 *> (sin)->sin6_family != family) continue;
+				if(reinterpret_cast <struct sockaddr_in6 *> (sin)->sin6_family != family) continue;
 				// Заполняем структуру нулями проверяемого хоста
 				memset(host, 0, sizeof(host));
 				// Копируем полученные данные
 				inet_ntop(family, &reinterpret_cast <struct sockaddr_in6 *> (sin)->sin6_addr, host, sizeof(host));
-				
-				cout << " =============1 " << host << " == " << target << endl;
-
 				// Если искомый IP адрес не совпадает, пропускаем
 				if(strcmp(host, target) != 0) continue;
 			// Если запрашиваемый адрес IPv4
@@ -445,8 +442,6 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 				sprintf(temp, "%02hhx:%02hhx:%02hhx:%02hhx:%02x:%02hhx", cp[0], cp[1], cp[2], cp[3], cp[4], cp[5]);
 				// Получаем результат MAC адреса
 				result = move(temp);
-
-				cout << " =============2 " << result << endl;
 				// Выходим из цикла
 				break;
 			}
