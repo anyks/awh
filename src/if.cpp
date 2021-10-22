@@ -335,6 +335,91 @@ const unordered_map <string, string> & awh::IfNet::hws() const noexcept {
 	return this->ifs;
 }
 /**
+ * mac Метод получения MAC адреса по IP адресу клиента
+ * @param ip адрес интернет-подключения клиента
+ * @return   аппаратный адрес сетевого интерфейса клиента
+ */
+const string awh::IfNet::mac(const string & ip) const noexcept {
+	// Результат работы функции
+	string result = "";
+	// Если IP адрес передан
+	if(!ip.empty()){
+/**
+ * Если операционной системой является MacOS X или FreeBSD
+ */
+#if __APPLE__ || __MACH__ || __FreeBSD__
+		// Создаём массив параметров сетевого интерфейса
+		int mib[6];
+		// Размер буфера данных
+		size_t size = 0;
+		// Параметры итератора в буфере
+		char * it = nullptr, * end = nullptr;
+		// Объекты для работы с сетевым интерфейсом
+		struct rt_msghdr * rtm      = nullptr;
+		struct sockaddr_dl * sdl    = nullptr;
+		struct sockaddr_inarp * sin = nullptr;
+		// Устанавливаем парарметры сетевого интерфейса
+		mib[0] = CTL_NET;
+		mib[1] = PF_ROUTE;
+		mib[2] = 0;
+		mib[3] = AF_INET;
+		mib[4] = NET_RT_FLAGS;
+		mib[5] = RTF_LLINFO;
+		// Выполняем получение размера буфера
+		if(::sysctl(mib, 6, nullptr, &size, nullptr, 0) < 0){
+			// Выводим сообщение об ошибке
+			this->log->print("%s", log_t::flag_t::WARNING, "route sysctl estimate");
+			// Выходим из функции
+			return result;
+		}
+		// Создаём буфер данных сетевого интерфейса
+		vector <char> buffer(size);
+		// Выполняем получение данных сетевого интерфейса
+		if(::sysctl(mib, 6, buffer.data(), &size, nullptr, 0) < 0){
+			// Выводим сообщение об ошибке
+			this->log->print("%s", log_t::flag_t::WARNING, "actual retrieval of routing table");
+			// Выходим из функции
+			return result;
+		}
+		// Получаем конечное значение итератора
+		end = (buffer.data() + size);
+		// Получаем числовое значение IP адреса
+		const u_long addr = inet_addr(ip.c_str());
+		// Переходим по всем сетевым интерфейсам
+		for(it = buffer.data(); it < end; it += rtm->rtm_msglen){
+			// Получаем указатель сетевого интерфейса
+			rtm = (struct rt_msghdr *) it;
+			// Получаем текущее значение активного подключения
+			sin = (struct sockaddr_inarp *) (rtm + 1);
+			// Получаем текущее значение аппаратного сетевого адреса
+			sdl = (struct sockaddr_dl *) (sin + 1);
+			// Если искомый IP адрес не совпадает, пропускаем
+			if(addr != sin->sin_addr.s_addr) continue;
+			// Если сетевой интерфейс получен
+			if(sdl->sdl_alen > 0){
+				// Выделяем память для MAC адреса
+				char buffer[18];
+				// Извлекаем MAC адрес
+				const u_char * cp = (u_char *) LLADDR(sdl);
+				// Выполняем формирование MAC адреса
+				sprintf(buffer, "%02hhx:%02hhx:%02hhx:%02hhx:%02x:%02hhx", cp[0], cp[1], cp[2], cp[3], cp[4], cp[5]);
+				// Получаем результат MAC адреса
+				result = move(buffer);
+				// Выходим из цикла
+				break;
+			}
+		}
+/**
+ * Если операционной системой является Linux
+ */
+#elif __linux__
+
+#endif
+	}
+	// Выводим результат
+	return result;
+}
+/**
  * Метод вывода IP адреса соответствующего сетевому интерфейсу
  * @param eth    название сетевого интерфейса
  * @param family тип протокола интернета AF_INET или AF_INET6

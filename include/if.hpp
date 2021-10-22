@@ -42,6 +42,8 @@
 	#include <net/ethernet.h>
 	#include <netinet/if_ether.h>
 	#include <sys/sockio.h>
+	#include <sys/sysctl.h>
+	#include <net/route.h>
 #endif
 
 /**
@@ -102,6 +104,13 @@ namespace awh {
 			 * @return список MAC адресов
 			 */
 			const unordered_map <string, string> & hws() const noexcept;
+		public:
+			/**
+			 * mac Метод получения MAC адреса по IP адресу клиента
+			 * @param ip адрес интернет-подключения клиента
+			 * @return   аппаратный адрес сетевого интерфейса клиента
+			 */
+			const string mac(const string & ip) const noexcept;
 			/**
 			 * Метод вывода IP адреса соответствующего сетевому интерфейсу
 			 * @param eth    название сетевого интерфейса
