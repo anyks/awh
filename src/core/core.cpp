@@ -417,12 +417,26 @@ void awh::Core::stop() noexcept {
 		} else event_base_loopexit(this->base, nullptr);
 	}
 }
+
+#include <if.hpp>
+
 /**
  * start Метод запуска клиента
  */
 void awh::Core::start() noexcept {
 	// Если система ещё не запущена
 	if(!this->mode && !this->locker){
+
+
+		ifnet_t net(this->fmk, this->log);
+
+		net.init();
+
+		const auto & hw = net.hws();
+
+		for(auto & item : hw) cout << " ==== " << item.first << " == " << item.second << endl;
+
+
 		// Разрешаем работу WebSocket
 		this->mode = true;
 		// Создаем новую базу

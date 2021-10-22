@@ -10,13 +10,14 @@
 // Подключаем заголовочный файл
 #include <if.hpp>
 
-// Если операционной системой является MacOS X
-#if __APPLE__ || __MACH__
-
 /**
  * getIPAddresses Метод извлечения IP адресов
  */
 void awh::IfNet::getIPAddresses() noexcept {
+/**
+ * Если операционной системой является MacOS X или FreeBSD
+ */
+#if __APPLE__ || __MACH__ || __FreeBSD__
 	// Структура параметров сетевого интерфейса
 	struct ifconf ifc;
 	// Структура сетевого интерфейса
@@ -87,11 +88,16 @@ void awh::IfNet::getIPAddresses() noexcept {
 	}
 	// Закрываем сетевой сокет
 	::close(fd);
+#endif
 }
 /**
  * getHWAddresses Метод извлечения MAC адресов
  */
 void awh::IfNet::getHWAddresses() noexcept {
+/**
+ * Если операционной системой является MacOS X или FreeBSD
+ */
+#if __APPLE__ || __MACH__ || __FreeBSD__
 	// Структура параметров сетевого интерфейса
 	struct ifconf ifc;
 	// Временный буфер MAC адреса
@@ -128,8 +134,8 @@ void awh::IfNet::getHWAddresses() noexcept {
 	for(char * cp = buffer; cp < cplim;){
 		// Выполняем получение сетевого интерфейса
 		struct ifreq * ifr = (struct ifreq *) cp;
-		// Если сетевой интерфейс отличается от MAC адреса
-		if(ifr->ifr_addr.sa_family == AF_LINK){
+		// Проверяем сетевой интерфейс (не loopback)
+		if(!(ifr->ifr_flags & IFF_LOOPBACK) && (ifr->ifr_addr.sa_family == AF_LINK)){
 			// Заполняем нуляем наши буферы
 			memset(temp, 0, sizeof(temp));
 			// Инициализируем все октеты
@@ -150,6 +156,74 @@ void awh::IfNet::getHWAddresses() noexcept {
 	}
 	// Закрываем сетевой сокет
 	::close(fd);
+/**
+ * Если операционной системой является Linux
+ */
+#elif __linux__
+	// Структура параметров сетевого интерфейса
+	struct ifconf ifc;
+	// Структура сетевого интерфейса
+	struct ifreq ifrc;
+	// Временный буфер MAC адреса
+	char temp[18];
+	// Создаём буфер для извлечения сетевых данных
+	char buffer[IF_BUFFER_SIZE];
+	// Заполняем нуляем наши буферы
+	memset(buffer, 0, sizeof(buffer));
+	// Выделяем сокет для подключения
+	int fd = ::socket(AF_INET, SOCK_DGRAM, IPPROTO_IP);
+	// Если файловый дескриптор не создан, выходим
+	if(fd < 0){
+		// Выводим сообщение об ошибке
+		this->log->print("%s", log_t::flag_t::CRITICAL, "socket failed");
+		// Выходим из функции
+		return;
+	}
+	// Устанавливаем буфер для получения параметров сетевого интерфейса
+	ifc.ifc_buf = buffer;
+	// Устанавливаем максимальный размер буфера
+	ifc.ifc_len = IF_BUFFER_SIZE;
+	// Выполняем получение сетевых параметров
+	if(::ioctl(fd, SIOCGIFCONF, &ifc) < 0){
+		// Закрываем сетевой сокет
+		::close(fd);
+		// Выводим сообщение об ошибке
+		this->log->print("%s", log_t::flag_t::CRITICAL, "ioctl failed");
+		// Выходим из функции
+		return;
+	}
+	// Получаем текущее значение итератора
+	struct ifreq * it = ifc.ifc_req;
+	// Получаем конечное значение итератора
+	const struct ifreq * const end = (it + (ifc.ifc_len / sizeof(struct ifreq)));
+	// Переходим по всем сетевым интерфейсам
+	for(; it != end; ++it){
+		// Копируем название сетевого интерфейса
+		strcpy(ifr.ifr_name, it->ifr_name);
+		// Выполняем подключение к сокету
+		if(::ioctl(fd, SIOCGIFFLAGS, &ifr) == 0){
+			// Проверяем сетевой интерфейс (не loopback)
+			if(!(ifr.ifr_flags & IFF_LOOPBACK) && (ifr.ifr_addr.sa_family == AF_LINK)){
+				// Извлекаем аппаратный адрес сетевого интерфейса
+				if(::ioctl(fd, SIOCGIFHWADDR, &ifr) == 0){
+					// Создаём буфер MAC-адреса
+					u_char mac[6];
+					// Заполняем нуляем наши буферы
+					memset(temp, 0, sizeof(temp));
+					// Выполняем копирование MAC-адреса
+					memcpy(mac, ifr.ifr_hwaddr.sa_data, 6);
+					// Выполняем получение MAC-адреса
+					sprintf(temp, "%02hhx:%02hhx:%02hhx:%02hhx:%02x:%02hhx", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+					// Добавляем MAC адрес в список сетевых интерфейсов
+					this->ifs.emplace(it->ifr_name, temp);
+				}
+			}
+		// Если подключение к сокету не удалось, выводим сообщение об ошибке
+		} else this->log->print("%s", log_t::flag_t::WARNING, "ioctl failed");
+	}
+	// Закрываем сетевой сокет
+	::close(fd);
+#endif
 }
 /**
  * init Метод инициализации сбора информации
@@ -213,5 +287,3 @@ const string & awh::IfNet::ip(const string & eth, const int family) const noexce
 	// Выводим результат
 	return result;
 }
-
-#endif // __APPLE__
