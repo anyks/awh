@@ -362,7 +362,7 @@ const string awh::IfNet::mac(const string & ip) const noexcept {
 		mib[0] = CTL_NET;
 		mib[1] = PF_ROUTE;
 		mib[2] = 0;
-		mib[3] = AF_INET;
+		mib[3] = AF_INET6;
 		mib[4] = NET_RT_FLAGS;
 		mib[5] = RTF_LLINFO;
 		// Выполняем получение размера буфера
