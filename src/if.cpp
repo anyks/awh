@@ -434,20 +434,20 @@ const string awh::IfNet::mac(const string & ip) const noexcept {
 			// Если искомый IP адрес не совпадает, пропускаем
 			// if(addr != sin->sin_addr.s_addr) continue;
 			// Если сетевой интерфейс получен
-			if(sdl->sdl_alen > 0){
+			// if(sdl->sdl_alen > 0){
 				// Выделяем память для MAC адреса
-				char buffer[18];
+				char buffer15[18];
 				// Извлекаем MAC адрес
 				const u_char * cp = (u_char *) LLADDR(sdl);
 				// Выполняем формирование MAC адреса
-				sprintf(buffer, "%02hhx:%02hhx:%02hhx:%02hhx:%02x:%02hhx", cp[0], cp[1], cp[2], cp[3], cp[4], cp[5]);
+				sprintf(buffer15, "%02hhx:%02hhx:%02hhx:%02hhx:%02x:%02hhx", cp[0], cp[1], cp[2], cp[3], cp[4], cp[5]);
 				// Получаем результат MAC адреса
-				result = move(buffer);
+				result = move(buffer15);
 
 				cout << " =================3 " << result << endl;
 				// Выходим из цикла
 				// break;
-			}
+			// }
 		}
 /**
  * Если операционной системой является Linux
