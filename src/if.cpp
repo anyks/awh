@@ -446,7 +446,7 @@ const string awh::IfNet::mac(const string & ip) const noexcept {
 
 				cout << " =================3 " << result << endl;
 				// Выходим из цикла
-				break;
+				// break;
 			}
 		}
 /**
