@@ -424,10 +424,10 @@ const string awh::IfNet::mac(const string & ip) const noexcept {
 			cout << " =================1 " << buffer13 << " === " << buffer14 << endl;
 
 			// Если сетевой интерфейс отличается от IPv4 пропускаем
-			if((sin->sin_family != AF_INET) && (reinterpret_cast <struct sockaddr_in6 *> (sin)->sin6_family != AF_INET6)) continue;
+			// if((sin->sin_family != AF_INET) && (reinterpret_cast <struct sockaddr_in6 *> (sin)->sin6_family != AF_INET6)) continue;
 
 			// Если искомый IP адрес не совпадает, пропускаем
-			if(strcmp((const char *) sin6.sin6_addr.s6_addr, (const char *) reinterpret_cast <struct sockaddr_in6 *> (sin)->sin6_addr.s6_addr) != 0) continue;
+			if(strcmp(buffer13, buffer14) != 0) continue;
 
 			
 
