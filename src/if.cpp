@@ -427,9 +427,9 @@ const string awh::IfNet::mac(const string & ip) const noexcept {
 			// if((sin->sin_family != AF_INET) && (reinterpret_cast <struct sockaddr_in6 *> (sin)->sin6_family != AF_INET6)) continue;
 
 			// Если искомый IP адрес не совпадает, пропускаем
-			if(strcmp(buffer13, buffer14) != 0) continue;
+			// if(strcmp(buffer13, buffer14) != 0) continue;
 
-			cout << " =================2 " << buffer13 << " === " << buffer14 << endl;
+			// cout << " =================2 " << buffer13 << " === " << buffer14 << endl;
 
 			// Если искомый IP адрес не совпадает, пропускаем
 			// if(addr != sin->sin_addr.s_addr) continue;
