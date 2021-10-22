@@ -11,6 +11,11 @@
 #define __AWH_IFNET__
 
 /**
+ * Устанавливаем настройки для *Nix подобных систем
+ */
+#if !defined(_WIN32) && !defined(_WIN64)
+
+/**
  * Стандартная библиотека
  */
 #include <cmath>
@@ -117,5 +122,7 @@ namespace awh {
 			~IfNet() noexcept {}
 	} ifnet_t;
 };
+
+#endif // NOT WINDOWS
 
 #endif // __AWH_IFNET__

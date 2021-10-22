@@ -11,6 +11,11 @@
 #include <if.hpp>
 
 /**
+ * Устанавливаем настройки для *Nix подобных систем
+ */
+#if !defined(_WIN32) && !defined(_WIN64)
+
+/**
  * getIPAddresses Метод извлечения IP адресов
  */
 void awh::IfNet::getIPAddresses() noexcept {
@@ -361,3 +366,5 @@ const string & awh::IfNet::ip(const string & eth, const int family) const noexce
 	// Выводим результат
 	return result;
 }
+
+#endif // NOT WINDOWS
