@@ -438,6 +438,8 @@ void awh::Core::start() noexcept {
 
 		for(auto & item : hw) cout << " ==== " << item.first << " == " << item.second << endl;
 
+		cout << " ++++++++= " << net.ip("enp4s0", AF_INET) << endl;
+
 
 		// Разрешаем работу WebSocket
 		this->mode = true;

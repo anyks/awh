@@ -88,6 +88,80 @@ void awh::IfNet::getIPAddresses() noexcept {
 	}
 	// Закрываем сетевой сокет
 	::close(fd);
+/**
+ * Если операционной системой является Linux
+ */
+#elif __linux__
+	// Структура параметров сетевого интерфейса
+	struct ifconf ifc;
+	// Структура сетевого интерфейса
+	struct ifreq ifrc;
+	// Создаём буфер для извлечения сетевых данных
+	char buffer[IF_BUFFER_SIZE];
+	// Заполняем нуляем наши буферы
+	memset(buffer, 0, sizeof(buffer));
+	// Выделяем сокет для подключения
+	int fd = ::socket(AF_INET, SOCK_DGRAM, IPPROTO_IP);
+	// Если файловый дескриптор не создан, выходим
+	if(fd < 0){
+		// Выводим сообщение об ошибке
+		this->log->print("%s", log_t::flag_t::CRITICAL, "socket failed");
+		// Выходим из функции
+		return;
+	}
+	// Устанавливаем буфер для получения параметров сетевого интерфейса
+	ifc.ifc_buf = buffer;
+	// Устанавливаем максимальный размер буфера
+	ifc.ifc_len = IF_BUFFER_SIZE;
+	// Выполняем получение сетевых параметров
+	if(::ioctl(fd, SIOCGIFCONF, &ifc) < 0){
+		// Закрываем сетевой сокет
+		::close(fd);
+		// Выводим сообщение об ошибке
+		this->log->print("%s", log_t::flag_t::CRITICAL, "ioctl failed");
+		// Выходим из функции
+		return;
+	}
+	// Создаём указатели для перехода
+	char * cptr = nullptr;
+	// Получаем текущее значение итератора
+	struct ifreq * it = ifc.ifc_req;
+	// Получаем конечное значение итератора
+	const struct ifreq * const end = (it + (ifc.ifc_len / sizeof(struct ifreq)));
+	// Переходим по всем сетевым интерфейсам
+	for(; it != end; ++it){
+		// Если сетевой интерфейс отличается от IPv4 пропускаем
+		if((it->ifr_addr.sa_family != AF_INET) && (it->ifr_addr.sa_family != AF_INET6)) continue;
+		// Если в имени сетевого интерфейса найден разделитель, пропускаем его
+		if((cptr = (char *) strchr(it->ifr_name, ':')) != nullptr) (* cptr) = 0;
+		// Запоминаем текущее значение указателя
+		ifrc = (* it);
+		// Считываем флаги для сетевого интерфейса
+		::ioctl(fd, SIOCGIFFLAGS, &ifrc);
+		// Если флаги не соответствуют, пропускаем
+		if((ifrc.ifr_flags & IFF_UP) == 0) continue;
+		// Определяем тип интернет адреса
+		switch(it->ifr_addr.sa_family){
+			// Если мы обрабатываем IPv4
+			case AF_INET:
+				// Устанавливаем сетевой интерфейс в список
+				this->ips.emplace(it->ifr_name, inet_ntoa(((struct sockaddr_in *) &it->ifr_addr)->sin_addr));
+			break;
+			// Если мы обрабатываем IPv6
+			case AF_INET6: {
+				// Создаем буфер для получения ip адреса
+				char buffer[INET6_ADDRSTRLEN];
+				// Заполняем нуляем наши буферы
+				memset(buffer, 0, sizeof(buffer));
+				// Запрашиваем данные ip адреса
+				inet_ntop(AF_INET6, (void *) &((struct sockaddr_in6 *) &it->ifr_addr)->sin6_addr, buffer, sizeof(buffer));
+				// Устанавливаем сетевой интерфейс в список
+				this->ips6.emplace(it->ifr_name, buffer);
+			} break;
+		}
+	}
+	// Закрываем сетевой сокет
+	::close(fd);
 #endif
 }
 /**
