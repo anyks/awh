@@ -434,6 +434,8 @@ void awh::Core::start() noexcept {
 
 		const auto & hw = net.hws();
 
+		cout << " ********* " << hw.size() << endl;
+
 		for(auto & item : hw) cout << " ==== " << item.first << " == " << item.second << endl;
 
 
