@@ -158,7 +158,7 @@ void awh::Http::parse(const char * buffer, const size_t size) noexcept {
 				// Выполняем обновление входящих параметров
 				this->update();
 				// Устанавливаем стейт рукопожатия
-				this->state = state_t::HANDSHAKE;
+				this->state = state_t::GOOD;
 			// Поменяем данные как бракованные
 			} else this->state = state_t::BROKEN;
 		}
@@ -313,7 +313,11 @@ const awh::uri_t::url_t & awh::Http::getUrl() const noexcept {
  */
 bool awh::Http::isEnd() const noexcept {
 	// Выводрим результат проверки
-	return ((this->state == state_t::BROKEN) || (this->state == state_t::HANDSHAKE));
+	return (
+		(this->state == state_t::GOOD) ||
+		(this->state == state_t::BROKEN) ||
+		(this->state == state_t::HANDSHAKE)
+	);
 }
 /**
  * isCrypt Метод проверки на зашифрованные данные
