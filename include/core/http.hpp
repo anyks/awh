@@ -13,12 +13,10 @@
 /**
  * Стандартная библиотека
  */
-#include <set>
 #include <string>
 #include <vector>
 #include <cstring>
 #include <unordered_set>
-#include <unordered_map>
 
 // Если - это Windows
 #if defined(_WIN32) || defined(_WIN64)
@@ -136,7 +134,7 @@ namespace awh {
 			mutable authSrv_t authSrv;
 		protected:
 			// Флаг зашифрованных данных
-			bool crypt = false;
+			mutable bool crypt = false;
 			// Флаг проверки аутентификации
 			mutable bool failAuth = false;
 			// Флаг разрешающий передавать тело чанками
@@ -147,7 +145,7 @@ namespace awh {
 		protected:
 			// Название сервиса
 			string servName = AWH_NAME;
-			// Версия сервиса
+			// Версия библиотеки приложения
 			string servVer = AWH_VERSION;
 			// Идентификатор сервиса
 			string servId = AWH_SHORT_NAME;
