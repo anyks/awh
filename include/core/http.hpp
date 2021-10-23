@@ -35,6 +35,7 @@
 #include <log.hpp>
 #include <uri.hpp>
 #include <hash.hpp>
+#include <core/web.hpp>
 #include <client/auth.hpp>
 #include <server/auth.hpp>
 
@@ -54,8 +55,8 @@ namespace awh {
 			 * Статусы проверки авторизации
 			 */
 			enum class stath_t : uint8_t {
+				NONE,  // Проверка авторизации не проводилась
 				GOOD,  // Авторизация прошла успешно
-				EMPTY, // Проверка авторизации не проводилась
 				RETRY, // Требуется повторить попытку
 				FAULT  // Авторизация не удалась
 			};
@@ -63,25 +64,6 @@ namespace awh {
 			 * Формат сжатия тела запроса
 			 */
 			enum class compress_t : uint8_t {NONE, BROTLI, GZIP, DEFLATE};
-			/**
-			 * Методы HTTP запроса
-			 */
-			enum class method_t : uint8_t {NONE, GET, PUT, DEL, POST, HEAD, PATCH, TRACE, OPTIONS, CONNECT};
-		public:
-			/**
-			 * Query Структура запроса
-			 */
-			typedef struct Query {
-				u_short code;    // Код ответа сервера
-				double ver;      // Версия протокола
-				method_t method; // Метод запроса
-				string uri;      // Параметры запроса
-				string message;  // Сообщение сервера
-				/**
-				 * Query Конструктор
-				 */
-				Query() : code(0), ver(HTTP_VERSION), method(method_t::NONE), uri(""), message("") {}
-			} query_t;
 		protected:
 			// Список HTTP сообщений
 			map <u_short, string> messages = {
@@ -130,65 +112,20 @@ namespace awh {
 				{504, "Gateway Timeout"},
 				{505, "HTTP Version Not Supported"}
 			};
-		private:
-			/**
-			 * Стейты работы чанка
-			 */
-			enum class cstate_t : uint8_t {
-				SIZE,    // Ожидание получения размера
-				BODY,    // Ожидание сбора тела данных
-				ENDSIZE, // Ожидание получения перевода строки после получения размера чанка
-				ENDBODY, // Ожидание получения перевода строки после получения тела чанка
-				STOPBODY // Ожидание получения возврата каретки после получения тела чанка
-			};
-			/**
-			 * Chunk Структура собираемого чанка
-			 */
-			typedef struct Chunk {
-				public:
-					size_t size;        // Размер чанка
-					cstate_t state;     // Стейт чанка
-					string hexSize;     // Размер чанка в 16-м виде
-					vector <char> data; // Данные чанка
-				public:
-					/**
-					 * clear Метод очистки данных чанка
-					 */
-					void clear() noexcept {
-						// Обнуляем размер чанка
-						this->size = 0;
-						// Обнуляем буфер данных
-						this->data.clear();
-						// Обнуляем размер чанка в 16-м виде
-						this->hexSize.clear();
-						// Выполняем сброс стейта чанка
-						this->state = cstate_t::SIZE;
-					}
-				public:
-					/**
-					 * Chunk Конструктор
-					 */
-					Chunk() : size(0), state(cstate_t::SIZE), hexSize("") {}
-			} chunk_t;
 		protected:
 			/**
 			 * Стейты работы модуля
 			 */
 			enum class state_t : uint8_t {
-				BODY,     // Режим чтения тела сообщения
-				GOOD,     // Режим завершения сбора данных
-				QUERY,    // Режим ожидания получения запроса
+				NONE,     // Режим стейта не выставлен
 				BROKEN,   // Режим бракованных данных
-				HEADERS,  // Режим чтения заголовков
 				HANDSHAKE // Режим выполненного рукопожатия
 			};
 		protected:
+			// Создаём объект HTTP парсера
+			mutable web_t web;
 			// Создаём объект для работы с жатыми данными
 			mutable hash_t hash;
-			// Объект параметров запроса
-			mutable query_t query;
-			// Объект собираемого чанка
-			mutable chunk_t chunk;
 			// Параметры выполняемого запроса
 			mutable uri_t::url_t url;
 		protected:
@@ -204,8 +141,6 @@ namespace awh {
 			// Флаг разрешающий передавать тело чанками
 			mutable bool chunking = false;
 		protected:
-			// Размер тела сообщения
-			int64_t bodySize = -1;
 			// Размер одного чанка
 			size_t chunkSize = BUFFER_CHUNK;
 		protected:
@@ -219,18 +154,14 @@ namespace awh {
 			mutable string userAgent = HTTP_HEADER_AGENT;
 		protected:
 			// Стейт проверки авторизации
-			stath_t stath = stath_t::EMPTY;
+			stath_t stath = stath_t::NONE;
 			// Стейт текущего запроса
-			state_t state = state_t::QUERY;
+			state_t state = state_t::NONE;
 			// Метод сжатия данных запроса/ответа
 			compress_t compress = compress_t::GZIP;
 		protected:
-			// Полученное тело HTTP запроса
-			mutable vector <char> body;
 			// Чёрный список заголовков
 			mutable unordered_set <string> black;
-			// Полученные HTTP заголовки
-			mutable unordered_multimap <string, string> headers;
 		private:
 			// Список контекстов передаваемых объектов
 			vector <void *> ctx = {nullptr};
@@ -243,6 +174,14 @@ namespace awh {
 			const log_t * log = nullptr;
 			// Создаём объект работы с URI
 			const uri_t * uri = nullptr;
+		private:
+			/**
+			 * chunkingCallback Функция вывода полученных чанков полезной нагрузки
+			 * @param buffer буфер данных чанка полезной нагрузки
+			 * @param web    объект HTTP парсера
+			 * @param ctx    передаваемый контекст модуля
+			 */
+			static void chunkingCallback(const vector <char> & buffer, const web_t * web, void * ctx) noexcept;
 		protected:
 			/**
 			 * update Метод обновления входящих данных
@@ -294,15 +233,15 @@ namespace awh {
 			void addHeader(const string & key, const string & val) noexcept;
 		public:
 			/**
+			 * payload Метод чтения чанка тела запроса
+			 * @return текущий чанк запроса
+			 */
+			const vector <char> payload() const noexcept;
+			/**
 			 * getBody Метод получения данных тела запроса
 			 * @return буфер данных тела запроса
 			 */
 			const vector <char> & getBody() const noexcept;
-			/**
-			 * chunkBody Метод чтения чанка тела запроса
-			 * @return текущий чанк запроса
-			 */
-			const vector <char> chunkBody() const noexcept;
 			/**
 			 * getHeader Метод получения данных заголовка
 			 * @param key ключ заголовка
@@ -314,14 +253,6 @@ namespace awh {
 			 * @return список существующих заголовков
 			 */
 			const unordered_multimap <string, string> & getHeaders() const noexcept;
-		private:
-			/**
-			 * readHeader Функция чтения заголовков из буфера данных
-			 * @param buffer   буфер данных для чтения
-			 * @param size     размер буфера данных для чтения
-			 * @param callback функция обратного вызова
-			 */
-			static void readHeader(const char * buffer, const size_t size, function <void (string)> callback) noexcept;
 		public:
 			/**
 			 * getAuth Метод проверки статуса авторизации
@@ -383,12 +314,12 @@ namespace awh {
 			 * getQuery Метод получения объекта запроса сервера
 			 * @return объект запроса сервера
 			 */
-			const query_t & getQuery() const noexcept;
+			const web_t::query_t & getQuery() const noexcept;
 			/**
 			 * setQuery Метод добавления объекта запроса клиента
 			 * @param query объект запроса клиента
 			 */
-			void setQuery(const query_t & query) noexcept;
+			void setQuery(const web_t::query_t & query) noexcept;
 		public:
 			/**
 			 * getMessage Метод получения HTTP сообщения
@@ -423,7 +354,7 @@ namespace awh {
 			 * @param method метод REST запроса
 			 * @return       буфер данных запроса в бинарном виде
 			 */
-			vector <char> request(const uri_t::url_t & url, const method_t method) const noexcept;
+			vector <char> request(const uri_t::url_t & url, const web_t::method_t method) const noexcept;
 		public:
 			/**
 			 * setChunkingFn Метод установки функции обратного вызова для получения чанков
@@ -464,7 +395,10 @@ namespace awh {
 			 * @param log объект для работы с логами
 			 * @param uri объект работы с URI
 			 */
-			Http(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcept : authCli(fmk, log), authSrv(fmk, log), hash(fmk, log), fmk(fmk), log(log), uri(uri) {}
+			Http(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcept : authCli(fmk, log), authSrv(fmk, log), hash(fmk, log), web(fmk, log), fmk(fmk), log(log), uri(uri) {
+				// Устанавливаем функцию обратного вызова для получения чанков
+				this->web.setChunkingFn(this, &chunkingCallback);
+			}
 			/**
 			 * ~Http Деструктор
 			 */

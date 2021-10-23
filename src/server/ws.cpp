@@ -235,7 +235,7 @@ void awh::WebSocketServer::readCallback(const char * buffer, const size_t size, 
 						// Отправляем ответ клиенту
 						core->write(response.data(), response.size(), aid);
 						// Получаем данные тела запроса
-						while(!(entity = adj->http.chunkBody()).empty()){
+						while(!(entity = adj->http.payload()).empty()){
 							// Устанавливаем размер стопбайт
 							if(!adj->http.isAlive()) adj->stopBytes += entity.size();
 							// Отправляем тело на сервер

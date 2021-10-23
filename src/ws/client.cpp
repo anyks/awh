@@ -20,12 +20,12 @@ void awh::WSClient::update() noexcept {
 	this->compress = compress_t::NONE;
 	// Список доступных расширений
 	vector <wstring> extensions;
-	// Выполняем поиск расширений
-	auto it = this->headers.find("sec-websocket-extensions");
+	// Получаем значение заголовка Sec-Websocket-Extensions
+	const string & ext = this->web.getHeader("sec-websocket-extensions");
 	// Если заголовок найден
-	if(it != this->headers.end()){
+	if(!ext.empty()){
 		// Выполняем разделение параметров расширений
-		this->fmk->split(it->second, ";", extensions);
+		this->fmk->split(ext, ";", extensions);
 		// Если список параметров получен
 		if(!extensions.empty()){
 			// Ищем поддерживаемые заголовки
@@ -75,9 +75,9 @@ void awh::WSClient::update() noexcept {
 		}
 	}
 	// Ищем подпротокол сервера
-	it = this->headers.find("sec-websocket-protocol");
+	const string & sub = this->web.getHeader("sec-websocket-protocol");
 	// Если подпротокол найден, устанавливаем его
-	if(it != this->headers.end()) this->sub = it->second;
+	if(!sub.empty()) this->sub = sub;
 }
 /**
  * checkKey Метод проверки ключа сервера
@@ -87,13 +87,13 @@ bool awh::WSClient::checkKey() noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Получаем параметры ключа сервера
-	auto it = this->headers.find("sec-websocket-accept");
+	const string & auth = this->web.getHeader("sec-websocket-accept");
 	// Если параметры авторизации найдены
-	if(it != this->headers.end()){
+	if(!auth.empty()){
 		// Получаем ключ для проверки
 		const string & key = this->getHash();
 		// Если ключи не соответствуют, запрещаем работу
-		result = (key.compare(it->second) == 0);
+		result = (key.compare(auth) == 0);
 	}
 	// Выводим результат
 	return result;
@@ -113,18 +113,20 @@ bool awh::WSClient::checkVer() noexcept {
 awh::Http::stath_t awh::WSClient::checkAuth() noexcept {
 	// Результат работы функции
 	http_t::stath_t result = http_t::stath_t::FAULT;
+	// Получаем объект параметров запроса
+	web_t::query_t query = this->web.getQuery();
 	// Проверяем код ответа
-	switch(this->query.code){
+	switch(query.code){
 		// Если требуется авторизация
 		case 401: {
 			// Если попытки провести аутентификацию ещё небыло, пробуем ещё раз
 			if(!this->failAuth && (this->authCli.getType() == auth_t::type_t::DIGEST)){
 				// Получаем параметры авторизации
-				auto it = this->headers.find("www-authenticate");
+				const string & auth = this->web.getHeader("www-authenticate");
 				// Если параметры авторизации найдены
-				if((this->failAuth = (it != this->headers.end()))){
+				if((this->failAuth = !auth.empty())){
 					// Устанавливаем заголовок HTTP в параметры авторизации
-					this->authCli.setHeader(it->second);
+					this->authCli.setHeader(auth);
 					// Просим повторить авторизацию ещё раз
 					result = http_t::stath_t::RETRY;
 				}
@@ -133,12 +135,12 @@ awh::Http::stath_t awh::WSClient::checkAuth() noexcept {
 		// Если нужно произвести редирект
 		case 301:
 		case 308: {
-			// Получаем параметры авторизации
-			auto it = this->headers.find("location");
+			// Получаем параметры переадресации
+			const string & location = this->web.getHeader("location");
 			// Если адрес перенаправления найден
-			if(it != this->headers.end()){
+			if(!location.empty()){
 				// Выполняем парсинг URL
-				uri_t::url_t tmp = this->uri->parseUrl(it->second);
+				uri_t::url_t tmp = this->uri->parseUrl(location);
 				// Если параметры URL существуют
 				if(!this->url.params.empty())
 					// Переходим по всему списку параметров

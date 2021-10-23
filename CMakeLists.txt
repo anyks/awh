@@ -145,6 +145,7 @@ set(SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/src/ws/client.cpp"
     "${CMAKE_SOURCE_DIR}/src/ws/server.cpp"
     "${CMAKE_SOURCE_DIR}/src/ws/worker.cpp"
+    "${CMAKE_SOURCE_DIR}/src/core/web.cpp"
     "${CMAKE_SOURCE_DIR}/src/core/http.cpp"
     "${CMAKE_SOURCE_DIR}/src/core/core.cpp"
     "${CMAKE_SOURCE_DIR}/src/core/auth.cpp"

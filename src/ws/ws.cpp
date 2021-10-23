@@ -133,21 +133,18 @@ bool awh::WS::isHandshake() noexcept {
 bool awh::WS::checkUpgrade() const noexcept {
 	// Результат работы функции
 	bool result = false;
-	// Если список заголовков получен
-	if(!this->headers.empty()){
-		// Выполняем поиск заголовка смены протокола
-		auto it = this->headers.find("upgrade");
-		// Выполняем поиск заголовка с параметрами подключения
-		auto jt = this->headers.find("connection");
-		// Если заголовки расширений найдены
-		if((it != this->headers.end()) && (jt != this->headers.end())){
-			// Получаем значение заголовка Upgrade
-			const string & upgrade = this->fmk->toLower(it->second);
-			// Получаем значение заголовка Connection
-			const string & connection = this->fmk->toLower(jt->second);
-			// Если заголовки соответствуют
-			result = ((upgrade.compare("websocket") == 0) && (connection.compare("upgrade") == 0));
-		}
+	// Получаем значение заголовка Upgrade
+	string upgrade = this->web.getHeader("upgrade");
+	// Получаем значение заголовка Connection
+	string connection = this->web.getHeader("connection");
+	// Если заголовки расширений найдены
+	if(!upgrade.empty() && !connection.empty()){
+		// Переводим значение заголовка Upgrade в нижний регистр
+		upgrade = this->fmk->toLower(upgrade);
+		// Переводим значение заголовка Connection в нижний регистр
+		connection = this->fmk->toLower(connection);
+		// Если заголовки соответствуют
+		result = ((upgrade.compare("websocket") == 0) && (connection.compare("upgrade") == 0));
 	}
 	// Выводим результат
 	return result;
@@ -255,10 +252,12 @@ vector <char> awh::WS::request(const uri_t::url_t & url) noexcept {
 			this->addHeader("Sec-WebSocket-Protocol", subs);
 		// Если подпротоколов слишком много
 		} else {
+			// Получаем список заголовков
+			const auto & headers = this->web.getHeaders();
 			// Переходим по всему списку подпротоколов
 			for(auto & sub : this->subs)
 				// Добавляем полученный заголовок
-				this->headers.insert({{"Sec-WebSocket-Protocol", sub}});
+				const_cast <unordered_multimap <string, string> *> (&headers)->insert({{"Sec-WebSocket-Protocol", sub}});
 		}
 	}
 	// Если метод компрессии указан
@@ -303,7 +302,7 @@ vector <char> awh::WS::request(const uri_t::url_t & url) noexcept {
 	// Добавляем заголовок ключ клиента
 	this->addHeader("Sec-WebSocket-Key", this->key);
 	// Выводим результат
-	return http_t::request(url, method_t::GET);
+	return http_t::request(url, web_t::method_t::GET);
 }
 /**
  * setSub Метод установки подпротокола поддерживаемого сервером

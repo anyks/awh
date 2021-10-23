@@ -20,11 +20,11 @@ awh::Http::stath_t awh::HttpServer::checkAuth() noexcept {
 	// Если авторизация требуется
 	if(this->authSrv.getType() != auth_t::type_t::NONE){
 		// Получаем параметры авторизации
-		auto it = this->headers.find("authorization");
+		const string & auth = this->web.getHeader("authorization");
 		// Если параметры авторизации найдены
-		if(it != this->headers.end()){
+		if(!auth.empty()){
 			// Устанавливаем заголовок HTTP в параметры авторизации
-			this->authSrv.setHeader(it->second);
+			this->authSrv.setHeader(auth);
 			// Выполняем проверку авторизации
 			if(this->authSrv.check())
 				// Устанавливаем успешный результат авторизации

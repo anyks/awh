@@ -20,12 +20,12 @@ void awh::WSServer::update() noexcept {
 	this->compress = compress_t::NONE;
 	// Список доступных расширений
 	vector <wstring> extensions;
-	// Выполняем поиск расширений
-	auto it = this->headers.find("sec-websocket-extensions");
+	// Получаем значение заголовка Sec-Websocket-Extensions
+	const string & ext = this->web.getHeader("sec-websocket-extensions");
 	// Если заголовки расширений найдены
-	if(it != this->headers.end()){
+	if(!ext.empty()){
 		// Выполняем разделение параметров расширений
-		this->fmk->split(it->second, ";", extensions);
+		this->fmk->split(ext, ";", extensions);
 		// Если список параметров получен
 		if(!extensions.empty()){
 			// Ищем поддерживаемые заголовки
@@ -68,8 +68,10 @@ void awh::WSServer::update() noexcept {
 	}
 	// Если протоколы установлены и система является сервером
 	if(!this->subs.empty()){
+		// Получаем список доступных заголовков
+		const auto & headers = this->web.getHeaders();
 		// Получаем список подпротоколов
-		auto ret = this->headers.equal_range("sec-websocket-protocol");
+		auto ret = headers.equal_range("sec-websocket-protocol");
 		// Перебираем все варианты желаемой версии
 		for(auto it = ret.first; it != ret.second; ++it){
 			// Проверяем, соответствует ли желаемый подпротокол нашему
@@ -90,11 +92,11 @@ bool awh::WSServer::checkKey() noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Получаем параметры ключа клиента
-	auto it = this->headers.find("sec-websocket-key");
+	const string & key = this->web.getHeader("sec-websocket-key");
 	// Если параметры авторизации найдены
-	if((result = (it != this->headers.end())))
+	if((result = !key.empty()))
 		// Устанавливаем ключ клиента
-		this->key = it->second;
+		this->key = key;
 	// Выводим результат
 	return result;
 }
@@ -105,8 +107,10 @@ bool awh::WSServer::checkKey() noexcept {
 bool awh::WSServer::checkVer() noexcept {
 	// Результат работы функции
 	bool result = false;
+	// Получаем список доступных заголовков
+	const auto & headers = this->web.getHeaders();
 	// Получаем список версий протоколов
-	auto ret = this->headers.equal_range("sec-websocket-version");
+	auto ret = headers.equal_range("sec-websocket-version");
 	// Перебираем все варианты желаемой версии
 	for(auto it = ret.first; it != ret.second; ++it){
 		// Проверяем, совпадает ли желаемая версия протокола
@@ -127,11 +131,11 @@ awh::Http::stath_t awh::WSServer::checkAuth() noexcept {
 	// Если авторизация требуется
 	if(this->authSrv.getType() != auth_t::type_t::NONE){
 		// Получаем параметры авторизации
-		auto it = this->headers.find("authorization");
+		const string & auth = this->web.getHeader("authorization");
 		// Если параметры авторизации найдены
-		if(it != this->headers.end()){
+		if(!auth.empty()){
 			// Устанавливаем заголовок HTTP в параметры авторизации
-			this->authSrv.setHeader(it->second);
+			this->authSrv.setHeader(auth);
 			// Выполняем проверку авторизации
 			if(this->authSrv.check())
 				// Устанавливаем успешный результат авторизации

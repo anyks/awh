@@ -72,7 +72,7 @@ void awh::Rest::connectCallback(const size_t aid, const size_t wid, core_t * cor
 			// Отправляем серверу сообщение
 			core->write(request.data(), request.size(), aid);
 			// Получаем данные тела запроса
-			while(!(entity = web->http.chunkBody()).empty()){
+			while(!(entity = web->http.payload()).empty()){
 				// Отправляем тело на сервер
 				core->write(entity.data(), entity.size(), aid);
 			}
@@ -366,7 +366,7 @@ const vector <char> & awh::Rest::GET(const uri_t::url_t & url, const unordered_m
 			}
 		});
 		// Выполняем REST запрос на сервер
-		this->REST(url, http_t::method_t::GET, {}, headers);
+		this->REST(url, web_t::method_t::GET, {}, headers);
 	}
 	// Выводим результат
 	return this->res.entity;
@@ -391,7 +391,7 @@ const vector <char> & awh::Rest::DEL(const uri_t::url_t & url, const unordered_m
 			}
 		});
 		// Выполняем REST запрос на сервер
-		this->REST(url, http_t::method_t::DEL, {}, headers);
+		this->REST(url, web_t::method_t::DEL, {}, headers);
 	}
 	// Выводим результат
 	return this->res.entity;
@@ -421,7 +421,7 @@ const vector <char> & awh::Rest::PUT(const uri_t::url_t & url, const json & enti
 			}
 		});
 		// Выполняем REST запрос на сервер
-		this->REST(url, http_t::method_t::PUT, vector <char> (body.begin(), body.end()), headers);
+		this->REST(url, web_t::method_t::PUT, vector <char> (body.begin(), body.end()), headers);
 	}
 	// Выводим результат
 	return this->res.entity;
@@ -447,7 +447,7 @@ const vector <char> & awh::Rest::PUT(const uri_t::url_t & url, const vector <cha
 			}
 		});
 		// Выполняем REST запрос на сервер
-		this->REST(url, http_t::method_t::PUT, entity, headers);
+		this->REST(url, web_t::method_t::PUT, entity, headers);
 	}
 	// Выводим результат
 	return this->res.entity;
@@ -488,7 +488,7 @@ const vector <char> & awh::Rest::PUT(const uri_t::url_t & url, const unordered_m
 			}
 		});
 		// Выполняем REST запрос на сервер
-		this->REST(url, http_t::method_t::PUT, vector <char> (body.begin(), body.end()), headers);
+		this->REST(url, web_t::method_t::PUT, vector <char> (body.begin(), body.end()), headers);
 	}
 	// Выводим результат
 	return this->res.entity;
@@ -518,7 +518,7 @@ const vector <char> & awh::Rest::POST(const uri_t::url_t & url, const json & ent
 			}
 		});
 		// Выполняем REST запрос на сервер
-		this->REST(url, http_t::method_t::POST, vector <char> (body.begin(), body.end()), headers);
+		this->REST(url, web_t::method_t::POST, vector <char> (body.begin(), body.end()), headers);
 	}
 	// Выводим результат
 	return this->res.entity;
@@ -544,7 +544,7 @@ const vector <char> & awh::Rest::POST(const uri_t::url_t & url, const vector <ch
 			}
 		});
 		// Выполняем REST запрос на сервер
-		this->REST(url, http_t::method_t::POST, entity, headers);
+		this->REST(url, web_t::method_t::POST, entity, headers);
 	}
 	// Выводим результат
 	return this->res.entity;
@@ -585,7 +585,7 @@ const vector <char> & awh::Rest::POST(const uri_t::url_t & url, const unordered_
 			}
 		});
 		// Выполняем REST запрос на сервер
-		this->REST(url, http_t::method_t::POST, vector <char> (body.begin(), body.end()), headers);
+		this->REST(url, web_t::method_t::POST, vector <char> (body.begin(), body.end()), headers);
 	}
 	// Выводим результат
 	return this->res.entity;
@@ -615,7 +615,7 @@ const vector <char> & awh::Rest::PATCH(const uri_t::url_t & url, const json & en
 			}
 		});
 		// Выполняем REST запрос на сервер
-		this->REST(url, http_t::method_t::PATCH, vector <char> (body.begin(), body.end()), headers);
+		this->REST(url, web_t::method_t::PATCH, vector <char> (body.begin(), body.end()), headers);
 	}
 	// Выводим результат
 	return this->res.entity;
@@ -641,7 +641,7 @@ const vector <char> & awh::Rest::PATCH(const uri_t::url_t & url, const vector <c
 			}
 		});
 		// Выполняем REST запрос на сервер
-		this->REST(url, http_t::method_t::PATCH, entity, headers);
+		this->REST(url, web_t::method_t::PATCH, entity, headers);
 	}
 	// Выводим результат
 	return this->res.entity;
@@ -682,7 +682,7 @@ const vector <char> & awh::Rest::PATCH(const uri_t::url_t & url, const unordered
 			}
 		});
 		// Выполняем REST запрос на сервер
-		this->REST(url, http_t::method_t::PATCH, vector <char> (body.begin(), body.end()), headers);
+		this->REST(url, web_t::method_t::PATCH, vector <char> (body.begin(), body.end()), headers);
 	}
 	// Выводим результат
 	return this->res.entity;
@@ -707,7 +707,7 @@ const unordered_multimap <string, string> & awh::Rest::HEAD(const uri_t::url_t &
 			}
 		});
 		// Выполняем REST запрос на сервер
-		this->REST(url, http_t::method_t::HEAD, {}, headers);
+		this->REST(url, web_t::method_t::HEAD, {}, headers);
 	}
 	// Выводим результат
 	return this->res.headers;
@@ -732,7 +732,7 @@ const unordered_multimap <string, string> & awh::Rest::TRACE(const uri_t::url_t 
 			}
 		});
 		// Выполняем REST запрос на сервер
-		this->REST(url, http_t::method_t::TRACE, {}, headers);
+		this->REST(url, web_t::method_t::TRACE, {}, headers);
 	}
 	// Выводим результат
 	return this->res.headers;
@@ -757,7 +757,7 @@ const unordered_multimap <string, string> & awh::Rest::OPTIONS(const uri_t::url_
 			}
 		});
 		// Выполняем REST запрос на сервер
-		this->REST(url, http_t::method_t::OPTIONS, {}, headers);
+		this->REST(url, web_t::method_t::OPTIONS, {}, headers);
 	}
 	// Выводим результат
 	return this->res.headers;
@@ -769,9 +769,9 @@ const unordered_multimap <string, string> & awh::Rest::OPTIONS(const uri_t::url_
  * @param entity  тело запроса
  * @param headers заголовки запроса
  */
-void awh::Rest::REST(const uri_t::url_t & url, http_t::method_t method, vector <char> entity, unordered_multimap <string, string> headers) noexcept {
+void awh::Rest::REST(const uri_t::url_t & url, web_t::method_t method, vector <char> entity, unordered_multimap <string, string> headers) noexcept {
 	// Если параметры и метод запроса переданы
-	if(!url.empty() && (method != http_t::method_t::NONE) && (this->messageFn != nullptr)){
+	if(!url.empty() && (method != web_t::method_t::NONE) && (this->messageFn != nullptr)){
 		// Выполняем сброс предыдущего результата
 		this->res = res_t();
 		// Выполняем очистку воркера

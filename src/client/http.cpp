@@ -17,19 +17,21 @@
 awh::Http::stath_t awh::HttpClient::checkAuth() noexcept {
 	// Результат работы функции
 	stath_t result = stath_t::FAULT;
+	// Получаем объект параметров запроса
+	web_t::query_t query = this->web.getQuery();
 	// Проверяем код ответа
-	switch(this->query.code){
+	switch(query.code){
 		// Если требуется авторизация
 		case 401:
 		case 407: {
 			// Если попытки провести аутентификацию ещё небыло, пробуем ещё раз
 			if(!this->failAuth && (this->authCli.getType() == auth_t::type_t::DIGEST)){
 				// Получаем параметры авторизации
-				auto it = this->headers.find(this->query.code == 401 ? "www-authenticate" : "proxy-authenticate");
+				const string & auth = this->web.getHeader(query.code == 401 ? "www-authenticate" : "proxy-authenticate");
 				// Если параметры авторизации найдены
-				if((this->failAuth = (it != this->headers.end()))){
+				if((this->failAuth = !auth.empty())){
 					// Устанавливаем заголовок HTTP в параметры авторизации
-					this->authCli.setHeader(it->second);
+					this->authCli.setHeader(auth);
 					// Просим повторить авторизацию ещё раз
 					result = stath_t::RETRY;
 				}
@@ -38,12 +40,12 @@ awh::Http::stath_t awh::HttpClient::checkAuth() noexcept {
 		// Если нужно произвести редирект
 		case 301:
 		case 308: {
-			// Получаем параметры авторизации
-			auto it = this->headers.find("location");
+			// Получаем параметры переадресации
+			const string & location = this->web.getHeader("location");
 			// Если адрес перенаправления найден
-			if(it != this->headers.end()){
+			if(!location.empty()){
 				// Выполняем парсинг URL
-				uri_t::url_t tmp = this->uri->parseUrl(it->second);
+				uri_t::url_t tmp = this->uri->parseUrl(location);
 				// Если параметры URL существуют
 				if(!this->url.params.empty())
 					// Переходим по всему списку параметров

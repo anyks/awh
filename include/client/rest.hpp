@@ -74,7 +74,7 @@ namespace awh {
 			// Объект рабочего
 			workCli_t worker;
 			// Метод выполняемого запроса
-			http_t::method_t method;
+			web_t::method_t method;
 			// Метод компрессии данных
 			http_t::compress_t compress;
 		private:
@@ -280,7 +280,7 @@ namespace awh {
 			 * @param entity  тело запроса
 			 * @param headers заголовки запроса
 			 */
-			void REST(const uri_t::url_t & url, http_t::method_t method, vector <char> entity = {}, unordered_multimap <string, string> headers = {}) noexcept;
+			void REST(const uri_t::url_t & url, web_t::method_t method, vector <char> entity = {}, unordered_multimap <string, string> headers = {}) noexcept;
 		public:
 			/**
 			 * setMessageCallback Метод установки функции обратного вызова при получении сообщения
