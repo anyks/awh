@@ -817,7 +817,20 @@ void awh::WebSocketClient::stop() noexcept {
 		// Завершаем работу, если разрешено остановить
 		if(this->unbind) const_cast <coreCli_t *> (this->core)->stop();
 		// Если завершать работу запрещено, просто отключаемся
-		else ((core_t *) const_cast <coreCli_t *> (this->core))->close(this->aid);
+		else {
+			/**
+			 * Если установлено постоянное подключение
+			 * нам нужно заблокировать автоматический реконнект.
+			 */
+			// Считываем значение флага
+			const bool alive = this->worker.alive;
+			// Выполняем отключение флага постоянного подключения
+			this->worker.alive = false;
+			// Выполняем отключение клиента
+			const_cast <coreCli_t *> (this->core)->close(this->aid);
+			// Восстанавливаем предыдущее значение флага
+			this->worker.alive = alive;
+		}
 		// Если функция обратного вызова установлена, выполняем
 		if(this->openStopFn != nullptr) this->openStopFn(false, this, this->ctx.at(0));
 	}

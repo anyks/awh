@@ -76,17 +76,21 @@ size_t awh::Web::readPayload(const char * buffer, const size_t size) noexcept {
 								// Меняем стейт чанка
 								this->chunk.state = cstate_t::ENDSIZE;
 								// Получаем размер чанка
-								this->chunk.size = this->fmk->hexToDec(
-									string(buffer + offset, i - offset)
-								);
+								this->chunk.size = this->fmk->hexToDec(string(
+									this->chunk.data.begin(),
+									this->chunk.data.end()
+								));
 								// Устанавливаем смещение
 								offset = (i + 1);
-							}
+								// Выполняем сброс тела данных
+								this->chunk.data.clear();
+							// Выполняем сборку 16-го размера чанка
+							} else this->chunk.data.push_back(buffer[i]);
 						} break;
 						// Если мы ожидаем получение окончания сбора размера тела чанка
 						case (uint8_t) cstate_t::ENDSIZE: {
 							// Увеличиваем смещение
-							offset++;
+							offset = (i + 1);
 							// Если мы получили перевод строки
 							if(buffer[i] == '\n'){
 								// Если размер получен 0-й значит мы завершили сбор данных
@@ -150,7 +154,7 @@ size_t awh::Web::readPayload(const char * buffer, const size_t size) noexcept {
 						// Если мы ожидаем перевод строки после сбора данных тела чанка
 						case (uint8_t) cstate_t::STOPBODY: {
 							// Увеличиваем смещение
-							offset++;
+							offset = (i + 1);
 							// Если мы получили возврат каретки
 							if(buffer[i] == '\r')
 								// Меняем стейт чанка
@@ -166,7 +170,7 @@ size_t awh::Web::readPayload(const char * buffer, const size_t size) noexcept {
 						// Если мы ожидаем получение окончания сбора данных тела чанка
 						case (uint8_t) cstate_t::ENDBODY: {
 							// Увеличиваем смещение
-							offset++;
+							offset = (i + 1);
 							// Если мы получили перевод строки
 							if(buffer[i] == '\n'){
 								// Если размер получен 0-й значит мы завершили сбор данных

@@ -52,13 +52,13 @@ int main(int argc, char * argv[]) noexcept {
 	// Устанавливаем адрес сертификата
 	core.setCA("./ca/cert.pem");
 	// Устанавливаем логин и пароль пользователя
-	rest.setUser("user", "password");
+	// rest.setUser("user", "password");
 	// Устанавливаем данные прокси-сервера
 	// rest.setProxy("http://B80TWR:uRMhnd@196.17.249.64:8000");
 	// rest.setProxy("socks5://rfbPbd:XcCuZH@45.144.169.109:8000");
 	rest.setProxy("socks5://6S7rAk:g6K8XD@217.29.62.231:30810");
 	// Выполняем инициализацию типа авторизации
-	rest.setAuthType();
+	// rest.setAuthType();
 	// Устанавливаем тип авторизации прокси-сервера
 	rest.setAuthTypeProxy();
 	// Устанавливаем тип компрессии
