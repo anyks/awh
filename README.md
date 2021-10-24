@@ -100,7 +100,7 @@ using namespace awh;
 using json = nlohmann::json;
 
 int main(int argc, char * argv[]) noexcept {
-	fmk_t fmk;
+	fmk_t fmk(true);
 	log_t log(&fmk);
 	network_t nwk(&fmk);
 	uri_t uri(&fmk, &nwk);
@@ -111,28 +111,27 @@ int main(int argc, char * argv[]) noexcept {
 	log.setLogFormat("%H:%M:%S %d.%m.%Y");
 
 	ws.setMode(
-		(u_short) core_t::flag_t::NOTSTOP |
-		(u_short) core_t::flag_t::WAITMESS |
-		(u_short) core_t::flag_t::VERIFYSSL |
-		(u_short) core_t::flag_t::KEEPALIVE
+		(uint8_t) wsCli_t::flag_t::NOTSTOP |
+		(uint8_t) wsCli_t::flag_t::WAITMESS |
+		(uint8_t) wsCli_t::flag_t::VERIFYSSL |
+		(uint8_t) wsCli_t::flag_t::KEEPALIVE
 	);
 
 	core.setCA("./ca/cert.pem");
+	ws.setUser("user", "password");
 
-	ws.setProxy("http://user:password@example.com:port");
-	ws.setAuthTypeProxy();
+	ws.setAuthType(auth_t::type_t::DIGEST, auth_t::alg_t::SHA256);
+	ws.init("ws://127.0.0.1:2222", http_t::compress_t::DEFLATE);
 
-	ws.init("wss://stream.binance.com:9443/stream", http_t::compress_t::DEFLATE);
+	ws.setCrypt("PASS");
+	ws.setSubs({"test2", "test8", "test9"});
 
-	ws.on([](const bool mode, wsCli_t * ws){
-		cout << (mode ? "Connect" : "Disconnect") << " on server" << endl;
+	ws.on(&log, [](const bool mode, wsCli_t * ws, void * ctx){
+		log_t * log = reinterpret_cast <log_t *> (ctx);
+		log->print("%s server", log_t::flag_t::INFO, (mode ? "Start" : "Stop"));
 
 		if(mode){
-			json data = json::object();
-			data["id"] = 1;
-			data["method"] = "SUBSCRIBE";
-			data["params"] = json::array();
-			data["params"][0] = "btcusdt@aggTrade";
+			json data = json::parse("{\"text\":\"Hello World!\"}");
 
 			const string query = data.dump();
 
@@ -140,19 +139,16 @@ int main(int argc, char * argv[]) noexcept {
 		}
 	});
 
-	ws.on([](const u_short code, const string & mess, wsCli_t * ws){
-		cout << " Error: [" << code << "] " << mess << endl;
+	ws.on(&log, [](const u_short code, const string & mess, wsCli_t * ws, void * ctx){
+		log_t * log = reinterpret_cast <log_t *> (ctx);
+		log->print("%s [%u]", log_t::flag_t::CRITICAL, mess.c_str(), code);
 	});
 
-	ws.on([](const string & mess, wsCli_t * ws){
-		cout << " get: [" << "PONG" << "] " << mess << endl;
-	});
-
-	ws.on([](const vector <char> & buffer, const bool utf8, wsCli_t * ws){
+	ws.on(&log, [](const vector <char> & buffer, const bool utf8, wsCli_t * ws, void * ctx){
 		if(utf8){
-			json data = json::parse(string(buffer.begin(), buffer.end()));
-			cout << " Message: " << data.dump(4) << endl;
-		} else cout << " Binary size message: " << buffer.size() << " bytes" << endl;
+			log_t * log = reinterpret_cast <log_t *> (ctx);
+			log->print("message: %s [%s]", log_t::flag_t::INFO, string(buffer.begin(), buffer.end()).c_str(), ws->getSub().c_str());
+		}
 	});
 
 	ws.start();
