@@ -117,14 +117,12 @@ int main(int argc, char * argv[]) noexcept {
 		(uint8_t) wsCli_t::flag_t::KEEPALIVE
 	);
 
-	core.setCA("./ca/cert.pem");
-	ws.setUser("user", "password");
-
-	ws.setAuthType(auth_t::type_t::DIGEST, auth_t::alg_t::SHA256);
-	ws.init("ws://127.0.0.1:2222", http_t::compress_t::DEFLATE);
-
 	ws.setCrypt("PASS");
+	ws.setUser("user", "password");
 	ws.setSubs({"test2", "test8", "test9"});
+	ws.setAuthType(auth_t::type_t::DIGEST, auth_t::alg_t::SHA256);
+
+	ws.init("ws://127.0.0.1:2222", http_t::compress_t::DEFLATE);
 
 	ws.on(&log, [](const bool mode, wsCli_t * ws, void * ctx){
 		log_t * log = reinterpret_cast <log_t *> (ctx);
