@@ -177,6 +177,7 @@ int main(int argc, char * argv[]) noexcept {
 	log.setLogName("WebSocket Server");
 	log.setLogFormat("%H:%M:%S %d.%m.%Y");
 
+	ws.setCrypt("PASS");
 	ws.setRealm("ANYKS");
 	ws.setOpaque("keySession");
 	ws.setSubs({"test1", "test2", "test3"});
