@@ -143,7 +143,7 @@ int main(int argc, char * argv[]) noexcept {
 	});
 
 	ws.on(&log, [](const vector <char> & buffer, const bool utf8, wsCli_t * ws, void * ctx){
-		if(utf8){
+		if(utf8 && !buffer.empty()){
 			log_t * log = reinterpret_cast <log_t *> (ctx);
 			log->print("message: %s [%s]", log_t::flag_t::INFO, string(buffer.begin(), buffer.end()).c_str(), ws->getSub().c_str());
 		}
@@ -219,7 +219,7 @@ int main(int argc, char * argv[]) noexcept {
 	});
 
 	ws.on(&log, [](const size_t aid, const vector <char> & buffer, const bool utf8,  wsSrv_t * ws, void * ctx) noexcept {
-		if(!buffer.empty()){
+		if(utf8 && !buffer.empty()){
 			log_t * log = reinterpret_cast <log_t *> (ctx);
 			log->print("message: %s [%s]", log_t::flag_t::INFO, string(buffer.begin(), buffer.end()).c_str(), ws->getSub(aid).c_str());
 
