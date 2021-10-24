@@ -58,7 +58,7 @@ int main(int argc, char * argv[]) noexcept {
 	// Устанавливаем шифрование
 	// ws.setCrypt("PASS");
 	// Устанавливаем сабпротоколы
-	ws.setSubs({"test1", "test2", "test3"});
+	// ws.setSubs({"test1", "test2", "test3"});
 	/*
 	// Устанавливаем функцию извлечения пароля
 	ws.setExtractPassCallback(&log, [](const string & user, void * ctx) -> string {
