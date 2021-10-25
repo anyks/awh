@@ -610,10 +610,6 @@ void awh::CoreServer::setCert(const string & cert, const string & key, const str
 	this->ssl.setCert(cert, key, chain);
 }
 /**
- * Устанавливаем настройки для *Nix подобных систем
- */
-#if !defined(_WIN32) && !defined(_WIN64)
-/**
  * CoreServer Конструктор
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
@@ -622,20 +618,6 @@ awh::CoreServer::CoreServer(const fmk_t * fmk, const log_t * log) noexcept : cor
 	// Устанавливаем тип запускаемого ядра
 	this->type = type_t::SERVER;
 }
-/**
- * Устанавливаем настройки для OS Windows
- */
-#else
-/**
- * CoreServer Конструктор
- * @param fmk объект фреймворка
- * @param log объект для работы с логами
- */
-awh::CoreServer::CoreServer(const fmk_t * fmk, const log_t * log) noexcept : core_t(fmk, log) {
-	// Устанавливаем тип запускаемого ядра
-	this->type = type_t::SERVER;
-}
-#endif
 /**
  * ~CoreServer Деструктор
  */

@@ -66,7 +66,7 @@
 #endif
 
 /**
- * Если операционной системой является Windows
+ * Если операционной системой является OS Windows
  */
 #else
 	/**
@@ -103,8 +103,13 @@ namespace awh {
 	 */
 	typedef class IfNet {
 		private:
+			// Результат работы функции
+			string result = "";
+		private:
 			// Список сетевых интерфейсов
 			unordered_map <string, string> ifs;
+			// Список названий сетевых интерфейсов
+			unordered_map <string, string> eth;
 			// Список интернет-адресов
 			unordered_map <string, string> ips;
 			// Список интернет-адресов
@@ -147,6 +152,12 @@ namespace awh {
 			const unordered_map <string, string> & hws() const noexcept;
 		public:
 			/**
+			 * name Метод запроса названия сетевого интерфейса
+			 * @param eth идентификатор сетевого интерфейса
+			 * @return    название сетевого интерфейса
+			 */
+			const string name(const string & eth) const noexcept;
+			/**
 			 * mac Метод получения MAC адреса по IP адресу клиента
 			 * @param ip     адрес интернет-подключения клиента
 			 * @param family тип протокола интернета AF_INET или AF_INET6
@@ -155,7 +166,7 @@ namespace awh {
 			const string mac(const string & ip, const int family = AF_INET) const noexcept;
 			/**
 			 * Метод вывода IP адреса соответствующего сетевому интерфейсу
-			 * @param eth    название сетевого интерфейса
+			 * @param eth    идентификатор сетевого интерфейса
 			 * @param family тип протокола интернета AF_INET или AF_INET6
 			 * @return       IP адрес соответствующий сетевому интерфейсу
 			 */

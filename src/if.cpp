@@ -476,6 +476,8 @@ void awh::IfNet::init() noexcept {
 void awh::IfNet::clear() noexcept {
 	// Выполняем очистку списка MAC адресов
 	this->ifs.clear();
+	// Выполняем очистку списка названий сетевых интерфейсов
+	this->eth.clear();
 	// Выполняем очистку списка IPv4 адресов
 	this->ips.clear();
 	// Выполняем очистку списка IPv6 адресов
@@ -488,6 +490,72 @@ void awh::IfNet::clear() noexcept {
 const unordered_map <string, string> & awh::IfNet::hws() const noexcept {
 	// Выводим список сетевых интерфейсов
 	return this->ifs;
+}
+/**
+ * name Метод запроса названия сетевого интерфейса
+ * @param eth идентификатор сетевого интерфейса
+ * @return    название сетевого интерфейса
+ */
+const string awh::IfNet::name(const string & eth) const noexcept {
+	// Результат работы функции
+	string result = eth;
+	// Если сетевой интерфейс получен
+	if(!eth.empty()){
+/**
+ * Устанавливаем настройки для OS Windows
+ */
+#if defined(_WIN32) || defined(_WIN64)
+		// Получаем размер буфера данных
+		ULONG size = sizeof(IP_ADAPTER_INFO);
+		// Выделяем память под буфер данных
+		PIP_ADAPTER_INFO addr = (IP_ADAPTER_INFO *) MALLOC(sizeof (IP_ADAPTER_INFO));
+		// Если буфер данных не существует
+		if(addr == nullptr){
+			// Выводим сообщение об ошибке
+			this->log->print("%s", log_t::flag_t::WARNING, "error allocating memory needed to call GetAdaptersinfo");
+			// Выходим из функции
+			return;
+		}
+		// Выполняем первоначальный вызов GetAdaptersInfo, чтобы получить необходимый размер.
+		if(GetAdaptersInfo(addr, &size) == ERROR_BUFFER_OVERFLOW){
+			// Очищаем выделенную ранее память
+			FREE(addr);
+			// Выделяем ещё раз память для буфера данных
+			addr = (IP_ADAPTER_INFO *) MALLOC(size);
+			// Если буфер данных не существует
+			if(addr == nullptr){
+				// Выводим сообщение об ошибке
+				this->log->print("%s", log_t::flag_t::WARNING, "error allocating memory needed to call GetAdaptersinfo");
+				// Выходим из функции
+				return;
+			}
+		}
+		// Результат получения данных адаптера
+		DWORD info = 0;
+		// Получаем информацию о сетевом адаптере
+		if((info = GetAdaptersInfo(addr, &size)) == NO_ERROR){
+			// В случае успеха выводим некоторую информацию из полученных данных.
+			PIP_ADAPTER_INFO adapters = addr;
+			// Выполняем обработку всех сетевых адаптеров
+			while(adapters != nullptr){
+				// Если сетевой адаптер найден
+				if(strcmp(adapters->AdapterName, eth.c_str()) == 0){
+					// Получаем результат
+					result = adapters->Description;
+					// Выходим из цикла
+					break;
+				}
+				// Выполняем смену итератора
+				adapters = adapters->Next;
+			}
+		// Выводим сообщение об ошибке
+		} else this->log->print("GetAdaptersInfo failed with error: %d", log_t::flag_t::WARNING, info);
+		// Очищаем выделенную ранее память
+		if(addr != nullptr) FREE(addr);
+#endif
+	}
+	// Выводим результат
+	return result;
 }
 /**
  * mac Метод получения MAC адреса по IP адресу клиента
@@ -804,13 +872,11 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 }
 /**
  * Метод вывода IP адреса соответствующего сетевому интерфейсу
- * @param eth    название сетевого интерфейса
+ * @param eth    идентификатор сетевого интерфейса
  * @param family тип протокола интернета AF_INET или AF_INET6
  * @return       IP адрес соответствующий сетевому интерфейсу
  */
 const string & awh::IfNet::ip(const string & eth, const int family) const noexcept {
-	// Результат работы функции
-	static const string result = "";
 	// Если сетевой интерфейс получен
 	if(!eth.empty()){
 		// Определяем тип интернет адреса
@@ -832,5 +898,5 @@ const string & awh::IfNet::ip(const string & eth, const int family) const noexce
 		}
 	}
 	// Выводим результат
-	return result;
+	return this->result;
 }
