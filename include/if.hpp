@@ -108,8 +108,6 @@ namespace awh {
 		private:
 			// Список сетевых интерфейсов
 			unordered_map <string, string> ifs;
-			// Список названий сетевых интерфейсов
-			unordered_map <string, string> eth;
 			// Список интернет-адресов
 			unordered_map <string, string> ips;
 			// Список интернет-адресов

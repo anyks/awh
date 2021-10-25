@@ -476,8 +476,6 @@ void awh::IfNet::init() noexcept {
 void awh::IfNet::clear() noexcept {
 	// Выполняем очистку списка MAC адресов
 	this->ifs.clear();
-	// Выполняем очистку списка названий сетевых интерфейсов
-	this->eth.clear();
 	// Выполняем очистку списка IPv4 адресов
 	this->ips.clear();
 	// Выполняем очистку списка IPv6 адресов
