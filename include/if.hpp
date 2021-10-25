@@ -11,12 +11,7 @@
 #define __AWH_IFNET__
 
 /**
- * Устанавливаем настройки для *Nix подобных систем
- */
-#if !defined(_WIN32) && !defined(_WIN64)
-
-/**
- * Стандартная библиотека
+ * Стандартные библиотеки
  */
 #include <cmath>
 #include <string>
@@ -25,6 +20,15 @@
 #include <iostream>
 #include <algorithm>
 #include <unordered_map>
+
+/**
+ * Устанавливаем настройки для *Nix подобных систем
+ */
+#if !defined(_WIN32) && !defined(_WIN64)
+
+/**
+ * Стандартные библиотеки
+ */
 #include <errno.h>
 #include <unistd.h>
 #include <net/if.h>
@@ -38,6 +42,9 @@
  * Если операционной системой является MacOS X или FreeBSD
  */
 #if __APPLE__ || __MACH__ || __FreeBSD__
+	/**
+	 * Стандартные библиотеки
+	 */
 	#include <netdb.h>
 	#include <net/if_dl.h>
 	#include <net/ethernet.h>
@@ -49,10 +56,33 @@
  * Если операционной системой является Linux
  */
 #elif __linux__
+	/**
+	 * Стандартные библиотеки
+	 */
 	#include <ifaddrs.h>
 	#include <stddef.h>
 	#include <stdbool.h>
 	#include <net/if_arp.h>
+#endif
+
+/**
+ * Если операционной системой является Windows
+ */
+#else
+	/**
+	 * Стандартные библиотеки
+	 */
+	#include <stdio.h>
+	#include <ws2tcpip.h>
+	#include <winsock2.h>
+	#include <iphlpapi.h>
+	// Используем библиотеку ws2_32.lib
+	#pragma comment(lib, "Ws2_32.lib")
+	/**
+	 * Создаём привычные нам функции выделения памяти
+	 */
+	#define MALLOC(x) HeapAlloc(GetProcessHeap(), 0, (x))
+	#define FREE(x) HeapFree(GetProcessHeap(), 0, (x))
 #endif
 
 /**
@@ -92,12 +122,14 @@ namespace awh {
 		private:
 			/**
 			 * getIPAddresses Метод извлечения IP адресов
+			 * @param family тип протокола интернета AF_INET или AF_INET6
 			 */
-			void getIPAddresses() noexcept;
+			void getIPAddresses(const int family = AF_INET) noexcept;
 			/**
 			 * getHWAddresses Метод извлечения MAC адресов
+			 * @param family тип протокола интернета AF_INET или AF_INET6
 			 */
-			void getHWAddresses() noexcept;
+			void getHWAddresses(const int family = AF_INET) noexcept;
 		public:
 			/**
 			 * init Метод инициализации сбора информации
@@ -141,7 +173,5 @@ namespace awh {
 			~IfNet() noexcept {}
 	} ifnet_t;
 };
-
-#endif // NOT WINDOWS
 
 #endif // __AWH_IFNET__
