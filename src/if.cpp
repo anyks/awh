@@ -871,12 +871,28 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 	ULONG size = 6;
 	// Буфер данных
 	ULONG buffer[2];
-	// Объект IP адреса назначения
-	struct in_addr destip;
-	// Устанавливаем IP адрес назначения
-	destip.s_addr = inet_addr(ip.c_str());
-	// Отправляем запрос на указанный адрес
-	SendARP((IPAddr) destip.S_un.S_addr, 0, buffer, &size);
+	// Если запрашиваемый адрес IPv6
+	if(family == AF_INET6){
+		// Объект IP адреса назначения
+		struct in6_addr destip;
+		// Выполняем копирование IP адреса
+		if(inet_pton(family, ip.c_str(), &destip) != 1){
+			// Выводим сообщение об ошибке
+			this->log->print("%s", log_t::flag_t::WARNING, "invalid IPv6 address");
+			// Выходим из функции
+			return result;
+		}
+		// Отправляем запрос на указанный адрес
+		SendARP((IPAddr) destip.S_un.S_addr, 0, buffer, &size);
+	// Если запрашиваемый адрес IPv4
+	} else if(family == AF_INET) {
+		// Объект IP адреса назначения
+		struct in_addr destip;
+		// Устанавливаем IP адрес назначения
+		destip.s_addr = inet_addr(ip.c_str());
+		// Отправляем запрос на указанный адрес
+		SendARP((IPAddr) destip.S_un.S_addr, 0, buffer, &size);
+	}
 	// Если MAC адрес получен
 	if(size > 0){
 		// Выделяем память для MAC адреса
