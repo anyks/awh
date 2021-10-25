@@ -512,7 +512,7 @@ const string awh::IfNet::name(const string & eth) const noexcept {
 			// Выводим сообщение об ошибке
 			this->log->print("%s", log_t::flag_t::WARNING, "error allocating memory needed to call GetAdaptersinfo");
 			// Выходим из функции
-			return;
+			return result;
 		}
 		// Выполняем первоначальный вызов GetAdaptersInfo, чтобы получить необходимый размер.
 		if(GetAdaptersInfo(addr, &size) == ERROR_BUFFER_OVERFLOW){
@@ -525,7 +525,7 @@ const string awh::IfNet::name(const string & eth) const noexcept {
 				// Выводим сообщение об ошибке
 				this->log->print("%s", log_t::flag_t::WARNING, "error allocating memory needed to call GetAdaptersinfo");
 				// Выходим из функции
-				return;
+				return result;
 			}
 		}
 		// Результат получения данных адаптера
