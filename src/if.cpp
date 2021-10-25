@@ -391,53 +391,68 @@ void awh::IfNet::getHWAddresses(const int family) noexcept {
  */
 #elif defined(_WIN32) || defined(_WIN64)
 	// Получаем размер буфера данных
-	ULONG size = sizeof(IP_ADAPTER_INFO);
+	ULONG size = sizeof(IP_ADAPTER_ADDRESSES);
 	// Выделяем память под буфер данных
-	PIP_ADAPTER_INFO addr = (IP_ADAPTER_INFO *) MALLOC(sizeof (IP_ADAPTER_INFO));
-	// Если буфер данных не существует
-	if(addr == nullptr){
-		// Выводим сообщение об ошибке
-		this->log->print("%s", log_t::flag_t::WARNING, "error allocating memory needed to call GetAdaptersinfo");
-		// Выходим из функции
-		return;
-	}
-	// Выполняем первоначальный вызов GetAdaptersInfo, чтобы получить необходимый размер.
-	if(GetAdaptersInfo(addr, &size) == ERROR_BUFFER_OVERFLOW){
+	PIP_ADAPTER_ADDRESSES addr = (IP_ADAPTER_ADDRESSES *) MALLOC(size);
+	// Выполняем первоначальный вызов GetAdaptersAddresses, чтобы получить необходимый размер.
+	if(GetAdaptersAddresses(family, GAA_FLAG_INCLUDE_PREFIX, nullptr, addr, &size) == ERROR_BUFFER_OVERFLOW){
 		// Очищаем выделенную ранее память
 		FREE(addr);
 		// Выделяем ещё раз память для буфера данных
-		addr = (IP_ADAPTER_INFO *) MALLOC(size);
-		// Если буфер данных не существует
-		if(addr == nullptr){
-			// Выводим сообщение об ошибке
-			this->log->print("%s", log_t::flag_t::WARNING, "error allocating memory needed to call GetAdaptersinfo");
-			// Выходим из функции
-			return;
-		}
+		addr = (IP_ADAPTER_ADDRESSES *) MALLOC(size);
 	}
-	// Результат получения данных адаптера
-	DWORD result = 0;
-	// Получаем информацию о сетевом адаптере
-	if((result = GetAdaptersInfo(addr, &size)) == NO_ERROR){
+	// Если буфер данных не существует
+	if(addr == nullptr){
+		// Выводим сообщение об ошибке
+		this->log->print("%s", log_t::flag_t::WARNING, "memory allocation failed for IP_ADAPTER_ADDRESSES struct");
+		// Выходим из функции
+		return;
+	}
+	// Выполняем получения данных сетевого адаптера
+	const DWORD result = GetAdaptersAddresses(family, GAA_FLAG_INCLUDE_PREFIX, nullptr, addr, &size);
+	// Если данные сетевого адаптера считаны удачно
+	if(result == NO_ERROR){
 		// Временный буфер MAC адреса
 		char temp[18];
 		// В случае успеха выводим некоторую информацию из полученных данных.
-		PIP_ADAPTER_INFO adapters = addr;
+		PIP_ADAPTER_ADDRESSES adapters = addr;
 		// Выполняем обработку всех сетевых адаптеров
 		while(adapters != nullptr){
-			// Заполняем нуляем наши буферы
-			memset(temp, 0, sizeof(temp));
-			// Выполняем получение MAC-адреса
-			sprintf(temp, "%02X:%02X:%02X:%02X:%02X:%02X", adapters->Address[0], adapters->Address[1], adapters->Address[2], adapters->Address[3], adapters->Address[4], adapters->Address[5]);
-			// Добавляем MAC адрес в список сетевых интерфейсов
-			this->ifs.emplace(adapters->AdapterName, temp);
+			// Если MAC адрес сетевой карты найден
+			if(adapters->PhysicalAddressLength != 0){
+				// Заполняем нуляем наши буферы
+				memset(temp, 0, sizeof(temp));
+				// Выполняем получение MAC-адреса
+				sprintf(temp, "%02X:%02X:%02X:%02X:%02X:%02X", adapters->PhysicalAddress[0], adapters->PhysicalAddress[1], adapters->PhysicalAddress[2], adapters->PhysicalAddress[3], adapters->PhysicalAddress[4], adapters->PhysicalAddress[5]);
+				// Добавляем MAC адрес в список сетевых интерфейсов
+				this->ifs.emplace(adapters->AdapterName, temp);
+			}
 			// Выполняем смену итератора
 			adapters = adapters->Next;
 		}
-	// Выводим сообщение об ошибке
-	} else this->log->print("GetAdaptersInfo failed with error: %d", log_t::flag_t::WARNING, result);
+	// Если данные адаптера прочитать не вышло
+	} else {
+		// Выводим сообщение об ошибке
+		this->log->print("сall to GetAdaptersAddresses failed with error: %d", log_t::flag_t::WARNING, result);
+		// Если ошибка связана с отсутствием данных
+		if(result == ERROR_NO_DATA)
+			// Выводим сообщение об ошибке
+			this->log->print("%s", log_t::flag_t::WARNING, "no addresses were found for the requested parameters");
+		// Если данные существуют
+		else {
+			// Создаём объект сообщения
+			LPVOID message = nullptr;
+			// Формируем генерарцию сообщения
+			if(FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, nullptr, result, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPTSTR) & message, 0, nullptr)){
+				// Выводим сообщение об ошибке
+				this->log->print("%s", log_t::flag_t::WARNING, message);
+				// Очищаем выделенную память сообщения
+				LocalFree(message);
+			}
+		}
+	}
 	// Очищаем выделенную ранее память
-    if(addr != nullptr) FREE(addr);
+	FREE(addr);
 #endif
 }
 /**
