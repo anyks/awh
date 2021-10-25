@@ -883,7 +883,7 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 			return result;
 		}
 		// Отправляем запрос на указанный адрес
-		SendARP((IPAddr) destip.u, 0, buffer, &size);
+		SendARP((IPAddr) destip.u.Byte, 0, buffer, &size);
 	// Если запрашиваемый адрес IPv4
 	} else if(family == AF_INET) {
 		// Объект IP адреса назначения
