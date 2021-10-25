@@ -162,15 +162,8 @@ void awh::CoreServer::accept(const evutil_socket_t fd, const short event, void *
 				ip = sockets_t::ip(AF_INET, &client);
 				// Если IP адрес получен пустой, устанавливаем адрес сервера
 				if(ip.compare("0.0.0.0") == 0) ip = sockets_t::serverIp(AF_INET);
-				// Устанавливаем настройки для *Nix подобных систем
-				#if !defined(_WIN32) && !defined(_WIN64)
-					// Получаем данные мак адреса клиента
-					mac = core->ifnet.mac(ip, AF_INET);
-				// Устанавливаем настройки для OS Windows
-				#else
-					// Получаем данные мак адреса клиента
-					mac = sockets_t::mac(reinterpret_cast <struct sockaddr *> (&client));
-				#endif
+				// Получаем данные мак адреса клиента
+				mac = core->ifnet.mac(ip, AF_INET);
 			} break;
 			// Для протокола IPv6
 			case AF_INET6: {
@@ -186,15 +179,8 @@ void awh::CoreServer::accept(const evutil_socket_t fd, const short event, void *
 				ip = sockets_t::ip(AF_INET6, &client);
 				// Если IP адрес получен пустой, устанавливаем адрес сервера
 				if(ip.compare("::") == 0) ip = sockets_t::serverIp(AF_INET6);
-				// Устанавливаем настройки для *Nix подобных систем
-				#if !defined(_WIN32) && !defined(_WIN64)
-					// Получаем данные мак адреса клиента
-					mac = core->ifnet.mac(ip, AF_INET6);
-				// Устанавливаем настройки для OS Windows
-				#else
-					// Получаем данные мак адреса клиента
-					mac = sockets_t::mac(reinterpret_cast <struct sockaddr *> (&client));
-				#endif
+				// Получаем данные мак адреса клиента
+				// mac = core->ifnet.mac(ip, AF_INET6);
 			} break;
 		}
 		// Если функция обратного вызова установлена

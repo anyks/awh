@@ -570,6 +570,9 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
  * Если операционной системой является MacOS X или FreeBSD
  */
 #if __APPLE__ || __MACH__ || __FreeBSD__
+	// Если запрашиваемый адрес IPv6
+	if(family == AF_INET6){
+		/*
 		// Создаём массив параметров сетевого интерфейса
 		int mib[6];
 		// Размер буфера данных
@@ -605,27 +608,22 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 		}
 		// Получаем конечное значение итератора
 		end = (buffer.data() + size);
+		// Создаём объект подключения
+		struct sockaddr_in6 sin;
 		// Создаем буфер для получения проверяемого IPv6 адреса
 		char host[INET6_ADDRSTRLEN];
 		// Создаем буфер для получения текущего IPv6 адреса
 		char target[INET6_ADDRSTRLEN];
-		// Если запрашиваемый адрес IPv6
-		if(family == AF_INET6){
-			// Создаём объект подключения
-			struct sockaddr_in6 sin;
-			// Заполняем нулями структуру объекта подключения
-			memset(&sin, 0, sizeof(sin));
-			// Заполняем структуру нулями текущего адреса
-			memset(target, 0, INET6_ADDRSTRLEN);
-			// Устанавливаем протокол интернета
-			sin.sin6_family = family;
-			// Указываем адрес IPv6 для сервера
-			inet_pton(family, ip.c_str(), &sin.sin6_addr);
-			// Заполняем буфер данными текущего адреса IPv6
-			inet_ntop(family, &sin.sin6_addr, target, INET6_ADDRSTRLEN);
-		}
-		// Получаем числовое значение IP адреса
-		const uint32_t addr = (family == AF_INET ? inet_addr(ip.c_str()) : 0);
+		// Заполняем нулями структуру объекта подключения
+		memset(&sin, 0, sizeof(sin));
+		// Заполняем структуру нулями текущего адреса
+		memset(target, 0, INET6_ADDRSTRLEN);
+		// Устанавливаем протокол интернета
+		sin.sin6_family = family;
+		// Указываем адрес IPv6 для сервера
+		inet_pton(family, ip.c_str(), &sin.sin6_addr);
+		// Заполняем буфер данными текущего адреса IPv6
+		inet_ntop(family, &sin.sin6_addr, target, INET6_ADDRSTRLEN);
 		// Переходим по всем сетевым интерфейсам
 		for(it = buffer.data(); it < end; it += rtm->rtm_msglen){
 			// Получаем указатель сетевого интерфейса
@@ -634,23 +632,14 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 			sin = (struct sockaddr_inarp *) (rtm + 1);
 			// Получаем текущее значение аппаратного сетевого адреса
 			sdl = (struct sockaddr_dl *) (sin + 1);
-			// Если запрашиваемый адрес IPv6
-			if(family == AF_INET6){
-				// Если сетевой интерфейс отличается от IPv4 пропускаем
-				if(reinterpret_cast <struct sockaddr_in6 *> (sin)->sin6_family != family) continue;
-				// Заполняем структуру нулями проверяемого хоста
-				memset(host, 0, INET6_ADDRSTRLEN);
-				// Копируем полученные данные
-				inet_ntop(family, &reinterpret_cast <struct sockaddr_in6 *> (sin)->sin6_addr, host, INET6_ADDRSTRLEN);
-				// Если искомый IP адрес не совпадает, пропускаем
-				if(strcmp(host, target) != 0) continue;
-			// Если запрашиваемый адрес IPv4
-			} else if(family == AF_INET) {
-				// Если сетевой интерфейс отличается от IPv4 пропускаем
-				if(sin->sin_family != family) continue;
-				// Если искомый IP адрес не совпадает, пропускаем
-				if(addr != sin->sin_addr.s_addr) continue;
-			}
+			// Если сетевой интерфейс отличается от IPv4 пропускаем
+			if(reinterpret_cast <struct sockaddr_in6 *> (sin)->sin6_family != family) continue;
+			// Заполняем структуру нулями проверяемого хоста
+			memset(host, 0, INET6_ADDRSTRLEN);
+			// Копируем полученные данные
+			inet_ntop(family, &reinterpret_cast <struct sockaddr_in6 *> (sin)->sin6_addr, host, INET6_ADDRSTRLEN);
+			// Если искомый IP адрес не совпадает, пропускаем
+			if(strcmp(host, target) != 0) continue;
 			// Если сетевой интерфейс получен
 			if(sdl->sdl_alen > 0){
 				// Выделяем память для MAC адреса
@@ -667,59 +656,109 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 				break;
 			}
 		}
+		*/
+	// Если запрашиваемый адрес IPv4
+	} else if(family == AF_INET) {
+		// Создаём массив параметров сетевого интерфейса
+		int mib[6];
+		// Размер буфера данных
+		size_t size = 0;
+		// Параметры итератора в буфере
+		char * it = nullptr, * end = nullptr;
+		// Объекты для работы с сетевым интерфейсом
+		struct rt_msghdr * rtm      = nullptr;
+		struct sockaddr_dl * sdl    = nullptr;
+		struct sockaddr_inarp * sin = nullptr;
+		// Устанавливаем парарметры сетевого интерфейса
+		mib[0] = CTL_NET;
+		mib[1] = PF_ROUTE;
+		mib[2] = 0;
+		mib[3] = family;
+		mib[4] = NET_RT_FLAGS;
+		mib[5] = RTF_LLINFO;
+		// Выполняем получение размера буфера
+		if(::sysctl(mib, 6, nullptr, &size, nullptr, 0) < 0){
+			// Выводим сообщение об ошибке
+			this->log->print("%s", log_t::flag_t::WARNING, "route sysctl estimate");
+			// Выходим из функции
+			return result;
+		}
+		// Создаём буфер данных сетевого интерфейса
+		vector <char> buffer(size);
+		// Выполняем получение данных сетевого интерфейса
+		if(::sysctl(mib, 6, buffer.data(), &size, nullptr, 0) < 0){
+			// Выводим сообщение об ошибке
+			this->log->print("%s", log_t::flag_t::WARNING, "actual retrieval of routing table");
+			// Выходим из функции
+			return result;
+		}
+		// Получаем конечное значение итератора
+		end = (buffer.data() + size);
+		// Получаем числовое значение IP адреса
+		const uint32_t addr = (family == AF_INET ? inet_addr(ip.c_str()) : 0);
+		// Переходим по всем сетевым интерфейсам
+		for(it = buffer.data(); it < end; it += rtm->rtm_msglen){
+			// Получаем указатель сетевого интерфейса
+			rtm = (struct rt_msghdr *) it;
+			// Получаем текущее значение активного подключения
+			sin = (struct sockaddr_inarp *) (rtm + 1);
+			// Получаем текущее значение аппаратного сетевого адреса
+			sdl = (struct sockaddr_dl *) (sin + 1);
+			// Если сетевой интерфейс отличается от IPv4 пропускаем
+			if(sin->sin_family != family) continue;
+			// Если искомый IP адрес не совпадает, пропускаем
+			if(addr != sin->sin_addr.s_addr) continue;
+			// Если сетевой интерфейс получен
+			if(sdl->sdl_alen > 0){
+				// Выделяем память для MAC адреса
+				char temp[18];
+				// Заполняем нуляем наши буферы
+				memset(temp, 0, sizeof(temp));
+				// Извлекаем MAC адрес
+				const u_char * cp = (u_char *) LLADDR(sdl);
+				// Выполняем получение MAC адреса
+				sprintf(temp, "%02X:%02X:%02X:%02X:%02X:%02X", cp[0], cp[1], cp[2], cp[3], cp[4], cp[5]);
+				// Получаем результат MAC адреса
+				result = move(temp);
+				// Выходим из цикла
+				break;
+			}
+		}
+	}
 /**
  * Если операционной системой является Linux
  */
 #elif __linux__
+	// Если запрашиваемый адрес IPv6
+	if(family == AF_INET6){
+		/*
 		// Числовое значение IP адреса
 		uint32_t addr = 0;
 		// Флаг найденнго MAC адреса
 		bool found = false;
 		// Создаём объект MAC адреса
 		struct sockaddr mac;
-		// Создаём объект подключения IPv4
-		struct sockaddr_in sin;
 		// Создаём объект подключения IPv6
 		struct sockaddr_in6 sin6;
 		// Создаем буфер для получения текущего IPv6 адреса
 		char target[INET6_ADDRSTRLEN];
 		// Заполняем нулями структуру объекта MAC адреса
 		memset(&mac, 0, sizeof(mac));
-		// Если запрашиваемый адрес IPv6
-		if(family == AF_INET6){
-			// Заполняем нулями структуру объекта подключения IPv6
-			memset(&sin6, 0, sizeof(sin6));
-			// Устанавливаем протокол интернета
-			sin6.sin6_family = family;
-			// Выполняем копирование IP адреса
-			if(inet_pton(family, ip.c_str(), &sin6.sin6_addr) != 1){
-				// Выводим сообщение об ошибке
-				this->log->print("%s", log_t::flag_t::WARNING, "invalid IPv6 address");
-				// Выходим из функции
-				return result;
-			}
-			// Заполняем структуру нулями текущего адреса
-			memset(target, 0, INET6_ADDRSTRLEN);
-			// Заполняем буфер данными текущего адреса IPv6
-			inet_ntop(family, &sin6.sin6_addr, target, INET6_ADDRSTRLEN);
-		// Если запрашиваемый адрес IPv4
-		} else if(family == AF_INET) {
-			// Заполняем нулями структуру объекта подключения IPv4
-			memset(&sin, 0, sizeof(sin));
-			// Устанавливаем протокол интернета
-			sin.sin_family = family;
-			// Устанавливаем IP адрес
-			sin.sin_addr.s_addr = inet_addr(ip.c_str());
-			// Выполняем копирование IP адреса
-			if(inet_pton(family, ip.c_str(), &sin.sin_addr) != 1){
-				// Выводим сообщение об ошибке
-				this->log->print("%s", log_t::flag_t::WARNING, "invalid IPv4 address");
-				// Выходим из функции
-				return result;
-			}
-			// Получаем числовое значение IP адреса
-			addr = sin.sin_addr.s_addr;
+		// Заполняем нулями структуру объекта подключения IPv6
+		memset(&sin6, 0, sizeof(sin6));
+		// Устанавливаем протокол интернета
+		sin6.sin6_family = family;
+		// Выполняем копирование IP адреса
+		if(inet_pton(family, ip.c_str(), &sin6.sin6_addr) != 1){
+			// Выводим сообщение об ошибке
+			this->log->print("%s", log_t::flag_t::WARNING, "invalid IPv6 address");
+			// Выходим из функции
+			return result;
 		}
+		// Заполняем структуру нулями текущего адреса
+		memset(target, 0, INET6_ADDRSTRLEN);
+		// Заполняем буфер данными текущего адреса IPv6
+		inet_ntop(family, &sin6.sin6_addr, target, INET6_ADDRSTRLEN);
 		// Объект работы с сетевой картой
 		struct ifaddrs * headIfa = nullptr;
 		// Считываем данные сетевой карты
@@ -740,109 +779,55 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 			// Выходим из функции
 			return result;
 		}
-		// Если запрашиваемый адрес IPv6
-		if(family == AF_INET6){
-			// Создаем буферы сетевых адресов
-			char ifaddr[INET6_ADDRSTRLEN];
-			char dstaddr[INET6_ADDRSTRLEN];
-			// Переходим по всем сетевым интерфейсам
-			for(struct ifaddrs * ifa = headIfa; ifa != nullptr; ifa = ifa->ifa_next){
-				// Если сетевой интерфейс не соответствует, пропускаем
-				if((ifa->ifa_addr == nullptr) || (ifa->ifa_flags & IFF_POINTOPOINT) || (ifa->ifa_addr->sa_family != family)) continue;
-				// Заполняем структуры нулями сетевых адресов
-				memset(ifaddr,  0, INET6_ADDRSTRLEN);
-				memset(dstaddr, 0, INET6_ADDRSTRLEN);
-				// Заполняем буфер данными сетевых адресов IPv6
-				inet_ntop(family, &((struct sockaddr_in6 *) ifa->ifa_addr)->sin6_addr, ifaddr, INET6_ADDRSTRLEN);
-				inet_ntop(family, &((struct sockaddr_in6 *) ifa->ifa_dstaddr)->sin6_addr, dstaddr, INET6_ADDRSTRLEN);
-				// Если искомый IP адрес найден
-				if(strcmp(dstaddr, target) == 0){
-					// Искомый IP адрес соответствует данному серверу
-					if(strcmp(ifaddr, target) == 0){
-						// Структура сетевого интерфейса
-						struct ifreq ifreq;
-						// Копируем название сетевого интерфейса
-						strncpy(ifreq.ifr_name, ifa->ifa_name, IFNAMSIZ);
-						// Извлекаем аппаратный адрес сетевого интерфейса
-						if((found = (::ioctl(fd, SIOCGIFHWADDR, &ifreq) != -1)))
-							// Копируем данные MAC адреса
-							memcpy(&mac, &ifreq.ifr_hwaddr, sizeof(mac));
-						// Выходим из цикла
-						break;
-					}
-					// Создаём структуру сетевого интерфейса
-					struct arpreq arpreq;
-					// Заполняем структуру сетевого интерфейса нулями
-					memset(&arpreq, 0, sizeof(arpreq));
-					// Устанавливаем искомый IP адрес
-					memcpy(&(arpreq.arp_pa), &sin, sizeof(sin));
+		// Создаем буферы сетевых адресов
+		char ifaddr[INET6_ADDRSTRLEN];
+		char dstaddr[INET6_ADDRSTRLEN];
+		// Переходим по всем сетевым интерфейсам
+		for(struct ifaddrs * ifa = headIfa; ifa != nullptr; ifa = ifa->ifa_next){
+			// Если сетевой интерфейс не соответствует, пропускаем
+			if((ifa->ifa_addr == nullptr) || (ifa->ifa_flags & IFF_POINTOPOINT) || (ifa->ifa_addr->sa_family != family)) continue;
+			// Заполняем структуры нулями сетевых адресов
+			memset(ifaddr,  0, INET6_ADDRSTRLEN);
+			memset(dstaddr, 0, INET6_ADDRSTRLEN);
+			// Заполняем буфер данными сетевых адресов IPv6
+			inet_ntop(family, &((struct sockaddr_in6 *) ifa->ifa_addr)->sin6_addr, ifaddr, INET6_ADDRSTRLEN);
+			inet_ntop(family, &((struct sockaddr_in6 *) ifa->ifa_dstaddr)->sin6_addr, dstaddr, INET6_ADDRSTRLEN);
+			// Если искомый IP адрес найден
+			if(strcmp(dstaddr, target) == 0){
+				// Искомый IP адрес соответствует данному серверу
+				if(strcmp(ifaddr, target) == 0){
+					// Структура сетевого интерфейса
+					struct ifreq ifreq;
 					// Копируем название сетевого интерфейса
-					strncpy(arpreq.arp_dev, ifa->ifa_name, IFNAMSIZ);
-					// Подключаем сетевой интерфейс к сокету
-					if(::ioctl(fd, SIOCGARP, &arpreq) == -1){
-						// Пропускаем если ошибка не значительная
-						if(errno == ENXIO) continue;
-						// Выходим из цикла
-						else break;
-					}
-					// Если мы нашли наш MAC адрес
-					if((found = (arpreq.arp_flags & ATF_COM))){
+					strncpy(ifreq.ifr_name, ifa->ifa_name, IFNAMSIZ);
+					// Извлекаем аппаратный адрес сетевого интерфейса
+					if((found = (::ioctl(fd, SIOCGIFHWADDR, &ifreq) != -1)))
 						// Копируем данные MAC адреса
-						memcpy(&mac, &arpreq.arp_ha, sizeof(mac));
-						// Выходим из цикла
-						break;
-					}
+						memcpy(&mac, &ifreq.ifr_hwaddr, sizeof(mac));
+					// Выходим из цикла
+					break;
 				}
-			}
-		// Если запрашиваемый адрес IPv4
-		} else if(family == AF_INET) {
-			// Сетевые адреса в цифровом виде
-			uint32_t ifaddr = 0, netmask = 0, dstaddr = 0;
-			// Переходим по всем сетевым интерфейсам
-			for(struct ifaddrs * ifa = headIfa; ifa != nullptr; ifa = ifa->ifa_next){
-				// Если сетевой интерфейс не соответствует, пропускаем
-				if((ifa->ifa_addr == nullptr) || (ifa->ifa_flags & IFF_POINTOPOINT) || (ifa->ifa_addr->sa_family != family)) continue;
-				// Получаем адреса сетевого интерфейса в цифровом виде
-				ifaddr  = ((struct sockaddr_in *) ifa->ifa_addr)->sin_addr.s_addr;
-				netmask = ((struct sockaddr_in *) ifa->ifa_netmask)->sin_addr.s_addr;
-				dstaddr = ((struct sockaddr_in *) ifa->ifa_dstaddr)->sin_addr.s_addr;
-				// Если искомый IP адрес найден
-				if(((netmask == 0xFFFFFFFF) && (addr == dstaddr)) || ((ifaddr & netmask) == (addr & netmask))){
-					// Искомый IP адрес соответствует данному серверу
-					if(ifaddr == addr){
-						// Структура сетевого интерфейса
-						struct ifreq ifreq;
-						// Копируем название сетевого интерфейса
-						strncpy(ifreq.ifr_name, ifa->ifa_name, IFNAMSIZ);
-						// Извлекаем аппаратный адрес сетевого интерфейса
-						if((found = (::ioctl(fd, SIOCGIFHWADDR, &ifreq) != -1)))
-							// Копируем данные MAC адреса
-							memcpy(&mac, &ifreq.ifr_hwaddr, sizeof(mac));
-						// Выходим из цикла
-						break;
-					}
-					// Создаём структуру сетевого интерфейса
-					struct arpreq arpreq;
-					// Заполняем структуру сетевого интерфейса нулями
-					memset(&arpreq, 0, sizeof(arpreq));
-					// Устанавливаем искомый IP адрес
-					memcpy(&(arpreq.arp_pa), &sin, sizeof(sin));
-					// Копируем название сетевого интерфейса
-					strncpy(arpreq.arp_dev, ifa->ifa_name, IFNAMSIZ);
-					// Подключаем сетевой интерфейс к сокету
-					if(::ioctl(fd, SIOCGARP, &arpreq) == -1){
-						// Пропускаем если ошибка не значительная
-						if(errno == ENXIO) continue;
-						// Выходим из цикла
-						else break;
-					}
-					// Если мы нашли наш MAC адрес
-					if((found = (arpreq.arp_flags & ATF_COM))){
-						// Копируем данные MAC адреса
-						memcpy(&mac, &arpreq.arp_ha, sizeof(mac));
-						// Выходим из цикла
-						break;
-					}
+				// Создаём структуру сетевого интерфейса
+				struct arpreq arpreq;
+				// Заполняем структуру сетевого интерфейса нулями
+				memset(&arpreq, 0, sizeof(arpreq));
+				// Устанавливаем искомый IP адрес
+				memcpy(&(arpreq.arp_pa), &sin, sizeof(sin));
+				// Копируем название сетевого интерфейса
+				strncpy(arpreq.arp_dev, ifa->ifa_name, IFNAMSIZ);
+				// Подключаем сетевой интерфейс к сокету
+				if(::ioctl(fd, SIOCGARP, &arpreq) == -1){
+					// Пропускаем если ошибка не значительная
+					if(errno == ENXIO) continue;
+					// Выходим из цикла
+					else break;
+				}
+				// Если мы нашли наш MAC адрес
+				if((found = (arpreq.arp_flags & ATF_COM))){
+					// Копируем данные MAC адреса
+					memcpy(&mac, &arpreq.arp_ha, sizeof(mac));
+					// Выходим из цикла
+					break;
 				}
 			}
 		}
@@ -863,48 +848,153 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 		}
 		// Закрываем сетевой сокет
 		::close(fd);
+		*/
+	// Если запрашиваемый адрес IPv4
+	} else if(family == AF_INET) {
+		// Числовое значение IP адреса
+		uint32_t addr = 0;
+		// Флаг найденнго MAC адреса
+		bool found = false;
+		// Создаём объект MAC адреса
+		struct sockaddr mac;
+		// Создаём объект подключения IPv4
+		struct sockaddr_in sin;
+		// Заполняем нулями структуру объекта MAC адреса
+		memset(&mac, 0, sizeof(mac));
+		// Заполняем нулями структуру объекта подключения IPv4
+		memset(&sin, 0, sizeof(sin));
+		// Устанавливаем протокол интернета
+		sin.sin_family = family;
+		// Устанавливаем IP адрес
+		sin.sin_addr.s_addr = inet_addr(ip.c_str());
+		// Выполняем копирование IP адреса
+		if(inet_pton(family, ip.c_str(), &sin.sin_addr) != 1){
+			// Выводим сообщение об ошибке
+			this->log->print("%s", log_t::flag_t::WARNING, "invalid IPv4 address");
+			// Выходим из функции
+			return result;
+		}
+		// Получаем числовое значение IP адреса
+		addr = sin.sin_addr.s_addr;
+		// Объект работы с сетевой картой
+		struct ifaddrs * headIfa = nullptr;
+		// Считываем данные сетевой карты
+		if(getifaddrs(&headIfa) == -1){
+			// Очищаем объект сетевой карты
+			freeifaddrs(headIfa);
+			// Выводим сообщение об ошибке
+			this->log->print("%s", log_t::flag_t::WARNING, "invalid ifaddrs");
+			// Выходим из функции
+			return result;
+		}
+		// Выделяем сокет для подключения
+		int fd = ::socket(family, SOCK_DGRAM, IPPROTO_IP);
+		// Если файловый дескриптор не создан, выходим
+		if(fd < 0){
+			// Выводим сообщение об ошибке
+			this->log->print("%s", log_t::flag_t::WARNING, "socket failed");
+			// Выходим из функции
+			return result;
+		}
+		// Сетевые адреса в цифровом виде
+		uint32_t ifaddr = 0, netmask = 0, dstaddr = 0;
+		// Переходим по всем сетевым интерфейсам
+		for(struct ifaddrs * ifa = headIfa; ifa != nullptr; ifa = ifa->ifa_next){
+			// Если сетевой интерфейс не соответствует, пропускаем
+			if((ifa->ifa_addr == nullptr) || (ifa->ifa_flags & IFF_POINTOPOINT) || (ifa->ifa_addr->sa_family != family)) continue;
+			// Получаем адреса сетевого интерфейса в цифровом виде
+			ifaddr  = ((struct sockaddr_in *) ifa->ifa_addr)->sin_addr.s_addr;
+			netmask = ((struct sockaddr_in *) ifa->ifa_netmask)->sin_addr.s_addr;
+			dstaddr = ((struct sockaddr_in *) ifa->ifa_dstaddr)->sin_addr.s_addr;
+			// Если искомый IP адрес найден
+			if(((netmask == 0xFFFFFFFF) && (addr == dstaddr)) || ((ifaddr & netmask) == (addr & netmask))){
+				// Искомый IP адрес соответствует данному серверу
+				if(ifaddr == addr){
+					// Структура сетевого интерфейса
+					struct ifreq ifreq;
+					// Копируем название сетевого интерфейса
+					strncpy(ifreq.ifr_name, ifa->ifa_name, IFNAMSIZ);
+					// Извлекаем аппаратный адрес сетевого интерфейса
+					if((found = (::ioctl(fd, SIOCGIFHWADDR, &ifreq) != -1)))
+						// Копируем данные MAC адреса
+						memcpy(&mac, &ifreq.ifr_hwaddr, sizeof(mac));
+					// Выходим из цикла
+					break;
+				}
+				// Создаём структуру сетевого интерфейса
+				struct arpreq arpreq;
+				// Заполняем структуру сетевого интерфейса нулями
+				memset(&arpreq, 0, sizeof(arpreq));
+				// Устанавливаем искомый IP адрес
+				memcpy(&(arpreq.arp_pa), &sin, sizeof(sin));
+				// Копируем название сетевого интерфейса
+				strncpy(arpreq.arp_dev, ifa->ifa_name, IFNAMSIZ);
+				// Подключаем сетевой интерфейс к сокету
+				if(::ioctl(fd, SIOCGARP, &arpreq) == -1){
+					// Пропускаем если ошибка не значительная
+					if(errno == ENXIO) continue;
+					// Выходим из цикла
+					else break;
+				}
+				// Если мы нашли наш MAC адрес
+				if((found = (arpreq.arp_flags & ATF_COM))){
+					// Копируем данные MAC адреса
+					memcpy(&mac, &arpreq.arp_ha, sizeof(mac));
+					// Выходим из цикла
+					break;
+				}
+			}
+		}
+		// Очищаем объект сетевой карты
+		freeifaddrs(headIfa);
+		// Если MAC адрес получен
+		if(found){
+			// Выделяем память для MAC адреса
+			char temp[18];
+			// Заполняем нуляем наши буферы
+			memset(temp, 0, sizeof(temp));
+			// Извлекаем MAC адрес
+			const u_char * cp = (u_char *) mac.sa_data;
+			// Выполняем получение MAC адреса
+			sprintf(temp, "%02X:%02X:%02X:%02X:%02X:%02X", cp[0], cp[1], cp[2], cp[3], cp[4], cp[5]);
+			// Получаем результат MAC адреса
+			result = move(temp);
+		}
+		// Закрываем сетевой сокет
+		::close(fd);
+	}
 /**
  * Устанавливаем настройки для OS Windows
  */
 #elif defined(_WIN32) || defined(_WIN64)
-	// Размер буфера данных
-	ULONG size = 6;
-	// Буфер данных
-	ULONG buffer[2];
 	// Если запрашиваемый адрес IPv6
 	if(family == AF_INET6){
-		// Объект IP адреса назначения
-		struct in6_addr destip;
-		// Выполняем копирование IP адреса
-		if(inet_pton(family, ip.c_str(), &destip) != 1){
-			// Выводим сообщение об ошибке
-			this->log->print("%s", log_t::flag_t::WARNING, "invalid IPv6 address");
-			// Выходим из функции
-			return result;
-		}
-		// Отправляем запрос на указанный адрес
-		SendARP((IPAddr) destip.u.Byte, 0, buffer, &size);
+		/** NDP IPv6 MAC Address */
 	// Если запрашиваемый адрес IPv4
 	} else if(family == AF_INET) {
+		// Размер буфера данных
+		ULONG size = 6;
+		// Буфер данных
+		ULONG buffer[2];
 		// Объект IP адреса назначения
 		struct in_addr destip;
 		// Устанавливаем IP адрес назначения
 		destip.s_addr = inet_addr(ip.c_str());
 		// Отправляем запрос на указанный адрес
 		SendARP((IPAddr) destip.S_un.S_addr, 0, buffer, &size);
-	}
-	// Если MAC адрес получен
-	if(size > 0){
-		// Выделяем память для MAC адреса
-		char temp[18];
-		// Заполняем нуляем наши буферы
-		memset(temp, 0, sizeof(temp));
-		// Получаем данные MAC адреса
-		BYTE * mac = (BYTE *) &buffer;
-		// Выполняем получение MAC адреса
-		sprintf(temp, "%02X:%02X:%02X:%02X:%02X:%02X", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
-		// Получаем результат MAC адреса
-		result = move(temp);
+		// Если MAC адрес получен
+		if(size > 0){
+			// Выделяем память для MAC адреса
+			char temp[18];
+			// Заполняем нуляем наши буферы
+			memset(temp, 0, sizeof(temp));
+			// Получаем данные MAC адреса
+			BYTE * mac = (BYTE *) &buffer;
+			// Выполняем получение MAC адреса
+			sprintf(temp, "%02X:%02X:%02X:%02X:%02X:%02X", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+			// Получаем результат MAC адреса
+			result = move(temp);
+		}
 	}
 #endif
 	}
