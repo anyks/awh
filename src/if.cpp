@@ -194,11 +194,11 @@ void awh::IfNet::getIPAddresses(const int family) noexcept {
 		// Создаем буфер для получения IPv6 адреса
 		char ipv6[INET6_ADDRSTRLEN];
 		// В случае успеха выводим некоторую информацию из полученных данных.
-		PIP_ADAPTER_ADDRESSES adapters = addr;
+		PIP_ADAPTER_ADDRESSES adapter = addr;
 		// Выполняем обработку всех сетевых адаптеров
-		while(adapters != nullptr){
+		while(adapter != nullptr){
 			// Получаем данные сетевого интерфейса
-			PIP_ADAPTER_UNICAST_ADDRESS host = adapters->FirstUnicastAddress;
+			PIP_ADAPTER_UNICAST_ADDRESS host = adapter->FirstUnicastAddress;
 			// Определяем тип сетевого интерфейса
 			switch(host->Address.lpSockaddr->sa_family){
 				// Если мы обрабатываем IPv4
@@ -210,7 +210,7 @@ void awh::IfNet::getIPAddresses(const int family) noexcept {
 					// Копируем данные IP адреса в буфер
 					inet_ntop(AF_INET, &(sin->sin_addr), ipv4, INET_ADDRSTRLEN);
 					// Устанавливаем сетевой интерфейс в список
-					this->ips.emplace(adapters->AdapterName, ipv4);
+					this->ips.emplace(adapter->AdapterName, ipv4);
 				} break;
 				// Если мы обрабатываем IPv6
 				case AF_INET6: {
@@ -221,11 +221,11 @@ void awh::IfNet::getIPAddresses(const int family) noexcept {
 					// Получаем буфер IP адреса
 					inet_ntop(AF_INET6, &(sin->sin6_addr), ipv6, INET6_ADDRSTRLEN);
 					// Устанавливаем сетевой интерфейс в список
-					this->ips6.emplace(adapters->AdapterName, ipv6);
+					this->ips6.emplace(adapter->AdapterName, ipv6);
 				} break;
 			}
 			// Выполняем смену итератора
-			adapters = adapters->Next;
+			adapter = adapter->Next;
 		}
 	// Если данные адаптера прочитать не вышло
 	} else {
@@ -369,13 +369,13 @@ void awh::IfNet::getHWAddresses(const int family) noexcept {
 			if(!(ifrc.ifr_flags & IFF_LOOPBACK)){
 				// Извлекаем аппаратный адрес сетевого интерфейса
 				if(::ioctl(fd, SIOCGIFHWADDR, &ifrc) == 0){
-					// Создаём буфер MAC-адреса
+					// Создаём буфер MAC адреса
 					u_char mac[6];
 					// Заполняем нуляем наши буферы
 					memset(temp, 0, sizeof(temp));
-					// Выполняем копирование MAC-адреса
+					// Выполняем копирование MAC адреса
 					memcpy(mac, ifrc.ifr_hwaddr.sa_data, 6);
-					// Выполняем получение MAC-адреса
+					// Выполняем получение MAC адреса
 					sprintf(temp, "%02X:%02X:%02X:%02X:%02X:%02X", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
 					// Добавляем MAC адрес в список сетевых интерфейсов
 					this->ifs.emplace(it->ifr_name, temp);
@@ -415,20 +415,20 @@ void awh::IfNet::getHWAddresses(const int family) noexcept {
 		// Временный буфер MAC адреса
 		char temp[18];
 		// В случае успеха выводим некоторую информацию из полученных данных.
-		PIP_ADAPTER_ADDRESSES adapters = addr;
+		PIP_ADAPTER_ADDRESSES adapter = addr;
 		// Выполняем обработку всех сетевых адаптеров
-		while(adapters != nullptr){
+		while(adapter != nullptr){
 			// Если MAC адрес сетевой карты найден
-			if(adapters->PhysicalAddressLength != 0){
+			if(adapter->PhysicalAddressLength != 0){
 				// Заполняем нуляем наши буферы
 				memset(temp, 0, sizeof(temp));
-				// Выполняем получение MAC-адреса
-				sprintf(temp, "%02X:%02X:%02X:%02X:%02X:%02X", adapters->PhysicalAddress[0], adapters->PhysicalAddress[1], adapters->PhysicalAddress[2], adapters->PhysicalAddress[3], adapters->PhysicalAddress[4], adapters->PhysicalAddress[5]);
+				// Выполняем получение MAC адреса
+				sprintf(temp, "%02X:%02X:%02X:%02X:%02X:%02X", adapter->PhysicalAddress[0], adapter->PhysicalAddress[1], adapter->PhysicalAddress[2], adapter->PhysicalAddress[3], adapter->PhysicalAddress[4], adapter->PhysicalAddress[5]);
 				// Добавляем MAC адрес в список сетевых интерфейсов
-				this->ifs.emplace(adapters->AdapterName, temp);
+				this->ifs.emplace(adapter->AdapterName, temp);
 			}
 			// Выполняем смену итератора
-			adapters = adapters->Next;
+			adapter = adapter->Next;
 		}
 	// Если данные адаптера прочитать не вышло
 	} else {
@@ -494,9 +494,9 @@ const unordered_map <string, string> & awh::IfNet::hws() const noexcept {
  * @param eth идентификатор сетевого интерфейса
  * @return    название сетевого интерфейса
  */
-const string awh::IfNet::name(const string & eth) const noexcept {
+const pair <string, string> awh::IfNet::name(const string & eth) const noexcept {
 	// Результат работы функции
-	string result = eth;
+	pair <string, string> result = {eth, ""};
 	// Если сетевой интерфейс получен
 	if(!eth.empty()){
 /**
@@ -506,7 +506,7 @@ const string awh::IfNet::name(const string & eth) const noexcept {
 		// Получаем размер буфера данных
 		ULONG size = sizeof(IP_ADAPTER_INFO);
 		// Выделяем память под буфер данных
-		PIP_ADAPTER_INFO addr = (IP_ADAPTER_INFO *) MALLOC(sizeof (IP_ADAPTER_INFO));
+		PIP_ADAPTER_INFO addr = (IP_ADAPTER_INFO *) MALLOC(sizeof(IP_ADAPTER_INFO));
 		// Если буфер данных не существует
 		if(addr == nullptr){
 			// Выводим сообщение об ошибке
@@ -533,18 +533,20 @@ const string awh::IfNet::name(const string & eth) const noexcept {
 		// Получаем информацию о сетевом адаптере
 		if((info = GetAdaptersInfo(addr, &size)) == NO_ERROR){
 			// В случае успеха выводим некоторую информацию из полученных данных.
-			PIP_ADAPTER_INFO adapters = addr;
+			PIP_ADAPTER_INFO adapter = addr;
 			// Выполняем обработку всех сетевых адаптеров
-			while(adapters != nullptr){
+			while(adapter != nullptr){
 				// Если сетевой адаптер найден
-				if(strcmp(adapters->AdapterName, eth.c_str()) == 0){
-					// Получаем результат
-					result = adapters->Description;
+				if(strcmp(adapter->AdapterName, eth.c_str()) == 0){
+					// Получаем название сетевого интерфейса
+					result.first = adapter->FriendlyName;
+					// Получаем описание сетевого интерфейса
+					result.second = adapter->Description;
 					// Выходим из цикла
 					break;
 				}
 				// Выполняем смену итератора
-				adapters = adapters->Next;
+				adapter = adapter->Next;
 			}
 		// Выводим сообщение об ошибке
 		} else this->log->print("GetAdaptersInfo failed with error: %d", log_t::flag_t::WARNING, info);
@@ -659,7 +661,7 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 				memset(temp, 0, sizeof(temp));
 				// Извлекаем MAC адрес
 				const u_char * cp = (u_char *) LLADDR(sdl);
-				// Выполняем получение MAC-адреса
+				// Выполняем получение MAC адреса
 				sprintf(temp, "%02X:%02X:%02X:%02X:%02X:%02X", cp[0], cp[1], cp[2], cp[3], cp[4], cp[5]);
 				// Получаем результат MAC адреса
 				result = move(temp);
@@ -675,7 +677,7 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 		uint32_t addr = 0;
 		// Флаг найденнго MAC адреса
 		bool found = false;
-		// Создаём объект MAC-адреса
+		// Создаём объект MAC адреса
 		struct sockaddr mac;
 		// Создаём объект подключения IPv4
 		struct sockaddr_in sin;
@@ -683,7 +685,7 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 		struct sockaddr_in6 sin6;
 		// Создаем буфер для получения текущего IPv6 адреса
 		char target[INET6_ADDRSTRLEN];
-		// Заполняем нулями структуру объекта MAC-адреса
+		// Заполняем нулями структуру объекта MAC адреса
 		memset(&mac, 0, sizeof(mac));
 		// Если запрашиваемый адрес IPv6
 		if(family == AF_INET6){
@@ -856,13 +858,40 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 			memset(temp, 0, sizeof(temp));
 			// Извлекаем MAC адрес
 			const u_char * cp = (u_char *) mac.sa_data;
-			// Выполняем получение MAC-адреса
+			// Выполняем получение MAC адреса
 			sprintf(temp, "%02X:%02X:%02X:%02X:%02X:%02X", cp[0], cp[1], cp[2], cp[3], cp[4], cp[5]);
 			// Получаем результат MAC адреса
 			result = move(temp);
 		}
 		// Закрываем сетевой сокет
 		::close(fd);
+/**
+ * Устанавливаем настройки для OS Windows
+ */
+#elif defined(_WIN32) || defined(_WIN64)
+	// Размер буфера данных
+	ULONG size = 6;
+	// Буфер данных
+	ULONG buffer[2];
+	// Объект IP адреса назначения
+	struct in_addr destip;
+	// Устанавливаем IP адрес назначения
+	destip.s_addr = inet_addr(ip.c_str());
+	// Отправляем запрос на указанный адрес
+	SendARP((IPAddr) destip.S_un.S_addr, 0, buffer, &size);
+	// Если MAC адрес получен
+	if(size > 0){
+		// Выделяем память для MAC адреса
+		char temp[18];
+		// Заполняем нуляем наши буферы
+		memset(temp, 0, sizeof(temp));
+		// Получаем данные MAC адреса
+		BYTE * mac = (BYTE *) &buffer;
+		// Выполняем получение MAC адреса
+		sprintf(temp, "%02X:%02X:%02X:%02X:%02X:%02X", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+		// Получаем результат MAC адреса
+		result = move(temp);
+	}
 #endif
 	}
 	// Выводим результат
