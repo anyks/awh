@@ -494,9 +494,9 @@ const unordered_map <string, string> & awh::IfNet::hws() const noexcept {
  * @param eth идентификатор сетевого интерфейса
  * @return    название сетевого интерфейса
  */
-const pair <string, string> awh::IfNet::name(const string & eth) const noexcept {
+const string awh::IfNet::name(const string & eth) const noexcept {
 	// Результат работы функции
-	pair <string, string> result = {eth, ""};
+	string result = eth;
 	// Если сетевой интерфейс получен
 	if(!eth.empty()){
 /**
@@ -539,9 +539,7 @@ const pair <string, string> awh::IfNet::name(const string & eth) const noexcept 
 				// Если сетевой адаптер найден
 				if(strcmp(adapter->AdapterName, eth.c_str()) == 0){
 					// Получаем название сетевого интерфейса
-					result.first = adapter->FriendlyName;
-					// Получаем описание сетевого интерфейса
-					result.second = adapter->Description;
+					result = adapter->Description;
 					// Выходим из цикла
 					break;
 				}

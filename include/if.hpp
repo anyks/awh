@@ -154,7 +154,7 @@ namespace awh {
 			 * @param eth идентификатор сетевого интерфейса
 			 * @return    название сетевого интерфейса
 			 */
-			const pair <string, string> name(const string & eth) const noexcept;
+			const string name(const string & eth) const noexcept;
 			/**
 			 * mac Метод получения MAC адреса по IP адресу клиента
 			 * @param ip     адрес интернет-подключения клиента
