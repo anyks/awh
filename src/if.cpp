@@ -806,9 +806,9 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 		// Переходим по всем сетевым интерфейсам
 		for(struct ifaddrs * ifa = headIfa; ifa != nullptr; ifa = ifa->ifa_next){
 			// Пропускаем локальные сетевые интерфейсы
-			// if(0 == strncmp(ifa->ifa_name, "lo", 2)) continue;
+			if(0 == strncmp(ifa->ifa_name, "lo", 2)) continue;
 			// Пропускаем локальные сетевые интерфейсы
-			// if(nullptr != strchr(ifa->ifa_name, ':')) continue;
+			if(nullptr != strchr(ifa->ifa_name, ':')) continue;
 
 			cout << " ++++++++++=6 " << endl;
 
@@ -824,6 +824,28 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 			inet_ntop(family, &((struct sockaddr_in6 *) ifa->ifa_addr)->sin6_addr, ifaddr, sizeof(ifaddr));
 
 			cout << " ^^^^^^^^^^^^^^^ " << ifaddr << " == " << ifa->ifa_name << endl;
+
+
+
+			// struct sockaddr_in6 *sockaddrp = ( struct sockaddr_in6 * )&ip;
+			unsigned char mac[6];
+			mac[0] = ((struct sockaddr_in6 *) ifa->ifa_addr)->sin6_addr.s6_addr[8] ^ 0x02;
+			mac[1] = ((struct sockaddr_in6 *) ifa->ifa_addr)->sin6_addr.s6_addr[9];
+			mac[2] = ((struct sockaddr_in6 *) ifa->ifa_addr)->sin6_addr.s6_addr[10];
+			mac[3] = ((struct sockaddr_in6 *) ifa->ifa_addr)->sin6_addr.s6_addr[13];
+			mac[4] = ((struct sockaddr_in6 *) ifa->ifa_addr)->sin6_addr.s6_addr[14];
+			mac[5] = ((struct sockaddr_in6 *) ifa->ifa_addr)->sin6_addr.s6_addr[15];
+
+			// Выделяем память для MAC адреса
+			char temp[18];
+			// Заполняем нуляем наши буферы
+			memset(temp, 0, sizeof(temp));
+			// Выполняем получение MAC адреса
+			sprintf(temp, "%02X:%02X:%02X:%02X:%02X:%02X", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+
+			cout << " ^^^^^^^^^^^^^ " << temp << endl;
+
+
 
 			// inet_ntop(family, &((struct sockaddr_in6 *) ifa->ifa_dstaddr)->sin6_addr, dstaddr, sizeof(dstaddr));
 			// cout << " ++++++++++=8 " << dstaddr << " == " << target << endl;
@@ -860,7 +882,7 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 				// Подключаем сетевой интерфейс к сокету
 				if(::ioctl(fd, SIOCGARP, &arpreq) == -1){
 
-					// continue;
+					continue;
 
 					//
 					// Пропускаем если ошибка не значительная
@@ -870,7 +892,7 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 					//
 				}
 				// Если мы нашли наш MAC адрес
-				// if((found = (arpreq.arp_flags & ATF_COM))){
+				if((found = (arpreq.arp_flags & ATF_COM))){
 					// Копируем данные MAC адреса
 					memcpy(&mac, &arpreq.arp_ha, sizeof(mac));
 
@@ -887,7 +909,7 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 
 					// Выходим из цикла
 					// break;
-				//}
+				}
 			// }
 		}
 		// Очищаем объект сетевой карты
