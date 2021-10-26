@@ -555,38 +555,6 @@ const string awh::IfNet::name(const string & eth) const noexcept {
 	// Выводим результат
 	return result;
 }
-
-
-#include <sys/socket.h>
-
-
-
-
-
-//#if __GLIBC__ >= 2 && __GLIBC_MINOR >= 1
-
-
-#include <netpacket/packet.h>
-
-
-#include <net/ethernet.h>       /* the L2 protocols */
-
-
-//#else
-
-/*
-#include <asm/types.h>
-
-
-#include <linux/if_packet.h>
-*/
-
-//#include <linux/if_ether.h>     /* The L2 protocols */ 
-
-
-//#endif
-
-
 /**
  * mac Метод получения MAC адреса по IP адресу клиента
  * @param ip     адрес интернет-подключения клиента
@@ -616,7 +584,7 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 		struct sockaddr_dl * sdl    = nullptr;
 		struct sockaddr_inarp * sin = nullptr;
 
-		struct sockaddr_ll * sll = nullptr;
+		// struct sockaddr_ll * sll = nullptr;
 
 		// Устанавливаем парарметры сетевого интерфейса
 		mib[0] = CTL_NET;
@@ -672,7 +640,7 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 			// Получаем текущее значение аппаратного сетевого адреса
 			sdl = (struct sockaddr_dl *) (sin + 1);
 
-			sll = (struct sockaddr_ll *) (sin + 1);
+			// sll = (struct sockaddr_ll *) (sin + 1);
 
 			// Если сетевой интерфейс отличается от IPv4 пропускаем // AF_PACKET
 			if(reinterpret_cast <struct sockaddr_in6 *> (sin)->sin6_family != family) continue;
@@ -681,8 +649,9 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 			// Копируем полученные данные
 			inet_ntop(family, &reinterpret_cast <struct sockaddr_in6 *> (sin)->sin6_addr, host, INET6_ADDRSTRLEN);
 
-			cout << " ^^^^^^^^^^^2 " << host << " == " << target << " || " << sdl->sdl_alen << " == " << sll->sll_halen << endl;
+			// cout << " ^^^^^^^^^^^2 " << host << " == " << target << " || " << sdl->sdl_alen << " == " << sll->sll_halen << endl;
 
+			cout << " ^^^^^^^^^^^2 " << host << " == " << target << " || " << sdl->sdl_alen << endl;
 
 			// Если искомый IP адрес не совпадает, пропускаем
 			// if(strcmp(host, target) != 0) continue;
