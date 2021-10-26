@@ -833,6 +833,7 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 
 				cout << " ----------- " << ifaddr << " == " << target << " == " << ifa->ifa_name << endl;
 
+				/*
 				// Искомый IP адрес соответствует данному серверу
 				if(strcmp(ifaddr, target) == 0){
 					// Структура сетевого интерфейса
@@ -846,6 +847,8 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 					// Выходим из цикла
 					break;
 				}
+				*/
+
 				// Создаём структуру сетевого интерфейса
 				struct arpreq arpreq;
 				// Заполняем структуру сетевого интерфейса нулями
@@ -870,8 +873,20 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 				if((found = (arpreq.arp_flags & ATF_COM))){
 					// Копируем данные MAC адреса
 					memcpy(&mac, &arpreq.arp_ha, sizeof(mac));
+
+					// Выделяем память для MAC адреса
+					char temp[18];
+					// Заполняем нуляем наши буферы
+					memset(temp, 0, sizeof(temp));
+					// Извлекаем MAC адрес
+					const u_char * cp = (u_char *) mac.sa_data;
+					// Выполняем получение MAC адреса
+					sprintf(temp, "%02X:%02X:%02X:%02X:%02X:%02X", cp[0], cp[1], cp[2], cp[3], cp[4], cp[5]);
+
+					cout << " ^^^^^^^^^^^^^ " << temp << endl;
+
 					// Выходим из цикла
-					break;
+					// break;
 				}
 			// }
 		}
