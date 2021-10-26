@@ -891,6 +891,7 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 					// else break;
 					//
 				}
+				/*
 				// Если мы нашли наш MAC адрес
 				if((found = (arpreq.arp_flags & ATF_COM))){
 					// Копируем данные MAC адреса
@@ -910,6 +911,7 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 					// Выходим из цикла
 					// break;
 				}
+				*/
 			// }
 		}
 		// Очищаем объект сетевой карты
