@@ -751,6 +751,9 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 		memset(&sin, 0, sizeof(sin));
 		// Устанавливаем протокол интернета
 		sin.sin6_family = family;
+
+		cout << " ++++++++++=1 " << endl;
+
 		// Выполняем копирование IP адреса
 		if(inet_pton(family, ip.c_str(), &sin.sin6_addr) != 1){
 			// Выводим сообщение об ошибке
@@ -758,12 +761,18 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 			// Выходим из функции
 			return result;
 		}
+
+		cout << " ++++++++++=2 " << endl;
+
 		// Создаем буфер для получения текущего IPv6 адреса
 		char target[INET6_ADDRSTRLEN];
 		// Заполняем структуру нулями текущего адреса
 		memset(target, 0, INET6_ADDRSTRLEN);
 		// Заполняем буфер данными текущего адреса IPv6
 		inet_ntop(family, &sin.sin6_addr, target, INET6_ADDRSTRLEN);
+
+		cout << " ++++++++++=3 " << endl;
+
 		// Объект работы с сетевой картой
 		struct ifaddrs * headIfa = nullptr;
 		// Считываем данные сетевой карты
@@ -775,6 +784,9 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 			// Выходим из функции
 			return result;
 		}
+
+		cout << " ++++++++++=4 " << endl;
+
 		// Выделяем сокет для подключения
 		int fd = ::socket(AF_INET, SOCK_DGRAM, IPPROTO_IP);
 		// Если файловый дескриптор не создан, выходим
@@ -784,19 +796,31 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 			// Выходим из функции
 			return result;
 		}
+
+		cout << " ++++++++++=5 " << endl;
+
 		// Создаем буферы сетевых адресов
 		char ifaddr[INET6_ADDRSTRLEN];
 		char dstaddr[INET6_ADDRSTRLEN];
 		// Переходим по всем сетевым интерфейсам
 		for(struct ifaddrs * ifa = headIfa; ifa != nullptr; ifa = ifa->ifa_next){
+
+			cout << " ++++++++++=6 " << endl;
+
 			// Если сетевой интерфейс не соответствует, пропускаем
 			if((ifa->ifa_addr == nullptr) || (ifa->ifa_flags & IFF_POINTOPOINT) || (ifa->ifa_addr->sa_family != family)) continue;
 			// Заполняем структуры нулями сетевых адресов
 			memset(ifaddr,  0, INET6_ADDRSTRLEN);
 			memset(dstaddr, 0, INET6_ADDRSTRLEN);
+
+			cout << " ++++++++++=7 " << endl;
+
 			// Заполняем буфер данными сетевых адресов IPv6
 			inet_ntop(family, &((struct sockaddr_in6 *) ifa->ifa_addr)->sin6_addr, ifaddr, INET6_ADDRSTRLEN);
 			inet_ntop(family, &((struct sockaddr_in6 *) ifa->ifa_dstaddr)->sin6_addr, dstaddr, INET6_ADDRSTRLEN);
+
+			cout << " ++++++++++=8 " << dstaddr << " == " << target << endl;
+
 			// Если искомый IP адрес найден
 			if(strcmp(dstaddr, target) == 0){
 
