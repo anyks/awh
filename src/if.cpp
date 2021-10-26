@@ -967,43 +967,14 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 					// Выходим из цикла
 					break;
 				}
-
-
-
-				// Структура сетевого интерфейса
-				struct ifreq ifreq;
-				// Копируем название сетевого интерфейса
-				strncpy(ifreq.ifr_name, ifa->ifa_name, IFNAMSIZ);
-				// Извлекаем аппаратный адрес сетевого интерфейса
-				::ioctl(fd, SIOCGIFHWADDR, &ifreq);
-
-				struct sockaddr_in dstadd_in;
-				memset(&dstadd_in, 0, sizeof(struct sockaddr_in));
-				socklen_t len = sizeof(struct sockaddr_in);
-				if(getpeername(fd, (struct sockaddr *) &dstadd_in, &len) < 0)
-					cout << " !!!!!!!!!! " << endl;
-
-
-
 				// Создаём структуру сетевого интерфейса
 				struct arpreq arpreq;
 				// Заполняем структуру сетевого интерфейса нулями
 				memset(&arpreq, 0, sizeof(arpreq));
-
-				
-				memcpy(&arpreq.arp_pa, &dstadd_in, sizeof(struct sockaddr_in));
-				strcpy(arpreq.arp_dev, ifa->ifa_name);
-				arpreq.arp_pa.sa_family = AF_INET;
-				arpreq.arp_ha.sa_family = AF_UNSPEC;
-				
-
-				/*
 				// Устанавливаем искомый IP адрес
 				memcpy(&(arpreq.arp_pa), &sin, sizeof(sin));
 				// Копируем название сетевого интерфейса
 				strncpy(arpreq.arp_dev, ifa->ifa_name, IFNAMSIZ);
-				*/
-
 				// Подключаем сетевой интерфейс к сокету
 				if(::ioctl(fd, SIOCGARP, &arpreq) == -1){
 					// Пропускаем если ошибка не значительная
