@@ -904,14 +904,6 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 		}
 		// Сетевые адреса в цифровом виде
 		uint32_t ifaddr = 0, netmask = 0, dstaddr = 0;
-
-		struct sockaddr_in sin2;
-		memset(&sin2, 0, sizeof(sin2));
-		// Устанавливаем протокол интернета
-		sin2.sin_family = AF_INET;
-		struct sockaddr_in6 sin6;
-
-
 		// Переходим по всем сетевым интерфейсам
 		for(struct ifaddrs * ifa = headIfa; ifa != nullptr; ifa = ifa->ifa_next){
 			// Если сетевой интерфейс не соответствует, пропускаем
@@ -922,8 +914,6 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 			dstaddr = ((struct sockaddr_in *) ifa->ifa_dstaddr)->sin_addr.s_addr;
 			// Если искомый IP адрес найден
 			if(((netmask == 0xFFFFFFFF) && (addr == dstaddr)) || ((ifaddr & netmask) == (addr & netmask))){
-
-				
 				// Искомый IP адрес соответствует данному серверу
 				if(ifaddr == addr){
 					// Структура сетевого интерфейса
@@ -937,18 +927,12 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 					// Выходим из цикла
 					break;
 				}
-				
-
 				// Создаём структуру сетевого интерфейса
 				struct arpreq arpreq;
 				// Заполняем структуру сетевого интерфейса нулями
 				memset(&arpreq, 0, sizeof(arpreq));
 				// Устанавливаем искомый IP адрес
-				// memcpy(&(arpreq.arp_pa), &sin, sizeof(sin));
-
-
-				memcpy(&(arpreq.arp_pa), &sin6, sizeof(sin6));
-
+				memcpy(&(arpreq.arp_pa), &sin, sizeof(sin));
 				// Копируем название сетевого интерфейса
 				strncpy(arpreq.arp_dev, ifa->ifa_name, IFNAMSIZ);
 				// Подключаем сетевой интерфейс к сокету
