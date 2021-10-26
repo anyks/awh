@@ -76,7 +76,7 @@ void awh::IfNet::getIPAddresses(const int family) noexcept {
 			break;
 			// Если мы обрабатываем IPv6
 			case AF_INET6: {
-				// Создаем буфер для получения ip адреса
+				// Создаём буфер для получения ip адреса
 				char buffer[INET6_ADDRSTRLEN];
 				// Заполняем нуляем наши буферы
 				memset(buffer, 0, INET6_ADDRSTRLEN);
@@ -150,7 +150,7 @@ void awh::IfNet::getIPAddresses(const int family) noexcept {
 			break;
 			// Если мы обрабатываем IPv6
 			case AF_INET6: {
-				// Создаем буфер для получения ip адреса
+				// Создаём буфер для получения ip адреса
 				char buffer[INET6_ADDRSTRLEN];
 				// Заполняем нуляем наши буферы
 				memset(buffer, 0, INET6_ADDRSTRLEN);
@@ -189,9 +189,9 @@ void awh::IfNet::getIPAddresses(const int family) noexcept {
 	const DWORD result = GetAdaptersAddresses(family, GAA_FLAG_INCLUDE_PREFIX, nullptr, addr, &size);
 	// Если данные сетевого адаптера считаны удачно
 	if(result == NO_ERROR){
-		// Создаем буфер для получения IPv4 адреса
+		// Создаём буфер для получения IPv4 адреса
 		char ipv4[INET_ADDRSTRLEN];
-		// Создаем буфер для получения IPv6 адреса
+		// Создаём буфер для получения IPv6 адреса
 		char ipv6[INET6_ADDRSTRLEN];
 		// В случае успеха выводим некоторую информацию из полученных данных.
 		PIP_ADAPTER_ADDRESSES adapter = addr;
@@ -737,6 +737,7 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 #elif __linux__
 	// Если запрашиваемый адрес IPv6
 	if(family == AF_INET6){
+		/*
 		// Числовое значение IP адреса
 		uint32_t addr = 0;
 		// Флаг найденнго MAC адреса
@@ -764,7 +765,7 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 
 		cout << " ++++++++++=2 " << endl;
 
-		// Создаем буфер для получения текущего IPv6 адреса
+		// Создаём буфер для получения текущего IPv6 адреса
 		char target[INET6_ADDRSTRLEN];
 		// Заполняем структуру нулями текущего адреса
 		memset(target, 0, INET6_ADDRSTRLEN);
@@ -799,7 +800,7 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 
 		cout << " ++++++++++=5 " << endl;
 
-		// Создаем буферы сетевых адресов
+		// Создаём буферы сетевых адресов
 		char ifaddr[INET6_ADDRSTRLEN];
 		// char dstaddr[INET6_ADDRSTRLEN];
 		// Переходим по всем сетевым интерфейсам
@@ -855,15 +856,15 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 				strncpy(arpreq.arp_dev, ifa->ifa_name, IFNAMSIZ);
 				// Подключаем сетевой интерфейс к сокету
 				if(::ioctl(fd, SIOCGARP, &arpreq) == -1){
-					
+
 					continue;
 
-					/*
+					//
 					// Пропускаем если ошибка не значительная
-					if(errno == ENXIO) continue;
+					// if(errno == ENXIO) continue;
 					// Выходим из цикла
-					else break;
-					*/
+					// else break;
+					//
 				}
 				// Если мы нашли наш MAC адрес
 				if((found = (arpreq.arp_flags & ATF_COM))){
@@ -891,6 +892,7 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 		}
 		// Закрываем сетевой сокет
 		::close(fd);
+		*/
 	// Если запрашиваемый адрес IPv4
 	} else if(family == AF_INET) {
 		// Числовое значение IP адреса
@@ -1015,7 +1017,66 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 #elif defined(_WIN32) || defined(_WIN64)
 	// Если запрашиваемый адрес IPv6
 	if(family == AF_INET6){
-		/** NDP IPv6 MAC Address */
+		// Получаем объект таблицы подключений
+		PMIB_IPNET_TABLE2 pipTable = nullptr;
+		// Считываем данные таблицы подключений
+		const u_long status = GetIpNetTable2(AF_INET6, &pipTable);
+		// Если данные таблицы не получены
+		if(status != NO_ERROR){
+			// Выводим сообщение об ошибке
+			this->log->print("GetIpNetTable for IPv4 table returned error: %ld", log_t::flag_t::WARNING, status);
+			// Выходим из функции
+			return result;
+		}
+		// Если список подключений получен
+		if(pipTable->NumEntries > 0){
+			// Создаём объект подключения IPv6
+			struct sockaddr_in6 sin;
+			// Заполняем нулями структуру объекта подключения IPv6
+			memset(&sin, 0, sizeof(sin));
+			// Устанавливаем протокол интернета
+			sin.sin6_family = family;
+			// Выполняем копирование IP адреса
+			if(inet_pton(family, ip.c_str(), &sin.sin6_addr) != 1){
+				// Выводим сообщение об ошибке
+				this->log->print("%s", log_t::flag_t::WARNING, "invalid IPv6 address");
+				// Выходим из функции
+				return result;
+			}
+			// Создаём буфер для получения текущего ip адреса
+			char host[INET6_ADDRSTRLEN];
+			// Создаём буфер для получения текущего IPv6 адреса
+			char target[INET6_ADDRSTRLEN];
+			// Заполняем структуру нулями текущего адреса
+			memset(target, 0, INET6_ADDRSTRLEN);
+			// Заполняем буфер данными текущего адреса IPv6
+			inet_ntop(family, &sin.sin6_addr, target, INET6_ADDRSTRLEN);
+			// Переходим по всему списку подключений
+			for(u_int i = 0; (u_int) i < pipTable->NumEntries; i++){
+				// Заполняем нуляем наши буферы
+				memset(host, 0, INET6_ADDRSTRLEN);
+				// Запрашиваем данные ip адреса
+				inet_ntop(AF_INET6, (void *) &pipTable->Table[i].Address.Ipv6.sin6_addr, host, INET6_ADDRSTRLEN);
+				// Если искомый IP адрес найден
+				if(strcmp(target, host) == 0){
+					// Если MAC адрес получен
+					if(pipTable->Table[i].PhysicalAddressLength > 0){
+						// Выделяем память для MAC адреса
+						char temp[18];
+						// Заполняем нуляем наши буферы
+						memset(temp, 0, sizeof(temp));
+						// Получаем данные MAC адреса
+						BYTE * mac = (BYTE *) pipTable->Table[i].PhysicalAddress;
+						// Выполняем получение MAC адреса
+						sprintf(temp, "%02X:%02X:%02X:%02X:%02X:%02X", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+						// Получаем результат MAC адреса
+						result = move(temp);
+					}
+					// Выходим из цикла
+					break;
+				}
+			}
+		}
 	// Если запрашиваемый адрес IPv4
 	} else if(family == AF_INET) {
 		// Размер буфера данных
