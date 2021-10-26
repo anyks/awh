@@ -800,7 +800,7 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 			// Если искомый IP адрес найден
 			if(strcmp(dstaddr, target) == 0){
 
-				cout << " ----------- " << ifaddr << " == " << target << " == " << ifa->ifa_name << end;
+				cout << " ----------- " << ifaddr << " == " << target << " == " << ifa->ifa_name << endl;
 
 				// Искомый IP адрес соответствует данному серверу
 				if(strcmp(ifaddr, target) == 0){
