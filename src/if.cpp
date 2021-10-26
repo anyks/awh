@@ -822,12 +822,12 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 
 			cout << " ^^^^^^^^^^^^^^^ " << ifaddr << endl;
 
-			inet_ntop(family, &((struct sockaddr_in6 *) ifa->ifa_dstaddr)->sin6_addr, dstaddr, sizeof(dstaddr));
+			// inet_ntop(family, &((struct sockaddr_in6 *) ifa->ifa_dstaddr)->sin6_addr, dstaddr, sizeof(dstaddr));
 
 			cout << " ++++++++++=8 " << dstaddr << " == " << target << endl;
 
 			// Если искомый IP адрес найден
-			if(strcmp(dstaddr, target) == 0){
+			// if(strcmp(dstaddr, target) == 0){
 
 				cout << " ----------- " << ifaddr << " == " << target << " == " << ifa->ifa_name << endl;
 
@@ -866,7 +866,7 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 					// Выходим из цикла
 					break;
 				}
-			}
+			// }
 		}
 		// Очищаем объект сетевой карты
 		freeifaddrs(headIfa);
