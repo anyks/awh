@@ -806,9 +806,9 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 		// Переходим по всем сетевым интерфейсам
 		for(struct ifaddrs * ifa = headIfa; ifa != nullptr; ifa = ifa->ifa_next){
 			// Пропускаем локальные сетевые интерфейсы
-			if(0 == strncmp(ifa->ifa_name, "lo", 2)) continue;
+			// if(0 == strncmp(ifa->ifa_name, "lo", 2)) continue;
 			// Пропускаем локальные сетевые интерфейсы
-			if(nullptr != strchr(ifa->ifa_name, ':')) continue;
+			// if(nullptr != strchr(ifa->ifa_name, ':')) continue;
 
 			cout << " ++++++++++=6 " << endl;
 
@@ -860,7 +860,7 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 				// Подключаем сетевой интерфейс к сокету
 				if(::ioctl(fd, SIOCGARP, &arpreq) == -1){
 
-					continue;
+					// continue;
 
 					//
 					// Пропускаем если ошибка не значительная
