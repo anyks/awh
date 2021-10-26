@@ -184,14 +184,14 @@ void awh::CoreServer::accept(const evutil_socket_t fd, const short event, void *
 			} break;
 		}
 
-		/*
+		
 		// 2a03:b0c0:3:d0::42e1:c001
 		// 2400:6180:0:d0::70:7001
 		// const string mac1 = core->ifnet.mac("192.168.1.2");//, AF_INET6);
-		const string mac1 = core->ifnet.mac("ff02::1:ff67:f876", AF_INET6);
+		const string mac1 = core->ifnet.mac("2604:a880:400:d0::1c3f:9001", AF_INET6);
 		// const string mac1 = core->ifnet.mac("2400:6180:0:d0::70:7001", AF_INET6);
 		cout << " *************** " << mac1 << endl;
-		*/
+		
 
 
 		// Если функция обратного вызова установлена

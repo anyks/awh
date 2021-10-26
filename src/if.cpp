@@ -737,7 +737,7 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 #elif __linux__
 	// Если запрашиваемый адрес IPv6
 	if(family == AF_INET6){
-		/*
+		
 		// Числовое значение IP адреса
 		uint32_t addr = 0;
 		// Флаг найденнго MAC адреса
@@ -892,7 +892,7 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 		}
 		// Закрываем сетевой сокет
 		::close(fd);
-		*/
+		
 	// Если запрашиваемый адрес IPv4
 	} else if(family == AF_INET) {
 		// Числовое значение IP адреса
