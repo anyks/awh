@@ -822,7 +822,7 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 			// Заполняем буфер данными сетевых адресов IPv6
 			inet_ntop(family, &((struct sockaddr_in6 *) ifa->ifa_addr)->sin6_addr, ifaddr, sizeof(ifaddr));
 
-			cout << " ^^^^^^^^^^^^^^^ " << ifaddr << endl;
+			cout << " ^^^^^^^^^^^^^^^ " << ifaddr << " == " << ifa->ifa_name << endl;
 
 			inet_ntop(family, &((struct sockaddr_in6 *) ifa->ifa_dstaddr)->sin6_addr, dstaddr, sizeof(dstaddr));
 
