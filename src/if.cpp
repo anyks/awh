@@ -804,6 +804,10 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 		char dstaddr[INET6_ADDRSTRLEN];
 		// Переходим по всем сетевым интерфейсам
 		for(struct ifaddrs * ifa = headIfa; ifa != nullptr; ifa = ifa->ifa_next){
+			// Пропускаем локальные сетевые интерфейсы
+			if(0 == strncmp(ifa->ifa_name, "lo", 2)) continue;
+			// Пропускаем локальные сетевые интерфейсы
+			if(nullptr != strchr(ifa->ifa_name, ':')) continue;
 
 			cout << " ++++++++++=6 " << endl;
 
@@ -818,23 +822,21 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 			// Заполняем буфер данными сетевых адресов IPv6
 			inet_ntop(family, &((struct sockaddr_in6 *) ifa->ifa_addr)->sin6_addr, ifaddr, sizeof(ifaddr));
 
-			if(strcmp(ifaddr, "::1") == 0) continue;
-
 			cout << " ^^^^^^^^^^^^^^^ " << ifaddr << endl;
 
-			// inet_ntop(family, &((struct sockaddr_in6 *) ifa->ifa_dstaddr)->sin6_addr, dstaddr, sizeof(dstaddr));
+			inet_ntop(family, &((struct sockaddr_in6 *) ifa->ifa_dstaddr)->sin6_addr, dstaddr, sizeof(dstaddr));
 
 			cout << " ++++++++++=8 " << dstaddr << " == " << target << endl;
 
 			// Если искомый IP адрес найден
-			// if(strcmp(dstaddr, target) == 0){
+			if(strcmp(dstaddr, target) == 0){
 
 				cout << " ----------- " << ifaddr << " == " << target << " == " << ifa->ifa_name << endl;
 
 				// Искомый IP адрес соответствует данному серверу
 				if(strcmp(ifaddr, target) == 0){
 					// Структура сетевого интерфейса
-					struct ifreq ifreq;
+					struct in6_ifreq ifreq;
 					// Копируем название сетевого интерфейса
 					strncpy(ifreq.ifr_name, ifa->ifa_name, IFNAMSIZ);
 					// Извлекаем аппаратный адрес сетевого интерфейса
@@ -866,7 +868,7 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 					// Выходим из цикла
 					break;
 				}
-			// }
+			}
 		}
 		// Очищаем объект сетевой карты
 		freeifaddrs(headIfa);
@@ -936,6 +938,10 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 		uint32_t ifaddr = 0, netmask = 0, dstaddr = 0;
 		// Переходим по всем сетевым интерфейсам
 		for(struct ifaddrs * ifa = headIfa; ifa != nullptr; ifa = ifa->ifa_next){
+			// Пропускаем локальные сетевые интерфейсы
+			if(0 == strncmp(ifa->ifa_name, "lo", 2)) continue;
+			// Пропускаем локальные сетевые интерфейсы
+			if(nullptr != strchr(ifa->ifa_name, ':')) continue;
 			// Если сетевой интерфейс не соответствует, пропускаем
 			if((ifa->ifa_addr == nullptr) || (ifa->ifa_flags & IFF_POINTOPOINT) || (ifa->ifa_addr->sa_family != family)) continue;
 			// Получаем адреса сетевого интерфейса в цифровом виде
