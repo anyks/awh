@@ -921,7 +921,7 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 			// Если искомый IP адрес найден
 			if(((netmask == 0xFFFFFFFF) && (addr == dstaddr)) || ((ifaddr & netmask) == (addr & netmask))){
 
-				/*
+				
 				// Искомый IP адрес соответствует данному серверу
 				if(ifaddr == addr){
 					// Структура сетевого интерфейса
@@ -935,17 +935,17 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 					// Выходим из цикла
 					break;
 				}
-				*/
+				
 
 				// Создаём структуру сетевого интерфейса
 				struct arpreq arpreq;
 				// Заполняем структуру сетевого интерфейса нулями
 				memset(&arpreq, 0, sizeof(arpreq));
 				// Устанавливаем искомый IP адрес
-				memcpy(&(arpreq.arp_pa), &sin, sizeof(sin));
+				// memcpy(&(arpreq.arp_pa), &sin, sizeof(sin));
 
 
-				// memcpy(&(arpreq.arp_pa), &sin2, sizeof(sin2));
+				memcpy(&(arpreq.arp_pa), &sin2, sizeof(sin2));
 
 				// Копируем название сетевого интерфейса
 				strncpy(arpreq.arp_dev, ifa->ifa_name, IFNAMSIZ);
