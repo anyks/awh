@@ -929,6 +929,7 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 			// Выходим из функции
 			return result;
 		}
+		/*
 		// Выделяем сокет для подключения
 		int fd = ::socket(family, SOCK_DGRAM, IPPROTO_IP);
 		// Если файловый дескриптор не создан, выходим
@@ -938,9 +939,16 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 			// Выходим из функции
 			return result;
 		}
+		*/
 		// Сетевые адреса в цифровом виде
 		uint32_t ifaddr = 0, netmask = 0, dstaddr = 0;
 
+		int fd = 0;
+
+		 if((fd = socket(PF_PACKET, SOCK_RAW, htons(ETH_P_ARP))) < 0) {
+                perror("Socket error");
+                exit(1);
+        }
 
 		struct sockaddr_in dstadd_in;
 		memset(&dstadd_in, 0, sizeof(struct sockaddr_in));
@@ -980,19 +988,20 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 				// Заполняем структуру сетевого интерфейса нулями
 				memset(&arpreq, 0, sizeof(arpreq));
 
-				/*
+				
 				memcpy(&arpreq.arp_pa, &dstadd_in, sizeof(struct sockaddr_in));
 				strcpy(arpreq.arp_dev, ifa->ifa_name);
 				arpreq.arp_pa.sa_family = AF_INET;
 				arpreq.arp_ha.sa_family = AF_UNSPEC;
-				*/
-
 				
+
+				/*
 				// Устанавливаем искомый IP адрес
 				memcpy(&(arpreq.arp_pa), &sin, sizeof(sin));
 				// Копируем название сетевого интерфейса
 				strncpy(arpreq.arp_dev, ifa->ifa_name, IFNAMSIZ);
-				
+				*/
+
 				// Подключаем сетевой интерфейс к сокету
 				if(::ioctl(fd, SIOCGARP, &arpreq) == -1){
 					// Пропускаем если ошибка не значительная
