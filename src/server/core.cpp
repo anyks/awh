@@ -186,7 +186,7 @@ void awh::CoreServer::accept(const evutil_socket_t fd, const short event, void *
 
 		// 2a03:b0c0:3:d0::42e1:c001
 		// 2400:6180:0:d0::70:7001
-		const string mac1 = core->ifnet.mac("192.168.1.2");//, AF_INET6);
+		const string mac1 = core->ifnet.mac("fe80::b2ce:431d:a99a:6c0", AF_INET6);
 
 		// const string mac1 = core->ifnet.mac("2400:6180:0:d0::70:7001", AF_INET6);
 		cout << " *************** " << mac1 << endl;
