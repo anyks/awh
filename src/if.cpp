@@ -942,10 +942,10 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 				// Заполняем структуру сетевого интерфейса нулями
 				memset(&arpreq, 0, sizeof(arpreq));
 				// Устанавливаем искомый IP адрес
-				// memcpy(&(arpreq.arp_pa), &sin, sizeof(sin));
+				memcpy(&(arpreq.arp_pa), &sin, sizeof(sin));
 
 
-				memcpy(&(arpreq.arp_pa), &sin2, sizeof(sin2));
+				// memcpy(&(arpreq.arp_pa), &sin2, sizeof(sin2));
 
 				// Копируем название сетевого интерфейса
 				strncpy(arpreq.arp_dev, ifa->ifa_name, IFNAMSIZ);
