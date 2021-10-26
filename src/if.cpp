@@ -572,7 +572,7 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 #if __APPLE__ || __MACH__ || __FreeBSD__
 	// Если запрашиваемый адрес IPv6
 	if(family == AF_INET6){
-		/*
+
 		// Создаём массив параметров сетевого интерфейса
 		int mib[6];
 		// Размер буфера данных
@@ -656,7 +656,7 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 				break;
 			}
 		}
-		*/
+
 	// Если запрашиваемый адрес IPv4
 	} else if(family == AF_INET) {
 		// Создаём массив параметров сетевого интерфейса
