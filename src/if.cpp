@@ -555,6 +555,84 @@ const string awh::IfNet::name(const string & eth) const noexcept {
 	// Выводим результат
 	return result;
 }
+
+
+
+
+bool parse_ip(const char *original_ip_addr, struct in6_addr *dst_ip) {
+    size_t index = 0;
+	char ip[INET6_ADDRSTRLEN];
+	char* token = ip;
+	char* colon;
+	int number_of_groups;
+	
+	if (original_ip_addr == NULL || dst_ip == NULL) return -1;
+	
+	// strok will modify our IP address
+	strcpy(ip, original_ip_addr);
+	
+	// Set all to zero first so we only have
+	// to fill in the non-empty groups
+	memset(dst_ip->s6_addr, 0, IPv6_ADDR_LEN);
+
+	if ((number_of_groups = count_groups(original_ip_addr)) == -1) {
+	  fprintf(stderr, "'%s' is not a valid IPv6 address!\n", original_ip_addr);
+	}
+
+	for (colon = strchr(ip, ':'); true; colon = strchr(colon, ':')) {
+		char group[4];
+		int octet;
+		int length;
+
+		// If we just found an empty group and are not at the start
+		// then this is the empty group in the middle, i.e. the ::
+		if (token == colon && token != ip) {
+		  // Skip all the empty groups (note we set everything to zero
+		  // first so this is OK). It even deals well with the invalid
+		  // case of compressing a single 0 field, i.e. a:b:c::e:f:g:h,
+		  // which is actually invalid. That group would simply be skipped.
+		  index += (7 - number_of_groups + 1) * 2;
+		  
+		} else {
+		  if (colon) *colon = '\0';
+
+		// Pad with zero (characters!) first
+		memset(group, '0', 4);
+
+		// Copy the rest of the group into the upper chars of
+		// the group string (so that lower zeros are taken into account)
+		// E.g. ff => 00ff
+		length = strlen(token);
+		strncpy(group + (4 - length), token, length);
+
+		// Parse each group of two hex digits into one octet
+		if ((octet = parse_octet(group)) == -1) {
+			return FAILURE;
+		} else {
+		  dst_ip->s6_addr[index++] = (uint8_t)octet;
+		}
+
+		// Next octet in the group
+		if ((octet = parse_octet(group + 2)) == -1) {
+			return FAILURE;
+		} else {
+			dst_ip->s6_addr[index++] = (uint8_t)octet;
+		}
+		}
+
+		// colon was at the : (now the \0), so set
+		// it one passed that for the next token
+		// (only if colon is not null, then we break now)
+		if (colon) token = ++colon;
+		else break;
+	}
+
+	return SUCCESS;
+}
+
+
+
+
 /**
  * mac Метод получения MAC адреса по IP адресу клиента
  * @param ip     адрес интернет-подключения клиента
@@ -788,7 +866,7 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 		cout << " ++++++++++=4 " << endl;
 
 		// Выделяем сокет для подключения
-		int fd = ::socket(AF_INET, SOCK_DGRAM, IPPROTO_IP);
+		int fd = ::socket(AF_INET6, SOCK_RAW, IPPROTO_IPV6);
 		// Если файловый дескриптор не создан, выходим
 		if(fd < 0){
 			// Выводим сообщение об ошибке
