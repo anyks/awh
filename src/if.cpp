@@ -954,6 +954,7 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 			dstaddr = ((struct sockaddr_in *) ifa->ifa_dstaddr)->sin_addr.s_addr;
 			// Если искомый IP адрес найден
 			if(((netmask == 0xFFFFFFFF) && (addr == dstaddr)) || ((ifaddr & netmask) == (addr & netmask))){
+				/*
 				// Искомый IP адрес соответствует данному серверу
 				if(ifaddr == addr){
 					// Структура сетевого интерфейса
@@ -967,6 +968,7 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 					// Выходим из цикла
 					break;
 				}
+				*/
 				// Создаём структуру сетевого интерфейса
 				struct arpreq arpreq;
 				// Заполняем структуру сетевого интерфейса нулями
