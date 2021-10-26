@@ -608,22 +608,26 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 		}
 		// Получаем конечное значение итератора
 		end = (buffer.data() + size);
-		// Создаём объект подключения
-		struct sockaddr_in6 sin;
 		// Создаем буфер для получения проверяемого IPv6 адреса
 		char host[INET6_ADDRSTRLEN];
 		// Создаем буфер для получения текущего IPv6 адреса
 		char target[INET6_ADDRSTRLEN];
-		// Заполняем нулями структуру объекта подключения
-		memset(&sin, 0, sizeof(sin));
-		// Заполняем структуру нулями текущего адреса
-		memset(target, 0, INET6_ADDRSTRLEN);
-		// Устанавливаем протокол интернета
-		sin.sin6_family = family;
-		// Указываем адрес IPv6 для сервера
-		inet_pton(family, ip.c_str(), &sin.sin6_addr);
-		// Заполняем буфер данными текущего адреса IPv6
-		inet_ntop(family, &sin.sin6_addr, target, INET6_ADDRSTRLEN);
+		{
+			// Создаём объект подключения
+			struct sockaddr_in6 sin6;
+			// Заполняем нулями структуру объекта подключения
+			memset(&sin6, 0, sizeof(sin6));
+			// Заполняем структуру нулями текущего адреса
+			memset(target, 0, INET6_ADDRSTRLEN);
+			// Устанавливаем протокол интернета
+			sin6.sin6_family = family;
+			// Указываем адрес IPv6 для сервера
+			inet_pton(family, ip.c_str(), &sin6.sin6_addr);
+			// Заполняем буфер данными текущего адреса IPv6
+			inet_ntop(family, &sin6.sin6_addr, target, INET6_ADDRSTRLEN);
+
+			cout << " ^^^^^^^^^^^ " << target << endl;
+		}
 		// Переходим по всем сетевым интерфейсам
 		for(it = buffer.data(); it < end; it += rtm->rtm_msglen){
 			// Получаем указатель сетевого интерфейса
