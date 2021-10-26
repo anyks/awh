@@ -860,7 +860,7 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 				// Подключаем сетевой интерфейс к сокету
 				if(::ioctl(fd, SIOCGARP, &arpreq) == -1){
 
-					continue;
+					// continue;
 
 					//
 					// Пропускаем если ошибка не значительная
