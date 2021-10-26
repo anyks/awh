@@ -563,7 +563,7 @@ const string awh::IfNet::name(const string & eth) const noexcept {
 
 
 
-#if __GLIBC__ >= 2 && __GLIBC_MINOR >= 1
+//#if __GLIBC__ >= 2 && __GLIBC_MINOR >= 1
 
 
 #include <netpacket/packet.h>
@@ -572,19 +572,19 @@ const string awh::IfNet::name(const string & eth) const noexcept {
 #include <net/ethernet.h>       /* the L2 protocols */
 
 
-#else
+//#else
 
-
+/*
 #include <asm/types.h>
 
 
 #include <linux/if_packet.h>
+*/
+
+//#include <linux/if_ether.h>     /* The L2 protocols */ 
 
 
-#include <linux/if_ether.h>     /* The L2 protocols */ 
-
-
-#endif
+//#endif
 
 
 /**
