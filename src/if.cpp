@@ -1057,6 +1057,9 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 				memset(host, 0, INET6_ADDRSTRLEN);
 				// Запрашиваем данные ip адреса
 				inet_ntop(AF_INET6, (void *) &pipTable->Table[i].Address.Ipv6.sin6_addr, host, INET6_ADDRSTRLEN);
+
+				cout << " +++++++++++++++ " << target << " == " << host << endl;
+
 				// Если искомый IP адрес найден
 				if(strcmp(target, host) == 0){
 					// Если MAC адрес получен
