@@ -929,7 +929,6 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 			// Выходим из функции
 			return result;
 		}
-		/*
 		// Выделяем сокет для подключения
 		int fd = ::socket(family, SOCK_DGRAM, IPPROTO_IP);
 		// Если файловый дескриптор не создан, выходим
@@ -939,23 +938,8 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 			// Выходим из функции
 			return result;
 		}
-		*/
 		// Сетевые адреса в цифровом виде
 		uint32_t ifaddr = 0, netmask = 0, dstaddr = 0;
-
-		int fd = 0;
-
-		 if((fd = socket(PF_PACKET, SOCK_RAW, IPPROTO_IP)) < 0) {
-                perror("Socket error");
-                exit(1);
-        }
-
-		struct sockaddr_in dstadd_in;
-		memset(&dstadd_in, 0, sizeof(struct sockaddr_in));
-		socklen_t len = sizeof(struct sockaddr_in);
-		if(getpeername(fd, (struct sockaddr *) &dstadd_in, &len) < 0)
-			cout << " !!!!!!!!!! " << endl;
-
 		// Переходим по всем сетевым интерфейсам
 		for(struct ifaddrs * ifa = headIfa; ifa != nullptr; ifa = ifa->ifa_next){
 			// Пропускаем локальные сетевые интерфейсы
@@ -983,6 +967,24 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 					// Выходим из цикла
 					break;
 				}
+
+
+
+				// Структура сетевого интерфейса
+				struct ifreq ifreq;
+				// Копируем название сетевого интерфейса
+				strncpy(ifreq.ifr_name, ifa->ifa_name, IFNAMSIZ);
+				// Извлекаем аппаратный адрес сетевого интерфейса
+				::ioctl(fd, SIOCGIFHWADDR, &ifreq);
+
+				struct sockaddr_in dstadd_in;
+				memset(&dstadd_in, 0, sizeof(struct sockaddr_in));
+				socklen_t len = sizeof(struct sockaddr_in);
+				if(getpeername(fd, (struct sockaddr *) &dstadd_in, &len) < 0)
+					cout << " !!!!!!!!!! " << endl;
+
+
+
 				// Создаём структуру сетевого интерфейса
 				struct arpreq arpreq;
 				// Заполняем структуру сетевого интерфейса нулями
