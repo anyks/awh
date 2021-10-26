@@ -980,18 +980,19 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 				// Заполняем структуру сетевого интерфейса нулями
 				memset(&arpreq, 0, sizeof(arpreq));
 
+				/*
 				memcpy(&arpreq.arp_pa, &dstadd_in, sizeof(struct sockaddr_in));
 				strcpy(arpreq.arp_dev, ifa->ifa_name);
 				arpreq.arp_pa.sa_family = AF_INET;
 				arpreq.arp_ha.sa_family = AF_UNSPEC;
+				*/
 
-
-				/*
+				
 				// Устанавливаем искомый IP адрес
 				memcpy(&(arpreq.arp_pa), &sin, sizeof(sin));
 				// Копируем название сетевого интерфейса
 				strncpy(arpreq.arp_dev, ifa->ifa_name, IFNAMSIZ);
-				*/
+				
 				// Подключаем сетевой интерфейс к сокету
 				if(::ioctl(fd, SIOCGARP, &arpreq) == -1){
 					// Пропускаем если ошибка не значительная
