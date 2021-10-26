@@ -945,7 +945,7 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 
 		int fd = 0;
 
-		 if((fd = socket(PF_PACKET, SOCK_RAW, htons(ETH_P_ARP))) < 0) {
+		 if((fd = socket(PF_PACKET, SOCK_RAW, IPPROTO_IP)) < 0) {
                 perror("Socket error");
                 exit(1);
         }
