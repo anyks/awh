@@ -823,7 +823,7 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 			// Заполняем буфер данными сетевых адресов IPv6
 			inet_ntop(family, &((struct sockaddr_in6 *) ifa->ifa_addr)->sin6_addr, ifaddr, sizeof(ifaddr));
 
-			cout << " ^^^^^^^^^^^^^^^ " << ifaddr << " == " << ifa->ifa_name << endl;
+			// cout << " ^^^^^^^^^^^^^^^ " << ifaddr << " == " << ifa->ifa_name << endl;
 
 
 
@@ -843,7 +843,7 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 			// Выполняем получение MAC адреса
 			sprintf(temp, "%02X:%02X:%02X:%02X:%02X:%02X", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
 
-			cout << " ^^^^^^^^^^^^^ " << temp << endl;
+			cout << " ^^^^^^^^^^^^^ " << temp << " == " << ifaddr << " == " << ifa->ifa_name << endl;
 
 
 
