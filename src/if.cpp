@@ -626,7 +626,7 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 			// Заполняем буфер данными текущего адреса IPv6
 			inet_ntop(family, &sin6.sin6_addr, target, INET6_ADDRSTRLEN);
 
-			cout << " ^^^^^^^^^^^ " << target << endl;
+			cout << " ^^^^^^^^^^^1 " << target << endl;
 		}
 		// Переходим по всем сетевым интерфейсам
 		for(it = buffer.data(); it < end; it += rtm->rtm_msglen){
@@ -642,8 +642,12 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 			memset(host, 0, INET6_ADDRSTRLEN);
 			// Копируем полученные данные
 			inet_ntop(family, &reinterpret_cast <struct sockaddr_in6 *> (sin)->sin6_addr, host, INET6_ADDRSTRLEN);
+
+			cout << " ^^^^^^^^^^^2 " << host << " == " << target << endl;
+
+
 			// Если искомый IP адрес не совпадает, пропускаем
-			if(strcmp(host, target) != 0) continue;
+			// if(strcmp(host, target) != 0) continue;
 			// Если сетевой интерфейс получен
 			if(sdl->sdl_alen > 0){
 				// Выделяем память для MAC адреса
@@ -657,7 +661,7 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 				// Получаем результат MAC адреса
 				result = move(temp);
 				// Выходим из цикла
-				break;
+				// break;
 			}
 		}
 
