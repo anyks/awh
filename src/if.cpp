@@ -801,7 +801,7 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 
 		// Создаем буферы сетевых адресов
 		char ifaddr[INET6_ADDRSTRLEN];
-		char dstaddr[INET6_ADDRSTRLEN];
+		// char dstaddr[INET6_ADDRSTRLEN];
 		// Переходим по всем сетевым интерфейсам
 		for(struct ifaddrs * ifa = headIfa; ifa != nullptr; ifa = ifa->ifa_next){
 			// Пропускаем локальные сетевые интерфейсы
@@ -815,7 +815,7 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 			if((ifa->ifa_addr == nullptr) || (ifa->ifa_flags & IFF_POINTOPOINT) || (ifa->ifa_addr->sa_family != family)) continue;
 			// Заполняем структуры нулями сетевых адресов
 			memset(ifaddr,  0, sizeof(ifaddr));
-			memset(dstaddr, 0, sizeof(dstaddr));
+			// memset(dstaddr, 0, sizeof(dstaddr));
 
 			cout << " ++++++++++=7 " << endl;
 
@@ -824,12 +824,11 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 
 			cout << " ^^^^^^^^^^^^^^^ " << ifaddr << " == " << ifa->ifa_name << endl;
 
-			inet_ntop(family, &((struct sockaddr_in6 *) ifa->ifa_dstaddr)->sin6_addr, dstaddr, sizeof(dstaddr));
-
-			cout << " ++++++++++=8 " << dstaddr << " == " << target << endl;
+			// inet_ntop(family, &((struct sockaddr_in6 *) ifa->ifa_dstaddr)->sin6_addr, dstaddr, sizeof(dstaddr));
+			// cout << " ++++++++++=8 " << dstaddr << " == " << target << endl;
 
 			// Если искомый IP адрес найден
-			if(strcmp(dstaddr, target) == 0){
+			// if(strcmp(dstaddr, target) == 0){
 
 				cout << " ----------- " << ifaddr << " == " << target << " == " << ifa->ifa_name << endl;
 
@@ -868,7 +867,7 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 					// Выходим из цикла
 					break;
 				}
-			}
+			// }
 		}
 		// Очищаем объект сетевой карты
 		freeifaddrs(headIfa);
