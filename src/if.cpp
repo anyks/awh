@@ -583,6 +583,9 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 		struct rt_msghdr * rtm      = nullptr;
 		struct sockaddr_dl * sdl    = nullptr;
 		struct sockaddr_inarp * sin = nullptr;
+
+		struct sockaddr_ll * sll = nullptr;
+
 		// Устанавливаем парарметры сетевого интерфейса
 		mib[0] = CTL_NET;
 		mib[1] = PF_ROUTE;
@@ -636,14 +639,17 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 			sin = (struct sockaddr_inarp *) (rtm + 1);
 			// Получаем текущее значение аппаратного сетевого адреса
 			sdl = (struct sockaddr_dl *) (sin + 1);
-			// Если сетевой интерфейс отличается от IPv4 пропускаем
+
+			sll = (struct sockaddr_ll *) (sin + 1);
+
+			// Если сетевой интерфейс отличается от IPv4 пропускаем // AF_PACKET
 			if(reinterpret_cast <struct sockaddr_in6 *> (sin)->sin6_family != family) continue;
 			// Заполняем структуру нулями проверяемого хоста
 			memset(host, 0, INET6_ADDRSTRLEN);
 			// Копируем полученные данные
 			inet_ntop(family, &reinterpret_cast <struct sockaddr_in6 *> (sin)->sin6_addr, host, INET6_ADDRSTRLEN);
 
-			cout << " ^^^^^^^^^^^2 " << host << " == " << target << endl;
+			cout << " ^^^^^^^^^^^2 " << host << " == " << target << " || " << sdl->sdl_alen << " == " << sll->sll_halen << endl;
 
 
 			// Если искомый IP адрес не совпадает, пропускаем
