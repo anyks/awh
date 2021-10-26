@@ -635,7 +635,7 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 				// Получаем текущий адрес IPv6
 				struct in6_addr * in6 = &sin->sin6_addr;
 				// Проверяем вид интерфейса, если интерфейс локальный и скоуп-ID не установлен
-				if((IN6_IS_ADDR_LINKLOCAL(in6) || IN6_IS_ADDR_MC_LINKLOCAL(in6) || IN6_IS_ADDR_MC_INTFACELOCAL(in6)) && (sin->sin6_scope_id == 0)){
+				if((IN6_IS_ADDR_LINKLOCAL(in6) || IN6_IS_ADDR_MC_LINKLOCAL(in6)) && (sin->sin6_scope_id == 0)){
 					// Принудительно устанавливаем скоуп-ID
 					sin->sin6_scope_id = (u_int32_t) ntohs(* (u_short *) &in6->s6_addr[2]);
 					// Выполняем зануление третьего хексета
