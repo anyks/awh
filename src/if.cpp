@@ -270,7 +270,7 @@ void awh::IfNet::getHWAddresses(const int family) noexcept {
 	// Заполняем нуляем наши буферы
 	memset(buffer, 0, sizeof(buffer));
 	// Выделяем сокет для подключения
-	int fd = ::socket(family, SOCK_DGRAM, 0);
+	int fd = ::socket(family, SOCK_DGRAM, IPPROTO_IP);
 	// Если файловый дескриптор не создан, выходим
 	if(fd < 0){
 		// Выводим сообщение об ошибке
@@ -1057,9 +1057,6 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 				memset(host, 0, INET6_ADDRSTRLEN);
 				// Запрашиваем данные ip адреса
 				inet_ntop(AF_INET6, (void *) &pipTable->Table[i].Address.Ipv6.sin6_addr, host, INET6_ADDRSTRLEN);
-
-				cout << " +++++++++++++++ " << target << " == " << host << endl;
-
 				// Если искомый IP адрес найден
 				if(strcmp(target, host) == 0){
 					// Если MAC адрес получен

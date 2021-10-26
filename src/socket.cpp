@@ -22,7 +22,7 @@ string awh::Sockets::serverIp(const int family) noexcept {
 			// Создаем буфер для получения ip адреса
 			char buffer[INET_ADDRSTRLEN];
 			// Создаем сокет
-			evutil_socket_t sock = socket(family, SOCK_DGRAM, 0);
+			evutil_socket_t sock = socket(family, SOCK_DGRAM, IPPROTO_IP);
 			// Если сокет создан
 			if(sock > -1){
 				// Создаем структуру подключения сервера
@@ -64,7 +64,7 @@ string awh::Sockets::serverIp(const int family) noexcept {
 			// Создаем буфер для получения ip адреса
 			char buffer[INET6_ADDRSTRLEN];
 			// Создаем сокет
-			evutil_socket_t sock = socket(family, SOCK_DGRAM, 0);
+			evutil_socket_t sock = socket(family, SOCK_DGRAM, IPPROTO_IP);
 			// Если сокет создан
 			if(sock > -1){
 				// Создаем структуру подключения сервера
