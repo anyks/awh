@@ -183,17 +183,6 @@ void awh::CoreServer::accept(const evutil_socket_t fd, const short event, void *
 				mac = core->ifnet.mac(ip, AF_INET6);
 			} break;
 		}
-
-		
-		// 2a03:b0c0:3:d0::42e1:c001
-		// 2400:6180:0:d0::70:7001
-		const string mac1 = core->ifnet.mac("10.116.0.2");//, AF_INET6);
-		// const string mac1 = core->ifnet.mac("fe80::c4fa:73ff:fef8:ad9b", AF_INET6);
-		// const string mac1 = core->ifnet.mac("2400:6180:0:d0::70:7001", AF_INET6);
-		cout << " *************** " << mac1 << endl;
-		
-
-
 		// Если функция обратного вызова установлена
 		if(wrk->acceptFn != nullptr){
 			// Выполняем проверку, разрешено ли клиенту подключиться к серверу
