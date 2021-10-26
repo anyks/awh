@@ -555,10 +555,6 @@ const string awh::IfNet::name(const string & eth) const noexcept {
 	// Выводим результат
 	return result;
 }
-
-#define ROUNDUP(a) \
-	((a) > 0 ? (1 + (((a) - 1) | (sizeof(long) - 1))) : sizeof(long))
-
 /**
  * mac Метод получения MAC адреса по IP адресу клиента
  * @param ip     адрес интернет-подключения клиента
@@ -908,6 +904,12 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 		}
 		// Сетевые адреса в цифровом виде
 		uint32_t ifaddr = 0, netmask = 0, dstaddr = 0;
+
+		struct sockaddr_in sin2;
+		memset(&sin2, 0, sizeof(sin2));
+		// Устанавливаем протокол интернета
+		sin2.sin_family = AF_INET;
+
 		// Переходим по всем сетевым интерфейсам
 		for(struct ifaddrs * ifa = headIfa; ifa != nullptr; ifa = ifa->ifa_next){
 			// Если сетевой интерфейс не соответствует, пропускаем
@@ -936,7 +938,11 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 				// Заполняем структуру сетевого интерфейса нулями
 				memset(&arpreq, 0, sizeof(arpreq));
 				// Устанавливаем искомый IP адрес
-				memcpy(&(arpreq.arp_pa), &sin, sizeof(sin));
+				// memcpy(&(arpreq.arp_pa), &sin, sizeof(sin));
+
+
+				memcpy(&(arpreq.arp_pa), &sin2, sizeof(sin2));
+
 				// Копируем название сетевого интерфейса
 				strncpy(arpreq.arp_dev, ifa->ifa_name, IFNAMSIZ);
 				// Подключаем сетевой интерфейс к сокету

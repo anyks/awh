@@ -52,6 +52,9 @@
 	#include <sys/sockio.h>
 	#include <sys/sysctl.h>
 	#include <net/route.h>
+	// Создаём функцию округления
+	#define ROUNDUP(a) \
+		((a) > 0 ? (1 + (((a) - 1) | (sizeof(long) - 1))) : sizeof(long))
 /**
  * Если операционной системой является Linux
  */
