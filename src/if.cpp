@@ -560,10 +560,10 @@ const string awh::IfNet::name(const string & eth) const noexcept {
 #include <sys/socket.h>
 
 
-#include <features.h>   /* for the glibc version number */
 
 
-#if __GLIBC__ >= 2 && __GLIBC_MINOR >= 1 
+
+#if __GLIBC__ >= 2 && __GLIBC_MINOR >= 1
 
 
 #include <netpacket/packet.h>
