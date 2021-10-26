@@ -555,6 +555,38 @@ const string awh::IfNet::name(const string & eth) const noexcept {
 	// Выводим результат
 	return result;
 }
+
+
+#include <sys/socket.h>
+
+
+#include <features.h>   /* for the glibc version number */
+
+
+#if __GLIBC__ >= 2 && __GLIBC_MINOR >= 1 
+
+
+#include <netpacket/packet.h>
+
+
+#include <net/ethernet.h>       /* the L2 protocols */
+
+
+#else
+
+
+#include <asm/types.h>
+
+
+#include <linux/if_packet.h>
+
+
+#include <linux/if_ether.h>     /* The L2 protocols */ 
+
+
+#endif
+
+
 /**
  * mac Метод получения MAC адреса по IP адресу клиента
  * @param ip     адрес интернет-подключения клиента
