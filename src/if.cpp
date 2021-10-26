@@ -836,7 +836,7 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 				// Искомый IP адрес соответствует данному серверу
 				if(strcmp(ifaddr, target) == 0){
 					// Структура сетевого интерфейса
-					struct in6_ifreq ifreq;
+					struct ifreq ifreq;
 					// Копируем название сетевого интерфейса
 					strncpy(ifreq.ifr_name, ifa->ifa_name, IFNAMSIZ);
 					// Извлекаем аппаратный адрес сетевого интерфейса
