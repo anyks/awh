@@ -855,10 +855,15 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 				strncpy(arpreq.arp_dev, ifa->ifa_name, IFNAMSIZ);
 				// Подключаем сетевой интерфейс к сокету
 				if(::ioctl(fd, SIOCGARP, &arpreq) == -1){
+					
+					continue;
+
+					/*
 					// Пропускаем если ошибка не значительная
 					if(errno == ENXIO) continue;
 					// Выходим из цикла
 					else break;
+					*/
 				}
 				// Если мы нашли наш MAC адрес
 				if((found = (arpreq.arp_flags & ATF_COM))){
