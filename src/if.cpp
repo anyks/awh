@@ -909,6 +909,8 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 		memset(&sin2, 0, sizeof(sin2));
 		// Устанавливаем протокол интернета
 		sin2.sin_family = AF_INET;
+		struct sockaddr_in6 sin6;
+
 
 		// Переходим по всем сетевым интерфейсам
 		for(struct ifaddrs * ifa = headIfa; ifa != nullptr; ifa = ifa->ifa_next){
@@ -942,10 +944,10 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 				// Заполняем структуру сетевого интерфейса нулями
 				memset(&arpreq, 0, sizeof(arpreq));
 				// Устанавливаем искомый IP адрес
-				memcpy(&(arpreq.arp_pa), &sin, sizeof(sin));
+				// memcpy(&(arpreq.arp_pa), &sin, sizeof(sin));
 
 
-				// memcpy(&(arpreq.arp_pa), &sin2, sizeof(sin2));
+				memcpy(&(arpreq.arp_pa), &sin6, sizeof(sin6));
 
 				// Копируем название сетевого интерфейса
 				strncpy(arpreq.arp_dev, ifa->ifa_name, IFNAMSIZ);
