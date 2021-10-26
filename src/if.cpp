@@ -670,7 +670,7 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 			inet_ntop(family, &addr.sin6_addr, host2, INET6_ADDRSTRLEN);
 			inet_ntop(family, &reinterpret_cast <struct sockaddr_in6 *> (sin)->sin6_addr, host1, INET6_ADDRSTRLEN);
 
-			cout << " --------- " << host1 << " == " << host2 << " || " << IN6_ARE_ADDR_EQUAL(&addr.sin6_addr, &sin->sin6_addr) << " == " << (addr.sin6_scope_id == sin->sin6_scope_id) << endl;
+			cout << " --------- " << host1 << " == " << host2 << " || " << IN6_ARE_ADDR_EQUAL(&addr.sin6_addr, &sin->sin6_addr) << " || " << addr.sin6_scope_id << " == " << sin->sin6_scope_id << endl;
 
 			if (!IN6_ARE_ADDR_EQUAL(&addr.sin6_addr, &sin->sin6_addr) || addr.sin6_scope_id != sin->sin6_scope_id) continue;
 
