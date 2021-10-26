@@ -158,6 +158,7 @@ namespace awh {
 			 * @return    название сетевого интерфейса
 			 */
 			const string name(const string & eth) const noexcept;
+		public:
 			/**
 			 * mac Метод получения MAC адреса по IP адресу клиента
 			 * @param ip     адрес интернет-подключения клиента
@@ -166,12 +167,32 @@ namespace awh {
 			 */
 			const string mac(const string & ip, const int family = AF_INET) const noexcept;
 			/**
-			 * Метод вывода IP адреса соответствующего сетевому интерфейсу
+			 * mac Метод определения мак адреса клиента
+			 * @param sin    объект подключения
+			 * @param family тип протокола интернета AF_INET или AF_INET6
+			 * @return       данные мак адреса
+			 */
+			const string mac(struct sockaddr * sin, const int family = AF_INET) const noexcept;
+		public:
+			/**
+			 * ip Метод получения основного IP адреса на сервере
+			 * @param family тип протокола интернета AF_INET или AF_INET6
+			 */
+			const string ip(const int family = AF_INET) const noexcept;
+			/**
+			 * ip Метод вывода IP адреса соответствующего сетевому интерфейсу
 			 * @param eth    идентификатор сетевого интерфейса
 			 * @param family тип протокола интернета AF_INET или AF_INET6
 			 * @return       IP адрес соответствующий сетевому интерфейсу
 			 */
 			const string & ip(const string & eth, const int family = AF_INET) const noexcept;
+			/**
+			 * ip Метод получения IP адреса из подключения
+			 * @param sin    объект подключения
+			 * @param family тип интернет протокола
+			 * @return       данные ip адреса
+			 */
+			const string ip(struct sockaddr * sin, const int family = AF_INET) const noexcept;
 		public:
 			/**
 			 * IfNet Конструктор

@@ -64,24 +64,6 @@ namespace awh {
 	 * Sockets Структура функций для работы с сокетами
 	 */
 	typedef struct Sockets {
-		/**
-		 * serverIp Метод получения основного ip на сервере
-		 * @param family Тип интернет подключения (IPv4 или IPv6)
-		 */
-		static string serverIp(const int family) noexcept;
-		/**
-		 * mac Метод определения мак адреса клиента
-		 * @param ctx указатель на объект подключения
-		 * @return    данные мак адреса
-		 */
-		static string mac(struct sockaddr * ctx = nullptr) noexcept;
-		/**
-		 * ip Метод получения данных ip адреса
-		 * @param family тип интернет протокола
-		 * @param ctx    указатель на объект подключения
-		 * @return       данные ip адреса
-		 */
-		static string ip(const int family, void * ctx = nullptr) noexcept;
 /**
  * Методы только для OS Windows
  */

@@ -159,9 +159,9 @@ void awh::CoreServer::accept(const evutil_socket_t fd, const short event, void *
 				// Если сокет не создан тогда выходим
 				if(socket < 0) return;
 				// Получаем данные подключившегося клиента
-				ip = sockets_t::ip(AF_INET, &client);
+				ip = core->ifnet.ip((struct sockaddr *) &client, AF_INET);
 				// Если IP адрес получен пустой, устанавливаем адрес сервера
-				if(ip.compare("0.0.0.0") == 0) ip = sockets_t::serverIp(AF_INET);
+				if(ip.compare("0.0.0.0") == 0) ip = core->ifnet.ip(AF_INET);
 				// Получаем данные мак адреса клиента
 				mac = core->ifnet.mac(ip, AF_INET);
 			} break;
@@ -176,9 +176,9 @@ void awh::CoreServer::accept(const evutil_socket_t fd, const short event, void *
 				// Если сокет не создан тогда выходим
 				if(socket < 0) return;
 				// Получаем данные подключившегося клиента
-				ip = sockets_t::ip(AF_INET6, &client);
+				ip = core->ifnet.ip((struct sockaddr *) &client, AF_INET6);
 				// Если IP адрес получен пустой, устанавливаем адрес сервера
-				if(ip.compare("::") == 0) ip = sockets_t::serverIp(AF_INET6);
+				if(ip.compare("::") == 0) ip = core->ifnet.ip(AF_INET6);
 				// Получаем данные мак адреса клиента
 				mac = core->ifnet.mac(ip, AF_INET6);
 			} break;
@@ -581,7 +581,7 @@ void awh::CoreServer::init(const size_t wid, const u_int port, const string & ho
 			// Если хост передан, устанавливаем
 			if(!host.empty()) wrk->host = host;
 			// Иначе получаем IP адрес сервера автоматически
-			else wrk->host = sockets_t::serverIp(this->net.family);
+			else wrk->host = this->ifnet.ip(this->net.family);
 		}
 	}
 }

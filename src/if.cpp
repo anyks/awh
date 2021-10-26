@@ -28,7 +28,7 @@ void awh::IfNet::getIPAddresses(const int family) noexcept {
 	// Заполняем нуляем наши буферы
 	memset(buffer, 0, sizeof(buffer));
 	// Выделяем сокет для подключения
-	int fd = ::socket(family, SOCK_DGRAM, IPPROTO_IP);
+	const int fd = ::socket(family, SOCK_DGRAM, IPPROTO_IP);
 	// Если файловый дескриптор не создан, выходим
 	if(fd < 0){
 		// Выводим сообщение об ошибке
@@ -102,7 +102,7 @@ void awh::IfNet::getIPAddresses(const int family) noexcept {
 	// Заполняем нуляем наши буферы
 	memset(buffer, 0, sizeof(buffer));
 	// Выделяем сокет для подключения
-	int fd = ::socket(family, SOCK_DGRAM, IPPROTO_IP);
+	const int fd = ::socket(family, SOCK_DGRAM, IPPROTO_IP);
 	// Если файловый дескриптор не создан, выходим
 	if(fd < 0){
 		// Выводим сообщение об ошибке
@@ -270,7 +270,7 @@ void awh::IfNet::getHWAddresses(const int family) noexcept {
 	// Заполняем нуляем наши буферы
 	memset(buffer, 0, sizeof(buffer));
 	// Выделяем сокет для подключения
-	int fd = ::socket(family, SOCK_DGRAM, IPPROTO_IP);
+	const int fd = ::socket(family, SOCK_DGRAM, IPPROTO_IP);
 	// Если файловый дескриптор не создан, выходим
 	if(fd < 0){
 		// Выводим сообщение об ошибке
@@ -334,7 +334,7 @@ void awh::IfNet::getHWAddresses(const int family) noexcept {
 	// Заполняем нуляем наши буферы
 	memset(buffer, 0, sizeof(buffer));
 	// Выделяем сокет для подключения
-	int fd = ::socket(family, SOCK_DGRAM, IPPROTO_IP);
+	const int fd = ::socket(family, SOCK_DGRAM, IPPROTO_IP);
 	// Если файловый дескриптор не создан, выходим
 	if(fd < 0){
 		// Выводим сообщение об ошибке
@@ -768,7 +768,7 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 			return result;
 		}
 		// Выделяем сокет для подключения
-		int fd = ::socket(AF_INET6, SOCK_RAW, IPPROTO_IPV6);
+		const int fd = ::socket(AF_INET6, SOCK_RAW, IPPROTO_IPV6);
 		// Если файловый дескриптор не создан, выходим
 		if(fd < 0){
 			// Выводим сообщение об ошибке
@@ -877,7 +877,7 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 			return result;
 		}
 		// Выделяем сокет для подключения
-		int fd = ::socket(family, SOCK_DGRAM, IPPROTO_IP);
+		const int fd = ::socket(family, SOCK_DGRAM, IPPROTO_IP);
 		// Если файловый дескриптор не создан, выходим
 		if(fd < 0){
 			// Выводим сообщение об ошибке
@@ -1054,7 +1054,146 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 	return result;
 }
 /**
- * Метод вывода IP адреса соответствующего сетевому интерфейсу
+ * mac Метод определения мак адреса клиента
+ * @param sin    объект подключения
+ * @param family тип протокола интернета AF_INET или AF_INET6
+ * @return       данные мак адреса
+ */
+const string awh::IfNet::mac(struct sockaddr * sin, const int family) const noexcept {
+	// Результат работы функции
+	string result = "";
+	// Если данные переданы
+	if(sin != nullptr){
+		// Выделяем память для MAC адреса
+		char hardware[18];
+		// Заполняем нуляем наши буферы
+		memset(hardware, 0, sizeof(hardware));
+		// Определяем тип интернет протокола
+		switch(family){
+			// Если это IPv4
+			case AF_INET: {
+				// Извлекаем MAC адрес
+				const u_char * cp = (u_char *) sin->sa_data;
+				// Выполняем получение MAC адреса
+				sprintf(hardware, "%02X:%02X:%02X:%02X:%02X:%02X", cp[0], cp[1], cp[2], cp[3], cp[4], cp[5]);
+				// Выводим данные мак адреса
+				result = move(hardware);
+			} break;
+			// Если это IPv6
+			case AF_INET6: {
+				// Создаём буфер для MAC адреса
+				u_char mac[6];
+				// Извлекаем данные MAC адреса
+				mac[0] = ((struct sockaddr_in6 *) sin)->sin6_addr.s6_addr[8] ^ 0x02;
+				mac[1] = ((struct sockaddr_in6 *) sin)->sin6_addr.s6_addr[9];
+				mac[2] = ((struct sockaddr_in6 *) sin)->sin6_addr.s6_addr[10];
+				mac[3] = ((struct sockaddr_in6 *) sin)->sin6_addr.s6_addr[13];
+				mac[4] = ((struct sockaddr_in6 *) sin)->sin6_addr.s6_addr[14];
+				mac[5] = ((struct sockaddr_in6 *) sin)->sin6_addr.s6_addr[15];
+				// Выполняем получение MAC адреса
+				sprintf(hardware, "%02X:%02X:%02X:%02X:%02X:%02X", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+				// Получаем результат MAC адреса
+				result = move(hardware);
+			} break;
+		}
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * ip Метод получения основного IP адреса на сервере
+ * @param family тип протокола интернета AF_INET или AF_INET6
+ */
+const string awh::IfNet::ip(const int family) const noexcept {
+	// Результат рарботы функции
+	string result = "";
+	// Создаем сокет
+	const int fd = ::socket(family, SOCK_DGRAM, IPPROTO_IP);
+	// Если сокет создан
+	if(fd > -1){
+		// Определяем тип интернет протокола
+		switch(family){
+			// Если это IPv4
+			case AF_INET: {
+				// Создаем список dns серверов
+				vector <string> dns = IPV4_RESOLVER;
+				// Создаем структуру подключения сервера
+				struct sockaddr_in serv;
+				// Обнуляем структуру подключения
+				memset(&serv, 0, sizeof(serv));
+				// Указываем тип сетевого подключения IPv4
+				serv.sin_family = family;
+				// Устанавливаем порт DNS сервера
+				serv.sin_port = htons(53);
+				// Указываем адрес DNS сервера
+				serv.sin_addr.s_addr = inet_addr(dns.front().c_str());
+				// Выполняем подключение к серверу
+				int conn = ::connect(fd, (const sockaddr *) &serv, sizeof(serv));
+				// Если подключение удачное
+				if(conn > -1){
+					// Создаем структуру имени
+					struct sockaddr_in name;
+					// Размер структуры
+					socklen_t size = sizeof(name);
+					// Запрашиваем имя сокета
+					conn = ::getsockname(fd, (sockaddr *) &name, &size);
+					// Если ошибки нет
+					if(conn > -1){
+						// Создаем буфер для получения ip адреса
+						char buffer[INET_ADDRSTRLEN];
+						// Обнуляем массив
+						memset(buffer, 0, sizeof(buffer));
+						// Запрашиваем данные ip адреса
+						inet_ntop(family, &name.sin_addr, buffer, sizeof(buffer));
+						// Выводим результат
+						result = move(buffer);
+					}
+				}
+			} break;
+			// Если это IPv6
+			case AF_INET6: {
+				// Создаем список dns серверов
+				vector <string> dns = IPV6_RESOLVER;
+				// Создаем структуру подключения сервера
+				struct sockaddr_in6 serv;
+				// Обнуляем структуру подключения
+				memset(&serv, 0, sizeof(serv));
+				// Указываем тип сетевого подключения IPv4
+				serv.sin6_family = family;
+				// Устанавливаем порт DNS сервера
+				serv.sin6_port = htons(53);
+				// Указываем адреса
+				inet_pton(family, dns.front().c_str(), &serv.sin6_addr);
+				// Выполняем подключение к серверу
+				int conn = ::connect(fd, (const sockaddr *) &serv, sizeof(serv));
+				// Если подключение удачное
+				if(conn > -1){
+					// Создаем структуру имени
+					struct sockaddr_in6 name;
+					// Размер структуры
+					socklen_t size = sizeof(name);
+					// Запрашиваем имя сокета
+					conn = ::getsockname(fd, (sockaddr *) &name, &size);
+					// Если ошибки нет
+					if(conn > -1){
+						// Создаем буфер для получения ip адреса
+						char buffer[INET6_ADDRSTRLEN];
+						// Обнуляем массив
+						memset(buffer, 0, sizeof(buffer));
+						// Запрашиваем данные ip адреса
+						inet_ntop(family, &name.sin6_addr, buffer, sizeof(buffer));
+						// Выводим результат
+						result = move(buffer);
+					}
+				}
+			} break;
+		}
+	}
+	// Сообщаем что ничего не найдено
+	return result;
+}
+/**
+ * ip Метод вывода IP адреса соответствующего сетевому интерфейсу
  * @param eth    идентификатор сетевого интерфейса
  * @param family тип протокола интернета AF_INET или AF_INET6
  * @return       IP адрес соответствующий сетевому интерфейсу
@@ -1082,4 +1221,48 @@ const string & awh::IfNet::ip(const string & eth, const int family) const noexce
 	}
 	// Выводим результат
 	return this->result;
+}
+/**
+ * ip Метод получения IP адреса из подключения
+ * @param sin    объект подключения
+ * @param family тип интернет протокола
+ * @return       данные ip адреса
+ */
+const string awh::IfNet::ip(struct sockaddr * sin, const int family) const noexcept {
+	// Результат работы функции
+	string result = "";
+	// Если данные переданы
+	if(sin != nullptr){
+		// Определяем тип интернет протокола
+		switch(family){
+			// Если это IPv4
+			case AF_INET: {
+				// Создаем буфер для получения ip адреса
+				char buffer[INET_ADDRSTRLEN];
+				// Заполняем структуру нулями
+				memset(buffer, 0, sizeof(buffer));
+				// Получаем данные адреса
+				struct sockaddr_in * s = reinterpret_cast <struct sockaddr_in *> (sin);
+				// Копируем полученные данные
+				inet_ntop(family, &s->sin_addr, buffer, sizeof(buffer));
+				// Выводим результат
+				result = buffer;
+			}
+			// Если это IPv6
+			case AF_INET6: {
+				// Создаем буфер для получения ip адреса
+				char buffer[INET6_ADDRSTRLEN];
+				// Заполняем структуру нулями
+				memset(buffer, 0, sizeof(buffer));
+				// Получаем данные адреса
+				struct sockaddr_in6 * s = reinterpret_cast <struct sockaddr_in6 *> (sin);
+				// Копируем полученные данные
+				inet_ntop(family, &s->sin6_addr, buffer, sizeof(buffer));
+				// Выводим результат
+				result = buffer;
+			}
+		}
+	}
+	// Выводим результат
+	return result;
 }
