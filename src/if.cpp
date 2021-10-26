@@ -656,7 +656,7 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 			// Если искомый IP адрес не совпадает, пропускаем
 			// if(strcmp(host, target) != 0) continue;
 			// Если сетевой интерфейс получен
-			if(sdl->sdl_alen > 0){
+			// if(sdl->sdl_alen > 0){
 				// Выделяем память для MAC адреса
 				char temp[18];
 				// Заполняем нуляем наши буферы
@@ -665,11 +665,14 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 				const u_char * cp = (u_char *) LLADDR(sdl);
 				// Выполняем получение MAC адреса
 				sprintf(temp, "%02X:%02X:%02X:%02X:%02X:%02X", cp[0], cp[1], cp[2], cp[3], cp[4], cp[5]);
+				
+				cout << " ^^^^^^^^^^^3 " << temp << endl;
+
 				// Получаем результат MAC адреса
-				result = move(temp);
+				// result = move(temp);
 				// Выходим из цикла
 				// break;
-			}
+			//}
 		}
 
 	// Если запрашиваемый адрес IPv4
