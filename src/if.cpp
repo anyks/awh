@@ -810,14 +810,17 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 			// Если сетевой интерфейс не соответствует, пропускаем
 			if((ifa->ifa_addr == nullptr) || (ifa->ifa_flags & IFF_POINTOPOINT) || (ifa->ifa_addr->sa_family != family)) continue;
 			// Заполняем структуры нулями сетевых адресов
-			memset(ifaddr,  0, INET6_ADDRSTRLEN);
-			memset(dstaddr, 0, INET6_ADDRSTRLEN);
+			memset(ifaddr,  0, sizeof(ifaddr));
+			memset(dstaddr, 0, sizeof(dstaddr));
 
 			cout << " ++++++++++=7 " << endl;
 
 			// Заполняем буфер данными сетевых адресов IPv6
-			inet_ntop(family, &((struct sockaddr_in6 *) ifa->ifa_addr)->sin6_addr, ifaddr, INET6_ADDRSTRLEN);
-			inet_ntop(family, &((struct sockaddr_in6 *) ifa->ifa_dstaddr)->sin6_addr, dstaddr, INET6_ADDRSTRLEN);
+			inet_ntop(family, &((struct sockaddr_in6 *) ifa->ifa_addr)->sin6_addr, ifaddr, sizeof(ifaddr));
+
+			cout << " ^^^^^^^^^^^^^^^ " << ifaddr << endl;
+
+			inet_ntop(family, &((struct sockaddr_in6 *) ifa->ifa_dstaddr)->sin6_addr, dstaddr, sizeof(dstaddr));
 
 			cout << " ++++++++++=8 " << dstaddr << " == " << target << endl;
 
