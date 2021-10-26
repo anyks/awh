@@ -799,6 +799,9 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 			inet_ntop(family, &((struct sockaddr_in6 *) ifa->ifa_dstaddr)->sin6_addr, dstaddr, INET6_ADDRSTRLEN);
 			// Если искомый IP адрес найден
 			if(strcmp(dstaddr, target) == 0){
+
+				cout << " ----------- " << ifaddr << " == " << target << " == " << ifa->ifa_name << end;
+
 				// Искомый IP адрес соответствует данному серверу
 				if(strcmp(ifaddr, target) == 0){
 					// Структура сетевого интерфейса
