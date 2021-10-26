@@ -573,6 +573,7 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 	// Если запрашиваемый адрес IPv6
 	if(family == AF_INET6){
 
+		/*
 		// Создаём массив параметров сетевого интерфейса
 		int mib[6];
 		// Размер буфера данных
@@ -665,7 +666,7 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 				const u_char * cp = (u_char *) LLADDR(sdl);
 				// Выполняем получение MAC адреса
 				sprintf(temp, "%02X:%02X:%02X:%02X:%02X:%02X", cp[0], cp[1], cp[2], cp[3], cp[4], cp[5]);
-				
+
 				cout << " ^^^^^^^^^^^3 " << temp << endl;
 
 				// Получаем результат MAC адреса
@@ -674,6 +675,7 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 				// break;
 			//}
 		}
+		*/
 
 	// Если запрашиваемый адрес IPv4
 	} else if(family == AF_INET) {
@@ -725,7 +727,7 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 			// Если сетевой интерфейс отличается от IPv4 пропускаем
 			if(sin->sin_family != family) continue;
 			// Если искомый IP адрес не совпадает, пропускаем
-			if(addr != sin->sin_addr.s_addr) continue;
+			// if(addr != sin->sin_addr.s_addr) continue;
 			// Если сетевой интерфейс получен
 			if(sdl->sdl_alen > 0){
 				// Выделяем память для MAC адреса
@@ -736,10 +738,13 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 				const u_char * cp = (u_char *) LLADDR(sdl);
 				// Выполняем получение MAC адреса
 				sprintf(temp, "%02X:%02X:%02X:%02X:%02X:%02X", cp[0], cp[1], cp[2], cp[3], cp[4], cp[5]);
+				
+				cout << " ++++++++++++++ " << temp << endl;
+
 				// Получаем результат MAC адреса
 				result = move(temp);
 				// Выходим из цикла
-				break;
+				// break;
 			}
 		}
 	}
