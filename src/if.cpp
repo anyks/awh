@@ -650,20 +650,7 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 			// Если RTM не соответствует хосту, пропускаем
 			// if(!(rtm->rtm_flags & RTF_HOST)) continue;
 			// Проверяем соответствует ли IP адрес - тому, что мы ищем
-			// if(!IN6_ARE_ADDR_EQUAL(&addr.sin6_addr, &sin->sin6_addr)) continue;
-
-
-			// Создаем буфер для получения IPv6 адреса
-			char host[INET6_ADDRSTRLEN];
-			// Заполняем структуру нулями проверяемого хоста
-			memset(host, 0, INET6_ADDRSTRLEN);
-			// Копируем полученные данные
-			inet_ntop(family, &reinterpret_cast <struct sockaddr_in6 *> (sin)->sin6_addr, host, INET6_ADDRSTRLEN);
-
-			cout << " +++++++++++++++++ " << host << endl;
-
-
-			/*
+			if(!IN6_ARE_ADDR_EQUAL(&addr.sin6_addr, &sin->sin6_addr)) continue;
 			// Если сетевой интерфейс получен
 			if(sdl->sdl_alen > 0x00){
 				// Выделяем память для MAC адреса
@@ -679,7 +666,6 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 				// Выходим из цикла
 				break;
 			}
-			*/
 		}
 	// Если запрашиваемый адрес IPv4
 	} else if(family == AF_INET) {
