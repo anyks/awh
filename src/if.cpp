@@ -651,7 +651,7 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 
 			// cout << " ^^^^^^^^^^^2 " << host << " == " << target << " || " << sdl->sdl_alen << " == " << sll->sll_halen << endl;
 
-			cout << " ^^^^^^^^^^^2 " << host << " == " << target << " || " << sdl->sdl_alen << endl;
+			cout << " ^^^^^^^^^^^2 " << host << " == " << target << " || " << (u_short) sdl->sdl_alen << endl;
 
 			// Если искомый IP адрес не совпадает, пропускаем
 			// if(strcmp(host, target) != 0) continue;
