@@ -107,8 +107,8 @@ int main(int argc, char * argv[]) noexcept {
 	log.setLogName("Rest Server");
 	log.setLogFormat("%H:%M:%S %d.%m.%Y");
 
+	rest.init(2222, "127.0.0.1");
 	rest.setAuthType(auth_t::type_t::DIGEST, auth_t::alg_t::MD5);
-	rest.init(2222, "127.0.0.1", http_t::compress_t::GZIP);
 
 	rest.setExtractPassCallback(&log, [](const string & user, void * ctx) -> string {
 		log_t * log = reinterpret_cast <log_t *> (ctx);
