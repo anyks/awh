@@ -82,16 +82,22 @@ void awh::Core::persistent(evutil_socket_t fd, short event, void * ctx) noexcept
 		core_t * core = reinterpret_cast <core_t *> (ctx);
 		// Если список воркеров существует
 		if(!core->workers.empty()){
+			// Список идентификаторов адъютантов
+			vector <size_t> ids;
 			// Переходим по всему списку воркеров
 			for(auto & worker : core->workers){
 				// Получаем объект воркера
 				worker_t * wrk = const_cast <worker_t *> (worker.second);
 				// Если функция обратного вызова установлена и адъютанты существуют
 				if((wrk->persistFn != nullptr) && !wrk->adjutants.empty()){
-					// Переходим по всему списку адъютантов
-					for(auto & adj : wrk->adjutants){
+					// Выполняем очистку списка адъютантов
+					ids.clear();
+					// Переходим по всему списку адъютантов и формируем список их идентификаторов
+					for(auto & adj : wrk->adjutants) ids.push_back(adj.first);
+					// Переходим по всему списку адъютантов и отсылаем им сообщение
+					for(auto & aid : ids){
 						// Выполняем функцию обратного вызова
-						wrk->persistFn(adj.first, worker.first, core, worker.second->ctx);
+						wrk->persistFn(aid, worker.first, core, worker.second->ctx);
 					}
 				}
 			}
