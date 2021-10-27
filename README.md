@@ -116,6 +116,7 @@ int main(int argc, char * argv[]) noexcept {
 
 		return "password";
 	});
+
 	/* For Basic Auth type
 	rest.setAuthCallback(&log, [](const string & user, const string & password, void * ctx) -> bool {
 		log_t * log = reinterpret_cast <log_t *> (ctx);
