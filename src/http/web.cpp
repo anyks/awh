@@ -523,10 +523,15 @@ bool awh::Web::isHeader(const string & key) const noexcept {
 	bool result = false;
 	// Если ключ передан
 	if(!key.empty()){
-		// Выполняем поиск ключа заголовка
-		auto it = this->headers.find(this->fmk->toLower(key));
-		// Выполняем проверку существования заголовка
-		result = (it != this->headers.end());
+		// Получаем название заголовка
+		const string & name = this->fmk->toLower(key);
+		// Выполняем перебор всех заголовков
+		for(auto & header : this->headers){
+			// Выполняем проверку существования заголовка
+			result = (this->fmk->toLower(header.first).compare(name) == 0);
+			// Выходим из цилка если заголовок найден
+			if(result) break;
+		}
 	}
 	// Выводим результат
 	return result;
@@ -547,11 +552,11 @@ void awh::Web::clearHeaders() noexcept {
 }
 /**
  * setBody Метод установки данных тела
- * @param buffer буфер тела для установки
+ * @param body буфер тела для установки
  */
-void awh::Web::setBody(const vector <char> & buffer) noexcept {
+void awh::Web::setBody(const vector <char> & body) noexcept {
 	// Выполняем установку данных тела
-	this->body.assign(buffer.begin(), buffer.end());
+	this->body.assign(body.begin(), body.end());
 }
 /**
  * addBody Метод добавления буфера тела данных запроса
@@ -574,6 +579,14 @@ void awh::Web::addHeader(const string & key, const string & val) noexcept {
 	if(!key.empty() && !val.empty())
 		// Выполняем добавление передаваемого заголовка
 		this->headers.emplace(key, val);
+}
+/**
+ * setHeaders Метод установки списка заголовков
+ * @param headers список заголовков для установки
+ */
+void awh::Web::setHeaders(const unordered_multimap <string, string> & headers) noexcept {
+	// Выполняем установку заголовков
+	this->headers = headers;
 }
 /**
  * getBody Метод получения данных тела запроса

@@ -183,6 +183,9 @@ namespace awh {
 			bool persist = false;
 			// Флаг разрешающий работу только с IPv6
 			bool ipV6only = false;
+		private:
+			// Интервал персистентного таймера в миллисекундах
+			time_t persistInterval = PERSIST_INTERVAL;
 		protected:
 			// Список контекстов передаваемых объектов
 			vector <void *> ctx = {nullptr};
@@ -375,6 +378,11 @@ namespace awh {
 			 * @param mode флаг состояния разрешения проверки
 			 */
 			void setVerifySSL(const bool mode) noexcept;
+			/**
+			 * setPersistInterval Метод установки персистентного таймера
+			 * @param itv интервал персистентного таймера в миллисекундах
+			 */
+			void setPersistInterval(const time_t itv) noexcept;
 			/**
 			 * setFamily Метод установки тип протокола интернета
 			 * @param family тип протокола интернета AF_INET или AF_INET6

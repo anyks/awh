@@ -70,13 +70,13 @@ void split(const wstring & str, const wstring & delim, T & v) noexcept {
 	const size_t len = delim.length();
 	// Выполняем разбиение строк
 	while(j != wstring::npos){
-		v.push_back(trimFn(str.substr(i, j - i)));
+		v.insert(v.end(), trimFn(str.substr(i, j - i)));
 		i = ++j + (len - 1);
 		j = str.find(delim, j);
-		if(j == wstring::npos) v.push_back(trimFn(str.substr(i, str.length())));
+		if(j == wstring::npos) v.insert(v.end(), trimFn(str.substr(i, str.length())));
 	}
 	// Если слово передано а вектор пустой, тогда создаем вектори из 1-го элемента
-	if(!str.empty() && v.empty()) v.push_back(trimFn(str));
+	if(!str.empty() && v.empty()) v.insert(v.end(), trimFn(str));
 }
 /**
  * trim Метод удаления пробелов вначале и конце текста
@@ -1050,6 +1050,16 @@ std::map <size_t, size_t> awh::Framework::urls(const wstring & text) const noexc
  * @param delim разделитель
  * @param v     результирующий вектор
  */
+void awh::Framework::split(const wstring & str, const wstring & delim, set <wstring> & v) const noexcept {
+	// Выполняем сплит строки
+	::split(str, delim, v);
+}
+/**
+ * split Метод разделения строк на составляющие
+ * @param str   строка для поиска
+ * @param delim разделитель
+ * @param v     результирующий вектор
+ */
 void awh::Framework::split(const wstring & str, const wstring & delim, list <wstring> & v) const noexcept {
 	// Выполняем сплит строки
 	::split(str, delim, v);
@@ -1063,6 +1073,16 @@ void awh::Framework::split(const wstring & str, const wstring & delim, list <wst
 void awh::Framework::split(const wstring & str, const wstring & delim, vector <wstring> & v) const noexcept {
 	// Выполняем сплит строки
 	::split(str, delim, v);
+}
+/**
+ * split Метод разделения строк на составляющие
+ * @param str   строка для поиска
+ * @param delim разделитель
+ * @param v     результирующий вектор
+ */
+void awh::Framework::split(const string & str, const string & delim, set <wstring> & v) const noexcept {
+	// Выполняем сплит строки
+	::split(this->convert(str), this->convert(delim), v);
 }
 /**
  * split Метод разделения строк на составляющие

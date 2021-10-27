@@ -4,7 +4,7 @@
 
 ## Project goals and features
 
-- **HTTP/HTTPS**: REST - CLIENT.
+- **HTTP/HTTPS**: REST - CLIENT/SERVER.
 - **WS/WSS**: WebSocket - CLIENT/SERVER.
 - **Proxy**: HTTP/SOCKS5 PROXY server support.
 - **Compress**: GZIP/DEFLATE/BROTLI compression support.
@@ -83,6 +83,83 @@ int main(int argc, char * argv[]) noexcept {
 	const auto & body = rest.GET(url, {{"User-Agent", "curl/7.64.1"}});
 
 	cout << " RESULT: " << string(body.begin(), body.end()) << endl;
+
+	return 0;
+}
+```
+
+### Example REST Server
+
+```c++
+#include <server/rest.hpp>
+
+using namespace std;
+using namespace awh;
+
+int main(int argc, char * argv[]) noexcept {
+	fmk_t fmk(true);
+	log_t log(&fmk);
+	network_t nwk(&fmk);
+	uri_t uri(&fmk, &nwk);
+	coreSrv_t core(&fmk, &log);
+	restSrv_t rest(&core, &fmk, &log);
+
+	log.setLogName("Rest Server");
+	log.setLogFormat("%H:%M:%S %d.%m.%Y");
+
+	rest.setAuthType(auth_t::type_t::DIGEST, auth_t::alg_t::MD5);
+	rest.init(2222, "127.0.0.1", http_t::compress_t::GZIP);
+
+	rest.setExtractPassCallback(&log, [](const string & user, void * ctx) -> string {
+		log_t * log = reinterpret_cast <log_t *> (ctx);
+		log->print("USER: %s, PASS: %s", log_t::flag_t::INFO, user.c_str(), "password");
+
+		return "password";
+	});
+	/* For Basic Auth type
+	rest.setAuthCallback(&log, [](const string & user, const string & password, void * ctx) -> bool {
+		log_t * log = reinterpret_cast <log_t *> (ctx);
+		log->print("USER: %s, PASS: %s", log_t::flag_t::INFO, user.c_str(), password.c_str());
+
+		return true;
+	});
+	*/
+
+	rest.on(&log, [](const string & ip, const string & mac, restSrv_t * rest, void * ctx) -> bool {
+		log_t * log = reinterpret_cast <log_t *> (ctx);
+		log->print("ACCEPT: ip = %s, mac = %s", log_t::flag_t::INFO, ip.c_str(), mac.c_str());
+
+		return true;
+	});
+
+	rest.on(&log, [](const size_t aid, const bool mode,  restSrv_t * rest, void * ctx) noexcept {
+		log_t * log = reinterpret_cast <log_t *> (ctx);
+		log->print("%s client", log_t::flag_t::INFO, (mode ? "Connect" : "Disconnect"));
+	});
+
+	rest.on(&log, [](const size_t aid, const u_short code, const string & mess,  restSrv_t * rest, void * ctx) noexcept {
+		log_t * log = reinterpret_cast <log_t *> (ctx);
+		log->print("%s [%u]", log_t::flag_t::CRITICAL, mess.c_str(), code);
+	});
+
+	rest.on(&log, [](const size_t aid, const restSrv_t::req_t & req, restSrv_t * rest, void * ctx) noexcept {
+		if(req.method == web_t::method_t::GET){
+
+			const string body = "<html>\n<head>\n<title>Hello World!</title>\n</head>\n<body>\n"
+			"<h1>\"Hello, World!\" program</h1>\n"
+			"<div>\nFrom Wikipedia, the free encyclopedia<br>\n"
+			"(Redirected from Hello, world!)<br>\n"
+			"Jump to navigationJump to search<br>\n"
+			"<strong>\"Hello World\"</strong> redirects here. For other uses, see Hello World (disambiguation).<br>\n"
+			"A <strong>\"Hello, World!\"</strong> program generally is a computer program that outputs or displays the message \"Hello, World!\".<br>\n"
+			"Such a program is very simple in most programming languages, and is often used to illustrate the basic syntax of a programming language. It is often the first program written by people learning to code. It can also be used as a sanity test to make sure that computer software intended to compile or run source code is correctly installed, and that the operator understands how to use it.\n"
+			"</div>\n</body>\n</html>\n";
+
+			rest->response(aid, 200, "OK", vector <char> (body.begin(), body.end()), {{"Connection", "close"}});
+		}
+	});
+
+	rest.start();
 
 	return 0;
 }

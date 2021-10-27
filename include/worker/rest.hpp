@@ -42,9 +42,12 @@ namespace awh {
 			typedef struct AdjParam {
 				httpSrv_t http;              // Создаём объект для работы с HTTP
 				bool crypt;                  // Флаг шифрования сообщений
-				bool compressed;             // Флаг переданных сжатых данных
+				bool alive;                  // Флаг долгоживущего подключения
+				bool close;                  // Флаг требования закрыть адъютанта
+				size_t requests;             // Количество выполненных запросов
 				size_t readBytes;            // Количество полученных байт для закрытия подключения
 				size_t stopBytes;            // Количество байт для закрытия подключения
+				time_t checkPoint;           // Контрольная точка ответа на пинг
 				http_t::compress_t compress; // Флаги работы с сжатыми данными
 				/**
 				 * AdjParam Конструктор
@@ -52,9 +55,12 @@ namespace awh {
 				AdjParam(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcept :
 					http(fmk, log, uri),
 					crypt(false),
-					compressed(false),
+					alive(false),
+					close(false),
+					requests(0),
 					readBytes(0),
 					stopBytes(0),
+					checkPoint(0),
 					compress(http_t::compress_t::NONE) {}
 				/**
 				 * ~AdjParam Деструктор

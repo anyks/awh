@@ -88,6 +88,33 @@ void awh::Http::update() noexcept {
 			}
 		}
 	}
+	// Если метод компрессии не определён
+	if(this->compress == compress_t::NONE){
+		// Получаем заголовок запрашиваемых методов компрессии
+		const string & encoding = this->web.getHeader("accept-encoding");
+		// Если список запрашиваемых методов компрессии получен
+		if(!encoding.empty()){
+			// Список методов компрессии
+			set <wstring> split;
+			// Выполняем сплит методов компрессии
+			this->fmk->split(encoding, ",", split);
+			// Если список методов компрессии получен
+			if(!split.empty()){
+				// Если найден метод компрессии Brotli
+				if(split.count(L"br") > 0)
+					// Устанавливаем метод компрессии Brotli
+					this->compress = compress_t::BROTLI;
+				// Если найден метод компрессии GZip
+				else if(split.count(L"gzip") > 0)
+					// Устанавливаем метод компрессии GZip
+					this->compress = compress_t::GZIP;
+				// Если найден метод компрессии Deflate
+				else if(split.count(L"deflate") > 0)
+					// Устанавливаем метод компрессии Deflate
+					this->compress = compress_t::DEFLATE;
+			}
+		}
+	}
 }
 /**
  * date Метод получения текущей даты для HTTP запроса
@@ -146,7 +173,7 @@ void awh::Http::addBlack(const string & key) noexcept {
  */
 void awh::Http::parse(const char * buffer, const size_t size) noexcept {
 	// Если рукопожатие не выполнено
-	if((this->state != state_t::HANDSHAKE) && (this->state != state_t::BROKEN)){
+	if((this->state != state_t::GOOD) && (this->state != state_t::BROKEN) && (this->state != state_t::BROKEN)){
 		// Выполняем парсинг сырых данных
 		this->web.parse(buffer, size);
 		// Если парсинг выполнен
@@ -163,6 +190,14 @@ void awh::Http::parse(const char * buffer, const size_t size) noexcept {
 			} else this->state = state_t::BROKEN;
 		}
 	}
+}
+/**
+ * setBody Метод установки данных тела
+ * @param body буфер тела для установки
+ */
+void awh::Http::setBody(const vector <char> & body) noexcept {
+	// Устанавливаем данные телал сообщения
+	this->web.setBody(body);
 }
 /**
  * addBody Метод добавления буфера тела данных запроса
@@ -185,6 +220,14 @@ void awh::Http::addHeader(const string & key, const string & val) noexcept {
 	if(!key.empty() && !val.empty())
 		// Выполняем добавление передаваемого заголовка
 		this->web.addHeader(key, val);
+}
+/**
+ * setHeaders Метод установки списка заголовков
+ * @param headers список заголовков для установки
+ */
+void awh::Http::setHeaders(const unordered_multimap <string, string> & headers) noexcept {
+	// Устанавливаем заголовки сообщения
+	this->web.setHeaders(headers);
 }
 /**
  * payload Метод чтения чанка тела запроса
@@ -336,10 +379,23 @@ bool awh::Http::isAlive() const noexcept {
 	bool result = true;
 	// Запрашиваем заголовок подключения
 	const string & header = this->web.getHeader("connection");
-	// Если заголовок получен
+	// Если заголовок подключения найден
 	if(!header.empty())
 		// Выполняем проверку является ли соединение закрытым
 		result = (header.compare("close") != 0);
+	// Если заголовок подключения не найден
+	else {
+		// Переходим по всему списку заголовков
+		for(auto & header : this->web.getHeaders()){
+			// Если заголовок найден
+			if(this->fmk->toLower(header.first) == "connection"){
+				// Выполняем проверку является ли соединение закрытым
+				result = (header.second.compare("close") != 0);
+				// Выходим из цикла
+				break;
+			}
+		}
+	}
 	// Выводим результат
 	return result;
 }

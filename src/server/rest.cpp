@@ -32,9 +32,9 @@ void awh::RestServer::openCallback(const size_t wid, core_t * core, void * ctx) 
 	// Если данные существуют
 	if((wid > 0) && (core != nullptr) && (ctx != nullptr)){
 		// Получаем контекст модуля
-		restSrv_t * rest = reinterpret_cast <restSrv_t *> (ctx);
+		restSrv_t * web = reinterpret_cast <restSrv_t *> (ctx);
 		// Устанавливаем хост сервера
-		reinterpret_cast <coreSrv_t *> (core)->init(wid, rest->port, rest->host);
+		reinterpret_cast <coreSrv_t *> (core)->init(wid, web->port, web->host);
 		// Выполняем запуск сервера
 		core->run(wid);
 	}
@@ -47,7 +47,27 @@ void awh::RestServer::openCallback(const size_t wid, core_t * core, void * ctx) 
  * @param ctx  передаваемый контекст модуля
  */
 void awh::RestServer::persistCallback(const size_t aid, const size_t wid, core_t * core, void * ctx) noexcept {
-
+	// Если данные существуют
+	if((aid > 0) && (wid > 0) && (core != nullptr) && (ctx != nullptr)){
+		// Получаем контекст модуля
+		restSrv_t * web = reinterpret_cast <restSrv_t *> (ctx);
+		// Получаем параметры подключения адъютанта
+		workSrvRest_t::adjp_t * adj = const_cast <workSrvRest_t::adjp_t *> (web->worker.getAdj(aid));
+		// Если параметры подключения адъютанта получены
+		if((adj != nullptr) && ((!adj->alive && !web->alive) || adj->close)){
+			// Если клиент давно должен был быть отключён, отключаем его
+			if(adj->close || !adj->http.isAlive()) core->close(aid);
+			// Иначе проверяем прошедшее время
+			else {
+				// Получаем текущий штамп времени
+				const time_t stamp = web->fmk->unixTimestamp();
+				// Если адъютант не ответил на пинг больше двух интервалов, отключаем его
+				if((stamp - adj->checkPoint) >= MAX_TIME_CONNECT)
+					// Завершаем работу
+					core->close(aid);
+			}
+		}
+	}
 }
 /**
  * connectCallback Функция обратного вызова при подключении к серверу
@@ -60,45 +80,49 @@ void awh::RestServer::connectCallback(const size_t aid, const size_t wid, core_t
 	// Если данные существуют
 	if((aid > 0) && (wid > 0) && (core != nullptr) && (ctx != nullptr)){
 		// Получаем контекст модуля
-		restSrv_t * rest = reinterpret_cast <restSrv_t *> (ctx);
+		restSrv_t * web = reinterpret_cast <restSrv_t *> (ctx);
 		// Создаём адъютанта
-		rest->worker.createAdj(aid);
+		web->worker.createAdj(aid);
 		// Получаем параметры подключения адъютанта
-		workSrvRest_t::adjp_t * adj = const_cast <workSrvRest_t::adjp_t *> (rest->worker.getAdj(aid));
+		workSrvRest_t::adjp_t * adj = const_cast <workSrvRest_t::adjp_t *> (web->worker.getAdj(aid));
+		// Устанавливаем размер чанка
+		adj->http.setChunkSize(web->chunkSize);
 		// Устанавливаем данные сервиса
-		adj->http.setServ(rest->sid, rest->name, rest->version);
+		adj->http.setServ(web->sid, web->name, web->version);
 		// Если функция обратного вызова для обработки чанков установлена
-		if(rest->chunkingFn != nullptr)
+		if(web->chunkingFn != nullptr)
 			// Устанавливаем внешнюю функцию обработки вызова для получения чанков
-			adj->http.setChunkingFn(rest->ctx.at(6), rest->chunkingFn);
+			adj->http.setChunkingFn(web->ctx.at(6), web->chunkingFn);
 		// Устанавливаем функцию обработки вызова для получения чанков
-		else adj->http.setChunkingFn(rest, &chunking);
+		else adj->http.setChunkingFn(web, &chunking);
 		// Устанавливаем параметры шифрования
-		if(rest->crypt) adj->http.setCrypt(rest->pass, rest->salt, rest->aes);
+		if(web->crypt) adj->http.setCrypt(web->pass, web->salt, web->aes);
 		// Если сервер требует авторизацию
-		if(rest->authType != auth_t::type_t::NONE){
+		if(web->authType != auth_t::type_t::NONE){
 			// Определяем тип авторизации
-			switch((uint8_t) rest->authType){
+			switch((uint8_t) web->authType){
 				// Если тип авторизации Basic
 				case (uint8_t) auth_t::type_t::BASIC: {
 					// Устанавливаем параметры авторизации
-					adj->http.setAuthType(rest->authType);
+					adj->http.setAuthType(web->authType);
 					// Устанавливаем функцию проверки авторизации
-					adj->http.setAuthCallback(rest->ctx.at(5), rest->checkAuthFn);
+					adj->http.setAuthCallback(web->ctx.at(5), web->checkAuthFn);
 				} break;
 				// Если тип авторизации Digest
 				case (uint8_t) auth_t::type_t::DIGEST: {
 					// Устанавливаем название сервера
-					adj->http.setRealm(rest->realm);
+					adj->http.setRealm(web->realm);
 					// Устанавливаем временный ключ сессии сервера
-					adj->http.setOpaque(rest->opaque);
+					adj->http.setOpaque(web->opaque);
 					// Устанавливаем параметры авторизации
-					adj->http.setAuthType(rest->authType, rest->authAlg);
+					adj->http.setAuthType(web->authType, web->authAlg);
 					// Устанавливаем функцию извлечения пароля
-					adj->http.setExtractPassCallback(rest->ctx.at(4), rest->extractPassFn);
+					adj->http.setExtractPassCallback(web->ctx.at(4), web->extractPassFn);
 				} break;
 			}
 		}
+		// Если функция обратного вызова установлена, выполняем
+		if(web->openStopFn != nullptr) web->openStopFn(aid, true, web, web->ctx.at(0));
 	}
 }
 /**
@@ -109,7 +133,15 @@ void awh::RestServer::connectCallback(const size_t aid, const size_t wid, core_t
  * @param ctx  передаваемый контекст модуля
  */
 void awh::RestServer::disconnectCallback(const size_t aid, const size_t wid, core_t * core, void * ctx) noexcept {
-
+	// Если данные существуют
+	if((wid > 0) && (core != nullptr) && (ctx != nullptr)){
+		// Получаем контекст модуля
+		restSrv_t * web = reinterpret_cast <restSrv_t *> (ctx);
+		// Выполняем удаление параметров адъютанта
+		web->worker.removeAdj(aid);
+		// Если функция обратного вызова установлена, выполняем
+		if(web->openStopFn != nullptr) web->openStopFn(aid, false, web, web->ctx.at(0));
+	}
 }
 /**
  * acceptCallback Функция обратного вызова при проверке подключения клиента
@@ -126,9 +158,9 @@ bool awh::RestServer::acceptCallback(const string & ip, const string & mac, cons
 	// Если данные существуют
 	if(!ip.empty() && !mac.empty() && (wid > 0) && (core != nullptr) && (ctx != nullptr)){
 		// Получаем контекст модуля
-		restSrv_t * rest = reinterpret_cast <restSrv_t *> (ctx);
+		restSrv_t * web = reinterpret_cast <restSrv_t *> (ctx);
 		// Если функция обратного вызова установлена, проверяем
-		if(rest->acceptFn != nullptr) result = rest->acceptFn(ip, mac, rest, rest->ctx.at(3));
+		if(web->acceptFn != nullptr) result = web->acceptFn(ip, mac, web, web->ctx.at(3));
 	}
 	// Разрешаем подключение клиенту
 	return result;
@@ -143,9 +175,113 @@ bool awh::RestServer::acceptCallback(const string & ip, const string & mac, cons
  * @param ctx    передаваемый контекст модуля
  */
 void awh::RestServer::readCallback(const char * buffer, const size_t size, const size_t aid, const size_t wid, core_t * core, void * ctx) noexcept {
-
-	cout << " ++++++++++++++ " << string(buffer, size) << endl;
-
+	// Если данные существуют
+	if((size > 0) && (aid > 0) && (wid > 0) && (buffer != nullptr) && (core != nullptr) && (ctx != nullptr)){
+		// Получаем контекст модуля
+		restSrv_t * web = reinterpret_cast <restSrv_t *> (ctx);
+		// Получаем параметры подключения адъютанта
+		workSrvRest_t::adjp_t * adj = const_cast <workSrvRest_t::adjp_t *> (web->worker.getAdj(aid));
+		// Если параметры подключения адъютанта получены
+		if(adj != nullptr){
+			// Увеличиваем количество выполненных запросов
+			adj->requests++;
+			// Если количество выполненных запросов превышает максимальный
+			if(adj->requests >= web->maxRequests)
+				// Устанавливаем флаг закрытия подключения
+				adj->close = true;
+			// Получаем текущий штамп времени
+			else adj->checkPoint = web->fmk->unixTimestamp();
+			// Выполняем парсинг полученных данных
+			adj->http.parse(buffer, size);
+			// Если все данные получены
+			if(adj->http.isEnd()){
+				// Бинарный буфер ответа сервера
+				vector <char> response;
+				// Выполняем проверку авторизации
+				switch((uint8_t) adj->http.getAuth()){
+					// Если запрос выполнен удачно
+					case (uint8_t) http_t::stath_t::GOOD: {
+						// Объект запроса клиента
+						req_t request;
+						// Получаем флаг шифрованных данных
+						adj->crypt = adj->http.isCrypt();
+						// Получаем поддерживаемый метод компрессии
+						adj->compress = adj->http.getCompress();
+						// Получаем данные запроса
+						const auto & query = adj->http.getQuery();
+						// Устанавливаем метод запроса
+						request.method = query.method;
+						// Устанавливаем IP адрес
+						request.ip = web->worker.ip(aid);
+						// Устанавливаем MAC адрес
+						request.mac = web->worker.mac(aid);
+						// Получаем тело запроса
+						request.entity = adj->http.getBody();
+						// Получаем заголовки запроса
+						request.headers = adj->http.getHeaders();
+						// Выполняем парсинг URL адреса
+						const auto & split = web->worker.uri.split(query.uri);
+						// Если список параметров получен
+						if(!split.empty()){
+							// Определяем сколько элементов мы получили
+							switch(split.size()){
+								// Если количество элементов равно 1
+								case 1: {
+									// Проверяем путь запроса
+									const string & value = split.front();
+									// Если первый символ является путём запроса
+									if(value.front() == '/') request.path = web->worker.uri.splitPath(value);
+									// Если же первый символ является параметром запросов
+									else if(value.front() == '?') request.params = web->worker.uri.splitParams(value);
+								} break;
+								// Если количество элементов равно 2
+								case 2: {
+									// Устанавливаем путь запроса
+									request.path = web->worker.uri.splitPath(split.front());
+									// Устанавливаем параметры запроса
+									request.params = web->worker.uri.splitParams(split.back());
+								} break;
+							}
+						}
+						// Выполняем сброс состояния HTTP парсера
+						adj->http.clear();
+						// Выполняем сброс состояния HTTP парсера
+						adj->http.reset();
+						// Если функция обратного вызова установлена, выполняем
+						if(web->messageFn != nullptr) web->messageFn(aid, request, web, web->ctx.at(1));
+						// Завершаем работу
+						return;
+					} break;
+					// Если запрос неудачный
+					case (uint8_t) http_t::stath_t::FAULT: {
+						// Выполняем сброс состояния HTTP парсера
+						adj->http.clear();
+						// Выполняем сброс состояния HTTP парсера
+						adj->http.reset();
+						// Формируем запрос авторизации
+						response = adj->http.reject(401);
+					} break;
+				}
+				// Если бинарные данные запроса получены, отправляем на сервер
+				if(!response.empty()){
+					// Тело полезной нагрузки
+					vector <char> payload;
+					// Устанавливаем размер стопбайт
+					if(!adj->http.isAlive()) adj->stopBytes = response.size();
+					// Отправляем ответ клиенту
+					core->write(response.data(), response.size(), aid);
+					// Получаем данные тела запроса
+					while(!(payload = adj->http.payload()).empty()){
+						// Устанавливаем размер стопбайт
+						if(!adj->http.isAlive()) adj->stopBytes += payload.size();
+						// Отправляем тело на сервер
+						core->write(payload.data(), payload.size(), aid);
+					}
+				// Завершаем работу
+				} else core->close(aid);
+			}
+		}
+	}
 }
 /**
  * writeCallback Функция обратного вызова при записи сообщения на клиенте
@@ -157,7 +293,20 @@ void awh::RestServer::readCallback(const char * buffer, const size_t size, const
  * @param ctx    передаваемый контекст модуля
  */
 void awh::RestServer::writeCallback(const char * buffer, const size_t size, const size_t aid, const size_t wid, core_t * core, void * ctx) noexcept {
-
+	// Если данные существуют
+	if((size > 0) && (aid > 0) && (wid > 0) && (core != nullptr) && (ctx != nullptr)){
+		// Получаем контекст модуля
+		restSrv_t * web = reinterpret_cast <restSrv_t *> (ctx);
+		// Получаем параметры подключения адъютанта
+		workSrvRest_t::adjp_t * adj = const_cast <workSrvRest_t::adjp_t *> (web->worker.getAdj(aid));
+		// Если параметры подключения адъютанта получены
+		if((adj != nullptr) && (adj->stopBytes > 0)){
+			// Запоминаем количество прочитанных байт
+			adj->readBytes += size;
+			// Если размер полученных байт соответствует
+			adj->close = (adj->stopBytes >= adj->readBytes);
+		}
+	}
 }
 /**
  * init Метод инициализации WebSocket клиента
@@ -185,26 +334,26 @@ void awh::RestServer::on(void * ctx, function <void (const size_t, const bool, R
 	this->openStopFn = callback;
 }
 /**
+ * on Метод установки функции обратного вызова на событие получения сообщений
+ * @param ctx      контекст для вывода в сообщении
+ * @param callback функция обратного вызова
+ */
+void awh::RestServer::on(void * ctx, function <void (const size_t, const req_t &, RestServer *, void *)> callback) noexcept {
+	// Устанавливаем контекст передаваемого объекта
+	this->ctx.at(1) = ctx;
+	// Устанавливаем функцию получения сообщений с сервера
+	this->messageFn = callback;
+}
+/**
  * on Метод установки функции обратного вызова на событие получения ошибок
  * @param ctx      контекст для вывода в сообщении
  * @param callback функция обратного вызова
  */
 void awh::RestServer::on(void * ctx, function <void (const size_t, const u_short, const string &, RestServer *, void *)> callback) noexcept {
 	// Устанавливаем контекст передаваемого объекта
-	this->ctx.at(1) = ctx;
+	this->ctx.at(2) = ctx;
 	// Устанавливаем функцию получения ошибок
 	this->errorFn = callback;
-}
-/**
- * on Метод установки функции обратного вызова на событие получения сообщений
- * @param ctx      контекст для вывода в сообщении
- * @param callback функция обратного вызова
- */
-void awh::RestServer::on(void * ctx, function <void (const size_t, const vector <char> &, const bool, RestServer *, void *)> callback) noexcept {
-	// Устанавливаем контекст передаваемого объекта
-	this->ctx.at(2) = ctx;
-	// Устанавливаем функцию получения сообщений с сервера
-	this->messageFn = callback;
 }
 /**
  * on Метод установки функции обратного вызова на событие активации клиента на сервере
@@ -218,21 +367,87 @@ void awh::RestServer::on(void * ctx, function <bool (const string &, const strin
 	this->acceptFn = callback;
 }
 /**
- * sendError Метод отправки сообщения об ошибке
- * @param aid  идентификатор адъютанта
- * @param mess отправляемое сообщение об ошибке
- */
-// void awh::RestServer::sendError(const size_t aid, const mess_t & mess) const noexcept {
-// }
-/**
- * send Метод отправки сообщения на сервер
+ * reject Метод отправки сообщения об ошибке
  * @param aid     идентификатор адъютанта
- * @param message буфер сообщения в бинарном виде
- * @param size    размер сообщения в байтах
- * @param utf8    данные передаются в текстовом виде
+ * @param code    код сообщения для клиента
+ * @param mess    отправляемое сообщение об ошибке
+ * @param entity  данные полезной нагрузки (тело сообщения)
+ * @param headers HTTP заголовки сообщения
  */
-// void awh::RestServer::send(const size_t aid, const char * message, const size_t size, const bool utf8) noexcept {
-// }
+void awh::RestServer::reject(const size_t aid, const u_short code, const string & mess, const vector <char> & entity, const unordered_multimap <string, string> & headers) const noexcept {
+	// Если подключение выполнено
+	if(this->core->working()){
+		// Получаем параметры подключения адъютанта
+		workSrvRest_t::adjp_t * adj = const_cast <workSrvRest_t::adjp_t *> (this->worker.getAdj(aid));
+		// Если отправка сообщений разблокированна
+		if(adj != nullptr){
+			// Тело полезной нагрузки
+			vector <char> payload;
+			// Устанавливаем полезную нагрузку
+			adj->http.setBody(entity);
+			// Устанавливаем заголовки ответа
+			adj->http.setHeaders(headers);
+			// Если подключение постоянное
+			if(adj->http.isAlive())
+				// Указываем сколько запросов разрешено выполнить за указанный интервал времени
+				adj->http.addHeader("Keep-Alive", this->fmk->format("timeout=%d, max=%d", MAX_TIME_CONNECT / 1000, this->maxRequests));
+			// Формируем запрос авторизации
+			const auto & response = adj->http.reject(code, mess);
+			// Устанавливаем размер стопбайт
+			if(!adj->http.isAlive()) adj->stopBytes = response.size();
+			// Отправляем серверу сообщение
+			((core_t *) const_cast <coreSrv_t *> (this->core))->write(response.data(), response.size(), aid);
+			// Получаем данные тела запроса
+			while(!(payload = adj->http.payload()).empty()){
+				// Устанавливаем размер стопбайт
+				if(!adj->http.isAlive()) adj->stopBytes += payload.size();
+				// Отправляем тело на сервер
+				((core_t *) const_cast <coreSrv_t *> (this->core))->write(payload.data(), payload.size(), aid);
+			}
+		}
+	}
+}
+/**
+ * response Метод отправки сообщения клиенту
+ * @param aid     идентификатор адъютанта
+ * @param code    код сообщения для клиента
+ * @param mess    отправляемое сообщение об ошибке
+ * @param entity  данные полезной нагрузки (тело сообщения)
+ * @param headers HTTP заголовки сообщения
+ */
+void awh::RestServer::response(const size_t aid, const u_short code, const string & mess, const vector <char> & entity, const unordered_multimap <string, string> & headers) const noexcept {
+	// Если подключение выполнено
+	if(this->core->working()){
+		// Получаем параметры подключения адъютанта
+		workSrvRest_t::adjp_t * adj = const_cast <workSrvRest_t::adjp_t *> (this->worker.getAdj(aid));
+		// Если отправка сообщений разблокированна
+		if(adj != nullptr){
+			// Тело полезной нагрузки
+			vector <char> payload;
+			// Устанавливаем полезную нагрузку
+			adj->http.setBody(entity);
+			// Устанавливаем заголовки ответа
+			adj->http.setHeaders(headers);
+			// Если подключение постоянное
+			if(adj->http.isAlive())
+				// Указываем сколько запросов разрешено выполнить за указанный интервал времени
+				adj->http.addHeader("Keep-Alive", this->fmk->format("timeout=%d, max=%d", MAX_TIME_CONNECT / 1000, this->maxRequests));
+			// Формируем запрос авторизации
+			const auto & response = adj->http.response(code, mess);
+			// Устанавливаем размер стопбайт
+			if(!adj->http.isAlive()) adj->stopBytes = response.size();
+			// Отправляем серверу сообщение
+			((core_t *) const_cast <coreSrv_t *> (this->core))->write(response.data(), response.size(), aid);
+			// Получаем данные тела запроса
+			while(!(payload = adj->http.payload()).empty()){
+				// Устанавливаем размер стопбайт
+				if(!adj->http.isAlive()) adj->stopBytes += payload.size();
+				// Отправляем тело на сервер
+				((core_t *) const_cast <coreSrv_t *> (this->core))->write(payload.data(), payload.size(), aid);
+			}
+		}
+	}
+}
 /**
  * ip Метод получения IP адреса адъютанта
  * @param aid идентификатор адъютанта
@@ -250,6 +465,25 @@ const string & awh::RestServer::ip(const size_t aid) const noexcept {
 const string & awh::RestServer::mac(const size_t aid) const noexcept {
 	// Выводим результат
 	return this->worker.mac(aid);
+}
+/**
+ * setAlive Метод установки долгоживущего подключения
+ * @param mode флаг долгоживущего подключения
+ */
+void awh::RestServer::setAlive(const bool mode) noexcept {
+	// Устанавливаем флаг долгоживущего подключения
+	this->alive = mode;
+}
+/**
+ * setAlive Метод установки долгоживущего подключения
+ * @param aid  идентификатор адъютанта
+ * @param mode флаг долгоживущего подключения
+ */
+void awh::RestServer::setAlive(const size_t aid, const bool mode) noexcept {
+	// Получаем параметры подключения адъютанта
+	workSrvRest_t::adjp_t * adj = const_cast <workSrvRest_t::adjp_t *> (this->worker.getAdj(aid));
+	// Если параметры подключения адъютанта получены, устанавливаем флаг пдолгоживущего подключения
+	if(adj != nullptr) adj->alive = mode;
 }
 /**
  * stop Метод остановки клиента
@@ -364,11 +598,20 @@ void awh::RestServer::setMode(const u_short flag) noexcept {
 	const_cast <coreSrv_t *> (this->core)->setNoInfo(flag & (uint8_t) flag_t::NOINFO);
 }
 /**
- * setFrameSize Метод установки размеров сегментов фрейма
- * @param size минимальный размер сегмента
+ * setChunkSize Метод установки размера чанка
+ * @param size размер чанка для установки
  */
-void awh::RestServer::setFrameSize(const size_t size) noexcept {
-
+void awh::RestServer::setChunkSize(const size_t size) noexcept {
+	// Устанавливаем размер чанка
+	this->chunkSize = (size > 0 ? size : BUFFER_CHUNK);
+}
+/**
+ * setMaxRequests Метод установки максимального количества запросов
+ * @param max максимальное количество запросов
+ */
+void awh::RestServer::setMaxRequests(const size_t max) noexcept {
+	// Устанавливаем максимальное количество запросов
+	this->maxRequests = max;
 }
 /**
  * setCompress Метод установки метода сжатия
@@ -438,6 +681,10 @@ awh::RestServer::RestServer(const coreSrv_t * core, const fmk_t * fmk, const log
 	this->worker.connectFn = connectCallback;
 	// Устанавливаем событие отключения
 	this->worker.disconnectFn = disconnectCallback;
+	// Активируем персистентный запуск для работы пингов
+	const_cast <coreSrv_t *> (this->core)->setPersist(true);
 	// Добавляем воркер в биндер TCP/IP
 	const_cast <coreSrv_t *> (this->core)->add(&this->worker);
+	// Устанавливаем интервал персистентного таймера для работы пингов
+	const_cast <coreSrv_t *> (this->core)->setPersistInterval(MAX_TIME_CONNECT / 2);
 }

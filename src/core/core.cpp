@@ -44,7 +44,7 @@ void awh::Core::run(evutil_socket_t fd, short event, void * ctx) noexcept {
 			// Очищаем объект таймаута базы событий
 			evutil_timerclear(&core->tvInterval);
 			// Устанавливаем интервал таймаута
-			core->tvInterval.tv_sec = (PERSIST_INTERVAL / 1000);
+			core->tvInterval.tv_sec = (core->persistInterval / 1000);
 			// Создаём событие таймаута на активацию базы событий
 			event_add(&core->interval, &core->tvInterval);
 		}
@@ -746,6 +746,14 @@ void awh::Core::setPersist(const bool mode) noexcept {
 void awh::Core::setVerifySSL(const bool mode) noexcept {
 	// Выполняем установку флага проверки домена
 	this->ssl.setVerify(mode);
+}
+/**
+ * setPersistInterval Метод установки персистентного таймера
+ * @param itv интервал персистентного таймера в миллисекундах
+ */
+void awh::Core::setPersistInterval(const time_t itv) noexcept {
+	// Устанавливаем интервал персистентного таймера
+	this->persistInterval = itv;
 }
 /**
  * setFamily Метод установки тип протокола интернета

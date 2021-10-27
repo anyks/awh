@@ -214,21 +214,27 @@ namespace awh {
 		public:
 			/**
 			 * setBody Метод установки данных тела
-			 * @param buffer буфер тела для установки
+			 * @param body буфер тела для установки
 			 */
-			void setBody(const vector <char> & buffer) noexcept;
+			void setBody(const vector <char> & body) noexcept;
 			/**
 			 * addBody Метод добавления буфера тела данных запроса
 			 * @param buffer буфер данных тела запроса
 			 * @param size   размер буфера данных
 			 */
 			void addBody(const char * buffer, const size_t size) noexcept;
+		public:
 			/**
 			 * addHeader Метод добавления заголовка
 			 * @param key ключ заголовка
 			 * @param val значение заголовка
 			 */
 			void addHeader(const string & key, const string & val) noexcept;
+			/**
+			 * setHeaders Метод установки списка заголовков
+			 * @param headers список заголовков для установки
+			 */
+			void setHeaders(const unordered_multimap <string, string> & headers) noexcept;
 		public:
 			/**
 			 * getBody Метод получения данных тела запроса

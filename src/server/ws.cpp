@@ -212,8 +212,8 @@ void awh::WebSocketServer::readCallback(const char * buffer, const size_t size, 
 							} else {
 								// Выполняем сброс состояния HTTP парсера
 								adj->http.clear();
-								// Формируем ответ, что страница не найдена
-								response = adj->http.reject(404);
+								// Формируем ответ, что страница не доступна
+								response = adj->http.reject(403);
 							}
 						} break;
 						// Если запрос неудачный
@@ -228,18 +228,18 @@ void awh::WebSocketServer::readCallback(const char * buffer, const size_t size, 
 					}
 					// Если бинарные данные запроса получены, отправляем на сервер
 					if(!response.empty()){
-						// Тело REST сообщения
-						vector <char> entity;
+						// Тело полезной нагрузки
+						vector <char> payload;
 						// Устанавливаем размер стопбайт
 						if(!adj->http.isAlive()) adj->stopBytes = response.size();
 						// Отправляем ответ клиенту
 						core->write(response.data(), response.size(), aid);
 						// Получаем данные тела запроса
-						while(!(entity = adj->http.payload()).empty()){
+						while(!(payload = adj->http.payload()).empty()){
 							// Устанавливаем размер стопбайт
-							if(!adj->http.isAlive()) adj->stopBytes += entity.size();
+							if(!adj->http.isAlive()) adj->stopBytes += payload.size();
 							// Отправляем тело на сервер
-							core->write(entity.data(), entity.size(), aid);
+							core->write(payload.data(), payload.size(), aid);
 						}
 					// Завершаем работу
 					} else core->close(aid);

@@ -48,18 +48,16 @@ int main(int argc, char * argv[]) noexcept {
 	 */
 	// rest.setMode((uint8_t) wsSrv_t::flag_t::WAITMESS);
 	// Устанавливаем название сервера
-	// rest.setRealm("ANYKS");
+	rest.setRealm("ANYKS");
 	// Устанавливаем временный ключ сессии
-	// rest.setOpaque("keySession");
+	rest.setOpaque("keySession");
 	// Устанавливаем тип авторизации
-	// rest.setAuthType(auth_t::type_t::DIGEST, auth_t::alg_t::SHA256);
+	// rest.setAuthType();
+	rest.setAuthType(auth_t::type_t::DIGEST, auth_t::alg_t::MD5);
 	// Выполняем инициализацию WebSocket сервера
-	rest.init(2222, "127.0.0.1", http_t::compress_t::DEFLATE);
+	rest.init(2222, "127.0.0.1", http_t::compress_t::GZIP);
 	// Устанавливаем шифрование
 	// rest.setCrypt("PASS");
-	// Устанавливаем сабпротоколы
-	// rest.setSubs({"test1", "test2", "test3"});
-	/*
 	// Устанавливаем функцию извлечения пароля
 	rest.setExtractPassCallback(&log, [](const string & user, void * ctx) -> string {
 		// Получаем объект логирования
@@ -78,7 +76,6 @@ int main(int argc, char * argv[]) noexcept {
 		// Разрешаем авторизацию
 		return true;
 	});
-	*/
 	// Установливаем функцию обратного вызова на событие активации клиента на сервере
 	rest.on(&log, [](const string & ip, const string & mac, restSrv_t * rest, void * ctx) -> bool {
 		// Получаем объект логирования
@@ -103,15 +100,21 @@ int main(int argc, char * argv[]) noexcept {
 		log->print("%s [%u]", log_t::flag_t::CRITICAL, mess.c_str(), code);
 	});
 	// Установливаем функцию обратного вызова на событие получения сообщений
-	rest.on(&log, [](const size_t aid, const vector <char> & buffer, const bool utf8,  restSrv_t * rest, void * ctx) noexcept {
-		// Если даныне получены
-		if(!buffer.empty()){
-			// Получаем объект логирования
-			log_t * log = reinterpret_cast <log_t *> (ctx);
-			// Выводим информацию в лог
-			log->print("message: %s", log_t::flag_t::INFO, string(buffer.begin(), buffer.end()).c_str());
-			// Отправляем сообщение обратно
-			// rest->send(aid, buffer.data(), buffer.size(), utf8);
+	rest.on(&log, [](const size_t aid, const restSrv_t::req_t & req, restSrv_t * rest, void * ctx) noexcept {
+		// Если метод GET
+		if(req.method == web_t::method_t::GET){
+			// Формируем тело ответа
+			const string body = "<html>\n<head>\n<title>Hello World!</title>\n</head>\n<body>\n"
+			"<h1>\"Hello, World!\" program</h1>\n"
+			"<div>\nFrom Wikipedia, the free encyclopedia<br>\n"
+			"(Redirected from Hello, world!)<br>\n"
+			"Jump to navigationJump to search<br>\n"
+			"<strong>\"Hello World\"</strong> redirects here. For other uses, see Hello World (disambiguation).<br>\n"
+			"A <strong>\"Hello, World!\"</strong> program generally is a computer program that outputs or displays the message \"Hello, World!\".<br>\n"
+			"Such a program is very simple in most programming languages, and is often used to illustrate the basic syntax of a programming language. It is often the first program written by people learning to code. It can also be used as a sanity test to make sure that computer software intended to compile or run source code is correctly installed, and that the operator understands how to use it.\n"
+			"</div>\n</body>\n</html>\n";
+			// Отправляем сообщение клиенту
+			rest->response(aid, 200, "OK", vector <char> (body.begin(), body.end()), {{"Connection", "close"}});
 		}
 	});
 	// Выполняем запуск REST сервер

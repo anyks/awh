@@ -53,16 +53,13 @@ void awh::RestClient::connectCallback(const size_t aid, const size_t wid, core_t
 		// Получаем само сообщение
 		web->res.message = web->http.getMessage(web->res.code);
 		// Если список заголовков получен
-		if(!web->headers.empty()){
-			// Переходим по всему списку заголовков
-			for(auto & header : web->headers)
-				// Устанавливаем заголовок
-				web->http.addHeader(header.first, header.second);
-		}
+		if(!web->headers.empty())
+			// Устанавливаем заголовоки запроса
+			web->http.setHeaders(web->headers);
 		// Если тело запроса существует
 		if(!web->entity.empty())
 			// Устанавливаем тело запроса
-			web->http.addBody(web->entity.data(), web->entity.size());
+			web->http.setBody(web->entity);
 		// Получаем бинарные данные REST запроса
 		const auto & request = web->http.request(web->worker.url, web->method);
 		// Если бинарные данные запроса получены

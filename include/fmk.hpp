@@ -408,6 +408,13 @@ namespace awh {
 			 * @param delim разделитель
 			 * @param v     результирующий вектор
 			 */
+			void split(const wstring & str, const wstring & delim, set <wstring> & v) const noexcept;
+			/**
+			 * split Метод разделения строк на составляющие
+			 * @param str   строка для поиска
+			 * @param delim разделитель
+			 * @param v     результирующий вектор
+			 */
 			void split(const wstring & str, const wstring & delim, list <wstring> & v) const noexcept;
 			/**
 			 * split Метод разделения строк на составляющие
@@ -416,6 +423,14 @@ namespace awh {
 			 * @param v     результирующий вектор
 			 */
 			void split(const wstring & str, const wstring & delim, vector <wstring> & v) const noexcept;
+		public:
+			/**
+			 * split Метод разделения строк на составляющие
+			 * @param str   строка для поиска
+			 * @param delim разделитель
+			 * @param v     результирующий вектор
+			 */
+			void split(const string & str, const string & delim, set <wstring> & v) const noexcept;
 			/**
 			 * split Метод разделения строк на составляющие
 			 * @param str   строка для поиска

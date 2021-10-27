@@ -36,6 +36,21 @@ namespace awh {
 				NOINFO   = 0x02, // Флаг запрещающий вывод информационных сообщений
 				WAITMESS = 0x04  // Флаг ожидания входящих сообщений
 			};
+			/**
+			 * Request Структура запроса клиента
+			 */
+			typedef struct Request {
+				string ip, mac;                              // IP и MAC адрес клиента
+				web_t::method_t method;                      // Метод запроса
+				vector <string> path;                        // Путь URL запроса
+				vector <char> entity;                        // Тело запроса
+				unordered_map <string, string> params;       // Параметры URL запроса
+				unordered_multimap <string, string> headers; // Заголовки клиента
+				/**
+				 * Request Конструктор
+				 */
+				Request() : ip(""), mac(""), method(web_t::method_t::NONE) {}
+			} req_t;
 		private:
 			// Хости сервера
 			string host = "";
@@ -78,6 +93,13 @@ namespace awh {
 		private:
 			// Флаг шифрования сообщений
 			bool crypt = false;
+			// Флаг долгоживущего подключения
+			bool alive = false;
+		private:
+			// Размер одного чанка
+			size_t chunkSize = BUFFER_CHUNK;
+			// Максимальное количество запросов
+			size_t maxRequests = SERVER_MAX_REQUESTS;
 		private:
 			// Список контекстов передаваемых объектов
 			vector <void *> ctx = {
@@ -98,10 +120,10 @@ namespace awh {
 		private:
 			// Функция обратного вызова, при запуске или остановки подключения к серверу
 			function <void (const size_t, const bool, RestServer *, void *)> openStopFn = nullptr;
+			// Функция обратного вызова, при получении сообщения с сервера
+			function <void (const size_t, const req_t &, RestServer *, void *)> messageFn = nullptr;
 			// Функция обратного вызова, при получении ошибки работы клиента
 			function <void (const size_t, const u_short, const string &, RestServer *, void *)> errorFn = nullptr;
-			// Функция обратного вызова, при получении сообщения с сервера
-			function <void (const size_t, const vector <char> &, const bool, RestServer *, void *)> messageFn = nullptr;
 		private:
 			// Функция разрешения подключения клиента на сервере
 			function <bool (const string &, const string &, RestServer *, void *)> acceptFn = nullptr;
@@ -182,7 +204,7 @@ namespace awh {
 			 * @param host     хост сервера
 			 * @param compress метод сжатия передаваемых сообщений
 			 */
-			void init(const u_int port, const string & host = "", const http_t::compress_t compress = http_t::compress_t::DEFLATE) noexcept;
+			void init(const u_int port, const string & host = "", const http_t::compress_t compress = http_t::compress_t::NONE) noexcept;
 		public:
 			/**
 			 * on Метод установки функции обратного вызова на событие запуска или остановки подключения
@@ -191,17 +213,17 @@ namespace awh {
 			 */
 			void on(void * ctx, function <void (const size_t, const bool, RestServer *, void *)> callback) noexcept;
 			/**
+			 * on Метод установки функции обратного вызова на событие получения сообщений
+			 * @param ctx      контекст для вывода в сообщении
+			 * @param callback функция обратного вызова
+			 */
+			void on(void * ctx, function <void (const size_t, const req_t &, RestServer *, void *)> callback) noexcept;
+			/**
 			 * on Метод установки функции обратного вызова на событие получения ошибок
 			 * @param ctx      контекст для вывода в сообщении
 			 * @param callback функция обратного вызова
 			 */
 			void on(void * ctx, function <void (const size_t, const u_short, const string &, RestServer *, void *)> callback) noexcept;
-			/**
-			 * on Метод установки функции обратного вызова на событие получения сообщений
-			 * @param ctx      контекст для вывода в сообщении
-			 * @param callback функция обратного вызова
-			 */
-			void on(void * ctx, function <void (const size_t, const vector <char> &, const bool, RestServer *, void *)> callback) noexcept;
 		public:
 			/**
 			 * on Метод установки функции обратного вызова на событие активации клиента на сервере
@@ -211,19 +233,23 @@ namespace awh {
 			void on(void * ctx, function <bool (const string &, const string &, RestServer *, void *)> callback) noexcept;
 		public:
 			/**
-			 * sendError Метод отправки сообщения об ошибке
-			 * @param aid  идентификатор адъютанта
-			 * @param mess отправляемое сообщение об ошибке
-			 */
-			// void sendError(const size_t aid, const mess_t & mess) const noexcept;
-			/**
-			 * send Метод отправки сообщения на сервер
+			 * reject Метод отправки сообщения об ошибке
 			 * @param aid     идентификатор адъютанта
-			 * @param message буфер сообщения в бинарном виде
-			 * @param size    размер сообщения в байтах
-			 * @param utf8    данные передаются в текстовом виде
+			 * @param code    код сообщения для клиента
+			 * @param mess    отправляемое сообщение об ошибке
+			 * @param entity  данные полезной нагрузки (тело сообщения)
+			 * @param headers HTTP заголовки сообщения
 			 */
-			// void send(const size_t aid, const char * message, const size_t size, const bool utf8 = true) noexcept;
+			void reject(const size_t aid, const u_short code, const string & mess = "", const vector <char> & entity = {}, const unordered_multimap <string, string> & headers = {}) const noexcept;
+			/**
+			 * response Метод отправки сообщения клиенту
+			 * @param aid     идентификатор адъютанта
+			 * @param code    код сообщения для клиента
+			 * @param mess    отправляемое сообщение об ошибке
+			 * @param entity  данные полезной нагрузки (тело сообщения)
+			 * @param headers HTTP заголовки сообщения
+			 */
+			void response(const size_t aid, const u_short code = 200, const string & mess = "", const vector <char> & entity = {}, const unordered_multimap <string, string> & headers = {}) const noexcept;
 		public:
 			/**
 			 * ip Метод получения IP адреса адъютанта
@@ -237,6 +263,18 @@ namespace awh {
 			 * @return    адрес устройства адъютанта
 			 */
 			const string & mac(const size_t aid) const noexcept;
+		public:
+			/**
+			 * setAlive Метод установки долгоживущего подключения
+			 * @param mode флаг долгоживущего подключения
+			 */
+			void setAlive(const bool mode) noexcept;
+			/**
+			 * setAlive Метод установки долгоживущего подключения
+			 * @param aid  идентификатор адъютанта
+			 * @param mode флаг долгоживущего подключения
+			 */
+			void setAlive(const size_t aid, const bool mode) noexcept;
 		public:
 			/**
 			 * stop Метод остановки клиента
@@ -303,10 +341,15 @@ namespace awh {
 			 */
 			void setMode(const u_short flag) noexcept;
 			/**
-			 * setFrameSize Метод установки размеров сегментов фрейма
-			 * @param size минимальный размер сегмента
+			 * setChunkSize Метод установки размера чанка
+			 * @param size размер чанка для установки
 			 */
-			void setFrameSize(const size_t size) noexcept;
+			void setChunkSize(const size_t size) noexcept;
+			/**
+			 * setMaxRequests Метод установки максимального количества запросов
+			 * @param max максимальное количество запросов
+			 */
+			void setMaxRequests(const size_t max) noexcept;
 			/**
 			 * setCompress Метод установки метода сжатия
 			 * @param метод сжатия сообщений
