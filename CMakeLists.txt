@@ -170,6 +170,7 @@ set(SOURCE_FILES
 # Задаем именя библиотеки и бинарника
 set(WSC_APP_NAME wsc)
 set(WSS_APP_NAME wss)
+set(WEB_APP_NAME web)
 set(REST_APP_NAME rest)
 set(CURRENT_LIB_NAME ${PROJECT_NAME})
 set(CURRENT_APP_NAME ${PROJECT_NAME}_bin)
@@ -197,6 +198,7 @@ if (ENABLE_CONSOLE_APP)
 
     add_executable(${WSC_APP_NAME} sample/wsc.cpp ${RES_FILES})
     add_executable(${WSS_APP_NAME} sample/wss.cpp ${RES_FILES})
+    add_executable(${WEB_APP_NAME} sample/web.cpp ${RES_FILES})
     add_executable(${REST_APP_NAME} sample/rest.cpp ${RES_FILES})
 
     target_link_libraries(${WSC_APP_NAME}
@@ -209,6 +211,15 @@ if (ENABLE_CONSOLE_APP)
     )
 
     target_link_libraries(${WSS_APP_NAME}
+        ${CURRENT_LIB_NAME}
+        ${ZLIB_LIBRARY}
+        ${BROTLI_LIBRARIES}
+        ${OPENSSL_LIBRARIES}
+        ${LIBEVENT_LIBRARIES}
+        ${WINFLAGS}
+    )
+
+    target_link_libraries(${WEB_APP_NAME}
         ${CURRENT_LIB_NAME}
         ${ZLIB_LIBRARY}
         ${BROTLI_LIBRARIES}
@@ -239,6 +250,7 @@ install(TARGETS ${CURRENT_LIB_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
 # Устанавливаем исполнительные файлы
 install(TARGETS ${WSC_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
 install(TARGETS ${WSS_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
+install(TARGETS ${WEB_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
 install(TARGETS ${REST_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
 
 # Устанавливаем хидеры сторонних библиотек

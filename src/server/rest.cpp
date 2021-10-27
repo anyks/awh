@@ -144,6 +144,8 @@ bool awh::RestServer::acceptCallback(const string & ip, const string & mac, cons
  */
 void awh::RestServer::readCallback(const char * buffer, const size_t size, const size_t aid, const size_t wid, core_t * core, void * ctx) noexcept {
 
+	cout << " ++++++++++++++ " << string(buffer, size) << endl;
+
 }
 /**
  * writeCallback Функция обратного вызова при записи сообщения на клиенте
