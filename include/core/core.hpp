@@ -53,7 +53,7 @@
 #include <ssl.hpp>
 #include <dns.hpp>
 #include <socket.hpp>
-#include <core/worker.hpp>
+#include <worker/core.hpp>
 
 // Подписываемся на стандартное пространство имён
 using namespace std;

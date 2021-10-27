@@ -19,8 +19,8 @@
 /**
  * Наши модули
  */
-#include <client/http.hpp>
-#include <client/core.hpp>
+#include <http/client.hpp>
+#include <core/client.hpp>
 
 // Подписываемся на стандартное пространство имён
 using namespace std;
@@ -33,9 +33,9 @@ using json = nlohmann::json;
  */
 namespace awh {
 	/**
-	 * Rest Класс работы с REST клиентом
+	 * RestClient Класс работы с REST клиентом
 	 */
-	typedef class Rest {
+	typedef class RestClient {
 		public:
 			/**
 			 * Основные флаги приложения
@@ -372,16 +372,16 @@ namespace awh {
 			void setAuthTypeProxy(const auth_t::type_t type = auth_t::type_t::BASIC, const auth_t::alg_t alg = auth_t::alg_t::MD5) noexcept;
 		public:
 			/**
-			 * Rest Конструктор
+			 * RestClient Конструктор
 			 * @param core объект биндинга TCP/IP
 			 * @param fmk  объект фреймворка
 			 * @param log  объект для работы с логами
 			 */
-			Rest(const coreCli_t * core, const fmk_t * fmk, const log_t * log) noexcept;
+			RestClient(const coreCli_t * core, const fmk_t * fmk, const log_t * log) noexcept;
 			/**
-			 * ~Rest Деструктор
+			 * ~RestClient Деструктор
 			 */
-			~Rest() noexcept {}
+			~RestClient() noexcept {}
 	} restCli_t;
 };
 

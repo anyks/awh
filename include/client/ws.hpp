@@ -15,7 +15,7 @@
  */
 #include <ws/frame.hpp>
 #include <ws/client.hpp>
-#include <client/core.hpp>
+#include <core/client.hpp>
 
 // Подписываемся на стандартное пространство имён
 using namespace std;

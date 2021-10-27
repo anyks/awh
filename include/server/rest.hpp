@@ -7,14 +7,14 @@
  * copyright: © Yuriy Lobarev
  */
 
-#ifndef __AWH_WEBSOCKET_SERVER__
-#define __AWH_WEBSOCKET_SERVER__
+#ifndef __AWH_REST_SERVER__
+#define __AWH_REST_SERVER__
 
 /**
  * Наши модули
  */
-#include <worker/ws.hpp>
 #include <core/server.hpp>
+#include <worker/rest.hpp>
 
 // Подписываемся на стандартное пространство имён
 using namespace std;
@@ -24,9 +24,9 @@ using namespace std;
  */
 namespace awh {
 	/**
-	 * WebSocketServer Класс работы с WebSocket сервером
+	 * RestServer Класс работы с REST сервером
 	 */
-	typedef class WebSocketServer {
+	typedef class RestServer {
 		public:
 			/**
 			 * Основные флаги приложения
@@ -42,12 +42,10 @@ namespace awh {
 			// Порт сервера
 			u_int port = SERVER_PORT;
 		private:
-			// Создаём объект для работы с фреймом WebSocket
-			frame_t frame;
-			// Объект рабочего
-			workSrvWss_t worker;
 			// Создаём объект для компрессии-декомпрессии данных
 			mutable hash_t hash;
+			// Объект рабочего
+			workSrvRest_t worker;
 		private:
 			// Идентификатор сервера
 			string sid = "";
@@ -78,17 +76,13 @@ namespace awh {
 			// Функция обратного вызова для обработки авторизации
 			function <bool (const string &, const string &, void *)> checkAuthFn = nullptr;
 		private:
-			// Поддерживаемые сабпротоколы
-			vector <string> subs;
-		private:
 			// Флаг шифрования сообщений
 			bool crypt = false;
-			// Минимальный размер сегмента
-			size_t frameSize = 0xFA000;
 		private:
 			// Список контекстов передаваемых объектов
 			vector <void *> ctx = {
-				nullptr, nullptr, nullptr,
+				nullptr, nullptr,
+				nullptr, nullptr,
 				nullptr, nullptr, nullptr
 			};
 		private:
@@ -99,15 +93,26 @@ namespace awh {
 			// Создаём объект биндинга TCP/IP
 			const coreSrv_t * core = nullptr;
 		private:
+			// Функция обратного вызова, при получении HTTP чанков от клиента
+			function <void (const vector <char> &, const http_t *, void *)> chunkingFn = nullptr;
+		private:
 			// Функция обратного вызова, при запуске или остановки подключения к серверу
-			function <void (const size_t, const bool, WebSocketServer *, void *)> openStopFn = nullptr;
+			function <void (const size_t, const bool, RestServer *, void *)> openStopFn = nullptr;
 			// Функция обратного вызова, при получении ошибки работы клиента
-			function <void (const size_t, const u_short, const string &, WebSocketServer *, void *)> errorFn = nullptr;
+			function <void (const size_t, const u_short, const string &, RestServer *, void *)> errorFn = nullptr;
 			// Функция обратного вызова, при получении сообщения с сервера
-			function <void (const size_t, const vector <char> &, const bool, WebSocketServer *, void *)> messageFn = nullptr;
+			function <void (const size_t, const vector <char> &, const bool, RestServer *, void *)> messageFn = nullptr;
 		private:
 			// Функция разрешения подключения клиента на сервере
-			function <bool (const string &, const string &, WebSocketServer *, void *)> acceptFn = nullptr;
+			function <bool (const string &, const string &, RestServer *, void *)> acceptFn = nullptr;
+		private:
+			/**
+			 * chunking Метод обработки получения чанков
+			 * @param chunk бинарный буфер чанка
+			 * @param http  объект модуля HTTP
+			 * @param ctx   передаваемый контекст модуля
+			 */
+			static void chunking(const vector <char> & chunk, const http_t * http, void * ctx) noexcept;
 		private:
 			/**
 			 * openCallback Функция обратного вызова при запуске работы
@@ -170,37 +175,6 @@ namespace awh {
 			 * @param ctx    передаваемый контекст модуля
 			 */
 			static void writeCallback(const char * buffer, const size_t size, const size_t aid, const size_t wid, core_t * core, void * ctx) noexcept;
-		private:
-			/**
-			 * error Метод вывода сообщений об ошибках работы клиента
-			 * @param aid     идентификатор адъютанта
-			 * @param message сообщение с описанием ошибки
-			 */
-			void error(const size_t aid, const mess_t & message) const noexcept;
-			/**
-			 * extraction Метод извлечения полученных данных
-			 * @param adj    параметры подключения адъютанта
-			 * @param aid    идентификатор адъютанта
-			 * @param core   объект биндинга TCP/IP
-			 * @param buffer данные в чистом виде полученные с сервера
-			 * @param utf8   данные передаются в текстовом виде
-			 */
-			void extraction(workSrvWss_t::adjp_t * adj, const size_t aid, core_t * core, const vector <char> & buffer, const bool utf8) const noexcept;
-		private:
-			/**
-			 * pong Метод ответа на проверку о доступности сервера
-			 * @param aid  идентификатор адъютанта
-			 * @param core объект биндинга TCP/IP
-			 * @param      message сообщение для отправки
-			 */
-			void pong(const size_t aid, core_t * core, const string & message = "") noexcept;
-			/**
-			 * ping Метод проверки доступности сервера
-			 * @param aid  идентификатор адъютанта
-			 * @param core объект биндинга TCP/IP
-			 * @param      message сообщение для отправки
-			 */
-			void ping(const size_t aid, core_t * core, const string & message = "") noexcept;
 		public:
 			/**
 			 * init Метод инициализации WebSocket клиента
@@ -215,33 +189,33 @@ namespace awh {
 			 * @param ctx      контекст для вывода в сообщении
 			 * @param callback функция обратного вызова
 			 */
-			void on(void * ctx, function <void (const size_t, const bool, WebSocketServer *, void *)> callback) noexcept;
+			void on(void * ctx, function <void (const size_t, const bool, RestServer *, void *)> callback) noexcept;
 			/**
 			 * on Метод установки функции обратного вызова на событие получения ошибок
 			 * @param ctx      контекст для вывода в сообщении
 			 * @param callback функция обратного вызова
 			 */
-			void on(void * ctx, function <void (const size_t, const u_short, const string &, WebSocketServer *, void *)> callback) noexcept;
+			void on(void * ctx, function <void (const size_t, const u_short, const string &, RestServer *, void *)> callback) noexcept;
 			/**
 			 * on Метод установки функции обратного вызова на событие получения сообщений
 			 * @param ctx      контекст для вывода в сообщении
 			 * @param callback функция обратного вызова
 			 */
-			void on(void * ctx, function <void (const size_t, const vector <char> &, const bool, WebSocketServer *, void *)> callback) noexcept;
+			void on(void * ctx, function <void (const size_t, const vector <char> &, const bool, RestServer *, void *)> callback) noexcept;
 		public:
 			/**
 			 * on Метод установки функции обратного вызова на событие активации клиента на сервере
 			 * @param ctx      контекст для вывода в сообщении
 			 * @param callback функция обратного вызова
 			 */
-			void on(void * ctx, function <bool (const string &, const string &, WebSocketServer *, void *)> callback) noexcept;
+			void on(void * ctx, function <bool (const string &, const string &, RestServer *, void *)> callback) noexcept;
 		public:
 			/**
 			 * sendError Метод отправки сообщения об ошибке
 			 * @param aid  идентификатор адъютанта
 			 * @param mess отправляемое сообщение об ошибке
 			 */
-			void sendError(const size_t aid, const mess_t & mess) const noexcept;
+			// void sendError(const size_t aid, const mess_t & mess) const noexcept;
 			/**
 			 * send Метод отправки сообщения на сервер
 			 * @param aid     идентификатор адъютанта
@@ -249,7 +223,7 @@ namespace awh {
 			 * @param size    размер сообщения в байтах
 			 * @param utf8    данные передаются в текстовом виде
 			 */
-			void send(const size_t aid, const char * message, const size_t size, const bool utf8 = true) noexcept;
+			// void send(const size_t aid, const char * message, const size_t size, const bool utf8 = true) noexcept;
 		public:
 			/**
 			 * ip Метод получения IP адреса адъютанта
@@ -272,23 +246,6 @@ namespace awh {
 			 * start Метод запуска клиента
 			 */
 			void start() noexcept;
-		public:
-			/**
-			 * setSub Метод установки подпротокола поддерживаемого сервером
-			 * @param sub подпротокол для установки
-			 */
-			void setSub(const string & sub) noexcept;
-			/**
-			 * setSubs Метод установки списка подпротоколов поддерживаемых сервером
-			 * @param subs подпротоколы для установки
-			 */
-			void setSubs(const vector <string> & subs) noexcept;
-			/**
-			 * getSub Метод получения выбранного сабпротокола
-			 * @param aid идентификатор адъютанта
-			 * @return    название поддерживаемого сабпротокола
-			 */
-			const string getSub(const size_t aid) const noexcept;
 		public:
 			/**
 			 * setWaitTimeDetect Метод детекции сообщений по количеству секунд
@@ -326,6 +283,12 @@ namespace awh {
 			 * @param callback функция обратного вызова для обработки авторизации
 			 */
 			void setAuthCallback(void * ctx, function <bool (const string &, const string &, void *)> callback) noexcept;
+			/**
+			 * setChunkingFn Метод установки функции обратного вызова для получения чанков
+			 * @param ctx      контекст для вывода в сообщении
+			 * @param callback функция обратного вызова
+			 */
+			void setChunkingFn(void * ctx, function <void (const vector <char> &, const http_t *, void *)> callback) noexcept;
 		public:
 			/**
 			 * setAuthType Метод установки типа авторизации
@@ -365,17 +328,17 @@ namespace awh {
 			void setCrypt(const string & pass, const string & salt = "", const hash_t::aes_t aes = hash_t::aes_t::AES128) noexcept;
 		public:
 			/**
-			 * WebSocketServer Конструктор
+			 * RestServer Конструктор
 			 * @param core объект биндинга TCP/IP
 			 * @param fmk  объект фреймворка
 			 * @param log  объект для работы с логами
 			 */
-			WebSocketServer(const coreSrv_t * core, const fmk_t * fmk, const log_t * log) noexcept;
+			RestServer(const coreSrv_t * core, const fmk_t * fmk, const log_t * log) noexcept;
 			/**
-			 * ~WebSocketServer Деструктор
+			 * ~RestServer Деструктор
 			 */
-			~WebSocketServer() noexcept {}
-	} wsSrv_t;
+			~RestServer() noexcept {}
+	} restSrv_t;
 };
 
-#endif // __AWH_WEBSOCKET_SERVER__
+#endif // __AWH_REST_SERVER__
