@@ -105,7 +105,7 @@ namespace awh {
 			vector <void *> ctx = {
 				nullptr, nullptr,
 				nullptr, nullptr,
-				nullptr, nullptr, nullptr
+				nullptr, nullptr
 			};
 		private:
 			// Создаём объект фреймворка
@@ -122,8 +122,6 @@ namespace awh {
 			function <void (const size_t, const bool, RestServer *, void *)> openStopFn = nullptr;
 			// Функция обратного вызова, при получении сообщения с сервера
 			function <void (const size_t, const req_t &, RestServer *, void *)> messageFn = nullptr;
-			// Функция обратного вызова, при получении ошибки работы клиента
-			function <void (const size_t, const u_short, const string &, RestServer *, void *)> errorFn = nullptr;
 		private:
 			// Функция разрешения подключения клиента на сервере
 			function <bool (const string &, const string &, RestServer *, void *)> acceptFn = nullptr;
@@ -218,12 +216,6 @@ namespace awh {
 			 * @param callback функция обратного вызова
 			 */
 			void on(void * ctx, function <void (const size_t, const req_t &, RestServer *, void *)> callback) noexcept;
-			/**
-			 * on Метод установки функции обратного вызова на событие получения ошибок
-			 * @param ctx      контекст для вывода в сообщении
-			 * @param callback функция обратного вызова
-			 */
-			void on(void * ctx, function <void (const size_t, const u_short, const string &, RestServer *, void *)> callback) noexcept;
 		public:
 			/**
 			 * on Метод установки функции обратного вызова на событие активации клиента на сервере

@@ -92,7 +92,7 @@ void awh::RestServer::connectCallback(const size_t aid, const size_t wid, core_t
 		// Если функция обратного вызова для обработки чанков установлена
 		if(web->chunkingFn != nullptr)
 			// Устанавливаем внешнюю функцию обработки вызова для получения чанков
-			adj->http.setChunkingFn(web->ctx.at(6), web->chunkingFn);
+			adj->http.setChunkingFn(web->ctx.at(5), web->chunkingFn);
 		// Устанавливаем функцию обработки вызова для получения чанков
 		else adj->http.setChunkingFn(web, &chunking);
 		// Устанавливаем параметры шифрования
@@ -106,7 +106,7 @@ void awh::RestServer::connectCallback(const size_t aid, const size_t wid, core_t
 					// Устанавливаем параметры авторизации
 					adj->http.setAuthType(web->authType);
 					// Устанавливаем функцию проверки авторизации
-					adj->http.setAuthCallback(web->ctx.at(5), web->checkAuthFn);
+					adj->http.setAuthCallback(web->ctx.at(4), web->checkAuthFn);
 				} break;
 				// Если тип авторизации Digest
 				case (uint8_t) auth_t::type_t::DIGEST: {
@@ -117,7 +117,7 @@ void awh::RestServer::connectCallback(const size_t aid, const size_t wid, core_t
 					// Устанавливаем параметры авторизации
 					adj->http.setAuthType(web->authType, web->authAlg);
 					// Устанавливаем функцию извлечения пароля
-					adj->http.setExtractPassCallback(web->ctx.at(4), web->extractPassFn);
+					adj->http.setExtractPassCallback(web->ctx.at(3), web->extractPassFn);
 				} break;
 			}
 		}
@@ -160,7 +160,7 @@ bool awh::RestServer::acceptCallback(const string & ip, const string & mac, cons
 		// Получаем контекст модуля
 		restSrv_t * web = reinterpret_cast <restSrv_t *> (ctx);
 		// Если функция обратного вызова установлена, проверяем
-		if(web->acceptFn != nullptr) result = web->acceptFn(ip, mac, web, web->ctx.at(3));
+		if(web->acceptFn != nullptr) result = web->acceptFn(ip, mac, web, web->ctx.at(2));
 	}
 	// Разрешаем подключение клиенту
 	return result;
@@ -345,24 +345,13 @@ void awh::RestServer::on(void * ctx, function <void (const size_t, const req_t &
 	this->messageFn = callback;
 }
 /**
- * on Метод установки функции обратного вызова на событие получения ошибок
- * @param ctx      контекст для вывода в сообщении
- * @param callback функция обратного вызова
- */
-void awh::RestServer::on(void * ctx, function <void (const size_t, const u_short, const string &, RestServer *, void *)> callback) noexcept {
-	// Устанавливаем контекст передаваемого объекта
-	this->ctx.at(2) = ctx;
-	// Устанавливаем функцию получения ошибок
-	this->errorFn = callback;
-}
-/**
  * on Метод установки функции обратного вызова на событие активации клиента на сервере
  * @param ctx      контекст для вывода в сообщении
  * @param callback функция обратного вызова
  */
 void awh::RestServer::on(void * ctx, function <bool (const string &, const string &, RestServer *, void *)> callback) noexcept {
 	// Устанавливаем контекст передаваемого объекта
-	this->ctx.at(3) = ctx;
+	this->ctx.at(2) = ctx;
 	// Устанавливаем функцию запуска и остановки
 	this->acceptFn = callback;
 }
@@ -548,7 +537,7 @@ void awh::RestServer::setOpaque(const string & opaque) noexcept {
  */
 void awh::RestServer::setExtractPassCallback(void * ctx, function <string (const string &, void *)> callback) noexcept {
 	// Устанавливаем контекст передаваемого объекта
-	this->ctx.at(4) = ctx;
+	this->ctx.at(3) = ctx;
 	// Устанавливаем функцию обратного вызова для извлечения пароля
 	this->extractPassFn = callback;
 }
@@ -559,7 +548,7 @@ void awh::RestServer::setExtractPassCallback(void * ctx, function <string (const
  */
 void awh::RestServer::setAuthCallback(void * ctx, function <bool (const string &, const string &, void *)> callback) noexcept {
 	// Устанавливаем контекст передаваемого объекта
-	this->ctx.at(5) = ctx;
+	this->ctx.at(4) = ctx;
 	// Устанавливаем функцию обратного вызова для обработки авторизации
 	this->checkAuthFn = callback;
 }
@@ -570,7 +559,7 @@ void awh::RestServer::setAuthCallback(void * ctx, function <bool (const string &
  */
 void awh::RestServer::setChunkingFn(void * ctx, function <void (const vector <char> &, const http_t *, void *)> callback) noexcept {
 	// Устанавливаем контекст передаваемого объекта
-	this->ctx.at(6) = ctx;
+	this->ctx.at(5) = ctx;
 	// Устанавливаем функцию обратного вызова для получения чанков
 	this->chunkingFn = callback;
 }

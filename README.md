@@ -138,11 +138,6 @@ int main(int argc, char * argv[]) noexcept {
 		log->print("%s client", log_t::flag_t::INFO, (mode ? "Connect" : "Disconnect"));
 	});
 
-	rest.on(&log, [](const size_t aid, const u_short code, const string & mess,  restSrv_t * rest, void * ctx) noexcept {
-		log_t * log = reinterpret_cast <log_t *> (ctx);
-		log->print("%s [%u]", log_t::flag_t::CRITICAL, mess.c_str(), code);
-	});
-
 	rest.on(&log, [](const size_t aid, const restSrv_t::req_t & req, restSrv_t * rest, void * ctx) noexcept {
 		if(req.method == web_t::method_t::GET){
 

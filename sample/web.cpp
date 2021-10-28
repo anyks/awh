@@ -92,13 +92,6 @@ int main(int argc, char * argv[]) noexcept {
 		// Выводим информацию в лог
 		log->print("%s client", log_t::flag_t::INFO, (mode ? "Connect" : "Disconnect"));
 	});
-	// Установливаем функцию обратного вызова на событие получения ошибок
-	rest.on(&log, [](const size_t aid, const u_short code, const string & mess,  restSrv_t * rest, void * ctx) noexcept {
-		// Получаем объект логирования
-		log_t * log = reinterpret_cast <log_t *> (ctx);
-		// Выводим информацию в лог
-		log->print("%s [%u]", log_t::flag_t::CRITICAL, mess.c_str(), code);
-	});
 	// Установливаем функцию обратного вызова на событие получения сообщений
 	rest.on(&log, [](const size_t aid, const restSrv_t::req_t & req, restSrv_t * rest, void * ctx) noexcept {
 		// Если метод GET
