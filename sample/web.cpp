@@ -59,7 +59,7 @@ int main(int argc, char * argv[]) noexcept {
 	// Устанавливаем шифрование
 	// rest.setCrypt("PASS");
 	// Устанавливаем функцию извлечения пароля
-	rest.setExtractPassCallback(&log, [](const string & user, void * ctx) -> string {
+	rest.on(&log, [](const string & user, void * ctx) -> string {
 		// Получаем объект логирования
 		log_t * log = reinterpret_cast <log_t *> (ctx);
 		// Выводим информацию в лог
@@ -68,7 +68,7 @@ int main(int argc, char * argv[]) noexcept {
 		return "password";
 	});
 	// Устанавливаем функцию проверки авторизации
-	rest.setAuthCallback(&log, [](const string & user, const string & password, void * ctx) -> bool {
+	rest.on(&log, [](const string & user, const string & password, void * ctx) -> bool {
 		// Получаем объект логирования
 		log_t * log = reinterpret_cast <log_t *> (ctx);
 		// Выводим информацию в лог

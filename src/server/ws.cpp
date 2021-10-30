@@ -85,7 +85,7 @@ void awh::WebSocketServer::connectCallback(const size_t aid, const size_t wid, c
 					// Устанавливаем параметры авторизации
 					adj->http.setAuthType(ws->authType);
 					// Устанавливаем функцию проверки авторизации
-					adj->http.setAuthCallback(ws->ctx.at(5), ws->checkAuthFn);
+					adj->http.setAuthCallback(ws->ctx.at(4), ws->checkAuthFn);
 				} break;
 				// Если тип авторизации Digest
 				case (uint8_t) auth_t::type_t::DIGEST: {
@@ -96,7 +96,7 @@ void awh::WebSocketServer::connectCallback(const size_t aid, const size_t wid, c
 					// Устанавливаем параметры авторизации
 					adj->http.setAuthType(ws->authType, ws->authAlg);
 					// Устанавливаем функцию извлечения пароля
-					adj->http.setExtractPassCallback(ws->ctx.at(4), ws->extractPassFn);
+					adj->http.setExtractPassCallback(ws->ctx.at(3), ws->extractPassFn);
 				} break;
 			}
 		}
@@ -137,7 +137,7 @@ bool awh::WebSocketServer::acceptCallback(const string & ip, const string & mac,
 		// Получаем контекст модуля
 		wsSrv_t * ws = reinterpret_cast <wsSrv_t *> (ctx);
 		// Если функция обратного вызова установлена, проверяем
-		if(ws->acceptFn != nullptr) result = ws->acceptFn(ip, mac, ws, ws->ctx.at(3));
+		if(ws->acceptFn != nullptr) result = ws->acceptFn(ip, mac, ws, ws->ctx.at(5));
 	}
 	// Разрешаем подключение клиенту
 	return result;
@@ -450,11 +450,11 @@ void awh::WebSocketServer::extraction(workSrvWss_t::adjp_t * adj, const size_t a
 					// Выполняем шифрование переданных данных
 					const auto & res = this->hash.decrypt(data.data(), data.size());
 					// Отправляем полученный результат
-					if(!res.empty()) this->messageFn(aid, res, utf8, const_cast <WebSocketServer *> (this), this->ctx.at(3));
+					if(!res.empty()) this->messageFn(aid, res, utf8, const_cast <WebSocketServer *> (this), this->ctx.at(2));
 					// Иначе выводим сообщение так - как оно пришло
-					else this->messageFn(aid, data, utf8, const_cast <WebSocketServer *> (this), this->ctx.at(3));
+					else this->messageFn(aid, data, utf8, const_cast <WebSocketServer *> (this), this->ctx.at(2));
 				// Отправляем полученный результат
-				} else this->messageFn(aid, data, utf8, const_cast <WebSocketServer *> (this), this->ctx.at(3));
+				} else this->messageFn(aid, data, utf8, const_cast <WebSocketServer *> (this), this->ctx.at(2));
 			// Выводим сообщение об ошибке
 			} else {
 				// Создаём сообщение
@@ -477,11 +477,11 @@ void awh::WebSocketServer::extraction(workSrvWss_t::adjp_t * adj, const size_t a
 				// Выполняем шифрование переданных данных
 				const auto & res = this->hash.decrypt(buffer.data(), buffer.size());
 				// Отправляем полученный результат
-				if(!res.empty()) this->messageFn(aid, res, utf8, const_cast <WebSocketServer *> (this), this->ctx.at(3));
+				if(!res.empty()) this->messageFn(aid, res, utf8, const_cast <WebSocketServer *> (this), this->ctx.at(2));
 				// Иначе выводим сообщение так - как оно пришло
-				else this->messageFn(aid, buffer, utf8, const_cast <WebSocketServer *> (this), this->ctx.at(3));
+				else this->messageFn(aid, buffer, utf8, const_cast <WebSocketServer *> (this), this->ctx.at(2));
 			// Отправляем полученный результат
-			} else this->messageFn(aid, buffer, utf8, const_cast <WebSocketServer *> (this), this->ctx.at(3));
+			} else this->messageFn(aid, buffer, utf8, const_cast <WebSocketServer *> (this), this->ctx.at(2));
 		}
 	}
 }
@@ -573,13 +573,35 @@ void awh::WebSocketServer::on(void * ctx, function <void (const size_t, const ve
 	this->messageFn = callback;
 }
 /**
+ * on Метод добавления функции извлечения пароля
+ * @param ctx      контекст для вывода в сообщении
+ * @param callback функция обратного вызова для извлечения пароля
+ */
+void awh::WebSocketServer::on(void * ctx, function <string (const string &, void *)> callback) noexcept {
+	// Устанавливаем контекст передаваемого объекта
+	this->ctx.at(3) = ctx;
+	// Устанавливаем функцию обратного вызова для извлечения пароля
+	this->extractPassFn = callback;
+}
+/**
+ * on Метод добавления функции обработки авторизации
+ * @param ctx      контекст для вывода в сообщении
+ * @param callback функция обратного вызова для обработки авторизации
+ */
+void awh::WebSocketServer::on(void * ctx, function <bool (const string &, const string &, void *)> callback) noexcept {
+	// Устанавливаем контекст передаваемого объекта
+	this->ctx.at(4) = ctx;
+	// Устанавливаем функцию обратного вызова для обработки авторизации
+	this->checkAuthFn = callback;
+}
+/**
  * on Метод установки функции обратного вызова на событие активации клиента на сервере
  * @param ctx      контекст для вывода в сообщении
  * @param callback функция обратного вызова
  */
 void awh::WebSocketServer::on(void * ctx, function <bool (const string &, const string &, WebSocketServer *, void *)> callback) noexcept {
 	// Устанавливаем контекст передаваемого объекта
-	this->ctx.at(3) = ctx;
+	this->ctx.at(5) = ctx;
 	// Устанавливаем функцию запуска и остановки
 	this->acceptFn = callback;
 }
@@ -852,28 +874,6 @@ void awh::WebSocketServer::setRealm(const string & realm) noexcept {
 void awh::WebSocketServer::setOpaque(const string & opaque) noexcept {
 	// Устанавливаем временный ключ сессии сервера
 	this->opaque = opaque;
-}
-/**
- * setExtractPassCallback Метод добавления функции извлечения пароля
- * @param ctx      контекст для вывода в сообщении
- * @param callback функция обратного вызова для извлечения пароля
- */
-void awh::WebSocketServer::setExtractPassCallback(void * ctx, function <string (const string &, void *)> callback) noexcept {
-	// Устанавливаем контекст передаваемого объекта
-	this->ctx.at(4) = ctx;
-	// Устанавливаем функцию обратного вызова для извлечения пароля
-	this->extractPassFn = callback;
-}
-/**
- * setAuthCallback Метод добавления функции обработки авторизации
- * @param ctx      контекст для вывода в сообщении
- * @param callback функция обратного вызова для обработки авторизации
- */
-void awh::WebSocketServer::setAuthCallback(void * ctx, function <bool (const string &, const string &, void *)> callback) noexcept {
-	// Устанавливаем контекст передаваемого объекта
-	this->ctx.at(5) = ctx;
-	// Устанавливаем функцию обратного вызова для обработки авторизации
-	this->checkAuthFn = callback;
 }
 /**
  * setAuthType Метод установки типа авторизации

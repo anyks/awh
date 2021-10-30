@@ -439,7 +439,7 @@ void awh::WebSocketClient::readProxyCallback(const char * buffer, const size_t s
 									// Запоминаем, что попытка выполнена
 									ws->failAuth = true;
 									// Если соединение является постоянным
-									if(ws->http.isAlive())
+									if(ws->worker.proxy.http.isAlive())
 										// Выполняем повторно отправку сообщения на сервер
 										connectProxyCallback(aid, wid, core, ctx);
 									// Завершаем работу

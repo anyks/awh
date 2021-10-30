@@ -61,7 +61,7 @@ int main(int argc, char * argv[]) noexcept {
 	// ws.setSubs({"test1", "test2", "test3"});
 	/*
 	// Устанавливаем функцию извлечения пароля
-	ws.setExtractPassCallback(&log, [](const string & user, void * ctx) -> string {
+	ws.on(&log, [](const string & user, void * ctx) -> string {
 		// Получаем объект логирования
 		log_t * log = reinterpret_cast <log_t *> (ctx);
 		// Выводим информацию в лог
@@ -70,7 +70,7 @@ int main(int argc, char * argv[]) noexcept {
 		return "password";
 	});
 	// Устанавливаем функцию проверки авторизации
-	ws.setAuthCallback(&log, [](const string & user, const string & password, void * ctx) -> bool {
+	ws.on(&log, [](const string & user, const string & password, void * ctx) -> bool {
 		// Получаем объект логирования
 		log_t * log = reinterpret_cast <log_t *> (ctx);
 		// Выводим информацию в лог

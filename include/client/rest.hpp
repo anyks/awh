@@ -311,11 +311,11 @@ namespace awh {
 			void on(void * ctx, function <void (const res_t &, RestClient *, void *)> callback) noexcept;
 		public:
 			/**
-			 * setChunkingFn Метод установки функции обратного вызова для получения чанков
+			 * on Метод установки функции обратного вызова для получения чанков
 			 * @param ctx      контекст для вывода в сообщении
 			 * @param callback функция обратного вызова
 			 */
-			void setChunkingFn(void * ctx, function <void (const vector <char> &, const http_t *, void *)> callback) noexcept;
+			void on(void * ctx, function <void (const vector <char> &, const http_t *, void *)> callback) noexcept;
 		public:
 			/**
 			 * setWaitTimeDetect Метод детекции сообщений по количеству секунд

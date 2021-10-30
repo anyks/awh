@@ -877,11 +877,11 @@ void awh::RestClient::on(void * ctx, function <void (const res_t &, RestClient *
 	this->messageFn = callback;
 }
 /**
- * setChunkingFn Метод установки функции обратного вызова для получения чанков
+ * on Метод установки функции обратного вызова для получения чанков
  * @param ctx      контекст для вывода в сообщении
  * @param callback функция обратного вызова
  */
-void awh::RestClient::setChunkingFn(void * ctx, function <void (const vector <char> &, const http_t *, void *)> callback) noexcept {
+void awh::RestClient::on(void * ctx, function <void (const vector <char> &, const http_t *, void *)> callback) noexcept {
 	// Устанавливаем функцию обработки вызова для получения чанков
 	this->http.setChunkingFn(ctx, callback);
 }

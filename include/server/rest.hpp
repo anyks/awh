@@ -218,6 +218,24 @@ namespace awh {
 			void on(void * ctx, function <void (const size_t, const req_t &, RestServer *, void *)> callback) noexcept;
 		public:
 			/**
+			 * on Метод добавления функции извлечения пароля
+			 * @param ctx      контекст для вывода в сообщении
+			 * @param callback функция обратного вызова для извлечения пароля
+			 */
+			void on(void * ctx, function <string (const string &, void *)> callback) noexcept;
+			/**
+			 * on Метод добавления функции обработки авторизации
+			 * @param ctx      контекст для вывода в сообщении
+			 * @param callback функция обратного вызова для обработки авторизации
+			 */
+			void on(void * ctx, function <bool (const string &, const string &, void *)> callback) noexcept;
+			/**
+			 * on Метод установки функции обратного вызова для получения чанков
+			 * @param ctx      контекст для вывода в сообщении
+			 * @param callback функция обратного вызова
+			 */
+			void on(void * ctx, function <void (const vector <char> &, const http_t *, void *)> callback) noexcept;
+			/**
 			 * on Метод установки функции обратного вызова на событие активации клиента на сервере
 			 * @param ctx      контекст для вывода в сообщении
 			 * @param callback функция обратного вызова
@@ -306,25 +324,6 @@ namespace awh {
 			 * @param opaque временный ключ сессии сервера
 			 */
 			void setOpaque(const string & opaque) noexcept;
-		public:
-			/**
-			 * setExtractPassCallback Метод добавления функции извлечения пароля
-			 * @param ctx      контекст для вывода в сообщении
-			 * @param callback функция обратного вызова для извлечения пароля
-			 */
-			void setExtractPassCallback(void * ctx, function <string (const string &, void *)> callback) noexcept;
-			/**
-			 * setAuthCallback Метод добавления функции обработки авторизации
-			 * @param ctx      контекст для вывода в сообщении
-			 * @param callback функция обратного вызова для обработки авторизации
-			 */
-			void setAuthCallback(void * ctx, function <bool (const string &, const string &, void *)> callback) noexcept;
-			/**
-			 * setChunkingFn Метод установки функции обратного вызова для получения чанков
-			 * @param ctx      контекст для вывода в сообщении
-			 * @param callback функция обратного вызова
-			 */
-			void setChunkingFn(void * ctx, function <void (const vector <char> &, const http_t *, void *)> callback) noexcept;
 		public:
 			/**
 			 * setAuthType Метод установки типа авторизации
