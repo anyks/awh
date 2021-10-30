@@ -53,7 +53,7 @@ int main(int argc, char * argv[]) noexcept {
 	rest.setOpaque("keySession");
 	// Устанавливаем тип авторизации
 	// rest.setAuthType();
-	// rest.setAuthType(auth_t::type_t::DIGEST, auth_t::alg_t::MD5);
+	// rest.setAuthType(auth_t::type_t::DIGEST, auth_t::aes_t::MD5);
 	// Выполняем инициализацию WebSocket сервера
 	rest.init(2222, "127.0.0.1", http_t::compress_t::GZIP);
 	// Устанавливаем шифрование
@@ -111,7 +111,7 @@ int main(int argc, char * argv[]) noexcept {
 			"Such a program is very simple in most programming languages, and is often used to illustrate the basic syntax of a programming language. It is often the first program written by people learning to code. It can also be used as a sanity test to make sure that computer software intended to compile or run source code is correctly installed, and that the operator understands how to use it.\n"
 			"</div>\n</body>\n</html>\n";
 			// Отправляем сообщение клиенту
-			rest->response(aid, 200, "OK", vector <char> (body.begin(), body.end()) );//, {{"Connection", "close"}});
+			rest->response(aid, 200, "OK", vector <char> (body.begin(), body.end()));//, {{"Connection", "close"}});
 		}
 	});
 	// Выполняем запуск REST сервер

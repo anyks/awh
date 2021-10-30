@@ -86,7 +86,7 @@ int main(int argc, char * argv[]) noexcept {
 	rest.setAuthTypeProxy(auth_t::type_t::BASIC);
 
 	// rest.setUser("user", "password");
-	// rest.setAuthType(auth_t::type_t::DIGEST, auth_t::alg_t::MD5);
+	// rest.setAuthType(auth_t::type_t::DIGEST, auth_t::aes_t::MD5);
 
 	uri_t::url_t url = uri.parseUrl("https://2ip.ru");
 
@@ -129,7 +129,7 @@ int main(int argc, char * argv[]) noexcept {
 	log.setLogFormat("%H:%M:%S %d.%m.%Y");
 
 	rest.init(2222, "127.0.0.1");
-	rest.setAuthType(auth_t::type_t::DIGEST, auth_t::alg_t::MD5);
+	rest.setAuthType(auth_t::type_t::DIGEST, auth_t::aes_t::MD5);
 
 	rest.on(&log, [](const string & user, void * ctx) -> string {
 		log_t * log = reinterpret_cast <log_t *> (ctx);
@@ -214,7 +214,7 @@ int main(int argc, char * argv[]) noexcept {
 	ws.setCrypt("PASS");
 	ws.setUser("user", "password");
 	ws.setSubs({"test2", "test8", "test9"});
-	ws.setAuthType(auth_t::type_t::DIGEST, auth_t::alg_t::SHA256);
+	ws.setAuthType(auth_t::type_t::DIGEST, auth_t::aes_t::SHA256);
 
 	ws.init("ws://127.0.0.1:2222", http_t::compress_t::DEFLATE);
 
@@ -275,7 +275,7 @@ int main(int argc, char * argv[]) noexcept {
 	ws.setRealm("ANYKS");
 	ws.setOpaque("keySession");
 	ws.setSubs({"test1", "test2", "test3"});
-	ws.setAuthType(auth_t::type_t::DIGEST, auth_t::alg_t::SHA256);
+	ws.setAuthType(auth_t::type_t::DIGEST, auth_t::aes_t::SHA256);
 
 	ws.init(2222, "127.0.0.1", http_t::compress_t::DEFLATE);
 

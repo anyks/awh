@@ -65,7 +65,7 @@ int main(int argc, char * argv[]) noexcept {
 	// ws.setProxy("socks5://6S7rAk:g6K8XD@217.29.62.231:30810");
 	// Выполняем инициализацию типа авторизации
 	// ws.setAuthType();
-	// ws.setAuthType(auth_t::type_t::DIGEST, auth_t::alg_t::SHA256);
+	// ws.setAuthType(auth_t::type_t::DIGEST, auth_t::aes_t::SHA256);
 	// Устанавливаем тип авторизации прокси-сервера
 	ws.setAuthTypeProxy();
 	// Выполняем инициализацию WebSocket клиента

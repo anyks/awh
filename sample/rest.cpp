@@ -63,7 +63,7 @@ int main(int argc, char * argv[]) noexcept {
 	// rest.setAuthTypeProxy();
 	// Выполняем инициализацию типа авторизации
 	// rest.setAuthType();
-	// rest.setAuthType(auth_t::type_t::DIGEST, auth_t::alg_t::MD5);
+	// rest.setAuthType(auth_t::type_t::DIGEST, auth_t::aes_t::MD5);
 	// Выполняем получение URL адреса сервера
 	// uri_t::url_t url = uri.parseUrl("https://2ip.ru");
 	// uri_t::url_t url = uri.parseUrl("https://www.anyks.com");

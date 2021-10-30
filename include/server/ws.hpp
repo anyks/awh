@@ -70,7 +70,7 @@ namespace awh {
 			// Временный ключ сессии сервера
 			string opaque = "";
 			// Алгоритм шифрования для Digest авторизации
-			auth_t::alg_t authAlg = auth_t::alg_t::MD5;
+			auth_t::aes_t authAes = auth_t::aes_t::MD5;
 			// Тип авторизации
 			auth_t::type_t authType = auth_t::type_t::NONE;
 			// Функция обратного вызова для извлечения пароля
@@ -329,9 +329,9 @@ namespace awh {
 			/**
 			 * setAuthType Метод установки типа авторизации
 			 * @param type тип авторизации
-			 * @param alg  алгоритм шифрования для Digest авторизации
+			 * @param aes  алгоритм шифрования для Digest авторизации
 			 */
-			void setAuthType(const auth_t::type_t type = auth_t::type_t::BASIC, const auth_t::alg_t alg = auth_t::alg_t::MD5) noexcept;
+			void setAuthType(const auth_t::type_t type = auth_t::type_t::BASIC, const auth_t::aes_t aes = auth_t::aes_t::MD5) noexcept;
 		public:
 			/**
 			 * setMode Метод установки флага модуля

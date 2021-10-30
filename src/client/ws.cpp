@@ -1046,20 +1046,20 @@ void awh::WebSocketClient::setCrypt(const string & pass, const string & salt, co
 /**
  * setAuthType Метод установки типа авторизации
  * @param type тип авторизации
- * @param alg  алгоритм шифрования для Digest авторизации
+ * @param aes  алгоритм шифрования для Digest авторизации
  */
-void awh::WebSocketClient::setAuthType(const auth_t::type_t type, const auth_t::alg_t alg) noexcept {
+void awh::WebSocketClient::setAuthType(const auth_t::type_t type, const auth_t::aes_t aes) noexcept {
 	// Если объект авторизации создан
-	this->http.setAuthType(type, alg);
+	this->http.setAuthType(type, aes);
 }
 /**
  * setAuthTypeProxy Метод установки типа авторизации прокси-сервера
  * @param type тип авторизации
- * @param alg  алгоритм шифрования для Digest авторизации
+ * @param aes  алгоритм шифрования для Digest авторизации
  */
-void awh::WebSocketClient::setAuthTypeProxy(const auth_t::type_t type, const auth_t::alg_t alg) noexcept {
+void awh::WebSocketClient::setAuthTypeProxy(const auth_t::type_t type, const auth_t::aes_t aes) noexcept {
 	// Если объект авторизации создан
-	this->worker.proxy.http.setAuthType(type, alg);
+	this->worker.proxy.http.setAuthType(type, aes);
 }
 /**
  * WebSocketClient Конструктор

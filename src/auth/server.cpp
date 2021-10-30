@@ -40,7 +40,7 @@ const bool awh::AuthServer::check() noexcept {
 						this->digest.nc = this->userDigest.nc;
 						// Устанавливаем параметры для проверки
 						digest.nc     = this->digest.nc;
-						digest.alg    = this->digest.alg;
+						digest.aes    = this->digest.aes;
 						digest.uri    = this->userDigest.uri;
 						digest.qop    = this->userDigest.qop;
 						digest.realm  = this->userDigest.realm;
@@ -245,9 +245,9 @@ const string awh::AuthServer::getHeader(const bool mode) noexcept {
 					if(!this->digest.nonce.empty()) stale = "TRUE";
 				}
 				// Определяем алгоритм шифрования
-				switch((u_short) this->digest.alg){
+				switch((u_short) this->digest.aes){
 					// Если алгоритм шифрования MD5
-					case (u_short) alg_t::MD5: {
+					case (u_short) aes_t::MD5: {
 						// Устанавливаем тип шифрования
 						algorithm = "MD5";
 						// Выполняем создание ключа клиента
@@ -256,7 +256,7 @@ const string awh::AuthServer::getHeader(const bool mode) noexcept {
 						if(this->digest.opaque.empty()) this->digest.opaque = this->fmk->md5(AWH_SITE);
 					} break;
 					// Если алгоритм шифрования SHA1
-					case (u_short) alg_t::SHA1: {
+					case (u_short) aes_t::SHA1: {
 						// Устанавливаем тип шифрования
 						algorithm = "SHA1";
 						// Выполняем создание ключа клиента
@@ -265,7 +265,7 @@ const string awh::AuthServer::getHeader(const bool mode) noexcept {
 						if(this->digest.opaque.empty()) this->digest.opaque = this->fmk->sha1(AWH_SITE);
 					} break;
 					// Если алгоритм шифрования SHA256
-					case (u_short) alg_t::SHA256: {
+					case (u_short) aes_t::SHA256: {
 						// Устанавливаем тип шифрования
 						algorithm = "SHA256";
 						// Выполняем создание ключа клиента
@@ -274,7 +274,7 @@ const string awh::AuthServer::getHeader(const bool mode) noexcept {
 						if(this->digest.opaque.empty()) this->digest.opaque = this->fmk->sha256(AWH_SITE);
 					} break;
 					// Если алгоритм шифрования SHA512
-					case (u_short) alg_t::SHA512: {
+					case (u_short) aes_t::SHA512: {
 						// Устанавливаем тип шифрования
 						algorithm = "SHA512";
 						// Выполняем создание ключа клиента

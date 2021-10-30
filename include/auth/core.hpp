@@ -49,13 +49,13 @@ namespace awh {
 			/**
 			 * Алгоритм шифрования для авторизации Digest
 			 */
-			enum class alg_t : uint8_t {MD5, SHA1, SHA256, SHA512};
+			enum class aes_t : uint8_t {MD5, SHA1, SHA256, SHA512};
 		protected:
 			/**
 			 * Digest Структура параметров дайджест авторизации
 			 */
 			typedef struct Digest {
-				alg_t alg;     // Алгоритм шифрования (MD5, SHA1, SHA256, SHA512)
+				aes_t aes;     // Алгоритм шифрования (MD5, SHA1, SHA256, SHA512)
 				time_t stamp;  // Штамп времени последнего создания nonce
 				string nc;     // Счётчик 16-го секретного кода клиента
 				string uri;    // Параметры HTTP запроса
@@ -73,7 +73,7 @@ namespace awh {
 					qop("auth"), realm(AWH_HOST),
 					nonce(""), opaque(""),
 					cnonce(""), resp(""),
-					stamp(0), alg(alg_t::MD5) {}
+					stamp(0), aes(aes_t::MD5) {}
 			} digest_t;
 		protected:
 			// Тип авторизации
@@ -121,9 +121,9 @@ namespace awh {
 			/**
 			 * setType Метод установки типа авторизации
 			 * @param type тип авторизации
-			 * @param alg  алгоритм шифрования для Digest авторизации
+			 * @param aes  алгоритм шифрования для Digest авторизации
 			 */
-			void setType(const type_t type, const alg_t alg = alg_t::MD5) noexcept;
+			void setType(const type_t type, const aes_t aes = aes_t::MD5) noexcept;
 		public:
 			/**
 			 * Authorization Конструктор

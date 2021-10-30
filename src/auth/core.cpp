@@ -43,9 +43,9 @@ const string awh::Authorization::response(const string & user, const string & pa
 		 */
 		try {
 			// Определяем алгоритм шифрования
-			switch((u_short) this->digest.alg){
+			switch((u_short) this->digest.aes){
 				// Если алгоритм шифрования MD5
-				case (u_short) alg_t::MD5: {
+				case (u_short) aes_t::MD5: {
 					// Создаем первый этап
 					const string & ha1 = this->fmk->md5(this->fmk->format("%s:%s:%s", user.c_str(), digest.realm.c_str(), pass.c_str()));
 					// Если первый этап получен
@@ -57,7 +57,7 @@ const string awh::Authorization::response(const string & user, const string & pa
 					}
 				} break;
 				// Если алгоритм шифрования SHA1
-				case (u_short) alg_t::SHA1: {
+				case (u_short) aes_t::SHA1: {
 					// Создаем первый этап
 					const string & ha1 = this->fmk->sha1(this->fmk->format("%s:%s:%s", user.c_str(), digest.realm.c_str(), pass.c_str()));
 					// Если первый этап получен
@@ -69,7 +69,7 @@ const string awh::Authorization::response(const string & user, const string & pa
 					}
 				} break;
 				// Если алгоритм шифрования SHA256
-				case (u_short) alg_t::SHA256: {
+				case (u_short) aes_t::SHA256: {
 					// Создаем первый этап
 					const string & ha1 = this->fmk->sha256(this->fmk->format("%s:%s:%s", user.c_str(), digest.realm.c_str(), pass.c_str()));
 					// Если первый этап получен
@@ -81,7 +81,7 @@ const string awh::Authorization::response(const string & user, const string & pa
 					}
 				} break;
 				// Если алгоритм шифрования SHA512
-				case (u_short) alg_t::SHA512: {
+				case (u_short) aes_t::SHA512: {
 					// Создаем первый этап
 					const string & ha1 = this->fmk->sha512(this->fmk->format("%s:%s:%s", user.c_str(), digest.realm.c_str(), pass.c_str()));
 					// Если первый этап получен
@@ -105,11 +105,11 @@ const string awh::Authorization::response(const string & user, const string & pa
 /**
  * setType Метод установки типа авторизации
  * @param type тип авторизации
- * @param alg  алгоритм шифрования для Digest авторизации
+ * @param aes  алгоритм шифрования для Digest авторизации
  */
-void awh::Authorization::setType(const type_t type, const alg_t alg) noexcept {
+void awh::Authorization::setType(const type_t type, const aes_t aes) noexcept {
 	// Устанавливаем тип авторизации
 	this->type = type;
 	// Устанавливаем алгоритм шифрования для авторизации Digest
-	this->digest.alg = alg;
+	this->digest.aes = aes;
 }

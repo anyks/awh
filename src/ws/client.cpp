@@ -184,9 +184,9 @@ void awh::WSClient::setUser(const string & user, const string & pass) noexcept {
 /**
  * setAuthType Метод установки типа авторизации
  * @param type тип авторизации
- * @param alg  алгоритм шифрования для Digest авторизации
+ * @param aes  алгоритм шифрования для Digest авторизации
  */
-void awh::WSClient::setAuthType(const auth_t::type_t type, const auth_t::alg_t alg) noexcept {
+void awh::WSClient::setAuthType(const auth_t::type_t type, const auth_t::aes_t aes) noexcept {
 	// Устанавливаем тип авторизации
-	this->authCli.setType(type, alg);
+	this->authCli.setType(type, aes);
 }

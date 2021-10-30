@@ -62,7 +62,7 @@ void awh::RestServer::persistCallback(const size_t aid, const size_t wid, core_t
 				// Получаем текущий штамп времени
 				const time_t stamp = web->fmk->unixTimestamp();
 				// Если адъютант не ответил на пинг больше двух интервалов, отключаем его
-				if((stamp - adj->checkPoint) >= MAX_TIME_CONNECT)
+				if((stamp - adj->checkPoint) >= web->keepAlive)
 					// Завершаем работу
 					core->close(aid);
 			}
@@ -115,7 +115,7 @@ void awh::RestServer::connectCallback(const size_t aid, const size_t wid, core_t
 					// Устанавливаем временный ключ сессии сервера
 					adj->http.setOpaque(web->opaque);
 					// Устанавливаем параметры авторизации
-					adj->http.setAuthType(web->authType, web->authAlg);
+					adj->http.setAuthType(web->authType, web->authAes);
 					// Устанавливаем функцию извлечения пароля
 					adj->http.setExtractPassCallback(web->ctx.at(2), web->extractPassFn);
 				} break;
@@ -437,7 +437,7 @@ void awh::RestServer::reject(const size_t aid, const u_short code, const string 
 			// Если подключение не установлено как постоянное, но подключение долгоживущее
 			if(!this->alive && !adj->alive && adj->http.isAlive())
 				// Указываем сколько запросов разрешено выполнить за указанный интервал времени
-				adj->http.addHeader("Keep-Alive", this->fmk->format("timeout=%d, max=%d", MAX_TIME_CONNECT / 1000, this->maxRequests));
+				adj->http.addHeader("Keep-Alive", this->fmk->format("timeout=%d, max=%d", this->keepAlive / 1000, this->maxRequests));
 			// Формируем запрос авторизации
 			const auto & response = adj->http.reject(code, mess);
 			// Устанавливаем размер стопбайт
@@ -478,7 +478,7 @@ void awh::RestServer::response(const size_t aid, const u_short code, const strin
 			// Если подключение не установлено как постоянное, но подключение долгоживущее
 			if(!this->alive && !adj->alive && adj->http.isAlive())
 				// Указываем сколько запросов разрешено выполнить за указанный интервал времени
-				adj->http.addHeader("Keep-Alive", this->fmk->format("timeout=%d, max=%d", MAX_TIME_CONNECT / 1000, this->maxRequests));
+				adj->http.addHeader("Keep-Alive", this->fmk->format("timeout=%d, max=%d", this->keepAlive / 1000, this->maxRequests));
 			// Формируем запрос авторизации
 			const auto & response = adj->http.response(code, mess);
 			// Устанавливаем размер стопбайт
@@ -601,11 +601,11 @@ void awh::RestServer::setOpaque(const string & opaque) noexcept {
 /**
  * setAuthType Метод установки типа авторизации
  * @param type тип авторизации
- * @param alg  алгоритм шифрования для Digest авторизации
+ * @param aes  алгоритм шифрования для Digest авторизации
  */
-void awh::RestServer::setAuthType(const auth_t::type_t type, const auth_t::alg_t alg) noexcept {
+void awh::RestServer::setAuthType(const auth_t::type_t type, const auth_t::aes_t aes) noexcept {
 	// Устанавливаем алгоритм шифрования для Digest авторизации
-	this->authAlg = alg;
+	this->authAes = aes;
 	// Устанавливаем тип авторизации
 	this->authType = type;
 }
@@ -628,6 +628,14 @@ void awh::RestServer::setMode(const u_short flag) noexcept {
 void awh::RestServer::setChunkSize(const size_t size) noexcept {
 	// Устанавливаем размер чанка
 	this->chunkSize = (size > 0 ? size : BUFFER_CHUNK);
+}
+/**
+ * setKeepAlive Метод установки времени жизни подключения
+ * @param time время жизни подключения
+ */
+void awh::RestServer::setKeepAlive(const size_t time) noexcept {
+	// Устанавливаем время жизни подключения
+	this->keepAlive = time;
 }
 /**
  * setMaxRequests Метод установки максимального количества запросов
@@ -710,5 +718,5 @@ awh::RestServer::RestServer(const coreSrv_t * core, const fmk_t * fmk, const log
 	// Добавляем воркер в биндер TCP/IP
 	const_cast <coreSrv_t *> (this->core)->add(&this->worker);
 	// Устанавливаем интервал персистентного таймера для работы пингов
-	const_cast <coreSrv_t *> (this->core)->setPersistInterval(MAX_TIME_CONNECT / 2);
+	const_cast <coreSrv_t *> (this->core)->setPersistInterval(KEEPALIVE_TIMEOUT / 2);
 }
