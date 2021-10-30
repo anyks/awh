@@ -49,6 +49,20 @@ namespace awh {
 				VERIFYSSL = 0x20  // Флаг выполнения проверки сертификата SSL
 			};
 			/**
+			 * Request Структура запроса клиента
+			 */
+			typedef struct Request {
+				bool failAuth;                               // Флаг проверки аутентификации
+				web_t::method_t method;                      // Метод запроса
+				uri_t::url_t url;                            // Параметры адреса для запроса
+				vector <char> entity;                        // Тело запроса
+				unordered_multimap <string, string> headers; // Заголовки клиента
+				/**
+				 * Request Конструктор
+				 */
+				Request() : failAuth(false), method(web_t::method_t::NONE) {}
+			} req_t;
+			/**
 			 * Response Структура ответа сервера
 			 */
 			typedef struct Response {
@@ -63,8 +77,6 @@ namespace awh {
 				Response() : ok(false), code(0), message("") {}
 			} res_t;
 		private:
-			// Параметры ответа
-			res_t res;
 			// Создаём объект работы с URI ссылками
 			uri_t uri;
 			// Создаем объект для работы с сетью
@@ -73,23 +85,27 @@ namespace awh {
 			httpCli_t http;
 			// Объект рабочего
 			workCli_t worker;
-			// Метод выполняемого запроса
-			web_t::method_t method;
 			// Метод компрессии данных
 			http_t::compress_t compress;
 		private:
+			// Список запросов
+			vector <req_t> requests;
+			// Список ответов
+			vector <res_t> responses;
+		private:
+			// Идентификатор подключения
+			size_t aid = 0;
+		private:
 			// Выполнять анбиндинг после завершения запроса
 			bool unbind = true;
-			// Флаг проверки аутентификации
-			bool failAuth = false;
+			// Флаг принудительного отключения
+			bool forstop = false;
 		private:
-			// Тело запроса (если требуется)
+			// Тело получения ответа
 			vector <char> entity;
-			// Список заголовков запроса (если требуется)
-			unordered_multimap <string, string> headers;
 		private:
-			// Контекст передаваемого объекта
-			void * ctx = nullptr;
+			// Список контекстов передаваемых объектов
+			vector <void *> ctx = {nullptr, nullptr};
 		private:
 			// Создаём объект фреймворка
 			const fmk_t * fmk = nullptr;
@@ -98,8 +114,10 @@ namespace awh {
 			// Создаём объект биндинга TCP/IP
 			const coreCli_t * core = nullptr;
 		private:
-			// messageFn Функция обратного вызова, вывода сообщения при его получении
-			function <void (const res_t &, void *)> messageFn = nullptr;
+			// Функция обратного вызова при подключении/отключении
+			function <void (const bool, RestClient *, void *)> openStopFn = nullptr;
+			// Функция обратного вызова, вывода сообщения при его получении
+			function <void (const res_t &, RestClient *, void *)> messageFn = nullptr;
 		private:
 			/**
 			 * chunking Метод обработки получения чанков
@@ -162,132 +180,136 @@ namespace awh {
 			static void readProxyCallback(const char * buffer, const size_t size, const size_t aid, const size_t wid, core_t * core, void * ctx) noexcept;
 		public:
 			/**
+			 * start Метод запуска клиента
+			 */
+			void start() noexcept;
+			/**
+			 * stop Метод остановки клиента
+			 */
+			void stop() noexcept;
+		public:
+			/**
+			 * close Метод закрытия подключения клиента
+			 */
+			void close() noexcept;
+		public:
+			/**
 			 * GET Метод запроса в формате HTTP методом GET
 			 * @param url     адрес запроса
 			 * @param headers заголовки запроса
-			 * @return        результат запроса
 			 */
-			const vector <char> & GET(const uri_t::url_t & url, const unordered_multimap <string, string> & headers = {}) noexcept;
+			void GET(const uri_t::url_t & url, const unordered_multimap <string, string> & headers = {}) noexcept;
 			/**
 			 * DEL Метод запроса в формате HTTP методом DEL
 			 * @param url     адрес запроса
 			 * @param headers заголовки запроса
-			 * @return        результат запроса
 			 */
-			const vector <char> & DEL(const uri_t::url_t & url, const unordered_multimap <string, string> & headers = {}) noexcept;
+			void DEL(const uri_t::url_t & url, const unordered_multimap <string, string> & headers = {}) noexcept;
 		public:
 			/**
 			 * PUT Метод запроса в формате HTTP методом PUT
 			 * @param url     адрес запроса
 			 * @param entity  тело запроса
 			 * @param headers заголовки запроса
-			 * @return        результат запроса
 			 */
-			const vector <char> & PUT(const uri_t::url_t & url, const json & entity, const unordered_multimap <string, string> & headers = {}) noexcept;
+			void PUT(const uri_t::url_t & url, const json & entity, const unordered_multimap <string, string> & headers = {}) noexcept;
 			/**
 			 * PUT Метод запроса в формате HTTP методом PUT
 			 * @param url     адрес запроса
 			 * @param entity  тело запроса
 			 * @param headers заголовки запроса
-			 * @return        результат запроса
 			 */
-			const vector <char> & PUT(const uri_t::url_t & url, const vector <char> & entity, const unordered_multimap <string, string> & headers = {}) noexcept;
+			void PUT(const uri_t::url_t & url, const vector <char> & entity, const unordered_multimap <string, string> & headers = {}) noexcept;
 			/**
 			 * PUT Метод запроса в формате HTTP методом PUT
 			 * @param url     адрес запроса
 			 * @param entity  тело запроса
 			 * @param headers заголовки запроса
-			 * @return        результат запроса
 			 */
-			const vector <char> & PUT(const uri_t::url_t & url, const unordered_multimap <string, string> & entity, const unordered_multimap <string, string> & headers = {}) noexcept;
+			void PUT(const uri_t::url_t & url, const unordered_multimap <string, string> & entity, const unordered_multimap <string, string> & headers = {}) noexcept;
 		public:
 			/**
 			 * POST Метод запроса в формате HTTP методом POST
 			 * @param url     адрес запроса
 			 * @param entity  тело запроса
 			 * @param headers заголовки запроса
-			 * @return        результат запроса
 			 */
-			const vector <char> & POST(const uri_t::url_t & url, const json & entity, const unordered_multimap <string, string> & headers = {}) noexcept;
+			void POST(const uri_t::url_t & url, const json & entity, const unordered_multimap <string, string> & headers = {}) noexcept;
 			/**
 			 * POST Метод запроса в формате HTTP методом POST
 			 * @param url     адрес запроса
 			 * @param entity  тело запроса
 			 * @param headers заголовки запроса
-			 * @return        результат запроса
 			 */
-			const vector <char> & POST(const uri_t::url_t & url, const vector <char> & entity, const unordered_multimap <string, string> & headers = {}) noexcept;
+			void POST(const uri_t::url_t & url, const vector <char> & entity, const unordered_multimap <string, string> & headers = {}) noexcept;
 			/**
 			 * POST Метод запроса в формате HTTP методом POST
 			 * @param url     адрес запроса
 			 * @param entity  тело запроса
 			 * @param headers заголовки запроса
-			 * @return        результат запроса
 			 */
-			const vector <char> & POST(const uri_t::url_t & url, const unordered_multimap <string, string> & entity, const unordered_multimap <string, string> & headers = {}) noexcept;
+			void POST(const uri_t::url_t & url, const unordered_multimap <string, string> & entity, const unordered_multimap <string, string> & headers = {}) noexcept;
 		public:
 			/**
 			 * PATCH Метод запроса в формате HTTP методом PATCH
 			 * @param url     адрес запроса
 			 * @param entity  тело запроса
 			 * @param headers заголовки запроса
-			 * @return        результат запроса
 			 */
-			const vector <char> & PATCH(const uri_t::url_t & url, const json & entity, const unordered_multimap <string, string> & headers = {}) noexcept;
+			void PATCH(const uri_t::url_t & url, const json & entity, const unordered_multimap <string, string> & headers = {}) noexcept;
 			/**
 			 * PATCH Метод запроса в формате HTTP методом PATCH
 			 * @param url     адрес запроса
 			 * @param entity  тело запроса
 			 * @param headers заголовки запроса
-			 * @return        результат запроса
 			 */
-			const vector <char> & PATCH(const uri_t::url_t & url, const vector <char> & entity, const unordered_multimap <string, string> & headers = {}) noexcept;
+			void PATCH(const uri_t::url_t & url, const vector <char> & entity, const unordered_multimap <string, string> & headers = {}) noexcept;
 			/**
 			 * PATCH Метод запроса в формате HTTP методом PATCH
 			 * @param url     адрес запроса
 			 * @param entity  тело запроса
 			 * @param headers заголовки запроса
-			 * @return        результат запроса
 			 */
-			const vector <char> & PATCH(const uri_t::url_t & url, const unordered_multimap <string, string> & entity, const unordered_multimap <string, string> & headers = {}) noexcept;
+			void PATCH(const uri_t::url_t & url, const unordered_multimap <string, string> & entity, const unordered_multimap <string, string> & headers = {}) noexcept;
 		public:
 			/**
 			 * HEAD Метод запроса в формате HTTP методом HEAD
 			 * @param url     адрес запроса
 			 * @param headers заголовки запроса
-			 * @return        результат запроса
 			 */
-			const unordered_multimap <string, string> & HEAD(const uri_t::url_t & url, const unordered_multimap <string, string> & headers = {}) noexcept;
+			void HEAD(const uri_t::url_t & url, const unordered_multimap <string, string> & headers = {}) noexcept;
 			/**
 			 * TRACE Метод запроса в формате HTTP методом TRACE
 			 * @param url     адрес запроса
 			 * @param headers заголовки запроса
-			 * @return        результат запроса
 			 */
-			const unordered_multimap <string, string> & TRACE(const uri_t::url_t & url, const unordered_multimap <string, string> & headers = {}) noexcept;
+			void TRACE(const uri_t::url_t & url, const unordered_multimap <string, string> & headers = {}) noexcept;
 			/**
 			 * OPTIONS Метод запроса в формате HTTP методом OPTIONS
 			 * @param url     адрес запроса
 			 * @param headers заголовки запроса
-			 * @return        результат запроса
 			 */
-			const unordered_multimap <string, string> & OPTIONS(const uri_t::url_t & url, const unordered_multimap <string, string> & headers = {}) noexcept;
+			void OPTIONS(const uri_t::url_t & url, const unordered_multimap <string, string> & headers = {}) noexcept;
 		public:
 			/**
-			 * REST Метод запроса в формате HTTP указанным методом
-			 * @param url     адрес запроса
-			 * @param method  метод запроса
-			 * @param entity  тело запроса
-			 * @param headers заголовки запроса
+			 * REST Метод запроса в формате HTTP
+			 * @param request список запросов
 			 */
-			void REST(const uri_t::url_t & url, web_t::method_t method, vector <char> entity = {}, unordered_multimap <string, string> headers = {}) noexcept;
+			void REST(const vector <req_t> & request) noexcept;
 		public:
+			/**
+			 * on Метод установки функции обратного вызова при подключении/отключении
+			 * @param ctx      контекст для вывода в сообщении
+			 * @param callback функция обратного вызова
+			 */
+			void on(void * ctx, function <void (const bool, RestClient *, void *)> callback) noexcept;
 			/**
 			 * setMessageCallback Метод установки функции обратного вызова при получении сообщения
 			 * @param ctx      контекст для вывода в сообщении
 			 * @param callback функция обратного вызова
 			 */
-			void setMessageCallback(void * ctx, function <void (const res_t &, void *)> callback) noexcept;
+			void on(void * ctx, function <void (const res_t &, RestClient *, void *)> callback) noexcept;
+		public:
 			/**
 			 * setChunkingFn Метод установки функции обратного вызова для получения чанков
 			 * @param ctx      контекст для вывода в сообщении

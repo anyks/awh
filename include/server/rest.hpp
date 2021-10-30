@@ -269,13 +269,19 @@ namespace awh {
 			void setAlive(const size_t aid, const bool mode) noexcept;
 		public:
 			/**
-			 * stop Метод остановки клиента
-			 */
-			void stop() noexcept;
-			/**
 			 * start Метод запуска клиента
 			 */
 			void start() noexcept;
+			/**
+			 * stop Метод остановки клиента
+			 */
+			void stop() noexcept;
+		public:
+			/**
+			 * close Метод закрытия подключения клиента
+			 * @param aid идентификатор адъютанта
+			 */
+			void close(const size_t aid) noexcept;
 		public:
 			/**
 			 * setWaitTimeDetect Метод детекции сообщений по количеству секунд

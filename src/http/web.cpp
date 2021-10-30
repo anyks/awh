@@ -27,8 +27,10 @@ size_t awh::Web::readPayload(const char * buffer, const size_t size) noexcept {
 			if(this->bodySize > -1){
 				// Если размер тела не получен
 				if(this->bodySize == 0){
+					// Запоминаем количество обработанных байт
+					result = size;
 					// Заполняем собранные данные тела
-					this->chunk.data.assign(buffer, buffer + size);
+					this->chunk.data.assign(buffer, buffer + result);
 					// Если функция обратного вызова установлена
 					if(this->chunkingFn != nullptr)
 						// Выводим функцию обратного вызова
@@ -36,13 +38,13 @@ size_t awh::Web::readPayload(const char * buffer, const size_t size) noexcept {
 				// Если размер установлен конкретный
 				} else {
 					// Получаем актуальный размер тела
-					size_t actual = (this->bodySize - this->body.size());
+					result = (this->bodySize - this->body.size());
 					// Фиксируем актуальный размер тела
-					actual = (size > actual ? actual : size);
+					result = (size > result ? result : size);
 					// Увеличиваем общий размер полученных данных
-					this->chunk.size += actual;
+					this->chunk.size += result;
 					// Заполняем собранные данные тела
-					this->chunk.data.assign(buffer, buffer + actual);
+					this->chunk.data.assign(buffer, buffer + result);
 					// Если функция обратного вызова установлена
 					if(this->chunkingFn != nullptr)
 						// Выводим функцию обратного вызова
@@ -65,8 +67,6 @@ size_t awh::Web::readPayload(const char * buffer, const size_t size) noexcept {
 				size_t offset = 0;
 				// Переходим по всему буферу данных
 				for(size_t i = 0; i < size; i++){
-					// Запоминаем количество обработанных байт
-					result++;
 					// Определяем стейт чанка
 					switch((uint8_t) this->chunk.state){
 						// Если мы ожидаем получения размера тела чанка
@@ -82,15 +82,24 @@ size_t awh::Web::readPayload(const char * buffer, const size_t size) noexcept {
 								));
 								// Устанавливаем смещение
 								offset = (i + 1);
+								// Запоминаем количество обработанных байт
+								result = offset;
 								// Выполняем сброс тела данных
 								this->chunk.data.clear();
 							// Выполняем сборку 16-го размера чанка
-							} else this->chunk.data.push_back(buffer[i]);
+							} else {
+								// Запоминаем количество обработанных байт
+								result = (i + 1);
+								// Выполняем сборку размера чанка
+								this->chunk.data.push_back(buffer[i]);
+							}
 						} break;
 						// Если мы ожидаем получение окончания сбора размера тела чанка
 						case (uint8_t) cstate_t::ENDSIZE: {
 							// Увеличиваем смещение
 							offset = (i + 1);
+							// Запоминаем количество обработанных байт
+							result = offset;
 							// Если мы получили перевод строки
 							if(buffer[i] == '\n'){
 								// Если размер получен 0-й значит мы завершили сбор данных
@@ -104,19 +113,23 @@ size_t awh::Web::readPayload(const char * buffer, const size_t size) noexcept {
 										// Меняем стейт чанка
 										this->chunk.state = cstate_t::STOPBODY;
 										// Определяем конец буфера
-										const size_t end = (offset + this->chunk.size);
+										size_t end = (offset + this->chunk.size);
 										// Собираем тело чанка
 										this->chunk.data.insert(this->chunk.data.end(), buffer + offset, buffer + end);
 										// Выполняем смещение итератора
 										i = (end - 1);
 										// Увеличиваем смещение
 										offset = end;
+										// Запоминаем количество обработанных байт
+										result = offset;
 									// Если количества байт не достаточно для сбора тела
 									} else {
 										// Меняем стейт чанка
 										this->chunk.state = cstate_t::BODY;
 										// Собираем тело чанка
 										this->chunk.data.insert(this->chunk.data.end(), buffer + offset, buffer + size);
+										// Запоминаем количество обработанных байт
+										result = size;
 										// Выходим из функции
 										return result;
 									}
@@ -132,7 +145,7 @@ size_t awh::Web::readPayload(const char * buffer, const size_t size) noexcept {
 						// Если мы ожидаем сбора тела чанка
 						case (uint8_t) cstate_t::BODY: {
 							// Определяем количество необходимых байт
-							const size_t rem = (this->chunk.size - this->chunk.data.size());
+							size_t rem = (this->chunk.size - this->chunk.data.size());
 							// Если количества байт достаточно для сбора тела чанка
 							if(size >= rem){
 								// Меняем стейт чанка
@@ -143,10 +156,14 @@ size_t awh::Web::readPayload(const char * buffer, const size_t size) noexcept {
 								i = (rem - 1);
 								// Увеличиваем смещение
 								offset = rem;
+								// Запоминаем количество обработанных байт
+								result = offset;
 							// Если количества байт не достаточно для сбора тела
 							} else {
 								// Собираем тело чанка
 								this->chunk.data.insert(this->chunk.data.end(), buffer, buffer + size);
+								// Запоминаем количество обработанных байт
+								result = size;
 								// Выходим из функции
 								return result;
 							}
@@ -155,6 +172,8 @@ size_t awh::Web::readPayload(const char * buffer, const size_t size) noexcept {
 						case (uint8_t) cstate_t::STOPBODY: {
 							// Увеличиваем смещение
 							offset = (i + 1);
+							// Запоминаем количество обработанных байт
+							result = offset;
 							// Если мы получили возврат каретки
 							if(buffer[i] == '\r')
 								// Меняем стейт чанка
@@ -171,6 +190,8 @@ size_t awh::Web::readPayload(const char * buffer, const size_t size) noexcept {
 						case (uint8_t) cstate_t::ENDBODY: {
 							// Увеличиваем смещение
 							offset = (i + 1);
+							// Запоминаем количество обработанных байт
+							result = offset;
 							// Если мы получили перевод строки
 							if(buffer[i] == '\n'){
 								// Если размер получен 0-й значит мы завершили сбор данных
@@ -231,6 +252,8 @@ size_t awh::Web::readHeaders(const char * buffer, const size_t size) noexcept {
 			 * Выполняем парсинг заголовков запроса
 			 */
 			this->prepare(buffer, size, [&result, this](const char * buffer, const size_t size, const size_t bytes, const bool stop) noexcept {
+				// Запоминаем количество обработанных байт
+				result = bytes;
 				// Если все данные получены
 				if(stop){
 					// Получаем размер тела
@@ -262,8 +285,6 @@ size_t awh::Web::readHeaders(const char * buffer, const size_t size) noexcept {
 					this->state = state_t::END;
 					// Устанавливаем метку завершения работы
 					end:
-					// Устанавливаем смещение в буфере
-					result = bytes;
 					// Выходим из функции
 					return;
 				// Если необходимо  получить оставшиеся данные
@@ -441,8 +462,11 @@ void awh::Web::prepare(const char * buffer, const size_t size, function <void (c
  * parse Метод выполнения парсинга HTTP буфера данных
  * @param buffer буфер данных для парсинга
  * @param size   размер буфера данных для парсинга
+ * @return       размер обработанных данных
  */
-void awh::Web::parse(const char * buffer, const size_t size) noexcept {
+size_t awh::Web::parse(const char * buffer, const size_t size) noexcept {
+	// Результат работы функции
+	size_t result = 0;
 	// Если данные переданы или обработка полностью выполнена
 	if((buffer != nullptr) && (size > 0) && (this->state != state_t::END)){
 		// Определяем текущий стейт
@@ -452,16 +476,18 @@ void awh::Web::parse(const char * buffer, const size_t size) noexcept {
 			// Если установлен стейт чтения заголовков
 			case (uint8_t) state_t::HEADERS: {
 				// Выполняем чтение заголовков
-				const size_t bytes = this->readHeaders(buffer, size);
+				result = this->readHeaders(buffer, size);
 				// Если требуется продолжить извлечение данных тела сообщения
-				if((bytes < size) && (this->state == state_t::BODY))
+				if((result < size) && (this->state == state_t::BODY))
 					// Выполняем извлечение данных тела сообщения
-					this->readPayload(buffer + bytes, size - bytes);
+					result += this->readPayload(buffer + result, size - result);
 			} break;
 			// Если установлен стейт чтения полезной нагрузки
-			case (uint8_t) state_t::BODY: this->readPayload(buffer, size); break;
+			case (uint8_t) state_t::BODY: result = this->readPayload(buffer, size); break;
 		}
 	}
+	// Выводим реузльтат
+	return result;
 }
 /**
  * clear Метод очистки собранных данных

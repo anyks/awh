@@ -137,6 +137,10 @@ void awh::RestServer::disconnectCallback(const size_t aid, const size_t wid, cor
 	if((wid > 0) && (core != nullptr) && (ctx != nullptr)){
 		// Получаем контекст модуля
 		restSrv_t * web = reinterpret_cast <restSrv_t *> (ctx);
+		// Получаем параметры подключения адъютанта
+		workSrvRest_t::adjp_t * adj = const_cast <workSrvRest_t::adjp_t *> (web->worker.getAdj(aid));
+		// Если параметры подключения адъютанта получены
+		adj->close = (adj != nullptr);
 		// Выполняем удаление параметров адъютанта
 		web->worker.removeAdj(aid);
 		// Если функция обратного вызова установлена, выполняем
@@ -183,102 +187,123 @@ void awh::RestServer::readCallback(const char * buffer, const size_t size, const
 		workSrvRest_t::adjp_t * adj = const_cast <workSrvRest_t::adjp_t *> (web->worker.getAdj(aid));
 		// Если параметры подключения адъютанта получены
 		if(adj != nullptr){
-			// Увеличиваем количество выполненных запросов
-			adj->requests++;
-			// Если количество выполненных запросов превышает максимальный
-			if(adj->requests >= web->maxRequests)
-				// Устанавливаем флаг закрытия подключения
-				adj->close = true;
-			// Получаем текущий штамп времени
-			else adj->checkPoint = web->fmk->unixTimestamp();
-			// Выполняем парсинг полученных данных
-			adj->http.parse(buffer, size);
-			// Если все данные получены
-			if(adj->http.isEnd()){
-				// Бинарный буфер ответа сервера
-				vector <char> response;
-				// Выполняем проверку авторизации
-				switch((uint8_t) adj->http.getAuth()){
-					// Если запрос выполнен удачно
-					case (uint8_t) http_t::stath_t::GOOD: {
-						// Объект запроса клиента
-						req_t request;
-						// Получаем флаг шифрованных данных
-						adj->crypt = adj->http.isCrypt();
-						// Получаем поддерживаемый метод компрессии
-						adj->compress = adj->http.getCompress();
-						// Получаем данные запроса
-						const auto & query = adj->http.getQuery();
-						// Устанавливаем метод запроса
-						request.method = query.method;
-						// Устанавливаем IP адрес
-						request.ip = web->worker.ip(aid);
-						// Устанавливаем MAC адрес
-						request.mac = web->worker.mac(aid);
-						// Получаем тело запроса
-						request.entity = adj->http.getBody();
-						// Получаем заголовки запроса
-						request.headers = adj->http.getHeaders();
-						// Выполняем парсинг URL адреса
-						const auto & split = web->worker.uri.split(query.uri);
-						// Если список параметров получен
-						if(!split.empty()){
-							// Определяем сколько элементов мы получили
-							switch(split.size()){
-								// Если количество элементов равно 1
-								case 1: {
-									// Проверяем путь запроса
-									const string & value = split.front();
-									// Если первый символ является путём запроса
-									if(value.front() == '/') request.path = web->worker.uri.splitPath(value);
-									// Если же первый символ является параметром запросов
-									else if(value.front() == '?') request.params = web->worker.uri.splitParams(value);
-								} break;
-								// Если количество элементов равно 2
-								case 2: {
-									// Устанавливаем путь запроса
-									request.path = web->worker.uri.splitPath(split.front());
-									// Устанавливаем параметры запроса
-									request.params = web->worker.uri.splitParams(split.back());
-								} break;
+			// Добавляем полученные данные в буфер
+			adj->buffer.insert(adj->buffer.end(), buffer, buffer + size);
+			// Выполняем обработку полученных данных
+			while(!adj->close){
+				// Выполняем парсинг полученных данных
+				size_t bytes = adj->http.parse(adj->buffer.data(), adj->buffer.size());
+				// Если все данные получены
+				if(adj->http.isEnd()){
+					// Если подключение не установлено как постоянное
+					if(!web->alive && !adj->alive){
+						// Увеличиваем количество выполненных запросов
+						adj->requests++;
+						// Если количество выполненных запросов превышает максимальный
+						if(adj->requests >= web->maxRequests)
+							// Устанавливаем флаг закрытия подключения
+							adj->close = true;
+						// Получаем текущий штамп времени
+						else adj->checkPoint = web->fmk->unixTimestamp();
+					// Выполняем сброс количества выполненных запросов
+					} else adj->requests = 0;
+					// Выполняем проверку авторизации
+					switch((uint8_t) adj->http.getAuth()){
+						// Если запрос выполнен удачно
+						case (uint8_t) http_t::stath_t::GOOD: {
+							// Объект запроса клиента
+							req_t request;
+							// Получаем флаг шифрованных данных
+							adj->crypt = adj->http.isCrypt();
+							// Получаем поддерживаемый метод компрессии
+							adj->compress = adj->http.getCompress();
+							// Получаем данные запроса
+							const auto & query = adj->http.getQuery();
+							// Устанавливаем метод запроса
+							request.method = query.method;
+							// Устанавливаем IP адрес
+							request.ip = web->worker.ip(aid);
+							// Устанавливаем MAC адрес
+							request.mac = web->worker.mac(aid);
+							// Получаем тело запроса
+							request.entity = adj->http.getBody();
+							// Получаем заголовки запроса
+							request.headers = adj->http.getHeaders();
+							// Выполняем парсинг URL адреса
+							const auto & split = web->worker.uri.split(query.uri);
+							// Если список параметров получен
+							if(!split.empty()){
+								// Определяем сколько элементов мы получили
+								switch(split.size()){
+									// Если количество элементов равно 1
+									case 1: {
+										// Проверяем путь запроса
+										const string & value = split.front();
+										// Если первый символ является путём запроса
+										if(value.front() == '/') request.path = web->worker.uri.splitPath(value);
+										// Если же первый символ является параметром запросов
+										else if(value.front() == '?') request.params = web->worker.uri.splitParams(value);
+									} break;
+									// Если количество элементов равно 2
+									case 2: {
+										// Устанавливаем путь запроса
+										request.path = web->worker.uri.splitPath(split.front());
+										// Устанавливаем параметры запроса
+										request.params = web->worker.uri.splitParams(split.back());
+									} break;
+								}
 							}
+							// Выполняем сброс состояния HTTP парсера
+							adj->http.clear();
+							// Выполняем сброс состояния HTTP парсера
+							adj->http.reset();
+							// Если функция обратного вызова установлена, выполняем
+							if(web->messageFn != nullptr) web->messageFn(aid, request, web, web->ctx.at(1));
+							// Завершаем обработку
+							goto Next;
+						} break;
+						// Если запрос неудачный
+						case (uint8_t) http_t::stath_t::FAULT: {
+							// Выполняем сброс состояния HTTP парсера
+							adj->http.clear();
+							// Выполняем сброс состояния HTTP парсера
+							adj->http.reset();
+							// Выполняем очистку буфера полученных данных
+							adj->buffer.clear();
+							// Формируем запрос авторизации
+							const auto & response = adj->http.reject(401);
+							// Если ответ получен
+							if(!response.empty()){
+								// Тело полезной нагрузки
+								vector <char> payload;
+								// Устанавливаем размер стопбайт
+								if(!adj->http.isAlive()) adj->stopBytes = response.size();
+								// Отправляем ответ клиенту
+								core->write(response.data(), response.size(), aid);
+								// Получаем данные тела запроса
+								while(!(payload = adj->http.payload()).empty()){
+									// Устанавливаем размер стопбайт
+									if(!adj->http.isAlive()) adj->stopBytes += payload.size();
+									// Отправляем тело на сервер
+									core->write(payload.data(), payload.size(), aid);
+								}
+							// Выполняем отключение клиента
+							} else core->close(aid);
+							// Выходим из функции
+							return;
 						}
-						// Выполняем сброс состояния HTTP парсера
-						adj->http.clear();
-						// Выполняем сброс состояния HTTP парсера
-						adj->http.reset();
-						// Если функция обратного вызова установлена, выполняем
-						if(web->messageFn != nullptr) web->messageFn(aid, request, web, web->ctx.at(1));
-						// Завершаем работу
-						return;
-					} break;
-					// Если запрос неудачный
-					case (uint8_t) http_t::stath_t::FAULT: {
-						// Выполняем сброс состояния HTTP парсера
-						adj->http.clear();
-						// Выполняем сброс состояния HTTP парсера
-						adj->http.reset();
-						// Формируем запрос авторизации
-						response = adj->http.reject(401);
-					} break;
-				}
-				// Если бинарные данные запроса получены, отправляем на сервер
-				if(!response.empty()){
-					// Тело полезной нагрузки
-					vector <char> payload;
-					// Устанавливаем размер стопбайт
-					if(!adj->http.isAlive()) adj->stopBytes = response.size();
-					// Отправляем ответ клиенту
-					core->write(response.data(), response.size(), aid);
-					// Получаем данные тела запроса
-					while(!(payload = adj->http.payload()).empty()){
-						// Устанавливаем размер стопбайт
-						if(!adj->http.isAlive()) adj->stopBytes += payload.size();
-						// Отправляем тело на сервер
-						core->write(payload.data(), payload.size(), aid);
 					}
-				// Завершаем работу
-				} else core->close(aid);
+				}
+				// Устанавливаем метку продолжения обработки пайплайна
+				Next:
+				// Если парсер обработал какое-то количество байт
+				if(bytes > 0){
+					// Удаляем количество обработанных байт
+					adj->buffer.erase(adj->buffer.begin(), adj->buffer.begin() + bytes);
+					// Если данных для обработки не осталось, выходим
+					if(adj->buffer.empty()) break;
+				// Если данных для обработки недостаточно, выходим
+				} else break;
 			}
 		}
 	}
@@ -376,8 +401,8 @@ void awh::RestServer::reject(const size_t aid, const u_short code, const string 
 			adj->http.setBody(entity);
 			// Устанавливаем заголовки ответа
 			adj->http.setHeaders(headers);
-			// Если подключение постоянное
-			if(adj->http.isAlive())
+			// Если подключение не установлено как постоянное, но подключение долгоживущее
+			if(!this->alive && !adj->alive && adj->http.isAlive())
 				// Указываем сколько запросов разрешено выполнить за указанный интервал времени
 				adj->http.addHeader("Keep-Alive", this->fmk->format("timeout=%d, max=%d", MAX_TIME_CONNECT / 1000, this->maxRequests));
 			// Формируем запрос авторизации
@@ -417,8 +442,8 @@ void awh::RestServer::response(const size_t aid, const u_short code, const strin
 			adj->http.setBody(entity);
 			// Устанавливаем заголовки ответа
 			adj->http.setHeaders(headers);
-			// Если подключение постоянное
-			if(adj->http.isAlive())
+			// Если подключение не установлено как постоянное, но подключение долгоживущее
+			if(!this->alive && !adj->alive && adj->http.isAlive())
 				// Указываем сколько запросов разрешено выполнить за указанный интервал времени
 				adj->http.addHeader("Keep-Alive", this->fmk->format("timeout=%d, max=%d", MAX_TIME_CONNECT / 1000, this->maxRequests));
 			// Формируем запрос авторизации
@@ -475,6 +500,15 @@ void awh::RestServer::setAlive(const size_t aid, const bool mode) noexcept {
 	if(adj != nullptr) adj->alive = mode;
 }
 /**
+ * start Метод запуска клиента
+ */
+void awh::RestServer::start() noexcept {
+	// Если биндинг не запущен, выполняем запуск биндинга
+	if(!this->core->working())
+		// Выполняем запуск биндинга
+		const_cast <coreSrv_t *> (this->core)->start();
+}
+/**
  * stop Метод остановки клиента
  */
 void awh::RestServer::stop() noexcept {
@@ -484,13 +518,14 @@ void awh::RestServer::stop() noexcept {
 		const_cast <coreSrv_t *> (this->core)->stop();
 }
 /**
- * start Метод запуска клиента
+ * close Метод закрытия подключения клиента
+ * @param aid идентификатор адъютанта
  */
-void awh::RestServer::start() noexcept {
-	// Если биндинг не запущен, выполняем запуск биндинга
-	if(!this->core->working())
-		// Выполняем запуск биндинга
-		const_cast <coreSrv_t *> (this->core)->start();
+void awh::RestServer::close(const size_t aid) noexcept {
+	// Получаем параметры подключения адъютанта
+	workSrvRest_t::adjp_t * adj = const_cast <workSrvRest_t::adjp_t *> (this->worker.getAdj(aid));
+	// Если параметры подключения адъютанта получены, устанавливаем флаг закрытия подключения
+	if(adj != nullptr) adj->close = true;
 }
 /**
  * setWaitTimeDetect Метод детекции сообщений по количеству секунд

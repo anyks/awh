@@ -61,7 +61,7 @@ using namespace std;
 using namespace awh;
 
 int main(int argc, char * argv[]) noexcept {
-	fmk_t fmk;
+	fmk_t fmk(true);
 	log_t log(&fmk);
 	network_t nwk(&fmk);
 	uri_t uri(&fmk, &nwk);
@@ -71,18 +71,39 @@ int main(int argc, char * argv[]) noexcept {
 	log.setLogName("REST Client");
 	log.setLogFormat("%H:%M:%S %d.%m.%Y");
 
-	rest.setMode((u_short) core_t::flag_t::WAITMESS | (u_short) core_t::flag_t::VERIFYSSL);
+	rest.setMode(
+		(uint8_t) restCli_t::flag_t::DEFER |
+		(uint8_t) restCli_t::flag_t::WAITMESS |
+		(uint8_t) restCli_t::flag_t::VERIFYSSL
+	);
 
 	core.setCA("./ca/cert.pem");
 
-	rest.setProxy("http://user:password@example.com:port");
-	rest.setAuthTypeProxy();
+	rest.setCompress(http_t::compress_t::GZIP);
+
+	// rest.setProxy("http://user:password@host.com:port");
+	rest.setProxy("socks5://user:password@host.com:port");
+	rest.setAuthTypeProxy(auth_t::type_t::BASIC);
+
+	rest.setUser("user", "password");
+	rest.setAuthType(auth_t::type_t::DIGEST, auth_t::alg_t::MD5);
 
 	uri_t::url_t url = uri.parseUrl("https://2ip.ru");
 
-	const auto & body = rest.GET(url, {{"User-Agent", "curl/7.64.1"}});
+	rest.on(&log, [](const bool mode, restCli_t * web, void * ctx){
+		log_t * log = reinterpret_cast <log_t *> (ctx);
+		log->print("%s client", log_t::flag_t::INFO, (mode ? "Connect" : "Disconnect"));
+	});
 
-	cout << " RESULT: " << string(body.begin(), body.end()) << endl;
+	rest.on(&log, [](const restCli_t::res_t & res, restCli_t * web, void * ctx){
+		log_t * log = reinterpret_cast <log_t *> (ctx);
+		log->print("ip: %s", log_t::flag_t::INFO, res.entity.data());
+
+		web->stop();
+	});
+
+	rest.GET(url, {{"User-Agent", "curl/7.64.1"}});
+	rest.start();
 
 	return 0;
 }

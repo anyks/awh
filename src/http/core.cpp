@@ -170,26 +170,31 @@ void awh::Http::addBlack(const string & key) noexcept {
  * parse Метод парсинга сырых данных
  * @param buffer буфер данных для обработки
  * @param size   размер буфера данных
+ * @return       размер обработанных данных
  */
-void awh::Http::parse(const char * buffer, const size_t size) noexcept {
+size_t awh::Http::parse(const char * buffer, const size_t size) noexcept {
+	// Результат работы функции
+	size_t result = 0;
 	// Если рукопожатие не выполнено
 	if((this->state != state_t::GOOD) && (this->state != state_t::BROKEN) && (this->state != state_t::BROKEN)){
 		// Выполняем парсинг сырых данных
-		this->web.parse(buffer, size);
+		result = this->web.parse(buffer, size);
 		// Если парсинг выполнен
 		if(this->web.isEnd()){
 			// Выполняем проверку авторизации
 			this->stath = this->checkAuth();
 			// Если ключ соответствует
-			if(this->stath == stath_t::GOOD){
-				// Выполняем обновление входящих параметров
-				this->update();
+			if(this->stath == stath_t::GOOD)
 				// Устанавливаем стейт рукопожатия
 				this->state = state_t::GOOD;
 			// Поменяем данные как бракованные
-			} else this->state = state_t::BROKEN;
+			else this->state = state_t::BROKEN;
+			// Выполняем обновление входящих параметров
+			this->update();
 		}
 	}
+	// Выводим реузльтат
+	return result;
 }
 /**
  * setBody Метод установки данных тела

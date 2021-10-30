@@ -216,8 +216,9 @@ namespace awh {
 			 * parse Метод парсинга сырых данных
 			 * @param buffer буфер данных для обработки
 			 * @param size   размер буфера данных
+			 * @return       размер обработанных данных
 			 */
-			void parse(const char * buffer, const size_t size) noexcept;
+			size_t parse(const char * buffer, const size_t size) noexcept;
 		public:
 			/**
 			 * setBody Метод установки данных тела

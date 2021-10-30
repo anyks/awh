@@ -49,6 +49,7 @@ namespace awh {
 				size_t stopBytes;            // Количество байт для закрытия подключения
 				time_t checkPoint;           // Контрольная точка ответа на пинг
 				http_t::compress_t compress; // Флаги работы с сжатыми данными
+				vector <char> buffer;        // Буфер бинарных необработанных данных
 				/**
 				 * AdjParam Конструктор
 				 */

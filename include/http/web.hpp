@@ -168,8 +168,9 @@ namespace awh {
 			 * parse Метод выполнения парсинга HTTP буфера данных
 			 * @param buffer буфер данных для парсинга
 			 * @param size   размер буфера данных для парсинга
+			 * @return       размер обработанных данных
 			 */
-			void parse(const char * buffer, const size_t size) noexcept;
+			size_t parse(const char * buffer, const size_t size) noexcept;
 		public:
 			/**
 			 * clear Метод очистки собранных данных

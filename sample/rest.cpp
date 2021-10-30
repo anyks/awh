@@ -52,17 +52,18 @@ int main(int argc, char * argv[]) noexcept {
 	// Устанавливаем адрес сертификата
 	core.setCA("./ca/cert.pem");
 	// Устанавливаем логин и пароль пользователя
-	// rest.setUser("user", "password");
+	rest.setUser("user", "password");
 	// Устанавливаем данные прокси-сервера
 	// rest.setProxy("http://B80TWR:uRMhnd@196.17.249.64:8000");
-	// rest.setProxy("socks5://rfbPbd:XcCuZH@45.144.169.109:8000");
-	rest.setProxy("socks5://6S7rAk:g6K8XD@217.29.62.231:30810");
-	// Выполняем инициализацию типа авторизации
-	// rest.setAuthType();
-	// Устанавливаем тип авторизации прокси-сервера
-	rest.setAuthTypeProxy();
+	rest.setProxy("socks5://rfbPbd:XcCuZH@45.144.169.109:8000");
+	// rest.setProxy("socks5://6S7rAk:g6K8XD@217.29.62.231:30810");
 	// Устанавливаем тип компрессии
 	rest.setCompress(http_t::compress_t::GZIP);
+	// Устанавливаем тип авторизации прокси-сервера
+	// rest.setAuthTypeProxy();
+	// Выполняем инициализацию типа авторизации
+	// rest.setAuthType();
+	// rest.setAuthType(auth_t::type_t::DIGEST, auth_t::alg_t::MD5);
 	// Выполняем получение URL адреса сервера
 	// uri_t::url_t url = uri.parseUrl("https://2ip.ru");
 	// uri_t::url_t url = uri.parseUrl("https://www.anyks.com");
@@ -71,17 +72,60 @@ int main(int argc, char * argv[]) noexcept {
 	// uri_t::url_t url = uri.parseUrl("https://api.binance.com/api/v3/exchangeInfo?symbol=BTCUSDT");
 	// uri_t::url_t url = uri.parseUrl("https://testnet.binance.vision/api/v3/exchangeInfo");
 	uri_t::url_t url = uri.parseUrl("https://api.coingecko.com/api/v3/coins/list?include_platform=true");
-	// Выполняем запрос на получение IP адреса
-	const auto & body = rest.GET(url);
-	// const auto & body = rest.GET(url, {{"Connection", "close"}});
-	// const auto & body = rest.GET(url, {{"User-Agent", "curl/7.64.1"}});
-	// Получаем результат
-	const string result(body.begin(), body.end());
-	// Создаём объект JSON
-	json data = json::parse(result);
-	// Выводим полученный результат
-	// cout << " +++++++++++++ " << result << endl;
-	cout << " +++++++++++++ " << data.dump(4) << endl;
+	// Подписываемся на событие коннекта и дисконнекта клиента
+	rest.on(&log, [](const bool mode, restCli_t * web, void * ctx){
+		// Получаем объект логирования
+		log_t * log = reinterpret_cast <log_t *> (ctx);
+		// Выводим информацию в лог
+		log->print("%s client", log_t::flag_t::INFO, (mode ? "Connect" : "Disconnect"));
+	});
+	// Подписываемся на событие получения сообщения
+	rest.on(&log, [](const restCli_t::res_t & res, restCli_t * web, void * ctx){
+		/*
+		// Получаем объект логирования
+		log_t * log = reinterpret_cast <log_t *> (ctx);
+		// Переходим по всем заголовкам
+		for(auto & header : res.headers){
+			// Выводим информацию в лог
+			log->print("%s : %s", log_t::flag_t::INFO, header.first.c_str(), header.second.c_str());
+		}
+		*/
+		// Получаем результат
+		const string result(res.entity.begin(), res.entity.end());
+		// Создаём объект JSON
+		json data = json::parse(result);
+		// Выводим полученный результат
+		cout << " =========== " << data.dump(4) << endl;
+		// cout << " =========== " << result << " == " << res.code << " == " << res.ok << endl;
+		// Выполняем остановку
+		web->stop();
+	});
+	/*
+	// Список запросов
+	vector <restCli_t::req_t> request;
+	// Создаём объект запроса
+	restCli_t::req_t req1, req2, req3;
+	// Устанавливаем URL адрес запроса
+	req1.url = uri.parseUrl("http://127.0.0.1:2222/action/1/?test=12&goga=124");
+	req2.url = uri.parseUrl("http://127.0.0.1:2222/action/2/?test=13&goga=125");
+	req3.url = uri.parseUrl("http://127.0.0.1:2222/action/3/?test=14&goga=126");
+	// Устанавливаем метод запроса
+	req1.method = web_t::method_t::GET;
+	req2.method = web_t::method_t::GET;
+	req3.method = web_t::method_t::GET;
+	// Добавляем объект запроса в список
+	request.push_back(req1);
+	request.push_back(req2);
+	request.push_back(req3);
+	// Формируем запрос
+	rest.REST(request);
+	*/
+	// Формируем GET запрос
+	rest.GET(url);
+	// rest.GET(url, {{"Connection", "close"}});
+	// rest.GET(url, {{"User-Agent", "curl/7.64.1"}});
+	// Выполняем REST запрос
+	rest.start();
 	// Выводим результат
 	return 0;
 }
