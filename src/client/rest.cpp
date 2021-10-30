@@ -1029,20 +1029,20 @@ void awh::RestClient::setCrypt(const string & pass, const string & salt, const h
 /**
  * setAuthType Метод установки типа авторизации
  * @param type тип авторизации
- * @param aes  алгоритм шифрования для Digest авторизации
+ * @param hash алгоритм шифрования для Digest авторизации
  */
-void awh::RestClient::setAuthType(const auth_t::type_t type, const auth_t::aes_t aes) noexcept {
+void awh::RestClient::setAuthType(const auth_t::type_t type, const auth_t::hash_t hash) noexcept {
 	// Если объект авторизации создан
-	this->http.setAuthType(type, aes);
+	this->http.setAuthType(type, hash);
 }
 /**
  * setAuthTypeProxy Метод установки типа авторизации прокси-сервера
  * @param type тип авторизации
- * @param aes  алгоритм шифрования для Digest авторизации
+ * @param hash алгоритм шифрования для Digest авторизации
  */
-void awh::RestClient::setAuthTypeProxy(const auth_t::type_t type, const auth_t::aes_t aes) noexcept {
+void awh::RestClient::setAuthTypeProxy(const auth_t::type_t type, const auth_t::hash_t hash) noexcept {
 	// Если объект авторизации создан
-	this->worker.proxy.http.setAuthType(type, aes);
+	this->worker.proxy.http.setAuthType(type, hash);
 }
 /**
  * RestClient Конструктор

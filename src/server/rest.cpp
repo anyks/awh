@@ -115,7 +115,7 @@ void awh::RestServer::connectCallback(const size_t aid, const size_t wid, core_t
 					// Устанавливаем временный ключ сессии сервера
 					adj->http.setOpaque(web->opaque);
 					// Устанавливаем параметры авторизации
-					adj->http.setAuthType(web->authType, web->authAes);
+					adj->http.setAuthType(web->authType, web->authHash);
 					// Устанавливаем функцию извлечения пароля
 					adj->http.setExtractPassCallback(web->ctx.at(2), web->extractPassFn);
 				} break;
@@ -601,11 +601,11 @@ void awh::RestServer::setOpaque(const string & opaque) noexcept {
 /**
  * setAuthType Метод установки типа авторизации
  * @param type тип авторизации
- * @param aes  алгоритм шифрования для Digest авторизации
+ * @param hash алгоритм шифрования для Digest авторизации
  */
-void awh::RestServer::setAuthType(const auth_t::type_t type, const auth_t::aes_t aes) noexcept {
+void awh::RestServer::setAuthType(const auth_t::type_t type, const auth_t::hash_t hash) noexcept {
 	// Устанавливаем алгоритм шифрования для Digest авторизации
-	this->authAes = aes;
+	this->authHash = hash;
 	// Устанавливаем тип авторизации
 	this->authType = type;
 }

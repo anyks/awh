@@ -53,7 +53,7 @@ int main(int argc, char * argv[]) noexcept {
 	rest.setOpaque("keySession");
 	// Устанавливаем тип авторизации
 	// rest.setAuthType();
-	// rest.setAuthType(auth_t::type_t::DIGEST, auth_t::aes_t::MD5);
+	// rest.setAuthType(auth_t::type_t::DIGEST, auth_t::hash_t::MD5);
 	// Выполняем инициализацию WebSocket сервера
 	rest.init(2222, "127.0.0.1", http_t::compress_t::GZIP);
 	// Устанавливаем шифрование

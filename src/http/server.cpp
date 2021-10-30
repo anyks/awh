@@ -72,9 +72,9 @@ void awh::HttpServer::setAuthCallback(void * ctx, function <bool (const string &
 /**
  * setAuthType Метод установки типа авторизации
  * @param type тип авторизации
- * @param aes  алгоритм шифрования для Digest авторизации
+ * @param hash алгоритм шифрования для Digest авторизации
  */
-void awh::HttpServer::setAuthType(const auth_t::type_t type, const auth_t::aes_t aes) noexcept {
+void awh::HttpServer::setAuthType(const auth_t::type_t type, const auth_t::hash_t hash) noexcept {
 	// Устанавливаем тип авторизации
-	this->authSrv.setType(type, aes);
+	this->authSrv.setType(type, hash);
 }

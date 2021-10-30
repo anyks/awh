@@ -97,9 +97,9 @@ void awh::HttpClient::setUser(const string & user, const string & pass) noexcept
 /**
  * setAuthType Метод установки типа авторизации
  * @param type тип авторизации
- * @param aes  алгоритм шифрования для Digest авторизации
+ * @param hash алгоритм шифрования для Digest авторизации
  */
-void awh::HttpClient::setAuthType(const auth_t::type_t type, const auth_t::aes_t aes) noexcept {
+void awh::HttpClient::setAuthType(const auth_t::type_t type, const auth_t::hash_t hash) noexcept {
 	// Устанавливаем тип авторизации
-	this->authCli.setType(type, aes);
+	this->authCli.setType(type, hash);
 }

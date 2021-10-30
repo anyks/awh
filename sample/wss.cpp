@@ -52,7 +52,7 @@ int main(int argc, char * argv[]) noexcept {
 	// Устанавливаем временный ключ сессии
 	// ws.setOpaque("keySession");
 	// Устанавливаем тип авторизации
-	// ws.setAuthType(auth_t::type_t::DIGEST, auth_t::aes_t::SHA256);
+	// ws.setAuthType(auth_t::type_t::DIGEST, auth_t::hash_t::SHA256);
 	// Выполняем инициализацию WebSocket сервера
 	ws.init(2222, "127.0.0.1", http_t::compress_t::DEFLATE);
 	// Устанавливаем шифрование

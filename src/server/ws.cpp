@@ -94,7 +94,7 @@ void awh::WebSocketServer::connectCallback(const size_t aid, const size_t wid, c
 					// Устанавливаем временный ключ сессии сервера
 					adj->http.setOpaque(ws->opaque);
 					// Устанавливаем параметры авторизации
-					adj->http.setAuthType(ws->authType, ws->authAes);
+					adj->http.setAuthType(ws->authType, ws->authHash);
 					// Устанавливаем функцию извлечения пароля
 					adj->http.setExtractPassCallback(ws->ctx.at(3), ws->extractPassFn);
 				} break;
@@ -878,11 +878,11 @@ void awh::WebSocketServer::setOpaque(const string & opaque) noexcept {
 /**
  * setAuthType Метод установки типа авторизации
  * @param type тип авторизации
- * @param aes  алгоритм шифрования для Digest авторизации
+ * @param hash алгоритм шифрования для Digest авторизации
  */
-void awh::WebSocketServer::setAuthType(const auth_t::type_t type, const auth_t::aes_t aes) noexcept {
+void awh::WebSocketServer::setAuthType(const auth_t::type_t type, const auth_t::hash_t hash) noexcept {
 	// Устанавливаем алгоритм шифрования для Digest авторизации
-	this->authAes = aes;
+	this->authHash = hash;
 	// Устанавливаем тип авторизации
 	this->authType = type;
 }

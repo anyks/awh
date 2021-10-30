@@ -43,9 +43,9 @@ namespace awh {
 			/**
 			 * setAuthType Метод установки типа авторизации
 			 * @param type тип авторизации
-			 * @param aes  алгоритм шифрования для Digest авторизации
+			 * @param hash алгоритм шифрования для Digest авторизации
 			 */
-			void setAuthType(const auth_t::type_t type = auth_t::type_t::BASIC, const auth_t::aes_t aes = auth_t::aes_t::MD5) noexcept;
+			void setAuthType(const auth_t::type_t type = auth_t::type_t::BASIC, const auth_t::hash_t hash = auth_t::hash_t::MD5) noexcept;
 		public:
 			/**
 			 * HttpClient Конструктор

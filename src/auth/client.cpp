@@ -96,13 +96,13 @@ void awh::AuthClient::setHeader(const string & header) noexcept {
 								// Переводим в нижний регистр
 								value = this->fmk->toLower(value);
 								// Если алгоритм является MD5
-								if(value.compare(L"md5") == 0) this->digest.aes = aes_t::MD5;
+								if(value.compare(L"md5") == 0) this->digest.hash = hash_t::MD5;
 								// Если алгоритм является SHA1
-								else if(value.compare(L"sha1") == 0) this->digest.aes = aes_t::SHA1;
+								else if(value.compare(L"sha1") == 0) this->digest.hash = hash_t::SHA1;
 								// Если алгоритм является SHA256
-								else if(value.compare(L"sha256") == 0) this->digest.aes = aes_t::SHA256;
+								else if(value.compare(L"sha256") == 0) this->digest.hash = hash_t::SHA256;
 								// Если алгоритм является SHA512
-								else if(value.compare(L"sha512") == 0) this->digest.aes = aes_t::SHA512;
+								else if(value.compare(L"sha512") == 0) this->digest.hash = hash_t::SHA512;
 							// Если параметр является типом авторизации
 							} else if(key.compare(L"qop") == 0)
 								// Если тип авторизации передан верно
@@ -155,7 +155,7 @@ const string awh::AuthClient::getHeader(const bool mode) noexcept {
 						digest.nc     = this->digest.nc;
 						digest.uri    = this->digest.uri;
 						digest.qop    = this->digest.qop;
-						digest.aes    = this->digest.aes;
+						digest.hash   = this->digest.hash;
 						digest.realm  = this->digest.realm;
 						digest.nonce  = this->digest.nonce;
 						digest.opaque = this->digest.opaque;
