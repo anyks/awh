@@ -85,8 +85,8 @@ int main(int argc, char * argv[]) noexcept {
 	rest.setProxy("socks5://user:password@host.com:port");
 	rest.setAuthTypeProxy(auth_t::type_t::BASIC);
 
-	rest.setUser("user", "password");
-	rest.setAuthType(auth_t::type_t::DIGEST, auth_t::alg_t::MD5);
+	// rest.setUser("user", "password");
+	// rest.setAuthType(auth_t::type_t::DIGEST, auth_t::alg_t::MD5);
 
 	uri_t::url_t url = uri.parseUrl("https://2ip.ru");
 
