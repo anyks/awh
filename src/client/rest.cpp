@@ -114,6 +114,8 @@ void awh::RestClient::disconnectCallback(const size_t aid, const size_t wid, cor
 		web->requests.clear();
 		// Выполняем очистку списка ответов
 		web->responses.clear();
+		// Очищаем адрес сервера
+		web->worker.url.clear();
 		// Завершаем работу
 		if(web->unbind) core->stop();
 	}
@@ -471,8 +473,11 @@ void awh::RestClient::close() noexcept {
  * GET Метод REST запроса
  * @param url     адрес запроса
  * @param headers список http заголовков
+ * @return        результат запроса
  */
-void awh::RestClient::GET(const uri_t::url_t & url, const unordered_multimap <string, string> & headers) noexcept {
+vector <char> awh::RestClient::GET(const uri_t::url_t & url, const unordered_multimap <string, string> & headers) noexcept {
+	// Результат работы функции
+	vector <char> result;
 	// Если данные запроса переданы
 	if(!url.empty()){
 		// Создаём объект запроса
@@ -483,16 +488,36 @@ void awh::RestClient::GET(const uri_t::url_t & url, const unordered_multimap <st
 		req.headers = headers;
 		// Устанавливаем метод запроса
 		req.method = web_t::method_t::GET;
+		// Подписываемся на событие получения сообщения
+		this->on(&result, [](const res_t & res, restCli_t * web, void * ctx){
+			// Проверяем на наличие ошибок
+			if(res.code >= 300)
+				// Выводим сообщение о неудачном запросе
+				web->log->print("request failed: %u %s", log_t::flag_t::WARNING, res.code, res.message.c_str());
+			// Если тело ответа получено
+			if(!res.entity.empty())
+				// Формируем результат ответа
+				reinterpret_cast <vector <char> *> (ctx)->assign(res.entity.begin(), res.entity.end());
+			// Выполняем остановку
+			web->stop();
+		});
 		// Выполняем формирование REST запроса
 		this->REST({move(req)});
+		// Запускаем выполнение запроса
+		this->start();
 	}
+	// Выводим результат
+	return result;
 }
 /**
  * DEL Метод запроса в формате HTTP методом DEL
  * @param url     адрес запроса
  * @param headers заголовки запроса
+ * @return        результат запроса
  */
-void awh::RestClient::DEL(const uri_t::url_t & url, const unordered_multimap <string, string> & headers) noexcept {
+vector <char> awh::RestClient::DEL(const uri_t::url_t & url, const unordered_multimap <string, string> & headers) noexcept {
+	// Результат работы функции
+	vector <char> result;
 	// Если данные запроса переданы
 	if(!url.empty()){
 		// Создаём объект запроса
@@ -503,19 +528,39 @@ void awh::RestClient::DEL(const uri_t::url_t & url, const unordered_multimap <st
 		req.headers = headers;
 		// Устанавливаем метод запроса
 		req.method = web_t::method_t::DEL;
+		// Подписываемся на событие получения сообщения
+		this->on(&result, [](const res_t & res, restCli_t * web, void * ctx){
+			// Проверяем на наличие ошибок
+			if(res.code >= 300)
+				// Выводим сообщение о неудачном запросе
+				web->log->print("request failed: %u %s", log_t::flag_t::WARNING, res.code, res.message.c_str());
+			// Если тело ответа получено
+			if(!res.entity.empty())
+				// Формируем результат ответа
+				reinterpret_cast <vector <char> *> (ctx)->assign(res.entity.begin(), res.entity.end());
+			// Выполняем остановку
+			web->stop();
+		});
 		// Выполняем формирование REST запроса
 		this->REST({move(req)});
+		// Запускаем выполнение запроса
+		this->start();
 	}
+	// Выводим результат
+	return result;
 }
 /**
  * PUT Метод запроса в формате HTTP методом PUT
  * @param url     адрес запроса
  * @param entity  тело запроса
  * @param headers заголовки запроса
+ * @return        результат запроса
  */
-void awh::RestClient::PUT(const uri_t::url_t & url, const json & entity, const unordered_multimap <string, string> & headers) noexcept {
+vector <char> awh::RestClient::PUT(const uri_t::url_t & url, const json & entity, const unordered_multimap <string, string> & headers) noexcept {
+	// Результат работы функции
+	vector <char> result;
 	// Если данные запроса переданы
-	if(!url.empty()){
+	if(!url.empty() && !entity.empty()){
 		// Создаём объект запроса
 		req_t req;
 		// Устанавливаем URL адрес запроса
@@ -530,17 +575,37 @@ void awh::RestClient::PUT(const uri_t::url_t & url, const json & entity, const u
 		req.entity.assign(body.begin(), body.end());
 		// Добавляем заголовок типа контента
 		req.headers.emplace("Content-Type", "application/json");
+		// Подписываемся на событие получения сообщения
+		this->on(&result, [](const res_t & res, restCli_t * web, void * ctx){
+			// Проверяем на наличие ошибок
+			if(res.code >= 300)
+				// Выводим сообщение о неудачном запросе
+				web->log->print("request failed: %u %s", log_t::flag_t::WARNING, res.code, res.message.c_str());
+			// Если тело ответа получено
+			if(!res.entity.empty())
+				// Формируем результат ответа
+				reinterpret_cast <vector <char> *> (ctx)->assign(res.entity.begin(), res.entity.end());
+			// Выполняем остановку
+			web->stop();
+		});
 		// Выполняем формирование REST запроса
 		this->REST({move(req)});
+		// Запускаем выполнение запроса
+		this->start();
 	}
+	// Выводим результат
+	return result;
 }
 /**
  * PUT Метод запроса в формате HTTP методом PUT
  * @param url     адрес запроса
  * @param entity  тело запроса
  * @param headers заголовки запроса
+ * @return        результат запроса
  */
-void awh::RestClient::PUT(const uri_t::url_t & url, const vector <char> & entity, const unordered_multimap <string, string> & headers) noexcept {
+vector <char> awh::RestClient::PUT(const uri_t::url_t & url, const vector <char> & entity, const unordered_multimap <string, string> & headers) noexcept {
+	// Результат работы функции
+	vector <char> result;
 	// Если данные запроса переданы
 	if(!url.empty()){
 		// Создаём объект запроса
@@ -553,19 +618,39 @@ void awh::RestClient::PUT(const uri_t::url_t & url, const vector <char> & entity
 		req.headers = headers;
 		// Устанавливаем метод запроса
 		req.method = web_t::method_t::PUT;
+		// Подписываемся на событие получения сообщения
+		this->on(&result, [](const res_t & res, restCli_t * web, void * ctx){
+			// Проверяем на наличие ошибок
+			if(res.code >= 300)
+				// Выводим сообщение о неудачном запросе
+				web->log->print("request failed: %u %s", log_t::flag_t::WARNING, res.code, res.message.c_str());
+			// Если тело ответа получено
+			if(!res.entity.empty())
+				// Формируем результат ответа
+				reinterpret_cast <vector <char> *> (ctx)->assign(res.entity.begin(), res.entity.end());
+			// Выполняем остановку
+			web->stop();
+		});
 		// Выполняем формирование REST запроса
 		this->REST({move(req)});
+		// Запускаем выполнение запроса
+		this->start();
 	}
+	// Выводим результат
+	return result;
 }
 /**
  * PUT Метод запроса в формате HTTP методом PUT
  * @param url     адрес запроса
  * @param entity  тело запроса
  * @param headers заголовки запроса
+ * @return        результат запроса
  */
-void awh::RestClient::PUT(const uri_t::url_t & url, const unordered_multimap <string, string> & entity, const unordered_multimap <string, string> & headers) noexcept {
+vector <char> awh::RestClient::PUT(const uri_t::url_t & url, const unordered_multimap <string, string> & entity, const unordered_multimap <string, string> & headers) noexcept {
+	// Результат работы функции
+	vector <char> result;
 	// Если данные запроса переданы
-	if(!url.empty()){
+	if(!url.empty() && !entity.empty()){
 		// Создаём объект запроса
 		req_t req;
 		// Устанавливаем URL адрес запроса
@@ -591,19 +676,39 @@ void awh::RestClient::PUT(const uri_t::url_t & url, const unordered_multimap <st
 		req.entity.assign(body.begin(), body.end());
 		// Добавляем заголовок типа контента
 		req.headers.emplace("Content-Type", "application/x-www-form-urlencoded");
+		// Подписываемся на событие получения сообщения
+		this->on(&result, [](const res_t & res, restCli_t * web, void * ctx){
+			// Проверяем на наличие ошибок
+			if(res.code >= 300)
+				// Выводим сообщение о неудачном запросе
+				web->log->print("request failed: %u %s", log_t::flag_t::WARNING, res.code, res.message.c_str());
+			// Если тело ответа получено
+			if(!res.entity.empty())
+				// Формируем результат ответа
+				reinterpret_cast <vector <char> *> (ctx)->assign(res.entity.begin(), res.entity.end());
+			// Выполняем остановку
+			web->stop();
+		});
 		// Выполняем формирование REST запроса
 		this->REST({move(req)});
+		// Запускаем выполнение запроса
+		this->start();
 	}
+	// Выводим результат
+	return result;
 }
 /**
  * POST Метод запроса в формате HTTP методом POST
  * @param url     адрес запроса
  * @param entity  тело запроса
  * @param headers заголовки запроса
+ * @return        результат запроса
  */
-void awh::RestClient::POST(const uri_t::url_t & url, const json & entity, const unordered_multimap <string, string> & headers) noexcept {
+vector <char> awh::RestClient::POST(const uri_t::url_t & url, const json & entity, const unordered_multimap <string, string> & headers) noexcept {
+	// Результат работы функции
+	vector <char> result;
 	// Если данные запроса переданы
-	if(!url.empty()){
+	if(!url.empty() && !entity.empty()){
 		// Создаём объект запроса
 		req_t req;
 		// Устанавливаем URL адрес запроса
@@ -618,17 +723,37 @@ void awh::RestClient::POST(const uri_t::url_t & url, const json & entity, const 
 		req.entity.assign(body.begin(), body.end());
 		// Добавляем заголовок типа контента
 		req.headers.emplace("Content-Type", "application/json");
+		// Подписываемся на событие получения сообщения
+		this->on(&result, [](const res_t & res, restCli_t * web, void * ctx){
+			// Проверяем на наличие ошибок
+			if(res.code >= 300)
+				// Выводим сообщение о неудачном запросе
+				web->log->print("request failed: %u %s", log_t::flag_t::WARNING, res.code, res.message.c_str());
+			// Если тело ответа получено
+			if(!res.entity.empty())
+				// Формируем результат ответа
+				reinterpret_cast <vector <char> *> (ctx)->assign(res.entity.begin(), res.entity.end());
+			// Выполняем остановку
+			web->stop();
+		});
 		// Выполняем формирование REST запроса
 		this->REST({move(req)});
+		// Запускаем выполнение запроса
+		this->start();
 	}
+	// Выводим результат
+	return result;
 }
 /**
  * POST Метод запроса в формате HTTP методом POST
  * @param url     адрес запроса
  * @param entity  тело запроса
  * @param headers заголовки запроса
+ * @return        результат запроса
  */
-void awh::RestClient::POST(const uri_t::url_t & url, const vector <char> & entity, const unordered_multimap <string, string> & headers) noexcept {
+vector <char> awh::RestClient::POST(const uri_t::url_t & url, const vector <char> & entity, const unordered_multimap <string, string> & headers) noexcept {
+	// Результат работы функции
+	vector <char> result;
 	// Если данные запроса переданы
 	if(!url.empty()){
 		// Создаём объект запроса
@@ -641,19 +766,39 @@ void awh::RestClient::POST(const uri_t::url_t & url, const vector <char> & entit
 		req.headers = headers;
 		// Устанавливаем метод запроса
 		req.method = web_t::method_t::POST;
+		// Подписываемся на событие получения сообщения
+		this->on(&result, [](const res_t & res, restCli_t * web, void * ctx){
+			// Проверяем на наличие ошибок
+			if(res.code >= 300)
+				// Выводим сообщение о неудачном запросе
+				web->log->print("request failed: %u %s", log_t::flag_t::WARNING, res.code, res.message.c_str());
+			// Если тело ответа получено
+			if(!res.entity.empty())
+				// Формируем результат ответа
+				reinterpret_cast <vector <char> *> (ctx)->assign(res.entity.begin(), res.entity.end());
+			// Выполняем остановку
+			web->stop();
+		});
 		// Выполняем формирование REST запроса
 		this->REST({move(req)});
+		// Запускаем выполнение запроса
+		this->start();
 	}
+	// Выводим результат
+	return result;
 }
 /**
  * POST Метод запроса в формате HTTP методом POST
  * @param url     адрес запроса
  * @param entity  тело запроса
  * @param headers заголовки запроса
+ * @return        результат запроса
  */
-void awh::RestClient::POST(const uri_t::url_t & url, const unordered_multimap <string, string> & entity, const unordered_multimap <string, string> & headers) noexcept {
+vector <char> awh::RestClient::POST(const uri_t::url_t & url, const unordered_multimap <string, string> & entity, const unordered_multimap <string, string> & headers) noexcept {
+	// Результат работы функции
+	vector <char> result;
 	// Если данные запроса переданы
-	if(!url.empty()){
+	if(!url.empty() && !entity.empty()){
 		// Создаём объект запроса
 		req_t req;
 		// Устанавливаем URL адрес запроса
@@ -679,19 +824,39 @@ void awh::RestClient::POST(const uri_t::url_t & url, const unordered_multimap <s
 		req.entity.assign(body.begin(), body.end());
 		// Добавляем заголовок типа контента
 		req.headers.emplace("Content-Type", "application/x-www-form-urlencoded");
+		// Подписываемся на событие получения сообщения
+		this->on(&result, [](const res_t & res, restCli_t * web, void * ctx){
+			// Проверяем на наличие ошибок
+			if(res.code >= 300)
+				// Выводим сообщение о неудачном запросе
+				web->log->print("request failed: %u %s", log_t::flag_t::WARNING, res.code, res.message.c_str());
+			// Если тело ответа получено
+			if(!res.entity.empty())
+				// Формируем результат ответа
+				reinterpret_cast <vector <char> *> (ctx)->assign(res.entity.begin(), res.entity.end());
+			// Выполняем остановку
+			web->stop();
+		});
 		// Выполняем формирование REST запроса
 		this->REST({move(req)});
+		// Запускаем выполнение запроса
+		this->start();
 	}
+	// Выводим результат
+	return result;
 }
 /**
  * PATCH Метод запроса в формате HTTP методом PATCH
  * @param url     адрес запроса
  * @param entity  тело запроса
  * @param headers заголовки запроса
+ * @return        результат запроса
  */
-void awh::RestClient::PATCH(const uri_t::url_t & url, const json & entity, const unordered_multimap <string, string> & headers) noexcept {
+vector <char> awh::RestClient::PATCH(const uri_t::url_t & url, const json & entity, const unordered_multimap <string, string> & headers) noexcept {
+	// Результат работы функции
+	vector <char> result;
 	// Если данные запроса переданы
-	if(!url.empty()){
+	if(!url.empty() && !entity.empty()){
 		// Создаём объект запроса
 		req_t req;
 		// Устанавливаем URL адрес запроса
@@ -706,17 +871,37 @@ void awh::RestClient::PATCH(const uri_t::url_t & url, const json & entity, const
 		req.entity.assign(body.begin(), body.end());
 		// Добавляем заголовок типа контента
 		req.headers.emplace("Content-Type", "application/json");
+		// Подписываемся на событие получения сообщения
+		this->on(&result, [](const res_t & res, restCli_t * web, void * ctx){
+			// Проверяем на наличие ошибок
+			if(res.code >= 300)
+				// Выводим сообщение о неудачном запросе
+				web->log->print("request failed: %u %s", log_t::flag_t::WARNING, res.code, res.message.c_str());
+			// Если тело ответа получено
+			if(!res.entity.empty())
+				// Формируем результат ответа
+				reinterpret_cast <vector <char> *> (ctx)->assign(res.entity.begin(), res.entity.end());
+			// Выполняем остановку
+			web->stop();
+		});
 		// Выполняем формирование REST запроса
 		this->REST({move(req)});
+		// Запускаем выполнение запроса
+		this->start();
 	}
+	// Выводим результат
+	return result;
 }
 /**
  * PATCH Метод запроса в формате HTTP методом PATCH
  * @param url     адрес запроса
  * @param entity  тело запроса
  * @param headers заголовки запроса
+ * @return        результат запроса
  */
-void awh::RestClient::PATCH(const uri_t::url_t & url, const vector <char> & entity, const unordered_multimap <string, string> & headers) noexcept {
+vector <char> awh::RestClient::PATCH(const uri_t::url_t & url, const vector <char> & entity, const unordered_multimap <string, string> & headers) noexcept {
+	// Результат работы функции
+	vector <char> result;
 	// Если данные запроса переданы
 	if(!url.empty()){
 		// Создаём объект запроса
@@ -729,19 +914,39 @@ void awh::RestClient::PATCH(const uri_t::url_t & url, const vector <char> & enti
 		req.headers = headers;
 		// Устанавливаем метод запроса
 		req.method = web_t::method_t::PATCH;
+		// Подписываемся на событие получения сообщения
+		this->on(&result, [](const res_t & res, restCli_t * web, void * ctx){
+			// Проверяем на наличие ошибок
+			if(res.code >= 300)
+				// Выводим сообщение о неудачном запросе
+				web->log->print("request failed: %u %s", log_t::flag_t::WARNING, res.code, res.message.c_str());
+			// Если тело ответа получено
+			if(!res.entity.empty())
+				// Формируем результат ответа
+				reinterpret_cast <vector <char> *> (ctx)->assign(res.entity.begin(), res.entity.end());
+			// Выполняем остановку
+			web->stop();
+		});
 		// Выполняем формирование REST запроса
 		this->REST({move(req)});
+		// Запускаем выполнение запроса
+		this->start();
 	}
+	// Выводим результат
+	return result;
 }
 /**
  * PATCH Метод запроса в формате HTTP методом PATCH
  * @param url     адрес запроса
  * @param entity  тело запроса
  * @param headers заголовки запроса
+ * @return        результат запроса
  */
-void awh::RestClient::PATCH(const uri_t::url_t & url, const unordered_multimap <string, string> & entity, const unordered_multimap <string, string> & headers) noexcept {
+vector <char> awh::RestClient::PATCH(const uri_t::url_t & url, const unordered_multimap <string, string> & entity, const unordered_multimap <string, string> & headers) noexcept {
+	// Результат работы функции
+	vector <char> result;
 	// Если данные запроса переданы
-	if(!url.empty()){
+	if(!url.empty() && !entity.empty()){
 		// Создаём объект запроса
 		req_t req;
 		// Устанавливаем URL адрес запроса
@@ -767,16 +972,36 @@ void awh::RestClient::PATCH(const uri_t::url_t & url, const unordered_multimap <
 		req.entity.assign(body.begin(), body.end());
 		// Добавляем заголовок типа контента
 		req.headers.emplace("Content-Type", "application/x-www-form-urlencoded");
+		// Подписываемся на событие получения сообщения
+		this->on(&result, [](const res_t & res, restCli_t * web, void * ctx){
+			// Проверяем на наличие ошибок
+			if(res.code >= 300)
+				// Выводим сообщение о неудачном запросе
+				web->log->print("request failed: %u %s", log_t::flag_t::WARNING, res.code, res.message.c_str());
+			// Если тело ответа получено
+			if(!res.entity.empty())
+				// Формируем результат ответа
+				reinterpret_cast <vector <char> *> (ctx)->assign(res.entity.begin(), res.entity.end());
+			// Выполняем остановку
+			web->stop();
+		});
 		// Выполняем формирование REST запроса
 		this->REST({move(req)});
+		// Запускаем выполнение запроса
+		this->start();
 	}
+	// Выводим результат
+	return result;
 }
 /**
  * HEAD Метод запроса в формате HTTP методом HEAD
  * @param url     адрес запроса
  * @param headers заголовки запроса
+ * @return        результат запроса
  */
-void awh::RestClient::HEAD(const uri_t::url_t & url, const unordered_multimap <string, string> & headers) noexcept {
+unordered_multimap <string, string> awh::RestClient::HEAD(const uri_t::url_t & url, const unordered_multimap <string, string> & headers) noexcept {
+	// Результат работы функции
+	unordered_multimap <string, string> result;
 	// Если данные запроса переданы
 	if(!url.empty()){
 		// Создаём объект запроса
@@ -787,16 +1012,36 @@ void awh::RestClient::HEAD(const uri_t::url_t & url, const unordered_multimap <s
 		req.headers = headers;
 		// Устанавливаем метод запроса
 		req.method = web_t::method_t::HEAD;
+		// Подписываемся на событие получения сообщения
+		this->on(&result, [](const res_t & res, restCli_t * web, void * ctx){
+			// Проверяем на наличие ошибок
+			if(res.code >= 300)
+				// Выводим сообщение о неудачном запросе
+				web->log->print("request failed: %u %s", log_t::flag_t::WARNING, res.code, res.message.c_str());
+			// Если заголовки ответа получены
+			if(!res.headers.empty())
+				// Формируем результат ответа
+				(* reinterpret_cast <unordered_multimap <string, string> *> (ctx)) = res.headers;
+			// Выполняем остановку
+			web->stop();
+		});
 		// Выполняем формирование REST запроса
 		this->REST({move(req)});
+		// Запускаем выполнение запроса
+		this->start();
 	}
+	// Выводим результат
+	return result;
 }
 /**
  * TRACE Метод запроса в формате HTTP методом TRACE
  * @param url     адрес запроса
  * @param headers заголовки запроса
+ * @return        результат запроса
  */
-void awh::RestClient::TRACE(const uri_t::url_t & url, const unordered_multimap <string, string> & headers) noexcept {
+unordered_multimap <string, string> awh::RestClient::TRACE(const uri_t::url_t & url, const unordered_multimap <string, string> & headers) noexcept {
+	// Результат работы функции
+	unordered_multimap <string, string> result;
 	// Если данные запроса переданы
 	if(!url.empty()){
 		// Создаём объект запроса
@@ -807,16 +1052,36 @@ void awh::RestClient::TRACE(const uri_t::url_t & url, const unordered_multimap <
 		req.headers = headers;
 		// Устанавливаем метод запроса
 		req.method = web_t::method_t::TRACE;
+		// Подписываемся на событие получения сообщения
+		this->on(&result, [](const res_t & res, restCli_t * web, void * ctx){
+			// Проверяем на наличие ошибок
+			if(res.code >= 300)
+				// Выводим сообщение о неудачном запросе
+				web->log->print("request failed: %u %s", log_t::flag_t::WARNING, res.code, res.message.c_str());
+			// Если заголовки ответа получены
+			if(!res.headers.empty())
+				// Формируем результат ответа
+				(* reinterpret_cast <unordered_multimap <string, string> *> (ctx)) = res.headers;
+			// Выполняем остановку
+			web->stop();
+		});
 		// Выполняем формирование REST запроса
 		this->REST({move(req)});
+		// Запускаем выполнение запроса
+		this->start();
 	}
+	// Выводим результат
+	return result;
 }
 /**
  * OPTIONS Метод запроса в формате HTTP методом OPTIONS
  * @param url     адрес запроса
  * @param headers заголовки запроса
+ * @return        результат запроса
  */
-void awh::RestClient::OPTIONS(const uri_t::url_t & url, const unordered_multimap <string, string> & headers) noexcept {
+unordered_multimap <string, string> awh::RestClient::OPTIONS(const uri_t::url_t & url, const unordered_multimap <string, string> & headers) noexcept {
+	// Результат работы функции
+	unordered_multimap <string, string> result;
 	// Если данные запроса переданы
 	if(!url.empty()){
 		// Создаём объект запроса
@@ -827,9 +1092,26 @@ void awh::RestClient::OPTIONS(const uri_t::url_t & url, const unordered_multimap
 		req.headers = headers;
 		// Устанавливаем метод запроса
 		req.method = web_t::method_t::OPTIONS;
+		// Подписываемся на событие получения сообщения
+		this->on(&result, [](const res_t & res, restCli_t * web, void * ctx){
+			// Проверяем на наличие ошибок
+			if(res.code >= 300)
+				// Выводим сообщение о неудачном запросе
+				web->log->print("request failed: %u %s", log_t::flag_t::WARNING, res.code, res.message.c_str());
+			// Если заголовки ответа получены
+			if(!res.headers.empty())
+				// Формируем результат ответа
+				(* reinterpret_cast <unordered_multimap <string, string> *> (ctx)) = res.headers;
+			// Выполняем остановку
+			web->stop();
+		});
 		// Выполняем формирование REST запроса
 		this->REST({move(req)});
+		// Запускаем выполнение запроса
+		this->start();
 	}
+	// Выводим результат
+	return result;
 }
 /**
  * REST Метод запроса в формате HTTP

@@ -88,22 +88,14 @@ int main(int argc, char * argv[]) noexcept {
 	// rest.setUser("user", "password");
 	// rest.setAuthType(auth_t::type_t::DIGEST, auth_t::hash_t::MD5);
 
-	uri_t::url_t url = uri.parseUrl("https://2ip.ru");
-
 	rest.on(&log, [](const bool mode, restCli_t * web, void * ctx){
 		log_t * log = reinterpret_cast <log_t *> (ctx);
 		log->print("%s client", log_t::flag_t::INFO, (mode ? "Connect" : "Disconnect"));
 	});
 
-	rest.on(&log, [](const restCli_t::res_t & res, restCli_t * web, void * ctx){
-		log_t * log = reinterpret_cast <log_t *> (ctx);
-		log->print("ip: %s", log_t::flag_t::INFO, res.entity.data());
+	const auto & body = rest.GET(uri.parseUrl("https://2ip.ru"), {{"User-Agent", "curl/7.64.1"}});
 
-		web->stop();
-	});
-
-	rest.GET(url, {{"User-Agent", "curl/7.64.1"}});
-	rest.start();
+	log.print("ip: %s", log_t::flag_t::INFO, body.data());
 
 	return 0;
 }

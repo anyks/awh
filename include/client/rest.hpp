@@ -197,99 +197,113 @@ namespace awh {
 			 * GET Метод запроса в формате HTTP методом GET
 			 * @param url     адрес запроса
 			 * @param headers заголовки запроса
+			 * @return        результат запроса
 			 */
-			void GET(const uri_t::url_t & url, const unordered_multimap <string, string> & headers = {}) noexcept;
+			vector <char> GET(const uri_t::url_t & url, const unordered_multimap <string, string> & headers = {}) noexcept;
 			/**
 			 * DEL Метод запроса в формате HTTP методом DEL
 			 * @param url     адрес запроса
 			 * @param headers заголовки запроса
+			 * @return        результат запроса
 			 */
-			void DEL(const uri_t::url_t & url, const unordered_multimap <string, string> & headers = {}) noexcept;
+			vector <char> DEL(const uri_t::url_t & url, const unordered_multimap <string, string> & headers = {}) noexcept;
 		public:
 			/**
 			 * PUT Метод запроса в формате HTTP методом PUT
 			 * @param url     адрес запроса
 			 * @param entity  тело запроса
 			 * @param headers заголовки запроса
+			 * @return        результат запроса
 			 */
-			void PUT(const uri_t::url_t & url, const json & entity, const unordered_multimap <string, string> & headers = {}) noexcept;
+			vector <char> PUT(const uri_t::url_t & url, const json & entity, const unordered_multimap <string, string> & headers = {}) noexcept;
 			/**
 			 * PUT Метод запроса в формате HTTP методом PUT
 			 * @param url     адрес запроса
 			 * @param entity  тело запроса
 			 * @param headers заголовки запроса
+			 * @return        результат запроса
 			 */
-			void PUT(const uri_t::url_t & url, const vector <char> & entity, const unordered_multimap <string, string> & headers = {}) noexcept;
+			vector <char> PUT(const uri_t::url_t & url, const vector <char> & entity, const unordered_multimap <string, string> & headers = {}) noexcept;
 			/**
 			 * PUT Метод запроса в формате HTTP методом PUT
 			 * @param url     адрес запроса
 			 * @param entity  тело запроса
 			 * @param headers заголовки запроса
+			 * @return        результат запроса
 			 */
-			void PUT(const uri_t::url_t & url, const unordered_multimap <string, string> & entity, const unordered_multimap <string, string> & headers = {}) noexcept;
+			vector <char> PUT(const uri_t::url_t & url, const unordered_multimap <string, string> & entity, const unordered_multimap <string, string> & headers = {}) noexcept;
 		public:
 			/**
 			 * POST Метод запроса в формате HTTP методом POST
 			 * @param url     адрес запроса
 			 * @param entity  тело запроса
 			 * @param headers заголовки запроса
+			 * @return        результат запроса
 			 */
-			void POST(const uri_t::url_t & url, const json & entity, const unordered_multimap <string, string> & headers = {}) noexcept;
+			vector <char> POST(const uri_t::url_t & url, const json & entity, const unordered_multimap <string, string> & headers = {}) noexcept;
 			/**
 			 * POST Метод запроса в формате HTTP методом POST
 			 * @param url     адрес запроса
 			 * @param entity  тело запроса
 			 * @param headers заголовки запроса
+			 * @return        результат запроса
 			 */
-			void POST(const uri_t::url_t & url, const vector <char> & entity, const unordered_multimap <string, string> & headers = {}) noexcept;
+			vector <char> POST(const uri_t::url_t & url, const vector <char> & entity, const unordered_multimap <string, string> & headers = {}) noexcept;
 			/**
 			 * POST Метод запроса в формате HTTP методом POST
 			 * @param url     адрес запроса
 			 * @param entity  тело запроса
 			 * @param headers заголовки запроса
+			 * @return        результат запроса
 			 */
-			void POST(const uri_t::url_t & url, const unordered_multimap <string, string> & entity, const unordered_multimap <string, string> & headers = {}) noexcept;
+			vector <char> POST(const uri_t::url_t & url, const unordered_multimap <string, string> & entity, const unordered_multimap <string, string> & headers = {}) noexcept;
 		public:
 			/**
 			 * PATCH Метод запроса в формате HTTP методом PATCH
 			 * @param url     адрес запроса
 			 * @param entity  тело запроса
 			 * @param headers заголовки запроса
+			 * @return        результат запроса
 			 */
-			void PATCH(const uri_t::url_t & url, const json & entity, const unordered_multimap <string, string> & headers = {}) noexcept;
+			vector <char> PATCH(const uri_t::url_t & url, const json & entity, const unordered_multimap <string, string> & headers = {}) noexcept;
 			/**
 			 * PATCH Метод запроса в формате HTTP методом PATCH
 			 * @param url     адрес запроса
 			 * @param entity  тело запроса
 			 * @param headers заголовки запроса
+			 * @return        результат запроса
 			 */
-			void PATCH(const uri_t::url_t & url, const vector <char> & entity, const unordered_multimap <string, string> & headers = {}) noexcept;
+			vector <char> PATCH(const uri_t::url_t & url, const vector <char> & entity, const unordered_multimap <string, string> & headers = {}) noexcept;
 			/**
 			 * PATCH Метод запроса в формате HTTP методом PATCH
 			 * @param url     адрес запроса
 			 * @param entity  тело запроса
 			 * @param headers заголовки запроса
+			 * @return        результат запроса
 			 */
-			void PATCH(const uri_t::url_t & url, const unordered_multimap <string, string> & entity, const unordered_multimap <string, string> & headers = {}) noexcept;
+			vector <char> PATCH(const uri_t::url_t & url, const unordered_multimap <string, string> & entity, const unordered_multimap <string, string> & headers = {}) noexcept;
 		public:
 			/**
 			 * HEAD Метод запроса в формате HTTP методом HEAD
 			 * @param url     адрес запроса
 			 * @param headers заголовки запроса
+			 * @return        результат запроса
 			 */
-			void HEAD(const uri_t::url_t & url, const unordered_multimap <string, string> & headers = {}) noexcept;
+			unordered_multimap <string, string> HEAD(const uri_t::url_t & url, const unordered_multimap <string, string> & headers = {}) noexcept;
 			/**
 			 * TRACE Метод запроса в формате HTTP методом TRACE
 			 * @param url     адрес запроса
 			 * @param headers заголовки запроса
+			 * @return        результат запроса
 			 */
-			void TRACE(const uri_t::url_t & url, const unordered_multimap <string, string> & headers = {}) noexcept;
+			unordered_multimap <string, string> TRACE(const uri_t::url_t & url, const unordered_multimap <string, string> & headers = {}) noexcept;
 			/**
 			 * OPTIONS Метод запроса в формате HTTP методом OPTIONS
 			 * @param url     адрес запроса
 			 * @param headers заголовки запроса
+			 * @return        результат запроса
 			 */
-			void OPTIONS(const uri_t::url_t & url, const unordered_multimap <string, string> & headers = {}) noexcept;
+			unordered_multimap <string, string> OPTIONS(const uri_t::url_t & url, const unordered_multimap <string, string> & headers = {}) noexcept;
 		public:
 			/**
 			 * REST Метод запроса в формате HTTP

@@ -130,7 +130,7 @@ const string awh::Http::date() const noexcept {
 	// Зануляем буфер
 	memset(buffer, 0, sizeof(buffer));
 	// Получаем формат времени
-	strftime(buffer, sizeof(buffer), "%a, %d %b %Y %H:%M:%S %Z", &tm);
+	strftime(buffer, sizeof(buffer), "%a, %d %b %Y %H:%M:%S GMT", &tm);
 	// Выводим результат
 	return buffer;
 }
@@ -852,10 +852,6 @@ vector <char> awh::Http::request(const uri_t::url_t & url, const web_t::method_t
 			}
 			// Запоминаем метод запроса
 			query.method = method;
-			// Если заголовок не запрещён
-			if(!this->isBlack("Date"))
-				// Добавляем заголовок даты в запрос
-				request.append(this->fmk->format("Date: %s\r\n", this->date().c_str()));
 			// Переходим по всему списку заголовков
 			for(auto & header : this->web.getHeaders()){
 				// Получаем анализируемый заголовок

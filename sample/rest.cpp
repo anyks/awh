@@ -79,9 +79,9 @@ int main(int argc, char * argv[]) noexcept {
 		// Выводим информацию в лог
 		log->print("%s client", log_t::flag_t::INFO, (mode ? "Connect" : "Disconnect"));
 	});
+	/*
 	// Подписываемся на событие получения сообщения
 	rest.on(&log, [](const restCli_t::res_t & res, restCli_t * web, void * ctx){
-		/*
 		// Получаем объект логирования
 		log_t * log = reinterpret_cast <log_t *> (ctx);
 		// Переходим по всем заголовкам
@@ -89,7 +89,6 @@ int main(int argc, char * argv[]) noexcept {
 			// Выводим информацию в лог
 			log->print("%s : %s", log_t::flag_t::INFO, header.first.c_str(), header.second.c_str());
 		}
-		*/
 		// Получаем результат
 		const string result(res.entity.begin(), res.entity.end());
 		// Создаём объект JSON
@@ -100,6 +99,7 @@ int main(int argc, char * argv[]) noexcept {
 		// Выполняем остановку
 		web->stop();
 	});
+	*/
 	/*
 	// Список запросов
 	vector <restCli_t::req_t> request;
@@ -119,13 +119,18 @@ int main(int argc, char * argv[]) noexcept {
 	request.push_back(req3);
 	// Формируем запрос
 	rest.REST(request);
-	*/
-	// Формируем GET запрос
-	rest.GET(url);
-	// rest.GET(url, {{"Connection", "close"}});
-	// rest.GET(url, {{"User-Agent", "curl/7.64.1"}});
 	// Выполняем REST запрос
 	rest.start();
+	*/
+	// Формируем GET запрос
+	const auto & body = rest.GET(url);
+	// const auto & body = rest.GET(url, {{"Connection", "close"}});
+	// const auto & body = rest.GET(url, {{"User-Agent", "curl/7.64.1"}});
+	// Создаём объект JSON
+	json data = json::parse(body);
+	// Выводим полученный результат
+	cout << " =========== " << data.dump(4) << endl;
+	// cout << " =========== " << string(body.begin(), body.end()) << endl;
 	// Выводим результат
 	return 0;
 }
