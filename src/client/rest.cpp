@@ -401,7 +401,7 @@ void awh::RestClient::readProxyCallback(const char * buffer, const size_t size, 
 									// Данные REST ответа
 									const string & response = web->fmk->format("SOCKS5 %u %s\r\n", res.code, res.message.c_str());
 									// Выводим заголовок ответа
-									cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
+									cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE PROXY ^^^^^^^^^\x1B[0m" << endl;
 									// Выводим параметры ответа
 									cout << string(response.begin(), response.end()) << endl;
 								}

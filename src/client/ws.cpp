@@ -460,7 +460,7 @@ void awh::WebSocketClient::readProxyCallback(const char * buffer, const size_t s
 									// Данные REST ответа
 									const string & response = ws->fmk->format("SOCKS5 %u %s\r\n", ws->code, mess.text.c_str());
 									// Выводим заголовок ответа
-									cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
+									cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE PROXY ^^^^^^^^^\x1B[0m" << endl;
 									// Выводим параметры ответа
 									cout << string(response.begin(), response.end()) << endl;
 								}
