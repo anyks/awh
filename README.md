@@ -178,12 +178,9 @@ int main(int argc, char * argv[]) noexcept {
 
 ```c++
 #include <client/ws.hpp>
-#include <nlohmann/json.hpp>
 
 using namespace std;
 using namespace awh;
-
-using json = nlohmann::json;
 
 int main(int argc, char * argv[]) noexcept {
 	fmk_t fmk(true);
@@ -215,10 +212,7 @@ int main(int argc, char * argv[]) noexcept {
 		log->print("%s server", log_t::flag_t::INFO, (mode ? "Start" : "Stop"));
 
 		if(mode){
-			json data = json::parse("{\"text\":\"Hello World!\"}");
-
-			const string query = data.dump();
-
+			const string query = "{\"text\":\"Hello World!\"}";
 			ws->send(query.data(), query.size());
 		}
 	});
@@ -245,12 +239,9 @@ int main(int argc, char * argv[]) noexcept {
 
 ```c++
 #include <server/ws.hpp>
-#include <nlohmann/json.hpp>
 
 using namespace std;
 using namespace awh;
-
-using json = nlohmann::json;
 
 int main(int argc, char * argv[]) noexcept {
 	fmk_t fmk;
