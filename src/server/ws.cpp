@@ -168,6 +168,81 @@ void awh::WebSocketServer::readCallback(const char * buffer, const size_t size, 
 				adj->http.parse(buffer, size);
 				// Если все данные получены
 				if(adj->http.isEnd()){
+					// Если включён режим отладки
+					#if defined(DEBUG_MODE)
+						// Получаем заголовки запроса
+						const auto & headers = adj->http.getHeaders();
+						// Если заголовки получены
+						if(!headers.empty()){
+							// Данные REST запроса
+							string request = "";
+							// Получаем данные запроса
+							const auto & query = adj->http.getQuery();
+							// Определяем метод запроса
+							switch((uint8_t) query.method){
+								// Если метод запроса указан как GET
+								case (uint8_t) web_t::method_t::GET:
+									// Формируем GET запрос
+									request = ws->fmk->format("GET %s HTTP/%.1f\r\n", query.uri.c_str(), query.ver);
+								break;
+								// Если метод запроса указан как PUT
+								case (uint8_t) web_t::method_t::PUT:
+									// Формируем PUT запрос
+									request = ws->fmk->format("PUT %s HTTP/%.1f\r\n", query.uri.c_str(), query.ver);
+								break;
+								// Если метод запроса указан как POST
+								case (uint8_t) web_t::method_t::POST:
+									// Формируем POST запрос
+									request = ws->fmk->format("POST %s HTTP/%.1f\r\n", query.uri.c_str(), query.ver);
+								break;
+								// Если метод запроса указан как HEAD
+								case (uint8_t) web_t::method_t::HEAD:
+									// Формируем HEAD запрос
+									request = ws->fmk->format("HEAD %s HTTP/%.1f\r\n", query.uri.c_str(), query.ver);
+								break;
+								// Если метод запроса указан как PATCH
+								case (uint8_t) web_t::method_t::PATCH:
+									// Формируем PATCH запрос
+									request = ws->fmk->format("PATCH %s HTTP/%.1f\r\n", query.uri.c_str(), query.ver);
+								break;
+								// Если метод запроса указан как TRACE
+								case (uint8_t) web_t::method_t::TRACE:
+									// Формируем TRACE запрос
+									request = ws->fmk->format("TRACE %s HTTP/%.1f\r\n", query.uri.c_str(), query.ver);
+								break;
+								// Если метод запроса указан как DELETE
+								case (uint8_t) web_t::method_t::DEL:
+									// Формируем DELETE запрос
+									request = ws->fmk->format("DELETE %s HTTP/%.1f\r\n", query.uri.c_str(), query.ver);
+								break;
+								// Если метод запроса указан как OPTIONS
+								case (uint8_t) web_t::method_t::OPTIONS:
+									// Формируем OPTIONS запрос
+									request = ws->fmk->format("OPTIONS %s HTTP/%.1f\r\n", query.uri.c_str(), query.ver);
+								break;
+								// Если метод запроса указан как CONNECT
+								case (uint8_t) web_t::method_t::CONNECT:
+									// Формируем CONNECT запрос
+									request = ws->fmk->format("CONNECT %s HTTP/%.1f\r\n", query.uri.c_str(), query.ver);
+								break;
+							}
+							// Переходим по всему списку заголовков
+							for(auto & header : headers){
+								// Формируем заголовок запроса
+								request.append(ws->fmk->format("%s: %s\r\n", header.first.c_str(), header.second.c_str()));
+							}
+							// Добавляем разделитель
+							request.append("\r\n");
+							// Выводим заголовок запроса
+							cout << "\x1B[33m\x1B[1m^^^^^^^^^ REQUEST ^^^^^^^^^\x1B[0m" << endl;
+							// Выводим параметры запроса
+							cout << string(request.begin(), request.end()) << endl;
+							// Если тело запроса существует
+							if(!adj->http.getBody().empty())
+								// Выводим сообщение о выводе чанка тела
+								cout << ws->fmk->format("<body %u>", adj->http.getBody().size())  << endl;
+						}
+					#endif
 					// Бинарный буфер ответа сервера
 					vector <char> response;
 					// Выполняем проверку авторизации
@@ -202,16 +277,36 @@ void awh::WebSocketServer::readCallback(const char * buffer, const size_t size, 
 								adj->compress = adj->http.getCompress();
 								// Получаем бинарные данные REST запроса
 								response = adj->http.response();
-								// Если бинарные данные запроса получены, отправляем на сервер
-								if(!response.empty()) core->write(response.data(), response.size(), aid);
-								// Если функция обратного вызова установлена, выполняем
-								if(ws->openStopFn != nullptr) ws->openStopFn(aid, true, ws, ws->ctx.at(0));
-								// Завершаем работу
-								return;
+								// Если бинарные данные ответа получены
+								if(!response.empty()){
+									// Если включён режим отладки
+									#if defined(DEBUG_MODE)
+										// Выводим заголовок ответа
+										cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
+										// Выводим параметры ответа
+										cout << string(response.begin(), response.end()) << endl;
+									#endif
+									// Отправляем сообщение клиенту
+									core->write(response.data(), response.size(), aid);
+									// Если функция обратного вызова установлена, выполняем
+									if(ws->openStopFn != nullptr) ws->openStopFn(aid, true, ws, ws->ctx.at(0));
+									// Завершаем работу
+									return;
+								// Выполняем реджект
+								} else {
+									// Выполняем сброс состояния HTTP парсера
+									adj->http.clear();
+									// Выполняем сброс состояния HTTP парсера
+									adj->http.reset();
+									// Формируем ответ, что страница не доступна
+									response = adj->http.reject(500);
+								}
 							// Сообщаем, что рукопожатие не выполнено
 							} else {
 								// Выполняем сброс состояния HTTP парсера
 								adj->http.clear();
+								// Выполняем сброс состояния HTTP парсера
+								adj->http.reset();
 								// Формируем ответ, что страница не доступна
 								response = adj->http.reject(403);
 							}
@@ -230,12 +325,24 @@ void awh::WebSocketServer::readCallback(const char * buffer, const size_t size, 
 					if(!response.empty()){
 						// Тело полезной нагрузки
 						vector <char> payload;
+						// Если включён режим отладки
+						#if defined(DEBUG_MODE)
+							// Выводим заголовок ответа
+							cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
+							// Выводим параметры ответа
+							cout << string(response.begin(), response.end()) << endl;
+						#endif
 						// Устанавливаем размер стопбайт
 						if(!adj->http.isAlive()) adj->stopBytes = response.size();
 						// Отправляем ответ клиенту
 						core->write(response.data(), response.size(), aid);
 						// Получаем данные тела запроса
 						while(!(payload = adj->http.payload()).empty()){
+							// Если включён режим отладки
+							#if defined(DEBUG_MODE)
+								// Выводим сообщение о выводе чанка полезной нагрузки
+								cout << ws->fmk->format("<chunk %u>", payload.size()) << endl;
+							#endif
 							// Устанавливаем размер стопбайт
 							if(!adj->http.isAlive()) adj->stopBytes += payload.size();
 							// Отправляем тело на сервер
@@ -621,6 +728,13 @@ void awh::WebSocketServer::sendError(const size_t aid, const mess_t & mess) cons
 			const auto & buffer = this->frame.message(mess);
 			// Если данные сообщения получены
 			if(!buffer.empty()){
+				// Если включён режим отладки
+				#if defined(DEBUG_MODE)
+					// Выводим заголовок ответа
+					cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
+					// Выводим отправляемое сообщение
+					cout << this->fmk->format("%s [%u]", mess.text.c_str(), mess.code) << endl;
+				#endif
 				// Устанавливаем размер стопбайт
 				adj->stopBytes = buffer.size();
 				// Отправляем серверу сообщение
@@ -651,6 +765,17 @@ void awh::WebSocketServer::send(const size_t aid, const char * message, const si
 			adj->locker = !adj->locker;
 			// Если рукопожатие выполнено
 			if(adj->http.isHandshake()){
+				// Если включён режим отладки
+				#if defined(DEBUG_MODE)
+					// Выводим заголовок ответа
+					cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
+					// Если отправляемое сообщение является текстом
+					if(utf8)
+						// Выводим параметры ответа
+						cout << string(message, size) << endl;
+					// Выводим сообщение о выводе чанка полезной нагрузки
+					else cout << this->fmk->format("<bytes %u>", size) << endl;
+				#endif
 				// Буфер сжатых данных
 				vector <char> buffer;
 				// Создаём объект заголовка для отправки

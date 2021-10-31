@@ -289,10 +289,6 @@ vector <char> awh::WS::request(const uri_t::url_t & url) noexcept {
 	this->key = this->getKey();
 	// Добавляем в чёрный список заголовок Accept
 	this->addBlack("Accept");
-	// Добавляем в чёрный список заголовок Accept-Language
-	this->addBlack("Accept-Language");
-	// Добавляем в чёрный список заголовок Accept-Encoding
-	this->addBlack("Accept-Encoding");
 	// Добавляем заголовок подключения
 	this->addHeader("Connection", "Upgrade");
 	// Добавляем заголовок апгрейд

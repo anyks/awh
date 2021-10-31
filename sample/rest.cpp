@@ -46,6 +46,7 @@ int main(int argc, char * argv[]) noexcept {
 	 */
 	rest.setMode(
 		(uint8_t) restCli_t::flag_t::DEFER |
+		// (uint8_t) restCli_t::flag_t::NOINFO |
 		(uint8_t) restCli_t::flag_t::WAITMESS |
 		(uint8_t) restCli_t::flag_t::VERIFYSSL
 	);

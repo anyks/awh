@@ -624,8 +624,11 @@ awh::ASSL::ctx_t awh::ASSL::init(const uri_t::url_t & url) noexcept {
 					X509_free(cert);
 					// Если домен найден в записях сертификата (т.е. сертификат соответствует данному домену)
 					if(validate == ssl_t::validate_t::MatchFound){
-						// Выводим в лог сообщение
-						obj->ssl->log->print("https server [%s] has this certificate, which looks good to me: %s", log_t::flag_t::INFO, obj->host.c_str(), buffer);
+						// Если включён режим отладки
+						#if defined(DEBUG_MODE)
+							// Выводим в лог сообщение
+							obj->ssl->log->print("https server [%s] has this certificate, which looks good to me: %s", log_t::flag_t::INFO, obj->host.c_str(), buffer);
+						#endif
 						// Выводим сообщение, что проверка пройдена
 						return 1;
 					// Если ресурс не найден тогда выводим сообщение об ошибке

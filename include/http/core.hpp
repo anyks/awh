@@ -66,7 +66,7 @@ namespace awh {
 			// Список HTTP сообщений
 			map <u_short, string> messages = {
 				{100, "Continue"},
-				{101, "Switching Protocol"},
+				{101, "Switching Protocols"},
 				{102, "Processing"},
 				{103, "Early Hints"},
 				{200, "OK"},
@@ -186,12 +186,6 @@ namespace awh {
 			 * update Метод обновления входящих данных
 			 */
 			virtual void update() noexcept;
-		protected:
-			/**
-			 * date Метод получения текущей даты для HTTP запроса
-			 * @return текущая дата
-			 */
-			const string date() const noexcept;
 			/**
 			 * checkAuth Метод проверки авторизации
 			 * @return результат проверки авторизации
@@ -333,6 +327,12 @@ namespace awh {
 			 */
 			void setQuery(const web_t::query_t & query) noexcept;
 		public:
+			/**
+			 * date Метод получения текущей даты для HTTP запроса
+			 * @param stamp штамп времени в числовом виде
+			 * @return      штамп времени в текстовом виде
+			 */
+			const string date(const time_t stamp = 0) const noexcept;
 			/**
 			 * getMessage Метод получения HTTP сообщения
 			 * @param code код сообщения для получение

@@ -213,8 +213,11 @@ void awh::Socks5Client::parse(const char * buffer, const size_t size) noexcept {
 										if(!ip.empty()){
 											// Заменяем порт сервера
 											server.port = ntohs(server.port);
-											// Выводим сообщение о данных сервера
-											this->log->print("%s %s:%u %s", log_t::flag_t::INFO, "socks5 proxy server", ip.c_str(), server.port, "is accepted");
+											// Если включён режим отладки
+											#if defined(DEBUG_MODE)
+												// Выводим сообщение о данных сервера
+												this->log->print("%s %s:%u %s", log_t::flag_t::INFO, "socks5 proxy server", ip.c_str(), server.port, "is accepted");
+											#endif
 											// Устанавливаем стейт рукопожатия
 											this->state = state_t::HANDSHAKE;
 										}
@@ -234,8 +237,11 @@ void awh::Socks5Client::parse(const char * buffer, const size_t size) noexcept {
 										if(!ip.empty()){
 											// Заменяем порт сервера
 											server.port = ntohs(server.port);
-											// Выводим сообщение о данных сервера
-											this->log->print("%s [%s]:%u %s", log_t::flag_t::INFO, "socks5 proxy server", ip.c_str(), server.port, "is accepted");
+											// Если включён режим отладки
+											#if defined(DEBUG_MODE)
+												// Выводим сообщение о данных сервера
+												this->log->print("%s [%s]:%u %s", log_t::flag_t::INFO, "socks5 proxy server", ip.c_str(), server.port, "is accepted");
+											#endif
 											// Устанавливаем стейт рукопожатия
 											this->state = state_t::HANDSHAKE;
 										}
@@ -257,8 +263,11 @@ void awh::Socks5Client::parse(const char * buffer, const size_t size) noexcept {
 											memcpy(&port, buffer + offset, sizeof(uint16_t));
 											// Заменяем порт сервера
 											port = ntohs(port);
-											// Выводим сообщение о данных сервера
-											this->log->print("%s %s:%u %s", log_t::flag_t::INFO, "socks5 proxy server", domain.c_str(), port, "is accepted");
+											// Если включён режим отладки
+											#if defined(DEBUG_MODE)
+												// Выводим сообщение о данных сервера
+												this->log->print("%s %s:%u %s", log_t::flag_t::INFO, "socks5 proxy server", domain.c_str(), port, "is accepted");
+											#endif
 											// Устанавливаем стейт рукопожатия
 											this->state = state_t::HANDSHAKE;
 										}

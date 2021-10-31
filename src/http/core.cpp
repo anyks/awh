@@ -117,24 +117,6 @@ void awh::Http::update() noexcept {
 	}
 }
 /**
- * date Метод получения текущей даты для HTTP запроса
- * @return текущая дата
- */
-const string awh::Http::date() const noexcept {
-	// Создаём буфер данных
-	char buffer[1000];
-	// Получаем текущее время
-	time_t now = time(nullptr);
-	// Извлекаем текущее время
-	struct tm tm = * gmtime(&now);
-	// Зануляем буфер
-	memset(buffer, 0, sizeof(buffer));
-	// Получаем формат времени
-	strftime(buffer, sizeof(buffer), "%a, %d %b %Y %H:%M:%S GMT", &tm);
-	// Выводим результат
-	return buffer;
-}
-/**
  * clear Метод очистки собранных данных
  */
 void awh::Http::clear() noexcept {
@@ -445,6 +427,25 @@ const awh::web_t::query_t & awh::Http::getQuery() const noexcept {
 void awh::Http::setQuery(const web_t::query_t & query) noexcept {
 	// Устанавливаем объект запроса клиента
 	this->web.setQuery(query);
+}
+/**
+ * date Метод получения текущей даты для HTTP запроса
+ * @param stamp штамп времени в числовом виде
+ * @return      штамп времени в текстовом виде
+ */
+const string awh::Http::date(const time_t stamp) const noexcept {
+	// Создаём буфер данных
+	char buffer[1000];
+	// Получаем текущее время
+	time_t date = (stamp > 0 ? stamp : time(nullptr));
+	// Извлекаем текущее время
+	struct tm tm = (* gmtime(&date));
+	// Зануляем буфер
+	memset(buffer, 0, sizeof(buffer));
+	// Получаем формат времени
+	strftime(buffer, sizeof(buffer), "%a, %d %b %Y %H:%M:%S GMT", &tm);
+	// Выводим результат
+	return buffer;
 }
 /**
  * getMessage Метод получения HTTP сообщения
@@ -958,6 +959,10 @@ vector <char> awh::Http::request(const uri_t::url_t & url, const web_t::method_t
 			const auto & body = this->web.getBody();
 			// Если запрос не является GET, HEAD или TRACE, а тело запроса существует
 			if((method != web_t::method_t::GET) && (method != web_t::method_t::HEAD) && (method != web_t::method_t::TRACE) && !body.empty()){
+				// Если заголовок не запрещён
+				if(!this->isBlack("Date"))
+					// Добавляем заголовок даты в запрос
+					request.append(this->fmk->format("Date: %s\r\n", this->date().c_str()));
 				// Проверяем нужно ли передать тело разбив на чанки
 				this->chunking = (!available[5] || ((length > 0) && (length != body.size())));
 				// Если нужно производить шифрование

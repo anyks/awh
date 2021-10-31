@@ -64,12 +64,24 @@ void awh::RestClient::connectCallback(const size_t aid, const size_t wid, core_t
 			const auto & request = web->http.request(req.url, req.method);
 			// Если бинарные данные запроса получены
 			if(!request.empty()){
+				// Если включён режим отладки
+				#if defined(DEBUG_MODE)
+					// Выводим заголовок запроса
+					cout << "\x1B[33m\x1B[1m^^^^^^^^^ REQUEST ^^^^^^^^^\x1B[0m" << endl;
+					// Выводим параметры запроса
+					cout << string(request.begin(), request.end()) << endl;
+				#endif
 				// Тело REST сообщения
 				vector <char> entity;
 				// Отправляем серверу сообщение
 				core->write(request.data(), request.size(), aid);
 				// Получаем данные тела запроса
 				while(!(entity = web->http.payload()).empty()){
+					// Если включён режим отладки
+					#if defined(DEBUG_MODE)
+						// Выводим сообщение о выводе чанка тела
+						cout << web->fmk->format("<chunk %u>", entity.size()) << endl;
+					#endif
 					// Отправляем тело на сервер
 					core->write(entity.data(), entity.size(), aid);
 				}
@@ -158,9 +170,19 @@ void awh::RestClient::connectProxyCallback(const size_t aid, const size_t wid, c
 				// Выполняем очистку параметров HTTP запроса
 				web->worker.proxy.http.clear();
 				// Получаем бинарные данные REST запроса
-				const auto & rest = web->worker.proxy.http.proxy(req.url);
-				// Если бинарные данные запроса получены, отправляем на прокси-сервер
-				if(!rest.empty()) core->write(rest.data(), rest.size(), aid);
+				const auto & proxy = web->worker.proxy.http.proxy(req.url);
+				// Если бинарные данные запроса получены
+				if(!proxy.empty()){
+					// Если включён режим отладки
+					#if defined(DEBUG_MODE)
+						// Выводим заголовок запроса
+						cout << "\x1B[33m\x1B[1m^^^^^^^^^ REQUEST PROXY ^^^^^^^^^\x1B[0m" << endl;
+						// Выводим параметры запроса
+						cout << string(proxy.begin(), proxy.end()) << endl;
+					#endif
+					// Отправляем на прокси-сервер
+					core->write(proxy.data(), proxy.size(), aid);
+				}
 			} break;
 			// Иначе завершаем работу
 			default: core->close(aid);
@@ -199,6 +221,31 @@ void awh::RestClient::readCallback(const char * buffer, const size_t size, const
 				res.code = query.code;
 				// Устанавливаем сообщение ответа
 				res.message = move(query.message);
+				// Если включён режим отладки
+				#if defined(DEBUG_MODE)
+					// Получаем заголовки ответа
+					const auto & headers = web->http.getHeaders();
+					// Если заголовки получены
+					if(!headers.empty()){
+						// Данные REST ответа
+						string response = web->fmk->format("HTTP/%.1f %u %s\r\n", query.ver, res.code, res.message.c_str());
+						// Переходим по всему списку заголовков
+						for(auto & header : headers){
+							// Формируем заголовок ответа
+							response.append(web->fmk->format("%s: %s\r\n", header.first.c_str(), header.second.c_str()));
+						}
+						// Добавляем разделитель
+						response.append("\r\n");
+						// Выводим заголовок ответа
+						cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
+						// Выводим параметры ответа
+						cout << string(response.begin(), response.end()) << endl;
+						// Если тело ответа существует
+						if(!web->http.getBody().empty())
+							// Выводим сообщение о выводе чанка тела
+							cout << web->fmk->format("<body %u>", web->http.getBody().size())  << endl;
+					}
+				#endif
 				// Выполняем анализ результата авторизации
 				switch((uint8_t) web->http.getAuth()){
 					// Если нужно попытаться ещё раз
@@ -347,6 +394,18 @@ void awh::RestClient::readProxyCallback(const char * buffer, const size_t size, 
 							res.code = web->worker.proxy.socks5.getCode();
 							// Устанавливаем сообщение ответа
 							res.message = web->worker.proxy.socks5.getMessage(res.code);
+							// Если включён режим отладки
+							#if defined(DEBUG_MODE)
+								// Если заголовки получены
+								if(!res.message.empty()){
+									// Данные REST ответа
+									const string & response = web->fmk->format("SOCKS5 %u %s\r\n", res.code, res.message.c_str());
+									// Выводим заголовок ответа
+									cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
+									// Выводим параметры ответа
+									cout << string(response.begin(), response.end()) << endl;
+								}
+							#endif
 							// Если функция обратного вызова установлена, выводим сообщение
 							if(web->messageFn != nullptr)
 								// Выполняем функцию обратного вызова
@@ -373,6 +432,31 @@ void awh::RestClient::readProxyCallback(const char * buffer, const size_t size, 
 					res.code = query.code;
 					// Устанавливаем сообщение ответа
 					res.message = query.message;
+					// Если включён режим отладки
+					#if defined(DEBUG_MODE)
+						// Получаем заголовки ответа
+						const auto & headers = web->worker.proxy.http.getHeaders();
+						// Если заголовки получены
+						if(!headers.empty()){
+							// Данные REST ответа
+							string response = web->fmk->format("HTTP/%.1f %u %s\r\n", query.ver, query.code, query.message.c_str());
+							// Переходим по всему списку заголовков
+							for(auto & header : headers){
+								// Формируем заголовок ответа
+								response.append(web->fmk->format("%s: %s\r\n", header.first.c_str(), header.second.c_str()));
+							}
+							// Добавляем разделитель
+							response.append("\r\n");
+							// Выводим заголовок ответа
+							cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE PROXY ^^^^^^^^^\x1B[0m" << endl;
+							// Выводим параметры ответа
+							cout << string(response.begin(), response.end()) << endl;
+							// Если тело ответа существует
+							if(!web->worker.proxy.http.getBody().empty())
+								// Выводим сообщение о выводе чанка тела
+								cout << web->fmk->format("<body %u>", web->worker.proxy.http.getBody().size())  << endl;
+						}
+					#endif
 					// Выполняем проверку авторизации
 					switch((uint8_t) web->worker.proxy.http.getAuth()){
 						// Если нужно попытаться ещё раз
