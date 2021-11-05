@@ -340,7 +340,7 @@ void awh::WebSocketClient::readCallback(const char * buffer, const size_t size, 
 						// Если ответом является PONG
 						case (uint8_t) frame_t::opcode_t::PONG:
 							// Если идентификатор адъютанта совпадает
-							if(stoull(string(data.begin(), data.end())) == aid)
+							if(to_string(aid).compare(0, data.size(), data.data()) == 0)
 								// Обновляем контрольную точку
 								ws->checkPoint = ws->fmk->unixTimestamp();
 						break;
