@@ -111,6 +111,11 @@ namespace awh {
 			 * @return результат проверки
 			 */
 			bool isProxy() const noexcept;
+			/**
+			 * getAid Метод получения идентификатора адъютанта
+			 * @return идентификатор адъютанта
+			 */
+			size_t getAid() const noexcept;
 		public:
 			/**
 			 * WorkerClient Конструктор

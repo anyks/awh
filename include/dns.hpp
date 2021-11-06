@@ -61,13 +61,13 @@ namespace awh {
 			 * Структура доменного имени
 			 */
 			typedef struct Domain {
-				size_t id;                                 // Идентификатор объекта доменного имени
-				int family;                                // Тип протокола интернета AF_INET или AF_INET6
-				string host;                               // Название искомого домена
-				const DNS * dns;                           // Объект резолвера DNS
-				const fmk_t * fmk;                         // Объект основного фреймворка
-				const log_t * log;                         // Объект для работы с логами
-				function <void (const string &)> callback; // Функция обратного вызова
+				size_t id;                               // Идентификатор объекта доменного имени
+				int family;                              // Тип протокола интернета AF_INET или AF_INET6
+				string host;                             // Название искомого домена
+				const DNS * dns;                         // Объект резолвера DNS
+				const fmk_t * fmk;                       // Объект основного фреймворка
+				const log_t * log;                       // Объект для работы с логами
+				function <void (const string)> callback; // Функция обратного вызова
 				/**
 				 * Domain Конструктор
 				 */
@@ -155,7 +155,7 @@ namespace awh {
 			 * @param family   тип интернет протокола AF_INET, AF_INET6 или AF_UNSPEC
 			 * @param callback функция обратного вызова срабатывающая при получении данных
 			 */
-			void resolve(const string & host, const int family, function <void (const string &)> callback) noexcept;
+			void resolve(const string & host, const int family, function <void (const string)> callback) noexcept;
 		public:
 			/**
 			 * DNS Конструктор

@@ -99,7 +99,9 @@ void awh::DNS::callback(const int error, struct evutil_addrinfo * addr, void * c
 				dns->ips.emplace(dom->host, * ip);
 			}
 			// Выводим готовый результат
-			if(dom->callback != nullptr) dom->callback(* ip);
+			if(dom->callback != nullptr)
+				// Выводим полученный IP адрес
+				dom->callback(ip != nullptr ? (* ip) : "");
 			// Если объект запроса существует
 			if(dns->reply != nullptr){
 				// Выполняем отмену запроса
@@ -287,7 +289,7 @@ void awh::DNS::replaceServers(const vector <string> & servers) noexcept {
  * @param family   тип интернет протокола IPv4 или IPv6
  * @param callback функция обратного вызова срабатывающая при получении данных
  */
-void awh::DNS::resolve(const string & host, const int family, function <void (const string &)> callback) noexcept {
+void awh::DNS::resolve(const string & host, const int family, function <void (const string)> callback) noexcept {
 	// Если домен передан
 	if(!host.empty() && (this->fmk != nullptr)){
 		// Результат работы регулярного выражения

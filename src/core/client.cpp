@@ -134,7 +134,7 @@ void awh::CoreClient::event(struct bufferevent * bev, const short events, void *
 		// Получаем объект подключения
 		workCli_t * wrk = (workCli_t *) const_cast <worker_t *> (adj->parent);
 		// Если подключение ещё существует
-		if((wrk->core->adjutants.count(adj->aid) > 0) && (adj->fmk != nullptr)){
+		if((adj->fmk != nullptr) && (wrk->core != nullptr) && !wrk->core->adjutants.empty() && (wrk->core->adjutants.count(adj->aid) > 0)){
 			// Получаем URL параметры запроса
 			const uri_t::url_t & url = (wrk->isProxy() ? wrk->proxy.url : wrk->url);
 			// Получаем хост сервера
@@ -164,6 +164,8 @@ void awh::CoreClient::event(struct bufferevent * bev, const short events, void *
 						(adj->timeWrite > 0 ? &write : nullptr)
 					);
 				}
+				// Выходим из функции
+				return;
 			// Если это ошибка или завершение работы
 			} else if(events & (BEV_EVENT_ERROR | BEV_EVENT_TIMEOUT | BEV_EVENT_EOF)) {
 				// Если это ошибка
@@ -172,12 +174,12 @@ void awh::CoreClient::event(struct bufferevent * bev, const short events, void *
 					adj->log->print("closing server [%s:%d] %s", log_t::flag_t::WARNING, host.c_str(), url.port, evutil_socket_error_to_string(EVUTIL_SOCKET_ERROR()));
 				// Если - это таймаут, выводим сообщение в лог
 				else if(events & BEV_EVENT_TIMEOUT) adj->log->print("timeout server [%s:%d]", log_t::flag_t::WARNING, host.c_str(), url.port);
-				// Запрещаем чтение запись данных серверу
-				bufferevent_disable(bev, EV_WRITE | EV_READ);
-				// Выполняем отключение от сервера
-				const_cast <core_t *> (wrk->core)->close(adj->aid);
 			}
 		}
+		// Запрещаем чтение запись данных серверу
+		bufferevent_disable(bev, EV_WRITE | EV_READ);
+		// Выполняем отключение от сервера
+		const_cast <core_t *> (wrk->core)->close(adj->aid);
 	}
 }
 /**
@@ -395,7 +397,7 @@ void awh::CoreClient::open(const size_t wid) noexcept {
 				 * runFn Функция выполнения запуска системы
 				 * @param ip полученный адрес сервера резолвером
 				 */
-				auto runFn = [wrk, this](const string & ip) noexcept {
+				auto runFn = [wrk, this](const string ip) noexcept {
 					// Если IP адрес получен
 					if(!ip.empty()){
 						// Если прокси-сервер активен

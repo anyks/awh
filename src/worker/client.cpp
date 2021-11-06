@@ -43,3 +43,20 @@ bool awh::WorkerClient::isProxy() const noexcept {
 	// Выполняем проверку типа подключения
 	return (this->connect == connect_t::PROXY);
 }
+/**
+ * getAid Метод получения идентификатора адъютанта
+ * @return идентификатор адъютанта
+ */
+size_t awh::WorkerClient::getAid() const noexcept {
+	// Результат работы функции
+	size_t result = 0;
+	// Если список адъютантов получен
+	if(!this->adjutants.empty()){
+		// Получаем первого адъютанта из списка
+		auto it = this->adjutants.begin();
+		// Получаем идентификатор адъютанта
+		result = it->first;
+	}
+	// Выводим результат
+	return result;
+}

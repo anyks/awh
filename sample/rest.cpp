@@ -56,7 +56,7 @@ int main(int argc, char * argv[]) noexcept {
 	rest.setUser("user", "password");
 	// Устанавливаем данные прокси-сервера
 	// rest.setProxy("http://B80TWR:uRMhnd@196.17.249.64:8000");
-	rest.setProxy("socks5://rfbPbd:XcCuZH@45.144.169.109:8000");
+	// rest.setProxy("socks5://rfbPbd:XcCuZH@45.144.169.109:8000");
 	// rest.setProxy("socks5://6S7rAk:g6K8XD@217.29.62.231:30810");
 	// Устанавливаем тип компрессии
 	rest.setCompress(http_t::compress_t::GZIP);
@@ -127,11 +127,14 @@ int main(int argc, char * argv[]) noexcept {
 	const auto & body = rest.GET(url);
 	// const auto & body = rest.GET(url, {{"Connection", "close"}});
 	// const auto & body = rest.GET(url, {{"User-Agent", "curl/7.64.1"}});
-	// Создаём объект JSON
-	json data = json::parse(body);
-	// Выводим полученный результат
-	cout << " =========== " << data.dump(4) << endl;
-	// cout << " =========== " << string(body.begin(), body.end()) << endl;
+	// Если данные получены
+	if(!body.empty()){
+		// Создаём объект JSON
+		json data = json::parse(body);
+		// Выводим полученный результат
+		cout << " =========== " << data.dump(4) << endl;
+		// cout << " =========== " << string(body.begin(), body.end()) << endl;
+	}
 	// Выводим результат
 	return 0;
 }

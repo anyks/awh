@@ -61,13 +61,13 @@ int main(int argc, char * argv[]) noexcept {
 	// ws.setUser("user", "password");
 	// Устанавливаем данные прокси-сервера
 	// ws.setProxy("http://B80TWR:uRMhnd@196.17.249.64:8000");
-	ws.setProxy("socks5://rfbPbd:XcCuZH@45.144.169.109:8000");
+	// ws.setProxy("socks5://rfbPbd:XcCuZH@45.144.169.109:8000");
 	// ws.setProxy("socks5://6S7rAk:g6K8XD@217.29.62.231:30810");
 	// Выполняем инициализацию типа авторизации
 	// ws.setAuthType();
 	// ws.setAuthType(auth_t::type_t::DIGEST, auth_t::hash_t::SHA256);
 	// Устанавливаем тип авторизации прокси-сервера
-	ws.setAuthTypeProxy();
+	// ws.setAuthTypeProxy();
 	// Выполняем инициализацию WebSocket клиента
 	ws.init("wss://stream.binance.com:9443/stream", http_t::compress_t::DEFLATE);
 	// ws.init("ws://127.0.0.1:2222", http_t::compress_t::DEFLATE);

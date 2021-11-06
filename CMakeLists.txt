@@ -155,6 +155,7 @@ set(SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/src/client/rest.cpp"
     "${CMAKE_SOURCE_DIR}/src/server/ws.cpp"
     "${CMAKE_SOURCE_DIR}/src/server/rest.cpp"
+    "${CMAKE_SOURCE_DIR}/src/server/proxy.cpp"
     "${CMAKE_SOURCE_DIR}/src/core/core.cpp"
     "${CMAKE_SOURCE_DIR}/src/core/client.cpp"
     "${CMAKE_SOURCE_DIR}/src/core/server.cpp"
@@ -163,6 +164,7 @@ set(SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/src/socks5/server.cpp"
     "${CMAKE_SOURCE_DIR}/src/worker/ws.cpp"
     "${CMAKE_SOURCE_DIR}/src/worker/rest.cpp"
+    "${CMAKE_SOURCE_DIR}/src/worker/proxy.cpp"
     "${CMAKE_SOURCE_DIR}/src/worker/client.cpp"
     "${CMAKE_SOURCE_DIR}/src/worker/server.cpp"
 )
@@ -172,6 +174,7 @@ set(WSC_APP_NAME wsc)
 set(WSS_APP_NAME wss)
 set(WEB_APP_NAME web)
 set(REST_APP_NAME rest)
+set(PROXY_APP_NAME proxy)
 set(CURRENT_LIB_NAME ${PROJECT_NAME})
 set(CURRENT_APP_NAME ${PROJECT_NAME}_bin)
 
@@ -200,6 +203,7 @@ if (ENABLE_CONSOLE_APP)
     add_executable(${WSS_APP_NAME} sample/wss.cpp ${RES_FILES})
     add_executable(${WEB_APP_NAME} sample/web.cpp ${RES_FILES})
     add_executable(${REST_APP_NAME} sample/rest.cpp ${RES_FILES})
+    add_executable(${PROXY_APP_NAME} sample/proxy.cpp ${RES_FILES})
 
     target_link_libraries(${WSC_APP_NAME}
         ${CURRENT_LIB_NAME}
@@ -236,6 +240,15 @@ if (ENABLE_CONSOLE_APP)
         ${LIBEVENT_LIBRARIES}
         ${WINFLAGS}
     )
+
+    target_link_libraries(${PROXY_APP_NAME}
+        ${CURRENT_LIB_NAME}
+        ${ZLIB_LIBRARY}
+        ${BROTLI_LIBRARIES}
+        ${OPENSSL_LIBRARIES}
+        ${LIBEVENT_LIBRARIES}
+        ${WINFLAGS}
+    )
 endif()
 
 # Устанавливаем адрес установки, запрет установки в /usr/local
@@ -252,6 +265,7 @@ install(TARGETS ${WSC_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE
 install(TARGETS ${WSS_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
 install(TARGETS ${WEB_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
 install(TARGETS ${REST_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
+install(TARGETS ${PROXY_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
 
 # Устанавливаем хидеры сторонних библиотек
 install(DIRECTORY "${ZLIB_INCLUDE_DIR}" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h")
