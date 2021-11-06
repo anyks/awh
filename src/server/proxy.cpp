@@ -219,9 +219,20 @@ void awh::ProxyServer::disconnectClientCallback(const size_t aid, const size_t w
 		// Ищем идентификатор адъютанта пары
 		auto it = proxy->worker.pairs.find(wid);
 		// Если адъютант получен
-		if(it != proxy->worker.pairs.end())
+		if(it != proxy->worker.pairs.end()){
+			// Получаем идентификатор адъютанта
+			const size_t aid = it->second;
+			// Удаляем пару клиента и сервера
+			proxy->worker.pairs.erase(it);
+			// Получаем параметры подключения адъютанта
+			workSrvProxy_t::adjp_t * adj = const_cast <workSrvProxy_t::adjp_t *> (proxy->worker.getAdj(aid));
+			// Устанавливаем флаг отключения клиента
+			adj->close = true;
 			// Выполняем отключение клиента
-			reinterpret_cast <core_t *> (&proxy->coreSrv)->close(it->second);
+			reinterpret_cast <core_t *> (&proxy->coreSrv)->close(aid);
+			// Выполняем удаление параметров адъютанта
+			proxy->worker.removeAdj(aid);
+		}
 	}
 }
 /**
@@ -238,17 +249,13 @@ void awh::ProxyServer::disconnectServerCallback(const size_t aid, const size_t w
 		proxySrv_t * proxy = reinterpret_cast <proxySrv_t *> (ctx);
 		// Получаем параметры подключения адъютанта
 		workSrvProxy_t::adjp_t * adj = const_cast <workSrvProxy_t::adjp_t *> (proxy->worker.getAdj(aid));
-		// Если параметры подключения адъютанта получены
-		adj->close = (adj != nullptr);
-		// Если подключение закрыто
-		if(adj->close){
-			// Выполняем отключение клиента от стороннего сервера
+		// Выполняем отключение клиента от стороннего сервера
+		if(adj != nullptr){
+			// Устанавливаем флаг отключения клиента
+			adj->close = true;
+			// Выполняем отключение всех дочерних клиентов
 			reinterpret_cast <core_t *> (&proxy->coreCli)->close(adj->worker.getAid());
-			// Удаляем пару клиента и сервера
-			proxy->worker.pairs.erase(adj->worker.wid);
 		}
-		// Выполняем удаление параметров адъютанта
-		proxy->worker.removeAdj(aid);
 		// Если функция обратного вызова установлена, выполняем
 		if(proxy->openStopFn != nullptr) proxy->openStopFn(aid, false, proxy, proxy->ctx.at(0));
 	}
