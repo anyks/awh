@@ -319,6 +319,7 @@ int main(int argc, char * argv[]) noexcept {
 	fmk_t fmk(true);
 	log_t log(&fmk);
 	proxySrv_t proxy(&fmk, &log);
+
 	log.setLogName("Proxy Server");
 	log.setLogFormat("%H:%M:%S %d.%m.%Y");
 
