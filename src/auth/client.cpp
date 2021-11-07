@@ -116,14 +116,15 @@ void awh::AuthClient::setHeader(const string & header) noexcept {
 }
 /**
  * getHeader Метод получения строки авторизации HTTP заголовка
- * @param mode режим вывода только значения заголовка
- * @return     строка авторизации
+ * @param method метод HTTP запроса
+ * @param mode   режим вывода только значения заголовка
+ * @return       строка авторизации
  */
-const string awh::AuthClient::getHeader(const bool mode) noexcept {
+const string awh::AuthClient::getHeader(const string & method, const bool mode) noexcept {
 	// Результат работы функции
 	string result = "";
 	// Если фреймворк установлен
-	if(this->fmk != nullptr){
+	if(!method.empty() && (this->fmk != nullptr)){
 		/**
 		 * Выполняем отлов ошибок
 		 */
@@ -144,11 +145,9 @@ const string awh::AuthClient::getHeader(const bool mode) noexcept {
 							this->digest.cnonce.assign(this->digest.cnonce.begin() + 12, this->digest.cnonce.end() - 12);
 						}
 						// Выполняем инкрементацию счётчика
-						this->digest.nc = to_string(stoi(this->digest.nc) + 1);
-						// Получаем количество цифр в счётчике
-						const u_short count = this->digest.nc.size();
+						this->digest.nc = this->fmk->decToHex((this->fmk->hexToDec(this->digest.nc) + 1));
 						// Добавляем нули в начало счётчика
-						for(u_short i = 0; i < (8 - count); i++)
+						for(u_short i = 0; i < (8 - this->digest.nc.size()); i++)
 							// Добавляем ноль в начало счётчика
 							this->digest.nc.insert(0, "0");
 						// Устанавливаем параметры для проверки
@@ -161,7 +160,7 @@ const string awh::AuthClient::getHeader(const bool mode) noexcept {
 						digest.opaque = this->digest.opaque;
 						digest.cnonce = this->digest.cnonce;
 						// Формируем ответ серверу
-						const string & response = this->response(this->user, this->pass, digest);
+						const string & response = this->response(this->fmk->toUpper(method), this->user, this->pass, digest);
 						// Если ответ получен
 						if(!response.empty()){
 							// Если нужно вывести только значение заголовка

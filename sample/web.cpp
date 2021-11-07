@@ -11,14 +11,10 @@
  * Подключаем заголовочные файлы проекта
  */
 #include <server/rest.hpp>
-#include <nlohmann/json.hpp>
 
 // Подключаем пространство имён
 using namespace std;
 using namespace awh;
-
-// Активируем json в качестве объекта пространства имён
-using json = nlohmann::json;
 
 /**
  * main Главная функция приложения
@@ -31,10 +27,6 @@ int main(int argc, char * argv[]) noexcept {
 	fmk_t fmk(true);
 	// Создаём объект для работы с логами
 	log_t log(&fmk);
-	// Создаём объект сети
-	network_t nwk(&fmk);
-	// Создаём объект URI
-	uri_t uri(&fmk, &nwk);
 	// Создаём биндинг
 	coreSrv_t core(&fmk, &log);
 	// Создаём объект REST запроса
@@ -86,20 +78,22 @@ int main(int argc, char * argv[]) noexcept {
 		return true;
 	});
 	// Установливаем функцию обратного вызова на событие запуска или остановки подключения
-	rest.on(&log, [](const size_t aid, const bool mode,  restSrv_t * rest, void * ctx) noexcept {
+	rest.on(&log, [](const size_t aid, const restSrv_t::mode_t mode, restSrv_t * rest, void * ctx) noexcept {
 		// Получаем объект логирования
 		log_t * log = reinterpret_cast <log_t *> (ctx);
 		// Выводим информацию в лог
-		log->print("%s client", log_t::flag_t::INFO, (mode ? "Connect" : "Disconnect"));
+		log->print("%s client", log_t::flag_t::INFO, (mode == restSrv_t::mode_t::CONNECT ? "Connect" : "Disconnect"));
 	});
 	// Установливаем функцию обратного вызова на событие получения сообщений
-	rest.on(&log, [](const size_t aid, const restSrv_t::req_t & req, restSrv_t * rest, void * ctx) noexcept {
+	rest.on(&log, [](const size_t aid, const http_t * http, restSrv_t * rest, void * ctx) noexcept {
+		// Получаем данные запроса
+		const auto & query = http->getQuery();
 		// Если пришёл запрос на фавиконку
-		if(!req.path.empty() && (req.path.front().compare("favicon.ico") == 0))
+		if(!query.uri.empty() && (query.uri.find("favicon.ico") != string::npos))
 			// Выполняем реджект
 			rest->reject(aid, 404);
 		// Если метод GET
-		else if(req.method == web_t::method_t::GET){
+		else if(query.method == web_t::method_t::GET){
 			// Формируем тело ответа
 			const string body = "<html>\n<head>\n<title>Hello World!</title>\n</head>\n<body>\n"
 			"<h1>\"Hello, World!\" program</h1>\n"

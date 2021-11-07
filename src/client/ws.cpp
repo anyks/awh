@@ -250,7 +250,7 @@ void awh::WebSocketClient::readCallback(const char * buffer, const size_t size, 
 							// Выводим в лог сообщение
 							if(!ws->noinfo) ws->log->print("%s", log_t::flag_t::INFO, "authorization on the WebSocket server was successful");
 							// Если функция обратного вызова установлена, выполняем
-							if(ws->openStopFn != nullptr) ws->openStopFn(true, ws, ws->ctx.at(0));
+							if(ws->openStopFn != nullptr) ws->openStopFn(mode_t::CONNECT, ws, ws->ctx.at(0));
 							// Завершаем работу
 							return;
 						// Сообщаем, что рукопожатие не выполнено
@@ -716,7 +716,7 @@ void awh::WebSocketClient::init(const string & url, const http_t::compress_t com
  * @param ctx      контекст для вывода в сообщении
  * @param callback функция обратного вызова
  */
-void awh::WebSocketClient::on(void * ctx, function <void (const bool, WebSocketClient *, void *)> callback) noexcept {
+void awh::WebSocketClient::on(void * ctx, function <void (const mode_t, WebSocketClient *, void *)> callback) noexcept {
 	// Устанавливаем контекст передаваемого объекта
 	this->ctx.at(0) = ctx;
 	// Устанавливаем функцию запуска и остановки
@@ -916,7 +916,7 @@ void awh::WebSocketClient::stop() noexcept {
 			this->worker.alive = alive;
 		}
 		// Если функция обратного вызова установлена, выполняем
-		if(this->openStopFn != nullptr) this->openStopFn(false, this, this->ctx.at(0));
+		if(this->openStopFn != nullptr) this->openStopFn(mode_t::DISCONNECT, this, this->ctx.at(0));
 	}
 }
 /**

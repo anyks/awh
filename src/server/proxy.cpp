@@ -73,7 +73,7 @@ void awh::ProxyServer::persistServerCallback(const size_t aid, const size_t wid,
 		// Если параметры подключения адъютанта получены
 		if((adj->method != web_t::method_t::CONNECT) && (adj != nullptr) && ((!adj->alive && !proxy->alive) || adj->close)){
 			// Если клиент давно должен был быть отключён, отключаем его
-			if(adj->close || !adj->http.isAlive()) core->close(aid);
+			if(adj->close || !adj->srv.isAlive()) core->close(aid);
 			// Иначе проверяем прошедшее время
 			else {
 				// Получаем текущий штамп времени
@@ -106,12 +106,18 @@ void awh::ProxyServer::connectClientCallback(const size_t aid, const size_t wid,
 			workSrvProxy_t::adjp_t * adj = const_cast <workSrvProxy_t::adjp_t *> (proxy->worker.getAdj(it->second));
 			// Если подключение не выполнено
 			if(!adj->connect){
+				// Разрешаем обработки данных
+				adj->locked = false;
 				// Запоминаем, что подключение выполнено
 				adj->connect = true;
+				// Выполняем сброс состояния HTTP парсера
+				adj->srv.clear();
+				// Выполняем сброс состояния HTTP парсера
+				adj->srv.reset();
 				// Если метод подключения CONNECT
 				if(adj->method == web_t::method_t::CONNECT){
 					// Формируем ответ клиенту
-					const auto & response = adj->http.response(200);
+					const auto & response = adj->srv.response(200);
 					// Если ответ получен
 					if(!response.empty()){
 						// Тело полезной нагрузки
@@ -119,19 +125,14 @@ void awh::ProxyServer::connectClientCallback(const size_t aid, const size_t wid,
 						// Отправляем ответ клиенту
 						reinterpret_cast <core_t *> (&proxy->coreSrv)->write(response.data(), response.size(), it->second);
 						// Получаем данные тела запроса
-						while(!(payload = adj->http.payload()).empty()){
+						while(!(payload = adj->srv.payload()).empty()){
 							// Отправляем тело на сервер
 							reinterpret_cast <core_t *> (&proxy->coreSrv)->write(payload.data(), payload.size(), it->second);
 						}
 					// Выполняем отключение клиента
 					} else reinterpret_cast <core_t *> (&proxy->coreSrv)->close(it->second);
 				// Отправляем сообщение на сервер, так-как оно пришло от клиента
-				} else {
-					// Отправляем ответ клиенту
-					reinterpret_cast <core_t *> (&proxy->coreCli)->write(adj->buffer.data(), adj->buffer.size(), aid);
-					// Очищаем буфер данных полученный от клиента
-					adj->buffer.clear();
-				}
+				} else proxy->prepare(it->second, proxy->worker.wid, reinterpret_cast <core_t *> (&proxy->coreSrv));
 			}
 		}
 	}
@@ -153,17 +154,17 @@ void awh::ProxyServer::connectServerCallback(const size_t aid, const size_t wid,
 		// Получаем параметры подключения адъютанта
 		workSrvProxy_t::adjp_t * adj = const_cast <workSrvProxy_t::adjp_t *> (proxy->worker.getAdj(aid));
 		// Устанавливаем размер чанка
-		adj->http.setChunkSize(proxy->chunkSize);
+		adj->srv.setChunkSize(proxy->chunkSize);
 		// Устанавливаем данные сервиса
-		adj->http.setServ(proxy->sid, proxy->name, proxy->version);
+		adj->srv.setServ(proxy->sid, proxy->name, proxy->version);
 		// Если функция обратного вызова для обработки чанков установлена
 		if(proxy->chunkingFn != nullptr)
 			// Устанавливаем внешнюю функцию обработки вызова для получения чанков
-			adj->http.setChunkingFn(proxy->ctx.at(4), proxy->chunkingFn);
+			adj->srv.setChunkingFn(proxy->ctx.at(5), proxy->chunkingFn);
 		// Устанавливаем функцию обработки вызова для получения чанков
-		else adj->http.setChunkingFn(proxy, &chunkingCallback);
+		else adj->srv.setChunkingFn(proxy, &chunkingCallback);
 		// Устанавливаем параметры шифрования
-		if(proxy->crypt) adj->http.setCrypt(proxy->pass, proxy->salt, proxy->aes);
+		if(proxy->crypt) adj->srv.setCrypt(proxy->pass, proxy->salt, proxy->aes);
 		// Если сервер требует авторизацию
 		if(proxy->authType != auth_t::type_t::NONE){
 			// Определяем тип авторизации
@@ -171,20 +172,20 @@ void awh::ProxyServer::connectServerCallback(const size_t aid, const size_t wid,
 				// Если тип авторизации Basic
 				case (uint8_t) auth_t::type_t::BASIC: {
 					// Устанавливаем параметры авторизации
-					adj->http.setAuthType(proxy->authType);
+					adj->srv.setAuthType(proxy->authType);
 					// Устанавливаем функцию проверки авторизации
-					adj->http.setAuthCallback(proxy->ctx.at(3), proxy->checkAuthFn);
+					adj->srv.setAuthCallback(proxy->ctx.at(4), proxy->checkAuthFn);
 				} break;
 				// Если тип авторизации Digest
 				case (uint8_t) auth_t::type_t::DIGEST: {
 					// Устанавливаем название сервера
-					adj->http.setRealm(proxy->realm);
+					adj->srv.setRealm(proxy->realm);
 					// Устанавливаем временный ключ сессии сервера
-					adj->http.setOpaque(proxy->opaque);
+					adj->srv.setOpaque(proxy->opaque);
 					// Устанавливаем параметры авторизации
-					adj->http.setAuthType(proxy->authType, proxy->authHash);
+					adj->srv.setAuthType(proxy->authType, proxy->authHash);
 					// Устанавливаем функцию извлечения пароля
-					adj->http.setExtractPassCallback(proxy->ctx.at(2), proxy->extractPassFn);
+					adj->srv.setExtractPassCallback(proxy->ctx.at(3), proxy->extractPassFn);
 				} break;
 			}
 		}
@@ -201,7 +202,7 @@ void awh::ProxyServer::connectServerCallback(const size_t aid, const size_t wid,
 		// Создаём пару клиента и сервера
 		proxy->worker.pairs.emplace(adj->worker.wid, aid);
 		// Если функция обратного вызова установлена, выполняем
-		if(proxy->openStopFn != nullptr) proxy->openStopFn(aid, true, proxy, proxy->ctx.at(0));
+		if(proxy->openStopFn != nullptr) proxy->openStopFn(aid, mode_t::CONNECT, proxy, proxy->ctx.at(0));
 	}
 }
 /**
@@ -257,7 +258,7 @@ void awh::ProxyServer::disconnectServerCallback(const size_t aid, const size_t w
 			reinterpret_cast <core_t *> (&proxy->coreCli)->close(adj->worker.getAid());
 		}
 		// Если функция обратного вызова установлена, выполняем
-		if(proxy->openStopFn != nullptr) proxy->openStopFn(aid, false, proxy, proxy->ctx.at(0));
+		if(proxy->openStopFn != nullptr) proxy->openStopFn(aid, mode_t::DISCONNECT, proxy, proxy->ctx.at(0));
 	}
 }
 /**
@@ -277,7 +278,7 @@ bool awh::ProxyServer::acceptServerCallback(const string & ip, const string & ma
 		// Получаем контекст модуля
 		proxySrv_t * proxy = reinterpret_cast <proxySrv_t *> (ctx);
 		// Если функция обратного вызова установлена, проверяем
-		if(proxy->acceptFn != nullptr) result = proxy->acceptFn(ip, mac, proxy, proxy->ctx.at(5));
+		if(proxy->acceptFn != nullptr) result = proxy->acceptFn(ip, mac, proxy, proxy->ctx.at(6));
 	}
 	// Разрешаем подключение клиенту
 	return result;
@@ -303,7 +304,77 @@ void awh::ProxyServer::readClientCallback(const char * buffer, const size_t size
 			// Получаем параметры подключения адъютанта
 			workSrvProxy_t::adjp_t * adj = const_cast <workSrvProxy_t::adjp_t *> (proxy->worker.getAdj(it->second));
 			// Если подключение выполнено, отправляем ответ клиенту
-			if(adj->connect) reinterpret_cast <core_t *> (&proxy->coreSrv)->write(buffer, size, it->second);
+			if(adj->connect){
+				// Если указан метод не CONNECT и функция обработки сообщения установлена
+				if((proxy->messageFn != nullptr) && (adj->method != web_t::method_t::CONNECT)){
+					// Добавляем полученные данные в буфер
+					adj->client.insert(adj->client.end(), buffer, buffer + size);
+					// Выполняем обработку полученных данных
+					while(!adj->close && !adj->client.empty()){
+						// Выполняем парсинг полученных данных
+						size_t bytes = adj->cli.parse(adj->client.data(), adj->client.size());
+						// Если все данные получены
+						if(adj->cli.isEnd()){
+							// Получаем параметры запроса
+							const auto & query = adj->cli.getQuery();
+							// Если включён режим отладки
+							#if defined(DEBUG_MODE)
+								// Получаем заголовки ответа
+								const auto & headers = adj->cli.getHeaders();
+								// Если заголовки получены
+								if(!headers.empty()){
+									// Данные REST ответа
+									string response = proxy->fmk->format("HTTP/%.1f %u %s\r\n", query.ver, query.code, query.message.c_str());
+									// Переходим по всему списку заголовков
+									for(auto & header : headers){
+										// Формируем заголовок ответа
+										response.append(proxy->fmk->format("%s: %s\r\n", header.first.c_str(), header.second.c_str()));
+									}
+									// Добавляем разделитель
+									response.append("\r\n");
+									// Выводим заголовок ответа
+									cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
+									// Выводим параметры ответа
+									cout << string(response.begin(), response.end()) << endl;
+									// Если тело ответа существует
+									if(!adj->cli.getBody().empty())
+										// Выводим сообщение о выводе чанка тела
+										cout << proxy->fmk->format("<body %u>", adj->cli.getBody().size())  << endl;
+								}
+							#endif
+							// Выводим сообщение
+							if(proxy->messageFn(it->second, event_t::RESPONSE, &adj->cli, proxy, proxy->ctx.at(1))){
+								// Получаем данные ответа
+								const auto & response = adj->cli.response();
+								// Если данные ответа получены
+								if(!response.empty())
+									// Отправляем ответ клиенту
+									reinterpret_cast <core_t *> (&proxy->coreSrv)->write(response.data(), response.size(), it->second);
+							}
+						}
+						// Устанавливаем метку продолжения обработки пайплайна
+						Next:
+						// Если парсер обработал какое-то количество байт
+						if(bytes > 0){
+							// Удаляем количество обработанных байт
+							adj->client.erase(adj->client.begin(), adj->client.begin() + bytes);
+							// Если данных для обработки не осталось, выходим
+							if(adj->client.empty()) break;
+						// Если данных для обработки недостаточно, выходим
+						} else break;
+					}
+				// Передаём данные так-как они есть
+				} else {
+					// Если функция обратного вызова установлена, выполняем
+					if(proxy->binaryFn != nullptr){
+						// Выводим сообщение
+						if(proxy->binaryFn(it->second, event_t::RESPONSE, buffer, size, proxy, proxy->ctx.at(2)))
+							// Отправляем ответ клиенту
+							reinterpret_cast <core_t *> (&proxy->coreSrv)->write(buffer, size, it->second);
+					// Отправляем ответ клиенту
+					} else reinterpret_cast <core_t *> (&proxy->coreSrv)->write(buffer, size, it->second);
+				}
+			}
 		}
 	}
 }
@@ -330,443 +401,25 @@ void awh::ProxyServer::readServerCallback(const char * buffer, const size_t size
 				// Получаем идентификатор адъютанта
 				const size_t aid = adj->worker.getAid();
 				// Отправляем запрос на внешний сервер
-				if(aid > 0) reinterpret_cast <core_t *> (&proxy->coreCli)->write(buffer, size, aid);
+				if(aid > 0){
+					// Если функция обратного вызова установлена, выполняем
+					if(proxy->binaryFn != nullptr){
+						// Выводим сообщение
+						if(proxy->binaryFn(aid, event_t::REQUEST, buffer, size, proxy, proxy->ctx.at(2)))
+							// Отправляем запрос на внешний сервер
+							reinterpret_cast <core_t *> (&proxy->coreCli)->write(buffer, size, aid);
+					// Отправляем запрос на внешний сервер
+					} else reinterpret_cast <core_t *> (&proxy->coreCli)->write(buffer, size, aid);
+				}
 			// Если подключение ещё не выполнено
 			} else {
 				// Добавляем полученные данные в буфер
-				adj->buffer.insert(adj->buffer.end(), buffer, buffer + size);
+				adj->server.insert(adj->server.end(), buffer, buffer + size);
 				// Выполняем обработку полученных данных
-				while(!adj->close){
-					// Выполняем парсинг полученных данных
-					size_t bytes = adj->http.parse(adj->buffer.data(), adj->buffer.size());
-					// Если все данные получены
-					if(adj->http.isEnd()){
-						// Если включён режим отладки
-						#if defined(DEBUG_MODE)
-							// Получаем заголовки запроса
-							const auto & headers = adj->http.getHeaders();
-							// Если заголовки получены
-							if(!headers.empty()){
-								// Данные REST запроса
-								string request = "";
-								// Получаем данные запроса
-								const auto & query = adj->http.getQuery();
-								// Определяем метод запроса
-								switch((uint8_t) query.method){
-									// Если метод запроса указан как GET
-									case (uint8_t) web_t::method_t::GET:
-										// Формируем GET запрос
-										request = proxy->fmk->format("GET %s HTTP/%.1f\r\n", query.uri.c_str(), query.ver);
-									break;
-									// Если метод запроса указан как PUT
-									case (uint8_t) web_t::method_t::PUT:
-										// Формируем PUT запрос
-										request = proxy->fmk->format("PUT %s HTTP/%.1f\r\n", query.uri.c_str(), query.ver);
-									break;
-									// Если метод запроса указан как POST
-									case (uint8_t) web_t::method_t::POST:
-										// Формируем POST запрос
-										request = proxy->fmk->format("POST %s HTTP/%.1f\r\n", query.uri.c_str(), query.ver);
-									break;
-									// Если метод запроса указан как HEAD
-									case (uint8_t) web_t::method_t::HEAD:
-										// Формируем HEAD запрос
-										request = proxy->fmk->format("HEAD %s HTTP/%.1f\r\n", query.uri.c_str(), query.ver);
-									break;
-									// Если метод запроса указан как PATCH
-									case (uint8_t) web_t::method_t::PATCH:
-										// Формируем PATCH запрос
-										request = proxy->fmk->format("PATCH %s HTTP/%.1f\r\n", query.uri.c_str(), query.ver);
-									break;
-									// Если метод запроса указан как TRACE
-									case (uint8_t) web_t::method_t::TRACE:
-										// Формируем TRACE запрос
-										request = proxy->fmk->format("TRACE %s HTTP/%.1f\r\n", query.uri.c_str(), query.ver);
-									break;
-									// Если метод запроса указан как DELETE
-									case (uint8_t) web_t::method_t::DEL:
-										// Формируем DELETE запрос
-										request = proxy->fmk->format("DELETE %s HTTP/%.1f\r\n", query.uri.c_str(), query.ver);
-									break;
-									// Если метод запроса указан как OPTIONS
-									case (uint8_t) web_t::method_t::OPTIONS:
-										// Формируем OPTIONS запрос
-										request = proxy->fmk->format("OPTIONS %s HTTP/%.1f\r\n", query.uri.c_str(), query.ver);
-									break;
-									// Если метод запроса указан как CONNECT
-									case (uint8_t) web_t::method_t::CONNECT:
-										// Формируем CONNECT запрос
-										request = proxy->fmk->format("CONNECT %s HTTP/%.1f\r\n", query.uri.c_str(), query.ver);
-									break;
-								}
-								// Переходим по всему списку заголовков
-								for(auto & header : headers){
-									// Формируем заголовок запроса
-									request.append(proxy->fmk->format("%s: %s\r\n", header.first.c_str(), header.second.c_str()));
-								}
-								// Добавляем разделитель
-								request.append("\r\n");
-								// Выводим заголовок запроса
-								cout << "\x1B[33m\x1B[1m^^^^^^^^^ REQUEST ^^^^^^^^^\x1B[0m" << endl;
-								// Выводим параметры запроса
-								cout << string(request.begin(), request.end()) << endl;
-								// Если тело запроса существует
-								if(!adj->http.getBody().empty())
-									// Выводим сообщение о выводе чанка тела
-									cout << proxy->fmk->format("<body %u>", adj->http.getBody().size())  << endl;
-							}
-						#endif
-						// Если подключение не установлено как постоянное
-						if(!proxy->alive && !adj->alive){
-							// Увеличиваем количество выполненных запросов
-							adj->requests++;
-							// Если количество выполненных запросов превышает максимальный
-							if(adj->requests >= proxy->maxRequests)
-								// Устанавливаем флаг закрытия подключения
-								adj->close = true;
-							// Получаем текущий штамп времени
-							else adj->checkPoint = proxy->fmk->unixTimestamp();
-						// Выполняем сброс количества выполненных запросов
-						} else adj->requests = 0;
-						// Выполняем проверку авторизации
-						switch((uint8_t) adj->http.getAuth()){
-							// Если запрос выполнен удачно
-							case (uint8_t) http_t::stath_t::GOOD: {
-								// Получаем флаг шифрованных данных
-								adj->crypt = adj->http.isCrypt();
-								// Получаем поддерживаемый метод компрессии
-								adj->compress = adj->http.getCompress();
-								// Если подключение не выполнено
-								if(!adj->connect){
-									// Получаем хост сервера
-									const auto & host = adj->http.getHeader("host");
-									// Если хост сервера получен
-									if(!host.empty()){
-										// Получаем данные запроса
-										const auto & query = adj->http.getQuery();
-										// Запоминаем метод подключения
-										adj->method = query.method;
-										// Формируем адрес подключения
-										adj->worker.url = proxy->worker.uri.parseUrl(proxy->fmk->format("http://%s", host.c_str()));
-										// Выполняем запрос на сервер
-										proxy->coreCli.open(adj->worker.wid);
-										// Выполняем сброс состояния HTTP парсера
-										adj->http.clear();
-										// Выполняем сброс состояния HTTP парсера
-										adj->http.reset();
-										// Выходим из функции
-										return;
-									}
-								// Если подключение выполнено
-								} else {
-									// Получаем идентификатор адъютанта
-									const size_t aid = adj->worker.getAid();
-									// Отправляем запрос на внешний сервер
-									if(aid > 0) reinterpret_cast <core_t *> (&proxy->coreCli)->write(buffer, size, aid);
-								}
-								// Выполняем сброс состояния HTTP парсера
-								adj->http.clear();
-								// Выполняем сброс состояния HTTP парсера
-								adj->http.reset();
-
-
-								/*
-								// Устанавливаем метод запроса
-								request.method = query.method;
-								// Устанавливаем IP адрес
-								request.ip = proxy->worker.ip(aid);
-								// Устанавливаем MAC адрес
-								request.mac = proxy->worker.mac(aid);
-								// Получаем тело запроса
-								request.entity = adj->http.getBody();
-								// Получаем заголовки запроса
-								request.headers = adj->http.getHeaders();
-								// Выполняем парсинг URL адреса
-								const auto & split = proxy->worker.uri.split(query.uri);
-								// Если список параметров получен
-								if(!split.empty()){
-									// Определяем сколько элементов мы получили
-									switch(split.size()){
-										// Если количество элементов равно 1
-										case 1: {
-											// Проверяем путь запроса
-											const string & value = split.front();
-											// Если первый символ является путём запроса
-											if(value.front() == '/') request.path = proxy->worker.uri.splitPath(value);
-											// Если же первый символ является параметром запросов
-											else if(value.front() == '?') request.params = proxy->worker.uri.splitParams(value);
-										} break;
-										// Если количество элементов равно 2
-										case 2: {
-											// Устанавливаем путь запроса
-											request.path = proxy->worker.uri.splitPath(split.front());
-											// Устанавливаем параметры запроса
-											request.params = proxy->worker.uri.splitParams(split.back());
-										} break;
-									}
-								}
-								// Выполняем сброс состояния HTTP парсера
-								adj->http.clear();
-								// Выполняем сброс состояния HTTP парсера
-								adj->http.reset();
-								// Если функция обратного вызова установлена, выполняем
-								if(proxy->messageFn != nullptr) proxy->messageFn(aid, request, proxy, proxy->ctx.at(1));
-								*/
-								// Завершаем обработку
-								goto Next;
-							} break;
-							// Если запрос неудачный
-							case (uint8_t) http_t::stath_t::FAULT: {
-								// Выполняем сброс состояния HTTP парсера
-								adj->http.clear();
-								// Выполняем сброс состояния HTTP парсера
-								adj->http.reset();
-								// Выполняем очистку буфера полученных данных
-								adj->buffer.clear();
-								// Формируем запрос авторизации
-								const auto & response = adj->http.reject(407);
-								// Если ответ получен
-								if(!response.empty()){
-									// Тело полезной нагрузки
-									vector <char> payload;
-									// Устанавливаем размер стопбайт
-									if(!adj->http.isAlive()) adj->stopBytes = response.size();
-									// Отправляем ответ клиенту
-									core->write(response.data(), response.size(), aid);
-									// Получаем данные тела запроса
-									while(!(payload = adj->http.payload()).empty()){
-										// Устанавливаем размер стопбайт
-										if(!adj->http.isAlive()) adj->stopBytes += payload.size();
-										// Отправляем тело на сервер
-										core->write(payload.data(), payload.size(), aid);
-									}
-								// Выполняем отключение клиента
-								} else core->close(aid);
-								// Выходим из функции
-								return;
-							}
-						}
-					}
-					// Устанавливаем метку продолжения обработки пайплайна
-					Next:
-					// Если парсер обработал какое-то количество байт
-					if(bytes > 0){
-						// Удаляем количество обработанных байт
-						adj->buffer.erase(adj->buffer.begin(), adj->buffer.begin() + bytes);
-						// Если данных для обработки не осталось, выходим
-						if(adj->buffer.empty()) break;
-					// Если данных для обработки недостаточно, выходим
-					} else break;
-				}
+				proxy->prepare(aid, wid, core);
 			}
 		}
 	}
-
-	/*
-	// Если данные существуют
-	if((size > 0) && (aid > 0) && (wid > 0) && (buffer != nullptr) && (core != nullptr) && (ctx != nullptr)){
-		// Получаем контекст модуля
-		restSrv_t * web = reinterpret_cast <restSrv_t *> (ctx);
-		// Получаем параметры подключения адъютанта
-		workSrvProxy_t::adjp_t * adj = const_cast <workSrvProxy_t::adjp_t *> (web->worker.getAdj(aid));
-		// Если параметры подключения адъютанта получены
-		if(adj != nullptr){
-			// Добавляем полученные данные в буфер
-			adj->buffer.insert(adj->buffer.end(), buffer, buffer + size);
-			// Выполняем обработку полученных данных
-			while(!adj->close){
-				// Выполняем парсинг полученных данных
-				size_t bytes = adj->http.parse(adj->buffer.data(), adj->buffer.size());
-				// Если все данные получены
-				if(adj->http.isEnd()){
-					// Если включён режим отладки
-					#if defined(DEBUG_MODE)
-						// Получаем заголовки запроса
-						const auto & headers = adj->http.getHeaders();
-						// Если заголовки получены
-						if(!headers.empty()){
-							// Данные REST запроса
-							string request = "";
-							// Получаем данные запроса
-							const auto & query = adj->http.getQuery();
-							// Определяем метод запроса
-							switch((uint8_t) query.method){
-								// Если метод запроса указан как GET
-								case (uint8_t) web_t::method_t::GET:
-									// Формируем GET запрос
-									request = web->fmk->format("GET %s HTTP/%.1f\r\n", query.uri.c_str(), query.ver);
-								break;
-								// Если метод запроса указан как PUT
-								case (uint8_t) web_t::method_t::PUT:
-									// Формируем PUT запрос
-									request = web->fmk->format("PUT %s HTTP/%.1f\r\n", query.uri.c_str(), query.ver);
-								break;
-								// Если метод запроса указан как POST
-								case (uint8_t) web_t::method_t::POST:
-									// Формируем POST запрос
-									request = web->fmk->format("POST %s HTTP/%.1f\r\n", query.uri.c_str(), query.ver);
-								break;
-								// Если метод запроса указан как HEAD
-								case (uint8_t) web_t::method_t::HEAD:
-									// Формируем HEAD запрос
-									request = web->fmk->format("HEAD %s HTTP/%.1f\r\n", query.uri.c_str(), query.ver);
-								break;
-								// Если метод запроса указан как PATCH
-								case (uint8_t) web_t::method_t::PATCH:
-									// Формируем PATCH запрос
-									request = web->fmk->format("PATCH %s HTTP/%.1f\r\n", query.uri.c_str(), query.ver);
-								break;
-								// Если метод запроса указан как TRACE
-								case (uint8_t) web_t::method_t::TRACE:
-									// Формируем TRACE запрос
-									request = web->fmk->format("TRACE %s HTTP/%.1f\r\n", query.uri.c_str(), query.ver);
-								break;
-								// Если метод запроса указан как DELETE
-								case (uint8_t) web_t::method_t::DEL:
-									// Формируем DELETE запрос
-									request = web->fmk->format("DELETE %s HTTP/%.1f\r\n", query.uri.c_str(), query.ver);
-								break;
-								// Если метод запроса указан как OPTIONS
-								case (uint8_t) web_t::method_t::OPTIONS:
-									// Формируем OPTIONS запрос
-									request = web->fmk->format("OPTIONS %s HTTP/%.1f\r\n", query.uri.c_str(), query.ver);
-								break;
-								// Если метод запроса указан как CONNECT
-								case (uint8_t) web_t::method_t::CONNECT:
-									// Формируем CONNECT запрос
-									request = web->fmk->format("CONNECT %s HTTP/%.1f\r\n", query.uri.c_str(), query.ver);
-								break;
-							}
-							// Переходим по всему списку заголовков
-							for(auto & header : headers){
-								// Формируем заголовок запроса
-								request.append(web->fmk->format("%s: %s\r\n", header.first.c_str(), header.second.c_str()));
-							}
-							// Добавляем разделитель
-							request.append("\r\n");
-							// Выводим заголовок запроса
-							cout << "\x1B[33m\x1B[1m^^^^^^^^^ REQUEST ^^^^^^^^^\x1B[0m" << endl;
-							// Выводим параметры запроса
-							cout << string(request.begin(), request.end()) << endl;
-							// Если тело запроса существует
-							if(!adj->http.getBody().empty())
-								// Выводим сообщение о выводе чанка тела
-								cout << web->fmk->format("<body %u>", adj->http.getBody().size())  << endl;
-						}
-					#endif
-					// Если подключение не установлено как постоянное
-					if(!web->alive && !adj->alive){
-						// Увеличиваем количество выполненных запросов
-						adj->requests++;
-						// Если количество выполненных запросов превышает максимальный
-						if(adj->requests >= web->maxRequests)
-							// Устанавливаем флаг закрытия подключения
-							adj->close = true;
-						// Получаем текущий штамп времени
-						else adj->checkPoint = web->fmk->unixTimestamp();
-					// Выполняем сброс количества выполненных запросов
-					} else adj->requests = 0;
-					// Выполняем проверку авторизации
-					switch((uint8_t) adj->http.getAuth()){
-						// Если запрос выполнен удачно
-						case (uint8_t) http_t::stath_t::GOOD: {
-							// Объект запроса клиента
-							req_t request;
-							// Получаем флаг шифрованных данных
-							adj->crypt = adj->http.isCrypt();
-							// Получаем поддерживаемый метод компрессии
-							adj->compress = adj->http.getCompress();
-							// Получаем данные запроса
-							const auto & query = adj->http.getQuery();
-							// Устанавливаем метод запроса
-							request.method = query.method;
-							// Устанавливаем IP адрес
-							request.ip = web->worker.ip(aid);
-							// Устанавливаем MAC адрес
-							request.mac = web->worker.mac(aid);
-							// Получаем тело запроса
-							request.entity = adj->http.getBody();
-							// Получаем заголовки запроса
-							request.headers = adj->http.getHeaders();
-							// Выполняем парсинг URL адреса
-							const auto & split = web->worker.uri.split(query.uri);
-							// Если список параметров получен
-							if(!split.empty()){
-								// Определяем сколько элементов мы получили
-								switch(split.size()){
-									// Если количество элементов равно 1
-									case 1: {
-										// Проверяем путь запроса
-										const string & value = split.front();
-										// Если первый символ является путём запроса
-										if(value.front() == '/') request.path = web->worker.uri.splitPath(value);
-										// Если же первый символ является параметром запросов
-										else if(value.front() == '?') request.params = web->worker.uri.splitParams(value);
-									} break;
-									// Если количество элементов равно 2
-									case 2: {
-										// Устанавливаем путь запроса
-										request.path = web->worker.uri.splitPath(split.front());
-										// Устанавливаем параметры запроса
-										request.params = web->worker.uri.splitParams(split.back());
-									} break;
-								}
-							}
-							// Выполняем сброс состояния HTTP парсера
-							adj->http.clear();
-							// Выполняем сброс состояния HTTP парсера
-							adj->http.reset();
-							// Если функция обратного вызова установлена, выполняем
-							if(web->messageFn != nullptr) web->messageFn(aid, request, web, web->ctx.at(1));
-							// Завершаем обработку
-							goto Next;
-						} break;
-						// Если запрос неудачный
-						case (uint8_t) http_t::stath_t::FAULT: {
-							// Выполняем сброс состояния HTTP парсера
-							adj->http.clear();
-							// Выполняем сброс состояния HTTP парсера
-							adj->http.reset();
-							// Выполняем очистку буфера полученных данных
-							adj->buffer.clear();
-							// Формируем запрос авторизации
-							const auto & response = adj->http.reject(401);
-							// Если ответ получен
-							if(!response.empty()){
-								// Тело полезной нагрузки
-								vector <char> payload;
-								// Устанавливаем размер стопбайт
-								if(!adj->http.isAlive()) adj->stopBytes = response.size();
-								// Отправляем ответ клиенту
-								core->write(response.data(), response.size(), aid);
-								// Получаем данные тела запроса
-								while(!(payload = adj->http.payload()).empty()){
-									// Устанавливаем размер стопбайт
-									if(!adj->http.isAlive()) adj->stopBytes += payload.size();
-									// Отправляем тело на сервер
-									core->write(payload.data(), payload.size(), aid);
-								}
-							// Выполняем отключение клиента
-							} else core->close(aid);
-							// Выходим из функции
-							return;
-						}
-					}
-				}
-				// Устанавливаем метку продолжения обработки пайплайна
-				Next:
-				// Если парсер обработал какое-то количество байт
-				if(bytes > 0){
-					// Удаляем количество обработанных байт
-					adj->buffer.erase(adj->buffer.begin(), adj->buffer.begin() + bytes);
-					// Если данных для обработки не осталось, выходим
-					if(adj->buffer.empty()) break;
-				// Если данных для обработки недостаточно, выходим
-				} else break;
-			}
-		}
-	}
-	*/
 }
 /**
  * writeServerCallback Функция обратного вызова при записи сообщения на клиенте
@@ -794,6 +447,288 @@ void awh::ProxyServer::writeServerCallback(const char * buffer, const size_t siz
 	}
 }
 /**
+ * prepare Метод обработки входящих данных
+ * @param aid  идентификатор адъютанта
+ * @param wid  идентификатор воркера
+ * @param core объект биндинга TCP/IP
+ */
+void awh::ProxyServer::prepare(const size_t aid, const size_t wid, core_t * core) noexcept {
+	// Если данные существуют
+	if((aid > 0) && (wid > 0) && (core != nullptr)){
+		// Получаем параметры подключения адъютанта
+		workSrvProxy_t::adjp_t * adj = const_cast <workSrvProxy_t::adjp_t *> (this->worker.getAdj(aid));
+		// Если параметры подключения адъютанта получены
+		if((adj != nullptr) && !adj->locked){
+			// Выполняем обработку полученных данных
+			while(!adj->close && !adj->server.empty()){
+				// Выполняем парсинг полученных данных
+				size_t bytes = adj->srv.parse(adj->server.data(), adj->server.size());
+				// Если все данные получены
+				if(adj->srv.isEnd()){
+					// Если включён режим отладки
+					#if defined(DEBUG_MODE)
+						// Получаем заголовки запроса
+						const auto & headers = adj->srv.getHeaders();
+						// Если заголовки получены
+						if(!headers.empty()){
+							// Данные REST запроса
+							string request = "";
+							// Получаем данные запроса
+							const auto & query = adj->srv.getQuery();
+							// Определяем метод запроса
+							switch((uint8_t) query.method){
+								// Если метод запроса указан как GET
+								case (uint8_t) web_t::method_t::GET:
+									// Формируем GET запрос
+									request = this->fmk->format("GET %s HTTP/%.1f\r\n", query.uri.c_str(), query.ver);
+								break;
+								// Если метод запроса указан как PUT
+								case (uint8_t) web_t::method_t::PUT:
+									// Формируем PUT запрос
+									request = this->fmk->format("PUT %s HTTP/%.1f\r\n", query.uri.c_str(), query.ver);
+								break;
+								// Если метод запроса указан как POST
+								case (uint8_t) web_t::method_t::POST:
+									// Формируем POST запрос
+									request = this->fmk->format("POST %s HTTP/%.1f\r\n", query.uri.c_str(), query.ver);
+								break;
+								// Если метод запроса указан как HEAD
+								case (uint8_t) web_t::method_t::HEAD:
+									// Формируем HEAD запрос
+									request = this->fmk->format("HEAD %s HTTP/%.1f\r\n", query.uri.c_str(), query.ver);
+								break;
+								// Если метод запроса указан как PATCH
+								case (uint8_t) web_t::method_t::PATCH:
+									// Формируем PATCH запрос
+									request = this->fmk->format("PATCH %s HTTP/%.1f\r\n", query.uri.c_str(), query.ver);
+								break;
+								// Если метод запроса указан как TRACE
+								case (uint8_t) web_t::method_t::TRACE:
+									// Формируем TRACE запрос
+									request = this->fmk->format("TRACE %s HTTP/%.1f\r\n", query.uri.c_str(), query.ver);
+								break;
+								// Если метод запроса указан как DELETE
+								case (uint8_t) web_t::method_t::DEL:
+									// Формируем DELETE запрос
+									request = this->fmk->format("DELETE %s HTTP/%.1f\r\n", query.uri.c_str(), query.ver);
+								break;
+								// Если метод запроса указан как OPTIONS
+								case (uint8_t) web_t::method_t::OPTIONS:
+									// Формируем OPTIONS запрос
+									request = this->fmk->format("OPTIONS %s HTTP/%.1f\r\n", query.uri.c_str(), query.ver);
+								break;
+								// Если метод запроса указан как CONNECT
+								case (uint8_t) web_t::method_t::CONNECT:
+									// Формируем CONNECT запрос
+									request = this->fmk->format("CONNECT %s HTTP/%.1f\r\n", query.uri.c_str(), query.ver);
+								break;
+							}
+							// Переходим по всему списку заголовков
+							for(auto & header : headers){
+								// Формируем заголовок запроса
+								request.append(this->fmk->format("%s: %s\r\n", header.first.c_str(), header.second.c_str()));
+							}
+							// Добавляем разделитель
+							request.append("\r\n");
+							// Выводим заголовок запроса
+							cout << "\x1B[33m\x1B[1m^^^^^^^^^ REQUEST ^^^^^^^^^\x1B[0m" << endl;
+							// Выводим параметры запроса
+							cout << string(request.begin(), request.end()) << endl;
+							// Если тело запроса существует
+							if(!adj->srv.getBody().empty())
+								// Выводим сообщение о выводе чанка тела
+								cout << this->fmk->format("<body %u>", adj->srv.getBody().size())  << endl;
+						}
+					#endif
+					// Если подключение не установлено как постоянное
+					if(!this->alive && !adj->alive){
+						// Увеличиваем количество выполненных запросов
+						adj->requests++;
+						// Если количество выполненных запросов превышает максимальный
+						if(adj->requests >= this->maxRequests)
+							// Устанавливаем флаг закрытия подключения
+							adj->close = true;
+						// Получаем текущий штамп времени
+						else adj->checkPoint = this->fmk->unixTimestamp();
+					// Выполняем сброс количества выполненных запросов
+					} else adj->requests = 0;
+					// Выполняем проверку авторизации
+					switch((uint8_t) adj->srv.getAuth()){
+						// Если запрос выполнен удачно
+						case (uint8_t) http_t::stath_t::GOOD: {
+							// Получаем флаг шифрованных данных
+							adj->crypt = adj->srv.isCrypt();
+							// Получаем поддерживаемый метод компрессии
+							adj->compress = adj->srv.getCompress();
+							// Если подключение не выполнено
+							if(!adj->connect){
+								// Получаем хост сервера
+								const auto & host = adj->srv.getHeader("host");
+								// Если хост сервера получен
+								if((adj->locked = !host.empty())){
+									// Получаем данные запроса
+									const auto & query = adj->srv.getQuery();
+									// Запоминаем метод подключения
+									adj->method = query.method;
+									// Формируем адрес подключения
+									adj->worker.url = this->worker.uri.parseUrl(this->fmk->format("http://%s", host.c_str()));
+									// Выполняем запрос на сервер
+									this->coreCli.open(adj->worker.wid);
+									// Выходим из функции
+									return;
+								// Если хост не получен
+								} else {
+									// Выполняем сброс состояния HTTP парсера
+									adj->srv.clear();
+									// Выполняем сброс состояния HTTP парсера
+									adj->srv.reset();
+									// Выполняем очистку буфера полученных данных
+									adj->server.clear();
+									// Формируем запрос реджекта
+									const auto & response = adj->srv.reject(403);
+									// Если ответ получен
+									if(!response.empty()){
+										// Тело полезной нагрузки
+										vector <char> payload;
+										// Отправляем ответ клиенту
+										core->write(response.data(), response.size(), aid);
+										// Получаем данные тела запроса
+										while(!(payload = adj->srv.payload()).empty()){
+											// Отправляем тело на сервер
+											core->write(payload.data(), payload.size(), aid);
+										}
+									// Выполняем отключение клиента
+									} else core->close(aid);
+									// Выходим из функции
+									return;
+								}
+							// Если подключение выполнено
+							} else {
+								{
+									// Получаем данные запроса
+									const auto & query = adj->srv.getQuery();
+									// Получаем данные заголовка Via
+									string via = adj->srv.getHeader("via");
+									// Если заголовок получен
+									if(!via.empty())
+										// Устанавливаем Via заголовок
+										via = this->fmk->format("%s, %.1f %s:%u", via.c_str(), query.ver, this->host.c_str(), this->port);
+									// Иначе просто формируем заголовок Via
+									else via = this->fmk->format("%.1f %s:%u", query.ver, this->host.c_str(), this->port);
+									// Устанавливаем заголовок Via
+									adj->srv.addHeader("Via", via);
+								}{
+									// Название операционной системы
+									const char * os = nullptr;
+									// Определяем название операционной системы
+									switch((uint8_t) this->fmk->os()){
+										// Если операционной системой является Unix
+										case (uint8_t) fmk_t::os_t::UNIX: os = "Unix"; break;
+										// Если операционной системой является Linux
+										case (uint8_t) fmk_t::os_t::LINUX: os = "Linux"; break;
+										// Если операционной системой является неизвестной
+										case (uint8_t) fmk_t::os_t::NONE: os = "Unknown"; break;
+										// Если операционной системой является Windows
+										case (uint8_t) fmk_t::os_t::WIND32:
+										case (uint8_t) fmk_t::os_t::WIND64: os = "Windows"; break;
+										// Если операционной системой является MacOS X
+										case (uint8_t) fmk_t::os_t::MACOSX: os = "MacOS X"; break;
+										// Если операционной системой является FreeBSD
+										case (uint8_t) fmk_t::os_t::FREEBSD: os = "FreeBSD"; break;
+									}
+									// Устанавливаем наименование агента
+									adj->srv.addHeader("X-Proxy-Agent", this->fmk->format("(%s; %s) %s/%s", os, this->name.c_str(), this->sid.c_str(), this->version.c_str()));
+								}
+								// Если функция обратного вызова установлена, выполняем
+								if(this->messageFn != nullptr){
+									// Выводим сообщение
+									if(this->messageFn(aid, event_t::REQUEST, &adj->srv, this, this->ctx.at(1))){
+										// Получаем данные запроса
+										const auto & request = adj->srv.request();
+										// Если данные запроса получены
+										if(!request.empty()){
+											// Получаем идентификатор адъютанта
+											const size_t aid = adj->worker.getAid();
+											// Отправляем запрос на внешний сервер
+											if(aid > 0) reinterpret_cast <core_t *> (&this->coreCli)->write(request.data(), request.size(), aid);
+										}
+									}
+								// Если функция обратного вызова не установлена
+								} else {
+									// Получаем идентификатор адъютанта
+									const size_t aid = adj->worker.getAid();
+									// Отправляем запрос на внешний сервер
+									if(aid > 0){
+										// Получаем данные запроса
+										const auto & request = adj->srv.request();
+										// Если данные запроса получены
+										if(!request.empty()){
+											// Если функция обратного вызова установлена, выполняем
+											if(this->binaryFn != nullptr){
+												// Выводим сообщение
+												if(this->binaryFn(aid, event_t::REQUEST, request.data(), request.size(), this, this->ctx.at(2)))
+													// Отправляем запрос на внешний сервер
+													reinterpret_cast <core_t *> (&this->coreCli)->write(request.data(), request.size(), aid);
+											// Отправляем запрос на внешний сервер
+											} else reinterpret_cast <core_t *> (&this->coreCli)->write(request.data(), request.size(), aid);
+										}
+									}
+								}
+							}
+							// Выполняем сброс состояния HTTP парсера
+							adj->srv.clear();
+							// Выполняем сброс состояния HTTP парсера
+							adj->srv.reset();
+							// Завершаем обработку
+							goto Next;
+						} break;
+						// Если запрос неудачный
+						case (uint8_t) http_t::stath_t::FAULT: {
+							// Выполняем сброс состояния HTTP парсера
+							adj->srv.clear();
+							// Выполняем сброс состояния HTTP парсера
+							adj->srv.reset();
+							// Выполняем очистку буфера полученных данных
+							adj->server.clear();
+							// Формируем запрос авторизации
+							const auto & response = adj->srv.reject(407);
+							// Если ответ получен
+							if(!response.empty()){
+								// Тело полезной нагрузки
+								vector <char> payload;
+								// Устанавливаем размер стопбайт
+								if(!adj->srv.isAlive()) adj->stopBytes = response.size();
+								// Отправляем ответ клиенту
+								core->write(response.data(), response.size(), aid);
+								// Получаем данные тела запроса
+								while(!(payload = adj->srv.payload()).empty()){
+									// Устанавливаем размер стопбайт
+									if(!adj->srv.isAlive()) adj->stopBytes += payload.size();
+									// Отправляем тело на сервер
+									core->write(payload.data(), payload.size(), aid);
+								}
+							// Выполняем отключение клиента
+							} else core->close(aid);
+							// Выходим из функции
+							return;
+						}
+					}
+				}
+				// Устанавливаем метку продолжения обработки пайплайна
+				Next:
+				// Если парсер обработал какое-то количество байт
+				if(bytes > 0){
+					// Удаляем количество обработанных байт
+					adj->server.erase(adj->server.begin(), adj->server.begin() + bytes);
+					// Если данных для обработки не осталось, выходим
+					if(adj->server.empty()) break;
+				// Если данных для обработки недостаточно, выходим
+				} else break;
+			}
+		}
+	}
+}
+/**
  * init Метод инициализации WebSocket клиента
  * @param port     порт сервера
  * @param host     хост сервера
@@ -812,7 +747,7 @@ void awh::ProxyServer::init(const u_int port, const string & host, const http_t:
  * @param ctx      контекст для вывода в сообщении
  * @param callback функция обратного вызова
  */
-void awh::ProxyServer::on(void * ctx, function <void (const size_t, const bool, ProxyServer *, void *)> callback) noexcept {
+void awh::ProxyServer::on(void * ctx, function <void (const size_t, const mode_t, ProxyServer *, void *)> callback) noexcept {
 	// Устанавливаем контекст передаваемого объекта
 	this->ctx.at(0) = ctx;
 	// Устанавливаем функцию запуска и остановки
@@ -823,13 +758,22 @@ void awh::ProxyServer::on(void * ctx, function <void (const size_t, const bool, 
  * @param ctx      контекст для вывода в сообщении
  * @param callback функция обратного вызова
  */
-void awh::ProxyServer::on(void * ctx, function <void (const size_t, const req_t &, ProxyServer *, void *)> callback) noexcept {
-	/*
+void awh::ProxyServer::on(void * ctx, function <bool (const size_t, const event_t, http_t *, ProxyServer *, void *)> callback) noexcept {
 	// Устанавливаем контекст передаваемого объекта
 	this->ctx.at(1) = ctx;
 	// Устанавливаем функцию получения сообщений с сервера
 	this->messageFn = callback;
-	*/
+}
+/**
+ * on Метод установки функции обратного вызова на событие получения сообщений в бинарном виде
+ * @param ctx      контекст для вывода в сообщении
+ * @param callback функция обратного вызова
+ */
+void awh::ProxyServer::on(void * ctx, function <bool (const size_t, const event_t, const char *, const size_t, ProxyServer *, void *)> callback) noexcept {
+	// Устанавливаем контекст передаваемого объекта
+	this->ctx.at(2) = ctx;
+	// Устанавливаем функцию получения сообщений в бинарном виде с сервера
+	this->binaryFn = callback;
 }
 /**
  * on Метод добавления функции извлечения пароля
@@ -838,7 +782,7 @@ void awh::ProxyServer::on(void * ctx, function <void (const size_t, const req_t 
  */
 void awh::ProxyServer::on(void * ctx, function <string (const string &, void *)> callback) noexcept {
 	// Устанавливаем контекст передаваемого объекта
-	this->ctx.at(2) = ctx;
+	this->ctx.at(3) = ctx;
 	// Устанавливаем функцию обратного вызова для извлечения пароля
 	this->extractPassFn = callback;
 }
@@ -849,7 +793,7 @@ void awh::ProxyServer::on(void * ctx, function <string (const string &, void *)>
  */
 void awh::ProxyServer::on(void * ctx, function <bool (const string &, const string &, void *)> callback) noexcept {
 	// Устанавливаем контекст передаваемого объекта
-	this->ctx.at(3) = ctx;
+	this->ctx.at(4) = ctx;
 	// Устанавливаем функцию обратного вызова для обработки авторизации
 	this->checkAuthFn = callback;
 }
@@ -860,7 +804,7 @@ void awh::ProxyServer::on(void * ctx, function <bool (const string &, const stri
  */
 void awh::ProxyServer::on(void * ctx, function <void (const vector <char> &, const http_t *, void *)> callback) noexcept {
 	// Устанавливаем контекст передаваемого объекта
-	this->ctx.at(4) = ctx;
+	this->ctx.at(5) = ctx;
 	// Устанавливаем функцию обратного вызова для получения чанков
 	this->chunkingFn = callback;
 }
@@ -871,7 +815,7 @@ void awh::ProxyServer::on(void * ctx, function <void (const vector <char> &, con
  */
 void awh::ProxyServer::on(void * ctx, function <bool (const string &, const string &, ProxyServer *, void *)> callback) noexcept {
 	// Устанавливаем контекст передаваемого объекта
-	this->ctx.at(5) = ctx;
+	this->ctx.at(6) = ctx;
 	// Устанавливаем функцию запуска и остановки
 	this->acceptFn = callback;
 }
@@ -893,15 +837,15 @@ void awh::ProxyServer::reject(const size_t aid, const u_short code, const string
 			// Тело полезной нагрузки
 			vector <char> payload;
 			// Устанавливаем полезную нагрузку
-			adj->http.setBody(entity);
+			adj->srv.setBody(entity);
 			// Устанавливаем заголовки ответа
-			adj->http.setHeaders(headers);
+			adj->srv.setHeaders(headers);
 			// Если подключение не установлено как постоянное, но подключение долгоживущее
-			if(!this->alive && !adj->alive && adj->http.isAlive())
+			if(!this->alive && !adj->alive && adj->srv.isAlive())
 				// Указываем сколько запросов разрешено выполнить за указанный интервал времени
-				adj->http.addHeader("Keep-Alive", this->fmk->format("timeout=%d, max=%d", this->keepAlive / 1000, this->maxRequests));
+				adj->srv.addHeader("Keep-Alive", this->fmk->format("timeout=%d, max=%d", this->keepAlive / 1000, this->maxRequests));
 			// Формируем запрос авторизации
-			const auto & response = adj->http.reject(code, mess);
+			const auto & response = adj->srv.reject(code, mess);
 			// Если включён режим отладки
 			#if defined(DEBUG_MODE)
 				// Выводим заголовок ответа
@@ -910,18 +854,18 @@ void awh::ProxyServer::reject(const size_t aid, const u_short code, const string
 				cout << string(response.begin(), response.end()) << endl;
 			#endif
 			// Устанавливаем размер стопбайт
-			if(!adj->http.isAlive()) adj->stopBytes = response.size();
+			if(!adj->srv.isAlive()) adj->stopBytes = response.size();
 			// Отправляем серверу сообщение
 			((core_t *) const_cast <coreSrv_t *> (&this->coreSrv))->write(response.data(), response.size(), aid);
 			// Получаем данные полезной нагрузки ответа
-			while(!(payload = adj->http.payload()).empty()){
+			while(!(payload = adj->srv.payload()).empty()){
 				// Если включён режим отладки
 				#if defined(DEBUG_MODE)
 					// Выводим сообщение о выводе чанка полезной нагрузки
 					cout << this->fmk->format("<chunk %u>", payload.size()) << endl;
 				#endif
 				// Устанавливаем размер стопбайт
-				if(!adj->http.isAlive()) adj->stopBytes += payload.size();
+				if(!adj->srv.isAlive()) adj->stopBytes += payload.size();
 				// Отправляем тело на сервер
 				((core_t *) const_cast <coreSrv_t *> (&this->coreSrv))->write(payload.data(), payload.size(), aid);
 			}
@@ -946,15 +890,15 @@ void awh::ProxyServer::response(const size_t aid, const u_short code, const stri
 			// Тело полезной нагрузки
 			vector <char> payload;
 			// Устанавливаем полезную нагрузку
-			adj->http.setBody(entity);
+			adj->srv.setBody(entity);
 			// Устанавливаем заголовки ответа
-			adj->http.setHeaders(headers);
+			adj->srv.setHeaders(headers);
 			// Если подключение не установлено как постоянное, но подключение долгоживущее
-			if(!this->alive && !adj->alive && adj->http.isAlive())
+			if(!this->alive && !adj->alive && adj->srv.isAlive())
 				// Указываем сколько запросов разрешено выполнить за указанный интервал времени
-				adj->http.addHeader("Keep-Alive", this->fmk->format("timeout=%d, max=%d", this->keepAlive / 1000, this->maxRequests));
+				adj->srv.addHeader("Keep-Alive", this->fmk->format("timeout=%d, max=%d", this->keepAlive / 1000, this->maxRequests));
 			// Формируем запрос авторизации
-			const auto & response = adj->http.response(code, mess);
+			const auto & response = adj->srv.response(code, mess);
 			// Если включён режим отладки
 			#if defined(DEBUG_MODE)
 				// Выводим заголовок ответа
@@ -963,18 +907,18 @@ void awh::ProxyServer::response(const size_t aid, const u_short code, const stri
 				cout << string(response.begin(), response.end()) << endl;
 			#endif
 			// Устанавливаем размер стопбайт
-			if(!adj->http.isAlive()) adj->stopBytes = response.size();
+			if(!adj->srv.isAlive()) adj->stopBytes = response.size();
 			// Отправляем серверу сообщение
 			((core_t *) const_cast <coreSrv_t *> (&this->coreSrv))->write(response.data(), response.size(), aid);
 			// Получаем данные полезной нагрузки ответа
-			while(!(payload = adj->http.payload()).empty()){
+			while(!(payload = adj->srv.payload()).empty()){
 				// Если включён режим отладки
 				#if defined(DEBUG_MODE)
 					// Выводим сообщение о выводе чанка полезной нагрузки
 					cout << this->fmk->format("<chunk %u>", payload.size()) << endl;
 				#endif
 				// Устанавливаем размер стопбайт
-				if(!adj->http.isAlive()) adj->stopBytes += payload.size();
+				if(!adj->srv.isAlive()) adj->stopBytes += payload.size();
 				// Отправляем тело на сервер
 				((core_t *) const_cast <coreSrv_t *> (&this->coreSrv))->write(payload.data(), payload.size(), aid);
 			}
@@ -1162,12 +1106,6 @@ void awh::ProxyServer::setServ(const string & id, const string & name, const str
  * @param aes  размер шифрования передаваемых данных
  */
 void awh::ProxyServer::setCrypt(const string & pass, const string & salt, const hash_t::aes_t aes) noexcept {
-	// Устанавливаем размер шифрования
-	this->hash.setAES(aes);
-	// Устанавливаем соль шифрования
-	this->hash.setSalt(salt);
-	// Устанавливаем пароль шифрования
-	this->hash.setPassword(pass);
 	// Устанавливаем флаг шифрования
 	if((this->crypt = !pass.empty())){
 		// Размер шифрования передаваемых данных
@@ -1183,7 +1121,7 @@ void awh::ProxyServer::setCrypt(const string & pass, const string & salt, const 
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
  */
-awh::ProxyServer::ProxyServer(const fmk_t * fmk, const log_t * log) noexcept : coreCli(fmk, log), coreSrv(fmk, log), worker(fmk, log), hash(fmk, log), fmk(fmk), log(log) {
+awh::ProxyServer::ProxyServer(const fmk_t * fmk, const log_t * log) noexcept : coreCli(fmk, log), coreSrv(fmk, log), worker(fmk, log), fmk(fmk), log(log) {
 	// Устанавливаем контекст сообщения
 	this->worker.ctx = this;
 	// Устанавливаем событие на запуск системы

@@ -44,9 +44,10 @@ namespace awh {
 		public:
 			/**
 			 * check Метод проверки авторизации
-			 * @return результат проверки авторизации
+			 * @param method метод HTTP запроса
+			 * @return       результат проверки авторизации
 			 */
-			const bool check() noexcept;
+			const bool check(const string & method) noexcept;
 		public:
 			/**
 			 * setRealm Метод установки название сервера

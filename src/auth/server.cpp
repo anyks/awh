@@ -12,9 +12,10 @@
 
 /**
  * check Метод проверки авторизации
- * @return результат проверки авторизации
+ * @param method метод HTTP запроса
+ * @return       результат проверки авторизации
  */
-const bool awh::AuthServer::check() noexcept {
+const bool awh::AuthServer::check(const string & method) noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Определяем тип авторизации
@@ -27,7 +28,7 @@ const bool awh::AuthServer::check() noexcept {
 		// Если тип авторизации - Дайджест
 		case (uint8_t) type_t::DIGEST: {
 			// Если данные пользователя переданы
-			if(!this->user.empty() && !this->userDigest.nc.empty() && !this->userDigest.uri.empty() && !this->userDigest.cnonce.empty() && !this->userDigest.resp.empty()){
+			if(!method.empty() && !this->user.empty() && !this->userDigest.nc.empty() && !this->userDigest.uri.empty() && !this->userDigest.cnonce.empty() && !this->userDigest.resp.empty()){
 				// Если на сервере счётчик меньше
 				if((stoi(this->digest.nc) < stoi(this->userDigest.nc)) && (this->extractPassFn != nullptr)){
 					// Получаем пароль пользователя
@@ -48,7 +49,7 @@ const bool awh::AuthServer::check() noexcept {
 						digest.opaque = this->userDigest.opaque;
 						digest.cnonce = this->userDigest.cnonce;
 						// Выполняем проверку авторизации
-						result = (this->response(this->user, pass, digest).compare(this->userDigest.resp) == 0);
+						result = (this->response(this->fmk->toUpper(method), this->user, pass, digest).compare(this->userDigest.resp) == 0);
 					}
 				}
 			}

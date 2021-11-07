@@ -31,10 +31,6 @@ int main(int argc, char * argv[]) noexcept {
 	fmk_t fmk(true);
 	// Создаём объект для работы с логами
 	log_t log(&fmk);
-	// Создаём объект сети
-	network_t nwk(&fmk);
-	// Создаём объект URI
-	uri_t uri(&fmk, &nwk);
 	// Создаём биндинг
 	coreCli_t core(&fmk, &log);
 	// Создаём объект REST запроса
@@ -81,13 +77,13 @@ int main(int argc, char * argv[]) noexcept {
 		// cout << " ============= " << message << endl;
 	});
 	// Подписываемся на событие запуска и остановки сервера
-	ws.on(&log, [](const bool mode, wsCli_t * ws, void * ctx){
+	ws.on(&log, [](const wsCli_t::mode_t mode, wsCli_t * ws, void * ctx){
 		// Получаем объект логирования
 		log_t * log = reinterpret_cast <log_t *> (ctx);
 		// Выводим информацию в лог
-		log->print("%s server", log_t::flag_t::INFO, (mode ? "Start" : "Stop"));
+		log->print("%s server", log_t::flag_t::INFO, (mode == wsCli_t::mode_t::CONNECT ? "Start" : "Stop"));
 		// Если подключение произошло удачно
-		if(mode){
+		if(mode == wsCli_t::mode_t::CONNECT){
 			// Создаём объект JSON
 			json data = json::object();
 			// Формируем идентификатор объекта

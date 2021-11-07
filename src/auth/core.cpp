@@ -28,16 +28,17 @@ const awh::Authorization::digest_t & awh::Authorization::getDigest() const noexc
 }
 /**
  * response Метод создания ответа на дайджест авторизацию
+ * @param method метод HTTP запроса
  * @param digest параметры дайджест авторизации
  * @param user   логин пользователя для проверки
  * @param pass   пароль пользователя для проверки
  * @return       ответ в 16-м виде
  */
-const string awh::Authorization::response(const string & user, const string & pass, const digest_t & digest) const noexcept {
+const string awh::Authorization::response(const string & method, const string & user, const string & pass, const digest_t & digest) const noexcept {
 	// Результат работы функции
 	string result = "";
 	// Если данные пользователя переданы
-	if(!user.empty() && !pass.empty() && !digest.nonce.empty() && !digest.cnonce.empty() && (this->fmk != nullptr)){
+	if(!method.empty() && !user.empty() && !pass.empty() && !digest.nonce.empty() && !digest.cnonce.empty() && (this->fmk != nullptr)){
 		/**
 		 * Выполняем отлов ошибок
 		 */
@@ -51,7 +52,7 @@ const string awh::Authorization::response(const string & user, const string & pa
 					// Если первый этап получен
 					if(!ha1.empty()){
 						// Создаём второй этап
-						const string & ha2 = this->fmk->md5(this->fmk->format("GET:%s", digest.uri.c_str()));
+						const string & ha2 = this->fmk->md5(this->fmk->format("%s:%s", method.c_str(), digest.uri.c_str()));
 						// Если второй этап создан, создаём результат ответа
 						if(!ha2.empty()) result = this->fmk->md5(this->fmk->format("%s:%s:%s:%s:%s:%s", ha1.c_str(), digest.nonce.c_str(), digest.nc.c_str(), digest.cnonce.c_str(), digest.qop.c_str(), ha2.c_str()));
 					}
@@ -63,7 +64,7 @@ const string awh::Authorization::response(const string & user, const string & pa
 					// Если первый этап получен
 					if(!ha1.empty()){
 						// Создаём второй этап
-						const string & ha2 = this->fmk->sha1(this->fmk->format("GET:%s", digest.uri.c_str()));
+						const string & ha2 = this->fmk->sha1(this->fmk->format("%s:%s", method.c_str(), digest.uri.c_str()));
 						// Если второй этап создан, создаём результат ответа
 						if(!ha2.empty()) result = this->fmk->sha1(this->fmk->format("%s:%s:%s:%s:%s:%s", ha1.c_str(), digest.nonce.c_str(), digest.nc.c_str(), digest.cnonce.c_str(), digest.qop.c_str(), ha2.c_str()));
 					}
@@ -75,7 +76,7 @@ const string awh::Authorization::response(const string & user, const string & pa
 					// Если первый этап получен
 					if(!ha1.empty()){
 						// Создаём второй этап
-						const string & ha2 = this->fmk->sha256(this->fmk->format("GET:%s", digest.uri.c_str()));
+						const string & ha2 = this->fmk->sha256(this->fmk->format("%s:%s", method.c_str(), digest.uri.c_str()));
 						// Если второй этап создан, создаём результат ответа
 						if(!ha2.empty()) result = this->fmk->sha256(this->fmk->format("%s:%s:%s:%s:%s:%s", ha1.c_str(), digest.nonce.c_str(), digest.nc.c_str(), digest.cnonce.c_str(), digest.qop.c_str(), ha2.c_str()));
 					}
@@ -87,7 +88,7 @@ const string awh::Authorization::response(const string & user, const string & pa
 					// Если первый этап получен
 					if(!ha1.empty()){
 						// Создаём второй этап
-						const string & ha2 = this->fmk->sha512(this->fmk->format("GET:%s", digest.uri.c_str()));
+						const string & ha2 = this->fmk->sha512(this->fmk->format("%s:%s", method.c_str(), digest.uri.c_str()));
 						// Если второй этап создан, создаём результат ответа
 						if(!ha2.empty()) result = this->fmk->sha512(this->fmk->format("%s:%s:%s:%s:%s:%s", ha1.c_str(), digest.nonce.c_str(), digest.nc.c_str(), digest.cnonce.c_str(), digest.qop.c_str(), ha2.c_str()));
 					}

@@ -370,24 +370,74 @@ const vector <string> awh::URI::split(const string & uri) const noexcept {
 		if(!match.empty()){
 			// Полученная строка
 			string value = "";
-			// Переходим по всему списку полученных данных
-			for(size_t i = 0; i < match.size(); i++){
-				// Получаем значение
-				value = match[i].str();
-				/**
-				 * schema [2]
-				 * domain [4]
-				 * path [5]
-				 * params [6]
-				 * anchor [8]
-				 */
-				// Если стркоа существует и индекс соответствует
-				if(!value.empty() && ((i == 2) || (i == 4) || (i == 5) || (i == 6) || (i == 8)))
-					// Если индекс соответствует
-					result.push_back(value);
+			// Если данные пришли в правильном формате
+			if(!match[4].str().empty()){
+				// Переходим по всему списку полученных данных
+				for(size_t i = 0; i < match.size(); i++){
+					// Получаем значение
+					value = match[i].str();
+					/**
+					 * schema [2]
+					 * domain [4]
+					 * path [5]
+					 * params [6]
+					 * anchor [8]
+					 */
+					// Если стркоа существует и индекс соответствует
+					if(!value.empty() && ((i == 2) || (i == 4) || (i == 5) || (i == 6) || (i == 8)))
+						// Если индекс соответствует
+						result.push_back(value);
+				}
+			// Если данные пришли в неправильном формате
+			} else {
+				// Переходим по всему списку полученных данных
+				for(size_t i = 0; i < match.size(); i++){
+					// Получаем значение
+					value = match[i].str();
+					/**
+					 * domain [2]
+					 * path [5]
+					 * params [6]
+					 * anchor [8]
+					 */
+					// Если стркоа существует и индекс соответствует
+					if(!value.empty() && ((i == 2) || (i == 5) || (i == 6) || (i == 8)))
+						// Если индекс соответствует
+						result.push_back(value);
+				}
+				// Если путь запроса получен
+				if(result.size() >= 2){
+					// Порт сервера
+					string port = "";
+					// Выполняем поиск порта
+					for(auto & letter : result.at(1)){
+						// Если число не получено, выходим
+						if(!this->fmk->isNumber(string(1, letter))) break;
+						// Если число получено, собираем его
+						else port.append(1, letter);
+					}
+					// Если мы нашли порт сервера
+					if(!port.empty()){
+						// Удаляем порт сервера из пути
+						result.at(1).erase(0, port.size());
+						// Устанавливаем порт хоста
+						result.front() = this->fmk->format("%s:%s", result.front().c_str(), port.c_str());
+						// Если порт указан для зашифрованного подключения
+						if(port.compare("443") == 0){
+							// Устанавливаем схему протокола
+							result.insert(result.begin(), "https");
+							// Выходим из функции
+							goto Next;
+						}
+					}
+				}
+				// Устанавливаем схему протокола
+				result.insert(result.begin(), "http");
 			}
 		}
 	}
+	// Устанавливаем метку выхода
+	Next:
 	// Выводим результат
 	return result;
 }

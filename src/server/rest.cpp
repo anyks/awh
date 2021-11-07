@@ -122,7 +122,7 @@ void awh::RestServer::connectCallback(const size_t aid, const size_t wid, core_t
 			}
 		}
 		// Если функция обратного вызова установлена, выполняем
-		if(web->openStopFn != nullptr) web->openStopFn(aid, true, web, web->ctx.at(0));
+		if(web->openStopFn != nullptr) web->openStopFn(aid, mode_t::CONNECT, web, web->ctx.at(0));
 	}
 }
 /**
@@ -144,7 +144,7 @@ void awh::RestServer::disconnectCallback(const size_t aid, const size_t wid, cor
 		// Выполняем удаление параметров адъютанта
 		web->worker.removeAdj(aid);
 		// Если функция обратного вызова установлена, выполняем
-		if(web->openStopFn != nullptr) web->openStopFn(aid, false, web, web->ctx.at(0));
+		if(web->openStopFn != nullptr) web->openStopFn(aid, mode_t::DISCONNECT, web, web->ctx.at(0));
 	}
 }
 /**
@@ -286,54 +286,16 @@ void awh::RestServer::readCallback(const char * buffer, const size_t size, const
 					switch((uint8_t) adj->http.getAuth()){
 						// Если запрос выполнен удачно
 						case (uint8_t) http_t::stath_t::GOOD: {
-							// Объект запроса клиента
-							req_t request;
 							// Получаем флаг шифрованных данных
 							adj->crypt = adj->http.isCrypt();
 							// Получаем поддерживаемый метод компрессии
 							adj->compress = adj->http.getCompress();
-							// Получаем данные запроса
-							const auto & query = adj->http.getQuery();
-							// Устанавливаем метод запроса
-							request.method = query.method;
-							// Устанавливаем IP адрес
-							request.ip = web->worker.ip(aid);
-							// Устанавливаем MAC адрес
-							request.mac = web->worker.mac(aid);
-							// Получаем тело запроса
-							request.entity = adj->http.getBody();
-							// Получаем заголовки запроса
-							request.headers = adj->http.getHeaders();
-							// Выполняем парсинг URL адреса
-							const auto & split = web->worker.uri.split(query.uri);
-							// Если список параметров получен
-							if(!split.empty()){
-								// Определяем сколько элементов мы получили
-								switch(split.size()){
-									// Если количество элементов равно 1
-									case 1: {
-										// Проверяем путь запроса
-										const string & value = split.front();
-										// Если первый символ является путём запроса
-										if(value.front() == '/') request.path = web->worker.uri.splitPath(value);
-										// Если же первый символ является параметром запросов
-										else if(value.front() == '?') request.params = web->worker.uri.splitParams(value);
-									} break;
-									// Если количество элементов равно 2
-									case 2: {
-										// Устанавливаем путь запроса
-										request.path = web->worker.uri.splitPath(split.front());
-										// Устанавливаем параметры запроса
-										request.params = web->worker.uri.splitParams(split.back());
-									} break;
-								}
-							}
+							// Если функция обратного вызова установлена, выполняем
+							if(web->messageFn != nullptr) web->messageFn(aid, &adj->http, web, web->ctx.at(1));
 							// Выполняем сброс состояния HTTP парсера
 							adj->http.clear();
 							// Выполняем сброс состояния HTTP парсера
 							adj->http.reset();
-							// Если функция обратного вызова установлена, выполняем
-							if(web->messageFn != nullptr) web->messageFn(aid, request, web, web->ctx.at(1));
 							// Завершаем обработку
 							goto Next;
 						} break;
@@ -427,7 +389,7 @@ void awh::RestServer::init(const u_int port, const string & host, const http_t::
  * @param ctx      контекст для вывода в сообщении
  * @param callback функция обратного вызова
  */
-void awh::RestServer::on(void * ctx, function <void (const size_t, const bool, RestServer *, void *)> callback) noexcept {
+void awh::RestServer::on(void * ctx, function <void (const size_t, const mode_t, RestServer *, void *)> callback) noexcept {
 	// Устанавливаем контекст передаваемого объекта
 	this->ctx.at(0) = ctx;
 	// Устанавливаем функцию запуска и остановки
@@ -438,7 +400,7 @@ void awh::RestServer::on(void * ctx, function <void (const size_t, const bool, R
  * @param ctx      контекст для вывода в сообщении
  * @param callback функция обратного вызова
  */
-void awh::RestServer::on(void * ctx, function <void (const size_t, const req_t &, RestServer *, void *)> callback) noexcept {
+void awh::RestServer::on(void * ctx, function <void (const size_t, const http_t *, RestServer *, void *)> callback) noexcept {
 	// Устанавливаем контекст передаваемого объекта
 	this->ctx.at(1) = ctx;
 	// Устанавливаем функцию получения сообщений с сервера
@@ -773,12 +735,6 @@ void awh::RestServer::setServ(const string & id, const string & name, const stri
  * @param aes  размер шифрования передаваемых данных
  */
 void awh::RestServer::setCrypt(const string & pass, const string & salt, const hash_t::aes_t aes) noexcept {
-	// Устанавливаем размер шифрования
-	this->hash.setAES(aes);
-	// Устанавливаем соль шифрования
-	this->hash.setSalt(salt);
-	// Устанавливаем пароль шифрования
-	this->hash.setPassword(pass);
 	// Устанавливаем флаг шифрования
 	if((this->crypt = !pass.empty())){
 		// Размер шифрования передаваемых данных
@@ -795,7 +751,7 @@ void awh::RestServer::setCrypt(const string & pass, const string & salt, const h
  * @param fmk  объект фреймворка
  * @param log  объект для работы с логами
  */
-awh::RestServer::RestServer(const coreSrv_t * core, const fmk_t * fmk, const log_t * log) noexcept : hash(fmk, log), core(core), fmk(fmk), log(log), worker(fmk, log) {
+awh::RestServer::RestServer(const coreSrv_t * core, const fmk_t * fmk, const log_t * log) noexcept : core(core), fmk(fmk), log(log), worker(fmk, log) {
 	// Устанавливаем контекст сообщения
 	this->worker.ctx = this;
 	// Устанавливаем событие на запуск системы

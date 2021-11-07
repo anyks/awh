@@ -6,7 +6,7 @@
 
 - **HTTP/HTTPS**: REST - CLIENT/SERVER.
 - **WS/WSS**: WebSocket - CLIENT/SERVER.
-- **Proxy**: HTTP/SOCKS5 PROXY server support.
+- **Proxy**: HTTP/SOCKS5 PROXY CLIENT/SERVER.
 - **Compress**: GZIP/DEFLATE/BROTLI compression support.
 - **Authentication**: BASIC/DIGEST authentication support.
 
@@ -112,8 +112,6 @@ using namespace awh;
 int main(int argc, char * argv[]) noexcept {
 	fmk_t fmk(true);
 	log_t log(&fmk);
-	network_t nwk(&fmk);
-	uri_t uri(&fmk, &nwk);
 	coreSrv_t core(&fmk, &log);
 	restSrv_t rest(&core, &fmk, &log);
 
@@ -146,14 +144,16 @@ int main(int argc, char * argv[]) noexcept {
 		return true;
 	});
 
-	rest.on(&log, [](const size_t aid, const bool mode,  restSrv_t * rest, void * ctx) noexcept {
+	rest.on(&log, [](const size_t aid, const restSrv_t::mode_t mode, restSrv_t * rest, void * ctx) noexcept {
 		log_t * log = reinterpret_cast <log_t *> (ctx);
-		log->print("%s client", log_t::flag_t::INFO, (mode ? "Connect" : "Disconnect"));
+		log->print("%s client", log_t::flag_t::INFO, (mode == restSrv_t::mode_t::CONNECT ? "Connect" : "Disconnect"));
 	});
 
-	rest.on(&log, [](const size_t aid, const restSrv_t::req_t & req, restSrv_t * rest, void * ctx) noexcept {
-		if(req.method == web_t::method_t::GET){
-
+	rest.on(&log, [](const size_t aid, const http_t * http, restSrv_t * rest, void * ctx) noexcept {
+		const auto & query = http->getQuery();
+		if(!query.uri.empty() && (query.uri.find("favicon.ico") != string::npos))
+			rest->reject(aid, 404);
+		else if(query.method == web_t::method_t::GET){
 			const string body = "<html>\n<head>\n<title>Hello World!</title>\n</head>\n<body>\n"
 			"<h1>\"Hello, World!\" program</h1>\n"
 			"<div>\nFrom Wikipedia, the free encyclopedia<br>\n"
@@ -185,8 +185,6 @@ using namespace awh;
 int main(int argc, char * argv[]) noexcept {
 	fmk_t fmk(true);
 	log_t log(&fmk);
-	network_t nwk(&fmk);
-	uri_t uri(&fmk, &nwk);
 	coreCli_t core(&fmk, &log);
 	wsCli_t ws(&core, &fmk, &log);
 
@@ -207,11 +205,11 @@ int main(int argc, char * argv[]) noexcept {
 
 	ws.init("ws://127.0.0.1:2222", http_t::compress_t::DEFLATE);
 
-	ws.on(&log, [](const bool mode, wsCli_t * ws, void * ctx){
+	ws.on(&log, [](const wsCli_t::mode_t mode, wsCli_t * ws, void * ctx){
 		log_t * log = reinterpret_cast <log_t *> (ctx);
-		log->print("%s server", log_t::flag_t::INFO, (mode ? "Start" : "Stop"));
+		log->print("%s server", log_t::flag_t::INFO, (mode == wsCli_t::mode_t::CONNECT ? "Start" : "Stop"));
 
-		if(mode){
+		if(mode == wsCli_t::mode_t::CONNECT){
 			const string query = "{\"text\":\"Hello World!\"}";
 			ws->send(query.data(), query.size());
 		}
@@ -246,8 +244,6 @@ using namespace awh;
 int main(int argc, char * argv[]) noexcept {
 	fmk_t fmk;
 	log_t log(&fmk);
-	network_t nwk(&fmk);
-	uri_t uri(&fmk, &nwk);
 	coreSrv_t core(&fmk, &log);
 	wsSrv_t ws(&core, &fmk, &log);
 
@@ -285,17 +281,17 @@ int main(int argc, char * argv[]) noexcept {
 		return true;
 	});
 
-	ws.on(&log, [](const size_t aid, const bool mode,  wsSrv_t * ws, void * ctx) noexcept {
+	ws.on(&log, [](const size_t aid, const wsSrv_t::mode_t mode, wsSrv_t * ws, void * ctx) noexcept {
 		log_t * log = reinterpret_cast <log_t *> (ctx);
-		log->print("%s client", log_t::flag_t::INFO, (mode ? "Connect" : "Disconnect"));
+		log->print("%s client", log_t::flag_t::INFO, (mode == wsSrv_t::mode_t::CONNECT ? "Connect" : "Disconnect"));
 	});
 
-	ws.on(&log, [](const size_t aid, const u_short code, const string & mess,  wsSrv_t * ws, void * ctx) noexcept {
+	ws.on(&log, [](const size_t aid, const u_short code, const string & mess, wsSrv_t * ws, void * ctx) noexcept {
 		log_t * log = reinterpret_cast <log_t *> (ctx);
 		log->print("%s [%u]", log_t::flag_t::CRITICAL, mess.c_str(), code);
 	});
 
-	ws.on(&log, [](const size_t aid, const vector <char> & buffer, const bool utf8,  wsSrv_t * ws, void * ctx) noexcept {
+	ws.on(&log, [](const size_t aid, const vector <char> & buffer, const bool utf8, wsSrv_t * ws, void * ctx) noexcept {
 		if(utf8 && !buffer.empty()){
 			log_t * log = reinterpret_cast <log_t *> (ctx);
 			log->print("message: %s [%s]", log_t::flag_t::INFO, string(buffer.begin(), buffer.end()).c_str(), ws->getSub(aid).c_str());
@@ -305,6 +301,68 @@ int main(int argc, char * argv[]) noexcept {
 	});
 
 	ws.start();
+
+	return 0;
+}
+```
+
+### Example HTTPS PROXY Server
+
+```c++
+#include <server/proxy.hpp>
+
+using namespace std;
+using namespace awh;
+
+int main(int argc, char * argv[]) noexcept {
+	fmk_t fmk(true);
+	log_t log(&fmk);
+	proxySrv_t proxy(&fmk, &log);
+	log.setLogName("Proxy Server");
+	log.setLogFormat("%H:%M:%S %d.%m.%Y");
+
+	proxy.setRealm("ANYKS");
+	proxy.setOpaque("keySession");
+	proxy.setAuthType(auth_t::type_t::DIGEST, auth_t::hash_t::MD5);
+
+	proxy.init(2222, "127.0.0.1", http_t::compress_t::GZIP);
+
+	proxy.on(&log, [](const string & user, void * ctx) -> string {
+		log_t * log = reinterpret_cast <log_t *> (ctx);
+		log->print("USER: %s, PASS: %s", log_t::flag_t::INFO, user.c_str(), "password");
+
+		return "password";
+	});
+
+	/* For Basic Auth type
+	proxy.on(&log, [](const string & user, const string & password, void * ctx) -> bool {
+		log_t * log = reinterpret_cast <log_t *> (ctx);
+		log->print("USER: %s, PASS: %s", log_t::flag_t::INFO, user.c_str(), password.c_str());
+
+		return true;
+	});
+	*/
+
+	proxy.on(&log, [](const string & ip, const string & mac, proxySrv_t * proxy, void * ctx) -> bool {
+		log_t * log = reinterpret_cast <log_t *> (ctx);
+		log->print("ACCEPT: ip = %s, mac = %s", log_t::flag_t::INFO, ip.c_str(), mac.c_str());
+
+		return true;
+	});
+
+	proxy.on(&log, [](const size_t aid, const proxySrv_t::mode_t mode, proxySrv_t * proxy, void * ctx) noexcept {
+		log_t * log = reinterpret_cast <log_t *> (ctx);
+		log->print("%s client", log_t::flag_t::INFO, (mode == proxySrv_t::mode_t::CONNECT ? "Connect" : "Disconnect"));
+	});
+
+	proxy.on(&log, [](const size_t aid, const proxySrv_t::event_t event, http_t * http, proxySrv_t * proxy, void * ctx) -> bool {
+		log_t * log = reinterpret_cast <log_t *> (ctx);
+		log->print("%s client", log_t::flag_t::INFO, (event == proxySrv_t::event_t::RESPONSE ? "Response" : "Request"));
+
+		return true;
+	});
+
+	proxy.start();
 
 	return 0;
 }

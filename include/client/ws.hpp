@@ -30,6 +30,13 @@ namespace awh {
 	typedef class WebSocketClient {
 		public:
 			/**
+			 * Режим работы клиента
+			 */
+			enum class mode_t : uint8_t {
+				CONNECT    = 0x01,
+				DISCONNECT = 0x02
+			};
+			/**
 			 * Основные флаги приложения
 			 */
 			enum class flag_t : uint8_t {
@@ -97,7 +104,7 @@ namespace awh {
 			const coreCli_t * core = nullptr;
 		private:
 			// Функция обратного вызова, при запуске или остановки подключения к серверу
-			function <void (const bool, WebSocketClient *, void *)> openStopFn = nullptr;
+			function <void (const mode_t, WebSocketClient *, void *)> openStopFn = nullptr;
 			// Функция обратного вызова, при получении ошибки работы клиента
 			function <void (const u_short, const string &, WebSocketClient *, void *)> errorFn = nullptr;
 			// Функция обратного вызова, при получении сообщения с сервера
@@ -198,7 +205,7 @@ namespace awh {
 			 * @param ctx      контекст для вывода в сообщении
 			 * @param callback функция обратного вызова
 			 */
-			void on(void * ctx, function <void (const bool, WebSocketClient *, void *)> callback) noexcept;
+			void on(void * ctx, function <void (const mode_t, WebSocketClient *, void *)> callback) noexcept;
 			/**
 			 * on Метод установки функции обратного вызова на событие получения ошибок
 			 * @param ctx      контекст для вывода в сообщении

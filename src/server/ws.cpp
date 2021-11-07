@@ -117,7 +117,7 @@ void awh::WebSocketServer::disconnectCallback(const size_t aid, const size_t wid
 		// Выполняем удаление параметров адъютанта
 		ws->worker.removeAdj(aid);
 		// Если функция обратного вызова установлена, выполняем
-		if(ws->openStopFn != nullptr) ws->openStopFn(aid, false, ws, ws->ctx.at(0));
+		if(ws->openStopFn != nullptr) ws->openStopFn(aid, mode_t::DISCONNECT, ws, ws->ctx.at(0));
 	}
 }
 /**
@@ -289,7 +289,7 @@ void awh::WebSocketServer::readCallback(const char * buffer, const size_t size, 
 									// Отправляем сообщение клиенту
 									core->write(response.data(), response.size(), aid);
 									// Если функция обратного вызова установлена, выполняем
-									if(ws->openStopFn != nullptr) ws->openStopFn(aid, true, ws, ws->ctx.at(0));
+									if(ws->openStopFn != nullptr) ws->openStopFn(aid, mode_t::CONNECT, ws, ws->ctx.at(0));
 									// Завершаем работу
 									return;
 								// Выполняем реджект
@@ -651,7 +651,7 @@ void awh::WebSocketServer::init(const u_int port, const string & host, const htt
  * @param ctx      контекст для вывода в сообщении
  * @param callback функция обратного вызова
  */
-void awh::WebSocketServer::on(void * ctx, function <void (const size_t, const bool, WebSocketServer *, void *)> callback) noexcept {
+void awh::WebSocketServer::on(void * ctx, function <void (const size_t, const mode_t, WebSocketServer *, void *)> callback) noexcept {
 	// Устанавливаем контекст передаваемого объекта
 	this->ctx.at(0) = ctx;
 	// Устанавливаем функцию запуска и остановки

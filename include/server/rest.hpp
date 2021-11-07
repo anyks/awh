@@ -29,6 +29,13 @@ namespace awh {
 	typedef class RestServer {
 		public:
 			/**
+			 * Режим работы клиента
+			 */
+			enum class mode_t : uint8_t {
+				CONNECT    = 0x01,
+				DISCONNECT = 0x02
+			};
+			/**
 			 * Основные флаги приложения
 			 */
 			enum class flag_t : uint8_t {
@@ -36,38 +43,21 @@ namespace awh {
 				NOINFO   = 0x02, // Флаг запрещающий вывод информационных сообщений
 				WAITMESS = 0x04  // Флаг ожидания входящих сообщений
 			};
-			/**
-			 * Request Структура запроса клиента
-			 */
-			typedef struct Request {
-				string ip, mac;                              // IP и MAC адрес клиента
-				web_t::method_t method;                      // Метод запроса
-				vector <string> path;                        // Путь URL запроса
-				vector <char> entity;                        // Тело запроса
-				unordered_map <string, string> params;       // Параметры URL запроса
-				unordered_multimap <string, string> headers; // Заголовки клиента
-				/**
-				 * Request Конструктор
-				 */
-				Request() : ip(""), mac(""), method(web_t::method_t::NONE) {}
-			} req_t;
 		private:
 			// Хости сервера
 			string host = "";
 			// Порт сервера
 			u_int port = SERVER_PORT;
 		private:
-			// Создаём объект для компрессии-декомпрессии данных
-			mutable hash_t hash;
 			// Объект рабочего
 			workSrvRest_t worker;
 		private:
-			// Идентификатор сервера
-			string sid = "";
 			// Название сервера
-			string name = "";
+			string name = AWH_NAME;
+			// Идентификатор сервера
+			string sid = AWH_SHORT_NAME;
 			// Версия сервера
-			string version = "";
+			string version = AWH_VERSION;
 		private:
 			// Пароль шифрования передаваемых данных
 			string pass = "";
@@ -121,9 +111,9 @@ namespace awh {
 			function <void (const vector <char> &, const http_t *, void *)> chunkingFn = nullptr;
 		private:
 			// Функция обратного вызова, при запуске или остановки подключения к серверу
-			function <void (const size_t, const bool, RestServer *, void *)> openStopFn = nullptr;
+			function <void (const size_t, const mode_t, RestServer *, void *)> openStopFn = nullptr;
 			// Функция обратного вызова, при получении сообщения с сервера
-			function <void (const size_t, const req_t &, RestServer *, void *)> messageFn = nullptr;
+			function <void (const size_t, const http_t *, RestServer *, void *)> messageFn = nullptr;
 		private:
 			// Функция разрешения подключения клиента на сервере
 			function <bool (const string &, const string &, RestServer *, void *)> acceptFn = nullptr;
@@ -211,13 +201,13 @@ namespace awh {
 			 * @param ctx      контекст для вывода в сообщении
 			 * @param callback функция обратного вызова
 			 */
-			void on(void * ctx, function <void (const size_t, const bool, RestServer *, void *)> callback) noexcept;
+			void on(void * ctx, function <void (const size_t, const mode_t, RestServer *, void *)> callback) noexcept;
 			/**
 			 * on Метод установки функции обратного вызова на событие получения сообщений
 			 * @param ctx      контекст для вывода в сообщении
 			 * @param callback функция обратного вызова
 			 */
-			void on(void * ctx, function <void (const size_t, const req_t &, RestServer *, void *)> callback) noexcept;
+			void on(void * ctx, function <void (const size_t, const http_t *, RestServer *, void *)> callback) noexcept;
 		public:
 			/**
 			 * on Метод добавления функции извлечения пароля

@@ -29,6 +29,13 @@ namespace awh {
 	typedef class WebSocketServer {
 		public:
 			/**
+			 * Режим работы клиента
+			 */
+			enum class mode_t : uint8_t {
+				CONNECT    = 0x01,
+				DISCONNECT = 0x02
+			};
+			/**
 			 * Основные флаги приложения
 			 */
 			enum class flag_t : uint8_t {
@@ -49,12 +56,12 @@ namespace awh {
 			// Создаём объект для компрессии-декомпрессии данных
 			mutable hash_t hash;
 		private:
-			// Идентификатор сервера
-			string sid = "";
 			// Название сервера
-			string name = "";
+			string name = AWH_NAME;
+			// Идентификатор сервера
+			string sid = AWH_SHORT_NAME;
 			// Версия сервера
-			string version = "";
+			string version = AWH_VERSION;
 		private:
 			// Пароль шифрования передаваемых данных
 			string pass = "";
@@ -100,7 +107,7 @@ namespace awh {
 			const coreSrv_t * core = nullptr;
 		private:
 			// Функция обратного вызова, при запуске или остановки подключения к серверу
-			function <void (const size_t, const bool, WebSocketServer *, void *)> openStopFn = nullptr;
+			function <void (const size_t, const mode_t, WebSocketServer *, void *)> openStopFn = nullptr;
 			// Функция обратного вызова, при получении ошибки работы клиента
 			function <void (const size_t, const u_short, const string &, WebSocketServer *, void *)> errorFn = nullptr;
 			// Функция обратного вызова, при получении сообщения с сервера
@@ -215,7 +222,7 @@ namespace awh {
 			 * @param ctx      контекст для вывода в сообщении
 			 * @param callback функция обратного вызова
 			 */
-			void on(void * ctx, function <void (const size_t, const bool, WebSocketServer *, void *)> callback) noexcept;
+			void on(void * ctx, function <void (const size_t, const mode_t, WebSocketServer *, void *)> callback) noexcept;
 			/**
 			 * on Метод установки функции обратного вызова на событие получения ошибок
 			 * @param ctx      контекст для вывода в сообщении

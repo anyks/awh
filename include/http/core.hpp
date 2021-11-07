@@ -341,6 +341,17 @@ namespace awh {
 			const string & getMessage(const u_short code) const noexcept;
 		public:
 			/**
+			 * request Метод создания запроса как он есть
+			 * @return буфер данных запроса в бинарном виде
+			 */
+			vector <char> request() const noexcept;
+			/**
+			 * response Метод создания ответа как он есть
+			 * @return буфер данных ответа в бинарном виде
+			 */
+			vector <char> response() const noexcept;
+		public:
+			/**
 			 * proxy Метод создания запроса для авторизации на прокси-сервере
 			 * @param url объект параметров REST запроса
 			 * @return    буфер данных запроса в бинарном виде

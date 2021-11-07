@@ -137,7 +137,7 @@ awh::Http::stath_t awh::WSServer::checkAuth() noexcept {
 			// Устанавливаем заголовок HTTP в параметры авторизации
 			this->authSrv.setHeader(auth);
 			// Выполняем проверку авторизации
-			if(this->authSrv.check())
+			if(this->authSrv.check("get"))
 				// Устанавливаем успешный результат авторизации
 				result = http_t::stath_t::GOOD;
 		}

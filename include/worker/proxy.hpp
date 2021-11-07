@@ -21,7 +21,7 @@
 /**
  * Наши модули
  */
-#include <http/server.hpp>
+#include <http/proxy.hpp>
 #include <worker/client.hpp>
 #include <worker/server.hpp>
 
@@ -41,11 +41,13 @@ namespace awh {
 			 * AdjParam Структура параметров адъютанта
 			 */
 			typedef struct AdjParam {
-				httpSrv_t http;              // Создаём объект для работы с HTTP
+				httpCli_t cli;               // Создаём объект для работы с HTTP клиентом
+				httpProxy_t srv;             // Создаём объект для работы с HTTP сервером
 				workCli_t worker;            // Объект рабочего для клиента
 				bool crypt;                  // Флаг шифрования сообщений
 				bool alive;                  // Флаг долгоживущего подключения
 				bool close;                  // Флаг требования закрыть адъютанта
+				bool locked;                 // Флаг блокировки обработки запроса
 				bool connect;                // Флаг выполненного подключения
 				size_t requests;             // Количество выполненных запросов
 				size_t readBytes;            // Количество полученных байт для закрытия подключения
@@ -53,16 +55,19 @@ namespace awh {
 				time_t checkPoint;           // Контрольная точка ответа на пинг
 				web_t::method_t method;      // Метод HTTP выполняемого запроса
 				http_t::compress_t compress; // Флаги работы с сжатыми данными
-				vector <char> buffer;        // Буфер бинарных необработанных данных
+				vector <char> client;        // Буфер бинарных необработанных данных клиента
+				vector <char> server;        // Буфер бинарных необработанных данных сервера
 				/**
 				 * AdjParam Конструктор
 				 */
 				AdjParam(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcept :
-					http(fmk, log, uri),
+					cli(fmk, log, uri),
+					srv(fmk, log, uri),
 					worker(fmk, log),
 					crypt(false),
 					alive(false),
 					close(false),
+					locked(false),
 					connect(false),
 					requests(0),
 					readBytes(0),

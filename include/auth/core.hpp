@@ -102,21 +102,16 @@ namespace awh {
 			 * @param header заголовок HTTP с параметрами авторизации
 			 */
 			virtual void setHeader(const string & header) noexcept = 0;
-			/**
-			 * getHeader Метод получения строки авторизации HTTP заголовка
-			 * @param mode режим вывода только значения заголовка
-			 * @return     строка авторизации
-			 */
-			virtual const string getHeader(const bool mode = false) noexcept = 0;
 		protected:
 			/**
 			 * response Метод создания ответа на дайджест авторизацию
+			 * @param method метод HTTP запроса
 			 * @param digest параметры дайджест авторизации
 			 * @param user   логин пользователя для проверки
 			 * @param pass   пароль пользователя для проверки
 			 * @return       ответ в 16-м виде
 			 */
-			const string response(const string & user, const string & pass, const digest_t & digest) const noexcept;
+			const string response(const string & method, const string & user, const string & pass, const digest_t & digest) const noexcept;
 		public:
 			/**
 			 * setType Метод установки типа авторизации

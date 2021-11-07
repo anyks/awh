@@ -30,6 +30,20 @@ namespace awh {
 	typedef class ProxyServer {
 		public:
 			/**
+			 * Режим работы клиента
+			 */
+			enum class mode_t : uint8_t {
+				CONNECT    = 0x01,
+				DISCONNECT = 0x02
+			};
+			/**
+			 * Режим событие клиента
+			 */
+			enum class event_t : uint8_t {
+				REQUEST  = 0x01,
+				RESPONSE = 0x02
+			};
+			/**
 			 * Основные флаги приложения
 			 */
 			enum class flag_t : uint8_t {
@@ -37,43 +51,26 @@ namespace awh {
 				NOINFO   = 0x02, // Флаг запрещающий вывод информационных сообщений
 				WAITMESS = 0x04  // Флаг ожидания входящих сообщений
 			};
-			/**
-			 * Request Структура запроса клиента
-			 */
-			typedef struct Request {
-				string ip, mac;                              // IP и MAC адрес клиента
-				web_t::method_t method;                      // Метод запроса
-				vector <string> path;                        // Путь URL запроса
-				vector <char> entity;                        // Тело запроса
-				unordered_map <string, string> params;       // Параметры URL запроса
-				unordered_multimap <string, string> headers; // Заголовки клиента
-				/**
-				 * Request Конструктор
-				 */
-				Request() : ip(""), mac(""), method(web_t::method_t::NONE) {}
-			} req_t;
 		private:
 			// Хости сервера
 			string host = "";
 			// Порт сервера
 			u_int port = SERVER_PORT;
 		private:
-			// Создаём объект для компрессии-декомпрессии данных
-			mutable hash_t hash;
-			// Объект рабочего для сервера
-			workSrvProxy_t worker;
-		private:
 			// Создаём объект биндинга TCP/IP для клиента
 			coreCli_t coreCli;
 			// Создаём объект биндинга TCP/IP для сервера
 			coreSrv_t coreSrv;
 		private:
-			// Идентификатор сервера
-			string sid = "";
+			// Объект рабочего для сервера
+			workSrvProxy_t worker;
+		private:
 			// Название сервера
-			string name = "";
+			string name = AWH_NAME;
+			// Идентификатор сервера
+			string sid = AWH_SHORT_NAME;
 			// Версия сервера
-			string version = "";
+			string version = AWH_VERSION;
 		private:
 			// Пароль шифрования передаваемых данных
 			string pass = "";
@@ -113,7 +110,8 @@ namespace awh {
 			vector <void *> ctx = {
 				nullptr, nullptr,
 				nullptr, nullptr,
-				nullptr, nullptr
+				nullptr, nullptr,
+				nullptr
 			};
 		private:
 			// Создаём объект фреймворка
@@ -125,9 +123,11 @@ namespace awh {
 			function <void (const vector <char> &, const http_t *, void *)> chunkingFn = nullptr;
 		private:
 			// Функция обратного вызова, при запуске или остановки подключения к серверу
-			function <void (const size_t, const bool, ProxyServer *, void *)> openStopFn = nullptr;
+			function <void (const size_t, const mode_t, ProxyServer *, void *)> openStopFn = nullptr;
 			// Функция обратного вызова, при получении сообщения с сервера
-			function <void (const size_t, const req_t &, ProxyServer *, void *)> messageFn = nullptr;
+			function <bool (const size_t, const event_t, http_t *, ProxyServer *, void *)> messageFn = nullptr;
+			// Функция обратного вызова, при получении сообщения в бинарном виде с сервера
+			function <bool (const size_t, const event_t, const char *, const size_t, ProxyServer *, void *)> binaryFn = nullptr;
 		private:
 			// Функция разрешения подключения клиента на сервере
 			function <bool (const string &, const string &, ProxyServer *, void *)> acceptFn = nullptr;
@@ -234,6 +234,14 @@ namespace awh {
 			 * @param ctx    передаваемый контекст модуля
 			 */
 			static void writeServerCallback(const char * buffer, const size_t size, const size_t aid, const size_t wid, core_t * core, void * ctx) noexcept;
+		private:
+			/**
+			 * prepare Метод обработки входящих данных
+			 * @param aid  идентификатор адъютанта
+			 * @param wid  идентификатор воркера
+			 * @param core объект биндинга TCP/IP
+			 */
+			void prepare(const size_t aid, const size_t wid, core_t * core) noexcept;
 		public:
 			/**
 			 * init Метод инициализации WebSocket клиента
@@ -248,13 +256,19 @@ namespace awh {
 			 * @param ctx      контекст для вывода в сообщении
 			 * @param callback функция обратного вызова
 			 */
-			void on(void * ctx, function <void (const size_t, const bool, ProxyServer *, void *)> callback) noexcept;
+			void on(void * ctx, function <void (const size_t, const mode_t, ProxyServer *, void *)> callback) noexcept;
 			/**
 			 * on Метод установки функции обратного вызова на событие получения сообщений
 			 * @param ctx      контекст для вывода в сообщении
 			 * @param callback функция обратного вызова
 			 */
-			void on(void * ctx, function <void (const size_t, const req_t &, ProxyServer *, void *)> callback) noexcept;
+			void on(void * ctx, function <bool (const size_t, const event_t, http_t *, ProxyServer *, void *)> callback) noexcept;
+			/**
+			 * on Метод установки функции обратного вызова на событие получения сообщений в бинарном виде
+			 * @param ctx      контекст для вывода в сообщении
+			 * @param callback функция обратного вызова
+			 */
+			void on(void * ctx, function <bool (const size_t, const event_t, const char *, const size_t, ProxyServer *, void *)> callback) noexcept;
 		public:
 			/**
 			 * on Метод добавления функции извлечения пароля

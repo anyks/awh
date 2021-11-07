@@ -56,10 +56,11 @@ namespace awh {
 			void setHeader(const string & header) noexcept;
 			/**
 			 * getHeader Метод получения строки авторизации HTTP заголовка
-			 * @param mode режим вывода только значения заголовка
-			 * @return     строка авторизации
+			 * @param method метод HTTP запроса
+			 * @param mode   режим вывода только значения заголовка
+			 * @return       строка авторизации
 			 */
-			const string getHeader(const bool mode = false) noexcept;
+			const string getHeader(const string & method, const bool mode = false) noexcept;
 		public:
 			/**
 			 * AuthClient Конструктор

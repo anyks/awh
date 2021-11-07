@@ -8,19 +8,19 @@
  */
 
 // Подключаем заголовочный файл
-#include <http/server.hpp>
+#include <http/proxy.hpp>
 
 /**
  * checkAuth Метод проверки авторизации
  * @return результат проверки авторизации
  */
-awh::Http::stath_t awh::HttpServer::checkAuth() noexcept {
+awh::Http::stath_t awh::HttpProxy::checkAuth() noexcept {
 	// Результат работы функции
 	stath_t result = stath_t::FAULT;
 	// Если авторизация требуется
 	if(this->authSrv.getType() != auth_t::type_t::NONE){
 		// Получаем параметры авторизации
-		const string & auth = this->web.getHeader("authorization");
+		const string & auth = this->web.getHeader("proxy-authorization");
 		// Если параметры авторизации найдены
 		if(!auth.empty()){
 			// Метод HTTP запроса
@@ -62,7 +62,7 @@ awh::Http::stath_t awh::HttpServer::checkAuth() noexcept {
  * setRealm Метод установки название сервера
  * @param realm название сервера
  */
-void awh::HttpServer::setRealm(const string & realm) noexcept {
+void awh::HttpProxy::setRealm(const string & realm) noexcept {
 	// Если название сервера передано
 	if(!realm.empty()) this->authSrv.setRealm(realm);
 }
@@ -70,7 +70,7 @@ void awh::HttpServer::setRealm(const string & realm) noexcept {
  * setOpaque Метод установки временного ключа сессии сервера
  * @param opaque временный ключ сессии сервера
  */
-void awh::HttpServer::setOpaque(const string & opaque) noexcept {
+void awh::HttpProxy::setOpaque(const string & opaque) noexcept {
 	// Если временный ключ сессии сервера передан
 	if(!opaque.empty()) this->authSrv.setOpaque(opaque);
 }
@@ -79,7 +79,7 @@ void awh::HttpServer::setOpaque(const string & opaque) noexcept {
  * @param ctx      контекст для вывода в сообщении
  * @param callback функция обратного вызова для извлечения пароля
  */
-void awh::HttpServer::setExtractPassCallback(void * ctx, function <string (const string &, void *)> callback) noexcept {
+void awh::HttpProxy::setExtractPassCallback(void * ctx, function <string (const string &, void *)> callback) noexcept {
 	// Устанавливаем внешнюю функцию
 	this->authSrv.setExtractPassCallback(ctx, callback);
 }
@@ -88,7 +88,7 @@ void awh::HttpServer::setExtractPassCallback(void * ctx, function <string (const
  * @param ctx      контекст для вывода в сообщении
  * @param callback функция обратного вызова для обработки авторизации
  */
-void awh::HttpServer::setAuthCallback(void * ctx, function <bool (const string &, const string &, void *)> callback) noexcept {
+void awh::HttpProxy::setAuthCallback(void * ctx, function <bool (const string &, const string &, void *)> callback) noexcept {
 	// Устанавливаем внешнюю функцию
 	this->authSrv.setAuthCallback(ctx, callback);
 }
@@ -97,7 +97,7 @@ void awh::HttpServer::setAuthCallback(void * ctx, function <bool (const string &
  * @param type тип авторизации
  * @param hash алгоритм шифрования для Digest авторизации
  */
-void awh::HttpServer::setAuthType(const auth_t::type_t type, const auth_t::hash_t hash) noexcept {
+void awh::HttpProxy::setAuthType(const auth_t::type_t type, const auth_t::hash_t hash) noexcept {
 	// Устанавливаем тип авторизации
 	this->authSrv.setType(type, hash);
 }
