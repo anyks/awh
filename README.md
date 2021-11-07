@@ -151,6 +151,7 @@ int main(int argc, char * argv[]) noexcept {
 
 	rest.on(&log, [](const size_t aid, const http_t * http, restSrv_t * rest, void * ctx) noexcept {
 		const auto & query = http->getQuery();
+
 		if(!query.uri.empty() && (query.uri.find("favicon.ico") != string::npos))
 			rest->reject(aid, 404);
 		else if(query.method == web_t::method_t::GET){
