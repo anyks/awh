@@ -42,7 +42,7 @@ int main(int argc, char * argv[]) noexcept {
 	// Устанавливаем временный ключ сессии
 	proxy.setOpaque("keySession");
 	// Устанавливаем таймаут для метода CONNECT
-	proxy.setConnectTimeouts(30, 30);
+	proxy.setConnectTimeouts(30, 0);
 	// Устанавливаем тип авторизации
 	// proxy.setAuthType();
 	proxy.setAuthType(auth_t::type_t::DIGEST, auth_t::hash_t::MD5);

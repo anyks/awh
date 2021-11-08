@@ -8,7 +8,7 @@
  */
 
 // Версия приложения
-#define AWH_VERSION "1.4.4"
+#define AWH_VERSION "1.4.5"
 // Короткое название библиотеки
 #define AWH_SHORT_NAME "AWH"
 // Название библиотеки
