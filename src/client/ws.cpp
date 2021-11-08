@@ -351,6 +351,8 @@ void awh::WebSocketClient::readCallback(const char * buffer, const size_t size, 
 								goto Reconnect;
 							// Если список фрагментированных сообщений существует
 							} else if(!ws->fragmes.empty()) {
+								// Очищаем список фрагментированных сообщений
+								ws->fragmes.clear();
 								// Создаём сообщение
 								mess = mess_t(1002, "opcode for subsequent fragmented messages should not be set");
 								// Выводим сообщение
