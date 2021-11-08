@@ -30,7 +30,7 @@ const bool awh::AuthServer::check(const string & method) noexcept {
 			// Если данные пользователя переданы
 			if(!method.empty() && !this->user.empty() && !this->userDigest.nc.empty() && !this->userDigest.uri.empty() && !this->userDigest.cnonce.empty() && !this->userDigest.resp.empty()){
 				// Если на сервере счётчик меньше
-				if((stoi(this->digest.nc) < stoi(this->userDigest.nc)) && (this->extractPassFn != nullptr)){
+				if((this->fmk->hexToDec(this->digest.nc) <= this->fmk->hexToDec(this->userDigest.nc)) && (this->extractPassFn != nullptr)){
 					// Получаем пароль пользователя
 					const string & pass = this->extractPassFn(this->user, this->ctx.at(0));
 					// Если пароль пользователя получен

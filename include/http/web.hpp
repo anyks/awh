@@ -214,6 +214,11 @@ namespace awh {
 			void clearHeaders() noexcept;
 		public:
 			/**
+			 * getBody Метод получения данных тела запроса
+			 * @return буфер данных тела запроса
+			 */
+			const vector <char> & getBody() const noexcept;
+			/**
 			 * setBody Метод установки данных тела
 			 * @param body буфер тела для установки
 			 */
@@ -238,10 +243,10 @@ namespace awh {
 			void setHeaders(const unordered_multimap <string, string> & headers) noexcept;
 		public:
 			/**
-			 * getBody Метод получения данных тела запроса
-			 * @return буфер данных тела запроса
+			 * rmHeader Метод удаления заголовка
+			 * @param key ключ заголовка
 			 */
-			const vector <char> & getBody() const noexcept;
+			void rmHeader(const string & key) noexcept;
 			/**
 			 * getHeader Метод получения данных заголовка
 			 * @param key ключ заголовка

@@ -577,6 +577,14 @@ void awh::Web::clearHeaders() noexcept {
 	this->headers.clear();
 }
 /**
+ * getBody Метод получения данных тела запроса
+ * @return буфер данных тела запроса
+ */
+const vector <char> & awh::Web::getBody() const noexcept {
+	// Выводим данные тела
+	return this->body;
+}
+/**
  * setBody Метод установки данных тела
  * @param body буфер тела для установки
  */
@@ -615,12 +623,24 @@ void awh::Web::setHeaders(const unordered_multimap <string, string> & headers) n
 	this->headers = headers;
 }
 /**
- * getBody Метод получения данных тела запроса
- * @return буфер данных тела запроса
+ * rmHeader Метод удаления заголовка
+ * @param key ключ заголовка
  */
-const vector <char> & awh::Web::getBody() const noexcept {
-	// Выводим данные тела
-	return this->body;
+void awh::Web::rmHeader(const string & key) noexcept {
+	// Если ключ заголовка передан
+	if(!key.empty()){
+		// Получаем название заголовка
+		const string & name = this->fmk->toLower(key);
+		// Выполняем перебор всех заголовков
+		for(auto it = this->headers.begin(); it != this->headers.end();){
+			// Выполняем проверку существования заголовка
+			if(this->fmk->toLower(it->first).compare(name) == 0)
+				// Выполняем удаление указанного заголовка
+				it = this->headers.erase(it);
+			// Иначе ищем заголовок дальше
+			else it++;
+		}
+	}
 }
 /**
  * getHeader Метод получения данных заголовка
@@ -630,10 +650,15 @@ const vector <char> & awh::Web::getBody() const noexcept {
 const string & awh::Web::getHeader(const string & key) const noexcept {
 	// Если ключ заголовка передан
 	if(!key.empty()){
-		// Выполняем поиск ключа заголовка
-		auto it = this->headers.find(key);
-		// Если заголовок найден
-		if(it != this->headers.end()) return it->second;
+		// Получаем название заголовка
+		const string & name = this->fmk->toLower(key);
+		// Выполняем перебор всех заголовков
+		for(auto & header : this->headers){
+			// Выполняем проверку существования заголовка
+			if(this->fmk->toLower(header.first).compare(name) == 0)
+				// Выводим найденный заголовок
+				return header.second;
+		}
 	}
 	// Выводим результат
 	return this->header;

@@ -154,17 +154,25 @@ void awh::ProxyServer::connectServerCallback(const size_t aid, const size_t wid,
 		// Получаем параметры подключения адъютанта
 		workSrvProxy_t::adjp_t * adj = const_cast <workSrvProxy_t::adjp_t *> (proxy->worker.getAdj(aid));
 		// Устанавливаем размер чанка
+		adj->cli.setChunkSize(proxy->chunkSize);
 		adj->srv.setChunkSize(proxy->chunkSize);
 		// Устанавливаем данные сервиса
+		adj->cli.setServ(proxy->sid, proxy->name, proxy->version);
 		adj->srv.setServ(proxy->sid, proxy->name, proxy->version);
 		// Если функция обратного вызова для обработки чанков установлена
 		if(proxy->chunkingFn != nullptr)
 			// Устанавливаем внешнюю функцию обработки вызова для получения чанков
-			adj->srv.setChunkingFn(proxy->ctx.at(5), proxy->chunkingFn);
+			adj->cli.setChunkingFn(proxy->ctx.at(5), proxy->chunkingFn);
 		// Устанавливаем функцию обработки вызова для получения чанков
-		else adj->srv.setChunkingFn(proxy, &chunkingCallback);
-		// Устанавливаем параметры шифрования
-		if(proxy->crypt) adj->srv.setCrypt(proxy->pass, proxy->salt, proxy->aes);
+		else adj->cli.setChunkingFn(proxy, &chunkingCallback);
+		// Устанавливаем функцию обработки вызова для получения чанков
+		adj->srv.setChunkingFn(proxy, &chunkingCallback);
+		// Если данные будем передавать в зашифрованном виде
+		if(proxy->crypt){
+			// Устанавливаем параметры шифрования
+			adj->cli.setCrypt(proxy->pass, proxy->salt, proxy->aes);
+			adj->srv.setCrypt(proxy->pass, proxy->salt, proxy->aes);
+		}
 		// Если сервер требует авторизацию
 		if(proxy->authType != auth_t::type_t::NONE){
 			// Определяем тип авторизации
@@ -604,6 +612,8 @@ void awh::ProxyServer::prepare(const size_t aid, const size_t wid, core_t * core
 								}
 							// Если подключение выполнено
 							} else {
+								// Выполняем удаление заголовка авторизации на прокси-сервере
+								adj->srv.rmHeader("proxy-authorization");
 								{
 									// Получаем данные запроса
 									const auto & query = adj->srv.getQuery();
@@ -616,7 +626,7 @@ void awh::ProxyServer::prepare(const size_t aid, const size_t wid, core_t * core
 									// Иначе просто формируем заголовок Via
 									else via = this->fmk->format("%.1f %s:%u", query.ver, this->host.c_str(), this->port);
 									// Устанавливаем заголовок Via
-									adj->srv.addHeader("Via", via);
+									adj->srv.addHeader("via", via);
 								}{
 									// Название операционной системы
 									const char * os = nullptr;
@@ -637,7 +647,7 @@ void awh::ProxyServer::prepare(const size_t aid, const size_t wid, core_t * core
 										case (uint8_t) fmk_t::os_t::FREEBSD: os = "FreeBSD"; break;
 									}
 									// Устанавливаем наименование агента
-									adj->srv.addHeader("X-Proxy-Agent", this->fmk->format("(%s; %s) %s/%s", os, this->name.c_str(), this->sid.c_str(), this->version.c_str()));
+									adj->srv.addHeader("x-proxy-agent", this->fmk->format("(%s; %s) %s/%s", os, this->name.c_str(), this->sid.c_str(), this->version.c_str()));
 								}
 								// Если функция обратного вызова установлена, выполняем
 								if(this->messageFn != nullptr){

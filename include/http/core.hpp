@@ -202,10 +202,16 @@ namespace awh {
 			virtual void reset() noexcept;
 		public:
 			/**
+			 * rmBlack Метод удаления заголовка из чёрного списка
+			 * @param key ключ заголовка
+			 */
+			void rmBlack(const string & key) noexcept;
+			/**
 			 * addBlack Метод добавления заголовка в чёрный список
 			 * @param key ключ заголовка
 			 */
 			void addBlack(const string & key) noexcept;
+		public:
 			/**
 			 * parse Метод парсинга сырых данных
 			 * @param buffer буфер данных для обработки
@@ -248,6 +254,12 @@ namespace awh {
 			 * @return буфер данных тела запроса
 			 */
 			const vector <char> & getBody() const noexcept;
+		public:
+			/**
+			 * rmHeader Метод удаления заголовка
+			 * @param key ключ заголовка
+			 */
+			void rmHeader(const string & key) noexcept;
 			/**
 			 * getHeader Метод получения данных заголовка
 			 * @param key ключ заголовка

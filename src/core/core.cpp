@@ -341,6 +341,8 @@ void awh::Core::bind(Core * core) noexcept {
 		core->locker = (core->base != nullptr);
 		// Если блокировка базы событий выполнена
 		if(core->locker){
+			// Блокируем информационные сообщения для клиента
+			core->noinfo = true;
 			// Добавляем базу событий для DNS резолвера IPv4
 			core->dns4.setBase(core->base);
 			// Добавляем базу событий для DNS резолвера IPv6

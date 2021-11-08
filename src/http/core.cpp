@@ -141,6 +141,14 @@ void awh::Http::reset() noexcept {
 	this->state = state_t::NONE;
 }
 /**
+ * rmBlack Метод удаления заголовка из чёрного списка
+ * @param key ключ заголовка
+ */
+void awh::Http::rmBlack(const string & key) noexcept {
+	// Если ключ заголовка передан, удаляем его
+	if(!key.empty()) this->black.erase(this->fmk->toLower(key));
+}
+/**
  * addBlack Метод добавления заголовка в чёрный список
  * @param key ключ заголовка
  */
@@ -287,6 +295,14 @@ const vector <char> awh::Http::payload() const noexcept {
 const vector <char> & awh::Http::getBody() const noexcept {
 	// Выводим данные тела
 	return this->web.getBody();
+}
+/**
+ * rmHeader Метод удаления заголовка
+ * @param key ключ заголовка
+ */
+void awh::Http::rmHeader(const string & key) noexcept {
+	// Выполняем удаление заголовка
+	this->web.rmHeader(key);
 }
 /**
  * getHeader Метод получения данных заголовка
@@ -1429,6 +1445,8 @@ void awh::Http::setChunkingFn(void * ctx, function <void (const vector <char> &,
 	this->ctx.at(0) = ctx;
 	// Устанавливаем функцию обратного вызова
 	this->chunkingFn = callback;
+	// Устанавливаем функцию обратного вызова для получения чанков
+	this->web.setChunkingFn(this, &chunkingCallback);
 }
 /**
  * setChunkSize Метод установки размера чанка
