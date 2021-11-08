@@ -169,6 +169,24 @@ string awh::Framework::toUpper(const string & str) const noexcept {
 	return result;
 }
 /**
+ * smartUpper Метод умного перевода символов в верхний регистр
+ * @param str строка для перевода
+ * @return    строка в верхнем регистре
+ */
+string awh::Framework::smartUpper(const string & str) const noexcept {
+	// Результат работы функции
+	string result = str;
+	// Если строка передана
+	if(!str.empty()){
+		// Получаем временную строку
+		const wstring & tmp = this->convert(result);
+		// Выполняем перевод символов в верхний регистр
+		result = this->convert(this->smartUpper(tmp));
+	}
+	// Выводим результат
+	return result;
+}
+/**
  * decToHex Метод конвертации 10-го числа в 16-е
  * @param number число для конвертации
  * @return       результат конвертации
@@ -514,6 +532,31 @@ wstring awh::Framework::toUpper(const wstring & str) const noexcept {
 	if(!str.empty()){
 		// Переходим по всем буквам слова и формируем новую строку
 		for(auto & c : str) result.append(1, towupper(c));
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * smartUpper Метод умного перевода символов в верхний регистр
+ * @param str строка для перевода
+ * @return    строка в верхнем регистре
+ */
+wstring awh::Framework::smartUpper(const wstring & str) const noexcept {
+	// Результат работы функции
+	wstring result = L"";
+	// Если строка передана
+	if(!str.empty()){
+		// Флаг детекции символа
+		bool mode = true;
+		// Переходим по всем буквам слова и формируем новую строку
+		for(auto & c : str){
+			// Если флаг установлен
+			if(mode) result.append(1, towupper(c));
+			// Иначе добавляем символ как есть
+			else result.append(1, c);
+			// Если найден спецсимвол, устанавливаем флаг детекции
+			mode = ((c == L'-') || (c == L'_') || this->isSpace(c));
+		}
 	}
 	// Выводим результат
 	return result;
@@ -997,10 +1040,10 @@ bool awh::Framework::isDecimal(const wstring & word) const noexcept {
 	return result;
 }
 /**
- * getzones Метод извлечения списка пользовательских зон интернета
+ * getZones Метод извлечения списка пользовательских зон интернета
  * @return список доменных зон
  */
-const std::set <wstring> & awh::Framework::getzones() const noexcept {
+const std::set <wstring> & awh::Framework::getZones() const noexcept {
 	// Выводим список доменных зон интернета
 	return this->nwt.getZones();
 }
@@ -1105,45 +1148,45 @@ void awh::Framework::split(const string & str, const string & delim, vector <wst
 	::split(this->convert(str), this->convert(delim), v);
 }
 /**
- * setzone Метод установки пользовательской зоны
+ * setZone Метод установки пользовательской зоны
  * @param zone пользовательская зона
  */
-void awh::Framework::setzone(const string & zone) noexcept {
+void awh::Framework::setZone(const string & zone) noexcept {
 	// Если зона передана, устанавливаем её
 	if(!zone.empty()) this->nwt.setZone(this->convert(zone));
 }
 /**
- * setzone Метод установки пользовательской зоны
+ * setZone Метод установки пользовательской зоны
  * @param zone пользовательская зона
  */
-void awh::Framework::setzone(const wstring & zone) noexcept {
+void awh::Framework::setZone(const wstring & zone) noexcept {
 	// Если зона передана, устанавливаем её
 	if(!zone.empty()) this->nwt.setZone(zone);
 }
 /**
- * setzones Метод установки списка пользовательских зон
+ * setZones Метод установки списка пользовательских зон
  * @param zones список доменных зон интернета
  */
-void awh::Framework::setzones(const std::set <string> & zones) noexcept {
+void awh::Framework::setZones(const std::set <string> & zones) noexcept {
 	// Устанавливаем список доменных зон
 	if(!zones.empty()){
 		// Переходим по всему списку доменных зон
-		for(auto & zone : zones) this->setzone(zone);
+		for(auto & zone : zones) this->setZone(zone);
 	}
 }
 /**
- * setzones Метод установки списка пользовательских зон
+ * setZones Метод установки списка пользовательских зон
  * @param zones список доменных зон интернета
  */
-void awh::Framework::setzones(const std::set <wstring> & zones) noexcept {
+void awh::Framework::setZones(const std::set <wstring> & zones) noexcept {
 	// Устанавливаем список доменных зон
 	if(!zones.empty()) this->nwt.setZones(zones);
 }
 /**
- * setlocale Метод установки локали
+ * setLocale Метод установки локали
  * @param locale локализация приложения
  */
-void awh::Framework::setlocale(const string & locale) noexcept {
+void awh::Framework::setLocale(const string & locale) noexcept {
 	// Устанавливаем локаль
 	if(!locale.empty()){
 		// Создаём новую локаль
@@ -1188,7 +1231,7 @@ time_t awh::Framework::strToTime(const string & date, const string & format) con
 		// Зануляем структуру
 		memset(&tm, 0, sizeof(struct tm));
 		// Выполняем парсинг даты
-		this->strptime(date, format, &tm);
+		this->strpTime(date, format, &tm);
 		// Выводим результат
 		result = mktime(&tm);
 	}
@@ -1243,13 +1286,13 @@ string awh::Framework::timeToAbbr(const time_t date) const noexcept {
 	return result;
 }
 /**
- * strptime Функция получения Unix TimeStamp из строки
+ * strpTime Функция получения Unix TimeStamp из строки
  * @param str    строка с датой
  * @param format форматы даты
  * @param tm     объект даты
  * @return       результат работы
  */
-string awh::Framework::strptime(const string & str, const string & format, struct tm * tm) const noexcept {
+string awh::Framework::strpTime(const string & str, const string & format, struct tm * tm) const noexcept {
 	// Результат работы функции
 	string result = "";
 	// Если данные переданы
@@ -1738,7 +1781,7 @@ void awh::Framework::cleanWinSock() noexcept {
  */
 awh::Framework::Framework(const bool winSock) noexcept : winSock(winSock) {
 	// Устанавливаем локализацию системы
-	this->setlocale();
+	this->setLocale();
 	// Выполняем инициализацию сокетов в OS Windows
 	if(winSock) this->initWinSock();
 }
@@ -1749,7 +1792,7 @@ awh::Framework::Framework(const bool winSock) noexcept : winSock(winSock) {
  */
 awh::Framework::Framework(const string & locale, const bool winSock) noexcept : winSock(winSock) {
 	// Устанавливаем локализацию системы
-	this->setlocale(locale);
+	this->setLocale(locale);
 	// Выполняем инициализацию сокетов в OS Windows
 	if(winSock) this->initWinSock();
 }

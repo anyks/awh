@@ -224,7 +224,7 @@ vector <char> awh::WS::response() noexcept {
 		// Добавляем заголовок хеша ключа
 		this->addHeader("Sec-WebSocket-Accept", hash.c_str());
 		// Выводим результат
-		return http_t::response(101);
+		return http_t::response((u_int) 101);
 	}
 	// Выводим результат
 	return result;

@@ -186,6 +186,12 @@ namespace awh {
 			 * @return    строка в верхнем регистре
 			 */
 			string toUpper(const string & str) const noexcept;
+			/**
+			 * smartUpper Метод умного перевода символов в верхний регистр
+			 * @param str строка для перевода
+			 * @return    строка в верхнем регистре
+			 */
+			string smartUpper(const string & str) const noexcept;
 		public:
 			/**
 			 * decToHex Метод конвертации 10-го числа в 16-е
@@ -281,6 +287,12 @@ namespace awh {
 			 * @return    строка в верхнем регистре
 			 */
 			wstring toUpper(const wstring & str) const noexcept;
+			/**
+			 * smartUpper Метод умного перевода символов в верхний регистр
+			 * @param str строка для перевода
+			 * @return    строка в верхнем регистре
+			 */
+			wstring smartUpper(const wstring & str) const noexcept;
 		public:
 			/**
 			 * arabic2Roman Метод перевода арабских чисел в римские
@@ -391,10 +403,10 @@ namespace awh {
 			bool isDecimal(const wstring & word) const noexcept;
 		public:
 			/**
-			 * getzones Метод извлечения списка пользовательских зон интернета
+			 * getZones Метод извлечения списка пользовательских зон интернета
 			 * @return список доменных зон
 			 */
-			const std::set <wstring> & getzones() const noexcept;
+			const std::set <wstring> & getZones() const noexcept;
 			/**
 			 * urls Метод извлечения координат url адресов в строке
 			 * @param text текст для извлечения url адресов
@@ -447,32 +459,32 @@ namespace awh {
 			void split(const string & str, const string & delim, vector <wstring> & v) const noexcept;
 		public:
 			/**
-			 * setzone Метод установки пользовательской зоны
+			 * setZone Метод установки пользовательской зоны
 			 * @param zone пользовательская зона
 			 */
-			void setzone(const string & zone) noexcept;
+			void setZone(const string & zone) noexcept;
 			/**
-			 * setzone Метод установки пользовательской зоны
+			 * setZone Метод установки пользовательской зоны
 			 * @param zone пользовательская зона
 			 */
-			void setzone(const wstring & zone) noexcept;
+			void setZone(const wstring & zone) noexcept;
 		public:
 			/**
-			 * setzones Метод установки списка пользовательских зон
+			 * setZones Метод установки списка пользовательских зон
 			 * @param zones список доменных зон интернета
 			 */
-			void setzones(const std::set <string> & zones) noexcept;
+			void setZones(const std::set <string> & zones) noexcept;
 			/**
-			 * setzones Метод установки списка пользовательских зон
+			 * setZones Метод установки списка пользовательских зон
 			 * @param zones список доменных зон интернета
 			 */
-			void setzones(const std::set <wstring> & zones) noexcept;
+			void setZones(const std::set <wstring> & zones) noexcept;
 		public:
 			/**
-			 * setlocale Метод установки локали
+			 * setLocale Метод установки локали
 			 * @param locale локализация приложения
 			 */
-			void setlocale(const string & locale = AWH_LOCALE) noexcept;
+			void setLocale(const string & locale = AWH_LOCALE) noexcept;
 		public:
 			/**
 			 * unixTimestamp Метод получения штампа времени в миллисекундах
@@ -500,13 +512,13 @@ namespace awh {
 			 */
 			string timeToAbbr(const time_t date) const noexcept;
 			/**
-			 * strptime Функция получения Unix TimeStamp из строки
+			 * strpTime Функция получения Unix TimeStamp из строки
 			 * @param str    строка с датой
 			 * @param format форматы даты
 			 * @param tm     объект даты
 			 * @return       результат работы
 			 */
-			string strptime(const string & str, const string & format, struct tm * tm) const noexcept;
+			string strpTime(const string & str, const string & format, struct tm * tm) const noexcept;
 		public:
 			/**
 			 * os Метод определения операционной системы

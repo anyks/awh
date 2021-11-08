@@ -103,3 +103,13 @@ void awh::HttpClient::setAuthType(const auth_t::type_t type, const auth_t::hash_
 	// Устанавливаем тип авторизации
 	this->authCli.setType(type, hash);
 }
+/**
+ * HttpClient Конструктор
+ * @param fmk объект фреймворка
+ * @param log объект для работы с логами
+ * @param uri объект работы с URI
+ */
+awh::HttpClient::HttpClient(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcept : http_t(fmk, log, uri) {
+	// Устанавливаем тип HTTP модуля
+	this->web.init(web_t::hid_t::CLIENT);
+}

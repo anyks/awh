@@ -51,7 +51,7 @@ namespace awh {
 			 */
 			typedef struct Query {
 				float ver;       // Версия протокола
-				u_short code;    // Код ответа сервера
+				u_int code;      // Код ответа сервера
 				method_t method; // Метод запроса
 				string uri;      // Параметры запроса
 				string message;  // Сообщение сервера

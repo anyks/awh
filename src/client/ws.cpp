@@ -181,21 +181,10 @@ void awh::WebSocketClient::readCallback(const char * buffer, const size_t size, 
 			if(ws->http.isEnd()){
 				// Если включён режим отладки
 				#if defined(DEBUG_MODE)
-					// Получаем заголовки ответа
-					const auto & headers = ws->http.getHeaders();
-					// Если заголовки получены
-					if(!headers.empty()){
-						// Получаем параметры запроса
-						const auto & query = ws->http.getQuery();
-						// Данные REST ответа
-						string response = ws->fmk->format("HTTP/%.1f %u %s\r\n", query.ver, query.code, query.message.c_str());
-						// Переходим по всему списку заголовков
-						for(auto & header : headers){
-							// Формируем заголовок ответа
-							response.append(ws->fmk->format("%s: %s\r\n", header.first.c_str(), header.second.c_str()));
-						}
-						// Добавляем разделитель
-						response.append("\r\n");
+					// Получаем данные ответа
+					const auto & response = reinterpret_cast <http_t *> (&ws->http)->response(true);
+					// Если параметры ответа получены
+					if(!response.empty()){
 						// Выводим заголовок ответа
 						cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
 						// Выводим параметры ответа
@@ -487,19 +476,10 @@ void awh::WebSocketClient::readProxyCallback(const char * buffer, const size_t s
 					mess_t mess(ws->code, query.message);
 					// Если включён режим отладки
 					#if defined(DEBUG_MODE)
-						// Получаем заголовки ответа
-						const auto & headers = ws->worker.proxy.http.getHeaders();
-						// Если заголовки получены
-						if(!headers.empty()){
-							// Данные REST ответа
-							string response = ws->fmk->format("HTTP/%.1f %u %s\r\n", query.ver, query.code, query.message.c_str());
-							// Переходим по всему списку заголовков
-							for(auto & header : headers){
-								// Формируем заголовок ответа
-								response.append(ws->fmk->format("%s: %s\r\n", header.first.c_str(), header.second.c_str()));
-							}
-							// Добавляем разделитель
-							response.append("\r\n");
+						// Получаем данные ответа
+						const auto & response = ws->worker.proxy.http.response(true);
+						// Если параметры ответа получены
+						if(!response.empty()){
 							// Выводим заголовок ответа
 							cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE PROXY ^^^^^^^^^\x1B[0m" << endl;
 							// Выводим параметры ответа

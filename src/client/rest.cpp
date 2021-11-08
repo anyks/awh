@@ -223,19 +223,10 @@ void awh::RestClient::readCallback(const char * buffer, const size_t size, const
 				res.message = move(query.message);
 				// Если включён режим отладки
 				#if defined(DEBUG_MODE)
-					// Получаем заголовки ответа
-					const auto & headers = web->http.getHeaders();
-					// Если заголовки получены
-					if(!headers.empty()){
-						// Данные REST ответа
-						string response = web->fmk->format("HTTP/%.1f %u %s\r\n", query.ver, res.code, res.message.c_str());
-						// Переходим по всему списку заголовков
-						for(auto & header : headers){
-							// Формируем заголовок ответа
-							response.append(web->fmk->format("%s: %s\r\n", header.first.c_str(), header.second.c_str()));
-						}
-						// Добавляем разделитель
-						response.append("\r\n");
+					// Получаем данные ответа
+					const auto & response = web->http.response(true);
+					// Если параметры ответа получены
+					if(!response.empty()){
 						// Выводим заголовок ответа
 						cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
 						// Выводим параметры ответа
@@ -434,19 +425,10 @@ void awh::RestClient::readProxyCallback(const char * buffer, const size_t size, 
 					res.message = query.message;
 					// Если включён режим отладки
 					#if defined(DEBUG_MODE)
-						// Получаем заголовки ответа
-						const auto & headers = web->worker.proxy.http.getHeaders();
-						// Если заголовки получены
-						if(!headers.empty()){
-							// Данные REST ответа
-							string response = web->fmk->format("HTTP/%.1f %u %s\r\n", query.ver, query.code, query.message.c_str());
-							// Переходим по всему списку заголовков
-							for(auto & header : headers){
-								// Формируем заголовок ответа
-								response.append(web->fmk->format("%s: %s\r\n", header.first.c_str(), header.second.c_str()));
-							}
-							// Добавляем разделитель
-							response.append("\r\n");
+						// Получаем данные ответа
+						const auto & response = web->worker.proxy.http.response(true);
+						// Если параметры ответа получены
+						if(!response.empty()){
 							// Выводим заголовок ответа
 							cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE PROXY ^^^^^^^^^\x1B[0m" << endl;
 							// Выводим параметры ответа

@@ -47,9 +47,10 @@ namespace awh {
 			 * Основные флаги приложения
 			 */
 			enum class flag_t : uint8_t {
-				DEFER    = 0x01, // Флаг отложенных вызовов событий сокета
-				NOINFO   = 0x02, // Флаг запрещающий вывод информационных сообщений
-				WAITMESS = 0x04  // Флаг ожидания входящих сообщений
+				DEFER     = 0x01, // Флаг отложенных вызовов событий сокета
+				NOINFO    = 0x02, // Флаг запрещающий вывод информационных сообщений
+				WAITMESS  = 0x04, // Флаг ожидания входящих сообщений
+				NOCONNECT = 0x08  // Флаг запрещающий метод CONNECT
 			};
 		private:
 			// Хости сервера
@@ -71,6 +72,11 @@ namespace awh {
 			string sid = AWH_SHORT_NAME;
 			// Версия сервера
 			string version = AWH_VERSION;
+		private:
+			// Таймаут на чтение для метода CONNECT
+			time_t readTimeout = READ_TIMEOUT;
+			// Таймаут на записи для метода CONNECT
+			time_t writeTimeout = WRITE_TIMEOUT;
 		private:
 			// Пароль шифрования передаваемых данных
 			string pass = "";
@@ -98,6 +104,8 @@ namespace awh {
 			bool crypt = false;
 			// Флаг долгоживущего подключения
 			bool alive = false;
+			// Флаг запрещающий метод CONNECT
+			bool noConnect = false;
 		private:
 			// Размер одного чанка
 			size_t chunkSize = BUFFER_CHUNK;
@@ -410,6 +418,12 @@ namespace awh {
 			 * @param метод сжатия сообщений
 			 */
 			void setCompress(const http_t::compress_t compress) noexcept;
+			/**
+			 * setConnectTimeouts Метод установки таймаутов для метода CONNECT
+			 * @param read  таймаут в секундах на чтение
+			 * @param write таймаут в секундах на запись
+			 */
+			void setConnectTimeouts(const time_t read, const time_t write) noexcept;
 			/**
 			 * setServ Метод установки данных сервиса
 			 * @param id   идентификатор сервиса

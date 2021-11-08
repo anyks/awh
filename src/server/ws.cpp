@@ -170,69 +170,10 @@ void awh::WebSocketServer::readCallback(const char * buffer, const size_t size, 
 				if(adj->http.isEnd()){
 					// Если включён режим отладки
 					#if defined(DEBUG_MODE)
-						// Получаем заголовки запроса
-						const auto & headers = adj->http.getHeaders();
-						// Если заголовки получены
-						if(!headers.empty()){
-							// Данные REST запроса
-							string request = "";
-							// Получаем данные запроса
-							const auto & query = adj->http.getQuery();
-							// Определяем метод запроса
-							switch((uint8_t) query.method){
-								// Если метод запроса указан как GET
-								case (uint8_t) web_t::method_t::GET:
-									// Формируем GET запрос
-									request = ws->fmk->format("GET %s HTTP/%.1f\r\n", query.uri.c_str(), query.ver);
-								break;
-								// Если метод запроса указан как PUT
-								case (uint8_t) web_t::method_t::PUT:
-									// Формируем PUT запрос
-									request = ws->fmk->format("PUT %s HTTP/%.1f\r\n", query.uri.c_str(), query.ver);
-								break;
-								// Если метод запроса указан как POST
-								case (uint8_t) web_t::method_t::POST:
-									// Формируем POST запрос
-									request = ws->fmk->format("POST %s HTTP/%.1f\r\n", query.uri.c_str(), query.ver);
-								break;
-								// Если метод запроса указан как HEAD
-								case (uint8_t) web_t::method_t::HEAD:
-									// Формируем HEAD запрос
-									request = ws->fmk->format("HEAD %s HTTP/%.1f\r\n", query.uri.c_str(), query.ver);
-								break;
-								// Если метод запроса указан как PATCH
-								case (uint8_t) web_t::method_t::PATCH:
-									// Формируем PATCH запрос
-									request = ws->fmk->format("PATCH %s HTTP/%.1f\r\n", query.uri.c_str(), query.ver);
-								break;
-								// Если метод запроса указан как TRACE
-								case (uint8_t) web_t::method_t::TRACE:
-									// Формируем TRACE запрос
-									request = ws->fmk->format("TRACE %s HTTP/%.1f\r\n", query.uri.c_str(), query.ver);
-								break;
-								// Если метод запроса указан как DELETE
-								case (uint8_t) web_t::method_t::DEL:
-									// Формируем DELETE запрос
-									request = ws->fmk->format("DELETE %s HTTP/%.1f\r\n", query.uri.c_str(), query.ver);
-								break;
-								// Если метод запроса указан как OPTIONS
-								case (uint8_t) web_t::method_t::OPTIONS:
-									// Формируем OPTIONS запрос
-									request = ws->fmk->format("OPTIONS %s HTTP/%.1f\r\n", query.uri.c_str(), query.ver);
-								break;
-								// Если метод запроса указан как CONNECT
-								case (uint8_t) web_t::method_t::CONNECT:
-									// Формируем CONNECT запрос
-									request = ws->fmk->format("CONNECT %s HTTP/%.1f\r\n", query.uri.c_str(), query.ver);
-								break;
-							}
-							// Переходим по всему списку заголовков
-							for(auto & header : headers){
-								// Формируем заголовок запроса
-								request.append(ws->fmk->format("%s: %s\r\n", header.first.c_str(), header.second.c_str()));
-							}
-							// Добавляем разделитель
-							request.append("\r\n");
+						// Получаем данные запроса
+						const auto & request = reinterpret_cast <http_t *> (&adj->http)->request(true);
+						// Если параметры запроса получены
+						if(!request.empty()){
 							// Выводим заголовок запроса
 							cout << "\x1B[33m\x1B[1m^^^^^^^^^ REQUEST ^^^^^^^^^\x1B[0m" << endl;
 							// Выводим параметры запроса

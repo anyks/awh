@@ -350,18 +350,20 @@ namespace awh {
 			 * @param code код сообщения для получение
 			 * @return     соответствующее коду HTTP сообщение
 			 */
-			const string & getMessage(const u_short code) const noexcept;
+			const string & getMessage(const u_int code) const noexcept;
 		public:
 			/**
 			 * request Метод создания запроса как он есть
-			 * @return буфер данных запроса в бинарном виде
+			 * @param nobody флаг запрета подготовки тела
+			 * @return       буфер данных запроса в бинарном виде
 			 */
-			vector <char> request() const noexcept;
+			vector <char> request(const bool nobody = false) const noexcept;
 			/**
 			 * response Метод создания ответа как он есть
-			 * @return буфер данных ответа в бинарном виде
+			 * @param nobody флаг запрета подготовки тела
+			 * @return       буфер данных ответа в бинарном виде
 			 */
-			vector <char> response() const noexcept;
+			vector <char> response(const bool nobody = false) const noexcept;
 		public:
 			/**
 			 * proxy Метод создания запроса для авторизации на прокси-сервере
@@ -375,14 +377,14 @@ namespace awh {
 			 * @param mess сообщение ответа
 			 * @return     буфер данных запроса в бинарном виде
 			 */
-			vector <char> reject(const u_short code, const string & mess = "") const noexcept;
+			vector <char> reject(const u_int code, const string & mess = "") const noexcept;
 			/**
 			 * response Метод создания ответа
 			 * @param code код ответа
 			 * @param mess сообщение ответа
 			 * @return     буфер данных запроса в бинарном виде
 			 */
-			vector <char> response(const u_short code, const string & mess = "") const noexcept;
+			vector <char> response(const u_int code, const string & mess = "") const noexcept;
 			/**
 			 * request Метод создания запроса
 			 * @param url    объект параметров REST запроса
@@ -430,10 +432,7 @@ namespace awh {
 			 * @param log объект для работы с логами
 			 * @param uri объект работы с URI
 			 */
-			Http(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcept : authCli(fmk, log), authSrv(fmk, log), hash(fmk, log), web(fmk, log), fmk(fmk), log(log), uri(uri) {
-				// Устанавливаем функцию обратного вызова для получения чанков
-				this->web.setChunkingFn(this, &chunkingCallback);
-			}
+			Http(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcept;
 			/**
 			 * ~Http Деструктор
 			 */

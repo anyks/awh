@@ -262,6 +262,18 @@ size_t awh::Web::readHeaders(const char * buffer, const size_t size) noexcept {
 					if(it != this->headers.end()){
 						// Запоминаем размер тела сообщения
 						this->bodySize = stoull(it->second);
+						// Если размер тела не получен
+						if(this->bodySize == 0){
+							// Запрашиваем заголовок подключения
+							const string & header = this->getHeader("connection");
+							// Если заголовок подключения найден
+							if(!header.empty() && (header.compare("close") != 0)){
+								// Тело в запросе не передано
+								this->state = state_t::END;
+								// Выходим из функции
+								return;
+							}
+						}
 						// Устанавливаем стейт поиска тела запроса
 						this->state = state_t::BODY;
 						// Продолжаем работу

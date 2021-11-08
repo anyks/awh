@@ -117,7 +117,7 @@ void awh::ProxyServer::connectClientCallback(const size_t aid, const size_t wid,
 				// Если метод подключения CONNECT
 				if(adj->method == web_t::method_t::CONNECT){
 					// Формируем ответ клиенту
-					const auto & response = adj->srv.response(200);
+					const auto & response = adj->srv.response((u_int) 200);
 					// Если ответ получен
 					if(!response.empty()){
 						// Тело полезной нагрузки
@@ -129,6 +129,14 @@ void awh::ProxyServer::connectClientCallback(const size_t aid, const size_t wid,
 							// Отправляем тело на сервер
 							reinterpret_cast <core_t *> (&proxy->coreSrv)->write(payload.data(), payload.size(), it->second);
 						}
+						// Устанавливаем время на чтение для клиента
+						core->setTimeout(core_t::method_t::READ, proxy->readTimeout, aid);
+						// Устанавливаем время на запись для клиента
+						core->setTimeout(core_t::method_t::WRITE, proxy->writeTimeout, aid);
+						// Устанавливаем время на чтение для сервера
+						reinterpret_cast <core_t *> (&proxy->coreSrv)->setTimeout(core_t::method_t::READ, proxy->readTimeout, it->second);
+						// Устанавливаем время на запись для сервера
+						reinterpret_cast <core_t *> (&proxy->coreSrv)->setTimeout(core_t::method_t::WRITE, proxy->writeTimeout, it->second);
 					// Выполняем отключение клиента
 					} else reinterpret_cast <core_t *> (&proxy->coreSrv)->close(it->second);
 				// Отправляем сообщение на сервер, так-как оно пришло от клиента
@@ -327,19 +335,10 @@ void awh::ProxyServer::readClientCallback(const char * buffer, const size_t size
 							const auto & query = adj->cli.getQuery();
 							// Если включён режим отладки
 							#if defined(DEBUG_MODE)
-								// Получаем заголовки ответа
-								const auto & headers = adj->cli.getHeaders();
-								// Если заголовки получены
-								if(!headers.empty()){
-									// Данные REST ответа
-									string response = proxy->fmk->format("HTTP/%.1f %u %s\r\n", query.ver, query.code, query.message.c_str());
-									// Переходим по всему списку заголовков
-									for(auto & header : headers){
-										// Формируем заголовок ответа
-										response.append(proxy->fmk->format("%s: %s\r\n", header.first.c_str(), header.second.c_str()));
-									}
-									// Добавляем разделитель
-									response.append("\r\n");
+								// Получаем данные ответа
+								const auto & response = adj->cli.response(true);
+								// Если параметры ответа получены
+								if(!response.empty()){
 									// Выводим заголовок ответа
 									cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
 									// Выводим параметры ответа
@@ -475,69 +474,10 @@ void awh::ProxyServer::prepare(const size_t aid, const size_t wid, core_t * core
 				if(adj->srv.isEnd()){
 					// Если включён режим отладки
 					#if defined(DEBUG_MODE)
-						// Получаем заголовки запроса
-						const auto & headers = adj->srv.getHeaders();
-						// Если заголовки получены
-						if(!headers.empty()){
-							// Данные REST запроса
-							string request = "";
-							// Получаем данные запроса
-							const auto & query = adj->srv.getQuery();
-							// Определяем метод запроса
-							switch((uint8_t) query.method){
-								// Если метод запроса указан как GET
-								case (uint8_t) web_t::method_t::GET:
-									// Формируем GET запрос
-									request = this->fmk->format("GET %s HTTP/%.1f\r\n", query.uri.c_str(), query.ver);
-								break;
-								// Если метод запроса указан как PUT
-								case (uint8_t) web_t::method_t::PUT:
-									// Формируем PUT запрос
-									request = this->fmk->format("PUT %s HTTP/%.1f\r\n", query.uri.c_str(), query.ver);
-								break;
-								// Если метод запроса указан как POST
-								case (uint8_t) web_t::method_t::POST:
-									// Формируем POST запрос
-									request = this->fmk->format("POST %s HTTP/%.1f\r\n", query.uri.c_str(), query.ver);
-								break;
-								// Если метод запроса указан как HEAD
-								case (uint8_t) web_t::method_t::HEAD:
-									// Формируем HEAD запрос
-									request = this->fmk->format("HEAD %s HTTP/%.1f\r\n", query.uri.c_str(), query.ver);
-								break;
-								// Если метод запроса указан как PATCH
-								case (uint8_t) web_t::method_t::PATCH:
-									// Формируем PATCH запрос
-									request = this->fmk->format("PATCH %s HTTP/%.1f\r\n", query.uri.c_str(), query.ver);
-								break;
-								// Если метод запроса указан как TRACE
-								case (uint8_t) web_t::method_t::TRACE:
-									// Формируем TRACE запрос
-									request = this->fmk->format("TRACE %s HTTP/%.1f\r\n", query.uri.c_str(), query.ver);
-								break;
-								// Если метод запроса указан как DELETE
-								case (uint8_t) web_t::method_t::DEL:
-									// Формируем DELETE запрос
-									request = this->fmk->format("DELETE %s HTTP/%.1f\r\n", query.uri.c_str(), query.ver);
-								break;
-								// Если метод запроса указан как OPTIONS
-								case (uint8_t) web_t::method_t::OPTIONS:
-									// Формируем OPTIONS запрос
-									request = this->fmk->format("OPTIONS %s HTTP/%.1f\r\n", query.uri.c_str(), query.ver);
-								break;
-								// Если метод запроса указан как CONNECT
-								case (uint8_t) web_t::method_t::CONNECT:
-									// Формируем CONNECT запрос
-									request = this->fmk->format("CONNECT %s HTTP/%.1f\r\n", query.uri.c_str(), query.ver);
-								break;
-							}
-							// Переходим по всему списку заголовков
-							for(auto & header : headers){
-								// Формируем заголовок запроса
-								request.append(this->fmk->format("%s: %s\r\n", header.first.c_str(), header.second.c_str()));
-							}
-							// Добавляем разделитель
-							request.append("\r\n");
+						// Получаем данные запроса
+						const auto & request = adj->srv.request(true);
+						// Если параметры запроса получены
+						if(!request.empty()){
 							// Выводим заголовок запроса
 							cout << "\x1B[33m\x1B[1m^^^^^^^^^ REQUEST ^^^^^^^^^\x1B[0m" << endl;
 							// Выводим параметры запроса
@@ -570,12 +510,16 @@ void awh::ProxyServer::prepare(const size_t aid, const size_t wid, core_t * core
 							adj->compress = adj->srv.getCompress();
 							// Если подключение не выполнено
 							if(!adj->connect){
+								// Получаем данные запроса
+								const auto & query = adj->srv.getQuery();
+								// Выполняем проверку разрешено ли нам выполнять подключение
+								const bool allow = (!this->noConnect || (query.method != web_t::method_t::CONNECT));
 								// Получаем хост сервера
 								const auto & host = adj->srv.getHeader("host");
+								// Сообщение запрета подключения
+								const string message = (allow ? "" : "Connect method prohibited");
 								// Если хост сервера получен
-								if((adj->locked = !host.empty())){
-									// Получаем данные запроса
-									const auto & query = adj->srv.getQuery();
+								if(allow && (adj->locked = !host.empty())){
 									// Запоминаем метод подключения
 									adj->method = query.method;
 									// Формируем адрес подключения
@@ -593,7 +537,7 @@ void awh::ProxyServer::prepare(const size_t aid, const size_t wid, core_t * core
 									// Выполняем очистку буфера полученных данных
 									adj->server.clear();
 									// Формируем запрос реджекта
-									const auto & response = adj->srv.reject(403);
+									const auto & response = adj->srv.reject(403, message);
 									// Если ответ получен
 									if(!response.empty()){
 										// Тело полезной нагрузки
@@ -626,7 +570,7 @@ void awh::ProxyServer::prepare(const size_t aid, const size_t wid, core_t * core
 									// Иначе просто формируем заголовок Via
 									else via = this->fmk->format("%.1f %s:%u", query.ver, this->host.c_str(), this->port);
 									// Устанавливаем заголовок Via
-									adj->srv.addHeader("via", via);
+									adj->srv.addHeader("Via", via);
 								}{
 									// Название операционной системы
 									const char * os = nullptr;
@@ -647,7 +591,7 @@ void awh::ProxyServer::prepare(const size_t aid, const size_t wid, core_t * core
 										case (uint8_t) fmk_t::os_t::FREEBSD: os = "FreeBSD"; break;
 									}
 									// Устанавливаем наименование агента
-									adj->srv.addHeader("x-proxy-agent", this->fmk->format("(%s; %s) %s/%s", os, this->name.c_str(), this->sid.c_str(), this->version.c_str()));
+									adj->srv.addHeader("X-Proxy-Agent", this->fmk->format("(%s; %s) %s/%s", os, this->name.c_str(), this->sid.c_str(), this->version.c_str()));
 								}
 								// Если функция обратного вызова установлена, выполняем
 								if(this->messageFn != nullptr){
@@ -1054,6 +998,8 @@ void awh::ProxyServer::setAuthType(const auth_t::type_t type, const auth_t::hash
  * @param flag флаг модуля для установки
  */
 void awh::ProxyServer::setMode(const u_short flag) noexcept {
+	// Устанавливаем флаг запрещающий метод CONNECT
+	this->noConnect = (flag & (uint8_t) flag_t::NOCONNECT);
 	// Устанавливаем флаг ожидания входящих сообщений
 	this->worker.wait = (flag & (uint8_t) flag_t::WAITMESS);
 	// Устанавливаем флаг отложенных вызовов событий сокета
@@ -1094,6 +1040,17 @@ void awh::ProxyServer::setMaxRequests(const size_t max) noexcept {
 void awh::ProxyServer::setCompress(const http_t::compress_t compress) noexcept {
 	// Устанавливаем метод компрессии
 	this->worker.compress = compress;
+}
+/**
+ * setConnectTimeouts Метод установки таймаутов для метода CONNECT
+ * @param read  таймаут в секундах на чтение
+ * @param write таймаут в секундах на запись
+ */
+void awh::ProxyServer::setConnectTimeouts(const time_t read, const time_t write) noexcept {
+	// Устанавливаем таймаут на чтение
+	this->readTimeout = read;
+	// Устанавливаем таймаут на запись
+	this->writeTimeout = write;
 }
 /**
  * setServ Метод установки данных сервиса

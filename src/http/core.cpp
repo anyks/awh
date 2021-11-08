@@ -22,7 +22,9 @@ void awh::Http::chunkingCallback(const vector <char> & buffer, const web_t * web
 		// Получаем объект модуля для работы с REST
 		http_t * http = reinterpret_cast <http_t *> (ctx);
 		// Если функция обратного вызова передана
-		if(http->chunkingFn != nullptr) http->chunkingFn(buffer, http, http->ctx.at(0));
+		if((http->chunkingFn != nullptr) && (http->ctx.size() == 1))
+			// Выполняем сборку бинарных чанков
+			http->chunkingFn(buffer, http, http->ctx.at(0));
 	}
 }
 /**
@@ -468,7 +470,7 @@ const string awh::Http::date(const time_t stamp) const noexcept {
  * @param code код сообщения для получение
  * @return     соответствующее коду HTTP сообщение
  */
-const string & awh::Http::getMessage(const u_short code) const noexcept {
+const string & awh::Http::getMessage(const u_int code) const noexcept {
 	/**
 	 * Подробнее: https://developer.mozilla.org/ru/docs/Web/HTTP/Status
 	 */
@@ -483,9 +485,10 @@ const string & awh::Http::getMessage(const u_short code) const noexcept {
 }
 /**
  * request Метод создания запроса как он есть
- * @return буфер данных запроса в бинарном виде
+ * @param nobody флаг запрета подготовки тела
+ * @return       буфер данных запроса в бинарном виде
  */
-vector <char> awh::Http::request() const noexcept {
+vector <char> awh::Http::request(const bool nobody) const noexcept {
 	// Результат работы функции
 	vector <char> result;
 	// Если заголовки получены
@@ -562,7 +565,7 @@ vector <char> awh::Http::request() const noexcept {
 				// Флаг разрешающий вывода заголовка
 				bool allow = !this->isBlack(head);
 				// Выполняем перебор всех обязательных заголовков
-				for(u_short i = 0; i < 4; i++){
+				for(uint8_t i = 0; i < 4; i++){
 					// Если заголовок уже найден пропускаем его
 					if(available[i]) continue;
 					// Выполняем првоерку заголовка
@@ -588,7 +591,7 @@ vector <char> awh::Http::request() const noexcept {
 					}
 				}
 				// Если заголовок не является запрещённым, добавляем заголовок в запрос
-				if(allow) request.append(this->fmk->format("%s: %s\r\n", header.first.c_str(), header.second.c_str()));
+				if(allow) request.append(this->fmk->format("%s: %s\r\n", this->fmk->smartUpper(header.first).c_str(), header.second.c_str()));
 			}
 			// Получаем данные тела
 			const auto & body = this->web.getBody();
@@ -602,10 +605,14 @@ vector <char> awh::Http::request() const noexcept {
 					const auto & res = this->hash.encrypt(body.data(), body.size());
 					// Если данные зашифрованы, заменяем тело данных
 					if(!res.empty()){
-						// Заменяем тело данных
-						this->web.setBody(res);
+						// Если флаг запрета подготовки тела полезной нагрузки не установлен
+						if(!nobody){
+							// Заменяем тело данных
+							this->web.setBody(res);
+							// Заменяем размер тела данных
+							if(!this->chunking) length = body.size();
 						// Заменяем размер тела данных
-						if(!this->chunking) length = body.size();
+						} else if(!this->chunking) length = res.size();
 						// Устанавливаем X-AWH-Encryption
 						request.append(this->fmk->format("X-AWH-Encryption: %u\r\n", (u_short) this->hash.getAES()));
 					}
@@ -620,10 +627,14 @@ vector <char> awh::Http::request() const noexcept {
 							const auto & brotli = this->hash.compressBrotli(body.data(), body.size());
 							// Если данные сжаты, заменяем тело данных
 							if(!brotli.empty()){
-								// Заменяем тело данных
-								this->web.setBody(brotli);
+								// Если флаг запрета подготовки тела полезной нагрузки не установлен
+								if(!nobody){
+									// Заменяем тело данных
+									this->web.setBody(brotli);
+									// Заменяем размер тела данных
+									if(!this->chunking) length = body.size();
 								// Заменяем размер тела данных
-								if(!this->chunking) length = body.size();
+								} else if(!this->chunking) length = brotli.size();
 								// Устанавливаем Content-Encoding если не передан
 								if(!available[1]) request.append(this->fmk->format("Content-Encoding: %s\r\n", "br"));
 							}
@@ -634,10 +645,14 @@ vector <char> awh::Http::request() const noexcept {
 							const auto & gzip = this->hash.compressGzip(body.data(), body.size());
 							// Если данные сжаты, заменяем тело данных
 							if(!gzip.empty()){
-								// Заменяем тело данных
-								this->web.setBody(gzip);
+								// Если флаг запрета подготовки тела полезной нагрузки не установлен
+								if(!nobody){
+									// Заменяем тело данных
+									this->web.setBody(gzip);
+									// Заменяем размер тела данных
+									if(!this->chunking) length = body.size();
 								// Заменяем размер тела данных
-								if(!this->chunking) length = body.size();
+								} else if(!this->chunking) length = gzip.size();
 								// Устанавливаем Content-Encoding если не передан
 								if(!available[1]) request.append(this->fmk->format("Content-Encoding: %s\r\n", "gzip"));
 							}
@@ -650,10 +665,14 @@ vector <char> awh::Http::request() const noexcept {
 							this->hash.rmTail(deflate);
 							// Если данные сжаты, заменяем тело данных
 							if(!deflate.empty()){
-								// Заменяем тело данных
-								this->web.setBody(deflate);
+								// Если флаг запрета подготовки тела полезной нагрузки не установлен
+								if(!nobody){
+									// Заменяем тело данных
+									this->web.setBody(deflate);
+									// Заменяем размер тела данных
+									if(!this->chunking) length = body.size();
 								// Заменяем размер тела данных
-								if(!this->chunking) length = body.size();
+								} else if(!this->chunking) length = deflate.size();
 								// Устанавливаем Content-Encoding если не передан
 								if(!available[1]) request.append(this->fmk->format("Content-Encoding: %s\r\n", "deflate"));
 							}
@@ -681,9 +700,10 @@ vector <char> awh::Http::request() const noexcept {
 }
 /**
  * response Метод создания ответа как он есть
- * @return буфер данных ответа в бинарном виде
+ * @param nobody флаг запрета подготовки тела
+ * @return       буфер данных ответа в бинарном виде
  */
-vector <char> awh::Http::response() const noexcept {
+vector <char> awh::Http::response(const bool nobody) const noexcept {
 	// Результат работы функции
 	vector <char> result;
 	// Если заголовки получены
@@ -712,7 +732,7 @@ vector <char> awh::Http::response() const noexcept {
 				// Флаг разрешающий вывода заголовка
 				bool allow = !this->isBlack(head);
 				// Выполняем перебор всех обязательных заголовков
-				for(u_short i = 0; i < 4; i++){
+				for(uint8_t i = 0; i < 4; i++){
 					// Если заголовок уже найден пропускаем его
 					if(available[i]) continue;
 					// Выполняем првоерку заголовка
@@ -738,7 +758,7 @@ vector <char> awh::Http::response() const noexcept {
 					}
 				}
 				// Если заголовок не является запрещённым, добавляем заголовок в ответ
-				if(allow) response.append(this->fmk->format("%s: %s\r\n", header.first.c_str(), header.second.c_str()));
+				if(allow) response.append(this->fmk->format("%s: %s\r\n", this->fmk->smartUpper(header.first).c_str(), header.second.c_str()));
 			}
 			// Получаем данные тела
 			const auto & body = this->web.getBody();
@@ -752,10 +772,14 @@ vector <char> awh::Http::response() const noexcept {
 					const auto & res = this->hash.encrypt(body.data(), body.size());
 					// Если данные зашифрованы, заменяем тело данных
 					if(!res.empty()){
-						// Заменяем тело данных
-						this->web.setBody(res);
+						// Если флаг запрета подготовки тела полезной нагрузки не установлен
+						if(!nobody){
+							// Заменяем тело данных
+							this->web.setBody(res);
+							// Заменяем размер тела данных
+							if(!this->chunking) length = body.size();
 						// Заменяем размер тела данных
-						if(!this->chunking) length = body.size();
+						} else if(!this->chunking) length = res.size();
 						// Устанавливаем X-AWH-Encryption
 						response.append(this->fmk->format("X-AWH-Encryption: %u\r\n", (u_short) this->hash.getAES()));
 					}
@@ -770,10 +794,14 @@ vector <char> awh::Http::response() const noexcept {
 							const auto & brotli = this->hash.compressBrotli(body.data(), body.size());
 							// Если данные сжаты, заменяем тело данных
 							if(!brotli.empty()){
-								// Заменяем тело данных
-								this->web.setBody(brotli);
+								// Если флаг запрета подготовки тела полезной нагрузки не установлен
+								if(!nobody){
+									// Заменяем тело данных
+									this->web.setBody(brotli);
+									// Заменяем размер тела данных
+									if(!this->chunking) length = body.size();
 								// Заменяем размер тела данных
-								if(!this->chunking) length = body.size();
+								} else if(!this->chunking) length = brotli.size();
 								// Устанавливаем Content-Encoding если не передан
 								if(!available[1]) response.append(this->fmk->format("Content-Encoding: %s\r\n", "br"));
 							}
@@ -784,10 +812,14 @@ vector <char> awh::Http::response() const noexcept {
 							const auto & gzip = this->hash.compressGzip(body.data(), body.size());
 							// Если данные сжаты, заменяем тело данных
 							if(!gzip.empty()){
-								// Заменяем тело данных
-								this->web.setBody(gzip);
+								// Если флаг запрета подготовки тела полезной нагрузки не установлен
+								if(!nobody){
+									// Заменяем тело данных
+									this->web.setBody(gzip);
+									// Заменяем размер тела данных
+									if(!this->chunking) length = body.size();
 								// Заменяем размер тела данных
-								if(!this->chunking) length = body.size();
+								} else if(!this->chunking) length = gzip.size();
 								// Устанавливаем Content-Encoding если не передан
 								if(!available[1]) response.append(this->fmk->format("Content-Encoding: %s\r\n", "gzip"));
 							}
@@ -800,10 +832,14 @@ vector <char> awh::Http::response() const noexcept {
 							this->hash.rmTail(deflate);
 							// Если данные сжаты, заменяем тело данных
 							if(!deflate.empty()){
-								// Заменяем тело данных
-								this->web.setBody(deflate);
+								// Если флаг запрета подготовки тела полезной нагрузки не установлен
+								if(!nobody){
+									// Заменяем тело данных
+									this->web.setBody(deflate);
+									// Заменяем размер тела данных
+									if(!this->chunking) length = body.size();
 								// Заменяем размер тела данных
-								if(!this->chunking) length = body.size();
+								} else if(!this->chunking) length = deflate.size();
 								// Устанавливаем Content-Encoding если не передан
 								if(!available[1]) response.append(this->fmk->format("Content-Encoding: %s\r\n", "deflate"));
 							}
@@ -876,7 +912,7 @@ vector <char> awh::Http::proxy(const uri_t::url_t & url) noexcept {
  * @param mess сообщение ответа
  * @return     буфер данных запроса в бинарном виде
  */
-vector <char> awh::Http::reject(const u_short code, const string & mess) const noexcept {
+vector <char> awh::Http::reject(const u_int code, const string & mess) const noexcept {
 	// Объект параметров запроса
 	web_t::query_t query;
 	// Получаем текст сообщения
@@ -922,7 +958,7 @@ vector <char> awh::Http::reject(const u_short code, const string & mess) const n
  * @param mess сообщение ответа
  * @return     буфер данных запроса в бинарном виде
  */
-vector <char> awh::Http::response(const u_short code, const string & mess) const noexcept {
+vector <char> awh::Http::response(const u_int code, const string & mess) const noexcept {
 	// Результат работы функции
 	vector <char> result;
 	// Получаем объект параметров запроса
@@ -961,7 +997,7 @@ vector <char> awh::Http::response(const u_short code, const string & mess) const
 			// Флаг разрешающий вывода заголовка
 			bool allow = !this->isBlack(head);
 			// Выполняем перебор всех обязательных заголовков
-			for(u_short i = 0; i < 8; i++){
+			for(uint8_t i = 0; i < 8; i++){
 				// Если заголовок уже найден пропускаем его
 				if(available[i]) continue;
 				// Выполняем првоерку заголовка
@@ -991,7 +1027,7 @@ vector <char> awh::Http::response(const u_short code, const string & mess) const
 				}
 			}
 			// Если заголовок не является запрещённым, добавляем заголовок в ответ
-			if(allow) response.append(this->fmk->format("%s: %s\r\n", header.first.c_str(), header.second.c_str()));
+			if(allow) response.append(this->fmk->format("%s: %s\r\n", this->fmk->smartUpper(header.first).c_str(), header.second.c_str()));
 		}
 		// Устанавливаем Connection если не передан
 		if(!available[0] && !this->isBlack("Connection"))
@@ -1224,7 +1260,7 @@ vector <char> awh::Http::request(const uri_t::url_t & url, const web_t::method_t
 				// Флаг разрешающий вывода заголовка
 				bool allow = !this->isBlack(head);
 				// Выполняем перебор всех обязательных заголовков
-				for(u_short i = 0; i < 11; i++){
+				for(uint8_t i = 0; i < 11; i++){
 					// Если заголовок уже найден пропускаем его
 					if(available[i]) continue;
 					// Выполняем првоерку заголовка
@@ -1258,7 +1294,7 @@ vector <char> awh::Http::request(const uri_t::url_t & url, const web_t::method_t
 					}
 				}
 				// Если заголовок не является запрещённым, добавляем заголовок в запрос
-				if(allow) request.append(this->fmk->format("%s: %s\r\n", header.first.c_str(), header.second.c_str()));
+				if(allow) request.append(this->fmk->format("%s: %s\r\n", this->fmk->smartUpper(header.first).c_str(), header.second.c_str()));
 			}
 			// Устанавливаем Host если не передан
 			if(!available[0] && !this->isBlack("Host"))
@@ -1313,7 +1349,7 @@ vector <char> awh::Http::request(const uri_t::url_t & url, const web_t::method_t
 				request.append(this->fmk->format("User-Agent: %s\r\n", this->userAgent.c_str()));
 			}
 			// Если заголовок авторизации не передан
-			if(!available[10] && !this->isBlack("Authorization")){
+			if(!available[10] && !this->isBlack("Authorization") && !this->isBlack("Proxy-Authorization")){
 				// Метод HTTP запроса
 				string httpMethod = "";
 				// Определяем метод запроса
@@ -1493,4 +1529,14 @@ void awh::Http::setCrypt(const string & pass, const string & salt, const hash_t:
 	this->hash.setSalt(salt);
 	// Устанавливаем пароль шифрования
 	this->hash.setPassword(pass);
+}
+/**
+ * Http Конструктор
+ * @param fmk объект фреймворка
+ * @param log объект для работы с логами
+ * @param uri объект работы с URI
+ */
+awh::Http::Http(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcept : authCli(fmk, log), authSrv(fmk, log), hash(fmk, log), web(fmk, log), fmk(fmk), log(log), uri(uri) {
+	// Устанавливаем функцию обратного вызова для получения чанков
+	this->web.setChunkingFn(this, &chunkingCallback);
 }

@@ -71,10 +71,7 @@ namespace awh {
 			 * @param log объект для работы с логами
 			 * @param uri объект работы с URI
 			 */
-			HttpServer(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcept : http_t(fmk, log, uri) {
-				// Устанавливаем тип HTTP модуля
-				this->web.init(web_t::hid_t::SERVER);
-			}
+			HttpServer(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcept;
 			/**
 			 * ~HttpServer Деструктор
 			 */
