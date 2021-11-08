@@ -88,7 +88,7 @@ int main(int argc, char * argv[]) noexcept {
 		log->print("%s client", log_t::flag_t::INFO, (mode == wsSrv_t::mode_t::CONNECT ? "Connect" : "Disconnect"));
 	});
 	// Установливаем функцию обратного вызова на событие получения ошибок
-	ws.on(&log, [](const size_t aid, const u_short code, const string & mess, wsSrv_t * ws, void * ctx) noexcept {
+	ws.on(&log, [](const size_t aid, const u_int code, const string & mess, wsSrv_t * ws, void * ctx) noexcept {
 		// Получаем объект логирования
 		log_t * log = reinterpret_cast <log_t *> (ctx);
 		// Выводим информацию в лог

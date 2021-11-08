@@ -82,7 +82,7 @@ namespace awh {
 			// Идентификатор адъютанта
 			size_t aid = 0;
 			// Код ответа сервера
-			u_short code = 0;
+			u_int code = 0;
 			// Контрольная точка ответа на пинг
 			time_t checkPoint = 0;
 			// Минимальный размер сегмента
@@ -106,7 +106,7 @@ namespace awh {
 			// Функция обратного вызова, при запуске или остановки подключения к серверу
 			function <void (const mode_t, WebSocketClient *, void *)> openStopFn = nullptr;
 			// Функция обратного вызова, при получении ошибки работы клиента
-			function <void (const u_short, const string &, WebSocketClient *, void *)> errorFn = nullptr;
+			function <void (const u_int, const string &, WebSocketClient *, void *)> errorFn = nullptr;
 			// Функция обратного вызова, при получении сообщения с сервера
 			function <void (const vector <char> &, const bool, WebSocketClient *, void *)> messageFn = nullptr;
 		private:
@@ -211,7 +211,7 @@ namespace awh {
 			 * @param ctx      контекст для вывода в сообщении
 			 * @param callback функция обратного вызова
 			 */
-			void on(void * ctx, function <void (const u_short, const string &, WebSocketClient *, void *)> callback) noexcept;
+			void on(void * ctx, function <void (const u_int, const string &, WebSocketClient *, void *)> callback) noexcept;
 			/**
 			 * on Метод установки функции обратного вызова на событие получения сообщений
 			 * @param ctx      контекст для вывода в сообщении

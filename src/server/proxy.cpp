@@ -781,7 +781,7 @@ void awh::ProxyServer::on(void * ctx, function <bool (const string &, const stri
  * @param entity  данные полезной нагрузки (тело сообщения)
  * @param headers HTTP заголовки сообщения
  */
-void awh::ProxyServer::reject(const size_t aid, const u_short code, const string & mess, const vector <char> & entity, const unordered_multimap <string, string> & headers) const noexcept {
+void awh::ProxyServer::reject(const size_t aid, const u_int code, const string & mess, const vector <char> & entity, const unordered_multimap <string, string> & headers) const noexcept {
 	// Если подключение выполнено
 	if(this->coreSrv.working()){
 		// Получаем параметры подключения адъютанта
@@ -834,7 +834,7 @@ void awh::ProxyServer::reject(const size_t aid, const u_short code, const string
  * @param entity  данные полезной нагрузки (тело сообщения)
  * @param headers HTTP заголовки сообщения
  */
-void awh::ProxyServer::response(const size_t aid, const u_short code, const string & mess, const vector <char> & entity, const unordered_multimap <string, string> & headers) const noexcept {
+void awh::ProxyServer::response(const size_t aid, const u_int code, const string & mess, const vector <char> & entity, const unordered_multimap <string, string> & headers) const noexcept {
 	// Если подключение выполнено
 	if(this->coreSrv.working()){
 		// Получаем параметры подключения адъютанта

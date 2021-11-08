@@ -109,7 +109,7 @@ namespace awh {
 			// Функция обратного вызова, при запуске или остановки подключения к серверу
 			function <void (const size_t, const mode_t, WebSocketServer *, void *)> openStopFn = nullptr;
 			// Функция обратного вызова, при получении ошибки работы клиента
-			function <void (const size_t, const u_short, const string &, WebSocketServer *, void *)> errorFn = nullptr;
+			function <void (const size_t, const u_int, const string &, WebSocketServer *, void *)> errorFn = nullptr;
 			// Функция обратного вызова, при получении сообщения с сервера
 			function <void (const size_t, const vector <char> &, const bool, WebSocketServer *, void *)> messageFn = nullptr;
 		private:
@@ -228,7 +228,7 @@ namespace awh {
 			 * @param ctx      контекст для вывода в сообщении
 			 * @param callback функция обратного вызова
 			 */
-			void on(void * ctx, function <void (const size_t, const u_short, const string &, WebSocketServer *, void *)> callback) noexcept;
+			void on(void * ctx, function <void (const size_t, const u_int, const string &, WebSocketServer *, void *)> callback) noexcept;
 			/**
 			 * on Метод установки функции обратного вызова на событие получения сообщений
 			 * @param ctx      контекст для вывода в сообщении

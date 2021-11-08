@@ -399,7 +399,7 @@ void awh::RestServer::on(void * ctx, function <bool (const string &, const strin
  * @param entity  данные полезной нагрузки (тело сообщения)
  * @param headers HTTP заголовки сообщения
  */
-void awh::RestServer::reject(const size_t aid, const u_short code, const string & mess, const vector <char> & entity, const unordered_multimap <string, string> & headers) const noexcept {
+void awh::RestServer::reject(const size_t aid, const u_int code, const string & mess, const vector <char> & entity, const unordered_multimap <string, string> & headers) const noexcept {
 	// Если подключение выполнено
 	if(this->core->working()){
 		// Получаем параметры подключения адъютанта
@@ -452,7 +452,7 @@ void awh::RestServer::reject(const size_t aid, const u_short code, const string 
  * @param entity  данные полезной нагрузки (тело сообщения)
  * @param headers HTTP заголовки сообщения
  */
-void awh::RestServer::response(const size_t aid, const u_short code, const string & mess, const vector <char> & entity, const unordered_multimap <string, string> & headers) const noexcept {
+void awh::RestServer::response(const size_t aid, const u_int code, const string & mess, const vector <char> & entity, const unordered_multimap <string, string> & headers) const noexcept {
 	// Если подключение выполнено
 	if(this->core->working()){
 		// Получаем параметры подключения адъютанта

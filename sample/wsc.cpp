@@ -101,7 +101,7 @@ int main(int argc, char * argv[]) noexcept {
 		}
 	});
 	// Подписываемся на событие получения ошибки работы клиента
-	ws.on(&log, [](const u_short code, const string & mess, wsCli_t * ws, void * ctx){
+	ws.on(&log, [](const u_int code, const string & mess, wsCli_t * ws, void * ctx){
 		// Получаем объект логирования
 		log_t * log = reinterpret_cast <log_t *> (ctx);
 		// Выводим информацию в лог

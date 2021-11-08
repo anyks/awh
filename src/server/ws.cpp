@@ -603,7 +603,7 @@ void awh::WebSocketServer::on(void * ctx, function <void (const size_t, const mo
  * @param ctx      контекст для вывода в сообщении
  * @param callback функция обратного вызова
  */
-void awh::WebSocketServer::on(void * ctx, function <void (const size_t, const u_short, const string &, WebSocketServer *, void *)> callback) noexcept {
+void awh::WebSocketServer::on(void * ctx, function <void (const size_t, const u_int, const string &, WebSocketServer *, void *)> callback) noexcept {
 	// Устанавливаем контекст передаваемого объекта
 	this->ctx.at(1) = ctx;
 	// Устанавливаем функцию получения ошибок

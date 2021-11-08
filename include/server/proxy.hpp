@@ -311,7 +311,7 @@ namespace awh {
 			 * @param entity  данные полезной нагрузки (тело сообщения)
 			 * @param headers HTTP заголовки сообщения
 			 */
-			void reject(const size_t aid, const u_short code, const string & mess = "", const vector <char> & entity = {}, const unordered_multimap <string, string> & headers = {}) const noexcept;
+			void reject(const size_t aid, const u_int code, const string & mess = "", const vector <char> & entity = {}, const unordered_multimap <string, string> & headers = {}) const noexcept;
 			/**
 			 * response Метод отправки сообщения клиенту
 			 * @param aid     идентификатор адъютанта
@@ -320,7 +320,7 @@ namespace awh {
 			 * @param entity  данные полезной нагрузки (тело сообщения)
 			 * @param headers HTTP заголовки сообщения
 			 */
-			void response(const size_t aid, const u_short code = 200, const string & mess = "", const vector <char> & entity = {}, const unordered_multimap <string, string> & headers = {}) const noexcept;
+			void response(const size_t aid, const u_int code = 200, const string & mess = "", const vector <char> & entity = {}, const unordered_multimap <string, string> & headers = {}) const noexcept;
 		public:
 			/**
 			 * ip Метод получения IP адреса адъютанта

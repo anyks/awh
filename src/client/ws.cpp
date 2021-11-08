@@ -707,7 +707,7 @@ void awh::WebSocketClient::on(void * ctx, function <void (const mode_t, WebSocke
  * @param ctx      контекст для вывода в сообщении
  * @param callback функция обратного вызова
  */
-void awh::WebSocketClient::on(void * ctx, function <void (const u_short, const string &, WebSocketClient *, void *)> callback) noexcept {
+void awh::WebSocketClient::on(void * ctx, function <void (const u_int, const string &, WebSocketClient *, void *)> callback) noexcept {
 	// Устанавливаем контекст передаваемого объекта
 	this->ctx.at(1) = ctx;
 	// Устанавливаем функцию получения ошибок

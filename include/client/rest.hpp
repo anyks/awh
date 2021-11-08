@@ -67,7 +67,7 @@ namespace awh {
 			 */
 			typedef struct Response {
 				bool ok;                                     // Флаг удачного ответа
-				u_short code;                                // Код ответа сервера
+				u_int code;                                  // Код ответа сервера
 				string message;                              // Сообщение ответа сервера
 				vector <char> entity;                        // Тело ответа сервера
 				unordered_multimap <string, string> headers; // Заголовки сервера
