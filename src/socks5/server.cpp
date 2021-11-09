@@ -22,7 +22,7 @@ const awh::Socks5Server::serv_t & awh::Socks5Server::getServer() const noexcept 
  * resCmd Метод получения бинарного буфера ответа
  * @param rep код ответа сервера
  */
-void awh::Socks5Server::resCmd(const uint8_t rep) const noexcept {
+void awh::Socks5Server::resCmd(const rep_t rep) const noexcept {
 	// Очищаем бинарный буфер данных
 	this->buffer.clear();
 	// Если IP адрес или доменное имя установлены
@@ -36,7 +36,7 @@ void awh::Socks5Server::resCmd(const uint8_t rep) const noexcept {
 		// Устанавливаем версию протокола
 		u_short offset = this->setOctet(VER);
 		// Устанавливаем комманду ответа
-		offset = this->setOctet(rep, offset);
+		offset = this->setOctet((uint8_t) rep, offset);
 		// Устанавливаем RSV октет
 		offset = this->setOctet(0x00, offset);
 		// Если IP адрес получен
@@ -126,7 +126,7 @@ void awh::Socks5Server::resAuth(const string & login, const string & password) c
 	// Если пользователи установлены
 	if(!login.empty() && !password.empty() && (this->authFn != nullptr)){
 		// Если авторизация выполнена
-		if(this->authFn(login, password))
+		if(this->authFn(login, password, this->ctx.at(0)))
 			// Разрешаем авторизацию пользователя
 			response.status = (uint8_t) rep_t::SUCCESS;
 	}
@@ -387,9 +387,12 @@ void awh::Socks5Server::reset() noexcept {
 }
 /**
  * setAuthCallback Метод добавления функции обработки авторизации
+ * @param ctx      контекст для вывода в сообщении
  * @param callback функция обратного вызова для обработки авторизации
  */
-void awh::Socks5Server::setAuthCallback(function <bool (const string &, const string &)> callback) noexcept {
+void awh::Socks5Server::setAuthCallback(void * ctx, function <bool (const string &, const string &, void *)> callback) noexcept {
+	// Устанавливаем контекст передаваемого объекта
+	this->ctx.at(0) = ctx;
 	// Устанавливаем функцию проверки авторизации
 	this->authFn = callback;
 }

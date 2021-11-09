@@ -65,6 +65,22 @@ namespace awh {
 				{0x12, "login or password is not correct"},
 				{0x13, "agreement version not supported"}
 			};
+		public:
+			/**
+			 * Коды ответа socks5 сервера
+			 */
+			enum class rep_t : uint8_t {
+				SUCCESS   = 0x00, // Подключение успешное
+				SOCKSERR  = 0x01, // Ошибка SOCKS-сервера
+				FORBIDDEN = 0x02, // Соединение запрещено набором правил
+				UNAVNET   = 0x03, // Сеть недоступна
+				UNAVHOST  = 0x04, // Хост недоступен
+				DENIED    = 0x05, // Отказ в соединении
+				TIMETTL   = 0x06, // Истечение TTL
+				NOCOMMAND = 0x07, // Команда не поддерживается
+				NOADDR    = 0x08, // Тип адреса не поддерживается
+				NOSUPPORT = 0x09  // До X'FF' не определены
+			};
 		protected:
 			/**
 			 * Типы адресации socks5
@@ -81,21 +97,6 @@ namespace awh {
 				CONNECT = 0x01, // Метод подключения
 				BIND    = 0x02, // Метод обратного подключения (сервера к клиенту)
 				UDP     = 0x03  // Работа с UDP протоколом
-			};
-			/**
-			 * Коды ответа socks5 сервера
-			 */
-			enum class rep_t : uint8_t {
-				SUCCESS   = 0x00, // Подключение успешное
-				SOCKSERR  = 0x01, // Ошибка SOCKS-сервера
-				FORBIDDEN = 0x02, // Соединение запрещено набором правил
-				UNAVNET   = 0x03, // Сеть недоступна
-				UNAVHOST  = 0x04, // Хост недоступен
-				DENIED    = 0x05, // Отказ в соединении
-				TIMETTL   = 0x06, // Истечение TTL
-				NOCOMMAND = 0x07, // Команда не поддерживается
-				NOADDR    = 0x08, // Тип адреса не поддерживается
-				NOSUPPORT = 0x09  // До X'FF' не определены
 			};
 			/**
 			 * Основные методы socks5

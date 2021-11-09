@@ -157,6 +157,7 @@ set(SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/src/server/ws.cpp"
     "${CMAKE_SOURCE_DIR}/src/server/rest.cpp"
     "${CMAKE_SOURCE_DIR}/src/server/proxy.cpp"
+    "${CMAKE_SOURCE_DIR}/src/server/socks5.cpp"
     "${CMAKE_SOURCE_DIR}/src/core/core.cpp"
     "${CMAKE_SOURCE_DIR}/src/core/client.cpp"
     "${CMAKE_SOURCE_DIR}/src/core/server.cpp"
@@ -166,6 +167,7 @@ set(SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/src/worker/ws.cpp"
     "${CMAKE_SOURCE_DIR}/src/worker/rest.cpp"
     "${CMAKE_SOURCE_DIR}/src/worker/proxy.cpp"
+    "${CMAKE_SOURCE_DIR}/src/worker/socks5.cpp"
     "${CMAKE_SOURCE_DIR}/src/worker/client.cpp"
     "${CMAKE_SOURCE_DIR}/src/worker/server.cpp"
 )

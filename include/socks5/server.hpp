@@ -48,8 +48,11 @@ namespace awh {
 			// Параметры запрашиваемого сервера
 			serv_t server;
 		private:
+			// Список контекстов передаваемых объектов
+			vector <void *> ctx = {nullptr};
+		private:
 			// Внешняя функция проверки авторизации
-			function <bool (const string &, const string &)> authFn = nullptr;
+			function <bool (const string &, const string &, void *)> authFn = nullptr;
 		public:
 			/**
 			 * getServer Метод извлечения параметров запрашиваемого сервера
@@ -61,7 +64,7 @@ namespace awh {
 			 * resCmd Метод получения бинарного буфера ответа
 			 * @param rep код ответа сервера
 			 */
-			void resCmd(const uint8_t rep) const noexcept;
+			void resCmd(const rep_t rep) const noexcept;
 			/**
 			 * resMethod Метод получения бинарного буфера выбора метода подключения
 			 * @param methods методы авторизаций выбранныйе пользователем
@@ -88,9 +91,10 @@ namespace awh {
 		public:
 			/**
 			 * setAuthCallback Метод добавления функции обработки авторизации
+			 * @param ctx      контекст для вывода в сообщении
 			 * @param callback функция обратного вызова для обработки авторизации
 			 */
-			void setAuthCallback(function <bool (const string &, const string &)> callback) noexcept;
+			void setAuthCallback(void * ctx, function <bool (const string &, const string &, void *)> callback) noexcept;
 		public:
 			/**
 			 * Socks5Server Конструктор

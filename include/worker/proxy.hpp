@@ -59,6 +59,9 @@ namespace awh {
 				vector <char> server;        // Буфер бинарных необработанных данных сервера
 				/**
 				 * AdjParam Конструктор
+				 * @param fmk объект фреймворка
+				 * @param log объект для работы с логами
+				 * @param uri объект работы с URI ссылками
 				 */
 				AdjParam(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcept :
 					cli(fmk, log, uri),
