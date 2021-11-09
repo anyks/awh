@@ -354,9 +354,17 @@ void awh::ProxyServer::readClientCallback(const char * buffer, const size_t size
 								// Получаем данные ответа
 								const auto & response = adj->cli.response();
 								// Если данные ответа получены
-								if(!response.empty())
+								if(!response.empty()){
+									// Тело REST сообщения
+									vector <char> entity;
 									// Отправляем ответ клиенту
 									reinterpret_cast <core_t *> (&proxy->coreSrv)->write(response.data(), response.size(), it->second);
+									// Получаем данные тела ответа
+									while(!(entity = adj->cli.payload()).empty()){
+										// Отправляем тело клиенту
+										reinterpret_cast <core_t *> (&proxy->coreSrv)->write(entity.data(), entity.size(), it->second);
+									}
+								}
 							}
 						}
 						// Устанавливаем метку продолжения обработки пайплайна
@@ -604,7 +612,17 @@ void awh::ProxyServer::prepare(const size_t aid, const size_t wid, core_t * core
 											// Получаем идентификатор адъютанта
 											const size_t aid = adj->worker.getAid();
 											// Отправляем запрос на внешний сервер
-											if(aid > 0) reinterpret_cast <core_t *> (&this->coreCli)->write(request.data(), request.size(), aid);
+											if(aid > 0){
+												// Тело REST сообщения
+												vector <char> entity;
+												// Отправляем серверу сообщение
+												reinterpret_cast <core_t *> (&this->coreCli)->write(request.data(), request.size(), aid);
+												// Получаем данные тела запроса
+												while(!(entity = adj->srv.payload()).empty()){
+													// Отправляем тело на сервер
+													reinterpret_cast <core_t *> (&this->coreCli)->write(entity.data(), entity.size(), aid);
+												}
+											}
 										}
 									}
 								// Если функция обратного вызова не установлена
@@ -617,6 +635,8 @@ void awh::ProxyServer::prepare(const size_t aid, const size_t wid, core_t * core
 										const auto & request = adj->srv.request();
 										// Если данные запроса получены
 										if(!request.empty()){
+											// Тело REST сообщения
+											vector <char> entity;
 											// Если функция обратного вызова установлена, выполняем
 											if(this->binaryFn != nullptr){
 												// Выводим сообщение
@@ -625,6 +645,11 @@ void awh::ProxyServer::prepare(const size_t aid, const size_t wid, core_t * core
 													reinterpret_cast <core_t *> (&this->coreCli)->write(request.data(), request.size(), aid);
 											// Отправляем запрос на внешний сервер
 											} else reinterpret_cast <core_t *> (&this->coreCli)->write(request.data(), request.size(), aid);
+											// Получаем данные тела запроса
+											while(!(entity = adj->srv.payload()).empty()){
+												// Отправляем тело на сервер
+												reinterpret_cast <core_t *> (&this->coreCli)->write(entity.data(), entity.size(), aid);
+											}
 										}
 									}
 								}
