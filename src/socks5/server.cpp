@@ -109,7 +109,7 @@ void awh::Socks5Server::resMethod(const vector <uint8_t> & methods) const noexce
 	// Увеличиваем память на 4 октета
 	this->buffer.resize(sizeof(uint8_t) * 2, 0x0);
 	// Копируем в буфер нашу структуру ответа
-	memcpy(&response, this->buffer.data(), sizeof(response));
+	memcpy(this->buffer.data(), &response, sizeof(response));
 }
 /**
  * resAuth Метод получения бинарного буфера ответа на авторизацию клиента
@@ -135,7 +135,7 @@ void awh::Socks5Server::resAuth(const string & login, const string & password) c
 	// Увеличиваем память на 4 октета
 	this->buffer.resize(sizeof(uint8_t) * 2, 0x0);
 	// Копируем в буфер нашу структуру ответа
-	memcpy(&response, this->buffer.data(), sizeof(response));
+	memcpy(this->buffer.data(), &response, sizeof(response));
 }
 /**
  * parse Метод парсинга входящих данных
@@ -285,8 +285,6 @@ void awh::Socks5Server::parse(const char * buffer, const size_t size) noexcept {
 					if(req.ver == (uint8_t) VER){
 						// Если команда запрошена поддерживаемая сервером
 						if(req.cmd == (uint8_t) cmd_t::CONNECT){
-							// Устанавливаем тип хоста сервера
-							this->server.family = req.atyp;
 							// Определяем тип адреса
 							switch(req.atyp){
 								// Получаем адрес IPv4
@@ -295,10 +293,12 @@ void awh::Socks5Server::parse(const char * buffer, const size_t size) noexcept {
 									if(size >= (sizeof(req_t) + sizeof(ip_t))){
 										// Создаём объект данных сервера
 										ip_t server;
+										// Устанавливаем тип хоста сервера
+										this->server.family = AF_INET;
 										// Копируем в буфер наши данные IP адреса
 										memcpy(&server, buffer + sizeof(req_t), sizeof(server));
 										// Выполняем получение IP адреса
-										this->server.host = this->hexToIp((const char *) &server.host, sizeof(server.host), this->server.family);
+										this->server.host = this->hexToIp((const char *) &server.host, sizeof(server.host), AF_INET);
 										// Если IP адрес получен
 										if(!this->server.host.empty()){
 											// Заменяем порт сервера
@@ -314,10 +314,12 @@ void awh::Socks5Server::parse(const char * buffer, const size_t size) noexcept {
 									if(size >= (sizeof(req_t) + sizeof(ip_t))){
 										// Создаём объект данных сервера
 										ip_t server;
+										// Устанавливаем тип хоста сервера
+										this->server.family = AF_INET6;
 										// Копируем в буфер наши данные IP адреса
 										memcpy(&server, buffer + sizeof(req_t), sizeof(server));
 										// Выполняем получение IP адреса
-										this->server.host = this->hexToIp((const char *) &server.host, sizeof(server.host), this->server.family);
+										this->server.host = this->hexToIp((const char *) &server.host, sizeof(server.host), AF_INET6);
 										// Если IP адрес получен
 										if(!this->server.host.empty()){
 											// Заменяем порт сервера

@@ -369,3 +369,47 @@ int main(int argc, char * argv[]) noexcept {
 	return 0;
 }
 ```
+
+### Example Socks5 PROXY Server
+
+```c++
+#include <server/socks5.hpp>
+
+using namespace std;
+using namespace awh;
+
+int main(int argc, char * argv[]) noexcept {
+	fmk_t fmk(true);
+	log_t log(&fmk);
+	proxySocks5Srv_t proxy(&fmk, &log);
+
+	log.setLogName("Proxy Socks5 Server");
+	log.setLogFormat("%H:%M:%S %d.%m.%Y");
+
+	proxy.init(2222, "127.0.0.1");
+	proxy.setConnectTimeouts(60, 15);
+
+	proxy.on(&log, [](const string & user, const string & password, void * ctx) -> bool {
+		log_t * log = reinterpret_cast <log_t *> (ctx);
+		log->print("USER: %s, PASS: %s", log_t::flag_t::INFO, user.c_str(), password.c_str());
+
+		return true;
+	});
+
+	proxy.on(&log, [](const string & ip, const string & mac, proxySocks5Srv_t * proxy, void * ctx) -> bool {
+		log_t * log = reinterpret_cast <log_t *> (ctx);
+		log->print("ACCEPT: ip = %s, mac = %s", log_t::flag_t::INFO, ip.c_str(), mac.c_str());
+
+		return true;
+	});
+
+	proxy.on(&log, [](const size_t aid, const proxySocks5Srv_t::mode_t mode, proxySocks5Srv_t * proxy, void * ctx) noexcept {
+		log_t * log = reinterpret_cast <log_t *> (ctx);
+		log->print("%s client", log_t::flag_t::INFO, (mode == proxySocks5Srv_t::mode_t::CONNECT ? "Connect" : "Disconnect"));
+	});
+
+	proxy.start();
+
+	return 0;
+}
+```

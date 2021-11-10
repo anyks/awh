@@ -363,19 +363,6 @@ namespace awh {
 			void close(const size_t aid) noexcept;
 		public:
 			/**
-			 * setWaitTimeDetect Метод детекции сообщений по количеству секунд
-			 * @param read  количество секунд для детекции по чтению
-			 * @param write количество секунд для детекции по записи
-			 */
-			void setWaitTimeDetect(const time_t read, const time_t write) noexcept;
-			/**
-			 * setBytesDetect Метод детекции сообщений по количеству байт
-			 * @param read  количество байт для детекции по чтению
-			 * @param write количество байт для детекции по записи
-			 */
-			void setBytesDetect(const worker_t::mark_t read, const worker_t::mark_t write) noexcept;
-		public:
-			/**
 			 * setRealm Метод установки название сервера
 			 * @param realm название сервера
 			 */
@@ -431,6 +418,12 @@ namespace awh {
 			 * @param ver  версия сервиса
 			 */
 			void setServ(const string & id, const string & name, const string & ver) noexcept;
+			/**
+			 * setBytesDetect Метод детекции сообщений по количеству байт
+			 * @param read  количество байт для детекции по чтению
+			 * @param write количество байт для детекции по записи
+			 */
+			void setBytesDetect(const worker_t::mark_t read, const worker_t::mark_t write) noexcept;
 			/**
 			 * setCrypt Метод установки параметров шифрования
 			 * @param pass пароль шифрования передаваемых данных

@@ -218,5 +218,5 @@ const vector <char> & awh::Socks5::get() const noexcept {
  */
 void awh::Socks5::setUrl(const uri_t::url_t & url) noexcept {
 	// Устанавливаем URL адрес REST запроса
-	if(!url.empty()) this->url = url;
+	this->url = url;
 }

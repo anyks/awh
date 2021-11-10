@@ -71,9 +71,9 @@ void awh::ProxyServer::persistServerCallback(const size_t aid, const size_t wid,
 		// Получаем параметры подключения адъютанта
 		workSrvProxy_t::adjp_t * adj = const_cast <workSrvProxy_t::adjp_t *> (proxy->worker.getAdj(aid));
 		// Если параметры подключения адъютанта получены
-		if((adj->method != web_t::method_t::CONNECT) && (adj != nullptr) && ((!adj->alive && !proxy->alive) || adj->close)){
+		if((adj != nullptr) && ((adj->method != web_t::method_t::CONNECT) || adj->close) && ((!adj->alive && !proxy->alive) || adj->close)){
 			// Если клиент давно должен был быть отключён, отключаем его
-			if(adj->close || !adj->srv.isAlive()) core->close(aid);
+			if(adj->close || !adj->srv.isAlive()) proxy->close(aid);
 			// Иначе проверяем прошедшее время
 			else {
 				// Получаем текущий штамп времени
@@ -81,7 +81,7 @@ void awh::ProxyServer::persistServerCallback(const size_t aid, const size_t wid,
 				// Если адъютант не ответил на пинг больше двух интервалов, отключаем его
 				if((stamp - adj->checkPoint) >= proxy->keepAlive)
 					// Завершаем работу
-					core->close(aid);
+					proxy->close(aid);
 			}
 		}
 	}
@@ -138,7 +138,7 @@ void awh::ProxyServer::connectClientCallback(const size_t aid, const size_t wid,
 						// Устанавливаем время на запись для сервера
 						reinterpret_cast <core_t *> (&proxy->coreSrv)->setTimeout(core_t::method_t::WRITE, proxy->writeTimeout, it->second);
 					// Выполняем отключение клиента
-					} else reinterpret_cast <core_t *> (&proxy->coreSrv)->close(it->second);
+					} else proxy->close(it->second);
 				// Отправляем сообщение на сервер, так-как оно пришло от клиента
 				} else proxy->prepare(it->second, proxy->worker.wid, reinterpret_cast <core_t *> (&proxy->coreSrv));
 			}
@@ -243,12 +243,12 @@ void awh::ProxyServer::disconnectClientCallback(const size_t aid, const size_t w
 			proxy->worker.pairs.erase(it);
 			// Получаем параметры подключения адъютанта
 			workSrvProxy_t::adjp_t * adj = const_cast <workSrvProxy_t::adjp_t *> (proxy->worker.getAdj(aid));
+			// Если подключение не выполнено, отправляем ответ клиенту
+			if(!adj->connect)
+				// Выполняем реджект
+				proxy->reject(aid, 404);
 			// Устанавливаем флаг отключения клиента
-			adj->close = true;
-			// Выполняем отключение клиента
-			reinterpret_cast <core_t *> (&proxy->coreSrv)->close(aid);
-			// Выполняем удаление параметров адъютанта
-			proxy->worker.removeAdj(aid);
+			else adj->close = true;
 		}
 	}
 }
@@ -267,14 +267,7 @@ void awh::ProxyServer::disconnectServerCallback(const size_t aid, const size_t w
 		// Получаем параметры подключения адъютанта
 		workSrvProxy_t::adjp_t * adj = const_cast <workSrvProxy_t::adjp_t *> (proxy->worker.getAdj(aid));
 		// Выполняем отключение клиента от стороннего сервера
-		if(adj != nullptr){
-			// Устанавливаем флаг отключения клиента
-			adj->close = true;
-			// Выполняем отключение всех дочерних клиентов
-			reinterpret_cast <core_t *> (&proxy->coreCli)->close(adj->worker.getAid());
-		}
-		// Если функция обратного вызова установлена, выполняем
-		if(proxy->openStopFn != nullptr) proxy->openStopFn(aid, mode_t::DISCONNECT, proxy, proxy->ctx.at(0));
+		if(adj != nullptr) adj->close = true;
 	}
 }
 /**
@@ -558,7 +551,7 @@ void awh::ProxyServer::prepare(const size_t aid, const size_t wid, core_t * core
 											core->write(payload.data(), payload.size(), aid);
 										}
 									// Выполняем отключение клиента
-									} else core->close(aid);
+									} else this->close(aid);
 									// Выходим из функции
 									return;
 								}
@@ -687,7 +680,7 @@ void awh::ProxyServer::prepare(const size_t aid, const size_t wid, core_t * core
 									core->write(payload.data(), payload.size(), aid);
 								}
 							// Выполняем отключение клиента
-							} else core->close(aid);
+							} else this->close(aid);
 							// Выходим из функции
 							return;
 						}
@@ -967,29 +960,16 @@ void awh::ProxyServer::close(const size_t aid) noexcept {
 	// Получаем параметры подключения адъютанта
 	workSrvProxy_t::adjp_t * adj = const_cast <workSrvProxy_t::adjp_t *> (this->worker.getAdj(aid));
 	// Если параметры подключения адъютанта получены, устанавливаем флаг закрытия подключения
-	if(adj != nullptr) adj->close = true;
-}
-/**
- * setWaitTimeDetect Метод детекции сообщений по количеству секунд
- * @param read  количество секунд для детекции по чтению
- * @param write количество секунд для детекции по записи
- */
-void awh::ProxyServer::setWaitTimeDetect(const time_t read, const time_t write) noexcept {
-	// Устанавливаем количество секунд на чтение
-	this->worker.timeRead = read;
-	// Устанавливаем количество секунд на запись
-	this->worker.timeWrite = write;
-}
-/**
- * setBytesDetect Метод детекции сообщений по количеству байт
- * @param read  количество байт для детекции по чтению
- * @param write количество байт для детекции по записи
- */
-void awh::ProxyServer::setBytesDetect(const worker_t::mark_t read, const worker_t::mark_t write) noexcept {
-	// Устанавливаем количество байт на чтение
-	this->worker.markRead = read;
-	// Устанавливаем количество байт на запись
-	this->worker.markWrite = write;
+	if(adj != nullptr){
+		// Выполняем отключение всех дочерних клиентов
+		reinterpret_cast <core_t *> (&this->coreCli)->close(adj->worker.getAid());
+		// Выполняем удаление параметров адъютанта
+		this->worker.removeAdj(aid);
+	}
+	// Отключаем клиента от сервера
+	reinterpret_cast <core_t *> (&this->coreSrv)->close(aid);
+	// Если функция обратного вызова установлена, выполняем
+	if(this->openStopFn != nullptr) this->openStopFn(aid, mode_t::DISCONNECT, this, this->ctx.at(0));
 }
 /**
  * setRealm Метод установки название сервера
@@ -1090,6 +1070,17 @@ void awh::ProxyServer::setServ(const string & id, const string & name, const str
 	this->name = name;
 	// Устанавливаем версию сервера
 	this->version = ver;
+}
+/**
+ * setBytesDetect Метод детекции сообщений по количеству байт
+ * @param read  количество байт для детекции по чтению
+ * @param write количество байт для детекции по записи
+ */
+void awh::ProxyServer::setBytesDetect(const worker_t::mark_t read, const worker_t::mark_t write) noexcept {
+	// Устанавливаем количество байт на чтение
+	this->worker.markRead = read;
+	// Устанавливаем количество байт на запись
+	this->worker.markWrite = write;
 }
 /**
  * setCrypt Метод установки параметров шифрования

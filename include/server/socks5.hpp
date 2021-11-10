@@ -47,10 +47,9 @@ namespace awh {
 			 * Основные флаги приложения
 			 */
 			enum class flag_t : uint8_t {
-				DEFER     = 0x01, // Флаг отложенных вызовов событий сокета
-				NOINFO    = 0x02, // Флаг запрещающий вывод информационных сообщений
-				WAITMESS  = 0x04, // Флаг ожидания входящих сообщений
-				NOCONNECT = 0x08  // Флаг запрещающий метод CONNECT
+				DEFER    = 0x01, // Флаг отложенных вызовов событий сокета
+				NOINFO   = 0x02, // Флаг запрещающий вывод информационных сообщений
+				WAITMESS = 0x04 // Флаг ожидания входящих сообщений
 			};
 		private:
 			// Хости сервера
@@ -71,29 +70,8 @@ namespace awh {
 			// Таймаут на записи для метода CONNECT
 			time_t writeTimeout = WRITE_TIMEOUT;
 		private:
-			// Пароль шифрования передаваемых данных
-			string pass = "";
-			// Соль шифрования передаваемых данных
-			string salt = "";
-			// Размер шифрования передаваемых данных
-			hash_t::aes_t aes = hash_t::aes_t::AES128;
-		private:
 			// Функция обратного вызова для обработки авторизации
 			function <bool (const string &, const string &, void *)> checkAuthFn = nullptr;
-		private:
-			// Флаг шифрования сообщений
-			bool crypt = false;
-			// Флаг долгоживущего подключения
-			bool alive = false;
-			// Флаг запрещающий метод CONNECT
-			bool noConnect = false;
-		private:
-			// Размер одного чанка
-			size_t chunkSize = BUFFER_CHUNK;
-			// Максимальный интервал времени жизни подключения
-			size_t keepAlive = KEEPALIVE_TIMEOUT;
-			// Максимальное количество запросов
-			size_t maxRequests = SERVER_MAX_REQUESTS;
 		private:
 			// Список контекстов передаваемых объектов
 			vector <void *> ctx = {
@@ -129,6 +107,14 @@ namespace awh {
 			 * @param ctx  передаваемый контекст модуля
 			 */
 			static void openServerCallback(const size_t wid, core_t * core, void * ctx) noexcept;
+			/**
+			 * persistServerCallback Функция персистентного вызова
+			 * @param aid  идентификатор адъютанта
+			 * @param wid  идентификатор воркера
+			 * @param core объект биндинга TCP/IP
+			 * @param ctx  передаваемый контекст модуля
+			 */
+			static void persistServerCallback(const size_t aid, const size_t wid, core_t * core, void * ctx) noexcept;
 			/**
 			 * connectClientCallback Функция обратного вызова при подключении к серверу
 			 * @param aid  идентификатор адъютанта
@@ -249,18 +235,6 @@ namespace awh {
 			const string & mac(const size_t aid) const noexcept;
 		public:
 			/**
-			 * setAlive Метод установки долгоживущего подключения
-			 * @param mode флаг долгоживущего подключения
-			 */
-			void setAlive(const bool mode) noexcept;
-			/**
-			 * setAlive Метод установки долгоживущего подключения
-			 * @param aid  идентификатор адъютанта
-			 * @param mode флаг долгоживущего подключения
-			 */
-			void setAlive(const size_t aid, const bool mode) noexcept;
-		public:
-			/**
 			 * start Метод запуска клиента
 			 */
 			void start() noexcept;
@@ -276,38 +250,10 @@ namespace awh {
 			void close(const size_t aid) noexcept;
 		public:
 			/**
-			 * setWaitTimeDetect Метод детекции сообщений по количеству секунд
-			 * @param read  количество секунд для детекции по чтению
-			 * @param write количество секунд для детекции по записи
-			 */
-			void setWaitTimeDetect(const time_t read, const time_t write) noexcept;
-			/**
-			 * setBytesDetect Метод детекции сообщений по количеству байт
-			 * @param read  количество байт для детекции по чтению
-			 * @param write количество байт для детекции по записи
-			 */
-			void setBytesDetect(const worker_t::mark_t read, const worker_t::mark_t write) noexcept;
-		public:
-			/**
 			 * setMode Метод установки флага модуля
 			 * @param flag флаг модуля для установки
 			 */
 			void setMode(const u_short flag) noexcept;
-			/**
-			 * setChunkSize Метод установки размера чанка
-			 * @param size размер чанка для установки
-			 */
-			void setChunkSize(const size_t size) noexcept;
-			/**
-			 * setKeepAlive Метод установки времени жизни подключения
-			 * @param time время жизни подключения
-			 */
-			void setKeepAlive(const size_t time) noexcept;
-			/**
-			 * setMaxRequests Метод установки максимального количества запросов
-			 * @param max максимальное количество запросов
-			 */
-			void setMaxRequests(const size_t max) noexcept;
 			/**
 			 * setConnectTimeouts Метод установки таймаутов для метода CONNECT
 			 * @param read  таймаут в секундах на чтение
@@ -315,12 +261,11 @@ namespace awh {
 			 */
 			void setConnectTimeouts(const time_t read, const time_t write) noexcept;
 			/**
-			 * setCrypt Метод установки параметров шифрования
-			 * @param pass пароль шифрования передаваемых данных
-			 * @param salt соль шифрования передаваемых данных
-			 * @param aes  размер шифрования передаваемых данных
+			 * setBytesDetect Метод детекции сообщений по количеству байт
+			 * @param read  количество байт для детекции по чтению
+			 * @param write количество байт для детекции по записи
 			 */
-			void setCrypt(const string & pass, const string & salt = "", const hash_t::aes_t aes = hash_t::aes_t::AES128) noexcept;
+			void setBytesDetect(const worker_t::mark_t read, const worker_t::mark_t write) noexcept;
 		public:
 			/**
 			 * ProxySocks5Server Конструктор

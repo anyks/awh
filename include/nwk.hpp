@@ -144,9 +144,15 @@ namespace awh {
 			 * type_t Флаги типа адреса
 			 */
 			enum class type_t : uint8_t {
-				NONE, MAC, IPV4, IPV6,
-				DOMNAME, NETWORK, ADDRESS,
-				HTTPADDRESS, HTTPMETHOD
+				MAC,        // Аппаратный адрес сетевого интерфейса
+				IPV4,       // Адрес подключения IPv4
+				IPV6,       // Адрес подключения IPv6
+				NONE,       // Не определено
+				DOMNAME,    // Доменное имя
+				NETWORK,    // Адрес/Маска сети
+				ADDRESS,    // Адрес в файловой системе
+				HTTPMETHOD, // HTTP метод
+				HTTPADDRESS // HTTP адрес
 			};
 		private:
 			// Набор локальных сетей IPv6

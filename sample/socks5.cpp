@@ -10,7 +10,7 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include <server/proxy.hpp>
+#include <server/socks5.hpp>
 
 // Подключаем пространство имён
 using namespace std;
@@ -28,37 +28,19 @@ int main(int argc, char * argv[]) noexcept {
 	// Создаём объект для работы с логами
 	log_t log(&fmk);
 	// Создаём объект PROXY сервера
-	proxySrv_t proxy(&fmk, &log);
+	proxySocks5Srv_t proxy(&fmk, &log);
 	// Устанавливаем название сервиса
-	log.setLogName("Proxy Server");
+	log.setLogName("Proxy Socks5 Server");
 	// Устанавливаем формат времени
 	log.setLogFormat("%H:%M:%S %d.%m.%Y");
 	/**
 	 * 1. Устанавливаем ожидание входящих сообщений
 	 */
 	// proxy.setMode((uint8_t) wsSrv_t::flag_t::WAITMESS);
-	// Устанавливаем название сервера
-	proxy.setRealm("ANYKS");
-	// Устанавливаем временный ключ сессии
-	proxy.setOpaque("keySession");
-	// Устанавливаем таймаут для метода CONNECT
-	proxy.setConnectTimeouts(30, 0);
-	// Устанавливаем тип авторизации
-	// proxy.setAuthType();
-	proxy.setAuthType(auth_t::type_t::DIGEST, auth_t::hash_t::MD5);
+	// Устанавливаем таймаут
+	proxy.setConnectTimeouts(60, 30);
 	// Выполняем инициализацию WebSocket сервера
-	proxy.init(2222, "127.0.0.1", http_t::compress_t::GZIP);
-	// Устанавливаем шифрование
-	// proxy.setCrypt("PASS");
-	// Устанавливаем функцию извлечения пароля
-	proxy.on(&log, [](const string & user, void * ctx) -> string {
-		// Получаем объект логирования
-		log_t * log = reinterpret_cast <log_t *> (ctx);
-		// Выводим информацию в лог
-		log->print("USER: %s, PASS: %s", log_t::flag_t::INFO, user.c_str(), "password");
-		// Выводим пароль
-		return "password";
-	});
+	proxy.init(2222, "127.0.0.1");
 	// Устанавливаем функцию проверки авторизации
 	proxy.on(&log, [](const string & user, const string & password, void * ctx) -> bool {
 		// Получаем объект логирования
@@ -69,7 +51,7 @@ int main(int argc, char * argv[]) noexcept {
 		return true;
 	});
 	// Установливаем функцию обратного вызова на событие активации клиента на сервере
-	proxy.on(&log, [](const string & ip, const string & mac, proxySrv_t * proxy, void * ctx) -> bool {
+	proxy.on(&log, [](const string & ip, const string & mac, proxySocks5Srv_t * proxy, void * ctx) -> bool {
 		// Получаем объект логирования
 		log_t * log = reinterpret_cast <log_t *> (ctx);
 		// Выводим информацию в лог
@@ -78,22 +60,13 @@ int main(int argc, char * argv[]) noexcept {
 		return true;
 	});
 	// Установливаем функцию обратного вызова на событие запуска или остановки подключения
-	proxy.on(&log, [](const size_t aid, const proxySrv_t::mode_t mode, proxySrv_t * proxy, void * ctx) noexcept {
+	proxy.on(&log, [](const size_t aid, const proxySocks5Srv_t::mode_t mode, proxySocks5Srv_t * proxy, void * ctx) noexcept {
 		// Получаем объект логирования
 		log_t * log = reinterpret_cast <log_t *> (ctx);
 		// Выводим информацию в лог
-		log->print("%s client", log_t::flag_t::INFO, (mode == proxySrv_t::mode_t::CONNECT ? "Connect" : "Disconnect"));
+		log->print("%s client", log_t::flag_t::INFO, (mode == proxySocks5Srv_t::mode_t::CONNECT ? "Connect" : "Disconnect"));
 	});
-	// Установливаем функцию обратного вызова на событие получения сообщений
-	proxy.on(&log, [](const size_t aid, const proxySrv_t::event_t event, http_t * http, proxySrv_t * proxy, void * ctx) -> bool {
-		// Получаем объект логирования
-		log_t * log = reinterpret_cast <log_t *> (ctx);
-		// Выводим информацию в лог
-		log->print("%s client", log_t::flag_t::INFO, (event == proxySrv_t::event_t::RESPONSE ? "Response" : "Request"));
-		// Выводим результат
-		return true;
-	});
-	// Выполняем запуск Proxy сервер
+	// Выполняем запуск Socks5 сервер
 	proxy.start();
 	// Выводим результат
 	return 0;

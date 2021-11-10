@@ -178,6 +178,7 @@ set(WSS_APP_NAME wss)
 set(WEB_APP_NAME web)
 set(REST_APP_NAME rest)
 set(PROXY_APP_NAME proxy)
+set(SOCKS5_APP_NAME socks5)
 set(CURRENT_LIB_NAME ${PROJECT_NAME})
 set(CURRENT_APP_NAME ${PROJECT_NAME}_bin)
 
@@ -207,6 +208,7 @@ if (ENABLE_CONSOLE_APP)
     add_executable(${WEB_APP_NAME} sample/web.cpp ${RES_FILES})
     add_executable(${REST_APP_NAME} sample/rest.cpp ${RES_FILES})
     add_executable(${PROXY_APP_NAME} sample/proxy.cpp ${RES_FILES})
+    add_executable(${SOCKS5_APP_NAME} sample/socks5.cpp ${RES_FILES})
 
     target_link_libraries(${WSC_APP_NAME}
         ${CURRENT_LIB_NAME}
@@ -252,6 +254,15 @@ if (ENABLE_CONSOLE_APP)
         ${LIBEVENT_LIBRARIES}
         ${WINFLAGS}
     )
+
+    target_link_libraries(${SOCKS5_APP_NAME}
+        ${CURRENT_LIB_NAME}
+        ${ZLIB_LIBRARY}
+        ${BROTLI_LIBRARIES}
+        ${OPENSSL_LIBRARIES}
+        ${LIBEVENT_LIBRARIES}
+        ${WINFLAGS}
+    )
 endif()
 
 # Устанавливаем адрес установки, запрет установки в /usr/local
@@ -269,6 +280,7 @@ install(TARGETS ${WSS_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE
 install(TARGETS ${WEB_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
 install(TARGETS ${REST_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
 install(TARGETS ${PROXY_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
+install(TARGETS ${SOCKS5_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
 
 # Устанавливаем хидеры сторонних библиотек
 install(DIRECTORY "${ZLIB_INCLUDE_DIR}" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h")

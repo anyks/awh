@@ -43,15 +43,11 @@ namespace awh {
 			typedef struct AdjParam {
 				workCli_t worker;     // Объект рабочего для клиента
 				socks5Srv_t socks5;   // Объект для работы с Socks5
-				bool crypt;           // Флаг шифрования сообщений
-				bool alive;           // Флаг долгоживущего подключения
 				bool close;           // Флаг требования закрыть адъютанта
 				bool locked;          // Флаг блокировки обработки запроса
 				bool connect;         // Флаг выполненного подключения
-				size_t requests;      // Количество выполненных запросов
 				size_t readBytes;     // Количество полученных байт для закрытия подключения
 				size_t stopBytes;     // Количество байт для закрытия подключения
-				time_t checkPoint;    // Контрольная точка ответа на пинг
 				vector <char> buffer; // Буфер бинарных необработанных данных
 				/**
 				 * AdjParam Конструктор
@@ -62,15 +58,11 @@ namespace awh {
 				AdjParam(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcept :
 					worker(fmk, log),
 					socks5(fmk, log, uri),
-					crypt(false),
-					alive(false),
 					close(false),
 					locked(false),
 					connect(false),
-					requests(0),
 					readBytes(0),
-					stopBytes(0),
-					checkPoint(0) {}
+					stopBytes(0) {}
 				/**
 				 * ~AdjParam Деструктор
 				 */

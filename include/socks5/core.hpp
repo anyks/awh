@@ -178,7 +178,7 @@ namespace awh {
 			 * IP Структура ip адреса сервера
 			 */
 			typedef struct IP {
-				uint16_t host; // Хост сервера
+				uint32_t host; // Хост сервера
 				uint16_t port; // Порт сервера
 				/**
 				 * IP Конструктор
