@@ -65,11 +65,6 @@ namespace awh {
 			// Объект рабочего для сервера
 			workSrvSocks5_t worker;
 		private:
-			// Таймаут на чтение для метода CONNECT
-			time_t readTimeout = READ_TIMEOUT;
-			// Таймаут на записи для метода CONNECT
-			time_t writeTimeout = WRITE_TIMEOUT;
-		private:
 			// Функция обратного вызова для обработки авторизации
 			function <bool (const string &, const string &, void *)> checkAuthFn = nullptr;
 		private:
@@ -255,11 +250,11 @@ namespace awh {
 			 */
 			void setMode(const u_short flag) noexcept;
 			/**
-			 * setConnectTimeouts Метод установки таймаутов для метода CONNECT
-			 * @param read  таймаут в секундах на чтение
-			 * @param write таймаут в секундах на запись
+			 * setWaitTimeDetect Метод детекции сообщений по количеству секунд
+			 * @param read  количество секунд для детекции по чтению
+			 * @param write количество секунд для детекции по записи
 			 */
-			void setConnectTimeouts(const time_t read, const time_t write) noexcept;
+			void setWaitTimeDetect(const time_t read, const time_t write) noexcept;
 			/**
 			 * setBytesDetect Метод детекции сообщений по количеству байт
 			 * @param read  количество байт для детекции по чтению

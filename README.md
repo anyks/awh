@@ -325,6 +325,8 @@ int main(int argc, char * argv[]) noexcept {
 
 	proxy.setRealm("ANYKS");
 	proxy.setOpaque("keySession");
+	proxy.setWaitTimeDetect(30, 15);
+	proxy.setMode((uint8_t) proxySrv_t::flag_t::WAITMESS);
 	proxy.setAuthType(auth_t::type_t::DIGEST, auth_t::hash_t::MD5);
 
 	proxy.init(2222, "127.0.0.1", http_t::compress_t::GZIP);
@@ -387,7 +389,8 @@ int main(int argc, char * argv[]) noexcept {
 	log.setLogFormat("%H:%M:%S %d.%m.%Y");
 
 	proxy.init(2222, "127.0.0.1");
-	proxy.setConnectTimeouts(60, 15);
+	proxy.setWaitTimeDetect(30, 15);
+	proxy.setMode((uint8_t) proxySocks5Srv_t::flag_t::WAITMESS);
 
 	proxy.on(&log, [](const string & user, const string & password, void * ctx) -> bool {
 		log_t * log = reinterpret_cast <log_t *> (ctx);

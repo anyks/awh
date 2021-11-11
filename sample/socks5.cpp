@@ -36,9 +36,9 @@ int main(int argc, char * argv[]) noexcept {
 	/**
 	 * 1. Устанавливаем ожидание входящих сообщений
 	 */
-	// proxy.setMode((uint8_t) wsSrv_t::flag_t::WAITMESS);
-	// Устанавливаем таймаут
-	proxy.setConnectTimeouts(60, 30);
+	proxy.setMode((uint8_t) proxySocks5Srv_t::flag_t::WAITMESS);
+	// Устанавливаем таймаут ожидания получения сообщений
+	proxy.setWaitTimeDetect(30, 15);
 	// Выполняем инициализацию WebSocket сервера
 	proxy.init(2222, "127.0.0.1");
 	// Устанавливаем функцию проверки авторизации

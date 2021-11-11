@@ -73,11 +73,6 @@ namespace awh {
 			// Версия сервера
 			string version = AWH_VERSION;
 		private:
-			// Таймаут на чтение для метода CONNECT
-			time_t readTimeout = READ_TIMEOUT;
-			// Таймаут на записи для метода CONNECT
-			time_t writeTimeout = WRITE_TIMEOUT;
-		private:
 			// Пароль шифрования передаваемых данных
 			string pass = "";
 			// Соль шифрования передаваемых данных
@@ -406,11 +401,11 @@ namespace awh {
 			 */
 			void setCompress(const http_t::compress_t compress) noexcept;
 			/**
-			 * setConnectTimeouts Метод установки таймаутов для метода CONNECT
-			 * @param read  таймаут в секундах на чтение
-			 * @param write таймаут в секундах на запись
+			 * setWaitTimeDetect Метод детекции сообщений по количеству секунд
+			 * @param read  количество секунд для детекции по чтению
+			 * @param write количество секунд для детекции по записи
 			 */
-			void setConnectTimeouts(const time_t read, const time_t write) noexcept;
+			void setWaitTimeDetect(const time_t read, const time_t write) noexcept;
 			/**
 			 * setServ Метод установки данных сервиса
 			 * @param id   идентификатор сервиса

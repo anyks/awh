@@ -36,13 +36,13 @@ int main(int argc, char * argv[]) noexcept {
 	/**
 	 * 1. Устанавливаем ожидание входящих сообщений
 	 */
-	// proxy.setMode((uint8_t) wsSrv_t::flag_t::WAITMESS);
+	proxy.setMode((uint8_t) proxySrv_t::flag_t::WAITMESS);
 	// Устанавливаем название сервера
 	proxy.setRealm("ANYKS");
 	// Устанавливаем временный ключ сессии
 	proxy.setOpaque("keySession");
-	// Устанавливаем таймаут для метода CONNECT
-	proxy.setConnectTimeouts(30, 0);
+	// Устанавливаем таймаут ожидания получения сообщений
+	proxy.setWaitTimeDetect(30, 15);
 	// Устанавливаем тип авторизации
 	// proxy.setAuthType();
 	proxy.setAuthType(auth_t::type_t::DIGEST, auth_t::hash_t::MD5);

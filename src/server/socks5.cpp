@@ -92,14 +92,6 @@ void awh::ProxySocks5Server::connectClientCallback(const size_t aid, const size_
 				const auto & socks5 = adj->socks5.get();
 				// Если данные получены
 				if(!socks5.empty()) reinterpret_cast <core_t *> (&proxy->coreSrv)->write(socks5.data(), socks5.size(), it->second);
-				// Устанавливаем время на чтение для клиента
-				core->setTimeout(core_t::method_t::READ, proxy->readTimeout, aid);
-				// Устанавливаем время на запись для клиента
-				core->setTimeout(core_t::method_t::WRITE, proxy->writeTimeout, aid);
-				// Устанавливаем время на чтение для сервера
-				reinterpret_cast <core_t *> (&proxy->coreSrv)->setTimeout(core_t::method_t::READ, proxy->readTimeout, it->second);
-				// Устанавливаем время на запись для сервера
-				reinterpret_cast <core_t *> (&proxy->coreSrv)->setTimeout(core_t::method_t::WRITE, proxy->writeTimeout, it->second);
 			}
 		}
 	}
@@ -122,6 +114,12 @@ void awh::ProxySocks5Server::connectServerCallback(const size_t aid, const size_
 		workSrvSocks5_t::adjp_t * adj = const_cast <workSrvSocks5_t::adjp_t *> (proxy->worker.getAdj(aid));
 		// Устанавливаем контекст сообщения
 		adj->worker.ctx = proxy;
+		// Устанавливаем флаг ожидания входящих сообщений
+		adj->worker.wait = proxy->worker.wait;
+		// Устанавливаем количество секунд на чтение
+		adj->worker.timeRead = proxy->worker.timeRead;
+		// Устанавливаем количество секунд на запись
+		adj->worker.timeWrite = proxy->worker.timeWrite;
 		// Устанавливаем функцию чтения данных
 		adj->worker.readFn = readClientCallback;
 		// Устанавливаем событие подключения
@@ -502,15 +500,15 @@ void awh::ProxySocks5Server::setMode(const u_short flag) noexcept {
 	this->coreSrv.setNoInfo(flag & (uint8_t) flag_t::NOINFO);
 }
 /**
- * setConnectTimeouts Метод установки таймаутов для метода CONNECT
- * @param read  таймаут в секундах на чтение
- * @param write таймаут в секундах на запись
+ * setWaitTimeDetect Метод детекции сообщений по количеству секунд
+ * @param read  количество секунд для детекции по чтению
+ * @param write количество секунд для детекции по записи
  */
-void awh::ProxySocks5Server::setConnectTimeouts(const time_t read, const time_t write) noexcept {
-	// Устанавливаем таймаут на чтение
-	this->readTimeout = read;
-	// Устанавливаем таймаут на запись
-	this->writeTimeout = write;
+void awh::ProxySocks5Server::setWaitTimeDetect(const time_t read, const time_t write) noexcept {
+	// Устанавливаем количество секунд на чтение
+	this->worker.timeRead = read;
+	// Устанавливаем количество секунд на запись
+	this->worker.timeWrite = write;
 }
 /**
  * setBytesDetect Метод детекции сообщений по количеству байт
