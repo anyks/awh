@@ -22,8 +22,10 @@ void awh::CoreClient::read(struct bufferevent * bev, void * ctx) noexcept {
 		worker_t::adj_t * adj = reinterpret_cast <worker_t::adj_t *> (ctx);
 		// Получаем объект подключения
 		workCli_t * wrk = (workCli_t *) const_cast <worker_t *> (adj->parent);
+		// Получаем объект ядра клиента
+		const coreCli_t * core = reinterpret_cast <const coreCli_t *> (wrk->core);
 		// Если подключение ещё существует
-		if(wrk->core->adjutants.count(adj->aid) > 0){
+		if(core->adjutants.count(adj->aid) > 0){
 			// Получаем буферы входящих данных
 			struct evbuffer * input = bufferevent_get_input(adj->bev);
 			// Получаем размер входящих данных
@@ -73,8 +75,10 @@ void awh::CoreClient::write(struct bufferevent * bev, void * ctx) noexcept {
 		worker_t::adj_t * adj = reinterpret_cast <worker_t::adj_t *> (ctx);
 		// Получаем объект подключения
 		workCli_t * wrk = (workCli_t *) const_cast <worker_t *> (adj->parent);
+		// Получаем объект ядра клиента
+		const coreCli_t * core = reinterpret_cast <const coreCli_t *> (wrk->core);
 		// Если подключение ещё существует
-		if(wrk->core->adjutants.count(adj->aid) > 0){
+		if(core->adjutants.count(adj->aid) > 0){
 			// Получаем буферы исходящих данных
 			struct evbuffer * output = bufferevent_get_output(bev);
 			// Получаем размер исходящих данных
@@ -134,52 +138,57 @@ void awh::CoreClient::event(struct bufferevent * bev, const short events, void *
 		// Получаем объект подключения
 		workCli_t * wrk = (workCli_t *) const_cast <worker_t *> (adj->parent);
 		// Если подключение ещё существует
-		if((adj->fmk != nullptr) && (wrk->core != nullptr) && !wrk->core->adjutants.empty() && (wrk->core->adjutants.count(adj->aid) > 0)){
-			// Получаем URL параметры запроса
-			const uri_t::url_t & url = (wrk->isProxy() ? wrk->proxy.url : wrk->url);
-			// Получаем хост сервера
-			const string & host = (!url.ip.empty() ? url.ip : url.domain);
-			// Если подключение удачное
-			if(events & BEV_EVENT_CONNECTED){
-				// Сбрасываем количество попыток подключений
-				adj->attempt = 0;
-				// Выводим в лог сообщение
-				if(!wrk->core->noinfo) adj->log->print("connect client to server [%s:%d]", log_t::flag_t::INFO, host.c_str(), url.port);
-				// Если подключение производится через, прокси-сервер
-				if(wrk->isProxy()){
-					// Выполняем функцию обратного вызова для прокси-сервера
-					if(wrk->connectProxyFn != nullptr) wrk->connectProxyFn(adj->aid, wrk->wid, const_cast <core_t *> (wrk->core), wrk->ctx);
-				// Выполняем функцию обратного вызова
-				} else if(wrk->connectFn != nullptr) wrk->connectFn(adj->aid, wrk->wid, const_cast <core_t *> (wrk->core), wrk->ctx);
-				// Если флаг ожидания входящих сообщений, активирован
-				if(wrk->wait){
-					// Устанавливаем таймаут ожидания поступления данных
-					struct timeval read = {adj->timeRead, 0};
-					// Устанавливаем таймаут ожидания записи данных
-					struct timeval write = {adj->timeWrite, 0};
-					// Устанавливаем таймаут на отправку/получение данных
-					bufferevent_set_timeouts(
-						adj->bev,
-						(adj->timeRead > 0 ? &read : nullptr),
-						(adj->timeWrite > 0 ? &write : nullptr)
-					);
-				}
-				// Выходим из функции
-				return;
-			// Если это ошибка или завершение работы
-			} else if(events & (BEV_EVENT_ERROR | BEV_EVENT_TIMEOUT | BEV_EVENT_EOF)) {
-				// Если это ошибка
-				if(events & BEV_EVENT_ERROR)
+		if((adj->fmk != nullptr) && (wrk->core != nullptr)){
+			// Получаем объект ядра клиента
+			const coreCli_t * core = reinterpret_cast <const coreCli_t *> (wrk->core);
+			// Если список адъютантов не пустой и адъютант найден
+		 	if(!core->adjutants.empty() && (core->adjutants.count(adj->aid) > 0)){
+				// Получаем URL параметры запроса
+				const uri_t::url_t & url = (wrk->isProxy() ? wrk->proxy.url : wrk->url);
+				// Получаем хост сервера
+				const string & host = (!url.ip.empty() ? url.ip : url.domain);
+				// Если подключение удачное
+				if(events & BEV_EVENT_CONNECTED){
+					// Сбрасываем количество попыток подключений
+					adj->attempt = 0;
 					// Выводим в лог сообщение
-					adj->log->print("closing server [%s:%d] %s", log_t::flag_t::WARNING, host.c_str(), url.port, evutil_socket_error_to_string(EVUTIL_SOCKET_ERROR()));
-				// Если - это таймаут, выводим сообщение в лог
-				else if(events & BEV_EVENT_TIMEOUT) adj->log->print("timeout server [%s:%d]", log_t::flag_t::WARNING, host.c_str(), url.port);
+					if(!core->noinfo) adj->log->print("connect client to server [%s:%d]", log_t::flag_t::INFO, host.c_str(), url.port);
+					// Если подключение производится через, прокси-сервер
+					if(wrk->isProxy()){
+						// Выполняем функцию обратного вызова для прокси-сервера
+						if(wrk->connectProxyFn != nullptr) wrk->connectProxyFn(adj->aid, wrk->wid, const_cast <core_t *> (wrk->core), wrk->ctx);
+					// Выполняем функцию обратного вызова
+					} else if(wrk->connectFn != nullptr) wrk->connectFn(adj->aid, wrk->wid, const_cast <core_t *> (wrk->core), wrk->ctx);
+					// Если флаг ожидания входящих сообщений, активирован
+					if(wrk->wait){
+						// Устанавливаем таймаут ожидания поступления данных
+						struct timeval read = {adj->timeRead, 0};
+						// Устанавливаем таймаут ожидания записи данных
+						struct timeval write = {adj->timeWrite, 0};
+						// Устанавливаем таймаут на отправку/получение данных
+						bufferevent_set_timeouts(
+							adj->bev,
+							(adj->timeRead > 0 ? &read : nullptr),
+							(adj->timeWrite > 0 ? &write : nullptr)
+						);
+					}
+					// Выходим из функции
+					return;
+				// Если это ошибка или завершение работы
+				} else if(events & (BEV_EVENT_ERROR | BEV_EVENT_TIMEOUT | BEV_EVENT_EOF)) {
+					// Если это ошибка
+					if(events & BEV_EVENT_ERROR)
+						// Выводим в лог сообщение
+						adj->log->print("closing server [%s:%d] %s", log_t::flag_t::WARNING, host.c_str(), url.port, evutil_socket_error_to_string(EVUTIL_SOCKET_ERROR()));
+					// Если - это таймаут, выводим сообщение в лог
+					else if(events & BEV_EVENT_TIMEOUT) adj->log->print("timeout server [%s:%d]", log_t::flag_t::WARNING, host.c_str(), url.port);
+				}
 			}
+			// Запрещаем чтение запись данных серверу
+			bufferevent_disable(bev, EV_WRITE | EV_READ);
+			// Выполняем отключение от сервера
+			const_cast <coreCli_t *> (core)->close(adj->aid);
 		}
-		// Запрещаем чтение запись данных серверу
-		bufferevent_disable(bev, EV_WRITE | EV_READ);
-		// Выполняем отключение от сервера
-		const_cast <core_t *> (wrk->core)->close(adj->aid);
 	}
 }
 /**
@@ -235,6 +244,8 @@ void awh::CoreClient::connect(const size_t wid) noexcept {
 			struct sockaddr * sin = nullptr;
 			// Получаем объект воркера
 			workCli_t * wrk = (workCli_t *) const_cast <worker_t *> (it->second);
+			// Получаем объект ядра клиента
+			const coreCli_t * core = reinterpret_cast <const coreCli_t *> (wrk->core);
 			// Получаем URL параметры запроса
 			const uri_t::url_t & url = (wrk->isProxy() ? wrk->proxy.url : wrk->url);
 			// Получаем сокет для подключения к серверу
@@ -305,7 +316,7 @@ void awh::CoreClient::connect(const size_t wid) noexcept {
 						// Если все попытки исчерпаны
 						} else {
 							// Выводим сообщение об ошибке
-							if(!wrk->core->noinfo) this->log->print("%s", log_t::flag_t::INFO, "disconnected from the server");
+							if(!core->noinfo) this->log->print("%s", log_t::flag_t::INFO, "disconnected from the server");
 							// Выводим функцию обратного вызова
 							if(wrk->disconnectFn != nullptr) wrk->disconnectFn(ret.first->first, wrk->wid, this, wrk->ctx);
 							// Выходим из функции
@@ -313,7 +324,7 @@ void awh::CoreClient::connect(const size_t wid) noexcept {
 						}
 					}
 					// Выводим в лог сообщение
-					if(!wrk->core->noinfo) this->log->print("create good connect to host = %s [%s:%d], socket = %d", log_t::flag_t::INFO, url.domain.c_str(), url.ip.c_str(), url.port, socket.fd);
+					if(!core->noinfo) this->log->print("create good connect to host = %s [%s:%d], socket = %d", log_t::flag_t::INFO, url.domain.c_str(), url.ip.c_str(), url.port, socket.fd);
 					// Выходим из функции
 					return;
 				// Выводим в лог сообщение
@@ -330,7 +341,7 @@ void awh::CoreClient::connect(const size_t wid) noexcept {
 			// Если все попытки исчерпаны
 			} else {
 				// Выводим сообщение об ошибке
-				if(!wrk->core->noinfo) this->log->print("%s", log_t::flag_t::INFO, "disconnected from the server");
+				if(!core->noinfo) this->log->print("%s", log_t::flag_t::INFO, "disconnected from the server");
 				// Выводим функцию обратного вызова
 				if(wrk->disconnectFn != nullptr) wrk->disconnectFn(0, wrk->wid, this, wrk->ctx);
 			}
@@ -442,6 +453,8 @@ void awh::CoreClient::close(const size_t aid) noexcept {
 		worker_t::adj_t * adj = const_cast <worker_t::adj_t *> (it->second);
 		// Получаем объект воркера
 		workCli_t * wrk = (workCli_t *) const_cast <worker_t *> (adj->parent);
+		// Получаем объект ядра клиента
+		const coreCli_t * core = reinterpret_cast <const coreCli_t *> (wrk->core);
 		// Если событие сервера существует
 		if(adj->bev != nullptr){
 			// Выполняем очистку буфера событий
@@ -464,7 +477,7 @@ void awh::CoreClient::close(const size_t aid) noexcept {
 		// Если автоматическое подключение выполнять не нужно
 		else {
 			// Выводим сообщение об ошибке
-			if(!wrk->core->noinfo) this->log->print("%s", log_t::flag_t::INFO, "disconnected from the server");
+			if(!core->noinfo) this->log->print("%s", log_t::flag_t::INFO, "disconnected from the server");
 			// Выводим функцию обратного вызова
 			if(wrk->disconnectFn != nullptr) wrk->disconnectFn(aid, wrk->wid, this, wrk->ctx);
 		}

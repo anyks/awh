@@ -22,8 +22,10 @@ void awh::CoreServer::read(struct bufferevent * bev, void * ctx) noexcept {
 		worker_t::adj_t * adj = reinterpret_cast <worker_t::adj_t *> (ctx);
 		// Получаем объект подключения
 		workSrv_t * wrk = (workSrv_t *) const_cast <worker_t *> (adj->parent);
+		// Получаем объект ядра клиента
+		const coreSrv_t * core = reinterpret_cast <const coreSrv_t *> (wrk->core);
 		// Если подключение ещё существует
-		if((wrk->core->adjutants.count(adj->aid) > 0) && (wrk->readFn != nullptr)){
+		if((core->adjutants.count(adj->aid) > 0) && (wrk->readFn != nullptr)){
 			// Получаем буферы входящих данных
 			struct evbuffer * input = bufferevent_get_input(bev);
 			// Получаем размер входящих данных
@@ -65,8 +67,10 @@ void awh::CoreServer::write(struct bufferevent * bev, void * ctx) noexcept {
 		worker_t::adj_t * adj = reinterpret_cast <worker_t::adj_t *> (ctx);
 		// Получаем объект подключения
 		workSrv_t * wrk = (workSrv_t *) const_cast <worker_t *> (adj->parent);
+		// Получаем объект ядра клиента
+		const coreSrv_t * core = reinterpret_cast <const coreSrv_t *> (wrk->core);
 		// Если подключение ещё существует
-		if((wrk->core->adjutants.count(adj->aid) > 0) && (wrk->writeFn != nullptr)){
+		if((core->adjutants.count(adj->aid) > 0) && (wrk->writeFn != nullptr)){
 			// Получаем буферы исходящих данных
 			struct evbuffer * output = bufferevent_get_output(bev);
 			// Получаем размер исходящих данных
@@ -109,8 +113,10 @@ void awh::CoreServer::event(struct bufferevent * bev, const short events, void *
 		worker_t::adj_t * adj = reinterpret_cast <worker_t::adj_t *> (ctx);
 		// Получаем объект подключения
 		workSrv_t * wrk = (workSrv_t *) const_cast <worker_t *> (adj->parent);
+		// Получаем объект ядра клиента
+		const coreSrv_t * core = reinterpret_cast <const coreSrv_t *> (wrk->core);
 		// Если подключение ещё существует
-		if((wrk->core->adjutants.count(adj->aid) > 0) && (adj->fmk != nullptr)){
+		if((core->adjutants.count(adj->aid) > 0) && (adj->fmk != nullptr)){
 			// Получаем файловый дескриптор
 			evutil_socket_t fd = bufferevent_getfd(bev);
 			// Если это ошибка или завершение работы
@@ -124,7 +130,7 @@ void awh::CoreServer::event(struct bufferevent * bev, const short events, void *
 				// Запрещаем чтение запись данных серверу
 				bufferevent_disable(bev, EV_WRITE | EV_READ);
 				// Выполняем отключение от сервера
-				const_cast <core_t *> (wrk->core)->close(adj->aid);
+				const_cast <coreSrv_t *> (core)->close(adj->aid);
 			}
 		}
 	}
@@ -493,6 +499,8 @@ void awh::CoreServer::close(const size_t aid) noexcept {
 		worker_t::adj_t * adj = const_cast <worker_t::adj_t *> (it->second);
 		// Получаем объект воркера
 		workSrv_t * wrk = (workSrv_t *) const_cast <worker_t *> (adj->parent);
+		// Получаем объект ядра клиента
+		const coreSrv_t * core = reinterpret_cast <const coreSrv_t *> (wrk->core);
 		// Если событие сервера существует
 		if(adj->bev != nullptr){
 			// Выполняем очистку буфера событий
@@ -507,7 +515,7 @@ void awh::CoreServer::close(const size_t aid) noexcept {
 		// Удаляем адъютанта из списка подключений
 		this->adjutants.erase(aid);
 		// Выводим сообщение об ошибке
-		if(!wrk->core->noinfo) this->log->print("%s", log_t::flag_t::INFO, "disconnect client from server");
+		if(!core->noinfo) this->log->print("%s", log_t::flag_t::INFO, "disconnect client from server");
 		// Выводим функцию обратного вызова
 		if(wrk->disconnectFn != nullptr) wrk->disconnectFn(aid, wrk->wid, this, wrk->ctx);
 	}
