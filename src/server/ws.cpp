@@ -164,10 +164,14 @@ void awh::WebSocketServer::readCallback(const char * buffer, const size_t size, 
 			mess_t mess;
 			// Если рукопожатие не выполнено
 			if(!reinterpret_cast <http_t *> (&adj->http)->isHandshake()){
+				// Добавляем полученные данные в буфер
+				adj->buffer.insert(adj->buffer.end(), buffer, buffer + size);
 				// Выполняем парсинг полученных данных
-				adj->http.parse(buffer, size);
+				adj->http.parse(adj->buffer.data(), adj->buffer.size());
 				// Если все данные получены
 				if(adj->http.isEnd()){
+					// Выполняем сброс данных буфера
+					adj->buffer.clear();
 					// Если включён режим отладки
 					#if defined(DEBUG_MODE)
 						// Получаем данные запроса
@@ -289,21 +293,25 @@ void awh::WebSocketServer::readCallback(const char * buffer, const size_t size, 
 							// Отправляем тело на сервер
 							core->write(payload.data(), payload.size(), aid);
 						}
-					// Завершаем работу
+					// Завершаем работу клиента
 					} else core->close(aid);
 				}
 				// Завершаем работу
 				return;
 			// Если рукопожатие выполнено
 			} else {
-				// Смещение в буфере данных
-				size_t offset = 0;
+				// Количество прочитанных байт
+				size_t bytes = 0;
 				// Создаём объект шапки фрейма
 				frame_t::head_t head;
-				// Выполняем перебор полученных данных
-				while((size - offset) > 0){
+				// Добавляем полученные данные в буфер
+				adj->buffer.insert(adj->buffer.end(), buffer, buffer + size);
+				// Выполняем обработку полученных данных
+				while(!adj->close){
+					// Сбрасываем количество прочитанных байт
+					bytes = 0;
 					// Выполняем чтение фрейма WebSocket
-					const auto & data = ws->frame.get(head, buffer + offset, size - offset);
+					const auto & data = ws->frame.get(head, adj->buffer.data(), adj->buffer.size());
 					// Если буфер данных получен
 					if(!data.empty()){
 						// Проверяем состояние флагов RSV2 и RSV3
@@ -392,11 +400,20 @@ void awh::WebSocketServer::readCallback(const char * buffer, const size_t size, 
 								ws->error(aid, mess);
 								// Завершаем работу
 								core->close(aid);
+								// Выходим из функции
+								return;
 							} break;
 						}
-						// Увеличиваем смещение в буфере
-						offset += (head.payload + head.size);
-					// Выходим из цикла, данных в буфере не достаточно
+						// Увеличиваем размер прочитанных байт
+						bytes = (head.payload + head.size);
+					}
+					// Если парсер обработал какое-то количество байт
+					if(bytes > 0){
+						// Удаляем количество обработанных байт
+						adj->buffer.erase(adj->buffer.begin(), adj->buffer.begin() + bytes);
+						// Если данных для обработки не осталось, выходим
+						if(adj->buffer.empty()) break;
+					// Если данных для обработки недостаточно, выходим
 					} else break;
 				}
 				// Выходим из функции
@@ -426,7 +443,7 @@ void awh::WebSocketServer::writeCallback(const char * buffer, const size_t size,
 		// Получаем параметры подключения адъютанта
 		workSrvWss_t::adjp_t * adj = const_cast <workSrvWss_t::adjp_t *> (ws->worker.getAdj(aid));
 		// Если параметры подключения адъютанта получены
-		if((adj != nullptr) && (adj->stopBytes > 0)){
+		if((adj != nullptr) && !adj->close && (adj->stopBytes > 0)){
 			// Запоминаем количество прочитанных байт
 			adj->readBytes += size;
 			// Если размер полученных байт соответствует
@@ -687,7 +704,7 @@ void awh::WebSocketServer::sendError(const size_t aid, const mess_t & mess) cons
 			}
 		}
 		// Завершаем работу
-		// const_cast <coreSrv_t *> (this->core)->close(aid);
+		const_cast <coreSrv_t *> (this->core)->close(aid);
 	}
 }
 /**

@@ -88,12 +88,14 @@ void awh::WebSocketClient::disconnectCallback(const size_t aid, const size_t wid
 	if((wid > 0) && (core != nullptr) && (ctx != nullptr)){
 		// Получаем контекст модуля
 		wsCli_t * ws = reinterpret_cast <wsCli_t *> (ctx);
-		// Выполняем сброс флага остановки
+		// Снимаем флаг отключения
 		ws->close = false;
 		// Выполняем сброс количество стоп-байт
 		ws->stopBytes = 0;
 		// Выполняем сброс количества прочитанных байт
 		ws->readBytes = 0;
+		// Очищаем буфер собранных данных
+		ws->buffer.clear();
 		// Очищаем буфер фрагментированного сообщения
 		ws->fragmes.clear();
 		// Если нужно произвести запрос заново
@@ -181,10 +183,14 @@ void awh::WebSocketClient::readCallback(const char * buffer, const size_t size, 
 		wsCli_t * ws = reinterpret_cast <wsCli_t *> (ctx);
 		// Если рукопожатие не выполнено
 		if(!reinterpret_cast <http_t *> (&ws->http)->isHandshake()){
+			// Добавляем полученные данные в буфер
+			ws->buffer.insert(ws->buffer.end(), buffer, buffer + size);
 			// Выполняем парсинг полученных данных
-			ws->http.parse(buffer, size);
+			ws->http.parse(ws->buffer.data(), ws->buffer.size());
 			// Если все данные получены
 			if(ws->http.isEnd()){
+				// Выполняем сброс данных буфера
+				ws->buffer.clear();
 				// Если включён режим отладки
 				#if defined(DEBUG_MODE)
 					// Получаем данные ответа
@@ -234,6 +240,8 @@ void awh::WebSocketClient::readCallback(const char * buffer, const size_t size, 
 					case (uint8_t) http_t::stath_t::GOOD: {
 						// Если рукопожатие выполнено
 						if(ws->http.isHandshake()){
+							// Очищаем буфер собранных данных
+							ws->buffer.clear();
 							// Очищаем список фрагментированных сообщений
 							ws->fragmes.clear();
 							// Выполняем сброс количество попыток
@@ -288,14 +296,18 @@ void awh::WebSocketClient::readCallback(const char * buffer, const size_t size, 
 			return;
 		// Если рукопожатие выполнено
 		} else {
-			// Смещение в буфере данных
-			size_t offset = 0;
+			// Количество прочитанных байт
+			size_t bytes = 0;
 			// Создаём объект шапки фрейма
 			frame_t::head_t head;
-			// Выполняем перебор полученных данных
-			while((size - offset) > 0){
+			// Добавляем полученные данные в буфер
+			ws->buffer.insert(ws->buffer.end(), buffer, buffer + size);
+			// Выполняем обработку полученных данных
+			while(!ws->close){
+				// Сбрасываем количество прочитанных байт
+				bytes = 0;
 				// Выполняем чтение фрейма WebSocket
-				const auto & data = ws->frame.get(head, buffer + offset, size - offset);
+				const auto & data = ws->frame.get(head, ws->buffer.data(), ws->buffer.size());
 				// Если буфер данных получен
 				if(!data.empty()){
 					// Проверяем состояние флагов RSV2 и RSV3
@@ -396,9 +408,16 @@ void awh::WebSocketClient::readCallback(const char * buffer, const size_t size, 
 							goto Reconnect;
 						} break;
 					}
-					// Увеличиваем смещение в буфере
-					offset += (head.payload + head.size);
-				// Выходим из цикла, данных в буфере не достаточно
+					// Увеличиваем размер прочитанных байт
+					bytes = (head.payload + head.size);
+				}
+				// Если парсер обработал какое-то количество байт
+				if(bytes > 0){
+					// Удаляем количество обработанных байт
+					ws->buffer.erase(ws->buffer.begin(), ws->buffer.begin() + bytes);
+					// Если данных для обработки не осталось, выходим
+					if(ws->buffer.empty()) break;
+				// Если данных для обработки недостаточно, выходим
 				} else break;
 			}
 			// Выходим из функции
@@ -425,7 +444,7 @@ void awh::WebSocketClient::writeCallback(const char * buffer, const size_t size,
 		// Получаем контекст модуля
 		wsCli_t * ws = reinterpret_cast <wsCli_t *> (ctx);
 		// Если стоп-байты установлены
-		if(ws->stopBytes > 0){
+		if(!ws->close && (ws->stopBytes > 0)){
 			// Запоминаем количество прочитанных байт
 			ws->readBytes += size;
 			// Если размер полученных байт соответствует
@@ -770,14 +789,23 @@ void awh::WebSocketClient::sendError(const mess_t & mess) noexcept {
 			const auto & buffer = this->frame.message(mess);
 			// Если данные сообщения получены
 			if(!buffer.empty()){
+				// Если включён режим отладки
+				#if defined(DEBUG_MODE)
+					// Выводим заголовок ответа
+					cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
+					// Выводим отправляемое сообщение
+					cout << this->fmk->format("%s [%u]", mess.text.c_str(), mess.code) << endl;
+				#endif
 				// Запоминаем рамер данных для остановки
 				this->stopBytes = buffer.size();
 				// Отправляем серверу сообщение
 				((core_t *) const_cast <coreCli_t *> (this->core))->write(buffer.data(), buffer.size(), this->aid);
+				// Выходим из функции
+				return;
 			}
 		}
 		// Завершаем работу
-		// const_cast <coreCli_t *> (this->core)->close(this->aid);
+		const_cast <coreCli_t *> (this->core)->close(this->aid);
 	}
 }
 /**
@@ -793,6 +821,17 @@ void awh::WebSocketClient::send(const char * message, const size_t size, const b
 		this->locker = !this->locker;
 		// Если рукопожатие выполнено
 		if((message != nullptr) && (size > 0) && this->http.isHandshake() && (this->aid > 0)){
+			// Если включён режим отладки
+			#if defined(DEBUG_MODE)
+				// Выводим заголовок ответа
+				cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
+				// Если отправляемое сообщение является текстом
+				if(utf8)
+					// Выводим параметры ответа
+					cout << string(message, size) << endl;
+				// Выводим сообщение о выводе чанка полезной нагрузки
+				else cout << this->fmk->format("<bytes %u>", size) << endl;
+			#endif
 			// Буфер сжатых данных
 			vector <char> buffer;
 			// Создаём объект заголовка для отправки

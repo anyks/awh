@@ -49,6 +49,7 @@ namespace awh {
 				size_t readBytes;            // Количество полученных байт для закрытия подключения
 				size_t stopBytes;            // Количество байт для закрытия подключения
 				time_t checkPoint;           // Контрольная точка ответа на пинг
+				vector <char> buffer;        // Буфер бинарных необработанных данных
 				vector <char> fragmes;       // Данные фрагметрированного сообщения
 				frame_t::opcode_t opcode;    // Полученный опкод сообщения
 				http_t::compress_t compress; // Флаги работы с сжатыми данными

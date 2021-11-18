@@ -61,6 +61,8 @@ namespace awh {
 			// Создаём объект для компрессии-декомпрессии данных
 			mutable hash_t hash;
 		private:
+			// Буфер бинарных необработанных данных
+			vector <char> buffer;
 			// Данные фрагметрированного сообщения
 			vector <char> fragmes;
 		private:
