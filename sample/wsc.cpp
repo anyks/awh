@@ -93,8 +93,6 @@ int main(int argc, char * argv[]) noexcept {
 			// Формируем параметры запрашиваемых криптовалютных пар
 			data["params"] = json::array();
 			// Формируем параметры криптовалютных пар
-			// data["params"][0] = "btcusdt@aggTrade";
-
 			data["params"][0] = "omgusdt@aggTrade";
 			data["params"][1] = "umausdt@aggTrade";
 			data["params"][2] = "radusdt@aggTrade";
@@ -195,9 +193,6 @@ int main(int argc, char * argv[]) noexcept {
 			data["params"][97] = "sushiusdt@aggTrade";
 			data["params"][98] = "1inchusdt@aggTrade";
 			data["params"][99] = "oceanusdt@aggTrade";
-
-
-
 			// Получаем параметры запроса в виде строки
 			const string query = data.dump();
 			// Отправляем сообщение на сервер
