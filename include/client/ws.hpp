@@ -66,6 +66,8 @@ namespace awh {
 		private:
 			// Флаг шифрования сообщений
 			bool crypt = false;
+			// Флаг завершения работы клиента
+			bool close = false;
 			// Выполнять анбиндинг после завершения запроса
 			bool unbind = true;
 			// Флаг фриза работы клиента
@@ -85,6 +87,11 @@ namespace awh {
 			u_int code = 0;
 			// Контрольная точка ответа на пинг
 			time_t checkPoint = 0;
+		private:
+			// Количество полученных байт для закрытия подключения
+			size_t readBytes = 0;
+			// Количество байт для закрытия подключения
+			size_t stopBytes = 0;
 			// Минимальный размер сегмента
 			size_t frameSize = 0xFA000;
 		public:
@@ -160,6 +167,16 @@ namespace awh {
 			 */
 			static void readCallback(const char * buffer, const size_t size, const size_t aid, const size_t wid, core_t * core, void * ctx) noexcept;
 			/**
+			 * writeCallback Функция обратного вызова при записи сообщения на клиенте
+			 * @param buffer бинарный буфер содержащий сообщение
+			 * @param size   размер записанных в сокет байт
+			 * @param aid    идентификатор адъютанта
+			 * @param wid    идентификатор воркера
+			 * @param core   объект биндинга TCP/IP
+			 * @param ctx    передаваемый контекст модуля
+			 */
+			static void writeCallback(const char * buffer, const size_t size, const size_t aid, const size_t wid, core_t * core, void * ctx) noexcept;
+			/**
 			 * readProxyCallback Функция обратного вызова при чтении сообщения с прокси-сервера
 			 * @param buffer бинарный буфер содержащий сообщение
 			 * @param size   размер бинарного буфера содержащего сообщение
@@ -180,7 +197,7 @@ namespace awh {
 			 * @param buffer данные в чистом виде полученные с сервера
 			 * @param utf8   данные передаются в текстовом виде
 			 */
-			void extraction(const vector <char> & buffer, const bool utf8) const noexcept;
+			void extraction(const vector <char> & buffer, const bool utf8) noexcept;
 		private:
 			/**
 			 * pong Метод ответа на проверку о доступности сервера
@@ -223,7 +240,7 @@ namespace awh {
 			 * sendError Метод отправки сообщения об ошибке
 			 * @param mess отправляемое сообщение об ошибке
 			 */
-			void sendError(const mess_t & mess) const noexcept;
+			void sendError(const mess_t & mess) noexcept;
 			/**
 			 * send Метод отправки сообщения на сервер
 			 * @param message буфер сообщения в бинарном виде

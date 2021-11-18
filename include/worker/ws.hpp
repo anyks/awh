@@ -43,6 +43,7 @@ namespace awh {
 			typedef struct AdjParam {
 				wss_t http;                  // Создаём объект для работы с HTTP
 				bool crypt;                  // Флаг шифрования сообщений
+				bool close;                  // Флаг требования закрыть адъютанта
 				bool locker;                 // Локер ожидания завершения запроса
 				bool compressed;             // Флаг переданных сжатых данных
 				size_t readBytes;            // Количество полученных байт для закрытия подключения
@@ -57,6 +58,7 @@ namespace awh {
 				AdjParam(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcept :
 					http(fmk, log, uri),
 					crypt(false),
+					close(false),
 					locker(false),
 					compressed(false),
 					readBytes(0),

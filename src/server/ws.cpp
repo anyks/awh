@@ -46,7 +46,7 @@ void awh::WebSocketServer::persistCallback(const size_t aid, const size_t wid, c
 			// Получаем текущий штамп времени
 			const time_t stamp = ws->fmk->unixTimestamp();
 			// Если адъютант не ответил на пинг больше двух интервалов, отключаем его
-			if((stamp - adj->checkPoint) >= (PERSIST_INTERVAL * 2))
+			if(adj->close || ((stamp - adj->checkPoint) >= (PERSIST_INTERVAL * 2)))
 				// Завершаем работу
 				core->close(aid);
 			// Отправляем запрос адъютанту
@@ -430,7 +430,7 @@ void awh::WebSocketServer::writeCallback(const char * buffer, const size_t size,
 			// Запоминаем количество прочитанных байт
 			adj->readBytes += size;
 			// Если размер полученных байт соответствует
-			if(adj->stopBytes >= adj->readBytes) core->close(aid);
+			adj->close = (adj->stopBytes >= adj->readBytes);
 		}
 	}
 }
@@ -687,7 +687,7 @@ void awh::WebSocketServer::sendError(const size_t aid, const mess_t & mess) cons
 			}
 		}
 		// Завершаем работу
-		const_cast <coreSrv_t *> (this->core)->close(aid);
+		// const_cast <coreSrv_t *> (this->core)->close(aid);
 	}
 }
 /**

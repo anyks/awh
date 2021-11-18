@@ -35,7 +35,7 @@ void awh::WebSocketClient::persistCallback(const size_t aid, const size_t wid, c
 		// Получаем текущий штамп времени
 		const time_t stamp = ws->fmk->unixTimestamp();
 		// Если адъютант не ответил на пинг больше двух интервалов, отключаем его
-		if((stamp - ws->checkPoint) >= (PERSIST_INTERVAL * 2))
+		if(ws->close || ((stamp - ws->checkPoint) >= (PERSIST_INTERVAL * 2)))
 			// Завершаем работу
 			core->close(aid);
 		// Отправляем запрос адъютанту
@@ -88,6 +88,12 @@ void awh::WebSocketClient::disconnectCallback(const size_t aid, const size_t wid
 	if((wid > 0) && (core != nullptr) && (ctx != nullptr)){
 		// Получаем контекст модуля
 		wsCli_t * ws = reinterpret_cast <wsCli_t *> (ctx);
+		// Выполняем сброс флага остановки
+		ws->close = false;
+		// Выполняем сброс количество стоп-байт
+		ws->stopBytes = 0;
+		// Выполняем сброс количества прочитанных байт
+		ws->readBytes = 0;
 		// Очищаем буфер фрагментированного сообщения
 		ws->fragmes.clear();
 		// Если нужно произвести запрос заново
@@ -228,6 +234,8 @@ void awh::WebSocketClient::readCallback(const char * buffer, const size_t size, 
 					case (uint8_t) http_t::stath_t::GOOD: {
 						// Если рукопожатие выполнено
 						if(ws->http.isHandshake()){
+							// Очищаем список фрагментированных сообщений
+							ws->fragmes.clear();
 							// Выполняем сброс количество попыток
 							ws->failAuth = false;
 							// Получаем флаг шифрованных данных
@@ -400,6 +408,29 @@ void awh::WebSocketClient::readCallback(const char * buffer, const size_t size, 
 		Reconnect:
 		// Выполняем отправку сообщения об ошибке
 		ws->sendError(mess);
+	}
+}
+/**
+ * writeCallback Функция обратного вызова при записи сообщения на клиенте
+ * @param buffer бинарный буфер содержащий сообщение
+ * @param size   размер записанных в сокет байт
+ * @param aid    идентификатор адъютанта
+ * @param wid    идентификатор воркера
+ * @param core   объект биндинга TCP/IP
+ * @param ctx    передаваемый контекст модуля
+ */
+void awh::WebSocketClient::writeCallback(const char * buffer, const size_t size, const size_t aid, const size_t wid, core_t * core, void * ctx) noexcept {
+	// Если данные существуют
+	if((size > 0) && (aid > 0) && (wid > 0) && (core != nullptr) && (ctx != nullptr)){
+		// Получаем контекст модуля
+		wsCli_t * ws = reinterpret_cast <wsCli_t *> (ctx);
+		// Если стоп-байты установлены
+		if(ws->stopBytes > 0){
+			// Запоминаем количество прочитанных байт
+			ws->readBytes += size;
+			// Если размер полученных байт соответствует
+			ws->close = (ws->stopBytes >= ws->readBytes);
+		}
 	}
 }
 /**
@@ -578,7 +609,7 @@ void awh::WebSocketClient::error(const mess_t & message) const noexcept {
  * @param buffer данные в чистом виде полученные с сервера
  * @param utf8   данные передаются в текстовом виде
  */
-void awh::WebSocketClient::extraction(const vector <char> & buffer, const bool utf8) const noexcept {
+void awh::WebSocketClient::extraction(const vector <char> & buffer, const bool utf8) noexcept {
 	// Если буфер данных передан
 	if(!buffer.empty() && !this->freeze && (this->messageFn != nullptr)){
 		// Если данные пришли в сжатом виде
@@ -730,7 +761,7 @@ void awh::WebSocketClient::on(void * ctx, function <void (const vector <char> &,
  * sendError Метод отправки сообщения об ошибке
  * @param mess отправляемое сообщение об ошибке
  */
-void awh::WebSocketClient::sendError(const mess_t & mess) const noexcept {
+void awh::WebSocketClient::sendError(const mess_t & mess) noexcept {
 	// Если подключение выполнено
 	if(this->core->working() && !this->locker && (this->aid > 0)){
 		// Если код ошибки относится к WebSocket
@@ -738,12 +769,15 @@ void awh::WebSocketClient::sendError(const mess_t & mess) const noexcept {
 			// Получаем буфер сообщения
 			const auto & buffer = this->frame.message(mess);
 			// Если данные сообщения получены
-			if(!buffer.empty())
+			if(!buffer.empty()){
+				// Запоминаем рамер данных для остановки
+				this->stopBytes = buffer.size();
 				// Отправляем серверу сообщение
 				((core_t *) const_cast <coreCli_t *> (this->core))->write(buffer.data(), buffer.size(), this->aid);
+			}
 		}
 		// Завершаем работу
-		const_cast <coreCli_t *> (this->core)->close(this->aid);
+		// const_cast <coreCli_t *> (this->core)->close(this->aid);
 	}
 }
 /**
@@ -1140,6 +1174,8 @@ awh::WebSocketClient::WebSocketClient(const coreCli_t * core, const fmk_t * fmk,
 	this->worker.openFn = openCallback;
 	// Устанавливаем функцию чтения данных
 	this->worker.readFn = readCallback;
+	// Устанавливаем функцию записи данных
+	this->worker.writeFn = writeCallback;
 	// Устанавливаем функцию персистентного вызова
 	this->worker.persistFn = persistCallback;
 	// Устанавливаем событие подключения
