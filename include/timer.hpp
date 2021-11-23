@@ -10,10 +10,9 @@
 #ifndef __AWH_TIMER__
 #define __AWH_TIMER__
 
-#include <mutex>
 #include <thread>
 #include <chrono>
-#include <condition_variable>
+#include <future>
 
 // Устанавливаем пространство имён
 using namespace std;
@@ -27,10 +26,8 @@ namespace awh {
 	 */
 	typedef class Timer {
 		private:
-			// Мютекс для блокировки потока
-			mutex mtx;
-			// Переменная ожидания
-			condition_variable cnd;
+			// Токен работы таймера
+			atomic_bool token;
 		public:
 			/**
 			 * Шаблон функции
@@ -44,14 +41,17 @@ namespace awh {
 			void setTimeout(Function function, size_t delay) noexcept {
 				// Создаём новый поток
 				thread t([=]{
-					// Создаем уникальный локер потока
-					unique_lock <mutex> lck(this->mtx);
-					// Усыпляем поток на указанное количество милисекунд
-					auto b = this->cnd.wait_for(lck, chrono::milliseconds(delay));
-					// Если время вышло, выполняем функцию обратного вызова
-					if(b == cv_status::timeout) function();
-					// Иначе выходим из функции
-					else return;
+					// Устанавливаем флаг разрешающий работу
+					this->token.store(true);
+					// Создаём бесконечный цикл
+					while(this->token.load()){
+						// Усыпляем поток на указанное количество милисекунд
+						this_thread::sleep_for(chrono::milliseconds(delay));
+						// Выполняем функцию обратного вызова
+						if(this->token.load()) function();
+						// Останавливаем работу таймера
+						this->token.store(false);
+					}
 				});
 				// Выполняем ожидание завершения работы потока
 				t.detach();
@@ -66,18 +66,16 @@ namespace awh {
 			 * @param interval интервал времени выполнения функции
 			 */
 			void setInterval(Function function, size_t interval) noexcept {
+				// Устанавливаем флаг разрешающий работу
+				this->token.store(true);
 				// Создаём новый поток
 				thread t([=]{
 					// Создаём бесконечный цикл
-					while(true){
-						// Создаем уникальный локер потока
-						unique_lock <mutex> lck(this->mtx);
+					while(this->token.load()){
 						// Усыпляем поток на указанное количество милисекунд
-						auto b = this->cnd.wait_for(lck, chrono::milliseconds(interval));
-						// Если время вышло, выполняем функцию обратного вызова
-						if(b == cv_status::timeout) function();
-						// Иначе выходим из функции
-						else return;
+						this_thread::sleep_for(chrono::milliseconds(interval));
+						// Выполняем функцию обратного вызова
+						if(this->token.load()) function();
 					}
 				});
 				// Выполняем ожидание завершения работы потока
@@ -87,8 +85,15 @@ namespace awh {
 			 * stop Метод остановки работы таймера
 			 */
 			void stop() noexcept {
-				// Отсылаем сообщение потоку, на остановку таймера
-				this->cnd.notify_one();
+				// Останавливаем работу таймера
+				this->token.store(false);
+			}
+			/**
+			 * ~Timer Деструктор
+			 */
+			~Timer() noexcept {
+				// Останавливаем работу таймера
+				this->stop();
 			}
 	} timer_t;
 };
