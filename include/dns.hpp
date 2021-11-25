@@ -58,9 +58,9 @@ namespace awh {
 	typedef class DNS {
 		private:
 			/**
-			 * Структура доменного имени
+			 * Worker Структура воркера резолвинга
 			 */
-			typedef struct Domain {
+			typedef struct Worker {
 				size_t id;                               // Идентификатор объекта доменного имени
 				int family;                              // Тип протокола интернета AF_INET или AF_INET6
 				string host;                             // Название искомого домена
@@ -69,16 +69,16 @@ namespace awh {
 				const log_t * log;                       // Объект для работы с логами
 				function <void (const string)> callback; // Функция обратного вызова
 				/**
-				 * Domain Конструктор
+				 * Worker Конструктор
 				 */
-				Domain() : id(0), family(AF_UNSPEC), host(""), dns(nullptr), fmk(nullptr), log(nullptr), callback(nullptr) {}
-			} dom_t;
+				Worker() : id(0), family(AF_UNSPEC), host(""), dns(nullptr), fmk(nullptr), log(nullptr), callback(nullptr) {}
+			} worker_t;
 		private:
 			// Адреса серверов dns
 			mutable vector <string> servers;
-			// Список объектов домена
-			mutable map <size_t, dom_t> workers;
-			// Список ранее полученых, IP адресов
+			// Список воркеров резолвинга доменов
+			mutable map <size_t, worker_t> workers;
+			// Список ранее полученых, IP адресов (горячий кэш)
 			mutable unordered_multimap <string, string> cache;
 		private:
 			// Создаём объект фреймворка
@@ -90,7 +90,7 @@ namespace awh {
 		private:
 			// База событий
 			struct event_base * base = nullptr;
-			// База dns
+			// База dns резолвера
 			struct evdns_base * dbase = nullptr;
 			// Объект dns запроса
 			struct evdns_getaddrinfo_request * reply = nullptr;

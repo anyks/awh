@@ -35,16 +35,16 @@ void awh::DNS::createBase() noexcept {
 void awh::DNS::callback(const int error, struct evutil_addrinfo * addr, void * ctx) noexcept {
 	// Если данные получены
 	if(ctx != nullptr){
-		// Получаем объект доменного имени
-		dom_t * dom = reinterpret_cast <dom_t *> (ctx);
+		// Получаем объект воркера резолвинга
+		worker_t * wrk = reinterpret_cast <worker_t *> (ctx);
 		// Получаем объект модуля DNS резолвера
-		dns_t * dns = const_cast <dns_t *> (dom->dns);
+		dns_t * dns = const_cast <dns_t *> (wrk->dns);
 		// Если данные фреймворка существуют
-		if((dom->fmk != nullptr) && (dom->log != nullptr)){
+		if((wrk->fmk != nullptr) && (wrk->log != nullptr)){
 			// Список полученных IP адресов
 			vector <string> ips;
 			// Если возникла ошибка, выводим в лог сообщение
-			if(error) dom->log->print("%s %s", log_t::flag_t::CRITICAL, dom->host.c_str(), evutil_gai_strerror(error));
+			if(error) wrk->log->print("%s %s", log_t::flag_t::CRITICAL, wrk->host.c_str(), evutil_gai_strerror(error));
 			// Если ошибки не возникало
 			else {
 				// Создаем буфер для получения ip адреса
@@ -58,7 +58,7 @@ void awh::DNS::callback(const int error, struct evutil_addrinfo * addr, void * c
 					// Заполняем буфер нулями
 					memset(buffer, 0, sizeof(buffer));
 					// Если это искомый тип интернет протокола
-					if((ai->ai_family == dom->family) || (dom->family == AF_UNSPEC)){
+					if((ai->ai_family == wrk->family) || (wrk->family == AF_UNSPEC)){
 						// Получаем структуру для указанного интернет протокола
 						switch(ai->ai_family){
 							// Если это IPv4 адрес
@@ -81,7 +81,7 @@ void awh::DNS::callback(const int error, struct evutil_addrinfo * addr, void * c
 							// Добавляем полученный IP адрес в список
 							ips.push_back(ip);
 							// Записываем данные в кэш
-							dns->cache.emplace(dom->host, ip);
+							dns->cache.emplace(wrk->host, ip);
 						}
 					}
 				}
@@ -102,19 +102,19 @@ void awh::DNS::callback(const int error, struct evutil_addrinfo * addr, void * c
 				} else ip = &ips.front();
 			}
 			// Выводим готовый результат
-			if(dom->callback != nullptr)
+			if(wrk->callback != nullptr)
 				// Выводим полученный IP адрес
-				dom->callback(ip != nullptr ? (* ip) : "");
+				wrk->callback(ip != nullptr ? (* ip) : "");
 			// Если объект запроса существует
 			if(dns->reply != nullptr){
 				// Выполняем отмену запроса
-				// evdns_getaddrinfo_cancel(dom->dns->reply);
+				// evdns_getaddrinfo_cancel(dns->reply);
 				// Обнуляем указатель
 				dns->reply = nullptr;
 			}
 		}
 		// Удаляем домен из списка доменов
-		dns->workers.erase(dom->id);
+		dns->workers.erase(wrk->id);
 	}
 }
 /**
@@ -148,20 +148,20 @@ struct evdns_base * awh::DNS::init(const string & host, const int family, struct
 				// Выводим в лог сообщение
 				this->log->print("name server [%s] does not add", log_t::flag_t::CRITICAL, dns.c_str());
 		}
-		// Создаем объект домен
-		dom_t dom;
+		// Создаем объект воркера резолвинга
+		worker_t wrk;
 		// Запоминаем название искомого домена
-		dom.host = host;
+		wrk.host = host;
 		// Устанавливаем тип протокола интернета
-		dom.family = family;
+		wrk.family = family;
 		// Запоминаем объект основного фреймворка
-		dom.fmk = this->fmk;
+		wrk.fmk = this->fmk;
 		// Запоминаем объект для работы с логами
-		dom.log = this->log;
+		wrk.log = this->log;
 		// Формируем идентификатор объекта
-		dom.id = this->fmk->unixTimestamp();
+		wrk.id = this->fmk->unixTimestamp();
 		// Запоминаем текущий объект
-		dom.dns = const_cast <dns_t *> (this);
+		wrk.dns = const_cast <dns_t *> (this);
 		// Структура запроса
 		struct evutil_addrinfo hints;
 		// Заполняем структуру запроса нулями
@@ -174,8 +174,8 @@ struct evdns_base * awh::DNS::init(const string & host, const int family, struct
 		hints.ai_protocol = IPPROTO_TCP;
 		// Устанавливаем флаг подключения что это канонническое имя
 		hints.ai_flags = EVUTIL_AI_CANONNAME;
-		// Добавляем доменное имя в список доменов
-		auto ret = this->workers.emplace(dom.id, move(dom));
+		// Добавляем воркер резолвинга в список воркеров
+		auto ret = this->workers.emplace(wrk.id, move(wrk));
 		// Выполняем dns запрос
 		struct evdns_getaddrinfo_request * reply = evdns_getaddrinfo(result, host.c_str(), nullptr, &hints, &dns_t::callback, &ret.first->second);
 		// Выводим в лог сообщение
@@ -359,22 +359,22 @@ void awh::DNS::resolve(const string & host, const int family, function <void (co
 			} else {
 				// Устанавливаем метку получения IP адреса
 				Resolve:
-				// Создаем объект домен
-				dom_t dom;
+				// Создаем объект воркера резолвинга
+				worker_t wrk;
 				// Запоминаем текущий объект
-				dom.dns = this;
+				wrk.dns = this;
 				// Запоминаем название искомого домена
-				dom.host = host;
+				wrk.host = host;
 				// Устанавливаем тип протокола интернета
-				dom.family = family;
+				wrk.family = family;
 				// Запоминаем объект основного фреймворка
-				dom.fmk = this->fmk;
+				wrk.fmk = this->fmk;
 				// Запоминаем объект для работы с логами
-				dom.log = this->log;
+				wrk.log = this->log;
 				// Устанавливаем функцию обратного вызова
-				dom.callback = callback;
+				wrk.callback = callback;
 				// Формируем идентификатор объекта
-				dom.id = this->fmk->unixTimestamp();
+				wrk.id = this->fmk->unixTimestamp();
 				// Структура запроса
 				struct evutil_addrinfo hints;
 				// Заполняем структуру запроса нулями
@@ -387,8 +387,8 @@ void awh::DNS::resolve(const string & host, const int family, function <void (co
 				hints.ai_protocol = IPPROTO_TCP;
 				// Устанавливаем флаг подключения что это канонническое имя
 				hints.ai_flags = EVUTIL_AI_CANONNAME;
-				// Добавляем доменное имя в список доменов
-				auto ret = this->workers.emplace(dom.id, move(dom));
+				// Добавляем воркер резолвинга в список воркеров
+				auto ret = this->workers.emplace(wrk.id, move(wrk));
 				// Выполняем dns запрос
 				this->reply = evdns_getaddrinfo(this->dbase, host.c_str(), nullptr, &hints, &dns_t::callback, &ret.first->second);
 				// Выводим в лог сообщение
