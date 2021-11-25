@@ -77,9 +77,9 @@ namespace awh {
 			// Адреса серверов dns
 			mutable vector <string> servers;
 			// Список объектов домена
-			mutable map <size_t, dom_t> doms;
+			mutable map <size_t, dom_t> workers;
 			// Список ранее полученых, IP адресов
-			mutable unordered_map <string, string> ips;
+			mutable unordered_multimap <string, string> cache;
 		private:
 			// Создаём объект фреймворка
 			const fmk_t * fmk = nullptr;
@@ -124,6 +124,11 @@ namespace awh {
 			 * clear Метод сброса кэша резолвера
 			 */
 			void clear() noexcept;
+			/**
+			 * flush Метод сброса кэша DNS резолвера
+			 */
+			void flush() noexcept;
+		public:
 			/**
 			 * updateNameServers Метод обновления списка нейм-серверов
 			 */

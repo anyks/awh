@@ -41,7 +41,7 @@ void awh::DNS::callback(const int error, struct evutil_addrinfo * addr, void * c
 		dns_t * dns = const_cast <dns_t *> (dom->dns);
 		// Если данные фреймворка существуют
 		if((dom->fmk != nullptr) && (dom->log != nullptr)){
-			// Полученные ip адреса
+			// Список полученных IP адресов
 			vector <string> ips;
 			// Если возникла ошибка, выводим в лог сообщение
 			if(error) dom->log->print("%s %s", log_t::flag_t::CRITICAL, dom->host.c_str(), evutil_gai_strerror(error));
@@ -76,8 +76,13 @@ void awh::DNS::callback(const int error, struct evutil_addrinfo * addr, void * c
 								ip = evutil_inet_ntop(ai->ai_family, &sin6->sin6_addr, buffer, 128);
 							} break;
 						}
-						// Запоминаем полученный ip адрес
-						if(ip != nullptr) ips.push_back(ip);
+						// Если IP адрес получен
+						if(ip != nullptr){
+							// Добавляем полученный IP адрес в список
+							ips.push_back(ip);
+							// Записываем данные в кэш
+							dns->cache.emplace(dom->host, ip);
+						}
 					}
 				}
 				// Очищаем структуру данных домена
@@ -95,8 +100,6 @@ void awh::DNS::callback(const int error, struct evutil_addrinfo * addr, void * c
 					ip = &ips.at(rand() % ips.size());
 				// Выводим только первый элемент
 				} else ip = &ips.front();
-				// Записываем данные в кэш
-				dns->ips.emplace(dom->host, * ip);
 			}
 			// Выводим готовый результат
 			if(dom->callback != nullptr)
@@ -111,7 +114,7 @@ void awh::DNS::callback(const int error, struct evutil_addrinfo * addr, void * c
 			}
 		}
 		// Удаляем домен из списка доменов
-		dns->doms.erase(dom->id);
+		dns->workers.erase(dom->id);
 	}
 }
 /**
@@ -172,7 +175,7 @@ struct evdns_base * awh::DNS::init(const string & host, const int family, struct
 		// Устанавливаем флаг подключения что это канонническое имя
 		hints.ai_flags = EVUTIL_AI_CANONNAME;
 		// Добавляем доменное имя в список доменов
-		auto ret = this->doms.emplace(dom.id, move(dom));
+		auto ret = this->workers.emplace(dom.id, move(dom));
 		// Выполняем dns запрос
 		struct evdns_getaddrinfo_request * reply = evdns_getaddrinfo(result, host.c_str(), nullptr, &hints, &dns_t::callback, &ret.first->second);
 		// Выводим в лог сообщение
@@ -204,8 +207,27 @@ void awh::DNS::reset() noexcept {
  * clear Метод сброса кэша резолвера
  */
 void awh::DNS::clear() noexcept {
+	// Выполняем сброс кэша DNS резолвера
+	this->flush();
 	// Выполняем сброс списка IP адресов
 	this->servers.clear();
+}
+/**
+ * flush Метод сброса кэша DNS резолвера
+ */
+void awh::DNS::flush() noexcept {
+	// Выполняем сброс кэша полученных IP адресов
+	this->cache.clear();
+	// Если список воркеров не пустой
+	if(!this->workers.empty()){
+		// Переходим по всем воркерам
+		for(auto it = this->workers.begin(); it != this->workers.end();){
+			// Выводим пустой IP адрес
+			it->second.callback("");
+			// Удаляем объект воркера
+			it = this->workers.erase(it);
+		}
+	}
 }
 /**
  * updateNameServers Метод обновления списка нейм-серверов
@@ -300,12 +322,43 @@ void awh::DNS::resolve(const string & host, const int family, function <void (co
 		regex_search(host, match, e);
 		// Если данные найдены
 		if(match.empty()){
-			// Запрашиваем данные домена из кэша
-			const string & ip = (this->ips.count(host) > 0 ? this->ips.at(host) : "");
-			// Если ip адрес найден тогда выводим результат
-			if(!ip.empty()) callback(ip);
+			// Получаем количество IP адресов в кэше
+			const size_t count = this->cache.count(host);
+			// Если количество адресов всего 1
+			if(count == 1){
+				// Выполняем проверку запрашиваемого хоста в кэше
+				auto it = this->cache.find(host);
+				// Если хост найден, выводим его
+				if(it != this->cache.end()) callback(it->second);
+				// Выполняем запрос IP адреса
+				else goto Resolve;
+			// Если доменных имён в кэше больше 1-го
+			} else if(count > 1){
+				// Индекс полученных IP адресов
+				size_t index = 0;
+				// Список полученных IP адресов
+				vector <string> ips(count, "");
+				// Получаем диапазон IP адресов в кэше
+				auto ret = this->cache.equal_range(host);
+				// Переходим по всему списку IP адресов
+				for(auto it = ret.first; it != ret.second; ++it){
+					// Добавляем IP адрес в список IP адресов
+					ips.at(index) = it->second;
+					// Увеличиваем значение индекса
+					index++;
+				}
+				// Если список IP адресов получен
+				if(!ips.empty()){
+					// рандомизация генератора случайных чисел
+					srand(time(0));
+					// Получаем ip адрес
+					callback(ips.at(rand() % ips.size()));
+				// Выполняем запрос IP адреса
+				} else goto Resolve;
 			// Если адрес не найден то запрашиваем его с резолвера
-			else {
+			} else {
+				// Устанавливаем метку получения IP адреса
+				Resolve:
 				// Создаем объект домен
 				dom_t dom;
 				// Запоминаем текущий объект
@@ -335,7 +388,7 @@ void awh::DNS::resolve(const string & host, const int family, function <void (co
 				// Устанавливаем флаг подключения что это канонническое имя
 				hints.ai_flags = EVUTIL_AI_CANONNAME;
 				// Добавляем доменное имя в список доменов
-				auto ret = this->doms.emplace(dom.id, move(dom));
+				auto ret = this->workers.emplace(dom.id, move(dom));
 				// Выполняем dns запрос
 				this->reply = evdns_getaddrinfo(this->dbase, host.c_str(), nullptr, &hints, &dns_t::callback, &ret.first->second);
 				// Выводим в лог сообщение

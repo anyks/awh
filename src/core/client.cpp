@@ -297,6 +297,13 @@ void awh::CoreClient::connect(const size_t wid) noexcept {
 					}
 					// Выполняем подключение к удаленному серверу, если подключение не выполненно то сообщаем об этом
 					if(bufferevent_socket_connect(ret.first->second.bev, sin, size) < 0){
+						// Определяем тип подключения
+						switch(this->net.family){
+							// Резолвер IPv4, выполняем сброс кэша резолвера
+							case AF_INET: this->dns4.flush(); break;
+							// Резолвер IPv6, выполняем сброс кэша резолвера
+							case AF_INET6: this->dns6.flush(); break;
+						}
 						// Выводим в лог сообщение
 						this->log->print("connecting to host = %s, port = %u", log_t::flag_t::CRITICAL, url.ip.c_str(), url.port);
 						// Если нужно выполнить автоматическое переподключение
@@ -327,8 +334,18 @@ void awh::CoreClient::connect(const size_t wid) noexcept {
 					if(!core->noinfo) this->log->print("create good connect to host = %s [%s:%d], socket = %d", log_t::flag_t::INFO, url.domain.c_str(), url.ip.c_str(), url.port, socket.fd);
 					// Выходим из функции
 					return;
-				// Выводим в лог сообщение
-				} else this->log->print("connecting to host = %s, port = %u", log_t::flag_t::CRITICAL, url.ip.c_str(), url.port);
+				// Если подключение не выполнено
+				} else {
+					// Определяем тип подключения
+					switch(this->net.family){
+						// Резолвер IPv4, выполняем сброс кэша резолвера
+						case AF_INET: this->dns4.flush(); break;
+						// Резолвер IPv6, выполняем сброс кэша резолвера
+						case AF_INET6: this->dns6.flush(); break;
+					}
+					// Выводим в лог сообщение
+					this->log->print("connecting to host = %s, port = %u", log_t::flag_t::CRITICAL, url.ip.c_str(), url.port);
+				}
 			}
 			// Если нужно выполнить автоматическое переподключение
 			if(wrk->alive && (wrk->attempt <= wrk->attempts)){
