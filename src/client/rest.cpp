@@ -46,6 +46,8 @@ void awh::RestClient::connectCallback(const size_t aid, const size_t wid, core_t
 		restCli_t * web = reinterpret_cast <restCli_t *> (ctx);
 		// Запоминаем идентификатор адъютанта
 		web->aid = aid;
+		// Выполняем сброс параметров запроса
+		web->flush();
 		// Выполняем перебор всех подключений
 		for(auto & req : web->requests){
 			// Выполняем сброс состояния HTTP парсера
@@ -128,6 +130,8 @@ void awh::RestClient::disconnectCallback(const size_t aid, const size_t wid, cor
 		web->responses.clear();
 		// Очищаем адрес сервера
 		web->worker.url.clear();
+		// Выполняем сброс параметров запроса
+		web->flush();
 		// Завершаем работу
 		if(web->unbind) core->stop();
 	}
@@ -501,11 +505,18 @@ void awh::RestClient::readProxyCallback(const char * buffer, const size_t size, 
 	}
 }
 /**
+ * flush Метод сброса параметров запроса
+ */
+void awh::RestClient::flush() noexcept {
+	// Сбрасываем флаг принудительной остановки
+	this->forstop = false;
+	// Выполняем очистку оставшихся данных
+	this->entity.clear();
+}
+/**
  * start Метод запуска клиента
  */
 void awh::RestClient::start() noexcept {
-	// Сбрасываем флаг принудительной остановки
-	this->forstop = false;
 	// Если биндинг не запущен
 	if(!this->core->working())
 		// Выполняем запуск биндинга

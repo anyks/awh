@@ -178,6 +178,11 @@ namespace awh {
 			 * @param ctx    передаваемый контекст модуля
 			 */
 			static void readProxyCallback(const char * buffer, const size_t size, const size_t aid, const size_t wid, core_t * core, void * ctx) noexcept;
+		private:
+			/**
+			 * flush Метод сброса параметров запроса
+			 */
+			void flush() noexcept;
 		public:
 			/**
 			 * start Метод запуска клиента

@@ -202,6 +202,11 @@ namespace awh {
 			void extraction(const vector <char> & buffer, const bool utf8) noexcept;
 		private:
 			/**
+			 * flush Метод сброса параметров запроса
+			 */
+			void flush() noexcept;
+		private:
+			/**
 			 * pong Метод ответа на проверку о доступности сервера
 			 * @param message сообщение для отправки
 			 */

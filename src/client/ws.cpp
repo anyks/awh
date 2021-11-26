@@ -56,6 +56,8 @@ void awh::WebSocketClient::connectCallback(const size_t aid, const size_t wid, c
 		wsCli_t * ws = reinterpret_cast <wsCli_t *> (ctx);
 		// Запоминаем объект адъютанта
 		ws->aid = aid;
+		// Выполняем сброс параметров запроса
+		ws->flush();
 		// Выполняем сброс состояния HTTP парсера
 		ws->http.reset();
 		// Выполняем очистку параметров HTTP запроса
@@ -88,16 +90,8 @@ void awh::WebSocketClient::disconnectCallback(const size_t aid, const size_t wid
 	if((wid > 0) && (core != nullptr) && (ctx != nullptr)){
 		// Получаем контекст модуля
 		wsCli_t * ws = reinterpret_cast <wsCli_t *> (ctx);
-		// Снимаем флаг отключения
-		ws->close = false;
-		// Выполняем сброс количество стоп-байт
-		ws->stopBytes = 0;
-		// Выполняем сброс количества прочитанных байт
-		ws->readBytes = 0;
-		// Очищаем буфер собранных данных
-		ws->buffer.clear();
-		// Очищаем буфер фрагментированного сообщения
-		ws->fragmes.clear();
+		// Выполняем сброс параметров запроса
+		ws->flush();
 		// Если нужно произвести запрос заново
 		if((ws->code == 301) || (ws->code == 308) ||
 		   (ws->code == 401) || (ws->code == 407)){
@@ -694,6 +688,21 @@ void awh::WebSocketClient::extraction(const vector <char> & buffer, const bool u
 			} else this->messageFn(buffer, utf8, const_cast <WebSocketClient *> (this), this->ctx.at(2));
 		}
 	}
+}
+/**
+ * flush Метод сброса параметров запроса
+ */
+void awh::WebSocketClient::flush() noexcept {
+	// Снимаем флаг отключения
+	this->close = false;
+	// Выполняем сброс количество стоп-байт
+	this->stopBytes = 0;
+	// Выполняем сброс количества прочитанных байт
+	this->readBytes = 0;
+	// Очищаем буфер собранных данных
+	this->buffer.clear();
+	// Очищаем буфер фрагментированного сообщения
+	this->fragmes.clear();
 }
 /**
  * pong Метод ответа на проверку о доступности сервера
