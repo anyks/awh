@@ -337,7 +337,7 @@ void awh::RestClient::readCallback(const char * buffer, const size_t size, const
 			// Устанавливаем метку продолжения обработки пайплайна
 			Next:
 			// Если парсер обработал какое-то количество байт
-			if(bytes > 0){
+			if((bytes > 0) && !web->entity.empty()){
 				// Удаляем количество обработанных байт
 				web->entity.erase(web->entity.begin(), web->entity.begin() + bytes);
 				// Если данных для обработки не осталось, выходим

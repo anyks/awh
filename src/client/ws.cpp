@@ -406,7 +406,7 @@ void awh::WebSocketClient::readCallback(const char * buffer, const size_t size, 
 					bytes = (head.payload + head.size);
 				}
 				// Если парсер обработал какое-то количество байт
-				if(bytes > 0){
+				if((bytes > 0) && !ws->buffer.empty()){
 					// Удаляем количество обработанных байт
 					ws->buffer.erase(ws->buffer.begin(), ws->buffer.begin() + bytes);
 					// Если данных для обработки не осталось, выходим
