@@ -501,6 +501,8 @@ void awh::CoreClient::close(const size_t aid) noexcept {
 		wrk->adjutants.erase(aid);
 		// Удаляем адъютанта из списка подключений
 		this->adjutants.erase(aid);
+		// Выполняем сброс флага
+		this->mode = core_t::mode_t::DISCONNECT;
 		// Если нужно выполнить автоматическое переподключение
 		if(wrk->alive) this->restore(wrk->wid);
 		// Если автоматическое подключение выполнять не нужно
