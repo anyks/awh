@@ -61,17 +61,18 @@ namespace awh {
 			 * Worker Структура воркера резолвинга
 			 */
 			typedef struct Worker {
-				size_t id;                               // Идентификатор объекта доменного имени
-				int family;                              // Тип протокола интернета AF_INET или AF_INET6
-				string host;                             // Название искомого домена
-				const DNS * dns;                         // Объект резолвера DNS
-				const fmk_t * fmk;                       // Объект основного фреймворка
-				const log_t * log;                       // Объект для работы с логами
-				function <void (const string)> callback; // Функция обратного вызова
+				size_t id;                                       // Идентификатор объекта доменного имени
+				int family;                                      // Тип протокола интернета AF_INET или AF_INET6
+				string host;                                     // Название искомого домена
+				void * context;                                  // Передаваемый внешний контекст
+				const DNS * dns;                                 // Объект резолвера DNS
+				const fmk_t * fmk;                               // Объект основного фреймворка
+				const log_t * log;                               // Объект для работы с логами
+				function <void (const string, void *)> callback; // Функция обратного вызова
 				/**
 				 * Worker Конструктор
 				 */
-				Worker() : id(0), family(AF_UNSPEC), host(""), dns(nullptr), fmk(nullptr), log(nullptr), callback(nullptr) {}
+				Worker() : id(0), family(AF_UNSPEC), host(""), context(nullptr), dns(nullptr), fmk(nullptr), log(nullptr), callback(nullptr) {}
 			} worker_t;
 		private:
 			// Адреса серверов dns
@@ -156,11 +157,12 @@ namespace awh {
 			void replaceServers(const vector <string> & servers) noexcept;
 			/**
 			 * resolve Метод ресолвинга домена
+			 * @param ctx      передаваемый контекст
 			 * @param host     хост сервера
 			 * @param family   тип интернет протокола AF_INET, AF_INET6 или AF_UNSPEC
 			 * @param callback функция обратного вызова срабатывающая при получении данных
 			 */
-			void resolve(const string & host, const int family, function <void (const string)> callback) noexcept;
+			void resolve(void * ctx, const string & host, const int family, function <void (const string, void *)> callback) noexcept;
 		public:
 			/**
 			 * DNS Конструктор

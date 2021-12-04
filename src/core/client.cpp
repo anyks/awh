@@ -11,7 +11,41 @@
 #include <core/client.hpp>
 
 /**
- * read Метод чтения данных с сокета сервера
+ * resolver Функция выполнения резолвинга домена
+ * @param ip  полученный IP адрес
+ * @param ctx передаваемый контекст
+ */
+void awh::CoreClient::resolver(const string ip, void * ctx) noexcept {
+	// Если передаваемый контекст передан
+	if(ctx != nullptr){
+		// Получаем объект воркера
+		workCli_t * wrk = reinterpret_cast <workCli_t *> (ctx);
+		// Если IP адрес получен
+		if(!ip.empty()){
+			// Если прокси-сервер активен
+			if(wrk->isProxy())
+				// Запоминаем полученный IP адрес для прокси-сервера
+				wrk->proxy.url.ip = ip;
+			// Запоминаем полученный IP адрес
+			else wrk->url.ip = ip;
+			// Получаем объект ядра подключения
+			coreCli_t * core = (coreCli_t *) const_cast <core_t *> (wrk->core);
+			// Определяем режим работы клиента
+			switch((uint8_t) core->mode){
+				// Если режим работы клиента - это подключение
+				case (uint8_t) core_t::mode_t::CONNECT:   core->connect(wrk->wid);   break;
+				// Если режим работы клиента - это переподключение
+				case (uint8_t) core_t::mode_t::RECONNECT: core->reconnect(wrk->wid); break;
+			}
+			// Выходим из функции
+			return;
+		}
+		// Выводим функцию обратного вызова
+		if(wrk->disconnectFn != nullptr) wrk->disconnectFn(0, wrk->wid, const_cast <core_t *> (wrk->core), wrk->ctx);
+	}
+}
+/**
+ * read Функция чтения данных с сокета сервера
  * @param bev буфер события
  * @param ctx передаваемый контекст
  */
@@ -64,7 +98,7 @@ void awh::CoreClient::read(struct bufferevent * bev, void * ctx) noexcept {
 	}
 }
 /**
- * write Метод записи данных в сокет сервера
+ * write Функция записи данных в сокет сервера
  * @param bev буфер события
  * @param ctx передаваемый контекст
  */
@@ -125,7 +159,7 @@ void awh::CoreClient::write(struct bufferevent * bev, void * ctx) noexcept {
 	}
 }
 /**
- * event Метод обработка входящих событий с сервера
+ * event Функция обработка входящих событий с сервера
  * @param bev    буфер события
  * @param events произошедшее событие
  * @param ctx    передаваемый контекст
@@ -297,13 +331,6 @@ void awh::CoreClient::connect(const size_t wid) noexcept {
 					}
 					// Выполняем подключение к удаленному серверу, если подключение не выполненно то сообщаем об этом
 					if(bufferevent_socket_connect(ret.first->second.bev, sin, size) < 0){
-						// Определяем тип подключения
-						switch(this->net.family){
-							// Резолвер IPv4, выполняем сброс кэша резолвера
-							case AF_INET: this->dns4.flush(); break;
-							// Резолвер IPv6, выполняем сброс кэша резолвера
-							case AF_INET6: this->dns6.flush(); break;
-						}
 						// Выводим в лог сообщение
 						this->log->print("connecting to host = %s, port = %u", log_t::flag_t::CRITICAL, url.ip.c_str(), url.port);
 						// Если нужно выполнить автоматическое переподключение
@@ -317,11 +344,18 @@ void awh::CoreClient::connect(const size_t wid) noexcept {
 							// Увеличиваем колпичество попыток
 							ret.first->second.attempt++;
 							// Выполняем переподключение
-							this->reconnect(wid);
+							this->restore(wid);
 							// Выходим из функции
 							return;
 						// Если все попытки исчерпаны
 						} else {
+							// Определяем тип подключения
+							switch(this->net.family){
+								// Резолвер IPv4, выполняем сброс кэша резолвера
+								case AF_INET: this->dns4.flush(); break;
+								// Резолвер IPv6, выполняем сброс кэша резолвера
+								case AF_INET6: this->dns6.flush(); break;
+							}
 							// Выводим сообщение об ошибке
 							if(!core->noinfo) this->log->print("%s", log_t::flag_t::INFO, "disconnected from the server");
 							// Выводим функцию обратного вызова
@@ -334,29 +368,26 @@ void awh::CoreClient::connect(const size_t wid) noexcept {
 					if(!core->noinfo) this->log->print("create good connect to host = %s [%s:%d], socket = %d", log_t::flag_t::INFO, url.domain.c_str(), url.ip.c_str(), url.port, socket.fd);
 					// Выходим из функции
 					return;
-				// Если подключение не выполнено
-				} else {
-					// Определяем тип подключения
-					switch(this->net.family){
-						// Резолвер IPv4, выполняем сброс кэша резолвера
-						case AF_INET: this->dns4.flush(); break;
-						// Резолвер IPv6, выполняем сброс кэша резолвера
-						case AF_INET6: this->dns6.flush(); break;
-					}
-					// Выводим в лог сообщение
-					this->log->print("connecting to host = %s, port = %u", log_t::flag_t::CRITICAL, url.ip.c_str(), url.port);
-				}
+				// Если подключение не выполнено, выводим в лог сообщение
+				} else this->log->print("connecting to host = %s, port = %u", log_t::flag_t::CRITICAL, url.ip.c_str(), url.port);
 			}
 			// Если нужно выполнить автоматическое переподключение
 			if(wrk->alive && (wrk->attempt <= wrk->attempts)){
 				// Увеличиваем колпичество попыток
 				wrk->attempt++;
 				// Выполняем переподключение
-				this->reconnect(wid);
+				this->restore(wid);
 				// Выходим из функции
 				return;
 			// Если все попытки исчерпаны
 			} else {
+				// Определяем тип подключения
+				switch(this->net.family){
+					// Резолвер IPv4, выполняем сброс кэша резолвера
+					case AF_INET: this->dns4.flush(); break;
+					// Резолвер IPv6, выполняем сброс кэша резолвера
+					case AF_INET6: this->dns6.flush(); break;
+				}
 				// Выводим сообщение об ошибке
 				if(!core->noinfo) this->log->print("%s", log_t::flag_t::INFO, "disconnected from the server");
 				// Выводим функцию обратного вызова
@@ -419,40 +450,21 @@ void awh::CoreClient::open(const size_t wid) noexcept {
 			workCli_t * wrk = (workCli_t *) const_cast <worker_t *> (it->second);
 			// Если параметры URL запроса переданы
 			if(!wrk->url.empty()){
+				// Устанавливаем режим торговли
+				this->mode = core_t::mode_t::CONNECT;
 				// Получаем URL параметры запроса
 				const uri_t::url_t & url = (wrk->isProxy() ? wrk->proxy.url : wrk->url);
-				/**
-				 * runFn Функция выполнения запуска системы
-				 * @param ip полученный адрес сервера резолвером
-				 */
-				auto runFn = [wrk, this](const string ip) noexcept {
-					// Если IP адрес получен
-					if(!ip.empty()){
-						// Если прокси-сервер активен
-						if(wrk->isProxy())
-							// Запоминаем полученный IP адрес для прокси-сервера
-							wrk->proxy.url.ip = ip;
-						// Запоминаем полученный IP адрес
-						else wrk->url.ip = ip;
-						// Выполняем подключение к серверу
-						this->connect(wrk->wid);
-						// Выходим из функции
-						return;
-					}
-					// Выводим функцию обратного вызова
-					if(wrk->disconnectFn != nullptr) wrk->disconnectFn(0, wrk->wid, this, wrk->ctx);
-				};
 				// Если IP адрес не получен
 				if(url.ip.empty() && !url.domain.empty())
 					// Определяем тип подключения
 					switch(this->net.family){
 						// Резолвер IPv4, создаём резолвер
-						case AF_INET: this->dns4.resolve(url.domain, AF_INET, runFn); break;
+						case AF_INET: this->dns4.resolve(wrk, url.domain, AF_INET, resolver); break;
 						// Резолвер IPv6, создаём резолвер
-						case AF_INET6: this->dns6.resolve(url.domain, AF_INET6, runFn); break;
+						case AF_INET6: this->dns6.resolve(wrk, url.domain, AF_INET6, resolver); break;
 					}
 				// Выполняем запуск системы
-				else if(!url.ip.empty()) runFn(url.ip);
+				else if(!url.ip.empty()) resolver(url.ip, wrk);
 			}
 		}
 	}
@@ -490,13 +502,50 @@ void awh::CoreClient::close(const size_t aid) noexcept {
 		// Удаляем адъютанта из списка подключений
 		this->adjutants.erase(aid);
 		// Если нужно выполнить автоматическое переподключение
-		if(wrk->alive) this->reconnect(wrk->wid);
+		if(wrk->alive) this->restore(wrk->wid);
 		// Если автоматическое подключение выполнять не нужно
 		else {
 			// Выводим сообщение об ошибке
 			if(!core->noinfo) this->log->print("%s", log_t::flag_t::INFO, "disconnected from the server");
 			// Выводим функцию обратного вызова
 			if(wrk->disconnectFn != nullptr) wrk->disconnectFn(aid, wrk->wid, this, wrk->ctx);
+		}
+	}
+}
+/**
+ * restore Метод восстановления подключения
+ * @param wid идентификатор воркера
+ */
+void awh::CoreClient::restore(const size_t wid) noexcept {
+	// Выполняем поиск воркера
+	auto it = this->workers.find(wid);
+	// Если воркер найден
+	if(it != this->workers.end()){
+		// Получаем объект воркера
+		workCli_t * wrk = (workCli_t *) const_cast <worker_t *> (it->second);
+		// Если параметры URL запроса переданы
+		if(!wrk->url.empty()){
+			// Устанавливаем режим торговли
+			this->mode = core_t::mode_t::RECONNECT;
+			// Получаем URL параметры запроса
+			const uri_t::url_t & url = (wrk->isProxy() ? wrk->proxy.url : wrk->url);
+			// Определяем тип подключения
+			switch(this->net.family){
+				// Резолвер IPv4, создаём резолвер
+				case AF_INET: {
+					// Выполняем сброс кэша DNS резолвера
+					this->dns4.flush();
+					// Выполняем резолвинг домена
+					this->dns4.resolve(wrk, url.domain, AF_INET, resolver);
+				} break;
+				// Резолвер IPv6, создаём резолвер
+				case AF_INET6: {
+					// Выполняем сброс кэша DNS резолвера
+					this->dns6.flush();
+					// Выполняем резолвинг домена
+					this->dns6.resolve(wrk, url.domain, AF_INET6, resolver);
+				} break;
+			}
 		}
 	}
 }
@@ -574,7 +623,7 @@ void awh::CoreClient::setBandwidth(const size_t aid, const string & read, const 
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
  */
-awh::CoreClient::CoreClient(const fmk_t * fmk, const log_t * log) noexcept : core_t(fmk, log) {
+awh::CoreClient::CoreClient(const fmk_t * fmk, const log_t * log) noexcept : core_t(fmk, log), mode(core_t::mode_t::DISCONNECT) {
 	// Устанавливаем тип запускаемого ядра
 	this->type = type_t::CLIENT;
 }

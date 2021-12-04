@@ -28,20 +28,29 @@ namespace awh {
 	 */
 	typedef class CoreClient : public core_t {
 		private:
+			// Флаг восстановления подключения
+			mode_t mode;
+		private:
 			/**
-			 * read Метод чтения данных с сокета сервера
+			 * resolver Функция выполнения резолвинга домена
+			 * @param ip  полученный IP адрес
+			 * @param ctx передаваемый контекст
+			 */
+			static void resolver(const string ip, void * ctx) noexcept;
+			/**
+			 * read Функция чтения данных с сокета сервера
 			 * @param bev буфер события
 			 * @param ctx передаваемый контекст
 			 */
 			static void read(struct bufferevent * bev, void * ctx) noexcept;
 			/**
-			 * write Метод записи данных в сокет сервера
+			 * write Функция записи данных в сокет сервера
 			 * @param bev буфер события
 			 * @param ctx передаваемый контекст
 			 */
 			static void write(struct bufferevent * bev, void * ctx) noexcept;
 			/**
-			 * event Метод обработка входящих событий с сервера
+			 * event Функция обработка входящих событий с сервера
 			 * @param bev    буфер события
 			 * @param events произошедшее событие
 			 * @param ctx    передаваемый контекст
@@ -79,6 +88,11 @@ namespace awh {
 			 * @param aid идентификатор адъютанта
 			 */
 			void close(const size_t aid) noexcept;
+			/**
+			 * restore Метод восстановления подключения
+			 * @param wid идентификатор воркера
+			 */
+			void restore(const size_t wid) noexcept;
 			/**
 			 * switchProxy Метод переключения с прокси-сервера
 			 * @param aid идентификатор адъютанта

@@ -79,6 +79,10 @@ namespace awh {
 			 * Тип запускаемого ядра
 			 */
 			enum class type_t : uint8_t {CLIENT, SERVER};
+			/**
+			 * Режимы работы клиента
+			 */
+			enum class mode_t : uint8_t {CONNECT, RECONNECT, DISCONNECT};
 		public:
 			/**
 			 * Основные методы режимов работы

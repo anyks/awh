@@ -11,7 +11,50 @@
 #include <core/server.hpp>
 
 /**
- * read Метод чтения данных с сокета сервера
+ * resolver Функция выполнения резолвинга домена
+ * @param ip  полученный IP адрес
+ * @param ctx передаваемый контекст
+ */
+void awh::CoreServer::resolver(const string ip, void * ctx) noexcept {
+	// Если передаваемый контекст передан
+	if(ctx != nullptr){
+		// Получаем объект воркера
+		workSrv_t * wrk = reinterpret_cast <workSrv_t *> (ctx);
+		// Получаем объект ядра подключения
+		coreSrv_t * core = (coreSrv_t *) const_cast <core_t *> (wrk->core);
+		// Если IP адрес получен
+		if(!ip.empty()){
+			// sudo lsof -i -P | grep 1080
+			// Обновляем хост сервера
+			wrk->host = ip;
+			// Получаем сокет сервера
+			wrk->fd = core->socket(wrk->host, wrk->port, core->net.family).fd;
+			// Выполняем чтение сокета
+			if(::listen(wrk->fd, wrk->total) < 0){
+				// Выводим в консоль информацию
+				if(!core->noinfo) core->log->print("listen service: pid = %u", log_t::flag_t::CRITICAL, getpid());
+				// Останавливаем работу сервера
+				core->stop();
+				// Выходим
+				return;
+			}
+			// Добавляем событие в базу
+			wrk->ev = event_new(core->base, wrk->fd, EV_READ | EV_PERSIST, &accept, wrk);
+			// Активируем событие
+			event_add(wrk->ev, nullptr);
+			// Выводим сообщение об активации
+			if(!core->noinfo) core->log->print("run server [%s:%u]", log_t::flag_t::INFO, wrk->host.c_str(), wrk->port);
+		// Если IP адрес сервера не получен
+		} else {
+			// Выводим в консоль информацию
+			core->log->print("broken host server %s", log_t::flag_t::CRITICAL, wrk->host.c_str());
+			// Останавливаем работу сервера
+			core->stop();
+		}
+	}
+}
+/**
+ * read Функция чтения данных с сокета сервера
  * @param bev буфер события
  * @param ctx передаваемый контекст
  */
@@ -56,7 +99,7 @@ void awh::CoreServer::read(struct bufferevent * bev, void * ctx) noexcept {
 	}
 }
 /**
- * write Метод записи данных в сокет сервера
+ * write Функция записи данных в сокет сервера
  * @param bev буфер события
  * @param ctx передаваемый контекст
  */
@@ -101,7 +144,7 @@ void awh::CoreServer::write(struct bufferevent * bev, void * ctx) noexcept {
 	}
 }
 /**
- * event Метод обработка входящих событий с сервера
+ * event Функция обработка входящих событий с сервера
  * @param bev    буфер события
  * @param events произошедшее событие
  * @param ctx    передаваемый контекст
@@ -433,47 +476,12 @@ void awh::CoreServer::run(const size_t wid) noexcept {
 		if(it != this->workers.end()){
 			// Получаем объект подключения
 			workSrv_t * wrk = (workSrv_t *) const_cast <worker_t *> (it->second);
-			/**
-			 * runFn Функция выполнения запуска системы
-			 * @param ip полученный адрес сервера резолвером
-			 */
-			auto runFn = [wrk, this](const string & ip) noexcept {
-				// Если IP адрес получен
-				if(!ip.empty()){
-					// sudo lsof -i -P | grep 1080
-					// Обновляем хост сервера
-					wrk->host = ip;
-					// Получаем сокет сервера
-					wrk->fd = this->socket(wrk->host, wrk->port, this->net.family).fd;
-					// Выполняем чтение сокета
-					if(::listen(wrk->fd, wrk->total) < 0){
-						// Выводим в консоль информацию
-						if(!this->noinfo) this->log->print("listen service: pid = %u", log_t::flag_t::CRITICAL, getpid());
-						// Останавливаем работу сервера
-						this->stop();
-						// Выходим
-						return;
-					}
-					// Добавляем событие в базу
-					wrk->ev = event_new(this->base, wrk->fd, EV_READ | EV_PERSIST, &accept, wrk);
-					// Активируем событие
-					event_add(wrk->ev, nullptr);
-					// Выводим сообщение об активации
-					if(!this->noinfo) this->log->print("run server [%s:%u]", log_t::flag_t::INFO, wrk->host.c_str(), wrk->port);
-				// Если IP адрес сервера не получен
-				} else {
-					// Выводим в консоль информацию
-					this->log->print("broken host server %s", log_t::flag_t::CRITICAL, wrk->host.c_str());
-					// Останавливаем работу сервера
-					this->stop();
-				}
-			};
 			// Определяем тип подключения
 			switch(this->net.family){
 				// Резолвер IPv4, создаём резолвер
-				case AF_INET: this->dns4.resolve(wrk->host, AF_INET, runFn); break;
+				case AF_INET: this->dns4.resolve(wrk, wrk->host, AF_INET, resolver); break;
 				// Резолвер IPv6, создаём резолвер
-				case AF_INET6: this->dns6.resolve(wrk->host, AF_INET6, runFn); break;
+				case AF_INET6: this->dns6.resolve(wrk, wrk->host, AF_INET6, resolver); break;
 			}
 		}
 	}

@@ -65,13 +65,6 @@ void awh::Core::reconnect(evutil_socket_t fd, short event, void * ctx) noexcept 
 		core_t * core = const_cast <core_t *> (wrk->core);
 		// Выполняем удаление событие таймера
 		event_del(&core->timeout);
-		// Определяем тип подключения
-		switch(core->net.family){
-			// Резолвер IPv4, выполняем сброс кэша резолвера
-			case AF_INET: core->dns4.flush(); break;
-			// Резолвер IPv6, выполняем сброс кэша резолвера
-			case AF_INET6: core->dns6.flush(); break;
-		}
 		// Выполняем новое подключение
 		core->connect(wrk->wid);
 	}

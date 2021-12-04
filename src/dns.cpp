@@ -104,7 +104,7 @@ void awh::DNS::callback(const int error, struct evutil_addrinfo * addr, void * c
 			// Выводим готовый результат
 			if(wrk->callback != nullptr)
 				// Выводим полученный IP адрес
-				wrk->callback(ip != nullptr ? (* ip) : "");
+				wrk->callback(ip != nullptr ? (* ip) : "", wrk->context);
 			// Если объект запроса существует
 			if(dns->reply != nullptr){
 				// Выполняем отмену запроса
@@ -223,7 +223,7 @@ void awh::DNS::flush() noexcept {
 		// Переходим по всем воркерам
 		for(auto it = this->workers.begin(); it != this->workers.end();){
 			// Выводим пустой IP адрес
-			it->second.callback("");
+			it->second.callback("", it->second.context);
 			// Удаляем объект воркера
 			it = this->workers.erase(it);
 		}
@@ -307,11 +307,12 @@ void awh::DNS::replaceServers(const vector <string> & servers) noexcept {
 }
 /**
  * resolve Метод ресолвинга домена
+ * @param ctx      передаваемый контекст
  * @param host     хост сервера
  * @param family   тип интернет протокола IPv4 или IPv6
  * @param callback функция обратного вызова срабатывающая при получении данных
  */
-void awh::DNS::resolve(const string & host, const int family, function <void (const string)> callback) noexcept {
+void awh::DNS::resolve(void * ctx, const string & host, const int family, function <void (const string, void *)> callback) noexcept {
 	// Если домен передан
 	if(!host.empty() && (this->fmk != nullptr)){
 		// Результат работы регулярного выражения
@@ -329,7 +330,7 @@ void awh::DNS::resolve(const string & host, const int family, function <void (co
 				// Выполняем проверку запрашиваемого хоста в кэше
 				auto it = this->cache.find(host);
 				// Если хост найден, выводим его
-				if(it != this->cache.end()) callback(it->second);
+				if(it != this->cache.end()) callback(it->second, ctx);
 				// Выполняем запрос IP адреса
 				else goto Resolve;
 			// Если доменных имён в кэше больше 1-го
@@ -352,7 +353,7 @@ void awh::DNS::resolve(const string & host, const int family, function <void (co
 					// рандомизация генератора случайных чисел
 					srand(time(0));
 					// Получаем ip адрес
-					callback(ips.at(rand() % ips.size()));
+					callback(ips.at(rand() % ips.size()), ctx);
 				// Выполняем запрос IP адреса
 				} else goto Resolve;
 			// Если адрес не найден то запрашиваем его с резолвера
@@ -365,6 +366,8 @@ void awh::DNS::resolve(const string & host, const int family, function <void (co
 				wrk.dns = this;
 				// Запоминаем название искомого домена
 				wrk.host = host;
+				// Устанавливаем передаваемый контекст
+				wrk.context = ctx;
 				// Устанавливаем тип протокола интернета
 				wrk.family = family;
 				// Запоминаем объект основного фреймворка
@@ -395,7 +398,7 @@ void awh::DNS::resolve(const string & host, const int family, function <void (co
 				if(this->reply == nullptr) this->log->print("request for %s returned immediately", log_t::flag_t::CRITICAL, host.c_str());
 			}
 		// Если передан домен то возвращаем его
-		} else callback(match[1].str());
+		} else callback(match[1].str(), ctx);
 	}
 	// Выходим
 	return;
