@@ -892,7 +892,7 @@ vector <char> awh::Http::proxy(const uri_t::url_t & url) noexcept {
 			// Добавляем поддержку постоянного подключения для прокси-сервера
 			this->addHeader("Proxy-Connection", "keep-alive");
 			// Получаем параметры авторизации
-			const string & auth = this->authCli.getHeader("connect", true);
+			const string & auth = this->auth.client.getHeader("connect", true);
 			// Если данные авторизации получены
 			if(!auth.empty()) this->addHeader("Proxy-Authorization", auth);
 			// Формируем URI запроса
@@ -1048,7 +1048,7 @@ vector <char> awh::Http::response(const u_int code, const string & mess) const n
 		// Если заголовок авторизации не передан
 		if(((code == 401) && !available[6]) || ((code == 407) && !available[7])){
 			// Получаем параметры авторизации
-			const string & auth = this->authSrv.getHeader(true);
+			const string & auth = this->auth.server.getHeader(true);
 			// Если параметры авторизации получены
 			if(!auth.empty()){
 				// Определяем код авторизации
@@ -1198,7 +1198,7 @@ vector <char> awh::Http::request(const uri_t::url_t & url, const web_t::method_t
 			// Получаем объект параметров запроса
 			web_t::query_t query = this->web.getQuery();
 			// Устанавливаем параметры REST запроса
-			this->authCli.setUri(this->uri->createUrl(url));
+			this->auth.client.setUri(this->uri->createUrl(url));
 			// Если метод не CONNECT или URI не установлен
 			if((method != web_t::method_t::CONNECT) || query.uri.empty())
 				// Формируем HTTP запрос
@@ -1374,7 +1374,7 @@ vector <char> awh::Http::request(const uri_t::url_t & url, const web_t::method_t
 					case (uint8_t) web_t::method_t::CONNECT: httpMethod = "connect"; break;
 				}
 				// Получаем параметры авторизации
-				const string & auth = this->authCli.getHeader(httpMethod);
+				const string & auth = this->auth.client.getHeader(httpMethod);
 				// Если данные авторизации получены
 				if(!auth.empty()) request.append(auth);
 			}
@@ -1536,7 +1536,7 @@ void awh::Http::setCrypt(const string & pass, const string & salt, const hash_t:
  * @param log объект для работы с логами
  * @param uri объект работы с URI
  */
-awh::Http::Http(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcept : authCli(fmk, log), authSrv(fmk, log), hash(fmk, log), web(fmk, log), fmk(fmk), log(log), uri(uri) {
+awh::Http::Http(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcept : auth(fmk, log), hash(fmk, log), web(fmk, log), fmk(fmk), log(log), uri(uri) {
 	// Устанавливаем функцию обратного вызова для получения чанков
 	this->web.setChunkingFn(this, &chunkingCallback);
 }

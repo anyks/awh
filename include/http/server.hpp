@@ -23,60 +23,65 @@ using namespace std;
  * awh пространство имён
  */
 namespace awh {
-	/**
-	 * HttpServer Класс для работы с REST сервером
+	/*
+	 * server серверное пространство имён
 	 */
-	typedef class HttpServer : public http_t {
-		private:
-			/**
-			 * checkAuth Метод проверки авторизации
-			 * @return результат проверки авторизации
-			 */
-			stath_t checkAuth() noexcept;
-		public:
-			/**
-			 * setRealm Метод установки название сервера
-			 * @param realm название сервера
-			 */
-			void setRealm(const string & realm) noexcept;
-			/**
-			 * setOpaque Метод установки временного ключа сессии сервера
-			 * @param opaque временный ключ сессии сервера
-			 */
-			void setOpaque(const string & opaque) noexcept;
-		public:
-			/**
-			 * setExtractPassCallback Метод добавления функции извлечения пароля
-			 * @param ctx      контекст для вывода в сообщении
-			 * @param callback функция обратного вызова для извлечения пароля
-			 */
-			void setExtractPassCallback(void * ctx, function <string (const string &, void *)> callback) noexcept;
-			/**
-			 * setAuthCallback Метод добавления функции обработки авторизации
-			 * @param ctx      контекст для вывода в сообщении
-			 * @param callback функция обратного вызова для обработки авторизации
-			 */
-			void setAuthCallback(void * ctx, function <bool (const string &, const string &, void *)> callback) noexcept;
-		public:
-			/**
-			 * setAuthType Метод установки типа авторизации
-			 * @param type тип авторизации
-			 * @param hash алгоритм шифрования для Digest авторизации
-			 */
-			void setAuthType(const auth_t::type_t type = auth_t::type_t::BASIC, const auth_t::hash_t hash = auth_t::hash_t::MD5) noexcept;
-		public:
-			/**
-			 * HttpServer Конструктор
-			 * @param fmk объект фреймворка
-			 * @param log объект для работы с логами
-			 * @param uri объект работы с URI
-			 */
-			HttpServer(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcept;
-			/**
-			 * ~HttpServer Деструктор
-			 */
-			~HttpServer() noexcept {}
-	} httpSrv_t;
+	namespace server {
+		/**
+		 * Http Класс для работы с REST сервером
+		 */
+		typedef class Http : public awh::http_t {
+			private:
+				/**
+				 * checkAuth Метод проверки авторизации
+				 * @return результат проверки авторизации
+				 */
+				stath_t checkAuth() noexcept;
+			public:
+				/**
+				 * setRealm Метод установки название сервера
+				 * @param realm название сервера
+				 */
+				void setRealm(const string & realm) noexcept;
+				/**
+				 * setOpaque Метод установки временного ключа сессии сервера
+				 * @param opaque временный ключ сессии сервера
+				 */
+				void setOpaque(const string & opaque) noexcept;
+			public:
+				/**
+				 * setExtractPassCallback Метод добавления функции извлечения пароля
+				 * @param ctx      контекст для вывода в сообщении
+				 * @param callback функция обратного вызова для извлечения пароля
+				 */
+				void setExtractPassCallback(void * ctx, function <string (const string &, void *)> callback) noexcept;
+				/**
+				 * setAuthCallback Метод добавления функции обработки авторизации
+				 * @param ctx      контекст для вывода в сообщении
+				 * @param callback функция обратного вызова для обработки авторизации
+				 */
+				void setAuthCallback(void * ctx, function <bool (const string &, const string &, void *)> callback) noexcept;
+			public:
+				/**
+				 * setAuthType Метод установки типа авторизации
+				 * @param type тип авторизации
+				 * @param hash алгоритм шифрования для Digest авторизации
+				 */
+				void setAuthType(const awh::auth_t::type_t type = awh::auth_t::type_t::BASIC, const awh::auth_t::hash_t hash = awh::auth_t::hash_t::MD5) noexcept;
+			public:
+				/**
+				 * Http Конструктор
+				 * @param fmk объект фреймворка
+				 * @param log объект для работы с логами
+				 * @param uri объект работы с URI
+				 */
+				Http(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcept;
+				/**
+				 * ~Http Деструктор
+				 */
+				~Http() noexcept {}
+		} http_t;
+	};
 };
 
 #endif // __AWH_HTTP_SERVER__

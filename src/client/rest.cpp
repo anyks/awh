@@ -16,11 +16,11 @@
  * @param http  объект модуля HTTP
  * @param ctx   передаваемый контекст модуля
  */
-void awh::RestClient::chunking(const vector <char> & chunk, const http_t * http, void * ctx) noexcept {
+void awh::client::Rest::chunking(const vector <char> & chunk, const awh::http_t * http, void * ctx) noexcept {
 	// Выполняем блокировку неиспользуемой переменной
 	(void) ctx;
 	// Если данные получены, формируем тело сообщения
-	if(!chunk.empty()) const_cast <http_t *> (http)->addBody(chunk.data(), chunk.size());
+	if(!chunk.empty()) const_cast <awh::http_t *> (http)->addBody(chunk.data(), chunk.size());
 }
 /**
  * openCallback Функция обратного вызова при запуске работы
@@ -28,7 +28,7 @@ void awh::RestClient::chunking(const vector <char> & chunk, const http_t * http,
  * @param core объект биндинга TCP/IP
  * @param ctx  передаваемый контекст модуля
  */
-void awh::RestClient::openCallback(const size_t wid, core_t * core, void * ctx) noexcept {
+void awh::client::Rest::openCallback(const size_t wid, awh::core_t * core, void * ctx) noexcept {
 	// Выполняем подключение
 	core->open(wid);
 }
@@ -39,11 +39,11 @@ void awh::RestClient::openCallback(const size_t wid, core_t * core, void * ctx) 
  * @param core объект биндинга TCP/IP
  * @param ctx  передаваемый контекст модуля
  */
-void awh::RestClient::connectCallback(const size_t aid, const size_t wid, core_t * core, void * ctx) noexcept {
+void awh::client::Rest::connectCallback(const size_t aid, const size_t wid, awh::core_t * core, void * ctx) noexcept {
 	// Если данные переданы верные
 	if((aid > 0) && (wid > 0) && (core != nullptr) && (ctx != nullptr)){
 		// Получаем контекст модуля
-		restCli_t * web = reinterpret_cast <restCli_t *> (ctx);
+		rest_t * web = reinterpret_cast <rest_t *> (ctx);
 		// Запоминаем идентификатор адъютанта
 		web->aid = aid;
 		// Выполняем сброс параметров запроса
@@ -102,11 +102,11 @@ void awh::RestClient::connectCallback(const size_t aid, const size_t wid, core_t
  * @param core объект биндинга TCP/IP
  * @param ctx  передаваемый контекст модуля
  */
-void awh::RestClient::disconnectCallback(const size_t aid, const size_t wid, core_t * core, void * ctx) noexcept {
+void awh::client::Rest::disconnectCallback(const size_t aid, const size_t wid, awh::core_t * core, void * ctx) noexcept {
 	// Если данные переданы верные
 	if((wid > 0) && (core != nullptr) && (ctx != nullptr)){
 		// Получаем контекст модуля
-		restCli_t * web = reinterpret_cast <restCli_t *> (ctx);
+		rest_t * web = reinterpret_cast <rest_t *> (ctx);
 		// Если список ответов получен
 		if(!web->responses.empty()){
 			// Получаем объект ответа
@@ -143,11 +143,11 @@ void awh::RestClient::disconnectCallback(const size_t aid, const size_t wid, cor
  * @param core объект биндинга TCP/IP
  * @param ctx  передаваемый контекст модуля
  */
-void awh::RestClient::connectProxyCallback(const size_t aid, const size_t wid, core_t * core, void * ctx) noexcept {
+void awh::client::Rest::connectProxyCallback(const size_t aid, const size_t wid, awh::core_t * core, void * ctx) noexcept {
 	// Если данные переданы верные
 	if((aid > 0) && (wid > 0) && (core != nullptr) && (ctx != nullptr)){
 		// Получаем контекст модуля
-		restCli_t * web = reinterpret_cast <restCli_t *> (ctx);
+		rest_t * web = reinterpret_cast <rest_t *> (ctx);
 		// Запоминаем идентификатор адъютанта
 		web->aid = aid;
 		// Получаем объект запроса
@@ -202,11 +202,11 @@ void awh::RestClient::connectProxyCallback(const size_t aid, const size_t wid, c
  * @param core   объект биндинга TCP/IP
  * @param ctx    передаваемый контекст модуля
  */
-void awh::RestClient::readCallback(const char * buffer, const size_t size, const size_t aid, const size_t wid, core_t * core, void * ctx) noexcept {
+void awh::client::Rest::readCallback(const char * buffer, const size_t size, const size_t aid, const size_t wid, awh::core_t * core, void * ctx) noexcept {
 	// Если данные существуют
 	if((buffer != nullptr) && (size > 0) && (aid > 0) && (wid > 0)){
 		// Получаем контекст модуля
-		restCli_t * web = reinterpret_cast <restCli_t *> (ctx);
+		rest_t * web = reinterpret_cast <rest_t *> (ctx);
 		// Добавляем полученные данные в буфер
 		web->entity.insert(web->entity.end(), buffer, buffer + size);
 		// Выполняем обработку полученных данных
@@ -244,7 +244,7 @@ void awh::RestClient::readCallback(const char * buffer, const size_t size, const
 				// Выполняем анализ результата авторизации
 				switch((uint8_t) web->http.getAuth()){
 					// Если нужно попытаться ещё раз
-					case (uint8_t) http_t::stath_t::RETRY: {
+					case (uint8_t) awh::http_t::stath_t::RETRY: {
 						// Если попытка повторить авторизацию ещё не проводилась
 						if(!req.failAuth){
 							// Получаем новый адрес запроса
@@ -274,7 +274,7 @@ void awh::RestClient::readCallback(const char * buffer, const size_t size, const
 						res.code = 403;
 					} break;
 					// Если запрос выполнен удачно
-					case (uint8_t) http_t::stath_t::GOOD: {
+					case (uint8_t) awh::http_t::stath_t::GOOD: {
 						// Если функция обратного вызова установлена, выводим сообщение
 						if(web->messageFn != nullptr){
 							// Получаем тело запроса
@@ -311,7 +311,7 @@ void awh::RestClient::readCallback(const char * buffer, const size_t size, const
 						goto Next;
 					} break;
 					// Если запрос неудачный
-					case (uint8_t) http_t::stath_t::FAULT: {
+					case (uint8_t) awh::http_t::stath_t::FAULT: {
 						// Запрещаем бесконечный редирект при запросе авторизации
 						if((res.code == 401) || (res.code == 407)) res.code = 403;
 					} break;
@@ -356,11 +356,11 @@ void awh::RestClient::readCallback(const char * buffer, const size_t size, const
  * @param core   объект биндинга TCP/IP
  * @param ctx    передаваемый контекст модуля
  */
-void awh::RestClient::readProxyCallback(const char * buffer, const size_t size, const size_t aid, const size_t wid, core_t * core, void * ctx) noexcept {
+void awh::client::Rest::readProxyCallback(const char * buffer, const size_t size, const size_t aid, const size_t wid, awh::core_t * core, void * ctx) noexcept {
 	// Если данные существуют
 	if((buffer != nullptr) && (size > 0) && (aid > 0) && (wid > 0)){
 		// Получаем контекст модуля
-		restCli_t * web = reinterpret_cast <restCli_t *> (ctx);
+		rest_t * web = reinterpret_cast <rest_t *> (ctx);
 		// Определяем тип прокси-сервера
 		switch((uint8_t) web->worker.proxy.type){
 			// Если прокси-сервер является Socks5
@@ -378,7 +378,7 @@ void awh::RestClient::readProxyCallback(const char * buffer, const size_t size, 
 						// Если рукопожатие выполнено
 						if(web->worker.proxy.socks5.isHandshake()){
 							// Выполняем переключение на работу с сервером
-							reinterpret_cast <coreCli_t *> (core)->switchProxy(aid);
+							reinterpret_cast <client::core_t *> (core)->switchProxy(aid);
 							// Завершаем работу
 							return;
 						// Если рукопожатие не выполнено
@@ -446,7 +446,7 @@ void awh::RestClient::readProxyCallback(const char * buffer, const size_t size, 
 					// Выполняем проверку авторизации
 					switch((uint8_t) web->worker.proxy.http.getAuth()){
 						// Если нужно попытаться ещё раз
-						case (uint8_t) http_t::stath_t::RETRY: {
+						case (uint8_t) awh::http_t::stath_t::RETRY: {
 							// Если попытка повторить авторизацию ещё не проводилась
 							if(!req.failAuth){
 								// Получаем новый адрес запроса
@@ -469,16 +469,16 @@ void awh::RestClient::readProxyCallback(const char * buffer, const size_t size, 
 							res.code = 403;
 						} break;
 						// Если запрос выполнен удачно
-						case (uint8_t) http_t::stath_t::GOOD: {
+						case (uint8_t) awh::http_t::stath_t::GOOD: {
 							// Выполняем сброс количество попыток
 							req.failAuth = false;
 							// Выполняем переключение на работу с сервером
-							reinterpret_cast <coreCli_t *> (core)->switchProxy(aid);
+							reinterpret_cast <client::core_t *> (core)->switchProxy(aid);
 							// Завершаем работу
 							return;
 						} break;
 						// Если запрос неудачный
-						case (uint8_t) http_t::stath_t::FAULT: {
+						case (uint8_t) awh::http_t::stath_t::FAULT: {
 							// Запрещаем бесконечный редирект при запросе авторизации
 							if((res.code == 401) || (res.code == 407))
 								// Устанавливаем код ответа
@@ -507,7 +507,7 @@ void awh::RestClient::readProxyCallback(const char * buffer, const size_t size, 
 /**
  * flush Метод сброса параметров запроса
  */
-void awh::RestClient::flush() noexcept {
+void awh::client::Rest::flush() noexcept {
 	// Сбрасываем флаг принудительной остановки
 	this->forstop = false;
 	// Выполняем очистку оставшихся данных
@@ -516,35 +516,35 @@ void awh::RestClient::flush() noexcept {
 /**
  * start Метод запуска клиента
  */
-void awh::RestClient::start() noexcept {
+void awh::client::Rest::start() noexcept {
 	// Если биндинг не запущен
 	if(!this->core->working())
 		// Выполняем запуск биндинга
-		const_cast <coreCli_t *> (this->core)->start();
+		const_cast <client::core_t *> (this->core)->start();
 	// Если биндинг уже запущен, выполняем запрос на сервер
-	else const_cast <coreCli_t *> (this->core)->open(this->worker.wid);
+	else const_cast <client::core_t *> (this->core)->open(this->worker.wid);
 }
 /**
  * stop Метод остановки клиента
  */
-void awh::RestClient::stop() noexcept {
+void awh::client::Rest::stop() noexcept {
 	// Устанавливаем флаг принудительной остановки
 	this->forstop = true;
 	// Если подключение выполнено
 	if(this->core->working())
 		// Завершаем работу, если разрешено остановить
-		const_cast <coreCli_t *> (this->core)->stop();
+		const_cast <client::core_t *> (this->core)->stop();
 }
 /**
  * close Метод закрытия подключения клиента
  */
-void awh::RestClient::close() noexcept {
+void awh::client::Rest::close() noexcept {
 	// Устанавливаем флаг принудительной остановки
 	this->forstop = true;
 	// Если подключение выполнено
 	if(this->core->working())
 		// Завершаем работу, если разрешено остановить
-		const_cast <coreCli_t *> (this->core)->close(this->aid);
+		const_cast <client::core_t *> (this->core)->close(this->aid);
 }
 /**
  * GET Метод REST запроса
@@ -552,7 +552,7 @@ void awh::RestClient::close() noexcept {
  * @param headers список http заголовков
  * @return        результат запроса
  */
-vector <char> awh::RestClient::GET(const uri_t::url_t & url, const unordered_multimap <string, string> & headers) noexcept {
+vector <char> awh::client::Rest::GET(const uri_t::url_t & url, const unordered_multimap <string, string> & headers) noexcept {
 	// Результат работы функции
 	vector <char> result;
 	// Если данные запроса переданы
@@ -566,7 +566,7 @@ vector <char> awh::RestClient::GET(const uri_t::url_t & url, const unordered_mul
 		// Устанавливаем метод запроса
 		req.method = web_t::method_t::GET;
 		// Подписываемся на событие получения сообщения
-		this->on(&result, [](const res_t & res, restCli_t * web, void * ctx){
+		this->on(&result, [](const res_t & res, rest_t * web, void * ctx){
 			// Проверяем на наличие ошибок
 			if(res.code >= 300)
 				// Выводим сообщение о неудачном запросе
@@ -592,7 +592,7 @@ vector <char> awh::RestClient::GET(const uri_t::url_t & url, const unordered_mul
  * @param headers заголовки запроса
  * @return        результат запроса
  */
-vector <char> awh::RestClient::DEL(const uri_t::url_t & url, const unordered_multimap <string, string> & headers) noexcept {
+vector <char> awh::client::Rest::DEL(const uri_t::url_t & url, const unordered_multimap <string, string> & headers) noexcept {
 	// Результат работы функции
 	vector <char> result;
 	// Если данные запроса переданы
@@ -606,7 +606,7 @@ vector <char> awh::RestClient::DEL(const uri_t::url_t & url, const unordered_mul
 		// Устанавливаем метод запроса
 		req.method = web_t::method_t::DEL;
 		// Подписываемся на событие получения сообщения
-		this->on(&result, [](const res_t & res, restCli_t * web, void * ctx){
+		this->on(&result, [](const res_t & res, rest_t * web, void * ctx){
 			// Проверяем на наличие ошибок
 			if(res.code >= 300)
 				// Выводим сообщение о неудачном запросе
@@ -633,7 +633,7 @@ vector <char> awh::RestClient::DEL(const uri_t::url_t & url, const unordered_mul
  * @param headers заголовки запроса
  * @return        результат запроса
  */
-vector <char> awh::RestClient::PUT(const uri_t::url_t & url, const json & entity, const unordered_multimap <string, string> & headers) noexcept {
+vector <char> awh::client::Rest::PUT(const uri_t::url_t & url, const json & entity, const unordered_multimap <string, string> & headers) noexcept {
 	// Результат работы функции
 	vector <char> result;
 	// Если данные запроса переданы
@@ -653,7 +653,7 @@ vector <char> awh::RestClient::PUT(const uri_t::url_t & url, const json & entity
 		// Добавляем заголовок типа контента
 		req.headers.emplace("Content-Type", "application/json");
 		// Подписываемся на событие получения сообщения
-		this->on(&result, [](const res_t & res, restCli_t * web, void * ctx){
+		this->on(&result, [](const res_t & res, rest_t * web, void * ctx){
 			// Проверяем на наличие ошибок
 			if(res.code >= 300)
 				// Выводим сообщение о неудачном запросе
@@ -680,7 +680,7 @@ vector <char> awh::RestClient::PUT(const uri_t::url_t & url, const json & entity
  * @param headers заголовки запроса
  * @return        результат запроса
  */
-vector <char> awh::RestClient::PUT(const uri_t::url_t & url, const vector <char> & entity, const unordered_multimap <string, string> & headers) noexcept {
+vector <char> awh::client::Rest::PUT(const uri_t::url_t & url, const vector <char> & entity, const unordered_multimap <string, string> & headers) noexcept {
 	// Результат работы функции
 	vector <char> result;
 	// Если данные запроса переданы
@@ -696,7 +696,7 @@ vector <char> awh::RestClient::PUT(const uri_t::url_t & url, const vector <char>
 		// Устанавливаем метод запроса
 		req.method = web_t::method_t::PUT;
 		// Подписываемся на событие получения сообщения
-		this->on(&result, [](const res_t & res, restCli_t * web, void * ctx){
+		this->on(&result, [](const res_t & res, rest_t * web, void * ctx){
 			// Проверяем на наличие ошибок
 			if(res.code >= 300)
 				// Выводим сообщение о неудачном запросе
@@ -723,7 +723,7 @@ vector <char> awh::RestClient::PUT(const uri_t::url_t & url, const vector <char>
  * @param headers заголовки запроса
  * @return        результат запроса
  */
-vector <char> awh::RestClient::PUT(const uri_t::url_t & url, const unordered_multimap <string, string> & entity, const unordered_multimap <string, string> & headers) noexcept {
+vector <char> awh::client::Rest::PUT(const uri_t::url_t & url, const unordered_multimap <string, string> & entity, const unordered_multimap <string, string> & headers) noexcept {
 	// Результат работы функции
 	vector <char> result;
 	// Если данные запроса переданы
@@ -754,7 +754,7 @@ vector <char> awh::RestClient::PUT(const uri_t::url_t & url, const unordered_mul
 		// Добавляем заголовок типа контента
 		req.headers.emplace("Content-Type", "application/x-www-form-urlencoded");
 		// Подписываемся на событие получения сообщения
-		this->on(&result, [](const res_t & res, restCli_t * web, void * ctx){
+		this->on(&result, [](const res_t & res, rest_t * web, void * ctx){
 			// Проверяем на наличие ошибок
 			if(res.code >= 300)
 				// Выводим сообщение о неудачном запросе
@@ -781,7 +781,7 @@ vector <char> awh::RestClient::PUT(const uri_t::url_t & url, const unordered_mul
  * @param headers заголовки запроса
  * @return        результат запроса
  */
-vector <char> awh::RestClient::POST(const uri_t::url_t & url, const json & entity, const unordered_multimap <string, string> & headers) noexcept {
+vector <char> awh::client::Rest::POST(const uri_t::url_t & url, const json & entity, const unordered_multimap <string, string> & headers) noexcept {
 	// Результат работы функции
 	vector <char> result;
 	// Если данные запроса переданы
@@ -801,7 +801,7 @@ vector <char> awh::RestClient::POST(const uri_t::url_t & url, const json & entit
 		// Добавляем заголовок типа контента
 		req.headers.emplace("Content-Type", "application/json");
 		// Подписываемся на событие получения сообщения
-		this->on(&result, [](const res_t & res, restCli_t * web, void * ctx){
+		this->on(&result, [](const res_t & res, rest_t * web, void * ctx){
 			// Проверяем на наличие ошибок
 			if(res.code >= 300)
 				// Выводим сообщение о неудачном запросе
@@ -828,7 +828,7 @@ vector <char> awh::RestClient::POST(const uri_t::url_t & url, const json & entit
  * @param headers заголовки запроса
  * @return        результат запроса
  */
-vector <char> awh::RestClient::POST(const uri_t::url_t & url, const vector <char> & entity, const unordered_multimap <string, string> & headers) noexcept {
+vector <char> awh::client::Rest::POST(const uri_t::url_t & url, const vector <char> & entity, const unordered_multimap <string, string> & headers) noexcept {
 	// Результат работы функции
 	vector <char> result;
 	// Если данные запроса переданы
@@ -844,7 +844,7 @@ vector <char> awh::RestClient::POST(const uri_t::url_t & url, const vector <char
 		// Устанавливаем метод запроса
 		req.method = web_t::method_t::POST;
 		// Подписываемся на событие получения сообщения
-		this->on(&result, [](const res_t & res, restCli_t * web, void * ctx){
+		this->on(&result, [](const res_t & res, rest_t * web, void * ctx){
 			// Проверяем на наличие ошибок
 			if(res.code >= 300)
 				// Выводим сообщение о неудачном запросе
@@ -871,7 +871,7 @@ vector <char> awh::RestClient::POST(const uri_t::url_t & url, const vector <char
  * @param headers заголовки запроса
  * @return        результат запроса
  */
-vector <char> awh::RestClient::POST(const uri_t::url_t & url, const unordered_multimap <string, string> & entity, const unordered_multimap <string, string> & headers) noexcept {
+vector <char> awh::client::Rest::POST(const uri_t::url_t & url, const unordered_multimap <string, string> & entity, const unordered_multimap <string, string> & headers) noexcept {
 	// Результат работы функции
 	vector <char> result;
 	// Если данные запроса переданы
@@ -902,7 +902,7 @@ vector <char> awh::RestClient::POST(const uri_t::url_t & url, const unordered_mu
 		// Добавляем заголовок типа контента
 		req.headers.emplace("Content-Type", "application/x-www-form-urlencoded");
 		// Подписываемся на событие получения сообщения
-		this->on(&result, [](const res_t & res, restCli_t * web, void * ctx){
+		this->on(&result, [](const res_t & res, rest_t * web, void * ctx){
 			// Проверяем на наличие ошибок
 			if(res.code >= 300)
 				// Выводим сообщение о неудачном запросе
@@ -929,7 +929,7 @@ vector <char> awh::RestClient::POST(const uri_t::url_t & url, const unordered_mu
  * @param headers заголовки запроса
  * @return        результат запроса
  */
-vector <char> awh::RestClient::PATCH(const uri_t::url_t & url, const json & entity, const unordered_multimap <string, string> & headers) noexcept {
+vector <char> awh::client::Rest::PATCH(const uri_t::url_t & url, const json & entity, const unordered_multimap <string, string> & headers) noexcept {
 	// Результат работы функции
 	vector <char> result;
 	// Если данные запроса переданы
@@ -949,7 +949,7 @@ vector <char> awh::RestClient::PATCH(const uri_t::url_t & url, const json & enti
 		// Добавляем заголовок типа контента
 		req.headers.emplace("Content-Type", "application/json");
 		// Подписываемся на событие получения сообщения
-		this->on(&result, [](const res_t & res, restCli_t * web, void * ctx){
+		this->on(&result, [](const res_t & res, rest_t * web, void * ctx){
 			// Проверяем на наличие ошибок
 			if(res.code >= 300)
 				// Выводим сообщение о неудачном запросе
@@ -976,7 +976,7 @@ vector <char> awh::RestClient::PATCH(const uri_t::url_t & url, const json & enti
  * @param headers заголовки запроса
  * @return        результат запроса
  */
-vector <char> awh::RestClient::PATCH(const uri_t::url_t & url, const vector <char> & entity, const unordered_multimap <string, string> & headers) noexcept {
+vector <char> awh::client::Rest::PATCH(const uri_t::url_t & url, const vector <char> & entity, const unordered_multimap <string, string> & headers) noexcept {
 	// Результат работы функции
 	vector <char> result;
 	// Если данные запроса переданы
@@ -992,7 +992,7 @@ vector <char> awh::RestClient::PATCH(const uri_t::url_t & url, const vector <cha
 		// Устанавливаем метод запроса
 		req.method = web_t::method_t::PATCH;
 		// Подписываемся на событие получения сообщения
-		this->on(&result, [](const res_t & res, restCli_t * web, void * ctx){
+		this->on(&result, [](const res_t & res, rest_t * web, void * ctx){
 			// Проверяем на наличие ошибок
 			if(res.code >= 300)
 				// Выводим сообщение о неудачном запросе
@@ -1019,7 +1019,7 @@ vector <char> awh::RestClient::PATCH(const uri_t::url_t & url, const vector <cha
  * @param headers заголовки запроса
  * @return        результат запроса
  */
-vector <char> awh::RestClient::PATCH(const uri_t::url_t & url, const unordered_multimap <string, string> & entity, const unordered_multimap <string, string> & headers) noexcept {
+vector <char> awh::client::Rest::PATCH(const uri_t::url_t & url, const unordered_multimap <string, string> & entity, const unordered_multimap <string, string> & headers) noexcept {
 	// Результат работы функции
 	vector <char> result;
 	// Если данные запроса переданы
@@ -1050,7 +1050,7 @@ vector <char> awh::RestClient::PATCH(const uri_t::url_t & url, const unordered_m
 		// Добавляем заголовок типа контента
 		req.headers.emplace("Content-Type", "application/x-www-form-urlencoded");
 		// Подписываемся на событие получения сообщения
-		this->on(&result, [](const res_t & res, restCli_t * web, void * ctx){
+		this->on(&result, [](const res_t & res, rest_t * web, void * ctx){
 			// Проверяем на наличие ошибок
 			if(res.code >= 300)
 				// Выводим сообщение о неудачном запросе
@@ -1076,7 +1076,7 @@ vector <char> awh::RestClient::PATCH(const uri_t::url_t & url, const unordered_m
  * @param headers заголовки запроса
  * @return        результат запроса
  */
-unordered_multimap <string, string> awh::RestClient::HEAD(const uri_t::url_t & url, const unordered_multimap <string, string> & headers) noexcept {
+unordered_multimap <string, string> awh::client::Rest::HEAD(const uri_t::url_t & url, const unordered_multimap <string, string> & headers) noexcept {
 	// Результат работы функции
 	unordered_multimap <string, string> result;
 	// Если данные запроса переданы
@@ -1090,7 +1090,7 @@ unordered_multimap <string, string> awh::RestClient::HEAD(const uri_t::url_t & u
 		// Устанавливаем метод запроса
 		req.method = web_t::method_t::HEAD;
 		// Подписываемся на событие получения сообщения
-		this->on(&result, [](const res_t & res, restCli_t * web, void * ctx){
+		this->on(&result, [](const res_t & res, rest_t * web, void * ctx){
 			// Проверяем на наличие ошибок
 			if(res.code >= 300)
 				// Выводим сообщение о неудачном запросе
@@ -1116,7 +1116,7 @@ unordered_multimap <string, string> awh::RestClient::HEAD(const uri_t::url_t & u
  * @param headers заголовки запроса
  * @return        результат запроса
  */
-unordered_multimap <string, string> awh::RestClient::TRACE(const uri_t::url_t & url, const unordered_multimap <string, string> & headers) noexcept {
+unordered_multimap <string, string> awh::client::Rest::TRACE(const uri_t::url_t & url, const unordered_multimap <string, string> & headers) noexcept {
 	// Результат работы функции
 	unordered_multimap <string, string> result;
 	// Если данные запроса переданы
@@ -1130,7 +1130,7 @@ unordered_multimap <string, string> awh::RestClient::TRACE(const uri_t::url_t & 
 		// Устанавливаем метод запроса
 		req.method = web_t::method_t::TRACE;
 		// Подписываемся на событие получения сообщения
-		this->on(&result, [](const res_t & res, restCli_t * web, void * ctx){
+		this->on(&result, [](const res_t & res, rest_t * web, void * ctx){
 			// Проверяем на наличие ошибок
 			if(res.code >= 300)
 				// Выводим сообщение о неудачном запросе
@@ -1156,7 +1156,7 @@ unordered_multimap <string, string> awh::RestClient::TRACE(const uri_t::url_t & 
  * @param headers заголовки запроса
  * @return        результат запроса
  */
-unordered_multimap <string, string> awh::RestClient::OPTIONS(const uri_t::url_t & url, const unordered_multimap <string, string> & headers) noexcept {
+unordered_multimap <string, string> awh::client::Rest::OPTIONS(const uri_t::url_t & url, const unordered_multimap <string, string> & headers) noexcept {
 	// Результат работы функции
 	unordered_multimap <string, string> result;
 	// Если данные запроса переданы
@@ -1170,7 +1170,7 @@ unordered_multimap <string, string> awh::RestClient::OPTIONS(const uri_t::url_t 
 		// Устанавливаем метод запроса
 		req.method = web_t::method_t::OPTIONS;
 		// Подписываемся на событие получения сообщения
-		this->on(&result, [](const res_t & res, restCli_t * web, void * ctx){
+		this->on(&result, [](const res_t & res, rest_t * web, void * ctx){
 			// Проверяем на наличие ошибок
 			if(res.code >= 300)
 				// Выводим сообщение о неудачном запросе
@@ -1194,7 +1194,7 @@ unordered_multimap <string, string> awh::RestClient::OPTIONS(const uri_t::url_t 
  * REST Метод запроса в формате HTTP
  * @param request список запросов
  */
-void awh::RestClient::REST(const vector <req_t> & request) noexcept {
+void awh::client::Rest::REST(const vector <req_t> & request) noexcept {
 	// Если список запросов передан
 	if(!request.empty() && (this->messageFn != nullptr)){
 		// Выполняем очистку воркера
@@ -1218,7 +1218,7 @@ void awh::RestClient::REST(const vector <req_t> & request) noexcept {
  * @param ctx      контекст для вывода в сообщении
  * @param callback функция обратного вызова
  */
-void awh::RestClient::on(void * ctx, function <void (const bool, RestClient *, void *)> callback) noexcept {
+void awh::client::Rest::on(void * ctx, function <void (const bool, Rest *, void *)> callback) noexcept {
 	// Устанавливаем контекст передаваемого объекта
 	this->ctx.at(0) = ctx;
 	// Устанавливаем функцию обратного вызова
@@ -1229,7 +1229,7 @@ void awh::RestClient::on(void * ctx, function <void (const bool, RestClient *, v
  * @param ctx      контекст для вывода в сообщении
  * @param callback функция обратного вызова
  */
-void awh::RestClient::on(void * ctx, function <void (const res_t &, RestClient *, void *)> callback) noexcept {
+void awh::client::Rest::on(void * ctx, function <void (const res_t &, Rest *, void *)> callback) noexcept {
 	// Устанавливаем контекст передаваемого объекта
 	this->ctx.at(1) = ctx;
 	// Устанавливаем функцию обратного вызова
@@ -1240,7 +1240,7 @@ void awh::RestClient::on(void * ctx, function <void (const res_t &, RestClient *
  * @param ctx      контекст для вывода в сообщении
  * @param callback функция обратного вызова
  */
-void awh::RestClient::on(void * ctx, function <void (const vector <char> &, const http_t *, void *)> callback) noexcept {
+void awh::client::Rest::on(void * ctx, function <void (const vector <char> &, const awh::http_t *, void *)> callback) noexcept {
 	// Устанавливаем функцию обработки вызова для получения чанков
 	this->http.setChunkingFn(ctx, callback);
 }
@@ -1249,7 +1249,7 @@ void awh::RestClient::on(void * ctx, function <void (const vector <char> &, cons
  * @param read  количество секунд для детекции по чтению
  * @param write количество секунд для детекции по записи
  */
-void awh::RestClient::setWaitTimeDetect(const time_t read, const time_t write) noexcept {
+void awh::client::Rest::setWaitTimeDetect(const time_t read, const time_t write) noexcept {
 	// Устанавливаем количество секунд на чтение
 	this->worker.timeRead = read;
 	// Устанавливаем количество секунд на запись
@@ -1260,7 +1260,7 @@ void awh::RestClient::setWaitTimeDetect(const time_t read, const time_t write) n
  * @param read  количество байт для детекции по чтению
  * @param write количество байт для детекции по записи
  */
-void awh::RestClient::setBytesDetect(const worker_t::mark_t read, const worker_t::mark_t write) noexcept {
+void awh::client::Rest::setBytesDetect(const worker_t::mark_t read, const worker_t::mark_t write) noexcept {
 	// Устанавливаем количество байт на чтение
 	this->worker.markRead = read;
 	// Устанавливаем количество байт на запись
@@ -1270,7 +1270,7 @@ void awh::RestClient::setBytesDetect(const worker_t::mark_t read, const worker_t
  * setMode Метод установки флага модуля
  * @param flag флаг модуля для установки
  */
-void awh::RestClient::setMode(const u_short flag) noexcept {
+void awh::client::Rest::setMode(const u_short flag) noexcept {
 	// Устанавливаем флаг анбиндинга ядра сетевого модуля
 	this->unbind = !(flag & (uint8_t) flag_t::NOTSTOP);
 	// Устанавливаем флаг ожидания входящих сообщений
@@ -1278,17 +1278,17 @@ void awh::RestClient::setMode(const u_short flag) noexcept {
 	// Устанавливаем флаг поддержания автоматического подключения
 	this->worker.alive = (flag & (uint8_t) flag_t::KEEPALIVE);
 	// Устанавливаем флаг отложенных вызовов событий сокета
-	const_cast <coreCli_t *> (this->core)->setDefer(flag & (uint8_t) flag_t::DEFER);
+	const_cast <client::core_t *> (this->core)->setDefer(flag & (uint8_t) flag_t::DEFER);
 	// Устанавливаем флаг запрещающий вывод информационных сообщений
-	const_cast <coreCli_t *> (this->core)->setNoInfo(flag & (uint8_t) flag_t::NOINFO);
+	const_cast <client::core_t *> (this->core)->setNoInfo(flag & (uint8_t) flag_t::NOINFO);
 	// Выполняем установку флага проверки домена
-	const_cast <coreCli_t *> (this->core)->setVerifySSL(flag & (uint8_t) flag_t::VERIFYSSL);
+	const_cast <client::core_t *> (this->core)->setVerifySSL(flag & (uint8_t) flag_t::VERIFYSSL);
 }
 /**
  * setProxy Метод установки прокси-сервера
  * @param uri параметры прокси-сервера
  */
-void awh::RestClient::setProxy(const string & uri) noexcept {
+void awh::client::Rest::setProxy(const string & uri) noexcept {
 	// Если URI параметры переданы
 	if(!uri.empty()){
 		// Устанавливаем параметры прокси-сервера
@@ -1319,7 +1319,7 @@ void awh::RestClient::setProxy(const string & uri) noexcept {
  * setChunkSize Метод установки размера чанка
  * @param size размер чанка для установки
  */
-void awh::RestClient::setChunkSize(const size_t size) noexcept {
+void awh::client::Rest::setChunkSize(const size_t size) noexcept {
 	// Устанавливаем размер чанка
 	this->http.setChunkSize(size);
 }
@@ -1327,7 +1327,7 @@ void awh::RestClient::setChunkSize(const size_t size) noexcept {
  * setAttempts Метод установки количества попыток переподключения
  * @param count количество попыток переподключения
  */
-void awh::RestClient::setAttempts(const u_short count) noexcept {
+void awh::client::Rest::setAttempts(const u_short count) noexcept {
 	// Устанавливаем количество попыток переподключения
 	this->worker.attempts = count;
 }
@@ -1335,7 +1335,7 @@ void awh::RestClient::setAttempts(const u_short count) noexcept {
  * setUserAgent Метод установки User-Agent для HTTP запроса
  * @param userAgent агент пользователя для HTTP запроса
  */
-void awh::RestClient::setUserAgent(const string & userAgent) noexcept {
+void awh::client::Rest::setUserAgent(const string & userAgent) noexcept {
 	// Устанавливаем UserAgent
 	if(!userAgent.empty()){
 		// Устанавливаем пользовательского агента
@@ -1348,7 +1348,7 @@ void awh::RestClient::setUserAgent(const string & userAgent) noexcept {
  * setCompress Метод установки метода сжатия
  * @param метод сжатия сообщений
  */
-void awh::RestClient::setCompress(const http_t::compress_t compress) noexcept {
+void awh::client::Rest::setCompress(const awh::http_t::compress_t compress) noexcept {
 	// Устанавливаем метод компрессии
 	this->compress = compress;
 }
@@ -1357,7 +1357,7 @@ void awh::RestClient::setCompress(const http_t::compress_t compress) noexcept {
  * @param login    логин пользователя для авторизации на сервере
  * @param password пароль пользователя для авторизации на сервере
  */
-void awh::RestClient::setUser(const string & login, const string & password) noexcept {
+void awh::client::Rest::setUser(const string & login, const string & password) noexcept {
 	// Если пользователь и пароль переданы
 	if(!login.empty() && !password.empty())
 		// Устанавливаем логин и пароль пользователя
@@ -1369,7 +1369,7 @@ void awh::RestClient::setUser(const string & login, const string & password) noe
  * @param name название сервиса
  * @param ver  версия сервиса
  */
-void awh::RestClient::setServ(const string & id, const string & name, const string & ver) noexcept {
+void awh::client::Rest::setServ(const string & id, const string & name, const string & ver) noexcept {
 	// Устанавливаем данные сервиса
 	this->http.setServ(id, name, ver);
 	// Устанавливаем данные сервиса для прокси-сервера
@@ -1381,7 +1381,7 @@ void awh::RestClient::setServ(const string & id, const string & name, const stri
  * @param salt соль шифрования передаваемых данных
  * @param aes  размер шифрования передаваемых данных
  */
-void awh::RestClient::setCrypt(const string & pass, const string & salt, const hash_t::aes_t aes) noexcept {
+void awh::client::Rest::setCrypt(const string & pass, const string & salt, const hash_t::aes_t aes) noexcept {
 	// Устанавливаем параметры шифрования
 	this->http.setCrypt(pass, salt, aes);
 }
@@ -1390,7 +1390,7 @@ void awh::RestClient::setCrypt(const string & pass, const string & salt, const h
  * @param type тип авторизации
  * @param hash алгоритм шифрования для Digest авторизации
  */
-void awh::RestClient::setAuthType(const auth_t::type_t type, const auth_t::hash_t hash) noexcept {
+void awh::client::Rest::setAuthType(const auth_t::type_t type, const auth_t::hash_t hash) noexcept {
 	// Если объект авторизации создан
 	this->http.setAuthType(type, hash);
 }
@@ -1399,17 +1399,17 @@ void awh::RestClient::setAuthType(const auth_t::type_t type, const auth_t::hash_
  * @param type тип авторизации
  * @param hash алгоритм шифрования для Digest авторизации
  */
-void awh::RestClient::setAuthTypeProxy(const auth_t::type_t type, const auth_t::hash_t hash) noexcept {
+void awh::client::Rest::setAuthTypeProxy(const auth_t::type_t type, const auth_t::hash_t hash) noexcept {
 	// Если объект авторизации создан
 	this->worker.proxy.http.setAuthType(type, hash);
 }
 /**
- * RestClient Конструктор
+ * Rest Конструктор
  * @param core объект биндинга TCP/IP
  * @param fmk  объект фреймворка
  * @param log  объект для работы с логами
  */
-awh::RestClient::RestClient(const coreCli_t * core, const fmk_t * fmk, const log_t * log) noexcept : nwk(fmk), uri(fmk, &nwk), http(fmk, log, &uri), core(core), fmk(fmk), log(log), worker(fmk, log), compress(http_t::compress_t::NONE) {
+awh::client::Rest::Rest(const client::core_t * core, const fmk_t * fmk, const log_t * log) noexcept : nwk(fmk), uri(fmk, &nwk), http(fmk, log, &uri), core(core), fmk(fmk), log(log), worker(fmk, log), compress(awh::http_t::compress_t::NONE) {
 	// Устанавливаем контекст сообщения
 	this->worker.ctx = this;
 	// Устанавливаем событие на запуск системы
@@ -1427,5 +1427,5 @@ awh::RestClient::RestClient(const coreCli_t * core, const fmk_t * fmk, const log
 	// Устанавливаем функцию обработки вызова для получения чанков
 	this->http.setChunkingFn(this, &chunking);
 	// Добавляем воркер в биндер TCP/IP
-	const_cast <coreCli_t *> (this->core)->add(&this->worker);
+	const_cast <client::core_t *> (this->core)->add(&this->worker);
 }

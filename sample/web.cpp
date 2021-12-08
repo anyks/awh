@@ -28,9 +28,9 @@ int main(int argc, char * argv[]) noexcept {
 	// Создаём объект для работы с логами
 	log_t log(&fmk);
 	// Создаём биндинг
-	coreSrv_t core(&fmk, &log);
+	server::core_t core(&fmk, &log);
 	// Создаём объект REST запроса
-	restSrv_t rest(&core, &fmk, &log);
+	server::rest_t rest(&core, &fmk, &log);
 	// Устанавливаем название сервиса
 	log.setLogName("Rest Server");
 	// Устанавливаем формат времени
@@ -69,7 +69,7 @@ int main(int argc, char * argv[]) noexcept {
 		return true;
 	});
 	// Установливаем функцию обратного вызова на событие активации клиента на сервере
-	rest.on(&log, [](const string & ip, const string & mac, restSrv_t * rest, void * ctx) -> bool {
+	rest.on(&log, [](const string & ip, const string & mac, server::rest_t * rest, void * ctx) -> bool {
 		// Получаем объект логирования
 		log_t * log = reinterpret_cast <log_t *> (ctx);
 		// Выводим информацию в лог
@@ -78,14 +78,14 @@ int main(int argc, char * argv[]) noexcept {
 		return true;
 	});
 	// Установливаем функцию обратного вызова на событие запуска или остановки подключения
-	rest.on(&log, [](const size_t aid, const restSrv_t::mode_t mode, restSrv_t * rest, void * ctx) noexcept {
+	rest.on(&log, [](const size_t aid, const server::rest_t::mode_t mode, server::rest_t * rest, void * ctx) noexcept {
 		// Получаем объект логирования
 		log_t * log = reinterpret_cast <log_t *> (ctx);
 		// Выводим информацию в лог
-		log->print("%s client", log_t::flag_t::INFO, (mode == restSrv_t::mode_t::CONNECT ? "Connect" : "Disconnect"));
+		log->print("%s client", log_t::flag_t::INFO, (mode == server::rest_t::mode_t::CONNECT ? "Connect" : "Disconnect"));
 	});
 	// Установливаем функцию обратного вызова на событие получения сообщений
-	rest.on(&log, [](const size_t aid, const http_t * http, restSrv_t * rest, void * ctx) noexcept {
+	rest.on(&log, [](const size_t aid, const http_t * http, server::rest_t * rest, void * ctx) noexcept {
 		// Получаем данные запроса
 		const auto & query = http->getQuery();
 		// Если пришёл запрос на фавиконку

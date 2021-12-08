@@ -14,11 +14,11 @@
  * checkAuth Метод проверки авторизации
  * @return результат проверки авторизации
  */
-awh::Http::stath_t awh::HttpServer::checkAuth() noexcept {
+awh::Http::stath_t awh::server::Http::checkAuth() noexcept {
 	// Результат работы функции
 	stath_t result = stath_t::FAULT;
 	// Если авторизация требуется
-	if(this->authSrv.getType() != auth_t::type_t::NONE){
+	if(this->auth.server.getType() != awh::auth_t::type_t::NONE){
 		// Получаем параметры авторизации
 		const string & auth = this->web.getHeader("authorization");
 		// Если параметры авторизации найдены
@@ -26,7 +26,7 @@ awh::Http::stath_t awh::HttpServer::checkAuth() noexcept {
 			// Метод HTTP запроса
 			string method = "";
 			// Устанавливаем заголовок HTTP в параметры авторизации
-			this->authSrv.setHeader(auth);
+			this->auth.server.setHeader(auth);
 			// Определяем метод запроса
 			switch((uint8_t) this->web.getQuery().method){
 				// Если метод запроса указан как GET
@@ -49,7 +49,7 @@ awh::Http::stath_t awh::HttpServer::checkAuth() noexcept {
 				case (uint8_t) web_t::method_t::CONNECT: method = "connect"; break;
 			}
 			// Выполняем проверку авторизации
-			if(this->authSrv.check(method))
+			if(this->auth.server.check(method))
 				// Устанавливаем успешный результат авторизации
 				result = http_t::stath_t::GOOD;
 		}
@@ -62,52 +62,52 @@ awh::Http::stath_t awh::HttpServer::checkAuth() noexcept {
  * setRealm Метод установки название сервера
  * @param realm название сервера
  */
-void awh::HttpServer::setRealm(const string & realm) noexcept {
+void awh::server::Http::setRealm(const string & realm) noexcept {
 	// Если название сервера передано
-	if(!realm.empty()) this->authSrv.setRealm(realm);
+	if(!realm.empty()) this->auth.server.setRealm(realm);
 }
 /**
  * setOpaque Метод установки временного ключа сессии сервера
  * @param opaque временный ключ сессии сервера
  */
-void awh::HttpServer::setOpaque(const string & opaque) noexcept {
+void awh::server::Http::setOpaque(const string & opaque) noexcept {
 	// Если временный ключ сессии сервера передан
-	if(!opaque.empty()) this->authSrv.setOpaque(opaque);
+	if(!opaque.empty()) this->auth.server.setOpaque(opaque);
 }
 /**
  * setExtractPassCallback Метод добавления функции извлечения пароля
  * @param ctx      контекст для вывода в сообщении
  * @param callback функция обратного вызова для извлечения пароля
  */
-void awh::HttpServer::setExtractPassCallback(void * ctx, function <string (const string &, void *)> callback) noexcept {
+void awh::server::Http::setExtractPassCallback(void * ctx, function <string (const string &, void *)> callback) noexcept {
 	// Устанавливаем внешнюю функцию
-	this->authSrv.setExtractPassCallback(ctx, callback);
+	this->auth.server.setExtractPassCallback(ctx, callback);
 }
 /**
  * setAuthCallback Метод добавления функции обработки авторизации
  * @param ctx      контекст для вывода в сообщении
  * @param callback функция обратного вызова для обработки авторизации
  */
-void awh::HttpServer::setAuthCallback(void * ctx, function <bool (const string &, const string &, void *)> callback) noexcept {
+void awh::server::Http::setAuthCallback(void * ctx, function <bool (const string &, const string &, void *)> callback) noexcept {
 	// Устанавливаем внешнюю функцию
-	this->authSrv.setAuthCallback(ctx, callback);
+	this->auth.server.setAuthCallback(ctx, callback);
 }
 /**
  * setAuthType Метод установки типа авторизации
  * @param type тип авторизации
  * @param hash алгоритм шифрования для Digest авторизации
  */
-void awh::HttpServer::setAuthType(const auth_t::type_t type, const auth_t::hash_t hash) noexcept {
+void awh::server::Http::setAuthType(const awh::auth_t::type_t type, const awh::auth_t::hash_t hash) noexcept {
 	// Устанавливаем тип авторизации
-	this->authSrv.setType(type, hash);
+	this->auth.server.setType(type, hash);
 }
 /**
- * HttpServer Конструктор
+ * Http Конструктор
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
  * @param uri объект работы с URI
  */
-awh::HttpServer::HttpServer(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcept : http_t(fmk, log, uri) {
+awh::server::Http::Http(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcept : awh::http_t(fmk, log, uri) {
 	// Устанавливаем тип HTTP модуля
 	this->web.init(web_t::hid_t::SERVER);
 }

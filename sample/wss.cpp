@@ -28,9 +28,9 @@ int main(int argc, char * argv[]) noexcept {
 	// Создаём объект для работы с логами
 	log_t log(&fmk);
 	// Создаём биндинг
-	coreSrv_t core(&fmk, &log);
+	server::core_t core(&fmk, &log);
 	// Создаём объект REST запроса
-	wsSrv_t ws(&core, &fmk, &log);
+	server::ws_t ws(&core, &fmk, &log);
 	// Устанавливаем название сервиса
 	log.setLogName("WebSocket Server");
 	// Устанавливаем формат времени
@@ -38,7 +38,7 @@ int main(int argc, char * argv[]) noexcept {
 	/**
 	 * 1. Устанавливаем ожидание входящих сообщений
 	 */
-	// ws.setMode((uint8_t) wsSrv_t::flag_t::WAITMESS);
+	// ws.setMode((uint8_t) server::ws_t::flag_t::WAITMESS);
 	// Устанавливаем название сервера
 	// ws.setRealm("ANYKS");
 	// Устанавливаем временный ключ сессии
@@ -72,7 +72,7 @@ int main(int argc, char * argv[]) noexcept {
 	});
 	*/
 	// Установливаем функцию обратного вызова на событие активации клиента на сервере
-	ws.on(&log, [](const string & ip, const string & mac, wsSrv_t * ws, void * ctx) -> bool {
+	ws.on(&log, [](const string & ip, const string & mac, server::ws_t * ws, void * ctx) -> bool {
 		// Получаем объект логирования
 		log_t * log = reinterpret_cast <log_t *> (ctx);
 		// Выводим информацию в лог
@@ -81,21 +81,21 @@ int main(int argc, char * argv[]) noexcept {
 		return true;
 	});
 	// Установливаем функцию обратного вызова на событие запуска или остановки подключения
-	ws.on(&log, [](const size_t aid, const wsSrv_t::mode_t mode, wsSrv_t * ws, void * ctx) noexcept {
+	ws.on(&log, [](const size_t aid, const server::ws_t::mode_t mode, server::ws_t * ws, void * ctx) noexcept {
 		// Получаем объект логирования
 		log_t * log = reinterpret_cast <log_t *> (ctx);
 		// Выводим информацию в лог
-		log->print("%s client", log_t::flag_t::INFO, (mode == wsSrv_t::mode_t::CONNECT ? "Connect" : "Disconnect"));
+		log->print("%s client", log_t::flag_t::INFO, (mode == server::ws_t::mode_t::CONNECT ? "Connect" : "Disconnect"));
 	});
 	// Установливаем функцию обратного вызова на событие получения ошибок
-	ws.on(&log, [](const size_t aid, const u_int code, const string & mess, wsSrv_t * ws, void * ctx) noexcept {
+	ws.on(&log, [](const size_t aid, const u_int code, const string & mess, server::ws_t * ws, void * ctx) noexcept {
 		// Получаем объект логирования
 		log_t * log = reinterpret_cast <log_t *> (ctx);
 		// Выводим информацию в лог
 		log->print("%s [%u]", log_t::flag_t::CRITICAL, mess.c_str(), code);
 	});
 	// Установливаем функцию обратного вызова на событие получения сообщений
-	ws.on(&log, [](const size_t aid, const vector <char> & buffer, const bool utf8, wsSrv_t * ws, void * ctx) noexcept {
+	ws.on(&log, [](const size_t aid, const vector <char> & buffer, const bool utf8, server::ws_t * ws, void * ctx) noexcept {
 		// Если даныне получены
 		if(!buffer.empty()){
 			// Получаем объект логирования

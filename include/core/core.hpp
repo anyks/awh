@@ -63,14 +63,6 @@ using namespace std;
  */
 namespace awh {
 	/**
-	 * CoreClient Прототип клиентского класса ядра
-	 */
-	class CoreClient;
-	/**
-	 * CoreServer Прототип серверного класса ядра
-	 */
-	class CoreServer;
-	/**
 	 * Core Класс ядра биндинга TCP/IP
 	 */
 	typedef class Core {
@@ -88,15 +80,6 @@ namespace awh {
 			 * Основные методы режимов работы
 			 */
 			enum class method_t : uint8_t {READ, WRITE};
-		private:
-			/**
-			 * CoreClient Устанавливаем дружбу с клиентским классом ядра
-			 */
-			friend class CoreClient;
-			/**
-			 * CoreServer Устанавливаем дружбу с серверным классом ядра
-			 */
-			friend class CoreServer;
 		protected:
 			/**
 			 * KeepAlive Структура с параметрами для постоянного подключения

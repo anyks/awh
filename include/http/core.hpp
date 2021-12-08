@@ -63,7 +63,22 @@ namespace awh {
 			 */
 			enum class compress_t : uint8_t {NONE, BROTLI, GZIP, DEFLATE};
 		protected:
-			// Список HTTP сообщений
+			/**
+			 * Auth Структура объекта авторизации
+			 */
+			typedef struct Auth {
+				client::auth_t client; // Объект для работы с клиентской авторизацией
+				server::auth_t server; // Объект для работы с серверной авторизацией
+				/**
+				 * Auth Конструктор
+				 * @param fmk объект фреймворка
+				 * @param log объект для работы с логами
+				 */
+				Auth(const fmk_t * fmk, const log_t * log) : client(fmk, log), server(fmk, log) {}
+			} auth_t;
+			/**
+			 * Список HTTP сообщений
+			 */
 			map <u_short, string> messages = {
 				{100, "Continue"},
 				{101, "Switching Protocols"},
@@ -125,13 +140,10 @@ namespace awh {
 			mutable web_t web;
 			// Создаём объект для работы с жатыми данными
 			mutable hash_t hash;
+			// Создаём объект для работы с авторизацией
+			mutable auth_t auth;
 			// Параметры выполняемого запроса
 			mutable uri_t::url_t url;
-		protected:
-			// Создаём объект для работы с клиентской авторизацией
-			mutable authCli_t authCli;
-			// Создаём объект для работы с серверной авторизацией
-			mutable authSrv_t authSrv;
 		protected:
 			// Флаг зашифрованных данных
 			mutable bool crypt = false;

@@ -14,7 +14,7 @@
  * checkAuth Метод проверки авторизации
  * @return результат проверки авторизации
  */
-awh::Http::stath_t awh::HttpClient::checkAuth() noexcept {
+awh::Http::stath_t awh::client::Http::checkAuth() noexcept {
 	// Результат работы функции
 	stath_t result = stath_t::FAULT;
 	// Получаем объект параметров запроса
@@ -25,13 +25,13 @@ awh::Http::stath_t awh::HttpClient::checkAuth() noexcept {
 		case 401:
 		case 407: {
 			// Если попытки провести аутентификацию ещё небыло, пробуем ещё раз
-			if(!this->failAuth && (this->authCli.getType() == auth_t::type_t::DIGEST)){
+			if(!this->failAuth && (this->auth.client.getType() == awh::auth_t::type_t::DIGEST)){
 				// Получаем параметры авторизации
 				const string & auth = this->web.getHeader(query.code == 401 ? "www-authenticate" : "proxy-authenticate");
 				// Если параметры авторизации найдены
 				if((this->failAuth = !auth.empty())){
 					// Устанавливаем заголовок HTTP в параметры авторизации
-					this->authCli.setHeader(auth);
+					this->auth.client.setHeader(auth);
 					// Просим повторить авторизацию ещё раз
 					result = stath_t::RETRY;
 				}
@@ -85,13 +85,13 @@ awh::Http::stath_t awh::HttpClient::checkAuth() noexcept {
  * @param user логин пользователя для авторизации на сервере
  * @param pass пароль пользователя для авторизации на сервере
  */
-void awh::HttpClient::setUser(const string & user, const string & pass) noexcept {
+void awh::client::Http::setUser(const string & user, const string & pass) noexcept {
 	// Если пользователь и пароль переданы
 	if(!user.empty() && !pass.empty()){
 		// Устанавливаем логин пользователя
-		this->authCli.setUser(user);
+		this->auth.client.setUser(user);
 		// Устанавливаем пароль пользователя
-		this->authCli.setPass(pass);
+		this->auth.client.setPass(pass);
 	}
 }
 /**
@@ -99,17 +99,17 @@ void awh::HttpClient::setUser(const string & user, const string & pass) noexcept
  * @param type тип авторизации
  * @param hash алгоритм шифрования для Digest авторизации
  */
-void awh::HttpClient::setAuthType(const auth_t::type_t type, const auth_t::hash_t hash) noexcept {
+void awh::client::Http::setAuthType(const awh::auth_t::type_t type, const awh::auth_t::hash_t hash) noexcept {
 	// Устанавливаем тип авторизации
-	this->authCli.setType(type, hash);
+	this->auth.client.setType(type, hash);
 }
 /**
- * HttpClient Конструктор
+ * Http Конструктор
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
  * @param uri объект работы с URI
  */
-awh::HttpClient::HttpClient(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcept : http_t(fmk, log, uri) {
+awh::client::Http::Http(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcept : awh::http_t(fmk, log, uri) {
 	// Устанавливаем тип HTTP модуля
 	this->web.init(web_t::hid_t::CLIENT);
 }

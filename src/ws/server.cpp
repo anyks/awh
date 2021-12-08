@@ -13,7 +13,7 @@
 /**
  * update Метод обновления входящих данных
  */
-void awh::WSServer::update() noexcept {
+void awh::server::WS::update() noexcept {
 	// Сбрасываем флаг шифрования
 	this->crypt = false;
 	// Отключаем сжатие ответа с сервера
@@ -88,7 +88,7 @@ void awh::WSServer::update() noexcept {
  * checkKey Метод проверки ключа сервера
  * @return результат проверки
  */
-bool awh::WSServer::checkKey() noexcept {
+bool awh::server::WS::checkKey() noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Получаем параметры ключа клиента
@@ -104,7 +104,7 @@ bool awh::WSServer::checkKey() noexcept {
  * checkVer Метод проверки на версию протокола
  * @return результат проверки соответствия
  */
-bool awh::WSServer::checkVer() noexcept {
+bool awh::server::WS::checkVer() noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Получаем список доступных заголовков
@@ -125,19 +125,19 @@ bool awh::WSServer::checkVer() noexcept {
  * checkAuth Метод проверки авторизации
  * @return результат проверки авторизации
  */
-awh::Http::stath_t awh::WSServer::checkAuth() noexcept {
+awh::Http::stath_t awh::server::WS::checkAuth() noexcept {
 	// Результат работы функции
 	http_t::stath_t result = http_t::stath_t::FAULT;
 	// Если авторизация требуется
-	if(this->authSrv.getType() != auth_t::type_t::NONE){
+	if(this->auth.server.getType() != awh::auth_t::type_t::NONE){
 		// Получаем параметры авторизации
 		const string & auth = this->web.getHeader("authorization");
 		// Если параметры авторизации найдены
 		if(!auth.empty()){
 			// Устанавливаем заголовок HTTP в параметры авторизации
-			this->authSrv.setHeader(auth);
+			this->auth.server.setHeader(auth);
 			// Выполняем проверку авторизации
-			if(this->authSrv.check("get"))
+			if(this->auth.server.check("get"))
 				// Устанавливаем успешный результат авторизации
 				result = http_t::stath_t::GOOD;
 		}
@@ -150,42 +150,42 @@ awh::Http::stath_t awh::WSServer::checkAuth() noexcept {
  * setRealm Метод установки название сервера
  * @param realm название сервера
  */
-void awh::WSServer::setRealm(const string & realm) noexcept {
+void awh::server::WS::setRealm(const string & realm) noexcept {
 	// Если название сервера передано
-	if(!realm.empty()) this->authSrv.setRealm(realm);
+	if(!realm.empty()) this->auth.server.setRealm(realm);
 }
 /**
  * setOpaque Метод установки временного ключа сессии сервера
  * @param opaque временный ключ сессии сервера
  */
-void awh::WSServer::setOpaque(const string & opaque) noexcept {
+void awh::server::WS::setOpaque(const string & opaque) noexcept {
 	// Если временный ключ сессии сервера передан
-	if(!opaque.empty()) this->authSrv.setOpaque(opaque);
+	if(!opaque.empty()) this->auth.server.setOpaque(opaque);
 }
 /**
  * setExtractPassCallback Метод добавления функции извлечения пароля
  * @param ctx      контекст для вывода в сообщении
  * @param callback функция обратного вызова для извлечения пароля
  */
-void awh::WSServer::setExtractPassCallback(void * ctx, function <string (const string &, void *)> callback) noexcept {
+void awh::server::WS::setExtractPassCallback(void * ctx, function <string (const string &, void *)> callback) noexcept {
 	// Устанавливаем внешнюю функцию
-	this->authSrv.setExtractPassCallback(ctx, callback);
+	this->auth.server.setExtractPassCallback(ctx, callback);
 }
 /**
  * setAuthCallback Метод добавления функции обработки авторизации
  * @param ctx      контекст для вывода в сообщении
  * @param callback функция обратного вызова для обработки авторизации
  */
-void awh::WSServer::setAuthCallback(void * ctx, function <bool (const string &, const string &, void *)> callback) noexcept {
+void awh::server::WS::setAuthCallback(void * ctx, function <bool (const string &, const string &, void *)> callback) noexcept {
 	// Устанавливаем внешнюю функцию
-	this->authSrv.setAuthCallback(ctx, callback);
+	this->auth.server.setAuthCallback(ctx, callback);
 }
 /**
  * setAuthType Метод установки типа авторизации
  * @param type тип авторизации
  * @param hash алгоритм шифрования для Digest авторизации
  */
-void awh::WSServer::setAuthType(const auth_t::type_t type, const auth_t::hash_t hash) noexcept {
+void awh::server::WS::setAuthType(const awh::auth_t::type_t type, const awh::auth_t::hash_t hash) noexcept {
 	// Устанавливаем тип авторизации
-	this->authSrv.setType(type, hash);
+	this->auth.server.setType(type, hash);
 }

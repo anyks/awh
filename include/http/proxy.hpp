@@ -63,7 +63,7 @@ namespace awh {
 			 * @param type тип авторизации
 			 * @param hash алгоритм шифрования для Digest авторизации
 			 */
-			void setAuthType(const auth_t::type_t type = auth_t::type_t::BASIC, const auth_t::hash_t hash = auth_t::hash_t::MD5) noexcept;
+			void setAuthType(const awh::auth_t::type_t type = awh::auth_t::type_t::BASIC, const awh::auth_t::hash_t hash = awh::auth_t::hash_t::MD5) noexcept;
 		public:
 			/**
 			 * HttpProxy Конструктор

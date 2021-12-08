@@ -15,6 +15,7 @@
 // Подключаем пространство имён
 using namespace std;
 using namespace awh;
+using namespace server;
 
 /**
  * main Главная функция приложения
@@ -28,7 +29,7 @@ int main(int argc, char * argv[]) noexcept {
 	// Создаём объект для работы с логами
 	log_t log(&fmk);
 	// Создаём объект PROXY сервера
-	proxySocks5Srv_t proxy(&fmk, &log);
+	proxySocks5_t proxy(&fmk, &log);
 	// Устанавливаем название сервиса
 	log.setLogName("Proxy Socks5 Server");
 	// Устанавливаем формат времени
@@ -36,7 +37,7 @@ int main(int argc, char * argv[]) noexcept {
 	/**
 	 * 1. Устанавливаем ожидание входящих сообщений
 	 */
-	proxy.setMode((uint8_t) proxySocks5Srv_t::flag_t::WAITMESS);
+	proxy.setMode((uint8_t) proxySocks5_t::flag_t::WAITMESS);
 	// Устанавливаем таймаут ожидания получения сообщений
 	proxy.setWaitTimeDetect(30, 15);
 	// Выполняем инициализацию WebSocket сервера
@@ -51,7 +52,7 @@ int main(int argc, char * argv[]) noexcept {
 		return true;
 	});
 	// Установливаем функцию обратного вызова на событие активации клиента на сервере
-	proxy.on(&log, [](const string & ip, const string & mac, proxySocks5Srv_t * proxy, void * ctx) -> bool {
+	proxy.on(&log, [](const string & ip, const string & mac, proxySocks5_t * proxy, void * ctx) -> bool {
 		// Получаем объект логирования
 		log_t * log = reinterpret_cast <log_t *> (ctx);
 		// Выводим информацию в лог
@@ -60,11 +61,11 @@ int main(int argc, char * argv[]) noexcept {
 		return true;
 	});
 	// Установливаем функцию обратного вызова на событие запуска или остановки подключения
-	proxy.on(&log, [](const size_t aid, const proxySocks5Srv_t::mode_t mode, proxySocks5Srv_t * proxy, void * ctx) noexcept {
+	proxy.on(&log, [](const size_t aid, const proxySocks5_t::mode_t mode, proxySocks5_t * proxy, void * ctx) noexcept {
 		// Получаем объект логирования
 		log_t * log = reinterpret_cast <log_t *> (ctx);
 		// Выводим информацию в лог
-		log->print("%s client", log_t::flag_t::INFO, (mode == proxySocks5Srv_t::mode_t::CONNECT ? "Connect" : "Disconnect"));
+		log->print("%s client", log_t::flag_t::INFO, (mode == proxySocks5_t::mode_t::CONNECT ? "Connect" : "Disconnect"));
 	});
 	// Выполняем запуск Socks5 сервер
 	proxy.start();

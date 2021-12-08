@@ -31,96 +31,101 @@ using namespace std;
  * awh пространство имён
  */
 namespace awh {
-	/**
-	 * WorkerServerRest Структура REST сервера воркера
+	/*
+	 * server серверное пространство имён
 	 */
-	typedef struct WorkerServerRest : public workSrv_t {
-		public:
-			/**
-			 * AdjParam Структура параметров адъютанта
-			 */
-			typedef struct AdjParam {
-				httpSrv_t http;              // Создаём объект для работы с HTTP
-				bool crypt;                  // Флаг шифрования сообщений
-				bool alive;                  // Флаг долгоживущего подключения
-				bool close;                  // Флаг требования закрыть адъютанта
-				size_t requests;             // Количество выполненных запросов
-				size_t readBytes;            // Количество полученных байт для закрытия подключения
-				size_t stopBytes;            // Количество байт для закрытия подключения
-				time_t checkPoint;           // Контрольная точка ответа на пинг
-				http_t::compress_t compress; // Флаги работы с сжатыми данными
-				vector <char> buffer;        // Буфер бинарных необработанных данных
+	namespace server {
+		/**
+		 * WorkerRest Структура REST сервера воркера
+		 */
+		typedef struct WorkerRest : public worker_t {
+			public:
 				/**
-				 * AdjParam Конструктор
+				 * AdjParam Структура параметров адъютанта
+				 */
+				typedef struct AdjParam {
+					bool crypt;                       // Флаг шифрования сообщений
+					bool alive;                       // Флаг долгоживущего подключения
+					bool close;                       // Флаг требования закрыть адъютанта
+					size_t requests;                  // Количество выполненных запросов
+					size_t readBytes;                 // Количество полученных байт для закрытия подключения
+					size_t stopBytes;                 // Количество байт для закрытия подключения
+					time_t checkPoint;                // Контрольная точка ответа на пинг
+					http_t http;                      // Создаём объект для работы с HTTP
+					vector <char> buffer;             // Буфер бинарных необработанных данных
+					awh::http_t::compress_t compress; // Флаги работы с сжатыми данными
+					/**
+					 * AdjParam Конструктор
+					 * @param fmk объект фреймворка
+					 * @param log объект для работы с логами
+					 * @param uri объект работы с URI ссылками
+					 */
+					AdjParam(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcept :
+						crypt(false),
+						alive(false),
+						close(false),
+						requests(0),
+						readBytes(0),
+						stopBytes(0),
+						checkPoint(0),
+						http(fmk, log, uri),
+						compress(awh::http_t::compress_t::NONE) {}
+					/**
+					 * ~AdjParam Деструктор
+					 */
+					~AdjParam() noexcept {}
+				} adjp_t;
+			public:
+				// Создаём объект работы с URI ссылками
+				uri_t uri;
+				// Создаем объект для работы с сетью
+				network_t nwk;
+			private:
+				// Параметры подключения адъютантов
+				map <size_t, adjp_t> adjParams;
+			public:
+				// Флаги работы с сжатыми данными
+				awh::http_t::compress_t compress = awh::http_t::compress_t::NONE;
+			private:
+				// Создаём объект фреймворка
+				const fmk_t * fmk = nullptr;
+				// Создаём объект работы с логами
+				const log_t * log = nullptr;
+			public:
+				/**
+				 * clear Метод очистки
+				 */
+				void clear() noexcept;
+			public:
+				/**
+				 * createAdj Метод создания параметров адъютанта
+				 * @param aid идентификатор адъютанта
+				 */
+				void createAdj(const size_t aid) noexcept;
+				/**
+				 * removeAdj Метод удаления параметров подключения адъютанта
+				 * @param aid идентификатор адъютанта
+				 */
+				void removeAdj(const size_t aid) noexcept;
+				/**
+				 * getAdj Метод получения параметров подключения адъютанта
+				 * @param aid идентификатор адъютанта
+				 * @return    параметры подключения адъютанта
+				 */
+				const adjp_t * getAdj(const size_t aid) const noexcept;
+			public:
+				/**
+				 * WorkerRest Конструктор
 				 * @param fmk объект фреймворка
 				 * @param log объект для работы с логами
-				 * @param uri объект работы с URI ссылками
 				 */
-				AdjParam(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcept :
-					http(fmk, log, uri),
-					crypt(false),
-					alive(false),
-					close(false),
-					requests(0),
-					readBytes(0),
-					stopBytes(0),
-					checkPoint(0),
-					compress(http_t::compress_t::NONE) {}
+				WorkerRest(const fmk_t * fmk, const log_t * log) noexcept : worker_t(fmk, log), nwk(fmk), uri(fmk, &nwk), fmk(fmk), log(log) {}
 				/**
-				 * ~AdjParam Деструктор
+				 * ~WorkerRest Деструктор
 				 */
-				~AdjParam() noexcept {}
-			} adjp_t;
-		public:
-			// Создаём объект работы с URI ссылками
-			uri_t uri;
-			// Создаем объект для работы с сетью
-			network_t nwk;
-		private:
-			// Параметры подключения адъютантов
-			map <size_t, adjp_t> adjParams;
-		public:
-			// Флаги работы с сжатыми данными
-			http_t::compress_t compress = http_t::compress_t::NONE;
-		private:
-			// Создаём объект фреймворка
-			const fmk_t * fmk = nullptr;
-			// Создаём объект работы с логами
-			const log_t * log = nullptr;
-		public:
-			/**
-			 * clear Метод очистки
-			 */
-			void clear() noexcept;
-		public:
-			/**
-			 * createAdj Метод создания параметров адъютанта
-			 * @param aid идентификатор адъютанта
-			 */
-			void createAdj(const size_t aid) noexcept;
-			/**
-			 * removeAdj Метод удаления параметров подключения адъютанта
-			 * @param aid идентификатор адъютанта
-			 */
-			void removeAdj(const size_t aid) noexcept;
-			/**
-			 * getAdj Метод получения параметров подключения адъютанта
-			 * @param aid идентификатор адъютанта
-			 * @return    параметры подключения адъютанта
-			 */
-			const adjp_t * getAdj(const size_t aid) const noexcept;
-		public:
-			/**
-			 * WorkerServerRest Конструктор
-			 * @param fmk объект фреймворка
-			 * @param log объект для работы с логами
-			 */
-			WorkerServerRest(const fmk_t * fmk, const log_t * log) noexcept : workSrv_t(fmk, log), nwk(fmk), uri(fmk, &nwk), fmk(fmk), log(log) {}
-			/**
-			 * ~WorkerServerRest Деструктор
-			 */
-			~WorkerServerRest() noexcept {}
-	} workSrvRest_t;
+				~WorkerRest() noexcept {}
+		} workerRest_t;
+	};
 };
 
 #endif // __AWH_WORKER_REST_SERVER__

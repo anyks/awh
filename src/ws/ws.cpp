@@ -144,7 +144,7 @@ bool awh::WS::checkUpgrade() const noexcept {
 		// Переводим значение заголовка Connection в нижний регистр
 		connection = this->fmk->toLower(connection);
 		// Если заголовки соответствуют
-		result = ((upgrade.compare("websocket") == 0) && (connection.compare("upgrade") == 0));
+		result = ((upgrade.compare("websocket") == 0) && (connection.find("upgrade") != string::npos));
 	}
 	// Выводим результат
 	return result;

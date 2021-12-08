@@ -1050,6 +1050,67 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 	}
 #endif
 	}
+	// Если MAC адрес не получен
+	if(result.empty()){
+		// Имя сетевого интерфейса
+		string ifrName = "";
+		// Выполняем обновление списка IP адресов
+		const_cast <awh::IfNet *> (this)->getIPAddresses(family);
+		// Выполняем обновление списка MAC адресов
+		const_cast <awh::IfNet *> (this)->getHWAddresses(family);
+		// Определяем тип протокола интернета
+		switch(family){
+			// Если протокол интернета IPv4
+			case AF_INET: {
+				// Получаем IP адрес в числовом виде
+				uint32_t addr = inet_addr(ip.c_str());
+				// Выполняем перебор всех локальных IP адресов
+				for(auto & item : this->ips){
+					// Если IP адрес соответствует
+					if(inet_addr(item.second.c_str()) == addr){
+						// Запоминаем название сетевого интерфейса
+						ifrName = item.first;
+						// Выходим из цикла
+						break;
+					}
+				}
+			} break;
+			// Если протокол интернета IPv6
+			case AF_INET6: {
+				// Создаём объект подключения
+				struct sockaddr_in6 addr1, addr2;
+				// Заполняем нулями структуру объекта подключения
+				memset(&addr1, 0, sizeof(addr1));
+				// Устанавливаем протокол интернета
+				addr1.sin6_family = family;
+				// Указываем адрес IPv6 для сервера
+				inet_pton(family, ip.c_str(), &addr1.sin6_addr);
+				// Выполняем перебор всех локальных IP адресов
+				for(auto & item : this->ips6){
+					// Заполняем нулями структуру объекта подключения
+					memset(&addr2, 0, sizeof(addr2));
+					// Устанавливаем протокол интернета
+					addr2.sin6_family = family;
+					// Указываем адрес IPv6 для сервера
+					inet_pton(family, item.second.c_str(), &addr2.sin6_addr);
+					// Если IP адрес соответствует
+					if(IN6_ARE_ADDR_EQUAL(&addr1.sin6_addr, &addr2.sin6_addr)){
+						// Запоминаем название сетевого интерфейса
+						ifrName = item.first;
+						// Выходим из цикла
+						break;
+					}
+				}
+			} break;
+		}
+		// Если название сетевого интерфейса получено
+		if(!ifrName.empty()){
+			// Выполняем поиск MAC адреса
+			auto it = this->ifs.find(ifrName);
+			// Если MAC адрес получен
+			if(it != this->ifs.end()) result = it->second;
+		}
+	}
 	// Выводим результат
 	return result;
 }

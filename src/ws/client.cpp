@@ -13,7 +13,7 @@
 /**
  * update Метод обновления входящих данных
  */
-void awh::WSClient::update() noexcept {
+void awh::client::WS::update() noexcept {
 	// Сбрасываем флаг шифрования
 	this->crypt = false;
 	// Отключаем сжатие ответа с сервера
@@ -83,7 +83,7 @@ void awh::WSClient::update() noexcept {
  * checkKey Метод проверки ключа сервера
  * @return результат проверки
  */
-bool awh::WSClient::checkKey() noexcept {
+bool awh::client::WS::checkKey() noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Получаем параметры ключа сервера
@@ -102,7 +102,7 @@ bool awh::WSClient::checkKey() noexcept {
  * checkVer Метод проверки на версию протокола
  * @return результат проверки соответствия
  */
-bool awh::WSClient::checkVer() noexcept {
+bool awh::client::WS::checkVer() noexcept {
 	// Сообщаем, что версия соответствует
 	return true;
 }
@@ -110,7 +110,7 @@ bool awh::WSClient::checkVer() noexcept {
  * checkAuth Метод проверки авторизации
  * @return результат проверки авторизации
  */
-awh::Http::stath_t awh::WSClient::checkAuth() noexcept {
+awh::Http::stath_t awh::client::WS::checkAuth() noexcept {
 	// Результат работы функции
 	http_t::stath_t result = http_t::stath_t::FAULT;
 	// Получаем объект параметров запроса
@@ -120,13 +120,13 @@ awh::Http::stath_t awh::WSClient::checkAuth() noexcept {
 		// Если требуется авторизация
 		case 401: {
 			// Если попытки провести аутентификацию ещё небыло, пробуем ещё раз
-			if(!this->failAuth && (this->authCli.getType() == auth_t::type_t::DIGEST)){
+			if(!this->failAuth && (this->auth.client.getType() == awh::auth_t::type_t::DIGEST)){
 				// Получаем параметры авторизации
 				const string & auth = this->web.getHeader("www-authenticate");
 				// Если параметры авторизации найдены
 				if((this->failAuth = !auth.empty())){
 					// Устанавливаем заголовок HTTP в параметры авторизации
-					this->authCli.setHeader(auth);
+					this->auth.client.setHeader(auth);
 					// Просим повторить авторизацию ещё раз
 					result = http_t::stath_t::RETRY;
 				}
@@ -172,13 +172,13 @@ awh::Http::stath_t awh::WSClient::checkAuth() noexcept {
  * @param user логин пользователя для авторизации на сервере
  * @param pass пароль пользователя для авторизации на сервере
  */
-void awh::WSClient::setUser(const string & user, const string & pass) noexcept {
+void awh::client::WS::setUser(const string & user, const string & pass) noexcept {
 	// Если пользователь и пароль переданы
 	if(!user.empty() && !pass.empty()){
 		// Устанавливаем логин пользователя
-		this->authCli.setUser(user);
+		this->auth.client.setUser(user);
 		// Устанавливаем пароль пользователя
-		this->authCli.setPass(pass);
+		this->auth.client.setPass(pass);
 	}
 }
 /**
@@ -186,7 +186,7 @@ void awh::WSClient::setUser(const string & user, const string & pass) noexcept {
  * @param type тип авторизации
  * @param hash алгоритм шифрования для Digest авторизации
  */
-void awh::WSClient::setAuthType(const auth_t::type_t type, const auth_t::hash_t hash) noexcept {
+void awh::client::WS::setAuthType(const awh::auth_t::type_t type, const awh::auth_t::hash_t hash) noexcept {
 	// Устанавливаем тип авторизации
-	this->authCli.setType(type, hash);
+	this->auth.client.setType(type, hash);
 }

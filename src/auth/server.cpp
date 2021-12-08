@@ -15,7 +15,7 @@
  * @param method метод HTTP запроса
  * @return       результат проверки авторизации
  */
-const bool awh::AuthServer::check(const string & method) noexcept {
+const bool awh::server::Auth::check(const string & method) noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Определяем тип авторизации
@@ -62,7 +62,7 @@ const bool awh::AuthServer::check(const string & method) noexcept {
  * setRealm Метод установки название сервера
  * @param realm название сервера
  */
-void awh::AuthServer::setRealm(const string & realm) noexcept {
+void awh::server::Auth::setRealm(const string & realm) noexcept {
 	// Если название сервера передано
 	if(!realm.empty()) this->digest.realm = realm;
 }
@@ -70,7 +70,7 @@ void awh::AuthServer::setRealm(const string & realm) noexcept {
  * setOpaque Метод установки временного ключа сессии сервера
  * @param opaque временный ключ сессии сервера
  */
-void awh::AuthServer::setOpaque(const string & opaque) noexcept {
+void awh::server::Auth::setOpaque(const string & opaque) noexcept {
 	// Если временный ключ сессии сервера передан
 	if(!opaque.empty()) this->digest.opaque = opaque;
 }
@@ -79,7 +79,7 @@ void awh::AuthServer::setOpaque(const string & opaque) noexcept {
  * @param ctx      контекст для вывода в сообщении
  * @param callback функция обратного вызова для извлечения пароля
  */
-void awh::AuthServer::setExtractPassCallback(void * ctx, function <string (const string &, void *)> callback) noexcept {
+void awh::server::Auth::setExtractPassCallback(void * ctx, function <string (const string &, void *)> callback) noexcept {
 	// Устанавливаем контекст передаваемого объекта
 	this->ctx.at(0) = ctx;
 	// Устанавливаем функцию извлечения пароля
@@ -90,7 +90,7 @@ void awh::AuthServer::setExtractPassCallback(void * ctx, function <string (const
  * @param ctx      контекст для вывода в сообщении
  * @param callback функция обратного вызова для обработки авторизации
  */
-void awh::AuthServer::setAuthCallback(void * ctx, function <bool (const string &, const string &, void *)> callback) noexcept {
+void awh::server::Auth::setAuthCallback(void * ctx, function <bool (const string &, const string &, void *)> callback) noexcept {
 	// Устанавливаем контекст передаваемого объекта
 	this->ctx.at(1) = ctx;
 	// Устанавливаем функцию проверки авторизации
@@ -100,7 +100,7 @@ void awh::AuthServer::setAuthCallback(void * ctx, function <bool (const string &
  * setHeader Метод установки параметров авторизации из заголовков
  * @param header заголовок HTTP с параметрами авторизации
  */
-void awh::AuthServer::setHeader(const string & header) noexcept {
+void awh::server::Auth::setHeader(const string & header) noexcept {
 	// Если заголовок передан
 	if(!header.empty() && (this->fmk != nullptr)){
 		// Если тип авторизации Basic
@@ -219,7 +219,7 @@ void awh::AuthServer::setHeader(const string & header) noexcept {
  * @param mode режим вывода только значения заголовка
  * @return     строка авторизации
  */
-const string awh::AuthServer::getHeader(const bool mode) noexcept {
+const string awh::server::Auth::getHeader(const bool mode) noexcept {
 	// Результат работы функции
 	string result = "";
 	// Если фреймворк установлен

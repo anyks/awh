@@ -28,7 +28,7 @@ int main(int argc, char * argv[]) noexcept {
 	// Создаём объект для работы с логами
 	log_t log(&fmk);
 	// Создаём объект PROXY сервера
-	proxySrv_t proxy(&fmk, &log);
+	server::proxy_t proxy(&fmk, &log);
 	// Устанавливаем название сервиса
 	log.setLogName("Proxy Server");
 	// Устанавливаем формат времени
@@ -36,7 +36,7 @@ int main(int argc, char * argv[]) noexcept {
 	/**
 	 * 1. Устанавливаем ожидание входящих сообщений
 	 */
-	proxy.setMode((uint8_t) proxySrv_t::flag_t::WAITMESS);
+	proxy.setMode((uint8_t) server::proxy_t::flag_t::WAITMESS);
 	// Устанавливаем название сервера
 	proxy.setRealm("ANYKS");
 	// Устанавливаем временный ключ сессии
@@ -69,7 +69,7 @@ int main(int argc, char * argv[]) noexcept {
 		return true;
 	});
 	// Установливаем функцию обратного вызова на событие активации клиента на сервере
-	proxy.on(&log, [](const string & ip, const string & mac, proxySrv_t * proxy, void * ctx) -> bool {
+	proxy.on(&log, [](const string & ip, const string & mac, server::proxy_t * proxy, void * ctx) -> bool {
 		// Получаем объект логирования
 		log_t * log = reinterpret_cast <log_t *> (ctx);
 		// Выводим информацию в лог
@@ -78,18 +78,18 @@ int main(int argc, char * argv[]) noexcept {
 		return true;
 	});
 	// Установливаем функцию обратного вызова на событие запуска или остановки подключения
-	proxy.on(&log, [](const size_t aid, const proxySrv_t::mode_t mode, proxySrv_t * proxy, void * ctx) noexcept {
+	proxy.on(&log, [](const size_t aid, const server::proxy_t::mode_t mode, server::proxy_t * proxy, void * ctx) noexcept {
 		// Получаем объект логирования
 		log_t * log = reinterpret_cast <log_t *> (ctx);
 		// Выводим информацию в лог
-		log->print("%s client", log_t::flag_t::INFO, (mode == proxySrv_t::mode_t::CONNECT ? "Connect" : "Disconnect"));
+		log->print("%s client", log_t::flag_t::INFO, (mode == server::proxy_t::mode_t::CONNECT ? "Connect" : "Disconnect"));
 	});
 	// Установливаем функцию обратного вызова на событие получения сообщений
-	proxy.on(&log, [](const size_t aid, const proxySrv_t::event_t event, http_t * http, proxySrv_t * proxy, void * ctx) -> bool {
+	proxy.on(&log, [](const size_t aid, const server::proxy_t::event_t event, http_t * http, server::proxy_t * proxy, void * ctx) -> bool {
 		// Получаем объект логирования
 		log_t * log = reinterpret_cast <log_t *> (ctx);
 		// Выводим информацию в лог
-		log->print("%s client", log_t::flag_t::INFO, (event == proxySrv_t::event_t::RESPONSE ? "Response" : "Request"));
+		log->print("%s client", log_t::flag_t::INFO, (event == server::proxy_t::event_t::RESPONSE ? "Response" : "Request"));
 		// Выводим результат
 		return true;
 	});

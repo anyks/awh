@@ -13,9 +13,9 @@
 /**
  * clear Метод очистки
  */
-void awh::WorkerServerRest::clear() noexcept {
+void awh::server::WorkerRest::clear() noexcept {
 	// Очищаем данные вокера
-	workSrv_t::clear();
+	worker_t::clear();
 	// Очищаем список параметров адъютантов
 	this->adjParams.clear();
 	// Освобождаем выделенную память
@@ -27,7 +27,7 @@ void awh::WorkerServerRest::clear() noexcept {
  * createAdj Метод создания параметров адъютанта
  * @param aid идентификатор адъютанта
  */
-void awh::WorkerServerRest::createAdj(const size_t aid) noexcept {
+void awh::server::WorkerRest::createAdj(const size_t aid) noexcept {
 	// Если идентификатор адъютанта передан
 	if((aid > 0) && (this->adjParams.count(aid) < 1)){
 		// Добавляем адъютанта в список адъютантов
@@ -40,7 +40,7 @@ void awh::WorkerServerRest::createAdj(const size_t aid) noexcept {
  * removeAdj Метод удаления параметров подключения адъютанта
  * @param aid идентификатор адъютанта
  */
-void awh::WorkerServerRest::removeAdj(const size_t aid) noexcept {
+void awh::server::WorkerRest::removeAdj(const size_t aid) noexcept {
 	// Если идентификатор адъютанта передан
 	if(aid > 0){
 		// Выполняем поиск адъютанта
@@ -54,7 +54,7 @@ void awh::WorkerServerRest::removeAdj(const size_t aid) noexcept {
  * @param aid идентификатор адъютанта
  * @return    параметры подключения адъютанта
  */
-const awh::WorkerServerRest::adjp_t * awh::WorkerServerRest::getAdj(const size_t aid) const noexcept {
+const awh::server::WorkerRest::adjp_t * awh::server::WorkerRest::getAdj(const size_t aid) const noexcept {
 	// Результат работы функции
 	adjp_t * result = nullptr;
 	// Если идентификатор адъютанта передан

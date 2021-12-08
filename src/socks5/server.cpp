@@ -14,7 +14,7 @@
  * getServer Метод извлечения параметров запрашиваемого сервера
  * @return параметры запрашиваемого сервера
  */
-const awh::Socks5Server::serv_t & awh::Socks5Server::getServer() const noexcept {
+const awh::server::Socks5::serv_t & awh::server::Socks5::getServer() const noexcept {
 	// Выводим запрашиваемый сервер
 	return this->server;
 }
@@ -22,7 +22,7 @@ const awh::Socks5Server::serv_t & awh::Socks5Server::getServer() const noexcept 
  * resCmd Метод получения бинарного буфера ответа
  * @param rep код ответа сервера
  */
-void awh::Socks5Server::resCmd(const rep_t rep) const noexcept {
+void awh::server::Socks5::resCmd(const rep_t rep) const noexcept {
 	// Очищаем бинарный буфер данных
 	this->buffer.clear();
 	// Если IP адрес или доменное имя установлены
@@ -72,7 +72,7 @@ void awh::Socks5Server::resCmd(const rep_t rep) const noexcept {
  * resMethod Метод получения бинарного буфера выбора метода подключения
  * @param methods методы авторизаций выбранныйе пользователем
  */
-void awh::Socks5Server::resMethod(const vector <uint8_t> & methods) const noexcept {
+void awh::server::Socks5::resMethod(const vector <uint8_t> & methods) const noexcept {
 	// Создаём объект ответа
 	resMet_t response;
 	// Устанавливаем версию прокси-протокола
@@ -116,7 +116,7 @@ void awh::Socks5Server::resMethod(const vector <uint8_t> & methods) const noexce
  * @param login    логин пользователя
  * @param password пароль пользователя
  */
-void awh::Socks5Server::resAuth(const string & login, const string & password) const noexcept {
+void awh::server::Socks5::resAuth(const string & login, const string & password) const noexcept {
 	// Создаём объект ответа
 	resAuth_t response;
 	// Устанавливаем версию соглашения авторизации
@@ -142,7 +142,7 @@ void awh::Socks5Server::resAuth(const string & login, const string & password) c
  * @param buffer бинарный буфер входящих данных
  * @param size   размер бинарного буфера входящих данных
  */
-void awh::Socks5Server::parse(const char * buffer, const size_t size) noexcept {
+void awh::server::Socks5::parse(const char * buffer, const size_t size) noexcept {
 	// Очищаем буфер данных
 	this->buffer.clear();
 	// Если данные буфера переданы
@@ -379,7 +379,7 @@ void awh::Socks5Server::parse(const char * buffer, const size_t size) noexcept {
 /**
  * reset Метод сброса собранных данных
  */
-void awh::Socks5Server::reset() noexcept {
+void awh::server::Socks5::reset() noexcept {
 	// Выполняем сброс статуса ошибки
 	this->code = 0x00;
 	// Выполняем очистку буфера данных
@@ -392,7 +392,7 @@ void awh::Socks5Server::reset() noexcept {
  * @param ctx      контекст для вывода в сообщении
  * @param callback функция обратного вызова для обработки авторизации
  */
-void awh::Socks5Server::setAuthCallback(void * ctx, function <bool (const string &, const string &, void *)> callback) noexcept {
+void awh::server::Socks5::setAuthCallback(void * ctx, function <bool (const string &, const string &, void *)> callback) noexcept {
 	// Устанавливаем контекст передаваемого объекта
 	this->ctx.at(0) = ctx;
 	// Устанавливаем функцию проверки авторизации

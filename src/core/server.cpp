@@ -15,13 +15,13 @@
  * @param ip  полученный IP адрес
  * @param ctx передаваемый контекст
  */
-void awh::CoreServer::resolver(const string ip, void * ctx) noexcept {
+void awh::server::Core::resolver(const string ip, void * ctx) noexcept {
 	// Если передаваемый контекст передан
 	if(ctx != nullptr){
 		// Получаем объект воркера
-		workSrv_t * wrk = reinterpret_cast <workSrv_t *> (ctx);
+		server::worker_t * wrk = reinterpret_cast <server::worker_t *> (ctx);
 		// Получаем объект ядра подключения
-		coreSrv_t * core = (coreSrv_t *) const_cast <core_t *> (wrk->core);
+		core_t * core = (core_t *) const_cast <awh::core_t *> (wrk->core);
 		// Если IP адрес получен
 		if(!ip.empty()){
 			// sudo lsof -i -P | grep 1080
@@ -58,15 +58,15 @@ void awh::CoreServer::resolver(const string ip, void * ctx) noexcept {
  * @param bev буфер события
  * @param ctx передаваемый контекст
  */
-void awh::CoreServer::read(struct bufferevent * bev, void * ctx) noexcept {
+void awh::server::Core::read(struct bufferevent * bev, void * ctx) noexcept {
 	// Если подключение не передано
 	if((bev != nullptr) && (ctx != nullptr)){
 		// Получаем объект подключения
-		worker_t::adj_t * adj = reinterpret_cast <worker_t::adj_t *> (ctx);
+		awh::worker_t::adj_t * adj = reinterpret_cast <awh::worker_t::adj_t *> (ctx);
 		// Получаем объект подключения
-		workSrv_t * wrk = (workSrv_t *) const_cast <worker_t *> (adj->parent);
+		server::worker_t * wrk = (server::worker_t *) const_cast <awh::worker_t *> (adj->parent);
 		// Получаем объект ядра клиента
-		const coreSrv_t * core = reinterpret_cast <const coreSrv_t *> (wrk->core);
+		const core_t * core = reinterpret_cast <const core_t *> (wrk->core);
 		// Если подключение ещё существует
 		if((core->adjutants.count(adj->aid) > 0) && (wrk->readFn != nullptr)){
 			// Получаем буферы входящих данных
@@ -84,7 +84,7 @@ void awh::CoreServer::read(struct bufferevent * bev, void * ctx) noexcept {
 					// Копируем в буфер полученные данные
 					evbuffer_remove(input, buffer, size);
 					// Выводим функцию обратного вызова
-					wrk->readFn(buffer, size, adj->aid, wrk->wid, const_cast <core_t *> (wrk->core), wrk->ctx);
+					wrk->readFn(buffer, size, adj->aid, wrk->wid, const_cast <awh::core_t *> (wrk->core), wrk->ctx);
 					// Удаляем выделенную память буфера
 					delete [] buffer;
 				// Если возникает ошибка
@@ -103,15 +103,15 @@ void awh::CoreServer::read(struct bufferevent * bev, void * ctx) noexcept {
  * @param bev буфер события
  * @param ctx передаваемый контекст
  */
-void awh::CoreServer::write(struct bufferevent * bev, void * ctx) noexcept {
+void awh::server::Core::write(struct bufferevent * bev, void * ctx) noexcept {
 	// Если подключение не передано
 	if((bev != nullptr) && (ctx != nullptr)){
 		// Получаем объект подключения
-		worker_t::adj_t * adj = reinterpret_cast <worker_t::adj_t *> (ctx);
+		awh::worker_t::adj_t * adj = reinterpret_cast <awh::worker_t::adj_t *> (ctx);
 		// Получаем объект подключения
-		workSrv_t * wrk = (workSrv_t *) const_cast <worker_t *> (adj->parent);
+		server::worker_t * wrk = (server::worker_t *) const_cast <awh::worker_t *> (adj->parent);
 		// Получаем объект ядра клиента
-		const coreSrv_t * core = reinterpret_cast <const coreSrv_t *> (wrk->core);
+		const core_t * core = reinterpret_cast <const core_t *> (wrk->core);
 		// Если подключение ещё существует
 		if((core->adjutants.count(adj->aid) > 0) && (wrk->writeFn != nullptr)){
 			// Получаем буферы исходящих данных
@@ -129,7 +129,7 @@ void awh::CoreServer::write(struct bufferevent * bev, void * ctx) noexcept {
 					// Копируем в буфер полученные данные
 					evbuffer_remove(output, buffer, size);
 					// Выводим функцию обратного вызова
-					wrk->writeFn(buffer, size, adj->aid, wrk->wid, const_cast <core_t *> (wrk->core), wrk->ctx);
+					wrk->writeFn(buffer, size, adj->aid, wrk->wid, const_cast <awh::core_t *> (wrk->core), wrk->ctx);
 					// Выполняем удаление буфера
 					delete [] buffer;
 				// Если возникает ошибка
@@ -137,7 +137,7 @@ void awh::CoreServer::write(struct bufferevent * bev, void * ctx) noexcept {
 					// Выводим в лог сообщение
 					adj->log->print("%s", log_t::flag_t::WARNING, "unable to allocate enough memory");
 					// Выводим пустое сообщение
-					wrk->writeFn(nullptr, size, adj->aid, wrk->wid, const_cast <core_t *> (wrk->core), wrk->ctx);
+					wrk->writeFn(nullptr, size, adj->aid, wrk->wid, const_cast <awh::core_t *> (wrk->core), wrk->ctx);
 				}
 			}
 		}
@@ -149,15 +149,15 @@ void awh::CoreServer::write(struct bufferevent * bev, void * ctx) noexcept {
  * @param events произошедшее событие
  * @param ctx    передаваемый контекст
  */
-void awh::CoreServer::event(struct bufferevent * bev, const short events, void * ctx) noexcept {
+void awh::server::Core::event(struct bufferevent * bev, const short events, void * ctx) noexcept {
 	// Если подключение не передано
 	if((ctx != nullptr) && (bev != nullptr)){
 		// Получаем объект подключения
-		worker_t::adj_t * adj = reinterpret_cast <worker_t::adj_t *> (ctx);
+		awh::worker_t::adj_t * adj = reinterpret_cast <awh::worker_t::adj_t *> (ctx);
 		// Получаем объект подключения
-		workSrv_t * wrk = (workSrv_t *) const_cast <worker_t *> (adj->parent);
+		server::worker_t * wrk = (server::worker_t *) const_cast <awh::worker_t *> (adj->parent);
 		// Получаем объект ядра клиента
-		const coreSrv_t * core = reinterpret_cast <const coreSrv_t *> (wrk->core);
+		const core_t * core = reinterpret_cast <const core_t *> (wrk->core);
 		// Если подключение ещё существует
 		if((core->adjutants.count(adj->aid) > 0) && (adj->fmk != nullptr)){
 			// Получаем файловый дескриптор
@@ -173,7 +173,7 @@ void awh::CoreServer::event(struct bufferevent * bev, const short events, void *
 				// Запрещаем чтение запись данных серверу
 				bufferevent_disable(bev, EV_WRITE | EV_READ);
 				// Выполняем отключение от сервера
-				const_cast <coreSrv_t *> (core)->close(adj->aid);
+				const_cast <core_t *> (core)->close(adj->aid);
 			}
 		}
 	}
@@ -184,7 +184,7 @@ void awh::CoreServer::event(struct bufferevent * bev, const short events, void *
  * @param event событие на которое сработала функция обратного вызова
  * @param ctx   объект передаваемый как значение
  */
-void awh::CoreServer::accept(const evutil_socket_t fd, const short event, void * ctx) noexcept {
+void awh::server::Core::accept(const evutil_socket_t fd, const short event, void * ctx) noexcept {
 	// Если прокси существует
 	if(ctx != nullptr){
 		// IP и MAC адрес подключения
@@ -192,9 +192,9 @@ void awh::CoreServer::accept(const evutil_socket_t fd, const short event, void *
 		// Сокет подключившегося клиента
 		evutil_socket_t socket = -1;
 		// Получаем объект воркера
-		workSrv_t * wrk = reinterpret_cast <workSrv_t *> (ctx);
+		server::worker_t * wrk = reinterpret_cast <server::worker_t *> (ctx);
 		// Получаем объект подключения
-		coreSrv_t * core = (coreSrv_t *) const_cast <core_t *> (wrk->core);
+		core_t * core = (core_t *) const_cast <awh::core_t *> (wrk->core);
 		// Определяем тип подключения
 		switch(core->net.family){
 			// Для протокола IPv4
@@ -258,7 +258,7 @@ void awh::CoreServer::accept(const evutil_socket_t fd, const short event, void *
 		// Устанавливаем разрешение на повторное использование сокета
 		evutil_make_listen_socket_reuseable(socket);
 		// Создаём бъект адъютанта
-		worker_t::adj_t adj = worker_t::adj_t(wrk, core->fmk, core->log);
+		awh::worker_t::adj_t adj = awh::worker_t::adj_t(wrk, core->fmk, core->log);
 		// Выполняем получение контекста сертификата
 		adj.ssl = core->ssl.init();
 		// Устанавливаем первоначальное значение
@@ -312,21 +312,21 @@ void awh::CoreServer::accept(const evutil_socket_t fd, const short event, void *
  * tuning Метод тюннинга буфера событий
  * @param aid идентификатор адъютанта
  */
-void awh::CoreServer::tuning(const size_t aid) noexcept {
+void awh::server::Core::tuning(const size_t aid) noexcept {
 	// Выполняем извлечение адъютанта
 	auto it = this->adjutants.find(aid);
 	// Если адъютант получен
 	if(it != this->adjutants.end()){
 		// Получаем объект воркера
-		workSrv_t * wrk = (workSrv_t *) const_cast <worker_t *> (it->second->parent);
+		server::worker_t * wrk = (server::worker_t *) const_cast <awh::worker_t *> (it->second->parent);
 		// Устанавливаем время ожидания поступления данных
-		const_cast <worker_t::adj_t *> (it->second)->timeRead = wrk->timeRead;
+		const_cast <awh::worker_t::adj_t *> (it->second)->timeRead = wrk->timeRead;
 		// Устанавливаем время ожидания записи данных
-		const_cast <worker_t::adj_t *> (it->second)->timeWrite = wrk->timeWrite;
+		const_cast <awh::worker_t::adj_t *> (it->second)->timeWrite = wrk->timeWrite;
 		// Устанавливаем размер детектируемых байт на чтение
-		const_cast <worker_t::adj_t *> (it->second)->markRead = wrk->markRead;
+		const_cast <awh::worker_t::adj_t *> (it->second)->markRead = wrk->markRead;
 		// Устанавливаем размер детектируемых байт на запись
-		const_cast <worker_t::adj_t *> (it->second)->markWrite = wrk->markWrite;
+		const_cast <awh::worker_t::adj_t *> (it->second)->markWrite = wrk->markWrite;
 		// Устанавливаем коллбеки
 		bufferevent_setcb(it->second->bev, &read, &write, &event, (void *) it->second);
 		// Очищаем буферы событий при завершении работы
@@ -346,7 +346,7 @@ void awh::CoreServer::tuning(const size_t aid) noexcept {
  * connect Метод создания подключения к удаленному серверу
  * @param wid идентификатор воркера
  */
-void awh::CoreServer::connect(const size_t wid) noexcept {
+void awh::server::Core::connect(const size_t wid) noexcept {
 	// Блокируем переданный идентификатор
 	(void) wid;
 }
@@ -354,7 +354,7 @@ void awh::CoreServer::connect(const size_t wid) noexcept {
  * close Метод закрытия сокета
  * @param fd файловый дескриптор (сокет) для закрытия
  */
-void awh::CoreServer::close(const evutil_socket_t fd) noexcept {
+void awh::server::Core::close(const evutil_socket_t fd) noexcept {
 	// Если - это Windows
 	#if defined(_WIN32) || defined(_WIN64)
 		// Отключаем подключение для сокета
@@ -370,17 +370,17 @@ void awh::CoreServer::close(const evutil_socket_t fd) noexcept {
 /**
  * removeAll Метод удаления всех воркеров
  */
-void awh::CoreServer::removeAll() noexcept {
+void awh::server::Core::removeAll() noexcept {
 	// Переходим по всему списку подключений
 	for(auto it = this->workers.begin(); it != this->workers.end();){
 		// Получаем объект воркера
-		workSrv_t * wrk = (workSrv_t *) const_cast <worker_t *> (it->second);
+		server::worker_t * wrk = (server::worker_t *) const_cast <awh::worker_t *> (it->second);
 		// Если в воркере есть подключённые клиенты
 		if(!wrk->adjutants.empty()){
 			// Переходим по всему списку адъютанта
 			for(auto jt = wrk->adjutants.begin(); jt != wrk->adjutants.end();){
 				// Получаем объект адъютанта
-				worker_t::adj_t * adj = const_cast <worker_t::adj_t *> (&jt->second);
+				awh::worker_t::adj_t * adj = const_cast <awh::worker_t::adj_t *> (&jt->second);
 				// Выполняем очистку буфера событий
 				this->clean(adj->bev);
 				// Выполняем удаление контекста SSL
@@ -416,7 +416,7 @@ void awh::CoreServer::removeAll() noexcept {
  * remove Метод удаления воркера
  * @param wid идентификатор воркера
  */
-void awh::CoreServer::remove(const size_t wid) noexcept {
+void awh::server::Core::remove(const size_t wid) noexcept {
 	// Если идентификатор воркера передан
 	if(wid > 0){
 		// Выполняем поиск воркера
@@ -424,13 +424,13 @@ void awh::CoreServer::remove(const size_t wid) noexcept {
 		// Если воркер найден, устанавливаем максимальное количество одновременных подключений
 		if(it != this->workers.end()){
 			// Получаем объект воркера
-			workSrv_t * wrk = (workSrv_t *) const_cast <worker_t *> (it->second);
+			server::worker_t * wrk = (server::worker_t *) const_cast <awh::worker_t *> (it->second);
 			// Если в воркере есть подключённые клиенты
 			if(!wrk->adjutants.empty()){
 				// Переходим по всему списку адъютанта
 				for(auto jt = wrk->adjutants.begin(); jt != wrk->adjutants.end();){
 					// Получаем объект адъютанта
-					worker_t::adj_t * adj = const_cast <worker_t::adj_t *> (&jt->second);
+					awh::worker_t::adj_t * adj = const_cast <awh::worker_t::adj_t *> (&jt->second);
 					// Выполняем очистку буфера событий
 					this->clean(adj->bev);
 					// Выполняем удаление контекста SSL
@@ -467,7 +467,7 @@ void awh::CoreServer::remove(const size_t wid) noexcept {
  * run Метод запуска сервера воркером
  * @param wid идентификатор воркера
  */
-void awh::CoreServer::run(const size_t wid) noexcept {
+void awh::server::Core::run(const size_t wid) noexcept {
 	// Если идентификатор воркера передан
 	if(wid > 0){
 		// Выполняем поиск воркера
@@ -475,7 +475,7 @@ void awh::CoreServer::run(const size_t wid) noexcept {
 		// Если воркер найден, устанавливаем максимальное количество одновременных подключений
 		if(it != this->workers.end()){
 			// Получаем объект подключения
-			workSrv_t * wrk = (workSrv_t *) const_cast <worker_t *> (it->second);
+			server::worker_t * wrk = (server::worker_t *) const_cast <awh::worker_t *> (it->second);
 			// Определяем тип подключения
 			switch(this->net.family){
 				// Резолвер IPv4, создаём резолвер
@@ -490,7 +490,7 @@ void awh::CoreServer::run(const size_t wid) noexcept {
  * open Метод открытия подключения воркером
  * @param wid идентификатор воркера
  */
-void awh::CoreServer::open(const size_t wid) noexcept {
+void awh::server::Core::open(const size_t wid) noexcept {
 	// Блокируем переданный идентификатор
 	(void) wid;
 }
@@ -498,17 +498,17 @@ void awh::CoreServer::open(const size_t wid) noexcept {
  * close Метод закрытия подключения воркера
  * @param aid идентификатор адъютанта
  */
-void awh::CoreServer::close(const size_t aid) noexcept {
+void awh::server::Core::close(const size_t aid) noexcept {
 	// Выполняем извлечение адъютанта
 	auto it = this->adjutants.find(aid);
 	// Если адъютант получен
 	if(it != this->adjutants.end()){
 		// Получаем объект адъютанта
-		worker_t::adj_t * adj = const_cast <worker_t::adj_t *> (it->second);
+		awh::worker_t::adj_t * adj = const_cast <awh::worker_t::adj_t *> (it->second);
 		// Получаем объект воркера
-		workSrv_t * wrk = (workSrv_t *) const_cast <worker_t *> (adj->parent);
+		server::worker_t * wrk = (server::worker_t *) const_cast <awh::worker_t *> (adj->parent);
 		// Получаем объект ядра клиента
-		const coreSrv_t * core = reinterpret_cast <const coreSrv_t *> (wrk->core);
+		const core_t * core = reinterpret_cast <const core_t *> (wrk->core);
 		// Если событие сервера существует
 		if(adj->bev != nullptr){
 			// Выполняем очистку буфера событий
@@ -534,15 +534,15 @@ void awh::CoreServer::close(const size_t aid) noexcept {
  * @param read  пропускная способность на чтение (bps, kbps, Mbps, Gbps)
  * @param write пропускная способность на запись (bps, kbps, Mbps, Gbps)
  */
-void awh::CoreServer::setBandwidth(const size_t aid, const string & read, const string & write) noexcept {
+void awh::server::Core::setBandwidth(const size_t aid, const string & read, const string & write) noexcept {
 	// Выполняем извлечение адъютанта
 	auto it = this->adjutants.find(aid);
 	// Если адъютант получен
 	if(it != this->adjutants.end()){
 		// Получаем объект адъютанта
-		worker_t::adj_t * adj = const_cast <worker_t::adj_t *> (it->second);
+		awh::worker_t::adj_t * adj = const_cast <awh::worker_t::adj_t *> (it->second);
 		// Получаем объект воркера
-		workSrv_t * wrk = (workSrv_t *) const_cast <worker_t *> (adj->parent);
+		server::worker_t * wrk = (server::worker_t *) const_cast <awh::worker_t *> (adj->parent);
 		// Получаем размер буфера на чтение
 		const int rcv = (!read.empty() ? this->fmk->sizeBuffer(read) : 0);
 		// Получаем размер буфера на запись
@@ -557,7 +557,7 @@ void awh::CoreServer::setBandwidth(const size_t aid, const string & read, const 
  * setIpV6only Метод установки флага использования только сети IPv6
  * @param mode флаг для установки
  */
-void awh::CoreServer::setIpV6only(const bool mode) noexcept {
+void awh::server::Core::setIpV6only(const bool mode) noexcept {
 	// Устанавливаем флаг использования только сети IPv6
 	this->ipV6only = mode;
 }
@@ -566,7 +566,7 @@ void awh::CoreServer::setIpV6only(const bool mode) noexcept {
  * @param wid   идентификатор воркера
  * @param total максимальное количество одновременных подключений
  */
-void awh::CoreServer::setTotal(const size_t wid, const u_short total) noexcept {
+void awh::server::Core::setTotal(const size_t wid, const u_short total) noexcept {
 	// Если идентификатор воркера передан
 	if(wid > 0){
 		// Выполняем поиск воркера
@@ -574,7 +574,7 @@ void awh::CoreServer::setTotal(const size_t wid, const u_short total) noexcept {
 		// Если воркер найден, устанавливаем максимальное количество одновременных подключений
 		if(it != this->workers.end())
 			// Устанавливаем максимальное количество одновременных подключений
-			((workSrv_t *) const_cast <worker_t *> (it->second))->total = total;
+			((server::worker_t *) const_cast <awh::worker_t *> (it->second))->total = total;
 	}
 }
 /**
@@ -583,7 +583,7 @@ void awh::CoreServer::setTotal(const size_t wid, const u_short total) noexcept {
  * @param port порт сервера
  * @param host хост сервера
  */
-void awh::CoreServer::init(const size_t wid, const u_int port, const string & host) noexcept {
+void awh::server::Core::init(const size_t wid, const u_int port, const string & host) noexcept {
 	// Если идентификатор воркера передан
 	if(wid > 0){
 		// Выполняем поиск воркера
@@ -591,7 +591,7 @@ void awh::CoreServer::init(const size_t wid, const u_int port, const string & ho
 		// Если воркер найден, устанавливаем максимальное количество одновременных подключений
 		if(it != this->workers.end()){
 			// Получаем объект подключения
-			workSrv_t * wrk = (workSrv_t *) const_cast <worker_t *> (it->second);
+			server::worker_t * wrk = (server::worker_t *) const_cast <awh::worker_t *> (it->second);
 			// Если порт передан, устанавливаем
 			if(port > 0) wrk->port = port;
 			// Если хост передан, устанавливаем
@@ -607,23 +607,23 @@ void awh::CoreServer::init(const size_t wid, const u_int port, const string & ho
  * @param key   приватный ключ сертификата
  * @param chain файл цепочки сертификатов
  */
-void awh::CoreServer::setCert(const string & cert, const string & key, const string & chain) noexcept {
+void awh::server::Core::setCert(const string & cert, const string & key, const string & chain) noexcept {
 	// Устанавливаем файлы сертификата
 	this->ssl.setCert(cert, key, chain);
 }
 /**
- * CoreServer Конструктор
+ * Core Конструктор
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
  */
-awh::CoreServer::CoreServer(const fmk_t * fmk, const log_t * log) noexcept : core_t(fmk, log), ifnet(fmk, log) {
+awh::server::Core::Core(const fmk_t * fmk, const log_t * log) noexcept : awh::core_t(fmk, log), ifnet(fmk, log) {
 	// Устанавливаем тип запускаемого ядра
 	this->type = type_t::SERVER;
 }
 /**
- * ~CoreServer Деструктор
+ * ~Core Деструктор
  */
-awh::CoreServer::~CoreServer() noexcept {
+awh::server::Core::~Core() noexcept {
 	// Выполняем остановку сервера
 	this->stop();
 }

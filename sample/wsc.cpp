@@ -32,9 +32,9 @@ int main(int argc, char * argv[]) noexcept {
 	// Создаём объект для работы с логами
 	log_t log(&fmk);
 	// Создаём биндинг
-	coreCli_t core(&fmk, &log);
-	// Создаём объект REST запроса
-	wsCli_t ws(&core, &fmk, &log);
+	client::core_t core(&fmk, &log);
+	// Создаём объект WebSocket клиента
+	client::ws_t ws(&core, &fmk, &log);
 	// Устанавливаем название сервиса
 	log.setLogName("WebSocket Client");
 	// Устанавливаем формат времени
@@ -46,10 +46,10 @@ int main(int argc, char * argv[]) noexcept {
 	 * 4. Устанавливаем флаг поддержания активным подключение
 	 */
 	ws.setMode(
-		(uint8_t) wsCli_t::flag_t::NOTSTOP |
-		(uint8_t) wsCli_t::flag_t::WAITMESS |
-		(uint8_t) wsCli_t::flag_t::VERIFYSSL |
-		(uint8_t) wsCli_t::flag_t::KEEPALIVE
+		(uint8_t) client::ws_t::flag_t::NOTSTOP |
+		(uint8_t) client::ws_t::flag_t::WAITMESS |
+		(uint8_t) client::ws_t::flag_t::VERIFYSSL |
+		(uint8_t) client::ws_t::flag_t::KEEPALIVE
 	);
 	// Устанавливаем адрес сертификата
 	core.setCA("./ca/cert.pem");
@@ -77,13 +77,13 @@ int main(int argc, char * argv[]) noexcept {
 		// cout << " ============= " << message << endl;
 	});
 	// Подписываемся на событие запуска и остановки сервера
-	ws.on(&log, [](const wsCli_t::mode_t mode, wsCli_t * ws, void * ctx){
+	ws.on(&log, [](const client::ws_t::mode_t mode, client::ws_t * ws, void * ctx){
 		// Получаем объект логирования
 		log_t * log = reinterpret_cast <log_t *> (ctx);
 		// Выводим информацию в лог
-		log->print("%s server", log_t::flag_t::INFO, (mode == wsCli_t::mode_t::CONNECT ? "Start" : "Stop"));
+		log->print("%s server", log_t::flag_t::INFO, (mode == client::ws_t::mode_t::CONNECT ? "Start" : "Stop"));
 		// Если подключение произошло удачно
-		if(mode == wsCli_t::mode_t::CONNECT){
+		if(mode == client::ws_t::mode_t::CONNECT){
 			// Создаём объект JSON
 			json data = json::object();
 			// Формируем идентификатор объекта
@@ -200,14 +200,14 @@ int main(int argc, char * argv[]) noexcept {
 		}
 	});
 	// Подписываемся на событие получения ошибки работы клиента
-	ws.on(&log, [](const u_int code, const string & mess, wsCli_t * ws, void * ctx){
+	ws.on(&log, [](const u_int code, const string & mess, client::ws_t * ws, void * ctx){
 		// Получаем объект логирования
 		log_t * log = reinterpret_cast <log_t *> (ctx);
 		// Выводим информацию в лог
 		log->print("%s [%u]", log_t::flag_t::CRITICAL, mess.c_str(), code);
 	});
 	// Подписываемся на событие получения сообщения с сервера
-	ws.on(nullptr, [](const vector <char> & buffer, const bool utf8, wsCli_t * ws, void * ctx){
+	ws.on(nullptr, [](const vector <char> & buffer, const bool utf8, client::ws_t * ws, void * ctx){
 		// Если данные пришли в виде текста, выводим
 		if(utf8){
 			try {

@@ -13,9 +13,9 @@
 /**
  * clear Метод очистки
  */
-void awh::WorkerServer::clear() noexcept {
+void awh::server::Worker::clear() noexcept {
 	// Очищаем данные вокера
-	worker_t::clear();
+	awh::worker_t::clear();
 	// Восстанавливаем порт сервера
 	this->port = SERVER_PORT;
 	// Восстанавливаем хост сервера

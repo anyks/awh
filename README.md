@@ -65,16 +65,16 @@ int main(int argc, char * argv[]) noexcept {
 	log_t log(&fmk);
 	network_t nwk(&fmk);
 	uri_t uri(&fmk, &nwk);
-	coreCli_t core(&fmk, &log);
-	restCli_t rest(&core, &fmk, &log);
+	client::core_t core(&fmk, &log);
+	client::rest_t rest(&core, &fmk, &log);
 
 	log.setLogName("REST Client");
 	log.setLogFormat("%H:%M:%S %d.%m.%Y");
 
 	rest.setMode(
-		(uint8_t) restCli_t::flag_t::DEFER |
-		(uint8_t) restCli_t::flag_t::WAITMESS |
-		(uint8_t) restCli_t::flag_t::VERIFYSSL
+		(uint8_t) client::rest_t::flag_t::DEFER |
+		(uint8_t) client::rest_t::flag_t::WAITMESS |
+		(uint8_t) client::rest_t::flag_t::VERIFYSSL
 	);
 
 	core.setCA("./ca/cert.pem");
@@ -88,7 +88,7 @@ int main(int argc, char * argv[]) noexcept {
 	// rest.setUser("user", "password");
 	// rest.setAuthType(auth_t::type_t::DIGEST, auth_t::hash_t::MD5);
 
-	rest.on(&log, [](const bool mode, restCli_t * web, void * ctx){
+	rest.on(&log, [](const bool mode, client::rest_t * web, void * ctx){
 		log_t * log = reinterpret_cast <log_t *> (ctx);
 		log->print("%s client", log_t::flag_t::INFO, (mode ? "Connect" : "Disconnect"));
 	});
@@ -112,8 +112,8 @@ using namespace awh;
 int main(int argc, char * argv[]) noexcept {
 	fmk_t fmk(true);
 	log_t log(&fmk);
-	coreSrv_t core(&fmk, &log);
-	restSrv_t rest(&core, &fmk, &log);
+	server::core_t core(&fmk, &log);
+	server::rest_t rest(&core, &fmk, &log);
 
 	log.setLogName("Rest Server");
 	log.setLogFormat("%H:%M:%S %d.%m.%Y");
@@ -137,19 +137,19 @@ int main(int argc, char * argv[]) noexcept {
 	});
 	*/
 
-	rest.on(&log, [](const string & ip, const string & mac, restSrv_t * rest, void * ctx) -> bool {
+	rest.on(&log, [](const string & ip, const string & mac, server::rest_t * rest, void * ctx) -> bool {
 		log_t * log = reinterpret_cast <log_t *> (ctx);
 		log->print("ACCEPT: ip = %s, mac = %s", log_t::flag_t::INFO, ip.c_str(), mac.c_str());
 
 		return true;
 	});
 
-	rest.on(&log, [](const size_t aid, const restSrv_t::mode_t mode, restSrv_t * rest, void * ctx) noexcept {
+	rest.on(&log, [](const size_t aid, const server::rest_t::mode_t mode, server::rest_t * rest, void * ctx) noexcept {
 		log_t * log = reinterpret_cast <log_t *> (ctx);
-		log->print("%s client", log_t::flag_t::INFO, (mode == restSrv_t::mode_t::CONNECT ? "Connect" : "Disconnect"));
+		log->print("%s client", log_t::flag_t::INFO, (mode == server::rest_t::mode_t::CONNECT ? "Connect" : "Disconnect"));
 	});
 
-	rest.on(&log, [](const size_t aid, const http_t * http, restSrv_t * rest, void * ctx) noexcept {
+	rest.on(&log, [](const size_t aid, const http_t * http, server::rest_t * rest, void * ctx) noexcept {
 		const auto & query = http->getQuery();
 
 		if(!query.uri.empty() && (query.uri.find("favicon.ico") != string::npos))
@@ -186,17 +186,17 @@ using namespace awh;
 int main(int argc, char * argv[]) noexcept {
 	fmk_t fmk(true);
 	log_t log(&fmk);
-	coreCli_t core(&fmk, &log);
-	wsCli_t ws(&core, &fmk, &log);
+	client::core_t core(&fmk, &log);
+	client::ws_t ws(&core, &fmk, &log);
 
 	log.setLogName("WebSocket Client");
 	log.setLogFormat("%H:%M:%S %d.%m.%Y");
 
 	ws.setMode(
-		(uint8_t) wsCli_t::flag_t::NOTSTOP |
-		(uint8_t) wsCli_t::flag_t::WAITMESS |
-		(uint8_t) wsCli_t::flag_t::VERIFYSSL |
-		(uint8_t) wsCli_t::flag_t::KEEPALIVE
+		(uint8_t) client::ws_t::flag_t::NOTSTOP |
+		(uint8_t) client::ws_t::flag_t::WAITMESS |
+		(uint8_t) client::ws_t::flag_t::VERIFYSSL |
+		(uint8_t) client::ws_t::flag_t::KEEPALIVE
 	);
 
 	ws.setCrypt("PASS");
@@ -206,22 +206,22 @@ int main(int argc, char * argv[]) noexcept {
 
 	ws.init("ws://127.0.0.1:2222", http_t::compress_t::DEFLATE);
 
-	ws.on(&log, [](const wsCli_t::mode_t mode, wsCli_t * ws, void * ctx){
+	ws.on(&log, [](const client::ws_t::mode_t mode, client::ws_t * ws, void * ctx){
 		log_t * log = reinterpret_cast <log_t *> (ctx);
-		log->print("%s server", log_t::flag_t::INFO, (mode == wsCli_t::mode_t::CONNECT ? "Start" : "Stop"));
+		log->print("%s server", log_t::flag_t::INFO, (mode == client::ws_t::mode_t::CONNECT ? "Start" : "Stop"));
 
-		if(mode == wsCli_t::mode_t::CONNECT){
+		if(mode == client::ws_t::mode_t::CONNECT){
 			const string query = "{\"text\":\"Hello World!\"}";
 			ws->send(query.data(), query.size());
 		}
 	});
 
-	ws.on(&log, [](const u_short code, const string & mess, wsCli_t * ws, void * ctx){
+	ws.on(&log, [](const u_short code, const string & mess, client::ws_t * ws, void * ctx){
 		log_t * log = reinterpret_cast <log_t *> (ctx);
 		log->print("%s [%u]", log_t::flag_t::CRITICAL, mess.c_str(), code);
 	});
 
-	ws.on(&log, [](const vector <char> & buffer, const bool utf8, wsCli_t * ws, void * ctx){
+	ws.on(&log, [](const vector <char> & buffer, const bool utf8, client::ws_t * ws, void * ctx){
 		if(utf8 && !buffer.empty()){
 			log_t * log = reinterpret_cast <log_t *> (ctx);
 			log->print("message: %s [%s]", log_t::flag_t::INFO, string(buffer.begin(), buffer.end()).c_str(), ws->getSub().c_str());
@@ -245,8 +245,8 @@ using namespace awh;
 int main(int argc, char * argv[]) noexcept {
 	fmk_t fmk;
 	log_t log(&fmk);
-	coreSrv_t core(&fmk, &log);
-	wsSrv_t ws(&core, &fmk, &log);
+	server::core_t core(&fmk, &log);
+	server::ws_t ws(&core, &fmk, &log);
 
 	log.setLogName("WebSocket Server");
 	log.setLogFormat("%H:%M:%S %d.%m.%Y");
@@ -275,24 +275,24 @@ int main(int argc, char * argv[]) noexcept {
 	});
 	*/
 
-	ws.on(&log, [](const string & ip, const string & mac, wsSrv_t * ws, void * ctx) -> bool {
+	ws.on(&log, [](const string & ip, const string & mac, server::ws_t * ws, void * ctx) -> bool {
 		log_t * log = reinterpret_cast <log_t *> (ctx);
 		log->print("ACCEPT: ip = %s, mac = %s", log_t::flag_t::INFO, ip.c_str(), mac.c_str());
 
 		return true;
 	});
 
-	ws.on(&log, [](const size_t aid, const wsSrv_t::mode_t mode, wsSrv_t * ws, void * ctx) noexcept {
+	ws.on(&log, [](const size_t aid, const server::ws_t::mode_t mode, server::ws_t * ws, void * ctx) noexcept {
 		log_t * log = reinterpret_cast <log_t *> (ctx);
-		log->print("%s client", log_t::flag_t::INFO, (mode == wsSrv_t::mode_t::CONNECT ? "Connect" : "Disconnect"));
+		log->print("%s client", log_t::flag_t::INFO, (mode == server::ws_t::mode_t::CONNECT ? "Connect" : "Disconnect"));
 	});
 
-	ws.on(&log, [](const size_t aid, const u_short code, const string & mess, wsSrv_t * ws, void * ctx) noexcept {
+	ws.on(&log, [](const size_t aid, const u_short code, const string & mess, server::ws_t * ws, void * ctx) noexcept {
 		log_t * log = reinterpret_cast <log_t *> (ctx);
 		log->print("%s [%u]", log_t::flag_t::CRITICAL, mess.c_str(), code);
 	});
 
-	ws.on(&log, [](const size_t aid, const vector <char> & buffer, const bool utf8, wsSrv_t * ws, void * ctx) noexcept {
+	ws.on(&log, [](const size_t aid, const vector <char> & buffer, const bool utf8, server::ws_t * ws, void * ctx) noexcept {
 		if(utf8 && !buffer.empty()){
 			log_t * log = reinterpret_cast <log_t *> (ctx);
 			log->print("message: %s [%s]", log_t::flag_t::INFO, string(buffer.begin(), buffer.end()).c_str(), ws->getSub(aid).c_str());
@@ -318,7 +318,7 @@ using namespace awh;
 int main(int argc, char * argv[]) noexcept {
 	fmk_t fmk(true);
 	log_t log(&fmk);
-	proxySrv_t proxy(&fmk, &log);
+	server::proxy_t proxy(&fmk, &log);
 
 	log.setLogName("Proxy Server");
 	log.setLogFormat("%H:%M:%S %d.%m.%Y");
@@ -326,7 +326,7 @@ int main(int argc, char * argv[]) noexcept {
 	proxy.setRealm("ANYKS");
 	proxy.setOpaque("keySession");
 	proxy.setWaitTimeDetect(30, 15);
-	proxy.setMode((uint8_t) proxySrv_t::flag_t::WAITMESS);
+	proxy.setMode((uint8_t) server::proxy_t::flag_t::WAITMESS);
 	proxy.setAuthType(auth_t::type_t::DIGEST, auth_t::hash_t::MD5);
 
 	proxy.init(2222, "127.0.0.1", http_t::compress_t::GZIP);
@@ -347,21 +347,21 @@ int main(int argc, char * argv[]) noexcept {
 	});
 	*/
 
-	proxy.on(&log, [](const string & ip, const string & mac, proxySrv_t * proxy, void * ctx) -> bool {
+	proxy.on(&log, [](const string & ip, const string & mac, server::proxy_t * proxy, void * ctx) -> bool {
 		log_t * log = reinterpret_cast <log_t *> (ctx);
 		log->print("ACCEPT: ip = %s, mac = %s", log_t::flag_t::INFO, ip.c_str(), mac.c_str());
 
 		return true;
 	});
 
-	proxy.on(&log, [](const size_t aid, const proxySrv_t::mode_t mode, proxySrv_t * proxy, void * ctx) noexcept {
+	proxy.on(&log, [](const size_t aid, const server::proxy_t::mode_t mode, server::proxy_t * proxy, void * ctx) noexcept {
 		log_t * log = reinterpret_cast <log_t *> (ctx);
-		log->print("%s client", log_t::flag_t::INFO, (mode == proxySrv_t::mode_t::CONNECT ? "Connect" : "Disconnect"));
+		log->print("%s client", log_t::flag_t::INFO, (mode == server::proxy_t::mode_t::CONNECT ? "Connect" : "Disconnect"));
 	});
 
-	proxy.on(&log, [](const size_t aid, const proxySrv_t::event_t event, http_t * http, proxySrv_t * proxy, void * ctx) -> bool {
+	proxy.on(&log, [](const size_t aid, const server::proxy_t::event_t event, http_t * http, server::proxy_t * proxy, void * ctx) -> bool {
 		log_t * log = reinterpret_cast <log_t *> (ctx);
-		log->print("%s client", log_t::flag_t::INFO, (event == proxySrv_t::event_t::RESPONSE ? "Response" : "Request"));
+		log->print("%s client", log_t::flag_t::INFO, (event == server::proxy_t::event_t::RESPONSE ? "Response" : "Request"));
 
 		return true;
 	});
@@ -379,18 +379,19 @@ int main(int argc, char * argv[]) noexcept {
 
 using namespace std;
 using namespace awh;
+using namespace server;
 
 int main(int argc, char * argv[]) noexcept {
 	fmk_t fmk(true);
 	log_t log(&fmk);
-	proxySocks5Srv_t proxy(&fmk, &log);
+	proxySocks5_t proxy(&fmk, &log);
 
 	log.setLogName("Proxy Socks5 Server");
 	log.setLogFormat("%H:%M:%S %d.%m.%Y");
 
 	proxy.init(2222, "127.0.0.1");
 	proxy.setWaitTimeDetect(30, 15);
-	proxy.setMode((uint8_t) proxySocks5Srv_t::flag_t::WAITMESS);
+	proxy.setMode((uint8_t) proxySocks5_t::flag_t::WAITMESS);
 
 	proxy.on(&log, [](const string & user, const string & password, void * ctx) -> bool {
 		log_t * log = reinterpret_cast <log_t *> (ctx);
@@ -399,16 +400,16 @@ int main(int argc, char * argv[]) noexcept {
 		return true;
 	});
 
-	proxy.on(&log, [](const string & ip, const string & mac, proxySocks5Srv_t * proxy, void * ctx) -> bool {
+	proxy.on(&log, [](const string & ip, const string & mac, proxySocks5_t * proxy, void * ctx) -> bool {
 		log_t * log = reinterpret_cast <log_t *> (ctx);
 		log->print("ACCEPT: ip = %s, mac = %s", log_t::flag_t::INFO, ip.c_str(), mac.c_str());
 
 		return true;
 	});
 
-	proxy.on(&log, [](const size_t aid, const proxySocks5Srv_t::mode_t mode, proxySocks5Srv_t * proxy, void * ctx) noexcept {
+	proxy.on(&log, [](const size_t aid, const proxySocks5_t::mode_t mode, proxySocks5_t * proxy, void * ctx) noexcept {
 		log_t * log = reinterpret_cast <log_t *> (ctx);
-		log->print("%s client", log_t::flag_t::INFO, (mode == proxySocks5Srv_t::mode_t::CONNECT ? "Connect" : "Disconnect"));
+		log->print("%s client", log_t::flag_t::INFO, (mode == proxySocks5_t::mode_t::CONNECT ? "Connect" : "Disconnect"));
 	});
 
 	proxy.start();

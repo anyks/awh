@@ -14,7 +14,7 @@
  * setUri Метод установки параметров HTTP запроса
  * @param uri строка параметров HTTP запроса
  */
-void awh::AuthClient::setUri(const string & uri) noexcept {
+void awh::client::Auth::setUri(const string & uri) noexcept {
 	// Если параметры HTTP запроса переданы
 	if(!uri.empty()) this->digest.uri = uri;
 }
@@ -22,7 +22,7 @@ void awh::AuthClient::setUri(const string & uri) noexcept {
  * setUser Метод установки логина пользователя
  * @param user логин пользователя для установки
  */
-void awh::AuthClient::setUser(const string & user) noexcept {
+void awh::client::Auth::setUser(const string & user) noexcept {
 	// Устанавливаем пользователя
 	this->user = user;
 }
@@ -30,7 +30,7 @@ void awh::AuthClient::setUser(const string & user) noexcept {
  * setPass Метод установки пароля пользователя
  * @param pass пароль пользователя для установки
  */
-void awh::AuthClient::setPass(const string & pass) noexcept {
+void awh::client::Auth::setPass(const string & pass) noexcept {
 	// Устанавливаем пароль пользвоателя
 	this->pass = pass;
 }
@@ -38,7 +38,7 @@ void awh::AuthClient::setPass(const string & pass) noexcept {
  * setHeader Метод установки параметров авторизации из заголовков
  * @param header заголовок HTTP с параметрами авторизации
  */
-void awh::AuthClient::setHeader(const string & header) noexcept {
+void awh::client::Auth::setHeader(const string & header) noexcept {
 	// Если заголовок передан
 	if(!header.empty() && (this->fmk != nullptr)){
 		// Выполняем поиск авторизации
@@ -120,7 +120,7 @@ void awh::AuthClient::setHeader(const string & header) noexcept {
  * @param mode   режим вывода только значения заголовка
  * @return       строка авторизации
  */
-const string awh::AuthClient::getHeader(const string & method, const bool mode) noexcept {
+const string awh::client::Auth::getHeader(const string & method, const bool mode) noexcept {
 	// Результат работы функции
 	string result = "";
 	// Если фреймворк установлен

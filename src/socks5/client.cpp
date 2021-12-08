@@ -13,7 +13,7 @@
 /**
  * reqCmd Метод получения бинарного буфера запроса
  */
-void awh::Socks5Client::reqCmd() const noexcept {
+void awh::client::Socks5::reqCmd() const noexcept {
 	// Очищаем бинарный буфер данных
 	this->buffer.clear();
 	// Если IP адрес или доменное имя установлены
@@ -62,7 +62,7 @@ void awh::Socks5Client::reqCmd() const noexcept {
 /**
  * reqAuth Метод получения бинарного буфера авторизации на сервере
  */
-void awh::Socks5Client::reqAuth() const noexcept {
+void awh::client::Socks5::reqAuth() const noexcept {
 	// Очищаем бинарный буфер данных
 	this->buffer.clear();
 	// Если логин и пароль переданы
@@ -80,7 +80,7 @@ void awh::Socks5Client::reqAuth() const noexcept {
 /**
  * reqMethods Метод получения бинарного буфера опроса методов подключения
  */
-void awh::Socks5Client::reqMethods() const noexcept {
+void awh::client::Socks5::reqMethods() const noexcept {
 	// Очищаем бинарный буфер данных
 	this->buffer.clear();
 	// Увеличиваем память на 4 октета
@@ -99,7 +99,7 @@ void awh::Socks5Client::reqMethods() const noexcept {
  * @param buffer бинарный буфер входящих данных
  * @param size   размер бинарного буфера входящих данных
  */
-void awh::Socks5Client::parse(const char * buffer, const size_t size) noexcept {
+void awh::client::Socks5::parse(const char * buffer, const size_t size) noexcept {
 	// Очищаем буфер данных
 	this->buffer.clear();
 	// Если данные буфера переданы
@@ -297,7 +297,7 @@ void awh::Socks5Client::parse(const char * buffer, const size_t size) noexcept {
 /**
  * reset Метод сброса собранных данных
  */
-void awh::Socks5Client::reset() noexcept {
+void awh::client::Socks5::reset() noexcept {
 	// Выполняем сброс статуса ошибки
 	this->code = 0x00;
 	// Выполняем очистку буфера данных
@@ -308,7 +308,7 @@ void awh::Socks5Client::reset() noexcept {
 /**
  * clearUser Метод очистки списка пользователей
  */
-void awh::Socks5Client::clearUser() noexcept {
+void awh::client::Socks5::clearUser() noexcept {
 	// Выполняем очистку пользователя
 	this->login.clear();
 	// Выполняем очистку пароля пользователя
@@ -319,7 +319,7 @@ void awh::Socks5Client::clearUser() noexcept {
  * @param login    логин пользователя для авторизации на сервере
  * @param password пароль пользователя для авторизации на сервере
  */
-void awh::Socks5Client::setUser(const string & login, const string & password) noexcept {
+void awh::client::Socks5::setUser(const string & login, const string & password) noexcept {
 	// Устанавливаем данные пользователя
 	this->login = login;
 	// Устанавливаем пароль пользователя

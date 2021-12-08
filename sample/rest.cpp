@@ -32,9 +32,9 @@ int main(int argc, char * argv[]) noexcept {
 	// Создаём объект URI
 	uri_t uri(&fmk, &nwk);
 	// Создаём биндинг
-	coreCli_t core(&fmk, &log);
+	client::core_t core(&fmk, &log);
 	// Создаём объект REST запроса
-	restCli_t rest(&core, &fmk, &log);
+	client::rest_t rest(&core, &fmk, &log);
 	// Устанавливаем название сервиса
 	log.setLogName("REST Client");
 	// Устанавливаем формат времени
@@ -45,10 +45,10 @@ int main(int argc, char * argv[]) noexcept {
 	 * 3. Устанавливаем валидацию SSL сертификата
 	 */
 	rest.setMode(
-		(uint8_t) restCli_t::flag_t::DEFER |
-		// (uint8_t) restCli_t::flag_t::NOINFO |
-		(uint8_t) restCli_t::flag_t::WAITMESS |
-		(uint8_t) restCli_t::flag_t::VERIFYSSL
+		(uint8_t) client::rest_t::flag_t::DEFER |
+		// (uint8_t) client::rest_t::flag_t::NOINFO |
+		(uint8_t) client::rest_t::flag_t::WAITMESS |
+		(uint8_t) client::rest_t::flag_t::VERIFYSSL
 	);
 	// Устанавливаем адрес сертификата
 	core.setCA("./ca/cert.pem");
@@ -74,7 +74,7 @@ int main(int argc, char * argv[]) noexcept {
 	// uri_t::url_t url = uri.parseUrl("https://testnet.binance.vision/api/v3/exchangeInfo");
 	uri_t::url_t url = uri.parseUrl("https://api.coingecko.com/api/v3/coins/list?include_platform=true");
 	// Подписываемся на событие коннекта и дисконнекта клиента
-	rest.on(&log, [](const bool mode, restCli_t * web, void * ctx){
+	rest.on(&log, [](const bool mode, client::rest_t * web, void * ctx){
 		// Получаем объект логирования
 		log_t * log = reinterpret_cast <log_t *> (ctx);
 		// Выводим информацию в лог
@@ -82,7 +82,7 @@ int main(int argc, char * argv[]) noexcept {
 	});
 	/*
 	// Подписываемся на событие получения сообщения
-	rest.on(&log, [](const restCli_t::res_t & res, restCli_t * web, void * ctx){
+	rest.on(&log, [](const client::rest_t::res_t & res, client::rest_t * web, void * ctx){
 		// Получаем объект логирования
 		log_t * log = reinterpret_cast <log_t *> (ctx);
 		// Переходим по всем заголовкам
@@ -103,9 +103,9 @@ int main(int argc, char * argv[]) noexcept {
 	*/
 	/*
 	// Список запросов
-	vector <restCli_t::req_t> request;
+	vector <client::rest_t::req_t> request;
 	// Создаём объект запроса
-	restCli_t::req_t req1, req2, req3;
+	client::rest_t::req_t req1, req2, req3;
 	// Устанавливаем URL адрес запроса
 	req1.url = uri.parseUrl("http://127.0.0.1:2222/action/1/?test=12&goga=124");
 	req2.url = uri.parseUrl("http://127.0.0.1:2222/action/2/?test=13&goga=125");

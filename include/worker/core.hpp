@@ -31,6 +31,30 @@ using namespace std;
  * awh пространство имён
  */
 namespace awh {
+	/*
+	 * client клиентское пространство имён
+	 */
+	namespace client {
+		/**
+		 * Core Прототип класса ядра биндинга TCP/IP
+		 */
+		class Core;
+	};
+	/*
+	 * server серверное пространство имён
+	 */
+	namespace server {
+		/**
+		 * Core Прототип класса ядра биндинга TCP/IP
+		 */
+		class Core;
+	};
+}
+
+/*
+ * awh пространство имён
+ */
+namespace awh {
 	/**
 	 * Core Прототип класса ядра биндинга TCP/IP
 	 */
@@ -42,10 +66,10 @@ namespace awh {
 		private:
 			// Core Устанавливаем дружбу с классом ядра
 			friend class Core;
-			// CoreClient Устанавливаем дружбу с клиентским классом ядра
-			friend class CoreClient;
-			// CoreServer Устанавливаем дружбу с серверным классом ядра
-			friend class CoreServer;
+			// Client Core Устанавливаем дружбу с клиентским классом ядра
+			friend class client::Core;
+			// Server Core Устанавливаем дружбу с серверным классом ядра
+			friend class server::Core;
 		public:
 			/**
 			 * Mark Структура маркера на размер детектируемых байт
@@ -70,10 +94,10 @@ namespace awh {
 					friend class Core;
 					// Worker Устанавливаем дружбу с родительским объектом
 					friend class Worker;
-					// CoreClient Устанавливаем дружбу с клиентским классом ядра
-					friend class CoreClient;
-					// CoreServer Устанавливаем дружбу с серверным классом ядра
-					friend class CoreServer;
+					// Client Core Устанавливаем дружбу с клиентским классом ядра
+					friend class client::Core;
+					// Server Core Устанавливаем дружбу с серверным классом ядра
+					friend class server::Core;
 				private:
 					// Маркера размера детектируемых байт на чтение
 					mark_t markRead;

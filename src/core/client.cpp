@@ -15,11 +15,11 @@
  * @param ip  полученный IP адрес
  * @param ctx передаваемый контекст
  */
-void awh::CoreClient::resolver(const string ip, void * ctx) noexcept {
+void awh::client::Core::resolver(const string ip, void * ctx) noexcept {
 	// Если передаваемый контекст передан
 	if(ctx != nullptr){
 		// Получаем объект воркера
-		workCli_t * wrk = reinterpret_cast <workCli_t *> (ctx);
+		client::worker_t * wrk = reinterpret_cast <client::worker_t *> (ctx);
 		// Если IP адрес получен
 		if(!ip.empty()){
 			// Если прокси-сервер активен
@@ -29,19 +29,19 @@ void awh::CoreClient::resolver(const string ip, void * ctx) noexcept {
 			// Запоминаем полученный IP адрес
 			else wrk->url.ip = ip;
 			// Получаем объект ядра подключения
-			coreCli_t * core = (coreCli_t *) const_cast <core_t *> (wrk->core);
+			core_t * core = (core_t *) const_cast <awh::core_t *> (wrk->core);
 			// Определяем режим работы клиента
 			switch((uint8_t) core->mode){
 				// Если режим работы клиента - это подключение
-				case (uint8_t) core_t::mode_t::CONNECT:   core->connect(wrk->wid);   break;
+				case (uint8_t) awh::core_t::mode_t::CONNECT:   core->connect(wrk->wid);   break;
 				// Если режим работы клиента - это переподключение
-				case (uint8_t) core_t::mode_t::RECONNECT: core->reconnect(wrk->wid); break;
+				case (uint8_t) awh::core_t::mode_t::RECONNECT: core->reconnect(wrk->wid); break;
 			}
 			// Выходим из функции
 			return;
 		}
 		// Выводим функцию обратного вызова
-		if(wrk->disconnectFn != nullptr) wrk->disconnectFn(0, wrk->wid, const_cast <core_t *> (wrk->core), wrk->ctx);
+		if(wrk->disconnectFn != nullptr) wrk->disconnectFn(0, wrk->wid, const_cast <awh::core_t *> (wrk->core), wrk->ctx);
 	}
 }
 /**
@@ -49,15 +49,15 @@ void awh::CoreClient::resolver(const string ip, void * ctx) noexcept {
  * @param bev буфер события
  * @param ctx передаваемый контекст
  */
-void awh::CoreClient::read(struct bufferevent * bev, void * ctx) noexcept {
+void awh::client::Core::read(struct bufferevent * bev, void * ctx) noexcept {
 	// Если подключение не передано
 	if((bev != nullptr) && (ctx != nullptr)){
 		// Получаем объект подключения
-		worker_t::adj_t * adj = reinterpret_cast <worker_t::adj_t *> (ctx);
+		awh::worker_t::adj_t * adj = reinterpret_cast <awh::worker_t::adj_t *> (ctx);
 		// Получаем объект подключения
-		workCli_t * wrk = (workCli_t *) const_cast <worker_t *> (adj->parent);
+		client::worker_t * wrk = (client::worker_t *) const_cast <awh::worker_t *> (adj->parent);
 		// Получаем объект ядра клиента
-		const coreCli_t * core = reinterpret_cast <const coreCli_t *> (wrk->core);
+		const core_t * core = reinterpret_cast <const core_t *> (wrk->core);
 		// Если подключение ещё существует
 		if(core->adjutants.count(adj->aid) > 0){
 			// Получаем буферы входящих данных
@@ -79,11 +79,11 @@ void awh::CoreClient::read(struct bufferevent * bev, void * ctx) noexcept {
 						// Если функция обратного вызова для вывода записи существует
 						if(wrk->readProxyFn != nullptr)
 							// Выводим функцию обратного вызова
-							wrk->readProxyFn(buffer, size, adj->aid, wrk->wid, const_cast <core_t *> (wrk->core), wrk->ctx);
+							wrk->readProxyFn(buffer, size, adj->aid, wrk->wid, const_cast <awh::core_t *> (wrk->core), wrk->ctx);
 					// Если прокси-сервер не используется
 					} else if(wrk->readFn != nullptr)
 						// Выводим функцию обратного вызова
-						wrk->readFn(buffer, size, adj->aid, wrk->wid, const_cast <core_t *> (wrk->core), wrk->ctx);
+						wrk->readFn(buffer, size, adj->aid, wrk->wid, const_cast <awh::core_t *> (wrk->core), wrk->ctx);
 					// Удаляем выделенную память буфера
 					delete [] buffer;
 				// Если возникает ошибка
@@ -102,15 +102,15 @@ void awh::CoreClient::read(struct bufferevent * bev, void * ctx) noexcept {
  * @param bev буфер события
  * @param ctx передаваемый контекст
  */
-void awh::CoreClient::write(struct bufferevent * bev, void * ctx) noexcept {
+void awh::client::Core::write(struct bufferevent * bev, void * ctx) noexcept {
 	// Если подключение не передано
 	if((bev != nullptr) && (ctx != nullptr)){
 		// Получаем объект подключения
-		worker_t::adj_t * adj = reinterpret_cast <worker_t::adj_t *> (ctx);
+		awh::worker_t::adj_t * adj = reinterpret_cast <awh::worker_t::adj_t *> (ctx);
 		// Получаем объект подключения
-		workCli_t * wrk = (workCli_t *) const_cast <worker_t *> (adj->parent);
+		client::worker_t * wrk = (client::worker_t *) const_cast <awh::worker_t *> (adj->parent);
 		// Получаем объект ядра клиента
-		const coreCli_t * core = reinterpret_cast <const coreCli_t *> (wrk->core);
+		const core_t * core = reinterpret_cast <const core_t *> (wrk->core);
 		// Если подключение ещё существует
 		if(core->adjutants.count(adj->aid) > 0){
 			// Получаем буферы исходящих данных
@@ -132,11 +132,11 @@ void awh::CoreClient::write(struct bufferevent * bev, void * ctx) noexcept {
 						// Если функция обратного вызова для вывода записи существует
 						if(wrk->writeProxyFn != nullptr)
 							// Выводим функцию обратного вызова
-							wrk->writeProxyFn(buffer, size, adj->aid, wrk->wid, const_cast <core_t *> (wrk->core), wrk->ctx);
+							wrk->writeProxyFn(buffer, size, adj->aid, wrk->wid, const_cast <awh::core_t *> (wrk->core), wrk->ctx);
 					// Если прокси-сервер не используется
 					} else if(wrk->writeFn != nullptr)
 						// Выводим функцию обратного вызова
-						wrk->writeFn(buffer, size, adj->aid, wrk->wid, const_cast <core_t *> (wrk->core), wrk->ctx);
+						wrk->writeFn(buffer, size, adj->aid, wrk->wid, const_cast <awh::core_t *> (wrk->core), wrk->ctx);
 					// Выполняем удаление буфера
 					delete [] buffer;
 				// Если возникает ошибка
@@ -148,11 +148,11 @@ void awh::CoreClient::write(struct bufferevent * bev, void * ctx) noexcept {
 						// Если функция обратного вызова для вывода записи существует
 						if(wrk->writeProxyFn != nullptr)
 							// Выводим функцию обратного вызова
-							wrk->writeProxyFn(nullptr, size, adj->aid, wrk->wid, const_cast <core_t *> (wrk->core), wrk->ctx);
+							wrk->writeProxyFn(nullptr, size, adj->aid, wrk->wid, const_cast <awh::core_t *> (wrk->core), wrk->ctx);
 					// Если прокси-сервер не используется
 					} else if(wrk->writeFn != nullptr)
 						// Выводим пустое сообщение
-						wrk->writeFn(nullptr, size, adj->aid, wrk->wid, const_cast <core_t *> (wrk->core), wrk->ctx);
+						wrk->writeFn(nullptr, size, adj->aid, wrk->wid, const_cast <awh::core_t *> (wrk->core), wrk->ctx);
 				}
 			}
 		}
@@ -164,17 +164,17 @@ void awh::CoreClient::write(struct bufferevent * bev, void * ctx) noexcept {
  * @param events произошедшее событие
  * @param ctx    передаваемый контекст
  */
-void awh::CoreClient::event(struct bufferevent * bev, const short events, void * ctx) noexcept {
+void awh::client::Core::event(struct bufferevent * bev, const short events, void * ctx) noexcept {
 	// Если подключение не передано
 	if((ctx != nullptr) && (bev != nullptr)){
 		// Получаем объект подключения
-		worker_t::adj_t * adj = reinterpret_cast <worker_t::adj_t *> (ctx);
+		awh::worker_t::adj_t * adj = reinterpret_cast <awh::worker_t::adj_t *> (ctx);
 		// Получаем объект подключения
-		workCli_t * wrk = (workCli_t *) const_cast <worker_t *> (adj->parent);
+		client::worker_t * wrk = (client::worker_t *) const_cast <awh::worker_t *> (adj->parent);
 		// Если подключение ещё существует
 		if((adj->fmk != nullptr) && (wrk->core != nullptr)){
 			// Получаем объект ядра клиента
-			const coreCli_t * core = reinterpret_cast <const coreCli_t *> (wrk->core);
+			const core_t * core = reinterpret_cast <const core_t *> (wrk->core);
 			// Если список адъютантов не пустой и адъютант найден
 		 	if(!core->adjutants.empty() && (core->adjutants.count(adj->aid) > 0)){
 				// Получаем URL параметры запроса
@@ -190,9 +190,9 @@ void awh::CoreClient::event(struct bufferevent * bev, const short events, void *
 					// Если подключение производится через, прокси-сервер
 					if(wrk->isProxy()){
 						// Выполняем функцию обратного вызова для прокси-сервера
-						if(wrk->connectProxyFn != nullptr) wrk->connectProxyFn(adj->aid, wrk->wid, const_cast <core_t *> (wrk->core), wrk->ctx);
+						if(wrk->connectProxyFn != nullptr) wrk->connectProxyFn(adj->aid, wrk->wid, const_cast <awh::core_t *> (wrk->core), wrk->ctx);
 					// Выполняем функцию обратного вызова
-					} else if(wrk->connectFn != nullptr) wrk->connectFn(adj->aid, wrk->wid, const_cast <core_t *> (wrk->core), wrk->ctx);
+					} else if(wrk->connectFn != nullptr) wrk->connectFn(adj->aid, wrk->wid, const_cast <awh::core_t *> (wrk->core), wrk->ctx);
 					// Если флаг ожидания входящих сообщений, активирован
 					if(wrk->wait){
 						// Устанавливаем таймаут ожидания поступления данных
@@ -221,7 +221,7 @@ void awh::CoreClient::event(struct bufferevent * bev, const short events, void *
 			// Запрещаем чтение запись данных серверу
 			bufferevent_disable(bev, EV_WRITE | EV_READ);
 			// Выполняем отключение от сервера
-			const_cast <coreCli_t *> (core)->close(adj->aid);
+			const_cast <core_t *> (core)->close(adj->aid);
 		}
 	}
 }
@@ -229,23 +229,23 @@ void awh::CoreClient::event(struct bufferevent * bev, const short events, void *
  * tuning Метод тюннинга буфера событий
  * @param aid идентификатор адъютанта
  */
-void awh::CoreClient::tuning(const size_t aid) noexcept {
+void awh::client::Core::tuning(const size_t aid) noexcept {
 	// Выполняем извлечение адъютанта
 	auto it = this->adjutants.find(aid);
 	// Если адъютант получен
 	if(it != this->adjutants.end()){
 		// Получаем объект воркера
-		workCli_t * wrk = (workCli_t *) const_cast <worker_t *> (it->second->parent);
+		client::worker_t * wrk = (client::worker_t *) const_cast <awh::worker_t *> (it->second->parent);
 		// Устанавливаем количество попыток
-		const_cast <worker_t::adj_t *> (it->second)->attempt = wrk->attempt;
+		const_cast <awh::worker_t::adj_t *> (it->second)->attempt = wrk->attempt;
 		// Устанавливаем время ожидания поступления данных
-		const_cast <worker_t::adj_t *> (it->second)->timeRead = wrk->timeRead;
+		const_cast <awh::worker_t::adj_t *> (it->second)->timeRead = wrk->timeRead;
 		// Устанавливаем время ожидания записи данных
-		const_cast <worker_t::adj_t *> (it->second)->timeWrite = wrk->timeWrite;
+		const_cast <awh::worker_t::adj_t *> (it->second)->timeWrite = wrk->timeWrite;
 		// Устанавливаем размер детектируемых байт на чтение
-		const_cast <worker_t::adj_t *> (it->second)->markRead = wrk->markRead;
+		const_cast <awh::worker_t::adj_t *> (it->second)->markRead = wrk->markRead;
 		// Устанавливаем размер детектируемых байт на запись
-		const_cast <worker_t::adj_t *> (it->second)->markWrite = wrk->markWrite;
+		const_cast <awh::worker_t::adj_t *> (it->second)->markWrite = wrk->markWrite;
 		// Устанавливаем коллбеки
 		bufferevent_setcb(it->second->bev, &read, &write, &event, (void *) it->second);
 		// Очищаем буферы событий при завершении работы
@@ -265,7 +265,7 @@ void awh::CoreClient::tuning(const size_t aid) noexcept {
  * connect Метод создания подключения к удаленному серверу
  * @param wid идентификатор воркера
  */
-void awh::CoreClient::connect(const size_t wid) noexcept {
+void awh::client::Core::connect(const size_t wid) noexcept {
 	// Если объект фреймворка существует
 	if((this->fmk != nullptr) && (wid > 0)){
 		// Выполняем поиск воркера
@@ -277,9 +277,9 @@ void awh::CoreClient::connect(const size_t wid) noexcept {
 			// Объект подключения
 			struct sockaddr * sin = nullptr;
 			// Получаем объект воркера
-			workCli_t * wrk = (workCli_t *) const_cast <worker_t *> (it->second);
+			client::worker_t * wrk = (client::worker_t *) const_cast <awh::worker_t *> (it->second);
 			// Получаем объект ядра клиента
-			const coreCli_t * core = reinterpret_cast <const coreCli_t *> (wrk->core);
+			const core_t * core = reinterpret_cast <const core_t *> (wrk->core);
 			// Получаем URL параметры запроса
 			const uri_t::url_t & url = (wrk->isProxy() ? wrk->proxy.url : wrk->url);
 			// Получаем сокет для подключения к серверу
@@ -287,7 +287,7 @@ void awh::CoreClient::connect(const size_t wid) noexcept {
 			// Если сокет создан удачно
 			if(socket.fd > -1){
 				// Создаём бъект адъютанта
-				worker_t::adj_t adj(wrk, this->fmk, this->log);
+				awh::worker_t::adj_t adj(wrk, this->fmk, this->log);
 				// Выполняем получение контекста сертификата
 				adj.ssl = this->ssl.init(url);
 				// Устанавливаем первоначальное значение
@@ -399,7 +399,7 @@ void awh::CoreClient::connect(const size_t wid) noexcept {
 /**
  * closeAll Метод отключения всех воркеров
  */
-void awh::CoreClient::closeAll() noexcept {
+void awh::client::Core::closeAll() noexcept {
 	// Если список подключений активен
 	if(!this->workers.empty()){
 		// Переходим по всему списку подключений
@@ -407,7 +407,7 @@ void awh::CoreClient::closeAll() noexcept {
 			// Если в воркере есть подключённые клиенты
 			if(!worker.second->adjutants.empty()){
 				// Получаем объект воркера
-				workCli_t * wrk = (workCli_t *) const_cast <worker_t *> (worker.second);
+				client::worker_t * wrk = (client::worker_t *) const_cast <awh::worker_t *> (worker.second);
 				// Переходим по всему списку адъютанта
 				for(auto it = wrk->adjutants.begin(); it != wrk->adjutants.end();){
 					// Выполняем очистку буфера событий
@@ -431,7 +431,7 @@ void awh::CoreClient::closeAll() noexcept {
  * run Метод запуска сервера воркером
  * @param wid идентификатор воркера
  */
-void awh::CoreClient::run(const size_t wid) noexcept {
+void awh::client::Core::run(const size_t wid) noexcept {
 	// Блокируем переданный идентификатор
 	(void) wid;
 }
@@ -439,7 +439,7 @@ void awh::CoreClient::run(const size_t wid) noexcept {
  * open Метод открытия подключения воркером
  * @param wid идентификатор воркера
  */
-void awh::CoreClient::open(const size_t wid) noexcept {
+void awh::client::Core::open(const size_t wid) noexcept {
 	// Если идентификатор воркера передан
 	if(wid > 0){
 		// Выполняем поиск воркера
@@ -447,11 +447,11 @@ void awh::CoreClient::open(const size_t wid) noexcept {
 		// Если воркер найден
 		if(it != this->workers.end()){
 			// Получаем объект воркера
-			workCli_t * wrk = (workCli_t *) const_cast <worker_t *> (it->second);
+			client::worker_t * wrk = (client::worker_t *) const_cast <awh::worker_t *> (it->second);
 			// Если параметры URL запроса переданы
 			if(!wrk->url.empty()){
 				// Устанавливаем режим торговли
-				this->mode = core_t::mode_t::CONNECT;
+				this->mode = awh::core_t::mode_t::CONNECT;
 				// Получаем URL параметры запроса
 				const uri_t::url_t & url = (wrk->isProxy() ? wrk->proxy.url : wrk->url);
 				// Если IP адрес не получен
@@ -473,17 +473,17 @@ void awh::CoreClient::open(const size_t wid) noexcept {
  * close Метод закрытия подключения воркера
  * @param aid идентификатор адъютанта
  */
-void awh::CoreClient::close(const size_t aid) noexcept {
+void awh::client::Core::close(const size_t aid) noexcept {
 	// Выполняем извлечение адъютанта
 	auto it = this->adjutants.find(aid);
 	// Если адъютант получен
 	if(it != this->adjutants.end()){
 		// Получаем объект адъютанта
-		worker_t::adj_t * adj = const_cast <worker_t::adj_t *> (it->second);
+		awh::worker_t::adj_t * adj = const_cast <awh::worker_t::adj_t *> (it->second);
 		// Получаем объект воркера
-		workCli_t * wrk = (workCli_t *) const_cast <worker_t *> (adj->parent);
+		client::worker_t * wrk = (client::worker_t *) const_cast <awh::worker_t *> (adj->parent);
 		// Получаем объект ядра клиента
-		const coreCli_t * core = reinterpret_cast <const coreCli_t *> (wrk->core);
+		const core_t * core = reinterpret_cast <const core_t *> (wrk->core);
 		// Если событие сервера существует
 		if(adj->bev != nullptr){
 			// Выполняем очистку буфера событий
@@ -502,7 +502,7 @@ void awh::CoreClient::close(const size_t aid) noexcept {
 		// Удаляем адъютанта из списка подключений
 		this->adjutants.erase(aid);
 		// Выполняем сброс флага
-		this->mode = core_t::mode_t::DISCONNECT;
+		this->mode = awh::core_t::mode_t::DISCONNECT;
 		// Если нужно выполнить автоматическое переподключение
 		if(wrk->alive) this->restore(wrk->wid);
 		// Если автоматическое подключение выполнять не нужно
@@ -518,17 +518,17 @@ void awh::CoreClient::close(const size_t aid) noexcept {
  * restore Метод восстановления подключения
  * @param wid идентификатор воркера
  */
-void awh::CoreClient::restore(const size_t wid) noexcept {
+void awh::client::Core::restore(const size_t wid) noexcept {
 	// Выполняем поиск воркера
 	auto it = this->workers.find(wid);
 	// Если воркер найден
 	if(it != this->workers.end()){
 		// Получаем объект воркера
-		workCli_t * wrk = (workCli_t *) const_cast <worker_t *> (it->second);
+		client::worker_t * wrk = (client::worker_t *) const_cast <awh::worker_t *> (it->second);
 		// Если параметры URL запроса переданы
 		if(!wrk->url.empty()){
 			// Устанавливаем режим торговли
-			this->mode = core_t::mode_t::RECONNECT;
+			this->mode = awh::core_t::mode_t::RECONNECT;
 			// Получаем URL параметры запроса
 			const uri_t::url_t & url = (wrk->isProxy() ? wrk->proxy.url : wrk->url);
 			// Определяем тип подключения
@@ -555,15 +555,15 @@ void awh::CoreClient::restore(const size_t wid) noexcept {
  * switchProxy Метод переключения с прокси-сервера
  * @param aid идентификатор адъютанта
  */
-void awh::CoreClient::switchProxy(const size_t aid) noexcept {
+void awh::client::Core::switchProxy(const size_t aid) noexcept {
 	// Выполняем извлечение адъютанта
 	auto it = this->adjutants.find(aid);
 	// Если адъютант получен
 	if(it != this->adjutants.end()){
 		// Получаем объект адъютанта
-		worker_t::adj_t * adj = const_cast <worker_t::adj_t *> (it->second);
+		awh::worker_t::adj_t * adj = const_cast <awh::worker_t::adj_t *> (it->second);
 		// Получаем объект воркера
-		workCli_t * wrk = (workCli_t *) const_cast <worker_t *> (adj->parent);
+		client::worker_t * wrk = (client::worker_t *) const_cast <awh::worker_t *> (adj->parent);
 		// Выполняем переключение типа подключения
 		wrk->switchConnect();
 		// Выполняем получение контекста сертификата
@@ -595,7 +595,7 @@ void awh::CoreClient::switchProxy(const size_t aid) noexcept {
  * @param read  пропускная способность на чтение (bps, kbps, Mbps, Gbps)
  * @param write пропускная способность на запись (bps, kbps, Mbps, Gbps)
  */
-void awh::CoreClient::setBandwidth(const size_t aid, const string & read, const string & write) noexcept {
+void awh::client::Core::setBandwidth(const size_t aid, const string & read, const string & write) noexcept {
 	// Выполняем извлечение адъютанта
 	auto it = this->adjutants.find(aid);
 	// Если адъютант получен
@@ -603,7 +603,7 @@ void awh::CoreClient::setBandwidth(const size_t aid, const string & read, const 
 		// Если - это Unix
 		#if !defined(_WIN32) && !defined(_WIN64)
 			// Получаем объект адъютанта
-			worker_t::adj_t * adj = const_cast <worker_t::adj_t *> (it->second);
+			awh::worker_t::adj_t * adj = const_cast <awh::worker_t::adj_t *> (it->second);
 			// Получаем размер буфера на чтение
 			const int rcv = (!read.empty() ? this->fmk->sizeBuffer(read) : 0);
 			// Получаем размер буфера на запись
@@ -621,18 +621,18 @@ void awh::CoreClient::setBandwidth(const size_t aid, const string & read, const 
 	}
 }
 /**
- * CoreClient Конструктор
+ * Core Конструктор
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
  */
-awh::CoreClient::CoreClient(const fmk_t * fmk, const log_t * log) noexcept : core_t(fmk, log), mode(core_t::mode_t::DISCONNECT) {
+awh::client::Core::Core(const fmk_t * fmk, const log_t * log) noexcept : awh::core_t(fmk, log), mode(awh::core_t::mode_t::DISCONNECT) {
 	// Устанавливаем тип запускаемого ядра
 	this->type = type_t::CLIENT;
 }
 /**
- * ~CoreClient Деструктор
+ * ~Core Деструктор
  */
-awh::CoreClient::~CoreClient() noexcept {
+awh::client::Core::~Core() noexcept {
 	// Выполняем остановку клиента
 	this->stop();
 }
