@@ -62,7 +62,9 @@ void awh::Core::timer(evutil_socket_t fd, short event, void * ctx) noexcept {
 		// Получаем объект воркера
 		timer_t * timer = reinterpret_cast <timer_t *> (ctx);
 		// Если функция обратного вызова установлена, выводим её
-		if(timer->callback != nullptr) timer->callback(timer->ctx);
+		if(timer->callback != nullptr)
+			// Выполняем функцию обратного вызова
+			timer->callback(timer->id, timer->core, timer->ctx);
 		// Если персистентная работа не установлена, удаляем таймер
 		if(!timer->persist){
 			// Очищаем объект таймаута базы событий
@@ -70,9 +72,9 @@ void awh::Core::timer(evutil_socket_t fd, short event, void * ctx) noexcept {
 			// Удаляем событие таймера
 			event_del(&timer->ev);
 			// Если родительский объект установлен
-			if(timer->self != nullptr)
+			if(timer->core != nullptr)
 				// Удаляем объект таймера
-				timer->self->erase(timer->id);
+				timer->core->timers.erase(timer->id);
 		}
 	}
 }
@@ -803,7 +805,7 @@ void awh::Core::clearTimer(const u_short id) noexcept {
  * @param callback     функция обратного вызова
  * @return             идентификатор созданного таймера
  */
-u_short awh::Core::setTimeout(void * ctx, const time_t milliseconds, function <void (void *)> callback) noexcept {
+u_short awh::Core::setTimeout(void * ctx, const time_t milliseconds, function <void (const u_short, Core *, void *)> callback) noexcept {
 	// Результат работы функции
 	u_short result = 0;
 	// Если данные переданы
@@ -814,12 +816,12 @@ u_short awh::Core::setTimeout(void * ctx, const time_t milliseconds, function <v
 		result = ret.first->first;
 		// Устанавливаем передаваемый контекст
 		ret.first->second.ctx = ctx;
+		// Устанавливаем родительский объект
+		ret.first->second.core = this;
 		// Устанавливаем идентификатор таймера
 		ret.first->second.id = result;
 		// Устанавливаем функцию обратного вызова
 		ret.first->second.callback = callback;
-		// Устанавливаем родительский объект
-		ret.first->second.self = &this->timers;
 		// Устанавливаем время в секундах
 		ret.first->second.tv.tv_sec = (milliseconds / 1000);
 		// Устанавливаем время счётчика (микросекунды)
@@ -839,7 +841,7 @@ u_short awh::Core::setTimeout(void * ctx, const time_t milliseconds, function <v
  * @param callback     функция обратного вызова
  * @return             идентификатор созданного таймера
  */
-u_short awh::Core::setInterval(void * ctx, const time_t milliseconds, function <void (void *)> callback) noexcept {
+u_short awh::Core::setInterval(void * ctx, const time_t milliseconds, function <void (const u_short, Core *, void *)> callback) noexcept {
 	// Результат работы функции
 	u_short result = 0;
 	// Если данные переданы
@@ -850,14 +852,14 @@ u_short awh::Core::setInterval(void * ctx, const time_t milliseconds, function <
 		result = ret.first->first;
 		// Устанавливаем передаваемый контекст
 		ret.first->second.ctx = ctx;
+		// Устанавливаем родительский объект
+		ret.first->second.core = this;
 		// Устанавливаем идентификатор таймера
 		ret.first->second.id = result;
 		// Устанавливаем флаг персистентной работы
 		ret.first->second.persist = true;
 		// Устанавливаем функцию обратного вызова
 		ret.first->second.callback = callback;
-		// Устанавливаем родительский объект
-		ret.first->second.self = &this->timers;
 		// Устанавливаем время в секундах
 		ret.first->second.tv.tv_sec = (milliseconds / 1000);
 		// Устанавливаем время счётчика (микросекунды)

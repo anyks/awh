@@ -85,17 +85,17 @@ namespace awh {
 			 * Timer Структура таймера
 			 */
 			typedef struct Timer {
-				u_short id;                        // Идентификатор таймера
-				void * ctx;                        // Передаваемый контекст
-				bool persist;                      // Флаг персистентной работы
-				struct event ev;                   // Объект события
-				struct timeval tv;                 // Параметры интервала времени
-				map <u_short, Timer> * self;       // Родительский объект
-				function <void (void *)> callback; // Функция обратного вызова
+				u_short id;                                               // Идентификатор таймера
+				void * ctx;                                               // Передаваемый контекст
+				Core * core;                                              // Родительский объект
+				bool persist;                                             // Флаг персистентной работы
+				struct event ev;                                          // Объект события
+				struct timeval tv;                                        // Параметры интервала времени
+				function <void (const u_short, Core *, void *)> callback; // Функция обратного вызова
 				/**
 				 * Timer Конструктор
 				 */
-				Timer() : id(0), ctx(nullptr), persist(false), self(nullptr), callback(nullptr) {}
+				Timer() : id(0), ctx(nullptr), core(nullptr), persist(false), callback(nullptr) {}
 			} timer_t;
 		protected:
 			/**
@@ -384,7 +384,7 @@ namespace awh {
 			 * @param callback     функция обратного вызова
 			 * @return             идентификатор созданного таймера
 			 */
-			u_short setTimeout(void * ctx, const time_t milliseconds, function <void (void *)> callback) noexcept;
+			u_short setTimeout(void * ctx, const time_t milliseconds, function <void (const u_short, Core *, void *)> callback) noexcept;
 			/**
 			 * setInterval Метод установки интервала времени
 			 * @param ctx          передаваемый контекст
@@ -392,7 +392,7 @@ namespace awh {
 			 * @param callback     функция обратного вызова
 			 * @return             идентификатор созданного таймера
 			 */
-			u_short setInterval(void * ctx, const time_t milliseconds, function <void (void *)> callback) noexcept;
+			u_short setInterval(void * ctx, const time_t milliseconds, function <void (const u_short, Core *, void *)> callback) noexcept;
 		public:
 			/**
 			 * setDefer Метод установки флага отложенных вызовов событий сокета

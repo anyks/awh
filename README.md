@@ -435,30 +435,37 @@ int main(int argc, char * argv[]) noexcept {
 	log.setLogName("Timer");
 	log.setLogFormat("%H:%M:%S %d.%m.%Y");
 
-	core.setCallback(&log, [](const bool mode, core_t * core, void * ctx) noexcept {
+	u_short count = 0;
+
+	auto ts = chrono::system_clock::now();
+	auto is = chrono::system_clock::now();
+
+	core.setCallback(&log, [&ts, &is, &count](const bool mode, core_t * core, void * ctx) noexcept {
 		log_t * log = reinterpret_cast <log_t *> (ctx);
 
 		if(mode){
-			u_short id1 = 0, id2 = 0, count = 0;
-
-			auto timeShift = chrono::system_clock::now();
-			auto intervalShift = chrono::system_clock::now();
+			ts = chrono::system_clock::now();
+			is = chrono::system_clock::now();
 
 			log->print("%s", log_t::flag_t::INFO, "Start timer");
 
-			id1 = core->setTimeout(log, 10000, [&timeShift](void * ctx) noexcept {
+			core->setTimeout(log, 10000, [&ts](const u_short id, core_t * core, void * ctx){
 				log_t * log = reinterpret_cast <log_t *> (ctx);
-				log->print("Timeout: %u seconds", log_t::flag_t::INFO, chrono::duration_cast <chrono::seconds> (chrono::system_clock::now() - timeShift).count());
+
+				log->print("Timeout: %u seconds", log_t::flag_t::INFO, chrono::duration_cast <chrono::seconds> (chrono::system_clock::now() - ts).count());
 			});
 
-			id2 = core->setInterval(log, 5000, [&id2, &count, &intervalShift, core](void * ctx) noexcept {
+			core->setInterval(log, 5000, [&is, &count](const u_short id, core_t * core, void * ctx){
 				log_t * log = reinterpret_cast <log_t *> (ctx);
-				log->print("Interval: %u seconds", log_t::flag_t::INFO, chrono::duration_cast <chrono::seconds> (chrono::system_clock::now() - intervalShift).count());
 
-				intervalShift = chrono::system_clock::now();
+				auto shift = chrono::system_clock::now();
+
+				log->print("Interval: %u seconds", log_t::flag_t::INFO, chrono::duration_cast <chrono::seconds> (shift - is).count());
+
+				is = shift;
 
 				if((count++) >= 10){
-					core->clearTimer(id2);
+					core->clearTimer(id);
 					core->stop();
 				}
 			});
