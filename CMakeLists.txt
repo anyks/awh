@@ -177,6 +177,7 @@ set(WSC_APP_NAME wsc)
 set(WSS_APP_NAME wss)
 set(WEB_APP_NAME web)
 set(REST_APP_NAME rest)
+set(TIMER_APP_NAME timer)
 set(PROXY_APP_NAME proxy)
 set(SOCKS5_APP_NAME socks5)
 set(CURRENT_LIB_NAME ${PROJECT_NAME})
@@ -207,6 +208,7 @@ if (ENABLE_CONSOLE_APP)
     add_executable(${WSS_APP_NAME} sample/wss.cpp ${RES_FILES})
     add_executable(${WEB_APP_NAME} sample/web.cpp ${RES_FILES})
     add_executable(${REST_APP_NAME} sample/rest.cpp ${RES_FILES})
+    add_executable(${TIMER_APP_NAME} sample/timer.cpp ${RES_FILES})
     add_executable(${PROXY_APP_NAME} sample/proxy.cpp ${RES_FILES})
     add_executable(${SOCKS5_APP_NAME} sample/socks5.cpp ${RES_FILES})
 
@@ -238,6 +240,15 @@ if (ENABLE_CONSOLE_APP)
     )
 
     target_link_libraries(${REST_APP_NAME}
+        ${CURRENT_LIB_NAME}
+        ${ZLIB_LIBRARY}
+        ${BROTLI_LIBRARIES}
+        ${OPENSSL_LIBRARIES}
+        ${LIBEVENT_LIBRARIES}
+        ${WINFLAGS}
+    )
+
+    target_link_libraries(${TIMER_APP_NAME}
         ${CURRENT_LIB_NAME}
         ${ZLIB_LIBRARY}
         ${BROTLI_LIBRARIES}
@@ -279,6 +290,7 @@ install(TARGETS ${WSC_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE
 install(TARGETS ${WSS_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
 install(TARGETS ${WEB_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
 install(TARGETS ${REST_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
+install(TARGETS ${TIMER_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
 install(TARGETS ${PROXY_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
 install(TARGETS ${SOCKS5_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
 

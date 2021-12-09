@@ -417,3 +417,56 @@ int main(int argc, char * argv[]) noexcept {
 	return 0;
 }
 ```
+
+### Example Timer
+
+```c++
+#include <chrono>
+#include <core/core.hpp>
+
+using namespace std;
+using namespace awh;
+
+int main(int argc, char * argv[]) noexcept {
+	fmk_t fmk(true);
+	log_t log(&fmk);
+	core_t core(&fmk, &log);
+
+	log.setLogName("Timer");
+	log.setLogFormat("%H:%M:%S %d.%m.%Y");
+
+	core.setCallback(&log, [](const bool mode, core_t * core, void * ctx) noexcept {
+		log_t * log = reinterpret_cast <log_t *> (ctx);
+
+		if(mode){
+			u_short id1 = 0, id2 = 0, count = 0;
+
+			auto timeShift = chrono::system_clock::now();
+			auto intervalShift = chrono::system_clock::now();
+
+			log->print("%s", log_t::flag_t::INFO, "Start timer");
+
+			id1 = core->setTimeout(log, 10000, [&timeShift](void * ctx) noexcept {
+				log_t * log = reinterpret_cast <log_t *> (ctx);
+				log->print("Timeout: %u seconds", log_t::flag_t::INFO, chrono::duration_cast <chrono::seconds> (chrono::system_clock::now() - timeShift).count());
+			});
+
+			id2 = core->setInterval(log, 5000, [&id2, &count, &intervalShift, core](void * ctx) noexcept {
+				log_t * log = reinterpret_cast <log_t *> (ctx);
+				log->print("Interval: %u seconds", log_t::flag_t::INFO, chrono::duration_cast <chrono::seconds> (chrono::system_clock::now() - intervalShift).count());
+
+				intervalShift = chrono::system_clock::now();
+
+				if((count++) >= 10){
+					core->clearTimer(id2);
+					core->stop();
+				}
+			});
+		} else log->print("%s", log_t::flag_t::INFO, "Stop timer");
+	});
+
+	core.start();
+
+	return 0;
+}
+```

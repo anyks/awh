@@ -80,6 +80,23 @@ namespace awh {
 			 * Основные методы режимов работы
 			 */
 			enum class method_t : uint8_t {READ, WRITE};
+		private:
+			/**
+			 * Timer Структура таймера
+			 */
+			typedef struct Timer {
+				u_short id;                        // Идентификатор таймера
+				void * ctx;                        // Передаваемый контекст
+				bool persist;                      // Флаг персистентной работы
+				struct event ev;                   // Объект события
+				struct timeval tv;                 // Параметры интервала времени
+				map <u_short, Timer> * self;       // Родительский объект
+				function <void (void *)> callback; // Функция обратного вызова
+				/**
+				 * Timer Конструктор
+				 */
+				Timer() : id(0), ctx(nullptr), persist(false), self(nullptr), callback(nullptr) {}
+			} timer_t;
 		protected:
 			/**
 			 * KeepAlive Структура с параметрами для постоянного подключения
@@ -152,6 +169,9 @@ namespace awh {
 			struct timeval tvTimeout;
 			// Структура интервала пинга
 			struct timeval tvInterval;
+		private:
+			// Список активных таймеров
+			map <u_short, timer_t> timers;
 		protected:
 			// Список активных воркеров
 			map <size_t, const worker_t *> workers;
@@ -189,12 +209,19 @@ namespace awh {
 			function <void (const bool, Core * core, void *)> callbackFn = nullptr;
 		private:
 			/**
-			 * run Функция обратного вызова при активации базы событий
+			 * run Функция вызова при активации базы событий
 			 * @param fd    файловый дескриптор (сокет)
 			 * @param event произошедшее событие
 			 * @param ctx   передаваемый контекст
 			 */
 			static void run(evutil_socket_t fd, short event, void * ctx) noexcept;
+			/**
+			 * timer Функция обработки события пользовательского таймера
+			 * @param fd    файловый дескриптор (сокет)
+			 * @param event произошедшее событие
+			 * @param ctx   передаваемый контекст
+			 */
+			static void timer(evutil_socket_t fd, short event, void * ctx) noexcept;
 			/**
 			 * reconnect Функция задержки времени на реконнект
 			 * @param fd    файловый дескриптор (сокет)
@@ -219,7 +246,7 @@ namespace awh {
 			 * connect Метод создания подключения к удаленному серверу
 			 * @param wid идентификатор воркера
 			 */
-			virtual void connect(const size_t wid) noexcept = 0;
+			virtual void connect(const size_t wid) noexcept;
 		protected:
 			/**
 			 * clean Метод буфера событий
@@ -286,20 +313,20 @@ namespace awh {
 			virtual void removeAll() noexcept;
 		public:
 			/**
-			 * remove Метод удаления воркера из биндинга
-			 * @param wid идентификатор воркера
-			 */
-			virtual void remove(const size_t wid) noexcept;
-			/**
 			 * run Метод запуска сервера воркером
 			 * @param wid идентификатор воркера
 			 */
-			virtual void run(const size_t wid) noexcept = 0;
+			virtual void run(const size_t wid) noexcept;
 			/**
 			 * open Метод открытия подключения воркером
 			 * @param wid идентификатор воркера
 			 */
-			virtual void open(const size_t wid) noexcept = 0;
+			virtual void open(const size_t wid) noexcept;
+			/**
+			 * remove Метод удаления воркера из биндинга
+			 * @param wid идентификатор воркера
+			 */
+			virtual void remove(const size_t wid) noexcept;
 		public:
 			/**
 			 * close Метод закрытия подключения воркера
@@ -313,7 +340,7 @@ namespace awh {
 			 * @param read  пропускная способность на чтение (bps, kbps, Mbps, Gbps)
 			 * @param write пропускная способность на запись (bps, kbps, Mbps, Gbps)
 			 */
-			virtual void setBandwidth(const size_t aid, const string & read, const string & write) noexcept = 0;
+			virtual void setBandwidth(const size_t aid, const string & read, const string & write) noexcept;
 		public:
 			/**
 			 * write Метод записи буфера данных воркером
@@ -330,12 +357,12 @@ namespace awh {
 			 */
 			void setLockMethod(const method_t method, const bool mode, const size_t aid) noexcept;
 			/**
-			 * setTimeout Метод установки таймаута ожидания появления данных
+			 * setDataTimeout Метод установки таймаута ожидания появления данных
 			 * @param method  метод режима работы
 			 * @param seconds время ожидания в секундах
 			 * @param aid     идентификатор адъютанта
 			 */
-			void setTimeout(const method_t method, const time_t seconds, const size_t aid) noexcept;
+			void setDataTimeout(const method_t method, const time_t seconds, const size_t aid) noexcept;
 			/**
 			 * setMark Метод установки маркера на размер детектируемых байт
 			 * @param method метод режима работы
@@ -344,6 +371,28 @@ namespace awh {
 			 * @param aid    идентификатор адъютанта
 			 */
 			void setMark(const method_t method, const size_t min, const size_t max, const size_t aid) noexcept;
+		public:
+			/**
+			 * clearTimer Метод очистки таймера
+			 * @param id идентификатор таймера для очистки
+			 */
+			void clearTimer(const u_short id) noexcept;
+			/**
+			 * setTimeout Метод установки таймаута
+			 * @param ctx          передаваемый контекст
+			 * @param milliseconds задержка времени в миллисекундах
+			 * @param callback     функция обратного вызова
+			 * @return             идентификатор созданного таймера
+			 */
+			u_short setTimeout(void * ctx, const time_t milliseconds, function <void (void *)> callback) noexcept;
+			/**
+			 * setInterval Метод установки интервала времени
+			 * @param ctx          передаваемый контекст
+			 * @param milliseconds задержка времени в миллисекундах
+			 * @param callback     функция обратного вызова
+			 * @return             идентификатор созданного таймера
+			 */
+			u_short setInterval(void * ctx, const time_t milliseconds, function <void (void *)> callback) noexcept;
 		public:
 			/**
 			 * setDefer Метод установки флага отложенных вызовов событий сокета

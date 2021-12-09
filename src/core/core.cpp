@@ -11,7 +11,7 @@
 #include <core/core.hpp>
 
 /**
- * run Функция обратного вызова при активации базы событий
+ * run Функция вызова при активации базы событий
  * @param fd    файловый дескриптор (сокет)
  * @param event произошедшее событие
  * @param ctx   передаваемый контекст
@@ -40,13 +40,39 @@ void awh::Core::run(evutil_socket_t fd, short event, void * ctx) noexcept {
 		// Если таймер периодического запуска коллбека активирован
 		if(core->persist){
 			// Создаём событие на активацию базы событий
-			event_assign(&core->interval, core->base, -1, EV_TIMEOUT | EV_PERSIST, persistent, core);
+			event_assign(&core->interval, core->base, -1, EV_TIMEOUT | EV_PERSIST, &persistent, core);
 			// Очищаем объект таймаута базы событий
 			evutil_timerclear(&core->tvInterval);
 			// Устанавливаем интервал таймаута
 			core->tvInterval.tv_sec = (core->persistInterval / 1000);
 			// Создаём событие таймаута на активацию базы событий
 			event_add(&core->interval, &core->tvInterval);
+		}
+	}
+}
+/**
+ * timer Функция обработки события пользовательского таймера
+ * @param fd    файловый дескриптор (сокет)
+ * @param event произошедшее событие
+ * @param ctx   передаваемый контекст
+ */
+void awh::Core::timer(evutil_socket_t fd, short event, void * ctx) noexcept {
+	// Если контекст модуля передан
+	if(ctx != nullptr){
+		// Получаем объект воркера
+		timer_t * timer = reinterpret_cast <timer_t *> (ctx);
+		// Если функция обратного вызова установлена, выводим её
+		if(timer->callback != nullptr) timer->callback(timer->ctx);
+		// Если персистентная работа не установлена, удаляем таймер
+		if(!timer->persist){
+			// Очищаем объект таймаута базы событий
+			evutil_timerclear(&timer->tv);
+			// Удаляем событие таймера
+			event_del(&timer->ev);
+			// Если родительский объект установлен
+			if(timer->self != nullptr)
+				// Удаляем объект таймера
+				timer->self->erase(timer->id);
 		}
 	}
 }
@@ -116,7 +142,7 @@ void awh::Core::reconnect(const size_t wid) noexcept {
 		// Получаем объект воркера
 		worker_t * wrk = const_cast <worker_t *> (it->second);
 		// Создаём событие на активацию базы событий
-		event_assign(&this->timeout, this->base, -1, EV_TIMEOUT, reconnect, wrk);
+		event_assign(&this->timeout, this->base, -1, EV_TIMEOUT, &reconnect, wrk);
 		// Очищаем объект таймаута базы событий
 		evutil_timerclear(&this->tvTimeout);
 		// Устанавливаем интервал таймаута
@@ -124,6 +150,14 @@ void awh::Core::reconnect(const size_t wid) noexcept {
 		// Создаём событие таймаута на активацию базы событий
 		event_add(&this->timeout, &this->tvTimeout);
 	}
+}
+/**
+ * connect Метод создания подключения к удаленному серверу
+ * @param wid идентификатор воркера
+ */
+void awh::Core::connect(const size_t wid) noexcept {
+	// Экранируем ошибку неиспользуемой переменной
+	(void) wid;
 }
 /**
  * clean Метод буфера событий
@@ -352,7 +386,7 @@ void awh::Core::bind(Core * core) noexcept {
 			// Выполняем установку нейм-серверов для DNS резолвера IPv6
 			core->dns6.replaceServers(core->net.v6.second);
 			// Создаём событие на активацию базы событий
-			event_assign(&core->timeout, core->base, -1, EV_TIMEOUT, run, core);
+			event_assign(&core->timeout, core->base, -1, EV_TIMEOUT, &run, core);
 			// Очищаем объект таймаута базы событий
 			evutil_timerclear(&core->tvTimeout);
 			// Устанавливаем таймаут базы событий в 1 секунду
@@ -444,7 +478,7 @@ void awh::Core::start() noexcept {
 		// Выполняем установку нейм-серверов для DNS резолвера IPv6
 		this->dns6.replaceServers(this->net.v6.second);
 		// Создаём событие на активацию базы событий
-		event_assign(&this->timeout, this->base, -1, EV_TIMEOUT, run, this);
+		event_assign(&this->timeout, this->base, -1, EV_TIMEOUT, &run, this);
 		// Очищаем объект таймаута базы событий
 		evutil_timerclear(&this->tvTimeout);
 		// Устанавливаем таймаут базы событий в 1 секунду
@@ -548,6 +582,22 @@ void awh::Core::removeAll() noexcept {
 	this->workers.clear();
 }
 /**
+ * run Метод запуска сервера воркером
+ * @param wid идентификатор воркера
+ */
+void awh::Core::run(const size_t wid) noexcept {
+	// Экранируем ошибку неиспользуемой переменной
+	(void) wid;
+}
+/**
+ * open Метод открытия подключения воркером
+ * @param wid идентификатор воркера
+ */
+void awh::Core::open(const size_t wid) noexcept {
+	// Экранируем ошибку неиспользуемой переменной
+	(void) wid;
+}
+/**
  * remove Метод удаления воркера из биндинга
  * @param wid идентификатор воркера
  */
@@ -591,6 +641,18 @@ void awh::Core::close(const size_t aid) noexcept {
 		// Выводим функцию обратного вызова
 		if(wrk->disconnectFn != nullptr) wrk->disconnectFn(aid, wrk->wid, this, wrk->ctx);
 	}
+}
+/**
+ * setBandwidth Метод установки пропускной способности сети
+ * @param aid   идентификатор адъютанта
+ * @param read  пропускная способность на чтение (bps, kbps, Mbps, Gbps)
+ * @param write пропускная способность на запись (bps, kbps, Mbps, Gbps)
+ */
+void awh::Core::setBandwidth(const size_t aid, const string & read, const string & write) noexcept {
+	// Экранируем ошибку неиспользуемой переменной
+	(void) aid;
+	(void) read;
+	(void) write;
 }
 /**
  * write Метод записи буфера данных воркером
@@ -653,12 +715,12 @@ void awh::Core::setLockMethod(const method_t method, const bool mode, const size
 	}
 }
 /**
- * setTimeout Метод установки таймаута ожидания появления данных
+ * setDataTimeout Метод установки таймаута ожидания появления данных
  * @param method  метод режима работы
  * @param seconds время ожидания в секундах
  * @param aid     идентификатор адъютанта
  */
-void awh::Core::setTimeout(const method_t method, const time_t seconds, const size_t aid) noexcept {
+void awh::Core::setDataTimeout(const method_t method, const time_t seconds, const size_t aid) noexcept {
 	// Выполняем извлечение адъютанта
 	auto it = this->adjutants.find(aid);
 	// Если адъютант получен
@@ -716,6 +778,97 @@ void awh::Core::setMark(const method_t method, const size_t min, const size_t ma
 			} break;
 		}
 	}
+}
+/**
+ * clearTimer Метод очистки таймера
+ * @param id идентификатор таймера для очистки
+ */
+void awh::Core::clearTimer(const u_short id) noexcept {
+	// Выполняем поиск идентификатора таймера
+	auto it = this->timers.find(id);
+	// Если идентификатор таймера найден
+	if(it != this->timers.end()){
+		// Очищаем объект таймаута базы событий
+		evutil_timerclear(&it->second.tv);
+		// Удаляем событие таймера
+		event_del(&it->second.ev);
+		// Удаляем объект таймера
+		this->timers.erase(it);
+	}
+}
+/**
+ * setTimeout Метод установки таймаута
+ * @param ctx          передаваемый контекст
+ * @param milliseconds задержка времени в миллисекундах
+ * @param callback     функция обратного вызова
+ * @return             идентификатор созданного таймера
+ */
+u_short awh::Core::setTimeout(void * ctx, const time_t milliseconds, function <void (void *)> callback) noexcept {
+	// Результат работы функции
+	u_short result = 0;
+	// Если данные переданы
+	if((milliseconds > 0) && (callback != nullptr) && (this->base != nullptr)){
+		// Создаём объект таймера
+		auto ret = this->timers.emplace(this->timers.size() + 1, timer_t());
+		// Получаем идентификатор таймера
+		result = ret.first->first;
+		// Устанавливаем передаваемый контекст
+		ret.first->second.ctx = ctx;
+		// Устанавливаем идентификатор таймера
+		ret.first->second.id = result;
+		// Устанавливаем функцию обратного вызова
+		ret.first->second.callback = callback;
+		// Устанавливаем родительский объект
+		ret.first->second.self = &this->timers;
+		// Устанавливаем время в секундах
+		ret.first->second.tv.tv_sec = (milliseconds / 1000);
+		// Устанавливаем время счётчика (микросекунды)
+		ret.first->second.tv.tv_usec = ((milliseconds % 1000) * 1000);
+		// Создаём событие на активацию базы событий
+		event_assign(&ret.first->second.ev, this->base, -1, EV_TIMEOUT, &timer, &ret.first->second);
+		// Создаём событие таймаута на активацию базы событий
+		event_add(&ret.first->second.ev, &ret.first->second.tv);
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * setInterval Метод установки интервала времени
+ * @param ctx          передаваемый контекст
+ * @param milliseconds задержка времени в миллисекундах
+ * @param callback     функция обратного вызова
+ * @return             идентификатор созданного таймера
+ */
+u_short awh::Core::setInterval(void * ctx, const time_t milliseconds, function <void (void *)> callback) noexcept {
+	// Результат работы функции
+	u_short result = 0;
+	// Если данные переданы
+	if((milliseconds > 0) && (callback != nullptr) && (this->base != nullptr)){
+		// Создаём объект таймера
+		auto ret = this->timers.emplace(this->timers.size() + 1, timer_t());
+		// Получаем идентификатор таймера
+		result = ret.first->first;
+		// Устанавливаем передаваемый контекст
+		ret.first->second.ctx = ctx;
+		// Устанавливаем идентификатор таймера
+		ret.first->second.id = result;
+		// Устанавливаем флаг персистентной работы
+		ret.first->second.persist = true;
+		// Устанавливаем функцию обратного вызова
+		ret.first->second.callback = callback;
+		// Устанавливаем родительский объект
+		ret.first->second.self = &this->timers;
+		// Устанавливаем время в секундах
+		ret.first->second.tv.tv_sec = (milliseconds / 1000);
+		// Устанавливаем время счётчика (микросекунды)
+		ret.first->second.tv.tv_usec = ((milliseconds % 1000) * 1000);
+		// Создаём событие на активацию базы событий
+		event_assign(&ret.first->second.ev, this->base, -1, EV_TIMEOUT | EV_PERSIST, timer, &ret.first->second);
+		// Создаём событие таймаута на активацию базы событий
+		event_add(&ret.first->second.ev, &ret.first->second.tv);
+	}
+	// Выводим результат
+	return result;
 }
 /**
  * setDefer Метод установки флага отложенных вызовов событий сокета
