@@ -782,6 +782,23 @@ void awh::Core::setMark(const method_t method, const size_t min, const size_t ma
 	}
 }
 /**
+ * clearTimers Метод очистки всех таймеров
+ */
+void awh::Core::clearTimers() noexcept {
+	// Если список таймеров существует
+	if(!this->timers.empty()){
+		// Переходим по всем таймерам
+		for(auto it = this->timers.begin(); it != this->timers.end();){
+			// Очищаем объект таймаута базы событий
+			evutil_timerclear(&it->second.tv);
+			// Удаляем событие таймера
+			event_del(&it->second.ev);
+			// Удаляем таймер из списка
+			it = this->timers.erase(it);
+		}
+	}
+}
+/**
  * clearTimer Метод очистки таймера
  * @param id идентификатор таймера для очистки
  */
@@ -800,16 +817,16 @@ void awh::Core::clearTimer(const u_short id) noexcept {
 }
 /**
  * setTimeout Метод установки таймаута
- * @param ctx          передаваемый контекст
- * @param milliseconds задержка времени в миллисекундах
- * @param callback     функция обратного вызова
- * @return             идентификатор созданного таймера
+ * @param ctx      передаваемый контекст
+ * @param delay    задержка времени в миллисекундах
+ * @param callback функция обратного вызова
+ * @return         идентификатор созданного таймера
  */
-u_short awh::Core::setTimeout(void * ctx, const time_t milliseconds, function <void (const u_short, Core *, void *)> callback) noexcept {
+u_short awh::Core::setTimeout(void * ctx, const time_t delay, function <void (const u_short, Core *, void *)> callback) noexcept {
 	// Результат работы функции
 	u_short result = 0;
 	// Если данные переданы
-	if((milliseconds > 0) && (callback != nullptr) && (this->base != nullptr)){
+	if((delay > 0) && (callback != nullptr) && (this->base != nullptr)){
 		// Создаём объект таймера
 		auto ret = this->timers.emplace(this->timers.size() + 1, timer_t());
 		// Получаем идентификатор таймера
@@ -823,9 +840,9 @@ u_short awh::Core::setTimeout(void * ctx, const time_t milliseconds, function <v
 		// Устанавливаем функцию обратного вызова
 		ret.first->second.callback = callback;
 		// Устанавливаем время в секундах
-		ret.first->second.tv.tv_sec = (milliseconds / 1000);
+		ret.first->second.tv.tv_sec = (delay / 1000);
 		// Устанавливаем время счётчика (микросекунды)
-		ret.first->second.tv.tv_usec = ((milliseconds % 1000) * 1000);
+		ret.first->second.tv.tv_usec = ((delay % 1000) * 1000);
 		// Создаём событие на активацию базы событий
 		event_assign(&ret.first->second.ev, this->base, -1, EV_TIMEOUT, &timer, &ret.first->second);
 		// Создаём событие таймаута на активацию базы событий
@@ -836,16 +853,16 @@ u_short awh::Core::setTimeout(void * ctx, const time_t milliseconds, function <v
 }
 /**
  * setInterval Метод установки интервала времени
- * @param ctx          передаваемый контекст
- * @param milliseconds задержка времени в миллисекундах
- * @param callback     функция обратного вызова
- * @return             идентификатор созданного таймера
+ * @param ctx      передаваемый контекст
+ * @param delay    задержка времени в миллисекундах
+ * @param callback функция обратного вызова
+ * @return         идентификатор созданного таймера
  */
-u_short awh::Core::setInterval(void * ctx, const time_t milliseconds, function <void (const u_short, Core *, void *)> callback) noexcept {
+u_short awh::Core::setInterval(void * ctx, const time_t delay, function <void (const u_short, Core *, void *)> callback) noexcept {
 	// Результат работы функции
 	u_short result = 0;
 	// Если данные переданы
-	if((milliseconds > 0) && (callback != nullptr) && (this->base != nullptr)){
+	if((delay > 0) && (callback != nullptr) && (this->base != nullptr)){
 		// Создаём объект таймера
 		auto ret = this->timers.emplace(this->timers.size() + 1, timer_t());
 		// Получаем идентификатор таймера
@@ -861,9 +878,9 @@ u_short awh::Core::setInterval(void * ctx, const time_t milliseconds, function <
 		// Устанавливаем функцию обратного вызова
 		ret.first->second.callback = callback;
 		// Устанавливаем время в секундах
-		ret.first->second.tv.tv_sec = (milliseconds / 1000);
+		ret.first->second.tv.tv_sec = (delay / 1000);
 		// Устанавливаем время счётчика (микросекунды)
-		ret.first->second.tv.tv_usec = ((milliseconds % 1000) * 1000);
+		ret.first->second.tv.tv_usec = ((delay % 1000) * 1000);
 		// Создаём событие на активацию базы событий
 		event_assign(&ret.first->second.ev, this->base, -1, EV_TIMEOUT | EV_PERSIST, timer, &ret.first->second);
 		// Создаём событие таймаута на активацию базы событий

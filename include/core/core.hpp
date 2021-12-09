@@ -373,26 +373,30 @@ namespace awh {
 			void setMark(const method_t method, const size_t min, const size_t max, const size_t aid) noexcept;
 		public:
 			/**
+			 * clearTimers Метод очистки всех таймеров
+			 */
+			void clearTimers() noexcept;
+			/**
 			 * clearTimer Метод очистки таймера
 			 * @param id идентификатор таймера для очистки
 			 */
 			void clearTimer(const u_short id) noexcept;
 			/**
 			 * setTimeout Метод установки таймаута
-			 * @param ctx          передаваемый контекст
-			 * @param milliseconds задержка времени в миллисекундах
-			 * @param callback     функция обратного вызова
-			 * @return             идентификатор созданного таймера
+			 * @param ctx      передаваемый контекст
+			 * @param delay    задержка времени в миллисекундах
+			 * @param callback функция обратного вызова
+			 * @return         идентификатор созданного таймера
 			 */
-			u_short setTimeout(void * ctx, const time_t milliseconds, function <void (const u_short, Core *, void *)> callback) noexcept;
+			u_short setTimeout(void * ctx, const time_t delay, function <void (const u_short, Core *, void *)> callback) noexcept;
 			/**
 			 * setInterval Метод установки интервала времени
-			 * @param ctx          передаваемый контекст
-			 * @param milliseconds задержка времени в миллисекундах
-			 * @param callback     функция обратного вызова
-			 * @return             идентификатор созданного таймера
+			 * @param ctx      передаваемый контекст
+			 * @param delay    задержка времени в миллисекундах
+			 * @param callback функция обратного вызова
+			 * @return         идентификатор созданного таймера
 			 */
-			u_short setInterval(void * ctx, const time_t milliseconds, function <void (const u_short, Core *, void *)> callback) noexcept;
+			u_short setInterval(void * ctx, const time_t delay, function <void (const u_short, Core *, void *)> callback) noexcept;
 		public:
 			/**
 			 * setDefer Метод установки флага отложенных вызовов событий сокета
