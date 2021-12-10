@@ -35,7 +35,7 @@ void awh::client::WebSocket::persistCallback(const size_t aid, const size_t wid,
 		// Получаем текущий штамп времени
 		const time_t stamp = ws->fmk->unixTimestamp();
 		// Если адъютант не ответил на пинг больше двух интервалов, отключаем его
-		if(ws->close || ((stamp - ws->checkPoint) >= (PERSIST_INTERVAL * 10)))
+		if(ws->close || ((stamp - ws->checkPoint) >= (PERSIST_INTERVAL * 5)))
 			// Завершаем работу
 			reinterpret_cast <client::core_t *> (core)->close(aid);
 		// Отправляем запрос адъютанту
