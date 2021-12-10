@@ -36,7 +36,7 @@ void awh::server::Rest::openCallback(const size_t wid, awh::core_t * core, void 
 		// Устанавливаем хост сервера
 		reinterpret_cast <server::core_t *> (core)->init(wid, web->port, web->host);
 		// Выполняем запуск сервера
-		core->run(wid);
+		reinterpret_cast <server::core_t *> (core)->run(wid);
 	}
 }
 /**
@@ -56,7 +56,7 @@ void awh::server::Rest::persistCallback(const size_t aid, const size_t wid, awh:
 		// Если параметры подключения адъютанта получены
 		if((adj != nullptr) && ((!adj->alive && !web->alive) || adj->close)){
 			// Если клиент давно должен был быть отключён, отключаем его
-			if(adj->close || !adj->http.isAlive()) core->close(aid);
+			if(adj->close || !adj->http.isAlive()) reinterpret_cast <server::core_t *> (core)->close(aid);
 			// Иначе проверяем прошедшее время
 			else {
 				// Получаем текущий штамп времени
@@ -64,7 +64,7 @@ void awh::server::Rest::persistCallback(const size_t aid, const size_t wid, awh:
 				// Если адъютант не ответил на пинг больше двух интервалов, отключаем его
 				if((stamp - adj->checkPoint) >= web->keepAlive)
 					// Завершаем работу
-					core->close(aid);
+					reinterpret_cast <server::core_t *> (core)->close(aid);
 			}
 		}
 	}
@@ -266,7 +266,7 @@ void awh::server::Rest::readCallback(const char * buffer, const size_t size, con
 									core->write(payload.data(), payload.size(), aid);
 								}
 							// Выполняем отключение клиента
-							} else core->close(aid);
+							} else reinterpret_cast <server::core_t *> (core)->close(aid);
 							// Выходим из функции
 							return;
 						}

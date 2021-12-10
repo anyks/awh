@@ -53,7 +53,7 @@ void awh::server::Proxy::openServerCallback(const size_t wid, awh::core_t * core
 		// Устанавливаем хост сервера
 		reinterpret_cast <server::core_t *> (core)->init(wid, proxy->port, proxy->host);
 		// Выполняем запуск сервера
-		core->run(wid);
+		reinterpret_cast <server::core_t *> (core)->run(wid);
 	}
 }
 /**

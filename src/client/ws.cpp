@@ -18,7 +18,7 @@
  */
 void awh::client::WebSocket::openCallback(const size_t wid, awh::core_t * core, void * ctx) noexcept {
 	// Выполняем подключение
-	core->open(wid);
+	reinterpret_cast <client::core_t *> (core)->open(wid);
 }
 /**
  * persistCallback Функция персистентного вызова
@@ -35,9 +35,9 @@ void awh::client::WebSocket::persistCallback(const size_t aid, const size_t wid,
 		// Получаем текущий штамп времени
 		const time_t stamp = ws->fmk->unixTimestamp();
 		// Если адъютант не ответил на пинг больше двух интервалов, отключаем его
-		if(ws->close || ((stamp - ws->checkPoint) >= (PERSIST_INTERVAL * 2)))
+		if(ws->close || ((stamp - ws->checkPoint) >= (PERSIST_INTERVAL * 10)))
 			// Завершаем работу
-			core->close(aid);
+			reinterpret_cast <client::core_t *> (core)->close(aid);
 		// Отправляем запрос адъютанту
 		else ws->ping(to_string(aid));
 	}
@@ -96,7 +96,7 @@ void awh::client::WebSocket::disconnectCallback(const size_t aid, const size_t w
 		if((ws->code == 301) || (ws->code == 308) ||
 		   (ws->code == 401) || (ws->code == 407)){
 			// Выполняем запрос заново
-			core->open(ws->worker.wid);
+			reinterpret_cast <client::core_t *> (core)->open(ws->worker.wid);
 			// Выходим из функции
 			return;
 		}
@@ -155,7 +155,7 @@ void awh::client::WebSocket::connectProxyCallback(const size_t aid, const size_t
 				}
 			} break;
 			// Иначе завершаем работу
-			default: core->close(aid);
+			default: reinterpret_cast <client::core_t *> (core)->close(aid);
 		}
 	}
 }
@@ -218,7 +218,7 @@ void awh::client::WebSocket::readCallback(const char * buffer, const size_t size
 									// Выполняем повторно отправку сообщения на сервер
 									connectCallback(aid, wid, core, ctx);
 								// Завершаем работу
-								else core->close(aid);
+								else reinterpret_cast <client::core_t *> (core)->close(aid);
 								// Завершаем работу
 								return;
 							}
@@ -284,7 +284,7 @@ void awh::client::WebSocket::readCallback(const char * buffer, const size_t size
 				// Выполняем сброс количество попыток
 				ws->failAuth = false;
 				// Завершаем работу
-				core->close(aid);
+				reinterpret_cast <client::core_t *> (core)->close(aid);
 			}
 			// Завершаем работу
 			return;
@@ -343,7 +343,7 @@ void awh::client::WebSocket::readCallback(const char * buffer, const size_t size
 						// Если ответом является PONG
 						case (uint8_t) frame_t::opcode_t::PONG:
 							// Если идентификатор адъютанта совпадает
-							if(to_string(aid).compare(0, data.size(), data.data()) == 0)
+							if(memcmp(to_string(aid).c_str(), data.data(), data.size()) == 0)
 								// Обновляем контрольную точку
 								ws->checkPoint = ws->fmk->unixTimestamp();
 						break;
@@ -503,7 +503,7 @@ void awh::client::WebSocket::readProxyCallback(const char * buffer, const size_t
 							// Выводим сообщение
 							ws->error(mess);
 							// Завершаем работу
-							core->close(aid);
+							reinterpret_cast <client::core_t *> (core)->close(aid);
 						}
 					}
 				}
@@ -553,7 +553,7 @@ void awh::client::WebSocket::readProxyCallback(const char * buffer, const size_t
 										// Выполняем повторно отправку сообщения на сервер
 										connectProxyCallback(aid, wid, core, ctx);
 									// Завершаем работу
-									else core->close(aid);
+									else reinterpret_cast <client::core_t *> (core)->close(aid);
 									// Завершаем работу
 									return;
 								}
@@ -588,11 +588,11 @@ void awh::client::WebSocket::readProxyCallback(const char * buffer, const size_t
 					// Выполняем сброс количество попыток
 					ws->failAuth = false;
 					// Завершаем работу
-					core->close(aid);
+					reinterpret_cast <client::core_t *> (core)->close(aid);
 				}
 			} break;
 			// Иначе завершаем работу
-			default: core->close(aid);
+			default: reinterpret_cast <client::core_t *> (core)->close(aid);
 		}
 	}
 }

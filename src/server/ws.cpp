@@ -24,7 +24,7 @@ void awh::server::WebSocket::openCallback(const size_t wid, awh::core_t * core, 
 		// Устанавливаем хост сервера
 		reinterpret_cast <server::core_t *> (core)->init(wid, ws->port, ws->host);
 		// Выполняем запуск сервера
-		core->run(wid);
+		reinterpret_cast <server::core_t *> (core)->run(wid);
 	}
 }
 /**
@@ -46,9 +46,9 @@ void awh::server::WebSocket::persistCallback(const size_t aid, const size_t wid,
 			// Получаем текущий штамп времени
 			const time_t stamp = ws->fmk->unixTimestamp();
 			// Если адъютант не ответил на пинг больше двух интервалов, отключаем его
-			if(adj->close || ((stamp - adj->checkPoint) >= (PERSIST_INTERVAL * 2)))
+			if(adj->close || ((stamp - adj->checkPoint) >= (PERSIST_INTERVAL * 10)))
 				// Завершаем работу
-				core->close(aid);
+				reinterpret_cast <server::core_t *> (core)->close(aid);
 			// Отправляем запрос адъютанту
 			else ws->ping(aid, core, to_string(aid));
 		}
@@ -294,7 +294,7 @@ void awh::server::WebSocket::readCallback(const char * buffer, const size_t size
 							core->write(payload.data(), payload.size(), aid);
 						}
 					// Завершаем работу клиента
-					} else core->close(aid);
+					} else reinterpret_cast <server::core_t *> (core)->close(aid);
 				}
 				// Завершаем работу
 				return;
@@ -347,7 +347,7 @@ void awh::server::WebSocket::readCallback(const char * buffer, const size_t size
 							// Если ответом является PONG
 							case (uint8_t) frame_t::opcode_t::PONG: {
 								// Если идентификатор адъютанта совпадает
-								if(to_string(aid).compare(0, data.size(), data.data()) == 0)
+								if(memcmp(to_string(aid).c_str(), data.data(), data.size()) == 0)
 									// Обновляем контрольную точку
 									adj->checkPoint = ws->fmk->unixTimestamp();
 							} break;
@@ -399,7 +399,7 @@ void awh::server::WebSocket::readCallback(const char * buffer, const size_t size
 								// Выводим сообщение об ошибке
 								ws->error(aid, mess);
 								// Завершаем работу
-								core->close(aid);
+								reinterpret_cast <server::core_t *> (core)->close(aid);
 								// Выходим из функции
 								return;
 							} break;
@@ -535,7 +535,7 @@ void awh::server::WebSocket::extraction(workerWS_t::adjp_t * adj, const size_t a
 					// Отправляем серверу сообщение
 					core->write(buffer.data(), buffer.size(), aid);
 				// Завершаем работу
-				} else core->close(aid);
+				} else reinterpret_cast <server::core_t *> (core)->close(aid);
 			}
 		// Если функция обратного вызова установлена, выводим полученное сообщение
 		} else {

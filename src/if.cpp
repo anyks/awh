@@ -789,11 +789,11 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 			// Если сетевой интерфейс не соответствует, пропускаем
 			if((ifa->ifa_addr == nullptr) || (ifa->ifa_flags & IFF_POINTOPOINT) || (ifa->ifa_addr->sa_family != family)) continue;
 			// Заполняем структуры нулями сетевых адресов
-			memset(host, 0, sizeof(host));
+			memset(host, 0, INET6_ADDRSTRLEN);
 			// Заполняем буфер данными сетевых адресов IPv6
-			inet_ntop(family, &((struct sockaddr_in6 *) ifa->ifa_addr)->sin6_addr, host, sizeof(host));
+			inet_ntop(family, &((struct sockaddr_in6 *) ifa->ifa_addr)->sin6_addr, host, INET6_ADDRSTRLEN);
 			// Искомый IP адрес соответствует данному серверу
-			if(strcmp(host, target) == 0){
+			if(memcmp(host, target, INET6_ADDRSTRLEN) == 0){
 				// Структура сетевого интерфейса
 				struct ifreq ifreq;
 				// Заполняем нуляем наши буферы
@@ -1003,7 +1003,7 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 				// Запрашиваем данные ip адреса
 				inet_ntop(AF_INET6, (void *) &pipTable->Table[i].Address.Ipv6.sin6_addr, host, INET6_ADDRSTRLEN);
 				// Если искомый IP адрес найден
-				if(strcmp(target, host) == 0){
+				if(memcmp(target, host, INET6_ADDRSTRLEN) == 0){
 					// Если MAC адрес получен
 					if(pipTable->Table[i].PhysicalAddressLength > 0){
 						// Выделяем память для MAC адреса

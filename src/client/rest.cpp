@@ -30,7 +30,7 @@ void awh::client::Rest::chunking(const vector <char> & chunk, const awh::http_t 
  */
 void awh::client::Rest::openCallback(const size_t wid, awh::core_t * core, void * ctx) noexcept {
 	// Выполняем подключение
-	core->open(wid);
+	reinterpret_cast <client::core_t *> (core)->open(wid);
 }
 /**
  * connectCallback Функция обратного вызова при подключении к серверу
@@ -115,7 +115,7 @@ void awh::client::Rest::disconnectCallback(const size_t aid, const size_t wid, a
 			if((res.code == 301) || (res.code == 308) ||
 			   (res.code == 401) || (res.code == 407)){
 				// Выполняем запрос заново
-				core->open(web->worker.wid);
+				reinterpret_cast <client::core_t *> (core)->open(web->worker.wid);
 				// Выходим из функции
 				return;
 			}
@@ -189,7 +189,7 @@ void awh::client::Rest::connectProxyCallback(const size_t aid, const size_t wid,
 				}
 			} break;
 			// Иначе завершаем работу
-			default: core->close(aid);
+			default: reinterpret_cast <client::core_t *> (core)->close(aid);
 		}
 	}
 }
@@ -264,7 +264,7 @@ void awh::client::Rest::readCallback(const char * buffer, const size_t size, con
 									// Получаем новый адрес запроса для воркера
 									web->worker.url = req.url;
 									// Завершаем работу
-									core->close(aid);
+									reinterpret_cast <client::core_t *> (core)->close(aid);
 								}
 								// Завершаем работу
 								return;
@@ -291,7 +291,7 @@ void awh::client::Rest::readCallback(const char * buffer, const size_t size, con
 							// Выполняем очистку оставшихся данных
 							web->entity.clear();
 							// Завершаем работу
-							core->close(aid);
+							reinterpret_cast <client::core_t *> (core)->close(aid);
 							// Выходим из функции
 							return;
 						}
@@ -330,7 +330,7 @@ void awh::client::Rest::readCallback(const char * buffer, const size_t size, con
 				// Выполняем очистку оставшихся данных
 				web->entity.clear();
 				// Завершаем работу
-				core->close(aid);
+				reinterpret_cast <client::core_t *> (core)->close(aid);
 				// Выходим из функции
 				return;
 			}
@@ -406,7 +406,7 @@ void awh::client::Rest::readProxyCallback(const char * buffer, const size_t size
 								// Выполняем функцию обратного вызова
 								web->messageFn(res, web, web->ctx.at(1));
 							// Завершаем работу
-							core->close(aid);
+							reinterpret_cast <client::core_t *> (core)->close(aid);
 						}
 					}
 				}
@@ -460,7 +460,7 @@ void awh::client::Rest::readProxyCallback(const char * buffer, const size_t size
 										// Выполняем повторно отправку сообщения на сервер
 										connectProxyCallback(aid, wid, core, ctx);
 									// Завершаем работу
-									else core->close(aid);
+									else reinterpret_cast <client::core_t *> (core)->close(aid);
 									// Завершаем работу
 									return;
 								}
@@ -496,11 +496,11 @@ void awh::client::Rest::readProxyCallback(const char * buffer, const size_t size
 						// Выполняем функцию обратного вызова
 						web->messageFn(res, web, web->ctx.at(1));
 					// Завершаем работу
-					core->close(aid);
+					reinterpret_cast <client::core_t *> (core)->close(aid);
 				}
 			} break;
 			// Иначе завершаем работу
-			default: core->close(aid);
+			default: reinterpret_cast <client::core_t *> (core)->close(aid);
 		}
 	}
 }
