@@ -69,8 +69,6 @@
 #define HTTP_HEADER_CONNECTION "keep-alive"
 // Заголовок Content-Type по умолчанию
 #define HTTP_HEADER_CONTENTTYPE "text/html"
-// Заголовок Accept-Encoding по умолчанию
-#define HTTP_HEADER_ACCEPTENCODING "gzip, deflate, br"
 // Заголовок User-Agent по умолчанию
 #define HTTP_HEADER_AGENT "Mozilla/5.0 (Macintosh; Intel Mac OS X 11_1_0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4324.192 Safari/537.36"
 // Заголовок Accept по умолчанию

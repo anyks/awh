@@ -95,6 +95,8 @@ void awh::server::Rest::connectCallback(const size_t aid, const size_t wid, awh:
 			adj->http.setChunkingFn(web->ctx.at(4), web->chunkingFn);
 		// Устанавливаем функцию обработки вызова для получения чанков
 		else adj->http.setChunkingFn(web, &chunking);
+		// Устанавливаем метод компрессии поддерживаемый сервером
+		adj->http.setCompress(web->worker.compress);
 		// Устанавливаем параметры шифрования
 		if(web->crypt) adj->http.setCrypt(web->pass, web->salt, web->aes);
 		// Если сервер требует авторизацию

@@ -108,6 +108,8 @@ void awh::HttpProxy::setAuthType(const awh::auth_t::type_t type, const awh::auth
  * @param uri объект работы с URI
  */
 awh::HttpProxy::HttpProxy(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcept : http_t(fmk, log, uri) {
-	// Устанавливаем тип HTTP модуля
+	// Устанавливаем тип HTTP парсера
 	this->web.init(web_t::hid_t::SERVER);
+	// Устанавливаем тип HTTP модуля
+	this->httpType = web_t::hid_t::SERVER;
 }

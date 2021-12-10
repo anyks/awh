@@ -167,6 +167,10 @@ void awh::server::Proxy::connectServerCallback(const size_t aid, const size_t wi
 		else adj->cli.setChunkingFn(proxy, &chunkingCallback);
 		// Устанавливаем функцию обработки вызова для получения чанков
 		adj->srv.setChunkingFn(proxy, &chunkingCallback);
+		// Устанавливаем метод компрессии поддерживаемый клиентом
+		adj->cli.setCompress(proxy->worker.compress);
+		// Устанавливаем метод компрессии поддерживаемый сервером
+		adj->srv.setCompress(proxy->worker.compress);
 		// Если данные будем передавать в зашифрованном виде
 		if(proxy->crypt){
 			// Устанавливаем параметры шифрования

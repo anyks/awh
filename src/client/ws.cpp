@@ -62,6 +62,8 @@ void awh::client::WebSocket::connectCallback(const size_t aid, const size_t wid,
 		ws->http.reset();
 		// Выполняем очистку параметров HTTP запроса
 		ws->http.clear();
+		// Устанавливаем метод сжатия
+		ws->http.setCompress(ws->compress);
 		// Получаем бинарные данные REST запроса
 		const auto & request = ws->http.request(ws->worker.url);
 		// Если бинарные данные запроса получены
@@ -996,8 +998,6 @@ void awh::client::WebSocket::pause() noexcept {
 void awh::client::WebSocket::start() noexcept {
 	// Если адрес URL запроса передан
 	if(!this->freeze && !this->worker.url.empty()){
-		// Устанавливаем метод сжатия
-		this->http.setCompress(this->compress);
 		// Если биндинг не запущен, выполняем запуск биндинга
 		if(!this->core->working())
 			// Выполняем запуск биндинга

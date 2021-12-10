@@ -54,6 +54,8 @@ void awh::client::Rest::connectCallback(const size_t aid, const size_t wid, awh:
 			web->http.reset();
 			// Выполняем очистку параметров HTTP запроса
 			web->http.clear();
+			// Устанавливаем метод сжатия
+			web->http.setCompress(web->compress);
 			// Если список заголовков получен
 			if(!req.headers.empty())
 				// Устанавливаем заголовоки запроса
@@ -1205,8 +1207,6 @@ void awh::client::Rest::REST(const vector <req_t> & request) noexcept {
 		this->responses.clear();
 		// Устанавливаем адрес подключения
 		this->worker.url = request.front().url;
-		// Устанавливаем метод сжатия
-		this->http.setCompress(this->compress);
 		// Добавляем объект ответа в список ответов
 		this->responses.assign(request.size(), res_t());
 		// Добавляем объект запроса в список запросов

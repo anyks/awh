@@ -35,8 +35,6 @@ void awh::Http::update() noexcept {
 	const auto & body = this->web.getBody();
 	// Если тело сообщения получено
 	if(!body.empty()){
-		// Отключаем сжатие ответа с сервера
-		this->compress = compress_t::NONE;
 		// Получаем заголовок шифрования
 		const string & encrypt = this->web.getHeader("x-awh-encryption");
 		// Если заголовок найден
@@ -87,35 +85,45 @@ void awh::Http::update() noexcept {
 				const auto & res = this->hash.decompress(buffer.data(), buffer.size());
 				// Заменяем полученное тело
 				if(!res.empty()) this->web.setBody(res);
-			}
-		}
+			// Отключаем сжатие тела сообщения
+			} else this->compress = compress_t::NONE;
+		// Отключаем сжатие тела сообщения
+		} else this->compress = compress_t::NONE;
 	}
-	// Если метод компрессии не определён
-	if(this->compress == compress_t::NONE){
-		// Получаем заголовок запрашиваемых методов компрессии
-		const string & encoding = this->web.getHeader("accept-encoding");
-		// Если список запрашиваемых методов компрессии получен
-		if(!encoding.empty()){
-			// Список методов компрессии
-			set <wstring> split;
-			// Выполняем сплит методов компрессии
-			this->fmk->split(encoding, ",", split);
-			// Если список методов компрессии получен
-			if(!split.empty()){
-				// Если найден метод компрессии Brotli
-				if(split.count(L"br") > 0)
-					// Устанавливаем метод компрессии Brotli
-					this->compress = compress_t::BROTLI;
-				// Если найден метод компрессии GZip
-				else if(split.count(L"gzip") > 0)
-					// Устанавливаем метод компрессии GZip
-					this->compress = compress_t::GZIP;
-				// Если найден метод компрессии Deflate
-				else if(split.count(L"deflate") > 0)
-					// Устанавливаем метод компрессии Deflate
-					this->compress = compress_t::DEFLATE;
+	// Если мы работаем с HTTP сервером и метод компрессии установлен
+	if((this->httpType == web_t::hid_t::SERVER) && (this->compress != compress_t::NONE)){
+		// Список запрашиваемых методов
+		set <compress_t> compress;
+		// Если заголовок с запрашиваемой кодировкой существует
+		if(this->web.isHeader("accept-encoding")){
+			// Переходим по всему списку заголовков
+			for(auto & header : this->web.getHeaders()){
+				// Если заголовок найден
+				if(this->fmk->toLower(header.first) == "accept-encoding"){
+					// Если конкретный метод сжатия не запрашивается
+					if(header.second.compare("*") == 0) break;
+					// Если запрашиваются конкретные методы сжатия
+					else {
+						// Если найден запрашиваемый метод компрессии BROTLI
+						if(header.second.find("br") != string::npos)
+							// Запоминаем запрашиваемый метод компрессии BROTLI
+							compress.emplace(compress_t::BROTLI);
+						// Если найден запрашиваемый метод компрессии GZip
+						if(header.second.find("gzip") != string::npos)
+							// Запоминаем запрашиваемый метод компрессии GZip
+							compress.emplace(compress_t::GZIP);
+						// Если найден запрашиваемый метод компрессии Deflate
+						if(header.second.find("deflate") != string::npos)
+							// Запоминаем запрашиваемый метод компрессии Deflate
+							compress.emplace(compress_t::DEFLATE);
+					}
+				}
 			}
 		}
+		// Если поддерживаемый метод компрессии сервером не совпадает с запрашиваемым методом компрессии клиентом
+		if(compress.empty() || (compress.count(this->compress) < 1))
+			// Отключаем поддержку сжатия на сервере
+			this->compress = compress_t::NONE;
 	}
 }
 /**
@@ -1317,9 +1325,46 @@ vector <char> awh::Http::request(const uri_t::url_t & url, const web_t::method_t
 				// Добавляем заголовок в запрос
 				request.append(this->fmk->format("Accept-Language: %s\r\n", HTTP_HEADER_ACCEPTLANGUAGE));
 			// Если нужно произвести сжатие контента
-			if((this->compress != compress_t::NONE) && (method != web_t::method_t::CONNECT) && !this->isBlack("Accept-Encoding"))
-				// Добавляем заголовок в запрос
-				request.append(this->fmk->format("Accept-Encoding: %s\r\n", HTTP_HEADER_ACCEPTENCODING));
+			if((this->compress != compress_t::NONE) && (method != web_t::method_t::CONNECT) && !this->isBlack("Accept-Encoding")){
+				// Определяем метод сжатия который поддерживает клиент
+				switch((uint8_t) this->compress){
+					// Если клиент поддерживает методот сжатия BROTLI
+					case (uint8_t) compress_t::BROTLI:
+						// Добавляем заголовок в запрос
+						request.append(this->fmk->format("Accept-Encoding: %s\r\n", "br"));
+					break;
+					// Если клиент поддерживает методот сжатия GZIP
+					case (uint8_t) compress_t::GZIP:
+						// Добавляем заголовок в запрос
+						request.append(this->fmk->format("Accept-Encoding: %s\r\n", "gzip"));
+					break;
+					// Если клиент поддерживает методот сжатия DEFLATE
+					case (uint8_t) compress_t::DEFLATE:
+						// Добавляем заголовок в запрос
+						request.append(this->fmk->format("Accept-Encoding: %s\r\n", "deflate"));
+					break;
+					// Если клиент поддерживает методот сжатия GZIP, BROTLI
+					case (uint8_t) compress_t::GZIP_BROTLI:
+						// Добавляем заголовок в запрос
+						request.append(this->fmk->format("Accept-Encoding: %s\r\n", "gzip, br"));
+					break;
+					// Если клиент поддерживает методот сжатия GZIP, DEFLATE
+					case (uint8_t) compress_t::GZIP_DEFLATE:
+						// Добавляем заголовок в запрос
+						request.append(this->fmk->format("Accept-Encoding: %s\r\n", "gzip, deflate"));
+					break;
+					// Если клиент поддерживает методот сжатия DEFLATE, BROTLI
+					case (uint8_t) compress_t::DEFLATE_BROTLI:
+						// Добавляем заголовок в запрос
+						request.append(this->fmk->format("Accept-Encoding: %s\r\n", "deflate, br"));
+					break;
+					// Если клиент поддерживает все методы сжатия
+					case (uint8_t) compress_t::ALL_COMPRESS:
+						// Добавляем заголовок в запрос
+						request.append(this->fmk->format("Accept-Encoding: %s\r\n", "gzip, deflate, br"));
+					break;
+				}
+			}
 			// Устанавливаем User-Agent если не передан
 			if(!available[3] && !this->isBlack("User-Agent")){
 				// Если User-Agent установлен стандартный

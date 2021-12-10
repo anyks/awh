@@ -61,7 +61,16 @@ namespace awh {
 			/**
 			 * Формат сжатия тела запроса
 			 */
-			enum class compress_t : uint8_t {NONE, BROTLI, GZIP, DEFLATE};
+			enum class compress_t : uint8_t {
+				NONE,          // -
+				GZIP,          // gzip
+				BROTLI,        // br
+				DEFLATE,       // deflate
+				GZIP_BROTLI,   // gzip, br
+				GZIP_DEFLATE,  // gzip, deflate
+				ALL_COMPRESS,  // gzip, deflate, br
+				DEFLATE_BROTLI // deflate, br
+			};
 		protected:
 			/**
 			 * Auth Структура объекта авторизации
@@ -169,7 +178,9 @@ namespace awh {
 			// Стейт текущего запроса
 			state_t state = state_t::NONE;
 			// Метод сжатия данных запроса/ответа
-			compress_t compress = compress_t::GZIP;
+			compress_t compress = compress_t::NONE;
+			// Тип используемого HTTP модуля
+			web_t::hid_t httpType = web_t::hid_t::NONE;
 		protected:
 			// Чёрный список заголовков
 			mutable unordered_set <string> black;

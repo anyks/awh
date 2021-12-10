@@ -59,7 +59,7 @@ int main(int argc, char * argv[]) noexcept {
 	// rest.setProxy("socks5://rfbPbd:XcCuZH@45.144.169.109:8000");
 	// rest.setProxy("socks5://6S7rAk:g6K8XD@217.29.62.231:30810");
 	// Устанавливаем тип компрессии
-	rest.setCompress(http_t::compress_t::GZIP);
+	rest.setCompress(http_t::compress_t::ALL_COMPRESS);
 	// Устанавливаем тип авторизации прокси-сервера
 	// rest.setAuthTypeProxy();
 	// Выполняем инициализацию типа авторизации

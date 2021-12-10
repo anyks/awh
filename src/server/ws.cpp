@@ -74,6 +74,8 @@ void awh::server::WebSocket::connectCallback(const size_t aid, const size_t wid,
 		adj->http.setServ(ws->sid, ws->name, ws->version);
 		// Устанавливаем поддерживаемые сабпротоколы
 		if(!ws->subs.empty()) adj->http.setSubs(ws->subs);
+		// Устанавливаем метод компрессии поддерживаемый сервером
+		adj->http.setCompress(ws->worker.compress);
 		// Устанавливаем параметры шифрования
 		if(ws->crypt) adj->http.setCrypt(ws->pass, ws->salt, ws->aes);
 		// Если сервер требует авторизацию

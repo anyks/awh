@@ -79,7 +79,7 @@ int main(int argc, char * argv[]) noexcept {
 
 	core.setCA("./ca/cert.pem");
 
-	rest.setCompress(http_t::compress_t::GZIP);
+	rest.setCompress(http_t::compress_t::ALL_COMPRESS);
 
 	// rest.setProxy("http://user:password@host.com:port");
 	rest.setProxy("socks5://user:password@host.com:port");
@@ -118,7 +118,7 @@ int main(int argc, char * argv[]) noexcept {
 	log.setLogName("Rest Server");
 	log.setLogFormat("%H:%M:%S %d.%m.%Y");
 
-	rest.init(2222, "127.0.0.1");
+	rest.init(2222, "127.0.0.1", http_t::compress_t::GZIP);
 	rest.setAuthType(auth_t::type_t::DIGEST, auth_t::hash_t::MD5);
 
 	rest.on(&log, [](const string & user, void * ctx) -> string {

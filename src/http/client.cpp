@@ -110,6 +110,8 @@ void awh::client::Http::setAuthType(const awh::auth_t::type_t type, const awh::a
  * @param uri объект работы с URI
  */
 awh::client::Http::Http(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcept : awh::http_t(fmk, log, uri) {
-	// Устанавливаем тип HTTP модуля
+	// Устанавливаем тип HTTP парсера
 	this->web.init(web_t::hid_t::CLIENT);
+	// Устанавливаем тип HTTP модуля
+	this->httpType = web_t::hid_t::CLIENT;
 }
