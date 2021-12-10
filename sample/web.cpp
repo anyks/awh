@@ -47,7 +47,7 @@ int main(int argc, char * argv[]) noexcept {
 	// rest.setAuthType();
 	// rest.setAuthType(auth_t::type_t::DIGEST, auth_t::hash_t::MD5);
 	// Выполняем инициализацию WebSocket сервера
-	rest.init(2222, "127.0.0.1", http_t::compress_t::GZIP);
+	rest.init(2222, "127.0.0.1", http_t::compress_t::ALL_COMPRESS);
 	// Устанавливаем шифрование
 	// rest.setCrypt("PASS");
 	// Устанавливаем функцию извлечения пароля
