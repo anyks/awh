@@ -52,7 +52,7 @@ fi
 if [[ $OS = "Windows" ]]; then
 	export MAKE="mingw32-make"
 else
-	export MAKE=make
+	export MAKE="make"
 fi
 
 # Каталог для установки собранных библиотек

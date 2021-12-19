@@ -53,6 +53,7 @@ string(TIMESTAMP CURRENT_TIME "%d.%m.%Y %H:%M:%S")
 
 # Опции компилятора
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC")
 
 if (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
     set(WINPARAMS "-Wno-cpp")

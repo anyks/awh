@@ -1,14 +1,19 @@
 /**
- * author:    Yuriy Lobarev
- * telegram:  @forman
- * phone:     +7(910)983-95-90
- * email:     forman@anyks.com
- * site:      https://anyks.com
- * copyright: © Yuriy Lobarev
+ * @file: lib.hpp
+ * @date: 2021-12-19
+ * @license: GPL-3.0
+ *
+ * @telegram: @forman
+ * @author: Yuriy Lobarev
+ * @phone: +7 (910) 983-95-90
+ * @email: forman@anyks.com
+ * @site: https://anyks.com
+ *
+ * @copyright: Copyright © 2021
  */
 
 // Версия приложения
-#define AWH_VERSION "1.6.2"
+#define AWH_VERSION "1.6.3"
 // Короткое название библиотеки
 #define AWH_SHORT_NAME "AWH"
 // Название библиотеки
