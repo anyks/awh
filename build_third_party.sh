@@ -50,9 +50,9 @@ fi
 
 # Устанавливаем систему сборки
 if [[ $OS = "Windows" ]]; then
-	export MAKE="mingw32-make"
+	export BUILD="mingw32-make"
 else
-	export MAKE="make"
+	export BUILD="make"
 fi
 
 # Каталог для установки собранных библиотек
@@ -121,10 +121,10 @@ if [ ! -f "$src/.stamp_done" ]; then
 	-Wl,-rpath,"$PREFIX/lib"  || exit 1
 
 	# Выполняем сборку на всех логических ядрах
-	$MAKE -j"$numproc" || exit 1
+	$BUILD -j"$numproc" || exit 1
 	# Выполняем установку проекта без документации
-	$MAKE install_sw || exit 1
-	$MAKE install_ssldirs || exit 1
+	$BUILD install_sw || exit 1
+	$BUILD install_ssldirs || exit 1
 
 	# Помечаем флагом, что сборка и установка произведена
 	touch "$src/.stamp_done"
@@ -181,9 +181,9 @@ if [ ! -f "$src/.stamp_done" ]; then
 	fi
 
 	# Выполняем сборку на всех логических ядрах
-	$MAKE -j"$numproc" || exit 1
+	$BUILD -j"$numproc" || exit 1
 	# Выполняем установку проекта
-	$MAKE install || exit 1
+	$BUILD install || exit 1
 
 	# Помечаем флагом, что сборка и установка произведена
 	touch "$src/.stamp_done"
@@ -246,7 +246,7 @@ if [ ! -f "$src/.stamp_done" ]; then
 	fi
 
 	# Выполняем сборку на всех логических ядрах
-	$MAKE -j"$numproc" || exit 1
+	$BUILD -j"$numproc" || exit 1
 
 	if [ $OS = "Darwin" ]; then # MacOS
 		INSTALL_CMD="ditto -v"
@@ -345,9 +345,9 @@ if [ ! -f "$src/.stamp_done" ]; then
 	fi
 
 	 # Выполняем сборку на всех логических ядрах
-	$MAKE -j"$numproc" || exit 1
+	$BUILD -j"$numproc" || exit 1
 	# Выполняем установку проекта
-	$MAKE install || exit 1
+	$BUILD install || exit 1
 
 	# Помечаем флагом, что сборка и установка произведена
 	touch "$src/.stamp_done"
