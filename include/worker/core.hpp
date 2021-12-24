@@ -119,8 +119,6 @@ namespace awh {
 				private:
 					// Идентификатор адъютанта
 					size_t aid = 0;
-					// Текущее количество попыток
-					u_short attempt = 0;
 				private:
 					// Таймер на чтение в секундах
 					time_t timeRead = READ_TIMEOUT;
@@ -165,9 +163,6 @@ namespace awh {
 			bool wait = false;
 			// Флаг автоматического поддержания подключения
 			bool alive = false;
-		public:
-			// Общее количество попыток
-			u_short attempts = 0;
 		public:
 			// Таймер на чтение в секундах
 			time_t timeRead = READ_TIMEOUT;

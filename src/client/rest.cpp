@@ -1329,14 +1329,6 @@ void awh::client::Rest::setChunkSize(const size_t size) noexcept {
 	this->http.setChunkSize(size);
 }
 /**
- * setAttempts Метод установки количества попыток переподключения
- * @param count количество попыток переподключения
- */
-void awh::client::Rest::setAttempts(const u_short count) noexcept {
-	// Устанавливаем количество попыток переподключения
-	this->worker.attempts = count;
-}
-/**
  * setUserAgent Метод установки User-Agent для HTTP запроса
  * @param userAgent агент пользователя для HTTP запроса
  */

@@ -188,8 +188,6 @@ void awh::client::Core::event(struct bufferevent * bev, const short events, void
 				const string & host = (!url.ip.empty() ? url.ip : url.domain);
 				// Если подключение удачное
 				if(events & BEV_EVENT_CONNECTED){
-					// Сбрасываем количество попыток подключений
-					adj->attempt = 0;
 					// Выводим в лог сообщение
 					if(!core->noinfo) adj->log->print("connect client to server [%s:%d]", log_t::flag_t::INFO, host.c_str(), url.port);
 					// Если подключение производится через, прокси-сервер
@@ -241,8 +239,6 @@ void awh::client::Core::tuning(const size_t aid) noexcept {
 	if(it != this->adjutants.end()){
 		// Получаем объект воркера
 		client::worker_t * wrk = (client::worker_t *) const_cast <awh::worker_t *> (it->second->parent);
-		// Устанавливаем количество попыток
-		const_cast <awh::worker_t::adj_t *> (it->second)->attempt = wrk->attempt;
 		// Устанавливаем время ожидания поступления данных
 		const_cast <awh::worker_t::adj_t *> (it->second)->timeRead = wrk->timeRead;
 		// Устанавливаем время ожидания записи данных
@@ -338,36 +334,15 @@ void awh::client::Core::connect(const size_t wid) noexcept {
 					if(bufferevent_socket_connect(ret.first->second.bev, sin, size) < 0){
 						// Выводим в лог сообщение
 						this->log->print("connecting to host = %s, port = %u", log_t::flag_t::CRITICAL, url.ip.c_str(), url.port);
-						// Если нужно выполнить автоматическое переподключение
-						if(wrk->alive && (ret.first->second.attempt <= wrk->attempts)){
-							// Выполняем очистку буфера событий
-							this->clean(ret.first->second.bev);
-							// Выполняем удаление контекста SSL
-							this->ssl.clear(ret.first->second.ssl);
-							// Устанавливаем что событие удалено
-							ret.first->second.bev = nullptr;
-							// Увеличиваем колпичество попыток
-							ret.first->second.attempt++;
-							// Выполняем переподключение
-							this->restore(wid);
-							// Выходим из функции
-							return;
-						// Если все попытки исчерпаны
-						} else {
-							// Определяем тип подключения
-							switch(this->net.family){
-								// Резолвер IPv4, выполняем сброс кэша резолвера
-								case AF_INET: this->dns4.flush(); break;
-								// Резолвер IPv6, выполняем сброс кэша резолвера
-								case AF_INET6: this->dns6.flush(); break;
-							}
-							// Выводим сообщение об ошибке
-							if(!core->noinfo) this->log->print("%s", log_t::flag_t::INFO, "disconnected from the server");
-							// Выводим функцию обратного вызова
-							if(wrk->disconnectFn != nullptr) wrk->disconnectFn(ret.first->first, wrk->wid, this, wrk->ctx);
-							// Выходим из функции
-							return;
+						// Определяем тип подключения
+						switch(this->net.family){
+							// Резолвер IPv4, выполняем сброс кэша резолвера
+							case AF_INET: this->dns4.flush(); break;
+							// Резолвер IPv6, выполняем сброс кэша резолвера
+							case AF_INET6: this->dns6.flush(); break;
 						}
+						// Выполняем отключение от сервера
+						this->close(ret.first->first);
 					}
 					// Выводим в лог сообщение
 					if(!core->noinfo) this->log->print("create good connect to host = %s [%s:%d], socket = %d", log_t::flag_t::INFO, url.domain.c_str(), url.ip.c_str(), url.port, socket.fd);
@@ -377,9 +352,7 @@ void awh::client::Core::connect(const size_t wid) noexcept {
 				} else this->log->print("connecting to host = %s, port = %u", log_t::flag_t::CRITICAL, url.ip.c_str(), url.port);
 			}
 			// Если нужно выполнить автоматическое переподключение
-			if(wrk->alive && (wrk->attempt <= wrk->attempts)){
-				// Увеличиваем колпичество попыток
-				wrk->attempt++;
+			if(wrk->alive){
 				// Выполняем переподключение
 				this->restore(wid);
 				// Выходим из функции
@@ -569,29 +542,36 @@ void awh::client::Core::switchProxy(const size_t aid) noexcept {
 		awh::worker_t::adj_t * adj = const_cast <awh::worker_t::adj_t *> (it->second);
 		// Получаем объект воркера
 		client::worker_t * wrk = (client::worker_t *) const_cast <awh::worker_t *> (adj->parent);
-		// Выполняем переключение типа подключения
-		wrk->switchConnect();
-		// Выполняем получение контекста сертификата
-		adj->ssl = this->ssl.init(wrk->url);
-		// Если SSL клиент разрешен
-		if(adj->ssl.mode){
-			// Устанавливаем первоначальное значение
-			u_int mode = BEV_OPT_THREADSAFE;
-			// Если нужно использовать отложенные вызовы событий сокета
-			if(this->defer) mode = (mode | BEV_OPT_DEFER_CALLBACKS);
-			// Выполняем переход на защищённое подключение
-			struct bufferevent * bev = bufferevent_openssl_filter_new(this->base, adj->bev, adj->ssl.ssl, BUFFEREVENT_SSL_CONNECTING, mode);
-			// Если буфер событий создан
-			if(bev != nullptr){
-				// Устанавливаем новый буфер событий
-				adj->bev = bev;
-				// Разрешаем непредвиденное грязное завершение работы
-				bufferevent_openssl_set_allow_dirty_shutdown(adj->bev, 1);
-				// Выполняем тюннинг буфера событий
-				this->tuning(aid);
+		// Если прокси-сервер активирован но ещё не переключён на работу с сервером
+		if((wrk->proxy.type != proxy_t::type_t::NONE) && wrk->isProxy()){
+			// Выполняем переключение на работу с сервером
+			wrk->switchConnect();
+			// Выполняем получение контекста сертификата
+			adj->ssl = this->ssl.init(wrk->url);
+			// Если SSL клиент разрешен
+			if(adj->ssl.mode){
+				// Устанавливаем первоначальное значение
+				u_int mode = BEV_OPT_THREADSAFE;
+				// Если нужно использовать отложенные вызовы событий сокета
+				if(this->defer) mode = (mode | BEV_OPT_DEFER_CALLBACKS);
+				// Выполняем переход на защищённое подключение
+				struct bufferevent * bev = bufferevent_openssl_filter_new(this->base, adj->bev, adj->ssl.ssl, BUFFEREVENT_SSL_CONNECTING, mode);
+				// Если буфер событий создан
+				if(bev != nullptr){
+					// Устанавливаем новый буфер событий
+					adj->bev = bev;
+					// Разрешаем непредвиденное грязное завершение работы
+					bufferevent_openssl_set_allow_dirty_shutdown(adj->bev, 1);
+					// Выполняем тюннинг буфера событий
+					this->tuning(aid);
+				// Отключаемся от сервера
+				} else this->close(aid);
+				// Выходим из функции
+				return;
 			}
-		// Выполняем функцию обратного вызова
-		} else if(wrk->connectFn != nullptr) wrk->connectFn(aid, wrk->wid, this, wrk->ctx);
+		}
+		// Если функция обратного вызова установлена, сообщаем, что мы подключились
+		if(wrk->connectFn != nullptr) wrk->connectFn(aid, wrk->wid, this, wrk->ctx);
 	}
 }
 /**

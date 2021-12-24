@@ -329,11 +329,6 @@ namespace awh {
 				 */
 				void setFrameSize(const size_t size) noexcept;
 				/**
-				 * setAttempts Метод установки количества попыток переподключения
-				 * @param count количество попыток переподключения
-				 */
-				void setAttempts(const u_short count) noexcept;
-				/**
 				 * setUserAgent Метод установки User-Agent для HTTP запроса
 				 * @param userAgent агент пользователя для HTTP запроса
 				 */

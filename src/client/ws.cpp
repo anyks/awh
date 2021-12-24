@@ -1127,14 +1127,6 @@ void awh::client::WebSocket::setFrameSize(const size_t size) noexcept {
 	if(size > 0) this->frameSize = size;
 }
 /**
- * setAttempts Метод установки количества попыток переподключения
- * @param count количество попыток переподключения
- */
-void awh::client::WebSocket::setAttempts(const u_short count) noexcept {
-	// Устанавливаем количество попыток переподключения
-	this->worker.attempts = count;
-}
-/**
  * setUserAgent Метод установки User-Agent для HTTP запроса
  * @param userAgent агент пользователя для HTTP запроса
  */

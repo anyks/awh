@@ -61,10 +61,10 @@ else()
 endif()
 
 if (${ARCHITECTURE} MATCHES "aarch64" OR ${ARCHITECTURE} MATCHES "arm*")
-    set(CMAKE_CXX_FLAGS_RELEASE "-O2 -pipe -DNDEBUG")
+    set(CMAKE_CXX_FLAGS_RELEASE "-O3 -pipe -DNDEBUG")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread -std=c++14 -fno-permissive -Wno-pedantic -Wno-deprecated-declarations -Wno-narrowing")
 else()
-    set(CMAKE_CXX_FLAGS_RELEASE "-O2 -pipe -mfma -mrdrnd -mf16c -march=core2 -DNDEBUG")
+    set(CMAKE_CXX_FLAGS_RELEASE "-O3 -pipe -mfma -mrdrnd -mf16c -march=core2 -DNDEBUG")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread -std=c++14 -fno-permissive -Wno-pedantic -Wno-deprecated-declarations -Wno-narrowing ${WINPARAMS}")
 endif()
 
