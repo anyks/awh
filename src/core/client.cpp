@@ -437,9 +437,9 @@ void awh::client::Core::open(const size_t wid) noexcept {
 					// Определяем тип подключения
 					switch(this->net.family){
 						// Резолвер IPv4, создаём резолвер
-						case AF_INET: this->dns4.resolve(wrk, url.domain, AF_INET, resolver); break;
+						case AF_INET: this->dns4.resolve(wrk, url.domain, AF_INET, &resolver); break;
 						// Резолвер IPv6, создаём резолвер
-						case AF_INET6: this->dns6.resolve(wrk, url.domain, AF_INET6, resolver); break;
+						case AF_INET6: this->dns6.resolve(wrk, url.domain, AF_INET6, &resolver); break;
 					}
 				// Выполняем запуск системы
 				else if(!url.ip.empty()) resolver(url.ip, wrk);
@@ -516,14 +516,14 @@ void awh::client::Core::restore(const size_t wid) noexcept {
 					// Выполняем сброс кэша DNS резолвера
 					this->dns4.flush();
 					// Выполняем резолвинг домена
-					this->dns4.resolve(wrk, url.domain, AF_INET, resolver);
+					this->dns4.resolve(wrk, (!url.domain.empty() ? url.domain : url.ip), AF_INET, &resolver);
 				} break;
 				// Резолвер IPv6, создаём резолвер
 				case AF_INET6: {
 					// Выполняем сброс кэша DNS резолвера
 					this->dns6.flush();
 					// Выполняем резолвинг домена
-					this->dns6.resolve(wrk, url.domain, AF_INET6, resolver);
+					this->dns6.resolve(wrk, (!url.domain.empty() ? url.domain : url.ip), AF_INET6, &resolver);
 				} break;
 			}
 		}
