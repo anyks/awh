@@ -6,9 +6,9 @@
 
 - **HTTP/HTTPS**: REST - CLIENT/SERVER.
 - **WS/WSS**: WebSocket - CLIENT/SERVER.
-- **Proxy**: HTTP/SOCKS5 PROXY CLIENT/SERVER.
-- **Compress**: GZIP/DEFLATE/BROTLI compression support.
-- **Authentication**: BASIC/DIGEST authentication support.
+- **Proxy**: HTTP/SOCKS5 PROXY - CLIENT/SERVER.
+- **Compress**: GZIP/DEFLATE/BROTLI - compression support.
+- **Authentication**: BASIC/DIGEST - authentication support.
 
 ## Requirements
 
