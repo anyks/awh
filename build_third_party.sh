@@ -61,8 +61,8 @@ export PKG_CONFIG_PATH="$PREFIX/lib/pkgconfig"
 
 # Устанавливаем флаги глобального использования
 # export CPPFLAGS=""
-export CFLAGS="-I$PREFIX/include"
 export CXXFLAGS="$CXXFLAGS -fPIC"
+export CFLAGS="-I$PREFIX/include -fPIC"
 
 export LDFLAGS="-L$PREFIX/lib"
 export LD_LIBRARY_PATH="$PREFIX/lib"
