@@ -287,13 +287,13 @@ string awh::Framework::noexp(const double number, const bool onlyNum) const noex
 	// Получаем из потока строку
 	stream >> result;
 	// Если количество цифр после запятой больше нуля
-	if(count > 0){
+	if((count > 0) && (result.size() > 2)){
 		// Устанавливаем значение последнего символа
 		char last = '$';
 		// Выполняем перебор всех символов
-		for(auto it = (result.end() - 1); it != (result.begin() - 1);){
+		for(auto it = (result.end() - 2); it != (result.begin() - 1);){
 			// Если символ не является последним
-			if(it != (result.end() - 1)){
+			if(it != (result.end() - 2)){
 				// Если символы совпадают, удаляем текущий
 				if((* it) == last) result.erase(it);
 				// Если символы не совпадат, выходим
