@@ -20,16 +20,39 @@
  * @return результат инициализации
  */
 bool awh::Hash::initAES() const {
+	// Размеры массивов IV и KEY
+	uint8_t keySize = 0, ivSize = 0;
 	// Создаем тип шифрования
 	const EVP_CIPHER * cipher = EVP_enc_null();
-	// Устанавливаем длину шифрования
+	// Определяем длину шифрования
 	switch((u_short) this->aesSize){
 		// Устанавливаем шифрование в 128
-		case (u_short) aes_t::AES128: cipher = EVP_aes_128_ecb(); break;
+		case (u_short) aes_t::AES128: {
+			// Устанавливаем размер массива IV
+			ivSize = 8;
+			// Устанавливаем размер массива KEY
+			keySize = 16;
+			// Устанавливаем функцию шифрования
+			cipher = EVP_aes_128_ecb();
+		} break;
 		// Устанавливаем шифрование в 192
-		case (u_short) aes_t::AES192: cipher = EVP_aes_192_ecb(); break;
+		case (u_short) aes_t::AES192: {
+			// Устанавливаем размер массива IV
+			ivSize = 12;
+			// Устанавливаем размер массива KEY
+			keySize = 24;
+			// Устанавливаем функцию шифрования
+			cipher = EVP_aes_192_ecb();
+		} break;
 		// Устанавливаем шифрование в 256
-		case (u_short) aes_t::AES256: cipher = EVP_aes_256_ecb(); break;
+		case (u_short) aes_t::AES256: {
+			// Устанавливаем размер массива IV
+			ivSize = 16;
+			// Устанавливаем размер массива KEY
+			keySize = 32;
+			// Устанавливаем функцию шифрования
+			cipher = EVP_aes_256_ecb();
+		} break;
 		// Если ничего не выбрано, сбрасываем
 		default: return false;
 	}
@@ -38,8 +61,13 @@ bool awh::Hash::initAES() const {
 	// Привязываем контекст к типу шифрования
 	EVP_EncryptInit_ex(ctx, cipher, nullptr, nullptr, nullptr);
 	// Выделяем нужное количество памяти
+	vector <u_char> iv(ivSize, 0);
+	vector <u_char> key(keySize, 0);
+	/*
+	// Выделяем нужное количество памяти
 	vector <u_char> iv(EVP_CIPHER_CTX_iv_length(ctx), 0);
 	vector <u_char> key(EVP_CIPHER_CTX_key_length(ctx), 0);
+	*/
 	// Выполняем инициализацию ключа
 	const int ok = EVP_BytesToKey(cipher, EVP_sha256(), (this->salt.empty() ? nullptr : (u_char *) this->salt.data()), (u_char *) this->password.data(), this->password.length(), this->roundsAES, key.data(), iv.data());
 	// Очищаем контекст
@@ -103,31 +131,32 @@ const vector <char> awh::Hash::encrypt(const char * buffer, const size_t size) c
 	if((buffer != nullptr) && (size > 0)){
 		// Если пароль установлен
 		if(!this->password.empty()){
-			// Максимальный размер считываемых данных
-			int chunk = 0;
-			// Размер буфера полученных данных
-			size_t count = 0;
-			// Определяем размер данных для считывания
-			size_t len = size;
-			// Выполняем инициализацию
-			this->initAES();
-			// Выделяем память для буфера данных
-			vector <u_char> output(len, 0);
-			// Входные данные
-			const u_char * input = (u_char *) buffer;
-			// Выполняем извлечение оставшихся данных
-			do {
+			// Выполняем инициализацию AES
+			if(this->initAES()){
 				// Максимальный размер считываемых данных
-				chunk = (len > CHUNK_BUFFER_SIZE ? CHUNK_BUFFER_SIZE : len);
-				// Выполняем сжатие данных
-				AES_cfb128_encrypt(input + count, output.data() + count, chunk, &this->aesKey, this->stateAES.ivec, &this->stateAES.num, AES_ENCRYPT);
-				// Увеличиваем смещение
-				count += chunk;
-				// Вычитаем считанные данные
-				len -= chunk;
-			} while(len > 0);
-			// Запоминаем полученные данные
-			result.insert(result.end(), output.data(), output.data() + count);
+				int chunk = 0;
+				// Размер буфера полученных данных
+				size_t count = 0;
+				// Определяем размер данных для считывания
+				size_t len = size;
+				// Выделяем память для буфера данных
+				vector <u_char> output(len, 0);
+				// Входные данные
+				const u_char * input = (u_char *) buffer;
+				// Выполняем извлечение оставшихся данных
+				do {
+					// Максимальный размер считываемых данных
+					chunk = (len > CHUNK_BUFFER_SIZE ? CHUNK_BUFFER_SIZE : len);
+					// Выполняем сжатие данных
+					AES_cfb128_encrypt(input + count, output.data() + count, chunk, &this->aesKey, this->stateAES.ivec, &this->stateAES.num, AES_ENCRYPT);
+					// Увеличиваем смещение
+					count += chunk;
+					// Вычитаем считанные данные
+					len -= chunk;
+				} while(len > 0);
+				// Запоминаем полученные данные
+				result.insert(result.end(), output.data(), output.data() + count);
+			}
 		// Выводим тот же самый буфер как он был передан
 		} else result.insert(result.end(), buffer, buffer + size);
 	}
@@ -147,31 +176,32 @@ const vector <char> awh::Hash::decrypt(const char * buffer, const size_t size) c
 	if((buffer != nullptr) && (size > 0)){
 		// Если пароль установлен
 		if(!this->password.empty()){
-			// Максимальный размер считываемых данных
-			int chunk = 0;
-			// Размер буфера полученных данных
-			size_t count = 0;
-			// Определяем размер данных для считывания
-			size_t len = size;
-			// Выполняем инициализацию
-			this->initAES();
-			// Выделяем память для буфера данных
-			vector <u_char> output(len, 0);
-			// Входные данные
-			const u_char * input = (u_char *) buffer;
-			// Выполняем извлечение оставшихся данных
-			do {
+			// Выполняем инициализацию AES
+			if(this->initAES()){
 				// Максимальный размер считываемых данных
-				chunk = (len > CHUNK_BUFFER_SIZE ? CHUNK_BUFFER_SIZE : len);
-				// Выполняем сжатие данных
-				AES_cfb128_encrypt(input + count, output.data() + count, chunk, &this->aesKey, this->stateAES.ivec, &this->stateAES.num, AES_DECRYPT);
-				// Увеличиваем смещение
-				count += chunk;
-				// Вычитаем считанные данные
-				len -= chunk;
-			} while(len > 0);
-			// Запоминаем полученные данные
-			result.insert(result.end(), output.data(), output.data() + count);
+				int chunk = 0;
+				// Размер буфера полученных данных
+				size_t count = 0;
+				// Определяем размер данных для считывания
+				size_t len = size;
+				// Выделяем память для буфера данных
+				vector <u_char> output(len, 0);
+				// Входные данные
+				const u_char * input = (u_char *) buffer;
+				// Выполняем извлечение оставшихся данных
+				do {
+					// Максимальный размер считываемых данных
+					chunk = (len > CHUNK_BUFFER_SIZE ? CHUNK_BUFFER_SIZE : len);
+					// Выполняем сжатие данных
+					AES_cfb128_encrypt(input + count, output.data() + count, chunk, &this->aesKey, this->stateAES.ivec, &this->stateAES.num, AES_DECRYPT);
+					// Увеличиваем смещение
+					count += chunk;
+					// Вычитаем считанные данные
+					len -= chunk;
+				} while(len > 0);
+				// Запоминаем полученные данные
+				result.insert(result.end(), output.data(), output.data() + count);
+			}
 		// Выводим тот же самый буфер как он был передан
 		} else result.insert(result.end(), buffer, buffer + size);
 	}
