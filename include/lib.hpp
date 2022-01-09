@@ -12,6 +12,9 @@
  * @copyright: Copyright © 2021
  */
 
+#ifndef __AWH_CONFIG__
+#define __AWH_CONFIG__
+
 // Версия приложения
 #define AWH_VERSION "1.6.5"
 // Короткое название библиотеки
@@ -124,3 +127,5 @@
 	// Адрес файла корневого сертификата
 	#define SSL_CA_FILE ""
 #endif
+
+#endif // __AWH_CONFIG__
