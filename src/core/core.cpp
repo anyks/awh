@@ -382,6 +382,8 @@ void awh::Core::bind(Core * core) noexcept {
 		core->locker = (core->base != nullptr);
 		// Если блокировка базы событий выполнена
 		if(core->locker){
+			// Устанавливаем флаг запуска
+			core->mode = true;
 			// Блокируем информационные сообщения для клиента
 			core->noinfo = true;
 			// Добавляем базу событий для DNS резолвера IPv4
@@ -427,6 +429,8 @@ void awh::Core::unbind(Core * core) noexcept {
 		core->dns6.reset();
 		// Если функция обратного вызова установлена, выполняем
 		if(core->callbackFn != nullptr) core->callbackFn(false, core, core->ctx.front());
+		// Устанавливаем флаг остановки
+		core->mode = false;
 		// Выполняем сброс блокировки базы событий
 		core->locker = false;
 		// Выполняем разблокировку потока
