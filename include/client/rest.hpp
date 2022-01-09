@@ -33,11 +33,11 @@ using namespace std;
 // Активируем json в качестве объекта пространства имён
 using json = nlohmann::json;
 
-/*
+/**
  * awh пространство имён
  */
 namespace awh {
-	/*
+	/**
 	 * client клиентское пространство имён
 	 */
 	namespace client {

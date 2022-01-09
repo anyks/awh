@@ -22,7 +22,7 @@
 // Устанавливаем пространство имён
 using namespace std;
 
-/*
+/**
  * awh пространство имён
  */
 namespace awh {

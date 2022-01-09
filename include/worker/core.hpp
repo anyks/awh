@@ -32,11 +32,11 @@
 // Подписываемся на стандартное пространство имён
 using namespace std;
 
-/*
+/**
  * awh пространство имён
  */
 namespace awh {
-	/*
+	/**
 	 * client клиентское пространство имён
 	 */
 	namespace client {
@@ -45,7 +45,7 @@ namespace awh {
 		 */
 		class Core;
 	};
-	/*
+	/**
 	 * server серверное пространство имён
 	 */
 	namespace server {
@@ -56,7 +56,7 @@ namespace awh {
 	};
 }
 
-/*
+/**
  * awh пространство имён
  */
 namespace awh {

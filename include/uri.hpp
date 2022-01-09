@@ -46,7 +46,7 @@
 // Устанавливаем область видимости
 using namespace std;
 
-/*
+/**
  * awh пространство имён
  */
 namespace awh {
