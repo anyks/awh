@@ -460,14 +460,23 @@ void awh::Core::stop() noexcept {
 		event_del(&this->timeout);
 		// Выполняем отключение всех клиентов
 		this->closeAll();
-		// Если таймер периодического запуска коллбека активирован
-		if(this->persist){
-			// Удаляем событие интервала
-			event_del(&this->interval);
-			// Завершаем работу базы событий
-			event_base_loopbreak(this->base);
-		// Нормально завершаем работу базы событий
-		} else event_base_loopexit(this->base, nullptr);
+		// Если запрещено использовать простое чтение базы событий
+		if(!this->easy){
+			// Если таймер периодического запуска коллбека активирован
+			if(this->persist){
+				// Удаляем событие интервала
+				event_del(&this->interval);
+				// Завершаем работу базы событий
+				event_base_loopbreak(this->base);
+			// Нормально завершаем работу базы событий
+			} else event_base_loopexit(this->base, nullptr);
+		// Если разрешено использовать простое чтение базы событий
+		} else {
+			// Если таймер периодического запуска коллбека активирован, удаляем событие интервала
+			if(this->persist) event_del(&this->interval);
+			// Завершаем чтение базы событий
+			this->easy = this->mode;
+		}
 	}
 }
 /**
@@ -496,8 +505,17 @@ void awh::Core::start() noexcept {
 		this->tvTimeout.tv_sec = 1;
 		// Создаём событие таймаута на активацию базы событий
 		event_add(&this->timeout, &this->tvTimeout);
-		// Запускаем работу базы событий
-		event_base_dispatch(this->base);
+		// Если запрещено использовать простое чтение базы событий
+		if(!this->easy)
+			// Запускаем работу базы событий
+			event_base_dispatch(this->base);
+		// Если разрешено использовать простое чтение базы событий
+		else {
+			// Выполняем чтение базы событий пока это разрешено
+			while(this->easy)
+				// Выполняем чтение базы событий
+				event_base_loop(this->base, EVLOOP_NONBLOCK);
+		}
 		// Выполняем сброс модуля DNS резолвера IPv4
 		this->dns4.reset();
 		// Выполняем сброс модуля DNS резолвера IPv6
@@ -897,6 +915,13 @@ u_short awh::Core::setInterval(void * ctx, const time_t delay, function <void (c
 	}
 	// Выводим результат
 	return result;
+}
+/**
+ * setEasy Разрешаем использовать простое чтение базы событий
+ */
+void awh::Core::setEasy() noexcept {
+	// Устанавливаем флаг разрешающий использовать простое чтение базы событий
+	this->easy = true;
 }
 /**
  * setDefer Метод установки флага отложенных вызовов событий сокета

@@ -185,6 +185,8 @@ namespace awh {
 		protected:
 			// Флаг отложенных вызовов событий сокета
 			bool defer = true;
+			// Флаг простого чтения базы событий
+			bool easy = false;
 			// Флаг разрешения работы
 			bool mode = false;
 			// Флаг блокировку инициализации базы событий
@@ -403,6 +405,10 @@ namespace awh {
 			 */
 			u_short setInterval(void * ctx, const time_t delay, function <void (const u_short, Core *, void *)> callback) noexcept;
 		public:
+			/**
+			 * setEasy Разрешаем использовать простое чтение базы событий
+			 */
+			void setEasy() noexcept;
 			/**
 			 * setDefer Метод установки флага отложенных вызовов событий сокета
 			 * @param mode флаг отложенных вызовов событий сокета
