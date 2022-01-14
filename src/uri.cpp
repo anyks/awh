@@ -162,94 +162,6 @@ const string awh::URI::urlDecode(const string & str) const noexcept {
 	return result;
 }
 /**
- * parseUrl Метод получения параметров URL запроса
- * @param url строка URL запроса для получения параметров
- * @return    параметры URL запроса
- */
-const awh::URI::url_t awh::URI::parseUrl(const string & url) const noexcept {
-	// Результат работы функции
-	url_t result;
-	// Если URL адрес передан
-	if(!url.empty()){
-		// Выполняем парсинг URL адреса
-		const auto & split = this->split(url);
-		// Если список параметров получен
-		if(!split.empty() && (split.size() > 1)){
-			// Устанавливаем протокол запроса
-			result.schema = this->fmk->toLower(split.front());
-			// Определяем сколько элементов мы получили
-			switch(split.size()){
-				// Если количество элементов равно 3
-				case 3: {
-					// Проверяем путь запроса
-					const string & value = split.back();
-					// Если первый символ является путём запроса
-					if(value.front() == '/') result.path = this->splitPath(value);
-					// Если же первый символ является параметром запросов
-					else if(value.front() == '?') result.params = this->splitParams(value);
-					// Если же первый символ является якорем
-					else if(value.front() == '#') result.anchor = value;
-				} break;
-				// Если количество элементов равно 4
-				case 4: {
-					// Устанавливаем путь запроса
-					result.path = this->splitPath(split.at(2));
-					// Проверяем параметры запроса
-					const string & value = split.back();
-					// Если первый символ является параметром запросов
-					if(value.front() == '?') result.params = this->splitParams(value);
-					// Если же первый символ является якорем
-					else if(value.front() == '#') result.anchor = value;
-				} break;
-				// Если количество элементов равно 5
-				case 5: {
-					// Устанавливаем якорь запроса
-					result.anchor = split.back();
-					// Устанавливаем путь запроса
-					result.path = this->splitPath(split.at(2));
-					// Устанавливаем параметры запроса
-					result.params = this->splitParams(split.at(3));
-				} break;
-			}
-			// Разбиваем доменное имя на параметры
-			const auto & params = this->params(split.at(1), result.schema);
-			// Устанавливаем хост сервера
-			result.host = params.host;
-			// Устанавливаем порт сервера
-			result.port = params.port;
-			// Если пользователь получен
-			if(!params.user.empty()) result.user = params.user;
-			// Если пароль получен
-			if(!params.pass.empty()) result.pass = params.pass;
-			// Определяем тип домена
-			switch(this->nwk->checkNetworkByIp(params.host)){
-				// Если - это доменное имя
-				case 0: result.domain = this->fmk->toLower(params.host); break;
-				// Если - это IP адрес сети v4
-				case 4: {
-					// Устанавливаем IP адрес
-					result.ip = params.host;
-					// Устанавливаем тип сети
-					result.family = AF_INET;
-				} break;
-				// Если - это IP адрес сети v6
-				case 6: {
-					// Устанавливаем IP адрес
-					result.ip = params.host;
-					// Устанавливаем тип сети
-					result.family = AF_INET6;
-					// Если у хоста обнаружены скобки
-					if((result.ip.front() == '[') && (result.ip.back() == ']'))
-						// Удаляем скобки вокруг IP адреса
-						result.ip = result.ip.substr(1, result.ip.length() - 2);
-				} break;
-			}
-		}
-	}
-	// Выводим результат
-	return result;
-}
-/**
  * createUrl Метод создания строки URL запросы из параметров
  * @param url параметры URL запроса
  * @return    URL запрос в виде строки
@@ -356,6 +268,97 @@ const string awh::URI::createOrigin(const url_t & url) const noexcept {
 		if(port > 0) result = this->fmk->format("%s://%s:%u", url.schema.c_str(), host.c_str(), port);
 		// Иначе порт не устанавливаем
 		else result = this->fmk->format("%s://%s", url.schema.c_str(), host.c_str());
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * parseUrl Метод получения параметров URL запроса
+ * @param url строка URL запроса для получения параметров
+ * @param ctx промежуточный передаваемый контекст (если требуется)
+ * @return    параметры URL запроса
+ */
+const awh::URI::url_t awh::URI::parseUrl(const string & url, void * ctx) const noexcept {
+	// Результат работы функции
+	url_t result;
+	// Если URL адрес передан
+	if(!url.empty()){
+		// Устанавливаем промежуточный передаваемый контекст
+		result.ctx = ctx;
+		// Выполняем парсинг URL адреса
+		const auto & split = this->split(url);
+		// Если список параметров получен
+		if(!split.empty() && (split.size() > 1)){
+			// Устанавливаем протокол запроса
+			result.schema = this->fmk->toLower(split.front());
+			// Определяем сколько элементов мы получили
+			switch(split.size()){
+				// Если количество элементов равно 3
+				case 3: {
+					// Проверяем путь запроса
+					const string & value = split.back();
+					// Если первый символ является путём запроса
+					if(value.front() == '/') result.path = this->splitPath(value);
+					// Если же первый символ является параметром запросов
+					else if(value.front() == '?') result.params = this->splitParams(value);
+					// Если же первый символ является якорем
+					else if(value.front() == '#') result.anchor = value;
+				} break;
+				// Если количество элементов равно 4
+				case 4: {
+					// Устанавливаем путь запроса
+					result.path = this->splitPath(split.at(2));
+					// Проверяем параметры запроса
+					const string & value = split.back();
+					// Если первый символ является параметром запросов
+					if(value.front() == '?') result.params = this->splitParams(value);
+					// Если же первый символ является якорем
+					else if(value.front() == '#') result.anchor = value;
+				} break;
+				// Если количество элементов равно 5
+				case 5: {
+					// Устанавливаем якорь запроса
+					result.anchor = split.back();
+					// Устанавливаем путь запроса
+					result.path = this->splitPath(split.at(2));
+					// Устанавливаем параметры запроса
+					result.params = this->splitParams(split.at(3));
+				} break;
+			}
+			// Разбиваем доменное имя на параметры
+			const auto & params = this->params(split.at(1), result.schema);
+			// Устанавливаем хост сервера
+			result.host = params.host;
+			// Устанавливаем порт сервера
+			result.port = params.port;
+			// Если пользователь получен
+			if(!params.user.empty()) result.user = params.user;
+			// Если пароль получен
+			if(!params.pass.empty()) result.pass = params.pass;
+			// Определяем тип домена
+			switch(this->nwk->checkNetworkByIp(params.host)){
+				// Если - это доменное имя
+				case 0: result.domain = this->fmk->toLower(params.host); break;
+				// Если - это IP адрес сети v4
+				case 4: {
+					// Устанавливаем IP адрес
+					result.ip = params.host;
+					// Устанавливаем тип сети
+					result.family = AF_INET;
+				} break;
+				// Если - это IP адрес сети v6
+				case 6: {
+					// Устанавливаем IP адрес
+					result.ip = params.host;
+					// Устанавливаем тип сети
+					result.family = AF_INET6;
+					// Если у хоста обнаружены скобки
+					if((result.ip.front() == '[') && (result.ip.back() == ']'))
+						// Удаляем скобки вокруг IP адреса
+						result.ip = result.ip.substr(1, result.ip.length() - 2);
+				} break;
+			}
+		}
 	}
 	// Выводим результат
 	return result;

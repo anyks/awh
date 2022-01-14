@@ -137,12 +137,6 @@ namespace awh {
 			const string urlDecode(const string & str) const noexcept;
 		public:
 			/**
-			 * parseUrl Метод получения параметров URL запроса
-			 * @param url строка URL запроса для получения параметров
-			 * @return    параметры URL запроса
-			 */
-			const url_t parseUrl(const string & url) const noexcept;
-			/**
 			 * createUrl Метод создания строки URL запросы из параметров
 			 * @param url параметры URL запроса
 			 * @return    URL запрос в виде строки
@@ -160,6 +154,13 @@ namespace awh {
 			 * @return    заголовок [origin]
 			 */
 			const string createOrigin(const url_t & url) const noexcept;
+			/**
+			 * parseUrl Метод получения параметров URL запроса
+			 * @param url строка URL запроса для получения параметров
+			 * @param ctx промежуточный передаваемый контекст (если требуется)
+			 * @return    параметры URL запроса
+			 */
+			const url_t parseUrl(const string & url, void * ctx = nullptr) const noexcept;
 		public:
 			/**
 			 * split Метод сплита URI на составные части
