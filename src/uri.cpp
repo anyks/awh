@@ -21,12 +21,16 @@
 void awh::URI::URL::clear() noexcept {
 	// Выполняем сброс порта
 	this->port = 0;
+	// Зануляем передаваемый промежуточный контекст
+	this->ctx = nullptr;
 	// Зануляем функцию генерации цифровой подписи запроса
 	this->sign = nullptr;
 	// Выполняем сброс протокола интернета AF_INET или AF_INET6
 	this->family = AF_INET;
 	// Выполняем очистку IP адреса
 	this->ip.clear();
+	// Выполняем очистку хоста сервера
+	this->host.clear();
 	// Выполняем очистку имени пользователя
 	this->user.clear();
 	// Выполняем очистку пароля пользователя
@@ -46,9 +50,9 @@ void awh::URI::URL::clear() noexcept {
  * empty Метод проверки на существование данных
  * @return результат проверки
  */
-const bool awh::URI::URL::empty() const noexcept {
+bool awh::URI::URL::empty() const noexcept {
 	// Выполняем проверку на существование данных
-	return (this->schema.empty() || (this->domain.empty() && this->ip.empty()));
+	return (this->schema.empty() || this->host.empty());
 }
 /**
  * etag Метод генерации ETag хэша текста
@@ -209,7 +213,9 @@ const awh::URI::url_t awh::URI::parseUrl(const string & url) const noexcept {
 			}
 			// Разбиваем доменное имя на параметры
 			const auto & params = this->params(split.at(1), result.schema);
-			// Устанавливаем порт
+			// Устанавливаем хост сервера
+			result.host = params.host;
+			// Устанавливаем порт сервера
 			result.port = params.port;
 			// Если пользователь получен
 			if(!params.user.empty()) result.user = params.user;
@@ -252,13 +258,13 @@ const string awh::URI::createUrl(const url_t & url) const noexcept {
 	// Результат работы функции
 	string result = "";
 	// Если данные получены
-	if(!url.schema.empty()){
+	if(!url.schema.empty() && !url.host.empty()){
 		// Порт сервера для URL запроса
 		u_int port = 0;
 		// Хост URL запроса и параметры авторизации
-		string host = "", auth = "";
-		// Если IP адрес существует
-		if(!url.ip.empty()){
+		string host = url.domain, auth = "";
+		// Если хост не существует
+		if(host.empty()){
 			// Определяем тип хоста
 			switch(url.family){
 				// Если - это IPv4
@@ -266,8 +272,7 @@ const string awh::URI::createUrl(const url_t & url) const noexcept {
 				// Если - это IPv6
 				case AF_INET6: host = this->fmk->format("[%s]", url.ip.c_str()); break;
 			}
-		// Устанавливаем доменное имя
-		} else host = url.domain;
+		}
 		// Если параметры авторизации указаны
 		if(!url.pass.empty() || !url.user.empty())
 			// Формируем параметры авторизации
@@ -309,7 +314,7 @@ const string awh::URI::createQuery(const url_t & url) const noexcept {
 		// Выполняем сборку параметров запроса
 		const string & params = this->joinParams(url.params);
 		// Выполняем генерацию сигнатуры
-		const string & signature = (url.sign != nullptr ? this->fmk->format("&%s", url.sign(&url).c_str()) : "");
+		const string & signature = (url.sign != nullptr ? this->fmk->format("&%s", url.sign(&url, this, url.ctx).c_str()) : "");
 		// Иначе порт не устанавливаем
 		result = this->fmk->format("%s%s%s%s", path.c_str(), params.c_str(), signature.c_str(), url.anchor.c_str());
 	}
@@ -325,7 +330,7 @@ const string awh::URI::createOrigin(const url_t & url) const noexcept {
 	// Результат работы функции
 	string result = "";
 	// Если данные получены
-	if(!url.schema.empty()){
+	if(!url.schema.empty() && !url.host.empty()){
 		// Хост URL запроса
 		string host = url.domain;
 		// Если IP адрес существует

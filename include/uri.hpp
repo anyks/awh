@@ -71,19 +71,34 @@ namespace awh {
 			/**
 			 * URL Структура URL адреса
 			 */
-			typedef struct URL {
+			typedef class URL {
 				public:
-					u_int port;                                 // Порт
-					int family;                                 // Тип протокола интернета AF_INET или AF_INET6
-					string ip;                                  // IP адрес
-					string user;                                // Пользователь
-					string pass;                                // Пароль
-					string domain;                              // Доменное имя
-					string schema;                              // Протокол передачи данных
-					string anchor;                              // Якорь URL запроса
-					vector <string> path;                       // Путь URL запроса
-					unordered_map <string, string> params;      // Параметры URL запроса
-					function <const string (const URL *)> sign; // Функция генерации цифровой подписи запроса
+					// Порт сервера
+					u_int port = 0;
+				public:
+					// Тип протокола интернета AF_INET или AF_INET6
+					int family = AF_INET;
+				public:
+					string ip   = ""; // IP адрес сервера
+					string host = ""; // Хост сервера
+				public:
+					string user = ""; // Пользователь
+					string pass = ""; // Пароль
+				public:
+					string domain = ""; // Доменное имя
+					string schema = ""; // Протокол передачи данных
+					string anchor = ""; // Якорь URL запроса
+				public:
+					// Путь URL запроса
+					vector <string> path;
+					// Параметры URL запроса
+					unordered_map <string, string> params;
+				public:
+					// Передаваемый промежуточный контекст
+					void * ctx = nullptr;
+				public:
+					// Функция генерации цифровой подписи запроса
+					function <const string (const URL *, const URI *, void * ctx)> sign = nullptr;
 				public:
 					/**
 					 * clear Метод очистки
@@ -94,12 +109,7 @@ namespace awh {
 					 * empty Метод проверки на существование данных
 					 * @return результат проверки
 					 */
-					const bool empty() const noexcept;
-				public:
-					/**
-					 * URL Конструктор
-					 */
-					URL() : port(0), family(AF_INET), ip(""), user(""), pass(""), domain(""), schema(""), anchor(""), path({}), params({}), sign(nullptr) {}
+					bool empty() const noexcept;
 			} url_t;
 		private:
 			// Создаём объект фреймворка
