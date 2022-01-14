@@ -98,7 +98,7 @@ namespace awh {
 					void * ctx = nullptr;
 				public:
 					// Функция генерации цифровой подписи запроса
-					function <const string (const URL *, const URI *, void * ctx)> sign = nullptr;
+					function <string (const URL *, const URI *, void * ctx)> sign = nullptr;
 				public:
 					/**
 					 * clear Метод очистки
