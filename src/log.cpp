@@ -161,7 +161,7 @@ void awh::Log::print(const string & format, flag_t flag, ...) const noexcept {
 				if(flag != flag_t::NONE) cout << "---------------- END ----------------" << endl << endl;
 			}
 			// Если функция подписки на логи установлена, выводим результат
-			if(this->subscribeFn != nullptr) this->subscribeFn(flag, logData);
+			if(this->subscribeFn != nullptr) this->subscribeFn(flag, logData, this->ctx);
 		}
 	}
 }
@@ -240,7 +240,7 @@ void awh::Log::print(const string & format, flag_t flag, const vector <string> &
 			if(flag != flag_t::NONE) cout << "---------------- END ----------------" << endl << endl;
 		}
 		// Если функция подписки на логи установлена, выводим результат
-		if(this->subscribeFn != nullptr) this->subscribeFn(flag, logData);
+		if(this->subscribeFn != nullptr) this->subscribeFn(flag, logData, this->ctx);
 	}
 }
 /**
@@ -293,9 +293,12 @@ void awh::Log::setLogFilename(const string & filename) noexcept {
 }
 /**
  * subscribe Метод подписки на события логов
+ * @param ctx      передаваемый промежуточный контекст
  * @param callback функция обратного вызова
  */
-void awh::Log::subscribe(function <void (const flag_t, const string &)> callback) noexcept {
+void awh::Log::subscribe(void * ctx, function <void (const flag_t, const string &, void *)> callback) noexcept {
+	// Устанавливаем передаваемый промежуточный контекст
+	this->ctx = ctx;
 	// Устанавливаем функцию подписки на получение лога
 	this->subscribeFn = callback;
 }

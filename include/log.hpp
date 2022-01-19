@@ -73,8 +73,11 @@ namespace awh {
 			// Название сервиса для вывода лога
 			string logName = AWH_SHORT_NAME;
 		private:
+			// Передаваемый промежуточный контекст
+			void * ctx = nullptr;
+		private:
 			// Функция обратного вызова которая срабатывает, при появлении лога
-			function <void (const flag_t, const string &)> subscribeFn = nullptr;
+			function <void (const flag_t, const string &, void *)> subscribeFn = nullptr;
 		private:
 			// Создаём объект фреймворка
 			const fmk_t * fmk = nullptr;
@@ -132,9 +135,10 @@ namespace awh {
 		public:
 			/**
 			 * subscribe Метод подписки на события логов
+			 * @param ctx      передаваемый промежуточный контекст
 			 * @param callback функция обратного вызова
 			 */
-			void subscribe(function <void (const flag_t, const string &)> callback) noexcept;
+			void subscribe(void * ctx, function <void (const flag_t, const string &, void *)> callback) noexcept;
 		public:
 			/**
 			 * Log Конструктор

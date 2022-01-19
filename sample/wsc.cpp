@@ -72,7 +72,7 @@ int main(int argc, char * argv[]) noexcept {
 	// Устанавливаем сабпротоколы
 	// ws.setSubs({"test2", "test8", "test9"});
 	// Выполняем подписку на получение логов
-	log.subscribe([](const log_t::flag_t flag, const string & message){
+	log.subscribe(nullptr, [](const log_t::flag_t flag, const string & message, void * ctx){
 		// Выводим сообщение
 		// cout << " ============= " << message << endl;
 	});
