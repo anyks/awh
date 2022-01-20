@@ -124,13 +124,25 @@ void awh::Log::print(const string & format, flag_t flag, ...) const noexcept {
 					// Определяем тип сообщения
 					switch((uint8_t) flag){
 						// Выводим сообщение так-как оно есть
-						case (uint8_t) flag_t::NONE: logData = this->fmk->format("%s%s", buffer.data(), (!isEnd ? "\r\n\r\n" : "")); break;
+						case (uint8_t) flag_t::NONE:
+							// Формируем текстовый вид лога
+							logData = this->fmk->format("%s%s", buffer.data(), (!isEnd ? "\r\n\r\n" : ""));
+						break;
 						// Выводим информационное сообщение
-						case (uint8_t) flag_t::INFO: logData = this->fmk->format("Info %s %s : %s%s", date, this->logName.c_str(), buffer.data(), (!isEnd ? "\r\n\r\n" : "")); break;
+						case (uint8_t) flag_t::INFO:
+							// Формируем текстовый вид лога
+							logData = this->fmk->format("Info %s %s : %s%s", date, this->logName.c_str(), buffer.data(), (!isEnd ? "\r\n\r\n" : ""));
+						break;
 						// Выводим сообщение об ошибке
-						case (uint8_t) flag_t::CRITICAL: logData = this->fmk->format("Error %s %s : %s%s", date, this->logName.c_str(), buffer.data(), (!isEnd ? "\r\n\r\n" : "")); break;
+						case (uint8_t) flag_t::CRITICAL:
+							// Формируем текстовый вид лога
+							logData = this->fmk->format("Error %s %s : %s%s", date, this->logName.c_str(), buffer.data(), (!isEnd ? "\r\n\r\n" : ""));
+						break;
 						// Выводим сообщение предупреждения
-						case (uint8_t) flag_t::WARNING: logData = this->fmk->format("Warning %s %s : %s%s", date, this->logName.c_str(), buffer.data(), (!isEnd ? "\r\n\r\n" : "")); break;
+						case (uint8_t) flag_t::WARNING:
+							// Формируем текстовый вид лога
+							logData = this->fmk->format("Warning %s %s : %s%s", date, this->logName.c_str(), buffer.data(), (!isEnd ? "\r\n\r\n" : ""));
+						break;
 					}
 					// Выполняем запись в файл
 					file.write(logData.data(), logData.size());
@@ -143,13 +155,25 @@ void awh::Log::print(const string & format, flag_t flag, ...) const noexcept {
 			// Определяем тип сообщения
 			switch((uint8_t) flag){
 				// Выводим сообщение так-как оно есть
-				case (uint8_t) flag_t::NONE: logData = this->fmk->format("%s%s", buffer.data(), (!isEnd ? "\r\n\r\n" : "")); break;
+				case (uint8_t) flag_t::NONE:
+					// Формируем текстовый вид лога
+					logData = this->fmk->format("%s%s", buffer.data(), (!isEnd ? "\r\n\r\n" : ""));
+				break;
 				// Выводим информационное сообщение
-				case (uint8_t) flag_t::INFO: logData = this->fmk->format("\x1B[32m\x1B[1mInfo\x1B[0m \x1B[32m%s %s :\x1B[0m %s%s", date, this->logName.c_str(), buffer.data(), (!isEnd ? "\r\n\r\n" : "")); break;
+				case (uint8_t) flag_t::INFO:
+					// Формируем текстовый вид лога
+					logData = this->fmk->format("\x1B[32m\x1B[1mInfo\x1B[0m \x1B[32m%s %s :\x1B[0m %s%s", date, this->logName.c_str(), buffer.data(), (!isEnd ? "\r\n\r\n" : ""));
+				break;
 				// Выводим сообщение об ошибке
-				case (uint8_t) flag_t::CRITICAL: logData = this->fmk->format("\x1B[31m\x1B[1mError\x1B[0m \x1B[31m%s %s :\x1B[0m %s%s", date, this->logName.c_str(), buffer.data(), (!isEnd ? "\r\n\r\n" : "")); break;
+				case (uint8_t) flag_t::CRITICAL:
+					// Формируем текстовый вид лога
+					logData = this->fmk->format("\x1B[31m\x1B[1mError\x1B[0m \x1B[31m%s %s :\x1B[0m %s%s", date, this->logName.c_str(), buffer.data(), (!isEnd ? "\r\n\r\n" : ""));
+				break;
 				// Выводим сообщение предупреждения
-				case (uint8_t) flag_t::WARNING: logData = this->fmk->format("\x1B[33m\x1B[1mWarning\x1B[0m \x1B[33m%s %s :\x1B[0m %s%s", date, this->logName.c_str(), buffer.data(), (!isEnd ? "\r\n\r\n" : "")); break;
+				case (uint8_t) flag_t::WARNING:
+					// Формируем текстовый вид лога
+					logData = this->fmk->format("\x1B[33m\x1B[1mWarning\x1B[0m \x1B[33m%s %s :\x1B[0m %s%s", date, this->logName.c_str(), buffer.data(), (!isEnd ? "\r\n\r\n" : ""));
+				break;
 			}
 			// Если вывод сообщения в консоль разрешён
 			if(this->consoleMode){
@@ -161,7 +185,7 @@ void awh::Log::print(const string & format, flag_t flag, ...) const noexcept {
 				if(flag != flag_t::NONE) cout << "---------------- END ----------------" << endl << endl;
 			}
 			// Если функция подписки на логи установлена, выводим результат
-			if(this->subscribeFn != nullptr) this->subscribeFn(flag, logData, this->ctx);
+			if(this->subscribeFn != nullptr) this->subscribeFn(flag, string(buffer.begin(), buffer.end()), this->ctx);
 		}
 	}
 }
@@ -203,13 +227,25 @@ void awh::Log::print(const string & format, flag_t flag, const vector <string> &
 				// Определяем тип сообщения
 				switch((uint8_t) flag){
 					// Выводим сообщение так-как оно есть
-					case (uint8_t) flag_t::NONE: logData = this->fmk->format("%s%s", str.c_str(), (!isEnd ? "\n\n" : "")); break;
+					case (uint8_t) flag_t::NONE:
+						// Формируем текстовый вид лога
+						logData = this->fmk->format("%s%s", str.c_str(), (!isEnd ? "\n\n" : ""));
+					break;
 					// Выводим информационное сообщение
-					case (uint8_t) flag_t::INFO: logData = this->fmk->format("Info %s %s : %s%s", date, this->logName.c_str(), str.c_str(), (!isEnd ? "\n\n" : "")); break;
+					case (uint8_t) flag_t::INFO:
+						// Формируем текстовый вид лога
+						logData = this->fmk->format("Info %s %s : %s%s", date, this->logName.c_str(), str.c_str(), (!isEnd ? "\n\n" : ""));
+					break;
 					// Выводим сообщение об ошибке
-					case (uint8_t) flag_t::CRITICAL: logData = this->fmk->format("Error %s %s : %s%s", date, this->logName.c_str(), str.c_str(), (!isEnd ? "\n\n" : "")); break;
+					case (uint8_t) flag_t::CRITICAL:
+						// Формируем текстовый вид лога
+						logData = this->fmk->format("Error %s %s : %s%s", date, this->logName.c_str(), str.c_str(), (!isEnd ? "\n\n" : ""));
+					break;
 					// Выводим сообщение предупреждения
-					case (uint8_t) flag_t::WARNING: logData = this->fmk->format("Warning %s %s : %s%s", date, this->logName.c_str(), str.c_str(), (!isEnd ? "\n\n" : "")); break;
+					case (uint8_t) flag_t::WARNING:
+						// Формируем текстовый вид лога
+						logData = this->fmk->format("Warning %s %s : %s%s", date, this->logName.c_str(), str.c_str(), (!isEnd ? "\n\n" : ""));
+					break;
 				}
 				// Выполняем запись в файл
 				file.write(logData.data(), logData.size());
@@ -222,13 +258,25 @@ void awh::Log::print(const string & format, flag_t flag, const vector <string> &
 		// Определяем тип сообщения
 		switch((uint8_t) flag){
 			// Выводим сообщение так-как оно есть
-			case (uint8_t) flag_t::NONE: logData = this->fmk->format("%s%s", str.c_str(), (!isEnd ? "\r\n\r\n" : "")); break;
+			case (uint8_t) flag_t::NONE:
+				// Формируем текстовый вид лога
+				logData = this->fmk->format("%s%s", str.c_str(), (!isEnd ? "\r\n\r\n" : ""));
+			break;
 			// Выводим информационное сообщение
-			case (uint8_t) flag_t::INFO: logData = this->fmk->format("\x1B[32m\x1B[1mInfo\x1B[0m \x1B[32m%s %s :\x1B[0m %s%s", date, this->logName.c_str(), str.c_str(), (!isEnd ? "\r\n\r\n" : "")); break;
+			case (uint8_t) flag_t::INFO:
+				// Формируем текстовый вид лога
+				logData = this->fmk->format("\x1B[32m\x1B[1mInfo\x1B[0m \x1B[32m%s %s :\x1B[0m %s%s", date, this->logName.c_str(), str.c_str(), (!isEnd ? "\r\n\r\n" : ""));
+			break;
 			// Выводим сообщение об ошибке
-			case (uint8_t) flag_t::CRITICAL: logData = this->fmk->format("\x1B[31m\x1B[1mError\x1B[0m \x1B[31m%s %s :\x1B[0m %s%s", date, this->logName.c_str(), str.c_str(), (!isEnd ? "\r\n\r\n" : "")); break;
+			case (uint8_t) flag_t::CRITICAL:
+				// Формируем текстовый вид лога
+				logData = this->fmk->format("\x1B[31m\x1B[1mError\x1B[0m \x1B[31m%s %s :\x1B[0m %s%s", date, this->logName.c_str(), str.c_str(), (!isEnd ? "\r\n\r\n" : ""));
+			break;
 			// Выводим сообщение предупреждения
-			case (uint8_t) flag_t::WARNING: logData = this->fmk->format("\x1B[33m\x1B[1mWarning\x1B[0m \x1B[33m%s %s :\x1B[0m %s%s", date, this->logName.c_str(), str.c_str(), (!isEnd ? "\r\n\r\n" : "")); break;
+			case (uint8_t) flag_t::WARNING:
+				// Формируем текстовый вид лога
+				logData = this->fmk->format("\x1B[33m\x1B[1mWarning\x1B[0m \x1B[33m%s %s :\x1B[0m %s%s", date, this->logName.c_str(), str.c_str(), (!isEnd ? "\r\n\r\n" : ""));
+			break;
 		}
 		// Если вывод сообщения в консоль разрешён
 		if(this->consoleMode){
@@ -240,7 +288,7 @@ void awh::Log::print(const string & format, flag_t flag, const vector <string> &
 			if(flag != flag_t::NONE) cout << "---------------- END ----------------" << endl << endl;
 		}
 		// Если функция подписки на логи установлена, выводим результат
-		if(this->subscribeFn != nullptr) this->subscribeFn(flag, logData, this->ctx);
+		if(this->subscribeFn != nullptr) this->subscribeFn(flag, str, this->ctx);
 	}
 }
 /**
