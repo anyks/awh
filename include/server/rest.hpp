@@ -339,6 +339,11 @@ namespace awh {
 				 */
 				void setMode(const u_short flag) noexcept;
 				/**
+				 * setTotal Метод установки максимального количества одновременных подключений
+				 * @param total максимальное количество одновременных подключений
+				 */
+				void setTotal(const u_short total) noexcept;
+				/**
 				 * setChunkSize Метод установки размера чанка
 				 * @param size размер чанка для установки
 				 */

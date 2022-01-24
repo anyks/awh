@@ -355,6 +355,11 @@ namespace awh {
 				 */
 				void setMode(const u_short flag) noexcept;
 				/**
+				 * setTotal Метод установки максимального количества одновременных подключений
+				 * @param total максимальное количество одновременных подключений
+				 */
+				void setTotal(const u_short total) noexcept;
+				/**
 				 * setFrameSize Метод установки размеров сегментов фрейма
 				 * @param size минимальный размер сегмента
 				 */

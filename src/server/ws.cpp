@@ -991,6 +991,14 @@ void awh::server::WebSocket::setMode(const u_short flag) noexcept {
 	const_cast <server::core_t *> (this->core)->setNoInfo(flag & (uint8_t) flag_t::NOINFO);
 }
 /**
+ * setTotal Метод установки максимального количества одновременных подключений
+ * @param total максимальное количество одновременных подключений
+ */
+void awh::server::WebSocket::setTotal(const u_short total) noexcept {
+	// Устанавливаем максимальное количество одновременных подключений
+	const_cast <server::core_t *> (this->core)->setTotal(this->worker.wid, total);
+}
+/**
  * setFrameSize Метод установки размеров сегментов фрейма
  * @param size минимальный размер сегмента
  */

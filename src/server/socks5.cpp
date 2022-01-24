@@ -505,6 +505,14 @@ void awh::server::ProxySocks5::setMode(const u_short flag) noexcept {
 	this->core.server.setNoInfo(flag & (uint8_t) flag_t::NOINFO);
 }
 /**
+ * setTotal Метод установки максимального количества одновременных подключений
+ * @param total максимальное количество одновременных подключений
+ */
+void awh::server::ProxySocks5::setTotal(const u_short total) noexcept {
+	// Устанавливаем максимальное количество одновременных подключений
+	this->core.server.setTotal(this->worker.wid, total);
+}
+/**
  * setWaitTimeDetect Метод детекции сообщений по количеству секунд
  * @param read  количество секунд для детекции по чтению
  * @param write количество секунд для детекции по записи
