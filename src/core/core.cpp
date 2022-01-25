@@ -952,6 +952,14 @@ void awh::Core::setVerifySSL(const bool mode) noexcept {
 	this->ssl.setVerify(mode);
 }
 /**
+ * setPersistInterval Метод установки персистентного таймера
+ * @param itv интервал персистентного таймера в миллисекундах
+ */
+void awh::Core::setPersistInterval(const time_t itv) noexcept {
+	// Устанавливаем интервал персистентного таймера
+	this->persistInterval = itv;
+}
+/**
  * setFrequency Метод установки частоты обновления базы событий
  * @param msec частота обновления базы событий в миллисекундах
  */
@@ -970,14 +978,6 @@ void awh::Core::setFrequency(const uint8_t msec) noexcept {
 	} else this->easy = false;
 	// Если ядро сети уже было запущено, запускаем его
 	if(start) this->start();
-}
-/**
- * setPersistInterval Метод установки персистентного таймера
- * @param itv интервал персистентного таймера в миллисекундах
- */
-void awh::Core::setPersistInterval(const time_t itv) noexcept {
-	// Устанавливаем интервал персистентного таймера
-	this->persistInterval = itv;
 }
 /**
  * setFamily Метод установки тип протокола интернета
