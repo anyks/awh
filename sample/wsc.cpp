@@ -51,6 +51,8 @@ int main(int argc, char * argv[]) noexcept {
 		(uint8_t) client::ws_t::flag_t::VERIFYSSL |
 		(uint8_t) client::ws_t::flag_t::KEEPALIVE
 	);
+	// Разрешаем простое чтение базы событий
+	core.setFrequency(100);
 	// Устанавливаем адрес сертификата
 	core.setCA("./ca/cert.pem");
 	// Устанавливаем логин и пароль пользователя

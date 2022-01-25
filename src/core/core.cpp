@@ -512,9 +512,12 @@ void awh::Core::start() noexcept {
 		// Если разрешено использовать простое чтение базы событий
 		else {
 			// Выполняем чтение базы событий пока это разрешено
-			while(this->easy)
+			while(this->easy){
 				// Выполняем чтение базы событий
 				event_base_loop(this->base, EVLOOP_NONBLOCK);
+				// Замораживаем поток на период времени частоты обновления базы событий
+				this_thread::sleep_for(this->freq);
+			}
 		}
 		// Выполняем сброс модуля DNS резолвера IPv4
 		this->dns4.reset();
@@ -917,13 +920,6 @@ u_short awh::Core::setInterval(void * ctx, const time_t delay, function <void (c
 	return result;
 }
 /**
- * setEasy Разрешаем использовать простое чтение базы событий
- */
-void awh::Core::setEasy() noexcept {
-	// Устанавливаем флаг разрешающий использовать простое чтение базы событий
-	this->easy = true;
-}
-/**
  * setDefer Метод установки флага отложенных вызовов событий сокета
  * @param mode флаг отложенных вызовов событий сокета
  */
@@ -954,6 +950,26 @@ void awh::Core::setPersist(const bool mode) noexcept {
 void awh::Core::setVerifySSL(const bool mode) noexcept {
 	// Выполняем установку флага проверки домена
 	this->ssl.setVerify(mode);
+}
+/**
+ * setFrequency Метод установки частоты обновления базы событий
+ * @param msec частота обновления базы событий в миллисекундах
+ */
+void awh::Core::setFrequency(const uint8_t msec) noexcept {
+	// Определяем запущено ли ядро сети
+	const bool start = this->mode;
+	// Если ядро сети уже запущено, останавливаем его
+	if(start) this->stop();
+	// Если количество миллисекунд передано больше 0
+	if(msec > 0){
+		// Устанавливаем флаг разрешающий использовать простое чтение базы событий
+		this->easy = true;
+		// Устанавливаем частоту обновления базы событий
+		this->freq = chrono::milliseconds(msec);
+	// Отключаем частоту обновления в прицпипе
+	} else this->easy = false;
+	// Если ядро сети уже было запущено, запускаем его
+	if(start) this->start();
 }
 /**
  * setPersistInterval Метод установки персистентного таймера

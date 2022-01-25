@@ -20,6 +20,8 @@
  */
 #include <map>
 #include <mutex>
+#include <chrono>
+#include <thread>
 #include <string>
 #include <functional>
 #include <unordered_map>
@@ -161,6 +163,9 @@ namespace awh {
 			network_t nwk;
 			// Мютекс для блокировки потока
 			mutex bloking;
+		private:
+			// Частота обновления базы событий
+			chrono::milliseconds freq;
 		protected:
 			// Тип запускаемого ядра
 			type_t type = type_t::CLIENT;
@@ -406,10 +411,6 @@ namespace awh {
 			u_short setInterval(void * ctx, const time_t delay, function <void (const u_short, Core *, void *)> callback) noexcept;
 		public:
 			/**
-			 * setEasy Разрешаем использовать простое чтение базы событий
-			 */
-			void setEasy() noexcept;
-			/**
 			 * setDefer Метод установки флага отложенных вызовов событий сокета
 			 * @param mode флаг отложенных вызовов событий сокета
 			 */
@@ -429,6 +430,11 @@ namespace awh {
 			 * @param mode флаг состояния разрешения проверки
 			 */
 			void setVerifySSL(const bool mode) noexcept;
+			/**
+			 * setFrequency Метод установки частоты обновления базы событий
+			 * @param msec частота обновления базы событий в миллисекундах
+			 */
+			void setFrequency(const uint8_t msec = 10) noexcept;
 			/**
 			 * setPersistInterval Метод установки персистентного таймера
 			 * @param itv интервал персистентного таймера в миллисекундах
