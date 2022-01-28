@@ -74,11 +74,11 @@ int main(int argc, char * argv[]) noexcept {
 	// uri_t::url_t url = uri.parseUrl("https://testnet.binance.vision/api/v3/exchangeInfo");
 	uri_t::url_t url = uri.parseUrl("https://api.coingecko.com/api/v3/coins/list?include_platform=true");
 	// Подписываемся на событие коннекта и дисконнекта клиента
-	rest.on(&log, [](const bool mode, client::rest_t * web, void * ctx){
+	rest.on(&log, [](const client::rest_t::mode_t mode, client::rest_t * web, void * ctx){
 		// Получаем объект логирования
 		log_t * log = reinterpret_cast <log_t *> (ctx);
 		// Выводим информацию в лог
-		log->print("%s client", log_t::flag_t::INFO, (mode ? "Connect" : "Disconnect"));
+		log->print("%s client", log_t::flag_t::INFO, (mode == client::rest_t::mode_t::CONNECT ? "Connect" : "Disconnect"));
 	});
 	/*
 	// Подписываемся на событие получения сообщения

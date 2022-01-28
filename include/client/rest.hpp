@@ -47,6 +47,13 @@ namespace awh {
 		typedef class Rest {
 			public:
 				/**
+				 * Режим работы клиента
+				 */
+				enum class mode_t : uint8_t {
+					CONNECT    = 0x01,
+					DISCONNECT = 0x02
+				};
+				/**
 				 * Основные флаги приложения
 				 */
 				enum class flag_t : uint8_t {
@@ -124,7 +131,7 @@ namespace awh {
 				const client::core_t * core = nullptr;
 			private:
 				// Функция обратного вызова при подключении/отключении
-				function <void (const bool, Rest *, void *)> openStopFn = nullptr;
+				function <void (const mode_t, Rest *, void *)> openStopFn = nullptr;
 				// Функция обратного вызова, вывода сообщения при его получении
 				function <void (const res_t &, Rest *, void *)> messageFn = nullptr;
 			private:
@@ -330,7 +337,7 @@ namespace awh {
 				 * @param ctx      контекст для вывода в сообщении
 				 * @param callback функция обратного вызова
 				 */
-				void on(void * ctx, function <void (const bool, Rest *, void *)> callback) noexcept;
+				void on(void * ctx, function <void (const mode_t, Rest *, void *)> callback) noexcept;
 				/**
 				 * setMessageCallback Метод установки функции обратного вызова при получении сообщения
 				 * @param ctx      контекст для вывода в сообщении

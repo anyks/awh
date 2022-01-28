@@ -99,7 +99,7 @@ void awh::client::Rest::connectCallback(const size_t aid, const size_t wid, awh:
 		// Если функция обратного вызова существует
 		if(web->openStopFn != nullptr)
 			// Выполняем функцию обратного вызова
-			web->openStopFn(true, web, web->ctx.at(0));
+			web->openStopFn(mode_t::CONNECT, web, web->ctx.at(0));
 	}
 }
 /**
@@ -114,10 +114,10 @@ void awh::client::Rest::disconnectCallback(const size_t aid, const size_t wid, a
 	if((wid > 0) && (core != nullptr) && (ctx != nullptr)){
 		// Получаем контекст модуля
 		rest_t * web = reinterpret_cast <rest_t *> (ctx);
+		// Получаем объект ответа
+		res_t & res = web->responses.front();
 		// Если список ответов получен
 		if(!web->responses.empty()){
-			// Получаем объект ответа
-			res_t & res = web->responses.front();
 			// Если нужно произвести запрос заново
 			if((res.code == 301) || (res.code == 308) ||
 			   (res.code == 401) || (res.code == 407)){
@@ -130,7 +130,14 @@ void awh::client::Rest::disconnectCallback(const size_t aid, const size_t wid, a
 		// Если функция обратного вызова существует
 		if(web->openStopFn != nullptr)
 			// Выполняем функцию обратного вызова
-			web->openStopFn(false, web, web->ctx.at(0));
+			web->openStopFn(mode_t::DISCONNECT, web, web->ctx.at(0));
+		// Если функция обратного вызова установлена, выводим сообщение
+		if((res.code == 0) && (web->messageFn != nullptr)){
+			// Устанавливаем код ответа сервера
+			res.code = 500;
+			// Выполняем функцию обратного вызова
+			web->messageFn(res, web, web->ctx.at(1));
+		}
 		// Выполняем очистку списка запросов
 		web->requests.clear();
 		// Выполняем очистку списка ответов
@@ -1223,7 +1230,7 @@ void awh::client::Rest::REST(const vector <req_t> & request) noexcept {
  * @param ctx      контекст для вывода в сообщении
  * @param callback функция обратного вызова
  */
-void awh::client::Rest::on(void * ctx, function <void (const bool, Rest *, void *)> callback) noexcept {
+void awh::client::Rest::on(void * ctx, function <void (const mode_t, Rest *, void *)> callback) noexcept {
 	// Устанавливаем контекст передаваемого объекта
 	this->ctx.at(0) = ctx;
 	// Устанавливаем функцию обратного вызова
