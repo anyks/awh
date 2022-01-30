@@ -595,6 +595,7 @@ namespace awh {
 			 * @return    размер в секундах
 			 */
 			time_t seconds(const string & str) const noexcept;
+		public:
 			/**
 			 * sizeBuffer Метод получения размера буфера в байтах
 			 * @param str пропускная способность сети (bps, kbps, Mbps, Gbps)
