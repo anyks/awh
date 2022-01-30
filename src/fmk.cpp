@@ -1425,13 +1425,13 @@ string awh::Framework::md5(const string & text) const noexcept {
 		// Копируем полученные данные
 		MD5_Final(digest, &ctx);
 		// Строка md5
-		char mdString[33];
+		char buffer[33];
 		// Заполняем массив нулями
-		memset(mdString, 0, 33);
+		memset(buffer, 0, 33);
 		// Заполняем строку данными md5
-		for(u_short i = 0; i < 16; i++) sprintf(&mdString[i * 2], "%02x", u_int(digest[i]));
+		for(u_short i = 0; i < 16; i++) sprintf(&buffer[i * 2], "%02x", u_int(digest[i]));
 		// Выводим результат
-		result = mdString;
+		result = buffer;
 	}
 	// Выводим результат
 	return result;
@@ -1457,13 +1457,13 @@ string awh::Framework::sha1(const string & text) const noexcept {
 		// Копируем полученные данные
 		SHA1_Final(digest, &ctx);
 		// Строка sha1
-		char mdString[41];
+		char buffer[41];
 		// Заполняем массив нулями
-		memset(mdString, 0, 41);
+		memset(buffer, 0, 41);
 		// Заполняем строку данными sha1
-		for(u_short i = 0; i < 20; i++) sprintf(&mdString[i * 2], "%02x", u_int(digest[i]));
+		for(u_short i = 0; i < 20; i++) sprintf(&buffer[i * 2], "%02x", u_int(digest[i]));
 		// Выводим результат
-		result = mdString;
+		result = buffer;
 	}
 	// Выводим результат
 	return result;
@@ -1489,13 +1489,13 @@ string awh::Framework::sha256(const string & text) const noexcept {
 		// Копируем полученные данные
 		SHA256_Final(digest, &ctx);
 		// Строка sha256
-		char mdString[65];
+		char buffer[65];
 		// Заполняем массив нулями
-		memset(mdString, 0, 65);
+		memset(buffer, 0, 65);
 		// Заполняем строку данными sha256
-		for(u_short i = 0; i < 32; i++) sprintf(&mdString[i * 2], "%02x", u_int(digest[i]));
+		for(u_short i = 0; i < 32; i++) sprintf(&buffer[i * 2], "%02x", u_int(digest[i]));
 		// Выводим результат
-		result = mdString;
+		result = buffer;
 	}
 	// Выводим результат
 	return result;
@@ -1521,13 +1521,13 @@ string awh::Framework::sha512(const string & text) const noexcept {
 		// Копируем полученные данные
 		SHA512_Final(digest, &ctx);
 		// Строка sha512
-		char mdString[129];
+		char buffer[129];
 		// Заполняем массив нулями
-		memset(mdString, 0, 129);
+		memset(buffer, 0, 129);
 		// Заполняем строку данными sha512
-		for(u_short i = 0; i < 64; i++) sprintf(&mdString[i * 2], "%02x", u_int(digest[i]));
+		for(u_short i = 0; i < 64; i++) sprintf(&buffer[i * 2], "%02x", u_int(digest[i]));
 		// Выводим результат
-		result = mdString;
+		result = buffer;
 	}
 	// Выводим результат
 	return result;
@@ -1544,15 +1544,15 @@ string awh::Framework::hmacsha1(const string & key, const string & text) const n
 	// Если текст передан
 	if(!key.empty() && !text.empty()){
 		// Строка sha1
-		char mdString[41];
+		char buffer[41];
 		// Заполняем массив нулями
-		memset(mdString, 0, 41);
+		memset(buffer, 0, 41);
 		// Выполняем получение подписи
 		const u_char * digest = HMAC(EVP_sha1(), key.c_str(), key.size(), (u_char *) text.c_str(), text.size(), nullptr, nullptr);
 		// Заполняем строку данными sha1
-		for(u_short i = 0; i < 20; i++) sprintf(&mdString[i * 2], "%02x", u_int(digest[i]));
+		for(u_short i = 0; i < 20; i++) sprintf(&buffer[i * 2], "%02x", u_int(digest[i]));
 		// Выводим результат
-		result = mdString;
+		result = buffer;
 	}
 	// Выводим результат
 	return result;
@@ -1569,15 +1569,15 @@ string awh::Framework::hmacsha256(const string & key, const string & text) const
 	// Если текст передан
 	if(!key.empty() && !text.empty()){
 		// Строка sha256
-		char mdString[65];
+		char buffer[65];
 		// Заполняем массив нулями
-		memset(mdString, 0, 65);
+		memset(buffer, 0, 65);
 		// Выполняем получение подписи
 		const u_char * digest = HMAC(EVP_sha256(), key.c_str(), key.size(), (u_char *) text.c_str(), text.size(), nullptr, nullptr);
 		// Заполняем строку данными sha256
-		for(u_short i = 0; i < 32; i++) sprintf(&mdString[i * 2], "%02x", u_int(digest[i]));
+		for(u_short i = 0; i < 32; i++) sprintf(&buffer[i * 2], "%02x", u_int(digest[i]));
 		// Выводим результат
-		result = mdString;
+		result = buffer;
 	}
 	// Выводим результат
 	return result;
@@ -1594,15 +1594,15 @@ string awh::Framework::hmacsha512(const string & key, const string & text) const
 	// Если текст передан
 	if(!key.empty() && !text.empty()){
 		// Строка sha512
-		char mdString[129];
+		char buffer[129];
 		// Заполняем массив нулями
-		memset(mdString, 0, 129);
+		memset(buffer, 0, 129);
 		// Выполняем получение подписи
-		const u_char * digest = HMAC(EVP_sha256(), key.c_str(), key.size(), (u_char *) text.c_str(), text.size(), nullptr, nullptr);
+		const u_char * digest = HMAC(EVP_sha512(), key.c_str(), key.size(), (u_char *) text.c_str(), text.size(), nullptr, nullptr);
 		// Заполняем строку данными sha512
-		for(u_short i = 0; i < 64; i++) sprintf(&mdString[i * 2], "%02x", u_int(digest[i]));
+		for(u_short i = 0; i < 64; i++) sprintf(&buffer[i * 2], "%02x", u_int(digest[i]));
 		// Выводим результат
-		result = mdString;
+		result = buffer;
 	}
 	// Выводим результат
 	return result;
