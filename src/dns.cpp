@@ -99,8 +99,8 @@ void awh::DNS::callback(const int error, struct evutil_addrinfo * addr, void * c
 			if(!ips.empty()){
 				// Если количество элементов больше 1
 				if(ips.size() > 1){
-					// рандомизация генератора случайных чисел
-					srand(time(0));
+					// Рандомизация генератора случайных чисел
+					srand(time(nullptr));
 					// Получаем ip адрес
 					ip = &ips.at(rand() % ips.size());
 				// Выводим только первый элемент
