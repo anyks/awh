@@ -496,6 +496,14 @@ namespace awh {
 			 * @return штамп времени в миллисекундах
 			 */
 			time_t unixTimestamp() const noexcept;
+		public:
+			/**
+			 * timeToStr Метод преобразования UnixTimestamp в строку
+			 * @param date   дата в UnixTimestamp
+			 * @param format формат даты
+			 * @return       строка содержащая дату
+			 */
+			string timeToStr(const time_t date, const string & format = "%a, %d %b %Y %H:%M:%S %Z") const noexcept;
 			/**
 			 * strToTime Метод перевода строки в UnixTimestamp
 			 * @param date   строка даты
@@ -504,12 +512,6 @@ namespace awh {
 			 */
 			time_t strToTime(const string & date, const string & format = "%a, %d %b %Y %H:%M:%S %Z") const noexcept;
 		public:
-			/**
-			 * timeToStr Метод преобразования UnixTimestamp в строку
-			 * @param date дата в UnixTimestamp
-			 * @return     строка содержащая дату
-			 */
-			string timeToStr(const time_t date) const noexcept;
 			/**
 			 * timeToAbbr Метод перевода времени в аббревиатуру
 			 * @param date дата в UnixTimestamp

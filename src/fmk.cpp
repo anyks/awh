@@ -1226,6 +1226,24 @@ time_t awh::Framework::unixTimestamp() const noexcept {
 	return ms.count();
 }
 /**
+ * timeToStr Метод преобразования UnixTimestamp в строку
+ * @param date   дата в UnixTimestamp
+ * @param format формат даты
+ * @return       строка содержащая дату
+ */
+string awh::Framework::timeToStr(const time_t date, const string & format) const noexcept {
+	// Буфер с данными
+	char buf[255];
+	// Создаем структуру времени
+	struct tm * tm = localtime(&date);
+	// Зануляем буфер
+	memset(buf, 0, sizeof(buf));
+	// Выполняем парсинг даты
+	strftime(buf, sizeof(buf), format.c_str(), tm);
+	// Выводим результат
+	return string(buf);
+}
+/**
  * strToTime Метод перевода строки в UnixTimestamp
  * @param date   строка даты
  * @param format формат даты
@@ -1247,23 +1265,6 @@ time_t awh::Framework::strToTime(const string & date, const string & format) con
 	}
 	// Выводим результат
 	return result;
-}
-/**
- * timeToStr Метод преобразования UnixTimestamp в строку
- * @param date дата в UnixTimestamp
- * @return     строка содержащая дату
- */
-string awh::Framework::timeToStr(const time_t date) const noexcept {
-	// Буфер с данными
-	char buf[255];
-	// Создаем структуру времени
-	struct tm * tm = localtime(&date);
-	// Зануляем буфер
-	memset(buf, 0, sizeof(buf));
-	// Выполняем парсинг даты
-	strftime(buf, sizeof(buf), "%a, %d %b %Y %H:%M:%S %Z", tm);
-	// Выводим результат
-	return string(buf);
 }
 /**
  * timeToAbbr Метод перевода времени в аббревиатуру
