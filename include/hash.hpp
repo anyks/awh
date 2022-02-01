@@ -90,12 +90,17 @@ namespace awh {
 			 */
 			enum class aes_t : u_short {AES128 = 128, AES192 = 192, AES256 = 256};
 		private:
-			// Размер скользящего окна
-			short wbit;
 			// Устанавливаем количество раундов
-			int roundsAES;
+			int roundsAES = 5;
+			// Размер скользящего окна
+			short wbit = MAX_WBITS;
 			// Соль и пароль для шифрования
-			string salt, password;
+			string salt = "", password = "";
+		private:
+			// Флаг переиспользования контекста компрессии
+			bool takeOverCompress = false;
+			// Флаг переиспользования контекста декомпрессии
+			bool takeOverDecompress = false;
 		private:
 			// Хвостовой буфер для удаления из финального сообщения
 			const char btype[4] = {
@@ -105,10 +110,15 @@ namespace awh {
 				static_cast <char> (0xFF)
 			};
 		private:
-			// Определяем размер шифрования по умолчанию
-			aes_t aesSize;
 			// Ключ шифрования
 			mutable AES_KEY aesKey;
+			// Определяем размер шифрования по умолчанию
+			aes_t aesSize = aes_t::AES128;
+		private:
+			// Создаем поток ZLib для декомпрессии
+			mutable z_stream zinf = {0};
+			// Создаем поток ZLib для компрессии
+			mutable z_stream zdef = {0};
 		private:
 			// Создаём объект фреймворка
 			const fmk_t * fmk = nullptr;
@@ -230,6 +240,17 @@ namespace awh {
 			void setPassword(const string & password) noexcept;
 		public:
 			/**
+			 * setTakeoverCompress Метод установки флага переиспользования контекста компрессии
+			 * @param flag флаг переиспользования контекста компрессии
+			 */
+			void setTakeoverCompress(const bool flag) noexcept;
+			/**
+			 * setTakeoverDecompress Метод установки флага переиспользования контекста декомпрессии
+			 * @param flag флаг переиспользования контекста декомпрессии
+			 */
+			void setTakeoverDecompress(const bool flag) noexcept;
+		public:
+			/**
 			 * Hash Конструктор
 			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
@@ -238,7 +259,7 @@ namespace awh {
 			/**
 			 * ~Hash Деструктор
 			 */
-			~Hash() noexcept {}
+			~Hash() noexcept;
 	} hash_t;
 };
 

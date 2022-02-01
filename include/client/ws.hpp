@@ -49,12 +49,14 @@ namespace awh {
 				 * Основные флаги приложения
 				 */
 				enum class flag_t : uint8_t {
-					DEFER     = 0x01, // Флаг отложенных вызовов событий сокета
-					NOINFO    = 0x02, // Флаг запрещающий вывод информационных сообщений
-					NOTSTOP   = 0x04, // Флаг запрета остановки биндинга
-					WAITMESS  = 0x08, // Флаг ожидания входящих сообщений
-					KEEPALIVE = 0x10, // Флаг автоматического поддержания подключения
-					VERIFYSSL = 0x20  // Флаг выполнения проверки сертификата SSL
+					DEFER       = 0x01, // Флаг отложенных вызовов событий сокета
+					NOINFO      = 0x02, // Флаг запрещающий вывод информационных сообщений
+					NOTSTOP     = 0x04, // Флаг запрета остановки биндинга
+					WAITMESS    = 0x08, // Флаг ожидания входящих сообщений
+					KEEPALIVE   = 0x10, // Флаг автоматического поддержания подключения
+					VERIFYSSL   = 0x20, // Флаг выполнения проверки сертификата SSL
+					TAKEOVERCLI = 0x40, // Флаг ожидания входящих сообщений для клиента
+					TAKEOVERSRV = 0x80  // Флаг ожидания входящих сообщений для сервера
 				};
 			private:
 				// Создаём объект работы с URI ссылками
@@ -92,6 +94,10 @@ namespace awh {
 				bool failAuth = false;
 				// Флаг переданных сжатых данных
 				bool compressed = false;
+				// Флаг переиспользования контекста клиента
+				bool takeOverCli = false;
+				// Флаг переиспользования контекста сервера
+				bool takeOverSrv = false;
 			private:
 				// Идентификатор адъютанта
 				size_t aid = 0;
@@ -109,7 +115,7 @@ namespace awh {
 			public:
 				// Полученный опкод сообщения
 				frame_t::opcode_t opcode = frame_t::opcode_t::TEXT;
-				// Флаги работы с сжатыми данными
+				// Метод компрессии данных
 				http_t::compress_t compress = http_t::compress_t::NONE;
 			private:
 				// Список контекстов передаваемых объектов
@@ -230,7 +236,7 @@ namespace awh {
 				/**
 				 * init Метод инициализации WebSocket клиента
 				 * @param url      адрес WebSocket сервера
-				 * @param compress метод сжатия передаваемых сообщений
+				 * @param compress метод компрессии передаваемых сообщений
 				 */
 				void init(const string & url, const http_t::compress_t compress = http_t::compress_t::DEFLATE) noexcept;
 			public:
@@ -334,8 +340,8 @@ namespace awh {
 				 */
 				void setUserAgent(const string & userAgent) noexcept;
 				/**
-				 * setCompress Метод установки метода сжатия
-				 * @param метод сжатия сообщений
+				 * setCompress Метод установки метода компрессии
+				 * @param compress метод компрессии сообщений
 				 */
 				void setCompress(const http_t::compress_t compress) noexcept;
 				/**

@@ -271,7 +271,7 @@ vector <char> awh::Frame::get(head_t & head, const char * buffer, const size_t s
 	// Если данные переданы в достаточном объёме
 	if((buffer != nullptr) && ((size_t) (head.payload + head.size) <= size)){
 		// Получаем размер смещения
-		uint8_t offset = head.size;
+		head.frame = head.size;
 		// Проверяем являются ли данные Пингом
 		const bool isPing = (head.optcode == opcode_t::PING);
 		// Проверяем являются ли данные Понгом
@@ -291,12 +291,12 @@ vector <char> awh::Frame::get(head_t & head, const char * buffer, const size_t s
 			// Если маска требуется, маскируем данные
 			if(head.mask){
 				// Считываем ключ маски
-				memcpy(mask.data(), buffer + offset, 4);
+				memcpy(mask.data(), buffer + head.frame, 4);
 				// Увеличиваем размер смещения
-				offset += 4;
+				head.frame += 4;
 			}
 			// Получаем оставшиеся данные полезной нагрузки
-			result.assign(buffer + offset, buffer + (head.payload + offset));
+			result.assign(buffer + head.frame, buffer + (head.payload + head.frame));
 			// Если маска требуется, размаскируем данные
 			if(head.mask){
 				// Выполняем перебор всех байт передаваемых данных
@@ -305,6 +305,8 @@ vector <char> awh::Frame::get(head_t & head, const char * buffer, const size_t s
 					result.at(i) ^= mask[i % 4];
 				}
 			}
+			// Увеличиваем размер смещения
+			head.frame += head.payload;
 		}
 	}
 	// Выводим результат

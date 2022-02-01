@@ -185,7 +185,9 @@ void awh::Log::print(const string & format, flag_t flag, ...) const noexcept {
 				if(flag != flag_t::NONE) cout << "---------------- END ----------------" << endl << endl;
 			}
 			// Если функция подписки на логи установлена, выводим результат
-			if(this->subscribeFn != nullptr) this->subscribeFn(flag, string(buffer.begin(), buffer.end()), this->ctx);
+			if(this->subscribeFn != nullptr)
+				// Выводим сообщение лога всем подписавшимся
+				this->subscribeFn(flag, string(buffer.data(), size), this->ctx);
 		}
 	}
 }

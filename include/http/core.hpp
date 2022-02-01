@@ -182,7 +182,7 @@ namespace awh {
 			stath_t stath = stath_t::NONE;
 			// Стейт текущего запроса
 			state_t state = state_t::NONE;
-			// Метод сжатия данных запроса/ответа
+			// Метод компрессии отправляемых данных
 			compress_t compress = compress_t::NONE;
 			// Тип используемого HTTP модуля
 			web_t::hid_t httpType = web_t::hid_t::NONE;
@@ -307,13 +307,18 @@ namespace awh {
 			stath_t getAuth() const noexcept;
 		public:
 			/**
-			 * getCompress Метод получения метода сжатия
-			 * @return метод сжатия сообщений
+			 * extractCompression Метод извлечения метода компрессии
+			 * @return метод компрессии
+			 */
+			compress_t extractCompression() const noexcept;
+			/**
+			 * getCompress Метод получения метода компрессии
+			 * @return метод компрессии сообщений
 			 */
 			virtual compress_t getCompress() const noexcept;
 			/**
-			 * setCompress Метод установки метода сжатия
-			 * @param метод сжатия сообщений
+			 * setCompress Метод установки метода компрессии
+			 * @param compress метод компрессии сообщений
 			 */
 			virtual void setCompress(const compress_t compress) noexcept;
 		public:

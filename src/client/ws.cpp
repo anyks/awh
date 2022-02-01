@@ -69,6 +69,14 @@ void awh::client::WebSocket::connectCallback(const size_t aid, const size_t wid,
 		ws->http.clear();
 		// Устанавливаем метод сжатия
 		ws->http.setCompress(ws->compress);
+		// Разрешаем перехватывать контекст для клиента
+		ws->http.setClientTakeover(ws->takeOverCli);
+		// Разрешаем перехватывать контекст для сервера
+		ws->http.setServerTakeover(ws->takeOverSrv);
+		// Разрешаем перехватывать контекст компрессии
+		ws->hash.setTakeoverCompress(ws->takeOverCli);
+		// Разрешаем перехватывать контекст декомпрессии
+		ws->hash.setTakeoverDecompress(ws->takeOverSrv);
 		// Получаем бинарные данные REST запроса
 		const auto & request = ws->http.request(ws->worker.url);
 		// Если бинарные данные запроса получены
@@ -253,6 +261,16 @@ void awh::client::WebSocket::readCallback(const char * buffer, const size_t size
 							ws->compress = ws->http.getCompress();
 							// Обновляем контрольную точку
 							ws->checkPoint = ws->fmk->unixTimestamp();
+							// Устанавливаем размер скользящего окна
+							ws->hash.setWbit(ws->http.getWbitServer());
+							// Если разрешено выполнять перехват контекста компрессии для клиента
+							if(ws->http.getClientTakeover())
+								// Разрешаем перехватывать контекст компрессии для клиента
+								ws->hash.setTakeoverCompress(true);
+							// Если разрешено выполнять перехват контекста компрессии для сервера
+							if(ws->http.getServerTakeover())
+								// Разрешаем перехватывать контекст компрессии для сервера
+								ws->hash.setTakeoverDecompress(true);
 							// Выводим в лог сообщение
 							if(!ws->noinfo) ws->log->print("%s", log_t::flag_t::INFO, "authorization on the WebSocket server was successful");
 							// Если функция обратного вызова установлена, выполняем
@@ -297,16 +315,12 @@ void awh::client::WebSocket::readCallback(const char * buffer, const size_t size
 			return;
 		// Если рукопожатие выполнено
 		} else {
-			// Количество прочитанных байт
-			size_t bytes = 0;
 			// Создаём объект шапки фрейма
 			frame_t::head_t head;
 			// Добавляем полученные данные в буфер
 			ws->buffer.insert(ws->buffer.end(), buffer, buffer + size);
 			// Выполняем обработку полученных данных
 			while(!ws->close){
-				// Сбрасываем количество прочитанных байт
-				bytes = 0;
 				// Выполняем чтение фрейма WebSocket
 				const auto & data = ws->frame.get(head, ws->buffer.data(), ws->buffer.size());
 				// Если буфер данных получен
@@ -409,13 +423,11 @@ void awh::client::WebSocket::readCallback(const char * buffer, const size_t size
 							goto Reconnect;
 						} break;
 					}
-					// Увеличиваем размер прочитанных байт
-					bytes = (head.payload + head.size);
 				}
 				// Если парсер обработал какое-то количество байт
-				if((bytes > 0) && !ws->buffer.empty()){
+				if((head.frame > 0) && !ws->buffer.empty()){
 					// Удаляем количество обработанных байт
-					ws->buffer.erase(ws->buffer.begin(), ws->buffer.begin() + bytes);
+					ws->buffer.erase(ws->buffer.begin(), ws->buffer.begin() + head.frame);
 					// Если данных для обработки не осталось, выходим
 					if(ws->buffer.empty()) break;
 				// Если данных для обработки недостаточно, выходим
@@ -640,8 +652,6 @@ void awh::client::WebSocket::extraction(const vector <char> & buffer, const bool
 			switch((uint8_t) this->compress){
 				// Если метод компрессии выбран Deflate
 				case (uint8_t) http_t::compress_t::DEFLATE: {
-					// Устанавливаем размер скользящего окна
-					this->hash.setWbit(this->http.getWbitServer());
 					// Добавляем хвост в полученные данные
 					this->hash.setTail(* const_cast <vector <char> *> (&buffer));
 					// Выполняем декомпрессию полученных данных
@@ -746,14 +756,14 @@ void awh::client::WebSocket::ping(const string & message) noexcept {
 /**
  * init Метод инициализации WebSocket клиента
  * @param url      адрес WebSocket сервера
- * @param compress метод сжатия передаваемых сообщений
+ * @param compress метод компрессии передаваемых сообщений
  */
 void awh::client::WebSocket::init(const string & url, const http_t::compress_t compress) noexcept {
 	// Если адрес сервера передан
 	if(!url.empty()){
 		// Выполняем очистку воркера
 		this->worker.clear();
-		// Устанавливаем флаг активации сжатия данных
+		// Устанавливаем метод компрессии сообщений
 		this->compress = compress;
 		// Устанавливаем URL адрес запроса
 		this->worker.url = this->uri.parseUrl(url);
@@ -889,8 +899,6 @@ void awh::client::WebSocket::send(const char * message, const size_t size, const
 						switch((uint8_t) this->compress){
 							// Если метод компрессии выбран Deflate
 							case (uint8_t) http_t::compress_t::DEFLATE: {
-								// Устанавливаем размер скользящего окна
-								this->hash.setWbit(this->http.getWbitClient());
 								// Выполняем компрессию полученных данных
 								data = this->hash.compress(message, size);
 								// Удаляем хвост в полученных данных
@@ -1072,6 +1080,10 @@ void awh::client::WebSocket::setMode(const u_short flag) noexcept {
 	this->worker.wait = (flag & (uint8_t) flag_t::WAITMESS);
 	// Устанавливаем флаг поддержания автоматического подключения
 	this->worker.alive = (flag & (uint8_t) flag_t::KEEPALIVE);
+	// Устанавливаем флаг перехвата контекста компрессии для клиента
+	this->takeOverCli = (flag & (uint8_t) flag_t::TAKEOVERCLI);
+	// Устанавливаем флаг перехвата контекста компрессии для сервера
+	this->takeOverSrv = (flag & (uint8_t) flag_t::TAKEOVERSRV);
 	// Устанавливаем флаг отложенных вызовов событий сокета
 	const_cast <client::core_t *> (this->core)->setDefer(flag & (uint8_t) flag_t::DEFER);
 	// Устанавливаем флаг запрещающий вывод информационных сообщений
@@ -1140,8 +1152,8 @@ void awh::client::WebSocket::setUserAgent(const string & userAgent) noexcept {
 	}
 }
 /**
- * setCompress Метод установки метода сжатия
- * @param метод сжатия сообщений
+ * setCompress Метод установки метода компрессии
+ * @param compress метод компрессии сообщений
  */
 void awh::client::WebSocket::setCompress(const http_t::compress_t compress) noexcept {
 	// Устанавливаем метод компрессии

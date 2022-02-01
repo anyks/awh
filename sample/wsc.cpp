@@ -47,7 +47,9 @@ int main(int argc, char * argv[]) noexcept {
 	 */
 	ws.setMode(
 		(uint8_t) client::ws_t::flag_t::NOTSTOP |
-		(uint8_t) client::ws_t::flag_t::WAITMESS |
+		// (uint8_t) client::ws_t::flag_t::WAITMESS |
+		(uint8_t) client::ws_t::flag_t::TAKEOVERCLI |
+		(uint8_t) client::ws_t::flag_t::TAKEOVERSRV |
 		(uint8_t) client::ws_t::flag_t::VERIFYSSL |
 		(uint8_t) client::ws_t::flag_t::KEEPALIVE
 	);

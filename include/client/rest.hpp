@@ -386,8 +386,8 @@ namespace awh {
 				 */
 				void setUserAgent(const string & userAgent) noexcept;
 				/**
-				 * setCompress Метод установки метода сжатия
-				 * @param метод сжатия сообщений
+				 * setCompress Метод установки метода компрессии
+				 * @param compress метод компрессии сообщений
 				 */
 				void setCompress(const awh::http_t::compress_t compress) noexcept;
 				/**

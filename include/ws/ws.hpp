@@ -59,6 +59,11 @@ namespace awh {
 			// Ключ клиента
 			mutable string key = "";
 		protected:
+			// Флаг запрета переиспользования контекста компрессии для клиента
+			bool noClientTakeover = true;
+			// Флаг запрета переиспользования контекста компрессии для сервера
+			bool noServerTakeover = true;
+		protected:
 			// Поддерживаемые сабпротоколы
 			set <string> subs;
 		protected:
@@ -100,13 +105,14 @@ namespace awh {
 			void clean() noexcept;
 		public:
 			/**
-			 * getCompress Метод получения метода сжатия
-			 * @return метод сжатия сообщений
+			 * getCompress Метод получения метода компрессии
+			 * @return метод компрессии сообщений
 			 */
 			compress_t getCompress() const noexcept;
+		public:
 			/**
-			 * setCompress Метод установки метода сжатия
-			 * @param метод сжатия сообщений
+			 * setCompress Метод установки метода компрессии
+			 * @param compress метод компрессии сообщений
 			 */
 			void setCompress(const compress_t compress) noexcept;
 		public:
@@ -160,6 +166,28 @@ namespace awh {
 			 * @param subs подпротоколы для установки
 			 */
 			void setSubs(const vector <string> & subs) noexcept;
+		public:
+			/**
+			 * getClientTakeover Метод получения флага переиспользования контекста компрессии для клиента
+			 * @return флаг запрета переиспользования контекста компрессии для клиента
+			 */
+			bool getClientTakeover() const noexcept;
+			/**
+			 * getServerTakeover Метод получения флага переиспользования контекста компрессии для сервера
+			 * @return флаг запрета переиспользования контекста компрессии для сервера
+			 */
+			bool getServerTakeover() const noexcept;
+		public:
+			/**
+			 * setClientTakeover Метод установки флага переиспользования контекста компрессии для клиента
+			 * @param flag флаг запрета переиспользования контекста компрессии для клиента
+			 */
+			void setClientTakeover(const bool flag) noexcept;
+			/**
+			 * setServerTakeover Метод установки флага переиспользования контекста компрессии для сервера
+			 * @param flag флаг запрета переиспользования контекста компрессии для сервера
+			 */
+			void setServerTakeover(const bool flag) noexcept;
 		public:
 			/**
 			 * WS Конструктор

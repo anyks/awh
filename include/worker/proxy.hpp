@@ -65,7 +65,7 @@ namespace awh {
 					web_t::method_t method;           // Метод HTTP выполняемого запроса
 					vector <char> client;             // Буфер бинарных необработанных данных клиента
 					vector <char> server;             // Буфер бинарных необработанных данных сервера
-					awh::http_t::compress_t compress; // Флаги работы с сжатыми данными
+					awh::http_t::compress_t compress; // Метод компрессии данных
 					/**
 					 * AdjParam Конструктор
 					 * @param fmk объект фреймворка

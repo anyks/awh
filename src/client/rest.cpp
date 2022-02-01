@@ -59,7 +59,7 @@ void awh::client::Rest::connectCallback(const size_t aid, const size_t wid, awh:
 			web->http.reset();
 			// Выполняем очистку параметров HTTP запроса
 			web->http.clear();
-			// Устанавливаем метод сжатия
+			// Устанавливаем метод компрессии
 			web->http.setCompress(web->compress);
 			// Если список заголовков получен
 			if(!req.headers.empty())
@@ -1349,8 +1349,8 @@ void awh::client::Rest::setUserAgent(const string & userAgent) noexcept {
 	}
 }
 /**
- * setCompress Метод установки метода сжатия
- * @param метод сжатия сообщений
+ * setCompress Метод установки метода компрессии
+ * @param compress метод компрессии сообщений
  */
 void awh::client::Rest::setCompress(const awh::http_t::compress_t compress) noexcept {
 	// Устанавливаем метод компрессии

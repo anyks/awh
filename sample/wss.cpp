@@ -38,7 +38,13 @@ int main(int argc, char * argv[]) noexcept {
 	/**
 	 * 1. Устанавливаем ожидание входящих сообщений
 	 */
-	// ws.setMode((uint8_t) server::ws_t::flag_t::WAITMESS);
+	/*
+	ws.setMode(
+		// (uint8_t) server::ws_t::flag_t::WAITMESS |
+		// (uint8_t) server::ws_t::flag_t::TAKEOVERCLI |
+		// (uint8_t) server::ws_t::flag_t::TAKEOVERSRV
+	);
+	*/
 	// Устанавливаем название сервера
 	// ws.setRealm("ANYKS");
 	// Устанавливаем временный ключ сессии
@@ -47,6 +53,7 @@ int main(int argc, char * argv[]) noexcept {
 	// ws.setAuthType(auth_t::type_t::DIGEST, auth_t::hash_t::SHA256);
 	// Выполняем инициализацию WebSocket сервера
 	ws.init(2222, "127.0.0.1", http_t::compress_t::DEFLATE);
+	// ws.init(2222, "127.0.0.1", http_t::compress_t::NONE);
 	// Устанавливаем шифрование
 	// ws.setCrypt("PASS");
 	// Устанавливаем сабпротоколы

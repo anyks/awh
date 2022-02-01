@@ -93,19 +93,19 @@ void awh::WS::clean() noexcept {
 	this->wbitServer = GZIP_MAX_WBITS;
 }
 /**
- * getCompress Метод получения метода сжатия
- * @return метод сжатия сообщений
+ * getCompress Метод получения метода компрессии
+ * @return метод компрессии сообщений
  */
 awh::Http::compress_t awh::WS::getCompress() const noexcept {
-	// Выводим метод сжатия сообщений
+	// Выводим метод компрессии сообщений
 	return this->compress;
 }
 /**
- * setCompress Метод установки метода сжатия
- * @param метод сжатия сообщений
+ * setCompress Метод установки метода компрессии
+ * @param compress метод компрессии сообщений
  */
 void awh::WS::setCompress(const compress_t compress) noexcept {
-	// Устанавливаем метод сжатия сообщений
+	// Устанавливаем метод компрессии сообщений
 	this->compress = compress;
 }
 /**
@@ -198,21 +198,33 @@ vector <char> awh::WS::response() noexcept {
 				// Если метод компрессии выбран Deflate
 				if(this->compress == compress_t::DEFLATE){
 					// Устанавливаем тип компрессии Deflate
-					extensions = "permessage-deflate; server_no_context_takeover";
+					extensions = "permessage-deflate";
+					// Если запрещено переиспользовать контекст компрессии для клиента и сервера
+					if(this->noServerTakeover && this->noClientTakeover)
+						// Устанавливаем запрет на переиспользование контекста компрессии для клиента и сервера
+						extensions.append("; server_no_context_takeover; client_no_context_takeover");
+					// Если запрещено переиспользовать контекст компрессии для клиента
+					else if(!this->noServerTakeover && this->noClientTakeover)
+						// Устанавливаем запрет на переиспользование контекста компрессии для клиента
+						extensions.append("; client_no_context_takeover");
+					// Если запрещено переиспользовать контекст компрессии для сервера
+					else if(this->noServerTakeover && !this->noClientTakeover)
+						// Устанавливаем запрет на переиспользование контекста компрессии для сервера
+						extensions.append("; server_no_context_takeover");
 					// Если требуется указать количество байт
 					if(this->wbitServer > 0) extensions.append(this->fmk->format("; server_max_window_bits=%u", this->wbitServer));
 				// Если метод компрессии выбран GZip
 				} else if(this->compress == compress_t::GZIP)
 					// Устанавливаем тип компрессии GZip
-					extensions = "permessage-gzip; server_no_context_takeover";
+					extensions = "permessage-gzip";
 				// Если метод компрессии выбран Brotli
 				else if(this->compress == compress_t::BROTLI)
 					// Устанавливаем тип компрессии Brotli
-					extensions = "permessage-br; server_no_context_takeover";
+					extensions = "permessage-br";
 				// Если данные должны быть зашифрованны
 				if(this->crypt) extensions.append(this->fmk->format("; permessage-encrypt=%u", (u_short) this->hash.getAES()));
 			// Если метод компрессии не указан но указан режим шифрования
-			} else if(this->crypt) extensions = this->fmk->format("permessage-encrypt=%u; server_no_context_takeover", (u_short) this->hash.getAES());
+			} else if(this->crypt) extensions = this->fmk->format("permessage-encrypt=%u", (u_short) this->hash.getAES());
 			// Добавляем полученный заголовок
 			this->addHeader("Sec-WebSocket-Extensions", extensions);
 		}
@@ -272,11 +284,25 @@ vector <char> awh::WS::request(const uri_t::url_t & url) noexcept {
 		// Если метод компрессии указан
 		if(this->compress != compress_t::NONE){
 			// Если метод компрессии выбран Deflate
-			if(this->compress == compress_t::DEFLATE)
+			if(this->compress == compress_t::DEFLATE){
 				// Устанавливаем тип компрессии Deflate
-				extensions = "permessage-deflate; client_max_window_bits";
+				extensions = "permessage-deflate";
+				// Если запрещено переиспользовать контекст компрессии для сервера
+				if(this->noServerTakeover && !this->noClientTakeover)
+					// Устанавливаем запрет на переиспользование контекста компрессии для сервера
+					extensions.append("; server_no_context_takeover");
+				// Если запрещено переиспользовать контекст компрессии для клиента
+				else if(!this->noServerTakeover && this->noClientTakeover)
+					// Устанавливаем запрет на переиспользование контекста компрессии для клиента
+					extensions.append("; client_no_context_takeover");
+				// Если запрещено переиспользовать контекст компрессии для клиента и сервера
+				else if(this->noServerTakeover && this->noClientTakeover)
+					// Устанавливаем запрет на переиспользование контекста компрессии для клиента и сервера
+					extensions.append("; server_no_context_takeover; client_no_context_takeover");
+				// Устанавливаем максимальный размер скользящего окна
+				extensions.append("; client_max_window_bits");
 			// Если метод компрессии выбран GZip
-			else if(this->compress == compress_t::GZIP)
+			} else if(this->compress == compress_t::GZIP)
 				// Устанавливаем тип компрессии GZip
 				extensions = "permessage-gzip";
 			// Если метод компрессии выбран Brotli
@@ -292,16 +318,28 @@ vector <char> awh::WS::request(const uri_t::url_t & url) noexcept {
 	}
 	// Генерируем ключ клиента
 	this->key = this->getKey();
-	// Добавляем в чёрный список заголовок Accept
-	this->addBlack("Accept");
-	// Добавляем заголовок подключения
-	this->addHeader("Connection", "Upgrade");
+	// Добавляем заголовок Accept
+	this->addHeader("Accept", "*/*");
 	// Добавляем заголовок апгрейд
 	this->addHeader("Upgrade", "websocket");
+	// Добавляем заголовок подключения
+	this->addHeader("Connection", "keep-alive, Upgrade");
 	// Добавляем заголовок версии WebSocket
 	this->addHeader("Sec-WebSocket-Version", to_string(WS_VERSION));
 	// Добавляем заголовок ключ клиента
 	this->addHeader("Sec-WebSocket-Key", this->key);
+	// Добавляем заголовок отключения кеширования
+	this->addHeader("Pragma", "no-cache");
+	// Добавляем заголовок отключения кеширования
+	this->addHeader("Cache-Control", "no-cache");
+	// Устанавливаем заголовок типа запроса
+	this->addHeader("Sec-Fetch-Mode", "websocket");
+	// Устанавливаем заголовок места назначения запроса
+	this->addHeader("Sec-Fetch-Dest", "websocket");
+	// Устанавливаем заголовок требования сжимать содержимое ответов
+	this->addHeader("Accept-Encoding", "gzip, deflate, br");
+	// Устанавливаем заголовок поддерживаемых языков
+	this->addHeader("Accept-Language", HTTP_HEADER_ACCEPTLANGUAGE);
 	// Выводим результат
 	return http_t::request(url, web_t::method_t::GET);
 }
@@ -325,4 +363,36 @@ void awh::WS::setSubs(const vector <string> & subs) noexcept {
 			// Устанавливаем подпротокол
 			this->setSub(sub);
 	}
+}
+/**
+ * getClientTakeover Метод получения флага переиспользования контекста компрессии для клиента
+ * @return флаг запрета переиспользования контекста компрессии для клиента
+ */
+bool awh::WS::getClientTakeover() const noexcept {
+	// Выводим результат проверки
+	return !this->noClientTakeover;
+}
+/**
+ * getServerTakeover Метод получения флага переиспользования контекста компрессии для сервера
+ * @return флаг запрета переиспользования контекста компрессии для сервера
+ */
+bool awh::WS::getServerTakeover() const noexcept {
+	// Выводим результат проверки
+	return !this->noServerTakeover;
+}
+/**
+ * setClientTakeover Метод установки флага переиспользования контекста компрессии для клиента
+ * @param flag флаг запрета переиспользования контекста компрессии для клиента
+ */
+void awh::WS::setClientTakeover(const bool flag) noexcept {
+	// Устанавливаем флаг запрета переиспользования контекста компрессии для клиента
+	this->noClientTakeover = !flag;
+}
+/**
+ * setServerTakeover Метод установки флага переиспользования контекста компрессии для сервера
+ * @param flag флаг запрета переиспользования контекста компрессии для сервера
+ */
+void awh::WS::setServerTakeover(const bool flag) noexcept {
+	// Устанавливаем флаг запрета переиспользования контекста компрессии для сервера
+	this->noServerTakeover = !flag;
 }

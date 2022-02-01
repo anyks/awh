@@ -75,6 +75,23 @@ void awh::server::WebSocket::connectCallback(const size_t aid, const size_t wid,
 		ws->worker.createAdj(aid);
 		// Получаем параметры подключения адъютанта
 		workerWS_t::adjp_t * adj = const_cast <workerWS_t::adjp_t *> (ws->worker.getAdj(aid));
+		// Если данные необходимо зашифровать
+		if(ws->crypt){
+			// Устанавливаем размер шифрования
+			adj->hash.setAES(ws->aes);
+			// Устанавливаем соль шифрования
+			adj->hash.setSalt(ws->salt);
+			// Устанавливаем пароль шифрования
+			adj->hash.setPassword(ws->pass);
+		}
+		// Разрешаем перехватывать контекст для клиента
+		adj->http.setClientTakeover(ws->takeOverCli);
+		// Разрешаем перехватывать контекст для сервера
+		adj->http.setServerTakeover(ws->takeOverSrv);
+		// Разрешаем перехватывать контекст компрессии
+		adj->hash.setTakeoverCompress(ws->takeOverSrv);
+		// Разрешаем перехватывать контекст декомпрессии
+		adj->hash.setTakeoverDecompress(ws->takeOverCli);
 		// Устанавливаем данные сервиса
 		adj->http.setServ(ws->sid, ws->name, ws->version);
 		// Устанавливаем поддерживаемые сабпротоколы
@@ -179,6 +196,8 @@ void awh::server::WebSocket::readCallback(const char * buffer, const size_t size
 				if(adj->http.isEnd()){
 					// Выполняем сброс данных буфера
 					adj->buffer.clear();
+					// Метод компрессии данных
+					http_t::compress_t compress = http_t::compress_t::NONE;
 					// Если включён режим отладки
 					#if defined(DEBUG_MODE)
 						// Получаем данные запроса
@@ -203,6 +222,8 @@ void awh::server::WebSocket::readCallback(const char * buffer, const size_t size
 						case (uint8_t) http_t::stath_t::GOOD: {
 							// Если рукопожатие выполнено
 							if(adj->http.isHandshake()){
+								// Получаем метод компрессии HTML данных
+								compress = adj->http.extractCompression();
 								// Проверяем версию протокола
 								if(!adj->http.checkVer()){
 									// Выполняем сброс состояния HTTP парсера
@@ -227,6 +248,16 @@ void awh::server::WebSocket::readCallback(const char * buffer, const size_t size
 								adj->crypt = adj->http.isCrypt();
 								// Получаем поддерживаемый метод компрессии
 								adj->compress = adj->http.getCompress();
+								// Устанавливаем размер скользящего окна
+								adj->hash.setWbit(adj->http.getWbitServer());
+								// Если разрешено выполнять перехват контекста компрессии для сервера
+								if(adj->http.getServerTakeover())
+									// Разрешаем перехватывать контекст компрессии для клиента
+									adj->hash.setTakeoverCompress(true);
+								// Если разрешено выполнять перехват контекста компрессии для клиента
+								if(adj->http.getClientTakeover())
+									// Разрешаем перехватывать контекст компрессии для сервера
+									adj->hash.setTakeoverDecompress(true);
 								// Получаем бинарные данные REST запроса
 								response = adj->http.response();
 								// Если бинарные данные ответа получены
@@ -284,6 +315,8 @@ void awh::server::WebSocket::readCallback(const char * buffer, const size_t size
 							// Выводим параметры ответа
 							cout << string(response.begin(), response.end()) << endl;
 						#endif
+						// Устанавливаем метод компрессии данных ответа
+						adj->http.setCompress(compress);
 						// Устанавливаем размер стопбайт
 						if(!adj->http.isAlive()) adj->stopBytes = response.size();
 						// Отправляем ответ клиенту
@@ -307,16 +340,12 @@ void awh::server::WebSocket::readCallback(const char * buffer, const size_t size
 				return;
 			// Если рукопожатие выполнено
 			} else {
-				// Количество прочитанных байт
-				size_t bytes = 0;
 				// Создаём объект шапки фрейма
 				frame_t::head_t head;
 				// Добавляем полученные данные в буфер
 				adj->buffer.insert(adj->buffer.end(), buffer, buffer + size);
 				// Выполняем обработку полученных данных
 				while(!adj->close){
-					// Сбрасываем количество прочитанных байт
-					bytes = 0;
 					// Выполняем чтение фрейма WebSocket
 					const auto & data = ws->frame.get(head, adj->buffer.data(), adj->buffer.size());
 					// Если буфер данных получен
@@ -411,13 +440,11 @@ void awh::server::WebSocket::readCallback(const char * buffer, const size_t size
 								return;
 							} break;
 						}
-						// Увеличиваем размер прочитанных байт
-						bytes = (head.payload + head.size);
 					}
 					// Если парсер обработал какое-то количество байт
-					if(bytes > 0){
+					if(head.frame > 0){
 						// Удаляем количество обработанных байт
-						adj->buffer.erase(adj->buffer.begin(), adj->buffer.begin() + bytes);
+						adj->buffer.erase(adj->buffer.begin(), adj->buffer.begin() + head.frame);
 						// Если данных для обработки не осталось, выходим
 						if(adj->buffer.empty()) break;
 					// Если данных для обработки недостаточно, выходим
@@ -499,22 +526,20 @@ void awh::server::WebSocket::extraction(workerWS_t::adjp_t * adj, const size_t a
 			switch((uint8_t) adj->compress){
 				// Если метод компрессии выбран Deflate
 				case (uint8_t) http_t::compress_t::DEFLATE: {
-					// Устанавливаем размер скользящего окна
-					this->hash.setWbit(adj->http.getWbitServer());
 					// Добавляем хвост в полученные данные
-					this->hash.setTail(* const_cast <vector <char> *> (&buffer));
+					adj->hash.setTail(* const_cast <vector <char> *> (&buffer));
 					// Выполняем декомпрессию полученных данных
-					data = this->hash.decompress(buffer.data(), buffer.size());
+					data = adj->hash.decompress(buffer.data(), buffer.size());
 				} break;
 				// Если метод компрессии выбран GZip
 				case (uint8_t) http_t::compress_t::GZIP:
 					// Выполняем декомпрессию полученных данных
-					data = this->hash.decompressGzip(buffer.data(), buffer.size());
+					data = adj->hash.decompressGzip(buffer.data(), buffer.size());
 				break;
 				// Если метод компрессии выбран Brotli
 				case (uint8_t) http_t::compress_t::BROTLI:
 					// Выполняем декомпрессию полученных данных
-					data = this->hash.decompressBrotli(buffer.data(), buffer.size());
+					data = adj->hash.decompressBrotli(buffer.data(), buffer.size());
 				break;
 			}
 			// Если данные получены
@@ -522,7 +547,7 @@ void awh::server::WebSocket::extraction(workerWS_t::adjp_t * adj, const size_t a
 				// Если нужно производить дешифрование
 				if(adj->crypt){
 					// Выполняем шифрование переданных данных
-					const auto & res = this->hash.decrypt(data.data(), data.size());
+					const auto & res = adj->hash.decrypt(data.data(), data.size());
 					// Отправляем полученный результат
 					if(!res.empty()) this->messageFn(aid, res, utf8, const_cast <WebSocket *> (this), this->ctx.at(2));
 					// Иначе выводим сообщение так - как оно пришло
@@ -549,7 +574,7 @@ void awh::server::WebSocket::extraction(workerWS_t::adjp_t * adj, const size_t a
 			// Если нужно производить дешифрование
 			if(adj->crypt){
 				// Выполняем шифрование переданных данных
-				const auto & res = this->hash.decrypt(buffer.data(), buffer.size());
+				const auto & res = adj->hash.decrypt(buffer.data(), buffer.size());
 				// Отправляем полученный результат
 				if(!res.empty()) this->messageFn(aid, res, utf8, const_cast <WebSocket *> (this), this->ctx.at(2));
 				// Иначе выводим сообщение так - как оно пришло
@@ -758,7 +783,7 @@ void awh::server::WebSocket::send(const size_t aid, const char * message, const 
 				// Если нужно производить шифрование
 				if(this->crypt){
 					// Выполняем шифрование переданных данных
-					buffer = this->hash.encrypt(message, size);
+					buffer = adj->hash.encrypt(message, size);
 					// Если данные зашифрованны
 					if(!buffer.empty()){
 						// Заменяем сообщение для передачи
@@ -784,22 +809,20 @@ void awh::server::WebSocket::send(const size_t aid, const char * message, const 
 							switch((uint8_t) adj->compress){
 								// Если метод компрессии выбран Deflate
 								case (uint8_t) http_t::compress_t::DEFLATE: {
-									// Устанавливаем размер скользящего окна
-									this->hash.setWbit(adj->http.getWbitClient());
 									// Выполняем компрессию полученных данных
-									data = this->hash.compress(message, size);
+									data = adj->hash.compress(message, size);
 									// Удаляем хвост в полученных данных
-									this->hash.rmTail(data);
+									adj->hash.rmTail(data);
 								} break;
 								// Если метод компрессии выбран GZip
 								case (uint8_t) http_t::compress_t::GZIP:
 									// Выполняем компрессию полученных данных
-									data = this->hash.compressGzip(message, size);
+									data = adj->hash.compressGzip(message, size);
 								break;
 								// Если метод компрессии выбран Brotli
 								case (uint8_t) http_t::compress_t::BROTLI:
 									// Выполняем компрессию полученных данных
-									data = this->hash.compressBrotli(message, size);
+									data = adj->hash.compressBrotli(message, size);
 								break;
 							}
 							// Если сжатие данных прошло удачно
@@ -985,6 +1008,10 @@ void awh::server::WebSocket::setAuthType(const auth_t::type_t type, const auth_t
 void awh::server::WebSocket::setMode(const u_short flag) noexcept {
 	// Устанавливаем флаг ожидания входящих сообщений
 	this->worker.wait = (flag & (uint8_t) flag_t::WAITMESS);
+	// Устанавливаем флаг перехвата контекста компрессии для клиента
+	this->takeOverCli = (flag & (uint8_t) flag_t::TAKEOVERCLI);
+	// Устанавливаем флаг перехвата контекста компрессии для сервера
+	this->takeOverSrv = (flag & (uint8_t) flag_t::TAKEOVERSRV);
 	// Устанавливаем флаг отложенных вызовов событий сокета
 	const_cast <server::core_t *> (this->core)->setDefer(flag & (uint8_t) flag_t::DEFER);
 	// Устанавливаем флаг запрещающий вывод информационных сообщений
@@ -1035,12 +1062,6 @@ void awh::server::WebSocket::setServ(const string & id, const string & name, con
  * @param aes  размер шифрования передаваемых данных
  */
 void awh::server::WebSocket::setCrypt(const string & pass, const string & salt, const hash_t::aes_t aes) noexcept {
-	// Устанавливаем размер шифрования
-	this->hash.setAES(aes);
-	// Устанавливаем соль шифрования
-	this->hash.setSalt(salt);
-	// Устанавливаем пароль шифрования
-	this->hash.setPassword(pass);
 	// Устанавливаем флаг шифрования
 	if((this->crypt = !pass.empty())){
 		// Размер шифрования передаваемых данных
@@ -1057,7 +1078,7 @@ void awh::server::WebSocket::setCrypt(const string & pass, const string & salt, 
  * @param fmk  объект фреймворка
  * @param log  объект для работы с логами
  */
-awh::server::WebSocket::WebSocket(const server::core_t * core, const fmk_t * fmk, const log_t * log) noexcept : hash(fmk, log), frame(fmk, log), core(core), fmk(fmk), log(log), worker(fmk, log) {
+awh::server::WebSocket::WebSocket(const server::core_t * core, const fmk_t * fmk, const log_t * log) noexcept : frame(fmk, log), core(core), fmk(fmk), log(log), worker(fmk, log) {
 	// Устанавливаем контекст сообщения
 	this->worker.ctx = this;
 	// Устанавливаем событие на запуск системы

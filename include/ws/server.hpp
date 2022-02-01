@@ -96,8 +96,10 @@ namespace awh {
 				 * @param uri объект работы с URI
 				 */
 				WS(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcept : ws_t(fmk, log, uri) {
-					// Устанавливаем тип HTTP модуля
+					// Устанавливаем тип HTTP модуля (Сервер)
 					this->web.init(web_t::hid_t::SERVER);
+					// Устанавливаем тип модуля (Сервер)
+					this->httpType = web_t::hid_t::SERVER;
 				}
 				/**
 				 * ~WS Деструктор

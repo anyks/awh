@@ -160,12 +160,13 @@ namespace awh {
 				bool mask;        // Маска протокола
 				bool rsv[3];      // Расширения протокола
 				uint8_t size;     // Размер блока заголовков
+				uint64_t frame;   // Размер всего фрейма данных
 				uint64_t payload; // Размер полезной нагрузки
 				opcode_t optcode; // Опциональные коды
 				/**
 				 * Head Конструктор
 				 */
-				Head() : fin(true), mask(true), rsv{false, false, false}, size(0), payload(0), optcode(opcode_t::TEXT) {}
+				Head() : fin(true), mask(true), rsv{false, false, false}, size(0), frame(0), payload(0), optcode(opcode_t::TEXT) {}
 			} head_t;
 		private:
 			// Создаём объект фреймворка

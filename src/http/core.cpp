@@ -450,19 +450,80 @@ awh::Http::stath_t awh::Http::getAuth() const noexcept {
 	return this->stath;
 }
 /**
- * getCompress Метод получения метода сжатия
- * @return метод сжатия сообщений
+ * extractCompression Метод извлечения метода компрессии
+ * @return метод компрессии
+ */
+awh::Http::compress_t awh::Http::extractCompression() const noexcept {
+	// Результат работы функции
+	compress_t result = compress_t::NONE;
+	// Проверяем пришли ли сжатые данные
+	const string & encoding = this->web.getHeader("content-encoding");
+	// Если данные пришли сжатые
+	if(!encoding.empty()){
+		// Если данные пришли сжатые методом Brotli
+		if(encoding.compare("br") == 0)
+			// Устанавливаем требование выполнять декомпрессию тела сообщения
+			result = compress_t::BROTLI;
+		// Если данные пришли сжатые методом GZip
+		else if(encoding.compare("gzip") == 0)
+			// Устанавливаем требование выполнять декомпрессию тела сообщения
+			result = compress_t::GZIP;
+		// Если данные пришли сжатые методом Deflate
+		else if(encoding.compare("deflate") == 0)
+			// Устанавливаем требование выполнять декомпрессию тела сообщения
+			result = compress_t::DEFLATE;
+	}
+	// Если мы работаем с HTTP сервером и метод компрессии установлен
+	if(this->httpType == web_t::hid_t::SERVER){
+		// Если заголовок с запрашиваемой кодировкой существует
+		if(this->web.isHeader("accept-encoding")){
+			// Переходим по всему списку заголовков
+			for(auto & header : this->web.getHeaders()){
+				// Если заголовок найден
+				if(this->fmk->toLower(header.first) == "accept-encoding"){
+					// Если конкретный метод сжатия не запрашивается
+					if(header.second.compare("*") == 0)
+						// Устанавливаем требование выполнять декомпрессию тела сообщения
+						return compress_t::BROTLI;
+					// Если запрашиваются конкретные методы сжатия
+					else {
+						// Если найден запрашиваемый метод компрессии BROTLI
+						if(header.second.find("br") != string::npos)
+							// Устанавливаем требование выполнять декомпрессию тела сообщения
+							return compress_t::BROTLI;
+						// Если найден запрашиваемый метод компрессии GZip
+						else if(header.second.find("gzip") != string::npos)
+							// Устанавливаем требование выполнять декомпрессию тела сообщения
+							result = compress_t::GZIP;
+						// Если найден запрашиваемый метод компрессии Deflate
+						else if(header.second.find("deflate") != string::npos){
+							// Если не указаны другие методы компрессии
+							if(result == compress_t::NONE)
+								// Устанавливаем требование выполнять декомпрессию тела сообщения
+								result = compress_t::DEFLATE;
+						}
+					}
+				}
+			}
+		}
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * getCompress Метод получения метода компрессии
+ * @return метод компрессии сообщений
  */
 awh::Http::compress_t awh::Http::getCompress() const noexcept {
-	// Выводим метод сжатия сообщений
+	// Выводим метод компрессии сообщений
 	return this->compress;
 }
 /**
- * setCompress Метод установки метода сжатия
- * @param метод сжатия сообщений
+ * setCompress Метод установки метода компрессии
+ * @param compress метод компрессии сообщений
  */
 void awh::Http::setCompress(const compress_t compress) noexcept {
-	// Устанавливаем метод сжатия сообщений
+	// Устанавливаем метод компрессии сообщений
 	this->compress = compress;
 }
 /**
@@ -737,7 +798,7 @@ vector <char> awh::Http::request(const bool nobody) const noexcept {
 				}
 				// Если заголовок не запрещён
 				if(!this->isBlack("Content-Encoding")){
-					// Определяем метод сжатия тела сообщения
+					// Определяем метод компрессии тела сообщения
 					switch((uint8_t) this->compress){
 						// Если нужно сжать тело методом BROTLI
 						case (uint8_t) compress_t::BROTLI: {
@@ -1434,7 +1495,7 @@ vector <char> awh::Http::request(const uri_t::url_t & url, const web_t::method_t
 			if(!available[6] && (method != web_t::method_t::CONNECT) && !this->isBlack("Accept-Language"))
 				// Добавляем заголовок в запрос
 				request.append(this->fmk->format("Accept-Language: %s\r\n", HTTP_HEADER_ACCEPTLANGUAGE));
-			// Если нужно произвести сжатие контента
+			// Если нужно запросить компрессию в удобном нам виде
 			if((this->compress != compress_t::NONE) && (method != web_t::method_t::CONNECT) && !this->isBlack("Accept-Encoding")){
 				// Определяем метод сжатия который поддерживает клиент
 				switch((uint8_t) this->compress){
@@ -1559,7 +1620,7 @@ vector <char> awh::Http::request(const uri_t::url_t & url, const web_t::method_t
 				}
 				// Если заголовок не запрещён
 				if(!this->isBlack("Content-Encoding")){
-					// Определяем метод сжатия тела сообщения
+					// Определяем метод компрессии тела сообщения
 					switch((uint8_t) this->compress){
 						// Если нужно сжать тело методом BROTLI
 						case (uint8_t) compress_t::BROTLI: {

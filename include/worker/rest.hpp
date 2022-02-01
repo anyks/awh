@@ -58,7 +58,7 @@ namespace awh {
 					time_t checkPoint;                // Контрольная точка ответа на пинг
 					http_t http;                      // Создаём объект для работы с HTTP
 					vector <char> buffer;             // Буфер бинарных необработанных данных
-					awh::http_t::compress_t compress; // Флаги работы с сжатыми данными
+					awh::http_t::compress_t compress; // Метод компрессии данных
 					/**
 					 * AdjParam Конструктор
 					 * @param fmk объект фреймворка

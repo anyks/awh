@@ -57,11 +57,12 @@ namespace awh {
 					size_t readBytes;            // Количество полученных байт для закрытия подключения
 					size_t stopBytes;            // Количество байт для закрытия подключения
 					time_t checkPoint;           // Контрольная точка ответа на пинг
+					hash_t hash;                 // Создаём объект для компрессии-декомпрессии данных
 					server::wss_t http;          // Создаём объект для работы с HTTP
 					vector <char> buffer;        // Буфер бинарных необработанных данных
 					vector <char> fragmes;       // Данные фрагметрированного сообщения
 					frame_t::opcode_t opcode;    // Полученный опкод сообщения
-					http_t::compress_t compress; // Флаги работы с сжатыми данными
+					http_t::compress_t compress; // Метод компрессии данных
 					/**
 					 * AdjParam Конструктор
 					 */
@@ -73,6 +74,7 @@ namespace awh {
 						readBytes(0),
 						stopBytes(0),
 						checkPoint(0),
+						hash(fmk, log),
 						http(fmk, log, uri),
 						opcode(frame_t::opcode_t::TEXT),
 						compress(http_t::compress_t::NONE) {}
