@@ -302,12 +302,15 @@ void awh::DNS::setNameServers(const vector <string> & servers) noexcept {
 void awh::DNS::replaceServers(const vector <string> & servers) noexcept {
 	// Если нейм сервера переданы, удаляем все настроенные серверы имён и приостанавливаем все ожидающие решения
 	if(!servers.empty()){
-		// Если база DNS созданы
-		if(this->dbase != nullptr)
-			// Выполняем очистку предыдущих DNS серверов
-			evdns_base_clear_nameservers_and_suspend(this->dbase);
-		// Устанавливаем новый список серверов
-		this->setNameServers(servers);
+		// Если список DNS серверов отличается
+		if(this->servers.empty() || !equal(servers.begin(), servers.end(), this->servers.begin())){
+			// Если база DNS созданы
+			if(this->dbase != nullptr)
+				// Выполняем очистку предыдущих DNS серверов
+				evdns_base_clear_nameservers_and_suspend(this->dbase);
+			// Устанавливаем новый список серверов
+			this->setNameServers(servers);
+		}
 	}
 }
 /**

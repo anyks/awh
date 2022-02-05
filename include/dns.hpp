@@ -25,6 +25,7 @@
 #include <vector>
 #include <random>
 #include <cstdlib>
+#include <algorithm>
 #include <functional>
 #include <unordered_map>
 #include <event2/dns.h>
