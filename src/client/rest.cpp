@@ -78,7 +78,7 @@ void awh::client::Rest::connectCallback(const size_t aid, const size_t wid, awh:
 					// Выводим заголовок запроса
 					cout << "\x1B[33m\x1B[1m^^^^^^^^^ REQUEST ^^^^^^^^^\x1B[0m" << endl;
 					// Выводим параметры запроса
-					cout << string(request.begin(), request.end()) << endl;
+					cout << string(request.begin(), request.end()) << endl << endl;
 				#endif
 				// Тело REST сообщения
 				vector <char> entity;
@@ -252,7 +252,9 @@ void awh::client::Rest::readCallback(const char * buffer, const size_t size, con
 						// Если тело ответа существует
 						if(!web->http.getBody().empty())
 							// Выводим сообщение о выводе чанка тела
-							cout << web->fmk->format("<body %u>", web->http.getBody().size())  << endl;
+							cout << web->fmk->format("<body %u>", web->http.getBody().size()) << endl << endl;
+						// Иначе устанавливаем перенос строки
+						else cout << endl;
 					}
 				#endif
 				// Выполняем анализ результата авторизации

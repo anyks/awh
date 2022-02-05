@@ -86,7 +86,7 @@ void awh::client::WebSocket::connectCallback(const size_t aid, const size_t wid,
 				// Выводим заголовок запроса
 				cout << "\x1B[33m\x1B[1m^^^^^^^^^ REQUEST ^^^^^^^^^\x1B[0m" << endl;
 				// Выводим параметры запроса
-				cout << string(request.begin(), request.end()) << endl;
+				cout << string(request.begin(), request.end()) << endl << endl;
 			#endif
 			// Отправляем серверу сообщение
 			core->write(request.data(), request.size(), aid);
@@ -213,7 +213,9 @@ void awh::client::WebSocket::readCallback(const char * buffer, const size_t size
 						// Если тело ответа существует
 						if(!ws->http.getBody().empty())
 							// Выводим сообщение о выводе чанка тела
-							cout << ws->fmk->format("<body %u>", ws->http.getBody().size())  << endl;
+							cout << ws->fmk->format("<body %u>", ws->http.getBody().size()) << endl << endl;
+						// Иначе устанавливаем перенос строки
+						else cout << endl;
 					}
 				#endif
 				// Выполняем проверку авторизации
@@ -820,7 +822,7 @@ void awh::client::WebSocket::sendError(const mess_t & mess) noexcept {
 					// Выводим заголовок ответа
 					cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
 					// Выводим отправляемое сообщение
-					cout << this->fmk->format("%s [%u]", mess.text.c_str(), mess.code) << endl;
+					cout << this->fmk->format("%s [%u]", mess.text.c_str(), mess.code) << endl << endl;
 				#endif
 				// Запоминаем рамер данных для остановки
 				this->stopBytes = buffer.size();
@@ -854,9 +856,9 @@ void awh::client::WebSocket::send(const char * message, const size_t size, const
 				// Если отправляемое сообщение является текстом
 				if(utf8)
 					// Выводим параметры ответа
-					cout << string(message, size) << endl;
+					cout << string(message, size) << endl << endl;
 				// Выводим сообщение о выводе чанка полезной нагрузки
-				else cout << this->fmk->format("<bytes %u>", size) << endl;
+				else cout << this->fmk->format("<bytes %u>", size) << endl << endl;
 			#endif
 			// Буфер сжатых данных
 			vector <char> buffer;

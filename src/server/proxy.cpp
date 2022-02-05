@@ -346,7 +346,9 @@ void awh::server::Proxy::readClientCallback(const char * buffer, const size_t si
 									// Если тело ответа существует
 									if(!adj->cli.getBody().empty())
 										// Выводим сообщение о выводе чанка тела
-										cout << proxy->fmk->format("<body %u>", adj->cli.getBody().size())  << endl;
+										cout << proxy->fmk->format("<body %u>", adj->cli.getBody().size()) << endl << endl;
+									// Иначе устанавливаем перенос строки
+									else cout << endl;
 								}
 							#endif
 							// Выводим сообщение
@@ -493,7 +495,9 @@ void awh::server::Proxy::prepare(const size_t aid, const size_t wid, awh::core_t
 							// Если тело запроса существует
 							if(!adj->srv.getBody().empty())
 								// Выводим сообщение о выводе чанка тела
-								cout << this->fmk->format("<body %u>", adj->srv.getBody().size())  << endl;
+								cout << this->fmk->format("<body %u>", adj->srv.getBody().size()) << endl << endl;
+							// Иначе устанавливаем перенос строки
+							else cout << endl;
 						}
 					#endif
 					// Если подключение не установлено как постоянное

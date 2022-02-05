@@ -305,11 +305,9 @@ void awh::DNS::replaceServers(const vector <string> & servers) noexcept {
 		// Получаем количество серверов DNS находящихся в базе
 		const u_short count = (this->dbase != nullptr ? evdns_base_count_nameservers(this->dbase) : 0);
 		// Если список DNS серверов отличается
-		if(this->servers.empty() || (count == 0) || !equal(servers.begin(), servers.end(), this->servers.begin())){			
-			// Если база DNS созданы
-			if(this->dbase != nullptr)
-				// Выполняем очистку предыдущих DNS серверов
-				evdns_base_clear_nameservers_and_suspend(this->dbase);
+		if(this->servers.empty() || (count == 0) || !equal(servers.begin(), servers.end(), this->servers.begin())){
+			// Выполняем очистку предыдущих DNS серверов
+			if(count > 0) evdns_base_clear_nameservers_and_suspend(this->dbase);
 			// Устанавливаем новый список серверов
 			this->setNameServers(servers);
 		}

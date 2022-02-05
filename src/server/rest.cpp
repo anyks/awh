@@ -215,7 +215,9 @@ void awh::server::Rest::readCallback(const char * buffer, const size_t size, con
 							// Если тело запроса существует
 							if(!adj->http.getBody().empty())
 								// Выводим сообщение о выводе чанка тела
-								cout << web->fmk->format("<body %u>", adj->http.getBody().size())  << endl;
+								cout << web->fmk->format("<body %u>", adj->http.getBody().size()) << endl << endl;
+							// Иначе устанавливаем перенос строки
+							else cout << endl;
 						}
 					#endif
 					// Если подключение не установлено как постоянное

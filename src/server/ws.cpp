@@ -211,7 +211,9 @@ void awh::server::WebSocket::readCallback(const char * buffer, const size_t size
 							// Если тело запроса существует
 							if(!adj->http.getBody().empty())
 								// Выводим сообщение о выводе чанка тела
-								cout << ws->fmk->format("<body %u>", adj->http.getBody().size())  << endl;
+								cout << ws->fmk->format("<body %u>", adj->http.getBody().size()) << endl << endl;
+							// Иначе устанавливаем перенос строки
+							else cout << endl;
 						}
 					#endif
 					// Бинарный буфер ответа сервера
@@ -267,7 +269,7 @@ void awh::server::WebSocket::readCallback(const char * buffer, const size_t size
 										// Выводим заголовок ответа
 										cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
 										// Выводим параметры ответа
-										cout << string(response.begin(), response.end()) << endl;
+										cout << string(response.begin(), response.end()) << endl << endl;
 									#endif
 									// Отправляем сообщение клиенту
 									core->write(response.data(), response.size(), aid);
@@ -313,7 +315,7 @@ void awh::server::WebSocket::readCallback(const char * buffer, const size_t size
 							// Выводим заголовок ответа
 							cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
 							// Выводим параметры ответа
-							cout << string(response.begin(), response.end()) << endl;
+							cout << string(response.begin(), response.end()) << endl << endl;
 						#endif
 						// Устанавливаем метод компрессии данных ответа
 						adj->http.setCompress(compress);
@@ -725,7 +727,7 @@ void awh::server::WebSocket::sendError(const size_t aid, const mess_t & mess) co
 					// Выводим заголовок ответа
 					cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
 					// Выводим отправляемое сообщение
-					cout << this->fmk->format("%s [%u]", mess.text.c_str(), mess.code) << endl;
+					cout << this->fmk->format("%s [%u]", mess.text.c_str(), mess.code) << endl << endl;
 				#endif
 				// Устанавливаем размер стопбайт
 				adj->stopBytes = buffer.size();
@@ -764,9 +766,9 @@ void awh::server::WebSocket::send(const size_t aid, const char * message, const 
 					// Если отправляемое сообщение является текстом
 					if(utf8)
 						// Выводим параметры ответа
-						cout << string(message, size) << endl;
+						cout << string(message, size) << endl << endl;
 					// Выводим сообщение о выводе чанка полезной нагрузки
-					else cout << this->fmk->format("<bytes %u>", size) << endl;
+					else cout << this->fmk->format("<bytes %u>", size) << endl << endl;
 				#endif
 				// Буфер сжатых данных
 				vector <char> buffer;
