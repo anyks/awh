@@ -232,8 +232,6 @@ void awh::client::Core::event(struct bufferevent * bev, const short events, void
 			}
 			// Запрещаем чтение запись данных серверу
 			bufferevent_disable(bev, EV_WRITE | EV_READ);
-			// Если включён мультипоточный режим работы
-			if(core->mthr) const_cast <core_t *> (core)->thrpool.wait();
 			// Выполняем отключение от сервера
 			const_cast <core_t *> (core)->close(adj->aid);
 		}

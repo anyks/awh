@@ -183,8 +183,6 @@ void awh::server::Core::event(struct bufferevent * bev, const short events, void
 				else if(events & BEV_EVENT_TIMEOUT) adj->log->print("timeout client, host = %s, mac = %s, socket = %d", log_t::flag_t::WARNING, adj->ip.c_str(), adj->mac.c_str(), fd);
 				// Запрещаем чтение запись данных серверу
 				bufferevent_disable(bev, EV_WRITE | EV_READ);
-				// Если включён мультипоточный режим работы
-				if(core->mthr) const_cast <core_t *> (core)->thrpool.wait();
 				// Выполняем отключение от сервера
 				const_cast <core_t *> (core)->close(adj->aid);
 			}
@@ -326,7 +324,7 @@ void awh::server::Core::accept(const evutil_socket_t fd, const short event, void
  * @param adj объект адъютанта
  * @param wrk объект воркера
  */
-void awh::server::Core::thread(const awh::worker_t::adj_t & adj, const server::worker_t & wrk) noexcept {
+void awh::server::Core::thread(const awh::worker_t::adj_t & adj, const server::worker_t & wrk) noexcept {	
 	// Получаем объект ядра клиента
 	core_t * core = (core_t *) const_cast <awh::core_t *> (wrk.core);
 	// Выполняем блокировку потока

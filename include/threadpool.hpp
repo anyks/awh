@@ -85,8 +85,9 @@ namespace awh {
 		public:
 			/**
 			 * wait Метод ожидания выполнения задач
+			 * @param stop флаг остановки пула потоков
 			 */
-			void wait() noexcept {
+			void wait(const bool stop = true) noexcept {
 				{
 					// Останавливаем работу потоков
 					this->stop = true;
@@ -99,12 +100,15 @@ namespace awh {
 				this->condition.notify_all();
 				// Ожидаем завершение работы каждого воркера
 				for(thread & worker: this->workers) worker.join();
-				// Очищаем список потоков
-				this->workers.clear();
-				// Очищаем список задач
-				swap(this->tasks, empty);
-				// Восстанавливаем работу потоков
-				this->stop = false;
+				// Если нужно завершить работу всех потоков
+				if(stop){
+					// Очищаем список потоков
+					this->workers.clear();
+					// Очищаем список задач
+					swap(this->tasks, empty);
+					// Восстанавливаем работу потоков
+					this->stop = false;
+				}
 			}
 			/**
 			 * clean Метод очистки списка потоков

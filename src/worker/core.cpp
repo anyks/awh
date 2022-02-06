@@ -29,10 +29,10 @@ void awh::Worker::Adjutant::end() noexcept {
  * @return буфер чанка в бинарном виде 
  */
 vector <char> awh::Worker::Adjutant::get() noexcept {
-	// Результат работы функции
-	vector <char> result;
 	// Выполняем блокировку потока
 	const lock_guard <mutex> lock(this->locker);
+	// Результат работы функции
+	vector <char> result;
 	// Если нужно продолжить выполнять сбор данных
 	if(!this->chunks.end){
 		// Флаг полученного значения буфера
@@ -69,10 +69,10 @@ vector <char> awh::Worker::Adjutant::get() noexcept {
  * @param size   размер буфера бинарных данных
  */
 void awh::Worker::Adjutant::add(const char * buffer, const size_t size) noexcept {
+	// Выполняем блокировку потока
+	const lock_guard <mutex> lock(this->locker);
 	// Если даныне переданы
 	if((buffer != nullptr) && (size > 0)){
-		// Выполняем блокировку потока
-		const lock_guard <mutex> lock(this->locker);
 		// Устанавливаем данные чанка
 		this->chunks.data.emplace(this->chunks.count, vector <char> (buffer, buffer + size));
 		// Увеличиваем количество обработанных чанков
