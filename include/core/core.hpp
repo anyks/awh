@@ -60,6 +60,7 @@
 #include <ssl.hpp>
 #include <dns.hpp>
 #include <socket.hpp>
+#include <threadpool.hpp>
 #include <worker/core.hpp>
 
 // Подписываемся на стандартное пространство имён
@@ -163,6 +164,8 @@ namespace awh {
 			network_t nwk;
 			// Мютекс для блокировки потока
 			mutex bloking;
+			// Создаем пул потоков
+			thrpool_t thrpool;
 		private:
 			// Частота обновления базы событий
 			chrono::milliseconds freq;
@@ -194,6 +197,8 @@ namespace awh {
 			bool easy = false;
 			// Флаг разрешения работы
 			bool mode = false;
+			// Флаг использования многопоточного режима
+			bool mthr = false;
 			// Флаг блокировку инициализации базы событий
 			bool locker = false;
 			// Флаг запрета вывода информационных сообщений
@@ -430,6 +435,11 @@ namespace awh {
 			 * @param mode флаг состояния разрешения проверки
 			 */
 			void setVerifySSL(const bool mode) noexcept;
+			/**
+			 * setMultiThreads Метод активации режима мультипотоковой обработки данных
+			 * @param mode флаг мультипотоковой обработки
+			 */
+			void setMultiThreads(const bool mode) noexcept;
 			/**
 			 * setPersistInterval Метод установки персистентного таймера
 			 * @param itv интервал персистентного таймера в миллисекундах

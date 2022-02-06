@@ -26,7 +26,7 @@ void awh::server::WorkerProxy::clear() noexcept {
 	// Очищаем список параметров адъютантов
 	this->adjParams.clear();
 	// Освобождаем выделенную память
-	map <size_t, adjp_t> ().swap(this->adjParams);
+	map <size_t, unique_ptr <adjp_t>> ().swap(this->adjParams);
 	// Сбрасываем тип компрессии
 	this->compress = http_t::compress_t::NONE;
 }
@@ -38,10 +38,10 @@ void awh::server::WorkerProxy::createAdj(const size_t aid) noexcept {
 	// Если идентификатор адъютанта передан
 	if((aid > 0) && (this->adjParams.count(aid) < 1)){
 		// Добавляем адъютанта в список адъютантов
-		auto ret = this->adjParams.emplace(aid, move(adjp_t(this->fmk, this->log, &this->uri)));
+		auto ret = this->adjParams.emplace(aid, unique_ptr <adjp_t> (new adjp_t(this->fmk, this->log, &this->uri)));
 		// Устанавливаем метод сжатия
-		ret.first->second.cli.setCompress(this->compress);
-		ret.first->second.srv.setCompress(this->compress);
+		ret.first->second->cli.setCompress(this->compress);
+		ret.first->second->srv.setCompress(this->compress);
 	}
 }
 /**

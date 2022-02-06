@@ -66,15 +66,15 @@ namespace awh {
 					 * @param uri объект работы с URI ссылками
 					 */
 					AdjParam(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcept :
-						crypt(false),
-						alive(false),
-						close(false),
-						requests(0),
-						readBytes(0),
-						stopBytes(0),
-						checkPoint(0),
-						http(fmk, log, uri),
-						compress(awh::http_t::compress_t::NONE) {}
+					 crypt(false),
+					 alive(false),
+					 close(false),
+					 requests(0),
+					 readBytes(0),
+					 stopBytes(0),
+					 checkPoint(0),
+					 http(fmk, log, uri),
+					 compress(awh::http_t::compress_t::NONE) {}
 					/**
 					 * ~AdjParam Деструктор
 					 */

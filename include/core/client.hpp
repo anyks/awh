@@ -65,6 +65,12 @@ namespace awh {
 				 * @param ctx    передаваемый контекст
 				 */
 				static void event(struct bufferevent * bev, const short events, void * ctx) noexcept;
+				/**
+				 * thread Функция сборки чанков бинарного буфера в многопоточном режиме
+				 * @param adj объект адъютанта
+				 * @param wrk объект воркера
+				 */
+				static void thread(const awh::worker_t::adj_t & adj, const client::worker_t & wrk) noexcept;
 			private:
 				/**
 				 * tuning Метод тюннинга буфера событий

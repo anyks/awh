@@ -67,7 +67,12 @@ namespace awh {
 				 * @param fmk объект фреймворка
 				 * @param log объект для работы с логами
 				 */
-				Proxy(const fmk_t * fmk, const log_t * log) noexcept : nwk(fmk), uri(fmk, &nwk), http(fmk, log, &uri), socks5(fmk, log, &uri), fmk(fmk), log(log), type(type_t::NONE) {}
+				Proxy(const fmk_t * fmk, const log_t * log) noexcept :
+				 nwk(fmk), uri(fmk, &nwk),
+				 http(fmk, log, &uri),
+				 socks5(fmk, log, &uri),
+				 fmk(fmk), log(log),
+				 type(type_t::NONE) {}
 				/**
 				 * ~Proxy Деструктор
 				 */

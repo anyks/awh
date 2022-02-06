@@ -50,6 +50,8 @@ int main(int argc, char * argv[]) noexcept {
 		(uint8_t) client::rest_t::flag_t::WAITMESS |
 		(uint8_t) client::rest_t::flag_t::VERIFYSSL
 	);
+	// Устанавливаем режим мультипоточной обработки
+	core.setMultiThreads(true);
 	// Устанавливаем адрес сертификата
 	core.setCA("./ca/cert.pem");
 	// Устанавливаем логин и пароль пользователя
@@ -123,8 +125,12 @@ int main(int argc, char * argv[]) noexcept {
 	// Выполняем REST запрос
 	rest.start();
 	*/
+	// Замеряем время начала работы
+	auto timeShifting = chrono::system_clock::now();
 	// Формируем GET запрос
 	const auto & body = rest.GET(url);
+	// Выводим время запроса // 3862 || 3869 == 3893
+	cout << " ++++++++++ Time Shifting " << chrono::duration_cast <chrono::milliseconds> (chrono::system_clock::now() - timeShifting).count() << endl;
 	// const auto & body = rest.GET(url, {{"Connection", "close"}});
 	// const auto & body = rest.GET(url, {{"User-Agent", "curl/7.64.1"}});
 	// Если данные получены

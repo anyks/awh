@@ -67,17 +67,17 @@ namespace awh {
 					 * AdjParam Конструктор
 					 */
 					AdjParam(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcept :
-						crypt(false),
-						close(false),
-						locker(false),
-						compressed(false),
-						readBytes(0),
-						stopBytes(0),
-						checkPoint(0),
-						hash(fmk, log),
-						http(fmk, log, uri),
-						opcode(frame_t::opcode_t::TEXT),
-						compress(http_t::compress_t::NONE) {}
+					 crypt(false),
+					 close(false),
+					 locker(false),
+					 compressed(false),
+					 readBytes(0),
+					 stopBytes(0),
+					 checkPoint(0),
+					 hash(fmk, log),
+					 http(fmk, log, uri),
+					 opcode(frame_t::opcode_t::TEXT),
+					 compress(http_t::compress_t::NONE) {}
 					/**
 					 * ~AdjParam Деструктор
 					 */

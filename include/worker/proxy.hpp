@@ -73,20 +73,20 @@ namespace awh {
 					 * @param uri объект работы с URI ссылками
 					 */
 					AdjParam(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcept :
-						crypt(false),
-						alive(false),
-						close(false),
-						locked(false),
-						connect(false),
-						requests(0),
-						readBytes(0),
-						stopBytes(0),
-						checkPoint(0),
-						srv(fmk, log, uri),
-						cli(fmk, log, uri),
-						worker(fmk, log),
-						method(web_t::method_t::NONE),
-						compress(awh::http_t::compress_t::NONE) {}
+					 crypt(false),
+					 alive(false),
+					 close(false),
+					 locked(false),
+					 connect(false),
+					 requests(0),
+					 readBytes(0),
+					 stopBytes(0),
+					 checkPoint(0),
+					 srv(fmk, log, uri),
+					 cli(fmk, log, uri),
+					 worker(fmk, log),
+					 method(web_t::method_t::NONE),
+					 compress(awh::http_t::compress_t::NONE) {}
 					/**
 					 * ~AdjParam Деструктор
 					 */
@@ -102,7 +102,7 @@ namespace awh {
 				map <size_t, size_t> pairs;
 			private:
 				// Параметры подключения адъютантов
-				map <size_t, adjp_t> adjParams;
+				map <size_t, unique_ptr <adjp_t>> adjParams;
 			public:
 				// Флаги работы с сжатыми данными
 				awh::http_t::compress_t compress = awh::http_t::compress_t::NONE;

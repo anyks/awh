@@ -53,6 +53,8 @@ int main(int argc, char * argv[]) noexcept {
 		(uint8_t) client::ws_t::flag_t::VERIFYSSL |
 		(uint8_t) client::ws_t::flag_t::KEEPALIVE
 	);
+	// Устанавливаем режим мультипоточной обработки
+	core.setMultiThreads(true);
 	// Разрешаем простое чтение базы событий
 	core.setFrequency(100);
 	// Устанавливаем адрес сертификата

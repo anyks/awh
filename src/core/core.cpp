@@ -586,7 +586,9 @@ void awh::Core::closeAll() noexcept {
 				// Переходим по всему списку адъютанта
 				for(auto it = wrk->adjutants.begin(); it != wrk->adjutants.end();){
 					// Получаем объект адъютанта
-					worker_t::adj_t * adj = const_cast <worker_t::adj_t *> (&it->second);
+					worker_t::adj_t * adj = const_cast <worker_t::adj_t *> (it->second.get());
+					// Выполняем блокировку буфера бинарного чанка данных
+					adj->end();
 					// Выполняем очистку буфера событий
 					this->clean(adj->bev);
 					// Выполняем удаление контекста SSL
@@ -655,6 +657,8 @@ void awh::Core::close(const size_t aid) noexcept {
 		worker_t::adj_t * adj = const_cast <worker_t::adj_t *> (it->second);
 		// Получаем объект воркера
 		worker_t * wrk = const_cast <worker_t *> (adj->parent);
+		// Выполняем блокировку буфера бинарного чанка данных
+		adj->end();
 		// Если событие сервера существует
 		if(adj->bev != nullptr){
 			// Выполняем очистку буфера событий
@@ -950,6 +954,22 @@ void awh::Core::setPersist(const bool mode) noexcept {
 void awh::Core::setVerifySSL(const bool mode) noexcept {
 	// Выполняем установку флага проверки домена
 	this->ssl.setVerify(mode);
+}
+/**
+ * setMultiThreads Метод активации режима мультипотоковой обработки данных
+ * @param mode флаг мультипотоковой обработки
+ */
+void awh::Core::setMultiThreads(const bool mode) noexcept {
+	// Устанавливаем флаг мультипотоковой обработки
+	this->mthr = mode;
+	// Устанавливаем частоту обновления базы событий
+	if(this->mthr){
+		// Выполняем инициализацию пула потоков
+		this->thrpool.init();
+		// Устанавливаем частоту обновления в 100мс
+		this->setFrequency(10);
+	// Выполняем ожидание завершения работы потоков
+	} else this->thrpool.wait();
 }
 /**
  * setPersistInterval Метод установки персистентного таймера

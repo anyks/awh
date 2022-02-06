@@ -26,7 +26,7 @@ void awh::server::WorkerSocks5::clear() noexcept {
 	// Очищаем список параметров адъютантов
 	this->adjParams.clear();
 	// Освобождаем выделенную память
-	map <size_t, adjp_t> ().swap(this->adjParams);
+	map <size_t, unique_ptr <adjp_t>> ().swap(this->adjParams);
 }
 /**
  * createAdj Метод создания параметров адъютанта
@@ -36,7 +36,7 @@ void awh::server::WorkerSocks5::createAdj(const size_t aid) noexcept {
 	// Если идентификатор адъютанта передан
 	if((aid > 0) && (this->adjParams.count(aid) < 1))
 		// Добавляем адъютанта в список адъютантов
-		this->adjParams.emplace(aid, move(adjp_t(this->fmk, this->log, &this->uri)));
+		this->adjParams.emplace(aid, unique_ptr <adjp_t> (new adjp_t(this->fmk, this->log, &this->uri)));
 }
 /**
  * removeAdj Метод удаления параметров подключения адъютанта

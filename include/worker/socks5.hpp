@@ -65,13 +65,13 @@ namespace awh {
 					 * @param uri объект работы с URI ссылками
 					 */
 					AdjParam(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcept :
-						close(false),
-						locked(false),
-						connect(false),
-						readBytes(0),
-						stopBytes(0),
-						worker(fmk, log),
-						socks5(fmk, log, uri) {}
+					 close(false),
+					 locked(false),
+					 connect(false),
+					 readBytes(0),
+					 stopBytes(0),
+					 worker(fmk, log),
+					 socks5(fmk, log, uri) {}
 					/**
 					 * ~AdjParam Деструктор
 					 */
@@ -87,7 +87,7 @@ namespace awh {
 				map <size_t, size_t> pairs;
 			private:
 				// Параметры подключения адъютантов
-				map <size_t, adjp_t> adjParams;
+				map <size_t, unique_ptr <adjp_t>> adjParams;
 			private:
 				// Создаём объект фреймворка
 				const fmk_t * fmk = nullptr;

@@ -19,6 +19,7 @@
  * Стандартная библиотека
  */
 #include <map>
+#include <mutex>
 #include <string>
 #include <event2/bufferevent.h>
 
@@ -104,6 +105,20 @@ namespace awh {
 					// Server Core Устанавливаем дружбу с серверным классом ядра
 					friend class server::Core;
 				private:
+					/**
+					 * Chunks Структура чанков
+					 */
+					typedef struct Chunks {
+						bool end;                         // Флаг завершения обработки данных
+						size_t count;                     // Общее количество обработанных чанков
+						size_t index;                     // Текущее значение индекса чанка
+						map <size_t, vector <char>> data; // Полученные бинарные чанки
+						/**
+						 * Chunks Конструктор
+						 */
+						Chunks() : end(false), count(0), index(0) {}
+					} chunks_t;
+				private:
 					// Маркера размера детектируемых байт на чтение
 					mark_t markRead;
 					// Маркера размера детектируемых байт на запись
@@ -111,6 +126,11 @@ namespace awh {
 				private:
 					// Контекст SSL для работы с защищённым подключением
 					ssl_t::ctx_t ssl;
+				private:
+					// Мютекс для блокировки потоков
+					mutex locker;
+					// Объект чанков данных
+					chunks_t chunks;
 				private:
 					// Адрес интернет подключения клиента
 					string ip = "";
@@ -134,6 +154,22 @@ namespace awh {
 					const log_t * log = nullptr;
 					// Объект родительского воркера
 					const Worker * parent = nullptr;
+				private:
+					/**
+					 * end Метод установки флага завершения работы
+					 */
+					void end() noexcept;
+					/**
+					 * get Метод получения буфера чанка
+					 * @return буфер чанка в бинарном виде 
+					 */
+					vector <char> get() noexcept;
+					/**
+					 * add Метод добавления чанка бинарных данных
+					 * @param buffer буфер чанка бинарных данных
+					 * @param size   размер буфера бинарных данных
+					 */
+					void add(const char * buffer, const size_t size) noexcept;
 				public:
 					/**
 					 * Adjutant Конструктор
@@ -170,7 +206,7 @@ namespace awh {
 			time_t timeWrite = WRITE_TIMEOUT;
 		protected:
 			// Список подключённых адъютантов
-			map <size_t, adj_t> adjutants;
+			map <size_t, unique_ptr <adj_t>> adjutants;
 		public:
 			// Контекст передаваемый в сообщении
 			void * ctx = nullptr;
@@ -198,42 +234,19 @@ namespace awh {
 			/**
 			 * clear Метод очистки
 			 */
-			virtual void clear() noexcept {
-				// Выполняем очистку списка адъютантов
-				this->adjutants.clear();
-			}
+			virtual void clear() noexcept;
 			/**
 			 * ip Метод получения IP адреса адъютанта
 			 * @param aid идентификатор адъютанта
 			 * @return    адрес интернет подключения адъютанта
 			 */
-			const string & ip(const size_t aid) const noexcept {
-				// Если идентификатор адъютанта передан
-				if(aid > 0){
-					// Выполняем поиск адъютанта
-					auto it = this->adjutants.find(aid);
-					// Если адъютант найден, выводим IP адрес
-					if(it != this->adjutants.end()) return it->second.ip;
-				}
-				// Выводим результат
-				return this->result;
-			}
+			const string & ip(const size_t aid) const noexcept;
 			/**
 			 * mac Метод получения MAC адреса адъютанта
 			 * @param aid идентификатор адъютанта
 			 * @return    адрес устройства адъютанта
 			 */
-			const string & mac(const size_t aid) const noexcept {
-				// Если идентификатор адъютанта передан
-				if(aid > 0){
-					// Выполняем поиск адъютанта
-					auto it = this->adjutants.find(aid);
-					// Если адъютант найден, выводим MAC адрес
-					if(it != this->adjutants.end()) return it->second.mac;
-				}
-				// Выводим результат
-				return this->result;
-			}
+			const string & mac(const size_t aid) const noexcept;
 		public:
 			/**
 			 * Worker Конструктор

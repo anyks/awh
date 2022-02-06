@@ -38,6 +38,10 @@ int main(int argc, char * argv[]) noexcept {
 	/**
 	 * 1. Устанавливаем ожидание входящих сообщений
 	 */
+	// Устанавливаем режим мультипоточной обработки
+	core.setMultiThreads(true);
+	// Разрешаем простое чтение базы событий
+	core.setFrequency(100);
 	// rest.setMode((uint8_t) wsSrv_t::flag_t::WAITMESS);
 	// Устанавливаем название сервера
 	rest.setRealm("ANYKS");

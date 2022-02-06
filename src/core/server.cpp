@@ -88,8 +88,14 @@ void awh::server::Core::read(struct bufferevent * bev, void * ctx) noexcept {
 					char * buffer = new char [size];
 					// Копируем в буфер полученные данные
 					evbuffer_remove(input, buffer, size);
+					// Если включён мультипоточный режим
+					if(core->mthr){
+						// Добавляем буфер бинарного чанка данных
+						adj->add(buffer, size);
+						// Добавляем полученные данные буфера в пул потоков
+						const_cast <core_t *> (core)->thrpool.push(&thread, ref(* adj), ref(* wrk));
 					// Выводим функцию обратного вызова
-					wrk->readFn(buffer, size, adj->aid, wrk->wid, const_cast <awh::core_t *> (wrk->core), wrk->ctx);
+					} else wrk->readFn(buffer, size, adj->aid, wrk->wid, const_cast <awh::core_t *> (wrk->core), wrk->ctx);
 					// Удаляем выделенную память буфера
 					delete [] buffer;
 				// Если возникает ошибка
@@ -177,6 +183,8 @@ void awh::server::Core::event(struct bufferevent * bev, const short events, void
 				else if(events & BEV_EVENT_TIMEOUT) adj->log->print("timeout client, host = %s, mac = %s, socket = %d", log_t::flag_t::WARNING, adj->ip.c_str(), adj->mac.c_str(), fd);
 				// Запрещаем чтение запись данных серверу
 				bufferevent_disable(bev, EV_WRITE | EV_READ);
+				// Если включён мультипоточный режим работы
+				if(core->mthr) const_cast <core_t *> (core)->thrpool.wait();
 				// Выполняем отключение от сервера
 				const_cast <core_t *> (core)->close(adj->aid);
 			}
@@ -263,55 +271,74 @@ void awh::server::Core::accept(const evutil_socket_t fd, const short event, void
 		// Устанавливаем разрешение на повторное использование сокета
 		evutil_make_listen_socket_reuseable(socket);
 		// Создаём бъект адъютанта
-		awh::worker_t::adj_t adj = awh::worker_t::adj_t(wrk, core->fmk, core->log);
+		unique_ptr <awh::worker_t::adj_t> adj(new awh::worker_t::adj_t(wrk, core->fmk, core->log));
 		// Выполняем получение контекста сертификата
-		adj.ssl = core->ssl.init();
+		adj->ssl = core->ssl.init();
 		// Устанавливаем первоначальное значение
 		u_int mode = BEV_OPT_THREADSAFE;
 		// Если нужно использовать отложенные вызовы событий сокета
 		if(core->defer) mode = (mode | BEV_OPT_DEFER_CALLBACKS);
 		// Если SSL клиент разрешён
-		if(adj.ssl.mode){
+		if(adj->ssl.mode){
 			// Создаем буфер событий для сервера зашифрованного подключения
-			adj.bev = bufferevent_openssl_socket_new(core->base, socket, adj.ssl.ssl, BUFFEREVENT_SSL_ACCEPTING, mode);
+			adj->bev = bufferevent_openssl_socket_new(core->base, socket, adj->ssl.ssl, BUFFEREVENT_SSL_ACCEPTING, mode);
 			// Разрешаем непредвиденное грязное завершение работы
-			bufferevent_openssl_set_allow_dirty_shutdown(adj.bev, 1);
+			bufferevent_openssl_set_allow_dirty_shutdown(adj->bev, 1);
 		// Создаем буфер событий для сервера
-		} else adj.bev = bufferevent_socket_new(core->base, socket, mode);
+		} else adj->bev = bufferevent_socket_new(core->base, socket, mode);
 		// Если буфер событий создан
-		if(adj.bev != nullptr){
+		if(adj->bev != nullptr){
 			// Запоминаем IP адрес
-			adj.ip = move(ip);
+			adj->ip = move(ip);
 			// Запоминаем MAC адрес
-			adj.mac = move(mac);
+			adj->mac = move(mac);
 			// Устанавливаем идентификатор адъютанта
-			adj.aid = core->fmk->unixTimestamp();
+			adj->aid = core->fmk->unixTimestamp();
 			// Добавляем созданного адъютанта в список адъютантов
-			auto ret = wrk->adjutants.emplace(adj.aid, move(adj));
+			auto ret = wrk->adjutants.emplace(adj->aid, move(adj));
 			// Добавляем адъютанта в список подключений
-			core->adjutants.emplace(ret.first->second.aid, &ret.first->second);
+			core->adjutants.emplace(ret.first->first, ret.first->second.get());
 			// Выполняем тюннинг буфера событий
-			core->tuning(ret.first->second.aid);
+			core->tuning(ret.first->first);
 			// Выполняем функцию обратного вызова
-			if(wrk->connectFn != nullptr) wrk->connectFn(adj.aid, wrk->wid, core, wrk->ctx);
+			if(wrk->connectFn != nullptr) wrk->connectFn(ret.first->second->aid, wrk->wid, core, wrk->ctx);
 			// Если флаг ожидания входящих сообщений, активирован
 			if(wrk->wait){
 				// Устанавливаем таймаут ожидания поступления данных
-				struct timeval read = {adj.timeRead, 0};
+				struct timeval read = {ret.first->second->timeRead, 0};
 				// Устанавливаем таймаут ожидания записи данных
-				struct timeval write = {adj.timeWrite, 0};
+				struct timeval write = {ret.first->second->timeWrite, 0};
 				// Устанавливаем таймаут на отправку/получение данных
 				bufferevent_set_timeouts(
-					adj.bev,
-					(adj.timeRead > 0 ? &read : nullptr),
-					(adj.timeWrite > 0 ? &write : nullptr)
+					ret.first->second->bev,
+					(ret.first->second->timeRead > 0 ? &read : nullptr),
+					(ret.first->second->timeWrite > 0 ? &write : nullptr)
 				);
 			}
 			// Выводим в консоль информацию
-			if(!core->noinfo) core->log->print("client connect to server, host = %s, mac = %s, socket = %d", log_t::flag_t::INFO, ret.first->second.ip.c_str(), ret.first->second.mac.c_str(), socket);
+			if(!core->noinfo) core->log->print("client connect to server, host = %s, mac = %s, socket = %d", log_t::flag_t::INFO, ret.first->second->ip.c_str(), ret.first->second->mac.c_str(), socket);
 		// Выводим в лог сообщение
 		} else core->log->print("client connect to server, host = %s, mac = %s, socket = %d", log_t::flag_t::CRITICAL, ip.c_str(), mac.c_str(), socket);
 	}
+}
+/**
+ * thread Функция сборки чанков бинарного буфера в многопоточном режиме
+ * @param adj объект адъютанта
+ * @param wrk объект воркера
+ */
+void awh::server::Core::thread(const awh::worker_t::adj_t & adj, const server::worker_t & wrk) noexcept {
+	// Получаем объект ядра клиента
+	core_t * core = (core_t *) const_cast <awh::core_t *> (wrk.core);
+	// Выполняем блокировку потока
+	core->bloking.lock();
+	// Выполняем получение буфера бинарного чанка данных
+	const auto & buffer = const_cast <awh::worker_t::adj_t *> (&adj)->get();
+	// Если буфер бинарных данных получен
+	if(!buffer.empty())
+		// Выводим функцию обратного вызова
+		wrk.readFn(buffer.data(), buffer.size(), adj.aid, wrk.wid, core, wrk.ctx);
+	// Выполняем разблокировку потока
+	core->bloking.unlock();
 }
 /**
  * tuning Метод тюннинга буфера событий
@@ -385,7 +412,9 @@ void awh::server::Core::removeAll() noexcept {
 			// Переходим по всему списку адъютанта
 			for(auto jt = wrk->adjutants.begin(); jt != wrk->adjutants.end();){
 				// Получаем объект адъютанта
-				awh::worker_t::adj_t * adj = const_cast <awh::worker_t::adj_t *> (&jt->second);
+				awh::worker_t::adj_t * adj = const_cast <awh::worker_t::adj_t *> (jt->second.get());
+				// Выполняем блокировку буфера бинарного чанка данных
+				adj->end();
 				// Выполняем очистку буфера событий
 				this->clean(adj->bev);
 				// Выполняем удаление контекста SSL
@@ -435,7 +464,9 @@ void awh::server::Core::remove(const size_t wid) noexcept {
 				// Переходим по всему списку адъютанта
 				for(auto jt = wrk->adjutants.begin(); jt != wrk->adjutants.end();){
 					// Получаем объект адъютанта
-					awh::worker_t::adj_t * adj = const_cast <awh::worker_t::adj_t *> (&jt->second);
+					awh::worker_t::adj_t * adj = const_cast <awh::worker_t::adj_t *> (jt->second.get());
+					// Выполняем блокировку буфера бинарного чанка данных
+					adj->end();
 					// Выполняем очистку буфера событий
 					this->clean(adj->bev);
 					// Выполняем удаление контекста SSL
@@ -514,6 +545,8 @@ void awh::server::Core::close(const size_t aid) noexcept {
 		server::worker_t * wrk = (server::worker_t *) const_cast <awh::worker_t *> (adj->parent);
 		// Получаем объект ядра клиента
 		const core_t * core = reinterpret_cast <const core_t *> (wrk->core);
+		// Выполняем блокировку буфера бинарного чанка данных
+		adj->end();
 		// Если событие сервера существует
 		if(adj->bev != nullptr){
 			// Выполняем очистку буфера событий
