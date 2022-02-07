@@ -27,7 +27,7 @@ void awh::Core::run(evutil_socket_t fd, short event, void * ctx) noexcept {
 		// Получаем объект подключения
 		core_t * core = reinterpret_cast <core_t *> (ctx);
 		// Выполняем удаление событие таймера
-		event_del(&core->timeout);
+		if(event > -1) event_del(&core->timeout);
 		// Если список воркеров существует
 		if(!core->workers.empty()){
 			// Переходим по всему списку воркеров
@@ -375,13 +375,13 @@ void awh::Core::bind(Core * core) noexcept {
 	// Если модуль ядра передан
 	if(core != nullptr){
 		// Выполняем блокировку потока
-		this->bloking.lock();
+		this->locker.main.lock();
 		// Устанавливаем базу событий
 		core->base = this->base;
 		// Выполняем блокировку инициализации базы событий
-		core->locker = (core->base != nullptr);
+		core->freeze = (core->base != nullptr);
 		// Если блокировка базы событий выполнена
-		if(core->locker){
+		if(core->freeze){
 			// Устанавливаем флаг запуска
 			core->mode = true;
 			// Блокируем информационные сообщения для клиента
@@ -394,17 +394,12 @@ void awh::Core::bind(Core * core) noexcept {
 			core->dns4.replaceServers(core->net.v4.second);
 			// Выполняем установку нейм-серверов для DNS резолвера IPv6
 			core->dns6.replaceServers(core->net.v6.second);
-			// Создаём событие на активацию базы событий
-			event_assign(&core->timeout, core->base, -1, EV_TIMEOUT, &run, core);
-			// Очищаем объект таймаута базы событий
-			evutil_timerclear(&core->tvTimeout);
-			// Устанавливаем таймаут базы событий в 1 секунду
-			core->tvTimeout.tv_sec = 1;
-			// Создаём событие таймаута на активацию базы событий
-			event_add(&core->timeout, &core->tvTimeout);
-		}
+			// Выполняем разблокировку потока
+			this->locker.main.unlock();
+			// Выполняем запуск управляющей функции
+			run(0, -1, core);
 		// Выполняем разблокировку потока
-		this->bloking.unlock();
+		} else this->locker.main.unlock();
 	}
 }
 /**
@@ -415,7 +410,7 @@ void awh::Core::unbind(Core * core) noexcept {
 	// Если модуль ядра передан
 	if(core != nullptr){
 		// Выполняем блокировку потока
-		this->bloking.lock();
+		const lock_guard <mutex> lock(this->locker.main);
 		// Если база событий подключена
 		if(core->base != nullptr){
 			// Отключаем всех клиентов
@@ -432,9 +427,7 @@ void awh::Core::unbind(Core * core) noexcept {
 		// Устанавливаем флаг остановки
 		core->mode = false;
 		// Выполняем сброс блокировки базы событий
-		core->locker = false;
-		// Выполняем разблокировку потока
-		this->bloking.unlock();
+		core->freeze = false;
 	}
 }
 /**
@@ -484,7 +477,7 @@ void awh::Core::stop() noexcept {
  */
 void awh::Core::start() noexcept {
 	// Если система ещё не запущена
-	if(!this->mode && !this->locker){
+	if(!this->mode && !this->freeze){
 		// Разрешаем работу WebSocket
 		this->mode = true;
 		// Создаем новую базу
@@ -549,10 +542,10 @@ bool awh::Core::working() const noexcept {
  * @return       идентификатор воркера в биндинге
  */
 size_t awh::Core::add(const worker_t * worker) noexcept {
+	// Выполняем блокировку потока
+	const lock_guard <mutex> lock(this->locker.main);
 	// Результат работы функции
 	size_t result = 0;
-	// Выполняем блокировку потока
-	this->bloking.lock();
 	// Если воркер передан и URL адрес существует
 	if(worker != nullptr){
 		// Получаем объект воркера
@@ -566,8 +559,6 @@ size_t awh::Core::add(const worker_t * worker) noexcept {
 		// Добавляем воркер в список
 		this->workers.emplace(result, wrk);
 	}
-	// Выполняем разблокировку потока
-	this->bloking.unlock();
 	// Выводим результат
 	return result;
 }
@@ -697,6 +688,8 @@ void awh::Core::setBandwidth(const size_t aid, const string & read, const string
  * @param aid    идентификатор адъютанта
  */
 void awh::Core::write(const char * buffer, const size_t size, const size_t aid) noexcept {
+	// Выполняем блокировку потока
+	if(this->mthr) const lock_guard <mutex> lock(this->locker.main);
 	// Если данные переданы
 	if((buffer != nullptr) && (size > 0)){
 		// Выполняем извлечение адъютанта

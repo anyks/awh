@@ -38,11 +38,31 @@ void awh::client::Core::resolver(const string ip, void * ctx) noexcept {
 			// Определяем режим работы клиента
 			switch((uint8_t) core->mode){
 				// Если режим работы клиента - это подключение
-				case (uint8_t) awh::core_t::mode_t::CONNECT:   core->connect(wrk->wid);   break;
+				case (uint8_t) awh::core_t::mode_t::CONNECT:
+					// Выполняем новое подключение к серверу
+					core->connect(wrk->wid);
+				break;
 				// Если режим работы клиента - это переподключение
-				case (uint8_t) awh::core_t::mode_t::RECONNECT: core->reconnect(wrk->wid); break;
+				case (uint8_t) awh::core_t::mode_t::RECONNECT:
+					// Выполняем ещё одну попытку переподключиться к серверу
+					core->reconnect(wrk->wid);
+				break;
 			}
 			// Выходим из функции
+			return;
+		// Если IP адрес не получен но нужно поддерживать постоянное подключение
+		} else if(wrk->alive) {
+			// Получаем объект ядра подключения
+			core_t * core = (core_t *) const_cast <awh::core_t *> (wrk->core);
+			// Создаём событие на активацию базы событий
+			event_assign(&core->timeout, core->base, -1, EV_TIMEOUT, &attempt, wrk);
+			// Очищаем объект таймаута базы событий
+			evutil_timerclear(&core->tvTimeout);
+			// Устанавливаем интервал таймаута
+			core->tvTimeout.tv_sec = 10;
+			// Создаём событие таймаута на активацию базы событий
+			event_add(&core->timeout, &core->tvTimeout);
+			// Выходим из функции, чтобы попытаться подключиться ещё раз
 			return;
 		}
 		// Выводим функцию обратного вызова
@@ -63,6 +83,8 @@ void awh::client::Core::read(struct bufferevent * bev, void * ctx) noexcept {
 		client::worker_t * wrk = (client::worker_t *) const_cast <awh::worker_t *> (adj->parent);
 		// Получаем объект ядра клиента
 		const core_t * core = reinterpret_cast <const core_t *> (wrk->core);
+		// Выполняем блокировку потока
+		if(core->mthr) const lock_guard <mutex> lock(const_cast <core_t *> (core)->locker.main);
 		// Если подключение ещё существует
 		if(core->adjutants.count(adj->aid) > 0){
 			// Получаем буферы входящих данных
@@ -125,6 +147,8 @@ void awh::client::Core::write(struct bufferevent * bev, void * ctx) noexcept {
 		client::worker_t * wrk = (client::worker_t *) const_cast <awh::worker_t *> (adj->parent);
 		// Получаем объект ядра клиента
 		const core_t * core = reinterpret_cast <const core_t *> (wrk->core);
+		// Выполняем блокировку потока
+		if(core->mthr) const lock_guard <mutex> lock(const_cast <core_t *> (core)->locker.main);
 		// Если подключение ещё существует
 		if(core->adjutants.count(adj->aid) > 0){
 			// Получаем буферы исходящих данных
@@ -170,6 +194,25 @@ void awh::client::Core::write(struct bufferevent * bev, void * ctx) noexcept {
 				}
 			}
 		}
+	}
+}
+/**
+ * attempt Функция задержки времени на новую попытку получить IP адрес
+ * @param fd    файловый дескриптор (сокет)
+ * @param event произошедшее событие
+ * @param ctx   передаваемый контекст
+ */
+void awh::client::Core::attempt(evutil_socket_t fd, short event, void * ctx) noexcept {
+	// Если контекст модуля передан
+	if(ctx != nullptr){
+		// Получаем объект воркера
+		worker_t * wrk = reinterpret_cast <worker_t *> (ctx);
+		// Получаем объект ядра подключения
+		core_t * core = (core_t *) const_cast <awh::core_t *> (wrk->core);
+		// Выполняем удаление событие таймера
+		event_del(&core->timeout);
+		// Выполняем новую попытку подключиться
+		core->restore(wrk->wid);
 	}
 }
 /**
@@ -246,7 +289,7 @@ void awh::client::Core::thread(const awh::worker_t::adj_t & adj, const client::w
 	// Получаем объект ядра клиента
 	core_t * core = (core_t *) const_cast <awh::core_t *> (wrk.core);
 	// Выполняем блокировку потока
-	core->bloking.lock();
+	const lock_guard <mutex> lock(core->locker.chunks);
 	// Выполняем получение буфера бинарного чанка данных
 	const auto & buffer = const_cast <awh::worker_t::adj_t *> (&adj)->get();
 	// Если буфер бинарных данных получен
@@ -262,8 +305,6 @@ void awh::client::Core::thread(const awh::worker_t::adj_t & adj, const client::w
 			// Выводим функцию обратного вызова
 			wrk.readFn(buffer.data(), buffer.size(), adj.aid, wrk.wid, core, wrk.ctx);
 	}
-	// Выполняем разблокировку потока
-	core->bloking.unlock();
 }
 /**
  * tuning Метод тюннинга буфера событий

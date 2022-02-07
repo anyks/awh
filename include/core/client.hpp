@@ -59,6 +59,13 @@ namespace awh {
 				 */
 				static void write(struct bufferevent * bev, void * ctx) noexcept;
 				/**
+				 * attempt Функция задержки времени на новую попытку получить IP адрес
+				 * @param fd    файловый дескриптор (сокет)
+				 * @param event произошедшее событие
+				 * @param ctx   передаваемый контекст
+				 */
+				static void attempt(evutil_socket_t fd, short event, void * ctx) noexcept;
+				/**
 				 * event Функция обработка входящих событий с сервера
 				 * @param bev    буфер события
 				 * @param events произошедшее событие

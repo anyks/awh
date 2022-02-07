@@ -107,6 +107,13 @@ namespace awh {
 			} timer_t;
 		protected:
 			/**
+			 * Locker Структуро мютексов для блокировки потоков
+			 */
+			typedef struct Locker {
+				mutex main;   // Мютекс для блокировки основного потока
+				mutex chunks; // Мютекс для блокировки потока при обработке чанков
+			} locker_t;
+			/**
 			 * KeepAlive Структура с параметрами для постоянного подключения
 			 */
 			typedef struct KeepAlive {
@@ -162,10 +169,10 @@ namespace awh {
 			alive_t alive;
 			// Создаем объект сети
 			network_t nwk;
-			// Мютекс для блокировки потока
-			mutex bloking;
 			// Создаем пул потоков
 			poolthr_t pool;
+			// Создаём объект для блокировки потоков
+			locker_t locker;
 		private:
 			// Частота обновления базы событий
 			chrono::milliseconds freq;
@@ -199,8 +206,8 @@ namespace awh {
 			bool mode = false;
 			// Флаг использования многопоточного режима
 			bool mthr = false;
-			// Флаг блокировку инициализации базы событий
-			bool locker = false;
+			// Флаг заморозки инициализации базы событий
+			bool freeze = false;
 			// Флаг запрета вывода информационных сообщений
 			bool noinfo = false;
 			// Флаг персистентного запуска каллбека

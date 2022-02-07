@@ -72,6 +72,8 @@ void awh::server::Core::read(struct bufferevent * bev, void * ctx) noexcept {
 		server::worker_t * wrk = (server::worker_t *) const_cast <awh::worker_t *> (adj->parent);
 		// Получаем объект ядра клиента
 		const core_t * core = reinterpret_cast <const core_t *> (wrk->core);
+		// Выполняем блокировку потока
+		if(core->mthr) const lock_guard <mutex> lock(const_cast <core_t *> (core)->locker.main);
 		// Если подключение ещё существует
 		if((core->adjutants.count(adj->aid) > 0) && (wrk->readFn != nullptr)){
 			// Получаем буферы входящих данных
@@ -123,6 +125,8 @@ void awh::server::Core::write(struct bufferevent * bev, void * ctx) noexcept {
 		server::worker_t * wrk = (server::worker_t *) const_cast <awh::worker_t *> (adj->parent);
 		// Получаем объект ядра клиента
 		const core_t * core = reinterpret_cast <const core_t *> (wrk->core);
+		// Выполняем блокировку потока
+		if(core->mthr) const lock_guard <mutex> lock(const_cast <core_t *> (core)->locker.main);
 		// Если подключение ещё существует
 		if((core->adjutants.count(adj->aid) > 0) && (wrk->writeFn != nullptr)){
 			// Получаем буферы исходящих данных
@@ -328,15 +332,13 @@ void awh::server::Core::thread(const awh::worker_t::adj_t & adj, const server::w
 	// Получаем объект ядра клиента
 	core_t * core = (core_t *) const_cast <awh::core_t *> (wrk.core);
 	// Выполняем блокировку потока
-	core->bloking.lock();
+	const lock_guard <mutex> lock(core->locker.chunks);
 	// Выполняем получение буфера бинарного чанка данных
 	const auto & buffer = const_cast <awh::worker_t::adj_t *> (&adj)->get();
 	// Если буфер бинарных данных получен
 	if(!buffer.empty())
 		// Выводим функцию обратного вызова
 		wrk.readFn(buffer.data(), buffer.size(), adj.aid, wrk.wid, core, wrk.ctx);
-	// Выполняем разблокировку потока
-	core->bloking.unlock();
 }
 /**
  * tuning Метод тюннинга буфера событий

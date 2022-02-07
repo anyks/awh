@@ -46,7 +46,7 @@ int main(int argc, char * argv[]) noexcept {
 	 * 4. Устанавливаем флаг поддержания активным подключение
 	 */
 	ws.setMode(
-		(uint8_t) client::ws_t::flag_t::NOTSTOP |
+		// (uint8_t) client::ws_t::flag_t::NOTSTOP |
 		// (uint8_t) client::ws_t::flag_t::WAITMESS |
 		(uint8_t) client::ws_t::flag_t::TAKEOVERCLI |
 		(uint8_t) client::ws_t::flag_t::TAKEOVERSRV |
