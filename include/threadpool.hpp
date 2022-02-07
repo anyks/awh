@@ -186,7 +186,7 @@ namespace awh {
 				// Выводим результат
 				return res;
 			}
-	} thrpool_t;
+	} poolthr_t;
 };
 
 #endif // __AWH_THREAD_POOL__

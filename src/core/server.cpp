@@ -93,7 +93,7 @@ void awh::server::Core::read(struct bufferevent * bev, void * ctx) noexcept {
 						// Добавляем буфер бинарного чанка данных
 						adj->add(buffer, size);
 						// Добавляем полученные данные буфера в пул потоков
-						const_cast <core_t *> (core)->thrpool.push(&thread, ref(* adj), ref(* wrk));
+						const_cast <core_t *> (core)->pool.push(&thread, ref(* adj), ref(* wrk));
 					// Выводим функцию обратного вызова
 					} else wrk->readFn(buffer, size, adj->aid, wrk->wid, const_cast <awh::core_t *> (wrk->core), wrk->ctx);
 					// Удаляем выделенную память буфера

@@ -84,7 +84,7 @@ void awh::client::Core::read(struct bufferevent * bev, void * ctx) noexcept {
 						// Добавляем буфер бинарного чанка данных
 						adj->add(buffer, size);
 						// Добавляем полученные данные буфера в пул потоков
-						const_cast <core_t *> (core)->thrpool.push(&thread, ref(* adj), ref(* wrk));
+						const_cast <core_t *> (core)->pool.push(&thread, ref(* adj), ref(* wrk));
 					// Если мультипоточный режим не включён
 					} else {
 						// Если подключение производится через, прокси-сервер

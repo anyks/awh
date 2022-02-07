@@ -965,11 +965,11 @@ void awh::Core::setMultiThreads(const bool mode) noexcept {
 	// Устанавливаем частоту обновления базы событий
 	if(this->mthr){
 		// Выполняем инициализацию пула потоков
-		this->thrpool.init();
+		this->pool.init();
 		// Устанавливаем частоту обновления в 100мс
 		this->setFrequency(10);
 	// Выполняем ожидание завершения работы потоков
-	} else this->thrpool.wait();
+	} else this->pool.wait();
 }
 /**
  * setPersistInterval Метод установки персистентного таймера

@@ -165,7 +165,7 @@ namespace awh {
 			// Мютекс для блокировки потока
 			mutex bloking;
 			// Создаем пул потоков
-			thrpool_t thrpool;
+			poolthr_t pool;
 		private:
 			// Частота обновления базы событий
 			chrono::milliseconds freq;
