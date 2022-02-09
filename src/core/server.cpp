@@ -73,7 +73,7 @@ void awh::server::Core::read(struct bufferevent * bev, void * ctx) noexcept {
 		// Получаем объект ядра клиента
 		const core_t * core = reinterpret_cast <const core_t *> (wrk->core);
 		// Выполняем блокировку потока
-		if(core->mthr) const lock_guard <mutex> lock(const_cast <core_t *> (core)->locker.main);
+		if(core->easy) const lock_guard <mutex> lock(const_cast <core_t *> (core)->locker.main);
 		// Если подключение ещё существует
 		if((core->adjutants.count(adj->aid) > 0) && (wrk->readFn != nullptr)){
 			// Получаем буферы входящих данных
@@ -126,7 +126,7 @@ void awh::server::Core::write(struct bufferevent * bev, void * ctx) noexcept {
 		// Получаем объект ядра клиента
 		const core_t * core = reinterpret_cast <const core_t *> (wrk->core);
 		// Выполняем блокировку потока
-		if(core->mthr) const lock_guard <mutex> lock(const_cast <core_t *> (core)->locker.main);
+		if(core->easy) const lock_guard <mutex> lock(const_cast <core_t *> (core)->locker.main);
 		// Если подключение ещё существует
 		if((core->adjutants.count(adj->aid) > 0) && (wrk->writeFn != nullptr)){
 			// Получаем буферы исходящих данных
