@@ -91,7 +91,7 @@ void awh::server::Core::read(struct bufferevent * bev, void * ctx) noexcept {
 					// Копируем в буфер полученные данные
 					evbuffer_remove(input, buffer, size);
 					// Если включён мультипоточный режим
-					if(core->mthr){
+					if(core->thr){
 						// Добавляем буфер бинарного чанка данных
 						adj->add(buffer, size);
 						// Добавляем полученные данные буфера в пул потоков

@@ -102,7 +102,7 @@ void awh::client::Core::read(struct bufferevent * bev, void * ctx) noexcept {
 					// Копируем в буфер полученные данные
 					evbuffer_remove(input, buffer, size);
 					// Если включён мультипоточный режим
-					if(core->mthr){
+					if(core->thr){
 						// Добавляем буфер бинарного чанка данных
 						adj->add(buffer, size);
 						// Добавляем полученные данные буфера в пул потоков
@@ -285,7 +285,7 @@ void awh::client::Core::event(struct bufferevent * bev, const short events, void
  * @param adj объект адъютанта
  * @param wrk объект воркера
  */
-void awh::client::Core::thread(const awh::worker_t::adj_t & adj, const client::worker_t & wrk) noexcept {
+void awh::client::Core::thread(const awh::worker_t::adj_t & adj, const client::worker_t & wrk) noexcept {	
 	// Получаем объект ядра клиента
 	core_t * core = (core_t *) const_cast <awh::core_t *> (wrk.core);
 	// Выполняем блокировку потока

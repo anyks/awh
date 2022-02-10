@@ -507,7 +507,7 @@ void awh::Core::start() noexcept {
 			// Выполняем чтение базы событий пока это разрешено
 			while(this->easy){
 				// Выполняем чтение базы событий
-				event_base_loop(this->base, EVLOOP_NONBLOCK);
+				event_base_loop(this->base, EVLOOP_NONBLOCK | EVLOOP_ONCE);
 				// Замораживаем поток на период времени частоты обновления базы событий
 				this_thread::sleep_for(this->freq);
 			}
@@ -689,7 +689,7 @@ void awh::Core::setBandwidth(const size_t aid, const string & read, const string
  */
 void awh::Core::write(const char * buffer, const size_t size, const size_t aid) noexcept {
 	// Выполняем блокировку потока
-	if(this->easy) const lock_guard <mutex> lock(this->locker.main);
+	// if(this->easy) const lock_guard <mutex> lock(this->locker.main);
 	// Если данные переданы
 	if((buffer != nullptr) && (size > 0)){
 		// Выполняем извлечение адъютанта
@@ -954,9 +954,9 @@ void awh::Core::setVerifySSL(const bool mode) noexcept {
  */
 void awh::Core::setMultiThreads(const bool mode) noexcept {
 	// Устанавливаем флаг мультипотоковой обработки
-	this->mthr = mode;
+	this->thr = mode;
 	// Устанавливаем частоту обновления базы событий
-	if(this->mthr){
+	if(this->thr){
 		// Выполняем инициализацию пула потоков
 		this->pool.init();
 		// Устанавливаем частоту обновления в 100мс
