@@ -284,9 +284,13 @@ void awh::server::Rest::readCallback(const char * buffer, const size_t size, con
 				// Устанавливаем метку продолжения обработки пайплайна
 				Next:
 				// Если парсер обработал какое-то количество байт
-				if(bytes > 0){
-					// Удаляем количество обработанных байт
-					adj->buffer.erase(adj->buffer.begin(), adj->buffer.begin() + bytes);
+				if((bytes > 0) && !adj->buffer.empty()){
+					// Если размер буфера больше количества удаляемых байт
+					if(adj->buffer.size() >= bytes)
+						// Удаляем количество обработанных байт
+						vector <decltype(adj->buffer)::value_type> (adj->buffer.begin() + bytes, adj->buffer.end()).swap(adj->buffer);
+					// Если байт в буфере меньше, просто очищаем буфер
+					else adj->buffer.clear();
 					// Если данных для обработки не осталось, выходим
 					if(adj->buffer.empty()) break;
 				// Если данных для обработки недостаточно, выходим

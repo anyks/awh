@@ -24,7 +24,7 @@ using namespace awh;
  */
 int main(int argc, char * argv[]) noexcept {
 	// Создаём объект фреймворка
-	fmk_t fmk(true);
+	fmk_t fmk;
 	// Создаём объект для работы с логами
 	log_t log(&fmk);
 	// Создаём биндинг

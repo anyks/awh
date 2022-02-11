@@ -444,9 +444,13 @@ void awh::server::WebSocket::readCallback(const char * buffer, const size_t size
 						}
 					}
 					// Если парсер обработал какое-то количество байт
-					if(head.frame > 0){
-						// Удаляем количество обработанных байт
-						adj->buffer.erase(adj->buffer.begin(), adj->buffer.begin() + head.frame);
+					if((head.frame > 0) && !adj->buffer.empty()){
+						// Если размер буфера больше количества удаляемых байт
+						if(adj->buffer.size() >= head.frame)
+							// Удаляем количество обработанных байт
+							vector <decltype(adj->buffer)::value_type> (adj->buffer.begin() + head.frame, adj->buffer.end()).swap(adj->buffer);
+						// Если байт в буфере меньше, просто очищаем буфер
+						else adj->buffer.clear();
 						// Если данных для обработки не осталось, выходим
 						if(adj->buffer.empty()) break;
 					// Если данных для обработки недостаточно, выходим

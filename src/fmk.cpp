@@ -15,7 +15,35 @@
 // Подключаем заголовочный файл
 #include <fmk.hpp>
 
-// Устанавливаем шаблон функции
+// Если - это Windows
+#if defined(_WIN32) || defined(_WIN64)
+	/**
+	 * initWinSock Функция инициализации сокетов в OS Windows
+	 */
+	static void initWinSock() noexcept {
+		// Идентификатор ошибки
+		int error = 0;
+		// Объект данных запроса
+		WSADATA wsaData;
+		// Выполняем инициализацию сетевого контекста
+		if((error = WSAStartup(MAKEWORD(2, 2), &wsaData)) != 0){
+			// Очищаем сетевой контекст
+			WSACleanup();
+			// Выходим из приложения
+			exit(EXIT_FAILURE);
+		}
+		// Выполняем проверку версии WinSocket
+		if((2 != LOBYTE(wsaData.wVersion)) || (2 != HIBYTE(wsaData.wVersion))){
+			// Очищаем сетевой контекст
+			WSACleanup();
+			// Выходим из приложения
+			exit(EXIT_FAILURE);
+		}
+	}
+#endif
+/**
+ * Устанавливаем шаблон функции
+ */
 template <typename T>
 /**
  * decimalPlaces Функция определения количества знаков после запятой
@@ -45,7 +73,9 @@ enable_if_t <(is_floating_point <T>::value), size_t> decimalPlaces(T number) noe
 	// Выводим результат
 	return count;
 }
-// Устанавливаем шаблон функции
+/**
+ * Устанавливаем шаблон функции
+ */
 template <typename T>
 /**
  * split Метод разделения строк на составляющие
@@ -1751,66 +1781,37 @@ float awh::Framework::rate(const float a, const float b) const noexcept {
 	return ((a > b ? ((a - b) / b * 100) : ((b - a) / b * 100) * -1));
 }
 /**
- * initWinSock Метод инициализации сокетов в OS Windows
- */
-void awh::Framework::initWinSock() noexcept {
-	// Если - это Windows
-	#if defined(_WIN32) || defined(_WIN64)
-		// Идентификатор ошибки
-		int error = 0;
-		// Объект данных запроса
-		WSADATA wsaData;
-		// Выполняем инициализацию сетевого контекста
-		if((error = WSAStartup(MAKEWORD(2, 2), &wsaData)) != 0){
-			// Очищаем сетевой контекст
-			WSACleanup();
-			// Выходим из приложения
-			exit(EXIT_FAILURE);
-		}
-		// Выполняем проверку версии WinSocket
-		if((2 != LOBYTE(wsaData.wVersion)) || (2 != HIBYTE(wsaData.wVersion))){
-			// Очищаем сетевой контекст
-			WSACleanup();
-			// Выходим из приложения
-			exit(EXIT_FAILURE);
-		}
-	#endif
-}
-/**
- * cleanWinSock Метод деинициализации сокетов в OS Windows
- */
-void awh::Framework::cleanWinSock() noexcept {
-	// Если - это Windows
-	#if defined(_WIN32) || defined(_WIN64)
-		// Очищаем сетевой контекст
-		WSACleanup();
-	#endif
-}
-/**
  * Framework Конструктор
- * @param winSock флаг инициализации сокетов в OS Windows
  */
-awh::Framework::Framework(const bool winSock) noexcept : winSock(winSock) {
+awh::Framework::Framework() noexcept {
 	// Устанавливаем локализацию системы
 	this->setLocale();
-	// Выполняем инициализацию сокетов в OS Windows
-	if(winSock) this->initWinSock();
+	// Если - это Windows
+	#if defined(_WIN32) || defined(_WIN64)
+		// Выполняем инициализацию сокетов в OS Windows
+		initWinSock();
+	#endif
 }
 /**
  * Framework Конструктор
- * @param locale  локализация приложения
- * @param winSock флаг инициализации сокетов в OS Windows
+ * @param locale локализация приложения
  */
-awh::Framework::Framework(const string & locale, const bool winSock) noexcept : winSock(winSock) {
+awh::Framework::Framework(const string & locale) noexcept {
 	// Устанавливаем локализацию системы
 	this->setLocale(locale);
-	// Выполняем инициализацию сокетов в OS Windows
-	if(winSock) this->initWinSock();
+	// Если - это Windows
+	#if defined(_WIN32) || defined(_WIN64)
+		// Выполняем инициализацию сокетов в OS Windows
+		initWinSock();
+	#endif
 }
 /**
  * ~Framework Деструктор
  */
 awh::Framework::~Framework() noexcept {
-	// Выполняем деинициализацию сокетов в OS Windows
-	if(this->winSock) this->cleanWinSock();
+	// Если - это Windows
+	#if defined(_WIN32) || defined(_WIN64)
+		// Очищаем сетевой контекст
+		WSACleanup();
+	#endif
 }

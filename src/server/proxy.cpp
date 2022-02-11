@@ -372,9 +372,13 @@ void awh::server::Proxy::readClientCallback(const char * buffer, const size_t si
 						// Устанавливаем метку продолжения обработки пайплайна
 						Next:
 						// Если парсер обработал какое-то количество байт
-						if(bytes > 0){
-							// Удаляем количество обработанных байт
-							adj->client.erase(adj->client.begin(), adj->client.begin() + bytes);
+						if((bytes > 0) && !adj->client.empty()){
+							// Если размер буфера больше количества удаляемых байт
+							if(adj->client.size() >= bytes)
+								// Удаляем количество обработанных байт
+								vector <decltype(adj->client)::value_type> (adj->client.begin() + bytes, adj->client.end()).swap(adj->client);
+							// Если байт в буфере меньше, просто очищаем буфер
+							else adj->client.clear();
 							// Если данных для обработки не осталось, выходим
 							if(adj->client.empty()) break;
 						// Если данных для обработки недостаточно, выходим
@@ -700,9 +704,13 @@ void awh::server::Proxy::prepare(const size_t aid, const size_t wid, awh::core_t
 				// Устанавливаем метку продолжения обработки пайплайна
 				Next:
 				// Если парсер обработал какое-то количество байт
-				if(bytes > 0){
-					// Удаляем количество обработанных байт
-					adj->server.erase(adj->server.begin(), adj->server.begin() + bytes);
+				if((bytes > 0) && !adj->server.empty()){
+					// Если размер буфера больше количества удаляемых байт
+					if(adj->server.size() >= bytes)
+						// Удаляем количество обработанных байт
+						vector <decltype(adj->server)::value_type> (adj->server.begin() + bytes, adj->server.end()).swap(adj->server);
+					// Если байт в буфере меньше, просто очищаем буфер
+					else adj->server.clear();
 					// Если данных для обработки не осталось, выходим
 					if(adj->server.empty()) break;
 				// Если данных для обработки недостаточно, выходим

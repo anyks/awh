@@ -428,8 +428,12 @@ void awh::client::WebSocket::readCallback(const char * buffer, const size_t size
 				}
 				// Если парсер обработал какое-то количество байт
 				if((head.frame > 0) && !ws->buffer.empty()){
-					// Удаляем количество обработанных байт
-					ws->buffer.erase(ws->buffer.begin(), ws->buffer.begin() + head.frame);
+					// Если размер буфера больше количества удаляемых байт
+					if(ws->buffer.size() >= head.frame)
+						// Удаляем количество обработанных байт
+						vector <decltype(ws->buffer)::value_type> (ws->buffer.begin() + head.frame, ws->buffer.end()).swap(ws->buffer);
+					// Если байт в буфере меньше, просто очищаем буфер
+					else ws->buffer.clear();
 					// Если данных для обработки не осталось, выходим
 					if(ws->buffer.empty()) break;
 				// Если данных для обработки недостаточно, выходим

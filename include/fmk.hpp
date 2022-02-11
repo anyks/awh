@@ -105,9 +105,6 @@ namespace awh {
 			};
 			// Устанавливаем локаль по умолчанию
 			std::locale locale{AWH_LOCALE};
-		private:
-			// Флаг инициализации сокетов OS Windows
-			bool winSock;
 		public:
 			/**
 			 * os_t Названия поддерживаемых операционных систем
@@ -613,25 +610,14 @@ namespace awh {
 			float rate(const float a, const float b) const noexcept;
 		public:
 			/**
-			 * initWinSock Метод инициализации сокетов в OS Windows
+			 * Framework Конструктор
 			 */
-			void initWinSock() noexcept;
-			/**
-			 * cleanWinSock Метод деинициализации сокетов в OS Windows
-			 */
-			void cleanWinSock() noexcept;
-		public:
+			Framework() noexcept;
 			/**
 			 * Framework Конструктор
-			 * @param winSock флаг инициализации сокетов в OS Windows
+			 * @param locale локализация приложения
 			 */
-			Framework(const bool winSock = false) noexcept;
-			/**
-			 * Framework Конструктор
-			 * @param locale  локализация приложения
-			 * @param winSock флаг инициализации сокетов в OS Windows
-			 */
-			Framework(const string & locale, const bool winSock = false) noexcept;
+			Framework(const string & locale) noexcept;
 			/**
 			 * ~Framework Деструктор
 			 */

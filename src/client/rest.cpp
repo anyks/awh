@@ -354,8 +354,12 @@ void awh::client::Rest::readCallback(const char * buffer, const size_t size, con
 			Next:
 			// Если парсер обработал какое-то количество байт
 			if((bytes > 0) && !web->entity.empty()){
-				// Удаляем количество обработанных байт
-				web->entity.erase(web->entity.begin(), web->entity.begin() + bytes);
+				// Если размер буфера больше количества удаляемых байт
+				if(web->entity.size() >= bytes)
+					// Удаляем количество обработанных байт
+					vector <decltype(web->entity)::value_type> (web->entity.begin() + bytes, web->entity.end()).swap(web->entity);
+				// Если байт в буфере меньше, просто очищаем буфер
+				else web->entity.clear();
 				// Если данных для обработки не осталось, выходим
 				if(web->entity.empty()) break;
 			// Если данных для обработки недостаточно, выходим

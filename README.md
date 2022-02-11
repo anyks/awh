@@ -61,7 +61,7 @@ using namespace std;
 using namespace awh;
 
 int main(int argc, char * argv[]) noexcept {
-	fmk_t fmk(true);
+	fmk_t fmk;
 	log_t log(&fmk);
 	network_t nwk(&fmk);
 	uri_t uri(&fmk, &nwk);
@@ -110,7 +110,7 @@ using namespace std;
 using namespace awh;
 
 int main(int argc, char * argv[]) noexcept {
-	fmk_t fmk(true);
+	fmk_t fmk;
 	log_t log(&fmk);
 	server::core_t core(&fmk, &log);
 	server::rest_t rest(&core, &fmk, &log);
@@ -184,7 +184,7 @@ using namespace std;
 using namespace awh;
 
 int main(int argc, char * argv[]) noexcept {
-	fmk_t fmk(true);
+	fmk_t fmk;
 	log_t log(&fmk);
 	client::core_t core(&fmk, &log);
 	client::ws_t ws(&core, &fmk, &log);
@@ -316,7 +316,7 @@ using namespace std;
 using namespace awh;
 
 int main(int argc, char * argv[]) noexcept {
-	fmk_t fmk(true);
+	fmk_t fmk;
 	log_t log(&fmk);
 	server::proxy_t proxy(&fmk, &log);
 
@@ -382,7 +382,7 @@ using namespace awh;
 using namespace server;
 
 int main(int argc, char * argv[]) noexcept {
-	fmk_t fmk(true);
+	fmk_t fmk;
 	log_t log(&fmk);
 	proxySocks5_t proxy(&fmk, &log);
 
@@ -428,7 +428,7 @@ using namespace std;
 using namespace awh;
 
 int main(int argc, char * argv[]) noexcept {
-	fmk_t fmk(true);
+	fmk_t fmk;
 	log_t log(&fmk);
 	core_t core(&fmk, &log);
 
