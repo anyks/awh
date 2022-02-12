@@ -13,7 +13,7 @@
  */
 
 // Подключаем заголовочный файл
-#include <dns.hpp>
+#include <net/dns.hpp>
 
 /**
  * createBase Метод создания dns базы

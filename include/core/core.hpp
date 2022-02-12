@@ -56,12 +56,12 @@
 /**
  * Наши модули
  */
-#include <fmk.hpp>
-#include <ssl.hpp>
-#include <dns.hpp>
-#include <socket.hpp>
-#include <threadpool.hpp>
+#include <net/ssl.hpp>
+#include <net/dns.hpp>
+#include <net/socket.hpp>
 #include <worker/core.hpp>
+#include <sys/fmk.hpp>
+#include <sys/threadpool.hpp>
 
 // Подписываемся на стандартное пространство имён
 using namespace std;
@@ -141,19 +141,19 @@ namespace awh {
 				Network() : family(AF_INET), v4({{"0.0.0.0"}, IPV4_RESOLVER}), v6({{"[::0]"}, IPV6_RESOLVER}) {}
 			} net_t;
 			/**
-			 * Socket Структура сокета
+			 * Sockaddr Структура адресного пространства сокета
 			 */
-			typedef struct Socket {
+			typedef struct Sockaddr {
 				evutil_socket_t fd;          // Файловый дескриптор
 				struct sockaddr_in client;   // Параметры подключения клиента IPv4
 				struct sockaddr_in server;   // Параметры подключения сервера IPv4
 				struct sockaddr_in6 client6; // Параметры подключения клиента IPv6
 				struct sockaddr_in6 server6; // Параметры подключения сервера IPv6
 				/**
-				 * Socket Конструктор
+				 * Sockaddr Конструктор
 				 */
-				Socket() : fd(-1), client({}), server({}), client6({}), server6({}) {}
-			} socket_t;
+				Sockaddr() : fd(-1), client({}), server({}), client6({}), server6({}) {}
+			} sockaddr_t;
 		protected:
 			// Сетевые параметры
 			net_t net;
@@ -171,6 +171,8 @@ namespace awh {
 			network_t nwk;
 			// Создаем пул потоков
 			poolthr_t pool;
+			// Объект для работы с сокетами
+			socket_t socket;
 			// Создаём объект для блокировки потоков
 			locker_t locker;
 		private:
@@ -279,13 +281,13 @@ namespace awh {
 			void clean(struct bufferevent * bev) noexcept;
 		protected:
 			/**
-			 * socket Метод создания сокета
+			 * sockaddr Метод создания адресного пространства сокета
 			 * @param ip     адрес для которого нужно создать сокет
 			 * @param port   порт сервера для которого нужно создать сокет
 			 * @param family тип протокола интернета AF_INET или AF_INET6
 			 * @return       параметры подключения к серверу
 			 */
-			const socket_t socket(const string & ip, const u_int port, const int family = AF_INET) const noexcept;
+			const sockaddr_t sockaddr(const string & ip, const u_int port, const int family = AF_INET) const noexcept;
 		public:
 			/**
 			 * bind Метод подключения модуля ядра к текущей базе событий
@@ -481,7 +483,7 @@ namespace awh {
 			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
 			 */
-			Core(const fmk_t * fmk, const log_t * log) noexcept : nwk(fmk), uri(fmk, &nwk), ssl(fmk, log, &uri), dns4(fmk, log, &nwk), dns6(fmk, log, &nwk), fmk(fmk), log(log) {}
+			Core(const fmk_t * fmk, const log_t * log) noexcept : nwk(fmk), uri(fmk, &nwk), ssl(fmk, log, &uri), dns4(fmk, log, &nwk), dns6(fmk, log, &nwk), socket(log), fmk(fmk), log(log) {}
 			/**
 			 * ~Core Деструктор
 			 */

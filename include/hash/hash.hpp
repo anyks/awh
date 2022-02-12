@@ -49,8 +49,8 @@
 /**
  * Наши модули
  */
-#include <fmk.hpp>
-#include <log.hpp>
+#include <sys/fmk.hpp>
+#include <sys/log.hpp>
 
 // Параметры Zlib
 #define MOD_GZIP_ZLIB_CFACTOR 9

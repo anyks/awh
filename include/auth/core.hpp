@@ -31,9 +31,9 @@
 /**
  * Наши модули
  */
-#include <fmk.hpp>
-#include <log.hpp>
-#include <base64.hpp>
+#include <sys/fmk.hpp>
+#include <sys/log.hpp>
+#include <hash/base64.hpp>
 
 // Подписываемся на стандартное пространство имён
 using namespace std;

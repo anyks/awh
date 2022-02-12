@@ -26,9 +26,9 @@
 /**
  * Наши модули
  */
-#include <fmk.hpp>
-#include <log.hpp>
-#include <ssl.hpp>
+#include <sys/fmk.hpp>
+#include <sys/log.hpp>
+#include <net/ssl.hpp>
 
 // Подписываемся на стандартное пространство имён
 using namespace std;

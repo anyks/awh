@@ -362,9 +362,9 @@ void awh::client::Core::connect(const size_t wid) noexcept {
 			// Получаем URL параметры запроса
 			const uri_t::url_t & url = (wrk->isProxy() ? wrk->proxy.url : wrk->url);
 			// Получаем сокет для подключения к серверу
-			auto socket = this->socket(url.ip, url.port, this->net.family);
+			auto sockaddr = this->sockaddr(url.ip, url.port, this->net.family);
 			// Если сокет создан удачно
-			if(socket.fd > -1){
+			if(sockaddr.fd > -1){
 				// Создаём бъект адъютанта
 				unique_ptr <awh::worker_t::adj_t> adj(new awh::worker_t::adj_t(wrk, this->fmk, this->log));
 				// Выполняем получение контекста сертификата
@@ -376,11 +376,11 @@ void awh::client::Core::connect(const size_t wid) noexcept {
 				// Если SSL клиент разрешён
 				if(adj->ssl.mode){
 					// Создаем буфер событий для сервера зашифрованного подключения
-					adj->bev = bufferevent_openssl_socket_new(this->base, socket.fd, adj->ssl.ssl, BUFFEREVENT_SSL_CONNECTING, mode);
+					adj->bev = bufferevent_openssl_socket_new(this->base, sockaddr.fd, adj->ssl.ssl, BUFFEREVENT_SSL_CONNECTING, mode);
 					// Разрешаем непредвиденное грязное завершение работы
 					bufferevent_openssl_set_allow_dirty_shutdown(adj->bev, 1);
 				// Создаем буфер событий для сервера
-				} else adj->bev = bufferevent_socket_new(this->base, socket.fd, mode);
+				} else adj->bev = bufferevent_socket_new(this->base, sockaddr.fd, mode);
 				// Если буфер событий создан
 				if(adj->bev != nullptr){
 					// Устанавливаем идентификатор адъютанта
@@ -396,16 +396,16 @@ void awh::client::Core::connect(const size_t wid) noexcept {
 						// Для протокола IPv4
 						case AF_INET: {
 							// Запоминаем размер структуры
-							size = sizeof(socket.server);
+							size = sizeof(sockaddr.server);
 							// Запоминаем полученную структуру
-							sin = reinterpret_cast <struct sockaddr *> (&socket.server);
+							sin = reinterpret_cast <struct sockaddr *> (&sockaddr.server);
 						} break;
 						// Для протокола IPv6
 						case AF_INET6: {
 							// Запоминаем размер структуры
-							size = sizeof(socket.server6);
+							size = sizeof(sockaddr.server6);
 							// Запоминаем полученную структуру
-							sin = reinterpret_cast <struct sockaddr *> (&socket.server6);
+							sin = reinterpret_cast <struct sockaddr *> (&sockaddr.server6);
 						} break;
 					}
 					// Выполняем подключение к удаленному серверу, если подключение не выполненно то сообщаем об этом
@@ -423,7 +423,7 @@ void awh::client::Core::connect(const size_t wid) noexcept {
 						this->close(ret.first->first);
 					}
 					// Выводим в лог сообщение
-					if(!core->noinfo) this->log->print("create good connect to host = %s [%s:%d], socket = %d", log_t::flag_t::INFO, url.domain.c_str(), url.ip.c_str(), url.port, socket.fd);
+					if(!core->noinfo) this->log->print("create good connect to host = %s [%s:%d], socket = %d", log_t::flag_t::INFO, url.domain.c_str(), url.ip.c_str(), url.port, sockaddr.fd);
 					// Выходим из функции
 					return;
 				// Если подключение не выполнено, выводим в лог сообщение
@@ -678,7 +678,7 @@ void awh::client::Core::setBandwidth(const size_t aid, const string & read, cons
 			// Получаем файловый дескриптор
 			evutil_socket_t fd = bufferevent_getfd(adj->bev);
 			// Устанавливаем размер буфера
-			if(fd > 0) sockets_t::bufferSize(fd, rcv, snd, 1, this->log);
+			if(fd > 0) this->socket.bufferSize(fd, rcv, snd, 1);
 		// Если - это Windows
 		#else
 			// Блокируем вывод переменных

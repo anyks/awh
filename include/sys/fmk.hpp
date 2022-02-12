@@ -54,8 +54,8 @@
 /**
  * Наши модули
  */
-#include <win.hpp>
-#include <nwt.hpp>
+#include <sys/win.hpp>
+#include <net/nwt.hpp>
 
 /**
  * Подключаем OpenSSL
@@ -621,7 +621,7 @@ namespace awh {
 			/**
 			 * ~Framework Деструктор
 			 */
-			~Framework() noexcept;
+			~Framework() noexcept {}
 	} fmk_t;
 };
 

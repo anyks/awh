@@ -13,7 +13,7 @@
  */
 
 // Подключаем заголовочный файл
-#include <uri.hpp>
+#include <net/uri.hpp>
 
 /**
  * clear Метод очистки

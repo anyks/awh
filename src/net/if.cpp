@@ -13,7 +13,7 @@
  */
 
 // Подключаем заголовочный файл
-#include <if.hpp>
+#include <net/if.hpp>
 
 /**
  * getIPAddresses Метод извлечения IP адресов

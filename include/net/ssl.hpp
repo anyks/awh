@@ -53,10 +53,10 @@
 /**
  * Наши модули
  */
-#include <fs.hpp>
-#include <fmk.hpp>
-#include <log.hpp>
-#include <uri.hpp>
+#include <sys/fs.hpp>
+#include <sys/fmk.hpp>
+#include <sys/log.hpp>
+#include <net/uri.hpp>
 
 /**
  * Подключаем OpenSSL

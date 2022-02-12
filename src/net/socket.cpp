@@ -13,29 +13,18 @@
  */
 
 // Подключаем заголовочный файл
-#include <socket.hpp>
+#include <net/socket.hpp>
 
 /**
  * Методы только для OS Windows
  */
 #if defined(_WIN32) || defined(_WIN64)
 /**
- * nonBlocking Метод установки неблокирующего сокета
- * @param fd файловый дескриптор (сокет)
- */
-void awh::Sockets::nonBlocking(const evutil_socket_t fd) noexcept {
-	// Флаг режима
-	u_long mode = 0;
-	// Отключаем неблокирующий режим у сокета
-	ioctlsocket(fd, FIONBIO, &mode);
-}
-/**
  * keepAlive Метод устанавливает постоянное подключение на сокет
- * @param fd  файловый дескриптор (сокет)
- * @param log объект для работы с логами
- * @return    результат работы функции
+ * @param fd файловый дескриптор (сокет)
+ * @return   результат работы функции
  */
-int awh::Sockets::keepAlive(const evutil_socket_t fd, const log_t * log) noexcept {
+int awh::Socket::keepAlive(const evutil_socket_t fd) const noexcept {
 	// Результат работы функции
 	int result = -1;
 	{
@@ -46,7 +35,7 @@ int awh::Sockets::keepAlive(const evutil_socket_t fd, const log_t * log) noexcep
 		// Если мы получили ошибку, выходим сообщение
 		if(result == SOCKET_ERROR){
 			// Выводим в лог информацию
-			if(log != nullptr) log->print("setsockopt for SO_KEEPALIVE failed with error: %u", log_t::flag_t::CRITICAL, WSAGetLastError());
+			this->log->print("setsockopt for SO_KEEPALIVE failed with error: %u", log_t::flag_t::CRITICAL, WSAGetLastError());
 			// Выходим
 			return -1;
 		}
@@ -60,7 +49,7 @@ int awh::Sockets::keepAlive(const evutil_socket_t fd, const log_t * log) noexcep
 		// Если мы получили ошибку, выходим сообщение
 		if(result == SOCKET_ERROR){
 			// Выводим в лог информацию
-			if(log != nullptr) log->print("getsockopt for SO_KEEPALIVE failed with error: %u", log_t::flag_t::CRITICAL, WSAGetLastError());
+			this->log->print("getsockopt for SO_KEEPALIVE failed with error: %u", log_t::flag_t::CRITICAL, WSAGetLastError());
 			// Выходим
 			return -1;
 		}
@@ -69,15 +58,24 @@ int awh::Sockets::keepAlive(const evutil_socket_t fd, const log_t * log) noexcep
 	return result;
 }
 /**
+ * nonBlocking Метод установки неблокирующего сокета
+ * @param fd файловый дескриптор (сокет)
+ */
+void awh::Socket::nonBlocking(const evutil_socket_t fd) const noexcept {
+	// Флаг режима
+	u_long mode = 0;
+	// Отключаем неблокирующий режим у сокета
+	ioctlsocket(fd, FIONBIO, &mode);
+}
+/**
  * Методы только для *Nix
  */
 #else
 /**
  * noSigill Метод блокировки сигнала SIGILL
- * @param log объект для работы с логами
- * @return    результат работы функции
+ * @return результат работы функции
  */
-int awh::Sockets::noSigill(const log_t * log) noexcept {
+int awh::Socket::noSigill() const noexcept {
 	// Создаем структуру активации сигнала
 	struct sigaction act;
 	// Зануляем структуру
@@ -89,7 +87,7 @@ int awh::Sockets::noSigill(const log_t * log) noexcept {
 	// Устанавливаем блокировку сигнала
 	if(sigaction(SIGILL, &act, nullptr)){
 		// Выводим в лог информацию
-		if(log != nullptr) log->print("%s", log_t::flag_t::CRITICAL, "cannot set SIG_IGN on signal SIGILL");
+		this->log->print("%s", log_t::flag_t::CRITICAL, "cannot set SIG_IGN on signal SIGILL");
 		// Выходим
 		return -1;
 	}
@@ -98,11 +96,10 @@ int awh::Sockets::noSigill(const log_t * log) noexcept {
 }
 /**
  * tcpCork Метод активации tcp_cork
- * @param fd  файловый дескриптор (сокет)
- * @param log объект для работы с логами
- * @return    результат работы функции
+ * @param fd файловый дескриптор (сокет)
+ * @return   результат работы функции
  */
-int awh::Sockets::tcpCork(const evutil_socket_t fd, const log_t * log) noexcept {
+int awh::Socket::tcpCork(const evutil_socket_t fd) const noexcept {
 	// Устанавливаем параметр
 	int tcpCork = 1;
 	// Если это Linux
@@ -110,7 +107,7 @@ int awh::Sockets::tcpCork(const evutil_socket_t fd, const log_t * log) noexcept 
 		// Устанавливаем TCP_CORK
 		if(setsockopt(fd, IPPROTO_TCP, TCP_CORK, &tcpCork, sizeof(tcpCork)) < 0){
 			// Выводим в лог информацию
-			if(log != nullptr) log->print("cannot set TCP_CORK option on socket %d", log_t::flag_t::CRITICAL, fd);
+			this->log->print("cannot set TCP_CORK option on socket %d", log_t::flag_t::CRITICAL, fd);
 			// Выходим
 			return -1;
 		}
@@ -119,7 +116,7 @@ int awh::Sockets::tcpCork(const evutil_socket_t fd, const log_t * log) noexcept 
 		// Устанавливаем TCP_NOPUSH
 		if(setsockopt(fd, IPPROTO_TCP, TCP_NOPUSH, &tcpCork, sizeof(tcpCork)) < 0){
 			// Выводим в лог информацию
-			if(log != nullptr) log->print("cannot set TCP_NOPUSH option on socket %d", log_t::flag_t::CRITICAL, fd);
+			this->log->print("cannot set TCP_NOPUSH option on socket %d", log_t::flag_t::CRITICAL, fd);
 			// Выходим
 			return -1;
 		}
@@ -129,11 +126,10 @@ int awh::Sockets::tcpCork(const evutil_socket_t fd, const log_t * log) noexcept 
 }
 /**
  * noSigpipe Метод игнорирования отключения сигнала записи в убитый сокет
- * @param fd  файловый дескриптор (сокет)
- * @param log объект для работы с логами
- * @return    результат работы функции
+ * @param fd файловый дескриптор (сокет)
+ * @return   результат работы функции
  */
-int awh::Sockets::noSigpipe(const evutil_socket_t fd, const log_t * log) noexcept {
+int awh::Socket::noSigpipe(const evutil_socket_t fd) const noexcept {
 	// Если это Linux
 	#ifdef __linux__
 		// Создаем структуру активации сигнала
@@ -147,7 +143,7 @@ int awh::Sockets::noSigpipe(const evutil_socket_t fd, const log_t * log) noexcep
 		// Устанавливаем блокировку сигнала
 		if(sigaction(SIGPIPE, &act, nullptr)){
 			// Выводим в лог информацию
-			if(log != nullptr) log->print("%s", log_t::flag_t::CRITICAL, "cannot set SIG_IGN on signal SIGPIPE");
+			this->log->print("%s", log_t::flag_t::CRITICAL, "cannot set SIG_IGN on signal SIGPIPE");
 			// Выходим
 			return -1;
 		}
@@ -160,7 +156,7 @@ int awh::Sockets::noSigpipe(const evutil_socket_t fd, const log_t * log) noexcep
 		// Устанавливаем SO_NOSIGPIPE
 		if(setsockopt(fd, SOL_SOCKET, SO_NOSIGPIPE, &noSigpipe, sizeof(noSigpipe)) < 0){
 			// Выводим в лог информацию
-			if(log != nullptr) log->print("cannot set SO_NOSIGPIPE option on socket %d", log_t::flag_t::CRITICAL, fd);
+			this->log->print("cannot set SO_NOSIGPIPE option on socket %d", log_t::flag_t::CRITICAL, fd);
 			// Выходим
 			return -1;
 		}
@@ -170,11 +166,10 @@ int awh::Sockets::noSigpipe(const evutil_socket_t fd, const log_t * log) noexcep
 }
 /**
  * nonBlocking Метод установки неблокирующего сокета
- * @param fd  файловый дескриптор (сокет)
- * @param log объект для работы с логами
- * @return    результат работы функции
+ * @param fd файловый дескриптор (сокет)
+ * @return   результат работы функции
  */
-int awh::Sockets::nonBlocking(const evutil_socket_t fd, const log_t * log) noexcept {
+int awh::Socket::nonBlocking(const evutil_socket_t fd) const noexcept {
 	// Получаем флаги файлового дескриптора
 	int flags = fcntl(fd, F_GETFL);
 	// Если флаги не установлены, выходим
@@ -184,7 +179,7 @@ int awh::Sockets::nonBlocking(const evutil_socket_t fd, const log_t * log) noexc
 	// Устанавливаем неблокирующий режим
 	if(fcntl(fd, F_SETFL, flags) < 0){
 		// Выводим в лог информацию
-		if(log != nullptr) log->print("cannot set NON_BLOCK option on socket %d", log_t::flag_t::CRITICAL, fd);
+		this->log->print("cannot set NON_BLOCK option on socket %d", log_t::flag_t::CRITICAL, fd);
 		// Выходим
 		return -1;
 	}
@@ -197,41 +192,40 @@ int awh::Sockets::nonBlocking(const evutil_socket_t fd, const log_t * log) noexc
  * @param cnt   максимальное количество попыток
  * @param idle  время через которое происходит проверка подключения
  * @param intvl время между попытками
- * @param log   объект для работы с логами
  * @return      результат работы функции
  */
-int awh::Sockets::keepAlive(const evutil_socket_t fd, const int cnt, const int idle, const int intvl, const log_t * log) noexcept {
+int awh::Socket::keepAlive(const evutil_socket_t fd, const int cnt, const int idle, const int intvl) const noexcept {
 	// Устанавливаем параметр
 	int keepAlive = 1;
 	// Активация постоянного подключения
 	if(setsockopt(fd, SOL_SOCKET, SO_KEEPALIVE, &keepAlive, sizeof(int))){
 		// Выводим в лог информацию
-		if(log != nullptr) log->print("cannot set SO_KEEPALIVE option on socket %d", log_t::flag_t::CRITICAL, fd);
+		this->log->print("cannot set SO_KEEPALIVE option on socket %d", log_t::flag_t::CRITICAL, fd);
 		// Выходим
 		return -1;
 	}
 	// Максимальное количество попыток
 	if(setsockopt(fd, IPPROTO_TCP, TCP_KEEPCNT, &cnt, sizeof(int))){
 		// Выводим в лог информацию
-		if(log != nullptr) log->print("cannot set TCP_KEEPCNT option on socket %d", log_t::flag_t::CRITICAL, fd);
+		this->log->print("cannot set TCP_KEEPCNT option on socket %d", log_t::flag_t::CRITICAL, fd);
 		// Выходим
 		return -1;
 	}
-	// Если это MacOS X
+	// Если - это MacOS X
 	#ifdef __APPLE__
 		// Время через которое происходит проверка подключения
 		if(setsockopt(fd, IPPROTO_TCP, TCP_KEEPALIVE, &idle, sizeof(int))){
 			// Выводим в лог информацию
-			if(log != nullptr) log->print("cannot set TCP_KEEPALIVE option on socket %d", log_t::flag_t::CRITICAL, fd);
+			this->log->print("cannot set TCP_KEEPALIVE option on socket %d", log_t::flag_t::CRITICAL, fd);
 			// Выходим
 			return -1;
 		}
-	// Если это FreeBSD или Linux
+	// Если - это FreeBSD или Linux
 	#elif __linux__ || __FreeBSD__
 		// Время через которое происходит проверка подключения
 		if(setsockopt(fd, IPPROTO_TCP, TCP_KEEPIDLE, &idle, sizeof(int))){
 			// Выводим в лог информацию
-			if(log != nullptr) log->print("cannot set TCP_KEEPIDLE option on socket %d", log_t::flag_t::CRITICAL, fd);
+			this->log->print("cannot set TCP_KEEPIDLE option on socket %d", log_t::flag_t::CRITICAL, fd);
 			// Выходим
 			return -1;
 		}
@@ -239,7 +233,7 @@ int awh::Sockets::keepAlive(const evutil_socket_t fd, const int cnt, const int i
 	// Время между попытками
 	if(setsockopt(fd, IPPROTO_TCP, TCP_KEEPINTVL, &intvl, sizeof(int))){
 		// Выводим в лог информацию
-		if(log != nullptr) log->print("cannot set TCP_KEEPINTVL option on socket %d", log_t::flag_t::CRITICAL, fd);
+		this->log->print("cannot set TCP_KEEPINTVL option on socket %d", log_t::flag_t::CRITICAL, fd);
 		// Выходим
 		return -1;
 	}
@@ -249,17 +243,16 @@ int awh::Sockets::keepAlive(const evutil_socket_t fd, const int cnt, const int i
 #endif
 /**
  * reuseable Метод разрешающая повторно использовать сокет после его удаления
- * @param fd  файловый дескриптор (сокет)
- * @param log объект для работы с логами
- * @return    результат работы функции
+ * @param fd файловый дескриптор (сокет)
+ * @return   результат работы функции
  */
-int awh::Sockets::reuseable(const evutil_socket_t fd, const log_t * log) noexcept {
+int awh::Socket::reuseable(const evutil_socket_t fd) const noexcept {
 	// Устанавливаем параметр
 	int reuseaddr = 1;
 	// Разрешаем повторно использовать тот же host:port после отключения
 	if(setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, (char *) &reuseaddr, sizeof(reuseaddr)) < 0){
 		// Выводим в лог информацию
-		if(log != nullptr) log->print("cannot set SO_REUSEADDR option on socket %d", log_t::flag_t::CRITICAL, fd);
+		this->log->print("cannot set SO_REUSEADDR option on socket %d", log_t::flag_t::CRITICAL, fd);
 		// Выходим
 		return -1;
 	}
@@ -268,17 +261,16 @@ int awh::Sockets::reuseable(const evutil_socket_t fd, const log_t * log) noexcep
 }
 /**
  * tcpNodelay Метод отключения алгоритма Нейгла
- * @param fd  файловый дескриптор (сокет)
- * @param log объект для работы с логами
- * @return    результат работы функции
+ * @param fd файловый дескриптор (сокет)
+ * @return   результат работы функции
  */
-int awh::Sockets::tcpNodelay(const evutil_socket_t fd, const log_t * log) noexcept {
+int awh::Socket::tcpNodelay(const evutil_socket_t fd) const noexcept {
 	// Устанавливаем параметр
 	int tcpNodelay = 1;
 	// Устанавливаем TCP_NODELAY
 	if(setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, (char *) &tcpNodelay, sizeof(tcpNodelay)) < 0){
 		// Выводим в лог информацию
-		if(log != nullptr) log->print("cannot set TCP_NODELAY option on socket %d", log_t::flag_t::CRITICAL, fd);
+		this->log->print("cannot set TCP_NODELAY option on socket %d", log_t::flag_t::CRITICAL, fd);
 		// Выходим
 		return -1;
 	}
@@ -289,16 +281,15 @@ int awh::Sockets::tcpNodelay(const evutil_socket_t fd, const log_t * log) noexce
  * ipV6only Метод включающая или отключающая режим отображения IPv4 на IPv6
  * @param fd   файловый дескриптор (сокет)
  * @param mode активация или деактивация режима
- * @param log  объект для работы с логами
  * @return     результат работы функции
  */
-int awh::Sockets::ipV6only(const evutil_socket_t fd, const bool mode, const log_t * log) noexcept {
+int awh::Socket::ipV6only(const evutil_socket_t fd, const bool mode) const noexcept {
 	// Устанавливаем параметр
 	int only6 = (mode ? 1 : 0);
 	// Разрешаем повторно использовать тот же host:port после отключения
 	if(setsockopt(fd, IPPROTO_IPV6, IPV6_V6ONLY, (char *) &only6, sizeof(only6)) < 0){
 		// Выводим в лог информацию
-		if(log != nullptr) log->print("cannot set IPV6_V6ONLY option on socket %d", log_t::flag_t::CRITICAL, fd);
+		this->log->print("cannot set IPV6_V6ONLY option on socket %d", log_t::flag_t::CRITICAL, fd);
 		// Выходим
 		return -1;
 	}
@@ -311,10 +302,9 @@ int awh::Sockets::ipV6only(const evutil_socket_t fd, const bool mode, const log_
  * @param read  размер буфера на чтение
  * @param write размер буфера на запись
  * @param total максимальное количество подключений
- * @param log   объект для работы с логами
  * @return      результат работы функции
  */
-int awh::Sockets::bufferSize(const evutil_socket_t fd, const int read, const int write, const u_int total, const log_t * log) noexcept {
+int awh::Socket::bufferSize(const evutil_socket_t fd, const int read, const int write, const u_int total) const noexcept {
 	// Определяем размер массива опции
 	socklen_t rlen = sizeof(read);
 	socklen_t wlen = sizeof(write);
@@ -339,10 +329,54 @@ int awh::Sockets::bufferSize(const evutil_socket_t fd, const int read, const int
 	if((getsockopt(fd, SOL_SOCKET, SO_RCVBUF, (char *) &readSize, &rlen) < 0) ||
 	   (getsockopt(fd, SOL_SOCKET, SO_SNDBUF, (char *) &writeSize, &wlen) < 0)){
 		// Выводим в лог информацию
-		if(log != nullptr) log->print("get buffer wrong on socket %d", log_t::flag_t::CRITICAL, fd);
+		this->log->print("get buffer wrong on socket %d", log_t::flag_t::CRITICAL, fd);
 		// Выходим
 		return -1;
 	}
 	// Все удачно
 	return 0;
+}
+/**
+ * Socket Конструктор
+ * @param log объект для работы с логами
+ */
+awh::Socket::Socket(const log_t * log) noexcept : log(log) {
+	// Если сетевой стек ещё не проинициализирован
+	#ifndef __AWH_SOCKET_WSA__
+		// Выполняем инициализацию сетевого стека
+		#define __AWH_SOCKET_WSA__
+		// Если - это Windows
+		#if defined(_WIN32) || defined(_WIN64)
+			// Очищаем сетевой контекст
+			WSACleanup();
+			// Идентификатор ошибки
+			int error = 0;
+			// Объект данных запроса
+			WSADATA wsaData;
+			// Выполняем инициализацию сетевого контекста
+			if((error = WSAStartup(MAKEWORD(2, 2), &wsaData)) != 0){
+				// Очищаем сетевой контекст
+				WSACleanup();
+				// Выходим из приложения
+				exit(EXIT_FAILURE);
+			}
+			// Выполняем проверку версии WinSocket
+			if((2 != LOBYTE(wsaData.wVersion)) || (2 != HIBYTE(wsaData.wVersion))){
+				// Очищаем сетевой контекст
+				WSACleanup();
+				// Выходим из приложения
+				exit(EXIT_FAILURE);
+			}
+		#endif
+	#endif
+}
+/**
+ * ~Socket Деструктор
+ */
+awh::Socket::~Socket() noexcept {
+	// Если - это Windows
+	#if defined(_WIN32) || defined(_WIN64)
+		// Очищаем сетевой контекст
+		WSACleanup();
+	#endif
 }

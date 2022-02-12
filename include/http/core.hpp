@@ -34,11 +34,11 @@
 /**
  * Наши модули
  */
-#include <fmk.hpp>
-#include <log.hpp>
-#include <uri.hpp>
-#include <hash.hpp>
+#include <sys/fmk.hpp>
+#include <sys/log.hpp>
+#include <net/uri.hpp>
 #include <http/web.hpp>
+#include <hash/hash.hpp>
 #include <auth/client.hpp>
 #include <auth/server.hpp>
 

@@ -43,7 +43,7 @@
 /**
  * Наши модули
  */
-#include <fmk.hpp>
+#include <sys/fmk.hpp>
 
 // Устанавливаем область видимости
 using namespace std;

@@ -39,7 +39,7 @@
 /**
  * Наши модули
  */
-#include <fmk.hpp>
+#include <sys/fmk.hpp>
 
 // Подписываемся на стандартное пространство имён
 using namespace std;

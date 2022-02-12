@@ -18,7 +18,7 @@
 /**
  * Наши модули
  */
-#include <if.hpp>
+#include <net/if.hpp>
 #include <core/core.hpp>
 #include <worker/server.hpp>
 

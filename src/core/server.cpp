@@ -33,7 +33,7 @@ void awh::server::Core::resolver(const string ip, void * ctx) noexcept {
 			// Обновляем хост сервера
 			wrk->host = ip;
 			// Получаем сокет сервера
-			wrk->fd = core->socket(wrk->host, wrk->port, core->net.family).fd;
+			wrk->fd = core->sockaddr(wrk->host, wrk->port, core->net.family).fd;
 			// Выполняем чтение сокета
 			if(::listen(wrk->fd, wrk->total) < 0){
 				// Выводим в консоль информацию
@@ -262,12 +262,12 @@ void awh::server::Core::accept(const evutil_socket_t fd, const short event, void
 		// Устанавливаем настройки для *Nix подобных систем
 		#if !defined(_WIN32) && !defined(_WIN64)
 			// Выполняем игнорирование сигнала неверной инструкции процессора
-			sockets_t::noSigill(core->log);
+			core->socket.noSigill();
 			// Отключаем сигнал записи в оборванное подключение
-			sockets_t::noSigpipe(socket, core->log);
+			core->socket.noSigpipe(socket);
 		#endif
 		// Отключаем алгоритм Нейгла для сервера и клиента
-		sockets_t::tcpNodelay(socket, core->log);
+		core->socket.tcpNodelay(socket);
 		// Переводим сокет в не блокирующий режим
 		evutil_make_socket_nonblocking(socket);
 		// Устанавливаем разрешение на повторное использование сокета
@@ -588,7 +588,7 @@ void awh::server::Core::setBandwidth(const size_t aid, const string & read, cons
 		// Получаем файловый дескриптор
 		evutil_socket_t fd = bufferevent_getfd(adj->bev);
 		// Устанавливаем размер буфера
-		if(fd > 0) sockets_t::bufferSize(fd, rcv, snd, wrk->total, this->log);
+		if(fd > 0) this->socket.bufferSize(fd, rcv, snd, wrk->total);
 	}
 }
 /**

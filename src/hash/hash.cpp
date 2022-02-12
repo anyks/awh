@@ -13,7 +13,7 @@
  */
 
 // Подключаем заголовочный файл
-#include <hash.hpp>
+#include <hash/hash.hpp>
 
 /**
  * initAES Метод инициализации AES шифрования

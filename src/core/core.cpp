@@ -195,15 +195,15 @@ void awh::Core::clean(struct bufferevent * bev) noexcept {
 	}
 }
 /**
- * socket Метод создания сокета
+ * sockaddr Метод создания адресного пространства сокета
  * @param ip     адрес для которого нужно создать сокет
  * @param port   порт сервера для которого нужно создать сокет
  * @param family тип протокола интернета AF_INET или AF_INET6
  * @return       параметры подключения к серверу
  */
-const awh::Core::socket_t awh::Core::socket(const string & ip, const u_int port, const int family) const noexcept {
+const awh::Core::sockaddr_t awh::Core::sockaddr(const string & ip, const u_int port, const int family) const noexcept {
 	// Результат работы функции
-	socket_t result;
+	sockaddr_t result;
 	// Если IP адрес передан
 	if(!ip.empty() && (port > 0) && (port <= 65535)){
 		// Адрес сервера для биндинга
@@ -323,35 +323,35 @@ const awh::Core::socket_t awh::Core::socket(const string & ip, const u_int port,
 			// Выводим сообщение в консоль
 			this->log->print("creating socket to server = %s, port = %u", log_t::flag_t::CRITICAL, ip.c_str(), port);
 			// Выходим
-			return socket_t();
+			return sockaddr_t();
 		}
 		// Устанавливаем настройки для *Nix подобных систем
 		#if !defined(_WIN32) && !defined(_WIN64)
 			// Выполняем игнорирование сигнала неверной инструкции процессора
-			sockets_t::noSigill(this->log);
+			this->socket.noSigill();
 			// Отключаем сигнал записи в оборванное подключение
-			sockets_t::noSigpipe(result.fd, this->log);
+			this->socket.noSigpipe(result.fd);
 			// Если ядро является сервером
 			if(this->type == type_t::SERVER){
 				// Включаем отображение сети IPv4 в IPv6
-				if(family == AF_INET6) sockets_t::ipV6only(result.fd, this->ipV6only, this->log);
+				if(family == AF_INET6) this->socket.ipV6only(result.fd, this->ipV6only);
 			// Активируем keepalive
-			} else sockets_t::keepAlive(result.fd, this->alive.keepcnt, this->alive.keepidle, this->alive.keepintvl, this->log);
+			} else this->socket.keepAlive(result.fd, this->alive.keepcnt, this->alive.keepidle, this->alive.keepintvl);
 		// Устанавливаем настройки для OS Windows
 		#else
 			// Если ядро является сервером
 			if(this->type == type_t::SERVER){
 				// Включаем отображение сети IPv4 в IPv6
-				if(family == AF_INET6) sockets_t::ipV6only(result.fd, this->ipV6only, this->log);
+				if(family == AF_INET6) this->socket.ipV6only(result.fd, this->ipV6only);
 			// Активируем keepalive
-			} else sockets_t::keepAlive(result.fd, this->log);
+			} else this->socket.keepAlive(result.fd);
 		#endif
 		// Если ядро является сервером
 		if(this->type == type_t::SERVER)
 			// Переводим сокет в не блокирующий режим
 			evutil_make_socket_nonblocking(result.fd);
 		// Отключаем алгоритм Нейгла для сервера и клиента
-		sockets_t::tcpNodelay(result.fd, this->log);
+		this->socket.tcpNodelay(result.fd);
 		// Устанавливаем разрешение на закрытие сокета при неиспользовании
 		// evutil_make_socket_closeonexec(result.fd);
 		// Устанавливаем разрешение на повторное использование сокета
@@ -361,7 +361,7 @@ const awh::Core::socket_t awh::Core::socket(const string & ip, const u_int port,
 			// Выводим в лог сообщение
 			this->log->print("bind local network [%s]", log_t::flag_t::CRITICAL, host.c_str());
 			// Выходим
-			return socket_t();
+			return sockaddr_t();
 		}
 	}
 	// Выводим результат

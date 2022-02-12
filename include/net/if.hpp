@@ -96,8 +96,8 @@
 /**
  * Наши модули
  */
-#include <fmk.hpp>
-#include <log.hpp>
+#include <sys/fmk.hpp>
+#include <sys/log.hpp>
 
 // Подписываемся на стандартное пространство имён
 using namespace std;

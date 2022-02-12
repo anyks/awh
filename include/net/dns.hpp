@@ -47,9 +47,9 @@
 /**
  * Наши модули
  */
-#include <fmk.hpp>
-#include <log.hpp>
-#include <nwk.hpp>
+#include <sys/fmk.hpp>
+#include <sys/log.hpp>
+#include <net/nwk.hpp>
 
 // Устанавливаем область видимости
 using namespace std;

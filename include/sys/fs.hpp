@@ -48,8 +48,8 @@
 /**
  * Наши модули
  */
-#include <fmk.hpp>
-#include <log.hpp>
+#include <sys/fmk.hpp>
+#include <sys/log.hpp>
 
 // Устанавливаем область видимости
 using namespace std;
