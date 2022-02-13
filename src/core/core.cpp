@@ -688,8 +688,6 @@ void awh::Core::setBandwidth(const size_t aid, const string & read, const string
  * @param aid    идентификатор адъютанта
  */
 void awh::Core::write(const char * buffer, const size_t size, const size_t aid) noexcept {
-	// Выполняем блокировку потока
-	if(this->easy) const lock_guard <mutex> lock(this->locker.main);
 	// Если данные переданы
 	if((buffer != nullptr) && (size > 0)){
 		// Выполняем извлечение адъютанта

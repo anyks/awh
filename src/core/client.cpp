@@ -83,8 +83,6 @@ void awh::client::Core::read(struct bufferevent * bev, void * ctx) noexcept {
 		client::worker_t * wrk = (client::worker_t *) const_cast <awh::worker_t *> (adj->parent);
 		// Получаем объект ядра клиента
 		const core_t * core = reinterpret_cast <const core_t *> (wrk->core);
-		// Выполняем блокировку потока
-		if(core->easy) const lock_guard <mutex> lock(const_cast <core_t *> (core)->locker.main);
 		// Если подключение ещё существует
 		if(core->adjutants.count(adj->aid) > 0){
 			// Получаем буферы входящих данных
@@ -147,8 +145,6 @@ void awh::client::Core::write(struct bufferevent * bev, void * ctx) noexcept {
 		client::worker_t * wrk = (client::worker_t *) const_cast <awh::worker_t *> (adj->parent);
 		// Получаем объект ядра клиента
 		const core_t * core = reinterpret_cast <const core_t *> (wrk->core);
-		// Выполняем блокировку потока
-		if(core->easy) const lock_guard <mutex> lock(const_cast <core_t *> (core)->locker.main);
 		// Если подключение ещё существует
 		if(core->adjutants.count(adj->aid) > 0){
 			// Получаем буферы исходящих данных
