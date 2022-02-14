@@ -190,6 +190,13 @@ void awh::client::WebSocket::readCallback(const char * buffer, const size_t size
 		mess_t mess;
 		// Получаем контекст модуля
 		ws_t * ws = reinterpret_cast <ws_t *> (ctx);
+		// Если подключение закрыто
+		if(ws->close){
+			// Принудительно выполняем отключение лкиента
+			reinterpret_cast <client::core_t *> (core)->close(aid);
+			// Выходим из функции
+			return;
+		}
 		// Если рукопожатие не выполнено
 		if(!reinterpret_cast <http_t *> (&ws->http)->isHandshake()){
 			// Добавляем полученные данные в буфер
@@ -626,6 +633,10 @@ void awh::client::WebSocket::readProxyCallback(const char * buffer, const size_t
  * @param message сообщение с описанием ошибки
  */
 void awh::client::WebSocket::error(const mess_t & message) const noexcept {
+	// Очищаем список буффер бинарных данных
+	const_cast <ws_t *> (this)->buffer.clear();
+	// Очищаем список фрагментированных сообщений
+	const_cast <ws_t *> (this)->fragmes.clear();
 	// Если код ошибки указан
 	if(message.code > 0){
 		// Если сообщение об ошибке пришло
@@ -638,8 +649,7 @@ void awh::client::WebSocket::error(const mess_t & message) const noexcept {
 			else this->log->print("%s [%u]", log_t::flag_t::WARNING, message.text.c_str(), message.code);
 			// Если функция обратного вызова установлена, выводим полученное сообщение
 			if(this->errorFn != nullptr) this->errorFn(message.code, message.text, const_cast <WebSocket *> (this), this->ctx.at(1));
-		// Если функция обратного вызова установлена, выводим только код ошибки
-		} else if(this->errorFn != nullptr) this->errorFn(message.code, "", const_cast <WebSocket *> (this), this->ctx.at(1));
+		}
 	}
 }
 /**

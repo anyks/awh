@@ -211,6 +211,8 @@ awh::mess_t awh::Frame::message(const vector <char> & buffer) const noexcept {
 				if(buffer.size() > sizeof(result.code))
 					// Извлекаем текст сообщения
 					result.text.assign(buffer.begin() + sizeof(result.code), buffer.end());
+				// Иначе запоминаем, что текст не установлен
+				else result.text.clear();
 			// Выполняем прехват ошибки
 			} catch(const exception & error) {
 				// Выводим в лог сообщение

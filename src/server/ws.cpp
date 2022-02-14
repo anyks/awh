@@ -184,6 +184,13 @@ void awh::server::WebSocket::readCallback(const char * buffer, const size_t size
 		workerWS_t::adjp_t * adj = const_cast <workerWS_t::adjp_t *> (ws->worker.getAdj(aid));
 		// Если параметры подключения адъютанта получены
 		if(adj != nullptr){
+			// Если подключение закрыто
+			if(adj->close){
+				// Принудительно выполняем отключение лкиента
+				reinterpret_cast <server::core_t *> (core)->close(aid);
+				// Выходим из функции
+				return;
+			}
 			// Объект сообщения
 			mess_t mess;
 			// Если рукопожатие не выполнено
@@ -497,6 +504,15 @@ void awh::server::WebSocket::writeCallback(const char * buffer, const size_t siz
  * @param message сообщение с описанием ошибки
  */
 void awh::server::WebSocket::error(const size_t aid, const mess_t & message) const noexcept {
+	// Получаем параметры подключения адъютанта
+	workerWS_t::adjp_t * adj = const_cast <workerWS_t::adjp_t *> (this->worker.getAdj(aid));
+	// Если отправка сообщений разблокированна
+	if(adj != nullptr){
+		// Очищаем список буффер бинарных данных
+		adj->buffer.clear();
+		// Очищаем список фрагментированных сообщений
+		adj->fragmes.clear();
+	}
 	// Если идентификатор адъютанта передан и код ошибки указан
 	if((aid > 0) && (message.code > 0)){
 		// Если сообщение об ошибке пришло
@@ -509,8 +525,7 @@ void awh::server::WebSocket::error(const size_t aid, const mess_t & message) con
 			else this->log->print("%s [%u]", log_t::flag_t::WARNING, message.text.c_str(), message.code);
 			// Если функция обратного вызова установлена, выводим полученное сообщение
 			if(this->errorFn != nullptr) this->errorFn(aid, message.code, message.text, const_cast <WebSocket *> (this), this->ctx.at(1));
-		// Если функция обратного вызова установлена, выводим только код ошибки
-		} else if(this->errorFn != nullptr) this->errorFn(aid, message.code, "", const_cast <WebSocket *> (this), this->ctx.at(1));
+		}
 	}
 }
 /**
