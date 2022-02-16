@@ -374,8 +374,6 @@ const awh::Core::sockaddr_t awh::Core::sockaddr(const string & ip, const u_int p
 void awh::Core::bind(Core * core) noexcept {
 	// Если модуль ядра передан
 	if(core != nullptr){
-		// Выполняем блокировку потока
-		this->locker.main.lock();
 		// Устанавливаем базу событий
 		core->base = this->base;
 		// Выполняем блокировку инициализации базы событий
@@ -394,12 +392,9 @@ void awh::Core::bind(Core * core) noexcept {
 			core->dns4.replaceServers(core->net.v4.second);
 			// Выполняем установку нейм-серверов для DNS резолвера IPv6
 			core->dns6.replaceServers(core->net.v6.second);
-			// Выполняем разблокировку потока
-			this->locker.main.unlock();
 			// Выполняем запуск управляющей функции
 			run(0, -1, core);
-		// Выполняем разблокировку потока
-		} else this->locker.main.unlock();
+		}
 	}
 }
 /**
@@ -409,8 +404,6 @@ void awh::Core::bind(Core * core) noexcept {
 void awh::Core::unbind(Core * core) noexcept {
 	// Если модуль ядра передан
 	if(core != nullptr){
-		// Выполняем блокировку потока
-		const lock_guard <mutex> lock(this->locker.main);
 		// Если база событий подключена
 		if(core->base != nullptr){
 			// Отключаем всех клиентов
@@ -542,8 +535,6 @@ bool awh::Core::working() const noexcept {
  * @return       идентификатор воркера в биндинге
  */
 size_t awh::Core::add(const worker_t * worker) noexcept {
-	// Выполняем блокировку потока
-	const lock_guard <mutex> lock(this->locker.main);
 	// Результат работы функции
 	size_t result = 0;
 	// Если воркер передан и URL адрес существует
@@ -556,8 +547,12 @@ size_t awh::Core::add(const worker_t * worker) noexcept {
 		wrk->core = this;
 		// Устанавливаем идентификатор воркера
 		wrk->wid = result;
+		// Выполняем блокировку потока
+		this->locker.main.lock();
 		// Добавляем воркер в список
 		this->workers.emplace(result, wrk);
+		// Выполняем разблокировку потока
+		this->locker.main.unlock();
 	}
 	// Выводим результат
 	return result;
@@ -812,6 +807,8 @@ void awh::Core::setMark(const method_t method, const size_t min, const size_t ma
 void awh::Core::clearTimers() noexcept {
 	// Если список таймеров существует
 	if(!this->timers.empty()){
+		// Выполняем блокировку потока
+		const lock_guard <mutex> lock(this->locker.main);
 		// Переходим по всем таймерам
 		for(auto it = this->timers.begin(); it != this->timers.end();){
 			// Очищаем объект таймаута базы событий
@@ -828,16 +825,21 @@ void awh::Core::clearTimers() noexcept {
  * @param id идентификатор таймера для очистки
  */
 void awh::Core::clearTimer(const u_short id) noexcept {
-	// Выполняем поиск идентификатора таймера
-	auto it = this->timers.find(id);
-	// Если идентификатор таймера найден
-	if(it != this->timers.end()){
-		// Очищаем объект таймаута базы событий
-		evutil_timerclear(&it->second.tv);
-		// Удаляем событие таймера
-		event_del(&it->second.ev);
-		// Удаляем объект таймера
-		this->timers.erase(it);
+	// Если список таймеров существует
+	if(!this->timers.empty()){
+		// Выполняем блокировку потока
+		const lock_guard <mutex> lock(this->locker.main);
+		// Выполняем поиск идентификатора таймера
+		auto it = this->timers.find(id);
+		// Если идентификатор таймера найден
+		if(it != this->timers.end()){
+			// Очищаем объект таймаута базы событий
+			evutil_timerclear(&it->second.tv);
+			// Удаляем событие таймера
+			event_del(&it->second.ev);
+			// Удаляем объект таймера
+			this->timers.erase(it);
+		}
 	}
 }
 /**
@@ -852,8 +854,12 @@ u_short awh::Core::setTimeout(void * ctx, const time_t delay, function <void (co
 	u_short result = 0;
 	// Если данные переданы
 	if((delay > 0) && (callback != nullptr) && (this->base != nullptr)){
+		// Выполняем блокировку потока
+		this->locker.main.lock();
 		// Создаём объект таймера
 		auto ret = this->timers.emplace(this->timers.size() + 1, timer_t());
+		// Выполняем разблокировку потока
+		this->locker.main.unlock();
 		// Получаем идентификатор таймера
 		result = ret.first->first;
 		// Устанавливаем передаваемый контекст
@@ -888,8 +894,12 @@ u_short awh::Core::setInterval(void * ctx, const time_t delay, function <void (c
 	u_short result = 0;
 	// Если данные переданы
 	if((delay > 0) && (callback != nullptr) && (this->base != nullptr)){
+		// Выполняем блокировку потока
+		this->locker.main.lock();
 		// Создаём объект таймера
 		auto ret = this->timers.emplace(this->timers.size() + 1, timer_t());
+		// Выполняем разблокировку потока
+		this->locker.main.unlock();
 		// Получаем идентификатор таймера
 		result = ret.first->first;
 		// Устанавливаем передаваемый контекст
