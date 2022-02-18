@@ -225,7 +225,7 @@ void awh::server::Proxy::connectServerCallback(const size_t aid, const size_t wi
 		// Создаём пару клиента и сервера
 		proxy->worker.pairs.emplace(adj->worker.wid, aid);
 		// Если функция обратного вызова установлена, выполняем
-		if(proxy->openStopFn != nullptr) proxy->openStopFn(aid, mode_t::CONNECT, proxy, proxy->ctx.at(0));
+		if(proxy->activeFn != nullptr) proxy->activeFn(aid, mode_t::CONNECT, proxy, proxy->ctx.at(0));
 	}
 }
 /**
@@ -742,7 +742,7 @@ void awh::server::Proxy::on(void * ctx, function <void (const size_t, const mode
 	// Устанавливаем контекст передаваемого объекта
 	this->ctx.at(0) = ctx;
 	// Устанавливаем функцию запуска и остановки
-	this->openStopFn = callback;
+	this->activeFn = callback;
 }
 /**
  * on Метод установки функции обратного вызова на событие получения сообщений
@@ -988,7 +988,7 @@ void awh::server::Proxy::close(const size_t aid) noexcept {
 	// Отключаем клиента от сервера
 	reinterpret_cast <awh::core_t *> (&this->core.server)->close(aid);
 	// Если функция обратного вызова установлена, выполняем
-	if(this->openStopFn != nullptr) this->openStopFn(aid, mode_t::DISCONNECT, this, this->ctx.at(0));
+	if(this->activeFn != nullptr) this->activeFn(aid, mode_t::DISCONNECT, this, this->ctx.at(0));
 }
 /**
  * setRealm Метод установки название сервера

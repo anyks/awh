@@ -129,7 +129,7 @@ void awh::server::Rest::connectCallback(const size_t aid, const size_t wid, awh:
 			}
 		}
 		// Если функция обратного вызова установлена, выполняем
-		if(web->openStopFn != nullptr) web->openStopFn(aid, mode_t::CONNECT, web, web->ctx.at(0));
+		if(web->activeFn != nullptr) web->activeFn(aid, mode_t::CONNECT, web, web->ctx.at(0));
 	}
 }
 /**
@@ -151,7 +151,7 @@ void awh::server::Rest::disconnectCallback(const size_t aid, const size_t wid, a
 		// Выполняем удаление параметров адъютанта
 		web->worker.removeAdj(aid);
 		// Если функция обратного вызова установлена, выполняем
-		if(web->openStopFn != nullptr) web->openStopFn(aid, mode_t::DISCONNECT, web, web->ctx.at(0));
+		if(web->activeFn != nullptr) web->activeFn(aid, mode_t::DISCONNECT, web, web->ctx.at(0));
 	}
 }
 /**
@@ -347,7 +347,7 @@ void awh::server::Rest::on(void * ctx, function <void (const size_t, const mode_
 	// Устанавливаем контекст передаваемого объекта
 	this->ctx.at(0) = ctx;
 	// Устанавливаем функцию запуска и остановки
-	this->openStopFn = callback;
+	this->activeFn = callback;
 }
 /**
  * on Метод установки функции обратного вызова на событие получения сообщений

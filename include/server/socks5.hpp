@@ -100,7 +100,7 @@ namespace awh {
 				const log_t * log = nullptr;
 			private:
 				// Функция обратного вызова, при запуске или остановки подключения к серверу
-				function <void (const size_t, const mode_t, ProxySocks5 *, void *)> openStopFn = nullptr;
+				function <void (const size_t, const mode_t, ProxySocks5 *, void *)> activeFn = nullptr;
 				// Функция обратного вызова, при получении сообщения в бинарном виде с сервера
 				function <bool (const size_t, const event_t, const char *, const size_t, ProxySocks5 *, void *)> binaryFn = nullptr;
 			private:

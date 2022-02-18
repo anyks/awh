@@ -183,7 +183,7 @@ void awh::client::WebSocket::connectProxyCallback(const size_t aid, const size_t
  * @param core   объект биндинга TCP/IP
  * @param ctx    передаваемый контекст модуля
  */
-void awh::client::WebSocket::readCallback(const char * buffer, const size_t size, const size_t aid, const size_t wid, awh::core_t * core, void * ctx) noexcept {
+void awh::client::WebSocket::readCallback(const char * buffer, const size_t size, const size_t aid, const size_t wid, awh::core_t * core, void * ctx) noexcept {	
 	// Если данные существуют
 	if((buffer != nullptr) && (size > 0) && (aid > 0) && (wid > 0)){
 		// Объект сообщения
@@ -202,7 +202,7 @@ void awh::client::WebSocket::readCallback(const char * buffer, const size_t size
 			// Добавляем полученные данные в буфер
 			ws->buffer.insert(ws->buffer.end(), buffer, buffer + size);
 			// Выполняем парсинг полученных данных
-			ws->http.parse(ws->buffer.data(), ws->buffer.size());
+			size_t bytes = ws->http.parse(ws->buffer.data(), ws->buffer.size());
 			// Если все данные получены
 			if(ws->http.isEnd()){
 				// Выполняем сброс данных буфера
@@ -283,7 +283,11 @@ void awh::client::WebSocket::readCallback(const char * buffer, const size_t size
 							// Выводим в лог сообщение
 							if(!ws->noinfo) ws->log->print("%s", log_t::flag_t::INFO, "authorization on the WebSocket server was successful");
 							// Если функция обратного вызова установлена, выполняем
-							if(ws->openStopFn != nullptr) ws->openStopFn(mode_t::CONNECT, ws, ws->ctx.at(0));
+							if(ws->activeFn != nullptr) ws->activeFn(mode_t::CONNECT, ws, ws->ctx.at(0));
+							// Есла данных передано больше чем обработано
+							if(size > bytes)
+								// Выполняем обработку дальше
+								readCallback(buffer + bytes, size - bytes, aid, wid, core, ctx);
 							// Завершаем работу
 							return;
 						// Сообщаем, что рукопожатие не выполнено
@@ -794,7 +798,7 @@ void awh::client::WebSocket::on(void * ctx, function <void (const mode_t, WebSoc
 	// Устанавливаем контекст передаваемого объекта
 	this->ctx.at(0) = ctx;
 	// Устанавливаем функцию запуска и остановки
-	this->openStopFn = callback;
+	this->activeFn = callback;
 }
 /**
  * on Метод установки функции обратного вызова на событие получения ошибок
@@ -1011,7 +1015,7 @@ void awh::client::WebSocket::stop() noexcept {
 			this->worker.alive = alive;
 		}
 		// Если функция обратного вызова установлена, выполняем
-		if(this->openStopFn != nullptr) this->openStopFn(mode_t::DISCONNECT, this, this->ctx.at(0));
+		if(this->activeFn != nullptr) this->activeFn(mode_t::DISCONNECT, this, this->ctx.at(0));
 	}
 }
 /**

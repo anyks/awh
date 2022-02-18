@@ -120,7 +120,7 @@ namespace awh {
 				function <void (const vector <char> &, const awh::http_t *, void *)> chunkingFn = nullptr;
 			private:
 				// Функция обратного вызова, при запуске или остановки подключения к серверу
-				function <void (const size_t, const mode_t, Rest *, void *)> openStopFn = nullptr;
+				function <void (const size_t, const mode_t, Rest *, void *)> activeFn = nullptr;
 				// Функция обратного вызова, при получении сообщения с сервера
 				function <void (const size_t, const awh::http_t *, Rest *, void *)> messageFn = nullptr;
 			private:

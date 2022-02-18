@@ -164,7 +164,7 @@ void awh::server::ProxySocks5::connectServerCallback(const size_t aid, const siz
 		// Устанавливаем URL адрес запроса
 		adj->socks5.setUrl(adj->worker.url);
 		// Если функция обратного вызова установлена, выполняем
-		if(proxy->openStopFn != nullptr) proxy->openStopFn(aid, mode_t::CONNECT, proxy, proxy->ctx.at(0));
+		if(proxy->activeFn != nullptr) proxy->activeFn(aid, mode_t::CONNECT, proxy, proxy->ctx.at(0));
 	}
 }
 /**
@@ -400,7 +400,7 @@ void awh::server::ProxySocks5::on(void * ctx, function <void (const size_t, cons
 	// Устанавливаем контекст передаваемого объекта
 	this->ctx.at(0) = ctx;
 	// Устанавливаем функцию запуска и остановки
-	this->openStopFn = callback;
+	this->activeFn = callback;
 }
 /**
  * on Метод установки функции обратного вызова на событие получения сообщений в бинарном виде
@@ -488,7 +488,7 @@ void awh::server::ProxySocks5::close(const size_t aid) noexcept {
 	// Отключаем клиента от сервера
 	reinterpret_cast <awh::core_t *> (&this->core.server)->close(aid);
 	// Если функция обратного вызова установлена, выполняем
-	if(this->openStopFn != nullptr) this->openStopFn(aid, mode_t::DISCONNECT, this, this->ctx.at(0));
+	if(this->activeFn != nullptr) this->activeFn(aid, mode_t::DISCONNECT, this, this->ctx.at(0));
 }
 /**
  * setMode Метод установки флага модуля

@@ -97,9 +97,9 @@ void awh::client::Rest::connectCallback(const size_t aid, const size_t wid, awh:
 			}
 		}
 		// Если функция обратного вызова существует
-		if(web->openStopFn != nullptr)
+		if(web->activeFn != nullptr)
 			// Выполняем функцию обратного вызова
-			web->openStopFn(mode_t::CONNECT, web, web->ctx.at(0));
+			web->activeFn(mode_t::CONNECT, web, web->ctx.at(0));
 	}
 }
 /**
@@ -128,9 +128,9 @@ void awh::client::Rest::disconnectCallback(const size_t aid, const size_t wid, a
 			}
 		}
 		// Если функция обратного вызова существует
-		if(web->openStopFn != nullptr)
+		if(web->activeFn != nullptr)
 			// Выполняем функцию обратного вызова
-			web->openStopFn(mode_t::DISCONNECT, web, web->ctx.at(0));
+			web->activeFn(mode_t::DISCONNECT, web, web->ctx.at(0));
 		// Если функция обратного вызова установлена, выводим сообщение
 		if((res.code == 0) && (web->messageFn != nullptr)){
 			// Устанавливаем код ответа сервера
@@ -1240,7 +1240,7 @@ void awh::client::Rest::on(void * ctx, function <void (const mode_t, Rest *, voi
 	// Устанавливаем контекст передаваемого объекта
 	this->ctx.at(0) = ctx;
 	// Устанавливаем функцию обратного вызова
-	this->openStopFn = callback;
+	this->activeFn = callback;
 }
 /**
  * on Метод установки функции обратного вызова при получении сообщения

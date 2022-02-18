@@ -129,7 +129,7 @@ namespace awh {
 				const client::core_t * core = nullptr;
 			private:
 				// Функция обратного вызова, при запуске или остановки подключения к серверу
-				function <void (const mode_t, WebSocket *, void *)> openStopFn = nullptr;
+				function <void (const mode_t, WebSocket *, void *)> activeFn = nullptr;
 				// Функция обратного вызова, при получении ошибки работы клиента
 				function <void (const u_int, const string &, WebSocket *, void *)> errorFn = nullptr;
 				// Функция обратного вызова, при получении сообщения с сервера

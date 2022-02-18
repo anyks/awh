@@ -131,7 +131,7 @@ namespace awh {
 				const client::core_t * core = nullptr;
 			private:
 				// Функция обратного вызова при подключении/отключении
-				function <void (const mode_t, Rest *, void *)> openStopFn = nullptr;
+				function <void (const mode_t, Rest *, void *)> activeFn = nullptr;
 				// Функция обратного вызова, вывода сообщения при его получении
 				function <void (const res_t &, Rest *, void *)> messageFn = nullptr;
 			private:

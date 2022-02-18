@@ -146,7 +146,7 @@ namespace awh {
 				function <void (const vector <char> &, const http_t *, void *)> chunkingFn = nullptr;
 			private:
 				// Функция обратного вызова, при запуске или остановки подключения к серверу
-				function <void (const size_t, const mode_t, Proxy *, void *)> openStopFn = nullptr;
+				function <void (const size_t, const mode_t, Proxy *, void *)> activeFn = nullptr;
 				// Функция обратного вызова, при получении сообщения с сервера
 				function <bool (const size_t, const event_t, http_t *, Proxy *, void *)> messageFn = nullptr;
 				// Функция обратного вызова, при получении сообщения в бинарном виде с сервера

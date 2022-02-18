@@ -141,7 +141,7 @@ void awh::server::WebSocket::disconnectCallback(const size_t aid, const size_t w
 		// Выполняем удаление параметров адъютанта
 		ws->worker.removeAdj(aid);
 		// Если функция обратного вызова установлена, выполняем
-		if(ws->openStopFn != nullptr) ws->openStopFn(aid, mode_t::DISCONNECT, ws, ws->ctx.at(0));
+		if(ws->activeFn != nullptr) ws->activeFn(aid, mode_t::DISCONNECT, ws, ws->ctx.at(0));
 	}
 }
 /**
@@ -198,7 +198,7 @@ void awh::server::WebSocket::readCallback(const char * buffer, const size_t size
 				// Добавляем полученные данные в буфер
 				adj->buffer.insert(adj->buffer.end(), buffer, buffer + size);
 				// Выполняем парсинг полученных данных
-				adj->http.parse(adj->buffer.data(), adj->buffer.size());
+				size_t bytes = adj->http.parse(adj->buffer.data(), adj->buffer.size());
 				// Если все данные получены
 				if(adj->http.isEnd()){
 					// Выполняем сброс данных буфера
@@ -281,7 +281,11 @@ void awh::server::WebSocket::readCallback(const char * buffer, const size_t size
 									// Отправляем сообщение клиенту
 									core->write(response.data(), response.size(), aid);
 									// Если функция обратного вызова установлена, выполняем
-									if(ws->openStopFn != nullptr) ws->openStopFn(aid, mode_t::CONNECT, ws, ws->ctx.at(0));
+									if(ws->activeFn != nullptr) ws->activeFn(aid, mode_t::CONNECT, ws, ws->ctx.at(0));
+									// Есла данных передано больше чем обработано
+									if(size > bytes)
+										// Выполняем обработку дальше
+										readCallback(buffer + bytes, size - bytes, aid, wid, core, ctx);
 									// Завершаем работу
 									return;
 								// Выполняем реджект
@@ -668,7 +672,7 @@ void awh::server::WebSocket::on(void * ctx, function <void (const size_t, const 
 	// Устанавливаем контекст передаваемого объекта
 	this->ctx.at(0) = ctx;
 	// Устанавливаем функцию запуска и остановки
-	this->openStopFn = callback;
+	this->activeFn = callback;
 }
 /**
  * on Метод установки функции обратного вызова на событие получения ошибок
