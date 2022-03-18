@@ -109,24 +109,32 @@ string awh::Framework::trim(const string & text) const noexcept {
 string awh::Framework::convert(const wstring & str) const noexcept {
 	// Результат работы функции
 	string result = "";
-	// Если строка передана
-	if(!str.empty()){
-// Если используется BOOST
-#ifdef USE_BOOST_CONVERT
-		// Объявляем конвертер
-		using boost::locale::conv::utf_to_utf;
-		// Выполняем конвертирование в utf-8 строку
-		result = utf_to_utf <char> (str.c_str(), str.c_str() + str.size());
-// Если нужно использовать стандартную библиотеку
-#else
-		// Устанавливаем тип для конвертера UTF-8
-		using convert_type = codecvt_utf8 <wchar_t, 0x10ffff, little_endian>;
-		// Объявляем конвертер
-		wstring_convert <convert_type, wchar_t> conv;
-		// wstring_convert <codecvt_utf8 <wchar_t>> conv;
-		// Выполняем конвертирование в utf-8 строку
-		result = conv.to_bytes(str);
-#endif
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		// Если строка передана
+		if(!str.empty()){
+			// Если используется BOOST
+			#ifdef USE_BOOST_CONVERT
+				// Объявляем конвертер
+				using boost::locale::conv::utf_to_utf;
+				// Выполняем конвертирование в utf-8 строку
+				result = utf_to_utf <char> (str.c_str(), str.c_str() + str.size());
+			// Если нужно использовать стандартную библиотеку
+			#else
+				// Устанавливаем тип для конвертера UTF-8
+				using convert_type = codecvt_utf8 <wchar_t, 0x10ffff, little_endian>;
+				// Объявляем конвертер
+				wstring_convert <convert_type, wchar_t> conv;
+				// wstring_convert <codecvt_utf8 <wchar_t>> conv;
+				// Выполняем конвертирование в utf-8 строку
+				result = conv.to_bytes(str);
+			#endif
+		}
+	// Если возникает ошибка
+	} catch(const range_error & error) {
+		/* Пропускаем возникшую ошибку */
 	}
 	// Выводим результат
 	return result;
@@ -143,13 +151,16 @@ string awh::Framework::toLower(const string & str) const noexcept {
 	if(!str.empty()){
 		// Получаем временную строку
 		wstring tmp = this->convert(result);
-		// Выполняем приведение к нижнему регистру
-		transform(tmp.begin(), tmp.end(), tmp.begin(), [](wchar_t c){
-			// Приводим к нижнему регистру каждую букву
-			return towlower(c);
-		});
-		// Конвертируем обратно
-		result = this->convert(tmp);
+		// Если конвертация прошла успешно
+		if(!tmp.empty()){
+			// Выполняем приведение к нижнему регистру
+			transform(tmp.begin(), tmp.end(), tmp.begin(), [](wchar_t c){
+				// Приводим к нижнему регистру каждую букву
+				return towlower(c);
+			});
+			// Конвертируем обратно
+			result = this->convert(tmp);
+		}
 	}
 	// Выводим результат
 	return result;
@@ -166,13 +177,16 @@ string awh::Framework::toUpper(const string & str) const noexcept {
 	if(!str.empty()){
 		// Получаем временную строку
 		wstring tmp = this->convert(result);
-		// Выполняем приведение к верхнему регистру
-		transform(tmp.begin(), tmp.end(), tmp.begin(), [](wchar_t c){
-			// Приводим к верхнему регистру каждую букву
-			return towupper(c);
-		});
-		// Конвертируем обратно
-		result = this->convert(tmp);
+		// Если конвертация прошла успешно
+		if(!tmp.empty()){
+			// Выполняем приведение к верхнему регистру
+			transform(tmp.begin(), tmp.end(), tmp.begin(), [](wchar_t c){
+				// Приводим к верхнему регистру каждую букву
+				return towupper(c);
+			});
+			// Конвертируем обратно
+			result = this->convert(tmp);
+		}
 	}
 	// Выводим результат
 	return result;
@@ -498,22 +512,30 @@ wstring awh::Framework::trim(const wstring & text) const noexcept {
 wstring awh::Framework::convert(const string & str) const noexcept {
 		// Результат работы функции
 	wstring result = L"";
-	// Если строка передана
-	if(!str.empty()){
-// Если используется BOOST
-#ifdef USE_BOOST_CONVERT
-		// Объявляем конвертер
-		using boost::locale::conv::utf_to_utf;
-		// Выполняем конвертирование в utf-8 строку
-		result = utf_to_utf <wchar_t> (str.c_str(), str.c_str() + str.size());
-// Если нужно использовать стандартную библиотеку
-#else
-		// Объявляем конвертер
-		// wstring_convert <codecvt_utf8 <wchar_t>> conv;
-		wstring_convert <codecvt_utf8_utf16 <wchar_t, 0x10ffff, little_endian>> conv;
-		// Выполняем конвертирование в utf-8 строку
-		result = conv.from_bytes(str);
-#endif
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		// Если строка передана
+		if(!str.empty()){
+			// Если используется BOOST
+			#ifdef USE_BOOST_CONVERT
+				// Объявляем конвертер
+				using boost::locale::conv::utf_to_utf;
+				// Выполняем конвертирование в utf-8 строку
+				result = utf_to_utf <wchar_t> (str.c_str(), str.c_str() + str.size());
+			// Если нужно использовать стандартную библиотеку
+			#else
+				// Объявляем конвертер
+				// wstring_convert <codecvt_utf8 <wchar_t>> conv;
+				wstring_convert <codecvt_utf8_utf16 <wchar_t, 0x10ffff, little_endian>> conv;
+				// Выполняем конвертирование в utf-8 строку
+				result = conv.from_bytes(str);
+			#endif
+		}
+	// Если возникает ошибка
+	} catch(const range_error & error) {
+		/* Пропускаем возникшую ошибку */
 	}
 	// Выводим результат
 	return result;
