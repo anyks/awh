@@ -221,90 +221,63 @@ const vector <char> awh::Hash::compress(const char * buffer, const size_t size) 
 	if((buffer != nullptr) && (size > 0)){
 		// Создаем поток zip
 		z_stream zs = {0};
-		// Заполняем его нулями
-		memset(&zs, 0, sizeof(zs));
 		// Обнуляем структуру
-		zs.zalloc = Z_NULL;
 		zs.zfree  = Z_NULL;
+		zs.zalloc = Z_NULL;
 		zs.opaque = Z_NULL;
-		// Буфер входных данных
-		uint8_t inbuff[CHUNK_BUFFER_SIZE];
-		// Буфер выходных данных
-		uint8_t outbuff[CHUNK_BUFFER_SIZE];
+		// Буфер выходных данных		
+		vector <uint8_t> output(size, 0);
 		// Если поток инициализировать не удалось, выходим
 		if(this->takeOverCompress || (deflateInit2(&zs, Z_DEFAULT_COMPRESSION, Z_DEFLATED, -1 * this->wbit, DEFAULT_MEM_LEVEL, Z_HUFFMAN_ONLY) == Z_OK)){
-			// Количество оставшихся байт
-			uint32_t nbytes = 0;
-			// Смещение в буфере и размеры доанных
-			size_t offset = 0, count = 0, avail = 0;
-			// Переменная сброса данных
-			int flush = Z_SYNC_FLUSH;
+			// Результат проверки декомпрессии
+			int rv = 0;
+			// Если поток декомпрессора не создан ранее
+			if(!this->takeOverCompress){
+				// Устанавливаем количество доступных данных
+				zs.avail_in = size;
+				// Устанавливаем буфер с данными для шифрования
+				zs.next_in = (Bytef *) buffer;
+			// Если нужно переиспользовать поток декомпрессора
+			} else {
+				// Устанавливаем количество доступных данных
+				this->zdef.avail_in = size;
+				// Устанавливаем буфер с данными для шифрования
+				this->zdef.next_in = (Bytef *) buffer;
+			}
 			/**
-			 * Выполняем перебор всех данных
+			 * Выполняем компрессию всех данных
 			 */
 			do {
-				// Заполняем нулями буфер входящих данных
-				memset(inbuff, 0, sizeof(inbuff));
-				// Заполняем нулями буфер исходящих данных
-				memset(outbuff, 0, sizeof(outbuff));
-				// Получаем размер доступных данных
-				count = (size - offset);
-				// Высчитываем количество доступных данных
-				avail = (count > CHUNK_BUFFER_SIZE ? CHUNK_BUFFER_SIZE : count);
 				// Если поток декомпрессора не создан ранее
 				if(!this->takeOverCompress){
-					// Устанавливаем количество доступных данных
-					zs.avail_in = avail;
-					// Копируем в буфер данные для шифрования
-					memcpy(inbuff, buffer + offset, zs.avail_in);
-					// Определяем закончено ли шифрование
-					flush = (count > 0 ? Z_SYNC_FLUSH : Z_FINISH);
-					// Устанавливаем буфер с данными для шифрования
-					zs.next_in = inbuff;
+					// Устанавливаем буфер для записи шифрованных данных
+					zs.next_out = output.data();
+					// Устанавливаем количество доступных данных для записи
+					zs.avail_out = output.size();
+					// Выполняем сжатие данных
+					rv = deflate(&zs, Z_SYNC_FLUSH);
 				// Если нужно переиспользовать поток декомпрессора
 				} else {
-					// Устанавливаем количество доступных данных
-					this->zdef.avail_in = avail;
-					// Копируем в буфер данные для шифрования
-					memcpy(inbuff, buffer + offset, this->zdef.avail_in);
-					// Определяем закончено ли шифрование
-					flush = (count > 0 ? Z_FULL_FLUSH : Z_FINISH);
-					// Устанавливаем буфер с данными для шифрования
-					this->zdef.next_in = inbuff;
+					// Устанавливаем буфер для записи шифрованных данных
+					this->zdef.next_out = output.data();
+					// Устанавливаем количество доступных данных для записи
+					this->zdef.avail_out = output.size();
+					// Выполняем сжатие данных
+					rv = deflate(&this->zdef, Z_FULL_FLUSH);
 				}
-				/**
-				 * Выполняем компрессию всех данных
-				 */
-				do {
-					// Если поток декомпрессора не создан ранее
-					if(!this->takeOverCompress){
-						// Устанавливаем буфер для записи шифрованных данных
-						zs.next_out = outbuff;
-						// Устанавливаем количество доступных данных для записи
-						zs.avail_out = CHUNK_BUFFER_SIZE;
-						// Выполняем шифрование данных
-						deflate(&zs, flush);
-						// Получаем количество оставшихся байт
-						nbytes = (CHUNK_BUFFER_SIZE - zs.avail_out);
-					// Если нужно переиспользовать поток декомпрессора
-					} else {
-						// Устанавливаем буфер для записи шифрованных данных
-						this->zdef.next_out = outbuff;
-						// Устанавливаем количество доступных данных для записи
-						this->zdef.avail_out = CHUNK_BUFFER_SIZE;
-						// Выполняем шифрование данных
-						deflate(&this->zdef, flush);
-						// Получаем количество оставшихся байт
-						nbytes = (CHUNK_BUFFER_SIZE - this->zdef.avail_out);
-					}
-					// Добавляем оставшиеся данные в список
-					result.insert(result.end(), outbuff, outbuff + nbytes);
-				// Если все данные уже сжаты
-				} while(!this->takeOverCompress ? (zs.avail_out == 0) : (this->zdef.avail_out == 0));
-				// Увеличиваем смещение в буфере
-				offset += avail;
-			// Если шифрование не зашифрованы
-			} while(flush != Z_FINISH);
+				// Если произошла ошибка дешифровки
+				if((rv != Z_OK) && (rv != Z_STREAM_END)){
+					// Выполняем сброс фрейма
+					if(deflateReset(!this->takeOverDecompress ? &zs : &this->zinf) != Z_OK)
+						// Выводим сообщение об ошибке
+						this->log->print("deflate reset failed: %d", log_t::flag_t::CRITICAL, rv);
+					// Пропускаем блок
+					continue;
+				}
+				// Добавляем оставшиеся данные в список
+				result.insert(result.end(), output.begin(), output.begin() + (!this->takeOverDecompress ? zs.total_out : this->zinf.total_out));
+			// Если все данные уже сжаты
+			} while(!this->takeOverCompress ? (zs.avail_out == 0) : (this->zdef.avail_out == 0));
 			// Закрываем поток
 			if(!this->takeOverCompress) deflateEnd(&zs);
 		}
@@ -325,103 +298,63 @@ const vector <char> awh::Hash::decompress(const char * buffer, const size_t size
 	if((buffer != nullptr) && (size > 0)){
 		// Создаем поток zip
 		z_stream zs = {0};
-		// Заполняем его нулями
-		memset(&zs, 0, sizeof(zs));
 		// Обнуляем структуру
-		zs.avail_in = 0;
-		zs.zalloc   = Z_NULL;
-		zs.zfree    = Z_NULL;
-		zs.opaque   = Z_NULL;
-        zs.next_in  = Z_NULL;
-		// Буфер входных данных
-		uint8_t inbuff[CHUNK_BUFFER_SIZE];
-		// Буфер выходных данных
-		uint8_t outbuff[CHUNK_BUFFER_SIZE];
+		zs.zfree  = Z_NULL;
+		zs.zalloc = Z_NULL;
+		zs.opaque = Z_NULL;
+		// Буфер выходных данных		
+		vector <uint8_t> output(size * 10, 0);
 		// Если поток инициализировать не удалось, выходим
 		if(this->takeOverDecompress || (inflateInit2(&zs, -1 * this->wbit) == Z_OK)){
-			// Количество оставшихся байт
-			uint32_t nbytes = 0;
-			// Смещение в буфере и размеры доанных
-			size_t offset = 0, count = 0, avail = 0;
-			// Переменная сброса данных
-			int flush = Z_NO_FLUSH;
+			// Результат проверки декомпрессии
+			int rv = 0;
+			// Если поток декомпрессора не создан ранее
+			if(!this->takeOverDecompress){
+				// Устанавливаем количество доступных данных
+				zs.avail_in = size;
+				// Копируем входящий буфер для дешифровки
+				zs.next_in = (Bytef *) buffer;
+			// Если нужно переиспользовать поток декомпрессора
+			} else {
+				// Устанавливаем количество доступных данных
+				this->zinf.avail_in = size;
+				// Копируем входящий буфер для дешифровки
+				this->zinf.next_in = (Bytef *) buffer;
+			}
 			/**
-			 * Выполняем перебор всех данных
+			 * Выполняем декомпрессию всех данных
 			 */
 			do {
-				// Заполняем нулями буфер входящих данных
-				memset(inbuff, 0, sizeof(inbuff));
-				// Заполняем нулями буфер исходящих данных
-				memset(outbuff, 0, sizeof(outbuff));
-				// Получаем размер доступных данных
-				count = (size - offset);
-				// Высчитываем количество доступных данных
-				avail = (count > CHUNK_BUFFER_SIZE ? CHUNK_BUFFER_SIZE : count);
 				// Если поток декомпрессора не создан ранее
 				if(!this->takeOverDecompress){
-					// Устанавливаем количество доступных данных
-					zs.avail_in = avail;
-					// Если доступных данных нет
-					if(zs.avail_in == 0) break;
-					// Копируем в буфер данные для дешифрования
-					memcpy(inbuff, buffer + offset, zs.avail_in);
-					// Копируем входящий буфер для дешифровки
-					zs.next_in = inbuff;
+					// Устанавливаем буфер для записи дешифрованных данных
+					zs.next_out = output.data();
+					// Устанавливаем количество доступных данных для записи
+					zs.avail_out = output.size();
+					// Выполняем декомпрессию данных
+					rv = inflate(&zs, Z_NO_FLUSH);
 				// Если нужно переиспользовать поток декомпрессора
 				} else {
-					// Устанавливаем количество доступных данных
-					this->zinf.avail_in = avail;
-					// Если доступных данных нет
-					if(this->zinf.avail_in == 0) break;
-					// Копируем в буфер данные для дешифрования
-					memcpy(inbuff, buffer + offset, this->zinf.avail_in);
-					// Копируем входящий буфер для дешифровки
-					this->zinf.next_in = inbuff;
+					// Устанавливаем буфер для записи дешифрованных данных
+					this->zinf.next_out = output.data();
+					// Устанавливаем количество доступных данных для записи
+					this->zinf.avail_out = output.size();
+					// Выполняем декомпрессию данных
+					rv = inflate(&this->zinf, Z_SYNC_FLUSH);
 				}
-				/**
-				 * Выполняем декомпрессию всех данных
-				 */
-				do {
-					// Если поток декомпрессора не создан ранее
-					if(!this->takeOverDecompress){
-						// Устанавливаем буфер для записи дешифрованных данных
-						zs.next_out = outbuff;
-						// Устанавливаем количество доступных данных для записи
-						zs.avail_out = CHUNK_BUFFER_SIZE;
-						// Выполняем дешифровку данных
-						flush = inflate(&zs, Z_NO_FLUSH);
-					// Если нужно переиспользовать поток декомпрессора
-					} else {
-						// Устанавливаем буфер для записи дешифрованных данных
-						this->zinf.next_out = outbuff;
-						// Устанавливаем количество доступных данных для записи
-						this->zinf.avail_out = CHUNK_BUFFER_SIZE;
-						// Выполняем дешифровку данных
-						flush = inflate(&this->zinf, Z_SYNC_FLUSH);
-					}
-					// Если произошла ошибка дешифровки
-					if((flush != Z_OK) && (flush != Z_STREAM_END)){
-						// Выполняем сброс фрейма
-						if(inflateReset(!this->takeOverDecompress ? &zs : &this->zinf) != Z_OK)
-							// Выводим сообщение об ошибке
-							this->log->print("inflate reset failed: %d", log_t::flag_t::CRITICAL, flush);
-						// Пропускаем блок
-						continue;
-					}
-					// Если поток декомпрессора не создан ранее
-					if(!this->takeOverDecompress)
-						// Получаем количество оставшихся байт
-						nbytes = (CHUNK_BUFFER_SIZE - zs.avail_out);
-					// Если нужно переиспользовать поток декомпрессора
-					else nbytes = (CHUNK_BUFFER_SIZE - this->zinf.avail_out);
-					// Добавляем оставшиеся данные в список
-					result.insert(result.end(), outbuff, outbuff + nbytes);
-				// Если все данные уже дешифрованы
-				} while(!this->takeOverDecompress ? (zs.avail_out == 0) : (this->zinf.avail_out == 0));
-				// Увеличиваем смещение в буфере
-				offset += avail;
-			// Если дешифрование не закончено
-			} while(flush != Z_STREAM_END);
+				// Если произошла ошибка дешифровки
+				if((rv != Z_OK) && (rv != Z_STREAM_END)){
+					// Выполняем сброс фрейма
+					if(inflateReset(!this->takeOverDecompress ? &zs : &this->zinf) != Z_OK)
+						// Выводим сообщение об ошибке
+						this->log->print("inflate reset failed: %d", log_t::flag_t::CRITICAL, rv);
+					// Пропускаем блок
+					continue;
+				}
+				// Добавляем оставшиеся данные в список
+				result.insert(result.end(), output.begin(), output.begin() + (!this->takeOverDecompress ? zs.total_out : this->zinf.total_out));
+			// Если все данные уже дешифрованы
+			} while(!this->takeOverDecompress ? (zs.avail_out == 0) : (this->zinf.avail_out == 0));
 			// Очищаем выделенную память для декомпрессора
 			if(!this->takeOverDecompress) inflateEnd(&zs);
 		}
