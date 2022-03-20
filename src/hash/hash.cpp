@@ -226,7 +226,7 @@ const vector <char> awh::Hash::compress(const char * buffer, const size_t size) 
 		zs.zalloc = Z_NULL;
 		zs.opaque = Z_NULL;
 		// Буфер выходных данных		
-		vector <uint8_t> output(size, 0);
+		vector <u_char> output(size, 0);
 		// Если поток инициализировать не удалось, выходим
 		if(this->takeOverCompress || (deflateInit2(&zs, Z_DEFAULT_COMPRESSION, Z_DEFLATED, -1 * this->wbit, DEFAULT_MEM_LEVEL, Z_HUFFMAN_ONLY) == Z_OK)){
 			// Результат проверки декомпрессии
@@ -275,7 +275,7 @@ const vector <char> awh::Hash::compress(const char * buffer, const size_t size) 
 					continue;
 				}
 				// Добавляем оставшиеся данные в список
-				result.insert(result.end(), output.begin(), output.begin() + (!this->takeOverDecompress ? zs.total_out : this->zinf.total_out));
+				if(!output.empty()) result.insert(result.end(), output.begin(), output.begin() + (!this->takeOverDecompress ? zs.total_out : this->zinf.total_out));
 			// Если все данные уже сжаты
 			} while(!this->takeOverCompress ? (zs.avail_out == 0) : (this->zdef.avail_out == 0));
 			// Закрываем поток
@@ -303,7 +303,7 @@ const vector <char> awh::Hash::decompress(const char * buffer, const size_t size
 		zs.zalloc = Z_NULL;
 		zs.opaque = Z_NULL;
 		// Буфер выходных данных		
-		vector <uint8_t> output(size * 10, 0);
+		vector <u_char> output(size * 10, 0);
 		// Если поток инициализировать не удалось, выходим
 		if(this->takeOverDecompress || (inflateInit2(&zs, -1 * this->wbit) == Z_OK)){
 			// Результат проверки декомпрессии
@@ -352,7 +352,7 @@ const vector <char> awh::Hash::decompress(const char * buffer, const size_t size
 					continue;
 				}
 				// Добавляем оставшиеся данные в список
-				result.insert(result.end(), output.begin(), output.begin() + (!this->takeOverDecompress ? zs.total_out : this->zinf.total_out));
+				if(!output.empty()) result.insert(result.end(), output.begin(), output.begin() + (!this->takeOverDecompress ? zs.total_out : this->zinf.total_out));
 			// Если все данные уже дешифрованы
 			} while(!this->takeOverDecompress ? (zs.avail_out == 0) : (this->zinf.avail_out == 0));
 			// Очищаем выделенную память для декомпрессора
