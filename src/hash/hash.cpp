@@ -230,7 +230,7 @@ const vector <char> awh::Hash::compress(const char * buffer, const size_t size) 
 		// Если поток инициализировать не удалось, выходим
 		if(this->takeOverCompress || (deflateInit2(&zs, Z_DEFAULT_COMPRESSION, Z_DEFLATED, -1 * this->wbit, DEFAULT_MEM_LEVEL, Z_HUFFMAN_ONLY) == Z_OK)){
 			// Результат проверки декомпрессии
-			int rv = 0;
+			int ret = Z_OK;
 			// Если поток декомпрессора не создан ранее
 			if(!this->takeOverCompress){
 				// Устанавливаем количество доступных данных
@@ -255,7 +255,7 @@ const vector <char> awh::Hash::compress(const char * buffer, const size_t size) 
 					// Устанавливаем количество доступных данных для записи
 					zs.avail_out = output.size();
 					// Выполняем сжатие данных
-					rv = deflate(&zs, Z_SYNC_FLUSH);
+					ret = deflate(&zs, Z_SYNC_FLUSH);
 				// Если нужно переиспользовать поток декомпрессора
 				} else {
 					// Устанавливаем буфер для записи шифрованных данных
@@ -263,21 +263,18 @@ const vector <char> awh::Hash::compress(const char * buffer, const size_t size) 
 					// Устанавливаем количество доступных данных для записи
 					this->zdef.avail_out = output.size();
 					// Выполняем сжатие данных
-					rv = deflate(&this->zdef, Z_FULL_FLUSH);
+					ret = deflate(&this->zdef, Z_FULL_FLUSH);
 				}
-				// Если произошла ошибка дешифровки
-				if((rv != Z_OK) && (rv != Z_STREAM_END)){
-					// Выполняем сброс фрейма
-					if(deflateReset(!this->takeOverDecompress ? &zs : &this->zinf) != Z_OK)
-						// Выводим сообщение об ошибке
-						this->log->print("deflate reset failed: %d", log_t::flag_t::CRITICAL, rv);
-					// Пропускаем блок
-					continue;
-				}
-				// Добавляем оставшиеся данные в список
-				if(!output.empty()) result.insert(result.end(), output.begin(), output.begin() + (!this->takeOverDecompress ? zs.total_out : this->zinf.total_out));
+				// Если данные обработаны удачно
+				if((ret == Z_OK) || (ret == Z_STREAM_END)){
+					// Получаем размер полученных данных
+					size_t size = (output.size() - (!this->takeOverDecompress ? zs.avail_out : this->zdef.avail_out));
+					// Добавляем оставшиеся данные в список
+					result.insert(result.end(), output.begin(), output.begin() + size);
+				// Если данные не могут быть обработанны, то выходим
+				} else break;
 			// Если все данные уже сжаты
-			} while(!this->takeOverCompress ? (zs.avail_out == 0) : (this->zdef.avail_out == 0));
+			} while(ret != Z_STREAM_END);
 			// Закрываем поток
 			if(!this->takeOverCompress) deflateEnd(&zs);
 		}
@@ -303,11 +300,11 @@ const vector <char> awh::Hash::decompress(const char * buffer, const size_t size
 		zs.zalloc = Z_NULL;
 		zs.opaque = Z_NULL;
 		// Буфер выходных данных		
-		vector <u_char> output(size * 10, 0);
+		vector <u_char> output(size, 0);
 		// Если поток инициализировать не удалось, выходим
 		if(this->takeOverDecompress || (inflateInit2(&zs, -1 * this->wbit) == Z_OK)){
 			// Результат проверки декомпрессии
-			int rv = 0;
+			int ret = Z_OK;
 			// Если поток декомпрессора не создан ранее
 			if(!this->takeOverDecompress){
 				// Устанавливаем количество доступных данных
@@ -332,7 +329,7 @@ const vector <char> awh::Hash::decompress(const char * buffer, const size_t size
 					// Устанавливаем количество доступных данных для записи
 					zs.avail_out = output.size();
 					// Выполняем декомпрессию данных
-					rv = inflate(&zs, Z_NO_FLUSH);
+					ret = inflate(&zs, Z_NO_FLUSH);
 				// Если нужно переиспользовать поток декомпрессора
 				} else {
 					// Устанавливаем буфер для записи дешифрованных данных
@@ -340,21 +337,18 @@ const vector <char> awh::Hash::decompress(const char * buffer, const size_t size
 					// Устанавливаем количество доступных данных для записи
 					this->zinf.avail_out = output.size();
 					// Выполняем декомпрессию данных
-					rv = inflate(&this->zinf, Z_SYNC_FLUSH);
+					ret = inflate(&this->zinf, Z_SYNC_FLUSH);
 				}
-				// Если произошла ошибка дешифровки
-				if((rv != Z_OK) && (rv != Z_STREAM_END)){
-					// Выполняем сброс фрейма
-					if(inflateReset(!this->takeOverDecompress ? &zs : &this->zinf) != Z_OK)
-						// Выводим сообщение об ошибке
-						this->log->print("inflate reset failed: %d", log_t::flag_t::CRITICAL, rv);
-					// Пропускаем блок
-					continue;
-				}
-				// Добавляем оставшиеся данные в список
-				if(!output.empty()) result.insert(result.end(), output.begin(), output.begin() + (!this->takeOverDecompress ? zs.total_out : this->zinf.total_out));
+				// Если данные обработаны удачно
+				if((ret == Z_OK) || (ret == Z_STREAM_END)){
+					// Получаем размер полученных данных
+					size_t size = (output.size() - (!this->takeOverDecompress ? zs.avail_out : this->zinf.avail_out));
+					// Добавляем оставшиеся данные в список
+					result.insert(result.end(), output.begin(), output.begin() + size);
+				// Если данные не могут быть обработанны, то выходим
+				} else break;
 			// Если все данные уже дешифрованы
-			} while(!this->takeOverDecompress ? (zs.avail_out == 0) : (this->zinf.avail_out == 0));
+			} while(ret != Z_STREAM_END);
 			// Очищаем выделенную память для декомпрессора
 			if(!this->takeOverDecompress) inflateEnd(&zs);
 		}
