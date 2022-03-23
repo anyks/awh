@@ -322,7 +322,7 @@ void awh::DNS::replaceServers(const vector <string> & servers) noexcept {
  */
 void awh::DNS::resolve(void * ctx, const string & host, const int family, function <void (const string, void *)> callback) noexcept {
 	// Если домен передан
-	if(!host.empty() && (this->fmk != nullptr)){
+	if(!host.empty() && (this->fmk != nullptr)){		
 		// Результат работы регулярного выражения
 		smatch match;
 		// Устанавливаем правило регулярного выражения
@@ -342,7 +342,7 @@ void awh::DNS::resolve(void * ctx, const string & host, const int family, functi
 				// Выполняем запрос IP адреса
 				else goto Resolve;
 			// Если доменных имён в кэше больше 1-го
-			} else if(count > 1){
+			} else if(count > 1) {
 				// Индекс полученных IP адресов
 				size_t index = 0;
 				// Список полученных IP адресов
