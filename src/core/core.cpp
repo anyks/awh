@@ -457,12 +457,9 @@ void awh::Core::stop() noexcept {
 			// Нормально завершаем работу базы событий
 			} else event_base_loopexit(this->base, nullptr);
 		// Если разрешено использовать простое чтение базы событий
-		} else {
+		} else if(this->persist)
 			// Если таймер периодического запуска коллбека активирован, удаляем событие интервала
-			if(this->persist) event_del(&this->interval);
-			// Завершаем чтение базы событий
-			this->easy = this->mode;
-		}
+			 event_del(&this->interval);
 	}
 }
 /**
@@ -498,19 +495,21 @@ void awh::Core::start() noexcept {
 		// Если разрешено использовать простое чтение базы событий
 		else {
 			// Выполняем чтение базы событий пока это разрешено
-			while(this->easy){
+			while(this->mode){
 				// Выполняем чтение базы событий
 				event_base_loop(this->base, EVLOOP_NONBLOCK | EVLOOP_ONCE);
 				// Замораживаем поток на период времени частоты обновления базы событий
 				this_thread::sleep_for(this->freq);
 			}
 		}
+		// Выполняем ожидание завершения работы потоков
+		if(this->thr) this->pool.wait();
+		// Выполняем отключение всех адъютантов
+		this->closeAll();
 		// Выполняем сброс модуля DNS резолвера IPv4
 		this->dns4.reset();
 		// Выполняем сброс модуля DNS резолвера IPv6
 		this->dns6.reset();
-		// Выполняем отключение всех адъютантов
-		this->closeAll();
 		// Удаляем объект базы событий
 		event_base_free(this->base);
 		// Очищаем все глобальные переменные
