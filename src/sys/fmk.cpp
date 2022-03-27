@@ -203,8 +203,10 @@ string awh::Framework::smartUpper(const string & str) const noexcept {
 	if(!str.empty()){
 		// Получаем временную строку
 		const wstring & tmp = this->convert(result);
-		// Выполняем перевод символов в верхний регистр
-		result = this->convert(this->smartUpper(tmp));
+		// Если конвертация прошла успешно
+		if(!tmp.empty())
+			// Выполняем перевод символов в верхний регистр
+			result = this->convert(this->smartUpper(tmp));
 	}
 	// Выводим результат
 	return result;
@@ -272,17 +274,20 @@ string awh::Framework::noexp(const double number, const double step) const noexc
 		stream >> result;
 		// Выполняем конвертацию числа
 		wstring number = this->convert(result);
-		// Переходим по всему числу
-		for(auto it = number.begin(); it != number.end();){
-			// Если это первый символ
-			if(it == number.begin() && ((* it) == L'-')) ++it;
-			// Проверяем является ли символ числом
-			else if((this->numsSymbols.arabs.count(* it) > 0) || ((* it) == L'.')) ++it;
-			// Иначе удаляем символ
-			else it = number.erase(it);
+		// Если конвертация прошла успешно
+		if(!number.empty()){
+			// Переходим по всему числу
+			for(auto it = number.begin(); it != number.end();){
+				// Если это первый символ
+				if(it == number.begin() && ((* it) == L'-')) ++it;
+				// Проверяем является ли символ числом
+				else if((this->numsSymbols.arabs.count(* it) > 0) || ((* it) == L'.')) ++it;
+				// Иначе удаляем символ
+				else it = number.erase(it);
+			}
+			// Запоминаем полученный результат
+			result = this->convert(number);
 		}
-		// Запоминаем полученный результат
-		result = this->convert(number);
 	}
 	// Выводим результат
 	return result;
@@ -327,17 +332,20 @@ string awh::Framework::noexp(const double number, const bool onlyNum) const noex
 	if(onlyNum){
 		// Выполняем конвертацию числа
 		wstring number = this->convert(result);
-		// Переходим по всему числу
-		for(auto it = number.begin(); it != number.end();){
-			// Если это первый символ
-			if(it == number.begin() && ((* it) == L'-')) ++it;
-			// Проверяем является ли символ числом
-			else if((this->numsSymbols.arabs.count(* it) > 0) || ((* it) == L'.')) ++it;
-			// Иначе удаляем символ
-			else it = number.erase(it);
+		// Если конвертация прошла успешно
+		if(!number.empty()){
+			// Переходим по всему числу
+			for(auto it = number.begin(); it != number.end();){
+				// Если это первый символ
+				if(it == number.begin() && ((* it) == L'-')) ++it;
+				// Проверяем является ли символ числом
+				else if((this->numsSymbols.arabs.count(* it) > 0) || ((* it) == L'.')) ++it;
+				// Иначе удаляем символ
+				else it = number.erase(it);
+			}
+			// Запоминаем полученный результат
+			result = this->convert(number);
 		}
-		// Запоминаем полученный результат
-		result = this->convert(number);
 	}
 	// Выводим результат
 	return result;
@@ -430,14 +438,19 @@ char awh::Framework::toLower(const char letter) const noexcept {
 	char result = 0;
 	// Если строка передана
 	if(letter > 0){
-		// Строка для конвертации
-		wstring str = L"";
 		// Выполняем конвертирование в utf-8 строку
-		const wchar_t c = this->convert(string{1, letter}).front();
-		// Формируем новую строку
-		str.assign(1, towlower(c));
-		// Выполняем конвертирование в utf-8 строку
-		result = this->convert(str).front();
+		const wstring & tmp = this->convert(string{1, letter});
+		// Если конвертация прошла успешно
+		if(!tmp.empty()){
+			// Строка для конвертации
+			wstring str = L"";
+			// Получаем первый символ строки
+			const wchar_t c = tmp.front();
+			// Формируем новую строку
+			str.assign(1, towlower(c));
+			// Выполняем конвертирование в utf-8 строку
+			result = this->convert(str).front();
+		}
 	}
 	// Выводим результат
 	return result;
@@ -452,14 +465,19 @@ char awh::Framework::toUpper(const char letter) const noexcept {
 	char result = 0;
 	// Если строка передана
 	if(letter > 0){
-		// Строка для конвертации
-		wstring str = L"";
 		// Выполняем конвертирование в utf-8 строку
-		const wchar_t c = this->convert(string{1, letter}).front();
-		// Формируем новую строку
-		str.assign(1, towupper(c));
-		// Выполняем конвертирование в utf-8 строку
-		result = this->convert(str).front();
+		const wstring & tmp = this->convert(string{1, letter});
+		// Если конвертация прошла успешно
+		if(!tmp.empty()){
+			// Строка для конвертации
+			wstring str = L"";
+			// Получаем первый символ строки
+			const wchar_t c = tmp.front();
+			// Формируем новую строку
+			str.assign(1, towupper(c));
+			// Выполняем конвертирование в utf-8 строку
+			result = this->convert(str).front();
+		}
 	}
 	// Выводим результат
 	return result;
