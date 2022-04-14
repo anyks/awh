@@ -45,7 +45,7 @@ namespace awh {
 			 */
 			void setTimeout(Function function, size_t delay) noexcept {
 				// Создаём новый поток
-				thread t([=]{
+				std::thread t([=]{
 					// Устанавливаем флаг разрешающий работу
 					this->token.store(true);
 					// Создаём бесконечный цикл
@@ -74,7 +74,7 @@ namespace awh {
 				// Устанавливаем флаг разрешающий работу
 				this->token.store(true);
 				// Создаём новый поток
-				thread t([=]{
+				std::thread t([=]{
 					// Создаём бесконечный цикл
 					while(this->token.load()){
 						// Усыпляем поток на указанное количество милисекунд

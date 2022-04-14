@@ -99,7 +99,7 @@ namespace awh {
 				// Сообщаем всем что мы завершаем работу
 				this->condition.notify_all();
 				// Ожидаем завершение работы каждого воркера
-				for(thread & worker: this->workers) worker.join();
+				for(auto & worker: this->workers) worker.join();
 				// Если нужно завершить работу всех потоков
 				if(stop){
 					// Очищаем список потоков
