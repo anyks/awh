@@ -1355,7 +1355,7 @@ vector <char> awh::Http::request(const uri_t::url_t & url, const web_t::method_t
 			/**
 			 * Типы основных заголовков
 			 */
-			bool available[11] = {
+			bool available[12] = {
 				false, // Host
 				false, // Accept
 				false, // Origin
@@ -1363,6 +1363,7 @@ vector <char> awh::Http::request(const uri_t::url_t & url, const web_t::method_t
 				false, // Connection
 				false, // Content-Length
 				false, // Accept-Language
+				false, // Accept-Encoding
 				false, // Content-Encoding
 				false, // Transfer-Encoding
 				false, // X-AWH-Encryption
@@ -1450,10 +1451,11 @@ vector <char> awh::Http::request(const uri_t::url_t & url, const web_t::method_t
 						case 3:  available[i] = (head.compare("user-agent") == 0);            break;
 						case 4:  available[i] = (head.compare("connection") == 0);            break;
 						case 6:  available[i] = (head.compare("accept-language") == 0);       break;
-						case 7:  available[i] = (head.compare("content-encoding") == 0);      break;
-						case 8:  available[i] = (head.compare("transfer-encoding") == 0);     break;
-						case 9:  available[i] = (head.compare("x-awh-encryption") == 0);      break;
-						case 10: available[i] = ((head.compare("authorization") == 0) ||
+						case 7:  available[i] = (head.compare("accept-encoding") == 0);       break;
+						case 8:  available[i] = (head.compare("content-encoding") == 0);      break;
+						case 9:  available[i] = (head.compare("transfer-encoding") == 0);     break;
+						case 10: available[i] = (head.compare("x-awh-encryption") == 0);      break;
+						case 11: available[i] = ((head.compare("authorization") == 0) ||
 							                     (head.compare("proxy-authorization") == 0)); break;
 						case 5: {
 							// Запоминаем, что мы нашли заголовок размера тела
@@ -1467,6 +1469,7 @@ vector <char> awh::Http::request(const uri_t::url_t & url, const web_t::method_t
 						// Выполняем првоерку заголовка
 						switch(i){
 							case 5:
+							case 7:
 							case 8:
 							case 9: allow = !available[i]; break;
 						}

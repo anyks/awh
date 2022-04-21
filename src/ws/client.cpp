@@ -154,10 +154,25 @@ awh::Http::stath_t awh::client::WS::checkAuth() noexcept {
 			if(!location.empty()){
 				// Выполняем парсинг URL
 				uri_t::url_t tmp = this->uri->parseUrl(location);
+				/*
 				// Если параметры URL существуют
-				if(!this->url.params.empty())
+				if(!this->url.params.empty()){
+					// Флаг поиска параметра
+					bool flag = false;
 					// Переходим по всему списку параметров
-					for(auto & param : this->url.params) tmp.params.emplace(param);
+					for(auto it = this->url.params.begin(); it != this->url.params.end(); ++it){
+						// Переходим по всему списку полученных параметров
+						for(auto jt = tmp.params.begin(); jt != tmp.params.end(); ++jt){
+							// Выполняем поиск ключа параметра
+							flag = (jt->first.compare(it->first) == 0);
+							// Если параметр найден
+							if(flag) break;
+						}
+						// Если параметр не найден, добавляем в список
+						if(!flag) tmp.params.push_back(make_pair(it->first, it->second));
+					}
+				}
+				*/
 				// Меняем IP адрес сервера
 				const_cast <uri_t::url_t *> (&this->url)->ip = move(tmp.ip);
 				// Меняем порт сервера
@@ -169,7 +184,7 @@ awh::Http::stath_t awh::client::WS::checkAuth() noexcept {
 				// Меняем протокол запроса сервера
 				const_cast <uri_t::url_t *> (&this->url)->schema = move(tmp.schema);
 				// Устанавливаем новый список параметров
-				const_cast <uri_t::url_t *> (&this->url)->params = move(tmp.params);
+				// const_cast <uri_t::url_t *> (&this->url)->params = move(tmp.params);
 				// Просим повторить авторизацию ещё раз
 				result = http_t::stath_t::RETRY;
 			}

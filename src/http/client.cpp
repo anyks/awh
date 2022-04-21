@@ -51,10 +51,12 @@ awh::Http::stath_t awh::client::Http::checkAuth() noexcept {
 			if(!location.empty()){
 				// Выполняем парсинг URL
 				uri_t::url_t tmp = this->uri->parseUrl(location);
+				/*
 				// Если параметры URL существуют
 				if(!this->url.params.empty())
 					// Переходим по всему списку параметров
 					for(auto & param : this->url.params) tmp.params.emplace(param);
+				*/
 				// Меняем IP адрес сервера
 				const_cast <uri_t::url_t *> (&this->url)->ip = move(tmp.ip);
 				// Меняем порт сервера
@@ -66,7 +68,7 @@ awh::Http::stath_t awh::client::Http::checkAuth() noexcept {
 				// Меняем протокол запроса сервера
 				const_cast <uri_t::url_t *> (&this->url)->schema = move(tmp.schema);
 				// Устанавливаем новый список параметров
-				const_cast <uri_t::url_t *> (&this->url)->params = move(tmp.params);
+				// const_cast <uri_t::url_t *> (&this->url)->params = move(tmp.params);
 				// Просим повторить авторизацию ещё раз
 				result = stath_t::RETRY;
 			}

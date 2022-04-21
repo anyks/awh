@@ -24,7 +24,6 @@
 #include <cctype>
 #include <iomanip>
 #include <sstream>
-#include <unordered_map>
 #include <stdlib.h>
 
 // Если - это Windows
@@ -92,7 +91,7 @@ namespace awh {
 					// Путь URL запроса
 					vector <string> path;
 					// Параметры URL запроса
-					unordered_map <string, string> params;
+					vector <pair <string, string>> params;
 				public:
 					// Передаваемый промежуточный контекст
 					void * ctx = nullptr;
@@ -173,7 +172,7 @@ namespace awh {
 			 * @param uri строка URI для сплита
 			 * @return    параметры полученные при сплите
 			 */
-			const unordered_map <string, string> splitParams(const string & uri) const noexcept;
+			const vector <pair <string, string>> splitParams(const string & uri) const noexcept;
 			/**
 			 * splitPath Метод выполнения сплита пути
 			 * @param path  путь для выполнения сплита
@@ -187,7 +186,7 @@ namespace awh {
 			 * @param uri параметры URI для сборки
 			 * @return    строка полученная при сборке параметров URI
 			 */
-			const string joinParams(const unordered_map <string, string> & uri) const noexcept;
+			const string joinParams(const vector <pair <string, string>> & uri) const noexcept;
 			/**
 			 * joinPath Метод сборки пути запроса
 			 * @param path  список параметров пути запроса

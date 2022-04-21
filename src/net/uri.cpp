@@ -459,9 +459,9 @@ const vector <string> awh::URI::split(const string & uri) const noexcept {
  * @param uri строка URI для сплита
  * @return    параметры полученные при сплите
  */
-const unordered_map <string, string> awh::URI::splitParams(const string & uri) const noexcept {
+const vector <pair <string, string>> awh::URI::splitParams(const string & uri) const noexcept {
 	// Результат работы функции
-	unordered_map <string, string> result;
+	vector <pair <string, string>> result;
 	// Если URI передано
 	if(!uri.empty()){
 		// Параметры URI
@@ -477,13 +477,16 @@ const unordered_map <string, string> awh::URI::splitParams(const string & uri) c
 				// Выполняем сплит данных URI параметров
 				this->fmk->split(param, L"=", data);
 				// Если данные получены
-				if(!data.empty()){
+				if(data.size() == 2)
 					// Добавляем полученные данные
-					result.emplace(
+					result.push_back(make_pair(
 						this->urlDecode(this->fmk->convert(data.front())),
 						this->urlDecode(this->fmk->convert(data.back()))
-					);
-				}
+					));
+				// Если значения параметр не имеет
+				else if(data.size() == 1)
+					// Добавляем полученные данные
+					result.push_back(make_pair(this->urlDecode(this->fmk->convert(data.front())), ""));
 			}
 		}
 	}
@@ -522,7 +525,7 @@ const vector <string> awh::URI::splitPath(const string & path, const string & de
  * @param uri параметры URI для сборки
  * @return    строка полученная при сборке параметров URI
  */
-const string awh::URI::joinParams(const unordered_map <string, string> & uri) const noexcept {
+const string awh::URI::joinParams(const vector <pair <string, string>> & uri) const noexcept {
 	// Результат работы функции
 	string result = "";
 	// Если параметры URI переданы
@@ -533,8 +536,12 @@ const string awh::URI::joinParams(const unordered_map <string, string> & uri) co
 		for(auto & param : uri){
 			// Если параметры уже были добавлены
 			if(result.length() > 1) result.append("&");
-			// Добавляем собранные параметры
-			result.append(this->fmk->format("%s=%s", this->urlEncode(param.first).c_str(), this->urlEncode(param.second).c_str()));
+			// Если значение не пустое
+			if(!param.second.empty())
+				// Добавляем собранные параметры
+				result.append(this->fmk->format("%s=%s", this->urlEncode(param.first).c_str(), this->urlEncode(param.second).c_str()));
+			// Если значение пустое, проставляем как есть
+			else result.append(this->fmk->format("%s", this->urlEncode(param.first).c_str()));
 		}
 	}
 	// Выводим результат
