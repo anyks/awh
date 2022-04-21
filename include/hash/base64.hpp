@@ -16,6 +16,7 @@
 #define __AWH_BASE64__
 
 #include <string>
+#include <vector>
 #include <sys/types.h>
 #include <openssl/bio.h>
 #include <openssl/evp.h>
@@ -41,12 +42,12 @@ namespace awh {
 			 * base64 Метод кодирования и декодирования base64
 			 * @param in   буфер входящих данных
 			 * @param out  буфер исходящих данных
-			 * @param lin  размер буфера входящих данных
-			 * @param lout размер буфера исходящих данных
+			 * @param sin  размер буфера входящих данных
+			 * @param sout размер буфера исходящих данных
 			 * @param mode режим работы (false - кодирование, true - декодирование)
 			 * @return     размер полученных данных
 			 */
-			const int base64(const u_char * in, char * out, u_int lin, u_int lout, const bool mode = false) const noexcept;
+			const int base64(const u_char * in, char * out, u_int sin, u_int sout, const bool mode = false) const noexcept;
 		public:
 			/**
 			 * encode Метод кодирования в base64
