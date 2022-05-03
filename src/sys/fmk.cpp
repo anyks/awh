@@ -1258,9 +1258,9 @@ void awh::Framework::setLocale(const string & locale) noexcept {
 			CONSOLE_FONT_INFOEX lpConsoleCurrentFontEx;
 			// Формируем параметры шрифта
 			lpConsoleCurrentFontEx.nFont        = 1;
-			lpConsoleCurrentFontEx.FontWeight   = 700;
-			lpConsoleCurrentFontEx.dwFontSize.X = 12;
+			lpConsoleCurrentFontEx.dwFontSize.X = 7;
 			lpConsoleCurrentFontEx.dwFontSize.Y = 12;
+			lpConsoleCurrentFontEx.FontWeight   = 500;
 			lpConsoleCurrentFontEx.FontFamily   = FF_DONTCARE;
 			lpConsoleCurrentFontEx.cbSize       = sizeof(CONSOLE_FONT_INFOEX);
 			// Выполняем установку шрифта Lucida Console
