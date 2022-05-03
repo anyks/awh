@@ -916,7 +916,7 @@ u_short awh::Core::setInterval(void * ctx, const time_t delay, function <void (c
 		// Устанавливаем время счётчика (микросекунды)
 		ret.first->second.tv.tv_usec = ((delay % 1000) * 1000);
 		// Создаём событие на активацию базы событий
-		event_assign(&ret.first->second.ev, this->base, -1, EV_TIMEOUT | EV_PERSIST, timer, &ret.first->second);
+		event_assign(&ret.first->second.ev, this->base, -1, EV_TIMEOUT | EV_PERSIST, &timer, &ret.first->second);
 		// Создаём событие таймаута на активацию базы событий
 		event_add(&ret.first->second.ev, &ret.first->second.tv);
 	}
