@@ -1254,7 +1254,9 @@ void awh::Framework::setLocale(const string & locale) noexcept {
 		 * Устанавливаем типы данных для Windows
 		 */
 		#if defined(_WIN32) || defined(_WIN64)
-			// Устанавливаем кодировку
+			// Устанавливаем кодировку ввода текстовых данных в консоле
+			SetConsoleCP(65001);
+			// Устанавливаем кодировку вывода текстовых данных из консоли
 			SetConsoleOutputCP(65001);
 		#endif
 	}
