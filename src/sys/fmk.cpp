@@ -1254,10 +1254,23 @@ void awh::Framework::setLocale(const string & locale) noexcept {
 		 * Устанавливаем типы данных для Windows
 		 */
 		#if defined(_WIN32) || defined(_WIN64)
+			// Параметры устанавливаемого шрифта
+			CONSOLE_FONT_INFOEX lpConsoleCurrentFontEx;
+			// Формируем параметры шрифта
+			lpConsoleCurrentFontEx.nFont        = 1;
+			lpConsoleCurrentFontEx.FontWeight   = 700;
+			lpConsoleCurrentFontEx.dwFontSize.X = 12;
+			lpConsoleCurrentFontEx.dwFontSize.Y = 12;
+			lpConsoleCurrentFontEx.FontFamily   = FF_DONTCARE;
+			lpConsoleCurrentFontEx.cbSize       = sizeof(CONSOLE_FONT_INFOEX);
+			// Выполняем установку шрифта Lucida Console
+			lstrcpyW(lpConsoleCurrentFontEx.FaceName, L"Lucida Console");
+			// Выполняем установку шрифта консоли
+			SetCurrentConsoleFontEx(GetStdHandle(STD_OUTPUT_HANDLE), false, &lpConsoleCurrentFontEx);
 			// Устанавливаем кодировку ввода текстовых данных в консоле
-			SetConsoleCP(65001);
+			SetConsoleCP(CP_UTF8); // 65001
 			// Устанавливаем кодировку вывода текстовых данных из консоли
-			SetConsoleOutputCP(65001);
+			SetConsoleOutputCP(CP_UTF8);
 		#endif
 	}
 }
