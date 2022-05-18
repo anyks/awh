@@ -284,12 +284,12 @@ void awh::client::Core::event(struct bufferevent * bev, const short events, void
 void awh::client::Core::thread(const awh::worker_t::adj_t & adj, const client::worker_t & wrk) noexcept {	
 	// Получаем объект ядра клиента
 	core_t * core = (core_t *) const_cast <awh::core_t *> (wrk.core);
-	// Выполняем блокировку потока
-	const lock_guard <mutex> lock(core->locker.chunks);
 	// Выполняем получение буфера бинарного чанка данных
 	const auto & buffer = const_cast <awh::worker_t::adj_t *> (&adj)->get();
 	// Если буфер бинарных данных получен
 	if(!buffer.empty()){
+		// Выполняем блокировку потока
+		const lock_guard <mutex> lock(core->locker.work);
 		// Если подключение производится через, прокси-сервер
 		if(wrk.isProxy()){
 			// Если функция обратного вызова для вывода записи существует

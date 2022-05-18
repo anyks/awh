@@ -807,7 +807,7 @@ void awh::Core::clearTimers() noexcept {
 	// Если список таймеров существует
 	if(!this->timers.empty()){
 		// Выполняем блокировку потока
-		const lock_guard <mutex> lock(this->locker.main);
+		const lock_guard <recursive_mutex> lock(this->locker.main);
 		// Переходим по всем таймерам
 		for(auto it = this->timers.begin(); it != this->timers.end();){
 			// Очищаем объект таймаута базы событий
@@ -827,7 +827,7 @@ void awh::Core::clearTimer(const u_short id) noexcept {
 	// Если список таймеров существует
 	if(!this->timers.empty()){
 		// Выполняем блокировку потока
-		const lock_guard <mutex> lock(this->locker.main);
+		const lock_guard <recursive_mutex> lock(this->locker.main);
 		// Выполняем поиск идентификатора таймера
 		auto it = this->timers.find(id);
 		// Если идентификатор таймера найден

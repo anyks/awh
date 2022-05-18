@@ -327,14 +327,15 @@ void awh::server::Core::accept(const evutil_socket_t fd, const short event, void
 void awh::server::Core::thread(const awh::worker_t::adj_t & adj, const server::worker_t & wrk) noexcept {	
 	// Получаем объект ядра клиента
 	core_t * core = (core_t *) const_cast <awh::core_t *> (wrk.core);
-	// Выполняем блокировку потока
-	const lock_guard <mutex> lock(core->locker.chunks);
 	// Выполняем получение буфера бинарного чанка данных
 	const auto & buffer = const_cast <awh::worker_t::adj_t *> (&adj)->get();
 	// Если буфер бинарных данных получен
-	if(!buffer.empty())
+	if(!buffer.empty()){
+		// Выполняем блокировку потока
+		const lock_guard <mutex> lock(core->locker.work);
 		// Выводим функцию обратного вызова
 		wrk.readFn(buffer.data(), buffer.size(), adj.aid, wrk.wid, core, wrk.ctx);
+	}
 }
 /**
  * tuning Метод тюннинга буфера событий
