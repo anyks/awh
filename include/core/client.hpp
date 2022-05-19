@@ -40,6 +40,9 @@ namespace awh {
 				// Флаг восстановления подключения
 				mode_t mode;
 			private:
+				// Флаг получения данных
+				bool acquisition;
+			private:
 				/**
 				 * resolver Функция выполнения резолвинга домена
 				 * @param ip  полученный IP адрес

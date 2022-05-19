@@ -81,8 +81,8 @@ void awh::DNS::callback(const int error, struct evutil_addrinfo * addr, void * c
 								ip = evutil_inet_ntop(ai->ai_family, &sin6->sin6_addr, buffer, 128);
 							} break;
 						}
-						// Если IP адрес получен
-						if(ip != nullptr){
+						// Если IP адрес получен и не находится в чёрном списке
+						if((ip != nullptr) && (dns->blacklist.count(ip) < 1)){
 							// Добавляем полученный IP адрес в список
 							ips.push_back(ip);
 							// Записываем данные в кэш
@@ -245,6 +245,34 @@ void awh::DNS::updateNameServers() noexcept {
 		// Переходим по всем нейм серверам и добавляем их
 		for(auto & server : this->servers) this->setNameServer(server);
 	}
+}
+/**
+ * clearBlackList Метод очистки чёрного списка
+ */
+void awh::DNS::clearBlackList() noexcept {
+	// Выполняем очистку чёрного списка
+	this->blacklist.clear();
+}
+/**
+ * delInBlackList Метод удаления IP адреса из чёрного списока
+ * @param ip адрес для удаления из чёрного списка
+ */
+void awh::DNS::delInBlackList(const string & ip) noexcept {
+	// Если IP адрес передан
+	if(!ip.empty()){
+		// Выполняем поиск IP адреса в чёрном списке
+		auto it = this->blacklist.find(ip);
+		// Если IP адрес найден в чёрном списке, удаляем его
+		if(it != this->blacklist.end()) this->blacklist.erase(it);
+	}
+}
+/**
+ * setToBlackList Метод добавления IP адреса в чёрный список
+ * @param ip адрес для добавления в чёрный список
+ */
+void awh::DNS::setToBlackList(const string & ip) noexcept {
+	// Если IP адрес передан, добавляем IP адрес в чёрный список
+	if(!ip.empty()) this->blacklist.emplace(ip);
 }
 /**
  * setBase Установка базы событий

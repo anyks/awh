@@ -18,6 +18,7 @@
 /**
  * Стандартная библиотека
  */
+#include <set>
 #include <map>
 #include <regex>
 #include <cstdio>
@@ -81,6 +82,8 @@ namespace awh {
 				Worker() : id(0), family(AF_UNSPEC), host(""), context(nullptr), dns(nullptr), fmk(nullptr), log(nullptr), callback(nullptr) {}
 			} worker_t;
 		private:
+			// Чёрный список IP адресов
+			mutable set <string> blacklist;
 			// Адреса серверов dns
 			mutable vector <string> servers;
 			// Список воркеров резолвинга доменов
@@ -140,6 +143,21 @@ namespace awh {
 			 * updateNameServers Метод обновления списка нейм-серверов
 			 */
 			void updateNameServers() noexcept;
+		public:
+			/**
+			 * clearBlackList Метод очистки чёрного списка
+			 */
+			void clearBlackList() noexcept;
+			/**
+			 * delInBlackList Метод удаления IP адреса из чёрного списока
+			 * @param ip адрес для удаления из чёрного списка
+			 */
+			void delInBlackList(const string & ip) noexcept;
+			/**
+			 * setToBlackList Метод добавления IP адреса в чёрный список
+			 * @param ip адрес для добавления в чёрный список
+			 */
+			void setToBlackList(const string & ip) noexcept;
 		public:
 			/**
 			 * setBase Метод установки базы событий

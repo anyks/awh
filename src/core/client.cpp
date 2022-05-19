@@ -83,8 +83,18 @@ void awh::client::Core::read(struct bufferevent * bev, void * ctx) noexcept {
 		client::worker_t * wrk = (client::worker_t *) const_cast <awh::worker_t *> (adj->parent);
 		// Получаем объект ядра клиента
 		const core_t * core = reinterpret_cast <const core_t *> (wrk->core);
+		// Если данные ещё ни разу не получены
+		if(!core->acquisition){
+			// Определяем тип подключения
+			switch(core->net.family){
+				// Резолвер IPv4, очищаем чёрный список IPv4 бракованных адресов
+				case AF_INET: const_cast <core_t *> (core)->dns4.clearBlackList(); break;
+				// Резолвер IPv6, очищаем чёрный список IPv4 бракованных адресов
+				case AF_INET6: const_cast <core_t *> (core)->dns6.clearBlackList(); break;
+			}
+		}
 		// Если подключение ещё существует
-		if(core->adjutants.count(adj->aid) > 0){
+		if((const_cast <core_t *> (core)->acquisition = (core->adjutants.count(adj->aid) > 0))){
 			// Получаем буферы входящих данных
 			struct evbuffer * input = bufferevent_get_input(adj->bev);
 			// Получаем размер входящих данных
@@ -145,8 +155,18 @@ void awh::client::Core::write(struct bufferevent * bev, void * ctx) noexcept {
 		client::worker_t * wrk = (client::worker_t *) const_cast <awh::worker_t *> (adj->parent);
 		// Получаем объект ядра клиента
 		const core_t * core = reinterpret_cast <const core_t *> (wrk->core);
+		// Если данные ещё ни разу не получены
+		if(!core->acquisition){
+			// Определяем тип подключения
+			switch(core->net.family){
+				// Резолвер IPv4, очищаем чёрный список IPv4 бракованных адресов
+				case AF_INET: const_cast <core_t *> (core)->dns4.clearBlackList(); break;
+				// Резолвер IPv6, очищаем чёрный список IPv4 бракованных адресов
+				case AF_INET6: const_cast <core_t *> (core)->dns6.clearBlackList(); break;
+			}
+		}
 		// Если подключение ещё существует
-		if(core->adjutants.count(adj->aid) > 0){
+		if((const_cast <core_t *> (core)->acquisition = (core->adjutants.count(adj->aid) > 0))){
 			// Получаем буферы исходящих данных
 			struct evbuffer * output = bufferevent_get_output(bev);
 			// Получаем размер исходящих данных
@@ -236,6 +256,8 @@ void awh::client::Core::event(struct bufferevent * bev, const short events, void
 				const string & host = (!url.ip.empty() ? url.ip : url.domain);
 				// Если подключение удачное
 				if(events & BEV_EVENT_CONNECTED){
+					// Снимаем флаг получения данных
+					const_cast <core_t *> (core)->acquisition = false;
 					// Выводим в лог сообщение
 					if(!core->noinfo) adj->log->print("connect client to server [%s:%d]", log_t::flag_t::INFO, host.c_str(), url.port);
 					// Если подключение производится через, прокси-сервер
@@ -266,7 +288,20 @@ void awh::client::Core::event(struct bufferevent * bev, const short events, void
 						// Выводим в лог сообщение
 						adj->log->print("closing server [%s:%d] %s", log_t::flag_t::WARNING, host.c_str(), url.port, evutil_socket_error_to_string(EVUTIL_SOCKET_ERROR()));
 					// Если - это таймаут, выводим сообщение в лог
-					else if(events & BEV_EVENT_TIMEOUT) adj->log->print("timeout server [%s:%d]", log_t::flag_t::WARNING, host.c_str(), url.port);
+					else if(events & BEV_EVENT_TIMEOUT) {
+						// Если данные ещё ни разу не получены
+						if(!core->acquisition && !url.ip.empty()){
+							// Определяем тип подключения
+							switch(core->net.family){
+								// Резолвер IPv4, добавляем бракованный IPv4 адрес в список адресов
+								case AF_INET: const_cast <core_t *> (core)->dns4.setToBlackList(url.ip); break;
+								// Резолвер IPv6, добавляем бракованный IPv6 адрес в список адресов
+								case AF_INET6: const_cast <core_t *> (core)->dns6.setToBlackList(url.ip); break;
+							}
+						}
+						// Выводим сообщение в лог, о таймауте подключения
+						adj->log->print("timeout server [%s:%d]", log_t::flag_t::WARNING, host.c_str(), url.port);
+					}
 				}
 			}
 			// Запрещаем чтение запись данных серверу
@@ -688,7 +723,7 @@ void awh::client::Core::setBandwidth(const size_t aid, const string & read, cons
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
  */
-awh::client::Core::Core(const fmk_t * fmk, const log_t * log) noexcept : awh::core_t(fmk, log), mode(awh::core_t::mode_t::DISCONNECT) {
+awh::client::Core::Core(const fmk_t * fmk, const log_t * log) noexcept : awh::core_t(fmk, log), mode(awh::core_t::mode_t::DISCONNECT), acquisition(false) {
 	// Устанавливаем тип запускаемого ядра
 	this->type = type_t::CLIENT;
 }
