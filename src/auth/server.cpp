@@ -244,7 +244,7 @@ const string awh::server::Auth::getHeader(const bool mode) noexcept {
 				// Получаем текущее значение штампа времени
 				const time_t stamp = this->fmk->unixTimestamp();
 				// Если ключ клиента не создан или прошло времени больше 30-ти минут
-				if((createNonce = (this->digest.nonce.empty() || ((stamp - this->digest.stamp) >= 1800000)))){
+				if((createNonce = (this->digest.nonce.empty() || ((stamp - this->digest.stamp) >= DIGEST_ALIVE_NONCE)))){
 					// Устанавливаем штамп времени
 					this->digest.stamp = stamp;
 					// Если ключ клиента, ещё небыл сгенерирован
