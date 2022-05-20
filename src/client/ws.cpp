@@ -823,6 +823,18 @@ void awh::client::WebSocket::on(void * ctx, function <void (const vector <char> 
 	this->messageFn = callback;
 }
 /**
+ * sendTimeout Метод отправки сигнала таймаута
+ */
+void awh::client::WebSocket::sendTimeout() noexcept {
+	// Если подключение выполнено
+	if(this->core->working() && !this->locker){
+		// Если рукопожатие выполнено
+		if(this->http.isHandshake() && (this->aid > 0))
+			// Отправляем сигнал принудительного таймаута
+			const_cast <client::core_t *> (this->core)->sendTimeout(this->aid);
+	}
+}
+/**
  * sendError Метод отправки сообщения об ошибке
  * @param mess отправляемое сообщение об ошибке
  */

@@ -333,6 +333,11 @@ namespace awh {
 				void REST(const vector <req_t> & request) noexcept;
 			public:
 				/**
+				 * sendTimeout Метод отправки сигнала таймаута
+				 */
+				void sendTimeout() noexcept;
+			public:
+				/**
 				 * on Метод установки функции обратного вызова при подключении/отключении
 				 * @param ctx      контекст для вывода в сообщении
 				 * @param callback функция обратного вызова

@@ -1232,6 +1232,15 @@ void awh::client::Rest::REST(const vector <req_t> & request) noexcept {
 	}
 }
 /**
+ * sendTimeout Метод отправки сигнала таймаута
+ */
+void awh::client::Rest::sendTimeout() noexcept {
+	// Если подключение выполнено
+	if(this->core->working())
+		// Отправляем сигнал принудительного таймаута
+		const_cast <client::core_t *> (this->core)->sendTimeout(this->aid);
+}
+/**
  * on Метод установки функции обратного вызова при подключении/отключении
  * @param ctx      контекст для вывода в сообщении
  * @param callback функция обратного вызова

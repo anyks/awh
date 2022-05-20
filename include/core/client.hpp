@@ -91,6 +91,12 @@ namespace awh {
 				void connect(const size_t wid) noexcept;
 			public:
 				/**
+				 * sendTimeout Метод отправки принудительного таймаута
+				 * @param aid идентификатор адъютанта
+				 */
+				void sendTimeout(const size_t aid) noexcept;
+			public:
+				/**
 				 * closeAll Метод отключения всех воркеров
 				 */
 				void closeAll() noexcept;

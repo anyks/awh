@@ -260,6 +260,10 @@ namespace awh {
 				void on(void * ctx, function <void (const vector <char> &, const bool, WebSocket *, void *)> callback) noexcept;
 			public:
 				/**
+				 * sendTimeout Метод отправки сигнала таймаута
+				 */
+				void sendTimeout() noexcept;
+				/**
 				 * sendError Метод отправки сообщения об ошибке
 				 * @param mess отправляемое сообщение об ошибке
 				 */

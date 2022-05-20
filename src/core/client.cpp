@@ -495,6 +495,21 @@ void awh::client::Core::connect(const size_t wid) noexcept {
 	}
 }
 /**
+ * sendTimeout Метод отправки принудительного таймаута
+ * @param aid идентификатор адъютанта
+ */
+void awh::client::Core::sendTimeout(const size_t aid) noexcept {
+	// Выполняем извлечение адъютанта
+	auto it = this->adjutants.find(aid);
+	// Если адъютант получен
+	if(it != this->adjutants.end()){
+		// Получаем объект подключения
+		awh::worker_t::adj_t * adj = const_cast <awh::worker_t::adj_t *> (it->second);
+		// Отправляем принудительный сигнал таймаута
+		event(adj->bev, BEV_EVENT_TIMEOUT, adj);
+	}
+}
+/**
  * closeAll Метод отключения всех воркеров
  */
 void awh::client::Core::closeAll() noexcept {
