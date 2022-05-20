@@ -26,6 +26,8 @@ void awh::Core::run(evutil_socket_t fd, short event, void * ctx) noexcept {
 	if(ctx != nullptr){
 		// Получаем объект подключения
 		core_t * core = reinterpret_cast <core_t *> (ctx);
+		// Устанавливаем статус сетевого ядра
+		core->status = status_t::START;
 		// Выполняем удаление событие таймера
 		if(event > -1) event_del(&core->timeout);
 		// Если список воркеров существует
@@ -421,6 +423,8 @@ void awh::Core::unbind(Core * core) noexcept {
 		core->mode = false;
 		// Выполняем сброс блокировки базы событий
 		core->freeze = false;
+		// Устанавливаем статус сетевого ядра
+		core->status = status_t::STOP;
 	}
 }
 /**
@@ -514,6 +518,8 @@ void awh::Core::start() noexcept {
 		event_base_free(this->base);
 		// Очищаем все глобальные переменные
 		libevent_global_shutdown();
+		// Устанавливаем статус сетевого ядра
+		this->status = status_t::STOP;
 		// Если функция обратного вызова установлена, выполняем
 		if(this->callbackFn != nullptr) this->callbackFn(false, this, this->ctx.front());
 		// Выводим в консоль информацию

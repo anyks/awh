@@ -238,7 +238,7 @@ void awh::client::Rest::readCallback(const char * buffer, const size_t size, con
 				// Устанавливаем код ответа
 				res.code = query.code;
 				// Устанавливаем сообщение ответа
-				res.message = move(query.message);
+				res.message = query.message;
 				// Если включён режим отладки
 				#if defined(DEBUG_MODE)
 					// Получаем данные ответа

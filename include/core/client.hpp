@@ -37,9 +37,6 @@ namespace awh {
 		 */
 		typedef class Core : public awh::core_t {
 			private:
-				// Флаг восстановления подключения
-				mode_t mode;
-			private:
 				// Флаг получения данных
 				bool acquisition;
 			private:

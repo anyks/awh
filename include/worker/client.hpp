@@ -92,9 +92,27 @@ namespace awh {
 				 * Формат сжатия тела запроса
 				 */
 				enum class connect_t : uint8_t {SERVER, PROXY};
+				/**
+				 * Режимы работы клиента
+				 */
+				enum class mode_t : uint8_t {CONNECT, RECONNECT, DISCONNECT};
+			private:
+				/**
+				 * Status Структура статуса подключения
+				 */
+				typedef struct Status {
+					mode_t wait; // Статус ожидание
+					mode_t real; // Статус действительность
+					/**
+					 * Status Конструктор
+					 */
+					Status() : real(mode_t::DISCONNECT), wait(mode_t::DISCONNECT) {}
+				} status_t;
 			public:
 				// Параметры прокси-сервера
 				proxy_t proxy;
+				// Статус сетевого ядра
+				status_t status;
 				// Параметры адреса для запроса
 				uri_t::url_t url;
 			private:

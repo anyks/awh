@@ -76,13 +76,13 @@ namespace awh {
 	typedef class Core {
 		protected:
 			/**
+			 * Статус работы сетевого ядра
+			 */
+			enum class status_t : uint8_t {STOP, START};
+			/**
 			 * Тип запускаемого ядра
 			 */
 			enum class type_t : uint8_t {CLIENT, SERVER};
-			/**
-			 * Режимы работы клиента
-			 */
-			enum class mode_t : uint8_t {CONNECT, RECONNECT, DISCONNECT};
 		public:
 			/**
 			 * Основные методы режимов работы
@@ -181,6 +181,8 @@ namespace awh {
 		protected:
 			// Тип запускаемого ядра
 			type_t type = type_t::CLIENT;
+			// Статус сетевого ядра
+			status_t status = status_t::STOP;
 		protected:
 			// Событие таймаута запуска системы
 			struct event timeout;
