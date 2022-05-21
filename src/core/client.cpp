@@ -613,9 +613,6 @@ void awh::client::Core::close(const size_t aid) noexcept {
 			awh::worker_t::adj_t * adj = const_cast <awh::worker_t::adj_t *> (it->second);
 			// Получаем объект воркера
 			client::worker_t * wrk = (client::worker_t *) const_cast <awh::worker_t *> (adj->parent);
-
-			cout << " !!!!!!!!!!!!!! " << (wrk->status.wait == client::worker_t::mode_t::CONNECT) << " == " << (wrk->status.real == client::worker_t::mode_t::CONNECT) << " || " << adj->ssl.ssl << endl;
-
 			// Получаем объект ядра клиента
 			const core_t * core = reinterpret_cast <const core_t *> (wrk->core);
 			// Выполняем блокировку буфера бинарного чанка данных
