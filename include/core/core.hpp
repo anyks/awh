@@ -18,6 +18,7 @@
 /**
  * Стандартная библиотека
  */
+#include <set>
 #include <map>
 #include <mutex>
 #include <chrono>
@@ -193,6 +194,9 @@ namespace awh {
 			struct timeval tvTimeout;
 			// Структура интервала пинга
 			struct timeval tvInterval;
+		protected:
+			// Список блокированных объектов
+			set <size_t> locking;
 		private:
 			// Список активных таймеров
 			map <u_short, timer_t> timers;

@@ -576,20 +576,28 @@ void awh::Core::closeAll() noexcept {
 				worker_t * wrk = const_cast <worker_t *> (worker.second);
 				// Переходим по всему списку адъютанта
 				for(auto it = wrk->adjutants.begin(); it != wrk->adjutants.end();){
-					// Получаем объект адъютанта
-					worker_t::adj_t * adj = const_cast <worker_t::adj_t *> (it->second.get());
-					// Выполняем блокировку буфера бинарного чанка данных
-					adj->end();
-					// Выполняем очистку буфера событий
-					this->clean(adj->bev);
-					// Выполняем удаление контекста SSL
-					this->ssl.clear(adj->ssl);
-					// Выводим функцию обратного вызова
-					if(wrk->disconnectFn != nullptr)
-						// Выполняем функцию обратного вызова
-						wrk->disconnectFn(it->first, worker.first, this, wrk->ctx);
-					// Удаляем адъютанта из списка
-					it = wrk->adjutants.erase(it);
+					// Если блокировка адъютанта не установлена
+					if(this->locking.count(it->first) < 1){
+						// Выполняем блокировку адъютанта
+						this->locking.emplace(it->first);
+						// Получаем объект адъютанта
+						worker_t::adj_t * adj = const_cast <worker_t::adj_t *> (it->second.get());
+						// Выполняем блокировку буфера бинарного чанка данных
+						adj->end();
+						// Выполняем очистку буфера событий
+						this->clean(adj->bev);
+						// Выполняем удаление контекста SSL
+						this->ssl.clear(adj->ssl);
+						// Выводим функцию обратного вызова
+						if(wrk->disconnectFn != nullptr)
+							// Выполняем функцию обратного вызова
+							wrk->disconnectFn(it->first, worker.first, this, wrk->ctx);
+						// Удаляем блокировку адъютанта
+						this->locking.erase(it->first);
+						// Удаляем адъютанта из списка
+						it = wrk->adjutants.erase(it);
+					// Иначе продолжаем дальше
+					} else ++it;
 				}
 			}
 		}
@@ -640,33 +648,40 @@ void awh::Core::remove(const size_t wid) noexcept {
  * @param aid идентификатор адъютанта
  */
 void awh::Core::close(const size_t aid) noexcept {
-	// Выполняем извлечение адъютанта
-	auto it = this->adjutants.find(aid);
-	// Если адъютант получен
-	if(it != this->adjutants.end()){
-		// Получаем объект адъютанта
-		worker_t::adj_t * adj = const_cast <worker_t::adj_t *> (it->second);
-		// Получаем объект воркера
-		worker_t * wrk = const_cast <worker_t *> (adj->parent);
-		// Выполняем блокировку буфера бинарного чанка данных
-		adj->end();
-		// Если событие сервера существует
-		if(adj->bev != nullptr){
-			// Выполняем очистку буфера событий
-			this->clean(adj->bev);
-			// Устанавливаем что событие удалено
-			adj->bev = nullptr;
+	// Если блокировка адъютанта не установлена
+	if(this->locking.count(aid) < 1){
+		// Выполняем блокировку адъютанта
+		this->locking.emplace(aid);
+		// Выполняем извлечение адъютанта
+		auto it = this->adjutants.find(aid);
+		// Если адъютант получен
+		if(it != this->adjutants.end()){
+			// Получаем объект адъютанта
+			worker_t::adj_t * adj = const_cast <worker_t::adj_t *> (it->second);
+			// Получаем объект воркера
+			worker_t * wrk = const_cast <worker_t *> (adj->parent);
+			// Выполняем блокировку буфера бинарного чанка данных
+			adj->end();
+			// Если событие сервера существует
+			if(adj->bev != nullptr){
+				// Выполняем очистку буфера событий
+				this->clean(adj->bev);
+				// Устанавливаем что событие удалено
+				adj->bev = nullptr;
+			}
+			// Выполняем удаление контекста SSL
+			this->ssl.clear(adj->ssl);
+			// Удаляем адъютанта из списка адъютантов
+			wrk->adjutants.erase(aid);
+			// Удаляем адъютанта из списка подключений
+			this->adjutants.erase(aid);
+			// Выводим сообщение об ошибке
+			if(!this->noinfo) this->log->print("%s", log_t::flag_t::INFO, "disconnected from the server");
+			// Выводим функцию обратного вызова
+			if(wrk->disconnectFn != nullptr) wrk->disconnectFn(aid, wrk->wid, this, wrk->ctx);
 		}
-		// Выполняем удаление контекста SSL
-		this->ssl.clear(adj->ssl);
-		// Удаляем адъютанта из списка адъютантов
-		wrk->adjutants.erase(aid);
-		// Удаляем адъютанта из списка подключений
-		this->adjutants.erase(aid);
-		// Выводим сообщение об ошибке
-		if(!this->noinfo) this->log->print("%s", log_t::flag_t::INFO, "disconnected from the server");
-		// Выводим функцию обратного вызова
-		if(wrk->disconnectFn != nullptr) wrk->disconnectFn(aid, wrk->wid, this, wrk->ctx);
+		// Удаляем блокировку адъютанта
+		this->locking.erase(aid);
 	}
 }
 /**

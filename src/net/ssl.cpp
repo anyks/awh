@@ -234,21 +234,23 @@ void awh::ASSL::clear(ctx_t & ctx) const noexcept {
 		// Зануляем объект верификации
 		ctx.verify = nullptr;
 	}
+	// Если контекст SSL создан
+	if(ctx.ssl != nullptr){
+		// Выключаем получение данных SSL
+		SSL_shutdown(ctx.ssl);
+		// Очищаем объект SSL
+		// SSL_clear(ctx.ssl);
+		// Освобождаем выделенную память
+		SSL_free(ctx.ssl);
+		// Зануляем контекст сервера
+		ctx.ssl = nullptr;
+	}
 	// Если контекст SSL сервер был поднят
 	if(ctx.ctx != nullptr){
 		// Очищаем контекст сервера
 		SSL_CTX_free(ctx.ctx);
 		// Зануляем контекст сервера
 		ctx.ctx = nullptr;
-	}
-	// Если контекст SSL создан
-	if(ctx.ssl != nullptr){
-		// Очищаем объект SSL
-		SSL_clear(ctx.ssl);
-		// Освобождаем выделенную память
-		SSL_free(ctx.ssl);
-		// Зануляем контекст сервера
-		ctx.ssl = nullptr;
 	}
 	// Сбрасываем флаг инициализации
 	ctx.mode = false;

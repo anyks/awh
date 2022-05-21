@@ -527,18 +527,26 @@ void awh::client::Core::closeAll() noexcept {
 				wrk->status.real = client::worker_t::mode_t::DISCONNECT;
 				// Переходим по всему списку адъютанта
 				for(auto it = wrk->adjutants.begin(); it != wrk->adjutants.end();){
-					// Выполняем блокировку буфера бинарного чанка данных
-					it->second->end();
-					// Выполняем очистку буфера событий
-					this->clean(it->second->bev);
-					// Выполняем удаление контекста SSL
-					this->ssl.clear(it->second->ssl);
-					// Выводим функцию обратного вызова
-					if(wrk->disconnectFn != nullptr)
-						// Выполняем функцию обратного вызова
-						wrk->disconnectFn(it->first, worker.first, this, wrk->ctx);
-					// Удаляем адъютанта из списка
-					it = wrk->adjutants.erase(it);
+					// Если блокировка адъютанта не установлена
+					if(this->locking.count(it->first) < 1){
+						// Выполняем блокировку адъютанта
+						this->locking.emplace(it->first);
+						// Выполняем блокировку буфера бинарного чанка данных
+						it->second->end();
+						// Выполняем очистку буфера событий
+						this->clean(it->second->bev);
+						// Выполняем удаление контекста SSL
+						this->ssl.clear(it->second->ssl);
+						// Выводим функцию обратного вызова
+						if(wrk->disconnectFn != nullptr)
+							// Выполняем функцию обратного вызова
+							wrk->disconnectFn(it->first, worker.first, this, wrk->ctx);
+						// Удаляем блокировку адъютанта
+						this->locking.erase(it->first);
+						// Удаляем адъютанта из списка
+						it = wrk->adjutants.erase(it);
+					// Иначе продолжаем дальше
+					} else ++it;
 				}
 			}
 		}
@@ -593,48 +601,58 @@ void awh::client::Core::open(const size_t wid) noexcept {
  * @param aid идентификатор адъютанта
  */
 void awh::client::Core::close(const size_t aid) noexcept {
-	// Выполняем извлечение адъютанта
-	auto it = this->adjutants.find(aid);
-	// Если адъютант получен
-	if(it != this->adjutants.end()){
-		// Получаем объект адъютанта
-		awh::worker_t::adj_t * adj = const_cast <awh::worker_t::adj_t *> (it->second);
-		// Получаем объект воркера
-		client::worker_t * wrk = (client::worker_t *) const_cast <awh::worker_t *> (adj->parent);
-		// Получаем объект ядра клиента
-		const core_t * core = reinterpret_cast <const core_t *> (wrk->core);
-		// Выполняем блокировку буфера бинарного чанка данных
-		adj->end();
-		// Если событие сервера существует
-		if(adj->bev != nullptr){
-			// Выполняем очистку буфера событий
-			this->clean(adj->bev);
-			// Устанавливаем что событие удалено
-			adj->bev = nullptr;
+	// Если блокировка адъютанта не установлена
+	if(this->locking.count(aid) < 1){
+		// Выполняем блокировку адъютанта
+		this->locking.emplace(aid);
+		// Выполняем извлечение адъютанта
+		auto it = this->adjutants.find(aid);
+		// Если адъютант получен
+		if(it != this->adjutants.end()){
+			// Получаем объект адъютанта
+			awh::worker_t::adj_t * adj = const_cast <awh::worker_t::adj_t *> (it->second);
+			// Получаем объект воркера
+			client::worker_t * wrk = (client::worker_t *) const_cast <awh::worker_t *> (adj->parent);
+
+			cout << " !!!!!!!!!!!!!! " << (wrk->status.wait == client::worker_t::mode_t::CONNECT) << " == " << (wrk->status.real == client::worker_t::mode_t::CONNECT) << " || " << adj->ssl.ssl << endl;
+
+			// Получаем объект ядра клиента
+			const core_t * core = reinterpret_cast <const core_t *> (wrk->core);
+			// Выполняем блокировку буфера бинарного чанка данных
+			adj->end();
+			// Если событие сервера существует
+			if(adj->bev != nullptr){
+				// Выполняем очистку буфера событий
+				this->clean(adj->bev);
+				// Устанавливаем что событие удалено
+				adj->bev = nullptr;
+			}
+			// Если прокси-сервер активирован но уже переключён на работу с сервером
+			if((wrk->proxy.type != proxy_t::type_t::NONE) && !wrk->isProxy())
+				// Выполняем переключение обратно на прокси-сервер
+				wrk->switchConnect();
+			// Выполняем удаление контекста SSL
+			this->ssl.clear(adj->ssl);
+			// Удаляем адъютанта из списка адъютантов
+			wrk->adjutants.erase(aid);
+			// Удаляем адъютанта из списка подключений
+			this->adjutants.erase(aid);
+			// Устанавливаем флаг ожидания статуса
+			wrk->status.wait = client::worker_t::mode_t::DISCONNECT;
+			// Устанавливаем статус сетевого ядра
+			wrk->status.real = client::worker_t::mode_t::DISCONNECT;
+			// Если нужно выполнить автоматическое переподключение
+			if(wrk->alive) this->restore(wrk->wid);
+			// Если автоматическое подключение выполнять не нужно
+			else {
+				// Выводим сообщение об ошибке
+				if(!core->noinfo) this->log->print("%s", log_t::flag_t::INFO, "disconnected from the server");
+				// Выводим функцию обратного вызова
+				if(wrk->disconnectFn != nullptr) wrk->disconnectFn(aid, wrk->wid, this, wrk->ctx);
+			}
 		}
-		// Если прокси-сервер активирован но уже переключён на работу с сервером
-		if((wrk->proxy.type != proxy_t::type_t::NONE) && !wrk->isProxy())
-			// Выполняем переключение обратно на прокси-сервер
-			wrk->switchConnect();
-		// Выполняем удаление контекста SSL
-		this->ssl.clear(adj->ssl);
-		// Удаляем адъютанта из списка адъютантов
-		wrk->adjutants.erase(aid);
-		// Удаляем адъютанта из списка подключений
-		this->adjutants.erase(aid);
-		// Устанавливаем флаг ожидания статуса
-		wrk->status.wait = client::worker_t::mode_t::DISCONNECT;
-		// Устанавливаем статус сетевого ядра
-		wrk->status.real = client::worker_t::mode_t::DISCONNECT;
-		// Если нужно выполнить автоматическое переподключение
-		if(wrk->alive) this->restore(wrk->wid);
-		// Если автоматическое подключение выполнять не нужно
-		else {
-			// Выводим сообщение об ошибке
-			if(!core->noinfo) this->log->print("%s", log_t::flag_t::INFO, "disconnected from the server");
-			// Выводим функцию обратного вызова
-			if(wrk->disconnectFn != nullptr) wrk->disconnectFn(aid, wrk->wid, this, wrk->ctx);
-		}
+		// Удаляем блокировку адъютанта
+		this->locking.erase(aid);
 	}
 }
 /**
