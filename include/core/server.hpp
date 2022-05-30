@@ -38,6 +38,19 @@ namespace awh {
 		 */
 		typedef class Core : public awh::core_t {
 			private:
+				/**
+				 * Mutex Объект основных мютексов
+				 */
+				typedef struct Mutex {
+					mutex thread;           // Для работы в дочерних потоках
+					recursive_mutex close;  // Для закрытия подключения
+					recursive_mutex accept; // Для одобрения подключения
+					recursive_mutex system; // Для установки системных параметров
+				} mtx_t;
+			private:
+				// Мютекс для блокировки основного потока
+				mtx_t mtx;
+			private:
 				// Объект для работы с сетевым интерфейсом
 				ifnet_t ifnet;
 			private:
@@ -86,25 +99,19 @@ namespace awh {
 				 */
 				void tuning(const size_t aid) noexcept;
 				/**
-				 * connect Метод создания подключения к удаленному серверу
-				 * @param wid идентификатор воркера
-				 */
-				void connect(const size_t wid) noexcept;
-				/**
 				 * close Метод закрытия сокета
 				 * @param fd файловый дескриптор (сокет) для закрытия
 				 */
 				void close(const evutil_socket_t fd) noexcept;
 			public:
 				/**
-				 * removeAll Метод удаления всех воркеров
+				 * close Метод отключения всех воркеров
 				 */
-				void removeAll() noexcept;
+				void close() noexcept;
 				/**
-				 * remove Метод удаления воркера
-				 * @param wid идентификатор воркера
+				 * remove Метод удаления всех воркеров
 				 */
-				void remove(const size_t wid) noexcept;
+				void remove() noexcept;
 			public:
 				/**
 				 * run Метод запуска сервера воркером
@@ -112,10 +119,11 @@ namespace awh {
 				 */
 				void run(const size_t wid) noexcept;
 				/**
-				 * open Метод открытия подключения воркером
+				 * remove Метод удаления воркера
 				 * @param wid идентификатор воркера
 				 */
-				void open(const size_t wid) noexcept;
+				void remove(const size_t wid) noexcept;
+			public:
 				/**
 				 * close Метод закрытия подключения воркера
 				 * @param aid идентификатор адъютанта

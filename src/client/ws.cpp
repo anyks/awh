@@ -827,12 +827,9 @@ void awh::client::WebSocket::on(void * ctx, function <void (const vector <char> 
  */
 void awh::client::WebSocket::sendTimeout() noexcept {
 	// Если подключение выполнено
-	if(this->core->working() && !this->locker){
-		// Если рукопожатие выполнено
-		if(this->http.isHandshake() && (this->aid > 0))
-			// Отправляем сигнал принудительного таймаута
-			const_cast <client::core_t *> (this->core)->sendTimeout(this->aid);
-	}
+	if(this->core->working() && !this->locker)
+		// Отправляем сигнал принудительного таймаута
+		const_cast <client::core_t *> (this->core)->sendTimeout(this->aid);
 }
 /**
  * sendError Метод отправки сообщения об ошибке
@@ -1256,7 +1253,7 @@ void awh::client::WebSocket::setAuthTypeProxy(const auth_t::type_t type, const a
  * @param fmk  объект фреймворка
  * @param log  объект для работы с логами
  */
-awh::client::WebSocket::WebSocket(const client::core_t * core, const fmk_t * fmk, const log_t * log) noexcept : nwk(fmk), uri(fmk, &nwk), hash(fmk, log), frame(fmk, log), http(fmk, log, &uri), core(core), fmk(fmk), log(log), worker(fmk, log) {
+awh::client::WebSocket::WebSocket(const client::core_t * core, const fmk_t * fmk, const log_t * log) noexcept : nwk(fmk), uri(fmk, &nwk), mode(mode_t::DISCONNECT), frame(fmk, log), hash(fmk, log), http(fmk, log, &uri), worker(fmk, log), fmk(fmk), log(log), core(core) {
 	// Устанавливаем контекст сообщения
 	this->worker.ctx = this;
 	// Устанавливаем событие на запуск системы

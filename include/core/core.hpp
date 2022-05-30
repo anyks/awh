@@ -108,12 +108,16 @@ namespace awh {
 			} timer_t;
 		protected:
 			/**
-			 * Locker Структуро мютексов для блокировки потоков
+			 * Mutex Объект основных мютексов
 			 */
-			typedef struct Locker {
-				mutex work;           // Мютекс для блокировки потока при обработке чанков
-				recursive_mutex main; // Мютекс для блокировки основного потока
-			} locker_t;
+			typedef struct Mutex {
+				mutex start;           // Для контроля запуска
+				mutex worker;          // Для работы с воркерами
+				recursive_mutex core;  // Для работы с ядрами
+				recursive_mutex stop;  // Для контроля остановки
+				recursive_mutex main;  // Для работы с параметрами модуля
+				recursive_mutex timer; // Для работы с таймерами
+			} mtx_t;
 			/**
 			 * KeepAlive Структура с параметрами для постоянного подключения
 			 */
@@ -156,6 +160,8 @@ namespace awh {
 				Sockaddr() : fd(-1), client({}), server({}), client6({}), server6({}) {}
 			} sockaddr_t;
 		protected:
+			// Мютекс для блокировки основного потока
+			mtx_t mtx;
 			// Сетевые параметры
 			net_t net;
 			// Создаём объект работы с URI
@@ -174,8 +180,6 @@ namespace awh {
 			poolthr_t pool;
 			// Объект для работы с сокетами
 			socket_t socket;
-			// Создаём объект для блокировки потоков
-			locker_t locker;
 		private:
 			// Частота обновления базы событий
 			chrono::milliseconds freq;
@@ -195,6 +199,8 @@ namespace awh {
 			// Структура интервала пинга
 			struct timeval tvInterval;
 		protected:
+			// Список сторонних сетевых ядер
+			set <Core *> cores;
 			// Список блокированных объектов
 			set <size_t> locking;
 		private:
@@ -255,30 +261,12 @@ namespace awh {
 			 */
 			static void timer(evutil_socket_t fd, short event, void * ctx) noexcept;
 			/**
-			 * reconnect Функция задержки времени на реконнект
-			 * @param fd    файловый дескриптор (сокет)
-			 * @param event произошедшее событие
-			 * @param ctx   передаваемый контекст
-			 */
-			static void reconnect(evutil_socket_t fd, short event, void * ctx) noexcept;
-			/**
 			 * persistent Функция персистентного вызова по таймеру
 			 * @param fd    файловый дескриптор (сокет)
 			 * @param event произошедшее событие
 			 * @param ctx   передаваемый контекст
 			 */
 			static void persistent(evutil_socket_t fd, short event, void * ctx) noexcept;
-		protected:
-			/**
-			 * reconnect Метод запуска переподключения
-			 * @param wid идентификатор воркера
-			 */
-			void reconnect(const size_t wid) noexcept;
-			/**
-			 * connect Метод создания подключения к удаленному серверу
-			 * @param wid идентификатор воркера
-			 */
-			virtual void connect(const size_t wid) noexcept;
 		protected:
 			/**
 			 * clean Метод буфера событий
@@ -336,13 +324,13 @@ namespace awh {
 			size_t add(const worker_t * worker) noexcept;
 		public:
 			/**
-			 * closeAll Метод отключения всех воркеров
+			 * close Метод отключения всех воркеров
 			 */
-			virtual void closeAll() noexcept;
+			virtual void close() noexcept;
 			/**
-			 * removeAll Метод удаления всех воркеров
+			 * remove Метод удаления всех воркеров
 			 */
-			virtual void removeAll() noexcept;
+			virtual void remove() noexcept;
 		public:
 			/**
 			 * run Метод запуска сервера воркером

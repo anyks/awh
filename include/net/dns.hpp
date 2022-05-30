@@ -20,6 +20,7 @@
  */
 #include <set>
 #include <map>
+#include <mutex>
 #include <regex>
 #include <cstdio>
 #include <string>
@@ -32,6 +33,7 @@
 #include <event2/dns.h>
 #include <event2/util.h>
 #include <event2/event.h>
+#include <event2/event_struct.h>
 
 // Если - это Windows
 #if defined(_WIN32) || defined(_WIN64)
@@ -65,31 +67,64 @@ namespace awh {
 	typedef class DNS {
 		private:
 			/**
-			 * Worker Структура воркера резолвинга
+			 * Mutex Объект основных мютексов
 			 */
-			typedef struct Worker {
-				size_t id;                                       // Идентификатор объекта доменного имени
-				int family;                                      // Тип протокола интернета AF_INET или AF_INET6
-				string host;                                     // Название искомого домена
-				void * context;                                  // Передаваемый внешний контекст
-				const DNS * dns;                                 // Объект резолвера DNS
-				const fmk_t * fmk;                               // Объект основного фреймворка
-				const log_t * log;                               // Объект для работы с логами
-				function <void (const string, void *)> callback; // Функция обратного вызова
-				/**
-				 * Worker Конструктор
-				 */
-				Worker() : id(0), family(AF_UNSPEC), host(""), context(nullptr), dns(nullptr), fmk(nullptr), log(nullptr), callback(nullptr) {}
+			typedef struct Mutex {
+				recursive_mutex clear;  // Для очистки параметров
+				recursive_mutex system; // Для установки системных параметров
+				recursive_mutex worker; // Для работы с воркерами
+			} mtx_t;
+			/**
+			 * Worker Класс воркера резолвинга
+			 */
+			typedef class Worker {
+				public:
+					// Идентификатор объекта доменного имени
+					size_t did;
+				public:
+					// Тип протокола интернета AF_INET или AF_INET6
+					int family;
+				public:
+					// Название искомого домена
+					string host;
+				public:
+					// Событие таймаута ожидания
+					struct event ev;
+					// Структура таймаута ожидания
+					struct timeval tv;
+				public:
+					// Передаваемый внешний контекст
+					void * context;
+				public:
+					// Объект DNS данных полученных с сервера
+					struct evutil_addrinfo hints;
+				public:
+					const DNS * dns;                          // Объект резолвера DNS
+					struct evdns_getaddrinfo_request * reply; // Объект DNS запроса
+				public:
+					// Функция обратного вызова
+					function <void (const string, void *)> callback;
+				public:
+					/**
+					 * Worker Конструктор
+					 */
+					Worker() noexcept : did(0), family(AF_UNSPEC), host(""), context(nullptr), dns(nullptr), reply(nullptr), callback(nullptr) {
+						// Заполняем структуру запроса нулями
+						memset(&this->hints, 0, sizeof(this->hints));
+					}
 			} worker_t;
+		private:
+			// Мютекс для блокировки основного потока
+			mutable mtx_t mtx;
 		private:
 			// Чёрный список IP адресов
 			mutable set <string> blacklist;
 			// Адреса серверов dns
 			mutable vector <string> servers;
-			// Список воркеров резолвинга доменов
-			mutable map <size_t, worker_t> workers;
 			// Список ранее полученых, IP адресов (горячий кэш)
 			mutable unordered_multimap <string, string> cache;
+			// Список воркеров резолвинга доменов
+			mutable map <size_t, unique_ptr <worker_t>> workers;
 		private:
 			// Создаём объект фреймворка
 			const fmk_t * fmk = nullptr;
@@ -102,13 +137,23 @@ namespace awh {
 			struct event_base * base = nullptr;
 			// База dns резолвера
 			struct evdns_base * dbase = nullptr;
-			// Объект dns запроса
-			struct evdns_getaddrinfo_request * reply = nullptr;
 		private:
 			/**
 			 * createBase Метод создания dns базы
 			 */
 			void createBase() noexcept;
+			/**
+			 * clearZomby Метод очистки зомби-запросов
+			 */
+			void clearZomby() noexcept;
+		private:
+			/**
+			 * garbage Функция выполняемая по таймеру для чистки мусора
+			 * @param fd    файловый дескриптор (сокет)
+			 * @param event произошедшее событие
+			 * @param ctx   передаваемый контекст
+			 */
+			static void garbage(evutil_socket_t fd, short event, void * ctx) noexcept;
 			/**
 			 * callback Событие срабатывающееся при получении данных с dns сервера
 			 * @param error ошибка dns сервера
@@ -116,15 +161,6 @@ namespace awh {
 			 * @param ctx   объект с данными для запроса
 			 */
 			static void callback(const int error, struct evutil_addrinfo * addr, void * ctx) noexcept;
-		public:
-			/**
-			 * init Метод инициализации DNS резолвера
-			 * @param host   хост сервера
-			 * @param family тип интернет протокола AF_INET, AF_INET6 или AF_UNSPEC
-			 * @param base   объект базы событий
-			 * @return       база DNS резолвера
-			 */
-			struct evdns_base * init(const string & host, const int family, struct event_base * base) const noexcept;
 		public:
 			/**
 			 * reset Метод сброса параметров модуля DNS резолвера
@@ -138,6 +174,12 @@ namespace awh {
 			 * flush Метод сброса кэша DNS резолвера
 			 */
 			void flush() noexcept;
+		public:
+			/**
+			 * cancel Метод отмены выполнения запроса
+			 * @param did идентификатор DNS запроса
+			 */
+			void cancel(const size_t did = 0) noexcept;
 		public:
 			/**
 			 * updateNameServers Метод обновления списка нейм-серверов
@@ -185,8 +227,9 @@ namespace awh {
 			 * @param host     хост сервера
 			 * @param family   тип интернет протокола AF_INET, AF_INET6 или AF_UNSPEC
 			 * @param callback функция обратного вызова срабатывающая при получении данных
+			 * @return         идентификатор DNS запроса
 			 */
-			void resolve(void * ctx, const string & host, const int family, function <void (const string, void *)> callback) noexcept;
+			size_t resolve(void * ctx, const string & host, const int family, function <void (const string, void *)> callback) noexcept;
 		public:
 			/**
 			 * DNS Конструктор

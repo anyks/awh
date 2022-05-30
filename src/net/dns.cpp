@@ -23,12 +23,74 @@ void awh::DNS::createBase() noexcept {
 	if((this->fmk != nullptr) && (this->base != nullptr)){
 		// Выполняем сброс модуля DNS резолвера
 		this->reset();
+		// Выполняем блокировку потока
+		const lock_guard <recursive_mutex> lock(this->mtx.system);
 		// Создаем базу dns
 		this->dbase = evdns_base_new(this->base, 0);
 		// Если база dns не создана
 		if(this->dbase == nullptr)
 			// Выводим в лог сообщение
 			this->log->print("%s", log_t::flag_t::CRITICAL, "dns base does not created");
+	}
+}
+/**
+ * clearZomby Метод очистки зомби-запросов
+ */
+void awh::DNS::clearZomby() noexcept {
+	// Выполняем блокировку потока
+	const lock_guard <recursive_mutex> lock(this->mtx.clear);
+	// Если список воркеров не пустой
+	if(!this->workers.empty()){
+		// Получаем текущее значение даты
+		const time_t date = this->fmk->unixTimestamp();
+		// Переходим по всем воркерам
+		for(auto it = this->workers.begin(); it != this->workers.end();){
+			// Если DNS запрос устарел на 3-и минуты, убиваем его
+			if((date - it->first) >= 180000){
+				// Очищаем объект таймаута базы событий
+				evutil_timerclear(&it->second->tv);
+				// Удаляем событие таймера
+				event_del(&it->second->ev);
+				// Выводим пустой IP адрес
+				it->second->callback("", it->second->context);
+				// Удаляем объект воркера
+				it = this->workers.erase(it);
+			// Иначе продолжаем дальше
+			} else ++it;
+		}
+	}
+}
+/**
+ * garbage Функция выполняемая по таймеру для чистки мусора
+ * @param fd    файловый дескриптор (сокет)
+ * @param event произошедшее событие
+ * @param ctx   передаваемый контекст
+ */
+void awh::DNS::garbage(evutil_socket_t fd, short event, void * ctx) noexcept {
+	// Если данные получены
+	if(ctx != nullptr){
+		// Получаем объект воркера резолвинга
+		worker_t * wrk = reinterpret_cast <worker_t *> (ctx);
+		// Получаем объект модуля DNS резолвера
+		dns_t * dns = const_cast <dns_t *> (wrk->dns);
+		// Если данные фреймворка существуют
+		if(dns->log != nullptr)
+			// Если возникла ошибка, выводим в лог сообщение
+			dns->log->print("%s request failed", log_t::flag_t::CRITICAL, wrk->host.c_str());
+		// Очищаем объект таймаута базы событий
+		evutil_timerclear(&wrk->tv);
+		// Удаляем событие таймера
+		event_del(&wrk->ev);
+		// Выводим готовый результат
+		if(wrk->callback != nullptr)
+			// Выводим полученный IP адрес
+			wrk->callback("", wrk->context);
+		// Выполняем блокировку потока
+		dns->mtx.worker.lock();
+		// Удаляем домен из списка доменов
+		dns->workers.erase(wrk->did);
+		// Выполняем разблокировку потока
+		dns->mtx.worker.unlock();
 	}
 }
 /**
@@ -44,150 +106,97 @@ void awh::DNS::callback(const int error, struct evutil_addrinfo * addr, void * c
 		worker_t * wrk = reinterpret_cast <worker_t *> (ctx);
 		// Получаем объект модуля DNS резолвера
 		dns_t * dns = const_cast <dns_t *> (wrk->dns);
-		// Если данные фреймворка существуют
-		if((wrk->fmk != nullptr) && (wrk->log != nullptr)){
-			// Список полученных IP адресов
-			vector <string> ips;
-			// Если возникла ошибка, выводим в лог сообщение
-			if(error) wrk->log->print("%s %s", log_t::flag_t::CRITICAL, wrk->host.c_str(), evutil_gai_strerror(error));
-			// Если ошибки не возникало
-			else {
-				// Создаем буфер для получения ip адреса
-				char buffer[128];
-				// Полученный IP адрес
-				const char * ip = nullptr;
-				// Создаем структуру данных, доменного имени
-				struct evutil_addrinfo * ai;
-				// Переходим по всей структуре и выводим ip адреса
-				for(ai = addr; ai; ai = ai->ai_next){
-					// Заполняем буфер нулями
-					memset(buffer, 0, sizeof(buffer));
-					// Если это искомый тип интернет протокола
-					if((ai->ai_family == wrk->family) || (wrk->family == AF_UNSPEC)){
-						// Получаем структуру для указанного интернет протокола
-						switch(ai->ai_family){
-							// Если это IPv4 адрес
-							case AF_INET: {
-								// Создаем структуру для получения ip адреса
-								struct sockaddr_in * sin = (struct sockaddr_in *) ai->ai_addr;
-								// Выполняем запрос и получает ip адрес
-								ip = evutil_inet_ntop(ai->ai_family, &sin->sin_addr, buffer, 128);
-							} break;
-							// Если это IPv6 адрес
-							case AF_INET6: {
-								// Создаем структуру для получения ip адреса
-								struct sockaddr_in6 * sin6 = (struct sockaddr_in6 *) ai->ai_addr;
-								// Выполняем запрос и получает ip адрес
-								ip = evutil_inet_ntop(ai->ai_family, &sin6->sin6_addr, buffer, 128);
-							} break;
-						}
-						// Если IP адрес получен и не находится в чёрном списке
-						if((ip != nullptr) && (dns->blacklist.count(ip) < 1)){
-							// Добавляем полученный IP адрес в список
-							ips.push_back(ip);
-							// Записываем данные в кэш
-							dns->cache.emplace(wrk->host, ip);
-						}
+		// Список полученных IP адресов
+		vector <string> ips;
+		// Если возникла ошибка, выводим в лог сообщение
+		if(error && (dns->log != nullptr)) dns->log->print("%s %s", log_t::flag_t::CRITICAL, wrk->host.c_str(), evutil_gai_strerror(error));
+		// Если ошибки не возникало
+		else {
+			// Создаем буфер для получения ip адреса
+			char buffer[128];
+			// Полученный IP адрес
+			const char * ip = nullptr;
+			// Создаем структуру данных, доменного имени
+			struct evutil_addrinfo * ai;
+			// Переходим по всей структуре и выводим ip адреса
+			for(ai = addr; ai; ai = ai->ai_next){
+				// Заполняем буфер нулями
+				memset(buffer, 0, sizeof(buffer));
+				// Если это искомый тип интернет протокола
+				if((ai->ai_family == wrk->family) || (wrk->family == AF_UNSPEC)){
+					// Получаем структуру для указанного интернет протокола
+					switch(ai->ai_family){
+						// Если это IPv4 адрес
+						case AF_INET: {
+							// Создаем структуру для получения ip адреса
+							struct sockaddr_in * sin = (struct sockaddr_in *) ai->ai_addr;
+							// Выполняем запрос и получает ip адрес
+							ip = evutil_inet_ntop(ai->ai_family, &sin->sin_addr, buffer, 128);
+						} break;
+						// Если это IPv6 адрес
+						case AF_INET6: {
+							// Создаем структуру для получения ip адреса
+							struct sockaddr_in6 * sin6 = (struct sockaddr_in6 *) ai->ai_addr;
+							// Выполняем запрос и получает ip адрес
+							ip = evutil_inet_ntop(ai->ai_family, &sin6->sin6_addr, buffer, 128);
+						} break;
+					}
+					// Если IP адрес получен и не находится в чёрном списке
+					if((ip != nullptr) && (dns->blacklist.empty() || (dns->blacklist.count(ip) < 1))){
+						// Добавляем полученный IP адрес в список
+						ips.push_back(ip);
+						// Выполняем блокировку потока
+						dns->mtx.system.lock();
+						// Записываем данные в кэш
+						dns->cache.emplace(wrk->host, ip);
+						// Выполняем разблокировку потока
+						dns->mtx.system.unlock();
 					}
 				}
-				// Очищаем структуру данных домена
-				evutil_freeaddrinfo(addr);
-			}
-			// Полученный ip адрес
-			const string * ip = nullptr;
-			// Если ip адреса получены, выводим ip адрес в случайном порядке
-			if(!ips.empty()){
-				// Если количество элементов больше 1
-				if(ips.size() > 1){
-					// Рандомизация генератора случайных чисел
-					srand(time(nullptr));
-					// Получаем ip адрес
-					ip = &ips.at(rand() % ips.size());
-				// Выводим только первый элемент
-				} else ip = &ips.front();
-			}
-			// Выводим готовый результат
-			if(wrk->callback != nullptr)
-				// Выводим полученный IP адрес
-				wrk->callback(ip != nullptr ? (* ip) : "", wrk->context);
-			// Если объект запроса существует
-			if(dns->reply != nullptr){
-				// Выполняем отмену запроса
-				// evdns_getaddrinfo_cancel(dns->reply);
-				// Обнуляем указатель
-				dns->reply = nullptr;
 			}
 		}
+		// Полученный ip адрес
+		const string * ip = nullptr;
+		// Если ip адреса получены, выводим ip адрес в случайном порядке
+		if(!ips.empty()){
+			// Если количество элементов больше 1
+			if(ips.size() > 1){
+				// Рандомизация генератора случайных чисел
+				srand(time(nullptr));
+				// Получаем ip адрес
+				ip = &ips.at(rand() % ips.size());
+			// Выводим только первый элемент
+			} else ip = &ips.front();
+		// Если чёрный список доменных имён не пустой
+		} else if(!dns->blacklist.empty() && !error) {
+			// Выполняем блокировку потока
+			dns->mtx.clear.lock();
+			// Выполняем очистку чёрного списка
+			dns->blacklist.clear();
+			// Выполняем разблокировку потока
+			dns->mtx.clear.unlock();
+			// Пробуем получить IP адреса заново
+			callback(error, addr, ctx);
+			// Выходим из функции
+			return;
+		}
+		// Очищаем объект таймаута базы событий
+		evutil_timerclear(&wrk->tv);
+		// Удаляем событие таймера
+		event_del(&wrk->ev);
+		// Очищаем структуру данных домена
+		if(!error) evutil_freeaddrinfo(addr);
+		// Выводим готовый результат
+		if(wrk->callback != nullptr)
+			// Выводим полученный IP адрес
+			wrk->callback(ip != nullptr ? (* ip) : "", wrk->context);
+		// Выполняем блокировку потока
+		dns->mtx.worker.lock();
 		// Удаляем домен из списка доменов
-		dns->workers.erase(wrk->id);
+		dns->workers.erase(wrk->did);
+		// Выполняем разблокировку потока
+		dns->mtx.worker.unlock();
 	}
-}
-/**
- * init Метод инициализации DNS резолвера
- * @param host   хост сервера
- * @param family тип интернет протокола AF_INET, AF_INET6 или AF_UNSPEC
- * @param base   объект базы событий
- * @return       база DNS резолвера
- */
-struct evdns_base * awh::DNS::init(const string & host, const int family, struct event_base * base) const noexcept {
-	// Результат работы функции
-	struct evdns_base * result = nullptr;
-	// Если база событий передана
-	if((base != nullptr) && !host.empty() && !this->servers.empty()){
-		// Адрес dns сервера
-		string dns = "";
-		// Создаем базу dns
-		result = evdns_base_new(base, 0);
-		// Переходим по всем нейм серверам и добавляем их
-		for(auto & server : this->servers){
-			// Определяем тип передаваемого сервера
-			switch((uint8_t) this->nwk->parseHost(server)){
-				// Если хост является доменом или IPv4 адресом
-				case (uint8_t) network_t::type_t::IPV4:
-				case (uint8_t) network_t::type_t::DOMNAME: dns = server; break;
-				// Если хост является IPv6 адресом, переводим ip адрес в полную форму
-				case (uint8_t) network_t::type_t::IPV6: dns = this->nwk->setLowIp6(server); break;
-			}
-			// Если DNS сервер установлен, добавляем его в базу DNS
-			if(!dns.empty() && (evdns_base_nameserver_ip_add(result, dns.c_str()) != 0))
-				// Выводим в лог сообщение
-				this->log->print("name server [%s] does not add", log_t::flag_t::CRITICAL, dns.c_str());
-		}
-		// Создаем объект воркера резолвинга
-		worker_t wrk;
-		// Запоминаем название искомого домена
-		wrk.host = host;
-		// Устанавливаем тип протокола интернета
-		wrk.family = family;
-		// Запоминаем объект основного фреймворка
-		wrk.fmk = this->fmk;
-		// Запоминаем объект для работы с логами
-		wrk.log = this->log;
-		// Формируем идентификатор объекта
-		wrk.id = this->fmk->unixTimestamp();
-		// Запоминаем текущий объект
-		wrk.dns = const_cast <dns_t *> (this);
-		// Структура запроса
-		struct evutil_addrinfo hints;
-		// Заполняем структуру запроса нулями
-		memset(&hints, 0, sizeof(hints));
-		// Устанавливаем тип подключения
-		hints.ai_family = AF_UNSPEC;
-		// Устанавливаем что это потоковый сокет
-		hints.ai_socktype = SOCK_STREAM;
-		// Устанавливаем что это tcp подключение
-		hints.ai_protocol = IPPROTO_TCP;
-		// Устанавливаем флаг подключения что это канонническое имя
-		hints.ai_flags = EVUTIL_AI_CANONNAME;
-		// Добавляем воркер резолвинга в список воркеров
-		auto ret = this->workers.emplace(wrk.id, move(wrk));
-		// Выполняем dns запрос
-		struct evdns_getaddrinfo_request * reply = evdns_getaddrinfo(result, host.c_str(), nullptr, &hints, &dns_t::callback, &ret.first->second);
-		// Выводим в лог сообщение
-		if(reply == nullptr) this->log->print("request for %s returned immediately", log_t::flag_t::CRITICAL, host.c_str());
-	}
-	// Выводим результат
-	return result;
 }
 /**
  * reset Метод сброса параметров модуля DNS резолвера
@@ -195,13 +204,10 @@ struct evdns_base * awh::DNS::init(const string & host, const int family, struct
 void awh::DNS::reset() noexcept {
 	// Очищаем базу dns
 	if(this->dbase != nullptr){
-		// Если объект запроса существует то отменяем его
-		if(this->reply != nullptr){
-			// Выполняем отмену запроса
-			evdns_getaddrinfo_cancel(this->reply);
-			// Обнуляем указатель
-			this->reply = nullptr;
-		}
+		// Выполняем сброс кэша резолвера
+		this->clear();
+		// Выполняем блокировку потока
+		const lock_guard <recursive_mutex> lock(this->mtx.clear);
 		// Очищаем базу dns
 		evdns_base_free(this->dbase, 0);
 		// Зануляем базу DNS
@@ -214,6 +220,12 @@ void awh::DNS::reset() noexcept {
 void awh::DNS::clear() noexcept {
 	// Выполняем сброс кэша DNS резолвера
 	this->flush();
+	// Выполняем отмену выполненных запросов
+	this->cancel();
+	// Убиваем зомби-процессы если такие имеются
+	this->clearZomby();
+	// Выполняем блокировку потока
+	const lock_guard <recursive_mutex> lock(this->mtx.clear);
 	// Выполняем сброс списка IP адресов
 	this->servers.clear();
 }
@@ -221,16 +233,56 @@ void awh::DNS::clear() noexcept {
  * flush Метод сброса кэша DNS резолвера
  */
 void awh::DNS::flush() noexcept {
+	// Выполняем блокировку потока
+	const lock_guard <recursive_mutex> lock(this->mtx.clear);
 	// Выполняем сброс кэша полученных IP адресов
 	this->cache.clear();
+}
+/**
+ * cancel Метод отмены выполнения запроса
+ * @param did идентификатор DNS запроса
+ */
+void awh::DNS::cancel(const size_t did) noexcept {
+	// Выполняем блокировку потока
+	const lock_guard <recursive_mutex> lock(this->mtx.clear);
 	// Если список воркеров не пустой
 	if(!this->workers.empty()){
-		// Переходим по всем воркерам
-		for(auto it = this->workers.begin(); it != this->workers.end();){
-			// Выводим пустой IP адрес
-			it->second.callback("", it->second.context);
-			// Удаляем объект воркера
-			it = this->workers.erase(it);
+		// Если идентификатор DNS запроса передан
+		if(did > 0){
+			// Выполняем поиск воркера
+			auto it = this->workers.find(did);
+			// Если воркер найден
+			if(it != this->workers.end()){
+				// Если объект запроса существует
+				if(it->second->reply != nullptr)
+					// Выполняем отмену запроса
+					evdns_getaddrinfo_cancel(it->second->reply);
+				// Иначе выполняем принудительный возврат
+				else {
+					// Выводим пустой IP адрес
+					it->second->callback("", it->second->context);
+					// Удаляем объект воркера
+					this->workers.erase(it);
+				}
+			}
+		// Если нужно остановить работу всех DNS запросов
+		} else {
+			// Переходим по всем воркерам
+			for(auto it = this->workers.begin(); it != this->workers.end();){
+				// Если объект запроса существует
+				if(it->second->reply != nullptr){
+					// Выполняем отмену запроса
+					evdns_getaddrinfo_cancel(it->second->reply);
+					// Продолжаем перебор
+					++it;
+				// Иначе выполняем принудительный возврат
+				} else {
+					// Выводим пустой IP адрес
+					it->second->callback("", it->second->context);
+					// Удаляем объект воркера
+					it = this->workers.erase(it);
+				}
+			}
 		}
 	}
 }
@@ -240,8 +292,12 @@ void awh::DNS::flush() noexcept {
 void awh::DNS::updateNameServers() noexcept {
 	// Если список DNS серверов не пустой
 	if(!this->servers.empty() && (this->dbase != nullptr)){
+		// Выполняем блокировку потока
+		this->mtx.clear.lock();
 		// Выполняем очистку предыдущих DNS серверов
 		evdns_base_clear_nameservers_and_suspend(this->dbase);
+		// Выполняем разблокировку потока
+		this->mtx.clear.unlock();
 		// Переходим по всем нейм серверам и добавляем их
 		for(auto & server : this->servers) this->setNameServer(server);
 	}
@@ -250,6 +306,8 @@ void awh::DNS::updateNameServers() noexcept {
  * clearBlackList Метод очистки чёрного списка
  */
 void awh::DNS::clearBlackList() noexcept {
+	// Выполняем блокировку потока
+	const lock_guard <recursive_mutex> lock(this->mtx.clear);
 	// Выполняем очистку чёрного списка
 	this->blacklist.clear();
 }
@@ -260,6 +318,8 @@ void awh::DNS::clearBlackList() noexcept {
 void awh::DNS::delInBlackList(const string & ip) noexcept {
 	// Если IP адрес передан
 	if(!ip.empty()){
+		// Выполняем блокировку потока
+		const lock_guard <recursive_mutex> lock(this->mtx.clear);
 		// Выполняем поиск IP адреса в чёрном списке
 		auto it = this->blacklist.find(ip);
 		// Если IP адрес найден в чёрном списке, удаляем его
@@ -271,6 +331,8 @@ void awh::DNS::delInBlackList(const string & ip) noexcept {
  * @param ip адрес для добавления в чёрный список
  */
 void awh::DNS::setToBlackList(const string & ip) noexcept {
+	// Выполняем блокировку потока
+	const lock_guard <recursive_mutex> lock(this->mtx.system);
 	// Если IP адрес передан, добавляем IP адрес в чёрный список
 	if(!ip.empty()) this->blacklist.emplace(ip);
 }
@@ -281,8 +343,12 @@ void awh::DNS::setToBlackList(const string & ip) noexcept {
 void awh::DNS::setBase(struct event_base * base) noexcept {
 	// Если база передана
 	if(base != nullptr){
+		// Выполняем блокировку потока
+		this->mtx.system.lock();
 		// Создаем базу событий
 		this->base = base;
+		// Выполняем разблокировку потока
+		this->mtx.system.unlock();
 		// Создаем dns базу
 		this->createBase();
 	}
@@ -292,22 +358,24 @@ void awh::DNS::setBase(struct event_base * base) noexcept {
  * @param server ip адрес dns сервера
  */
 void awh::DNS::setNameServer(const string & server) noexcept {
+	// Выполняем блокировку потока
+	const lock_guard <recursive_mutex> lock(this->mtx.system);
 	// Если dns сервер передан
 	if(!server.empty() && (this->fmk != nullptr) && (this->dbase != nullptr)){
-		// Адрес dns сервера
-		string dns = "";
+		// Адрес имени сервера
+		string ns = "";
 		// Определяем тип передаваемого сервера
 		switch((uint8_t) this->nwk->parseHost(server)){
 			// Если хост является доменом или IPv4 адресом
 			case (uint8_t) network_t::type_t::IPV4:
-			case (uint8_t) network_t::type_t::DOMNAME: dns = server; break;
+			case (uint8_t) network_t::type_t::DOMNAME: ns = server; break;
 			// Если хост является IPv6 адресом, переводим ip адрес в полную форму
-			case (uint8_t) network_t::type_t::IPV6: dns = this->nwk->setLowIp6(server); break;
+			case (uint8_t) network_t::type_t::IPV6: ns = this->nwk->setLowIp6(server); break;
 		}
 		// Если DNS сервер установлен, добавляем его в базу DNS
-		if(!dns.empty() && (evdns_base_nameserver_ip_add(this->dbase, dns.c_str()) != 0))
+		if(!ns.empty() && (evdns_base_nameserver_ip_add(this->dbase, ns.c_str()) != 0))
 			// Выводим в лог сообщение
-			this->log->print("name server [%s] does not add", log_t::flag_t::CRITICAL, dns.c_str());
+			this->log->print("name server [%s] does not add", log_t::flag_t::CRITICAL, ns.c_str());
 	}
 }
 /**
@@ -317,8 +385,12 @@ void awh::DNS::setNameServer(const string & server) noexcept {
 void awh::DNS::setNameServers(const vector <string> & servers) noexcept {
 	// Если нейм сервера переданы
 	if(!servers.empty()){
+		// Выполняем блокировку потока
+		this->mtx.system.lock();
 		// Запоминаем dns сервера
 		this->servers = servers;
+		// Выполняем разблокировку потока
+		this->mtx.system.unlock();
 		// Переходим по всем нейм серверам и добавляем их
 		for(auto & server : this->servers) this->setNameServer(server);
 	}
@@ -334,8 +406,12 @@ void awh::DNS::replaceServers(const vector <string> & servers) noexcept {
 		const u_short count = (this->dbase != nullptr ? evdns_base_count_nameservers(this->dbase) : 0);
 		// Если список DNS серверов отличается
 		if(this->servers.empty() || (count == 0) || !equal(servers.begin(), servers.end(), this->servers.begin())){
+			// Выполняем блокировку потока
+			this->mtx.system.lock();
 			// Выполняем очистку предыдущих DNS серверов
 			if(count > 0) evdns_base_clear_nameservers_and_suspend(this->dbase);
+			// Выполняем разблокировку потока
+			this->mtx.system.unlock();
 			// Устанавливаем новый список серверов
 			this->setNameServers(servers);
 		}
@@ -347,8 +423,11 @@ void awh::DNS::replaceServers(const vector <string> & servers) noexcept {
  * @param host     хост сервера
  * @param family   тип интернет протокола IPv4 или IPv6
  * @param callback функция обратного вызова срабатывающая при получении данных
+ * @return         идентификатор DNS запроса
  */
-void awh::DNS::resolve(void * ctx, const string & host, const int family, function <void (const string, void *)> callback) noexcept {
+size_t awh::DNS::resolve(void * ctx, const string & host, const int family, function <void (const string, void *)> callback) noexcept {
+	// Результат работы функции
+	size_t result = 0;
 	// Если домен передан
 	if(!host.empty() && (this->fmk != nullptr)){		
 		// Результат работы регулярного выражения
@@ -366,23 +445,23 @@ void awh::DNS::resolve(void * ctx, const string & host, const int family, functi
 				// Выполняем проверку запрашиваемого хоста в кэше
 				auto it = this->cache.find(host);
 				// Если хост найден, выводим его
-				if(it != this->cache.end()) callback(it->second, ctx);
+				if((it != this->cache.end()) && (this->blacklist.empty() || (this->blacklist.count(it->second) < 1)))
+					// Выводим полученный IP адрес
+					callback(it->second, ctx);
 				// Выполняем запрос IP адреса
 				else goto Resolve;
 			// Если доменных имён в кэше больше 1-го
 			} else if(count > 1) {
-				// Индекс полученных IP адресов
-				size_t index = 0;
 				// Список полученных IP адресов
-				vector <string> ips(count, "");
+				vector <string> ips;
 				// Получаем диапазон IP адресов в кэше
 				auto ret = this->cache.equal_range(host);
 				// Переходим по всему списку IP адресов
 				for(auto it = ret.first; it != ret.second; ++it){
-					// Добавляем IP адрес в список IP адресов
-					ips.at(index) = it->second;
-					// Увеличиваем значение индекса
-					index++;
+					// Если чёрный список пустой, или IP адрес в нём не значится
+					if(this->blacklist.empty() || (this->blacklist.count(it->second) < 1))
+						// Добавляем IP адрес в список адресов пригодных для работы
+						ips.push_back(it->second);
 				}
 				// Если список IP адресов получен
 				if(!ips.empty()){
@@ -396,48 +475,67 @@ void awh::DNS::resolve(void * ctx, const string & host, const int family, functi
 			} else {
 				// Устанавливаем метку получения IP адреса
 				Resolve:
-				// Создаем объект воркера резолвинга
-				worker_t wrk;
-				// Запоминаем текущий объект
-				wrk.dns = this;
-				// Запоминаем название искомого домена
-				wrk.host = host;
-				// Устанавливаем передаваемый контекст
-				wrk.context = ctx;
-				// Устанавливаем тип протокола интернета
-				wrk.family = family;
-				// Запоминаем объект основного фреймворка
-				wrk.fmk = this->fmk;
-				// Запоминаем объект для работы с логами
-				wrk.log = this->log;
-				// Устанавливаем функцию обратного вызова
-				wrk.callback = callback;
-				// Формируем идентификатор объекта
-				wrk.id = this->fmk->unixTimestamp();
-				// Структура запроса
-				struct evutil_addrinfo hints;
-				// Заполняем структуру запроса нулями
-				memset(&hints, 0, sizeof(hints));
-				// Устанавливаем тип подключения
-				hints.ai_family = AF_UNSPEC;
-				// Устанавливаем что это потоковый сокет
-				hints.ai_socktype = SOCK_STREAM;
-				// Устанавливаем что это tcp подключение
-				hints.ai_protocol = IPPROTO_TCP;
-				// Устанавливаем флаг подключения что это канонническое имя
-				hints.ai_flags = EVUTIL_AI_CANONNAME;
+				// Выполняем блокировку потока
+				this->mtx.worker.lock();
+				// Получаем идентификатор воркера
+				result = this->fmk->unixTimestamp();
 				// Добавляем воркер резолвинга в список воркеров
-				auto ret = this->workers.emplace(wrk.id, move(wrk));
+				auto ret = this->workers.emplace(result, unique_ptr <worker_t> (new worker_t()));
+				// Выполняем разблокировку потока
+				this->mtx.worker.unlock();
+				// Запоминаем текущий объект
+				ret.first->second->dns = this;
+				// Запоминаем название искомого домена
+				ret.first->second->host = host;
+				// Формируем идентификатор объекта
+				ret.first->second->did = result;
+				// Устанавливаем передаваемый контекст
+				ret.first->second->context = ctx;
+				// Устанавливаем тип протокола интернета
+				ret.first->second->family = family;
+				// Устанавливаем функцию обратного вызова
+				ret.first->second->callback = callback;
+				// Устанавливаем тип подключения
+				ret.first->second->hints.ai_family = AF_UNSPEC;
+				// Устанавливаем что это потоковый сокет
+				ret.first->second->hints.ai_socktype = SOCK_STREAM;
+				// Устанавливаем что это tcp подключение
+				ret.first->second->hints.ai_protocol = IPPROTO_TCP;
+				// Устанавливаем флаг подключения что это канонническое имя
+				ret.first->second->hints.ai_flags = EVUTIL_AI_CANONNAME;
 				// Выполняем dns запрос
-				this->reply = evdns_getaddrinfo(this->dbase, host.c_str(), nullptr, &hints, &dns_t::callback, &ret.first->second);
-				// Выводим в лог сообщение
-				if(this->reply == nullptr) this->log->print("request for %s returned immediately", log_t::flag_t::CRITICAL, host.c_str());
+				ret.first->second->reply = evdns_getaddrinfo(this->dbase, host.c_str(), nullptr, &ret.first->second->hints, &dns_t::callback, ret.first->second.get());
+				// Если DNS запрос не создан
+				if(ret.first->second->reply == nullptr){
+					// Выполняем блокировку потока
+					this->mtx.worker.lock();
+					// Удаляем объект воркера
+					this->workers.erase(result);
+					// Выполняем разблокировку потока
+					this->mtx.worker.unlock();
+					// Выводим в лог сообщение
+					this->log->print("request for %s returned immediately", log_t::flag_t::CRITICAL, host.c_str());
+					// Выводим функцию обратного вызова
+					callback("", ctx);
+				// Если DNS запрос удачно создан
+				} else {
+					// Создаём событие на ожидание выполнения запроса
+					event_assign(&ret.first->second->ev, this->base, -1, EV_TIMEOUT, &garbage, ret.first->second.get());
+					// Очищаем объект таймаута базы событий
+					evutil_timerclear(&ret.first->second->tv);
+					// Устанавливаем таймаут базы событий в 30 секунд
+					ret.first->second->tv.tv_sec = 30;
+					// Создаём событие таймаута на ожидание выполнения запроса
+					event_add(&ret.first->second->ev, &ret.first->second->tv);
+				}
 			}
-		// Если передан домен то возвращаем его
+		// Если передан IP адрес то возвращаем его
 		} else callback(match[1].str(), ctx);
 	}
-	// Выходим
-	return;
+	// Убиваем зомби-процессы если такие имеются
+	this->clearZomby();
+	// Выводим результат
+	return result;
 }
 /**
  * DNS Конструктор

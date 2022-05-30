@@ -42,8 +42,8 @@ namespace awh {
 				 * Режим работы клиента
 				 */
 				enum class mode_t : uint8_t {
-					CONNECT    = 0x01,
-					DISCONNECT = 0x02
+					CONNECT    = 0x01, // Флаг подключения
+					DISCONNECT = 0x02  // Флаг отключения
 				};
 				/**
 				 * Основные флаги приложения
@@ -59,12 +59,15 @@ namespace awh {
 					TAKEOVERSRV = 0x80  // Флаг ожидания входящих сообщений для сервера
 				};
 			private:
-				// Создаём объект работы с URI ссылками
-				uri_t uri;
-				// Создаём объект для работы с фреймом WebSocket
-				frame_t frame;
 				// Создаем объект для работы с сетью
 				network_t nwk;
+			private:
+				// Создаём объект работы с URI ссылками
+				uri_t uri;
+				// Создаём флаг режима работы модуля
+				mode_t mode;
+				// Создаём объект для работы с фреймом WebSocket
+				frame_t frame;
 				// Создаём объект для компрессии-декомпрессии данных
 				mutable hash_t hash;
 			private:

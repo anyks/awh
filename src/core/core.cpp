@@ -26,6 +26,8 @@ void awh::Core::run(evutil_socket_t fd, short event, void * ctx) noexcept {
 	if(ctx != nullptr){
 		// Получаем объект подключения
 		core_t * core = reinterpret_cast <core_t *> (ctx);
+		// Выполняем блокировку потока
+		const lock_guard <mutex> lock(core->mtx.start);
 		// Устанавливаем статус сетевого ядра
 		core->status = status_t::START;
 		// Выполняем удаление событие таймера
@@ -44,7 +46,7 @@ void awh::Core::run(evutil_socket_t fd, short event, void * ctx) noexcept {
 		if(core->callbackFn != nullptr) core->callbackFn(true, core, core->ctx.front());
 		// Выводим в консоль информацию
 		if(!core->noinfo) core->log->print("[+] start service: pid = %u", log_t::flag_t::INFO, getpid());
-		// Если таймер периодического запуска коллбека активирован
+		// Если таймер периодического запуска коллбека активирован, запускаем персистентную работу
 		if(core->persist){
 			// Создаём событие на активацию базы событий
 			event_assign(&core->interval, core->base, -1, EV_TIMEOUT | EV_PERSIST, &persistent, core);
@@ -86,25 +88,6 @@ void awh::Core::timer(evutil_socket_t fd, short event, void * ctx) noexcept {
 	}
 }
 /**
- * reconnect Функция задержки времени на реконнект
- * @param fd    файловый дескриптор (сокет)
- * @param event произошедшее событие
- * @param ctx   передаваемый контекст
- */
-void awh::Core::reconnect(evutil_socket_t fd, short event, void * ctx) noexcept {
-	// Если контекст модуля передан
-	if(ctx != nullptr){
-		// Получаем объект воркера
-		worker_t * wrk = reinterpret_cast <worker_t *> (ctx);
-		// Получаем объект подключения
-		core_t * core = const_cast <core_t *> (wrk->core);
-		// Выполняем удаление событие таймера
-		event_del(&core->timeout);
-		// Выполняем новое подключение
-		core->connect(wrk->wid);
-	}
-}
-/**
  * persistent Функция персистентного вызова по таймеру
  * @param fd    файловый дескриптор (сокет)
  * @param event произошедшее событие
@@ -138,35 +121,6 @@ void awh::Core::persistent(evutil_socket_t fd, short event, void * ctx) noexcept
 			}
 		}
 	}
-}
-/**
- * reconnect Метод запуска переподключения
- * @param wid идентификатор воркера
- */
-void awh::Core::reconnect(const size_t wid) noexcept {
-	// Выполняем поиск воркера
-	auto it = this->workers.find(wid);
-	// Если воркер найден
-	if(it != this->workers.end()){
-		// Получаем объект воркера
-		worker_t * wrk = const_cast <worker_t *> (it->second);
-		// Создаём событие на активацию базы событий
-		event_assign(&this->timeout, this->base, -1, EV_TIMEOUT, &reconnect, wrk);
-		// Очищаем объект таймаута базы событий
-		evutil_timerclear(&this->tvTimeout);
-		// Устанавливаем интервал таймаута
-		this->tvTimeout.tv_sec = 10;
-		// Создаём событие таймаута на активацию базы событий
-		event_add(&this->timeout, &this->tvTimeout);
-	}
-}
-/**
- * connect Метод создания подключения к удаленному серверу
- * @param wid идентификатор воркера
- */
-void awh::Core::connect(const size_t wid) noexcept {
-	// Экранируем ошибку неиспользуемой переменной
-	(void) wid;
 }
 /**
  * clean Метод буфера событий
@@ -394,6 +348,12 @@ void awh::Core::bind(Core * core) noexcept {
 			core->dns4.replaceServers(core->net.v4.second);
 			// Выполняем установку нейм-серверов для DNS резолвера IPv6
 			core->dns6.replaceServers(core->net.v6.second);
+			// Выполняем блокировку потока
+			this->mtx.core.lock();
+			// Добавляем ядро в список подключенных ядер
+			this->cores.emplace(core);
+			// Выполняем разблокировку потока
+			this->mtx.core.unlock();
 			// Выполняем запуск управляющей функции
 			run(0, -1, core);
 		}
@@ -408,8 +368,10 @@ void awh::Core::unbind(Core * core) noexcept {
 	if(core != nullptr){
 		// Если база событий подключена
 		if(core->base != nullptr){
+			// Выполняем остановку всех таймеров
+			core->clearTimers();
 			// Отключаем всех клиентов
-			core->closeAll();
+			core->close();
 			// Зануляем базу событий
 			core->base = nullptr;
 		}
@@ -417,14 +379,22 @@ void awh::Core::unbind(Core * core) noexcept {
 		core->dns4.reset();
 		// Выполняем сброс модуля DNS резолвера IPv6
 		core->dns6.reset();
-		// Если функция обратного вызова установлена, выполняем
-		if(core->callbackFn != nullptr) core->callbackFn(false, core, core->ctx.front());
 		// Устанавливаем флаг остановки
 		core->mode = false;
 		// Выполняем сброс блокировки базы событий
 		core->freeze = false;
 		// Устанавливаем статус сетевого ядра
 		core->status = status_t::STOP;
+		// Выполняем блокировку потока
+		this->mtx.core.lock();
+		// Если адрес ядра присутствует в списке подключённых ядер
+		if(this->cores.count(core) > 0)
+			// Удаляем ядро из списка ядер
+			this->cores.erase(core);
+		// Выполняем разблокировку потока
+		this->mtx.core.unlock();
+		// Если функция обратного вызова установлена, выполняем
+		if(core->callbackFn != nullptr) core->callbackFn(false, core, core->ctx.front());
 	}
 }
 /**
@@ -433,6 +403,8 @@ void awh::Core::unbind(Core * core) noexcept {
  * @param callback функция обратного вызова для установки
  */
 void awh::Core::setCallback(void * ctx, function <void (const bool, Core * core, void *)> callback) noexcept {
+	// Выполняем блокировку потока
+	const lock_guard <recursive_mutex> lock(this->mtx.main);
 	// Устанавливаем объект контекста
 	this->ctx.front() = ctx;
 	// Устанавливаем функцию обратного вызова
@@ -442,28 +414,33 @@ void awh::Core::setCallback(void * ctx, function <void (const bool, Core * core,
  * stop Метод остановки клиента
  */
 void awh::Core::stop() noexcept {
+	// Выполняем блокировку потока
+	const lock_guard <recursive_mutex> lock(this->mtx.stop);
 	// Если система уже запущена
 	if(this->mode){
 		// Запрещаем работу WebSocket
 		this->mode = false;
+		// Выполняем блокировку инициализации базы событий
+		this->freeze = (this->base != nullptr);
+		// Выполняем остановку всех таймеров
+		this->clearTimers();
+		// Очищаем объект таймаута базы событий
+		evutil_timerclear(&this->tvTimeout);
 		// Выполняем удаление событие таймера
 		event_del(&this->timeout);
+		// Если таймер периодического запуска коллбека активирован
+		if(this->persist){
+			// Очищаем объект таймаута базы событий
+			evutil_timerclear(&this->tvInterval);
+			// Удаляем событие интервала
+			event_del(&this->interval);
+		}
 		// Выполняем отключение всех клиентов
-		this->closeAll();
-		// Если запрещено использовать простое чтение базы событий
-		if(!this->easy){
-			// Если таймер периодического запуска коллбека активирован
-			if(this->persist){
-				// Удаляем событие интервала
-				event_del(&this->interval);
-				// Завершаем работу базы событий
-				event_base_loopbreak(this->base);
-			// Нормально завершаем работу базы событий
-			} else event_base_loopexit(this->base, nullptr);
-		// Если разрешено использовать простое чтение базы событий
-		} else if(this->persist)
-			// Если таймер периодического запуска коллбека активирован, удаляем событие интервала
-			 event_del(&this->interval);
+		this->close();
+		// Завершаем работу базы событий
+		event_base_loopbreak(this->base);
+		// Размораживаем работу базы событий
+		this->freeze = false;
 	}
 }
 /**
@@ -501,25 +478,31 @@ void awh::Core::start() noexcept {
 			// Выполняем чтение базы событий пока это разрешено
 			while(this->mode){
 				// Выполняем чтение базы событий
-				event_base_loop(this->base, EVLOOP_NONBLOCK | EVLOOP_ONCE);
+				if(!this->freeze) event_base_loop(this->base, EVLOOP_NONBLOCK | EVLOOP_ONCE);
 				// Замораживаем поток на период времени частоты обновления базы событий
 				this_thread::sleep_for(this->freq);
 			}
 		}
 		// Выполняем ожидание завершения работы потоков
 		if(this->thr) this->pool.wait();
+		// Выполняем блокировку потока
+		this->mtx.main.lock();
 		// Выполняем отключение всех адъютантов
-		this->closeAll();
+		this->close();
 		// Выполняем сброс модуля DNS резолвера IPv4
 		this->dns4.reset();
 		// Выполняем сброс модуля DNS резолвера IPv6
 		this->dns6.reset();
 		// Удаляем объект базы событий
 		event_base_free(this->base);
+		// Обнуляем базу событий
+		this->base = nullptr;
 		// Очищаем все глобальные переменные
 		libevent_global_shutdown();
 		// Устанавливаем статус сетевого ядра
 		this->status = status_t::STOP;
+		// Выполняем разблокировку потока
+		this->mtx.main.unlock();
 		// Если функция обратного вызова установлена, выполняем
 		if(this->callbackFn != nullptr) this->callbackFn(false, this, this->ctx.front());
 		// Выводим в консоль информацию
@@ -544,6 +527,8 @@ size_t awh::Core::add(const worker_t * worker) noexcept {
 	size_t result = 0;
 	// Если воркер передан и URL адрес существует
 	if(worker != nullptr){
+		// Выполняем блокировку потока
+		const lock_guard <mutex> lock(this->mtx.worker);
 		// Получаем объект воркера
 		worker_t * wrk = const_cast <worker_t *> (worker);
 		// Получаем идентификатор воркера
@@ -552,67 +537,23 @@ size_t awh::Core::add(const worker_t * worker) noexcept {
 		wrk->core = this;
 		// Устанавливаем идентификатор воркера
 		wrk->wid = result;
-		// Выполняем блокировку потока
-		this->locker.main.lock();
 		// Добавляем воркер в список
 		this->workers.emplace(result, wrk);
-		// Выполняем разблокировку потока
-		this->locker.main.unlock();
 	}
 	// Выводим результат
 	return result;
 }
 /**
- * closeAll Метод отключения всех воркеров
+ * close Метод отключения всех воркеров
  */
-void awh::Core::closeAll() noexcept {
-	// Если список подключений активен
-	if(!this->workers.empty()){
-		// Переходим по всему списку подключений
-		for(auto & worker : this->workers){
-			// Если в воркере есть подключённые клиенты
-			if(!worker.second->adjutants.empty()){
-				// Получаем объект воркера
-				worker_t * wrk = const_cast <worker_t *> (worker.second);
-				// Переходим по всему списку адъютанта
-				for(auto it = wrk->adjutants.begin(); it != wrk->adjutants.end();){
-					// Если блокировка адъютанта не установлена
-					if(this->locking.count(it->first) < 1){
-						// Выполняем блокировку адъютанта
-						this->locking.emplace(it->first);
-						// Получаем объект адъютанта
-						worker_t::adj_t * adj = const_cast <worker_t::adj_t *> (it->second.get());
-						// Выполняем блокировку буфера бинарного чанка данных
-						adj->end();
-						// Выполняем очистку буфера событий
-						this->clean(adj->bev);
-						// Выполняем удаление контекста SSL
-						this->ssl.clear(adj->ssl);
-						// Выводим функцию обратного вызова
-						if(wrk->disconnectFn != nullptr)
-							// Выполняем функцию обратного вызова
-							wrk->disconnectFn(it->first, worker.first, this, wrk->ctx);
-						// Удаляем блокировку адъютанта
-						this->locking.erase(it->first);
-						// Удаляем адъютанта из списка
-						it = wrk->adjutants.erase(it);
-					// Иначе продолжаем дальше
-					} else ++it;
-				}
-			}
-		}
-	}
-	// Выполняем очистку списка адъютантов
-	this->adjutants.clear();
+void awh::Core::close() noexcept {
+	/** Реализация метода не требуется **/
 }
 /**
- * removeAll Метод удаления всех воркеров
+ * remove Метод удаления всех воркеров
  */
-void awh::Core::removeAll() noexcept {
-	// Выполняем отключение всех клиентов
-	this->closeAll();
-	// Выполняем удаление всех воркеров
-	this->workers.clear();
+void awh::Core::remove() noexcept {
+	/** Реализация метода не требуется **/
 }
 /**
  * run Метод запуска сервера воркером
@@ -637,6 +578,8 @@ void awh::Core::open(const size_t wid) noexcept {
 void awh::Core::remove(const size_t wid) noexcept {
 	// Если идентификатор воркера передан
 	if(wid > 0){
+		// Выполняем блокировку потока
+		const lock_guard <mutex> lock(this->mtx.worker);
 		// Выполняем поиск воркера
 		auto it = this->workers.find(wid);
 		// Если воркер найден
@@ -648,41 +591,8 @@ void awh::Core::remove(const size_t wid) noexcept {
  * @param aid идентификатор адъютанта
  */
 void awh::Core::close(const size_t aid) noexcept {
-	// Если блокировка адъютанта не установлена
-	if(this->locking.count(aid) < 1){
-		// Выполняем блокировку адъютанта
-		this->locking.emplace(aid);
-		// Выполняем извлечение адъютанта
-		auto it = this->adjutants.find(aid);
-		// Если адъютант получен
-		if(it != this->adjutants.end()){
-			// Получаем объект адъютанта
-			worker_t::adj_t * adj = const_cast <worker_t::adj_t *> (it->second);
-			// Получаем объект воркера
-			worker_t * wrk = const_cast <worker_t *> (adj->parent);
-			// Выполняем блокировку буфера бинарного чанка данных
-			adj->end();
-			// Если событие сервера существует
-			if(adj->bev != nullptr){
-				// Выполняем очистку буфера событий
-				this->clean(adj->bev);
-				// Устанавливаем что событие удалено
-				adj->bev = nullptr;
-			}
-			// Выполняем удаление контекста SSL
-			this->ssl.clear(adj->ssl);
-			// Удаляем адъютанта из списка адъютантов
-			wrk->adjutants.erase(aid);
-			// Удаляем адъютанта из списка подключений
-			this->adjutants.erase(aid);
-			// Выводим сообщение об ошибке
-			if(!this->noinfo) this->log->print("%s", log_t::flag_t::INFO, "disconnected from the server");
-			// Выводим функцию обратного вызова
-			if(wrk->disconnectFn != nullptr) wrk->disconnectFn(aid, wrk->wid, this, wrk->ctx);
-		}
-		// Удаляем блокировку адъютанта
-		this->locking.erase(aid);
-	}
+	// Экранируем ошибку неиспользуемой переменной
+	(void) aid;
 }
 /**
  * setBandwidth Метод установки пропускной способности сети
@@ -828,7 +738,7 @@ void awh::Core::clearTimers() noexcept {
 	// Если список таймеров существует
 	if(!this->timers.empty()){
 		// Выполняем блокировку потока
-		const lock_guard <recursive_mutex> lock(this->locker.main);
+		const lock_guard <recursive_mutex> lock(this->mtx.timer);
 		// Переходим по всем таймерам
 		for(auto it = this->timers.begin(); it != this->timers.end();){
 			// Очищаем объект таймаута базы событий
@@ -848,7 +758,7 @@ void awh::Core::clearTimer(const u_short id) noexcept {
 	// Если список таймеров существует
 	if(!this->timers.empty()){
 		// Выполняем блокировку потока
-		const lock_guard <recursive_mutex> lock(this->locker.main);
+		const lock_guard <recursive_mutex> lock(this->mtx.timer);
 		// Выполняем поиск идентификатора таймера
 		auto it = this->timers.find(id);
 		// Если идентификатор таймера найден
@@ -875,11 +785,11 @@ u_short awh::Core::setTimeout(void * ctx, const time_t delay, function <void (co
 	// Если данные переданы
 	if((delay > 0) && (callback != nullptr) && (this->base != nullptr)){
 		// Выполняем блокировку потока
-		this->locker.main.lock();
+		this->mtx.timer.lock();
 		// Создаём объект таймера
 		auto ret = this->timers.emplace(this->timers.size() + 1, timer_t());
 		// Выполняем разблокировку потока
-		this->locker.main.unlock();
+		this->mtx.timer.unlock();
 		// Получаем идентификатор таймера
 		result = ret.first->first;
 		// Устанавливаем передаваемый контекст
@@ -915,11 +825,11 @@ u_short awh::Core::setInterval(void * ctx, const time_t delay, function <void (c
 	// Если данные переданы
 	if((delay > 0) && (callback != nullptr) && (this->base != nullptr)){
 		// Выполняем блокировку потока
-		this->locker.main.lock();
+		this->mtx.timer.lock();
 		// Создаём объект таймера
 		auto ret = this->timers.emplace(this->timers.size() + 1, timer_t());
 		// Выполняем разблокировку потока
-		this->locker.main.unlock();
+		this->mtx.timer.unlock();
 		// Получаем идентификатор таймера
 		result = ret.first->first;
 		// Устанавливаем передаваемый контекст
@@ -949,6 +859,8 @@ u_short awh::Core::setInterval(void * ctx, const time_t delay, function <void (c
  * @param mode флаг отложенных вызовов событий сокета
  */
 void awh::Core::setDefer(const bool mode) noexcept {
+	// Выполняем блокировку потока
+	const lock_guard <recursive_mutex> lock(this->mtx.main);
 	// Устанавливаем флаг отложенных вызовов событий сокета
 	this->defer = mode;
 }
@@ -957,6 +869,8 @@ void awh::Core::setDefer(const bool mode) noexcept {
  * @param mode флаг запрета вывода информационных сообщений
  */
 void awh::Core::setNoInfo(const bool mode) noexcept {
+	// Выполняем блокировку потока
+	const lock_guard <recursive_mutex> lock(this->mtx.main);
 	// Устанавливаем флаг запрета вывода информационных сообщений
 	this->noinfo = mode;
 }
@@ -965,6 +879,8 @@ void awh::Core::setNoInfo(const bool mode) noexcept {
  * @param mode флаг персистентного запуска каллбека
  */
 void awh::Core::setPersist(const bool mode) noexcept {
+	// Выполняем блокировку потока
+	const lock_guard <recursive_mutex> lock(this->mtx.main);
 	// Выполняем установку флага персистентного запуска каллбека
 	this->persist = mode;
 }
@@ -973,6 +889,8 @@ void awh::Core::setPersist(const bool mode) noexcept {
  * @param mode флаг состояния разрешения проверки
  */
 void awh::Core::setVerifySSL(const bool mode) noexcept {
+	// Выполняем блокировку потока
+	const lock_guard <recursive_mutex> lock(this->mtx.main);
 	// Выполняем установку флага проверки домена
 	this->ssl.setVerify(mode);
 }
@@ -981,8 +899,12 @@ void awh::Core::setVerifySSL(const bool mode) noexcept {
  * @param mode флаг мультипотоковой обработки
  */
 void awh::Core::setMultiThreads(const bool mode) noexcept {
+	// Выполняем блокировку потока
+	this->mtx.main.lock();
 	// Устанавливаем флаг мультипотоковой обработки
 	this->thr = mode;
+	// Выполняем блокировку потока
+	this->mtx.main.unlock();
 	// Устанавливаем частоту обновления базы событий
 	if(this->thr){
 		// Выполняем инициализацию пула потоков
@@ -997,6 +919,8 @@ void awh::Core::setMultiThreads(const bool mode) noexcept {
  * @param itv интервал персистентного таймера в миллисекундах
  */
 void awh::Core::setPersistInterval(const time_t itv) noexcept {
+	// Выполняем блокировку потока
+	const lock_guard <recursive_mutex> lock(this->mtx.main);
 	// Устанавливаем интервал персистентного таймера
 	this->persistInterval = itv;
 }
@@ -1009,6 +933,8 @@ void awh::Core::setFrequency(const uint8_t msec) noexcept {
 	const bool start = this->mode;
 	// Если ядро сети уже запущено, останавливаем его
 	if(start) this->stop();
+	// Выполняем блокировку потока
+	this->mtx.main.lock();
 	// Если количество миллисекунд передано больше 0
 	if(msec > 0){
 		// Устанавливаем флаг разрешающий использовать простое чтение базы событий
@@ -1017,6 +943,8 @@ void awh::Core::setFrequency(const uint8_t msec) noexcept {
 		this->freq = chrono::milliseconds(msec);
 	// Отключаем частоту обновления в прицпипе
 	} else this->easy = false;
+	// Выполняем блокировку потока
+	this->mtx.main.unlock();
 	// Если ядро сети уже было запущено, запускаем его
 	if(start) this->start();
 }
@@ -1025,6 +953,8 @@ void awh::Core::setFrequency(const uint8_t msec) noexcept {
  * @param family тип протокола интернета AF_INET или AF_INET6
  */
 void awh::Core::setFamily(const int family) noexcept {
+	// Выполняем блокировку потока
+	const lock_guard <recursive_mutex> lock(this->mtx.main);
 	// Устанавливаем тип активного интернет-подключения
 	this->net.family = family;
 }
@@ -1034,6 +964,8 @@ void awh::Core::setFamily(const int family) noexcept {
  * @param capath адрес каталога где находится CA-файл
  */
 void awh::Core::setCA(const string & cafile, const string & capath) noexcept {
+	// Выполняем блокировку потока
+	const lock_guard <recursive_mutex> lock(this->mtx.main);
 	// Устанавливаем адрес CA-файла
 	this->ssl.setCA(cafile, capath);
 }
@@ -1044,6 +976,8 @@ void awh::Core::setCA(const string & cafile, const string & capath) noexcept {
  * @param family тип протокола интернета AF_INET или AF_INET6
  */
 void awh::Core::setNet(const vector <string> & ip, const vector <string> & ns, const int family) noexcept {
+	// Выполняем блокировку потока
+	const lock_guard <recursive_mutex> lock(this->mtx.main);
 	// Устанавливаем тип активного интернет-подключения
 	this->net.family = family;
 	// Определяем тип интернет-протокола

@@ -276,6 +276,8 @@ void awh::server::Core::accept(const evutil_socket_t fd, const short event, void
 		u_int mode = BEV_OPT_THREADSAFE;
 		// Если нужно использовать отложенные вызовы событий сокета
 		if(core->defer) mode = (mode | BEV_OPT_DEFER_CALLBACKS);
+		// Выполняем блокировку потока
+		core->mtx.accept.lock();
 		// Если SSL клиент разрешён
 		if(adj->ssl.mode){
 			// Создаем буфер событий для сервера зашифрованного подключения
@@ -284,6 +286,8 @@ void awh::server::Core::accept(const evutil_socket_t fd, const short event, void
 			bufferevent_openssl_set_allow_dirty_shutdown(adj->bev, 1);
 		// Создаем буфер событий для сервера
 		} else adj->bev = bufferevent_socket_new(core->base, socket, mode);
+		// Выполняем блокировку потока
+		core->mtx.accept.unlock();
 		// Если буфер событий создан
 		if(adj->bev != nullptr){
 			// Запоминаем IP адрес
@@ -294,8 +298,12 @@ void awh::server::Core::accept(const evutil_socket_t fd, const short event, void
 			adj->aid = core->fmk->unixTimestamp();
 			// Добавляем созданного адъютанта в список адъютантов
 			auto ret = wrk->adjutants.emplace(adj->aid, move(adj));
+			// Выполняем блокировку потока
+			core->mtx.accept.lock();
 			// Добавляем адъютанта в список подключений
 			core->adjutants.emplace(ret.first->first, ret.first->second.get());
+			// Выполняем блокировку потока
+			core->mtx.accept.unlock();
 			// Выполняем тюннинг буфера событий
 			core->tuning(ret.first->first);
 			// Выполняем функцию обратного вызова
@@ -332,7 +340,7 @@ void awh::server::Core::thread(const awh::worker_t::adj_t & adj, const server::w
 	// Если буфер бинарных данных получен
 	if(!buffer.empty()){
 		// Выполняем блокировку потока
-		const lock_guard <mutex> lock(core->locker.work);
+		const lock_guard <mutex> lock(core->mtx.thread);
 		// Выводим функцию обратного вызова
 		wrk.readFn(buffer.data(), buffer.size(), adj.aid, wrk.wid, core, wrk.ctx);
 	}
@@ -372,14 +380,6 @@ void awh::server::Core::tuning(const size_t aid) noexcept {
 	}
 }
 /**
- * connect Метод создания подключения к удаленному серверу
- * @param wid идентификатор воркера
- */
-void awh::server::Core::connect(const size_t wid) noexcept {
-	// Блокируем переданный идентификатор
-	(void) wid;
-}
-/**
  * close Метод закрытия сокета
  * @param fd файловый дескриптор (сокет) для закрытия
  */
@@ -397,85 +397,102 @@ void awh::server::Core::close(const evutil_socket_t fd) noexcept {
 	if(fd > 0) evutil_closesocket(fd);
 }
 /**
- * removeAll Метод удаления всех воркеров
+ * close Метод отключения всех воркеров
  */
-void awh::server::Core::removeAll() noexcept {
-	// Переходим по всему списку подключений
-	for(auto it = this->workers.begin(); it != this->workers.end();){
-		// Получаем объект воркера
-		server::worker_t * wrk = (server::worker_t *) const_cast <awh::worker_t *> (it->second);
-		// Если в воркере есть подключённые клиенты
-		if(!wrk->adjutants.empty()){
-			// Переходим по всему списку адъютанта
-			for(auto jt = wrk->adjutants.begin(); jt != wrk->adjutants.end();){
-				// Получаем объект адъютанта
-				awh::worker_t::adj_t * adj = const_cast <awh::worker_t::adj_t *> (jt->second.get());
-				// Выполняем блокировку буфера бинарного чанка данных
-				adj->end();
-				// Выполняем очистку буфера событий
-				this->clean(adj->bev);
-				// Выполняем удаление контекста SSL
-				this->ssl.clear(adj->ssl);
-				// Выводим функцию обратного вызова
-				if(wrk->disconnectFn != nullptr)
-					// Выполняем функцию обратного вызова
-					wrk->disconnectFn(jt->first, it->first, this, wrk->ctx);
-				// Удаляем адъютанта из списка подключений
-				this->adjutants.erase(jt->first);
-				// Удаляем адъютанта из списка
-				jt = wrk->adjutants.erase(jt);
+void awh::server::Core::close() noexcept {
+	// Если список воркеров активен
+	if(!this->workers.empty()){
+		// Выполняем блокировку потока
+		const lock_guard <recursive_mutex> lock(this->mtx.close);
+		// Если список подключённых ядер не пустой
+		if(!this->cores.empty()){
+			// Переходим по всем списка подключённым ядрам и устанавливаем новую базу событий
+			for(auto & core : this->cores)
+				// Выполняем отключение всех клиентов у подключённых ядер
+				core->close();
+		}
+		// Переходим по всему списку воркеров
+		for(auto & worker : this->workers){
+			// Если в воркере есть подключённые клиенты
+			if(!worker.second->adjutants.empty()){
+				// Получаем объект воркера
+				server::worker_t * wrk = (server::worker_t *) const_cast <awh::worker_t *> (worker.second);
+				// Переходим по всему списку адъютанта
+				for(auto it = wrk->adjutants.begin(); it != wrk->adjutants.end();){
+					// Если блокировка адъютанта не установлена
+					if(this->locking.count(it->first) < 1){
+						// Выполняем блокировку адъютанта
+						this->locking.emplace(it->first);
+						// Выполняем блокировку буфера бинарного чанка данных
+						it->second->end();
+						// Выполняем очистку буфера событий
+						this->clean(it->second->bev);
+						// Выполняем удаление контекста SSL
+						this->ssl.clear(it->second->ssl);
+						// Удаляем адъютанта из списка подключений
+						this->adjutants.erase(it->first);
+						// Выводим функцию обратного вызова
+						if(wrk->disconnectFn != nullptr)
+							// Выполняем функцию обратного вызова
+							wrk->disconnectFn(it->first, worker.first, this, wrk->ctx);
+						// Удаляем блокировку адъютанта
+						this->locking.erase(it->first);
+						// Удаляем адъютанта из списка
+						it = wrk->adjutants.erase(it);
+					// Иначе продолжаем дальше
+					} else ++it;
+				}
 			}
 		}
-		// Выполняем закрытие сокета
-		this->close(wrk->fd);
-		// Сбрасываем сокет
-		wrk->fd = -1;
-		// Если объект событий подключения к серверу создан
-		if(wrk->ev != nullptr){
-			// Удаляем событие
-			event_del(wrk->ev);
-			// Очищаем событие
-			event_free(wrk->ev);
-			// Зануляем объект события
-			wrk->ev = nullptr;
-		}
-		// Выполняем удаление воркера
-		it = this->workers.erase(it);
 	}
 }
 /**
- * remove Метод удаления воркера
- * @param wid идентификатор воркера
+ * remove Метод удаления всех воркеров
  */
-void awh::server::Core::remove(const size_t wid) noexcept {
-	// Если идентификатор воркера передан
-	if(wid > 0){
-		// Выполняем поиск воркера
-		auto it = this->workers.find(wid);
-		// Если воркер найден, устанавливаем максимальное количество одновременных подключений
-		if(it != this->workers.end()){
+void awh::server::Core::remove() noexcept {
+	// Если список воркеров активен
+	if(!this->workers.empty()){
+		// Выполняем блокировку потока
+		const lock_guard <recursive_mutex> lock(this->mtx.close);
+		// Если список подключённых ядер не пустой
+		if(!this->cores.empty()){
+			// Переходим по всем списка подключённым ядрам и устанавливаем новую базу событий
+			for(auto & core : this->cores)
+				// Выполняем удаление всех воркеров у подключённых ядер
+				core->remove();
+		}
+		// Переходим по всему списку воркеров
+		for(auto it = this->workers.begin(); it != this->workers.end();){
 			// Получаем объект воркера
 			server::worker_t * wrk = (server::worker_t *) const_cast <awh::worker_t *> (it->second);
 			// Если в воркере есть подключённые клиенты
 			if(!wrk->adjutants.empty()){
 				// Переходим по всему списку адъютанта
 				for(auto jt = wrk->adjutants.begin(); jt != wrk->adjutants.end();){
-					// Получаем объект адъютанта
-					awh::worker_t::adj_t * adj = const_cast <awh::worker_t::adj_t *> (jt->second.get());
-					// Выполняем блокировку буфера бинарного чанка данных
-					adj->end();
-					// Выполняем очистку буфера событий
-					this->clean(adj->bev);
-					// Выполняем удаление контекста SSL
-					this->ssl.clear(adj->ssl);
-					// Выводим функцию обратного вызова
-					if(wrk->disconnectFn != nullptr)
-						// Выполняем функцию обратного вызова
-						wrk->disconnectFn(jt->first, it->first, this, wrk->ctx);
-					// Удаляем адъютанта из списка подключений
-					this->adjutants.erase(jt->first);
-					// Удаляем адъютанта из списка
-					jt = wrk->adjutants.erase(jt);
+					// Если блокировка адъютанта не установлена
+					if(this->locking.count(jt->first) < 1){
+						// Выполняем блокировку адъютанта
+						this->locking.emplace(jt->first);
+						// Получаем объект адъютанта
+						awh::worker_t::adj_t * adj = const_cast <awh::worker_t::adj_t *> (jt->second.get());
+						// Выполняем блокировку буфера бинарного чанка данных
+						adj->end();
+						// Выполняем очистку буфера событий
+						this->clean(adj->bev);
+						// Выполняем удаление контекста SSL
+						this->ssl.clear(adj->ssl);
+						// Удаляем адъютанта из списка подключений
+						this->adjutants.erase(jt->first);
+						// Выводим функцию обратного вызова
+						if(wrk->disconnectFn != nullptr)
+							// Выполняем функцию обратного вызова
+							wrk->disconnectFn(jt->first, it->first, this, wrk->ctx);
+						// Удаляем блокировку адъютанта
+						this->locking.erase(jt->first);
+						// Удаляем адъютанта из списка
+						jt = wrk->adjutants.erase(jt);
+					// Иначе продолжаем дальше
+					} else ++jt;
 				}
 			}
 			// Выполняем закрытие сокета
@@ -492,7 +509,7 @@ void awh::server::Core::remove(const size_t wid) noexcept {
 				wrk->ev = nullptr;
 			}
 			// Выполняем удаление воркера
-			this->workers.erase(wid);
+			it = this->workers.erase(it);
 		}
 	}
 }
@@ -520,47 +537,111 @@ void awh::server::Core::run(const size_t wid) noexcept {
 	}
 }
 /**
- * open Метод открытия подключения воркером
+ * remove Метод удаления воркера
  * @param wid идентификатор воркера
  */
-void awh::server::Core::open(const size_t wid) noexcept {
-	// Блокируем переданный идентификатор
-	(void) wid;
+void awh::server::Core::remove(const size_t wid) noexcept {
+	// Если идентификатор воркера передан
+	if(wid > 0){
+		// Выполняем блокировку потока
+		const lock_guard <recursive_mutex> lock(this->mtx.close);
+		// Выполняем поиск воркера
+		auto it = this->workers.find(wid);
+		// Если воркер найден, устанавливаем максимальное количество одновременных подключений
+		if(it != this->workers.end()){
+			// Получаем объект воркера
+			server::worker_t * wrk = (server::worker_t *) const_cast <awh::worker_t *> (it->second);
+			// Если в воркере есть подключённые клиенты
+			if(!wrk->adjutants.empty()){
+				// Переходим по всему списку адъютанта
+				for(auto jt = wrk->adjutants.begin(); jt != wrk->adjutants.end();){
+					// Если блокировка адъютанта не установлена
+					if(this->locking.count(jt->first) < 1){
+						// Выполняем блокировку адъютанта
+						this->locking.emplace(jt->first);
+						// Получаем объект адъютанта
+						awh::worker_t::adj_t * adj = const_cast <awh::worker_t::adj_t *> (jt->second.get());
+						// Выполняем блокировку буфера бинарного чанка данных
+						adj->end();
+						// Выполняем очистку буфера событий
+						this->clean(adj->bev);
+						// Выполняем удаление контекста SSL
+						this->ssl.clear(adj->ssl);
+						// Выводим функцию обратного вызова
+						if(wrk->disconnectFn != nullptr)
+							// Выполняем функцию обратного вызова
+							wrk->disconnectFn(jt->first, it->first, this, wrk->ctx);
+						// Удаляем адъютанта из списка подключений
+						this->adjutants.erase(jt->first);
+						// Удаляем блокировку адъютанта
+						this->locking.erase(jt->first);
+						// Удаляем адъютанта из списка
+						jt = wrk->adjutants.erase(jt);
+					// Иначе продолжаем дальше
+					} else ++jt;
+				}
+			}
+			// Выполняем закрытие сокета
+			this->close(wrk->fd);
+			// Сбрасываем сокет
+			wrk->fd = -1;
+			// Если объект событий подключения к серверу создан
+			if(wrk->ev != nullptr){
+				// Удаляем событие
+				event_del(wrk->ev);
+				// Очищаем событие
+				event_free(wrk->ev);
+				// Зануляем объект события
+				wrk->ev = nullptr;
+			}
+			// Выполняем удаление воркера
+			this->workers.erase(wid);
+		}
+	}
 }
 /**
  * close Метод закрытия подключения воркера
  * @param aid идентификатор адъютанта
  */
 void awh::server::Core::close(const size_t aid) noexcept {
-	// Выполняем извлечение адъютанта
-	auto it = this->adjutants.find(aid);
-	// Если адъютант получен
-	if(it != this->adjutants.end()){
-		// Получаем объект адъютанта
-		awh::worker_t::adj_t * adj = const_cast <awh::worker_t::adj_t *> (it->second);
-		// Получаем объект воркера
-		server::worker_t * wrk = (server::worker_t *) const_cast <awh::worker_t *> (adj->parent);
-		// Получаем объект ядра клиента
-		const core_t * core = reinterpret_cast <const core_t *> (wrk->core);
-		// Выполняем блокировку буфера бинарного чанка данных
-		adj->end();
-		// Если событие сервера существует
-		if(adj->bev != nullptr){
-			// Выполняем очистку буфера событий
-			this->clean(adj->bev);
-			// Устанавливаем что событие удалено
-			adj->bev = nullptr;
+	// Если блокировка адъютанта не установлена
+	if(this->locking.count(aid) < 1){
+		// Выполняем блокировку адъютанта
+		this->locking.emplace(aid);
+		// Выполняем блокировку потока
+		const lock_guard <recursive_mutex> lock(this->mtx.close);
+		// Выполняем извлечение адъютанта
+		auto it = this->adjutants.find(aid);
+		// Если адъютант получен
+		if(it != this->adjutants.end()){
+			// Получаем объект адъютанта
+			awh::worker_t::adj_t * adj = const_cast <awh::worker_t::adj_t *> (it->second);
+			// Получаем объект воркера
+			server::worker_t * wrk = (server::worker_t *) const_cast <awh::worker_t *> (adj->parent);
+			// Получаем объект ядра клиента
+			const core_t * core = reinterpret_cast <const core_t *> (wrk->core);
+			// Выполняем блокировку буфера бинарного чанка данных
+			adj->end();
+			// Если событие сервера существует
+			if(adj->bev != nullptr){
+				// Выполняем очистку буфера событий
+				this->clean(adj->bev);
+				// Устанавливаем что событие удалено
+				adj->bev = nullptr;
+			}
+			// Выполняем удаление контекста SSL
+			this->ssl.clear(adj->ssl);
+			// Удаляем адъютанта из списка адъютантов
+			wrk->adjutants.erase(aid);
+			// Удаляем адъютанта из списка подключений
+			this->adjutants.erase(aid);
+			// Выводим сообщение об ошибке
+			if(!core->noinfo) this->log->print("%s", log_t::flag_t::INFO, "disconnect client from server");
+			// Выводим функцию обратного вызова
+			if(wrk->disconnectFn != nullptr) wrk->disconnectFn(aid, wrk->wid, this, wrk->ctx);
 		}
-		// Выполняем удаление контекста SSL
-		this->ssl.clear(adj->ssl);
-		// Удаляем адъютанта из списка адъютантов
-		wrk->adjutants.erase(aid);
-		// Удаляем адъютанта из списка подключений
-		this->adjutants.erase(aid);
-		// Выводим сообщение об ошибке
-		if(!core->noinfo) this->log->print("%s", log_t::flag_t::INFO, "disconnect client from server");
-		// Выводим функцию обратного вызова
-		if(wrk->disconnectFn != nullptr) wrk->disconnectFn(aid, wrk->wid, this, wrk->ctx);
+		// Удаляем блокировку адъютанта
+		this->locking.erase(aid);
 	}
 }
 /**
@@ -593,6 +674,8 @@ void awh::server::Core::setBandwidth(const size_t aid, const string & read, cons
  * @param mode флаг для установки
  */
 void awh::server::Core::setIpV6only(const bool mode) noexcept {
+	// Выполняем блокировку потока
+	const lock_guard <recursive_mutex> lock(this->mtx.system);
 	// Устанавливаем флаг использования только сети IPv6
 	this->ipV6only = mode;
 }
@@ -604,6 +687,8 @@ void awh::server::Core::setIpV6only(const bool mode) noexcept {
 void awh::server::Core::setTotal(const size_t wid, const u_short total) noexcept {
 	// Если идентификатор воркера передан
 	if(wid > 0){
+		// Выполняем блокировку потока
+		const lock_guard <recursive_mutex> lock(this->mtx.system);
 		// Выполняем поиск воркера
 		auto it = this->workers.find(wid);
 		// Если воркер найден, устанавливаем максимальное количество одновременных подключений
@@ -625,6 +710,8 @@ void awh::server::Core::init(const size_t wid, const u_int port, const string & 
 		auto it = this->workers.find(wid);
 		// Если воркер найден, устанавливаем максимальное количество одновременных подключений
 		if(it != this->workers.end()){
+			// Выполняем блокировку потока
+			const lock_guard <recursive_mutex> lock(this->mtx.system);
 			// Получаем объект подключения
 			server::worker_t * wrk = (server::worker_t *) const_cast <awh::worker_t *> (it->second);
 			// Если порт передан, устанавливаем
@@ -643,6 +730,8 @@ void awh::server::Core::init(const size_t wid, const u_int port, const string & 
  * @param chain файл цепочки сертификатов
  */
 void awh::server::Core::setCert(const string & cert, const string & key, const string & chain) noexcept {
+	// Выполняем блокировку потока
+	const lock_guard <recursive_mutex> lock(this->mtx.system);
 	// Устанавливаем файлы сертификата
 	this->ssl.setCert(cert, key, chain);
 }

@@ -37,8 +37,36 @@ namespace awh {
 		 */
 		typedef class Core : public awh::core_t {
 			private:
-				// Флаг получения данных
-				bool acquisition;
+				/**
+				 * Mutex Объект основных мютексов
+				 */
+				typedef struct Mutex {
+					mutex proxy;             // Для работы с прокси-сервером
+					mutex thread;            // Для работы в дочерних потоках
+					mutex connect;           // Для выполнения подключения
+					recursive_mutex close;   // Для закрытия подключения
+					recursive_mutex timeout; // Для установки таймаутов
+				} mtx_t;
+				/**
+				 * Timeout Объект работы таймаута
+				 */
+				typedef struct Timeout {
+					size_t wid;                    // Идентификатор воркера
+					Core * core;                   // Объект ядра клиента
+					struct event ev;               // Объект события
+					struct timeval tv;             // Параметры интервала времени
+					client::worker_t::mode_t mode; // Режим работы клиента
+					/**
+					 * Timeout Конструктор
+					 */
+					Timeout() : wid(0), core(nullptr), mode(client::worker_t::mode_t::DISCONNECT) {}
+				} timeout_t;
+			private:
+				// Мютекс для блокировки основного потока
+				mtx_t mtx;
+			private:
+				// Список таймеров
+				map <size_t, timeout_t> timeouts;
 			private:
 				/**
 				 * resolver Функция выполнения резолвинга домена
@@ -59,12 +87,12 @@ namespace awh {
 				 */
 				static void write(struct bufferevent * bev, void * ctx) noexcept;
 				/**
-				 * attempt Функция задержки времени на новую попытку получить IP адрес
+				 * reconnect Функция задержки времени на реконнект
 				 * @param fd    файловый дескриптор (сокет)
 				 * @param event произошедшее событие
 				 * @param ctx   передаваемый контекст
 				 */
-				static void attempt(evutil_socket_t fd, short event, void * ctx) noexcept;
+				static void reconnect(evutil_socket_t fd, short event, void * ctx) noexcept;
 				/**
 				 * event Функция обработка входящих событий с сервера
 				 * @param bev    буфер события
@@ -84,43 +112,61 @@ namespace awh {
 				 * @param aid идентификатор адъютанта
 				 */
 				void tuning(const size_t aid) noexcept;
+			private:
 				/**
 				 * connect Метод создания подключения к удаленному серверу
 				 * @param wid идентификатор воркера
 				 */
 				void connect(const size_t wid) noexcept;
+				/**
+				 * reconnect Метод восстановления подключения
+				 * @param wid идентификатор воркера
+				 */
+				void reconnect(const size_t wid) noexcept;
+			private:
+				/**
+				 * createTimeout Метод создания таймаута
+				 * @param wid  идентификатор воркера
+				 * @param mode режим работы клиента
+				 */
+				void createTimeout(const size_t wid, const client::worker_t::mode_t mode) noexcept;
 			public:
 				/**
 				 * sendTimeout Метод отправки принудительного таймаута
 				 * @param aid идентификатор адъютанта
 				 */
 				void sendTimeout(const size_t aid) noexcept;
-			public:
 				/**
-				 * closeAll Метод отключения всех воркеров
-				 */
-				void closeAll() noexcept;
-			public:
-				/**
-				 * run Метод запуска сервера воркером
+				 * clearTimeout Метод удаления установленного таймаута
 				 * @param wid идентификатор воркера
 				 */
-				void run(const size_t wid) noexcept;
+				void clearTimeout(const size_t wid) noexcept;
+			public:
+				/**
+				 * close Метод отключения всех воркеров
+				 */
+				void close() noexcept;
+				/**
+				 * remove Метод удаления всех воркеров
+				 */
+				void remove() noexcept;
+			public:
 				/**
 				 * open Метод открытия подключения воркером
 				 * @param wid идентификатор воркера
 				 */
 				void open(const size_t wid) noexcept;
 				/**
+				 * remove Метод удаления воркера из биндинга
+				 * @param wid идентификатор воркера
+				 */
+				void remove(const size_t wid) noexcept;
+			public:
+				/**
 				 * close Метод закрытия подключения воркера
 				 * @param aid идентификатор адъютанта
 				 */
 				void close(const size_t aid) noexcept;
-				/**
-				 * restore Метод восстановления подключения
-				 * @param wid идентификатор воркера
-				 */
-				void restore(const size_t wid) noexcept;
 				/**
 				 * switchProxy Метод переключения с прокси-сервера
 				 * @param aid идентификатор адъютанта

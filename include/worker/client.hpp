@@ -89,13 +89,17 @@ namespace awh {
 				friend class awh::Core;
 			private:
 				/**
+				 * Разрешения на выполнение работы
+				 */
+				enum class work_t : uint8_t {ALLOW, DISALLOW};
+				/**
 				 * Формат сжатия тела запроса
 				 */
 				enum class connect_t : uint8_t {SERVER, PROXY};
 				/**
 				 * Режимы работы клиента
 				 */
-				enum class mode_t : uint8_t {CONNECT, RECONNECT, DISCONNECT};
+				enum class mode_t : uint8_t {CONNECT, PRECONNECT, RECONNECT, DISCONNECT};
 			private:
 				/**
 				 * Status Структура статуса подключения
@@ -103,10 +107,11 @@ namespace awh {
 				typedef struct Status {
 					mode_t wait; // Статус ожидание
 					mode_t real; // Статус действительность
+					work_t work; // Статус разрешения на выполнение работы
 					/**
 					 * Status Конструктор
 					 */
-					Status() : real(mode_t::DISCONNECT), wait(mode_t::DISCONNECT) {}
+					Status() : real(mode_t::DISCONNECT), wait(mode_t::DISCONNECT), work(work_t::ALLOW) {}
 				} status_t;
 			public:
 				// Параметры прокси-сервера
@@ -115,9 +120,17 @@ namespace awh {
 				status_t status;
 				// Параметры адреса для запроса
 				uri_t::url_t url;
+			public:
+				// Идентификатор DNS запроса
+				size_t did = 0;
 			private:
 				// Текущее количество попыток
 				u_short attempt = 0;
+			public:
+				// Выполнять остановку работы воркера, после закрытия подключения
+				bool stop = false;
+				// Флаг получения данных
+				bool acquisition = false;
 			private:
 				// Устанавливаем тип подключения
 				connect_t connect = connect_t::SERVER;
