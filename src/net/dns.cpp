@@ -24,22 +24,22 @@
  */
 bool awh::DNS::Holder::access(const set <status_t> & comp, const status_t hold, const bool equal) noexcept {
 	// Определяем есть ли фиксированные статусы
-	this->hold = this->status->empty();
+	this->flag = this->status->empty();
 	// Если результат не получен
-	if(!this->hold && !comp.empty())
+	if(!this->flag && !comp.empty())
 		// Получаем результат сравнения
-		this->hold = (equal ? (comp.count(this->status->top()) > 0) : (comp.count(this->status->top()) < 1));
+		this->flag = (equal ? (comp.count(this->status->top()) > 0) : (comp.count(this->status->top()) < 1));
 	// Если результат получен, выполняем холд
-	if(this->hold) this->status->push(hold);
+	if(this->flag) this->status->push(hold);
 	// Выводим результат
-	return this->hold;
+	return this->flag;
 }
 /**
  * ~Holder Деструктор
  */
 awh::DNS::Holder::~Holder() noexcept {
 	// Если холдирование выполнено
-	if(this->hold) this->status->pop();
+	if(this->flag) this->status->pop();
 }
 /**
  * createBase Метод создания dns базы

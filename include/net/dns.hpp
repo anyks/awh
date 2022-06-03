@@ -105,7 +105,7 @@ namespace awh {
 			typedef class Holder {
 				private:
 					// Флаг холдирования
-					bool hold;
+					bool flag;
 				private:
 					// Объект статуса работы DNS резолвера
 					stack <status_t> * status;
@@ -123,7 +123,7 @@ namespace awh {
 					 * Holder Конструктор
 					 * @param status объект статуса работы DNS резолвера
 					 */
-					Holder(stack <status_t> * status) noexcept : hold(false), status(status) {}
+					Holder(stack <status_t> * status) noexcept : flag(false), status(status) {}
 					/**
 					 * ~Holder Деструктор
 					 */
