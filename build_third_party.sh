@@ -102,7 +102,7 @@ if [ ! -f "$src/.stamp_done" ]; then
 	cd "$src" || exit 1
 
 	# Версия OpenSSL
-	ver="l"
+	ver="o"
 
 	# Переключаемся на master
 	git checkout master
