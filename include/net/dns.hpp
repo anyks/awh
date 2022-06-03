@@ -20,6 +20,7 @@
  */
 #include <set>
 #include <map>
+#include <stack>
 #include <mutex>
 #include <regex>
 #include <cstdio>
@@ -67,13 +68,67 @@ namespace awh {
 	typedef class DNS {
 		private:
 			/**
+			 * Статус работы DNS резолвера
+			 */
+			enum class status_t : uint8_t {
+				NONE,        // Событие не установлено
+				CLEAR,       // Событие отчистки параметров резолвера
+				FLUSH,       // Событие сброса кэша DNS серверов
+				ZOMBY,       // Событие очистки зависших процессов
+				REMOVE,      // Событие удаления параметров резолвера
+				CANCEL,      // Событие отмены резолвинга домена
+				RESOLVE,     // Событие резолвинга домена
+				SET_BASE,    // Событие установки базы событий
+				NS_SET,      // Событие установки DNS сервера
+				NSS_SET,     // Событие установки DNS серверов
+				NSS_REP,     // Событие замены DNS серверов
+				NSS_UPDATE,  // Событие обновления DNS серверов
+				CREATE_EVDNS // Событие создания DNS базы событий
+			};
+		private:
+			/**
 			 * Mutex Объект основных мютексов
 			 */
 			typedef struct Mutex {
-				recursive_mutex clear;  // Для очистки параметров
-				recursive_mutex system; // Для установки системных параметров
-				recursive_mutex worker; // Для работы с воркерами
+				recursive_mutex hold;      // Для работы со стеком событий
+				recursive_mutex base;      // Для работы с базой событий
+				recursive_mutex evdns;     // Для работы с базой событий evdns
+				recursive_mutex cache;     // Для работы с кэшем DNS серверов 
+				recursive_mutex worker;    // Для работы с воркерами
+				recursive_mutex servers;   // Для работы со списком DNS серверов
+				recursive_mutex blacklist; // Для работы с чёрным списком DNS серверов
 			} mtx_t;
+		private:
+			/**
+			 * Holder Класс холдера
+			 */
+			typedef class Holder {
+				private:
+					// Флаг холдирования
+					bool hold;
+				private:
+					// Объект статуса работы DNS резолвера
+					stack <status_t> * status;
+				public:
+					/**
+					 * access Метод проверки на разрешение выполнения операции
+					 * @param comp  статус сравнения
+					 * @param hold  статус установки
+					 * @param equal флаг эквивалентности
+					 * @return      результат проверки
+					 */
+					bool access(const set <status_t> & comp, const status_t hold, const bool equal = true) noexcept;
+				public:
+					/**
+					 * Holder Конструктор
+					 * @param status объект статуса работы DNS резолвера
+					 */
+					Holder(stack <status_t> * status) noexcept : hold(false), status(status) {}
+					/**
+					 * ~Holder Деструктор
+					 */
+					~Holder() noexcept;
+			} hold_t;
 			/**
 			 * Worker Класс воркера резолвинга
 			 */
@@ -116,6 +171,8 @@ namespace awh {
 		private:
 			// Мютекс для блокировки основного потока
 			mutable mtx_t mtx;
+			// Статус работы DNS резолвера
+			mutable stack <status_t> status;
 		private:
 			// Чёрный список IP адресов
 			mutable set <string> blacklist;
@@ -163,10 +220,6 @@ namespace awh {
 			static void callback(const int error, struct evutil_addrinfo * addr, void * ctx) noexcept;
 		public:
 			/**
-			 * reset Метод сброса параметров модуля DNS резолвера
-			 */
-			void reset() noexcept;
-			/**
 			 * clear Метод сброса кэша резолвера
 			 */
 			void clear() noexcept;
@@ -174,6 +227,10 @@ namespace awh {
 			 * flush Метод сброса кэша DNS резолвера
 			 */
 			void flush() noexcept;
+			/**
+			 * remove Метод удаления параметров модуля DNS резолвера
+			 */
+			void remove() noexcept;
 		public:
 			/**
 			 * cancel Метод отмены выполнения запроса

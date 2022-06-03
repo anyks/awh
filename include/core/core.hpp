@@ -111,12 +111,13 @@ namespace awh {
 			 * Mutex Объект основных мютексов
 			 */
 			typedef struct Mutex {
-				mutex start;           // Для контроля запуска
-				mutex worker;          // Для работы с воркерами
-				recursive_mutex core;  // Для работы с ядрами
-				recursive_mutex stop;  // Для контроля остановки
-				recursive_mutex main;  // Для работы с параметрами модуля
-				recursive_mutex timer; // Для работы с таймерами
+				recursive_mutex end;    // Для завершения работы ядра
+				recursive_mutex core;   // Для работы с ядрами
+				recursive_mutex stop;   // Для контроля остановки
+				recursive_mutex main;   // Для работы с параметрами модуля
+				recursive_mutex start;  // Для контроля запуска
+				recursive_mutex timer;  // Для работы с таймерами
+				recursive_mutex worker; // Для работы с воркерами
 			} mtx_t;
 			/**
 			 * KeepAlive Структура с параметрами для постоянного подключения

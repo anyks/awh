@@ -356,12 +356,12 @@ void awh::client::Core::event(struct bufferevent * bev, const short events, void
 void awh::client::Core::thread(const awh::worker_t::adj_t & adj, const client::worker_t & wrk) noexcept {
 	// Получаем объект ядра клиента
 	core_t * core = (core_t *) const_cast <awh::core_t *> (wrk.core);
+	// Выполняем блокировку потока
+	const lock_guard <mutex> lock(core->mtx.thread);
 	// Выполняем получение буфера бинарного чанка данных
 	const auto & buffer = const_cast <awh::worker_t::adj_t *> (&adj)->get();
 	// Если буфер бинарных данных получен и подключение установлено
 	if(!buffer.empty() && (wrk.status.real == client::worker_t::mode_t::CONNECT)){
-		// Выполняем блокировку потока
-		const lock_guard <mutex> lock(core->mtx.thread);
 		// Если подключение производится через, прокси-сервер
 		if(wrk.isProxy()){
 			// Если функция обратного вызова для вывода записи существует
@@ -628,8 +628,6 @@ void awh::client::Core::reconnect(const size_t wid) noexcept {
  * @param mode режим работы клиента
  */
 void awh::client::Core::createTimeout(const size_t wid, const client::worker_t::mode_t mode) noexcept {
-	// Выполняем блокировку потока
-	const lock_guard <recursive_mutex> lock(this->mtx.timeout);
 	// Выполняем поиск воркера
 	auto it = this->workers.find(wid);
 	// Если воркер найден
@@ -642,8 +640,15 @@ void awh::client::Core::createTimeout(const size_t wid, const client::worker_t::
 		if(it != this->timeouts.end())
 			// Получаем объект таймаута
 			timeout = &it->second;
-		// Получаем объект таймаута
-		else timeout = &this->timeouts.emplace(wid, timeout_t()).first->second;
+		// Если таймаут ещё не существует
+		else {
+			// Выполняем блокировку потока
+			this->mtx.timeout.lock();
+			// Получаем объект таймаута
+			timeout = &this->timeouts.emplace(wid, timeout_t()).first->second;
+			// Выполняем разблокировку потока
+			this->mtx.timeout.unlock();
+		}
 		// Устанавливаем идентификатор таймаута
 		timeout->wid = wid;
 		// Устанавливаем режим работы клиента
@@ -680,7 +685,7 @@ void awh::client::Core::sendTimeout(const size_t aid) noexcept {
 		// Если адъютант не существует
 		} else if(!this->workers.empty()) {
 			// Выполняем блокировку потока
-			const lock_guard <recursive_mutex> lock(this->mtx.timeout);
+			const lock_guard <recursive_mutex> lock(this->mtx.reset);
 			// Переходим по всему списку воркеров
 			for(auto & worker : this->workers){
 				// Получаем объект воркера
@@ -702,8 +707,6 @@ void awh::client::Core::sendTimeout(const size_t aid) noexcept {
 			for(auto & worker : this->workers){
 				// Получаем объект воркера
 				client::worker_t * wrk = (client::worker_t *) const_cast <awh::worker_t *> (worker.second);
-				// Выполняем очистку существующих таймаутов
-				this->clearTimeout(wrk->wid);
 				// Если флаг поддержания постоянного подключения не установлен
 				if(!alive && wrk->alive) alive = wrk->alive;
 				// Устанавливаем статус подключения
@@ -773,6 +776,16 @@ void awh::client::Core::clearTimeout(const size_t wid) noexcept {
 void awh::client::Core::close() noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->mtx.close);
+	// Если список активных таймеров существует
+	if(!this->timeouts.empty()){
+		// Переходим по всему списку активных таймеров
+		for(auto & timeout : this->timeouts){
+			// Очищаем объект таймаута базы событий
+			evutil_timerclear(&timeout.second.tv);
+			// Выполняем удаление событие таймера
+			event_del(&timeout.second.ev);
+		}
+	}
 	// Если список воркеров активен
 	if(!this->workers.empty()){
 		// Если список подключённых ядер не пустой
@@ -820,16 +833,6 @@ void awh::client::Core::close() noexcept {
 			}
 		}
 	}
-	// Если список активных таймеров существует
-	if(!this->timeouts.empty()){
-		// Переходим по всему списку активных таймеров
-		for(auto & timeout : this->timeouts){
-			// Очищаем объект таймаута базы событий
-			evutil_timerclear(&timeout.second.tv);
-			// Выполняем удаление событие таймера
-			event_del(&timeout.second.ev);
-		}
-	}
 }
 /**
  * remove Метод удаления всех воркеров
@@ -839,6 +842,22 @@ void awh::client::Core::remove() noexcept {
 	const lock_guard <recursive_mutex> lock(this->mtx.close);
 	// Если список воркеров активен
 	if(!this->workers.empty()){
+		// Если список активных таймеров существует
+		if(!this->timeouts.empty()){
+			// Переходим по всему списку активных таймеров
+			for(auto it = this->timeouts.begin(); it != this->timeouts.end();){
+				// Очищаем объект таймаута базы событий
+				evutil_timerclear(&it->second.tv);
+				// Выполняем удаление событие таймера
+				event_del(&it->second.ev);
+				// Выполняем блокировку потока
+				this->mtx.timeout.lock();
+				// Выполняем удаление текущего таймаута
+				it = this->timeouts.erase(it);
+				// Выполняем разблокировку потока
+				this->mtx.timeout.unlock();
+			}
+		}
 		// Если список подключённых ядер не пустой
 		if(!this->cores.empty()){
 			// Переходим по всем списка подключённым ядрам и устанавливаем новую базу событий
@@ -886,18 +905,6 @@ void awh::client::Core::remove() noexcept {
 			}
 			// Выполняем удаление воркера
 			it = this->workers.erase(it);
-		}
-		// Если список активных таймеров существует
-		if(!this->timeouts.empty()){
-			// Переходим по всему списку активных таймеров
-			for(auto it = this->timeouts.begin(); it != this->timeouts.end();){
-				// Очищаем объект таймаута базы событий
-				evutil_timerclear(&it->second.tv);
-				// Выполняем удаление событие таймера
-				event_del(&it->second.ev);
-				// Выполняем удаление текущего таймаута
-				it = this->timeouts.erase(it);
-			}
 		}
 	}
 }
@@ -958,8 +965,12 @@ void awh::client::Core::remove(const size_t wid) noexcept {
 				evutil_timerclear(&it->second.tv);
 				// Выполняем удаление событие таймера
 				event_del(&it->second.ev);
+				// Выполняем блокировку потока
+				this->mtx.timeout.lock();
 				// Выполняем удаление текущего таймаута
 				this->timeouts.erase(it);
+				// Выполняем разблокировку потока
+				this->mtx.timeout.unlock();
 			}
 		}
 	}
@@ -969,12 +980,12 @@ void awh::client::Core::remove(const size_t wid) noexcept {
  * @param aid идентификатор адъютанта
  */
 void awh::client::Core::close(const size_t aid) noexcept {
+	// Выполняем блокировку потока
+	const lock_guard <recursive_mutex> lock(this->mtx.close);
 	// Если блокировка адъютанта не установлена
 	if(this->locking.count(aid) < 1){
 		// Выполняем блокировку адъютанта
 		this->locking.emplace(aid);
-		// Выполняем блокировку потока
-		const lock_guard <recursive_mutex> lock(this->mtx.close);
 		// Выполняем извлечение адъютанта
 		auto it = this->adjutants.find(aid);
 		// Если адъютант получен

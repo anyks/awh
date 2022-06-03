@@ -335,15 +335,14 @@ void awh::server::Core::accept(const evutil_socket_t fd, const short event, void
 void awh::server::Core::thread(const awh::worker_t::adj_t & adj, const server::worker_t & wrk) noexcept {	
 	// Получаем объект ядра клиента
 	core_t * core = (core_t *) const_cast <awh::core_t *> (wrk.core);
+	// Выполняем блокировку потока
+	const lock_guard <mutex> lock(core->mtx.thread);
 	// Выполняем получение буфера бинарного чанка данных
 	const auto & buffer = const_cast <awh::worker_t::adj_t *> (&adj)->get();
 	// Если буфер бинарных данных получен
-	if(!buffer.empty()){
-		// Выполняем блокировку потока
-		const lock_guard <mutex> lock(core->mtx.thread);
+	if(!buffer.empty())
 		// Выводим функцию обратного вызова
 		wrk.readFn(buffer.data(), buffer.size(), adj.aid, wrk.wid, core, wrk.ctx);
-	}
 }
 /**
  * tuning Метод тюннинга буфера событий
@@ -604,12 +603,12 @@ void awh::server::Core::remove(const size_t wid) noexcept {
  * @param aid идентификатор адъютанта
  */
 void awh::server::Core::close(const size_t aid) noexcept {
+	// Выполняем блокировку потока
+	const lock_guard <recursive_mutex> lock(this->mtx.close);
 	// Если блокировка адъютанта не установлена
 	if(this->locking.count(aid) < 1){
 		// Выполняем блокировку адъютанта
 		this->locking.emplace(aid);
-		// Выполняем блокировку потока
-		const lock_guard <recursive_mutex> lock(this->mtx.close);
 		// Выполняем извлечение адъютанта
 		auto it = this->adjutants.find(aid);
 		// Если адъютант получен

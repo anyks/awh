@@ -41,10 +41,11 @@ namespace awh {
 				 * Mutex Объект основных мютексов
 				 */
 				typedef struct Mutex {
-					mutex proxy;             // Для работы с прокси-сервером
 					mutex thread;            // Для работы в дочерних потоках
-					mutex connect;           // Для выполнения подключения
 					recursive_mutex close;   // Для закрытия подключения
+					recursive_mutex reset;   // Для сброса параметров таймаута
+					recursive_mutex proxy;   // Для работы с прокси-сервером
+					recursive_mutex connect; // Для выполнения подключения
 					recursive_mutex timeout; // Для установки таймаутов
 				} mtx_t;
 				/**

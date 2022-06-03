@@ -27,7 +27,7 @@ void awh::Core::run(evutil_socket_t fd, short event, void * ctx) noexcept {
 		// Получаем объект подключения
 		core_t * core = reinterpret_cast <core_t *> (ctx);
 		// Выполняем блокировку потока
-		const lock_guard <mutex> lock(core->mtx.start);
+		const lock_guard <recursive_mutex> lock(core->mtx.start);
 		// Устанавливаем статус сетевого ядра
 		core->status = status_t::START;
 		// Выполняем удаление событие таймера
@@ -375,10 +375,10 @@ void awh::Core::unbind(Core * core) noexcept {
 			// Зануляем базу событий
 			core->base = nullptr;
 		}
-		// Выполняем сброс модуля DNS резолвера IPv4
-		core->dns4.reset();
-		// Выполняем сброс модуля DNS резолвера IPv6
-		core->dns6.reset();
+		// Выполняем удаление модуля DNS резолвера IPv4
+		core->dns4.remove();
+		// Выполняем удаление модуля DNS резолвера IPv6
+		core->dns6.remove();
 		// Устанавливаем флаг остановки
 		core->mode = false;
 		// Выполняем сброс блокировки базы событий
@@ -486,13 +486,13 @@ void awh::Core::start() noexcept {
 		// Выполняем ожидание завершения работы потоков
 		if(this->thr) this->pool.wait();
 		// Выполняем блокировку потока
-		this->mtx.main.lock();
+		this->mtx.end.lock();
 		// Выполняем отключение всех адъютантов
 		this->close();
-		// Выполняем сброс модуля DNS резолвера IPv4
-		this->dns4.reset();
-		// Выполняем сброс модуля DNS резолвера IPv6
-		this->dns6.reset();
+		// Выполняем удаление модуля DNS резолвера IPv4
+		this->dns4.remove();
+		// Выполняем удаление модуля DNS резолвера IPv6
+		this->dns6.remove();
 		// Удаляем объект базы событий
 		event_base_free(this->base);
 		// Обнуляем базу событий
@@ -502,7 +502,7 @@ void awh::Core::start() noexcept {
 		// Устанавливаем статус сетевого ядра
 		this->status = status_t::STOP;
 		// Выполняем разблокировку потока
-		this->mtx.main.unlock();
+		this->mtx.end.unlock();
 		// Если функция обратного вызова установлена, выполняем
 		if(this->callbackFn != nullptr) this->callbackFn(false, this, this->ctx.front());
 		// Выводим в консоль информацию
@@ -528,7 +528,7 @@ size_t awh::Core::add(const worker_t * worker) noexcept {
 	// Если воркер передан и URL адрес существует
 	if(worker != nullptr){
 		// Выполняем блокировку потока
-		const lock_guard <mutex> lock(this->mtx.worker);
+		const lock_guard <recursive_mutex> lock(this->mtx.worker);
 		// Получаем объект воркера
 		worker_t * wrk = const_cast <worker_t *> (worker);
 		// Получаем идентификатор воркера
@@ -579,7 +579,7 @@ void awh::Core::remove(const size_t wid) noexcept {
 	// Если идентификатор воркера передан
 	if(wid > 0){
 		// Выполняем блокировку потока
-		const lock_guard <mutex> lock(this->mtx.worker);
+		const lock_guard <recursive_mutex> lock(this->mtx.worker);
 		// Выполняем поиск воркера
 		auto it = this->workers.find(wid);
 		// Если воркер найден
