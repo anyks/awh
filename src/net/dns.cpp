@@ -227,16 +227,20 @@ void awh::DNS::callback(const int error, struct evutil_addrinfo * addr, void * c
 		event_del(&wrk->ev);
 		// Очищаем структуру данных домена
 		if(!error) evutil_freeaddrinfo(addr);
-		// Выводим готовый результат
-		if(wrk->callback != nullptr)
-			// Выводим полученный IP адрес
-			wrk->callback(ip != nullptr ? (* ip) : "", wrk->context);
+		// Получаем контекст воркера
+		auto context = wrk->context;
+		// Функция обратного вызова
+		auto callback = wrk->callback;
 		// Выполняем блокировку потока
 		dns->mtx.worker.lock();
 		// Удаляем домен из списка доменов
 		dns->workers.erase(wrk->did);
 		// Выполняем разблокировку потока
 		dns->mtx.worker.unlock();
+		// Если функция обратного вызова передана
+		if(callback != nullptr)
+			// Выводим полученный IP адрес
+			callback(ip != nullptr ? (* ip) : "", context);
 	}
 }
 /**
