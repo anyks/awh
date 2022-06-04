@@ -159,12 +159,12 @@ namespace awh {
 					struct evdns_getaddrinfo_request * reply; // Объект DNS запроса
 				public:
 					// Функция обратного вызова
-					function <void (const string, void *)> callback;
+					function <void (const string, void *)> callbackFn;
 				public:
 					/**
 					 * Worker Конструктор
 					 */
-					Worker() noexcept : did(0), family(AF_UNSPEC), host(""), context(nullptr), dns(nullptr), reply(nullptr), callback(nullptr) {
+					Worker() noexcept : did(0), family(AF_UNSPEC), host(""), context(nullptr), dns(nullptr), reply(nullptr), callbackFn(nullptr) {
 						// Заполняем структуру запроса нулями
 						memset(&this->hints, 0, sizeof(this->hints));
 					}

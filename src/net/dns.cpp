@@ -230,7 +230,7 @@ void awh::DNS::callback(const int error, struct evutil_addrinfo * addr, void * c
 		// Получаем контекст воркера
 		auto context = wrk->context;
 		// Функция обратного вызова
-		auto callback = wrk->callback;
+		auto callback = wrk->callbackFn;
 		// Выполняем блокировку потока
 		dns->mtx.worker.lock();
 		// Удаляем домен из списка доменов
@@ -334,7 +334,7 @@ void awh::DNS::cancel(const size_t did) noexcept {
 					// Иначе выполняем принудительный возврат
 					else {
 						// Выводим пустой IP адрес
-						it->second->callback("", it->second->context);
+						it->second->callbackFn("", it->second->context);
 						// Удаляем объект воркера
 						this->workers.erase(it);
 					}
@@ -352,7 +352,7 @@ void awh::DNS::cancel(const size_t did) noexcept {
 					// Иначе выполняем принудительный возврат
 					} else {
 						// Выводим пустой IP адрес
-						it->second->callback("", it->second->context);
+						it->second->callbackFn("", it->second->context);
 						// Удаляем объект воркера
 						it = this->workers.erase(it);
 					}
@@ -608,7 +608,7 @@ size_t awh::DNS::resolve(void * ctx, const string & host, const int family, func
 					// Устанавливаем тип протокола интернета
 					ret.first->second->family = family;
 					// Устанавливаем функцию обратного вызова
-					ret.first->second->callback = callback;
+					ret.first->second->callbackFn = callback;
 					// Устанавливаем тип подключения
 					ret.first->second->hints.ai_family = AF_UNSPEC;
 					// Устанавливаем что это потоковый сокет
