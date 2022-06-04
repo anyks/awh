@@ -67,35 +67,44 @@ void awh::DNS::createBase() noexcept {
 	}
 }
 /**
- * clearZomby Метод очистки зомби-запросов
+ * clearZombie Метод очистки зомби-запросов
  */
-void awh::DNS::clearZomby() noexcept {
+void awh::DNS::clearZombie() noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->mtx.hold);
 	// Создаём объект холдирования
 	hold_t hold(&this->status);
 	// Если статус работы DNS резолвера соответствует
-	if(hold.access({status_t::CLEAR, status_t::RESOLVE}, status_t::ZOMBY)){
+	if(hold.access({status_t::CLEAR, status_t::RESOLVE}, status_t::ZOMBIE)){
 		// Если список воркеров не пустой
 		if(!this->workers.empty()){
 			// Выполняем блокировку потока
 			const lock_guard <recursive_mutex> lock(this->mtx.worker);
+			// Список зомби-воркеров
+			vector <size_t> zombie;
 			// Получаем текущее значение даты
 			const time_t date = this->fmk->unixTimestamp();
 			// Переходим по всем воркерам
-			for(auto it = this->workers.begin(); it != this->workers.end();){
+			for(auto & worker : this->workers){
 				// Если DNS запрос устарел на 3-и минуты, убиваем его
-				if((date - it->first) >= 180000){
+				if((date - worker.first) >= 180000){
 					// Очищаем объект таймаута базы событий
-					evutil_timerclear(&it->second->tv);
+					evutil_timerclear(&worker.second->tv);
 					// Удаляем событие таймера
-					event_del(&it->second->ev);
-					// Выводим пустой IP адрес
-					it->second->callback("", it->second->context);
-					// Удаляем объект воркера
-					it = this->workers.erase(it);
-				// Иначе продолжаем дальше
-				} else ++it;
+					event_del(&worker.second->ev);
+					// Добавляем идентификатор воркеров в список зомби
+					zombie.push_back(worker.first);
+				}
+			}
+			// Если список зомби-воркеров существует
+			if(!zombie.empty()){
+				// Переходим по всему списку зомби-воркеров
+				for(auto it = zombie.begin(); it != zombie.end();){
+					// Выполняем отмену DNS запроса
+					this->cancel(* it);
+					// Удаляем зомби-воркер из списка зомби
+					it = zombie.erase(it);
+				}
 			}
 		}
 	}
@@ -121,16 +130,8 @@ void awh::DNS::garbage(evutil_socket_t fd, short event, void * ctx) noexcept {
 		evutil_timerclear(&wrk->tv);
 		// Удаляем событие таймера
 		event_del(&wrk->ev);
-		// Выводим готовый результат
-		if(wrk->callback != nullptr)
-			// Выводим полученный IP адрес
-			wrk->callback("", wrk->context);
-		// Выполняем блокировку потока
-		dns->mtx.worker.lock();
-		// Удаляем домен из списка доменов
-		dns->workers.erase(wrk->did);
-		// Выполняем разблокировку потока
-		dns->mtx.worker.unlock();
+		// Выполняем отмену DNS запроса
+		dns->cancel(wrk->did);
 	}
 }
 /**
@@ -253,7 +254,7 @@ void awh::DNS::clear() noexcept {
 		// Выполняем отмену выполненных запросов
 		this->cancel();
 		// Убиваем зомби-процессы если такие имеются
-		this->clearZomby();
+		this->clearZombie();
 		// Выполняем блокировку потока
 		this->mtx.servers.lock();
 		// Выполняем сброс списка IP адресов
@@ -449,7 +450,7 @@ void awh::DNS::setNameServer(const string & server) noexcept {
 		// Выполняем блокировку потока
 		const lock_guard <recursive_mutex> lock(this->mtx.evdns);
 		// Если dns сервер передан
-		if(!server.empty() && (this->fmk != nullptr) && (this->dbase != nullptr)){
+		if(!server.empty() && (this->fmk != nullptr) && (this->base != nullptr) && (this->dbase != nullptr)){
 			// Адрес имени сервера
 			string ns = "";
 			// Определяем тип передаваемого сервера
@@ -642,7 +643,7 @@ size_t awh::DNS::resolve(void * ctx, const string & host, const int family, func
 			} else callback(match[1].str(), ctx);
 		}
 		// Убиваем зомби-процессы если такие имеются
-		this->clearZomby();
+		this->clearZombie();
 	}
 	// Выводим результат
 	return result;

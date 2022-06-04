@@ -531,10 +531,20 @@ void awh::client::Core::connect(const size_t wid) noexcept {
 								this->log->print("connecting to host = %s, port = %u", log_t::flag_t::CRITICAL, url.ip.c_str(), url.port);
 								// Определяем тип подключения
 								switch(this->net.family){
-									// Резолвер IPv4, выполняем сброс кэша резолвера
-									case AF_INET: this->dns4.flush(); break;
-									// Резолвер IPv6, выполняем сброс кэша резолвера
-									case AF_INET6: this->dns6.flush(); break;
+									// Для резолвера IPv4
+									case AF_INET: {
+										// Выполняем сброс кэша резолвера
+										this->dns4.flush();
+										// Добавляем бракованный IPv4 адрес в список адресов
+										this->dns4.setToBlackList(url.ip); 
+									} break;
+									// Для резолвера IPv6
+									case AF_INET6: {
+										// Выполняем сброс кэша резолвера
+										this->dns6.flush();
+										// Добавляем бракованный IPv6 адрес в список адресов
+										this->dns6.setToBlackList(url.ip);
+									} break;
 								}
 								// Выполняем отключение от сервера
 								this->close(ret.first->first);
@@ -575,10 +585,20 @@ void awh::client::Core::connect(const size_t wid) noexcept {
 					wrk->status.real = client::worker_t::mode_t::DISCONNECT;
 					// Определяем тип подключения
 					switch(this->net.family){
-						// Резолвер IPv4, выполняем сброс кэша резолвера
-						case AF_INET: this->dns4.flush(); break;
-						// Резолвер IPv6, выполняем сброс кэша резолвера
-						case AF_INET6: this->dns6.flush(); break;
+						// Для резолвера IPv4
+						case AF_INET: {
+							// Выполняем сброс кэша резолвера
+							this->dns4.flush();
+							// Добавляем бракованный IPv4 адрес в список адресов
+							this->dns4.setToBlackList(url.ip); 
+						} break;
+						// Для резолвера IPv6
+						case AF_INET6: {
+							// Выполняем сброс кэша резолвера
+							this->dns6.flush();
+							// Добавляем бракованный IPv6 адрес в список адресов
+							this->dns6.setToBlackList(url.ip);
+						} break;
 					}
 					// Выводим сообщение об ошибке
 					if(!core->noinfo) this->log->print("%s", log_t::flag_t::INFO, "disconnected from the server");
@@ -683,7 +703,7 @@ void awh::client::Core::sendTimeout(const size_t aid) noexcept {
 			// Иначе выполняем отключение от сервера
 			else this->close(adj->aid);
 		// Если адъютант не существует
-		} else if(!this->workers.empty()) {
+		} else if(!this->workers.empty() && (this->base != nullptr)) {
 			// Выполняем блокировку потока
 			const lock_guard <recursive_mutex> lock(this->mtx.reset);
 			// Переходим по всему списку воркеров

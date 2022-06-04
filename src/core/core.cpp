@@ -447,67 +447,73 @@ void awh::Core::stop() noexcept {
  * start Метод запуска клиента
  */
 void awh::Core::start() noexcept {
+	// Выполняем блокировку потока
+	this->mtx.start.lock();
 	// Если система ещё не запущена
 	if(!this->mode && !this->freeze){
 		// Разрешаем работу WebSocket
 		this->mode = true;
 		// Создаем новую базу
 		this->base = event_base_new();
-		// Добавляем базу событий для DNS резолвера IPv4
-		this->dns4.setBase(this->base);
-		// Добавляем базу событий для DNS резолвера IPv6
-		this->dns6.setBase(this->base);
-		// Выполняем установку нейм-серверов для DNS резолвера IPv4
-		this->dns4.replaceServers(this->net.v4.second);
-		// Выполняем установку нейм-серверов для DNS резолвера IPv6
-		this->dns6.replaceServers(this->net.v6.second);
-		// Создаём событие на активацию базы событий
-		event_assign(&this->timeout, this->base, -1, EV_TIMEOUT, &run, this);
-		// Очищаем объект таймаута базы событий
-		evutil_timerclear(&this->tvTimeout);
-		// Устанавливаем таймаут базы событий в 1 секунду
-		this->tvTimeout.tv_sec = 1;
-		// Создаём событие таймаута на активацию базы событий
-		event_add(&this->timeout, &this->tvTimeout);
-		// Если запрещено использовать простое чтение базы событий
-		if(!this->easy)
-			// Запускаем работу базы событий
-			event_base_dispatch(this->base);
-		// Если разрешено использовать простое чтение базы событий
-		else {
-			// Выполняем чтение базы событий пока это разрешено
-			while(this->mode){
-				// Выполняем чтение базы событий
-				if(!this->freeze) event_base_loop(this->base, EVLOOP_NONBLOCK | EVLOOP_ONCE);
-				// Замораживаем поток на период времени частоты обновления базы событий
-				this_thread::sleep_for(this->freq);
-			}
-		}
-		// Выполняем ожидание завершения работы потоков
-		if(this->thr) this->pool.wait();
-		// Выполняем блокировку потока
-		this->mtx.end.lock();
-		// Выполняем отключение всех адъютантов
-		this->close();
-		// Выполняем удаление модуля DNS резолвера IPv4
-		this->dns4.remove();
-		// Выполняем удаление модуля DNS резолвера IPv6
-		this->dns6.remove();
-		// Удаляем объект базы событий
-		event_base_free(this->base);
-		// Обнуляем базу событий
-		this->base = nullptr;
-		// Очищаем все глобальные переменные
-		libevent_global_shutdown();
-		// Устанавливаем статус сетевого ядра
-		this->status = status_t::STOP;
 		// Выполняем разблокировку потока
-		this->mtx.end.unlock();
+		this->mtx.start.unlock();
+		// Если база событий создана
+		if(this->base != nullptr){
+			// Добавляем базу событий для DNS резолвера IPv4
+			this->dns4.setBase(this->base);
+			// Добавляем базу событий для DNS резолвера IPv6
+			this->dns6.setBase(this->base);
+			// Выполняем установку нейм-серверов для DNS резолвера IPv4
+			this->dns4.replaceServers(this->net.v4.second);
+			// Выполняем установку нейм-серверов для DNS резолвера IPv6
+			this->dns6.replaceServers(this->net.v6.second);
+			// Создаём событие на активацию базы событий
+			event_assign(&this->timeout, this->base, -1, EV_TIMEOUT, &run, this);
+			// Очищаем объект таймаута базы событий
+			evutil_timerclear(&this->tvTimeout);
+			// Устанавливаем таймаут базы событий в 1 секунду
+			this->tvTimeout.tv_sec = 1;
+			// Создаём событие таймаута на активацию базы событий
+			event_add(&this->timeout, &this->tvTimeout);
+			// Если запрещено использовать простое чтение базы событий
+			if(!this->easy)
+				// Запускаем работу базы событий
+				event_base_dispatch(this->base);
+			// Если разрешено использовать простое чтение базы событий
+			else {
+				// Выполняем чтение базы событий пока это разрешено
+				while(this->mode){
+					// Выполняем чтение базы событий
+					if(!this->freeze) event_base_loop(this->base, EVLOOP_NONBLOCK | EVLOOP_ONCE);
+					// Замораживаем поток на период времени частоты обновления базы событий
+					this_thread::sleep_for(this->freq);
+				}
+			}
+			// Выполняем ожидание завершения работы потоков
+			if(this->thr) this->pool.wait();
+			// Выполняем блокировку потока
+			this->mtx.end.lock();
+			// Выполняем отключение всех адъютантов
+			this->close();
+			// Выполняем удаление модуля DNS резолвера IPv4
+			this->dns4.remove();
+			// Выполняем удаление модуля DNS резолвера IPv6
+			this->dns6.remove();
+			// Удаляем объект базы событий
+			event_base_free(this->base);
+			// Обнуляем базу событий
+			this->base = nullptr;
+			// Устанавливаем статус сетевого ядра
+			this->status = status_t::STOP;
+			// Выполняем разблокировку потока
+			this->mtx.end.unlock();
+		}
 		// Если функция обратного вызова установлена, выполняем
 		if(this->callbackFn != nullptr) this->callbackFn(false, this, this->ctx.front());
 		// Выводим в консоль информацию
 		if(!this->noinfo) this->log->print("[-] stop service: pid = %u", log_t::flag_t::INFO, getpid());
-	}
+	// Выполняем разблокировку потока
+	} else this->mtx.start.unlock();
 }
 /**
  * working Метод проверки на запуск работы
@@ -1004,4 +1010,6 @@ void awh::Core::setNet(const vector <string> & ip, const vector <string> & ns, c
 awh::Core::~Core() noexcept {
 	// Выполняем остановку сервиса
 	this->stop();
+	// Очищаем все глобальные переменные
+	libevent_global_shutdown();
 }

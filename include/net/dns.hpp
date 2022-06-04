@@ -23,6 +23,7 @@
 #include <stack>
 #include <mutex>
 #include <regex>
+#include <thread> // +++++++++
 #include <cstdio>
 #include <string>
 #include <vector>
@@ -74,7 +75,7 @@ namespace awh {
 				NONE,        // Событие не установлено
 				CLEAR,       // Событие отчистки параметров резолвера
 				FLUSH,       // Событие сброса кэша DNS серверов
-				ZOMBY,       // Событие очистки зависших процессов
+				ZOMBIE,      // Событие очистки зависших процессов
 				REMOVE,      // Событие удаления параметров резолвера
 				CANCEL,      // Событие отмены резолвинга домена
 				RESOLVE,     // Событие резолвинга домена
@@ -200,9 +201,9 @@ namespace awh {
 			 */
 			void createBase() noexcept;
 			/**
-			 * clearZomby Метод очистки зомби-запросов
+			 * clearZombie Метод очистки зомби-запросов
 			 */
-			void clearZomby() noexcept;
+			void clearZombie() noexcept;
 		private:
 			/**
 			 * garbage Функция выполняемая по таймеру для чистки мусора
