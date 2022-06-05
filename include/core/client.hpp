@@ -16,6 +16,11 @@
 #define __AWH_CORE_CLIENT__
 
 /**
+ * Стандартная библиотека
+ */
+#include <set>
+
+/**
  * Наши модули
  */
 #include <core/core.hpp>
@@ -66,6 +71,8 @@ namespace awh {
 				// Мютекс для блокировки основного потока
 				mtx_t mtx;
 			private:
+				// Список блокированных объектов
+				set <size_t> locking;
 				// Список таймеров
 				map <size_t, timeout_t> timeouts;
 			private:

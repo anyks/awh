@@ -18,7 +18,6 @@
 /**
  * Стандартная библиотека
  */
-#include <set>
 #include <map>
 #include <mutex>
 #include <chrono>
@@ -91,6 +90,13 @@ namespace awh {
 			enum class method_t : uint8_t {READ, WRITE};
 		private:
 			/**
+			 * Event Структура события
+			 */
+			typedef struct Event {
+				struct event ev;   // Объект события
+				struct timeval tv; // Параметры интервала времени
+			} event_t;
+			/**
 			 * Timer Структура таймера
 			 */
 			typedef struct Timer {
@@ -98,8 +104,7 @@ namespace awh {
 				void * ctx;                                               // Передаваемый контекст
 				Core * core;                                              // Родительский объект
 				bool persist;                                             // Флаг персистентной работы
-				struct event ev;                                          // Объект события
-				struct timeval tv;                                        // Параметры интервала времени
+				event_t event;                                            // Объект события
 				function <void (const u_short, Core *, void *)> callback; // Функция обратного вызова
 				/**
 				 * Timer Конструктор
@@ -111,11 +116,11 @@ namespace awh {
 			 * Mutex Объект основных мютексов
 			 */
 			typedef struct Mutex {
-				recursive_mutex end;    // Для завершения работы ядра
 				recursive_mutex core;   // Для работы с ядрами
-				recursive_mutex stop;   // Для контроля остановки
+				recursive_mutex bind;   // Для работы с биндингом ядра
+				recursive_mutex stop;   // Для контроля остановки модуля
 				recursive_mutex main;   // Для работы с параметрами модуля
-				recursive_mutex start;  // Для контроля запуска
+				recursive_mutex start;  // Для контроля запуска модуля
 				recursive_mutex timer;  // Для работы с таймерами
 				recursive_mutex worker; // Для работы с воркерами
 			} mtx_t;
@@ -173,6 +178,8 @@ namespace awh {
 			dns_t dns4;
 			// Создаём объект DNS IPv6 резолвера
 			dns_t dns6;
+			// Объект события
+			event_t event;
 			// Параметры постоянного подключения
 			alive_t alive;
 			// Создаем объект сети
@@ -189,27 +196,14 @@ namespace awh {
 			type_t type = type_t::CLIENT;
 			// Статус сетевого ядра
 			status_t status = status_t::STOP;
-		protected:
-			// Событие таймаута запуска системы
-			struct event timeout;
-			// Событие интервала пинга
-			struct event interval;
-		protected:
-			// Структура интервала таймаута
-			struct timeval tvTimeout;
-			// Структура интервала пинга
-			struct timeval tvInterval;
-		protected:
-			// Список сторонних сетевых ядер
-			set <Core *> cores;
-			// Список блокированных объектов
-			set <size_t> locking;
 		private:
 			// Список активных таймеров
 			map <u_short, timer_t> timers;
 		protected:
 			// Список активных воркеров
 			map <size_t, const worker_t *> workers;
+			// Список сторонних сетевых ядер
+			map <Core *, struct event_base **> cores;
 			// Список подключённых клиентов
 			map <size_t, const worker_t::adj_t *> adjutants;
 		protected:
@@ -248,13 +242,6 @@ namespace awh {
 			function <void (const bool, Core * core, void *)> callbackFn = nullptr;
 		private:
 			/**
-			 * run Функция вызова при активации базы событий
-			 * @param fd    файловый дескриптор (сокет)
-			 * @param event произошедшее событие
-			 * @param ctx   передаваемый контекст
-			 */
-			static void run(evutil_socket_t fd, short event, void * ctx) noexcept;
-			/**
 			 * timer Функция обработки события пользовательского таймера
 			 * @param fd    файловый дескриптор (сокет)
 			 * @param event произошедшее событие
@@ -268,6 +255,11 @@ namespace awh {
 			 * @param ctx   передаваемый контекст
 			 */
 			static void persistent(evutil_socket_t fd, short event, void * ctx) noexcept;
+		private:
+			/**
+			 * launching Метод вызова при активации базы событий
+			 */
+			void launching() noexcept;
 		protected:
 			/**
 			 * clean Метод буфера событий
@@ -478,7 +470,7 @@ namespace awh {
 			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
 			 */
-			Core(const fmk_t * fmk, const log_t * log) noexcept : nwk(fmk), uri(fmk, &nwk), ssl(fmk, log, &uri), dns4(fmk, log, &nwk), dns6(fmk, log, &nwk), socket(log), fmk(fmk), log(log) {}
+			Core(const fmk_t * fmk, const log_t * log) noexcept;
 			/**
 			 * ~Core Деструктор
 			 */

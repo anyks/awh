@@ -245,14 +245,17 @@ void awh::DNS::callback(const int error, struct evutil_addrinfo * addr, void * c
 }
 /**
  * clear Метод сброса кэша резолвера
+ * @return результат работы функции
  */
-void awh::DNS::clear() noexcept {
+bool awh::DNS::clear() noexcept {
+	// Результат работы функции
+	bool result = false;
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->mtx.hold);
 	// Создаём объект холдирования
 	hold_t hold(&this->status);
 	// Если статус работы DNS резолвера соответствует
-	if(hold.access({status_t::REMOVE}, status_t::CLEAR)){
+	if((result = hold.access({status_t::REMOVE}, status_t::CLEAR))){
 		// Выполняем сброс кэша DNS резолвера
 		this->flush();
 		// Выполняем отмену выполненных запросов
@@ -266,35 +269,45 @@ void awh::DNS::clear() noexcept {
 		// Выполняем разблокировку потока
 		this->mtx.servers.unlock();
 	}
+	// Выводим результат
+	return result;
 }
 /**
  * flush Метод сброса кэша DNS резолвера
+ * @return результат работы функции
  */
-void awh::DNS::flush() noexcept {
+bool awh::DNS::flush() noexcept {
+	// Результат работы функции
+	bool result = false;
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->mtx.hold);
 	// Создаём объект холдирования
 	hold_t hold(&this->status);
 	// Если статус работы DNS резолвера соответствует
-	if(hold.access({status_t::CLEAR}, status_t::FLUSH)){
+	if((result = hold.access({status_t::CLEAR}, status_t::FLUSH))){
 		// Выполняем блокировку потока
 		const lock_guard <recursive_mutex> lock(this->mtx.cache);
 		// Выполняем сброс кэша полученных IP адресов
 		this->cache.clear();
 	}
+	// Выводим результат
+	return result;
 }
 /**
  * remove Метод удаления параметров модуля DNS резолвера
+ * @return результат работы функции
  */
-void awh::DNS::remove() noexcept {
+bool awh::DNS::remove() noexcept {
+	// Результат работы функции
+	bool result = false;
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->mtx.hold);
 	// Создаём объект холдирования
 	hold_t hold(&this->status);
 	// Если статус работы DNS резолвера соответствует
-	if(hold.access({status_t::CREATE_EVDNS}, status_t::REMOVE)){
+	if((result = hold.access({status_t::CREATE_EVDNS}, status_t::REMOVE))){
 		// Очищаем базу dns
-		if(this->dbase != nullptr){
+		if((result = (this->dbase != nullptr))){
 			// Выполняем сброс кэша резолвера
 			this->clear();
 			// Выполняем блокировку потока
@@ -305,20 +318,25 @@ void awh::DNS::remove() noexcept {
 			this->dbase = nullptr;
 		}
 	}
+	// Выводим результат
+	return result;
 }
 /**
  * cancel Метод отмены выполнения запроса
  * @param did идентификатор DNS запроса
+ * @return    результат работы функции
  */
-void awh::DNS::cancel(const size_t did) noexcept {
+bool awh::DNS::cancel(const size_t did) noexcept {
+	// Результат работы функции
+	bool result = false;
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->mtx.hold);
 	// Создаём объект холдирования
 	hold_t hold(&this->status);
 	// Если статус работы DNS резолвера соответствует
-	if(hold.access({status_t::RESOLVE}, status_t::CANCEL, false)){
+	if((result = hold.access({status_t::RESOLVE}, status_t::CANCEL, false))){
 		// Если список воркеров не пустой
-		if(!this->workers.empty()){
+		if((result = !this->workers.empty())){
 			// Выполняем блокировку потока
 			const lock_guard <recursive_mutex> lock(this->mtx.worker);
 			// Если идентификатор DNS запроса передан
@@ -360,6 +378,8 @@ void awh::DNS::cancel(const size_t did) noexcept {
 			}
 		}
 	}
+	// Выводим результат
+	return result;
 }
 /**
  * updateNameServers Метод обновления списка нейм-серверов

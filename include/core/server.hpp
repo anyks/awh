@@ -16,6 +16,11 @@
 #define __AWH_CORE_SERVER__
 
 /**
+ * Стандартная библиотека
+ */
+#include <set>
+
+/**
  * Наши модули
  */
 #include <net/if.hpp>
@@ -53,6 +58,9 @@ namespace awh {
 			private:
 				// Объект для работы с сетевым интерфейсом
 				ifnet_t ifnet;
+			private:
+				// Список блокированных объектов
+				set <size_t> locking;
 			private:
 				/**
 				 * resolver Функция выполнения резолвинга домена

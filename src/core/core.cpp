@@ -16,50 +16,6 @@
 #include <core/core.hpp>
 
 /**
- * run Функция вызова при активации базы событий
- * @param fd    файловый дескриптор (сокет)
- * @param event произошедшее событие
- * @param ctx   передаваемый контекст
- */
-void awh::Core::run(evutil_socket_t fd, short event, void * ctx) noexcept {
-	// Если контекст модуля передан
-	if(ctx != nullptr){
-		// Получаем объект подключения
-		core_t * core = reinterpret_cast <core_t *> (ctx);
-		// Выполняем блокировку потока
-		const lock_guard <recursive_mutex> lock(core->mtx.start);
-		// Устанавливаем статус сетевого ядра
-		core->status = status_t::START;
-		// Выполняем удаление событие таймера
-		if(event > -1) event_del(&core->timeout);
-		// Если список воркеров существует
-		if(!core->workers.empty()){
-			// Переходим по всему списку воркеров
-			for(auto & worker : core->workers){
-				// Если функция обратного вызова установлена
-				if(worker.second->openFn != nullptr)
-					// Выполняем функцию обратного вызова
-					worker.second->openFn(worker.first, core, worker.second->ctx);
-			}
-		}
-		// Если функция обратного вызова установлена, выполняем
-		if(core->callbackFn != nullptr) core->callbackFn(true, core, core->ctx.front());
-		// Выводим в консоль информацию
-		if(!core->noinfo) core->log->print("[+] start service: pid = %u", log_t::flag_t::INFO, getpid());
-		// Если таймер периодического запуска коллбека активирован, запускаем персистентную работу
-		if(core->persist){
-			// Создаём событие на активацию базы событий
-			event_assign(&core->interval, core->base, -1, EV_TIMEOUT | EV_PERSIST, &persistent, core);
-			// Очищаем объект таймаута базы событий
-			evutil_timerclear(&core->tvInterval);
-			// Устанавливаем интервал таймаута
-			core->tvInterval.tv_sec = (core->persistInterval / 1000);
-			// Создаём событие таймаута на активацию базы событий
-			event_add(&core->interval, &core->tvInterval);
-		}
-	}
-}
-/**
  * timer Функция обработки события пользовательского таймера
  * @param fd    файловый дескриптор (сокет)
  * @param event произошедшее событие
@@ -77,9 +33,9 @@ void awh::Core::timer(evutil_socket_t fd, short event, void * ctx) noexcept {
 		// Если персистентная работа не установлена, удаляем таймер
 		if(!timer->persist){
 			// Очищаем объект таймаута базы событий
-			evutil_timerclear(&timer->tv);
+			evutil_timerclear(&timer->event.tv);
 			// Удаляем событие таймера
-			event_del(&timer->ev);
+			event_del(&timer->event.ev);
 			// Если родительский объект установлен
 			if(timer->core != nullptr)
 				// Удаляем объект таймера
@@ -119,6 +75,43 @@ void awh::Core::persistent(evutil_socket_t fd, short event, void * ctx) noexcept
 					}
 				}
 			}
+		}
+	}
+}
+/**
+ * launching Метод вызова при активации базы событий
+ */
+void awh::Core::launching() noexcept {
+	// Если база событий создана
+	if(this->base != nullptr){
+		// Выполняем блокировку потока
+		const lock_guard <recursive_mutex> lock(this->mtx.start);
+		// Устанавливаем статус сетевого ядра
+		this->status = status_t::START;
+		// Если список воркеров существует
+		if(!this->workers.empty()){
+			// Переходим по всему списку воркеров
+			for(auto & worker : this->workers){
+				// Если функция обратного вызова установлена
+				if(worker.second->openFn != nullptr)
+					// Выполняем функцию обратного вызова
+					worker.second->openFn(worker.first, this, worker.second->ctx);
+			}
+		}
+		// Если функция обратного вызова установлена, выполняем
+		if(this->callbackFn != nullptr) this->callbackFn(true, this, this->ctx.front());
+		// Выводим в консоль информацию
+		if(!this->noinfo) this->log->print("[+] start service: pid = %u", log_t::flag_t::INFO, getpid());
+		// Если таймер периодического запуска коллбека активирован, запускаем персистентную работу
+		if(this->persist){
+			// Создаём событие на активацию базы событий
+			event_assign(&this->event.ev, this->base, -1, EV_TIMEOUT | EV_PERSIST, &persistent, this);
+			// Очищаем объект таймаута базы событий
+			evutil_timerclear(&this->event.tv);
+			// Устанавливаем интервал таймаута
+			this->event.tv.tv_sec = (this->persistInterval / 1000);
+			// Создаём событие таймаута на активацию базы событий
+			event_add(&this->event.ev, &this->event.tv);
 		}
 	}
 }
@@ -328,18 +321,31 @@ const awh::Core::sockaddr_t awh::Core::sockaddr(const string & ip, const u_int p
  * @param core модуль ядра для подключения
  */
 void awh::Core::bind(Core * core) noexcept {
+	// Выполняем блокировку потока
+	const lock_guard <recursive_mutex> lock(core->mtx.bind);
 	// Если модуль ядра передан
-	if(core != nullptr){
-		// Устанавливаем базу событий
-		core->base = this->base;
-		// Выполняем блокировку инициализации базы событий
-		core->freeze = (core->base != nullptr);
-		// Если блокировка базы событий выполнена
-		if(core->freeze){
-			// Устанавливаем флаг запуска
-			core->mode = true;
+	if((core != nullptr) && (this->base != nullptr)){
+		// Если база событий активна и она отличается от текущей базы событий
+		if((core->base != nullptr) && (core->base != this->base)){
+			// Выполняем остановку базы событий
+			core->stop();
+			// Выполняем блокировку потока
+			this->mtx.core.lock();
+			// Добавляем ядро в список подключенных ядер
+			this->cores.emplace(core, &core->base);
+			// Выполняем разблокировку потока
+			this->mtx.core.unlock();
+		}
+		// Выполняем блокировку потока
+		this->mtx.start.lock();
+		// Устанавливаем флаг запуска
+		core->mode = true;
+		// Если база событий не установлена
+		if(core->base != this->base){
 			// Блокируем информационные сообщения для клиента
 			core->noinfo = true;
+			// Устанавливаем базу событий
+			core->base = this->base;
 			// Добавляем базу событий для DNS резолвера IPv4
 			core->dns4.setBase(core->base);
 			// Добавляем базу событий для DNS резолвера IPv6
@@ -348,15 +354,11 @@ void awh::Core::bind(Core * core) noexcept {
 			core->dns4.replaceServers(core->net.v4.second);
 			// Выполняем установку нейм-серверов для DNS резолвера IPv6
 			core->dns6.replaceServers(core->net.v6.second);
-			// Выполняем блокировку потока
-			this->mtx.core.lock();
-			// Добавляем ядро в список подключенных ядер
-			this->cores.emplace(core);
-			// Выполняем разблокировку потока
-			this->mtx.core.unlock();
-			// Выполняем запуск управляющей функции
-			run(0, -1, core);
 		}
+		// Выполняем разблокировку потока
+		this->mtx.start.unlock();
+		// Выполняем запуск управляющей функции
+		core->launching();
 	}
 }
 /**
@@ -364,33 +366,58 @@ void awh::Core::bind(Core * core) noexcept {
  * @param core модуль ядра для отключения
  */
 void awh::Core::unbind(Core * core) noexcept {
+	// Выполняем блокировку потока
+	const lock_guard <recursive_mutex> lock(core->mtx.bind);
 	// Если модуль ядра передан
-	if(core != nullptr){
-		// Если база событий подключена
-		if(core->base != nullptr){
-			// Выполняем остановку всех таймеров
-			core->clearTimers();
-			// Отключаем всех клиентов
-			core->close();
-			// Зануляем базу событий
-			core->base = nullptr;
+	if((core != nullptr) && (core->base == this->base) && (core != this)){
+		// Выполняем блокировку потока
+		this->mtx.stop.lock();
+		// Запрещаем работу WebSocket
+		core->mode = false;
+		// Выполняем блокировку инициализации базы событий
+		core->freeze = !core->freeze;
+		// Выполняем разблокировку потока
+		this->mtx.stop.unlock();
+		// Выполняем остановку всех таймеров
+		core->clearTimers();
+		// Выполняем блокировку потока
+		this->mtx.stop.lock();
+		// Если таймер периодического запуска коллбека активирован
+		if(core->persist){
+			// Очищаем объект таймаута базы событий
+			evutil_timerclear(&core->event.tv);
+			// Удаляем событие интервала
+			event_del(&core->event.ev);
 		}
+		// Выполняем разблокировку потока
+		this->mtx.stop.unlock();
+		// Отключаем всех клиентов
+		core->close();
+		// Зануляем базу событий
+		core->base = nullptr;
 		// Выполняем удаление модуля DNS резолвера IPv4
 		core->dns4.remove();
 		// Выполняем удаление модуля DNS резолвера IPv6
 		core->dns6.remove();
-		// Устанавливаем флаг остановки
-		core->mode = false;
-		// Выполняем сброс блокировки базы событий
-		core->freeze = false;
+		// Выполняем блокировку потока
+		this->mtx.stop.lock();
+		// Размораживаем работу базы событий
+		core->freeze = !core->freeze;
 		// Устанавливаем статус сетевого ядра
 		core->status = status_t::STOP;
+		// Выполняем разблокировку потока
+		this->mtx.stop.unlock();
 		// Выполняем блокировку потока
 		this->mtx.core.lock();
-		// Если адрес ядра присутствует в списке подключённых ядер
-		if(this->cores.count(core) > 0)
+		// Ищем ядро в списке подключённых ядер
+		auto it = this->cores.find(core);
+		// Если ядро в списке подключённых ядер найдено
+		if(it != this->cores.end()){
+			// Восстанавливаем базу событий для данного ядра
+			core->base = (* it->second);
 			// Удаляем ядро из списка ядер
-			this->cores.erase(core);
+			this->cores.erase(it);
+		}
 		// Выполняем разблокировку потока
 		this->mtx.core.unlock();
 		// Если функция обратного вызова установлена, выполняем
@@ -417,103 +444,69 @@ void awh::Core::stop() noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->mtx.stop);
 	// Если система уже запущена
-	if(this->mode){
+	if(this->mode && (this->base != nullptr)){
 		// Запрещаем работу WebSocket
 		this->mode = false;
 		// Выполняем блокировку инициализации базы событий
-		this->freeze = (this->base != nullptr);
+		this->freeze = !this->freeze;
 		// Выполняем остановку всех таймеров
 		this->clearTimers();
-		// Очищаем объект таймаута базы событий
-		evutil_timerclear(&this->tvTimeout);
-		// Выполняем удаление событие таймера
-		event_del(&this->timeout);
 		// Если таймер периодического запуска коллбека активирован
 		if(this->persist){
 			// Очищаем объект таймаута базы событий
-			evutil_timerclear(&this->tvInterval);
+			evutil_timerclear(&this->event.tv);
 			// Удаляем событие интервала
-			event_del(&this->interval);
+			event_del(&this->event.ev);
 		}
 		// Выполняем отключение всех клиентов
 		this->close();
 		// Завершаем работу базы событий
 		event_base_loopbreak(this->base);
 		// Размораживаем работу базы событий
-		this->freeze = false;
+		this->freeze = !this->freeze;
 	}
 }
 /**
  * start Метод запуска клиента
  */
 void awh::Core::start() noexcept {
-	// Выполняем блокировку потока
-	this->mtx.start.lock();
 	// Если система ещё не запущена
-	if(!this->mode && !this->freeze){
+	if(!this->mode && !this->freeze && (this->base != nullptr)){
+		// Выполняем блокировку потока
+		this->mtx.start.lock();
 		// Разрешаем работу WebSocket
-		this->mode = true;
-		// Создаем новую базу
-		this->base = event_base_new();
+		this->mode = !this->mode;
 		// Выполняем разблокировку потока
 		this->mtx.start.unlock();
-		// Если база событий создана
-		if(this->base != nullptr){
-			// Добавляем базу событий для DNS резолвера IPv4
-			this->dns4.setBase(this->base);
-			// Добавляем базу событий для DNS резолвера IPv6
-			this->dns6.setBase(this->base);
-			// Выполняем установку нейм-серверов для DNS резолвера IPv4
-			this->dns4.replaceServers(this->net.v4.second);
-			// Выполняем установку нейм-серверов для DNS резолвера IPv6
-			this->dns6.replaceServers(this->net.v6.second);
-			// Создаём событие на активацию базы событий
-			event_assign(&this->timeout, this->base, -1, EV_TIMEOUT, &run, this);
-			// Очищаем объект таймаута базы событий
-			evutil_timerclear(&this->tvTimeout);
-			// Устанавливаем таймаут базы событий в 1 секунду
-			this->tvTimeout.tv_sec = 1;
-			// Создаём событие таймаута на активацию базы событий
-			event_add(&this->timeout, &this->tvTimeout);
-			// Если запрещено использовать простое чтение базы событий
-			if(!this->easy)
-				// Запускаем работу базы событий
-				event_base_dispatch(this->base);
-			// Если разрешено использовать простое чтение базы событий
-			else {
-				// Выполняем чтение базы событий пока это разрешено
-				while(this->mode){
-					// Выполняем чтение базы событий
-					if(!this->freeze) event_base_loop(this->base, EVLOOP_NONBLOCK | EVLOOP_ONCE);
-					// Замораживаем поток на период времени частоты обновления базы событий
-					this_thread::sleep_for(this->freq);
-				}
+		// Выполняем запуск управляющей функции
+		this->launching();
+		// Если запрещено использовать простое чтение базы событий
+		if(!this->easy)
+			// Запускаем работу базы событий
+			event_base_dispatch(this->base);
+		// Если разрешено использовать простое чтение базы событий
+		else {
+			// Выполняем чтение базы событий пока это разрешено
+			while(this->mode){
+				// Выполняем чтение базы событий
+				if(!this->freeze) event_base_loop(this->base, EVLOOP_NONBLOCK | EVLOOP_ONCE);
+				// Замораживаем поток на период времени частоты обновления базы событий
+				this_thread::sleep_for(this->freq);
 			}
-			// Выполняем ожидание завершения работы потоков
-			if(this->thr) this->pool.wait();
-			// Выполняем блокировку потока
-			this->mtx.end.lock();
-			// Выполняем отключение всех адъютантов
-			this->close();
-			// Выполняем удаление модуля DNS резолвера IPv4
-			this->dns4.remove();
-			// Выполняем удаление модуля DNS резолвера IPv6
-			this->dns6.remove();
-			// Удаляем объект базы событий
-			event_base_free(this->base);
-			// Обнуляем базу событий
-			this->base = nullptr;
-			// Устанавливаем статус сетевого ядра
-			this->status = status_t::STOP;
-			// Выполняем разблокировку потока
-			this->mtx.end.unlock();
 		}
+		// Выполняем отключение всех адъютантов
+		this->close();
+		// Выполняем блокировку потока
+		this->mtx.stop.lock();
+		// Устанавливаем статус сетевого ядра
+		this->status = status_t::STOP;
+		// Выполняем разблокировку потока
+		this->mtx.stop.unlock();
 		// Если функция обратного вызова установлена, выполняем
 		if(this->callbackFn != nullptr) this->callbackFn(false, this, this->ctx.front());
 		// Выводим в консоль информацию
 		if(!this->noinfo) this->log->print("[-] stop service: pid = %u", log_t::flag_t::INFO, getpid());
-	// Выполняем разблокировку потока
-	} else this->mtx.start.unlock();
+	}
 }
 /**
  * working Метод проверки на запуск работы
@@ -748,9 +741,9 @@ void awh::Core::clearTimers() noexcept {
 		// Переходим по всем таймерам
 		for(auto it = this->timers.begin(); it != this->timers.end();){
 			// Очищаем объект таймаута базы событий
-			evutil_timerclear(&it->second.tv);
+			evutil_timerclear(&it->second.event.tv);
 			// Удаляем событие таймера
-			event_del(&it->second.ev);
+			event_del(&it->second.event.ev);
 			// Удаляем таймер из списка
 			it = this->timers.erase(it);
 		}
@@ -770,9 +763,9 @@ void awh::Core::clearTimer(const u_short id) noexcept {
 		// Если идентификатор таймера найден
 		if(it != this->timers.end()){
 			// Очищаем объект таймаута базы событий
-			evutil_timerclear(&it->second.tv);
+			evutil_timerclear(&it->second.event.tv);
 			// Удаляем событие таймера
-			event_del(&it->second.ev);
+			event_del(&it->second.event.ev);
 			// Удаляем объект таймера
 			this->timers.erase(it);
 		}
@@ -807,13 +800,13 @@ u_short awh::Core::setTimeout(void * ctx, const time_t delay, function <void (co
 		// Устанавливаем функцию обратного вызова
 		ret.first->second.callback = callback;
 		// Устанавливаем время в секундах
-		ret.first->second.tv.tv_sec = (delay / 1000);
+		ret.first->second.event.tv.tv_sec = (delay / 1000);
 		// Устанавливаем время счётчика (микросекунды)
-		ret.first->second.tv.tv_usec = ((delay % 1000) * 1000);
+		ret.first->second.event.tv.tv_usec = ((delay % 1000) * 1000);
 		// Создаём событие на активацию базы событий
-		event_assign(&ret.first->second.ev, this->base, -1, EV_TIMEOUT, &timer, &ret.first->second);
+		event_assign(&ret.first->second.event.ev, this->base, -1, EV_TIMEOUT, &timer, &ret.first->second);
 		// Создаём событие таймаута на активацию базы событий
-		event_add(&ret.first->second.ev, &ret.first->second.tv);
+		event_add(&ret.first->second.event.ev, &ret.first->second.event.tv);
 	}
 	// Выводим результат
 	return result;
@@ -849,13 +842,13 @@ u_short awh::Core::setInterval(void * ctx, const time_t delay, function <void (c
 		// Устанавливаем функцию обратного вызова
 		ret.first->second.callback = callback;
 		// Устанавливаем время в секундах
-		ret.first->second.tv.tv_sec = (delay / 1000);
+		ret.first->second.event.tv.tv_sec = (delay / 1000);
 		// Устанавливаем время счётчика (микросекунды)
-		ret.first->second.tv.tv_usec = ((delay % 1000) * 1000);
+		ret.first->second.event.tv.tv_usec = ((delay % 1000) * 1000);
 		// Создаём событие на активацию базы событий
-		event_assign(&ret.first->second.ev, this->base, -1, EV_TIMEOUT | EV_PERSIST, &timer, &ret.first->second);
+		event_assign(&ret.first->second.event.ev, this->base, -1, EV_TIMEOUT | EV_PERSIST, &timer, &ret.first->second);
 		// Создаём событие таймаута на активацию базы событий
-		event_add(&ret.first->second.ev, &ret.first->second.tv);
+		event_add(&ret.first->second.event.ev, &ret.first->second.event.tv);
 	}
 	// Выводим результат
 	return result;
@@ -994,6 +987,8 @@ void awh::Core::setNet(const vector <string> & ip, const vector <string> & ns, c
 			if(!ip.empty()) this->net.v4.first.assign(ip.cbegin(), ip.cend());
 			// Если сервера имён переданы, устанавливаем их
 			if(!ns.empty()) this->net.v4.second.assign(ns.cbegin(), ns.cend());
+			// Выполняем установку нейм-серверов для DNS резолвера IPv4
+			this->dns4.replaceServers(this->net.v4.second);
 		} break;
 		// Если - это интернет-протокол IPv6
 		case AF_INET6: {
@@ -1001,15 +996,78 @@ void awh::Core::setNet(const vector <string> & ip, const vector <string> & ns, c
 			if(!ip.empty()) this->net.v6.first.assign(ip.cbegin(), ip.cend());
 			// Если сервера имён переданы, устанавливаем их
 			if(!ns.empty()) this->net.v6.second.assign(ns.cbegin(), ns.cend());
+			// Выполняем установку нейм-серверов для DNS резолвера IPv6
+			this->dns6.replaceServers(this->net.v6.second);
 		} break;
 	}
+}
+/**
+ * Core Конструктор
+ * @param fmk объект фреймворка
+ * @param log объект для работы с логами
+ */
+awh::Core::Core(const fmk_t * fmk, const log_t * log) noexcept : nwk(fmk), uri(fmk, &nwk), ssl(fmk, log, &uri), dns4(fmk, log, &nwk), dns6(fmk, log, &nwk), socket(log), fmk(fmk), log(log) {
+	// Создаем новую базу
+	this->base = event_base_new();
+	// Если база событий создана
+	if(this->base != nullptr){
+		// Добавляем базу событий для DNS резолвера IPv4
+		this->dns4.setBase(this->base);
+		// Добавляем базу событий для DNS резолвера IPv6
+		this->dns6.setBase(this->base);
+		// Выполняем установку нейм-серверов для DNS резолвера IPv4
+		this->dns4.replaceServers(this->net.v4.second);
+		// Выполняем установку нейм-серверов для DNS резолвера IPv6
+		this->dns6.replaceServers(this->net.v6.second);
+	// Выходим принудительно из приложения
+	} else exit(EXIT_FAILURE);
 }
 /**
  * ~Core Деструктор
  */
 awh::Core::~Core() noexcept {
+	// Выполняем ожидание завершения работы потоков
+	if(this->thr) this->pool.wait();
 	// Выполняем остановку сервиса
 	this->stop();
+	// Выполняем удаление модуля DNS резолвера IPv4
+	this->dns4.remove();
+	// Выполняем удаление модуля DNS резолвера IPv6
+	this->dns6.remove();
+	// Если список подключённых ядер не пустой
+	if(!this->cores.empty()){
+		// Выполняем блокировку потока
+		this->mtx.core.lock();
+		// Переходим по всему списку подключённых ядер
+		for(auto & core : this->cores){
+			// Выполняем блокировку потока
+			core.first->mtx.stop.lock();
+			// Если база событий подключена, удаляем её
+			if((* core.second) != nullptr){
+				// Удаляем объект базы событий
+				event_base_free(* core.second);
+				// Обнуляем базу событий
+				(* core.second) = nullptr;
+			}
+			// Выполняем разблокировку потока
+			core.first->mtx.stop.unlock();
+		}
+		// Выполняем разблокировку потока
+		this->mtx.core.unlock();
+	}
+	// Выполняем блокировку потока
+	this->mtx.stop.lock();
+	// Если база событий существует
+	if(this->base != nullptr){
+		// Удаляем объект базы событий
+		event_base_free(this->base);
+		// Обнуляем базу событий
+		this->base = nullptr;
+	}
+	// Устанавливаем статус сетевого ядра
+	this->status = status_t::STOP;
+	// Выполняем разблокировку потока
+	this->mtx.stop.unlock();
 	// Очищаем все глобальные переменные
 	libevent_global_shutdown();
 }

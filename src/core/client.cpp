@@ -703,7 +703,7 @@ void awh::client::Core::sendTimeout(const size_t aid) noexcept {
 			// Иначе выполняем отключение от сервера
 			else this->close(adj->aid);
 		// Если адъютант не существует
-		} else if(!this->workers.empty() && (this->base != nullptr)) {
+		} else if(!this->workers.empty()) {
 			// Выполняем блокировку потока
 			const lock_guard <recursive_mutex> lock(this->mtx.reset);
 			// Переходим по всему списку воркеров
@@ -740,20 +740,10 @@ void awh::client::Core::sendTimeout(const size_t aid) noexcept {
 			if(alive){
 				// Определяем тип подключения
 				switch(this->net.family){
-					// Резолвер IPv4, создаём резолвер
-					case AF_INET: {
-						// Добавляем базу событий для DNS резолвера IPv4
-						this->dns4.setBase(this->base);
-						// Выполняем установку нейм-серверов для DNS резолвера IPv4
-						this->dns4.replaceServers(this->net.v4.second);
-					} break;
-					// Резолвер IPv6, создаём резолвер
-					case AF_INET6: {
-						// Добавляем базу событий для DNS резолвера IPv6
-						this->dns4.setBase(this->base);
-						// Выполняем установку нейм-серверов для DNS резолвера IPv6
-						this->dns4.replaceServers(this->net.v4.second);
-					} break;
+					// Резолвер IPv4, выполняем отмену ранее выполненных запросов DNS
+					case AF_INET: this->dns4.cancel(); break;
+					// Резолвер IPv6, выполняем отмену ранее выполненных запросов DNS
+					case AF_INET6: this->dns6.cancel(); break;
 				}
 			}
 			// Переходим по всему списку воркеров
@@ -783,10 +773,14 @@ void awh::client::Core::clearTimeout(const size_t wid) noexcept {
 		auto it = this->timeouts.find(wid);
 		// Если таймер найден
 		if(it != this->timeouts.end()){
+			// Выполняем блокировку потока
+			this->mtx.timeout.lock();
 			// Очищаем объект таймаута базы событий
 			evutil_timerclear(&it->second.tv);
 			// Выполняем удаление событие таймера
 			event_del(&it->second.ev);
+			// Выполняем разблокировку потока
+			this->mtx.timeout.unlock();
 		}
 	}
 }
@@ -813,7 +807,7 @@ void awh::client::Core::close() noexcept {
 			// Переходим по всем списка подключённым ядрам и устанавливаем новую базу событий
 			for(auto & core : this->cores)
 				// Выполняем отключение всех клиентов у подключённых ядер
-				core->close();
+				core.first->close();
 		}
 		// Переходим по всему списку воркеров
 		for(auto & worker : this->workers){
@@ -866,12 +860,12 @@ void awh::client::Core::remove() noexcept {
 		if(!this->timeouts.empty()){
 			// Переходим по всему списку активных таймеров
 			for(auto it = this->timeouts.begin(); it != this->timeouts.end();){
+				// Выполняем блокировку потока
+				this->mtx.timeout.lock();
 				// Очищаем объект таймаута базы событий
 				evutil_timerclear(&it->second.tv);
 				// Выполняем удаление событие таймера
 				event_del(&it->second.ev);
-				// Выполняем блокировку потока
-				this->mtx.timeout.lock();
 				// Выполняем удаление текущего таймаута
 				it = this->timeouts.erase(it);
 				// Выполняем разблокировку потока
@@ -883,7 +877,7 @@ void awh::client::Core::remove() noexcept {
 			// Переходим по всем списка подключённым ядрам и устанавливаем новую базу событий
 			for(auto & core : this->cores)
 				// Выполняем удаление всех воркеров у подключённых ядер
-				core->remove();
+				core.first->remove();
 		}
 		// Переходим по всему списку воркеров
 		for(auto it = this->workers.begin(); it != this->workers.end();){
@@ -981,12 +975,12 @@ void awh::client::Core::remove(const size_t wid) noexcept {
 			auto it = this->timeouts.find(wid);
 			// Если таймаут найден, удаляем его
 			if(it != this->timeouts.end()){
+				// Выполняем блокировку потока
+				this->mtx.timeout.lock();
 				// Очищаем объект таймаута базы событий
 				evutil_timerclear(&it->second.tv);
 				// Выполняем удаление событие таймера
 				event_del(&it->second.ev);
-				// Выполняем блокировку потока
-				this->mtx.timeout.lock();
 				// Выполняем удаление текущего таймаута
 				this->timeouts.erase(it);
 				// Выполняем разблокировку потока

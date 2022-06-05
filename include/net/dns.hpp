@@ -23,7 +23,6 @@
 #include <stack>
 #include <mutex>
 #include <regex>
-#include <thread> // +++++++++
 #include <cstdio>
 #include <string>
 #include <vector>
@@ -222,22 +221,26 @@ namespace awh {
 		public:
 			/**
 			 * clear Метод сброса кэша резолвера
+			 * @return результат работы функции
 			 */
-			void clear() noexcept;
+			bool clear() noexcept;
 			/**
 			 * flush Метод сброса кэша DNS резолвера
+			 * @return результат работы функции
 			 */
-			void flush() noexcept;
+			bool flush() noexcept;
 			/**
 			 * remove Метод удаления параметров модуля DNS резолвера
+			 * @return результат работы функции
 			 */
-			void remove() noexcept;
+			bool remove() noexcept;
 		public:
 			/**
 			 * cancel Метод отмены выполнения запроса
 			 * @param did идентификатор DNS запроса
+			 * @return    результат работы функции
 			 */
-			void cancel(const size_t did = 0) noexcept;
+			bool cancel(const size_t did = 0) noexcept;
 		public:
 			/**
 			 * updateNameServers Метод обновления списка нейм-серверов

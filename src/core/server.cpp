@@ -408,7 +408,7 @@ void awh::server::Core::close() noexcept {
 			// Переходим по всем списка подключённым ядрам и устанавливаем новую базу событий
 			for(auto & core : this->cores)
 				// Выполняем отключение всех клиентов у подключённых ядер
-				core->close();
+				core.first->close();
 		}
 		// Переходим по всему списку воркеров
 		for(auto & worker : this->workers){
@@ -458,7 +458,7 @@ void awh::server::Core::remove() noexcept {
 			// Переходим по всем списка подключённым ядрам и устанавливаем новую базу событий
 			for(auto & core : this->cores)
 				// Выполняем удаление всех воркеров у подключённых ядер
-				core->remove();
+				core.first->remove();
 		}
 		// Переходим по всему списку воркеров
 		for(auto it = this->workers.begin(); it != this->workers.end();){
