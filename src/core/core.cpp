@@ -1039,18 +1039,20 @@ awh::Core::~Core() noexcept {
 		// Выполняем блокировку потока
 		this->mtx.core.lock();
 		// Переходим по всему списку подключённых ядер
-		for(auto & core : this->cores){
+		for(auto it = this->cores.begin(); it != this->cores.end();){
 			// Выполняем блокировку потока
-			core.first->mtx.stop.lock();
+			it->first->mtx.stop.lock();
 			// Если база событий подключена, удаляем её
-			if((* core.second) != nullptr){
+			if((* it->second) != nullptr){
 				// Удаляем объект базы событий
-				event_base_free(* core.second);
+				event_base_free(* it->second);
 				// Обнуляем базу событий
-				(* core.second) = nullptr;
+				(* it->second) = nullptr;
 			}
 			// Выполняем разблокировку потока
-			core.first->mtx.stop.unlock();
+			it->first->mtx.stop.unlock();
+			// Удаляем ядро из списка ядер
+			it = this->cores.erase(it);
 		}
 		// Выполняем разблокировку потока
 		this->mtx.core.unlock();
