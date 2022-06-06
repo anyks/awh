@@ -562,6 +562,8 @@ size_t awh::DNS::resolve(void * ctx, const string & host, const int family, func
 	hold_t hold(&this->status);
 	// Если статус работы DNS резолвера соответствует
 	if(hold.access({}, status_t::RESOLVE)){
+		// Убиваем зомби-процессы если такие имеются
+		this->clearZombie();
 		// Если домен передан
 		if(!host.empty() && (this->fmk != nullptr)){
 			// Результат работы регулярного выражения
@@ -666,8 +668,6 @@ size_t awh::DNS::resolve(void * ctx, const string & host, const int family, func
 			// Если передан IP адрес то возвращаем его
 			} else callback(match[1].str(), ctx);
 		}
-		// Убиваем зомби-процессы если такие имеются
-		this->clearZombie();
 	}
 	// Выводим результат
 	return result;

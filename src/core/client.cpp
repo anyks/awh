@@ -740,10 +740,20 @@ void awh::client::Core::sendTimeout(const size_t aid) noexcept {
 			if(alive){
 				// Определяем тип подключения
 				switch(this->net.family){
-					// Резолвер IPv4, выполняем отмену ранее выполненных запросов DNS
-					case AF_INET: this->dns4.cancel(); break;
-					// Резолвер IPv6, выполняем отмену ранее выполненных запросов DNS
-					case AF_INET6: this->dns6.cancel(); break;
+					// Резолвер IPv4, создаём резолвер
+					case AF_INET: {
+						// Добавляем базу событий для DNS резолвера IPv4
+						this->dns4.setBase(this->base);
+						// Выполняем установку нейм-серверов для DNS резолвера IPv4
+						this->dns4.replaceServers(this->net.v4.second);
+					} break;
+					// Резолвер IPv6, создаём резолвер
+					case AF_INET6: {
+						// Добавляем базу событий для DNS резолвера IPv6
+						this->dns4.setBase(this->base);
+						// Выполняем установку нейм-серверов для DNS резолвера IPv6
+						this->dns4.replaceServers(this->net.v4.second);
+					} break;
 				}
 			}
 			// Переходим по всему списку воркеров

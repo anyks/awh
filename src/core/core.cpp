@@ -476,6 +476,23 @@ void awh::Core::start() noexcept {
 		this->mtx.start.lock();
 		// Разрешаем работу WebSocket
 		this->mode = !this->mode;
+		// Определяем тип подключения
+		switch(this->net.family){
+			// Резолвер IPv4, создаём резолвер
+			case AF_INET: {
+				// Добавляем базу событий для DNS резолвера IPv4
+				this->dns4.setBase(this->base);
+				// Выполняем установку нейм-серверов для DNS резолвера IPv4
+				this->dns4.replaceServers(this->net.v4.second);
+			} break;
+			// Резолвер IPv6, создаём резолвер
+			case AF_INET6: {
+				// Добавляем базу событий для DNS резолвера IPv6
+				this->dns4.setBase(this->base);
+				// Выполняем установку нейм-серверов для DNS резолвера IPv6
+				this->dns4.replaceServers(this->net.v4.second);
+			} break;
+		}
 		// Выполняем разблокировку потока
 		this->mtx.start.unlock();
 		// Выполняем запуск управляющей функции
