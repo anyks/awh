@@ -90,9 +90,9 @@ void awh::client::Core::read(struct bufferevent * bev, void * ctx) noexcept {
 				const size_t size = evbuffer_get_length(input);
 				// Если данные существуют
 				if(size > 0){
-					/*
-					* Выполняем отлов ошибок
-					*/
+					/**
+					 * Выполняем отлов ошибок
+					 */
 					try {
 						// Создаём буфер данных
 						char * buffer = new char [size];

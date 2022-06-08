@@ -143,12 +143,12 @@ void awh::DNS::garbage(evutil_socket_t fd, short event, void * ctx) noexcept {
 void awh::DNS::callback(const int error, struct evutil_addrinfo * addr, void * ctx) noexcept {
 	// Если данные получены
 	if(ctx != nullptr){
+		// Список полученных IP адресов
+		vector <string> ips;
 		// Получаем объект воркера резолвинга
 		worker_t * wrk = reinterpret_cast <worker_t *> (ctx);
 		// Получаем объект модуля DNS резолвера
 		dns_t * dns = const_cast <dns_t *> (wrk->dns);
-		// Список полученных IP адресов
-		vector <string> ips;
 		// Если возникла ошибка, выводим в лог сообщение
 		if(error && (dns->log != nullptr)) dns->log->print("%s %s", log_t::flag_t::CRITICAL, wrk->host.c_str(), evutil_gai_strerror(error));
 		// Если ошибки не возникало

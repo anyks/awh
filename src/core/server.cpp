@@ -80,7 +80,7 @@ void awh::server::Core::read(struct bufferevent * bev, void * ctx) noexcept {
 			const size_t size = evbuffer_get_length(input);
 			// Если данные существуют
 			if(size > 0){
-				/*
+				/**
 				 * Выполняем отлов ошибок
 				 */
 				try {

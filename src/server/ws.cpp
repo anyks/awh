@@ -353,8 +353,12 @@ void awh::server::WebSocket::readCallback(const char * buffer, const size_t size
 				return;
 			// Если рукопожатие выполнено
 			} else {
+				// Основные флаг остановки перебора бинарного буфера
+				bool stop = false;
 				// Создаём объект шапки фрейма
 				frame_t::head_t head;
+				// Создаём буфер сообщения
+				vector <char> message;
 				// Добавляем полученные данные в буфер
 				adj->buffer.insert(adj->buffer.end(), buffer, buffer + size);
 				// Выполняем обработку полученных данных
@@ -363,6 +367,8 @@ void awh::server::WebSocket::readCallback(const char * buffer, const size_t size
 					const auto & data = ws->frame.get(head, adj->buffer.data(), adj->buffer.size());
 					// Если буфер данных получен
 					if(!data.empty()){
+						// Очищаем буфер полученного сообщения
+						message.clear();
 						// Проверяем состояние флагов RSV2 и RSV3
 						if(head.rsv[1] || head.rsv[2]){
 							// Создаём сообщение
@@ -427,7 +433,7 @@ void awh::server::WebSocket::readCallback(const char * buffer, const size_t size
 									// Заполняем фрагментированное сообщение
 									adj->fragmes.insert(adj->fragmes.end(), data.begin(), data.end());
 								// Если сообщение является последним
-								else ws->extraction(adj, aid, core, data, (adj->opcode == frame_t::opcode_t::TEXT));
+								else message = move(* const_cast <vector <char> *> (&data));
 							} break;
 							// Если ответом является CONTINUATION
 							case (uint8_t) frame_t::opcode_t::CONTINUATION: {
@@ -435,8 +441,8 @@ void awh::server::WebSocket::readCallback(const char * buffer, const size_t size
 								adj->fragmes.insert(adj->fragmes.end(), data.begin(), data.end());
 								// Если сообщение является последним
 								if(head.fin){
-									// Выполняем извлечение данных
-									ws->extraction(adj, aid, core, adj->fragmes, (adj->opcode == frame_t::opcode_t::TEXT));
+									// Выполняем копирование всех собранных сегментов
+									message = move(* const_cast <vector <char> *> (&adj->fragmes));
 									// Очищаем список фрагментированных сообщений
 									adj->fragmes.clear();
 								}
@@ -463,9 +469,15 @@ void awh::server::WebSocket::readCallback(const char * buffer, const size_t size
 						// Если байт в буфере меньше, просто очищаем буфер
 						else adj->buffer.clear();
 						// Если данных для обработки не осталось, выходим
-						if(adj->buffer.empty()) break;
+						stop = adj->buffer.empty();
 					// Если данных для обработки недостаточно, выходим
-					} else break;
+					} else stop = true;
+					// Если сообщения получены
+					if(!message.empty())
+						// Выполняем извлечение полученных сообщений
+						ws->extraction(adj, aid, core, message, (adj->opcode == frame_t::opcode_t::TEXT));
+					// Если установлен флаг выхода, выходим
+					if(stop) break;
 				}
 				// Выходим из функции
 				return;
