@@ -265,7 +265,7 @@ namespace awh {
 			 * clean Метод буфера событий
 			 * @param bev буфер событий для очистки
 			 */
-			void clean(struct bufferevent * bev) noexcept;
+			void clean(struct bufferevent ** bev) noexcept;
 		protected:
 			/**
 			 * sockaddr Метод создания адресного пространства сокета

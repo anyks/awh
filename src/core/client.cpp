@@ -341,8 +341,6 @@ void awh::client::Core::event(struct bufferevent * bev, const short events, void
 					}
 				}
 			}
-			// Запрещаем чтение запись данных серверу
-			if(bev != nullptr) bufferevent_disable(bev, EV_WRITE | EV_READ);
 			// Выполняем отключение от сервера
 			const_cast <core_t *> (core)->close(adj->aid);
 		}
@@ -446,7 +444,7 @@ void awh::client::Core::connect(const size_t wid) noexcept {
 							// Выполняем блокировку буфера бинарного чанка данных
 							it->second->end();
 							// Выполняем очистку буфера событий
-							this->clean(it->second->bev);
+							this->clean(&it->second->bev);
 							// Выполняем удаление контекста SSL
 							this->ssl.clear(it->second->ssl);
 							// Удаляем адъютанта из списка подключений
@@ -475,7 +473,7 @@ void awh::client::Core::connect(const size_t wid) noexcept {
 						// Устанавливаем первоначальное значение
 						u_int mode = BEV_OPT_THREADSAFE;
 						// Если нужно использовать отложенные вызовы событий сокета
-						if(this->defer) mode = (mode | BEV_OPT_DEFER_CALLBACKS);
+						if(this->defer) mode = (mode | BEV_OPT_DEFER_CALLBACKS | BEV_OPT_UNLOCK_CALLBACKS);
 						// Выполняем блокировку потока
 						this->mtx.connect.lock();
 						// Если SSL клиент разрешён
@@ -692,18 +690,12 @@ void awh::client::Core::createTimeout(const size_t wid, const client::worker_t::
 void awh::client::Core::sendTimeout(const size_t aid) noexcept {
 	// Если блокировка адъютанта не установлена
 	if(this->locking.count(aid) < 1){
-		// Выполняем извлечение адъютанта
-		auto it = this->adjutants.find(aid);
-		// Если адъютант получен
-		if(it != this->adjutants.end()){
-			// Получаем объект подключения
-			awh::worker_t::adj_t * adj = const_cast <awh::worker_t::adj_t *> (it->second);
-			// Отправляем принудительный сигнал таймаута
-			if(adj->bev != nullptr) event(adj->bev, BEV_EVENT_TIMEOUT, adj);
-			// Иначе выполняем отключение от сервера
-			else this->close(adj->aid);
+		// Если адъютант существует
+		if(this->adjutants.count(aid) > 0)
+			// Выполняем отключение от сервера
+			this->close(aid);
 		// Если адъютант не существует
-		} else if(!this->workers.empty()) {
+		else if(!this->workers.empty()) {
 			// Выполняем блокировку потока
 			const lock_guard <recursive_mutex> lock(this->mtx.reset);
 			// Переходим по всему списку воркеров
@@ -838,7 +830,7 @@ void awh::client::Core::close() noexcept {
 						// Выполняем блокировку буфера бинарного чанка данных
 						it->second->end();
 						// Выполняем очистку буфера событий
-						this->clean(it->second->bev);
+						this->clean(&it->second->bev);
 						// Выполняем удаление контекста SSL
 						this->ssl.clear(it->second->ssl);
 						// Удаляем адъютанта из списка подключений
@@ -910,7 +902,7 @@ void awh::client::Core::remove() noexcept {
 						// Выполняем блокировку буфера бинарного чанка данных
 						adj->end();
 						// Выполняем очистку буфера событий
-						this->clean(adj->bev);
+						this->clean(&adj->bev);
 						// Выполняем удаление контекста SSL
 						this->ssl.clear(adj->ssl);
 						// Удаляем адъютанта из списка подключений
@@ -1023,12 +1015,9 @@ void awh::client::Core::close(const size_t aid) noexcept {
 			// Выполняем блокировку буфера бинарного чанка данных
 			adj->end();
 			// Если событие сервера существует
-			if(adj->bev != nullptr){
+			if(adj->bev != nullptr)
 				// Выполняем очистку буфера событий
-				this->clean(adj->bev);
-				// Устанавливаем что событие удалено
-				adj->bev = nullptr;
-			}
+				this->clean(&adj->bev);
 			// Удаляем установленный таймаут, если он существует
 			this->clearTimeout(wrk->wid);
 			// Если прокси-сервер активирован но уже переключён на работу с сервером
@@ -1088,7 +1077,7 @@ void awh::client::Core::switchProxy(const size_t aid) noexcept {
 				// Устанавливаем первоначальное значение
 				u_int mode = BEV_OPT_THREADSAFE;
 				// Если нужно использовать отложенные вызовы событий сокета
-				if(this->defer) mode = (mode | BEV_OPT_DEFER_CALLBACKS);
+				if(this->defer) mode = (mode | BEV_OPT_DEFER_CALLBACKS | BEV_OPT_UNLOCK_CALLBACKS);
 				// Выполняем переход на защищённое подключение
 				struct bufferevent * bev = bufferevent_openssl_filter_new(this->base, adj->bev, adj->ssl.ssl, BUFFEREVENT_SSL_CONNECTING, mode);
 				// Если буфер событий создан

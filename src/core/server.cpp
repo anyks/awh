@@ -181,8 +181,6 @@ void awh::server::Core::event(struct bufferevent * bev, const short events, void
 					adj->log->print("closing client, host = %s, mac = %s, socket = %d %s", log_t::flag_t::WARNING, adj->ip.c_str(), adj->mac.c_str(), fd, evutil_socket_error_to_string(EVUTIL_SOCKET_ERROR()));
 				// Если - это таймаут, выводим сообщение в лог
 				else if(events & BEV_EVENT_TIMEOUT) adj->log->print("timeout client, host = %s, mac = %s, socket = %d", log_t::flag_t::WARNING, adj->ip.c_str(), adj->mac.c_str(), fd);
-				// Запрещаем чтение запись данных серверу
-				bufferevent_disable(bev, EV_WRITE | EV_READ);
 				// Выполняем отключение от сервера
 				const_cast <core_t *> (core)->close(adj->aid);
 			}
@@ -275,7 +273,7 @@ void awh::server::Core::accept(const evutil_socket_t fd, const short event, void
 		// Устанавливаем первоначальное значение
 		u_int mode = BEV_OPT_THREADSAFE;
 		// Если нужно использовать отложенные вызовы событий сокета
-		if(core->defer) mode = (mode | BEV_OPT_DEFER_CALLBACKS);
+		if(core->defer) mode = (mode | BEV_OPT_DEFER_CALLBACKS | BEV_OPT_UNLOCK_CALLBACKS);
 		// Выполняем блокировку потока
 		core->mtx.accept.lock();
 		// Если SSL клиент разрешён
@@ -425,7 +423,7 @@ void awh::server::Core::close() noexcept {
 						// Выполняем блокировку буфера бинарного чанка данных
 						it->second->end();
 						// Выполняем очистку буфера событий
-						this->clean(it->second->bev);
+						this->clean(&it->second->bev);
 						// Выполняем удаление контекста SSL
 						this->ssl.clear(it->second->ssl);
 						// Удаляем адъютанта из списка подключений
@@ -477,7 +475,7 @@ void awh::server::Core::remove() noexcept {
 						// Выполняем блокировку буфера бинарного чанка данных
 						adj->end();
 						// Выполняем очистку буфера событий
-						this->clean(adj->bev);
+						this->clean(&adj->bev);
 						// Выполняем удаление контекста SSL
 						this->ssl.clear(adj->ssl);
 						// Удаляем адъютанта из списка подключений
@@ -563,7 +561,7 @@ void awh::server::Core::remove(const size_t wid) noexcept {
 						// Выполняем блокировку буфера бинарного чанка данных
 						adj->end();
 						// Выполняем очистку буфера событий
-						this->clean(adj->bev);
+						this->clean(&adj->bev);
 						// Выполняем удаление контекста SSL
 						this->ssl.clear(adj->ssl);
 						// Выводим функцию обратного вызова
@@ -622,12 +620,9 @@ void awh::server::Core::close(const size_t aid) noexcept {
 			// Выполняем блокировку буфера бинарного чанка данных
 			adj->end();
 			// Если событие сервера существует
-			if(adj->bev != nullptr){
+			if(adj->bev != nullptr)
 				// Выполняем очистку буфера событий
-				this->clean(adj->bev);
-				// Устанавливаем что событие удалено
-				adj->bev = nullptr;
-			}
+				this->clean(&adj->bev);
 			// Выполняем удаление контекста SSL
 			this->ssl.clear(adj->ssl);
 			// Удаляем адъютанта из списка адъютантов

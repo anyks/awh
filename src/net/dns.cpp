@@ -659,8 +659,8 @@ size_t awh::DNS::resolve(void * ctx, const string & host, const int family, func
 						event_assign(&ret.first->second->ev, this->base, -1, EV_TIMEOUT, &garbage, ret.first->second.get());
 						// Очищаем объект таймаута базы событий
 						evutil_timerclear(&ret.first->second->tv);
-						// Устанавливаем таймаут базы событий в 30 секунд
-						ret.first->second->tv.tv_sec = 30;
+						// Устанавливаем таймаут базы событий в 15 секунд
+						ret.first->second->tv.tv_sec = 15;
 						// Создаём событие таймаута на ожидание выполнения запроса
 						event_add(&ret.first->second->ev, &ret.first->second->tv);
 					}
