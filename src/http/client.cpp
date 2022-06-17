@@ -43,7 +43,11 @@ awh::Http::stath_t awh::client::Http::checkAuth() noexcept {
 			}
 		} break;
 		// Если нужно произвести редирект
+		case 201:
 		case 301:
+		case 302:
+		case 303:
+		case 307:
 		case 308: {
 			// Получаем параметры переадресации
 			const string & location = this->web.getHeader("location");
@@ -77,7 +81,6 @@ awh::Http::stath_t awh::client::Http::checkAuth() noexcept {
 		case 100:
 		case 101:
 		case 200:
-		case 201:
 		case 202:
 		case 203:
 		case 204:

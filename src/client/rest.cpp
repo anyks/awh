@@ -114,30 +114,31 @@ void awh::client::Rest::disconnectCallback(const size_t aid, const size_t wid, a
 	if((wid > 0) && (core != nullptr) && (ctx != nullptr)){
 		// Получаем контекст модуля
 		rest_t * web = reinterpret_cast <rest_t *> (ctx);
-		// Получаем объект ответа
-		res_t & res = web->responses.front();
 		// Если список ответов получен
 		if(!web->responses.empty()){
+			// Получаем объект ответа
+			const res_t & res = web->responses.front();
 			// Если нужно произвести запрос заново
-			if((res.code == 301) || (res.code == 308) ||
+			if((res.code == 201) || (res.code == 301) ||
+			   (res.code == 302) || (res.code == 303) ||
+			   (res.code == 307) || (res.code == 308) ||
 			   (res.code == 401) || (res.code == 407)){
+				// Получаем объект запроса
+				req_t & req = web->requests.front();
+				// Устанавливаем новый URL адрес запроса
+				req.url = web->http.getUrl();
+				// Получаем новый адрес запроса для воркера
+				web->worker.url = req.url;
 				// Выполняем запрос заново
 				reinterpret_cast <client::core_t *> (core)->open(web->worker.wid);
 				// Выходим из функции
 				return;
 			}
 		}
-		// Если функция обратного вызова существует
-		if(web->activeFn != nullptr)
-			// Выполняем функцию обратного вызова
-			web->activeFn(mode_t::DISCONNECT, web, web->ctx.at(0));
-		// Если функция обратного вызова установлена, выводим сообщение
-		if((res.code == 0) && (web->messageFn != nullptr)){
-			// Устанавливаем код ответа сервера
-			res.code = 500;
-			// Выполняем функцию обратного вызова
-			web->messageFn(res, web, web->ctx.at(1));
-		}
+		// Получаем объект ответа
+		res_t res = (!web->responses.empty() ? move(web->responses.front()) : res_t());
+		// Если список ответов не получен, значит он был выведен ранее
+		if(web->responses.empty()) res.code = 1;
 		// Выполняем очистку списка запросов
 		web->requests.clear();
 		// Выполняем очистку списка ответов
@@ -148,6 +149,17 @@ void awh::client::Rest::disconnectCallback(const size_t aid, const size_t wid, a
 		web->flush();
 		// Завершаем работу
 		if(web->unbind) core->stop();
+		// Если функция обратного вызова установлена, выводим сообщение
+		if((res.code == 0) && (web->messageFn != nullptr)){
+			// Устанавливаем код ответа сервера
+			res.code = 500;
+			// Выполняем функцию обратного вызова
+			web->messageFn(res, web, web->ctx.at(1));
+		}
+		// Если функция обратного вызова существует
+		if(web->activeFn != nullptr)
+			// Выполняем функцию обратного вызова
+			web->activeFn(mode_t::DISCONNECT, web, web->ctx.at(0));
 	}
 }
 /**
@@ -291,21 +303,27 @@ void awh::client::Rest::readCallback(const char * buffer, const size_t size, con
 					} break;
 					// Если запрос выполнен удачно
 					case (uint8_t) awh::http_t::stath_t::GOOD: {
+						// Получаем объект ответа
+						res_t res = move(web->responses.front());
 						// Если функция обратного вызова установлена, выводим сообщение
 						if(web->messageFn != nullptr){
 							// Получаем тело запроса
 							const auto & entity = web->http.getBody();
-							// Устанавливаем заголовки ответа
-							res.headers = web->http.getHeaders();
+							// Получаем заголовки ответа
+							const auto & headers = web->http.getHeaders();
 							// Устанавливаем тело ответа
 							res.entity.assign(entity.begin(), entity.end());
-							// Выполняем функцию обратного вызова
-							web->messageFn(res, web, web->ctx.at(1));
+							// Устанавливаем заголовки ответа
+							res.headers = move(* const_cast <unordered_multimap <string, string> *> (&headers));
 						}
 						// Устанавливаем размер стопбайт
 						if(!web->http.isAlive()){
 							// Выполняем очистку оставшихся данных
 							web->entity.clear();
+							// Если функция обратного вызова установлена, выводим сообщение
+							if(web->messageFn != nullptr)
+								// Выполняем функцию обратного вызова
+								web->messageFn(res, web, web->ctx.at(1));
 							// Завершаем работу
 							reinterpret_cast <client::core_t *> (core)->close(aid);
 							// Выходим из функции
@@ -323,6 +341,10 @@ void awh::client::Rest::readCallback(const char * buffer, const size_t size, con
 						if(!web->responses.empty())
 							// Выполняем удаление объекта ответа
 							web->responses.erase(web->responses.begin());
+						// Если функция обратного вызова установлена, выводим сообщение
+						if(web->messageFn != nullptr)
+							// Выполняем функцию обратного вызова
+							web->messageFn(res, web, web->ctx.at(1));
 						// Завершаем обработку
 						goto Next;
 					} break;
@@ -332,19 +354,21 @@ void awh::client::Rest::readCallback(const char * buffer, const size_t size, con
 						if((res.code == 401) || (res.code == 407)) res.code = 403;
 					} break;
 				}
+				// Выполняем очистку оставшихся данных
+				web->entity.clear();
 				// Если функция обратного вызова установлена, выводим сообщение
 				if(web->messageFn != nullptr){
 					// Получаем тело запроса
 					const auto & entity = web->http.getBody();
-					// Устанавливаем заголовки ответа
-					res.headers = web->http.getHeaders();
+					// Получаем заголовки ответа
+					const auto & headers = web->http.getHeaders();
 					// Устанавливаем тело ответа
 					res.entity.assign(entity.begin(), entity.end());
+					// Устанавливаем заголовки ответа
+					res.headers = move(* const_cast <unordered_multimap <string, string> *> (&headers));
 					// Выполняем функцию обратного вызова
 					web->messageFn(res, web, web->ctx.at(1));
 				}
-				// Выполняем очистку оставшихся данных
-				web->entity.clear();
 				// Завершаем работу
 				reinterpret_cast <client::core_t *> (core)->close(aid);
 				// Выходим из функции
@@ -552,18 +576,14 @@ void awh::client::Rest::stop() noexcept {
 	this->active = true;
 	// Если подключение выполнено
 	if(this->core->working()){
-		// Завершаем работу, если разрешено остановить
-		const_cast <client::core_t *> (this->core)->stop();
 		// Выполняем очистку списка запросов
 		this->requests.clear();
 		// Выполняем очистку списка ответов
 		this->responses.clear();
 		// Очищаем адрес сервера
 		this->worker.url.clear();
-		// Если функция обратного вызова существует
-		if(this->activeFn != nullptr)
-			// Выполняем функцию обратного вызова
-			this->activeFn(mode_t::DISCONNECT, this, this->ctx.at(0));
+		// Завершаем работу, если разрешено остановить
+		const_cast <client::core_t *> (this->core)->stop();
 	}
 }
 /**
