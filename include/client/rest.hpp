@@ -115,7 +115,7 @@ namespace awh {
 				// Выполнять анбиндинг после завершения запроса
 				bool unbind = true;
 				// Флаг принудительного отключения
-				bool forstop = false;
+				bool active = false;
 			private:
 				// Тело получения ответа
 				vector <char> entity;

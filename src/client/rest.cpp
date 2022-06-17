@@ -224,7 +224,7 @@ void awh::client::Rest::readCallback(const char * buffer, const size_t size, con
 		// Добавляем полученные данные в буфер
 		web->entity.insert(web->entity.end(), buffer, buffer + size);
 		// Выполняем обработку полученных данных
-		while(!web->forstop){
+		while(!web->active){
 			// Получаем объект запроса
 			req_t & req = web->requests.front();
 			// Получаем объект ответа
@@ -529,7 +529,7 @@ void awh::client::Rest::readProxyCallback(const char * buffer, const size_t size
  */
 void awh::client::Rest::flush() noexcept {
 	// Сбрасываем флаг принудительной остановки
-	this->forstop = false;
+	this->active = false;
 	// Выполняем очистку оставшихся данных
 	this->entity.clear();
 }
@@ -549,18 +549,29 @@ void awh::client::Rest::start() noexcept {
  */
 void awh::client::Rest::stop() noexcept {
 	// Устанавливаем флаг принудительной остановки
-	this->forstop = true;
+	this->active = true;
 	// Если подключение выполнено
-	if(this->core->working())
+	if(this->core->working()){
 		// Завершаем работу, если разрешено остановить
 		const_cast <client::core_t *> (this->core)->stop();
+		// Выполняем очистку списка запросов
+		this->requests.clear();
+		// Выполняем очистку списка ответов
+		this->responses.clear();
+		// Очищаем адрес сервера
+		this->worker.url.clear();
+		// Если функция обратного вызова существует
+		if(this->activeFn != nullptr)
+			// Выполняем функцию обратного вызова
+			this->activeFn(mode_t::DISCONNECT, this, this->ctx.at(0));
+	}
 }
 /**
  * close Метод закрытия подключения клиента
  */
 void awh::client::Rest::close() noexcept {
 	// Устанавливаем флаг принудительной остановки
-	this->forstop = true;
+	this->active = true;
 	// Если подключение выполнено
 	if(this->core->working())
 		// Завершаем работу, если разрешено остановить

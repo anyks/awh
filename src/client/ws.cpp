@@ -1016,6 +1016,8 @@ void awh::client::WebSocket::send(const char * message, const size_t size, const
  * stop Метод остановки клиента
  */
 void awh::client::WebSocket::stop() noexcept {
+	// Очищаем код ответа
+	this->code = 0;
 	// Если подключение выполнено
 	if(this->core->working()){
 		// Завершаем работу, если разрешено остановить
