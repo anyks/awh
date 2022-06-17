@@ -115,7 +115,7 @@ void awh::client::Rest::disconnectCallback(const size_t aid, const size_t wid, a
 		// Получаем контекст модуля
 		rest_t * web = reinterpret_cast <rest_t *> (ctx);
 		// Если список ответов получен
-		if(!web->responses.empty()){
+		if(!web->responses.empty() && !web->requests.empty()){
 			// Получаем объект ответа
 			const res_t & res = web->responses.front();
 			// Если нужно произвести запрос заново
