@@ -99,7 +99,7 @@ void awh::client::Core::read(struct bufferevent * bev, void * ctx) noexcept {
 						// Копируем в буфер полученные данные
 						evbuffer_remove(input, buffer, size);
 						// Если включён мультипоточный режим
-						if(core->thr){
+						if(core->multi){
 							// Добавляем буфер бинарного чанка данных
 							adj->add(buffer, size);
 							// Добавляем полученные данные буфера в пул потоков
@@ -726,8 +726,6 @@ void awh::client::Core::sendTimeout(const size_t aid) noexcept {
 				// Устанавливаем флаг ожидания статуса
 				wrk->status.wait = client::worker_t::mode_t::DISCONNECT;
 			}
-			// Завершаем работу базы событий
-			event_base_loopbreak(this->base);
 			// Если необходимо поддерживать постоянное подключение
 			if(alive){
 				// Определяем тип подключения

@@ -453,7 +453,7 @@ void awh::Core::stop() noexcept {
 		 * Если запрещено использовать простое чтение базы событий
 		 * Выполняем остановку всех таймеров
 		 */
-		if(!this->easy) this->clearTimers();
+		this->clearTimers();
 		// Если таймер периодического запуска коллбека активирован
 		if(this->persist){
 			// Очищаем объект таймаута базы событий
@@ -463,8 +463,12 @@ void awh::Core::stop() noexcept {
 		}
 		// Выполняем отключение всех клиентов
 		this->close();
-		// Завершаем работу базы событий
-		event_base_loopbreak(this->base);
+		// Если запрещено использовать простое чтение базы событий
+		if(!this->easy)
+			// Завершаем работу базы событий
+			event_base_loopbreak(this->base);
+		// Если разрешено использовать простое чтение базы событий
+		else event_base_loopexit(this->base, nullptr);
 		// Размораживаем работу базы событий
 		this->freeze = !this->freeze;
 	}
@@ -507,11 +511,20 @@ void awh::Core::start() noexcept {
 		// Если разрешено использовать простое чтение базы событий
 		else {
 			// Выполняем чтение базы событий пока это разрешено
-			while(this->mode){
-				// Выполняем чтение базы событий
-				if(!this->freeze) event_base_loop(this->base, EVLOOP_NONBLOCK | EVLOOP_ONCE);
-				// Замораживаем поток на период времени частоты обновления базы событий
-				this_thread::sleep_for(this->freq);
+			while(!event_base_got_break(this->base) && !event_base_got_exit(this->base)){
+				// Если частота обновления не установлена
+				if(this->freq == 0ms){
+					// Выполняем чтение базы событий
+					if(!this->freeze) event_base_loop(this->base, EVLOOP_ONCE);
+					// Замораживаем поток на период времени частоты обновления базы событий
+					else this_thread::sleep_for(10ms);
+				// Если частота обновления установлена
+				} else {
+					// Замораживаем поток на период времени частоты обновления базы событий
+					this_thread::sleep_for(this->freq);
+					// Выполняем чтение базы событий
+					if(!this->freeze) event_base_loop(this->base, EVLOOP_NONBLOCK);
+				}
 			}
 		}
 		// Выполняем отключение всех адъютантов
@@ -626,6 +639,193 @@ void awh::Core::setBandwidth(const size_t aid, const string & read, const string
 	(void) write;
 }
 /**
+ * rebase Метод пересоздания базы событий
+ */
+void awh::Core::rebase() noexcept {
+	// Выполняем блокировку потока
+	const lock_guard <recursive_mutex> lock(this->mtx.stop);
+	// Если система уже запущена
+	if(this->mode && (this->base != nullptr)){
+		// Запрещаем работу WebSocket
+		this->mode = false;
+		// Выполняем блокировку инициализации базы событий
+		this->freeze = !this->freeze;
+		/**
+		 * Timer Структура таймера
+		 */
+		typedef struct Timer {
+			void * ctx;                                               // Передаваемый контекст
+			time_t delay;                                             // Задержка времени в миллисекундах
+			function <void (const u_short, Core *, void *)> callback; // Функция обратного вызова
+			/**
+			 * Timer Конструктор
+			 */
+			Timer() noexcept : ctx(nullptr), delay(0), callback(nullptr) {}
+		} timer_t;
+		// Список дочерних таймеров
+		map <Core *, timer_t> childTimers;
+		// Список пересоздаваемых таймеров
+		vector <timer_t> mainTimers(this->timers.size());
+		/**
+		 * Если запрещено использовать простое чтение базы событий
+		 * Выполняем остановку всех таймеров
+		 */
+		if(!this->timers.empty()){
+			// Индекс текущего таймера
+			size_t index = 0;
+			// Переходим по всем таймерам
+			for(auto it = this->timers.begin(); it != this->timers.end();){
+				// Выполняем блокировку потока
+				this->mtx.timer.lock();
+				// Очищаем объект таймаута базы событий
+				evutil_timerclear(&it->second.event.tv);
+				// Удаляем событие таймера
+				event_del(&it->second.event.ev);
+				// Устанавливаем передаваемый контекст
+				mainTimers.at(index).ctx = it->second.ctx;
+				// Устанавливаем задержку времени в миллисекундах
+				mainTimers.at(index).delay = it->second.delay;
+				// Устанавливаем функцию обратного вызова
+				mainTimers.at(index).callback = it->second.callback;
+				// Удаляем таймер из списка
+				it = this->timers.erase(it);
+				// Выполняем разблокировку потока
+				this->mtx.timer.unlock();
+				// Увеличиваем значение индекса
+				index++;
+			}
+		}
+		// Если таймер периодического запуска коллбека активирован
+		if(this->persist){
+			// Очищаем объект таймаута базы событий
+			evutil_timerclear(&this->event.tv);
+			// Удаляем событие интервала
+			event_del(&this->event.ev);
+		}
+		// Выполняем отключение всех клиентов
+		this->close();
+		// Если список подключённых ядер не пустой
+		if(!this->cores.empty()){
+			// Выполняем блокировку потока
+			this->mtx.core.lock();
+			// Переходим по всему списку ядер
+			for(auto & core : this->cores){
+				// Выполняем пересоздание всех баз дочерних объектов
+				core.first->close();
+				/**
+				 * Если запрещено использовать простое чтение базы событий
+				 * Выполняем остановку всех таймеров
+				 */
+				if(!core.first->timers.empty()){
+					// Переходим по всем таймерам
+					for(auto it = core.first->timers.begin(); it != core.first->timers.end();){
+						// Создаём объект таймера
+						timer_t timer;
+						// Выполняем блокировку потока
+						core.first->mtx.timer.lock();
+						// Очищаем объект таймаута базы событий
+						evutil_timerclear(&it->second.event.tv);
+						// Удаляем событие таймера
+						event_del(&it->second.event.ev);
+						// Устанавливаем передаваемый контекст
+						timer.ctx = it->second.ctx;
+						// Устанавливаем задержку времени в миллисекундах
+						timer.delay = it->second.delay;
+						// Устанавливаем функцию обратного вызова
+						timer.callback = it->second.callback;
+						// Добавляем таймер в список таймеров
+						childTimers.emplace(core.first, move(timer));
+						// Удаляем таймер из списка
+						it = core.first->timers.erase(it);
+						// Выполняем разблокировку потока
+						core.first->mtx.timer.unlock();
+					}
+				}
+				// Если таймер периодического запуска коллбека активирован
+				if(core.first->persist){
+					// Очищаем объект таймаута базы событий
+					evutil_timerclear(&core.first->event.tv);
+					// Удаляем событие интервала
+					event_del(&core.first->event.ev);
+				}
+				// Выполняем ожидание завершения работы потоков
+				if(core.first->multi) core.first->pool.wait();
+				// Устанавливаем статус сетевого ядра
+				core.first->status = status_t::STOP;
+				// Если функция обратного вызова установлена, выполняем
+				if(core.first->callbackFn != nullptr) core.first->callbackFn(false, core.first, core.first->ctx.front());
+			}
+			// Выполняем разблокировку потока
+			this->mtx.core.unlock();
+		}
+		// Выполняем ожидание завершения работы потоков
+		if(this->multi) this->pool.wait();
+		// Если запрещено использовать простое чтение базы событий
+		if(!this->easy)
+			// Завершаем работу базы событий
+			event_base_loopbreak(this->base);
+		// Если разрешено использовать простое чтение базы событий
+		else event_base_loopexit(this->base, nullptr);
+		// Удаляем объект базы событий
+		event_base_free(this->base);
+		// Обнуляем базу событий
+		this->base = nullptr;
+		// Размораживаем работу базы событий
+		this->freeze = !this->freeze;		
+		// Создаем новую базу
+		this->base = event_base_new();
+		// Если база событий создана
+		if(this->base != nullptr){
+			// Если список таймеров получен
+			if(!mainTimers.empty()){
+				// Переходим по всему списку таймеров
+				for(auto & timer : mainTimers)
+					// Создаём новый таймер
+					this->setTimeout(timer.ctx, timer.delay, timer.callback);
+				// Выполняем очистку списка таймеров
+				mainTimers.clear();
+				// Выполняем освобождение выделенной памяти
+				vector <timer_t> ().swap(mainTimers);
+			}
+			// Если список подключённых ядер не пустой
+			if(!this->cores.empty()){
+				// Выполняем блокировку потока
+				this->mtx.core.lock();
+				// Переходим по всему списку ядер
+				for(auto & core : this->cores){
+					// Устанавливаем базу событий
+					core.first->base = this->base;
+					// Добавляем базу событий для DNS резолвера IPv4
+					core.first->dns4.setBase(core.first->base);
+					// Добавляем базу событий для DNS резолвера IPv6
+					core.first->dns6.setBase(core.first->base);
+					// Выполняем установку нейм-серверов для DNS резолвера IPv4
+					core.first->dns4.replaceServers(core.first->net.v4.second);
+					// Выполняем установку нейм-серверов для DNS резолвера IPv6
+					core.first->dns6.replaceServers(core.first->net.v6.second);
+					// Выполняем запуск управляющей функции
+					core.first->launching();
+					// Выполняем поиск текущего ядра
+					auto it = childTimers.find(core.first);
+					// Если ядро существует
+					if(it != childTimers.end())
+						// Создаём новый таймер
+						core.first->setTimeout(it->second.ctx, it->second.delay, it->second.callback);
+				}
+				// Выполняем очистку списка таймеров
+				childTimers.clear();
+				// Выполняем освобождение выделенной памяти
+				map <Core *, timer_t> ().swap(childTimers);
+				// Выполняем разблокировку потока
+				this->mtx.core.unlock();
+			}
+			// Выполняем запуск работы
+			this->start();
+		// Выходим принудительно из приложения
+		} else exit(EXIT_FAILURE);
+	}
+}
+/**
  * write Метод записи буфера данных воркером
  * @param buffer буфер для записи данных
  * @param size   размер записываемых данных
@@ -637,9 +837,9 @@ void awh::Core::write(const char * buffer, const size_t size, const size_t aid) 
 		// Выполняем извлечение адъютанта
 		auto it = this->adjutants.find(aid);
 		// Если адъютант получен
-		if(it != this->adjutants.end()){
+		if((it != this->adjutants.end()) && (it->second->bev != nullptr)){
 			// Получаем максимальное количество байт для детекции
-			const size_t max = (it->second->markWrite.max > 0 ? it->second->markWrite.max : 0);
+			const size_t max = (it->second->markWrite.max > 0 ? it->second->markWrite.max : size);
 			// Получаем минимальное количество байт для детекции
 			const size_t min = (it->second->markWrite.min > 0 ? it->second->markWrite.min : size);
 			// Устанавливаем размер записываемых данных
@@ -817,6 +1017,8 @@ u_short awh::Core::setTimeout(void * ctx, const time_t delay, function <void (co
 		ret.first->second.core = this;
 		// Устанавливаем идентификатор таймера
 		ret.first->second.id = result;
+		// Устанавливаем задержку времени в миллисекундах
+		ret.first->second.delay = delay;
 		// Устанавливаем функцию обратного вызова
 		ret.first->second.callback = callback;
 		// Устанавливаем время в секундах
@@ -857,6 +1059,8 @@ u_short awh::Core::setInterval(void * ctx, const time_t delay, function <void (c
 		ret.first->second.core = this;
 		// Устанавливаем идентификатор таймера
 		ret.first->second.id = result;
+		// Устанавливаем задержку времени в миллисекундах
+		ret.first->second.delay = delay;
 		// Устанавливаем флаг персистентной работы
 		ret.first->second.persist = true;
 		// Устанавливаем функцию обратного вызова
@@ -872,6 +1076,24 @@ u_short awh::Core::setInterval(void * ctx, const time_t delay, function <void (c
 	}
 	// Выводим результат
 	return result;
+}
+/**
+ * setEasy Метод активации простого чтения базы событий
+ * @param mode флаг активации простого чтения базы событий
+ */
+void awh::Core::setEasy(const bool mode) noexcept {
+	// Определяем запущено ли ядро сети
+	const bool start = this->mode;
+	// Если ядро сети уже запущено, останавливаем его
+	if(start) this->stop();
+	// Выполняем блокировку потока
+	this->mtx.main.lock();
+	// Устанавливаем флаг активации простого чтения базы событий
+	this->easy = mode;
+	// Выполняем блокировку потока
+	this->mtx.main.unlock();
+	// Если ядро сети уже было запущено, запускаем его
+	if(start) this->start();
 }
 /**
  * setDefer Метод установки флага отложенных вызовов событий сокета
@@ -921,15 +1143,17 @@ void awh::Core::setMultiThreads(const bool mode) noexcept {
 	// Выполняем блокировку потока
 	this->mtx.main.lock();
 	// Устанавливаем флаг мультипотоковой обработки
-	this->thr = mode;
+	this->multi = mode;
 	// Выполняем блокировку потока
 	this->mtx.main.unlock();
 	// Устанавливаем частоту обновления базы событий
-	if(this->thr){
+	if(this->multi){
+		// Если частота обновления не активна
+		if(this->freq == 0ms)
+			// Устанавливаем частоту обновления
+			this->setFrequency(10);
 		// Выполняем инициализацию пула потоков
 		this->pool.init();
-		// Устанавливаем частоту обновления в 100мс
-		this->setFrequency(10);
 	// Выполняем ожидание завершения работы потоков
 	} else this->pool.wait();
 }
@@ -955,13 +1179,11 @@ void awh::Core::setFrequency(const uint8_t msec) noexcept {
 	// Выполняем блокировку потока
 	this->mtx.main.lock();
 	// Если количество миллисекунд передано больше 0
-	if(msec > 0){
-		// Устанавливаем флаг разрешающий использовать простое чтение базы событий
-		this->easy = true;
+	if((this->easy = (msec > 0)))
 		// Устанавливаем частоту обновления базы событий
 		this->freq = chrono::milliseconds(msec);
-	// Отключаем частоту обновления в прицпипе
-	} else this->easy = false;
+	// Выполняем сброс частоты обновления базы событий
+	else this->freq = 0ms;
 	// Выполняем блокировку потока
 	this->mtx.main.unlock();
 	// Если ядро сети уже было запущено, запускаем его
@@ -1047,7 +1269,7 @@ awh::Core::Core(const fmk_t * fmk, const log_t * log) noexcept : nwk(fmk), uri(f
  */
 awh::Core::~Core() noexcept {
 	// Выполняем ожидание завершения работы потоков
-	if(this->thr) this->pool.wait();
+	if(this->multi) this->pool.wait();
 	// Выполняем остановку сервиса
 	this->stop();
 	// Выполняем удаление модуля DNS резолвера IPv4

@@ -103,13 +103,14 @@ namespace awh {
 				u_short id;                                               // Идентификатор таймера
 				void * ctx;                                               // Передаваемый контекст
 				Core * core;                                              // Родительский объект
+				time_t delay;                                             // Задержка времени в миллисекундах
 				bool persist;                                             // Флаг персистентной работы
 				event_t event;                                            // Объект события
 				function <void (const u_short, Core *, void *)> callback; // Функция обратного вызова
 				/**
 				 * Timer Конструктор
 				 */
-				Timer() : id(0), ctx(nullptr), core(nullptr), persist(false), callback(nullptr) {}
+				Timer() noexcept : id(0), ctx(nullptr), core(nullptr), delay(0), persist(false), callback(nullptr) {}
 			} timer_t;
 		protected:
 			/**
@@ -190,7 +191,7 @@ namespace awh {
 			socket_t socket;
 		private:
 			// Частота обновления базы событий
-			chrono::milliseconds freq;
+			chrono::milliseconds freq = 0ms;
 		protected:
 			// Тип запускаемого ядра
 			type_t type = type_t::CLIENT;
@@ -207,14 +208,14 @@ namespace awh {
 			// Список подключённых клиентов
 			map <size_t, const worker_t::adj_t *> adjutants;
 		protected:
-			// Флаг использования многопоточного режима
-			bool thr = false;
 			// Флаг отложенных вызовов событий сокета
 			bool defer = true;
 			// Флаг простого чтения базы событий
 			bool easy = false;
 			// Флаг разрешения работы
 			bool mode = false;
+			// Флаг использования многопоточного режима
+			bool multi = false;
 			// Флаг заморозки инициализации базы событий
 			bool freeze = false;
 			// Флаг запрета вывода информационных сообщений
@@ -356,12 +357,18 @@ namespace awh {
 			virtual void setBandwidth(const size_t aid, const string & read, const string & write) noexcept;
 		public:
 			/**
+			 * rebase Метод пересоздания базы событий
+			 */
+			void rebase() noexcept;
+		public:
+			/**
 			 * write Метод записи буфера данных воркером
 			 * @param buffer буфер для записи данных
 			 * @param size   размер записываемых данных
 			 * @param aid    идентификатор адъютанта
 			 */
 			void write(const char * buffer, const size_t size, const size_t aid) noexcept;
+		public:
 			/**
 			 * setLockMethod Метод блокировки метода режима работы
 			 * @param method метод режима работы
@@ -394,6 +401,7 @@ namespace awh {
 			 * @param id идентификатор таймера для очистки
 			 */
 			void clearTimer(const u_short id) noexcept;
+		public:
 			/**
 			 * setTimeout Метод установки таймаута
 			 * @param ctx      передаваемый контекст
@@ -411,6 +419,11 @@ namespace awh {
 			 */
 			u_short setInterval(void * ctx, const time_t delay, function <void (const u_short, Core *, void *)> callback) noexcept;
 		public:
+			/**
+			 * setEasy Метод активации простого чтения базы событий
+			 * @param mode флаг активации простого чтения базы событий
+			 */
+			void setEasy(const bool mode) noexcept;
 			/**
 			 * setDefer Метод установки флага отложенных вызовов событий сокета
 			 * @param mode флаг отложенных вызовов событий сокета
