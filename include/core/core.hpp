@@ -192,13 +192,17 @@ namespace awh {
 					struct event_base ** base;
 				public:
 					/**
+					 * kick Метод отправки пинка
+					 */
+					void kick() noexcept;
+					/**
 					 * stop Метод остановки чтения базы событий
 					 */
 					void stop() noexcept;
 					/**
 					 * start Метод запуска чтения базы событий
 					 */
-					void start() noexcept;
+					void start() noexcept;					
 				public:
 					/**
 					 * freeze Метод заморозки чтения данных

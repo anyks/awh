@@ -215,7 +215,7 @@ int main(int argc, char * argv[]) noexcept {
 		log->print("%s [%u]", log_t::flag_t::CRITICAL, mess.c_str(), code);
 	});
 	// Подписываемся на событие получения сообщения с сервера
-	ws.on(nullptr, [](const vector <char> & buffer, const bool utf8, client::ws_t * ws, void * ctx){
+	ws.on(nullptr, [&core](const vector <char> & buffer, const bool utf8, client::ws_t * ws, void * ctx){
 		// Если данные пришли в виде текста, выводим
 		if(utf8){
 			try {

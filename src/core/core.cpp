@@ -16,6 +16,24 @@
 #include <core/core.hpp>
 
 /**
+ * kick Метод отправки пинка
+ */
+void awh::Core::Dispatch::kick() noexcept {
+	// Если база событий установлена
+	if(this->work && (this->base != nullptr) && ((* this->base) != nullptr)){
+		// Выполняем блокировку потока
+		const lock_guard <recursive_mutex> lock(this->mtx);
+		// Выпускаем пропуск входящих событий
+		event_base_loopcontinue(* this->base);
+		// Если запрещено использовать простое чтение базы событий
+		if(!this->easy)
+			// Завершаем работу базы событий
+			event_base_loopbreak(* this->base);
+		// Если разрешено использовать простое чтение базы событий, завершаем работу чтения базы событий
+		else event_base_loopexit(* this->base, nullptr);
+	}
+}
+/**
  * stop Метод остановки чтения базы событий
  */
 void awh::Core::Dispatch::stop() noexcept {
@@ -23,14 +41,16 @@ void awh::Core::Dispatch::stop() noexcept {
 	if(this->work && (this->base != nullptr) && ((* this->base) != nullptr)){		
 		// Выполняем блокировку потока
 		const lock_guard <recursive_mutex> lock(this->mtx);
-		// Устанавливаем флаг работы модуля
+		// Снимаем флаг работы модуля
 		this->work = false;
 		// Если запрещено использовать простое чтение базы событий
-		if(!this->easy)
+		if(!this->easy){
 			// Завершаем работу базы событий
 			event_base_loopbreak(* this->base);
+			// Завершаем работу чтения базы событий
+			event_base_loopexit(* this->base, nullptr);
 		// Если разрешено использовать простое чтение базы событий
-		else {
+		} else {
 			// Выполняем блокировку инициализации базы событий
 			this->mode = !this->mode;
 			// Завершаем работу чтения базы событий
@@ -54,21 +74,19 @@ void awh::Core::Dispatch::start() noexcept {
 		this->mtx.unlock();
 		// Если запрещено использовать простое чтение базы событий
 		if(!this->easy){
-			// Устанавливаем метку для чтения базы событий
-			dispatch:
-			// Запускаем работу базы событий
-			event_base_dispatch(* this->base);
-			// Если требуется удержания работы
-			if(this->mode){
-				// Замораживаем поток на 10 миллисекунд
-				while(this->mode) this_thread::sleep_for(this->freq != 0ms ? this->freq : 10ms);
-				// Продолжаем работу дальше
-				goto dispatch;
+			// Выполняем чтение базы событий пока это разрешено
+			while(this->work){				
+				// Запускаем работу базы событий
+				if(!this->mode) event_base_dispatch(* this->base);
+				// Завершаем работу чтения базы событий
+				event_base_loopexit(* this->base, nullptr);
+				// Замораживаем поток на период времени частоты обновления базы событий
+				this_thread::sleep_for(this->freq != 0ms ? this->freq : 10ms);
 			}
 		// Если разрешено использовать простое чтение базы событий
 		} else {
 			// Выполняем чтение базы событий пока это разрешено
-			while(!event_base_got_break(* this->base) && !event_base_got_exit(* this->base)){
+			while(this->work){
 				// Если частота обновления не установлена
 				if(this->freq == 0ms){
 					// Выполняем чтение базы событий

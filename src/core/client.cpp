@@ -726,6 +726,8 @@ void awh::client::Core::sendTimeout(const size_t aid) noexcept {
 				// Устанавливаем флаг ожидания статуса
 				wrk->status.wait = client::worker_t::mode_t::DISCONNECT;
 			}
+			// Выполняем пинок базе событий
+			this->dispatch.kick();
 			// Если необходимо поддерживать постоянное подключение
 			if(alive){
 				// Определяем тип подключения
