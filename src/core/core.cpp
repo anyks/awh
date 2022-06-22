@@ -38,7 +38,7 @@ void awh::Core::Dispatch::kick() noexcept {
  */
 void awh::Core::Dispatch::stop() noexcept {
 	// Если база событий установлена
-	if(this->work && (this->base != nullptr) && ((* this->base) != nullptr)){		
+	if(this->work && (this->base != nullptr) && ((* this->base) != nullptr)){
 		// Выполняем блокировку потока
 		const lock_guard <recursive_mutex> lock(this->mtx);
 		// Снимаем флаг работы модуля
@@ -75,7 +75,7 @@ void awh::Core::Dispatch::start() noexcept {
 		// Если запрещено использовать простое чтение базы событий
 		if(!this->easy){
 			// Выполняем чтение базы событий пока это разрешено
-			while(this->work){				
+			while(this->work){
 				// Запускаем работу базы событий
 				if(!this->mode) event_base_dispatch(* this->base);
 				// Замораживаем поток на период времени частоты обновления базы событий
