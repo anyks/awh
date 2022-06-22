@@ -166,6 +166,72 @@ namespace awh {
 				 */
 				Sockaddr() : fd(-1), client({}), server({}), client6({}), server6({}) {}
 			} sockaddr_t;
+		private:
+			/**
+			 * Dispatch Класс работы с событиями
+			 */
+			typedef class Dispatch {
+				private:
+					// Core Устанавливаем дружбу с классом ядра
+					friend class Core;
+				private:
+					// Флаг простого чтения базы событий
+					bool easy;
+					// Флаг разрешения работы
+					bool mode;
+					// Флаг работы модуля
+					bool work;
+				private:
+					// Мютекс для блокировки потока
+					recursive_mutex mtx;
+				private:
+					// Частота обновления базы событий
+					chrono::milliseconds freq;
+				private:
+					// База данных событий
+					struct event_base ** base;
+				public:
+					/**
+					 * stop Метод остановки чтения базы событий
+					 */
+					void stop() noexcept;
+					/**
+					 * start Метод запуска чтения базы событий
+					 */
+					void start() noexcept;
+				public:
+					/**
+					 * freeze Метод заморозки чтения данных
+					 * @param mode флаг активации
+					 */
+					void freeze(const bool mode) noexcept;
+					/**
+					 * easily Метод активации простого режима чтения базы событий
+					 * @param mode флаг активации
+					 */
+					void easily(const bool mode) noexcept;
+				public:
+					/**
+					 * setBase Метод установки базы событий
+					 * @param base база событий
+					 */
+					void setBase(struct event_base ** base) noexcept;
+					/**
+					 * setFrequency Метод установки частоты обновления базы событий
+					 * @param msec частота обновления базы событий в миллисекундах
+					 */
+					void setFrequency(const uint8_t msec = 10) noexcept;
+				public:
+					/**
+					 * Dispatch Конструктор
+					 */
+					Dispatch() noexcept : easy(false), mode(false), work(false), freq(0ms), base(nullptr) {}
+					/**
+					 * Dispatch Конструктор
+					 * @param base база событий
+					 */
+					Dispatch(struct event_base ** base) noexcept : easy(false), mode(false), work(false), freq(0ms), base(base) {}
+			} dispatch_t;
 		protected:
 			// Мютекс для блокировки основного потока
 			mtx_t mtx;
@@ -189,6 +255,8 @@ namespace awh {
 			poolthr_t pool;
 			// Объект для работы с сокетами
 			socket_t socket;
+			// Объект для работы с чтением базы событий
+			dispatch_t dispatch;
 		private:
 			// Частота обновления базы событий
 			chrono::milliseconds freq = 0ms;
@@ -210,14 +278,10 @@ namespace awh {
 		protected:
 			// Флаг отложенных вызовов событий сокета
 			bool defer = true;
-			// Флаг простого чтения базы событий
-			bool easy = false;
 			// Флаг разрешения работы
 			bool mode = false;
 			// Флаг использования многопоточного режима
 			bool multi = false;
-			// Флаг заморозки инициализации базы событий
-			bool freeze = false;
 			// Флаг запрета вывода информационных сообщений
 			bool noinfo = false;
 			// Флаг персистентного запуска каллбека
@@ -420,10 +484,16 @@ namespace awh {
 			u_short setInterval(void * ctx, const time_t delay, function <void (const u_short, Core *, void *)> callback) noexcept;
 		public:
 			/**
-			 * setEasy Метод активации простого чтения базы событий
+			 * easily Метод активации простого режима чтения базы событий
 			 * @param mode флаг активации простого чтения базы событий
 			 */
-			void setEasy(const bool mode) noexcept;
+			void easily(const bool mode) noexcept;
+			/**
+			 * freeze Метод заморозки чтения данных
+			 * @param mode флаг активации заморозки чтения данных
+			 */
+			void freeze(const bool mode) noexcept;
+		public:
 			/**
 			 * setDefer Метод установки флага отложенных вызовов событий сокета
 			 * @param mode флаг отложенных вызовов событий сокета

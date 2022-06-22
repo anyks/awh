@@ -53,7 +53,7 @@ int main(int argc, char * argv[]) noexcept {
 	// Устанавливаем режим мультипоточной обработки
 	core.setMultiThreads(true);
 	// Устанавливаем простое чтение базы событий
-	// core.setEasy(true);
+	// core.easily(true);
 	// Устанавливаем адрес сертификата
 	core.setCA("./ca/cert.pem");
 	// Устанавливаем логин и пароль пользователя

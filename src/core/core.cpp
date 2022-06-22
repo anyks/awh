@@ -16,6 +16,132 @@
 #include <core/core.hpp>
 
 /**
+ * stop Метод остановки чтения базы событий
+ */
+void awh::Core::Dispatch::stop() noexcept {
+	// Если база событий установлена
+	if(this->work && (this->base != nullptr) && ((* this->base) != nullptr)){		
+		// Выполняем блокировку потока
+		const lock_guard <recursive_mutex> lock(this->mtx);
+		// Устанавливаем флаг работы модуля
+		this->work = false;
+		// Если запрещено использовать простое чтение базы событий
+		if(!this->easy)
+			// Завершаем работу базы событий
+			event_base_loopbreak(* this->base);
+		// Если разрешено использовать простое чтение базы событий
+		else {
+			// Выполняем блокировку инициализации базы событий
+			this->mode = !this->mode;
+			// Завершаем работу чтения базы событий
+			event_base_loopexit(* this->base, nullptr);
+			// Размораживаем работу базы событий
+			this->mode = !this->mode;
+		}
+	}
+}
+/**
+ * start Метод запуска чтения базы событий
+ */
+void awh::Core::Dispatch::start() noexcept {
+	// Если база событий установлена
+	if(!this->work && (this->base != nullptr) && ((* this->base) != nullptr)){
+		// Выполняем блокировку потока
+		this->mtx.lock();
+		// Устанавливаем флаг работы модуля
+		this->work = true;
+		// Выполняем разблокировку потока
+		this->mtx.unlock();
+		// Если запрещено использовать простое чтение базы событий
+		if(!this->easy){
+			// Устанавливаем метку для чтения базы событий
+			dispatch:
+			// Запускаем работу базы событий
+			event_base_dispatch(* this->base);
+			// Если требуется удержания работы
+			if(this->mode){
+				// Замораживаем поток на 10 миллисекунд
+				while(this->mode) this_thread::sleep_for(this->freq != 0ms ? this->freq : 10ms);
+				// Продолжаем работу дальше
+				goto dispatch;
+			}
+		// Если разрешено использовать простое чтение базы событий
+		} else {
+			// Выполняем чтение базы событий пока это разрешено
+			while(!event_base_got_break(* this->base) && !event_base_got_exit(* this->base)){
+				// Если частота обновления не установлена
+				if(this->freq == 0ms){
+					// Выполняем чтение базы событий
+					if(!this->mode) event_base_loop(* this->base, EVLOOP_ONCE);
+					// Замораживаем поток на период времени частоты обновления базы событий
+					else this_thread::sleep_for(10ms);
+				// Если частота обновления установлена
+				} else {
+					// Замораживаем поток на период времени частоты обновления базы событий
+					this_thread::sleep_for(this->freq);
+					// Выполняем чтение базы событий
+					if(!this->mode) event_base_loop(* this->base, EVLOOP_NONBLOCK);
+				}
+			}
+		}
+	}
+}
+/**
+ * freeze Метод заморозки чтения данных
+ * @param mode флаг активации
+ */
+void awh::Core::Dispatch::freeze(const bool mode) noexcept {
+	// Если база событий установлена
+	if((this->base != nullptr) && ((* this->base) != nullptr)){
+		// Выполняем блокировку потока
+		const lock_guard <recursive_mutex> lock(this->mtx);
+		// Выполняем фриз получения данных
+		this->mode = mode;
+		// Если запрещено использовать простое чтение базы событий
+		if(this->mode && !this->easy)
+			// Завершаем работу базы событий
+			event_base_loopbreak(* this->base);
+	}
+}
+/**
+ * easily Метод активации простого режима чтения базы событий
+ * @param mode флаг активации
+ */
+void awh::Core::Dispatch::easily(const bool mode) noexcept {
+	// Выполняем блокировку потока
+	const lock_guard <recursive_mutex> lock(this->mtx);
+	// Устанавливаем флаг активации простого чтения базы событий
+	this->easy = mode;
+}
+/**
+ * setBase Метод установки базы событий
+ * @param base база событий
+ */
+void awh::Core::Dispatch::setBase(struct event_base ** base) noexcept {
+	// Выполняем блокировку потока
+	const lock_guard <recursive_mutex> lock(this->mtx);
+	// Выполняем заморозку получения данных
+	this->freeze(true);
+	// Устанавливаем базу событий
+	this->base = base;
+	// Выполняем раззаморозку получения данных
+	this->freeze(false);
+}
+/**
+ * setFrequency Метод установки частоты обновления базы событий
+ * @param msec частота обновления базы событий в миллисекундах
+ */
+void awh::Core::Dispatch::setFrequency(const uint8_t msec) noexcept {
+	// Выполняем блокировку потока
+	const lock_guard <recursive_mutex> lock(this->mtx);
+	// Если количество миллисекунд передано больше 0
+	if((this->easy = (msec > 0)))
+		// Устанавливаем частоту обновления базы событий
+		this->freq = chrono::milliseconds(msec);
+	// Выполняем сброс частоты обновления базы событий
+	else this->freq = 0ms;
+}
+/**
  * timer Функция обработки события пользовательского таймера
  * @param fd    файловый дескриптор (сокет)
  * @param event произошедшее событие
@@ -374,10 +500,10 @@ void awh::Core::unbind(Core * core) noexcept {
 		this->mtx.stop.lock();
 		// Запрещаем работу WebSocket
 		core->mode = false;
-		// Выполняем блокировку инициализации базы событий
-		core->freeze = !core->freeze;
 		// Выполняем разблокировку потока
 		this->mtx.stop.unlock();
+		// Выполняем блокировку инициализации базы событий
+		core->dispatch.freeze(true);
 		// Выполняем остановку всех таймеров
 		core->clearTimers();
 		// Выполняем блокировку потока
@@ -399,10 +525,10 @@ void awh::Core::unbind(Core * core) noexcept {
 		core->dns4.remove();
 		// Выполняем удаление модуля DNS резолвера IPv6
 		core->dns6.remove();
+		// Размораживаем работу базы событий
+		core->dispatch.freeze(false);
 		// Выполняем блокировку потока
 		this->mtx.stop.lock();
-		// Размораживаем работу базы событий
-		core->freeze = !core->freeze;
 		// Устанавливаем статус сетевого ядра
 		core->status = status_t::STOP;
 		// Выполняем разблокировку потока
@@ -447,8 +573,6 @@ void awh::Core::stop() noexcept {
 	if(this->mode && (this->base != nullptr)){
 		// Запрещаем работу WebSocket
 		this->mode = false;
-		// Выполняем блокировку инициализации базы событий
-		this->freeze = !this->freeze;
 		/**
 		 * Если запрещено использовать простое чтение базы событий
 		 * Выполняем остановку всех таймеров
@@ -463,14 +587,8 @@ void awh::Core::stop() noexcept {
 		}
 		// Выполняем отключение всех клиентов
 		this->close();
-		// Если запрещено использовать простое чтение базы событий
-		if(!this->easy)
-			// Завершаем работу базы событий
-			event_base_loopbreak(this->base);
-		// Если разрешено использовать простое чтение базы событий
-		else event_base_loopexit(this->base, nullptr);
-		// Размораживаем работу базы событий
-		this->freeze = !this->freeze;
+		// Выполняем остановку чтения базы событий
+		this->dispatch.stop();
 	}
 }
 /**
@@ -478,7 +596,7 @@ void awh::Core::stop() noexcept {
  */
 void awh::Core::start() noexcept {
 	// Если система ещё не запущена
-	if(!this->mode && !this->freeze && (this->base != nullptr)){
+	if(!this->mode && (this->base != nullptr)){
 		// Выполняем блокировку потока
 		this->mtx.start.lock();
 		// Разрешаем работу WebSocket
@@ -504,29 +622,8 @@ void awh::Core::start() noexcept {
 		this->mtx.start.unlock();
 		// Выполняем запуск управляющей функции
 		this->launching();
-		// Если запрещено использовать простое чтение базы событий
-		if(!this->easy)
-			// Запускаем работу базы событий
-			event_base_dispatch(this->base);
-		// Если разрешено использовать простое чтение базы событий
-		else {
-			// Выполняем чтение базы событий пока это разрешено
-			while(!event_base_got_break(this->base) && !event_base_got_exit(this->base)){
-				// Если частота обновления не установлена
-				if(this->freq == 0ms){
-					// Выполняем чтение базы событий
-					if(!this->freeze) event_base_loop(this->base, EVLOOP_ONCE);
-					// Замораживаем поток на период времени частоты обновления базы событий
-					else this_thread::sleep_for(10ms);
-				// Если частота обновления установлена
-				} else {
-					// Замораживаем поток на период времени частоты обновления базы событий
-					this_thread::sleep_for(this->freq);
-					// Выполняем чтение базы событий
-					if(!this->freeze) event_base_loop(this->base, EVLOOP_NONBLOCK);
-				}
-			}
-		}
+		// Выполняем запуск чтения базы событий
+		this->dispatch.start();
 		// Выполняем отключение всех адъютантов
 		this->close();
 		// Выполняем блокировку потока
@@ -642,14 +739,8 @@ void awh::Core::setBandwidth(const size_t aid, const string & read, const string
  * rebase Метод пересоздания базы событий
  */
 void awh::Core::rebase() noexcept {
-	// Выполняем блокировку потока
-	const lock_guard <recursive_mutex> lock(this->mtx.stop);
 	// Если система уже запущена
 	if(this->mode && (this->base != nullptr)){
-		// Запрещаем работу WebSocket
-		this->mode = false;
-		// Выполняем блокировку инициализации базы событий
-		this->freeze = !this->freeze;
 		/**
 		 * Timer Структура таймера
 		 */
@@ -663,7 +754,7 @@ void awh::Core::rebase() noexcept {
 			Timer() noexcept : ctx(nullptr), delay(0), callback(nullptr) {}
 		} timer_t;
 		// Список дочерних таймеров
-		map <Core *, timer_t> childTimers;
+		multimap <Core *, timer_t> childTimers;
 		// Список пересоздаваемых таймеров
 		vector <timer_t> mainTimers(this->timers.size());
 		/**
@@ -694,13 +785,6 @@ void awh::Core::rebase() noexcept {
 				// Увеличиваем значение индекса
 				index++;
 			}
-		}
-		// Если таймер периодического запуска коллбека активирован
-		if(this->persist){
-			// Очищаем объект таймаута базы событий
-			evutil_timerclear(&this->event.tv);
-			// Удаляем событие интервала
-			event_del(&this->event.ev);
 		}
 		// Выполняем отключение всех клиентов
 		this->close();
@@ -760,20 +844,20 @@ void awh::Core::rebase() noexcept {
 		}
 		// Выполняем ожидание завершения работы потоков
 		if(this->multi) this->pool.wait();
-		// Если запрещено использовать простое чтение базы событий
-		if(!this->easy)
-			// Завершаем работу базы событий
-			event_base_loopbreak(this->base);
-		// Если разрешено использовать простое чтение базы событий
-		else event_base_loopexit(this->base, nullptr);
+		// Выполняем остановку работы
+		this->stop();
+		// Выполняем блокировку потока
+		this->mtx.main.lock();
 		// Удаляем объект базы событий
 		event_base_free(this->base);
 		// Обнуляем базу событий
-		this->base = nullptr;
-		// Размораживаем работу базы событий
-		this->freeze = !this->freeze;		
+		this->base = nullptr;		
 		// Создаем новую базу
 		this->base = event_base_new();
+		// Выполняем разблокировку потока
+		this->mtx.main.unlock();
+		// Выполняем установку базы событий
+		this->dispatch.setBase(&this->base);
 		// Если база событий создана
 		if(this->base != nullptr){
 			// Если список таймеров получен
@@ -803,19 +887,19 @@ void awh::Core::rebase() noexcept {
 					core.first->dns4.replaceServers(core.first->net.v4.second);
 					// Выполняем установку нейм-серверов для DNS резолвера IPv6
 					core.first->dns6.replaceServers(core.first->net.v6.second);
-					// Выполняем запуск управляющей функции
-					core.first->launching();
 					// Выполняем поиск текущего ядра
-					auto it = childTimers.find(core.first);
-					// Если ядро существует
-					if(it != childTimers.end())
+					auto ret = childTimers.equal_range(core.first);
+					// Выполняем перебор всех активных таймеров
+					for(auto it = ret.first; it != ret.second; ++it)
 						// Создаём новый таймер
 						core.first->setTimeout(it->second.ctx, it->second.delay, it->second.callback);
+					// Выполняем запуск управляющей функции
+					core.first->launching();
 				}
 				// Выполняем очистку списка таймеров
 				childTimers.clear();
 				// Выполняем освобождение выделенной памяти
-				map <Core *, timer_t> ().swap(childTimers);
+				multimap <Core *, timer_t> ().swap(childTimers);
 				// Выполняем разблокировку потока
 				this->mtx.core.unlock();
 			}
@@ -1078,22 +1162,26 @@ u_short awh::Core::setInterval(void * ctx, const time_t delay, function <void (c
 	return result;
 }
 /**
- * setEasy Метод активации простого чтения базы событий
+ * easily Метод активации простого режима чтения базы событий
  * @param mode флаг активации простого чтения базы событий
  */
-void awh::Core::setEasy(const bool mode) noexcept {
+void awh::Core::easily(const bool mode) noexcept {
 	// Определяем запущено ли ядро сети
 	const bool start = this->mode;
 	// Если ядро сети уже запущено, останавливаем его
 	if(start) this->stop();
-	// Выполняем блокировку потока
-	this->mtx.main.lock();
-	// Устанавливаем флаг активации простого чтения базы событий
-	this->easy = mode;
-	// Выполняем блокировку потока
-	this->mtx.main.unlock();
+	// Устанавливаем режим чтения базы событий
+	this->dispatch.easily(mode);
 	// Если ядро сети уже было запущено, запускаем его
 	if(start) this->start();
+}
+/**
+ * freeze Метод заморозки чтения данных
+ * @param mode флаг активации заморозки чтения данных
+ */
+void awh::Core::freeze(const bool mode) noexcept {
+	// Устанавливаем режим заморозки чтения данных
+	this->dispatch.freeze(mode);
 }
 /**
  * setDefer Метод установки флага отложенных вызовов событий сокета
@@ -1149,7 +1237,7 @@ void awh::Core::setMultiThreads(const bool mode) noexcept {
 	// Устанавливаем частоту обновления базы событий
 	if(this->multi){
 		// Если частота обновления не активна
-		if(this->freq == 0ms)
+		if(this->dispatch.freq == 0ms)
 			// Устанавливаем частоту обновления
 			this->setFrequency(10);
 		// Выполняем инициализацию пула потоков
@@ -1176,16 +1264,8 @@ void awh::Core::setFrequency(const uint8_t msec) noexcept {
 	const bool start = this->mode;
 	// Если ядро сети уже запущено, останавливаем его
 	if(start) this->stop();
-	// Выполняем блокировку потока
-	this->mtx.main.lock();
-	// Если количество миллисекунд передано больше 0
-	if((this->easy = (msec > 0)))
-		// Устанавливаем частоту обновления базы событий
-		this->freq = chrono::milliseconds(msec);
-	// Выполняем сброс частоты обновления базы событий
-	else this->freq = 0ms;
-	// Выполняем блокировку потока
-	this->mtx.main.unlock();
+	// Устанавливаем частоту чтения базы событий
+	this->dispatch.setFrequency(msec);
 	// Если ядро сети уже было запущено, запускаем его
 	if(start) this->start();
 }
@@ -1261,6 +1341,8 @@ awh::Core::Core(const fmk_t * fmk, const log_t * log) noexcept : nwk(fmk), uri(f
 		this->dns4.replaceServers(this->net.v4.second);
 		// Выполняем установку нейм-серверов для DNS резолвера IPv6
 		this->dns6.replaceServers(this->net.v6.second);
+		// Выполняем установку базы событий
+		this->dispatch.setBase(&this->base);
 	// Выходим принудительно из приложения
 	} else exit(EXIT_FAILURE);
 }
