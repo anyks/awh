@@ -29,8 +29,8 @@ void awh::Core::Dispatch::kick() noexcept {
 		if(!this->easy)
 			// Завершаем работу базы событий
 			event_base_loopbreak(* this->base);
-		// Если разрешено использовать простое чтение базы событий, завершаем работу чтения базы событий
-		else event_base_loopexit(* this->base, nullptr);
+		// Завершаем работу чтения базы событий
+		event_base_loopexit(* this->base, nullptr);
 	}
 }
 /**
@@ -78,8 +78,6 @@ void awh::Core::Dispatch::start() noexcept {
 			while(this->work){				
 				// Запускаем работу базы событий
 				if(!this->mode) event_base_dispatch(* this->base);
-				// Завершаем работу чтения базы событий
-				event_base_loopexit(* this->base, nullptr);
 				// Замораживаем поток на период времени частоты обновления базы событий
 				this_thread::sleep_for(this->freq != 0ms ? this->freq : 10ms);
 			}
@@ -95,10 +93,10 @@ void awh::Core::Dispatch::start() noexcept {
 					else this_thread::sleep_for(10ms);
 				// Если частота обновления установлена
 				} else {
-					// Замораживаем поток на период времени частоты обновления базы событий
-					this_thread::sleep_for(this->freq);
 					// Выполняем чтение базы событий
 					if(!this->mode) event_base_loop(* this->base, EVLOOP_NONBLOCK);
+					// Замораживаем поток на период времени частоты обновления базы событий
+					this_thread::sleep_for(this->freq);
 				}
 			}
 		}
@@ -119,6 +117,8 @@ void awh::Core::Dispatch::freeze(const bool mode) noexcept {
 		if(this->mode && !this->easy)
 			// Завершаем работу базы событий
 			event_base_loopbreak(* this->base);
+		// Завершаем работу чтения базы событий
+		if(this->mode) event_base_loopexit(* this->base, nullptr);
 	}
 }
 /**

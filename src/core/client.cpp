@@ -711,10 +711,12 @@ void awh::client::Core::sendTimeout(const size_t aid) noexcept {
 				// Запрещаем воркеру выполнять перезапуск
 				wrk->stop = true;
 			}
-			// Выполняем отключение всех подключённых адъютантов
-			this->close();
 			// Флаг поддержания постоянного подключения
 			bool alive = false;
+			// Выполняем пинок базе событий
+			this->dispatch.kick();
+			// Выполняем отключение всех подключённых адъютантов
+			this->close();
 			// Переходим по всему списку воркеров
 			for(auto & worker : this->workers){
 				// Получаем объект воркера
@@ -726,8 +728,6 @@ void awh::client::Core::sendTimeout(const size_t aid) noexcept {
 				// Устанавливаем флаг ожидания статуса
 				wrk->status.wait = client::worker_t::mode_t::DISCONNECT;
 			}
-			// Выполняем пинок базе событий
-			this->dispatch.kick();
 			// Если необходимо поддерживать постоянное подключение
 			if(alive){
 				// Определяем тип подключения
