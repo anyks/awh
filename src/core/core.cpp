@@ -23,8 +23,6 @@ void awh::Core::Dispatch::kick() noexcept {
 	if(this->work && (this->base != nullptr) && ((* this->base) != nullptr)){
 		// Выполняем блокировку потока
 		const lock_guard <recursive_mutex> lock(this->mtx);
-		// Выпускаем пропуск входящих событий
-		event_base_loopcontinue(* this->base);
 		// Если запрещено использовать простое чтение базы событий
 		if(!this->easy)
 			// Завершаем работу базы событий
@@ -78,6 +76,8 @@ void awh::Core::Dispatch::start() noexcept {
 			while(this->work){
 				// Запускаем работу базы событий
 				if(!this->mode) event_base_dispatch(* this->base);
+				// Если запрещено считывать данные
+				else event_base_loopcontinue(* this->base);
 				// Замораживаем поток на период времени частоты обновления базы событий
 				this_thread::sleep_for(this->freq != 0ms ? this->freq : 10ms);
 			}
@@ -98,6 +98,8 @@ void awh::Core::Dispatch::start() noexcept {
 					// Замораживаем поток на период времени частоты обновления базы событий
 					this_thread::sleep_for(this->freq);
 				}
+				// Если запрещено считывать данные
+				if(this->mode) event_base_loopcontinue(* this->base);
 			}
 		}
 	}
