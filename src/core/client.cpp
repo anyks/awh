@@ -1075,9 +1075,9 @@ void awh::client::Core::switchProxy(const size_t aid) noexcept {
 				// Выполняем блокировку потока
 				this->mtx.proxy.lock();
 				// Устанавливаем первоначальное значение
-				u_int mode = BEV_OPT_THREADSAFE;
+				u_int mode = 0;
 				// Если нужно использовать отложенные вызовы событий сокета
-				if(this->defer) mode = (mode | BEV_OPT_DEFER_CALLBACKS | BEV_OPT_UNLOCK_CALLBACKS);
+				if(this->defer) mode = (mode | BEV_OPT_DEFER_CALLBACKS);
 				// Выполняем переход на защищённое подключение
 				struct bufferevent * bev = bufferevent_openssl_filter_new(this->base, adj->bev, adj->ssl.ssl, BUFFEREVENT_SSL_CONNECTING, mode);
 				// Если буфер событий создан
