@@ -271,9 +271,9 @@ void awh::server::Core::accept(const evutil_socket_t fd, const short event, void
 		// Выполняем получение контекста сертификата
 		adj->ssl = core->ssl.init();
 		// Устанавливаем первоначальное значение
-		u_int mode = BEV_OPT_THREADSAFE;
+		u_int mode = 0;
 		// Если нужно использовать отложенные вызовы событий сокета
-		if(core->defer) mode = (mode | BEV_OPT_DEFER_CALLBACKS | BEV_OPT_UNLOCK_CALLBACKS);
+		if(core->defer) mode = (mode | BEV_OPT_DEFER_CALLBACKS);
 		// Выполняем блокировку потока
 		core->mtx.accept.lock();
 		// Если SSL клиент разрешён
