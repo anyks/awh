@@ -20,13 +20,11 @@
  */
 void awh::Core::Dispatch::kick() noexcept {
 	// Если база событий установлена
-	if(this->work && (this->base != nullptr) && ((* this->base) != nullptr)){
+	if((this->base != nullptr) && ((* this->base) != nullptr)){
 		// Выполняем блокировку потока
 		const lock_guard <recursive_mutex> lock(this->mtx);
-		// Если запрещено использовать простое чтение базы событий
-		if(!this->easy)
-			// Завершаем работу базы событий
-			event_base_loopbreak(* this->base);
+		// Завершаем работу базы событий
+		event_base_loopbreak(* this->base);
 		// Завершаем работу чтения базы событий
 		event_base_loopexit(* this->base, nullptr);
 	}
@@ -41,21 +39,8 @@ void awh::Core::Dispatch::stop() noexcept {
 		const lock_guard <recursive_mutex> lock(this->mtx);
 		// Снимаем флаг работы модуля
 		this->work = false;
-		// Если запрещено использовать простое чтение базы событий
-		if(!this->easy){
-			// Завершаем работу базы событий
-			event_base_loopbreak(* this->base);
-			// Завершаем работу чтения базы событий
-			event_base_loopexit(* this->base, nullptr);
-		// Если разрешено использовать простое чтение базы событий
-		} else {
-			// Выполняем блокировку инициализации базы событий
-			this->mode = !this->mode;
-			// Завершаем работу чтения базы событий
-			event_base_loopexit(* this->base, nullptr);
-			// Размораживаем работу базы событий
-			this->mode = !this->mode;
-		}
+		// Выполняем пинок
+		this->kick();
 	}
 }
 /**
@@ -76,10 +61,10 @@ void awh::Core::Dispatch::start() noexcept {
 			while(this->work){
 				// Запускаем работу базы событий
 				if(!this->mode) event_base_dispatch(* this->base);
-				// Если запрещено считывать данные
-				else event_base_loopcontinue(* this->base);
 				// Замораживаем поток на период времени частоты обновления базы событий
 				this_thread::sleep_for(this->freq != 0ms ? this->freq : 10ms);
+				// Если запрещено считывать данные, выполняем пропуск события
+				if(this->mode) event_base_loopcontinue(* this->base);
 			}
 		// Если разрешено использовать простое чтение базы событий
 		} else {
@@ -89,17 +74,22 @@ void awh::Core::Dispatch::start() noexcept {
 				if(this->freq == 0ms){
 					// Выполняем чтение базы событий
 					if(!this->mode) event_base_loop(* this->base, EVLOOP_ONCE);
-					// Замораживаем поток на период времени частоты обновления базы событий
-					else this_thread::sleep_for(10ms);
+					// Если чтение базы событий запрещено
+					else {
+						// Замораживаем поток на период времени частоты обновления базы событий
+						this_thread::sleep_for(10ms);
+						// Выполняем пропуск события
+						event_base_loopcontinue(* this->base);
+					}
 				// Если частота обновления установлена
 				} else {
 					// Выполняем чтение базы событий
 					if(!this->mode) event_base_loop(* this->base, EVLOOP_NONBLOCK);
 					// Замораживаем поток на период времени частоты обновления базы событий
 					this_thread::sleep_for(this->freq);
+					// Если чтение базы событий запрещено, выполняем пропуск события
+					if(this->mode) event_base_loopcontinue(* this->base);
 				}
-				// Если запрещено считывать данные
-				if(this->mode) event_base_loopcontinue(* this->base);
 			}
 		}
 	}
@@ -1280,14 +1270,8 @@ void awh::Core::setPersistInterval(const time_t itv) noexcept {
  * @param msec частота обновления базы событий в миллисекундах
  */
 void awh::Core::setFrequency(const uint8_t msec) noexcept {
-	// Определяем запущено ли ядро сети
-	const bool start = this->mode;
-	// Если ядро сети уже запущено, останавливаем его
-	if(start) this->stop();
 	// Устанавливаем частоту чтения базы событий
 	this->dispatch.setFrequency(msec);
-	// Если ядро сети уже было запущено, запускаем его
-	if(start) this->start();
 }
 /**
  * setFamily Метод установки тип протокола интернета

@@ -471,9 +471,9 @@ void awh::client::Core::connect(const size_t wid) noexcept {
 						// Выполняем получение контекста сертификата
 						adj->ssl = this->ssl.init(url);
 						// Устанавливаем первоначальное значение
-						u_int mode = BEV_OPT_THREADSAFE;
+						u_int mode = 0;
 						// Если нужно использовать отложенные вызовы событий сокета
-						if(this->defer) mode = (mode | BEV_OPT_DEFER_CALLBACKS | BEV_OPT_UNLOCK_CALLBACKS);
+						if(this->defer) mode = (mode | BEV_OPT_DEFER_CALLBACKS);
 						// Выполняем блокировку потока
 						this->mtx.connect.lock();
 						// Если SSL клиент разрешён
