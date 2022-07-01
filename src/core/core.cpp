@@ -25,8 +25,6 @@ void awh::Core::Dispatch::kick() noexcept {
 		const lock_guard <recursive_mutex> lock(this->mtx);
 		// Завершаем работу базы событий
 		event_base_loopbreak(* this->base);
-		// Завершаем работу чтения базы событий
-		event_base_loopexit(* this->base, nullptr);
 	}
 }
 /**
@@ -57,14 +55,18 @@ void awh::Core::Dispatch::start() noexcept {
 		this->mtx.unlock();
 		// Если запрещено использовать простое чтение базы событий
 		if(!this->easy){
-			// Выполняем чтение базы событий пока это разрешено
-			while(this->work){
-				// Запускаем работу базы событий
-				if(!this->mode) event_base_dispatch(* this->base);
+			// Устанавливаем метку для чтения базы событий
+			dispatch:
+			// Запускаем работу базы событий
+			if(!this->mode) event_base_dispatch(* this->base);
+			// Если запрещено считывать данные, выполняем пропуск события
+			if(this->mode) event_base_loopcontinue(* this->base);
+			// Если работа ещё продолжается
+			if(this->work){
 				// Замораживаем поток на период времени частоты обновления базы событий
 				this_thread::sleep_for(this->freq != 0ms ? this->freq : 10ms);
-				// Если запрещено считывать данные, выполняем пропуск события
-				if(this->mode) event_base_loopcontinue(* this->base);
+				// Выполняем чтение базы событий заново
+				goto dispatch;
 			}
 		// Если разрешено использовать простое чтение базы событий
 		} else {
@@ -76,19 +78,19 @@ void awh::Core::Dispatch::start() noexcept {
 					if(!this->mode) event_base_loop(* this->base, EVLOOP_ONCE);
 					// Если чтение базы событий запрещено
 					else {
-						// Замораживаем поток на период времени частоты обновления базы событий
-						this_thread::sleep_for(10ms);
 						// Выполняем пропуск события
 						event_base_loopcontinue(* this->base);
+						// Замораживаем поток на период времени частоты обновления базы событий
+						this_thread::sleep_for(10ms);
 					}
 				// Если частота обновления установлена
 				} else {
 					// Выполняем чтение базы событий
 					if(!this->mode) event_base_loop(* this->base, EVLOOP_NONBLOCK);
+					// Если чтение базы событий запрещено, выполняем пропуск события
+					else event_base_loopcontinue(* this->base);
 					// Замораживаем поток на период времени частоты обновления базы событий
 					this_thread::sleep_for(this->freq);
-					// Если чтение базы событий запрещено, выполняем пропуск события
-					if(this->mode) event_base_loopcontinue(* this->base);
 				}
 			}
 		}
@@ -109,8 +111,6 @@ void awh::Core::Dispatch::freeze(const bool mode) noexcept {
 		if(this->mode && !this->easy)
 			// Завершаем работу базы событий
 			event_base_loopbreak(* this->base);
-		// Завершаем работу чтения базы событий
-		if(this->mode) event_base_loopexit(* this->base, nullptr);
 	}
 }
 /**
@@ -131,11 +131,11 @@ void awh::Core::Dispatch::setBase(struct event_base ** base) noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->mtx);
 	// Выполняем заморозку получения данных
-	this->freeze(true);
+	if(this->work) this->freeze(true);
 	// Устанавливаем базу событий
 	this->base = base;
 	// Выполняем раззаморозку получения данных
-	this->freeze(false);
+	if(this->work) this->freeze(false);
 }
 /**
  * setFrequency Метод установки частоты обновления базы событий
