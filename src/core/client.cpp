@@ -678,7 +678,7 @@ void awh::client::Core::createTimeout(const size_t wid, const client::worker_t::
 		// Очищаем объект таймаута базы событий
 		evutil_timerclear(&timeout->tv);
 		// Устанавливаем интервал таймаута
-		timeout->tv.tv_sec = 10;
+		timeout->tv.tv_sec = 5;
 		// Создаём событие таймаута на активацию базы событий
 		event_add(&timeout->ev, &timeout->tv);
 	}
@@ -711,12 +711,12 @@ void awh::client::Core::sendTimeout(const size_t aid) noexcept {
 				// Запрещаем воркеру выполнять перезапуск
 				wrk->stop = true;
 			}
-			// Флаг поддержания постоянного подключения
-			bool alive = false;
-			// Выполняем пинок базе событий
-			this->dispatch.kick();
 			// Выполняем отключение всех подключённых адъютантов
 			this->close();
+			// Выполняем пинок базе событий
+			this->dispatch.kick();
+			// Флаг поддержания постоянного подключения
+			bool alive = false;
 			// Переходим по всему списку воркеров
 			for(auto & worker : this->workers){
 				// Получаем объект воркера
