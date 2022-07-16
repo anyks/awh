@@ -207,7 +207,10 @@ namespace awh {
 					 * @param fmk    объект фреймворка
 					 * @param log    объект для работы с логами
 					 */
-					Adjutant(const Worker * parent, const fmk_t * fmk, const log_t * log) noexcept : parent(parent), fmk(fmk), log(log) {}
+					Adjutant(const Worker * parent, const fmk_t * fmk, const log_t * log) noexcept :
+					 markRead(BUFFER_READ_MIN, BUFFER_READ_MAX),
+					 markWrite(BUFFER_WRITE_MIN, BUFFER_WRITE_MAX),
+					 parent(parent), fmk(fmk), log(log) {}
 					/**
 					 * ~Adjutant Деструктор
 					 */
@@ -283,7 +286,7 @@ namespace awh {
 			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
 			 */
-			Worker(const fmk_t * fmk, const log_t * log) noexcept : markRead(0, 0), fmk(fmk), log(log) {}
+			Worker(const fmk_t * fmk, const log_t * log) noexcept : markRead(BUFFER_READ_MIN, BUFFER_READ_MAX), markWrite(BUFFER_WRITE_MIN, BUFFER_WRITE_MAX), fmk(fmk), log(log) {}
 			/**
 			 * ~Worker Деструктор
 			 */

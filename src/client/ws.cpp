@@ -1109,6 +1109,14 @@ void awh::client::WebSocket::setBytesDetect(const worker_t::mark_t read, const w
 	this->worker.markRead = read;
 	// Устанавливаем количество байт на запись
 	this->worker.markWrite = write;
+	// Если минимальный размер данных для чтения, не установлен
+	if(this->worker.markRead.min == 0)
+		// Устанавливаем размер минимальных для чтения данных по умолчанию
+		this->worker.markRead.min = BUFFER_READ_MIN;
+	// Если максимальный размер данных для записи не установлен, устанавливаем по умолчанию
+	if(this->worker.markWrite.max == 0)
+		// Устанавливаем размер максимальных записываемых данных по умолчанию
+		this->worker.markWrite.max = BUFFER_WRITE_MAX;
 }
 /**
  * setMode Метод установки флага модуля

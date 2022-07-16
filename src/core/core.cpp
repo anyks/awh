@@ -974,6 +974,10 @@ void awh::Core::setMark(const method_t method, const size_t min, const size_t ma
 				const_cast <worker_t::adj_t *> (it->second)->markRead.min = min;
 				// Устанавливаем максимальный размер байт
 				const_cast <worker_t::adj_t *> (it->second)->markRead.max = max;
+				// Если минимальный размер данных для чтения, не установлен
+				if(it->second->markRead.min == 0)
+					// Устанавливаем размер минимальных для чтения данных по умолчанию
+					const_cast <worker_t::adj_t *> (it->second)->markRead.min = BUFFER_READ_MIN;
 			} break;
 			// Режим работы ЗАПИСЬ
 			case (uint8_t) method_t::WRITE: {
@@ -981,6 +985,10 @@ void awh::Core::setMark(const method_t method, const size_t min, const size_t ma
 				const_cast <worker_t::adj_t *> (it->second)->markWrite.min = min;
 				// Устанавливаем максимальный размер байт
 				const_cast <worker_t::adj_t *> (it->second)->markWrite.max = max;
+				// Если максимальный размер данных для записи не установлен, устанавливаем по умолчанию
+				if(it->second->markWrite.max == 0)
+					// Устанавливаем размер максимальных записываемых данных по умолчанию
+					const_cast <worker_t::adj_t *> (it->second)->markWrite.max = BUFFER_WRITE_MAX;
 			} break;
 		}
 	}
