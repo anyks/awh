@@ -86,27 +86,42 @@ namespace awh {
 			enum class method_t : uint8_t {READ, WRITE};
 		private:
 			/**
-			 * Event Структура события
+			 * Timer Класс таймера
 			 */
-			typedef struct Event {
-				// struct event ev;   // Объект события
-				struct timeval tv; // Параметры интервала времени
-			} event_t;
-			/**
-			 * Timer Структура таймера
-			 */
-			typedef struct Timer {
-				u_short id;                                               // Идентификатор таймера
-				void * ctx;                                               // Передаваемый контекст
-				Core * core;                                              // Родительский объект
-				time_t delay;                                             // Задержка времени в миллисекундах
-				bool persist;                                             // Флаг персистентной работы
-				event_t event;                                            // Объект события
-				function <void (const u_short, Core *, void *)> callback; // Функция обратного вызова
-				/**
-				 * Timer Конструктор
-				 */
-				Timer() noexcept : id(0), ctx(nullptr), core(nullptr), delay(0), persist(false), callback(nullptr) {}
+			typedef class Timer {
+				public:
+					// Идентификатор таймера
+					u_short id;
+				public:
+					// Задержка времени в секундах
+					float delay;
+				public:
+					// Флаг персистентной работы
+					bool persist;
+				public:
+					// Объект события таймера
+					ev::timer timer;
+				public:
+					// Передаваемый контекст
+					void * ctx;
+				public:
+					// Родительский объект
+					Core * core;
+				public:
+					// Внешняя функция обратного вызова
+					function <void (const u_short, Core *, void *)> fn;
+				public:
+					/**
+					 * callback Функция обратного вызова
+					 * @param timer   объект события таймера
+					 * @param revents идентификатор события
+					 */
+					void callback(ev::timer & timer, int revents) noexcept;
+				public:
+					/**
+					 * Timer Конструктор
+					 */
+					Timer() noexcept : id(0), delay(0.f), persist(false), ctx(nullptr), core(nullptr), fn(nullptr) {}
 			} timer_t;
 		protected:
 			/**
@@ -232,8 +247,6 @@ namespace awh {
 			// Создаём объект DNS IPv6 резолвера
 			dns_t dns6;
 			*/
-			// Объект события
-			event_t event;
 			// Параметры постоянного подключения
 			alive_t alive;
 			// Создаем объект сети
@@ -244,6 +257,9 @@ namespace awh {
 			socket_t socket;
 			// Объект для работы с чтением базы событий
 			dispatch_t dispatch;
+		private:
+			// Объект события таймера
+			ev::periodic timer;
 		protected:
 			// Тип запускаемого ядра
 			type_t type = type_t::CLIENT;
@@ -251,7 +267,7 @@ namespace awh {
 			status_t status = status_t::STOP;
 		private:
 			// Список активных таймеров
-			map <u_short, timer_t> timers;
+			map <u_short, unique_ptr <timer_t>> timers;
 		protected:
 			// Список активных воркеров
 			map <size_t, const worker_t *> workers;
@@ -289,24 +305,16 @@ namespace awh {
 			function <void (const bool, Core * core, void *)> callbackFn = nullptr;
 		private:
 			/**
-			 * timer Функция обработки события пользовательского таймера
-			 * @param fd    файловый дескриптор (сокет)
-			 * @param event произошедшее событие
-			 * @param ctx   передаваемый контекст
-			 */
-			static void timer(int fd, short event, void * ctx) noexcept;
-			/**
-			 * persistent Функция персистентного вызова по таймеру
-			 * @param fd    файловый дескриптор (сокет)
-			 * @param event произошедшее событие
-			 * @param ctx   передаваемый контекст
-			 */
-			static void persistent(int fd, short event, void * ctx) noexcept;
-		private:
-			/**
 			 * launching Метод вызова при активации базы событий
 			 */
 			void launching() noexcept;
+		private:
+			/**
+			 * persistent Функция персистентного вызова по таймеру
+			 * @param timer   объект события таймера
+			 * @param revents идентификатор события
+			 */
+			void persistent(ev::periodic & timer, int revents) noexcept;
 		protected:
 			/**
 			 * clean Метод буфера событий

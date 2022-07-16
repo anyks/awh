@@ -78,16 +78,34 @@ namespace awh {
 			friend class server::Core;
 		public:
 			/**
+			 * Event Структура события
+			 */
+			typedef struct Event {
+				ev::io read;  // Событие на чтение
+				ev::io write; // Событие на запись
+			} event_t;
+			/**
+			 * Locked Структура блокировки на чтение и запись данных в буфере
+			 */
+			typedef struct Locked {
+				bool read;  // Флаг блокировки чтения
+				bool write; // Флаг блокировки записи
+				/**
+				 * Locked Конструктор
+				 */
+				Locked() noexcept : read(true), write(true) {}
+			} locked_t;
+			/**
 			 * BufferEvent Структура буфера событий
 			 */
 			typedef struct BufferEvent {
-				int socket;   // Активный сокет
-				ev::io read;  // Буфер на чтение
-				ev::io write; // Буфер на запись
+				int socket;      // Активный сокет
+				event_t event;   // Событие чтения/записи
+				locked_t locked; // Блокиратор чтения/записи
 				/**
 				 * BufferEvent Конструктор
 				 */
-				BufferEvent() : socket(-1) {}
+				BufferEvent() noexcept : socket(-1) {}
 			} bev_t;
 			/**
 			 * Mark Структура маркера на размер детектируемых байт
