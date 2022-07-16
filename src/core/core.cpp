@@ -54,8 +54,13 @@ void awh::Core::Dispatch::start() noexcept {
 		while(this->work){
 			// Выполняем чтение базы событий
 			if(!this->mode) this->base.run();
-			// Замораживаем поток на период времени частоты обновления базы событий
-			else this_thread::sleep_for(10ms);
+			// Если чтение базы событий запрещено
+			else {
+				// Выполняем остановку всех событий
+				this->base.break_loop(ev::how_t::ALL);
+				// Замораживаем поток на период времени частоты обновления базы событий
+				this_thread::sleep_for(10ms);
+			}
 		}
 	}
 }
