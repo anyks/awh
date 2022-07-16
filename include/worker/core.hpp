@@ -21,7 +21,7 @@
 #include <map>
 #include <mutex>
 #include <string>
-#include <event2/bufferevent.h>
+// #include <event2/bufferevent.h>
 
 /**
  * Наши модули
@@ -146,7 +146,7 @@ namespace awh {
 					time_t timeWrite = WRITE_TIMEOUT;
 				private:
 					// Объект буфера событий
-					struct bufferevent * bev = nullptr;
+					// struct bufferevent * bev = nullptr;
 				public:
 					// Создаём объект фреймворка
 					const fmk_t * fmk = nullptr;

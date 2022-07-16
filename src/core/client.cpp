@@ -21,6 +21,7 @@
  * @param ctx передаваемый контекст
  */
 void awh::client::Core::resolver(const string ip, void * ctx) noexcept {
+	/*
 	// Если передаваемый контекст передан
 	if(ctx != nullptr){
 		// Получаем объект воркера
@@ -65,12 +66,14 @@ void awh::client::Core::resolver(const string ip, void * ctx) noexcept {
 		// Выводим функцию обратного вызова
 		if(wrk->disconnectFn != nullptr) wrk->disconnectFn(0, wrk->wid, const_cast <awh::core_t *> (wrk->core), wrk->ctx);
 	}
+	*/
 }
 /**
  * read Функция чтения данных с сокета сервера
  * @param bev буфер события
  * @param ctx передаваемый контекст
  */
+/*
 void awh::client::Core::read(struct bufferevent * bev, void * ctx) noexcept {
 	// Если подключение не передано
 	if((bev != nullptr) && (ctx != nullptr)){
@@ -90,9 +93,11 @@ void awh::client::Core::read(struct bufferevent * bev, void * ctx) noexcept {
 				const size_t size = evbuffer_get_length(input);
 				// Если данные существуют
 				if(size > 0){
+*/
 					/**
 					 * Выполняем отлов ошибок
 					 */
+/*
 					try {
 						// Создаём буфер данных
 						char * buffer = new char [size];
@@ -131,12 +136,14 @@ void awh::client::Core::read(struct bufferevent * bev, void * ctx) noexcept {
 		}
 	}
 }
+*/
 /**
  * write Функция записи данных в сокет сервера
  * @param bev буфер события
  * @param ctx передаваемый контекст
  */
 void awh::client::Core::write(struct bufferevent * bev, void * ctx) noexcept {
+	/*
 	// Если подключение не передано
 	if((bev != nullptr) && (ctx != nullptr)){
 		// Получаем объект подключения
@@ -155,9 +162,11 @@ void awh::client::Core::write(struct bufferevent * bev, void * ctx) noexcept {
 				const size_t size = evbuffer_get_length(output);
 				// Если данные существуют
 				if(size > 0){
+	*/
 					/**
 					 * Выполняем отлов ошибок
 					 */
+	/*
 					try {
 						// Создаём буфер входящих данных
 						char * buffer = new char [size];
@@ -194,6 +203,7 @@ void awh::client::Core::write(struct bufferevent * bev, void * ctx) noexcept {
 			}
 		}
 	}
+	*/
 }
 /**
  * reconnect Функция задержки времени на реконнект
@@ -201,7 +211,8 @@ void awh::client::Core::write(struct bufferevent * bev, void * ctx) noexcept {
  * @param event произошедшее событие
  * @param ctx   передаваемый контекст
  */
-void awh::client::Core::reconnect(evutil_socket_t fd, short event, void * ctx) noexcept {
+void awh::client::Core::reconnect(int fd, short event, void * ctx) noexcept {
+	/*
 	// Если контекст модуля передан
 	if(ctx != nullptr){
 		// Получаем объект таймера
@@ -248,6 +259,7 @@ void awh::client::Core::reconnect(evutil_socket_t fd, short event, void * ctx) n
 			}
 		}
 	}
+	*/
 }
 /**
  * event Функция обработка входящих событий с сервера
@@ -255,6 +267,7 @@ void awh::client::Core::reconnect(evutil_socket_t fd, short event, void * ctx) n
  * @param events произошедшее событие
  * @param ctx    передаваемый контекст
  */
+/*
 void awh::client::Core::event(struct bufferevent * bev, const short events, void * ctx) noexcept {
 	// Если подключение не передано
 	if(ctx != nullptr){
@@ -346,12 +359,14 @@ void awh::client::Core::event(struct bufferevent * bev, const short events, void
 		}
 	}
 }
+*/
 /**
  * thread Функция сборки чанков бинарного буфера в многопоточном режиме
  * @param adj объект адъютанта
  * @param wrk объект воркера
  */
 void awh::client::Core::thread(const awh::worker_t::adj_t & adj, const client::worker_t & wrk) noexcept {
+	/*
 	// Получаем объект ядра клиента
 	core_t * core = (core_t *) const_cast <awh::core_t *> (wrk.core);
 	// Выполняем блокировку потока
@@ -371,12 +386,14 @@ void awh::client::Core::thread(const awh::worker_t::adj_t & adj, const client::w
 			// Выводим функцию обратного вызова
 			wrk.readFn(buffer.data(), buffer.size(), adj.aid, wrk.wid, core, wrk.ctx);
 	}
+	*/
 }
 /**
  * tuning Метод тюннинга буфера событий
  * @param aid идентификатор адъютанта
  */
 void awh::client::Core::tuning(const size_t aid) noexcept {
+	/*
 	// Выполняем извлечение адъютанта
 	auto it = this->adjutants.find(aid);
 	// Если адъютант получен
@@ -395,9 +412,11 @@ void awh::client::Core::tuning(const size_t aid) noexcept {
 		bufferevent_setcb(it->second->bev, &read, &write, &event, (void *) it->second);
 		// Очищаем буферы событий при завершении работы
 		bufferevent_flush(it->second->bev, EV_READ | EV_WRITE, BEV_FINISHED);
+	*/
 		/**
 		 * Водяной знак на N байт (чтобы считывать данные когда они действительно приходят)
 		 */
+	/*
 		// Устанавливаем размер считываемых данных
 		bufferevent_setwatermark(it->second->bev, EV_READ, it->second->markRead.min, it->second->markRead.max);
 		// Устанавливаем размер записываемых данных
@@ -405,12 +424,14 @@ void awh::client::Core::tuning(const size_t aid) noexcept {
 		// Активируем буферы событий на чтение и запись
 		bufferevent_enable(it->second->bev, EV_READ | EV_WRITE);
 	}
+	*/
 }
 /**
  * connect Метод создания подключения к удаленному серверу
  * @param wid идентификатор воркера
  */
 void awh::client::Core::connect(const size_t wid) noexcept {
+	/*
 	// Если объект фреймворка существует
 	if((this->fmk != nullptr) && (wid > 0)){
 		// Выполняем поиск воркера
@@ -606,12 +627,14 @@ void awh::client::Core::connect(const size_t wid) noexcept {
 			}
 		}
 	}
+	*/
 }
 /**
  * reconnect Метод восстановления подключения
  * @param wid идентификатор воркера
  */
 void awh::client::Core::reconnect(const size_t wid) noexcept {
+	/*
 	// Выполняем поиск воркера
 	auto it = this->workers.find(wid);
 	// Если воркер найден
@@ -639,6 +662,7 @@ void awh::client::Core::reconnect(const size_t wid) noexcept {
 			}
 		}
 	}
+	*/
 }
 /**
  * createTimeout Метод создания таймаута
@@ -646,6 +670,7 @@ void awh::client::Core::reconnect(const size_t wid) noexcept {
  * @param mode режим работы клиента
  */
 void awh::client::Core::createTimeout(const size_t wid, const client::worker_t::mode_t mode) noexcept {
+	/*
 	// Выполняем поиск воркера
 	auto it = this->workers.find(wid);
 	// Если воркер найден
@@ -682,12 +707,14 @@ void awh::client::Core::createTimeout(const size_t wid, const client::worker_t::
 		// Создаём событие таймаута на активацию базы событий
 		event_add(&timeout->ev, &timeout->tv);
 	}
+	*/
 }
 /**
  * sendTimeout Метод отправки принудительного таймаута
  * @param aid идентификатор адъютанта
  */
 void awh::client::Core::sendTimeout(const size_t aid) noexcept {
+	/*
 	// Если блокировка адъютанта не установлена
 	if(this->locking.count(aid) < 1){
 		// Если адъютант существует
@@ -763,12 +790,14 @@ void awh::client::Core::sendTimeout(const size_t aid) noexcept {
 			}
 		}
 	}
+	*/
 }
 /**
  * clearTimeout Метод удаления установленного таймаута
  * @param wid идентификатор воркера
  */
 void awh::client::Core::clearTimeout(const size_t wid) noexcept {
+	/*
 	// Если список таймеров не пустой
 	if(!this->timeouts.empty()){
 		// Выполняем поиск таймера
@@ -785,11 +814,13 @@ void awh::client::Core::clearTimeout(const size_t wid) noexcept {
 			this->mtx.timeout.unlock();
 		}
 	}
+	*/
 }
 /**
  * close Метод отключения всех воркеров
  */
 void awh::client::Core::close() noexcept {
+	/*
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->mtx.close);
 	// Если список активных таймеров существует
@@ -849,11 +880,13 @@ void awh::client::Core::close() noexcept {
 			}
 		}
 	}
+	*/
 }
 /**
  * remove Метод удаления всех воркеров
  */
 void awh::client::Core::remove() noexcept {
+	/*
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->mtx.close);
 	// Если список воркеров активен
@@ -923,12 +956,14 @@ void awh::client::Core::remove() noexcept {
 			it = this->workers.erase(it);
 		}
 	}
+	*/
 }
 /**
  * open Метод открытия подключения воркером
  * @param wid идентификатор воркера
  */
 void awh::client::Core::open(const size_t wid) noexcept {
+	/*
 	// Если идентификатор воркера передан
 	if(wid > 0){
 		// Выполняем поиск воркера
@@ -957,12 +992,14 @@ void awh::client::Core::open(const size_t wid) noexcept {
 			}
 		}
 	}
+	*/
 }
 /**
  * remove Метод удаления воркера из биндинга
  * @param wid идентификатор воркера
  */
 void awh::client::Core::remove(const size_t wid) noexcept {
+	/*
 	// Если идентификатор воркера передан
 	if(wid > 0){
 		// Выполняем блокировку потока
@@ -990,12 +1027,14 @@ void awh::client::Core::remove(const size_t wid) noexcept {
 			}
 		}
 	}
+	*/
 }
 /**
  * close Метод закрытия подключения воркера
  * @param aid идентификатор адъютанта
  */
 void awh::client::Core::close(const size_t aid) noexcept {
+	/*
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->mtx.close);
 	// Если блокировка адъютанта не установлена
@@ -1050,12 +1089,14 @@ void awh::client::Core::close(const size_t aid) noexcept {
 		// Удаляем блокировку адъютанта
 		this->locking.erase(aid);
 	}
+	*/
 }
 /**
  * switchProxy Метод переключения с прокси-сервера
  * @param aid идентификатор адъютанта
  */
 void awh::client::Core::switchProxy(const size_t aid) noexcept {
+	/*
 	// Выполняем извлечение адъютанта
 	auto it = this->adjutants.find(aid);
 	// Если адъютант получен
@@ -1099,6 +1140,7 @@ void awh::client::Core::switchProxy(const size_t aid) noexcept {
 		// Если функция обратного вызова установлена, сообщаем, что мы подключились
 		if(wrk->connectFn != nullptr) wrk->connectFn(aid, wrk->wid, this, wrk->ctx);
 	}
+	*/
 }
 /**
  * setBandwidth Метод установки пропускной способности сети
@@ -1107,6 +1149,7 @@ void awh::client::Core::switchProxy(const size_t aid) noexcept {
  * @param write пропускная способность на запись (bps, kbps, Mbps, Gbps)
  */
 void awh::client::Core::setBandwidth(const size_t aid, const string & read, const string & write) noexcept {
+	/*
 	// Выполняем извлечение адъютанта
 	auto it = this->adjutants.find(aid);
 	// Если адъютант получен
@@ -1120,7 +1163,7 @@ void awh::client::Core::setBandwidth(const size_t aid, const string & read, cons
 			// Получаем размер буфера на запись
 			const int snd = (!write.empty() ? this->fmk->sizeBuffer(write) : 0);
 			// Получаем файловый дескриптор
-			evutil_socket_t fd = bufferevent_getfd(adj->bev);
+			int fd = bufferevent_getfd(adj->bev);
 			// Устанавливаем размер буфера
 			if(fd > 0) this->socket.bufferSize(fd, rcv, snd, 1);
 		// Если - это Windows
@@ -1130,6 +1173,7 @@ void awh::client::Core::setBandwidth(const size_t aid, const string & read, cons
 			(void) write;
 		#endif
 	}
+	*/
 }
 /**
  * Core Конструктор

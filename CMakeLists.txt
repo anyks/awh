@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.5)
 # TODO: вписать рабочее название проекта
 project(awh LANGUAGES CXX)
 
-set(PROJECT_VENDOR_LONG "ANYKS - WebSocket/HTTP")
+set(PROJECT_VENDOR_LONG "ANYKS - WEB")
 
 # Опции сборки
 # Сборка тестового ПО
@@ -82,10 +82,10 @@ endif()
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
 # Выполняем поиск нужных библиотек
-find_package(OpenSSL REQUIRED)
 find_package(Zlib REQUIRED)
 find_package(Brotli REQUIRED)
-find_package(LibEvent REQUIRED)
+find_package(LibEv REQUIRED)
+find_package(OpenSSL REQUIRED)
 
 # Провекра OpenSSL
 if (OpenSSL_FOUND)
@@ -111,19 +111,19 @@ else()
     message(FATAL_ERROR "Brotli not found")
 endif()
 
-# Провекра LibEvent2
-if (LibEvent_FOUND)
-    message(STATUS "LibEvent2 libs found: " ${LIBEVENT_LIBRARIES})
-    message(STATUS "LibEvent2 include dir found: " ${LIBEVENT_INCLUDE_DIR})
+# Провекра LibEv
+if (LibEv_FOUND)
+    message(STATUS "LibEv libs found: " ${})
+    message(STATUS "LibEv include dir found: " ${LIBEV_INCLUDE_DIR})
 else()
-    message(FATAL_ERROR "LibEvent2 not found")
+    message(FATAL_ERROR "LibEv not found")
 endif()
 
 # Выполняем подключение хидеров
 include_directories(${ZLIB_INCLUDE_DIR})
+include_directories(${LIBEV_INCLUDE_DIR})
 include_directories(${BROTLI_INCLUDE_DIRS})
 include_directories(${OPENSSL_INCLUDE_DIR})
-include_directories(${LIBEVENT_INCLUDE_DIR})
 include_directories(${CMAKE_SOURCE_DIR}/include)
 include_directories(${CMAKE_SOURCE_DIR}/contrib/include)
 
@@ -138,7 +138,7 @@ set(SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/src/net/if.cpp"
     "${CMAKE_SOURCE_DIR}/src/net/nwt.cpp"
     "${CMAKE_SOURCE_DIR}/src/net/nwk.cpp"
-    "${CMAKE_SOURCE_DIR}/src/net/dns.cpp"
+#    "${CMAKE_SOURCE_DIR}/src/net/dns.cpp"
     "${CMAKE_SOURCE_DIR}/src/net/ssl.cpp"
     "${CMAKE_SOURCE_DIR}/src/net/uri.cpp"
     "${CMAKE_SOURCE_DIR}/src/net/socket.cpp"
@@ -154,33 +154,33 @@ set(SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/src/auth/server.cpp"
     "${CMAKE_SOURCE_DIR}/src/client/ws.cpp"
     "${CMAKE_SOURCE_DIR}/src/client/rest.cpp"
-    "${CMAKE_SOURCE_DIR}/src/server/ws.cpp"
-    "${CMAKE_SOURCE_DIR}/src/server/rest.cpp"
-    "${CMAKE_SOURCE_DIR}/src/server/proxy.cpp"
-    "${CMAKE_SOURCE_DIR}/src/server/socks5.cpp"
+#    "${CMAKE_SOURCE_DIR}/src/server/ws.cpp"
+#    "${CMAKE_SOURCE_DIR}/src/server/rest.cpp"
+#    "${CMAKE_SOURCE_DIR}/src/server/proxy.cpp"
+#    "${CMAKE_SOURCE_DIR}/src/server/socks5.cpp"
     "${CMAKE_SOURCE_DIR}/src/core/core.cpp"
     "${CMAKE_SOURCE_DIR}/src/core/client.cpp"
-    "${CMAKE_SOURCE_DIR}/src/core/server.cpp"
+#    "${CMAKE_SOURCE_DIR}/src/core/server.cpp"
     "${CMAKE_SOURCE_DIR}/src/socks5/core.cpp"
     "${CMAKE_SOURCE_DIR}/src/socks5/client.cpp"
-    "${CMAKE_SOURCE_DIR}/src/socks5/server.cpp"
-    "${CMAKE_SOURCE_DIR}/src/worker/ws.cpp"
+#    "${CMAKE_SOURCE_DIR}/src/socks5/server.cpp"
+#    "${CMAKE_SOURCE_DIR}/src/worker/ws.cpp"
     "${CMAKE_SOURCE_DIR}/src/worker/core.cpp"
     "${CMAKE_SOURCE_DIR}/src/worker/rest.cpp"
-    "${CMAKE_SOURCE_DIR}/src/worker/proxy.cpp"
-    "${CMAKE_SOURCE_DIR}/src/worker/socks5.cpp"
+#    "${CMAKE_SOURCE_DIR}/src/worker/proxy.cpp"
+#    "${CMAKE_SOURCE_DIR}/src/worker/socks5.cpp"
     "${CMAKE_SOURCE_DIR}/src/worker/client.cpp"
-    "${CMAKE_SOURCE_DIR}/src/worker/server.cpp"
+#    "${CMAKE_SOURCE_DIR}/src/worker/server.cpp"
 )
 
 # Задаем именя библиотеки и бинарника
 set(WSC_APP_NAME wsc)
-set(WSS_APP_NAME wss)
-set(WEB_APP_NAME web)
+#set(WSS_APP_NAME wss)
+#set(WEB_APP_NAME web)
 set(REST_APP_NAME rest)
-set(TIMER_APP_NAME timer)
-set(PROXY_APP_NAME proxy)
-set(SOCKS5_APP_NAME socks5)
+#set(TIMER_APP_NAME timer)
+#set(PROXY_APP_NAME proxy)
+#set(SOCKS5_APP_NAME socks5)
 set(CURRENT_LIB_NAME ${PROJECT_NAME})
 set(CURRENT_APP_NAME ${PROJECT_NAME}_bin)
 
@@ -206,75 +206,75 @@ if (ENABLE_CONSOLE_APP)
     endif(MINGW)
 
     add_executable(${WSC_APP_NAME} sample/wsc.cpp ${RES_FILES})
-    add_executable(${WSS_APP_NAME} sample/wss.cpp ${RES_FILES})
-    add_executable(${WEB_APP_NAME} sample/web.cpp ${RES_FILES})
+#    add_executable(${WSS_APP_NAME} sample/wss.cpp ${RES_FILES})
+#    add_executable(${WEB_APP_NAME} sample/web.cpp ${RES_FILES})
     add_executable(${REST_APP_NAME} sample/rest.cpp ${RES_FILES})
-    add_executable(${TIMER_APP_NAME} sample/timer.cpp ${RES_FILES})
-    add_executable(${PROXY_APP_NAME} sample/proxy.cpp ${RES_FILES})
-    add_executable(${SOCKS5_APP_NAME} sample/socks5.cpp ${RES_FILES})
+#    add_executable(${TIMER_APP_NAME} sample/timer.cpp ${RES_FILES})
+#    add_executable(${PROXY_APP_NAME} sample/proxy.cpp ${RES_FILES})
+#    add_executable(${SOCKS5_APP_NAME} sample/socks5.cpp ${RES_FILES})
 
     target_link_libraries(${WSC_APP_NAME}
         ${CURRENT_LIB_NAME}
         ${ZLIB_LIBRARY}
+        ${LIBEV_LIBRARY}
         ${BROTLI_LIBRARIES}
         ${OPENSSL_LIBRARIES}
-        ${LIBEVENT_LIBRARIES}
         ${WINFLAGS}
     )
 
-    target_link_libraries(${WSS_APP_NAME}
-        ${CURRENT_LIB_NAME}
-        ${ZLIB_LIBRARY}
-        ${BROTLI_LIBRARIES}
-        ${OPENSSL_LIBRARIES}
-        ${LIBEVENT_LIBRARIES}
-        ${WINFLAGS}
-    )
+#    target_link_libraries(${WSS_APP_NAME}
+#        ${CURRENT_LIB_NAME}
+#        ${ZLIB_LIBRARY}
+#        ${BROTLI_LIBRARIES}
+#        ${OPENSSL_LIBRARIES}
+#        ${LIBEVENT_LIBRARIES}
+#        ${WINFLAGS}
+#    )
 
-    target_link_libraries(${WEB_APP_NAME}
-        ${CURRENT_LIB_NAME}
-        ${ZLIB_LIBRARY}
-        ${BROTLI_LIBRARIES}
-        ${OPENSSL_LIBRARIES}
-        ${LIBEVENT_LIBRARIES}
-        ${WINFLAGS}
-    )
+#    target_link_libraries(${WEB_APP_NAME}
+#        ${CURRENT_LIB_NAME}
+#        ${ZLIB_LIBRARY}
+#        ${LIBEV_LIBRARY}
+#        ${BROTLI_LIBRARIES}
+#        ${OPENSSL_LIBRARIES}
+#        ${WINFLAGS}
+#    )
 
     target_link_libraries(${REST_APP_NAME}
         ${CURRENT_LIB_NAME}
         ${ZLIB_LIBRARY}
+        ${LIBEV_LIBRARY}
         ${BROTLI_LIBRARIES}
         ${OPENSSL_LIBRARIES}
-        ${LIBEVENT_LIBRARIES}
         ${WINFLAGS}
     )
 
-    target_link_libraries(${TIMER_APP_NAME}
-        ${CURRENT_LIB_NAME}
-        ${ZLIB_LIBRARY}
-        ${BROTLI_LIBRARIES}
-        ${OPENSSL_LIBRARIES}
-        ${LIBEVENT_LIBRARIES}
-        ${WINFLAGS}
-    )
+#    target_link_libraries(${TIMER_APP_NAME}
+#        ${CURRENT_LIB_NAME}
+#        ${ZLIB_LIBRARY}
+#        ${BROTLI_LIBRARIES}
+#        ${OPENSSL_LIBRARIES}
+#        ${LIBEVENT_LIBRARIES}
+#        ${WINFLAGS}
+#    )
 
-    target_link_libraries(${PROXY_APP_NAME}
-        ${CURRENT_LIB_NAME}
-        ${ZLIB_LIBRARY}
-        ${BROTLI_LIBRARIES}
-        ${OPENSSL_LIBRARIES}
-        ${LIBEVENT_LIBRARIES}
-        ${WINFLAGS}
-    )
+#    target_link_libraries(${PROXY_APP_NAME}
+#        ${CURRENT_LIB_NAME}
+#        ${ZLIB_LIBRARY}
+#        ${BROTLI_LIBRARIES}
+#        ${OPENSSL_LIBRARIES}
+#        ${LIBEVENT_LIBRARIES}
+#        ${WINFLAGS}
+#    )
 
-    target_link_libraries(${SOCKS5_APP_NAME}
-        ${CURRENT_LIB_NAME}
-        ${ZLIB_LIBRARY}
-        ${BROTLI_LIBRARIES}
-        ${OPENSSL_LIBRARIES}
-        ${LIBEVENT_LIBRARIES}
-        ${WINFLAGS}
-    )
+#    target_link_libraries(${SOCKS5_APP_NAME}
+#        ${CURRENT_LIB_NAME}
+#        ${ZLIB_LIBRARY}
+#        ${BROTLI_LIBRARIES}
+#        ${OPENSSL_LIBRARIES}
+#        ${LIBEVENT_LIBRARIES}
+#        ${WINFLAGS}
+#    )
 endif()
 
 # Устанавливаем адрес установки, запрет установки в /usr/local
@@ -288,21 +288,21 @@ install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/include" DESTINATION "${CMAKE_INS
 install(TARGETS ${CURRENT_LIB_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
 # Устанавливаем исполнительные файлы
 install(TARGETS ${WSC_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
-install(TARGETS ${WSS_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
-install(TARGETS ${WEB_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
+#install(TARGETS ${WSS_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
+#install(TARGETS ${WEB_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
 install(TARGETS ${REST_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
-install(TARGETS ${TIMER_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
-install(TARGETS ${PROXY_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
-install(TARGETS ${SOCKS5_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
+#install(TARGETS ${TIMER_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
+#install(TARGETS ${PROXY_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
+#install(TARGETS ${SOCKS5_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
 
 # Устанавливаем хидеры сторонних библиотек
 install(DIRECTORY "${ZLIB_INCLUDE_DIR}" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h")
 install(DIRECTORY "${BROTLI_INCLUDE_ENCODE_DIR}" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h")
+install(DIRECTORY "${LIBEV_INCLUDE_DIR}/libev" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h")
 install(DIRECTORY "${OPENSSL_INCLUDE_DIR}/openssl" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h")
-install(DIRECTORY "${LIBEVENT_INCLUDE_DIR}/event2" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h")
 
 # Устанавливаем стороние библиотеки
 install(FILES ${ZLIB_LIBRARY} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
+install(FILES ${LIBEV_LIBRARY} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
 install(FILES ${BROTLI_LIBRARIES} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
 install(FILES ${OPENSSL_LIBRARIES} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
-install(FILES ${LIBEVENT_LIBRARIES} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")

@@ -25,11 +25,13 @@
 #include <string>
 #include <functional>
 #include <unordered_map>
+/*
 #include <event2/util.h>
 #include <event2/event.h>
 #include <event2/buffer.h>
 #include <event2/bufferevent.h>
 #include <event2/event_struct.h>
+*/
 
 // Если - это Windows
 #if defined(_WIN32) || defined(_WIN64)
@@ -57,7 +59,7 @@
  * Наши модули
  */
 #include <net/ssl.hpp>
-#include <net/dns.hpp>
+// #include <net/dns.hpp>
 #include <net/socket.hpp>
 #include <worker/core.hpp>
 #include <sys/fmk.hpp>
@@ -93,7 +95,7 @@ namespace awh {
 			 * Event Структура события
 			 */
 			typedef struct Event {
-				struct event ev;   // Объект события
+				// struct event ev;   // Объект события
 				struct timeval tv; // Параметры интервала времени
 			} event_t;
 			/**
@@ -156,7 +158,7 @@ namespace awh {
 			 * Sockaddr Структура адресного пространства сокета
 			 */
 			typedef struct Sockaddr {
-				evutil_socket_t fd;          // Файловый дескриптор
+				int fd;                      // Файловый дескриптор
 				struct sockaddr_in client;   // Параметры подключения клиента IPv4
 				struct sockaddr_in server;   // Параметры подключения сервера IPv4
 				struct sockaddr_in6 client6; // Параметры подключения клиента IPv6
@@ -189,7 +191,7 @@ namespace awh {
 					chrono::milliseconds freq;
 				private:
 					// База данных событий
-					struct event_base ** base;
+					// struct event_base ** base;
 				public:
 					/**
 					 * kick Метод отправки пинка
@@ -219,7 +221,7 @@ namespace awh {
 					 * setBase Метод установки базы событий
 					 * @param base база событий
 					 */
-					void setBase(struct event_base ** base) noexcept;
+					// void setBase(struct event_base ** base) noexcept;
 					/**
 					 * setFrequency Метод установки частоты обновления базы событий
 					 * @param msec частота обновления базы событий в миллисекундах
@@ -229,12 +231,12 @@ namespace awh {
 					/**
 					 * Dispatch Конструктор
 					 */
-					Dispatch() noexcept : easy(false), mode(false), work(false), freq(0ms), base(nullptr) {}
+					Dispatch() noexcept : easy(false), mode(false), work(false), freq(0ms)/*, base(nullptr) */ {}
 					/**
 					 * Dispatch Конструктор
 					 * @param base база событий
 					 */
-					Dispatch(struct event_base ** base) noexcept : easy(false), mode(false), work(false), freq(0ms), base(base) {}
+					// Dispatch(struct event_base ** base) noexcept : easy(false), mode(false), work(false), freq(0ms), base(base) {}
 			} dispatch_t;
 		protected:
 			// Мютекс для блокировки основного потока
@@ -245,10 +247,12 @@ namespace awh {
 			uri_t uri;
 			// Создаём объект для работы с SSL
 			ssl_t ssl;
+			/*
 			// Создаём объект DNS IPv4 резолвера
 			dns_t dns4;
 			// Создаём объект DNS IPv6 резолвера
 			dns_t dns6;
+			*/
 			// Объект события
 			event_t event;
 			// Параметры постоянного подключения
@@ -276,7 +280,7 @@ namespace awh {
 			// Список активных воркеров
 			map <size_t, const worker_t *> workers;
 			// Список сторонних сетевых ядер
-			map <Core *, struct event_base **> cores;
+			// map <Core *, struct event_base **> cores;
 			// Список подключённых клиентов
 			map <size_t, const worker_t::adj_t *> adjutants;
 		protected:
@@ -305,7 +309,7 @@ namespace awh {
 			const log_t * log = nullptr;
 		protected:
 			// База данных событий
-			struct event_base * base = nullptr;
+			// struct event_base * base = nullptr;
 		protected:
 			// Функция обратного вызова при запуске/остановке модуля
 			function <void (const bool, Core * core, void *)> callbackFn = nullptr;
@@ -316,14 +320,14 @@ namespace awh {
 			 * @param event произошедшее событие
 			 * @param ctx   передаваемый контекст
 			 */
-			static void timer(evutil_socket_t fd, short event, void * ctx) noexcept;
+			static void timer(int fd, short event, void * ctx) noexcept;
 			/**
 			 * persistent Функция персистентного вызова по таймеру
 			 * @param fd    файловый дескриптор (сокет)
 			 * @param event произошедшее событие
 			 * @param ctx   передаваемый контекст
 			 */
-			static void persistent(evutil_socket_t fd, short event, void * ctx) noexcept;
+			static void persistent(int fd, short event, void * ctx) noexcept;
 		private:
 			/**
 			 * launching Метод вызова при активации базы событий
@@ -334,7 +338,7 @@ namespace awh {
 			 * clean Метод буфера событий
 			 * @param bev буфер событий для очистки
 			 */
-			void clean(struct bufferevent ** bev) noexcept;
+			// void clean(struct bufferevent ** bev) noexcept;
 		protected:
 			/**
 			 * sockaddr Метод создания адресного пространства сокета

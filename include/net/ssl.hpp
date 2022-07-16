@@ -36,7 +36,7 @@
 #include <cstdlib>
 #include <iostream>
 #include <sys/types.h>
-#include <event2/bufferevent_ssl.h>
+// #include <event2/bufferevent_ssl.h>
 
 // Если - это Windows
 #if defined(_WIN32) || defined(_WIN64)

@@ -59,7 +59,7 @@ namespace awh {
 				typedef struct Timeout {
 					size_t wid;                    // Идентификатор воркера
 					Core * core;                   // Объект ядра клиента
-					struct event ev;               // Объект события
+					// struct event ev;               // Объект события
 					struct timeval tv;             // Параметры интервала времени
 					client::worker_t::mode_t mode; // Режим работы клиента
 					/**
@@ -100,14 +100,14 @@ namespace awh {
 				 * @param event произошедшее событие
 				 * @param ctx   передаваемый контекст
 				 */
-				static void reconnect(evutil_socket_t fd, short event, void * ctx) noexcept;
+				static void reconnect(int fd, short event, void * ctx) noexcept;
 				/**
 				 * event Функция обработка входящих событий с сервера
 				 * @param bev    буфер события
 				 * @param events произошедшее событие
 				 * @param ctx    передаваемый контекст
 				 */
-				static void event(struct bufferevent * bev, const short events, void * ctx) noexcept;
+				// static void event(struct bufferevent * bev, const short events, void * ctx) noexcept;
 				/**
 				 * thread Функция сборки чанков бинарного буфера в многопоточном режиме
 				 * @param adj объект адъютанта

@@ -30,7 +30,6 @@
 #include <string>
 #include <cstring>
 #include <stdlib.h>
-#include <event2/listener.h>
 
 // Если - это Windows
 #if defined(_WIN32) || defined(_WIN64)
@@ -82,12 +81,12 @@ namespace awh {
 			 * @param fd файловый дескриптор (сокет)
 			 * @return   результат работы функции
 			 */
-			int keepAlive(const evutil_socket_t fd) const noexcept;
+			int keepAlive(const int fd) const noexcept;
 			/**
 			 * nonBlocking Метод установки неблокирующего сокета
 			 * @param fd файловый дескриптор (сокет)
 			 */
-			void nonBlocking(const evutil_socket_t fd = -1) const noexcept;
+			void nonBlocking(const int fd = -1) const noexcept;
 		/**
 		 * Методы только для *Nix
 		 */
@@ -102,19 +101,19 @@ namespace awh {
 			 * @param fd файловый дескриптор (сокет)
 			 * @return   результат работы функции
 			 */
-			int tcpCork(const evutil_socket_t fd = -1) const noexcept;
+			int tcpCork(const int fd = -1) const noexcept;
 			/**
 			 * noSigpipe Метод игнорирования отключения сигнала записи в убитый сокет
 			 * @param fd файловый дескриптор (сокет)
 			 * @return   результат работы функции
 			 */
-			int noSigpipe(const evutil_socket_t fd = -1) const noexcept;
+			int noSigpipe(const int fd = -1) const noexcept;
 			/**
 			 * nonBlocking Метод установки неблокирующего сокета
 			 * @param fd файловый дескриптор (сокет)
 			 * @return   результат работы функции
 			 */
-			int nonBlocking(const evutil_socket_t fd = -1) const noexcept;
+			int nonBlocking(const int fd = -1) const noexcept;
 			/**
 			 * keepAlive Метод устанавливает постоянное подключение на сокет
 			 * @param fd    файловый дескриптор (сокет)
@@ -123,27 +122,27 @@ namespace awh {
 			 * @param intvl время между попытками
 			 * @return      результат работы функции
 			 */
-			int keepAlive(const evutil_socket_t fd = -1, const int cnt = 0, const int idle = 0, const int intvl = 0) const noexcept;
+			int keepAlive(const int fd = -1, const int cnt = 0, const int idle = 0, const int intvl = 0) const noexcept;
 		#endif
 			/**
 			 * reuseable Метод разрешающая повторно использовать сокет после его удаления
 			 * @param fd файловый дескриптор (сокет)
 			 * @return   результат работы функции
 			 */
-			int reuseable(const evutil_socket_t fd = -1) const noexcept;
+			int reuseable(const int fd = -1) const noexcept;
 			/**
 			 * tcpNodelay Метод отключения алгоритма Нейгла
 			 * @param fd файловый дескриптор (сокет)
 			 * @return   результат работы функции
 			 */
-			int tcpNodelay(const evutil_socket_t fd = -1) const noexcept;
+			int tcpNodelay(const int fd = -1) const noexcept;
 			/**
 			 * ipV6only Метод включающая или отключающая режим отображения IPv4 на IPv6
 			 * @param fd   файловый дескриптор (сокет)
 			 * @param mode активация или деактивация режима
 			 * @return     результат работы функции
 			 */
-			int ipV6only(const evutil_socket_t fd = -1, const bool mode = false) const noexcept;
+			int ipV6only(const int fd = -1, const bool mode = false) const noexcept;
 			/**
 			 * bufferSize Метод установки размеров буфера
 			 * @param fd    файловый дескриптор (сокет)
@@ -152,7 +151,7 @@ namespace awh {
 			 * @param total максимальное количество подключений
 			 * @return      результат работы функции
 			 */
-			int bufferSize(const evutil_socket_t fd = -1, const int read = 0, const int write = 0, const u_int total = 0) const noexcept;
+			int bufferSize(const int fd = -1, const int read = 0, const int write = 0, const u_int total = 0) const noexcept;
 		public:
 			/**
 			 * Socket Конструктор

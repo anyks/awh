@@ -21,7 +21,7 @@
 #include <map>
 #include <ctime>
 #include <vector>
-#include <event2/event.h>
+// #include <event2/event.h>
 
 /**
  * Наши модули

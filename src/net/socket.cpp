@@ -24,7 +24,7 @@
  * @param fd файловый дескриптор (сокет)
  * @return   результат работы функции
  */
-int awh::Socket::keepAlive(const evutil_socket_t fd) const noexcept {
+int awh::Socket::keepAlive(const int fd) const noexcept {
 	// Результат работы функции
 	int result = -1;
 	{
@@ -61,7 +61,7 @@ int awh::Socket::keepAlive(const evutil_socket_t fd) const noexcept {
  * nonBlocking Метод установки неблокирующего сокета
  * @param fd файловый дескриптор (сокет)
  */
-void awh::Socket::nonBlocking(const evutil_socket_t fd) const noexcept {
+void awh::Socket::nonBlocking(const int fd) const noexcept {
 	// Флаг режима
 	u_long mode = 0;
 	// Отключаем неблокирующий режим у сокета
@@ -99,7 +99,7 @@ int awh::Socket::noSigill() const noexcept {
  * @param fd файловый дескриптор (сокет)
  * @return   результат работы функции
  */
-int awh::Socket::tcpCork(const evutil_socket_t fd) const noexcept {
+int awh::Socket::tcpCork(const int fd) const noexcept {
 	// Устанавливаем параметр
 	int tcpCork = 1;
 	// Если это Linux
@@ -129,7 +129,7 @@ int awh::Socket::tcpCork(const evutil_socket_t fd) const noexcept {
  * @param fd файловый дескриптор (сокет)
  * @return   результат работы функции
  */
-int awh::Socket::noSigpipe(const evutil_socket_t fd) const noexcept {
+int awh::Socket::noSigpipe(const int fd) const noexcept {
 	// Если это Linux
 	#ifdef __linux__
 		// Создаем структуру активации сигнала
@@ -169,7 +169,7 @@ int awh::Socket::noSigpipe(const evutil_socket_t fd) const noexcept {
  * @param fd файловый дескриптор (сокет)
  * @return   результат работы функции
  */
-int awh::Socket::nonBlocking(const evutil_socket_t fd) const noexcept {
+int awh::Socket::nonBlocking(const int fd) const noexcept {
 	// Получаем флаги файлового дескриптора
 	int flags = fcntl(fd, F_GETFL);
 	// Если флаги не установлены, выходим
@@ -194,7 +194,7 @@ int awh::Socket::nonBlocking(const evutil_socket_t fd) const noexcept {
  * @param intvl время между попытками
  * @return      результат работы функции
  */
-int awh::Socket::keepAlive(const evutil_socket_t fd, const int cnt, const int idle, const int intvl) const noexcept {
+int awh::Socket::keepAlive(const int fd, const int cnt, const int idle, const int intvl) const noexcept {
 	// Устанавливаем параметр
 	int keepAlive = 1;
 	// Активация постоянного подключения
@@ -246,7 +246,7 @@ int awh::Socket::keepAlive(const evutil_socket_t fd, const int cnt, const int id
  * @param fd файловый дескриптор (сокет)
  * @return   результат работы функции
  */
-int awh::Socket::reuseable(const evutil_socket_t fd) const noexcept {
+int awh::Socket::reuseable(const int fd) const noexcept {
 	// Устанавливаем параметр
 	int reuseaddr = 1;
 	// Разрешаем повторно использовать тот же host:port после отключения
@@ -264,7 +264,7 @@ int awh::Socket::reuseable(const evutil_socket_t fd) const noexcept {
  * @param fd файловый дескриптор (сокет)
  * @return   результат работы функции
  */
-int awh::Socket::tcpNodelay(const evutil_socket_t fd) const noexcept {
+int awh::Socket::tcpNodelay(const int fd) const noexcept {
 	// Устанавливаем параметр
 	int tcpNodelay = 1;
 	// Устанавливаем TCP_NODELAY
@@ -283,7 +283,7 @@ int awh::Socket::tcpNodelay(const evutil_socket_t fd) const noexcept {
  * @param mode активация или деактивация режима
  * @return     результат работы функции
  */
-int awh::Socket::ipV6only(const evutil_socket_t fd, const bool mode) const noexcept {
+int awh::Socket::ipV6only(const int fd, const bool mode) const noexcept {
 	// Устанавливаем параметр
 	int only6 = (mode ? 1 : 0);
 	// Разрешаем повторно использовать тот же host:port после отключения
@@ -304,7 +304,7 @@ int awh::Socket::ipV6only(const evutil_socket_t fd, const bool mode) const noexc
  * @param total максимальное количество подключений
  * @return      результат работы функции
  */
-int awh::Socket::bufferSize(const evutil_socket_t fd, const int read, const int write, const u_int total) const noexcept {
+int awh::Socket::bufferSize(const int fd, const int read, const int write, const u_int total) const noexcept {
 	// Определяем размер массива опции
 	socklen_t rlen = sizeof(read);
 	socklen_t wlen = sizeof(write);

@@ -42,7 +42,7 @@ namespace awh {
 				friend class awh::Core;
 			protected:
 				// Файловый дескриптор сервера
-				evutil_socket_t fd = -1;
+				int fd = -1;
 				// Порт сервера
 				u_int port = SERVER_PORT;
 				// Хост сервера

@@ -26,10 +26,10 @@ if [ -n "$1" ]; then
 		}
 
 		# Очищаем подпроекты
-		clean_submodule "openssl"
 		clean_submodule "zlib"
+		clean_submodule "libev"
 		clean_submodule "brotli"
-		clean_submodule "libevent"
+		clean_submodule "openssl"
 
 		# Удаляем сборочную директорию
 		rm -rf "$ROOT/third_party"
@@ -282,70 +282,23 @@ if [ ! -f "$src/.stamp_done" ]; then
 	cd "$ROOT" || exit 1
 fi
 
-# Сборка LibEvent2
-src="$ROOT/submodules/libevent"
+# Сборка LibEv
+src="$ROOT/submodules/libev"
 if [ ! -f "$src/.stamp_done" ]; then
-	printf "\n****** LibEvent2 ******\n"
+	printf "\n****** LibEv ******\n"
 	cd "$src" || exit 1
 
-	# Версия Brotli
-	ver="2.1.12"
-
-	# Переключаемся на master
-	git checkout master
-	# Закачиваем все теги
-	git fetch --all --tags
-	# Удаляем старую ветку
-	git branch -D v${ver}-branch
-	# Выполняем переключение на указанную версию
-	git checkout tags/release-${ver}-stable -b v${ver}-branch
-
-	# Применяем патч исправления ошибки нулевого указателя
-	apply_patch "libevent" "0001-Correcting-the-error-on-checking-the-pointer.patch"
-
-	# Создаём каталог сборки
-	mkdir -p "build" || exit 1
-	# Переходим в каталог
-	cd "build" || exit 1
-
-	# Удаляем старый файл кэша
-	rm -rf ./CMakeCache.txt
-
-	# Выполняем конфигурацию проекта
-	if [[ $OS = "Windows" ]]; then
-		cmake \
-		 -DCMAKE_C_COMPILER="gcc" \
-		 -DCMAKE_BUILD_TYPE="Release" \
-		 -DCMAKE_SYSTEM_NAME="Windows" \
-		 -DEVENT__LIBRARY_TYPE="STATIC" \
-		 -DEVENT__DISABLE_DEBUG_MODE="ON" \
-		 -DEVENT__DISABLE_BENCHMARK="ON" \
-		 -DEVENT__DISABLE_SAMPLES="ON" \
-		 -DEVENT__DISABLE_TESTS="ON" \
-		 -DEVENT__DISABLE_THREAD_SUPPORT="ON" \
-		 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
-		 -DOPENSSL_ROOT_DIR="$PREFIX" \
-		 -DOPENSSL_LIBRARIES="$PREFIX/lib" \
-		 -DOPENSSL_INCLUDE_DIR="$PREFIX/include" \
-		 -G "MinGW Makefiles" \
-		 .. || exit 1
-	else
-		cmake \
-		 -DEVENT__LIBRARY_TYPE="STATIC" \
-		 -DEVENT__DISABLE_DEBUG_MODE="ON" \
-		 -DEVENT__DISABLE_BENCHMARK="ON" \
-		 -DEVENT__DISABLE_SAMPLES="ON" \
-		 -DEVENT__DISABLE_TESTS="ON" \
-		 -DEVENT__DISABLE_THREAD_SUPPORT="ON" \
-		 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
-		 -DOPENSSL_ROOT_DIR="$PREFIX" \
-		 -DOPENSSL_LIBRARIES="$PREFIX/lib" \
-		 -DOPENSSL_INCLUDE_DIR="$PREFIX/include" \
-		 .. || exit 1
-	fi
-
-	 # Выполняем сборку на всех логических ядрах
-	$BUILD -j"$numproc" || exit 1
+	# Выполняем конфигурирование сборки
+	./configure \
+	 --with-pic=use \
+	 --enable-static=yes \
+	 --enable-shared=no \
+	 --prefix=$PREFIX \
+	 --includedir="$PREFIX/include/libev" \
+	 --libdir="$PREFIX/lib"
+	
+	# Выполняем сборку проекта
+	$BUILD || exit 1
 	# Выполняем установку проекта
 	$BUILD install || exit 1
 
