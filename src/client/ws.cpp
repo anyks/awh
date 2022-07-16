@@ -1127,8 +1127,6 @@ void awh::client::WebSocket::setMode(const u_short flag) noexcept {
 	this->takeOverCli = (flag & (uint8_t) flag_t::TAKEOVERCLI);
 	// Устанавливаем флаг перехвата контекста компрессии для сервера
 	this->takeOverSrv = (flag & (uint8_t) flag_t::TAKEOVERSRV);
-	// Устанавливаем флаг отложенных вызовов событий сокета
-	const_cast <client::core_t *> (this->core)->setDefer(flag & (uint8_t) flag_t::DEFER);
 	// Устанавливаем флаг запрещающий вывод информационных сообщений
 	const_cast <client::core_t *> (this->core)->setNoInfo(flag & (uint8_t) flag_t::NOINFO);
 	// Выполняем установку флага проверки домена

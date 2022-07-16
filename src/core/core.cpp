@@ -19,23 +19,17 @@
  * kick Метод отправки пинка
  */
 void awh::Core::Dispatch::kick() noexcept {
-	/*
-	// Если база событий установлена
-	if((this->base != nullptr) && ((* this->base) != nullptr)){
-		// Выполняем блокировку потока
-		const lock_guard <recursive_mutex> lock(this->mtx);
-		// Завершаем работу базы событий
-		event_base_loopbreak(* this->base);
-	}
-	*/
+	// Выполняем блокировку потока
+	const lock_guard <recursive_mutex> lock(this->mtx);
+	// Выполняем остановку всех событий
+	this->base.break_loop(ev::how_t::ALL);
 }
 /**
  * stop Метод остановки чтения базы событий
  */
 void awh::Core::Dispatch::stop() noexcept {
-	/*
-	// Если база событий установлена
-	if(this->work && (this->base != nullptr) && ((* this->base) != nullptr)){
+	// Если чтение базы событий уже началось
+	if(this->work){
 		// Выполняем блокировку потока
 		const lock_guard <recursive_mutex> lock(this->mtx);
 		// Снимаем флаг работы модуля
@@ -43,123 +37,55 @@ void awh::Core::Dispatch::stop() noexcept {
 		// Выполняем пинок
 		this->kick();
 	}
-	*/
 }
 /**
  * start Метод запуска чтения базы событий
  */
 void awh::Core::Dispatch::start() noexcept {
-	/*
-	// Если база событий установлена
-	if(!this->work && (this->base != nullptr) && ((* this->base) != nullptr)){
+	// Если чтение базы событий ещё не началось
+	if(!this->work){
 		// Выполняем блокировку потока
 		this->mtx.lock();
 		// Устанавливаем флаг работы модуля
 		this->work = true;
 		// Выполняем разблокировку потока
 		this->mtx.unlock();
-		// Если запрещено использовать простое чтение базы событий
-		if(!this->easy){
-			// Устанавливаем метку для чтения базы событий
-			dispatch:
-			// Запускаем работу базы событий
-			if(!this->mode) event_base_dispatch(* this->base);
-			// Если запрещено считывать данные, выполняем пропуск события
-			if(this->mode) event_base_loopcontinue(* this->base);
-			// Если работа ещё продолжается
-			if(this->work){
-				// Замораживаем поток на период времени частоты обновления базы событий
-				this_thread::sleep_for(this->freq != 0ms ? this->freq : 10ms);
-				// Выполняем чтение базы событий заново
-				goto dispatch;
-			}
-		// Если разрешено использовать простое чтение базы событий
-		} else {
-			// Выполняем чтение базы событий пока это разрешено
-			while(this->work){
-				// Если частота обновления не установлена
-				if(this->freq == 0ms){
-					// Выполняем чтение базы событий
-					if(!this->mode) event_base_loop(* this->base, EVLOOP_ONCE);
-					// Если чтение базы событий запрещено
-					else {
-						// Выполняем пропуск события
-						event_base_loopcontinue(* this->base);
-						// Замораживаем поток на период времени частоты обновления базы событий
-						this_thread::sleep_for(10ms);
-					}
-				// Если частота обновления установлена
-				} else {
-					// Выполняем чтение базы событий
-					if(!this->mode) event_base_loop(* this->base, EVLOOP_NONBLOCK);
-					// Если чтение базы событий запрещено, выполняем пропуск события
-					else event_base_loopcontinue(* this->base);
-					// Замораживаем поток на период времени частоты обновления базы событий
-					this_thread::sleep_for(this->freq);
-				}
-			}
+		// Выполняем чтение базы событий пока это разрешено
+		while(this->work){
+			// Выполняем чтение базы событий
+			if(!this->mode) this->base.run();
+			// Замораживаем поток на период времени частоты обновления базы событий
+			else this_thread::sleep_for(10ms);
 		}
 	}
-	*/
 }
 /**
  * freeze Метод заморозки чтения данных
  * @param mode флаг активации
  */
 void awh::Core::Dispatch::freeze(const bool mode) noexcept {
-	/*
-	// Если база событий установлена
-	if((this->base != nullptr) && ((* this->base) != nullptr)){
-		// Выполняем блокировку потока
-		const lock_guard <recursive_mutex> lock(this->mtx);
-		// Выполняем фриз получения данных
-		this->mode = mode;
-		// Если запрещено использовать простое чтение базы событий
-		if(this->mode && !this->easy)
-			// Завершаем работу базы событий
-			event_base_loopbreak(* this->base);
-	}
-	*/
-}
-/**
- * easily Метод активации простого режима чтения базы событий
- * @param mode флаг активации
- */
-void awh::Core::Dispatch::easily(const bool mode) noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->mtx);
-	// Устанавливаем флаг активации простого чтения базы событий
-	this->easy = mode;
+	// Выполняем фриз получения данных
+	this->mode = mode;
+	// Если запрещено использовать простое чтение базы событий
+	if(this->mode)
+		// Выполняем остановку всех событий
+		this->base.break_loop(ev::how_t::ALL);
 }
 /**
  * setBase Метод установки базы событий
  * @param base база событий
  */
-/*
-void awh::Core::Dispatch::setBase(struct event_base ** base) noexcept {
+void awh::Core::Dispatch::setBase(struct ev_loop * base) noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->mtx);
 	// Выполняем заморозку получения данных
 	if(this->work) this->freeze(true);
 	// Устанавливаем базу событий
-	this->base = base;
+	this->base = ev::loop_ref(base);
 	// Выполняем раззаморозку получения данных
 	if(this->work) this->freeze(false);
-}
-*/
-/**
- * setFrequency Метод установки частоты обновления базы событий
- * @param msec частота обновления базы событий в миллисекундах
- */
-void awh::Core::Dispatch::setFrequency(const uint8_t msec) noexcept {
-	// Выполняем блокировку потока
-	const lock_guard <recursive_mutex> lock(this->mtx);
-	// Если количество миллисекунд передано больше 0
-	if((this->easy = (msec > 0)))
-		// Устанавливаем частоту обновления базы событий
-		this->freq = chrono::milliseconds(msec);
-	// Выполняем сброс частоты обновления базы событий
-	else this->freq = 0ms;
 }
 /**
  * timer Функция обработки события пользовательского таймера
@@ -198,7 +124,6 @@ void awh::Core::timer(int fd, short event, void * ctx) noexcept {
  * @param ctx   передаваемый контекст
  */
 void awh::Core::persistent(int fd, short event, void * ctx) noexcept {
-	/*
 	// Если контекст модуля передан
 	if(ctx != nullptr){
 		// Получаем объект подключения
@@ -226,13 +151,11 @@ void awh::Core::persistent(int fd, short event, void * ctx) noexcept {
 			}
 		}
 	}
-	*/
 }
 /**
  * launching Метод вызова при активации базы событий
  */
 void awh::Core::launching() noexcept {
-	/*
 	// Если база событий создана
 	if(this->base != nullptr){
 		// Выполняем блокировку потока
@@ -253,6 +176,7 @@ void awh::Core::launching() noexcept {
 		if(this->callbackFn != nullptr) this->callbackFn(true, this, this->ctx.front());
 		// Выводим в консоль информацию
 		if(!this->noinfo) this->log->print("[+] start service: pid = %u", log_t::flag_t::INFO, getpid());
+		/*
 		// Если таймер периодического запуска коллбека активирован, запускаем персистентную работу
 		if(this->persist){
 			// Создаём событие на активацию базы событий
@@ -264,39 +188,39 @@ void awh::Core::launching() noexcept {
 			// Создаём событие таймаута на активацию базы событий
 			event_add(&this->event.ev, &this->event.tv);
 		}
+		*/
 	}
-	*/
 }
 /**
  * clean Метод буфера событий
  * @param bev буфер событий для очистки
  */
-/*
-void awh::Core::clean(struct bufferevent ** bev) noexcept {
-	// Если буфер событий передан
-	if((bev != nullptr) && ((* bev) != nullptr)){
-		// Запрещаем чтение запись данных серверу
-		bufferevent_disable(* bev, EV_WRITE | EV_READ);
-		// Получаем файловый дескриптор
-		int fd = bufferevent_getfd(* bev);
+void awh::Core::clean(worker_t::bev_t & bev) noexcept {
+	// Запрещаем чтение запись данных серверу
+	// bufferevent_disable(* bev, EV_WRITE | EV_READ);
+	// Выполняем остановку чтения буфера событий
+	ev_io_stop(this->base, &bev.read);
+	// Выполняем остановку записи буфера событий
+	ev_io_stop(this->base, &bev.write);
+	// Если сокет активен
+	if(bev.socket > 0){
 		// Если - это Windows
 		#if defined(_WIN32) || defined(_WIN64)
-			// Отключаем подключение для сокета
-			if(fd > 0) shutdown(fd, SD_BOTH);
+			// Запрещаем работу с сокетом
+			shutdown(bev.socket, SD_BOTH);
+			// Выполняем закрытие сокета
+			closesocket(bev.socket);
 		// Если - это Unix
 		#else
-			// Отключаем подключение для сокета
-			if(fd > 0) shutdown(fd, SHUT_RDWR);
+			// Запрещаем работу с сокетом
+			shutdown(bev.socket, SHUT_RDWR);
+			// Выполняем закрытие сокета
+			close(bev.socket);
 		#endif
-		// Закрываем подключение
-		if(fd > 0) evutil_closesocket(fd);
-		// Удаляем буфер события
-		bufferevent_free(* bev);
-		// Зануляем буфер событий
-		(* bev) = nullptr;
+		// Выполняем сброс сокета
+		bev.socket = -1;
 	}
 }
-*/
 /**
  * sockaddr Метод создания адресного пространства сокета
  * @param ip     адрес для которого нужно создать сокет
@@ -449,18 +373,16 @@ const awh::Core::sockaddr_t awh::Core::sockaddr(const string & ip, const u_int p
 			// Активируем keepalive
 			} else this->socket.keepAlive(result.fd);
 		#endif
-		/*
 		// Если ядро является сервером
 		if(this->type == type_t::SERVER)
 			// Переводим сокет в не блокирующий режим
-			evutil_make_socket_nonblocking(result.fd);
+			this->socket.nonBlocking(result.fd);
 		// Отключаем алгоритм Нейгла для сервера и клиента
 		this->socket.tcpNodelay(result.fd);
 		// Устанавливаем разрешение на закрытие сокета при неиспользовании
-		// evutil_make_socket_closeonexec(result.fd);
+		// this->socket.closeonexec(result.fd);
 		// Устанавливаем разрешение на повторное использование сокета
-		evutil_make_listen_socket_reuseable(result.fd);
-		*/
+		this->socket.reuseable(result.fd);
 		// Выполняем бинд на сокет
 		if(::bind(result.fd, sin, size) < 0){
 			// Выводим в лог сообщение
@@ -601,20 +523,18 @@ void awh::Core::setCallback(void * ctx, function <void (const bool, Core * core,
  * stop Метод остановки клиента
  */
 void awh::Core::stop() noexcept {
-	/*
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->mtx.stop);
 	// Если система уже запущена
 	if(this->mode && (this->base != nullptr)){
 		// Запрещаем работу WebSocket
 		this->mode = false;
-	*/
 		/**
 		 * Если запрещено использовать простое чтение базы событий
 		 * Выполняем остановку всех таймеров
 		 */
-	/*
 		this->clearTimers();
+		/*
 		// Если таймер периодического запуска коллбека активирован
 		if(this->persist){
 			// Очищаем объект таймаута базы событий
@@ -622,24 +542,24 @@ void awh::Core::stop() noexcept {
 			// Удаляем событие интервала
 			event_del(&this->event.ev);
 		}
+		*/
 		// Выполняем отключение всех клиентов
 		this->close();
 		// Выполняем остановку чтения базы событий
 		this->dispatch.stop();
 	}
-	*/
 }
 /**
  * start Метод запуска клиента
  */
 void awh::Core::start() noexcept {
-	/*
 	// Если система ещё не запущена
 	if(!this->mode && (this->base != nullptr)){
 		// Выполняем блокировку потока
 		this->mtx.start.lock();
 		// Разрешаем работу WebSocket
 		this->mode = !this->mode;
+		/*
 		// Определяем тип подключения
 		switch(this->net.family){
 			// Резолвер IPv4, создаём резолвер
@@ -657,6 +577,7 @@ void awh::Core::start() noexcept {
 				this->dns4.replaceServers(this->net.v4.second);
 			} break;
 		}
+		*/
 		// Выполняем разблокировку потока
 		this->mtx.start.unlock();
 		// Выполняем запуск управляющей функции
@@ -676,7 +597,6 @@ void awh::Core::start() noexcept {
 		// Выводим в консоль информацию
 		if(!this->noinfo) this->log->print("[-] stop service: pid = %u", log_t::flag_t::INFO, getpid());
 	}
-	*/
 }
 /**
  * working Метод проверки на запуск работы
@@ -1228,83 +1148,48 @@ u_short awh::Core::setInterval(void * ctx, const time_t delay, function <void (c
 	return result;
 }
 /**
- * easily Метод активации простого режима чтения базы событий
- * @param mode флаг активации простого чтения базы событий
- */
-void awh::Core::easily(const bool mode) noexcept {
-	/*
-	// Определяем запущено ли ядро сети
-	const bool start = this->mode;
-	// Если ядро сети уже запущено, останавливаем его
-	if(start) this->stop();
-	// Устанавливаем режим чтения базы событий
-	this->dispatch.easily(mode);
-	// Если ядро сети уже было запущено, запускаем его
-	if(start) this->start();
-	*/
-}
-/**
  * freeze Метод заморозки чтения данных
  * @param mode флаг активации заморозки чтения данных
  */
 void awh::Core::freeze(const bool mode) noexcept {
 	// Устанавливаем режим заморозки чтения данных
-	// this->dispatch.freeze(mode);
-}
-/**
- * setDefer Метод установки флага отложенных вызовов событий сокета
- * @param mode флаг отложенных вызовов событий сокета
- */
-void awh::Core::setDefer(const bool mode) noexcept {
-	/*
-	// Выполняем блокировку потока
-	const lock_guard <recursive_mutex> lock(this->mtx.main);
-	// Устанавливаем флаг отложенных вызовов событий сокета
-	this->defer = mode;
-	*/
+	this->dispatch.freeze(mode);
 }
 /**
  * setNoInfo Метод установки флага запрета вывода информационных сообщений
  * @param mode флаг запрета вывода информационных сообщений
  */
 void awh::Core::setNoInfo(const bool mode) noexcept {
-	/*
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->mtx.main);
 	// Устанавливаем флаг запрета вывода информационных сообщений
 	this->noinfo = mode;
-	*/
 }
 /**
  * setPersist Метод установки персистентного флага
  * @param mode флаг персистентного запуска каллбека
  */
 void awh::Core::setPersist(const bool mode) noexcept {
-	/*
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->mtx.main);
 	// Выполняем установку флага персистентного запуска каллбека
 	this->persist = mode;
-	*/
 }
 /**
  * setVerifySSL Метод разрешающий или запрещающий, выполнять проверку соответствия, сертификата домену
  * @param mode флаг состояния разрешения проверки
  */
 void awh::Core::setVerifySSL(const bool mode) noexcept {
-	/*
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->mtx.main);
 	// Выполняем установку флага проверки домена
 	this->ssl.setVerify(mode);
-	*/
 }
 /**
  * setMultiThreads Метод активации режима мультипотоковой обработки данных
  * @param mode флаг мультипотоковой обработки
  */
 void awh::Core::setMultiThreads(const bool mode) noexcept {
-	/*
 	// Выполняем блокировку потока
 	this->mtx.main.lock();
 	// Устанавливаем флаг мультипотоковой обработки
@@ -1312,48 +1197,31 @@ void awh::Core::setMultiThreads(const bool mode) noexcept {
 	// Выполняем блокировку потока
 	this->mtx.main.unlock();
 	// Устанавливаем частоту обновления базы событий
-	if(this->multi){
-		// Если частота обновления не активна
-		if(this->dispatch.freq == 0ms)
-			// Устанавливаем частоту обновления
-			this->setFrequency(10);
+	if(this->multi)
 		// Выполняем инициализацию пула потоков
 		this->pool.init();
 	// Выполняем ожидание завершения работы потоков
-	} else this->pool.wait();
-	*/
+	else this->pool.wait();
 }
 /**
  * setPersistInterval Метод установки персистентного таймера
  * @param itv интервал персистентного таймера в миллисекундах
  */
 void awh::Core::setPersistInterval(const time_t itv) noexcept {
-	/*
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->mtx.main);
 	// Устанавливаем интервал персистентного таймера
 	this->persistInterval = itv;
-	*/
-}
-/**
- * setFrequency Метод установки частоты обновления базы событий
- * @param msec частота обновления базы событий в миллисекундах
- */
-void awh::Core::setFrequency(const uint8_t msec) noexcept {
-	// Устанавливаем частоту чтения базы событий
-	// this->dispatch.setFrequency(msec);
 }
 /**
  * setFamily Метод установки тип протокола интернета
  * @param family тип протокола интернета AF_INET или AF_INET6
  */
 void awh::Core::setFamily(const int family) noexcept {
-	/*
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->mtx.main);
 	// Устанавливаем тип активного интернет-подключения
 	this->net.family = family;
-	*/
 }
 /**
  * setCA Метод установки CA-файла корневого SSL сертификата
@@ -1361,12 +1229,10 @@ void awh::Core::setFamily(const int family) noexcept {
  * @param capath адрес каталога где находится CA-файл
  */
 void awh::Core::setCA(const string & cafile, const string & capath) noexcept {
-	/*
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->mtx.main);
 	// Устанавливаем адрес CA-файла
 	this->ssl.setCA(cafile, capath);
-	*/
 }
 /**
  * setNet Метод установки параметров сети
@@ -1375,7 +1241,6 @@ void awh::Core::setCA(const string & cafile, const string & capath) noexcept {
  * @param family тип протокола интернета AF_INET или AF_INET6
  */
 void awh::Core::setNet(const vector <string> & ip, const vector <string> & ns, const int family) noexcept {
-	/*
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->mtx.main);
 	// Устанавливаем тип активного интернет-подключения
@@ -1389,7 +1254,7 @@ void awh::Core::setNet(const vector <string> & ip, const vector <string> & ns, c
 			// Если сервера имён переданы, устанавливаем их
 			if(!ns.empty()) this->net.v4.second.assign(ns.cbegin(), ns.cend());
 			// Выполняем установку нейм-серверов для DNS резолвера IPv4
-			this->dns4.replaceServers(this->net.v4.second);
+			// this->dns4.replaceServers(this->net.v4.second);
 		} break;
 		// Если - это интернет-протокол IPv6
 		case AF_INET6: {
@@ -1398,10 +1263,9 @@ void awh::Core::setNet(const vector <string> & ip, const vector <string> & ns, c
 			// Если сервера имён переданы, устанавливаем их
 			if(!ns.empty()) this->net.v6.second.assign(ns.cbegin(), ns.cend());
 			// Выполняем установку нейм-серверов для DNS резолвера IPv6
-			this->dns6.replaceServers(this->net.v6.second);
+			// this->dns6.replaceServers(this->net.v6.second);
 		} break;
 	}
-	*/
 }
 /**
  * Core Конструктор
@@ -1409,11 +1273,11 @@ void awh::Core::setNet(const vector <string> & ip, const vector <string> & ns, c
  * @param log объект для работы с логами
  */
 awh::Core::Core(const fmk_t * fmk, const log_t * log) noexcept : nwk(fmk), uri(fmk, &nwk), ssl(fmk, log, &uri), /* dns4(fmk, log, &nwk), dns6(fmk, log, &nwk),*/ socket(log), fmk(fmk), log(log) {
-	/*
 	// Создаем новую базу
-	this->base = event_base_new();
+	this->base = ev_default_loop(0);
 	// Если база событий создана
 	if(this->base != nullptr){
+		/*
 		// Добавляем базу событий для DNS резолвера IPv4
 		this->dns4.setBase(this->base);
 		// Добавляем базу событий для DNS резолвера IPv6
@@ -1422,21 +1286,21 @@ awh::Core::Core(const fmk_t * fmk, const log_t * log) noexcept : nwk(fmk), uri(f
 		this->dns4.replaceServers(this->net.v4.second);
 		// Выполняем установку нейм-серверов для DNS резолвера IPv6
 		this->dns6.replaceServers(this->net.v6.second);
+		*/
 		// Выполняем установку базы событий
-		this->dispatch.setBase(&this->base);
+		this->dispatch.setBase(this->base);
 	// Выходим принудительно из приложения
 	} else exit(EXIT_FAILURE);
-	*/
 }
 /**
  * ~Core Деструктор
  */
 awh::Core::~Core() noexcept {
-	/*
 	// Выполняем ожидание завершения работы потоков
 	if(this->multi) this->pool.wait();
 	// Выполняем остановку сервиса
 	this->stop();
+	/*
 	// Выполняем удаление модуля DNS резолвера IPv4
 	this->dns4.remove();
 	// Выполняем удаление модуля DNS резолвера IPv6
@@ -1464,12 +1328,13 @@ awh::Core::~Core() noexcept {
 		// Выполняем разблокировку потока
 		this->mtx.core.unlock();
 	}
+	*/
 	// Выполняем блокировку потока
 	this->mtx.stop.lock();
 	// Если база событий существует
 	if(this->base != nullptr){
 		// Удаляем объект базы событий
-		event_base_free(this->base);
+		ev_loop_destroy(this->base);
 		// Обнуляем базу событий
 		this->base = nullptr;
 	}
@@ -1477,7 +1342,4 @@ awh::Core::~Core() noexcept {
 	this->status = status_t::STOP;
 	// Выполняем разблокировку потока
 	this->mtx.stop.unlock();
-	// Очищаем все глобальные переменные
-	libevent_global_shutdown();
-	*/
 }

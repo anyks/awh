@@ -25,13 +25,7 @@
 #include <string>
 #include <functional>
 #include <unordered_map>
-/*
-#include <event2/util.h>
-#include <event2/event.h>
-#include <event2/buffer.h>
-#include <event2/bufferevent.h>
-#include <event2/event_struct.h>
-*/
+#include <libev/ev++.h>
 
 // Если - это Windows
 #if defined(_WIN32) || defined(_WIN64)
@@ -177,21 +171,16 @@ namespace awh {
 					// Core Устанавливаем дружбу с классом ядра
 					friend class Core;
 				private:
-					// Флаг простого чтения базы событий
-					bool easy;
 					// Флаг разрешения работы
 					bool mode;
 					// Флаг работы модуля
 					bool work;
 				private:
+					// База событий
+					ev::loop_ref base;
+				private:
 					// Мютекс для блокировки потока
 					recursive_mutex mtx;
-				private:
-					// Частота обновления базы событий
-					chrono::milliseconds freq;
-				private:
-					// База данных событий
-					// struct event_base ** base;
 				public:
 					/**
 					 * kick Метод отправки пинка
@@ -211,32 +200,22 @@ namespace awh {
 					 * @param mode флаг активации
 					 */
 					void freeze(const bool mode) noexcept;
-					/**
-					 * easily Метод активации простого режима чтения базы событий
-					 * @param mode флаг активации
-					 */
-					void easily(const bool mode) noexcept;
 				public:
 					/**
 					 * setBase Метод установки базы событий
 					 * @param base база событий
 					 */
-					// void setBase(struct event_base ** base) noexcept;
-					/**
-					 * setFrequency Метод установки частоты обновления базы событий
-					 * @param msec частота обновления базы событий в миллисекундах
-					 */
-					void setFrequency(const uint8_t msec = 10) noexcept;
+					void setBase(struct ev_loop * base) noexcept;
 				public:
 					/**
 					 * Dispatch Конструктор
 					 */
-					Dispatch() noexcept : easy(false), mode(false), work(false), freq(0ms)/*, base(nullptr) */ {}
+					Dispatch() noexcept : mode(false), work(false), base(nullptr) {}
 					/**
 					 * Dispatch Конструктор
 					 * @param base база событий
 					 */
-					// Dispatch(struct event_base ** base) noexcept : easy(false), mode(false), work(false), freq(0ms), base(base) {}
+					Dispatch(struct ev_loop * base) noexcept : mode(false), work(false), base(base) {}
 			} dispatch_t;
 		protected:
 			// Мютекс для блокировки основного потока
@@ -265,9 +244,6 @@ namespace awh {
 			socket_t socket;
 			// Объект для работы с чтением базы событий
 			dispatch_t dispatch;
-		private:
-			// Частота обновления базы событий
-			chrono::milliseconds freq = 0ms;
 		protected:
 			// Тип запускаемого ядра
 			type_t type = type_t::CLIENT;
@@ -284,8 +260,6 @@ namespace awh {
 			// Список подключённых клиентов
 			map <size_t, const worker_t::adj_t *> adjutants;
 		protected:
-			// Флаг отложенных вызовов событий сокета
-			bool defer = true;
 			// Флаг разрешения работы
 			bool mode = false;
 			// Флаг использования многопоточного режима
@@ -309,7 +283,7 @@ namespace awh {
 			const log_t * log = nullptr;
 		protected:
 			// База данных событий
-			// struct event_base * base = nullptr;
+			struct ev_loop * base = nullptr;
 		protected:
 			// Функция обратного вызова при запуске/остановке модуля
 			function <void (const bool, Core * core, void *)> callbackFn = nullptr;
@@ -338,7 +312,7 @@ namespace awh {
 			 * clean Метод буфера событий
 			 * @param bev буфер событий для очистки
 			 */
-			// void clean(struct bufferevent ** bev) noexcept;
+			void clean(worker_t::bev_t & bev) noexcept;
 		protected:
 			/**
 			 * sockaddr Метод создания адресного пространства сокета
@@ -492,21 +466,11 @@ namespace awh {
 			u_short setInterval(void * ctx, const time_t delay, function <void (const u_short, Core *, void *)> callback) noexcept;
 		public:
 			/**
-			 * easily Метод активации простого режима чтения базы событий
-			 * @param mode флаг активации простого чтения базы событий
-			 */
-			void easily(const bool mode) noexcept;
-			/**
 			 * freeze Метод заморозки чтения данных
 			 * @param mode флаг активации заморозки чтения данных
 			 */
 			void freeze(const bool mode) noexcept;
 		public:
-			/**
-			 * setDefer Метод установки флага отложенных вызовов событий сокета
-			 * @param mode флаг отложенных вызовов событий сокета
-			 */
-			void setDefer(const bool mode) noexcept;
 			/**
 			 * setNoInfo Метод установки флага запрета вывода информационных сообщений
 			 * @param mode флаг запрета вывода информационных сообщений
@@ -532,11 +496,6 @@ namespace awh {
 			 * @param itv интервал персистентного таймера в миллисекундах
 			 */
 			void setPersistInterval(const time_t itv) noexcept;
-			/**
-			 * setFrequency Метод установки частоты обновления базы событий
-			 * @param msec частота обновления базы событий в миллисекундах
-			 */
-			void setFrequency(const uint8_t msec = 10) noexcept;
 			/**
 			 * setFamily Метод установки тип протокола интернета
 			 * @param family тип протокола интернета AF_INET или AF_INET6

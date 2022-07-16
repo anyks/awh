@@ -45,7 +45,6 @@ int main(int argc, char * argv[]) noexcept {
 	 * 3. Устанавливаем валидацию SSL сертификата
 	 */
 	rest.setMode(
-		(uint8_t) client::rest_t::flag_t::DEFER |
 		// (uint8_t) client::rest_t::flag_t::NOINFO |
 		(uint8_t) client::rest_t::flag_t::WAITMESS |
 		(uint8_t) client::rest_t::flag_t::VERIFYSSL

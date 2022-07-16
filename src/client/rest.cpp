@@ -1335,8 +1335,6 @@ void awh::client::Rest::setMode(const u_short flag) noexcept {
 	this->worker.wait = (flag & (uint8_t) flag_t::WAITMESS);
 	// Устанавливаем флаг поддержания автоматического подключения
 	this->worker.alive = (flag & (uint8_t) flag_t::KEEPALIVE);
-	// Устанавливаем флаг отложенных вызовов событий сокета
-	const_cast <client::core_t *> (this->core)->setDefer(flag & (uint8_t) flag_t::DEFER);
 	// Устанавливаем флаг запрещающий вывод информационных сообщений
 	const_cast <client::core_t *> (this->core)->setNoInfo(flag & (uint8_t) flag_t::NOINFO);
 	// Выполняем установку флага проверки домена

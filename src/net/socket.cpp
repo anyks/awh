@@ -16,81 +16,30 @@
 #include <net/socket.hpp>
 
 /**
- * Методы только для OS Windows
- */
-#if defined(_WIN32) || defined(_WIN64)
-/**
- * keepAlive Метод устанавливает постоянное подключение на сокет
- * @param fd файловый дескриптор (сокет)
- * @return   результат работы функции
- */
-int awh::Socket::keepAlive(const int fd) const noexcept {
-	// Результат работы функции
-	int result = -1;
-	{
-		// Флаг устанавливаемой опции KeepAlive
-		bool option = false;
-		// Устанавливаем опцию сокета KeepAlive
-		result = setsockopt(fd, SOL_SOCKET, SO_KEEPALIVE, (char *) &option, sizeof(option));
-		// Если мы получили ошибку, выходим сообщение
-		if(result == SOCKET_ERROR){
-			// Выводим в лог информацию
-			this->log->print("setsockopt for SO_KEEPALIVE failed with error: %u", log_t::flag_t::CRITICAL, WSAGetLastError());
-			// Выходим
-			return -1;
-		}
-	}{
-		// Флаг получения устанавливаемой опции KeepAlive
-		int option = 0;
-		// Размер флага опции KeepAlive
-		int size = sizeof(option);
-		// Получаем опцию сокета KeepAlive
-		result = getsockopt(fd, SOL_SOCKET, SO_KEEPALIVE, (char *) &option, &size);
-		// Если мы получили ошибку, выходим сообщение
-		if(result == SOCKET_ERROR){
-			// Выводим в лог информацию
-			this->log->print("getsockopt for SO_KEEPALIVE failed with error: %u", log_t::flag_t::CRITICAL, WSAGetLastError());
-			// Выходим
-			return -1;
-		}
-	}
-	// Выводим результат
-	return result;
-}
-/**
- * nonBlocking Метод установки неблокирующего сокета
- * @param fd файловый дескриптор (сокет)
- */
-void awh::Socket::nonBlocking(const int fd) const noexcept {
-	// Флаг режима
-	u_long mode = 0;
-	// Отключаем неблокирующий режим у сокета
-	ioctlsocket(fd, FIONBIO, &mode);
-}
-/**
- * Методы только для *Nix
- */
-#else
-/**
  * noSigill Метод блокировки сигнала SIGILL
  * @return результат работы функции
  */
 int awh::Socket::noSigill() const noexcept {
-	// Создаем структуру активации сигнала
-	struct sigaction act;
-	// Зануляем структуру
-	memset(&act, 0, sizeof(act));
-	// Устанавливаем макрос игнорирования сигнала
-	act.sa_handler = SIG_IGN;
-	// Устанавливаем флаги перезагрузки
-	act.sa_flags = (SA_ONSTACK | SA_RESTART | SA_SIGINFO);
-	// Устанавливаем блокировку сигнала
-	if(sigaction(SIGILL, &act, nullptr)){
-		// Выводим в лог информацию
-		this->log->print("%s", log_t::flag_t::CRITICAL, "cannot set SIG_IGN on signal SIGILL");
-		// Выходим
-		return -1;
-	}
+	/**
+	 * Методы только не для OS Windows
+	 */
+	#if !defined(_WIN32) && !defined(_WIN64)
+		// Создаем структуру активации сигнала
+		struct sigaction act;
+		// Зануляем структуру
+		memset(&act, 0, sizeof(act));
+		// Устанавливаем макрос игнорирования сигнала
+		act.sa_handler = SIG_IGN;
+		// Устанавливаем флаги перезагрузки
+		act.sa_flags = (SA_ONSTACK | SA_RESTART | SA_SIGINFO);
+		// Устанавливаем блокировку сигнала
+		if(sigaction(SIGILL, &act, nullptr)){
+			// Выводим в лог информацию
+			this->log->print("%s", log_t::flag_t::CRITICAL, "cannot set SIG_IGN on signal SIGILL");
+			// Выходим
+			return -1;
+		}
+	#endif
 	// Все удачно
 	return 0;
 }
@@ -165,97 +114,25 @@ int awh::Socket::noSigpipe(const int fd) const noexcept {
 	return 0;
 }
 /**
- * nonBlocking Метод установки неблокирующего сокета
- * @param fd файловый дескриптор (сокет)
- * @return   результат работы функции
- */
-int awh::Socket::nonBlocking(const int fd) const noexcept {
-	// Получаем флаги файлового дескриптора
-	int flags = fcntl(fd, F_GETFL);
-	// Если флаги не установлены, выходим
-	if(flags < 0) return flags;
-	// Устанавливаем флаг, запрещающий блокировку файлового дескриптора
-	flags |= O_NONBLOCK;
-	// Устанавливаем неблокирующий режим
-	if(fcntl(fd, F_SETFL, flags) < 0){
-		// Выводим в лог информацию
-		this->log->print("cannot set NON_BLOCK option on socket %d", log_t::flag_t::CRITICAL, fd);
-		// Выходим
-		return -1;
-	}
-	// Все удачно
-	return 0;
-}
-/**
- * keepAlive Метод устанавливает постоянное подключение на сокет
- * @param fd    файловый дескриптор (сокет)
- * @param cnt   максимальное количество попыток
- * @param idle  время через которое происходит проверка подключения
- * @param intvl время между попытками
- * @return      результат работы функции
- */
-int awh::Socket::keepAlive(const int fd, const int cnt, const int idle, const int intvl) const noexcept {
-	// Устанавливаем параметр
-	int keepAlive = 1;
-	// Активация постоянного подключения
-	if(setsockopt(fd, SOL_SOCKET, SO_KEEPALIVE, &keepAlive, sizeof(int))){
-		// Выводим в лог информацию
-		this->log->print("cannot set SO_KEEPALIVE option on socket %d", log_t::flag_t::CRITICAL, fd);
-		// Выходим
-		return -1;
-	}
-	// Максимальное количество попыток
-	if(setsockopt(fd, IPPROTO_TCP, TCP_KEEPCNT, &cnt, sizeof(int))){
-		// Выводим в лог информацию
-		this->log->print("cannot set TCP_KEEPCNT option on socket %d", log_t::flag_t::CRITICAL, fd);
-		// Выходим
-		return -1;
-	}
-	// Если - это MacOS X
-	#ifdef __APPLE__
-		// Время через которое происходит проверка подключения
-		if(setsockopt(fd, IPPROTO_TCP, TCP_KEEPALIVE, &idle, sizeof(int))){
-			// Выводим в лог информацию
-			this->log->print("cannot set TCP_KEEPALIVE option on socket %d", log_t::flag_t::CRITICAL, fd);
-			// Выходим
-			return -1;
-		}
-	// Если - это FreeBSD или Linux
-	#elif __linux__ || __FreeBSD__
-		// Время через которое происходит проверка подключения
-		if(setsockopt(fd, IPPROTO_TCP, TCP_KEEPIDLE, &idle, sizeof(int))){
-			// Выводим в лог информацию
-			this->log->print("cannot set TCP_KEEPIDLE option on socket %d", log_t::flag_t::CRITICAL, fd);
-			// Выходим
-			return -1;
-		}
-	#endif
-	// Время между попытками
-	if(setsockopt(fd, IPPROTO_TCP, TCP_KEEPINTVL, &intvl, sizeof(int))){
-		// Выводим в лог информацию
-		this->log->print("cannot set TCP_KEEPINTVL option on socket %d", log_t::flag_t::CRITICAL, fd);
-		// Выходим
-		return -1;
-	}
-	// Все удачно
-	return 0;
-}
-#endif
-/**
  * reuseable Метод разрешающая повторно использовать сокет после его удаления
  * @param fd файловый дескриптор (сокет)
  * @return   результат работы функции
  */
 int awh::Socket::reuseable(const int fd) const noexcept {
-	// Устанавливаем параметр
-	int reuseaddr = 1;
-	// Разрешаем повторно использовать тот же host:port после отключения
-	if(setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, (char *) &reuseaddr, sizeof(reuseaddr)) < 0){
-		// Выводим в лог информацию
-		this->log->print("cannot set SO_REUSEADDR option on socket %d", log_t::flag_t::CRITICAL, fd);
-		// Выходим
-		return -1;
-	}
+	/**
+	 * Методы только не для OS Windows
+	 */
+	#if !defined(_WIN32) && !defined(_WIN64)
+		// Устанавливаем параметр
+		int reuseaddr = 1;
+		// Разрешаем повторно использовать тот же host:port после отключения
+		if(setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, (char *) &reuseaddr, sizeof(reuseaddr)) < 0){
+			// Выводим в лог информацию
+			this->log->print("cannot set SO_REUSEADDR option on socket %d", log_t::flag_t::CRITICAL, fd);
+			// Выходим
+			return -1;
+		}
+	#endif
 	// Все удачно
 	return 0;
 }
@@ -278,6 +155,87 @@ int awh::Socket::tcpNodelay(const int fd) const noexcept {
 	return 0;
 }
 /**
+ * closeonexec Метод разрешения закрывать сокет, после запуска
+ * @param fd файловый дескриптор (сокет)
+ * @return   результат работы функции
+ */
+int awh::Socket::closeonexec(const int fd) const noexcept {
+	/**
+	 * Методы только не для OS Windows
+	 */
+	#if !defined(_WIN32) && !defined(_WIN64)
+		// Флаги файлового дескриптора
+		int flags = 0;
+		// Получаем флаги файлового дескриптора 
+		if((flags = fcntl(fd, F_GETFD, nullptr)) < 0){
+			// Выводим в лог информацию
+			this->log->print("cannot set CLOSE_ON_EXEC option on socket %d", log_t::flag_t::CRITICAL, fd);
+			// Выходим
+			return -1;
+		}
+		// Если флаг ещё не установлен
+		if(!(flags & FD_CLOEXEC)){
+			// Устанавливаем флаги для файлового дескриптора
+			if(fcntl(fd, F_SETFD, flags | FD_CLOEXEC) == -1){
+				// Выводим в лог информацию
+				this->log->print("cannot set CLOSE_ON_EXEC option on socket %d", log_t::flag_t::CRITICAL, fd);
+				// Выходим
+				return -1;
+			}
+		}
+	#endif
+	// Все удачно
+	return 0;
+}
+/**
+ * nonBlocking Метод установки неблокирующего сокета
+ * @param fd файловый дескриптор (сокет)
+ * @return   результат работы функции
+ */
+int awh::Socket::nonBlocking(const int fd) const noexcept {
+	/**
+	 * Методы только для OS Windows
+	 */
+	#if defined(_WIN32) || defined(_WIN64)
+		{
+			// Формируем флаг разблокировки
+			u_long nonblocking = 1;
+			// Выполняем разблокировку сокета
+			if(ioctlsocket(fd, FIONBIO, &nonblocking) == SOCKET_ERROR){
+				// Выводим в лог информацию
+				this->log->print("cannot set NON_BLOCK option on socket %d", log_t::flag_t::CRITICAL, fd);
+				// Выходим
+				return -1;
+			}
+		}
+	// Для всех остальных операционных систем
+	#else
+		{
+			// Флаги файлового дескриптора
+			int flags = 0;
+			// Получаем флаги файлового дескриптора
+			if((flags = fcntl(fd, F_GETFL, nullptr)) < 0){
+				// Выводим в лог информацию
+				this->log->print("cannot set NON_BLOCK option on socket %d", log_t::flag_t::CRITICAL, fd);
+				// Выходим
+				return -1;
+			}
+			// Если флаг ещё не установлен
+			if(!(flags & O_NONBLOCK)){
+				// Устанавливаем неблокирующий режим
+				if(fcntl(fd, F_SETFL, flags | O_NONBLOCK) == -1){
+					// Выводим в лог информацию
+					this->log->print("cannot set NON_BLOCK option on socket %d", log_t::flag_t::CRITICAL, fd);
+					// Выходим
+					return -1;
+				}
+			}
+		}
+	#endif
+	// Все удачно
+	return 0;
+}
+/**
  * ipV6only Метод включающая или отключающая режим отображения IPv4 на IPv6
  * @param fd   файловый дескриптор (сокет)
  * @param mode активация или деактивация режима
@@ -295,6 +253,98 @@ int awh::Socket::ipV6only(const int fd, const bool mode) const noexcept {
 	}
 	// Все удачно
 	return 0;
+}
+/**
+ * keepAlive Метод устанавливает постоянное подключение на сокет
+ * @param fd    файловый дескриптор (сокет)
+ * @param cnt   максимальное количество попыток
+ * @param idle  время через которое происходит проверка подключения
+ * @param intvl время между попытками
+ * @return      результат работы функции
+ */
+int awh::Socket::keepAlive(const int fd, const int cnt, const int idle, const int intvl) const noexcept {
+	// Результат работы функции
+	int result = 0;
+	/**
+	 * Методы только для OS Windows
+	 */
+	#if defined(_WIN32) || defined(_WIN64)
+		{
+			// Флаг устанавливаемой опции KeepAlive
+			bool option = false;
+			// Устанавливаем опцию сокета KeepAlive
+			result = setsockopt(fd, SOL_SOCKET, SO_KEEPALIVE, (char *) &option, sizeof(option));
+			// Если мы получили ошибку, выходим сообщение
+			if(result == SOCKET_ERROR){
+				// Выводим в лог информацию
+				this->log->print("setsockopt for SO_KEEPALIVE failed with error: %u", log_t::flag_t::CRITICAL, WSAGetLastError());
+				// Выходим
+				return -1;
+			}
+		}{
+			// Флаг получения устанавливаемой опции KeepAlive
+			int option = 0;
+			// Размер флага опции KeepAlive
+			int size = sizeof(option);
+			// Получаем опцию сокета KeepAlive
+			result = getsockopt(fd, SOL_SOCKET, SO_KEEPALIVE, (char *) &option, &size);
+			// Если мы получили ошибку, выходим сообщение
+			if(result == SOCKET_ERROR){
+				// Выводим в лог информацию
+				this->log->print("getsockopt for SO_KEEPALIVE failed with error: %u", log_t::flag_t::CRITICAL, WSAGetLastError());
+				// Выходим
+				return -1;
+			}
+		}
+	/**
+	 * Методы только для *Nix
+	 */
+	#else
+		// Устанавливаем параметр
+		int keepAlive = 1;
+		// Активация постоянного подключения
+		if(setsockopt(fd, SOL_SOCKET, SO_KEEPALIVE, &keepAlive, sizeof(int))){
+			// Выводим в лог информацию
+			this->log->print("cannot set SO_KEEPALIVE option on socket %d", log_t::flag_t::CRITICAL, fd);
+			// Выходим
+			return -1;
+		}
+		// Максимальное количество попыток
+		if(setsockopt(fd, IPPROTO_TCP, TCP_KEEPCNT, &cnt, sizeof(int))){
+			// Выводим в лог информацию
+			this->log->print("cannot set TCP_KEEPCNT option on socket %d", log_t::flag_t::CRITICAL, fd);
+			// Выходим
+			return -1;
+		}
+		// Если - это MacOS X
+		#ifdef __APPLE__
+			// Время через которое происходит проверка подключения
+			if(setsockopt(fd, IPPROTO_TCP, TCP_KEEPALIVE, &idle, sizeof(int))){
+				// Выводим в лог информацию
+				this->log->print("cannot set TCP_KEEPALIVE option on socket %d", log_t::flag_t::CRITICAL, fd);
+				// Выходим
+				return -1;
+			}
+		// Если - это FreeBSD или Linux
+		#elif __linux__ || __FreeBSD__
+			// Время через которое происходит проверка подключения
+			if(setsockopt(fd, IPPROTO_TCP, TCP_KEEPIDLE, &idle, sizeof(int))){
+				// Выводим в лог информацию
+				this->log->print("cannot set TCP_KEEPIDLE option on socket %d", log_t::flag_t::CRITICAL, fd);
+				// Выходим
+				return -1;
+			}
+		#endif
+		// Время между попытками
+		if(setsockopt(fd, IPPROTO_TCP, TCP_KEEPINTVL, &intvl, sizeof(int))){
+			// Выводим в лог информацию
+			this->log->print("cannot set TCP_KEEPINTVL option on socket %d", log_t::flag_t::CRITICAL, fd);
+			// Выходим
+			return -1;
+		}
+	#endif
+	// Выводим результат
+	return result;
 }
 /**
  * bufferSize Метод установки размеров буфера

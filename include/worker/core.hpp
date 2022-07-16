@@ -21,7 +21,7 @@
 #include <map>
 #include <mutex>
 #include <string>
-// #include <event2/bufferevent.h>
+#include <libev/ev++.h>
 
 /**
  * Наши модули
@@ -78,6 +78,18 @@ namespace awh {
 			friend class server::Core;
 		public:
 			/**
+			 * BufferEvent Структура буфера событий
+			 */
+			typedef struct BufferEvent {
+				int socket;   // Активный сокет
+				ev::io read;  // Буфер на чтение
+				ev::io write; // Буфер на запись
+				/**
+				 * BufferEvent Конструктор
+				 */
+				BufferEvent() : socket(-1) {}
+			} bev_t;
+			/**
 			 * Mark Структура маркера на размер детектируемых байт
 			 */
 			typedef struct Mark {
@@ -119,6 +131,9 @@ namespace awh {
 						Chunks() : end(false), count(0), index(0) {}
 					} chunks_t;
 				private:
+					// Объект буфера событий
+					bev_t bev;
+				private:
 					// Маркера размера детектируемых байт на чтение
 					mark_t markRead;
 					// Маркера размера детектируемых байт на запись
@@ -144,9 +159,6 @@ namespace awh {
 					time_t timeRead = READ_TIMEOUT;
 					// Таймер на запись в секундах
 					time_t timeWrite = WRITE_TIMEOUT;
-				private:
-					// Объект буфера событий
-					// struct bufferevent * bev = nullptr;
 				public:
 					// Создаём объект фреймворка
 					const fmk_t * fmk = nullptr;
