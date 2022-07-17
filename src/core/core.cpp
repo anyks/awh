@@ -176,36 +176,43 @@ void awh::Core::persistent(ev::periodic & timer, int revents) noexcept {
 }
 /**
  * clean Метод буфера событий
- * @param bev буфер событий для очистки
+ * @param aid идентификатор адъютанта
  */
-void awh::Core::clean(worker_t::bev_t & bev) noexcept {
-	// Выполняем остановку таймера на чтение данных
-	bev.timer.read.stop();
-	// Выполняем остановку таймера на запись данных
-	bev.timer.write.stop();
-	// Выполняем остановку чтения буфера событий
-	bev.event.read.stop();
-	// Выполняем остановку записи буфера событий
-	bev.event.write.stop();
-	// Выполняем блокировку на чтение/запись данных
-	bev.locked = worker_t::locked_t();
-	// Если сокет активен
-	if(bev.socket > 0){
-		// Если - это Windows
-		#if defined(_WIN32) || defined(_WIN64)
-			// Запрещаем работу с сокетом
-			shutdown(bev.socket, SD_BOTH);
-			// Выполняем закрытие сокета
-			closesocket(bev.socket);
-		// Если - это Unix
-		#else
-			// Запрещаем работу с сокетом
-			shutdown(bev.socket, SHUT_RDWR);
-			// Выполняем закрытие сокета
-			close(bev.socket);
-		#endif
-		// Выполняем сброс сокета
-		bev.socket = -1;
+void awh::Core::clean(const size_t aid) const noexcept {
+	// Выполняем извлечение адъютанта
+	auto it = this->adjutants.find(aid);
+	// Если адъютант получен
+	if(it != this->adjutants.end()){
+		// Получаем объект адъютанта
+		awh::worker_t::adj_t * adj = const_cast <awh::worker_t::adj_t *> (it->second);
+		// Выполняем остановку таймера на чтение данных
+		adj->bev.timer.read.stop();
+		// Выполняем остановку таймера на запись данных
+		adj->bev.timer.write.stop();
+		// Выполняем остановку чтения буфера событий
+		adj->bev.event.read.stop();
+		// Выполняем остановку записи буфера событий
+		adj->bev.event.write.stop();
+		// Выполняем блокировку на чтение/запись данных
+		adj->bev.locked = worker_t::locked_t();
+		// Если сокет активен
+		if(adj->bev.socket > 0){
+			// Если - это Windows
+			#if defined(_WIN32) || defined(_WIN64)
+				// Запрещаем работу с сокетом
+				shutdown(adj->bev.socket, SD_BOTH);
+				// Выполняем закрытие сокета
+				closesocket(adj->bev.socket);
+			// Если - это Unix
+			#else
+				// Запрещаем работу с сокетом
+				shutdown(adj->bev.socket, SHUT_RDWR);
+				// Выполняем закрытие сокета
+				::close(adj->bev.socket);
+			#endif
+			// Выполняем сброс сокета
+			adj->bev.socket = -1;
+		}
 	}
 }
 /**

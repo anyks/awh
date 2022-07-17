@@ -322,9 +322,9 @@ namespace awh {
 		protected:
 			/**
 			 * clean Метод буфера событий
-			 * @param bev буфер событий для очистки
+			 * @param aid идентификатор адъютанта
 			 */
-			void clean(worker_t::bev_t & bev) noexcept;
+			void clean(const size_t aid) const noexcept;
 		protected:
 			/**
 			 * sockaddr Метод создания адресного пространства сокета

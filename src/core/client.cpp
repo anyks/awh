@@ -568,7 +568,7 @@ void awh::client::Core::connect(const size_t wid) noexcept {
 							// Выполняем блокировку буфера бинарного чанка данных
 							it->second->end();
 							// Выполняем очистку буфера событий
-							this->clean(it->second->bev);
+							this->clean(it->first);
 							// Выполняем удаление контекста SSL
 							this->ssl.clear(it->second->ssl);
 							// Удаляем адъютанта из списка подключений
@@ -1030,7 +1030,7 @@ void awh::client::Core::close() noexcept {
 						// Выполняем блокировку буфера бинарного чанка данных
 						it->second->end();
 						// Выполняем очистку буфера событий
-						this->clean(it->second->bev);
+						this->clean(it->first);
 						// Выполняем удаление контекста SSL
 						this->ssl.clear(it->second->ssl);
 						// Удаляем адъютанта из списка подключений
@@ -1102,7 +1102,7 @@ void awh::client::Core::remove() noexcept {
 						// Выполняем блокировку буфера бинарного чанка данных
 						adj->end();
 						// Выполняем очистку буфера событий
-						this->clean(adj->bev);
+						this->clean(jt->first);
 						// Выполняем удаление контекста SSL
 						this->ssl.clear(adj->ssl);
 						// Удаляем адъютанта из списка подключений
@@ -1240,7 +1240,7 @@ void awh::client::Core::close(const size_t aid) noexcept {
 			// Выполняем блокировку буфера бинарного чанка данных
 			adj->end();
 			// Выполняем очистку буфера событий
-			this->clean(adj->bev);
+			this->clean(it->first);
 			// Удаляем установленный таймаут, если он существует
 			this->clearTimeout(wrk->wid);
 			// Если прокси-сервер активирован но уже переключён на работу с сервером
