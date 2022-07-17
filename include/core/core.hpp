@@ -25,6 +25,7 @@
 #include <string>
 #include <functional>
 #include <unordered_map>
+#include <errno.h>
 #include <libev/ev++.h>
 
 // Если - это Windows
@@ -417,6 +418,13 @@ namespace awh {
 			 * rebase Метод пересоздания базы событий
 			 */
 			void rebase() noexcept;
+		protected:
+			/**
+			 * error Метод вывода описание ошибок
+			 * @param bytes количество записанных/прочитанных байт в сокет
+			 * @param aid   идентификатор адъютанта
+			 */
+			void error(const int64_t bytes, const size_t aid) const noexcept;
 		public:
 			/**
 			 * write Метод записи буфера данных воркером

@@ -21,8 +21,9 @@
  * @param revents идентификатор события
  */
 void awh::worker_t::adj_t::read(ev::io & watcher, int revents) noexcept {
-	// Останавливаем таймаут ожидания на чтение из сокета
-	this->bev.timer.read.stop();
+
+	cout << " +++++++++++++++++++READ " << endl;
+
 	// Если разрешено выполнять чтения данных из сокета
 	if(!this->bev.locked.read){
 		// Получаем объект подключения
@@ -33,24 +34,34 @@ void awh::worker_t::adj_t::read(ev::io & watcher, int revents) noexcept {
 		if(wrk->status.real == client::worker_t::mode_t::CONNECT){
 			// Если подключение ещё существует
 			if((wrk->acquisition = (core->adjutants.count(this->aid) > 0))){
+				// Количество полученных байт
+				int64_t bytes = -1;
 				// Создаём буфер входящих данных
 				char buffer[BUFFER_SIZE];
+				// Останавливаем таймаут ожидания на чтение из сокета
+				this->bev.timer.read.stop();
 				// Выполняем чтение всех данных из сокета
 				while(true){
 					// Выполняем зануление буфера
 					memset(buffer, 0, sizeof(buffer));
+					// Если SSL клиент разрешён
+					if(this->ssl.mode)
+						// Выполняем чтение из защищённого сокета
+						bytes = SSL_read(this->ssl.ssl, buffer, sizeof(buffer));
 					// Выполняем чтение данных из сокета
-					const int64_t size = recv(this->bev.socket, buffer, sizeof(buffer), 0);
+					else bytes = recv(this->bev.socket, buffer, sizeof(buffer), 0);
+					// Останавливаем таймаут ожидания на чтение из сокета
+					this->bev.timer.read.stop();
 					// Если данные получены
-					if(size > 0){
+					if(bytes > 0){
 						// Если данные считанные из буфера, больше размера ожидающего буфера
-						if(size >= this->markWrite.max){
+						if((this->markWrite.max > 0) && (bytes >= this->markWrite.max)){
 							// Смещение в буфере и отправляемый размер данных
 							size_t offset = 0, actual = 0;
 							// Выполняем пересылку всех полученных данных
-							while((size - offset) > 0){
+							while((bytes - offset) > 0){
 								// Определяем размер отправляемых данных
-								actual = ((size - offset) >= this->markWrite.max ? this->markWrite.max : (size - offset));
+								actual = ((bytes - offset) >= this->markWrite.max ? this->markWrite.max : (bytes - offset));
 								// Если включён мультипоточный режим
 								if(core->multi){
 									// Добавляем буфер бинарного чанка данных
@@ -78,7 +89,7 @@ void awh::worker_t::adj_t::read(ev::io & watcher, int revents) noexcept {
 							// Если включён мультипоточный режим
 							if(core->multi){
 								// Добавляем буфер бинарного чанка данных
-								this->add(buffer, size);
+								this->add(buffer, bytes);
 								// Добавляем полученные данные буфера в пул потоков
 								const_cast <client::core_t *> (core)->pool.push(&awh::worker_t::adj_t::thread, ref(* this), ref(* wrk));
 							// Если мультипоточный режим не включён
@@ -88,29 +99,34 @@ void awh::worker_t::adj_t::read(ev::io & watcher, int revents) noexcept {
 									// Если функция обратного вызова для вывода записи существует
 									if(wrk->readProxyFn != nullptr)
 										// Выводим функцию обратного вызова
-										wrk->readProxyFn(buffer, size, this->aid, wrk->wid, const_cast <awh::core_t *> (wrk->core), wrk->ctx);
+										wrk->readProxyFn(buffer, bytes, this->aid, wrk->wid, const_cast <awh::core_t *> (wrk->core), wrk->ctx);
 								// Если прокси-сервер не используется
 								} else if(wrk->readFn != nullptr)
 									// Выводим функцию обратного вызова
-									wrk->readFn(buffer, size, this->aid, wrk->wid, const_cast <awh::core_t *> (wrk->core), wrk->ctx);
+									wrk->readFn(buffer, bytes, this->aid, wrk->wid, const_cast <awh::core_t *> (wrk->core), wrk->ctx);
 							}
 						}
+						// Если время ожидания записи данных установлено
+						if(this->timeRead > 0)
+							// Запускаем ожидание чтения данных с сервера
+							this->bev.timer.read.start(this->timeRead);
 					// Если данные не могут быть прочитаны
-					} else if(size < 0) {
+					} else {
+						// Выполняем обработку ошибок
+						core->error(bytes, this->aid);
 						// Выполняем отключение от сервера
 						const_cast <client::core_t *> (core)->close(this->aid);
 						// Выходим из цикла
 						break;
-					// Выходим из цикла
-					} else break;
+					}
 				}
+				// Выходим из функции
+				return;
 			}
 		}
 	}
-	// Если время ожидания записи данных установлено
-	if(this->timeRead > 0)
-		// Запускаем ожидание чтения данных с сервера
-		this->bev.timer.read.start(this->timeRead / (float) 1000.f);
+	// Останавливаем таймаут ожидания на чтение из сокета
+	this->bev.timer.read.stop();
 }
 /**
  * write Функция обратного вызова при записи данных в сокет
@@ -118,8 +134,6 @@ void awh::worker_t::adj_t::read(ev::io & watcher, int revents) noexcept {
  * @param revents идентификатор события
  */
 void awh::worker_t::adj_t::write(ev::io & watcher, int revents) noexcept {
-	// Останавливаем таймаут ожидания на запись в сокет
-	this->bev.timer.write.stop();
 	// Если разрешено выполнять запись данных в сокет
 	if(!this->bev.locked.write){
 		// Получаем объект подключения
@@ -130,24 +144,34 @@ void awh::worker_t::adj_t::write(ev::io & watcher, int revents) noexcept {
 		if(wrk->status.real == client::worker_t::mode_t::CONNECT){
 			// Если подключение ещё существует
 			if((wrk->acquisition = (core->adjutants.count(this->aid) > 0))){
+				// Количество отправленных байт
+				int64_t bytes = -1;
 				// Создаём буфер входящих данных
 				char buffer[BUFFER_SIZE];
+				// Останавливаем таймаут ожидания на запись в сокет
+				this->bev.timer.write.stop();
 				// Выполняем чтение всех данных из сокета
 				while(true){
 					// Выполняем зануление буфера
 					memset(buffer, 0, sizeof(buffer));
+					// Если SSL клиент разрешён
+					if(this->ssl.mode)
+						// Выполняем чтение из защищённого сокета
+						bytes = SSL_read(this->ssl.ssl, buffer, sizeof(buffer));
 					// Выполняем чтение данных из сокета
-					const int64_t size = recv(this->bev.socket, buffer, sizeof(buffer), 0);
+					else bytes = recv(this->bev.socket, buffer, sizeof(buffer), 0);
+					// Останавливаем таймаут ожидания на запись в сокет
+					this->bev.timer.write.stop();
 					// Если данные получены
-					if(size > 0){
+					if(bytes > 0){
 						// Если данные считанные из буфера, больше размера ожидающего буфера
-						if(size >= this->markWrite.max){
+						if((this->markWrite.max > 0) && (bytes >= this->markWrite.max)){
 							// Смещение в буфере и отправляемый размер данных
 							size_t offset = 0, actual = 0;
 							// Выполняем пересылку всех полученных данных
-							while((size - offset) > 0){
+							while((bytes - offset) > 0){
 								// Определяем размер отправляемых данных
-								actual = ((size - offset) >= this->markWrite.max ? this->markWrite.max : (size - offset));
+								actual = ((bytes - offset) >= this->markWrite.max ? this->markWrite.max : (bytes - offset));
 								// Если подключение производится через, прокси-сервер
 								if(wrk->isProxy()){
 									// Если функция обратного вызова для вывода записи существует
@@ -168,28 +192,33 @@ void awh::worker_t::adj_t::write(ev::io & watcher, int revents) noexcept {
 								// Если функция обратного вызова для вывода записи существует
 								if(wrk->writeProxyFn != nullptr)
 									// Выводим функцию обратного вызова
-									wrk->writeProxyFn(buffer, size, this->aid, wrk->wid, const_cast <awh::core_t *> (wrk->core), wrk->ctx);
+									wrk->writeProxyFn(buffer, bytes, this->aid, wrk->wid, const_cast <awh::core_t *> (wrk->core), wrk->ctx);
 							// Если прокси-сервер не используется
 							} else if(wrk->writeFn != nullptr)
 								// Выводим функцию обратного вызова
-								wrk->writeFn(buffer, size, this->aid, wrk->wid, const_cast <awh::core_t *> (wrk->core), wrk->ctx);
+								wrk->writeFn(buffer, bytes, this->aid, wrk->wid, const_cast <awh::core_t *> (wrk->core), wrk->ctx);
 						}
+						// Если время ожидания записи данных установлено
+						if(this->timeWrite > 0)
+							// Запускаем ожидание записи данных на сервер
+							this->bev.timer.write.start(this->timeWrite);
 					// Если данные не могут быть прочитаны
-					} else if(size < 0) {
+					} else {
+						// Выполняем обработку ошибок
+						core->error(bytes, this->aid);
 						// Выполняем отключение от сервера
 						const_cast <client::core_t *> (core)->close(this->aid);
 						// Выходим из цикла
 						break;
-					// Выходим из цикла
-					} else break;
+					}
 				}
+				// Выходим из функции
+				return;
 			}
 		}
-		// Если время ожидания записи данных установлено
-		if(this->timeWrite > 0)
-			// Запускаем ожидание записи данных на сервер
-			this->bev.timer.write.start(this->timeWrite / (float) 1000.f);
 	}
+	// Останавливаем таймаут ожидания на запись в сокет
+	this->bev.timer.write.stop();
 }
 /**
  * connect Функция обратного вызова при подключении к серверу
@@ -251,39 +280,41 @@ void awh::worker_t::adj_t::connect(ev::io & watcher, int revents) noexcept {
 				// Устанавливаем сокет для записи
 				this->bev.event.read.set(this->bev.socket, ev::READ);
 				// Устанавливаем сокет для записи
-				this->bev.event.write.set(this->bev.socket, ev::WRITE);
-				// Устанавливаем событие на чтение данных подключения
-				this->bev.event.read.set <awh::worker_t::adj_t, &awh::worker_t::adj_t::read> (this);
-				// Устанавливаем событие на запись данных подключения
-				this->bev.event.write.set <awh::worker_t::adj_t, &awh::worker_t::adj_t::write> (this);
+				// this->bev.event.write.set(this->bev.socket, ev::WRITE);
 				// Устанавливаем базу событий
 				this->bev.event.read.set(const_cast <client::core_t *> (core)->base);
 				// Устанавливаем базу событий
-				this->bev.event.write.set(const_cast <client::core_t *> (core)->base);
+				// this->bev.event.write.set(const_cast <client::core_t *> (core)->base);
+				// Устанавливаем событие на чтение данных подключения
+				this->bev.event.read.set <awh::worker_t::adj_t, &awh::worker_t::adj_t::read> (this);
+				// Устанавливаем событие на запись данных подключения
+				// this->bev.event.write.set <awh::worker_t::adj_t, &awh::worker_t::adj_t::write> (this);
 				// Запускаем чтение данных с сервера
 				this->bev.event.read.start();
 				// Запускаем запись данных на сервер
-				this->bev.event.write.start();
+				// this->bev.event.write.start();
 				// Если флаг ожидания входящих сообщений, активирован
 				if(wrk->wait){
 					// Если время ожидания чтения данных установлено
 					if(this->timeRead > 0){
-						// Устанавливаем событие на чтение данных подключения
-						this->bev.timer.read.set <awh::worker_t::adj_t, &awh::worker_t::adj_t::timeout> (this);
 						// Устанавливаем базу событий
 						this->bev.timer.read.set(const_cast <client::core_t *> (core)->base);
+						// Устанавливаем событие на чтение данных подключения
+						this->bev.timer.read.set <awh::worker_t::adj_t, &awh::worker_t::adj_t::timeout> (this);
 						// Запускаем ожидание чтения данных с сервера
-						this->bev.timer.read.start(this->timeRead / (float) 1000.f);
+						this->bev.timer.read.start(this->timeRead);
 					}
+					/*
 					// Если время ожидания записи данных установлено
 					if(this->timeWrite > 0){
-						// Устанавливаем событие на запись данных подключения
-						this->bev.timer.write.set <awh::worker_t::adj_t, &awh::worker_t::adj_t::timeout> (this);
 						// Устанавливаем базу событий
 						this->bev.timer.write.set(const_cast <client::core_t *> (core)->base);
+						// Устанавливаем событие на запись данных подключения
+						this->bev.timer.write.set <awh::worker_t::adj_t, &awh::worker_t::adj_t::timeout> (this);
 						// Запускаем ожидание записи данных на сервер
-						this->bev.timer.write.start(this->timeWrite / (float) 1000.f);
+						this->bev.timer.write.start(this->timeWrite);
 					}
+					*/
 				}
 				// Выходим из функции
 				return;
@@ -562,6 +593,46 @@ void awh::client::Core::connect(const size_t wid) noexcept {
 						// Запоминаем файловый дескриптор
 						adj->bev.socket = sockaddr.fd;
 
+						
+
+						// Если SSL клиент разрешён
+						if(adj->ssl.mode){
+
+							cout << " ----------------- " << endl;
+
+							BIO * bio = SSL_get_wbio(adj->ssl.ssl);
+
+							int have_fd = -1;
+							if(bio) have_fd = BIO_get_fd(bio, nullptr);
+
+							if(have_fd >= 0){
+								if(adj->bev.socket < 0){
+									adj->bev.socket = (int) have_fd;
+								} else if (have_fd == (long) adj->bev.socket) {
+									/* We already know the fd from the SSL; do nothing */
+								} else {
+									/* We specified an fd different from that of the SSL.
+									This is probably an error on our part.  Fail. */
+									// goto err;
+								}
+								BIO_set_close(bio, 0);
+							} else {
+								/* The SSL isn't configured with a BIO with an fd. */
+								if (adj->bev.socket >= 0) {
+									/* ... and we have an fd we want to use. */
+									bio = BIO_new_socket(adj->bev.socket, 0);
+									BIO_set_nbio(bio, 1);
+									SSL_set_bio(adj->ssl.ssl, bio, bio);
+								} else {
+									/* Leave the fd unset. */
+								}
+							}
+							SSL_set_mode(adj->ssl.ssl, SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER);
+
+							SSL_set_connect_state(adj->ssl.ssl);
+
+						}
+
 						/*
 						// Если SSL клиент разрешён
 						if(adj->ssl.mode){
@@ -656,7 +727,7 @@ void awh::client::Core::connect(const size_t wid) noexcept {
 							// Устанавливаем базу событий
 							ret.first->second->bev.timer.write.set(this->base);
 							// Запускаем запись данных на сервер
-							ret.first->second->bev.timer.write.start(ret.first->second->timeWrite / (float) 1000.f);
+							ret.first->second->bev.timer.write.start(ret.first->second->timeWrite);
 						}
 						// Выходим из функции
 						return;
@@ -1141,6 +1212,9 @@ void awh::client::Core::remove(const size_t wid) noexcept {
  * @param aid идентификатор адъютанта
  */
 void awh::client::Core::close(const size_t aid) noexcept {
+
+	cout << " +++++++++++++++++++CLOSE " << endl;
+
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->mtx.close);
 	// Если блокировка адъютанта не установлена

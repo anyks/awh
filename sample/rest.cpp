@@ -70,8 +70,9 @@ int main(int argc, char * argv[]) noexcept {
 	// rest.setAuthType(auth_t::type_t::DIGEST, auth_t::hash_t::MD5);
 	// Выполняем получение URL адреса сервера
 	// uri_t::url_t url = uri.parseUrl("https://2ip.ru");
-	uri_t::url_t url = uri.parseUrl("https://www.anyks.com");
-	// uri_t::url_t url = uri.parseUrl("https://apple.com");
+	// uri_t::url_t url = uri.parseUrl("http://localhost/test");
+	// uri_t::url_t url = uri.parseUrl("https://www.anyks.com");
+	uri_t::url_t url = uri.parseUrl("https://apple.com");
 	// uri_t::url_t url = uri.parseUrl("https://ru.wikipedia.org/wiki/HTTP");
 	// uri_t::url_t url = uri.parseUrl("https://api.binance.com/api/v3/exchangeInfo?symbol=BTCUSDT");
 	// uri_t::url_t url = uri.parseUrl("https://testnet.binance.vision/api/v3/exchangeInfo");

@@ -858,6 +858,114 @@ void awh::Core::rebase() noexcept {
 	*/
 }
 /**
+ * error Метод вывода описание ошибок
+ * @param bytes количество записанных/прочитанных байт в сокет
+ * @param aid   идентификатор адъютанта
+ */
+void awh::Core::error(const int64_t bytes, const size_t aid) const noexcept {
+	// Выполняем извлечение адъютанта
+	auto it = this->adjutants.find(aid);
+	// Если адъютант получен
+	if(it != this->adjutants.end()){
+		// Если SSL клиент разрешён
+		if(it->second->ssl.mode){
+			// Получаем данные описание ошибки
+			const int error = SSL_get_error(it->second->ssl.ssl, bytes);
+			// Определяем тип ошибки
+			switch(error){
+				// Если ошибка ожидания записи
+				case SSL_ERROR_WANT_WRITE:
+					// Выводим в лог сообщение
+					this->log->print("SSL: unable to write data to server", log_t::flag_t::CRITICAL);
+				break;
+				// Если ошибка чтения данных
+				case SSL_ERROR_WANT_READ:
+					// Выводим в лог сообщение
+					this->log->print("SSL: unable to read data from server", log_t::flag_t::CRITICAL);
+				break;
+				// Если был возвращён ноль
+				case SSL_ERROR_ZERO_RETURN: {
+					// Если удалённая сторона произвела закрытие подключения
+					if(SSL_get_shutdown(it->second->ssl.ssl) & SSL_RECEIVED_SHUTDOWN)
+						// Выводим в лог сообщение
+						this->log->print("SSL: the remote side closed the connection", log_t::flag_t::INFO);
+				} break;
+				// Если произошла ошибка вызова
+				case SSL_ERROR_SYSCALL: {
+					// Получаем данные описание ошибки
+					u_long error = ERR_get_error();
+					// Если ошибка получена
+					if(error != 0){
+						// Выводим в лог сообщение
+						this->log->print("SSL: %s", log_t::flag_t::CRITICAL, ERR_error_string(error, nullptr));
+						/**
+						 * Выполняем извлечение остальных ошибок
+						 */
+						do {
+							// Выводим в лог сообщение
+							this->log->print("SSL: %s", log_t::flag_t::CRITICAL, ERR_error_string(error, nullptr));
+						// Если ещё есть ошибки
+						} while((error = ERR_get_error()));
+					// Если данные записаны неверно
+					} else if(bytes == -1) {
+						// Определяем тип ошибки
+						switch(errno){
+							// Если произведена неудачная запись в PIPE
+							case EPIPE:
+								// Выводим в лог сообщение
+								this->log->print("SSL: EPIPE", log_t::flag_t::WARNING);
+							break;
+							// Если произведён сброс подключения
+							case ECONNRESET:
+								// Выводим в лог сообщение
+								this->log->print("SSL: ECONNRESET", log_t::flag_t::WARNING);
+							break;
+							// Для остальных ошибок
+							default:
+								// Выводим в лог сообщение
+								this->log->print("SSL: %s", log_t::flag_t::CRITICAL, strerror(errno));
+						}
+					}
+				} break;
+				// Если произошла ошибка шифрования
+				case SSL_ERROR_SSL:
+				// Для всех остальных ошибок
+				case SSL_ERROR_NONE:
+				// Если произошла ошибка сертификата
+				case SSL_ERROR_WANT_X509_LOOKUP:
+				// Для всех остальных ошибок
+				default: {
+					// Получаем данные описание ошибки
+					u_long error = 0;
+					// Выполняем чтение ошибок OpenSSL
+					while((error = ERR_get_error()))
+						// Выводим в лог сообщение
+						this->log->print("SSL: %s", log_t::flag_t::CRITICAL, ERR_error_string(error, nullptr));
+				}
+			};
+		// Если произошла ошибка
+		} else if(bytes == -1) {	
+			// Определяем тип ошибки
+			switch(errno){
+				// Если произведена неудачная запись в PIPE
+				case EPIPE:
+					// Выводим в лог сообщение
+					this->log->print("EPIPE", log_t::flag_t::WARNING);
+				break;
+				// Если произведён сброс подключения
+				case ECONNRESET:
+					// Выводим в лог сообщение
+					this->log->print("ECONNRESET", log_t::flag_t::WARNING);
+				break;
+				// Для остальных ошибок
+				default:
+					// Выводим в лог сообщение
+					this->log->print("%s", log_t::flag_t::CRITICAL, strerror(errno));
+			}
+		}
+	}
+}
+/**
  * write Метод записи буфера данных воркером
  * @param buffer буфер для записи данных
  * @param size   размер записываемых данных
@@ -872,23 +980,40 @@ void awh::Core::write(const char * buffer, const size_t size, const size_t aid) 
 		if((it != this->adjutants.end()) && !it->second->bev.locked.write && (it->second->bev.socket > -1)){
 			// Если размер записываемых данных соответствует
 			if(size >= it->second->markWrite.min){
+				// Количество отправленных байт
+				int64_t bytes = -1;
 				// Если количество записываемых данных менье максимального занчения
-				if(size <= it->second->markWrite.max)
+				if(size <= it->second->markWrite.max){
+					// Если SSL клиент разрешён
+					if(it->second->ssl.mode)
+						// Выполняем отправку сообщения через защищённый канал
+						bytes = SSL_write(it->second->ssl.ssl, buffer, size);
 					// Выполняем отправку сообщения в сокет
-					send(it->second->bev.socket, buffer, size, 0);
+					else bytes = send(it->second->bev.socket, buffer, size, 0);
 				// Иначе выполняем дробление передаваемых данных
-				else {
+				} else {
 					// Смещение в буфере и отправляемый размер данных
 					size_t offset = 0, actual = 0;
 					// Выполняем отправку данных пока всё не отправим
 					while((size - offset) > 0){
 						// Определяем размер отправляемых данных
 						actual = ((size - offset) >= it->second->markWrite.max ? it->second->markWrite.max : (size - offset));
+						// Если SSL клиент разрешён
+						if(it->second->ssl.mode)
+							// Выполняем отправку сообщения через защищённый канал
+							bytes = SSL_write(it->second->ssl.ssl, buffer + offset, actual);
 						// Выполняем отправку сообщения в сокет
-						send(it->second->bev.socket, buffer + offset, actual, 0);
+						else bytes = send(it->second->bev.socket, buffer + offset, actual, 0);
 						// Увеличиваем смещение в буфере
 						offset += actual;
 					}
+				}
+				// Если байты не были записаны в сокет
+				if(bytes <= 0){
+					// Выполняем обработку ошибок
+					this->error(bytes, aid);
+					// Выполняем отключение от сервера
+					this->close(it->second->aid);
 				}
 			}
 		}
