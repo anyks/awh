@@ -22,7 +22,7 @@
  */
 void awh::worker_t::adj_t::read(ev::io & watcher, int revents) noexcept {
 
-	cout << " +++++++++++++++++++READ " << endl;
+	cout << " +++++++++++++++++++READ1 " << endl;
 
 	// Если разрешено выполнять чтения данных из сокета
 	if(!this->bev.locked.read){
@@ -112,6 +112,9 @@ void awh::worker_t::adj_t::read(ev::io & watcher, int revents) noexcept {
 							this->bev.timer.read.start(this->timeRead);
 					// Если данные не могут быть прочитаны
 					} else {
+
+						cout << " +++++++++++++++++++READ2.1 " << endl;
+
 						// Выполняем обработку ошибок
 						core->error(bytes, this->aid);
 						// Выполняем отключение от сервера
@@ -120,6 +123,9 @@ void awh::worker_t::adj_t::read(ev::io & watcher, int revents) noexcept {
 						break;
 					}
 				}
+
+				cout << " +++++++++++++++++++READ2.2 " << endl;
+
 				// Выходим из функции
 				return;
 			}
