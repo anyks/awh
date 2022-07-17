@@ -179,12 +179,16 @@ void awh::Core::persistent(ev::periodic & timer, int revents) noexcept {
  * @param bev буфер событий для очистки
  */
 void awh::Core::clean(worker_t::bev_t & bev) noexcept {
+	// Выполняем остановку таймера на чтение данных
+	bev.timer.read.stop();
+	// Выполняем остановку таймера на запись данных
+	bev.timer.write.stop();
+	// Выполняем остановку чтения буфера событий
+	bev.event.read.stop();
+	// Выполняем остановку записи буфера событий
+	bev.event.write.stop();
 	// Выполняем блокировку на чтение/запись данных
 	bev.locked = worker_t::locked_t();
-	// Выполняем остановку чтения буфера событий
-	ev_io_stop(this->base, &bev.event.read);
-	// Выполняем остановку записи буфера событий
-	ev_io_stop(this->base, &bev.event.write);
 	// Если сокет активен
 	if(bev.socket > 0){
 		// Если - это Windows
