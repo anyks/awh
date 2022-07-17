@@ -20,6 +20,9 @@
  */
 #include <set>
 
+// ++++++++++++++++++++++++++++++++=
+#include <netdb.h>
+
 /**
  * Наши модули
  */
@@ -42,8 +45,11 @@ namespace awh {
 		 */
 		typedef class Core : public awh::core_t {
 			private:
+				// Worker Adjutant Устанавливаем дружбу с классом сетевого ядра
+				friend class Worker::Adjutant;
+			private:
 				/**
-				 * Mutex Объект основных мютексов
+				 * Mutex Структура основных мютексов
 				 */
 				typedef struct Mutex {
 					mutex thread;            // Для работы в дочерних потоках
@@ -54,18 +60,26 @@ namespace awh {
 					recursive_mutex timeout; // Для установки таймаутов
 				} mtx_t;
 				/**
-				 * Timeout Объект работы таймаута
+				 * Timeout Класс работы таймаута
 				 */
-				typedef struct Timeout {
-					size_t wid;                    // Идентификатор воркера
-					Core * core;                   // Объект ядра клиента
-					// struct event ev;               // Объект события
-					struct timeval tv;             // Параметры интервала времени
-					client::worker_t::mode_t mode; // Режим работы клиента
-					/**
-					 * Timeout Конструктор
-					 */
-					Timeout() : wid(0), core(nullptr), mode(client::worker_t::mode_t::DISCONNECT) {}
+				typedef class Timeout {
+					public:
+						size_t wid;                    // Идентификатор воркера
+						Core * core;                   // Объект ядра клиента
+						ev::timer timer;               // Объект события таймера
+						client::worker_t::mode_t mode; // Режим работы клиента
+					public:
+						/**
+						 * callback Функция обратного вызова
+						 * @param timer   объект события таймера
+						 * @param revents идентификатор события
+						 */
+						void callback(ev::timer & timer, int revents) noexcept;
+					public:
+						/**
+						 * Timeout Конструктор
+						 */
+						Timeout() : wid(0), core(nullptr), mode(client::worker_t::mode_t::DISCONNECT) {}
 				} timeout_t;
 			private:
 				// Мютекс для блокировки основного потока
@@ -74,7 +88,7 @@ namespace awh {
 				// Список блокированных объектов
 				set <size_t> locking;
 				// Список таймеров
-				map <size_t, timeout_t> timeouts;
+				map <size_t, unique_ptr <timeout_t>> timeouts;
 			private:
 				/**
 				 * resolver Функция выполнения резолвинга домена
@@ -82,38 +96,6 @@ namespace awh {
 				 * @param ctx передаваемый контекст
 				 */
 				static void resolver(const string ip, void * ctx) noexcept;
-				/**
-				 * read Функция чтения данных с сокета сервера
-				 * @param bev буфер события
-				 * @param ctx передаваемый контекст
-				 */
-				static void read(struct bufferevent * bev, void * ctx) noexcept;
-				/**
-				 * write Функция записи данных в сокет сервера
-				 * @param bev буфер события
-				 * @param ctx передаваемый контекст
-				 */
-				static void write(struct bufferevent * bev, void * ctx) noexcept;
-				/**
-				 * reconnect Функция задержки времени на реконнект
-				 * @param fd    файловый дескриптор (сокет)
-				 * @param event произошедшее событие
-				 * @param ctx   передаваемый контекст
-				 */
-				static void reconnect(int fd, short event, void * ctx) noexcept;
-				/**
-				 * event Функция обработка входящих событий с сервера
-				 * @param bev    буфер события
-				 * @param events произошедшее событие
-				 * @param ctx    передаваемый контекст
-				 */
-				// static void event(struct bufferevent * bev, const short events, void * ctx) noexcept;
-				/**
-				 * thread Функция сборки чанков бинарного буфера в многопоточном режиме
-				 * @param adj объект адъютанта
-				 * @param wrk объект воркера
-				 */
-				static void thread(const awh::worker_t::adj_t & adj, const client::worker_t & wrk) noexcept;
 			private:
 				/**
 				 * tuning Метод тюннинга буфера событий

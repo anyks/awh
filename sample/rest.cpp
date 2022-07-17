@@ -70,12 +70,12 @@ int main(int argc, char * argv[]) noexcept {
 	// rest.setAuthType(auth_t::type_t::DIGEST, auth_t::hash_t::MD5);
 	// Выполняем получение URL адреса сервера
 	// uri_t::url_t url = uri.parseUrl("https://2ip.ru");
-	// uri_t::url_t url = uri.parseUrl("https://www.anyks.com");
+	uri_t::url_t url = uri.parseUrl("https://www.anyks.com");
 	// uri_t::url_t url = uri.parseUrl("https://apple.com");
 	// uri_t::url_t url = uri.parseUrl("https://ru.wikipedia.org/wiki/HTTP");
 	// uri_t::url_t url = uri.parseUrl("https://api.binance.com/api/v3/exchangeInfo?symbol=BTCUSDT");
 	// uri_t::url_t url = uri.parseUrl("https://testnet.binance.vision/api/v3/exchangeInfo");
-	uri_t::url_t url = uri.parseUrl("https://api.coingecko.com/api/v3/coins/list?include_platform=true");
+	// uri_t::url_t url = uri.parseUrl("https://api.coingecko.com/api/v3/coins/list?include_platform=true");
 	// Подписываемся на событие коннекта и дисконнекта клиента
 	rest.on(&log, [](const client::rest_t::mode_t mode, client::rest_t * web, void * ctx){
 		// Получаем объект логирования
@@ -137,10 +137,10 @@ int main(int argc, char * argv[]) noexcept {
 	// Если данные получены
 	if(!body.empty()){
 		// Создаём объект JSON
-		json data = json::parse(body);
+		// json data = json::parse(body);
 		// Выводим полученный результат
-		cout << " =========== " << data.dump(4) << endl;
-		// cout << " =========== " << string(body.begin(), body.end()) << endl;
+		// cout << " =========== " << data.dump(4) << endl;
+		cout << " =========== " << string(body.begin(), body.end()) << endl;
 	}
 	// Выводим результат
 	return 0;

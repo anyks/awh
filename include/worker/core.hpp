@@ -78,6 +78,13 @@ namespace awh {
 			friend class server::Core;
 		public:
 			/**
+			 * Timer Структура таймаута
+			 */
+			typedef struct Timer {
+				ev::timer read;  // Событие таймера таймаута на чтение из сокета
+				ev::timer write; // Событие таймера таймаута на запись в сокет
+			} timer_t;
+			/**
 			 * Event Структура события
 			 */
 			typedef struct Event {
@@ -101,6 +108,7 @@ namespace awh {
 			typedef struct BufferEvent {
 				int socket;      // Активный сокет
 				event_t event;   // Событие чтения/записи
+				timer_t timer;   // Собатие таймера на чтение/запись
 				locked_t locked; // Блокиратор чтения/записи
 				/**
 				 * BufferEvent Конструктор
@@ -184,6 +192,38 @@ namespace awh {
 					const log_t * log = nullptr;
 					// Объект родительского воркера
 					const Worker * parent = nullptr;
+				private:
+					/**
+					 * read Функция обратного вызова при чтении данных с сокета
+					 * @param watcher объект события чтения
+					 * @param revents идентификатор события
+					 */
+					void read(ev::io & watcher, int revents) noexcept;
+					/**
+					 * write Функция обратного вызова при записи данных в сокет
+					 * @param watcher объект события записи
+					 * @param revents идентификатор события
+					 */
+					void write(ev::io & watcher, int revents) noexcept;
+					/**
+					 * connect Функция обратного вызова при подключении к серверу
+					 * @param watcher объект события подключения
+					 * @param revents идентификатор события
+					 */
+					void connect(ev::io & watcher, int revents) noexcept;
+					/**
+					 * timeout Функция обратного вызова при срабатывании таймаута
+					 * @param timer   объект события таймаута
+					 * @param revents идентификатор события
+					 */
+					void timeout(ev::timer & timer, int revents) noexcept;
+				private:
+					/**
+					 * thread Функция сборки чанков бинарного буфера в многопоточном режиме
+					 * @param adj    объект адъютанта
+					 * @param worker объект воркера
+					 */
+					static void thread(const Adjutant & adj, const Worker & worker) noexcept;
 				private:
 					/**
 					 * end Метод установки флага завершения работы

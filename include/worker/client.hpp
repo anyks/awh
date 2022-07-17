@@ -87,7 +87,7 @@ namespace awh {
 				friend class Core;
 				// Core Устанавливаем дружбу с классом ядра
 				friend class awh::Core;
-			private:
+			public:
 				/**
 				 * Разрешения на выполнение работы
 				 */

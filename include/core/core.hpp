@@ -70,6 +70,9 @@ namespace awh {
 	 * Core Класс ядра биндинга TCP/IP
 	 */
 	typedef class Core {
+		private:
+			// Worker Устанавливаем дружбу с классом сетевого ядра
+			friend class Worker;
 		protected:
 			/**
 			 * Статус работы сетевого ядра
