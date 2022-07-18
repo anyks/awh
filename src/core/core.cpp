@@ -71,15 +71,14 @@ void awh::Core::Dispatch::start() noexcept {
 		this->mtx.unlock();
 		// Выполняем чтение базы событий пока это разрешено
 		while(this->work){
-			// Выполняем чтение базы событий
-			if(!this->mode) this->base.run();
-			// Если чтение базы событий запрещено
-			else {
-				// Выполняем остановку всех событий
-				this->base.break_loop(ev::how_t::ALL);
-				// Замораживаем поток на период времени частоты обновления базы событий
-				this_thread::sleep_for(10ms);
-			}
+			// Если не нужно использовать простой режим чтения
+			if(this->easy)
+				// Выполняем чтение базы событий
+				this->base.run();
+			// Выполняем чтение базы событий в простом режиме
+			else this->base.run(EVRUN_NOWAIT);
+			// Замораживаем поток на период времени частоты обновления базы событий
+			this_thread::sleep_for(this->freq);
 		}
 	}
 }
@@ -94,8 +93,22 @@ void awh::Core::Dispatch::freeze(const bool mode) noexcept {
 	this->mode = mode;
 	// Если запрещено использовать простое чтение базы событий
 	if(this->mode)
-		// Выполняем остановку всех событий
-		this->base.break_loop(ev::how_t::ALL);
+		// Выполняем фриз чтения данных
+		ev_suspend(this->base);
+	// Продолжаем чтение данных
+	else ev_resume(this->base);
+}
+/**
+ * easily Метод активации простого режима чтения базы событий
+ * @param mode флаг активации
+ */
+void awh::Core::Dispatch::easily(const bool mode) noexcept {
+	// Выполняем блокировку потока
+	const lock_guard <recursive_mutex> lock(this->mtx);
+	// Устанавливаем флаг активации простого чтения базы событий
+	this->easy = mode;
+	// Выполняем пинок
+	this->kick();
 }
 /**
  * setBase Метод установки базы событий
@@ -110,6 +123,20 @@ void awh::Core::Dispatch::setBase(struct ev_loop * base) noexcept {
 	this->base = ev::loop_ref(base);
 	// Выполняем раззаморозку получения данных
 	if(this->work) this->freeze(false);
+}
+/**
+ * setFrequency Метод установки частоты обновления базы событий
+ * @param msec частота обновления базы событий в миллисекундах
+ */
+void awh::Core::Dispatch::setFrequency(const uint8_t msec) noexcept {
+	// Выполняем блокировку потока
+	const lock_guard <recursive_mutex> lock(this->mtx);
+	// Если количество миллисекунд передано больше 0
+	if((this->easy = (msec > 0)))
+		// Устанавливаем частоту обновления базы событий
+		this->freq = chrono::milliseconds(msec);
+	// Выполняем сброс частоты обновления базы событий
+	else this->freq = 10ms;
 }
 /**
  * launching Метод вызова при активации базы событий
@@ -179,24 +206,44 @@ void awh::Core::persistent(ev::periodic & timer, int revents) noexcept {
  * @param aid идентификатор адъютанта
  */
 void awh::Core::clean(const size_t aid) const noexcept {
+
+	cout << " ###########1 " << aid << endl;
+
 	// Выполняем извлечение адъютанта
 	auto it = this->adjutants.find(aid);
 	// Если адъютант получен
 	if(it != this->adjutants.end()){
 		// Получаем объект адъютанта
 		awh::worker_t::adj_t * adj = const_cast <awh::worker_t::adj_t *> (it->second);
+
+		cout << " ^^^^^^^^^^^^^^^^^ SOCKET= " << adj->bev.socket << endl;
+
+		cout << " ###########2 " << aid << endl;
+
 		// Выполняем остановку таймера на чтение данных
 		adj->bev.timer.read.stop();
+
+		cout << " ###########3 " << aid << endl;
+
 		// Выполняем остановку таймера на запись данных
 		adj->bev.timer.write.stop();
+
+		cout << " ###########4 " << aid << endl;
+
 		// Выполняем остановку чтения буфера событий
 		adj->bev.event.read.stop();
+
+		cout << " ###########5 " << aid << endl;
+
 		// Выполняем остановку записи буфера событий
 		adj->bev.event.write.stop();
+
+		cout << " ###########6 " << aid << endl;
+
 		// Выполняем блокировку на чтение/запись данных
 		adj->bev.locked = worker_t::locked_t();
 		// Если сокет активен
-		if(adj->bev.socket > 0){
+		if(adj->bev.socket > -1){
 			// Если - это Windows
 			#if defined(_WIN32) || defined(_WIN64)
 				// Запрещаем работу с сокетом
@@ -874,104 +921,107 @@ void awh::Core::rebase() noexcept {
  * @param aid   идентификатор адъютанта
  */
 void awh::Core::error(const int64_t bytes, const size_t aid) const noexcept {
-	// Выполняем извлечение адъютанта
-	auto it = this->adjutants.find(aid);
-	// Если адъютант получен
-	if(it != this->adjutants.end()){
-		// Если SSL клиент разрешён
-		if(it->second->ssl.mode){
-			// Получаем данные описание ошибки
-			const int error = SSL_get_error(it->second->ssl.ssl, bytes);
-			// Определяем тип ошибки
-			switch(error){
-				// Если ошибка ожидания записи
-				case SSL_ERROR_WANT_WRITE:
-					// Выводим в лог сообщение
-					this->log->print("SSL: unable to write data to server", log_t::flag_t::CRITICAL);
-				break;
-				// Если ошибка чтения данных
-				case SSL_ERROR_WANT_READ:
-					// Выводим в лог сообщение
-					this->log->print("SSL: unable to read data from server", log_t::flag_t::CRITICAL);
-				break;
-				// Если был возвращён ноль
-				case SSL_ERROR_ZERO_RETURN: {
-					// Если удалённая сторона произвела закрытие подключения
-					if(SSL_get_shutdown(it->second->ssl.ssl) & SSL_RECEIVED_SHUTDOWN)
+	// Если работа базы событий продолжается
+	if(this->working()){
+		// Выполняем извлечение адъютанта
+		auto it = this->adjutants.find(aid);
+		// Если адъютант получен
+		if(it != this->adjutants.end()){
+			// Если SSL клиент разрешён
+			if(it->second->ssl.mode){
+				// Получаем данные описание ошибки
+				const int error = SSL_get_error(it->second->ssl.ssl, bytes);
+				// Определяем тип ошибки
+				switch(error){
+					// Если ошибка ожидания записи
+					case SSL_ERROR_WANT_WRITE:
 						// Выводим в лог сообщение
-						this->log->print("SSL: the remote side closed the connection", log_t::flag_t::INFO);
-				} break;
-				// Если произошла ошибка вызова
-				case SSL_ERROR_SYSCALL: {
-					// Получаем данные описание ошибки
-					u_long error = ERR_get_error();
-					// Если ошибка получена
-					if(error != 0){
+						this->log->print("SSL: unable to write data to server", log_t::flag_t::CRITICAL);
+					break;
+					// Если ошибка чтения данных
+					case SSL_ERROR_WANT_READ:
 						// Выводим в лог сообщение
-						this->log->print("SSL: %s", log_t::flag_t::CRITICAL, ERR_error_string(error, nullptr));
-						/**
-						 * Выполняем извлечение остальных ошибок
-						 */
-						do {
+						this->log->print("SSL: unable to read data from server", log_t::flag_t::CRITICAL);
+					break;
+					// Если был возвращён ноль
+					case SSL_ERROR_ZERO_RETURN: {
+						// Если удалённая сторона произвела закрытие подключения
+						if(SSL_get_shutdown(it->second->ssl.ssl) & SSL_RECEIVED_SHUTDOWN)
+							// Выводим в лог сообщение
+							this->log->print("SSL: the remote side closed the connection", log_t::flag_t::INFO);
+					} break;
+					// Если произошла ошибка вызова
+					case SSL_ERROR_SYSCALL: {
+						// Получаем данные описание ошибки
+						u_long error = ERR_get_error();
+						// Если ошибка получена
+						if(error != 0){
 							// Выводим в лог сообщение
 							this->log->print("SSL: %s", log_t::flag_t::CRITICAL, ERR_error_string(error, nullptr));
-						// Если ещё есть ошибки
-						} while((error = ERR_get_error()));
-					// Если данные записаны неверно
-					} else if(bytes == -1) {
-						// Определяем тип ошибки
-						switch(errno){
-							// Если произведена неудачная запись в PIPE
-							case EPIPE:
+							/**
+							 * Выполняем извлечение остальных ошибок
+							 */
+							do {
 								// Выводим в лог сообщение
-								this->log->print("SSL: EPIPE", log_t::flag_t::WARNING);
-							break;
-							// Если произведён сброс подключения
-							case ECONNRESET:
-								// Выводим в лог сообщение
-								this->log->print("SSL: ECONNRESET", log_t::flag_t::WARNING);
-							break;
-							// Для остальных ошибок
-							default:
-								// Выводим в лог сообщение
-								this->log->print("SSL: %s", log_t::flag_t::CRITICAL, strerror(errno));
+								this->log->print("SSL: %s", log_t::flag_t::CRITICAL, ERR_error_string(error, nullptr));
+							// Если ещё есть ошибки
+							} while((error = ERR_get_error()));
+						// Если данные записаны неверно
+						} else if(bytes == -1) {
+							// Определяем тип ошибки
+							switch(errno){
+								// Если произведена неудачная запись в PIPE
+								case EPIPE:
+									// Выводим в лог сообщение
+									this->log->print("SSL: EPIPE", log_t::flag_t::WARNING);
+								break;
+								// Если произведён сброс подключения
+								case ECONNRESET:
+									// Выводим в лог сообщение
+									this->log->print("SSL: ECONNRESET", log_t::flag_t::WARNING);
+								break;
+								// Для остальных ошибок
+								default:
+									// Выводим в лог сообщение
+									this->log->print("SSL: %s", log_t::flag_t::CRITICAL, strerror(errno));
+							}
 						}
+					} break;
+					// Если произошла ошибка шифрования
+					case SSL_ERROR_SSL:
+					// Для всех остальных ошибок
+					case SSL_ERROR_NONE:
+					// Если произошла ошибка сертификата
+					case SSL_ERROR_WANT_X509_LOOKUP:
+					// Для всех остальных ошибок
+					default: {
+						// Получаем данные описание ошибки
+						u_long error = 0;
+						// Выполняем чтение ошибок OpenSSL
+						while((error = ERR_get_error()))
+							// Выводим в лог сообщение
+							this->log->print("SSL: %s", log_t::flag_t::CRITICAL, ERR_error_string(error, nullptr));
 					}
-				} break;
-				// Если произошла ошибка шифрования
-				case SSL_ERROR_SSL:
-				// Для всех остальных ошибок
-				case SSL_ERROR_NONE:
-				// Если произошла ошибка сертификата
-				case SSL_ERROR_WANT_X509_LOOKUP:
-				// Для всех остальных ошибок
-				default: {
-					// Получаем данные описание ошибки
-					u_long error = 0;
-					// Выполняем чтение ошибок OpenSSL
-					while((error = ERR_get_error()))
+				};
+			// Если произошла ошибка
+			} else if(bytes == -1) {	
+				// Определяем тип ошибки
+				switch(errno){
+					// Если произведена неудачная запись в PIPE
+					case EPIPE:
 						// Выводим в лог сообщение
-						this->log->print("SSL: %s", log_t::flag_t::CRITICAL, ERR_error_string(error, nullptr));
+						this->log->print("EPIPE", log_t::flag_t::WARNING);
+					break;
+					// Если произведён сброс подключения
+					case ECONNRESET:
+						// Выводим в лог сообщение
+						this->log->print("ECONNRESET", log_t::flag_t::WARNING);
+					break;
+					// Для остальных ошибок
+					default:
+						// Выводим в лог сообщение
+						this->log->print("%s", log_t::flag_t::CRITICAL, strerror(errno));
 				}
-			};
-		// Если произошла ошибка
-		} else if(bytes == -1) {	
-			// Определяем тип ошибки
-			switch(errno){
-				// Если произведена неудачная запись в PIPE
-				case EPIPE:
-					// Выводим в лог сообщение
-					this->log->print("EPIPE", log_t::flag_t::WARNING);
-				break;
-				// Если произведён сброс подключения
-				case ECONNRESET:
-					// Выводим в лог сообщение
-					this->log->print("ECONNRESET", log_t::flag_t::WARNING);
-				break;
-				// Для остальных ошибок
-				default:
-					// Выводим в лог сообщение
-					this->log->print("%s", log_t::flag_t::CRITICAL, strerror(errno));
 			}
 		}
 	}
@@ -1249,6 +1299,20 @@ u_short awh::Core::setInterval(void * ctx, const time_t delay, function <void (c
 	return result;
 }
 /**
+ * easily Метод активации простого режима чтения базы событий
+ * @param mode флаг активации простого чтения базы событий
+ */
+void awh::Core::easily(const bool mode) noexcept {
+	// Определяем запущено ли ядро сети
+	const bool start = this->mode;
+	// Если ядро сети уже запущено, останавливаем его
+	if(start) this->stop();
+	// Устанавливаем режим чтения базы событий
+	this->dispatch.easily(mode);
+	// Если ядро сети уже было запущено, запускаем его
+	if(start) this->start();
+}
+/**
  * freeze Метод заморозки чтения данных
  * @param mode флаг активации заморозки чтения данных
  */
@@ -1287,24 +1351,6 @@ void awh::Core::setVerifySSL(const bool mode) noexcept {
 	this->ssl.setVerify(mode);
 }
 /**
- * setMultiThreads Метод активации режима мультипотоковой обработки данных
- * @param mode флаг мультипотоковой обработки
- */
-void awh::Core::setMultiThreads(const bool mode) noexcept {
-	// Выполняем блокировку потока
-	this->mtx.main.lock();
-	// Устанавливаем флаг мультипотоковой обработки
-	this->multi = mode;
-	// Выполняем блокировку потока
-	this->mtx.main.unlock();
-	// Устанавливаем частоту обновления базы событий
-	if(this->multi)
-		// Выполняем инициализацию пула потоков
-		this->pool.init();
-	// Выполняем ожидание завершения работы потоков
-	else this->pool.wait();
-}
-/**
  * setPersistInterval Метод установки персистентного таймера
  * @param itv интервал персистентного таймера в миллисекундах
  */
@@ -1313,6 +1359,14 @@ void awh::Core::setPersistInterval(const time_t itv) noexcept {
 	const lock_guard <recursive_mutex> lock(this->mtx.main);
 	// Устанавливаем интервал персистентного таймера
 	this->persistInterval = itv;
+}
+/**
+ * setFrequency Метод установки частоты обновления базы событий
+ * @param msec частота обновления базы событий в миллисекундах
+ */
+void awh::Core::setFrequency(const uint8_t msec) noexcept {
+	// Устанавливаем частоту чтения базы событий
+	this->dispatch.setFrequency(msec);
 }
 /**
  * setFamily Метод установки тип протокола интернета
@@ -1397,8 +1451,6 @@ awh::Core::Core(const fmk_t * fmk, const log_t * log) noexcept : nwk(fmk), uri(f
  * ~Core Деструктор
  */
 awh::Core::~Core() noexcept {
-	// Выполняем ожидание завершения работы потоков
-	if(this->multi) this->pool.wait();
 	// Выполняем остановку сервиса
 	this->stop();
 	/*

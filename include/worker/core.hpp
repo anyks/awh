@@ -143,20 +143,6 @@ namespace awh {
 					// Server Core Устанавливаем дружбу с серверным классом ядра
 					friend class server::Core;
 				private:
-					/**
-					 * Chunks Структура чанков
-					 */
-					typedef struct Chunks {
-						bool end;                         // Флаг завершения обработки данных
-						size_t count;                     // Общее количество обработанных чанков
-						size_t index;                     // Текущее значение индекса чанка
-						map <size_t, vector <char>> data; // Полученные бинарные чанки
-						/**
-						 * Chunks Конструктор
-						 */
-						Chunks() : end(false), count(0), index(0) {}
-					} chunks_t;
-				private:
 					// Объект буфера событий
 					bev_t bev;
 				private:
@@ -167,11 +153,6 @@ namespace awh {
 				private:
 					// Контекст SSL для работы с защищённым подключением
 					ssl_t::ctx_t ssl;
-				private:
-					// Мютекс для блокировки потоков
-					mutex locker;
-					// Объект чанков данных
-					chunks_t chunks;
 				private:
 					// Адрес интернет подключения клиента
 					string ip = "";
@@ -217,29 +198,6 @@ namespace awh {
 					 * @param revents идентификатор события
 					 */
 					void timeout(ev::timer & timer, int revents) noexcept;
-				private:
-					/**
-					 * thread Функция сборки чанков бинарного буфера в многопоточном режиме
-					 * @param adj    объект адъютанта
-					 * @param worker объект воркера
-					 */
-					static void thread(const Adjutant & adj, const Worker & worker) noexcept;
-				private:
-					/**
-					 * end Метод установки флага завершения работы
-					 */
-					void end() noexcept;
-					/**
-					 * get Метод получения буфера чанка
-					 * @return буфер чанка в бинарном виде 
-					 */
-					vector <char> get() noexcept;
-					/**
-					 * add Метод добавления чанка бинарных данных
-					 * @param buffer буфер чанка бинарных данных
-					 * @param size   размер буфера бинарных данных
-					 */
-					void add(const char * buffer, const size_t size) noexcept;
 				public:
 					/**
 					 * Adjutant Конструктор

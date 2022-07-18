@@ -34,8 +34,15 @@ void awh::client::Rest::chunking(const vector <char> & chunk, const awh::http_t 
  * @param ctx  передаваемый контекст модуля
  */
 void awh::client::Rest::openCallback(const size_t wid, awh::core_t * core, void * ctx) noexcept {
-	// Выполняем подключение
-	reinterpret_cast <client::core_t *> (core)->open(wid);
+	// Получаем контекст модуля
+	rest_t * web = reinterpret_cast <rest_t *> (ctx);
+	// Если дисконнекта ещё не произошло
+	if(web->action == action_t::NONE){
+		// Устанавливаем экшен выполнения
+		web->action = action_t::OPEN;
+		// Выполняем запуск обработчика событий
+		web->handler();
+	}
 }
 /**
  * connectCallback Функция обратного вызова при подключении к серверу
@@ -51,55 +58,10 @@ void awh::client::Rest::connectCallback(const size_t aid, const size_t wid, awh:
 		rest_t * web = reinterpret_cast <rest_t *> (ctx);
 		// Запоминаем идентификатор адъютанта
 		web->aid = aid;
-		// Выполняем сброс параметров запроса
-		web->flush();
-		// Выполняем перебор всех подключений
-		for(auto & req : web->requests){
-			// Выполняем сброс состояния HTTP парсера
-			web->http.reset();
-			// Выполняем очистку параметров HTTP запроса
-			web->http.clear();
-			// Устанавливаем метод компрессии
-			web->http.setCompress(web->compress);
-			// Если список заголовков получен
-			if(!req.headers.empty())
-				// Устанавливаем заголовоки запроса
-				web->http.setHeaders(req.headers);
-			// Если тело запроса существует
-			if(!req.entity.empty())
-				// Устанавливаем тело запроса
-				web->http.setBody(req.entity);
-			// Получаем бинарные данные REST запроса
-			const auto & request = web->http.request(req.url, req.method);
-			// Если бинарные данные запроса получены
-			if(!request.empty()){
-				// Если включён режим отладки
-				#if defined(DEBUG_MODE)
-					// Выводим заголовок запроса
-					cout << "\x1B[33m\x1B[1m^^^^^^^^^ REQUEST ^^^^^^^^^\x1B[0m" << endl;
-					// Выводим параметры запроса
-					cout << string(request.begin(), request.end()) << endl << endl;
-				#endif
-				// Тело REST сообщения
-				vector <char> entity;
-				// Отправляем серверу сообщение
-				core->write(request.data(), request.size(), aid);
-				// Получаем данные тела запроса
-				while(!(entity = web->http.payload()).empty()){
-					// Если включён режим отладки
-					#if defined(DEBUG_MODE)
-						// Выводим сообщение о выводе чанка тела
-						cout << web->fmk->format("<chunk %u>", entity.size()) << endl;
-					#endif
-					// Отправляем тело на сервер
-					core->write(entity.data(), entity.size(), aid);
-				}
-			}
-		}
-		// Если функция обратного вызова существует
-		if(web->activeFn != nullptr)
-			// Выполняем функцию обратного вызова
-			web->activeFn(mode_t::CONNECT, web, web->ctx.at(0));
+		// Устанавливаем экшен выполнения
+		web->action = action_t::SERVER_CONNECT;
+		// Выполняем запуск обработчика событий
+		web->handler();
 	}
 }
 /**
@@ -114,52 +76,10 @@ void awh::client::Rest::disconnectCallback(const size_t aid, const size_t wid, a
 	if((wid > 0) && (core != nullptr) && (ctx != nullptr)){
 		// Получаем контекст модуля
 		rest_t * web = reinterpret_cast <rest_t *> (ctx);
-		// Если список ответов получен
-		if(!web->responses.empty() && !web->requests.empty()){
-			// Получаем объект ответа
-			const res_t & res = web->responses.front();
-			// Если нужно произвести запрос заново
-			if((res.code == 201) || (res.code == 301) ||
-			   (res.code == 302) || (res.code == 303) ||
-			   (res.code == 307) || (res.code == 308) ||
-			   (res.code == 401) || (res.code == 407)){
-				// Получаем объект запроса
-				req_t & req = web->requests.front();
-				// Устанавливаем новый URL адрес запроса
-				req.url = web->http.getUrl();
-				// Получаем новый адрес запроса для воркера
-				web->worker.url = req.url;
-				// Выполняем запрос заново
-				reinterpret_cast <client::core_t *> (core)->open(web->worker.wid);
-				// Выходим из функции
-				return;
-			}
-		}
-		// Получаем объект ответа
-		res_t res = (!web->responses.empty() ? move(web->responses.front()) : res_t());
-		// Если список ответов не получен, значит он был выведен ранее
-		if(web->responses.empty()) res.code = 1;
-		// Выполняем очистку списка запросов
-		web->requests.clear();
-		// Выполняем очистку списка ответов
-		web->responses.clear();
-		// Очищаем адрес сервера
-		web->worker.url.clear();
-		// Выполняем сброс параметров запроса
-		web->flush();
-		// Завершаем работу
-		if(web->unbind) core->stop();
-		// Если функция обратного вызова установлена, выводим сообщение
-		if((res.code == 0) && (web->messageFn != nullptr)){
-			// Устанавливаем код ответа сервера
-			res.code = 500;
-			// Выполняем функцию обратного вызова
-			web->messageFn(res, web, web->ctx.at(1));
-		}
-		// Если функция обратного вызова существует
-		if(web->activeFn != nullptr)
-			// Выполняем функцию обратного вызова
-			web->activeFn(mode_t::DISCONNECT, web, web->ctx.at(0));
+		// Устанавливаем экшен выполнения
+		web->action = action_t::SERVER_DISCONNECT;
+		// Выполняем запуск обработчика событий
+		web->handler();
 	}
 }
 /**
@@ -176,47 +96,10 @@ void awh::client::Rest::connectProxyCallback(const size_t aid, const size_t wid,
 		rest_t * web = reinterpret_cast <rest_t *> (ctx);
 		// Запоминаем идентификатор адъютанта
 		web->aid = aid;
-		// Получаем объект запроса
-		req_t & req = web->requests.front();
-		// Определяем тип прокси-сервера
-		switch((uint8_t) web->worker.proxy.type){
-			// Если прокси-сервер является Socks5
-			case (uint8_t) proxy_t::type_t::SOCKS5: {
-				// Выполняем сброс состояния Socks5 парсера
-				web->worker.proxy.socks5.reset();
-				// Устанавливаем URL адрес запроса
-				web->worker.proxy.socks5.setUrl(req.url);
-				// Выполняем создание буфера запроса
-				web->worker.proxy.socks5.parse();
-				// Получаем данные запроса
-				const auto & socks5 = web->worker.proxy.socks5.get();
-				// Если данные получены
-				if(!socks5.empty()) core->write(socks5.data(), socks5.size(), aid);
-			} break;
-			// Если прокси-сервер является HTTP
-			case (uint8_t) proxy_t::type_t::HTTP: {
-				// Выполняем сброс состояния HTTP парсера
-				web->worker.proxy.http.reset();
-				// Выполняем очистку параметров HTTP запроса
-				web->worker.proxy.http.clear();
-				// Получаем бинарные данные REST запроса
-				const auto & proxy = web->worker.proxy.http.proxy(req.url);
-				// Если бинарные данные запроса получены
-				if(!proxy.empty()){
-					// Если включён режим отладки
-					#if defined(DEBUG_MODE)
-						// Выводим заголовок запроса
-						cout << "\x1B[33m\x1B[1m^^^^^^^^^ REQUEST PROXY ^^^^^^^^^\x1B[0m" << endl;
-						// Выводим параметры запроса
-						cout << string(proxy.begin(), proxy.end()) << endl;
-					#endif
-					// Отправляем на прокси-сервер
-					core->write(proxy.data(), proxy.size(), aid);
-				}
-			} break;
-			// Иначе завершаем работу
-			default: reinterpret_cast <client::core_t *> (core)->close(aid);
-		}
+		// Устанавливаем экшен выполнения
+		web->action = action_t::PROXY_CONNECT;
+		// Выполняем запуск обработчика событий
+		web->handler();
 	}
 }
 /**
@@ -233,161 +116,14 @@ void awh::client::Rest::readCallback(const char * buffer, const size_t size, con
 	if((buffer != nullptr) && (size > 0) && (aid > 0) && (wid > 0)){
 		// Получаем контекст модуля
 		rest_t * web = reinterpret_cast <rest_t *> (ctx);
-		// Добавляем полученные данные в буфер
-		web->entity.insert(web->entity.end(), buffer, buffer + size);
-		// Выполняем обработку полученных данных
-		while(!web->active){
-			// Получаем объект запроса
-			req_t & req = web->requests.front();
-			// Получаем объект ответа
-			res_t & res = web->responses.front();
-			// Выполняем парсинг полученных данных
-			size_t bytes = web->http.parse(web->entity.data(), web->entity.size());
-			// Если все данные получены
-			if((res.ok = web->http.isEnd())){
-				// Получаем параметры запроса
-				auto query = web->http.getQuery();
-				// Устанавливаем код ответа
-				res.code = query.code;
-				// Устанавливаем сообщение ответа
-				res.message = query.message;
-				// Если включён режим отладки
-				#if defined(DEBUG_MODE)
-					// Получаем данные ответа
-					const auto & response = web->http.response(true);
-					// Если параметры ответа получены
-					if(!response.empty()){
-						// Выводим заголовок ответа
-						cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
-						// Выводим параметры ответа
-						cout << string(response.begin(), response.end()) << endl;
-						// Если тело ответа существует
-						if(!web->http.getBody().empty())
-							// Выводим сообщение о выводе чанка тела
-							cout << web->fmk->format("<body %u>", web->http.getBody().size()) << endl << endl;
-						// Иначе устанавливаем перенос строки
-						else cout << endl;
-					}
-				#endif
-				// Выполняем анализ результата авторизации
-				switch((uint8_t) web->http.getAuth()){
-					// Если нужно попытаться ещё раз
-					case (uint8_t) awh::http_t::stath_t::RETRY: {
-						// Если попытка повторить авторизацию ещё не проводилась
-						if(!req.failAuth){
-							// Получаем новый адрес запроса
-							req.url = web->http.getUrl();
-							// Если адрес запроса получен
-							if(!req.url.empty()){
-								// Выполняем очистку оставшихся данных
-								web->entity.clear();
-								// Запоминаем, что попытка выполнена
-								req.failAuth = true;
-								// Если соединение является постоянным
-								if(web->http.isAlive())
-									// Выполняем повторно отправку сообщения на сервер
-									connectCallback(aid, wid, core, ctx);
-								// Если нам необходимо отключиться
-								else {
-									// Получаем новый адрес запроса для воркера
-									web->worker.url = req.url;
-									// Завершаем работу
-									reinterpret_cast <client::core_t *> (core)->close(aid);
-								}
-								// Завершаем работу
-								return;
-							}
-						}
-						// Устанавливаем код ответа
-						res.code = 403;
-					} break;
-					// Если запрос выполнен удачно
-					case (uint8_t) awh::http_t::stath_t::GOOD: {
-						// Получаем объект ответа
-						res_t res = move(web->responses.front());
-						// Если функция обратного вызова установлена, выводим сообщение
-						if(web->messageFn != nullptr){
-							// Получаем тело запроса
-							const auto & entity = web->http.getBody();
-							// Получаем заголовки ответа
-							const auto & headers = web->http.getHeaders();
-							// Устанавливаем тело ответа
-							res.entity.assign(entity.begin(), entity.end());
-							// Устанавливаем заголовки ответа
-							res.headers = move(* const_cast <unordered_multimap <string, string> *> (&headers));
-						}
-						// Устанавливаем размер стопбайт
-						if(!web->http.isAlive()){
-							// Выполняем очистку оставшихся данных
-							web->entity.clear();
-							// Если функция обратного вызова установлена, выводим сообщение
-							if(web->messageFn != nullptr)
-								// Выполняем функцию обратного вызова
-								web->messageFn(res, web, web->ctx.at(1));
-							// Завершаем работу
-							reinterpret_cast <client::core_t *> (core)->close(aid);
-							// Выходим из функции
-							return;
-						}
-						// Выполняем сброс состояния HTTP парсера
-						web->http.reset();
-						// Выполняем очистку параметров HTTP запроса
-						web->http.clear();
-						// Если объект ещё не удалён
-						if(!web->requests.empty())
-							// Выполняем удаление объекта запроса
-							web->requests.erase(web->requests.begin());
-						// Если объект ещё не удалён
-						if(!web->responses.empty())
-							// Выполняем удаление объекта ответа
-							web->responses.erase(web->responses.begin());
-						// Если функция обратного вызова установлена, выводим сообщение
-						if(web->messageFn != nullptr)
-							// Выполняем функцию обратного вызова
-							web->messageFn(res, web, web->ctx.at(1));
-						// Завершаем обработку
-						goto Next;
-					} break;
-					// Если запрос неудачный
-					case (uint8_t) awh::http_t::stath_t::FAULT: {
-						// Запрещаем бесконечный редирект при запросе авторизации
-						if((res.code == 401) || (res.code == 407)) res.code = 403;
-					} break;
-				}
-				// Выполняем очистку оставшихся данных
-				web->entity.clear();
-				// Если функция обратного вызова установлена, выводим сообщение
-				if(web->messageFn != nullptr){
-					// Получаем тело запроса
-					const auto & entity = web->http.getBody();
-					// Получаем заголовки ответа
-					const auto & headers = web->http.getHeaders();
-					// Устанавливаем тело ответа
-					res.entity.assign(entity.begin(), entity.end());
-					// Устанавливаем заголовки ответа
-					res.headers = move(* const_cast <unordered_multimap <string, string> *> (&headers));
-					// Выполняем функцию обратного вызова
-					web->messageFn(res, web, web->ctx.at(1));
-				}
-				// Завершаем работу
-				reinterpret_cast <client::core_t *> (core)->close(aid);
-				// Выходим из функции
-				return;
-			}
-			// Устанавливаем метку продолжения обработки пайплайна
-			Next:
-			// Если парсер обработал какое-то количество байт
-			if((bytes > 0) && !web->entity.empty()){
-				// Если размер буфера больше количества удаляемых байт
-				if(web->entity.size() >= bytes)
-					// Удаляем количество обработанных байт
-					vector <decltype(web->entity)::value_type> (web->entity.begin() + bytes, web->entity.end()).swap(web->entity);
-				// Если байт в буфере меньше, просто очищаем буфер
-				else web->entity.clear();
-				// Если данных для обработки не осталось, выходим
-				if(web->entity.empty()) break;
-			// Если данных для обработки недостаточно, выходим
-			} else break;
+		// Если дисконнекта ещё не произошло
+		if((web->action == action_t::NONE) || (web->action == action_t::SERVER_READ)){
+			// Устанавливаем экшен выполнения
+			web->action = action_t::SERVER_READ;
+			// Добавляем полученные данные в буфер
+			web->entity.insert(web->entity.end(), buffer, buffer + size);
+			// Выполняем запуск обработчика событий
+			web->handler();
 		}
 	}
 }
@@ -405,76 +141,408 @@ void awh::client::Rest::readProxyCallback(const char * buffer, const size_t size
 	if((buffer != nullptr) && (size > 0) && (aid > 0) && (wid > 0)){
 		// Получаем контекст модуля
 		rest_t * web = reinterpret_cast <rest_t *> (ctx);
-		// Определяем тип прокси-сервера
-		switch((uint8_t) web->worker.proxy.type){
-			// Если прокси-сервер является Socks5
-			case (uint8_t) proxy_t::type_t::SOCKS5: {
-				// Если данные не получены
-				if(!web->worker.proxy.socks5.isEnd()){
-					// Выполняем парсинг входящих данных
-					web->worker.proxy.socks5.parse(buffer, size);
-					// Получаем данные запроса
-					const auto & socks5 = web->worker.proxy.socks5.get();
-					// Если данные получены
-					if(!socks5.empty()) core->write(socks5.data(), socks5.size(), aid);
-					// Если данные все получены
-					else if(web->worker.proxy.socks5.isEnd()) {
-						// Если рукопожатие выполнено
-						if(web->worker.proxy.socks5.isHandshake()){
-							// Выполняем переключение на работу с сервером
-							reinterpret_cast <client::core_t *> (core)->switchProxy(aid);
-							// Завершаем работу
-							return;
-						// Если рукопожатие не выполнено
-						} else {
-							// Получаем объект ответа
-							res_t & res = web->responses.front();
-							// Устанавливаем код ответа
-							res.code = web->worker.proxy.socks5.getCode();
-							// Устанавливаем сообщение ответа
-							res.message = web->worker.proxy.socks5.getMessage(res.code);
-							// Если включён режим отладки
-							#if defined(DEBUG_MODE)
-								// Если заголовки получены
-								if(!res.message.empty()){
-									// Данные REST ответа
-									const string & response = web->fmk->format("SOCKS5 %u %s\r\n", res.code, res.message.c_str());
-									// Выводим заголовок ответа
-									cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE PROXY ^^^^^^^^^\x1B[0m" << endl;
-									// Выводим параметры ответа
-									cout << string(response.begin(), response.end()) << endl;
-								}
-							#endif
-							// Если функция обратного вызова установлена, выводим сообщение
-							if(web->messageFn != nullptr)
-								// Выполняем функцию обратного вызова
-								web->messageFn(res, web, web->ctx.at(1));
-							// Завершаем работу
-							reinterpret_cast <client::core_t *> (core)->close(aid);
-						}
+		// Если дисконнекта ещё не произошло
+		if((web->action == action_t::NONE) || (web->action == action_t::PROXY_READ)){
+			// Устанавливаем экшен выполнения
+			web->action = action_t::PROXY_READ;
+			// Добавляем полученные данные в буфер
+			web->entity.insert(web->entity.end(), buffer, buffer + size);
+			// Выполняем запуск обработчика событий
+			web->handler();
+		}
+	}
+}
+/**
+ * handler Метод управления входящими методами
+ */
+void awh::client::Rest::handler() noexcept {
+	// Если управляющий блокировщик не заблокирован
+	if(!this->locker.mode){
+		// Выполняем блокировку потока
+		const lock_guard <recursive_mutex> lock(this->locker.mtx);
+		// Выполняем блокировку обработчика
+		this->locker.mode = true;
+		// Устанавливаем метку обработчика
+		repeat:
+		// Определяем обрабатываемый экшен
+		switch((uint8_t) this->action){
+			// Если необходимо запустить экшен открытия подключения
+			case (uint8_t) action_t::OPEN:
+				// Выполняем экшен открытия подключения
+				this->actionOpen();
+			break;
+			// Если необходимо запустить экшен обработки данных поступающих с сервера
+			case (uint8_t) action_t::SERVER_READ:
+				// Выполняем экшен обработки данных поступающих с сервера
+				this->actionRead();
+			break;
+			// Если необходимо запустить экшен обработки подключения к серверу
+			case (uint8_t) action_t::SERVER_CONNECT:
+				// Выполняем экшен обработки подключения к серверу
+				this->actionConnect();
+			break;
+			// Если необходимо запустить экшен обработки отключения от сервера
+			case (uint8_t) action_t::SERVER_DISCONNECT:
+				// Выполняем экшен обработки отключения от сервера
+				this->actionDisconnect();
+			break;
+			// Если необходимо запустить экшен обработки данных поступающих с прокси-сервера
+			case (uint8_t) action_t::PROXY_READ:
+				// Выполняем экшен обработки данных поступающих с прокси-сервера
+				this->actionConnectProxy();
+			break;
+			// Если необходимо запустить экшен обработки подключения к прокси-серверу
+			case (uint8_t) action_t::PROXY_CONNECT:
+				// Выполняем экшен обработки подключения к прокси-серверу
+				this->actionReadProxy();
+			break;
+		}
+		// Если требуется запустить следующий экшен
+		if(this->action != action_t::NONE)
+			// Выполняем обработку заново
+			goto repeat;
+		// Выполняем разблокировку обработчика
+		this->locker.mode = false;
+	}
+}
+/**
+ * actionOpen Метод обработки экшена открытия подключения
+ */
+void awh::client::Rest::actionOpen() noexcept {
+	// Выполняем подключение
+	const_cast <client::core_t *> (this->core)->open(this->worker.wid);
+	// Если экшен соответствует, выполняем его сброс
+	if(this->action == action_t::OPEN)
+		// Выполняем сброс экшена
+		this->action = action_t::NONE;
+}
+/**
+ * actionRead Метод обработки экшена чтения с сервера
+ */
+void awh::client::Rest::actionRead() noexcept {
+	// Результат работы функции
+	res_t result;
+	// Флаг завершения работы
+	bool completed = false;
+	// Получаем объект биндинга ядра TCP/IP
+	client::core_t * core = const_cast <client::core_t *> (this->core);
+	// Выполняем обработку полученных данных
+	while(!this->active){
+		// Получаем объект запроса
+		req_t & request = this->requests.front();
+		// Получаем объект ответа
+		res_t & response = this->responses.front();
+		// Выполняем парсинг полученных данных
+		size_t bytes = this->http.parse(this->entity.data(), this->entity.size());
+		// Если все данные получены
+		if((response.ok = completed = this->http.isEnd())){
+			// Получаем параметры запроса
+			auto query = this->http.getQuery();
+			// Устанавливаем код ответа
+			response.code = query.code;
+			// Устанавливаем сообщение ответа
+			response.message = query.message;
+			// Если включён режим отладки
+			#if defined(DEBUG_MODE)
+				{
+					// Получаем данные ответа
+					const auto & response = this->http.response(true);
+					// Если параметры ответа получены
+					if(!response.empty()){
+						// Выводим заголовок ответа
+						cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
+						// Выводим параметры ответа
+						cout << string(response.begin(), response.end()) << endl;
+						// Если тело ответа существует
+						if(!this->http.getBody().empty())
+							// Выводим сообщение о выводе чанка тела
+							cout << this->fmk->format("<body %u>", this->http.getBody().size()) << endl << endl;
+						// Иначе устанавливаем перенос строки
+						else cout << endl;
 					}
 				}
-			} break;
-			// Если прокси-сервер является HTTP
-			case (uint8_t) proxy_t::type_t::HTTP: {
-				// Выполняем парсинг полученных данных
-				web->worker.proxy.http.parse(buffer, size);
-				// Если все данные получены
-				if(web->worker.proxy.http.isEnd()){
-					// Получаем параметры запроса
-					const auto & query = web->worker.proxy.http.getQuery();
-					// Получаем объект запроса
-					req_t & req = web->requests.front();
-					// Получаем объект ответа
-					res_t & res = web->responses.front();
+			#endif
+			// Выполняем анализ результата авторизации
+			switch((uint8_t) this->http.getAuth()){
+				// Если нужно попытаться ещё раз
+				case (uint8_t) awh::http_t::stath_t::RETRY: {
+					// Если попытка повторить авторизацию ещё не проводилась
+					if(!request.failAuth){
+						// Получаем новый адрес запроса
+						request.url = this->http.getUrl();
+						// Если адрес запроса получен
+						if(!request.url.empty()){
+							// Выполняем очистку оставшихся данных
+							this->entity.clear();
+							// Запоминаем, что попытка выполнена
+							request.failAuth = true;
+							// Если соединение является постоянным
+							if(this->http.isAlive())
+								// Устанавливаем новый экшен выполнения
+								this->action = action_t::SERVER_CONNECT;
+							// Если нам необходимо отключиться
+							else {
+								// Если экшен соответствует, выполняем его сброс
+								if(this->action == action_t::SERVER_READ)
+									// Выполняем сброс экшена
+									this->action = action_t::NONE;
+								// Получаем новый адрес запроса для воркера
+								this->worker.url = request.url;
+								// Завершаем работу
+								core->close(this->aid);
+							}
+							// Завершаем работу
+							return;
+						}
+					}
 					// Устанавливаем код ответа
-					res.code = query.code;
-					// Устанавливаем сообщение ответа
-					res.message = query.message;
-					// Если включён режим отладки
-					#if defined(DEBUG_MODE)
+					response.code = 403;
+				} break;
+				// Если запрос выполнен удачно
+				case (uint8_t) awh::http_t::stath_t::GOOD: {					
+					// Получаем объект ответа
+					result = response;
+					// Если функция обратного вызова установлена, выводим сообщение
+					if(this->messageFn != nullptr){
+						// Получаем тело запроса
+						const auto & entity = this->http.getBody();
+						// Получаем заголовки ответа
+						const auto & headers = this->http.getHeaders();
+						// Устанавливаем тело ответа
+						result.entity.assign(entity.begin(), entity.end());
+						// Устанавливаем заголовки ответа
+						result.headers = move(* const_cast <unordered_multimap <string, string> *> (&headers));
+					}
+					// Устанавливаем размер стопбайт
+					if(!this->http.isAlive()){
+						// Выполняем очистку оставшихся данных
+						this->entity.clear();
+						// Завершаем работу
+						core->close(this->aid);
+						// Выполняем завершение работы
+						goto Stop;
+					}
+					// Выполняем сброс состояния HTTP парсера
+					this->http.reset();
+					// Выполняем очистку параметров HTTP запроса
+					this->http.clear();
+					// Если объект ещё не удалён
+					if(!this->requests.empty())
+						// Выполняем удаление объекта запроса
+						this->requests.erase(this->requests.begin());
+					// Если объект ещё не удалён
+					if(!this->responses.empty())
+						// Выполняем удаление объекта ответа
+						this->responses.erase(this->responses.begin());
+					// Завершаем обработку
+					goto Next;
+				} break;
+				// Если запрос неудачный
+				case (uint8_t) awh::http_t::stath_t::FAULT: {
+					// Запрещаем бесконечный редирект при запросе авторизации
+					if((response.code == 401) || (response.code == 407)) response.code = 403;
+				} break;
+			}
+			// Выполняем очистку оставшихся данных
+			this->entity.clear();
+			// Если функция обратного вызова установлена, выводим сообщение
+			if(this->messageFn != nullptr){
+				// Получаем объект ответа
+				result = response;
+				// Получаем тело запроса
+				const auto & entity = this->http.getBody();
+				// Получаем заголовки ответа
+				const auto & headers = this->http.getHeaders();
+				// Устанавливаем тело ответа
+				result.entity.assign(entity.begin(), entity.end());
+				// Устанавливаем заголовки ответа
+				result.headers = move(* const_cast <unordered_multimap <string, string> *> (&headers));
+				// Завершаем работу
+				core->close(this->aid);
+			// Завершаем работу
+			} else core->close(this->aid);
+			// Выходим из функции
+			return;
+		}
+		// Устанавливаем метку продолжения обработки пайплайна
+		Next:
+		// Если парсер обработал какое-то количество байт
+		if((bytes > 0) && !this->entity.empty()){
+			// Если размер буфера больше количества удаляемых байт
+			if(this->entity.size() >= bytes)
+				// Удаляем количество обработанных байт
+				vector <decltype(this->entity)::value_type> (this->entity.begin() + bytes, this->entity.end()).swap(this->entity);
+			// Если байт в буфере меньше, просто очищаем буфер
+			else this->entity.clear();
+			// Если данных для обработки не осталось, выходим
+			if(this->entity.empty()) break;
+		// Если данных для обработки недостаточно, выходим
+		} else break;
+	}
+	// Устанавливаем метку завершения работы
+	Stop:
+	// Если экшен соответствует, выполняем его сброс
+	if(this->action == action_t::SERVER_READ)
+		// Выполняем сброс экшена
+		this->action = action_t::NONE;
+	// Если функция обратного вызова установлена, выводим сообщение
+	if(completed && (this->messageFn != nullptr))
+		// Выполняем функцию обратного вызова
+		this->messageFn(result, this, this->ctx.at(1));
+}
+/**
+ * actionConnect Метод обработки экшена подключения к серверу
+ */
+void awh::client::Rest::actionConnect() noexcept {
+	// Выполняем сброс параметров запроса
+	this->flush();
+	// Получаем объект биндинга ядра TCP/IP
+	client::core_t * core = const_cast <client::core_t *> (this->core);
+	// Выполняем перебор всех подключений
+	for(auto & req : this->requests){
+		// Выполняем сброс состояния HTTP парсера
+		this->http.reset();
+		// Выполняем очистку параметров HTTP запроса
+		this->http.clear();
+		// Устанавливаем метод компрессии
+		this->http.setCompress(this->compress);
+		// Если список заголовков получен
+		if(!req.headers.empty())
+			// Устанавливаем заголовоки запроса
+			this->http.setHeaders(req.headers);
+		// Если тело запроса существует
+		if(!req.entity.empty())
+			// Устанавливаем тело запроса
+			this->http.setBody(req.entity);
+		// Получаем бинарные данные REST запроса
+		const auto & request = this->http.request(req.url, req.method);
+		// Если бинарные данные запроса получены
+		if(!request.empty()){
+			// Если включён режим отладки
+			#if defined(DEBUG_MODE)
+				// Выводим заголовок запроса
+				cout << "\x1B[33m\x1B[1m^^^^^^^^^ REQUEST ^^^^^^^^^\x1B[0m" << endl;
+				// Выводим параметры запроса
+				cout << string(request.begin(), request.end()) << endl << endl;
+			#endif
+			// Тело REST сообщения
+			vector <char> entity;
+			// Отправляем серверу сообщение
+			core->write(request.data(), request.size(), this->aid);
+			// Получаем данные тела запроса
+			while(!(entity = this->http.payload()).empty()){
+				// Если включён режим отладки
+				#if defined(DEBUG_MODE)
+					// Выводим сообщение о выводе чанка тела
+					cout << this->fmk->format("<chunk %u>", entity.size()) << endl;
+				#endif
+				// Отправляем тело на сервер
+				core->write(entity.data(), entity.size(), this->aid);
+			}
+		}
+	}
+	// Если экшен соответствует, выполняем его сброс
+	if(this->action == action_t::SERVER_CONNECT)
+		// Выполняем сброс экшена
+		this->action = action_t::NONE;
+	// Если функция обратного вызова существует
+	if(this->activeFn != nullptr)
+		// Выполняем функцию обратного вызова
+		this->activeFn(mode_t::CONNECT, this, this->ctx.at(0));
+}
+/**
+ * actionReadProxy Метод обработки экшена чтения с прокси-сервера
+ */
+void awh::client::Rest::actionReadProxy() noexcept {
+	// Получаем объект биндинга ядра TCP/IP
+	client::core_t * core = const_cast <client::core_t *> (this->core);
+	// Определяем тип прокси-сервера
+	switch((uint8_t) this->worker.proxy.type){
+		// Если прокси-сервер является Socks5
+		case (uint8_t) proxy_t::type_t::SOCKS5: {
+			// Если данные не получены
+			if(!this->worker.proxy.socks5.isEnd()){
+				// Выполняем парсинг входящих данных
+				this->worker.proxy.socks5.parse(this->entity.data(), this->entity.size());
+				// Получаем данные запроса
+				const auto & socks5 = this->worker.proxy.socks5.get();
+				// Если данные получены
+				if(!socks5.empty()) core->write(socks5.data(), socks5.size(), this->aid);
+				// Если данные все получены
+				else if(this->worker.proxy.socks5.isEnd()) {
+					// Выполняем очистку буфера данных
+					this->entity.clear();
+					// Если рукопожатие выполнено
+					if(this->worker.proxy.socks5.isHandshake()){
+						// Выполняем переключение на работу с сервером
+						core->switchProxy(this->aid);
+						// Если экшен соответствует, выполняем его сброс
+						if(this->action == action_t::PROXY_READ)
+							// Выполняем сброс экшена
+							this->action = action_t::NONE;
+						// Завершаем работу
+						return;
+					// Если рукопожатие не выполнено
+					} else {
+						// Получаем объект ответа
+						res_t & response = this->responses.front();
+						// Устанавливаем код ответа
+						response.code = this->worker.proxy.socks5.getCode();
+						// Устанавливаем сообщение ответа
+						response.message = this->worker.proxy.socks5.getMessage(response.code);
+						// Если включён режим отладки
+						#if defined(DEBUG_MODE)
+							// Если заголовки получены
+							if(!response.message.empty()){
+								// Данные REST ответа
+								const string & message = this->fmk->format("SOCKS5 %u %s\r\n", response.code, response.message.c_str());
+								// Выводим заголовок ответа
+								cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE PROXY ^^^^^^^^^\x1B[0m" << endl;
+								// Выводим параметры ответа
+								cout << string(message.begin(), message.end()) << endl;
+							}
+						#endif
+						// Если экшен соответствует, выполняем его сброс
+						if(this->action == action_t::PROXY_READ)
+							// Выполняем сброс экшена
+							this->action = action_t::NONE;
+						// Если функция обратного вызова установлена, выводим сообщение
+						if(this->messageFn != nullptr){
+							// Получаем результат ответа
+							res_t result = response;
+							// Завершаем работу
+							core->close(this->aid);
+							// Выполняем функцию обратного вызова
+							this->messageFn(result, this, this->ctx.at(1));
+						// Завершаем работу
+						} else core->close(this->aid);
+					}
+				}
+			}
+		} break;
+		// Если прокси-сервер является HTTP
+		case (uint8_t) proxy_t::type_t::HTTP: {
+			// Выполняем парсинг полученных данных
+			this->worker.proxy.http.parse(this->entity.data(), this->entity.size());
+			// Если все данные получены
+			if(this->worker.proxy.http.isEnd()){
+				// Выполняем очистку буфера данных
+				this->entity.clear();
+				// Получаем параметры запроса
+				const auto & query = this->worker.proxy.http.getQuery();
+				// Получаем объект запроса
+				req_t & request = this->requests.front();
+				// Получаем объект ответа
+				res_t & response = this->responses.front();
+				// Устанавливаем код ответа
+				response.code = query.code;
+				// Устанавливаем сообщение ответа
+				response.message = query.message;
+				// Если включён режим отладки
+				#if defined(DEBUG_MODE)
+					{
 						// Получаем данные ответа
-						const auto & response = web->worker.proxy.http.response(true);
+						const auto & response = this->worker.proxy.http.response(true);
 						// Если параметры ответа получены
 						if(!response.empty()){
 							// Выводим заголовок ответа
@@ -482,71 +550,208 @@ void awh::client::Rest::readProxyCallback(const char * buffer, const size_t size
 							// Выводим параметры ответа
 							cout << string(response.begin(), response.end()) << endl;
 							// Если тело ответа существует
-							if(!web->worker.proxy.http.getBody().empty())
+							if(!this->worker.proxy.http.getBody().empty())
 								// Выводим сообщение о выводе чанка тела
-								cout << web->fmk->format("<body %u>", web->worker.proxy.http.getBody().size())  << endl;
+								cout << this->fmk->format("<body %u>", this->worker.proxy.http.getBody().size())  << endl;
 						}
-					#endif
-					// Выполняем проверку авторизации
-					switch((uint8_t) web->worker.proxy.http.getAuth()){
-						// Если нужно попытаться ещё раз
-						case (uint8_t) awh::http_t::stath_t::RETRY: {
-							// Если попытка повторить авторизацию ещё не проводилась
-							if(!req.failAuth){
-								// Получаем новый адрес запроса
-								web->worker.proxy.url = web->worker.proxy.http.getUrl();
-								// Если адрес запроса получен
-								if(!web->worker.proxy.url.empty()){
-									// Запоминаем, что попытка выполнена
-									req.failAuth = true;
-									// Если соединение является постоянным
-									if(web->worker.proxy.http.isAlive())
-										// Выполняем повторно отправку сообщения на сервер
-										connectProxyCallback(aid, wid, core, ctx);
-									// Завершаем работу
-									else reinterpret_cast <client::core_t *> (core)->close(aid);
-									// Завершаем работу
-									return;
-								}
-							}
-							// Устанавливаем код ответа
-							res.code = 403;
-						} break;
-						// Если запрос выполнен удачно
-						case (uint8_t) awh::http_t::stath_t::GOOD: {
-							// Выполняем сброс количество попыток
-							req.failAuth = false;
-							// Выполняем переключение на работу с сервером
-							reinterpret_cast <client::core_t *> (core)->switchProxy(aid);
-							// Завершаем работу
-							return;
-						} break;
-						// Если запрос неудачный
-						case (uint8_t) awh::http_t::stath_t::FAULT: {
-							// Запрещаем бесконечный редирект при запросе авторизации
-							if((res.code == 401) || (res.code == 407))
-								// Устанавливаем код ответа
-								res.code = 403;
-							// Получаем тело запроса
-							const auto & entity = web->worker.proxy.http.getBody();
-							// Устанавливаем заголовки ответа
-							res.headers = web->worker.proxy.http.getHeaders();
-							// Устанавливаем тело ответа
-							res.entity.assign(entity.begin(), entity.end());
-						} break;
 					}
-					// Если функция обратного вызова установлена, выводим сообщение
-					if(web->messageFn != nullptr)
-						// Выполняем функцию обратного вызова
-						web->messageFn(res, web, web->ctx.at(1));
-					// Завершаем работу
-					reinterpret_cast <client::core_t *> (core)->close(aid);
+				#endif
+				// Выполняем проверку авторизации
+				switch((uint8_t) this->worker.proxy.http.getAuth()){
+					// Если нужно попытаться ещё раз
+					case (uint8_t) awh::http_t::stath_t::RETRY: {
+						// Если попытка повторить авторизацию ещё не проводилась
+						if(!request.failAuth){
+							// Получаем новый адрес запроса
+							this->worker.proxy.url = this->worker.proxy.http.getUrl();
+							// Если адрес запроса получен
+							if(!this->worker.proxy.url.empty()){
+								// Запоминаем, что попытка выполнена
+								request.failAuth = true;
+								// Если соединение является постоянным
+								if(this->worker.proxy.http.isAlive())
+									// Устанавливаем новый экшен выполнения
+									this->action = action_t::PROXY_CONNECT;
+								// Завершаем работу
+								else {
+									// Если экшен соответствует, выполняем его сброс
+									if(this->action == action_t::PROXY_READ)
+										// Выполняем сброс экшена
+										this->action = action_t::NONE;
+									// Завершаем работу
+									core->close(this->aid);
+								}
+								// Завершаем работу
+								return;
+							}
+						}
+						// Устанавливаем код ответа
+						response.code = 403;
+					} break;
+					// Если запрос выполнен удачно
+					case (uint8_t) awh::http_t::stath_t::GOOD: {
+						// Выполняем сброс количество попыток
+						request.failAuth = false;
+						// Выполняем переключение на работу с сервером
+						core->switchProxy(this->aid);
+						// Если экшен соответствует, выполняем его сброс
+						if(this->action == action_t::PROXY_READ)
+							// Выполняем сброс экшена
+							this->action = action_t::NONE;
+						// Завершаем работу
+						return;
+					} break;
+					// Если запрос неудачный
+					case (uint8_t) awh::http_t::stath_t::FAULT: {
+						// Запрещаем бесконечный редирект при запросе авторизации
+						if((response.code == 401) || (response.code == 407))
+							// Устанавливаем код ответа
+							response.code = 403;
+						// Получаем тело запроса
+						const auto & entity = this->worker.proxy.http.getBody();
+						// Устанавливаем заголовки ответа
+						response.headers = this->worker.proxy.http.getHeaders();
+						// Устанавливаем тело ответа
+						response.entity.assign(entity.begin(), entity.end());
+					} break;
 				}
-			} break;
-			// Иначе завершаем работу
-			default: reinterpret_cast <client::core_t *> (core)->close(aid);
+				// Если экшен соответствует, выполняем его сброс
+				if(this->action == action_t::PROXY_READ)
+					// Выполняем сброс экшена
+					this->action = action_t::NONE;
+				// Если функция обратного вызова установлена, выводим сообщение
+				if(this->messageFn != nullptr){
+					// Получаем результат ответа
+					res_t result = response;
+					// Завершаем работу
+					core->close(this->aid);
+					// Выполняем функцию обратного вызова
+					this->messageFn(result, this, this->ctx.at(1));
+				// Завершаем работу
+				} else core->close(this->aid);
+			}
+		} break;
+		// Иначе завершаем работу
+		default: {
+			// Если экшен соответствует, выполняем его сброс
+			if(this->action == action_t::PROXY_READ)
+				// Выполняем сброс экшена
+				this->action = action_t::NONE;
+			// Завершаем работу
+			core->close(this->aid);
 		}
 	}
+}
+/**
+ * actionDisconnect Метод обработки экшена отключения от сервера
+ */
+void awh::client::Rest::actionDisconnect() noexcept {
+	// Получаем объект биндинга ядра TCP/IP
+	client::core_t * core = const_cast <client::core_t *> (this->core);
+	// Если список ответов получен
+	if(!this->responses.empty() && !this->requests.empty()){
+		// Получаем объект ответа
+		const res_t & response = this->responses.front();
+		// Если нужно произвести запрос заново
+		if((response.code == 201) || (response.code == 301) ||
+			(response.code == 302) || (response.code == 303) ||
+			(response.code == 307) || (response.code == 308) ||
+			(response.code == 401) || (response.code == 407)){
+			// Получаем объект запроса
+			req_t & request = this->requests.front();
+			// Устанавливаем новый URL адрес запроса
+			request.url = this->http.getUrl();
+			// Получаем новый адрес запроса для воркера
+			this->worker.url = request.url;
+			// Выполняем установку следующего экшена на открытие подключения
+			this->action = action_t::OPEN;
+			// Выходим из функции
+			return;
+		}
+	}
+	// Получаем объект ответа
+	res_t response = (!this->responses.empty() ? move(this->responses.front()) : res_t());
+	// Если список ответов не получен, значит он был выведен ранее
+	if(this->responses.empty())
+		// Устанавливаем код сообщения по умолчанию
+		response.code = 1;
+	// Выполняем очистку списка запросов
+	this->requests.clear();
+	// Выполняем очистку списка ответов
+	this->responses.clear();
+	// Очищаем адрес сервера
+	this->worker.url.clear();
+	// Выполняем сброс параметров запроса
+	this->flush();
+	// Завершаем работу
+	if(this->unbind) core->stop();
+	// Если экшен соответствует, выполняем его сброс
+	if(this->action == action_t::SERVER_DISCONNECT)
+		// Выполняем сброс экшена
+		this->action = action_t::NONE;
+	// Если функция обратного вызова установлена, выводим сообщение
+	if((response.code == 0) && (this->messageFn != nullptr)){
+		// Устанавливаем код ответа сервера
+		response.code = 500;
+		// Выполняем функцию обратного вызова
+		this->messageFn(response, this, this->ctx.at(1));
+	}
+	// Если функция обратного вызова существует
+	if(this->activeFn != nullptr)
+		// Выполняем функцию обратного вызова
+		this->activeFn(mode_t::DISCONNECT, this, this->ctx.at(0));
+}
+/**
+ * actionConnectProxy Метод обработки экшена подключения к прокси-серверу
+ */
+void awh::client::Rest::actionConnectProxy() noexcept {
+	// Получаем объект запроса
+	req_t & request = this->requests.front();
+	// Получаем объект биндинга ядра TCP/IP
+	client::core_t * core = const_cast <client::core_t *> (this->core);
+	// Определяем тип прокси-сервера
+	switch((uint8_t) this->worker.proxy.type){
+		// Если прокси-сервер является Socks5
+		case (uint8_t) proxy_t::type_t::SOCKS5: {
+			// Выполняем сброс состояния Socks5 парсера
+			this->worker.proxy.socks5.reset();
+			// Устанавливаем URL адрес запроса
+			this->worker.proxy.socks5.setUrl(request.url);
+			// Выполняем создание буфера запроса
+			this->worker.proxy.socks5.parse();
+			// Получаем данные запроса
+			const auto & socks5 = this->worker.proxy.socks5.get();
+			// Если данные получены
+			if(!socks5.empty()) core->write(socks5.data(), socks5.size(), this->aid);
+		} break;
+		// Если прокси-сервер является HTTP
+		case (uint8_t) proxy_t::type_t::HTTP: {
+			// Выполняем сброс состояния HTTP парсера
+			this->worker.proxy.http.reset();
+			// Выполняем очистку параметров HTTP запроса
+			this->worker.proxy.http.clear();
+			// Получаем бинарные данные REST запроса
+			const auto & proxy = this->worker.proxy.http.proxy(request.url);
+			// Если бинарные данные запроса получены
+			if(!proxy.empty()){
+				// Если включён режим отладки
+				#if defined(DEBUG_MODE)
+					// Выводим заголовок запроса
+					cout << "\x1B[33m\x1B[1m^^^^^^^^^ REQUEST PROXY ^^^^^^^^^\x1B[0m" << endl;
+					// Выводим параметры запроса
+					cout << string(proxy.begin(), proxy.end()) << endl;
+				#endif
+				// Отправляем на прокси-сервер
+				core->write(proxy.data(), proxy.size(), this->aid);
+			}
+		} break;
+		// Иначе завершаем работу
+		default: core->close(this->aid);
+	}
+	// Если экшен соответствует, выполняем его сброс
+	if(this->action == action_t::PROXY_CONNECT)
+		// Выполняем сброс экшена
+		this->action = action_t::NONE;
 }
 /**
  * flush Метод сброса параметров запроса
@@ -1465,7 +1670,7 @@ void awh::client::Rest::setAuthTypeProxy(const auth_t::type_t type, const auth_t
  * @param fmk  объект фреймворка
  * @param log  объект для работы с логами
  */
-awh::client::Rest::Rest(const client::core_t * core, const fmk_t * fmk, const log_t * log) noexcept : nwk(fmk), uri(fmk, &nwk), http(fmk, log, &uri), core(core), fmk(fmk), log(log), worker(fmk, log), compress(awh::http_t::compress_t::NONE) {
+awh::client::Rest::Rest(const client::core_t * core, const fmk_t * fmk, const log_t * log) noexcept : nwk(fmk), uri(fmk, &nwk), http(fmk, log, &uri), core(core), fmk(fmk), log(log), worker(fmk, log), action(action_t::NONE), compress(awh::http_t::compress_t::NONE) {
 	// Устанавливаем контекст сообщения
 	this->worker.ctx = this;
 	// Устанавливаем событие на запуск системы

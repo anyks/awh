@@ -49,8 +49,6 @@ int main(int argc, char * argv[]) noexcept {
 		(uint8_t) client::rest_t::flag_t::WAITMESS |
 		(uint8_t) client::rest_t::flag_t::VERIFYSSL
 	);
-	// Устанавливаем режим мультипоточной обработки
-	core.setMultiThreads(true);
 	// Устанавливаем простое чтение базы событий
 	// core.easily(true);
 	// Устанавливаем адрес сертификата

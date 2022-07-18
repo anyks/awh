@@ -45,14 +45,10 @@ namespace awh {
 		 */
 		typedef class Core : public awh::core_t {
 			private:
-				// Worker Adjutant Устанавливаем дружбу с классом сетевого ядра
-				friend class Worker::Adjutant;
-			private:
 				/**
 				 * Mutex Структура основных мютексов
 				 */
 				typedef struct Mutex {
-					mutex thread;            // Для работы в дочерних потоках
 					recursive_mutex close;   // Для закрытия подключения
 					recursive_mutex reset;   // Для сброса параметров таймаута
 					recursive_mutex proxy;   // Для работы с прокси-сервером

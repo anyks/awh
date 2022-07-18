@@ -45,6 +45,19 @@ namespace awh {
 		 * Rest Класс работы с REST клиентом
 		 */
 		typedef class Rest {
+			private:
+				/**
+				 * Основные экшены
+				 */
+				enum class action_t : uint8_t {
+					NONE              = 0x01, // Отсутствие события
+					OPEN              = 0x02, // Событие открытия подключения
+					SERVER_READ       = 0x03, // Событие чтения с сервера
+					SERVER_CONNECT    = 0x04, // Событие подключения к серверу
+					SERVER_DISCONNECT = 0x05, // Событие отключения от сервера
+					PROXY_READ        = 0x06, // Событие чтения с прокси-сервера
+					PROXY_CONNECT     = 0x07  // Событие подключения к прокси-серверу
+				};
 			public:
 				/**
 				 * Режим работы клиента
@@ -75,7 +88,7 @@ namespace awh {
 					/**
 					 * Request Конструктор
 					 */
-					Request() : failAuth(false), method(web_t::method_t::NONE) {}
+					Request() noexcept : failAuth(false), method(web_t::method_t::NONE) {}
 				} req_t;
 				/**
 				 * Response Структура ответа сервера
@@ -89,8 +102,20 @@ namespace awh {
 					/**
 					 * Response Конструктор
 					 */
-					Response() : ok(false), code(0), message("") {}
+					Response() noexcept : ok(false), code(0), message("") {}
 				} res_t;
+			private:
+				/**
+				 * Locker Структура локера
+				 */
+				typedef struct Locker {
+					bool mode;           // Флаг блокировки
+					recursive_mutex mtx; // Мютекс для блокировки потока
+					/**
+					 * Locker Конструктор
+					 */
+					Locker() noexcept : mode(false) {}
+				} locker_t;
 			private:
 				// Создаём объект работы с URI ссылками
 				uri_t uri;
@@ -100,6 +125,10 @@ namespace awh {
 				network_t nwk;
 				// Объект рабочего
 				worker_t worker;
+				// Объект блокировщика
+				locker_t locker;
+				// Экшен события
+				action_t action;
 				// Метод компрессии данных
 				awh::http_t::compress_t compress;
 			private:
@@ -193,6 +222,36 @@ namespace awh {
 				 * @param ctx    передаваемый контекст модуля
 				 */
 				static void readProxyCallback(const char * buffer, const size_t size, const size_t aid, const size_t wid, awh::core_t * core, void * ctx) noexcept;
+			private:
+				/**
+				 * handler Метод управления входящими методами
+				 */
+				void handler() noexcept;
+			private:
+				/**
+				 * actionOpen Метод обработки экшена открытия подключения
+				 */
+				void actionOpen() noexcept;
+				/**
+				 * actionRead Метод обработки экшена чтения с сервера
+				 */
+				void actionRead() noexcept;
+				/**
+				 * actionConnect Метод обработки экшена подключения к серверу
+				 */
+				void actionConnect() noexcept;
+				/**
+				 * actionReadProxy Метод обработки экшена чтения с прокси-сервера
+				 */
+				void actionReadProxy() noexcept;
+				/**
+				 * actionDisconnect Метод обработки экшена отключения от сервера
+				 */
+				void actionDisconnect() noexcept;
+				/**
+				 * actionConnectProxy Метод обработки экшена подключения к прокси-серверу
+				 */
+				void actionConnectProxy() noexcept;
 			private:
 				/**
 				 * flush Метод сброса параметров запроса

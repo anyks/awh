@@ -53,14 +53,14 @@ int main(int argc, char * argv[]) noexcept {
 		(uint8_t) client::ws_t::flag_t::VERIFYSSL |
 		(uint8_t) client::ws_t::flag_t::KEEPALIVE
 	);
-	// Устанавливаем режим мультипоточной обработки
-	core.setMultiThreads(true);
 	// Разрешаем простое чтение базы событий
 	// core.setFrequency(0);
 	// Устанавливаем простое чтение базы событий
 	// core.easily(true);
 	// Устанавливаем адрес сертификата
 	core.setCA("./ca/cert.pem");
+	// Устанавливаем режим мультипоточной обработки
+	// ws.setMultiThreads(true);
 	// Устанавливаем логин и пароль пользователя
 	// ws.setUser("user", "password");
 	// Устанавливаем данные прокси-сервера

@@ -58,7 +58,6 @@
 #include <net/socket.hpp>
 #include <worker/core.hpp>
 #include <sys/fmk.hpp>
-#include <sys/threadpool.hpp>
 
 // Подписываемся на стандартное пространство имён
 using namespace std;
@@ -190,6 +189,8 @@ namespace awh {
 					// Core Устанавливаем дружбу с классом ядра
 					friend class Core;
 				private:
+					// Флаг простого чтения базы событий
+					bool easy;
 					// Флаг разрешения работы
 					bool mode;
 					// Флаг работы модуля
@@ -200,6 +201,9 @@ namespace awh {
 				private:
 					// Мютекс для блокировки потока
 					recursive_mutex mtx;
+				private:
+					// Частота обновления базы событий
+					chrono::milliseconds freq;
 				public:
 					/**
 					 * kick Метод отправки пинка
@@ -219,22 +223,32 @@ namespace awh {
 					 * @param mode флаг активации
 					 */
 					void freeze(const bool mode) noexcept;
+					/**
+					 * easily Метод активации простого режима чтения базы событий
+					 * @param mode флаг активации
+					 */
+					void easily(const bool mode) noexcept;
 				public:
 					/**
 					 * setBase Метод установки базы событий
 					 * @param base база событий
 					 */
 					void setBase(struct ev_loop * base) noexcept;
+					/**
+					 * setFrequency Метод установки частоты обновления базы событий
+					 * @param msec частота обновления базы событий в миллисекундах
+					 */
+					void setFrequency(const uint8_t msec = 10) noexcept;
 				public:
 					/**
 					 * Dispatch Конструктор
 					 */
-					Dispatch() noexcept : mode(false), work(false), base(nullptr) {}
+					Dispatch() noexcept : easy(false), mode(false), work(false), base(nullptr), freq(10ms) {}
 					/**
 					 * Dispatch Конструктор
 					 * @param base база событий
 					 */
-					Dispatch(struct ev_loop * base) noexcept : mode(false), work(false), base(base) {}
+					Dispatch(struct ev_loop * base) noexcept : easy(false), mode(false), work(false), base(base), freq(10ms) {}
 			} dispatch_t;
 		protected:
 			// Мютекс для блокировки основного потока
@@ -255,8 +269,6 @@ namespace awh {
 			alive_t alive;
 			// Создаем объект сети
 			network_t nwk;
-			// Создаем пул потоков
-			poolthr_t pool;
 			// Объект для работы с сокетами
 			socket_t socket;
 			// Объект для работы с чтением базы событий
@@ -485,6 +497,11 @@ namespace awh {
 			u_short setInterval(void * ctx, const time_t delay, function <void (const u_short, Core *, void *)> callback) noexcept;
 		public:
 			/**
+			 * easily Метод активации простого режима чтения базы событий
+			 * @param mode флаг активации простого чтения базы событий
+			 */
+			void easily(const bool mode) noexcept;
+			/**
 			 * freeze Метод заморозки чтения данных
 			 * @param mode флаг активации заморозки чтения данных
 			 */
@@ -506,15 +523,15 @@ namespace awh {
 			 */
 			void setVerifySSL(const bool mode) noexcept;
 			/**
-			 * setMultiThreads Метод активации режима мультипотоковой обработки данных
-			 * @param mode флаг мультипотоковой обработки
-			 */
-			void setMultiThreads(const bool mode) noexcept;
-			/**
 			 * setPersistInterval Метод установки персистентного таймера
 			 * @param itv интервал персистентного таймера в миллисекундах
 			 */
 			void setPersistInterval(const time_t itv) noexcept;
+			/**
+			 * setFrequency Метод установки частоты обновления базы событий
+			 * @param msec частота обновления базы событий в миллисекундах
+			 */
+			void setFrequency(const uint8_t msec = 10) noexcept;
 			/**
 			 * setFamily Метод установки тип протокола интернета
 			 * @param family тип протокола интернета AF_INET или AF_INET6
