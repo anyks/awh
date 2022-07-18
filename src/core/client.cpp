@@ -711,10 +711,10 @@ void awh::client::Core::connect(const size_t wid) noexcept {
 							ret.first->second->bev.event.write.start();
 							// Если время ожидания записи данных установлено
 							if(ret.first->second->timeWrite > 0){
-								// Устанавливаем событие на запись данных подключения
-								ret.first->second->bev.timer.write.set <awh::worker_t::adj_t, &awh::worker_t::adj_t::timeout> (ret.first->second.get());
 								// Устанавливаем базу событий
 								ret.first->second->bev.timer.write.set(this->base);
+								// Устанавливаем событие на запись данных подключения
+								ret.first->second->bev.timer.write.set <awh::worker_t::adj_t, &awh::worker_t::adj_t::timeout> (ret.first->second.get());
 								// Запускаем запись данных на сервер
 								ret.first->second->bev.timer.write.start(ret.first->second->timeWrite);
 							}
