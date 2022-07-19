@@ -59,7 +59,7 @@ void awh::client::Rest::connectCallback(const size_t aid, const size_t wid, awh:
 		// Запоминаем идентификатор адъютанта
 		web->aid = aid;
 		// Устанавливаем экшен выполнения
-		web->action = action_t::SERVER_CONNECT;
+		web->action = action_t::CONNECT;
 		// Выполняем запуск обработчика событий
 		web->handler();
 	}
@@ -77,7 +77,7 @@ void awh::client::Rest::disconnectCallback(const size_t aid, const size_t wid, a
 		// Получаем контекст модуля
 		rest_t * web = reinterpret_cast <rest_t *> (ctx);
 		// Устанавливаем экшен выполнения
-		web->action = action_t::SERVER_DISCONNECT;
+		web->action = action_t::DISCONNECT;
 		// Выполняем запуск обработчика событий
 		web->handler();
 	}
@@ -117,9 +117,9 @@ void awh::client::Rest::readCallback(const char * buffer, const size_t size, con
 		// Получаем контекст модуля
 		rest_t * web = reinterpret_cast <rest_t *> (ctx);
 		// Если дисконнекта ещё не произошло
-		if((web->action == action_t::NONE) || (web->action == action_t::SERVER_READ1)){
+		if((web->action == action_t::NONE) || (web->action == action_t::READ)){
 			// Устанавливаем экшен выполнения
-			web->action = action_t::SERVER_READ1;
+			web->action = action_t::READ;
 			// Добавляем полученные данные в буфер
 			web->entity.insert(web->entity.end(), buffer, buffer + size);
 			// Выполняем запуск обработчика событий
@@ -172,17 +172,17 @@ void awh::client::Rest::handler() noexcept {
 				this->actionOpen();
 			break;
 			// Если необходимо запустить экшен обработки данных поступающих с сервера
-			case (uint8_t) action_t::SERVER_READ1:
+			case (uint8_t) action_t::READ:
 				// Выполняем экшен обработки данных поступающих с сервера
 				this->actionRead();
 			break;
 			// Если необходимо запустить экшен обработки подключения к серверу
-			case (uint8_t) action_t::SERVER_CONNECT:
+			case (uint8_t) action_t::CONNECT:
 				// Выполняем экшен обработки подключения к серверу
 				this->actionConnect();
 			break;
 			// Если необходимо запустить экшен обработки отключения от сервера
-			case (uint8_t) action_t::SERVER_DISCONNECT:
+			case (uint8_t) action_t::DISCONNECT:
 				// Выполняем экшен обработки отключения от сервера
 				this->actionDisconnect();
 			break;
@@ -290,11 +290,11 @@ void awh::client::Rest::actionRead() noexcept {
 							// Если соединение является постоянным
 							if(this->http.isAlive())
 								// Устанавливаем новый экшен выполнения
-								this->action = action_t::SERVER_CONNECT;
+								this->action = action_t::CONNECT;
 							// Если нам необходимо отключиться
 							else {
 								// Если экшен соответствует, выполняем его сброс
-								if(this->action == action_t::SERVER_READ1)
+								if(this->action == action_t::READ)
 									// Выполняем сброс экшена
 									this->action = action_t::NONE;
 								// Получаем новый адрес запроса для воркера
@@ -393,7 +393,7 @@ void awh::client::Rest::actionRead() noexcept {
 	// Устанавливаем метку завершения работы
 	Stop:
 	// Если экшен соответствует, выполняем его сброс
-	if(this->action == action_t::SERVER_READ1)
+	if(this->action == action_t::READ)
 		// Выполняем сброс экшена
 		this->action = action_t::NONE;
 	// Если функция обратного вызова установлена, выводим сообщение
@@ -453,7 +453,7 @@ void awh::client::Rest::actionConnect() noexcept {
 		}
 	}
 	// Если экшен соответствует, выполняем его сброс
-	if(this->action == action_t::SERVER_CONNECT)
+	if(this->action == action_t::CONNECT)
 		// Выполняем сброс экшена
 		this->action = action_t::NONE;
 	// Если функция обратного вызова существует
@@ -711,7 +711,7 @@ void awh::client::Rest::actionDisconnect() noexcept {
 	// Завершаем работу
 	if(this->unbind) core->stop();
 	// Если экшен соответствует, выполняем его сброс
-	if(this->action == action_t::SERVER_DISCONNECT)
+	if(this->action == action_t::DISCONNECT)
 		// Выполняем сброс экшена
 		this->action = action_t::NONE;
 	// Если функция обратного вызова установлена, выводим сообщение
