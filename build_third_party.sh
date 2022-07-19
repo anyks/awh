@@ -28,6 +28,7 @@ if [ -n "$1" ]; then
 		# Очищаем подпроекты
 		clean_submodule "zlib"
 		clean_submodule "libev"
+		clean_submodule "libev-win"
 		clean_submodule "brotli"
 		clean_submodule "openssl"
 
@@ -282,29 +283,74 @@ if [ ! -f "$src/.stamp_done" ]; then
 	cd "$ROOT" || exit 1
 fi
 
-# Сборка LibEv
-src="$ROOT/submodules/libev"
-if [ ! -f "$src/.stamp_done" ]; then
-	printf "\n****** LibEv ******\n"
-	cd "$src" || exit 1
+# Переименовываем расширение библиотек для Windows
+if [ $OS = "Windows" ]; then # Windows
+	# Сборка LibEv под Windows
+	src="$ROOT/submodules/libev-win"
+	if [ ! -f "$src/.stamp_done" ]; then
+		printf "\n****** LibEv ******\n"
+		cd "$src" || exit 1
 
-	# Выполняем конфигурирование сборки
-	./configure \
-	 --with-pic=use \
-	 --enable-static=yes \
-	 --enable-shared=no \
-	 --prefix=$PREFIX \
-	 --includedir="$PREFIX/include/libev" \
-	 --libdir="$PREFIX/lib"
-	
-	# Выполняем сборку проекта
-	$BUILD || exit 1
-	# Выполняем установку проекта
-	$BUILD install || exit 1
+		# Создаём каталог сборки
+		mkdir -p "build" || exit 1
+		# Переходим в каталог
+		cd "build" || exit 1
 
-	# Помечаем флагом, что сборка и установка произведена
-	touch "$src/.stamp_done"
-	cd "$ROOT" || exit 1
+		# Удаляем старый файл кэша
+		rm -rf ./CMakeCache.txt
+
+		# Выполняем конфигурацию проекта
+		cmake \
+		 -DCMAKE_C_COMPILER="gcc" \
+		 -DCMAKE_BUILD_TYPE="Release" \
+		 -DCMAKE_SYSTEM_NAME="Windows" \
+		 -G "MinGW Makefiles" \
+		 .. || exit 1
+
+		# Выполняем сборку на всех логических ядрах
+		$BUILD -j"$numproc" || exit 1
+
+		# Производим установку библиотеки по нужному пути
+		echo "Install \"$ROOT/submodules/libev-win/build/liblibev_static.a\" to \"$PREFIX/lib/libev_static.a\""
+		${INSTALL_CMD} "$ROOT/submodules/libev-win/build/liblibev_static.a" "$PREFIX/lib/libev_static.a" || exit 1
+
+		# Производим установку заголовочных файлов по нужному пути
+		for i in $(ls "$ROOT/submodules/libev-win" | grep .h$);
+		do
+			echo "Install \"$ROOT/submodules/libev-win/$i\" to \"$PREFIX/include/libev/$i\""
+			${INSTALL_CMD} "$ROOT/submodules/libev-win/$i" "$PREFIX/include/libev/$i" || exit 1
+		done
+		
+		# Помечаем флагом, что сборка и установка произведена
+		touch "$src/.stamp_done"
+		cd "$ROOT" || exit 1
+	fi
+# Для всех остальных версий операционных систем
+else
+	# Сборка LibEv
+	src="$ROOT/submodules/libev"
+	if [ ! -f "$src/.stamp_done" ]; then
+		printf "\n****** LibEv ******\n"
+		cd "$src" || exit 1
+
+		# Выполняем конфигурирование сборки
+		./configure \
+		--with-pic=use \
+		--enable-static=yes \
+		--enable-shared=no \
+		--prefix=$PREFIX \
+		--includedir="$PREFIX/include/libev" \
+		--libdir="$PREFIX/lib"
+		
+		# Выполняем сборку проекта
+		$BUILD || exit 1
+		# Выполняем установку проекта
+		$BUILD install || exit 1
+
+		# Помечаем флагом, что сборка и установка произведена
+		touch "$src/.stamp_done"
+		cd "$ROOT" || exit 1
+	fi
 fi
 
 # Переименовываем расширение библиотек для Windows

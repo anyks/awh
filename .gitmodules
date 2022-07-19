@@ -7,3 +7,9 @@
 [submodule "submodules/brotli"]
 	path = submodules/brotli
 	url = https://github.com/google/brotli.git
+[submodule "submodules/libev-win"]
+	path = submodules/libev-win
+	url = https://github.com/disenone/libev-win
+[submodule "submodules/libev"]
+	path = submodules/libev
+	url = https://github.com/enki/libev
