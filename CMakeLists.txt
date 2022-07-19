@@ -55,7 +55,7 @@ string(TIMESTAMP CURRENT_TIME "%d.%m.%Y %H:%M:%S")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC")
 
 if (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
-    set(WINPARAMS "-Wno-cpp")
+    set(WINPARAMS "-Wno-cpp -Wno-deprecated")
 else()
     set(WINPARAMS "-Wno-unknown-attributes")
 endif()
