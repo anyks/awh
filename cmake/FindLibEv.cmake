@@ -11,7 +11,7 @@ find_path(LIBEV_INCLUDE_DIR libev/event.h PATHS ${CMAKE_SOURCE_DIR}/third_party/
 
 # Поиск библиотеки LibEv
 if (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
-    find_library(ZLIB_LIBRARY NAMES ev_static PATHS ${CMAKE_SOURCE_DIR}/third_party/lib NO_DEFAULT_PATH)
+    find_library(LIBEV_LIBRARY NAMES ev_static PATHS ${CMAKE_SOURCE_DIR}/third_party/lib NO_DEFAULT_PATH)
 else()
     find_library(LIBEV_LIBRARY NAMES ev PATHS ${CMAKE_SOURCE_DIR}/third_party/lib NO_DEFAULT_PATH)
 endif()
