@@ -21,7 +21,12 @@
 #include <set>
 
 // ++++++++++++++++++++++++++++++++=
-#include <netdb.h>
+
+#if defined(_WIN32) || defined(_WIN64)
+	#include <winsock2.h>
+#else
+	#include <netdb.h>
+#endif
 
 /**
  * Наши модули

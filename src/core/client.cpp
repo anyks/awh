@@ -792,8 +792,16 @@ void awh::client::Core::reconnect(const size_t wid) noexcept {
 
 			// Структура определяющая тип адреса
 			struct sockaddr_in serv_addr;
-			// Выполняем резолвинг доменного имени
-			struct hostent * server = gethostbyname2(url.domain.c_str(), AF_INET);
+
+			#if defined(_WIN32) || defined(_WIN64)
+				// Выполняем резолвинг доменного имени
+				struct hostent * server = gethostbyname(url.domain.c_str());
+			#else
+				// Выполняем резолвинг доменного имени
+				struct hostent * server = gethostbyname2(url.domain.c_str(), AF_INET);
+			#endif
+
+
 			// Заполняем структуру типа адреса нулями
 			memset(&serv_addr, 0, sizeof(serv_addr));
 			// Устанавливаем что удаленный адрес это ИНТЕРНЕТ
@@ -1130,8 +1138,18 @@ void awh::client::Core::open(const size_t wid) noexcept {
 
 				// Структура определяющая тип адреса
 				struct sockaddr_in serv_addr;
-				// Выполняем резолвинг доменного имени
-				struct hostent * server = gethostbyname2(url.domain.c_str(), AF_INET);
+
+				
+
+				#if defined(_WIN32) || defined(_WIN64)
+					// Выполняем резолвинг доменного имени
+					struct hostent * server = gethostbyname(url.domain.c_str());
+				#else
+					// Выполняем резолвинг доменного имени
+					struct hostent * server = gethostbyname2(url.domain.c_str(), AF_INET);
+				#endif
+
+				
 				// Заполняем структуру типа адреса нулями
 				memset(&serv_addr, 0, sizeof(serv_addr));
 				// Устанавливаем что удаленный адрес это ИНТЕРНЕТ
