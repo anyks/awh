@@ -4,9 +4,6 @@
 [submodule "submodules/zlib"]
 	path = submodules/zlib
 	url = https://github.com/madler/zlib.git
-[submodule "submodules/libevent"]
-	path = submodules/libevent
-	url = https://github.com/libevent/libevent.git
 [submodule "submodules/brotli"]
 	path = submodules/brotli
 	url = https://github.com/google/brotli.git
