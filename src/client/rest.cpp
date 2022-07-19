@@ -262,8 +262,19 @@ void awh::client::Rest::actionRead() noexcept {
 					}
 				}
 			#endif
+			// Получаем статус ответа
+			awh::http_t::stath_t status = this->http.getAuth();
+			// Если выполнять редиректы запрещено
+			if(!this->redirects && (status == awh::http_t::stath_t::RETRY)){
+				// Если нужно произвести запрос заново
+				if((response.code == 201) || (response.code == 301) ||
+				   (response.code == 302) || (response.code == 303) ||
+				   (response.code == 307) || (response.code == 308))
+						// Запрещаем выполнять редирект
+						status = awh::http_t::stath_t::GOOD;
+			}
 			// Выполняем анализ результата авторизации
-			switch((uint8_t) this->http.getAuth()){
+			switch((uint8_t) status){
 				// Если нужно попытаться ещё раз
 				case (uint8_t) awh::http_t::stath_t::RETRY: {
 					// Если попытка повторить авторизацию ещё не проводилась
@@ -556,8 +567,19 @@ void awh::client::Rest::actionReadProxy() noexcept {
 						}
 					}
 				#endif
+				// Получаем статус ответа
+				awh::http_t::stath_t status = this->worker.proxy.http.getAuth();
+				// Если выполнять редиректы запрещено
+				if(!this->redirects && (status == awh::http_t::stath_t::RETRY)){
+					// Если нужно произвести запрос заново
+					if((response.code == 201) || (response.code == 301) ||
+					   (response.code == 302) || (response.code == 303) ||
+					   (response.code == 307) || (response.code == 308))
+						// Запрещаем выполнять редирект
+						status = awh::http_t::stath_t::GOOD;
+				}
 				// Выполняем проверку авторизации
-				switch((uint8_t) this->worker.proxy.http.getAuth()){
+				switch((uint8_t) status){
 					// Если нужно попытаться ещё раз
 					case (uint8_t) awh::http_t::stath_t::RETRY: {
 						// Если попытка повторить авторизацию ещё не проводилась
@@ -657,16 +679,19 @@ void awh::client::Rest::actionDisconnect() noexcept {
 			(response.code == 302) || (response.code == 303) ||
 			(response.code == 307) || (response.code == 308) ||
 			(response.code == 401) || (response.code == 407)){
-			// Получаем объект запроса
-			req_t & request = this->requests.front();
-			// Устанавливаем новый URL адрес запроса
-			request.url = this->http.getUrl();
-			// Получаем новый адрес запроса для воркера
-			this->worker.url = request.url;
-			// Выполняем установку следующего экшена на открытие подключения
-			this->action = action_t::OPEN;
-			// Выходим из функции
-			return;
+			// Если статус ответа требует произвести авторизацию или заголовок перенаправления указан
+			if((response.code == 401) || (response.code == 407) || this->http.isHeader("location")){
+				// Получаем объект запроса
+				req_t & request = this->requests.front();
+				// Устанавливаем новый URL адрес запроса
+				request.url = this->http.getUrl();
+				// Получаем новый адрес запроса для воркера
+				this->worker.url = request.url;
+				// Выполняем установку следующего экшена на открытие подключения
+				this->action = action_t::OPEN;
+				// Выходим из функции
+				return;
+			}
 		}
 	}
 	// Получаем объект ответа
@@ -1544,6 +1569,8 @@ void awh::client::Rest::setBytesDetect(const worker_t::mark_t read, const worker
 void awh::client::Rest::setMode(const u_short flag) noexcept {
 	// Устанавливаем флаг анбиндинга ядра сетевого модуля
 	this->unbind = !(flag & (uint8_t) flag_t::NOTSTOP);
+	// Устанавливаем флаг разрешающий выполнять редиректы
+	this->redirects = (flag & (uint8_t) flag_t::REDIRECTS);
 	// Устанавливаем флаг ожидания входящих сообщений
 	this->worker.wait = (flag & (uint8_t) flag_t::WAITMESS);
 	// Устанавливаем флаг поддержания автоматического подключения

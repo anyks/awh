@@ -76,6 +76,19 @@ namespace awh {
 				ALL_COMPRESS,  // gzip, deflate, br
 				DEFLATE_BROTLI // deflate, br
 			};
+		public:
+			/**
+			 * Crypto Структура крипто-данных
+			 */
+			typedef struct Crypto {
+				bool encrypt;       // Флаг шифрованных данных
+				bool compress;      // Флаг сжатых данных
+				vector <char> data; // Буфер бинарных данных
+				/**
+				 * Crypto Конструктор
+				 */
+				Crypto() noexcept : encrypt(false), compress(false) {}
+			} crypto_t;
 		protected:
 			/**
 			 * Auth Структура объекта авторизации
@@ -152,10 +165,14 @@ namespace awh {
 		protected:
 			// Создаём объект HTTP парсера
 			mutable web_t web;
-			// Создаём объект для работы с жатыми данными
-			mutable hash_t hash;
 			// Создаём объект для работы с авторизацией
 			mutable auth_t auth;
+		protected:
+			// Создаём объект для работы с жатыми данными
+			mutable hash_t hash;
+			// Создаём объект для работы с временными жатыми данными
+			mutable hash_t dhash;
+		protected:
 			// Параметры выполняемого запроса
 			mutable uri_t::url_t url;
 		protected:
@@ -384,6 +401,19 @@ namespace awh {
 			 * @return     соответствующее коду HTTP сообщение
 			 */
 			const string & getMessage(const u_int code) const noexcept;
+		public:
+			/**
+			 * decode Метод декодирования полученных чанков
+			 * @param buffer буфер данных для декодирования
+			 * @return       декодированный буфер данных
+			 */
+			crypto_t decode(const vector <char> & buffer) const noexcept;
+			/**
+			 * encode Метод кодирования полученных чанков
+			 * @param buffer буфер данных для кодирования
+			 * @return       кодированный буфер данных
+			 */
+			crypto_t encode(const vector <char> & buffer) const noexcept;
 		public:
 			/**
 			 * request Метод создания запроса как он есть
