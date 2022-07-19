@@ -83,26 +83,6 @@ void awh::client::Rest::disconnectCallback(const size_t aid, const size_t wid, a
 	}
 }
 /**
- * connectProxyCallback Функция обратного вызова при подключении к прокси-серверу
- * @param aid  идентификатор адъютанта
- * @param wid  идентификатор воркера
- * @param core объект биндинга TCP/IP
- * @param ctx  передаваемый контекст модуля
- */
-void awh::client::Rest::connectProxyCallback(const size_t aid, const size_t wid, awh::core_t * core, void * ctx) noexcept {
-	// Если данные переданы верные
-	if((aid > 0) && (wid > 0) && (core != nullptr) && (ctx != nullptr)){
-		// Получаем контекст модуля
-		rest_t * web = reinterpret_cast <rest_t *> (ctx);
-		// Запоминаем идентификатор адъютанта
-		web->aid = aid;
-		// Устанавливаем экшен выполнения
-		web->action = action_t::PROXY_CONNECT;
-		// Выполняем запуск обработчика событий
-		web->handler();
-	}
-}
-/**
  * readCallback Функция обратного вызова при чтении сообщения с сервера
  * @param buffer бинарный буфер содержащий сообщение
  * @param size   размер бинарного буфера содержащего сообщение
@@ -128,7 +108,27 @@ void awh::client::Rest::readCallback(const char * buffer, const size_t size, con
 	}
 }
 /**
- * readProxyCallback Функция обратного вызова при чтении сообщения с прокси-сервера
+ * proxyConnectCallback Функция обратного вызова при подключении к прокси-серверу
+ * @param aid  идентификатор адъютанта
+ * @param wid  идентификатор воркера
+ * @param core объект биндинга TCP/IP
+ * @param ctx  передаваемый контекст модуля
+ */
+void awh::client::Rest::proxyConnectCallback(const size_t aid, const size_t wid, awh::core_t * core, void * ctx) noexcept {
+	// Если данные переданы верные
+	if((aid > 0) && (wid > 0) && (core != nullptr) && (ctx != nullptr)){
+		// Получаем контекст модуля
+		rest_t * web = reinterpret_cast <rest_t *> (ctx);
+		// Запоминаем идентификатор адъютанта
+		web->aid = aid;
+		// Устанавливаем экшен выполнения
+		web->action = action_t::PROXY_CONNECT;
+		// Выполняем запуск обработчика событий
+		web->handler();
+	}
+}
+/**
+ * proxyReadCallback Функция обратного вызова при чтении сообщения с прокси-сервера
  * @param buffer бинарный буфер содержащий сообщение
  * @param size   размер бинарного буфера содержащего сообщение
  * @param aid    идентификатор адъютанта
@@ -136,7 +136,7 @@ void awh::client::Rest::readCallback(const char * buffer, const size_t size, con
  * @param core   объект биндинга TCP/IP
  * @param ctx    передаваемый контекст модуля
  */
-void awh::client::Rest::readProxyCallback(const char * buffer, const size_t size, const size_t aid, const size_t wid, awh::core_t * core, void * ctx) noexcept {
+void awh::client::Rest::proxyReadCallback(const char * buffer, const size_t size, const size_t aid, const size_t wid, awh::core_t * core, void * ctx) noexcept {
 	// Если данные существуют
 	if((buffer != nullptr) && (size > 0) && (aid > 0) && (wid > 0)){
 		// Получаем контекст модуля
@@ -162,45 +162,24 @@ void awh::client::Rest::handler() noexcept {
 		const lock_guard <recursive_mutex> lock(this->locker.mtx);
 		// Выполняем блокировку обработчика
 		this->locker.mode = true;
-		// Устанавливаем метку обработчика
-		repeat:
-		// Определяем обрабатываемый экшен
-		switch((uint8_t) this->action){
-			// Если необходимо запустить экшен открытия подключения
-			case (uint8_t) action_t::OPEN:
-				// Выполняем экшен открытия подключения
-				this->actionOpen();
-			break;
-			// Если необходимо запустить экшен обработки данных поступающих с сервера
-			case (uint8_t) action_t::READ:
-				// Выполняем экшен обработки данных поступающих с сервера
-				this->actionRead();
-			break;
-			// Если необходимо запустить экшен обработки подключения к серверу
-			case (uint8_t) action_t::CONNECT:
-				// Выполняем экшен обработки подключения к серверу
-				this->actionConnect();
-			break;
-			// Если необходимо запустить экшен обработки отключения от сервера
-			case (uint8_t) action_t::DISCONNECT:
-				// Выполняем экшен обработки отключения от сервера
-				this->actionDisconnect();
-			break;
-			// Если необходимо запустить экшен обработки данных поступающих с прокси-сервера
-			case (uint8_t) action_t::PROXY_READ:
-				// Выполняем экшен обработки данных поступающих с прокси-сервера
-				this->actionConnectProxy();
-			break;
-			// Если необходимо запустить экшен обработки подключения к прокси-серверу
-			case (uint8_t) action_t::PROXY_CONNECT:
-				// Выполняем экшен обработки подключения к прокси-серверу
-				this->actionReadProxy();
-			break;
+		// Выполняем обработку всех экшенов
+		while(this->action != action_t::NONE){
+			// Определяем обрабатываемый экшен
+			switch((uint8_t) this->action){
+				// Если необходимо запустить экшен открытия подключения
+				case (uint8_t) action_t::OPEN: this->actionOpen(); break;
+				// Если необходимо запустить экшен обработки данных поступающих с сервера
+				case (uint8_t) action_t::READ: this->actionRead(); break;
+				// Если необходимо запустить экшен обработки подключения к серверу
+				case (uint8_t) action_t::CONNECT: this->actionConnect(); break;
+				// Если необходимо запустить экшен обработки отключения от сервера
+				case (uint8_t) action_t::DISCONNECT: this->actionDisconnect(); break;
+				// Если необходимо запустить экшен обработки данных поступающих с прокси-сервера
+				case (uint8_t) action_t::PROXY_READ: this->actionProxyRead(); break;
+				// Если необходимо запустить экшен обработки подключения к прокси-серверу
+				case (uint8_t) action_t::PROXY_CONNECT: this->actionProxyConnect(); break;
+			}
 		}
-		// Если требуется запустить следующий экшен
-		if(this->action != action_t::NONE)
-			// Выполняем обработку заново
-			goto repeat;
 		// Выполняем разблокировку обработчика
 		this->locker.mode = false;
 	}
@@ -462,9 +441,71 @@ void awh::client::Rest::actionConnect() noexcept {
 		this->activeFn(mode_t::CONNECT, this, this->ctx.at(0));
 }
 /**
- * actionReadProxy Метод обработки экшена чтения с прокси-сервера
+ * actionDisconnect Метод обработки экшена отключения от сервера
  */
-void awh::client::Rest::actionReadProxy() noexcept {
+void awh::client::Rest::actionDisconnect() noexcept {
+	// Получаем объект биндинга ядра TCP/IP
+	client::core_t * core = const_cast <client::core_t *> (this->core);
+	// Если список ответов получен
+	if(!this->responses.empty() && !this->requests.empty()){
+		// Получаем объект ответа
+		const res_t & response = this->responses.front();
+		// Если нужно произвести запрос заново
+		if((response.code == 201) || (response.code == 301) ||
+			(response.code == 302) || (response.code == 303) ||
+			(response.code == 307) || (response.code == 308) ||
+			(response.code == 401) || (response.code == 407)){
+			// Если статус ответа требует произвести авторизацию или заголовок перенаправления указан
+			if((response.code == 401) || (response.code == 407) || this->http.isHeader("location")){
+				// Получаем объект запроса
+				req_t & request = this->requests.front();
+				// Устанавливаем новый URL адрес запроса
+				request.url = this->http.getUrl();
+				// Получаем новый адрес запроса для воркера
+				this->worker.url = request.url;
+				// Выполняем установку следующего экшена на открытие подключения
+				this->action = action_t::OPEN;
+				// Выходим из функции
+				return;
+			}
+		}
+	}
+	// Получаем объект ответа
+	res_t response = (!this->responses.empty() ? move(this->responses.front()) : res_t());
+	// Если список ответов не получен, значит он был выведен ранее
+	if(this->responses.empty())
+		// Устанавливаем код сообщения по умолчанию
+		response.code = 1;
+	// Выполняем очистку списка запросов
+	this->requests.clear();
+	// Выполняем очистку списка ответов
+	this->responses.clear();
+	// Очищаем адрес сервера
+	this->worker.url.clear();
+	// Выполняем сброс параметров запроса
+	this->flush();
+	// Завершаем работу
+	if(this->unbind) core->stop();
+	// Если экшен соответствует, выполняем его сброс
+	if(this->action == action_t::DISCONNECT)
+		// Выполняем сброс экшена
+		this->action = action_t::NONE;
+	// Если функция обратного вызова установлена, выводим сообщение
+	if((response.code == 0) && (this->messageFn != nullptr)){
+		// Устанавливаем код ответа сервера
+		response.code = 500;
+		// Выполняем функцию обратного вызова
+		this->messageFn(response, this, this->ctx.at(1));
+	}
+	// Если функция обратного вызова существует
+	if(this->activeFn != nullptr)
+		// Выполняем функцию обратного вызова
+		this->activeFn(mode_t::DISCONNECT, this, this->ctx.at(0));
+}
+/**
+ * actionProxyRead Метод обработки экшена чтения с прокси-сервера
+ */
+void awh::client::Rest::actionProxyRead() noexcept {
 	// Получаем объект биндинга ядра TCP/IP
 	client::core_t * core = const_cast <client::core_t *> (this->core);
 	// Определяем тип прокси-сервера
@@ -665,71 +706,9 @@ void awh::client::Rest::actionReadProxy() noexcept {
 	}
 }
 /**
- * actionDisconnect Метод обработки экшена отключения от сервера
+ * actionProxyConnect Метод обработки экшена подключения к прокси-серверу
  */
-void awh::client::Rest::actionDisconnect() noexcept {
-	// Получаем объект биндинга ядра TCP/IP
-	client::core_t * core = const_cast <client::core_t *> (this->core);
-	// Если список ответов получен
-	if(!this->responses.empty() && !this->requests.empty()){
-		// Получаем объект ответа
-		const res_t & response = this->responses.front();
-		// Если нужно произвести запрос заново
-		if((response.code == 201) || (response.code == 301) ||
-			(response.code == 302) || (response.code == 303) ||
-			(response.code == 307) || (response.code == 308) ||
-			(response.code == 401) || (response.code == 407)){
-			// Если статус ответа требует произвести авторизацию или заголовок перенаправления указан
-			if((response.code == 401) || (response.code == 407) || this->http.isHeader("location")){
-				// Получаем объект запроса
-				req_t & request = this->requests.front();
-				// Устанавливаем новый URL адрес запроса
-				request.url = this->http.getUrl();
-				// Получаем новый адрес запроса для воркера
-				this->worker.url = request.url;
-				// Выполняем установку следующего экшена на открытие подключения
-				this->action = action_t::OPEN;
-				// Выходим из функции
-				return;
-			}
-		}
-	}
-	// Получаем объект ответа
-	res_t response = (!this->responses.empty() ? move(this->responses.front()) : res_t());
-	// Если список ответов не получен, значит он был выведен ранее
-	if(this->responses.empty())
-		// Устанавливаем код сообщения по умолчанию
-		response.code = 1;
-	// Выполняем очистку списка запросов
-	this->requests.clear();
-	// Выполняем очистку списка ответов
-	this->responses.clear();
-	// Очищаем адрес сервера
-	this->worker.url.clear();
-	// Выполняем сброс параметров запроса
-	this->flush();
-	// Завершаем работу
-	if(this->unbind) core->stop();
-	// Если экшен соответствует, выполняем его сброс
-	if(this->action == action_t::DISCONNECT)
-		// Выполняем сброс экшена
-		this->action = action_t::NONE;
-	// Если функция обратного вызова установлена, выводим сообщение
-	if((response.code == 0) && (this->messageFn != nullptr)){
-		// Устанавливаем код ответа сервера
-		response.code = 500;
-		// Выполняем функцию обратного вызова
-		this->messageFn(response, this, this->ctx.at(1));
-	}
-	// Если функция обратного вызова существует
-	if(this->activeFn != nullptr)
-		// Выполняем функцию обратного вызова
-		this->activeFn(mode_t::DISCONNECT, this, this->ctx.at(0));
-}
-/**
- * actionConnectProxy Метод обработки экшена подключения к прокси-серверу
- */
-void awh::client::Rest::actionConnectProxy() noexcept {
+void awh::client::Rest::actionProxyConnect() noexcept {
 	// Получаем объект запроса
 	req_t & request = this->requests.front();
 	// Получаем объект биндинга ядра TCP/IP
@@ -1711,11 +1690,11 @@ awh::client::Rest::Rest(const client::core_t * core, const fmk_t * fmk, const lo
 	// Устанавливаем событие подключения
 	this->worker.connectFn = connectCallback;
 	// Устанавливаем событие на чтение данных с прокси-сервера
-	this->worker.readProxyFn = readProxyCallback;
+	this->worker.readProxyFn = proxyReadCallback;
 	// Устанавливаем событие отключения
 	this->worker.disconnectFn = disconnectCallback;
 	// Устанавливаем событие на подключение к прокси-серверу
-	this->worker.connectProxyFn = connectProxyCallback;
+	this->worker.connectProxyFn = proxyConnectCallback;
 	// Устанавливаем функцию обработки вызова для получения чанков
 	this->http.setChunkingFn(this, &chunking);
 	// Добавляем воркер в биндер TCP/IP

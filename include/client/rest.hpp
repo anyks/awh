@@ -198,14 +198,6 @@ namespace awh {
 				 */
 				static void disconnectCallback(const size_t aid, const size_t wid, awh::core_t * core, void * ctx) noexcept;
 				/**
-				 * connectProxyCallback Функция обратного вызова при подключении к прокси-серверу
-				 * @param aid  идентификатор адъютанта
-				 * @param wid  идентификатор воркера
-				 * @param core объект биндинга TCP/IP
-				 * @param ctx  передаваемый контекст модуля
-				 */
-				static void connectProxyCallback(const size_t aid, const size_t wid, awh::core_t * core, void * ctx) noexcept;
-				/**
 				 * readCallback Функция обратного вызова при чтении сообщения с сервера
 				 * @param buffer бинарный буфер содержащий сообщение
 				 * @param size   размер бинарного буфера содержащего сообщение
@@ -215,8 +207,17 @@ namespace awh {
 				 * @param ctx    передаваемый контекст модуля
 				 */
 				static void readCallback(const char * buffer, const size_t size, const size_t aid, const size_t wid, awh::core_t * core, void * ctx) noexcept;
+			private:
 				/**
-				 * readProxyCallback Функция обратного вызова при чтении сообщения с прокси-сервера
+				 * proxyConnectCallback Функция обратного вызова при подключении к прокси-серверу
+				 * @param aid  идентификатор адъютанта
+				 * @param wid  идентификатор воркера
+				 * @param core объект биндинга TCP/IP
+				 * @param ctx  передаваемый контекст модуля
+				 */
+				static void proxyConnectCallback(const size_t aid, const size_t wid, awh::core_t * core, void * ctx) noexcept;
+				/**
+				 * proxyReadCallback Функция обратного вызова при чтении сообщения с прокси-сервера
 				 * @param buffer бинарный буфер содержащий сообщение
 				 * @param size   размер бинарного буфера содержащего сообщение
 				 * @param aid    идентификатор адъютанта
@@ -224,7 +225,7 @@ namespace awh {
 				 * @param core   объект биндинга TCP/IP
 				 * @param ctx    передаваемый контекст модуля
 				 */
-				static void readProxyCallback(const char * buffer, const size_t size, const size_t aid, const size_t wid, awh::core_t * core, void * ctx) noexcept;
+				static void proxyReadCallback(const char * buffer, const size_t size, const size_t aid, const size_t wid, awh::core_t * core, void * ctx) noexcept;
 			private:
 				/**
 				 * handler Метод управления входящими методами
@@ -244,17 +245,18 @@ namespace awh {
 				 */
 				void actionConnect() noexcept;
 				/**
-				 * actionReadProxy Метод обработки экшена чтения с прокси-сервера
-				 */
-				void actionReadProxy() noexcept;
-				/**
 				 * actionDisconnect Метод обработки экшена отключения от сервера
 				 */
 				void actionDisconnect() noexcept;
+			private:
 				/**
-				 * actionConnectProxy Метод обработки экшена подключения к прокси-серверу
+				 * actionProxyRead Метод обработки экшена чтения с прокси-сервера
 				 */
-				void actionConnectProxy() noexcept;
+				void actionProxyRead() noexcept;
+				/**
+				 * actionProxyConnect Метод обработки экшена подключения к прокси-серверу
+				 */
+				void actionProxyConnect() noexcept;
 			private:
 				/**
 				 * flush Метод сброса параметров запроса
