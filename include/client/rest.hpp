@@ -52,7 +52,7 @@ namespace awh {
 				enum class action_t : uint8_t {
 					NONE              = 0x01, // Отсутствие события
 					OPEN              = 0x02, // Событие открытия подключения
-					SERVER_READ       = 0x03, // Событие чтения с сервера
+					SERVER_READ1       = 0x03, // Событие чтения с сервера
 					SERVER_CONNECT    = 0x04, // Событие подключения к серверу
 					SERVER_DISCONNECT = 0x05, // Событие отключения от сервера
 					PROXY_READ        = 0x06, // Событие чтения с прокси-сервера

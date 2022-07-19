@@ -117,9 +117,9 @@ void awh::client::Rest::readCallback(const char * buffer, const size_t size, con
 		// Получаем контекст модуля
 		rest_t * web = reinterpret_cast <rest_t *> (ctx);
 		// Если дисконнекта ещё не произошло
-		if((web->action == action_t::NONE) || (web->action == action_t::SERVER_READ)){
+		if((web->action == action_t::NONE) || (web->action == action_t::SERVER_READ1)){
 			// Устанавливаем экшен выполнения
-			web->action = action_t::SERVER_READ;
+			web->action = action_t::SERVER_READ1;
 			// Добавляем полученные данные в буфер
 			web->entity.insert(web->entity.end(), buffer, buffer + size);
 			// Выполняем запуск обработчика событий
@@ -172,7 +172,7 @@ void awh::client::Rest::handler() noexcept {
 				this->actionOpen();
 			break;
 			// Если необходимо запустить экшен обработки данных поступающих с сервера
-			case (uint8_t) action_t::SERVER_READ:
+			case (uint8_t) action_t::SERVER_READ1:
 				// Выполняем экшен обработки данных поступающих с сервера
 				this->actionRead();
 			break;
@@ -294,7 +294,7 @@ void awh::client::Rest::actionRead() noexcept {
 							// Если нам необходимо отключиться
 							else {
 								// Если экшен соответствует, выполняем его сброс
-								if(this->action == action_t::SERVER_READ)
+								if(this->action == action_t::SERVER_READ1)
 									// Выполняем сброс экшена
 									this->action = action_t::NONE;
 								// Получаем новый адрес запроса для воркера
@@ -393,7 +393,7 @@ void awh::client::Rest::actionRead() noexcept {
 	// Устанавливаем метку завершения работы
 	Stop:
 	// Если экшен соответствует, выполняем его сброс
-	if(this->action == action_t::SERVER_READ)
+	if(this->action == action_t::SERVER_READ1)
 		// Выполняем сброс экшена
 		this->action = action_t::NONE;
 	// Если функция обратного вызова установлена, выводим сообщение
