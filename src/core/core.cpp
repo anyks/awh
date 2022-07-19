@@ -16,6 +16,69 @@
 #include <core/core.hpp>
 
 /**
+ * read Функция обратного вызова при чтении данных с сокета
+ * @param watcher объект события чтения
+ * @param revents идентификатор события
+ */
+void awh::worker_t::adj_t::read(ev::io & watcher, int revents) noexcept {
+	// Получаем объект подключения
+	worker_t * wrk = const_cast <worker_t *> (this->parent);
+	// Получаем объект ядра клиента
+	core_t * core = const_cast <core_t *> (wrk->core);
+	// Если разрешено выполнять чтения данных из сокета
+	if(!this->bev.locked.read)
+		// Выполняем передачу данных
+		core->transfer(core_t::method_t::READ, this->aid);
+	// Если выполнять чтение данных запрещено
+	else {
+		// Останавливаем таймаут ожидания на чтение из сокета
+		this->bev.timer.read.stop();
+		// Останавливаем таймаут ожидания на запись в сокет
+		this->bev.timer.write.stop();
+		// Выполняем отключение от сервера
+		core->close(this->aid);
+	}
+}
+/**
+ * write Функция обратного вызова при записи данных в сокет
+ * @param watcher объект события записи
+ * @param revents идентификатор события
+ */
+void awh::worker_t::adj_t::write(ev::io & watcher, int revents) noexcept {
+	// Получаем объект подключения
+	worker_t * wrk = const_cast <worker_t *> (this->parent);
+	// Получаем объект ядра клиента
+	core_t * core = const_cast <core_t *> (wrk->core);
+	// Если разрешено выполнять запись данных в сокет
+	if(!this->bev.locked.write)
+		// Выполняем передачу данных
+		core->transfer(core_t::method_t::WRITE, this->aid);
+	// Если выполнять запись данных запрещено
+	else {
+		// Останавливаем таймаут ожидания на чтение из сокета
+		this->bev.timer.read.stop();
+		// Останавливаем таймаут ожидания на запись в сокет
+		this->bev.timer.write.stop();
+		// Выполняем отключение от сервера
+		core->close(this->aid);
+	}
+}
+/**
+ * timeout Функция обратного вызова при срабатывании таймаута
+ * @param timer   объект события таймаута
+ * @param revents идентификатор события
+ */
+void awh::worker_t::adj_t::timeout(ev::timer & timer, int revents) noexcept {
+	// Выполняем остановку таймера
+	timer.stop();
+	// Получаем объект подключения
+	worker_t * wrk = const_cast <worker_t *> (this->parent);
+	// Получаем объект ядра клиента
+	core_t * core = const_cast <core_t *> (wrk->core);
+	// Выполняем передачу данных
+	core->timeout(this->aid);
+}
+/**
  * callback Функция обратного вызова
  * @param timer   объект события таймера
  * @param revents идентификатор события
@@ -718,6 +781,24 @@ void awh::Core::remove(const size_t wid) noexcept {
 void awh::Core::close(const size_t aid) noexcept {
 	// Экранируем ошибку неиспользуемой переменной
 	(void) aid;
+}
+/**
+ * timeout Функция обратного вызова при срабатывании таймаута
+ * @param aid идентификатор адъютанта
+ */
+void awh::Core::timeout(const size_t aid) noexcept {
+	// Экранируем ошибку неиспользуемой переменной
+	(void) aid;
+}
+/**
+ * write Функция обратного вызова при записи данных в сокет
+ * @param method метод режима работы
+ * @param aid    идентификатор адъютанта
+ */
+void awh::Core::transfer(const method_t method, const size_t aid) noexcept {
+	// Экранируем ошибку неиспользуемой переменной
+	(void) aid;
+	(void) method;
 }
 /**
  * setBandwidth Метод установки пропускной способности сети

@@ -1700,6 +1700,10 @@ void awh::client::Rest::setAuthTypeProxy(const auth_t::type_t type, const auth_t
 awh::client::Rest::Rest(const client::core_t * core, const fmk_t * fmk, const log_t * log) noexcept : nwk(fmk), uri(fmk, &nwk), http(fmk, log, &uri), core(core), fmk(fmk), log(log), worker(fmk, log), action(action_t::NONE), compress(awh::http_t::compress_t::NONE) {
 	// Устанавливаем контекст сообщения
 	this->worker.ctx = this;
+	// Устанавливаем количество секунд на чтение
+	this->worker.timeRead = 60;
+	// Устанавливаем количество секунд на запись
+	this->worker.timeWrite = 60;
 	// Устанавливаем событие на запуск системы
 	this->worker.openFn = openCallback;
 	// Устанавливаем функцию чтения данных

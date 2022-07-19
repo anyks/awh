@@ -417,6 +417,18 @@ namespace awh {
 			 * @param aid идентификатор адъютанта
 			 */
 			virtual void close(const size_t aid) noexcept;
+		private:
+			/**
+			 * timeout Функция обратного вызова при срабатывании таймаута
+			 * @param aid идентификатор адъютанта
+			 */
+			virtual void timeout(const size_t aid) noexcept;
+			/**
+			 * write Функция обратного вызова при записи данных в сокет
+			 * @param method метод режима работы
+			 * @param aid    идентификатор адъютанта
+			 */
+			virtual void transfer(const method_t method, const size_t aid) noexcept;
 		public:
 			/**
 			 * setBandwidth Метод установки пропускной способности сети
