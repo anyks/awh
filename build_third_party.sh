@@ -311,8 +311,8 @@ if [ $OS = "Windows" ]; then # Windows
 		$BUILD -j"$numproc" || exit 1
 
 		# Производим установку библиотеки по нужному пути
-		echo "Install \"$ROOT/submodules/libev-win/build/liblibev_static.a\" to \"$PREFIX/lib/libev_static.a\""
-		${INSTALL_CMD} "$ROOT/submodules/libev-win/build/liblibev_static.a" "$PREFIX/lib/libev_static.a" || exit 1
+		echo "Install \"$ROOT/submodules/libev-win/build/liblibev_static.a\" to \"$PREFIX/lib/libev.a\""
+		${INSTALL_CMD} "$ROOT/submodules/libev-win/build/liblibev_static.a" "$PREFIX/lib/libev.a" || exit 1
 
 		# Производим установку заголовочных файлов по нужному пути
 		for i in $(ls "$ROOT/submodules/libev-win" | grep \\.h$);

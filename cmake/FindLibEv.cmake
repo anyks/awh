@@ -10,11 +10,7 @@ find_path(LIBEV_INCLUDE_DIR libev/ev++.h PATHS ${CMAKE_SOURCE_DIR}/third_party/i
 find_path(LIBEV_INCLUDE_DIR libev/event.h PATHS ${CMAKE_SOURCE_DIR}/third_party/include NO_DEFAULT_PATH)
 
 # Поиск библиотеки LibEv
-if (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
-    find_library(LIBEV_LIBRARY NAMES ev_static PATHS ${CMAKE_SOURCE_DIR}/third_party/lib NO_DEFAULT_PATH)
-else()
-    find_library(LIBEV_LIBRARY NAMES ev PATHS ${CMAKE_SOURCE_DIR}/third_party/lib NO_DEFAULT_PATH)
-endif()
+find_library(LIBEV_LIBRARY NAMES ev PATHS ${CMAKE_SOURCE_DIR}/third_party/lib NO_DEFAULT_PATH)
 
 # Подключаем 'FindPackageHandle' для использования модуля поиска (find_package(<PackageName>))
 include(FindPackageHandleStandardArgs)
