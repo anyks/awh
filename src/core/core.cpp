@@ -866,10 +866,20 @@ void awh::Core::rebase() noexcept {
 		this->base = ev_default_loop(0);
 		// Выполняем разблокировку потока
 		this->mtx.main.unlock();
-		// Выполняем установку базы событий
-		this->dispatch.setBase(this->base);
 		// Если база событий создана
 		if(this->base != nullptr){
+			/*
+			// Добавляем базу событий для DNS резолвера IPv4
+			this->dns4.setBase(this->base);
+			// Добавляем базу событий для DNS резолвера IPv6
+			this->dns6.setBase(this->base);
+			// Выполняем установку нейм-серверов для DNS резолвера IPv4
+			this->dns4.replaceServers(this->net.v4.second);
+			// Выполняем установку нейм-серверов для DNS резолвера IPv6
+			this->dns6.replaceServers(this->net.v6.second);
+			*/
+			// Выполняем установку базы событий
+			this->dispatch.setBase(this->base);
 			// Если список таймеров получен
 			if(!mainTimers.empty()){
 				// Переходим по всему списку таймеров
@@ -883,6 +893,32 @@ void awh::Core::rebase() noexcept {
 			}
 			// Выполняем запуск работы
 			this->start();
+		// Выходим принудительно из приложения
+		} else exit(EXIT_FAILURE);
+	// Если система ещё не запущена
+	} else {
+		// Выполняем блокировку потока
+		this->mtx.main.lock();
+		// Удаляем объект базы событий
+		ev_loop_destroy(this->base);
+		// Создаем новую базу
+		this->base = ev_default_loop(0);
+		// Выполняем разблокировку потока
+		this->mtx.main.unlock();
+		// Если база событий создана
+		if(this->base != nullptr){
+			/*
+			// Добавляем базу событий для DNS резолвера IPv4
+			this->dns4.setBase(this->base);
+			// Добавляем базу событий для DNS резолвера IPv6
+			this->dns6.setBase(this->base);
+			// Выполняем установку нейм-серверов для DNS резолвера IPv4
+			this->dns4.replaceServers(this->net.v4.second);
+			// Выполняем установку нейм-серверов для DNS резолвера IPv6
+			this->dns6.replaceServers(this->net.v6.second);
+			*/
+			// Выполняем установку базы событий
+			this->dispatch.setBase(this->base);
 		// Выходим принудительно из приложения
 		} else exit(EXIT_FAILURE);
 	}
@@ -1400,24 +1436,8 @@ void awh::Core::setNet(const vector <string> & ip, const vector <string> & ns, c
  * @param log объект для работы с логами
  */
 awh::Core::Core(const fmk_t * fmk, const log_t * log) noexcept : nwk(fmk), uri(fmk, &nwk), ssl(fmk, log, &uri), /* dns4(fmk, log, &nwk), dns6(fmk, log, &nwk),*/ socket(log), fmk(fmk), log(log) {
-	// Создаем новую базу
-	this->base = ev_default_loop(0);
-	// Если база событий создана
-	if(this->base != nullptr){
-		/*
-		// Добавляем базу событий для DNS резолвера IPv4
-		this->dns4.setBase(this->base);
-		// Добавляем базу событий для DNS резолвера IPv6
-		this->dns6.setBase(this->base);
-		// Выполняем установку нейм-серверов для DNS резолвера IPv4
-		this->dns4.replaceServers(this->net.v4.second);
-		// Выполняем установку нейм-серверов для DNS резолвера IPv6
-		this->dns6.replaceServers(this->net.v6.second);
-		*/
-		// Выполняем установку базы событий
-		this->dispatch.setBase(this->base);
-	// Выходим принудительно из приложения
-	} else exit(EXIT_FAILURE);
+	// Выполняем создание базы событий
+	this->rebase();
 }
 /**
  * ~Core Деструктор
