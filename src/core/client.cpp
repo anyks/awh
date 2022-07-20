@@ -748,7 +748,6 @@ void awh::client::Core::close() noexcept {
 	}
 	// Если список воркеров активен
 	if(!this->workers.empty()){
-		/*
 		// Если список подключённых ядер не пустой
 		if(!this->cores.empty()){
 			// Переходим по всем списка подключённым ядрам и устанавливаем новую базу событий
@@ -756,7 +755,6 @@ void awh::client::Core::close() noexcept {
 				// Выполняем отключение всех клиентов у подключённых ядер
 				core.first->close();
 		}
-		*/
 		// Переходим по всему списку воркеров
 		for(auto & worker : this->workers){
 			// Если в воркере есть подключённые клиенты
@@ -816,7 +814,6 @@ void awh::client::Core::remove() noexcept {
 				this->mtx.timeout.unlock();
 			}
 		}
-		/*
 		// Если список подключённых ядер не пустой
 		if(!this->cores.empty()){
 			// Переходим по всем списка подключённым ядрам и устанавливаем новую базу событий
@@ -824,7 +821,6 @@ void awh::client::Core::remove() noexcept {
 				// Выполняем удаление всех воркеров у подключённых ядер
 				core.first->remove();
 		}
-		*/
 		// Переходим по всему списку воркеров
 		for(auto it = this->workers.begin(); it != this->workers.end();){
 			// Получаем объект воркера

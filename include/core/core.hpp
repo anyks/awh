@@ -285,10 +285,10 @@ namespace awh {
 			// Список активных таймеров
 			map <u_short, unique_ptr <timer_t>> timers;
 		protected:
+			// Список сторонних сетевых ядер
+			map <Core *, struct ev_loop **> cores;
 			// Список активных воркеров
 			map <size_t, const worker_t *> workers;
-			// Список сторонних сетевых ядер
-			// map <Core *, struct event_base **> cores;
 			// Список подключённых клиентов
 			map <size_t, const worker_t::adj_t *> adjutants;
 		protected:
