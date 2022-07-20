@@ -827,8 +827,6 @@ void awh::Core::rebase() noexcept {
 			 */
 			Timer() noexcept : ctx(nullptr), delay(0), fn(nullptr) {}
 		} timer_t;
-		// Список дочерних таймеров
-		multimap <Core *, timer_t> childTimers;
 		// Список пересоздаваемых таймеров
 		vector <timer_t> mainTimers(this->timers.size());
 		/**
@@ -858,55 +856,6 @@ void awh::Core::rebase() noexcept {
 				index++;
 			}
 		}
-		// Выполняем отключение всех клиентов
-		this->close();
-		// Если список подключённых ядер не пустой
-		if(!this->cores.empty()){
-			// Выполняем блокировку потока
-			this->mtx.core.lock();
-			// Переходим по всему списку ядер
-			for(auto & core : this->cores){
-				// Выполняем пересоздание всех баз дочерних объектов
-				core.first->close();
-				/**
-				 * Если запрещено использовать простое чтение базы событий
-				 * Выполняем остановку всех таймеров
-				 */
-				if(!core.first->timers.empty()){
-					// Переходим по всем таймерам
-					for(auto it = core.first->timers.begin(); it != core.first->timers.end();){
-						// Создаём объект таймера
-						timer_t timer;
-						// Выполняем блокировку потока
-						core.first->mtx.timer.lock();
-						// Выполняем остановку таймера
-						it->second->timer.stop();
-						// Устанавливаем функцию обратного вызова
-						timer.fn = it->second->fn;
-						// Устанавливаем передаваемый контекст
-						timer.ctx = it->second->ctx;
-						// Устанавливаем задержку времени в миллисекундах
-						timer.delay = it->second->delay;
-						// Добавляем таймер в список таймеров
-						childTimers.emplace(core.first, move(timer));
-						// Удаляем таймер из списка
-						it = core.first->timers.erase(it);
-						// Выполняем разблокировку потока
-						core.first->mtx.timer.unlock();
-					}
-				}
-				// Если таймер периодического запуска коллбека активирован
-				if(core.first->persist)
-					// Выполняем остановку таймера
-					core.first->timer.stop();
-				// Устанавливаем статус сетевого ядра
-				core.first->status = status_t::STOP;
-				// Если функция обратного вызова установлена, выполняем
-				if(core.first->callbackFn != nullptr) core.first->callbackFn(false, core.first, core.first->ctx.front());
-			}
-			// Выполняем разблокировку потока
-			this->mtx.core.unlock();
-		}
 		// Выполняем остановку работы
 		this->stop();
 		// Выполняем блокировку потока
@@ -931,40 +880,6 @@ void awh::Core::rebase() noexcept {
 				mainTimers.clear();
 				// Выполняем освобождение выделенной памяти
 				vector <timer_t> ().swap(mainTimers);
-			}
-			// Если список подключённых ядер не пустой
-			if(!this->cores.empty()){
-				// Выполняем блокировку потока
-				this->mtx.core.lock();
-				// Переходим по всему списку ядер
-				for(auto & core : this->cores){
-					// Устанавливаем базу событий
-					core.first->base = this->base;
-					/*
-					// Добавляем базу событий для DNS резолвера IPv4
-					core.first->dns4.setBase(core.first->base);
-					// Добавляем базу событий для DNS резолвера IPv6
-					core.first->dns6.setBase(core.first->base);
-					// Выполняем установку нейм-серверов для DNS резолвера IPv4
-					core.first->dns4.replaceServers(core.first->net.v4.second);
-					// Выполняем установку нейм-серверов для DNS резолвера IPv6
-					core.first->dns6.replaceServers(core.first->net.v6.second);
-					*/
-					// Выполняем поиск текущего ядра
-					auto ret = childTimers.equal_range(core.first);
-					// Выполняем перебор всех активных таймеров
-					for(auto it = ret.first; it != ret.second; ++it)
-						// Создаём новый таймер
-						core.first->setTimeout(it->second.ctx, it->second.delay, it->second.fn);
-					// Выполняем запуск управляющей функции
-					core.first->launching();
-				}
-				// Выполняем очистку списка таймеров
-				childTimers.clear();
-				// Выполняем освобождение выделенной памяти
-				multimap <Core *, timer_t> ().swap(childTimers);
-				// Выполняем разблокировку потока
-				this->mtx.core.unlock();
 			}
 			// Выполняем запуск работы
 			this->start();
@@ -1516,29 +1431,6 @@ awh::Core::~Core() noexcept {
 	// Выполняем удаление модуля DNS резолвера IPv6
 	this->dns6.remove();
 	*/
-	// Если список подключённых ядер не пустой
-	if(!this->cores.empty()){
-		// Выполняем блокировку потока
-		this->mtx.core.lock();
-		// Переходим по всему списку подключённых ядер
-		for(auto it = this->cores.begin(); it != this->cores.end();){
-			// Выполняем блокировку потока
-			it->first->mtx.stop.lock();
-			// Если база событий подключена, удаляем её
-			if((* it->second) != nullptr){
-				// Удаляем объект базы событий
-				ev_loop_destroy(* it->second);
-				// Обнуляем базу событий
-				(* it->second) = nullptr;
-			}
-			// Выполняем разблокировку потока
-			it->first->mtx.stop.unlock();
-			// Удаляем ядро из списка ядер
-			it = this->cores.erase(it);
-		}
-		// Выполняем разблокировку потока
-		this->mtx.core.unlock();
-	}
 	// Выполняем блокировку потока
 	this->mtx.stop.lock();
 	// Если база событий существует
