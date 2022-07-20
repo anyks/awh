@@ -899,8 +899,10 @@ void awh::Core::rebase() noexcept {
 	} else {
 		// Выполняем блокировку потока
 		this->mtx.main.lock();
-		// Удаляем объект базы событий
-		ev_loop_destroy(this->base);
+		// Если база событий уже создана
+		if(this->base != nullptr)
+			// Удаляем объект базы событий
+			ev_loop_destroy(this->base);
 		// Создаем новую базу
 		this->base = ev_default_loop(0);
 		// Выполняем разблокировку потока
