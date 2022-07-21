@@ -44,6 +44,7 @@
 
 // Подписываемся на стандартное пространство имён
 using namespace std;
+using namespace std::placeholders;
 
 /**
  * awh пространство имён
@@ -207,10 +208,8 @@ namespace awh {
 			// Чёрный список заголовков
 			mutable unordered_set <string> black;
 		private:
-			// Список контекстов передаваемых объектов
-			vector <void *> ctx = {nullptr};
 			// Функция вызова при получении чанка
-			function <void (const vector <char> &, const Http *, void *)> chunkingFn = nullptr;
+			function <void (const vector <char> &, const Http *)> chunkingFn = nullptr;
 		protected:
 			// Создаём объект фреймворка
 			const fmk_t * fmk = nullptr;
@@ -223,9 +222,8 @@ namespace awh {
 			 * chunkingCallback Функция вывода полученных чанков полезной нагрузки
 			 * @param buffer буфер данных чанка полезной нагрузки
 			 * @param web    объект HTTP парсера
-			 * @param ctx    передаваемый контекст модуля
 			 */
-			static void chunkingCallback(const vector <char> & buffer, const web_t * web, void * ctx) noexcept;
+			void chunkingCallback(const vector <char> & buffer, const web_t * web) noexcept;
 		protected:
 			/**
 			 * update Метод обновления входящих данных
@@ -458,10 +456,9 @@ namespace awh {
 		public:
 			/**
 			 * setChunkingFn Метод установки функции обратного вызова для получения чанков
-			 * @param ctx      контекст для вывода в сообщении
 			 * @param callback функция обратного вызова
 			 */
-			void setChunkingFn(void * ctx, function <void (const vector <char> &, const Http *, void *)> callback) noexcept;
+			void setChunkingFn(function <void (const vector <char> &, const Http *)> callback) noexcept;
 		public:
 			/**
 			 * setChunkSize Метод установки размера чанка

@@ -80,16 +80,14 @@ int main(int argc, char * argv[]) noexcept {
 	// Устанавливаем сабпротоколы
 	// ws.setSubs({"test2", "test8", "test9"});
 	// Выполняем подписку на получение логов
-	log.subscribe(nullptr, [](const log_t::flag_t flag, const string & message, void * ctx){
+	log.subscribe([](const log_t::flag_t flag, const string & message){
 		// Выводим сообщение
 		// cout << " ============= " << message << endl;
 	});
 	// Подписываемся на событие запуска и остановки сервера
-	ws.on(&log, [](const client::ws_t::mode_t mode, client::ws_t * ws, void * ctx){
-		// Получаем объект логирования
-		log_t * log = reinterpret_cast <log_t *> (ctx);
+	ws.on([&log](const client::ws_t::mode_t mode, client::ws_t * ws){
 		// Выводим информацию в лог
-		log->print("%s server", log_t::flag_t::INFO, (mode == client::ws_t::mode_t::CONNECT ? "Start" : "Stop"));
+		log.print("%s server", log_t::flag_t::INFO, (mode == client::ws_t::mode_t::CONNECT ? "Start" : "Stop"));
 		// Если подключение произошло удачно
 		if(mode == client::ws_t::mode_t::CONNECT){
 			// Создаём объект JSON
@@ -208,14 +206,12 @@ int main(int argc, char * argv[]) noexcept {
 		}
 	});
 	// Подписываемся на событие получения ошибки работы клиента
-	ws.on(&log, [](const u_int code, const string & mess, client::ws_t * ws, void * ctx){
-		// Получаем объект логирования
-		log_t * log = reinterpret_cast <log_t *> (ctx);
+	ws.on([&log](const u_int code, const string & mess, client::ws_t * ws){
 		// Выводим информацию в лог
-		log->print("%s [%u]", log_t::flag_t::CRITICAL, mess.c_str(), code);
+		log.print("%s [%u]", log_t::flag_t::CRITICAL, mess.c_str(), code);
 	});
 	// Подписываемся на событие получения сообщения с сервера
-	ws.on(nullptr, [](const vector <char> & buffer, const bool utf8, client::ws_t * ws, void * ctx){
+	ws.on([](const vector <char> & buffer, const bool utf8, client::ws_t * ws){
 		// Если данные пришли в виде текста, выводим
 		if(utf8){
 			try {

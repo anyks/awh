@@ -29,6 +29,7 @@
 
 // Подписываемся на стандартное пространство имён
 using namespace std;
+using namespace std::placeholders;
 
 // Активируем json в качестве объекта пространства имён
 using json = nlohmann::json;
@@ -151,9 +152,6 @@ namespace awh {
 				// Тело получения ответа
 				vector <char> entity;
 			private:
-				// Список контекстов передаваемых объектов
-				vector <void *> ctx = {nullptr, nullptr};
-			private:
 				// Создаём объект фреймворка
 				const fmk_t * fmk = nullptr;
 				// Создаём объект работы с логами
@@ -162,41 +160,37 @@ namespace awh {
 				const client::core_t * core = nullptr;
 			private:
 				// Функция обратного вызова при подключении/отключении
-				function <void (const mode_t, Rest *, void *)> activeFn = nullptr;
+				function <void (const mode_t, Rest *)> activeFn = nullptr;
 				// Функция обратного вызова, вывода сообщения при его получении
-				function <void (const res_t &, Rest *, void *)> messageFn = nullptr;
+				function <void (const res_t &, Rest *)> messageFn = nullptr;
 			private:
 				/**
 				 * chunking Метод обработки получения чанков
 				 * @param chunk бинарный буфер чанка
 				 * @param http  объект модуля HTTP
-				 * @param ctx   передаваемый контекст модуля
 				 */
-				static void chunking(const vector <char> & chunk, const awh::http_t * http, void * ctx) noexcept;
+				void chunking(const vector <char> & chunk, const awh::http_t * http) noexcept;
 			private:
 				/**
 				 * openCallback Функция обратного вызова при запуске работы
 				 * @param wid  идентификатор воркера
 				 * @param core объект биндинга TCP/IP
-				 * @param ctx  передаваемый контекст модуля
 				 */
-				static void openCallback(const size_t wid, awh::core_t * core, void * ctx) noexcept;
+				void openCallback(const size_t wid, awh::core_t * core) noexcept;
 				/**
 				 * connectCallback Функция обратного вызова при подключении к серверу
 				 * @param aid  идентификатор адъютанта
 				 * @param wid  идентификатор воркера
 				 * @param core объект биндинга TCP/IP
-				 * @param ctx  передаваемый контекст модуля
 				 */
-				static void connectCallback(const size_t aid, const size_t wid, awh::core_t * core, void * ctx) noexcept;
+				void connectCallback(const size_t aid, const size_t wid, awh::core_t * core) noexcept;
 				/**
 				 * disconnectCallback Функция обратного вызова при отключении от сервера
 				 * @param aid  идентификатор адъютанта
 				 * @param wid  идентификатор воркера
 				 * @param core объект биндинга TCP/IP
-				 * @param ctx  передаваемый контекст модуля
 				 */
-				static void disconnectCallback(const size_t aid, const size_t wid, awh::core_t * core, void * ctx) noexcept;
+				void disconnectCallback(const size_t aid, const size_t wid, awh::core_t * core) noexcept;
 				/**
 				 * readCallback Функция обратного вызова при чтении сообщения с сервера
 				 * @param buffer бинарный буфер содержащий сообщение
@@ -204,18 +198,16 @@ namespace awh {
 				 * @param aid    идентификатор адъютанта
 				 * @param wid    идентификатор воркера
 				 * @param core   объект биндинга TCP/IP
-				 * @param ctx    передаваемый контекст модуля
 				 */
-				static void readCallback(const char * buffer, const size_t size, const size_t aid, const size_t wid, awh::core_t * core, void * ctx) noexcept;
+				void readCallback(const char * buffer, const size_t size, const size_t aid, const size_t wid, awh::core_t * core) noexcept;
 			private:
 				/**
 				 * proxyConnectCallback Функция обратного вызова при подключении к прокси-серверу
 				 * @param aid  идентификатор адъютанта
 				 * @param wid  идентификатор воркера
 				 * @param core объект биндинга TCP/IP
-				 * @param ctx  передаваемый контекст модуля
 				 */
-				static void proxyConnectCallback(const size_t aid, const size_t wid, awh::core_t * core, void * ctx) noexcept;
+				void proxyConnectCallback(const size_t aid, const size_t wid, awh::core_t * core) noexcept;
 				/**
 				 * proxyReadCallback Функция обратного вызова при чтении сообщения с прокси-сервера
 				 * @param buffer бинарный буфер содержащий сообщение
@@ -223,9 +215,8 @@ namespace awh {
 				 * @param aid    идентификатор адъютанта
 				 * @param wid    идентификатор воркера
 				 * @param core   объект биндинга TCP/IP
-				 * @param ctx    передаваемый контекст модуля
 				 */
-				static void proxyReadCallback(const char * buffer, const size_t size, const size_t aid, const size_t wid, awh::core_t * core, void * ctx) noexcept;
+				void proxyReadCallback(const char * buffer, const size_t size, const size_t aid, const size_t wid, awh::core_t * core) noexcept;
 			private:
 				/**
 				 * handler Метод управления входящими методами
@@ -402,23 +393,20 @@ namespace awh {
 			public:
 				/**
 				 * on Метод установки функции обратного вызова при подключении/отключении
-				 * @param ctx      контекст для вывода в сообщении
 				 * @param callback функция обратного вызова
 				 */
-				void on(void * ctx, function <void (const mode_t, Rest *, void *)> callback) noexcept;
+				void on(function <void (const mode_t, Rest *)> callback) noexcept;
 				/**
 				 * setMessageCallback Метод установки функции обратного вызова при получении сообщения
-				 * @param ctx      контекст для вывода в сообщении
 				 * @param callback функция обратного вызова
 				 */
-				void on(void * ctx, function <void (const res_t &, Rest *, void *)> callback) noexcept;
+				void on(function <void (const res_t &, Rest *)> callback) noexcept;
 			public:
 				/**
 				 * on Метод установки функции обратного вызова для получения чанков
-				 * @param ctx      контекст для вывода в сообщении
 				 * @param callback функция обратного вызова
 				 */
-				void on(void * ctx, function <void (const vector <char> &, const awh::http_t *, void *)> callback) noexcept;
+				void on(function <void (const vector <char> &, const awh::http_t *)> callback) noexcept;
 			public:
 				/**
 				 * setWaitTimeDetect Метод детекции сообщений по количеству секунд

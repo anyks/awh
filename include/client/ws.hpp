@@ -120,9 +120,6 @@ namespace awh {
 				// Метод компрессии данных
 				http_t::compress_t compress = http_t::compress_t::NONE;
 			private:
-				// Список контекстов передаваемых объектов
-				vector <void *> ctx = {nullptr, nullptr, nullptr};
-			private:
 				// Создаём объект фреймворка
 				const fmk_t * fmk = nullptr;
 				// Создаём объект работы с логами
@@ -131,51 +128,46 @@ namespace awh {
 				const client::core_t * core = nullptr;
 			private:
 				// Функция обратного вызова, при запуске или остановки подключения к серверу
-				function <void (const mode_t, WebSocket *, void *)> activeFn = nullptr;
+				function <void (const mode_t, WebSocket *)> activeFn = nullptr;
 				// Функция обратного вызова, при получении ошибки работы клиента
-				function <void (const u_int, const string &, WebSocket *, void *)> errorFn = nullptr;
+				function <void (const u_int, const string &, WebSocket *)> errorFn = nullptr;
 				// Функция обратного вызова, при получении сообщения с сервера
-				function <void (const vector <char> &, const bool, WebSocket *, void *)> messageFn = nullptr;
+				function <void (const vector <char> &, const bool, WebSocket *)> messageFn = nullptr;
 			private:
 				/**
 				 * openCallback Функция обратного вызова при запуске работы
 				 * @param wid  идентификатор воркера
 				 * @param core объект биндинга TCP/IP
-				 * @param ctx  передаваемый контекст модуля
 				 */
-				static void openCallback(const size_t wid, awh::core_t * core, void * ctx) noexcept;
+				void openCallback(const size_t wid, awh::core_t * core) noexcept;
 				/**
 				 * persistCallback Функция персистентного вызова
 				 * @param aid  идентификатор адъютанта
 				 * @param wid  идентификатор воркера
 				 * @param core объект биндинга TCP/IP
-				 * @param ctx  передаваемый контекст модуля
 				 */
-				static void persistCallback(const size_t aid, const size_t wid, awh::core_t * core, void * ctx) noexcept;
+				void persistCallback(const size_t aid, const size_t wid, awh::core_t * core) noexcept;
 				/**
 				 * connectCallback Функция обратного вызова при подключении к серверу
 				 * @param aid  идентификатор адъютанта
 				 * @param wid  идентификатор воркера
 				 * @param core объект биндинга TCP/IP
-				 * @param ctx  передаваемый контекст модуля
 				 */
-				static void connectCallback(const size_t aid, const size_t wid, awh::core_t * core, void * ctx) noexcept;
+				void connectCallback(const size_t aid, const size_t wid, awh::core_t * core) noexcept;
 				/**
 				 * disconnectCallback Функция обратного вызова при отключении от сервера
 				 * @param aid  идентификатор адъютанта
 				 * @param wid  идентификатор воркера
 				 * @param core объект биндинга TCP/IP
-				 * @param ctx  передаваемый контекст модуля
 				 */
-				static void disconnectCallback(const size_t aid, const size_t wid, awh::core_t * core, void * ctx) noexcept;
+				void disconnectCallback(const size_t aid, const size_t wid, awh::core_t * core) noexcept;
 				/**
 				 * connectProxyCallback Функция обратного вызова при подключении к прокси-серверу
 				 * @param aid  идентификатор адъютанта
 				 * @param wid  идентификатор воркера
 				 * @param core объект биндинга TCP/IP
-				 * @param ctx  передаваемый контекст модуля
 				 */
-				static void connectProxyCallback(const size_t aid, const size_t wid, awh::core_t * core, void * ctx) noexcept;
+				void connectProxyCallback(const size_t aid, const size_t wid, awh::core_t * core) noexcept;
 				/**
 				 * readCallback Функция обратного вызова при чтении сообщения с сервера
 				 * @param buffer бинарный буфер содержащий сообщение
@@ -183,9 +175,8 @@ namespace awh {
 				 * @param aid    идентификатор адъютанта
 				 * @param wid    идентификатор воркера
 				 * @param core   объект биндинга TCP/IP
-				 * @param ctx    передаваемый контекст модуля
 				 */
-				static void readCallback(const char * buffer, const size_t size, const size_t aid, const size_t wid, awh::core_t * core, void * ctx) noexcept;
+				void readCallback(const char * buffer, const size_t size, const size_t aid, const size_t wid, awh::core_t * core) noexcept;
 				/**
 				 * writeCallback Функция обратного вызова при записи сообщения на клиенте
 				 * @param buffer бинарный буфер содержащий сообщение
@@ -193,9 +184,8 @@ namespace awh {
 				 * @param aid    идентификатор адъютанта
 				 * @param wid    идентификатор воркера
 				 * @param core   объект биндинга TCP/IP
-				 * @param ctx    передаваемый контекст модуля
 				 */
-				static void writeCallback(const char * buffer, const size_t size, const size_t aid, const size_t wid, awh::core_t * core, void * ctx) noexcept;
+				void writeCallback(const char * buffer, const size_t size, const size_t aid, const size_t wid, awh::core_t * core) noexcept;
 				/**
 				 * readProxyCallback Функция обратного вызова при чтении сообщения с прокси-сервера
 				 * @param buffer бинарный буфер содержащий сообщение
@@ -203,9 +193,8 @@ namespace awh {
 				 * @param aid    идентификатор адъютанта
 				 * @param wid    идентификатор воркера
 				 * @param core   объект биндинга TCP/IP
-				 * @param ctx    передаваемый контекст модуля
 				 */
-				static void readProxyCallback(const char * buffer, const size_t size, const size_t aid, const size_t wid, awh::core_t * core, void * ctx) noexcept;
+				void readProxyCallback(const char * buffer, const size_t size, const size_t aid, const size_t wid, awh::core_t * core) noexcept;
 			private:
 				/**
 				 * error Метод вывода сообщений об ошибках работы клиента
@@ -244,22 +233,19 @@ namespace awh {
 			public:
 				/**
 				 * on Метод установки функции обратного вызова на событие запуска или остановки подключения
-				 * @param ctx      контекст для вывода в сообщении
 				 * @param callback функция обратного вызова
 				 */
-				void on(void * ctx, function <void (const mode_t, WebSocket *, void *)> callback) noexcept;
+				void on(function <void (const mode_t, WebSocket *)> callback) noexcept;
 				/**
 				 * on Метод установки функции обратного вызова на событие получения ошибок
-				 * @param ctx      контекст для вывода в сообщении
 				 * @param callback функция обратного вызова
 				 */
-				void on(void * ctx, function <void (const u_int, const string &, WebSocket *, void *)> callback) noexcept;
+				void on(function <void (const u_int, const string &, WebSocket *)> callback) noexcept;
 				/**
 				 * on Метод установки функции обратного вызова на событие получения сообщений
-				 * @param ctx      контекст для вывода в сообщении
 				 * @param callback функция обратного вызова
 				 */
-				void on(void * ctx, function <void (const vector <char> &, const bool, WebSocket *, void *)> callback) noexcept;
+				void on(function <void (const vector <char> &, const bool, WebSocket *)> callback) noexcept;
 			public:
 				/**
 				 * sendTimeout Метод отправки сигнала таймаута

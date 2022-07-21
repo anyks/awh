@@ -238,9 +238,6 @@ namespace awh {
 		protected:
 			// Список подключённых адъютантов
 			map <size_t, unique_ptr <adj_t>> adjutants;
-		public:
-			// Контекст передаваемый в сообщении
-			void * ctx = nullptr;
 		protected:
 			// Создаём объект фреймворка
 			const fmk_t * fmk = nullptr;
@@ -250,17 +247,17 @@ namespace awh {
 			const Core * core = nullptr;
 		public:
 			// Функция обратного вызова при открытии приложения
-			function <void (const size_t, Core *, void *)> openFn = nullptr;
+			function <void (const size_t, Core *)> openFn = nullptr;
 			// Функция обратного вызова для персистентного вызова
-			function <void (const size_t, const size_t, Core *, void *)> persistFn = nullptr;
+			function <void (const size_t, const size_t, Core *)> persistFn = nullptr;
 			// Функция обратного вызова при запуске подключения
-			function <void (const size_t, const size_t, Core *, void *)> connectFn = nullptr;
+			function <void (const size_t, const size_t, Core *)> connectFn = nullptr;
 			// Функция обратного вызова при закрытии подключения
-			function <void (const size_t, const size_t, Core *, void *)> disconnectFn = nullptr;
+			function <void (const size_t, const size_t, Core *)> disconnectFn = nullptr;
 			// Функция обратного вызова при получении данных
-			function <void (const char *, const size_t, const size_t, const size_t, Core *, void *)> readFn = nullptr;
+			function <void (const char *, const size_t, const size_t, const size_t, Core *)> readFn = nullptr;
 			// Функция обратного вызова при записи данных
-			function <void (const char *, const size_t, const size_t, const size_t, Core *, void *)> writeFn = nullptr;
+			function <void (const char *, const size_t, const size_t, const size_t, Core *)> writeFn = nullptr;
 		public:
 			/**
 			 * clear Метод очистки

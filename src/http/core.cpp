@@ -19,18 +19,12 @@
  * chunkingCallback Функция вывода полученных чанков полезной нагрузки
  * @param buffer буфер данных чанка полезной нагрузки
  * @param web    объект HTTP парсера
- * @param ctx    передаваемый контекст модуля
  */
-void awh::Http::chunkingCallback(const vector <char> & buffer, const web_t * web, void * ctx) noexcept {
-	// Если передаваемый контекст передан
-	if(ctx != nullptr){
-		// Получаем объект модуля для работы с REST
-		http_t * http = reinterpret_cast <http_t *> (ctx);
-		// Если функция обратного вызова передана
-		if((http->chunkingFn != nullptr) && (http->ctx.size() == 1))
-			// Выполняем сборку бинарных чанков
-			http->chunkingFn(buffer, http, http->ctx.at(0));
-	}
+void awh::Http::chunkingCallback(const vector <char> & buffer, const web_t * web) noexcept {
+	// Если функция обратного вызова передана
+	if(this->chunkingFn != nullptr)
+		// Выполняем сборку бинарных чанков
+		this->chunkingFn(buffer, this);
 }
 /**
  * update Метод обновления входящих данных
@@ -1662,16 +1656,13 @@ vector <char> awh::Http::request(const uri_t::url_t & url, const web_t::method_t
 }
 /**
  * setChunkingFn Метод установки функции обратного вызова для получения чанков
- * @param ctx      контекст для вывода в сообщении
  * @param callback функция обратного вызова
  */
-void awh::Http::setChunkingFn(void * ctx, function <void (const vector <char> &, const Http *, void *)> callback) noexcept {
-	// Устанавливаем контекст передаваемого объекта
-	this->ctx.at(0) = ctx;
+void awh::Http::setChunkingFn(function <void (const vector <char> &, const Http *)> callback) noexcept {
 	// Устанавливаем функцию обратного вызова
 	this->chunkingFn = callback;
 	// Устанавливаем функцию обратного вызова для получения чанков
-	this->web.setChunkingFn(this, &chunkingCallback);
+	this->web.setChunkingFn(std::bind(&awh::Http::chunkingCallback, this, _1, _2));
 }
 /**
  * setChunkSize Метод установки размера чанка
@@ -1736,5 +1727,5 @@ void awh::Http::setCrypt(const string & pass, const string & salt, const hash_t:
  */
 awh::Http::Http(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcept : web(fmk, log), auth(fmk, log), hash(fmk, log), dhash(fmk, log), fmk(fmk), log(log), uri(uri) {
 	// Устанавливаем функцию обратного вызова для получения чанков
-	this->web.setChunkingFn(this, &chunkingCallback);
+	this->web.setChunkingFn(std::bind(&awh::Http::chunkingCallback, this, _1, _2));
 }

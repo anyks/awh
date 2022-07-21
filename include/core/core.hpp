@@ -105,14 +105,11 @@ namespace awh {
 					// Объект события таймера
 					ev::timer timer;
 				public:
-					// Передаваемый контекст
-					void * ctx;
-				public:
 					// Родительский объект
 					Core * core;
 				public:
 					// Внешняя функция обратного вызова
-					function <void (const u_short, Core *, void *)> fn;
+					function <void (const u_short, Core *)> fn;
 				public:
 					/**
 					 * callback Функция обратного вызова
@@ -124,7 +121,7 @@ namespace awh {
 					/**
 					 * Timer Конструктор
 					 */
-					Timer() noexcept : id(0), delay(0.f), persist(false), ctx(nullptr), core(nullptr), fn(nullptr) {}
+					Timer() noexcept : id(0), delay(0.f), persist(false), core(nullptr), fn(nullptr) {}
 			} timer_t;
 		protected:
 			/**
@@ -133,10 +130,9 @@ namespace awh {
 			typedef struct Mutex {
 				recursive_mutex core;   // Для работы с ядрами
 				recursive_mutex bind;   // Для работы с биндингом ядра
-				recursive_mutex stop;   // Для контроля остановки модуля
 				recursive_mutex main;   // Для работы с параметрами модуля
-				recursive_mutex start;  // Для контроля запуска модуля
 				recursive_mutex timer;  // Для работы с таймерами
+				recursive_mutex status; // Для контроля запуска модуля
 				recursive_mutex worker; // Для работы с воркерами
 			} mtx_t;
 			/**
@@ -188,6 +184,9 @@ namespace awh {
 				private:
 					// Core Устанавливаем дружбу с классом ядра
 					friend class Core;
+				private:
+					// Объект ядра
+					Core * core;
 				private:
 					// Флаг простого чтения базы событий
 					bool easy;
@@ -243,12 +242,12 @@ namespace awh {
 					/**
 					 * Dispatch Конструктор
 					 */
-					Dispatch() noexcept : easy(false), mode(false), work(false), base(nullptr), freq(10ms) {}
+					Dispatch(Core * core) noexcept : core(core), easy(false), mode(false), work(false), base(nullptr), freq(10ms) {}
 					/**
 					 * Dispatch Конструктор
 					 * @param base база событий
 					 */
-					Dispatch(struct ev_loop * base) noexcept : easy(false), mode(false), work(false), base(base), freq(10ms) {}
+					Dispatch(Core * core, struct ev_loop * base) noexcept : core(core), easy(false), mode(false), work(false), base(base), freq(10ms) {}
 			} dispatch_t;
 		protected:
 			// Мютекс для блокировки основного потока
@@ -306,9 +305,6 @@ namespace awh {
 			// Интервал персистентного таймера в миллисекундах
 			time_t persistInterval = PERSIST_INTERVAL;
 		protected:
-			// Список контекстов передаваемых объектов
-			vector <void *> ctx = {nullptr};
-		protected:
 			// Создаём объект фреймворка
 			const fmk_t * fmk = nullptr;
 			// Создаём объект работы с логами
@@ -318,12 +314,16 @@ namespace awh {
 			struct ev_loop * base = nullptr;
 		protected:
 			// Функция обратного вызова при запуске/остановке модуля
-			function <void (const bool, Core * core, void *)> callbackFn = nullptr;
+			function <void (const bool, Core * core)> callbackFn = nullptr;
 		private:
 			/**
 			 * launching Метод вызова при активации базы событий
 			 */
 			void launching() noexcept;
+			/**
+			 * closedown Метод вызова при деакцтивации базы событий
+			 */
+			void closedown() noexcept;
 		private:
 			/**
 			 * persistent Функция персистентного вызова по таймеру
@@ -360,10 +360,9 @@ namespace awh {
 		public:
 			/**
 			 * setCallback Метод установки функции обратного вызова при запуске/остановки работы модуля
-			 * @param ctx      передаваемый объект контекста
 			 * @param callback функция обратного вызова для установки
 			 */
-			void setCallback(void * ctx, function <void (const bool, Core * core, void *)> callback) noexcept;
+			void setCallback(function <void (const bool, Core * core)> callback) noexcept;
 		public:
 			/**
 			 * stop Метод остановки клиента
@@ -493,20 +492,18 @@ namespace awh {
 		public:
 			/**
 			 * setTimeout Метод установки таймаута
-			 * @param ctx      передаваемый контекст
 			 * @param delay    задержка времени в миллисекундах
 			 * @param callback функция обратного вызова
 			 * @return         идентификатор созданного таймера
 			 */
-			u_short setTimeout(void * ctx, const time_t delay, function <void (const u_short, Core *, void *)> callback) noexcept;
+			u_short setTimeout(const time_t delay, function <void (const u_short, Core *)> callback) noexcept;
 			/**
 			 * setInterval Метод установки интервала времени
-			 * @param ctx      передаваемый контекст
 			 * @param delay    задержка времени в миллисекундах
 			 * @param callback функция обратного вызова
 			 * @return         идентификатор созданного таймера
 			 */
-			u_short setInterval(void * ctx, const time_t delay, function <void (const u_short, Core *, void *)> callback) noexcept;
+			u_short setInterval(const time_t delay, function <void (const u_short, Core *)> callback) noexcept;
 		public:
 			/**
 			 * easily Метод активации простого режима чтения базы событий
@@ -565,10 +562,11 @@ namespace awh {
 		public:
 			/**
 			 * Core Конструктор
-			 * @param fmk объект фреймворка
-			 * @param log объект для работы с логами
+			 * @param fmk    объект фреймворка
+			 * @param log    объект для работы с логами
+			 * @param family тип протокола интернета AF_INET или AF_INET6
 			 */
-			Core(const fmk_t * fmk, const log_t * log) noexcept;
+			Core(const fmk_t * fmk, const log_t * log, const int family = AF_INET) noexcept;
 			/**
 			 * ~Core Деструктор
 			 */

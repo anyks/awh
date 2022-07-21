@@ -77,21 +77,17 @@ int main(int argc, char * argv[]) noexcept {
 	// uri_t::url_t url = uri.parseUrl("https://testnet.binance.vision/api/v3/exchangeInfo");
 	// uri_t::url_t url = uri.parseUrl("https://api.coingecko.com/api/v3/coins/list?include_platform=true");
 	// Подписываемся на событие коннекта и дисконнекта клиента
-	rest.on(&log, [](const client::rest_t::mode_t mode, client::rest_t * web, void * ctx){
-		// Получаем объект логирования
-		log_t * log = reinterpret_cast <log_t *> (ctx);
+	rest.on([&log](const client::rest_t::mode_t mode, client::rest_t * web){
 		// Выводим информацию в лог
-		log->print("%s client", log_t::flag_t::INFO, (mode == client::rest_t::mode_t::CONNECT ? "Connect" : "Disconnect"));
+		log.print("%s client", log_t::flag_t::INFO, (mode == client::rest_t::mode_t::CONNECT ? "Connect" : "Disconnect"));
 	});
 	/*
 	// Подписываемся на событие получения сообщения
-	rest.on(&log, [](const client::rest_t::res_t & res, client::rest_t * web, void * ctx){
-		// Получаем объект логирования
-		log_t * log = reinterpret_cast <log_t *> (ctx);
+	rest.on([&log](const client::rest_t::res_t & res, client::rest_t * web){
 		// Переходим по всем заголовкам
 		for(auto & header : res.headers){
 			// Выводим информацию в лог
-			log->print("%s : %s", log_t::flag_t::INFO, header.first.c_str(), header.second.c_str());
+			log.print("%s : %s", log_t::flag_t::INFO, header.first.c_str(), header.second.c_str());
 		}
 		// Получаем результат
 		const string result(res.entity.begin(), res.entity.end());

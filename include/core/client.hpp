@@ -94,9 +94,9 @@ namespace awh {
 				/**
 				 * resolver Функция выполнения резолвинга домена
 				 * @param ip  полученный IP адрес
-				 * @param ctx передаваемый контекст
+				 * @param wrk объект воркера
 				 */
-				static void resolver(const string ip, void * ctx) noexcept;
+				void resolver(const string & ip, client::worker_t * wrk) noexcept;
 			private:
 				/**
 				 * tuning Метод тюннинга буфера событий

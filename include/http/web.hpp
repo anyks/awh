@@ -136,10 +136,8 @@ namespace awh {
 			// Полученные HTTP заголовки
 			unordered_multimap <string, string> headers;
 		private:
-			// Список контекстов передаваемых объектов
-			vector <void *> ctx = {nullptr};
 			// Функция вызова при получении чанка
-			function <void (const vector <char> &, const Web *, void *)> chunkingFn = nullptr;
+			function <void (const vector <char> &, const Web *)> chunkingFn = nullptr;
 		private:
 			// Создаём объект фреймворка
 			const fmk_t * fmk = nullptr;
@@ -272,10 +270,9 @@ namespace awh {
 		public:
 			/**
 			 * setChunkingFn Метод установки функции обратного вызова для получения чанков
-			 * @param ctx      контекст для вывода в сообщении
 			 * @param callback функция обратного вызова
 			 */
-			void setChunkingFn(void * ctx, function <void (const vector <char> &, const Web *, void *)> callback) noexcept;
+			void setChunkingFn(function <void (const vector <char> &, const Web *)> callback) noexcept;
 		public:
 			/**
 			 * Web Конструктор

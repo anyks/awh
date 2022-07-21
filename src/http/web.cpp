@@ -39,7 +39,7 @@ size_t awh::Web::readPayload(const char * buffer, const size_t size) noexcept {
 					// Если функция обратного вызова установлена
 					if(this->chunkingFn != nullptr)
 						// Выводим функцию обратного вызова
-						this->chunkingFn(this->chunk.data, this, this->ctx.at(0));
+						this->chunkingFn(this->chunk.data, this);
 				// Если размер установлен конкретный
 				} else {
 					// Получаем актуальный размер тела
@@ -53,7 +53,7 @@ size_t awh::Web::readPayload(const char * buffer, const size_t size) noexcept {
 					// Если функция обратного вызова установлена
 					if(this->chunkingFn != nullptr)
 						// Выводим функцию обратного вызова
-						this->chunkingFn(this->chunk.data, this, this->ctx.at(0));
+						this->chunkingFn(this->chunk.data, this);
 					// Если тело сообщения полностью собранно
 					if(this->bodySize == this->chunk.size){
 						// Очищаем собранные данные
@@ -204,7 +204,7 @@ size_t awh::Web::readPayload(const char * buffer, const size_t size) noexcept {
 								// Если функция обратного вызова установлена
 								else if(this->chunkingFn != nullptr)
 									// Выводим функцию обратного вызова
-									this->chunkingFn(this->chunk.data, this, this->ctx.at(0));
+									this->chunkingFn(this->chunk.data, this);
 								// Выполняем очистку чанка
 								this->chunk.clear();
 							// Если символ отличается, значит ошибка
@@ -698,12 +698,9 @@ void awh::Web::init(const hid_t hid) noexcept {
 }
 /**
  * setChunkingFn Метод установки функции обратного вызова для получения чанков
- * @param ctx      контекст для вывода в сообщении
  * @param callback функция обратного вызова
  */
-void awh::Web::setChunkingFn(void * ctx, function <void (const vector <char> &, const Web *, void *)> callback) noexcept {
-	// Устанавливаем контекст передаваемого объекта
-	this->ctx.at(0) = ctx;
+void awh::Web::setChunkingFn(function <void (const vector <char> &, const Web *)> callback) noexcept {
 	// Устанавливаем функцию обратного вызова
 	this->chunkingFn = callback;
 }
