@@ -25,7 +25,7 @@ void awh::client::Rest::chunking(const vector <char> & chunk, const awh::http_t 
 	if(!chunk.empty()) const_cast <awh::http_t *> (http)->addBody(chunk.data(), chunk.size());
 }
 /**
- * openCallback Функция обратного вызова при запуске работы
+ * openCallback Метод обратного вызова при запуске работы
  * @param wid  идентификатор воркера
  * @param core объект биндинга TCP/IP
  */
@@ -39,7 +39,7 @@ void awh::client::Rest::openCallback(const size_t wid, awh::core_t * core) noexc
 	}
 }
 /**
- * connectCallback Функция обратного вызова при подключении к серверу
+ * connectCallback Метод обратного вызова при подключении к серверу
  * @param aid  идентификатор адъютанта
  * @param wid  идентификатор воркера
  * @param core объект биндинга TCP/IP
@@ -56,7 +56,7 @@ void awh::client::Rest::connectCallback(const size_t aid, const size_t wid, awh:
 	}
 }
 /**
- * disconnectCallback Функция обратного вызова при отключении от сервера
+ * disconnectCallback Метод обратного вызова при отключении от сервера
  * @param aid  идентификатор адъютанта
  * @param wid  идентификатор воркера
  * @param core объект биндинга TCP/IP
@@ -71,7 +71,7 @@ void awh::client::Rest::disconnectCallback(const size_t aid, const size_t wid, a
 	}
 }
 /**
- * readCallback Функция обратного вызова при чтении сообщения с сервера
+ * readCallback Метод обратного вызова при чтении сообщения с сервера
  * @param buffer бинарный буфер содержащий сообщение
  * @param size   размер бинарного буфера содержащего сообщение
  * @param aid    идентификатор адъютанта
@@ -93,7 +93,7 @@ void awh::client::Rest::readCallback(const char * buffer, const size_t size, con
 	}
 }
 /**
- * proxyConnectCallback Функция обратного вызова при подключении к прокси-серверу
+ * proxyConnectCallback Метод обратного вызова при подключении к прокси-серверу
  * @param aid  идентификатор адъютанта
  * @param wid  идентификатор воркера
  * @param core объект биндинга TCP/IP
@@ -110,7 +110,7 @@ void awh::client::Rest::proxyConnectCallback(const size_t aid, const size_t wid,
 	}
 }
 /**
- * proxyReadCallback Функция обратного вызова при чтении сообщения с прокси-сервера
+ * proxyReadCallback Метод обратного вызова при чтении сообщения с прокси-сервера
  * @param buffer бинарный буфер содержащий сообщение
  * @param size   размер бинарного буфера содержащего сообщение
  * @param aid    идентификатор адъютанта
@@ -255,8 +255,6 @@ void awh::client::Rest::actionRead() noexcept {
 								if(this->action == action_t::READ)
 									// Выполняем сброс экшена
 									this->action = action_t::NONE;
-								// Получаем новый адрес запроса для воркера
-								this->worker.url = request.url;
 								// Завершаем работу
 								core->close(this->aid);
 							}
@@ -423,17 +421,15 @@ void awh::client::Rest::actionConnect() noexcept {
  * actionDisconnect Метод обработки экшена отключения от сервера
  */
 void awh::client::Rest::actionDisconnect() noexcept {
-	// Получаем объект биндинга ядра TCP/IP
-	client::core_t * core = const_cast <client::core_t *> (this->core);
 	// Если список ответов получен
 	if(!this->responses.empty() && !this->requests.empty()){
 		// Получаем объект ответа
 		const res_t & response = this->responses.front();
 		// Если нужно произвести запрос заново
 		if((response.code == 201) || (response.code == 301) ||
-			(response.code == 302) || (response.code == 303) ||
-			(response.code == 307) || (response.code == 308) ||
-			(response.code == 401) || (response.code == 407)){
+		   (response.code == 302) || (response.code == 303) ||
+		   (response.code == 307) || (response.code == 308) ||
+		   (response.code == 401) || (response.code == 407)){
 			// Если статус ответа требует произвести авторизацию или заголовок перенаправления указан
 			if((response.code == 401) || (response.code == 407) || this->http.isHeader("location")){
 				// Получаем объект запроса
@@ -464,7 +460,7 @@ void awh::client::Rest::actionDisconnect() noexcept {
 	// Выполняем сброс параметров запроса
 	this->flush();
 	// Завершаем работу
-	if(this->unbind) core->stop();
+	if(this->unbind) const_cast <client::core_t *> (this->core)->stop();
 	// Если экшен соответствует, выполняем его сброс
 	if(this->action == action_t::DISCONNECT)
 		// Выполняем сброс экшена
@@ -614,7 +610,7 @@ void awh::client::Rest::actionProxyRead() noexcept {
 								if(this->worker.proxy.http.isAlive())
 									// Устанавливаем новый экшен выполнения
 									this->action = action_t::PROXY_CONNECT;
-								// Завершаем работу
+								// Если соединение должно быть закрыто
 								else {
 									// Если экшен соответствует, выполняем его сброс
 									if(this->action == action_t::PROXY_READ)
@@ -1648,7 +1644,7 @@ void awh::client::Rest::setAuthTypeProxy(const auth_t::type_t type, const auth_t
  * @param fmk  объект фреймворка
  * @param log  объект для работы с логами
  */
-awh::client::Rest::Rest(const client::core_t * core, const fmk_t * fmk, const log_t * log) noexcept : nwk(fmk), uri(fmk, &nwk), http(fmk, log, &uri), core(core), fmk(fmk), log(log), worker(fmk, log), action(action_t::NONE), compress(awh::http_t::compress_t::NONE) {
+awh::client::Rest::Rest(const client::core_t * core, const fmk_t * fmk, const log_t * log) noexcept : nwk(fmk), uri(fmk, &nwk), http(fmk, log, &uri), worker(fmk, log), action(action_t::NONE), compress(awh::http_t::compress_t::NONE), fmk(fmk), log(log), core(core) {
 	// Устанавливаем количество секунд на чтение
 	this->worker.timeRead = 60;
 	// Устанавливаем количество секунд на запись

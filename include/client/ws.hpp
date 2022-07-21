@@ -24,6 +24,7 @@
 
 // Подписываемся на стандартное пространство имён
 using namespace std;
+using namespace std::placeholders;
 
 /**
  * awh пространство имён
@@ -37,6 +38,19 @@ namespace awh {
 		 * WebSocket Класс работы с WebSocket клиентом
 		 */
 		typedef class WebSocket {
+			private:
+				/**
+				 * Основные экшены
+				 */
+				enum class action_t : uint8_t {
+					NONE          = 0x01, // Отсутствие события
+					OPEN          = 0x02, // Событие открытия подключения
+					READ          = 0x03, // Событие чтения с сервера
+					CONNECT       = 0x04, // Событие подключения к серверу
+					DISCONNECT    = 0x05, // Событие отключения от сервера
+					PROXY_READ    = 0x06, // Событие чтения с прокси-сервера
+					PROXY_CONNECT = 0x07  // Событие подключения к прокси-серверу
+				};
 			public:
 				/**
 				 * Режим работы клиента
@@ -58,27 +72,59 @@ namespace awh {
 					TAKEOVERSRV = 0x40  // Флаг ожидания входящих сообщений для сервера
 				};
 			private:
+				/**
+				 * Locker Структура локера
+				 */
+				typedef struct Locker {
+					bool mode;           // Флаг блокировки
+					recursive_mutex mtx; // Мютекс для блокировки потока
+					/**
+					 * Locker Конструктор
+					 */
+					Locker() noexcept : mode(false) {}
+				} locker_t;
+				/**
+				 * Allow Структура флагов разрешения обменом данных
+				 */
+				typedef struct Allow {
+					bool send;    // Флаг разрешения отправки данных
+					bool receive; // Флаг разрешения чтения данных
+					/**
+					 * Allow Конструктор
+					 */
+					Allow() noexcept : send(true), receive(true) {}
+				} allow_t;
+			private:
 				// Создаем объект для работы с сетью
 				network_t nwk;
 			private:
-				// Создаём объект работы с URI ссылками
-				uri_t uri;
-				// Создаём флаг режима работы модуля
-				mode_t mode;
-				// Создаём объект для работы с фреймом WebSocket
-				frame_t frame;
-				// Создаём объект для компрессии-декомпрессии данных
+				// Объект для компрессии-декомпрессии данных
 				mutable hash_t hash;
 			private:
-				// Создаём объект для работы с HTTP
-				client::wss_t http;
+				// Объект работы с URI ссылками
+				uri_t uri;
+				// Объект для работы с HTTP
+				wss_t http;
+				// Объект для работы с фреймом WebSocket
+				frame_t frame;
+				// Объект разрешения обмена данными
+				allow_t allow;
 				// Объект рабочего
-				client::worker_t worker;
+				worker_t worker;
+				// Объект блокировщика
+				locker_t locker;
+				// Экшен события
+				action_t action;
 			private:
 				// Буфер бинарных необработанных данных
 				vector <char> buffer;
 				// Данные фрагметрированного сообщения
 				vector <char> fragmes;
+			public:
+				// Полученный опкод сообщения
+				frame_t::opcode_t opcode;
+				// Метод компрессии данных
+				http_t::compress_t compress;
 			private:
 				// Флаг шифрования сообщений
 				bool crypt = false;
@@ -88,10 +134,10 @@ namespace awh {
 				bool unbind = true;
 				// Флаг фриза работы клиента
 				bool freeze = false;
-				// Локер ожидания завершения запроса
-				bool locker = false;
 				// Флаг запрета вывода информационных сообщений
 				bool noinfo = false;
+				// Флаг принудительной остановки
+				bool stopped = false;
 				// Флаг проверки аутентификации
 				bool failAuth = false;
 				// Флаг переданных сжатых данных
@@ -107,18 +153,8 @@ namespace awh {
 				u_int code = 0;
 				// Контрольная точка ответа на пинг
 				time_t checkPoint = 0;
-			private:
-				// Количество полученных байт для закрытия подключения
-				size_t readBytes = 0;
-				// Количество байт для закрытия подключения
-				size_t stopBytes = 0;
 				// Минимальный размер сегмента
 				size_t frameSize = 0xFA000;
-			public:
-				// Полученный опкод сообщения
-				frame_t::opcode_t opcode = frame_t::opcode_t::TEXT;
-				// Метод компрессии данных
-				http_t::compress_t compress = http_t::compress_t::NONE;
 			private:
 				// Создаём объект фреймворка
 				const fmk_t * fmk = nullptr;
@@ -135,41 +171,34 @@ namespace awh {
 				function <void (const vector <char> &, const bool, WebSocket *)> messageFn = nullptr;
 			private:
 				/**
-				 * openCallback Функция обратного вызова при запуске работы
+				 * openCallback Метод обратного вызова при запуске работы
 				 * @param wid  идентификатор воркера
 				 * @param core объект биндинга TCP/IP
 				 */
 				void openCallback(const size_t wid, awh::core_t * core) noexcept;
 				/**
-				 * persistCallback Функция персистентного вызова
+				 * persistCallback Метод персистентного вызова
 				 * @param aid  идентификатор адъютанта
 				 * @param wid  идентификатор воркера
 				 * @param core объект биндинга TCP/IP
 				 */
 				void persistCallback(const size_t aid, const size_t wid, awh::core_t * core) noexcept;
 				/**
-				 * connectCallback Функция обратного вызова при подключении к серверу
+				 * connectCallback Метод обратного вызова при подключении к серверу
 				 * @param aid  идентификатор адъютанта
 				 * @param wid  идентификатор воркера
 				 * @param core объект биндинга TCP/IP
 				 */
 				void connectCallback(const size_t aid, const size_t wid, awh::core_t * core) noexcept;
 				/**
-				 * disconnectCallback Функция обратного вызова при отключении от сервера
+				 * disconnectCallback Метод обратного вызова при отключении от сервера
 				 * @param aid  идентификатор адъютанта
 				 * @param wid  идентификатор воркера
 				 * @param core объект биндинга TCP/IP
 				 */
 				void disconnectCallback(const size_t aid, const size_t wid, awh::core_t * core) noexcept;
 				/**
-				 * connectProxyCallback Функция обратного вызова при подключении к прокси-серверу
-				 * @param aid  идентификатор адъютанта
-				 * @param wid  идентификатор воркера
-				 * @param core объект биндинга TCP/IP
-				 */
-				void connectProxyCallback(const size_t aid, const size_t wid, awh::core_t * core) noexcept;
-				/**
-				 * readCallback Функция обратного вызова при чтении сообщения с сервера
+				 * readCallback Метод обратного вызова при чтении сообщения с сервера
 				 * @param buffer бинарный буфер содержащий сообщение
 				 * @param size   размер бинарного буфера содержащего сообщение
 				 * @param aid    идентификатор адъютанта
@@ -178,7 +207,7 @@ namespace awh {
 				 */
 				void readCallback(const char * buffer, const size_t size, const size_t aid, const size_t wid, awh::core_t * core) noexcept;
 				/**
-				 * writeCallback Функция обратного вызова при записи сообщения на клиенте
+				 * writeCallback Метод обратного вызова при записи сообщения на клиенте
 				 * @param buffer бинарный буфер содержащий сообщение
 				 * @param size   размер записанных в сокет байт
 				 * @param aid    идентификатор адъютанта
@@ -186,15 +215,54 @@ namespace awh {
 				 * @param core   объект биндинга TCP/IP
 				 */
 				void writeCallback(const char * buffer, const size_t size, const size_t aid, const size_t wid, awh::core_t * core) noexcept;
+			private:
 				/**
-				 * readProxyCallback Функция обратного вызова при чтении сообщения с прокси-сервера
+				 * proxyConnectCallback Метод обратного вызова при подключении к прокси-серверу
+				 * @param aid  идентификатор адъютанта
+				 * @param wid  идентификатор воркера
+				 * @param core объект биндинга TCP/IP
+				 */
+				void proxyConnectCallback(const size_t aid, const size_t wid, awh::core_t * core) noexcept;
+				/**
+				 * proxyReadCallback Метод обратного вызова при чтении сообщения с прокси-сервера
 				 * @param buffer бинарный буфер содержащий сообщение
 				 * @param size   размер бинарного буфера содержащего сообщение
 				 * @param aid    идентификатор адъютанта
 				 * @param wid    идентификатор воркера
 				 * @param core   объект биндинга TCP/IP
 				 */
-				void readProxyCallback(const char * buffer, const size_t size, const size_t aid, const size_t wid, awh::core_t * core) noexcept;
+				void proxyReadCallback(const char * buffer, const size_t size, const size_t aid, const size_t wid, awh::core_t * core) noexcept;
+			private:
+				/**
+				 * handler Метод управления входящими методами
+				 */
+				void handler() noexcept;
+			private:
+				/**
+				 * actionOpen Метод обработки экшена открытия подключения
+				 */
+				void actionOpen() noexcept;
+				/**
+				 * actionRead Метод обработки экшена чтения с сервера
+				 */
+				void actionRead() noexcept;
+				/**
+				 * actionConnect Метод обработки экшена подключения к серверу
+				 */
+				void actionConnect() noexcept;
+				/**
+				 * actionDisconnect Метод обработки экшена отключения от сервера
+				 */
+				void actionDisconnect() noexcept;
+			private:
+				/**
+				 * actionProxyRead Метод обработки экшена чтения с прокси-сервера
+				 */
+				void actionProxyRead() noexcept;
+				/**
+				 * actionProxyConnect Метод обработки экшена подключения к прокси-серверу
+				 */
+				void actionProxyConnect() noexcept;
 			private:
 				/**
 				 * error Метод вывода сообщений об ошибках работы клиента

@@ -230,7 +230,7 @@ void awh::Core::launching() noexcept {
 		// Выводим в консоль информацию
 		if(!this->noinfo) this->log->print("[+] start service: pid = %u", log_t::flag_t::INFO, getpid());
 		// Если таймер периодического запуска коллбека активирован, запускаем персистентную работу
-		if(this->persist){
+		if(this->persist){			
 			// Устанавливаем базу событий
 			this->timer.set(this->base);
 			// Устанавливаем функцию обратного вызова
@@ -260,28 +260,26 @@ void awh::Core::closedown() noexcept {
  * @param timer   объект события таймера
  * @param revents идентификатор события
  */
-void awh::Core::persistent(ev::periodic & timer, int revents) noexcept {
+void awh::Core::persistent(ev::timer & timer, int revents) noexcept {
+	// Выполняем остановку таймера
+	timer.stop();	
 	// Если список воркеров существует
 	if(!this->workers.empty()){
-		// Список идентификаторов адъютантов
-		vector <size_t> ids;
 		// Переходим по всему списку воркеров
 		for(auto & worker : this->workers){
 			// Получаем объект воркера
 			worker_t * wrk = const_cast <worker_t *> (worker.second);
 			// Если функция обратного вызова установлена и адъютанты существуют
 			if((wrk->persistFn != nullptr) && !wrk->adjutants.empty()){
-				// Выполняем очистку списка адъютантов
-				ids.clear();
 				// Переходим по всему списку адъютантов и формируем список их идентификаторов
-				for(auto & adj : wrk->adjutants) ids.push_back(adj.first);
-				// Переходим по всему списку адъютантов и отсылаем им сообщение
-				for(auto & aid : ids)
+				for(auto & adj : wrk->adjutants)
 					// Выполняем функцию обратного вызова
-					wrk->persistFn(aid, worker.first, this);
+					wrk->persistFn(adj.first, worker.first, this);
 			}
 		}
 	}
+	// Если нужно продолжить работу таймера
+	timer.start(this->persistInterval / (float) 1000.f);
 }
 /**
  * clean Метод буфера событий

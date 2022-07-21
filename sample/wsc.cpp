@@ -59,8 +59,6 @@ int main(int argc, char * argv[]) noexcept {
 	// core.easily(true);
 	// Устанавливаем адрес сертификата
 	core.setCA("./ca/cert.pem");
-	// Устанавливаем режим мультипоточной обработки
-	// ws.setMultiThreads(true);
 	// Устанавливаем логин и пароль пользователя
 	// ws.setUser("user", "password");
 	// Устанавливаем данные прокси-сервера
@@ -225,7 +223,7 @@ int main(int argc, char * argv[]) noexcept {
 		} else cout << " +++++++++++++ " << buffer.size() << " bytes" << endl;
 	});
 	// Выполняем запуск WebSocket клиента
-	ws.start();
+	ws.start();	
 	// Выводим результат
 	return 0;
 }

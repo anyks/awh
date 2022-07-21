@@ -119,12 +119,13 @@ namespace awh {
 					Locker() noexcept : mode(false) {}
 				} locker_t;
 			private:
-				// Создаём объект работы с URI ссылками
-				uri_t uri;
-				// Создаём объект для работы с HTTP
-				http_t http;
-				// Создаем объект для работы с сетью
+				// Объект для работы с сетью
 				network_t nwk;
+			private:
+				// Объект работы с URI ссылками
+				uri_t uri;
+				// Объект для работы с HTTP
+				http_t http;
 				// Объект рабочего
 				worker_t worker;
 				// Объект блокировщика
@@ -172,27 +173,27 @@ namespace awh {
 				void chunking(const vector <char> & chunk, const awh::http_t * http) noexcept;
 			private:
 				/**
-				 * openCallback Функция обратного вызова при запуске работы
+				 * openCallback Метод обратного вызова при запуске работы
 				 * @param wid  идентификатор воркера
 				 * @param core объект биндинга TCP/IP
 				 */
 				void openCallback(const size_t wid, awh::core_t * core) noexcept;
 				/**
-				 * connectCallback Функция обратного вызова при подключении к серверу
+				 * connectCallback Метод обратного вызова при подключении к серверу
 				 * @param aid  идентификатор адъютанта
 				 * @param wid  идентификатор воркера
 				 * @param core объект биндинга TCP/IP
 				 */
 				void connectCallback(const size_t aid, const size_t wid, awh::core_t * core) noexcept;
 				/**
-				 * disconnectCallback Функция обратного вызова при отключении от сервера
+				 * disconnectCallback Метод обратного вызова при отключении от сервера
 				 * @param aid  идентификатор адъютанта
 				 * @param wid  идентификатор воркера
 				 * @param core объект биндинга TCP/IP
 				 */
 				void disconnectCallback(const size_t aid, const size_t wid, awh::core_t * core) noexcept;
 				/**
-				 * readCallback Функция обратного вызова при чтении сообщения с сервера
+				 * readCallback Метод обратного вызова при чтении сообщения с сервера
 				 * @param buffer бинарный буфер содержащий сообщение
 				 * @param size   размер бинарного буфера содержащего сообщение
 				 * @param aid    идентификатор адъютанта
@@ -202,14 +203,14 @@ namespace awh {
 				void readCallback(const char * buffer, const size_t size, const size_t aid, const size_t wid, awh::core_t * core) noexcept;
 			private:
 				/**
-				 * proxyConnectCallback Функция обратного вызова при подключении к прокси-серверу
+				 * proxyConnectCallback Метод обратного вызова при подключении к прокси-серверу
 				 * @param aid  идентификатор адъютанта
 				 * @param wid  идентификатор воркера
 				 * @param core объект биндинга TCP/IP
 				 */
 				void proxyConnectCallback(const size_t aid, const size_t wid, awh::core_t * core) noexcept;
 				/**
-				 * proxyReadCallback Функция обратного вызова при чтении сообщения с прокси-сервера
+				 * proxyReadCallback Метод обратного вызова при чтении сообщения с прокси-сервера
 				 * @param buffer бинарный буфер содержащий сообщение
 				 * @param size   размер бинарного буфера содержащего сообщение
 				 * @param aid    идентификатор адъютанта

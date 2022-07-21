@@ -1157,6 +1157,16 @@ void awh::client::Core::transfer(const method_t method, const size_t aid) noexce
 					if(adj->timeWrite > 0)
 						// Запускаем ожидание записи данных на сервер
 						adj->bev.timer.write.start(adj->timeWrite);
+					// Если подключение производится через, прокси-сервер
+					if(wrk->isProxy()){
+						// Если функция обратного вызова для вывода записи существует
+						if(wrk->writeProxyFn != nullptr)
+							// Выводим функцию обратного вызова
+							wrk->writeProxyFn(nullptr, 0, aid, wrk->wid, reinterpret_cast <awh::core_t *> (this));
+					// Если прокси-сервер не используется
+					} else if(wrk->writeFn != nullptr)
+						// Выводим функцию обратного вызова
+						wrk->writeFn(nullptr, 0, aid, wrk->wid, reinterpret_cast <awh::core_t *> (this));
 				} break;
 			}
 		// Если подключение завершено

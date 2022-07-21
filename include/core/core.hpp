@@ -274,7 +274,7 @@ namespace awh {
 			dispatch_t dispatch;
 		private:
 			// Объект события таймера
-			ev::periodic timer;
+			ev::timer timer;
 		protected:
 			// Тип запускаемого ядра
 			type_t type = type_t::CLIENT;
@@ -330,7 +330,7 @@ namespace awh {
 			 * @param timer   объект события таймера
 			 * @param revents идентификатор события
 			 */
-			void persistent(ev::periodic & timer, int revents) noexcept;
+			void persistent(ev::timer & timer, int revents) noexcept;
 		protected:
 			/**
 			 * clean Метод буфера событий

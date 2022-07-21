@@ -16,16 +16,21 @@
 #include <client/ws.hpp>
 
 /**
- * openCallback Функция обратного вызова при запуске работы
+ * openCallback Метод обратного вызова при запуске работы
  * @param wid  идентификатор воркера
  * @param core объект биндинга TCP/IP
  */
 void awh::client::WebSocket::openCallback(const size_t wid, awh::core_t * core) noexcept {
-	// Выполняем подключение
-	reinterpret_cast <client::core_t *> (core)->open(wid);
+	// Если дисконнекта ещё не произошло
+	if(this->action == action_t::NONE){
+		// Устанавливаем экшен выполнения
+		this->action = action_t::OPEN;
+		// Выполняем запуск обработчика событий
+		this->handler();
+	}
 }
 /**
- * persistCallback Функция персистентного вызова
+ * persistCallback Метод персистентного вызова
  * @param aid  идентификатор адъютанта
  * @param wid  идентификатор воркера
  * @param core объект биндинга TCP/IP
@@ -44,7 +49,7 @@ void awh::client::WebSocket::persistCallback(const size_t aid, const size_t wid,
 	}
 }
 /**
- * connectCallback Функция обратного вызова при подключении к серверу
+ * connectCallback Метод обратного вызова при подключении к серверу
  * @param aid  идентификатор адъютанта
  * @param wid  идентификатор воркера
  * @param core объект биндинга TCP/IP
@@ -52,42 +57,16 @@ void awh::client::WebSocket::persistCallback(const size_t aid, const size_t wid,
 void awh::client::WebSocket::connectCallback(const size_t aid, const size_t wid, awh::core_t * core) noexcept {
 	// Если данные переданы верные
 	if((aid > 0) && (wid > 0) && (core != nullptr)){
-		// Запоминаем объект адъютанта
+		// Запоминаем идентификатор адъютанта
 		this->aid = aid;
-		// Выполняем сброс параметров запроса
-		this->flush();
-		// Выполняем сброс состояния HTTP парсера
-		this->http.reset();
-		// Выполняем очистку параметров HTTP запроса
-		this->http.clear();
-		// Устанавливаем метод сжатия
-		this->http.setCompress(this->compress);
-		// Разрешаем перехватывать контекст для клиента
-		this->http.setClientTakeover(this->takeOverCli);
-		// Разрешаем перехватывать контекст для сервера
-		this->http.setServerTakeover(this->takeOverSrv);
-		// Разрешаем перехватывать контекст компрессии
-		this->hash.setTakeoverCompress(this->takeOverCli);
-		// Разрешаем перехватывать контекст декомпрессии
-		this->hash.setTakeoverDecompress(this->takeOverSrv);
-		// Получаем бинарные данные REST запроса
-		const auto & request = this->http.request(this->worker.url);
-		// Если бинарные данные запроса получены
-		if(!request.empty()){
-			// Если включён режим отладки
-			#if defined(DEBUG_MODE)
-				// Выводим заголовок запроса
-				cout << "\x1B[33m\x1B[1m^^^^^^^^^ REQUEST ^^^^^^^^^\x1B[0m" << endl;
-				// Выводим параметры запроса
-				cout << string(request.begin(), request.end()) << endl << endl;
-			#endif
-			// Отправляем серверу сообщение
-			core->write(request.data(), request.size(), aid);
-		}
+		// Устанавливаем экшен выполнения
+		this->action = action_t::CONNECT;
+		// Выполняем запуск обработчика событий
+		this->handler();
 	}
 }
 /**
- * closeCallback Функция обратного вызова при отключении от сервера
+ * disconnectCallback Метод обратного вызова при отключении от сервера
  * @param aid  идентификатор адъютанта
  * @param wid  идентификатор воркера
  * @param core объект биндинга TCP/IP
@@ -95,368 +74,46 @@ void awh::client::WebSocket::connectCallback(const size_t aid, const size_t wid,
 void awh::client::WebSocket::disconnectCallback(const size_t aid, const size_t wid, awh::core_t * core) noexcept {
 	// Если данные переданы верные
 	if((wid > 0) && (core != nullptr)){
-		// Выполняем сброс параметров запроса
-		this->flush();
-		// Если нужно произвести запрос заново
-		if((this->code == 301) || (this->code == 308) ||
-		   (this->code == 401) || (this->code == 407)){
-			// Выполняем запрос заново
-			reinterpret_cast <client::core_t *> (core)->open(this->worker.wid);
-			// Выходим из функции
-			return;
-		}
-		// Очищаем код ответа
-		this->code = 0;
-		// Завершаем работу
-		if(this->unbind) core->stop();
+		// Устанавливаем экшен выполнения
+		this->action = action_t::DISCONNECT;
+		// Выполняем запуск обработчика событий
+		this->handler();
 	}
 }
 /**
- * connectProxyCallback Функция обратного вызова при подключении к прокси-серверу
- * @param aid  идентификатор адъютанта
- * @param wid  идентификатор воркера
- * @param core объект биндинга TCP/IP
- */
-void awh::client::WebSocket::connectProxyCallback(const size_t aid, const size_t wid, awh::core_t * core) noexcept {
-	// Если данные переданы верные
-	if((aid > 0) && (wid > 0) && (core != nullptr)){
-		// Определяем тип прокси-сервера
-		switch((uint8_t) this->worker.proxy.type){
-			// Если прокси-сервер является Socks5
-			case (uint8_t) proxy_t::type_t::SOCKS5: {
-				// Выполняем сброс состояния Socks5 парсера
-				this->worker.proxy.socks5.reset();
-				// Устанавливаем URL адрес запроса
-				this->worker.proxy.socks5.setUrl(this->worker.url);
-				// Выполняем создание буфера запроса
-				this->worker.proxy.socks5.parse();
-				// Получаем данные запроса
-				const auto & socks5 = this->worker.proxy.socks5.get();
-				// Если данные получены
-				if(!socks5.empty()) core->write(socks5.data(), socks5.size(), aid);
-			} break;
-			// Если прокси-сервер является HTTP
-			case (uint8_t) proxy_t::type_t::HTTP: {
-				// Выполняем сброс состояния HTTP парсера
-				this->worker.proxy.http.reset();
-				// Выполняем очистку параметров HTTP запроса
-				this->worker.proxy.http.clear();
-				// Получаем бинарные данные REST запроса
-				const auto & proxy = this->worker.proxy.http.proxy(this->worker.url);
-				// Если бинарные данные запроса получены
-				if(!proxy.empty()){
-					// Если включён режим отладки
-					#if defined(DEBUG_MODE)
-						// Выводим заголовок запроса
-						cout << "\x1B[33m\x1B[1m^^^^^^^^^ REQUEST PROXY ^^^^^^^^^\x1B[0m" << endl;
-						// Выводим параметры запроса
-						cout << string(proxy.begin(), proxy.end()) << endl;
-					#endif
-					// Отправляем на прокси-сервер
-					core->write(proxy.data(), proxy.size(), aid);
-				}
-			} break;
-			// Иначе завершаем работу
-			default: reinterpret_cast <client::core_t *> (core)->close(aid);
-		}
-	}
-}
-/**
- * readCallback Функция обратного вызова при чтении сообщения с сервера
+ * readCallback Метод обратного вызова при чтении сообщения с сервера
  * @param buffer бинарный буфер содержащий сообщение
  * @param size   размер бинарного буфера содержащего сообщение
  * @param aid    идентификатор адъютанта
  * @param wid    идентификатор воркера
  * @param core   объект биндинга TCP/IP
  */
-void awh::client::WebSocket::readCallback(const char * buffer, const size_t size, const size_t aid, const size_t wid, awh::core_t * core) noexcept {	
+void awh::client::WebSocket::readCallback(const char * buffer, const size_t size, const size_t aid, const size_t wid, awh::core_t * core) noexcept {
 	// Если данные существуют
 	if((buffer != nullptr) && (size > 0) && (aid > 0) && (wid > 0)){
-		// Объект сообщения
-		mess_t mess;
-		// Если подключение закрыто
-		if(this->close){
-			// Принудительно выполняем отключение лкиента
-			reinterpret_cast <client::core_t *> (core)->close(aid);
-			// Выходим из функции
-			return;
-		}
-		// Если рукопожатие не выполнено
-		if(!reinterpret_cast <http_t *> (&this->http)->isHandshake()){
-			// Добавляем полученные данные в буфер
-			this->buffer.insert(this->buffer.end(), buffer, buffer + size);
-			// Выполняем парсинг полученных данных
-			size_t bytes = this->http.parse(this->buffer.data(), this->buffer.size());
-			// Если все данные получены
-			if(this->http.isEnd()){
-				// Выполняем сброс данных буфера
-				this->buffer.clear();
-				// Если включён режим отладки
-				#if defined(DEBUG_MODE)
-					// Получаем данные ответа
-					const auto & response = reinterpret_cast <http_t *> (&this->http)->response(true);
-					// Если параметры ответа получены
-					if(!response.empty()){
-						// Выводим заголовок ответа
-						cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
-						// Выводим параметры ответа
-						cout << string(response.begin(), response.end()) << endl;
-						// Если тело ответа существует
-						if(!this->http.getBody().empty())
-							// Выводим сообщение о выводе чанка тела
-							cout << this->fmk->format("<body %u>", this->http.getBody().size()) << endl << endl;
-						// Иначе устанавливаем перенос строки
-						else cout << endl;
-					}
-				#endif
-				// Выполняем проверку авторизации
-				switch((uint8_t) this->http.getAuth()){
-					// Если нужно попытаться ещё раз
-					case (uint8_t) http_t::stath_t::RETRY: {
-						// Если попытка повторить авторизацию ещё не проводилась
-						if(!this->failAuth){
-							// Получаем новый адрес запроса
-							this->worker.url = this->http.getUrl();
-							// Если адрес запроса получен
-							if(!this->worker.url.empty()){
-								// Запоминаем, что попытка выполнена
-								this->failAuth = true;
-								// Если соединение является постоянным
-								if(this->http.isAlive())
-									// Выполняем повторно отправку сообщения на сервер
-									this->connectCallback(aid, wid, core);
-								// Завершаем работу
-								else reinterpret_cast <client::core_t *> (core)->close(aid);
-								// Завершаем работу
-								return;
-							}
-						}
-						// Устанавливаем код ответа
-						this->code = 403;
-						// Создаём сообщение
-						mess = mess_t(this->code, this->http.getMessage(this->code));
-						// Выводим сообщение
-						this->error(mess);
-					} break;
-					// Если запрос выполнен удачно
-					case (uint8_t) http_t::stath_t::GOOD: {
-						// Если рукопожатие выполнено
-						if(this->http.isHandshake()){
-							// Очищаем буфер собранных данных
-							this->buffer.clear();
-							// Очищаем список фрагментированных сообщений
-							this->fragmes.clear();
-							// Выполняем сброс количество попыток
-							this->failAuth = false;
-							// Получаем флаг шифрованных данных
-							this->crypt = this->http.isCrypt();
-							// Получаем поддерживаемый метод компрессии
-							this->compress = this->http.getCompress();
-							// Обновляем контрольную точку
-							this->checkPoint = this->fmk->unixTimestamp();
-							// Устанавливаем размер скользящего окна
-							this->hash.setWbit(this->http.getWbitServer());
-							// Если разрешено выполнять перехват контекста компрессии для клиента
-							if(this->http.getClientTakeover())
-								// Разрешаем перехватывать контекст компрессии для клиента
-								this->hash.setTakeoverCompress(true);
-							// Если разрешено выполнять перехват контекста компрессии для сервера
-							if(this->http.getServerTakeover())
-								// Разрешаем перехватывать контекст компрессии для сервера
-								this->hash.setTakeoverDecompress(true);
-							// Выводим в лог сообщение
-							if(!this->noinfo) this->log->print("%s", log_t::flag_t::INFO, "authorization on the WebSocket server was successful");
-							// Если функция обратного вызова установлена, выполняем
-							if(this->activeFn != nullptr) this->activeFn(mode_t::CONNECT, this);
-							// Есла данных передано больше чем обработано
-							if(size > bytes)
-								// Выполняем обработку дальше
-								this->readCallback(buffer + bytes, size - bytes, aid, wid, core);
-							// Завершаем работу
-							return;
-						// Сообщаем, что рукопожатие не выполнено
-						} else {
-							// Устанавливаем код ответа
-							this->code = 404;
-							// Создаём сообщение
-							mess = mess_t(this->code, this->http.getMessage(this->code));
-							// Выводим сообщение
-							this->error(mess);
-						}
-					} break;
-					// Если запрос неудачный
-					case (uint8_t) http_t::stath_t::FAULT: {
-						// Получаем параметры запроса
-						const auto & query = this->http.getQuery();
-						// Устанавливаем код ответа
-						this->code = query.code;
-						// Создаём сообщение
-						mess = mess_t(this->code, query.message);
-						// Запрещаем бесконечный редирект при запросе авторизации
-						if((this->code == 401) || (this->code == 407)){
-							// Устанавливаем код ответа
-							this->code = 403;
-							// Присваиваем сообщению, новое значение кода
-							mess = this->code;
-						}
-						// Выводим сообщение
-						this->error(mess);
-					} break;
-				}
-				// Выполняем сброс количество попыток
-				this->failAuth = false;
-				// Завершаем работу
+		// Если дисконнекта ещё не произошло
+		if((this->action == action_t::NONE) || (this->action == action_t::READ)){
+			// Если подключение закрыто
+			if(this->close){
+				// Принудительно выполняем отключение лкиента
 				reinterpret_cast <client::core_t *> (core)->close(aid);
+				// Выходим из функции
+				return;
 			}
-			// Завершаем работу
-			return;
-		// Если рукопожатие выполнено
-		} else {
-			// Основные флаг остановки перебора бинарного буфера
-			bool stop = false;
-			// Создаём объект шапки фрейма
-			frame_t::head_t head;
-			// Создаём буфер сообщения
-			vector <char> message;
-			// Добавляем полученные данные в буфер
-			this->buffer.insert(this->buffer.end(), buffer, buffer + size);
-			// Выполняем обработку полученных данных
-			while(!this->close){
-				// Выполняем чтение фрейма WebSocket
-				const auto & data = this->frame.get(head, this->buffer.data(), this->buffer.size());
-				// Если буфер данных получен
-				if(!data.empty()){
-					// Очищаем буфер полученного сообщения
-					message.clear();
-					// Проверяем состояние флагов RSV2 и RSV3
-					if(head.rsv[1] || head.rsv[2]){
-						// Создаём сообщение
-						mess = mess_t(1002, "RSV2 and RSV3 must be clear");
-						// Выводим сообщение
-						this->error(mess);
-						// Выполняем реконнект
-						goto Reconnect;
-					}
-					// Если флаг компресси включён а данные пришли не сжатые
-					if(head.rsv[0] && ((this->compress == http_t::compress_t::NONE) ||
-					(head.optcode == frame_t::opcode_t::CONTINUATION) ||
-					(((uint8_t) head.optcode > 0x07) && ((uint8_t) head.optcode < 0x0b)))){
-						// Создаём сообщение
-						mess = mess_t(1002, "RSV1 must be clear");
-						// Выводим сообщение
-						this->error(mess);
-						// Выполняем реконнект
-						goto Reconnect;
-					}
-					// Если опкоды требуют финального фрейма
-					if(!head.fin && ((uint8_t) head.optcode > 0x07) && ((uint8_t) head.optcode < 0x0b)){
-						// Создаём сообщение
-						mess = mess_t(1002, "FIN must be set");
-						// Выводим сообщение
-						this->error(mess);
-						// Выполняем реконнект
-						goto Reconnect;
-					}
-					// Определяем тип ответа
-					switch((uint8_t) head.optcode){
-						// Если ответом является PING
-						case (uint8_t) frame_t::opcode_t::PING:
-							// Отправляем ответ серверу
-							this->pong(string(data.begin(), data.end()));
-						break;
-						// Если ответом является PONG
-						case (uint8_t) frame_t::opcode_t::PONG:
-							// Если идентификатор адъютанта совпадает
-							if(memcmp(to_string(aid).c_str(), data.data(), data.size()) == 0)
-								// Обновляем контрольную точку
-								this->checkPoint = this->fmk->unixTimestamp();
-						break;
-						// Если ответом является TEXT
-						case (uint8_t) frame_t::opcode_t::TEXT:
-						// Если ответом является BINARY
-						case (uint8_t) frame_t::opcode_t::BINARY: {
-							// Запоминаем полученный опкод
-							this->opcode = head.optcode;
-							// Запоминаем, что данные пришли сжатыми
-							this->compressed = (head.rsv[0] && (this->compress != http_t::compress_t::NONE));
-							// Если сообщение замаскированно
-							if(head.mask){
-								// Создаём сообщение
-								mess = mess_t(1002, "masked frame from server");
-								// Выводим сообщение
-								this->error(mess);
-								// Выполняем реконнект
-								goto Reconnect;
-							// Если список фрагментированных сообщений существует
-							} else if(!this->fragmes.empty()) {
-								// Очищаем список фрагментированных сообщений
-								this->fragmes.clear();
-								// Создаём сообщение
-								mess = mess_t(1002, "opcode for subsequent fragmented messages should not be set");
-								// Выводим сообщение
-								this->error(mess);
-								// Выполняем реконнект
-								goto Reconnect;
-							// Если сообщение является не последнем
-							} else if(!head.fin)
-								// Заполняем фрагментированное сообщение
-								this->fragmes.insert(this->fragmes.end(), data.begin(), data.end());
-							// Если сообщение является последним
-							else message = move(* const_cast <vector <char> *> (&data));
-						} break;
-						// Если ответом является CONTINUATION
-						case (uint8_t) frame_t::opcode_t::CONTINUATION: {
-							// Заполняем фрагментированное сообщение
-							this->fragmes.insert(this->fragmes.end(), data.begin(), data.end());
-							// Если сообщение является последним
-							if(head.fin){
-								// Выполняем копирование всех собранных сегментов
-								message = move(* const_cast <vector <char> *> (&this->fragmes));
-								// Очищаем список фрагментированных сообщений
-								this->fragmes.clear();
-							}
-						} break;
-						// Если ответом является CLOSE
-						case (uint8_t) frame_t::opcode_t::CLOSE: {
-							// Извлекаем сообщение
-							mess = this->frame.message(data);
-							// Выводим сообщение
-							this->error(mess);
-							// Выполняем реконнект
-							goto Reconnect;
-						} break;
-					}
-				}
-				// Если парсер обработал какое-то количество байт
-				if((head.frame > 0) && !this->buffer.empty()){
-					// Если размер буфера больше количества удаляемых байт
-					if(this->buffer.size() >= head.frame)
-						// Удаляем количество обработанных байт
-						vector <decltype(this->buffer)::value_type> (this->buffer.begin() + head.frame, this->buffer.end()).swap(this->buffer);
-					// Если байт в буфере меньше, просто очищаем буфер
-					else this->buffer.clear();
-					// Если данных для обработки не осталось, выходим
-					stop = this->buffer.empty();
-				// Если данных для обработки недостаточно, выходим
-				} else stop = true;
-				// Если сообщения получены
-				if(!message.empty())
-					// Выполняем извлечение полученных сообщений
-					this->extraction(message, (this->opcode == frame_t::opcode_t::TEXT));
-				// Если установлен флаг выхода, выходим
-				if(stop) break;
+			// Если разрешено получение данных
+			if(this->allow.receive){
+				// Устанавливаем экшен выполнения
+				this->action = action_t::READ;
+				// Добавляем полученные данные в буфер
+				this->buffer.insert(this->buffer.end(), buffer, buffer + size);
+				// Выполняем запуск обработчика событий
+				this->handler();
 			}
-			// Выходим из функции
-			return;
 		}
-		// Устанавливаем метку реконнекта
-		Reconnect:
-		// Выполняем отправку сообщения об ошибке
-		this->sendError(mess);
 	}
 }
 /**
- * writeCallback Функция обратного вызова при записи сообщения на клиенте
+ * writeCallback Метод обратного вызова при записи сообщения на клиенте
  * @param buffer бинарный буфер содержащий сообщение
  * @param size   размер записанных в сокет байт
  * @param aid    идентификатор адъютанта
@@ -466,161 +123,676 @@ void awh::client::WebSocket::readCallback(const char * buffer, const size_t size
 void awh::client::WebSocket::writeCallback(const char * buffer, const size_t size, const size_t aid, const size_t wid, awh::core_t * core) noexcept {
 	// Если данные существуют
 	if((size > 0) && (aid > 0) && (wid > 0) && (core != nullptr)){
-		// Если стоп-байты установлены
-		if(!this->close && (this->stopBytes > 0)){
-			// Запоминаем количество прочитанных байт
-			this->readBytes += size;
-			// Если размер полученных байт соответствует
-			this->close = (this->stopBytes >= this->readBytes);
-		}
+		// Если необходимо выполнить закрыть подключение
+		if(!this->close && this->stopped)
+			// Устанавливаем флаг закрытия подключения
+			this->close = !this->close;
 	}
 }
 /**
- * readProxyCallback Функция обратного вызова при чтении сообщения с прокси-сервера
+ * proxyConnectCallback Метод обратного вызова при подключении к прокси-серверу
+ * @param aid  идентификатор адъютанта
+ * @param wid  идентификатор воркера
+ * @param core объект биндинга TCP/IP
+ */
+void awh::client::WebSocket::proxyConnectCallback(const size_t aid, const size_t wid, awh::core_t * core) noexcept {
+	// Если данные переданы верные
+	if((aid > 0) && (wid > 0) && (core != nullptr)){
+		// Запоминаем идентификатор адъютанта
+		this->aid = aid;
+		// Устанавливаем экшен выполнения
+		this->action = action_t::PROXY_CONNECT;
+		// Выполняем запуск обработчика событий
+		this->handler();
+	}
+}
+/**
+ * proxyReadCallback Метод обратного вызова при чтении сообщения с прокси-сервера
  * @param buffer бинарный буфер содержащий сообщение
  * @param size   размер бинарного буфера содержащего сообщение
  * @param aid    идентификатор адъютанта
  * @param wid    идентификатор воркера
  * @param core   объект биндинга TCP/IP
  */
-void awh::client::WebSocket::readProxyCallback(const char * buffer, const size_t size, const size_t aid, const size_t wid, awh::core_t * core) noexcept {
+void awh::client::WebSocket::proxyReadCallback(const char * buffer, const size_t size, const size_t aid, const size_t wid, awh::core_t * core) noexcept {
 	// Если данные существуют
 	if((buffer != nullptr) && (size > 0) && (aid > 0) && (wid > 0)){
-		// Определяем тип прокси-сервера
-		switch((uint8_t) this->worker.proxy.type){
-			// Если прокси-сервер является Socks5
-			case (uint8_t) proxy_t::type_t::SOCKS5: {
-				// Если данные не получены
-				if(!this->worker.proxy.socks5.isEnd()){
-					// Выполняем парсинг входящих данных
-					this->worker.proxy.socks5.parse(buffer, size);
-					// Получаем данные запроса
-					const auto & socks5 = this->worker.proxy.socks5.get();
-					// Если данные получены
-					if(!socks5.empty()) core->write(socks5.data(), socks5.size(), aid);
-					// Если данные все получены
-					else if(this->worker.proxy.socks5.isEnd()) {
-						// Если рукопожатие выполнено
-						if(this->worker.proxy.socks5.isHandshake()){
-							// Выполняем переключение на работу с сервером
-							reinterpret_cast <client::core_t *> (core)->switchProxy(aid);
+		// Если дисконнекта ещё не произошло
+		if((this->action == action_t::NONE) || (this->action == action_t::PROXY_READ)){
+			// Устанавливаем экшен выполнения
+			this->action = action_t::PROXY_READ;
+			// Добавляем полученные данные в буфер
+			this->buffer.insert(this->buffer.end(), buffer, buffer + size);
+			// Выполняем запуск обработчика событий
+			this->handler();
+		}
+	}
+}
+/**
+ * handler Метод управления входящими методами
+ */
+void awh::client::WebSocket::handler() noexcept {
+	// Если управляющий блокировщик не заблокирован
+	if(!this->locker.mode){
+		// Выполняем блокировку потока
+		const lock_guard <recursive_mutex> lock(this->locker.mtx);
+		// Выполняем блокировку обработчика
+		this->locker.mode = true;
+		// Выполняем обработку всех экшенов
+		while(this->action != action_t::NONE){
+			// Определяем обрабатываемый экшен
+			switch((uint8_t) this->action){
+				// Если необходимо запустить экшен открытия подключения
+				case (uint8_t) action_t::OPEN: this->actionOpen(); break;
+				// Если необходимо запустить экшен обработки данных поступающих с сервера
+				case (uint8_t) action_t::READ: this->actionRead(); break;
+				// Если необходимо запустить экшен обработки подключения к серверу
+				case (uint8_t) action_t::CONNECT: this->actionConnect(); break;
+				// Если необходимо запустить экшен обработки отключения от сервера
+				case (uint8_t) action_t::DISCONNECT: this->actionDisconnect(); break;
+				// Если необходимо запустить экшен обработки данных поступающих с прокси-сервера
+				case (uint8_t) action_t::PROXY_READ: this->actionProxyRead(); break;
+				// Если необходимо запустить экшен обработки подключения к прокси-серверу
+				case (uint8_t) action_t::PROXY_CONNECT: this->actionProxyConnect(); break;
+			}
+		}
+		// Выполняем разблокировку обработчика
+		this->locker.mode = false;
+	}
+}
+/**
+ * actionOpen Метод обработки экшена открытия подключения
+ */
+void awh::client::WebSocket::actionOpen() noexcept {
+	// Выполняем подключение
+	const_cast <client::core_t *> (this->core)->open(this->worker.wid);
+	// Если экшен соответствует, выполняем его сброс
+	if(this->action == action_t::OPEN)
+		// Выполняем сброс экшена
+		this->action = action_t::NONE;
+}
+/**
+ * actionRead Метод обработки экшена чтения с сервера
+ */
+void awh::client::WebSocket::actionRead() noexcept {
+	// Объект сообщения
+	mess_t mess;
+	// Получаем объект биндинга ядра TCP/IP
+	client::core_t * core = const_cast <client::core_t *> (this->core);
+	// Если рукопожатие не выполнено
+	if(!reinterpret_cast <http_t *> (&this->http)->isHandshake()){
+		// Выполняем парсинг полученных данных
+		const size_t bytes = this->http.parse(this->buffer.data(), this->buffer.size());
+		// Если все данные получены
+		if(this->http.isEnd()){
+			// Если включён режим отладки
+			#if defined(DEBUG_MODE)
+				// Получаем данные ответа
+				const auto & response = reinterpret_cast <http_t *> (&this->http)->response(true);
+				// Если параметры ответа получены
+				if(!response.empty()){
+					// Выводим заголовок ответа
+					cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
+					// Выводим параметры ответа
+					cout << string(response.begin(), response.end()) << endl;
+					// Если тело ответа существует
+					if(!this->http.getBody().empty())
+						// Выводим сообщение о выводе чанка тела
+						cout << this->fmk->format("<body %u>", this->http.getBody().size()) << endl << endl;
+					// Иначе устанавливаем перенос строки
+					else cout << endl;
+				}
+			#endif
+			// Выполняем проверку авторизации
+			switch((uint8_t) this->http.getAuth()){
+				// Если нужно попытаться ещё раз
+				case (uint8_t) http_t::stath_t::RETRY: {
+					// Если попытка повторить авторизацию ещё не проводилась
+					if(!this->failAuth){
+						// Получаем новый адрес запроса
+						this->worker.url = this->http.getUrl();
+						// Если адрес запроса получен
+						if(!this->worker.url.empty()){
+							// Выполняем очистку оставшихся данных
+							this->buffer.clear();
+							// Запоминаем, что попытка выполнена
+							this->failAuth = true;
+							// Если соединение является постоянным
+							if(this->http.isAlive())
+								// Устанавливаем новый экшен выполнения
+								this->action = action_t::CONNECT;
+							// Завершаем работу
+							else {
+								// Если экшен соответствует, выполняем его сброс
+								if(this->action == action_t::READ)
+									// Выполняем сброс экшена
+									this->action = action_t::NONE;
+								// Завершаем работу
+								core->close(this->aid);
+							}
 							// Завершаем работу
 							return;
-						// Если рукопожатие не выполнено
-						} else {
-							// Устанавливаем код ответа
-							this->code = this->worker.proxy.socks5.getCode();
-							// Создаём сообщение
-							mess_t mess(this->code);
-							// Устанавливаем сообщение ответа
-							mess = this->worker.proxy.socks5.getMessage(this->code);
-							// Если включён режим отладки
-							#if defined(DEBUG_MODE)
-								// Если заголовки получены
-								if(!mess.text.empty()){
-									// Данные REST ответа
-									const string & response = this->fmk->format("SOCKS5 %u %s\r\n", this->code, mess.text.c_str());
-									// Выводим заголовок ответа
-									cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE PROXY ^^^^^^^^^\x1B[0m" << endl;
-									// Выводим параметры ответа
-									cout << string(response.begin(), response.end()) << endl;
-								}
-							#endif
-							// Выводим сообщение
-							this->error(mess);
-							// Завершаем работу
-							reinterpret_cast <client::core_t *> (core)->close(aid);
 						}
 					}
-				}
-			} break;
-			// Если прокси-сервер является HTTP
-			case (uint8_t) proxy_t::type_t::HTTP: {
-				// Выполняем парсинг полученных данных
-				this->worker.proxy.http.parse(buffer, size);
-				// Если все данные получены
-				if(this->worker.proxy.http.isEnd()){
+					// Устанавливаем код ответа
+					this->code = 403;
+					// Создаём сообщение
+					mess = mess_t(this->code, this->http.getMessage(this->code));
+					// Выводим сообщение
+					this->error(mess);
+				} break;
+				// Если запрос выполнен удачно
+				case (uint8_t) http_t::stath_t::GOOD: {
+					// Если рукопожатие выполнено
+					if(this->http.isHandshake()){
+						// Очищаем буфер собранных данных
+						this->buffer.clear();
+						// Очищаем список фрагментированных сообщений
+						this->fragmes.clear();
+						// Выполняем сброс количество попыток
+						this->failAuth = false;
+						// Получаем флаг шифрованных данных
+						this->crypt = this->http.isCrypt();
+						// Получаем поддерживаемый метод компрессии
+						this->compress = this->http.getCompress();
+						// Обновляем контрольную точку
+						this->checkPoint = this->fmk->unixTimestamp();
+						// Устанавливаем размер скользящего окна
+						this->hash.setWbit(this->http.getWbitServer());
+						// Если разрешено выполнять перехват контекста компрессии для клиента
+						if(this->http.getClientTakeover())
+							// Разрешаем перехватывать контекст компрессии для клиента
+							this->hash.setTakeoverCompress(true);
+						// Если разрешено выполнять перехват контекста компрессии для сервера
+						if(this->http.getServerTakeover())
+							// Разрешаем перехватывать контекст компрессии для сервера
+							this->hash.setTakeoverDecompress(true);
+						// Выводим в лог сообщение
+						if(!this->noinfo) this->log->print("authorization on the WebSocket server was successful", log_t::flag_t::INFO);
+						// Если функция обратного вызова установлена, выполняем
+						if(this->activeFn != nullptr) this->activeFn(mode_t::CONNECT, this);
+						// Есла данных передано больше чем обработано
+						if(this->buffer.size() > bytes)
+							// Удаляем количество обработанных байт
+							vector <decltype(this->buffer)::value_type> (this->buffer.begin() + bytes, this->buffer.end()).swap(this->buffer);
+						// Завершаем работу
+						return;
+					// Сообщаем, что рукопожатие не выполнено
+					} else {
+						// Устанавливаем код ответа
+						this->code = 404;
+						// Создаём сообщение
+						mess = mess_t(this->code, this->http.getMessage(this->code));
+						// Выводим сообщение
+						this->error(mess);
+					}
+				} break;
+				// Если запрос неудачный
+				case (uint8_t) http_t::stath_t::FAULT: {
 					// Получаем параметры запроса
-					const auto & query = this->worker.proxy.http.getQuery();
+					const auto & query = this->http.getQuery();
 					// Устанавливаем код ответа
 					this->code = query.code;
 					// Создаём сообщение
-					mess_t mess(this->code, query.message);
-					// Если включён режим отладки
-					#if defined(DEBUG_MODE)
-						// Получаем данные ответа
-						const auto & response = this->worker.proxy.http.response(true);
-						// Если параметры ответа получены
-						if(!response.empty()){
-							// Выводим заголовок ответа
-							cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE PROXY ^^^^^^^^^\x1B[0m" << endl;
-							// Выводим параметры ответа
-							cout << string(response.begin(), response.end()) << endl;
-							// Если тело ответа существует
-							if(!this->worker.proxy.http.getBody().empty())
-								// Выводим сообщение о выводе чанка тела
-								cout << this->fmk->format("<body %u>", this->worker.proxy.http.getBody().size())  << endl;
+					mess = mess_t(this->code, query.message);
+					// Запрещаем бесконечный редирект при запросе авторизации
+					if((this->code == 401) || (this->code == 407)){
+						// Устанавливаем код ответа
+						this->code = 403;
+						// Присваиваем сообщению, новое значение кода
+						mess = this->code;
+					}
+					// Выводим сообщение
+					this->error(mess);
+				} break;
+			}
+			// Если экшен соответствует, выполняем его сброс
+			if(this->action == action_t::READ)
+				// Выполняем сброс экшена
+				this->action = action_t::NONE;
+			// Выполняем сброс количество попыток
+			this->failAuth = false;
+			// Завершаем работу
+			core->close(this->aid);
+		// Если экшен соответствует, выполняем его сброс
+		} else if(this->action == action_t::READ)
+			// Выполняем сброс экшена
+			this->action = action_t::NONE;
+		// Завершаем работу
+		return;
+	// Если рукопожатие выполнено
+	} else if(this->allow.receive) {
+		// Флаг удачного получения данных
+		bool receive = false;
+		// Создаём буфер сообщения
+		vector <char> buffer;
+		// Создаём объект шапки фрейма
+		frame_t::head_t head;
+		// Выполняем обработку полученных данных
+		while(!this->close && this->allow.receive){
+			// Выполняем чтение фрейма WebSocket
+			const auto & data = this->frame.get(head, this->buffer.data(), this->buffer.size());
+			// Если буфер данных получен
+			if(!data.empty()){
+				// Проверяем состояние флагов RSV2 и RSV3
+				if(head.rsv[1] || head.rsv[2]){
+					// Создаём сообщение
+					mess = mess_t(1002, "RSV2 and RSV3 must be clear");
+					// Выводим сообщение
+					this->error(mess);
+					// Выполняем реконнект
+					goto Reconnect;
+				}
+				// Если флаг компресси включён а данные пришли не сжатые
+				if(head.rsv[0] && ((this->compress == http_t::compress_t::NONE) ||
+				  (head.optcode == frame_t::opcode_t::CONTINUATION) ||
+				  (((uint8_t) head.optcode > 0x07) && ((uint8_t) head.optcode < 0x0b)))){
+					// Создаём сообщение
+					mess = mess_t(1002, "RSV1 must be clear");
+					// Выводим сообщение
+					this->error(mess);
+					// Выполняем реконнект
+					goto Reconnect;
+				}
+				// Если опкоды требуют финального фрейма
+				if(!head.fin && ((uint8_t) head.optcode > 0x07) && ((uint8_t) head.optcode < 0x0b)){
+					// Создаём сообщение
+					mess = mess_t(1002, "FIN must be set");
+					// Выводим сообщение
+					this->error(mess);
+					// Выполняем реконнект
+					goto Reconnect;
+				}
+				// Определяем тип ответа
+				switch((uint8_t) head.optcode){
+					// Если ответом является PING
+					case (uint8_t) frame_t::opcode_t::PING:
+						// Отправляем ответ серверу
+						this->pong(string(data.begin(), data.end()));
+					break;
+					// Если ответом является PONG
+					case (uint8_t) frame_t::opcode_t::PONG:
+						// Если идентификатор адъютанта совпадает
+						if(memcmp(to_string(aid).c_str(), data.data(), data.size()) == 0)
+							// Обновляем контрольную точку
+							this->checkPoint = this->fmk->unixTimestamp();
+					break;
+					// Если ответом является TEXT
+					case (uint8_t) frame_t::opcode_t::TEXT:
+					// Если ответом является BINARY
+					case (uint8_t) frame_t::opcode_t::BINARY: {
+						// Запоминаем полученный опкод
+						this->opcode = head.optcode;
+						// Запоминаем, что данные пришли сжатыми
+						this->compressed = (head.rsv[0] && (this->compress != http_t::compress_t::NONE));
+						// Если сообщение замаскированно
+						if(head.mask){
+							// Создаём сообщение
+							mess = mess_t(1002, "masked frame from server");
+							// Выводим сообщение
+							this->error(mess);
+							// Выполняем реконнект
+							goto Reconnect;
+						// Если список фрагментированных сообщений существует
+						} else if(!this->fragmes.empty()) {
+							// Очищаем список фрагментированных сообщений
+							this->fragmes.clear();
+							// Создаём сообщение
+							mess = mess_t(1002, "opcode for subsequent fragmented messages should not be set");
+							// Выводим сообщение
+							this->error(mess);
+							// Выполняем реконнект
+							goto Reconnect;
+						// Если сообщение является не последнем
+						} else if(!head.fin)
+							// Заполняем фрагментированное сообщение
+							this->fragmes.insert(this->fragmes.end(), data.begin(), data.end());
+						// Если сообщение является последним
+						else buffer = move(* const_cast <vector <char> *> (&data));
+					} break;
+					// Если ответом является CONTINUATION
+					case (uint8_t) frame_t::opcode_t::CONTINUATION: {
+						// Заполняем фрагментированное сообщение
+						this->fragmes.insert(this->fragmes.end(), data.begin(), data.end());
+						// Если сообщение является последним
+						if(head.fin){
+							// Выполняем копирование всех собранных сегментов
+							buffer = move(* const_cast <vector <char> *> (&this->fragmes));
+							// Очищаем список фрагментированных сообщений
+							this->fragmes.clear();
 						}
-					#endif
-					// Выполняем проверку авторизации
-					switch((uint8_t) this->worker.proxy.http.getAuth()){
-						// Если нужно попытаться ещё раз
-						case (uint8_t) http_t::stath_t::RETRY: {
-							// Если попытка повторить авторизацию ещё не проводилась
-							if(!this->failAuth){
-								// Получаем новый адрес запроса
-								this->worker.proxy.url = this->worker.proxy.http.getUrl();
-								// Если адрес запроса получен
-								if(!this->worker.proxy.url.empty()){
-									// Запоминаем, что попытка выполнена
-									this->failAuth = true;
-									// Если соединение является постоянным
-									if(this->worker.proxy.http.isAlive())
-										// Выполняем повторно отправку сообщения на сервер
-										this->connectProxyCallback(aid, wid, core);
-									// Завершаем работу
-									else reinterpret_cast <client::core_t *> (core)->close(aid);
-									// Завершаем работу
-									return;
-								}
+					} break;
+					// Если ответом является CLOSE
+					case (uint8_t) frame_t::opcode_t::CLOSE: {
+						// Извлекаем сообщение
+						mess = this->frame.message(data);
+						// Выводим сообщение
+						this->error(mess);
+						// Выполняем реконнект
+						goto Reconnect;
+					} break;
+				}
+			}
+			// Если парсер обработал какое-то количество байт
+			if((receive = ((head.frame > 0) && !this->buffer.empty()))){
+				// Если размер буфера больше количества удаляемых байт
+				if((receive = (this->buffer.size() >= head.frame)))
+					// Удаляем количество обработанных байт
+					vector <decltype(this->buffer)::value_type> (this->buffer.begin() + head.frame, this->buffer.end()).swap(this->buffer);
+			}
+			// Если сообщения получены
+			if(!buffer.empty()){
+				// Выполняем извлечение полученных сообщений
+				this->extraction(buffer, (this->opcode == frame_t::opcode_t::TEXT));
+				// Очищаем буфер полученного сообщения
+				buffer.clear();
+			}
+			// Если данные мы все получили, выходим
+			if(!receive || this->buffer.empty()) break;
+		}
+		// Если экшен соответствует, выполняем его сброс
+		if(this->action == action_t::READ)
+			// Выполняем сброс экшена
+			this->action = action_t::NONE;
+		// Выходим из функции
+		return;
+	}
+	// Устанавливаем метку реконнекта
+	Reconnect:
+	// Выполняем отправку сообщения об ошибке
+	this->sendError(mess);
+	// Если экшен соответствует, выполняем его сброс
+	if(this->action == action_t::READ)
+		// Выполняем сброс экшена
+		this->action = action_t::NONE;
+}
+/**
+ * actionConnect Метод обработки экшена подключения к серверу
+ */
+void awh::client::WebSocket::actionConnect() noexcept {
+	// Выполняем сброс параметров запроса
+	this->flush();
+	// Выполняем сброс состояния HTTP парсера
+	this->http.reset();
+	// Выполняем очистку параметров HTTP запроса
+	this->http.clear();
+	// Устанавливаем метод сжатия
+	this->http.setCompress(this->compress);
+	// Разрешаем перехватывать контекст для клиента
+	this->http.setClientTakeover(this->takeOverCli);
+	// Разрешаем перехватывать контекст для сервера
+	this->http.setServerTakeover(this->takeOverSrv);
+	// Разрешаем перехватывать контекст компрессии
+	this->hash.setTakeoverCompress(this->takeOverCli);
+	// Разрешаем перехватывать контекст декомпрессии
+	this->hash.setTakeoverDecompress(this->takeOverSrv);
+	// Получаем бинарные данные REST запроса
+	const auto & request = this->http.request(this->worker.url);
+	// Если бинарные данные запроса получены
+	if(!request.empty()){
+		// Если включён режим отладки
+		#if defined(DEBUG_MODE)
+			// Выводим заголовок запроса
+			cout << "\x1B[33m\x1B[1m^^^^^^^^^ REQUEST ^^^^^^^^^\x1B[0m" << endl;
+			// Выводим параметры запроса
+			cout << string(request.begin(), request.end()) << endl << endl;
+		#endif
+		// Отправляем серверу сообщение
+		const_cast <client::core_t *> (this->core)->write(request.data(), request.size(), this->aid);
+	}
+	// Если экшен соответствует, выполняем его сброс
+	if(this->action == action_t::CONNECT)
+		// Выполняем сброс экшена
+		this->action = action_t::NONE;
+}
+/**
+ * actionDisconnect Метод обработки экшена отключения от сервера
+ */
+void awh::client::WebSocket::actionDisconnect() noexcept {
+	// Если нужно произвести запрос заново
+	if((this->code == 301) || (this->code == 308) ||
+	   (this->code == 401) || (this->code == 407)){
+		// Если статус ответа требует произвести авторизацию или заголовок перенаправления указан
+		if((this->code == 401) || (this->code == 407) || this->http.isHeader("location")){
+			// Выполняем установку следующего экшена на открытие подключения
+			this->action = action_t::OPEN;
+			// Выходим из функции
+			return;
+		}
+	}
+	// Выполняем сброс параметров запроса
+	this->flush();
+	// Очищаем код ответа
+	this->code = 0;
+	// Завершаем работу
+	if(this->unbind) const_cast <client::core_t *> (this->core)->stop();
+	// Если экшен соответствует, выполняем его сброс
+	if(this->action == action_t::DISCONNECT)
+		// Выполняем сброс экшена
+		this->action = action_t::NONE;
+}
+/**
+ * actionProxyRead Метод обработки экшена чтения с прокси-сервера
+ */
+void awh::client::WebSocket::actionProxyRead() noexcept {
+	// Получаем объект биндинга ядра TCP/IP
+	client::core_t * core = const_cast <client::core_t *> (this->core);
+	// Определяем тип прокси-сервера
+	switch((uint8_t) this->worker.proxy.type){
+		// Если прокси-сервер является Socks5
+		case (uint8_t) proxy_t::type_t::SOCKS5: {
+			// Если данные не получены
+			if(!this->worker.proxy.socks5.isEnd()){
+				// Выполняем парсинг входящих данных
+				this->worker.proxy.socks5.parse(this->buffer.data(), this->buffer.size());
+				// Получаем данные запроса
+				const auto & socks5 = this->worker.proxy.socks5.get();
+				// Если данные получены
+				if(!socks5.empty()) core->write(socks5.data(), socks5.size(), this->aid);
+				// Если данные все получены
+				else if(this->worker.proxy.socks5.isEnd()) {
+					// Выполняем очистку буфера данных
+					this->buffer.clear();
+					// Если рукопожатие выполнено
+					if(this->worker.proxy.socks5.isHandshake()){
+						// Выполняем переключение на работу с сервером
+						core->switchProxy(this->aid);
+						// Если экшен соответствует, выполняем его сброс
+						if(this->action == action_t::PROXY_READ)
+							// Выполняем сброс экшена
+							this->action = action_t::NONE;
+						// Завершаем работу
+						return;
+					// Если рукопожатие не выполнено
+					} else {
+						// Устанавливаем код ответа
+						this->code = this->worker.proxy.socks5.getCode();
+						// Создаём сообщение
+						mess_t mess(this->code);
+						// Устанавливаем сообщение ответа
+						mess = this->worker.proxy.socks5.getMessage(this->code);
+						// Если включён режим отладки
+						#if defined(DEBUG_MODE)
+							// Если заголовки получены
+							if(!mess.text.empty()){
+								// Данные REST ответа
+								const string & response = this->fmk->format("SOCKS5 %u %s\r\n", this->code, mess.text.c_str());
+								// Выводим заголовок ответа
+								cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE PROXY ^^^^^^^^^\x1B[0m" << endl;
+								// Выводим параметры ответа
+								cout << string(response.begin(), response.end()) << endl;
 							}
+						#endif
+						// Выводим сообщение
+						this->error(mess);
+						// Если экшен соответствует, выполняем его сброс
+						if(this->action == action_t::PROXY_READ)
+							// Выполняем сброс экшена
+							this->action = action_t::NONE;
+						// Завершаем работу
+						core->close(this->aid);
+					}
+				}
+			}
+		} break;
+		// Если прокси-сервер является HTTP
+		case (uint8_t) proxy_t::type_t::HTTP: {
+			// Выполняем парсинг полученных данных
+			this->worker.proxy.http.parse(this->buffer.data(), this->buffer.size());
+			// Если все данные получены
+			if(this->worker.proxy.http.isEnd()){
+				// Получаем параметры запроса
+				const auto & query = this->worker.proxy.http.getQuery();
+				// Устанавливаем код ответа
+				this->code = query.code;
+				// Создаём сообщение
+				mess_t mess(this->code, query.message);
+				// Если включён режим отладки
+				#if defined(DEBUG_MODE)
+					// Получаем данные ответа
+					const auto & response = this->worker.proxy.http.response(true);
+					// Если параметры ответа получены
+					if(!response.empty()){
+						// Выводим заголовок ответа
+						cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE PROXY ^^^^^^^^^\x1B[0m" << endl;
+						// Выводим параметры ответа
+						cout << string(response.begin(), response.end()) << endl;
+						// Если тело ответа существует
+						if(!this->worker.proxy.http.getBody().empty())
+							// Выводим сообщение о выводе чанка тела
+							cout << this->fmk->format("<body %u>", this->worker.proxy.http.getBody().size())  << endl;
+					}
+				#endif
+				// Выполняем проверку авторизации
+				switch((uint8_t) this->worker.proxy.http.getAuth()){
+					// Если нужно попытаться ещё раз
+					case (uint8_t) http_t::stath_t::RETRY: {
+						// Если попытка повторить авторизацию ещё не проводилась
+						if(!this->failAuth){
+							// Получаем новый адрес запроса
+							this->worker.proxy.url = this->worker.proxy.http.getUrl();
+							// Если адрес запроса получен
+							if(!this->worker.proxy.url.empty()){
+								// Запоминаем, что попытка выполнена
+								this->failAuth = true;
+								// Если соединение является постоянным
+								if(this->worker.proxy.http.isAlive())
+									// Устанавливаем новый экшен выполнения
+									this->action = action_t::PROXY_CONNECT;
+								// Если соединение должно быть закрыто
+								else {
+									// Если экшен соответствует, выполняем его сброс
+									if(this->action == action_t::PROXY_READ)
+										// Выполняем сброс экшена
+										this->action = action_t::NONE;
+									// Завершаем работу
+									core->close(this->aid);
+								}
+								// Завершаем работу
+								return;
+							}
+						}
+						// Устанавливаем код ответа
+						this->code = 403;
+						// Присваиваем сообщению, новое значение кода
+						mess = this->code;
+					} break;
+					// Если запрос выполнен удачно
+					case (uint8_t) http_t::stath_t::GOOD: {
+						// Выполняем сброс количество попыток
+						this->failAuth = false;
+						// Выполняем переключение на работу с сервером
+						core->switchProxy(this->aid);
+						// Если экшен соответствует, выполняем его сброс
+						if(this->action == action_t::PROXY_READ)
+							// Выполняем сброс экшена
+							this->action = action_t::NONE;
+						// Завершаем работу
+						return;
+					} break;
+					// Если запрос неудачный
+					case (uint8_t) http_t::stath_t::FAULT: {
+						// Запрещаем бесконечный редирект при запросе авторизации
+						if((this->code == 401) || (this->code == 407)){
 							// Устанавливаем код ответа
 							this->code = 403;
 							// Присваиваем сообщению, новое значение кода
 							mess = this->code;
-						} break;
-						// Если запрос выполнен удачно
-						case (uint8_t) http_t::stath_t::GOOD: {
-							// Выполняем сброс количество попыток
-							this->failAuth = false;
-							// Выполняем переключение на работу с сервером
-							reinterpret_cast <client::core_t *> (core)->switchProxy(aid);
-							// Завершаем работу
-							return;
-						} break;
-						// Если запрос неудачный
-						case (uint8_t) http_t::stath_t::FAULT: {
-							// Запрещаем бесконечный редирект при запросе авторизации
-							if((this->code == 401) || (this->code == 407)){
-								// Устанавливаем код ответа
-								this->code = 403;
-								// Присваиваем сообщению, новое значение кода
-								mess = this->code;
-							}
-						} break;
-					}
-					// Выводим сообщение
-					this->error(mess);
-					// Выполняем сброс количество попыток
-					this->failAuth = false;
-					// Завершаем работу
-					reinterpret_cast <client::core_t *> (core)->close(aid);
+						}
+					} break;
 				}
-			} break;
-			// Иначе завершаем работу
-			default: reinterpret_cast <client::core_t *> (core)->close(aid);
+				// Выводим сообщение
+				this->error(mess);
+				// Если экшен соответствует, выполняем его сброс
+				if(this->action == action_t::PROXY_READ)
+					// Выполняем сброс экшена
+					this->action = action_t::NONE;
+				// Выполняем сброс количество попыток
+				this->failAuth = false;
+				// Завершаем работу
+				core->close(this->aid);
+			}
+		} break;
+		// Иначе завершаем работу
+		default: {
+			// Если экшен соответствует, выполняем его сброс
+			if(this->action == action_t::PROXY_READ)
+				// Выполняем сброс экшена
+				this->action = action_t::NONE;
+			// Завершаем работу
+			core->close(this->aid);
 		}
 	}
+}
+/**
+ * actionProxyConnect Метод обработки экшена подключения к прокси-серверу
+ */
+void awh::client::WebSocket::actionProxyConnect() noexcept {
+	// Получаем объект биндинга ядра TCP/IP
+	client::core_t * core = const_cast <client::core_t *> (this->core);
+	// Определяем тип прокси-сервера
+	switch((uint8_t) this->worker.proxy.type){
+		// Если прокси-сервер является Socks5
+		case (uint8_t) proxy_t::type_t::SOCKS5: {
+			// Выполняем сброс состояния Socks5 парсера
+			this->worker.proxy.socks5.reset();
+			// Устанавливаем URL адрес запроса
+			this->worker.proxy.socks5.setUrl(this->worker.url);
+			// Выполняем создание буфера запроса
+			this->worker.proxy.socks5.parse();
+			// Получаем данные запроса
+			const auto & socks5 = this->worker.proxy.socks5.get();
+			// Если данные получены
+			if(!socks5.empty()) core->write(socks5.data(), socks5.size(), this->aid);
+		} break;
+		// Если прокси-сервер является HTTP
+		case (uint8_t) proxy_t::type_t::HTTP: {
+			// Выполняем сброс состояния HTTP парсера
+			this->worker.proxy.http.reset();
+			// Выполняем очистку параметров HTTP запроса
+			this->worker.proxy.http.clear();
+			// Получаем бинарные данные REST запроса
+			const auto & proxy = this->worker.proxy.http.proxy(this->worker.url);
+			// Если бинарные данные запроса получены
+			if(!proxy.empty()){
+				// Если включён режим отладки
+				#if defined(DEBUG_MODE)
+					// Выводим заголовок запроса
+					cout << "\x1B[33m\x1B[1m^^^^^^^^^ REQUEST PROXY ^^^^^^^^^\x1B[0m" << endl;
+					// Выводим параметры запроса
+					cout << string(proxy.begin(), proxy.end()) << endl;
+				#endif
+				// Отправляем на прокси-сервер
+				core->write(proxy.data(), proxy.size(), this->aid);
+			}
+		} break;
+		// Иначе завершаем работу
+		default: core->close(this->aid);
+	}
+	// Если экшен соответствует, выполняем его сброс
+	if(this->action == action_t::PROXY_CONNECT)
+		// Выполняем сброс экшена
+		this->action = action_t::NONE;
 }
 /**
  * error Метод вывода сообщений об ошибках работы клиента
@@ -722,10 +894,10 @@ void awh::client::WebSocket::extraction(const vector <char> & buffer, const bool
 void awh::client::WebSocket::flush() noexcept {
 	// Снимаем флаг отключения
 	this->close = false;
-	// Выполняем сброс количество стоп-байт
-	this->stopBytes = 0;
-	// Выполняем сброс количества прочитанных байт
-	this->readBytes = 0;
+	// Снимаем флаг принудительной остановки
+	this->stopped = false;
+	// Устанавливаем флаг разрешающий обмен данных
+	this->allow = allow_t();
 	// Очищаем буфер собранных данных
 	this->buffer.clear();
 	// Очищаем буфер фрагментированного сообщения
@@ -737,7 +909,7 @@ void awh::client::WebSocket::flush() noexcept {
  */
 void awh::client::WebSocket::pong(const string & message) noexcept {
 	// Если подключение выполнено
-	if(this->core->working() && !this->locker){
+	if(this->core->working() && this->allow.send){
 		// Если рукопожатие выполнено
 		if(this->http.isHandshake() && (this->aid > 0)){
 			// Создаём буфер для отправки
@@ -753,7 +925,7 @@ void awh::client::WebSocket::pong(const string & message) noexcept {
  */
 void awh::client::WebSocket::ping(const string & message) noexcept {
 	// Если подключение выполнено
-	if(this->core->working() && !this->locker){
+	if(this->core->working() && this->allow.send){
 		// Если рукопожатие выполнено
 		if(this->http.isHandshake() && (this->aid > 0)){
 			// Создаём буфер для отправки
@@ -808,7 +980,7 @@ void awh::client::WebSocket::on(function <void (const vector <char> &, const boo
  */
 void awh::client::WebSocket::sendTimeout() noexcept {
 	// Если подключение выполнено
-	if(this->core->working() && !this->locker)
+	if(this->core->working() && this->allow.send)
 		// Отправляем сигнал принудительного таймаута
 		const_cast <client::core_t *> (this->core)->sendTimeout(this->aid);
 }
@@ -818,13 +990,15 @@ void awh::client::WebSocket::sendTimeout() noexcept {
  */
 void awh::client::WebSocket::sendError(const mess_t & mess) noexcept {
 	// Если подключение выполнено
-	if(this->core->working() && !this->locker && (this->aid > 0)){
+	if(this->core->working() && this->allow.send && (this->aid > 0)){
+		// Если разрешено получение данных
+		this->allow.receive = false;
 		// Если код ошибки относится к WebSocket
 		if(mess.code >= 1000){
 			// Получаем буфер сообщения
 			const auto & buffer = this->frame.message(mess);
 			// Если данные сообщения получены
-			if(!buffer.empty()){
+			if((this->stopped = !buffer.empty())){
 				// Если включён режим отладки
 				#if defined(DEBUG_MODE)
 					// Выводим заголовок ответа
@@ -832,8 +1006,6 @@ void awh::client::WebSocket::sendError(const mess_t & mess) noexcept {
 					// Выводим отправляемое сообщение
 					cout << this->fmk->format("%s [%u]", mess.text.c_str(), mess.code) << endl << endl;
 				#endif
-				// Запоминаем рамер данных для остановки
-				this->stopBytes = buffer.size();
 				// Отправляем серверу сообщение
 				((awh::core_t *) const_cast <client::core_t *> (this->core))->write(buffer.data(), buffer.size(), this->aid);
 				// Выходим из функции
@@ -852,9 +1024,9 @@ void awh::client::WebSocket::sendError(const mess_t & mess) noexcept {
  */
 void awh::client::WebSocket::send(const char * message, const size_t size, const bool utf8) noexcept {
 	// Если подключение выполнено
-	if(this->core->working() && !this->locker){
+	if(this->core->working() && this->allow.send){
 		// Выполняем блокировку отправки сообщения
-		this->locker = !this->locker;
+		this->allow.send = !this->allow.send;
 		// Если рукопожатие выполнено
 		if((message != nullptr) && (size > 0) && this->http.isHandshake() && (this->aid > 0)){
 			// Если включён режим отладки
@@ -978,7 +1150,7 @@ void awh::client::WebSocket::send(const char * message, const size_t size, const
 			} else sendFn(head, message, size);
 		}
 		// Выполняем разблокировку отправки сообщения
-		this->locker = !this->locker;
+		this->allow.send = !this->allow.send;
 	}
 }
 /**
@@ -1242,23 +1414,23 @@ void awh::client::WebSocket::setAuthTypeProxy(const auth_t::type_t type, const a
  * @param fmk  объект фреймворка
  * @param log  объект для работы с логами
  */
-awh::client::WebSocket::WebSocket(const client::core_t * core, const fmk_t * fmk, const log_t * log) noexcept : nwk(fmk), uri(fmk, &nwk), mode(mode_t::DISCONNECT), frame(fmk, log), hash(fmk, log), http(fmk, log, &uri), worker(fmk, log), fmk(fmk), log(log), core(core) {
+awh::client::WebSocket::WebSocket(const client::core_t * core, const fmk_t * fmk, const log_t * log) noexcept : nwk(fmk), hash(fmk, log), uri(fmk, &nwk), http(fmk, log, &uri), frame(fmk, log), worker(fmk, log), action(action_t::NONE), opcode(frame_t::opcode_t::TEXT), compress(http_t::compress_t::NONE), fmk(fmk), log(log), core(core) {
 	// Устанавливаем событие на запуск системы
-	this->worker.openFn = std::bind(&awh::client::WebSocket::openCallback, this, std::placeholders::_1, std::placeholders::_2);
+	this->worker.openFn = std::bind(&awh::client::WebSocket::openCallback, this, _1, _2);
 	// Устанавливаем функцию персистентного вызова
-	this->worker.persistFn = std::bind(&awh::client::WebSocket::persistCallback, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3);
+	this->worker.persistFn = std::bind(&awh::client::WebSocket::persistCallback, this, _1, _2, _3);
 	// Устанавливаем событие подключения
-	this->worker.connectFn = std::bind(&awh::client::WebSocket::connectCallback, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3);
-	// Устанавливаем событие отключения
-	this->worker.disconnectFn = std::bind(&awh::client::WebSocket::disconnectCallback, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3);
-	// Устанавливаем событие на подключение к прокси-серверу
-	this->worker.connectProxyFn = std::bind(&awh::client::WebSocket::connectProxyCallback, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3);
+	this->worker.connectFn = std::bind(&awh::client::WebSocket::connectCallback, this, _1, _2, _3);
 	// Устанавливаем функцию чтения данных
-	this->worker.readFn = std::bind(&awh::client::WebSocket::readCallback, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5);
+	this->worker.readFn = std::bind(&awh::client::WebSocket::readCallback, this, _1, _2, _3, _4, _5);
 	// Устанавливаем функцию записи данных
-	this->worker.writeFn = std::bind(&awh::client::WebSocket::writeCallback, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5);
+	this->worker.writeFn = std::bind(&awh::client::WebSocket::writeCallback, this, _1, _2, _3, _4, _5);
+	// Устанавливаем событие отключения
+	this->worker.disconnectFn = std::bind(&awh::client::WebSocket::disconnectCallback, this, _1, _2, _3);
+	// Устанавливаем событие на подключение к прокси-серверу
+	this->worker.connectProxyFn = std::bind(&awh::client::WebSocket::proxyConnectCallback, this, _1, _2, _3);
 	// Устанавливаем событие на чтение данных с прокси-сервера
-	this->worker.readProxyFn = std::bind(&awh::client::WebSocket::readProxyCallback, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5);
+	this->worker.readProxyFn = std::bind(&awh::client::WebSocket::proxyReadCallback, this, _1, _2, _3, _4, _5);
 	// Активируем персистентный запуск для работы пингов
 	const_cast <client::core_t *> (this->core)->setPersist(true);
 	// Добавляем воркер в биндер TCP/IP
