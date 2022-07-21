@@ -269,8 +269,6 @@ void awh::client::Core::connect(const size_t wid) noexcept {
 				wrk->status.wait = client::worker_t::mode_t::DISCONNECT;
 				// Устанавливаем статус подключения
 				wrk->status.real = client::worker_t::mode_t::PRECONNECT;
-				// Получаем объект ядра клиента
-				const core_t * core = reinterpret_cast <const core_t *> (wrk->core);
 				// Получаем URL параметры запроса
 				const uri_t::url_t & url = (wrk->isProxy() ? wrk->proxy.url : wrk->url);
 				// Если в воркере есть подключённые клиенты
@@ -328,18 +326,20 @@ void awh::client::Core::connect(const size_t wid) noexcept {
 								SSL_set_connect_state(adj->ssl.ssl);
 							// Если BIO SSL не создано
 							} else {
+								// Запрещаем чтение данных с сервера
+								adj->bev.locked.read = true;
+								// Запрещаем запись данных на сервер
+								adj->bev.locked.write = true;
 								// Разрешаем выполнение работы
 								wrk->status.work = client::worker_t::work_t::ALLOW;
 								// Устанавливаем статус подключения
 								wrk->status.real = client::worker_t::mode_t::DISCONNECT;
-								// Запрещаем чтение данных с сервера
-								ret.first->second->bev.locked.read = true;
-								// Запрещаем запись данных на сервер
-								ret.first->second->bev.locked.write = true;
+								// Устанавливаем флаг ожидания статуса
+								wrk->status.wait = client::worker_t::mode_t::DISCONNECT;
 								// Выводим сообщение об ошибке
 								this->log->print("BIO new socket is failed", log_t::flag_t::CRITICAL);
-								// Выполняем отключение от сервера
-								this->close(ret.first->first);
+								// Выполняем переподключение
+								this->reconnect(wid);
 								// Выходим из функции
 								return;
 							}
@@ -373,14 +373,14 @@ void awh::client::Core::connect(const size_t wid) noexcept {
 						}
 						// Выполняем подключение к удаленному серверу, если подключение не выполненно то сообщаем об этом
 						if(::connect(ret.first->second->bev.socket, sin, sizeof(struct sockaddr_in)) != 0){
-							// Разрешаем выполнение работы
-							wrk->status.work = client::worker_t::work_t::ALLOW;
-							// Устанавливаем статус подключения
-							wrk->status.real = client::worker_t::mode_t::DISCONNECT;
 							// Запрещаем чтение данных с сервера
 							ret.first->second->bev.locked.read = true;
 							// Запрещаем запись данных на сервер
 							ret.first->second->bev.locked.write = true;
+							// Разрешаем выполнение работы
+							wrk->status.work = client::worker_t::work_t::ALLOW;
+							// Устанавливаем статус подключения
+							wrk->status.real = client::worker_t::mode_t::DISCONNECT;
 							// Выводим в лог сообщение
 							this->log->print("connecting to host = %s, port = %u", log_t::flag_t::CRITICAL, url.ip.c_str(), url.port);
 							/*
@@ -429,7 +429,7 @@ void awh::client::Core::connect(const size_t wid) noexcept {
 								ret.first->second->bev.timer.write.start(ret.first->second->timeWrite);
 							}
 							// Выводим в лог сообщение
-							if(!core->noinfo) this->log->print("good host = %s [%s:%d], socket = %d", log_t::flag_t::INFO, url.domain.c_str(), url.ip.c_str(), url.port, sockaddr.fd);
+							if(!this->noinfo) this->log->print("good host = %s [%s:%d], socket = %d", log_t::flag_t::INFO, url.domain.c_str(), url.ip.c_str(), url.port, sockaddr.fd);
 						}
 						// Выходим из функции
 						return;
@@ -473,7 +473,7 @@ void awh::client::Core::connect(const size_t wid) noexcept {
 					}
 					*/
 					// Выводим сообщение об ошибке
-					if(!core->noinfo) this->log->print("%s", log_t::flag_t::INFO, "disconnected from the server");
+					if(!this->noinfo) this->log->print("%s", log_t::flag_t::INFO, "disconnected from the server");
 					// Выводим функцию обратного вызова
 					if(wrk->disconnectFn != nullptr) wrk->disconnectFn(0, wrk->wid, this);
 				}
@@ -985,19 +985,32 @@ void awh::client::Core::switchProxy(const size_t aid) noexcept {
 				// Выполняем блокировку потока
 				this->mtx.proxy.lock();
 				// Выполняем обёртывание сокета в BIO SSL
-				BIO * bio = BIO_new_socket(adj->bev.socket, 0);
+				BIO * bio = BIO_new_socket(adj->bev.socket, BIO_NOCLOSE);
 				// Если BIO SSL создано
 				if(bio != nullptr){
 					// Устанавливаем блокирующий режим ввода/вывода для сокета
 					BIO_set_nbio(bio, 0);
 					// Выполняем установку BIO SSL
 					SSL_set_bio(adj->ssl.ssl, bio, bio);
-					// Флаг необходимо установить только для неблокирующего сокета
-					// SSL_set_mode(adj->ssl.ssl, SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER);
 					// Выполняем активацию клиента SSL
 					SSL_set_connect_state(adj->ssl.ssl);
+					// Останавливаем таймаут ожидания на запись в сокет
+					adj->bev.timer.write.stop();
+					// Останавливаем запись данных
+					adj->bev.event.write.stop();
 					// Выполняем тюннинг буфера событий
-					this->tuning(aid);
+					this->tuning(it->first);
+					// Выполняем запуск подключения
+					adj->bev.event.write.start();
+					// Если время ожидания записи данных установлено
+					if(adj->timeWrite > 0){
+						// Устанавливаем базу событий
+						adj->bev.timer.write.set(this->base);
+						// Устанавливаем событие на запись данных подключения
+						adj->bev.timer.write.set <awh::worker_t::adj_t, &awh::worker_t::adj_t::timeout> (adj);
+						// Запускаем запись данных на сервер
+						adj->bev.timer.write.start(adj->timeWrite);
+					}
 				// Выводим сообщение об ошибке
 				} else this->log->print("BIO new socket is failed", log_t::flag_t::CRITICAL);
 				// Выполняем разблокировку потока
@@ -1007,7 +1020,7 @@ void awh::client::Core::switchProxy(const size_t aid) noexcept {
 			}
 		}
 		// Если функция обратного вызова установлена, сообщаем, что мы подключились
-		if(wrk->connectFn != nullptr) wrk->connectFn(aid, wrk->wid, this);
+		if(wrk->connectFn != nullptr) wrk->connectFn(it->first, wrk->wid, this);
 	}
 }
 /**
