@@ -233,6 +233,8 @@ void awh::Core::launching() noexcept {
 		if(!this->noinfo) this->log->print("[+] start service: pid = %u", log_t::flag_t::INFO, getpid());
 		// Если таймер периодического запуска коллбека активирован, запускаем персистентную работу
 		if(this->persist){
+			// Устанавливаем приоритет выполнения
+			ev_set_priority(&this->timer.io, 2);
 			// Устанавливаем базу событий
 			this->timer.io.set(this->base);
 			// Устанавливаем текущий штамп времени
@@ -1262,6 +1264,8 @@ u_short awh::Core::setTimeout(const time_t delay, function <void (const u_short,
 		this->mtx.timer.unlock();
 		// Получаем идентификатор таймера
 		result = ret.first->first;
+		// Устанавливаем приоритет выполнения
+		ev_set_priority(&ret.first->second->io, 1);
 		// Устанавливаем родительский объект
 		ret.first->second->core = this;
 		// Устанавливаем идентификатор таймера
@@ -1301,6 +1305,8 @@ u_short awh::Core::setInterval(const time_t delay, function <void (const u_short
 		this->mtx.timer.unlock();
 		// Получаем идентификатор таймера
 		result = ret.first->first;
+		// Устанавливаем приоритет выполнения
+		ev_set_priority(&ret.first->second->io, 1);
 		// Устанавливаем родительский объект
 		ret.first->second->core = this;
 		// Устанавливаем идентификатор таймера

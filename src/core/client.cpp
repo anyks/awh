@@ -236,6 +236,14 @@ void awh::client::Core::tuning(const size_t aid) noexcept {
 		adj->markRead = wrk->markRead;
 		// Устанавливаем размер детектируемых байт на запись
 		adj->markWrite = wrk->markWrite;
+		// Устанавливаем приоритет выполнения для таймаута на чтение
+		ev_set_priority(&adj->bev.timer.read, 0);
+		// Устанавливаем приоритет выполнения для таймаута на запись
+		ev_set_priority(&adj->bev.timer.write, 0);
+		// Устанавливаем приоритет выполнения для события на чтения
+		ev_set_priority(&adj->bev.event.read, -2);
+		// Устанавливаем приоритет выполнения для события на чтения
+		ev_set_priority(&adj->bev.event.write, -2);
 		// Устанавливаем базу событий
 		adj->bev.event.write.set(const_cast <core_t *> (core)->base);
 		// Устанавливаем сокет для записи
