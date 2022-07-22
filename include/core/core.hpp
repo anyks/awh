@@ -95,15 +95,15 @@ namespace awh {
 				public:
 					// Идентификатор таймера
 					u_short id;
-				public:
 					// Задержка времени в секундах
 					float delay;
-				public:
+					// Штамп времени исполнения
+					time_t stamp;
 					// Флаг персистентной работы
 					bool persist;
 				public:
 					// Объект события таймера
-					ev::timer timer;
+					ev::timer io;
 				public:
 					// Родительский объект
 					Core * core;
@@ -121,7 +121,7 @@ namespace awh {
 					/**
 					 * Timer Конструктор
 					 */
-					Timer() noexcept : id(0), delay(0.f), persist(false), core(nullptr), fn(nullptr) {}
+					Timer() noexcept : id(0), delay(0.f), stamp(0), persist(false), core(nullptr), fn(nullptr) {}
 			} timer_t;
 		protected:
 			/**
@@ -274,7 +274,7 @@ namespace awh {
 			dispatch_t dispatch;
 		private:
 			// Объект события таймера
-			ev::timer timer;
+			timer_t timer;
 		protected:
 			// Тип запускаемого ядра
 			type_t type = type_t::CLIENT;
@@ -324,6 +324,11 @@ namespace awh {
 			 * closedown Метод вызова при деакцтивации базы событий
 			 */
 			void closedown() noexcept;
+		protected:
+			/**
+			 * executeTimers Метод принудительного исполнения работы таймеров
+			 */
+			void executeTimers() noexcept;
 		private:
 			/**
 			 * persistent Функция персистентного вызова по таймеру

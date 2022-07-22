@@ -1100,6 +1100,8 @@ void awh::client::Core::transfer(const method_t method, const size_t aid) noexce
 						adj->bev.timer.read.stop();
 						// Если данные получены
 						if(bytes > 0){
+							// Выполняем принудительное исполнение таймеров
+							this->executeTimers();
 							// Если время ожидания записи данных установлено
 							if(adj->timeRead > 0)
 								// Запускаем ожидание чтения данных с сервера
@@ -1153,6 +1155,8 @@ void awh::client::Core::transfer(const method_t method, const size_t aid) noexce
 				case (uint8_t) method_t::WRITE: {
 					// Останавливаем таймаут ожидания на запись в сокет
 					adj->bev.timer.write.stop();
+					// Выполняем принудительное исполнение таймеров
+					this->executeTimers();
 					// Если время ожидания записи данных установлено
 					if(adj->timeWrite > 0)
 						// Запускаем ожидание записи данных на сервер

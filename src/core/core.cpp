@@ -84,10 +84,12 @@ void awh::worker_t::adj_t::timeout(ev::timer & timer, int revents) noexcept {
  * @param revents идентификатор события
  */
 void awh::Core::Timer::callback(ev::timer & timer, int revents) noexcept {
-	// Если функция обратного вызова установлена
-	if(this->fn != nullptr) this->fn(this->id, this->core);
 	// Выполняем остановку таймера
 	timer.stop();
+	// Устанавливаем текущий штамп времени
+	this->stamp = this->core->fmk->unixTimestamp();
+	// Если функция обратного вызова установлена
+	if(this->fn != nullptr) this->fn(this->id, this->core);
 	// Если персистентная работа не установлена, удаляем таймер
 	if(!this->persist){
 		// Если родительский объект установлен
@@ -230,13 +232,17 @@ void awh::Core::launching() noexcept {
 		// Выводим в консоль информацию
 		if(!this->noinfo) this->log->print("[+] start service: pid = %u", log_t::flag_t::INFO, getpid());
 		// Если таймер периодического запуска коллбека активирован, запускаем персистентную работу
-		if(this->persist){			
+		if(this->persist){
 			// Устанавливаем базу событий
-			this->timer.set(this->base);
+			this->timer.io.set(this->base);
+			// Устанавливаем текущий штамп времени
+			this->timer.stamp = this->fmk->unixTimestamp();
+			// Устанавливаем время задержки персистентного вызова
+			this->timer.delay = (this->persistInterval / (float) 1000.f);
 			// Устанавливаем функцию обратного вызова
-			this->timer.set <core_t, &core_t::persistent> (this);
+			this->timer.io.set <core_t, &core_t::persistent> (this);
 			// Запускаем работу таймера
-			this->timer.start(this->persistInterval / (float) 1000.f);
+			this->timer.io.start(this->timer.delay);
 		}
 	}
 }
@@ -256,13 +262,61 @@ void awh::Core::closedown() noexcept {
 	if(!this->noinfo) this->log->print("[-] stop service: pid = %u", log_t::flag_t::INFO, getpid());
 }
 /**
+ * executeTimers Метод принудительного исполнения работы таймеров
+ */
+void awh::Core::executeTimers() noexcept {
+	// Если персистентный таймер или пользовательские таймеры активны
+	if(this->persist || !this->timers.empty()){
+		// Выполняем получение текущего значения времени
+		const time_t date = this->fmk->unixTimestamp();
+		// Если таймер периодического запуска коллбека активирован
+		if(this->persist){
+			// Если таймер не исполнился в заданное время
+			if(((date - this->timer.stamp) / (float) 1000.f) >= this->timer.delay)
+				// Выполняем функцию обратного вызова таймера
+				this->persistent(this->timer.io, ev::TIMER);
+		}
+		// Если список таймеров не пустой
+		if(!this->timers.empty()){
+			// Переходим по всем таймерам
+			for(auto it = this->timers.begin(); it != this->timers.end();){
+				// Если таймер не исполнился в заданное время
+				if(((date - it->second->stamp) / (float) 1000.f) >= it->second->delay){
+					// Выполняем остановку таймера
+					it->second->io.stop();
+					// Устанавливаем текущий штамп времени
+					it->second->stamp = date;
+					// Если функция обратного вызова установлена
+					if(it->second->fn != nullptr)
+						// Выполняем функцию обратного вызова
+						it->second->fn(it->first, this);
+					// Если персистентная работа не установлена, удаляем таймер
+					if(!it->second->persist)
+						// Удаляем объект таймера
+						it = this->timers.erase(it);
+					// Если нужно продолжить работу таймера
+					else {
+						// Запускаем таймер снова
+						it->second->io.start(it->second->delay);
+						// Выполняем смещение итератора
+						++it;
+					}
+				// Выполняем смещение итератора
+				} else ++it;
+			}
+		}
+	}
+}
+/**
  * persistent Функция персистентного вызова по таймеру
  * @param timer   объект события таймера
  * @param revents идентификатор события
  */
 void awh::Core::persistent(ev::timer & timer, int revents) noexcept {
 	// Выполняем остановку таймера
-	timer.stop();	
+	timer.stop();
+	// Устанавливаем текущий штамп времени
+	this->timer.stamp = this->fmk->unixTimestamp();
 	// Если список воркеров существует
 	if(!this->workers.empty()){
 		// Переходим по всему списку воркеров
@@ -278,8 +332,10 @@ void awh::Core::persistent(ev::timer & timer, int revents) noexcept {
 			}
 		}
 	}
+	// Устанавливаем время задержки персистентного вызова
+	this->timer.delay = (this->persistInterval / (float) 1000.f);
 	// Если нужно продолжить работу таймера
-	timer.start(this->persistInterval / (float) 1000.f);
+	timer.start(this->timer.delay);
 }
 /**
  * clean Метод буфера событий
@@ -565,7 +621,7 @@ void awh::Core::unbind(Core * core) noexcept {
 		// Если таймер периодического запуска коллбека активирован
 		if(core->persist)
 			// Останавливаем работу персистентного таймера
-			core->timer.stop();
+			core->timer.io.stop();
 		// Выполняем разблокировку потока
 		core->mtx.status.unlock();
 		// Выполняем отключение всех клиентов
@@ -633,7 +689,7 @@ void awh::Core::stop() noexcept {
 		// Если таймер периодического запуска коллбека активирован
 		if(this->persist)
 			// Останавливаем работу персистентного таймера
-			this->timer.stop();
+			this->timer.io.stop();
 		// Выполняем разблокировку потока
 		this->mtx.status.unlock();
 		// Выполняем отключение всех клиентов
@@ -804,7 +860,7 @@ void awh::Core::rebase() noexcept {
 				// Выполняем блокировку потока
 				this->mtx.timer.lock();
 				// Выполняем остановку таймера
-				it->second->timer.stop();
+				it->second->io.stop();
 				// Устанавливаем функцию обратного вызова
 				mainTimers.at(index).fn = it->second->fn;
 				// Устанавливаем задержку времени в миллисекундах
@@ -1161,7 +1217,7 @@ void awh::Core::clearTimers() noexcept {
 		// Переходим по всем таймерам
 		for(auto it = this->timers.begin(); it != this->timers.end();){
 			// Выполняем остановку таймера
-			it->second->timer.stop();
+			it->second->io.stop();
 			// Удаляем таймер из списка
 			it = this->timers.erase(it);
 		}
@@ -1181,7 +1237,7 @@ void awh::Core::clearTimer(const u_short id) noexcept {
 		// Если идентификатор таймера найден
 		if(it != this->timers.end()){
 			// Выполняем остановку таймера
-			it->second->timer.stop();
+			it->second->io.stop();
 			// Удаляем объект таймера
 			this->timers.erase(it);
 		}
@@ -1214,12 +1270,14 @@ u_short awh::Core::setTimeout(const time_t delay, function <void (const u_short,
 		ret.first->second->fn = callback;
 		// Устанавливаем задержку времени в миллисекундах
 		ret.first->second->delay = (delay / (float) 1000.f);
+		// Устанавливаем текущий штамп времени
+		ret.first->second->stamp = this->fmk->unixTimestamp();
 		// Устанавливаем базу событий
-		ret.first->second->timer.set(this->base);
+		ret.first->second->io.set(this->base);
 		// Устанавливаем функцию обратного вызова
-		ret.first->second->timer.set <timer_t, &timer_t::callback> (ret.first->second.get());
+		ret.first->second->io.set <timer_t, &timer_t::callback> (ret.first->second.get());
 		// Запускаем работу таймера
-		ret.first->second->timer.start(ret.first->second->delay);
+		ret.first->second->io.start(ret.first->second->delay);
 	}
 	// Выводим результат
 	return result;
@@ -1253,12 +1311,14 @@ u_short awh::Core::setInterval(const time_t delay, function <void (const u_short
 		ret.first->second->persist = true;
 		// Устанавливаем задержку времени в миллисекундах
 		ret.first->second->delay = (delay / (float) 1000.f);
+		// Устанавливаем текущий штамп времени
+		ret.first->second->stamp = this->fmk->unixTimestamp();
 		// Устанавливаем базу событий
-		ret.first->second->timer.set(this->base);
+		ret.first->second->io.set(this->base);
 		// Устанавливаем функцию обратного вызова
-		ret.first->second->timer.set <timer_t, &timer_t::callback> (ret.first->second.get());
+		ret.first->second->io.set <timer_t, &timer_t::callback> (ret.first->second.get());
 		// Запускаем работу таймера
-		ret.first->second->timer.start(ret.first->second->delay);
+		ret.first->second->io.start(ret.first->second->delay);
 	}
 	// Выводим результат
 	return result;
