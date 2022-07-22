@@ -1090,6 +1090,13 @@ void awh::client::Core::transfer(const method_t method, const size_t aid) noexce
 					while(wrk->status.real == client::worker_t::mode_t::CONNECT){
 						// Выполняем зануление буфера
 						memset(buffer, 0, sizeof(buffer));
+						// Если дочерние активные подключения есть и сокет блокирующий
+						if(!adj->bev.noblock && !this->cores.empty()){
+							// Устанавливаем флаг сокета, что он теперь неблокирующий
+							adj->bev.noblock = true;
+							// Переводим сокет в не блокирующий режим
+							this->socket.nonBlocking(adj->bev.socket);
+						}
 						// Если SSL клиент разрешён
 						if(adj->ssl.mode)
 							// Выполняем чтение из защищённого сокета
@@ -1098,10 +1105,10 @@ void awh::client::Core::transfer(const method_t method, const size_t aid) noexce
 						else bytes = recv(adj->bev.socket, buffer, sizeof(buffer), 0);
 						// Останавливаем таймаут ожидания на чтение из сокета
 						adj->bev.timer.read.stop();
+						// Выполняем принудительное исполнение таймеров
+						if(!adj->bev.noblock) this->executeTimers();
 						// Если данные получены
 						if(bytes > 0){
-							// Выполняем принудительное исполнение таймеров
-							this->executeTimers();
 							// Если время ожидания записи данных установлено
 							if(adj->timeRead > 0)
 								// Запускаем ожидание чтения данных с сервера
@@ -1142,10 +1149,14 @@ void awh::client::Core::transfer(const method_t method, const size_t aid) noexce
 							}
 						// Если данные не могут быть прочитаны
 						} else {
-							// Выполняем обработку ошибок
-							this->error(bytes, aid);
-							// Выполняем отключение от сервера
-							this->close(aid);
+							// Если сокет находится в блокирующем режиме
+							if((bytes < 0) && !adj->bev.noblock)
+								// Выполняем обработку ошибок
+								this->error(bytes, aid);
+							// Если подключение разорвано или сокет находится в блокирующем режиме
+							if((bytes == 0) || !adj->bev.noblock)
+								// Выполняем отключение от сервера
+								this->close(aid);
 							// Выходим из цикла
 							break;
 						}
@@ -1156,7 +1167,7 @@ void awh::client::Core::transfer(const method_t method, const size_t aid) noexce
 					// Останавливаем таймаут ожидания на запись в сокет
 					adj->bev.timer.write.stop();
 					// Выполняем принудительное исполнение таймеров
-					this->executeTimers();
+					if(!adj->bev.noblock) this->executeTimers();
 					// Если время ожидания записи данных установлено
 					if(adj->timeWrite > 0)
 						// Запускаем ожидание записи данных на сервер

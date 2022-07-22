@@ -266,7 +266,7 @@ void awh::Core::closedown() noexcept {
  */
 void awh::Core::executeTimers() noexcept {
 	// Если персистентный таймер или пользовательские таймеры активны
-	if(this->persist || !this->timers.empty()){
+	if((this->type == type_t::CLIENT) && (this->persist || !this->timers.empty())){
 		// Выполняем получение текущего значения времени
 		const time_t date = this->fmk->unixTimestamp();
 		// Если таймер периодического запуска коллбека активирован
