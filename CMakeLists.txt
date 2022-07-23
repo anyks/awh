@@ -160,7 +160,7 @@ set(SOURCE_FILES
 #    "${CMAKE_SOURCE_DIR}/src/server/socks5.cpp"
     "${CMAKE_SOURCE_DIR}/src/core/core.cpp"
     "${CMAKE_SOURCE_DIR}/src/core/client.cpp"
-#    "${CMAKE_SOURCE_DIR}/src/core/server.cpp"
+    "${CMAKE_SOURCE_DIR}/src/core/server.cpp"
     "${CMAKE_SOURCE_DIR}/src/socks5/core.cpp"
     "${CMAKE_SOURCE_DIR}/src/socks5/client.cpp"
 #    "${CMAKE_SOURCE_DIR}/src/socks5/server.cpp"

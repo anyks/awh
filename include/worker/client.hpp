@@ -58,9 +58,9 @@ namespace awh {
 				client::http_t http;
 			public:
 				// Создаём объект фреймворка
-				const fmk_t * fmk = nullptr;
+				const fmk_t * fmk;
 				// Создаём объект работы с логами
-				const log_t * log = nullptr;
+				const log_t * log;
 			public:
 				/**
 				 * Proxy Конструктор
@@ -111,8 +111,19 @@ namespace awh {
 					/**
 					 * Status Конструктор
 					 */
-					Status() : real(mode_t::DISCONNECT), wait(mode_t::DISCONNECT), work(work_t::ALLOW) {}
+					Status() noexcept : real(mode_t::DISCONNECT), wait(mode_t::DISCONNECT), work(work_t::ALLOW) {}
 				} status_t;
+			public:
+				// Идентификатор DNS запроса
+				size_t did;
+			private:
+				// Текущее количество попыток
+				u_short attempt;
+			public:
+				// Выполнять остановку работы воркера, после закрытия подключения
+				bool stop;
+				// Флаг получения данных
+				bool acquisition;
 			public:
 				// Параметры прокси-сервера
 				proxy_t proxy;
@@ -120,27 +131,16 @@ namespace awh {
 				status_t status;
 				// Параметры адреса для запроса
 				uri_t::url_t url;
-			public:
-				// Идентификатор DNS запроса
-				size_t did = 0;
-			private:
-				// Текущее количество попыток
-				u_short attempt = 0;
-			public:
-				// Выполнять остановку работы воркера, после закрытия подключения
-				bool stop = false;
-				// Флаг получения данных
-				bool acquisition = false;
 			private:
 				// Устанавливаем тип подключения
-				connect_t connect = connect_t::SERVER;
+				connect_t connect;
 			public:
 				// Функция обратного вызова при открытии подключения к прокси-серверу
-				function <void (const size_t, const size_t, awh::Core *)> connectProxyFn = nullptr;
+				function <void (const size_t, const size_t, awh::Core *)> connectProxyFn;
 				// Функция обратного вызова при получении данных с прокси-сервера
-				function <void (const char *, const size_t, const size_t, const size_t, awh::Core *)> readProxyFn = nullptr;
+				function <void (const char *, const size_t, const size_t, const size_t, awh::Core *)> readProxyFn;
 				// Функция обратного вызова при записи данных с прокси-сервера
-				function <void (const char *, const size_t, const size_t, const size_t, awh::Core *)> writeProxyFn = nullptr;
+				function <void (const char *, const size_t, const size_t, const size_t, awh::Core *)> writeProxyFn;
 			public:
 				/**
 				 * clear Метод очистки
@@ -167,7 +167,11 @@ namespace awh {
 				 * @param fmk объект фреймворка
 				 * @param log объект для работы с логами
 				 */
-				Worker(const fmk_t * fmk, const log_t * log) noexcept : awh::worker_t(fmk, log), proxy(fmk, log) {}
+				Worker(const fmk_t * fmk, const log_t * log) noexcept :
+				 awh::worker_t(fmk, log), did(0), attempt(0),
+				 stop(false), acquisition(false), proxy(fmk, log),
+				 connect(connect_t::SERVER), connectProxyFn(nullptr),
+				 readProxyFn(nullptr), writeProxyFn(nullptr) {}
 				/**
 				 * ~Worker Деструктор
 				 */

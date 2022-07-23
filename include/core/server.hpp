@@ -23,7 +23,6 @@
 /**
  * Наши модули
  */
-#include <net/if.hpp>
 #include <core/core.hpp>
 #include <worker/server.hpp>
 
@@ -43,11 +42,13 @@ namespace awh {
 		 */
 		typedef class Core : public awh::core_t {
 			private:
+				// Worker Устанавливаем дружбу с классом сетевого ядра
+				friend class Worker;
+			private:
 				/**
 				 * Mutex Объект основных мютексов
 				 */
 				typedef struct Mutex {
-					mutex thread;           // Для работы в дочерних потоках
 					recursive_mutex close;  // Для закрытия подключения
 					recursive_mutex accept; // Для одобрения подключения
 					recursive_mutex system; // Для установки системных параметров
@@ -59,58 +60,38 @@ namespace awh {
 				// Объект для работы с сетевым интерфейсом
 				ifnet_t ifnet;
 			private:
+				// Количество доступных потоков
+				size_t threads;
+			private:
+				// Список пидов процессов
+				set <pid_t> pids;
 				// Список блокированных объектов
 				set <size_t> locking;
 			private:
 				/**
 				 * resolver Функция выполнения резолвинга домена
 				 * @param ip  полученный IP адрес
-				 * @param ctx передаваемый контекст
-				 */
-				static void resolver(const string ip, void * ctx) noexcept;
-				/**
-				 * read Функция чтения данных с сокета сервера
-				 * @param bev буфер события
-				 * @param ctx передаваемый контекст
-				 */
-				static void read(struct bufferevent * bev, void * ctx) noexcept;
-				/**
-				 * write Функция записи данных в сокет сервера
-				 * @param bev буфер события
-				 * @param ctx передаваемый контекст
-				 */
-				static void write(struct bufferevent * bev, void * ctx) noexcept;
-				/**
-				 * event Функция обработка входящих событий с сервера
-				 * @param bev    буфер события
-				 * @param events произошедшее событие
-				 * @param ctx    передаваемый контекст
-				 */
-				static void event(struct bufferevent * bev, const short events, void * ctx) noexcept;
-				/**
-				 * accept Функция подключения к серверу
-				 * @param fd    файловый дескриптор (сокет)
-				 * @param event событие на которое сработала функция обратного вызова
-				 * @param ctx   объект передаваемый как значение
-				 */
-				static void accept(const evutil_socket_t fd, const short event, void * ctx) noexcept;
-				/**
-				 * thread Функция сборки чанков бинарного буфера в многопоточном режиме
-				 * @param adj объект адъютанта
 				 * @param wrk объект воркера
 				 */
-				static void thread(const awh::worker_t::adj_t & adj, const server::worker_t & wrk) noexcept;
+				void resolver(const string & ip, worker_t * wrk) noexcept;
 			private:
-				/**
-				 * tuning Метод тюннинга буфера событий
-				 * @param aid идентификатор адъютанта
-				 */
-				void tuning(const size_t aid) noexcept;
 				/**
 				 * close Метод закрытия сокета
 				 * @param fd файловый дескриптор (сокет) для закрытия
 				 */
-				void close(const evutil_socket_t fd) noexcept;
+				void close(const int fd) noexcept;
+				/**
+				 * accept Функция подключения к серверу
+				 * @param fd  файловый дескриптор (сокет) подключившегося клиента
+				 * @param wid идентификатор воркера
+				 */
+				void accept(const int fd, const size_t wid) noexcept;
+			private:
+				/**
+				 * detach Метод отсоединения от родительского процесса
+				 * @param wid идентификатор воркера
+				 */
+				void detach(const size_t wid) noexcept;
 			public:
 				/**
 				 * close Метод отключения всех воркеров
@@ -137,6 +118,18 @@ namespace awh {
 				 * @param aid идентификатор адъютанта
 				 */
 				void close(const size_t aid) noexcept;
+			private:
+				/**
+				 * timeout Функция обратного вызова при срабатывании таймаута
+				 * @param aid идентификатор адъютанта
+				 */
+				void timeout(const size_t aid) noexcept;
+				/**
+				 * write Функция обратного вызова при записи данных в сокет
+				 * @param method метод режима работы
+				 * @param aid    идентификатор адъютанта
+				 */
+				void transfer(const method_t method, const size_t aid) noexcept;
 			public:
 				/**
 				 * setBandwidth Метод установки пропускной способности сети
@@ -151,6 +144,11 @@ namespace awh {
 				 * @param mode флаг для установки
 				 */
 				void setIpV6only(const bool mode) noexcept;
+				/**
+				 * setThreads Метод установки максимального количества потоков
+				 * @param threads максимальное количество потоков
+				 */
+				void setThreads(const size_t threads = 0) noexcept;
 				/**
 				 * setTotal Метод установки максимального количества одновременных подключений
 				 * @param wid   идентификатор воркера

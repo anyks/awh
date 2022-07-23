@@ -71,7 +71,7 @@ namespace awh {
 	 */
 	typedef class Core {
 		private:
-			// Worker Устанавливаем дружбу с классом сетевого ядра
+			// Worker Устанавливаем дружбу с классом воркера
 			friend class Worker;
 		protected:
 			/**
@@ -401,32 +401,26 @@ namespace awh {
 			virtual void remove() noexcept;
 		public:
 			/**
-			 * run Метод запуска сервера воркером
-			 * @param wid идентификатор воркера
+			 * close Метод закрытия подключения воркера
+			 * @param aid идентификатор адъютанта
 			 */
-			virtual void run(const size_t wid) noexcept;
-			/**
-			 * open Метод открытия подключения воркером
-			 * @param wid идентификатор воркера
-			 */
-			virtual void open(const size_t wid) noexcept;
+			virtual void close(const size_t aid) noexcept;
 			/**
 			 * remove Метод удаления воркера из биндинга
 			 * @param wid идентификатор воркера
 			 */
 			virtual void remove(const size_t wid) noexcept;
-		public:
-			/**
-			 * close Метод закрытия подключения воркера
-			 * @param aid идентификатор адъютанта
-			 */
-			virtual void close(const size_t aid) noexcept;
 		private:
 			/**
 			 * timeout Функция обратного вызова при срабатывании таймаута
 			 * @param aid идентификатор адъютанта
 			 */
 			virtual void timeout(const size_t aid) noexcept;
+			/**
+			 * connected Функция обратного вызова при удачном подключении к серверу
+			 * @param aid идентификатор адъютанта
+			 */
+			virtual void connected(const size_t aid) noexcept;
 			/**
 			 * write Функция обратного вызова при записи данных в сокет
 			 * @param method метод режима работы

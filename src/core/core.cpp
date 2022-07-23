@@ -64,6 +64,23 @@ void awh::worker_t::adj_t::write(ev::io & watcher, int revents) noexcept {
 	}
 }
 /**
+ * connect Функция обратного вызова при подключении к серверу
+ * @param watcher объект события подключения
+ * @param revents идентификатор события
+ */
+void awh::worker_t::adj_t::connect(ev::io & watcher, int revents) noexcept {
+	// Выполняем остановку чтения
+	watcher.stop();
+	// Получаем объект подключения
+	worker_t * wrk = const_cast <worker_t *> (this->parent);
+	// Получаем объект ядра клиента
+	core_t * core = const_cast <core_t *> (wrk->core);
+	// Останавливаем таймаут ожидания на запись в сокет
+	this->bev.timer.write.stop();
+	// Выполняем передачу данных об удачном подключении к серверу
+	core->connected(this->aid);
+}
+/**
  * timeout Функция обратного вызова при срабатывании таймаута
  * @param timer   объект события таймаута
  * @param revents идентификатор события
@@ -763,20 +780,12 @@ void awh::Core::remove() noexcept {
 	/** Реализация метода не требуется **/
 }
 /**
- * run Метод запуска сервера воркером
- * @param wid идентификатор воркера
+ * close Метод закрытия подключения воркера
+ * @param aid идентификатор адъютанта
  */
-void awh::Core::run(const size_t wid) noexcept {
+void awh::Core::close(const size_t aid) noexcept {
 	// Экранируем ошибку неиспользуемой переменной
-	(void) wid;
-}
-/**
- * open Метод открытия подключения воркером
- * @param wid идентификатор воркера
- */
-void awh::Core::open(const size_t wid) noexcept {
-	// Экранируем ошибку неиспользуемой переменной
-	(void) wid;
+	(void) aid;
 }
 /**
  * remove Метод удаления воркера из биндинга
@@ -794,18 +803,18 @@ void awh::Core::remove(const size_t wid) noexcept {
 	}
 }
 /**
- * close Метод закрытия подключения воркера
- * @param aid идентификатор адъютанта
- */
-void awh::Core::close(const size_t aid) noexcept {
-	// Экранируем ошибку неиспользуемой переменной
-	(void) aid;
-}
-/**
  * timeout Функция обратного вызова при срабатывании таймаута
  * @param aid идентификатор адъютанта
  */
 void awh::Core::timeout(const size_t aid) noexcept {
+	// Экранируем ошибку неиспользуемой переменной
+	(void) aid;
+}
+/**
+ * connected Функция обратного вызова при удачном подключении к серверу
+ * @param aid идентификатор адъютанта
+ */
+void awh::Core::connected(const size_t aid) noexcept {
 	// Экранируем ошибку неиспользуемой переменной
 	(void) aid;
 }

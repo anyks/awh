@@ -28,15 +28,17 @@ void awh::Worker::clear() noexcept {
  * @return    адрес интернет подключения адъютанта
  */
 const string & awh::Worker::ip(const size_t aid) const noexcept {
+	// Результат работы функции
+	static const string result = "";
 	// Если идентификатор адъютанта передан
 	if(aid > 0){
 		// Выполняем поиск адъютанта
 		auto it = this->adjutants.find(aid);
 		// Если адъютант найден, выводим IP адрес
-		if(it != this->adjutants.end()) return it->second.get()->ip;
+		if(it != this->adjutants.end()) return it->second->ip;
 	}
 	// Выводим результат
-	return this->result;
+	return result;
 }
 /**
  * mac Метод получения MAC адреса адъютанта
@@ -44,13 +46,15 @@ const string & awh::Worker::ip(const size_t aid) const noexcept {
  * @return    адрес устройства адъютанта
  */
 const string & awh::Worker::mac(const size_t aid) const noexcept {
+	// Результат работы функции
+	static const string result = "";
 	// Если идентификатор адъютанта передан
 	if(aid > 0){
 		// Выполняем поиск адъютанта
 		auto it = this->adjutants.find(aid);
 		// Если адъютант найден, выводим MAC адрес
-		if(it != this->adjutants.end()) return it->second.get()->mac;
+		if(it != this->adjutants.end()) return it->second->mac;
 	}
 	// Выводим результат
-	return this->result;
+	return result;
 }

@@ -18,6 +18,7 @@
 /**
  * Наши модули
  */
+#include <net/if.hpp>
 #include <worker/core.hpp>
 
 // Подписываемся на стандартное пространство имён
@@ -41,32 +42,43 @@ namespace awh {
 				// Core Устанавливаем дружбу с классом ядра
 				friend class awh::Core;
 			protected:
-				// Файловый дескриптор сервера
-				int fd = -1;
-				// Порт сервера
-				u_int port = SERVER_PORT;
-				// Хост сервера
-				string host = SERVER_HOST;
-				// Максимальное количество одновременных подключений
-				u_short total = SERVER_TOTAL_CONNECT;
-			protected:
 				// Событие подключения к серверу
-				struct event * ev = nullptr;
+				ev::io io;
+			protected:
+				// Файловый дескриптор сервера
+				int fd;
+				// Порт сервера
+				u_int port;
+				// Хост сервера
+				string host;
+			protected:
+				// Максимальное количество одновременных подключений
+				u_short total;
 			public:
 				// Функция обратного вызова при подключении нового клиента
-				function <bool (const string &, const string &, const size_t, awh::Core *, void *)> acceptFn = nullptr;
+				function <bool (const string &, const string &, const size_t, awh::Core *)> acceptFn;
 			public:
 				/**
 				 * clear Метод очистки
 				 */
 				void clear() noexcept;
+			private:
+				/**
+				 * accept Функция подключения к серверу
+				 * @param watcher объект события подключения
+				 * @param revents идентификатор события
+				 */
+				void accept(ev::io & watcher, int revents) noexcept;
 			public:
 				/**
 				 * Worker Конструктор
 				 * @param fmk объект фреймворка
 				 * @param log объект для работы с логами
 				 */
-				Worker(const fmk_t * fmk, const log_t * log) noexcept : awh::worker_t(fmk, log) {}
+				Worker(const fmk_t * fmk, const log_t * log) noexcept :
+				 awh::worker_t(fmk, log), fd(-1),
+				 port(SERVER_PORT), host(SERVER_HOST),
+				 total(SERVER_TOTAL_CONNECT), acceptFn(nullptr) {}
 				/**
 				 * ~Worker Деструктор
 				 */

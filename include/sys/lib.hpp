@@ -16,7 +16,7 @@
 #define __AWH_CONFIG__
 
 // Версия приложения
-#define AWH_VERSION "1.9.1"
+#define AWH_VERSION "2.0.0"
 // Короткое название библиотеки
 #define AWH_SHORT_NAME "AWH"
 // Название библиотеки
@@ -51,6 +51,8 @@
 #define READ_TIMEOUT 30
 // Интервал времени для записи данных на сервере в секундах
 #define WRITE_TIMEOUT 0
+// Максимальное количество потоков сервера
+#define MAX_COUNT_THREADS 1000
 // Максимальное время подключения
 #define KEEPALIVE_TIMEOUT 15000
 // Интервал времени на проверку подключения с сервером в милисекундах

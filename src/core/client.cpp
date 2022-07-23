@@ -16,108 +16,6 @@
 #include <core/client.hpp>
 
 /**
- * connect Функция обратного вызова при подключении к серверу
- * @param watcher объект события подключения
- * @param revents идентификатор события
- */
-void awh::worker_t::adj_t::connect(ev::io & watcher, int revents) noexcept {
-	// Выполняем остановку чтения
-	watcher.stop();
-	// Останавливаем таймаут ожидания на запись в сокет
-	this->bev.timer.write.stop();
-	// Получаем объект подключения
-	client::worker_t * wrk = (client::worker_t *) const_cast <awh::worker_t *> (this->parent);
-	// Если подключение ещё существует
-	if((this->fmk != nullptr) && (wrk->core != nullptr)){
-		// Получаем объект ядра клиента
-		const client::core_t * core = reinterpret_cast <const client::core_t *> (wrk->core);
-		// Если список адъютантов не пустой и адъютант найден
-		if(!core->adjutants.empty() && (core->adjutants.count(this->aid) > 0)){
-			// Получаем URL параметры запроса
-			const uri_t::url_t & url = (wrk->isProxy() ? wrk->proxy.url : wrk->url);
-			// Получаем хост сервера
-			const string & host = (!url.ip.empty() ? url.ip : url.domain);
-			// Если подключение удачное и работа воркера разрешена
-			if(wrk->status.work == client::worker_t::work_t::ALLOW){
-				// Снимаем флаг получения данных
-				wrk->acquisition = false;
-				// Устанавливаем статус подключения к серверу
-				wrk->status.real = client::worker_t::mode_t::CONNECT;
-				// Устанавливаем флаг ожидания статуса
-				wrk->status.wait = client::worker_t::mode_t::DISCONNECT;
-				// Выполняем очистку существующих таймаутов
-				const_cast <client::core_t *> (core)->clearTimeout(wrk->wid);
-
-				/*
-				// Определяем тип подключения
-				switch(core->net.family){
-					// Резолвер IPv4, создаём резолвер
-					case AF_INET:
-						// Выполняем отмену ранее выполненных запросов DNS
-						const_cast <client::core_t *> (core)->dns4.cancel(wrk->did);
-					break;
-					// Резолвер IPv6, создаём резолвер
-					case AF_INET6:
-						// Выполняем отмену ранее выполненных запросов DNS
-						const_cast <client::core_t *> (core)->dns6.cancel(wrk->did);
-					break;
-				}
-				*/
-
-				// Устанавливаем сокет для записи
-				this->bev.event.read.set(this->bev.socket, ev::READ);
-				// Устанавливаем сокет для записи
-				this->bev.event.write.set(this->bev.socket, ev::WRITE);
-				// Устанавливаем базу событий
-				this->bev.event.read.set(const_cast <client::core_t *> (core)->base);
-				// Устанавливаем базу событий
-				this->bev.event.write.set(const_cast <client::core_t *> (core)->base);
-				// Устанавливаем событие на чтение данных подключения
-				this->bev.event.read.set <awh::worker_t::adj_t, &awh::worker_t::adj_t::read> (this);
-				// Устанавливаем событие на запись данных подключения
-				this->bev.event.write.set <awh::worker_t::adj_t, &awh::worker_t::adj_t::write> (this);
-				// Запускаем чтение данных с сервера
-				this->bev.event.read.start();
-				// Запускаем запись данных на сервер
-				this->bev.event.write.start();
-				// Если флаг ожидания входящих сообщений, активирован
-				if(wrk->wait){
-					// Если время ожидания чтения данных установлено
-					if(this->timeRead > 0){
-						// Устанавливаем базу событий
-						this->bev.timer.read.set(const_cast <client::core_t *> (core)->base);
-						// Устанавливаем событие на чтение данных подключения
-						this->bev.timer.read.set <awh::worker_t::adj_t, &awh::worker_t::adj_t::timeout> (this);
-						// Запускаем ожидание чтения данных с сервера
-						this->bev.timer.read.start(this->timeRead);
-					}
-					// Если время ожидания записи данных установлено
-					if(this->timeWrite > 0){
-						// Устанавливаем базу событий
-						this->bev.timer.write.set(const_cast <client::core_t *> (core)->base);
-						// Устанавливаем событие на запись данных подключения
-						this->bev.timer.write.set <awh::worker_t::adj_t, &awh::worker_t::adj_t::timeout> (this);
-						// Запускаем ожидание записи данных на сервер
-						this->bev.timer.write.start(this->timeWrite);
-					}
-				}
-				// Выводим в лог сообщение
-				if(!core->noinfo) this->log->print("connect client to server [%s:%d]", log_t::flag_t::INFO, host.c_str(), url.port);
-				// Если подключение производится через, прокси-сервер
-				if(wrk->isProxy()){
-					// Выполняем функцию обратного вызова для прокси-сервера
-					if(wrk->connectProxyFn != nullptr) wrk->connectProxyFn(this->aid, wrk->wid, const_cast <awh::core_t *> (wrk->core));
-				// Выполняем функцию обратного вызова
-				} else if(wrk->connectFn != nullptr) wrk->connectFn(this->aid, wrk->wid, const_cast <awh::core_t *> (wrk->core));
-				// Выходим из функции
-				return;
-			}
-		}
-		// Выполняем отключение от сервера
-		const_cast <client::core_t *> (core)->close(this->aid);
-	}
-}
-/**
  * callback Функция обратного вызова
  * @param timer   объект события таймера
  * @param revents идентификатор события
@@ -146,16 +44,16 @@ void awh::client::Core::Timeout::callback(ev::timer & timer, int revents) noexce
 			// Определяем режим работы клиента
 			switch((uint8_t) this->mode){
 				// Если режим работы клиента - это подключение
-				case (uint8_t) client::worker_t::mode_t::CONNECT:
+				case (uint8_t) worker_t::mode_t::CONNECT:
 					// Выполняем новое подключение
 					this->core->connect(this->wid);
 				break;
 				// Если режим работы клиента - это переподключение
-				case (uint8_t) client::worker_t::mode_t::RECONNECT: {
+				case (uint8_t) worker_t::mode_t::RECONNECT: {
 					// Получаем объект воркера
-					client::worker_t * wrk = (client::worker_t *) const_cast <awh::worker_t *> (it->second);
+					worker_t * wrk = (worker_t *) const_cast <awh::worker_t *> (it->second);
 					// Устанавливаем флаг ожидания статуса
-					wrk->status.wait = client::worker_t::mode_t::DISCONNECT;
+					wrk->status.wait = worker_t::mode_t::DISCONNECT;
 					// Выполняем новую попытку подключиться
 					this->core->reconnect(wrk->wid);
 				} break;
@@ -168,7 +66,7 @@ void awh::client::Core::Timeout::callback(ev::timer & timer, int revents) noexce
  * @param ip  полученный IP адрес
  * @param wrk объект воркера
  */
-void awh::client::Core::resolver(const string & ip, client::worker_t * wrk) noexcept {
+void awh::client::Core::resolver(const string & ip, worker_t * wrk) noexcept {
 	// Если IP адрес получен
 	if(!ip.empty()){
 		// Если прокси-сервер активен
@@ -182,14 +80,14 @@ void awh::client::Core::resolver(const string & ip, client::worker_t * wrk) noex
 		// Определяем режим работы клиента
 		switch((uint8_t) wrk->status.wait){
 			// Если режим работы клиента - это подключение
-			case (uint8_t) client::worker_t::mode_t::CONNECT:
+			case (uint8_t) worker_t::mode_t::CONNECT:
 				// Выполняем новое подключение к серверу
 				core->connect(wrk->wid);
 			break;
 			// Если режим работы клиента - это переподключение
-			case (uint8_t) client::worker_t::mode_t::RECONNECT:
+			case (uint8_t) worker_t::mode_t::RECONNECT:
 				// Выполняем ещё одну попытку переподключиться к серверу
-				core->createTimeout(wrk->wid, client::worker_t::mode_t::CONNECT);
+				core->createTimeout(wrk->wid, worker_t::mode_t::CONNECT);
 			break;
 		}
 		// Выходим из функции
@@ -197,11 +95,11 @@ void awh::client::Core::resolver(const string & ip, client::worker_t * wrk) noex
 	// Если IP адрес не получен но нужно поддерживать постоянное подключение
 	} else if(wrk->alive) {
 		// Если ожидание переподключения не остановлено ранее
-		if(wrk->status.wait != client::worker_t::mode_t::DISCONNECT){
+		if(wrk->status.wait != worker_t::mode_t::DISCONNECT){
 			// Получаем объект ядра подключения
 			core_t * core = (core_t *) const_cast <awh::core_t *> (wrk->core);
 			// Выполняем ещё одну попытку переподключиться к серверу
-			core->createTimeout(wrk->wid, client::worker_t::mode_t::RECONNECT);
+			core->createTimeout(wrk->wid, worker_t::mode_t::RECONNECT);
 		}
 		// Выходим из функции, чтобы попытаться подключиться ещё раз
 		return;
@@ -221,7 +119,7 @@ void awh::client::Core::tuning(const size_t aid) noexcept {
 		// Получаем объект адъютанта
 		awh::worker_t::adj_t * adj = const_cast <awh::worker_t::adj_t *> (it->second);
 		// Получаем объект воркера
-		client::worker_t * wrk = (client::worker_t *) const_cast <awh::worker_t *> (adj->parent);
+		worker_t * wrk = (worker_t *) const_cast <awh::worker_t *> (adj->parent);
 		// Получаем объект ядра клиента
 		const core_t * core = reinterpret_cast <const core_t *> (wrk->core);
 		// Разрешаем чтение данных с сокета
@@ -264,19 +162,19 @@ void awh::client::Core::connect(const size_t wid) noexcept {
 		// Если воркер найден
 		if(it != this->workers.end()){
 			// Получаем объект воркера
-			client::worker_t * wrk = (client::worker_t *) const_cast <awh::worker_t *> (it->second);
+			worker_t * wrk = (worker_t *) const_cast <awh::worker_t *> (it->second);
 			// Если подключение ещё не выполнено и выполнение работ разрешено
-			if((wrk->status.real == client::worker_t::mode_t::DISCONNECT) && (wrk->status.work == client::worker_t::work_t::ALLOW)){
+			if((wrk->status.real == worker_t::mode_t::DISCONNECT) && (wrk->status.work == worker_t::work_t::ALLOW)){
 				// Размер структуры подключения
 				socklen_t size = 0;
 				// Объект подключения
 				struct sockaddr * sin = nullptr;
 				// Запрещаем выполнение работы
-				wrk->status.work = client::worker_t::work_t::DISALLOW;
+				wrk->status.work = worker_t::work_t::DISALLOW;
 				// Устанавливаем флаг ожидания статуса
-				wrk->status.wait = client::worker_t::mode_t::DISCONNECT;
+				wrk->status.wait = worker_t::mode_t::DISCONNECT;
 				// Устанавливаем статус подключения
-				wrk->status.real = client::worker_t::mode_t::PRECONNECT;
+				wrk->status.real = worker_t::mode_t::PRECONNECT;
 				// Получаем URL параметры запроса
 				const uri_t::url_t & url = (wrk->isProxy() ? wrk->proxy.url : wrk->url);
 				// Если в воркере есть подключённые клиенты
@@ -296,7 +194,7 @@ void awh::client::Core::connect(const size_t wid) noexcept {
 						// Если есть хотябы один заблокированный элемент, выходим
 						} else {
 							// Устанавливаем статус подключения
-							wrk->status.real = client::worker_t::mode_t::DISCONNECT;
+							wrk->status.real = worker_t::mode_t::DISCONNECT;
 							// Выходим из функции
 							return;
 						}
@@ -309,7 +207,7 @@ void awh::client::Core::connect(const size_t wid) noexcept {
 					// Создаём бъект адъютанта
 					unique_ptr <awh::worker_t::adj_t> adj(new awh::worker_t::adj_t(wrk, this->fmk, this->log));
 					// Если статус подключения не изменился
-					if(wrk->status.real == client::worker_t::mode_t::PRECONNECT){
+					if(wrk->status.real == worker_t::mode_t::PRECONNECT){
 						// Выполняем удаление контекста SSL
 						this->ssl.clear(adj->ssl);
 						// Выполняем получение контекста сертификата
@@ -328,8 +226,6 @@ void awh::client::Core::connect(const size_t wid) noexcept {
 								BIO_set_nbio(bio, 0);
 								// Выполняем установку BIO SSL
 								SSL_set_bio(adj->ssl.ssl, bio, bio);
-								// Флаг необходимо установить только для неблокирующего сокета
-								// SSL_set_mode(adj->ssl.ssl, SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER);
 								// Выполняем активацию клиента SSL
 								SSL_set_connect_state(adj->ssl.ssl);
 							// Если BIO SSL не создано
@@ -339,11 +235,11 @@ void awh::client::Core::connect(const size_t wid) noexcept {
 								// Запрещаем запись данных на сервер
 								adj->bev.locked.write = true;
 								// Разрешаем выполнение работы
-								wrk->status.work = client::worker_t::work_t::ALLOW;
+								wrk->status.work = worker_t::work_t::ALLOW;
 								// Устанавливаем статус подключения
-								wrk->status.real = client::worker_t::mode_t::DISCONNECT;
+								wrk->status.real = worker_t::mode_t::DISCONNECT;
 								// Устанавливаем флаг ожидания статуса
-								wrk->status.wait = client::worker_t::mode_t::DISCONNECT;
+								wrk->status.wait = worker_t::mode_t::DISCONNECT;
 								// Выводим сообщение об ошибке
 								this->log->print("BIO new socket is failed", log_t::flag_t::CRITICAL);
 								// Выполняем переподключение
@@ -386,9 +282,9 @@ void awh::client::Core::connect(const size_t wid) noexcept {
 							// Запрещаем запись данных на сервер
 							ret.first->second->bev.locked.write = true;
 							// Разрешаем выполнение работы
-							wrk->status.work = client::worker_t::work_t::ALLOW;
+							wrk->status.work = worker_t::work_t::ALLOW;
 							// Устанавливаем статус подключения
-							wrk->status.real = client::worker_t::mode_t::DISCONNECT;
+							wrk->status.real = worker_t::mode_t::DISCONNECT;
 							// Выводим в лог сообщение
 							this->log->print("connecting to host = %s, port = %u", log_t::flag_t::CRITICAL, url.ip.c_str(), url.port);
 							/*
@@ -416,9 +312,9 @@ void awh::client::Core::connect(const size_t wid) noexcept {
 							return;
 						}
 						// Разрешаем выполнение работы
-						wrk->status.work = client::worker_t::work_t::ALLOW;
+						wrk->status.work = worker_t::work_t::ALLOW;
 						// Если статус подключения изменился
-						if(wrk->status.real != client::worker_t::mode_t::PRECONNECT){
+						if(wrk->status.real != worker_t::mode_t::PRECONNECT){
 							// Запрещаем чтение данных с сервера
 							ret.first->second->bev.locked.read = true;
 							// Запрещаем запись данных на сервер
@@ -446,11 +342,11 @@ void awh::client::Core::connect(const size_t wid) noexcept {
 				// Если нужно выполнить автоматическое переподключение
 				if(wrk->alive){
 					// Разрешаем выполнение работы
-					wrk->status.work = client::worker_t::work_t::ALLOW;
+					wrk->status.work = worker_t::work_t::ALLOW;
 					// Устанавливаем статус подключения
-					wrk->status.real = client::worker_t::mode_t::DISCONNECT;
+					wrk->status.real = worker_t::mode_t::DISCONNECT;
 					// Устанавливаем флаг ожидания статуса
-					wrk->status.wait = client::worker_t::mode_t::DISCONNECT;
+					wrk->status.wait = worker_t::mode_t::DISCONNECT;
 					// Выполняем переподключение
 					this->reconnect(wid);
 					// Выходим из функции
@@ -458,9 +354,9 @@ void awh::client::Core::connect(const size_t wid) noexcept {
 				// Если все попытки исчерпаны
 				} else {
 					// Разрешаем выполнение работы
-					wrk->status.work = client::worker_t::work_t::ALLOW;
+					wrk->status.work = worker_t::work_t::ALLOW;
 					// Устанавливаем статус подключения
-					wrk->status.real = client::worker_t::mode_t::DISCONNECT;
+					wrk->status.real = worker_t::mode_t::DISCONNECT;
 					/*
 					// Определяем тип подключения
 					switch(this->net.family){
@@ -499,11 +395,11 @@ void awh::client::Core::reconnect(const size_t wid) noexcept {
 	// Если воркер найден
 	if(it != this->workers.end()){
 		// Получаем объект воркера
-		client::worker_t * wrk = (client::worker_t *) const_cast <awh::worker_t *> (it->second);
+		worker_t * wrk = (worker_t *) const_cast <awh::worker_t *> (it->second);
 		// Если параметры URL запроса переданы и выполнение работы разрешено
-		if(!wrk->url.empty() && (wrk->status.wait == client::worker_t::mode_t::DISCONNECT) && (wrk->status.work == client::worker_t::work_t::ALLOW)){
+		if(!wrk->url.empty() && (wrk->status.wait == worker_t::mode_t::DISCONNECT) && (wrk->status.work == worker_t::work_t::ALLOW)){
 			// Устанавливаем флаг ожидания статуса
-			wrk->status.wait = client::worker_t::mode_t::RECONNECT;
+			wrk->status.wait = worker_t::mode_t::RECONNECT;
 			// Получаем URL параметры запроса
 			const uri_t::url_t & url = (wrk->isProxy() ? wrk->proxy.url : wrk->url);
 
@@ -560,7 +456,7 @@ void awh::client::Core::reconnect(const size_t wid) noexcept {
  * @param wid  идентификатор воркера
  * @param mode режим работы клиента
  */
-void awh::client::Core::createTimeout(const size_t wid, const client::worker_t::mode_t mode) noexcept {
+void awh::client::Core::createTimeout(const size_t wid, const worker_t::mode_t mode) noexcept {
 	// Выполняем поиск воркера
 	auto it = this->workers.find(wid);
 	// Если воркер найден
@@ -614,11 +510,11 @@ void awh::client::Core::sendTimeout(const size_t aid) noexcept {
 			// Переходим по всему списку воркеров
 			for(auto & worker : this->workers){
 				// Получаем объект воркера
-				client::worker_t * wrk = (client::worker_t *) const_cast <awh::worker_t *> (worker.second);
+				worker_t * wrk = (worker_t *) const_cast <awh::worker_t *> (worker.second);
 				// Если выполнение работ разрешено
-				if(wrk->status.work == client::worker_t::work_t::ALLOW)
+				if(wrk->status.work == worker_t::work_t::ALLOW)
 					// Запрещаем выполнение работы
-					wrk->status.work = client::worker_t::work_t::DISALLOW;
+					wrk->status.work = worker_t::work_t::DISALLOW;
 				// Если работы запрещены, выходим
 				else return;
 				// Запрещаем воркеру выполнять перезапуск
@@ -633,13 +529,13 @@ void awh::client::Core::sendTimeout(const size_t aid) noexcept {
 			// Переходим по всему списку воркеров
 			for(auto & worker : this->workers){
 				// Получаем объект воркера
-				client::worker_t * wrk = (client::worker_t *) const_cast <awh::worker_t *> (worker.second);
+				worker_t * wrk = (worker_t *) const_cast <awh::worker_t *> (worker.second);
 				// Если флаг поддержания постоянного подключения не установлен
 				if(!alive && wrk->alive) alive = wrk->alive;
 				// Устанавливаем статус подключения
-				wrk->status.real = client::worker_t::mode_t::DISCONNECT;
+				wrk->status.real = worker_t::mode_t::DISCONNECT;
 				// Устанавливаем флаг ожидания статуса
-				wrk->status.wait = client::worker_t::mode_t::DISCONNECT;
+				wrk->status.wait = worker_t::mode_t::DISCONNECT;
 			}
 			// Если необходимо поддерживать постоянное подключение
 			if(alive){
@@ -666,13 +562,13 @@ void awh::client::Core::sendTimeout(const size_t aid) noexcept {
 			// Переходим по всему списку воркеров
 			for(auto & worker : this->workers){
 				// Получаем объект воркера
-				client::worker_t * wrk = (client::worker_t *) const_cast <awh::worker_t *> (worker.second);
+				worker_t * wrk = (worker_t *) const_cast <awh::worker_t *> (worker.second);
 				// Разрешаем воркеру выполнять перезапуск
 				wrk->stop = false;
 				// Если выполнение работ запрещено
-				if(wrk->status.work == client::worker_t::work_t::DISALLOW)
+				if(wrk->status.work == worker_t::work_t::DISALLOW)
 					// Разрешаем выполнение работы
-					wrk->status.work = client::worker_t::work_t::ALLOW;
+					wrk->status.work = worker_t::work_t::ALLOW;
 				// Если нужно выполнить автоматическое переподключение, выполняем новую попытку
 				if(wrk->alive) this->reconnect(wrk->wid);
 			}
@@ -719,11 +615,11 @@ void awh::client::Core::close() noexcept {
 			// Если в воркере есть подключённые клиенты
 			if(!worker.second->adjutants.empty()){
 				// Получаем объект воркера
-				client::worker_t * wrk = (client::worker_t *) const_cast <awh::worker_t *> (worker.second);
+				worker_t * wrk = (worker_t *) const_cast <awh::worker_t *> (worker.second);
 				// Устанавливаем флаг ожидания статуса
-				wrk->status.wait = client::worker_t::mode_t::DISCONNECT;
+				wrk->status.wait = worker_t::mode_t::DISCONNECT;
 				// Устанавливаем статус сетевого ядра
-				wrk->status.real = client::worker_t::mode_t::DISCONNECT;
+				wrk->status.real = worker_t::mode_t::DISCONNECT;
 				// Переходим по всему списку адъютанта
 				for(auto it = wrk->adjutants.begin(); it != wrk->adjutants.end();){
 					// Если блокировка адъютанта не установлена
@@ -776,11 +672,11 @@ void awh::client::Core::remove() noexcept {
 		// Переходим по всему списку воркеров
 		for(auto it = this->workers.begin(); it != this->workers.end();){
 			// Получаем объект воркера
-			client::worker_t * wrk = (client::worker_t *) const_cast <awh::worker_t *> (it->second);
+			worker_t * wrk = (worker_t *) const_cast <awh::worker_t *> (it->second);
 			// Устанавливаем флаг ожидания статуса
-			wrk->status.wait = client::worker_t::mode_t::DISCONNECT;
+			wrk->status.wait = worker_t::mode_t::DISCONNECT;
 			// Устанавливаем статус сетевого ядра
-			wrk->status.real = client::worker_t::mode_t::DISCONNECT;
+			wrk->status.real = worker_t::mode_t::DISCONNECT;
 			// Если в воркере есть подключённые клиенты
 			if(!wrk->adjutants.empty()){
 				// Переходим по всему списку адъютанта
@@ -826,11 +722,11 @@ void awh::client::Core::open(const size_t wid) noexcept {
 		// Если воркер найден
 		if(it != this->workers.end()){
 			// Получаем объект воркера
-			client::worker_t * wrk = (client::worker_t *) const_cast <awh::worker_t *> (it->second);
+			worker_t * wrk = (worker_t *) const_cast <awh::worker_t *> (it->second);
 			// Если параметры URL запроса переданы и выполнение работы разрешено
-			if(!wrk->url.empty() && (wrk->status.wait == client::worker_t::mode_t::DISCONNECT) && (wrk->status.work == client::worker_t::work_t::ALLOW)){
+			if(!wrk->url.empty() && (wrk->status.wait == worker_t::mode_t::DISCONNECT) && (wrk->status.work == worker_t::work_t::ALLOW)){
 				// Устанавливаем флаг ожидания статуса
-				wrk->status.wait = client::worker_t::mode_t::CONNECT;
+				wrk->status.wait = worker_t::mode_t::CONNECT;
 				// Получаем URL параметры запроса
 				const uri_t::url_t & url = (wrk->isProxy() ? wrk->proxy.url : wrk->url);
 
@@ -929,7 +825,7 @@ void awh::client::Core::close(const size_t aid) noexcept {
 			// Получаем объект адъютанта
 			awh::worker_t::adj_t * adj = const_cast <awh::worker_t::adj_t *> (it->second);
 			// Получаем объект воркера
-			client::worker_t * wrk = (client::worker_t *) const_cast <awh::worker_t *> (adj->parent);
+			worker_t * wrk = (worker_t *) const_cast <awh::worker_t *> (adj->parent);
 			// Получаем объект ядра клиента
 			const core_t * core = reinterpret_cast <const core_t *> (wrk->core);
 			// Выполняем очистку буфера событий
@@ -947,9 +843,9 @@ void awh::client::Core::close(const size_t aid) noexcept {
 			// Удаляем адъютанта из списка подключений
 			this->adjutants.erase(aid);	
 			// Устанавливаем флаг ожидания статуса
-			wrk->status.wait = client::worker_t::mode_t::DISCONNECT;
+			wrk->status.wait = worker_t::mode_t::DISCONNECT;
 			// Устанавливаем статус сетевого ядра
-			wrk->status.real = client::worker_t::mode_t::DISCONNECT;
+			wrk->status.real = worker_t::mode_t::DISCONNECT;
 			// Если не нужно выполнять принудительную остановку работы воркера
 			if(!wrk->stop){
 				// Если нужно выполнить автоматическое переподключение
@@ -979,7 +875,7 @@ void awh::client::Core::switchProxy(const size_t aid) noexcept {
 		// Получаем объект адъютанта
 		awh::worker_t::adj_t * adj = const_cast <awh::worker_t::adj_t *> (it->second);
 		// Получаем объект воркера
-		client::worker_t * wrk = (client::worker_t *) const_cast <awh::worker_t *> (adj->parent);
+		worker_t * wrk = (worker_t *) const_cast <awh::worker_t *> (adj->parent);
 		// Если прокси-сервер активирован но ещё не переключён на работу с сервером
 		if((wrk->proxy.type != proxy_t::type_t::NONE) && (adj->bev.socket >= 0) && wrk->isProxy()){
 			// Выполняем переключение на работу с сервером
@@ -1043,7 +939,7 @@ void awh::client::Core::timeout(const size_t aid) noexcept {
 		// Получаем объект адъютанта
 		awh::worker_t::adj_t * adj = const_cast <awh::worker_t::adj_t *> (it->second);
 		// Получаем объект подключения
-		client::worker_t * wrk = (client::worker_t *) const_cast <awh::worker_t *> (adj->parent);
+		worker_t * wrk = (worker_t *) const_cast <awh::worker_t *> (adj->parent);
 		// Получаем URL параметры запроса
 		const uri_t::url_t & url = (wrk->isProxy() ? wrk->proxy.url : wrk->url);
 		// Если данные ещё ни разу не получены
@@ -1069,6 +965,102 @@ void awh::client::Core::timeout(const size_t aid) noexcept {
 	}
 }
 /**
+ * connected Функция обратного вызова при удачном подключении к серверу
+ * @param aid идентификатор адъютанта
+ */
+void awh::client::Core::connected(const size_t aid) noexcept {
+	// Выполняем извлечение адъютанта
+	auto it = this->adjutants.find(aid);
+	// Если адъютант получен
+	if(it != this->adjutants.end()){
+		// Получаем объект адъютанта
+		awh::worker_t::adj_t * adj = const_cast <awh::worker_t::adj_t *> (it->second);
+		// Получаем объект подключения
+		worker_t * wrk = (worker_t *) const_cast <awh::worker_t *> (adj->parent);
+		// Если подключение удачное и работа воркера разрешена
+		if(wrk->status.work == worker_t::work_t::ALLOW){
+			// Снимаем флаг получения данных
+			wrk->acquisition = false;
+			// Устанавливаем статус подключения к серверу
+			wrk->status.real = worker_t::mode_t::CONNECT;
+			// Устанавливаем флаг ожидания статуса
+			wrk->status.wait = worker_t::mode_t::DISCONNECT;
+			// Выполняем очистку существующих таймаутов
+			this->clearTimeout(wrk->wid);
+			// Получаем URL параметры запроса
+			const uri_t::url_t & url = (wrk->isProxy() ? wrk->proxy.url : wrk->url);
+			// Получаем хост сервера
+			const string & host = (!url.ip.empty() ? url.ip : url.domain);
+
+			/*
+			// Определяем тип подключения
+			switch(this->net.family){
+				// Резолвер IPv4, создаём резолвер
+				case AF_INET:
+					// Выполняем отмену ранее выполненных запросов DNS
+					this->dns4.cancel(wrk->did);
+				break;
+				// Резолвер IPv6, создаём резолвер
+				case AF_INET6:
+					// Выполняем отмену ранее выполненных запросов DNS
+					this->dns6.cancel(wrk->did);
+				break;
+			}
+			*/
+
+			// Устанавливаем базу событий
+			adj->bev.event.read.set(this->base);
+			// Устанавливаем базу событий
+			adj->bev.event.write.set(this->base);
+			// Устанавливаем сокет для записи
+			adj->bev.event.read.set(adj->bev.socket, ev::READ);
+			// Устанавливаем сокет для записи
+			adj->bev.event.write.set(adj->bev.socket, ev::WRITE);
+			// Устанавливаем событие на чтение данных подключения
+			adj->bev.event.read.set <awh::worker_t::adj_t, &awh::worker_t::adj_t::read> (adj);
+			// Устанавливаем событие на запись данных подключения
+			adj->bev.event.write.set <awh::worker_t::adj_t, &awh::worker_t::adj_t::write> (adj);
+			// Запускаем чтение данных с сервера
+			adj->bev.event.read.start();
+			// Запускаем запись данных на сервер
+			adj->bev.event.write.start();
+			// Если флаг ожидания входящих сообщений, активирован
+			if(wrk->wait){
+				// Если время ожидания чтения данных установлено
+				if(adj->timeRead > 0){
+					// Устанавливаем базу событий
+					adj->bev.timer.read.set(this->base);
+					// Устанавливаем событие на чтение данных подключения
+					adj->bev.timer.read.set <awh::worker_t::adj_t, &awh::worker_t::adj_t::timeout> (adj);
+					// Запускаем ожидание чтения данных с сервера
+					adj->bev.timer.read.start(adj->timeRead);
+				}
+				// Если время ожидания записи данных установлено
+				if(adj->timeWrite > 0){
+					// Устанавливаем базу событий
+					adj->bev.timer.write.set(this->base);
+					// Устанавливаем событие на запись данных подключения
+					adj->bev.timer.write.set <awh::worker_t::adj_t, &awh::worker_t::adj_t::timeout> (adj);
+					// Запускаем ожидание записи данных на сервер
+					adj->bev.timer.write.start(adj->timeWrite);
+				}
+			}
+			// Выводим в лог сообщение
+			if(!this->noinfo) this->log->print("connect client to server [%s:%d]", log_t::flag_t::INFO, host.c_str(), url.port);
+			// Если подключение производится через, прокси-сервер
+			if(wrk->isProxy()){
+				// Выполняем функцию обратного вызова для прокси-сервера
+				if(wrk->connectProxyFn != nullptr) wrk->connectProxyFn(it->first, wrk->wid, const_cast <awh::core_t *> (wrk->core));
+			// Выполняем функцию обратного вызова
+			} else if(wrk->connectFn != nullptr) wrk->connectFn(it->first, wrk->wid, const_cast <awh::core_t *> (wrk->core));
+			// Выходим из функции
+			return;
+		}
+		// Выполняем отключение от сервера
+		this->close(it->first);
+	}
+}
+/**
  * write Функция обратного вызова при записи данных в сокет
  * @param method метод режима работы
  * @param aid    идентификатор адъютанта
@@ -1081,9 +1073,9 @@ void awh::client::Core::transfer(const method_t method, const size_t aid) noexce
 		// Получаем объект адъютанта
 		awh::worker_t::adj_t * adj = const_cast <awh::worker_t::adj_t *> (it->second);
 		// Получаем объект подключения
-		client::worker_t * wrk = (client::worker_t *) const_cast <awh::worker_t *> (adj->parent);
+		worker_t * wrk = (worker_t *) const_cast <awh::worker_t *> (adj->parent);
 		// Если подключение установлено
-		if((wrk->acquisition = (wrk->status.real == client::worker_t::mode_t::CONNECT))){
+		if((wrk->acquisition = (wrk->status.real == worker_t::mode_t::CONNECT))){
 			// Определяем метод работы
 			switch((uint8_t) method){
 				// Если производится чтение данных
@@ -1095,7 +1087,7 @@ void awh::client::Core::transfer(const method_t method, const size_t aid) noexce
 					// Останавливаем таймаут ожидания на чтение из сокета
 					adj->bev.timer.read.stop();
 					// Выполняем чтение всех данных из сокета
-					while(wrk->status.real == client::worker_t::mode_t::CONNECT){
+					while(wrk->status.real == worker_t::mode_t::CONNECT){
 						// Выполняем зануление буфера
 						memset(buffer, 0, sizeof(buffer));
 						// Если дочерние активные подключения есть и сокет блокирующий
@@ -1104,6 +1096,15 @@ void awh::client::Core::transfer(const method_t method, const size_t aid) noexce
 							adj->bev.noblock = true;
 							// Переводим сокет в не блокирующий режим
 							this->socket.nonBlocking(adj->bev.socket);
+							// Если SSL клиент разрешён
+							if(adj->ssl.mode){
+								// Получаем BIO подключения
+								BIO * bio = SSL_get_wbio(adj->ssl.ssl);
+								// Устанавливаем блокирующий режим ввода/вывода для сокета
+								if(bio != nullptr) BIO_set_nbio(bio, 1);
+								// Флаг необходимо установить только для неблокирующего сокета
+								SSL_set_mode(adj->ssl.ssl, SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER);
+							}
 						}
 						// Если SSL клиент разрешён
 						if(adj->ssl.mode)

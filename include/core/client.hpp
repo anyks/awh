@@ -50,6 +50,9 @@ namespace awh {
 		 */
 		typedef class Core : public awh::core_t {
 			private:
+				// Worker Устанавливаем дружбу с классом сетевого ядра
+				friend class Worker;
+			private:
 				/**
 				 * Mutex Структура основных мютексов
 				 */
@@ -65,10 +68,10 @@ namespace awh {
 				 */
 				typedef class Timeout {
 					public:
-						size_t wid;                    // Идентификатор воркера
-						Core * core;                   // Объект ядра клиента
-						ev::timer timer;               // Объект события таймера
-						client::worker_t::mode_t mode; // Режим работы клиента
+						size_t wid;            // Идентификатор воркера
+						Core * core;           // Объект ядра клиента
+						ev::timer timer;       // Объект события таймера
+						worker_t::mode_t mode; // Режим работы клиента
 					public:
 						/**
 						 * callback Функция обратного вызова
@@ -80,7 +83,7 @@ namespace awh {
 						/**
 						 * Timeout Конструктор
 						 */
-						Timeout() : wid(0), core(nullptr), mode(client::worker_t::mode_t::DISCONNECT) {}
+						Timeout() : wid(0), core(nullptr), mode(worker_t::mode_t::DISCONNECT) {}
 				} timeout_t;
 			private:
 				// Мютекс для блокировки основного потока
@@ -96,7 +99,7 @@ namespace awh {
 				 * @param ip  полученный IP адрес
 				 * @param wrk объект воркера
 				 */
-				void resolver(const string & ip, client::worker_t * wrk) noexcept;
+				void resolver(const string & ip, worker_t * wrk) noexcept;
 			private:
 				/**
 				 * tuning Метод тюннинга буфера событий
@@ -120,7 +123,7 @@ namespace awh {
 				 * @param wid  идентификатор воркера
 				 * @param mode режим работы клиента
 				 */
-				void createTimeout(const size_t wid, const client::worker_t::mode_t mode) noexcept;
+				void createTimeout(const size_t wid, const worker_t::mode_t mode) noexcept;
 			public:
 				/**
 				 * sendTimeout Метод отправки принудительного таймаута
@@ -169,6 +172,11 @@ namespace awh {
 				 * @param aid идентификатор адъютанта
 				 */
 				void timeout(const size_t aid) noexcept;
+				/**
+				 * connected Функция обратного вызова при удачном подключении к серверу
+				 * @param aid идентификатор адъютанта
+				 */
+				void connected(const size_t aid) noexcept;
 				/**
 				 * write Функция обратного вызова при записи данных в сокет
 				 * @param method метод режима работы

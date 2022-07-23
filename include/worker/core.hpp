@@ -144,6 +144,14 @@ namespace awh {
 					// Server Core Устанавливаем дружбу с серверным классом ядра
 					friend class server::Core;
 				private:
+					// Идентификатор адъютанта
+					size_t aid;
+				private:
+					// Адрес интернет подключения клиента
+					string ip;
+					// Мак адрес подключившегося клиента
+					string mac;
+				private:
 					// Объект буфера событий
 					bev_t bev;
 				private:
@@ -152,28 +160,20 @@ namespace awh {
 					// Маркера размера детектируемых байт на запись
 					mark_t markWrite;
 				private:
+					// Таймер на чтение в секундах
+					time_t timeRead;
+					// Таймер на запись в секундах
+					time_t timeWrite;
+				private:
 					// Контекст SSL для работы с защищённым подключением
 					ssl_t::ctx_t ssl;
-				private:
-					// Адрес интернет подключения клиента
-					string ip = "";
-					// Мак адрес подключившегося клиента
-					string mac = "";
-				private:
-					// Идентификатор адъютанта
-					size_t aid = 0;
-				private:
-					// Таймер на чтение в секундах
-					time_t timeRead = READ_TIMEOUT;
-					// Таймер на запись в секундах
-					time_t timeWrite = WRITE_TIMEOUT;
 				public:
 					// Создаём объект фреймворка
-					const fmk_t * fmk = nullptr;
+					const fmk_t * fmk;
 					// Создаём объект работы с логами
-					const log_t * log = nullptr;
+					const log_t * log;
 					// Объект родительского воркера
-					const Worker * parent = nullptr;
+					const Worker * parent;
 				private:
 					/**
 					 * read Функция обратного вызова при чтении данных с сокета
@@ -207,8 +207,10 @@ namespace awh {
 					 * @param log    объект для работы с логами
 					 */
 					Adjutant(const Worker * parent, const fmk_t * fmk, const log_t * log) noexcept :
+					 aid(0), ip(""), mac(""),
 					 markRead(BUFFER_READ_MIN, BUFFER_READ_MAX),
 					 markWrite(BUFFER_WRITE_MIN, BUFFER_WRITE_MAX),
+					 timeRead(READ_TIMEOUT), timeWrite(WRITE_TIMEOUT),
 					 parent(parent), fmk(fmk), log(log) {}
 					/**
 					 * ~Adjutant Деструктор
@@ -216,54 +218,52 @@ namespace awh {
 					~Adjutant() noexcept {}
 			} adj_t;
 		public:
+			// Идентификатор воркера
+			size_t wid;
+		public:
+			// Флаг ожидания входящих сообщений
+			bool wait;
+			// Флаг автоматического поддержания подключения
+			bool alive;
+		public:
 			// Маркера размера детектируемых байт на чтение
 			mark_t markRead;
 			// Маркера размера детектируемых байт на запись
 			mark_t markWrite;
-		private:
-			// Результат работы функции
-			string result = "";
-		public:
-			// Идентификатор воркера
-			size_t wid = 0;
-		public:
-			// Флаг ожидания входящих сообщений
-			bool wait = false;
-			// Флаг автоматического поддержания подключения
-			bool alive = false;
 		public:
 			// Таймер на чтение в секундах
-			time_t timeRead = READ_TIMEOUT;
+			time_t timeRead;
 			// Таймер на запись в секундах
-			time_t timeWrite = WRITE_TIMEOUT;
+			time_t timeWrite;
 		protected:
 			// Список подключённых адъютантов
 			map <size_t, unique_ptr <adj_t>> adjutants;
 		protected:
 			// Создаём объект фреймворка
-			const fmk_t * fmk = nullptr;
+			const fmk_t * fmk;
 			// Создаём объект работы с логами
-			const log_t * log = nullptr;
+			const log_t * log;
 			// Создаём объект фреймворка
-			const Core * core = nullptr;
+			const Core * core;
 		public:
 			// Функция обратного вызова при открытии приложения
-			function <void (const size_t, Core *)> openFn = nullptr;
+			function <void (const size_t, Core *)> openFn;
 			// Функция обратного вызова для персистентного вызова
-			function <void (const size_t, const size_t, Core *)> persistFn = nullptr;
+			function <void (const size_t, const size_t, Core *)> persistFn;
 			// Функция обратного вызова при запуске подключения
-			function <void (const size_t, const size_t, Core *)> connectFn = nullptr;
+			function <void (const size_t, const size_t, Core *)> connectFn;
 			// Функция обратного вызова при закрытии подключения
-			function <void (const size_t, const size_t, Core *)> disconnectFn = nullptr;
+			function <void (const size_t, const size_t, Core *)> disconnectFn;
 			// Функция обратного вызова при получении данных
-			function <void (const char *, const size_t, const size_t, const size_t, Core *)> readFn = nullptr;
+			function <void (const char *, const size_t, const size_t, const size_t, Core *)> readFn;
 			// Функция обратного вызова при записи данных
-			function <void (const char *, const size_t, const size_t, const size_t, Core *)> writeFn = nullptr;
+			function <void (const char *, const size_t, const size_t, const size_t, Core *)> writeFn;
 		public:
 			/**
 			 * clear Метод очистки
 			 */
 			virtual void clear() noexcept;
+		public:
 			/**
 			 * ip Метод получения IP адреса адъютанта
 			 * @param aid идентификатор адъютанта
@@ -282,7 +282,14 @@ namespace awh {
 			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
 			 */
-			Worker(const fmk_t * fmk, const log_t * log) noexcept : markRead(BUFFER_READ_MIN, BUFFER_READ_MAX), markWrite(BUFFER_WRITE_MIN, BUFFER_WRITE_MAX), fmk(fmk), log(log) {}
+			Worker(const fmk_t * fmk, const log_t * log) noexcept :
+			 wid(0), wait(false), alive(false),
+			 markRead(BUFFER_READ_MIN, BUFFER_READ_MAX),
+			 markWrite(BUFFER_WRITE_MIN, BUFFER_WRITE_MAX),
+			 timeRead(READ_TIMEOUT), timeWrite(WRITE_TIMEOUT),
+			 fmk(fmk), log(log), core(nullptr),
+			 openFn(nullptr), persistFn(nullptr), connectFn(nullptr),
+			 disconnectFn(nullptr), readFn(nullptr), writeFn(nullptr) {}
 			/**
 			 * ~Worker Деструктор
 			 */
