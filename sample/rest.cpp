@@ -125,9 +125,9 @@ int main(int argc, char * argv[]) noexcept {
 	// uri_t::url_t url = uri.parseUrl("https://testnet.binance.vision/api/v3/exchangeInfo");
 	// uri_t::url_t url = uri.parseUrl("https://api.coingecko.com/api/v3/coins/list?include_platform=true");
 	// Подписываемся на событие коннекта и дисконнекта клиента
-	rest.on((function <void (const client::rest_t::mode_t, client::rest_t *)>) bind(&WebClient::active, &executor, _1, _2));
+	rest.on(bind(&WebClient::active, &executor, _1, _2));
 	// Подписываемся на событие получения сообщения
-	// rest.on((function <void (const client::rest_t::res_t &, client::rest_t *)>) bind(&WebClient::message, &executor, _1, _2));
+	// rest.on(bind(&WebClient::message, &executor, _1, _2));
 	/*
 	// Список запросов
 	vector <client::rest_t::req_t> request;

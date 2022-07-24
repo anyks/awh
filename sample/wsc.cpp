@@ -260,13 +260,13 @@ int main(int argc, char * argv[]) noexcept {
 	// Устанавливаем сабпротоколы
 	// ws.setSubs({"test2", "test8", "test9"});
 	// Выполняем подписку на получение логов
-	log.subscribe((function <void (const log_t::flag_t, const string &)>) bind(&WebSocket::subscribe, &executor, _1, _2));
+	log.subscribe(bind(&WebSocket::subscribe, &executor, _1, _2));
 	// Подписываемся на событие запуска и остановки сервера
-	ws.on((function <void (const client::ws_t::mode_t, client::ws_t *)>) bind(&WebSocket::active, &executor, _1, _2));
+	ws.on(bind(&WebSocket::active, &executor, _1, _2));
 	// Подписываемся на событие получения ошибки работы клиента
-	ws.on((function <void (const u_int, const string &, client::ws_t *)>) bind(&WebSocket::error, &executor, _1, _2, _3));
+	ws.on(bind(&WebSocket::error, &executor, _1, _2, _3));
 	// Подписываемся на событие получения сообщения с сервера
-	ws.on((function <void (const vector <char> &, const bool, client::ws_t *)>) bind(&WebSocket::message, &executor, _1, _2, _3));
+	ws.on(bind(&WebSocket::message, &executor, _1, _2, _3));
 	// Выполняем запуск WebSocket клиента
 	ws.start();	
 	// Выводим результат
