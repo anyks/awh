@@ -965,22 +965,12 @@ void awh::Core::error(const int64_t bytes, const size_t aid) const noexcept {
 		auto it = this->adjutants.find(aid);
 		// Если адъютант получен
 		if(it != this->adjutants.end()){
-			// Если SSL клиент разрешён
+			// Если защищённый режим работы разрешён
 			if(it->second->ssl.mode){
 				// Получаем данные описание ошибки
 				const int error = SSL_get_error(it->second->ssl.ssl, bytes);
 				// Определяем тип ошибки
 				switch(error){
-					// Если ошибка ожидания записи
-					case SSL_ERROR_WANT_WRITE:
-						// Выводим в лог сообщение
-						this->log->print("SSL: unable to write data to server", log_t::flag_t::CRITICAL);
-					break;
-					// Если ошибка чтения данных
-					case SSL_ERROR_WANT_READ:
-						// Выводим в лог сообщение
-						this->log->print("SSL: unable to read data from server", log_t::flag_t::CRITICAL);
-					break;
 					// Если был возвращён ноль
 					case SSL_ERROR_ZERO_RETURN: {
 						// Если удалённая сторона произвела закрытие подключения
@@ -1027,12 +1017,18 @@ void awh::Core::error(const int64_t bytes, const size_t aid) const noexcept {
 					} break;
 					// Если произошла ошибка шифрования
 					case SSL_ERROR_SSL:
-					// Для всех остальных ошибок
-					case SSL_ERROR_NONE:
+					// Если произошла ошибка временной невозможности подключения клиента
+					case SSL_ERROR_WANT_ACCEPT:
+					// Если произошла ошибка временной невозможности подключения к серверу
+					case SSL_ERROR_WANT_CONNECT:
+					// Если произошла ошибка асинхронного вызова
+					case SSL_ERROR_WANT_ASYNC:
+					// Если произошла ошибка выполнения асинхронной задачи
+					case SSL_ERROR_WANT_ASYNC_JOB:
 					// Если произошла ошибка сертификата
 					case SSL_ERROR_WANT_X509_LOOKUP:
-					// Для всех остальных ошибок
-					default: {
+					// Если произошла ошибка вызова каллбека в асинхронном режиме
+					case SSL_ERROR_WANT_CLIENT_HELLO_CB: {
 						// Получаем данные описание ошибки
 						u_long error = 0;
 						// Выполняем чтение ошибок OpenSSL
@@ -1079,16 +1075,20 @@ void awh::Core::write(const char * buffer, const size_t size, const size_t aid) 
 		if((it != this->adjutants.end()) && !it->second->bev.locked.write && (it->second->bev.socket > -1)){
 			// Если размер записываемых данных соответствует
 			if(size >= it->second->markWrite.min){
+				// Устанавливаем метку для записи
+				Write:
 				// Количество отправленных байт
 				int64_t bytes = -1;
 				// Если количество записываемых данных менье максимального занчения
 				if(size <= it->second->markWrite.max){
-					// Если SSL клиент разрешён
-					if(it->second->ssl.mode)
+					// Если защищённый режим работы разрешён
+					if(it->second->ssl.mode){
+						// Выполняем очистку ошибок OpenSSL
+						ERR_clear_error();
 						// Выполняем отправку сообщения через защищённый канал
 						bytes = SSL_write(it->second->ssl.ssl, buffer, size);
 					// Выполняем отправку сообщения в сокет
-					else bytes = send(it->second->bev.socket, buffer, size, 0);
+					} else bytes = send(it->second->bev.socket, buffer, size, 0);
 				// Иначе выполняем дробление передаваемых данных
 				} else {
 					// Смещение в буфере и отправляемый размер данных
@@ -1097,22 +1097,45 @@ void awh::Core::write(const char * buffer, const size_t size, const size_t aid) 
 					while((size - offset) > 0){
 						// Определяем размер отправляемых данных
 						actual = ((size - offset) >= it->second->markWrite.max ? it->second->markWrite.max : (size - offset));
-						// Если SSL клиент разрешён
-						if(it->second->ssl.mode)
+						// Если защищённый режим работы разрешён
+						if(it->second->ssl.mode){
+							// Выполняем очистку ошибок OpenSSL
+							ERR_clear_error();
 							// Выполняем отправку сообщения через защищённый канал
 							bytes = SSL_write(it->second->ssl.ssl, buffer + offset, actual);
 						// Выполняем отправку сообщения в сокет
-						else bytes = send(it->second->bev.socket, buffer + offset, actual, 0);
+						} else bytes = send(it->second->bev.socket, buffer + offset, actual, 0);
 						// Увеличиваем смещение в буфере
 						offset += actual;
 					}
 				}
 				// Если байты не были записаны в сокет
 				if(bytes <= 0){
-					// Выполняем обработку ошибок
-					this->error(bytes, aid);
-					// Выполняем отключение от сервера
-					this->close(it->second->aid);
+					// Получаем статус сокета
+					const int status = this->socket.isBlocking(it->second->bev.socket);
+					// Если сокет находится в блокирующем режиме
+					if((bytes < 0) && (status != 0))
+						// Выполняем обработку ошибок
+						this->error(bytes, it->first);
+					// Если произошла ошибка
+					else if((bytes < 0) && (status == 0)) {
+						// Если защищённый режим работы разрешён
+						if(it->second->ssl.mode){
+							// Получаем данные описание ошибки
+							if(SSL_get_error(it->second->ssl.ssl, bytes) == SSL_ERROR_WANT_WRITE)
+								// Выполняем пропуск попытки
+								goto Write;
+							// Иначе выводим сообщение об ошибке
+							else this->error(bytes, it->first);
+						// Если защищённый режим работы запрещён
+						} else if(errno == EAGAIN) goto Write;
+						// Иначе просто закрываем подключение
+						this->close(it->first);
+					}
+					// Если подключение разорвано или сокет находится в блокирующем режиме
+					if((bytes == 0) || (status != 0))
+						// Выполняем отключение от сервера
+						this->close(it->first);
 				}
 			}
 		}

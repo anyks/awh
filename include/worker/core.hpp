@@ -107,14 +107,13 @@ namespace awh {
 			 */
 			typedef struct BufferEvent {
 				int socket;      // Активный сокет
-				bool noblock;    // Флаг активного неблокирующего сокета
 				event_t event;   // Событие чтения/записи
 				timer_t timer;   // Собатие таймера на чтение/запись
 				locked_t locked; // Блокиратор чтения/записи
 				/**
 				 * BufferEvent Конструктор
 				 */
-				BufferEvent() noexcept : socket(-1), noblock(false) {}
+				BufferEvent() noexcept : socket(-1) {}
 			} bev_t;
 			/**
 			 * Mark Структура маркера на размер детектируемых байт

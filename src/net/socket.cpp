@@ -74,6 +74,54 @@ int awh::Socket::tcpCork(const int fd) const noexcept {
 	return 0;
 }
 /**
+ * blocking Метод установки блокирующего сокета
+ * @param fd файловый дескриптор (сокет)
+ * @return   результат работы функции
+ */
+int awh::Socket::blocking(const int fd) const noexcept {
+	/**
+	 * Методы только для OS Windows
+	 */
+	#if defined(_WIN32) || defined(_WIN64)
+		{
+			// Формируем флаг разблокировки
+			u_long nonblocking = 0;
+			// Выполняем разблокировку сокета
+			if(ioctlsocket(fd, FIONBIO, &nonblocking) == SOCKET_ERROR){
+				// Выводим в лог информацию
+				this->log->print("cannot set BLOCK option on socket %d", log_t::flag_t::CRITICAL, fd);
+				// Выходим
+				return -1;
+			}
+		}
+	// Для всех остальных операционных систем
+	#else
+		{
+			// Флаги файлового дескриптора
+			int flags = 0;
+			// Получаем флаги файлового дескриптора
+			if((flags = fcntl(fd, F_GETFL, nullptr)) < 0){
+				// Выводим в лог информацию
+				this->log->print("cannot set BLOCK option on socket %d", log_t::flag_t::CRITICAL, fd);
+				// Выходим
+				return -1;
+			}
+			// Если флаг уже установлен
+			if(flags & O_NONBLOCK){
+				// Устанавливаем неблокирующий режим
+				if(fcntl(fd, F_SETFL, flags ^ O_NONBLOCK) == -1){
+					// Выводим в лог информацию
+					this->log->print("cannot set NON_BLOCK option on socket %d", log_t::flag_t::CRITICAL, fd);
+					// Выходим
+					return -1;
+				}
+			}
+		}
+	#endif
+	// Все удачно
+	return 0;
+}
+/**
  * noSigpipe Метод игнорирования отключения сигнала записи в убитый сокет
  * @param fd файловый дескриптор (сокет)
  * @return   результат работы функции
@@ -153,6 +201,51 @@ int awh::Socket::tcpNodelay(const int fd) const noexcept {
 	}
 	// Все удачно
 	return 0;
+}
+/**
+ * isBlocking Метод проверки сокета блокирующий режим
+ * @param fd файловый дескриптор (сокет)
+ * @return   результат работы функции
+ */
+int awh::Socket::isBlocking(const int fd) const noexcept {
+	/**
+	 * Методы только для OS Windows
+	 */
+	#if defined(_WIN32) || defined(_WIN64)
+		{
+			// Буфер данных для чтения
+			u_char buffer[1];
+			// Выполняем чтение из сокета 0 байт
+			const int bytes = recv(fd, buffer, 0, 0);
+			// Если данные прочитаны, то сообщаем, что сокет находится в блокирующем режиме
+			if(bytes == 0) return 1;
+			// Если возникает ошибка, чтения из неблокирующего сокета
+			else if((bytes == -1) && (GetLastError() == WSAEWOULDBLOCK))
+				// Сообщаем, что сокет находится в неблокирующем режиме
+				return 0;
+		}
+	// Для всех остальных операционных систем
+	#else
+		{
+			// Флаги файлового дескриптора
+			int flags = 0;
+			// Получаем флаги файлового дескриптора
+			if((flags = fcntl(fd, F_GETFL, nullptr)) < 0){
+				// Выводим в лог информацию
+				this->log->print("cannot set BLOCK option on socket %d", log_t::flag_t::CRITICAL, fd);
+				// Выходим
+				return -1;
+			}
+			// Если флаг неблокирующего режима работы установлен
+			if(flags & O_NONBLOCK)
+				// Сообщаем, что сокет находится в неблокирующем режиме
+				return 0;
+			// Сообщаем, что сокет находится в блокирующем режиме
+			else return 1;
+		}
+	#endif
+	// Все удачно
+	return -1;
 }
 /**
  * closeonexec Метод разрешения закрывать сокет, после запуска

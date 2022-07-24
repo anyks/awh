@@ -84,6 +84,12 @@ namespace awh {
 			 */
 			int tcpCork(const int fd) const noexcept;
 			/**
+			 * blocking Метод установки блокирующего сокета
+			 * @param fd файловый дескриптор (сокет)
+			 * @return   результат работы функции
+			 */
+			int blocking(const int fd) const noexcept;
+			/**
 			 * noSigpipe Метод игнорирования отключения сигнала записи в убитый сокет
 			 * @param fd файловый дескриптор (сокет)
 			 * @return   результат работы функции
@@ -101,6 +107,12 @@ namespace awh {
 			 * @return   результат работы функции
 			 */
 			int tcpNodelay(const int fd) const noexcept;
+			/**
+			 * isBlocking Метод проверки сокета блокирующий режим
+			 * @param fd файловый дескриптор (сокет)
+			 * @return   результат работы функции
+			 */
+			int isBlocking(const int fd) const noexcept;
 			/**
 			 * closeonexec Метод разрешения закрывать сокет, после запуска
 			 * @param fd файловый дескриптор (сокет)

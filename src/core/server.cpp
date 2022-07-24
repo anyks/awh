@@ -142,18 +142,6 @@ void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 					mac = this->ifnet.mac(ip, AF_INET6);
 				} break;
 			}
-			// Если функция обратного вызова установлена
-			if(wrk->acceptFn != nullptr){
-				// Выполняем проверку, разрешено ли клиенту подключиться к серверу
-				if(!wrk->acceptFn(ip, mac, it->first, this)){
-					// Выполняем закрытие сокета
-					this->close(socket);
-					// Выводим в лог сообщение
-					this->log->print("broken client, host = %s, mac = %s, socket = %d", log_t::flag_t::WARNING, ip.c_str(), mac.c_str(), socket);
-					// Выходим из функции
-					return;
-				}
-			}
 			// Устанавливаем настройки для *Nix подобных систем
 			#if !defined(_WIN32) && !defined(_WIN64)
 				// Выполняем игнорирование сигнала неверной инструкции процессора
@@ -175,11 +163,13 @@ void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 			adj->ssl = this->ssl.init();
 			// Выполняем блокировку потока
 			this->mtx.accept.lock();
-			// Запоминаем что сокет неблокирующий
-			adj->bev.noblock = true;
 			// Запоминаем файловый дескриптор
 			adj->bev.socket = socket;
-			// Если SSL клиент разрешён
+			// Устанавливаем идентификатор адъютанта
+			adj->aid = this->fmk->unixTimestamp();
+			// Выполняем блокировку потока
+			this->mtx.accept.unlock();
+			// Если защищённый режим работы разрешён
 			if(adj->ssl.mode){
 				// Выполняем обёртывание сокета в BIO SSL
 				BIO * bio = BIO_new_socket(adj->bev.socket, BIO_NOCLOSE);
@@ -189,10 +179,40 @@ void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 					BIO_set_nbio(bio, 1);
 					// Выполняем установку BIO SSL
 					SSL_set_bio(adj->ssl.ssl, bio, bio);
-					// Флаг необходимо установить только для неблокирующего сокета
+					// Устанавливаем флаг работы в асинхронном режиме
+					SSL_set_mode(adj->ssl.ssl, SSL_MODE_ASYNC);
+					// Устанавливаем флаг записи в буфер порциями
 					SSL_set_mode(adj->ssl.ssl, SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER);
 					// Выполняем активацию клиента SSL
 					SSL_set_accept_state(adj->ssl.ssl);
+					// Выполняем проверку на подключение
+					const int error = SSL_accept(adj->ssl.ssl);
+					// Если возникла ошибка
+					if(error <= 0){
+						// Очищаем ошибки SSL
+						ERR_clear_error();
+						// Выполняем чтение ошибки OpenSSL
+						const int code = SSL_get_error(adj->ssl.ssl, error);
+						// Выполняем проверку на подключение
+						if(code == SSL_ERROR_WANT_ACCEPT){
+							// Выполняем попытку снова
+							this->accept(fd, wid);
+							// Выходим из функции
+							return;
+						// Если возникла другая ошибка
+						} else if(code != SSL_ERROR_NONE) {
+							// Получаем данные описание ошибки
+							u_long error = 0;
+							// Выполняем чтение ошибок OpenSSL
+							while((error = ERR_get_error()))
+								// Выводим в лог сообщение
+								this->log->print("SSL: %s", log_t::flag_t::CRITICAL, ERR_error_string(error, nullptr));
+							// Выполняем закрытие подключения
+							this->close(adj->bev.socket);
+							// Выходим из функции
+							return;
+						}
+					}
 				// Если BIO SSL не создано
 				} else {
 					// Выполняем закрытие подключения
@@ -203,8 +223,20 @@ void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 					return;
 				}
 			}
-			// Устанавливаем идентификатор адъютанта
-			adj->aid = this->fmk->unixTimestamp();
+			// Если функция обратного вызова установлена
+			if(wrk->acceptFn != nullptr){
+				// Выполняем проверку, разрешено ли клиенту подключиться к серверу
+				if(!wrk->acceptFn(ip, mac, it->first, this)){
+					// Выполняем закрытие сокета
+					this->close(adj->bev.socket);
+					// Выводим в лог сообщение
+					this->log->print("broken client, host = %s, mac = %s, socket = %d", log_t::flag_t::WARNING, ip.c_str(), mac.c_str(), socket);
+					// Выходим из функции
+					return;
+				}
+			}
+			// Выполняем блокировку потока
+			this->mtx.accept.lock();
 			// Добавляем созданного адъютанта в список адъютантов
 			auto ret = wrk->adjutants.emplace(adj->aid, move(adj));
 			// Добавляем адъютанта в список подключений
@@ -598,7 +630,7 @@ void awh::server::Core::timeout(const size_t aid) noexcept {
 		adj->bev.event.read.stop();
 		// Останавливаем запись данных
 		adj->bev.event.write.stop();
-		// Выполняем отключение от сервера
+		// Выполняем отключение клиента
 		this->close(aid);
 	}
 }
@@ -630,12 +662,14 @@ void awh::server::Core::transfer(const method_t method, const size_t aid) noexce
 				while(!adj->bev.locked.read){
 					// Выполняем зануление буфера
 					memset(buffer, 0, sizeof(buffer));
-					// Если SSL клиент разрешён
-					if(adj->ssl.mode)
+					// Если защищённый режим работы разрешён
+					if(adj->ssl.mode){
+						// Выполняем очистку ошибок OpenSSL
+						ERR_clear_error();
 						// Выполняем чтение из защищённого сокета
 						bytes = SSL_read(adj->ssl.ssl, buffer, sizeof(buffer));
 					// Выполняем чтение данных из сокета
-					else bytes = recv(adj->bev.socket, buffer, sizeof(buffer), 0);
+					} else bytes = recv(adj->bev.socket, buffer, sizeof(buffer), 0);
 					// Останавливаем таймаут ожидания на чтение из сокета
 					adj->bev.timer.read.stop();
 					// Если данные получены
@@ -665,9 +699,24 @@ void awh::server::Core::transfer(const method_t method, const size_t aid) noexce
 							wrk->readFn(buffer, bytes, aid, wrk->wid, reinterpret_cast <awh::core_t *> (this));
 					// Если данные не могут быть прочитаны
 					} else {
-						// Если подключение разорвано или сокет находится в блокирующем режиме
+						// Если произошла ошибка
+						if(bytes < 0){
+							// Если защищённый режим работы разрешён
+							if(adj->ssl.mode){
+								// Получаем данные описание ошибки
+								if(SSL_get_error(adj->ssl.ssl, bytes) == SSL_ERROR_WANT_READ)
+									// Выполняем пропуск попытки
+									break;
+								// Иначе выводим сообщение об ошибке
+								else this->error(bytes, aid);
+							// Если защищённый режим работы запрещён
+							} else if(errno == EAGAIN) break;
+							// Выполняем отключение клиента
+							this->close(aid);
+						}
+						// Если подключение разорвано
 						if(bytes == 0)
-							// Выполняем отключение от сервера
+							// Выполняем отключение клиента
 							this->close(aid);
 						// Выходим из цикла
 						break;

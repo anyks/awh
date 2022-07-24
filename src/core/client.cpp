@@ -216,7 +216,7 @@ void awh::client::Core::connect(const size_t wid) noexcept {
 						this->mtx.connect.lock();
 						// Запоминаем файловый дескриптор
 						adj->bev.socket = sockaddr.fd;
-						// Если SSL клиент разрешён
+						// Если защищённый режим работы разрешён
 						if(adj->ssl.mode){
 							// Выполняем обёртывание сокета в BIO SSL
 							BIO * bio = BIO_new_socket(adj->bev.socket, BIO_NOCLOSE);
@@ -868,6 +868,8 @@ void awh::client::Core::close(const size_t aid) noexcept {
  * @param aid идентификатор адъютанта
  */
 void awh::client::Core::switchProxy(const size_t aid) noexcept {
+	// Выполняем блокировку потока
+	const lock_guard <recursive_mutex> lock(this->mtx.proxy);
 	// Выполняем извлечение адъютанта
 	auto it = this->adjutants.find(aid);
 	// Если адъютант получен
@@ -884,10 +886,8 @@ void awh::client::Core::switchProxy(const size_t aid) noexcept {
 			this->ssl.clear(adj->ssl);
 			// Выполняем получение контекста сертификата
 			adj->ssl = this->ssl.init(wrk->url);
-			// Если SSL клиент разрешен
+			// Если защищённый режим работы разрешён
 			if(adj->ssl.mode){
-				// Выполняем блокировку потока
-				this->mtx.proxy.lock();
 				// Выполняем обёртывание сокета в BIO SSL
 				BIO * bio = BIO_new_socket(adj->bev.socket, BIO_NOCLOSE);
 				// Если BIO SSL создано
@@ -915,10 +915,23 @@ void awh::client::Core::switchProxy(const size_t aid) noexcept {
 						// Запускаем запись данных на сервер
 						adj->bev.timer.write.start(adj->timeWrite);
 					}
+					// Выполняем очистку ошибок OpenSSL
+					ERR_clear_error();
+					// Выполняем проверку подключения
+					const int status = SSL_do_handshake(adj->ssl.ssl);
+					// Если подключение выполнено
+					if(status == 1){
+						// Если функция обратного вызова установлена, сообщаем, что мы подключились
+						if(wrk->connectFn != nullptr) wrk->connectFn(it->first, wrk->wid, this);
+					// Выполняем закрытие подключения
+					} else {
+						// Выводим сообщение об ошибке
+						this->error(status, it->first);
+						// Выполняем закрытие подключения
+						this->close(it->first);
+					}
 				// Выводим сообщение об ошибке
 				} else this->log->print("BIO new socket is failed", log_t::flag_t::CRITICAL);
-				// Выполняем разблокировку потока
-				this->mtx.proxy.unlock();
 				// Выходим из функции
 				return;
 			}
@@ -1090,13 +1103,11 @@ void awh::client::Core::transfer(const method_t method, const size_t aid) noexce
 					while(wrk->status.real == worker_t::mode_t::CONNECT){
 						// Выполняем зануление буфера
 						memset(buffer, 0, sizeof(buffer));
-						// Если дочерние активные подключения есть и сокет блокирующий
-						if(!adj->bev.noblock && !this->cores.empty()){
-							// Устанавливаем флаг сокета, что он теперь неблокирующий
-							adj->bev.noblock = true;
+						// Если дочерние активные подключения есть и сокет блокирующий						
+						if(!this->cores.empty() && (this->socket.isBlocking(adj->bev.socket) == 1)){
 							// Переводим сокет в не блокирующий режим
 							this->socket.nonBlocking(adj->bev.socket);
-							// Если SSL клиент разрешён
+							// Если защищённый режим работы разрешён
 							if(adj->ssl.mode){
 								// Получаем BIO подключения
 								BIO * bio = SSL_get_wbio(adj->ssl.ssl);
@@ -1106,16 +1117,18 @@ void awh::client::Core::transfer(const method_t method, const size_t aid) noexce
 								SSL_set_mode(adj->ssl.ssl, SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER);
 							}
 						}
-						// Если SSL клиент разрешён
-						if(adj->ssl.mode)
+						// Если защищённый режим работы разрешён
+						if(adj->ssl.mode){
+							// Выполняем очистку ошибок OpenSSL
+							ERR_clear_error();
 							// Выполняем чтение из защищённого сокета
 							bytes = SSL_read(adj->ssl.ssl, buffer, sizeof(buffer));
 						// Выполняем чтение данных из сокета
-						else bytes = recv(adj->bev.socket, buffer, sizeof(buffer), 0);
+						} else bytes = recv(adj->bev.socket, buffer, sizeof(buffer), 0);
 						// Останавливаем таймаут ожидания на чтение из сокета
 						adj->bev.timer.read.stop();
 						// Выполняем принудительное исполнение таймеров
-						if(!adj->bev.noblock) this->executeTimers();
+						if(this->socket.isBlocking(adj->bev.socket) == 1) this->executeTimers();
 						// Если данные получены
 						if(bytes > 0){
 							// Если время ожидания записи данных установлено
@@ -1158,12 +1171,32 @@ void awh::client::Core::transfer(const method_t method, const size_t aid) noexce
 							}
 						// Если данные не могут быть прочитаны
 						} else {
+							// Получаем статус сокета
+							const int status = this->socket.isBlocking(adj->bev.socket);
 							// Если сокет находится в блокирующем режиме
-							if((bytes < 0) && !adj->bev.noblock)
+							if((bytes < 0) && (status != 0))
 								// Выполняем обработку ошибок
 								this->error(bytes, aid);
+							// Если произошла ошибка
+							else if((bytes < 0) && (status == 0)) {
+
+								cout << " -------------- " << bytes << endl;
+
+								// Если защищённый режим работы разрешён
+								if(adj->ssl.mode){
+									// Получаем данные описание ошибки
+									if(SSL_get_error(adj->ssl.ssl, bytes) == SSL_ERROR_WANT_READ)
+										// Выполняем пропуск попытки
+										break;
+									// Иначе выводим сообщение об ошибке
+									else this->error(bytes, aid);
+								// Если защищённый режим работы запрещён
+								} else if(errno == EAGAIN) break;
+								// Иначе просто закрываем подключение
+								this->close(aid);
+							}
 							// Если подключение разорвано или сокет находится в блокирующем режиме
-							if((bytes == 0) || !adj->bev.noblock)
+							if((bytes == 0) || (status != 0))
 								// Выполняем отключение от сервера
 								this->close(aid);
 							// Выходим из цикла
@@ -1176,7 +1209,7 @@ void awh::client::Core::transfer(const method_t method, const size_t aid) noexce
 					// Останавливаем таймаут ожидания на запись в сокет
 					adj->bev.timer.write.stop();
 					// Выполняем принудительное исполнение таймеров
-					if(!adj->bev.noblock) this->executeTimers();
+					if(this->socket.isBlocking(adj->bev.socket) == 1) this->executeTimers();
 					// Если время ожидания записи данных установлено
 					if(adj->timeWrite > 0)
 						// Запускаем ожидание записи данных на сервер
