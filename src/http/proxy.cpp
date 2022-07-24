@@ -81,21 +81,19 @@ void awh::HttpProxy::setOpaque(const string & opaque) noexcept {
 }
 /**
  * setExtractPassCallback Метод добавления функции извлечения пароля
- * @param ctx      контекст для вывода в сообщении
  * @param callback функция обратного вызова для извлечения пароля
  */
-void awh::HttpProxy::setExtractPassCallback(void * ctx, function <string (const string &, void *)> callback) noexcept {
+void awh::HttpProxy::setExtractPassCallback(function <string (const string &)> callback) noexcept {
 	// Устанавливаем внешнюю функцию
-	this->auth.server.setExtractPassCallback(ctx, callback);
+	this->auth.server.setExtractPassCallback(callback);
 }
 /**
  * setAuthCallback Метод добавления функции обработки авторизации
- * @param ctx      контекст для вывода в сообщении
  * @param callback функция обратного вызова для обработки авторизации
  */
-void awh::HttpProxy::setAuthCallback(void * ctx, function <bool (const string &, const string &, void *)> callback) noexcept {
+void awh::HttpProxy::setAuthCallback(function <bool (const string &, const string &)> callback) noexcept {
 	// Устанавливаем внешнюю функцию
-	this->auth.server.setAuthCallback(ctx, callback);
+	this->auth.server.setAuthCallback(callback);
 }
 /**
  * setAuthType Метод установки типа авторизации

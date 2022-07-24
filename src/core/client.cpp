@@ -941,6 +941,48 @@ void awh::client::Core::switchProxy(const size_t aid) noexcept {
 	}
 }
 /**
+ * waitingWrite Метод активации режима ожидании доступа на запись
+ * @param aid идентификатор адъютанта
+ */
+void awh::client::Core::waitingWrite(const size_t aid) noexcept {
+	// Выполняем извлечение адъютанта
+	auto it = this->adjutants.find(aid);
+	// Если адъютант получен
+	if(it != this->adjutants.end()){
+		// Получаем объект адъютанта
+		awh::worker_t::adj_t * adj = const_cast <awh::worker_t::adj_t *> (it->second);
+		// Получаем объект подключения
+		worker_t * wrk = (worker_t *) const_cast <awh::worker_t *> (adj->parent);
+		// Разрешаем запись данных в сокет
+		adj->bev.locked.write = false;
+		// Устанавливаем время ожидания записи данных
+		adj->timeWrite = wrk->timeWrite;
+		// Устанавливаем размер детектируемых байт на запись
+		adj->markWrite = wrk->markWrite;
+		// Устанавливаем приоритет выполнения для события на чтения
+		ev_set_priority(&adj->bev.event.write, -2);
+		// Устанавливаем базу событий
+		adj->bev.event.write.set(this->base);
+		// Устанавливаем сокет для записи
+		adj->bev.event.write.set(adj->bev.socket, ev::WRITE);
+		// Устанавливаем событие на запись данных подключения
+		adj->bev.event.write.set <awh::worker_t::adj_t, &awh::worker_t::adj_t::write> (adj);
+		// Запускаем запись данных на сервер
+		adj->bev.event.write.start();
+		// Если флаг ожидания входящих сообщений, активирован
+		if(wrk->wait && (adj->timeWrite > 0)){
+			// Устанавливаем приоритет выполнения для таймаута на запись
+			ev_set_priority(&adj->bev.timer.write, 0);
+			// Устанавливаем базу событий
+			adj->bev.timer.write.set(this->base);
+			// Устанавливаем событие на запись данных подключения
+			adj->bev.timer.write.set <awh::worker_t::adj_t, &awh::worker_t::adj_t::timeout> (adj);
+			// Запускаем ожидание записи данных на сервер
+			adj->bev.timer.write.start(adj->timeWrite);
+		}
+	}
+}
+/**
  * timeout Функция обратного вызова при срабатывании таймаута
  * @param aid идентификатор адъютанта
  */
@@ -1023,20 +1065,12 @@ void awh::client::Core::connected(const size_t aid) noexcept {
 
 			// Устанавливаем базу событий
 			adj->bev.event.read.set(this->base);
-			// Устанавливаем базу событий
-			adj->bev.event.write.set(this->base);
 			// Устанавливаем сокет для записи
 			adj->bev.event.read.set(adj->bev.socket, ev::READ);
-			// Устанавливаем сокет для записи
-			adj->bev.event.write.set(adj->bev.socket, ev::WRITE);
 			// Устанавливаем событие на чтение данных подключения
 			adj->bev.event.read.set <awh::worker_t::adj_t, &awh::worker_t::adj_t::read> (adj);
-			// Устанавливаем событие на запись данных подключения
-			adj->bev.event.write.set <awh::worker_t::adj_t, &awh::worker_t::adj_t::write> (adj);
 			// Запускаем чтение данных с сервера
 			adj->bev.event.read.start();
-			// Запускаем запись данных на сервер
-			adj->bev.event.write.start();
 			// Если флаг ожидания входящих сообщений, активирован
 			if(wrk->wait){
 				// Если время ожидания чтения данных установлено
@@ -1047,15 +1081,6 @@ void awh::client::Core::connected(const size_t aid) noexcept {
 					adj->bev.timer.read.set <awh::worker_t::adj_t, &awh::worker_t::adj_t::timeout> (adj);
 					// Запускаем ожидание чтения данных с сервера
 					adj->bev.timer.read.start(adj->timeRead);
-				}
-				// Если время ожидания записи данных установлено
-				if(adj->timeWrite > 0){
-					// Устанавливаем базу событий
-					adj->bev.timer.write.set(this->base);
-					// Устанавливаем событие на запись данных подключения
-					adj->bev.timer.write.set <awh::worker_t::adj_t, &awh::worker_t::adj_t::timeout> (adj);
-					// Запускаем ожидание записи данных на сервер
-					adj->bev.timer.write.start(adj->timeWrite);
 				}
 			}
 			// Выводим в лог сообщение
@@ -1129,12 +1154,12 @@ void awh::client::Core::transfer(const method_t method, const size_t aid) noexce
 						adj->bev.timer.read.stop();
 						// Выполняем принудительное исполнение таймеров
 						if(this->socket.isBlocking(adj->bev.socket) == 1) this->executeTimers();
+						// Если время ожидания записи данных установлено
+						if(adj->timeRead > 0)
+							// Запускаем ожидание чтения данных с сервера
+							adj->bev.timer.read.start(adj->timeRead);
 						// Если данные получены
 						if(bytes > 0){
-							// Если время ожидания записи данных установлено
-							if(adj->timeRead > 0)
-								// Запускаем ожидание чтения данных с сервера
-								adj->bev.timer.read.start(adj->timeRead);
 							// Если данные считанные из буфера, больше размера ожидающего буфера
 							if((adj->markWrite.max > 0) && (bytes >= adj->markWrite.max)){
 								// Смещение в буфере и отправляемый размер данных
@@ -1203,24 +1228,16 @@ void awh::client::Core::transfer(const method_t method, const size_t aid) noexce
 				} break;
 				// Если производится запись данных
 				case (uint8_t) method_t::WRITE: {
+					// Останавливаем запись данных на сервер
+					adj->bev.event.write.stop();
 					// Останавливаем таймаут ожидания на запись в сокет
 					adj->bev.timer.write.stop();
 					// Выполняем принудительное исполнение таймеров
 					if(this->socket.isBlocking(adj->bev.socket) == 1) this->executeTimers();
-					// Если время ожидания записи данных установлено
-					if(adj->timeWrite > 0)
-						// Запускаем ожидание записи данных на сервер
-						adj->bev.timer.write.start(adj->timeWrite);
-					// Если подключение производится через, прокси-сервер
-					if(wrk->isProxy()){
-						// Если функция обратного вызова для вывода записи существует
-						if(wrk->writeProxyFn != nullptr)
-							// Выводим функцию обратного вызова
-							wrk->writeProxyFn(nullptr, 0, aid, wrk->wid, reinterpret_cast <awh::core_t *> (this));
-					// Если прокси-сервер не используется
-					} else if(wrk->writeFn != nullptr)
+					// Если функция обратного вызова на запись данных установлена
+					if(wrk->writeFn != nullptr)
 						// Выводим функцию обратного вызова
-						wrk->writeFn(nullptr, 0, aid, wrk->wid, reinterpret_cast <awh::core_t *> (this));
+						wrk->writeFn(aid, wrk->wid, reinterpret_cast <awh::core_t *> (this));
 				} break;
 			}
 		// Если подключение завершено

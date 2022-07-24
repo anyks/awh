@@ -166,6 +166,11 @@ namespace awh {
 				 * @param aid идентификатор адъютанта
 				 */
 				void switchProxy(const size_t aid) noexcept;
+				/**
+				 * waitingWrite Метод активации режима ожидании доступа на запись
+				 * @param aid идентификатор адъютанта
+				 */
+				void waitingWrite(const size_t aid) noexcept;
 			private:
 				/**
 				 * timeout Функция обратного вызова при срабатывании таймаута

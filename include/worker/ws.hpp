@@ -21,7 +21,6 @@
 #include <map>
 #include <ctime>
 #include <vector>
-#include <event2/event.h>
 
 /**
  * Наши модули
@@ -47,20 +46,55 @@ namespace awh {
 		typedef struct WorkerWebSocket : public worker_t {
 			public:
 				/**
+				 * Основные экшены
+				 */
+				enum class action_t : uint8_t {
+					NONE       = 0x01, // Отсутствие события
+					READ       = 0x02, // Событие чтения с сервера
+					CONNECT    = 0x03, // Событие подключения к серверу
+					DISCONNECT = 0x04  // Событие отключения от сервера
+				};
+			public:
+				/**
+				 * Locker Структура локера
+				 */
+				typedef struct Locker {
+					bool mode;           // Флаг блокировки
+					recursive_mutex mtx; // Мютекс для блокировки потока
+					/**
+					 * Locker Конструктор
+					 */
+					Locker() noexcept : mode(false) {}
+				} locker_t;
+				/**
+				 * Allow Структура флагов разрешения обменом данных
+				 */
+				typedef struct Allow {
+					bool send;    // Флаг разрешения отправки данных
+					bool receive; // Флаг разрешения чтения данных
+					/**
+					 * Allow Конструктор
+					 */
+					Allow() noexcept : send(true), receive(true) {}
+				} allow_t;
+			public:
+				/**
 				 * AdjParam Структура параметров адъютанта
 				 */
 				typedef struct AdjParam {
 					bool crypt;                  // Флаг шифрования сообщений
 					bool close;                  // Флаг требования закрыть адъютанта
-					bool locker;                 // Локер ожидания завершения запроса
+					bool stopped;                // Флаг принудительной остановки
 					bool compressed;             // Флаг переданных сжатых данных
-					size_t readBytes;            // Количество полученных байт для закрытия подключения
-					size_t stopBytes;            // Количество байт для закрытия подключения
+					action_t action;             // Экшен активного события
 					time_t checkPoint;           // Контрольная точка ответа на пинг
 					hash_t hash;                 // Создаём объект для компрессии-декомпрессии данных
+					allow_t allow;               // Объект разрешения обмена данными
+					locker_t locker;             // Объект блокировщика
 					server::wss_t http;          // Создаём объект для работы с HTTP
-					vector <char> buffer;        // Буфер бинарных необработанных данных
 					vector <char> fragmes;       // Данные фрагметрированного сообщения
+					vector <char> bufferRead;    // Буфер бинарных необработанных данных
+					vector <char> bufferWrite;   // Буфер бинарных обработанных данных
 					frame_t::opcode_t opcode;    // Полученный опкод сообщения
 					http_t::compress_t compress; // Метод компрессии данных
 					/**
@@ -69,10 +103,9 @@ namespace awh {
 					AdjParam(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcept :
 					 crypt(false),
 					 close(false),
-					 locker(false),
+					 stopped(false),
 					 compressed(false),
-					 readBytes(0),
-					 stopBytes(0),
+					 action(action_t::NONE),
 					 checkPoint(0),
 					 hash(fmk, log),
 					 http(fmk, log, uri),
@@ -88,17 +121,17 @@ namespace awh {
 				uri_t uri;
 				// Создаем объект для работы с сетью
 				network_t nwk;
-			private:
-				// Параметры подключения адъютантов
-				map <size_t, adjp_t> adjParams;
 			public:
 				// Флаги работы с сжатыми данными
-				http_t::compress_t compress = http_t::compress_t::NONE;
+				http_t::compress_t compress;
+			private:
+				// Параметры подключения адъютантов
+				map <size_t, unique_ptr <adjp_t>> adjParams;
 			private:
 				// Создаём объект фреймворка
-				const fmk_t * fmk = nullptr;
+				const fmk_t * fmk;
 				// Создаём объект работы с логами
-				const log_t * log = nullptr;
+				const log_t * log;
 			public:
 				/**
 				 * clear Метод очистки
@@ -106,33 +139,36 @@ namespace awh {
 				void clear() noexcept;
 			public:
 				/**
-				 * createAdj Метод создания параметров адъютанта
+				 * set Метод создания параметров адъютанта
 				 * @param aid идентификатор адъютанта
 				 */
-				void createAdj(const size_t aid) noexcept;
+				void set(const size_t aid) noexcept;
 				/**
-				 * removeAdj Метод удаления параметров подключения адъютанта
+				 * rm Метод удаления параметров подключения адъютанта
 				 * @param aid идентификатор адъютанта
 				 */
-				void removeAdj(const size_t aid) noexcept;
+				void rm(const size_t aid) noexcept;
 				/**
-				 * getAdj Метод получения параметров подключения адъютанта
+				 * get Метод получения параметров подключения адъютанта
 				 * @param aid идентификатор адъютанта
 				 * @return    параметры подключения адъютанта
 				 */
-				const adjp_t * getAdj(const size_t aid) const noexcept;
+				const adjp_t * get(const size_t aid) const noexcept;
 			public:
 				/**
 				 * WorkerWebSocket Конструктор
 				 * @param fmk объект фреймворка
 				 * @param log объект для работы с логами
 				 */
-				WorkerWebSocket(const fmk_t * fmk, const log_t * log) noexcept : worker_t(fmk, log), nwk(fmk), uri(fmk, &nwk), fmk(fmk), log(log) {}
+				WorkerWebSocket(const fmk_t * fmk, const log_t * log) noexcept :
+				 worker_t(fmk, log), nwk(fmk),
+				 compress(http_t::compress_t::NONE),
+				 uri(fmk, &nwk), fmk(fmk), log(log) {}
 				/**
 				 * ~WorkerWebSocket Деструктор
 				 */
 				~WorkerWebSocket() noexcept {}
-		} workerWS_t;
+		} ws_worker_t;
 	};
 };
 

@@ -17,6 +17,52 @@ using namespace std;
 using namespace awh;
 
 /**
+ * WebClient Класс объекта исполнителя
+ */
+class WebClient {
+	private:
+		// Объект логирования
+		log_t * log;
+	public:
+		/**
+		 * active Метод идентификации активности на WebClient клиенте
+		 * @param mode режим события подключения
+		 * @param web  объект WebClient-а
+		 */
+		void active(const client::rest_t::mode_t mode, client::rest_t * web){
+			// Выводим информацию в лог
+			this->log->print("%s client", log_t::flag_t::INFO, (mode == client::rest_t::mode_t::CONNECT ? "Connect" : "Disconnect"));
+		}
+		/**
+		 * message Метод получения сообщений
+		 * @param res объект ответа с Web-сервера
+		 * @param web объект WebClient-а
+		 */
+		void message(const client::rest_t::res_t & res, client::rest_t * web){
+			// Переходим по всем заголовкам
+			for(auto & header : res.headers){
+				// Выводим информацию в лог
+				this->log->print("%s : %s", log_t::flag_t::INFO, header.first.c_str(), header.second.c_str());
+			}
+			// Получаем результат
+			const string result(res.entity.begin(), res.entity.end());
+			// Создаём объект JSON
+			json data = json::parse(result);
+			// Выводим полученный результат
+			cout << " =========== " << data.dump(4) << endl;
+			// cout << " =========== " << result << " == " << res.code << " == " << res.ok << endl;
+			// Выполняем остановку
+			web->stop();
+		}
+	public:
+		/**
+		 * WebClient Конструктор
+		 * @param log объект логирования
+		 */
+		WebClient(log_t * log) : log(log) {}
+};
+
+/**
  * main Главная функция приложения
  * @param argc длина массива параметров
  * @param argv массив параметров
@@ -31,6 +77,8 @@ int main(int argc, char * argv[]) noexcept {
 	network_t nwk(&fmk);
 	// Создаём объект URI
 	uri_t uri(&fmk, &nwk);
+	// Создаём объект исполнителя
+	WebClient executor(&log);
 	// Создаём биндинг
 	client::core_t core(&fmk, &log);
 	// Создаём объект REST запроса
@@ -77,29 +125,9 @@ int main(int argc, char * argv[]) noexcept {
 	// uri_t::url_t url = uri.parseUrl("https://testnet.binance.vision/api/v3/exchangeInfo");
 	// uri_t::url_t url = uri.parseUrl("https://api.coingecko.com/api/v3/coins/list?include_platform=true");
 	// Подписываемся на событие коннекта и дисконнекта клиента
-	rest.on([&log](const client::rest_t::mode_t mode, client::rest_t * web){
-		// Выводим информацию в лог
-		log.print("%s client", log_t::flag_t::INFO, (mode == client::rest_t::mode_t::CONNECT ? "Connect" : "Disconnect"));
-	});
-	/*
+	rest.on((function <void (const client::rest_t::mode_t, client::rest_t *)>) bind(&WebClient::active, &executor, _1, _2));
 	// Подписываемся на событие получения сообщения
-	rest.on([&log](const client::rest_t::res_t & res, client::rest_t * web){
-		// Переходим по всем заголовкам
-		for(auto & header : res.headers){
-			// Выводим информацию в лог
-			log.print("%s : %s", log_t::flag_t::INFO, header.first.c_str(), header.second.c_str());
-		}
-		// Получаем результат
-		const string result(res.entity.begin(), res.entity.end());
-		// Создаём объект JSON
-		json data = json::parse(result);
-		// Выводим полученный результат
-		cout << " =========== " << data.dump(4) << endl;
-		// cout << " =========== " << result << " == " << res.code << " == " << res.ok << endl;
-		// Выполняем остановку
-		web->stop();
-	});
-	*/
+	// rest.on((function <void (const client::rest_t::res_t &, client::rest_t *)>) bind(&WebClient::message, &executor, _1, _2));
 	/*
 	// Список запросов
 	vector <client::rest_t::req_t> request;

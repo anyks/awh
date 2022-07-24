@@ -154,7 +154,7 @@ set(SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/src/auth/server.cpp"
     "${CMAKE_SOURCE_DIR}/src/client/ws.cpp"
     "${CMAKE_SOURCE_DIR}/src/client/rest.cpp"
-#    "${CMAKE_SOURCE_DIR}/src/server/ws.cpp"
+    "${CMAKE_SOURCE_DIR}/src/server/ws.cpp"
 #    "${CMAKE_SOURCE_DIR}/src/server/rest.cpp"
 #    "${CMAKE_SOURCE_DIR}/src/server/proxy.cpp"
 #    "${CMAKE_SOURCE_DIR}/src/server/socks5.cpp"
@@ -164,18 +164,18 @@ set(SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/src/socks5/core.cpp"
     "${CMAKE_SOURCE_DIR}/src/socks5/client.cpp"
 #    "${CMAKE_SOURCE_DIR}/src/socks5/server.cpp"
-#    "${CMAKE_SOURCE_DIR}/src/worker/ws.cpp"
+    "${CMAKE_SOURCE_DIR}/src/worker/ws.cpp"
     "${CMAKE_SOURCE_DIR}/src/worker/core.cpp"
     "${CMAKE_SOURCE_DIR}/src/worker/rest.cpp"
 #    "${CMAKE_SOURCE_DIR}/src/worker/proxy.cpp"
 #    "${CMAKE_SOURCE_DIR}/src/worker/socks5.cpp"
     "${CMAKE_SOURCE_DIR}/src/worker/client.cpp"
-#    "${CMAKE_SOURCE_DIR}/src/worker/server.cpp"
+    "${CMAKE_SOURCE_DIR}/src/worker/server.cpp"
 )
 
 # Задаем именя библиотеки и бинарника
 set(WSC_APP_NAME wsc)
-#set(WSS_APP_NAME wss)
+set(WSS_APP_NAME wss)
 #set(WEB_APP_NAME web)
 set(REST_APP_NAME rest)
 #set(TIMER_APP_NAME timer)
@@ -206,7 +206,7 @@ if (ENABLE_CONSOLE_APP)
     endif(MINGW)
 
     add_executable(${WSC_APP_NAME} sample/wsc.cpp ${RES_FILES})
-#    add_executable(${WSS_APP_NAME} sample/wss.cpp ${RES_FILES})
+    add_executable(${WSS_APP_NAME} sample/wss.cpp ${RES_FILES})
 #    add_executable(${WEB_APP_NAME} sample/web.cpp ${RES_FILES})
     add_executable(${REST_APP_NAME} sample/rest.cpp ${RES_FILES})
 #    add_executable(${TIMER_APP_NAME} sample/timer.cpp ${RES_FILES})
@@ -222,14 +222,14 @@ if (ENABLE_CONSOLE_APP)
         ${WINFLAGS}
     )
 
-#    target_link_libraries(${WSS_APP_NAME}
-#        ${CURRENT_LIB_NAME}
-#        ${ZLIB_LIBRARY}
-#        ${BROTLI_LIBRARIES}
-#        ${OPENSSL_LIBRARIES}
-#        ${LIBEVENT_LIBRARIES}
-#        ${WINFLAGS}
-#    )
+    target_link_libraries(${WSS_APP_NAME}
+        ${CURRENT_LIB_NAME}
+        ${ZLIB_LIBRARY}
+        ${LIBEV_LIBRARY}
+        ${BROTLI_LIBRARIES}
+        ${OPENSSL_LIBRARIES}
+        ${WINFLAGS}
+    )
 
 #    target_link_libraries(${WEB_APP_NAME}
 #        ${CURRENT_LIB_NAME}
@@ -288,7 +288,7 @@ install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/include" DESTINATION "${CMAKE_INS
 install(TARGETS ${CURRENT_LIB_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
 # Устанавливаем исполнительные файлы
 install(TARGETS ${WSC_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
-#install(TARGETS ${WSS_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
+install(TARGETS ${WSS_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
 #install(TARGETS ${WEB_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
 install(TARGETS ${REST_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
 #install(TARGETS ${TIMER_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")

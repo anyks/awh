@@ -19,17 +19,44 @@
  * openCallback Функция обратного вызова при запуске работы
  * @param wid  идентификатор воркера
  * @param core объект биндинга TCP/IP
- * @param ctx  передаваемый контекст модуля
  */
-void awh::server::WebSocket::openCallback(const size_t wid, awh::core_t * core, void * ctx) noexcept {
+void awh::server::WebSocket::openCallback(const size_t wid, awh::core_t * core) noexcept {
 	// Если данные существуют
-	if((wid > 0) && (core != nullptr) && (ctx != nullptr)){
-		// Получаем контекст модуля
-		ws_t * ws = reinterpret_cast <ws_t *> (ctx);
+	if((wid > 0) && (core != nullptr)){
 		// Устанавливаем хост сервера
-		reinterpret_cast <server::core_t *> (core)->init(wid, ws->port, ws->host);
+		reinterpret_cast <server::core_t *> (core)->init(wid, this->port, this->host);
 		// Выполняем запуск сервера
 		reinterpret_cast <server::core_t *> (core)->run(wid);
+	}
+}
+/**
+ * writeCallback Функция обратного вызова при записи сообщения на клиенте
+ * @param aid  идентификатор адъютанта
+ * @param wid  идентификатор воркера
+ * @param core объект биндинга TCP/IP
+ */
+void awh::server::WebSocket::writeCallback(const size_t aid, const size_t wid, awh::core_t * core) noexcept {
+	// Если данные существуют
+	if((aid > 0) && (wid > 0) && (core != nullptr)){
+		// Получаем параметры подключения адъютанта
+		ws_worker_t::adjp_t * adj = const_cast <ws_worker_t::adjp_t *> (this->worker.get(aid));
+		// Если объект адъютанта получен
+		if(adj != nullptr){
+			// Если буфер данных не пустой
+			if(!adj->bufferWrite.empty()){
+				// Выполняем запись данных на сервер
+				core->write(adj->bufferWrite.data(), adj->bufferWrite.size(), aid);
+				// Выполняем очистку буфера данных
+				adj->bufferWrite.clear();
+				// Если нужно произвести отключение
+				if(!adj->close && adj->stopped)
+					// Выполняем ожидание доступности записи
+					const_cast <server::core_t *> (this->core)->waitingWrite(aid);
+			// Если необходимо выполнить закрыть подключение
+			} else if(!adj->close && adj->stopped)
+				// Устанавливаем флаг закрытия подключения
+				adj->close = !adj->close;
+		}
 	}
 }
 /**
@@ -37,25 +64,22 @@ void awh::server::WebSocket::openCallback(const size_t wid, awh::core_t * core, 
  * @param aid  идентификатор адъютанта
  * @param wid  идентификатор воркера
  * @param core объект биндинга TCP/IP
- * @param ctx  передаваемый контекст модуля
  */
-void awh::server::WebSocket::persistCallback(const size_t aid, const size_t wid, awh::core_t * core, void * ctx) noexcept {
+void awh::server::WebSocket::persistCallback(const size_t aid, const size_t wid, awh::core_t * core) noexcept {
 	// Если данные существуют
-	if((aid > 0) && (wid > 0) && (core != nullptr) && (ctx != nullptr)){
-		// Получаем контекст модуля
-		ws_t * ws = reinterpret_cast <ws_t *> (ctx);
+	if((aid > 0) && (wid > 0) && (core != nullptr)){
 		// Получаем параметры подключения адъютанта
-		workerWS_t::adjp_t * adj = const_cast <workerWS_t::adjp_t *> (ws->worker.getAdj(aid));
+		ws_worker_t::adjp_t * adj = const_cast <ws_worker_t::adjp_t *> (this->worker.get(aid));
 		// Если параметры подключения адъютанта получены
 		if(adj != nullptr){
 			// Получаем текущий штамп времени
-			const time_t stamp = ws->fmk->unixTimestamp();
+			const time_t stamp = this->fmk->unixTimestamp();
 			// Если адъютант не ответил на пинг больше двух интервалов, отключаем его
 			if(adj->close || ((stamp - adj->checkPoint) >= (PERSIST_INTERVAL * 5)))
 				// Завершаем работу
 				reinterpret_cast <server::core_t *> (core)->close(aid);
 			// Отправляем запрос адъютанту
-			else ws->ping(aid, core, to_string(aid));
+			else this->ping(aid, core, to_string(aid));
 		}
 	}
 }
@@ -64,65 +88,20 @@ void awh::server::WebSocket::persistCallback(const size_t aid, const size_t wid,
  * @param aid  идентификатор адъютанта
  * @param wid  идентификатор воркера
  * @param core объект биндинга TCP/IP
- * @param ctx  передаваемый контекст модуля
  */
-void awh::server::WebSocket::connectCallback(const size_t aid, const size_t wid, awh::core_t * core, void * ctx) noexcept {
-	// Если данные существуют
-	if((aid > 0) && (wid > 0) && (core != nullptr) && (ctx != nullptr)){
-		// Получаем контекст модуля
-		ws_t * ws = reinterpret_cast <ws_t *> (ctx);
+void awh::server::WebSocket::connectCallback(const size_t aid, const size_t wid, awh::core_t * core) noexcept {
+	// Если данные переданы верные
+	if((aid > 0) && (wid > 0) && (core != nullptr)){
 		// Создаём адъютанта
-		ws->worker.createAdj(aid);
+		this->worker.set(aid);
 		// Получаем параметры подключения адъютанта
-		workerWS_t::adjp_t * adj = const_cast <workerWS_t::adjp_t *> (ws->worker.getAdj(aid));
-		// Если данные необходимо зашифровать
-		if(ws->crypt){
-			// Устанавливаем размер шифрования
-			adj->hash.setAES(ws->aes);
-			// Устанавливаем соль шифрования
-			adj->hash.setSalt(ws->salt);
-			// Устанавливаем пароль шифрования
-			adj->hash.setPassword(ws->pass);
-		}
-		// Разрешаем перехватывать контекст для клиента
-		adj->http.setClientTakeover(ws->takeOverCli);
-		// Разрешаем перехватывать контекст для сервера
-		adj->http.setServerTakeover(ws->takeOverSrv);
-		// Разрешаем перехватывать контекст компрессии
-		adj->hash.setTakeoverCompress(ws->takeOverSrv);
-		// Разрешаем перехватывать контекст декомпрессии
-		adj->hash.setTakeoverDecompress(ws->takeOverCli);
-		// Устанавливаем данные сервиса
-		adj->http.setServ(ws->sid, ws->name, ws->version);
-		// Устанавливаем поддерживаемые сабпротоколы
-		if(!ws->subs.empty()) adj->http.setSubs(ws->subs);
-		// Устанавливаем метод компрессии поддерживаемый сервером
-		adj->http.setCompress(ws->worker.compress);
-		// Устанавливаем параметры шифрования
-		if(ws->crypt) adj->http.setCrypt(ws->pass, ws->salt, ws->aes);
-		// Если сервер требует авторизацию
-		if(ws->authType != auth_t::type_t::NONE){
-			// Определяем тип авторизации
-			switch((uint8_t) ws->authType){
-				// Если тип авторизации Basic
-				case (uint8_t) auth_t::type_t::BASIC: {
-					// Устанавливаем параметры авторизации
-					adj->http.setAuthType(ws->authType);
-					// Устанавливаем функцию проверки авторизации
-					adj->http.setAuthCallback(ws->ctx.at(4), ws->checkAuthFn);
-				} break;
-				// Если тип авторизации Digest
-				case (uint8_t) auth_t::type_t::DIGEST: {
-					// Устанавливаем название сервера
-					adj->http.setRealm(ws->realm);
-					// Устанавливаем временный ключ сессии сервера
-					adj->http.setOpaque(ws->opaque);
-					// Устанавливаем параметры авторизации
-					adj->http.setAuthType(ws->authType, ws->authHash);
-					// Устанавливаем функцию извлечения пароля
-					adj->http.setExtractPassCallback(ws->ctx.at(3), ws->extractPassFn);
-				} break;
-			}
+		ws_worker_t::adjp_t * adj = const_cast <ws_worker_t::adjp_t *> (this->worker.get(aid));
+		// Если объект адъютанта получен
+		if(adj != nullptr){
+			// Устанавливаем экшен выполнения
+			adj->action = ws_worker_t::action_t::CONNECT;
+			// Выполняем запуск обработчика событий
+			this->handler(aid);
 		}
 	}
 }
@@ -131,17 +110,19 @@ void awh::server::WebSocket::connectCallback(const size_t aid, const size_t wid,
  * @param aid  идентификатор адъютанта
  * @param wid  идентификатор воркера
  * @param core объект биндинга TCP/IP
- * @param ctx  передаваемый контекст модуля
  */
-void awh::server::WebSocket::disconnectCallback(const size_t aid, const size_t wid, awh::core_t * core, void * ctx) noexcept {
-	// Если данные существуют
-	if((wid > 0) && (core != nullptr) && (ctx != nullptr)){
-		// Получаем контекст модуля
-		ws_t * ws = reinterpret_cast <ws_t *> (ctx);
-		// Выполняем удаление параметров адъютанта
-		ws->worker.removeAdj(aid);
-		// Если функция обратного вызова установлена, выполняем
-		if(ws->activeFn != nullptr) ws->activeFn(aid, mode_t::DISCONNECT, ws, ws->ctx.at(0));
+void awh::server::WebSocket::disconnectCallback(const size_t aid, const size_t wid, awh::core_t * core) noexcept {
+	// Если данные переданы верные
+	if((aid > 0) && (wid > 0) && (core != nullptr)){
+		// Получаем параметры подключения адъютанта
+		ws_worker_t::adjp_t * adj = const_cast <ws_worker_t::adjp_t *> (this->worker.get(aid));
+		// Если объект адъютанта получен
+		if(adj != nullptr){
+			// Устанавливаем экшен выполнения
+			adj->action = ws_worker_t::action_t::DISCONNECT;
+			// Выполняем запуск обработчика событий
+			this->handler(aid);
+		}
 	}
 }
 /**
@@ -150,18 +131,15 @@ void awh::server::WebSocket::disconnectCallback(const size_t aid, const size_t w
  * @param mac  мак-адрес подключившегося клиента
  * @param wid  идентификатор воркера
  * @param core объект биндинга TCP/IP
- * @param ctx  передаваемый контекст модуля
  * @return     результат разрешения к подключению клиента
  */
-bool awh::server::WebSocket::acceptCallback(const string & ip, const string & mac, const size_t wid, awh::core_t * core, void * ctx) noexcept {
+bool awh::server::WebSocket::acceptCallback(const string & ip, const string & mac, const size_t wid, awh::core_t * core) noexcept {
 	// Результат работы функции
 	bool result = true;
 	// Если данные существуют
-	if(!ip.empty() && !mac.empty() && (wid > 0) && (core != nullptr) && (ctx != nullptr)){
-		// Получаем контекст модуля
-		ws_t * ws = reinterpret_cast <ws_t *> (ctx);
+	if(!ip.empty() && !mac.empty() && (wid > 0) && (core != nullptr)){
 		// Если функция обратного вызова установлена, проверяем
-		if(ws->acceptFn != nullptr) result = ws->acceptFn(ip, mac, ws, ws->ctx.at(5));
+		if(this->acceptFn != nullptr) result = this->acceptFn(ip, mac, this);
 	}
 	// Разрешаем подключение клиенту
 	return result;
@@ -173,36 +151,89 @@ bool awh::server::WebSocket::acceptCallback(const string & ip, const string & ma
  * @param aid    идентификатор адъютанта
  * @param wid    идентификатор воркера
  * @param core   объект биндинга TCP/IP
- * @param ctx    передаваемый контекст модуля
  */
-void awh::server::WebSocket::readCallback(const char * buffer, const size_t size, const size_t aid, const size_t wid, awh::core_t * core, void * ctx) noexcept {
+void awh::server::WebSocket::readCallback(const char * buffer, const size_t size, const size_t aid, const size_t wid, awh::core_t * core) noexcept {
 	// Если данные существуют
-	if((size > 0) && (aid > 0) && (wid > 0) && (buffer != nullptr) && (core != nullptr) && (ctx != nullptr)){
-		// Получаем контекст модуля
-		ws_t * ws = reinterpret_cast <ws_t *> (ctx);
+	if((buffer != nullptr) && (size > 0) && (aid > 0) && (wid > 0)){
 		// Получаем параметры подключения адъютанта
-		workerWS_t::adjp_t * adj = const_cast <workerWS_t::adjp_t *> (ws->worker.getAdj(aid));
-		// Если параметры подключения адъютанта получены
+		ws_worker_t::adjp_t * adj = const_cast <ws_worker_t::adjp_t *> (this->worker.get(aid));
+		// Если объект адъютанта получен
 		if(adj != nullptr){
-			// Если подключение закрыто
-			if(adj->close){
-				// Принудительно выполняем отключение лкиента
-				reinterpret_cast <server::core_t *> (core)->close(aid);
-				// Выходим из функции
-				return;
+			// Если дисконнекта ещё не произошло
+			if((adj->action == ws_worker_t::action_t::NONE) || (adj->action == ws_worker_t::action_t::READ)){
+				// Если подключение закрыто
+				if(adj->close){
+					// Принудительно выполняем отключение лкиента
+					reinterpret_cast <server::core_t *> (core)->close(aid);
+					// Выходим из функции
+					return;
+				}
+				// Если разрешено получение данных
+				if(adj->allow.receive){
+					// Устанавливаем экшен выполнения
+					adj->action = ws_worker_t::action_t::READ;
+					// Добавляем полученные данные в буфер
+					adj->bufferRead.insert(adj->bufferRead.end(), buffer, buffer + size);
+					// Выполняем запуск обработчика событий
+					this->handler(aid);
+				}
 			}
+		}
+	}
+}
+/**
+ * handler Метод управления входящими методами
+ * @param aid идентификатор адъютанта
+ */
+void awh::server::WebSocket::handler(const size_t aid) noexcept {
+	// Получаем параметры подключения адъютанта
+	ws_worker_t::adjp_t * adj = const_cast <ws_worker_t::adjp_t *> (this->worker.get(aid));
+	// Если объект адъютанта получен
+	if(adj != nullptr){
+		// Если управляющий блокировщик не заблокирован
+		if(!adj->locker.mode){
+			// Выполняем блокировку потока
+			const lock_guard <recursive_mutex> lock(adj->locker.mtx);
+			// Выполняем блокировку обработчика
+			adj->locker.mode = true;
+			// Выполняем обработку всех экшенов
+			while(adj->action != ws_worker_t::action_t::NONE){
+				// Определяем обрабатываемый экшен
+				switch((uint8_t) adj->action){
+					// Если необходимо запустить экшен обработки данных поступающих с сервера
+					case (uint8_t) ws_worker_t::action_t::READ: this->actionRead(aid); break;
+					// Если необходимо запустить экшен обработки подключения к серверу
+					case (uint8_t) ws_worker_t::action_t::CONNECT: this->actionConnect(aid); break;
+					// Если необходимо запустить экшен обработки отключения от сервера
+					case (uint8_t) ws_worker_t::action_t::DISCONNECT: this->actionDisconnect(aid); break;
+				}
+			}
+			// Выполняем разблокировку обработчика
+			adj->locker.mode = false;
+		}
+	}
+}
+/**
+ * actionRead Метод обработки экшена чтения с сервера
+ * @param aid идентификатор адъютанта
+ */
+void awh::server::WebSocket::actionRead(const size_t aid) noexcept {
+	// Если данные существуют
+	if(aid > 0){
+		// Получаем параметры подключения адъютанта
+		ws_worker_t::adjp_t * adj = const_cast <ws_worker_t::adjp_t *> (this->worker.get(aid));
+		// Если объект адъютанта получен
+		if(adj != nullptr){
 			// Объект сообщения
 			mess_t mess;
+			// Получаем объект биндинга ядра TCP/IP
+			server::core_t * core = const_cast <server::core_t *> (this->core);
 			// Если рукопожатие не выполнено
 			if(!reinterpret_cast <http_t *> (&adj->http)->isHandshake()){
-				// Добавляем полученные данные в буфер
-				adj->buffer.insert(adj->buffer.end(), buffer, buffer + size);
 				// Выполняем парсинг полученных данных
-				size_t bytes = adj->http.parse(adj->buffer.data(), adj->buffer.size());
+				const size_t bytes = adj->http.parse(adj->bufferRead.data(), adj->bufferRead.size());
 				// Если все данные получены
 				if(adj->http.isEnd()){
-					// Выполняем сброс данных буфера
-					adj->buffer.clear();
 					// Метод компрессии данных
 					http_t::compress_t compress = http_t::compress_t::NONE;
 					// Если включён режим отладки
@@ -218,13 +249,11 @@ void awh::server::WebSocket::readCallback(const char * buffer, const size_t size
 							// Если тело запроса существует
 							if(!adj->http.getBody().empty())
 								// Выводим сообщение о выводе чанка тела
-								cout << ws->fmk->format("<body %u>", adj->http.getBody().size()) << endl << endl;
+								cout << this->fmk->format("<body %u>", adj->http.getBody().size()) << endl << endl;
 							// Иначе устанавливаем перенос строки
 							else cout << endl;
 						}
 					#endif
-					// Бинарный буфер ответа сервера
-					vector <char> response;
 					// Выполняем проверку авторизации
 					switch((uint8_t) adj->http.getAuth()){
 						// Если запрос выполнен удачно
@@ -238,7 +267,7 @@ void awh::server::WebSocket::readCallback(const char * buffer, const size_t size
 									// Выполняем сброс состояния HTTP парсера
 									adj->http.clear();
 									// Получаем бинарные данные REST запроса
-									response = adj->http.reject(400, "Unsupported protocol version");
+									adj->bufferWrite = adj->http.reject(400, "Unsupported protocol version");
 									// Завершаем работу
 									break;
 								}
@@ -247,7 +276,7 @@ void awh::server::WebSocket::readCallback(const char * buffer, const size_t size
 									// Выполняем сброс состояния HTTP парсера
 									adj->http.clear();
 									// Получаем бинарные данные REST запроса
-									response = adj->http.reject(400, "Wrong client key");
+									adj->bufferWrite = adj->http.reject(400, "Wrong client key");
 									// Завершаем работу
 									break;
 								}
@@ -268,24 +297,33 @@ void awh::server::WebSocket::readCallback(const char * buffer, const size_t size
 									// Разрешаем перехватывать контекст компрессии для сервера
 									adj->hash.setTakeoverDecompress(true);
 								// Получаем бинарные данные REST запроса
-								response = adj->http.response();
+								adj->bufferWrite = adj->http.response();
 								// Если бинарные данные ответа получены
-								if(!response.empty()){
+								if(!adj->bufferWrite.empty()){
 									// Если включён режим отладки
 									#if defined(DEBUG_MODE)
 										// Выводим заголовок ответа
 										cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
 										// Выводим параметры ответа
-										cout << string(response.begin(), response.end()) << endl << endl;
+										cout << string(adj->bufferWrite.begin(), adj->bufferWrite.end()) << endl << endl;
 									#endif
-									// Отправляем сообщение клиенту
-									core->write(response.data(), response.size(), aid);
+									// Выполняем ожидание доступности записи
+									core->waitingWrite(aid);
 									// Если функция обратного вызова установлена, выполняем
-									if(ws->activeFn != nullptr) ws->activeFn(aid, mode_t::CONNECT, ws, ws->ctx.at(0));
+									if(this->activeFn != nullptr) this->activeFn(aid, mode_t::CONNECT, this);
 									// Есла данных передано больше чем обработано
-									if(size > bytes)
-										// Выполняем обработку дальше
-										readCallback(buffer + bytes, size - bytes, aid, wid, core, ctx);
+									if(adj->bufferRead.size() > bytes)
+										// Удаляем количество обработанных байт
+										vector <decltype(adj->bufferRead)::value_type> (adj->bufferRead.begin() + bytes, adj->bufferRead.end()).swap(adj->bufferRead);
+									// Если данных в буфере больше нет
+									else {
+										// Очищаем буфер собранных данных
+										adj->bufferRead.clear();
+										// Если экшен соответствует, выполняем его сброс
+										if(adj->action == ws_worker_t::action_t::READ)
+											// Выполняем сброс экшена
+											adj->action = ws_worker_t::action_t::NONE;
+									}
 									// Завершаем работу
 									return;
 								// Выполняем реджект
@@ -294,8 +332,10 @@ void awh::server::WebSocket::readCallback(const char * buffer, const size_t size
 									adj->http.clear();
 									// Выполняем сброс состояния HTTP парсера
 									adj->http.reset();
+									// Выполняем очистку буфера данных
+									adj->bufferRead.clear();
 									// Формируем ответ, что страница не доступна
-									response = adj->http.reject(500);
+									adj->bufferWrite = adj->http.reject(500);
 								}
 							// Сообщаем, что рукопожатие не выполнено
 							} else {
@@ -303,8 +343,10 @@ void awh::server::WebSocket::readCallback(const char * buffer, const size_t size
 								adj->http.clear();
 								// Выполняем сброс состояния HTTP парсера
 								adj->http.reset();
+								// Выполняем очистку буфера данных
+								adj->bufferRead.clear();
 								// Формируем ответ, что страница не доступна
-								response = adj->http.reject(403);
+								adj->bufferWrite = adj->http.reject(403);
 							}
 						} break;
 						// Если запрос неудачный
@@ -313,12 +355,14 @@ void awh::server::WebSocket::readCallback(const char * buffer, const size_t size
 							adj->http.clear();
 							// Выполняем сброс состояния HTTP парсера
 							adj->http.reset();
+							// Выполняем очистку буфера данных
+							adj->bufferRead.clear();
 							// Формируем запрос авторизации
-							response = adj->http.reject(401);
+							adj->bufferWrite = adj->http.reject(401);
 						} break;
 					}
 					// Если бинарные данные запроса получены, отправляем на сервер
-					if(!response.empty()){
+					if(!adj->bufferWrite.empty()){
 						// Тело полезной нагрузки
 						vector <char> payload;
 						// Если включён режим отладки
@@ -326,49 +370,57 @@ void awh::server::WebSocket::readCallback(const char * buffer, const size_t size
 							// Выводим заголовок ответа
 							cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
 							// Выводим параметры ответа
-							cout << string(response.begin(), response.end()) << endl << endl;
+							cout << string(adj->bufferWrite.begin(), adj->bufferWrite.end()) << endl << endl;
 						#endif
 						// Устанавливаем метод компрессии данных ответа
 						adj->http.setCompress(compress);
-						// Устанавливаем размер стопбайт
-						if(!adj->http.isAlive()) adj->stopBytes = response.size();
-						// Отправляем ответ клиенту
-						core->write(response.data(), response.size(), aid);
 						// Получаем данные тела запроса
 						while(!(payload = adj->http.payload()).empty()){
 							// Если включён режим отладки
 							#if defined(DEBUG_MODE)
 								// Выводим сообщение о выводе чанка полезной нагрузки
-								cout << ws->fmk->format("<chunk %u>", payload.size()) << endl;
+								cout << this->fmk->format("<chunk %u>", payload.size()) << endl;
 							#endif
-							// Устанавливаем размер стопбайт
-							if(!adj->http.isAlive()) adj->stopBytes += payload.size();
-							// Отправляем тело на сервер
-							core->write(payload.data(), payload.size(), aid);
+							// Объединяем буфер для отправки
+							adj->bufferWrite.insert(adj->bufferWrite.end(), payload.begin(), payload.end());
 						}
-					// Завершаем работу клиента
-					} else reinterpret_cast <server::core_t *> (core)->close(aid);
-				}
+						// Устанавливаем флаг разрешающий остановку
+						adj->stopped = true;
+						// Выполняем ожидание доступности записи
+						core->waitingWrite(aid);
+						// Если экшен соответствует, выполняем его сброс
+						if(adj->action == ws_worker_t::action_t::READ)
+							// Выполняем сброс экшена
+							adj->action = ws_worker_t::action_t::NONE;
+						// Завершаем работу
+						return;
+					}
+					// Если экшен соответствует, выполняем его сброс
+					if(adj->action == ws_worker_t::action_t::READ)
+						// Выполняем сброс экшена
+						adj->action = ws_worker_t::action_t::NONE;
+					// Завершаем работу
+					core->close(aid);
+				// Если экшен соответствует, выполняем его сброс
+				} else if(adj->action == ws_worker_t::action_t::READ)
+					// Выполняем сброс экшена
+					adj->action = ws_worker_t::action_t::NONE;
 				// Завершаем работу
 				return;
 			// Если рукопожатие выполнено
-			} else {
-				// Основные флаг остановки перебора бинарного буфера
-				bool stop = false;
+			} else if(adj->allow.receive) {
+				// Флаг удачного получения данных
+				bool receive = false;
+				// Создаём буфер сообщения
+				vector <char> buffer;
 				// Создаём объект шапки фрейма
 				frame_t::head_t head;
-				// Создаём буфер сообщения
-				vector <char> message;
-				// Добавляем полученные данные в буфер
-				adj->buffer.insert(adj->buffer.end(), buffer, buffer + size);
 				// Выполняем обработку полученных данных
-				while(!adj->close){
+				while(!adj->close && adj->allow.receive){
 					// Выполняем чтение фрейма WebSocket
-					const auto & data = ws->frame.get(head, adj->buffer.data(), adj->buffer.size());
+					const auto & data = this->frame.get(head, adj->bufferRead.data(), adj->bufferRead.size());
 					// Если буфер данных получен
 					if(!data.empty()){
-						// Очищаем буфер полученного сообщения
-						message.clear();
 						// Проверяем состояние флагов RSV2 и RSV3
 						if(head.rsv[1] || head.rsv[2]){
 							// Создаём сообщение
@@ -378,8 +430,8 @@ void awh::server::WebSocket::readCallback(const char * buffer, const size_t size
 						}
 						// Если флаг компресси включён а данные пришли не сжатые
 						if(head.rsv[0] && ((adj->compress == http_t::compress_t::NONE) ||
-						(head.optcode == frame_t::opcode_t::CONTINUATION) ||
-						(((uint8_t) head.optcode > 0x07) && ((uint8_t) head.optcode < 0x0b)))){
+						  (head.optcode == frame_t::opcode_t::CONTINUATION) ||
+						  (((uint8_t) head.optcode > 0x07) && ((uint8_t) head.optcode < 0x0b)))){
 							// Создаём сообщение
 							mess = mess_t(1002, "RSV1 must be clear");
 							// Выполняем отключение клиента
@@ -397,14 +449,14 @@ void awh::server::WebSocket::readCallback(const char * buffer, const size_t size
 							// Если ответом является PING
 							case (uint8_t) frame_t::opcode_t::PING:
 								// Отправляем ответ клиенту
-								ws->pong(aid, core, string(data.begin(), data.end()));
+								this->pong(aid, core, string(data.begin(), data.end()));
 							break;
 							// Если ответом является PONG
 							case (uint8_t) frame_t::opcode_t::PONG: {
 								// Если идентификатор адъютанта совпадает
 								if(memcmp(to_string(aid).c_str(), data.data(), data.size()) == 0)
 									// Обновляем контрольную точку
-									adj->checkPoint = ws->fmk->unixTimestamp();
+									adj->checkPoint = this->fmk->unixTimestamp();
 							} break;
 							// Если ответом является TEXT
 							case (uint8_t) frame_t::opcode_t::TEXT:
@@ -433,7 +485,7 @@ void awh::server::WebSocket::readCallback(const char * buffer, const size_t size
 									// Заполняем фрагментированное сообщение
 									adj->fragmes.insert(adj->fragmes.end(), data.begin(), data.end());
 								// Если сообщение является последним
-								else message = move(* const_cast <vector <char> *> (&data));
+								else buffer = move(* const_cast <vector <char> *> (&data));
 							} break;
 							// Если ответом является CONTINUATION
 							case (uint8_t) frame_t::opcode_t::CONTINUATION: {
@@ -442,7 +494,7 @@ void awh::server::WebSocket::readCallback(const char * buffer, const size_t size
 								// Если сообщение является последним
 								if(head.fin){
 									// Выполняем копирование всех собранных сегментов
-									message = move(* const_cast <vector <char> *> (&adj->fragmes));
+									buffer = move(* const_cast <vector <char> *> (&adj->fragmes));
 									// Очищаем список фрагментированных сообщений
 									adj->fragmes.clear();
 								}
@@ -450,67 +502,141 @@ void awh::server::WebSocket::readCallback(const char * buffer, const size_t size
 							// Если ответом является CLOSE
 							case (uint8_t) frame_t::opcode_t::CLOSE: {
 								// Создаём сообщение
-								mess = ws->frame.message(data);
+								mess = this->frame.message(data);
 								// Выводим сообщение об ошибке
-								ws->error(aid, mess);
+								this->error(aid, mess);
+								// Если экшен соответствует, выполняем его сброс
+								if(adj->action == ws_worker_t::action_t::READ)
+									// Выполняем сброс экшена
+									adj->action = ws_worker_t::action_t::NONE;
 								// Завершаем работу
-								reinterpret_cast <server::core_t *> (core)->close(aid);
+								core->close(aid);
 								// Выходим из функции
 								return;
 							} break;
 						}
 					}
 					// Если парсер обработал какое-то количество байт
-					if((head.frame > 0) && !adj->buffer.empty()){
+					if((receive = ((head.frame > 0) && !adj->bufferRead.empty()))){
 						// Если размер буфера больше количества удаляемых байт
-						if(adj->buffer.size() >= head.frame)
+						if((receive = (adj->bufferRead.size() >= head.frame)))
 							// Удаляем количество обработанных байт
-							vector <decltype(adj->buffer)::value_type> (adj->buffer.begin() + head.frame, adj->buffer.end()).swap(adj->buffer);
-						// Если байт в буфере меньше, просто очищаем буфер
-						else adj->buffer.clear();
-						// Если данных для обработки не осталось, выходим
-						stop = adj->buffer.empty();
-					// Если данных для обработки недостаточно, выходим
-					} else stop = true;
+							vector <decltype(adj->bufferRead)::value_type> (adj->bufferRead.begin() + head.frame, adj->bufferRead.end()).swap(adj->bufferRead);
+					}
 					// Если сообщения получены
-					if(!message.empty())
+					if(!buffer.empty()){
 						// Выполняем извлечение полученных сообщений
-						ws->extraction(adj, aid, core, message, (adj->opcode == frame_t::opcode_t::TEXT));
-					// Если установлен флаг выхода, выходим
-					if(stop) break;
+						this->extraction(adj, aid, core, buffer, (adj->opcode == frame_t::opcode_t::TEXT));
+						// Очищаем буфер полученного сообщения
+						buffer.clear();
+					}
+					// Если данные мы все получили, выходим
+					if(!receive || adj->bufferRead.empty()) break;
 				}
+				// Если экшен соответствует, выполняем его сброс
+				if(adj->action == ws_worker_t::action_t::READ)
+					// Выполняем сброс экшена
+					adj->action = ws_worker_t::action_t::NONE;
 				// Выходим из функции
 				return;
 			}
 			// Устанавливаем метку остановки клиента
 			Stop:
 			// Отправляем серверу сообщение
-			ws->sendError(aid, mess);
+			this->sendError(aid, mess);
+			// Если экшен соответствует, выполняем его сброс
+			if(adj->action == ws_worker_t::action_t::READ)
+				// Выполняем сброс экшена
+				adj->action = ws_worker_t::action_t::NONE;
 		}
 	}
 }
 /**
- * writeCallback Функция обратного вызова при записи сообщения на клиенте
- * @param buffer бинарный буфер содержащий сообщение
- * @param size   размер записанных в сокет байт
- * @param aid    идентификатор адъютанта
- * @param wid    идентификатор воркера
- * @param core   объект биндинга TCP/IP
- * @param ctx    передаваемый контекст модуля
+ * actionConnect Метод обработки экшена подключения к серверу
+ * @param aid идентификатор адъютанта
  */
-void awh::server::WebSocket::writeCallback(const char * buffer, const size_t size, const size_t aid, const size_t wid, awh::core_t * core, void * ctx) noexcept {
+void awh::server::WebSocket::actionConnect(const size_t aid) noexcept {
 	// Если данные существуют
-	if((size > 0) && (aid > 0) && (wid > 0) && (core != nullptr) && (ctx != nullptr)){
-		// Получаем контекст модуля
-		ws_t * ws = reinterpret_cast <ws_t *> (ctx);
+	if(aid > 0){
 		// Получаем параметры подключения адъютанта
-		workerWS_t::adjp_t * adj = const_cast <workerWS_t::adjp_t *> (ws->worker.getAdj(aid));
-		// Если параметры подключения адъютанта получены
-		if((adj != nullptr) && !adj->close && (adj->stopBytes > 0)){
-			// Запоминаем количество прочитанных байт
-			adj->readBytes += size;
-			// Если размер полученных байт соответствует
-			adj->close = (adj->stopBytes >= adj->readBytes);
+		ws_worker_t::adjp_t * adj = const_cast <ws_worker_t::adjp_t *> (this->worker.get(aid));
+		// Если объект адъютанта получен
+		if(adj != nullptr){
+			// Если данные необходимо зашифровать
+			if(this->crypt){
+				// Устанавливаем размер шифрования
+				adj->hash.setAES(this->aes);
+				// Устанавливаем соль шифрования
+				adj->hash.setSalt(this->salt);
+				// Устанавливаем пароль шифрования
+				adj->hash.setPassword(this->pass);
+			}
+			// Разрешаем перехватывать контекст для клиента
+			adj->http.setClientTakeover(this->takeOverCli);
+			// Разрешаем перехватывать контекст для сервера
+			adj->http.setServerTakeover(this->takeOverSrv);
+			// Разрешаем перехватывать контекст компрессии
+			adj->hash.setTakeoverCompress(this->takeOverSrv);
+			// Разрешаем перехватывать контекст декомпрессии
+			adj->hash.setTakeoverDecompress(this->takeOverCli);
+			// Устанавливаем данные сервиса
+			adj->http.setServ(this->sid, this->name, this->version);
+			// Устанавливаем поддерживаемые сабпротоколы
+			if(!this->subs.empty()) adj->http.setSubs(this->subs);
+			// Устанавливаем метод компрессии поддерживаемый сервером
+			adj->http.setCompress(this->worker.compress);
+			// Устанавливаем параметры шифрования
+			if(this->crypt) adj->http.setCrypt(this->pass, this->salt, this->aes);
+			// Если сервер требует авторизацию
+			if(this->authType != auth_t::type_t::NONE){
+				// Определяем тип авторизации
+				switch((uint8_t) this->authType){
+					// Если тип авторизации Basic
+					case (uint8_t) auth_t::type_t::BASIC: {
+						// Устанавливаем параметры авторизации
+						adj->http.setAuthType(this->authType);
+						// Устанавливаем функцию проверки авторизации
+						adj->http.setAuthCallback(this->checkAuthFn);
+					} break;
+					// Если тип авторизации Digest
+					case (uint8_t) auth_t::type_t::DIGEST: {
+						// Устанавливаем название сервера
+						adj->http.setRealm(this->realm);
+						// Устанавливаем временный ключ сессии сервера
+						adj->http.setOpaque(this->opaque);
+						// Устанавливаем параметры авторизации
+						adj->http.setAuthType(this->authType, this->authHash);
+						// Устанавливаем функцию извлечения пароля
+						adj->http.setExtractPassCallback(this->extractPassFn);
+					} break;
+				}
+			}
+			// Если экшен соответствует, выполняем его сброс
+			if(adj->action == ws_worker_t::action_t::CONNECT)
+				// Выполняем сброс экшена
+				adj->action = ws_worker_t::action_t::NONE;
+		}
+	}
+}
+/**
+ * actionDisconnect Метод обработки экшена отключения от сервера
+ * @param aid идентификатор адъютанта
+ */
+void awh::server::WebSocket::actionDisconnect(const size_t aid) noexcept {
+	// Если данные существуют
+	if(aid > 0){
+		// Получаем параметры подключения адъютанта
+		ws_worker_t::adjp_t * adj = const_cast <ws_worker_t::adjp_t *> (this->worker.get(aid));
+		// Если объект адъютанта получен
+		if(adj != nullptr){
+			// Если функция обратного вызова установлена, выполняем
+			if(this->activeFn != nullptr) this->activeFn(aid, mode_t::DISCONNECT, this);
+			// Если экшен соответствует, выполняем его сброс
+			if(adj->action == ws_worker_t::action_t::DISCONNECT)
+				// Выполняем сброс экшена
+				adj->action = ws_worker_t::action_t::NONE;
+			// Выполняем удаление параметров адъютанта
+			this->worker.rm(aid);
 		}
 	}
 }
@@ -521,13 +647,13 @@ void awh::server::WebSocket::writeCallback(const char * buffer, const size_t siz
  */
 void awh::server::WebSocket::error(const size_t aid, const mess_t & message) const noexcept {
 	// Получаем параметры подключения адъютанта
-	workerWS_t::adjp_t * adj = const_cast <workerWS_t::adjp_t *> (this->worker.getAdj(aid));
+	ws_worker_t::adjp_t * adj = const_cast <ws_worker_t::adjp_t *> (this->worker.get(aid));
 	// Если отправка сообщений разблокированна
 	if(adj != nullptr){
-		// Очищаем список буффер бинарных данных
-		adj->buffer.clear();
 		// Очищаем список фрагментированных сообщений
 		adj->fragmes.clear();
+		// Очищаем список буффер бинарных данных
+		adj->bufferRead.clear();
 	}
 	// Если идентификатор адъютанта передан и код ошибки указан
 	if((aid > 0) && (message.code > 0)){
@@ -540,7 +666,7 @@ void awh::server::WebSocket::error(const size_t aid, const mess_t & message) con
 			// Иначе выводим сообщение в упрощёном виде
 			else this->log->print("%s [%u]", log_t::flag_t::WARNING, message.text.c_str(), message.code);
 			// Если функция обратного вызова установлена, выводим полученное сообщение
-			if(this->errorFn != nullptr) this->errorFn(aid, message.code, message.text, const_cast <WebSocket *> (this), this->ctx.at(1));
+			if(this->errorFn != nullptr) this->errorFn(aid, message.code, message.text, const_cast <WebSocket *> (this));
 		}
 	}
 }
@@ -552,7 +678,7 @@ void awh::server::WebSocket::error(const size_t aid, const mess_t & message) con
  * @param buffer данные в чистом виде полученные с сервера
  * @param utf8   данные передаются в текстовом виде
  */
-void awh::server::WebSocket::extraction(workerWS_t::adjp_t * adj, const size_t aid, awh::core_t * core, const vector <char> & buffer, const bool utf8) const noexcept {
+void awh::server::WebSocket::extraction(ws_worker_t::adjp_t * adj, const size_t aid, awh::core_t * core, const vector <char> & buffer, const bool utf8) const noexcept {
 	// Если буфер данных передан
 	if(!buffer.empty() && (this->messageFn != nullptr)){
 		// Если данные пришли в сжатом виде
@@ -586,23 +712,23 @@ void awh::server::WebSocket::extraction(workerWS_t::adjp_t * adj, const size_t a
 					// Выполняем шифрование переданных данных
 					const auto & res = adj->hash.decrypt(data.data(), data.size());
 					// Отправляем полученный результат
-					if(!res.empty()) this->messageFn(aid, res, utf8, const_cast <WebSocket *> (this), this->ctx.at(2));
+					if(!res.empty()) this->messageFn(aid, res, utf8, const_cast <WebSocket *> (this));
 					// Иначе выводим сообщение так - как оно пришло
-					else this->messageFn(aid, data, utf8, const_cast <WebSocket *> (this), this->ctx.at(2));
+					else this->messageFn(aid, data, utf8, const_cast <WebSocket *> (this));
 				// Отправляем полученный результат
-				} else this->messageFn(aid, data, utf8, const_cast <WebSocket *> (this), this->ctx.at(2));
+				} else this->messageFn(aid, data, utf8, const_cast <WebSocket *> (this));
 			// Выводим сообщение об ошибке
 			} else {
 				// Создаём сообщение
 				mess_t mess(1007, "received data decompression error");
 				// Получаем буфер сообщения
-				const auto & buffer = this->frame.message(mess);
+				adj->bufferWrite = this->frame.message(mess);
 				// Если данные сообщения получены
-				if(!buffer.empty()){
-					// Устанавливаем размер стопбайт
-					adj->stopBytes = buffer.size();
-					// Отправляем серверу сообщение
-					core->write(buffer.data(), buffer.size(), aid);
+				if(!adj->bufferWrite.empty()){
+					// Устанавливаем флаг разрешающий остановку
+					adj->stopped = true;
+					// Выполняем ожидание доступности записи
+					((server::core_t *) core)->waitingWrite(aid);
 				// Завершаем работу
 				} else reinterpret_cast <server::core_t *> (core)->close(aid);
 			}
@@ -613,11 +739,11 @@ void awh::server::WebSocket::extraction(workerWS_t::adjp_t * adj, const size_t a
 				// Выполняем шифрование переданных данных
 				const auto & res = adj->hash.decrypt(buffer.data(), buffer.size());
 				// Отправляем полученный результат
-				if(!res.empty()) this->messageFn(aid, res, utf8, const_cast <WebSocket *> (this), this->ctx.at(2));
+				if(!res.empty()) this->messageFn(aid, res, utf8, const_cast <WebSocket *> (this));
 				// Иначе выводим сообщение так - как оно пришло
-				else this->messageFn(aid, buffer, utf8, const_cast <WebSocket *> (this), this->ctx.at(2));
+				else this->messageFn(aid, buffer, utf8, const_cast <WebSocket *> (this));
 			// Отправляем полученный результат
-			} else this->messageFn(aid, buffer, utf8, const_cast <WebSocket *> (this), this->ctx.at(2));
+			} else this->messageFn(aid, buffer, utf8, const_cast <WebSocket *> (this));
 		}
 	}
 }
@@ -631,13 +757,13 @@ void awh::server::WebSocket::pong(const size_t aid, awh::core_t * core, const st
 	// Если необходимые данные переданы
 	if((aid > 0) && (core != nullptr)){
 		// Получаем параметры подключения адъютанта
-		workerWS_t::adjp_t * adj = const_cast <workerWS_t::adjp_t *> (this->worker.getAdj(aid));
+		ws_worker_t::adjp_t * adj = const_cast <ws_worker_t::adjp_t *> (this->worker.get(aid));
 		// Если отправка сообщений разблокированна
-		if((adj != nullptr) && !adj->locker){
+		if((adj != nullptr) && adj->allow.send){
 			// Создаём буфер для отправки
-			const auto & buffer = this->frame.pong(message);
-			// Отправляем серверу сообщение
-			core->write(buffer.data(), buffer.size(), aid);
+			adj->bufferWrite = this->frame.pong(message);
+			// Выполняем ожидание доступности записи
+			((server::core_t *) core)->waitingWrite(aid);
 		}
 	}
 }
@@ -651,13 +777,13 @@ void awh::server::WebSocket::ping(const size_t aid, awh::core_t * core, const st
 	// Если необходимые данные переданы
 	if((aid > 0) && (core != nullptr) && core->working()){
 		// Получаем параметры подключения адъютанта
-		workerWS_t::adjp_t * adj = const_cast <workerWS_t::adjp_t *> (this->worker.getAdj(aid));
+		ws_worker_t::adjp_t * adj = const_cast <ws_worker_t::adjp_t *> (this->worker.get(aid));
 		// Если отправка сообщений разблокированна
-		if((adj != nullptr) && !adj->locker){
+		if((adj != nullptr) && adj->allow.send){
 			// Создаём буфер для отправки
-			const auto & buffer = this->frame.ping(message);
-			// Отправляем серверу сообщение
-			core->write(buffer.data(), buffer.size(), aid);
+			adj->bufferWrite = this->frame.ping(message);
+			// Выполняем ожидание доступности записи
+			((server::core_t *) core)->waitingWrite(aid);
 		}
 	}
 }
@@ -677,67 +803,49 @@ void awh::server::WebSocket::init(const u_int port, const string & host, const h
 }
 /**
  * on Метод установки функции обратного вызова на событие запуска или остановки подключения
- * @param ctx      контекст для вывода в сообщении
  * @param callback функция обратного вызова
  */
-void awh::server::WebSocket::on(void * ctx, function <void (const size_t, const mode_t, WebSocket *, void *)> callback) noexcept {
-	// Устанавливаем контекст передаваемого объекта
-	this->ctx.at(0) = ctx;
+void awh::server::WebSocket::on(function <void (const size_t, const mode_t, WebSocket *)> callback) noexcept {
 	// Устанавливаем функцию запуска и остановки
 	this->activeFn = callback;
 }
 /**
  * on Метод установки функции обратного вызова на событие получения ошибок
- * @param ctx      контекст для вывода в сообщении
  * @param callback функция обратного вызова
  */
-void awh::server::WebSocket::on(void * ctx, function <void (const size_t, const u_int, const string &, WebSocket *, void *)> callback) noexcept {
-	// Устанавливаем контекст передаваемого объекта
-	this->ctx.at(1) = ctx;
+void awh::server::WebSocket::on(function <void (const size_t, const u_int, const string &, WebSocket *)> callback) noexcept {
 	// Устанавливаем функцию получения ошибок
 	this->errorFn = callback;
 }
 /**
  * on Метод установки функции обратного вызова на событие получения сообщений
- * @param ctx      контекст для вывода в сообщении
  * @param callback функция обратного вызова
  */
-void awh::server::WebSocket::on(void * ctx, function <void (const size_t, const vector <char> &, const bool, WebSocket *, void *)> callback) noexcept {
-	// Устанавливаем контекст передаваемого объекта
-	this->ctx.at(2) = ctx;
+void awh::server::WebSocket::on(function <void (const size_t, const vector <char> &, const bool, WebSocket *)> callback) noexcept {
 	// Устанавливаем функцию получения сообщений с сервера
 	this->messageFn = callback;
 }
 /**
  * on Метод добавления функции извлечения пароля
- * @param ctx      контекст для вывода в сообщении
  * @param callback функция обратного вызова для извлечения пароля
  */
-void awh::server::WebSocket::on(void * ctx, function <string (const string &, void *)> callback) noexcept {
-	// Устанавливаем контекст передаваемого объекта
-	this->ctx.at(3) = ctx;
+void awh::server::WebSocket::on(function <string (const string &)> callback) noexcept {
 	// Устанавливаем функцию обратного вызова для извлечения пароля
 	this->extractPassFn = callback;
 }
 /**
  * on Метод добавления функции обработки авторизации
- * @param ctx      контекст для вывода в сообщении
  * @param callback функция обратного вызова для обработки авторизации
  */
-void awh::server::WebSocket::on(void * ctx, function <bool (const string &, const string &, void *)> callback) noexcept {
-	// Устанавливаем контекст передаваемого объекта
-	this->ctx.at(4) = ctx;
+void awh::server::WebSocket::on(function <bool (const string &, const string &)> callback) noexcept {
 	// Устанавливаем функцию обратного вызова для обработки авторизации
 	this->checkAuthFn = callback;
 }
 /**
  * on Метод установки функции обратного вызова на событие активации клиента на сервере
- * @param ctx      контекст для вывода в сообщении
  * @param callback функция обратного вызова
  */
-void awh::server::WebSocket::on(void * ctx, function <bool (const string &, const string &, WebSocket *, void *)> callback) noexcept {
-	// Устанавливаем контекст передаваемого объекта
-	this->ctx.at(5) = ctx;
+void awh::server::WebSocket::on(function <bool (const string &, const string &, WebSocket *)> callback) noexcept {
 	// Устанавливаем функцию запуска и остановки
 	this->acceptFn = callback;
 }
@@ -749,27 +857,34 @@ void awh::server::WebSocket::on(void * ctx, function <bool (const string &, cons
 void awh::server::WebSocket::sendError(const size_t aid, const mess_t & mess) const noexcept {
 	// Если подключение выполнено
 	if(this->core->working()){
-		// Получаем параметры подключения адъютанта
-		workerWS_t::adjp_t * adj = const_cast <workerWS_t::adjp_t *> (this->worker.getAdj(aid));
-		// Если отправка сообщений разблокированна
-		if((adj != nullptr) && !adj->locker){
-			// Получаем буфер сообщения
-			const auto & buffer = this->frame.message(mess);
-			// Если данные сообщения получены
-			if(!buffer.empty()){
-				// Если включён режим отладки
-				#if defined(DEBUG_MODE)
-					// Выводим заголовок ответа
-					cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
-					// Выводим отправляемое сообщение
-					cout << this->fmk->format("%s [%u]", mess.text.c_str(), mess.code) << endl << endl;
-				#endif
-				// Устанавливаем размер стопбайт
-				adj->stopBytes = buffer.size();
-				// Отправляем серверу сообщение
-				((awh::core_t *) const_cast <server::core_t *> (this->core))->write(buffer.data(), buffer.size(), aid);
-				// Выходим из функции
-				return;
+		// Если код ошибки относится к WebSocket
+		if(mess.code >= 1000){
+			// Получаем параметры подключения адъютанта
+			ws_worker_t::adjp_t * adj = const_cast <ws_worker_t::adjp_t *> (this->worker.get(aid));
+			// Если разрешено получение данных
+			if(adj != nullptr) adj->allow.receive = false;
+			// Если отправка сообщений разблокированна
+			if((adj != nullptr) && adj->allow.send){
+				// Получаем буфер сообщения
+				adj->bufferWrite = this->frame.message(mess);
+				// Если данные сообщения получены
+				if(!adj->bufferWrite.empty()){
+					// Получаем объект биндинга ядра TCP/IP
+					server::core_t * core = const_cast <server::core_t *> (this->core);
+					// Если включён режим отладки
+					#if defined(DEBUG_MODE)
+						// Выводим заголовок ответа
+						cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
+						// Выводим отправляемое сообщение
+						cout << this->fmk->format("%s [%u]", mess.text.c_str(), mess.code) << endl << endl;
+					#endif
+					// Устанавливаем флаг принудительной остановки
+					adj->stopped = true;
+					// Выполняем ожидание доступности записи
+					core->waitingWrite(aid);
+					// Выходим из функции
+					return;
+				}
 			}
 		}
 		// Завершаем работу
@@ -787,11 +902,11 @@ void awh::server::WebSocket::send(const size_t aid, const char * message, const 
 	// Если подключение выполнено
 	if(this->core->working() && (aid > 0) && (size > 0) && (message != nullptr)){
 		// Получаем параметры подключения адъютанта
-		workerWS_t::adjp_t * adj = const_cast <workerWS_t::adjp_t *> (this->worker.getAdj(aid));
+		ws_worker_t::adjp_t * adj = const_cast <ws_worker_t::adjp_t *> (this->worker.get(aid));
 		// Если отправка сообщений разблокированна
-		if((adj != nullptr) && !adj->locker){
+		if((adj != nullptr) && adj->allow.send){
 			// Выполняем блокировку отправки сообщения
-			adj->locker = !adj->locker;
+			adj->allow.send = !adj->allow.send;
 			// Если рукопожатие выполнено
 			if(adj->http.isHandshake()){
 				// Если включён режим отладки
@@ -867,7 +982,7 @@ void awh::server::WebSocket::send(const size_t aid, const char * message, const 
 								// Создаём буфер для отправки
 								const auto & buffer = this->frame.set(head, data.data(), data.size());
 								// Отправляем серверу сообщение
-								((awh::core_t *) const_cast <server::core_t *> (this->core))->write(buffer.data(), buffer.size(), aid);
+								const_cast <server::core_t *> (this->core)->write(buffer.data(), buffer.size(), aid);
 							// Если сжать данные не получилось
 							} else {
 								// Снимаем флаг сжатых данных
@@ -875,14 +990,14 @@ void awh::server::WebSocket::send(const size_t aid, const char * message, const 
 								// Создаём буфер для отправки
 								const auto & buffer = this->frame.set(head, message, size);
 								// Отправляем серверу сообщение
-								((awh::core_t *) const_cast <server::core_t *> (this->core))->write(buffer.data(), buffer.size(), aid);
+								const_cast <server::core_t *> (this->core)->write(buffer.data(), buffer.size(), aid);
 							}
 						// Если сообщение перед отправкой сжимать не нужно
 						} else {
 							// Создаём буфер для отправки
 							const auto & buffer = this->frame.set(head, message, size);
 							// Отправляем серверу сообщение
-							((awh::core_t *) const_cast <server::core_t *> (this->core))->write(buffer.data(), buffer.size(), aid);
+							const_cast <server::core_t *> (this->core)->write(buffer.data(), buffer.size(), aid);
 						}
 					}
 				};
@@ -915,7 +1030,7 @@ void awh::server::WebSocket::send(const size_t aid, const char * message, const 
 				} else sendFn(head, message, size);
 			}
 			// Выполняем разблокировку отправки сообщения
-			adj->locker = !adj->locker;
+			adj->allow.send = !adj->allow.send;
 		}
 	}
 }
@@ -982,7 +1097,7 @@ const string awh::server::WebSocket::getSub(const size_t aid) const noexcept {
 	// Если идентификатор адъютанта передан
 	if(aid > 0){
 		// Получаем параметры подключения адъютанта
-		workerWS_t::adjp_t * adj = const_cast <workerWS_t::adjp_t *> (this->worker.getAdj(aid));
+		ws_worker_t::adjp_t * adj = const_cast <ws_worker_t::adjp_t *> (this->worker.get(aid));
 		// Если отправка сообщений разблокированна
 		if(adj != nullptr) result = adj->http.getSub();
 	}
@@ -1049,8 +1164,6 @@ void awh::server::WebSocket::setMode(const u_short flag) noexcept {
 	this->takeOverCli = (flag & (uint8_t) flag_t::TAKEOVERCLI);
 	// Устанавливаем флаг перехвата контекста компрессии для сервера
 	this->takeOverSrv = (flag & (uint8_t) flag_t::TAKEOVERSRV);
-	// Устанавливаем флаг отложенных вызовов событий сокета
-	const_cast <server::core_t *> (this->core)->setDefer(flag & (uint8_t) flag_t::DEFER);
 	// Устанавливаем флаг запрещающий вывод информационных сообщений
 	const_cast <server::core_t *> (this->core)->setNoInfo(flag & (uint8_t) flag_t::NOINFO);
 }
@@ -1116,22 +1229,24 @@ void awh::server::WebSocket::setCrypt(const string & pass, const string & salt, 
  * @param log  объект для работы с логами
  */
 awh::server::WebSocket::WebSocket(const server::core_t * core, const fmk_t * fmk, const log_t * log) noexcept : frame(fmk, log), core(core), fmk(fmk), log(log), worker(fmk, log) {
-	// Устанавливаем контекст сообщения
-	this->worker.ctx = this;
+	// Устанавливаем количество секунд на чтение
+	this->worker.timeRead = 60;
+	// Устанавливаем количество секунд на запись
+	this->worker.timeWrite = 60;
 	// Устанавливаем событие на запуск системы
-	this->worker.openFn = openCallback;
-	// Устанавливаем функцию чтения данных
-	this->worker.readFn = readCallback;
+	this->worker.openFn = std::bind(&awh::server::WebSocket::openCallback, this, _1, _2);
 	// Устанавливаем функцию записи данных
-	this->worker.writeFn = writeCallback;
-	// Добавляем событие аццепта клиента
-	this->worker.acceptFn = acceptCallback;
+	this->worker.writeFn = std::bind(&awh::server::WebSocket::writeCallback, this, _1, _2, _3);
 	// Устанавливаем функцию персистентного вызова
-	this->worker.persistFn = persistCallback;
+	this->worker.persistFn = std::bind(&awh::server::WebSocket::persistCallback, this, _1, _2, _3);
 	// Устанавливаем событие подключения
-	this->worker.connectFn = connectCallback;
+	this->worker.connectFn = std::bind(&awh::server::WebSocket::connectCallback, this, _1, _2, _3);
+	// Добавляем событие аццепта клиента
+	this->worker.acceptFn = std::bind(&awh::server::WebSocket::acceptCallback, this, _1, _2, _3, _4);
+	// Устанавливаем функцию чтения данных
+	this->worker.readFn = std::bind(&awh::server::WebSocket::readCallback, this, _1, _2, _3, _4, _5);
 	// Устанавливаем событие отключения
-	this->worker.disconnectFn = disconnectCallback;
+	this->worker.disconnectFn = std::bind(&awh::server::WebSocket::disconnectCallback, this, _1, _2, _3);
 	// Активируем персистентный запуск для работы пингов
 	const_cast <server::core_t *> (this->core)->setPersist(true);
 	// Добавляем воркер в биндер TCP/IP

@@ -28,7 +28,7 @@ const bool awh::server::Auth::check(const string & method) noexcept {
 		// Если тип авторизации - Базовая
 		case (uint8_t) type_t::BASIC:
 			// Выполняем проверку авторизации
-			result = (this->authFn != nullptr ? this->authFn(this->user, this->pass, this->ctx.at(1)) : result);
+			result = (this->authFn != nullptr ? this->authFn(this->user, this->pass) : result);
 		break;
 		// Если тип авторизации - Дайджест
 		case (uint8_t) type_t::DIGEST: {
@@ -37,7 +37,7 @@ const bool awh::server::Auth::check(const string & method) noexcept {
 				// Если на сервере счётчик меньше
 				if((this->fmk->hexToDec(this->digest.nc) <= this->fmk->hexToDec(this->userDigest.nc)) && (this->extractPassFn != nullptr)){
 					// Получаем пароль пользователя
-					const string & pass = this->extractPassFn(this->user, this->ctx.at(0));
+					const string & pass = this->extractPassFn(this->user);
 					// Если пароль пользователя получен
 					if(!pass.empty()){
 						// Параметры проверки дайджест авторизации
@@ -81,23 +81,17 @@ void awh::server::Auth::setOpaque(const string & opaque) noexcept {
 }
 /**
  * setExtractPassCallback Метод добавления функции извлечения пароля
- * @param ctx      контекст для вывода в сообщении
  * @param callback функция обратного вызова для извлечения пароля
  */
-void awh::server::Auth::setExtractPassCallback(void * ctx, function <string (const string &, void *)> callback) noexcept {
-	// Устанавливаем контекст передаваемого объекта
-	this->ctx.at(0) = ctx;
+void awh::server::Auth::setExtractPassCallback(function <string (const string &)> callback) noexcept {
 	// Устанавливаем функцию извлечения пароля
 	this->extractPassFn = callback;
 }
 /**
  * setAuthCallback Метод добавления функции обработки авторизации
- * @param ctx      контекст для вывода в сообщении
  * @param callback функция обратного вызова для обработки авторизации
  */
-void awh::server::Auth::setAuthCallback(void * ctx, function <bool (const string &, const string &, void *)> callback) noexcept {
-	// Устанавливаем контекст передаваемого объекта
-	this->ctx.at(1) = ctx;
+void awh::server::Auth::setAuthCallback(function <bool (const string &, const string &)> callback) noexcept {
 	// Устанавливаем функцию проверки авторизации
 	this->authFn = callback;
 }

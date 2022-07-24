@@ -40,16 +40,14 @@ namespace awh {
 				string user = "";
 				// Пароль пользователя
 				string pass = "";
+			private:
 				// Параметры Digest авторизации пользователя
 				digest_t userDigest;
 			private:
-				// Список контекстов передаваемых объектов
-				vector <void *> ctx = {nullptr, nullptr};
-			private:
 				// Внешняя функция получения пароля пользователя авторизации Digest
-				function <string (const string &, void *)> extractPassFn = nullptr;
+				function <string (const string &)> extractPassFn = nullptr;
 				// Внешняя функция проверки авторизации Basic
-				function <bool (const string &, const string &, void *)> authFn = nullptr;
+				function <bool (const string &, const string &)> authFn = nullptr;
 			public:
 				/**
 				 * check Метод проверки авторизации
@@ -71,16 +69,14 @@ namespace awh {
 			public:
 				/**
 				 * setExtractPassCallback Метод добавления функции извлечения пароля
-				 * @param ctx      контекст для вывода в сообщении
 				 * @param callback функция обратного вызова для извлечения пароля
 				 */
-				void setExtractPassCallback(void * ctx, function <string (const string &, void *)> callback) noexcept;
+				void setExtractPassCallback(function <string (const string &)> callback) noexcept;
 				/**
 				 * setAuthCallback Метод добавления функции обработки авторизации
-				 * @param ctx      контекст для вывода в сообщении
 				 * @param callback функция обратного вызова для обработки авторизации
 				 */
-				void setAuthCallback(void * ctx, function <bool (const string &, const string &, void *)> callback) noexcept;
+				void setAuthCallback(function <bool (const string &, const string &)> callback) noexcept;
 			public:
 				/**
 				 * setHeader Метод установки параметров авторизации из заголовков

@@ -53,6 +53,7 @@
 /**
  * Наши модули
  */
+#include <net/if.hpp>
 #include <net/ssl.hpp>
 // #include <net/dns.hpp>
 #include <net/socket.hpp>
@@ -194,6 +195,8 @@ namespace awh {
 					bool mode;
 					// Флаг работы модуля
 					bool work;
+					// Флаг инициализации базы событий
+					bool init;
 				private:
 					// База событий
 					ev::loop_ref base;
@@ -242,12 +245,16 @@ namespace awh {
 					/**
 					 * Dispatch Конструктор
 					 */
-					Dispatch(Core * core) noexcept : core(core), easy(false), mode(false), work(false), base(nullptr), freq(10ms) {}
+					Dispatch(Core * core) noexcept :
+					 core(core), easy(false), mode(false),
+					 work(false), init(false), base(nullptr), freq(10ms) {}
 					/**
 					 * Dispatch Конструктор
 					 * @param base база событий
 					 */
-					Dispatch(Core * core, struct ev_loop * base) noexcept : core(core), easy(false), mode(false), work(false), base(base), freq(10ms) {}
+					Dispatch(Core * core, struct ev_loop * base) noexcept :
+					 core(core), easy(false), mode(false),
+					 work(false), init(true), base(base), freq(10ms) {}
 			} dispatch_t;
 		protected:
 			// Мютекс для блокировки основного потока

@@ -23,31 +23,31 @@ void awh::server::WorkerWebSocket::clear() noexcept {
 	worker_t::clear();
 	// Очищаем список параметров адъютантов
 	this->adjParams.clear();
-	// Освобождаем выделенную память
-	map <size_t, adjp_t> ().swap(this->adjParams);
 	// Сбрасываем тип компрессии
 	this->compress = http_t::compress_t::NONE;
+	// Освобождаем выделенную память
+	map <size_t, unique_ptr <adjp_t>> ().swap(this->adjParams);
 }
 /**
- * createAdj Метод создания параметров адъютанта
+ * set Метод создания параметров адъютанта
  * @param aid идентификатор адъютанта
  */
-void awh::server::WorkerWebSocket::createAdj(const size_t aid) noexcept {
+void awh::server::WorkerWebSocket::set(const size_t aid) noexcept {
 	// Если идентификатор адъютанта передан
 	if((aid > 0) && (this->adjParams.count(aid) < 1)){
 		// Добавляем адъютанта в список адъютантов
-		auto ret = this->adjParams.emplace(aid, move(adjp_t(this->fmk, this->log, &this->uri)));
+		auto ret = this->adjParams.emplace(aid, unique_ptr <adjp_t> (new adjp_t(this->fmk, this->log, &this->uri)));
 		// Устанавливаем метод сжатия
-		ret.first->second.http.setCompress(this->compress);
+		ret.first->second->http.setCompress(this->compress);
 		// Устанавливаем контрольную точку
-		ret.first->second.checkPoint = this->fmk->unixTimestamp();
+		ret.first->second->checkPoint = this->fmk->unixTimestamp();
 	}
 }
 /**
- * removeAdj Метод удаления параметров подключения адъютанта
+ * rm Метод удаления параметров подключения адъютанта
  * @param aid идентификатор адъютанта
  */
-void awh::server::WorkerWebSocket::removeAdj(const size_t aid) noexcept {
+void awh::server::WorkerWebSocket::rm(const size_t aid) noexcept {
 	// Если идентификатор адъютанта передан
 	if(aid > 0){
 		// Выполняем поиск адъютанта
@@ -57,11 +57,11 @@ void awh::server::WorkerWebSocket::removeAdj(const size_t aid) noexcept {
 	}
 }
 /**
- * getAdj Метод получения параметров подключения адъютанта
+ * get Метод получения параметров подключения адъютанта
  * @param aid идентификатор адъютанта
  * @return    параметры подключения адъютанта
  */
-const awh::server::WorkerWebSocket::adjp_t * awh::server::WorkerWebSocket::getAdj(const size_t aid) const noexcept {
+const awh::server::WorkerWebSocket::adjp_t * awh::server::WorkerWebSocket::get(const size_t aid) const noexcept {
 	// Результат работы функции
 	adjp_t * result = nullptr;
 	// Если идентификатор адъютанта передан
@@ -69,7 +69,7 @@ const awh::server::WorkerWebSocket::adjp_t * awh::server::WorkerWebSocket::getAd
 		// Выполняем поиск адъютанта
 		auto it = this->adjParams.find(aid);
 		// Если адъютант найден, выводим его параметры
-		if(it != this->adjParams.end()) result = (adjp_t *) &it->second;
+		if(it != this->adjParams.end()) result = it->second.get();
 	}
 	// Выводим результат
 	return result;

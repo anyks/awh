@@ -247,6 +247,8 @@ namespace awh {
 		public:
 			// Функция обратного вызова при открытии приложения
 			function <void (const size_t, Core *)> openFn;
+			// Функция обратного вызова при записи данных
+			function <void (const size_t, const size_t, Core *)> writeFn;
 			// Функция обратного вызова для персистентного вызова
 			function <void (const size_t, const size_t, Core *)> persistFn;
 			// Функция обратного вызова при запуске подключения
@@ -255,8 +257,6 @@ namespace awh {
 			function <void (const size_t, const size_t, Core *)> disconnectFn;
 			// Функция обратного вызова при получении данных
 			function <void (const char *, const size_t, const size_t, const size_t, Core *)> readFn;
-			// Функция обратного вызова при записи данных
-			function <void (const char *, const size_t, const size_t, const size_t, Core *)> writeFn;
 		public:
 			/**
 			 * clear Метод очистки
@@ -287,8 +287,8 @@ namespace awh {
 			 markWrite(BUFFER_WRITE_MIN, BUFFER_WRITE_MAX),
 			 timeRead(READ_TIMEOUT), timeWrite(WRITE_TIMEOUT),
 			 fmk(fmk), log(log), core(nullptr),
-			 openFn(nullptr), persistFn(nullptr), connectFn(nullptr),
-			 disconnectFn(nullptr), readFn(nullptr), writeFn(nullptr) {}
+			 openFn(nullptr), writeFn(nullptr), persistFn(nullptr),
+			 connectFn(nullptr), disconnectFn(nullptr), readFn(nullptr) {}
 			/**
 			 * ~Worker Деструктор
 			 */

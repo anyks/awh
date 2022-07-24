@@ -139,8 +139,6 @@ namespace awh {
 				function <void (const size_t, const size_t, awh::Core *)> connectProxyFn;
 				// Функция обратного вызова при получении данных с прокси-сервера
 				function <void (const char *, const size_t, const size_t, const size_t, awh::Core *)> readProxyFn;
-				// Функция обратного вызова при записи данных с прокси-сервера
-				function <void (const char *, const size_t, const size_t, const size_t, awh::Core *)> writeProxyFn;
 			public:
 				/**
 				 * clear Метод очистки
@@ -170,8 +168,7 @@ namespace awh {
 				Worker(const fmk_t * fmk, const log_t * log) noexcept :
 				 awh::worker_t(fmk, log), did(0), attempt(0),
 				 stop(false), acquisition(false), proxy(fmk, log),
-				 connect(connect_t::SERVER), connectProxyFn(nullptr),
-				 readProxyFn(nullptr), writeProxyFn(nullptr) {}
+				 connect(connect_t::SERVER), connectProxyFn(nullptr), readProxyFn(nullptr) {}
 				/**
 				 * ~Worker Деструктор
 				 */

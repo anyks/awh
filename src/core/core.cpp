@@ -120,10 +120,13 @@ void awh::Core::Timer::callback(ev::timer & timer, int revents) noexcept {
  * kick Метод отправки пинка
  */
 void awh::Core::Dispatch::kick() noexcept {
-	// Выполняем блокировку потока
-	const lock_guard <recursive_mutex> lock(this->mtx);
-	// Выполняем остановку всех событий
-	this->base.break_loop(ev::how_t::ALL);
+	// Если база событий проинициализированна
+	if(this->init){
+		// Выполняем блокировку потока
+		const lock_guard <recursive_mutex> lock(this->mtx);
+		// Выполняем остановку всех событий
+		this->base.break_loop(ev::how_t::ALL);
+	}
 }
 /**
  * stop Метод остановки чтения базы событий
@@ -144,7 +147,7 @@ void awh::Core::Dispatch::stop() noexcept {
  */
 void awh::Core::Dispatch::start() noexcept {
 	// Если чтение базы событий ещё не началось
-	if(!this->work){
+	if(!this->work && this->init){
 		// Выполняем блокировку потока
 		this->mtx.lock();
 		// Устанавливаем флаг работы модуля
@@ -155,12 +158,15 @@ void awh::Core::Dispatch::start() noexcept {
 		std::bind(&awh::Core::launching, this->core)();
 		// Выполняем чтение базы событий пока это разрешено
 		while(this->work){
-			// Если не нужно использовать простой режим чтения
-			if(this->easy)
-				// Выполняем чтение базы событий
-				this->base.run();
-			// Выполняем чтение базы событий в простом режиме
-			else this->base.run(EVRUN_NOWAIT);
+			// Если база событий проинициализированна
+			if(this->init){
+				// Если не нужно использовать простой режим чтения
+				if(!this->easy)
+					// Выполняем чтение базы событий
+					this->base.run();
+				// Выполняем чтение базы событий в простом режиме
+				else this->base.run(EVRUN_NOWAIT);
+			}
 			// Замораживаем поток на период времени частоты обновления базы событий
 			this_thread::sleep_for(this->freq);
 		}
@@ -175,14 +181,17 @@ void awh::Core::Dispatch::start() noexcept {
 void awh::Core::Dispatch::freeze(const bool mode) noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->mtx);
-	// Выполняем фриз получения данных
-	this->mode = mode;
-	// Если запрещено использовать простое чтение базы событий
-	if(this->mode)
-		// Выполняем фриз чтения данных
-		ev_suspend(this->base);
-	// Продолжаем чтение данных
-	else ev_resume(this->base);
+	// Если база событий проинициализированна
+	if(this->init){
+		// Выполняем фриз получения данных
+		this->mode = mode;
+		// Если запрещено использовать простое чтение базы событий
+		if(this->mode)
+			// Выполняем фриз чтения данных
+			ev_suspend(this->base);
+		// Продолжаем чтение данных
+		else ev_resume(this->base);
+	}
 }
 /**
  * easily Метод активации простого режима чтения базы событий
@@ -204,9 +213,21 @@ void awh::Core::Dispatch::setBase(struct ev_loop * base) noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->mtx);
 	// Выполняем заморозку получения данных
-	if(this->work) this->freeze(true);
-	// Устанавливаем базу событий
-	this->base = ev::loop_ref(base);
+	if(this->work){
+		// Выполняем заморозку базы событий
+		this->freeze(true);
+		// Выполняем деактивации инициализации базы событий
+		this->init = false;
+		/// Выполняем пинок
+		this->kick();
+	}
+	// Если база событий передана
+	if(base != nullptr){
+		// Устанавливаем базу событий
+		this->base = ev::loop_ref(base);
+		// Выполняем активацию инициализации базы событий
+		this->init = true;
+	}
 	// Выполняем раззаморозку получения данных
 	if(this->work) this->freeze(false);
 }
@@ -559,6 +580,13 @@ const awh::Core::sockaddr_t awh::Core::sockaddr(const string & ip, const u_int p
 		// this->socket.closeonexec(result.fd);
 		// Устанавливаем разрешение на повторное использование сокета
 		this->socket.reuseable(result.fd);
+		// Если ядро является сервером, устанавливаем хост
+		if(this->type == type_t::SERVER){
+			// Объект для работы с сетевым интерфейсом
+			ifnet_t ifnet(this->fmk, this->log);
+			// Получаем настоящий хост сервера
+			host = ifnet.ip(family);
+		}		
 		// Выполняем бинд на сокет
 		if(::bind(result.fd, sin, size) < 0){
 			// Выводим в лог сообщение
@@ -890,8 +918,25 @@ void awh::Core::rebase() noexcept {
 		this->mtx.main.lock();
 		// Удаляем объект базы событий
 		ev_loop_destroy(this->base);
-		// Создаем новую базу
-		this->base = ev_default_loop(0);
+		/**
+		 * Если операционной системой является MS Windows
+		 */
+		#if defined(_WIN32) || defined(_WIN64)
+			// Создаем новую базу
+			this->base = ev_default_loop(0);
+		/**
+		 * Если операционной системой является Linux
+		 */
+		#elif __linux__
+			// Создаем новую базу
+			this->base = ev_loop_new(ev_recommended_backends () | EVBACKEND_EPOLL);
+		/**
+		 * Если операционной системой является FreeBSD или MacOS X
+		 */
+		#elif __APPLE__ || __MACH__ || __FreeBSD__
+			// Создаем новую базу
+			this->base = ev_loop_new(ev_recommended_backends () | EVBACKEND_KQUEUE);
+		#endif
 		// Выполняем разблокировку потока
 		this->mtx.main.unlock();
 		// Если база событий создана
@@ -931,8 +976,25 @@ void awh::Core::rebase() noexcept {
 		if(this->base != nullptr)
 			// Удаляем объект базы событий
 			ev_loop_destroy(this->base);
-		// Создаем новую базу
-		this->base = ev_default_loop(0);
+		/**
+		 * Если операционной системой является MS Windows
+		 */
+		#if defined(_WIN32) || defined(_WIN64)
+			// Создаем новую базу
+			this->base = ev_default_loop(0);
+		/**
+		 * Если операционной системой является Linux
+		 */
+		#elif __linux__
+			// Создаем новую базу
+			this->base = ev_loop_new(ev_recommended_backends () | EVBACKEND_EPOLL);
+		/**
+		 * Если операционной системой является FreeBSD или MacOS X
+		 */
+		#elif __APPLE__ || __MACH__ || __FreeBSD__
+			// Создаем новую базу
+			this->base = ev_loop_new(ev_recommended_backends () | EVBACKEND_KQUEUE);
+		#endif
 		// Выполняем разблокировку потока
 		this->mtx.main.unlock();
 		// Если база событий создана

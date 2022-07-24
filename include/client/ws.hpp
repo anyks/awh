@@ -116,10 +116,12 @@ namespace awh {
 				// Экшен события
 				action_t action;
 			private:
-				// Буфер бинарных необработанных данных
-				vector <char> buffer;
 				// Данные фрагметрированного сообщения
 				vector <char> fragmes;
+				// Буфер бинарных необработанных данных
+				vector <char> bufferRead;
+				// Буфер бинарных обработанных данных
+				vector <char> bufferWrite;
 			public:
 				// Полученный опкод сообщения
 				frame_t::opcode_t opcode;
@@ -177,6 +179,13 @@ namespace awh {
 				 */
 				void openCallback(const size_t wid, awh::core_t * core) noexcept;
 				/**
+				 * writeCallback Метод обратного вызова при записи сообщения на клиенте
+				 * @param aid  идентификатор адъютанта
+				 * @param wid  идентификатор воркера
+				 * @param core объект биндинга TCP/IP
+				 */
+				void writeCallback(const size_t aid, const size_t wid, awh::core_t * core) noexcept;
+				/**
 				 * persistCallback Метод персистентного вызова
 				 * @param aid  идентификатор адъютанта
 				 * @param wid  идентификатор воркера
@@ -206,15 +215,6 @@ namespace awh {
 				 * @param core   объект биндинга TCP/IP
 				 */
 				void readCallback(const char * buffer, const size_t size, const size_t aid, const size_t wid, awh::core_t * core) noexcept;
-				/**
-				 * writeCallback Метод обратного вызова при записи сообщения на клиенте
-				 * @param buffer бинарный буфер содержащий сообщение
-				 * @param size   размер записанных в сокет байт
-				 * @param aid    идентификатор адъютанта
-				 * @param wid    идентификатор воркера
-				 * @param core   объект биндинга TCP/IP
-				 */
-				void writeCallback(const char * buffer, const size_t size, const size_t aid, const size_t wid, awh::core_t * core) noexcept;
 			private:
 				/**
 				 * proxyConnectCallback Метод обратного вызова при подключении к прокси-серверу

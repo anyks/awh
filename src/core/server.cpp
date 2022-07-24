@@ -50,10 +50,18 @@ void awh::server::Core::resolver(const string & ip, worker_t * wrk) noexcept {
 				// Выходим из функции
 				goto Stop;
 			}
-			// Выполняем создание дочерних процессов
-			this->detach(wrk->wid);
+			// Запоминаем PID родительского процесса
+			core->pid = getpid();
 			// Выводим сообщение об активации
-			if(!core->noinfo) core->log->print("run server [%s:%u]", log_t::flag_t::INFO, wrk->host.c_str(), wrk->port);
+			if(!core->noinfo) core->log->print("run server [%s:%u]", log_t::flag_t::INFO, wrk->host.c_str(), wrk->port);			
+			// Устанавливаем базу событий
+			wrk->io.set(this->base);
+			// Устанавливаем событие на запись данных подключения
+			wrk->io.set <worker_t, &worker_t::accept> (wrk);
+			// Устанавливаем сокет для записи
+			wrk->io.set(wrk->fd, ev::READ);
+			// Запускаем запись данных на сервер
+			wrk->io.start();
 			// Выходим из функции
 			return;
 		// Если сокет не создан, выводим в консоль информацию
@@ -249,36 +257,20 @@ void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 			ret.first->second->mac = move(mac);
 			// Разрешаем чтение данных с сокета
 			ret.first->second->bev.locked.read = false;
-			// Разрешаем запись данных в сокет
-			ret.first->second->bev.locked.write = false;
 			// Устанавливаем время ожидания поступления данных
 			ret.first->second->timeRead = wrk->timeRead;
-			// Устанавливаем время ожидания записи данных
-			ret.first->second->timeWrite = wrk->timeWrite;
 			// Устанавливаем размер детектируемых байт на чтение
 			ret.first->second->markRead = wrk->markRead;
-			// Устанавливаем размер детектируемых байт на запись
-			ret.first->second->markWrite = wrk->markWrite;
 			// Устанавливаем приоритет выполнения для события на чтения
 			ev_set_priority(&ret.first->second->bev.event.read, -2);
-			// Устанавливаем приоритет выполнения для события на чтения
-			ev_set_priority(&ret.first->second->bev.event.write, -2);
 			// Устанавливаем базу событий
 			ret.first->second->bev.event.read.set(this->base);
-			// Устанавливаем базу событий
-			ret.first->second->bev.event.write.set(this->base);
 			// Устанавливаем сокет для записи
 			ret.first->second->bev.event.read.set(ret.first->second->bev.socket, ev::READ);
-			// Устанавливаем сокет для записи
-			ret.first->second->bev.event.write.set(ret.first->second->bev.socket, ev::WRITE);
 			// Устанавливаем событие на чтение данных подключения
 			ret.first->second->bev.event.read.set <awh::worker_t::adj_t, &awh::worker_t::adj_t::read> (ret.first->second.get());
-			// Устанавливаем событие на запись данных подключения
-			ret.first->second->bev.event.write.set <awh::worker_t::adj_t, &awh::worker_t::adj_t::write> (ret.first->second.get());
 			// Запускаем чтение данных с сервера
 			ret.first->second->bev.event.read.start();
-			// Запускаем запись данных на сервер
-			ret.first->second->bev.event.write.start();
 			// Если флаг ожидания входящих сообщений, активирован
 			if(wrk->wait){
 				// Если время ожидания чтения данных установлено
@@ -292,86 +284,11 @@ void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 					// Запускаем ожидание чтения данных с сервера
 					ret.first->second->bev.timer.read.start(ret.first->second->timeRead);
 				}
-				// Если время ожидания записи данных установлено
-				if(ret.first->second->timeWrite > 0){
-					// Устанавливаем приоритет выполнения для таймаута на запись
-					ev_set_priority(&ret.first->second->bev.timer.write, 0);
-					// Устанавливаем базу событий
-					ret.first->second->bev.timer.write.set(this->base);
-					// Устанавливаем событие на запись данных подключения
-					ret.first->second->bev.timer.write.set <awh::worker_t::adj_t, &awh::worker_t::adj_t::timeout> (ret.first->second.get());
-					// Запускаем ожидание записи данных на сервер
-					ret.first->second->bev.timer.write.start(ret.first->second->timeWrite);
-				}
 			}
 			// Выводим в консоль информацию
 			if(!this->noinfo) this->log->print("client connect to server, host = %s, mac = %s, socket = %d", log_t::flag_t::INFO, ret.first->second->ip.c_str(), ret.first->second->mac.c_str(), ret.first->second->bev.socket);
 			// Выполняем функцию обратного вызова
-			if(wrk->connectFn != nullptr) wrk->connectFn(ret.first->second->aid, wrk->wid, this);
-		}
-	}
-}
-/**
- * detach Метод отсоединения от родительского процесса
- * @param wid идентификатор воркера
- */
-void awh::server::Core::detach(const size_t wid) noexcept {
-	// Если идентификатор воркера передан
-	if(wid > 0){
-		// Выполняем поиск воркера
-		auto it = this->workers.find(wid);
-		// Если воркер найден, устанавливаем максимальное количество одновременных подключений
-		if(it != this->workers.end()){
-			// Получаем количество возможных дочерних процессов
-			const size_t pids = ((this->threads == 0) || (this->threads > MAX_COUNT_THREADS) ? std::thread::hardware_concurrency() : this->threads);
-			// Получаем объект подключения
-			worker_t * wrk = (worker_t *) const_cast <awh::worker_t *> (it->second);
-			// Если количество доступных дочерних процессов больше 1-го
-			if(pids > 1){
-				// Созданный пид процесса
-				pid_t pid = -1;
-				// Выполняем форк процесса
-				switch((pid = fork())){
-					// Если дочерний процесс не создан
-					case -1: {
-						// Выводим сообщение об ошибке
-						if(!this->noinfo) this->log->print("%s", log_t::flag_t::CRITICAL, "[-] create child process");
-						// Выходим из приложения
-						exit(EXIT_SUCCESS);
-					}
-					// Если дочерний процесс был создан удачно
-					case 0: {
-						// Устанавливаем базу событий
-						wrk->io.set(this->base);
-						// Устанавливаем событие на запись данных подключения
-						wrk->io.set <worker_t, &worker_t::accept> (wrk);
-						// Устанавливаем сокет для записи
-						wrk->io.set(wrk->fd, ev::READ);
-						// Запускаем запись данных на сервер
-						wrk->io.start();
-					} break;
-					// Если процесс является родительским
-					default: {
-						// Если кодичество дочерних процессов ещё не достигло предела
-						if(this->pids.size() < pids){
-							// Добавляем дочерний процесс в список дочерних процессов
-							this->pids.emplace(pid);
-							// Выполняем создание следующего процесса
-							this->detach(it->first);
-						}
-					}
-				}
-			// Если количество доступных процессов всего один
-			} else {
-				// Устанавливаем базу событий
-				wrk->io.set(this->base);
-				// Устанавливаем событие на запись данных подключения
-				wrk->io.set <worker_t, &worker_t::accept> (wrk);
-				// Устанавливаем сокет для записи
-				wrk->io.set(wrk->fd, ev::READ);
-				// Запускаем запись данных на сервер
-				wrk->io.start();
-			}
+			if(wrk->connectFn != nullptr) wrk->connectFn(ret.first->first, wrk->wid, this);
 		}
 	}
 }
@@ -612,6 +529,51 @@ void awh::server::Core::close(const size_t aid) noexcept {
 	}
 }
 /**
+ * waitingWrite Метод активации режима ожидании доступа на запись
+ * @param aid идентификатор адъютанта
+ */
+void awh::server::Core::waitingWrite(const size_t aid) noexcept {
+	// Выполняем извлечение адъютанта
+	auto it = this->adjutants.find(aid);
+	// Если адъютант получен
+	if(it != this->adjutants.end()){
+		// Получаем объект адъютанта
+		awh::worker_t::adj_t * adj = const_cast <awh::worker_t::adj_t *> (it->second);
+		// Получаем объект подключения
+		worker_t * wrk = (worker_t *) const_cast <awh::worker_t *> (adj->parent);
+		// Разрешаем запись данных в сокет
+		adj->bev.locked.write = false;
+		// Устанавливаем время ожидания записи данных
+		adj->timeWrite = wrk->timeWrite;
+		// Устанавливаем размер детектируемых байт на запись
+		adj->markWrite = wrk->markWrite;
+		// Устанавливаем приоритет выполнения для события на чтения
+		ev_set_priority(&adj->bev.event.write, -2);
+		// Устанавливаем базу событий
+		adj->bev.event.write.set(this->base);
+		// Устанавливаем сокет для записи
+		adj->bev.event.write.set(adj->bev.socket, ev::WRITE);
+		// Устанавливаем событие на запись данных подключения
+		adj->bev.event.write.set <awh::worker_t::adj_t, &awh::worker_t::adj_t::write> (adj);
+		// Запускаем запись данных на сервер
+		adj->bev.event.write.start();
+		// Если флаг ожидания входящих сообщений, активирован
+		if(wrk->wait){
+			// Если время ожидания записи данных установлено
+			if(adj->timeWrite > 0){
+				// Устанавливаем приоритет выполнения для таймаута на запись
+				ev_set_priority(&adj->bev.timer.write, 0);
+				// Устанавливаем базу событий
+				adj->bev.timer.write.set(this->base);
+				// Устанавливаем событие на запись данных подключения
+				adj->bev.timer.write.set <awh::worker_t::adj_t, &awh::worker_t::adj_t::timeout> (adj);
+				// Запускаем ожидание записи данных на сервер
+				adj->bev.timer.write.start(adj->timeWrite);
+			}
+		}
+	}
+}
+/**
  * timeout Функция обратного вызова при срабатывании таймаута
  * @param aid идентификатор адъютанта
  */
@@ -672,12 +634,12 @@ void awh::server::Core::transfer(const method_t method, const size_t aid) noexce
 					} else bytes = recv(adj->bev.socket, buffer, sizeof(buffer), 0);
 					// Останавливаем таймаут ожидания на чтение из сокета
 					adj->bev.timer.read.stop();
+					// Если время ожидания записи данных установлено
+					if(adj->timeRead > 0)
+						// Запускаем ожидание чтения данных с сервера
+						adj->bev.timer.read.start(adj->timeRead);
 					// Если данные получены
 					if(bytes > 0){
-						// Если время ожидания записи данных установлено
-						if(adj->timeRead > 0)
-							// Запускаем ожидание чтения данных с сервера
-							adj->bev.timer.read.start(adj->timeRead);
 						// Если данные считанные из буфера, больше размера ожидающего буфера
 						if((adj->markWrite.max > 0) && (bytes >= adj->markWrite.max)){
 							// Смещение в буфере и отправляемый размер данных
@@ -725,16 +687,14 @@ void awh::server::Core::transfer(const method_t method, const size_t aid) noexce
 			} break;
 			// Если производится запись данных
 			case (uint8_t) method_t::WRITE: {
+				// Останавливаем запись данных на сервер
+				adj->bev.event.write.stop();
 				// Останавливаем таймаут ожидания на запись в сокет
 				adj->bev.timer.write.stop();
-				// Если время ожидания записи данных установлено
-				if(adj->timeWrite > 0)
-					// Запускаем ожидание записи данных на сервер
-					adj->bev.timer.write.start(adj->timeWrite);
 				// Если функция обратного вызова на запись данных установлена
 				if(wrk->writeFn != nullptr)
 					// Выводим функцию обратного вызова
-					wrk->writeFn(nullptr, 0, aid, wrk->wid, reinterpret_cast <awh::core_t *> (this));
+					wrk->writeFn(aid, wrk->wid, reinterpret_cast <awh::core_t *> (this));
 			} break;
 		}
 	}
@@ -779,14 +739,6 @@ void awh::server::Core::setIpV6only(const bool mode) noexcept {
 	const lock_guard <recursive_mutex> lock(this->mtx.system);
 	// Устанавливаем флаг использования только сети IPv6
 	this->ipV6only = mode;
-}
-/**
- * setThreads Метод установки максимального количества потоков
- * @param threads максимальное количество потоков
- */
-void awh::server::Core::setThreads(const size_t threads) noexcept {
-	// Устанавливаем максимальное количество потоков
-	this->threads = threads;
 }
 /**
  * setTotal Метод установки максимального количества одновременных подключений
@@ -849,7 +801,7 @@ void awh::server::Core::setCert(const string & cert, const string & key, const s
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
  */
-awh::server::Core::Core(const fmk_t * fmk, const log_t * log) noexcept : awh::core_t(fmk, log), ifnet(fmk, log), threads(0) {
+awh::server::Core::Core(const fmk_t * fmk, const log_t * log) noexcept : awh::core_t(fmk, log), pid(0), ifnet(fmk, log) {
 	// Устанавливаем тип запускаемого ядра
 	this->type = type_t::SERVER;
 }

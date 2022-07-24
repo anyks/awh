@@ -54,14 +54,14 @@ namespace awh {
 					recursive_mutex system; // Для установки системных параметров
 				} mtx_t;
 			private:
+				// Пид родительского процесса
+				pid_t pid;
+			private:
 				// Мютекс для блокировки основного потока
 				mtx_t mtx;
 			private:
 				// Объект для работы с сетевым интерфейсом
 				ifnet_t ifnet;
-			private:
-				// Количество доступных потоков
-				size_t threads;
 			private:
 				// Список пидов процессов
 				set <pid_t> pids;
@@ -86,12 +86,6 @@ namespace awh {
 				 * @param wid идентификатор воркера
 				 */
 				void accept(const int fd, const size_t wid) noexcept;
-			private:
-				/**
-				 * detach Метод отсоединения от родительского процесса
-				 * @param wid идентификатор воркера
-				 */
-				void detach(const size_t wid) noexcept;
 			public:
 				/**
 				 * close Метод отключения всех воркеров
@@ -118,6 +112,11 @@ namespace awh {
 				 * @param aid идентификатор адъютанта
 				 */
 				void close(const size_t aid) noexcept;
+				/**
+				 * waitingWrite Метод активации режима ожидании доступа на запись
+				 * @param aid идентификатор адъютанта
+				 */
+				void waitingWrite(const size_t aid) noexcept;
 			private:
 				/**
 				 * timeout Функция обратного вызова при срабатывании таймаута
@@ -144,11 +143,6 @@ namespace awh {
 				 * @param mode флаг для установки
 				 */
 				void setIpV6only(const bool mode) noexcept;
-				/**
-				 * setThreads Метод установки максимального количества потоков
-				 * @param threads максимальное количество потоков
-				 */
-				void setThreads(const size_t threads = 0) noexcept;
 				/**
 				 * setTotal Метод установки максимального количества одновременных подключений
 				 * @param wid   идентификатор воркера
