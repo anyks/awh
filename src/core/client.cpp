@@ -1179,9 +1179,6 @@ void awh::client::Core::transfer(const method_t method, const size_t aid) noexce
 								this->error(bytes, aid);
 							// Если произошла ошибка
 							else if((bytes < 0) && (status == 0)) {
-
-								cout << " -------------- " << bytes << endl;
-
 								// Если защищённый режим работы разрешён
 								if(adj->ssl.mode){
 									// Получаем данные описание ошибки
