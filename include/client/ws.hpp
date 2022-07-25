@@ -94,6 +94,14 @@ namespace awh {
 					 */
 					Allow() noexcept : send(true), receive(true) {}
 				} allow_t;
+				/**
+				 * Buffer Структура буфера данных
+				 */
+				typedef struct Buffer {
+					vector <char> read;    // Буфер бинарных необработанных данных
+					vector <char> write;   // Буфер бинарных обработанных данных
+					vector <char> fragmes; // Данные фрагметрированного сообщения
+				} buffer_t;
 			private:
 				// Создаем объект для работы с сетью
 				network_t nwk;
@@ -115,13 +123,8 @@ namespace awh {
 				locker_t locker;
 				// Экшен события
 				action_t action;
-			private:
-				// Данные фрагметрированного сообщения
-				vector <char> fragmes;
-				// Буфер бинарных необработанных данных
-				vector <char> bufferRead;
-				// Буфер бинарных обработанных данных
-				vector <char> bufferWrite;
+				// Объект буфера данных
+				buffer_t buffer;
 			public:
 				// Полученный опкод сообщения
 				frame_t::opcode_t opcode;
@@ -362,17 +365,18 @@ namespace awh {
 				void setSubs(const vector <string> & subs) noexcept;
 			public:
 				/**
-				 * setWaitTimeDetect Метод детекции сообщений по количеству секунд
-				 * @param read  количество секунд для детекции по чтению
-				 * @param write количество секунд для детекции по записи
-				 */
-				void setWaitTimeDetect(const time_t read, const time_t write) noexcept;
-				/**
 				 * setBytesDetect Метод детекции сообщений по количеству байт
 				 * @param read  количество байт для детекции по чтению
 				 * @param write количество байт для детекции по записи
 				 */
 				void setBytesDetect(const worker_t::mark_t read, const worker_t::mark_t write) noexcept;
+				/**
+				 * setWaitTimeDetect Метод детекции сообщений по количеству секунд
+				 * @param read    количество секунд для детекции по чтению
+				 * @param write   количество секунд для детекции по записи
+				 * @param connect количество секунд для детекции по подключению
+				 */
+				void setWaitTimeDetect(const time_t read = READ_TIMEOUT, const time_t write = WRITE_TIMEOUT, const time_t connect = CONNECT_TIMEOUT) noexcept;
 			public:
 				/**
 				 * setMode Метод установки флага модуля

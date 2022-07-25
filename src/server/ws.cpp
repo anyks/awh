@@ -43,19 +43,22 @@ void awh::server::WebSocket::writeCallback(const size_t aid, const size_t wid, a
 		// Если объект адъютанта получен
 		if(adj != nullptr){
 			// Если буфер данных не пустой
-			if(!adj->bufferWrite.empty()){
+			if(!adj->buffer.write.empty()){
 				// Выполняем запись данных на сервер
-				core->write(adj->bufferWrite.data(), adj->bufferWrite.size(), aid);
+				core->write(adj->buffer.write.data(), adj->buffer.write.size(), aid);
 				// Выполняем очистку буфера данных
-				adj->bufferWrite.clear();
+				adj->buffer.write.clear();
 				// Если нужно произвести отключение
 				if(!adj->close && adj->stopped)
 					// Выполняем ожидание доступности записи
-					const_cast <server::core_t *> (this->core)->waitingWrite(aid);
+					const_cast <server::core_t *> (this->core)->enabled(core_t::method_t::WRITE, aid);
 			// Если необходимо выполнить закрыть подключение
-			} else if(!adj->close && adj->stopped)
+			} else if(!adj->close && adj->stopped) {
 				// Устанавливаем флаг закрытия подключения
 				adj->close = !adj->close;
+				// Принудительно выполняем отключение лкиента
+				const_cast <server::core_t *> (this->core)->close(aid);
+			}
 		}
 	}
 }
@@ -173,7 +176,7 @@ void awh::server::WebSocket::readCallback(const char * buffer, const size_t size
 					// Устанавливаем экшен выполнения
 					adj->action = ws_worker_t::action_t::READ;
 					// Добавляем полученные данные в буфер
-					adj->bufferRead.insert(adj->bufferRead.end(), buffer, buffer + size);
+					adj->buffer.read.insert(adj->buffer.read.end(), buffer, buffer + size);
 					// Выполняем запуск обработчика событий
 					this->handler(aid);
 				}
@@ -231,7 +234,7 @@ void awh::server::WebSocket::actionRead(const size_t aid) noexcept {
 			// Если рукопожатие не выполнено
 			if(!reinterpret_cast <http_t *> (&adj->http)->isHandshake()){
 				// Выполняем парсинг полученных данных
-				const size_t bytes = adj->http.parse(adj->bufferRead.data(), adj->bufferRead.size());
+				const size_t bytes = adj->http.parse(adj->buffer.read.data(), adj->buffer.read.size());
 				// Если все данные получены
 				if(adj->http.isEnd()){
 					// Метод компрессии данных
@@ -267,7 +270,7 @@ void awh::server::WebSocket::actionRead(const size_t aid) noexcept {
 									// Выполняем сброс состояния HTTP парсера
 									adj->http.clear();
 									// Получаем бинарные данные REST запроса
-									adj->bufferWrite = adj->http.reject(400, "Unsupported protocol version");
+									adj->buffer.write = adj->http.reject(400, "Unsupported protocol version");
 									// Завершаем работу
 									break;
 								}
@@ -276,7 +279,7 @@ void awh::server::WebSocket::actionRead(const size_t aid) noexcept {
 									// Выполняем сброс состояния HTTP парсера
 									adj->http.clear();
 									// Получаем бинарные данные REST запроса
-									adj->bufferWrite = adj->http.reject(400, "Wrong client key");
+									adj->buffer.write = adj->http.reject(400, "Wrong client key");
 									// Завершаем работу
 									break;
 								}
@@ -297,28 +300,28 @@ void awh::server::WebSocket::actionRead(const size_t aid) noexcept {
 									// Разрешаем перехватывать контекст компрессии для сервера
 									adj->hash.setTakeoverDecompress(true);
 								// Получаем бинарные данные REST запроса
-								adj->bufferWrite = adj->http.response();
+								adj->buffer.write = adj->http.response();
 								// Если бинарные данные ответа получены
-								if(!adj->bufferWrite.empty()){
+								if(!adj->buffer.write.empty()){
 									// Если включён режим отладки
 									#if defined(DEBUG_MODE)
 										// Выводим заголовок ответа
 										cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
 										// Выводим параметры ответа
-										cout << string(adj->bufferWrite.begin(), adj->bufferWrite.end()) << endl << endl;
+										cout << string(adj->buffer.write.begin(), adj->buffer.write.end()) << endl << endl;
 									#endif
 									// Выполняем ожидание доступности записи
-									core->waitingWrite(aid);
+									core->enabled(core_t::method_t::WRITE, aid);
 									// Если функция обратного вызова установлена, выполняем
 									if(this->activeFn != nullptr) this->activeFn(aid, mode_t::CONNECT, this);
 									// Есла данных передано больше чем обработано
-									if(adj->bufferRead.size() > bytes)
+									if(adj->buffer.read.size() > bytes)
 										// Удаляем количество обработанных байт
-										vector <decltype(adj->bufferRead)::value_type> (adj->bufferRead.begin() + bytes, adj->bufferRead.end()).swap(adj->bufferRead);
+										vector <decltype(adj->buffer.read)::value_type> (adj->buffer.read.begin() + bytes, adj->buffer.read.end()).swap(adj->buffer.read);
 									// Если данных в буфере больше нет
 									else {
 										// Очищаем буфер собранных данных
-										adj->bufferRead.clear();
+										adj->buffer.read.clear();
 										// Если экшен соответствует, выполняем его сброс
 										if(adj->action == ws_worker_t::action_t::READ)
 											// Выполняем сброс экшена
@@ -333,9 +336,9 @@ void awh::server::WebSocket::actionRead(const size_t aid) noexcept {
 									// Выполняем сброс состояния HTTP парсера
 									adj->http.reset();
 									// Выполняем очистку буфера данных
-									adj->bufferRead.clear();
+									adj->buffer.read.clear();
 									// Формируем ответ, что страница не доступна
-									adj->bufferWrite = adj->http.reject(500);
+									adj->buffer.write = adj->http.reject(500);
 								}
 							// Сообщаем, что рукопожатие не выполнено
 							} else {
@@ -344,9 +347,9 @@ void awh::server::WebSocket::actionRead(const size_t aid) noexcept {
 								// Выполняем сброс состояния HTTP парсера
 								adj->http.reset();
 								// Выполняем очистку буфера данных
-								adj->bufferRead.clear();
+								adj->buffer.read.clear();
 								// Формируем ответ, что страница не доступна
-								adj->bufferWrite = adj->http.reject(403);
+								adj->buffer.write = adj->http.reject(403);
 							}
 						} break;
 						// Если запрос неудачный
@@ -356,13 +359,13 @@ void awh::server::WebSocket::actionRead(const size_t aid) noexcept {
 							// Выполняем сброс состояния HTTP парсера
 							adj->http.reset();
 							// Выполняем очистку буфера данных
-							adj->bufferRead.clear();
+							adj->buffer.read.clear();
 							// Формируем запрос авторизации
-							adj->bufferWrite = adj->http.reject(401);
+							adj->buffer.write = adj->http.reject(401);
 						} break;
 					}
 					// Если бинарные данные запроса получены, отправляем на сервер
-					if(!adj->bufferWrite.empty()){
+					if(!adj->buffer.write.empty()){
 						// Тело полезной нагрузки
 						vector <char> payload;
 						// Если включён режим отладки
@@ -370,7 +373,7 @@ void awh::server::WebSocket::actionRead(const size_t aid) noexcept {
 							// Выводим заголовок ответа
 							cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
 							// Выводим параметры ответа
-							cout << string(adj->bufferWrite.begin(), adj->bufferWrite.end()) << endl << endl;
+							cout << string(adj->buffer.write.begin(), adj->buffer.write.end()) << endl << endl;
 						#endif
 						// Устанавливаем метод компрессии данных ответа
 						adj->http.setCompress(compress);
@@ -382,12 +385,14 @@ void awh::server::WebSocket::actionRead(const size_t aid) noexcept {
 								cout << this->fmk->format("<chunk %u>", payload.size()) << endl;
 							#endif
 							// Объединяем буфер для отправки
-							adj->bufferWrite.insert(adj->bufferWrite.end(), payload.begin(), payload.end());
+							adj->buffer.write.insert(adj->buffer.write.end(), payload.begin(), payload.end());
 						}
 						// Устанавливаем флаг разрешающий остановку
 						adj->stopped = true;
+						// Выполняем запрет на получение входящих данных
+						core->disabled(core_t::method_t::READ, aid);
 						// Выполняем ожидание доступности записи
-						core->waitingWrite(aid);
+						core->enabled(core_t::method_t::WRITE, aid);
 						// Если экшен соответствует, выполняем его сброс
 						if(adj->action == ws_worker_t::action_t::READ)
 							// Выполняем сброс экшена
@@ -418,7 +423,7 @@ void awh::server::WebSocket::actionRead(const size_t aid) noexcept {
 				// Выполняем обработку полученных данных
 				while(!adj->close && adj->allow.receive){
 					// Выполняем чтение фрейма WebSocket
-					const auto & data = this->frame.get(head, adj->bufferRead.data(), adj->bufferRead.size());
+					const auto & data = this->frame.get(head, adj->buffer.read.data(), adj->buffer.read.size());
 					// Если буфер данных получен
 					if(!data.empty()){
 						// Проверяем состояние флагов RSV2 и RSV3
@@ -473,9 +478,9 @@ void awh::server::WebSocket::actionRead(const size_t aid) noexcept {
 									// Выполняем отключение клиента
 									goto Stop;
 								// Если список фрагментированных сообщений существует
-								} else if(!adj->fragmes.empty()) {
+								} else if(!adj->buffer.fragmes.empty()) {
 									// Очищаем список фрагментированных сообщений
-									adj->fragmes.clear();
+									adj->buffer.fragmes.clear();
 									// Создаём сообщение
 									mess = mess_t(1002, "opcode for subsequent fragmented messages should not be set");
 									// Выполняем отключение клиента
@@ -483,20 +488,20 @@ void awh::server::WebSocket::actionRead(const size_t aid) noexcept {
 								// Если сообщение является не последнем
 								} else if(!head.fin)
 									// Заполняем фрагментированное сообщение
-									adj->fragmes.insert(adj->fragmes.end(), data.begin(), data.end());
+									adj->buffer.fragmes.insert(adj->buffer.fragmes.end(), data.begin(), data.end());
 								// Если сообщение является последним
 								else buffer = move(* const_cast <vector <char> *> (&data));
 							} break;
 							// Если ответом является CONTINUATION
 							case (uint8_t) frame_t::opcode_t::CONTINUATION: {
 								// Заполняем фрагментированное сообщение
-								adj->fragmes.insert(adj->fragmes.end(), data.begin(), data.end());
+								adj->buffer.fragmes.insert(adj->buffer.fragmes.end(), data.begin(), data.end());
 								// Если сообщение является последним
 								if(head.fin){
 									// Выполняем копирование всех собранных сегментов
-									buffer = move(* const_cast <vector <char> *> (&adj->fragmes));
+									buffer = move(* const_cast <vector <char> *> (&adj->buffer.fragmes));
 									// Очищаем список фрагментированных сообщений
-									adj->fragmes.clear();
+									adj->buffer.fragmes.clear();
 								}
 							} break;
 							// Если ответом является CLOSE
@@ -517,11 +522,11 @@ void awh::server::WebSocket::actionRead(const size_t aid) noexcept {
 						}
 					}
 					// Если парсер обработал какое-то количество байт
-					if((receive = ((head.frame > 0) && !adj->bufferRead.empty()))){
+					if((receive = ((head.frame > 0) && !adj->buffer.read.empty()))){
 						// Если размер буфера больше количества удаляемых байт
-						if((receive = (adj->bufferRead.size() >= head.frame)))
+						if((receive = (adj->buffer.read.size() >= head.frame)))
 							// Удаляем количество обработанных байт
-							vector <decltype(adj->bufferRead)::value_type> (adj->bufferRead.begin() + head.frame, adj->bufferRead.end()).swap(adj->bufferRead);
+							vector <decltype(adj->buffer.read)::value_type> (adj->buffer.read.begin() + head.frame, adj->buffer.read.end()).swap(adj->buffer.read);
 					}
 					// Если сообщения получены
 					if(!buffer.empty()){
@@ -531,7 +536,7 @@ void awh::server::WebSocket::actionRead(const size_t aid) noexcept {
 						buffer.clear();
 					}
 					// Если данные мы все получили, выходим
-					if(!receive || adj->bufferRead.empty()) break;
+					if(!receive || adj->buffer.read.empty()) break;
 				}
 				// Если экшен соответствует, выполняем его сброс
 				if(adj->action == ws_worker_t::action_t::READ)
@@ -650,10 +655,10 @@ void awh::server::WebSocket::error(const size_t aid, const mess_t & message) con
 	ws_worker_t::adjp_t * adj = const_cast <ws_worker_t::adjp_t *> (this->worker.get(aid));
 	// Если отправка сообщений разблокированна
 	if(adj != nullptr){
-		// Очищаем список фрагментированных сообщений
-		adj->fragmes.clear();
 		// Очищаем список буффер бинарных данных
-		adj->bufferRead.clear();
+		adj->buffer.read.clear();
+		// Очищаем список фрагментированных сообщений
+		adj->buffer.fragmes.clear();
 	}
 	// Если идентификатор адъютанта передан и код ошибки указан
 	if((aid > 0) && (message.code > 0)){
@@ -722,13 +727,15 @@ void awh::server::WebSocket::extraction(ws_worker_t::adjp_t * adj, const size_t 
 				// Создаём сообщение
 				mess_t mess(1007, "received data decompression error");
 				// Получаем буфер сообщения
-				adj->bufferWrite = this->frame.message(mess);
+				adj->buffer.write = this->frame.message(mess);
 				// Если данные сообщения получены
-				if(!adj->bufferWrite.empty()){
+				if(!adj->buffer.write.empty()){
 					// Устанавливаем флаг разрешающий остановку
 					adj->stopped = true;
+					// Выполняем запрет на получение входящих данных
+					((server::core_t *) core)->disabled(core_t::method_t::READ, aid);
 					// Выполняем ожидание доступности записи
-					((server::core_t *) core)->waitingWrite(aid);
+					((server::core_t *) core)->enabled(core_t::method_t::WRITE, aid);
 				// Завершаем работу
 				} else reinterpret_cast <server::core_t *> (core)->close(aid);
 			}
@@ -761,9 +768,11 @@ void awh::server::WebSocket::pong(const size_t aid, awh::core_t * core, const st
 		// Если отправка сообщений разблокированна
 		if((adj != nullptr) && adj->allow.send){
 			// Создаём буфер для отправки
-			adj->bufferWrite = this->frame.pong(message);
-			// Выполняем ожидание доступности записи
-			((server::core_t *) core)->waitingWrite(aid);
+			adj->buffer.write = this->frame.pong(message);
+			// Если буфер данных получен
+			if(!adj->buffer.write.empty())
+				// Выполняем ожидание доступности записи
+				((server::core_t *) core)->enabled(core_t::method_t::WRITE, aid);
 		}
 	}
 }
@@ -781,9 +790,11 @@ void awh::server::WebSocket::ping(const size_t aid, awh::core_t * core, const st
 		// Если отправка сообщений разблокированна
 		if((adj != nullptr) && adj->allow.send){
 			// Создаём буфер для отправки
-			adj->bufferWrite = this->frame.ping(message);
-			// Выполняем ожидание доступности записи
-			((server::core_t *) core)->waitingWrite(aid);
+			adj->buffer.write = this->frame.ping(message);
+			// Если буфер данных получен
+			if(!adj->buffer.write.empty())
+				// Выполняем ожидание доступности записи
+				((server::core_t *) core)->enabled(core_t::method_t::WRITE, aid);
 		}
 	}
 }
@@ -861,16 +872,21 @@ void awh::server::WebSocket::sendError(const size_t aid, const mess_t & mess) co
 		if(mess.code >= 1000){
 			// Получаем параметры подключения адъютанта
 			ws_worker_t::adjp_t * adj = const_cast <ws_worker_t::adjp_t *> (this->worker.get(aid));
+			// Получаем объект биндинга ядра TCP/IP
+			server::core_t * core = const_cast <server::core_t *> (this->core);
 			// Если разрешено получение данных
-			if(adj != nullptr) adj->allow.receive = false;
+			if(adj != nullptr){
+				// Запрещаем получение данных
+				adj->allow.receive = false;
+				// Выполняем остановку получения данных
+				core->disabled(core_t::method_t::READ, aid);
+			}
 			// Если отправка сообщений разблокированна
 			if((adj != nullptr) && adj->allow.send){
 				// Получаем буфер сообщения
-				adj->bufferWrite = this->frame.message(mess);
+				adj->buffer.write = this->frame.message(mess);
 				// Если данные сообщения получены
-				if(!adj->bufferWrite.empty()){
-					// Получаем объект биндинга ядра TCP/IP
-					server::core_t * core = const_cast <server::core_t *> (this->core);
+				if(!adj->buffer.write.empty()){
 					// Если включён режим отладки
 					#if defined(DEBUG_MODE)
 						// Выводим заголовок ответа
@@ -881,7 +897,7 @@ void awh::server::WebSocket::sendError(const size_t aid, const mess_t & mess) co
 					// Устанавливаем флаг принудительной остановки
 					adj->stopped = true;
 					// Выполняем ожидание доступности записи
-					core->waitingWrite(aid);
+					core->enabled(core_t::method_t::WRITE, aid);
 					// Выходим из функции
 					return;
 				}
@@ -1111,9 +1127,9 @@ const string awh::server::WebSocket::getSub(const size_t aid) const noexcept {
  */
 void awh::server::WebSocket::setWaitTimeDetect(const time_t read, const time_t write) noexcept {
 	// Устанавливаем количество секунд на чтение
-	this->worker.timeRead = read;
+	this->worker.timeouts.read = read;
 	// Устанавливаем количество секунд на запись
-	this->worker.timeWrite = write;
+	this->worker.timeouts.write = write;
 }
 /**
  * setBytesDetect Метод детекции сообщений по количеству байт
@@ -1122,9 +1138,17 @@ void awh::server::WebSocket::setWaitTimeDetect(const time_t read, const time_t w
  */
 void awh::server::WebSocket::setBytesDetect(const worker_t::mark_t read, const worker_t::mark_t write) noexcept {
 	// Устанавливаем количество байт на чтение
-	this->worker.markRead = read;
+	this->worker.marker.read = read;
 	// Устанавливаем количество байт на запись
-	this->worker.markWrite = write;
+	this->worker.marker.write = write;
+	// Если минимальный размер данных для чтения, не установлен
+	if(this->worker.marker.read.min == 0)
+		// Устанавливаем размер минимальных для чтения данных по умолчанию
+		this->worker.marker.read.min = BUFFER_READ_MIN;
+	// Если максимальный размер данных для записи не установлен, устанавливаем по умолчанию
+	if(this->worker.marker.write.max == 0)
+		// Устанавливаем размер максимальных записываемых данных по умолчанию
+		this->worker.marker.write.max = BUFFER_WRITE_MAX;
 }
 /**
  * setRealm Метод установки название сервера
@@ -1229,10 +1253,6 @@ void awh::server::WebSocket::setCrypt(const string & pass, const string & salt, 
  * @param log  объект для работы с логами
  */
 awh::server::WebSocket::WebSocket(const server::core_t * core, const fmk_t * fmk, const log_t * log) noexcept : frame(fmk, log), core(core), fmk(fmk), log(log), worker(fmk, log) {
-	// Устанавливаем количество секунд на чтение
-	this->worker.timeRead = 60;
-	// Устанавливаем количество секунд на запись
-	this->worker.timeWrite = 60;
 	// Устанавливаем событие на запуск системы
 	this->worker.openFn = std::bind(&awh::server::WebSocket::openCallback, this, _1, _2);
 	// Устанавливаем функцию записи данных

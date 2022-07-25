@@ -102,12 +102,6 @@ namespace awh {
 				void resolver(const string & ip, worker_t * wrk) noexcept;
 			private:
 				/**
-				 * tuning Метод тюннинга буфера событий
-				 * @param aid идентификатор адъютанта
-				 */
-				void tuning(const size_t aid) noexcept;
-			private:
-				/**
 				 * connect Метод создания подключения к удаленному серверу
 				 * @param wid идентификатор воркера
 				 */
@@ -166,11 +160,6 @@ namespace awh {
 				 * @param aid идентификатор адъютанта
 				 */
 				void switchProxy(const size_t aid) noexcept;
-				/**
-				 * waitingWrite Метод активации режима ожидании доступа на запись
-				 * @param aid идентификатор адъютанта
-				 */
-				void waitingWrite(const size_t aid) noexcept;
 			private:
 				/**
 				 * timeout Функция обратного вызова при срабатывании таймаута

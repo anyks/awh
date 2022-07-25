@@ -53,7 +53,7 @@ void awh::server::Core::resolver(const string & ip, worker_t * wrk) noexcept {
 			// Запоминаем PID родительского процесса
 			core->pid = getpid();
 			// Выводим сообщение об активации
-			if(!core->noinfo) core->log->print("run server [%s:%u]", log_t::flag_t::INFO, wrk->host.c_str(), wrk->port);			
+			if(!core->noinfo) core->log->print("run server [%s:%u]", log_t::flag_t::INFO, wrk->host.c_str(), wrk->port);
 			// Устанавливаем базу событий
 			wrk->io.set(this->base);
 			// Устанавливаем событие на запись данных подключения
@@ -255,36 +255,8 @@ void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 			ret.first->second->ip = move(ip);
 			// Запоминаем MAC адрес
 			ret.first->second->mac = move(mac);
-			// Разрешаем чтение данных с сокета
-			ret.first->second->bev.locked.read = false;
-			// Устанавливаем время ожидания поступления данных
-			ret.first->second->timeRead = wrk->timeRead;
-			// Устанавливаем размер детектируемых байт на чтение
-			ret.first->second->markRead = wrk->markRead;
-			// Устанавливаем приоритет выполнения для события на чтения
-			ev_set_priority(&ret.first->second->bev.event.read, -2);
-			// Устанавливаем базу событий
-			ret.first->second->bev.event.read.set(this->base);
-			// Устанавливаем сокет для записи
-			ret.first->second->bev.event.read.set(ret.first->second->bev.socket, ev::READ);
-			// Устанавливаем событие на чтение данных подключения
-			ret.first->second->bev.event.read.set <awh::worker_t::adj_t, &awh::worker_t::adj_t::read> (ret.first->second.get());
-			// Запускаем чтение данных с сервера
-			ret.first->second->bev.event.read.start();
-			// Если флаг ожидания входящих сообщений, активирован
-			if(wrk->wait){
-				// Если время ожидания чтения данных установлено
-				if(ret.first->second->timeRead > 0){
-					// Устанавливаем приоритет выполнения для таймаута на чтение
-					ev_set_priority(&ret.first->second->bev.timer.read, 0);
-					// Устанавливаем базу событий
-					ret.first->second->bev.timer.read.set(this->base);
-					// Устанавливаем событие на чтение данных подключения
-					ret.first->second->bev.timer.read.set <awh::worker_t::adj_t, &awh::worker_t::adj_t::timeout> (ret.first->second.get());
-					// Запускаем ожидание чтения данных с сервера
-					ret.first->second->bev.timer.read.start(ret.first->second->timeRead);
-				}
-			}
+			// Запускаем чтение данных
+			this->enabled(method_t::READ, ret.first->first, wrk->wait);
 			// Выводим в консоль информацию
 			if(!this->noinfo) this->log->print("client connect to server, host = %s, mac = %s, socket = %d", log_t::flag_t::INFO, ret.first->second->ip.c_str(), ret.first->second->mac.c_str(), ret.first->second->bev.socket);
 			// Выполняем функцию обратного вызова
@@ -529,51 +501,6 @@ void awh::server::Core::close(const size_t aid) noexcept {
 	}
 }
 /**
- * waitingWrite Метод активации режима ожидании доступа на запись
- * @param aid идентификатор адъютанта
- */
-void awh::server::Core::waitingWrite(const size_t aid) noexcept {
-	// Выполняем извлечение адъютанта
-	auto it = this->adjutants.find(aid);
-	// Если адъютант получен
-	if(it != this->adjutants.end()){
-		// Получаем объект адъютанта
-		awh::worker_t::adj_t * adj = const_cast <awh::worker_t::adj_t *> (it->second);
-		// Получаем объект подключения
-		worker_t * wrk = (worker_t *) const_cast <awh::worker_t *> (adj->parent);
-		// Разрешаем запись данных в сокет
-		adj->bev.locked.write = false;
-		// Устанавливаем время ожидания записи данных
-		adj->timeWrite = wrk->timeWrite;
-		// Устанавливаем размер детектируемых байт на запись
-		adj->markWrite = wrk->markWrite;
-		// Устанавливаем приоритет выполнения для события на чтения
-		ev_set_priority(&adj->bev.event.write, -2);
-		// Устанавливаем базу событий
-		adj->bev.event.write.set(this->base);
-		// Устанавливаем сокет для записи
-		adj->bev.event.write.set(adj->bev.socket, ev::WRITE);
-		// Устанавливаем событие на запись данных подключения
-		adj->bev.event.write.set <awh::worker_t::adj_t, &awh::worker_t::adj_t::write> (adj);
-		// Запускаем запись данных на сервер
-		adj->bev.event.write.start();
-		// Если флаг ожидания входящих сообщений, активирован
-		if(wrk->wait){
-			// Если время ожидания записи данных установлено
-			if(adj->timeWrite > 0){
-				// Устанавливаем приоритет выполнения для таймаута на запись
-				ev_set_priority(&adj->bev.timer.write, 0);
-				// Устанавливаем базу событий
-				adj->bev.timer.write.set(this->base);
-				// Устанавливаем событие на запись данных подключения
-				adj->bev.timer.write.set <awh::worker_t::adj_t, &awh::worker_t::adj_t::timeout> (adj);
-				// Запускаем ожидание записи данных на сервер
-				adj->bev.timer.write.start(adj->timeWrite);
-			}
-		}
-	}
-}
-/**
  * timeout Функция обратного вызова при срабатывании таймаута
  * @param aid идентификатор адъютанта
  */
@@ -589,9 +516,9 @@ void awh::server::Core::timeout(const size_t aid) noexcept {
 		// Выводим сообщение в лог, о таймауте подключения
 		this->log->print("timeout host [%s]", log_t::flag_t::WARNING, adj->ip.c_str());
 		// Останавливаем чтение данных
-		adj->bev.event.read.stop();
+		this->disabled(method_t::READ, it->first);
 		// Останавливаем запись данных
-		adj->bev.event.write.stop();
+		this->disabled(method_t::WRITE, it->first);
 		// Выполняем отключение клиента
 		this->close(aid);
 	}
@@ -620,81 +547,77 @@ void awh::server::Core::transfer(const method_t method, const size_t aid) noexce
 				char buffer[BUFFER_SIZE];
 				// Останавливаем таймаут ожидания на чтение из сокета
 				adj->bev.timer.read.stop();
-				// Выполняем чтение всех данных из сокета
-				while(!adj->bev.locked.read){
-					// Выполняем зануление буфера
-					memset(buffer, 0, sizeof(buffer));
-					// Если защищённый режим работы разрешён
-					if(adj->ssl.mode){
-						// Выполняем очистку ошибок OpenSSL
-						ERR_clear_error();
-						// Выполняем чтение из защищённого сокета
-						bytes = SSL_read(adj->ssl.ssl, buffer, sizeof(buffer));
-					// Выполняем чтение данных из сокета
-					} else bytes = recv(adj->bev.socket, buffer, sizeof(buffer), 0);
-					// Останавливаем таймаут ожидания на чтение из сокета
-					adj->bev.timer.read.stop();
-					// Если время ожидания записи данных установлено
-					if(adj->timeRead > 0)
-						// Запускаем ожидание чтения данных с сервера
-						adj->bev.timer.read.start(adj->timeRead);
-					// Если данные получены
-					if(bytes > 0){
-						// Если данные считанные из буфера, больше размера ожидающего буфера
-						if((adj->markWrite.max > 0) && (bytes >= adj->markWrite.max)){
-							// Смещение в буфере и отправляемый размер данных
-							size_t offset = 0, actual = 0;
-							// Выполняем пересылку всех полученных данных
-							while((bytes - offset) > 0){
-								// Определяем размер отправляемых данных
-								actual = ((bytes - offset) >= adj->markWrite.max ? adj->markWrite.max : (bytes - offset));
-								// Если функция обратного вызова на получение данных установлена
-								if(wrk->readFn != nullptr)
-									// Выводим функцию обратного вызова
-									wrk->readFn(buffer + offset, actual, aid, wrk->wid, reinterpret_cast <awh::core_t *> (this));
-								// Увеличиваем смещение в буфере
-								offset += actual;
-							}
-						// Если данных достаточно и функция обратного вызова на получение данных установлена
-						} else if(wrk->readFn != nullptr)
-							// Выводим функцию обратного вызова
-							wrk->readFn(buffer, bytes, aid, wrk->wid, reinterpret_cast <awh::core_t *> (this));
-					// Если данные не могут быть прочитаны
-					} else {
-						// Если произошла ошибка
-						if(bytes < 0){
-							// Если защищённый режим работы разрешён
-							if(adj->ssl.mode){
-								// Получаем данные описание ошибки
-								if(SSL_get_error(adj->ssl.ssl, bytes) == SSL_ERROR_WANT_READ)
-									// Выполняем пропуск попытки
-									break;
-								// Иначе выводим сообщение об ошибке
-								else this->error(bytes, aid);
-							// Если защищённый режим работы запрещён
-							} else if(errno == EAGAIN) break;
-							// Выполняем отключение клиента
-							this->close(aid);
+				// Выполняем зануление буфера
+				memset(buffer, 0, sizeof(buffer));
+				// Если защищённый режим работы разрешён
+				if(adj->ssl.mode){
+					// Выполняем очистку ошибок OpenSSL
+					ERR_clear_error();
+					// Выполняем чтение из защищённого сокета
+					bytes = SSL_read(adj->ssl.ssl, buffer, sizeof(buffer));
+				// Выполняем чтение данных из сокета
+				} else bytes = recv(adj->bev.socket, buffer, sizeof(buffer), 0);
+				// Останавливаем таймаут ожидания на чтение из сокета
+				adj->bev.timer.read.stop();
+				// Если время ожидания записи данных установлено
+				if(adj->timeouts.read > 0)
+					// Запускаем ожидание чтения данных с сервера
+					adj->bev.timer.read.start(adj->timeouts.read);
+				// Если данные получены
+				if(bytes > 0){
+					// Если данные считанные из буфера, больше размера ожидающего буфера
+					if((adj->marker.write.max > 0) && (bytes >= adj->marker.write.max)){
+						// Смещение в буфере и отправляемый размер данных
+						size_t offset = 0, actual = 0;
+						// Выполняем пересылку всех полученных данных
+						while((bytes - offset) > 0){
+							// Определяем размер отправляемых данных
+							actual = ((bytes - offset) >= adj->marker.write.max ? adj->marker.write.max : (bytes - offset));
+							// Если функция обратного вызова на получение данных установлена
+							if(wrk->readFn != nullptr)
+								// Выводим функцию обратного вызова
+								wrk->readFn(buffer + offset, actual, aid, wrk->wid, reinterpret_cast <awh::core_t *> (this));
+							// Увеличиваем смещение в буфере
+							offset += actual;
 						}
-						// Если подключение разорвано
-						if(bytes == 0)
-							// Выполняем отключение клиента
-							this->close(aid);
-						// Выходим из цикла
-						break;
+					// Если данных достаточно и функция обратного вызова на получение данных установлена
+					} else if(wrk->readFn != nullptr)
+						// Выводим функцию обратного вызова
+						wrk->readFn(buffer, bytes, aid, wrk->wid, reinterpret_cast <awh::core_t *> (this));
+				// Если данные не могут быть прочитаны
+				} else {
+					// Если произошла ошибка
+					if(bytes < 0){
+						// Если защищённый режим работы разрешён
+						if(adj->ssl.mode){
+							// Получаем данные описание ошибки
+							if(SSL_get_error(adj->ssl.ssl, bytes) == SSL_ERROR_WANT_READ)
+								// Выполняем пропуск попытки
+								return;
+							// Иначе выводим сообщение об ошибке
+							else this->error(bytes, aid);
+						// Если защищённый режим работы запрещён
+						} else if(errno == EAGAIN) return;
+						// Выполняем отключение клиента
+						this->close(aid);
 					}
+					// Если подключение разорвано
+					if(bytes == 0)
+						// Выполняем отключение клиента
+						this->close(aid);
 				}
 			} break;
 			// Если производится запись данных
 			case (uint8_t) method_t::WRITE: {
-				// Останавливаем запись данных на сервер
-				adj->bev.event.write.stop();
-				// Останавливаем таймаут ожидания на запись в сокет
-				adj->bev.timer.write.stop();
+				// Останавливаем запись данных
+				this->disabled(method_t::WRITE, it->first);
 				// Если функция обратного вызова на запись данных установлена
-				if(wrk->writeFn != nullptr)
+				if(wrk->writeFn != nullptr){
+					// Разрешаем выполнять запись в сокет
+					adj->bev.locked.write = false;
 					// Выводим функцию обратного вызова
 					wrk->writeFn(aid, wrk->wid, reinterpret_cast <awh::core_t *> (this));
+				}
 			} break;
 		}
 	}

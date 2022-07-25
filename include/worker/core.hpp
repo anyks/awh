@@ -81,16 +81,30 @@ namespace awh {
 			 * Timer Структура таймаута
 			 */
 			typedef struct Timer {
-				ev::timer read;  // Событие таймера таймаута на чтение из сокета
-				ev::timer write; // Событие таймера таймаута на запись в сокет
+				ev::timer read;    // Событие таймера таймаута на чтение из сокета
+				ev::timer write;   // Событие таймера таймаута на запись в сокет
+				ev::timer connect; // Событие таймера таймаута на подключение к серверу
 			} timer_t;
 			/**
 			 * Event Структура события
 			 */
 			typedef struct Event {
-				ev::io read;  // Событие на чтение
-				ev::io write; // Событие на запись
+				ev::io read;    // Событие на чтение
+				ev::io write;   // Событие на запись
+				ev::io connect; // Событие на подключение
 			} event_t;
+			/**
+			 * Timeouts Структура таймаутов
+			 */
+			typedef struct Timeouts {
+				time_t read;    // Таймаут на чтение в секундах
+				time_t write;   // Таймаут на запись в секундах
+				time_t connect; // Таймаут на подключение в секундах
+				/**
+				 * Timeouts Конструктор
+				 */
+				Timeouts() noexcept : read(READ_TIMEOUT), write(WRITE_TIMEOUT), connect(CONNECT_TIMEOUT) {}
+			} timeouts_t;
 			/**
 			 * Locked Структура блокировки на чтение и запись данных в буфере
 			 */
@@ -128,6 +142,17 @@ namespace awh {
 				 */
 				Mark(const size_t min = 0, const size_t max = 0) : min(min), max(max) {}
 			} __attribute__((packed)) mark_t;
+			/**
+			 * Marker Структура маркеров
+			 */
+			typedef struct Marker {
+				mark_t read;  // Маркера размера детектируемых байт на чтение
+				mark_t write; // Маркера размера детектируемых байт на запись
+				/**
+				 * Marker Конструктор
+				 */
+				Marker() noexcept : read(BUFFER_READ_MIN, BUFFER_READ_MAX), write(BUFFER_WRITE_MIN, BUFFER_WRITE_MAX) {}
+			} marker_t;
 		public:
 			/**
 			 * Adjutant Структура адъютанта
@@ -154,15 +179,11 @@ namespace awh {
 					// Объект буфера событий
 					bev_t bev;
 				private:
-					// Маркера размера детектируемых байт на чтение
-					mark_t markRead;
-					// Маркера размера детектируемых байт на запись
-					mark_t markWrite;
+					// Маркер размера детектируемых байт
+					marker_t marker;
 				private:
-					// Таймер на чтение в секундах
-					time_t timeRead;
-					// Таймер на запись в секундах
-					time_t timeWrite;
+					// Объект таймаутов
+					timeouts_t timeouts;
 				private:
 					// Контекст SSL для работы с защищённым подключением
 					ssl_t::ctx_t ssl;
@@ -206,11 +227,7 @@ namespace awh {
 					 * @param log    объект для работы с логами
 					 */
 					Adjutant(const Worker * parent, const fmk_t * fmk, const log_t * log) noexcept :
-					 aid(0), ip(""), mac(""),
-					 markRead(BUFFER_READ_MIN, BUFFER_READ_MAX),
-					 markWrite(BUFFER_WRITE_MIN, BUFFER_WRITE_MAX),
-					 timeRead(READ_TIMEOUT), timeWrite(WRITE_TIMEOUT),
-					 parent(parent), fmk(fmk), log(log) {}
+					 aid(0), ip(""), mac(""), parent(parent), fmk(fmk), log(log) {}
 					/**
 					 * ~Adjutant Деструктор
 					 */
@@ -225,15 +242,11 @@ namespace awh {
 			// Флаг автоматического поддержания подключения
 			bool alive;
 		public:
-			// Маркера размера детектируемых байт на чтение
-			mark_t markRead;
-			// Маркера размера детектируемых байт на запись
-			mark_t markWrite;
+			// Маркер размера детектируемых байт
+			marker_t marker;
 		public:
-			// Таймер на чтение в секундах
-			time_t timeRead;
-			// Таймер на запись в секундах
-			time_t timeWrite;
+			// Объект таймаутов
+			timeouts_t timeouts;
 		protected:
 			// Список подключённых адъютантов
 			map <size_t, unique_ptr <adj_t>> adjutants;
@@ -283,9 +296,6 @@ namespace awh {
 			 */
 			Worker(const fmk_t * fmk, const log_t * log) noexcept :
 			 wid(0), wait(false), alive(false),
-			 markRead(BUFFER_READ_MIN, BUFFER_READ_MAX),
-			 markWrite(BUFFER_WRITE_MIN, BUFFER_WRITE_MAX),
-			 timeRead(READ_TIMEOUT), timeWrite(WRITE_TIMEOUT),
 			 fmk(fmk), log(log), core(nullptr),
 			 openFn(nullptr), writeFn(nullptr), persistFn(nullptr),
 			 connectFn(nullptr), disconnectFn(nullptr), readFn(nullptr) {}

@@ -118,6 +118,13 @@ namespace awh {
 					 */
 					Locker() noexcept : mode(false) {}
 				} locker_t;
+				/**
+				 * Buffer Структура буфера данных
+				 */
+				typedef struct Buffer {
+					vector <char> read;  // Буфер бинарных необработанных данных
+					vector <char> write; // Буфер бинарных обработанных данных
+				} buffer_t;
 			private:
 				// Объект для работы с сетью
 				network_t nwk;
@@ -132,6 +139,8 @@ namespace awh {
 				locker_t locker;
 				// Экшен события
 				action_t action;
+				// Объект буфера данных
+				buffer_t buffer;
 				// Метод компрессии данных
 				awh::http_t::compress_t compress;
 			private:
@@ -149,9 +158,6 @@ namespace awh {
 				bool active = false;
 				// Флаг выполнения редиректов
 				bool redirects = false;
-			private:
-				// Тело получения ответа
-				vector <char> entity;
 			private:
 				// Создаём объект фреймворка
 				const fmk_t * fmk = nullptr;
@@ -178,6 +184,13 @@ namespace awh {
 				 * @param core объект биндинга TCP/IP
 				 */
 				void openCallback(const size_t wid, awh::core_t * core) noexcept;
+				/**
+				 * writeCallback Метод обратного вызова при записи сообщения на клиенте
+				 * @param aid  идентификатор адъютанта
+				 * @param wid  идентификатор воркера
+				 * @param core объект биндинга TCP/IP
+				 */
+				void writeCallback(const size_t aid, const size_t wid, awh::core_t * core) noexcept;
 				/**
 				 * connectCallback Метод обратного вызова при подключении к серверу
 				 * @param aid  идентификатор адъютанта
@@ -410,17 +423,18 @@ namespace awh {
 				void on(function <void (const vector <char> &, const awh::http_t *)> callback) noexcept;
 			public:
 				/**
-				 * setWaitTimeDetect Метод детекции сообщений по количеству секунд
-				 * @param read  количество секунд для детекции по чтению
-				 * @param write количество секунд для детекции по записи
-				 */
-				void setWaitTimeDetect(const time_t read, const time_t write) noexcept;
-				/**
 				 * setBytesDetect Метод детекции сообщений по количеству байт
 				 * @param read  количество байт для детекции по чтению
 				 * @param write количество байт для детекции по записи
 				 */
 				void setBytesDetect(const worker_t::mark_t read, const worker_t::mark_t write) noexcept;
+				/**
+				 * setWaitTimeDetect Метод детекции сообщений по количеству секунд
+				 * @param read    количество секунд для детекции по чтению
+				 * @param write   количество секунд для детекции по записи
+				 * @param connect количество секунд для детекции по подключению
+				 */
+				void setWaitTimeDetect(const time_t read = READ_TIMEOUT, const time_t write = WRITE_TIMEOUT, const time_t connect = CONNECT_TIMEOUT) noexcept;
 			public:
 				/**
 				 * setMode Метод установки флага модуля

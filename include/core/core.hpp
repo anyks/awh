@@ -87,7 +87,7 @@ namespace awh {
 			/**
 			 * Основные методы режимов работы
 			 */
-			enum class method_t : uint8_t {READ, WRITE};
+			enum class method_t : uint8_t {READ, WRITE, CONNECT};
 		private:
 			/**
 			 * Timer Класс таймера
@@ -454,6 +454,20 @@ namespace awh {
 			 * @param aid   идентификатор адъютанта
 			 */
 			void error(const int64_t bytes, const size_t aid) const noexcept;
+		public:
+			/**
+			 * disabled Метод деактивации метода события сокета
+			 * @param method метод события сокета
+			 * @param aid    идентификатор адъютанта
+			 */
+			void disabled(const method_t method, const size_t aid) noexcept;
+			/**
+			 * enabled Метод активации метода события сокета
+			 * @param method  метод события сокета
+			 * @param aid     идентификатор адъютанта
+			 * @param timeout флаг активации таймаута
+			 */
+			void enabled(const method_t method, const size_t aid, const bool timeout = true) noexcept;
 		public:
 			/**
 			 * write Метод записи буфера данных воркером

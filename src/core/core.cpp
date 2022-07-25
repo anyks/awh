@@ -31,12 +31,18 @@ void awh::worker_t::adj_t::read(ev::io & watcher, int revents) noexcept {
 		core->transfer(core_t::method_t::READ, this->aid);
 	// Если выполнять чтение данных запрещено
 	else {
-		// Останавливаем таймаут ожидания на чтение из сокета
-		this->bev.timer.read.stop();
-		// Останавливаем таймаут ожидания на запись в сокет
-		this->bev.timer.write.stop();
-		// Выполняем отключение от сервера
-		core->close(this->aid);
+		// Если запрещено выполнять чтение данных из сокета
+		if(this->bev.locked.read)
+			// Останавливаем чтение данных
+			core->disabled(core_t::method_t::READ, this->aid);
+		// Если запрещено выполнять запись данных в сокет
+		if(this->bev.locked.write)
+			// Останавливаем запись данных
+			core->disabled(core_t::method_t::WRITE, this->aid);
+		// Если запрещено и читать и записывать в сокет
+		if(this->bev.locked.read && this->bev.locked.write)
+			// Выполняем отключение от сервера
+			core->close(this->aid);
 	}
 }
 /**
@@ -55,12 +61,18 @@ void awh::worker_t::adj_t::write(ev::io & watcher, int revents) noexcept {
 		core->transfer(core_t::method_t::WRITE, this->aid);
 	// Если выполнять запись данных запрещено
 	else {
-		// Останавливаем таймаут ожидания на чтение из сокета
-		this->bev.timer.read.stop();
-		// Останавливаем таймаут ожидания на запись в сокет
-		this->bev.timer.write.stop();
-		// Выполняем отключение от сервера
-		core->close(this->aid);
+		// Если запрещено выполнять чтение данных из сокета
+		if(this->bev.locked.read)
+			// Останавливаем чтение данных
+			core->disabled(core_t::method_t::READ, this->aid);
+		// Если запрещено выполнять запись данных в сокет
+		if(this->bev.locked.write)
+			// Останавливаем запись данных
+			core->disabled(core_t::method_t::WRITE, this->aid);
+		// Если запрещено и читать и записывать в сокет
+		if(this->bev.locked.read && this->bev.locked.write)
+			// Выполняем отключение от сервера
+			core->close(this->aid);
 	}
 }
 /**
@@ -75,8 +87,8 @@ void awh::worker_t::adj_t::connect(ev::io & watcher, int revents) noexcept {
 	worker_t * wrk = const_cast <worker_t *> (this->parent);
 	// Получаем объект ядра клиента
 	core_t * core = const_cast <core_t *> (wrk->core);
-	// Останавливаем таймаут ожидания на запись в сокет
-	this->bev.timer.write.stop();
+	// Останавливаем подключение
+	core->disabled(core_t::method_t::CONNECT, this->aid);
 	// Выполняем передачу данных об удачном подключении к серверу
 	core->connected(this->aid);
 }
@@ -211,7 +223,7 @@ void awh::Core::Dispatch::easily(const bool mode) noexcept {
  */
 void awh::Core::Dispatch::setBase(struct ev_loop * base) noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <recursive_mutex> lock(this->mtx);
+	const lock_guard <recursive_mutex> lock(this->mtx);	
 	// Выполняем заморозку получения данных
 	if(this->work){
 		// Выполняем заморозку базы событий
@@ -388,14 +400,10 @@ void awh::Core::clean(const size_t aid) const noexcept {
 	if(it != this->adjutants.end()){
 		// Получаем объект адъютанта
 		awh::worker_t::adj_t * adj = const_cast <awh::worker_t::adj_t *> (it->second);
-		// Выполняем остановку таймера на чтение данных
-		adj->bev.timer.read.stop();
-		// Выполняем остановку таймера на запись данных
-		adj->bev.timer.write.stop();
-		// Выполняем остановку чтения буфера событий
-		adj->bev.event.read.stop();
-		// Выполняем остановку записи буфера событий
-		adj->bev.event.write.stop();
+		// Останавливаем чтение данных
+		const_cast <core_t *> (this)->disabled(method_t::READ, it->first);
+		// Останавливаем запись данных
+		const_cast <core_t *> (this)->disabled(method_t::WRITE, it->first);
 		// Выполняем блокировку на чтение/запись данных
 		adj->bev.locked = worker_t::locked_t();
 		// Если сокет активен
@@ -1123,6 +1131,160 @@ void awh::Core::error(const int64_t bytes, const size_t aid) const noexcept {
 	}
 }
 /**
+ * disabled Метод деактивации метода события сокета
+ * @param method метод события сокета
+ * @param aid    идентификатор адъютанта
+ */
+void awh::Core::disabled(const method_t method, const size_t aid) noexcept {
+	// Если работа базы событий продолжается
+	if(this->working()){
+		// Выполняем извлечение адъютанта
+		auto it = this->adjutants.find(aid);
+		// Если адъютант получен
+		if(it != this->adjutants.end()){
+			// Получаем объект адъютанта
+			awh::worker_t::adj_t * adj = const_cast <awh::worker_t::adj_t *> (it->second);
+			// Определяем метод события сокета
+			switch((uint8_t) method){
+				// Если событием является чтение
+				case (uint8_t) method_t::READ: {
+					// Запрещаем чтение данных из сокета
+					adj->bev.locked.read = true;
+					// Останавливаем ожидание чтения данных
+					adj->bev.timer.read.stop();
+					// Останавливаем чтение данных
+					adj->bev.event.read.stop();
+				} break;
+				// Если событием является запись
+				case (uint8_t) method_t::WRITE: {
+					// Запрещаем запись данных в сокет
+					adj->bev.locked.write = true;
+					// Останавливаем ожидание записи данных
+					adj->bev.timer.write.stop();
+					// Останавливаем запись данных
+					adj->bev.event.write.stop();
+				} break;
+				// Если событием является подключение
+				case (uint8_t) method_t::CONNECT: {
+					// Останавливаем ожидание подключения
+					adj->bev.timer.connect.stop();
+					// Останавливаем подключение
+					adj->bev.event.connect.stop();
+				} break;
+			}
+		}
+	}
+}
+/**
+ * enabled Метод активации метода события сокета
+ * @param method  метод события сокета
+ * @param aid     идентификатор адъютанта
+ * @param timeout флаг активации таймаута
+ */
+void awh::Core::enabled(const method_t method, const size_t aid, const bool timeout) noexcept {
+	// Если работа базы событий продолжается
+	if(this->working()){
+		// Выполняем извлечение адъютанта
+		auto it = this->adjutants.find(aid);
+		// Если адъютант получен
+		if(it != this->adjutants.end()){
+			// Получаем объект адъютанта
+			awh::worker_t::adj_t * adj = const_cast <awh::worker_t::adj_t *> (it->second);
+			// Получаем объект подключения
+			worker_t * wrk = (worker_t *) const_cast <awh::worker_t *> (adj->parent);
+			// Определяем метод события сокета
+			switch((uint8_t) method){
+				// Если событием является чтение
+				case (uint8_t) method_t::READ: {
+					// Разрешаем чтение данных из сокета
+					adj->bev.locked.read = false;
+					// Разрешаем запись данных в сокет
+					adj->bev.locked.write = false;
+					// Устанавливаем размер детектируемых байт на чтение
+					adj->marker.read = wrk->marker.read;
+					// Устанавливаем время ожидания чтения данных
+					adj->timeouts.read = wrk->timeouts.read;
+					// Устанавливаем приоритет выполнения для события на чтение
+					ev_set_priority(&adj->bev.event.read, -2);
+					// Устанавливаем базу событий
+					adj->bev.event.read.set(this->base);
+					// Устанавливаем сокет для чтения
+					adj->bev.event.read.set(adj->bev.socket, ev::READ);
+					// Устанавливаем событие на чтение данных подключения
+					adj->bev.event.read.set <awh::worker_t::adj_t, &awh::worker_t::adj_t::read> (adj);
+					// Запускаем чтение данных
+					adj->bev.event.read.start();
+					// Если флаг ожидания входящих сообщений, активирован
+					if(timeout && (adj->timeouts.read > 0)){
+						// Устанавливаем приоритет выполнения для таймаута на чтение
+						ev_set_priority(&adj->bev.timer.read, 0);
+						// Устанавливаем базу событий
+						adj->bev.timer.read.set(this->base);
+						// Устанавливаем событие на таймаут чтения данных подключения
+						adj->bev.timer.read.set <awh::worker_t::adj_t, &awh::worker_t::adj_t::timeout> (adj);
+						// Запускаем ожидание чтения данных
+						adj->bev.timer.read.start(adj->timeouts.read);
+					}
+				} break;
+				// Если событием является запись
+				case (uint8_t) method_t::WRITE: {
+					// Разрешаем запись данных в сокет
+					adj->bev.locked.write = false;
+					// Устанавливаем размер детектируемых байт на запись
+					adj->marker.write = wrk->marker.write;
+					// Устанавливаем время ожидания записи данных
+					adj->timeouts.write = wrk->timeouts.write;
+					// Устанавливаем приоритет выполнения для события на запись
+					ev_set_priority(&adj->bev.event.write, -2);
+					// Устанавливаем базу событий
+					adj->bev.event.write.set(this->base);
+					// Устанавливаем сокет для записи
+					adj->bev.event.write.set(adj->bev.socket, ev::WRITE);
+					// Устанавливаем событие на запись данных подключения
+					adj->bev.event.write.set <awh::worker_t::adj_t, &awh::worker_t::adj_t::write> (adj);
+					// Запускаем запись данных
+					adj->bev.event.write.start();
+					// Если флаг ожидания исходящих сообщений, активирован
+					if(timeout && (adj->timeouts.write > 0)){
+						// Устанавливаем приоритет выполнения для таймаута на запись
+						ev_set_priority(&adj->bev.timer.write, 0);
+						// Устанавливаем базу событий
+						adj->bev.timer.write.set(this->base);
+						// Устанавливаем событие на таймаут записи данных подключения
+						adj->bev.timer.write.set <awh::worker_t::adj_t, &awh::worker_t::adj_t::timeout> (adj);
+						// Запускаем ожидание записи данных
+						adj->bev.timer.write.start(adj->timeouts.write);
+					}
+				} break;
+				// Если событием является подключение
+				case (uint8_t) method_t::CONNECT: {
+					// Устанавливаем время ожидания записи данных
+					adj->timeouts.connect = wrk->timeouts.connect;
+					// Устанавливаем приоритет выполнения для события на чтения
+					ev_set_priority(&adj->bev.event.connect, -2);
+					// Устанавливаем базу событий
+					adj->bev.event.connect.set(this->base);
+					// Устанавливаем сокет для записи
+					adj->bev.event.connect.set(adj->bev.socket, ev::WRITE);
+					// Устанавливаем событие подключения
+					adj->bev.event.connect.set <awh::worker_t::adj_t, &awh::worker_t::adj_t::connect> (adj);
+					// Выполняем запуск подключения
+					adj->bev.event.connect.start();
+					// Если время ожидания записи данных установлено
+					if(timeout && (adj->timeouts.connect > 0)){
+						// Устанавливаем базу событий
+						adj->bev.timer.connect.set(this->base);
+						// Устанавливаем событие на запись данных подключения
+						adj->bev.timer.connect.set <awh::worker_t::adj_t, &awh::worker_t::adj_t::timeout> (adj);
+						// Запускаем запись данных на сервер
+						adj->bev.timer.connect.start(adj->timeouts.connect);
+					}
+				} break;
+			}
+		}
+	}
+}
+/**
  * write Метод записи буфера данных воркером
  * @param buffer буфер для записи данных
  * @param size   размер записываемых данных
@@ -1136,13 +1298,13 @@ void awh::Core::write(const char * buffer, const size_t size, const size_t aid) 
 		// Если адъютант получен и запись в сокет разрешена
 		if((it != this->adjutants.end()) && !it->second->bev.locked.write && (it->second->bev.socket > -1)){
 			// Если размер записываемых данных соответствует
-			if(size >= it->second->markWrite.min){
+			if(size >= it->second->marker.write.min){
 				// Устанавливаем метку для записи
 				Write:
 				// Количество отправленных байт
 				int64_t bytes = -1;
 				// Если количество записываемых данных менье максимального занчения
-				if(size <= it->second->markWrite.max){
+				if(size <= it->second->marker.write.max){
 					// Если защищённый режим работы разрешён
 					if(it->second->ssl.mode){
 						// Выполняем очистку ошибок OpenSSL
@@ -1158,7 +1320,7 @@ void awh::Core::write(const char * buffer, const size_t size, const size_t aid) 
 					// Выполняем отправку данных пока всё не отправим
 					while((size - offset) > 0){
 						// Определяем размер отправляемых данных
-						actual = ((size - offset) >= it->second->markWrite.max ? it->second->markWrite.max : (size - offset));
+						actual = ((size - offset) >= it->second->marker.write.max ? it->second->marker.write.max : (size - offset));
 						// Если защищённый режим работы разрешён
 						if(it->second->ssl.mode){
 							// Выполняем очистку ошибок OpenSSL
@@ -1253,12 +1415,17 @@ void awh::Core::setDataTimeout(const method_t method, const time_t seconds, cons
 			// Режим работы ЧТЕНИЕ
 			case (uint8_t) method_t::READ:
 				// Устанавливаем время ожидания на входящие данные
-				const_cast <worker_t::adj_t *> (it->second)->timeRead = seconds;
+				const_cast <worker_t::adj_t *> (it->second)->timeouts.read = seconds;
 			break;
 			// Режим работы ЗАПИСЬ
 			case (uint8_t) method_t::WRITE:
 				// Устанавливаем время ожидания на исходящие данные
-				const_cast <worker_t::adj_t *> (it->second)->timeWrite = seconds;
+				const_cast <worker_t::adj_t *> (it->second)->timeouts.write = seconds;
+			break;
+			// Режим работы ПОДКЛЮЧЕНИЕ
+			case (uint8_t) method_t::CONNECT:
+				// Устанавливаем время ожидания на исходящие данные
+				const_cast <worker_t::adj_t *> (it->second)->timeouts.connect = seconds;
 			break;
 		}
 	}
@@ -1280,24 +1447,24 @@ void awh::Core::setMark(const method_t method, const size_t min, const size_t ma
 			// Режим работы ЧТЕНИЕ
 			case (uint8_t) method_t::READ: {
 				// Устанавливаем минимальный размер байт
-				const_cast <worker_t::adj_t *> (it->second)->markRead.min = min;
+				const_cast <worker_t::adj_t *> (it->second)->marker.read.min = min;
 				// Устанавливаем максимальный размер байт
-				const_cast <worker_t::adj_t *> (it->second)->markRead.max = max;
+				const_cast <worker_t::adj_t *> (it->second)->marker.read.max = max;
 				// Если минимальный размер данных для чтения, не установлен
-				if(it->second->markRead.min == 0)
+				if(it->second->marker.read.min == 0)
 					// Устанавливаем размер минимальных для чтения данных по умолчанию
-					const_cast <worker_t::adj_t *> (it->second)->markRead.min = BUFFER_READ_MIN;
+					const_cast <worker_t::adj_t *> (it->second)->marker.read.min = BUFFER_READ_MIN;
 			} break;
 			// Режим работы ЗАПИСЬ
 			case (uint8_t) method_t::WRITE: {
 				// Устанавливаем минимальный размер байт
-				const_cast <worker_t::adj_t *> (it->second)->markWrite.min = min;
+				const_cast <worker_t::adj_t *> (it->second)->marker.write.min = min;
 				// Устанавливаем максимальный размер байт
-				const_cast <worker_t::adj_t *> (it->second)->markWrite.max = max;
+				const_cast <worker_t::adj_t *> (it->second)->marker.write.max = max;
 				// Если максимальный размер данных для записи не установлен, устанавливаем по умолчанию
-				if(it->second->markWrite.max == 0)
+				if(it->second->marker.write.max == 0)
 					// Устанавливаем размер максимальных записываемых данных по умолчанию
-					const_cast <worker_t::adj_t *> (it->second)->markWrite.max = BUFFER_WRITE_MAX;
+					const_cast <worker_t::adj_t *> (it->second)->marker.write.max = BUFFER_WRITE_MAX;
 			} break;
 		}
 	}

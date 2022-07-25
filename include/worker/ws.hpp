@@ -56,6 +56,14 @@ namespace awh {
 				};
 			public:
 				/**
+				 * Buffer Структура буфера данных
+				 */
+				typedef struct Buffer {
+					vector <char> read;    // Буфер бинарных необработанных данных
+					vector <char> write;   // Буфер бинарных обработанных данных
+					vector <char> fragmes; // Данные фрагметрированного сообщения
+				} buffer_t;
+				/**
 				 * Locker Структура локера
 				 */
 				typedef struct Locker {
@@ -91,10 +99,8 @@ namespace awh {
 					hash_t hash;                 // Создаём объект для компрессии-декомпрессии данных
 					allow_t allow;               // Объект разрешения обмена данными
 					locker_t locker;             // Объект блокировщика
+					buffer_t buffer;             // Объект буфера данных
 					server::wss_t http;          // Создаём объект для работы с HTTP
-					vector <char> fragmes;       // Данные фрагметрированного сообщения
-					vector <char> bufferRead;    // Буфер бинарных необработанных данных
-					vector <char> bufferWrite;   // Буфер бинарных обработанных данных
 					frame_t::opcode_t opcode;    // Полученный опкод сообщения
 					http_t::compress_t compress; // Метод компрессии данных
 					/**

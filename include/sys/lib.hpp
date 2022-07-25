@@ -48,9 +48,11 @@
 // Формат даты и времени
 #define DATE_FORMAT "%m/%d/%Y %H:%M:%S"
 // Интервал времени для получения данных с сервера в секундах
-#define READ_TIMEOUT 30
+#define READ_TIMEOUT 60
 // Интервал времени для записи данных на сервере в секундах
-#define WRITE_TIMEOUT 0
+#define WRITE_TIMEOUT 60
+// Интервал времени для подключение на сервере
+#define CONNECT_TIMEOUT 10
 // Максимальное количество потоков сервера
 #define MAX_COUNT_THREADS 1000
 // Максимальное время подключения
