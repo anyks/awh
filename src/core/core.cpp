@@ -1343,6 +1343,8 @@ void awh::Core::write(const char * buffer, const size_t size, const size_t aid) 
 						this->error(bytes, it->first);
 					// Если произошла ошибка
 					else if((bytes < 0) && (status == 0)) {
+						// Если произошёл системный сигнал попробовать ещё раз
+						if(errno == EINTR) goto Write;
 						// Если защищённый режим работы разрешён
 						if(it->second->ssl.mode){
 							// Получаем данные описание ошибки

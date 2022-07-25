@@ -547,64 +547,71 @@ void awh::server::Core::transfer(const method_t method, const size_t aid) noexce
 				char buffer[BUFFER_SIZE];
 				// Останавливаем таймаут ожидания на чтение из сокета
 				adj->bev.timer.read.stop();
-				// Выполняем зануление буфера
-				memset(buffer, 0, sizeof(buffer));
-				// Если защищённый режим работы разрешён
-				if(adj->ssl.mode){
-					// Выполняем очистку ошибок OpenSSL
-					ERR_clear_error();
-					// Выполняем чтение из защищённого сокета
-					bytes = SSL_read(adj->ssl.ssl, buffer, sizeof(buffer));
-				// Выполняем чтение данных из сокета
-				} else bytes = recv(adj->bev.socket, buffer, sizeof(buffer), 0);
-				// Останавливаем таймаут ожидания на чтение из сокета
-				adj->bev.timer.read.stop();
-				// Если время ожидания записи данных установлено
-				if(adj->timeouts.read > 0)
-					// Запускаем ожидание чтения данных с сервера
-					adj->bev.timer.read.start(adj->timeouts.read);
-				// Если данные получены
-				if(bytes > 0){
-					// Если данные считанные из буфера, больше размера ожидающего буфера
-					if((adj->marker.write.max > 0) && (bytes >= adj->marker.write.max)){
-						// Смещение в буфере и отправляемый размер данных
-						size_t offset = 0, actual = 0;
-						// Выполняем пересылку всех полученных данных
-						while((bytes - offset) > 0){
-							// Определяем размер отправляемых данных
-							actual = ((bytes - offset) >= adj->marker.write.max ? adj->marker.write.max : (bytes - offset));
-							// Если функция обратного вызова на получение данных установлена
-							if(wrk->readFn != nullptr)
-								// Выводим функцию обратного вызова
-								wrk->readFn(buffer + offset, actual, aid, wrk->wid, reinterpret_cast <awh::core_t *> (this));
-							// Увеличиваем смещение в буфере
-							offset += actual;
+				// Выполняем перебор бесконечным циклом пока это разрешено
+				while(!adj->bev.locked.read){
+					// Выполняем зануление буфера
+					memset(buffer, 0, sizeof(buffer));
+					// Если защищённый режим работы разрешён
+					if(adj->ssl.mode){
+						// Выполняем очистку ошибок OpenSSL
+						ERR_clear_error();
+						// Выполняем чтение из защищённого сокета
+						bytes = SSL_read(adj->ssl.ssl, buffer, sizeof(buffer));
+					// Выполняем чтение данных из сокета
+					} else bytes = recv(adj->bev.socket, buffer, sizeof(buffer), 0);
+					// Останавливаем таймаут ожидания на чтение из сокета
+					adj->bev.timer.read.stop();
+					// Если время ожидания записи данных установлено
+					if(adj->timeouts.read > 0)
+						// Запускаем ожидание чтения данных с сервера
+						adj->bev.timer.read.start(adj->timeouts.read);
+					// Если данные получены
+					if(bytes > 0){
+						// Если данные считанные из буфера, больше размера ожидающего буфера
+						if((adj->marker.write.max > 0) && (bytes >= adj->marker.write.max)){
+							// Смещение в буфере и отправляемый размер данных
+							size_t offset = 0, actual = 0;
+							// Выполняем пересылку всех полученных данных
+							while((bytes - offset) > 0){
+								// Определяем размер отправляемых данных
+								actual = ((bytes - offset) >= adj->marker.write.max ? adj->marker.write.max : (bytes - offset));
+								// Если функция обратного вызова на получение данных установлена
+								if(wrk->readFn != nullptr)
+									// Выводим функцию обратного вызова
+									wrk->readFn(buffer + offset, actual, aid, wrk->wid, reinterpret_cast <awh::core_t *> (this));
+								// Увеличиваем смещение в буфере
+								offset += actual;
+							}
+						// Если данных достаточно и функция обратного вызова на получение данных установлена
+						} else if(wrk->readFn != nullptr)
+							// Выводим функцию обратного вызова
+							wrk->readFn(buffer, bytes, aid, wrk->wid, reinterpret_cast <awh::core_t *> (this));
+					// Если данные не могут быть прочитаны
+					} else {
+						// Если произошла ошибка
+						if(bytes < 0){
+							// Если произошёл системный сигнал попробовать ещё раз
+							if(errno == EINTR) continue;
+							// Если защищённый режим работы разрешён
+							if(adj->ssl.mode){
+								// Получаем данные описание ошибки
+								if(SSL_get_error(adj->ssl.ssl, bytes) == SSL_ERROR_WANT_READ)
+									// Выполняем пропуск попытки
+									break;
+								// Иначе выводим сообщение об ошибке
+								else this->error(bytes, aid);
+							// Если защищённый режим работы запрещён
+							} else if(errno == EAGAIN) break;
+							// Выполняем отключение клиента
+							this->close(aid);
 						}
-					// Если данных достаточно и функция обратного вызова на получение данных установлена
-					} else if(wrk->readFn != nullptr)
-						// Выводим функцию обратного вызова
-						wrk->readFn(buffer, bytes, aid, wrk->wid, reinterpret_cast <awh::core_t *> (this));
-				// Если данные не могут быть прочитаны
-				} else {
-					// Если произошла ошибка
-					if(bytes < 0){
-						// Если защищённый режим работы разрешён
-						if(adj->ssl.mode){
-							// Получаем данные описание ошибки
-							if(SSL_get_error(adj->ssl.ssl, bytes) == SSL_ERROR_WANT_READ)
-								// Выполняем пропуск попытки
-								return;
-							// Иначе выводим сообщение об ошибке
-							else this->error(bytes, aid);
-						// Если защищённый режим работы запрещён
-						} else if(errno == EAGAIN) return;
-						// Выполняем отключение клиента
-						this->close(aid);
+						// Если подключение разорвано
+						if(bytes == 0)
+							// Выполняем отключение клиента
+							this->close(aid);
 					}
-					// Если подключение разорвано
-					if(bytes == 0)
-						// Выполняем отключение клиента
-						this->close(aid);
+					// Выходим из цикла
+					break;
 				}
 			} break;
 			// Если производится запись данных

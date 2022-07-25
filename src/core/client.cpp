@@ -998,101 +998,108 @@ void awh::client::Core::transfer(const method_t method, const size_t aid) noexce
 					char buffer[BUFFER_SIZE];
 					// Останавливаем таймаут ожидания на чтение из сокета
 					adj->bev.timer.read.stop();
-					// Выполняем зануление буфера
-					memset(buffer, 0, sizeof(buffer));
-					// Если дочерние активные подключения есть и сокет блокирующий
-					if(!this->cores.empty() && (this->socket.isBlocking(adj->bev.socket) == 1)){
-						// Переводим сокет в не блокирующий режим
-						this->socket.nonBlocking(adj->bev.socket);
+					// Выполняем перебор бесконечным циклом пока это разрешено
+					while(!adj->bev.locked.read && (wrk->status.real == worker_t::mode_t::CONNECT)){
+						// Выполняем зануление буфера
+						memset(buffer, 0, sizeof(buffer));
+						// Если дочерние активные подключения есть и сокет блокирующий
+						if(!this->cores.empty() && (this->socket.isBlocking(adj->bev.socket) == 1)){
+							// Переводим сокет в не блокирующий режим
+							this->socket.nonBlocking(adj->bev.socket);
+							// Если защищённый режим работы разрешён
+							if(adj->ssl.mode){
+								// Получаем BIO подключения
+								BIO * bio = SSL_get_wbio(adj->ssl.ssl);
+								// Устанавливаем блокирующий режим ввода/вывода для сокета
+								if(bio != nullptr) BIO_set_nbio(bio, 1);
+								// Флаг необходимо установить только для неблокирующего сокета
+								SSL_set_mode(adj->ssl.ssl, SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER);
+							}
+						}
 						// Если защищённый режим работы разрешён
 						if(adj->ssl.mode){
-							// Получаем BIO подключения
-							BIO * bio = SSL_get_wbio(adj->ssl.ssl);
-							// Устанавливаем блокирующий режим ввода/вывода для сокета
-							if(bio != nullptr) BIO_set_nbio(bio, 1);
-							// Флаг необходимо установить только для неблокирующего сокета
-							SSL_set_mode(adj->ssl.ssl, SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER);
-						}
-					}
-					// Если защищённый режим работы разрешён
-					if(adj->ssl.mode){
-						// Выполняем очистку ошибок OpenSSL
-						ERR_clear_error();
-						// Выполняем чтение из защищённого сокета
-						bytes = SSL_read(adj->ssl.ssl, buffer, sizeof(buffer));
-					// Выполняем чтение данных из сокета
-					} else bytes = recv(adj->bev.socket, buffer, sizeof(buffer), 0);
-					// Останавливаем таймаут ожидания на чтение из сокета
-					adj->bev.timer.read.stop();
-					// Выполняем принудительное исполнение таймеров
-					if(this->socket.isBlocking(adj->bev.socket) == 1) this->executeTimers();
-					// Если время ожидания записи данных установлено
-					if(adj->timeouts.read > 0)
-						// Запускаем ожидание чтения данных с сервера
-						adj->bev.timer.read.start(adj->timeouts.read);
-					// Если данные получены
-					if(bytes > 0){
-						// Если данные считанные из буфера, больше размера ожидающего буфера
-						if((adj->marker.write.max > 0) && (bytes >= adj->marker.write.max)){
-							// Смещение в буфере и отправляемый размер данных
-							size_t offset = 0, actual = 0;
-							// Выполняем пересылку всех полученных данных
-							while((bytes - offset) > 0){
-								// Определяем размер отправляемых данных
-								actual = ((bytes - offset) >= adj->marker.write.max ? adj->marker.write.max : (bytes - offset));
+							// Выполняем очистку ошибок OpenSSL
+							ERR_clear_error();
+							// Выполняем чтение из защищённого сокета
+							bytes = SSL_read(adj->ssl.ssl, buffer, sizeof(buffer));
+						// Выполняем чтение данных из сокета
+						} else bytes = recv(adj->bev.socket, buffer, sizeof(buffer), 0);
+						// Останавливаем таймаут ожидания на чтение из сокета
+						adj->bev.timer.read.stop();
+						// Выполняем принудительное исполнение таймеров
+						if(this->socket.isBlocking(adj->bev.socket) == 1) this->executeTimers();
+						// Если время ожидания записи данных установлено
+						if(adj->timeouts.read > 0)
+							// Запускаем ожидание чтения данных с сервера
+							adj->bev.timer.read.start(adj->timeouts.read);
+						// Если данные получены
+						if(bytes > 0){
+							// Если данные считанные из буфера, больше размера ожидающего буфера
+							if((adj->marker.write.max > 0) && (bytes >= adj->marker.write.max)){
+								// Смещение в буфере и отправляемый размер данных
+								size_t offset = 0, actual = 0;
+								// Выполняем пересылку всех полученных данных
+								while((bytes - offset) > 0){
+									// Определяем размер отправляемых данных
+									actual = ((bytes - offset) >= adj->marker.write.max ? adj->marker.write.max : (bytes - offset));
+									// Если подключение производится через, прокси-сервер
+									if(wrk->isProxy()){
+										// Если функция обратного вызова для вывода записи существует
+										if(wrk->readProxyFn != nullptr)
+											// Выводим функцию обратного вызова
+											wrk->readProxyFn(buffer + offset, actual, aid, wrk->wid, reinterpret_cast <awh::core_t *> (this));
+									// Если прокси-сервер не используется
+									} else if(wrk->readFn != nullptr)
+										// Выводим функцию обратного вызова
+										wrk->readFn(buffer + offset, actual, aid, wrk->wid, reinterpret_cast <awh::core_t *> (this));
+									// Увеличиваем смещение в буфере
+									offset += actual;
+								}
+							// Если данных достаточно
+							} else {
 								// Если подключение производится через, прокси-сервер
 								if(wrk->isProxy()){
 									// Если функция обратного вызова для вывода записи существует
 									if(wrk->readProxyFn != nullptr)
 										// Выводим функцию обратного вызова
-										wrk->readProxyFn(buffer + offset, actual, aid, wrk->wid, reinterpret_cast <awh::core_t *> (this));
+										wrk->readProxyFn(buffer, bytes, aid, wrk->wid, reinterpret_cast <awh::core_t *> (this));
 								// Если прокси-сервер не используется
 								} else if(wrk->readFn != nullptr)
 									// Выводим функцию обратного вызова
-									wrk->readFn(buffer + offset, actual, aid, wrk->wid, reinterpret_cast <awh::core_t *> (this));
-								// Увеличиваем смещение в буфере
-								offset += actual;
+									wrk->readFn(buffer, bytes, aid, wrk->wid, reinterpret_cast <awh::core_t *> (this));
 							}
-						// Если данных достаточно
+						// Если данные не могут быть прочитаны
 						} else {
-							// Если подключение производится через, прокси-сервер
-							if(wrk->isProxy()){
-								// Если функция обратного вызова для вывода записи существует
-								if(wrk->readProxyFn != nullptr)
-									// Выводим функцию обратного вызова
-									wrk->readProxyFn(buffer, bytes, aid, wrk->wid, reinterpret_cast <awh::core_t *> (this));
-							// Если прокси-сервер не используется
-							} else if(wrk->readFn != nullptr)
-								// Выводим функцию обратного вызова
-								wrk->readFn(buffer, bytes, aid, wrk->wid, reinterpret_cast <awh::core_t *> (this));
+							// Получаем статус сокета
+							const int status = this->socket.isBlocking(adj->bev.socket);
+							// Если сокет находится в блокирующем режиме
+							if((bytes < 0) && (status != 0))
+								// Выполняем обработку ошибок
+								this->error(bytes, aid);
+							// Если произошла ошибка
+							else if((bytes < 0) && (status == 0)) {
+								// Если произошёл системный сигнал попробовать ещё раз
+								if(errno == EINTR) continue;
+								// Если защищённый режим работы разрешён
+								if(adj->ssl.mode){
+									// Получаем данные описание ошибки
+									if(SSL_get_error(adj->ssl.ssl, bytes) == SSL_ERROR_WANT_READ)
+										// Выполняем пропуск попытки
+										break;
+									// Иначе выводим сообщение об ошибке
+									else this->error(bytes, aid);
+								// Если защищённый режим работы запрещён
+								} else if(errno == EAGAIN) break;
+								// Иначе просто закрываем подключение
+								this->close(aid);
+							}
+							// Если подключение разорвано или сокет находится в блокирующем режиме
+							if((bytes == 0) || (status != 0))
+								// Выполняем отключение от сервера
+								this->close(aid);
 						}
-					// Если данные не могут быть прочитаны
-					} else {
-						// Получаем статус сокета
-						const int status = this->socket.isBlocking(adj->bev.socket);
-						// Если сокет находится в блокирующем режиме
-						if((bytes < 0) && (status != 0))
-							// Выполняем обработку ошибок
-							this->error(bytes, aid);
-						// Если произошла ошибка
-						else if((bytes < 0) && (status == 0)) {
-							// Если защищённый режим работы разрешён
-							if(adj->ssl.mode){
-								// Получаем данные описание ошибки
-								if(SSL_get_error(adj->ssl.ssl, bytes) == SSL_ERROR_WANT_READ)
-									// Выполняем пропуск попытки
-									return;
-								// Иначе выводим сообщение об ошибке
-								else this->error(bytes, aid);
-							// Если защищённый режим работы запрещён
-							} else if(errno == EAGAIN) return;
-							// Иначе просто закрываем подключение
-							this->close(aid);
-						}
-						// Если подключение разорвано или сокет находится в блокирующем режиме
-						if((bytes == 0) || (status != 0))
-							// Выполняем отключение от сервера
-							this->close(aid);
+						// Выходим из цикла
+						break;
 					}
 				} break;
 				// Если производится запись данных
