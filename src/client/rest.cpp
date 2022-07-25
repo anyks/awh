@@ -358,7 +358,8 @@ void awh::client::Rest::actionRead() noexcept {
 			// Если размер буфера больше количества удаляемых байт
 			if((receive = (this->buffer.read.size() >= bytes)))
 				// Удаляем количество обработанных байт
-				vector <decltype(this->buffer.read)::value_type> (this->buffer.read.begin() + bytes, this->buffer.read.end()).swap(this->buffer.read);
+				this->buffer.read.assign(this->buffer.read.begin() + bytes, this->buffer.read.end());
+				// vector <decltype(this->buffer.read)::value_type> (this->buffer.read.begin() + bytes, this->buffer.read.end()).swap(this->buffer.read);
 		}
 		// Если данные мы все получили, выходим
 		if(!receive || this->buffer.read.empty()) break;

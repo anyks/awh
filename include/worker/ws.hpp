@@ -101,6 +101,7 @@ namespace awh {
 					locker_t locker;             // Объект блокировщика
 					buffer_t buffer;             // Объект буфера данных
 					server::wss_t http;          // Создаём объект для работы с HTTP
+					recursive_mutex mtx;         // Мютекс для блокировки потока
 					frame_t::opcode_t opcode;    // Полученный опкод сообщения
 					http_t::compress_t compress; // Метод компрессии данных
 					/**

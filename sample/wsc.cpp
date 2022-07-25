@@ -243,6 +243,8 @@ int main(int argc, char * argv[]) noexcept {
 	core.setCA("./ca/cert.pem");
 	// Устанавливаем логин и пароль пользователя
 	// ws.setUser("user", "password");
+	// Выполняем активацию многопоточности
+	// ws.multiThreads(22);
 	// Устанавливаем данные прокси-сервера
 	// ws.setProxy("http://B80TWR:uRMhnd@196.17.249.64:8000");
 	// ws.setProxy("socks5://rfbPbd:XcCuZH@45.144.169.109:8000");

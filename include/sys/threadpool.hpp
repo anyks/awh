@@ -41,9 +41,10 @@ namespace awh {
 	typedef class ThreadPool {
 		private:
 			// Сингнал остановки работы пула потоков
-			bool stop = false;
+			bool stop;
+		private:
 			// Количество потоков
-			size_t threads = 1;
+			size_t threads;
 		private:
 			// Тип очереди задач
 			typedef queue <function <void()>> TaskQueue_t;
@@ -81,6 +82,15 @@ namespace awh {
 					// Задача появилась, исполняем ее и сообщаем о том, что задача выбрана из очереди
 					task();
 				}
+			}
+		public:
+			/**
+			 * is Метод проверки на инициализацию тредпула
+			 * @return результат проверки
+			 */
+			bool is() const noexcept {
+				// Выводим результат проверки
+				return !this->workers.empty();
 			}
 		public:
 			/**
@@ -133,6 +143,7 @@ namespace awh {
 					}
 				}
 			}
+		public:
 			/**
 			 * getTaskQueueSize Метод возврата количества сообщений в очереди задач на исполнение
 			 * @return результат работы функции
@@ -143,6 +154,7 @@ namespace awh {
 				// Выводим количество заданий
 				return this->tasks.size();
 			}
+		public:
 			/**
 			 * ThreadPool Конструктор
 			 * @param threads потоки
@@ -186,7 +198,7 @@ namespace awh {
 				// Выводим результат
 				return res;
 			}
-	} poolthr_t;
+	} thr_t;
 };
 
 #endif // __AWH_THREAD_POOL__

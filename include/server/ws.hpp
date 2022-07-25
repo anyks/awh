@@ -20,6 +20,7 @@
  */
 #include <worker/ws.hpp>
 #include <core/server.hpp>
+#include <sys/threadpool.hpp>
 
 // Подписываемся на стандартное пространство имён
 using namespace std;
@@ -60,6 +61,8 @@ namespace awh {
 				// Порт сервера
 				u_int port = SERVER_PORT;
 			private:
+				// Объект тредпула для работы с потоками
+				thr_t thr;
 				// Создаём объект для работы с фреймом WebSocket
 				frame_t frame;
 				// Объект рабочего
@@ -207,13 +210,11 @@ namespace awh {
 				void error(const size_t aid, const mess_t & message) const noexcept;
 				/**
 				 * extraction Метод извлечения полученных данных
-				 * @param adj    параметры подключения адъютанта
 				 * @param aid    идентификатор адъютанта
-				 * @param core   объект биндинга TCP/IP
 				 * @param buffer данные в чистом виде полученные с сервера
 				 * @param utf8   данные передаются в текстовом виде
 				 */
-				void extraction(ws_worker_t::adjp_t * adj, const size_t aid, awh::core_t * core, const vector <char> & buffer, const bool utf8) const noexcept;
+				void extraction(const size_t aid, const vector <char> & buffer, const bool utf8) const noexcept;
 			private:
 				/**
 				 * pong Метод ответа на проверку о доступности сервера
@@ -306,6 +307,13 @@ namespace awh {
 				 * start Метод запуска клиента
 				 */
 				void start() noexcept;
+			public:
+				/**
+				 * multiThreads Метод активации многопоточности
+				 * @param threads количество потоков для активации
+				 * @param mode    флаг активации/деактивации мультипоточности
+				 */
+				void multiThreads(const size_t threads = 0, const bool mode = true) noexcept;
 			public:
 				/**
 				 * setSub Метод установки подпротокола поддерживаемого сервером

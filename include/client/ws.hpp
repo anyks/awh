@@ -21,6 +21,7 @@
 #include <ws/frame.hpp>
 #include <ws/client.hpp>
 #include <core/client.hpp>
+#include <sys/threadpool.hpp>
 
 // Подписываемся на стандартное пространство имён
 using namespace std;
@@ -109,6 +110,11 @@ namespace awh {
 				// Объект для компрессии-декомпрессии данных
 				mutable hash_t hash;
 			private:
+				// Мютекс для блокировки потока
+				recursive_mutex mtx;
+			private:
+				// Объект тредпула для работы с потоками
+				thr_t thr;
 				// Объект работы с URI ссылками
 				uri_t uri;
 				// Объект для работы с HTTP
@@ -377,6 +383,13 @@ namespace awh {
 				 * @param connect количество секунд для детекции по подключению
 				 */
 				void setWaitTimeDetect(const time_t read = READ_TIMEOUT, const time_t write = WRITE_TIMEOUT, const time_t connect = CONNECT_TIMEOUT) noexcept;
+			public:
+				/**
+				 * multiThreads Метод активации многопоточности
+				 * @param threads количество потоков для активации
+				 * @param mode    флаг активации/деактивации мультипоточности
+				 */
+				void multiThreads(const size_t threads = 0, const bool mode = true) noexcept;
 			public:
 				/**
 				 * setMode Метод установки флага модуля

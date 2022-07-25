@@ -323,7 +323,8 @@ void awh::client::WebSocket::actionRead() noexcept {
 						// Есла данных передано больше чем обработано
 						if(this->buffer.read.size() > bytes)
 							// Удаляем количество обработанных байт
-							vector <decltype(this->buffer.read)::value_type> (this->buffer.read.begin() + bytes, this->buffer.read.end()).swap(this->buffer.read);
+							this->buffer.read.assign(this->buffer.read.begin() + bytes, this->buffer.read.end());
+							// vector <decltype(this->buffer.read)::value_type> (this->buffer.read.begin() + bytes, this->buffer.read.end()).swap(this->buffer.read);
 						// Если данных в буфере больше нет
 						else {
 							// Очищаем буфер собранных данных
@@ -496,12 +497,17 @@ void awh::client::WebSocket::actionRead() noexcept {
 				// Если размер буфера больше количества удаляемых байт
 				if((receive = (this->buffer.read.size() >= head.frame)))
 					// Удаляем количество обработанных байт
-					vector <decltype(this->buffer.read)::value_type> (this->buffer.read.begin() + head.frame, this->buffer.read.end()).swap(this->buffer.read);
+					this->buffer.read.assign(this->buffer.read.begin() + head.frame, this->buffer.read.end());
+					// vector <decltype(this->buffer.read)::value_type> (this->buffer.read.begin() + head.frame, this->buffer.read.end()).swap(this->buffer.read);
 			}
 			// Если сообщения получены
 			if(!buffer.empty()){
-				// Выполняем извлечение полученных сообщений
-				this->extraction(buffer, (this->opcode == frame_t::opcode_t::TEXT));
+				// Если тредпул активирован
+				if(this->thr.is())
+					// Добавляем в тредпул новую задачу на извлечение полученных сообщений
+					this->thr.push(std::bind(&ws_t::extraction, this, buffer, (this->opcode == frame_t::opcode_t::TEXT)));
+				// Если тредпул не активирован, выполняем извлечение полученных сообщений
+				else this->extraction(buffer, (this->opcode == frame_t::opcode_t::TEXT));
 				// Очищаем буфер полученного сообщения
 				buffer.clear();
 			}
@@ -846,6 +852,8 @@ void awh::client::WebSocket::error(const mess_t & message) const noexcept {
  * @param utf8   данные передаются в текстовом виде
  */
 void awh::client::WebSocket::extraction(const vector <char> & buffer, const bool utf8) noexcept {
+	// Выполняем блокировку потока	
+	const lock_guard <recursive_mutex> lock(this->mtx);
 	// Если буфер данных передан
 	if(!buffer.empty() && !this->freeze && (this->messageFn != nullptr)){
 		// Если данные пришли в сжатом виде
@@ -1291,6 +1299,28 @@ void awh::client::WebSocket::setWaitTimeDetect(const time_t read, const time_t w
 	this->worker.timeouts.write = write;
 	// Устанавливаем количество секунд на подключение
 	this->worker.timeouts.connect = connect;
+}
+/**
+ * multiThreads Метод активации многопоточности
+ * @param threads количество потоков для активации
+ * @param mode    флаг активации/деактивации мультипоточности
+ */
+void awh::client::WebSocket::multiThreads(const size_t threads, const bool mode) noexcept {
+	// Если нужно активировать многопоточность
+	if(mode){
+		// Если многопоточность ещё не активированна
+		if(!this->thr.is()) this->thr.init(threads);
+		// Если многопоточность уже активированна
+		else {
+			// Выполняем завершение всех активных потоков
+			this->thr.wait();
+			// Выполняем инициализацию нового тредпула
+			this->thr.init(threads);
+		}
+		// Устанавливаем простое чтение базы событий
+		const_cast <client::core_t *> (this->core)->easily(true);
+	// Выполняем завершение всех потоков
+	} else this->thr.wait();
 }
 /**
  * setMode Метод установки флага модуля

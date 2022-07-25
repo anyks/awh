@@ -317,7 +317,8 @@ void awh::server::WebSocket::actionRead(const size_t aid) noexcept {
 									// Есла данных передано больше чем обработано
 									if(adj->buffer.read.size() > bytes)
 										// Удаляем количество обработанных байт
-										vector <decltype(adj->buffer.read)::value_type> (adj->buffer.read.begin() + bytes, adj->buffer.read.end()).swap(adj->buffer.read);
+										adj->buffer.read.assign(adj->buffer.read.begin() + bytes, adj->buffer.read.end());
+										// vector <decltype(adj->buffer.read)::value_type> (adj->buffer.read.begin() + bytes, adj->buffer.read.end()).swap(adj->buffer.read);
 									// Если данных в буфере больше нет
 									else {
 										// Очищаем буфер собранных данных
@@ -526,12 +527,17 @@ void awh::server::WebSocket::actionRead(const size_t aid) noexcept {
 						// Если размер буфера больше количества удаляемых байт
 						if((receive = (adj->buffer.read.size() >= head.frame)))
 							// Удаляем количество обработанных байт
-							vector <decltype(adj->buffer.read)::value_type> (adj->buffer.read.begin() + head.frame, adj->buffer.read.end()).swap(adj->buffer.read);
+							adj->buffer.read.assign(adj->buffer.read.begin() + head.frame, adj->buffer.read.end());
+							// vector <decltype(adj->buffer.read)::value_type> (adj->buffer.read.begin() + head.frame, adj->buffer.read.end()).swap(adj->buffer.read);
 					}
 					// Если сообщения получены
 					if(!buffer.empty()){
-						// Выполняем извлечение полученных сообщений
-						this->extraction(adj, aid, core, buffer, (adj->opcode == frame_t::opcode_t::TEXT));
+						// Если тредпул активирован
+						if(this->thr.is())
+							// Добавляем в тредпул новую задачу на извлечение полученных сообщений
+							this->thr.push(std::bind(&ws_t::extraction, this, aid, buffer, (adj->opcode == frame_t::opcode_t::TEXT)));
+						// Если тредпул не активирован, выполняем извлечение полученных сообщений
+						else this->extraction(aid, buffer, (adj->opcode == frame_t::opcode_t::TEXT));
 						// Очищаем буфер полученного сообщения
 						buffer.clear();
 					}
@@ -677,15 +683,17 @@ void awh::server::WebSocket::error(const size_t aid, const mess_t & message) con
 }
 /**
  * extraction Метод извлечения полученных данных
- * @param adj    параметры подключения адъютанта
  * @param aid    идентификатор адъютанта
- * @param core   объект биндинга TCP/IP
  * @param buffer данные в чистом виде полученные с сервера
  * @param utf8   данные передаются в текстовом виде
  */
-void awh::server::WebSocket::extraction(ws_worker_t::adjp_t * adj, const size_t aid, awh::core_t * core, const vector <char> & buffer, const bool utf8) const noexcept {
+void awh::server::WebSocket::extraction(const size_t aid, const vector <char> & buffer, const bool utf8) const noexcept {
 	// Если буфер данных передан
-	if(!buffer.empty() && (this->messageFn != nullptr)){
+	if((aid > 0) && !buffer.empty() && (this->messageFn != nullptr)){
+		// Получаем параметры подключения адъютанта
+		ws_worker_t::adjp_t * adj = const_cast <ws_worker_t::adjp_t *> (this->worker.get(aid));
+		// Выполняем блокировку потока	
+		const lock_guard <recursive_mutex> lock(adj->mtx);
 		// Если данные пришли в сжатом виде
 		if(adj->compressed && (adj->compress != http_t::compress_t::NONE)){
 			// Декомпрессионные данные
@@ -733,11 +741,11 @@ void awh::server::WebSocket::extraction(ws_worker_t::adjp_t * adj, const size_t 
 					// Устанавливаем флаг разрешающий остановку
 					adj->stopped = true;
 					// Выполняем запрет на получение входящих данных
-					((server::core_t *) core)->disabled(core_t::method_t::READ, aid);
+					const_cast <server::core_t *> (this->core)->disabled(core_t::method_t::READ, aid);
 					// Выполняем ожидание доступности записи
-					((server::core_t *) core)->enabled(core_t::method_t::WRITE, aid);
+					const_cast <server::core_t *> (this->core)->enabled(core_t::method_t::WRITE, aid);
 				// Завершаем работу
-				} else reinterpret_cast <server::core_t *> (core)->close(aid);
+				} else const_cast <server::core_t *> (this->core)->close(aid);
 			}
 		// Если функция обратного вызова установлена, выводим полученное сообщение
 		} else {
@@ -1085,6 +1093,28 @@ void awh::server::WebSocket::start() noexcept {
 	if(!this->core->working())
 		// Выполняем запуск биндинга
 		const_cast <server::core_t *> (this->core)->start();
+}
+/**
+ * multiThreads Метод активации многопоточности
+ * @param threads количество потоков для активации
+ * @param mode    флаг активации/деактивации мультипоточности
+ */
+void awh::server::WebSocket::multiThreads(const size_t threads, const bool mode) noexcept {
+	// Если нужно активировать многопоточность
+	if(mode){
+		// Если многопоточность ещё не активированна
+		if(!this->thr.is()) this->thr.init(threads);
+		// Если многопоточность уже активированна
+		else {
+			// Выполняем завершение всех активных потоков
+			this->thr.wait();
+			// Выполняем инициализацию нового тредпула
+			this->thr.init(threads);
+		}
+		// Устанавливаем простое чтение базы событий
+		const_cast <server::core_t *> (this->core)->easily(true);
+	// Выполняем завершение всех потоков
+	} else this->thr.wait();
 }
 /**
  * setSub Метод установки подпротокола поддерживаемого сервером
