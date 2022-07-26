@@ -37,9 +37,9 @@ namespace awh {
 		typedef class Socks5 : public awh::socks5_t {
 			private:
 				// Логин пользователя
-				string login = "";
+				string login;
 				// Пароль пользователя
-				string password = "";
+				string password;
 			private:
 				/**
 				 * reqCmd Метод получения бинарного буфера запроса
@@ -83,7 +83,7 @@ namespace awh {
 				 * @param log объект для работы с логами
 				 * @param uri объект для работы с URI
 				 */
-				Socks5(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcept : awh::socks5_t(fmk, log, uri) {}
+				Socks5(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcept : awh::socks5_t(fmk, log, uri), login(""), password("") {}
 				/**
 				 * ~Socks5 Деструктор
 				 */

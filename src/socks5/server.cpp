@@ -131,7 +131,7 @@ void awh::server::Socks5::resAuth(const string & login, const string & password)
 	// Если пользователи установлены
 	if(!login.empty() && !password.empty() && (this->authFn != nullptr)){
 		// Если авторизация выполнена
-		if(this->authFn(login, password, this->ctx.at(0)))
+		if(this->authFn(login, password))
 			// Разрешаем авторизацию пользователя
 			response.status = (uint8_t) rep_t::SUCCESS;
 	}
@@ -394,12 +394,9 @@ void awh::server::Socks5::reset() noexcept {
 }
 /**
  * setAuthCallback Метод добавления функции обработки авторизации
- * @param ctx      контекст для вывода в сообщении
  * @param callback функция обратного вызова для обработки авторизации
  */
-void awh::server::Socks5::setAuthCallback(void * ctx, function <bool (const string &, const string &, void *)> callback) noexcept {
-	// Устанавливаем контекст передаваемого объекта
-	this->ctx.at(0) = ctx;
+void awh::server::Socks5::setAuthCallback(function <bool (const string &, const string &)> callback) noexcept {
 	// Устанавливаем функцию проверки авторизации
 	this->authFn = callback;
 }

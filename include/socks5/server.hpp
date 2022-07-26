@@ -51,17 +51,14 @@ namespace awh {
 					/**
 					 * Server Конструктор
 					 */
-					Server() : family(AF_INET), port(80), host("") {}
+					Server() noexcept : family(AF_INET), port(80), host("") {}
 				} serv_t;
 			private:
 				// Параметры запрашиваемого сервера
 				serv_t server;
 			private:
-				// Список контекстов передаваемых объектов
-				vector <void *> ctx = {nullptr};
-			private:
 				// Внешняя функция проверки авторизации
-				function <bool (const string &, const string &, void *)> authFn = nullptr;
+				function <bool (const string &, const string &)> authFn;
 			public:
 				/**
 				 * getServer Метод извлечения параметров запрашиваемого сервера
@@ -100,10 +97,9 @@ namespace awh {
 			public:
 				/**
 				 * setAuthCallback Метод добавления функции обработки авторизации
-				 * @param ctx      контекст для вывода в сообщении
 				 * @param callback функция обратного вызова для обработки авторизации
 				 */
-				void setAuthCallback(void * ctx, function <bool (const string &, const string &, void *)> callback) noexcept;
+				void setAuthCallback(function <bool (const string &, const string &)> callback) noexcept;
 			public:
 				/**
 				 * Socks5 Конструктор
@@ -111,7 +107,7 @@ namespace awh {
 				 * @param log объект для работы с логами
 				 * @param uri объект для работы с URI
 				 */
-				Socks5(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcept : awh::socks5_t(fmk, log, uri) {}
+				Socks5(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcept : awh::socks5_t(fmk, log, uri), authFn(nullptr) {}
 				/**
 				 * ~Socks5 Деструктор
 				 */
