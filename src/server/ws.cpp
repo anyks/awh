@@ -30,39 +30,6 @@ void awh::server::WebSocket::openCallback(const size_t wid, awh::core_t * core) 
 	}
 }
 /**
- * writeCallback Функция обратного вызова при записи сообщения на клиенте
- * @param aid  идентификатор адъютанта
- * @param wid  идентификатор воркера
- * @param core объект биндинга TCP/IP
- */
-void awh::server::WebSocket::writeCallback(const size_t aid, const size_t wid, awh::core_t * core) noexcept {
-	// Если данные существуют
-	if((aid > 0) && (wid > 0) && (core != nullptr)){
-		// Получаем параметры подключения адъютанта
-		ws_worker_t::adjp_t * adj = const_cast <ws_worker_t::adjp_t *> (this->worker.get(aid));
-		// Если объект адъютанта получен
-		if(adj != nullptr){
-			// Если буфер данных не пустой
-			if(!adj->buffer.write.empty()){
-				// Выполняем запись данных на сервер
-				core->write(adj->buffer.write.data(), adj->buffer.write.size(), aid);
-				// Выполняем очистку буфера данных
-				adj->buffer.write.clear();
-				// Если нужно произвести отключение
-				if(!adj->close && adj->stopped)
-					// Выполняем ожидание доступности записи
-					const_cast <server::core_t *> (this->core)->enabled(core_t::method_t::WRITE, aid);
-			// Если необходимо выполнить закрыть подключение
-			} else if(!adj->close && adj->stopped) {
-				// Устанавливаем флаг закрытия подключения
-				adj->close = !adj->close;
-				// Принудительно выполняем отключение лкиента
-				const_cast <server::core_t *> (this->core)->close(aid);
-			}
-		}
-	}
-}
-/**
  * persistCallback Функция персистентного вызова
  * @param aid  идентификатор адъютанта
  * @param wid  идентификатор воркера
@@ -176,10 +143,35 @@ void awh::server::WebSocket::readCallback(const char * buffer, const size_t size
 					// Устанавливаем экшен выполнения
 					adj->action = ws_worker_t::action_t::READ;
 					// Добавляем полученные данные в буфер
-					adj->buffer.read.insert(adj->buffer.read.end(), buffer, buffer + size);
+					adj->buffer.payload.insert(adj->buffer.payload.end(), buffer, buffer + size);
 					// Выполняем запуск обработчика событий
 					this->handler(aid);
 				}
+			}
+		}
+	}
+}
+/**
+ * writeCallback Функция обратного вызова при записи сообщения на клиенте
+ * @param buffer бинарный буфер содержащий сообщение
+ * @param size   размер бинарного буфера содержащего сообщение
+ * @param aid    идентификатор адъютанта
+ * @param wid    идентификатор воркера
+ * @param core   объект биндинга TCP/IP
+ */
+void awh::server::WebSocket::writeCallback(const char * buffer, const size_t size, const size_t aid, const size_t wid, awh::core_t * core) noexcept {
+	// Если данные существуют
+	if((aid > 0) && (wid > 0) && (core != nullptr)){
+		// Получаем параметры подключения адъютанта
+		ws_worker_t::adjp_t * adj = const_cast <ws_worker_t::adjp_t *> (this->worker.get(aid));
+		// Если объект адъютанта получен
+		if(adj != nullptr){
+			// Если необходимо выполнить закрыть подключение
+			if(!adj->close && adj->stopped){
+				// Устанавливаем флаг закрытия подключения
+				adj->close = !adj->close;
+				// Принудительно выполняем отключение лкиента
+				const_cast <server::core_t *> (this->core)->close(aid);
 			}
 		}
 	}
@@ -234,9 +226,11 @@ void awh::server::WebSocket::actionRead(const size_t aid) noexcept {
 			// Если рукопожатие не выполнено
 			if(!reinterpret_cast <http_t *> (&adj->http)->isHandshake()){
 				// Выполняем парсинг полученных данных
-				const size_t bytes = adj->http.parse(adj->buffer.read.data(), adj->buffer.read.size());
+				const size_t bytes = adj->http.parse(adj->buffer.payload.data(), adj->buffer.payload.size());
 				// Если все данные получены
 				if(adj->http.isEnd()){
+					// Буфер данных для записи в сокет
+					vector <char> buffer;
 					// Метод компрессии данных
 					http_t::compress_t compress = http_t::compress_t::NONE;
 					// Если включён режим отладки
@@ -270,7 +264,7 @@ void awh::server::WebSocket::actionRead(const size_t aid) noexcept {
 									// Выполняем сброс состояния HTTP парсера
 									adj->http.clear();
 									// Получаем бинарные данные REST запроса
-									adj->buffer.write = adj->http.reject(400, "Unsupported protocol version");
+									buffer = adj->http.reject(400, "Unsupported protocol version");
 									// Завершаем работу
 									break;
 								}
@@ -279,7 +273,7 @@ void awh::server::WebSocket::actionRead(const size_t aid) noexcept {
 									// Выполняем сброс состояния HTTP парсера
 									adj->http.clear();
 									// Получаем бинарные данные REST запроса
-									adj->buffer.write = adj->http.reject(400, "Wrong client key");
+									buffer = adj->http.reject(400, "Wrong client key");
 									// Завершаем работу
 									break;
 								}
@@ -300,29 +294,29 @@ void awh::server::WebSocket::actionRead(const size_t aid) noexcept {
 									// Разрешаем перехватывать контекст компрессии для сервера
 									adj->hash.setTakeoverDecompress(true);
 								// Получаем бинарные данные REST запроса
-								adj->buffer.write = adj->http.response();
+								buffer = adj->http.response();
 								// Если бинарные данные ответа получены
-								if(!adj->buffer.write.empty()){
+								if(!buffer.empty()){
 									// Если включён режим отладки
 									#if defined(DEBUG_MODE)
 										// Выводим заголовок ответа
 										cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
 										// Выводим параметры ответа
-										cout << string(adj->buffer.write.begin(), adj->buffer.write.end()) << endl << endl;
+										cout << string(buffer.begin(), buffer.end()) << endl << endl;
 									#endif
-									// Выполняем ожидание доступности записи
-									core->enabled(core_t::method_t::WRITE, aid);
+									// Выполняем отправку данных клиенту
+									core->write(buffer.data(), buffer.size(), aid);
 									// Если функция обратного вызова установлена, выполняем
 									if(this->activeFn != nullptr) this->activeFn(aid, mode_t::CONNECT, this);
 									// Есла данных передано больше чем обработано
-									if(adj->buffer.read.size() > bytes)
+									if(adj->buffer.payload.size() > bytes)
 										// Удаляем количество обработанных байт
-										adj->buffer.read.assign(adj->buffer.read.begin() + bytes, adj->buffer.read.end());
-										// vector <decltype(adj->buffer.read)::value_type> (adj->buffer.read.begin() + bytes, adj->buffer.read.end()).swap(adj->buffer.read);
+										adj->buffer.payload.assign(adj->buffer.payload.begin() + bytes, adj->buffer.payload.end());
+										// vector <decltype(adj->buffer.payload)::value_type> (adj->buffer.payload.begin() + bytes, adj->buffer.payload.end()).swap(adj->buffer.payload);
 									// Если данных в буфере больше нет
 									else {
 										// Очищаем буфер собранных данных
-										adj->buffer.read.clear();
+										adj->buffer.payload.clear();
 										// Если экшен соответствует, выполняем его сброс
 										if(adj->action == ws_worker_t::action_t::READ)
 											// Выполняем сброс экшена
@@ -337,9 +331,9 @@ void awh::server::WebSocket::actionRead(const size_t aid) noexcept {
 									// Выполняем сброс состояния HTTP парсера
 									adj->http.reset();
 									// Выполняем очистку буфера данных
-									adj->buffer.read.clear();
+									adj->buffer.payload.clear();
 									// Формируем ответ, что страница не доступна
-									adj->buffer.write = adj->http.reject(500);
+									buffer = adj->http.reject(500);
 								}
 							// Сообщаем, что рукопожатие не выполнено
 							} else {
@@ -348,9 +342,9 @@ void awh::server::WebSocket::actionRead(const size_t aid) noexcept {
 								// Выполняем сброс состояния HTTP парсера
 								adj->http.reset();
 								// Выполняем очистку буфера данных
-								adj->buffer.read.clear();
+								adj->buffer.payload.clear();
 								// Формируем ответ, что страница не доступна
-								adj->buffer.write = adj->http.reject(403);
+								buffer = adj->http.reject(403);
 							}
 						} break;
 						// Если запрос неудачный
@@ -360,13 +354,13 @@ void awh::server::WebSocket::actionRead(const size_t aid) noexcept {
 							// Выполняем сброс состояния HTTP парсера
 							adj->http.reset();
 							// Выполняем очистку буфера данных
-							adj->buffer.read.clear();
+							adj->buffer.payload.clear();
 							// Формируем запрос авторизации
-							adj->buffer.write = adj->http.reject(401);
+							buffer = adj->http.reject(401);
 						} break;
 					}
 					// Если бинарные данные запроса получены, отправляем на сервер
-					if(!adj->buffer.write.empty()){
+					if((adj->stopped = !buffer.empty())){
 						// Тело полезной нагрузки
 						vector <char> payload;
 						// Если включён режим отладки
@@ -374,10 +368,12 @@ void awh::server::WebSocket::actionRead(const size_t aid) noexcept {
 							// Выводим заголовок ответа
 							cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
 							// Выводим параметры ответа
-							cout << string(adj->buffer.write.begin(), adj->buffer.write.end()) << endl << endl;
+							cout << string(buffer.begin(), buffer.end()) << endl << endl;
 						#endif
 						// Устанавливаем метод компрессии данных ответа
 						adj->http.setCompress(compress);
+						// Выполняем отправку заголовков сообщения
+						core->write(buffer.data(), buffer.size(), aid);
 						// Получаем данные тела запроса
 						while(!(payload = adj->http.payload()).empty()){
 							// Если включён режим отладки
@@ -385,15 +381,11 @@ void awh::server::WebSocket::actionRead(const size_t aid) noexcept {
 								// Выводим сообщение о выводе чанка полезной нагрузки
 								cout << this->fmk->format("<chunk %u>", payload.size()) << endl;
 							#endif
-							// Объединяем буфер для отправки
-							adj->buffer.write.insert(adj->buffer.write.end(), payload.begin(), payload.end());
+							// Выполняем отправку чанков
+							core->write(payload.data(), payload.size(), aid);
 						}
-						// Устанавливаем флаг разрешающий остановку
-						adj->stopped = true;
 						// Выполняем запрет на получение входящих данных
 						core->disabled(core_t::method_t::READ, aid);
-						// Выполняем ожидание доступности записи
-						core->enabled(core_t::method_t::WRITE, aid);
 						// Если экшен соответствует, выполняем его сброс
 						if(adj->action == ws_worker_t::action_t::READ)
 							// Выполняем сброс экшена
@@ -424,7 +416,7 @@ void awh::server::WebSocket::actionRead(const size_t aid) noexcept {
 				// Выполняем обработку полученных данных
 				while(!adj->close && adj->allow.receive){
 					// Выполняем чтение фрейма WebSocket
-					const auto & data = this->frame.get(head, adj->buffer.read.data(), adj->buffer.read.size());
+					const auto & data = this->frame.get(head, adj->buffer.payload.data(), adj->buffer.payload.size());
 					// Если буфер данных получен
 					if(!data.empty()){
 						// Проверяем состояние флагов RSV2 и RSV3
@@ -523,12 +515,12 @@ void awh::server::WebSocket::actionRead(const size_t aid) noexcept {
 						}
 					}
 					// Если парсер обработал какое-то количество байт
-					if((receive = ((head.frame > 0) && !adj->buffer.read.empty()))){
+					if((receive = ((head.frame > 0) && !adj->buffer.payload.empty()))){
 						// Если размер буфера больше количества удаляемых байт
-						if((receive = (adj->buffer.read.size() >= head.frame)))
+						if((receive = (adj->buffer.payload.size() >= head.frame)))
 							// Удаляем количество обработанных байт
-							adj->buffer.read.assign(adj->buffer.read.begin() + head.frame, adj->buffer.read.end());
-							// vector <decltype(adj->buffer.read)::value_type> (adj->buffer.read.begin() + head.frame, adj->buffer.read.end()).swap(adj->buffer.read);
+							adj->buffer.payload.assign(adj->buffer.payload.begin() + head.frame, adj->buffer.payload.end());
+							// vector <decltype(adj->buffer.payload)::value_type> (adj->buffer.payload.begin() + head.frame, adj->buffer.payload.end()).swap(adj->buffer.payload);
 					}
 					// Если сообщения получены
 					if(!buffer.empty()){
@@ -542,7 +534,7 @@ void awh::server::WebSocket::actionRead(const size_t aid) noexcept {
 						buffer.clear();
 					}
 					// Если данные мы все получили, выходим
-					if(!receive || adj->buffer.read.empty()) break;
+					if(!receive || adj->buffer.payload.empty()) break;
 				}
 				// Если экшен соответствует, выполняем его сброс
 				if(adj->action == ws_worker_t::action_t::READ)
@@ -662,7 +654,7 @@ void awh::server::WebSocket::error(const size_t aid, const mess_t & message) con
 	// Если отправка сообщений разблокированна
 	if(adj != nullptr){
 		// Очищаем список буффер бинарных данных
-		adj->buffer.read.clear();
+		adj->buffer.payload.clear();
 		// Очищаем список фрагментированных сообщений
 		adj->buffer.fragmes.clear();
 	}
@@ -735,15 +727,13 @@ void awh::server::WebSocket::extraction(const size_t aid, const vector <char> & 
 				// Создаём сообщение
 				mess_t mess(1007, "received data decompression error");
 				// Получаем буфер сообщения
-				adj->buffer.write = this->frame.message(mess);
+				data = this->frame.message(mess);
 				// Если данные сообщения получены
-				if(!adj->buffer.write.empty()){
-					// Устанавливаем флаг разрешающий остановку
-					adj->stopped = true;
+				if((adj->stopped = !data.empty())){
 					// Выполняем запрет на получение входящих данных
 					const_cast <server::core_t *> (this->core)->disabled(core_t::method_t::READ, aid);
-					// Выполняем ожидание доступности записи
-					const_cast <server::core_t *> (this->core)->enabled(core_t::method_t::WRITE, aid);
+					// Выполняем отправку сообщения клиенту
+					const_cast <server::core_t *> (this->core)->write(data.data(), data.size(), aid);
 				// Завершаем работу
 				} else const_cast <server::core_t *> (this->core)->close(aid);
 			}
@@ -776,11 +766,11 @@ void awh::server::WebSocket::pong(const size_t aid, awh::core_t * core, const st
 		// Если отправка сообщений разблокированна
 		if((adj != nullptr) && adj->allow.send){
 			// Создаём буфер для отправки
-			adj->buffer.write = this->frame.pong(message);
+			const auto & buffer = this->frame.pong(message);
 			// Если буфер данных получен
-			if(!adj->buffer.write.empty())
-				// Выполняем ожидание доступности записи
-				((server::core_t *) core)->enabled(core_t::method_t::WRITE, aid);
+			if(!buffer.empty())
+				// Выполняем отправку сообщения клиенту
+				core->write(buffer.data(), buffer.size(), aid);
 		}
 	}
 }
@@ -798,11 +788,11 @@ void awh::server::WebSocket::ping(const size_t aid, awh::core_t * core, const st
 		// Если отправка сообщений разблокированна
 		if((adj != nullptr) && adj->allow.send){
 			// Создаём буфер для отправки
-			adj->buffer.write = this->frame.ping(message);
+			const auto & buffer = this->frame.ping(message);
 			// Если буфер данных получен
-			if(!adj->buffer.write.empty())
-				// Выполняем ожидание доступности записи
-				((server::core_t *) core)->enabled(core_t::method_t::WRITE, aid);
+			if(!buffer.empty())
+				// Выполняем отправку сообщения клиенту
+				core->write(buffer.data(), buffer.size(), aid);
 		}
 	}
 }
@@ -892,9 +882,9 @@ void awh::server::WebSocket::sendError(const size_t aid, const mess_t & mess) co
 			// Если отправка сообщений разблокированна
 			if((adj != nullptr) && adj->allow.send){
 				// Получаем буфер сообщения
-				adj->buffer.write = this->frame.message(mess);
+				const auto & buffer = this->frame.message(mess);
 				// Если данные сообщения получены
-				if(!adj->buffer.write.empty()){
+				if((adj->stopped = !buffer.empty())){
 					// Если включён режим отладки
 					#if defined(DEBUG_MODE)
 						// Выводим заголовок ответа
@@ -902,10 +892,8 @@ void awh::server::WebSocket::sendError(const size_t aid, const mess_t & mess) co
 						// Выводим отправляемое сообщение
 						cout << this->fmk->format("%s [%u]", mess.text.c_str(), mess.code) << endl << endl;
 					#endif
-					// Устанавливаем флаг принудительной остановки
-					adj->stopped = true;
-					// Выполняем ожидание доступности записи
-					core->enabled(core_t::method_t::WRITE, aid);
+					// Выполняем отправку сообщения клиенту
+					core->write(buffer.data(), buffer.size(), aid);
 					// Выходим из функции
 					return;
 				}
@@ -947,15 +935,7 @@ void awh::server::WebSocket::send(const size_t aid, const char * message, const 
 				// Буфер сжатых данных
 				vector <char> buffer;
 				// Создаём объект заголовка для отправки
-				frame_t::head_t head;
-				// Передаём сообщение одним запросом
-				head.fin = true;
-				// Выполняем маскировку сообщения
-				head.mask = false;
-				// Указываем, что сообщение передаётся в сжатом виде
-				head.rsv[0] = (adj->compress != http_t::compress_t::NONE);
-				// Устанавливаем опкод сообщения
-				head.optcode = (utf8 ? frame_t::opcode_t::TEXT : frame_t::opcode_t::BINARY);
+				frame_t::head_t head(true, false);
 				// Если нужно производить шифрование
 				if(this->crypt){
 					// Выполняем шифрование переданных данных
@@ -968,63 +948,45 @@ void awh::server::WebSocket::send(const size_t aid, const char * message, const 
 						(* const_cast <size_t *> (&size)) = buffer.size();
 					}
 				}
-				/**
-				 * sendFn Функция отправки сообщения на сервер
-				 * @param head    объект заголовков фрейма WebSocket
-				 * @param message буфер сообщения в бинарном виде
-				 * @param size    размер сообщения в байтах
-				 */
-				auto sendFn = [aid, adj, this](const frame_t::head_t & head, const char * message, const size_t size) noexcept {
-					// Если все данные переданы
-					if((message != nullptr) && (size > 0)){
-						// Если необходимо сжимать сообщение перед отправкой
-						if(adj->compress != http_t::compress_t::NONE){
-							// Компрессионные данные
-							vector <char> data;
-							// Определяем метод компрессии
-							switch((uint8_t) adj->compress){
-								// Если метод компрессии выбран Deflate
-								case (uint8_t) http_t::compress_t::DEFLATE: {
-									// Выполняем компрессию полученных данных
-									data = adj->hash.compress(message, size);
-									// Удаляем хвост в полученных данных
-									adj->hash.rmTail(data);
-								} break;
-								// Если метод компрессии выбран GZip
-								case (uint8_t) http_t::compress_t::GZIP:
-									// Выполняем компрессию полученных данных
-									data = adj->hash.compressGzip(message, size);
-								break;
-								// Если метод компрессии выбран Brotli
-								case (uint8_t) http_t::compress_t::BROTLI:
-									// Выполняем компрессию полученных данных
-									data = adj->hash.compressBrotli(message, size);
-								break;
-							}
-							// Если сжатие данных прошло удачно
-							if(!data.empty()){
-								// Создаём буфер для отправки
-								const auto & buffer = this->frame.set(head, data.data(), data.size());
-								// Отправляем серверу сообщение
-								const_cast <server::core_t *> (this->core)->write(buffer.data(), buffer.size(), aid);
-							// Если сжать данные не получилось
-							} else {
-								// Снимаем флаг сжатых данных
-								const_cast <frame_t::head_t *> (&head)->rsv[0] = false;
-								// Создаём буфер для отправки
-								const auto & buffer = this->frame.set(head, message, size);
-								// Отправляем серверу сообщение
-								const_cast <server::core_t *> (this->core)->write(buffer.data(), buffer.size(), aid);
-							}
-						// Если сообщение перед отправкой сжимать не нужно
-						} else {
-							// Создаём буфер для отправки
-							const auto & buffer = this->frame.set(head, message, size);
-							// Отправляем серверу сообщение
-							const_cast <server::core_t *> (this->core)->write(buffer.data(), buffer.size(), aid);
-						}
+				// Устанавливаем опкод сообщения
+				head.optcode = (utf8 ? frame_t::opcode_t::TEXT : frame_t::opcode_t::BINARY);
+				// Указываем, что сообщение передаётся в сжатом виде
+				head.rsv[0] = ((size >= 1024) && (adj->compress != http_t::compress_t::NONE));
+				// Если необходимо сжимать сообщение перед отправкой
+				if(head.rsv[0]){
+					// Компрессионные данные
+					vector <char> data;
+					// Определяем метод компрессии
+					switch((uint8_t) adj->compress){
+						// Если метод компрессии выбран Deflate
+						case (uint8_t) http_t::compress_t::DEFLATE: {
+							// Выполняем компрессию полученных данных
+							data = adj->hash.compress(message, size);
+							// Удаляем хвост в полученных данных
+							adj->hash.rmTail(data);
+						} break;
+						// Если метод компрессии выбран GZip
+						case (uint8_t) http_t::compress_t::GZIP:
+							// Выполняем компрессию полученных данных
+							data = adj->hash.compressGzip(message, size);
+						break;
+						// Если метод компрессии выбран Brotli
+						case (uint8_t) http_t::compress_t::BROTLI:
+							// Выполняем компрессию полученных данных
+							data = adj->hash.compressBrotli(message, size);
+						break;
 					}
-				};
+					// Если сжатие данных прошло удачно
+					if(!data.empty()){
+						// Выполняем перемещение данных
+						buffer = move(data);
+						// Заменяем сообщение для передачи
+						message = buffer.data();
+						// Заменяем размер сообщения
+						(* const_cast <size_t *> (&size)) = buffer.size();
+					// Снимаем флаг сжатых данных
+					} else head.rsv[0] = false;
+				}
 				// Если требуется фрагментация сообщения
 				if(size > this->frameSize){
 					// Бинарный буфер чанка данных
@@ -1041,8 +1003,14 @@ void awh::server::WebSocket::send(const size_t aid, const char * message, const 
 						head.fin = (stop == size);
 						// Формируем чанк бинарных данных
 						chunk.assign(message + start, message + stop);
-						// Выполняем отправку чанка на сервер
-						sendFn(head, chunk.data(), chunk.size());
+						// Создаём буфер для отправки
+						const auto & buffer = this->frame.set(head, chunk.data(), chunk.size());
+						// Если бинарный буфер для отправки данных получен
+						if(!buffer.empty())
+							// Отправляем серверу сообщение
+							const_cast <server::core_t *> (this->core)->write(buffer.data(), buffer.size(), aid);
+						// Иначе просто выходим
+						else break;
 						// Выполняем сброс RSV1
 						head.rsv[0] = false;
 						// Устанавливаем опкод сообщения
@@ -1051,7 +1019,14 @@ void awh::server::WebSocket::send(const size_t aid, const char * message, const 
 						start = stop;
 					}
 				// Если фрагментация сообщения не требуется
-				} else sendFn(head, message, size);
+				} else {
+					// Создаём буфер для отправки
+					const auto & buffer = this->frame.set(head, message, size);
+					// Если бинарный буфер для отправки данных получен
+					if(!buffer.empty())
+						// Отправляем серверу сообщение
+						const_cast <server::core_t *> (this->core)->write(buffer.data(), buffer.size(), aid);
+				}
 			}
 			// Выполняем разблокировку отправки сообщения
 			adj->allow.send = !adj->allow.send;
@@ -1285,8 +1260,6 @@ void awh::server::WebSocket::setCrypt(const string & pass, const string & salt, 
 awh::server::WebSocket::WebSocket(const server::core_t * core, const fmk_t * fmk, const log_t * log) noexcept : frame(fmk, log), core(core), fmk(fmk), log(log), worker(fmk, log) {
 	// Устанавливаем событие на запуск системы
 	this->worker.openFn = std::bind(&awh::server::WebSocket::openCallback, this, _1, _2);
-	// Устанавливаем функцию записи данных
-	this->worker.writeFn = std::bind(&awh::server::WebSocket::writeCallback, this, _1, _2, _3);
 	// Устанавливаем функцию персистентного вызова
 	this->worker.persistFn = std::bind(&awh::server::WebSocket::persistCallback, this, _1, _2, _3);
 	// Устанавливаем событие подключения
@@ -1295,6 +1268,8 @@ awh::server::WebSocket::WebSocket(const server::core_t * core, const fmk_t * fmk
 	this->worker.acceptFn = std::bind(&awh::server::WebSocket::acceptCallback, this, _1, _2, _3, _4);
 	// Устанавливаем функцию чтения данных
 	this->worker.readFn = std::bind(&awh::server::WebSocket::readCallback, this, _1, _2, _3, _4, _5);
+	// Устанавливаем функцию записи данных
+	this->worker.writeFn = std::bind(&awh::server::WebSocket::writeCallback, this, _1, _2, _3, _4, _5);
 	// Устанавливаем событие отключения
 	this->worker.disconnectFn = std::bind(&awh::server::WebSocket::disconnectCallback, this, _1, _2, _3);
 	// Активируем персистентный запуск для работы пингов

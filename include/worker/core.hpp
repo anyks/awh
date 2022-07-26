@@ -187,6 +187,9 @@ namespace awh {
 				private:
 					// Контекст SSL для работы с защищённым подключением
 					ssl_t::ctx_t ssl;
+				private:
+					// Бинарный буфер для записи данных в сокет
+					vector <char> buffer;
 				public:
 					// Создаём объект фреймворка
 					const fmk_t * fmk;
@@ -260,8 +263,6 @@ namespace awh {
 		public:
 			// Функция обратного вызова при открытии приложения
 			function <void (const size_t, Core *)> openFn;
-			// Функция обратного вызова при записи данных
-			function <void (const size_t, const size_t, Core *)> writeFn;
 			// Функция обратного вызова для персистентного вызова
 			function <void (const size_t, const size_t, Core *)> persistFn;
 			// Функция обратного вызова при запуске подключения
@@ -270,6 +271,8 @@ namespace awh {
 			function <void (const size_t, const size_t, Core *)> disconnectFn;
 			// Функция обратного вызова при получении данных
 			function <void (const char *, const size_t, const size_t, const size_t, Core *)> readFn;
+			// Функция обратного вызова при записи данных
+			function <void (const char *, const size_t, const size_t, const size_t, Core *)> writeFn;
 		public:
 			/**
 			 * clear Метод очистки

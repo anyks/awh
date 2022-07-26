@@ -134,13 +134,6 @@ namespace awh {
 				 */
 				void openCallback(const size_t wid, awh::core_t * core) noexcept;
 				/**
-				 * writeCallback Функция обратного вызова при записи сообщения на клиенте
-				 * @param aid  идентификатор адъютанта
-				 * @param wid  идентификатор воркера
-				 * @param core объект биндинга TCP/IP
-				 */
-				void writeCallback(const size_t aid, const size_t wid, awh::core_t * core) noexcept;
-				/**
 				 * persistCallback Функция персистентного вызова
 				 * @param aid  идентификатор адъютанта
 				 * @param wid  идентификатор воркера
@@ -179,6 +172,15 @@ namespace awh {
 				 * @param core   объект биндинга TCP/IP
 				 */
 				void readCallback(const char * buffer, const size_t size, const size_t aid, const size_t wid, awh::core_t * core) noexcept;
+				/**
+				 * writeCallback Функция обратного вызова при записи сообщения на клиенте
+				 * @param buffer бинарный буфер содержащий сообщение
+				 * @param size   размер бинарного буфера содержащего сообщение
+				 * @param aid    идентификатор адъютанта
+				 * @param wid    идентификатор воркера
+				 * @param core   объект биндинга TCP/IP
+				 */
+				void writeCallback(const char * buffer, const size_t size, const size_t aid, const size_t wid, awh::core_t * core) noexcept;
 			private:
 				/**
 				 * handler Метод управления входящими методами

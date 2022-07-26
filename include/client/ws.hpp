@@ -99,8 +99,7 @@ namespace awh {
 				 * Buffer Структура буфера данных
 				 */
 				typedef struct Buffer {
-					vector <char> read;    // Буфер бинарных необработанных данных
-					vector <char> write;   // Буфер бинарных обработанных данных
+					vector <char> payload; // Бинарный буфер полезной нагрузки
 					vector <char> fragmes; // Данные фрагметрированного сообщения
 				} buffer_t;
 			private:
@@ -149,14 +148,17 @@ namespace awh {
 				bool noinfo = false;
 				// Флаг принудительной остановки
 				bool stopped = false;
-				// Флаг проверки аутентификации
-				bool failAuth = false;
 				// Флаг переданных сжатых данных
 				bool compressed = false;
 				// Флаг переиспользования контекста клиента
 				bool takeOverCli = false;
 				// Флаг переиспользования контекста сервера
 				bool takeOverSrv = false;
+			private:
+				// Количество попыток
+				uint8_t attempts = 0;
+				// Общее количество попыток
+				uint8_t totalAttempts = 10;
 			private:
 				// Идентификатор адъютанта
 				size_t aid = 0;
@@ -188,13 +190,6 @@ namespace awh {
 				 */
 				void openCallback(const size_t wid, awh::core_t * core) noexcept;
 				/**
-				 * writeCallback Метод обратного вызова при записи сообщения на клиенте
-				 * @param aid  идентификатор адъютанта
-				 * @param wid  идентификатор воркера
-				 * @param core объект биндинга TCP/IP
-				 */
-				void writeCallback(const size_t aid, const size_t wid, awh::core_t * core) noexcept;
-				/**
 				 * persistCallback Метод персистентного вызова
 				 * @param aid  идентификатор адъютанта
 				 * @param wid  идентификатор воркера
@@ -224,6 +219,15 @@ namespace awh {
 				 * @param core   объект биндинга TCP/IP
 				 */
 				void readCallback(const char * buffer, const size_t size, const size_t aid, const size_t wid, awh::core_t * core) noexcept;
+				/**
+				 * writeCallback Метод обратного вызова при записи сообщения на клиенте
+				 * @param buffer бинарный буфер содержащий сообщение
+				 * @param size   размер бинарного буфера содержащего сообщение
+				 * @param aid    идентификатор адъютанта
+				 * @param wid    идентификатор воркера
+				 * @param core   объект биндинга TCP/IP
+				 */
+				void writeCallback(const char * buffer, const size_t size, const size_t aid, const size_t wid, awh::core_t * core) noexcept;
 			private:
 				/**
 				 * proxyConnectCallback Метод обратного вызова при подключении к прокси-серверу
@@ -411,6 +415,11 @@ namespace awh {
 				 * @param size минимальный размер сегмента
 				 */
 				void setFrameSize(const size_t size) noexcept;
+				/**
+				 * setAttempts Метод установки общего количества попыток
+				 * @param attempts общее количество попыток
+				 */
+				void setAttempts(const uint8_t attempts) noexcept;
 				/**
 				 * setUserAgent Метод установки User-Agent для HTTP запроса
 				 * @param userAgent агент пользователя для HTTP запроса

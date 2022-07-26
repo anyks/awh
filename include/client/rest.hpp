@@ -82,7 +82,7 @@ namespace awh {
 				 * Request Структура запроса клиента
 				 */
 				typedef struct Request {
-					bool failAuth;                               // Флаг проверки аутентификации
+					uint8_t attempts;                            // Количество попыток
 					web_t::method_t method;                      // Метод запроса
 					uri_t::url_t url;                            // Параметры адреса для запроса
 					vector <char> entity;                        // Тело запроса
@@ -90,7 +90,7 @@ namespace awh {
 					/**
 					 * Request Конструктор
 					 */
-					Request() noexcept : failAuth(false), method(web_t::method_t::NONE) {}
+					Request() noexcept : attempts(0), method(web_t::method_t::NONE) {}
 				} req_t;
 				/**
 				 * Response Структура ответа сервера
@@ -118,13 +118,6 @@ namespace awh {
 					 */
 					Locker() noexcept : mode(false) {}
 				} locker_t;
-				/**
-				 * Buffer Структура буфера данных
-				 */
-				typedef struct Buffer {
-					vector <char> read;  // Буфер бинарных необработанных данных
-					vector <char> write; // Буфер бинарных обработанных данных
-				} buffer_t;
 			private:
 				// Объект для работы с сетью
 				network_t nwk;
@@ -139,10 +132,11 @@ namespace awh {
 				locker_t locker;
 				// Экшен события
 				action_t action;
-				// Объект буфера данных
-				buffer_t buffer;
 				// Метод компрессии данных
 				awh::http_t::compress_t compress;
+			private:
+				// Буфер бинарных данных
+				vector <char> buffer;
 			private:
 				// Список запросов
 				vector <req_t> requests;
@@ -158,6 +152,9 @@ namespace awh {
 				bool active = false;
 				// Флаг выполнения редиректов
 				bool redirects = false;
+			private:
+				// Общее количество попыток
+				uint8_t totalAttempts = 10;
 			private:
 				// Создаём объект фреймворка
 				const fmk_t * fmk = nullptr;
@@ -184,13 +181,6 @@ namespace awh {
 				 * @param core объект биндинга TCP/IP
 				 */
 				void openCallback(const size_t wid, awh::core_t * core) noexcept;
-				/**
-				 * writeCallback Метод обратного вызова при записи сообщения на клиенте
-				 * @param aid  идентификатор адъютанта
-				 * @param wid  идентификатор воркера
-				 * @param core объект биндинга TCP/IP
-				 */
-				void writeCallback(const size_t aid, const size_t wid, awh::core_t * core) noexcept;
 				/**
 				 * connectCallback Метод обратного вызова при подключении к серверу
 				 * @param aid  идентификатор адъютанта
@@ -451,6 +441,11 @@ namespace awh {
 				 * @param size размер чанка для установки
 				 */
 				void setChunkSize(const size_t size) noexcept;
+				/**
+				 * setAttempts Метод установки общего количества попыток
+				 * @param attempts общее количество попыток
+				 */
+				void setAttempts(const uint8_t attempts) noexcept;
 				/**
 				 * setUserAgent Метод установки User-Agent для HTTP запроса
 				 * @param userAgent агент пользователя для HTTP запроса

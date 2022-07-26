@@ -165,8 +165,12 @@ namespace awh {
 				opcode_t optcode; // Опциональные коды
 				/**
 				 * Head Конструктор
+				 * @param fin  флаг финального фрейма
+				 * @param mask флаг маскирования сообщения
 				 */
-				Head() : fin(true), mask(true), rsv{false, false, false}, size(0), frame(0), payload(0), optcode(opcode_t::TEXT) {}
+				Head(const bool fin = true, const bool mask = true) noexcept :
+				 fin(fin), mask(mask), rsv{false, false, false},
+				 size(0), frame(0), payload(0), optcode(opcode_t::TEXT) {}
 			} head_t;
 		private:
 			// Создаём объект фреймворка

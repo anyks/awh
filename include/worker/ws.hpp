@@ -59,8 +59,7 @@ namespace awh {
 				 * Buffer Структура буфера данных
 				 */
 				typedef struct Buffer {
-					vector <char> read;    // Буфер бинарных необработанных данных
-					vector <char> write;   // Буфер бинарных обработанных данных
+					vector <char> payload; // Бинарный буфер полезной нагрузки
 					vector <char> fragmes; // Данные фрагметрированного сообщения
 				} buffer_t;
 				/**

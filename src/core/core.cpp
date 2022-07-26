@@ -1198,8 +1198,6 @@ void awh::Core::enabled(const method_t method, const size_t aid, const bool time
 				case (uint8_t) method_t::READ: {
 					// Разрешаем чтение данных из сокета
 					adj->bev.locked.read = false;
-					// Разрешаем запись данных в сокет
-					adj->bev.locked.write = false;
 					// Устанавливаем размер детектируемых байт на чтение
 					adj->marker.read = wrk->marker.read;
 					// Устанавливаем время ожидания чтения данных
@@ -1290,80 +1288,21 @@ void awh::Core::enabled(const method_t method, const size_t aid, const bool time
  * @param size   размер записываемых данных
  * @param aid    идентификатор адъютанта
  */
-void awh::Core::write(const char * buffer, const size_t size, const size_t aid) noexcept {
+void awh::Core::write(const char * buffer, const size_t size, const size_t aid) noexcept {	
 	// Если данные переданы
 	if((buffer != nullptr) && (size > 0)){
 		// Выполняем извлечение адъютанта
 		auto it = this->adjutants.find(aid);
-		// Если адъютант получен и запись в сокет разрешена
-		if((it != this->adjutants.end()) && !it->second->bev.locked.write && (it->second->bev.socket > -1)){
-			// Если размер записываемых данных соответствует
-			if(size >= it->second->marker.write.min){
-				// Устанавливаем метку для записи
-				Write:
-				// Количество отправленных байт
-				int64_t bytes = -1;
-				// Если количество записываемых данных менье максимального занчения
-				if(size <= it->second->marker.write.max){
-					// Если защищённый режим работы разрешён
-					if(it->second->ssl.mode){
-						// Выполняем очистку ошибок OpenSSL
-						ERR_clear_error();
-						// Выполняем отправку сообщения через защищённый канал
-						bytes = SSL_write(it->second->ssl.ssl, buffer, size);
-					// Выполняем отправку сообщения в сокет
-					} else bytes = send(it->second->bev.socket, buffer, size, 0);
-				// Иначе выполняем дробление передаваемых данных
-				} else {
-					// Смещение в буфере и отправляемый размер данных
-					size_t offset = 0, actual = 0;
-					// Выполняем отправку данных пока всё не отправим
-					while((size - offset) > 0){
-						// Определяем размер отправляемых данных
-						actual = ((size - offset) >= it->second->marker.write.max ? it->second->marker.write.max : (size - offset));
-						// Если защищённый режим работы разрешён
-						if(it->second->ssl.mode){
-							// Выполняем очистку ошибок OpenSSL
-							ERR_clear_error();
-							// Выполняем отправку сообщения через защищённый канал
-							bytes = SSL_write(it->second->ssl.ssl, buffer + offset, actual);
-						// Выполняем отправку сообщения в сокет
-						} else bytes = send(it->second->bev.socket, buffer + offset, actual, 0);
-						// Увеличиваем смещение в буфере
-						offset += actual;
-					}
-				}
-				// Если байты не были записаны в сокет
-				if(bytes <= 0){
-					// Получаем статус сокета
-					const int status = this->socket.isBlocking(it->second->bev.socket);
-					// Если сокет находится в блокирующем режиме
-					if((bytes < 0) && (status != 0))
-						// Выполняем обработку ошибок
-						this->error(bytes, it->first);
-					// Если произошла ошибка
-					else if((bytes < 0) && (status == 0)) {
-						// Если произошёл системный сигнал попробовать ещё раз
-						if(errno == EINTR) goto Write;
-						// Если защищённый режим работы разрешён
-						if(it->second->ssl.mode){
-							// Получаем данные описание ошибки
-							if(SSL_get_error(it->second->ssl.ssl, bytes) == SSL_ERROR_WANT_WRITE)
-								// Выполняем пропуск попытки
-								goto Write;
-							// Иначе выводим сообщение об ошибке
-							else this->error(bytes, it->first);
-						// Если защищённый режим работы запрещён
-						} else if(errno == EAGAIN) goto Write;
-						// Иначе просто закрываем подключение
-						this->close(it->first);
-					}
-					// Если подключение разорвано или сокет находится в блокирующем режиме
-					if((bytes == 0) || (status != 0))
-						// Выполняем отключение от сервера
-						this->close(it->first);
-				}
-			}
+		// Если адъютант получен
+		if(it != this->adjutants.end()){
+			// Получаем объект адъютанта
+			awh::worker_t::adj_t * adj = const_cast <awh::worker_t::adj_t *> (it->second);
+			// Добавляем буфер данных для записи
+			adj->buffer.insert(adj->buffer.end(), buffer, buffer + size);
+			// Если запись в сокет заблокирована
+			if(adj->bev.locked.write)
+				// Разрешаем выполнение записи в сокет
+				this->enabled(method_t::WRITE, it->first);
 		}
 	}
 }
@@ -1382,21 +1321,21 @@ void awh::Core::setLockMethod(const method_t method, const bool mode, const size
 		switch((uint8_t) method){
 			// Режим работы ЧТЕНИЕ
 			case (uint8_t) method_t::READ: {
-				// Если нужно разблокировать метод
-				if(mode)
-					// Активируем разрешение на чтение
-					const_cast <worker_t::adj_t *> (it->second)->bev.locked.read = false;
 				// Если нужно заблокировать метод
-				else const_cast <worker_t::adj_t *> (it->second)->bev.locked.read = true;
+				if(mode)
+					// Запрещаем чтение данных из сокета
+					const_cast <worker_t::adj_t *> (it->second)->bev.locked.read = true;
+				// Если нужно разблокировать метод
+				else const_cast <worker_t::adj_t *> (it->second)->bev.locked.read = false;
 			} break;
 			// Режим работы ЗАПИСЬ
 			case (uint8_t) method_t::WRITE:
-				// Если нужно разблокировать метод
-				if(mode)
-					// Активируем разрешение на запись
-					const_cast <worker_t::adj_t *> (it->second)->bev.locked.write = false;
 				// Если нужно заблокировать метод
-				else const_cast <worker_t::adj_t *> (it->second)->bev.locked.write = true;
+				if(mode)
+					// Запрещаем запись данных в сокет
+					const_cast <worker_t::adj_t *> (it->second)->bev.locked.write = true;
+				// Если нужно разблокировать метод
+				else const_cast <worker_t::adj_t *> (it->second)->bev.locked.write = false;
 			break;
 		}
 	}

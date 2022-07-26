@@ -39,24 +39,6 @@ void awh::client::Rest::openCallback(const size_t wid, awh::core_t * core) noexc
 	}
 }
 /**
- * writeCallback Метод обратного вызова при записи сообщения на клиенте
- * @param aid  идентификатор адъютанта
- * @param wid  идентификатор воркера
- * @param core объект биндинга TCP/IP
- */
-void awh::client::Rest::writeCallback(const size_t aid, const size_t wid, awh::core_t * core) noexcept {
-	// Если данные существуют
-	if((aid > 0) && (wid > 0) && (core != nullptr)){
-		// Если буфер данных не пустой
-		if(!this->buffer.write.empty()){
-			// Выполняем запись данных на сервер
-			core->write(this->buffer.write.data(), this->buffer.write.size(), aid);
-			// Выполняем очистку буфера данных
-			this->buffer.write.clear();
-		}
-	}
-}
-/**
  * connectCallback Метод обратного вызова при подключении к серверу
  * @param aid  идентификатор адъютанта
  * @param wid  идентификатор воркера
@@ -104,7 +86,7 @@ void awh::client::Rest::readCallback(const char * buffer, const size_t size, con
 			// Устанавливаем экшен выполнения
 			this->action = action_t::READ;
 			// Добавляем полученные данные в буфер
-			this->buffer.read.insert(this->buffer.read.end(), buffer, buffer + size);
+			this->buffer.insert(this->buffer.end(), buffer, buffer + size);
 			// Выполняем запуск обработчика событий
 			this->handler();
 		}
@@ -143,7 +125,7 @@ void awh::client::Rest::proxyReadCallback(const char * buffer, const size_t size
 			// Устанавливаем экшен выполнения
 			this->action = action_t::PROXY_READ;
 			// Добавляем полученные данные в буфер
-			this->buffer.read.insert(this->buffer.read.end(), buffer, buffer + size);
+			this->buffer.insert(this->buffer.end(), buffer, buffer + size);
 			// Выполняем запуск обработчика событий
 			this->handler();
 		}
@@ -211,7 +193,7 @@ void awh::client::Rest::actionRead() noexcept {
 		// Получаем объект ответа
 		res_t & response = this->responses.front();
 		// Выполняем парсинг полученных данных
-		size_t bytes = this->http.parse(this->buffer.read.data(), this->buffer.read.size());
+		size_t bytes = this->http.parse(this->buffer.data(), this->buffer.size());
 		// Если все данные получены
 		if((response.ok = completed = this->http.isEnd())){
 			// Получаем параметры запроса
@@ -256,15 +238,15 @@ void awh::client::Rest::actionRead() noexcept {
 				// Если нужно попытаться ещё раз
 				case (uint8_t) awh::http_t::stath_t::RETRY: {
 					// Если попытка повторить авторизацию ещё не проводилась
-					if(!request.failAuth){
+					if(request.attempts < this->totalAttempts){
 						// Получаем новый адрес запроса
 						request.url = this->http.getUrl();
 						// Если адрес запроса получен
 						if(!request.url.empty()){
 							// Выполняем очистку оставшихся данных
-							this->buffer.read.clear();
-							// Запоминаем, что попытка выполнена
-							request.failAuth = true;
+							this->buffer.clear();
+							// Увеличиваем количество попыток
+							request.attempts++;
 							// Если соединение является постоянным
 							if(this->http.isAlive())
 								// Устанавливаем новый экшен выполнения
@@ -289,6 +271,8 @@ void awh::client::Rest::actionRead() noexcept {
 				case (uint8_t) awh::http_t::stath_t::GOOD: {
 					// Получаем объект ответа
 					result = response;
+					// Выполняем сброс количества попыток
+					request.attempts = 0;
 					// Если функция обратного вызова установлена, выводим сообщение
 					if(this->messageFn != nullptr){
 						// Получаем тело запроса
@@ -303,7 +287,7 @@ void awh::client::Rest::actionRead() noexcept {
 					// Устанавливаем размер стопбайт
 					if(!this->http.isAlive()){
 						// Выполняем очистку оставшихся данных
-						this->buffer.read.clear();
+						this->buffer.clear();
 						// Завершаем работу
 						core->close(this->aid);
 						// Выполняем завершение работы
@@ -331,7 +315,7 @@ void awh::client::Rest::actionRead() noexcept {
 				} break;
 			}
 			// Выполняем очистку оставшихся данных
-			this->buffer.read.clear();
+			this->buffer.clear();
 			// Если функция обратного вызова установлена, выводим сообщение
 			if(this->messageFn != nullptr){
 				// Получаем объект ответа
@@ -354,15 +338,15 @@ void awh::client::Rest::actionRead() noexcept {
 		// Устанавливаем метку продолжения обработки пайплайна
 		Next:
 		// Если парсер обработал какое-то количество байт
-		if((receive = ((bytes > 0) && !this->buffer.read.empty()))){
+		if((receive = ((bytes > 0) && !this->buffer.empty()))){
 			// Если размер буфера больше количества удаляемых байт
-			if((receive = (this->buffer.read.size() >= bytes)))
+			if((receive = (this->buffer.size() >= bytes)))
 				// Удаляем количество обработанных байт
-				this->buffer.read.assign(this->buffer.read.begin() + bytes, this->buffer.read.end());
-				// vector <decltype(this->buffer.read)::value_type> (this->buffer.read.begin() + bytes, this->buffer.read.end()).swap(this->buffer.read);
+				this->buffer.assign(this->buffer.begin() + bytes, this->buffer.end());
+				// vector <decltype(this->buffer)::value_type> (this->buffer.begin() + bytes, this->buffer.end()).swap(this->buffer);
 		}
 		// Если данные мы все получили, выходим
-		if(!receive || this->buffer.read.empty()) break;
+		if(!receive || this->buffer.empty()) break;
 	}
 	// Устанавливаем метку завершения работы
 	Stop:
@@ -400,18 +384,20 @@ void awh::client::Rest::actionConnect() noexcept {
 			// Устанавливаем тело запроса
 			this->http.setBody(req.entity);
 		// Получаем бинарные данные REST запроса
-		this->buffer.write = this->http.request(req.url, req.method);
+		const auto & buffer = this->http.request(req.url, req.method);
 		// Если бинарные данные запроса получены
-		if(!this->buffer.write.empty()){
+		if(!buffer.empty()){
 			// Если включён режим отладки
 			#if defined(DEBUG_MODE)
 				// Выводим заголовок запроса
 				cout << "\x1B[33m\x1B[1m^^^^^^^^^ REQUEST ^^^^^^^^^\x1B[0m" << endl;
 				// Выводим параметры запроса
-				cout << string(this->buffer.write.begin(), this->buffer.write.end()) << endl << endl;
+				cout << string(buffer.begin(), buffer.end()) << endl << endl;
 			#endif
 			// Тело REST сообщения
 			vector <char> entity;
+			// Выполняем отправку заголовков запроса на сервер
+			core->write(buffer.data(), buffer.size(), this->aid);
 			// Получаем данные тела запроса
 			while(!(entity = this->http.payload()).empty()){
 				// Если включён режим отладки
@@ -419,11 +405,9 @@ void awh::client::Rest::actionConnect() noexcept {
 					// Выводим сообщение о выводе чанка тела
 					cout << this->fmk->format("<chunk %u>", entity.size()) << endl;
 				#endif
-				// Собираем тело запроса
-				this->buffer.write.insert(this->buffer.write.end(), entity.begin(), entity.end());
+				// Выполняем отправку тела запроса на сервер
+				core->write(entity.data(), entity.size(), this->aid);
 			}
-			// Выполняем ожидание доступности записи
-			core->enabled(core_t::method_t::WRITE, this->aid);
 		}
 	}
 	// Если экшен соответствует, выполняем его сброс
@@ -508,17 +492,17 @@ void awh::client::Rest::actionProxyRead() noexcept {
 			// Если данные не получены
 			if(!this->worker.proxy.socks5.isEnd()){
 				// Выполняем парсинг входящих данных
-				this->worker.proxy.socks5.parse(this->buffer.read.data(), this->buffer.read.size());
+				this->worker.proxy.socks5.parse(this->buffer.data(), this->buffer.size());
 				// Получаем данные запроса
-				this->buffer.write = this->worker.proxy.socks5.get();
+				const auto & buffer = this->worker.proxy.socks5.get();
 				// Если данные получены
-				if(!this->buffer.write.empty())
-					// Выполняем ожидание доступности записи
-					core->enabled(core_t::method_t::WRITE, this->aid);
+				if(!buffer.empty())
+					// Выполняем отправку запроса на сервер
+					core->write(buffer.data(), buffer.size(), this->aid);
 				// Если данные все получены
 				else if(this->worker.proxy.socks5.isEnd()) {
 					// Выполняем очистку буфера данных
-					this->buffer.read.clear();
+					this->buffer.clear();
 					// Если рукопожатие выполнено
 					if(this->worker.proxy.socks5.isHandshake()){
 						// Выполняем переключение на работу с сервером
@@ -570,11 +554,11 @@ void awh::client::Rest::actionProxyRead() noexcept {
 		// Если прокси-сервер является HTTP
 		case (uint8_t) proxy_t::type_t::HTTP: {
 			// Выполняем парсинг полученных данных
-			this->worker.proxy.http.parse(this->buffer.read.data(), this->buffer.read.size());
+			this->worker.proxy.http.parse(this->buffer.data(), this->buffer.size());
 			// Если все данные получены
 			if(this->worker.proxy.http.isEnd()){
 				// Выполняем очистку буфера данных
-				this->buffer.read.clear();
+				this->buffer.clear();
 				// Получаем параметры запроса
 				const auto & query = this->worker.proxy.http.getQuery();
 				// Получаем объект запроса
@@ -619,13 +603,13 @@ void awh::client::Rest::actionProxyRead() noexcept {
 					// Если нужно попытаться ещё раз
 					case (uint8_t) awh::http_t::stath_t::RETRY: {
 						// Если попытка повторить авторизацию ещё не проводилась
-						if(!request.failAuth){
+						if(request.attempts < this->totalAttempts){
 							// Получаем новый адрес запроса
 							this->worker.proxy.url = this->worker.proxy.http.getUrl();
 							// Если адрес запроса получен
 							if(!this->worker.proxy.url.empty()){
-								// Запоминаем, что попытка выполнена
-								request.failAuth = true;
+								// Увеличиваем количество попыток
+								request.attempts++;
 								// Если соединение является постоянным
 								if(this->worker.proxy.http.isAlive())
 									// Устанавливаем новый экшен выполнения
@@ -648,8 +632,8 @@ void awh::client::Rest::actionProxyRead() noexcept {
 					} break;
 					// Если запрос выполнен удачно
 					case (uint8_t) awh::http_t::stath_t::GOOD: {
-						// Выполняем сброс количество попыток
-						request.failAuth = false;
+						// Выполняем сброс количества попыток
+						request.attempts = 0;
 						// Выполняем переключение на работу с сервером
 						core->switchProxy(this->aid);
 						// Если экшен соответствует, выполняем его сброс
@@ -719,11 +703,11 @@ void awh::client::Rest::actionProxyConnect() noexcept {
 			// Выполняем создание буфера запроса
 			this->worker.proxy.socks5.parse();
 			// Получаем данные запроса
-			this->buffer.write = this->worker.proxy.socks5.get();
+			const auto & buffer = this->worker.proxy.socks5.get();
 			// Если данные получены
-			if(!this->buffer.write.empty())
-				// Выполняем ожидание доступности записи
-				core->enabled(core_t::method_t::WRITE, this->aid);
+			if(!buffer.empty())
+				// Выполняем отправку запроса на сервер
+				core->write(buffer.data(), buffer.size(), this->aid);
 		} break;
 		// Если прокси-сервер является HTTP
 		case (uint8_t) proxy_t::type_t::HTTP: {
@@ -732,18 +716,18 @@ void awh::client::Rest::actionProxyConnect() noexcept {
 			// Выполняем очистку параметров HTTP запроса
 			this->worker.proxy.http.clear();
 			// Получаем бинарные данные REST запроса
-			this->buffer.write = this->worker.proxy.http.proxy(request.url);
+			const auto & buffer = this->worker.proxy.http.proxy(request.url);
 			// Если бинарные данные запроса получены
-			if(!this->buffer.write.empty()){
+			if(!buffer.empty()){
 				// Если включён режим отладки
 				#if defined(DEBUG_MODE)
 					// Выводим заголовок запроса
 					cout << "\x1B[33m\x1B[1m^^^^^^^^^ REQUEST PROXY ^^^^^^^^^\x1B[0m" << endl;
 					// Выводим параметры запроса
-					cout << string(this->buffer.write.begin(), this->buffer.write.end()) << endl;
+					cout << string(buffer.begin(), buffer.end()) << endl;
 				#endif
-				// Выполняем ожидание доступности записи
-				core->enabled(core_t::method_t::WRITE, this->aid);
+				// Выполняем отправку запроса на сервер
+				core->write(buffer.data(), buffer.size(), this->aid);
 			}
 		} break;
 		// Иначе завершаем работу
@@ -761,7 +745,7 @@ void awh::client::Rest::flush() noexcept {
 	// Сбрасываем флаг принудительной остановки
 	this->active = false;
 	// Выполняем очистку оставшихся данных
-	this->buffer = buffer_t();
+	this->buffer.clear();
 }
 /**
  * start Метод запуска клиента
@@ -1592,6 +1576,14 @@ void awh::client::Rest::setChunkSize(const size_t size) noexcept {
 	this->http.setChunkSize(size);
 }
 /**
+ * setAttempts Метод установки общего количества попыток
+ * @param attempts общее количество попыток
+ */
+void awh::client::Rest::setAttempts(const uint8_t attempts) noexcept {
+	// Если количество попыток передано, устанавливаем его
+	if(attempts > 0) this->totalAttempts = attempts;
+}
+/**
  * setUserAgent Метод установки User-Agent для HTTP запроса
  * @param userAgent агент пользователя для HTTP запроса
  */
@@ -1672,8 +1664,6 @@ void awh::client::Rest::setAuthTypeProxy(const auth_t::type_t type, const auth_t
 awh::client::Rest::Rest(const client::core_t * core, const fmk_t * fmk, const log_t * log) noexcept : nwk(fmk), uri(fmk, &nwk), http(fmk, log, &uri), worker(fmk, log), action(action_t::NONE), compress(awh::http_t::compress_t::NONE), fmk(fmk), log(log), core(core) {
 	// Устанавливаем событие на запуск системы
 	this->worker.openFn = std::bind(&awh::client::Rest::openCallback, this, _1, _2);
-	// Устанавливаем функцию записи данных
-	this->worker.writeFn = std::bind(&awh::client::Rest::writeCallback, this, _1, _2, _3);
 	// Устанавливаем событие подключения
 	this->worker.connectFn = std::bind(&awh::client::Rest::connectCallback, this, _1, _2, _3);
 	// Устанавливаем функцию чтения данных

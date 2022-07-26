@@ -373,6 +373,7 @@ void awh::client::Core::reconnect(const size_t wid) noexcept {
 			printf("IP address: %s\n", ip);
 			
 			const_cast <uri_t::url_t *> (&url)->ip = ip;
+			
 
 			// Выполняем запуск системы
 			resolver(url.ip, wrk);
@@ -699,7 +700,7 @@ void awh::client::Core::open(const size_t wid) noexcept {
 				printf("IP address: %s\n", ip);
 
 				const_cast <uri_t::url_t *> (&url)->ip = ip;
-
+				
 				
 				// Выполняем запуск системы
 				resolver(url.ip, wrk);
@@ -1104,16 +1105,87 @@ void awh::client::Core::transfer(const method_t method, const size_t aid) noexce
 				} break;
 				// Если производится запись данных
 				case (uint8_t) method_t::WRITE: {
-					// Останавливаем запись данных
-					this->disabled(method_t::WRITE, it->first);
-					// Выполняем принудительное исполнение таймеров
-					if(this->socket.isBlocking(adj->bev.socket) == 1) this->executeTimers();
-					// Если функция обратного вызова на запись данных установлена
-					if(wrk->writeFn != nullptr){
-						// Разрешаем выполнять запись в сокет
-						adj->bev.locked.write = false;
-						// Выводим функцию обратного вызова
-						wrk->writeFn(aid, wrk->wid, reinterpret_cast <awh::core_t *> (this));
+					// Останавливаем таймаут ожидания на запись в сокет
+					adj->bev.timer.write.stop();
+					// Если данных достаточно для записи в сокет
+					if(adj->buffer.size() >= adj->marker.write.min){
+						// Количество полученных байт
+						int64_t bytes = -1;
+						// Cмещение в буфере и отправляемый размер данных
+						size_t offset = 0, actual = 0, size = 0;
+						// Выполняем отправку данных пока всё не отправим
+						while(!adj->bev.locked.write && ((adj->buffer.size() - offset) > 0)){
+							// Получаем общий размер буфера данных
+							size = (adj->buffer.size() - offset);
+							// Определяем размер отправляемых данных
+							actual = ((size >= adj->marker.write.max) ? adj->marker.write.max : size);
+							// Если защищённый режим работы разрешён
+							if(adj->ssl.mode){
+								// Выполняем очистку ошибок OpenSSL
+								ERR_clear_error();
+								// Выполняем отправку сообщения через защищённый канал
+								bytes = SSL_write(adj->ssl.ssl, adj->buffer.data() + offset, actual);
+							// Выполняем отправку сообщения в сокет
+							} else bytes = send(adj->bev.socket, adj->buffer.data() + offset, actual, 0);
+							// Останавливаем таймаут ожидания на запись в сокет
+							adj->bev.timer.write.stop();
+							// Выполняем принудительное исполнение таймеров
+							if(this->socket.isBlocking(adj->bev.socket) == 1) this->executeTimers();
+							// Если время ожидания записи данных установлено
+							if(adj->timeouts.write > 0)
+								// Запускаем ожидание запись данных на сервер
+								adj->bev.timer.write.start(adj->timeouts.write);
+							// Если байты не были записаны в сокет
+							if(bytes <= 0){
+								// Получаем статус сокета
+								const int status = this->socket.isBlocking(adj->bev.socket);
+								// Если сокет находится в блокирующем режиме
+								if((bytes < 0) && (status != 0))
+									// Выполняем обработку ошибок
+									this->error(bytes, aid);
+								// Если произошла ошибка
+								else if((bytes < 0) && (status == 0)) {
+									// Если произошёл системный сигнал попробовать ещё раз
+									if(errno == EINTR) continue;
+									// Если защищённый режим работы разрешён
+									if(adj->ssl.mode){
+										// Получаем данные описание ошибки
+										if(SSL_get_error(adj->ssl.ssl, bytes) == SSL_ERROR_WANT_WRITE)
+											// Выполняем пропуск попытки
+											continue;
+										// Иначе выводим сообщение об ошибке
+										else this->error(bytes, aid);
+									// Если защищённый режим работы запрещён
+									} else if(errno == EAGAIN) continue;
+									// Иначе просто закрываем подключение
+									this->close(aid);
+								}
+								// Если подключение разорвано или сокет находится в блокирующем режиме
+								if((bytes == 0) || (status != 0))
+									// Выполняем отключение от сервера
+									this->close(aid);
+								// Выходим из цикла
+								break;
+							}
+							// Увеличиваем смещение в буфере
+							offset += actual;
+						}
+						// Получаем буфер отправляемых данных
+						const vector <char> buffer = move(adj->buffer);
+						// Останавливаем запись данных
+						this->disabled(method_t::WRITE, aid);
+						// Если функция обратного вызова на запись данных установлена
+						if(wrk->writeFn != nullptr)
+							// Выводим функцию обратного вызова
+							wrk->writeFn(buffer.data(), buffer.size(), aid, wrk->wid, reinterpret_cast <awh::core_t *> (this));
+					// Если данных недостаточно для записи в сокет
+					} else {
+						// Останавливаем запись данных
+						this->disabled(method_t::WRITE, aid);
+						// Если функция обратного вызова на запись данных установлена
+						if(wrk->writeFn != nullptr)
+							// Выводим функцию обратного вызова
+							wrk->writeFn(nullptr, 0, aid, wrk->wid, reinterpret_cast <awh::core_t *> (this));
 					}
 				} break;
 			}
