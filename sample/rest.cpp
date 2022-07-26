@@ -105,9 +105,10 @@ int main(int argc, char * argv[]) noexcept {
 	// Устанавливаем логин и пароль пользователя
 	rest.setUser("user", "password");
 	// Устанавливаем данные прокси-сервера
-	// rest.setProxy("http://B80TWR:uRMhnd@196.17.249.64:8000");
-	// rest.setProxy("socks5://rfbPbd:XcCuZH@45.144.169.109:8000");
-	// rest.setProxy("socks5://6S7rAk:g6K8XD@217.29.62.231:30810");
+	// rest.setProxy("http://qKseEr:t5QrcW@212.102.146.33:8000");
+	// rest.setProxy("socks5://3JMFxD:CWv6MP@45.130.126.236:8000");
+	// rest.setProxy("http://fn3nzc:GZJAeP@217.29.62.232:11283");
+	// rest.setProxy("socks5://xYkj89:eqCQJA@85.195.81.167:12387");
 	// Устанавливаем тип компрессии
 	rest.setCompress(http_t::compress_t::ALL_COMPRESS);
 	// Устанавливаем тип авторизации прокси-сервера
@@ -117,6 +118,7 @@ int main(int argc, char * argv[]) noexcept {
 	// rest.setAuthType(auth_t::type_t::DIGEST, auth_t::hash_t::MD5);
 	// Выполняем получение URL адреса сервера
 	// uri_t::url_t url = uri.parseUrl("https://2ip.ru");
+	// uri_t::url_t url = uri.parseUrl("https://ipv6.google.com");
 	// uri_t::url_t url = uri.parseUrl("http://localhost/test");
 	// uri_t::url_t url = uri.parseUrl("https://www.anyks.com");
 	uri_t::url_t url = uri.parseUrl("https://apple.com/ru/mac");
@@ -153,11 +155,11 @@ int main(int argc, char * argv[]) noexcept {
 	// Замеряем время начала работы
 	auto timeShifting = chrono::system_clock::now();
 	// Формируем GET запрос
-	const auto & body = rest.GET(url);
+	// const auto & body = rest.GET(url);
+	// const auto & body = rest.GET(url, {{"Connection", "close"}});
+	const auto & body = rest.GET(url, {{"User-Agent", "curl/7.64.1"}});
 	// Выводим время запроса // 3862 || 3869 == 3893
 	cout << " ++++++++++ Time Shifting " << chrono::duration_cast <chrono::milliseconds> (chrono::system_clock::now() - timeShifting).count() << endl;
-	// const auto & body = rest.GET(url, {{"Connection", "close"}});
-	// const auto & body = rest.GET(url, {{"User-Agent", "curl/7.64.1"}});
 	// Если данные получены
 	if(!body.empty()){
 		// Создаём объект JSON

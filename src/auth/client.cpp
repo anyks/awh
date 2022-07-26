@@ -128,18 +128,18 @@ void awh::client::Auth::setHeader(const string & header) noexcept {
 const string awh::client::Auth::getHeader(const string & method, const bool mode) noexcept {
 	// Результат работы функции
 	string result = "";
-	// Если фреймворк установлен
-	if(!method.empty() && (this->fmk != nullptr)){
-		/**
-		 * Выполняем отлов ошибок
-		 */
-		try {
-			// Если логин и пароль установлены
-			if(!this->user.empty() && !this->pass.empty()){
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		// Если логин и пароль установлены
+		if(!this->user.empty() && !this->pass.empty()){
+			// Определяем тип авторизации
+			switch((uint8_t) this->type){
 				// Если тип авторизации Digest
-				if(this->type == type_t::DIGEST){
+				case (uint8_t) type_t::DIGEST: {
 					// Если данные необходимые для продолжения работы переданы сервером
-					if(!this->digest.nonce.empty() && !this->digest.opaque.empty()){
+					if(!method.empty() && !this->digest.nonce.empty() && !this->digest.opaque.empty()){
 						// Параметры проверки дайджест авторизации
 						digest_t digest;
 						// Если ключ клиента не создан, создаём его
@@ -200,8 +200,9 @@ const string awh::client::Auth::getHeader(const string & method, const bool mode
 							}
 						}
 					}
+				} break;
 				// Если тип авторизации Basic
-				} else if(this->type == type_t::BASIC) {
+				case (uint8_t) type_t::BASIC: {					
 					// Выводим результат
 					result = base64_t().encode(this->fmk->format("%s:%s", this->user.c_str(), this->pass.c_str()));
 					// Если нужно вывести только значение заголовка
@@ -210,13 +211,13 @@ const string awh::client::Auth::getHeader(const string & method, const bool mode
 						result = this->fmk->format("Basic %s", result.c_str());
 					// Если нужно вывести полную строку запроса
 					else result = this->fmk->format("Authorization: Basic %s\r\n", result.c_str());
-				}
+				} break;
 			}
-		// Выполняем прехват ошибки
-		} catch(const exception & error) {
-			// Выводим в лог сообщение
-			this->log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		}
+	// Выполняем прехват ошибки
+	} catch(const exception & error) {
+		// Выводим в лог сообщение
+		this->log->print("%s", log_t::flag_t::CRITICAL, error.what());
 	}
 	// Выводим результат
 	return result;

@@ -872,6 +872,7 @@ vector <char> awh::Http::request(const bool nobody) const noexcept {
 						// Выполняем првоерку заголовка
 						switch(i){
 							case 0:
+							case 1:
 							case 2:
 							case 3: allow = !available[i]; break;
 						}
@@ -910,17 +911,17 @@ vector <char> awh::Http::request(const bool nobody) const noexcept {
 						// Если нужно сжать тело методом BROTLI
 						case (uint8_t) compress_t::BROTLI:
 							// Устанавливаем Content-Encoding если не передан
-							if(!available[1]) request.append(this->fmk->format("Content-Encoding: %s\r\n", "br"));
+							request.append(this->fmk->format("Content-Encoding: %s\r\n", "br"));
 						break;
 						// Если нужно сжать тело методом GZIP
 						case (uint8_t) compress_t::GZIP:
 							// Устанавливаем Content-Encoding если не передан
-							if(!available[1]) request.append(this->fmk->format("Content-Encoding: %s\r\n", "gzip"));
+							request.append(this->fmk->format("Content-Encoding: %s\r\n", "gzip"));
 						break;
 						// Если нужно сжать тело методом DEFLATE
 						case (uint8_t) compress_t::DEFLATE:
 							// Устанавливаем Content-Encoding если не передан
-							if(!available[1]) request.append(this->fmk->format("Content-Encoding: %s\r\n", "deflate"));
+							request.append(this->fmk->format("Content-Encoding: %s\r\n", "deflate"));
 						break;
 					}
 				}
@@ -997,6 +998,7 @@ vector <char> awh::Http::response(const bool nobody) const noexcept {
 						// Выполняем првоерку заголовка
 						switch(i){
 							case 0:
+							case 1:
 							case 2:
 							case 3: allow = !available[i]; break;
 						}
@@ -1035,17 +1037,17 @@ vector <char> awh::Http::response(const bool nobody) const noexcept {
 						// Если нужно сжать тело методом BROTLI
 						case (uint8_t) compress_t::BROTLI:
 							// Устанавливаем Content-Encoding если не передан
-							if(!available[1]) response.append(this->fmk->format("Content-Encoding: %s\r\n", "br"));
+							response.append(this->fmk->format("Content-Encoding: %s\r\n", "br"));
 						break;
 						// Если нужно сжать тело методом GZIP
 						case (uint8_t) compress_t::GZIP:
 							// Устанавливаем Content-Encoding если не передан
-							if(!available[1]) response.append(this->fmk->format("Content-Encoding: %s\r\n", "gzip"));
+							response.append(this->fmk->format("Content-Encoding: %s\r\n", "gzip"));
 						break;
 						// Если нужно сжать тело методом DEFLATE
 						case (uint8_t) compress_t::DEFLATE:
 							// Устанавливаем Content-Encoding если не передан
-							if(!available[1]) response.append(this->fmk->format("Content-Encoding: %s\r\n", "deflate"));
+							response.append(this->fmk->format("Content-Encoding: %s\r\n", "deflate"));
 						break;
 					}
 				}
@@ -1224,6 +1226,7 @@ vector <char> awh::Http::response(const u_int code, const string & mess) const n
 					// Выполняем првоерку заголовка
 					switch(i){
 						case 2:
+						case 3:
 						case 4:
 						case 5: allow = !available[i]; break;
 					}
@@ -1299,17 +1302,17 @@ vector <char> awh::Http::response(const u_int code, const string & mess) const n
 					// Если нужно сжать тело методом BROTLI
 					case (uint8_t) compress_t::BROTLI:
 						// Устанавливаем Content-Encoding если не передан
-						if(!available[3]) response.append(this->fmk->format("Content-Encoding: %s\r\n", "br"));
+						response.append(this->fmk->format("Content-Encoding: %s\r\n", "br"));
 					break;
 					// Если нужно сжать тело методом GZIP
 					case (uint8_t) compress_t::GZIP:
 						// Устанавливаем Content-Encoding если не передан
-						if(!available[3]) response.append(this->fmk->format("Content-Encoding: %s\r\n", "gzip"));
+						response.append(this->fmk->format("Content-Encoding: %s\r\n", "gzip"));
 					break;
 					// Если нужно сжать тело методом DEFLATE
 					case (uint8_t) compress_t::DEFLATE:
 						// Устанавливаем Content-Encoding если не передан
-						if(!available[3]) response.append(this->fmk->format("Content-Encoding: %s\r\n", "deflate"));
+						response.append(this->fmk->format("Content-Encoding: %s\r\n", "deflate"));
 					break;
 				}
 			}
@@ -1434,7 +1437,7 @@ vector <char> awh::Http::request(const uri_t::url_t & url, const web_t::method_t
 				// Флаг разрешающий вывода заголовка
 				bool allow = !this->isBlack(head);
 				// Выполняем перебор всех обязательных заголовков
-				for(uint8_t i = 0; i < 11; i++){
+				for(uint8_t i = 0; i < 12; i++){
 					// Если заголовок уже найден пропускаем его
 					if(available[i]) continue;
 					// Выполняем првоерку заголовка
@@ -1465,7 +1468,8 @@ vector <char> awh::Http::request(const uri_t::url_t & url, const web_t::method_t
 							case 5:
 							case 7:
 							case 8:
-							case 9: allow = !available[i]; break;
+							case 9:
+							case 10: allow = !available[i]; break;
 						}
 					}
 				}
@@ -1556,13 +1560,13 @@ vector <char> awh::Http::request(const uri_t::url_t & url, const web_t::method_t
 						case (uint8_t) fmk_t::os_t::FREEBSD: os = "FreeBSD"; break;
 					}
 					// Выполняем генерацию Юзер-агента клиента выполняющего HTTP запрос
-					this->userAgent = this->fmk->format("Mozilla/5.0 (%s; %s) %s/%s", os, this->servName.c_str(), this->servId.c_str(), this->servVer.c_str());
+					this->userAgent = this->fmk->format("%s (%s; %s/%s)", this->servName.c_str(), os, this->servId.c_str(), this->servVer.c_str());
 				}
 				// Добавляем заголовок в запрос
 				request.append(this->fmk->format("User-Agent: %s\r\n", this->userAgent.c_str()));
 			}
 			// Если заголовок авторизации не передан
-			if(!available[10] && !this->isBlack("Authorization") && !this->isBlack("Proxy-Authorization")){
+			if(!available[11] && !this->isBlack("Authorization") && !this->isBlack("Proxy-Authorization")){
 				// Метод HTTP запроса
 				string httpMethod = "";
 				// Определяем метод запроса
@@ -1621,17 +1625,17 @@ vector <char> awh::Http::request(const uri_t::url_t & url, const web_t::method_t
 						// Если нужно сжать тело методом BROTLI
 						case (uint8_t) compress_t::BROTLI:
 							// Устанавливаем Content-Encoding если не передан
-							if(!available[7]) request.append(this->fmk->format("Content-Encoding: %s\r\n", "br"));
+							request.append(this->fmk->format("Content-Encoding: %s\r\n", "br"));
 						break;
 						// Если нужно сжать тело методом GZIP
 						case (uint8_t) compress_t::GZIP:
 							// Устанавливаем Content-Encoding если не передан
-							if(!available[7]) request.append(this->fmk->format("Content-Encoding: %s\r\n", "gzip"));
+							request.append(this->fmk->format("Content-Encoding: %s\r\n", "gzip"));
 						break;
 						// Если нужно сжать тело методом DEFLATE
 						case (uint8_t) compress_t::DEFLATE:
 							// Устанавливаем Content-Encoding если не передан
-							if(!available[7]) request.append(this->fmk->format("Content-Encoding: %s\r\n", "deflate"));
+							request.append(this->fmk->format("Content-Encoding: %s\r\n", "deflate"));
 						break;
 					}
 				}

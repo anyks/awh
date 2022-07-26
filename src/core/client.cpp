@@ -850,21 +850,6 @@ void awh::client::Core::switchProxy(const size_t aid) noexcept {
 					this->disabled(method_t::WRITE, it->first);
 					// Активируем ожидание подключения
 					this->enabled(method_t::CONNECT, it->first);
-					// Выполняем очистку ошибок OpenSSL
-					ERR_clear_error();
-					// Выполняем проверку подключения
-					const int status = SSL_do_handshake(adj->ssl.ssl);
-					// Если подключение выполнено
-					if(status == 1){
-						// Если функция обратного вызова установлена, сообщаем, что мы подключились
-						if(wrk->connectFn != nullptr) wrk->connectFn(it->first, wrk->wid, this);
-					// Выполняем закрытие подключения
-					} else {
-						// Выводим сообщение об ошибке
-						this->error(status, it->first);
-						// Выполняем закрытие подключения
-						this->close(it->first);
-					}
 				// Выводим сообщение об ошибке
 				} else this->log->print("BIO new socket is failed", log_t::flag_t::CRITICAL);
 				// Выходим из функции

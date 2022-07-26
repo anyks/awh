@@ -246,9 +246,10 @@ int main(int argc, char * argv[]) noexcept {
 	// Выполняем активацию многопоточности
 	// ws.multiThreads(22);
 	// Устанавливаем данные прокси-сервера
-	// ws.setProxy("http://B80TWR:uRMhnd@196.17.249.64:8000");
-	// ws.setProxy("socks5://rfbPbd:XcCuZH@45.144.169.109:8000");
-	// ws.setProxy("socks5://6S7rAk:g6K8XD@217.29.62.231:30810");
+	// ws.setProxy("http://qKseEr:t5QrcW@212.102.146.33:8000");
+	// ws.setProxy("socks5://3JMFxD:CWv6MP@45.130.126.236:8000");
+	// ws.setProxy("http://fn3nzc:GZJAeP@217.29.62.232:11283");
+	// ws.setProxy("socks5://xYkj89:eqCQJA@85.195.81.167:12387");
 	// Выполняем инициализацию типа авторизации
 	// ws.setAuthType();
 	// ws.setAuthType(auth_t::type_t::DIGEST, auth_t::hash_t::SHA256);

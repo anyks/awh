@@ -496,11 +496,19 @@ void awh::client::Rest::actionProxyRead() noexcept {
 				// Получаем данные запроса
 				const auto & buffer = this->worker.proxy.socks5.get();
 				// Если данные получены
-				if(!buffer.empty())
+				if(!buffer.empty()){
+					// Выполняем очистку буфера данных
+					this->buffer.clear();
 					// Выполняем отправку запроса на сервер
 					core->write(buffer.data(), buffer.size(), this->aid);
+					// Если экшен соответствует, выполняем его сброс
+					if(this->action == action_t::PROXY_READ)
+						// Выполняем сброс экшена
+						this->action = action_t::NONE;
+					// Завершаем работу
+					return;
 				// Если данные все получены
-				else if(this->worker.proxy.socks5.isEnd()) {
+				} else if(this->worker.proxy.socks5.isEnd()) {
 					// Выполняем очистку буфера данных
 					this->buffer.clear();
 					// Если рукопожатие выполнено
@@ -547,6 +555,8 @@ void awh::client::Rest::actionProxyRead() noexcept {
 							this->messageFn(result, this);
 						// Завершаем работу
 						} else core->close(this->aid);
+						// Завершаем работу
+						return;
 					}
 				}
 			}
@@ -671,6 +681,8 @@ void awh::client::Rest::actionProxyRead() noexcept {
 					this->messageFn(result, this);
 				// Завершаем работу
 				} else core->close(this->aid);
+				// Завершаем работу
+				return;
 			}
 		} break;
 		// Иначе завершаем работу

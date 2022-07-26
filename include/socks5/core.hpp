@@ -140,7 +140,7 @@ namespace awh {
 				/**
 				 * ResMethod Конструктор
 				 */
-				ResMethod() : ver(0x0), method(0x0) {}
+				ResMethod() noexcept : ver(0x0), method(0x0) {}
 			} __attribute__((packed)) resMet_t;
 			/**
 			 * ResAuth Структура ответа на авторизацию
@@ -151,7 +151,7 @@ namespace awh {
 				/**
 				 * ResAuth Конструктор
 				 */
-				ResAuth() : ver(0x0), status(0x0) {}
+				ResAuth() noexcept : ver(0x0), status(0x0) {}
 			} __attribute__((packed)) resAuth_t;
 			/**
 			 * Req Структура запроса
@@ -164,7 +164,7 @@ namespace awh {
 				/**
 				 * Req Конструктор
 				 */
-				Req() : ver(0x0), cmd(0x0), rsv(0x0), atyp(0x0) {}
+				Req() noexcept : ver(0x0), cmd(0x0), rsv(0x0), atyp(0x0) {}
 			} __attribute__((packed)) req_t;
 			/**
 			 * Res Структура ответа
@@ -177,7 +177,7 @@ namespace awh {
 				/**
 				 * Resp Конструктор
 				 */
-				Res() : ver(0x0), rep(0x0), rsv(0x0), atyp(0x0) {}
+				Res() noexcept : ver(0x0), rep(0x0), rsv(0x0), atyp(0x0) {}
 			} __attribute__((packed)) res_t;
 			/**
 			 * IP Структура ip адреса сервера
@@ -188,26 +188,26 @@ namespace awh {
 				/**
 				 * IP Конструктор
 				 */
-				IP() : host(0x0), port(0x0) {}
+				IP() noexcept : host(0x0), port(0x0) {}
 			} __attribute__((packed)) ip_t;
 		protected:
 			// URL параметры REST запроса
 			uri_t::url_t url;
 		protected:
 			// Код сообщения
-			uint8_t code = 0x00;
+			uint8_t code;
 			// Стейт текущего запроса
-			state_t state = state_t::METHOD;
+			state_t state;
 		protected:
 			// Буфер бинарных данных
 			mutable vector <char> buffer;
 		protected:
 			// Создаём объект фреймворка
-			const fmk_t * fmk = nullptr;
+			const fmk_t * fmk;
 			// Создаём объект работы с логами
-			const log_t * log = nullptr;
+			const log_t * log;
 			// Создаём объект работы с URI ссылками
-			const uri_t * uri = nullptr;
+			const uri_t * uri;
 		protected:
 			/**
 			 * ipToHex Метод конвертации IP адреса в бинарный буфер
@@ -305,7 +305,7 @@ namespace awh {
 			 * @param log объект для работы с логами
 			 * @param uri объект для работы с URI
 			 */
-			Socks5(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcept : fmk(fmk), log(log), uri(uri) {}
+			Socks5(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcept : code(0x00), state(state_t::METHOD), fmk(fmk), log(log), uri(uri) {}
 			/**
 			 * ~Socks5 Деструктор
 			 */
