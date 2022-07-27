@@ -328,10 +328,12 @@ namespace awh {
 				if(stat(name.c_str(), &info) == 0){
 					// Если это каталог
 					if(S_ISDIR(info.st_mode)) result = type_t::DIR;
-					// Если это устройство ввода-вывода
-					else if(S_ISFIFO(info.st_mode)) result = type_t::FIFO;
+					// Если это устройство
+					else if(S_ISCHR(info.st_mode)) result = type_t::CHR;
 					// Если это файл
 					else if(S_ISREG(info.st_mode)) result = type_t::FILE;
+					// Если это устройство ввода-вывода
+					else if(S_ISFIFO(info.st_mode)) result = type_t::FIFO;
 					/**
 					 * Если - это не Windows
 					 */
@@ -342,8 +344,6 @@ namespace awh {
 						else if(S_ISBLK(info.st_mode)) result = type_t::BLK;
 						// Если это символьная ссылка
 						else if(S_ISLNK(info.st_mode)) result = type_t::LNK;
-						// Если это устройство ввода-вывода
-						else if(S_ISFIFO(info.st_mode)) result = type_t::FIFO;
 						// Если это сокет
 						else if(S_ISSOCK(info.st_mode)) result = type_t::SOCKET;
 					#endif
