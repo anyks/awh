@@ -238,7 +238,7 @@ int main(int argc, char * argv[]) noexcept {
 	// Разрешаем простое чтение базы событий
 	// core.setFrequency(0);
 	// Устанавливаем простое чтение базы событий
-	// core.easily(true);
+	core.easily(true);
 	// Устанавливаем адрес сертификата
 	core.setCA("./ca/cert.pem");
 	// Устанавливаем логин и пароль пользователя
