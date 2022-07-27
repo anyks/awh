@@ -121,11 +121,11 @@ int main(int argc, char * argv[]) noexcept {
 	// uri_t::url_t url = uri.parseUrl("https://ipv6.google.com");
 	// uri_t::url_t url = uri.parseUrl("http://localhost/test");
 	// uri_t::url_t url = uri.parseUrl("https://www.anyks.com");
-	// uri_t::url_t url = uri.parseUrl("https://apple.com/ru/mac");
+	uri_t::url_t url = uri.parseUrl("https://apple.com/ru/mac");
 	// uri_t::url_t url = uri.parseUrl("https://ru.wikipedia.org/wiki/HTTP");
 	// uri_t::url_t url = uri.parseUrl("https://api.binance.com/api/v3/exchangeInfo?symbol=BTCUSDT");
 	// uri_t::url_t url = uri.parseUrl("https://testnet.binance.vision/api/v3/exchangeInfo");
-	uri_t::url_t url = uri.parseUrl("https://api.coingecko.com/api/v3/coins/list?include_platform=true");
+	// uri_t::url_t url = uri.parseUrl("https://api.coingecko.com/api/v3/coins/list?include_platform=true");
 	// Подписываемся на событие коннекта и дисконнекта клиента
 	rest.on(bind(&WebClient::active, &executor, _1, _2));
 	// Подписываемся на событие получения сообщения
