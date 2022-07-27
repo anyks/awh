@@ -271,7 +271,7 @@ int main(int argc, char * argv[]) noexcept {
 	// Подписываемся на событие получения сообщения с сервера
 	ws.on(bind(&WebSocket::message, &executor, _1, _2, _3));
 	// Выполняем запуск WebSocket клиента
-	ws.start(true);	
+	ws.start();	
 	// Выводим результат
 	return 0;
 }
