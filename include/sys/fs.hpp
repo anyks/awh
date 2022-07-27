@@ -340,8 +340,6 @@ namespace awh {
 					 * Если - это не Windows
 					 */
 					#if !defined(_WIN32) && !defined(_WIN64)
-						// Если это блок устройства
-						else if(S_ISBLK(info.st_mode)) result = type_t::BLK;
 						// Если это символьная ссылка
 						else if(S_ISLNK(info.st_mode)) result = type_t::LNK;
 						// Если это сокет
