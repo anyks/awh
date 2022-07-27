@@ -202,7 +202,9 @@ void awh::client::Rest::actionRead() noexcept {
 			response.code = query.code;
 			// Устанавливаем сообщение ответа
 			response.message = query.message;
-			// Если включён режим отладки
+			/**
+			 * Если включён режим отладки
+			 */
 			#if defined(DEBUG_MODE)
 				{
 					// Получаем данные ответа
@@ -387,7 +389,9 @@ void awh::client::Rest::actionConnect() noexcept {
 		const auto & buffer = this->http.request(req.url, req.method);
 		// Если бинарные данные запроса получены
 		if(!buffer.empty()){
-			// Если включён режим отладки
+			/**
+			 * Если включён режим отладки
+			 */
 			#if defined(DEBUG_MODE)
 				// Выводим заголовок запроса
 				cout << "\x1B[33m\x1B[1m^^^^^^^^^ REQUEST ^^^^^^^^^\x1B[0m" << endl;
@@ -400,7 +404,9 @@ void awh::client::Rest::actionConnect() noexcept {
 			core->write(buffer.data(), buffer.size(), this->aid);
 			// Получаем данные тела запроса
 			while(!(entity = this->http.payload()).empty()){
-				// Если включён режим отладки
+				/**
+				 * Если включён режим отладки
+				 */
 				#if defined(DEBUG_MODE)
 					// Выводим сообщение о выводе чанка тела
 					cout << this->fmk->format("<chunk %u>", entity.size()) << endl;
@@ -529,7 +535,9 @@ void awh::client::Rest::actionProxyRead() noexcept {
 						response.code = this->worker.proxy.socks5.getCode();
 						// Устанавливаем сообщение ответа
 						response.message = this->worker.proxy.socks5.getMessage(response.code);
-						// Если включён режим отладки
+						/**
+						 * Если включён режим отладки
+						 */
 						#if defined(DEBUG_MODE)
 							// Если заголовки получены
 							if(!response.message.empty()){
@@ -579,7 +587,9 @@ void awh::client::Rest::actionProxyRead() noexcept {
 				response.code = query.code;
 				// Устанавливаем сообщение ответа
 				response.message = query.message;
-				// Если включён режим отладки
+				/**
+				 * Если включён режим отладки
+				 */
 				#if defined(DEBUG_MODE)
 					{
 						// Получаем данные ответа
@@ -731,7 +741,9 @@ void awh::client::Rest::actionProxyConnect() noexcept {
 			const auto & buffer = this->worker.proxy.http.proxy(request.url);
 			// Если бинарные данные запроса получены
 			if(!buffer.empty()){
-				// Если включён режим отладки
+				/**
+				 * Если включён режим отладки
+				 */
 				#if defined(DEBUG_MODE)
 					// Выводим заголовок запроса
 					cout << "\x1B[33m\x1B[1m^^^^^^^^^ REQUEST PROXY ^^^^^^^^^\x1B[0m" << endl;

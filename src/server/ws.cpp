@@ -233,7 +233,9 @@ void awh::server::WebSocket::actionRead(const size_t aid) noexcept {
 					vector <char> buffer;
 					// Метод компрессии данных
 					http_t::compress_t compress = http_t::compress_t::NONE;
-					// Если включён режим отладки
+					/**
+					 * Если включён режим отладки
+					 */
 					#if defined(DEBUG_MODE)
 						// Получаем данные запроса
 						const auto & request = reinterpret_cast <http_t *> (&adj->http)->request(true);
@@ -297,7 +299,9 @@ void awh::server::WebSocket::actionRead(const size_t aid) noexcept {
 								buffer = adj->http.response();
 								// Если бинарные данные ответа получены
 								if(!buffer.empty()){
-									// Если включён режим отладки
+									/**
+									 * Если включён режим отладки
+									 */
 									#if defined(DEBUG_MODE)
 										// Выводим заголовок ответа
 										cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
@@ -363,7 +367,9 @@ void awh::server::WebSocket::actionRead(const size_t aid) noexcept {
 					if((adj->stopped = !buffer.empty())){
 						// Тело полезной нагрузки
 						vector <char> payload;
-						// Если включён режим отладки
+						/**
+						 * Если включён режим отладки
+						 */
 						#if defined(DEBUG_MODE)
 							// Выводим заголовок ответа
 							cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
@@ -376,7 +382,9 @@ void awh::server::WebSocket::actionRead(const size_t aid) noexcept {
 						core->write(buffer.data(), buffer.size(), aid);
 						// Получаем данные тела запроса
 						while(!(payload = adj->http.payload()).empty()){
-							// Если включён режим отладки
+							/**
+							 * Если включён режим отладки
+							 */
 							#if defined(DEBUG_MODE)
 								// Выводим сообщение о выводе чанка полезной нагрузки
 								cout << this->fmk->format("<chunk %u>", payload.size()) << endl;
@@ -903,7 +911,9 @@ void awh::server::WebSocket::sendError(const size_t aid, const mess_t & mess) co
 				const auto & buffer = this->frame.message(mess);
 				// Если данные сообщения получены
 				if((adj->stopped = !buffer.empty())){
-					// Если включён режим отладки
+					/**
+					 * Если включён режим отладки
+					 */
 					#if defined(DEBUG_MODE)
 						// Выводим заголовок ответа
 						cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
@@ -939,7 +949,9 @@ void awh::server::WebSocket::send(const size_t aid, const char * message, const 
 			adj->allow.send = !adj->allow.send;
 			// Если рукопожатие выполнено
 			if(adj->http.isHandshake()){
-				// Если включён режим отладки
+				/**
+				 * Если включён режим отладки
+				 */
 				#if defined(DEBUG_MODE)
 					// Выводим заголовок ответа
 					cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;

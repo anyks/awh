@@ -409,13 +409,17 @@ void awh::Core::clean(const size_t aid) const noexcept {
 		adj->bev.locked = worker_t::locked_t();
 		// Если сокет активен
 		if(adj->bev.socket > -1){
-			// Если - это Windows
+			/**
+			 * Если операционной системой является Windows
+			 */
 			#if defined(_WIN32) || defined(_WIN64)
 				// Запрещаем работу с сокетом
 				shutdown(adj->bev.socket, SD_BOTH);
 				// Выполняем закрытие сокета
 				closesocket(adj->bev.socket);
-			// Если - это Unix
+			/**
+			 * Если операционной системой является Nix-подобная
+			 */
 			#else
 				// Запрещаем работу с сокетом
 				shutdown(adj->bev.socket, SHUT_RDWR);
@@ -618,7 +622,9 @@ const awh::Core::sockaddr_t awh::Core::sockaddr(const string & ip, const u_int p
 			// Выходим
 			return sockaddr_t();
 		}
-		// Устанавливаем настройки для *Nix подобных систем
+		/**
+		 * Если операционной системой является Nix-подобная
+		 */
 		#if !defined(_WIN32) && !defined(_WIN64)
 			// Выполняем игнорирование сигнала неверной инструкции процессора
 			this->socket.noSigill();
@@ -630,7 +636,9 @@ const awh::Core::sockaddr_t awh::Core::sockaddr(const string & ip, const u_int p
 				if(family == AF_INET6) this->socket.ipV6only(result.socket, this->ipV6only);
 			// Активируем keepalive
 			} else this->socket.keepAlive(result.socket, this->alive.keepcnt, this->alive.keepidle, this->alive.keepintvl);
-		// Устанавливаем настройки для OS Windows
+		/**
+		 * Если операционной системой является MS Windows
+		 */
 		#else
 			// Если ядро является сервером
 			if(this->type == type_t::SERVER){
@@ -1000,13 +1008,13 @@ void awh::Core::rebase() noexcept {
 		 */
 		#elif __linux__
 			// Создаем новую базу
-			this->base = ev_loop_new(ev_recommended_backends () | EVBACKEND_EPOLL);
+			this->base = ev_loop_new(ev_recommended_backends() | EVBACKEND_EPOLL);
 		/**
 		 * Если операционной системой является FreeBSD или MacOS X
 		 */
 		#elif __APPLE__ || __MACH__ || __FreeBSD__
 			// Создаем новую базу
-			this->base = ev_loop_new(ev_recommended_backends () | EVBACKEND_KQUEUE);
+			this->base = ev_loop_new(ev_recommended_backends() | EVBACKEND_KQUEUE);
 		#endif
 		// Выполняем разблокировку потока
 		this->mtx.main.unlock();
@@ -1058,13 +1066,13 @@ void awh::Core::rebase() noexcept {
 		 */
 		#elif __linux__
 			// Создаем новую базу
-			this->base = ev_loop_new(ev_recommended_backends () | EVBACKEND_EPOLL);
+			this->base = ev_loop_new(ev_recommended_backends() | EVBACKEND_EPOLL);
 		/**
 		 * Если операционной системой является FreeBSD или MacOS X
 		 */
 		#elif __APPLE__ || __MACH__ || __FreeBSD__
 			// Создаем новую базу
-			this->base = ev_loop_new(ev_recommended_backends () | EVBACKEND_KQUEUE);
+			this->base = ev_loop_new(ev_recommended_backends() | EVBACKEND_KQUEUE);
 		#endif
 		// Выполняем разблокировку потока
 		this->mtx.main.unlock();
@@ -1253,94 +1261,97 @@ void awh::Core::enabled(const method_t method, const size_t aid, const bool time
 		if(it != this->adjutants.end()){
 			// Получаем объект адъютанта
 			awh::worker_t::adj_t * adj = const_cast <awh::worker_t::adj_t *> (it->second);
-			// Получаем объект подключения
-			worker_t * wrk = (worker_t *) const_cast <awh::worker_t *> (adj->parent);
-			// Определяем метод события сокета
-			switch((uint8_t) method){
-				// Если событием является чтение
-				case (uint8_t) method_t::READ: {
-					// Разрешаем чтение данных из сокета
-					adj->bev.locked.read = false;
-					// Устанавливаем размер детектируемых байт на чтение
-					adj->marker.read = wrk->marker.read;
-					// Устанавливаем время ожидания чтения данных
-					adj->timeouts.read = wrk->timeouts.read;
-					// Устанавливаем приоритет выполнения для события на чтение
-					ev_set_priority(&adj->bev.event.read, -2);
-					// Устанавливаем базу событий
-					adj->bev.event.read.set(this->base);
-					// Устанавливаем сокет для чтения
-					adj->bev.event.read.set(adj->bev.socket, ev::READ);
-					// Устанавливаем событие на чтение данных подключения
-					adj->bev.event.read.set <awh::worker_t::adj_t, &awh::worker_t::adj_t::read> (adj);
-					// Запускаем чтение данных
-					adj->bev.event.read.start();
-					// Если флаг ожидания входящих сообщений, активирован
-					if(timeout && (adj->timeouts.read > 0)){
-						// Устанавливаем приоритет выполнения для таймаута на чтение
-						ev_set_priority(&adj->bev.timer.read, 0);
+			// Если сокет подключения активен
+			if(adj->bev.socket > -1){
+				// Получаем объект подключения
+				worker_t * wrk = (worker_t *) const_cast <awh::worker_t *> (adj->parent);
+				// Определяем метод события сокета
+				switch((uint8_t) method){
+					// Если событием является чтение
+					case (uint8_t) method_t::READ: {
+						// Разрешаем чтение данных из сокета
+						adj->bev.locked.read = false;
+						// Устанавливаем размер детектируемых байт на чтение
+						adj->marker.read = wrk->marker.read;
+						// Устанавливаем время ожидания чтения данных
+						adj->timeouts.read = wrk->timeouts.read;
+						// Устанавливаем приоритет выполнения для события на чтение
+						ev_set_priority(&adj->bev.event.read, -2);
 						// Устанавливаем базу событий
-						adj->bev.timer.read.set(this->base);
-						// Устанавливаем событие на таймаут чтения данных подключения
-						adj->bev.timer.read.set <awh::worker_t::adj_t, &awh::worker_t::adj_t::timeout> (adj);
-						// Запускаем ожидание чтения данных
-						adj->bev.timer.read.start(adj->timeouts.read);
-					}
-				} break;
-				// Если событием является запись
-				case (uint8_t) method_t::WRITE: {
-					// Разрешаем запись данных в сокет
-					adj->bev.locked.write = false;
-					// Устанавливаем размер детектируемых байт на запись
-					adj->marker.write = wrk->marker.write;
-					// Устанавливаем время ожидания записи данных
-					adj->timeouts.write = wrk->timeouts.write;
-					// Устанавливаем приоритет выполнения для события на запись
-					ev_set_priority(&adj->bev.event.write, -2);
-					// Устанавливаем базу событий
-					adj->bev.event.write.set(this->base);
-					// Устанавливаем сокет для записи
-					adj->bev.event.write.set(adj->bev.socket, ev::WRITE);
-					// Устанавливаем событие на запись данных подключения
-					adj->bev.event.write.set <awh::worker_t::adj_t, &awh::worker_t::adj_t::write> (adj);
-					// Запускаем запись данных
-					adj->bev.event.write.start();
-					// Если флаг ожидания исходящих сообщений, активирован
-					if(timeout && (adj->timeouts.write > 0)){
-						// Устанавливаем приоритет выполнения для таймаута на запись
-						ev_set_priority(&adj->bev.timer.write, 0);
+						adj->bev.event.read.set(this->base);
+						// Устанавливаем сокет для чтения
+						adj->bev.event.read.set(adj->bev.socket, ev::READ);
+						// Устанавливаем событие на чтение данных подключения
+						adj->bev.event.read.set <awh::worker_t::adj_t, &awh::worker_t::adj_t::read> (adj);
+						// Запускаем чтение данных
+						adj->bev.event.read.start();
+						// Если флаг ожидания входящих сообщений, активирован
+						if(timeout && (adj->timeouts.read > 0)){
+							// Устанавливаем приоритет выполнения для таймаута на чтение
+							ev_set_priority(&adj->bev.timer.read, 0);
+							// Устанавливаем базу событий
+							adj->bev.timer.read.set(this->base);
+							// Устанавливаем событие на таймаут чтения данных подключения
+							adj->bev.timer.read.set <awh::worker_t::adj_t, &awh::worker_t::adj_t::timeout> (adj);
+							// Запускаем ожидание чтения данных
+							adj->bev.timer.read.start(adj->timeouts.read);
+						}
+					} break;
+					// Если событием является запись
+					case (uint8_t) method_t::WRITE: {
+						// Разрешаем запись данных в сокет
+						adj->bev.locked.write = false;
+						// Устанавливаем размер детектируемых байт на запись
+						adj->marker.write = wrk->marker.write;
+						// Устанавливаем время ожидания записи данных
+						adj->timeouts.write = wrk->timeouts.write;
+						// Устанавливаем приоритет выполнения для события на запись
+						ev_set_priority(&adj->bev.event.write, -2);
 						// Устанавливаем базу событий
-						adj->bev.timer.write.set(this->base);
-						// Устанавливаем событие на таймаут записи данных подключения
-						adj->bev.timer.write.set <awh::worker_t::adj_t, &awh::worker_t::adj_t::timeout> (adj);
-						// Запускаем ожидание записи данных
-						adj->bev.timer.write.start(adj->timeouts.write);
-					}
-				} break;
-				// Если событием является подключение
-				case (uint8_t) method_t::CONNECT: {
-					// Устанавливаем время ожидания записи данных
-					adj->timeouts.connect = wrk->timeouts.connect;
-					// Устанавливаем приоритет выполнения для события на чтения
-					ev_set_priority(&adj->bev.event.connect, -2);
-					// Устанавливаем базу событий
-					adj->bev.event.connect.set(this->base);
-					// Устанавливаем сокет для записи
-					adj->bev.event.connect.set(adj->bev.socket, ev::WRITE);
-					// Устанавливаем событие подключения
-					adj->bev.event.connect.set <awh::worker_t::adj_t, &awh::worker_t::adj_t::connect> (adj);
-					// Выполняем запуск подключения
-					adj->bev.event.connect.start();
-					// Если время ожидания записи данных установлено
-					if(timeout && (adj->timeouts.connect > 0)){
-						// Устанавливаем базу событий
-						adj->bev.timer.connect.set(this->base);
+						adj->bev.event.write.set(this->base);
+						// Устанавливаем сокет для записи
+						adj->bev.event.write.set(adj->bev.socket, ev::WRITE);
 						// Устанавливаем событие на запись данных подключения
-						adj->bev.timer.connect.set <awh::worker_t::adj_t, &awh::worker_t::adj_t::timeout> (adj);
-						// Запускаем запись данных на сервер
-						adj->bev.timer.connect.start(adj->timeouts.connect);
-					}
-				} break;
+						adj->bev.event.write.set <awh::worker_t::adj_t, &awh::worker_t::adj_t::write> (adj);
+						// Запускаем запись данных
+						adj->bev.event.write.start();
+						// Если флаг ожидания исходящих сообщений, активирован
+						if(timeout && (adj->timeouts.write > 0)){
+							// Устанавливаем приоритет выполнения для таймаута на запись
+							ev_set_priority(&adj->bev.timer.write, 0);
+							// Устанавливаем базу событий
+							adj->bev.timer.write.set(this->base);
+							// Устанавливаем событие на таймаут записи данных подключения
+							adj->bev.timer.write.set <awh::worker_t::adj_t, &awh::worker_t::adj_t::timeout> (adj);
+							// Запускаем ожидание записи данных
+							adj->bev.timer.write.start(adj->timeouts.write);
+						}
+					} break;
+					// Если событием является подключение
+					case (uint8_t) method_t::CONNECT: {
+						// Устанавливаем время ожидания записи данных
+						adj->timeouts.connect = wrk->timeouts.connect;
+						// Устанавливаем приоритет выполнения для события на чтения
+						ev_set_priority(&adj->bev.event.connect, -2);
+						// Устанавливаем базу событий
+						adj->bev.event.connect.set(this->base);
+						// Устанавливаем сокет для записи
+						adj->bev.event.connect.set(adj->bev.socket, ev::WRITE);
+						// Устанавливаем событие подключения
+						adj->bev.event.connect.set <awh::worker_t::adj_t, &awh::worker_t::adj_t::connect> (adj);
+						// Выполняем запуск подключения
+						adj->bev.event.connect.start();
+						// Если время ожидания записи данных установлено
+						if(timeout && (adj->timeouts.connect > 0)){
+							// Устанавливаем базу событий
+							adj->bev.timer.connect.set(this->base);
+							// Устанавливаем событие на запись данных подключения
+							adj->bev.timer.connect.set <awh::worker_t::adj_t, &awh::worker_t::adj_t::timeout> (adj);
+							// Запускаем запись данных на сервер
+							adj->bev.timer.connect.start(adj->timeouts.connect);
+						}
+					} break;
+				}
 			}
 		}
 	}
@@ -1363,9 +1374,26 @@ void awh::Core::write(const char * buffer, const size_t size, const size_t aid) 
 			// Добавляем буфер данных для записи
 			adj->buffer.insert(adj->buffer.end(), buffer, buffer + size);
 			// Если запись в сокет заблокирована
-			if(adj->bev.locked.write)
-				// Разрешаем выполнение записи в сокет
-				this->enabled(method_t::WRITE, it->first);
+			if(adj->bev.locked.write){
+				/**
+				 * Если операционной системой является Nix-подобная
+				 */
+				#if !defined(_WIN32) && !defined(_WIN64)
+					// Разрешаем выполнение записи в сокет
+					this->enabled(method_t::WRITE, it->first);
+				/**
+				 * Если операционной системой является MS Windows
+				 */
+				#else
+					// Если сокет подключения активен
+					if(adj->bev.socket > -1){
+						// Разрешаем запись данных в сокет
+						adj->bev.locked.write = false;
+						// Выполняем передачу данных
+						this->transfer(core_t::method_t::WRITE, it->first);
+					}
+				#endif
+			}
 		}
 	}
 }

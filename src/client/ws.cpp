@@ -228,7 +228,9 @@ void awh::client::WebSocket::actionRead() noexcept {
 		const size_t bytes = this->http.parse(this->buffer.payload.data(), this->buffer.payload.size());
 		// Если все данные получены
 		if(this->http.isEnd()){
-			// Если включён режим отладки
+			/**
+			 * Если включён режим отладки
+			 */
 			#if defined(DEBUG_MODE)
 				// Получаем данные ответа
 				const auto & response = reinterpret_cast <http_t *> (&this->http)->response(true);
@@ -546,7 +548,9 @@ void awh::client::WebSocket::actionConnect() noexcept {
 	const auto & buffer = this->http.request(this->worker.url);
 	// Если бинарные данные запроса получены
 	if(!buffer.empty()){
-		// Если включён режим отладки
+		/**
+		 * Если включён режим отладки
+		 */
 		#if defined(DEBUG_MODE)
 			// Выводим заголовок запроса
 			cout << "\x1B[33m\x1B[1m^^^^^^^^^ REQUEST ^^^^^^^^^\x1B[0m" << endl;
@@ -637,7 +641,9 @@ void awh::client::WebSocket::actionProxyRead() noexcept {
 						mess_t mess(this->code);
 						// Устанавливаем сообщение ответа
 						mess = this->worker.proxy.socks5.getMessage(this->code);
-						// Если включён режим отладки
+						/**
+						 * Если включён режим отладки
+						 */
 						#if defined(DEBUG_MODE)
 							// Если заголовки получены
 							if(!mess.text.empty()){
@@ -675,7 +681,9 @@ void awh::client::WebSocket::actionProxyRead() noexcept {
 				this->code = query.code;
 				// Создаём сообщение
 				mess_t mess(this->code, query.message);
-				// Если включён режим отладки
+				/**
+				 * Если включён режим отладки
+				 */
 				#if defined(DEBUG_MODE)
 					// Получаем данные ответа
 					const auto & response = this->worker.proxy.http.response(true);
@@ -807,7 +815,9 @@ void awh::client::WebSocket::actionProxyConnect() noexcept {
 			const auto & buffer = this->worker.proxy.http.proxy(this->worker.url);
 			// Если бинарные данные запроса получены
 			if(!buffer.empty()){
-				// Если включён режим отладки
+				/**
+				 * Если включён режим отладки
+				 */
 				#if defined(DEBUG_MODE)
 					// Выводим заголовок запроса
 					cout << "\x1B[33m\x1B[1m^^^^^^^^^ REQUEST PROXY ^^^^^^^^^\x1B[0m" << endl;
@@ -1063,7 +1073,9 @@ void awh::client::WebSocket::sendError(const mess_t & mess) noexcept {
 			const auto & buffer = this->frame.message(mess);
 			// Если данные сообщения получены
 			if(!buffer.empty()){
-				// Если включён режим отладки
+				/**
+				 * Если включён режим отладки
+				 */
 				#if defined(DEBUG_MODE)
 					// Выводим заголовок ответа
 					cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
@@ -1095,7 +1107,9 @@ void awh::client::WebSocket::send(const char * message, const size_t size, const
 		this->allow.send = !this->allow.send;
 		// Если рукопожатие выполнено
 		if((message != nullptr) && (size > 0) && this->http.isHandshake() && (this->aid > 0)){
-			// Если включён режим отладки
+			/**
+			 * Если включён режим отладки
+			 */
 			#if defined(DEBUG_MODE)
 				// Выводим заголовок ответа
 				cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;

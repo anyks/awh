@@ -80,13 +80,17 @@ void awh::server::Core::resolver(const string & ip, worker_t * wrk) noexcept {
 void awh::server::Core::close(const int fd) noexcept {
 	// Если сокет активен
 	if(fd > -1){
-		// Если - это Windows
+		/**
+		 * Если операционной системой является MS Windows
+		 */
 		#if defined(_WIN32) || defined(_WIN64)
 			// Запрещаем работу с сокетом
 			shutdown(fd, SD_BOTH);
 			// Выполняем закрытие сокета
 			closesocket(fd);
-		// Если - это Unix
+		/**
+		 * Если операционной системой является Nix-подобная
+		 */
 		#else
 			// Запрещаем работу с сокетом
 			shutdown(fd, SHUT_RDWR);
@@ -201,7 +205,9 @@ void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 						mac = this->ifnet.mac(ip, this->net.family);
 					} break;
 				}
-				// Устанавливаем настройки для *Nix подобных систем
+				/**
+				 * Если операционной системой является Nix-подобная
+				 */
 				#if !defined(_WIN32) && !defined(_WIN64)
 					// Выполняем игнорирование сигнала неверной инструкции процессора
 					this->socket.noSigill();
@@ -673,6 +679,8 @@ void awh::server::Core::transfer(const method_t method, const size_t aid) noexce
 					if(adj->timeouts.read > 0)
 						// Запускаем ожидание чтения данных с сервера
 						adj->bev.timer.read.start(adj->timeouts.read);
+					// Запускаем чтение данных снова
+					if(bytes != 0) adj->bev.event.read.start();
 					// Если данные получены
 					if(bytes > 0){
 						// Если данные считанные из буфера, больше размера ожидающего буфера
@@ -813,7 +821,9 @@ void awh::server::Core::setBandwidth(const size_t aid, const string & read, cons
 	auto it = this->adjutants.find(aid);
 	// Если адъютант получен
 	if(it != this->adjutants.end()){
-		// Если - это Unix
+		/**
+		 * Если операционной системой является Nix-подобная
+		 */
 		#if !defined(_WIN32) && !defined(_WIN64)
 			// Получаем объект адъютанта
 			awh::worker_t::adj_t * adj = const_cast <awh::worker_t::adj_t *> (it->second);
@@ -825,7 +835,9 @@ void awh::server::Core::setBandwidth(const size_t aid, const string & read, cons
 			const int snd = (!write.empty() ? this->fmk->sizeBuffer(write) : 0);
 			// Устанавливаем размер буфера
 			if(adj->bev.socket > 0) this->socket.bufferSize(adj->bev.socket, rcv, snd, wrk->total);
-		// Если - это Windows
+		/**
+		 * Если операционной системой является MS Windows
+		 */
 		#else
 			// Блокируем вывод переменных
 			(void) read;
