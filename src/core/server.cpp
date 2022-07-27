@@ -113,8 +113,13 @@ void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 		if(it != this->workers.end()){
 			// Получаем объект подключения
 			worker_t * wrk = (worker_t *) const_cast <awh::worker_t *> (it->second);
-			// Запускаем запись данных на сервер (Для Windows)
-			wrk->io.start();
+			/**
+			 * Если операционной системой является MS Windows
+			 */
+			#if defined(_WIN32) || defined(_WIN64)
+				// Запускаем запись данных на сервер (Для Windows)
+				wrk->io.start();
+			#endif
 			// Если требуется использовать unix-сокет
 			if(this->isSetUnixSocket()){
 				/**
@@ -129,6 +134,8 @@ void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 					const int socket = ::accept(fd, reinterpret_cast <struct sockaddr *> (&client), &len);
 					// Если сокет не создан тогда выходим
 					if(socket < 0) return;
+					// Выполняем закрытие прежнего файлового дескриптора
+					// this->close(fd);
 					// Выполняем игнорирование сигнала неверной инструкции процессора
 					this->socket.noSigill();
 					// Отключаем сигнал записи в оборванное подключение
@@ -182,6 +189,8 @@ void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 						socket = ::accept(fd, reinterpret_cast <struct sockaddr *> (&client), &len);
 						// Если сокет не создан тогда выходим
 						if(socket < 0) return;
+						// Выполняем закрытие прежнего файлового дескриптора
+						// this->close(fd);
 						// Получаем данные подключившегося клиента
 						ip = this->ifnet.ip((struct sockaddr *) &client, this->net.family);
 						// Если IP адрес получен пустой, устанавливаем адрес сервера
@@ -199,6 +208,8 @@ void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 						socket = ::accept(fd, reinterpret_cast <struct sockaddr *> (&client), &len);
 						// Если сокет не создан тогда выходим
 						if(socket < 0) return;
+						// Выполняем закрытие прежнего файлового дескриптора
+						// this->close(fd);
 						// Получаем данные подключившегося клиента
 						ip = this->ifnet.ip((struct sockaddr *) &client, this->net.family);
 						// Если IP адрес получен пустой, устанавливаем адрес сервера
@@ -681,8 +692,13 @@ void awh::server::Core::transfer(const method_t method, const size_t aid) noexce
 					if(adj->timeouts.read > 0)
 						// Запускаем ожидание чтения данных с сервера
 						adj->bev.timer.read.start(adj->timeouts.read);
-					// Запускаем чтение данных снова (Для Windows)
-					if(bytes != 0) adj->bev.event.read.start();
+					/**
+					 * Если операционной системой является MS Windows
+					 */
+					#if defined(_WIN32) || defined(_WIN64)
+						// Запускаем чтение данных снова (Для Windows)
+						if(bytes != 0) adj->bev.event.read.start();
+					#endif
 					// Если данные получены
 					if(bytes > 0){
 						// Если данные считанные из буфера, больше размера ожидающего буфера

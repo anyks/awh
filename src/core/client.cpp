@@ -449,7 +449,7 @@ void awh::client::Core::reconnect(const size_t wid) noexcept {
 				// Получаем URL параметры запроса
 				const uri_t::url_t & url = (wrk->isProxy() ? wrk->proxy.url : wrk->url);
 
-				/*
+				
 				// Структура определяющая тип адреса
 				struct sockaddr_in serv_addr;
 
@@ -473,7 +473,7 @@ void awh::client::Core::reconnect(const size_t wid) noexcept {
 				printf("IP address: %s\n", ip);
 				
 				const_cast <uri_t::url_t *> (&url)->ip = ip;
-				*/
+				
 				
 
 				// Выполняем запуск системы
@@ -788,7 +788,7 @@ void awh::client::Core::open(const size_t wid) noexcept {
 					const uri_t::url_t & url = (wrk->isProxy() ? wrk->proxy.url : wrk->url);
 
 
-					/*
+					
 					// Структура определяющая тип адреса
 					struct sockaddr_in serv_addr;
 
@@ -812,7 +812,7 @@ void awh::client::Core::open(const size_t wid) noexcept {
 					printf("IP address: %s\n", ip);
 
 					const_cast <uri_t::url_t *> (&url)->ip = ip;
-					*/
+					
 					
 					
 					// Выполняем запуск системы
@@ -1152,8 +1152,13 @@ void awh::client::Core::transfer(const method_t method, const size_t aid) noexce
 						if(adj->timeouts.read > 0)
 							// Запускаем ожидание чтения данных с сервера
 							adj->bev.timer.read.start(adj->timeouts.read);
-						// Запускаем чтение данных снова (Для Windows)
-						if(bytes != 0) adj->bev.event.read.start();
+						/**
+						 * Если операционной системой является MS Windows
+						 */
+						#if defined(_WIN32) || defined(_WIN64)
+							// Запускаем чтение данных снова (Для Windows)
+							if(bytes != 0) adj->bev.event.read.start();
+						#endif
 						// Если данные получены
 						if(bytes > 0){
 							// Если данные считанные из буфера, больше размера ожидающего буфера
