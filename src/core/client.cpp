@@ -1145,7 +1145,7 @@ void awh::client::Core::transfer(const method_t method, const size_t aid) noexce
 						// Останавливаем таймаут ожидания на чтение из сокета
 						adj->bev.timer.read.stop();
 						// Выполняем принудительное исполнение таймеров
-						if(this->socket.isBlocking(adj->bev.socket) == 1) this->executeTimers();
+						if(this->socket.isBlocking(adj->bev.socket) != 0) this->executeTimers();
 						// Если время ожидания записи данных установлено
 						if(adj->timeouts.read > 0)
 							// Запускаем ожидание чтения данных с сервера
@@ -1261,7 +1261,7 @@ void awh::client::Core::transfer(const method_t method, const size_t aid) noexce
 							// Останавливаем таймаут ожидания на запись в сокет
 							adj->bev.timer.write.stop();
 							// Выполняем принудительное исполнение таймеров
-							if(this->socket.isBlocking(adj->bev.socket) == 1) this->executeTimers();
+							if(this->socket.isBlocking(adj->bev.socket) != 0) this->executeTimers();
 							// Если время ожидания записи данных установлено
 							if(adj->timeouts.write > 0)
 								// Запускаем ожидание запись данных на сервер

@@ -51,7 +51,9 @@ int awh::Socket::noSigill() const noexcept {
 int awh::Socket::tcpCork(const int fd) const noexcept {
 	// Устанавливаем параметр
 	int tcpCork = 1;
-	// Если это Linux
+	/**
+	 * Если это Linux
+	 */
 	#ifdef __linux__
 		// Устанавливаем TCP_CORK
 		if(setsockopt(fd, IPPROTO_TCP, TCP_CORK, &tcpCork, sizeof(tcpCork)) < 0){
@@ -60,7 +62,9 @@ int awh::Socket::tcpCork(const int fd) const noexcept {
 			// Выходим
 			return -1;
 		}
-	// Если это FreeBSD или MacOS X
+	/**
+	 * Если это FreeBSD или MacOS X
+	 */
 	#elif __APPLE__ || __MACH__ || __FreeBSD__
 		// Устанавливаем TCP_NOPUSH
 		if(setsockopt(fd, IPPROTO_TCP, TCP_NOPUSH, &tcpCork, sizeof(tcpCork)) < 0){
@@ -94,7 +98,9 @@ int awh::Socket::blocking(const int fd) const noexcept {
 				return -1;
 			}
 		}
-	// Для всех остальных операционных систем
+	/**
+	 * Для всех остальных операционных систем
+	 */
 	#else
 		{
 			// Флаги файлового дескриптора
@@ -127,7 +133,9 @@ int awh::Socket::blocking(const int fd) const noexcept {
  * @return   результат работы функции
  */
 int awh::Socket::noSigpipe(const int fd) const noexcept {
-	// Если это Linux
+	/**
+	 * Если это Linux
+	 */
 	#ifdef __linux__
 		// Создаем структуру активации сигнала
 		struct sigaction act;
@@ -146,7 +154,9 @@ int awh::Socket::noSigpipe(const int fd) const noexcept {
 		}
 		// Отключаем вывод сигнала записи в пустой сокет
 		// if(signal(SIGPIPE, SIG_IGN) == SIG_ERR) return -1;
-	// Если это FreeBSD или MacOS X
+	/**
+	 * Если это FreeBSD или MacOS X
+	 */
 	#elif __APPLE__ || __MACH__ || __FreeBSD__
 		// Устанавливаем параметр
 		int noSigpipe = 1;
@@ -213,6 +223,9 @@ int awh::Socket::isBlocking(const int fd) const noexcept {
 	 */
 	#if defined(_WIN32) || defined(_WIN64)
 		{
+			// Все удачно
+			return -1;
+			/*
 			// Буфер данных для чтения
 			char buffer[1];
 			// Выполняем чтение из сокета 0 байт
@@ -223,8 +236,11 @@ int awh::Socket::isBlocking(const int fd) const noexcept {
 			else if((bytes == -1) && (GetLastError() == WSAEWOULDBLOCK))
 				// Сообщаем, что сокет находится в неблокирующем режиме
 				return 0;
+			*/
 		}
-	// Для всех остальных операционных систем
+	/**
+	 * Для всех остальных операционных систем
+	 */
 	#else
 		{
 			// Флаги файлового дескриптора
@@ -301,7 +317,9 @@ int awh::Socket::nonBlocking(const int fd) const noexcept {
 				return -1;
 			}
 		}
-	// Для всех остальных операционных систем
+	/**
+	 * Для всех остальных операционных систем
+	 */
 	#else
 		{
 			// Флаги файлового дескриптора
@@ -390,7 +408,7 @@ int awh::Socket::keepAlive(const int fd, const int cnt, const int idle, const in
 			}
 		}
 	/**
-	 * Методы только для *Nix
+	 * Методы только для *Nix-подобных операционных систем
 	 */
 	#else
 		// Устанавливаем параметр
@@ -409,7 +427,9 @@ int awh::Socket::keepAlive(const int fd, const int cnt, const int idle, const in
 			// Выходим
 			return -1;
 		}
-		// Если - это MacOS X
+		/**
+		 * Если - это MacOS X
+		 */
 		#ifdef __APPLE__
 			// Время через которое происходит проверка подключения
 			if(setsockopt(fd, IPPROTO_TCP, TCP_KEEPALIVE, &idle, sizeof(int))){
@@ -418,7 +438,9 @@ int awh::Socket::keepAlive(const int fd, const int cnt, const int idle, const in
 				// Выходим
 				return -1;
 			}
-		// Если - это FreeBSD или Linux
+		/**
+		 * Если - это FreeBSD или Linux
+		 */
 		#elif __linux__ || __FreeBSD__
 			// Время через которое происходит проверка подключения
 			if(setsockopt(fd, IPPROTO_TCP, TCP_KEEPIDLE, &idle, sizeof(int))){
@@ -484,11 +506,17 @@ int awh::Socket::bufferSize(const int fd, const int read, const int write, const
  * @param log объект для работы с логами
  */
 awh::Socket::Socket(const log_t * log) noexcept : log(log) {
-	// Если сетевой стек ещё не проинициализирован
+	/**
+	 * Если сетевой стек ещё не проинициализирован
+	 */
 	#ifndef __AWH_SOCKET_WSA__
-		// Выполняем инициализацию сетевого стека
+		/**
+		 * Выполняем инициализацию сетевого стека
+		 */
 		#define __AWH_SOCKET_WSA__
-		// Если - это Windows
+		/**
+		 * Если - это MS Windows
+		 */
 		#if defined(_WIN32) || defined(_WIN64)
 			// Очищаем сетевой контекст
 			WSACleanup();
@@ -517,7 +545,9 @@ awh::Socket::Socket(const log_t * log) noexcept : log(log) {
  * ~Socket Деструктор
  */
 awh::Socket::~Socket() noexcept {
-	// Если - это Windows
+	/**
+	 * Если - это MS Windows
+	 */
 	#if defined(_WIN32) || defined(_WIN64)
 		// Очищаем сетевой контекст
 		WSACleanup();

@@ -26,6 +26,7 @@
 /**
  * Стандартная библиотека
  */
+#include <set>
 #include <cstdio>
 #include <string>
 #include <cstring>
