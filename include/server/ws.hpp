@@ -307,8 +307,9 @@ namespace awh {
 				void stop() noexcept;
 				/**
 				 * start Метод запуска клиента
+				 * @param unix Флаг запуска для работы с UnixSocket
 				 */
-				void start() noexcept;
+				void start(const bool unix = false) noexcept;
 			public:
 				/**
 				 * multiThreads Метод активации многопоточности

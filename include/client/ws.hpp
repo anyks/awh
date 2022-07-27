@@ -355,8 +355,9 @@ namespace awh {
 				void pause() noexcept;
 				/**
 				 * start Метод запуска клиента
+				 * @param unix Флаг запуска для работы с UnixSocket
 				 */
-				void start() noexcept;
+				void start(const bool unix = false) noexcept;
 			public:
 				/**
 				 * getSub Метод получения выбранного сабпротокола

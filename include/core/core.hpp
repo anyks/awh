@@ -34,6 +34,7 @@
 // Если - это Unix
 #else
 	#include <ctime>
+	#include <sys/un.h>
 #endif
 
 /**
@@ -96,12 +97,14 @@ namespace awh {
 				public:
 					// Идентификатор таймера
 					u_short id;
+				public:
+					// Флаг персистентной работы
+					bool persist;
+				public:
 					// Задержка времени в секундах
 					float delay;
 					// Штамп времени исполнения
 					time_t stamp;
-					// Флаг персистентной работы
-					bool persist;
 				public:
 					// Объект события таймера
 					ev::timer io;
@@ -122,7 +125,7 @@ namespace awh {
 					/**
 					 * Timer Конструктор
 					 */
-					Timer() noexcept : id(0), delay(0.f), stamp(0), persist(false), core(nullptr), fn(nullptr) {}
+					Timer() noexcept : id(0), persist(false), delay(0.f), stamp(0), core(nullptr), fn(nullptr) {}
 			} timer_t;
 		protected:
 			/**
@@ -146,7 +149,7 @@ namespace awh {
 				/**
 				 * KeepAlive Конструктор
 				 */
-				KeepAlive() : keepcnt(3), keepidle(1), keepintvl(2) {}
+				KeepAlive() noexcept : keepcnt(3), keepidle(1), keepintvl(2) {}
 			} __attribute__((packed)) alive_t;
 			/**
 			 * Network Структура текущих параметров сети
@@ -161,21 +164,38 @@ namespace awh {
 				/**
 				 * Network Конструктор
 				 */
-				Network() : family(AF_INET), v4({{"0.0.0.0"}, IPV4_RESOLVER}), v6({{"[::0]"}, IPV6_RESOLVER}) {}
+				Network() noexcept : family(AF_INET), v4({{"0.0.0.0"}, IPV4_RESOLVER}), v6({{"[::0]"}, IPV6_RESOLVER}) {}
 			} net_t;
 			/**
-			 * Sockaddr Структура адресного пространства сокета
+			 * Sockaddr Класс сетевого пространства
 			 */
-			typedef struct Sockaddr {
-				int fd;                      // Файловый дескриптор
-				struct sockaddr_in client;   // Параметры подключения клиента IPv4
-				struct sockaddr_in server;   // Параметры подключения сервера IPv4
-				struct sockaddr_in6 client6; // Параметры подключения клиента IPv6
-				struct sockaddr_in6 server6; // Параметры подключения сервера IPv6
+			typedef class Sockaddr {
+				public:
+					// Сокет сервера
+					int socket;
+				public:
 				/**
-				 * Sockaddr Конструктор
+				 * Если операционной системой не является Windows
 				 */
-				Sockaddr() : fd(-1), client({}), server({}), client6({}), server6({}) {}
+				#if !defined(_WIN32) && !defined(_WIN64)
+					// Параметры подключения для UnixSocket
+					struct sockaddr_un unix;
+				#endif
+				public:
+					// Параметры подключения клиента IPv4
+					struct sockaddr_in client;
+					// Параметры подключения сервера IPv4
+					struct sockaddr_in server;
+				public:
+					// Параметры подключения клиента IPv6
+					struct sockaddr_in6 client6;
+					// Параметры подключения сервера IPv6
+					struct sockaddr_in6 server6;
+				public:
+					/**
+					 * Sockaddr Конструктор
+					 */
+					Sockaddr() noexcept : socket(-1) {}
 			} sockaddr_t;
 		private:
 			/**
@@ -308,6 +328,11 @@ namespace awh {
 			bool persist = false;
 			// Флаг разрешающий работу только с IPv6
 			bool ipV6only = false;
+			// Флаг разрешения использования UnixSocket
+			bool unixSocket = false;
+		private:
+			// Имя сервера для идентификации в сети
+			string serverName = AWH_SHORT_NAME;
 		private:
 			// Интервал персистентного таймера в миллисекундах
 			time_t persistInterval = PERSIST_INTERVAL;
@@ -352,6 +377,11 @@ namespace awh {
 		protected:
 			/**
 			 * sockaddr Метод создания адресного пространства сокета
+			 * @return параметры подключения к серверу
+			 */
+			const sockaddr_t sockaddr() const noexcept;
+			/**
+			 * sockaddr Метод создания адресного пространства сокета
 			 * @param ip     адрес для которого нужно создать сокет
 			 * @param port   порт сервера для которого нужно создать сокет
 			 * @param family тип протокола интернета AF_INET или AF_INET6
@@ -382,14 +412,21 @@ namespace awh {
 			virtual void stop() noexcept;
 			/**
 			 * start Метод запуска клиента
+			 * @param unix Флаг запуска для работы с UnixSocket
 			 */
-			virtual void start() noexcept;
+			virtual void start(const bool unix = false) noexcept;
 		public:
 			/**
 			 * working Метод проверки на запуск работы
 			 * @return результат проверки
 			 */
 			bool working() const noexcept;
+		protected:
+			/**
+			 * unixSocketAddr Метод получения адреса UnixSocket-а сервера
+			 * @return адрес активного UnixSocket-а сервера
+			 */
+			string unixSocketAddr() const noexcept;
 		public:
 			/**
 			 * add Метод добавления воркера в биндинг
@@ -551,6 +588,11 @@ namespace awh {
 			 * @param mode флаг состояния разрешения проверки
 			 */
 			void setVerifySSL(const bool mode) noexcept;
+			/**
+			 * setServerName Метод установки названия сервера
+			 * @param name название сервиса
+			 */
+			void setServerName(const string & name) noexcept;
 			/**
 			 * setPersistInterval Метод установки персистентного таймера
 			 * @param itv интервал персистентного таймера в миллисекундах

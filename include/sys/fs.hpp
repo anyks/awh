@@ -65,7 +65,7 @@ namespace awh {
 		/**
 		 * Типы файловой системы
 		 */
-		enum class type_t : uint8_t {NONE, DIR, FILE, SOCKET};
+		enum class type_t : uint8_t {NONE, DIR, CHR, BLK, LNK, FILE, FIFO, SOCKET};
 		/**
 		 * file Функция извлечения названия и расширения файла
 		 * @param filename адрес файла для извлечения его параметров
@@ -327,14 +327,24 @@ namespace awh {
 				// Если тип определён
 				if(stat(name.c_str(), &info) == 0){
 					// Если это каталог
-					if((info.st_mode & S_IFDIR) != 0) result = type_t::DIR;
+					if(S_ISDIR(info.st_mode)) result = type_t::DIR;
+					// Если это символьная ссылка
+					else if(S_ISLNK(info.st_mode)) result = type_t::LNK;
 					// Если это файл
-					else if((info.st_mode & S_IFMT) != 0) result = type_t::FILE;
-// Если - это не Windows
-#if !defined(_WIN32) && !defined(_WIN64)
-					// Если это сокет
-					else if((info.st_mode & S_IFSOCK) != 0) result = type_t::SOCKET;
-#endif
+					else if(S_ISREG(info.st_mode)) result = type_t::FILE;
+					/**
+					 * Если - это не Windows
+					 */
+					#if !defined(_WIN32) && !defined(_WIN64)
+						// Если это устройство
+						else if(S_ISCHR(info.st_mode)) result = type_t::CHR;
+						// Если это блок устройства
+						else if(S_ISBLK(info.st_mode)) result = type_t::BLK;
+						// Если это устройство ввода-вывода
+						else if(S_ISFIFO(info.st_mode)) result = type_t::FIFO;
+						// Если это сокет
+						else if(S_ISSOCK(info.st_mode)) result = type_t::SOCKET;
+					#endif
 				}
 			}
 			// Выводим результат

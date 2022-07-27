@@ -167,7 +167,7 @@ int main(int argc, char * argv[]){
 	// Установливаем функцию обратного вызова на событие получения сообщений
 	ws.on((function <void (const size_t, const vector <char> &, const bool, server::ws_t *)>) bind(&WebSocket::message, &executor, _1, _2, _3, _4));
 	// Выполняем запуск WebSocket сервер
-	ws.start();
+	ws.start(true);
 	// Выводим результат
 	return 0;
 }

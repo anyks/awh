@@ -158,10 +158,10 @@ void awh::Core::Dispatch::stop() noexcept {
  * start Метод запуска чтения базы событий
  */
 void awh::Core::Dispatch::start() noexcept {
+	// Выполняем блокировку потока
+	this->mtx.lock();
 	// Если чтение базы событий ещё не началось
 	if(!this->work && this->init){
-		// Выполняем блокировку потока
-		this->mtx.lock();
 		// Устанавливаем флаг работы модуля
 		this->work = true;
 		// Выполняем разблокировку потока
@@ -184,7 +184,8 @@ void awh::Core::Dispatch::start() noexcept {
 		}
 		// Выполняем остановку функции активации базы событий
 		std::bind(&awh::Core::closedown, this->core)();
-	}
+	// Выполняем разблокировку потока
+	} else this->mtx.unlock();
 }
 /**
  * freeze Метод заморозки чтения данных
@@ -428,6 +429,71 @@ void awh::Core::clean(const size_t aid) const noexcept {
 }
 /**
  * sockaddr Метод создания адресного пространства сокета
+ * @return параметры подключения к серверу
+ */
+const awh::Core::sockaddr_t awh::Core::sockaddr() const noexcept {
+	// Результат работы функции
+	sockaddr_t result;
+	// Если требуется использовать UnixSocket
+	if(this->unixSocket){
+		/**
+		 * Если операционной системой не является Windows
+		 */
+		#if !defined(_WIN32) && !defined(_WIN64)
+			// Получаем адрес сокета
+			const string & socket = this->unixSocketAddr();
+			// Если адрес сокета сервера получен
+			if(!socket.empty()){
+				// Если ядро является сервером
+				if(this->type == type_t::SERVER){
+					// Если сокет в файловой системе уже существует, удаляем его
+					if(fs_t::issock(socket))
+						// Удаляем файл сокета
+						::unlink(socket.c_str());
+				}
+				// Устанавливаем протокол интернета
+				result.unix.sun_family = AF_UNIX;
+				// Очищаем всю структуру для сервера
+				memset(&result.unix.sun_path, 0, sizeof(result.unix.sun_path));
+				// Копируем адрес сокета сервера
+				strncpy(result.unix.sun_path, socket.c_str(), sizeof(result.unix.sun_path));
+				// Создаем сокет подключения
+				result.socket = ::socket(AF_UNIX, SOCK_STREAM, 0);
+				// Если сокет не создан то выходим
+				if(result.socket < 0){
+					// Выводим сообщение в консоль
+					this->log->print("creating socket %s", log_t::flag_t::CRITICAL, socket.c_str());
+					// Выходим
+					return sockaddr_t();
+				}
+				// Выполняем игнорирование сигнала неверной инструкции процессора
+				this->socket.noSigill();
+				// Отключаем сигнал записи в оборванное подключение
+				this->socket.noSigpipe(result.socket);
+				// Устанавливаем разрешение на повторное использование сокета
+				this->socket.reuseable(result.socket);
+				// Переводим сокет в не блокирующий режим
+				this->socket.nonBlocking(result.socket);
+				// Если ядро является сервером
+				if(this->type == type_t::SERVER){
+					// Получаем размер объекта сокета
+					const socklen_t size = (offsetof(struct sockaddr_un, sun_path) + strlen(result.unix.sun_path));
+					// Выполняем бинд на сокет
+					if(::bind(result.socket, (struct sockaddr *) &result.unix, size) < 0){
+						// Выводим в лог сообщение
+						this->log->print("bind local network [%s]", log_t::flag_t::CRITICAL, socket.c_str());
+						// Выходим
+						return sockaddr_t();
+					}
+				}
+			}
+		#endif
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * sockaddr Метод создания адресного пространства сокета
  * @param ip     адрес для которого нужно создать сокет
  * @param port   порт сервера для которого нужно создать сокет
  * @param family тип протокола интернета AF_INET или AF_INET6
@@ -463,7 +529,7 @@ const awh::Core::sockaddr_t awh::Core::sockaddr(const string & ip, const u_int p
 					// Очищаем всю структуру для клиента
 					memset(&result.client, 0, sizeof(result.client));
 					// Устанавливаем протокол интернета
-					result.client.sin_family = AF_INET;
+					result.client.sin_family = family;
 					// Устанавливаем произвольный порт для локального подключения
 					result.client.sin_port = htons(0);
 					// Устанавливаем адрес для локальго подключения
@@ -476,7 +542,7 @@ const awh::Core::sockaddr_t awh::Core::sockaddr(const string & ip, const u_int p
 				// Очищаем всю структуру для сервера
 				memset(&result.server, 0, sizeof(result.server));
 				// Устанавливаем протокол интернета
-				result.server.sin_family = AF_INET;
+				result.server.sin_family = family;
 				// Устанавливаем порт для локального подключения
 				result.server.sin_port = htons(port);
 				// Устанавливаем адрес для удаленного подключения
@@ -491,7 +557,7 @@ const awh::Core::sockaddr_t awh::Core::sockaddr(const string & ip, const u_int p
 				// Обнуляем серверную структуру
 				memset(&result.server.sin_zero, 0, sizeof(result.server.sin_zero));
 				// Создаем сокет подключения
-				result.fd = ::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+				result.socket = ::socket(family, SOCK_STREAM, IPPROTO_TCP);
 			} break;
 			// Для протокола IPv6
 			case AF_INET6: {
@@ -512,12 +578,12 @@ const awh::Core::sockaddr_t awh::Core::sockaddr(const string & ip, const u_int p
 					// Очищаем всю структуру для клиента
 					memset(&result.client6, 0, sizeof(result.client6));
 					// Устанавливаем протокол интернета
-					result.client6.sin6_family = AF_INET6;
+					result.client6.sin6_family = family;
 					// Устанавливаем произвольный порт для локального подключения
 					result.client6.sin6_port = htons(0);
 					// Указываем адрес IPv6 для клиента
-					inet_pton(AF_INET6, host.c_str(), &result.client6.sin6_addr);
-					// inet_ntop(AF_INET6, &result.client6.sin6_addr, hostClient, sizeof(hostClient));
+					inet_pton(family, host.c_str(), &result.client6.sin6_addr);
+					// inet_ntop(family, &result.client6.sin6_addr, hostClient, sizeof(hostClient));
 					// Запоминаем размер структуры
 					size = sizeof(result.client6);
 					// Запоминаем полученную структуру
@@ -526,12 +592,12 @@ const awh::Core::sockaddr_t awh::Core::sockaddr(const string & ip, const u_int p
 				// Очищаем всю структуру для сервера
 				memset(&result.server6, 0, sizeof(result.server6));
 				// Устанавливаем протокол интернета
-				result.server6.sin6_family = AF_INET6;
+				result.server6.sin6_family = family;
 				// Устанавливаем порт для локального подключения
 				result.server6.sin6_port = htons(port);
 				// Указываем адрес IPv6 для сервера
-				inet_pton(AF_INET6, ip.c_str(), &result.server6.sin6_addr);
-				// inet_ntop(AF_INET6, &result.server6.sin6_addr, hostServer, sizeof(hostServer));
+				inet_pton(family, ip.c_str(), &result.server6.sin6_addr);
+				// inet_ntop(family, &result.server6.sin6_addr, hostServer, sizeof(hostServer));
 				// Если ядро является сервером
 				if(this->type == type_t::SERVER){
 					// Запоминаем размер структуры
@@ -540,7 +606,7 @@ const awh::Core::sockaddr_t awh::Core::sockaddr(const string & ip, const u_int p
 					sin = reinterpret_cast <struct sockaddr *> (&result.server6);
 				}
 				// Создаем сокет подключения
-				result.fd = ::socket(AF_INET6, SOCK_STREAM, IPPROTO_TCP);
+				result.socket = ::socket(family, SOCK_STREAM, IPPROTO_TCP);
 			} break;
 			// Если тип сети не определен
 			default: {
@@ -551,7 +617,7 @@ const awh::Core::sockaddr_t awh::Core::sockaddr(const string & ip, const u_int p
 			}
 		}
 		// Если сокет не создан то выходим
-		if(result.fd < 0){
+		if(result.socket < 0){
 			// Выводим сообщение в консоль
 			this->log->print("creating socket to server = %s, port = %u", log_t::flag_t::CRITICAL, ip.c_str(), port);
 			// Выходим
@@ -562,41 +628,41 @@ const awh::Core::sockaddr_t awh::Core::sockaddr(const string & ip, const u_int p
 			// Выполняем игнорирование сигнала неверной инструкции процессора
 			this->socket.noSigill();
 			// Отключаем сигнал записи в оборванное подключение
-			this->socket.noSigpipe(result.fd);
+			this->socket.noSigpipe(result.socket);
 			// Если ядро является сервером
 			if(this->type == type_t::SERVER){
 				// Включаем отображение сети IPv4 в IPv6
-				if(family == AF_INET6) this->socket.ipV6only(result.fd, this->ipV6only);
+				if(family == AF_INET6) this->socket.ipV6only(result.socket, this->ipV6only);
 			// Активируем keepalive
-			} else this->socket.keepAlive(result.fd, this->alive.keepcnt, this->alive.keepidle, this->alive.keepintvl);
+			} else this->socket.keepAlive(result.socket, this->alive.keepcnt, this->alive.keepidle, this->alive.keepintvl);
 		// Устанавливаем настройки для OS Windows
 		#else
 			// Если ядро является сервером
 			if(this->type == type_t::SERVER){
 				// Включаем отображение сети IPv4 в IPv6
-				if(family == AF_INET6) this->socket.ipV6only(result.fd, this->ipV6only);
+				if(family == AF_INET6) this->socket.ipV6only(result.socket, this->ipV6only);
 			// Активируем keepalive
-			} else this->socket.keepAlive(result.fd);
+			} else this->socket.keepAlive(result.socket);
 		#endif
 		// Если ядро является сервером
 		if(this->type == type_t::SERVER)
 			// Переводим сокет в не блокирующий режим
-			this->socket.nonBlocking(result.fd);
+			this->socket.nonBlocking(result.socket);
 		// Отключаем алгоритм Нейгла для сервера и клиента
-		this->socket.tcpNodelay(result.fd);
+		this->socket.tcpNodelay(result.socket);
 		// Устанавливаем разрешение на закрытие сокета при неиспользовании
-		// this->socket.closeonexec(result.fd);
+		// this->socket.closeonexec(result.socket);
 		// Устанавливаем разрешение на повторное использование сокета
-		this->socket.reuseable(result.fd);
+		this->socket.reuseable(result.socket);
 		// Если ядро является сервером, устанавливаем хост
 		if(this->type == type_t::SERVER){
 			// Объект для работы с сетевым интерфейсом
 			ifnet_t ifnet(this->fmk, this->log);
 			// Получаем настоящий хост сервера
 			host = ifnet.ip(family);
-		}		
+		}
 		// Выполняем бинд на сокет
-		if(::bind(result.fd, sin, size) < 0){
+		if(::bind(result.socket, sin, size) < 0){
 			// Выводим в лог сообщение
 			this->log->print("bind local network [%s]", log_t::flag_t::CRITICAL, host.c_str());
 			// Выходим
@@ -726,10 +792,10 @@ void awh::Core::setCallback(function <void (const bool, Core * core)> callback) 
  * stop Метод остановки клиента
  */
 void awh::Core::stop() noexcept {
+	// Выполняем блокировку потока
+	this->mtx.status.lock();
 	// Если система уже запущена
 	if(this->mode && (this->base != nullptr)){
-		// Выполняем блокировку потока
-		this->mtx.status.lock();
 		// Запрещаем работу WebSocket
 		this->mode = false;
 		// Выполняем разблокировку потока
@@ -751,23 +817,33 @@ void awh::Core::stop() noexcept {
 		this->close();
 		// Выполняем остановку чтения базы событий
 		this->dispatch.stop();
-	}
+	// Выполняем разблокировку потока
+	} else this->mtx.status.unlock();
 }
 /**
  * start Метод запуска клиента
+ * @param unix Флаг запуска для работы с UnixSocket
  */
-void awh::Core::start() noexcept {
+void awh::Core::start(const bool unix) noexcept {
+	// Выполняем блокировку потока
+	this->mtx.status.lock();
 	// Если система ещё не запущена
 	if(!this->mode && (this->base != nullptr)){
-		// Выполняем блокировку потока
-		this->mtx.status.lock();
+		/**
+		 * Если операционной системой не является Windows
+		 */
+		#if !defined(_WIN32) && !defined(_WIN64)
+			// Устанавливаем флаг работы с UnixSocket
+			this->unixSocket = unix;
+		#endif
 		// Разрешаем работу WebSocket
 		this->mode = !this->mode;
 		// Выполняем разблокировку потока
 		this->mtx.status.unlock();
 		// Выполняем запуск чтения базы событий
 		this->dispatch.start();
-	}
+	// Выполняем разблокировку потока
+	} else this->mtx.status.unlock();
 }
 /**
  * working Метод проверки на запуск работы
@@ -776,6 +852,20 @@ void awh::Core::start() noexcept {
 bool awh::Core::working() const noexcept {
 	// Выводим результат проверки
 	return this->mode;
+}
+/**
+ * unixSocketAddr Метод получения адреса UnixSocket-а сервера
+ * @return адрес активного UnixSocket-а сервера
+ */
+string awh::Core::unixSocketAddr() const noexcept {
+	// Результат работы функции
+	string result = "";
+	// Если флаг работы с UnixSocket установлен
+	if(this->unixSocket)
+		// Выполняем формирование адреса UnixSocket
+		result = this->fmk->format("/tmp/%s.sock", this->fmk->toLower(this->serverName).c_str());
+	// Выводим результат
+	return result;
 }
 /**
  * add Метод добавления воркера в биндинг
@@ -1584,6 +1674,14 @@ void awh::Core::setVerifySSL(const bool mode) noexcept {
 	this->ssl.setVerify(mode);
 }
 /**
+ * setServerName Метод установки названия сервера
+ * @param name название сервиса
+ */
+void awh::Core::setServerName(const string & name) noexcept {
+	// Если имя сервера передано
+	if(!name.empty()) this->serverName = name;
+}
+/**
  * setPersistInterval Метод установки персистентного таймера
  * @param itv интервал персистентного таймера в миллисекундах
  */
@@ -1700,6 +1798,16 @@ awh::Core::~Core() noexcept {
 	*/
 	// Выполняем блокировку потока
 	this->mtx.status.lock();
+	// Выполняем остановку персистентного таймера
+	this->timer.io.stop();
+	// Выполняем удаление активных таймеров
+	this->timers.clear();
+	// Выполняем удаление списка активных ядер
+	this->cores.clear();
+	// Выполняем удаление списка активных воркеров
+	this->workers.clear();
+	// Выполняем удаление активных адъютантов
+	this->adjutants.clear();
 	// Если база событий существует
 	if(this->base != nullptr){
 		// Удаляем объект базы событий
@@ -1709,6 +1817,23 @@ awh::Core::~Core() noexcept {
 	}
 	// Устанавливаем статус сетевого ядра
 	this->status = status_t::STOP;
+	// Если требуется использовать UnixSocket и ядро является сервером
+	if(this->unixSocket && (this->type == type_t::SERVER)){
+		/**
+		 * Если операционной системой не является Windows
+		 */
+		#if !defined(_WIN32) && !defined(_WIN64)
+			// Получаем адрес сокета
+			const string & socket = this->unixSocketAddr();
+			// Если адрес сокета сервера получен
+			if(!socket.empty()){
+				// Если сокет в файловой системе уже существует, удаляем его
+				if(fs_t::issock(socket))
+					// Удаляем файл сокета
+					::unlink(socket.c_str());
+			}
+		#endif
+	}
 	// Выполняем разблокировку потока
 	this->mtx.status.unlock();
 }

@@ -214,7 +214,7 @@ int awh::Socket::isBlocking(const int fd) const noexcept {
 	#if defined(_WIN32) || defined(_WIN64)
 		{
 			// Буфер данных для чтения
-			u_char buffer[1];
+			char buffer[1];
 			// Выполняем чтение из сокета 0 байт
 			const int bytes = recv(fd, buffer, 0, 0);
 			// Если данные прочитаны, то сообщаем, что сокет находится в блокирующем режиме

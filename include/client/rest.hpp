@@ -259,13 +259,14 @@ namespace awh {
 				void flush() noexcept;
 			public:
 				/**
-				 * start Метод запуска клиента
-				 */
-				void start() noexcept;
-				/**
 				 * stop Метод остановки клиента
 				 */
 				void stop() noexcept;
+				/**
+				 * start Метод запуска клиента
+				 * @param unix Флаг запуска для работы с UnixSocket
+				 */
+				void start(const bool unix = false) noexcept;
 			public:
 				/**
 				 * close Метод закрытия подключения клиента

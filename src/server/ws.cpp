@@ -1062,12 +1062,13 @@ void awh::server::WebSocket::stop() noexcept {
 }
 /**
  * start Метод запуска клиента
+ * @param unix Флаг запуска для работы с UnixSocket
  */
-void awh::server::WebSocket::start() noexcept {
+void awh::server::WebSocket::start(const bool unix) noexcept {
 	// Если биндинг не запущен, выполняем запуск биндинга
 	if(!this->core->working())
 		// Выполняем запуск биндинга
-		const_cast <server::core_t *> (this->core)->start();
+		const_cast <server::core_t *> (this->core)->start(unix);
 }
 /**
  * multiThreads Метод активации многопоточности
@@ -1233,6 +1234,8 @@ void awh::server::WebSocket::setServ(const string & id, const string & name, con
 	this->name = name;
 	// Устанавливаем версию сервера
 	this->version = ver;
+	// Устанавливаем название сервера
+	const_cast <server::core_t *> (this->core)->setServerName(name);
 }
 /**
  * setCrypt Метод установки параметров шифрования

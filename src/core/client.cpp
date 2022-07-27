@@ -122,167 +122,264 @@ void awh::client::Core::connect(const size_t wid) noexcept {
 			worker_t * wrk = (worker_t *) const_cast <awh::worker_t *> (it->second);
 			// Если подключение ещё не выполнено и выполнение работ разрешено
 			if((wrk->status.real == worker_t::mode_t::DISCONNECT) && (wrk->status.work == worker_t::work_t::ALLOW)){
-				// Размер структуры подключения
-				socklen_t size = 0;
-				// Объект подключения
-				struct sockaddr * sin = nullptr;
 				// Запрещаем выполнение работы
 				wrk->status.work = worker_t::work_t::DISALLOW;
 				// Устанавливаем флаг ожидания статуса
 				wrk->status.wait = worker_t::mode_t::DISCONNECT;
 				// Устанавливаем статус подключения
 				wrk->status.real = worker_t::mode_t::PRECONNECT;
-				// Получаем URL параметры запроса
-				const uri_t::url_t & url = (wrk->isProxy() ? wrk->proxy.url : wrk->url);
-				// Если в воркере есть подключённые клиенты
-				if(!wrk->adjutants.empty()){
-					// Переходим по всему списку адъютанта
-					for(auto it = wrk->adjutants.begin(); it != wrk->adjutants.end();){
-						// Если блокировка адъютанта не установлена
-						if(this->locking.count(it->first) < 1){
-							// Выполняем очистку буфера событий
-							this->clean(it->first);
-							// Выполняем удаление контекста SSL
-							this->ssl.clear(it->second->ssl);
-							// Удаляем адъютанта из списка подключений
-							this->adjutants.erase(it->first);
-							// Удаляем адъютанта из списка
-							it = wrk->adjutants.erase(it);
-						// Если есть хотябы один заблокированный элемент, выходим
-						} else {
-							// Устанавливаем статус подключения
-							wrk->status.real = worker_t::mode_t::DISCONNECT;
-							// Выходим из функции
-							return;
+				// Если требуется использовать UnixSocket
+				if(this->unixSocket){
+					/**
+					 * Если операционной системой не является Windows
+					 */
+					#if !defined(_WIN32) && !defined(_WIN64)
+						// Если в воркере есть подключённые клиенты
+						if(!wrk->adjutants.empty()){
+							// Переходим по всему списку адъютанта
+							for(auto it = wrk->adjutants.begin(); it != wrk->adjutants.end();){
+								// Если блокировка адъютанта не установлена
+								if(this->locking.count(it->first) < 1){
+									// Выполняем очистку буфера событий
+									this->clean(it->first);
+									// Удаляем адъютанта из списка подключений
+									this->adjutants.erase(it->first);
+									// Удаляем адъютанта из списка
+									it = wrk->adjutants.erase(it);
+								// Если есть хотябы один заблокированный элемент, выходим
+								} else {
+									// Устанавливаем статус подключения
+									wrk->status.real = worker_t::mode_t::DISCONNECT;
+									// Выходим из функции
+									return;
+								}
+							}
 						}
-					}
-				}
-				// Получаем сокет для подключения к серверу
-				auto sockaddr = this->sockaddr(url.ip, url.port, this->net.family);
-				// Если сокет создан удачно
-				if(sockaddr.fd > -1){
-					// Создаём бъект адъютанта
-					unique_ptr <awh::worker_t::adj_t> adj(new awh::worker_t::adj_t(wrk, this->fmk, this->log));
-					// Если статус подключения не изменился
-					if(wrk->status.real == worker_t::mode_t::PRECONNECT){
-						// Выполняем удаление контекста SSL
-						this->ssl.clear(adj->ssl);
-						// Выполняем получение контекста сертификата
-						adj->ssl = this->ssl.init(url);
-						// Выполняем блокировку потока
-						this->mtx.connect.lock();
-						// Запоминаем файловый дескриптор
-						adj->bev.socket = sockaddr.fd;
-						// Если защищённый режим работы разрешён
-						if(adj->ssl.mode){
-							// Выполняем обёртывание сокета в BIO SSL
-							BIO * bio = BIO_new_socket(adj->bev.socket, BIO_NOCLOSE);
-							// Если BIO SSL создано
-							if(bio != nullptr){
-								// Устанавливаем блокирующий режим ввода/вывода для сокета
-								BIO_set_nbio(bio, 0);
-								// Выполняем установку BIO SSL
-								SSL_set_bio(adj->ssl.ssl, bio, bio);
-								// Выполняем активацию клиента SSL
-								SSL_set_connect_state(adj->ssl.ssl);
-							// Если BIO SSL не создано
-							} else {
-								// Запрещаем чтение данных с сервера
-								adj->bev.locked.read = true;
-								// Запрещаем запись данных на сервер
-								adj->bev.locked.write = true;
+						// Получаем сокет для подключения к серверу
+						auto sockaddr = this->sockaddr();
+						// Если сокет создан удачно
+						if(sockaddr.socket > -1){
+							// Создаём бъект адъютанта
+							unique_ptr <awh::worker_t::adj_t> adj(new awh::worker_t::adj_t(wrk, this->fmk, this->log));
+							// Если статус подключения не изменился
+							if(wrk->status.real == worker_t::mode_t::PRECONNECT){
+								// Выполняем блокировку потока
+								this->mtx.connect.lock();
+								// Запоминаем файловый дескриптор
+								adj->bev.socket = sockaddr.socket;
+								// Устанавливаем идентификатор адъютанта
+								adj->aid = this->fmk->unixTimestamp();
+								// Добавляем созданного адъютанта в список адъютантов
+								auto ret = wrk->adjutants.emplace(adj->aid, move(adj));
+								// Добавляем адъютанта в список подключений
+								this->adjutants.emplace(ret.first->first, ret.first->second.get());
+								// Выполняем блокировку потока
+								this->mtx.connect.unlock();
+								// Запоминаем полученную структуру
+								struct sockaddr * sun = reinterpret_cast <struct sockaddr *> (&sockaddr.unix);
+								// Получаем размер объекта сокета
+								const socklen_t size = (offsetof(struct sockaddr_un, sun_path) + strlen(sockaddr.unix.sun_path));
+								// Если подключение не выполненно то сообщаем об этом, выполняем подключение к удаленному серверу
+								if(::connect(ret.first->second->bev.socket, sun, size) != 0){									
+									// Запрещаем чтение данных с сервера
+									ret.first->second->bev.locked.read = true;
+									// Запрещаем запись данных на сервер
+									ret.first->second->bev.locked.write = true;
+									// Разрешаем выполнение работы
+									wrk->status.work = worker_t::work_t::ALLOW;
+									// Устанавливаем статус подключения
+									wrk->status.real = worker_t::mode_t::DISCONNECT;
+									// Получаем адрес сокета
+									const string & socket = this->unixSocketAddr();
+									// Если адрес сокета сервера получен
+									if(!socket.empty())
+										// Выводим в лог сообщение
+										this->log->print("connecting to host = %s", log_t::flag_t::CRITICAL, socket.c_str());
+									// Выполняем отключение от сервера
+									this->close(ret.first->first);
+									// Выходим из функции
+									return;
+								}
 								// Разрешаем выполнение работы
 								wrk->status.work = worker_t::work_t::ALLOW;
-								// Устанавливаем статус подключения
-								wrk->status.real = worker_t::mode_t::DISCONNECT;
-								// Устанавливаем флаг ожидания статуса
-								wrk->status.wait = worker_t::mode_t::DISCONNECT;
-								// Выводим сообщение об ошибке
-								this->log->print("BIO new socket is failed", log_t::flag_t::CRITICAL);
-								// Выполняем переподключение
-								this->reconnect(wid);
+								// Если статус подключения изменился
+								if(wrk->status.real != worker_t::mode_t::PRECONNECT){
+									// Запрещаем чтение данных с сервера
+									ret.first->second->bev.locked.read = true;
+									// Запрещаем запись данных на сервер
+									ret.first->second->bev.locked.write = true;
+								// Если статус подключения не изменился
+								} else {
+									// Получаем адрес сокета
+									const string & socket = this->unixSocketAddr();
+									// Активируем ожидание подключения
+									this->enabled(method_t::CONNECT, ret.first->first);
+									// Выводим в лог сообщение
+									if(!this->noinfo && !socket.empty()) this->log->print("good host = %s, socket = %d", log_t::flag_t::INFO, socket.c_str(), sockaddr.socket);
+								}
 								// Выходим из функции
 								return;
 							}
 						}
-						// Устанавливаем идентификатор адъютанта
-						adj->aid = this->fmk->unixTimestamp();
-						// Добавляем созданного адъютанта в список адъютантов
-						auto ret = wrk->adjutants.emplace(adj->aid, move(adj));
-						// Добавляем адъютанта в список подключений
-						this->adjutants.emplace(ret.first->first, ret.first->second.get());
-						// Выполняем блокировку потока
-						this->mtx.connect.unlock();
-						// Определяем тип подключения
-						switch(this->net.family){
-							// Для протокола IPv4
-							case AF_INET: {
-								// Запоминаем размер структуры
-								size = sizeof(sockaddr.server);
-								// Запоминаем полученную структуру
-								sin = reinterpret_cast <struct sockaddr *> (&sockaddr.server);
-							} break;
-							// Для протокола IPv6
-							case AF_INET6: {
-								// Запоминаем размер структуры
-								size = sizeof(sockaddr.server6);
-								// Запоминаем полученную структуру
-								sin = reinterpret_cast <struct sockaddr *> (&sockaddr.server6);
-							} break;
+					#endif
+				// Если UnixSocket не используется
+				} else {
+					// Получаем URL параметры запроса
+					const uri_t::url_t & url = (wrk->isProxy() ? wrk->proxy.url : wrk->url);
+					// Если в воркере есть подключённые клиенты
+					if(!wrk->adjutants.empty()){
+						// Переходим по всему списку адъютанта
+						for(auto it = wrk->adjutants.begin(); it != wrk->adjutants.end();){
+							// Если блокировка адъютанта не установлена
+							if(this->locking.count(it->first) < 1){
+								// Выполняем очистку буфера событий
+								this->clean(it->first);
+								// Выполняем удаление контекста SSL
+								this->ssl.clear(it->second->ssl);
+								// Удаляем адъютанта из списка подключений
+								this->adjutants.erase(it->first);
+								// Удаляем адъютанта из списка
+								it = wrk->adjutants.erase(it);
+							// Если есть хотябы один заблокированный элемент, выходим
+							} else {
+								// Устанавливаем статус подключения
+								wrk->status.real = worker_t::mode_t::DISCONNECT;
+								// Выходим из функции
+								return;
+							}
 						}
-						// Выполняем подключение к удаленному серверу, если подключение не выполненно то сообщаем об этом
-						if(::connect(ret.first->second->bev.socket, sin, sizeof(struct sockaddr_in)) != 0){
-							// Запрещаем чтение данных с сервера
-							ret.first->second->bev.locked.read = true;
-							// Запрещаем запись данных на сервер
-							ret.first->second->bev.locked.write = true;
-							// Разрешаем выполнение работы
-							wrk->status.work = worker_t::work_t::ALLOW;
-							// Устанавливаем статус подключения
-							wrk->status.real = worker_t::mode_t::DISCONNECT;
-							// Выводим в лог сообщение
-							this->log->print("connecting to host = %s, port = %u", log_t::flag_t::CRITICAL, url.ip.c_str(), url.port);
-							/*
+					}
+					// Получаем сокет для подключения к серверу
+					auto sockaddr = this->sockaddr(url.ip, url.port, this->net.family);
+					// Если сокет создан удачно
+					if(sockaddr.socket > -1){
+						// Создаём бъект адъютанта
+						unique_ptr <awh::worker_t::adj_t> adj(new awh::worker_t::adj_t(wrk, this->fmk, this->log));
+						// Если статус подключения не изменился
+						if(wrk->status.real == worker_t::mode_t::PRECONNECT){
+							// Размер структуры подключения
+							socklen_t size = 0;
+							// Объект подключения
+							struct sockaddr * sin = nullptr;
+							// Выполняем удаление контекста SSL
+							this->ssl.clear(adj->ssl);
+							// Выполняем получение контекста сертификата
+							adj->ssl = this->ssl.init(url);
+							// Выполняем блокировку потока
+							this->mtx.connect.lock();
+							// Запоминаем файловый дескриптор
+							adj->bev.socket = sockaddr.socket;
+							// Если защищённый режим работы разрешён
+							if(adj->ssl.mode){
+								// Выполняем обёртывание сокета в BIO SSL
+								BIO * bio = BIO_new_socket(adj->bev.socket, BIO_NOCLOSE);
+								// Если BIO SSL создано
+								if(bio != nullptr){
+									// Устанавливаем блокирующий режим ввода/вывода для сокета
+									BIO_set_nbio(bio, 0);
+									// Выполняем установку BIO SSL
+									SSL_set_bio(adj->ssl.ssl, bio, bio);
+									// Выполняем активацию клиента SSL
+									SSL_set_connect_state(adj->ssl.ssl);
+								// Если BIO SSL не создано
+								} else {
+									// Запрещаем чтение данных с сервера
+									adj->bev.locked.read = true;
+									// Запрещаем запись данных на сервер
+									adj->bev.locked.write = true;
+									// Разрешаем выполнение работы
+									wrk->status.work = worker_t::work_t::ALLOW;
+									// Устанавливаем статус подключения
+									wrk->status.real = worker_t::mode_t::DISCONNECT;
+									// Устанавливаем флаг ожидания статуса
+									wrk->status.wait = worker_t::mode_t::DISCONNECT;
+									// Выводим сообщение об ошибке
+									this->log->print("BIO new socket is failed", log_t::flag_t::CRITICAL);
+									// Выполняем переподключение
+									this->reconnect(wid);
+									// Выходим из функции
+									return;
+								}
+							}
+							// Устанавливаем идентификатор адъютанта
+							adj->aid = this->fmk->unixTimestamp();
+							// Добавляем созданного адъютанта в список адъютантов
+							auto ret = wrk->adjutants.emplace(adj->aid, move(adj));
+							// Добавляем адъютанта в список подключений
+							this->adjutants.emplace(ret.first->first, ret.first->second.get());
+							// Выполняем блокировку потока
+							this->mtx.connect.unlock();
 							// Определяем тип подключения
 							switch(this->net.family){
-								// Для резолвера IPv4
+								// Для протокола IPv4
 								case AF_INET: {
-									// Выполняем сброс кэша резолвера
-									this->dns4.flush();
-									// Добавляем бракованный IPv4 адрес в список адресов
-									this->dns4.setToBlackList(url.ip); 
+									// Запоминаем размер структуры
+									size = sizeof(sockaddr.server);
+									// Запоминаем полученную структуру
+									sin = reinterpret_cast <struct sockaddr *> (&sockaddr.server);
 								} break;
-								// Для резолвера IPv6
+								// Для протокола IPv6
 								case AF_INET6: {
-									// Выполняем сброс кэша резолвера
-									this->dns6.flush();
-									// Добавляем бракованный IPv6 адрес в список адресов
-									this->dns6.setToBlackList(url.ip);
+									// Запоминаем размер структуры
+									size = sizeof(sockaddr.server6);
+									// Запоминаем полученную структуру
+									sin = reinterpret_cast <struct sockaddr *> (&sockaddr.server6);
 								} break;
 							}
-							*/
-							// Выполняем отключение от сервера
-							this->close(ret.first->first);
+							// Если подключение не выполненно то сообщаем об этом, выполняем подключение к удаленному серверу
+							if(::connect(ret.first->second->bev.socket, sin, size) != 0){
+								// Запрещаем чтение данных с сервера
+								ret.first->second->bev.locked.read = true;
+								// Запрещаем запись данных на сервер
+								ret.first->second->bev.locked.write = true;
+								// Разрешаем выполнение работы
+								wrk->status.work = worker_t::work_t::ALLOW;
+								// Устанавливаем статус подключения
+								wrk->status.real = worker_t::mode_t::DISCONNECT;
+								// Выводим в лог сообщение
+								this->log->print("connecting to host = %s, port = %u", log_t::flag_t::CRITICAL, url.ip.c_str(), url.port);
+								/*
+								// Определяем тип подключения
+								switch(this->net.family){
+									// Для резолвера IPv4
+									case AF_INET: {
+										// Выполняем сброс кэша резолвера
+										this->dns4.flush();
+										// Добавляем бракованный IPv4 адрес в список адресов
+										this->dns4.setToBlackList(url.ip); 
+									} break;
+									// Для резолвера IPv6
+									case AF_INET6: {
+										// Выполняем сброс кэша резолвера
+										this->dns6.flush();
+										// Добавляем бракованный IPv6 адрес в список адресов
+										this->dns6.setToBlackList(url.ip);
+									} break;
+								}
+								*/
+								// Выполняем отключение от сервера
+								this->close(ret.first->first);
+								// Выходим из функции
+								return;
+							}
+							// Разрешаем выполнение работы
+							wrk->status.work = worker_t::work_t::ALLOW;
+							// Если статус подключения изменился
+							if(wrk->status.real != worker_t::mode_t::PRECONNECT){
+								// Запрещаем чтение данных с сервера
+								ret.first->second->bev.locked.read = true;
+								// Запрещаем запись данных на сервер
+								ret.first->second->bev.locked.write = true;
+							// Если статус подключения не изменился
+							} else {
+								// Активируем ожидание подключения
+								this->enabled(method_t::CONNECT, ret.first->first);
+								// Выводим в лог сообщение
+								if(!this->noinfo) this->log->print("good host = %s [%s:%d], socket = %d", log_t::flag_t::INFO, url.domain.c_str(), url.ip.c_str(), url.port, sockaddr.socket);
+							}
 							// Выходим из функции
 							return;
 						}
-						// Разрешаем выполнение работы
-						wrk->status.work = worker_t::work_t::ALLOW;
-						// Если статус подключения изменился
-						if(wrk->status.real != worker_t::mode_t::PRECONNECT){
-							// Запрещаем чтение данных с сервера
-							ret.first->second->bev.locked.read = true;
-							// Запрещаем запись данных на сервер
-							ret.first->second->bev.locked.write = true;
-						// Если статус подключения не изменился
-						} else {
-							// Активируем ожидание подключения
-							this->enabled(method_t::CONNECT, ret.first->first);
-							// Выводим в лог сообщение
-							if(!this->noinfo) this->log->print("good host = %s [%s:%d], socket = %d", log_t::flag_t::INFO, url.domain.c_str(), url.ip.c_str(), url.port, sockaddr.fd);
-						}
-						// Выходим из функции
-						return;
 					}
 				}
 				// Если нужно выполнить автоматическое переподключение
@@ -303,25 +400,28 @@ void awh::client::Core::connect(const size_t wid) noexcept {
 					wrk->status.work = worker_t::work_t::ALLOW;
 					// Устанавливаем статус подключения
 					wrk->status.real = worker_t::mode_t::DISCONNECT;
-					/*
-					// Определяем тип подключения
-					switch(this->net.family){
-						// Для резолвера IPv4
-						case AF_INET: {
-							// Выполняем сброс кэша резолвера
-							this->dns4.flush();
-							// Добавляем бракованный IPv4 адрес в список адресов
-							this->dns4.setToBlackList(url.ip); 
-						} break;
-						// Для резолвера IPv6
-						case AF_INET6: {
-							// Выполняем сброс кэша резолвера
-							this->dns6.flush();
-							// Добавляем бракованный IPv6 адрес в список адресов
-							this->dns6.setToBlackList(url.ip);
-						} break;
+					// Если UnixSocket не используется
+					if(!this->unixSocket){
+						/*
+						// Определяем тип подключения
+						switch(this->net.family){
+							// Для резолвера IPv4
+							case AF_INET: {
+								// Выполняем сброс кэша резолвера
+								this->dns4.flush();
+								// Добавляем бракованный IPv4 адрес в список адресов
+								this->dns4.setToBlackList(url.ip); 
+							} break;
+							// Для резолвера IPv6
+							case AF_INET6: {
+								// Выполняем сброс кэша резолвера
+								this->dns6.flush();
+								// Добавляем бракованный IPv6 адрес в список адресов
+								this->dns6.setToBlackList(url.ip);
+							} break;
+						}
+						*/
 					}
-					*/
 					// Выводим сообщение об ошибке
 					if(!this->noinfo) this->log->print("%s", log_t::flag_t::INFO, "disconnected from the server");
 					// Выводим функцию обратного вызова
@@ -344,55 +444,62 @@ void awh::client::Core::reconnect(const size_t wid) noexcept {
 		worker_t * wrk = (worker_t *) const_cast <awh::worker_t *> (it->second);
 		// Если параметры URL запроса переданы и выполнение работы разрешено
 		if(!wrk->url.empty() && (wrk->status.wait == worker_t::mode_t::DISCONNECT) && (wrk->status.work == worker_t::work_t::ALLOW)){
-			// Устанавливаем флаг ожидания статуса
-			wrk->status.wait = worker_t::mode_t::RECONNECT;
-			// Получаем URL параметры запроса
-			const uri_t::url_t & url = (wrk->isProxy() ? wrk->proxy.url : wrk->url);
+			// Если требуется использовать UnixSocket
+			if(this->unixSocket)
+				// Выполняем подключение заново
+				this->connect(wrk->wid);
+			// Если требуется использовать UnixSocket
+			else {
+				// Устанавливаем флаг ожидания статуса
+				wrk->status.wait = worker_t::mode_t::RECONNECT;
+				// Получаем URL параметры запроса
+				const uri_t::url_t & url = (wrk->isProxy() ? wrk->proxy.url : wrk->url);
 
-			
-			// Структура определяющая тип адреса
-			struct sockaddr_in serv_addr;
+				
+				// Структура определяющая тип адреса
+				struct sockaddr_in serv_addr;
 
-			#if defined(_WIN32) || defined(_WIN64)
-				// Выполняем резолвинг доменного имени
-				struct hostent * server = gethostbyname(url.domain.c_str());
-			#else
-				// Выполняем резолвинг доменного имени
-				struct hostent * server = gethostbyname2(url.domain.c_str(), AF_INET);
-			#endif
+				#if defined(_WIN32) || defined(_WIN64)
+					// Выполняем резолвинг доменного имени
+					struct hostent * server = gethostbyname(url.domain.c_str());
+				#else
+					// Выполняем резолвинг доменного имени
+					struct hostent * server = gethostbyname2(url.domain.c_str(), AF_INET);
+				#endif
 
-			// Заполняем структуру типа адреса нулями
-			memset(&serv_addr, 0, sizeof(serv_addr));
-			// Устанавливаем что удаленный адрес это ИНТЕРНЕТ
-			serv_addr.sin_family = AF_INET;
-			// Выполняем копирование данных типа подключения
-			memcpy(&serv_addr.sin_addr.s_addr, server->h_addr, server->h_length);
-			// Получаем IP адрес
-			char * ip = inet_ntoa(serv_addr.sin_addr);
+				// Заполняем структуру типа адреса нулями
+				memset(&serv_addr, 0, sizeof(serv_addr));
+				// Устанавливаем что удаленный адрес это ИНТЕРНЕТ
+				serv_addr.sin_family = AF_INET;
+				// Выполняем копирование данных типа подключения
+				memcpy(&serv_addr.sin_addr.s_addr, server->h_addr, server->h_length);
+				// Получаем IP адрес
+				char * ip = inet_ntoa(serv_addr.sin_addr);
 
-			printf("IP address: %s\n", ip);
-			
-			const_cast <uri_t::url_t *> (&url)->ip = ip;
-			
+				printf("IP address: %s\n", ip);
+				
+				const_cast <uri_t::url_t *> (&url)->ip = ip;
+				
 
-			// Выполняем запуск системы
-			resolver(url.ip, wrk);
+				// Выполняем запуск системы
+				resolver(url.ip, wrk);
 
-			/*
-			// Определяем тип подключения
-			switch(this->net.family){
-				// Резолвер IPv4, создаём резолвер
-				case AF_INET:
-					// Выполняем резолвинг домена
-					wrk->did = this->dns4.resolve(wrk, (!url.domain.empty() ? url.domain : url.ip), AF_INET, &resolver);
-				break;
-				// Резолвер IPv6, создаём резолвер
-				case AF_INET6:
-					// Выполняем резолвинг домена
-					wrk->did = this->dns6.resolve(wrk, (!url.domain.empty() ? url.domain : url.ip), AF_INET6, &resolver);
-				break;
+				/*
+				// Определяем тип подключения
+				switch(this->net.family){
+					// Резолвер IPv4, создаём резолвер
+					case AF_INET:
+						// Выполняем резолвинг домена
+						wrk->did = this->dns4.resolve(wrk, (!url.domain.empty() ? url.domain : url.ip), AF_INET, &resolver);
+					break;
+					// Резолвер IPv6, создаём резолвер
+					case AF_INET6:
+						// Выполняем резолвинг домена
+						wrk->did = this->dns6.resolve(wrk, (!url.domain.empty() ? url.domain : url.ip), AF_INET6, &resolver);
+					break;
+				}
+				*/
 			}
-			*/
 		}
 	}
 }
@@ -483,7 +590,7 @@ void awh::client::Core::sendTimeout(const size_t aid) noexcept {
 				wrk->status.wait = worker_t::mode_t::DISCONNECT;
 			}
 			// Если необходимо поддерживать постоянное подключение
-			if(alive){
+			if(alive && !this->unixSocket){
 				/*
 				// Определяем тип подключения
 				switch(this->net.family){
@@ -573,8 +680,10 @@ void awh::client::Core::close() noexcept {
 						this->locking.emplace(it->first);
 						// Выполняем очистку буфера событий
 						this->clean(it->first);
-						// Выполняем удаление контекста SSL
-						this->ssl.clear(it->second->ssl);
+						// Если UnixSocket не используется
+						if(!this->unixSocket)
+							// Выполняем удаление контекста SSL
+							this->ssl.clear(it->second->ssl);
 						// Удаляем адъютанта из списка подключений
 						this->adjutants.erase(it->first);
 						// Выводим функцию обратного вызова
@@ -634,8 +743,10 @@ void awh::client::Core::remove() noexcept {
 						awh::worker_t::adj_t * adj = const_cast <awh::worker_t::adj_t *> (jt->second.get());
 						// Выполняем очистку буфера событий
 						this->clean(jt->first);
-						// Выполняем удаление контекста SSL
-						this->ssl.clear(adj->ssl);
+						// Если UnixSocket не используется
+						if(!this->unixSocket)
+							// Выполняем удаление контекста SSL
+							this->ssl.clear(adj->ssl);
 						// Удаляем адъютанта из списка подключений
 						this->adjutants.erase(jt->first);
 						// Выводим функцию обратного вызова
@@ -670,54 +781,61 @@ void awh::client::Core::open(const size_t wid) noexcept {
 			worker_t * wrk = (worker_t *) const_cast <awh::worker_t *> (it->second);
 			// Если параметры URL запроса переданы и выполнение работы разрешено
 			if(!wrk->url.empty() && (wrk->status.wait == worker_t::mode_t::DISCONNECT) && (wrk->status.work == worker_t::work_t::ALLOW)){
-				// Устанавливаем флаг ожидания статуса
-				wrk->status.wait = worker_t::mode_t::CONNECT;
-				// Получаем URL параметры запроса
-				const uri_t::url_t & url = (wrk->isProxy() ? wrk->proxy.url : wrk->url);
+				// Если требуется использовать UnixSocket
+				if(this->unixSocket)
+					// Выполняем подключение заново
+					this->connect(wrk->wid);
+				// Если требуется использовать UnixSocket
+				else {
+					// Устанавливаем флаг ожидания статуса
+					wrk->status.wait = worker_t::mode_t::CONNECT;
+					// Получаем URL параметры запроса
+					const uri_t::url_t & url = (wrk->isProxy() ? wrk->proxy.url : wrk->url);
 
 
-				
-				// Структура определяющая тип адреса
-				struct sockaddr_in serv_addr;
+					
+					// Структура определяющая тип адреса
+					struct sockaddr_in serv_addr;
 
-				#if defined(_WIN32) || defined(_WIN64)
-					// Выполняем резолвинг доменного имени
-					struct hostent * server = gethostbyname(url.domain.c_str());
-				#else
-					// Выполняем резолвинг доменного имени
-					struct hostent * server = gethostbyname2(url.domain.c_str(), AF_INET);
-				#endif
+					#if defined(_WIN32) || defined(_WIN64)
+						// Выполняем резолвинг доменного имени
+						struct hostent * server = gethostbyname(url.domain.c_str());
+					#else
+						// Выполняем резолвинг доменного имени
+						struct hostent * server = gethostbyname2(url.domain.c_str(), AF_INET);
+					#endif
 
-				// Заполняем структуру типа адреса нулями
-				memset(&serv_addr, 0, sizeof(serv_addr));
-				// Устанавливаем что удаленный адрес это ИНТЕРНЕТ
-				serv_addr.sin_family = AF_INET;
-				// Выполняем копирование данных типа подключения
-				memcpy(&serv_addr.sin_addr.s_addr, server->h_addr, server->h_length);
-				// Получаем IP адрес
-				char * ip = inet_ntoa(serv_addr.sin_addr);
+					// Заполняем структуру типа адреса нулями
+					memset(&serv_addr, 0, sizeof(serv_addr));
+					// Устанавливаем что удаленный адрес это ИНТЕРНЕТ
+					serv_addr.sin_family = AF_INET;
+					// Выполняем копирование данных типа подключения
+					memcpy(&serv_addr.sin_addr.s_addr, server->h_addr, server->h_length);
+					// Получаем IP адрес
+					char * ip = inet_ntoa(serv_addr.sin_addr);
 
-				printf("IP address: %s\n", ip);
+					printf("IP address: %s\n", ip);
 
-				const_cast <uri_t::url_t *> (&url)->ip = ip;
-				
-				
-				// Выполняем запуск системы
-				resolver(url.ip, wrk);
+					const_cast <uri_t::url_t *> (&url)->ip = ip;
+					
+					
+					// Выполняем запуск системы
+					resolver(url.ip, wrk);
 
-				/*
-				// Если IP адрес не получен
-				if(url.ip.empty() && !url.domain.empty())
-					// Определяем тип подключения
-					switch(this->net.family){
-						// Резолвер IPv4, создаём резолвер
-						case AF_INET: wrk->did = this->dns4.resolve(wrk, url.domain, AF_INET, &resolver); break;
-						// Резолвер IPv6, создаём резолвер
-						case AF_INET6: wrk->did = this->dns6.resolve(wrk, url.domain, AF_INET6, &resolver); break;
-					}
-				// Выполняем запуск системы
-				else if(!url.ip.empty()) resolver(url.ip, wrk);
-				*/
+					/*
+					// Если IP адрес не получен
+					if(url.ip.empty() && !url.domain.empty())
+						// Определяем тип подключения
+						switch(this->net.family){
+							// Резолвер IPv4, создаём резолвер
+							case AF_INET: wrk->did = this->dns4.resolve(wrk, url.domain, AF_INET, &resolver); break;
+							// Резолвер IPv6, создаём резолвер
+							case AF_INET6: wrk->did = this->dns6.resolve(wrk, url.domain, AF_INET6, &resolver); break;
+						}
+					// Выполняем запуск системы
+					else if(!url.ip.empty()) resolver(url.ip, wrk);
+					*/
+				}
 			}
 		}
 	}
@@ -782,8 +900,10 @@ void awh::client::Core::close(const size_t aid) noexcept {
 			if((wrk->proxy.type != proxy_t::type_t::NONE) && !wrk->isProxy())
 				// Выполняем переключение обратно на прокси-сервер
 				wrk->switchConnect();
-			// Выполняем удаление контекста SSL
-			this->ssl.clear(adj->ssl);
+			// Если UnixSocket не используется
+			if(!this->unixSocket)
+				// Выполняем удаление контекста SSL
+				this->ssl.clear(adj->ssl);
 			// Удаляем адъютанта из списка адъютантов
 			wrk->adjutants.erase(aid);
 			// Удаляем адъютанта из списка подключений
@@ -814,50 +934,53 @@ void awh::client::Core::close(const size_t aid) noexcept {
  * @param aid идентификатор адъютанта
  */
 void awh::client::Core::switchProxy(const size_t aid) noexcept {
-	// Выполняем блокировку потока
-	const lock_guard <recursive_mutex> lock(this->mtx.proxy);
-	// Выполняем извлечение адъютанта
-	auto it = this->adjutants.find(aid);
-	// Если адъютант получен
-	if(it != this->adjutants.end()){
-		// Получаем объект адъютанта
-		awh::worker_t::adj_t * adj = const_cast <awh::worker_t::adj_t *> (it->second);
-		// Получаем объект воркера
-		worker_t * wrk = (worker_t *) const_cast <awh::worker_t *> (adj->parent);
-		// Если прокси-сервер активирован но ещё не переключён на работу с сервером
-		if((wrk->proxy.type != proxy_t::type_t::NONE) && (adj->bev.socket >= 0) && wrk->isProxy()){
-			// Выполняем переключение на работу с сервером
-			wrk->switchConnect();
-			// Выполняем удаление контекста SSL
-			this->ssl.clear(adj->ssl);
-			// Выполняем получение контекста сертификата
-			adj->ssl = this->ssl.init(wrk->url);
-			// Если защищённый режим работы разрешён
-			if(adj->ssl.mode){
-				// Выполняем обёртывание сокета в BIO SSL
-				BIO * bio = BIO_new_socket(adj->bev.socket, BIO_NOCLOSE);
-				// Если BIO SSL создано
-				if(bio != nullptr){
-					// Устанавливаем блокирующий режим ввода/вывода для сокета
-					BIO_set_nbio(bio, 0);
-					// Выполняем установку BIO SSL
-					SSL_set_bio(adj->ssl.ssl, bio, bio);
-					// Выполняем активацию клиента SSL
-					SSL_set_connect_state(adj->ssl.ssl);
-					// Останавливаем чтение данных
-					this->disabled(method_t::READ, it->first);
-					// Останавливаем запись данных
-					this->disabled(method_t::WRITE, it->first);
-					// Активируем ожидание подключения
-					this->enabled(method_t::CONNECT, it->first);
-				// Выводим сообщение об ошибке
-				} else this->log->print("BIO new socket is failed", log_t::flag_t::CRITICAL);
-				// Выходим из функции
-				return;
+	// Если UnixSocket не используется
+	if(!this->unixSocket){
+		// Выполняем блокировку потока
+		const lock_guard <recursive_mutex> lock(this->mtx.proxy);
+		// Выполняем извлечение адъютанта
+		auto it = this->adjutants.find(aid);
+		// Если адъютант получен
+		if(it != this->adjutants.end()){
+			// Получаем объект адъютанта
+			awh::worker_t::adj_t * adj = const_cast <awh::worker_t::adj_t *> (it->second);
+			// Получаем объект воркера
+			worker_t * wrk = (worker_t *) const_cast <awh::worker_t *> (adj->parent);
+			// Если прокси-сервер активирован но ещё не переключён на работу с сервером
+			if((wrk->proxy.type != proxy_t::type_t::NONE) && (adj->bev.socket >= 0) && wrk->isProxy()){
+				// Выполняем переключение на работу с сервером
+				wrk->switchConnect();
+				// Выполняем удаление контекста SSL
+				this->ssl.clear(adj->ssl);
+				// Выполняем получение контекста сертификата
+				adj->ssl = this->ssl.init(wrk->url);
+				// Если защищённый режим работы разрешён
+				if(adj->ssl.mode){
+					// Выполняем обёртывание сокета в BIO SSL
+					BIO * bio = BIO_new_socket(adj->bev.socket, BIO_NOCLOSE);
+					// Если BIO SSL создано
+					if(bio != nullptr){
+						// Устанавливаем блокирующий режим ввода/вывода для сокета
+						BIO_set_nbio(bio, 0);
+						// Выполняем установку BIO SSL
+						SSL_set_bio(adj->ssl.ssl, bio, bio);
+						// Выполняем активацию клиента SSL
+						SSL_set_connect_state(adj->ssl.ssl);
+						// Останавливаем чтение данных
+						this->disabled(method_t::READ, it->first);
+						// Останавливаем запись данных
+						this->disabled(method_t::WRITE, it->first);
+						// Активируем ожидание подключения
+						this->enabled(method_t::CONNECT, it->first);
+					// Выводим сообщение об ошибке
+					} else this->log->print("BIO new socket is failed", log_t::flag_t::CRITICAL);
+					// Выходим из функции
+					return;
+				}
 			}
+			// Если функция обратного вызова установлена, сообщаем, что мы подключились
+			if(wrk->connectFn != nullptr) wrk->connectFn(it->first, wrk->wid, this);
 		}
-		// Если функция обратного вызова установлена, сообщаем, что мы подключились
-		if(wrk->connectFn != nullptr) wrk->connectFn(it->first, wrk->wid, this);
 	}
 }
 /**
@@ -873,22 +996,31 @@ void awh::client::Core::timeout(const size_t aid) noexcept {
 		awh::worker_t::adj_t * adj = const_cast <awh::worker_t::adj_t *> (it->second);
 		// Получаем объект подключения
 		worker_t * wrk = (worker_t *) const_cast <awh::worker_t *> (adj->parent);
-		// Получаем URL параметры запроса
-		const uri_t::url_t & url = (wrk->isProxy() ? wrk->proxy.url : wrk->url);
-		// Если данные ещё ни разу не получены
-		if(!wrk->acquisition && !url.ip.empty()){
-			/*
-			// Определяем тип подключения
-			switch(core->net.family){
-				// Резолвер IPv4, добавляем бракованный IPv4 адрес в список адресов
-				case AF_INET: this->dns4.setToBlackList(url.ip); break;
-				// Резолвер IPv6, добавляем бракованный IPv6 адрес в список адресов
-				case AF_INET6: this->dns6.setToBlackList(url.ip); break;
-			}
-			*/
+		// Если UnixSocket не используется
+		if(!this->unixSocket){
+			// Получаем URL параметры запроса
+			const uri_t::url_t & url = (wrk->isProxy() ? wrk->proxy.url : wrk->url);
+			// Если данные ещё ни разу не получены
+			if(!wrk->acquisition && !url.ip.empty()){
+				/*
+				// Определяем тип подключения
+				switch(core->net.family){
+					// Резолвер IPv4, добавляем бракованный IPv4 адрес в список адресов
+					case AF_INET: this->dns4.setToBlackList(url.ip); break;
+					// Резолвер IPv6, добавляем бракованный IPv6 адрес в список адресов
+					case AF_INET6: this->dns6.setToBlackList(url.ip); break;
+				}
+				*/
+			}			
+			// Выводим сообщение в лог, о таймауте подключения
+			this->log->print("timeout host %s [%s%d]", log_t::flag_t::WARNING, url.domain.c_str(), (!url.ip.empty() ? (url.ip + ":").c_str() : ""), url.port);
+		// Если используется UnixSocket
+		} else {
+			// Получаем адрес сокета
+			const string & socket = this->unixSocketAddr();
+			// Выводим сообщение в лог, о таймауте подключения
+			if(!socket.empty()) this->log->print("timeout host %s", log_t::flag_t::WARNING, socket.c_str());
 		}
-		// Выводим сообщение в лог, о таймауте подключения
-		this->log->print("timeout host %s [%s%d]", log_t::flag_t::WARNING, url.domain.c_str(), (!url.ip.empty() ? (url.ip + ":").c_str() : ""), url.port);
 		// Останавливаем чтение данных
 		this->disabled(method_t::READ, it->first);
 		// Останавливаем запись данных
@@ -920,37 +1052,50 @@ void awh::client::Core::connected(const size_t aid) noexcept {
 			wrk->status.wait = worker_t::mode_t::DISCONNECT;
 			// Выполняем очистку существующих таймаутов
 			this->clearTimeout(wrk->wid);
-			// Получаем URL параметры запроса
-			const uri_t::url_t & url = (wrk->isProxy() ? wrk->proxy.url : wrk->url);
-			// Получаем хост сервера
-			const string & host = (!url.ip.empty() ? url.ip : url.domain);
+			// Если UnixSocket не используется
+			if(!this->unixSocket){
+				// Получаем URL параметры запроса
+				const uri_t::url_t & url = (wrk->isProxy() ? wrk->proxy.url : wrk->url);
+				// Получаем хост сервера
+				const string & host = (!url.ip.empty() ? url.ip : url.domain);
 
-			/*
-			// Определяем тип подключения
-			switch(this->net.family){
-				// Резолвер IPv4, создаём резолвер
-				case AF_INET:
-					// Выполняем отмену ранее выполненных запросов DNS
-					this->dns4.cancel(wrk->did);
-				break;
-				// Резолвер IPv6, создаём резолвер
-				case AF_INET6:
-					// Выполняем отмену ранее выполненных запросов DNS
-					this->dns6.cancel(wrk->did);
-				break;
+				/*
+				// Определяем тип подключения
+				switch(this->net.family){
+					// Резолвер IPv4, создаём резолвер
+					case AF_INET:
+						// Выполняем отмену ранее выполненных запросов DNS
+						this->dns4.cancel(wrk->did);
+					break;
+					// Резолвер IPv6, создаём резолвер
+					case AF_INET6:
+						// Выполняем отмену ранее выполненных запросов DNS
+						this->dns6.cancel(wrk->did);
+					break;
+				}
+				*/
+
+				// Запускаем чтение данных
+				this->enabled(method_t::READ, it->first, wrk->wait);
+				// Выводим в лог сообщение
+				if(!this->noinfo) this->log->print("connect client to server [%s:%d]", log_t::flag_t::INFO, host.c_str(), url.port);
+				// Если подключение производится через, прокси-сервер
+				if(wrk->isProxy()){
+					// Выполняем функцию обратного вызова для прокси-сервера
+					if(wrk->connectProxyFn != nullptr) wrk->connectProxyFn(it->first, wrk->wid, const_cast <awh::core_t *> (wrk->core));
+				// Выполняем функцию обратного вызова
+				} else if(wrk->connectFn != nullptr) wrk->connectFn(it->first, wrk->wid, const_cast <awh::core_t *> (wrk->core));
+			// Если используется UnixSocket
+			} else {
+				// Получаем адрес сокета
+				const string & socket = this->unixSocketAddr();
+				// Запускаем чтение данных
+				this->enabled(method_t::READ, it->first, wrk->wait);
+				// Выводим в лог сообщение
+				if(!this->noinfo && !socket.empty()) this->log->print("connect client to server [%s]", log_t::flag_t::INFO, socket.c_str());
+				// Выполняем функцию обратного вызова
+				if(wrk->connectFn != nullptr) wrk->connectFn(it->first, wrk->wid, const_cast <awh::core_t *> (wrk->core));
 			}
-			*/
-
-			// Запускаем чтение данных
-			this->enabled(method_t::READ, it->first, wrk->wait);
-			// Выводим в лог сообщение
-			if(!this->noinfo) this->log->print("connect client to server [%s:%d]", log_t::flag_t::INFO, host.c_str(), url.port);
-			// Если подключение производится через, прокси-сервер
-			if(wrk->isProxy()){
-				// Выполняем функцию обратного вызова для прокси-сервера
-				if(wrk->connectProxyFn != nullptr) wrk->connectProxyFn(it->first, wrk->wid, const_cast <awh::core_t *> (wrk->core));
-			// Выполняем функцию обратного вызова
-			} else if(wrk->connectFn != nullptr) wrk->connectFn(it->first, wrk->wid, const_cast <awh::core_t *> (wrk->core));
 			// Выходим из функции
 			return;
 		}
@@ -1028,13 +1173,19 @@ void awh::client::Core::transfer(const method_t method, const size_t aid) noexce
 								while((bytes - offset) > 0){
 									// Определяем размер отправляемых данных
 									actual = ((bytes - offset) >= adj->marker.write.max ? adj->marker.write.max : (bytes - offset));
-									// Если подключение производится через, прокси-сервер
-									if(wrk->isProxy()){
-										// Если функция обратного вызова для вывода записи существует
-										if(wrk->readProxyFn != nullptr)
+									// Если UnixSocket не используется
+									if(!this->unixSocket){
+										// Если подключение производится через, прокси-сервер
+										if(wrk->isProxy()){
+											// Если функция обратного вызова для вывода записи существует
+											if(wrk->readProxyFn != nullptr)
+												// Выводим функцию обратного вызова
+												wrk->readProxyFn(buffer + offset, actual, aid, wrk->wid, reinterpret_cast <awh::core_t *> (this));
+										// Если прокси-сервер не используется
+										} else if(wrk->readFn != nullptr)
 											// Выводим функцию обратного вызова
-											wrk->readProxyFn(buffer + offset, actual, aid, wrk->wid, reinterpret_cast <awh::core_t *> (this));
-									// Если прокси-сервер не используется
+											wrk->readFn(buffer + offset, actual, aid, wrk->wid, reinterpret_cast <awh::core_t *> (this));
+									// Если функция обратного вызова установлена
 									} else if(wrk->readFn != nullptr)
 										// Выводим функцию обратного вызова
 										wrk->readFn(buffer + offset, actual, aid, wrk->wid, reinterpret_cast <awh::core_t *> (this));
@@ -1043,13 +1194,19 @@ void awh::client::Core::transfer(const method_t method, const size_t aid) noexce
 								}
 							// Если данных достаточно
 							} else {
-								// Если подключение производится через, прокси-сервер
-								if(wrk->isProxy()){
-									// Если функция обратного вызова для вывода записи существует
-									if(wrk->readProxyFn != nullptr)
+								// Если UnixSocket не используется
+								if(!this->unixSocket){
+									// Если подключение производится через, прокси-сервер
+									if(wrk->isProxy()){
+										// Если функция обратного вызова для вывода записи существует
+										if(wrk->readProxyFn != nullptr)
+											// Выводим функцию обратного вызова
+											wrk->readProxyFn(buffer, bytes, aid, wrk->wid, reinterpret_cast <awh::core_t *> (this));
+									// Если прокси-сервер не используется
+									} else if(wrk->readFn != nullptr)
 										// Выводим функцию обратного вызова
-										wrk->readProxyFn(buffer, bytes, aid, wrk->wid, reinterpret_cast <awh::core_t *> (this));
-								// Если прокси-сервер не используется
+										wrk->readFn(buffer, bytes, aid, wrk->wid, reinterpret_cast <awh::core_t *> (this));
+								// Если функция обратного вызова установлена
 								} else if(wrk->readFn != nullptr)
 									// Выводим функцию обратного вызова
 									wrk->readFn(buffer, bytes, aid, wrk->wid, reinterpret_cast <awh::core_t *> (this));

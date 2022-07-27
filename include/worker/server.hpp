@@ -44,8 +44,8 @@ namespace awh {
 				// Событие подключения к серверу
 				ev::io io;
 			protected:
-				// Файловый дескриптор сервера
-				int fd;
+				// Сокет сервера
+				int socket;
 				// Порт сервера
 				u_int port;
 				// Хост сервера
@@ -75,7 +75,7 @@ namespace awh {
 				 * @param log объект для работы с логами
 				 */
 				Worker(const fmk_t * fmk, const log_t * log) noexcept :
-				 awh::worker_t(fmk, log), fd(-1),
+				 awh::worker_t(fmk, log), socket(-1),
 				 port(SERVER_PORT), host(SERVER_HOST),
 				 total(SERVER_TOTAL_CONNECT), acceptFn(nullptr) {}
 				/**
