@@ -1021,7 +1021,7 @@ void awh::Core::rebase() noexcept {
 		 */
 		#if defined(_WIN32) || defined(_WIN64)
 			// Создаем новую базу
-			this->base = ev_loop_new(ev_recommended_backends ());
+			this->base = ev_default_loop(0);
 		/**
 		 * Если операционной системой является Linux
 		 */
