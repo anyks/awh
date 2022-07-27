@@ -434,57 +434,52 @@ void awh::Core::clean(const size_t aid) const noexcept {
 const awh::Core::sockaddr_t awh::Core::sockaddr() const noexcept {
 	// Результат работы функции
 	sockaddr_t result;
-	// Если требуется использовать UnixSocket
-	if(this->unixSocket){
+	// Если требуется использовать unix-сокет
+	if(this->isSetUnixSocket()){
 		/**
 		 * Если операционной системой не является Windows
 		 */
 		#if !defined(_WIN32) && !defined(_WIN64)
-			// Получаем адрес сокета
-			const string & socket = this->unixSocketAddr();
-			// Если адрес сокета сервера получен
-			if(!socket.empty()){
-				// Если ядро является сервером
-				if(this->type == type_t::SERVER){
-					// Если сокет в файловой системе уже существует, удаляем его
-					if(fs_t::issock(socket))
-						// Удаляем файл сокета
-						::unlink(socket.c_str());
-				}
-				// Устанавливаем протокол интернета
-				result.unix.sun_family = AF_UNIX;
-				// Очищаем всю структуру для сервера
-				memset(&result.unix.sun_path, 0, sizeof(result.unix.sun_path));
-				// Копируем адрес сокета сервера
-				strncpy(result.unix.sun_path, socket.c_str(), sizeof(result.unix.sun_path));
-				// Создаем сокет подключения
-				result.socket = ::socket(AF_UNIX, SOCK_STREAM, 0);
-				// Если сокет не создан то выходим
-				if(result.socket < 0){
-					// Выводим сообщение в консоль
-					this->log->print("creating socket %s", log_t::flag_t::CRITICAL, socket.c_str());
+			// Если ядро является сервером
+			if(this->type == type_t::SERVER){
+				// Если сокет в файловой системе уже существует, удаляем его
+				if(fs_t::issock(this->unixSocket))
+					// Удаляем файл сокета
+					::unlink(this->unixSocket.c_str());
+			}
+			// Устанавливаем протокол интернета
+			result.unix.sun_family = AF_UNIX;
+			// Очищаем всю структуру для сервера
+			memset(&result.unix.sun_path, 0, sizeof(result.unix.sun_path));
+			// Копируем адрес сокета сервера
+			strncpy(result.unix.sun_path, this->unixSocket.c_str(), sizeof(result.unix.sun_path));
+			// Создаем сокет подключения
+			result.socket = ::socket(AF_UNIX, SOCK_STREAM, 0);
+			// Если сокет не создан то выходим
+			if(result.socket < 0){
+				// Выводим сообщение в консоль
+				this->log->print("creating socket %s", log_t::flag_t::CRITICAL, this->unixSocket.c_str());
+				// Выходим
+				return sockaddr_t();
+			}
+			// Выполняем игнорирование сигнала неверной инструкции процессора
+			this->socket.noSigill();
+			// Отключаем сигнал записи в оборванное подключение
+			this->socket.noSigpipe(result.socket);
+			// Устанавливаем разрешение на повторное использование сокета
+			this->socket.reuseable(result.socket);
+			// Переводим сокет в не блокирующий режим
+			this->socket.nonBlocking(result.socket);
+			// Если ядро является сервером
+			if(this->type == type_t::SERVER){
+				// Получаем размер объекта сокета
+				const socklen_t size = (offsetof(struct sockaddr_un, sun_path) + strlen(result.unix.sun_path));
+				// Выполняем бинд на сокет
+				if(::bind(result.socket, (struct sockaddr *) &result.unix, size) < 0){
+					// Выводим в лог сообщение
+					this->log->print("bind local network [%s]", log_t::flag_t::CRITICAL, this->unixSocket.c_str());
 					// Выходим
 					return sockaddr_t();
-				}
-				// Выполняем игнорирование сигнала неверной инструкции процессора
-				this->socket.noSigill();
-				// Отключаем сигнал записи в оборванное подключение
-				this->socket.noSigpipe(result.socket);
-				// Устанавливаем разрешение на повторное использование сокета
-				this->socket.reuseable(result.socket);
-				// Переводим сокет в не блокирующий режим
-				this->socket.nonBlocking(result.socket);
-				// Если ядро является сервером
-				if(this->type == type_t::SERVER){
-					// Получаем размер объекта сокета
-					const socklen_t size = (offsetof(struct sockaddr_un, sun_path) + strlen(result.unix.sun_path));
-					// Выполняем бинд на сокет
-					if(::bind(result.socket, (struct sockaddr *) &result.unix, size) < 0){
-						// Выводим в лог сообщение
-						this->log->print("bind local network [%s]", log_t::flag_t::CRITICAL, socket.c_str());
-						// Выходим
-						return sockaddr_t();
-					}
 				}
 			}
 		#endif
@@ -822,26 +817,18 @@ void awh::Core::stop() noexcept {
 }
 /**
  * start Метод запуска клиента
- * @param unix Флаг запуска для работы с UnixSocket
  */
-void awh::Core::start(const bool unix) noexcept {
+void awh::Core::start() noexcept {
 	// Выполняем блокировку потока
 	this->mtx.status.lock();
 	// Если система ещё не запущена
 	if(!this->mode && (this->base != nullptr)){
-		/**
-		 * Если операционной системой не является Windows
-		 */
-		#if !defined(_WIN32) && !defined(_WIN64)
-			// Устанавливаем флаг работы с UnixSocket
-			this->unixSocket = unix;
-		#endif
 		// Разрешаем работу WebSocket
 		this->mode = !this->mode;
 		// Выполняем разблокировку потока
 		this->mtx.status.unlock();
 		// Выполняем запуск чтения базы событий
-		this->dispatch.start();
+		this->dispatch.start();		
 	// Выполняем разблокировку потока
 	} else this->mtx.status.unlock();
 }
@@ -852,20 +839,6 @@ void awh::Core::start(const bool unix) noexcept {
 bool awh::Core::working() const noexcept {
 	// Выводим результат проверки
 	return this->mode;
-}
-/**
- * unixSocketAddr Метод получения адреса UnixSocket-а сервера
- * @return адрес активного UnixSocket-а сервера
- */
-string awh::Core::unixSocketAddr() const noexcept {
-	// Результат работы функции
-	string result = "";
-	// Если флаг работы с UnixSocket установлен
-	if(this->unixSocket)
-		// Выполняем формирование адреса UnixSocket
-		result = this->fmk->format("/tmp/%s.sock", this->fmk->toLower(this->serverName).c_str());
-	// Выводим результат
-	return result;
 }
 /**
  * add Метод добавления воркера в биндинг
@@ -1644,6 +1617,81 @@ void awh::Core::freeze(const bool mode) noexcept {
 	this->dispatch.freeze(mode);
 }
 /**
+ * unsetUnixSocket Метод удаления unix-сокета
+ * @return результат выполнения операции
+ */
+bool awh::Core::unsetUnixSocket() noexcept {
+	// Выполняем блокировку потока
+	const lock_guard <recursive_mutex> lock(this->mtx.unix);
+	// Результат работы функции
+	bool result = false;
+	/**
+	 * Если операционной системой не является Windows
+	 */
+	#if !defined(_WIN32) && !defined(_WIN64)
+		// Если сервер в данный момент не работает
+		if((result = !this->working()))
+			// Выполняем очистку unix-сокета
+			this->unixSocket.clear();
+	#endif
+	// Выводим результат
+	return result;
+}
+/**
+ * setUnixSocket Метод установки адреса файла unix-сокета
+ * @param socket адрес файла unix-сокета
+ * @return       результат установки unix-сокета
+ */
+bool awh::Core::setUnixSocket(const string & socket) noexcept {
+	// Выполняем блокировку потока
+	const lock_guard <recursive_mutex> lock(this->mtx.unix);
+	/**
+	 * Если операционной системой не является Windows
+	 */
+	#if !defined(_WIN32) && !defined(_WIN64)
+		// Если адрес unix-сокета передан
+		if(!socket.empty())
+			// Выполняем установку unix-сокета
+			this->unixSocket = this->fmk->format("/tmp/%s.sock", this->fmk->toLower(socket).c_str());
+		// Если адрес unix-сокета не передан
+		else this->unixSocket = this->fmk->format("/tmp/%s.sock", this->fmk->toLower(unixServerName.c_str()).c_str());
+	#endif
+	// Выводим результат
+	return !this->unixSocket.empty();
+}
+/**
+ * isSetUnixSocket Метод проверки установки unix-сокета
+ * @return результат проверки установки unix-сокета
+ */
+bool awh::Core::isSetUnixSocket() const noexcept {
+	// Выполняем проверку на установку unix-сокета
+	return !this->unixSocket.empty();
+}
+/**
+ * isActiveUnixSocket Метод проверки активного unix-сокета
+ * @param socket адрес файла unix-сокета
+ * @return       результат проверки активного unix-сокета
+ */
+bool awh::Core::isActiveUnixSocket(const string & socket) const noexcept {
+	// Выполняем блокировку потока
+	const lock_guard <recursive_mutex> lock(this->mtx.unix);
+	// Результат работы функции
+	bool result = false;
+	/**
+	 * Если операционной системой не является Windows
+	 */
+	#if !defined(_WIN32) && !defined(_WIN64)
+		// Если адрес unix-сокета передан
+		if(!socket.empty())
+			// Выполняем установку unix-сокета
+			result = fs_t::issock(this->fmk->format("/tmp/%s.sock", this->fmk->toLower(socket).c_str()));
+		// Если адрес unix-сокета не передан
+		else result = fs_t::issock(this->fmk->format("/tmp/%s.sock", this->fmk->toLower(AWH_SHORT_NAME).c_str()));
+	#endif
+	// Выводим результат
+	return result;
+}
+/**
  * setNoInfo Метод установки флага запрета вывода информационных сообщений
  * @param mode флаг запрета вывода информационных сообщений
  */
@@ -1674,14 +1722,6 @@ void awh::Core::setVerifySSL(const bool mode) noexcept {
 	this->ssl.setVerify(mode);
 }
 /**
- * setServerName Метод установки названия сервера
- * @param name название сервиса
- */
-void awh::Core::setServerName(const string & name) noexcept {
-	// Если имя сервера передано
-	if(!name.empty()) this->serverName = name;
-}
-/**
  * setPersistInterval Метод установки персистентного таймера
  * @param itv интервал персистентного таймера в миллисекундах
  */
@@ -1708,6 +1748,20 @@ void awh::Core::setFamily(const int family) noexcept {
 	const lock_guard <recursive_mutex> lock(this->mtx.main);
 	// Устанавливаем тип активного интернет-подключения
 	this->net.family = family;
+}
+/**
+ * setNameServer Метод добавления названия сервера
+ * @param name название сервера для добавления
+ */
+void awh::Core::setNameServer(const string & name) noexcept {
+	// Выполняем блокировку потока
+	const lock_guard <recursive_mutex> lock(this->mtx.main);
+	// Если название сервера передано
+	if(!name.empty())
+		// Устанавливаем новое название сервера
+		this->unixServerName = name;
+	// Иначе устанавливаем название сервера по умолчанию
+	else this->unixServerName = AWH_SHORT_NAME;
 }
 /**
  * setCA Метод установки CA-файла корневого SSL сертификата
@@ -1817,21 +1871,16 @@ awh::Core::~Core() noexcept {
 	}
 	// Устанавливаем статус сетевого ядра
 	this->status = status_t::STOP;
-	// Если требуется использовать UnixSocket и ядро является сервером
-	if(this->unixSocket && (this->type == type_t::SERVER)){
+	// Если требуется использовать unix-сокет и ядро является сервером
+	if(this->isSetUnixSocket() && (this->type == type_t::SERVER)){
 		/**
 		 * Если операционной системой не является Windows
 		 */
 		#if !defined(_WIN32) && !defined(_WIN64)
-			// Получаем адрес сокета
-			const string & socket = this->unixSocketAddr();
-			// Если адрес сокета сервера получен
-			if(!socket.empty()){
-				// Если сокет в файловой системе уже существует, удаляем его
-				if(fs_t::issock(socket))
-					// Удаляем файл сокета
-					::unlink(socket.c_str());
-			}
+			// Если сокет в файловой системе уже существует, удаляем его
+			if(fs_t::issock(this->unixSocket))
+				// Удаляем файл сокета
+				::unlink(this->unixSocket.c_str());
 		#endif
 	}
 	// Выполняем разблокировку потока

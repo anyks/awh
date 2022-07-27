@@ -135,6 +135,7 @@ namespace awh {
 				recursive_mutex core;   // Для работы с ядрами
 				recursive_mutex bind;   // Для работы с биндингом ядра
 				recursive_mutex main;   // Для работы с параметрами модуля
+				recursive_mutex unix;   // Для работы с unix-сокетами
 				recursive_mutex timer;  // Для работы с таймерами
 				recursive_mutex status; // Для контроля запуска модуля
 				recursive_mutex worker; // Для работы с воркерами
@@ -277,8 +278,6 @@ namespace awh {
 					 work(false), init(true), base(base), freq(10ms) {}
 			} dispatch_t;
 		protected:
-			// Мютекс для блокировки основного потока
-			mtx_t mtx;
 			// Сетевые параметры
 			net_t net;
 			// Создаём объект работы с URI
@@ -302,6 +301,9 @@ namespace awh {
 		private:
 			// Объект события таймера
 			timer_t timer;
+		protected:
+			// Мютекс для блокировки основного потока
+			mutable mtx_t mtx;
 		protected:
 			// Тип запускаемого ядра
 			type_t type = type_t::CLIENT;
@@ -328,11 +330,11 @@ namespace awh {
 			bool persist = false;
 			// Флаг разрешающий работу только с IPv6
 			bool ipV6only = false;
-			// Флаг разрешения использования UnixSocket
-			bool unixSocket = false;
-		private:
-			// Имя сервера для идентификации в сети
-			string serverName = AWH_SHORT_NAME;
+		protected:
+			// Адрес файла unix-сокета
+			string unixSocket = "";
+			// Название сокета по умолчанию
+			string unixServerName = AWH_SHORT_NAME;
 		private:
 			// Интервал персистентного таймера в миллисекундах
 			time_t persistInterval = PERSIST_INTERVAL;
@@ -412,21 +414,14 @@ namespace awh {
 			virtual void stop() noexcept;
 			/**
 			 * start Метод запуска клиента
-			 * @param unix Флаг запуска для работы с UnixSocket
 			 */
-			virtual void start(const bool unix = false) noexcept;
+			virtual void start() noexcept;
 		public:
 			/**
 			 * working Метод проверки на запуск работы
 			 * @return результат проверки
 			 */
 			bool working() const noexcept;
-		protected:
-			/**
-			 * unixSocketAddr Метод получения адреса UnixSocket-а сервера
-			 * @return адрес активного UnixSocket-а сервера
-			 */
-			string unixSocketAddr() const noexcept;
 		public:
 			/**
 			 * add Метод добавления воркера в биндинг
@@ -574,6 +569,30 @@ namespace awh {
 			void freeze(const bool mode) noexcept;
 		public:
 			/**
+			 * unsetUnixSocket Метод удаления unix-сокета
+			 * @return результат выполнения операции
+			 */
+			bool unsetUnixSocket() noexcept;
+			/**
+			 * setUnixSocket Метод установки адреса файла unix-сокета
+			 * @param socket адрес файла unix-сокета
+			 * @return       результат установки unix-сокета
+			 */
+			bool setUnixSocket(const string & socket = "") noexcept;
+		public:
+			/**
+			 * isSetUnixSocket Метод проверки установки unix-сокета
+			 * @return результат проверки установки unix-сокета
+			 */
+			bool isSetUnixSocket() const noexcept;
+			/**
+			 * isActiveUnixSocket Метод проверки активного unix-сокета
+			 * @param socket адрес файла unix-сокета
+			 * @return       результат проверки активного unix-сокета
+			 */
+			bool isActiveUnixSocket(const string & socket = "") const noexcept;
+		public:
+			/**
 			 * setNoInfo Метод установки флага запрета вывода информационных сообщений
 			 * @param mode флаг запрета вывода информационных сообщений
 			 */
@@ -589,11 +608,6 @@ namespace awh {
 			 */
 			void setVerifySSL(const bool mode) noexcept;
 			/**
-			 * setServerName Метод установки названия сервера
-			 * @param name название сервиса
-			 */
-			void setServerName(const string & name) noexcept;
-			/**
 			 * setPersistInterval Метод установки персистентного таймера
 			 * @param itv интервал персистентного таймера в миллисекундах
 			 */
@@ -608,6 +622,11 @@ namespace awh {
 			 * @param family тип протокола интернета AF_INET или AF_INET6
 			 */
 			void setFamily(const int family = AF_INET) noexcept;
+			/**
+			 * setNameServer Метод добавления названия сервера
+			 * @param name название сервера для добавления
+			 */
+			void setNameServer(const string & name = "") noexcept;
 			/**
 			 * setCA Метод установки CA-файла корневого SSL сертификата
 			 * @param cafile адрес CA-файла

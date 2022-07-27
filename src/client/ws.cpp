@@ -977,15 +977,39 @@ void awh::client::WebSocket::ping(const string & message) noexcept {
  * @param compress метод компрессии передаваемых сообщений
  */
 void awh::client::WebSocket::init(const string & url, const http_t::compress_t compress) noexcept {
-	// Если адрес сервера передан
-	if(!url.empty()){
+	// Флаг активации сокета
+	bool unixSocket = false;
+	/**
+	 * Если операционной системой не является Windows
+	 */
+	#if !defined(_WIN32) && !defined(_WIN64)
+		// Выполняем проверку, установлен ли UnixSocket
+		unixSocket = this->core->isActiveUnixSocket(url);
+	#endif
+	// Если unix-сокет не установлен
+	if(!unixSocket){
+		// Если адрес сервера передан
+		if(!url.empty()){
+			// Выполняем очистку воркера
+			this->worker.clear();
+			// Устанавливаем URL адрес запроса
+			this->worker.url = this->uri.parseUrl(url);
+			// Удаляем unix-сокет ранее установленный
+			const_cast <client::core_t *> (this->core)->unsetUnixSocket();
+		}
+	// Выполняем установку unix-сокет
+	} else {
 		// Выполняем очистку воркера
 		this->worker.clear();
 		// Устанавливаем метод компрессии сообщений
 		this->compress = compress;
-		// Устанавливаем URL адрес запроса
-		this->worker.url = this->uri.parseUrl(url);
+		// Устанавливаем URL адрес запроса (как заглушка)
+		this->worker.url = this->uri.parseUrl("ws://unixsocket");
+		// Выполняем установку unix-сокета 
+		const_cast <client::core_t *> (this->core)->setUnixSocket(url);
 	}
+	// Устанавливаем метод компрессии сообщений
+	this->compress = compress;
 }
 /**
  * on Метод установки функции обратного вызова на событие запуска или остановки подключения
@@ -1210,28 +1234,27 @@ void awh::client::WebSocket::stop() noexcept {
 	}
 }
 /**
- * pause Метод установки на паузу клиента
- */
-void awh::client::WebSocket::pause() noexcept {
-	// Ставим работу клиента на паузу
-	this->freeze = true;
-}
-/**
  * start Метод запуска клиента
- * @param unix Флаг запуска для работы с UnixSocket
  */
-void awh::client::WebSocket::start(const bool unix) noexcept {
+void awh::client::WebSocket::start() noexcept {
 	// Если адрес URL запроса передан
 	if(!this->freeze && !this->worker.url.empty()){
 		// Если биндинг не запущен, выполняем запуск биндинга
 		if(!this->core->working())
 			// Выполняем запуск биндинга
-			const_cast <client::core_t *> (this->core)->start(unix);
+			const_cast <client::core_t *> (this->core)->start();
 		// Выполняем запрос на сервер
 		else const_cast <client::core_t *> (this->core)->open(this->worker.wid);
 	}
 	// Снимаем с паузы клиент
 	this->freeze = false;
+}
+/**
+ * pause Метод установки на паузу клиента
+ */
+void awh::client::WebSocket::pause() noexcept {
+	// Ставим работу клиента на паузу
+	this->freeze = true;
 }
 /**
  * getSub Метод получения выбранного сабпротокола
@@ -1432,8 +1455,6 @@ void awh::client::WebSocket::setServ(const string & id, const string & name, con
 	this->http.setServ(id, name, ver);
 	// Устанавливаем данные сервиса для прокси-сервера
 	this->worker.proxy.http.setServ(id, name, ver);
-	// Устанавливаем название сервера
-	const_cast <client::core_t *> (this->core)->setServerName(name);
 }
 /**
  * setCrypt Метод установки параметров шифрования

@@ -264,9 +264,8 @@ namespace awh {
 				void stop() noexcept;
 				/**
 				 * start Метод запуска клиента
-				 * @param unix Флаг запуска для работы с UnixSocket
 				 */
-				void start(const bool unix = false) noexcept;
+				void start() noexcept;
 			public:
 				/**
 				 * close Метод закрытия подключения клиента

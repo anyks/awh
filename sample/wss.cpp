@@ -138,7 +138,9 @@ int main(int argc, char * argv[]){
 	);
 	*/
 	// Устанавливаем простое чтение базы событий
-	core.easily(true);
+	// core.easily(true);
+	// Устанавливаем название сервера
+	// core.setNameServer("anyks");
 	// Выполняем активацию многопоточности
 	// ws.multiThreads(22);
 	// Устанавливаем название сервера
@@ -150,6 +152,7 @@ int main(int argc, char * argv[]){
 	// Выполняем инициализацию WebSocket сервера
 	ws.init(2222, "127.0.0.1", http_t::compress_t::DEFLATE);
 	// ws.init(2222, "127.0.0.1", http_t::compress_t::NONE);
+	// ws.init("anyks", http_t::compress_t::DEFLATE);
 	// Устанавливаем шифрование
 	// ws.setCrypt("PASS");
 	// Устанавливаем сабпротоколы

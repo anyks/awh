@@ -235,6 +235,12 @@ namespace awh {
 			public:
 				/**
 				 * init Метод инициализации WebSocket клиента
+				 * @param socket   unix socket для биндинга
+				 * @param compress метод сжатия передаваемых сообщений
+				 */
+				void init(const string & socket, const http_t::compress_t compress = http_t::compress_t::DEFLATE) noexcept;
+				/**
+				 * init Метод инициализации WebSocket клиента
 				 * @param port     порт сервера
 				 * @param host     хост сервера
 				 * @param compress метод сжатия передаваемых сообщений
@@ -307,9 +313,8 @@ namespace awh {
 				void stop() noexcept;
 				/**
 				 * start Метод запуска клиента
-				 * @param unix Флаг запуска для работы с UnixSocket
 				 */
-				void start(const bool unix = false) noexcept;
+				void start() noexcept;
 			public:
 				/**
 				 * multiThreads Метод активации многопоточности

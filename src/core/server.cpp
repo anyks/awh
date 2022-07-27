@@ -109,8 +109,8 @@ void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 		if(it != this->workers.end()){
 			// Получаем объект подключения
 			worker_t * wrk = (worker_t *) const_cast <awh::worker_t *> (it->second);
-			// Если требуется использовать UnixSocket
-			if(this->unixSocket){
+			// Если требуется использовать unix-сокет
+			if(this->isSetUnixSocket()){
 				/**
 				 * Если операционной системой не является Windows
 				 */
@@ -158,7 +158,7 @@ void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 					// Выполняем функцию обратного вызова
 					if(wrk->connectFn != nullptr) wrk->connectFn(ret.first->first, wrk->wid, this);
 				#endif
-			// Если UnixSocket не используется
+			// Если unix-сокет не используется
 			} else {
 				// Сокет подключившегося клиента
 				int socket = -1;
@@ -340,8 +340,8 @@ void awh::server::Core::close() noexcept {
 						this->locking.emplace(it->first);
 						// Выполняем очистку буфера событий
 						this->clean(it->first);
-						// Если UnixSocket не используется
-						if(!this->unixSocket)
+						// Если unix-сокет не используется
+						if(!this->isSetUnixSocket())
 							// Выполняем удаление контекста SSL
 							this->ssl.clear(it->second->ssl);
 						// Удаляем адъютанта из списка подключений
@@ -385,8 +385,8 @@ void awh::server::Core::remove() noexcept {
 						awh::worker_t::adj_t * adj = const_cast <awh::worker_t::adj_t *> (jt->second.get());
 						// Выполняем очистку буфера событий
 						this->clean(jt->first);
-						// Если UnixSocket не используется
-						if(!this->unixSocket)
+						// Если unix-сокет не используется
+						if(!this->isSetUnixSocket())
 							// Выполняем удаление контекста SSL
 							this->ssl.clear(adj->ssl);
 						// Удаляем адъютанта из списка подключений
@@ -427,8 +427,8 @@ void awh::server::Core::run(const size_t wid) noexcept {
 		if(it != this->workers.end()){
 			// Получаем объект подключения
 			worker_t * wrk = (worker_t *) const_cast <awh::worker_t *> (it->second);
-			// Если UnixSocket не используется
-			if(!this->unixSocket){
+			// Если unix-сокет не используется
+			if(!this->isSetUnixSocket()){
 
 				// Структура определяющая тип адреса
 				struct sockaddr_in serv_addr;
@@ -464,7 +464,7 @@ void awh::server::Core::run(const size_t wid) noexcept {
 					case AF_INET6: this->dns6.resolve(wrk, wrk->host, AF_INET6, resolver); break;
 				}
 				*/
-			// Если требуется использовать UnixSocket
+			// Если требуется использовать unix-сокет
 			} else {
 				/**
 				 * Если операционной системой не является Windows
@@ -475,8 +475,6 @@ void awh::server::Core::run(const size_t wid) noexcept {
 					wrk->host = this->ifnet.ip(AF_INET);
 					// Получаем сокет сервера
 					wrk->socket = this->sockaddr().socket;
-					// Получаем адрес сокета
-					const string & socket = this->unixSocketAddr();
 					// Если сокет сервера создан
 					if(wrk->socket > -1){
 						// Запоминаем PID родительского процесса
@@ -491,7 +489,7 @@ void awh::server::Core::run(const size_t wid) noexcept {
 							return;
 						}
 						// Выводим сообщение об активации
-						if(!socket.empty() && !this->noinfo) this->log->print("run server [%s]", log_t::flag_t::INFO, socket.c_str());
+						if(!this->noinfo) this->log->print("run server [%s]", log_t::flag_t::INFO, this->unixSocket.c_str());
 						// Устанавливаем базу событий
 						wrk->io.set(this->base);
 						// Устанавливаем событие на запись данных подключения
@@ -505,7 +503,7 @@ void awh::server::Core::run(const size_t wid) noexcept {
 					// Если сокет не создан
 					} else {
 						// Выводим в консоль информацию
-						this->log->print("server cannot be started [%s]", log_t::flag_t::CRITICAL, socket.c_str());
+						this->log->print("server cannot be started [%s]", log_t::flag_t::CRITICAL, this->unixSocket.c_str());
 						// Останавливаем работу сервера
 						this->stop();
 					}
@@ -541,8 +539,8 @@ void awh::server::Core::remove(const size_t wid) noexcept {
 						awh::worker_t::adj_t * adj = const_cast <awh::worker_t::adj_t *> (jt->second.get());
 						// Выполняем очистку буфера событий
 						this->clean(jt->first);
-						// Если UnixSocket не используется
-						if(!this->unixSocket)
+						// Если unix-сокет не используется
+						if(!this->isSetUnixSocket())
 							// Выполняем удаление контекста SSL
 							this->ssl.clear(adj->ssl);
 						// Выводим функцию обратного вызова
@@ -593,8 +591,8 @@ void awh::server::Core::close(const size_t aid) noexcept {
 			const core_t * core = reinterpret_cast <const core_t *> (wrk->core);
 			// Выполняем очистку буфера событий
 			this->clean(aid);
-			// Если UnixSocket не используется
-			if(!this->unixSocket)
+			// Если unix-сокет не используется
+			if(!this->isSetUnixSocket())
 				// Выполняем удаление контекста SSL
 				this->ssl.clear(adj->ssl);
 			// Удаляем адъютанта из списка адъютантов

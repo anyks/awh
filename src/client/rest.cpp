@@ -761,13 +761,12 @@ void awh::client::Rest::flush() noexcept {
 }
 /**
  * start Метод запуска клиента
- * @param unix Флаг запуска для работы с UnixSocket
  */
-void awh::client::Rest::start(const bool unix) noexcept {
+void awh::client::Rest::start() noexcept {
 	// Если биндинг не запущен
 	if(!this->core->working())
 		// Выполняем запуск биндинга
-		const_cast <client::core_t *> (this->core)->start(unix);
+		const_cast <client::core_t *> (this->core)->start();
 	// Если биндинг уже запущен, выполняем запрос на сервер
 	else const_cast <client::core_t *> (this->core)->open(this->worker.wid);
 }
@@ -1639,8 +1638,6 @@ void awh::client::Rest::setServ(const string & id, const string & name, const st
 	this->http.setServ(id, name, ver);
 	// Устанавливаем данные сервиса для прокси-сервера
 	this->worker.proxy.http.setServ(id, name, ver);
-	// Устанавливаем название сервера
-	const_cast <client::core_t *> (this->core)->setServerName(name);
 }
 /**
  * setCrypt Метод установки параметров шифрования

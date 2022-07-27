@@ -798,6 +798,22 @@ void awh::server::WebSocket::ping(const size_t aid, awh::core_t * core, const st
 }
 /**
  * init Метод инициализации WebSocket клиента
+ * @param socket   unix socket для биндинга
+ * @param compress метод сжатия передаваемых сообщений
+ */
+void awh::server::WebSocket::init(const string & socket, const http_t::compress_t compress) noexcept {
+	// Устанавливаем тип компрессии
+	this->worker.compress = compress;
+	/**
+	 * Если операционной системой не является Windows
+	 */
+	#if !defined(_WIN32) && !defined(_WIN64)
+		// Выполняем установку unix-сокет
+		const_cast <server::core_t *> (this->core)->setUnixSocket(socket);
+	#endif
+}
+/**
+ * init Метод инициализации WebSocket клиента
  * @param port     порт сервера
  * @param host     хост сервера
  * @param compress метод сжатия передаваемых сообщений
@@ -809,6 +825,8 @@ void awh::server::WebSocket::init(const u_int port, const string & host, const h
 	this->host = host;
 	// Устанавливаем тип компрессии
 	this->worker.compress = compress;
+	// Удаляем unix-сокет ранее установленный
+	const_cast <server::core_t *> (this->core)->unsetUnixSocket();
 }
 /**
  * on Метод установки функции обратного вызова на событие запуска или остановки подключения
@@ -1062,13 +1080,12 @@ void awh::server::WebSocket::stop() noexcept {
 }
 /**
  * start Метод запуска клиента
- * @param unix Флаг запуска для работы с UnixSocket
  */
-void awh::server::WebSocket::start(const bool unix) noexcept {
+void awh::server::WebSocket::start() noexcept {
 	// Если биндинг не запущен, выполняем запуск биндинга
 	if(!this->core->working())
 		// Выполняем запуск биндинга
-		const_cast <server::core_t *> (this->core)->start(unix);
+		const_cast <server::core_t *> (this->core)->start();
 }
 /**
  * multiThreads Метод активации многопоточности
@@ -1234,8 +1251,6 @@ void awh::server::WebSocket::setServ(const string & id, const string & name, con
 	this->name = name;
 	// Устанавливаем версию сервера
 	this->version = ver;
-	// Устанавливаем название сервера
-	const_cast <server::core_t *> (this->core)->setServerName(name);
 }
 /**
  * setCrypt Метод установки параметров шифрования

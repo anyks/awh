@@ -128,8 +128,8 @@ void awh::client::Core::connect(const size_t wid) noexcept {
 				wrk->status.wait = worker_t::mode_t::DISCONNECT;
 				// Устанавливаем статус подключения
 				wrk->status.real = worker_t::mode_t::PRECONNECT;
-				// Если требуется использовать UnixSocket
-				if(this->unixSocket){
+				// Если требуется использовать unix-сокет
+				if(this->isSetUnixSocket()){
 					/**
 					 * Если операционной системой не является Windows
 					 */
@@ -189,12 +189,8 @@ void awh::client::Core::connect(const size_t wid) noexcept {
 									wrk->status.work = worker_t::work_t::ALLOW;
 									// Устанавливаем статус подключения
 									wrk->status.real = worker_t::mode_t::DISCONNECT;
-									// Получаем адрес сокета
-									const string & socket = this->unixSocketAddr();
-									// Если адрес сокета сервера получен
-									if(!socket.empty())
-										// Выводим в лог сообщение
-										this->log->print("connecting to host = %s", log_t::flag_t::CRITICAL, socket.c_str());
+									// Выводим в лог сообщение
+									this->log->print("connecting to host = %s", log_t::flag_t::CRITICAL, this->unixSocket.c_str());
 									// Выполняем отключение от сервера
 									this->close(ret.first->first);
 									// Выходим из функции
@@ -210,19 +206,17 @@ void awh::client::Core::connect(const size_t wid) noexcept {
 									ret.first->second->bev.locked.write = true;
 								// Если статус подключения не изменился
 								} else {
-									// Получаем адрес сокета
-									const string & socket = this->unixSocketAddr();
 									// Активируем ожидание подключения
 									this->enabled(method_t::CONNECT, ret.first->first);
 									// Выводим в лог сообщение
-									if(!this->noinfo && !socket.empty()) this->log->print("good host = %s, socket = %d", log_t::flag_t::INFO, socket.c_str(), sockaddr.socket);
+									if(!this->noinfo) this->log->print("good host = %s, socket = %d", log_t::flag_t::INFO, this->unixSocket.c_str(), sockaddr.socket);
 								}
 								// Выходим из функции
 								return;
 							}
 						}
 					#endif
-				// Если UnixSocket не используется
+				// Если unix-сокет не используется
 				} else {
 					// Получаем URL параметры запроса
 					const uri_t::url_t & url = (wrk->isProxy() ? wrk->proxy.url : wrk->url);
@@ -400,8 +394,8 @@ void awh::client::Core::connect(const size_t wid) noexcept {
 					wrk->status.work = worker_t::work_t::ALLOW;
 					// Устанавливаем статус подключения
 					wrk->status.real = worker_t::mode_t::DISCONNECT;
-					// Если UnixSocket не используется
-					if(!this->unixSocket){
+					// Если unix-сокет не используется
+					if(!this->isSetUnixSocket()){
 						/*
 						// Определяем тип подключения
 						switch(this->net.family){
@@ -444,11 +438,11 @@ void awh::client::Core::reconnect(const size_t wid) noexcept {
 		worker_t * wrk = (worker_t *) const_cast <awh::worker_t *> (it->second);
 		// Если параметры URL запроса переданы и выполнение работы разрешено
 		if(!wrk->url.empty() && (wrk->status.wait == worker_t::mode_t::DISCONNECT) && (wrk->status.work == worker_t::work_t::ALLOW)){
-			// Если требуется использовать UnixSocket
-			if(this->unixSocket)
+			// Если требуется использовать unix-сокет
+			if(this->isSetUnixSocket())
 				// Выполняем подключение заново
 				this->connect(wrk->wid);
-			// Если требуется использовать UnixSocket
+			// Если unix-сокет использовать не требуется
 			else {
 				// Устанавливаем флаг ожидания статуса
 				wrk->status.wait = worker_t::mode_t::RECONNECT;
@@ -590,7 +584,7 @@ void awh::client::Core::sendTimeout(const size_t aid) noexcept {
 				wrk->status.wait = worker_t::mode_t::DISCONNECT;
 			}
 			// Если необходимо поддерживать постоянное подключение
-			if(alive && !this->unixSocket){
+			if(alive && !this->isSetUnixSocket()){
 				/*
 				// Определяем тип подключения
 				switch(this->net.family){
@@ -680,8 +674,8 @@ void awh::client::Core::close() noexcept {
 						this->locking.emplace(it->first);
 						// Выполняем очистку буфера событий
 						this->clean(it->first);
-						// Если UnixSocket не используется
-						if(!this->unixSocket)
+						// Если unix-сокет не используется
+						if(!this->isSetUnixSocket())
 							// Выполняем удаление контекста SSL
 							this->ssl.clear(it->second->ssl);
 						// Удаляем адъютанта из списка подключений
@@ -743,8 +737,8 @@ void awh::client::Core::remove() noexcept {
 						awh::worker_t::adj_t * adj = const_cast <awh::worker_t::adj_t *> (jt->second.get());
 						// Выполняем очистку буфера событий
 						this->clean(jt->first);
-						// Если UnixSocket не используется
-						if(!this->unixSocket)
+						// Если unix-сокет не используется
+						if(!this->isSetUnixSocket())
 							// Выполняем удаление контекста SSL
 							this->ssl.clear(adj->ssl);
 						// Удаляем адъютанта из списка подключений
@@ -781,11 +775,11 @@ void awh::client::Core::open(const size_t wid) noexcept {
 			worker_t * wrk = (worker_t *) const_cast <awh::worker_t *> (it->second);
 			// Если параметры URL запроса переданы и выполнение работы разрешено
 			if(!wrk->url.empty() && (wrk->status.wait == worker_t::mode_t::DISCONNECT) && (wrk->status.work == worker_t::work_t::ALLOW)){
-				// Если требуется использовать UnixSocket
-				if(this->unixSocket)
+				// Если требуется использовать unix-сокет
+				if(this->isSetUnixSocket())
 					// Выполняем подключение заново
 					this->connect(wrk->wid);
-				// Если требуется использовать UnixSocket
+				// Если unix-сокет использовать не требуется
 				else {
 					// Устанавливаем флаг ожидания статуса
 					wrk->status.wait = worker_t::mode_t::CONNECT;
@@ -900,8 +894,8 @@ void awh::client::Core::close(const size_t aid) noexcept {
 			if((wrk->proxy.type != proxy_t::type_t::NONE) && !wrk->isProxy())
 				// Выполняем переключение обратно на прокси-сервер
 				wrk->switchConnect();
-			// Если UnixSocket не используется
-			if(!this->unixSocket)
+			// Если unix-сокет не используется
+			if(!this->isSetUnixSocket())
 				// Выполняем удаление контекста SSL
 				this->ssl.clear(adj->ssl);
 			// Удаляем адъютанта из списка адъютантов
@@ -934,8 +928,8 @@ void awh::client::Core::close(const size_t aid) noexcept {
  * @param aid идентификатор адъютанта
  */
 void awh::client::Core::switchProxy(const size_t aid) noexcept {
-	// Если UnixSocket не используется
-	if(!this->unixSocket){
+	// Если unix-сокет не используется
+	if(!this->isSetUnixSocket()){
 		// Выполняем блокировку потока
 		const lock_guard <recursive_mutex> lock(this->mtx.proxy);
 		// Выполняем извлечение адъютанта
@@ -996,8 +990,8 @@ void awh::client::Core::timeout(const size_t aid) noexcept {
 		awh::worker_t::adj_t * adj = const_cast <awh::worker_t::adj_t *> (it->second);
 		// Получаем объект подключения
 		worker_t * wrk = (worker_t *) const_cast <awh::worker_t *> (adj->parent);
-		// Если UnixSocket не используется
-		if(!this->unixSocket){
+		// Если unix-сокет не используется
+		if(!this->isSetUnixSocket()){
 			// Получаем URL параметры запроса
 			const uri_t::url_t & url = (wrk->isProxy() ? wrk->proxy.url : wrk->url);
 			// Если данные ещё ни разу не получены
@@ -1014,13 +1008,8 @@ void awh::client::Core::timeout(const size_t aid) noexcept {
 			}			
 			// Выводим сообщение в лог, о таймауте подключения
 			this->log->print("timeout host %s [%s%d]", log_t::flag_t::WARNING, url.domain.c_str(), (!url.ip.empty() ? (url.ip + ":").c_str() : ""), url.port);
-		// Если используется UnixSocket
-		} else {
-			// Получаем адрес сокета
-			const string & socket = this->unixSocketAddr();
-			// Выводим сообщение в лог, о таймауте подключения
-			if(!socket.empty()) this->log->print("timeout host %s", log_t::flag_t::WARNING, socket.c_str());
-		}
+		// Если используется unix-сокет, вводим сообщение в лог, о таймауте подключения
+		} else this->log->print("timeout host %s", log_t::flag_t::WARNING, this->unixSocket.c_str());
 		// Останавливаем чтение данных
 		this->disabled(method_t::READ, it->first);
 		// Останавливаем запись данных
@@ -1052,8 +1041,8 @@ void awh::client::Core::connected(const size_t aid) noexcept {
 			wrk->status.wait = worker_t::mode_t::DISCONNECT;
 			// Выполняем очистку существующих таймаутов
 			this->clearTimeout(wrk->wid);
-			// Если UnixSocket не используется
-			if(!this->unixSocket){
+			// Если unix-сокет не используется
+			if(!this->isSetUnixSocket()){
 				// Получаем URL параметры запроса
 				const uri_t::url_t & url = (wrk->isProxy() ? wrk->proxy.url : wrk->url);
 				// Получаем хост сервера
@@ -1085,14 +1074,12 @@ void awh::client::Core::connected(const size_t aid) noexcept {
 					if(wrk->connectProxyFn != nullptr) wrk->connectProxyFn(it->first, wrk->wid, const_cast <awh::core_t *> (wrk->core));
 				// Выполняем функцию обратного вызова
 				} else if(wrk->connectFn != nullptr) wrk->connectFn(it->first, wrk->wid, const_cast <awh::core_t *> (wrk->core));
-			// Если используется UnixSocket
+			// Если используется unix-сокет
 			} else {
-				// Получаем адрес сокета
-				const string & socket = this->unixSocketAddr();
 				// Запускаем чтение данных
 				this->enabled(method_t::READ, it->first, wrk->wait);
 				// Выводим в лог сообщение
-				if(!this->noinfo && !socket.empty()) this->log->print("connect client to server [%s]", log_t::flag_t::INFO, socket.c_str());
+				if(!this->noinfo) this->log->print("connect client to server [%s]", log_t::flag_t::INFO, this->unixSocket.c_str());
 				// Выполняем функцию обратного вызова
 				if(wrk->connectFn != nullptr) wrk->connectFn(it->first, wrk->wid, const_cast <awh::core_t *> (wrk->core));
 			}
@@ -1173,8 +1160,8 @@ void awh::client::Core::transfer(const method_t method, const size_t aid) noexce
 								while((bytes - offset) > 0){
 									// Определяем размер отправляемых данных
 									actual = ((bytes - offset) >= adj->marker.write.max ? adj->marker.write.max : (bytes - offset));
-									// Если UnixSocket не используется
-									if(!this->unixSocket){
+									// Если unix-сокет не используется
+									if(!this->isSetUnixSocket()){
 										// Если подключение производится через, прокси-сервер
 										if(wrk->isProxy()){
 											// Если функция обратного вызова для вывода записи существует
@@ -1194,8 +1181,8 @@ void awh::client::Core::transfer(const method_t method, const size_t aid) noexce
 								}
 							// Если данных достаточно
 							} else {
-								// Если UnixSocket не используется
-								if(!this->unixSocket){
+								// Если unix-сокет не используется
+								if(!this->isSetUnixSocket()){
 									// Если подключение производится через, прокси-сервер
 									if(wrk->isProxy()){
 										// Если функция обратного вызова для вывода записи существует
