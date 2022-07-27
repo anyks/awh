@@ -165,7 +165,6 @@ if [ ! -f "$src/.stamp_done" ]; then
 		rm -rf ./CMakeCache.txt
 
 		cmake \
-		 -DCMAKE_C_COMPILER="gcc" \
 		 -DCMAKE_BUILD_TYPE="Release" \
 		 -DCMAKE_SYSTEM_NAME="Windows" \
 		 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
@@ -223,7 +222,6 @@ if [ ! -f "$src/.stamp_done" ]; then
 	# Выполняем конфигурацию проекта
 	if [[ $OS = "Windows" ]]; then
 		cmake \
-		 -DCMAKE_C_COMPILER="gcc" \
 		 -DCMAKE_BUILD_TYPE="Release" \
 		 -DCMAKE_SYSTEM_NAME="Windows" \
 		 -DBROTLI_EMSCRIPTEN="YES" \
@@ -301,7 +299,6 @@ if [ $OS = "Windows" ]; then # Windows
 
 		# Выполняем конфигурацию проекта
 		cmake \
-		 -DCMAKE_C_COMPILER="gcc" \
 		 -DCMAKE_BUILD_TYPE="Release" \
 		 -DCMAKE_SYSTEM_NAME="Windows" \
 		 -G "MinGW Makefiles" \
