@@ -330,6 +330,8 @@ namespace awh {
 					if(S_ISDIR(info.st_mode)) result = type_t::DIR;
 					// Если это устройство
 					else if(S_ISCHR(info.st_mode)) result = type_t::CHR;
+					// Если это блок устройства
+					else if(S_ISBLK(info.st_mode)) result = type_t::BLK;
 					// Если это файл
 					else if(S_ISREG(info.st_mode)) result = type_t::FILE;
 					// Если это устройство ввода-вывода
@@ -338,8 +340,6 @@ namespace awh {
 					 * Если - это не Windows
 					 */
 					#if !defined(_WIN32) && !defined(_WIN64)
-						// Если это устройство
-						else if(S_ISCHR(info.st_mode)) result = type_t::CHR;
 						// Если это блок устройства
 						else if(S_ISBLK(info.st_mode)) result = type_t::BLK;
 						// Если это символьная ссылка
