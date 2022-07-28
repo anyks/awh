@@ -50,7 +50,9 @@ namespace awh {
 		 */
 		typedef class Core : public awh::core_t {
 			private:
-				// Worker Устанавливаем дружбу с классом сетевого ядра
+				/**
+				 * Worker Устанавливаем дружбу с классом сетевого ядра
+				 */
 				friend class Worker;
 			private:
 				/**

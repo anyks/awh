@@ -73,7 +73,9 @@ namespace awh {
 	 */
 	typedef class Core {
 		private:
-			// Worker Устанавливаем дружбу с классом воркера
+			/**
+			 * Worker Устанавливаем дружбу с классом воркера
+			 */
 			friend class Worker;
 		protected:
 			/**

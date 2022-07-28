@@ -27,6 +27,172 @@ void awh::server::worker_t::accept(ev::io & watcher, int revents) noexcept {
 	core->accept(watcher.fd, this->wid);
 }
 /**
+ * readJack Функция обратного вызова при чтении данных с сокета
+ * @param watcher объект события чтения
+ * @param revents идентификатор события
+ */
+void awh::server::Core::readJack(ev::io & watcher, int revents) noexcept {
+	// Бинарный буфер для получения данных
+	char buffer[4096];
+	// Заполняем буфер нулями
+	memset(buffer, 0, sizeof(buffer));
+	// Если процесс является родительским
+	if(getpid() == this->pid){
+
+		size_t c = 0;
+		
+		int bytes = ::read(watcher.fd, buffer, sizeof(buffer));
+
+		if(bytes > 0){
+			memcpy(&c, buffer, bytes);
+
+			cout << " ================ " << " MAIN " << " ||| " << getpid() << " <= " << c << endl;
+		}
+
+	// Если процесс является дочерним
+	} else {
+		// Получаем объект текущего работника
+		jack_t * jack = this->jacks.at(this->index).get();
+		// Если файловый дескриптор не соответствует родительскому, выходим
+		if(jack->cfds[0] != watcher.fd) return;
+
+		size_t c = 0;
+		int bytes = ::read(watcher.fd, buffer, sizeof(buffer));
+
+		if(bytes > 0){
+			memcpy(&c, buffer, bytes);
+
+			cout << " ================ " << " CHILD " << " ||| " << getpid() << " <= " << c << endl;
+		}
+
+	}
+}
+/**
+ * writeJack Функция обратного вызова при записи данных в сокет
+ * @param watcher объект события записи
+ * @param revents идентификатор события
+ */
+void awh::server::Core::writeJack(ev::io & watcher, int revents) noexcept {
+	// Выполняем остановку проверки сокета на запись
+	watcher.stop();
+	// Если процесс является родительским
+	if(getpid() == this->pid){
+
+		size_t c = getpid();
+		if(::write(watcher.fd, &c, sizeof(c)) > 0)
+			cout << " ================ Main Write " << c << endl;
+
+	// Если процесс является дочерним
+	} else {
+		// Получаем объект текущего работника
+		jack_t * jack = this->jacks.at(this->index).get();
+		// Если файловый дескриптор не соответствует родительскому, выходим
+		if(jack->mfds[1] != watcher.fd) return;
+		
+		size_t c = getpid();
+		if(::write(watcher.fd, &c, sizeof(c)) > 0)
+			cout << " ================ Child Write " << c << endl;
+		
+	}
+}
+/**
+ * explain Метод разъяснения (создание дочерних процессов)
+ * @param index индекс инициализированного процесса
+ */
+void awh::server::Core::explain(const size_t index) noexcept {
+	// Если не все форки созданы
+	if(index < this->threads){
+		// Если индекс нулевой, значит работаем с основным процессом
+		if(index == 0){
+			// Выполняем создание указанное количество работников
+			for(size_t i = 0; i < this->threads; i++){
+				// Создаём объект работника
+				unique_ptr <jack_t> jack(new jack_t);
+				// Устанавливаем индекс работника
+				jack->index = i;
+				// Выполняем подписку на основной канал передачи данных
+				pipe(jack->mfds);
+				// Выполняем подписку на дочерний канал передачи данных
+				pipe(jack->cfds);
+				// Выполняем добавление работника в список работников
+				this->jacks.push_back(move(jack));
+			}
+		}
+		// Устанавливаем идентификатор процесса
+		pid_t pid = -1;
+		// Определяем тип потока
+		switch((pid = fork())){
+			// Если поток не создан
+			case -1: {
+				// Выводим в лог сообщение
+				this->log->print("child process could not be created", log_t::flag_t::CRITICAL);
+				// Выходим принудительно из приложения
+				exit(EXIT_FAILURE);
+			} break;
+			// Если - это дочерний поток значит все нормально
+			case 0: {
+				// Запоминаем текущий индекс процесса
+				this->index = index;
+				// Получаем объект текущего работника
+				jack_t * jack = this->jacks.at(index).get();
+				// Закрываем файловый дескриптор на запись в дочерний процесс
+				::close(jack->cfds[1]);
+				// Закрываем файловый дескриптор на чтение из основного процесса
+				::close(jack->mfds[0]);
+				// Устанавливаем идентификатор процесса
+				jack->pid = getpid();
+				// Устанавливаем базу событий для чтения
+				jack->read.set(this->base);
+				// Устанавливаем базу событий для записи
+				jack->write.set(this->base);
+				// Устанавливаем событие на чтение данных от основного процесса
+				jack->read.set <core_t, &core_t::readJack> (this);
+				// Устанавливаем событие на запись данных основному процессу
+				jack->write.set <core_t, &core_t::writeJack> (this);
+				// Устанавливаем сокет для чтения
+				jack->read.set(jack->cfds[0], ev::READ);
+				// Устанавливаем сокет для записи
+				jack->write.set(jack->mfds[1], ev::WRITE);
+				// Запускаем чтение данных с основного процесса
+				jack->read.start();
+				// Запускаем запись данных основному процессу
+				jack->write.start();
+				// Выполняем активацию базы событий
+				ev_loop_fork(this->base);
+			} break;
+			// Если - это родительский процесс
+			default: {
+				// Устанавливаем идентификатор процесса
+				this->pid = getpid();
+				// Получаем объект текущего работника
+				jack_t * jack = this->jacks.at(index).get();
+				// Закрываем файловый дескриптор на запись в основной процесс
+				::close(jack->mfds[1]);
+				// Закрываем файловый дескриптор на чтение из дочернего процесса
+				::close(jack->cfds[0]);
+				// Устанавливаем базу событий для чтения
+				jack->read.set(this->base);
+				// Устанавливаем базу событий для записи
+				jack->write.set(this->base);
+				// Устанавливаем событие на чтение данных от дочернего процесса
+				jack->read.set <core_t, &core_t::readJack> (this);
+				// Устанавливаем событие на запись данных дочернему процессу
+				jack->write.set <core_t, &core_t::writeJack> (this);
+				// Устанавливаем сокет для чтения
+				jack->read.set(jack->mfds[0], ev::READ);
+				// Устанавливаем сокет для записи
+				jack->write.set(jack->cfds[1], ev::WRITE);
+				// Запускаем чтение данных с дочернего процесса
+				jack->read.start();
+				// Запускаем запись данных дочернему процессу
+				jack->write.start();
+				// Продолжаем дальше
+				this->explain(index + 1);
+			}
+		}
+	}
+}
+/**
  * resolver Функция выполнения резолвинга домена
  * @param ip  полученный IP адрес
  * @param wrk объект воркера
@@ -43,8 +209,6 @@ void awh::server::Core::resolver(const string & ip, worker_t * wrk) noexcept {
 		wrk->socket = core->sockaddr(wrk->host, wrk->port, core->net.family).socket;
 		// Если сокет сервера создан
 		if(wrk->socket > -1){
-			// Запоминаем PID родительского процесса
-			core->pid = getpid();
 			// Выполняем слушать порт сервера
 			if(::listen(wrk->socket, wrk->total) < 0){
 				// Выводим сообщени об активном сервисе
@@ -56,11 +220,11 @@ void awh::server::Core::resolver(const string & ip, worker_t * wrk) noexcept {
 			if(!core->noinfo) core->log->print("run server [%s:%u]", log_t::flag_t::INFO, wrk->host.c_str(), wrk->port);
 			// Устанавливаем базу событий
 			wrk->io.set(this->base);
-			// Устанавливаем событие на запись данных подключения
+			// Устанавливаем событие на чтение данных подключения
 			wrk->io.set <worker_t, &worker_t::accept> (wrk);
-			// Устанавливаем сокет для записи
+			// Устанавливаем сокет для чтения
 			wrk->io.set(wrk->socket, ev::READ);
-			// Запускаем запись данных на сервер
+			// Запускаем чтение данных с клиента
 			wrk->io.start();
 			// Выходим из функции
 			return;
@@ -438,6 +602,17 @@ void awh::server::Core::remove() noexcept {
  * @param wid идентификатор воркера
  */
 void awh::server::Core::run(const size_t wid) noexcept {
+	
+	// this->threads = 3;
+
+	this->explain();
+
+	return;
+	
+	
+	
+	
+	
 	// Если идентификатор воркера передан
 	if(wid > 0){
 		// Выполняем поиск воркера
@@ -496,8 +671,6 @@ void awh::server::Core::run(const size_t wid) noexcept {
 					wrk->socket = this->sockaddr().socket;
 					// Если сокет сервера создан
 					if(wrk->socket > -1){
-						// Запоминаем PID родительского процесса
-						this->pid = getpid();
 						// Выполняем слушать порт сервера
 						if(::listen(wrk->socket, wrk->total) < 0){
 							// Выводим сообщени об активном сервисе
@@ -934,7 +1107,7 @@ void awh::server::Core::setCert(const string & cert, const string & key, const s
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
  */
-awh::server::Core::Core(const fmk_t * fmk, const log_t * log) noexcept : awh::core_t(fmk, log), pid(0), ifnet(fmk, log) {
+awh::server::Core::Core(const fmk_t * fmk, const log_t * log) noexcept : awh::core_t(fmk, log), pid(-1), index(0), ifnet(fmk, log), threads(std::thread::hardware_concurrency()) {
 	// Устанавливаем тип запускаемого ядра
 	this->type = type_t::SERVER;
 }

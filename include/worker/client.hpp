@@ -83,9 +83,13 @@ namespace awh {
 		 */
 		typedef struct Worker : public awh::worker_t {
 			private:
-				// Client Core Устанавливаем дружбу с клиентским классом ядра
+				/**
+				 * Client Core Устанавливаем дружбу с клиентским классом ядра
+				 */
 				friend class Core;
-				// Core Устанавливаем дружбу с классом ядра
+				/**
+				 * Core Устанавливаем дружбу с классом ядра
+				 */
 				friend class awh::Core;
 			public:
 				/**

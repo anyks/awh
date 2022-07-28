@@ -70,11 +70,17 @@ namespace awh {
 	 */
 	typedef struct Worker {
 		private:
-			// Core Устанавливаем дружбу с классом ядра
+			/**
+			 * Core Устанавливаем дружбу с классом ядра
+			 */
 			friend class Core;
-			// Client Core Устанавливаем дружбу с клиентским классом ядра
+			/**
+			 * Client Core Устанавливаем дружбу с клиентским классом ядра
+			 */
 			friend class client::Core;
-			// Server Core Устанавливаем дружбу с серверным классом ядра
+			/**
+			 * Server Core Устанавливаем дружбу с серверным классом ядра
+			 */
 			friend class server::Core;
 		public:
 			/**
@@ -159,13 +165,21 @@ namespace awh {
 			 */
 			typedef struct Adjutant {
 				private:
-					// Core Устанавливаем дружбу с классом ядра
+					/**
+					 * Core Устанавливаем дружбу с классом ядра
+					 */
 					friend class Core;
-					// Worker Устанавливаем дружбу с родительским объектом
+					/**
+					 * Worker Устанавливаем дружбу с родительским объектом
+					 */
 					friend class Worker;
-					// Client Core Устанавливаем дружбу с клиентским классом ядра
+					/**
+					 * Client Core Устанавливаем дружбу с клиентским классом ядра
+					 */
 					friend class client::Core;
-					// Server Core Устанавливаем дружбу с серверным классом ядра
+					/**
+					 * Server Core Устанавливаем дружбу с серверным классом ядра
+					 */
 					friend class server::Core;
 				private:
 					// Идентификатор адъютанта

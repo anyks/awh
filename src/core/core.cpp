@@ -1661,6 +1661,14 @@ bool awh::Core::unsetUnixSocket() noexcept {
 		if((result = !this->working()))
 			// Выполняем очистку unix-сокета
 			this->unixSocket.clear();
+	/**
+	 * Если операционной системой является MS Windows
+	 */
+	#else
+		// Выводим в лог сообщение
+		this->log->print("Microsoft Windows does not support Unix sockets", log_t::flag_t::CRITICAL);
+		// Выходим принудительно из приложения
+		exit(EXIT_FAILURE);
 	#endif
 	// Выводим результат
 	return result;
@@ -1683,6 +1691,14 @@ bool awh::Core::setUnixSocket(const string & socket) noexcept {
 			this->unixSocket = this->fmk->format("/tmp/%s.sock", this->fmk->toLower(socket).c_str());
 		// Если адрес unix-сокета не передан
 		else this->unixSocket = this->fmk->format("/tmp/%s.sock", this->fmk->toLower(unixServerName.c_str()).c_str());
+	/**
+	 * Если операционной системой является MS Windows
+	 */
+	#else
+		// Выводим в лог сообщение
+		this->log->print("Microsoft Windows does not support Unix sockets", log_t::flag_t::CRITICAL);
+		// Выходим принудительно из приложения
+		exit(EXIT_FAILURE);
 	#endif
 	// Выводим результат
 	return !this->unixSocket.empty();
@@ -1715,6 +1731,14 @@ bool awh::Core::isActiveUnixSocket(const string & socket) const noexcept {
 			result = fs_t::issock(this->fmk->format("/tmp/%s.sock", this->fmk->toLower(socket).c_str()));
 		// Если адрес unix-сокета не передан
 		else result = fs_t::issock(this->fmk->format("/tmp/%s.sock", this->fmk->toLower(AWH_SHORT_NAME).c_str()));
+	/**
+	 * Если операционной системой является MS Windows
+	 */
+	#else
+		// Выводим в лог сообщение
+		this->log->print("Microsoft Windows does not support Unix sockets", log_t::flag_t::CRITICAL);
+		// Выходим принудительно из приложения
+		exit(EXIT_FAILURE);
 	#endif
 	// Выводим результат
 	return result;

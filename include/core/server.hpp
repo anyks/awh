@@ -19,6 +19,7 @@
  * Стандартная библиотека
  */
 #include <set>
+#include <vector>
 
 /**
  * Наши модули
@@ -42,8 +43,27 @@ namespace awh {
 		 */
 		typedef class Core : public awh::core_t {
 			private:
-				// Worker Устанавливаем дружбу с классом сетевого ядра
+				/**
+				 * Worker Устанавливаем дружбу с классом сетевого ядра
+				 */
 				friend class Worker;
+			private:
+				/**
+				 * Jack Структура работника
+				 */
+				typedef struct Jack {
+					pid_t pid;    // Пид родительского процесса
+					int mfds[2];  // Список файловых дескрипторов родительского процесса
+					int cfds[2];  // Список файловых дескрипторов дочернего процесса
+					ev::io read;  // Объект события на чтение
+					ev::io write; // Объект события на запись
+					size_t index; // Индекс работника в списке
+					size_t count; // Количество подключений
+					/**
+					 * Jack Конструктор
+					 */
+					Jack() noexcept : pid(0), index(0), count(0) {}
+				} jack_t;
 			private:
 				/**
 				 * Mutex Объект основных мютексов
@@ -54,8 +74,10 @@ namespace awh {
 					recursive_mutex system; // Для установки системных параметров
 				} mtx_t;
 			private:
-				// Пид родительского процесса
+				// Идентификатор процесса
 				pid_t pid;
+				// Индекс работника в списке
+				size_t index;
 			private:
 				// Мютекс для блокировки основного потока
 				mtx_t mtx;
@@ -63,10 +85,33 @@ namespace awh {
 				// Объект для работы с сетевым интерфейсом
 				ifnet_t ifnet;
 			private:
-				// Список пидов процессов
-				set <pid_t> pids;
+				// Количество доступных потоков
+				size_t threads;
+			private:
 				// Список блокированных объектов
 				set <size_t> locking;
+			private:
+				// Список дочерних работников
+				vector <unique_ptr <jack_t>> jacks;
+			private:
+				/**
+				 * readJack Функция обратного вызова при чтении данных с сокета
+				 * @param watcher объект события чтения
+				 * @param revents идентификатор события
+				 */
+				void readJack(ev::io & watcher, int revents) noexcept;
+				/**
+				 * writeJack Функция обратного вызова при записи данных в сокет
+				 * @param watcher объект события записи
+				 * @param revents идентификатор события
+				 */
+				void writeJack(ev::io & watcher, int revents) noexcept;
+			private:
+				/**
+				 * explain Метод разъяснения (создание дочерних процессов)
+				 * @param index индекс инициализированного процесса
+				 */
+				void explain(const size_t index = 0) noexcept;
 			private:
 				/**
 				 * resolver Функция выполнения резолвинга домена
