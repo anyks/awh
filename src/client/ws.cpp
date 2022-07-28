@@ -1004,8 +1004,13 @@ void awh::client::WebSocket::init(const string & url, const http_t::compress_t c
 			this->worker.clear();
 			// Устанавливаем URL адрес запроса
 			this->worker.url = this->uri.parseUrl(url);
-			// Удаляем unix-сокет ранее установленный
-			const_cast <client::core_t *> (this->core)->unsetUnixSocket();
+			/**
+			 * Если операционной системой не является Windows
+			 */
+			#if !defined(_WIN32) && !defined(_WIN64)
+				// Удаляем unix-сокет ранее установленный
+				const_cast <client::core_t *> (this->core)->unsetUnixSocket();
+			#endif
 		}
 	// Выполняем установку unix-сокет
 	} else {
@@ -1015,8 +1020,13 @@ void awh::client::WebSocket::init(const string & url, const http_t::compress_t c
 		this->compress = compress;
 		// Устанавливаем URL адрес запроса (как заглушка)
 		this->worker.url = this->uri.parseUrl("ws://unixsocket");
-		// Выполняем установку unix-сокета 
-		const_cast <client::core_t *> (this->core)->setUnixSocket(url);
+		/**
+		 * Если операционной системой не является Windows
+		 */
+		#if !defined(_WIN32) && !defined(_WIN64)
+			// Выполняем установку unix-сокета 
+			const_cast <client::core_t *> (this->core)->setUnixSocket(url);
+		#endif
 	}
 	// Устанавливаем метод компрессии сообщений
 	this->compress = compress;

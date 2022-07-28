@@ -111,9 +111,19 @@ void awh::server::Core::explain(const size_t index) noexcept {
 				// Устанавливаем индекс работника
 				jack->index = i;
 				// Выполняем подписку на основной канал передачи данных
-				pipe(jack->mfds);
+				if(pipe(jack->mfds) != 0){
+					// Выводим в лог сообщение
+					this->log->print("%s", log_t::flag_t::CRITICAL, strerror(errno));
+					// Выходим принудительно из приложения
+					exit(EXIT_FAILURE);
+				}
 				// Выполняем подписку на дочерний канал передачи данных
-				pipe(jack->cfds);
+				if(pipe(jack->cfds) != 0){
+					// Выводим в лог сообщение
+					this->log->print("%s", log_t::flag_t::CRITICAL, strerror(errno));
+					// Выходим принудительно из приложения
+					exit(EXIT_FAILURE);
+				}
 				// Выполняем добавление работника в список работников
 				this->jacks.push_back(move(jack));
 			}

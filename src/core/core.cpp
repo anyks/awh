@@ -1117,7 +1117,7 @@ void awh::Core::error(const int64_t bytes, const size_t aid) const noexcept {
 						// Если удалённая сторона произвела закрытие подключения
 						if(SSL_get_shutdown(it->second->ssl.ssl) & SSL_RECEIVED_SHUTDOWN)
 							// Выводим в лог сообщение
-							this->log->print("SSL: the remote side closed the connection", log_t::flag_t::INFO);
+							this->log->print("the remote side closed the connection", log_t::flag_t::INFO);
 					} break;
 					// Если произошла ошибка вызова
 					case SSL_ERROR_SYSCALL: {
@@ -1126,78 +1126,34 @@ void awh::Core::error(const int64_t bytes, const size_t aid) const noexcept {
 						// Если ошибка получена
 						if(error != 0){
 							// Выводим в лог сообщение
-							this->log->print("SSL: %s", log_t::flag_t::CRITICAL, ERR_error_string(error, nullptr));
+							this->log->print("%s", log_t::flag_t::CRITICAL, ERR_error_string(error, nullptr));
 							/**
 							 * Выполняем извлечение остальных ошибок
 							 */
 							do {
 								// Выводим в лог сообщение
-								this->log->print("SSL: %s", log_t::flag_t::CRITICAL, ERR_error_string(error, nullptr));
+								this->log->print("%s", log_t::flag_t::CRITICAL, ERR_error_string(error, nullptr));
 							// Если ещё есть ошибки
 							} while((error = ERR_get_error()));
 						// Если данные записаны неверно
-						} else if(bytes == -1) {
-							// Определяем тип ошибки
-							switch(errno){
-								// Если произведена неудачная запись в PIPE
-								case EPIPE:
-									// Выводим в лог сообщение
-									this->log->print("SSL: EPIPE", log_t::flag_t::WARNING);
-								break;
-								// Если произведён сброс подключения
-								case ECONNRESET:
-									// Выводим в лог сообщение
-									this->log->print("SSL: ECONNRESET", log_t::flag_t::WARNING);
-								break;
-								// Для остальных ошибок
-								default:
-									// Выводим в лог сообщение
-									this->log->print("SSL: %s", log_t::flag_t::CRITICAL, strerror(errno));
-							}
-						}
+						} else if(bytes == -1)
+							// Выводим в лог сообщение
+							this->log->print("%s", log_t::flag_t::CRITICAL, strerror(errno));
 					} break;
-					// Если произошла ошибка шифрования
-					case SSL_ERROR_SSL:
-					// Если произошла ошибка временной невозможности подключения клиента
-					case SSL_ERROR_WANT_ACCEPT:
-					// Если произошла ошибка временной невозможности подключения к серверу
-					case SSL_ERROR_WANT_CONNECT:
-					// Если произошла ошибка асинхронного вызова
-					case SSL_ERROR_WANT_ASYNC:
-					// Если произошла ошибка выполнения асинхронной задачи
-					case SSL_ERROR_WANT_ASYNC_JOB:
-					// Если произошла ошибка сертификата
-					case SSL_ERROR_WANT_X509_LOOKUP:
-					// Если произошла ошибка вызова каллбека в асинхронном режиме
-					case SSL_ERROR_WANT_CLIENT_HELLO_CB: {
+					// Для всех остальных ошибок
+					default: {
 						// Получаем данные описание ошибки
 						u_long error = 0;
 						// Выполняем чтение ошибок OpenSSL
 						while((error = ERR_get_error()))
 							// Выводим в лог сообщение
-							this->log->print("SSL: %s", log_t::flag_t::CRITICAL, ERR_error_string(error, nullptr));
+							this->log->print("%s", log_t::flag_t::CRITICAL, ERR_error_string(error, nullptr));
 					}
 				};
 			// Если произошла ошибка
-			} else if(bytes == -1) {	
-				// Определяем тип ошибки
-				switch(errno){
-					// Если произведена неудачная запись в PIPE
-					case EPIPE:
-						// Выводим в лог сообщение
-						this->log->print("EPIPE", log_t::flag_t::WARNING);
-					break;
-					// Если произведён сброс подключения
-					case ECONNRESET:
-						// Выводим в лог сообщение
-						this->log->print("ECONNRESET", log_t::flag_t::WARNING);
-					break;
-					// Для остальных ошибок
-					default:
-						// Выводим в лог сообщение
-						this->log->print("%s", log_t::flag_t::CRITICAL, strerror(errno));
-				}
-			}
+			} else if(bytes == -1)
+				// Выводим в лог сообщение
+				this->log->print("%s", log_t::flag_t::CRITICAL, strerror(errno));
 		}
 	}
 }
@@ -1731,6 +1687,14 @@ bool awh::Core::isActiveUnixSocket(const string & socket) const noexcept {
 			result = fs_t::issock(this->fmk->format("/tmp/%s.sock", this->fmk->toLower(socket).c_str()));
 		// Если адрес unix-сокета не передан
 		else result = fs_t::issock(this->fmk->format("/tmp/%s.sock", this->fmk->toLower(AWH_SHORT_NAME).c_str()));
+	/**
+	 * Если операционной системой является MS Windows
+	 */
+	#else
+		// Выводим в лог сообщение
+		this->log->print("Microsoft Windows does not support Unix sockets", log_t::flag_t::CRITICAL);
+		// Выходим принудительно из приложения
+		exit(EXIT_FAILURE);
 	#endif
 	// Выводим результат
 	return result;

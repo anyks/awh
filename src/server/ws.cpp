@@ -833,8 +833,13 @@ void awh::server::WebSocket::init(const u_int port, const string & host, const h
 	this->host = host;
 	// Устанавливаем тип компрессии
 	this->worker.compress = compress;
-	// Удаляем unix-сокет ранее установленный
-	const_cast <server::core_t *> (this->core)->unsetUnixSocket();
+	/**
+	 * Если операционной системой не является Windows
+	 */
+	#if !defined(_WIN32) && !defined(_WIN64)
+		// Удаляем unix-сокет ранее установленный
+		const_cast <server::core_t *> (this->core)->unsetUnixSocket();
+	#endif
 }
 /**
  * on Метод установки функции обратного вызова на событие запуска или остановки подключения
