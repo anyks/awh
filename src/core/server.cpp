@@ -76,10 +76,17 @@ void awh::server::Core::readJack(ev::io & watcher, int revents) noexcept {
 					}
 					// Выводим сообщени об активном сервисе
 					if(!this->noinfo) this->log->print("%d clients are connected to the process, pid = %d", log_t::flag_t::INFO, message.count, message.pid);
-					// Устанавливаем тип сообщения
-					this->event = event_t::SELECT;
-					// Выполняем отправку сообщения дочернему процессу
-					this->writeJack(this->jacks.at(this->index)->write, ev::WRITE);
+					// Если был выбран новый процесс для обработки запросов
+					if(this->index != message.index){
+						// Устанавливаем тип сообщения активация выбора
+						this->event = event_t::SELECT;
+						// Выполняем отправку сообщения дочернему процессу
+						this->writeJack(this->jacks.at(this->index)->write, ev::WRITE);
+						// Устанавливаем тип сообщения деактивация выбора
+						this->event = event_t::UNSELECT;
+						// Выполняем отправку сообщения дочернему процессу
+						this->writeJack(this->jacks.at(message.index)->write, ev::WRITE);
+					}
 				} break;
 				// Если событием является отключение
 				case (uint8_t) event_t::DISCONNECT:
@@ -124,6 +131,13 @@ void awh::server::Core::readJack(ev::io & watcher, int revents) noexcept {
 					this->interception = true;
 					// Выводим сообщени об активном сервисе
 					if(!this->noinfo) this->log->print("a process has been activated to intercept connections, pid = %d", log_t::flag_t::INFO, getpid());
+				break;
+				// Если событием является снятия выбора с работника
+				case (uint8_t) event_t::UNSELECT:
+					// Снимаем флаг активации перехвата подключения
+					this->interception = false;
+					// Выводим сообщени об активном сервисе
+					if(!this->noinfo) this->log->print("a process has been deactivated to intercept connections, pid = %d", log_t::flag_t::INFO, getpid());
 				break;
 			}
 		}
@@ -463,8 +477,6 @@ void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 					const int socket = ::accept(fd, reinterpret_cast <struct sockaddr *> (&client), &len);
 					// Если сокет не создан тогда выходим
 					if(socket < 0) return;
-					// Устанавливаем активации перехвата подключения
-					this->interception = (this->pid == getpid());
 					// Выполняем игнорирование сигнала неверной инструкции процессора
 					this->socket.noSigill();
 					// Отключаем сигнал записи в оборванное подключение
@@ -531,8 +543,6 @@ void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 						socket = ::accept(fd, reinterpret_cast <struct sockaddr *> (&client), &len);
 						// Если сокет не создан тогда выходим
 						if(socket < 0) return;
-						// Устанавливаем активации перехвата подключения
-						this->interception = (this->pid == getpid());
 						// Получаем данные подключившегося клиента
 						ip = this->ifnet.ip((struct sockaddr *) &client, this->net.family);
 						// Если IP адрес получен пустой, устанавливаем адрес сервера
@@ -550,8 +560,6 @@ void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 						socket = ::accept(fd, reinterpret_cast <struct sockaddr *> (&client), &len);
 						// Если сокет не создан тогда выходим
 						if(socket < 0) return;
-						// Устанавливаем активации перехвата подключения
-						this->interception = (this->pid == getpid());
 						// Получаем данные подключившегося клиента
 						ip = this->ifnet.ip((struct sockaddr *) &client, this->net.family);
 						// Если IP адрес получен пустой, устанавливаем адрес сервера
