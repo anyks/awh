@@ -1058,14 +1058,20 @@ void awh::server::Core::run(const size_t wid) noexcept {
 						}
 						// Выводим сообщение об активации
 						if(!this->noinfo) this->log->print("run server [%s]", log_t::flag_t::INFO, this->unixSocket.c_str());
-						// Устанавливаем базу событий
-						wrk->io.set(this->dispatch.base);
-						// Устанавливаем событие на запись данных подключения
-						wrk->io.set <worker_t, &worker_t::accept> (wrk);
-						// Устанавливаем сокет для записи
-						wrk->io.set(wrk->socket, ev::READ);
-						// Запускаем запись данных на сервер
-						wrk->io.start();
+						// Получаем тип операционной системы
+						const fmk_t::os_t os = this->fmk->os();
+						// Если операционная система является Windows или количество процессов всего один
+						if((this->interception = ((os == fmk_t::os_t::WIND32) || (os == fmk_t::os_t::WIND64) || (this->forks == 1)))){
+							// Устанавливаем базу событий
+							wrk->io.set(this->dispatch.base);
+							// Устанавливаем событие на чтение данных подключения
+							wrk->io.set <worker_t, &worker_t::accept> (wrk);
+							// Устанавливаем сокет для чтения
+							wrk->io.set(wrk->socket, ev::READ);
+							// Запускаем чтение данных с клиента
+							wrk->io.start();
+						// Выполняем создание дочерних процессов
+						} else this->forking(wrk->wid);
 						// Выходим из функции
 						return;
 					// Если сокет не создан
