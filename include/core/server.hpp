@@ -49,10 +49,34 @@ namespace awh {
 				friend class Worker;
 			private:
 				/**
+				 * События работы сервера
+				 */
+				enum class event_t : uint8_t {
+					NONE       = 0x00, // Флаг не установлен
+					EXIT       = 0x01, // Флаг выхода работника
+					SELECT     = 0x02, // Флаг выбора работника
+					CONNECT    = 0x03, // Флаг подключения
+					DISCONNECT = 0x04  // Флаг отключения
+				};
+			private:
+				/**
+				 * Message Структура межпроцессного сообщения
+				 */
+				typedef struct Message {
+					pid_t pid;     // Пид активного процесса
+					size_t index;  // Индекс работника в списке
+					size_t count;  // Количество подключений
+					event_t event; // Активное событие
+					/**
+					 * Message Конструктор
+					 */
+					Message() noexcept : pid(0), index(0), count(0), event(event_t::NONE) {}
+				} mess_t;
+				/**
 				 * Jack Структура работника
 				 */
 				typedef struct Jack {
-					pid_t pid;    // Пид родительского процесса
+					pid_t pid;    // Пид активного процесса
 					int mfds[2];  // Список файловых дескрипторов родительского процесса
 					int cfds[2];  // Список файловых дескрипторов дочернего процесса
 					ev::io read;  // Объект события на чтение
@@ -78,15 +102,19 @@ namespace awh {
 				pid_t pid;
 				// Индекс работника в списке
 				size_t index;
+				// Активное событие
+				event_t event;
+				// Флаг активации перехвата подключения
+				bool interception;
 			private:
 				// Мютекс для блокировки основного потока
 				mtx_t mtx;
 			private:
+				// Количество рабочих процессов
+				size_t forks;
+			private:
 				// Объект для работы с сетевым интерфейсом
 				ifnet_t ifnet;
-			private:
-				// Количество доступных потоков
-				size_t threads;
 			private:
 				// Список блокированных объектов
 				set <size_t> locking;
@@ -184,6 +212,11 @@ namespace awh {
 				 * @param mode флаг для установки
 				 */
 				void setIpV6only(const bool mode) noexcept;
+				/**
+				 * setForks Метод установки количества процессов
+				 * @param forks количество рабочих процессов
+				 */
+				void setForks(const size_t forks = 0) noexcept;
 				/**
 				 * setTotal Метод установки максимального количества одновременных подключений
 				 * @param wid   идентификатор воркера

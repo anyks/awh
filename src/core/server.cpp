@@ -37,34 +37,96 @@ void awh::server::Core::readJack(ev::io & watcher, int revents) noexcept {
 	// Заполняем буфер нулями
 	memset(buffer, 0, sizeof(buffer));
 	// Если процесс является родительским
-	if(getpid() == this->pid){
-
-		size_t c = 0;
-		
-		int bytes = ::read(watcher.fd, buffer, sizeof(buffer));
-
-		if(bytes > 0){
-			memcpy(&c, buffer, bytes);
-
-			cout << " ================ " << " MAIN " << " ||| " << getpid() << " <= " << c << endl;
+	if(this->pid == getpid()){
+		// Создаём объект сообщения
+		mess_t message;
+		// Выполняем чтение полученного сообщения
+		const int bytes = ::read(watcher.fd, buffer, sizeof(buffer));
+		// Если сообщение прочитанно
+		if(bytes == sizeof(message)){
+			// Выполняем извлечение входящих данных
+			memcpy(&message, buffer, bytes);
+			// Определяем тип события
+			switch((uint8_t) message.event){
+				// Если событием является выход приложения
+				case (uint8_t) event_t::EXIT: {
+					// Выполняем закрытие файловых дескрипторов
+					::close(this->jacks.at(message.index)->mfds[0]);
+					::close(this->jacks.at(message.index)->cfds[1]);
+					// Удаляем текущий процесс из списка процессов
+					this->jacks.erase(this->jacks.begin() + message.index);
+					// Выводим сообщение об ошибке, о невозможности отправкить сообщение
+					this->log->print("child process terminated, index = %d, pid = %d", log_t::flag_t::CRITICAL, message.index, message.pid);
+				} break;
+				// Если событием является подключение
+				case (uint8_t) event_t::CONNECT: {
+					// Индекс выбранного процесса
+					this->index = message.index;
+					// Выполняем установку количества подключений
+					this->jacks.at(message.index)->count = message.count;
+					// Выполняем перебор всех процессов и ищем тот, где меньше всего нагрузка
+					for(auto & jack : this->jacks){
+						// Если текущее количество подключений меньше чем передано
+						if((jack->count < message.count) || (jack->count == 0)){
+							// Запоминаем новый индекс процесса
+							this->index = jack->index;
+							// Выходим из цикла
+							break;
+						}
+					}
+					// Выводим сообщени об активном сервисе
+					if(!this->noinfo) this->log->print("%d clients are connected to the process, pid = %d", log_t::flag_t::INFO, message.count, message.pid);
+					// Устанавливаем тип сообщения
+					this->event = event_t::SELECT;
+					// Выполняем отправку сообщения дочернему процессу
+					this->writeJack(this->jacks.at(this->index)->write, ev::WRITE);
+				} break;
+				// Если событием является отключение
+				case (uint8_t) event_t::DISCONNECT:
+					// Выводим сообщени об активном сервисе
+					if(!this->noinfo) this->log->print("client disconnected from process, %d connections left, pid = %d", log_t::flag_t::INFO, message.count, message.pid);
+					// Выполняем установку количества подключений
+					this->jacks.at(message.index)->count = message.count;
+				break;
+			}
 		}
-
 	// Если процесс является дочерним
 	} else {
 		// Получаем объект текущего работника
 		jack_t * jack = this->jacks.at(this->index).get();
 		// Если файловый дескриптор не соответствует родительскому, выходим
 		if(jack->cfds[0] != watcher.fd) return;
-
-		size_t c = 0;
-		int bytes = ::read(watcher.fd, buffer, sizeof(buffer));
-
-		if(bytes > 0){
-			memcpy(&c, buffer, bytes);
-
-			cout << " ================ " << " CHILD " << " ||| " << getpid() << " <= " << c << endl;
+		// Создаём объект сообщения
+		mess_t message;
+		// Выполняем чтение полученного сообщения
+		const int bytes = ::read(watcher.fd, buffer, sizeof(buffer));
+		// Если сообщение прочитанно
+		if(bytes == sizeof(message)){
+			// Выполняем извлечение входящих данных
+			memcpy(&message, buffer, bytes);
+			// Определяем тип события
+			switch((uint8_t) message.event){
+				// Если событием является выход приложения
+				case (uint8_t) event_t::EXIT: {
+					// Блокируем проверку на родительский PID процесса
+					this->pid = getpid();
+					// Выполняем закрытие файловых дескрипторов
+					::close(this->jacks.at(this->index)->mfds[1]);
+					::close(this->jacks.at(this->index)->cfds[0]);
+					// Выводим сообщени об активном сервисе
+					if(!this->noinfo) this->log->print("got an order to finish the job, pid = %d", log_t::flag_t::INFO, getpid());
+					// Выходим из процесса
+					exit(0);
+				} break;
+				// Если событием является выбор работника
+				case (uint8_t) event_t::SELECT:
+					// Устанавливаем флаг активации перехвата подключения
+					this->interception = true;
+					// Выводим сообщени об активном сервисе
+					if(!this->noinfo) this->log->print("a process has been activated to intercept connections, pid = %d", log_t::flag_t::INFO, getpid());
+				break;
+			}
 		}
-
 	}
 }
 /**
@@ -76,23 +138,76 @@ void awh::server::Core::writeJack(ev::io & watcher, int revents) noexcept {
 	// Выполняем остановку проверки сокета на запись
 	watcher.stop();
 	// Если процесс является родительским
-	if(getpid() == this->pid){
-
-		size_t c = getpid();
-		if(::write(watcher.fd, &c, sizeof(c)) > 0)
-			cout << " ================ Main Write " << c << endl;
-
+	if(this->pid == getpid()){
+		// Создаём объект сообщения
+		mess_t message;
+		// Устанавливаем идентификатор процесса
+		message.pid = getpid();
+		// Устанавливаем событие сообщения
+		message.event = this->event;
+		// Выполняем отправку сообщения
+		if(::write(watcher.fd, &message, sizeof(message)) <= 0){
+			// Определяем тип события
+			switch((uint8_t) this->event){
+				// Если событием является выход приложения
+				case (uint8_t) event_t::EXIT:
+					// Выводим сообщение об ошибке, о невозможности отправкить сообщение
+					this->log->print("unable to send message to parent process, for [%s] event", log_t::flag_t::WARNING, "EXIT");
+				break;
+				// Если событием является выбор работника
+				case (uint8_t) event_t::SELECT:
+					// Выводим сообщение об ошибке, о невозможности отправкить сообщение
+					this->log->print("unable to send message to parent process, for [%s] event", log_t::flag_t::WARNING, "SELECT");
+				break;
+			}
+		}
 	// Если процесс является дочерним
 	} else {
 		// Получаем объект текущего работника
 		jack_t * jack = this->jacks.at(this->index).get();
 		// Если файловый дескриптор не соответствует родительскому, выходим
 		if(jack->mfds[1] != watcher.fd) return;
-		
-		size_t c = getpid();
-		if(::write(watcher.fd, &c, sizeof(c)) > 0)
-			cout << " ================ Child Write " << c << endl;
-		
+		// Создаём объект сообщения
+		mess_t message;
+		// Устанавливаем идентификатор процесса
+		message.pid = getpid();
+		// Устанавливаем событие сообщения
+		message.event = this->event;
+		// Устанавливаем индекс процесса
+		message.index = this->index;
+		// Определяем тип события
+		switch((uint8_t) this->event){
+			// Если событием является подключение
+			case (uint8_t) event_t::CONNECT:
+			// Если событием является отключение
+			case (uint8_t) event_t::DISCONNECT: {
+				// Переходим по всем активным воркерам
+				for(auto & wrk : this->workers)
+					// Устанавливаем количество подключений
+					message.count += wrk.second->adjutants.size();
+			} break;
+		}
+		// Выполняем отправку сообщения
+		if(::write(watcher.fd, &message, sizeof(message)) <= 0){
+			// Определяем тип события
+			switch((uint8_t) this->event){
+				// Если событием является выход приложения
+				case (uint8_t) event_t::EXIT:
+					// Выводим сообщение об ошибке, о невозможности отправкить сообщение
+					this->log->print("unable to send message to parent process, for [%s] event", log_t::flag_t::WARNING, "EXIT");
+				break;
+				// Если событием является подключение
+				case (uint8_t) event_t::CONNECT:
+					// Выводим сообщение об ошибке, о невозможности отправкить сообщение
+					this->log->print("unable to send message to parent process, for [%s] event", log_t::flag_t::WARNING, "CONNECT");
+				break;
+				// Если событием является отключение
+				case (uint8_t) event_t::DISCONNECT:
+					// Выводим сообщение об ошибке, о невозможности отправкить сообщение
+					this->log->print("unable to send message to parent process, for [%s] event", log_t::flag_t::WARNING, "DISCONNECT");
+				break;
+			}
+		}
 	}
 }
 /**
@@ -106,7 +221,7 @@ void awh::server::Core::explain(const size_t wid, const size_t index) noexcept {
 	 */
 	#if !defined(_WIN32) && !defined(_WIN64)
 		// Если не все форки созданы
-		if(index < this->threads){
+		if(index < this->forks){
 			// Выполняем поиск воркера
 			auto it = this->workers.find(wid);
 			// Если воркер найден, устанавливаем максимальное количество одновременных подключений
@@ -116,7 +231,7 @@ void awh::server::Core::explain(const size_t wid, const size_t index) noexcept {
 				// Если индекс нулевой, значит работаем с основным процессом
 				if(index == 0){
 					// Выполняем создание указанное количество работников
-					for(size_t i = 0; i < this->threads; i++){
+					for(size_t i = 0; i < this->forks; i++){
 						// Создаём объект работника
 						unique_ptr <jack_t> jack(new jack_t);
 						// Устанавливаем индекс работника
@@ -178,7 +293,7 @@ void awh::server::Core::explain(const size_t wid, const size_t index) noexcept {
 							// Запускаем чтение данных с основного процесса
 							jack->read.start();
 							// Запускаем запись данных основному процессу
-							jack->write.start();
+							// jack->write.start();
 						}{
 							// Устанавливаем базу событий
 							wrk->io.set(this->base);
@@ -194,8 +309,6 @@ void awh::server::Core::explain(const size_t wid, const size_t index) noexcept {
 					} break;
 					// Если - это родительский процесс
 					default: {
-						// Устанавливаем идентификатор процесса
-						this->pid = getpid();
 						// Получаем объект текущего работника
 						jack_t * jack = this->jacks.at(index).get();
 						// Закрываем файловый дескриптор на запись в основной процесс
@@ -216,8 +329,13 @@ void awh::server::Core::explain(const size_t wid, const size_t index) noexcept {
 						jack->write.set(jack->cfds[1], ev::WRITE);
 						// Запускаем чтение данных с дочернего процесса
 						jack->read.start();
-						// Запускаем запись данных дочернему процессу
-						jack->write.start();
+						// Если это первый воркер, активируем его
+						if(index == 0){
+							// Устанавливаем тип сообщения
+							this->event = event_t::SELECT;
+							// Запускаем запись данных дочернему процессу
+							jack->write.start();
+						}
 						// Продолжаем дальше
 						this->explain(wid, index + 1);
 					}
@@ -246,7 +364,7 @@ void awh::server::Core::resolver(const string & ip, worker_t * wrk) noexcept {
 			// Выполняем слушать порт сервера
 			if(::listen(wrk->socket, SOMAXCONN) < 0){
 				// Выводим сообщени об активном сервисе
-				if(!core->noinfo) core->log->print("listen service: pid = %u", log_t::flag_t::CRITICAL, getpid());
+				core->log->print("listen service: pid = %u", log_t::flag_t::CRITICAL, getpid());
 				// Останавливаем работу сервера
 				core->stop();
 				// Выходим из функции
@@ -254,16 +372,10 @@ void awh::server::Core::resolver(const string & ip, worker_t * wrk) noexcept {
 			}
 			// Выводим сообщение об активации
 			if(!core->noinfo) core->log->print("run server [%s:%u]", log_t::flag_t::INFO, wrk->host.c_str(), wrk->port);
-			/**
-			 * Если операционной системой не является Windows
-			 */
-			#if !defined(_WIN32) && !defined(_WIN64)
-				// Выполняем создание дочерних процессов
-				this->explain(wrk->wid);
-			/**
-			 * Если операционной системой является MS Windows
-			 */
-			#else
+			// Получаем тип операционной системы
+			const fmk_t::os_t os = core->fmk->os();
+			// Если операционная система является Windows или количество процессов всего один
+			if((this->interception = ((os == fmk_t::os_t::WIND32) || (os == fmk_t::os_t::WIND64) || (this->forks == 1)))){
 				// Устанавливаем базу событий
 				wrk->io.set(this->base);
 				// Устанавливаем событие на чтение данных подключения
@@ -272,7 +384,8 @@ void awh::server::Core::resolver(const string & ip, worker_t * wrk) noexcept {
 				wrk->io.set(wrk->socket, ev::READ);
 				// Запускаем чтение данных с клиента
 				wrk->io.start();
-			#endif
+			// Выполняем создание дочерних процессов
+			} else this->explain(wrk->wid);
 			// Выходим из функции
 			return;
 		// Если сокет не создан, выводим в консоль информацию
@@ -315,7 +428,7 @@ void awh::server::Core::close(const int fd) noexcept {
  */
 void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 	// Если идентификатор воркера передан
-	if((wid > 0) && (fd >= 0)){
+	if((wid > 0) && (fd >= 0) && this->interception){
 		// Выполняем поиск воркера
 		auto it = this->workers.find(wid);
 		// Если воркер найден, устанавливаем максимальное количество одновременных подключений
@@ -350,6 +463,8 @@ void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 					const int socket = ::accept(fd, reinterpret_cast <struct sockaddr *> (&client), &len);
 					// Если сокет не создан тогда выходим
 					if(socket < 0) return;
+					// Устанавливаем активации перехвата подключения
+					this->interception = (this->pid == getpid());
 					// Выполняем игнорирование сигнала неверной инструкции процессора
 					this->socket.noSigill();
 					// Отключаем сигнал записи в оборванное подключение
@@ -376,6 +491,13 @@ void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 					ret.first->second->ip = this->ifnet.ip(AF_INET);
 					// Запоминаем аппаратный адрес локального сервера
 					ret.first->second->mac = this->ifnet.mac(ret.first->second->ip, AF_INET);
+					// Если процесс не является основным
+					if((this->pid != getpid()) && !this->jacks.empty()){
+						// Устанавливаем активное событие подключения
+						this->event = event_t::CONNECT;
+						// Выполняем разрешение на отправку сообщения
+						this->jacks.at(this->index)->write.start();
+					}
 					// Запускаем чтение данных
 					this->enabled(method_t::READ, ret.first->first, wrk->wait);
 					// Если вывод информационных данных не запрещён
@@ -409,6 +531,8 @@ void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 						socket = ::accept(fd, reinterpret_cast <struct sockaddr *> (&client), &len);
 						// Если сокет не создан тогда выходим
 						if(socket < 0) return;
+						// Устанавливаем активации перехвата подключения
+						this->interception = (this->pid == getpid());
 						// Получаем данные подключившегося клиента
 						ip = this->ifnet.ip((struct sockaddr *) &client, this->net.family);
 						// Если IP адрес получен пустой, устанавливаем адрес сервера
@@ -426,6 +550,8 @@ void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 						socket = ::accept(fd, reinterpret_cast <struct sockaddr *> (&client), &len);
 						// Если сокет не создан тогда выходим
 						if(socket < 0) return;
+						// Устанавливаем активации перехвата подключения
+						this->interception = (this->pid == getpid());
 						// Получаем данные подключившегося клиента
 						ip = this->ifnet.ip((struct sockaddr *) &client, this->net.family);
 						// Если IP адрес получен пустой, устанавливаем адрес сервера
@@ -541,6 +667,13 @@ void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 				ret.first->second->ip = move(ip);
 				// Запоминаем MAC адрес
 				ret.first->second->mac = move(mac);
+				// Если процесс не является основным
+				if((this->pid != getpid()) && !this->jacks.empty()){
+					// Устанавливаем активное событие подключения
+					this->event = event_t::CONNECT;
+					// Выполняем разрешение на отправку сообщения
+					this->jacks.at(this->index)->write.start();
+				}
 				// Запускаем чтение данных
 				this->enabled(method_t::READ, ret.first->first, wrk->wait);
 				// Если вывод информационных данных не запрещён
@@ -598,6 +731,13 @@ void awh::server::Core::close() noexcept {
 					// Иначе продолжаем дальше
 					} else ++it;
 				}
+				// Если процесс не является основным
+				if((this->pid != getpid()) && !this->jacks.empty()){
+					// Устанавливаем активное событие отключения
+					this->event = event_t::DISCONNECT;
+					// Выполняем разрешение на отправку сообщения
+					this->jacks.at(this->index)->write.start();
+				}
 			}
 		}
 	}
@@ -642,6 +782,13 @@ void awh::server::Core::remove() noexcept {
 						jt = wrk->adjutants.erase(jt);
 					// Иначе продолжаем дальше
 					} else ++jt;
+				}
+				// Если процесс не является основным
+				if((this->pid != getpid()) && !this->jacks.empty()){
+					// Устанавливаем активное событие отключения
+					this->event = event_t::DISCONNECT;
+					// Выполняем разрешение на отправку сообщения
+					this->jacks.at(this->index)->write.start();
 				}
 			}
 			// Останавливаем работу сервера
@@ -719,9 +866,9 @@ void awh::server::Core::run(const size_t wid) noexcept {
 					// Если сокет сервера создан
 					if(wrk->socket > -1){
 						// Выполняем слушать порт сервера
-						if(::listen(wrk->socket, wrk->total) < 0){
+						if(::listen(wrk->socket, SOMAXCONN) < 0){
 							// Выводим сообщени об активном сервисе
-							if(!this->noinfo) this->log->print("listen service: pid = %u", log_t::flag_t::CRITICAL, getpid());
+							this->log->print("listen service: pid = %u", log_t::flag_t::CRITICAL, getpid());
 							// Останавливаем работу сервера
 							this->stop();
 							// Выходим из функции
@@ -795,6 +942,13 @@ void awh::server::Core::remove(const size_t wid) noexcept {
 					// Иначе продолжаем дальше
 					} else ++jt;
 				}
+				// Если процесс не является основным
+				if((this->pid != getpid()) && !this->jacks.empty()){
+					// Устанавливаем активное событие отключения
+					this->event = event_t::DISCONNECT;
+					// Выполняем разрешение на отправку сообщения
+					this->jacks.at(this->index)->write.start();
+				}
 			}
 			// Останавливаем работу сервера
 			wrk->io.stop();
@@ -838,6 +992,13 @@ void awh::server::Core::close(const size_t aid) noexcept {
 			wrk->adjutants.erase(aid);
 			// Удаляем адъютанта из списка подключений
 			this->adjutants.erase(aid);
+			// Если процесс не является основным
+			if((this->pid != getpid()) && !this->jacks.empty()){
+				// Устанавливаем активное событие отключения
+				this->event = event_t::DISCONNECT;
+				// Выполняем разрешение на отправку сообщения
+				this->jacks.at(this->index)->write.start();
+			}
 			// Выводим сообщение об ошибке
 			if(!core->noinfo) this->log->print("%s", log_t::flag_t::INFO, "disconnect client from server");
 			// Выводим функцию обратного вызова
@@ -1094,6 +1255,18 @@ void awh::server::Core::setIpV6only(const bool mode) noexcept {
 	this->ipV6only = mode;
 }
 /**
+ * setForks Метод установки количества процессов
+ * @param forks количество рабочих процессов
+ */
+void awh::server::Core::setForks(const size_t forks) noexcept {
+	// Если количество процессов не передано
+	if(forks == 0)
+		// Устанавливаем максимальное количество
+		this->forks = std::thread::hardware_concurrency();
+	// Иначе устанавливаем указанное количество процессов
+	else this->forks = forks;
+}
+/**
  * setTotal Метод установки максимального количества одновременных подключений
  * @param wid   идентификатор воркера
  * @param total максимальное количество одновременных подключений
@@ -1154,7 +1327,9 @@ void awh::server::Core::setCert(const string & cert, const string & key, const s
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
  */
-awh::server::Core::Core(const fmk_t * fmk, const log_t * log) noexcept : awh::core_t(fmk, log), pid(-1), index(0), ifnet(fmk, log), threads(std::thread::hardware_concurrency()) {
+awh::server::Core::Core(const fmk_t * fmk, const log_t * log) noexcept : awh::core_t(fmk, log), pid(-1), index(0), event(event_t::NONE), interception(false), forks(1), ifnet(fmk, log) {
+	// Устанавливаем идентификатор процесса
+	this->pid = getpid();
 	// Устанавливаем тип запускаемого ядра
 	this->type = type_t::SERVER;
 }
@@ -1162,6 +1337,22 @@ awh::server::Core::Core(const fmk_t * fmk, const log_t * log) noexcept : awh::co
  * ~Core Деструктор
  */
 awh::server::Core::~Core() noexcept {
+	// Если процесс не является основным
+	if((this->pid != getpid()) && !this->jacks.empty()){
+		// Устанавливаем активное событие завершения работы
+		this->event = event_t::EXIT;
+		// Выполняем отправку сообщения дочернему процессу
+		this->writeJack(this->jacks.at(this->index)->write, ev::WRITE);
+	// Если просесс является родительским и список процессов не пустой
+	} else if(!this->jacks.empty()) {
+		// Переходим по всем процессам и приказываем им завершить работу
+		for(auto & jack : this->jacks){
+			// Устанавливаем тип сообщения
+			this->event = event_t::EXIT;
+			// Выполняем отправку сообщения дочернему процессу
+			this->writeJack(jack->write, ev::WRITE);
+		}
+	}
 	// Выполняем остановку сервера
 	this->stop();
 }
