@@ -101,125 +101,130 @@ void awh::server::Core::writeJack(ev::io & watcher, int revents) noexcept {
  * @param index индекс инициализированного процесса
  */
 void awh::server::Core::explain(const size_t wid, const size_t index) noexcept {
-	// Если не все форки созданы
-	if(index < this->threads){
-		// Выполняем поиск воркера
-		auto it = this->workers.find(wid);
-		// Если воркер найден, устанавливаем максимальное количество одновременных подключений
-		if(it != this->workers.end()){
-			// Получаем объект подключения
-			worker_t * wrk = (worker_t *) const_cast <awh::worker_t *> (it->second);
-			// Если индекс нулевой, значит работаем с основным процессом
-			if(index == 0){
-				// Выполняем создание указанное количество работников
-				for(size_t i = 0; i < this->threads; i++){
-					// Создаём объект работника
-					unique_ptr <jack_t> jack(new jack_t);
-					// Устанавливаем индекс работника
-					jack->index = i;
-					// Выполняем подписку на основной канал передачи данных
-					if(pipe(jack->mfds) != 0){
-						// Выводим в лог сообщение
-						this->log->print("%s", log_t::flag_t::CRITICAL, strerror(errno));
-						// Выходим принудительно из приложения
-						exit(EXIT_FAILURE);
+	/**
+	 * Если операционной системой не является Windows
+	 */
+	#if !defined(_WIN32) && !defined(_WIN64)
+		// Если не все форки созданы
+		if(index < this->threads){
+			// Выполняем поиск воркера
+			auto it = this->workers.find(wid);
+			// Если воркер найден, устанавливаем максимальное количество одновременных подключений
+			if(it != this->workers.end()){
+				// Получаем объект подключения
+				worker_t * wrk = (worker_t *) const_cast <awh::worker_t *> (it->second);
+				// Если индекс нулевой, значит работаем с основным процессом
+				if(index == 0){
+					// Выполняем создание указанное количество работников
+					for(size_t i = 0; i < this->threads; i++){
+						// Создаём объект работника
+						unique_ptr <jack_t> jack(new jack_t);
+						// Устанавливаем индекс работника
+						jack->index = i;
+						// Выполняем подписку на основной канал передачи данных
+						if(pipe(jack->mfds) != 0){
+							// Выводим в лог сообщение
+							this->log->print("%s", log_t::flag_t::CRITICAL, strerror(errno));
+							// Выходим принудительно из приложения
+							exit(EXIT_FAILURE);
+						}
+						// Выполняем подписку на дочерний канал передачи данных
+						if(pipe(jack->cfds) != 0){
+							// Выводим в лог сообщение
+							this->log->print("%s", log_t::flag_t::CRITICAL, strerror(errno));
+							// Выходим принудительно из приложения
+							exit(EXIT_FAILURE);
+						}
+						// Выполняем добавление работника в список работников
+						this->jacks.push_back(move(jack));
 					}
-					// Выполняем подписку на дочерний канал передачи данных
-					if(pipe(jack->cfds) != 0){
-						// Выводим в лог сообщение
-						this->log->print("%s", log_t::flag_t::CRITICAL, strerror(errno));
-						// Выходим принудительно из приложения
-						exit(EXIT_FAILURE);
-					}
-					// Выполняем добавление работника в список работников
-					this->jacks.push_back(move(jack));
 				}
-			}
-			// Устанавливаем идентификатор процесса
-			pid_t pid = -1;
-			// Определяем тип потока
-			switch((pid = fork())){
-				// Если поток не создан
-				case -1: {
-					// Выводим в лог сообщение
-					this->log->print("child process could not be created", log_t::flag_t::CRITICAL);
-					// Выходим принудительно из приложения
-					exit(EXIT_FAILURE);
-				} break;
-				// Если - это дочерний поток значит все нормально
-				case 0: {
-					// Запоминаем текущий индекс процесса
-					this->index = index;
-					{
+				// Устанавливаем идентификатор процесса
+				pid_t pid = -1;
+				// Определяем тип потока
+				switch((pid = fork())){
+					// Если поток не создан
+					case -1: {
+						// Выводим в лог сообщение
+						this->log->print("child process could not be created", log_t::flag_t::CRITICAL);
+						// Выходим принудительно из приложения
+						exit(EXIT_FAILURE);
+					} break;
+					// Если - это дочерний поток значит все нормально
+					case 0: {
+						// Запоминаем текущий индекс процесса
+						this->index = index;
+						{
+							// Получаем объект текущего работника
+							jack_t * jack = this->jacks.at(index).get();
+							// Закрываем файловый дескриптор на запись в дочерний процесс
+							::close(jack->cfds[1]);
+							// Закрываем файловый дескриптор на чтение из основного процесса
+							::close(jack->mfds[0]);
+							// Устанавливаем идентификатор процесса
+							jack->pid = getpid();
+							// Устанавливаем базу событий для чтения
+							jack->read.set(this->base);
+							// Устанавливаем базу событий для записи
+							jack->write.set(this->base);
+							// Устанавливаем событие на чтение данных от основного процесса
+							jack->read.set <core_t, &core_t::readJack> (this);
+							// Устанавливаем событие на запись данных основному процессу
+							jack->write.set <core_t, &core_t::writeJack> (this);
+							// Устанавливаем сокет для чтения
+							jack->read.set(jack->cfds[0], ev::READ);
+							// Устанавливаем сокет для записи
+							jack->write.set(jack->mfds[1], ev::WRITE);
+							// Запускаем чтение данных с основного процесса
+							jack->read.start();
+							// Запускаем запись данных основному процессу
+							jack->write.start();
+						}{
+							// Устанавливаем базу событий
+							wrk->io.set(this->base);
+							// Устанавливаем событие на чтение данных подключения
+							wrk->io.set <worker_t, &worker_t::accept> (wrk);
+							// Устанавливаем сокет для чтения
+							wrk->io.set(wrk->socket, ev::READ);
+							// Запускаем чтение данных с клиента
+							wrk->io.start();
+						}
+						// Выполняем активацию базы событий
+						ev_loop_fork(this->base);
+					} break;
+					// Если - это родительский процесс
+					default: {
+						// Устанавливаем идентификатор процесса
+						this->pid = getpid();
 						// Получаем объект текущего работника
 						jack_t * jack = this->jacks.at(index).get();
-						// Закрываем файловый дескриптор на запись в дочерний процесс
-						::close(jack->cfds[1]);
-						// Закрываем файловый дескриптор на чтение из основного процесса
-						::close(jack->mfds[0]);
-						// Устанавливаем идентификатор процесса
-						jack->pid = getpid();
+						// Закрываем файловый дескриптор на запись в основной процесс
+						::close(jack->mfds[1]);
+						// Закрываем файловый дескриптор на чтение из дочернего процесса
+						::close(jack->cfds[0]);
 						// Устанавливаем базу событий для чтения
 						jack->read.set(this->base);
 						// Устанавливаем базу событий для записи
 						jack->write.set(this->base);
-						// Устанавливаем событие на чтение данных от основного процесса
+						// Устанавливаем событие на чтение данных от дочернего процесса
 						jack->read.set <core_t, &core_t::readJack> (this);
-						// Устанавливаем событие на запись данных основному процессу
+						// Устанавливаем событие на запись данных дочернему процессу
 						jack->write.set <core_t, &core_t::writeJack> (this);
 						// Устанавливаем сокет для чтения
-						jack->read.set(jack->cfds[0], ev::READ);
+						jack->read.set(jack->mfds[0], ev::READ);
 						// Устанавливаем сокет для записи
-						jack->write.set(jack->mfds[1], ev::WRITE);
-						// Запускаем чтение данных с основного процесса
+						jack->write.set(jack->cfds[1], ev::WRITE);
+						// Запускаем чтение данных с дочернего процесса
 						jack->read.start();
-						// Запускаем запись данных основному процессу
+						// Запускаем запись данных дочернему процессу
 						jack->write.start();
-					}{
-						// Устанавливаем базу событий
-						wrk->io.set(this->base);
-						// Устанавливаем событие на чтение данных подключения
-						wrk->io.set <worker_t, &worker_t::accept> (wrk);
-						// Устанавливаем сокет для чтения
-						wrk->io.set(wrk->socket, ev::READ);
-						// Запускаем чтение данных с клиента
-						wrk->io.start();
+						// Продолжаем дальше
+						this->explain(wid, index + 1);
 					}
-					// Выполняем активацию базы событий
-					ev_loop_fork(this->base);
-				} break;
-				// Если - это родительский процесс
-				default: {
-					// Устанавливаем идентификатор процесса
-					this->pid = getpid();
-					// Получаем объект текущего работника
-					jack_t * jack = this->jacks.at(index).get();
-					// Закрываем файловый дескриптор на запись в основной процесс
-					::close(jack->mfds[1]);
-					// Закрываем файловый дескриптор на чтение из дочернего процесса
-					::close(jack->cfds[0]);
-					// Устанавливаем базу событий для чтения
-					jack->read.set(this->base);
-					// Устанавливаем базу событий для записи
-					jack->write.set(this->base);
-					// Устанавливаем событие на чтение данных от дочернего процесса
-					jack->read.set <core_t, &core_t::readJack> (this);
-					// Устанавливаем событие на запись данных дочернему процессу
-					jack->write.set <core_t, &core_t::writeJack> (this);
-					// Устанавливаем сокет для чтения
-					jack->read.set(jack->mfds[0], ev::READ);
-					// Устанавливаем сокет для записи
-					jack->write.set(jack->cfds[1], ev::WRITE);
-					// Запускаем чтение данных с дочернего процесса
-					jack->read.start();
-					// Запускаем запись данных дочернему процессу
-					jack->write.start();
-					// Продолжаем дальше
-					this->explain(wid, index + 1);
 				}
 			}
 		}
-	}
+	#endif
 }
 /**
  * resolver Функция выполнения резолвинга домена
@@ -227,47 +232,6 @@ void awh::server::Core::explain(const size_t wid, const size_t index) noexcept {
  * @param wrk объект воркера
  */
 void awh::server::Core::resolver(const string & ip, worker_t * wrk) noexcept {
-	/*
-	// Получаем объект ядра подключения
-	core_t * core = (core_t *) const_cast <awh::core_t *> (wrk->core);
-	// Если IP адрес получен
-	if(!ip.empty()){
-		// sudo lsof -i -P | grep 1080
-		// Обновляем хост сервера
-		wrk->host = ip;
-		// Получаем сокет сервера
-		wrk->socket = core->sockaddr(wrk->host, wrk->port, core->net.family).socket;
-		// Если сокет сервера создан
-		if(wrk->socket > -1){
-			// Выполняем слушать порт сервера
-			if(::listen(wrk->socket, wrk->total) < 0){
-				// Выводим сообщени об активном сервисе
-				if(!core->noinfo) core->log->print("listen service: pid = %u", log_t::flag_t::CRITICAL, getpid());
-				// Выходим из функции
-				goto Stop;
-			}
-			// Выводим сообщение об активации
-			if(!core->noinfo) core->log->print("run server [%s:%u]", log_t::flag_t::INFO, wrk->host.c_str(), wrk->port);
-			// Устанавливаем базу событий
-			wrk->io.set(this->base);
-			// Устанавливаем событие на чтение данных подключения
-			wrk->io.set <worker_t, &worker_t::accept> (wrk);
-			// Устанавливаем сокет для чтения
-			wrk->io.set(wrk->socket, ev::READ);
-			// Запускаем чтение данных с клиента
-			wrk->io.start();
-			// Выходим из функции
-			return;
-		// Если сокет не создан, выводим в консоль информацию
-		} else core->log->print("server cannot be started [%s:%u]", log_t::flag_t::CRITICAL, wrk->host.c_str(), wrk->port);
-	// Если IP адрес сервера не получен, выводим в консоль информацию
-	} else core->log->print("broken host server %s", log_t::flag_t::CRITICAL, wrk->host.c_str());
-	// Устанавливаем метку
-	Stop:
-	// Останавливаем работу сервера
-	core->stop();
-	*/
-
 	// Получаем объект ядра подключения
 	core_t * core = (core_t *) const_cast <awh::core_t *> (wrk->core);
 	// Если IP адрес получен
@@ -290,8 +254,25 @@ void awh::server::Core::resolver(const string & ip, worker_t * wrk) noexcept {
 			}
 			// Выводим сообщение об активации
 			if(!core->noinfo) core->log->print("run server [%s:%u]", log_t::flag_t::INFO, wrk->host.c_str(), wrk->port);
-			// Выполняем создание дочерних процессов
-			this->explain(wrk->wid);
+			/**
+			 * Если операционной системой не является Windows
+			 */
+			#if !defined(_WIN32) && !defined(_WIN64)
+				// Выполняем создание дочерних процессов
+				this->explain(wrk->wid);
+			/**
+			 * Если операционной системой является MS Windows
+			 */
+			#else
+				// Устанавливаем базу событий
+				wrk->io.set(this->base);
+				// Устанавливаем событие на чтение данных подключения
+				wrk->io.set <worker_t, &worker_t::accept> (wrk);
+				// Устанавливаем сокет для чтения
+				wrk->io.set(wrk->socket, ev::READ);
+				// Запускаем чтение данных с клиента
+				wrk->io.start();
+			#endif
 			// Выходим из функции
 			return;
 		// Если сокет не создан, выводим в консоль информацию
