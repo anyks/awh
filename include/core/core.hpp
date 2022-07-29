@@ -134,7 +134,6 @@ namespace awh {
 			 * Mutex Объект основных мютексов
 			 */
 			typedef struct Mutex {
-				recursive_mutex core;   // Для работы с ядрами
 				recursive_mutex bind;   // Для работы с биндингом ядра
 				recursive_mutex main;   // Для работы с параметрами модуля
 				recursive_mutex unix;   // Для работы с unix-сокетами
@@ -220,7 +219,7 @@ namespace awh {
 					bool work;
 					// Флаг инициализации базы событий
 					bool init;
-				private:
+				public:
 					// База событий
 					ev::loop_ref base;
 				private:
@@ -241,7 +240,7 @@ namespace awh {
 					/**
 					 * start Метод запуска чтения базы событий
 					 */
-					void start() noexcept;					
+					void start() noexcept;
 				public:
 					/**
 					 * freeze Метод заморозки чтения данных
@@ -253,6 +252,11 @@ namespace awh {
 					 * @param mode флаг активации
 					 */
 					void easily(const bool mode) noexcept;
+					/**
+					 * rebase Метод пересоздания базы событий
+					 * @param clear флаг очистки предыдущей базы событий
+					 */
+					void rebase(const bool clear = true) noexcept;
 				public:
 					/**
 					 * setBase Метод установки базы событий
@@ -268,16 +272,11 @@ namespace awh {
 					/**
 					 * Dispatch Конструктор
 					 */
-					Dispatch(Core * core) noexcept :
-					 core(core), easy(false), mode(false),
-					 work(false), init(false), base(nullptr), freq(10ms) {}
+					Dispatch(Core * core) noexcept;
 					/**
-					 * Dispatch Конструктор
-					 * @param base база событий
+					 * ~Dispatch Деструктор
 					 */
-					Dispatch(Core * core, struct ev_loop * base) noexcept :
-					 core(core), easy(false), mode(false),
-					 work(false), init(true), base(base), freq(10ms) {}
+					~Dispatch() noexcept;
 			} dispatch_t;
 		protected:
 			// Сетевые параметры
@@ -315,8 +314,6 @@ namespace awh {
 			// Список активных таймеров
 			map <u_short, unique_ptr <timer_t>> timers;
 		protected:
-			// Список сторонних сетевых ядер
-			map <Core *, struct ev_loop **> cores;
 			// Список активных воркеров
 			map <size_t, const worker_t *> workers;
 			// Список подключённых клиентов
@@ -333,6 +330,9 @@ namespace awh {
 			// Флаг разрешающий работу только с IPv6
 			bool ipV6only = false;
 		protected:
+			// Количество подключённых внешних ядер
+			u_int cores = 0;
+		protected:
 			// Адрес файла unix-сокета
 			string unixSocket = "";
 			// Название сокета по умолчанию
@@ -345,9 +345,6 @@ namespace awh {
 			const fmk_t * fmk = nullptr;
 			// Создаём объект работы с логами
 			const log_t * log = nullptr;
-		protected:
-			// База данных событий
-			struct ev_loop * base = nullptr;
 		protected:
 			// Функция обратного вызова при запуске/остановке модуля
 			function <void (const bool, Core * core)> callbackFn = nullptr;
@@ -490,18 +487,17 @@ namespace awh {
 			void error(const int64_t bytes, const size_t aid) const noexcept;
 		public:
 			/**
+			 * enabled Метод активации метода события сокета
+			 * @param method метод события сокета
+			 * @param aid    идентификатор адъютанта
+			 */
+			void enabled(const method_t method, const size_t aid) noexcept;
+			/**
 			 * disabled Метод деактивации метода события сокета
 			 * @param method метод события сокета
 			 * @param aid    идентификатор адъютанта
 			 */
 			void disabled(const method_t method, const size_t aid) noexcept;
-			/**
-			 * enabled Метод активации метода события сокета
-			 * @param method  метод события сокета
-			 * @param aid     идентификатор адъютанта
-			 * @param timeout флаг активации таймаута
-			 */
-			void enabled(const method_t method, const size_t aid, const bool timeout = true) noexcept;
 		public:
 			/**
 			 * write Метод записи буфера данных воркером

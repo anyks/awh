@@ -79,9 +79,7 @@ namespace awh {
 					ev::sig sfpe;
 					ev::sig sterm;
 					ev::sig squit;
-					ev::sig sabrt;
 					ev::sig ssegv;
-					ev::sig skill;
 				} sig_t;
 				/**
 				 * Message Структура межпроцессного сообщения

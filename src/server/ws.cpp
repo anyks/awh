@@ -68,6 +68,10 @@ void awh::server::WebSocket::connectCallback(const size_t aid, const size_t wid,
 		ws_worker_t::adjp_t * adj = const_cast <ws_worker_t::adjp_t *> (this->worker.get(aid));
 		// Если объект адъютанта получен
 		if(adj != nullptr){
+			// Если нужно активировать многопоточность и она не активирована
+			if(this->threadsEnabled && !this->thr.is())
+				// Выполняем активацию тредпула
+				this->thr.init(this->threadsCount);
 			// Устанавливаем экшен выполнения
 			adj->action = ws_worker_t::action_t::CONNECT;
 			// Выполняем запуск обработчика событий
@@ -1110,21 +1114,16 @@ void awh::server::WebSocket::start() noexcept {
  * @param mode    флаг активации/деактивации мультипоточности
  */
 void awh::server::WebSocket::multiThreads(const size_t threads, const bool mode) noexcept {
+	// Выполняем активацию тредпула
+	this->threadsEnabled = mode;
+	// Устанавливаем количество активных потоков
+	this->threadsCount = threads;
 	// Если нужно активировать многопоточность
-	if(mode){
-		// Если многопоточность ещё не активированна
-		if(!this->thr.is()) this->thr.init(threads);
-		// Если многопоточность уже активированна
-		else {
-			// Выполняем завершение всех активных потоков
-			this->thr.wait();
-			// Выполняем инициализацию нового тредпула
-			this->thr.init(threads);
-		}
+	if(this->threadsEnabled)
 		// Устанавливаем простое чтение базы событий
 		const_cast <server::core_t *> (this->core)->easily(true);
 	// Выполняем завершение всех потоков
-	} else this->thr.wait();
+	else this->thr.wait();
 }
 /**
  * setSub Метод установки подпротокола поддерживаемого сервером
@@ -1311,4 +1310,13 @@ awh::server::WebSocket::WebSocket(const server::core_t * core, const fmk_t * fmk
 	const_cast <server::core_t *> (this->core)->setPersist(true);
 	// Добавляем воркер в биндер TCP/IP
 	const_cast <server::core_t *> (this->core)->add(&this->worker);
+}
+/**
+ * ~WebSocket Деструктор
+ */
+awh::server::WebSocket::~WebSocket() noexcept {
+	// Если многопоточность активированна
+	if(this->threadsEnabled && this->thr.is())
+		// Выполняем завершение всех потоков
+		this->thr.wait();
 }

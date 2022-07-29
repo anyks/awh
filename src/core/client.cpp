@@ -532,7 +532,7 @@ void awh::client::Core::createTimeout(const size_t wid, const worker_t::mode_t m
 		// Устанавливаем ядро клиента
 		timeout->core = this;
 		// Устанавливаем базу событий
-		timeout->timer.set(this->base);
+		timeout->timer.set(this->dispatch.base);
 		// Устанавливаем функцию обратного вызова
 		timeout->timer.set <timeout_t, &timeout_t::callback> (timeout);
 		// Запускаем работу таймера
@@ -592,14 +592,14 @@ void awh::client::Core::sendTimeout(const size_t aid) noexcept {
 					// Резолвер IPv4, создаём резолвер
 					case AF_INET: {
 						// Добавляем базу событий для DNS резолвера IPv4
-						this->dns4.setBase(this->base);
+						this->dns4.setBase(this->dispatch.base);
 						// Выполняем установку нейм-серверов для DNS резолвера IPv4
 						this->dns4.replaceServers(this->net.v4.second);
 					} break;
 					// Резолвер IPv6, создаём резолвер
 					case AF_INET6: {
 						// Добавляем базу событий для DNS резолвера IPv6
-						this->dns4.setBase(this->base);
+						this->dns4.setBase(this->dispatch.base);
 						// Выполняем установку нейм-серверов для DNS резолвера IPv6
 						this->dns4.replaceServers(this->net.v4.second);
 					} break;
@@ -1067,7 +1067,7 @@ void awh::client::Core::connected(const size_t aid) noexcept {
 				*/
 
 				// Запускаем чтение данных
-				this->enabled(method_t::READ, it->first, wrk->wait);
+				this->enabled(method_t::READ, it->first);
 				// Выводим в лог сообщение
 				if(!this->noinfo) this->log->print("connect client to server [%s:%d]", log_t::flag_t::INFO, host.c_str(), url.port);
 				// Если подключение производится через, прокси-сервер
@@ -1079,7 +1079,7 @@ void awh::client::Core::connected(const size_t aid) noexcept {
 			// Если используется unix-сокет
 			} else {
 				// Запускаем чтение данных
-				this->enabled(method_t::READ, it->first, wrk->wait);
+				this->enabled(method_t::READ, it->first);
 				// Выводим в лог сообщение
 				if(!this->noinfo) this->log->print("connect client to server [%s]", log_t::flag_t::INFO, this->unixSocket.c_str());
 				// Выполняем функцию обратного вызова
@@ -1116,14 +1116,12 @@ void awh::client::Core::transfer(const method_t method, const size_t aid) noexce
 					int64_t bytes = -1;
 					// Создаём буфер входящих данных
 					char buffer[BUFFER_SIZE];
-					// Останавливаем таймаут ожидания на чтение из сокета
-					adj->bev.timer.read.stop();
 					// Выполняем перебор бесконечным циклом пока это разрешено
 					while(!adj->bev.locked.read && (wrk->status.real == worker_t::mode_t::CONNECT)){
 						// Выполняем зануление буфера
 						memset(buffer, 0, sizeof(buffer));
 						// Если дочерние активные подключения есть и сокет блокирующий
-						if(!this->cores.empty() && (this->socket.isBlocking(adj->bev.socket) == 1)){
+						if((this->cores > 0) && (this->socket.isBlocking(adj->bev.socket) == 1)){
 							// Переводим сокет в не блокирующий режим
 							this->socket.nonBlocking(adj->bev.socket);
 							// Если защищённый режим работы разрешён
@@ -1144,14 +1142,16 @@ void awh::client::Core::transfer(const method_t method, const size_t aid) noexce
 							bytes = SSL_read(adj->ssl.ssl, buffer, sizeof(buffer));
 						// Выполняем чтение данных из сокета
 						} else bytes = recv(adj->bev.socket, buffer, sizeof(buffer), 0);
+						// Если время ожидания чтения данных установлено
+						if(wrk->wait && (adj->timeouts.read > 0)){
+							// Устанавливаем время ожидания на получение данных
+							adj->bev.timer.read.repeat = adj->timeouts.read;
+							// Запускаем повторное ожидание
+							adj->bev.timer.read.again();
 						// Останавливаем таймаут ожидания на чтение из сокета
-						adj->bev.timer.read.stop();
+						} else adj->bev.timer.read.stop();
 						// Выполняем принудительное исполнение таймеров
 						if(this->socket.isBlocking(adj->bev.socket) != 0) this->executeTimers();
-						// Если время ожидания записи данных установлено
-						if(adj->timeouts.read > 0)
-							// Запускаем ожидание чтения данных с сервера
-							adj->bev.timer.read.start(adj->timeouts.read);
 						/**
 						 * Если операционной системой является MS Windows
 						 */
@@ -1243,8 +1243,6 @@ void awh::client::Core::transfer(const method_t method, const size_t aid) noexce
 				} break;
 				// Если производится запись данных
 				case (uint8_t) method_t::WRITE: {
-					// Останавливаем таймаут ожидания на запись в сокет
-					adj->bev.timer.write.stop();
 					// Если данных достаточно для записи в сокет
 					if(adj->buffer.size() >= adj->marker.write.min){
 						// Количество полученных байт
@@ -1265,14 +1263,16 @@ void awh::client::Core::transfer(const method_t method, const size_t aid) noexce
 								bytes = SSL_write(adj->ssl.ssl, adj->buffer.data() + offset, actual);
 							// Выполняем отправку сообщения в сокет
 							} else bytes = send(adj->bev.socket, adj->buffer.data() + offset, actual, 0);
-							// Останавливаем таймаут ожидания на запись в сокет
-							adj->bev.timer.write.stop();
 							// Выполняем принудительное исполнение таймеров
 							if(this->socket.isBlocking(adj->bev.socket) != 0) this->executeTimers();
 							// Если время ожидания записи данных установлено
-							if(adj->timeouts.write > 0)
-								// Запускаем ожидание запись данных на сервер
-								adj->bev.timer.write.start(adj->timeouts.write);
+							if(adj->timeouts.write > 0){
+								// Устанавливаем время ожидания на запись данных
+								adj->bev.timer.write.repeat = adj->timeouts.write;
+								// Запускаем повторное ожидание
+								adj->bev.timer.write.again();
+							// Останавливаем таймаут ожидания на запись в сокет
+							} else adj->bev.timer.write.stop();
 							// Если байты не были записаны в сокет
 							if(bytes <= 0){
 								// Получаем статус сокета

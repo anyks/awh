@@ -177,7 +177,7 @@ void awh::Core::Dispatch::start() noexcept {
 					// Выполняем чтение базы событий
 					this->base.run();
 				// Выполняем чтение базы событий в простом режиме
-				else this->base.run(EVRUN_NOWAIT);
+				else this->base.run(ev::NOWAIT);
 			}
 			// Замораживаем поток на период времени частоты обновления базы событий
 			this_thread::sleep_for(this->freq);
@@ -219,30 +219,66 @@ void awh::Core::Dispatch::easily(const bool mode) noexcept {
 	this->kick();
 }
 /**
+ * rebase Метод пересоздания базы событий
+ * @param clear флаг очистки предыдущей базы событий
+ */
+void awh::Core::Dispatch::rebase(const bool clear) noexcept {
+	// Выполняем блокировку потока
+	const lock_guard <recursive_mutex> lock(this->mtx);
+	// Если работа уже запущена
+	if(this->work){
+		// Выполняем блокировку чтения данных
+		this->init = !this->init;
+		// Выполняем пинок
+		this->kick();
+	}
+	// Удаляем объект базы событий
+	if(clear) ev_loop_destroy(this->base);
+	/**
+	 * Если операционной системой является MS Windows
+	 */
+	#if defined(_WIN32) || defined(_WIN64)
+		// Создаем новую базу
+		this->base = ev::loop_ref(ev_default_loop(EVFLAG_NOINOTIFY));
+	/**
+	 * Если операционной системой является Linux
+	 */
+	#elif __linux__
+		// Создаем новую базу
+		this->base = ev::loop_ref(ev_default_loop(ev::EPOLL | ev::NOENV | EVFLAG_NOINOTIFY));
+	/**
+	 * Если операционной системой является FreeBSD или MacOS X
+	 */
+	#elif __APPLE__ || __MACH__ || __FreeBSD__
+		// Создаем новую базу
+		this->base = ev::loop_ref(ev_default_loop(ev::KQUEUE | ev::NOENV | EVFLAG_NOINOTIFY));
+	#endif
+	// Если работа уже запущена
+	if(this->work) this->init = !this->init;
+}
+/**
  * setBase Метод установки базы событий
  * @param base база событий
  */
 void awh::Core::Dispatch::setBase(struct ev_loop * base) noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <recursive_mutex> lock(this->mtx);	
-	// Выполняем заморозку получения данных
-	if(this->work){
-		// Выполняем заморозку базы событий
-		this->freeze(true);
-		// Выполняем деактивации инициализации базы событий
-		this->init = false;
-		/// Выполняем пинок
-		this->kick();
-	}
+	const lock_guard <recursive_mutex> lock(this->mtx);
 	// Если база событий передана
 	if(base != nullptr){
-		// Устанавливаем базу событий
+		// Если работа уже запущена
+		if(this->work){
+			// Выполняем блокировку чтения данных
+			this->init = !this->init;
+			// Выполняем пинок
+			this->kick();
+		}
+		// Удаляем объект базы событий
+		ev_loop_destroy(this->base);
+		// Создаем новую базу
 		this->base = ev::loop_ref(base);
-		// Выполняем активацию инициализации базы событий
-		this->init = true;
+		// Если работа уже запущена
+		if(this->work) this->init = !this->init;
 	}
-	// Выполняем раззаморозку получения данных
-	if(this->work) this->freeze(false);
 }
 /**
  * setFrequency Метод установки частоты обновления базы событий
@@ -259,44 +295,57 @@ void awh::Core::Dispatch::setFrequency(const uint8_t msec) noexcept {
 	else this->freq = 10ms;
 }
 /**
+ * Dispatch Конструктор
+ */
+awh::Core::Dispatch::Dispatch(Core * core) noexcept : core(core), easy(false), mode(false), work(false), init(true), base(nullptr), freq(10ms) {
+	// Выполняем инициализацию базы событий
+	this->rebase(false);
+}
+/**
+ * ~Dispatch Деструктор
+ */
+awh::Core::Dispatch::~Dispatch() noexcept {
+	// Выполняем остановку работы
+	this->stop();
+	// Удаляем объект базы событий
+	ev_loop_destroy(this->base);
+}
+/**
  * launching Метод вызова при активации базы событий
  */
 void awh::Core::launching() noexcept {
-	// Если база событий создана
-	if(this->base != nullptr){
-		// Выполняем блокировку потока
-		const lock_guard <recursive_mutex> lock(this->mtx.status);
-		// Устанавливаем статус сетевого ядра
-		this->status = status_t::START;
-		// Если список воркеров существует
-		if(!this->workers.empty()){
-			// Переходим по всему списку воркеров
-			for(auto & worker : this->workers){
-				// Если функция обратного вызова установлена
-				if(worker.second->openFn != nullptr)
-					// Выполняем функцию обратного вызова
-					worker.second->openFn(worker.first, this);
-			}
+	// Выполняем блокировку потока
+	const lock_guard <recursive_mutex> lock(this->mtx.status);
+	// Устанавливаем статус сетевого ядра
+	this->status = status_t::START;
+	// Если список воркеров существует
+	if(!this->workers.empty()){
+		// Переходим по всему списку воркеров
+		for(auto & worker : this->workers){
+			// Если функция обратного вызова установлена
+			if(worker.second->openFn != nullptr)
+				// Выполняем функцию обратного вызова
+				worker.second->openFn(worker.first, this);
 		}
-		// Если функция обратного вызова установлена, выполняем
-		if(this->callbackFn != nullptr) this->callbackFn(true, this);
-		// Выводим в консоль информацию
-		if(!this->noinfo) this->log->print("[+] start service: pid = %u", log_t::flag_t::INFO, getpid());
-		// Если таймер периодического запуска коллбека активирован, запускаем персистентную работу
-		if(this->persist){
-			// Устанавливаем приоритет выполнения
-			ev_set_priority(&this->timer.io, 2);
-			// Устанавливаем базу событий
-			this->timer.io.set(this->base);
-			// Устанавливаем текущий штамп времени
-			this->timer.stamp = this->fmk->unixTimestamp();
-			// Устанавливаем время задержки персистентного вызова
-			this->timer.delay = (this->persistInterval / (float) 1000.f);
-			// Устанавливаем функцию обратного вызова
-			this->timer.io.set <core_t, &core_t::persistent> (this);
-			// Запускаем работу таймера
-			this->timer.io.start(this->timer.delay);
-		}
+	}
+	// Если функция обратного вызова установлена, выполняем
+	if(this->callbackFn != nullptr) this->callbackFn(true, this);
+	// Выводим в консоль информацию
+	if(!this->noinfo) this->log->print("[+] start service: pid = %u", log_t::flag_t::INFO, getpid());
+	// Если таймер периодического запуска коллбека активирован, запускаем персистентную работу
+	if(this->persist){
+		// Устанавливаем приоритет выполнения
+		ev_set_priority(&this->timer.io, 2);
+		// Устанавливаем базу событий
+		this->timer.io.set(this->dispatch.base);
+		// Устанавливаем текущий штамп времени
+		this->timer.stamp = this->fmk->unixTimestamp();
+		// Устанавливаем время задержки персистентного вызова
+		this->timer.delay = (this->persistInterval / (float) 1000.f);
+		// Устанавливаем функцию обратного вызова
+		this->timer.io.set <core_t, &core_t::persistent> (this);
+		// Запускаем работу таймера
+		this->timer.io.start(this->timer.delay);
 	}
 }
 /**
@@ -682,38 +731,28 @@ const awh::Core::sockaddr_t awh::Core::sockaddr(const string & ip, const u_int p
 void awh::Core::bind(Core * core) noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(core->mtx.bind);
-	// Если модуль ядра передан
-	if((core != nullptr) && (this->base != nullptr)){
-		// Если база событий активна и она отличается от текущей базы событий
-		if((core->base != nullptr) && (core->base != this->base)){
-			// Выполняем остановку базы событий
-			core->stop();
-			// Выполняем блокировку потока
-			this->mtx.core.lock();
-			// Добавляем ядро в список подключенных ядер
-			this->cores.emplace(core, &core->base);
-			// Выполняем разблокировку потока
-			this->mtx.core.unlock();
-		}
+	// Если база событий активна и она отличается от текущей базы событий
+	if((core != nullptr) && (core != this) && (core->dispatch.base != this->dispatch.base)){
+		// Выполняем остановку базы событий
+		core->stop();
+		// Устанавливаем новую базу событий
+		core->dispatch.setBase(this->dispatch.base);
 		// Выполняем блокировку потока
 		core->mtx.status.lock();
+		// Увеличиваем количество подключённых потоков
+		this->cores++;
 		// Устанавливаем флаг запуска
 		core->mode = true;
-		// Если база событий не установлена
-		if(core->base != this->base){
-			// Устанавливаем базу событий
-			core->base = this->base;
-			/*
-			// Добавляем базу событий для DNS резолвера IPv4
-			core->dns4.setBase(core->base);
-			// Добавляем базу событий для DNS резолвера IPv6
-			core->dns6.setBase(core->base);
-			// Выполняем установку нейм-серверов для DNS резолвера IPv4
-			core->dns4.replaceServers(core->net.v4.second);
-			// Выполняем установку нейм-серверов для DNS резолвера IPv6
-			core->dns6.replaceServers(core->net.v6.second);
-			*/
-		}
+		/*
+		// Добавляем базу событий для DNS резолвера IPv4
+		core->dns4.setBase(core->dispatch.base);
+		// Добавляем базу событий для DNS резолвера IPv6
+		core->dns6.setBase(core->dispatch.base);
+		// Выполняем установку нейм-серверов для DNS резолвера IPv4
+		core->dns4.replaceServers(core->net.v4.second);
+		// Выполняем установку нейм-серверов для DNS резолвера IPv6
+		core->dns6.replaceServers(core->net.v6.second);
+		*/
 		// Выполняем разблокировку потока
 		core->mtx.status.unlock();
 		// Выполняем запуск управляющей функции
@@ -727,10 +766,12 @@ void awh::Core::bind(Core * core) noexcept {
 void awh::Core::unbind(Core * core) noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(core->mtx.bind);
-	// Если модуль ядра передан
-	if((core != nullptr) && (core->base == this->base) && (core != this)){
+	// Если база событий активна и она совпадает с текущей базы событий
+	if((core != nullptr) && (core != this) && (core->dispatch.base == this->dispatch.base)){
 		// Выполняем блокировку потока
 		core->mtx.status.lock();
+		// Уменьшаем количество подключённых потоков
+		this->cores--;
 		// Запрещаем работу WebSocket
 		core->mode = false;
 		// Выполняем разблокировку потока
@@ -750,33 +791,14 @@ void awh::Core::unbind(Core * core) noexcept {
 		core->mtx.status.unlock();
 		// Выполняем отключение всех клиентов
 		core->close();
-		// Выполняем блокировку потока
-		core->mtx.status.lock();
 		// Зануляем базу событий
-		core->base = nullptr;
-		// Выполняем разблокировку потока
-		core->mtx.status.unlock();
-		
+		core->dispatch.rebase(false);
 		/*
 		// Выполняем удаление модуля DNS резолвера IPv4
 		core->dns4.remove();
 		// Выполняем удаление модуля DNS резолвера IPv6
 		core->dns6.remove();
 		*/
-
-		// Выполняем блокировку потока
-		this->mtx.core.lock();
-		// Ищем ядро в списке подключённых ядер
-		auto it = this->cores.find(core);
-		// Если ядро в списке подключённых ядер найдено
-		if(it != this->cores.end()){
-			// Восстанавливаем базу событий для данного ядра
-			core->base = (* it->second);
-			// Удаляем ядро из списка ядер
-			this->cores.erase(it);
-		}
-		// Выполняем разблокировку потока
-		this->mtx.core.unlock();
 		// Запускаем метод деактивации базы событий
 		core->closedown();
 	}
@@ -798,7 +820,7 @@ void awh::Core::stop() noexcept {
 	// Выполняем блокировку потока
 	this->mtx.status.lock();
 	// Если система уже запущена
-	if(this->mode && (this->base != nullptr)){
+	if(this->mode){
 		// Запрещаем работу WebSocket
 		this->mode = false;
 		// Выполняем разблокировку потока
@@ -830,7 +852,7 @@ void awh::Core::start() noexcept {
 	// Выполняем блокировку потока
 	this->mtx.status.lock();
 	// Если система ещё не запущена
-	if(!this->mode && (this->base != nullptr)){
+	if(!this->mode){
 		// Разрешаем работу WebSocket
 		this->mode = !this->mode;
 		// Выполняем разблокировку потока
@@ -952,7 +974,7 @@ void awh::Core::setBandwidth(const size_t aid, const string & read, const string
  */
 void awh::Core::rebase() noexcept {
 	// Если система уже запущена
-	if(this->mode && (this->base != nullptr)){
+	if(this->mode){
 		/**
 		 * Timer Структура таймера
 		 */
@@ -993,109 +1015,31 @@ void awh::Core::rebase() noexcept {
 		}
 		// Выполняем остановку работы
 		this->stop();
-		// Выполняем блокировку потока
-		this->mtx.main.lock();
-		// Удаляем объект базы событий
-		ev_loop_destroy(this->base);
-		/**
-		 * Если операционной системой является MS Windows
-		 */
-		#if defined(_WIN32) || defined(_WIN64)
-			// Создаем новую базу
-			this->base = ev_default_loop(EVFLAG_NOINOTIFY);
-		/**
-		 * Если операционной системой является Linux
-		 */
-		#elif __linux__
-			// Создаем новую базу
-			this->base = ev_default_loop(EVBACKEND_EPOLL | EVFLAG_NOENV | EVFLAG_NOINOTIFY);
-			// this->base = ev_loop_new(ev_recommended_backends() | EVBACKEND_EPOLL | EVFLAG_NOINOTIFY);
-		/**
-		 * Если операционной системой является FreeBSD или MacOS X
-		 */
-		#elif __APPLE__ || __MACH__ || __FreeBSD__
-			// Создаем новую базу
-			this->base = ev_default_loop(EVBACKEND_KQUEUE | EVFLAG_NOENV | EVFLAG_NOINOTIFY);
-			// this->base = ev_loop_new(ev_recommended_backends() | EVBACKEND_KQUEUE | EVFLAG_NOINOTIFY);
-		#endif
-		// Выполняем разблокировку потока
-		this->mtx.main.unlock();
-		// Если база событий создана
-		if(this->base != nullptr){
-			/*
-			// Добавляем базу событий для DNS резолвера IPv4
-			this->dns4.setBase(this->base);
-			// Добавляем базу событий для DNS резолвера IPv6
-			this->dns6.setBase(this->base);
-			// Выполняем установку нейм-серверов для DNS резолвера IPv4
-			this->dns4.replaceServers(this->net.v4.second);
-			// Выполняем установку нейм-серверов для DNS резолвера IPv6
-			this->dns6.replaceServers(this->net.v6.second);
-			*/
-			// Выполняем установку базы событий
-			this->dispatch.setBase(this->base);
-			// Если список таймеров получен
-			if(!mainTimers.empty()){
-				// Переходим по всему списку таймеров
-				for(auto & timer : mainTimers)
-					// Создаём новый таймер
-					this->setTimeout(timer.delay, timer.fn);
-				// Выполняем очистку списка таймеров
-				mainTimers.clear();
-				// Выполняем освобождение выделенной памяти
-				vector <timer_t> ().swap(mainTimers);
-			}
-			// Выполняем запуск работы
-			this->start();
-		// Выходим принудительно из приложения
-		} else exit(EXIT_FAILURE);
-	// Если система ещё не запущена
-	} else {
-		// Выполняем блокировку потока
-		this->mtx.main.lock();
-		// Если база событий уже создана
-		if(this->base != nullptr)
-			// Удаляем объект базы событий
-			ev_loop_destroy(this->base);
-		/**
-		 * Если операционной системой является MS Windows
-		 */
-		#if defined(_WIN32) || defined(_WIN64)
-			// Создаем новую базу
-			this->base = ev_default_loop(EVFLAG_NOINOTIFY);
-		/**
-		 * Если операционной системой является Linux
-		 */
-		#elif __linux__
-			// Создаем новую базу
-			this->base = ev_default_loop(EVBACKEND_EPOLL | EVFLAG_NOENV | EVFLAG_NOINOTIFY);
-			// this->base = ev_loop_new(ev_recommended_backends() | EVBACKEND_EPOLL | EVFLAG_NOINOTIFY);
-		/**
-		 * Если операционной системой является FreeBSD или MacOS X
-		 */
-		#elif __APPLE__ || __MACH__ || __FreeBSD__
-			// Создаем новую базу
-			this->base = ev_default_loop(EVBACKEND_KQUEUE | EVFLAG_NOENV | EVFLAG_NOINOTIFY);
-			// this->base = ev_loop_new(ev_recommended_backends() | EVBACKEND_KQUEUE | EVFLAG_NOINOTIFY);
-		#endif
-		// Выполняем разблокировку потока
-		this->mtx.main.unlock();
-		// Если база событий создана
-		if(this->base != nullptr){
-			/*
-			// Добавляем базу событий для DNS резолвера IPv4
-			this->dns4.setBase(this->base);
-			// Добавляем базу событий для DNS резолвера IPv6
-			this->dns6.setBase(this->base);
-			// Выполняем установку нейм-серверов для DNS резолвера IPv4
-			this->dns4.replaceServers(this->net.v4.second);
-			// Выполняем установку нейм-серверов для DNS резолвера IPv6
-			this->dns6.replaceServers(this->net.v6.second);
-			*/
-			// Выполняем установку базы событий
-			this->dispatch.setBase(this->base);
-		// Выходим принудительно из приложения
-		} else exit(EXIT_FAILURE);
+		// Выполняем пересоздание базы событий
+		this->dispatch.rebase();
+		/*
+		// Добавляем базу событий для DNS резолвера IPv4
+		this->dns4.setBase(this->dispatch.base);
+		// Добавляем базу событий для DNS резолвера IPv6
+		this->dns6.setBase(this->dispatch.base);
+		// Выполняем установку нейм-серверов для DNS резолвера IPv4
+		this->dns4.replaceServers(this->net.v4.second);
+		// Выполняем установку нейм-серверов для DNS резолвера IPv6
+		this->dns6.replaceServers(this->net.v6.second);
+		*/
+		// Если список таймеров получен
+		if(!mainTimers.empty()){
+			// Переходим по всему списку таймеров
+			for(auto & timer : mainTimers)
+				// Создаём новый таймер
+				this->setTimeout(timer.delay, timer.fn);
+			// Выполняем очистку списка таймеров
+			mainTimers.clear();
+			// Выполняем освобождение выделенной памяти
+			vector <timer_t> ().swap(mainTimers);
+		}
+		// Выполняем запуск работы
+		this->start();
 	}
 }
 /**
@@ -1162,6 +1106,119 @@ void awh::Core::error(const int64_t bytes, const size_t aid) const noexcept {
 	}
 }
 /**
+ * enabled Метод активации метода события сокета
+ * @param method метод события сокета
+ * @param aid    идентификатор адъютанта
+ */
+void awh::Core::enabled(const method_t method, const size_t aid) noexcept {
+	// Если работа базы событий продолжается
+	if(this->working()){
+		// Выполняем извлечение адъютанта
+		auto it = this->adjutants.find(aid);
+		// Если адъютант получен
+		if(it != this->adjutants.end()){
+			// Получаем объект адъютанта
+			awh::worker_t::adj_t * adj = const_cast <awh::worker_t::adj_t *> (it->second);
+			// Если сокет подключения активен
+			if(adj->bev.socket > -1){
+				// Получаем объект подключения
+				worker_t * wrk = (worker_t *) const_cast <awh::worker_t *> (adj->parent);
+				// Определяем метод события сокета
+				switch((uint8_t) method){
+					// Если событием является чтение
+					case (uint8_t) method_t::READ: {
+						// Разрешаем чтение данных из сокета
+						adj->bev.locked.read = false;
+						// Устанавливаем размер детектируемых байт на чтение
+						adj->marker.read = wrk->marker.read;
+						// Устанавливаем время ожидания чтения данных
+						adj->timeouts.read = wrk->timeouts.read;
+						// Устанавливаем приоритет выполнения для события на чтение
+						ev_set_priority(&adj->bev.event.read, -2);
+						// Устанавливаем базу событий
+						adj->bev.event.read.set(this->dispatch.base);
+						// Устанавливаем сокет для чтения
+						adj->bev.event.read.set(adj->bev.socket, ev::READ);
+						// Устанавливаем событие на чтение данных подключения
+						adj->bev.event.read.set <awh::worker_t::adj_t, &awh::worker_t::adj_t::read> (adj);
+						// Запускаем чтение данных
+						adj->bev.event.read.start();
+						// Если флаг ожидания входящих сообщений, активирован
+						if(adj->timeouts.read > 0){
+							// Устанавливаем приоритет выполнения для таймаута на чтение
+							ev_set_priority(&adj->bev.timer.read, 0);
+							// Устанавливаем базу событий
+							adj->bev.timer.read.set(this->dispatch.base);
+							// Устанавливаем событие на таймаут чтения данных подключения
+							adj->bev.timer.read.set <awh::worker_t::adj_t, &awh::worker_t::adj_t::timeout> (adj);
+							// Устанавливаем время ожидания таймера
+							adj->bev.timer.read.repeat = adj->timeouts.read;
+							// Запускаем ожидание чтения данных
+							adj->bev.timer.read.again();
+						}
+					} break;
+					// Если событием является запись
+					case (uint8_t) method_t::WRITE: {
+						// Разрешаем запись данных в сокет
+						adj->bev.locked.write = false;
+						// Устанавливаем размер детектируемых байт на запись
+						adj->marker.write = wrk->marker.write;
+						// Устанавливаем время ожидания записи данных
+						adj->timeouts.write = wrk->timeouts.write;
+						// Устанавливаем приоритет выполнения для события на запись
+						ev_set_priority(&adj->bev.event.write, -2);
+						// Устанавливаем базу событий
+						adj->bev.event.write.set(this->dispatch.base);
+						// Устанавливаем сокет для записи
+						adj->bev.event.write.set(adj->bev.socket, ev::WRITE);
+						// Устанавливаем событие на запись данных подключения
+						adj->bev.event.write.set <awh::worker_t::adj_t, &awh::worker_t::adj_t::write> (adj);
+						// Запускаем запись данных
+						adj->bev.event.write.start();
+						// Если флаг ожидания исходящих сообщений, активирован
+						if(adj->timeouts.write > 0){
+							// Устанавливаем приоритет выполнения для таймаута на запись
+							ev_set_priority(&adj->bev.timer.write, 0);
+							// Устанавливаем базу событий
+							adj->bev.timer.write.set(this->dispatch.base);
+							// Устанавливаем событие на таймаут записи данных подключения
+							adj->bev.timer.write.set <awh::worker_t::adj_t, &awh::worker_t::adj_t::timeout> (adj);
+							// Устанавливаем время ожидания таймера
+							adj->bev.timer.write.repeat = adj->timeouts.write;
+							// Запускаем ожидание запись данных
+							adj->bev.timer.write.again();
+						}
+					} break;
+					// Если событием является подключение
+					case (uint8_t) method_t::CONNECT: {
+						// Устанавливаем время ожидания записи данных
+						adj->timeouts.connect = wrk->timeouts.connect;
+						// Устанавливаем приоритет выполнения для события на чтения
+						ev_set_priority(&adj->bev.event.connect, -2);
+						// Устанавливаем базу событий
+						adj->bev.event.connect.set(this->dispatch.base);
+						// Устанавливаем сокет для записи
+						adj->bev.event.connect.set(adj->bev.socket, ev::WRITE);
+						// Устанавливаем событие подключения
+						adj->bev.event.connect.set <awh::worker_t::adj_t, &awh::worker_t::adj_t::connect> (adj);
+						// Выполняем запуск подключения
+						adj->bev.event.connect.start();
+						// Если время ожидания записи данных установлено
+						if(adj->timeouts.connect > 0){
+							// Устанавливаем базу событий
+							adj->bev.timer.connect.set(this->dispatch.base);
+							// Устанавливаем событие на запись данных подключения
+							adj->bev.timer.connect.set <awh::worker_t::adj_t, &awh::worker_t::adj_t::timeout> (adj);
+							// Запускаем запись данных на сервер
+							adj->bev.timer.connect.start(adj->timeouts.connect);
+						}
+					} break;
+				}
+			}
+		}
+	}
+}
+/**
  * disabled Метод деактивации метода события сокета
  * @param method метод события сокета
  * @param aid    идентификатор адъютанта
@@ -1202,116 +1259,6 @@ void awh::Core::disabled(const method_t method, const size_t aid) noexcept {
 					// Останавливаем подключение
 					adj->bev.event.connect.stop();
 				} break;
-			}
-		}
-	}
-}
-/**
- * enabled Метод активации метода события сокета
- * @param method  метод события сокета
- * @param aid     идентификатор адъютанта
- * @param timeout флаг активации таймаута
- */
-void awh::Core::enabled(const method_t method, const size_t aid, const bool timeout) noexcept {
-	// Если работа базы событий продолжается
-	if(this->working()){
-		// Выполняем извлечение адъютанта
-		auto it = this->adjutants.find(aid);
-		// Если адъютант получен
-		if(it != this->adjutants.end()){
-			// Получаем объект адъютанта
-			awh::worker_t::adj_t * adj = const_cast <awh::worker_t::adj_t *> (it->second);
-			// Если сокет подключения активен
-			if(adj->bev.socket > -1){
-				// Получаем объект подключения
-				worker_t * wrk = (worker_t *) const_cast <awh::worker_t *> (adj->parent);
-				// Определяем метод события сокета
-				switch((uint8_t) method){
-					// Если событием является чтение
-					case (uint8_t) method_t::READ: {
-						// Разрешаем чтение данных из сокета
-						adj->bev.locked.read = false;
-						// Устанавливаем размер детектируемых байт на чтение
-						adj->marker.read = wrk->marker.read;
-						// Устанавливаем время ожидания чтения данных
-						adj->timeouts.read = wrk->timeouts.read;
-						// Устанавливаем приоритет выполнения для события на чтение
-						ev_set_priority(&adj->bev.event.read, -2);
-						// Устанавливаем базу событий
-						adj->bev.event.read.set(this->base);
-						// Устанавливаем сокет для чтения
-						adj->bev.event.read.set(adj->bev.socket, ev::READ);
-						// Устанавливаем событие на чтение данных подключения
-						adj->bev.event.read.set <awh::worker_t::adj_t, &awh::worker_t::adj_t::read> (adj);
-						// Запускаем чтение данных
-						adj->bev.event.read.start();
-						// Если флаг ожидания входящих сообщений, активирован
-						if(timeout && (adj->timeouts.read > 0)){
-							// Устанавливаем приоритет выполнения для таймаута на чтение
-							ev_set_priority(&adj->bev.timer.read, 0);
-							// Устанавливаем базу событий
-							adj->bev.timer.read.set(this->base);
-							// Устанавливаем событие на таймаут чтения данных подключения
-							adj->bev.timer.read.set <awh::worker_t::adj_t, &awh::worker_t::adj_t::timeout> (adj);
-							// Запускаем ожидание чтения данных
-							adj->bev.timer.read.start(adj->timeouts.read);
-						}
-					} break;
-					// Если событием является запись
-					case (uint8_t) method_t::WRITE: {
-						// Разрешаем запись данных в сокет
-						adj->bev.locked.write = false;
-						// Устанавливаем размер детектируемых байт на запись
-						adj->marker.write = wrk->marker.write;
-						// Устанавливаем время ожидания записи данных
-						adj->timeouts.write = wrk->timeouts.write;
-						// Устанавливаем приоритет выполнения для события на запись
-						ev_set_priority(&adj->bev.event.write, -2);
-						// Устанавливаем базу событий
-						adj->bev.event.write.set(this->base);
-						// Устанавливаем сокет для записи
-						adj->bev.event.write.set(adj->bev.socket, ev::WRITE);
-						// Устанавливаем событие на запись данных подключения
-						adj->bev.event.write.set <awh::worker_t::adj_t, &awh::worker_t::adj_t::write> (adj);
-						// Запускаем запись данных
-						adj->bev.event.write.start();
-						// Если флаг ожидания исходящих сообщений, активирован
-						if(timeout && (adj->timeouts.write > 0)){
-							// Устанавливаем приоритет выполнения для таймаута на запись
-							ev_set_priority(&adj->bev.timer.write, 0);
-							// Устанавливаем базу событий
-							adj->bev.timer.write.set(this->base);
-							// Устанавливаем событие на таймаут записи данных подключения
-							adj->bev.timer.write.set <awh::worker_t::adj_t, &awh::worker_t::adj_t::timeout> (adj);
-							// Запускаем ожидание записи данных
-							adj->bev.timer.write.start(adj->timeouts.write);
-						}
-					} break;
-					// Если событием является подключение
-					case (uint8_t) method_t::CONNECT: {
-						// Устанавливаем время ожидания записи данных
-						adj->timeouts.connect = wrk->timeouts.connect;
-						// Устанавливаем приоритет выполнения для события на чтения
-						ev_set_priority(&adj->bev.event.connect, -2);
-						// Устанавливаем базу событий
-						adj->bev.event.connect.set(this->base);
-						// Устанавливаем сокет для записи
-						adj->bev.event.connect.set(adj->bev.socket, ev::WRITE);
-						// Устанавливаем событие подключения
-						adj->bev.event.connect.set <awh::worker_t::adj_t, &awh::worker_t::adj_t::connect> (adj);
-						// Выполняем запуск подключения
-						adj->bev.event.connect.start();
-						// Если время ожидания записи данных установлено
-						if(timeout && (adj->timeouts.connect > 0)){
-							// Устанавливаем базу событий
-							adj->bev.timer.connect.set(this->base);
-							// Устанавливаем событие на запись данных подключения
-							adj->bev.timer.connect.set <awh::worker_t::adj_t, &awh::worker_t::adj_t::timeout> (adj);
-							// Запускаем запись данных на сервер
-							adj->bev.timer.connect.start(adj->timeouts.connect);
-						}
-					} break;
-				}
 			}
 		}
 	}
@@ -1508,7 +1455,7 @@ u_short awh::Core::setTimeout(const time_t delay, function <void (const u_short,
 	// Результат работы функции
 	u_short result = 0;
 	// Если данные переданы
-	if((delay > 0) && (callback != nullptr) && (this->base != nullptr)){
+	if((delay > 0) && (callback != nullptr)){
 		// Выполняем блокировку потока
 		this->mtx.timer.lock();
 		// Создаём объект таймера
@@ -1530,7 +1477,7 @@ u_short awh::Core::setTimeout(const time_t delay, function <void (const u_short,
 		// Устанавливаем текущий штамп времени
 		ret.first->second->stamp = this->fmk->unixTimestamp();
 		// Устанавливаем базу событий
-		ret.first->second->io.set(this->base);
+		ret.first->second->io.set(this->dispatch.base);
 		// Устанавливаем функцию обратного вызова
 		ret.first->second->io.set <timer_t, &timer_t::callback> (ret.first->second.get());
 		// Запускаем работу таймера
@@ -1549,7 +1496,7 @@ u_short awh::Core::setInterval(const time_t delay, function <void (const u_short
 	// Результат работы функции
 	u_short result = 0;
 	// Если данные переданы
-	if((delay > 0) && (callback != nullptr) && (this->base != nullptr)){
+	if((delay > 0) && (callback != nullptr)){
 		// Выполняем блокировку потока
 		this->mtx.timer.lock();
 		// Создаём объект таймера
@@ -1573,7 +1520,7 @@ u_short awh::Core::setInterval(const time_t delay, function <void (const u_short
 		// Устанавливаем текущий штамп времени
 		ret.first->second->stamp = this->fmk->unixTimestamp();
 		// Устанавливаем базу событий
-		ret.first->second->io.set(this->base);
+		ret.first->second->io.set(this->dispatch.base);
 		// Устанавливаем функцию обратного вызова
 		ret.first->second->io.set <timer_t, &timer_t::callback> (ret.first->second.get());
 		// Запускаем работу таймера
@@ -1826,8 +1773,6 @@ void awh::Core::setNet(const vector <string> & ip, const vector <string> & ns, c
  * @param family тип протокола интернета AF_INET или AF_INET6
  */
 awh::Core::Core(const fmk_t * fmk, const log_t * log, const int family) noexcept : nwk(fmk), uri(fmk, &nwk), ssl(fmk, log, &uri), /* dns4(fmk, log, &nwk), dns6(fmk, log, &nwk),*/ socket(log), dispatch(this), fmk(fmk), log(log) {
-	// Выполняем создание базы событий
-	this->rebase();
 	// Устанавливаем тип активного интернет-подключения
 	this->net.family = family;
 	/*
@@ -1836,14 +1781,14 @@ awh::Core::Core(const fmk_t * fmk, const log_t * log, const int family) noexcept
 		// Резолвер IPv4, создаём резолвер
 		case AF_INET: {
 			// Добавляем базу событий для DNS резолвера IPv4
-			this->dns4.setBase(this->base);
+			this->dns4.setBase(this->dispatch.base);
 			// Выполняем установку нейм-серверов для DNS резолвера IPv4
 			this->dns4.replaceServers(this->net.v4.second);
 		} break;
 		// Резолвер IPv6, создаём резолвер
 		case AF_INET6: {
 			// Добавляем базу событий для DNS резолвера IPv6
-			this->dns4.setBase(this->base);
+			this->dns4.setBase(this->dispatch.base);
 			// Выполняем установку нейм-серверов для DNS резолвера IPv6
 			this->dns4.replaceServers(this->net.v4.second);
 		} break;
@@ -1868,19 +1813,10 @@ awh::Core::~Core() noexcept {
 	this->timer.io.stop();
 	// Выполняем удаление активных таймеров
 	this->timers.clear();
-	// Выполняем удаление списка активных ядер
-	this->cores.clear();
 	// Выполняем удаление списка активных воркеров
 	this->workers.clear();
 	// Выполняем удаление активных адъютантов
 	this->adjutants.clear();
-	// Если база событий существует
-	if(this->base != nullptr){
-		// Удаляем объект базы событий
-		ev_loop_destroy(this->base);
-		// Обнуляем базу событий
-		this->base = nullptr;
-	}
 	// Устанавливаем статус сетевого ядра
 	this->status = status_t::STOP;
 	// Если требуется использовать unix-сокет и ядро является сервером

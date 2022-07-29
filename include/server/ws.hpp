@@ -97,6 +97,11 @@ namespace awh {
 				// Поддерживаемые сабпротоколы
 				vector <string> subs;
 			private:
+				// Количество активных потоков
+				size_t threadsCount = 0;
+				// Флаг активации работы тредпула
+				bool threadsEnabled = false;
+			private:
 				// Флаг шифрования сообщений
 				bool crypt = false;
 				// Флаг переиспользования контекста клиента
@@ -416,7 +421,7 @@ namespace awh {
 				/**
 				 * ~WebSocket Деструктор
 				 */
-				~WebSocket() noexcept {}
+				~WebSocket() noexcept;
 		} ws_t;
 	};
 };

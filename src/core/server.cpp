@@ -234,20 +234,10 @@ void awh::server::Core::signal(ev::sig & watcher, int revents) noexcept {
 				// Выводим сообщение об завершении работы процесса
 				this->log->print("main process was closed with signal [%s]", log_t::flag_t::WARNING, "SIGQUIT");
 			break;
-			// Если возникает сигнал аварийной остановки процесса со сбросом дампа памяти
-			case SIGABRT:
-				// Выводим сообщение об завершении работы процесса
-				this->log->print("main process was closed with signal [%s]", log_t::flag_t::WARNING, "SIGABRT");
-			break;
 			// Если возникает сигнал сегментации памяти (обращение к несуществующему адресу памяти)
 			case SIGSEGV:
 				// Выводим сообщение об завершении работы процесса
 				this->log->print("main process was closed with signal [%s]", log_t::flag_t::WARNING, "SIGSEGV");
-			break;
-			// Если возникает сигнал запроса немедленного завершения процесса
-			case SIGKILL:
-				// Выводим сообщение об завершении работы процесса
-				this->log->print("main process was closed with signal [%s]", log_t::flag_t::CRITICAL, "SIGKILL");
 			break;
 		}
 		// Завершаем работу основного процесса
@@ -276,20 +266,10 @@ void awh::server::Core::signal(ev::sig & watcher, int revents) noexcept {
 				// Выводим сообщение об завершении работы процесса
 				this->log->print("child process was closed with signal [%s]", log_t::flag_t::WARNING, "SIGQUIT");
 			break;
-			// Если возникает сигнал аварийной остановки процесса со сбросом дампа памяти
-			case SIGABRT:
-				// Выводим сообщение об завершении работы процесса
-				this->log->print("child process was closed with signal [%s]", log_t::flag_t::WARNING, "SIGABRT");
-			break;
 			// Если возникает сигнал сегментации памяти (обращение к несуществующему адресу памяти)
 			case SIGSEGV:
 				// Выводим сообщение об завершении работы процесса
 				this->log->print("child process was closed with signal [%s]", log_t::flag_t::WARNING, "SIGSEGV");
-			break;
-			// Если возникает сигнал запроса немедленного завершения процесса
-			case SIGKILL:
-				// Выводим сообщение об завершении работы процесса
-				this->log->print("child process was closed with signal [%s]", log_t::flag_t::CRITICAL, "SIGKILL");
 			break;
 		}
 		// Завершаем работу дочернего процесса
@@ -455,9 +435,9 @@ void awh::server::Core::forking(const size_t wid, const size_t index, const size
 							// Устанавливаем идентификатор процесса
 							jack->pid = getpid();
 							// Устанавливаем базу событий для чтения
-							jack->read.set(this->base);
+							jack->read.set(this->dispatch.base);
 							// Устанавливаем базу событий для записи
-							jack->write.set(this->base);
+							jack->write.set(this->dispatch.base);
 							// Устанавливаем событие на чтение данных от основного процесса
 							jack->read.set <core_t, &core_t::readJack> (this);
 							// Устанавливаем событие на запись данных основному процессу
@@ -472,7 +452,7 @@ void awh::server::Core::forking(const size_t wid, const size_t index, const size
 							// jack->write.start();
 						}{
 							// Устанавливаем базу событий
-							wrk->io.set(this->base);
+							wrk->io.set(this->dispatch.base);
 							// Устанавливаем событие на чтение данных подключения
 							wrk->io.set <worker_t, &worker_t::accept> (wrk);
 							// Устанавливаем сокет для чтения
@@ -481,7 +461,7 @@ void awh::server::Core::forking(const size_t wid, const size_t index, const size
 							wrk->io.start();
 						}
 						// Выполняем активацию базы событий
-						ev_loop_fork(this->base);
+						ev_loop_fork(this->dispatch.base);
 					} break;
 					// Если - это родительский процесс
 					default: {
@@ -494,9 +474,9 @@ void awh::server::Core::forking(const size_t wid, const size_t index, const size
 						// Устанавливаем PID процесса
 						jack->pid = pid;
 						// Устанавливаем базу событий для чтения
-						jack->read.set(this->base);
+						jack->read.set(this->dispatch.base);
 						// Устанавливаем базу событий для записи
-						jack->write.set(this->base);
+						jack->write.set(this->dispatch.base);
 						// Устанавливаем событие на чтение данных от дочернего процесса
 						jack->read.set <core_t, &core_t::readJack> (this);
 						// Устанавливаем событие на запись данных дочернему процессу
@@ -510,30 +490,27 @@ void awh::server::Core::forking(const size_t wid, const size_t index, const size
 						// Если это первый воркер, активируем его
 						if(initialization){
 							{
+								// Выполняем игнорирование сигналов SIGPIPE и SIGABRT
+								::signal(SIGPIPE, SIG_IGN);
+								::signal(SIGABRT, SIG_IGN);
 								// Устанавливаем базу событий для сигналов
-								this->sig.sint.set(this->base);
-								this->sig.sfpe.set(this->base);
-								this->sig.sterm.set(this->base);
-								this->sig.squit.set(this->base);
-								this->sig.sabrt.set(this->base);
-								this->sig.ssegv.set(this->base);
-								this->sig.skill.set(this->base);
+								this->sig.sint.set(this->dispatch.base);
+								this->sig.sfpe.set(this->dispatch.base);
+								this->sig.sterm.set(this->dispatch.base);
+								this->sig.squit.set(this->dispatch.base);
+								this->sig.ssegv.set(this->dispatch.base);
 								// Устанавливаем событие на отслеживание сигнала
 								this->sig.sint.set <core_t, &core_t::signal> (this);
 								this->sig.sfpe.set <core_t, &core_t::signal> (this);
 								this->sig.sterm.set <core_t, &core_t::signal> (this);
 								this->sig.squit.set <core_t, &core_t::signal> (this);
-								this->sig.sabrt.set <core_t, &core_t::signal> (this);
 								this->sig.ssegv.set <core_t, &core_t::signal> (this);
-								this->sig.skill.set <core_t, &core_t::signal> (this);
 								// Выполняем отслеживание возникающего сигнала
 								this->sig.sint.start(SIGINT);
 								this->sig.sfpe.start(SIGFPE);
 								this->sig.sterm.start(SIGTERM);
 								this->sig.squit.start(SIGQUIT);
-								this->sig.sabrt.start(SIGABRT);
 								this->sig.ssegv.start(SIGSEGV);
-								this->sig.skill.start(SIGKILL);
 							}{
 								// Устанавливаем тип сообщения
 								this->event = event_t::SELECT;
@@ -542,7 +519,7 @@ void awh::server::Core::forking(const size_t wid, const size_t index, const size
 							}
 						}
 						// Устанавливаем базу событий
-						jack->cw.set(this->base);
+						jack->cw.set(this->dispatch.base);
 						// Устанавливаем событие на выход дочернего процесса
 						jack->cw.set <core_t, &core_t::children> (this);
 						// Выполняем отслеживание статуса дочернего процесса
@@ -588,7 +565,7 @@ void awh::server::Core::resolver(const string & ip, worker_t * wrk) noexcept {
 			// Если операционная система является Windows или количество процессов всего один
 			if((this->interception = ((os == fmk_t::os_t::WIND32) || (os == fmk_t::os_t::WIND64) || (this->forks == 1)))){
 				// Устанавливаем базу событий
-				wrk->io.set(this->base);
+				wrk->io.set(this->dispatch.base);
 				// Устанавливаем событие на чтение данных подключения
 				wrk->io.set <worker_t, &worker_t::accept> (wrk);
 				// Устанавливаем сокет для чтения
@@ -708,7 +685,7 @@ void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 						this->jacks.at(this->index)->write.start();
 					}
 					// Запускаем чтение данных
-					this->enabled(method_t::READ, ret.first->first, wrk->wait);
+					this->enabled(method_t::READ, ret.first->first);
 					// Если вывод информационных данных не запрещён
 					if(!this->noinfo)
 						// Выводим в консоль информацию
@@ -880,7 +857,7 @@ void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 					this->jacks.at(this->index)->write.start();
 				}
 				// Запускаем чтение данных
-				this->enabled(method_t::READ, ret.first->first, wrk->wait);
+				this->enabled(method_t::READ, ret.first->first);
 				// Если вывод информационных данных не запрещён
 				if(!this->noinfo)
 					// Выводим в консоль информацию
@@ -1082,7 +1059,7 @@ void awh::server::Core::run(const size_t wid) noexcept {
 						// Выводим сообщение об активации
 						if(!this->noinfo) this->log->print("run server [%s]", log_t::flag_t::INFO, this->unixSocket.c_str());
 						// Устанавливаем базу событий
-						wrk->io.set(this->base);
+						wrk->io.set(this->dispatch.base);
 						// Устанавливаем событие на запись данных подключения
 						wrk->io.set <worker_t, &worker_t::accept> (wrk);
 						// Устанавливаем сокет для записи
@@ -1258,8 +1235,6 @@ void awh::server::Core::transfer(const method_t method, const size_t aid) noexce
 				int64_t bytes = -1;
 				// Создаём буфер входящих данных
 				char buffer[BUFFER_SIZE];
-				// Останавливаем таймаут ожидания на чтение из сокета
-				adj->bev.timer.read.stop();
 				// Выполняем перебор бесконечным циклом пока это разрешено
 				while(!adj->bev.locked.read){
 					// Выполняем зануление буфера
@@ -1272,12 +1247,14 @@ void awh::server::Core::transfer(const method_t method, const size_t aid) noexce
 						bytes = SSL_read(adj->ssl.ssl, buffer, sizeof(buffer));
 					// Выполняем чтение данных из сокета
 					} else bytes = recv(adj->bev.socket, buffer, sizeof(buffer), 0);
-					// Останавливаем таймаут ожидания на чтение из сокета
-					adj->bev.timer.read.stop();
 					// Если время ожидания чтения данных установлено
-					if(adj->timeouts.read > 0)
-						// Запускаем ожидание чтения данных с сервера
-						adj->bev.timer.read.start(adj->timeouts.read);
+					if(wrk->wait && (adj->timeouts.read > 0)){
+						// Устанавливаем время ожидания на получение данных
+						adj->bev.timer.read.repeat = adj->timeouts.read;
+						// Запускаем повторное ожидание
+						adj->bev.timer.read.again();
+					// Останавливаем таймаут ожидания на чтение из сокета
+					} else adj->bev.timer.read.stop();
 					/**
 					 * Если операционной системой является MS Windows
 					 */
@@ -1358,12 +1335,14 @@ void awh::server::Core::transfer(const method_t method, const size_t aid) noexce
 							bytes = SSL_write(adj->ssl.ssl, adj->buffer.data() + offset, actual);
 						// Выполняем отправку сообщения в сокет
 						} else bytes = send(adj->bev.socket, adj->buffer.data() + offset, actual, 0);
-						// Останавливаем таймаут ожидания на запись в сокет
-						adj->bev.timer.write.stop();
 						// Если время ожидания записи данных установлено
-						if(adj->timeouts.write > 0)
-							// Запускаем ожидание запись данных на сервер
-							adj->bev.timer.write.start(adj->timeouts.write);
+						if(adj->timeouts.write > 0){
+							// Устанавливаем время ожидания на запись данных
+							adj->bev.timer.write.repeat = adj->timeouts.write;
+							// Запускаем повторное ожидание
+							adj->bev.timer.write.again();
+						// Останавливаем таймаут ожидания на запись в сокет
+						} else adj->bev.timer.write.stop();
 						// Если байты не были записаны в сокет
 						if(bytes <= 0){
 							// Если произошла ошибка
