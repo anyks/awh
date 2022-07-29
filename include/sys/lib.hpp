@@ -113,7 +113,7 @@
 // Максимальное количество запросов к серверу на одно подключение
 #define SERVER_MAX_REQUESTS 100
 // Количество максимальных подключений к серверу
-#define SERVER_TOTAL_CONNECT 100
+#define SERVER_TOTAL_CONNECT 65535
 
 /**
  * Файловые пути CA-файла SSL сертификата

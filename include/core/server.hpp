@@ -109,9 +109,10 @@ namespace awh {
 			private:
 				/**
 				 * explain Метод разъяснения (создание дочерних процессов)
+				 * @param wid   wid идентификатор воркера
 				 * @param index индекс инициализированного процесса
 				 */
-				void explain(const size_t index = 0) noexcept;
+				void explain(const size_t wid, const size_t index = 0) noexcept;
 			private:
 				/**
 				 * resolver Функция выполнения резолвинга домена

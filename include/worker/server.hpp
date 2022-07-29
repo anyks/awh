@@ -56,7 +56,7 @@ namespace awh {
 				string host;
 			protected:
 				// Максимальное количество одновременных подключений
-				u_short total;
+				u_int total;
 			public:
 				// Функция обратного вызова при подключении нового клиента
 				function <bool (const string &, const string &, const size_t, awh::Core *)> acceptFn;
