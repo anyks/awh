@@ -1002,19 +1002,21 @@ void awh::Core::rebase() noexcept {
 		 */
 		#if defined(_WIN32) || defined(_WIN64)
 			// Создаем новую базу
-			this->base = ev_default_loop(0);
+			this->base = ev_default_loop(EVFLAG_NOINOTIFY);
 		/**
 		 * Если операционной системой является Linux
 		 */
 		#elif __linux__
 			// Создаем новую базу
-			this->base = ev_loop_new(ev_recommended_backends() | EVBACKEND_EPOLL);
+			this->base = ev_default_loop(EVBACKEND_EPOLL | EVFLAG_NOENV | EVFLAG_NOINOTIFY);
+			// this->base = ev_loop_new(ev_recommended_backends() | EVBACKEND_EPOLL | EVFLAG_NOINOTIFY);
 		/**
 		 * Если операционной системой является FreeBSD или MacOS X
 		 */
 		#elif __APPLE__ || __MACH__ || __FreeBSD__
 			// Создаем новую базу
-			this->base = ev_loop_new(ev_recommended_backends() | EVBACKEND_KQUEUE);
+			this->base = ev_default_loop(EVBACKEND_KQUEUE | EVFLAG_NOENV | EVFLAG_NOINOTIFY);
+			// this->base = ev_loop_new(ev_recommended_backends() | EVBACKEND_KQUEUE | EVFLAG_NOINOTIFY);
 		#endif
 		// Выполняем разблокировку потока
 		this->mtx.main.unlock();
@@ -1060,19 +1062,21 @@ void awh::Core::rebase() noexcept {
 		 */
 		#if defined(_WIN32) || defined(_WIN64)
 			// Создаем новую базу
-			this->base = ev_default_loop(0);
+			this->base = ev_default_loop(EVFLAG_NOINOTIFY);
 		/**
 		 * Если операционной системой является Linux
 		 */
 		#elif __linux__
 			// Создаем новую базу
-			this->base = ev_loop_new(ev_recommended_backends() | EVBACKEND_EPOLL);
+			this->base = ev_default_loop(EVBACKEND_EPOLL | EVFLAG_NOENV | EVFLAG_NOINOTIFY);
+			// this->base = ev_loop_new(ev_recommended_backends() | EVBACKEND_EPOLL | EVFLAG_NOINOTIFY);
 		/**
 		 * Если операционной системой является FreeBSD или MacOS X
 		 */
 		#elif __APPLE__ || __MACH__ || __FreeBSD__
 			// Создаем новую базу
-			this->base = ev_loop_new(ev_recommended_backends() | EVBACKEND_KQUEUE);
+			this->base = ev_default_loop(EVBACKEND_KQUEUE | EVFLAG_NOENV | EVFLAG_NOINOTIFY);
+			// this->base = ev_loop_new(ev_recommended_backends() | EVBACKEND_KQUEUE | EVFLAG_NOINOTIFY);
 		#endif
 		// Выполняем разблокировку потока
 		this->mtx.main.unlock();

@@ -22,6 +22,18 @@
 #include <vector>
 
 /**
+ * Для OS Windows
+ */
+#if defined(_WIN32) || defined(_WIN64)
+	#include <windows.h>
+/**
+ * Для *nix подобных систем
+ */
+#else
+	#include <signal.h>
+#endif
+
+/**
  * Наши модули
  */
 #include <core/core.hpp>
@@ -53,13 +65,24 @@ namespace awh {
 				 */
 				enum class event_t : uint8_t {
 					NONE       = 0x00, // Флаг не установлен
-					EXIT       = 0x01, // Флаг выхода работника
-					SELECT     = 0x02, // Флаг выбора работника
-					UNSELECT   = 0x03, // Флаг снятия выбора с работника
-					CONNECT    = 0x04, // Флаг подключения
-					DISCONNECT = 0x05  // Флаг отключения
+					SELECT     = 0x01, // Флаг выбора работника
+					UNSELECT   = 0x02, // Флаг снятия выбора с работника
+					CONNECT    = 0x03, // Флаг подключения
+					DISCONNECT = 0x04  // Флаг отключения
 				};
 			private:
+				/**
+				 * Signals Структура событий сигналов
+				 */
+				typedef struct Signals {
+					ev::sig sint;
+					ev::sig sfpe;
+					ev::sig sterm;
+					ev::sig squit;
+					ev::sig sabrt;
+					ev::sig ssegv;
+					ev::sig skill;
+				} sig_t;
 				/**
 				 * Message Структура межпроцессного сообщения
 				 */
@@ -82,12 +105,14 @@ namespace awh {
 					int cfds[2];  // Список файловых дескрипторов дочернего процесса
 					ev::io read;  // Объект события на чтение
 					ev::io write; // Объект события на запись
+					ev::child cw; // Объект работы с дочерними процессами
+					size_t wid;   // Идентификатор основного воркера
 					size_t index; // Индекс работника в списке
 					size_t count; // Количество подключений
 					/**
 					 * Jack Конструктор
 					 */
-					Jack() noexcept : pid(0), index(0), count(0) {}
+					Jack() noexcept : pid(0), wid(0), index(0), count(0) {}
 				} jack_t;
 			private:
 				/**
@@ -99,6 +124,11 @@ namespace awh {
 					recursive_mutex system; // Для установки системных параметров
 				} mtx_t;
 			private:
+				// Мютекс для блокировки основного потока
+				mtx_t mtx;
+				// Объект работы с сигналами
+				sig_t sig;
+			private:
 				// Идентификатор процесса
 				pid_t pid;
 				// Индекс работника в списке
@@ -107,9 +137,6 @@ namespace awh {
 				event_t event;
 				// Флаг активации перехвата подключения
 				bool interception;
-			private:
-				// Мютекс для блокировки основного потока
-				mtx_t mtx;
 			private:
 				// Количество рабочих процессов
 				size_t forks;
@@ -137,11 +164,25 @@ namespace awh {
 				void writeJack(ev::io & watcher, int revents) noexcept;
 			private:
 				/**
-				 * explain Метод разъяснения (создание дочерних процессов)
+				 * signal Функция обратного вызова при возникновении сигнала
+				 * @param watcher объект события сигнала
+				 * @param revents идентификатор события
+				 */
+				void signal(ev::sig & watcher, int revents) noexcept;
+				/**
+				 * children Функция обратного вызова при завершении работы процесса
+				 * @param watcher объект события дочернего процесса
+				 * @param revents идентификатор события
+				 */
+				void children(ev::child & watcher, int revents) noexcept;
+			private:
+				/**
+				 * forking Метод разъяснения (создание дочерних процессов)
 				 * @param wid   wid идентификатор воркера
 				 * @param index индекс инициализированного процесса
+				 * @param stop  флаг остановки итерации создания дочерних процессов
 				 */
-				void explain(const size_t wid, const size_t index = 0) noexcept;
+				void forking(const size_t wid, const size_t index = 0, const size_t stop = false) noexcept;
 			private:
 				/**
 				 * resolver Функция выполнения резолвинга домена
