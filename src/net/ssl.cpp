@@ -264,7 +264,8 @@ awh::ASSL::ctx_t awh::ASSL::init() noexcept {
 	ctx_t result;
 	// Если объект фреймворка существует
 	if((this->fmk != nullptr) && !this->key.empty() && !this->cert.empty()){
-
+		
+		/*
 		// Активируем рандомный генератор
 		if(RAND_poll() == 0){
 			// Выводим в лог сообщение
@@ -272,6 +273,7 @@ awh::ASSL::ctx_t awh::ASSL::init() noexcept {
 			// Выходим
 			return result;
 		}
+		*/
 
 		// Получаем контекст OpenSSL
 		result.ctx = SSL_CTX_new(SSLv23_server_method()); // SSLv3_method()
@@ -508,7 +510,11 @@ awh::ASSL::ctx_t awh::ASSL::init() noexcept {
 		*/
 		
 
+		int accept_result = SSL_accept(result.ssl);
 		
+		cout << " =======================5 " << accept_result << endl;
+
+		/*
 		// Проверяем рукопожатие
 		if(SSL_do_handshake(result.ssl) <= 0){
 			// Выполняем проверку рукопожатия
@@ -521,6 +527,7 @@ awh::ASSL::ctx_t awh::ASSL::init() noexcept {
 				this->log->print("certificate chain validation failed: %s", log_t::flag_t::CRITICAL, X509_verify_cert_error_string(verify));
 			}
 		}
+		*/
 		
 		// Если объект не создан
 		if(!(result.mode = (result.ssl != nullptr))){
