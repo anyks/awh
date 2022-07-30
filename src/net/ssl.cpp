@@ -485,13 +485,10 @@ awh::ASSL::ctx_t awh::ASSL::init() noexcept {
 		}
 		// Метка следующей итерации
 		Next:
-
-		/*
 		// Устанавливаем флаг quiet shutdown
 		SSL_CTX_set_quiet_shutdown(result.ctx, 1);
 		// Запускаем кэширование
 		SSL_CTX_set_session_cache_mode(result.ctx, SSL_SESS_CACHE_SERVER | SSL_SESS_CACHE_NO_INTERNAL);
-		*/
 
 		/*
 		// Запрашиваем данные цепочки доверия
@@ -502,22 +499,24 @@ awh::ASSL::ctx_t awh::ASSL::init() noexcept {
 		const int cert = (!this->cert.empty() ? SSL_CTX_use_certificate_file(result.ctx, this->cert.c_str(), SSL_FILETYPE_PEM) : 0);
 		*/
 
-		
+		// ssl_trusted_certificate == chain.pem
 		cout << " -----------------------1 " << result.ctx << " === " << this->chain << " === " << SSL_CTX_use_certificate_file(result.ctx, this->chain.c_str(), SSL_FILETYPE_PEM) << endl;
+		// ssl_certificate == fullchain.pem
 		cout << " -----------------------3 " << result.ctx << " === " << this->cert << " === " << SSL_CTX_use_certificate_chain_file(result.ctx, this->cert.c_str()) << endl;
+		// ssl_certificate_key == privkey.pem
 		cout << " -----------------------2 " << result.ctx << " === " << this->key << " === " << SSL_CTX_use_PrivateKey_file(result.ctx, this->key.c_str(), SSL_FILETYPE_PEM) << endl;
 		cout << " -----------------------4 " << result.ctx << " === " << SSL_CTX_check_private_key(result.ctx) << endl;
 		
-		// SSL_CTX_set_verify(result.ctx, SSL_VERIFY_PEER | SSL_VERIFY_FAIL_IF_NO_PEER_CERT, nullptr);
-    	// SSL_CTX_set_verify_depth(result.ctx, 4);
+		
 
 
-		/*
+		
 		#ifdef SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER
 			SSL_CTX_set_mode(result.ctx, SSL_CTX_get_mode(result.ctx) | SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER);
 		#endif
-			SSL_CTX_set_verify(result.ctx, SSL_VERIFY_NONE, nullptr);
-		*/
+			SSL_CTX_set_verify(result.ctx, SSL_VERIFY_PEER | SSL_VERIFY_FAIL_IF_NO_PEER_CERT, nullptr);
+    		SSL_CTX_set_verify_depth(result.ctx, 4);
+		
 		
 		/*
 		int SSL_use_certificate_file(SSL *ssl, const char *file, int type);
