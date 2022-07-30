@@ -1305,7 +1305,7 @@ void awh::server::Core::transfer(const method_t method, const size_t aid) noexce
 									// Выполняем пропуск попытки
 									break;
 								// Иначе выводим сообщение об ошибке
-								else break;// this->error(bytes, aid);
+								else continue; // this->error(bytes, aid);
 							// Если защищённый режим работы запрещён
 							} else if(errno == EAGAIN) break;
 							// Выполняем отключение клиента
