@@ -278,7 +278,9 @@ awh::ASSL::ctx_t awh::ASSL::init() noexcept {
 
 
 		// Получаем контекст OpenSSL
-		result.ctx = SSL_CTX_new(SSLv23_server_method()); // SSLv3_method()
+		// result.ctx = SSL_CTX_new(SSLv23_server_method()); // SSLv3_method()
+
+		result.ctx = SSL_CTX_new(TLS_server_method());
 
 		// Если контекст не создан
 		if(result.ctx == nullptr){
@@ -326,19 +328,21 @@ awh::ASSL::ctx_t awh::ASSL::init() noexcept {
 		SSL_CTX_set_options(result.ctx, SSL_OP_CIPHER_SERVER_PREFERENCE);
 		
 		
-		
+		/*
 		// Если CA-файл не найден или адрес файла не указан
 		if(this->cafile.empty()){
 			// Получаем данные стора
 			X509_STORE * store = SSL_CTX_get_cert_store(result.ctx);
 			// Если - это Windows
 			#if defined(_WIN32) || defined(_WIN64)
+		*/
 				/**
 				 * addCertToStoreFn Функция проверки параметров сертификата
 				 * @param store стор с сертификатами для работы
 				 * @param name  название параметра сертификата
 				 * @return      результат проверки
 				 */
+		/*
 				auto addCertToStoreFn = [this](X509_STORE * store = nullptr, const char * name = nullptr) -> int {
 					// Результат работы функции
 					int result = 0;
@@ -473,6 +477,7 @@ awh::ASSL::ctx_t awh::ASSL::init() noexcept {
 				// Выполняем проверку CA-файла
 				SSL_CTX_set_client_CA_list(result.ctx, SSL_load_client_CA_file(this->cafile.c_str()));
 		}
+		*/
 		// Метка следующей итерации
 		Next:
 
@@ -499,10 +504,12 @@ awh::ASSL::ctx_t awh::ASSL::init() noexcept {
 		cout << " -----------------------4 " << result.ctx << " === " << SSL_CTX_check_private_key(result.ctx) << endl;
 		*/
 
+		/*
 		#ifdef SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER
 			SSL_CTX_set_mode(result.ctx, SSL_CTX_get_mode(result.ctx) | SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER);
 		#endif
 			SSL_CTX_set_verify(result.ctx, SSL_VERIFY_NONE, nullptr);
+		*/
 		
 		/*
 		int SSL_use_certificate_file(SSL *ssl, const char *file, int type);
