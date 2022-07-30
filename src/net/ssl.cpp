@@ -276,7 +276,7 @@ awh::ASSL::ctx_t awh::ASSL::init() noexcept {
 		*/
 
 		// Получаем контекст OpenSSL
-		result.ctx = SSL_CTX_new(SSLv23_server_method()); // SSLv3_method()
+		result.ctx = SSL_CTX_new(TLS_server_method()); // SSLv3_method()
 		// Если контекст не создан
 		if(result.ctx == nullptr){
 			// Выводим в лог сообщение
