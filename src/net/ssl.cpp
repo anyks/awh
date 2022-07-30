@@ -654,7 +654,7 @@ awh::ASSL::ctx_t awh::ASSL::init() noexcept {
 
 		
 		// Проверяем рукопожатие
-		if(SSL_do_handshake(result.ssl) <= 0){
+		// if(SSL_do_handshake(result.ssl) <= 0){
 			// Выполняем проверку рукопожатия
 			const long verify = SSL_get_verify_result(result.ssl);
 			// Если рукопожатие не выполнено
@@ -664,7 +664,7 @@ awh::ASSL::ctx_t awh::ASSL::init() noexcept {
 				// Выводим в лог сообщение
 				this->log->print("certificate chain validation failed: %s", log_t::flag_t::CRITICAL, X509_verify_cert_error_string(verify));
 			}
-		}
+		// }
 		
 		
 		// Если объект не создан
