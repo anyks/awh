@@ -849,6 +849,10 @@ void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 
 								cout << " ###################11 " << endl;
 
+
+								// Выводим в лог сообщение
+								this->log->print("SSL1: %s", log_t::flag_t::CRITICAL, ERR_error_string(code, nullptr));
+
 								// Получаем данные описание ошибки
 								u_long error = 0;
 								// Выполняем чтение ошибок OpenSSL
