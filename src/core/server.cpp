@@ -244,6 +244,8 @@ void awh::server::worker_t::accept(ev::io & watcher, int revents) noexcept {
 					this->log->print("main process was closed with signal [%s]", log_t::flag_t::WARNING, "SIGSEGV");
 				break;
 			}
+			// Выполняем остановку работы
+			this->stop();
 			// Завершаем работу основного процесса
 			exit(watcher.signum);
 		// Если процесс является дочерним
@@ -276,6 +278,8 @@ void awh::server::worker_t::accept(ev::io & watcher, int revents) noexcept {
 					this->log->print("child process was closed with signal [%s]", log_t::flag_t::WARNING, "SIGSEGV");
 				break;
 			}
+			// Выполняем остановку работы
+			this->stop();
 			// Завершаем работу дочернего процесса
 			exit(watcher.signum);
 		}
@@ -306,7 +310,7 @@ void awh::server::worker_t::accept(ev::io & watcher, int revents) noexcept {
 				::close(jack->mfds[0]);
 				::close(jack->cfds[1]);
 				// Выводим сообщение об ошибке, о невозможности отправкить сообщение
-				this->log->print("child process terminated, index = %d, pid = %d", log_t::flag_t::CRITICAL, jack->index, jack->pid);
+				this->log->print("child process terminated, index = %d, pid = %d, status = %x", log_t::flag_t::CRITICAL, jack->index, jack->pid, watcher.rstatus);
 				// Выходим из цикла
 				break;
 			}
