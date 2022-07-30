@@ -285,7 +285,7 @@ awh::ASSL::ctx_t awh::ASSL::init() noexcept {
 		// Устанавливаем опции запроса
 		SSL_CTX_set_options(result.ctx, SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3);
 
-		
+		/*
 		// Устанавливаем типы шифрования
 		if(!SSL_CTX_set_cipher_list(result.ctx, "ECDHE-RSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-SHA:ECDHE-RSA-AES256-SHA384")){
 			// Очищаем созданный контекст
@@ -295,6 +295,8 @@ awh::ASSL::ctx_t awh::ASSL::init() noexcept {
 			// Выходим
 			return result;
 		}
+		*/
+
 		// Устанавливаем поддерживаемые кривые
 		if(!SSL_CTX_set_ecdh_auto(result.ctx, 1)){
 			// Очищаем созданный контекст
