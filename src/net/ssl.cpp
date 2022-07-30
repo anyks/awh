@@ -492,12 +492,12 @@ awh::ASSL::ctx_t awh::ASSL::init() noexcept {
 		const int cert = (!this->cert.empty() ? SSL_CTX_use_certificate_file(result.ctx, this->cert.c_str(), SSL_FILETYPE_PEM) : 0);
 		*/
 
-		
+		/*
 		cout << " -----------------------1 " << result.ctx << " === " << this->cert << " === " << SSL_CTX_use_certificate_file(result.ctx, this->cert.c_str(), SSL_FILETYPE_PEM) << endl;
 		cout << " -----------------------2 " << result.ctx << " === " << this->key << " === " << SSL_CTX_use_RSAPrivateKey_file(result.ctx, this->key.c_str(), SSL_FILETYPE_PEM) << endl;
 		cout << " -----------------------3 " << result.ctx << " === " << this->chain << " === " << SSL_CTX_use_certificate_chain_file(result.ctx, this->chain.c_str()) << endl;
 		cout << " -----------------------4 " << result.ctx << " === " << SSL_CTX_check_private_key(result.ctx) << endl;
-		
+		*/
 
 		#ifdef SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER
 			SSL_CTX_set_mode(result.ctx, SSL_CTX_get_mode(result.ctx) | SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER);
@@ -526,13 +526,13 @@ awh::ASSL::ctx_t awh::ASSL::init() noexcept {
 		// Создаем ssl объект
 		result.ssl = SSL_new(result.ctx);
 
-		/*
+		
 		cout << " =======================1 " << result.ssl << " === " << this->cert << " === " << SSL_use_certificate_file(result.ssl, this->cert.c_str(), SSL_FILETYPE_PEM) << endl;
 		cout << " =======================2 " << result.ssl << " === " << this->key << " === " << SSL_use_PrivateKey_file(result.ssl, this->key.c_str(), SSL_FILETYPE_PEM) << endl;
 		cout << " =======================3 " << result.ssl << " === " << this->chain << " === " << SSL_use_certificate_chain_file(result.ssl, this->chain.c_str()) << endl;
 		
 		cout << " =======================4 " << result.ssl << " === " << SSL_check_private_key(result.ssl) << endl;
-		*/
+		
 		
 
 		// int accept_result = SSL_accept(result.ssl);
