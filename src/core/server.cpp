@@ -778,10 +778,16 @@ void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 				this->mtx.accept.unlock();
 				// Если защищённый режим работы разрешён
 				if(adj->ssl.mode){
+
+					cout << " ###################1 " << endl;
+
 					// Выполняем обёртывание сокета в BIO SSL
 					BIO * bio = BIO_new_socket(adj->bev.socket, BIO_NOCLOSE);
 					// Если BIO SSL создано
 					if(bio != nullptr){
+
+						cout << " ###################2 " << endl;
+
 						// Устанавливаем блокирующий режим ввода/вывода для сокета
 						BIO_set_nbio(bio, 1);
 						// Выполняем установку BIO SSL
@@ -792,22 +798,37 @@ void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 						SSL_set_mode(adj->ssl.ssl, SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER);
 						// Выполняем активацию клиента SSL
 						SSL_set_accept_state(adj->ssl.ssl);
+
+						cout << " ###################2 " << endl;
+
 						// Выполняем проверку на подключение
 						const int error = SSL_accept(adj->ssl.ssl);
+
+						cout << " ###################3 " << endl;
+
 						// Если возникла ошибка
 						if(error <= 0){
 							// Очищаем ошибки SSL
 							ERR_clear_error();
+
+							cout << " ###################4 " << endl;
+
 							// Выполняем чтение ошибки OpenSSL
 							const int code = SSL_get_error(adj->ssl.ssl, error);
 							// Выполняем проверку на подключение
 							if(code == SSL_ERROR_WANT_ACCEPT){
+
+								cout << " ###################5 " << endl;
+
 								// Выполняем попытку снова
 								this->accept(fd, wid);
 								// Выходим из функции
 								return;
 							// Если возникла другая ошибка
 							} else if(code != SSL_ERROR_NONE) {
+
+								cout << " ###################6 " << endl;
+
 								// Получаем данные описание ошибки
 								u_long error = 0;
 								// Выполняем чтение ошибок OpenSSL
@@ -820,6 +841,9 @@ void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 								return;
 							}
 						}
+
+						cout << " ###################7 " << endl;
+
 					// Если BIO SSL не создано
 					} else {
 						// Выполняем закрытие подключения
