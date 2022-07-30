@@ -820,7 +820,7 @@ void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 						SSL_set_accept_state(adj->ssl.ssl);
 
 						cout << " ###################7 " << endl;
-
+					*/
 						/*
 						// Выполняем проверку на подключение
 						const int error = SSL_accept(adj->ssl.ssl);
