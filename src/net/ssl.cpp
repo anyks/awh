@@ -510,13 +510,14 @@ awh::ASSL::ctx_t awh::ASSL::init() noexcept {
 		
 
 
-		/*
+		
 		#ifdef SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER
 			SSL_CTX_set_mode(result.ctx, SSL_CTX_get_mode(result.ctx) | SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER);
 		#endif
-			SSL_CTX_set_verify(result.ctx, SSL_VERIFY_PEER | SSL_VERIFY_FAIL_IF_NO_PEER_CERT, nullptr);
-    		SSL_CTX_set_verify_depth(result.ctx, 4);
-		*/
+			// SSL_CTX_set_verify(result.ctx, SSL_VERIFY_PEER | SSL_VERIFY_FAIL_IF_NO_PEER_CERT, nullptr);
+			SSL_CTX_set_verify(result.ctx, SSL_VERIFY_PEER, nullptr);
+			SSL_CTX_set_verify_depth(result.ctx, 4);
+		
 		
 		
 		/*
