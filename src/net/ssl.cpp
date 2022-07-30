@@ -334,7 +334,7 @@ awh::ASSL::ctx_t awh::ASSL::init() noexcept {
 		// Если CA-файл не найден или адрес файла не указан
 		if(this->cafile.empty()){
 			// Получаем данные стора
-			// X509_STORE * store = SSL_CTX_get_cert_store(result.ctx);
+			X509_STORE * store = SSL_CTX_get_cert_store(result.ctx);
 			/**
 			 * Если операционной системой является MS Windows
 			 */
@@ -390,7 +390,6 @@ awh::ASSL::ctx_t awh::ASSL::init() noexcept {
 				// Проверяем существует ли путь
 				if((addCertToStoreFn(store, "CA") < 0) || (addCertToStoreFn(store, "AuthRoot") < 0) || (addCertToStoreFn(store, "ROOT") < 0)) return result;
 			#endif
-			/*
 			// Если стор не устанавливается, тогда выводим ошибку
 			if(X509_STORE_set_default_paths(store) != 1){
 				// Очищаем созданный контекст
@@ -400,10 +399,8 @@ awh::ASSL::ctx_t awh::ASSL::init() noexcept {
 				// Выходим
 				return result;
 			}
-			*/
 		// Если CA файл найден
 		} else {
-			/*
 			// Определяем путь где хранятся сертификаты
 			const char * capath = (!this->capath.empty() ? this->capath.c_str() : nullptr);
 			// Выполняем проверку
@@ -421,11 +418,9 @@ awh::ASSL::ctx_t awh::ASSL::init() noexcept {
 				const string & fullPath = fs_t::realPath(this->capath);
 				// Если адрес существует
 				if(fs_t::isdir(fullPath) && !fs_t::isfile(this->cafile)){
-			*/
 					/**
 					 * Если операционной системой является MS Windows
 					 */
-			/*
 					#if defined(_WIN32) || defined(_WIN64)
 						// Выполняем сплит адреса
 						const auto & params = this->uri->split(fullPath);
@@ -452,11 +447,9 @@ awh::ASSL::ctx_t awh::ASSL::init() noexcept {
 						}
 						// Выполняем очистку CA-файла
 						this->cafile.clear();
-			*/
 					/**
 					 * Если операционной системой является Nix-подобная
 					 */
-			/*
 					#else
 						// Выполняем сплит адреса
 						auto path = this->uri->splitPath(fullPath, FS_SEPARATOR);
@@ -489,7 +482,6 @@ awh::ASSL::ctx_t awh::ASSL::init() noexcept {
 			} else if(fs_t::isfile(this->cafile))
 				// Выполняем проверку CA-файла
 				SSL_CTX_set_client_CA_list(result.ctx, SSL_load_client_CA_file(this->cafile.c_str()));
-			*/
 		}
 		// Метка следующей итерации
 		Next:
