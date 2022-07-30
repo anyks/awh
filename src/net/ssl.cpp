@@ -290,17 +290,20 @@ awh::ASSL::ctx_t awh::ASSL::init() noexcept {
 		// Устанавливаем опции запроса
 		SSL_CTX_set_options(result.ctx, SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3); // TLSv1	TLSv1.1	TLSv1.2
 
+		SSL_CTX_set_min_proto_version(result.ctx, 0);
+   		SSL_CTX_set_max_proto_version(result.ctx, TLS1_3_VERSION);
+
 		// cout << " ^^^^^^^^^^^^^^^^^^^^^^ CIPHERS1 " << OSSL_default_ciphersuites() << endl;
 		// cout << " ^^^^^^^^^^^^^^^^^^^^^^ CIPHERS2 " << OSSL_default_cipher_list() << endl;
 		
 		
 		// Устанавливаем типы шифрования
 		// if(!SSL_CTX_set_cipher_list(result.ctx, "ECDHE-RSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-SHA:ECDHE-RSA-AES256-SHA384")){		
-		// if(!SSL_CTX_set_cipher_list(result.ctx, "ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES256-GCM-SHA384:DHE-RSA-AES128-GCM-SHA256:DHE-DSS-AES128-GCM-SHA256:kEDH+AESGCM:ECDHE-RSA-AES128-SHA256:ECDHE-ECDSA-AES128-SHA256:ECDHE-RSA-AES128-SHA:ECDHE-ECDSA-AES128-SHA:ECDHE-RSA-AES256-SHA384:ECDHE-ECDSA-AES256-SHA384:ECDHE-RSA-AES256-SHA:ECDHE-ECDSA-AES256-SHA:DHE-RSA-AES128-SHA256:DHE-RSA-AES128-SHA:DHE-DSS-AES128-SHA256:DHE-RSA-AES256-SHA256:DHE-DSS-AES256-SHA:DHE-RSA-AES256-SHA:AES128-GCM-SHA256:AES256-GCM-SHA384:AES128-SHA256:AES256-SHA256:AES128-SHA:AES256-SHA:AES:CAMELLIA:DES-CBC3-SHA:!aNULL:!eNULL:!EXPORT:!DES:!RC4:!MD5:!PSK:!aECDH:!EDH-DSS-DES-CBC3-SHA:!EDH-RSA-DES-CBC3-SHA:!KRB5-DES-CBC3-SHA")){
+		if(!SSL_CTX_set_cipher_list(result.ctx, "ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES256-GCM-SHA384:DHE-RSA-AES128-GCM-SHA256:DHE-DSS-AES128-GCM-SHA256:kEDH+AESGCM:ECDHE-RSA-AES128-SHA256:ECDHE-ECDSA-AES128-SHA256:ECDHE-RSA-AES128-SHA:ECDHE-ECDSA-AES128-SHA:ECDHE-RSA-AES256-SHA384:ECDHE-ECDSA-AES256-SHA384:ECDHE-RSA-AES256-SHA:ECDHE-ECDSA-AES256-SHA:DHE-RSA-AES128-SHA256:DHE-RSA-AES128-SHA:DHE-DSS-AES128-SHA256:DHE-RSA-AES256-SHA256:DHE-DSS-AES256-SHA:DHE-RSA-AES256-SHA:AES128-GCM-SHA256:AES256-GCM-SHA384:AES128-SHA256:AES256-SHA256:AES128-SHA:AES256-SHA:AES:CAMELLIA:DES-CBC3-SHA:!aNULL:!eNULL:!EXPORT:!DES:!RC4:!MD5:!PSK:!aECDH:!EDH-DSS-DES-CBC3-SHA:!EDH-RSA-DES-CBC3-SHA:!KRB5-DES-CBC3-SHA")){
 		// SSL_CTX_set_ciphersuites(result.ctx, "TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256");
 		// if(!SSL_CTX_set_cipher_list(result.ctx, "ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-SHA256:AES128-SHA:AES256-SHA:DES-CBC3-SHA:!DSS")){
 		
-		if(!SSL_CTX_set_cipher_list(result.ctx, "ALL:!ADH:!RC4:+HIGH:+MEDIUM:-LOW:-SSLv2:-SSLv3:-EXP")){
+		// if(!SSL_CTX_set_cipher_list(result.ctx, "ALL:!ADH:!RC4:+HIGH:+MEDIUM:-LOW:-SSLv2:-SSLv3:-EXP")){
 			// Очищаем созданный контекст
 			this->clear(result);
 			// Выводим в лог сообщение
@@ -319,23 +322,23 @@ awh::ASSL::ctx_t awh::ASSL::init() noexcept {
 			return result;
 		}
 		*/
+
+		SSL_CTX_set_options(result.ctx, SSL_OP_CIPHER_SERVER_PREFERENCE);
 		
 		
-		/*
+		
 		// Если CA-файл не найден или адрес файла не указан
 		if(this->cafile.empty()){
 			// Получаем данные стора
 			X509_STORE * store = SSL_CTX_get_cert_store(result.ctx);
 			// Если - это Windows
 			#if defined(_WIN32) || defined(_WIN64)
-		*/
 				/**
 				 * addCertToStoreFn Функция проверки параметров сертификата
 				 * @param store стор с сертификатами для работы
 				 * @param name  название параметра сертификата
 				 * @return      результат проверки
 				 */
-		/*
 				auto addCertToStoreFn = [this](X509_STORE * store = nullptr, const char * name = nullptr) -> int {
 					// Результат работы функции
 					int result = 0;
@@ -470,7 +473,6 @@ awh::ASSL::ctx_t awh::ASSL::init() noexcept {
 				// Выполняем проверку CA-файла
 				SSL_CTX_set_client_CA_list(result.ctx, SSL_load_client_CA_file(this->cafile.c_str()));
 		}
-		*/
 		// Метка следующей итерации
 		Next:
 
