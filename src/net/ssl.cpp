@@ -284,10 +284,11 @@ awh::ASSL::ctx_t awh::ASSL::init() noexcept {
 		}
 		// Устанавливаем опции запроса
 		SSL_CTX_set_options(result.ctx, SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3);
-
-		/*
+		
 		// Устанавливаем типы шифрования
-		if(!SSL_CTX_set_cipher_list(result.ctx, "ECDHE-RSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-SHA:ECDHE-RSA-AES256-SHA384")){
+		// if(!SSL_CTX_set_cipher_list(result.ctx, "ECDHE-RSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-SHA:ECDHE-RSA-AES256-SHA384")){
+		// if(!SSL_CTX_set_cipher_list(result.ctx, "ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-SHA256:AES128-SHA:AES256-SHA:DES-CBC3-SHA:!DSS")){
+		if(!SSL_CTX_set_cipher_list(result.ctx, "ALL:!ADH:!RC4:+HIGH:+MEDIUM:-LOW:-SSLv2:-SSLv3:-EXP")){
 			// Очищаем созданный контекст
 			this->clear(result);
 			// Выводим в лог сообщение
@@ -295,8 +296,6 @@ awh::ASSL::ctx_t awh::ASSL::init() noexcept {
 			// Выходим
 			return result;
 		}
-		*/
-
 		// Устанавливаем поддерживаемые кривые
 		if(!SSL_CTX_set_ecdh_auto(result.ctx, 1)){
 			// Очищаем созданный контекст
@@ -307,9 +306,11 @@ awh::ASSL::ctx_t awh::ASSL::init() noexcept {
 			return result;
 		}
 		
+		
 
 		// Если CA-файл не найден или адрес файла не указан
 		if(this->cafile.empty()){
+			// Получаем данные стора
 			X509_STORE * store = SSL_CTX_get_cert_store(result.ctx);
 			// Если - это Windows
 			#if defined(_WIN32) || defined(_WIN64)
