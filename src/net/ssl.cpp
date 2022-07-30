@@ -392,19 +392,22 @@ awh::ASSL::ctx_t awh::ASSL::init() noexcept {
 		SSL_CTX_set_quiet_shutdown(result.ctx, 1);
 		// Запускаем кэширование
 		SSL_CTX_set_session_cache_mode(result.ctx, SSL_SESS_CACHE_SERVER | SSL_SESS_CACHE_NO_INTERNAL);
+
+		/*
 		// Запрашиваем данные цепочки доверия
 		const int chain = (!this->chain.empty() ? SSL_CTX_use_certificate_chain_file(result.ctx, this->chain.c_str()) : 1);
 		// Запрашиваем данные приватного ключа сертификата
 		const int prv = (!this->key.empty() ? SSL_CTX_use_PrivateKey_file(result.ctx, this->key.c_str(), SSL_FILETYPE_PEM) : 0);
 		// Запрашиваем данные сертификата
 		const int cert = (!this->cert.empty() ? SSL_CTX_use_certificate_file(result.ctx, this->cert.c_str(), SSL_FILETYPE_PEM) : 0);
+		*/
 
 
-		cout << " -----------------------1 " << result.ctx << " === " << this->chain << " === " << chain << endl;
-		cout << " -----------------------2 " << result.ctx << " === " << this->key << " === " << prv << endl;
-		cout << " -----------------------3 " << result.ctx << " === " << this->cert << " === " << cert << endl;
+		cout << " -----------------------1 " << result.ctx << " === " << this->chain << " === " << SSL_CTX_use_certificate_chain_file(result.ctx, this->chain.c_str()) << endl;
+		cout << " -----------------------2 " << result.ctx << " === " << this->key << " === " << SSL_CTX_use_PrivateKey_file(result.ctx, this->key.c_str(), SSL_FILETYPE_PEM) << endl;
+		cout << " -----------------------3 " << result.ctx << " === " << this->cert << " === " << SSL_CTX_use_certificate_file(result.ctx, this->cert.c_str(), SSL_FILETYPE_PEM) << endl;
 
-
+		/*
 		// Если какой-то из файлов не получен то выходим
 		if(!(result.mode = ((chain > 0) && (cert > 0) && (prv > 0)))){
 			// Очищаем созданный контекст
@@ -412,6 +415,7 @@ awh::ASSL::ctx_t awh::ASSL::init() noexcept {
 			// Выводим в лог сообщение
 			this->log->print("%s", log_t::flag_t::CRITICAL, "ssl certificates is not load");
 		}
+		*/
 	}
 	// Выводим результат
 	return result;
