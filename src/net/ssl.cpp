@@ -398,6 +398,13 @@ awh::ASSL::ctx_t awh::ASSL::init() noexcept {
 		const int prv = (!this->key.empty() ? SSL_CTX_use_PrivateKey_file(result.ctx, this->key.c_str(), SSL_FILETYPE_PEM) : 0);
 		// Запрашиваем данные сертификата
 		const int cert = (!this->cert.empty() ? SSL_CTX_use_certificate_file(result.ctx, this->cert.c_str(), SSL_FILETYPE_PEM) : 0);
+
+
+		cout << " -----------------------1 " << result.ctx << " === " << this->chain << " === " << chain << endl;
+		cout << " -----------------------2 " << result.ctx << " === " << this->key << " === " << prv << endl;
+		cout << " -----------------------3 " << result.ctx << " === " << this->cert << " === " << cert << endl;
+
+
 		// Если какой-то из файлов не получен то выходим
 		if(!(result.mode = ((chain > 0) && (cert > 0) && (prv > 0)))){
 			// Очищаем созданный контекст
