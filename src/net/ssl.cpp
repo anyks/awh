@@ -393,14 +393,14 @@ awh::ASSL::ctx_t awh::ASSL::init() noexcept {
 		// Запускаем кэширование
 		SSL_CTX_set_session_cache_mode(result.ctx, SSL_SESS_CACHE_SERVER | SSL_SESS_CACHE_NO_INTERNAL);
 
-		/*
+		
 		// Запрашиваем данные цепочки доверия
 		const int chain = (!this->chain.empty() ? SSL_CTX_use_certificate_chain_file(result.ctx, this->chain.c_str()) : 1);
 		// Запрашиваем данные приватного ключа сертификата
 		const int prv = (!this->key.empty() ? SSL_CTX_use_PrivateKey_file(result.ctx, this->key.c_str(), SSL_FILETYPE_PEM) : 0);
 		// Запрашиваем данные сертификата
 		const int cert = (!this->cert.empty() ? SSL_CTX_use_certificate_file(result.ctx, this->cert.c_str(), SSL_FILETYPE_PEM) : 0);
-		*/
+		
 
 		/*
 		cout << " -----------------------1 " << result.ctx << " === " << this->cert << " === " << SSL_use_certificate_file(result.ctx, this->cert.c_str(), SSL_FILETYPE_PEM) << endl;
