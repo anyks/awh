@@ -389,7 +389,7 @@ awh::ASSL::ctx_t awh::ASSL::init() noexcept {
 		// Метка следующей итерации
 		Next:
 		// Устанавливаем флаг quiet shutdown
-		SSL_CTX_set_quiet_shutdown(result.ctx, 1);
+		// SSL_CTX_set_quiet_shutdown(result.ctx, 1);
 		// Запускаем кэширование
 		SSL_CTX_set_session_cache_mode(result.ctx, SSL_SESS_CACHE_SERVER | SSL_SESS_CACHE_NO_INTERNAL);
 
@@ -402,11 +402,12 @@ awh::ASSL::ctx_t awh::ASSL::init() noexcept {
 		const int cert = (!this->cert.empty() ? SSL_CTX_use_certificate_file(result.ctx, this->cert.c_str(), SSL_FILETYPE_PEM) : 0);
 		*/
 
-		/*
+		
 		cout << " -----------------------1 " << result.ctx << " === " << this->cert << " === " << SSL_CTX_use_certificate_file(result.ctx, this->cert.c_str(), SSL_FILETYPE_PEM) << endl;
 		cout << " -----------------------2 " << result.ctx << " === " << this->key << " === " << SSL_CTX_use_RSAPrivateKey_file(result.ctx, this->key.c_str(), SSL_FILETYPE_PEM) << endl;
 		cout << " -----------------------3 " << result.ctx << " === " << this->chain << " === " << SSL_CTX_use_certificate_chain_file(result.ctx, this->chain.c_str()) << endl;
-		*/
+		cout << " -----------------------4 " << result.ssl << " === " << SSL_CTX_check_private_key(result.ctx) << endl;
+		
 		
 		/*
 		int SSL_use_certificate_file(SSL *ssl, const char *file, int type);
@@ -435,6 +436,7 @@ awh::ASSL::ctx_t awh::ASSL::init() noexcept {
 		cout << " =======================2 " << result.ssl << " === " << this->key << " === " << SSL_use_PrivateKey_file(result.ssl, this->key.c_str(), SSL_FILETYPE_PEM) << endl;
 		cout << " =======================3 " << result.ssl << " === " << this->chain << " === " << SSL_use_certificate_chain_file(result.ssl, this->chain.c_str()) << endl;
 		
+		cout << " =======================4 " << result.ssl << " === " << SSL_check_private_key(result.ssl) << endl;
 
 		// Если объект не создан
 		if(!(result.mode = (result.ssl != nullptr))){
