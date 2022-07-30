@@ -786,7 +786,7 @@ void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 						cout << " ################### GOOD ################### " << endl;
 					}
 
-					/*
+					
 					cout << " ###################1 " << endl;
 
 					// Выполняем обёртывание сокета в BIO SSL
@@ -820,7 +820,7 @@ void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 						SSL_set_accept_state(adj->ssl.ssl);
 
 						cout << " ###################7 " << endl;
-					*/
+					
 						/*
 						// Выполняем проверку на подключение
 						const int error = SSL_accept(adj->ssl.ssl);
@@ -865,7 +865,6 @@ void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 						*/
 
 						cout << " ###################12 " << endl;
-					/*
 					// Если BIO SSL не создано
 					} else {
 						// Выполняем закрытие подключения
@@ -875,7 +874,6 @@ void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 						// Выходим из функции
 						return;
 					}
-					*/
 				}
 				// Если функция обратного вызова установлена
 				if(wrk->acceptFn != nullptr){
@@ -1379,7 +1377,7 @@ void awh::server::Core::transfer(const method_t method, const size_t aid) noexce
 									// Выполняем пропуск попытки
 									break;
 								// Иначе выводим сообщение об ошибке
-								else break; // this->error(bytes, aid);
+								else this->error(bytes, aid);
 							// Если защищённый режим работы запрещён
 							} else if(errno == EAGAIN) break;
 							// Выполняем отключение клиента
