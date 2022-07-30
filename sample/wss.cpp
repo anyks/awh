@@ -155,6 +155,12 @@ int main(int argc, char * argv[]){
 	ws.init(2222, "127.0.0.1", http_t::compress_t::DEFLATE);
 	// ws.init(2222, "127.0.0.1", http_t::compress_t::NONE);
 	// ws.init("anyks", http_t::compress_t::DEFLATE);
+	// Устанавливаем SSL сертификаты сервера
+	core.setCert(
+		"/usr/local/etc/letsencrypt/live/anyks.net/fullchain.pem",
+		"/usr/local/etc/letsencrypt/live/anyks.net/privkey.pem",
+		"/usr/local/etc/letsencrypt/live/anyks.net/chain.pem"
+	);
 	// Устанавливаем шифрование
 	// ws.setCrypt("PASS");
 	// Устанавливаем сабпротоколы
