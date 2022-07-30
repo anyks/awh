@@ -854,13 +854,18 @@ void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 				ret.first->second->ip = move(ip);
 				// Запоминаем MAC адрес
 				ret.first->second->mac = move(mac);
-				// Если процесс не является основным
-				if((this->pid != getpid()) && !this->jacks.empty()){
-					// Устанавливаем активное событие подключения
-					this->event = event_t::CONNECT;
-					// Выполняем разрешение на отправку сообщения
-					this->jacks.at(this->index)->write.start();
-				}
+				/**
+				 * Если операционной системой не является Windows
+				 */
+				#if !defined(_WIN32) && !defined(_WIN64)
+					// Если процесс не является основным
+					if((this->pid != getpid()) && !this->jacks.empty()){
+						// Устанавливаем активное событие подключения
+						this->event = event_t::CONNECT;
+						// Выполняем разрешение на отправку сообщения
+						this->jacks.at(this->index)->write.start();
+					}
+				#endif
 				// Запускаем чтение данных
 				this->enabled(method_t::READ, ret.first->first);
 				// Если вывод информационных данных не запрещён
@@ -918,13 +923,18 @@ void awh::server::Core::close() noexcept {
 					// Иначе продолжаем дальше
 					} else ++it;
 				}
-				// Если процесс не является основным
-				if((this->pid != getpid()) && !this->jacks.empty()){
-					// Устанавливаем активное событие отключения
-					this->event = event_t::DISCONNECT;
-					// Выполняем разрешение на отправку сообщения
-					this->jacks.at(this->index)->write.start();
-				}
+				/**
+				 * Если операционной системой не является Windows
+				 */
+				#if !defined(_WIN32) && !defined(_WIN64)
+					// Если процесс не является основным
+					if((this->pid != getpid()) && !this->jacks.empty()){
+						// Устанавливаем активное событие отключения
+						this->event = event_t::DISCONNECT;
+						// Выполняем разрешение на отправку сообщения
+						this->jacks.at(this->index)->write.start();
+					}
+				#endif
 			}
 		}
 	}
@@ -970,13 +980,18 @@ void awh::server::Core::remove() noexcept {
 					// Иначе продолжаем дальше
 					} else ++jt;
 				}
-				// Если процесс не является основным
-				if((this->pid != getpid()) && !this->jacks.empty()){
-					// Устанавливаем активное событие отключения
-					this->event = event_t::DISCONNECT;
-					// Выполняем разрешение на отправку сообщения
-					this->jacks.at(this->index)->write.start();
-				}
+				/**
+				 * Если операционной системой не является Windows
+				 */
+				#if !defined(_WIN32) && !defined(_WIN64)
+					// Если процесс не является основным
+					if((this->pid != getpid()) && !this->jacks.empty()){
+						// Устанавливаем активное событие отключения
+						this->event = event_t::DISCONNECT;
+						// Выполняем разрешение на отправку сообщения
+						this->jacks.at(this->index)->write.start();
+					}
+				#endif
 			}
 			// Останавливаем работу сервера
 			wrk->io.stop();
@@ -1135,13 +1150,18 @@ void awh::server::Core::remove(const size_t wid) noexcept {
 					// Иначе продолжаем дальше
 					} else ++jt;
 				}
-				// Если процесс не является основным
-				if((this->pid != getpid()) && !this->jacks.empty()){
-					// Устанавливаем активное событие отключения
-					this->event = event_t::DISCONNECT;
-					// Выполняем разрешение на отправку сообщения
-					this->jacks.at(this->index)->write.start();
-				}
+				/**
+				 * Если операционной системой не является Windows
+				 */
+				#if !defined(_WIN32) && !defined(_WIN64)
+					// Если процесс не является основным
+					if((this->pid != getpid()) && !this->jacks.empty()){
+						// Устанавливаем активное событие отключения
+						this->event = event_t::DISCONNECT;
+						// Выполняем разрешение на отправку сообщения
+						this->jacks.at(this->index)->write.start();
+					}
+				#endif
 			}
 			// Останавливаем работу сервера
 			wrk->io.stop();
@@ -1185,13 +1205,18 @@ void awh::server::Core::close(const size_t aid) noexcept {
 			wrk->adjutants.erase(aid);
 			// Удаляем адъютанта из списка подключений
 			this->adjutants.erase(aid);
-			// Если процесс не является основным
-			if((this->pid != getpid()) && !this->jacks.empty()){
-				// Устанавливаем активное событие отключения
-				this->event = event_t::DISCONNECT;
-				// Выполняем разрешение на отправку сообщения
-				this->jacks.at(this->index)->write.start();
-			}
+			/**
+			 * Если операционной системой не является Windows
+			 */
+			#if !defined(_WIN32) && !defined(_WIN64)
+				// Если процесс не является основным
+				if((this->pid != getpid()) && !this->jacks.empty()){
+					// Устанавливаем активное событие отключения
+					this->event = event_t::DISCONNECT;
+					// Выполняем разрешение на отправку сообщения
+					this->jacks.at(this->index)->write.start();
+				}
+			#endif
 			// Выводим сообщение об ошибке
 			if(!core->noinfo) this->log->print("%s", log_t::flag_t::INFO, "disconnect client from server");
 			// Выводим функцию обратного вызова
