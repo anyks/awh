@@ -780,13 +780,11 @@ void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 				if(adj->ssl.mode){
 
 
-					SSL_set_fd(adj->ssl.ssl, adj->bev.socket);
+					// SSL_set_fd(adj->ssl.ssl, adj->bev.socket);
 
-					if (SSL_accept(adj->ssl.ssl) <= 0) {
-						cout << " ################### GOOD ################### " << endl;
-					}
+					
 
-					/*
+					
 					cout << " ###################1 " << endl;
 
 					// Выполняем обёртывание сокета в BIO SSL
@@ -807,12 +805,12 @@ void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 						cout << " ###################4 " << endl;
 
 						// Устанавливаем флаг работы в асинхронном режиме
-						// SSL_set_mode(adj->ssl.ssl, SSL_MODE_ASYNC);
+						SSL_set_mode(adj->ssl.ssl, SSL_MODE_ASYNC);
 
 						cout << " ###################5 " << endl;
 
 						// Устанавливаем флаг записи в буфер порциями
-						// SSL_set_mode(adj->ssl.ssl, SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER);
+						SSL_set_mode(adj->ssl.ssl, SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER);
 
 						cout << " ###################6 " << endl;
 
@@ -820,9 +818,9 @@ void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 						SSL_set_accept_state(adj->ssl.ssl);
 
 						cout << " ###################7 " << endl;
-					*/
 					
-						/*
+					
+						
 						// Выполняем проверку на подключение
 						const int error = SSL_accept(adj->ssl.ssl);
 
@@ -843,7 +841,7 @@ void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 								cout << " ###################10 " << endl;
 
 								// Выполняем попытку снова
-								this->accept(fd, wid);
+								// this->accept(fd, wid);
 								// Выходим из функции
 								return;
 							// Если возникла другая ошибка
@@ -857,14 +855,17 @@ void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 								while((error = ERR_get_error()))
 									// Выводим в лог сообщение
 									this->log->print("SSL: %s", log_t::flag_t::CRITICAL, ERR_error_string(error, nullptr));
+								
+								/*
 								// Выполняем закрытие подключения
 								this->close(adj->bev.socket);
 								// Выходим из функции
 								return;
+								*/
 							}
 						}
-						*/
-					/*
+						
+					
 						cout << " ###################12 " << endl;
 					// Если BIO SSL не создано
 					} else {
@@ -875,7 +876,6 @@ void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 						// Выходим из функции
 						return;
 					}
-					*/
 				}
 				// Если функция обратного вызова установлена
 				if(wrk->acceptFn != nullptr){
@@ -1379,7 +1379,7 @@ void awh::server::Core::transfer(const method_t method, const size_t aid) noexce
 									// Выполняем пропуск попытки
 									break;
 								// Иначе выводим сообщение об ошибке
-								else continue; // this->error(bytes, aid);
+								else this->error(bytes, aid);
 							// Если защищённый режим работы запрещён
 							} else if(errno == EAGAIN) break;
 							// Выполняем отключение клиента
