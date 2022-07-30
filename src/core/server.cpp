@@ -777,7 +777,7 @@ void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 				// Выполняем блокировку потока
 				this->mtx.accept.unlock();
 				// Если защищённый режим работы разрешён
-				// if(adj->ssl.mode){
+				if(adj->ssl.mode){
 
 					cout << " ###################1 " << endl;
 
@@ -799,12 +799,12 @@ void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 						cout << " ###################4 " << endl;
 
 						// Устанавливаем флаг работы в асинхронном режиме
-						SSL_set_mode(adj->ssl.ssl, SSL_MODE_ASYNC);
+						// SSL_set_mode(adj->ssl.ssl, SSL_MODE_ASYNC);
 
 						cout << " ###################5 " << endl;
 
 						// Устанавливаем флаг записи в буфер порциями
-						SSL_set_mode(adj->ssl.ssl, SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER);
+						// SSL_set_mode(adj->ssl.ssl, SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER);
 
 						cout << " ###################6 " << endl;
 
@@ -813,6 +813,7 @@ void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 
 						cout << " ###################7 " << endl;
 
+						/*
 						// Выполняем проверку на подключение
 						const int error = SSL_accept(adj->ssl.ssl);
 
@@ -853,6 +854,7 @@ void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 								return;
 							}
 						}
+						*/
 
 						cout << " ###################12 " << endl;
 
@@ -865,7 +867,7 @@ void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 						// Выходим из функции
 						return;
 					}
-				// }
+				}
 				// Если функция обратного вызова установлена
 				if(wrk->acceptFn != nullptr){
 					// Выполняем проверку, разрешено ли клиенту подключиться к серверу
