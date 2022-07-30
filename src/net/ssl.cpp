@@ -276,7 +276,7 @@ awh::ASSL::ctx_t awh::ASSL::init() noexcept {
 		*/
 
 		// Получаем контекст OpenSSL
-		result.ctx = SSL_CTX_new(TLS_server_method()); // SSLv3_method()
+		result.ctx = SSL_CTX_new(SSLv23_server_method()); // SSLv3_method()
 		// Если контекст не создан
 		if(result.ctx == nullptr){
 			// Выводим в лог сообщение
@@ -285,7 +285,7 @@ awh::ASSL::ctx_t awh::ASSL::init() noexcept {
 			return result;
 		}
 		// Устанавливаем опции запроса
-		SSL_CTX_set_options(result.ctx, SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3); // TLSv1	TLSv1.1	TLSv1.2
+		SSL_CTX_set_options(result.ctx, SSL_OP_ALL); // SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3); // TLSv1	TLSv1.1	TLSv1.2
 
 		// cout << " ^^^^^^^^^^^^^^^^^^^^^^ CIPHERS1 " << OSSL_default_ciphersuites() << endl;
 		// cout << " ^^^^^^^^^^^^^^^^^^^^^^ CIPHERS2 " << OSSL_default_cipher_list() << endl;
