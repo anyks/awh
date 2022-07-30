@@ -792,7 +792,7 @@ void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 					*/
 
 					
-					
+					// BIO_free(BIO *a);
 					// Выполняем обёртывание сокета в BIO SSL
 					BIO * bio = BIO_new_socket(adj->bev.socket, BIO_NOCLOSE);
 					// Если BIO SSL создано
@@ -809,11 +809,6 @@ void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 						SSL_set_bio(adj->ssl.ssl, bio, bio);
 
 						cout << " ###################4 " << endl;
-
-						// Выполняем активацию клиента SSL
-						// SSL_set_accept_state(adj->ssl.ssl);
-
-						// cout << " ###################5 " << endl;
 					
 
 						// Устанавливаем флаг работы в асинхронном режиме

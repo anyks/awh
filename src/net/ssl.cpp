@@ -265,7 +265,7 @@ awh::ASSL::ctx_t awh::ASSL::init() noexcept {
 	// Если объект фреймворка существует
 	if((this->fmk != nullptr) && !this->key.empty() && !this->cert.empty()){
 		
-		/*
+		
 		// Активируем рандомный генератор
 		if(RAND_poll() == 0){
 			// Выводим в лог сообщение
@@ -273,14 +273,14 @@ awh::ASSL::ctx_t awh::ASSL::init() noexcept {
 			// Выходим
 			return result;
 		}
-		*/
+		
 
 
 
 		// Получаем контекст OpenSSL
-		result.ctx = SSL_CTX_new(SSLv23_server_method()); // SSLv3_method()
+		// result.ctx = SSL_CTX_new(SSLv23_server_method()); // SSLv3_method()
 
-		// result.ctx = SSL_CTX_new(TLS_server_method());
+		result.ctx = SSL_CTX_new(TLS_server_method());
 
 		// Если контекст не создан
 		if(result.ctx == nullptr){
