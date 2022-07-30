@@ -479,7 +479,6 @@ awh::ASSL::ctx_t awh::ASSL::init() noexcept {
 				// Выполняем проверку CA-файла
 				SSL_CTX_set_client_CA_list(result.ctx, SSL_load_client_CA_file(this->cafile.c_str()));
 		}
-		
 		// Метка следующей итерации
 		Next:
 
