@@ -788,7 +788,7 @@ void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 					*/
 
 					
-					cout << " ###################1 " << error << endl;
+					cout << " ###################1 " << endl;
 
 					
 
