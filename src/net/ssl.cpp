@@ -677,11 +677,11 @@ awh::ASSL::ctx_t awh::ASSL::init(const uri_t::url_t & url) noexcept {
 		// Создаем ssl объект
 		result.ssl = SSL_new(result.ctx);
 
-		/*
-		cout << " -----------------------1 " << result.ssl << " === " << this->cert << " === " << SSL_use_certificate_file(result.ssl, this->cert.c_str(), SSL_FILETYPE_PEM) << endl;
-		cout << " -----------------------2 " << result.ssl << " === " << this->key << " === " << SSL_use_PrivateKey_file(result.ssl, this->key.c_str(), SSL_FILETYPE_PEM) << endl;
-		cout << " -----------------------3 " << result.ssl << " === " << this->chain << " === " << SSL_use_certificate_chain_file(result.ssl, this->chain.c_str()) << endl;
-		*/
+		
+		cout << " =======================1 " << result.ssl << " === " << this->cert << " === " << SSL_use_certificate_file(result.ssl, this->cert.c_str(), SSL_FILETYPE_PEM) << endl;
+		cout << " =======================2 " << result.ssl << " === " << this->key << " === " << SSL_use_PrivateKey_file(result.ssl, this->key.c_str(), SSL_FILETYPE_PEM) << endl;
+		cout << " =======================3 " << result.ssl << " === " << this->chain << " === " << SSL_use_certificate_chain_file(result.ssl, this->chain.c_str()) << endl;
+		
 
 		// Если объект не создан
 		if(!(result.mode = (result.ssl != nullptr))){
