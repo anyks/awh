@@ -275,8 +275,15 @@ awh::ASSL::ctx_t awh::ASSL::init() noexcept {
 		}
 		*/
 
+		#if OPENSSL_VERSION_NUMBER < 0x10100000L
+			result.ctx = SSL_CTX_new(SSLv23_method());
+		#else
+			result.ctx = SSL_CTX_new(TLS_method());
+		#endif
+
 		// Получаем контекст OpenSSL
-		result.ctx = SSL_CTX_new(SSLv23_server_method()); // SSLv3_method()
+		// result.ctx = SSL_CTX_new(SSLv23_server_method()); // SSLv3_method()
+
 		// Если контекст не создан
 		if(result.ctx == nullptr){
 			// Выводим в лог сообщение
@@ -285,11 +292,12 @@ awh::ASSL::ctx_t awh::ASSL::init() noexcept {
 			return result;
 		}
 		// Устанавливаем опции запроса
-		SSL_CTX_set_options(result.ctx, SSL_OP_ALL); // SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3); // TLSv1	TLSv1.1	TLSv1.2
+		// SSL_CTX_set_options(result.ctx, SSL_OP_ALL); // SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3); // TLSv1	TLSv1.1	TLSv1.2
 
 		// cout << " ^^^^^^^^^^^^^^^^^^^^^^ CIPHERS1 " << OSSL_default_ciphersuites() << endl;
 		// cout << " ^^^^^^^^^^^^^^^^^^^^^^ CIPHERS2 " << OSSL_default_cipher_list() << endl;
 		
+		/*
 		// Устанавливаем типы шифрования
 		// if(!SSL_CTX_set_cipher_list(result.ctx, "ECDHE-RSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-SHA:ECDHE-RSA-AES256-SHA384")){		
 		if(!SSL_CTX_set_cipher_list(result.ctx, "ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES256-GCM-SHA384:DHE-RSA-AES128-GCM-SHA256:DHE-DSS-AES128-GCM-SHA256:kEDH+AESGCM:ECDHE-RSA-AES128-SHA256:ECDHE-ECDSA-AES128-SHA256:ECDHE-RSA-AES128-SHA:ECDHE-ECDSA-AES128-SHA:ECDHE-RSA-AES256-SHA384:ECDHE-ECDSA-AES256-SHA384:ECDHE-RSA-AES256-SHA:ECDHE-ECDSA-AES256-SHA:DHE-RSA-AES128-SHA256:DHE-RSA-AES128-SHA:DHE-DSS-AES128-SHA256:DHE-RSA-AES256-SHA256:DHE-DSS-AES256-SHA:DHE-RSA-AES256-SHA:AES128-GCM-SHA256:AES256-GCM-SHA384:AES128-SHA256:AES256-SHA256:AES128-SHA:AES256-SHA:AES:CAMELLIA:DES-CBC3-SHA:!aNULL:!eNULL:!EXPORT:!DES:!RC4:!MD5:!PSK:!aECDH:!EDH-DSS-DES-CBC3-SHA:!EDH-RSA-DES-CBC3-SHA:!KRB5-DES-CBC3-SHA")){
@@ -311,6 +319,7 @@ awh::ASSL::ctx_t awh::ASSL::init() noexcept {
 			// Выходим
 			return result;
 		}
+		*/
 		
 		
 
@@ -462,10 +471,13 @@ awh::ASSL::ctx_t awh::ASSL::init() noexcept {
 		}
 		// Метка следующей итерации
 		Next:
+
+		/*
 		// Устанавливаем флаг quiet shutdown
 		SSL_CTX_set_quiet_shutdown(result.ctx, 1);
 		// Запускаем кэширование
 		SSL_CTX_set_session_cache_mode(result.ctx, SSL_SESS_CACHE_SERVER | SSL_SESS_CACHE_NO_INTERNAL);
+		*/
 
 		/*
 		// Запрашиваем данные цепочки доверия
@@ -482,6 +494,11 @@ awh::ASSL::ctx_t awh::ASSL::init() noexcept {
 		cout << " -----------------------3 " << result.ctx << " === " << this->chain << " === " << SSL_CTX_use_certificate_chain_file(result.ctx, this->chain.c_str()) << endl;
 		cout << " -----------------------4 " << result.ctx << " === " << SSL_CTX_check_private_key(result.ctx) << endl;
 		
+
+		#ifdef SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER
+			SSL_CTX_set_mode(result.ctx, SSL_CTX_get_mode(result.ctx) | SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER);
+		#endif
+			SSL_CTX_set_verify(result.ctx, SSL_VERIFY_NONE, nullptr);
 		
 		/*
 		int SSL_use_certificate_file(SSL *ssl, const char *file, int type);
@@ -884,13 +901,21 @@ void awh::ASSL::setCert(const string & cert, const string & key, const string & 
 awh::ASSL::ASSL(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcept : fmk(fmk), uri(uri), log(log) {
 	// Выполняем модификацию CA-файла
 	this->cafile = fs_t::realPath(this->cafile);
-	// Если версия OPENSSL старая
+	/**
+	 * Если версия OPENSSL старая
+	 */
 	#if (OPENSSL_VERSION_NUMBER < 0x10100000L) || (defined(LIBRESSL_VERSION_NUMBER) && LIBRESSL_VERSION_NUMBER < 0x20700000L)
 		// Выполняем инициализацию OpenSSL
 		SSL_library_init();
 		ERR_load_crypto_strings();
 		SSL_load_error_strings();
 		OpenSSL_add_all_algorithms();
+	/**
+	 * Для более свежей версии
+	 */
+	#else
+		// Выполняем инициализацию OpenSSL
+        OPENSSL_init_ssl(OPENSSL_INIT_SSL_DEFAULT, nullptr);
 	#endif
 }
 /**
