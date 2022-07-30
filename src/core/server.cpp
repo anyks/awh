@@ -311,6 +311,8 @@ void awh::server::worker_t::accept(ev::io & watcher, int revents) noexcept {
 				::close(jack->cfds[1]);
 				// Выводим сообщение об ошибке, о невозможности отправкить сообщение
 				this->log->print("child process terminated, index = %d, pid = %d, status = %x", log_t::flag_t::CRITICAL, jack->index, jack->pid, watcher.rstatus);
+				// Если статус сигнала, ручной остановкой процесса, выходим из приложения
+				if(watcher.rstatus == SIGINT) exit(SIGINT);
 				// Выходим из цикла
 				break;
 			}
