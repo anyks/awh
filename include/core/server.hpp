@@ -164,30 +164,40 @@ namespace awh {
 				#endif
 			private:
 				/**
-				 * readJack Функция обратного вызова при чтении данных с сокета
-				 * @param watcher объект события чтения
-				 * @param revents идентификатор события
+				 * Если операционной системой не является Windows
 				 */
-				void readJack(ev::io & watcher, int revents) noexcept;
-				/**
-				 * writeJack Функция обратного вызова при записи данных в сокет
-				 * @param watcher объект события записи
-				 * @param revents идентификатор события
-				 */
-				void writeJack(ev::io & watcher, int revents) noexcept;
+				#if !defined(_WIN32) && !defined(_WIN64)
+					/**
+					 * readJack Функция обратного вызова при чтении данных с сокета
+					 * @param watcher объект события чтения
+					 * @param revents идентификатор события
+					 */
+					void readJack(ev::io & watcher, int revents) noexcept;
+					/**
+					 * writeJack Функция обратного вызова при записи данных в сокет
+					 * @param watcher объект события записи
+					 * @param revents идентификатор события
+					 */
+					void writeJack(ev::io & watcher, int revents) noexcept;
+				#endif
 			private:
 				/**
-				 * signal Функция обратного вызова при возникновении сигнала
-				 * @param watcher объект события сигнала
-				 * @param revents идентификатор события
+				 * Если операционной системой не является Windows
 				 */
-				void signal(ev::sig & watcher, int revents) noexcept;
-				/**
-				 * children Функция обратного вызова при завершении работы процесса
-				 * @param watcher объект события дочернего процесса
-				 * @param revents идентификатор события
-				 */
-				void children(ev::child & watcher, int revents) noexcept;
+				#if !defined(_WIN32) && !defined(_WIN64)
+					/**
+					 * signal Функция обратного вызова при возникновении сигнала
+					 * @param watcher объект события сигнала
+					 * @param revents идентификатор события
+					 */
+					void signal(ev::sig & watcher, int revents) noexcept;
+					/**
+					 * children Функция обратного вызова при завершении работы процесса
+					 * @param watcher объект события дочернего процесса
+					 * @param revents идентификатор события
+					 */
+					void children(ev::child & watcher, int revents) noexcept;
+				#endif
 			private:
 				/**
 				 * forking Метод разъяснения (создание дочерних процессов)
