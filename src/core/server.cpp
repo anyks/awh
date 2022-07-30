@@ -817,7 +817,7 @@ void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 					
 
 						// Устанавливаем флаг работы в асинхронном режиме
-						SSL_set_mode(adj->ssl.ssl, SSL_MODE_ASYNC);
+						// SSL_set_mode(adj->ssl.ssl, SSL_MODE_ASYNC);
 
 						// cout << " ###################6 " << endl;
 
