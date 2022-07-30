@@ -289,19 +289,18 @@ namespace awh {
 				 */
 				void setTotal(const size_t wid, const u_short total) noexcept;
 				/**
+				 * setCert Метод установки файлов сертификата
+				 * @param chain файл цепочки сертификатов
+				 * @param key   приватный ключ сертификата
+				 */
+				void setCert(const string & chain, const string & key) noexcept;
+				/**
 				 * init Метод инициализации сервера
 				 * @param wid  идентификатор воркера
 				 * @param port порт сервера
 				 * @param host хост сервера
 				 */
 				void init(const size_t wid, const u_int port, const string & host = "") noexcept;
-				/**
-				 * setCert Метод установки файлов сертификата
-				 * @param cert  корневой сертификат
-				 * @param key   приватный ключ сертификата
-				 * @param chain файл цепочки сертификатов
-				 */
-				void setCert(const string & cert, const string & key, const string & chain = "") noexcept;
 			public:
 				/**
 				 * Core Конструктор

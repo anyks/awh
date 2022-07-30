@@ -477,13 +477,6 @@ namespace awh {
 			 * rebase Метод пересоздания базы событий
 			 */
 			void rebase() noexcept;
-		protected:
-			/**
-			 * error Метод вывода описание ошибок
-			 * @param bytes количество записанных/прочитанных байт в сокет
-			 * @param aid   идентификатор адъютанта
-			 */
-			void error(const int64_t bytes, const size_t aid) const noexcept;
 		public:
 			/**
 			 * enabled Метод активации метода события сокета
@@ -625,11 +618,11 @@ namespace awh {
 			 */
 			void setNameServer(const string & name = "") noexcept;
 			/**
-			 * setCA Метод установки CA-файла корневого SSL сертификата
-			 * @param cafile адрес CA-файла
-			 * @param capath адрес каталога где находится CA-файл
+			 * setTrusted Метод установки доверенного сертификата (CA-файла)
+			 * @param trusted адрес доверенного сертификата (CA-файла)
+			 * @param path    адрес каталога где находится сертификат (CA-файл)
 			 */
-			void setCA(const string & cafile, const string & capath = "") noexcept;
+			void setTrusted(const string & trusted, const string & path = "") noexcept;
 			/**
 			 * setNet Метод установки параметров сети
 			 * @param ip     список IP адресов компьютера с которых разрешено выходить в интернет

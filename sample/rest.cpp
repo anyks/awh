@@ -101,7 +101,7 @@ int main(int argc, char * argv[]) noexcept {
 	// Устанавливаем простое чтение базы событий
 	// core.easily(true);
 	// Устанавливаем адрес сертификата
-	core.setCA("./ca/cert.pem");
+	core.setTrusted("./ca/cert.pem");
 	// Устанавливаем логин и пароль пользователя
 	rest.setUser("user", "password");
 	// Устанавливаем данные прокси-сервера

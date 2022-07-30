@@ -126,14 +126,13 @@ namespace awh {
 			 * BufferEvent Структура буфера событий
 			 */
 			typedef struct BufferEvent {
-				int socket;      // Активный сокет
 				event_t event;   // Событие чтения/записи
 				timer_t timer;   // Собатие таймера на чтение/запись
 				locked_t locked; // Блокиратор чтения/записи
 				/**
 				 * BufferEvent Конструктор
 				 */
-				BufferEvent() noexcept : socket(-1) {}
+				BufferEvent() noexcept {}
 			} bev_t;
 			/**
 			 * Mark Структура маркера на размер детектируемых байт
@@ -244,7 +243,7 @@ namespace awh {
 					 * @param log    объект для работы с логами
 					 */
 					Adjutant(const Worker * parent, const fmk_t * fmk, const log_t * log) noexcept :
-					 aid(0), ip(""), mac(""), parent(parent), fmk(fmk), log(log) {}
+					 aid(0), ip(""), mac(""), ssl(log), fmk(fmk), log(log), parent(parent) {}
 					/**
 					 * ~Adjutant Деструктор
 					 */

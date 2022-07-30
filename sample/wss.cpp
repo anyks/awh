@@ -141,6 +141,8 @@ int main(int argc, char * argv[]){
 	// core.easily(true);
 	// Активируем максимальное количество рабочих процессов
 	// core.setForks();
+	// Устанавливаем адрес сертификата
+	core.setTrusted("./ca/cert.pem");
 	// Устанавливаем название сервера
 	// core.setNameServer("anyks");
 	// Выполняем активацию многопоточности
@@ -159,8 +161,7 @@ int main(int argc, char * argv[]){
 	// Устанавливаем SSL сертификаты сервера
 	core.setCert(
 		"/usr/local/etc/letsencrypt/live/anyks.net/fullchain.pem",
-		"/usr/local/etc/letsencrypt/live/anyks.net/privkey.pem",
-		"/usr/local/etc/letsencrypt/live/anyks.net/chain.pem"
+		"/usr/local/etc/letsencrypt/live/anyks.net/privkey.pem"
 	);
 	// Устанавливаем шифрование
 	// ws.setCrypt("PASS");

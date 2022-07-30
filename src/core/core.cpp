@@ -456,28 +456,6 @@ void awh::Core::clean(const size_t aid) const noexcept {
 		const_cast <core_t *> (this)->disabled(method_t::WRITE, it->first);
 		// Выполняем блокировку на чтение/запись данных
 		adj->bev.locked = worker_t::locked_t();
-		// Если сокет активен
-		if(adj->bev.socket > -1){
-			/**
-			 * Если операционной системой является Windows
-			 */
-			#if defined(_WIN32) || defined(_WIN64)
-				// Запрещаем работу с сокетом
-				shutdown(adj->bev.socket, SD_BOTH);
-				// Выполняем закрытие сокета
-				closesocket(adj->bev.socket);
-			/**
-			 * Если операционной системой является Nix-подобная
-			 */
-			#else
-				// Запрещаем работу с сокетом
-				shutdown(adj->bev.socket, SHUT_RDWR);
-				// Выполняем закрытие сокета
-				::close(adj->bev.socket);
-			#endif
-			// Выполняем сброс сокета
-			adj->bev.socket = -1;
-		}
 	}
 }
 /**
@@ -1043,69 +1021,6 @@ void awh::Core::rebase() noexcept {
 	}
 }
 /**
- * error Метод вывода описание ошибок
- * @param bytes количество записанных/прочитанных байт в сокет
- * @param aid   идентификатор адъютанта
- */
-void awh::Core::error(const int64_t bytes, const size_t aid) const noexcept {
-	// Если работа базы событий продолжается
-	if(this->working()){
-		// Выполняем извлечение адъютанта
-		auto it = this->adjutants.find(aid);
-		// Если адъютант получен
-		if(it != this->adjutants.end()){
-			// Если защищённый режим работы разрешён
-			if(it->second->ssl.mode){
-				// Получаем данные описание ошибки
-				const int error = SSL_get_error(it->second->ssl.ssl, bytes);
-				// Определяем тип ошибки
-				switch(error){
-					// Если был возвращён ноль
-					case SSL_ERROR_ZERO_RETURN: {
-						// Если удалённая сторона произвела закрытие подключения
-						if(SSL_get_shutdown(it->second->ssl.ssl) & SSL_RECEIVED_SHUTDOWN)
-							// Выводим в лог сообщение
-							this->log->print("the remote side closed the connection", log_t::flag_t::INFO);
-					} break;
-					// Если произошла ошибка вызова
-					case SSL_ERROR_SYSCALL: {
-						// Получаем данные описание ошибки
-						u_long error = ERR_get_error();
-						// Если ошибка получена
-						if(error != 0){
-							// Выводим в лог сообщение
-							this->log->print("%s", log_t::flag_t::CRITICAL, ERR_error_string(error, nullptr));
-							/**
-							 * Выполняем извлечение остальных ошибок
-							 */
-							do {
-								// Выводим в лог сообщение
-								this->log->print("%s", log_t::flag_t::CRITICAL, ERR_error_string(error, nullptr));
-							// Если ещё есть ошибки
-							} while((error = ERR_get_error()));
-						// Если данные записаны неверно
-						} else if(bytes == -1)
-							// Выводим в лог сообщение
-							this->log->print("%s", log_t::flag_t::CRITICAL, strerror(errno));
-					} break;
-					// Для всех остальных ошибок
-					default: {
-						// Получаем данные описание ошибки
-						u_long error = 0;
-						// Выполняем чтение ошибок OpenSSL
-						while((error = ERR_get_error()))
-							// Выводим в лог сообщение
-							this->log->print("%s", log_t::flag_t::CRITICAL, ERR_error_string(error, nullptr));
-					}
-				};
-			// Если произошла ошибка
-			} else if(bytes == -1)
-				// Выводим в лог сообщение
-				this->log->print("%s", log_t::flag_t::CRITICAL, strerror(errno));
-		}
-	}
-}
-/**
  * enabled Метод активации метода события сокета
  * @param method метод события сокета
  * @param aid    идентификатор адъютанта
@@ -1120,7 +1035,7 @@ void awh::Core::enabled(const method_t method, const size_t aid) noexcept {
 			// Получаем объект адъютанта
 			awh::worker_t::adj_t * adj = const_cast <awh::worker_t::adj_t *> (it->second);
 			// Если сокет подключения активен
-			if(adj->bev.socket > -1){
+			if(adj->ssl.wrapped()){
 				// Получаем объект подключения
 				worker_t * wrk = (worker_t *) const_cast <awh::worker_t *> (adj->parent);
 				// Определяем метод события сокета
@@ -1138,7 +1053,7 @@ void awh::Core::enabled(const method_t method, const size_t aid) noexcept {
 						// Устанавливаем базу событий
 						adj->bev.event.read.set(this->dispatch.base);
 						// Устанавливаем сокет для чтения
-						adj->bev.event.read.set(adj->bev.socket, ev::READ);
+						adj->bev.event.read.set(adj->ssl.get(), ev::READ);
 						// Устанавливаем событие на чтение данных подключения
 						adj->bev.event.read.set <awh::worker_t::adj_t, &awh::worker_t::adj_t::read> (adj);
 						// Запускаем чтение данных
@@ -1170,7 +1085,7 @@ void awh::Core::enabled(const method_t method, const size_t aid) noexcept {
 						// Устанавливаем базу событий
 						adj->bev.event.write.set(this->dispatch.base);
 						// Устанавливаем сокет для записи
-						adj->bev.event.write.set(adj->bev.socket, ev::WRITE);
+						adj->bev.event.write.set(adj->ssl.get(), ev::WRITE);
 						// Устанавливаем событие на запись данных подключения
 						adj->bev.event.write.set <awh::worker_t::adj_t, &awh::worker_t::adj_t::write> (adj);
 						// Запускаем запись данных
@@ -1198,7 +1113,7 @@ void awh::Core::enabled(const method_t method, const size_t aid) noexcept {
 						// Устанавливаем базу событий
 						adj->bev.event.connect.set(this->dispatch.base);
 						// Устанавливаем сокет для записи
-						adj->bev.event.connect.set(adj->bev.socket, ev::WRITE);
+						adj->bev.event.connect.set(adj->ssl.get(), ev::WRITE);
 						// Устанавливаем событие подключения
 						adj->bev.event.connect.set <awh::worker_t::adj_t, &awh::worker_t::adj_t::connect> (adj);
 						// Выполняем запуск подключения
@@ -1293,7 +1208,7 @@ void awh::Core::write(const char * buffer, const size_t size, const size_t aid) 
 				 */
 				#else
 					// Если сокет подключения активен
-					if(adj->bev.socket > -1){
+					if(adj->ssl.wrapped()){
 						// Разрешаем запись данных в сокет
 						adj->bev.locked.write = false;
 						// Выполняем передачу данных
@@ -1723,15 +1638,15 @@ void awh::Core::setNameServer(const string & name) noexcept {
 	else this->unixServerName = AWH_SHORT_NAME;
 }
 /**
- * setCA Метод установки CA-файла корневого SSL сертификата
- * @param cafile адрес CA-файла
- * @param capath адрес каталога где находится CA-файл
+ * setTrusted Метод установки доверенного сертификата (CA-файла)
+ * @param trusted адрес доверенного сертификата (CA-файла)
+ * @param path    адрес каталога где находится сертификат (CA-файл)
  */
-void awh::Core::setCA(const string & cafile, const string & capath) noexcept {
+void awh::Core::setTrusted(const string & trusted, const string & path) noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->mtx.main);
 	// Устанавливаем адрес CA-файла
-	this->ssl.setCA(cafile, capath);
+	this->ssl.setTrusted(trusted, path);
 }
 /**
  * setNet Метод установки параметров сети

@@ -668,10 +668,17 @@ void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 					unique_ptr <awh::worker_t::adj_t> adj(new awh::worker_t::adj_t(wrk, this->fmk, this->log));
 					// Выполняем блокировку потока
 					this->mtx.accept.lock();
-					// Запоминаем файловый дескриптор
-					adj->bev.socket = socket;
 					// Устанавливаем идентификатор адъютанта
 					adj->aid = this->fmk->unixTimestamp();
+					// Выполняем получение контекста сертификата
+					adj->ssl = this->ssl.wrap(socket, false);
+					// Если защищённый режим не активирован
+					if(!adj->ssl.wrapped()){
+						// Выводим сообщение об ошибке
+						this->log->print("wrap SSL context is failed", log_t::flag_t::CRITICAL);
+						// Выходим из функции
+						return;
+					}
 					// Добавляем созданного адъютанта в список адъютантов
 					auto ret = wrk->adjutants.emplace(adj->aid, move(adj));
 					// Добавляем адъютанта в список подключений
@@ -699,7 +706,7 @@ void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 							log_t::flag_t::INFO,
 							ret.first->second->ip.c_str(),
 							ret.first->second->mac.c_str(),
-							ret.first->second->bev.socket, getpid()
+							socket, getpid()
 						);
 					// Выполняем функцию обратного вызова
 					if(wrk->connectFn != nullptr) wrk->connectFn(ret.first->first, wrk->wid, this);
@@ -764,51 +771,27 @@ void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 				this->socket.nonBlocking(socket);
 				// Создаём бъект адъютанта
 				unique_ptr <awh::worker_t::adj_t> adj(new awh::worker_t::adj_t(wrk, this->fmk, this->log));
-				// Выполняем удаление контекста SSL
-				this->ssl.clear(adj->ssl);
-				// Выполняем получение контекста сертификата
-				adj->ssl = this->ssl.init();
 				// Выполняем блокировку потока
 				this->mtx.accept.lock();
-				// Запоминаем файловый дескриптор
-				adj->bev.socket = socket;
+				// Выполняем получение контекста сертификата
+				adj->ssl = this->ssl.wrap(socket);
 				// Устанавливаем идентификатор адъютанта
 				adj->aid = this->fmk->unixTimestamp();
 				// Выполняем блокировку потока
 				this->mtx.accept.unlock();
-				// Если защищённый режим работы разрешён
-				if(adj->ssl.mode){
-
-					
-					// BIO_free(BIO *a);
-					// Выполняем обёртывание сокета в BIO SSL
-					BIO * bio = BIO_new_socket(adj->bev.socket, BIO_NOCLOSE);
-					// Если BIO SSL создано
-					if(bio != nullptr){
-						// Устанавливаем блокирующий режим ввода/вывода для сокета
-						BIO_set_nbio(bio, 1);
-						// Выполняем установку BIO SSL
-						SSL_set_bio(adj->ssl.ssl, bio, bio);
-						// Устанавливаем флаг записи в буфер порциями
-						SSL_set_mode(adj->ssl.ssl, SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER);
-						// Выполняем активацию клиента SSL
-						SSL_set_accept_state(adj->ssl.ssl);
-					// Если BIO SSL не создано
-					} else {
-						// Выполняем закрытие подключения
-						this->close(adj->bev.socket);
-						// Выводим сообщение об ошибке
-						this->log->print("BIO new socket is failed", log_t::flag_t::CRITICAL);
-						// Выходим из функции
-						return;
-					}
+				// Если защищённый режим не активирован
+				if(!adj->ssl.wrapped()){
+					// Выводим сообщение об ошибке
+					this->log->print("wrap SSL context is failed", log_t::flag_t::CRITICAL);
+					// Выходим из функции
+					return;
 				}
 				// Если функция обратного вызова установлена
 				if(wrk->acceptFn != nullptr){
 					// Выполняем проверку, разрешено ли клиенту подключиться к серверу
 					if(!wrk->acceptFn(ip, mac, it->first, this)){
 						// Выполняем закрытие сокета
-						this->close(adj->bev.socket);
+						this->close(socket);
 						// Выводим в лог сообщение
 						this->log->print("broken client, host = %s, mac = %s, socket = %d", log_t::flag_t::WARNING, ip.c_str(), mac.c_str(), socket);
 						// Выходим из функции
@@ -849,7 +832,7 @@ void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 						log_t::flag_t::INFO,
 						ret.first->second->ip.c_str(),
 						ret.first->second->mac.c_str(),
-						ret.first->second->bev.socket, getpid()
+						socket, getpid()
 					);
 				// Выполняем функцию обратного вызова
 				if(wrk->connectFn != nullptr) wrk->connectFn(ret.first->first, wrk->wid, this);
@@ -1246,16 +1229,8 @@ void awh::server::Core::transfer(const method_t method, const size_t aid) noexce
 				char buffer[BUFFER_SIZE];
 				// Выполняем перебор бесконечным циклом пока это разрешено
 				while(!adj->bev.locked.read){
-					// Выполняем зануление буфера
-					memset(buffer, 0, sizeof(buffer));
-					// Если защищённый режим работы разрешён
-					if(adj->ssl.mode){
-						// Выполняем очистку ошибок OpenSSL
-						ERR_clear_error();
-						// Выполняем чтение из защищённого сокета
-						bytes = SSL_read(adj->ssl.ssl, buffer, sizeof(buffer));
-					// Выполняем чтение данных из сокета
-					} else bytes = recv(adj->bev.socket, buffer, sizeof(buffer), 0);
+					// Выполняем получение сообщения от клиента
+					bytes = adj->ssl.read(buffer, sizeof(buffer));
 					// Если время ожидания чтения данных установлено
 					if(wrk->wait && (adj->timeouts.read > 0)){
 						// Устанавливаем время ожидания на получение данных
@@ -1294,27 +1269,17 @@ void awh::server::Core::transfer(const method_t method, const size_t aid) noexce
 							wrk->readFn(buffer, bytes, aid, wrk->wid, reinterpret_cast <awh::core_t *> (this));
 					// Если данные не могут быть прочитаны
 					} else {
-						// Если произошла ошибка
-						if(bytes < 0){
-							// Если произошёл системный сигнал попробовать ещё раз
-							if(errno == EINTR) continue;
-							// Если защищённый режим работы разрешён
-							if(adj->ssl.mode){
-								// Получаем данные описание ошибки
-								if(SSL_get_error(adj->ssl.ssl, bytes) == SSL_ERROR_WANT_READ)
-									// Выполняем пропуск попытки
-									break;
-								// Иначе выводим сообщение об ошибке
-								else this->error(bytes, aid);
-							// Если защищённый режим работы запрещён
-							} else if(errno == EAGAIN) break;
+						// Если нужно повторить попытку
+						if(bytes == -2) continue;
+						// Если нужно выйти из цикла
+						else if(bytes == -1) break;
+						// Если нужно завершить работу
+						else if(bytes == 0) {
 							// Выполняем отключение клиента
 							this->close(aid);
+							// Выходим из цикла
+							break;
 						}
-						// Если подключение разорвано
-						if(bytes == 0)
-							// Выполняем отключение клиента
-							this->close(aid);
 					}
 					// Выходим из цикла
 					break;
@@ -1336,14 +1301,8 @@ void awh::server::Core::transfer(const method_t method, const size_t aid) noexce
 						size = (adj->buffer.size() - offset);
 						// Определяем размер отправляемых данных
 						actual = ((size >= adj->marker.write.max) ? adj->marker.write.max : size);
-						// Если защищённый режим работы разрешён
-						if(adj->ssl.mode){
-							// Выполняем очистку ошибок OpenSSL
-							ERR_clear_error();
-							// Выполняем отправку сообщения через защищённый канал
-							bytes = SSL_write(adj->ssl.ssl, adj->buffer.data() + offset, actual);
-						// Выполняем отправку сообщения в сокет
-						} else bytes = send(adj->bev.socket, adj->buffer.data() + offset, actual, 0);
+						// Выполняем отправку сообщения клиенту
+						bytes = adj->ssl.write(adj->buffer.data() + offset, actual);
 						// Если время ожидания записи данных установлено
 						if(adj->timeouts.write > 0){
 							// Устанавливаем время ожидания на запись данных
@@ -1352,29 +1311,14 @@ void awh::server::Core::transfer(const method_t method, const size_t aid) noexce
 							adj->bev.timer.write.again();
 						// Останавливаем таймаут ожидания на запись в сокет
 						} else adj->bev.timer.write.stop();
-						// Если байты не были записаны в сокет
-						if(bytes <= 0){
-							// Если произошла ошибка
-							if(bytes < 0){
-								// Если произошёл системный сигнал попробовать ещё раз
-								if(errno == EINTR) continue;
-								// Если защищённый режим работы разрешён
-								if(adj->ssl.mode){
-									// Получаем данные описание ошибки
-									if(SSL_get_error(adj->ssl.ssl, bytes) == SSL_ERROR_WANT_WRITE)
-										// Выполняем пропуск попытки
-										continue;
-									// Иначе выводим сообщение об ошибке
-									else this->error(bytes, aid);
-								// Если защищённый режим работы запрещён
-								} else if(errno == EAGAIN) continue;
-								// Иначе просто закрываем подключение
-								this->close(aid);
-							}
-							// Если подключение разорвано или сокет находится в блокирующем режиме
-							if(bytes == 0)
-								// Выполняем отключение клиента
-								this->close(aid);
+						// Если нужно повторить попытку
+						if(bytes == -2) continue;
+						// Если нужно выйти из цикла
+						else if(bytes == -1) break;
+						// Если нужно завершить работу
+						else if(bytes == 0) {
+							// Выполняем отключение клиента
+							this->close(aid);
 							// Выходим из цикла
 							break;
 						}
@@ -1419,14 +1363,12 @@ void awh::server::Core::setBandwidth(const size_t aid, const string & read, cons
 		#if !defined(_WIN32) && !defined(_WIN64)
 			// Получаем объект адъютанта
 			awh::worker_t::adj_t * adj = const_cast <awh::worker_t::adj_t *> (it->second);
-			// Получаем объект воркера
-			worker_t * wrk = (worker_t *) const_cast <awh::worker_t *> (adj->parent);
-			// Получаем размер буфера на чтение
-			const int rcv = (!read.empty() ? this->fmk->sizeBuffer(read) : 0);
-			// Получаем размер буфера на запись
-			const int snd = (!write.empty() ? this->fmk->sizeBuffer(write) : 0);
 			// Устанавливаем размер буфера
-			if(adj->bev.socket > 0) this->socket.bufferSize(adj->bev.socket, rcv, snd, wrk->total);
+			adj->ssl.bufferSize(
+				(!read.empty() ? this->fmk->sizeBuffer(read) : 0),
+				(!write.empty() ? this->fmk->sizeBuffer(write) : 0),
+				reinterpret_cast <const worker_t *> (adj->parent)->total
+			);
 		/**
 		 * Если операционной системой является MS Windows
 		 */
@@ -1478,6 +1420,17 @@ void awh::server::Core::setTotal(const size_t wid, const u_short total) noexcept
 	}
 }
 /**
+ * setCert Метод установки файлов сертификата
+ * @param chain файл цепочки сертификатов
+ * @param key   приватный ключ сертификата
+ */
+void awh::server::Core::setCert(const string & chain, const string & key) noexcept {
+	// Выполняем блокировку потока
+	const lock_guard <recursive_mutex> lock(this->mtx.system);
+	// Устанавливаем файлы сертификата
+	this->ssl.setCertificate(chain, key);
+}
+/**
  * init Метод инициализации сервера
  * @param wid  идентификатор воркера
  * @param port порт сервера
@@ -1502,18 +1455,6 @@ void awh::server::Core::init(const size_t wid, const u_int port, const string & 
 			else wrk->host = this->ifnet.ip(this->net.family);
 		}
 	}
-}
-/**
- * setCert Метод установки файлов сертификата
- * @param cert  корневой сертификат
- * @param key   приватный ключ сертификата
- * @param chain файл цепочки сертификатов
- */
-void awh::server::Core::setCert(const string & cert, const string & key, const string & chain) noexcept {
-	// Выполняем блокировку потока
-	const lock_guard <recursive_mutex> lock(this->mtx.system);
-	// Устанавливаем файлы сертификата
-	this->ssl.setCert(cert, key, chain);
 }
 /**
  * Core Конструктор

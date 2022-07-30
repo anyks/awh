@@ -242,7 +242,7 @@ int main(int argc, char * argv[]) noexcept {
 	// Устанавливаем название сервера
 	// core.setNameServer("anyks");
 	// Устанавливаем адрес сертификата
-	core.setCA("./ca/cert.pem");
+	core.setTrusted("./ca/cert.pem");
 	// Устанавливаем логин и пароль пользователя
 	// ws.setUser("user", "password");
 	// Выполняем активацию многопоточности
