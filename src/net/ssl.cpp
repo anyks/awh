@@ -274,7 +274,7 @@ awh::ASSL::ctx_t awh::ASSL::init() noexcept {
 		}
 
 		// Получаем контекст OpenSSL
-		result.ctx = SSL_CTX_new(SSLv23_client_method());
+		result.ctx = SSL_CTX_new(SSLv23_server_method()); // SSLv3_method()
 		// Если контекст не создан
 		if(result.ctx == nullptr){
 			// Выводим в лог сообщение
@@ -513,7 +513,7 @@ awh::ASSL::ctx_t awh::ASSL::init() noexcept {
 			return result;
 		}
 
-		/*
+		
 		// Проверяем рукопожатие
 		if(SSL_do_handshake(result.ssl) <= 0){
 			// Выполняем проверку рукопожатия
@@ -526,7 +526,7 @@ awh::ASSL::ctx_t awh::ASSL::init() noexcept {
 				this->log->print("certificate chain validation failed: %s", log_t::flag_t::CRITICAL, X509_verify_cert_error_string(verify));
 			}
 		}
-		*/
+		
 
 		result.mode = true;
 	}
