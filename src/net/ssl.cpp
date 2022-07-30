@@ -427,6 +427,37 @@ awh::ASSL::ctx_t awh::ASSL::init() noexcept {
 		}
 		*/
 
+		// Создаем ssl объект
+		result.ssl = SSL_new(result.ctx);
+
+		/*
+		cout << " =======================1 " << result.ssl << " === " << this->cert << " === " << SSL_use_certificate_file(result.ssl, this->cert.c_str(), SSL_FILETYPE_PEM) << endl;
+		cout << " =======================2 " << result.ssl << " === " << this->key << " === " << SSL_use_PrivateKey_file(result.ssl, this->key.c_str(), SSL_FILETYPE_PEM) << endl;
+		cout << " =======================3 " << result.ssl << " === " << this->chain << " === " << SSL_use_certificate_chain_file(result.ssl, this->chain.c_str()) << endl;
+		*/
+
+		// Если объект не создан
+		if(!(result.mode = (result.ssl != nullptr))){
+			// Очищаем созданный контекст
+			this->clear(result);
+			// Выводим в лог сообщение
+			this->log->print("%s", log_t::flag_t::CRITICAL, "ssl initialization is not allow");
+			// Выходим
+			return result;
+		}
+		// Проверяем рукопожатие
+		if(SSL_do_handshake(result.ssl) <= 0){
+			// Выполняем проверку рукопожатия
+			const long verify = SSL_get_verify_result(result.ssl);
+			// Если рукопожатие не выполнено
+			if(verify != X509_V_OK){
+				// Очищаем созданный контекст
+				this->clear(result);
+				// Выводим в лог сообщение
+				this->log->print("certificate chain validation failed: %s", log_t::flag_t::CRITICAL, X509_verify_cert_error_string(verify));
+			}
+		}
+
 		result.mode = true;
 	}
 	// Выводим результат
@@ -441,7 +472,7 @@ awh::ASSL::ctx_t awh::ASSL::init(const uri_t::url_t & url) noexcept {
 	// Результат работы функции
 	ctx_t result;
 	// Если объект фреймворка существует
-	// if((this->fmk != nullptr) && (!url.domain.empty() || !url.ip.empty()) && ((url.schema.compare("https") == 0) || (url.schema.compare("wss") == 0))){
+	if((this->fmk != nullptr) && (!url.domain.empty() || !url.ip.empty()) && ((url.schema.compare("https") == 0) || (url.schema.compare("wss") == 0))){
 		// Активируем рандомный генератор
 		if(RAND_poll() == 0){
 			// Выводим в лог сообщение
@@ -718,7 +749,7 @@ awh::ASSL::ctx_t awh::ASSL::init(const uri_t::url_t & url) noexcept {
 				this->log->print("certificate chain validation failed: %s", log_t::flag_t::CRITICAL, X509_verify_cert_error_string(verify));
 			}
 		}
-	// }
+	}
 	// Выводим результат
 	return result;
 }
