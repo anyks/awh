@@ -503,8 +503,8 @@ awh::ASSL::ctx_t awh::ASSL::init() noexcept {
 		cout << " -----------------------2 " << result.ctx << " === " << this->key << " === " << SSL_CTX_use_PrivateKey_file(result.ctx, this->key.c_str(), SSL_FILETYPE_PEM) << endl;
 		cout << " -----------------------4 " << result.ctx << " === " << SSL_CTX_check_private_key(result.ctx) << endl;
 		
-		SSL_CTX_set_verify(result.ctx, SSL_VERIFY_PEER | SSL_VERIFY_FAIL_IF_NO_PEER_CERT, nullptr);
-    	SSL_CTX_set_verify_depth(result.ctx, 4);
+		// SSL_CTX_set_verify(result.ctx, SSL_VERIFY_PEER | SSL_VERIFY_FAIL_IF_NO_PEER_CERT, nullptr);
+    	// SSL_CTX_set_verify_depth(result.ctx, 4);
 
 
 		/*
