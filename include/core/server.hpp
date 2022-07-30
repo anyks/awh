@@ -72,46 +72,51 @@ namespace awh {
 				};
 			private:
 				/**
-				 * Signals Структура событий сигналов
+				 * Если операционной системой не является Windows
 				 */
-				typedef struct Signals {
-					ev::sig sint;
-					ev::sig sfpe;
-					ev::sig sterm;
-					ev::sig squit;
-					ev::sig ssegv;
-				} sig_t;
-				/**
-				 * Message Структура межпроцессного сообщения
-				 */
-				typedef struct Message {
-					pid_t pid;     // Пид активного процесса
-					size_t index;  // Индекс работника в списке
-					size_t count;  // Количество подключений
-					event_t event; // Активное событие
+				#if !defined(_WIN32) && !defined(_WIN64)
 					/**
-					 * Message Конструктор
+					 * Signals Структура событий сигналов
 					 */
-					Message() noexcept : pid(0), index(0), count(0), event(event_t::NONE) {}
-				} mess_t;
-				/**
-				 * Jack Структура работника
-				 */
-				typedef struct Jack {
-					pid_t pid;    // Пид активного процесса
-					int mfds[2];  // Список файловых дескрипторов родительского процесса
-					int cfds[2];  // Список файловых дескрипторов дочернего процесса
-					ev::io read;  // Объект события на чтение
-					ev::io write; // Объект события на запись
-					ev::child cw; // Объект работы с дочерними процессами
-					size_t wid;   // Идентификатор основного воркера
-					size_t index; // Индекс работника в списке
-					size_t count; // Количество подключений
+					typedef struct Signals {
+						ev::sig sint;
+						ev::sig sfpe;
+						ev::sig sterm;
+						ev::sig squit;
+						ev::sig ssegv;
+					} sig_t;
 					/**
-					 * Jack Конструктор
+					 * Message Структура межпроцессного сообщения
 					 */
-					Jack() noexcept : pid(0), wid(0), index(0), count(0) {}
-				} jack_t;
+					typedef struct Message {
+						pid_t pid;     // Пид активного процесса
+						size_t index;  // Индекс работника в списке
+						size_t count;  // Количество подключений
+						event_t event; // Активное событие
+						/**
+						 * Message Конструктор
+						 */
+						Message() noexcept : pid(0), index(0), count(0), event(event_t::NONE) {}
+					} mess_t;
+					/**
+					 * Jack Структура работника
+					 */
+					typedef struct Jack {
+						pid_t pid;    // Пид активного процесса
+						int mfds[2];  // Список файловых дескрипторов родительского процесса
+						int cfds[2];  // Список файловых дескрипторов дочернего процесса
+						ev::io read;  // Объект события на чтение
+						ev::io write; // Объект события на запись
+						ev::child cw; // Объект работы с дочерними процессами
+						size_t wid;   // Идентификатор основного воркера
+						size_t index; // Индекс работника в списке
+						size_t count; // Количество подключений
+						/**
+						 * Jack Конструктор
+						 */
+						Jack() noexcept : pid(0), wid(0), index(0), count(0) {}
+					} jack_t;
+				#endif
 			private:
 				/**
 				 * Mutex Объект основных мютексов
@@ -124,8 +129,13 @@ namespace awh {
 			private:
 				// Мютекс для блокировки основного потока
 				mtx_t mtx;
-				// Объект работы с сигналами
-				sig_t sig;
+				/**
+				 * Если операционной системой не является Windows
+				 */
+				#if !defined(_WIN32) && !defined(_WIN64)
+					// Объект работы с сигналами
+					sig_t sig;
+				#endif
 			private:
 				// Идентификатор процесса
 				pid_t pid;
@@ -145,8 +155,13 @@ namespace awh {
 				// Список блокированных объектов
 				set <size_t> locking;
 			private:
-				// Список дочерних работников
-				vector <unique_ptr <jack_t>> jacks;
+				/**
+				 * Если операционной системой не является Windows
+				 */
+				#if !defined(_WIN32) && !defined(_WIN64)
+					// Список дочерних работников
+					vector <unique_ptr <jack_t>> jacks;
+				#endif
 			private:
 				/**
 				 * readJack Функция обратного вызова при чтении данных с сокета
