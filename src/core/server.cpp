@@ -777,7 +777,7 @@ void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 				// Выполняем блокировку потока
 				this->mtx.accept.unlock();
 				// Если защищённый режим работы разрешён
-				if(adj->ssl.mode){
+				// if(adj->ssl.mode){
 
 					cout << " ###################1 " << endl;
 
@@ -853,7 +853,7 @@ void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 						// Выходим из функции
 						return;
 					}
-				}
+				// }
 				// Если функция обратного вызова установлена
 				if(wrk->acceptFn != nullptr){
 					// Выполняем проверку, разрешено ли клиенту подключиться к серверу
