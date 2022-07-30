@@ -865,7 +865,7 @@ void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 						*/
 
 						cout << " ###################12 " << endl;
-
+					/*
 					// Если BIO SSL не создано
 					} else {
 						// Выполняем закрытие подключения
