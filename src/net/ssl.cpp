@@ -117,6 +117,9 @@ const bool awh::ASSL::hostmatch(const string & host, const string & patt) const 
 const bool awh::ASSL::certHostcheck(const string & host, const string & patt) const noexcept {
 	// Результат работы функции
 	bool result = false;
+
+	cout << " ========================== " << host << " === " << patt << endl;
+
 	// Если данные переданы
 	if(!host.empty() && !patt.empty())
 		// Проверяем эквивалентны ли домен и шаблон
