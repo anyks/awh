@@ -79,11 +79,11 @@ namespace awh {
 					 * Signals Структура событий сигналов
 					 */
 					typedef struct Signals {
-						ev::sig sint;
-						ev::sig sfpe;
-						ev::sig sterm;
-						ev::sig squit;
-						ev::sig ssegv;
+						ev::sig sint;  // Перехватчик сигнала SIGINT
+						ev::sig sfpe;  // Перехватчик сигнала SIGFPE
+						ev::sig sterm; // Перехватчик сигнала SIGTERM
+						ev::sig squit; // Перехватчик сигнала SIGQUIT
+						ev::sig ssegv; // Перехватчик сигнала SIGSEGV
 					} sig_t;
 					/**
 					 * Message Структура межпроцессного сообщения
@@ -97,7 +97,7 @@ namespace awh {
 						 * Message Конструктор
 						 */
 						Message() noexcept : pid(0), index(0), count(0), event(event_t::NONE) {}
-					} mess_t;
+					} __attribute__((packed)) mess_t;
 					/**
 					 * Jack Структура работника
 					 */

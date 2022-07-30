@@ -378,7 +378,7 @@ void awh::server::worker_t::accept(ev::io & watcher, int revents) noexcept {
  * @param index индекс инициализированного процесса
  * @param stop  флаг остановки итерации создания дочерних процессов
  */
-void awh::server::Core::forking(const size_t wid, const size_t index, const size_t stop) noexcept {	
+void awh::server::Core::forking(const size_t wid, const size_t index, const size_t stop) noexcept {
 	/**
 	 * Если операционной системой не является Windows
 	 */

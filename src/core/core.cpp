@@ -836,7 +836,7 @@ void awh::Core::start() noexcept {
 		// Выполняем разблокировку потока
 		this->mtx.status.unlock();
 		// Выполняем запуск чтения базы событий
-		this->dispatch.start();		
+		this->dispatch.start();
 	// Выполняем разблокировку потока
 	} else this->mtx.status.unlock();
 }
@@ -1184,7 +1184,7 @@ void awh::Core::disabled(const method_t method, const size_t aid) noexcept {
  * @param size   размер записываемых данных
  * @param aid    идентификатор адъютанта
  */
-void awh::Core::write(const char * buffer, const size_t size, const size_t aid) noexcept {	
+void awh::Core::write(const char * buffer, const size_t size, const size_t aid) noexcept {
 	// Если данные переданы
 	if((buffer != nullptr) && (size > 0)){
 		// Выполняем извлечение адъютанта
@@ -1636,6 +1636,16 @@ void awh::Core::setNameServer(const string & name) noexcept {
 		this->unixServerName = name;
 	// Иначе устанавливаем название сервера по умолчанию
 	else this->unixServerName = AWH_SHORT_NAME;
+}
+/**
+ * setCipher Метод установки алгоритмов шифрования
+ * @param cipher список алгоритмов шифрования для установки
+ */
+void awh::Core::setCipher(const vector <string> & cipher) noexcept {
+	// Выполняем блокировку потока
+	const lock_guard <recursive_mutex> lock(this->mtx.main);
+	// Выполняем установку алгоритмов шифрования
+	this->ssl.setCipher(cipher);
 }
 /**
  * setTrusted Метод установки доверенного сертификата (CA-файла)

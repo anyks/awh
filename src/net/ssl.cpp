@@ -687,40 +687,6 @@ bool awh::ASSL::initTrustedStore(SSL_CTX * ctx) const noexcept {
  * @param ctx контекст для очистки
  */
 void awh::ASSL::clear(ctx_t & ctx) const noexcept {
-	// Если объект верификации домена создан
-	if(ctx.verify != nullptr){
-		// Удаляем объект верификации
-		delete ctx.verify;
-		// Зануляем объект верификации
-		ctx.verify = nullptr;
-	}
-	/*
-	// Если BIO создано
-	if(ctx.bio != nullptr){
-		// Выполняем очистку BIO
-		BIO_free(ctx.bio);
-		// Зануляем контекст BIO
-		ctx.bio = nullptr;
-	}
-	*/
-	// Если контекст SSL создан
-	if(ctx.ssl != nullptr){
-		// Выключаем получение данных SSL
-		SSL_shutdown(ctx.ssl);
-		// Очищаем объект SSL
-		// SSL_clear(ctx.ssl);
-		// Освобождаем выделенную память
-		SSL_free(ctx.ssl);
-		// Зануляем контекст сервера
-		ctx.ssl = nullptr;
-	}
-	// Если контекст SSL сервер был поднят
-	if(ctx.ctx != nullptr){
-		// Очищаем контекст сервера
-		SSL_CTX_free(ctx.ctx);
-		// Зануляем контекст сервера
-		ctx.ctx = nullptr;
-	}
 	// Если сокет активен
 	if(ctx.fd > -1){
 		/**
@@ -743,6 +709,40 @@ void awh::ASSL::clear(ctx_t & ctx) const noexcept {
 		// Выполняем сброс сокета
 		ctx.fd = -1;
 	}
+	// Если объект верификации домена создан
+	if(ctx.verify != nullptr){
+		// Удаляем объект верификации
+		delete ctx.verify;
+		// Зануляем объект верификации
+		ctx.verify = nullptr;
+	}
+	// Если контекст SSL создан
+	if(ctx.ssl != nullptr){
+		// Выключаем получение данных SSL
+		SSL_shutdown(ctx.ssl);
+		// Очищаем объект SSL
+		// SSL_clear(ctx.ssl);
+		// Освобождаем выделенную память
+		SSL_free(ctx.ssl);
+		// Зануляем контекст сервера
+		ctx.ssl = nullptr;
+	}
+	// Если контекст SSL сервер был поднят
+	if(ctx.ctx != nullptr){
+		// Очищаем контекст сервера
+		SSL_CTX_free(ctx.ctx);
+		// Зануляем контекст сервера
+		ctx.ctx = nullptr;
+	}
+	/*
+	// Если BIO создано
+	if(ctx.bio != nullptr){
+		// Выполняем очистку BIO
+		BIO_free(ctx.bio);
+		// Зануляем контекст BIO
+		ctx.bio = nullptr;
+	}
+	*/
 	// Сбрасываем флаг инициализации
 	ctx.mode = false;
 }
@@ -986,75 +986,14 @@ awh::ASSL::ctx_t awh::ASSL::wrap(const int fd, const uri_t::url_t & url) noexcep
 		}
 		// Если нужно произвести проверку
 		if(this->verify && !url.domain.empty()){
-			/**
-			 * verifyFn Функция обратного вызова для проверки валидности сертификата
-			 * @param x509 данные сертификата
-			 * @param ctx  передаваемый контекст
-			 * @return     результат проверки
-			 */
-			/*
-			auto verifyFn = [](X509_STORE_CTX * x509 = nullptr, void * ctx = nullptr) -> int {
-				// Если объекты переданы верно
-				if((x509 != nullptr) && (ctx != nullptr)){
-					// Буфер данных сертификатов из хранилища
-					char buffer[256];
-					// Заполняем структуру нулями
-					memset(buffer, 0, sizeof(buffer));
-					// Ошибка проверки сертификата
-					string status = "X509VerifyCertFailed";
-					// Результат проверки домена
-					ssl_t::validate_t validate = ssl_t::validate_t::Error;
-					// Получаем объект подключения
-					const verify_t * obj = reinterpret_cast <const verify_t *> (ctx);
-					// Выполняем проверку сертификата
-					const int ok = X509_verify_cert(x509);
-					// Запрашиваем данные сертификата
-					X509 * cert = X509_STORE_CTX_get_current_cert(x509);
-					// Если проверка сертификата прошла удачно
-					if(ok){
-						// Выполняем проверку на соответствие хоста с данными хостов у сертификата
-						validate = obj->ssl->validateHostname(obj->host.c_str(), cert);
-						// Определяем полученную ошибку
-						switch((uint8_t) validate){
-							case (uint8_t) ssl_t::validate_t::MatchFound:           status = "MatchFound";           break;
-							case (uint8_t) ssl_t::validate_t::MatchNotFound:        status = "MatchNotFound";        break;
-							case (uint8_t) ssl_t::validate_t::NoSANPresent:         status = "NoSANPresent";         break;
-							case (uint8_t) ssl_t::validate_t::MalformedCertificate: status = "MalformedCertificate"; break;
-							case (uint8_t) ssl_t::validate_t::Error:                status = "Error";                break;
-							default:                                                status = "WTF!";
-						}
-					}
-					// Запрашиваем имя домена
-					X509_NAME_oneline(X509_get_subject_name(cert), buffer, sizeof(buffer));
-					// Очищаем выделенную память
-					X509_free(cert);
-					// Если домен найден в записях сертификата (т.е. сертификат соответствует данному домену)
-					if(validate == ssl_t::validate_t::MatchFound){
-					*/
-						/**
-						 * Если включён режим отладки
-						 */
-					/*
-						#if defined(DEBUG_MODE)
-							// Выводим в лог сообщение
-							obj->ssl->log->print("https server [%s] has this certificate, which looks good to me: %s", log_t::flag_t::INFO, obj->host.c_str(), buffer);
-						#endif
-						// Выводим сообщение, что проверка пройдена
-						return 1;
-					// Если ресурс не найден тогда выводим сообщение об ошибке
-					} else obj->ssl->log->print("%s for hostname '%s' [%s]", log_t::flag_t::CRITICAL, status.c_str(), obj->host.c_str(), buffer);
-				}
-				// Выводим сообщение, что проверка не пройдена
-				return 0;
-			};
-			*/
 			// Создаём объект проверки домена
 			result.verify = new verify_t(url.domain, this);
 			// Выполняем проверку сертификата
 			SSL_CTX_set_verify(result.ctx, SSL_VERIFY_PEER | SSL_VERIFY_CLIENT_ONCE, nullptr);
 			// Выполняем проверку всех дочерних сертификатов
 			SSL_CTX_set_cert_verify_callback(result.ctx, &verifyHost, result.verify);
-		}
+		// Запрещаем выполнять првоерку сертификата пользователя
+		} else SSL_CTX_set_verify(result.ctx, SSL_VERIFY_NONE, nullptr);
 		// Создаем ssl объект
 		result.ssl = SSL_new(result.ctx);
 		/**

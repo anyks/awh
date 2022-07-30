@@ -140,13 +140,13 @@ int main(int argc, char * argv[]){
 	// Устанавливаем простое чтение базы событий
 	// core.easily(true);
 	// Активируем максимальное количество рабочих процессов
-	core.setForks();
+	// core.setForks();
 	// Устанавливаем адрес сертификата
-	core.setTrusted("./ca/cert.pem");
+	// core.setTrusted("./ca/cert.pem");
 	// Устанавливаем название сервера
 	// core.setNameServer("anyks");
 	// Выполняем активацию многопоточности
-	ws.multiThreads(22);
+	// ws.multiThreads(22);
 	// Устанавливаем название сервера
 	// ws.setRealm("ANYKS");
 	// Устанавливаем временный ключ сессии
@@ -154,15 +154,17 @@ int main(int argc, char * argv[]){
 	// Устанавливаем тип авторизации
 	// ws.setAuthType(auth_t::type_t::DIGEST, auth_t::hash_t::SHA256);
 	// Выполняем инициализацию WebSocket сервера
-	// ws.init(2222, "127.0.0.1", http_t::compress_t::DEFLATE);
-	ws.init(2222, "", http_t::compress_t::DEFLATE);
+	ws.init(2222, "127.0.0.1", http_t::compress_t::DEFLATE);
+	// ws.init(2222, "", http_t::compress_t::DEFLATE);
 	// ws.init(2222, "127.0.0.1", http_t::compress_t::NONE);
 	// ws.init("anyks", http_t::compress_t::DEFLATE);
+	/*
 	// Устанавливаем SSL сертификаты сервера
 	core.setCert(
 		"/usr/local/etc/letsencrypt/live/anyks.net/fullchain.pem",
 		"/usr/local/etc/letsencrypt/live/anyks.net/privkey.pem"
 	);
+	*/
 	// Устанавливаем шифрование
 	// ws.setCrypt("PASS");
 	// Устанавливаем сабпротоколы

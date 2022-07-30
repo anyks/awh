@@ -618,6 +618,11 @@ namespace awh {
 			 */
 			void setNameServer(const string & name = "") noexcept;
 			/**
+			 * setCipher Метод установки алгоритмов шифрования
+			 * @param cipher список алгоритмов шифрования для установки
+			 */
+			void setCipher(const vector <string> & cipher) noexcept;
+			/**
 			 * setTrusted Метод установки доверенного сертификата (CA-файла)
 			 * @param trusted адрес доверенного сертификата (CA-файла)
 			 * @param path    адрес каталога где находится сертификат (CA-файл)
