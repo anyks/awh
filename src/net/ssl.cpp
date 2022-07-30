@@ -641,6 +641,17 @@ awh::ASSL::ctx_t awh::ASSL::init() noexcept {
 		
 		// cout << " =======================5 " << accept_result << endl;
 
+
+		// Активируем верификацию доменного имени
+		if(!X509_VERIFY_PARAM_set1_host(SSL_get0_param(result.ssl), "mimi.anyks.net", 0)){
+			// Очищаем созданный контекст
+			this->clear(result);
+			// Выводим в лог сообщение
+			this->log->print("%s", log_t::flag_t::CRITICAL, "domain ssl verification failed");
+			// Выходим
+			return result;
+		}
+
 		
 		// Проверяем рукопожатие
 		if(SSL_do_handshake(result.ssl) <= 0){
