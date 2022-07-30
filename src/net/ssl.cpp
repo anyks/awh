@@ -275,14 +275,10 @@ awh::ASSL::ctx_t awh::ASSL::init() noexcept {
 		}
 		*/
 
-		#if OPENSSL_VERSION_NUMBER < 0x10100000L
-			result.ctx = SSL_CTX_new(SSLv23_method());
-		#else
-			result.ctx = SSL_CTX_new(TLS_method());
-		#endif
+
 
 		// Получаем контекст OpenSSL
-		// result.ctx = SSL_CTX_new(SSLv23_server_method()); // SSLv3_method()
+		result.ctx = SSL_CTX_new(SSLv23_server_method()); // SSLv3_method()
 
 		// Если контекст не создан
 		if(result.ctx == nullptr){
@@ -300,9 +296,9 @@ awh::ASSL::ctx_t awh::ASSL::init() noexcept {
 		
 		// Устанавливаем типы шифрования
 		// if(!SSL_CTX_set_cipher_list(result.ctx, "ECDHE-RSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-SHA:ECDHE-RSA-AES256-SHA384")){		
-		// if(!SSL_CTX_set_cipher_list(result.ctx, "ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES256-GCM-SHA384:DHE-RSA-AES128-GCM-SHA256:DHE-DSS-AES128-GCM-SHA256:kEDH+AESGCM:ECDHE-RSA-AES128-SHA256:ECDHE-ECDSA-AES128-SHA256:ECDHE-RSA-AES128-SHA:ECDHE-ECDSA-AES128-SHA:ECDHE-RSA-AES256-SHA384:ECDHE-ECDSA-AES256-SHA384:ECDHE-RSA-AES256-SHA:ECDHE-ECDSA-AES256-SHA:DHE-RSA-AES128-SHA256:DHE-RSA-AES128-SHA:DHE-DSS-AES128-SHA256:DHE-RSA-AES256-SHA256:DHE-DSS-AES256-SHA:DHE-RSA-AES256-SHA:AES128-GCM-SHA256:AES256-GCM-SHA384:AES128-SHA256:AES256-SHA256:AES128-SHA:AES256-SHA:AES:CAMELLIA:DES-CBC3-SHA:!aNULL:!eNULL:!EXPORT:!DES:!RC4:!MD5:!PSK:!aECDH:!EDH-DSS-DES-CBC3-SHA:!EDH-RSA-DES-CBC3-SHA:!KRB5-DES-CBC3-SHA")){
+		if(!SSL_CTX_set_cipher_list(result.ctx, "ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES256-GCM-SHA384:DHE-RSA-AES128-GCM-SHA256:DHE-DSS-AES128-GCM-SHA256:kEDH+AESGCM:ECDHE-RSA-AES128-SHA256:ECDHE-ECDSA-AES128-SHA256:ECDHE-RSA-AES128-SHA:ECDHE-ECDSA-AES128-SHA:ECDHE-RSA-AES256-SHA384:ECDHE-ECDSA-AES256-SHA384:ECDHE-RSA-AES256-SHA:ECDHE-ECDSA-AES256-SHA:DHE-RSA-AES128-SHA256:DHE-RSA-AES128-SHA:DHE-DSS-AES128-SHA256:DHE-RSA-AES256-SHA256:DHE-DSS-AES256-SHA:DHE-RSA-AES256-SHA:AES128-GCM-SHA256:AES256-GCM-SHA384:AES128-SHA256:AES256-SHA256:AES128-SHA:AES256-SHA:AES:CAMELLIA:DES-CBC3-SHA:!aNULL:!eNULL:!EXPORT:!DES:!RC4:!MD5:!PSK:!aECDH:!EDH-DSS-DES-CBC3-SHA:!EDH-RSA-DES-CBC3-SHA:!KRB5-DES-CBC3-SHA")){
 		// SSL_CTX_set_ciphersuites(result.ctx, "TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256");
-		if(!SSL_CTX_set_cipher_list(result.ctx, "ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-SHA256:AES128-SHA:AES256-SHA:DES-CBC3-SHA:!DSS")){
+		// if(!SSL_CTX_set_cipher_list(result.ctx, "ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-SHA256:AES128-SHA:AES256-SHA:DES-CBC3-SHA:!DSS")){
 		
 		// if(!SSL_CTX_set_cipher_list(result.ctx, "ALL:!ADH:!RC4:+HIGH:+MEDIUM:-LOW:-SSLv2:-SSLv3:-EXP")){
 			// Очищаем созданный контекст
@@ -325,19 +321,21 @@ awh::ASSL::ctx_t awh::ASSL::init() noexcept {
 		*/
 		
 		
-
+		/*
 		// Если CA-файл не найден или адрес файла не указан
 		if(this->cafile.empty()){
 			// Получаем данные стора
 			X509_STORE * store = SSL_CTX_get_cert_store(result.ctx);
 			// Если - это Windows
 			#if defined(_WIN32) || defined(_WIN64)
+		*/
 				/**
 				 * addCertToStoreFn Функция проверки параметров сертификата
 				 * @param store стор с сертификатами для работы
 				 * @param name  название параметра сертификата
 				 * @return      результат проверки
 				 */
+		/*
 				auto addCertToStoreFn = [this](X509_STORE * store = nullptr, const char * name = nullptr) -> int {
 					// Результат работы функции
 					int result = 0;
@@ -472,6 +470,7 @@ awh::ASSL::ctx_t awh::ASSL::init() noexcept {
 				// Выполняем проверку CA-файла
 				SSL_CTX_set_client_CA_list(result.ctx, SSL_load_client_CA_file(this->cafile.c_str()));
 		}
+		*/
 		// Метка следующей итерации
 		Next:
 
@@ -534,9 +533,9 @@ awh::ASSL::ctx_t awh::ASSL::init() noexcept {
 		*/
 		
 
-		int accept_result = SSL_accept(result.ssl);
+		// int accept_result = SSL_accept(result.ssl);
 		
-		cout << " =======================5 " << accept_result << endl;
+		// cout << " =======================5 " << accept_result << endl;
 
 		/*
 		// Проверяем рукопожатие
