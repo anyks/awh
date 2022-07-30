@@ -782,7 +782,7 @@ void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 
 					SSL_set_fd(adj->ssl.ssl, adj->bev.socket);
 
-					if (SSL_accept(ssl) <= 0) {
+					if (SSL_accept(adj->ssl.ssl) <= 0) {
 						cout << " ################### GOOD ################### " << endl;
 					}
 
