@@ -1336,6 +1336,9 @@ void awh::server::Core::transfer(const method_t method, const size_t aid) noexce
 				while(!adj->bev.locked.read){
 					// Выполняем зануление буфера
 					memset(buffer, 0, sizeof(buffer));
+
+					cout << " **************** " << SSL_accept(adj->ssl.ssl) << endl;
+
 					// Если защищённый режим работы разрешён
 					if(adj->ssl.mode){
 						// Выполняем очистку ошибок OpenSSL
