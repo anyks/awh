@@ -287,8 +287,8 @@ awh::ASSL::ctx_t awh::ASSL::init() noexcept {
 		// Устанавливаем опции запроса
 		SSL_CTX_set_options(result.ctx, SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3); // TLSv1	TLSv1.1	TLSv1.2
 
-		cout << " ^^^^^^^^^^^^^^^^^^^^^^ CIPHERS1 " << SSL_default_ciphersuites() << endl;
-		cout << " ^^^^^^^^^^^^^^^^^^^^^^ CIPHERS2 " << SSL_default_cipher_list() << endl;
+		// cout << " ^^^^^^^^^^^^^^^^^^^^^^ CIPHERS1 " << OSSL_default_ciphersuites() << endl;
+		// cout << " ^^^^^^^^^^^^^^^^^^^^^^ CIPHERS2 " << OSSL_default_cipher_list() << endl;
 		
 		// Устанавливаем типы шифрования
 		// if(!SSL_CTX_set_cipher_list(result.ctx, "ECDHE-RSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-SHA:ECDHE-RSA-AES256-SHA384")){		
