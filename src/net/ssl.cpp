@@ -592,11 +592,11 @@ awh::ASSL::ctx_t awh::ASSL::init() noexcept {
 		// Создаём объект проверки домена
 		result.verify = new verify_t("mimi.anyks.net", this);
 		// Выполняем проверку сертификата
-		SSL_CTX_set_verify(result.ctx, SSL_VERIFY_PEER | SSL_VERIFY_POST_HANDSHAKE, nullptr);
+		SSL_CTX_set_verify(result.ctx, SSL_VERIFY_PEER | SSL_VERIFY_CLIENT_ONCE, nullptr);
 		// Выполняем проверку всех дочерних сертификатов
 		SSL_CTX_set_cert_verify_callback(result.ctx, verifyFn, result.verify);
 
-		SSL_CTX_set_verify_depth(result.ctx, 4);
+		// SSL_CTX_set_verify_depth(result.ctx, 4);
 
 
 		
@@ -654,7 +654,7 @@ awh::ASSL::ctx_t awh::ASSL::init() noexcept {
 
 		
 		// Проверяем рукопожатие
-		// if(SSL_do_handshake(result.ssl) <= 0){
+		if(SSL_do_handshake(result.ssl) <= 0){
 			// Выполняем проверку рукопожатия
 			const long verify = SSL_get_verify_result(result.ssl);
 			// Если рукопожатие не выполнено
@@ -664,7 +664,7 @@ awh::ASSL::ctx_t awh::ASSL::init() noexcept {
 				// Выводим в лог сообщение
 				this->log->print("certificate chain validation failed: %s", log_t::flag_t::CRITICAL, X509_verify_cert_error_string(verify));
 			}
-		// }
+		}
 		
 		
 		// Если объект не создан
