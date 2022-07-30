@@ -1557,7 +1557,7 @@ void awh::Core::freeze(const bool mode) noexcept {
  */
 bool awh::Core::unsetUnixSocket() noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <recursive_mutex> lock(this->mtx.unix);
+	const lock_guard <recursive_mutex> lock(this->mtx.main);
 	// Результат работы функции
 	bool result = false;
 	/**
@@ -1587,7 +1587,7 @@ bool awh::Core::unsetUnixSocket() noexcept {
  */
 bool awh::Core::setUnixSocket(const string & socket) noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <recursive_mutex> lock(this->mtx.unix);
+	const lock_guard <recursive_mutex> lock(this->mtx.main);
 	/**
 	 * Если операционной системой не является Windows
 	 */
@@ -1625,7 +1625,7 @@ bool awh::Core::isSetUnixSocket() const noexcept {
  */
 bool awh::Core::isActiveUnixSocket(const string & socket) const noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <recursive_mutex> lock(this->mtx.unix);
+	const lock_guard <recursive_mutex> lock(this->mtx.main);
 	// Результат работы функции
 	bool result = false;
 	/**

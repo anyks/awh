@@ -136,7 +136,6 @@ namespace awh {
 			typedef struct Mutex {
 				recursive_mutex bind;   // Для работы с биндингом ядра
 				recursive_mutex main;   // Для работы с параметрами модуля
-				recursive_mutex unix;   // Для работы с unix-сокетами
 				recursive_mutex timer;  // Для работы с таймерами
 				recursive_mutex status; // Для контроля запуска модуля
 				recursive_mutex worker; // Для работы с воркерами
