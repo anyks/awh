@@ -779,6 +779,14 @@ void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 				// Если защищённый режим работы разрешён
 				if(adj->ssl.mode){
 
+
+					SSL_set_fd(adj->ssl.ssl, adj->bev.socket);
+
+					if (SSL_accept(ssl) <= 0) {
+						cout << " ################### GOOD ################### " << endl;
+					}
+
+					/*
 					cout << " ###################1 " << endl;
 
 					// Выполняем обёртывание сокета в BIO SSL
@@ -867,6 +875,7 @@ void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 						// Выходим из функции
 						return;
 					}
+					*/
 				}
 				// Если функция обратного вызова установлена
 				if(wrk->acceptFn != nullptr){
