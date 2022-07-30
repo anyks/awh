@@ -501,11 +501,11 @@ const awh::Core::sockaddr_t awh::Core::sockaddr() const noexcept {
 					::unlink(this->unixSocket.c_str());
 			}
 			// Устанавливаем протокол интернета
-			result.unix.sun_family = AF_UNIX;
+			result.uxsock.sun_family = AF_UNIX;
 			// Очищаем всю структуру для сервера
-			memset(&result.unix.sun_path, 0, sizeof(result.unix.sun_path));
+			memset(&result.uxsock.sun_path, 0, sizeof(result.uxsock.sun_path));
 			// Копируем адрес сокета сервера
-			strncpy(result.unix.sun_path, this->unixSocket.c_str(), sizeof(result.unix.sun_path));
+			strncpy(result.uxsock.sun_path, this->unixSocket.c_str(), sizeof(result.uxsock.sun_path));
 			// Создаем сокет подключения
 			result.socket = ::socket(AF_UNIX, SOCK_STREAM, 0);
 			// Если сокет не создан то выходим
@@ -526,9 +526,9 @@ const awh::Core::sockaddr_t awh::Core::sockaddr() const noexcept {
 			// Если ядро является сервером
 			if(this->type == type_t::SERVER){
 				// Получаем размер объекта сокета
-				const socklen_t size = (offsetof(struct sockaddr_un, sun_path) + strlen(result.unix.sun_path));
+				const socklen_t size = (offsetof(struct sockaddr_un, sun_path) + strlen(result.uxsock.sun_path));
 				// Выполняем бинд на сокет
-				if(::bind(result.socket, (struct sockaddr *) &result.unix, size) < 0){
+				if(::bind(result.socket, (struct sockaddr *) &result.uxsock, size) < 0){
 					// Выводим в лог сообщение
 					this->log->print("bind local network [%s]", log_t::flag_t::CRITICAL, this->unixSocket.c_str());
 					// Выходим

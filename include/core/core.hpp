@@ -180,7 +180,7 @@ namespace awh {
 				 */
 				#if !defined(_WIN32) && !defined(_WIN64)
 					// Параметры подключения для UnixSocket
-					struct sockaddr_un unix;
+					struct sockaddr_un uxsock;
 				#endif
 				public:
 					// Параметры подключения клиента IPv4

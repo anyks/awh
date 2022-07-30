@@ -176,9 +176,9 @@ void awh::client::Core::connect(const size_t wid) noexcept {
 								// Выполняем блокировку потока
 								this->mtx.connect.unlock();
 								// Запоминаем полученную структуру
-								struct sockaddr * sun = reinterpret_cast <struct sockaddr *> (&sockaddr.unix);
+								struct sockaddr * sun = reinterpret_cast <struct sockaddr *> (&sockaddr.uxsock);
 								// Получаем размер объекта сокета
-								const socklen_t size = (offsetof(struct sockaddr_un, sun_path) + strlen(sockaddr.unix.sun_path));
+								const socklen_t size = (offsetof(struct sockaddr_un, sun_path) + strlen(sockaddr.uxsock.sun_path));
 								// Если подключение не выполненно то сообщаем об этом, выполняем подключение к удаленному серверу
 								if(::connect(ret.first->second->bev.socket, sun, size) != 0){									
 									// Запрещаем чтение данных с сервера
