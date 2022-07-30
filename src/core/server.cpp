@@ -786,7 +786,7 @@ void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 						cout << " ################### GOOD ################### " << endl;
 					}
 
-					
+					/*
 					cout << " ###################1 " << endl;
 
 					// Выполняем обёртывание сокета в BIO SSL
@@ -820,6 +820,7 @@ void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 						SSL_set_accept_state(adj->ssl.ssl);
 
 						cout << " ###################7 " << endl;
+					*/
 					
 						/*
 						// Выполняем проверку на подключение
@@ -863,7 +864,7 @@ void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 							}
 						}
 						*/
-
+					/*
 						cout << " ###################12 " << endl;
 					// Если BIO SSL не создано
 					} else {
@@ -874,6 +875,7 @@ void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 						// Выходим из функции
 						return;
 					}
+					*/
 				}
 				// Если функция обратного вызова установлена
 				if(wrk->acceptFn != nullptr){
