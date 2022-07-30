@@ -503,8 +503,8 @@ awh::ASSL::ctx_t awh::ASSL::init() noexcept {
 		*/
 
 		
-		cout << " -----------------------1 " << result.ctx << " === " << this->cert << " === " << SSL_CTX_use_certificate_file(result.ctx, this->chain.c_str(), SSL_FILETYPE_PEM) << endl;
-		cout << " -----------------------3 " << result.ctx << " === " << this->chain << " === " << SSL_CTX_use_certificate_chain_file(result.ctx, this->cert.c_str()) << endl;
+		cout << " -----------------------1 " << result.ctx << " === " << this->chain << " === " << SSL_CTX_use_certificate_file(result.ctx, this->chain.c_str(), SSL_FILETYPE_PEM) << endl;
+		cout << " -----------------------3 " << result.ctx << " === " << this->cert << " === " << SSL_CTX_use_certificate_chain_file(result.ctx, this->cert.c_str()) << endl;
 		cout << " -----------------------2 " << result.ctx << " === " << this->key << " === " << SSL_CTX_use_PrivateKey_file(result.ctx, this->key.c_str(), SSL_FILETYPE_PEM) << endl;
 		cout << " -----------------------4 " << result.ctx << " === " << SSL_CTX_check_private_key(result.ctx) << endl;
 		
