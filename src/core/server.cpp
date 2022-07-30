@@ -832,7 +832,7 @@ void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 						cout << " ###################8 " << endl;
 					
 					
-						
+						/*
 						// Выполняем проверку на подключение
 						const int error = SSL_accept(adj->ssl.ssl);
 
@@ -873,6 +873,7 @@ void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 								return;
 							}
 						}
+						*/
 					
 					
 					
