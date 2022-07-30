@@ -280,7 +280,7 @@ awh::ASSL::ctx_t awh::ASSL::init() noexcept {
 		// Получаем контекст OpenSSL
 		// result.ctx = SSL_CTX_new(SSLv23_server_method()); // SSLv3_method()
 
-		result.ctx = SSL_CTX_new(TLS_server_method());
+		result.ctx = SSL_CTX_new(TLSv1_2_server_method());
 
 		// Если контекст не создан
 		if(result.ctx == nullptr){
@@ -313,7 +313,9 @@ awh::ASSL::ctx_t awh::ASSL::init() noexcept {
 			// Выходим
 			return result;
 		}
-		/*
+
+		SSL_CTX_set_options(result.ctx, SSL_OP_CIPHER_SERVER_PREFERENCE);
+		
 		// Устанавливаем поддерживаемые кривые
 		if(!SSL_CTX_set_ecdh_auto(result.ctx, 1)){
 			// Очищаем созданный контекст
@@ -323,9 +325,9 @@ awh::ASSL::ctx_t awh::ASSL::init() noexcept {
 			// Выходим
 			return result;
 		}
-		*/
+		
 
-		SSL_CTX_set_options(result.ctx, SSL_OP_CIPHER_SERVER_PREFERENCE);
+		
 		
 		
 		
