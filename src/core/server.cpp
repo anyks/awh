@@ -829,7 +829,9 @@ void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 						// Выполняем активацию клиента SSL
 						SSL_set_accept_state(adj->ssl.ssl);
 
-						cout << " ###################8 " << endl;
+
+						cout << " ###################8 " << SSL_accept(adj->ssl.ssl) << endl;
+
 					
 					
 						/*
