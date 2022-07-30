@@ -521,6 +521,9 @@ awh::ASSL::ctx_t awh::ASSL::init() noexcept {
 		 * @return     результат проверки
 		 */
 		auto verifyFn = [](X509_STORE_CTX * x509 = nullptr, void * ctx = nullptr) -> int {
+			
+			cout << " %%%%%%%%%%%%%%%% VERIFY1 " << endl;
+			
 			// Если объекты переданы верно
 			if((x509 != nullptr) && (ctx != nullptr)){
 				// Буфер данных сертификатов из хранилища
@@ -537,6 +540,9 @@ awh::ASSL::ctx_t awh::ASSL::init() noexcept {
 				const int ok = X509_verify_cert(x509);
 				// Запрашиваем данные сертификата
 				X509 * cert = X509_STORE_CTX_get_current_cert(x509);
+
+				cout << " %%%%%%%%%%%%%%%% VERIFY2 " << ok << endl;
+
 				// Если проверка сертификата прошла удачно
 				if(ok){
 					// Выполняем проверку на соответствие хоста с данными хостов у сертификата
@@ -551,10 +557,16 @@ awh::ASSL::ctx_t awh::ASSL::init() noexcept {
 						default:                                                status = "WTF!";
 					}
 				}
+
+				cout << " %%%%%%%%%%%%%%%% VERIFY3 " << endl;
+
 				// Запрашиваем имя домена
 				X509_NAME_oneline(X509_get_subject_name(cert), buffer, sizeof(buffer));
 				// Очищаем выделенную память
 				X509_free(cert);
+
+				cout << " %%%%%%%%%%%%%%%% VERIFY4 " << endl;
+
 				// Если домен найден в записях сертификата (т.е. сертификат соответствует данному домену)
 				if(validate == ssl_t::validate_t::MatchFound){
 					/**
@@ -580,7 +592,7 @@ awh::ASSL::ctx_t awh::ASSL::init() noexcept {
 		// Создаём объект проверки домена
 		result.verify = new verify_t("mimi.anyks.net", this);
 		// Выполняем проверку сертификата
-		SSL_CTX_set_verify(result.ctx, SSL_VERIFY_PEER | SSL_VERIFY_CLIENT_ONCE, nullptr);
+		SSL_CTX_set_verify(result.ctx, SSL_VERIFY_PEER | SSL_VERIFY_POST_HANDSHAKE, nullptr);
 		// Выполняем проверку всех дочерних сертификатов
 		SSL_CTX_set_cert_verify_callback(result.ctx, verifyFn, result.verify);
 
