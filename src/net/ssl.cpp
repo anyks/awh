@@ -275,6 +275,8 @@ awh::ASSL::ctx_t awh::ASSL::init() noexcept {
 		}
 		// Устанавливаем опции запроса
 		SSL_CTX_set_options(result.ctx, SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3);
+
+		/*
 		// Устанавливаем типы шифрования
 		if(!SSL_CTX_set_cipher_list(result.ctx, "ECDHE-RSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-SHA:ECDHE-RSA-AES256-SHA384")){
 			// Очищаем созданный контекст
@@ -293,16 +295,70 @@ awh::ASSL::ctx_t awh::ASSL::init() noexcept {
 			// Выходим
 			return result;
 		}
+		*/
+
 		// Если CA-файл не найден или адрес файла не указан
 		if(this->cafile.empty()){
-			// Получаем данные стора
 			X509_STORE * store = SSL_CTX_get_cert_store(result.ctx);
+			// Если - это Windows
+			#if defined(_WIN32) || defined(_WIN64)
+				/**
+				 * addCertToStoreFn Функция проверки параметров сертификата
+				 * @param store стор с сертификатами для работы
+				 * @param name  название параметра сертификата
+				 * @return      результат проверки
+				 */
+				auto addCertToStoreFn = [this](X509_STORE * store = nullptr, const char * name = nullptr) -> int {
+					// Результат работы функции
+					int result = 0;
+					// Если объекты переданы верно
+					if((store != nullptr) && (name != nullptr)){
+						// Контекст сертификата
+						PCCERT_CONTEXT ctx = nullptr;
+						// Получаем данные системного стора
+						HCERTSTORE sys = CertOpenSystemStore(0, name);
+						// Если системный стор не получен
+						if(!sys){
+							// Выводим в лог сообщение
+							this->log->print("%s", log_t::flag_t::CRITICAL, "failed to open system certificate store");
+							// Выходим
+							return -1;
+						}
+						// Перебираем все сертификаты в системном сторе
+						while((ctx = CertEnumCertificatesInStore(sys, ctx))){
+							// Получаем сертификат
+							X509 * cert = d2i_X509(nullptr, (const u_char **) &ctx->pbCertEncoded, ctx->cbCertEncoded);
+							// Если сертификат получен
+							if(cert != nullptr){
+								// Добавляем сертификат в стор
+								X509_STORE_add_cert(store, cert);
+								// Очищаем выделенную память
+								X509_free(cert);
+							// Если сертификат не получен
+							} else {
+								// Формируем результат ответа
+								result = -1;
+								// Выводим в лог сообщение
+								this->log->print("%s failed", log_t::flag_t::CRITICAL, "d2i_X509");
+								// Выходим из цикла
+								break;
+							}
+						}
+						// Закрываем системный стор
+						CertCloseStore(sys, 0);
+					}
+					// Выходим
+					return result;
+				};
+				// Проверяем существует ли путь
+				if((addCertToStoreFn(store, "CA") < 0) || (addCertToStoreFn(store, "AuthRoot") < 0) || (addCertToStoreFn(store, "ROOT") < 0)) return result;
+			#endif
 			// Если стор не устанавливается, тогда выводим ошибку
-			if(!X509_STORE_set_default_paths(store)){
+			if(X509_STORE_set_default_paths(store) != 1){
 				// Очищаем созданный контекст
 				this->clear(result);
 				// Выводим в лог сообщение
-				this->log->print("%s", log_t::flag_t::CRITICAL, "set ssl default paths for x509 store is not allow");
+				this->log->print("%s", log_t::flag_t::CRITICAL, "set default paths for x509 store is not allow");
 				// Выходим
 				return result;
 			}
@@ -389,7 +445,7 @@ awh::ASSL::ctx_t awh::ASSL::init() noexcept {
 		// Метка следующей итерации
 		Next:
 		// Устанавливаем флаг quiet shutdown
-		// SSL_CTX_set_quiet_shutdown(result.ctx, 1);
+		SSL_CTX_set_quiet_shutdown(result.ctx, 1);
 		// Запускаем кэширование
 		SSL_CTX_set_session_cache_mode(result.ctx, SSL_SESS_CACHE_SERVER | SSL_SESS_CACHE_NO_INTERNAL);
 
@@ -402,12 +458,12 @@ awh::ASSL::ctx_t awh::ASSL::init() noexcept {
 		const int cert = (!this->cert.empty() ? SSL_CTX_use_certificate_file(result.ctx, this->cert.c_str(), SSL_FILETYPE_PEM) : 0);
 		*/
 
-		
+		/*
 		cout << " -----------------------1 " << result.ctx << " === " << this->cert << " === " << SSL_CTX_use_certificate_file(result.ctx, this->cert.c_str(), SSL_FILETYPE_PEM) << endl;
 		cout << " -----------------------2 " << result.ctx << " === " << this->key << " === " << SSL_CTX_use_RSAPrivateKey_file(result.ctx, this->key.c_str(), SSL_FILETYPE_PEM) << endl;
 		cout << " -----------------------3 " << result.ctx << " === " << this->chain << " === " << SSL_CTX_use_certificate_chain_file(result.ctx, this->chain.c_str()) << endl;
-		cout << " -----------------------4 " << result.ssl << " === " << SSL_CTX_check_private_key(result.ctx) << endl;
-		
+		cout << " -----------------------4 " << result.ctx << " === " << SSL_CTX_check_private_key(result.ctx) << endl;
+		*/
 		
 		/*
 		int SSL_use_certificate_file(SSL *ssl, const char *file, int type);
