@@ -140,13 +140,13 @@ int main(int argc, char * argv[]){
 	// Устанавливаем простое чтение базы событий
 	// core.easily(true);
 	// Активируем максимальное количество рабочих процессов
-	// core.setForks();
+	core.setForks();
 	// Устанавливаем адрес сертификата
 	core.setTrusted("./ca/cert.pem");
 	// Устанавливаем название сервера
 	// core.setNameServer("anyks");
 	// Выполняем активацию многопоточности
-	// ws.multiThreads(22);
+	ws.multiThreads(22);
 	// Устанавливаем название сервера
 	// ws.setRealm("ANYKS");
 	// Устанавливаем временный ключ сессии
