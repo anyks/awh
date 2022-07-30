@@ -264,6 +264,15 @@ awh::ASSL::ctx_t awh::ASSL::init() noexcept {
 	ctx_t result;
 	// Если объект фреймворка существует
 	if((this->fmk != nullptr) && !this->key.empty() && !this->cert.empty()){
+
+		// Активируем рандомный генератор
+		if(RAND_poll() == 0){
+			// Выводим в лог сообщение
+			this->log->print("%s", log_t::flag_t::CRITICAL, "rand poll is not allow");
+			// Выходим
+			return result;
+		}
+
 		// Получаем контекст OpenSSL
 		result.ctx = SSL_CTX_new(SSLv23_client_method());
 		// Если контекст не создан
@@ -276,7 +285,7 @@ awh::ASSL::ctx_t awh::ASSL::init() noexcept {
 		// Устанавливаем опции запроса
 		SSL_CTX_set_options(result.ctx, SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3);
 
-		/*
+		
 		// Устанавливаем типы шифрования
 		if(!SSL_CTX_set_cipher_list(result.ctx, "ECDHE-RSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-SHA:ECDHE-RSA-AES256-SHA384")){
 			// Очищаем созданный контекст
@@ -295,7 +304,7 @@ awh::ASSL::ctx_t awh::ASSL::init() noexcept {
 			// Выходим
 			return result;
 		}
-		*/
+		
 
 		// Если CA-файл не найден или адрес файла не указан
 		if(this->cafile.empty()){
@@ -503,6 +512,8 @@ awh::ASSL::ctx_t awh::ASSL::init() noexcept {
 			// Выходим
 			return result;
 		}
+
+		/*
 		// Проверяем рукопожатие
 		if(SSL_do_handshake(result.ssl) <= 0){
 			// Выполняем проверку рукопожатия
@@ -515,6 +526,7 @@ awh::ASSL::ctx_t awh::ASSL::init() noexcept {
 				this->log->print("certificate chain validation failed: %s", log_t::flag_t::CRITICAL, X509_verify_cert_error_string(verify));
 			}
 		}
+		*/
 
 		result.mode = true;
 	}
