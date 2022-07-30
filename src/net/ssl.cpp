@@ -486,7 +486,7 @@ awh::ASSL::ctx_t awh::ASSL::init() noexcept {
 		// Метка следующей итерации
 		Next:
 		// Устанавливаем флаг quiet shutdown
-		SSL_CTX_set_quiet_shutdown(result.ctx, 1);
+		// SSL_CTX_set_quiet_shutdown(result.ctx, 1);
 		// Запускаем кэширование
 		SSL_CTX_set_session_cache_mode(result.ctx, SSL_SESS_CACHE_SERVER | SSL_SESS_CACHE_NO_INTERNAL);
 
