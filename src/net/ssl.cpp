@@ -426,6 +426,8 @@ awh::ASSL::ctx_t awh::ASSL::init() noexcept {
 			this->log->print("%s", log_t::flag_t::CRITICAL, "ssl certificates is not load");
 		}
 		*/
+
+		result.mode = true;
 	}
 	// Выводим результат
 	return result;

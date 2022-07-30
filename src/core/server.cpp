@@ -790,35 +790,47 @@ void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 
 						// Устанавливаем блокирующий режим ввода/вывода для сокета
 						BIO_set_nbio(bio, 1);
+
+						cout << " ###################3 " << endl;
+
 						// Выполняем установку BIO SSL
 						SSL_set_bio(adj->ssl.ssl, bio, bio);
+
+						cout << " ###################4 " << endl;
+
 						// Устанавливаем флаг работы в асинхронном режиме
 						SSL_set_mode(adj->ssl.ssl, SSL_MODE_ASYNC);
+
+						cout << " ###################5 " << endl;
+
 						// Устанавливаем флаг записи в буфер порциями
 						SSL_set_mode(adj->ssl.ssl, SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER);
+
+						cout << " ###################6 " << endl;
+
 						// Выполняем активацию клиента SSL
 						SSL_set_accept_state(adj->ssl.ssl);
 
-						cout << " ###################2 " << endl;
+						cout << " ###################7 " << endl;
 
 						// Выполняем проверку на подключение
 						const int error = SSL_accept(adj->ssl.ssl);
 
-						cout << " ###################3 " << endl;
+						cout << " ###################8 " << endl;
 
 						// Если возникла ошибка
 						if(error <= 0){
 							// Очищаем ошибки SSL
 							ERR_clear_error();
 
-							cout << " ###################4 " << endl;
+							cout << " ###################9 " << endl;
 
 							// Выполняем чтение ошибки OpenSSL
 							const int code = SSL_get_error(adj->ssl.ssl, error);
 							// Выполняем проверку на подключение
 							if(code == SSL_ERROR_WANT_ACCEPT){
 
-								cout << " ###################5 " << endl;
+								cout << " ###################10 " << endl;
 
 								// Выполняем попытку снова
 								this->accept(fd, wid);
@@ -827,7 +839,7 @@ void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 							// Если возникла другая ошибка
 							} else if(code != SSL_ERROR_NONE) {
 
-								cout << " ###################6 " << endl;
+								cout << " ###################11 " << endl;
 
 								// Получаем данные описание ошибки
 								u_long error = 0;
@@ -842,7 +854,7 @@ void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 							}
 						}
 
-						cout << " ###################7 " << endl;
+						cout << " ###################12 " << endl;
 
 					// Если BIO SSL не создано
 					} else {
