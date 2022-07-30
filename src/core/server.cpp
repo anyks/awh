@@ -807,6 +807,11 @@ void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 						// Выполняем активацию клиента SSL
 						SSL_set_accept_state(adj->ssl.ssl);
 
+						// Выполняем проверку на подключение
+						const int error = SSL_accept(adj->ssl.ssl);
+
+						cout << " ###################5 " << error << endl;
+
 						/*
 
 						// Устанавливаем флаг работы в асинхронном режиме
