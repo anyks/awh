@@ -335,16 +335,16 @@ awh::ASSL::ctx_t awh::ASSL::init() noexcept {
 		if(this->cafile.empty()){
 			// Получаем данные стора
 			X509_STORE * store = SSL_CTX_get_cert_store(result.ctx);
-			// Если - это Windows
+			/**
+			 * Если операционной системой является MS Windows
+			 */
 			#if defined(_WIN32) || defined(_WIN64)
-		
 				/**
 				 * addCertToStoreFn Функция проверки параметров сертификата
 				 * @param store стор с сертификатами для работы
 				 * @param name  название параметра сертификата
 				 * @return      результат проверки
 				 */
-		
 				auto addCertToStoreFn = [this](X509_STORE * store = nullptr, const char * name = nullptr) -> int {
 					// Результат работы функции
 					int result = 0;
@@ -418,7 +418,9 @@ awh::ASSL::ctx_t awh::ASSL::init() noexcept {
 				const string & fullPath = fs_t::realPath(this->capath);
 				// Если адрес существует
 				if(fs_t::isdir(fullPath) && !fs_t::isfile(this->cafile)){
-					// Если - это Windows
+					/**
+					 * Если операционной системой является MS Windows
+					 */
 					#if defined(_WIN32) || defined(_WIN64)
 						// Выполняем сплит адреса
 						const auto & params = this->uri->split(fullPath);
@@ -445,7 +447,9 @@ awh::ASSL::ctx_t awh::ASSL::init() noexcept {
 						}
 						// Выполняем очистку CA-файла
 						this->cafile.clear();
-					// Если - это Unix
+					/**
+					 * Если операционной системой является Nix-подобная
+					 */
 					#else
 						// Выполняем сплит адреса
 						auto path = this->uri->splitPath(fullPath, FS_SEPARATOR);
@@ -627,7 +631,9 @@ awh::ASSL::ctx_t awh::ASSL::init(const uri_t::url_t & url) noexcept {
 				const string & fullPath = fs_t::realPath(this->capath);
 				// Если адрес существует
 				if(fs_t::isdir(fullPath) && !fs_t::isfile(this->cafile)){
-					// Если - это Windows
+					/**
+					 * Если операционной системой является MS Windows
+					 */
 					#if defined(_WIN32) || defined(_WIN64)
 						// Выполняем сплит адреса
 						const auto & params = this->uri->split(fullPath);
@@ -654,7 +660,9 @@ awh::ASSL::ctx_t awh::ASSL::init(const uri_t::url_t & url) noexcept {
 						}
 						// Выполняем очистку CA-файла
 						this->cafile.clear();
-					// Если - это Unix
+					/**
+					 * Если операционной системой является Nix-подобная
+					 */
 					#else
 						// Выполняем сплит адреса
 						auto path = this->uri->splitPath(fullPath, FS_SEPARATOR);
@@ -694,7 +702,9 @@ awh::ASSL::ctx_t awh::ASSL::init(const uri_t::url_t & url) noexcept {
 		if(this->cafile.empty()){
 			// Получаем данные стора
 			X509_STORE * store = SSL_CTX_get_cert_store(result.ctx);
-			// Если - это Windows
+			/**
+			 * Если операционной системой является MS Windows
+			 */
 			#if defined(_WIN32) || defined(_WIN64)
 				/**
 				 * addCertToStoreFn Функция проверки параметров сертификата
@@ -802,7 +812,9 @@ awh::ASSL::ctx_t awh::ASSL::init(const uri_t::url_t & url) noexcept {
 					X509_free(cert);
 					// Если домен найден в записях сертификата (т.е. сертификат соответствует данному домену)
 					if(validate == ssl_t::validate_t::MatchFound){
-						// Если включён режим отладки
+						/**
+						 * Если включён режим отладки
+						 */
 						#if defined(DEBUG_MODE)
 							// Выводим в лог сообщение
 							obj->ssl->log->print("https server [%s] has this certificate, which looks good to me: %s", log_t::flag_t::INFO, obj->host.c_str(), buffer);
@@ -833,7 +845,9 @@ awh::ASSL::ctx_t awh::ASSL::init(const uri_t::url_t & url) noexcept {
 			// Выходим
 			return result;
 		}
-		// Если нужно установить TLS расширение
+		/**
+		 * Если нужно установить TLS расширение
+		 */
 		#ifdef SSL_CTRL_SET_TLSEXT_HOSTNAME
 			// Устанавливаем имя хоста для SNI расширения
 			SSL_set_tlsext_host_name(result.ssl, (!url.domain.empty() ? url.domain : url.ip).c_str());
@@ -931,15 +945,24 @@ awh::ASSL::ASSL(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcep
  * ~ASSL Деструктор
  */
 awh::ASSL::~ASSL() noexcept {
-	// Если версия OPENSSL старая
+	/**
+	 * Если версия OpenSSL старая
+	 */
 	#if (OPENSSL_VERSION_NUMBER < 0x10100000L) || (defined(LIBRESSL_VERSION_NUMBER) && LIBRESSL_VERSION_NUMBER < 0x20700000L)
 		// Выполняем освобождение памяти
 		EVP_cleanup();
 		ERR_free_strings();
-		// Освобождаем объект состояния
+		/**
+		 * Если версия OpenSSL старая
+		 */
 		#if OPENSSL_VERSION_NUMBER < 0x10000000L
+			// Освобождаем стейт
 			ERR_remove_state(0);
+		/**
+		 * Если версия OpenSSL более новая
+		 */
 		#else
+			// Освобождаем стейт для потока
 			ERR_remove_thread_state(nullptr);
 		#endif
 		// Освобождаем оставшиеся данные

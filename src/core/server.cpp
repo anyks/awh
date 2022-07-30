@@ -785,33 +785,14 @@ void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 					BIO * bio = BIO_new_socket(adj->bev.socket, BIO_NOCLOSE);
 					// Если BIO SSL создано
 					if(bio != nullptr){
-
-						cout << " ###################2 " << endl;
-
 						// Устанавливаем блокирующий режим ввода/вывода для сокета
 						BIO_set_nbio(bio, 1);
-
-						cout << " ###################3 " << endl;
-
 						// Выполняем установку BIO SSL
 						SSL_set_bio(adj->ssl.ssl, bio, bio);
-
-						cout << " ###################4 " << endl;
-					
-
-						// Устанавливаем флаг работы в асинхронном режиме
-						SSL_set_mode(adj->ssl.ssl, SSL_MODE_ASYNC);
-
-						cout << " ###################6 " << endl;
-
 						// Устанавливаем флаг записи в буфер порциями
 						SSL_set_mode(adj->ssl.ssl, SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER);
-
-						cout << " ###################7 " << endl;
-
 						// Выполняем активацию клиента SSL
 						SSL_set_accept_state(adj->ssl.ssl);
-
 					// Если BIO SSL не создано
 					} else {
 						// Выполняем закрытие подключения
@@ -821,7 +802,6 @@ void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 						// Выходим из функции
 						return;
 					}
-					
 				}
 				// Если функция обратного вызова установлена
 				if(wrk->acceptFn != nullptr){
@@ -1260,8 +1240,6 @@ void awh::server::Core::transfer(const method_t method, const size_t aid) noexce
 		switch((uint8_t) method){
 			// Если производится чтение данных
 			case (uint8_t) method_t::READ: {
-				// Статус поступления данных
-				int accept = -1;
 				// Количество полученных байт
 				int64_t bytes = -1;
 				// Создаём буфер входящих данных
@@ -1270,30 +1248,6 @@ void awh::server::Core::transfer(const method_t method, const size_t aid) noexce
 				while(!adj->bev.locked.read){
 					// Выполняем зануление буфера
 					memset(buffer, 0, sizeof(buffer));
-					// Выполняем проверку на подключение
-					accept = SSL_accept(adj->ssl.ssl);
-					// Если возникла ошибка
-					if(accept <= 0){
-						// Очищаем ошибки SSL
-						ERR_clear_error();
-						// Выполняем чтение ошибки OpenSSL
-						accept = SSL_get_error(adj->ssl.ssl, accept);
-						// Выполняем проверку на подключение
-						if(accept == SSL_ERROR_WANT_ACCEPT)
-							// Продолжаем попытку снова
-							continue;
-						// Если возникла другая ошибка
-						else if(accept != SSL_ERROR_NONE) {
-							// Получаем данные описание ошибки
-							u_long error = 0;
-							// Выполняем чтение ошибок OpenSSL
-							while((error = ERR_get_error()))
-								// Выводим в лог сообщение
-								this->log->print("SSL: %s", log_t::flag_t::CRITICAL, ERR_error_string(error, nullptr));
-							// Выходим из цикла
-							break;
-						}
-					}
 					// Если защищённый режим работы разрешён
 					if(adj->ssl.mode){
 						// Выполняем очистку ошибок OpenSSL
