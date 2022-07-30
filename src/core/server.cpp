@@ -811,15 +811,15 @@ void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 						cout << " ###################4 " << endl;
 
 						// Выполняем активацию клиента SSL
-						SSL_set_accept_state(adj->ssl.ssl);
+						// SSL_set_accept_state(adj->ssl.ssl);
 
-						cout << " ###################5 " << endl;
+						// cout << " ###################5 " << endl;
 					
 
 						// Устанавливаем флаг работы в асинхронном режиме
 						SSL_set_mode(adj->ssl.ssl, SSL_MODE_ASYNC);
 
-						cout << " ###################6 " << endl;
+						// cout << " ###################6 " << endl;
 
 						// Устанавливаем флаг записи в буфер порциями
 						SSL_set_mode(adj->ssl.ssl, SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER);
