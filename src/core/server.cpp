@@ -780,18 +780,18 @@ void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 				if(adj->ssl.mode){
 
 
-					/*
+					
 					SSL_set_fd(adj->ssl.ssl, adj->bev.socket);
 
 					// Выполняем проверку на подключение
 					const int error = SSL_accept(adj->ssl.ssl);
-					*/
-
-					
-					cout << " ###################1 " << endl;
-
 					
 
+					
+					cout << " ###################1 " << error << endl;
+
+					
+					/*
 					// Выполняем обёртывание сокета в BIO SSL
 					BIO * bio = BIO_new_socket(adj->bev.socket, BIO_NOCLOSE);
 					// Если BIO SSL создано
@@ -816,7 +816,7 @@ void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 						const int error = SSL_accept(adj->ssl.ssl);
 
 						cout << " ###################5 " << error << endl;
-					
+					*/
 
 						/*
 
@@ -878,7 +878,7 @@ void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 							}
 						}
 						*/
-					
+					/*
 					
 						cout << " ###################12 " << endl;
 					// Если BIO SSL не создано
@@ -890,7 +890,7 @@ void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 						// Выходим из функции
 						return;
 					}
-					
+					*/
 				}
 				// Если функция обратного вызова установлена
 				if(wrk->acceptFn != nullptr){
