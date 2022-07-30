@@ -804,6 +804,11 @@ void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 
 						cout << " ###################4 " << endl;
 
+						// Выполняем активацию клиента SSL
+						SSL_set_accept_state(adj->ssl.ssl);
+
+						/*
+
 						// Устанавливаем флаг работы в асинхронном режиме
 						SSL_set_mode(adj->ssl.ssl, SSL_MODE_ASYNC);
 
@@ -841,7 +846,7 @@ void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 								cout << " ###################10 " << endl;
 
 								// Выполняем попытку снова
-								// this->accept(fd, wid);
+								this->accept(fd, wid);
 								// Выходим из функции
 								return;
 							// Если возникла другая ошибка
@@ -849,26 +854,19 @@ void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 
 								cout << " ###################11 " << endl;
 
-
-								// Выводим в лог сообщение
-								this->log->print("SSL1: %s", log_t::flag_t::CRITICAL, ERR_error_string(code, nullptr));
-
 								// Получаем данные описание ошибки
 								u_long error = 0;
 								// Выполняем чтение ошибок OpenSSL
 								while((error = ERR_get_error()))
 									// Выводим в лог сообщение
 									this->log->print("SSL: %s", log_t::flag_t::CRITICAL, ERR_error_string(error, nullptr));
-								
-								/*
 								// Выполняем закрытие подключения
 								this->close(adj->bev.socket);
 								// Выходим из функции
 								return;
-								*/
 							}
 						}
-						
+						*/
 					
 						cout << " ###################12 " << endl;
 					// Если BIO SSL не создано
