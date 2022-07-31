@@ -24,104 +24,12 @@
 	 * @param except объект исключения
 	 * @return       тип полученного исключения
 	 */
-	/*
-	static LONG CALLBACK winHandler(LPEXCEPTION_POINTERS except){
-		// Выполняем обработку исключений
-		switch(except->ExceptionRecord->ExceptionCode){
-			// Если исключением является сегментацией памяти
-			case EXCEPTION_ACCESS_VIOLATION: {
-				// Создаём объект фреймворка
-				fmk_t fmk;
-				// Создаём объект для работы с логами
-				log_t log(&fmk);
-				// Очищаем сетевой контекст
-				WSACleanup();
-				// Выводим сообщение об завершении работы процесса
-				log.print("main process was closed with signal [%s]", awh::log_t::flag_t::WARNING, "SIGSEGV");
-				// Сообщаем, что произошло исключение
-				return EXCEPTION_CONTINUE_EXECUTION;
-			}
-			// Если исключение является деление на ноль или переполнение числа
-			case EXCEPTION_INT_OVERFLOW:
-			case EXCEPTION_FLT_DIVIDE_BY_ZERO:
-			case EXCEPTION_INT_DIVIDE_BY_ZERO: {
-				// Создаём объект фреймворка
-				fmk_t fmk;
-				// Создаём объект для работы с логами
-				log_t log(&fmk);
-				// Очищаем сетевой контекст
-				WSACleanup();
-				// Выводим сообщение об завершении работы процесса
-				log.print("main process was closed with signal [%s]", log_t::flag_t::WARNING, "SIGFPE");
-				// Сообщаем, что произошло исключение
-				return EXCEPTION_CONTINUE_EXECUTION;
-			}
-			// Если сигналов является, попытка исполнения привилегированной команды
-			case EXCEPTION_PRIV_INSTRUCTION: {
-				// Создаём объект фреймворка
-				fmk_t fmk;
-				// Создаём объект для работы с логами
-				log_t log(&fmk);
-				// Очищаем сетевой контекст
-				WSACleanup();
-				// Выводим сообщение об завершении работы процесса
-				log.print("main process was closed with signal [%s]", log_t::flag_t::WARNING, "SIGABRT");
-				// Сообщаем, что произошло исключение
-				return EXCEPTION_CONTINUE_EXECUTION;
-			}
-			// Сообщаем, что исключение нужно пропустить
-			default: return EXCEPTION_CONTINUE_SEARCH;
-		}
-	}
-	*/
-	/**
-	 * winHandler Функция фильтр перехватчика сигналов
-	 * @param except объект исключения
-	 * @return       тип полученного исключения
-	 */
-	static void SignalHandler(int signal) noexcept {  
-		// Создаём объект фреймворка
-		awh::fmk_t fmk;
-		// Создаём объект для работы с логами
-		awh::log_t log(&fmk);
-		// Определяем тип сигнала
-		switch(signal){
-			// Если возникает сигнал ручной остановкой процесса
-			case SIGINT:
-				// Выводим сообщение об завершении работы процесса
-				log.print("main process was closed, goodbye!", awh::log_t::flag_t::INFO);
-			break;
-			// Если возникает сигнал ошибки выполнения арифметической операции
-			case SIGFPE:
-				// Выводим сообщение об завершении работы процесса
-				log.print("main process was closed with signal [%s]", awh::log_t::flag_t::WARNING, "SIGFPE");
-			break;
-			// Если возникает сигнал выполнения неверной инструкции
-			case SIGILL:
-				// Выводим сообщение об завершении работы процесса
-				log.print("main process was closed with signal [%s]", awh::log_t::flag_t::WARNING, "SIGILL");
-			break;
-			// Если возникает сигнал запроса принудительного завершения процесса
-			case SIGTERM:
-				// Выводим сообщение об завершении работы процесса
-				log.print("main process was closed with signal [%s]", awh::log_t::flag_t::WARNING, "SIGTERM");
-			break;
-			// Если возникает сигнал запроса принудительное закрытие приложения из кода программы
-			case SIGABRT:
-				// Выводим сообщение об завершении работы процесса
-				log.print("main process was closed with signal [%s]", awh::log_t::flag_t::WARNING, "SIGABRT");
-			break;
-			// Если возникает сигнал сегментации памяти (обращение к несуществующему адресу памяти)
-			case SIGSEGV:
-				// Выводим сообщение об завершении работы процесса
-				log.print("main process was closed with signal [%s]", awh::log_t::flag_t::WARNING, "SIGSEGV");
-			break;
-		}
+	static void SignalHandler(int signal) noexcept {
 		// Очищаем сетевой контекст
 		WSACleanup();
 		// Завершаем работу основного процесса
 		exit(signal);
-	} 
+	}
 #endif
 /**
  * read Функция обратного вызова при чтении данных с сокета
@@ -1143,7 +1051,7 @@ void awh::Core::enabled(const method_t method, const size_t aid) noexcept {
 			// Получаем объект адъютанта
 			awh::worker_t::adj_t * adj = const_cast <awh::worker_t::adj_t *> (it->second);
 			// Если сокет подключения активен
-			if(adj->ssl.wrapped()){
+			if(adj->act.wrapped()){
 				// Получаем объект подключения
 				worker_t * wrk = (worker_t *) const_cast <awh::worker_t *> (adj->parent);
 				// Определяем метод события сокета
@@ -1161,7 +1069,7 @@ void awh::Core::enabled(const method_t method, const size_t aid) noexcept {
 						// Устанавливаем базу событий
 						adj->bev.event.read.set(this->dispatch.base);
 						// Устанавливаем сокет для чтения
-						adj->bev.event.read.set(adj->ssl.get(), ev::READ);
+						adj->bev.event.read.set(adj->act.get(), ev::READ);
 						// Устанавливаем событие на чтение данных подключения
 						adj->bev.event.read.set <awh::worker_t::adj_t, &awh::worker_t::adj_t::read> (adj);
 						// Запускаем чтение данных
@@ -1193,7 +1101,7 @@ void awh::Core::enabled(const method_t method, const size_t aid) noexcept {
 						// Устанавливаем базу событий
 						adj->bev.event.write.set(this->dispatch.base);
 						// Устанавливаем сокет для записи
-						adj->bev.event.write.set(adj->ssl.get(), ev::WRITE);
+						adj->bev.event.write.set(adj->act.get(), ev::WRITE);
 						// Устанавливаем событие на запись данных подключения
 						adj->bev.event.write.set <awh::worker_t::adj_t, &awh::worker_t::adj_t::write> (adj);
 						// Запускаем запись данных
@@ -1221,7 +1129,7 @@ void awh::Core::enabled(const method_t method, const size_t aid) noexcept {
 						// Устанавливаем базу событий
 						adj->bev.event.connect.set(this->dispatch.base);
 						// Устанавливаем сокет для записи
-						adj->bev.event.connect.set(adj->ssl.get(), ev::WRITE);
+						adj->bev.event.connect.set(adj->act.get(), ev::WRITE);
 						// Устанавливаем событие подключения
 						adj->bev.event.connect.set <awh::worker_t::adj_t, &awh::worker_t::adj_t::connect> (adj);
 						// Выполняем запуск подключения
@@ -1316,7 +1224,7 @@ void awh::Core::write(const char * buffer, const size_t size, const size_t aid) 
 				 */
 				#else
 					// Если сокет подключения активен
-					if(adj->ssl.wrapped()){
+					if(adj->act.wrapped()){
 						// Разрешаем запись данных в сокет
 						adj->bev.locked.write = false;
 						// Выполняем передачу данных
@@ -1701,7 +1609,7 @@ void awh::Core::setVerifySSL(const bool mode) noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->mtx.main);
 	// Выполняем установку флага проверки домена
-	this->ssl.setVerify(mode);
+	this->act.setVerify(mode);
 }
 /**
  * setPersistInterval Метод установки персистентного таймера
@@ -1753,7 +1661,7 @@ void awh::Core::setCipher(const vector <string> & cipher) noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->mtx.main);
 	// Выполняем установку алгоритмов шифрования
-	this->ssl.setCipher(cipher);
+	this->act.setCipher(cipher);
 }
 /**
  * setTrusted Метод установки доверенного сертификата (CA-файла)
@@ -1764,7 +1672,7 @@ void awh::Core::setTrusted(const string & trusted, const string & path) noexcept
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->mtx.main);
 	// Устанавливаем адрес CA-файла
-	this->ssl.setTrusted(trusted, path);
+	this->act.setTrusted(trusted, path);
 }
 /**
  * setNet Метод установки параметров сети
@@ -1805,7 +1713,7 @@ void awh::Core::setNet(const vector <string> & ip, const vector <string> & ns, c
  * @param log    объект для работы с логами
  * @param family тип протокола интернета AF_INET или AF_INET6
  */
-awh::Core::Core(const fmk_t * fmk, const log_t * log, const int family) noexcept : nwk(fmk), uri(fmk, &nwk), ssl(fmk, log, &uri), /* dns4(fmk, log, &nwk), dns6(fmk, log, &nwk),*/ socket(log), dispatch(this), fmk(fmk), log(log) {
+awh::Core::Core(const fmk_t * fmk, const log_t * log, const int family) noexcept : nwk(fmk), uri(fmk, &nwk), act(fmk, log, &uri), /* dns4(fmk, log, &nwk), dns6(fmk, log, &nwk),*/ socket(log), dispatch(this), fmk(fmk), log(log) {
 	// Устанавливаем тип активного интернет-подключения
 	this->net.family = family;
 	/*
@@ -1849,8 +1757,6 @@ awh::Core::Core(const fmk_t * fmk, const log_t * log, const int family) noexcept
 			// Выходим из приложения
 			exit(EXIT_FAILURE);
 		}
-		// Выполняем установку функцию перехватчика сигналов
-		// SetUnhandledExceptionFilter(winHandler);
 		// Создаём обработчик сигнала для SIGFPE
 		this->sig.sfpe = signal(SIGFPE, SignalHandler);
 		// Создаём обработчик сигнала для SIGILL

@@ -28,7 +28,7 @@
  */
 #include <sys/fmk.hpp>
 #include <sys/log.hpp>
-#include <net/ssl.hpp>
+#include <net/act.hpp>
 
 // Подписываемся на стандартное пространство имён
 using namespace std;
@@ -198,8 +198,8 @@ namespace awh {
 					// Объект таймаутов
 					timeouts_t timeouts;
 				private:
-					// Контекст SSL для работы с защищённым подключением
-					ssl_t::ctx_t ssl;
+					// Контекст актуатора для работы с передачей данных
+					act_t::ctx_t act;
 				private:
 					// Бинарный буфер для записи данных в сокет
 					vector <char> buffer;
@@ -243,7 +243,7 @@ namespace awh {
 					 * @param log    объект для работы с логами
 					 */
 					Adjutant(const Worker * parent, const fmk_t * fmk, const log_t * log) noexcept :
-					 aid(0), ip(""), mac(""), ssl(log), fmk(fmk), log(log), parent(parent) {}
+					 aid(0), ip(""), mac(""), act(log), fmk(fmk), log(log), parent(parent) {}
 					/**
 					 * ~Adjutant Деструктор
 					 */

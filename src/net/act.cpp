@@ -1,6 +1,6 @@
 /**
- * @file: ssl.cpp
- * @date: 2021-12-19
+ * @file: act.cpp
+ * @date: 2022-07-31
  * @license: GPL-3.0
  *
  * @telegram: @forman
@@ -9,11 +9,11 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
- * @copyright: Copyright © 2021
+ * @copyright: Copyright © 2022
  */
 
 // Подключаем заголовочный файл
-#include <net/ssl.hpp>
+#include <net/act.hpp>
 
 /**
  * socketIsBlocking Функция проверки сокета блокирующий режим
@@ -62,7 +62,7 @@ static int socketIsBlocking(const int fd, const awh::log_t * log = nullptr) noex
  * error Метод вывода информации об ошибке
  * @param status статус ошибки
  */
-void awh::ASSL::Context::error(const int status) const noexcept {
+void awh::Actuator::Context::error(const int status) const noexcept {
 	// Получаем данные описание ошибки
 	const int error = SSL_get_error(this->ssl, status);
 	// Определяем тип ошибки
@@ -110,7 +110,7 @@ void awh::ASSL::Context::error(const int status) const noexcept {
  * get Метод получения файлового дескриптора
  * @return файловый дескриптор
  */
-int awh::ASSL::Context::get() const noexcept {
+int awh::Actuator::Context::get() const noexcept {
 	// Выводим установленный файловый дескриптор
 	return this->fd;
 }
@@ -118,7 +118,7 @@ int awh::ASSL::Context::get() const noexcept {
  * wrapped Метод првоерки на активацию контекста
  * @return результат проверки
  */
-bool awh::ASSL::Context::wrapped() const noexcept {
+bool awh::Actuator::Context::wrapped() const noexcept {
 	// Выводим результат проверки
 	return (this->fd > -1);
 }
@@ -128,7 +128,7 @@ bool awh::ASSL::Context::wrapped() const noexcept {
  * @param size   размер буфера данных
  * @return       количество считанных байт
  */
-int64_t awh::ASSL::Context::read(char * buffer, const size_t size) const noexcept {
+int64_t awh::Actuator::Context::read(char * buffer, const size_t size) const noexcept {
 	// Результат работы функции
 	int64_t result = 0;
 	// Если буфер данных передан
@@ -185,7 +185,7 @@ int64_t awh::ASSL::Context::read(char * buffer, const size_t size) const noexcep
  * @param size   размер буфера данных
  * @return       количество записанных байт
  */
-int64_t awh::ASSL::Context::write(const char * buffer, const size_t size) const noexcept {
+int64_t awh::Actuator::Context::write(const char * buffer, const size_t size) const noexcept {
 	// Результат работы функции
 	int64_t result = 0;
 	// Если буфер данных передан
@@ -238,7 +238,7 @@ int64_t awh::ASSL::Context::write(const char * buffer, const size_t size) const 
  * block Метод установки блокирующего сокета
  * @return результат работы функции
  */
-int awh::ASSL::Context::block() noexcept {
+int awh::Actuator::Context::block() noexcept {
 	// Результат работы функции
 	int result = 0;
 	// Если защищённый режим работы разрешён
@@ -255,7 +255,7 @@ int awh::ASSL::Context::block() noexcept {
  * noblock Метод установки неблокирующего сокета
  * @return результат работы функции
  */
-int awh::ASSL::Context::noblock() noexcept {
+int awh::Actuator::Context::noblock() noexcept {
 	// Результат работы функции
 	int result = 0;
 	// Если файловый дескриптор активен
@@ -274,7 +274,7 @@ int awh::ASSL::Context::noblock() noexcept {
  * @param second второе доменное имя
  * @return       результат проверки
  */
-const bool awh::ASSL::rawEqual(const string & first, const string & second) const noexcept {
+const bool awh::Actuator::rawEqual(const string & first, const string & second) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Если данные переданы
@@ -291,7 +291,7 @@ const bool awh::ASSL::rawEqual(const string & first, const string & second) cons
  * @param max    количество начальных символов для проверки
  * @return       результат проверки
  */
-const bool awh::ASSL::rawNequal(const string & first, const string & second, const size_t max) const noexcept {
+const bool awh::Actuator::rawNequal(const string & first, const string & second, const size_t max) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Если данные переданы
@@ -314,7 +314,7 @@ const bool awh::ASSL::rawNequal(const string & first, const string & second, con
  * @param patt шаблон домена
  * @return     результат проверки
  */
-const bool awh::ASSL::hostmatch(const string & host, const string & patt) const noexcept {
+const bool awh::Actuator::hostmatch(const string & host, const string & patt) const noexcept {
 	// Результат работы функции
 	bool result = true;
 	// Если данные переданы
@@ -367,7 +367,7 @@ const bool awh::ASSL::hostmatch(const string & host, const string & patt) const 
  * @param patt шаблон домена
  * @return     результат проверки
  */
-const bool awh::ASSL::certHostcheck(const string & host, const string & patt) const noexcept {
+const bool awh::Actuator::certHostcheck(const string & host, const string & patt) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Если данные переданы
@@ -383,7 +383,7 @@ const bool awh::ASSL::certHostcheck(const string & host, const string & patt) co
  * @param ctx  передаваемый контекст
  * @return     результат проверки
  */
-int awh::ASSL::verifyHost(X509_STORE_CTX * x509, void * ctx) noexcept {
+int awh::Actuator::verifyHost(X509_STORE_CTX * x509, void * ctx) noexcept {
 	// Если объекты переданы верно
 	if((x509 != nullptr) && (ctx != nullptr)){
 		// Буфер данных сертификатов из хранилища
@@ -392,25 +392,25 @@ int awh::ASSL::verifyHost(X509_STORE_CTX * x509, void * ctx) noexcept {
 		memset(buffer, 0, sizeof(buffer));
 		// Ошибка проверки сертификата
 		string status = "X509VerifyCertFailed";
-		// Результат проверки домена
-		ssl_t::validate_t validate = ssl_t::validate_t::Error;
-		// Получаем объект подключения
-		const verify_t * obj = reinterpret_cast <const verify_t *> (ctx);
 		// Выполняем проверку сертификата
 		const int ok = X509_verify_cert(x509);
 		// Запрашиваем данные сертификата
 		X509 * cert = X509_STORE_CTX_get_current_cert(x509);
+		// Результат проверки домена
+		act_t::validate_t validate = act_t::validate_t::Error;
+		// Получаем объект подключения
+		const verify_t * verify = reinterpret_cast <const verify_t *> (ctx);
 		// Если проверка сертификата прошла удачно
 		if(ok){
 			// Выполняем проверку на соответствие хоста с данными хостов у сертификата
-			validate = obj->ssl->validateHostname(obj->host.c_str(), cert);
+			validate = verify->act->validateHostname(verify->host.c_str(), cert);
 			// Определяем полученную ошибку
 			switch((uint8_t) validate){
-				case (uint8_t) ssl_t::validate_t::MatchFound:           status = "MatchFound";           break;
-				case (uint8_t) ssl_t::validate_t::MatchNotFound:        status = "MatchNotFound";        break;
-				case (uint8_t) ssl_t::validate_t::NoSANPresent:         status = "NoSANPresent";         break;
-				case (uint8_t) ssl_t::validate_t::MalformedCertificate: status = "MalformedCertificate"; break;
-				case (uint8_t) ssl_t::validate_t::Error:                status = "Error";                break;
+				case (uint8_t) act_t::validate_t::MatchFound:           status = "MatchFound";           break;
+				case (uint8_t) act_t::validate_t::MatchNotFound:        status = "MatchNotFound";        break;
+				case (uint8_t) act_t::validate_t::NoSANPresent:         status = "NoSANPresent";         break;
+				case (uint8_t) act_t::validate_t::MalformedCertificate: status = "MalformedCertificate"; break;
+				case (uint8_t) act_t::validate_t::Error:                status = "Error";                break;
 				default:                                                status = "WTF!";
 			}
 		}
@@ -419,18 +419,18 @@ int awh::ASSL::verifyHost(X509_STORE_CTX * x509, void * ctx) noexcept {
 		// Очищаем выделенную память
 		X509_free(cert);
 		// Если домен найден в записях сертификата (т.е. сертификат соответствует данному домену)
-		if(validate == ssl_t::validate_t::MatchFound){
+		if(validate == act_t::validate_t::MatchFound){
 			/**
 			 * Если включён режим отладки
 			 */
 			#if defined(DEBUG_MODE)
 				// Выводим в лог сообщение
-				obj->ssl->log->print("https server [%s] has this certificate, which looks good to me: %s", log_t::flag_t::INFO, obj->host.c_str(), buffer);
+				verify->act->log->print("https server [%s] has this certificate, which looks good to me: %s", log_t::flag_t::INFO, verify->host.c_str(), buffer);
 			#endif
 			// Выводим сообщение, что проверка пройдена
 			return 1;
 		// Если ресурс не найден тогда выводим сообщение об ошибке
-		} else obj->ssl->log->print("%s for hostname '%s' [%s]", log_t::flag_t::CRITICAL, status.c_str(), obj->host.c_str(), buffer);
+		} else verify->act->log->print("%s for hostname '%s' [%s]", log_t::flag_t::CRITICAL, status.c_str(), verify->host.c_str(), buffer);
 	}
 	// Выводим сообщение, что проверка не пройдена
 	return 0;
@@ -441,7 +441,7 @@ int awh::ASSL::verifyHost(X509_STORE_CTX * x509, void * ctx) noexcept {
  * @param cert сертификат
  * @return     результат проверки
  */
-const awh::ASSL::validate_t awh::ASSL::matchesCommonName(const string & host, const X509 * cert) const noexcept {
+const awh::Actuator::validate_t awh::Actuator::matchesCommonName(const string & host, const X509 * cert) const noexcept {
 	// Результат работы функции
 	validate_t result = validate_t::MatchNotFound;
 	// Если данные переданы
@@ -474,7 +474,7 @@ const awh::ASSL::validate_t awh::ASSL::matchesCommonName(const string & host, co
  * @param cert сертификат
  * @return     результат проверки
  */
-const awh::ASSL::validate_t awh::ASSL::matchSubjectName(const string & host, const X509 * cert) const noexcept {
+const awh::Actuator::validate_t awh::Actuator::matchSubjectName(const string & host, const X509 * cert) const noexcept {
 	// Результат работы функции
 	validate_t result = validate_t::MatchNotFound;
 	// Если данные переданы
@@ -520,7 +520,7 @@ const awh::ASSL::validate_t awh::ASSL::matchSubjectName(const string & host, con
  * @param cert сертификат
  * @return     результат проверки
  */
-const awh::ASSL::validate_t awh::ASSL::validateHostname(const string & host, const X509 * cert) const noexcept {
+const awh::Actuator::validate_t awh::Actuator::validateHostname(const string & host, const X509 * cert) const noexcept {
 	// Результат работы функции
 	validate_t result = validate_t::Error;
 	// Если данные переданы
@@ -538,7 +538,7 @@ const awh::ASSL::validate_t awh::ASSL::validateHostname(const string & host, con
  * @param ctx объект контекста SSL
  * @return    результат инициализации
  */
-bool awh::ASSL::initTrustedStore(SSL_CTX * ctx) const noexcept {
+bool awh::Actuator::initTrustedStore(SSL_CTX * ctx) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Если контекст SSL передан
@@ -700,7 +700,7 @@ bool awh::ASSL::initTrustedStore(SSL_CTX * ctx) const noexcept {
  * clear Метод очистки контекста
  * @param ctx контекст для очистки
  */
-void awh::ASSL::clear(ctx_t & ctx) const noexcept {
+void awh::Actuator::clear(ctx_t & ctx) const noexcept {
 	// Если сокет активен
 	if(ctx.fd > -1){
 		/**
@@ -765,7 +765,7 @@ void awh::ASSL::clear(ctx_t & ctx) const noexcept {
  * @param ctx контекст для очистки
  * @return    объект SSL контекста
  */
-awh::ASSL::ctx_t awh::ASSL::wrap(ctx_t & ctx) noexcept {
+awh::Actuator::ctx_t awh::Actuator::wrap(ctx_t & ctx) noexcept {
 	// Если объект ещё не обёрнут в SSL контекст
 	if(!ctx.mode)
 		// Выполняем обёртывание уже активного SSL контекста
@@ -779,7 +779,7 @@ awh::ASSL::ctx_t awh::ASSL::wrap(ctx_t & ctx) noexcept {
  * @param url Параметры URL адреса для инициализации
  * @return    объект SSL контекста
  */
-awh::ASSL::ctx_t awh::ASSL::wrap(ctx_t & ctx, const uri_t::url_t & url) noexcept {
+awh::Actuator::ctx_t awh::Actuator::wrap(ctx_t & ctx, const uri_t::url_t & url) noexcept {
 	// Если объект ещё не обёрнут в SSL контекст
 	if(!ctx.mode)
 		// Выполняем обёртывание уже активного SSL контекста
@@ -793,7 +793,7 @@ awh::ASSL::ctx_t awh::ASSL::wrap(ctx_t & ctx, const uri_t::url_t & url) noexcept
  * @param mode флаг выполнения обертывания файлового дескриптора
  * @return     объект SSL контекста
  */
-awh::ASSL::ctx_t awh::ASSL::wrap(const int fd, const bool mode) noexcept {
+awh::Actuator::ctx_t awh::Actuator::wrap(const int fd, const bool mode) noexcept {
 	// Результат работы функции
 	ctx_t result(this->log);
 	// Устанавливаем файловый дескриптор
@@ -960,7 +960,7 @@ awh::ASSL::ctx_t awh::ASSL::wrap(const int fd, const bool mode) noexcept {
  * @param url Параметры URL адреса для инициализации
  * @return    объект SSL контекста
  */
-awh::ASSL::ctx_t awh::ASSL::wrap(const int fd, const uri_t::url_t & url) noexcept {
+awh::Actuator::ctx_t awh::Actuator::wrap(const int fd, const uri_t::url_t & url) noexcept {
 	// Результат работы функции
 	ctx_t result(this->log);
 	// Устанавливаем файловый дескриптор
@@ -1072,7 +1072,7 @@ awh::ASSL::ctx_t awh::ASSL::wrap(const int fd, const uri_t::url_t & url) noexcep
  * setVerify Метод разрешающий или запрещающий, выполнять проверку соответствия, сертификата домену
  * @param mode флаг состояния разрешения проверки
  */
-void awh::ASSL::setVerify(const bool mode) noexcept {
+void awh::Actuator::setVerify(const bool mode) noexcept {
 	// Устанавливаем флаг проверки
 	this->verify = mode;
 }
@@ -1080,7 +1080,7 @@ void awh::ASSL::setVerify(const bool mode) noexcept {
  * setCipher Метод установки алгоритмов шифрования
  * @param cipher список алгоритмов шифрования для установки
  */
-void awh::ASSL::setCipher(const vector <string> & cipher) noexcept {
+void awh::Actuator::setCipher(const vector <string> & cipher) noexcept {
 	// Если список алгоритмов шифрования передан
 	if(!cipher.empty()){
 		// Очищаем установленный список алгоритмов шифрования
@@ -1101,7 +1101,7 @@ void awh::ASSL::setCipher(const vector <string> & cipher) noexcept {
  * @param trusted адрес доверенного сертификата (CA-файла)
  * @param path    адрес каталога где находится сертификат (CA-файл)
  */
-void awh::ASSL::setTrusted(const string & trusted, const string & path) noexcept {
+void awh::Actuator::setTrusted(const string & trusted, const string & path) noexcept {
 	// Если адрес CA-файла передан
 	if(!trusted.empty()){
 		// Устанавливаем адрес доверенного сертификата (CA-файла)
@@ -1117,19 +1117,19 @@ void awh::ASSL::setTrusted(const string & trusted, const string & path) noexcept
  * @param chain файл цепочки сертификатов
  * @param key   приватный ключ сертификата (если требуется)
  */
-void awh::ASSL::setCertificate(const string & chain, const string & key) noexcept {
+void awh::Actuator::setCertificate(const string & chain, const string & key) noexcept {
 	// Устанавливаем приватный ключ сертификата
 	this->privkey = key;
 	// Устанавливаем файл полной цепочки сертификатов
 	this->fullchain = chain;
 }
 /**
- * ASSL Конструктор
+ * Actuator Конструктор
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
  * @param uri объект работы с URI
  */
-awh::ASSL::ASSL(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcept : fmk(fmk), uri(uri), log(log) {
+awh::Actuator::Actuator(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcept : fmk(fmk), uri(uri), log(log) {
 	// Выполняем модификацию доверенного сертификата (CA-файла)
 	this->trusted = fs_t::realPath(this->trusted);
 	// Выполняем установку алгоритмов шифрования
@@ -1194,9 +1194,9 @@ awh::ASSL::ASSL(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcep
 	#endif
 }
 /**
- * ~ASSL Деструктор
+ * ~Actuator Деструктор
  */
-awh::ASSL::~ASSL() noexcept {
+awh::Actuator::~Actuator() noexcept {
 	/**
 	 * Если версия OpenSSL старая
 	 */

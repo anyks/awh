@@ -690,11 +690,11 @@ void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 					// Устанавливаем идентификатор адъютанта
 					adj->aid = this->fmk->unixTimestamp();
 					// Выполняем получение контекста сертификата
-					adj->ssl = this->ssl.wrap(socket, false);
-					// Если защищённый режим не активирован
-					if(!adj->ssl.wrapped()){
+					adj->act = this->act.wrap(socket, false);
+					// Если подключение не обёрнуто
+					if(!adj->act.wrapped()){
 						// Выводим сообщение об ошибке
-						this->log->print("wrap SSL context is failed", log_t::flag_t::CRITICAL);
+						this->log->print("wrap actuator context is failed", log_t::flag_t::CRITICAL);
 						// Выходим из функции
 						return;
 					}
@@ -793,15 +793,15 @@ void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 				// Выполняем блокировку потока
 				this->mtx.accept.lock();
 				// Выполняем получение контекста сертификата
-				adj->ssl = this->ssl.wrap(socket);
+				adj->act = this->act.wrap(socket);
 				// Устанавливаем идентификатор адъютанта
 				adj->aid = this->fmk->unixTimestamp();
 				// Выполняем блокировку потока
 				this->mtx.accept.unlock();
-				// Если защищённый режим не активирован
-				if(!adj->ssl.wrapped()){
+				// Если подключение не обёрнуто
+				if(!adj->act.wrapped()){
 					// Выводим сообщение об ошибке
-					this->log->print("wrap SSL context is failed", log_t::flag_t::CRITICAL);
+					this->log->print("wrap actuator context is failed", log_t::flag_t::CRITICAL);
 					// Выходим из функции
 					return;
 				}
@@ -883,8 +883,8 @@ void awh::server::Core::close() noexcept {
 						this->clean(it->first);
 						// Если unix-сокет не используется
 						if(!this->isSetUnixSocket())
-							// Выполняем удаление контекста SSL
-							this->ssl.clear(it->second->ssl);
+							// Выполняем очистку контекста актуатора
+							this->act.clear(it->second->act);
 						// Удаляем адъютанта из списка подключений
 						this->adjutants.erase(it->first);
 						// Выводим функцию обратного вызова
@@ -940,8 +940,8 @@ void awh::server::Core::remove() noexcept {
 						this->clean(jt->first);
 						// Если unix-сокет не используется
 						if(!this->isSetUnixSocket())
-							// Выполняем удаление контекста SSL
-							this->ssl.clear(adj->ssl);
+							// Выполняем очистку контекста актуатора
+							this->act.clear(adj->act);
 						// Удаляем адъютанта из списка подключений
 						this->adjutants.erase(jt->first);
 						// Выводим функцию обратного вызова
@@ -1110,8 +1110,8 @@ void awh::server::Core::remove(const size_t wid) noexcept {
 						this->clean(jt->first);
 						// Если unix-сокет не используется
 						if(!this->isSetUnixSocket())
-							// Выполняем удаление контекста SSL
-							this->ssl.clear(adj->ssl);
+							// Выполняем очистку контекста актуатора
+							this->act.clear(adj->act);
 						// Выводим функцию обратного вызова
 						if(wrk->disconnectFn != nullptr)
 							// Выполняем функцию обратного вызова
@@ -1174,8 +1174,8 @@ void awh::server::Core::close(const size_t aid) noexcept {
 			this->clean(aid);
 			// Если unix-сокет не используется
 			if(!this->isSetUnixSocket())
-				// Выполняем удаление контекста SSL
-				this->ssl.clear(adj->ssl);
+				// Выполняем очистку контекста актуатора
+				this->act.clear(adj->act);
 			// Удаляем адъютанта из списка адъютантов
 			wrk->adjutants.erase(aid);
 			// Удаляем адъютанта из списка подключений
@@ -1249,7 +1249,7 @@ void awh::server::Core::transfer(const method_t method, const size_t aid) noexce
 				// Выполняем перебор бесконечным циклом пока это разрешено
 				while(!adj->bev.locked.read){
 					// Выполняем получение сообщения от клиента
-					bytes = adj->ssl.read(buffer, sizeof(buffer));
+					bytes = adj->act.read(buffer, sizeof(buffer));
 					// Если время ожидания чтения данных установлено
 					if(wrk->wait && (adj->timeouts.read > 0)){
 						// Устанавливаем время ожидания на получение данных
@@ -1321,7 +1321,7 @@ void awh::server::Core::transfer(const method_t method, const size_t aid) noexce
 						// Определяем размер отправляемых данных
 						actual = ((size >= adj->marker.write.max) ? adj->marker.write.max : size);
 						// Выполняем отправку сообщения клиенту
-						bytes = adj->ssl.write(adj->buffer.data() + offset, actual);
+						bytes = adj->act.write(adj->buffer.data() + offset, actual);
 						// Если время ожидания записи данных установлено
 						if(adj->timeouts.write > 0){
 							// Устанавливаем время ожидания на запись данных
@@ -1384,7 +1384,7 @@ void awh::server::Core::setBandwidth(const size_t aid, const string & read, cons
 			awh::worker_t::adj_t * adj = const_cast <awh::worker_t::adj_t *> (it->second);
 			// Устанавливаем размер буфера
 			this->socket.bufferSize(
-				adj->ssl.get(),
+				adj->act.get(),
 				(!read.empty() ? this->fmk->sizeBuffer(read) : 0),
 				(!write.empty() ? this->fmk->sizeBuffer(write) : 0),
 				reinterpret_cast <const worker_t *> (adj->parent)->total
@@ -1448,7 +1448,7 @@ void awh::server::Core::setCert(const string & chain, const string & key) noexce
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->mtx.system);
 	// Устанавливаем файлы сертификата
-	this->ssl.setCertificate(chain, key);
+	this->act.setCertificate(chain, key);
 }
 /**
  * init Метод инициализации сервера

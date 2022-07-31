@@ -168,9 +168,9 @@ void awh::client::Core::connect(const size_t wid) noexcept {
 								// Выполняем блокировку потока
 								this->mtx.connect.lock();
 								// Выполняем получение контекста сертификата
-								adj->ssl = this->ssl.wrap(sockaddr.socket, url);
-								// Если защищённый режим не активирован
-								if(!adj->ssl.wrapped()){
+								adj->act = this->act.wrap(sockaddr.socket, url);
+								// Если подключение не обёрнуто
+								if(!adj->act.wrapped()){
 									// Запрещаем чтение данных с сервера
 									adj->bev.locked.read = true;
 									// Запрещаем запись данных на сервер
@@ -180,7 +180,7 @@ void awh::client::Core::connect(const size_t wid) noexcept {
 									// Устанавливаем статус подключения
 									wrk->status.real = worker_t::mode_t::DISCONNECT;
 									// Выводим сообщение об ошибке
-									this->log->print("wrap SSL context is failed", log_t::flag_t::CRITICAL);
+									this->log->print("wrap actuator context is failed", log_t::flag_t::CRITICAL);
 									// Выполняем переподключение
 									this->reconnect(wid);
 									// Выходим из функции
@@ -247,8 +247,8 @@ void awh::client::Core::connect(const size_t wid) noexcept {
 							if(this->locking.count(it->first) < 1){
 								// Выполняем очистку буфера событий
 								this->clean(it->first);
-								// Выполняем удаление контекста SSL
-								this->ssl.clear(it->second->ssl);
+								// Выполняем очистку контекста актуатора
+								this->act.clear(it->second->act);
 								// Удаляем адъютанта из списка подключений
 								this->adjutants.erase(it->first);
 								// Удаляем адъютанта из списка
@@ -277,9 +277,9 @@ void awh::client::Core::connect(const size_t wid) noexcept {
 							// Выполняем блокировку потока
 							this->mtx.connect.lock();
 							// Выполняем получение контекста сертификата
-							adj->ssl = this->ssl.wrap(sockaddr.socket, url);
-							// Если защищённый режим не активирован
-							if(!adj->ssl.wrapped()){
+							adj->act = this->act.wrap(sockaddr.socket, url);
+							// Если подключение не обёрнуто
+							if(!adj->act.wrapped()){
 								// Запрещаем чтение данных с сервера
 								adj->bev.locked.read = true;
 								// Запрещаем запись данных на сервер
@@ -291,7 +291,7 @@ void awh::client::Core::connect(const size_t wid) noexcept {
 								// Устанавливаем флаг ожидания статуса
 								wrk->status.wait = worker_t::mode_t::DISCONNECT;
 								// Выводим сообщение об ошибке
-								this->log->print("wrap SSL context is failed", log_t::flag_t::CRITICAL);
+								this->log->print("wrap actuator context is failed", log_t::flag_t::CRITICAL);
 								// Выполняем переподключение
 								this->reconnect(wid);
 								// Выходим из функции
@@ -679,8 +679,8 @@ void awh::client::Core::close() noexcept {
 						this->clean(it->first);
 						// Если unix-сокет не используется
 						if(!this->isSetUnixSocket())
-							// Выполняем удаление контекста SSL
-							this->ssl.clear(it->second->ssl);
+							// Выполняем очистку контекста актуатора
+							this->act.clear(it->second->act);
 						// Удаляем адъютанта из списка подключений
 						this->adjutants.erase(it->first);
 						// Выводим функцию обратного вызова
@@ -742,8 +742,8 @@ void awh::client::Core::remove() noexcept {
 						this->clean(jt->first);
 						// Если unix-сокет не используется
 						if(!this->isSetUnixSocket())
-							// Выполняем удаление контекста SSL
-							this->ssl.clear(adj->ssl);
+							// Выполняем очистку контекста актуатора
+							this->act.clear(adj->act);
 						// Удаляем адъютанта из списка подключений
 						this->adjutants.erase(jt->first);
 						// Выводим функцию обратного вызова
@@ -900,8 +900,8 @@ void awh::client::Core::close(const size_t aid) noexcept {
 				wrk->switchConnect();
 			// Если unix-сокет не используется
 			if(!this->isSetUnixSocket())
-				// Выполняем удаление контекста SSL
-				this->ssl.clear(adj->ssl);
+				// Выполняем очистку контекста актуатора
+				this->act.clear(adj->act);
 			// Удаляем адъютанта из списка адъютантов
 			wrk->adjutants.erase(aid);
 			// Удаляем адъютанта из списка подключений
@@ -949,11 +949,11 @@ void awh::client::Core::switchProxy(const size_t aid) noexcept {
 				// Выполняем переключение на работу с сервером
 				wrk->switchConnect();
 				// Выполняем получение контекста сертификата
-				adj->ssl = this->ssl.wrap(adj->ssl, wrk->url);
-				// Если защищённый режим не активирован
-				if(!adj->ssl.wrapped()){
+				adj->act = this->act.wrap(adj->act, wrk->url);
+				// Если подключение не обёрнуто
+				if(!adj->act.wrapped()){
 					// Выводим сообщение об ошибке
-					this->log->print("wrap SSL context is failed", log_t::flag_t::CRITICAL);
+					this->log->print("wrap actuator context is failed", log_t::flag_t::CRITICAL);
 					// Выходим из функции
 					return;
 				}
@@ -1109,14 +1109,14 @@ void awh::client::Core::transfer(const method_t method, const size_t aid) noexce
 					// Выполняем перебор бесконечным циклом пока это разрешено
 					while(!adj->bev.locked.read && (wrk->status.real == worker_t::mode_t::CONNECT)){
 						// Если дочерние активные подключения есть и сокет блокирующий
-						if((this->cores > 0) && (this->socket.isBlocking(adj->ssl.get()) == 1)){
+						if((this->cores > 0) && (this->socket.isBlocking(adj->act.get()) == 1)){
 							// Переводим сокет в не блокирующий режим
-							this->socket.nonBlocking(adj->ssl.get());
+							this->socket.nonBlocking(adj->act.get());
 							// Переводим BIO в не блокирующий режим
-							adj->ssl.noblock();
+							adj->act.noblock();
 						}
 						// Выполняем получение сообщения от клиента
-						bytes = adj->ssl.read(buffer, sizeof(buffer));
+						bytes = adj->act.read(buffer, sizeof(buffer));
 						// Если время ожидания чтения данных установлено
 						if(wrk->wait && (adj->timeouts.read > 0)){
 							// Устанавливаем время ожидания на получение данных
@@ -1126,7 +1126,7 @@ void awh::client::Core::transfer(const method_t method, const size_t aid) noexce
 						// Останавливаем таймаут ожидания на чтение из сокета
 						} else adj->bev.timer.read.stop();
 						// Выполняем принудительное исполнение таймеров
-						if(this->socket.isBlocking(adj->ssl.get()) != 0) this->executeTimers();
+						if(this->socket.isBlocking(adj->act.get()) != 0) this->executeTimers();
 						/**
 						 * Если операционной системой является MS Windows
 						 */
@@ -1215,9 +1215,9 @@ void awh::client::Core::transfer(const method_t method, const size_t aid) noexce
 							// Определяем размер отправляемых данных
 							actual = ((size >= adj->marker.write.max) ? adj->marker.write.max : size);
 							// Выполняем отправку сообщения клиенту
-							bytes = adj->ssl.write(adj->buffer.data() + offset, actual);
+							bytes = adj->act.write(adj->buffer.data() + offset, actual);
 							// Выполняем принудительное исполнение таймеров
-							if(this->socket.isBlocking(adj->ssl.get()) != 0) this->executeTimers();
+							if(this->socket.isBlocking(adj->act.get()) != 0) this->executeTimers();
 							// Если время ожидания записи данных установлено
 							if(adj->timeouts.write > 0){
 								// Устанавливаем время ожидания на запись данных
@@ -1289,7 +1289,7 @@ void awh::client::Core::setBandwidth(const size_t aid, const string & read, cons
 			awh::worker_t::adj_t * adj = const_cast <awh::worker_t::adj_t *> (it->second);
 			// Устанавливаем размер буфера
 			this->socket.bufferSize(
-				adj->ssl.get(),
+				adj->act.get(),
 				(!read.empty() ? this->fmk->sizeBuffer(read) : 0),
 				(!write.empty() ? this->fmk->sizeBuffer(write) : 0), 1
 			);

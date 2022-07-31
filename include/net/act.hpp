@@ -1,6 +1,6 @@
 /**
- * @file: ssl.hpp
- * @date: 2021-12-19
+ * @file: act.hpp
+ * @date: 2022-07-31
  * @license: GPL-3.0
  *
  * @telegram: @forman
@@ -9,11 +9,11 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
- * @copyright: Copyright © 2021
+ * @copyright: Copyright © 2022
  */
 
-#ifndef __AWH_SSL__
-#define __AWH_SSL__
+#ifndef __AWH_ACTUATOR__
+#define __AWH_ACTUATOR__
 
 /**
  * Отключаем Deprecated для Apple
@@ -73,9 +73,9 @@ using namespace std;
  */
 namespace awh {
 	/**
-	 * ASSL Класс для работы с зашифрованными данными
+	 * Actuator Класс для работы с каналом передачи данных
 	 */
-	typedef class ASSL {
+	typedef class Actuator {
 		private:
 			/**
 			 * Тип активного приложения
@@ -86,14 +86,14 @@ namespace awh {
 			 * Verify Структура параметров для валидации доменов
 			 */
 			typedef struct Verify {
-				string host;      // Хост для валидации
-				const ASSL * ssl; // Объект для работы с SSL
+				string host;          // Хост для валидации
+				const Actuator * act; // Объект для работы с SSL
 				/**
 				 * Verify Конструктор
-				 * @param ssl  основной родительский объект
+				 * @param act  основной родительский объект
 				 * @param host хост для которого производится проверка
 				 */
-				Verify(const string & host = "", const ASSL * ssl = nullptr) noexcept : host(host), ssl(ssl) {}
+				Verify(const string & host = "", const Actuator * act = nullptr) noexcept : host(host), act(act) {}
 			} verify_t;
 		public:
 			/**
@@ -102,9 +102,9 @@ namespace awh {
 			typedef class Context {
 				private:
 					/**
-					 *ASSL Устанавливаем дружбу с родительским объектом
+					 * Actuator Устанавливаем дружбу с родительским объектом актуатора
 					 */
-					friend class ASSL;
+					friend class Actuator;
 				private:
 					// Файловый дескриптор (сокет)
 					int fd;
@@ -340,17 +340,17 @@ namespace awh {
 			void setCertificate(const string & chain, const string & key = "") noexcept;
 		public:
 			/**
-			 * ASSL Конструктор
+			 * Actuator Конструктор
 			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
 			 * @param uri объект работы с URI
 			 */
-			ASSL(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcept;
+			Actuator(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcept;
 			/**
-			 * ~ASSL Деструктор
+			 * ~Actuator Деструктор
 			 */
-			~ASSL() noexcept;
-	} ssl_t;
+			~Actuator() noexcept;
+	} act_t;
 };
 
-#endif // __AWH_SSL__
+#endif // __AWH_ACTUATOR__

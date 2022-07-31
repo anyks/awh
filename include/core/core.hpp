@@ -58,7 +58,7 @@
  * Наши модули
  */
 #include <net/if.hpp>
-#include <net/ssl.hpp>
+#include <net/act.hpp>
 // #include <net/dns.hpp>
 #include <net/socket.hpp>
 #include <worker/core.hpp>
@@ -303,8 +303,8 @@ namespace awh {
 			net_t net;
 			// Создаём объект работы с URI
 			uri_t uri;
-			// Создаём объект для работы с SSL
-			ssl_t ssl;
+			// Создаём объект для работы с актуатором
+			act_t act;
 			/*
 			// Создаём объект DNS IPv4 резолвера
 			dns_t dns4;
