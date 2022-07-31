@@ -110,12 +110,13 @@ namespace awh {
 						ev::io write; // Объект события на запись
 						ev::child cw; // Объект работы с дочерними процессами
 						size_t wid;   // Идентификатор основного воркера
+						time_t date;  // Время начала жизни процесса
 						size_t index; // Индекс работника в списке
 						size_t count; // Количество подключений
 						/**
 						 * Jack Конструктор
 						 */
-						Jack() noexcept : pid(0), wid(0), index(0), count(0) {}
+						Jack() noexcept : pid(0), wid(0), date(0), index(0), count(0) {}
 					} jack_t;
 				#endif
 			private:

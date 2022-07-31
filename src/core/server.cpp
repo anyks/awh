@@ -216,39 +216,6 @@ void awh::server::worker_t::accept(ev::io & watcher, int revents) noexcept {
 		watcher.stop();
 		// Если процесс является родительским
 		if(this->pid == getpid()){
-			// Определяем тип сигнала
-			switch(watcher.signum){
-				// Если возникает сигнал ручной остановкой процесса
-				case SIGINT:
-					// Выводим сообщение об завершении работы процесса
-					this->log->print("main process was closed, goodbye!", log_t::flag_t::INFO);
-				break;
-				// Если возникает сигнал ошибки выполнения арифметической операции
-				case SIGFPE:
-					// Выводим сообщение об завершении работы процесса
-					this->log->print("main process was closed with signal [%s]", log_t::flag_t::WARNING, "SIGFPE");
-				break;
-				// Если возникает сигнал выполнения неверной инструкции
-				case SIGILL:
-					// Выводим сообщение об завершении работы процесса
-					this->log->print("main process was closed with signal [%s]", log_t::flag_t::WARNING, "SIGILL");
-				break;
-				// Если возникает сигнал запроса принудительного завершения процесса
-				case SIGTERM:
-					// Выводим сообщение об завершении работы процесса
-					this->log->print("main process was closed with signal [%s]", log_t::flag_t::WARNING, "SIGTERM");
-				break;
-				// Если возникает сигнал сегментации памяти (обращение к несуществующему адресу памяти)
-				case SIGSEGV:
-					// Выводим сообщение об завершении работы процесса
-					this->log->print("main process was closed with signal [%s]", log_t::flag_t::WARNING, "SIGSEGV");
-				break;
-				// Если возникает сигнал запроса принудительное закрытие приложения из кода программы
-				case SIGABRT:
-					// Выводим сообщение об завершении работы процесса
-					this->log->print("main process was closed with signal [%s]", log_t::flag_t::WARNING, "SIGABRT");
-				break;
-			}
 			// Выполняем остановку работы
 			this->stop();
 			// Завершаем работу основного процесса
@@ -320,9 +287,15 @@ void awh::server::worker_t::accept(ev::io & watcher, int revents) noexcept {
 				::close(jack->mfds[0]);
 				::close(jack->cfds[1]);
 				// Выводим сообщение об ошибке, о невозможности отправкить сообщение
-				this->log->print("child process terminated, index = %d, pid = %d, status = %x", log_t::flag_t::CRITICAL, jack->index, jack->pid, watcher.rstatus);
-				// Если статус сигнала, ручной остановкой процесса, выходим из приложения
-				if(watcher.rstatus == SIGINT) exit(SIGINT);
+				this->log->print("child process stopped, index = %d, pid = %d, status = %x", log_t::flag_t::CRITICAL, jack->index, jack->pid, watcher.rstatus);
+				// Если статус сигнала, ручной остановкой процесса
+				if(watcher.rstatus == SIGINT)
+					// Выходим из приложения
+					exit(SIGINT);
+				// Если время жизни процесса составляет меньше 3-х минут
+				else if((this->fmk->unixTimestamp() - jack->date) <= 180000)
+					// Выходим из приложения
+					exit(EXIT_FAILURE);
 				// Выходим из цикла
 				break;
 			}
@@ -455,6 +428,8 @@ void awh::server::Core::forking(const size_t wid, const size_t index, const size
 							::close(jack->mfds[0]);
 							// Устанавливаем идентификатор процесса
 							jack->pid = getpid();
+							// Устанавливаем время начала жизни процесса
+							jack->date = this->fmk->unixTimestamp();
 							// Устанавливаем базу событий для чтения
 							jack->read.set(this->dispatch.base);
 							// Устанавливаем базу событий для записи
@@ -494,6 +469,8 @@ void awh::server::Core::forking(const size_t wid, const size_t index, const size
 						::close(jack->cfds[0]);
 						// Устанавливаем PID процесса
 						jack->pid = pid;
+						// Устанавливаем время начала жизни процесса
+						jack->date = this->fmk->unixTimestamp();
 						// Устанавливаем базу событий для чтения
 						jack->read.set(this->dispatch.base);
 						// Устанавливаем базу событий для записи
