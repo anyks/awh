@@ -31,6 +31,7 @@
 #include <cstring>
 #include <iomanip>
 #include <cstdlib>
+#include <iostream>
 #include <algorithm>
 #include <type_traits>
 #include <sys/types.h>

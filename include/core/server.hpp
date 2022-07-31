@@ -81,8 +81,9 @@ namespace awh {
 					typedef struct Signals {
 						ev::sig sint;  // Перехватчик сигнала SIGINT
 						ev::sig sfpe;  // Перехватчик сигнала SIGFPE
+						ev::sig sill;  // Перехватчик сигнала SIGILL
 						ev::sig sterm; // Перехватчик сигнала SIGTERM
-						ev::sig squit; // Перехватчик сигнала SIGQUIT
+						ev::sig sabrt; // Перехватчик сигнала SIGABRT
 						ev::sig ssegv; // Перехватчик сигнала SIGSEGV
 					} sig_t;
 					/**

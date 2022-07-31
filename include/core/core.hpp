@@ -42,6 +42,9 @@
  */
 #if defined(_WIN32) || defined(_WIN64)
 	// Подключаем заголовочный файл
+	#include <tchar.h>
+	#include <stdlib.h>
+	#include <signal.h>
 	#include <synchapi.h>
 /**
  * Для всех остальных операционных систем
@@ -92,6 +95,24 @@ namespace awh {
 			 */
 			enum class method_t : uint8_t {READ, WRITE, CONNECT};
 		private:
+			/**
+			 * Методы только для OS Windows
+			 */
+			#if defined(_WIN32) || defined(_WIN64)
+				// Устанавливаем прототип функции обработчика сигнала
+				typedef void (* SignalHandlerPointer)(int);
+				/**
+				 * Signals Структура событий сигналов
+				 */
+				typedef struct Signals {
+					SignalHandlerPointer sint;  // Перехватчик сигнала SIGINT
+					SignalHandlerPointer sfpe;  // Перехватчик сигнала SIGFPE
+					SignalHandlerPointer sill;  // Перехватчик сигнала SIGILL
+					SignalHandlerPointer sabrt; // Перехватчик сигнала SIGABRT
+					SignalHandlerPointer sterm; // Перехватчик сигнала SIGTERM
+					SignalHandlerPointer ssegv; // Перехватчик сигнала SIGSEGV
+				} sig_t;
+			#endif
 			/**
 			 * Timer Класс таймера
 			 */
@@ -304,6 +325,14 @@ namespace awh {
 		protected:
 			// Мютекс для блокировки основного потока
 			mutable mtx_t mtx;
+		private:
+			/**
+			 * Методы только для OS Windows
+			 */
+			#if defined(_WIN32) || defined(_WIN64)
+				// Объект работы с сигналами
+				sig_t sig;
+			#endif
 		protected:
 			// Тип запускаемого ядра
 			type_t type = type_t::CLIENT;

@@ -156,11 +156,11 @@ namespace awh {
 			 * Socket Конструктор
 			 * @param log объект для работы с логами
 			 */
-			Socket(const log_t * log) noexcept;
+			Socket(const log_t * log) noexcept : log(log) {}
 			/**
 			 * ~Socket Деструктор
 			 */
-			~Socket() noexcept;
+			~Socket() noexcept {}
 	} socket_t;
 };
 

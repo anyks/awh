@@ -228,20 +228,25 @@ void awh::server::worker_t::accept(ev::io & watcher, int revents) noexcept {
 					// Выводим сообщение об завершении работы процесса
 					this->log->print("main process was closed with signal [%s]", log_t::flag_t::WARNING, "SIGFPE");
 				break;
+				// Если возникает сигнал выполнения неверной инструкции
+				case SIGILL:
+					// Выводим сообщение об завершении работы процесса
+					this->log->print("main process was closed with signal [%s]", log_t::flag_t::WARNING, "SIGILL");
+				break;
 				// Если возникает сигнал запроса принудительного завершения процесса
 				case SIGTERM:
 					// Выводим сообщение об завершении работы процесса
 					this->log->print("main process was closed with signal [%s]", log_t::flag_t::WARNING, "SIGTERM");
 				break;
-				// Если возникает сигнал запроса принудительного завершения процесса со сбросом дампа памяти
-				case SIGQUIT:
-					// Выводим сообщение об завершении работы процесса
-					this->log->print("main process was closed with signal [%s]", log_t::flag_t::WARNING, "SIGQUIT");
-				break;
 				// Если возникает сигнал сегментации памяти (обращение к несуществующему адресу памяти)
 				case SIGSEGV:
 					// Выводим сообщение об завершении работы процесса
 					this->log->print("main process was closed with signal [%s]", log_t::flag_t::WARNING, "SIGSEGV");
+				break;
+				// Если возникает сигнал запроса принудительное закрытие приложения из кода программы
+				case SIGABRT:
+					// Выводим сообщение об завершении работы процесса
+					this->log->print("main process was closed with signal [%s]", log_t::flag_t::WARNING, "SIGABRT");
 				break;
 			}
 			// Выполняем остановку работы
@@ -262,20 +267,25 @@ void awh::server::worker_t::accept(ev::io & watcher, int revents) noexcept {
 					// Выводим сообщение об завершении работы процесса
 					this->log->print("child process was closed with signal [%s]", log_t::flag_t::WARNING, "SIGFPE");
 				break;
+				// Если возникает сигнал выполнения неверной инструкции
+				case SIGILL:
+					// Выводим сообщение об завершении работы процесса
+					this->log->print("child process was closed with signal [%s]", log_t::flag_t::WARNING, "SIGILL");
+				break;
 				// Если возникает сигнал запроса принудительного завершения процесса
 				case SIGTERM:
 					// Выводим сообщение об завершении работы процесса
 					this->log->print("child process was closed with signal [%s]", log_t::flag_t::WARNING, "SIGTERM");
 				break;
-				// Если возникает сигнал запроса принудительного завершения процесса со сбросом дампа памяти
-				case SIGQUIT:
-					// Выводим сообщение об завершении работы процесса
-					this->log->print("child process was closed with signal [%s]", log_t::flag_t::WARNING, "SIGQUIT");
-				break;
 				// Если возникает сигнал сегментации памяти (обращение к несуществующему адресу памяти)
 				case SIGSEGV:
 					// Выводим сообщение об завершении работы процесса
 					this->log->print("child process was closed with signal [%s]", log_t::flag_t::WARNING, "SIGSEGV");
+				break;
+				// Если возникает сигнал запроса принудительное закрытие приложения из кода программы
+				case SIGABRT:
+					// Выводим сообщение об завершении работы процесса
+					this->log->print("child process was closed with signal [%s]", log_t::flag_t::WARNING, "SIGABRT");
 				break;
 			}
 			// Выполняем остановку работы
@@ -507,20 +517,23 @@ void awh::server::Core::forking(const size_t wid, const size_t index, const size
 								// Устанавливаем базу событий для сигналов
 								this->sig.sint.set(this->dispatch.base);
 								this->sig.sfpe.set(this->dispatch.base);
+								this->sig.sill.set(this->dispatch.base);
 								this->sig.sterm.set(this->dispatch.base);
-								this->sig.squit.set(this->dispatch.base);
+								this->sig.sabrt.set(this->dispatch.base);
 								this->sig.ssegv.set(this->dispatch.base);
 								// Устанавливаем событие на отслеживание сигнала
 								this->sig.sint.set <core_t, &core_t::signal> (this);
 								this->sig.sfpe.set <core_t, &core_t::signal> (this);
+								this->sig.sill.set <core_t, &core_t::signal> (this);
 								this->sig.sterm.set <core_t, &core_t::signal> (this);
-								this->sig.squit.set <core_t, &core_t::signal> (this);
+								this->sig.sabrt.set <core_t, &core_t::signal> (this);
 								this->sig.ssegv.set <core_t, &core_t::signal> (this);
 								// Выполняем отслеживание возникающего сигнала
 								this->sig.sint.start(SIGINT);
 								this->sig.sfpe.start(SIGFPE);
+								this->sig.sill.start(SIGILL);
 								this->sig.sterm.start(SIGTERM);
-								this->sig.squit.start(SIGQUIT);
+								this->sig.sabrt.start(SIGABRT);
 								this->sig.ssegv.start(SIGSEGV);
 							}{
 								// Устанавливаем тип сообщения
@@ -1370,7 +1383,8 @@ void awh::server::Core::setBandwidth(const size_t aid, const string & read, cons
 			// Получаем объект адъютанта
 			awh::worker_t::adj_t * adj = const_cast <awh::worker_t::adj_t *> (it->second);
 			// Устанавливаем размер буфера
-			adj->ssl.bufferSize(
+			this->socket.bufferSize(
+				adj->ssl.get(),
 				(!read.empty() ? this->fmk->sizeBuffer(read) : 0),
 				(!write.empty() ? this->fmk->sizeBuffer(write) : 0),
 				reinterpret_cast <const worker_t *> (adj->parent)->total

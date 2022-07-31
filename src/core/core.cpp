@@ -16,6 +16,114 @@
 #include <core/core.hpp>
 
 /**
+ * Методы только для OS Windows
+ */
+#if defined(_WIN32) || defined(_WIN64)
+	/**
+	 * winHandler Функция фильтр перехватчика сигналов
+	 * @param except объект исключения
+	 * @return       тип полученного исключения
+	 */
+	/*
+	static LONG CALLBACK winHandler(LPEXCEPTION_POINTERS except){
+		// Выполняем обработку исключений
+		switch(except->ExceptionRecord->ExceptionCode){
+			// Если исключением является сегментацией памяти
+			case EXCEPTION_ACCESS_VIOLATION: {
+				// Создаём объект фреймворка
+				fmk_t fmk;
+				// Создаём объект для работы с логами
+				log_t log(&fmk);
+				// Очищаем сетевой контекст
+				WSACleanup();
+				// Выводим сообщение об завершении работы процесса
+				log.print("main process was closed with signal [%s]", awh::log_t::flag_t::WARNING, "SIGSEGV");
+				// Сообщаем, что произошло исключение
+				return EXCEPTION_CONTINUE_EXECUTION;
+			}
+			// Если исключение является деление на ноль или переполнение числа
+			case EXCEPTION_INT_OVERFLOW:
+			case EXCEPTION_FLT_DIVIDE_BY_ZERO:
+			case EXCEPTION_INT_DIVIDE_BY_ZERO: {
+				// Создаём объект фреймворка
+				fmk_t fmk;
+				// Создаём объект для работы с логами
+				log_t log(&fmk);
+				// Очищаем сетевой контекст
+				WSACleanup();
+				// Выводим сообщение об завершении работы процесса
+				log.print("main process was closed with signal [%s]", log_t::flag_t::WARNING, "SIGFPE");
+				// Сообщаем, что произошло исключение
+				return EXCEPTION_CONTINUE_EXECUTION;
+			}
+			// Если сигналов является, попытка исполнения привилегированной команды
+			case EXCEPTION_PRIV_INSTRUCTION: {
+				// Создаём объект фреймворка
+				fmk_t fmk;
+				// Создаём объект для работы с логами
+				log_t log(&fmk);
+				// Очищаем сетевой контекст
+				WSACleanup();
+				// Выводим сообщение об завершении работы процесса
+				log.print("main process was closed with signal [%s]", log_t::flag_t::WARNING, "SIGABRT");
+				// Сообщаем, что произошло исключение
+				return EXCEPTION_CONTINUE_EXECUTION;
+			}
+			// Сообщаем, что исключение нужно пропустить
+			default: return EXCEPTION_CONTINUE_SEARCH;
+		}
+	}
+	*/
+	/**
+	 * winHandler Функция фильтр перехватчика сигналов
+	 * @param except объект исключения
+	 * @return       тип полученного исключения
+	 */
+	static void SignalHandler(int signal) noexcept {  
+		// Создаём объект фреймворка
+		awh::fmk_t fmk;
+		// Создаём объект для работы с логами
+		awh::log_t log(&fmk);
+		// Определяем тип сигнала
+		switch(signal){
+			// Если возникает сигнал ручной остановкой процесса
+			case SIGINT:
+				// Выводим сообщение об завершении работы процесса
+				log.print("main process was closed, goodbye!", awh::log_t::flag_t::INFO);
+			break;
+			// Если возникает сигнал ошибки выполнения арифметической операции
+			case SIGFPE:
+				// Выводим сообщение об завершении работы процесса
+				log.print("main process was closed with signal [%s]", awh::log_t::flag_t::WARNING, "SIGFPE");
+			break;
+			// Если возникает сигнал выполнения неверной инструкции
+			case SIGILL:
+				// Выводим сообщение об завершении работы процесса
+				log.print("main process was closed with signal [%s]", awh::log_t::flag_t::WARNING, "SIGILL");
+			break;
+			// Если возникает сигнал запроса принудительного завершения процесса
+			case SIGTERM:
+				// Выводим сообщение об завершении работы процесса
+				log.print("main process was closed with signal [%s]", awh::log_t::flag_t::WARNING, "SIGTERM");
+			break;
+			// Если возникает сигнал запроса принудительное закрытие приложения из кода программы
+			case SIGABRT:
+				// Выводим сообщение об завершении работы процесса
+				log.print("main process was closed with signal [%s]", awh::log_t::flag_t::WARNING, "SIGABRT");
+			break;
+			// Если возникает сигнал сегментации памяти (обращение к несуществующему адресу памяти)
+			case SIGSEGV:
+				// Выводим сообщение об завершении работы процесса
+				log.print("main process was closed with signal [%s]", awh::log_t::flag_t::WARNING, "SIGSEGV");
+			break;
+		}
+		// Очищаем сетевой контекст
+		WSACleanup();
+		// Завершаем работу основного процесса
+		exit(signal);
+	} 
+#endif
+/**
  * read Функция обратного вызова при чтении данных с сокета
  * @param watcher объект события чтения
  * @param revents идентификатор события
@@ -1719,6 +1827,43 @@ awh::Core::Core(const fmk_t * fmk, const log_t * log, const int family) noexcept
 		} break;
 	}
 	*/
+	/**
+	 * Методы только для OS Windows
+	 */
+	#if defined(_WIN32) || defined(_WIN64)
+		// Идентификатор ошибки
+		int error = 0;
+		// Объект данных запроса
+		WSADATA wsaData;
+		// Выполняем инициализацию сетевого контекста
+		if((error = WSAStartup(MAKEWORD(2, 2), &wsaData)) != 0){
+			// Очищаем сетевой контекст
+			WSACleanup();
+			// Выходим из приложения
+			exit(EXIT_FAILURE);
+		}
+		// Выполняем проверку версии WinSocket
+		if((2 != LOBYTE(wsaData.wVersion)) || (2 != HIBYTE(wsaData.wVersion))){
+			// Очищаем сетевой контекст
+			WSACleanup();
+			// Выходим из приложения
+			exit(EXIT_FAILURE);
+		}
+		// Выполняем установку функцию перехватчика сигналов
+		// SetUnhandledExceptionFilter(winHandler);
+		// Создаём обработчик сигнала для SIGFPE
+		this->sig.sfpe = signal(SIGFPE, SignalHandler);
+		// Создаём обработчик сигнала для SIGILL
+		this->sig.sill = signal(SIGILL, SignalHandler);
+		// Создаём обработчик сигнала для SIGINT
+		this->sig.sint = signal(SIGINT, SignalHandler);
+		// Создаём обработчик сигнала для SIGABRT
+		this->sig.sabrt = signal(SIGABRT, SignalHandler);
+		// Создаём обработчик сигнала для SIGSEGV
+		this->sig.ssegv = signal(SIGSEGV, SignalHandler);
+		// Создаём обработчик сигнала для SIGTERM
+		this->sig.sterm = signal(SIGTERM, SignalHandler);
+	#endif
 }
 /**
  * ~Core Деструктор

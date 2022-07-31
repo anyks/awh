@@ -1109,9 +1109,12 @@ void awh::client::Core::transfer(const method_t method, const size_t aid) noexce
 					// Выполняем перебор бесконечным циклом пока это разрешено
 					while(!adj->bev.locked.read && (wrk->status.real == worker_t::mode_t::CONNECT)){
 						// Если дочерние активные подключения есть и сокет блокирующий
-						if((this->cores > 0) && (adj->ssl.isBlocking() == 1))
+						if((this->cores > 0) && (this->socket.isBlocking(adj->ssl.get()) == 1)){
 							// Переводим сокет в не блокирующий режим
-							adj->ssl.nonBlocking();
+							this->socket.nonBlocking(adj->ssl.get());
+							// Переводим BIO в не блокирующий режим
+							adj->ssl.noblock();
+						}
 						// Выполняем получение сообщения от клиента
 						bytes = adj->ssl.read(buffer, sizeof(buffer));
 						// Если время ожидания чтения данных установлено
@@ -1123,7 +1126,7 @@ void awh::client::Core::transfer(const method_t method, const size_t aid) noexce
 						// Останавливаем таймаут ожидания на чтение из сокета
 						} else adj->bev.timer.read.stop();
 						// Выполняем принудительное исполнение таймеров
-						if(adj->ssl.isBlocking() != 0) this->executeTimers();
+						if(this->socket.isBlocking(adj->ssl.get()) != 0) this->executeTimers();
 						/**
 						 * Если операционной системой является MS Windows
 						 */
@@ -1214,7 +1217,7 @@ void awh::client::Core::transfer(const method_t method, const size_t aid) noexce
 							// Выполняем отправку сообщения клиенту
 							bytes = adj->ssl.write(adj->buffer.data() + offset, actual);
 							// Выполняем принудительное исполнение таймеров
-							if(adj->ssl.isBlocking() != 0) this->executeTimers();
+							if(this->socket.isBlocking(adj->ssl.get()) != 0) this->executeTimers();
 							// Если время ожидания записи данных установлено
 							if(adj->timeouts.write > 0){
 								// Устанавливаем время ожидания на запись данных
@@ -1285,7 +1288,8 @@ void awh::client::Core::setBandwidth(const size_t aid, const string & read, cons
 			// Получаем объект адъютанта
 			awh::worker_t::adj_t * adj = const_cast <awh::worker_t::adj_t *> (it->second);
 			// Устанавливаем размер буфера
-			adj->ssl.bufferSize(
+			this->socket.bufferSize(
+				adj->ssl.get(),
 				(!read.empty() ? this->fmk->sizeBuffer(read) : 0),
 				(!write.empty() ? this->fmk->sizeBuffer(write) : 0), 1
 			);

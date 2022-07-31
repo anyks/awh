@@ -16,7 +16,7 @@
 #define __AWH_WINDOWS__
 
 /**
- * Устанавливаем типы данных для Windows
+ * Если операционной системой является MS Windows
  */
 #if defined(_WIN32) || defined(_WIN64)
 	#include <windows.h>
@@ -28,7 +28,9 @@
 	#define FS_SEPARATOR "\\"
 	// Устанавливаем кодировку UTF-8
 	#pragma execution_character_set("utf-8")
-// Для всех остальных OS
+/**
+ * Если операционной системой является Nix-подобная
+ */
 #else
 	// Файловый разделитель Unix
 	#define FS_SEPARATOR "/"

@@ -16,6 +16,49 @@
 #include <net/ssl.hpp>
 
 /**
+ * socketIsBlocking Функция проверки сокета блокирующий режим
+ * @param fd  файловый дескриптор (сокет)
+ * @param log объект для работы с логами
+ * @return    результат работы функции
+ */
+static int socketIsBlocking(const int fd, const awh::log_t * log = nullptr) noexcept {
+	// Если файловый дескриптор передан
+	if(fd > -1){
+		/**
+		 * Методы только для OS Windows
+		 */
+		#if defined(_WIN32) || defined(_WIN64)
+			{
+				// Все удачно
+				return -1;
+			}
+		/**
+		 * Для всех остальных операционных систем
+		 */
+		#else
+			{
+				// Флаги файлового дескриптора
+				int flags = 0;
+				// Получаем флаги файлового дескриптора
+				if((flags = fcntl(fd, F_GETFL, nullptr)) < 0){
+					// Выводим в лог информацию
+					if(log != nullptr) log->print("cannot set BLOCK option on socket %d", awh::log_t::flag_t::CRITICAL, fd);
+					// Выходим
+					return -1;
+				}
+				// Если флаг неблокирующего режима работы установлен
+				if(flags & O_NONBLOCK)
+					// Сообщаем, что сокет находится в неблокирующем режиме
+					return 0;
+				// Сообщаем, что сокет находится в блокирующем режиме
+				else return 1;
+			}
+		#endif
+	}
+	// Все удачно
+	return -1;
+}
+/**
  * error Метод вывода информации об ошибке
  * @param status статус ошибки
  */
@@ -105,7 +148,7 @@ int64_t awh::ASSL::Context::read(char * buffer, const size_t size) const noexcep
 		// Если данные прочитать не удалось
 		if(result <= 0){
 			// Получаем статус сокета
-			const int status = this->isBlocking();
+			const int status = socketIsBlocking(this->fd, this->log);
 			// Если сокет находится в блокирующем режиме
 			if((result < 0) && (status != 0))
 				// Выполняем обработку ошибок
@@ -160,7 +203,7 @@ int64_t awh::ASSL::Context::write(const char * buffer, const size_t size) const 
 		// Если данные записать не удалось
 		if(result <= 0){
 			// Получаем статус сокета
-			const int status = this->isBlocking();
+			const int status = socketIsBlocking(this->fd, this->log);
 			// Если сокет находится в блокирующем режиме
 			if((result < 0) && (status != 0))
 				// Выполняем обработку ошибок
@@ -192,209 +235,38 @@ int64_t awh::ASSL::Context::write(const char * buffer, const size_t size) const 
 	return result;
 }
 /**
- * blocking Метод установки блокирующего сокета
+ * block Метод установки блокирующего сокета
  * @return результат работы функции
  */
-int awh::ASSL::Context::blocking() noexcept {
+int awh::ASSL::Context::block() noexcept {
 	// Результат работы функции
 	int result = 0;
-	// Если файловый дескриптор активен
-	if(this->fd > -1){
-		/**
-		 * Методы только для OS Windows
-		 */
-		#if defined(_WIN32) || defined(_WIN64)
-			{
-				// Формируем флаг разблокировки
-				u_long nonblocking = 0;
-				// Выполняем разблокировку сокета
-				if(ioctlsocket(this->fd, FIONBIO, &nonblocking) == SOCKET_ERROR){
-					// Выводим в лог информацию
-					this->log->print("cannot set BLOCK option on socket %d", log_t::flag_t::CRITICAL, this->fd);
-					// Выходим
-					return -1;
-				}
-			}
-		/**
-		 * Для всех остальных операционных систем
-		 */
-		#else
-			{
-				// Флаги файлового дескриптора
-				int flags = 0;
-				// Получаем флаги файлового дескриптора
-				if((flags = fcntl(this->fd, F_GETFL, nullptr)) < 0){
-					// Выводим в лог информацию
-					this->log->print("cannot set BLOCK option on socket %d", log_t::flag_t::CRITICAL, this->fd);
-					// Выходим
-					return -1;
-				}
-				// Если флаг уже установлен
-				if(flags & O_NONBLOCK){
-					// Устанавливаем неблокирующий режим
-					if(fcntl(this->fd, F_SETFL, flags ^ O_NONBLOCK) == -1){
-						// Выводим в лог информацию
-						this->log->print("cannot set NON_BLOCK option on socket %d", log_t::flag_t::CRITICAL, this->fd);
-						// Выходим
-						return -1;
-					}
-				}
-			}
-		#endif
-		// Если защищённый режим работы разрешён
-		if(this->mode){
-			// Устанавливаем блокирующий режим ввода/вывода для сокета
-			BIO_set_nbio(this->bio, 0);
-			// Флаг необходимо установить только для неблокирующего сокета
-			SSL_clear_mode(this->ssl, SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER);
-		}
+	// Если защищённый режим работы разрешён
+	if(this->mode && (this->fd > -1)){
+		// Устанавливаем блокирующий режим ввода/вывода для сокета
+		BIO_set_nbio(this->bio, 0);
+		// Флаг необходимо установить только для неблокирующего сокета
+		SSL_clear_mode(this->ssl, SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER);
 	}
 	// Выводим результат
 	return result;
 }
 /**
- * nonBlocking Метод установки неблокирующего сокета
+ * noblock Метод установки неблокирующего сокета
  * @return результат работы функции
  */
-int awh::ASSL::Context::nonBlocking() noexcept {
+int awh::ASSL::Context::noblock() noexcept {
 	// Результат работы функции
 	int result = 0;
 	// Если файловый дескриптор активен
-	if(this->fd > -1){
-		/**
-		 * Методы только для OS Windows
-		 */
-		#if defined(_WIN32) || defined(_WIN64)
-			{
-				// Формируем флаг разблокировки
-				u_long nonblocking = 1;
-				// Выполняем разблокировку сокета
-				if(ioctlsocket(this->fd, FIONBIO, &nonblocking) == SOCKET_ERROR){
-					// Выводим в лог информацию
-					this->log->print("cannot set NON_BLOCK option on socket %d", log_t::flag_t::CRITICAL, this->fd);
-					// Выходим
-					return -1;
-				}
-			}
-		/**
-		 * Для всех остальных операционных систем
-		 */
-		#else
-			{
-				// Флаги файлового дескриптора
-				int flags = 0;
-				// Получаем флаги файлового дескриптора
-				if((flags = fcntl(this->fd, F_GETFL, nullptr)) < 0){
-					// Выводим в лог информацию
-					this->log->print("cannot set NON_BLOCK option on socket %d", log_t::flag_t::CRITICAL, this->fd);
-					// Выходим
-					return -1;
-				}
-				// Если флаг ещё не установлен
-				if(!(flags & O_NONBLOCK)){
-					// Устанавливаем неблокирующий режим
-					if(fcntl(this->fd, F_SETFL, flags | O_NONBLOCK) == -1){
-						// Выводим в лог информацию
-						this->log->print("cannot set NON_BLOCK option on socket %d", log_t::flag_t::CRITICAL, this->fd);
-						// Выходим
-						return -1;
-					}
-				}
-			}
-		#endif
-		// Если защищённый режим работы разрешён
-		if(this->mode){
-			// Устанавливаем неблокирующий режим ввода/вывода для сокета
-			BIO_set_nbio(this->bio, 1);
-			// Флаг необходимо установить только для неблокирующего сокета
-			SSL_set_mode(this->ssl, SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER);
-		}
+	if(this->mode && (this->fd > -1)){
+		// Устанавливаем неблокирующий режим ввода/вывода для сокета
+		BIO_set_nbio(this->bio, 1);
+		// Флаг необходимо установить только для неблокирующего сокета
+		SSL_set_mode(this->ssl, SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER);
 	}
 	// Выводим результат
 	return result;
-}
-/**
- * isBlocking Метод проверки сокета блокирующий режим
- * @return результат работы функции
- */
-int awh::ASSL::Context::isBlocking() const noexcept {
-	// Если файловый дескриптор активен
-	if(this->fd > -1){
-		/**
-		 * Методы только для OS Windows
-		 */
-		#if defined(_WIN32) || defined(_WIN64)
-			{
-				// Все удачно
-				return -1;
-			}
-		/**
-		 * Для всех остальных операционных систем
-		 */
-		#else
-			{
-				// Флаги файлового дескриптора
-				int flags = 0;
-				// Получаем флаги файлового дескриптора
-				if((flags = fcntl(this->fd, F_GETFL, nullptr)) < 0){
-					// Выводим в лог информацию
-					this->log->print("cannot set BLOCK option on socket %d", log_t::flag_t::CRITICAL, this->fd);
-					// Выходим
-					return -1;
-				}
-				// Если флаг неблокирующего режима работы установлен
-				if(flags & O_NONBLOCK)
-					// Сообщаем, что сокет находится в неблокирующем режиме
-					return 0;
-				// Сообщаем, что сокет находится в блокирующем режиме
-				else return 1;
-			}
-		#endif
-	}
-	// Все удачно
-	return -1;
-}
-/**
- * bufferSize Метод установки размеров буфера
- * @param read  размер буфера на чтение
- * @param write размер буфера на запись
- * @param total максимальное количество подключений
- * @return      результат работы функции
- */
-int awh::ASSL::Context::bufferSize(const int read, const int write, const u_int total) const noexcept {
-	// Если файловый дескриптор активен
-	if(this->fd > -1){
-		// Определяем размер массива опции
-		socklen_t rlen = sizeof(read);
-		socklen_t wlen = sizeof(write);
-		// Получаем переданные размеры
-		int readSize  = (read > 0 ? read : BUFFER_SIZE_RCV);
-		int writeSize = (write > 0 ? write : BUFFER_SIZE_SND);
-		// Устанавливаем размер буфера для сокета на чтение
-		if(readSize > 0){
-			// Выполняем перерасчет размера буфера
-			readSize = (readSize / total);
-			// Устанавливаем размер буфера
-			setsockopt(this->fd, SOL_SOCKET, SO_RCVBUF, (char *) &readSize, rlen);
-		}
-		// Устанавливаем размер буфера для сокета на запись
-		if(writeSize > 0){
-			// Выполняем перерасчет размера буфера
-			writeSize = (writeSize / total);
-			// Устанавливаем размер буфера
-			setsockopt(this->fd, SOL_SOCKET, SO_SNDBUF, (char *) &writeSize, wlen);
-		}
-		// Считываем установленный размер буфера
-		if((getsockopt(this->fd, SOL_SOCKET, SO_RCVBUF, (char *) &readSize, &rlen) < 0) ||
-		   (getsockopt(this->fd, SOL_SOCKET, SO_SNDBUF, (char *) &writeSize, &wlen) < 0)){
-			// Выводим в лог информацию
-			this->log->print("get buffer wrong on socket %d", log_t::flag_t::CRITICAL, this->fd);
-			// Выходим
-			return -1;
-		}
-	}
-	// Все удачно
-	return 0;
 }
 /**
  * rawEqual Метод проверки на эквивалентность доменных имен
@@ -1055,11 +927,9 @@ awh::ASSL::ctx_t awh::ASSL::wrap(const int fd, const bool mode) noexcept {
 		// Если BIO SSL создано
 		if(result.bio != nullptr){
 			// Устанавливаем неблокирующий режим ввода/вывода для сокета
-			BIO_set_nbio(result.bio, 1);
+			result.noblock();
 			// Выполняем установку BIO SSL
 			SSL_set_bio(result.ssl, result.bio, result.bio);
-			// Устанавливаем флаг записи в буфер порциями
-			SSL_set_mode(result.ssl, SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER);
 			// Выполняем активацию сервера SSL
 			SSL_set_accept_state(result.ssl);
 		// Если BIO SSL не создано
@@ -1171,7 +1041,7 @@ awh::ASSL::ctx_t awh::ASSL::wrap(const int fd, const uri_t::url_t & url) noexcep
 		// Если BIO SSL создано
 		if(result.bio != nullptr){
 			// Устанавливаем блокирующий режим ввода/вывода для сокета
-			BIO_set_nbio(result.bio, 0);
+			result.block();
 			// Выполняем установку BIO SSL
 			SSL_set_bio(result.ssl, result.bio, result.bio);
 			// Выполняем активацию клиента SSL

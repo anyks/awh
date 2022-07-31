@@ -158,29 +158,15 @@ namespace awh {
 					int64_t write(const char * buffer, const size_t size) const noexcept;
 				public:
 					/**
-					 * blocking Метод установки блокирующего сокета
+					 * block Метод установки блокирующего сокета
 					 * @return результат работы функции
 					 */
-					int blocking() noexcept;
+					int block() noexcept;
 					/**
-					 * nonBlocking Метод установки неблокирующего сокета
+					 * noblock Метод установки неблокирующего сокета
 					 * @return результат работы функции
 					 */
-					int nonBlocking() noexcept;
-					/**
-					 * isBlocking Метод проверки сокета блокирующий режим
-					 * @return результат работы функции
-					 */
-					int isBlocking() const noexcept;
-				public:
-					/**
-					 * bufferSize Метод установки размеров буфера
-					 * @param read  размер буфера на чтение
-					 * @param write размер буфера на запись
-					 * @param total максимальное количество подключений
-					 * @return      результат работы функции
-					 */
-					int bufferSize(const int read = 0, const int write = 0, const u_int total = 0) const noexcept;
+					int noblock() noexcept;
 				public:
 					/**
 					 * Context Конструктор
