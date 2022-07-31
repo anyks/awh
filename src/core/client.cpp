@@ -905,7 +905,7 @@ void awh::client::Core::close(const size_t aid) noexcept {
 			// Удаляем адъютанта из списка адъютантов
 			wrk->adjutants.erase(aid);
 			// Удаляем адъютанта из списка подключений
-			this->adjutants.erase(aid);	
+			this->adjutants.erase(aid);
 			// Устанавливаем флаг ожидания статуса
 			wrk->status.wait = worker_t::mode_t::DISCONNECT;
 			// Устанавливаем статус сетевого ядра

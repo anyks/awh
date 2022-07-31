@@ -54,7 +54,6 @@
 #include <sys/fmk.hpp>
 #include <sys/log.hpp>
 #include <net/uri.hpp>
-#include <net/socket.hpp>
 
 /**
  * Подключаем OpenSSL
@@ -114,9 +113,6 @@ namespace awh {
 				private:
 					// Тип активного приложения
 					type_t type;
-				private:
-					// Объект для работы с сокетами
-					socket_t socket;
 				private:
 					BIO * bio;     // Объект BIO
 					SSL * ssl;     // Объект SSL
@@ -192,8 +188,8 @@ namespace awh {
 					 */
 					Context(const log_t * log) noexcept :
 					 fd(-1), mode(false), type(type_t::NONE),
-					 socket(log), bio(nullptr), ssl(nullptr),
-					 ctx(nullptr), verify(nullptr), log(log) {}
+					 bio(nullptr), ssl(nullptr), ctx(nullptr),
+					 verify(nullptr), log(log) {}
 			} ctx_t;
 			/**
 			 * Типы ошибок валидации

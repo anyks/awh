@@ -509,13 +509,13 @@ awh::Socket::Socket(const log_t * log) noexcept : log(log) {
 	/**
 	 * Если сетевой стек ещё не проинициализирован
 	 */
-	#ifndef __AWH_SOCKET_WSA__
+	#ifndef __AWH_SOCKET_WINDOWS__
 		/**
 		 * Выполняем инициализацию сетевого стека
 		 */
-		#define __AWH_SOCKET_WSA__
+		#define __AWH_SOCKET_WINDOWS__
 		/**
-		 * Если - это MS Windows
+		 * Методы только для OS Windows
 		 */
 		#if defined(_WIN32) || defined(_WIN64)
 			// Очищаем сетевой контекст
