@@ -28,20 +28,12 @@
 #include <errno.h>
 #include <libev/ev++.h>
 
-// Если - это Windows
-#if defined(_WIN32) || defined(_WIN64)
-	#include <time.h>
-// Если - это Unix
-#else
-	#include <ctime>
-	#include <sys/un.h>
-#endif
-
 /**
  * Если операционной системой является Windows
  */
 #if defined(_WIN32) || defined(_WIN64)
 	// Подключаем заголовочный файл
+	#include <time.h>
 	#include <tchar.h>
 	#include <stdlib.h>
 	#include <signal.h>
@@ -51,18 +43,16 @@
  */
 #else
 	// Подключаем заголовочный файл
+	#include <ctime>
 	#include <unistd.h>
 #endif
 
 /**
  * Наши модули
  */
-#include <net/if.hpp>
 #include <net/act.hpp>
 // #include <net/dns.hpp>
-#include <net/socket.hpp>
 #include <worker/core.hpp>
-#include <sys/fmk.hpp>
 
 // Подписываемся на стандартное пространство имён
 using namespace std;
@@ -85,11 +75,15 @@ namespace awh {
 			 * Статус работы сетевого ядра
 			 */
 			enum class status_t : uint8_t {STOP, START};
-			/**
-			 * Тип запускаемого ядра
-			 */
-			enum class type_t : uint8_t {CLIENT, SERVER};
 		public:
+			/**
+			 * Тип сокета подключения
+			 */
+			enum class sock_t : uint8_t {TCPSOCK, UDPSOCK};
+			/**
+			 * Тип интернет-подключения
+			 */
+			enum class af_t : uint8_t {AFIPV4, AFIPV6, AFUNIX};
 			/**
 			 * Основные методы режимов работы
 			 */
@@ -162,23 +156,15 @@ namespace awh {
 				recursive_mutex worker; // Для работы с воркерами
 			} mtx_t;
 			/**
-			 * KeepAlive Структура с параметрами для постоянного подключения
-			 */
-			typedef struct KeepAlive {
-				int keepcnt;   // Максимальное количество попыток
-				int keepidle;  // Интервал времени в секундах через которое происходит проверка подключения
-				int keepintvl; // Интервал времени в секундах между попытками
-				/**
-				 * KeepAlive Конструктор
-				 */
-				KeepAlive() noexcept : keepcnt(3), keepidle(1), keepintvl(2) {}
-			} __attribute__((packed)) alive_t;
-			/**
 			 * Network Структура текущих параметров сети
 			 */
 			typedef struct Network {
-				// Тип протокола интернета AF_INET или AF_INET6
-				int family;
+				// Тип сокета подключения (TCPSOCK / UDPSOCK)
+				sock_t sock;
+				// Тип протокола интернета (AFIPV4 / AFIPV6 / AFUNIX)
+				af_t family;
+				// Адрес файла unix-сокета
+				string filename;
 				// Параметры для сети IPv4
 				pair <vector <string>, vector <string>> v4;
 				// Параметры для сети IPv6
@@ -186,39 +172,10 @@ namespace awh {
 				/**
 				 * Network Конструктор
 				 */
-				Network() noexcept : family(AF_INET), v4({{"0.0.0.0"}, IPV4_RESOLVER}), v6({{"[::0]"}, IPV6_RESOLVER}) {}
+				Network() noexcept :
+				 sock(sock_t::TCPSOCK), family(af_t::AFIPV4), filename(""),
+				 v4({{"0.0.0.0"}, IPV4_RESOLVER}), v6({{"[::0]"}, IPV6_RESOLVER}) {}
 			} net_t;
-			/**
-			 * Sockaddr Класс сетевого пространства
-			 */
-			typedef class Sockaddr {
-				public:
-					// Сокет сервера
-					int socket;
-				public:
-				/**
-				 * Если операционной системой не является Windows
-				 */
-				#if !defined(_WIN32) && !defined(_WIN64)
-					// Параметры подключения для UnixSocket
-					struct sockaddr_un uxsock;
-				#endif
-				public:
-					// Параметры подключения клиента IPv4
-					struct sockaddr_in client;
-					// Параметры подключения сервера IPv4
-					struct sockaddr_in server;
-				public:
-					// Параметры подключения клиента IPv6
-					struct sockaddr_in6 client6;
-					// Параметры подключения сервера IPv6
-					struct sockaddr_in6 server6;
-				public:
-					/**
-					 * Sockaddr Конструктор
-					 */
-					Sockaddr() noexcept : socket(-1) {}
-			} sockaddr_t;
 		private:
 			/**
 			 * Dispatch Класс работы с событиями
@@ -299,24 +256,21 @@ namespace awh {
 					~Dispatch() noexcept;
 			} dispatch_t;
 		protected:
-			// Сетевые параметры
-			net_t net;
+			// Создаем объект сети
+			network_t nwk;
+		protected:
 			// Создаём объект работы с URI
 			uri_t uri;
 			// Создаём объект для работы с актуатором
 			act_t act;
+			// Сетевые параметры
+			net_t net;
 			/*
 			// Создаём объект DNS IPv4 резолвера
 			dns_t dns4;
 			// Создаём объект DNS IPv6 резолвера
 			dns_t dns6;
 			*/
-			// Параметры постоянного подключения
-			alive_t alive;
-			// Создаем объект сети
-			network_t nwk;
-			// Объект для работы с сокетами
-			socket_t socket;
 			// Объект для работы с чтением базы событий
 			dispatch_t dispatch;
 		private:
@@ -334,10 +288,10 @@ namespace awh {
 				sig_t sig;
 			#endif
 		protected:
-			// Тип запускаемого ядра
-			type_t type = type_t::CLIENT;
 			// Статус сетевого ядра
 			status_t status = status_t::STOP;
+			// Тип запускаемого ядра
+			act_t::type_t type = act_t::type_t::CLIENT;
 		private:
 			// Список активных таймеров
 			map <u_short, unique_ptr <timer_t>> timers;
@@ -349,22 +303,16 @@ namespace awh {
 		protected:
 			// Флаг разрешения работы
 			bool mode = false;
-			// Флаг использования многопоточного режима
-			bool multi = false;
 			// Флаг запрета вывода информационных сообщений
 			bool noinfo = false;
 			// Флаг персистентного запуска каллбека
 			bool persist = false;
-			// Флаг разрешающий работу только с IPv6
-			bool ipV6only = false;
 		protected:
 			// Количество подключённых внешних ядер
 			u_int cores = 0;
 		protected:
-			// Адрес файла unix-сокета
-			string unixSocket = "";
-			// Название сокета по умолчанию
-			string unixServerName = AWH_SHORT_NAME;
+			// Название сервера по умолчанию
+			string serverName = AWH_SHORT_NAME;
 		private:
 			// Интервал персистентного таймера в миллисекундах
 			time_t persistInterval = PERSIST_INTERVAL;
@@ -403,20 +351,6 @@ namespace awh {
 			 * @param aid идентификатор адъютанта
 			 */
 			void clean(const size_t aid) const noexcept;
-		protected:
-			/**
-			 * sockaddr Метод создания адресного пространства сокета
-			 * @return параметры подключения к серверу
-			 */
-			const sockaddr_t sockaddr() const noexcept;
-			/**
-			 * sockaddr Метод создания адресного пространства сокета
-			 * @param ip     адрес для которого нужно создать сокет
-			 * @param port   порт сервера для которого нужно создать сокет
-			 * @param family тип протокола интернета AF_INET или AF_INET6
-			 * @return       параметры подключения к серверу
-			 */
-			const sockaddr_t sockaddr(const string & ip, const u_int port, const int family = AF_INET) const noexcept;
 		public:
 			/**
 			 * bind Метод подключения модуля ядра к текущей базе событий
@@ -637,20 +571,25 @@ namespace awh {
 			 */
 			void setFrequency(const uint8_t msec = 10) noexcept;
 			/**
-			 * setFamily Метод установки тип протокола интернета
-			 * @param family тип протокола интернета AF_INET или AF_INET6
-			 */
-			void setFamily(const int family = AF_INET) noexcept;
-			/**
-			 * setNameServer Метод добавления названия сервера
+			 * setServerName Метод добавления названия сервера
 			 * @param name название сервера для добавления
 			 */
-			void setNameServer(const string & name = "") noexcept;
+			void setServerName(const string & name = "") noexcept;
 			/**
 			 * setCipher Метод установки алгоритмов шифрования
 			 * @param cipher список алгоритмов шифрования для установки
 			 */
 			void setCipher(const vector <string> & cipher) noexcept;
+			/**
+			 * setFamily Метод установки тип протокола интернета
+			 * @param family тип протокола интернета (AFIPV4 / AFIPV6 / AFUNIX)
+			 */
+			void setFamily(const af_t family = af_t::AFIPV4) noexcept;
+			/**
+			 * setSockType Метод установки типа сокета подключения
+			 * @param sock тип сокета подключения (TCPSOCK / UDPSOCK)
+			 */
+			void setSockType(const sock_t sock = sock_t::TCPSOCK) noexcept;
 			/**
 			 * setTrusted Метод установки доверенного сертификата (CA-файла)
 			 * @param trusted адрес доверенного сертификата (CA-файла)
@@ -661,17 +600,19 @@ namespace awh {
 			 * setNet Метод установки параметров сети
 			 * @param ip     список IP адресов компьютера с которых разрешено выходить в интернет
 			 * @param ns     список серверов имён, через которые необходимо производить резолвинг доменов
-			 * @param family тип протокола интернета AF_INET или AF_INET6
+			 * @param family тип протокола интернета (AFIPV4 / AFIPV6 / AFUNIX)
+			 * @param sock   тип сокета подключения (TCPSOCK / UDPSOCK)
 			 */
-			void setNet(const vector <string> & ip = {}, const vector <string> & ns = {}, const int family = AF_INET) noexcept;
+			void setNet(const vector <string> & ip = {}, const vector <string> & ns = {}, const af_t family = af_t::AFIPV4, const sock_t sock = sock_t::TCPSOCK) noexcept;
 		public:
 			/**
 			 * Core Конструктор
 			 * @param fmk    объект фреймворка
 			 * @param log    объект для работы с логами
-			 * @param family тип протокола интернета AF_INET или AF_INET6
+			 * @param family тип протокола интернета (AFIPV4 / AFIPV6 / AFUNIX)
+			 * @param sock   тип сокета подключения (TCPSOCK / UDPSOCK)
 			 */
-			Core(const fmk_t * fmk, const log_t * log, const int family = AF_INET) noexcept;
+			Core(const fmk_t * fmk, const log_t * log, const af_t family = af_t::AFIPV4, const sock_t sock = sock_t::TCPSOCK) noexcept;
 			/**
 			 * ~Core Деструктор
 			 */

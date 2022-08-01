@@ -43,6 +43,7 @@
  * Если операционной системой является Nix-подобная
  */
 #else
+	#include <sys/un.h>
 	#include <sys/socket.h>
 	#include <netinet/in.h>
 #endif
@@ -53,7 +54,9 @@
 #include <sys/fs.hpp>
 #include <sys/fmk.hpp>
 #include <sys/log.hpp>
+#include <net/if.hpp>
 #include <net/uri.hpp>
+#include <net/socket.hpp>
 
 /**
  * Подключаем OpenSSL
@@ -76,11 +79,174 @@ namespace awh {
 	 * Actuator Класс для работы с каналом передачи данных
 	 */
 	typedef class Actuator {
-		private:
+		public:
 			/**
 			 * Тип активного приложения
 			 */
-			enum class type_t : uint8_t {NONE, CLIENT, SERVER};
+			enum class type_t : uint8_t {
+				NONE   = 0x00, // Приложение не инициализированно
+				CLIENT = 0x01, // Приложение является клиентом
+				SERVER = 0x02  // Приложение является сервером
+			};
+		public:
+			/**
+			 * KeepAlive Структура с параметрами для постоянного подключения
+			 */
+			typedef struct KeepAlive {
+				int keepcnt;   // Максимальное количество попыток
+				int keepidle;  // Интервал времени в секундах через которое происходит проверка подключения
+				int keepintvl; // Интервал времени в секундах между попытками
+				/**
+				 * KeepAlive Конструктор
+				 */
+				KeepAlive() noexcept : keepcnt(3), keepidle(1), keepintvl(2) {}
+			} __attribute__((packed)) alive_t;
+			/**
+			 * Прототип класса Context
+			 */
+			class Context;
+			/**
+			 * Sock Класс сетевого пространства
+			 */
+			typedef class Sock {
+				public:
+					/**
+					 * Статус подключения
+					 */
+					enum class status_t : uint8_t {
+						ACCEPTED     = 0x01, // Статус подключения (разрешено)
+						CONNECTED    = 0x02, // Статус подключения (подключено)
+						DISCONNECTED = 0x00  // Статус подключения (отключено)
+					};
+				private:
+					/**
+					 * Context Устанавливаем дружбу с классом контекста двигателя
+					 */
+					friend class Context;
+				public:
+					// Файловый дескриптор
+					int fd;
+					// Тип сокета (SOCK_STREAM / SOCK_DGRAM)
+					int type;
+					// Семейство сокета (AF_INET / AF_INET6 / AF_UNIX)
+					int family;
+					// Протокол сокета (IPPROTO_TCP / IPPROTO_UDP)
+					int protocol;
+				public:
+					// Флаг разрешающий работу только с IPv6
+					bool v6only;
+				public:
+					// Статус подключения
+					status_t status;
+				public:
+					// Адрес интернет подключения и аппаратный
+					string ip, mac;
+				public:
+					// Параметры постоянного подключения
+					alive_t alive;
+				private:
+					// Создаем объект сети
+					network_t nwk;
+					// Объект для работы с сетевым интерфейсом
+					ifnet_t ifnet;
+					// Объект для работы с сокетами
+					socket_t socket;
+				public:
+					// Список сетевых интерфейсов
+					vector <string> network;
+				public:
+					// Объект SSL
+					SSL * ssl;
+				public:
+				/**
+				 * Если операционной системой не является Windows
+				 */
+				#if !defined(_WIN32) && !defined(_WIN64)
+					// Параметры подключения для unix-сокета
+					struct sockaddr_un uxsock;
+				#endif
+				public:
+					// Параметры подключения клиента IPv4
+					struct sockaddr_in client;
+					// Параметры подключения сервера IPv4
+					struct sockaddr_in server;
+				public:
+					// Параметры подключения клиента IPv6
+					struct sockaddr_in6 client6;
+					// Параметры подключения сервера IPv6
+					struct sockaddr_in6 server6;
+				public:
+					// Создаём объект фреймворка
+					const fmk_t * fmk = nullptr;
+					// Создаём объект работы с логами
+					const log_t * log = nullptr;
+				public:
+					/**
+					 * list Метод активации прослушивания сокета
+					 * @return результат выполнения операции
+					 */
+					bool list() noexcept;
+					/**
+					 * close Метод закрытия подключения
+					 * @return результат выполнения операции
+					 */
+					bool close() noexcept;
+				public:
+					/**
+					 * connect Метод выполнения подключения
+					 * @return результат выполнения операции
+					 */
+					bool connect() noexcept;
+					/**
+					 * connect Метод выполнения подключения сервера к клиенту для UDP
+					 * @param sock объект подключения сервера
+					 */
+					bool connect(Sock & sock) noexcept;
+				public:
+					/**
+					 * accept Метод согласования подключения
+					 * @param sock объект подключения сервера
+					 * @return     результат выполнения операции
+					 */
+					bool accept(Sock & sock) noexcept;
+					/**
+					 * accept Метод согласования подключения
+					 * @param fd файловый дескриптор сервера
+					 * @return   результат выполнения операции
+					 */
+					bool accept(const int fd) noexcept;
+				public:
+					/**
+					 * init Метод инициализации адресного пространства сокета
+					 * @param unixsocket адрес unxi-сокета в файловой системе
+					 * @param type       тип приложения (клиент или сервер)
+					 */
+					void init(const string & unixsocket, const type_t type) noexcept;
+					/**
+					 * init Метод инициализации адресного пространства сокета
+					 * @param ip   адрес для которого нужно создать сокет
+					 * @param port порт сервера для которого нужно создать сокет
+					 * @param type тип приложения (клиент или сервер)
+					 * @return     параметры подключения к серверу
+					 */
+					void init(const string & ip, const u_int port, const type_t type) noexcept;
+				public:
+					/**
+					 * Sock Конструктор
+					 * @param fmk объект фреймворка
+					 * @param log объект для работы с логами
+					 */
+					Sock(const fmk_t * fmk, const log_t * log) noexcept :
+					 fd(-1), type(SOCK_STREAM), family(AF_INET),
+					 protocol(IPPROTO_TCP), v6only(false),
+					 status(status_t::DISCONNECTED), ip(""), mac(""),
+					 nwk(fmk), ifnet(fmk, log), socket(log),
+					 ssl(nullptr), fmk(fmk), log(log) {}
+					/**
+					 * ~Sock Деструктор
+					 */
+					~Sock() noexcept;
+			} sock_t;
 		private:
 			/**
 			 * Verify Структура параметров для валидации доменов
@@ -97,7 +263,7 @@ namespace awh {
 			} verify_t;
 		public:
 			/**
-			 * Context Класс контекста
+			 * Context Класс контекста двигателя
 			 */
 			typedef class Context {
 				private:
@@ -106,21 +272,20 @@ namespace awh {
 					 */
 					friend class Actuator;
 				private:
-					// Файловый дескриптор (сокет)
-					int fd;
 					// Флаг инициализации
 					bool mode;
 				private:
 					// Тип активного приложения
 					type_t type;
 				private:
-					BIO * bio;     // Объект BIO
-					SSL * ssl;     // Объект SSL
-					SSL_CTX * ctx; // Контекст SSL
+					BIO * bio;         // Объект BIO
+					SSL * ssl;         // Объект SSL
+					SSL_CTX * ctx;     // Контекст SSL
+					sock_t * sock;     // Объект подключения
+					verify_t * verify; // Параметры валидации домена
 				private:
-					// Параметры валидации домена
-					verify_t * verify;
-				private:
+					// Создаём объект фреймворка
+					const fmk_t * fmk = nullptr;
 					// Создаём объект работы с логами
 					const log_t * log = nullptr;
 				private:
@@ -131,10 +296,9 @@ namespace awh {
 					void error(const int status) const noexcept;
 				public:
 					/**
-					 * get Метод получения файлового дескриптора
-					 * @return файловый дескриптор
+					 * clear Метод очистки контекста
 					 */
-					int get() const noexcept;
+					void clear() noexcept;
 				public:
 					/**
 					 * wrapped Метод првоерки на активацию контекста
@@ -148,14 +312,14 @@ namespace awh {
 					 * @param size   размер буфера данных
 					 * @return       количество считанных байт
 					 */
-					int64_t read(char * buffer, const size_t size) const noexcept;
+					int64_t read(char * buffer, const size_t size) noexcept;
 					/**
 					 * write Метод записи данных в сокет
 					 * @param buffer буфер данных для записи
 					 * @param size   размер буфера данных
 					 * @return       количество записанных байт
 					 */
-					int64_t write(const char * buffer, const size_t size) const noexcept;
+					int64_t write(const char * buffer, const size_t size) noexcept;
 				public:
 					/**
 					 * block Метод установки блокирующего сокета
@@ -167,15 +331,25 @@ namespace awh {
 					 * @return результат работы функции
 					 */
 					int noblock() noexcept;
+					/**
+					 * isblock Метод проверки на то, является ли сокет заблокированным
+					 * @return результат работы функции
+					 */
+					int isblock() noexcept;
 				public:
 					/**
 					 * Context Конструктор
+					 * @param fmk объект фреймворка
 					 * @param log объект для работы с логами
 					 */
-					Context(const log_t * log) noexcept :
-					 fd(-1), mode(false), type(type_t::NONE),
+					Context(const fmk_t * fmk, const log_t * log) noexcept :
+					 mode(false), type(type_t::NONE), sock(nullptr),
 					 bio(nullptr), ssl(nullptr), ctx(nullptr),
 					 verify(nullptr), log(log) {}
+					/**
+					 * ~Context Деструктор
+					 */
+					~Context() noexcept;
 			} ctx_t;
 			/**
 			 * Типы ошибок валидации
@@ -244,12 +418,36 @@ namespace awh {
 			const bool certHostcheck(const string & host, const string & patt) const noexcept;
 		private:
 			/**
-			 * verifyHost Функция обратного вызова для проверки валидности сертификата
+			 * verifyCert Функция обратного вызова для проверки валидности сертификата
+			 * @param ok   результат получения сертификата
+			 * @param x509 данные сертификата
+			 * @return     результат проверки
+			 */
+			static int verifyCert(const int ok, X509_STORE_CTX * x509) noexcept;
+			/**
+			 * verifyHost Функция обратного вызова для проверки валидности хоста
 			 * @param x509 данные сертификата
 			 * @param ctx  передаваемый контекст
 			 * @return     результат проверки
 			 */
-			static int verifyHost(X509_STORE_CTX * x509 = nullptr, void * ctx = nullptr) noexcept;
+			static int verifyHost(X509_STORE_CTX * x509, void * ctx = nullptr) noexcept;
+		private:
+			/**
+			 * verifyCookie Функция обратного вызова для проверки куков
+			 * @param ssl    объект SSL
+			 * @param cookie данные куков
+			 * @param size   количество символов
+			 * @return       результат проверки
+			 */
+			static int verifyCookie(SSL * ssl, u_char * cookie, u_int size) noexcept;
+			/**
+			 * generateCookie Функция обратного вызова для генерации куков
+			 * @param ssl    объект SSL
+			 * @param cookie данные куков
+			 * @param size   количество символов
+			 * @return       результат проверки
+			 */
+			static int generateCookie(SSL * ssl, u_char * cookie, u_int * size) noexcept;
 		private:
 			/**
 			 * matchesCommonName Метод проверки доменного имени по данным из сертификата
@@ -282,39 +480,53 @@ namespace awh {
 			bool initTrustedStore(SSL_CTX * ctx) const noexcept;
 		public:
 			/**
-			 * clear Метод очистки контекста
-			 * @param ctx контекст для очистки
+			 * wrap Метод обертывания файлового дескриптора для сервера
+			 * @param target контекст назначения
+			 * @param source исходный контекст
+			 * @return       объект SSL контекста
 			 */
-			void clear(ctx_t & ctx) const noexcept;
+			void wrap(ctx_t & target, ctx_t & source) noexcept;
+			/**
+			 * wrap Метод обертывания файлового дескриптора для клиента
+			 * @param target контекст назначения
+			 * @param source исходный контекст
+			 * @param url    параметры URL адреса для инициализации
+			 * @return       объект SSL контекста
+			 */
+			void wrap(ctx_t & target, ctx_t & source, const uri_t::url_t & url) noexcept;
 		public:
 			/**
 			 * wrap Метод обертывания файлового дескриптора для сервера
-			 * @param ctx контекст для очистки
-			 * @return    объект SSL контекста
+			 * @param target контекст назначения
+			 * @param socket объект подключения
+			 * @return       объект SSL контекста
 			 */
-			ctx_t wrap(ctx_t & ctx) noexcept;
+			void wrap(ctx_t & target, sock_t * socket) noexcept;
 			/**
 			 * wrap Метод обертывания файлового дескриптора для клиента
-			 * @param ctx контекст для очистки
-			 * @param url Параметры URL адреса для инициализации
-			 * @return    объект SSL контекста
+			 * @param target контекст назначения
+			 * @param socket объект подключения
+			 * @param source исходный контекст
+			 * @return       объект SSL контекста
 			 */
-			ctx_t wrap(ctx_t & ctx, const uri_t::url_t & url) noexcept;
+			void wrap(ctx_t & target, sock_t * socket, const ctx_t & source) noexcept;
 		public:
 			/**
 			 * wrap Метод обертывания файлового дескриптора для сервера
-			 * @param fd   файловый дескриптор (сокет)
-			 * @param mode флаг выполнения обертывания файлового дескриптора
-			 * @return     объект SSL контекста
+			 * @param target контекст назначения
+			 * @param socket объект подключения
+			 * @param mode   флаг выполнения обертывания файлового дескриптора
+			 * @return       объект SSL контекста
 			 */
-			ctx_t wrap(const int fd, const bool mode = true) noexcept;
+			void wrap(ctx_t & target, sock_t * socket, const bool mode) noexcept;
 			/**
 			 * wrap Метод обертывания файлового дескриптора для клиента
-			 * @param fd  файловый дескриптор (сокет)
-			 * @param url Параметры URL адреса для инициализации
-			 * @return    объект SSL контекста
+			 * @param target контекст назначения
+			 * @param socket объект подключения
+			 * @param url    параметры URL адреса для инициализации
+			 * @return       объект SSL контекста
 			 */
-			ctx_t wrap(const int fd, const uri_t::url_t & url) noexcept;
+			void wrap(ctx_t & target, sock_t * socket, const uri_t::url_t & url) noexcept;
 		public:
 			/**
 			 * setVerify Метод разрешающий или запрещающий, выполнять проверку соответствия, сертификата домену

@@ -145,6 +145,10 @@ int main(int argc, char * argv[]){
 	// core.setTrusted("./ca/cert.pem");
 	// Устанавливаем название сервера
 	// core.setNameServer("anyks");
+	// Устанавливаем тип сокета unix-сокет
+	// core.setFamily(core_t::af_t::AFUNIX);
+	// Устанавливаем тип сокета UDP
+	// core.setSockType(core_t::sock_t::UDPSOCK);
 	// Выполняем активацию многопоточности
 	// ws.multiThreads(22);
 	// Устанавливаем название сервера

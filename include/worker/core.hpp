@@ -200,6 +200,8 @@ namespace awh {
 				private:
 					// Контекст актуатора для работы с передачей данных
 					act_t::ctx_t act;
+					// Создаём объект подключения клиента
+					act_t::sock_t sock;
 				private:
 					// Бинарный буфер для записи данных в сокет
 					vector <char> buffer;
@@ -243,7 +245,7 @@ namespace awh {
 					 * @param log    объект для работы с логами
 					 */
 					Adjutant(const Worker * parent, const fmk_t * fmk, const log_t * log) noexcept :
-					 aid(0), ip(""), mac(""), act(log), fmk(fmk), log(log), parent(parent) {}
+					 aid(0), ip(""), mac(""), act(fmk, log), sock(fmk, log), fmk(fmk), log(log), parent(parent) {}
 					/**
 					 * ~Adjutant Деструктор
 					 */

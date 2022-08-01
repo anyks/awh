@@ -16,103 +16,735 @@
 #include <net/act.hpp>
 
 /**
- * socketIsBlocking Функция проверки сокета блокирующий режим
- * @param fd  файловый дескриптор (сокет)
- * @param log объект для работы с логами
- * @return    результат работы функции
+ * list Метод активации прослушивания сокета
+ * @return результат выполнения операции
  */
-static int socketIsBlocking(const int fd, const awh::log_t * log = nullptr) noexcept {
-	// Если файловый дескриптор передан
-	if(fd > -1){
+bool awh::Actuator::Sock::list() noexcept {
+	// Результат работы функции
+	bool result = false;
+	// Если объект SSL не создан
+	if(this->ssl == nullptr){
+		// Определяем тип сокета
+		switch(this->type){
+			// Если сокет установлен TCP/IP
+			case SOCK_STREAM: {
+				// Выполняем слушать порт сервера
+				if(!(result = (::listen(this->fd, SOMAXCONN) == 0))){
+					// Выводим сообщени об активном сервисе
+					this->log->print("listen service: pid = %u", log_t::flag_t::CRITICAL, getpid());
+					// Выходим из функции
+					return result;
+				}
+			} break;
+			// Если сокет установлен UDP
+			case SOCK_DGRAM: return true;
+		}
+	// Если тип сокета UDP
+	} else if(this->type == SOCK_DGRAM) {
+		/*
+		// Определяем тип подключения
+		switch(this->family){
+			// Для протокола IPv4
+			case AF_INET: {
+				// Выполняем слушать порт сервера
+				if(DTLSv1_listen(this->ssl, &this->client) < 0){
+					// Выводим сообщени об активном сервисе
+					this->log->print("listen service: pid = %u", log_t::flag_t::CRITICAL, getpid());
+					// Выходим из функции
+					return result;
+				}
+			} break;
+			// Для протокола IPv6
+			case AF_INET6: {
+				// Выполняем слушать порт сервера
+				if(DTLSv1_listen(this->ssl, &this->client6) < 0){
+					// Выводим сообщени об активном сервисе
+					this->log->print("listen service: pid = %u", log_t::flag_t::CRITICAL, getpid());
+					// Выходим из функции
+					return result;
+				}
+			} break;
+		}
+		*/
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * close Метод закрытия подключения
+ * @return результат выполнения операции
+ */
+bool awh::Actuator::Sock::close() noexcept {
+	// Результат работы функции
+	bool result = false;
+	// Если файловый дескриптор подключён
+	if((result = (this->fd > -1))){
 		/**
-		 * Методы только для OS Windows
+		 * Если операционной системой является Windows
 		 */
 		#if defined(_WIN32) || defined(_WIN64)
-			{
-				// Все удачно
-				return -1;
-			}
+			// Запрещаем работу с сокетом
+			shutdown(this->fd, SD_BOTH);
+			// Выполняем закрытие сокета
+			closesocket(this->fd);
 		/**
-		 * Для всех остальных операционных систем
+		 * Если операционной системой является Nix-подобная
 		 */
 		#else
-			{
-				// Флаги файлового дескриптора
-				int flags = 0;
-				// Получаем флаги файлового дескриптора
-				if((flags = fcntl(fd, F_GETFL, nullptr)) < 0){
-					// Выводим в лог информацию
-					if(log != nullptr) log->print("cannot set BLOCK option on socket %d", awh::log_t::flag_t::CRITICAL, fd);
+			// Запрещаем работу с сокетом
+			shutdown(this->fd, SHUT_RDWR);
+			// Выполняем закрытие сокета
+			::close(this->fd);
+		#endif
+		// Выполняем сброс сокета
+		this->fd = -1;
+		/**
+		 * Если операционной системой не является Windows
+		 */
+		#if !defined(_WIN32) && !defined(_WIN64)
+			// Зануляем структуру для unix-сокетов
+			memset(&this->uxsock, 0, sizeof(this->uxsock));
+		#endif
+		// Зануляем структуру клиента IPv4
+		memset(&this->client, 0, sizeof(this->client));
+		// Зануляем структуру сервера IPv4
+		memset(&this->server, 0, sizeof(this->server));
+		// Зануляем структуру клиента IPv6
+		memset(&this->client6, 0, sizeof(this->client6));
+		// Зануляем структуру сервера IPv6
+		memset(&this->server6, 0, sizeof(this->server6));
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * connect Метод выполнения подключения
+ * @return результат выполнения операции
+ */
+bool awh::Actuator::Sock::connect() noexcept {
+	// Размер объекта подключения
+	socklen_t size = 0;
+	// Создаём объект подключения
+	struct sockaddr * sock = nullptr;
+	// Определяем тип подключения
+	switch(this->family){
+		// Для протокола IPv4
+		case AF_INET: {
+			// Запоминаем размер структуры
+			size = sizeof(this->server);
+			// Запоминаем полученную структуру
+			sock = reinterpret_cast <struct sockaddr *> (&this->server);
+		} break;
+		// Для протокола IPv6
+		case AF_INET6: {
+			// Запоминаем размер структуры
+			size = sizeof(this->server6);
+			// Запоминаем полученную структуру
+			sock = reinterpret_cast <struct sockaddr *> (&this->server6);
+		} break;
+		/**
+		 * Если операционной системой не является Windows
+		 */
+		#if !defined(_WIN32) && !defined(_WIN64)
+			// Для протокола unix-сокета
+			case AF_UNIX: {
+				// Запоминаем полученную структуру
+				sock = reinterpret_cast <struct sockaddr *> (&this->uxsock);
+				// Получаем размер объекта сокета
+				size = (offsetof(struct sockaddr_un, sun_path) + strlen(this->uxsock.sun_path));
+			} break;
+		#endif
+	}
+	// Если подключение не выполненно то сообщаем об этом, выполняем подключение к удаленному серверу
+	if(::connect(this->fd, sock, size) == 0)
+		// Устанавливаем статус подключения
+		this->status = status_t::CONNECTED;
+	// Устанавливаем статус отключения
+	else this->status = status_t::DISCONNECTED;
+	// Выводим результат
+	return (this->status == status_t::CONNECTED);
+}
+/**
+ * connect Метод выполнения подключения сервера к клиенту для UDP
+ * @param sock объект подключения сервера
+ */
+bool awh::Actuator::Sock::connect(Sock & sock) noexcept {
+	// Если тип подключения UDP
+	if(this->type == SOCK_DGRAM){
+		// Размер структуры подключения
+		socklen_t size = 0;
+		// Объект подключения к серверу
+		struct sockaddr * sin = nullptr;
+		// Объект подключения к клиенту
+		struct sockaddr * sot = nullptr;
+		// Создаем сокет подключения
+		this->fd = ::socket(this->family, this->type, this->protocol);
+		// Определяем тип подключения
+		switch(this->family){
+			// Для протокола IPv4
+			case AF_INET: {
+				// Запоминаем размер структуры
+				size = sizeof(sock.server);
+				// Запоминаем полученную структуру
+				sin = reinterpret_cast <struct sockaddr *> (&sock.server);
+			} break;
+			// Для протокола IPv6
+			case AF_INET6: {
+				// Запоминаем размер структуры
+				size = sizeof(sock.server6);
+				// Запоминаем полученную структуру
+				sin = reinterpret_cast <struct sockaddr *> (&sock.server6);
+			} break;
+		}
+		// Выполняем бинд на сокет
+		if(::bind(this->fd, sin, size) < 0){
+			// Получаем данные подключившегося клиента
+			const string & host = this->ifnet.ip((struct sockaddr *) &this->client, this->family);
+			// Выводим в лог сообщение
+			this->log->print("bind client UDP [%s]", log_t::flag_t::CRITICAL, host.c_str());
+			// Выходим
+			return false;
+		}
+		// Определяем тип подключения
+		switch(this->family){
+			// Для протокола IPv4
+			case AF_INET: {
+				// Запоминаем размер структуры
+				size = sizeof(this->client);
+				// Запоминаем полученную структуру
+				sot = reinterpret_cast <struct sockaddr *> (&this->client);
+			} break;
+			// Для протокола IPv6
+			case AF_INET6: {
+				// Запоминаем размер структуры
+				size = sizeof(this->client6);
+				// Запоминаем полученную структуру
+				sot = reinterpret_cast <struct sockaddr *> (&this->client6);
+			} break;
+		}
+		// Если подключение не выполненно то сообщаем об этом, выполняем подключение к удаленному серверу
+		if(::connect(this->fd, sot, size) == 0)
+			// Устанавливаем статус подключения
+			this->status = status_t::CONNECTED;
+		// Устанавливаем статус отключения
+		else this->status = status_t::DISCONNECTED;
+	}
+	// Выводим результат
+	return (this->status == status_t::CONNECTED);
+}
+/**
+ * accept Метод согласования подключения
+ * @param sock объект подключения сервера
+ * @return     результат выполнения операции
+ */
+bool awh::Actuator::Sock::accept(Sock & sock) noexcept {
+	// Выполняем вызов метода согласование
+	return this->accept(sock.fd);
+}
+/**
+ * accept Метод согласования подключения
+ * @param fd файловый дескриптор сервера
+ * @return   результат выполнения операции
+ */
+bool awh::Actuator::Sock::accept(const int fd) noexcept {
+	// Устанавливаем статус отключения
+	this->status = status_t::DISCONNECTED;
+	// Определяем тип сокета
+	switch(this->type){
+		// Если сокет установлен TCP/IP
+		case SOCK_STREAM: {
+			// Определяем тип подключения
+			switch(this->family){
+				// Для протокола IPv4
+				case AF_INET: {
+					// Размер структуры подключения
+					socklen_t size = sizeof(this->client);
+					// Определяем разрешено ли подключение к прокси серверу
+					this->fd = ::accept(fd, reinterpret_cast <struct sockaddr *> (&this->client), &size);
+					// Если сокет не создан тогда выходим
+					if(this->fd < 0) return false;
+				} break;
+				// Для протокола IPv6
+				case AF_INET6: {
+					// Размер структуры подключения
+					socklen_t size = sizeof(this->client6);
+					// Определяем разрешено ли подключение к прокси серверу
+					this->fd = ::accept(fd, reinterpret_cast <struct sockaddr *> (&this->client6), &size);
+					// Если сокет не создан тогда выходим
+					if(this->fd < 0) return false;
+				} break;
+				/**
+				 * Если операционной системой не является Windows
+				 */
+				#if !defined(_WIN32) && !defined(_WIN64)
+					// Для протокола unix-сокета
+					case AF_UNIX: {
+						// Размер структуры подключения
+						socklen_t size = sizeof(this->uxsock);
+						// Определяем разрешено ли подключение к прокси серверу
+						this->fd = ::accept(fd, reinterpret_cast <struct sockaddr *> (&this->uxsock), &size);
+						// Если сокет не создан тогда выходим
+						if(this->fd < 0) return false;
+					} break;
+				#endif
+			}
+		} break;
+		// Если сокет установлен UDP
+		case SOCK_DGRAM: this->fd = fd; break;
+	}
+	// Определяем тип подключения
+	switch(this->family){
+		// Для протокола IPv4
+		case AF_INET:
+		// Для протокола IPv6
+		case AF_INET6: {
+			/**
+			 * Если операционной системой является Nix-подобная
+			 */
+			#if !defined(_WIN32) && !defined(_WIN64)
+				// Выполняем игнорирование сигнала неверной инструкции процессора
+				this->socket.noSigill();
+				// Отключаем сигнал записи в оборванное подключение
+				this->socket.noSigpipe(this->fd);
+			#endif
+			// Устанавливаем разрешение на повторное использование сокета
+			this->socket.reuseable(this->fd);
+			// Если сокет установлен TCP/IP
+			if(this->type == SOCK_STREAM){
+				// Отключаем алгоритм Нейгла для сервера и клиента
+				this->socket.tcpNodelay(this->fd);
+				// Отключаем алгоритм Нейгла
+				BIO_set_tcp_ndelay(this->fd, 1);
+			}
+			// Переводим сокет в не блокирующий режим
+			this->socket.nonBlocking(this->fd);
+		} break;
+		/**
+		 * Если операционной системой не является Windows
+		 */
+		#if !defined(_WIN32) && !defined(_WIN64)
+			// Для протокола unix-сокета
+			case AF_UNIX: {
+				// Выполняем игнорирование сигнала неверной инструкции процессора
+				this->socket.noSigill();
+				// Отключаем сигнал записи в оборванное подключение
+				this->socket.noSigpipe(this->fd);
+				// Устанавливаем разрешение на повторное использование сокета
+				this->socket.reuseable(this->fd);
+				// Переводим сокет в не блокирующий режим
+				this->socket.nonBlocking(this->fd);
+			} break;
+		#endif
+	}
+	// Определяем тип подключения
+	switch(this->family){
+		// Для протокола IPv4
+		case AF_INET: {
+			// Получаем данные подключившегося клиента
+			this->ip = this->ifnet.ip((struct sockaddr *) &this->client, this->family);
+			// Если IP адрес получен пустой, устанавливаем адрес сервера
+			if(this->ip.compare("0.0.0.0") == 0) this->ip = this->ifnet.ip(this->family);
+			// Получаем данные мак адреса клиента
+			this->mac = this->ifnet.mac(this->ip, this->family);
+		} break;
+		// Для протокола IPv6
+		case AF_INET6: {
+			// Получаем данные подключившегося клиента
+			this->ip = this->ifnet.ip((struct sockaddr *) &this->client6, this->family);
+			// Если IP адрес получен пустой, устанавливаем адрес сервера
+			if(this->ip.compare("::") == 0) this->ip = this->ifnet.ip(this->family);
+			// Получаем данные мак адреса клиента
+			this->mac = this->ifnet.mac(this->ip, this->family);
+		} break;
+		/**
+		 * Если операционной системой не является Windows
+		 */
+		#if !defined(_WIN32) && !defined(_WIN64)
+			// Для протокола unix-сокета
+			case AF_UNIX: {
+				// Получаем данные подключившегося клиента
+				this->ip = this->ifnet.ip((struct sockaddr *) &this->uxsock, this->family);
+				// Если IP адрес получен пустой, устанавливаем адрес сервера
+				if(this->ip.compare("0.0.0.0") == 0) this->ip = this->ifnet.ip(this->family);
+				// Получаем данные мак адреса клиента
+				this->mac = this->ifnet.mac(this->ip, this->family);
+			} break;
+		#endif
+	}
+	// Устанавливаем статус подключения
+	this->status = status_t::ACCEPTED;
+	// Выводим результат
+	return true;
+}
+/**
+ * init Метод инициализации адресного пространства сокета
+ * @param unixsocket адрес unxi-сокета в файловой системе
+ * @param type       тип приложения (клиент или сервер)
+ */
+void awh::Actuator::Sock::init(const string & unixsocket, const type_t type) noexcept {
+	// Если unix-сокет передан
+	if(!unixsocket.empty() && (this->family == AF_UNIX)){
+		/**
+		 * Если операционной системой не является Windows
+		 */
+		#if !defined(_WIN32) && !defined(_WIN64)
+			// Если приложение является сервером
+			if(type == type_t::SERVER){
+				// Если сокет в файловой системе уже существует, удаляем его
+				if(fs_t::issock(unixsocket))
+					// Удаляем файл сокета
+					::unlink(unixsocket.c_str());
+			}
+			// Устанавливаем протокол интернета
+			this->uxsock.sun_family = this->family;
+			// Очищаем всю структуру для сервера
+			memset(&this->uxsock.sun_path, 0, sizeof(this->uxsock.sun_path));
+			// Копируем адрес сокета сервера
+			strncpy(this->uxsock.sun_path, unixsocket.c_str(), sizeof(this->uxsock.sun_path));
+			// Создаем сокет подключения
+			this->fd = ::socket(this->family, this->type, 0);
+			// Если сокет не создан то выходим
+			if(this->fd < 0){
+				// Выводим сообщение в консоль
+				this->log->print("creating socket %s", log_t::flag_t::CRITICAL, unixsocket.c_str());
+				// Выходим
+				return;
+			}
+			// Выполняем игнорирование сигнала неверной инструкции процессора
+			this->socket.noSigill();
+			// Отключаем сигнал записи в оборванное подключение
+			this->socket.noSigpipe(this->fd);
+			// Устанавливаем разрешение на повторное использование сокета
+			this->socket.reuseable(this->fd);
+			// Переводим сокет в не блокирующий режим
+			this->socket.nonBlocking(this->fd);
+			// Если ядро является сервером
+			if(type == type_t::SERVER){
+				// Получаем размер объекта сокета
+				const socklen_t size = (offsetof(struct sockaddr_un, sun_path) + strlen(this->uxsock.sun_path));
+				// Выполняем бинд на сокет
+				if(::bind(this->fd, (struct sockaddr *) &this->uxsock, size) < 0){
+					// Выводим в лог сообщение
+					this->log->print("bind local network [%s]", log_t::flag_t::CRITICAL, unixsocket.c_str());
 					// Выходим
-					return -1;
+					return;
 				}
-				// Если флаг неблокирующего режима работы установлен
-				if(flags & O_NONBLOCK)
-					// Сообщаем, что сокет находится в неблокирующем режиме
-					return 0;
-				// Сообщаем, что сокет находится в блокирующем режиме
-				else return 1;
 			}
 		#endif
 	}
-	// Все удачно
-	return -1;
+}
+/**
+ * init Метод инициализации адресного пространства сокета
+ * @param ip   адрес для которого нужно создать сокет
+ * @param port порт сервера для которого нужно создать сокет
+ * @param type тип приложения (клиент или сервер)
+ * @return     параметры подключения к серверу
+ */
+void awh::Actuator::Sock::init(const string & ip, const u_int port, const type_t type) noexcept {
+	// Если IP адрес передан
+	if(!ip.empty() && (port > 0) && (port <= 65535) && !this->network.empty()){
+		// Если список сетевых интерфейсов установлен
+		if((this->family == AF_INET) || (this->family == AF_INET6)){
+			// Адрес сервера для биндинга
+			string host = "";
+			// Размер структуры подключения
+			socklen_t size = 0;
+			// Объект подключения
+			struct sockaddr * sin = nullptr;
+			// Определяем тип подключения
+			switch(this->family){
+				// Для протокола IPv4
+				case AF_INET: {
+					// Если приложение является клиентом
+					if(type == type_t::CLIENT){
+						// Если количество элементов больше 1
+						if(this->network.size() > 1){
+							// рандомизация генератора случайных чисел
+							srand(time(0));
+							// Получаем ip адрес
+							host = this->network.at(rand() % this->network.size());
+						// Выводим только первый элемент
+						} else host = this->network.front();
+						// Очищаем всю структуру для клиента
+						memset(&this->client, 0, sizeof(this->client));
+						// Устанавливаем произвольный порт для локального подключения
+						this->client.sin_port = htons(0);
+						// Устанавливаем протокол интернета
+						this->client.sin_family = this->family;
+						// Устанавливаем адрес для локальго подключения
+						this->client.sin_addr.s_addr = inet_addr(host.c_str());
+						// Запоминаем размер структуры
+						size = sizeof(this->client);
+						// Запоминаем полученную структуру
+						sin = reinterpret_cast <struct sockaddr *> (&this->client);
+					}
+					// Очищаем всю структуру для сервера
+					memset(&this->server, 0, sizeof(this->server));
+					// Устанавливаем порт для локального подключения
+					this->server.sin_port = htons(port);
+					// Устанавливаем протокол интернета
+					this->server.sin_family = this->family;
+					// Устанавливаем адрес для удаленного подключения
+					this->server.sin_addr.s_addr = inet_addr(ip.c_str());
+					// Если ядро является сервером
+					if(type == type_t::SERVER){
+						// Запоминаем размер структуры
+						size = sizeof(this->server);
+						// Запоминаем полученную структуру
+						sin = reinterpret_cast <struct sockaddr *> (&this->server);
+					}
+					// Обнуляем серверную структуру
+					memset(&this->server.sin_zero, 0, sizeof(this->server.sin_zero));
+					// Создаем сокет подключения
+					this->fd = ::socket(this->family, this->type, this->protocol);
+				} break;
+				// Для протокола IPv6
+				case AF_INET6: {
+					// Если приложение является клиентом
+					if(type == type_t::CLIENT){
+						// Если количество элементов больше 1
+						if(this->network.size() > 1){
+							// рандомизация генератора случайных чисел
+							srand(time(0));
+							// Получаем ip адрес
+							host = this->network.at(rand() % this->network.size());
+						// Выводим только первый элемент
+						} else host = this->network.front();
+						// Переводим ip адрес в полноценный вид
+						host = move(this->nwk.setLowIp6(host));
+						// Очищаем всю структуру для клиента
+						memset(&this->client6, 0, sizeof(this->client6));
+						// Устанавливаем произвольный порт для локального подключения
+						this->client6.sin6_port = htons(0);
+						// Устанавливаем протокол интернета
+						this->client6.sin6_family = this->family;
+						// Указываем адрес IPv6 для клиента
+						inet_pton(this->family, host.c_str(), &this->client6.sin6_addr);
+						// inet_ntop(this->family, &this->client6.sin6_addr, hostClient, sizeof(hostClient));
+						// Запоминаем размер структуры
+						size = sizeof(this->client6);
+						// Запоминаем полученную структуру
+						sin = reinterpret_cast <struct sockaddr *> (&this->client6);
+					}
+					// Очищаем всю структуру для сервера
+					memset(&this->server6, 0, sizeof(this->server6));
+					// Устанавливаем порт для локального подключения
+					this->server6.sin6_port = htons(port);
+					// Устанавливаем протокол интернета
+					this->server6.sin6_family = this->family;
+					// Указываем адрес IPv6 для сервера
+					inet_pton(this->family, ip.c_str(), &this->server6.sin6_addr);
+					// inet_ntop(this->family, &this->server6.sin6_addr, hostServer, sizeof(hostServer));
+					// Если приложение является сервером
+					if(type == type_t::SERVER){
+						// Запоминаем размер структуры
+						size = sizeof(this->server6);
+						// Запоминаем полученную структуру
+						sin = reinterpret_cast <struct sockaddr *> (&this->server6);
+					}
+					// Создаем сокет подключения
+					this->fd = ::socket(this->family, this->type, this->protocol);
+				} break;
+				// Если тип сети не определен
+				default: {
+					// Выводим сообщение в консоль
+					this->log->print("network not allow from server = %s, port = %u", log_t::flag_t::CRITICAL, ip.c_str(), port);
+					// Выходим
+					return;
+				}
+			}
+			// Если сокет не создан то выходим
+			if(this->fd < 0){
+				// Выводим сообщение в консоль
+				this->log->print("creating socket to server = %s, port = %u", log_t::flag_t::CRITICAL, ip.c_str(), port);
+				// Выходим
+				return;
+			}
+			/**
+			 * Если операционной системой является Nix-подобная
+			 */
+			#if !defined(_WIN32) && !defined(_WIN64)
+				// Выполняем игнорирование сигнала неверной инструкции процессора
+				this->socket.noSigill();
+				// Отключаем сигнал записи в оборванное подключение
+				this->socket.noSigpipe(this->fd);
+				// Если приложение является сервером
+				if(type == type_t::SERVER){
+					// Включаем отображение сети IPv4 в IPv6
+					if(this->family == AF_INET6) this->socket.ipV6only(this->fd, this->v6only);
+				// Если приложение является клиентом и сокет установлен TCP/IP
+				} else if(this->type == SOCK_STREAM)
+					// Активируем KeepAlive
+					this->socket.keepAlive(this->fd, this->alive.keepcnt, this->alive.keepidle, this->alive.keepintvl);
+			/**
+			 * Если операционной системой является MS Windows
+			 */
+			#else
+				// Если приложение является сервером
+				if(type == type_t::SERVER){
+					// Включаем отображение сети IPv4 в IPv6
+					if(this->family == AF_INET6) this->socket.ipV6only(this->fd, this->v6only);
+				// Если приложение является клиентом и сокет установлен TCP/IP
+				} else if(this->type == SOCK_STREAM)
+					// Активируем KeepAlive
+					this->socket.keepAlive(this->fd);
+			#endif
+			// Если приложение является сервером
+			if(type == type_t::SERVER)
+				// Переводим сокет в не блокирующий режим
+				this->socket.nonBlocking(this->fd);
+			// Если сокет установлен TCP/IP
+			if(this->type == SOCK_STREAM){
+				// Отключаем алгоритм Нейгла для сервера и клиента
+				this->socket.tcpNodelay(this->fd);
+				// Отключаем алгоритм Нейгла
+				BIO_set_tcp_ndelay(this->fd, 1);
+			}
+			// Устанавливаем разрешение на закрытие сокета при неиспользовании
+			// this->socket.closeonexec(this->fd);
+			// Устанавливаем разрешение на повторное использование сокета
+			this->socket.reuseable(this->fd);
+			// Если приложение является сервером
+			if(type == type_t::SERVER)
+				// Получаем настоящий хост сервера
+				host = this->ifnet.ip(this->family);
+			// Выполняем бинд на сокет
+			if(::bind(this->fd, sin, size) < 0){
+				// Выводим в лог сообщение
+				this->log->print("bind local network [%s]", log_t::flag_t::CRITICAL, host.c_str());
+				// Выходим
+				return;
+			}
+		}
+	}
+}
+/**
+ * ~Sock Деструктор
+ */
+awh::Actuator::Sock::~Sock() noexcept {
+	// Выполняем отключение
+	this->close();
 }
 /**
  * error Метод вывода информации об ошибке
  * @param status статус ошибки
  */
 void awh::Actuator::Context::error(const int status) const noexcept {
-	// Получаем данные описание ошибки
-	const int error = SSL_get_error(this->ssl, status);
-	// Определяем тип ошибки
-	switch(error){
-		// Если был возвращён ноль
-		case SSL_ERROR_ZERO_RETURN: {
-			// Если удалённая сторона произвела закрытие подключения
-			if(SSL_get_shutdown(this->ssl) & SSL_RECEIVED_SHUTDOWN)
-				// Выводим в лог сообщение
-				this->log->print("the remote side closed the connection", log_t::flag_t::INFO);
-		} break;
-		// Если произошла ошибка вызова
-		case SSL_ERROR_SYSCALL: {
-			// Получаем данные описание ошибки
-			u_long error = ERR_get_error();
-			// Если ошибка получена
-			if(error != 0){
-				// Выводим в лог сообщение
-				this->log->print("%s", log_t::flag_t::CRITICAL, ERR_error_string(error, nullptr));
-				/**
-				 * Выполняем извлечение остальных ошибок
-				 */
-				do {
+	// Если защищённый режим работы разрешён
+	if(this->mode){
+		// Получаем данные описание ошибки
+		const int error = SSL_get_error(this->ssl, status);
+		// Определяем тип ошибки
+		switch(error){
+			// Если был возвращён ноль
+			case SSL_ERROR_ZERO_RETURN: {
+				// Если удалённая сторона произвела закрытие подключения
+				if(SSL_get_shutdown(this->ssl) & SSL_RECEIVED_SHUTDOWN)
+					// Выводим в лог сообщение
+					this->log->print("the remote side closed the connection", log_t::flag_t::INFO);
+			} break;
+			// Если произошла ошибка вызова
+			case SSL_ERROR_SYSCALL: {
+				// Получаем данные описание ошибки
+				u_long error = ERR_get_error();
+				// Если ошибка получена
+				if(error != 0){
 					// Выводим в лог сообщение
 					this->log->print("%s", log_t::flag_t::CRITICAL, ERR_error_string(error, nullptr));
-				// Если ещё есть ошибки
-				} while((error = ERR_get_error()));
-			// Если данные записаны неверно
-			} else if(status == -1)
+					/**
+					 * Выполняем извлечение остальных ошибок
+					 */
+					do {
+						// Выводим в лог сообщение
+						this->log->print("%s", log_t::flag_t::CRITICAL, ERR_error_string(error, nullptr));
+					// Если ещё есть ошибки
+					} while((error = ERR_get_error()));
+				// Если данные записаны неверно
+				} else if(status == -1)
+					// Выводим в лог сообщение
+					this->log->print("%s", log_t::flag_t::CRITICAL, strerror(errno));
+			} break;
+			// Для всех остальных ошибок
+			default: {
+				// Получаем данные описание ошибки
+				u_long error = 0;
+				// Выполняем чтение ошибок OpenSSL
+				while((error = ERR_get_error()))
+					// Выводим в лог сообщение
+					this->log->print("%s", log_t::flag_t::CRITICAL, ERR_error_string(error, nullptr));
+			}
+		}
+	// Если произошла ошибка
+	} else if(status == -1) {
+		// Определяем тип ошибки
+		switch(errno){
+			// Если произведена неудачная запись в PIPE
+			case EPIPE:
+				// Выводим в лог сообщение
+				this->log->print("EPIPE", log_t::flag_t::WARNING);
+			break;
+			// Если произведён сброс подключения
+			case ECONNRESET:
+				// Выводим в лог сообщение
+				this->log->print("ECONNRESET", log_t::flag_t::WARNING);
+			break;
+			// Для остальных ошибок
+			default:
 				// Выводим в лог сообщение
 				this->log->print("%s", log_t::flag_t::CRITICAL, strerror(errno));
-		} break;
-		// Для всех остальных ошибок
-		default: {
-			// Получаем данные описание ошибки
-			u_long error = 0;
-			// Выполняем чтение ошибок OpenSSL
-			while((error = ERR_get_error()))
-				// Выводим в лог сообщение
-				this->log->print("%s", log_t::flag_t::CRITICAL, ERR_error_string(error, nullptr));
 		}
-	};
+	}
 }
 /**
- * get Метод получения файлового дескриптора
- * @return файловый дескриптор
+ * clear Метод очистки контекста
  */
-int awh::Actuator::Context::get() const noexcept {
-	// Выводим установленный файловый дескриптор
-	return this->fd;
+void awh::Actuator::Context::clear() noexcept {
+	// Если сокет активен
+	if(this->sock != nullptr)
+		// Выполняем закрытие подключения
+		this->sock->close();
+	// Если объект верификации домена создан
+	if(this->verify != nullptr){
+		// Удаляем объект верификации
+		delete this->verify;
+		// Зануляем объект верификации
+		this->verify = nullptr;
+	}
+	// Если контекст SSL создан
+	if(this->ssl != nullptr){
+		// Выключаем получение данных SSL
+		SSL_shutdown(this->ssl);
+		// Очищаем объект SSL
+		// SSL_clear(this->ssl);
+		// Освобождаем выделенную память
+		SSL_free(this->ssl);
+		// Зануляем контекст сервера
+		this->ssl = nullptr;
+		// Если объект подключения существует
+		if(this->sock != nullptr)
+			// Зануляем контекст подключения
+			this->sock->ssl = nullptr;
+	}
+	// Если контекст SSL сервер был поднят
+	if(this->ctx != nullptr){
+		// Очищаем контекст сервера
+		SSL_CTX_free(this->ctx);
+		// Зануляем контекст сервера
+		this->ctx = nullptr;
+	}
+	/*
+	// Если BIO создано
+	if(this->bio != nullptr){
+		// Выполняем очистку BIO
+		BIO_free(this->bio);
+		// Зануляем контекст BIO
+		this->bio = nullptr;
+	}
+	*/
+	// Сбрасываем флаг инициализации
+	this->mode = false;
+	// Зануляем объект подключения
+	this->sock = nullptr;
 }
 /**
  * wrapped Метод првоерки на активацию контекста
@@ -120,7 +752,7 @@ int awh::Actuator::Context::get() const noexcept {
  */
 bool awh::Actuator::Context::wrapped() const noexcept {
 	// Выводим результат проверки
-	return (this->fd > -1);
+	return (this->sock->fd > -1);
 }
 /**
  * read Метод чтения данных из сокета
@@ -128,11 +760,11 @@ bool awh::Actuator::Context::wrapped() const noexcept {
  * @param size   размер буфера данных
  * @return       количество считанных байт
  */
-int64_t awh::Actuator::Context::read(char * buffer, const size_t size) const noexcept {
+int64_t awh::Actuator::Context::read(char * buffer, const size_t size) noexcept {
 	// Результат работы функции
 	int64_t result = 0;
 	// Если буфер данных передан
-	if((buffer != nullptr) && (size > 0) && (this->type != type_t::NONE) && (this->fd > -1)){
+	if((buffer != nullptr) && (size > 0) && (this->type != type_t::NONE) && this->wrapped()){
 		// Выполняем зануление буфера
 		memset(buffer, 0, size);
 		// Если защищённый режим работы разрешён
@@ -144,11 +776,85 @@ int64_t awh::Actuator::Context::read(char * buffer, const size_t size) const noe
 				// Выполняем чтение из защищённого сокета
 				result = SSL_read(this->ssl, buffer, size);
 		// Выполняем чтение из буфера данных стандартным образом
-		} else result = recv(this->fd, buffer, size, 0);
+		} else {
+			// Если сокет установлен как TCP/IP
+			if(this->sock->type == SOCK_STREAM)
+				// Выполняем чтение данных из TCP/IP сокета
+				result = ::recv(this->sock->fd, buffer, size, 0);
+			// Если сокет установлен UDP
+			else if(this->sock->type == SOCK_DGRAM) {
+				// Размер объекта подключения
+				socklen_t socklen = 0;
+				// Создаём объект подключения
+				struct sockaddr * sock = nullptr;
+				// Если тип подключения IPv4 или IPv6
+				if((this->sock->family == AF_INET) || (this->sock->family == AF_INET6)){
+					// Определяем тип подключения
+					switch((uint8_t) this->sock->status){
+						// Если статус установлен как подключение клиентом
+						case (uint8_t) sock_t::status_t::CONNECTED: {
+							// Определяем тип подключения
+							switch(this->sock->family){
+								// Для протокола IPv4
+								case AF_INET: {
+									// Запоминаем размер структуры
+									socklen = sizeof(this->sock->server);
+									// Запоминаем полученную структуру
+									sock = reinterpret_cast <struct sockaddr *> (&this->sock->server);
+								} break;
+								// Для протокола IPv6
+								case AF_INET6: {
+									// Запоминаем размер структуры
+									socklen = sizeof(this->sock->server6);
+									// Запоминаем полученную структуру
+									sock = reinterpret_cast <struct sockaddr *> (&this->sock->server6);
+								} break;
+							}
+						} break;
+						// Если статус установлен как разрешение подключения к серверу
+						case (uint8_t) sock_t::status_t::ACCEPTED: {
+							// Определяем тип подключения
+							switch(this->sock->family){
+								// Для протокола IPv4
+								case AF_INET: {
+									// Запоминаем размер структуры
+									socklen = sizeof(this->sock->client);
+									// Запоминаем полученную структуру
+									sock = reinterpret_cast <struct sockaddr *> (&this->sock->client);
+								} break;
+								// Для протокола IPv6
+								case AF_INET6: {
+									// Запоминаем размер структуры
+									socklen = sizeof(this->sock->client6);
+									// Запоминаем полученную структуру
+									sock = reinterpret_cast <struct sockaddr *> (&this->sock->client6);
+								} break;
+							}
+						} break;
+					}
+				// Если подключение производится по unix-сокету
+				} else {
+					/**
+					 * Если операционной системой не является Windows
+					 */
+					#if !defined(_WIN32) && !defined(_WIN64)
+						// Для протокола unix-сокета
+						if(this->sock->family == AF_UNIX){
+							// Запоминаем полученную структуру
+							sock = reinterpret_cast <struct sockaddr *> (&this->sock->uxsock);
+							// Получаем размер объекта сокета
+							socklen = (offsetof(struct sockaddr_un, sun_path) + strlen(this->sock->uxsock.sun_path));
+						}
+					#endif
+				}
+				// Выполняем чтение данных из сокета
+				result = ::recvfrom(this->sock->fd, buffer, size, 0, sock, &socklen);
+			}
+		}
 		// Если данные прочитать не удалось
 		if(result <= 0){
 			// Получаем статус сокета
-			const int status = socketIsBlocking(this->fd, this->log);
+			const int status = this->sock->socket.isBlocking(this->sock->fd);
 			// Если сокет находится в блокирующем режиме
 			if((result < 0) && (status != 0))
 				// Выполняем обработку ошибок
@@ -174,6 +880,8 @@ int64_t awh::Actuator::Context::read(char * buffer, const size_t size) const noe
 			if((result == 0) || (status != 0))
 				// Выполняем отключение от сервера
 				result = 0;
+			// Если произошло отключение
+			if(result == 0) this->sock->status = sock_t::status_t::DISCONNECTED;
 		}
 	}
 	// Выводим результат
@@ -185,11 +893,11 @@ int64_t awh::Actuator::Context::read(char * buffer, const size_t size) const noe
  * @param size   размер буфера данных
  * @return       количество записанных байт
  */
-int64_t awh::Actuator::Context::write(const char * buffer, const size_t size) const noexcept {
+int64_t awh::Actuator::Context::write(const char * buffer, const size_t size) noexcept {
 	// Результат работы функции
 	int64_t result = 0;
 	// Если буфер данных передан
-	if((buffer != nullptr) && (size > 0) && (this->type != type_t::NONE) && (this->fd > -1)){
+	if((buffer != nullptr) && (size > 0) && (this->type != type_t::NONE) && this->wrapped()){
 		// Если защищённый режим работы разрешён
 		if(this->mode){
 			// Выполняем очистку ошибок OpenSSL
@@ -199,11 +907,85 @@ int64_t awh::Actuator::Context::write(const char * buffer, const size_t size) co
 				// Выполняем отправку сообщения через защищённый канал
 				result = SSL_write(this->ssl, buffer, size);
 		// Выполняем отправку сообщения в сокет
-		} else result = send(this->fd, buffer, size, 0);
+		} else {
+			// Если сокет установлен как TCP/IP
+			if(this->sock->type == SOCK_STREAM)
+				// Выполняем отправку данных в TCP/IP сокет
+				result = ::send(this->sock->fd, buffer, size, 0);
+			// Если сокет установлен UDP
+			else if(this->sock->type == SOCK_DGRAM) {
+				// Размер объекта подключения
+				socklen_t socklen = 0;
+				// Создаём объект подключения
+				struct sockaddr * sock = nullptr;
+				// Если тип подключения IPv4 или IPv6
+				if((this->sock->family == AF_INET) || (this->sock->family == AF_INET6)){
+					// Определяем тип подключения
+					switch((uint8_t) this->sock->status){
+						// Если статус установлен как подключение клиентом
+						case (uint8_t) sock_t::status_t::CONNECTED: {
+							// Определяем тип подключения
+							switch(this->sock->family){
+								// Для протокола IPv4
+								case AF_INET: {
+									// Запоминаем размер структуры
+									socklen = sizeof(this->sock->server);
+									// Запоминаем полученную структуру
+									sock = reinterpret_cast <struct sockaddr *> (&this->sock->server);
+								} break;
+								// Для протокола IPv6
+								case AF_INET6: {
+									// Запоминаем размер структуры
+									socklen = sizeof(this->sock->server6);
+									// Запоминаем полученную структуру
+									sock = reinterpret_cast <struct sockaddr *> (&this->sock->server6);
+								} break;
+							}
+						} break;
+						// Если статус установлен как разрешение подключения к серверу
+						case (uint8_t) sock_t::status_t::ACCEPTED: {
+							// Определяем тип подключения
+							switch(this->sock->family){
+								// Для протокола IPv4
+								case AF_INET: {
+									// Запоминаем размер структуры
+									socklen = sizeof(this->sock->client);
+									// Запоминаем полученную структуру
+									sock = reinterpret_cast <struct sockaddr *> (&this->sock->client);
+								} break;
+								// Для протокола IPv6
+								case AF_INET6: {
+									// Запоминаем размер структуры
+									socklen = sizeof(this->sock->client6);
+									// Запоминаем полученную структуру
+									sock = reinterpret_cast <struct sockaddr *> (&this->sock->client6);
+								} break;
+							}
+						} break;
+					}
+				// Если подключение производится по unix-сокету
+				} else {
+					/**
+					 * Если операционной системой не является Windows
+					 */
+					#if !defined(_WIN32) && !defined(_WIN64)
+						// Для протокола unix-сокета
+						if(this->sock->family == AF_UNIX){
+							// Запоминаем полученную структуру
+							sock = reinterpret_cast <struct sockaddr *> (&this->sock->uxsock);
+							// Получаем размер объекта сокета
+							socklen = (offsetof(struct sockaddr_un, sun_path) + strlen(this->sock->uxsock.sun_path));
+						}
+					#endif
+				}
+				// Выполняем запись данных в сокет
+				result = ::sendto(this->sock->fd, buffer, size, 0, sock, socklen);
+			}
+		}
 		// Если данные записать не удалось
 		if(result <= 0){
 			// Получаем статус сокета
-			const int status = socketIsBlocking(this->fd, this->log);
+			const int status = this->sock->socket.isBlocking(this->sock->fd);
 			// Если сокет находится в блокирующем режиме
 			if((result < 0) && (status != 0))
 				// Выполняем обработку ошибок
@@ -229,6 +1011,8 @@ int64_t awh::Actuator::Context::write(const char * buffer, const size_t size) co
 			if((result == 0) || (status != 0))
 				// Выполняем отключение от сервера
 				result = 0;
+			// Если произошло отключение
+			if(result == 0) this->sock->status = sock_t::status_t::DISCONNECTED;
 		}
 	}
 	// Выводим результат
@@ -242,7 +1026,9 @@ int awh::Actuator::Context::block() noexcept {
 	// Результат работы функции
 	int result = 0;
 	// Если защищённый режим работы разрешён
-	if(this->mode && (this->fd > -1)){
+	if(this->mode && this->wrapped()){
+		// Переводим сокет в блокирующий режим
+		this->sock->socket.blocking(this->sock->fd);
 		// Устанавливаем блокирующий режим ввода/вывода для сокета
 		BIO_set_nbio(this->bio, 0);
 		// Флаг необходимо установить только для неблокирующего сокета
@@ -259,7 +1045,9 @@ int awh::Actuator::Context::noblock() noexcept {
 	// Результат работы функции
 	int result = 0;
 	// Если файловый дескриптор активен
-	if(this->mode && (this->fd > -1)){
+	if(this->mode && this->wrapped()){
+		// Переводим сокет в не блокирующий режим
+		this->sock->socket.nonBlocking(this->sock->fd);
 		// Устанавливаем неблокирующий режим ввода/вывода для сокета
 		BIO_set_nbio(this->bio, 1);
 		// Флаг необходимо установить только для неблокирующего сокета
@@ -267,6 +1055,21 @@ int awh::Actuator::Context::noblock() noexcept {
 	}
 	// Выводим результат
 	return result;
+}
+/**
+ * isblock Метод проверки на то, является ли сокет заблокированным
+ * @return результат работы функции
+ */
+int awh::Actuator::Context::isblock() noexcept {
+	// Выводим результат проверки
+	return (this->wrapped() ? this->sock->socket.isBlocking(this->sock->fd) : -1);
+}
+ /**
+ * ~Context Деструктор
+ */
+awh::Actuator::Context::~Context() noexcept {
+	// Выполняем очистку выделенных ранее данных
+	this->clear();
 }
 /**
  * rawEqual Метод проверки на эквивалентность доменных имен
@@ -378,7 +1181,17 @@ const bool awh::Actuator::certHostcheck(const string & host, const string & patt
 	return result;
 }
 /**
- * verifyHost Функция обратного вызова для проверки валидности сертификата
+ * verifyCert Функция обратного вызова для проверки валидности сертификата
+ * @param ok   результат получения сертификата
+ * @param x509 данные сертификата
+ * @return     результат проверки
+ */
+int awh::Actuator::verifyCert(const int ok, X509_STORE_CTX * x509) noexcept {
+	// Выводим положительный ответ
+	return 1;
+}
+/**
+ * verifyHost Функция обратного вызова для проверки валидности хоста
  * @param x509 данные сертификата
  * @param ctx  передаваемый контекст
  * @return     результат проверки
@@ -434,6 +1247,28 @@ int awh::Actuator::verifyHost(X509_STORE_CTX * x509, void * ctx) noexcept {
 	}
 	// Выводим сообщение, что проверка не пройдена
 	return 0;
+}
+/**
+ * verifyCookie Функция обратного вызова для проверки куков
+ * @param ssl    объект SSL
+ * @param cookie данные куков
+ * @param size   количество символов
+ * @return       результат проверки
+ */
+int awh::Actuator::verifyCookie(SSL * ssl, u_char * cookie, u_int size) noexcept {
+	// Выводим положительный ответ
+	return 1;
+}
+/**
+ * generateCookie Функция обратного вызова для генерации куков
+ * @param ssl    объект SSL
+ * @param cookie данные куков
+ * @param size   количество символов
+ * @return       результат проверки
+ */
+int awh::Actuator::generateCookie(SSL * ssl, u_char * cookie, u_int * size) noexcept {
+	// Выводим положительный ответ
+	return 1;
 }
 /**
  * matchesCommonName Метод проверки доменного имени по данным из сертификата
@@ -697,376 +1532,650 @@ bool awh::Actuator::initTrustedStore(SSL_CTX * ctx) const noexcept {
 	return result;
 }
 /**
- * clear Метод очистки контекста
- * @param ctx контекст для очистки
- */
-void awh::Actuator::clear(ctx_t & ctx) const noexcept {
-	// Если сокет активен
-	if(ctx.fd > -1){
-		/**
-		 * Если операционной системой является Windows
-		 */
-		#if defined(_WIN32) || defined(_WIN64)
-			// Запрещаем работу с сокетом
-			shutdown(ctx.fd, SD_BOTH);
-			// Выполняем закрытие сокета
-			closesocket(ctx.fd);
-		/**
-		 * Если операционной системой является Nix-подобная
-		 */
-		#else
-			// Запрещаем работу с сокетом
-			shutdown(ctx.fd, SHUT_RDWR);
-			// Выполняем закрытие сокета
-			::close(ctx.fd);
-		#endif
-		// Выполняем сброс сокета
-		ctx.fd = -1;
-	}
-	// Если объект верификации домена создан
-	if(ctx.verify != nullptr){
-		// Удаляем объект верификации
-		delete ctx.verify;
-		// Зануляем объект верификации
-		ctx.verify = nullptr;
-	}
-	// Если контекст SSL создан
-	if(ctx.ssl != nullptr){
-		// Выключаем получение данных SSL
-		SSL_shutdown(ctx.ssl);
-		// Очищаем объект SSL
-		// SSL_clear(ctx.ssl);
-		// Освобождаем выделенную память
-		SSL_free(ctx.ssl);
-		// Зануляем контекст сервера
-		ctx.ssl = nullptr;
-	}
-	// Если контекст SSL сервер был поднят
-	if(ctx.ctx != nullptr){
-		// Очищаем контекст сервера
-		SSL_CTX_free(ctx.ctx);
-		// Зануляем контекст сервера
-		ctx.ctx = nullptr;
-	}
-	/*
-	// Если BIO создано
-	if(ctx.bio != nullptr){
-		// Выполняем очистку BIO
-		BIO_free(ctx.bio);
-		// Зануляем контекст BIO
-		ctx.bio = nullptr;
-	}
-	*/
-	// Сбрасываем флаг инициализации
-	ctx.mode = false;
-}
-/**
  * wrap Метод обертывания файлового дескриптора для сервера
- * @param ctx контекст для очистки
- * @return    объект SSL контекста
+ * @param target контекст назначения
+ * @param source исходный контекст
+ * @return       объект SSL контекста
  */
-awh::Actuator::ctx_t awh::Actuator::wrap(ctx_t & ctx) noexcept {
+void awh::Actuator::wrap(ctx_t & target, ctx_t & source) noexcept {
 	// Если объект ещё не обёрнут в SSL контекст
-	if(!ctx.mode)
+	if(!source.mode && (source.sock != nullptr))
 		// Выполняем обёртывание уже активного SSL контекста
-		return this->wrap(ctx.fd);
-	// Если объект уже обёрнут, выводим его как есть
-	else return ctx;
+		this->wrap(target, source.sock, true);
 }
 /**
  * wrap Метод обертывания файлового дескриптора для клиента
- * @param ctx контекст для очистки
- * @param url Параметры URL адреса для инициализации
- * @return    объект SSL контекста
+ * @param target контекст назначения
+ * @param source исходный контекст
+ * @param url    параметры URL адреса для инициализации
+ * @return       объект SSL контекста
  */
-awh::Actuator::ctx_t awh::Actuator::wrap(ctx_t & ctx, const uri_t::url_t & url) noexcept {
+void awh::Actuator::wrap(ctx_t & target, ctx_t & source, const uri_t::url_t & url) noexcept {
 	// Если объект ещё не обёрнут в SSL контекст
-	if(!ctx.mode)
+	if(!source.mode && (source.sock != nullptr))
 		// Выполняем обёртывание уже активного SSL контекста
-		return this->wrap(ctx.fd, url);
-	// Если объект уже обёрнут, выводим его как есть
-	else return ctx;
+		this->wrap(target, source.sock, url);
 }
 /**
  * wrap Метод обертывания файлового дескриптора для сервера
- * @param fd   файловый дескриптор (сокет)
- * @param mode флаг выполнения обертывания файлового дескриптора
- * @return     объект SSL контекста
+ * @param target контекст назначения
+ * @param socket объект подключения
+ * @return       объект SSL контекста
  */
-awh::Actuator::ctx_t awh::Actuator::wrap(const int fd, const bool mode) noexcept {
-	// Результат работы функции
-	ctx_t result(this->log);
-	// Устанавливаем файловый дескриптор
-	result.fd = fd;
-	// Устанавливаем тип приложения
-	result.type = type_t::SERVER;
-	// Отключаем алгоритм Нейгла
-	BIO_set_tcp_ndelay(result.fd, 1);
-	// Если обёртывание выполнять не нужно, выходим
-	if(!mode) return result;
-	// Если объект фреймворка существует
-	if((fd >= 0) && !this->privkey.empty() && !this->fullchain.empty()){
-		// Активируем рандомный генератор
-		if(RAND_poll() == 0){
-			// Выводим в лог сообщение
-			this->log->print("%s", log_t::flag_t::CRITICAL, "rand poll is not allow");
-			// Выходим
-			return result;
-		}
-		// Получаем контекст OpenSSL
-		result.ctx = SSL_CTX_new(TLSv1_2_server_method());
-		// Если контекст не создан
-		if(result.ctx == nullptr){
-			// Выводим в лог сообщение
-			this->log->print("%s", log_t::flag_t::CRITICAL, "context ssl is not initialization");
-			// Выходим
-			return result;
-		}
-		// Устанавливаем опции запроса
-		SSL_CTX_set_options(result.ctx, SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3);
-		// Устанавливаем минимально-возможную версию TLS
-		SSL_CTX_set_min_proto_version(result.ctx, 0);
-		// Устанавливаем максимально-возможную версию TLS
-		SSL_CTX_set_max_proto_version(result.ctx, TLS1_3_VERSION);
-		// Если нужно установить основные алгоритмы шифрования
-		if(!this->cipher.empty()){
-			// Устанавливаем все основные алгоритмы шифрования
-			if(!SSL_CTX_set_cipher_list(result.ctx, this->cipher.c_str())){
-				// Очищаем созданный контекст
-				this->clear(result);
+void awh::Actuator::wrap(ctx_t & target, sock_t * socket) noexcept {
+	// Если данные переданы
+	if(socket != nullptr){
+		// Устанавливаем файловый дескриптор
+		target.sock = socket;
+		// Устанавливаем тип приложения
+		target.type = type_t::SERVER;
+		// Если объект фреймворка существует
+		if(target.wrapped() && !this->privkey.empty() && !this->fullchain.empty()){
+			// Активируем рандомный генератор
+			if(RAND_poll() == 0){
 				// Выводим в лог сообщение
-				this->log->print("%s", log_t::flag_t::CRITICAL, "set ssl ciphers");
+				this->log->print("%s", log_t::flag_t::CRITICAL, "rand poll is not allow");
 				// Выходим
-				return result;
+				return;
 			}
-			// Заставляем серверные алгоритмы шифрования использовать в приоритете
-			SSL_CTX_set_options(result.ctx, SSL_OP_CIPHER_SERVER_PREFERENCE);
-		}
-		// Устанавливаем поддерживаемые кривые
-		if(!SSL_CTX_set_ecdh_auto(result.ctx, 1)){
-			// Очищаем созданный контекст
-			this->clear(result);
-			// Выводим в лог сообщение
-			this->log->print("%s", log_t::flag_t::CRITICAL, "set ssl ecdh");
-			// Выходим
-			return result;
-		}
-		// Выполняем инициализацию доверенного сертификата
-		if(!this->initTrustedStore(result.ctx)){
-			// Очищаем созданный контекст
-			this->clear(result);
-			// Выходим
-			return result;
-		}
-		// Устанавливаем флаг quiet shutdown
-		SSL_CTX_set_quiet_shutdown(result.ctx, 1);
-		// Запускаем кэширование
-		SSL_CTX_set_session_cache_mode(result.ctx, SSL_SESS_CACHE_SERVER | SSL_SESS_CACHE_NO_INTERNAL);
-		// Если цепочка сертификатов установлена
-		if(!this->fullchain.empty()){
-			// Если цепочка сертификатов не установлена
-			if(SSL_CTX_use_certificate_chain_file(result.ctx, this->fullchain.c_str()) < 1){
+			// Определяем тип входящего сокета
+			switch(target.sock->type){
+				// Если сокет установлен TCP/IP
+				case SOCK_STREAM:
+					// Получаем контекст OpenSSL
+					target.ctx = SSL_CTX_new(TLSv1_2_server_method());
+				break;
+				// Если сокет установлен UDP
+				case SOCK_DGRAM:
+					// Получаем контекст OpenSSL
+					target.ctx = SSL_CTX_new(DTLSv1_server_method());
+				break;
+			}
+			// Если контекст не создан
+			if(target.ctx == nullptr){
 				// Выводим в лог сообщение
-				this->log->print("%s", log_t::flag_t::CRITICAL, "certificate fullchain cannot be set");
-				// Очищаем созданный контекст
-				this->clear(result);
+				this->log->print("%s", log_t::flag_t::CRITICAL, "context ssl is not initialization");
 				// Выходим
-				return result;
+				return;
 			}
-		}
-		// Если приватный ключ установлен
-		if(!this->privkey.empty()){
-			// Если приватный ключ не может быть установлен
-			if(SSL_CTX_use_PrivateKey_file(result.ctx, this->privkey.c_str(), SSL_FILETYPE_PEM) < 1){
+			// Устанавливаем опции запроса
+			SSL_CTX_set_options(target.ctx, SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3);
+			// Устанавливаем минимально-возможную версию TLS
+			SSL_CTX_set_min_proto_version(target.ctx, 0);
+			// Устанавливаем максимально-возможную версию TLS
+			SSL_CTX_set_max_proto_version(target.ctx, TLS1_3_VERSION);
+			// Если нужно установить основные алгоритмы шифрования
+			if(!this->cipher.empty()){
+				// Устанавливаем все основные алгоритмы шифрования
+				if(!SSL_CTX_set_cipher_list(target.ctx, this->cipher.c_str())){
+					// Очищаем созданный контекст
+					target.clear();
+					// Выводим в лог сообщение
+					this->log->print("%s", log_t::flag_t::CRITICAL, "set ssl ciphers");
+					// Выходим
+					return;
+				}
+				// Заставляем серверные алгоритмы шифрования использовать в приоритете
+				SSL_CTX_set_options(target.ctx, SSL_OP_CIPHER_SERVER_PREFERENCE);
+			}
+			// Устанавливаем поддерживаемые кривые
+			if(!SSL_CTX_set_ecdh_auto(target.ctx, 1)){
+				// Очищаем созданный контекст
+				target.clear();
 				// Выводим в лог сообщение
-				this->log->print("%s", log_t::flag_t::CRITICAL, "private key cannot be set");
-				// Очищаем созданный контекст
-				this->clear(result);
+				this->log->print("%s", log_t::flag_t::CRITICAL, "set ssl ecdh");
 				// Выходим
-				return result;
+				return;
 			}
-		}	
-		// Если приватный ключ недействителен
-		if(SSL_CTX_check_private_key(result.ctx) < 1){
-			// Выводим в лог сообщение
-			this->log->print("%s", log_t::flag_t::CRITICAL, "private key is not valid");
-			// Очищаем созданный контекст
-			this->clear(result);
-			// Выходим
-			return result;
-		}
-		// Если доверенный сертификат недействителен
-		if(SSL_CTX_set_default_verify_file(result.ctx) < 1){
-			// Выводим в лог сообщение
-			this->log->print("%s", log_t::flag_t::CRITICAL, "trusted certificate is invalid");
-			// Очищаем созданный контекст
-			this->clear(result);
-			// Выходим
-			return result;
-		}
-   		// Запрещаем выполнять првоерку сертификата пользователя
-		SSL_CTX_set_verify(result.ctx, SSL_VERIFY_NONE, nullptr);
-		// Создаем ssl объект
-		result.ssl = SSL_new(result.ctx);
-		// Проверяем рукопожатие
-		if(SSL_do_handshake(result.ssl) <= 0){
-			// Выполняем проверку рукопожатия
-			const long verify = SSL_get_verify_result(result.ssl);
-			// Если рукопожатие не выполнено
-			if(verify != X509_V_OK){
+			// Выполняем инициализацию доверенного сертификата
+			if(!this->initTrustedStore(target.ctx)){
 				// Очищаем созданный контекст
-				this->clear(result);
+				target.clear();
+				// Выходим
+				return;
+			}
+			// Устанавливаем флаг quiet shutdown
+			SSL_CTX_set_quiet_shutdown(target.ctx, 1);
+			// Запускаем кэширование
+			SSL_CTX_set_session_cache_mode(target.ctx, SSL_SESS_CACHE_SERVER | SSL_SESS_CACHE_NO_INTERNAL);
+			// Если цепочка сертификатов установлена
+			if(!this->fullchain.empty()){
+				// Если цепочка сертификатов не установлена
+				if(SSL_CTX_use_certificate_chain_file(target.ctx, this->fullchain.c_str()) < 1){
+					// Выводим в лог сообщение
+					this->log->print("%s", log_t::flag_t::CRITICAL, "certificate fullchain cannot be set");
+					// Очищаем созданный контекст
+					target.clear();
+					// Выходим
+					return;
+				}
+			}
+			// Если приватный ключ установлен
+			if(!this->privkey.empty()){
+				// Если приватный ключ не может быть установлен
+				if(SSL_CTX_use_PrivateKey_file(target.ctx, this->privkey.c_str(), SSL_FILETYPE_PEM) < 1){
+					// Выводим в лог сообщение
+					this->log->print("%s", log_t::flag_t::CRITICAL, "private key cannot be set");
+					// Очищаем созданный контекст
+					target.clear();
+					// Выходим
+					return;
+				}
+			}	
+			// Если приватный ключ недействителен
+			if(SSL_CTX_check_private_key(target.ctx) < 1){
 				// Выводим в лог сообщение
-				this->log->print("certificate chain validation failed: %s", log_t::flag_t::CRITICAL, X509_verify_cert_error_string(verify));
+				this->log->print("%s", log_t::flag_t::CRITICAL, "private key is not valid");
+				// Очищаем созданный контекст
+				target.clear();
 				// Выходим
-				return result;
+				return;
 			}
-		}
-		// Выполняем обёртывание сокета в BIO SSL
-		result.bio = BIO_new_socket(result.fd, BIO_NOCLOSE);
-		// Если BIO SSL создано
-		if(result.bio != nullptr){
-			// Устанавливаем неблокирующий режим ввода/вывода для сокета
-			result.noblock();
-			// Выполняем установку BIO SSL
-			SSL_set_bio(result.ssl, result.bio, result.bio);
-			// Выполняем активацию сервера SSL
-			SSL_set_accept_state(result.ssl);
-		// Если BIO SSL не создано
-		} else {
-			// Очищаем созданный контекст
-			this->clear(result);
-			// Выводим сообщение об ошибке
-			this->log->print("BIO new socket is failed", log_t::flag_t::CRITICAL);
-			// Выходим из функции
-			return result;
-		}
-		// Если объект не создан
-		if(!(result.mode = (result.ssl != nullptr))){
-			// Очищаем созданный контекст
-			this->clear(result);
-			// Выводим в лог сообщение
-			this->log->print("%s", log_t::flag_t::CRITICAL, "ssl initialization is not allow");
-			// Выходим
-			return result;
+			// Если доверенный сертификат недействителен
+			if(SSL_CTX_set_default_verify_file(target.ctx) < 1){
+				// Выводим в лог сообщение
+				this->log->print("%s", log_t::flag_t::CRITICAL, "trusted certificate is invalid");
+				// Очищаем созданный контекст
+				target.clear();
+				// Выходим
+				return;
+			}
+			/*
+			// Хост адрес текущего сервера
+			const string host = "mimi.anyks.net";
+			// Если нужно произвести проверку
+			if(this->verify && !host.empty()){
+				// Создаём объект проверки домена
+				target.verify = new verify_t(host, this);
+				// Выполняем проверку сертификата
+				SSL_CTX_set_verify(target.ctx, SSL_VERIFY_PEER | SSL_VERIFY_CLIENT_ONCE, nullptr);
+				// Выполняем проверку всех дочерних сертификатов
+				SSL_CTX_set_cert_verify_callback(target.ctx, &verifyHost, target.verify);
+			// Запрещаем выполнять првоерку сертификата пользователя
+			} else SSL_CTX_set_verify(target.ctx, SSL_VERIFY_NONE, nullptr);
+			*/
+			// Запрещаем выполнять првоерку сертификата пользователя
+			SSL_CTX_set_verify(target.ctx, SSL_VERIFY_NONE, nullptr);
+			// Выполняем проверку сертификата клиента
+			// SSL_CTX_set_verify(target.ctx, SSL_VERIFY_PEER, &verifyCert);
+			// Выполняем проверку файлов печенок
+			// SSL_CTX_set_cookie_verify_cb(target.ctx, &verifyCookie);
+			// Выполняем генерацию файлов печенок
+			// SSL_CTX_set_cookie_generate_cb(target.ctx, &generateCookie);
+			// Создаем SSL объект
+			target.ssl = SSL_new(target.ctx);
+			// Устанавливаем объект SSL подключения
+			target.sock->ssl = target.ssl;
+			// Определяем тип входящего сокета
+			switch(target.sock->type){
+				// Если сокет установлен TCP/IP
+				case SOCK_STREAM:
+					// Выполняем обёртывание сокета в BIO SSL
+					target.bio = BIO_new_socket(target.sock->fd, BIO_NOCLOSE);
+				break;
+				// Если сокет установлен UDP
+				case SOCK_DGRAM: {
+					// Выполняем обёртывание сокета UDP в BIO SSL
+					target.bio = BIO_new_dgram(target.sock->fd, BIO_NOCLOSE);
+				} break;
+			}
+			// Если BIO SSL создано
+			if(target.bio != nullptr){
+				// Устанавливаем неблокирующий режим ввода/вывода для сокета
+				target.noblock();
+				// Выполняем установку BIO SSL
+				SSL_set_bio(target.ssl, target.bio, target.bio);
+				/*
+				// Если подключение производится по UDP
+				if(target.sock->type == SOCK_DGRAM)
+					// Включаем обмен куками
+					SSL_set_options(target.ssl, SSL_OP_COOKIE_EXCHANGE);
+				*/
+			// Если BIO SSL не создано
+			} else {
+				// Очищаем созданный контекст
+				target.clear();
+				// Выводим сообщение об ошибке
+				this->log->print("BIO new socket is failed", log_t::flag_t::CRITICAL);
+				// Выходим из функции
+				return;
+			}
+			// Если объект не создан
+			if(!(target.mode = (target.ssl != nullptr))){
+				// Очищаем созданный контекст
+				target.clear();
+				// Выводим в лог сообщение
+				this->log->print("%s", log_t::flag_t::CRITICAL, "ssl initialization is not allow");
+				// Выходим
+				return;
+			}
 		}
 	}
-	// Выводим результат
-	return result;
 }
 /**
  * wrap Метод обертывания файлового дескриптора для клиента
- * @param fd  файловый дескриптор (сокет)
- * @param url Параметры URL адреса для инициализации
- * @return    объект SSL контекста
+ * @param target контекст назначения
+ * @param socket объект подключения
+ * @param source исходный контекст
+ * @return       объект SSL контекста
  */
-awh::Actuator::ctx_t awh::Actuator::wrap(const int fd, const uri_t::url_t & url) noexcept {
-	// Результат работы функции
-	ctx_t result(this->log);
-	// Устанавливаем файловый дескриптор
-	result.fd = fd;
-	// Устанавливаем тип приложения
-	result.type = type_t::CLIENT;
-	// Отключаем алгоритм Нейгла
-	BIO_set_tcp_ndelay(result.fd, 1);
-	// Если объект фреймворка существует
-	if((this->fmk != nullptr) && (!url.domain.empty() || !url.ip.empty()) && ((url.schema.compare("https") == 0) || (url.schema.compare("wss") == 0))){
-		// Активируем рандомный генератор
-		if(RAND_poll() == 0){
-			// Выводим в лог сообщение
-			this->log->print("%s", log_t::flag_t::CRITICAL, "rand poll is not allow");
-			// Выходим
-			return result;
-		}
-		// Получаем контекст OpenSSL
-		result.ctx = SSL_CTX_new(TLSv1_2_client_method());
-		// Если контекст не создан
-		if(result.ctx == nullptr){
-			// Выводим в лог сообщение
-			this->log->print("%s", log_t::flag_t::CRITICAL, "context ssl is not initialization");
-			// Выходим
-			return result;
-		}
-		// Устанавливаем опции запроса
-		SSL_CTX_set_options(result.ctx, SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3);
-		// Выполняем инициализацию доверенного сертификата
-		if(!this->initTrustedStore(result.ctx)){
-			// Очищаем созданный контекст
-			this->clear(result);
-			// Выходим
-			return result;
-		}
-		// Если нужно произвести проверку
-		if(this->verify && !url.domain.empty()){
-			// Создаём объект проверки домена
-			result.verify = new verify_t(url.domain, this);
-			// Выполняем проверку сертификата
-			SSL_CTX_set_verify(result.ctx, SSL_VERIFY_PEER | SSL_VERIFY_CLIENT_ONCE, nullptr);
-			// Выполняем проверку всех дочерних сертификатов
-			SSL_CTX_set_cert_verify_callback(result.ctx, &verifyHost, result.verify);
-		// Запрещаем выполнять првоерку сертификата пользователя
-		} else SSL_CTX_set_verify(result.ctx, SSL_VERIFY_NONE, nullptr);
-		// Создаем ssl объект
-		result.ssl = SSL_new(result.ctx);
-		/**
-		 * Если нужно установить TLS расширение
-		 */
-		#ifdef SSL_CTRL_SET_TLSEXT_HOSTNAME
-			// Устанавливаем имя хоста для SNI расширения
-			SSL_set_tlsext_host_name(result.ssl, (!url.domain.empty() ? url.domain : url.ip).c_str());
-		#endif
-		// Активируем верификацию доменного имени
-		if(!X509_VERIFY_PARAM_set1_host(SSL_get0_param(result.ssl), (!url.domain.empty() ? url.domain : url.ip).c_str(), 0)){
-			// Очищаем созданный контекст
-			this->clear(result);
-			// Выводим в лог сообщение
-			this->log->print("%s", log_t::flag_t::CRITICAL, "domain ssl verification failed");
-			// Выходим
-			return result;
-		}
-		// Проверяем рукопожатие
-		if(SSL_do_handshake(result.ssl) <= 0){
-			// Выполняем проверку рукопожатия
-			const long verify = SSL_get_verify_result(result.ssl);
-			// Если рукопожатие не выполнено
-			if(verify != X509_V_OK){
-				// Очищаем созданный контекст
-				this->clear(result);
-				// Выводим в лог сообщение
-				this->log->print("certificate chain validation failed: %s", log_t::flag_t::CRITICAL, X509_verify_cert_error_string(verify));
+void awh::Actuator::wrap(ctx_t & target, sock_t * socket, const ctx_t & source) noexcept {
+	// Если данные переданы
+	if(socket != nullptr){
+		// Устанавливаем файловый дескриптор
+		target.sock = socket;
+		// Устанавливаем тип приложения
+		target.type = type_t::SERVER;
+		// Если тип подключения является клиент
+		if(target.wrapped() && source.mode){
+			// Извлекаем BIO cthdthf
+			target.bio = SSL_get_rbio(source.ssl);
+			// Устанавливаем сокет клиента
+			BIO_set_fd(target.bio, target.sock->fd, BIO_NOCLOSE);
+			// Определяем тип входящего сокета
+			switch(target.sock->type){
+				// Если сокет установлен UDP
+				case SOCK_DGRAM: {
+					// Определяем тип подключения
+					switch(target.sock->family){
+						// Для протокола IPv4
+						case AF_INET:
+							// Выполняем установку объекта подключения в BIO
+							BIO_ctrl(target.bio, BIO_CTRL_DGRAM_SET_CONNECTED, 0, &target.sock->client);
+						break;
+						// Для протокола IPv6
+						case AF_INET6:
+							// Выполняем установку объекта подключения в BIO
+							BIO_ctrl(target.bio, BIO_CTRL_DGRAM_SET_CONNECTED, 0, &target.sock->client6);
+						break;
+					}
+				} break;
 			}
 		}
-		// Выполняем обёртывание сокета в BIO SSL
-		result.bio = BIO_new_socket(result.fd, BIO_NOCLOSE);
-		// Если BIO SSL создано
-		if(result.bio != nullptr){
-			// Устанавливаем блокирующий режим ввода/вывода для сокета
-			result.block();
-			// Выполняем установку BIO SSL
-			SSL_set_bio(result.ssl, result.bio, result.bio);
-			// Выполняем активацию клиента SSL
-			SSL_set_connect_state(result.ssl);
-		// Если BIO SSL не создано
-		} else {
-			// Очищаем созданный контекст
-			this->clear(result);
-			// Выводим сообщение об ошибке
-			this->log->print("BIO new socket is failed", log_t::flag_t::CRITICAL);
-			// Выходим из функции
-			return result;
-		}
-		// Если объект не создан
-		if(!(result.mode = (result.ssl != nullptr))){
-			// Очищаем созданный контекст
-			this->clear(result);
-			// Выводим в лог сообщение
-			this->log->print("%s", log_t::flag_t::CRITICAL, "ssl initialization is not allow");
-			// Выходим
-			return result;
+	}
+}
+/**
+ * wrap Метод обертывания файлового дескриптора для сервера
+ * @param target контекст назначения
+ * @param socket объект подключения
+ * @param mode   флаг выполнения обертывания файлового дескриптора
+ * @return       объект SSL контекста
+ */
+void awh::Actuator::wrap(ctx_t & target, sock_t * socket, const bool mode) noexcept {
+	// Если данные переданы
+	if(socket != nullptr){
+		// Устанавливаем файловый дескриптор
+		target.sock = socket;
+		// Устанавливаем тип приложения
+		target.type = type_t::SERVER;
+		// Если обёртывание выполнять не нужно, выходим
+		if(!mode) return;
+		// Если объект фреймворка существует
+		if(target.wrapped() && !this->privkey.empty() && !this->fullchain.empty()){
+			// Активируем рандомный генератор
+			if(RAND_poll() == 0){
+				// Выводим в лог сообщение
+				this->log->print("%s", log_t::flag_t::CRITICAL, "rand poll is not allow");
+				// Выходим
+				return;
+			}
+			// Определяем тип входящего сокета
+			switch(target.sock->type){
+				// Если сокет установлен TCP/IP
+				case SOCK_STREAM:
+					// Получаем контекст OpenSSL
+					target.ctx = SSL_CTX_new(TLSv1_2_server_method());
+				break;
+				// Если сокет установлен UDP
+				case SOCK_DGRAM:
+					// Получаем контекст OpenSSL
+					target.ctx = SSL_CTX_new(DTLSv1_server_method());
+				break;
+			}
+			// Если контекст не создан
+			if(target.ctx == nullptr){
+				// Выводим в лог сообщение
+				this->log->print("%s", log_t::flag_t::CRITICAL, "context ssl is not initialization");
+				// Выходим
+				return;
+			}
+			// Устанавливаем опции запроса
+			SSL_CTX_set_options(target.ctx, SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3);
+			// Устанавливаем минимально-возможную версию TLS
+			SSL_CTX_set_min_proto_version(target.ctx, 0);
+			// Устанавливаем максимально-возможную версию TLS
+			SSL_CTX_set_max_proto_version(target.ctx, TLS1_3_VERSION);
+			// Если нужно установить основные алгоритмы шифрования
+			if(!this->cipher.empty()){
+				// Устанавливаем все основные алгоритмы шифрования
+				if(!SSL_CTX_set_cipher_list(target.ctx, this->cipher.c_str())){
+					// Очищаем созданный контекст
+					target.clear();
+					// Выводим в лог сообщение
+					this->log->print("%s", log_t::flag_t::CRITICAL, "set ssl ciphers");
+					// Выходим
+					return;
+				}
+				// Заставляем серверные алгоритмы шифрования использовать в приоритете
+				SSL_CTX_set_options(target.ctx, SSL_OP_CIPHER_SERVER_PREFERENCE);
+			}
+			// Устанавливаем поддерживаемые кривые
+			if(!SSL_CTX_set_ecdh_auto(target.ctx, 1)){
+				// Очищаем созданный контекст
+				target.clear();
+				// Выводим в лог сообщение
+				this->log->print("%s", log_t::flag_t::CRITICAL, "set ssl ecdh");
+				// Выходим
+				return;
+			}
+			// Выполняем инициализацию доверенного сертификата
+			if(!this->initTrustedStore(target.ctx)){
+				// Очищаем созданный контекст
+				target.clear();
+				// Выходим
+				return;
+			}
+			// Устанавливаем флаг quiet shutdown
+			SSL_CTX_set_quiet_shutdown(target.ctx, 1);
+			// Запускаем кэширование
+			SSL_CTX_set_session_cache_mode(target.ctx, SSL_SESS_CACHE_SERVER | SSL_SESS_CACHE_NO_INTERNAL);
+			// Если цепочка сертификатов установлена
+			if(!this->fullchain.empty()){
+				// Если цепочка сертификатов не установлена
+				if(SSL_CTX_use_certificate_chain_file(target.ctx, this->fullchain.c_str()) < 1){
+					// Выводим в лог сообщение
+					this->log->print("%s", log_t::flag_t::CRITICAL, "certificate fullchain cannot be set");
+					// Очищаем созданный контекст
+					target.clear();
+					// Выходим
+					return;
+				}
+			}
+			// Если приватный ключ установлен
+			if(!this->privkey.empty()){
+				// Если приватный ключ не может быть установлен
+				if(SSL_CTX_use_PrivateKey_file(target.ctx, this->privkey.c_str(), SSL_FILETYPE_PEM) < 1){
+					// Выводим в лог сообщение
+					this->log->print("%s", log_t::flag_t::CRITICAL, "private key cannot be set");
+					// Очищаем созданный контекст
+					target.clear();
+					// Выходим
+					return;
+				}
+			}	
+			// Если приватный ключ недействителен
+			if(SSL_CTX_check_private_key(target.ctx) < 1){
+				// Выводим в лог сообщение
+				this->log->print("%s", log_t::flag_t::CRITICAL, "private key is not valid");
+				// Очищаем созданный контекст
+				target.clear();
+				// Выходим
+				return;
+			}
+			// Если доверенный сертификат недействителен
+			if(SSL_CTX_set_default_verify_file(target.ctx) < 1){
+				// Выводим в лог сообщение
+				this->log->print("%s", log_t::flag_t::CRITICAL, "trusted certificate is invalid");
+				// Очищаем созданный контекст
+				target.clear();
+				// Выходим
+				return;
+			}
+			/*
+			// Хост адрес текущего сервера
+			const string host = "mimi.anyks.net";
+			// Если нужно произвести проверку
+			if(this->verify && !host.empty()){
+				// Создаём объект проверки домена
+				target.verify = new verify_t(host, this);
+				// Выполняем проверку сертификата
+				SSL_CTX_set_verify(target.ctx, SSL_VERIFY_PEER | SSL_VERIFY_CLIENT_ONCE, nullptr);
+				// Выполняем проверку всех дочерних сертификатов
+				SSL_CTX_set_cert_verify_callback(target.ctx, &verifyHost, target.verify);
+			// Запрещаем выполнять првоерку сертификата пользователя
+			} else SSL_CTX_set_verify(target.ctx, SSL_VERIFY_NONE, nullptr);
+			*/
+			// Запрещаем выполнять првоерку сертификата пользователя
+			SSL_CTX_set_verify(target.ctx, SSL_VERIFY_NONE, nullptr);
+			// Выполняем проверку сертификата клиента
+			// SSL_CTX_set_verify(target.ctx, SSL_VERIFY_PEER, &verifyCert);
+			// Выполняем проверку файлов печенок
+			// SSL_CTX_set_cookie_verify_cb(target.ctx, &verifyCookie);
+			// Выполняем генерацию файлов печенок
+			// SSL_CTX_set_cookie_generate_cb(target.ctx, &generateCookie);
+			// Создаем SSL объект
+			target.ssl = SSL_new(target.ctx);
+			// Проверяем рукопожатие
+			if(SSL_do_handshake(target.ssl) <= 0){
+				// Выполняем проверку рукопожатия
+				const long verify = SSL_get_verify_result(target.ssl);
+				// Если рукопожатие не выполнено
+				if(verify != X509_V_OK){
+					// Очищаем созданный контекст
+					target.clear();
+					// Выводим в лог сообщение
+					this->log->print("certificate chain validation failed: %s", log_t::flag_t::CRITICAL, X509_verify_cert_error_string(verify));
+					// Выходим
+					return;
+				}
+			}
+			// Определяем тип входящего сокета
+			switch(target.sock->type){
+				// Если сокет установлен TCP/IP
+				case SOCK_STREAM:
+					// Выполняем обёртывание сокета в BIO SSL
+					target.bio = BIO_new_socket(target.sock->fd, BIO_NOCLOSE);
+				break;
+				// Если сокет установлен UDP
+				case SOCK_DGRAM: {
+					// Выполняем обёртывание сокета UDP в BIO SSL
+					target.bio = BIO_new_dgram(target.sock->fd, BIO_NOCLOSE);
+					// Определяем тип подключения
+					switch(target.sock->family){
+						// Для протокола IPv4
+						case AF_INET:
+							// Выполняем установку объекта подключения в BIO
+							BIO_ctrl(target.bio, BIO_CTRL_DGRAM_SET_CONNECTED, 0, &target.sock->client);
+						break;
+						// Для протокола IPv6
+						case AF_INET6:
+							// Выполняем установку объекта подключения в BIO
+							BIO_ctrl(target.bio, BIO_CTRL_DGRAM_SET_CONNECTED, 0, &target.sock->client6);
+						break;
+					}
+				} break;
+			}
+			// Если BIO SSL создано
+			if(target.bio != nullptr){
+				// Устанавливаем неблокирующий режим ввода/вывода для сокета
+				target.noblock();
+				// Выполняем установку BIO SSL
+				SSL_set_bio(target.ssl, target.bio, target.bio);
+				/*
+				// Если подключение производится по UDP
+				if(target.sock->type == SOCK_DGRAM)
+					// Включаем обмен куками
+					SSL_set_options(target.ssl, SSL_OP_COOKIE_EXCHANGE);
+				*/
+				// Выполняем активацию сервера SSL
+				SSL_set_accept_state(target.ssl);
+			// Если BIO SSL не создано
+			} else {
+				// Очищаем созданный контекст
+				target.clear();
+				// Выводим сообщение об ошибке
+				this->log->print("BIO new socket is failed", log_t::flag_t::CRITICAL);
+				// Выходим из функции
+				return;
+			}
+			// Если объект не создан
+			if(!(target.mode = (target.ssl != nullptr))){
+				// Очищаем созданный контекст
+				target.clear();
+				// Выводим в лог сообщение
+				this->log->print("%s", log_t::flag_t::CRITICAL, "ssl initialization is not allow");
+				// Выходим
+				return;
+			}
 		}
 	}
-	// Выводим результат
-	return result;
+}
+/**
+ * wrap Метод обертывания файлового дескриптора для клиента
+ * @param target контекст назначения
+ * @param socket объект подключения
+ * @param url    параметры URL адреса для инициализации
+ * @return       объект SSL контекста
+ */
+void awh::Actuator::wrap(ctx_t & target, sock_t * socket, const uri_t::url_t & url) noexcept {
+	// Если данные переданы
+	if((socket != nullptr) && !url.empty()){
+		// Устанавливаем файловый дескриптор
+		target.sock = socket;
+		// Устанавливаем тип приложения
+		target.type = type_t::CLIENT;
+		// Если объект фреймворка существует
+		if(target.wrapped() && (!url.domain.empty() || !url.ip.empty()) && ((url.schema.compare("https") == 0) || (url.schema.compare("wss") == 0))){
+			// Активируем рандомный генератор
+			if(RAND_poll() == 0){
+				// Выводим в лог сообщение
+				this->log->print("%s", log_t::flag_t::CRITICAL, "rand poll is not allow");
+				// Выходим
+				return;
+			}
+			// Определяем тип входящего сокета
+			switch(target.sock->type){
+				// Если сокет установлен TCP/IP
+				case SOCK_STREAM:
+					// Получаем контекст OpenSSL
+					target.ctx = SSL_CTX_new(TLSv1_2_client_method());
+				break;
+				// Если сокет установлен UDP
+				case SOCK_DGRAM:
+					// Получаем контекст OpenSSL
+					target.ctx = SSL_CTX_new(DTLSv1_client_method());
+				break;
+			}
+			// Если контекст не создан
+			if(target.ctx == nullptr){
+				// Выводим в лог сообщение
+				this->log->print("%s", log_t::flag_t::CRITICAL, "context ssl is not initialization");
+				// Выходим
+				return;
+			}
+			// Устанавливаем опции запроса
+			SSL_CTX_set_options(target.ctx, SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3);
+			// Выполняем инициализацию доверенного сертификата
+			if(!this->initTrustedStore(target.ctx)){
+				// Очищаем созданный контекст
+				target.clear();
+				// Выходим
+				return;
+			}
+			// Если нужно произвести проверку
+			if(this->verify && !url.domain.empty()){
+				// Создаём объект проверки домена
+				target.verify = new verify_t(url.domain, this);
+				// Выполняем проверку сертификата
+				SSL_CTX_set_verify(target.ctx, SSL_VERIFY_PEER | SSL_VERIFY_CLIENT_ONCE, nullptr);
+				// Выполняем проверку всех дочерних сертификатов
+				SSL_CTX_set_cert_verify_callback(target.ctx, &verifyHost, target.verify);
+			// Запрещаем выполнять првоерку сертификата пользователя
+			} else SSL_CTX_set_verify(target.ctx, SSL_VERIFY_NONE, nullptr);
+			// Выполняем проверку файлов печенок
+			// SSL_CTX_set_cookie_verify_cb(target.ctx, &verifyCookie);
+			// Выполняем генерацию файлов печенок
+			// SSL_CTX_set_cookie_generate_cb(target.ctx, &generateCookie);
+			// Создаем SSL объект
+			target.ssl = SSL_new(target.ctx);
+			/**
+			 * Если нужно установить TLS расширение
+			 */
+			#ifdef SSL_CTRL_SET_TLSEXT_HOSTNAME
+				// Устанавливаем имя хоста для SNI расширения
+				SSL_set_tlsext_host_name(target.ssl, (!url.domain.empty() ? url.domain : url.ip).c_str());
+			#endif
+			// Активируем верификацию доменного имени
+			if(!X509_VERIFY_PARAM_set1_host(SSL_get0_param(target.ssl), (!url.domain.empty() ? url.domain : url.ip).c_str(), 0)){
+				// Очищаем созданный контекст
+				target.clear();
+				// Выводим в лог сообщение
+				this->log->print("%s", log_t::flag_t::CRITICAL, "domain ssl verification failed");
+				// Выходим
+				return;
+			}
+			// Проверяем рукопожатие
+			if(SSL_do_handshake(target.ssl) <= 0){
+				// Выполняем проверку рукопожатия
+				const long verify = SSL_get_verify_result(target.ssl);
+				// Если рукопожатие не выполнено
+				if(verify != X509_V_OK){
+					// Очищаем созданный контекст
+					target.clear();
+					// Выводим в лог сообщение
+					this->log->print("certificate chain validation failed: %s", log_t::flag_t::CRITICAL, X509_verify_cert_error_string(verify));
+				}
+			}
+			// Определяем тип входящего сокета
+			switch(target.sock->type){
+				// Если сокет установлен TCP/IP
+				case SOCK_STREAM:
+					// Выполняем обёртывание сокета TCP в BIO SSL
+					target.bio = BIO_new_socket(target.sock->fd, BIO_NOCLOSE);
+				break;
+				// Если сокет установлен UDP
+				case SOCK_DGRAM: {
+					// Выполняем обёртывание сокета UDP в BIO SSL
+					target.bio = BIO_new_dgram(target.sock->fd, BIO_NOCLOSE);
+					// Определяем тип подключения
+					switch(target.sock->family){
+						// Для протокола IPv4
+						case AF_INET:
+							// Выполняем установку объекта подключения в BIO
+							BIO_ctrl(target.bio, BIO_CTRL_DGRAM_SET_CONNECTED, 0, &target.sock->server);
+						break;
+						// Для протокола IPv6
+						case AF_INET6:
+							// Выполняем установку объекта подключения в BIO
+							BIO_ctrl(target.bio, BIO_CTRL_DGRAM_SET_CONNECTED, 0, &target.sock->server6);
+						break;
+					}
+				} break;
+			}
+			// Если BIO SSL создано
+			if(target.bio != nullptr){
+				// Устанавливаем блокирующий режим ввода/вывода для сокета
+				target.block();
+				// Выполняем установку BIO SSL
+				SSL_set_bio(target.ssl, target.bio, target.bio);
+				/*
+				// Если подключение производится по UDP
+				if(target.sock->type == SOCK_DGRAM)
+					// Включаем обмен куками
+					SSL_set_options(target.ssl, SSL_OP_COOKIE_EXCHANGE);
+				*/
+				// Выполняем активацию клиента SSL
+				SSL_set_connect_state(target.ssl);
+			// Если BIO SSL не создано
+			} else {
+				// Очищаем созданный контекст
+				target.clear();
+				// Выводим сообщение об ошибке
+				this->log->print("BIO new socket is failed", log_t::flag_t::CRITICAL);
+				// Выходим из функции
+				return;
+			}
+			// Если объект не создан
+			if(!(target.mode = (target.ssl != nullptr))){
+				// Очищаем созданный контекст
+				target.clear();
+				// Выводим в лог сообщение
+				this->log->print("%s", log_t::flag_t::CRITICAL, "ssl initialization is not allow");
+				// Выходим
+				return;
+			}
+		}
+	}
 }
 /**
  * setVerify Метод разрешающий или запрещающий, выполнять проверку соответствия, сертификата домену

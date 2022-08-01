@@ -39,7 +39,7 @@ void awh::server::WebSocket::persistCallback(const size_t aid, const size_t wid,
 	// Если данные существуют
 	if((aid > 0) && (wid > 0) && (core != nullptr)){
 		// Получаем параметры подключения адъютанта
-		ws_worker_t::adjp_t * adj = const_cast <ws_worker_t::adjp_t *> (this->worker.get(aid));
+		ws_worker_t::settings_t * adj = const_cast <ws_worker_t::settings_t *> (this->worker.get(aid));
 		// Если параметры подключения адъютанта получены
 		if(adj != nullptr){
 			// Получаем текущий штамп времени
@@ -65,7 +65,7 @@ void awh::server::WebSocket::connectCallback(const size_t aid, const size_t wid,
 		// Создаём адъютанта
 		this->worker.set(aid);
 		// Получаем параметры подключения адъютанта
-		ws_worker_t::adjp_t * adj = const_cast <ws_worker_t::adjp_t *> (this->worker.get(aid));
+		ws_worker_t::settings_t * adj = const_cast <ws_worker_t::settings_t *> (this->worker.get(aid));
 		// Если объект адъютанта получен
 		if(adj != nullptr){
 			// Если нужно активировать многопоточность и она не активирована
@@ -89,7 +89,7 @@ void awh::server::WebSocket::disconnectCallback(const size_t aid, const size_t w
 	// Если данные переданы верные
 	if((aid > 0) && (wid > 0) && (core != nullptr)){
 		// Получаем параметры подключения адъютанта
-		ws_worker_t::adjp_t * adj = const_cast <ws_worker_t::adjp_t *> (this->worker.get(aid));
+		ws_worker_t::settings_t * adj = const_cast <ws_worker_t::settings_t *> (this->worker.get(aid));
 		// Если объект адъютанта получен
 		if(adj != nullptr){
 			// Устанавливаем экшен выполнения
@@ -130,7 +130,7 @@ void awh::server::WebSocket::readCallback(const char * buffer, const size_t size
 	// Если данные существуют
 	if((buffer != nullptr) && (size > 0) && (aid > 0) && (wid > 0)){
 		// Получаем параметры подключения адъютанта
-		ws_worker_t::adjp_t * adj = const_cast <ws_worker_t::adjp_t *> (this->worker.get(aid));
+		ws_worker_t::settings_t * adj = const_cast <ws_worker_t::settings_t *> (this->worker.get(aid));
 		// Если объект адъютанта получен
 		if(adj != nullptr){
 			// Если дисконнекта ещё не произошло
@@ -167,7 +167,7 @@ void awh::server::WebSocket::writeCallback(const char * buffer, const size_t siz
 	// Если данные существуют
 	if((aid > 0) && (wid > 0) && (core != nullptr)){
 		// Получаем параметры подключения адъютанта
-		ws_worker_t::adjp_t * adj = const_cast <ws_worker_t::adjp_t *> (this->worker.get(aid));
+		ws_worker_t::settings_t * adj = const_cast <ws_worker_t::settings_t *> (this->worker.get(aid));
 		// Если объект адъютанта получен
 		if(adj != nullptr){
 			// Если необходимо выполнить закрыть подключение
@@ -186,7 +186,7 @@ void awh::server::WebSocket::writeCallback(const char * buffer, const size_t siz
  */
 void awh::server::WebSocket::handler(const size_t aid) noexcept {
 	// Получаем параметры подключения адъютанта
-	ws_worker_t::adjp_t * adj = const_cast <ws_worker_t::adjp_t *> (this->worker.get(aid));
+	ws_worker_t::settings_t * adj = const_cast <ws_worker_t::settings_t *> (this->worker.get(aid));
 	// Если объект адъютанта получен
 	if(adj != nullptr){
 		// Если управляющий блокировщик не заблокирован
@@ -220,7 +220,7 @@ void awh::server::WebSocket::actionRead(const size_t aid) noexcept {
 	// Если данные существуют
 	if(aid > 0){
 		// Получаем параметры подключения адъютанта
-		ws_worker_t::adjp_t * adj = const_cast <ws_worker_t::adjp_t *> (this->worker.get(aid));
+		ws_worker_t::settings_t * adj = const_cast <ws_worker_t::settings_t *> (this->worker.get(aid));
 		// Если объект адъютанта получен
 		if(adj != nullptr){
 			// Объект сообщения
@@ -574,7 +574,7 @@ void awh::server::WebSocket::actionConnect(const size_t aid) noexcept {
 	// Если данные существуют
 	if(aid > 0){
 		// Получаем параметры подключения адъютанта
-		ws_worker_t::adjp_t * adj = const_cast <ws_worker_t::adjp_t *> (this->worker.get(aid));
+		ws_worker_t::settings_t * adj = const_cast <ws_worker_t::settings_t *> (this->worker.get(aid));
 		// Если объект адъютанта получен
 		if(adj != nullptr){
 			// Если данные необходимо зашифровать
@@ -641,7 +641,7 @@ void awh::server::WebSocket::actionDisconnect(const size_t aid) noexcept {
 	// Если данные существуют
 	if(aid > 0){
 		// Получаем параметры подключения адъютанта
-		ws_worker_t::adjp_t * adj = const_cast <ws_worker_t::adjp_t *> (this->worker.get(aid));
+		ws_worker_t::settings_t * adj = const_cast <ws_worker_t::settings_t *> (this->worker.get(aid));
 		// Если объект адъютанта получен
 		if(adj != nullptr){
 			// Если функция обратного вызова установлена, выполняем
@@ -662,7 +662,7 @@ void awh::server::WebSocket::actionDisconnect(const size_t aid) noexcept {
  */
 void awh::server::WebSocket::error(const size_t aid, const mess_t & message) const noexcept {
 	// Получаем параметры подключения адъютанта
-	ws_worker_t::adjp_t * adj = const_cast <ws_worker_t::adjp_t *> (this->worker.get(aid));
+	ws_worker_t::settings_t * adj = const_cast <ws_worker_t::settings_t *> (this->worker.get(aid));
 	// Если отправка сообщений разблокированна
 	if(adj != nullptr){
 		// Очищаем список буффер бинарных данных
@@ -695,7 +695,7 @@ void awh::server::WebSocket::extraction(const size_t aid, const vector <char> & 
 	// Если буфер данных передан
 	if((aid > 0) && !buffer.empty() && (this->messageFn != nullptr)){
 		// Получаем параметры подключения адъютанта
-		ws_worker_t::adjp_t * adj = const_cast <ws_worker_t::adjp_t *> (this->worker.get(aid));
+		ws_worker_t::settings_t * adj = const_cast <ws_worker_t::settings_t *> (this->worker.get(aid));
 		// Выполняем блокировку потока	
 		const lock_guard <recursive_mutex> lock(adj->mtx);
 		// Если данные пришли в сжатом виде
@@ -774,7 +774,7 @@ void awh::server::WebSocket::pong(const size_t aid, awh::core_t * core, const st
 	// Если необходимые данные переданы
 	if((aid > 0) && (core != nullptr)){
 		// Получаем параметры подключения адъютанта
-		ws_worker_t::adjp_t * adj = const_cast <ws_worker_t::adjp_t *> (this->worker.get(aid));
+		ws_worker_t::settings_t * adj = const_cast <ws_worker_t::settings_t *> (this->worker.get(aid));
 		// Если отправка сообщений разблокированна
 		if((adj != nullptr) && adj->allow.send){
 			// Создаём буфер для отправки
@@ -796,7 +796,7 @@ void awh::server::WebSocket::ping(const size_t aid, awh::core_t * core, const st
 	// Если необходимые данные переданы
 	if((aid > 0) && (core != nullptr) && core->working()){
 		// Получаем параметры подключения адъютанта
-		ws_worker_t::adjp_t * adj = const_cast <ws_worker_t::adjp_t *> (this->worker.get(aid));
+		ws_worker_t::settings_t * adj = const_cast <ws_worker_t::settings_t *> (this->worker.get(aid));
 		// Если отправка сообщений разблокированна
 		if((adj != nullptr) && adj->allow.send){
 			// Создаём буфер для отправки
@@ -904,7 +904,7 @@ void awh::server::WebSocket::sendError(const size_t aid, const mess_t & mess) co
 		// Если код ошибки относится к WebSocket
 		if(mess.code >= 1000){
 			// Получаем параметры подключения адъютанта
-			ws_worker_t::adjp_t * adj = const_cast <ws_worker_t::adjp_t *> (this->worker.get(aid));
+			ws_worker_t::settings_t * adj = const_cast <ws_worker_t::settings_t *> (this->worker.get(aid));
 			// Получаем объект биндинга ядра TCP/IP
 			server::core_t * core = const_cast <server::core_t *> (this->core);
 			// Если разрешено получение данных
@@ -951,7 +951,7 @@ void awh::server::WebSocket::send(const size_t aid, const char * message, const 
 	// Если подключение выполнено
 	if(this->core->working() && (aid > 0) && (size > 0) && (message != nullptr)){
 		// Получаем параметры подключения адъютанта
-		ws_worker_t::adjp_t * adj = const_cast <ws_worker_t::adjp_t *> (this->worker.get(aid));
+		ws_worker_t::settings_t * adj = const_cast <ws_worker_t::settings_t *> (this->worker.get(aid));
 		// Если отправка сообщений разблокированна
 		if((adj != nullptr) && adj->allow.send){
 			// Выполняем блокировку отправки сообщения
@@ -1152,7 +1152,7 @@ const string awh::server::WebSocket::getSub(const size_t aid) const noexcept {
 	// Если идентификатор адъютанта передан
 	if(aid > 0){
 		// Получаем параметры подключения адъютанта
-		ws_worker_t::adjp_t * adj = const_cast <ws_worker_t::adjp_t *> (this->worker.get(aid));
+		ws_worker_t::settings_t * adj = const_cast <ws_worker_t::settings_t *> (this->worker.get(aid));
 		// Если отправка сообщений разблокированна
 		if(adj != nullptr) result = adj->http.getSub();
 	}

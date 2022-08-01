@@ -86,9 +86,9 @@ namespace awh {
 				} allow_t;
 			public:
 				/**
-				 * AdjParam Структура параметров адъютанта
+				 * Settings Структура параметров адъютанта
 				 */
-				typedef struct AdjParam {
+				typedef struct Settings {
 					bool crypt;                  // Флаг шифрования сообщений
 					bool close;                  // Флаг требования закрыть адъютанта
 					bool stopped;                // Флаг принудительной остановки
@@ -104,9 +104,9 @@ namespace awh {
 					frame_t::opcode_t opcode;    // Полученный опкод сообщения
 					http_t::compress_t compress; // Метод компрессии данных
 					/**
-					 * AdjParam Конструктор
+					 * Settings Конструктор
 					 */
-					AdjParam(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcept :
+					Settings(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcept :
 					 crypt(false),
 					 close(false),
 					 stopped(false),
@@ -118,10 +118,10 @@ namespace awh {
 					 opcode(frame_t::opcode_t::TEXT),
 					 compress(http_t::compress_t::NONE) {}
 					/**
-					 * ~AdjParam Деструктор
+					 * ~Settings Деструктор
 					 */
-					~AdjParam() noexcept {}
-				} adjp_t;
+					~Settings() noexcept {}
+				} settings_t;
 			public:
 				// Создаём объект работы с URI ссылками
 				uri_t uri;
@@ -132,7 +132,7 @@ namespace awh {
 				http_t::compress_t compress;
 			private:
 				// Параметры подключения адъютантов
-				map <size_t, unique_ptr <adjp_t>> adjParams;
+				map <size_t, unique_ptr <settings_t>> settings;
 			private:
 				// Создаём объект фреймворка
 				const fmk_t * fmk;
@@ -159,7 +159,7 @@ namespace awh {
 				 * @param aid идентификатор адъютанта
 				 * @return    параметры подключения адъютанта
 				 */
-				const adjp_t * get(const size_t aid) const noexcept;
+				const settings_t * get(const size_t aid) const noexcept;
 			public:
 				/**
 				 * WorkerWebSocket Конструктор

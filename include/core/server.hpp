@@ -151,8 +151,8 @@ namespace awh {
 				// Количество рабочих процессов
 				size_t forks;
 			private:
-				// Объект для работы с сетевым интерфейсом
-				ifnet_t ifnet;
+				// Флаг работы в режиме только IPv6
+				bool ipV6only;
 			private:
 				// Список блокированных объектов
 				set <size_t> locking;

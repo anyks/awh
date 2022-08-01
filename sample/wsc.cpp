@@ -243,6 +243,10 @@ int main(int argc, char * argv[]) noexcept {
 	// core.setNameServer("anyks");
 	// Устанавливаем адрес сертификата
 	core.setTrusted("./ca/cert.pem");
+	// Устанавливаем тип сокета unix-сокет
+	// core.setFamily(core_t::af_t::AFUNIX);
+	// Устанавливаем тип сокета UDP
+	// core.setSockType(core_t::sock_t::UDPSOCK);
 	// Устанавливаем логин и пароль пользователя
 	// ws.setUser("user", "password");
 	// Выполняем активацию многопоточности
