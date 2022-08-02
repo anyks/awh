@@ -973,8 +973,24 @@ void awh::Core::write(const char * buffer, const size_t size, const size_t aid) 
 				 * Если операционной системой является Nix-подобная
 				 */
 				#if !defined(_WIN32) && !defined(_WIN64)
-					// Разрешаем выполнение записи в сокет
-					this->enabled(method_t::WRITE, it->first);
+					// Определяем тип сокета
+					switch((uint8_t) this->net.sock){
+						// Если тип сокета UDP
+						case (uint8_t) sock_t::UDPSOCK: {
+							// Если сокет подключения активен
+							if(adj->act.wrapped()){
+								// Разрешаем запись данных в сокет
+								adj->bev.locked.write = false;
+								// Выполняем передачу данных
+								this->transfer(core_t::method_t::WRITE, it->first);
+							}
+						} break;
+						// Если тип сокета TCP
+						case (uint8_t) sock_t::TCPSOCK:
+							// Разрешаем выполнение записи в сокет
+							this->enabled(method_t::WRITE, it->first);
+						break;
+					}
 				/**
 				 * Если операционной системой является MS Windows
 				 */
@@ -1268,6 +1284,14 @@ bool awh::Core::unsetUnixSocket() noexcept {
 	return result;
 }
 /**
+ * isSetUnixSocket Метод проверки установки unix-сокета
+ * @return результат проверки установки unix-сокета
+ */
+bool awh::Core::isSetUnixSocket() const noexcept {
+	// Выполняем проверку на установку unix-сокета
+	return (this->net.family == af_t::AFUNIX);
+}
+/**
  * setUnixSocket Метод установки адреса файла unix-сокета
  * @param socket адрес файла unix-сокета
  * @return       результат установки unix-сокета
@@ -1296,46 +1320,6 @@ bool awh::Core::setUnixSocket(const string & socket) noexcept {
 	#endif
 	// Выводим результат
 	return !this->net.filename.empty();
-}
-/**
- * isSetUnixSocket Метод проверки установки unix-сокета
- * @return результат проверки установки unix-сокета
- */
-bool awh::Core::isSetUnixSocket() const noexcept {
-	// Выполняем проверку на установку unix-сокета
-	return (this->net.family == af_t::AFUNIX);
-}
-/**
- * isActiveUnixSocket Метод проверки активного unix-сокета
- * @param socket адрес файла unix-сокета
- * @return       результат проверки активного unix-сокета
- */
-bool awh::Core::isActiveUnixSocket(const string & socket) const noexcept {
-	// Выполняем блокировку потока
-	const lock_guard <recursive_mutex> lock(this->mtx.main);
-	// Результат работы функции
-	bool result = false;
-	/**
-	 * Если операционной системой не является Windows
-	 */
-	#if !defined(_WIN32) && !defined(_WIN64)
-		// Если адрес unix-сокета передан
-		if(!socket.empty())
-			// Выполняем установку unix-сокета
-			result = fs_t::issock(this->fmk->format("/tmp/%s.sock", this->fmk->toLower(socket).c_str()));
-		// Если адрес unix-сокета не передан
-		else result = fs_t::issock(this->fmk->format("/tmp/%s.sock", this->fmk->toLower(this->serverName.c_str()).c_str()));
-	/**
-	 * Если операционной системой является MS Windows
-	 */
-	#else
-		// Выводим в лог сообщение
-		this->log->print("Microsoft Windows does not support Unix sockets", log_t::flag_t::CRITICAL);
-		// Выходим принудительно из приложения
-		exit(EXIT_FAILURE);
-	#endif
-	// Выводим результат
-	return result;
 }
 /**
  * setNoInfo Метод установки флага запрета вывода информационных сообщений

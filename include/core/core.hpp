@@ -527,23 +527,16 @@ namespace awh {
 			 */
 			bool unsetUnixSocket() noexcept;
 			/**
-			 * setUnixSocket Метод установки адреса файла unix-сокета
-			 * @param socket адрес файла unix-сокета
-			 * @return       результат установки unix-сокета
-			 */
-			bool setUnixSocket(const string & socket = "") noexcept;
-		public:
-			/**
 			 * isSetUnixSocket Метод проверки установки unix-сокета
 			 * @return результат проверки установки unix-сокета
 			 */
 			bool isSetUnixSocket() const noexcept;
 			/**
-			 * isActiveUnixSocket Метод проверки активного unix-сокета
+			 * setUnixSocket Метод установки адреса файла unix-сокета
 			 * @param socket адрес файла unix-сокета
-			 * @return       результат проверки активного unix-сокета
+			 * @return       результат установки unix-сокета
 			 */
-			bool isActiveUnixSocket(const string & socket = "") const noexcept;
+			bool setUnixSocket(const string & socket = "") noexcept;
 		public:
 			/**
 			 * setNoInfo Метод установки флага запрета вывода информационных сообщений

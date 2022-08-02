@@ -299,7 +299,14 @@ void awh::client::Core::connect(const size_t wid) noexcept {
 					// Выходим из функции
 					return;
 				// Если сокет не создан, выводим в консоль информацию
-				} else this->log->print("server cannot be started [%s:%u]", log_t::flag_t::CRITICAL, url.ip.c_str(), url.port);
+				} else {
+					// Если unix-сокет используется
+					if(this->net.family == af_t::AFUNIX)
+						// Выводим ионформацию об неудачном подключении к серверу по unix-сокету
+						this->log->print("client cannot be started [%s]", log_t::flag_t::CRITICAL, this->net.filename.c_str());
+					// Выводим ионформацию об неудачном подключении к серверу по хосту и порту
+					else this->log->print("client cannot be started [%s:%u]", log_t::flag_t::CRITICAL, url.ip.c_str(), url.port);
+				}
 				// Если нужно выполнить автоматическое переподключение
 				if(wrk->alive){
 					// Разрешаем выполнение работы
@@ -373,7 +380,7 @@ void awh::client::Core::reconnect(const size_t wid) noexcept {
 				// Получаем URL параметры запроса
 				const uri_t::url_t & url = (wrk->isProxy() ? wrk->proxy.url : wrk->url);
 
-				
+				/*
 				// Структура определяющая тип адреса
 				struct sockaddr_in serv_addr;
 
@@ -397,7 +404,7 @@ void awh::client::Core::reconnect(const size_t wid) noexcept {
 				printf("IP address: %s\n", ip);
 				
 				const_cast <uri_t::url_t *> (&url)->ip = ip;
-				
+				*/
 				
 
 				// Выполняем запуск системы
@@ -715,7 +722,7 @@ void awh::client::Core::open(const size_t wid) noexcept {
 					const uri_t::url_t & url = (wrk->isProxy() ? wrk->proxy.url : wrk->url);
 
 
-					
+					/*
 					// Структура определяющая тип адреса
 					struct sockaddr_in serv_addr;
 
@@ -739,7 +746,7 @@ void awh::client::Core::open(const size_t wid) noexcept {
 					printf("IP address: %s\n", ip);
 
 					const_cast <uri_t::url_t *> (&url)->ip = ip;
-					
+					*/
 					
 					
 					

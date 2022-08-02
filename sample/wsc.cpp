@@ -244,9 +244,9 @@ int main(int argc, char * argv[]) noexcept {
 	// Устанавливаем адрес сертификата
 	core.setTrusted("./ca/cert.pem");
 	// Устанавливаем тип сокета unix-сокет
-	// core.setFamily(core_t::af_t::AFUNIX);
+	core.setFamily(core_t::af_t::AFUNIX);
 	// Устанавливаем тип сокета UDP
-	// core.setSockType(core_t::sock_t::UDPSOCK);
+	core.setSockType(core_t::sock_t::UDPSOCK);
 	// Устанавливаем логин и пароль пользователя
 	// ws.setUser("user", "password");
 	// Выполняем активацию многопоточности
@@ -262,9 +262,9 @@ int main(int argc, char * argv[]) noexcept {
 	// Устанавливаем тип авторизации прокси-сервера
 	// ws.setAuthTypeProxy();
 	// Выполняем инициализацию WebSocket клиента
-	ws.init("wss://stream.binance.com:9443/stream", http_t::compress_t::DEFLATE);
+	// ws.init("wss://stream.binance.com:9443/stream", http_t::compress_t::DEFLATE);
 	// ws.init("ws://127.0.0.1:2222", http_t::compress_t::DEFLATE);
-	// ws.init("anyks", http_t::compress_t::DEFLATE);
+	ws.init("anyks", http_t::compress_t::DEFLATE);
 	// Устанавливаем шифрование
 	// ws.setCrypt("PASS");
 	// Устанавливаем сабпротоколы

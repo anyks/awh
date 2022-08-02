@@ -987,17 +987,8 @@ void awh::client::WebSocket::ping(const string & message) noexcept {
  * @param compress метод компрессии передаваемых сообщений
  */
 void awh::client::WebSocket::init(const string & url, const http_t::compress_t compress) noexcept {
-	// Флаг активации сокета
-	bool unixSocket = false;
-	/**
-	 * Если операционной системой не является Windows
-	 */
-	#if !defined(_WIN32) && !defined(_WIN64)
-		// Выполняем проверку, установлен ли UnixSocket
-		unixSocket = this->core->isActiveUnixSocket(url);
-	#endif
 	// Если unix-сокет не установлен
-	if(!unixSocket){
+	if(!this->core->isSetUnixSocket()){
 		// Если адрес сервера передан
 		if(!url.empty()){
 			// Выполняем очистку воркера

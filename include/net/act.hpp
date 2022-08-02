@@ -88,6 +88,42 @@ namespace awh {
 				CLIENT = 0x01, // Приложение является клиентом
 				SERVER = 0x02  // Приложение является сервером
 			};
+		private:
+			/**
+			 * IPv4 Структура протокола IPv4
+			 */
+			typedef struct IPv4 {
+				// Параметры подключения клиента
+				struct sockaddr_in client;
+				// Параметры подключения сервера
+				struct sockaddr_in server;
+			} ipv4_t;
+			/**
+			 * IPv6 Структура протокола IPv6
+			 */
+			typedef struct IPv6 {
+				// Параметры подключения клиента
+				struct sockaddr_in6 client;
+				// Параметры подключения сервера
+				struct sockaddr_in6 server;
+			} ipv6_t;
+			/**
+			 * Если операционной системой не является Windows
+			 */
+			#if !defined(_WIN32) && !defined(_WIN64)
+				/**
+				 * UnixSocket Структура протокола unix-сокета
+				 */
+				typedef struct UnixSocket {
+					socklen_t size;            // Размер объекта подключения
+					struct sockaddr_un client; // Параметры подключения для unix-сокет клиента
+					struct sockaddr_un server; // Параметры подключения для unix-сокет сервера
+					/**
+					 * UnixSocket Конструктор
+					 */
+					UnixSocket() noexcept : size(0) {}
+				} usock_t;
+			#endif
 		public:
 			/**
 			 * KeepAlive Структура с параметрами для постоянного подключения
@@ -101,10 +137,6 @@ namespace awh {
 				 */
 				KeepAlive() noexcept : keepcnt(3), keepidle(1), keepintvl(2) {}
 			} __attribute__((packed)) alive_t;
-			/**
-			 * Прототип класса Context
-			 */
-			class Context;
 			/**
 			 * Sock Класс сетевого пространства
 			 */
@@ -120,9 +152,9 @@ namespace awh {
 					};
 				private:
 					/**
-					 * Context Устанавливаем дружбу с классом контекста двигателя
+					 * Actuator Устанавливаем дружбу с классом актуатора
 					 */
-					friend class Context;
+					friend class Actuator;
 				public:
 					// Файловый дескриптор
 					int fd;
@@ -157,24 +189,18 @@ namespace awh {
 				public:
 					// Объект SSL
 					SSL * ssl;
-				public:
-				/**
-				 * Если операционной системой не является Windows
-				 */
-				#if !defined(_WIN32) && !defined(_WIN64)
-					// Параметры подключения для unix-сокета
-					struct sockaddr_un uxsock;
-				#endif
-				public:
-					// Параметры подключения клиента IPv4
-					struct sockaddr_in client;
-					// Параметры подключения сервера IPv4
-					struct sockaddr_in server;
-				public:
-					// Параметры подключения клиента IPv6
-					struct sockaddr_in6 client6;
-					// Параметры подключения сервера IPv6
-					struct sockaddr_in6 server6;
+				private:
+					// Объект протокола IPv4
+					ipv4_t ipv4;
+					// Объект протокола IPv6
+					ipv6_t ipv6;
+					/**
+					 * Если операционной системой не является Windows
+					 */
+					#if !defined(_WIN32) && !defined(_WIN64)
+						// Объект протокола unix-сокет
+						usock_t usock;
+					#endif
 				public:
 					// Создаём объект фреймворка
 					const fmk_t * fmk = nullptr;
