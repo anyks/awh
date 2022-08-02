@@ -50,7 +50,7 @@
 /**
  * Наши модули
  */
-#include <net/act.hpp>
+#include <net/engine.hpp>
 // #include <net/dns.hpp>
 #include <worker/core.hpp>
 
@@ -79,11 +79,11 @@ namespace awh {
 			/**
 			 * Тип сокета подключения
 			 */
-			enum class sock_t : uint8_t {TCPSOCK, UDPSOCK};
+			enum class sonet_t : uint8_t {TCP_SOCK, UDP_SOCK};
 			/**
 			 * Тип интернет-подключения
 			 */
-			enum class af_t : uint8_t {AFIPV4, AFIPV6, AFUNIX};
+			enum class family_t : uint8_t {IPV4, IPV6, SONIX};
 			/**
 			 * Основные методы режимов работы
 			 */
@@ -159,10 +159,10 @@ namespace awh {
 			 * Network Структура текущих параметров сети
 			 */
 			typedef struct Network {
-				// Тип сокета подключения (TCPSOCK / UDPSOCK)
-				sock_t sock;
-				// Тип протокола интернета (AFIPV4 / AFIPV6 / AFUNIX)
-				af_t family;
+				// Тип сокета подключения (TCP_SOCK / UDP_SOCK)
+				sonet_t sonet;
+				// Тип протокола интернета (IPV4 / IPV6 / SONIX)
+				family_t family;
 				// Адрес файла unix-сокета
 				string filename;
 				// Параметры для сети IPv4
@@ -173,7 +173,7 @@ namespace awh {
 				 * Network Конструктор
 				 */
 				Network() noexcept :
-				 sock(sock_t::TCPSOCK), family(af_t::AFIPV4), filename(""),
+				 sonet(sonet_t::TCP_SOCK), family(family_t::IPV4), filename(""),
 				 v4({{"0.0.0.0"}, IPV4_RESOLVER}), v6({{"[::0]"}, IPV6_RESOLVER}) {}
 			} net_t;
 		private:
@@ -261,10 +261,10 @@ namespace awh {
 		protected:
 			// Создаём объект работы с URI
 			uri_t uri;
-			// Создаём объект для работы с актуатором
-			act_t act;
 			// Сетевые параметры
 			net_t net;
+			// Создаём объект для работы с актуатором
+			engine_t engine;
 			/*
 			// Создаём объект DNS IPv4 резолвера
 			dns_t dns4;
@@ -291,7 +291,7 @@ namespace awh {
 			// Статус сетевого ядра
 			status_t status = status_t::STOP;
 			// Тип запускаемого ядра
-			act_t::type_t type = act_t::type_t::CLIENT;
+			engine_t::type_t type = engine_t::type_t::CLIENT;
 		private:
 			// Список активных таймеров
 			map <u_short, unique_ptr <timer_t>> timers;
@@ -527,16 +527,22 @@ namespace awh {
 			 */
 			bool unsetUnixSocket() noexcept;
 			/**
-			 * isSetUnixSocket Метод проверки установки unix-сокета
-			 * @return результат проверки установки unix-сокета
-			 */
-			bool isSetUnixSocket() const noexcept;
-			/**
 			 * setUnixSocket Метод установки адреса файла unix-сокета
 			 * @param socket адрес файла unix-сокета
 			 * @return       результат установки unix-сокета
 			 */
 			bool setUnixSocket(const string & socket = "") noexcept;
+		public:
+			/**
+			 * sonet Метод извлечения типа сокета подключения
+			 * @return тип сокета подключения (TCP_SOCK / UDP_SOCK)
+			 */
+			sonet_t sonet() const noexcept;
+			/**
+			 * family Метод извлечения типа протокола интернета
+			 * @return тип протокола интернета (IPV4 / IPV6 / SONIX)
+			 */
+			family_t family() const noexcept;
 		public:
 			/**
 			 * setNoInfo Метод установки флага запрета вывода информационных сообщений
@@ -575,14 +581,14 @@ namespace awh {
 			void setCipher(const vector <string> & cipher) noexcept;
 			/**
 			 * setFamily Метод установки тип протокола интернета
-			 * @param family тип протокола интернета (AFIPV4 / AFIPV6 / AFUNIX)
+			 * @param family тип протокола интернета (IPV4 / IPV6 / SONIX)
 			 */
-			void setFamily(const af_t family = af_t::AFIPV4) noexcept;
+			void setFamily(const family_t family = family_t::IPV4) noexcept;
 			/**
 			 * setSockType Метод установки типа сокета подключения
-			 * @param sock тип сокета подключения (TCPSOCK / UDPSOCK)
+			 * @param sonet тип сокета подключения (TCP_SOCK / UDP_SOCK)
 			 */
-			void setSockType(const sock_t sock = sock_t::TCPSOCK) noexcept;
+			void setSockType(const sonet_t sonet = sonet_t::TCP_SOCK) noexcept;
 			/**
 			 * setTrusted Метод установки доверенного сертификата (CA-файла)
 			 * @param trusted адрес доверенного сертификата (CA-файла)
@@ -593,19 +599,19 @@ namespace awh {
 			 * setNet Метод установки параметров сети
 			 * @param ip     список IP адресов компьютера с которых разрешено выходить в интернет
 			 * @param ns     список серверов имён, через которые необходимо производить резолвинг доменов
-			 * @param family тип протокола интернета (AFIPV4 / AFIPV6 / AFUNIX)
-			 * @param sock   тип сокета подключения (TCPSOCK / UDPSOCK)
+			 * @param family тип протокола интернета (IPV4 / IPV6 / SONIX)
+			 * @param sonet  тип сокета подключения (TCP_SOCK / UDP_SOCK)
 			 */
-			void setNet(const vector <string> & ip = {}, const vector <string> & ns = {}, const af_t family = af_t::AFIPV4, const sock_t sock = sock_t::TCPSOCK) noexcept;
+			void setNet(const vector <string> & ip = {}, const vector <string> & ns = {}, const family_t family = family_t::IPV4, const sonet_t sonet = sonet_t::TCP_SOCK) noexcept;
 		public:
 			/**
 			 * Core Конструктор
 			 * @param fmk    объект фреймворка
 			 * @param log    объект для работы с логами
-			 * @param family тип протокола интернета (AFIPV4 / AFIPV6 / AFUNIX)
-			 * @param sock   тип сокета подключения (TCPSOCK / UDPSOCK)
+			 * @param family тип протокола интернета (IPV4 / IPV6 / SONIX)
+			 * @param sonet  тип сокета подключения (TCP_SOCK / UDP_SOCK)
 			 */
-			Core(const fmk_t * fmk, const log_t * log, const af_t family = af_t::AFIPV4, const sock_t sock = sock_t::TCPSOCK) noexcept;
+			Core(const fmk_t * fmk, const log_t * log, const family_t family = family_t::IPV4, const sonet_t sonet = sonet_t::TCP_SOCK) noexcept;
 			/**
 			 * ~Core Деструктор
 			 */

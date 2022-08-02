@@ -22,11 +22,11 @@ void awh::server::WorkerWebSocket::clear() noexcept {
 	// Очищаем данные вокера
 	worker_t::clear();
 	// Очищаем список параметров адъютантов
-	this->settings.clear();
+	this->coffers.clear();
 	// Сбрасываем тип компрессии
 	this->compress = http_t::compress_t::NONE;
 	// Освобождаем выделенную память
-	map <size_t, unique_ptr <settings_t>> ().swap(this->settings);
+	map <size_t, unique_ptr <coffer_t>> ().swap(this->coffers);
 }
 /**
  * set Метод создания параметров адъютанта
@@ -34,9 +34,9 @@ void awh::server::WorkerWebSocket::clear() noexcept {
  */
 void awh::server::WorkerWebSocket::set(const size_t aid) noexcept {
 	// Если идентификатор адъютанта передан
-	if((aid > 0) && (this->settings.count(aid) < 1)){
+	if((aid > 0) && (this->coffers.count(aid) < 1)){
 		// Добавляем адъютанта в список адъютантов
-		auto ret = this->settings.emplace(aid, unique_ptr <settings_t> (new settings_t(this->fmk, this->log, &this->uri)));
+		auto ret = this->coffers.emplace(aid, unique_ptr <coffer_t> (new coffer_t(this->fmk, this->log, &this->uri)));
 		// Устанавливаем метод сжатия
 		ret.first->second->http.setCompress(this->compress);
 		// Устанавливаем контрольную точку
@@ -51,9 +51,9 @@ void awh::server::WorkerWebSocket::rm(const size_t aid) noexcept {
 	// Если идентификатор адъютанта передан
 	if(aid > 0){
 		// Выполняем поиск адъютанта
-		auto it = this->settings.find(aid);
+		auto it = this->coffers.find(aid);
 		// Если адъютант найден, удаляем его
-		if(it != this->settings.end()) this->settings.erase(it);
+		if(it != this->coffers.end()) this->coffers.erase(it);
 	}
 }
 /**
@@ -61,15 +61,15 @@ void awh::server::WorkerWebSocket::rm(const size_t aid) noexcept {
  * @param aid идентификатор адъютанта
  * @return    параметры подключения адъютанта
  */
-const awh::server::WorkerWebSocket::settings_t * awh::server::WorkerWebSocket::get(const size_t aid) const noexcept {
+const awh::server::WorkerWebSocket::coffer_t * awh::server::WorkerWebSocket::get(const size_t aid) const noexcept {
 	// Результат работы функции
-	settings_t * result = nullptr;
+	coffer_t * result = nullptr;
 	// Если идентификатор адъютанта передан
 	if(aid > 0){
 		// Выполняем поиск адъютанта
-		auto it = this->settings.find(aid);
+		auto it = this->coffers.find(aid);
 		// Если адъютант найден, выводим его параметры
-		if(it != this->settings.end()) result = it->second.get();
+		if(it != this->coffers.end()) result = it->second.get();
 	}
 	// Выводим результат
 	return result;

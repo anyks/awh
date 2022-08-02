@@ -141,7 +141,7 @@ void awh::client::Core::connect(const size_t wid) noexcept {
 							// Выполняем очистку буфера событий
 							this->clean(it->first);
 							// Выполняем очистку контекста актуатора
-							adj->act.clear();
+							adj->engine.clear();
 							// Удаляем адъютанта из списка подключений
 							this->adjutants.erase(it->first);
 							// Удаляем адъютанта из списка
@@ -160,59 +160,59 @@ void awh::client::Core::connect(const size_t wid) noexcept {
 				// Определяем тип протокола подключения
 				switch((uint8_t) this->net.family){
 					// Если тип протокола подключения IPv4
-					case (uint8_t) af_t::AFIPV4: {
+					case (uint8_t) family_t::IPV4: {
 						// Устанавливаем тип протокола подключения IPv4
-						adj->sock.family = AF_INET;
+						adj->addr.family = AF_INET;
 						// Устанавливаем сеть, для выхода в интернет
-						adj->sock.network.assign(
+						adj->addr.network.assign(
 							this->net.v4.first.begin(),
 							this->net.v4.first.end()
 						);
 					} break;
 					// Если тип протокола подключения IPv6
-					case (uint8_t) af_t::AFIPV6: {
+					case (uint8_t) family_t::IPV6: {
 						// Устанавливаем тип протокола подключения IPv6
-						adj->sock.family = AF_INET6;
+						adj->addr.family = AF_INET6;
 						// Устанавливаем сеть, для выхода в интернет
-						adj->sock.network.assign(
+						adj->addr.network.assign(
 							this->net.v6.first.begin(),
 							this->net.v6.first.end()
 						);
 					} break;
 					// Если тип протокола подключения unix-сокет
-					case (uint8_t) af_t::AFUNIX: adj->sock.family = AF_UNIX; break;
+					case (uint8_t) family_t::SONIX: adj->addr.family = AF_UNIX; break;
 				}
 				// Определяем тип сокета
-				switch((uint8_t) this->net.sock){
+				switch((uint8_t) this->net.sonet){
 					// Если тип сокета UDP
-					case (uint8_t) sock_t::UDPSOCK: {
+					case (uint8_t) sonet_t::UDP_SOCK: {
 						// Устанавливаем тип сокета
-						adj->sock.type = SOCK_DGRAM;
+						adj->addr.type = SOCK_DGRAM;
 						// Устанавливаем тип протокола
-						adj->sock.protocol = IPPROTO_UDP;
+						adj->addr.protocol = IPPROTO_UDP;
 					} break;
 					// Если тип сокета TCP
-					case (uint8_t) sock_t::TCPSOCK: {
+					case (uint8_t) sonet_t::TCP_SOCK: {
 						// Устанавливаем тип сокета
-						adj->sock.type = SOCK_STREAM;
+						adj->addr.type = SOCK_STREAM;
 						// Устанавливаем тип протокола
-						adj->sock.protocol = IPPROTO_TCP;
+						adj->addr.protocol = IPPROTO_TCP;
 					} break;
 				}
 				// Если unix-сокет используется
-				if(this->net.family == af_t::AFUNIX)
+				if(this->net.family == family_t::SONIX)
 					// Выполняем инициализацию сокета
-					adj->sock.init(this->net.filename, act_t::type_t::CLIENT);
+					adj->addr.init(this->net.filename, engine_t::type_t::CLIENT);
 				// Если unix-сокет не используется, выполняем инициализацию сокета
-				else adj->sock.init(url.ip, url.port, act_t::type_t::CLIENT);
+				else adj->addr.init(url.ip, url.port, engine_t::type_t::CLIENT);
 				// Если сокет подключения получен
-				if(adj->sock.fd > -1){
+				if(adj->addr.fd > -1){
 					// Устанавливаем идентификатор адъютанта
 					adj->aid = this->fmk->unixTimestamp();
 					// Выполняем получение контекста сертификата
-					this->act.wrap(adj->act, &adj->sock, url);
+					this->engine.wrap(adj->engine, &adj->addr, url);
 					// Если подключение не обёрнуто
-					if(!adj->act.wrapped()){
+					if(!adj->engine.wrapped()){
 						// Запрещаем чтение данных с сервера
 						adj->bev.locked.read = true;
 						// Запрещаем запись данных на сервер
@@ -224,7 +224,7 @@ void awh::client::Core::connect(const size_t wid) noexcept {
 						// Устанавливаем флаг ожидания статуса
 						wrk->status.wait = worker_t::mode_t::DISCONNECT;
 						// Выводим сообщение об ошибке
-						this->log->print("wrap actuator context is failed", log_t::flag_t::CRITICAL);
+						this->log->print("wrap engine context is failed", log_t::flag_t::CRITICAL);
 						// Выполняем переподключение
 						this->reconnect(wid);
 						// Выходим из функции
@@ -239,7 +239,7 @@ void awh::client::Core::connect(const size_t wid) noexcept {
 					// Выполняем блокировку потока
 					this->mtx.connect.unlock();
 					// Если подключение к серверу не выполнено
-					if(!ret.first->second->sock.connect()){
+					if(!ret.first->second->addr.connect()){
 						// Запрещаем чтение данных с сервера
 						ret.first->second->bev.locked.read = true;
 						// Запрещаем запись данных на сервер
@@ -249,7 +249,7 @@ void awh::client::Core::connect(const size_t wid) noexcept {
 						// Устанавливаем статус подключения
 						wrk->status.real = worker_t::mode_t::DISCONNECT;
 						// Если unix-сокет используется
-						if(this->net.family == af_t::AFUNIX)
+						if(this->net.family == family_t::SONIX)
 							// Выводим ионформацию об обрыве подключении по unix-сокету
 							this->log->print("connecting to socket = %s", log_t::flag_t::CRITICAL, this->net.filename.c_str());
 						// Выводим ионформацию об обрыве подключении по хосту и порту
@@ -258,14 +258,14 @@ void awh::client::Core::connect(const size_t wid) noexcept {
 						// Определяем тип протокола подключения
 						switch((uint8_t) this->net.family){
 							// Если тип протокола подключения IPv4
-							case (uint8_t) af_t::AFIPV4: {
+							case (uint8_t) family_t::IPV4: {
 								// Выполняем сброс кэша резолвера
 								this->dns4.flush();
 								// Добавляем бракованный IPv4 адрес в список адресов
 								this->dns4.setToBlackList(url.ip); 
 							} break;
 							// Если тип протокола подключения IPv6
-							case (uint8_t) af_t::AFIPV6: {
+							case (uint8_t) family_t::IPV6: {
 								// Выполняем сброс кэша резолвера
 								this->dns6.flush();
 								// Добавляем бракованный IPv6 адрес в список адресов
@@ -293,11 +293,11 @@ void awh::client::Core::connect(const size_t wid) noexcept {
 						// Если разрешено выводить информационные сообщения
 						if(!this->noinfo){
 							// Если unix-сокет используется
-							if(this->net.family == af_t::AFUNIX)
+							if(this->net.family == family_t::SONIX)
 								// Выводим ионформацию об удачном подключении к серверу по unix-сокету
-								this->log->print("good host %s, socket = %d", log_t::flag_t::INFO, this->net.filename.c_str(), ret.first->second->sock.fd);
+								this->log->print("good host %s, socket = %d", log_t::flag_t::INFO, this->net.filename.c_str(), ret.first->second->addr.fd);
 							// Выводим ионформацию об удачном подключении к серверу по хосту и порту
-							else this->log->print("good host %s [%s:%d], socket = %d", log_t::flag_t::INFO, url.domain.c_str(), url.ip.c_str(), url.port, ret.first->second->sock.fd);
+							else this->log->print("good host %s [%s:%d], socket = %d", log_t::flag_t::INFO, url.domain.c_str(), url.ip.c_str(), url.port, ret.first->second->addr.fd);
 						}
 					}
 					// Выходим из функции
@@ -305,7 +305,7 @@ void awh::client::Core::connect(const size_t wid) noexcept {
 				// Если сокет не создан, выводим в консоль информацию
 				} else {
 					// Если unix-сокет используется
-					if(this->net.family == af_t::AFUNIX)
+					if(this->net.family == family_t::SONIX)
 						// Выводим ионформацию об неудачном подключении к серверу по unix-сокету
 						this->log->print("client cannot be started [%s]", log_t::flag_t::CRITICAL, this->net.filename.c_str());
 					// Выводим ионформацию об неудачном подключении к серверу по хосту и порту
@@ -333,14 +333,14 @@ void awh::client::Core::connect(const size_t wid) noexcept {
 					// Определяем тип подключения
 					switch((uint8_t) this->net.family){
 						// Если тип протокола подключения IPv4
-						case (uint8_t) af_t::AFIPV4: {
+						case (uint8_t) family_t::IPV4: {
 							// Выполняем сброс кэша резолвера
 							this->dns4.flush();
 							// Добавляем бракованный IPv4 адрес в список адресов
 							this->dns4.setToBlackList(url.ip); 
 						} break;
 						// Если тип протокола подключения IPv6
-						case (uint8_t) af_t::AFIPV6: {
+						case (uint8_t) family_t::IPV6: {
 							// Выполняем сброс кэша резолвера
 							this->dns6.flush();
 							// Добавляем бракованный IPv6 адрес в список адресов
@@ -373,9 +373,9 @@ void awh::client::Core::reconnect(const size_t wid) noexcept {
 			// Определяем тип протокола подключения
 			switch((uint8_t) this->net.family){
 				// Если тип протокола подключения IPv4
-				case (uint8_t) af_t::AFIPV4:
+				case (uint8_t) family_t::IPV4:
 				// Если тип протокола подключения IPv6
-				case (uint8_t) af_t::AFIPV6: {
+				case (uint8_t) family_t::IPV6: {
 					// Устанавливаем флаг ожидания статуса
 					wrk->status.wait = worker_t::mode_t::RECONNECT;
 					// Получаем URL параметры запроса
@@ -415,12 +415,12 @@ void awh::client::Core::reconnect(const size_t wid) noexcept {
 					// Определяем тип протокола подключения
 					switch((uint8_t) this->net.family){
 						// Если тип протокола подключения IPv4
-						case (uint8_t) af_t::AFIPV4:
+						case (uint8_t) family_t::IPV4:
 							// Выполняем резолвинг домена
 							wrk->did = this->dns4.resolve(wrk, (!url.domain.empty() ? url.domain : url.ip), AF_INET, &resolver);
 						break;
 						// Если тип протокола подключения IPv6
-						case (uint8_t) af_t::AFIPV6:
+						case (uint8_t) family_t::IPV6:
 							// Выполняем резолвинг домена
 							wrk->did = this->dns6.resolve(wrk, (!url.domain.empty() ? url.domain : url.ip), AF_INET6, &resolver);
 						break;
@@ -428,7 +428,7 @@ void awh::client::Core::reconnect(const size_t wid) noexcept {
 					*/
 				} break;
 				// Если тип протокола подключения unix-сокет
-				case (uint8_t) af_t::AFUNIX:
+				case (uint8_t) family_t::SONIX:
 					// Выполняем подключение заново
 					this->connect(wrk->wid);
 				break;
@@ -528,14 +528,14 @@ void awh::client::Core::sendTimeout(const size_t aid) noexcept {
 				// Определяем тип протокола подключения
 				switch((uint8_t) this->net.family){
 					// Если тип протокола подключения IPv4
-					case (uint8_t) af_t::AFIPV4: {
+					case (uint8_t) family_t::IPV4: {
 						// Добавляем базу событий для DNS резолвера IPv4
 						this->dns4.setBase(this->dispatch.base);
 						// Выполняем установку нейм-серверов для DNS резолвера IPv4
 						this->dns4.replaceServers(this->net.v4.second);
 					} break;
 					// Если тип протокола подключения IPv6
-					case (uint8_t) af_t::AFIPV6: {
+					case (uint8_t) family_t::IPV6: {
 						// Добавляем базу событий для DNS резолвера IPv6
 						this->dns4.setBase(this->dispatch.base);
 						// Выполняем установку нейм-серверов для DNS резолвера IPv6
@@ -620,7 +620,7 @@ void awh::client::Core::close() noexcept {
 						// Выполняем очистку буфера событий
 						this->clean(it->first);
 						// Выполняем очистку контекста актуатора
-						adj->act.clear();
+						adj->engine.clear();
 						// Удаляем адъютанта из списка подключений
 						this->adjutants.erase(it->first);
 						// Выводим функцию обратного вызова
@@ -681,7 +681,7 @@ void awh::client::Core::remove() noexcept {
 						// Выполняем очистку буфера событий
 						this->clean(jt->first);
 						// Выполняем очистку контекста актуатора
-						adj->act.clear();
+						adj->engine.clear();
 						// Удаляем адъютанта из списка подключений
 						this->adjutants.erase(jt->first);
 						// Выводим функцию обратного вызова
@@ -719,9 +719,9 @@ void awh::client::Core::open(const size_t wid) noexcept {
 				// Определяем тип протокола подключения
 				switch((uint8_t) this->net.family){
 					// Если тип протокола подключения IPv4
-					case (uint8_t) af_t::AFIPV4:
+					case (uint8_t) family_t::IPV4:
 					// Если тип протокола подключения IPv6
-					case (uint8_t) af_t::AFIPV6: {
+					case (uint8_t) family_t::IPV6: {
 						// Устанавливаем флаг ожидания статуса
 						wrk->status.wait = worker_t::mode_t::CONNECT;
 						// Получаем URL параметры запроса
@@ -765,12 +765,12 @@ void awh::client::Core::open(const size_t wid) noexcept {
 							// Определяем тип протокола подключения
 							switch((uint8_t) this->net.family){
 								// Если тип протокола подключения IPv4
-								case (uint8_t) af_t::AFIPV4:
+								case (uint8_t) family_t::IPV4:
 									// Выполняем резолвинг доменного имени
 									wrk->did = this->dns4.resolve(wrk, url.domain, AF_INET, &resolver);
 								break;
 								// Если тип протокола подключения IPv6
-								case (uint8_t) af_t::AFIPV6:
+								case (uint8_t) family_t::IPV6:
 									// Выполняем резолвинг доменного имени
 									wrk->did = this->dns6.resolve(wrk, url.domain, AF_INET6, &resolver);
 								break;
@@ -780,7 +780,7 @@ void awh::client::Core::open(const size_t wid) noexcept {
 						*/
 					} break;
 					// Если тип протокола подключения unix-сокет
-					case (uint8_t) af_t::AFUNIX:
+					case (uint8_t) family_t::SONIX:
 						// Выполняем подключение заново
 						this->connect(wrk->wid);
 					break;
@@ -850,7 +850,7 @@ void awh::client::Core::close(const size_t aid) noexcept {
 				// Выполняем переключение обратно на прокси-сервер
 				wrk->switchConnect();
 			// Выполняем очистку контекста актуатора
-			adj->act.clear();
+			adj->engine.clear();
 			// Удаляем адъютанта из списка адъютантов
 			wrk->adjutants.erase(aid);
 			// Удаляем адъютанта из списка подключений
@@ -882,7 +882,7 @@ void awh::client::Core::close(const size_t aid) noexcept {
  */
 void awh::client::Core::switchProxy(const size_t aid) noexcept {
 	// Если подключение производится по IPv4 или IPv6 и по хосту с портом
-	if((this->net.sock == sock_t::TCPSOCK) && ((this->net.family == af_t::AFIPV4) || (this->net.family == af_t::AFIPV6))){
+	if((this->net.sonet == sonet_t::TCP_SOCK) && ((this->net.family == family_t::IPV4) || (this->net.family == family_t::IPV6))){
 		// Выполняем блокировку потока
 		const lock_guard <recursive_mutex> lock(this->mtx.proxy);
 		// Выполняем извлечение адъютанта
@@ -898,11 +898,11 @@ void awh::client::Core::switchProxy(const size_t aid) noexcept {
 				// Выполняем переключение на работу с сервером
 				wrk->switchConnect();
 				// Выполняем получение контекста сертификата
-				this->act.wrap(adj->act, adj->act, wrk->url);
+				this->engine.wrap(adj->engine, adj->engine, wrk->url);
 				// Если подключение не обёрнуто
-				if(!adj->act.wrapped()){
+				if(!adj->engine.wrapped()){
 					// Выводим сообщение об ошибке
-					this->log->print("wrap actuator context is failed", log_t::flag_t::CRITICAL);
+					this->log->print("wrap engine context is failed", log_t::flag_t::CRITICAL);
 					// Выходим из функции
 					return;
 				}
@@ -932,9 +932,9 @@ void awh::client::Core::timeout(const size_t aid) noexcept {
 		// Определяем тип протокола подключения
 		switch((uint8_t) this->net.family){
 			// Если тип протокола подключения IPv4
-			case (uint8_t) af_t::AFIPV4:
+			case (uint8_t) family_t::IPV4:
 			// Если тип протокола подключения IPv6
-			case (uint8_t) af_t::AFIPV6: {
+			case (uint8_t) family_t::IPV6: {
 				// Получаем URL параметры запроса
 				const uri_t::url_t & url = (wrk->isProxy() ? wrk->proxy.url : wrk->url);
 				// Если данные ещё ни разу не получены
@@ -943,9 +943,9 @@ void awh::client::Core::timeout(const size_t aid) noexcept {
 					// Определяем тип протокола подключения
 					switch((uint8_t) this->net.family){
 						// Резолвер IPv4, добавляем бракованный IPv4 адрес в список адресов
-						case (uint8_t) af_t::AFIPV4: this->dns4.setToBlackList(url.ip); break;
+						case (uint8_t) family_t::IPV4: this->dns4.setToBlackList(url.ip); break;
 						// Резолвер IPv6, добавляем бракованный IPv6 адрес в список адресов
-						case (uint8_t) af_t::AFIPV6: this->dns6.setToBlackList(url.ip); break;
+						case (uint8_t) family_t::IPV6: this->dns6.setToBlackList(url.ip); break;
 					}
 					*/
 				}			
@@ -953,7 +953,7 @@ void awh::client::Core::timeout(const size_t aid) noexcept {
 				this->log->print("timeout host %s [%s%d]", log_t::flag_t::WARNING, url.domain.c_str(), (!url.ip.empty() ? (url.ip + ":").c_str() : ""), url.port);
 			} break;
 			// Если тип протокола подключения unix-сокет
-			case (uint8_t) af_t::AFUNIX:
+			case (uint8_t) family_t::SONIX:
 				// Выводим сообщение в лог, о таймауте подключения
 				this->log->print("timeout host %s", log_t::flag_t::WARNING, this->net.filename.c_str());
 			break;
@@ -992,9 +992,9 @@ void awh::client::Core::connected(const size_t aid) noexcept {
 			// Определяем тип протокола подключения
 			switch((uint8_t) this->net.family){
 				// Если тип протокола подключения IPv4
-				case (uint8_t) af_t::AFIPV4:
+				case (uint8_t) family_t::IPV4:
 				// Если тип протокола подключения IPv6
-				case (uint8_t) af_t::AFIPV6: {
+				case (uint8_t) family_t::IPV6: {
 					// Получаем URL параметры запроса
 					const uri_t::url_t & url = (wrk->isProxy() ? wrk->proxy.url : wrk->url);
 					// Получаем хост сервера
@@ -1004,12 +1004,12 @@ void awh::client::Core::connected(const size_t aid) noexcept {
 					// Определяем тип протокола подключения
 					switch((uint8_t) this->net.family){
 						// Резолвер IPv4, создаём резолвер
-						case (uint8_t) af_t::AFIPV4:
+						case (uint8_t) family_t::IPV4:
 							// Выполняем отмену ранее выполненных запросов DNS
 							this->dns4.cancel(wrk->did);
 						break;
 						// Резолвер IPv6, создаём резолвер
-						case (uint8_t) af_t::AFIPV6:
+						case (uint8_t) family_t::IPV6:
 							// Выполняем отмену ранее выполненных запросов DNS
 							this->dns6.cancel(wrk->did);
 						break;
@@ -1028,7 +1028,7 @@ void awh::client::Core::connected(const size_t aid) noexcept {
 					} else if(wrk->connectFn != nullptr) wrk->connectFn(it->first, wrk->wid, const_cast <awh::core_t *> (wrk->core));
 				} break;
 				// Если тип протокола подключения unix-сокет
-				case (uint8_t) af_t::AFUNIX: {
+				case (uint8_t) family_t::SONIX: {
 					// Запускаем чтение данных
 					this->enabled(method_t::READ, it->first);
 					// Выводим в лог сообщение
@@ -1069,17 +1069,17 @@ void awh::client::Core::transfer(const method_t method, const size_t aid) noexce
 					// Создаём буфер входящих данных
 					char buffer[BUFFER_SIZE];
 					// Если тип сокета установлен как UDP, останавливаем чтение
-					if(this->net.sock == sock_t::UDPSOCK)
+					if(this->net.sonet == sonet_t::UDP_SOCK)
 						// Останавливаем чтение данных с клиента
 						adj->bev.event.read.stop();
 					// Выполняем перебор бесконечным циклом пока это разрешено
 					while(!adj->bev.locked.read && (wrk->status.real == worker_t::mode_t::CONNECT)){
 						// Если дочерние активные подключения есть и сокет блокирующий
-						if((this->cores > 0) && (adj->act.isblock() == 1))
+						if((this->cores > 0) && (adj->engine.isblock() == 1))
 							// Переводим BIO в не блокирующий режим
-							adj->act.noblock();
+							adj->engine.noblock();
 						// Выполняем получение сообщения от клиента
-						bytes = adj->act.read(buffer, sizeof(buffer));
+						bytes = adj->engine.read(buffer, sizeof(buffer));
 						// Если время ожидания чтения данных установлено
 						if(wrk->wait && (adj->timeouts.read > 0)){
 							// Устанавливаем время ожидания на получение данных
@@ -1089,13 +1089,13 @@ void awh::client::Core::transfer(const method_t method, const size_t aid) noexce
 						// Останавливаем таймаут ожидания на чтение из сокета
 						} else adj->bev.timer.read.stop();
 						// Выполняем принудительное исполнение таймеров
-						if(adj->act.isblock() != 0) this->executeTimers();
+						if(adj->engine.isblock() != 0) this->executeTimers();
 						/**
 						 * Если операционной системой является MS Windows
 						 */
 						#if defined(_WIN32) || defined(_WIN64)
 							// Запускаем чтение данных снова (Для Windows)
-							if((bytes != 0) && (this->net.sock == sock_t::TCPSOCK))
+							if((bytes != 0) && (this->net.sonet == sonet_t::TCP_SOCK))
 								// Запускаем чтение снова
 								adj->bev.event.read.start();
 						#endif
@@ -1112,9 +1112,9 @@ void awh::client::Core::transfer(const method_t method, const size_t aid) noexce
 									// Определяем тип протокола подключения
 									switch((uint8_t) this->net.family){
 										// Если тип протокола подключения IPv4
-										case (uint8_t) af_t::AFIPV4:
+										case (uint8_t) family_t::IPV4:
 										// Если тип протокола подключения IPv6
-										case (uint8_t) af_t::AFIPV6: {
+										case (uint8_t) family_t::IPV6: {
 											// Если подключение производится через, прокси-сервер
 											if(wrk->isProxy()){
 												// Если функция обратного вызова для вывода записи существует
@@ -1127,7 +1127,7 @@ void awh::client::Core::transfer(const method_t method, const size_t aid) noexce
 												wrk->readFn(buffer + offset, actual, aid, wrk->wid, reinterpret_cast <awh::core_t *> (this));
 										} break;
 										// Если тип протокола подключения unix-сокет
-										case (uint8_t) af_t::AFUNIX: {
+										case (uint8_t) family_t::SONIX: {
 											// Если функция обратного вызова установлена
 											if(wrk->readFn != nullptr)
 												// Выводим функцию обратного вызова
@@ -1142,9 +1142,9 @@ void awh::client::Core::transfer(const method_t method, const size_t aid) noexce
 								// Определяем тип протокола подключения
 								switch((uint8_t) this->net.family){
 									// Если тип протокола подключения IPv4
-									case (uint8_t) af_t::AFIPV4:
+									case (uint8_t) family_t::IPV4:
 									// Если тип протокола подключения IPv6
-									case (uint8_t) af_t::AFIPV6: {
+									case (uint8_t) family_t::IPV6: {
 										// Если подключение производится через, прокси-сервер
 										if(wrk->isProxy()){
 											// Если функция обратного вызова для вывода записи существует
@@ -1157,7 +1157,7 @@ void awh::client::Core::transfer(const method_t method, const size_t aid) noexce
 											wrk->readFn(buffer, bytes, aid, wrk->wid, reinterpret_cast <awh::core_t *> (this));
 									} break;
 									// Если тип протокола подключения unix-сокет
-									case (uint8_t) af_t::AFUNIX: {
+									case (uint8_t) family_t::SONIX: {
 										// Если функция обратного вызова установлена
 										if(wrk->readFn != nullptr)
 											// Выводим функцию обратного вызова
@@ -1200,13 +1200,13 @@ void awh::client::Core::transfer(const method_t method, const size_t aid) noexce
 							// Определяем размер отправляемых данных
 							actual = ((size >= adj->marker.write.max) ? adj->marker.write.max : size);
 							// Выполняем отправку сообщения клиенту
-							bytes = adj->act.write(adj->buffer.data() + offset, actual);
+							bytes = adj->engine.write(adj->buffer.data() + offset, actual);
 							// Если данные записаны удачно
 							if(bytes > 0)
 								// Добавляем записанные байты в буфер
 								buffer.insert(buffer.end(), adj->buffer.data() + offset, (adj->buffer.data() + offset) + bytes);
 							// Выполняем принудительное исполнение таймеров
-							if(adj->act.isblock() != 0) this->executeTimers();
+							if(adj->engine.isblock() != 0) this->executeTimers();
 							// Если время ожидания записи данных установлено
 							if(adj->timeouts.write > 0){
 								// Устанавливаем время ожидания на запись данных
@@ -1251,7 +1251,7 @@ void awh::client::Core::transfer(const method_t method, const size_t aid) noexce
 							wrk->writeFn(nullptr, 0, aid, wrk->wid, reinterpret_cast <awh::core_t *> (this));
 					}
 					// Если тип сокета установлен как UDP, и данных для записи больше нет, запускаем чтение
-					if(adj->buffer.empty() && (this->net.sock == sock_t::UDPSOCK))
+					if(adj->buffer.empty() && (this->net.sonet == sonet_t::UDP_SOCK))
 						// Запускаем чтение данных с клиента
 						adj->bev.event.read.start();
 				} break;
@@ -1282,16 +1282,13 @@ void awh::client::Core::setBandwidth(const size_t aid, const string & read, cons
 		 * Если операционной системой является Nix-подобная
 		 */
 		#if !defined(_WIN32) && !defined(_WIN64)
-			/*
 			// Получаем объект адъютанта
 			awh::worker_t::adj_t * adj = const_cast <awh::worker_t::adj_t *> (it->second);
 			// Устанавливаем размер буфера
-			this->socket.bufferSize(
-				adj->act.get(),
+			adj->engine.buffer(
 				(!read.empty() ? this->fmk->sizeBuffer(read) : 0),
 				(!write.empty() ? this->fmk->sizeBuffer(write) : 0), 1
 			);
-			*/
 		/**
 		 * Если операционной системой является MS Windows
 		 */
@@ -1309,7 +1306,7 @@ void awh::client::Core::setBandwidth(const size_t aid, const string & read, cons
  */
 awh::client::Core::Core(const fmk_t * fmk, const log_t * log) noexcept : awh::core_t(fmk, log) {
 	// Устанавливаем тип запускаемого ядра
-	this->type = act_t::type_t::CLIENT;
+	this->type = engine_t::type_t::CLIENT;
 }
 /**
  * ~Core Деструктор

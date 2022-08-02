@@ -28,7 +28,7 @@
  */
 #include <sys/fmk.hpp>
 #include <sys/log.hpp>
-#include <net/act.hpp>
+#include <net/engine.hpp>
 
 // Подписываемся на стандартное пространство имён
 using namespace std;
@@ -198,10 +198,10 @@ namespace awh {
 					// Объект таймаутов
 					timeouts_t timeouts;
 				private:
-					// Контекст актуатора для работы с передачей данных
-					act_t::ctx_t act;
 					// Создаём объект подключения клиента
-					act_t::sock_t sock;
+					engine_t::addr_t addr;
+					// Контекст двигателя для работы с передачей данных
+					engine_t::ctx_t engine;
 				private:
 					// Бинарный буфер для записи данных в сокет
 					vector <char> buffer;
@@ -245,7 +245,7 @@ namespace awh {
 					 * @param log    объект для работы с логами
 					 */
 					Adjutant(const Worker * parent, const fmk_t * fmk, const log_t * log) noexcept :
-					 aid(0), ip(""), mac(""), act(fmk, log), sock(fmk, log), fmk(fmk), log(log), parent(parent) {}
+					 aid(0), ip(""), mac(""), engine(fmk, log), addr(fmk, log), fmk(fmk), log(log), parent(parent) {}
 					/**
 					 * ~Adjutant Деструктор
 					 */

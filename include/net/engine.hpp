@@ -1,5 +1,5 @@
 /**
- * @file: act.hpp
+ * @file: engine.hpp
  * @date: 2022-07-31
  * @license: GPL-3.0
  *
@@ -12,8 +12,8 @@
  * @copyright: Copyright © 2022
  */
 
-#ifndef __AWH_ACTUATOR__
-#define __AWH_ACTUATOR__
+#ifndef __AWH_ENGINE__
+#define __AWH_ENGINE__
 
 /**
  * Отключаем Deprecated для Apple
@@ -76,9 +76,9 @@ using namespace std;
  */
 namespace awh {
 	/**
-	 * Actuator Класс для работы с каналом передачи данных
+	 * Engine Класс для работы с двигателем передачи данных
 	 */
-	typedef class Actuator {
+	typedef class Engine {
 		public:
 			/**
 			 * Тип активного приложения
@@ -138,9 +138,9 @@ namespace awh {
 				KeepAlive() noexcept : keepcnt(3), keepidle(1), keepintvl(2) {}
 			} __attribute__((packed)) alive_t;
 			/**
-			 * Sock Класс сетевого пространства
+			 * Address Класс сетевого пространства
 			 */
-			typedef class Sock {
+			typedef class Address {
 				public:
 					/**
 					 * Статус подключения
@@ -152,9 +152,9 @@ namespace awh {
 					};
 				private:
 					/**
-					 * Actuator Устанавливаем дружбу с классом актуатора
+					 * Engine Устанавливаем дружбу с классом двигателя
 					 */
-					friend class Actuator;
+					friend class Engine;
 				public:
 					// Файловый дескриптор
 					int fd;
@@ -227,14 +227,14 @@ namespace awh {
 					 * connect Метод выполнения подключения сервера к клиенту для UDP
 					 * @param sock объект подключения сервера
 					 */
-					bool connect(Sock & sock) noexcept;
+					bool connect(Address & sock) noexcept;
 				public:
 					/**
 					 * accept Метод согласования подключения
 					 * @param sock объект подключения сервера
 					 * @return     результат выполнения операции
 					 */
-					bool accept(Sock & sock) noexcept;
+					bool accept(Address & sock) noexcept;
 					/**
 					 * accept Метод согласования подключения
 					 * @param fd файловый дескриптор сервера
@@ -258,34 +258,34 @@ namespace awh {
 					void init(const string & ip, const u_int port, const type_t type) noexcept;
 				public:
 					/**
-					 * Sock Конструктор
+					 * Address Конструктор
 					 * @param fmk объект фреймворка
 					 * @param log объект для работы с логами
 					 */
-					Sock(const fmk_t * fmk, const log_t * log) noexcept :
+					Address(const fmk_t * fmk, const log_t * log) noexcept :
 					 fd(-1), type(SOCK_STREAM), family(AF_INET),
 					 protocol(IPPROTO_TCP), v6only(false),
 					 status(status_t::DISCONNECTED), ip(""), mac(""),
 					 nwk(fmk), ifnet(fmk, log), socket(log),
 					 ssl(nullptr), fmk(fmk), log(log) {}
 					/**
-					 * ~Sock Деструктор
+					 * ~Address Деструктор
 					 */
-					~Sock() noexcept;
-			} sock_t;
+					~Address() noexcept;
+			} addr_t;
 		private:
 			/**
 			 * Verify Структура параметров для валидации доменов
 			 */
 			typedef struct Verify {
-				string host;          // Хост для валидации
-				const Actuator * act; // Объект для работы с SSL
+				string host;           // Хост для валидации
+				const Engine * engine; // Объект для работы с двигателем
 				/**
 				 * Verify Конструктор
-				 * @param act  основной родительский объект
-				 * @param host хост для которого производится проверка
+				 * @param engine основной родительский объект двигателя
+				 * @param host   хост для которого производится проверка
 				 */
-				Verify(const string & host = "", const Actuator * act = nullptr) noexcept : host(host), act(act) {}
+				Verify(const string & host = "", const Engine * engine = nullptr) noexcept : host(host), engine(engine) {}
 			} verify_t;
 		public:
 			/**
@@ -294,9 +294,9 @@ namespace awh {
 			typedef class Context {
 				private:
 					/**
-					 * Actuator Устанавливаем дружбу с родительским объектом актуатора
+					 * Engine Устанавливаем дружбу с родительским объектом двигателя
 					 */
-					friend class Actuator;
+					friend class Engine;
 				private:
 					// Флаг инициализации
 					bool mode;
@@ -307,7 +307,7 @@ namespace awh {
 					BIO * bio;         // Объект BIO
 					SSL * ssl;         // Объект SSL
 					SSL_CTX * ctx;     // Контекст SSL
-					sock_t * sock;     // Объект подключения
+					addr_t * addr;     // Объект подключения
 					verify_t * verify; // Параметры валидации домена
 				private:
 					// Создаём объект фреймворка
@@ -362,6 +362,14 @@ namespace awh {
 					 * @return результат работы функции
 					 */
 					int isblock() noexcept;
+					/**
+					 * buffer Метод установки размеров буфера
+					 * @param read  размер буфера на чтение
+					 * @param write размер буфера на запись
+					 * @param total максимальное количество подключений
+					 * @return      результат работы функции
+					 */
+					int buffer(const int read, const int write, const u_int total) noexcept;
 				public:
 					/**
 					 * Context Конструктор
@@ -369,7 +377,7 @@ namespace awh {
 					 * @param log объект для работы с логами
 					 */
 					Context(const fmk_t * fmk, const log_t * log) noexcept :
-					 mode(false), type(type_t::NONE), sock(nullptr),
+					 mode(false), type(type_t::NONE), addr(nullptr),
 					 bio(nullptr), ssl(nullptr), ctx(nullptr),
 					 verify(nullptr), log(log) {}
 					/**
@@ -523,36 +531,36 @@ namespace awh {
 		public:
 			/**
 			 * wrap Метод обертывания файлового дескриптора для сервера
-			 * @param target контекст назначения
-			 * @param socket объект подключения
-			 * @return       объект SSL контекста
+			 * @param target  контекст назначения
+			 * @param address объект подключения
+			 * @return        объект SSL контекста
 			 */
-			void wrap(ctx_t & target, sock_t * socket) noexcept;
+			void wrap(ctx_t & target, addr_t * address) noexcept;
 			/**
 			 * wrap Метод обертывания файлового дескриптора для клиента
-			 * @param target контекст назначения
-			 * @param socket объект подключения
-			 * @param source исходный контекст
-			 * @return       объект SSL контекста
+			 * @param target  контекст назначения
+			 * @param address объект подключения
+			 * @param source  исходный контекст
+			 * @return        объект SSL контекста
 			 */
-			void wrap(ctx_t & target, sock_t * socket, const ctx_t & source) noexcept;
+			void wrap(ctx_t & target, addr_t * address, const ctx_t & source) noexcept;
 		public:
 			/**
 			 * wrap Метод обертывания файлового дескриптора для сервера
-			 * @param target контекст назначения
-			 * @param socket объект подключения
-			 * @param mode   флаг выполнения обертывания файлового дескриптора
-			 * @return       объект SSL контекста
+			 * @param target  контекст назначения
+			 * @param address объект подключения
+			 * @param mode    флаг выполнения обертывания файлового дескриптора
+			 * @return        объект SSL контекста
 			 */
-			void wrap(ctx_t & target, sock_t * socket, const bool mode) noexcept;
+			void wrap(ctx_t & target, addr_t * address, const bool mode) noexcept;
 			/**
 			 * wrap Метод обертывания файлового дескриптора для клиента
-			 * @param target контекст назначения
-			 * @param socket объект подключения
-			 * @param url    параметры URL адреса для инициализации
-			 * @return       объект SSL контекста
+			 * @param target  контекст назначения
+			 * @param address объект подключения
+			 * @param url     параметры URL адреса для инициализации
+			 * @return        объект SSL контекста
 			 */
-			void wrap(ctx_t & target, sock_t * socket, const uri_t::url_t & url) noexcept;
+			void wrap(ctx_t & target, addr_t * address, const uri_t::url_t & url) noexcept;
 		public:
 			/**
 			 * setVerify Метод разрешающий или запрещающий, выполнять проверку соответствия, сертификата домену
@@ -578,17 +586,17 @@ namespace awh {
 			void setCertificate(const string & chain, const string & key = "") noexcept;
 		public:
 			/**
-			 * Actuator Конструктор
+			 * Engine Конструктор
 			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
 			 * @param uri объект работы с URI
 			 */
-			Actuator(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcept;
+			Engine(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcept;
 			/**
-			 * ~Actuator Деструктор
+			 * ~Engine Деструктор
 			 */
-			~Actuator() noexcept;
-	} act_t;
+			~Engine() noexcept;
+	} engine_t;
 };
 
-#endif // __AWH_ACTUATOR__
+#endif // __AWH_ENGINE__

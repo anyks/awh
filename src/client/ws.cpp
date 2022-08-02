@@ -987,8 +987,23 @@ void awh::client::WebSocket::ping(const string & message) noexcept {
  * @param compress метод компрессии передаваемых сообщений
  */
 void awh::client::WebSocket::init(const string & url, const http_t::compress_t compress) noexcept {
-	// Если unix-сокет не установлен
-	if(!this->core->isSetUnixSocket()){
+	// Если unix-сокет установлен
+	if(this->core->family() == core_t::family_t::SONIX){
+		// Выполняем очистку воркера
+		this->worker.clear();
+		// Устанавливаем метод компрессии сообщений
+		this->compress = compress;
+		// Устанавливаем URL адрес запроса (как заглушка)
+		this->worker.url = this->uri.parseUrl("ws://unixsocket");
+		/**
+		 * Если операционной системой не является Windows
+		 */
+		#if !defined(_WIN32) && !defined(_WIN64)
+			// Выполняем установку unix-сокета 
+			const_cast <client::core_t *> (this->core)->setUnixSocket(url);
+		#endif
+	// Выполняем установку unix-сокет
+	} else {
 		// Если адрес сервера передан
 		if(!url.empty()){
 			// Выполняем очистку воркера
@@ -1003,21 +1018,6 @@ void awh::client::WebSocket::init(const string & url, const http_t::compress_t c
 				const_cast <client::core_t *> (this->core)->unsetUnixSocket();
 			#endif
 		}
-	// Выполняем установку unix-сокет
-	} else {
-		// Выполняем очистку воркера
-		this->worker.clear();
-		// Устанавливаем метод компрессии сообщений
-		this->compress = compress;
-		// Устанавливаем URL адрес запроса (как заглушка)
-		this->worker.url = this->uri.parseUrl("ws://unixsocket");
-		/**
-		 * Если операционной системой не является Windows
-		 */
-		#if !defined(_WIN32) && !defined(_WIN64)
-			// Выполняем установку unix-сокета 
-			const_cast <client::core_t *> (this->core)->setUnixSocket(url);
-		#endif
 	}
 	// Устанавливаем метод компрессии сообщений
 	this->compress = compress;

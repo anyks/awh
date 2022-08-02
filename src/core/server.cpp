@@ -448,20 +448,20 @@ void awh::server::Core::forking(const size_t wid, const size_t index, const size
 							// jack->write.start();
 						}{
 							// Определяем тип сокета
-							switch((uint8_t) this->net.sock){
+							switch((uint8_t) this->net.sonet){
 								// Если тип сокета установлен как UDP
-								case (uint8_t) sock_t::UDPSOCK:
+								case (uint8_t) sonet_t::UDP_SOCK:
 									// Выполняем активацию сервера
 									this->accept(1, wid);
 								break;
 								// Если тип сокета установлен как TCP/IP
-								case (uint8_t) sock_t::TCPSOCK: {
+								case (uint8_t) sonet_t::TCP_SOCK: {
 									// Устанавливаем базу событий
 									wrk->io.set(this->dispatch.base);
 									// Устанавливаем событие на чтение данных подключения
 									wrk->io.set <worker_t, &worker_t::accept> (wrk);
 									// Устанавливаем сокет для чтения
-									wrk->io.set(wrk->sock.fd, ev::READ);
+									wrk->io.set(wrk->addr.fd, ev::READ);
 									// Запускаем чтение данных с клиента
 									wrk->io.start();
 								} break;
@@ -558,13 +558,13 @@ void awh::server::Core::resolver(const string & ip, worker_t * wrk) noexcept {
 		// Обновляем хост сервера
 		wrk->host = ip;
 		// Определяем тип сокета
-		switch((uint8_t) core->net.sock){
+		switch((uint8_t) core->net.sonet){
 			// Если тип сокета установлен как UDP
-			case (uint8_t) sock_t::UDPSOCK: {
+			case (uint8_t) sonet_t::UDP_SOCK: {
 				// Если разрешено выводить информационные сообщения
 				if(!core->noinfo){
 					// Если unix-сокет используется
-					if(core->net.family == af_t::AFUNIX)
+					if(core->net.family == family_t::SONIX)
 						// Выводим информацию о запущенном сервере на unix-сокете
 						core->log->print("run server [%s]", log_t::flag_t::INFO, core->net.filename.c_str());
 					// Если unix-сокет не используется, выводим сообщение о запущенном сервере за порту
@@ -582,65 +582,65 @@ void awh::server::Core::resolver(const string & ip, worker_t * wrk) noexcept {
 				return;
 			} break;
 			// Если тип сокета установлен как TCP/IP
-			case (uint8_t) sock_t::TCPSOCK: {
+			case (uint8_t) sonet_t::TCP_SOCK: {
 				// Определяем тип протокола подключения
 				switch((uint8_t) core->net.family){
 					// Если тип протокола подключения IPv4
-					case (uint8_t) af_t::AFIPV4: {
+					case (uint8_t) family_t::IPV4: {
 						// Устанавливаем тип протокола подключения IPv4
-						wrk->sock.family = AF_INET;
+						wrk->addr.family = AF_INET;
 						// Устанавливаем сеть, для выхода в интернет
-						wrk->sock.network.assign(
+						wrk->addr.network.assign(
 							core->net.v4.first.begin(),
 							core->net.v4.first.end()
 						);
 					} break;
 					// Если тип протокола подключения IPv6
-					case (uint8_t) af_t::AFIPV6: {
+					case (uint8_t) family_t::IPV6: {
 						// Устанавливаем тип протокола подключения IPv6
-						wrk->sock.family = AF_INET6;
+						wrk->addr.family = AF_INET6;
 						// Устанавливаем использование только IPv6
-						wrk->sock.v6only = core->ipV6only;
+						wrk->addr.v6only = core->ipV6only;
 						// Устанавливаем сеть, для выхода в интернет
-						wrk->sock.network.assign(
+						wrk->addr.network.assign(
 							core->net.v6.first.begin(),
 							core->net.v6.first.end()
 						);
 					} break;
 					// Если тип протокола подключения unix-сокет
-					case (uint8_t) af_t::AFUNIX: wrk->sock.family = AF_UNIX; break;
+					case (uint8_t) family_t::SONIX: wrk->addr.family = AF_UNIX; break;
 				}
 				// Определяем тип сокета
-				switch((uint8_t) core->net.sock){
+				switch((uint8_t) core->net.sonet){
 					// Если тип сокета UDP
-					case (uint8_t) sock_t::UDPSOCK: {
+					case (uint8_t) sonet_t::UDP_SOCK: {
 						// Устанавливаем тип сокета
-						wrk->sock.type = SOCK_DGRAM;
+						wrk->addr.type = SOCK_DGRAM;
 						// Устанавливаем тип протокола
-						wrk->sock.protocol = IPPROTO_UDP;
+						wrk->addr.protocol = IPPROTO_UDP;
 					} break;
 					// Если тип сокета TCP
-					case (uint8_t) sock_t::TCPSOCK: {
+					case (uint8_t) sonet_t::TCP_SOCK: {
 						// Устанавливаем тип сокета
-						wrk->sock.type = SOCK_STREAM;
+						wrk->addr.type = SOCK_STREAM;
 						// Устанавливаем тип протокола
-						wrk->sock.protocol = IPPROTO_TCP;
+						wrk->addr.protocol = IPPROTO_TCP;
 					} break;
 				}
 				// Если unix-сокет используется
-				if(core->net.family == af_t::AFUNIX)
+				if(core->net.family == family_t::SONIX)
 					// Выполняем инициализацию сокета
-					wrk->sock.init(core->net.filename, act_t::type_t::SERVER);
+					wrk->addr.init(core->net.filename, engine_t::type_t::SERVER);
 				// Если unix-сокет не используется, выполняем инициализацию сокета
-				else wrk->sock.init(wrk->host, wrk->port, act_t::type_t::SERVER);
+				else wrk->addr.init(wrk->host, wrk->port, engine_t::type_t::SERVER);
 				// Если сокет подключения получен
-				if(wrk->sock.fd > -1){
+				if(wrk->addr.fd > -1){
 					// Если повесить прослушку на порт не вышло
-					if(!wrk->sock.list()) break;
+					if(!wrk->addr.list()) break;
 					// Если разрешено выводить информационные сообщения
 					if(!core->noinfo){
 						// Если unix-сокет используется
-						if(core->net.family == af_t::AFUNIX)
+						if(core->net.family == family_t::SONIX)
 							// Выводим информацию о запущенном сервере на unix-сокете
 							core->log->print("run server [%s]", log_t::flag_t::INFO, core->net.filename.c_str());
 						// Если unix-сокет не используется, выводим сообщение о запущенном сервере за порту
@@ -655,7 +655,7 @@ void awh::server::Core::resolver(const string & ip, worker_t * wrk) noexcept {
 						// Устанавливаем событие на чтение данных подключения
 						wrk->io.set <worker_t, &worker_t::accept> (wrk);
 						// Устанавливаем сокет для чтения
-						wrk->io.set(wrk->sock.fd, ev::READ);
+						wrk->io.set(wrk->addr.fd, ev::READ);
 						// Запускаем чтение данных с клиента
 						wrk->io.start();
 					// Выполняем создание дочерних процессов
@@ -665,7 +665,7 @@ void awh::server::Core::resolver(const string & ip, worker_t * wrk) noexcept {
 				// Если сокет не создан, выводим в консоль информацию
 				} else {
 					// Если unix-сокет используется
-					if(core->net.family == af_t::AFUNIX)
+					if(core->net.family == family_t::SONIX)
 						// Выводим информацию об незапущенном сервере на unix-сокете
 						core->log->print("server cannot be started [%s]", log_t::flag_t::CRITICAL, core->net.filename.c_str());
 					// Если unix-сокет не используется, выводим сообщение об незапущенном сервере за порту
@@ -693,75 +693,75 @@ void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 			// Получаем объект подключения
 			worker_t * wrk = (worker_t *) const_cast <awh::worker_t *> (it->second);
 			// Определяем тип сокета
-			switch((uint8_t) this->net.sock){
+			switch((uint8_t) this->net.sonet){
 				// Если тип сокета установлен как UDP
-				case (uint8_t) sock_t::UDPSOCK: {
+				case (uint8_t) sonet_t::UDP_SOCK: {
 					// Создаём бъект адъютанта
 					unique_ptr <awh::worker_t::adj_t> adj(new awh::worker_t::adj_t(wrk, this->fmk, this->log));
 					// Определяем тип протокола подключения
 					switch((uint8_t) this->net.family){
 						// Если тип протокола подключения IPv4
-						case (uint8_t) af_t::AFIPV4: {
+						case (uint8_t) family_t::IPV4: {
 							// Устанавливаем тип протокола подключения IPv4
-							adj->sock.family = AF_INET;
+							adj->addr.family = AF_INET;
 							// Устанавливаем сеть, для выхода в интернет
-							adj->sock.network.assign(
+							adj->addr.network.assign(
 								this->net.v4.first.begin(),
 								this->net.v4.first.end()
 							);
 						} break;
 						// Если тип протокола подключения IPv6
-						case (uint8_t) af_t::AFIPV6: {
+						case (uint8_t) family_t::IPV6: {
 							// Устанавливаем тип протокола подключения IPv6
-							adj->sock.family = AF_INET6;
+							adj->addr.family = AF_INET6;
 							// Устанавливаем использование только IPv6
-							adj->sock.v6only = this->ipV6only;
+							adj->addr.v6only = this->ipV6only;
 							// Устанавливаем сеть, для выхода в интернет
-							adj->sock.network.assign(
+							adj->addr.network.assign(
 								this->net.v6.first.begin(),
 								this->net.v6.first.end()
 							);
 						} break;
 						// Если тип протокола подключения unix-сокет
-						case (uint8_t) af_t::AFUNIX: adj->sock.family = AF_UNIX; break;
+						case (uint8_t) family_t::SONIX: adj->addr.family = AF_UNIX; break;
 					}
 					// Определяем тип сокета
-					switch((uint8_t) this->net.sock){
+					switch((uint8_t) this->net.sonet){
 						// Если тип сокета UDP
-						case (uint8_t) sock_t::UDPSOCK: {
+						case (uint8_t) sonet_t::UDP_SOCK: {
 							// Устанавливаем тип сокета
-							adj->sock.type = SOCK_DGRAM;
+							adj->addr.type = SOCK_DGRAM;
 							// Устанавливаем тип протокола
-							adj->sock.protocol = IPPROTO_UDP;
+							adj->addr.protocol = IPPROTO_UDP;
 						} break;
 						// Если тип сокета TCP
-						case (uint8_t) sock_t::TCPSOCK: {
+						case (uint8_t) sonet_t::TCP_SOCK: {
 							// Устанавливаем тип сокета
-							adj->sock.type = SOCK_STREAM;
+							adj->addr.type = SOCK_STREAM;
 							// Устанавливаем тип протокола
-							adj->sock.protocol = IPPROTO_TCP;
+							adj->addr.protocol = IPPROTO_TCP;
 						} break;
 					}
 					// Если unix-сокет используется
-					if(this->net.family == af_t::AFUNIX)
+					if(this->net.family == family_t::SONIX)
 						// Выполняем инициализацию сокета
-						adj->sock.init(this->net.filename, act_t::type_t::SERVER);
+						adj->addr.init(this->net.filename, engine_t::type_t::SERVER);
 					// Если unix-сокет не используется, выполняем инициализацию сокета
-					else adj->sock.init(wrk->host, wrk->port, act_t::type_t::SERVER);
+					else adj->addr.init(wrk->host, wrk->port, engine_t::type_t::SERVER);
 					// Выполняем разрешение подключения
-					if(adj->sock.accept(adj->sock.fd)){
+					if(adj->addr.accept(adj->addr.fd)){
 						// Получаем адрес подключения клиента
-						adj->ip = adj->sock.ip;
+						adj->ip = adj->addr.ip;
 						// Получаем аппаратный адрес клиента
-						adj->mac = adj->sock.mac;
+						adj->mac = adj->addr.mac;
 						// Устанавливаем идентификатор адъютанта
 						adj->aid = this->fmk->unixTimestamp();
 						// Выполняем получение контекста сертификата
-						this->act.wrap(adj->act, &adj->sock, this->net.family != af_t::AFUNIX);
+						this->engine.wrap(adj->engine, &adj->addr, this->net.family != family_t::SONIX);
 						// Если подключение не обёрнуто
-						if(!adj->act.wrapped()){
+						if(!adj->engine.wrapped()){
 							// Выводим сообщение об ошибке
-							this->log->print("wrap actuator context is failed", log_t::flag_t::CRITICAL);
+							this->log->print("wrap engine context is failed", log_t::flag_t::CRITICAL);
 							// Выходим из функции
 							return;
 						}
@@ -790,7 +790,7 @@ void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 					} else this->log->print("accepting for client is broken", log_t::flag_t::CRITICAL);
 				} break;
 				// Если тип сокета установлен как TCP/IP
-				case (uint8_t) sock_t::TCPSOCK: {
+				case (uint8_t) sonet_t::TCP_SOCK: {
 					// Если количество подключившихся клиентов, больше максимально-допустимого количества клиентов
 					if(wrk->adjutants.size() >= (size_t) wrk->total){
 						// Выводим в консоль информацию
@@ -810,43 +810,43 @@ void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 					// Определяем тип протокола подключения
 					switch((uint8_t) this->net.family){
 						// Если тип протокола подключения IPv4
-						case (uint8_t) af_t::AFIPV4: adj->sock.family = AF_INET; break;
+						case (uint8_t) family_t::IPV4: adj->addr.family = AF_INET; break;
 						// Если тип протокола подключения IPv6
-						case (uint8_t) af_t::AFIPV6: adj->sock.family = AF_INET6; break;
+						case (uint8_t) family_t::IPV6: adj->addr.family = AF_INET6; break;
 						// Если тип протокола подключения unix-сокет
-						case (uint8_t) af_t::AFUNIX: adj->sock.family = AF_UNIX; break;
+						case (uint8_t) family_t::SONIX: adj->addr.family = AF_UNIX; break;
 					}
 					// Определяем тип сокета
-					switch((uint8_t) this->net.sock){
+					switch((uint8_t) this->net.sonet){
 						// Если тип сокета UDP
-						case (uint8_t) sock_t::UDPSOCK: {
+						case (uint8_t) sonet_t::UDP_SOCK: {
 							// Устанавливаем тип сокета
-							adj->sock.type = SOCK_DGRAM;
+							adj->addr.type = SOCK_DGRAM;
 							// Устанавливаем тип протокола
-							adj->sock.protocol = IPPROTO_UDP;
+							adj->addr.protocol = IPPROTO_UDP;
 						} break;
 						// Если тип сокета TCP
-						case (uint8_t) sock_t::TCPSOCK: {
+						case (uint8_t) sonet_t::TCP_SOCK: {
 							// Устанавливаем тип сокета
-							adj->sock.type = SOCK_STREAM;
+							adj->addr.type = SOCK_STREAM;
 							// Устанавливаем тип протокола
-							adj->sock.protocol = IPPROTO_TCP;
+							adj->addr.protocol = IPPROTO_TCP;
 						} break;
 					}
 					// Выполняем разрешение подключения
-					if(adj->sock.accept(fd)){
+					if(adj->addr.accept(fd)){
 						// Получаем адрес подключения клиента
-						adj->ip = adj->sock.ip;
+						adj->ip = adj->addr.ip;
 						// Получаем аппаратный адрес клиента
-						adj->mac = adj->sock.mac;
+						adj->mac = adj->addr.mac;
 						// Устанавливаем идентификатор адъютанта
 						adj->aid = this->fmk->unixTimestamp();
 						// Выполняем получение контекста сертификата
-						this->act.wrap(adj->act, &adj->sock, this->net.family != af_t::AFUNIX);
+						this->engine.wrap(adj->engine, &adj->addr, this->net.family != family_t::SONIX);
 						// Если подключение не обёрнуто
-						if(!adj->act.wrapped()){
+						if(!adj->engine.wrapped()){
 							// Выводим сообщение об ошибке
-							this->log->print("wrap actuator context is failed", log_t::flag_t::CRITICAL);
+							this->log->print("wrap engine context is failed", log_t::flag_t::CRITICAL);
 							// Выходим
 							break;
 						}
@@ -875,7 +875,7 @@ void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 								log_t::flag_t::INFO,
 								ret.first->second->ip.c_str(),
 								ret.first->second->mac.c_str(),
-								ret.first->second->sock.fd, getpid()
+								ret.first->second->addr.fd, getpid()
 							);
 						// Выполняем функцию обратного вызова
 						if(wrk->connectFn != nullptr) wrk->connectFn(ret.first->first, wrk->wid, this);
@@ -911,7 +911,7 @@ void awh::server::Core::close() noexcept {
 						// Выполняем очистку буфера событий
 						this->clean(it->first);
 						// Выполняем очистку контекста актуатора
-						adj->act.clear();
+						adj->engine.clear();
 						// Удаляем адъютанта из списка подключений
 						this->adjutants.erase(it->first);
 						// Выводим функцию обратного вызова
@@ -966,7 +966,7 @@ void awh::server::Core::remove() noexcept {
 						// Выполняем очистку буфера событий
 						this->clean(jt->first);
 						// Выполняем очистку контекста актуатора
-						adj->act.clear();
+						adj->engine.clear();
 						// Удаляем адъютанта из списка подключений
 						this->adjutants.erase(jt->first);
 						// Выводим функцию обратного вызова
@@ -996,7 +996,7 @@ void awh::server::Core::remove() noexcept {
 			// Останавливаем работу сервера
 			wrk->io.stop();
 			// Выполняем закрытие подключение сервера
-			wrk->sock.close();
+			wrk->addr.close();
 			// Выполняем удаление воркера
 			it = this->workers.erase(it);
 		}
@@ -1022,14 +1022,14 @@ void awh::server::Core::run(const size_t wid) noexcept {
 				// Определяем тип протокола подключения
 				switch((uint8_t) this->net.family){
 					// Если тип протокола подключения unix-сокет
-					case (uint8_t) af_t::AFUNIX:
+					case (uint8_t) family_t::SONIX:
 					// Если тип протокола подключения IPv4
-					case (uint8_t) af_t::AFIPV4:
+					case (uint8_t) family_t::IPV4:
 						// Обновляем хост сервера
 						wrk->host = ifnet.ip(AF_INET);
 					break;
 					// Если тип протокола подключения IPv6
-					case (uint8_t) af_t::AFIPV6:
+					case (uint8_t) family_t::IPV6:
 						// Обновляем хост сервера
 						wrk->host = ifnet.ip(AF_INET6);
 					break;
@@ -1101,7 +1101,7 @@ void awh::server::Core::remove(const size_t wid) noexcept {
 						// Выполняем очистку буфера событий
 						this->clean(jt->first);
 						// Выполняем очистку контекста актуатора
-						adj->act.clear();
+						adj->engine.clear();
 						// Выводим функцию обратного вызова
 						if(wrk->disconnectFn != nullptr)
 							// Выполняем функцию обратного вызова
@@ -1131,7 +1131,7 @@ void awh::server::Core::remove(const size_t wid) noexcept {
 			// Останавливаем работу сервера
 			wrk->io.stop();
 			// Выполняем закрытие подключение сервера
-			wrk->sock.close();
+			wrk->addr.close();
 			// Выполняем удаление воркера
 			this->workers.erase(wid);
 		}
@@ -1145,7 +1145,7 @@ void awh::server::Core::close(const size_t aid) noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->mtx.close);
 	// Если тип сокета установлен как TCP/IP, останавливаем чтение
-	if(this->net.sock == sock_t::TCPSOCK){
+	if(this->net.sonet == sonet_t::TCP_SOCK){
 		// Если блокировка адъютанта не установлена
 		if(this->locking.count(aid) < 1){
 			// Выполняем блокировку адъютанта
@@ -1163,7 +1163,7 @@ void awh::server::Core::close(const size_t aid) noexcept {
 				// Выполняем очистку буфера событий
 				this->clean(aid);
 				// Выполняем очистку контекста актуатора
-				adj->act.clear();
+				adj->engine.clear();
 				// Удаляем адъютанта из списка адъютантов
 				wrk->adjutants.erase(aid);
 				// Удаляем адъютанта из списка подключений
@@ -1206,14 +1206,14 @@ void awh::server::Core::timeout(const size_t aid) noexcept {
 		// Определяем тип протокола подключения
 		switch((uint8_t) this->net.family){
 			// Если тип протокола подключения IPv4
-			case (uint8_t) af_t::AFIPV4:
+			case (uint8_t) family_t::IPV4:
 			// Если тип протокола подключения IPv6
-			case (uint8_t) af_t::AFIPV6:
+			case (uint8_t) family_t::IPV6:
 				// Выводим сообщение в лог, о таймауте подключения
 				this->log->print("timeout host = %s, mac = %s", log_t::flag_t::WARNING, adj->ip.c_str(), adj->mac.c_str());
 			break;
 			// Если тип протокола подключения unix-сокет
-			case (uint8_t) af_t::AFUNIX:
+			case (uint8_t) family_t::SONIX:
 				// Выводим сообщение в лог, о таймауте подключения
 				this->log->print("timeout host %s", log_t::flag_t::WARNING, this->net.filename.c_str());
 			break;
@@ -1249,13 +1249,13 @@ void awh::server::Core::transfer(const method_t method, const size_t aid) noexce
 				// Создаём буфер входящих данных
 				char buffer[BUFFER_SIZE];
 				// Если тип сокета установлен как UDP, останавливаем чтение
-				if(this->net.sock == sock_t::UDPSOCK)
+				if(this->net.sonet == sonet_t::UDP_SOCK)
 					// Останавливаем чтение данных с клиента
 					adj->bev.event.read.stop();
 				// Выполняем перебор бесконечным циклом пока это разрешено
 				while(!adj->bev.locked.read){
 					// Выполняем получение сообщения от клиента
-					bytes = adj->act.read(buffer, sizeof(buffer));
+					bytes = adj->engine.read(buffer, sizeof(buffer));
 					// Если время ожидания чтения данных установлено
 					if(wrk->wait && (adj->timeouts.read > 0)){
 						// Устанавливаем время ожидания на получение данных
@@ -1269,7 +1269,7 @@ void awh::server::Core::transfer(const method_t method, const size_t aid) noexce
 					 */
 					#if defined(_WIN32) || defined(_WIN64)
 						// Запускаем чтение данных снова (Для Windows)
-						if((bytes != 0) && (this->net.sock == sock_t::TCPSOCK))
+						if((bytes != 0) && (this->net.sonet == sonet_t::TCP_SOCK))
 							// Запускаем чтение снова
 							adj->bev.event.read.start();
 					#endif
@@ -1331,7 +1331,7 @@ void awh::server::Core::transfer(const method_t method, const size_t aid) noexce
 						// Определяем размер отправляемых данных
 						actual = ((size >= adj->marker.write.max) ? adj->marker.write.max : size);
 						// Выполняем отправку сообщения клиенту
-						bytes = adj->act.write(adj->buffer.data() + offset, actual);
+						bytes = adj->engine.write(adj->buffer.data() + offset, actual);
 						// Если данные записаны удачно
 						if(bytes > 0)
 							// Добавляем записанные байты в буфер
@@ -1380,7 +1380,7 @@ void awh::server::Core::transfer(const method_t method, const size_t aid) noexce
 						wrk->writeFn(nullptr, 0, aid, wrk->wid, reinterpret_cast <awh::core_t *> (this));
 				}
 				// Если тип сокета установлен как UDP, и данных для записи больше нет, запускаем чтение
-				if(adj->buffer.empty() && (this->net.sock == sock_t::UDPSOCK))
+				if(adj->buffer.empty() && (this->net.sonet == sonet_t::UDP_SOCK))
 					// Запускаем чтение данных с клиента
 					adj->bev.event.read.start();
 			} break;
@@ -1402,17 +1402,14 @@ void awh::server::Core::setBandwidth(const size_t aid, const string & read, cons
 		 * Если операционной системой является Nix-подобная
 		 */
 		#if !defined(_WIN32) && !defined(_WIN64)
-			/*
 			// Получаем объект адъютанта
 			awh::worker_t::adj_t * adj = const_cast <awh::worker_t::adj_t *> (it->second);
 			// Устанавливаем размер буфера
-			this->socket.bufferSize(
-				adj->act.fd(),
+			adj->engine.buffer(
 				(!read.empty() ? this->fmk->sizeBuffer(read) : 0),
 				(!write.empty() ? this->fmk->sizeBuffer(write) : 0),
 				reinterpret_cast <const worker_t *> (adj->parent)->total
 			);
-			*/
 		/**
 		 * Если операционной системой является MS Windows
 		 */
@@ -1472,7 +1469,7 @@ void awh::server::Core::setCert(const string & chain, const string & key) noexce
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->mtx.system);
 	// Устанавливаем файлы сертификата
-	this->act.setCertificate(chain, key);
+	this->engine.setCertificate(chain, key);
 }
 /**
  * init Метод инициализации сервера
@@ -1502,14 +1499,14 @@ void awh::server::Core::init(const size_t wid, const u_int port, const string & 
 				// Определяем тип протокола подключения
 				switch((uint8_t) this->net.family){
 					// Если тип протокола подключения unix-сокет
-					case (uint8_t) af_t::AFUNIX:
+					case (uint8_t) family_t::SONIX:
 					// Если тип протокола подключения IPv4
-					case (uint8_t) af_t::AFIPV4:
+					case (uint8_t) family_t::IPV4:
 						// Обновляем хост сервера
 						wrk->host = ifnet.ip(AF_INET);
 					break;
 					// Если тип протокола подключения IPv6
-					case (uint8_t) af_t::AFIPV6:
+					case (uint8_t) family_t::IPV6:
 						// Обновляем хост сервера
 						wrk->host = ifnet.ip(AF_INET6);
 					break;
@@ -1527,7 +1524,7 @@ awh::server::Core::Core(const fmk_t * fmk, const log_t * log) noexcept : awh::co
 	// Устанавливаем идентификатор процесса
 	this->pid = getpid();
 	// Устанавливаем тип запускаемого ядра
-	this->type = act_t::type_t::SERVER;
+	this->type = engine_t::type_t::SERVER;
 }
 /**
  * ~Core Деструктор

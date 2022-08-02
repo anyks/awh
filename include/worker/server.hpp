@@ -18,7 +18,7 @@
 /**
  * Наши модули
  */
-#include <net/act.hpp>
+#include <net/engine.hpp>
 #include <worker/core.hpp>
 
 // Подписываемся на стандартное пространство имён
@@ -50,7 +50,7 @@ namespace awh {
 				ev::io io;
 			protected:
 				// Объект подключения
-				act_t::sock_t sock;
+				engine_t::addr_t addr;
 			protected:
 				// Порт сервера
 				u_int port;
@@ -81,7 +81,7 @@ namespace awh {
 				 * @param log объект для работы с логами
 				 */
 				Worker(const fmk_t * fmk, const log_t * log) noexcept :
-				 awh::worker_t(fmk, log), sock(fmk, log),
+				 awh::worker_t(fmk, log), addr(fmk, log),
 				 port(SERVER_PORT), host(SERVER_HOST),
 				 total(SERVER_TOTAL_CONNECT), acceptFn(nullptr) {}
 				/**

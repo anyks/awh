@@ -1,5 +1,5 @@
 /**
- * @file: act.cpp
+ * @file: engine.cpp
  * @date: 2022-07-31
  * @license: GPL-3.0
  *
@@ -13,13 +13,13 @@
  */
 
 // Подключаем заголовочный файл
-#include <net/act.hpp>
+#include <net/engine.hpp>
 
 /**
  * list Метод активации прослушивания сокета
  * @return результат выполнения операции
  */
-bool awh::Actuator::Sock::list() noexcept {
+bool awh::Engine::Address::list() noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Определяем тип сокета
@@ -44,7 +44,7 @@ bool awh::Actuator::Sock::list() noexcept {
  * close Метод закрытия подключения
  * @return результат выполнения операции
  */
-bool awh::Actuator::Sock::close() noexcept {
+bool awh::Engine::Address::close() noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Если файловый дескриптор подключён
@@ -95,7 +95,7 @@ bool awh::Actuator::Sock::close() noexcept {
  * connect Метод выполнения подключения
  * @return результат выполнения операции
  */
-bool awh::Actuator::Sock::connect() noexcept {
+bool awh::Engine::Address::connect() noexcept {
 	// Устанавливаем статус отключения
 	this->status = status_t::DISCONNECTED;
 	// Если сокет установлен TCP/IP
@@ -148,7 +148,7 @@ bool awh::Actuator::Sock::connect() noexcept {
  * connect Метод выполнения подключения сервера к клиенту для UDP
  * @param sock объект подключения сервера
  */
-bool awh::Actuator::Sock::connect(Sock & sock) noexcept {
+bool awh::Engine::Address::connect(Address & sock) noexcept {
 	// Если тип подключения UDP
 	if(this->type == SOCK_DGRAM){
 		// Размер структуры подключения
@@ -228,7 +228,7 @@ bool awh::Actuator::Sock::connect(Sock & sock) noexcept {
  * @param sock объект подключения сервера
  * @return     результат выполнения операции
  */
-bool awh::Actuator::Sock::accept(Sock & sock) noexcept {
+bool awh::Engine::Address::accept(Address & sock) noexcept {
 	// Выполняем вызов метода согласование
 	return this->accept(sock.fd);
 }
@@ -237,7 +237,7 @@ bool awh::Actuator::Sock::accept(Sock & sock) noexcept {
  * @param fd файловый дескриптор сервера
  * @return   результат выполнения операции
  */
-bool awh::Actuator::Sock::accept(const int fd) noexcept {
+bool awh::Engine::Address::accept(const int fd) noexcept {
 	// Устанавливаем статус отключения
 	this->status = status_t::DISCONNECTED;
 	// Определяем тип сокета
@@ -375,7 +375,7 @@ bool awh::Actuator::Sock::accept(const int fd) noexcept {
  * @param unixsocket адрес unxi-сокета в файловой системе
  * @param type       тип приложения (клиент или сервер)
  */
-void awh::Actuator::Sock::init(const string & unixsocket, const type_t type) noexcept {
+void awh::Engine::Address::init(const string & unixsocket, const type_t type) noexcept {
 	// Если unix-сокет передан
 	if(!unixsocket.empty() && (this->family == AF_UNIX)){		
 		/**
@@ -504,7 +504,7 @@ void awh::Actuator::Sock::init(const string & unixsocket, const type_t type) noe
  * @param type тип приложения (клиент или сервер)
  * @return     параметры подключения к серверу
  */
-void awh::Actuator::Sock::init(const string & ip, const u_int port, const type_t type) noexcept {
+void awh::Engine::Address::init(const string & ip, const u_int port, const type_t type) noexcept {
 	// Если IP адрес передан
 	if(!ip.empty() && (port > 0) && (port <= 65535) && !this->network.empty()){
 		// Если список сетевых интерфейсов установлен
@@ -683,9 +683,9 @@ void awh::Actuator::Sock::init(const string & ip, const u_int port, const type_t
 	}
 }
 /**
- * ~Sock Деструктор
+ * ~Address Деструктор
  */
-awh::Actuator::Sock::~Sock() noexcept {
+awh::Engine::Address::~Address() noexcept {
 	// Выполняем отключение
 	this->close();
 }
@@ -693,7 +693,7 @@ awh::Actuator::Sock::~Sock() noexcept {
  * error Метод вывода информации об ошибке
  * @param status статус ошибки
  */
-void awh::Actuator::Context::error(const int status) const noexcept {
+void awh::Engine::Context::error(const int status) const noexcept {
 	// Если защищённый режим работы разрешён
 	if(this->mode){
 		// Получаем данные описание ошибки
@@ -762,11 +762,11 @@ void awh::Actuator::Context::error(const int status) const noexcept {
 /**
  * clear Метод очистки контекста
  */
-void awh::Actuator::Context::clear() noexcept {
+void awh::Engine::Context::clear() noexcept {
 	// Если сокет активен
-	if(this->sock != nullptr)
+	if(this->addr != nullptr)
 		// Выполняем закрытие подключения
-		this->sock->close();
+		this->addr->close();
 	// Если объект верификации домена создан
 	if(this->verify != nullptr){
 		// Удаляем объект верификации
@@ -785,9 +785,9 @@ void awh::Actuator::Context::clear() noexcept {
 		// Зануляем контекст сервера
 		this->ssl = nullptr;
 		// Если объект подключения существует
-		if(this->sock != nullptr)
+		if(this->addr != nullptr)
 			// Зануляем контекст подключения
-			this->sock->ssl = nullptr;
+			this->addr->ssl = nullptr;
 	}
 	// Если контекст SSL сервер был поднят
 	if(this->ctx != nullptr){
@@ -808,15 +808,15 @@ void awh::Actuator::Context::clear() noexcept {
 	// Сбрасываем флаг инициализации
 	this->mode = false;
 	// Зануляем объект подключения
-	this->sock = nullptr;
+	this->addr = nullptr;
 }
 /**
  * wrapped Метод првоерки на активацию контекста
  * @return результат проверки
  */
-bool awh::Actuator::Context::wrapped() const noexcept {
+bool awh::Engine::Context::wrapped() const noexcept {
 	// Выводим результат проверки
-	return (this->sock->fd > -1);
+	return (this->addr->fd > -1);
 }
 /**
  * read Метод чтения данных из сокета
@@ -824,7 +824,7 @@ bool awh::Actuator::Context::wrapped() const noexcept {
  * @param size   размер буфера данных
  * @return       количество считанных байт
  */
-int64_t awh::Actuator::Context::read(char * buffer, const size_t size) noexcept {
+int64_t awh::Engine::Context::read(char * buffer, const size_t size) noexcept {
 	// Результат работы функции
 	int64_t result = 0;
 	// Если буфер данных передан
@@ -842,62 +842,62 @@ int64_t awh::Actuator::Context::read(char * buffer, const size_t size) noexcept 
 		// Выполняем чтение из буфера данных стандартным образом
 		} else {
 			// Если сокет установлен как TCP/IP
-			if(this->sock->type == SOCK_STREAM)
+			if(this->addr->type == SOCK_STREAM)
 				// Выполняем чтение данных из TCP/IP сокета
-				result = ::recv(this->sock->fd, buffer, size, 0);
+				result = ::recv(this->addr->fd, buffer, size, 0);
 			// Если сокет установлен UDP
-			else if(this->sock->type == SOCK_DGRAM) {
+			else if(this->addr->type == SOCK_DGRAM) {
 				// Размер объекта подключения
 				socklen_t socklen = 0;
 				// Создаём объект подключения
 				struct sockaddr * sock = nullptr;
 				// Если тип подключения IPv4 или IPv6
-				if((this->sock->family == AF_INET) || (this->sock->family == AF_INET6)){
+				if((this->addr->family == AF_INET) || (this->addr->family == AF_INET6)){
 					// Определяем тип подключения
-					switch((uint8_t) this->sock->status){
+					switch((uint8_t) this->addr->status){
 						// Если статус установлен как подключение клиентом
-						case (uint8_t) sock_t::status_t::CONNECTED: {
+						case (uint8_t) addr_t::status_t::CONNECTED: {
 							// Определяем тип подключения
-							switch(this->sock->family){
+							switch(this->addr->family){
 								// Для протокола IPv4
 								case AF_INET: {
 									// Запоминаем размер структуры
-									socklen = sizeof(this->sock->ipv4.server);
+									socklen = sizeof(this->addr->ipv4.server);
 									// Запоминаем полученную структуру
-									sock = reinterpret_cast <struct sockaddr *> (&this->sock->ipv4.server);
+									sock = reinterpret_cast <struct sockaddr *> (&this->addr->ipv4.server);
 								} break;
 								// Для протокола IPv6
 								case AF_INET6: {
 									// Запоминаем размер структуры
-									socklen = sizeof(this->sock->ipv6.server);
+									socklen = sizeof(this->addr->ipv6.server);
 									// Запоминаем полученную структуру
-									sock = reinterpret_cast <struct sockaddr *> (&this->sock->ipv6.server);
+									sock = reinterpret_cast <struct sockaddr *> (&this->addr->ipv6.server);
 								} break;
 							}
 						} break;
 						// Если статус установлен как разрешение подключения к серверу
-						case (uint8_t) sock_t::status_t::ACCEPTED: {
+						case (uint8_t) addr_t::status_t::ACCEPTED: {
 							// Определяем тип подключения
-							switch(this->sock->family){
+							switch(this->addr->family){
 								// Для протокола IPv4
 								case AF_INET: {
 									// Запоминаем размер структуры
-									socklen = sizeof(this->sock->ipv4.client);
+									socklen = sizeof(this->addr->ipv4.client);
 									// Запоминаем полученную структуру
-									sock = reinterpret_cast <struct sockaddr *> (&this->sock->ipv4.client);
+									sock = reinterpret_cast <struct sockaddr *> (&this->addr->ipv4.client);
 								} break;
 								// Для протокола IPv6
 								case AF_INET6: {
 									// Запоминаем размер структуры
-									socklen = sizeof(this->sock->ipv6.client);
+									socklen = sizeof(this->addr->ipv6.client);
 									// Запоминаем полученную структуру
-									sock = reinterpret_cast <struct sockaddr *> (&this->sock->ipv6.client);
+									sock = reinterpret_cast <struct sockaddr *> (&this->addr->ipv6.client);
 								} break;
 							}
 						} break;
 					}
 					// Выполняем чтение данных из сокета
-					result = ::recvfrom(this->sock->fd, buffer, size, 0, sock, &socklen);
+					result = ::recvfrom(this->addr->fd, buffer, size, 0, sock, &socklen);
 				// Если подключение производится по unix-сокету
 				} else {
 					/**
@@ -905,24 +905,24 @@ int64_t awh::Actuator::Context::read(char * buffer, const size_t size) noexcept 
 					 */
 					#if !defined(_WIN32) && !defined(_WIN64)
 						// Для протокола unix-сокета
-						if(this->sock->family == AF_UNIX){
+						if(this->addr->family == AF_UNIX){
 							// Устанавливаем размер счтиываемой структуры данных
-							this->sock->usock.size = sizeof(struct sockaddr_un);
+							this->addr->usock.size = sizeof(struct sockaddr_un);
 							// Определяем тип подключения
-							switch((uint8_t) this->sock->status){
+							switch((uint8_t) this->addr->status){
 								// Если статус установлен как подключение клиентом
-								case (uint8_t) sock_t::status_t::CONNECTED:
+								case (uint8_t) addr_t::status_t::CONNECTED:
 									// Запоминаем полученную структуру
-									sock = reinterpret_cast <struct sockaddr *> (&this->sock->usock.server);
+									sock = reinterpret_cast <struct sockaddr *> (&this->addr->usock.server);
 								break;
 								// Если статус установлен как разрешение подключения к серверу
-								case (uint8_t) sock_t::status_t::ACCEPTED:
+								case (uint8_t) addr_t::status_t::ACCEPTED:
 									// Запоминаем полученную структуру
-									sock = reinterpret_cast <struct sockaddr *> (&this->sock->usock.client);
+									sock = reinterpret_cast <struct sockaddr *> (&this->addr->usock.client);
 								break;
 							}
 							// Выполняем чтение данных из сокета
-							result = ::recvfrom(this->sock->fd, buffer, size, 0, sock, &this->sock->usock.size);
+							result = ::recvfrom(this->addr->fd, buffer, size, 0, sock, &this->addr->usock.size);
 						}
 					#endif
 				}
@@ -931,7 +931,7 @@ int64_t awh::Actuator::Context::read(char * buffer, const size_t size) noexcept 
 		// Если данные прочитать не удалось
 		if(result <= 0){
 			// Получаем статус сокета
-			const int status = this->sock->socket.isBlocking(this->sock->fd);
+			const int status = this->addr->socket.isBlocking(this->addr->fd);
 			// Если сокет находится в блокирующем режиме
 			if((result < 0) && (status != 0))
 				// Выполняем обработку ошибок
@@ -958,7 +958,7 @@ int64_t awh::Actuator::Context::read(char * buffer, const size_t size) noexcept 
 				// Выполняем отключение от сервера
 				result = 0;
 			// Если произошло отключение
-			if(result == 0) this->sock->status = sock_t::status_t::DISCONNECTED;
+			if(result == 0) this->addr->status = addr_t::status_t::DISCONNECTED;
 		}
 	}
 	// Выводим результат
@@ -970,7 +970,7 @@ int64_t awh::Actuator::Context::read(char * buffer, const size_t size) noexcept 
  * @param size   размер буфера данных
  * @return       количество записанных байт
  */
-int64_t awh::Actuator::Context::write(const char * buffer, const size_t size) noexcept {
+int64_t awh::Engine::Context::write(const char * buffer, const size_t size) noexcept {
 	// Результат работы функции
 	int64_t result = 0;
 	// Если буфер данных передан
@@ -986,62 +986,62 @@ int64_t awh::Actuator::Context::write(const char * buffer, const size_t size) no
 		// Выполняем отправку сообщения в сокет
 		} else {
 			// Если сокет установлен как TCP/IP
-			if(this->sock->type == SOCK_STREAM)
+			if(this->addr->type == SOCK_STREAM)
 				// Выполняем отправку данных в TCP/IP сокет
-				result = ::send(this->sock->fd, buffer, size, 0);
+				result = ::send(this->addr->fd, buffer, size, 0);
 			// Если сокет установлен UDP
-			else if(this->sock->type == SOCK_DGRAM) {				
+			else if(this->addr->type == SOCK_DGRAM) {				
 				// Размер объекта подключения
 				socklen_t socklen = 0;
 				// Создаём объект подключения
 				struct sockaddr * sock = nullptr;
 				// Если тип подключения IPv4 или IPv6
-				if((this->sock->family == AF_INET) || (this->sock->family == AF_INET6)){
+				if((this->addr->family == AF_INET) || (this->addr->family == AF_INET6)){
 					// Определяем тип подключения
-					switch((uint8_t) this->sock->status){
+					switch((uint8_t) this->addr->status){
 						// Если статус установлен как подключение клиентом
-						case (uint8_t) sock_t::status_t::CONNECTED: {
+						case (uint8_t) addr_t::status_t::CONNECTED: {
 							// Определяем тип подключения
-							switch(this->sock->family){
+							switch(this->addr->family){
 								// Для протокола IPv4
 								case AF_INET: {
 									// Запоминаем размер структуры
-									socklen = sizeof(this->sock->ipv4.server);
+									socklen = sizeof(this->addr->ipv4.server);
 									// Запоминаем полученную структуру
-									sock = reinterpret_cast <struct sockaddr *> (&this->sock->ipv4.server);
+									sock = reinterpret_cast <struct sockaddr *> (&this->addr->ipv4.server);
 								} break;
 								// Для протокола IPv6
 								case AF_INET6: {
 									// Запоминаем размер структуры
-									socklen = sizeof(this->sock->ipv6.server);
+									socklen = sizeof(this->addr->ipv6.server);
 									// Запоминаем полученную структуру
-									sock = reinterpret_cast <struct sockaddr *> (&this->sock->ipv6.server);
+									sock = reinterpret_cast <struct sockaddr *> (&this->addr->ipv6.server);
 								} break;
 							}
 						} break;
 						// Если статус установлен как разрешение подключения к серверу
-						case (uint8_t) sock_t::status_t::ACCEPTED: {
+						case (uint8_t) addr_t::status_t::ACCEPTED: {
 							// Определяем тип подключения
-							switch(this->sock->family){
+							switch(this->addr->family){
 								// Для протокола IPv4
 								case AF_INET: {
 									// Запоминаем размер структуры
-									socklen = sizeof(this->sock->ipv4.client);
+									socklen = sizeof(this->addr->ipv4.client);
 									// Запоминаем полученную структуру
-									sock = reinterpret_cast <struct sockaddr *> (&this->sock->ipv4.client);
+									sock = reinterpret_cast <struct sockaddr *> (&this->addr->ipv4.client);
 								} break;
 								// Для протокола IPv6
 								case AF_INET6: {
 									// Запоминаем размер структуры
-									socklen = sizeof(this->sock->ipv6.client);
+									socklen = sizeof(this->addr->ipv6.client);
 									// Запоминаем полученную структуру
-									sock = reinterpret_cast <struct sockaddr *> (&this->sock->ipv6.client);
+									sock = reinterpret_cast <struct sockaddr *> (&this->addr->ipv6.client);
 								} break;
 							}
 						} break;
 					}
 					// Выполняем запись данных в сокет
-					result = ::sendto(this->sock->fd, buffer, size, 0, sock, socklen);
+					result = ::sendto(this->addr->fd, buffer, size, 0, sock, socklen);
 				// Если подключение производится по unix-сокету
 				} else {
 					/**
@@ -1049,26 +1049,26 @@ int64_t awh::Actuator::Context::write(const char * buffer, const size_t size) no
 					 */
 					#if !defined(_WIN32) && !defined(_WIN64)
 						// Для протокола unix-сокета
-						if(this->sock->family == AF_UNIX){
+						if(this->addr->family == AF_UNIX){
 							// Определяем тип подключения
-							switch((uint8_t) this->sock->status){
+							switch((uint8_t) this->addr->status){
 								// Если статус установлен как подключение клиентом
-								case (uint8_t) sock_t::status_t::CONNECTED: {
+								case (uint8_t) addr_t::status_t::CONNECTED: {
 									// Запоминаем полученную структуру
-									sock = reinterpret_cast <struct sockaddr *> (&this->sock->usock.server);
+									sock = reinterpret_cast <struct sockaddr *> (&this->addr->usock.server);
 									// Получаем размер объекта сокета
-									this->sock->usock.size = (offsetof(struct sockaddr_un, sun_path) + strlen(this->sock->usock.server.sun_path));
+									this->addr->usock.size = (offsetof(struct sockaddr_un, sun_path) + strlen(this->addr->usock.server.sun_path));
 								} break;
 								// Если статус установлен как разрешение подключения к серверу
-								case (uint8_t) sock_t::status_t::ACCEPTED: {
+								case (uint8_t) addr_t::status_t::ACCEPTED: {
 									// Запоминаем полученную структуру
-									sock = reinterpret_cast <struct sockaddr *> (&this->sock->usock.client);
+									sock = reinterpret_cast <struct sockaddr *> (&this->addr->usock.client);
 									// Получаем размер объекта сокета
-									this->sock->usock.size = (offsetof(struct sockaddr_un, sun_path) + strlen(this->sock->usock.client.sun_path));
+									this->addr->usock.size = (offsetof(struct sockaddr_un, sun_path) + strlen(this->addr->usock.client.sun_path));
 								} break;
 							}
 							// Выполняем запись данных в сокет
-							result = ::sendto(this->sock->fd, buffer, size, 0, sock, this->sock->usock.size);
+							result = ::sendto(this->addr->fd, buffer, size, 0, sock, this->addr->usock.size);
 						}
 					#endif
 				}
@@ -1077,7 +1077,7 @@ int64_t awh::Actuator::Context::write(const char * buffer, const size_t size) no
 		// Если данные записать не удалось
 		if(result <= 0){
 			// Получаем статус сокета
-			const int status = this->sock->socket.isBlocking(this->sock->fd);
+			const int status = this->addr->socket.isBlocking(this->addr->fd);
 			// Если сокет находится в блокирующем режиме
 			if((result < 0) && (status != 0))
 				// Выполняем обработку ошибок
@@ -1104,7 +1104,7 @@ int64_t awh::Actuator::Context::write(const char * buffer, const size_t size) no
 				// Выполняем отключение от сервера
 				result = 0;
 			// Если произошло отключение
-			if(result == 0) this->sock->status = sock_t::status_t::DISCONNECTED;
+			if(result == 0) this->addr->status = addr_t::status_t::DISCONNECTED;
 		}
 	}
 	// Выводим результат
@@ -1114,13 +1114,13 @@ int64_t awh::Actuator::Context::write(const char * buffer, const size_t size) no
  * block Метод установки блокирующего сокета
  * @return результат работы функции
  */
-int awh::Actuator::Context::block() noexcept {
+int awh::Engine::Context::block() noexcept {
 	// Результат работы функции
 	int result = 0;
 	// Если защищённый режим работы разрешён
 	if(this->mode && this->wrapped()){
 		// Переводим сокет в блокирующий режим
-		this->sock->socket.blocking(this->sock->fd);
+		this->addr->socket.blocking(this->addr->fd);
 		// Устанавливаем блокирующий режим ввода/вывода для сокета
 		BIO_set_nbio(this->bio, 0);
 		// Флаг необходимо установить только для неблокирующего сокета
@@ -1133,13 +1133,13 @@ int awh::Actuator::Context::block() noexcept {
  * noblock Метод установки неблокирующего сокета
  * @return результат работы функции
  */
-int awh::Actuator::Context::noblock() noexcept {
+int awh::Engine::Context::noblock() noexcept {
 	// Результат работы функции
 	int result = 0;
 	// Если файловый дескриптор активен
 	if(this->mode && this->wrapped()){
 		// Переводим сокет в не блокирующий режим
-		this->sock->socket.nonBlocking(this->sock->fd);
+		this->addr->socket.nonBlocking(this->addr->fd);
 		// Устанавливаем неблокирующий режим ввода/вывода для сокета
 		BIO_set_nbio(this->bio, 1);
 		// Флаг необходимо установить только для неблокирующего сокета
@@ -1152,14 +1152,25 @@ int awh::Actuator::Context::noblock() noexcept {
  * isblock Метод проверки на то, является ли сокет заблокированным
  * @return результат работы функции
  */
-int awh::Actuator::Context::isblock() noexcept {
+int awh::Engine::Context::isblock() noexcept {
 	// Выводим результат проверки
-	return (this->wrapped() ? this->sock->socket.isBlocking(this->sock->fd) : -1);
+	return (this->wrapped() ? this->addr->socket.isBlocking(this->addr->fd) : -1);
+}
+/**
+ * buffer Метод установки размеров буфера
+ * @param read  размер буфера на чтение
+ * @param write размер буфера на запись
+ * @param total максимальное количество подключений
+ * @return      результат работы функции
+ */
+int awh::Engine::Context::buffer(const int read, const int write, const u_int total) noexcept {
+	// Если подключение выполнено
+	return (this->wrapped() ? this->addr->socket.bufferSize(this->addr->fd, read, write, total) : -1);
 }
  /**
  * ~Context Деструктор
  */
-awh::Actuator::Context::~Context() noexcept {
+awh::Engine::Context::~Context() noexcept {
 	// Выполняем очистку выделенных ранее данных
 	this->clear();
 }
@@ -1169,7 +1180,7 @@ awh::Actuator::Context::~Context() noexcept {
  * @param second второе доменное имя
  * @return       результат проверки
  */
-const bool awh::Actuator::rawEqual(const string & first, const string & second) const noexcept {
+const bool awh::Engine::rawEqual(const string & first, const string & second) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Если данные переданы
@@ -1186,7 +1197,7 @@ const bool awh::Actuator::rawEqual(const string & first, const string & second) 
  * @param max    количество начальных символов для проверки
  * @return       результат проверки
  */
-const bool awh::Actuator::rawNequal(const string & first, const string & second, const size_t max) const noexcept {
+const bool awh::Engine::rawNequal(const string & first, const string & second, const size_t max) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Если данные переданы
@@ -1209,7 +1220,7 @@ const bool awh::Actuator::rawNequal(const string & first, const string & second,
  * @param patt шаблон домена
  * @return     результат проверки
  */
-const bool awh::Actuator::hostmatch(const string & host, const string & patt) const noexcept {
+const bool awh::Engine::hostmatch(const string & host, const string & patt) const noexcept {
 	// Результат работы функции
 	bool result = true;
 	// Если данные переданы
@@ -1262,7 +1273,7 @@ const bool awh::Actuator::hostmatch(const string & host, const string & patt) co
  * @param patt шаблон домена
  * @return     результат проверки
  */
-const bool awh::Actuator::certHostcheck(const string & host, const string & patt) const noexcept {
+const bool awh::Engine::certHostcheck(const string & host, const string & patt) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Если данные переданы
@@ -1278,7 +1289,7 @@ const bool awh::Actuator::certHostcheck(const string & host, const string & patt
  * @param x509 данные сертификата
  * @return     результат проверки
  */
-int awh::Actuator::verifyCert(const int ok, X509_STORE_CTX * x509) noexcept {
+int awh::Engine::verifyCert(const int ok, X509_STORE_CTX * x509) noexcept {
 	// Выводим положительный ответ
 	return 1;
 }
@@ -1288,7 +1299,7 @@ int awh::Actuator::verifyCert(const int ok, X509_STORE_CTX * x509) noexcept {
  * @param ctx  передаваемый контекст
  * @return     результат проверки
  */
-int awh::Actuator::verifyHost(X509_STORE_CTX * x509, void * ctx) noexcept {
+int awh::Engine::verifyHost(X509_STORE_CTX * x509, void * ctx) noexcept {
 	// Если объекты переданы верно
 	if((x509 != nullptr) && (ctx != nullptr)){
 		// Буфер данных сертификатов из хранилища
@@ -1302,20 +1313,20 @@ int awh::Actuator::verifyHost(X509_STORE_CTX * x509, void * ctx) noexcept {
 		// Запрашиваем данные сертификата
 		X509 * cert = X509_STORE_CTX_get_current_cert(x509);
 		// Результат проверки домена
-		act_t::validate_t validate = act_t::validate_t::Error;
+		engine_t::validate_t validate = engine_t::validate_t::Error;
 		// Получаем объект подключения
 		const verify_t * verify = reinterpret_cast <const verify_t *> (ctx);
 		// Если проверка сертификата прошла удачно
 		if(ok){
 			// Выполняем проверку на соответствие хоста с данными хостов у сертификата
-			validate = verify->act->validateHostname(verify->host.c_str(), cert);
+			validate = verify->engine->validateHostname(verify->host.c_str(), cert);
 			// Определяем полученную ошибку
 			switch((uint8_t) validate){
-				case (uint8_t) act_t::validate_t::MatchFound:           status = "MatchFound";           break;
-				case (uint8_t) act_t::validate_t::MatchNotFound:        status = "MatchNotFound";        break;
-				case (uint8_t) act_t::validate_t::NoSANPresent:         status = "NoSANPresent";         break;
-				case (uint8_t) act_t::validate_t::MalformedCertificate: status = "MalformedCertificate"; break;
-				case (uint8_t) act_t::validate_t::Error:                status = "Error";                break;
+				case (uint8_t) engine_t::validate_t::MatchFound:           status = "MatchFound";           break;
+				case (uint8_t) engine_t::validate_t::MatchNotFound:        status = "MatchNotFound";        break;
+				case (uint8_t) engine_t::validate_t::NoSANPresent:         status = "NoSANPresent";         break;
+				case (uint8_t) engine_t::validate_t::MalformedCertificate: status = "MalformedCertificate"; break;
+				case (uint8_t) engine_t::validate_t::Error:                status = "Error";                break;
 				default:                                                status = "WTF!";
 			}
 		}
@@ -1324,18 +1335,18 @@ int awh::Actuator::verifyHost(X509_STORE_CTX * x509, void * ctx) noexcept {
 		// Очищаем выделенную память
 		X509_free(cert);
 		// Если домен найден в записях сертификата (т.е. сертификат соответствует данному домену)
-		if(validate == act_t::validate_t::MatchFound){
+		if(validate == engine_t::validate_t::MatchFound){
 			/**
 			 * Если включён режим отладки
 			 */
 			#if defined(DEBUG_MODE)
 				// Выводим в лог сообщение
-				verify->act->log->print("https server [%s] has this certificate, which looks good to me: %s", log_t::flag_t::INFO, verify->host.c_str(), buffer);
+				verify->engine->log->print("https server [%s] has this certificate, which looks good to me: %s", log_t::flag_t::INFO, verify->host.c_str(), buffer);
 			#endif
 			// Выводим сообщение, что проверка пройдена
 			return 1;
 		// Если ресурс не найден тогда выводим сообщение об ошибке
-		} else verify->act->log->print("%s for hostname '%s' [%s]", log_t::flag_t::CRITICAL, status.c_str(), verify->host.c_str(), buffer);
+		} else verify->engine->log->print("%s for hostname '%s' [%s]", log_t::flag_t::CRITICAL, status.c_str(), verify->host.c_str(), buffer);
 	}
 	// Выводим сообщение, что проверка не пройдена
 	return 0;
@@ -1347,7 +1358,7 @@ int awh::Actuator::verifyHost(X509_STORE_CTX * x509, void * ctx) noexcept {
  * @param size   количество символов
  * @return       результат проверки
  */
-int awh::Actuator::verifyCookie(SSL * ssl, u_char * cookie, u_int size) noexcept {
+int awh::Engine::verifyCookie(SSL * ssl, u_char * cookie, u_int size) noexcept {
 	// Выводим положительный ответ
 	return 1;
 }
@@ -1358,7 +1369,7 @@ int awh::Actuator::verifyCookie(SSL * ssl, u_char * cookie, u_int size) noexcept
  * @param size   количество символов
  * @return       результат проверки
  */
-int awh::Actuator::generateCookie(SSL * ssl, u_char * cookie, u_int * size) noexcept {
+int awh::Engine::generateCookie(SSL * ssl, u_char * cookie, u_int * size) noexcept {
 	// Выводим положительный ответ
 	return 1;
 }
@@ -1368,7 +1379,7 @@ int awh::Actuator::generateCookie(SSL * ssl, u_char * cookie, u_int * size) noex
  * @param cert сертификат
  * @return     результат проверки
  */
-const awh::Actuator::validate_t awh::Actuator::matchesCommonName(const string & host, const X509 * cert) const noexcept {
+const awh::Engine::validate_t awh::Engine::matchesCommonName(const string & host, const X509 * cert) const noexcept {
 	// Результат работы функции
 	validate_t result = validate_t::MatchNotFound;
 	// Если данные переданы
@@ -1401,7 +1412,7 @@ const awh::Actuator::validate_t awh::Actuator::matchesCommonName(const string & 
  * @param cert сертификат
  * @return     результат проверки
  */
-const awh::Actuator::validate_t awh::Actuator::matchSubjectName(const string & host, const X509 * cert) const noexcept {
+const awh::Engine::validate_t awh::Engine::matchSubjectName(const string & host, const X509 * cert) const noexcept {
 	// Результат работы функции
 	validate_t result = validate_t::MatchNotFound;
 	// Если данные переданы
@@ -1447,7 +1458,7 @@ const awh::Actuator::validate_t awh::Actuator::matchSubjectName(const string & h
  * @param cert сертификат
  * @return     результат проверки
  */
-const awh::Actuator::validate_t awh::Actuator::validateHostname(const string & host, const X509 * cert) const noexcept {
+const awh::Engine::validate_t awh::Engine::validateHostname(const string & host, const X509 * cert) const noexcept {
 	// Результат работы функции
 	validate_t result = validate_t::Error;
 	// Если данные переданы
@@ -1465,7 +1476,7 @@ const awh::Actuator::validate_t awh::Actuator::validateHostname(const string & h
  * @param ctx объект контекста SSL
  * @return    результат инициализации
  */
-bool awh::Actuator::initTrustedStore(SSL_CTX * ctx) const noexcept {
+bool awh::Engine::initTrustedStore(SSL_CTX * ctx) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Если контекст SSL передан
@@ -1629,11 +1640,11 @@ bool awh::Actuator::initTrustedStore(SSL_CTX * ctx) const noexcept {
  * @param source исходный контекст
  * @return       объект SSL контекста
  */
-void awh::Actuator::wrap(ctx_t & target, ctx_t & source) noexcept {
+void awh::Engine::wrap(ctx_t & target, ctx_t & source) noexcept {
 	// Если объект ещё не обёрнут в SSL контекст
-	if(!source.mode && (source.sock != nullptr))
+	if(!source.mode && (source.addr != nullptr))
 		// Выполняем обёртывание уже активного SSL контекста
-		this->wrap(target, source.sock, true);
+		this->wrap(target, source.addr, true);
 }
 /**
  * wrap Метод обертывания файлового дескриптора для клиента
@@ -1642,23 +1653,23 @@ void awh::Actuator::wrap(ctx_t & target, ctx_t & source) noexcept {
  * @param url    параметры URL адреса для инициализации
  * @return       объект SSL контекста
  */
-void awh::Actuator::wrap(ctx_t & target, ctx_t & source, const uri_t::url_t & url) noexcept {
+void awh::Engine::wrap(ctx_t & target, ctx_t & source, const uri_t::url_t & url) noexcept {
 	// Если объект ещё не обёрнут в SSL контекст
-	if(!source.mode && (source.sock != nullptr))
+	if(!source.mode && (source.addr != nullptr))
 		// Выполняем обёртывание уже активного SSL контекста
-		this->wrap(target, source.sock, url);
+		this->wrap(target, source.addr, url);
 }
 /**
  * wrap Метод обертывания файлового дескриптора для сервера
- * @param target контекст назначения
- * @param socket объект подключения
- * @return       объект SSL контекста
+ * @param target  контекст назначения
+ * @param address объект подключения
+ * @return        объект SSL контекста
  */
-void awh::Actuator::wrap(ctx_t & target, sock_t * socket) noexcept {
+void awh::Engine::wrap(ctx_t & target, addr_t * address) noexcept {
 	// Если данные переданы
-	if(socket != nullptr){
+	if(address != nullptr){
 		// Устанавливаем файловый дескриптор
-		target.sock = socket;
+		target.addr = address;
 		// Устанавливаем тип приложения
 		target.type = type_t::SERVER;
 		// Если объект фреймворка существует
@@ -1671,7 +1682,7 @@ void awh::Actuator::wrap(ctx_t & target, sock_t * socket) noexcept {
 				return;
 			}
 			// Определяем тип входящего сокета
-			switch(target.sock->type){
+			switch(target.addr->type){
 				// Если сокет установлен TCP/IP
 				case SOCK_STREAM:
 					// Получаем контекст OpenSSL
@@ -1797,18 +1808,18 @@ void awh::Actuator::wrap(ctx_t & target, sock_t * socket) noexcept {
 			// Создаем SSL объект
 			target.ssl = SSL_new(target.ctx);
 			// Устанавливаем объект SSL подключения
-			target.sock->ssl = target.ssl;
+			target.addr->ssl = target.ssl;
 			// Определяем тип входящего сокета
-			switch(target.sock->type){
+			switch(target.addr->type){
 				// Если сокет установлен TCP/IP
 				case SOCK_STREAM:
 					// Выполняем обёртывание сокета в BIO SSL
-					target.bio = BIO_new_socket(target.sock->fd, BIO_NOCLOSE);
+					target.bio = BIO_new_socket(target.addr->fd, BIO_NOCLOSE);
 				break;
 				// Если сокет установлен UDP
 				case SOCK_DGRAM: {
 					// Выполняем обёртывание сокета UDP в BIO SSL
-					target.bio = BIO_new_dgram(target.sock->fd, BIO_NOCLOSE);
+					target.bio = BIO_new_dgram(target.addr->fd, BIO_NOCLOSE);
 				} break;
 			}
 			// Если BIO SSL создано
@@ -1819,7 +1830,7 @@ void awh::Actuator::wrap(ctx_t & target, sock_t * socket) noexcept {
 				SSL_set_bio(target.ssl, target.bio, target.bio);
 				/*
 				// Если подключение производится по UDP
-				if(target.sock->type == SOCK_DGRAM)
+				if(target.addr->type == SOCK_DGRAM)
 					// Включаем обмен куками
 					SSL_set_options(target.ssl, SSL_OP_COOKIE_EXCHANGE);
 				*/
@@ -1846,16 +1857,16 @@ void awh::Actuator::wrap(ctx_t & target, sock_t * socket) noexcept {
 }
 /**
  * wrap Метод обертывания файлового дескриптора для клиента
- * @param target контекст назначения
- * @param socket объект подключения
- * @param source исходный контекст
- * @return       объект SSL контекста
+ * @param target  контекст назначения
+ * @param address объект подключения
+ * @param source  исходный контекст
+ * @return        объект SSL контекста
  */
-void awh::Actuator::wrap(ctx_t & target, sock_t * socket, const ctx_t & source) noexcept {
+void awh::Engine::wrap(ctx_t & target, addr_t * address, const ctx_t & source) noexcept {
 	// Если данные переданы
-	if(socket != nullptr){
+	if(address != nullptr){
 		// Устанавливаем файловый дескриптор
-		target.sock = socket;
+		target.addr = address;
 		// Устанавливаем тип приложения
 		target.type = type_t::SERVER;
 		// Если тип подключения является клиент
@@ -1863,22 +1874,22 @@ void awh::Actuator::wrap(ctx_t & target, sock_t * socket, const ctx_t & source) 
 			// Извлекаем BIO cthdthf
 			target.bio = SSL_get_rbio(source.ssl);
 			// Устанавливаем сокет клиента
-			BIO_set_fd(target.bio, target.sock->fd, BIO_NOCLOSE);
+			BIO_set_fd(target.bio, target.addr->fd, BIO_NOCLOSE);
 			// Определяем тип входящего сокета
-			switch(target.sock->type){
+			switch(target.addr->type){
 				// Если сокет установлен UDP
 				case SOCK_DGRAM: {
 					// Определяем тип подключения
-					switch(target.sock->family){
+					switch(target.addr->family){
 						// Для протокола IPv4
 						case AF_INET:
 							// Выполняем установку объекта подключения в BIO
-							BIO_ctrl(target.bio, BIO_CTRL_DGRAM_SET_CONNECTED, 0, &target.sock->ipv4.client);
+							BIO_ctrl(target.bio, BIO_CTRL_DGRAM_SET_CONNECTED, 0, &target.addr->ipv4.client);
 						break;
 						// Для протокола IPv6
 						case AF_INET6:
 							// Выполняем установку объекта подключения в BIO
-							BIO_ctrl(target.bio, BIO_CTRL_DGRAM_SET_CONNECTED, 0, &target.sock->ipv6.client);
+							BIO_ctrl(target.bio, BIO_CTRL_DGRAM_SET_CONNECTED, 0, &target.addr->ipv6.client);
 						break;
 					}
 				} break;
@@ -1888,16 +1899,16 @@ void awh::Actuator::wrap(ctx_t & target, sock_t * socket, const ctx_t & source) 
 }
 /**
  * wrap Метод обертывания файлового дескриптора для сервера
- * @param target контекст назначения
- * @param socket объект подключения
- * @param mode   флаг выполнения обертывания файлового дескриптора
- * @return       объект SSL контекста
+ * @param target  контекст назначения
+ * @param address объект подключения
+ * @param mode    флаг выполнения обертывания файлового дескриптора
+ * @return        объект SSL контекста
  */
-void awh::Actuator::wrap(ctx_t & target, sock_t * socket, const bool mode) noexcept {
+void awh::Engine::wrap(ctx_t & target, addr_t * address, const bool mode) noexcept {
 	// Если данные переданы
-	if(socket != nullptr){
+	if(address != nullptr){
 		// Устанавливаем файловый дескриптор
-		target.sock = socket;
+		target.addr = address;
 		// Устанавливаем тип приложения
 		target.type = type_t::SERVER;
 		// Если обёртывание выполнять не нужно, выходим
@@ -1912,7 +1923,7 @@ void awh::Actuator::wrap(ctx_t & target, sock_t * socket, const bool mode) noexc
 				return;
 			}
 			// Определяем тип входящего сокета
-			switch(target.sock->type){
+			switch(target.addr->type){
 				// Если сокет установлен TCP/IP
 				case SOCK_STREAM:
 					// Получаем контекст OpenSSL
@@ -2052,27 +2063,27 @@ void awh::Actuator::wrap(ctx_t & target, sock_t * socket, const bool mode) noexc
 				}
 			}
 			// Определяем тип входящего сокета
-			switch(target.sock->type){
+			switch(target.addr->type){
 				// Если сокет установлен TCP/IP
 				case SOCK_STREAM:
 					// Выполняем обёртывание сокета в BIO SSL
-					target.bio = BIO_new_socket(target.sock->fd, BIO_NOCLOSE);
+					target.bio = BIO_new_socket(target.addr->fd, BIO_NOCLOSE);
 				break;
 				// Если сокет установлен UDP
 				case SOCK_DGRAM: {
 					// Выполняем обёртывание сокета UDP в BIO SSL
-					target.bio = BIO_new_dgram(target.sock->fd, BIO_NOCLOSE);
+					target.bio = BIO_new_dgram(target.addr->fd, BIO_NOCLOSE);
 					// Определяем тип подключения
-					switch(target.sock->family){
+					switch(target.addr->family){
 						// Для протокола IPv4
 						case AF_INET:
 							// Выполняем установку объекта подключения в BIO
-							BIO_ctrl(target.bio, BIO_CTRL_DGRAM_SET_CONNECTED, 0, &target.sock->ipv4.client);
+							BIO_ctrl(target.bio, BIO_CTRL_DGRAM_SET_CONNECTED, 0, &target.addr->ipv4.client);
 						break;
 						// Для протокола IPv6
 						case AF_INET6:
 							// Выполняем установку объекта подключения в BIO
-							BIO_ctrl(target.bio, BIO_CTRL_DGRAM_SET_CONNECTED, 0, &target.sock->ipv6.client);
+							BIO_ctrl(target.bio, BIO_CTRL_DGRAM_SET_CONNECTED, 0, &target.addr->ipv6.client);
 						break;
 					}
 				} break;
@@ -2085,7 +2096,7 @@ void awh::Actuator::wrap(ctx_t & target, sock_t * socket, const bool mode) noexc
 				SSL_set_bio(target.ssl, target.bio, target.bio);
 				/*
 				// Если подключение производится по UDP
-				if(target.sock->type == SOCK_DGRAM)
+				if(target.addr->type == SOCK_DGRAM)
 					// Включаем обмен куками
 					SSL_set_options(target.ssl, SSL_OP_COOKIE_EXCHANGE);
 				*/
@@ -2114,16 +2125,16 @@ void awh::Actuator::wrap(ctx_t & target, sock_t * socket, const bool mode) noexc
 }
 /**
  * wrap Метод обертывания файлового дескриптора для клиента
- * @param target контекст назначения
- * @param socket объект подключения
- * @param url    параметры URL адреса для инициализации
- * @return       объект SSL контекста
+ * @param target  контекст назначения
+ * @param address объект подключения
+ * @param url     параметры URL адреса для инициализации
+ * @return        объект SSL контекста
  */
-void awh::Actuator::wrap(ctx_t & target, sock_t * socket, const uri_t::url_t & url) noexcept {
+void awh::Engine::wrap(ctx_t & target, addr_t * address, const uri_t::url_t & url) noexcept {
 	// Если данные переданы
-	if((socket != nullptr) && !url.empty()){
+	if((address != nullptr) && !url.empty()){
 		// Устанавливаем файловый дескриптор
-		target.sock = socket;
+		target.addr = address;
 		// Устанавливаем тип приложения
 		target.type = type_t::CLIENT;
 		// Если объект фреймворка существует
@@ -2136,7 +2147,7 @@ void awh::Actuator::wrap(ctx_t & target, sock_t * socket, const uri_t::url_t & u
 				return;
 			}
 			// Определяем тип входящего сокета
-			switch(target.sock->type){
+			switch(target.addr->type){
 				// Если сокет установлен TCP/IP
 				case SOCK_STREAM:
 					// Получаем контекст OpenSSL
@@ -2209,27 +2220,27 @@ void awh::Actuator::wrap(ctx_t & target, sock_t * socket, const uri_t::url_t & u
 				}
 			}
 			// Определяем тип входящего сокета
-			switch(target.sock->type){
+			switch(target.addr->type){
 				// Если сокет установлен TCP/IP
 				case SOCK_STREAM:
 					// Выполняем обёртывание сокета TCP в BIO SSL
-					target.bio = BIO_new_socket(target.sock->fd, BIO_NOCLOSE);
+					target.bio = BIO_new_socket(target.addr->fd, BIO_NOCLOSE);
 				break;
 				// Если сокет установлен UDP
 				case SOCK_DGRAM: {
 					// Выполняем обёртывание сокета UDP в BIO SSL
-					target.bio = BIO_new_dgram(target.sock->fd, BIO_NOCLOSE);
+					target.bio = BIO_new_dgram(target.addr->fd, BIO_NOCLOSE);
 					// Определяем тип подключения
-					switch(target.sock->family){
+					switch(target.addr->family){
 						// Для протокола IPv4
 						case AF_INET:
 							// Выполняем установку объекта подключения в BIO
-							BIO_ctrl(target.bio, BIO_CTRL_DGRAM_SET_CONNECTED, 0, &target.sock->ipv4.server);
+							BIO_ctrl(target.bio, BIO_CTRL_DGRAM_SET_CONNECTED, 0, &target.addr->ipv4.server);
 						break;
 						// Для протокола IPv6
 						case AF_INET6:
 							// Выполняем установку объекта подключения в BIO
-							BIO_ctrl(target.bio, BIO_CTRL_DGRAM_SET_CONNECTED, 0, &target.sock->ipv6.server);
+							BIO_ctrl(target.bio, BIO_CTRL_DGRAM_SET_CONNECTED, 0, &target.addr->ipv6.server);
 						break;
 					}
 				} break;
@@ -2242,7 +2253,7 @@ void awh::Actuator::wrap(ctx_t & target, sock_t * socket, const uri_t::url_t & u
 				SSL_set_bio(target.ssl, target.bio, target.bio);
 				/*
 				// Если подключение производится по UDP
-				if(target.sock->type == SOCK_DGRAM)
+				if(target.addr->type == SOCK_DGRAM)
 					// Включаем обмен куками
 					SSL_set_options(target.ssl, SSL_OP_COOKIE_EXCHANGE);
 				*/
@@ -2273,7 +2284,7 @@ void awh::Actuator::wrap(ctx_t & target, sock_t * socket, const uri_t::url_t & u
  * setVerify Метод разрешающий или запрещающий, выполнять проверку соответствия, сертификата домену
  * @param mode флаг состояния разрешения проверки
  */
-void awh::Actuator::setVerify(const bool mode) noexcept {
+void awh::Engine::setVerify(const bool mode) noexcept {
 	// Устанавливаем флаг проверки
 	this->verify = mode;
 }
@@ -2281,7 +2292,7 @@ void awh::Actuator::setVerify(const bool mode) noexcept {
  * setCipher Метод установки алгоритмов шифрования
  * @param cipher список алгоритмов шифрования для установки
  */
-void awh::Actuator::setCipher(const vector <string> & cipher) noexcept {
+void awh::Engine::setCipher(const vector <string> & cipher) noexcept {
 	// Если список алгоритмов шифрования передан
 	if(!cipher.empty()){
 		// Очищаем установленный список алгоритмов шифрования
@@ -2302,7 +2313,7 @@ void awh::Actuator::setCipher(const vector <string> & cipher) noexcept {
  * @param trusted адрес доверенного сертификата (CA-файла)
  * @param path    адрес каталога где находится сертификат (CA-файл)
  */
-void awh::Actuator::setTrusted(const string & trusted, const string & path) noexcept {
+void awh::Engine::setTrusted(const string & trusted, const string & path) noexcept {
 	// Если адрес CA-файла передан
 	if(!trusted.empty()){
 		// Устанавливаем адрес доверенного сертификата (CA-файла)
@@ -2318,19 +2329,19 @@ void awh::Actuator::setTrusted(const string & trusted, const string & path) noex
  * @param chain файл цепочки сертификатов
  * @param key   приватный ключ сертификата (если требуется)
  */
-void awh::Actuator::setCertificate(const string & chain, const string & key) noexcept {
+void awh::Engine::setCertificate(const string & chain, const string & key) noexcept {
 	// Устанавливаем приватный ключ сертификата
 	this->privkey = key;
 	// Устанавливаем файл полной цепочки сертификатов
 	this->fullchain = chain;
 }
 /**
- * Actuator Конструктор
+ * Engine Конструктор
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
  * @param uri объект работы с URI
  */
-awh::Actuator::Actuator(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcept : fmk(fmk), uri(uri), log(log) {
+awh::Engine::Engine(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcept : fmk(fmk), uri(uri), log(log) {
 	// Выполняем модификацию доверенного сертификата (CA-файла)
 	this->trusted = fs_t::realPath(this->trusted);
 	// Выполняем установку алгоритмов шифрования
@@ -2395,9 +2406,9 @@ awh::Actuator::Actuator(const fmk_t * fmk, const log_t * log, const uri_t * uri)
 	#endif
 }
 /**
- * ~Actuator Деструктор
+ * ~Engine Деструктор
  */
-awh::Actuator::~Actuator() noexcept {
+awh::Engine::~Engine() noexcept {
 	/**
 	 * Если версия OpenSSL старая
 	 */
