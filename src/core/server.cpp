@@ -564,7 +564,7 @@ void awh::server::Core::resolver(const string & ip, worker_t * wrk) noexcept {
 				// Если разрешено выводить информационные сообщения
 				if(!core->noinfo){
 					// Если unix-сокет используется
-					if(core->net.family == family_t::SONIX)
+					if(core->net.family == family_t::NIX)
 						// Выводим информацию о запущенном сервере на unix-сокете
 						core->log->print("run server [%s]", log_t::flag_t::INFO, core->net.filename.c_str());
 					// Если unix-сокет не используется, выводим сообщение о запущенном сервере за порту
@@ -608,7 +608,7 @@ void awh::server::Core::resolver(const string & ip, worker_t * wrk) noexcept {
 						);
 					} break;
 					// Если тип протокола подключения unix-сокет
-					case (uint8_t) family_t::SONIX: wrk->addr.family = AF_UNIX; break;
+					case (uint8_t) family_t::NIX: wrk->addr.family = AF_UNIX; break;
 				}
 				// Определяем тип сокета
 				switch((uint8_t) core->net.sonet){
@@ -628,7 +628,7 @@ void awh::server::Core::resolver(const string & ip, worker_t * wrk) noexcept {
 					} break;
 				}
 				// Если unix-сокет используется
-				if(core->net.family == family_t::SONIX)
+				if(core->net.family == family_t::NIX)
 					// Выполняем инициализацию сокета
 					wrk->addr.init(core->net.filename, engine_t::type_t::SERVER);
 				// Если unix-сокет не используется, выполняем инициализацию сокета
@@ -640,7 +640,7 @@ void awh::server::Core::resolver(const string & ip, worker_t * wrk) noexcept {
 					// Если разрешено выводить информационные сообщения
 					if(!core->noinfo){
 						// Если unix-сокет используется
-						if(core->net.family == family_t::SONIX)
+						if(core->net.family == family_t::NIX)
 							// Выводим информацию о запущенном сервере на unix-сокете
 							core->log->print("run server [%s]", log_t::flag_t::INFO, core->net.filename.c_str());
 						// Если unix-сокет не используется, выводим сообщение о запущенном сервере за порту
@@ -665,7 +665,7 @@ void awh::server::Core::resolver(const string & ip, worker_t * wrk) noexcept {
 				// Если сокет не создан, выводим в консоль информацию
 				} else {
 					// Если unix-сокет используется
-					if(core->net.family == family_t::SONIX)
+					if(core->net.family == family_t::NIX)
 						// Выводим информацию об незапущенном сервере на unix-сокете
 						core->log->print("server cannot be started [%s]", log_t::flag_t::CRITICAL, core->net.filename.c_str());
 					// Если unix-сокет не используется, выводим сообщение об незапущенном сервере за порту
@@ -723,7 +723,7 @@ void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 							);
 						} break;
 						// Если тип протокола подключения unix-сокет
-						case (uint8_t) family_t::SONIX: adj->addr.family = AF_UNIX; break;
+						case (uint8_t) family_t::NIX: adj->addr.family = AF_UNIX; break;
 					}
 					// Определяем тип сокета
 					switch((uint8_t) this->net.sonet){
@@ -743,7 +743,7 @@ void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 						} break;
 					}
 					// Если unix-сокет используется
-					if(this->net.family == family_t::SONIX)
+					if(this->net.family == family_t::NIX)
 						// Выполняем инициализацию сокета
 						adj->addr.init(this->net.filename, engine_t::type_t::SERVER);
 					// Если unix-сокет не используется, выполняем инициализацию сокета
@@ -757,9 +757,9 @@ void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 						// Устанавливаем идентификатор адъютанта
 						adj->aid = this->fmk->unixTimestamp();
 						// Выполняем получение контекста сертификата
-						this->engine.wrap(adj->engine, &adj->addr, this->net.family != family_t::SONIX);
+						this->engine.wrap(adj->engine, &adj->addr, this->net.family != family_t::NIX);
 						// Если подключение не обёрнуто
-						if(!adj->engine.wrapped()){
+						if(adj->addr.fd < 0){
 							// Выводим сообщение об ошибке
 							this->log->print("wrap engine context is failed", log_t::flag_t::CRITICAL);
 							// Выходим из функции
@@ -814,7 +814,7 @@ void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 						// Если тип протокола подключения IPv6
 						case (uint8_t) family_t::IPV6: adj->addr.family = AF_INET6; break;
 						// Если тип протокола подключения unix-сокет
-						case (uint8_t) family_t::SONIX: adj->addr.family = AF_UNIX; break;
+						case (uint8_t) family_t::NIX: adj->addr.family = AF_UNIX; break;
 					}
 					// Определяем тип сокета
 					switch((uint8_t) this->net.sonet){
@@ -842,9 +842,9 @@ void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 						// Устанавливаем идентификатор адъютанта
 						adj->aid = this->fmk->unixTimestamp();
 						// Выполняем получение контекста сертификата
-						this->engine.wrap(adj->engine, &adj->addr, this->net.family != family_t::SONIX);
+						this->engine.wrap(adj->engine, &adj->addr, this->net.family != family_t::NIX);
 						// Если подключение не обёрнуто
-						if(!adj->engine.wrapped()){
+						if(adj->addr.fd < 0){
 							// Выводим сообщение об ошибке
 							this->log->print("wrap engine context is failed", log_t::flag_t::CRITICAL);
 							// Выходим
@@ -1022,7 +1022,7 @@ void awh::server::Core::run(const size_t wid) noexcept {
 				// Определяем тип протокола подключения
 				switch((uint8_t) this->net.family){
 					// Если тип протокола подключения unix-сокет
-					case (uint8_t) family_t::SONIX:
+					case (uint8_t) family_t::NIX:
 					// Если тип протокола подключения IPv4
 					case (uint8_t) family_t::IPV4:
 						// Обновляем хост сервера
@@ -1213,7 +1213,7 @@ void awh::server::Core::timeout(const size_t aid) noexcept {
 				this->log->print("timeout host = %s, mac = %s", log_t::flag_t::WARNING, adj->ip.c_str(), adj->mac.c_str());
 			break;
 			// Если тип протокола подключения unix-сокет
-			case (uint8_t) family_t::SONIX:
+			case (uint8_t) family_t::NIX:
 				// Выводим сообщение в лог, о таймауте подключения
 				this->log->print("timeout host %s", log_t::flag_t::WARNING, this->net.filename.c_str());
 			break;
@@ -1499,7 +1499,7 @@ void awh::server::Core::init(const size_t wid, const u_int port, const string & 
 				// Определяем тип протокола подключения
 				switch((uint8_t) this->net.family){
 					// Если тип протокола подключения unix-сокет
-					case (uint8_t) family_t::SONIX:
+					case (uint8_t) family_t::NIX:
 					// Если тип протокола подключения IPv4
 					case (uint8_t) family_t::IPV4:
 						// Обновляем хост сервера

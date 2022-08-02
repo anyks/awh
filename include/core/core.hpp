@@ -83,7 +83,7 @@ namespace awh {
 			/**
 			 * Тип интернет-подключения
 			 */
-			enum class family_t : uint8_t {IPV4, IPV6, SONIX};
+			enum class family_t : uint8_t {IPV4, IPV6, NIX};
 			/**
 			 * Основные методы режимов работы
 			 */
@@ -161,7 +161,7 @@ namespace awh {
 			typedef struct Network {
 				// Тип сокета подключения (TCP_SOCK / UDP_SOCK)
 				sonet_t sonet;
-				// Тип протокола интернета (IPV4 / IPV6 / SONIX)
+				// Тип протокола интернета (IPV4 / IPV6 / NIX)
 				family_t family;
 				// Адрес файла unix-сокета
 				string filename;
@@ -540,7 +540,7 @@ namespace awh {
 			sonet_t sonet() const noexcept;
 			/**
 			 * family Метод извлечения типа протокола интернета
-			 * @return тип протокола интернета (IPV4 / IPV6 / SONIX)
+			 * @return тип протокола интернета (IPV4 / IPV6 / NIX)
 			 */
 			family_t family() const noexcept;
 		public:
@@ -581,7 +581,7 @@ namespace awh {
 			void setCipher(const vector <string> & cipher) noexcept;
 			/**
 			 * setFamily Метод установки тип протокола интернета
-			 * @param family тип протокола интернета (IPV4 / IPV6 / SONIX)
+			 * @param family тип протокола интернета (IPV4 / IPV6 / NIX)
 			 */
 			void setFamily(const family_t family = family_t::IPV4) noexcept;
 			/**
@@ -599,7 +599,7 @@ namespace awh {
 			 * setNet Метод установки параметров сети
 			 * @param ip     список IP адресов компьютера с которых разрешено выходить в интернет
 			 * @param ns     список серверов имён, через которые необходимо производить резолвинг доменов
-			 * @param family тип протокола интернета (IPV4 / IPV6 / SONIX)
+			 * @param family тип протокола интернета (IPV4 / IPV6 / NIX)
 			 * @param sonet  тип сокета подключения (TCP_SOCK / UDP_SOCK)
 			 */
 			void setNet(const vector <string> & ip = {}, const vector <string> & ns = {}, const family_t family = family_t::IPV4, const sonet_t sonet = sonet_t::TCP_SOCK) noexcept;
@@ -608,7 +608,7 @@ namespace awh {
 			 * Core Конструктор
 			 * @param fmk    объект фреймворка
 			 * @param log    объект для работы с логами
-			 * @param family тип протокола интернета (IPV4 / IPV6 / SONIX)
+			 * @param family тип протокола интернета (IPV4 / IPV6 / NIX)
 			 * @param sonet  тип сокета подключения (TCP_SOCK / UDP_SOCK)
 			 */
 			Core(const fmk_t * fmk, const log_t * log, const family_t family = family_t::IPV4, const sonet_t sonet = sonet_t::TCP_SOCK) noexcept;

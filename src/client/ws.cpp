@@ -386,7 +386,7 @@ void awh::client::WebSocket::actionRead() noexcept {
 			// Выполняем чтение фрейма WebSocket
 			const auto & data = this->frame.get(head, this->buffer.payload.data(), this->buffer.payload.size());
 			// Если буфер данных получен
-			if(!data.empty()){				
+			if(!data.empty()){
 				// Проверяем состояние флагов RSV2 и RSV3
 				if(head.rsv[1] || head.rsv[2]){
 					// Создаём сообщение
@@ -988,7 +988,7 @@ void awh::client::WebSocket::ping(const string & message) noexcept {
  */
 void awh::client::WebSocket::init(const string & url, const http_t::compress_t compress) noexcept {
 	// Если unix-сокет установлен
-	if(this->core->family() == core_t::family_t::SONIX){
+	if(this->core->family() == core_t::family_t::NIX){
 		// Выполняем очистку воркера
 		this->worker.clear();
 		// Устанавливаем метод компрессии сообщений

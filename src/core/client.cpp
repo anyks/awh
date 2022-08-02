@@ -180,7 +180,7 @@ void awh::client::Core::connect(const size_t wid) noexcept {
 						);
 					} break;
 					// Если тип протокола подключения unix-сокет
-					case (uint8_t) family_t::SONIX: adj->addr.family = AF_UNIX; break;
+					case (uint8_t) family_t::NIX: adj->addr.family = AF_UNIX; break;
 				}
 				// Определяем тип сокета
 				switch((uint8_t) this->net.sonet){
@@ -200,7 +200,7 @@ void awh::client::Core::connect(const size_t wid) noexcept {
 					} break;
 				}
 				// Если unix-сокет используется
-				if(this->net.family == family_t::SONIX)
+				if(this->net.family == family_t::NIX)
 					// Выполняем инициализацию сокета
 					adj->addr.init(this->net.filename, engine_t::type_t::CLIENT);
 				// Если unix-сокет не используется, выполняем инициализацию сокета
@@ -212,7 +212,7 @@ void awh::client::Core::connect(const size_t wid) noexcept {
 					// Выполняем получение контекста сертификата
 					this->engine.wrap(adj->engine, &adj->addr, url);
 					// Если подключение не обёрнуто
-					if(!adj->engine.wrapped()){
+					if(adj->addr.fd < 0){
 						// Запрещаем чтение данных с сервера
 						adj->bev.locked.read = true;
 						// Запрещаем запись данных на сервер
@@ -249,7 +249,7 @@ void awh::client::Core::connect(const size_t wid) noexcept {
 						// Устанавливаем статус подключения
 						wrk->status.real = worker_t::mode_t::DISCONNECT;
 						// Если unix-сокет используется
-						if(this->net.family == family_t::SONIX)
+						if(this->net.family == family_t::NIX)
 							// Выводим ионформацию об обрыве подключении по unix-сокету
 							this->log->print("connecting to socket = %s", log_t::flag_t::CRITICAL, this->net.filename.c_str());
 						// Выводим ионформацию об обрыве подключении по хосту и порту
@@ -293,7 +293,7 @@ void awh::client::Core::connect(const size_t wid) noexcept {
 						// Если разрешено выводить информационные сообщения
 						if(!this->noinfo){
 							// Если unix-сокет используется
-							if(this->net.family == family_t::SONIX)
+							if(this->net.family == family_t::NIX)
 								// Выводим ионформацию об удачном подключении к серверу по unix-сокету
 								this->log->print("good host %s, socket = %d", log_t::flag_t::INFO, this->net.filename.c_str(), ret.first->second->addr.fd);
 							// Выводим ионформацию об удачном подключении к серверу по хосту и порту
@@ -305,7 +305,7 @@ void awh::client::Core::connect(const size_t wid) noexcept {
 				// Если сокет не создан, выводим в консоль информацию
 				} else {
 					// Если unix-сокет используется
-					if(this->net.family == family_t::SONIX)
+					if(this->net.family == family_t::NIX)
 						// Выводим ионформацию об неудачном подключении к серверу по unix-сокету
 						this->log->print("client cannot be started [%s]", log_t::flag_t::CRITICAL, this->net.filename.c_str());
 					// Выводим ионформацию об неудачном подключении к серверу по хосту и порту
@@ -428,7 +428,7 @@ void awh::client::Core::reconnect(const size_t wid) noexcept {
 					*/
 				} break;
 				// Если тип протокола подключения unix-сокет
-				case (uint8_t) family_t::SONIX:
+				case (uint8_t) family_t::NIX:
 					// Выполняем подключение заново
 					this->connect(wrk->wid);
 				break;
@@ -780,7 +780,7 @@ void awh::client::Core::open(const size_t wid) noexcept {
 						*/
 					} break;
 					// Если тип протокола подключения unix-сокет
-					case (uint8_t) family_t::SONIX:
+					case (uint8_t) family_t::NIX:
 						// Выполняем подключение заново
 						this->connect(wrk->wid);
 					break;
@@ -900,7 +900,7 @@ void awh::client::Core::switchProxy(const size_t aid) noexcept {
 				// Выполняем получение контекста сертификата
 				this->engine.wrap(adj->engine, adj->engine, wrk->url);
 				// Если подключение не обёрнуто
-				if(!adj->engine.wrapped()){
+				if(adj->addr.fd < 0){
 					// Выводим сообщение об ошибке
 					this->log->print("wrap engine context is failed", log_t::flag_t::CRITICAL);
 					// Выходим из функции
@@ -953,7 +953,7 @@ void awh::client::Core::timeout(const size_t aid) noexcept {
 				this->log->print("timeout host %s [%s%d]", log_t::flag_t::WARNING, url.domain.c_str(), (!url.ip.empty() ? (url.ip + ":").c_str() : ""), url.port);
 			} break;
 			// Если тип протокола подключения unix-сокет
-			case (uint8_t) family_t::SONIX:
+			case (uint8_t) family_t::NIX:
 				// Выводим сообщение в лог, о таймауте подключения
 				this->log->print("timeout host %s", log_t::flag_t::WARNING, this->net.filename.c_str());
 			break;
@@ -1028,7 +1028,7 @@ void awh::client::Core::connected(const size_t aid) noexcept {
 					} else if(wrk->connectFn != nullptr) wrk->connectFn(it->first, wrk->wid, const_cast <awh::core_t *> (wrk->core));
 				} break;
 				// Если тип протокола подключения unix-сокет
-				case (uint8_t) family_t::SONIX: {
+				case (uint8_t) family_t::NIX: {
 					// Запускаем чтение данных
 					this->enabled(method_t::READ, it->first);
 					// Выводим в лог сообщение
@@ -1127,7 +1127,7 @@ void awh::client::Core::transfer(const method_t method, const size_t aid) noexce
 												wrk->readFn(buffer + offset, actual, aid, wrk->wid, reinterpret_cast <awh::core_t *> (this));
 										} break;
 										// Если тип протокола подключения unix-сокет
-										case (uint8_t) family_t::SONIX: {
+										case (uint8_t) family_t::NIX: {
 											// Если функция обратного вызова установлена
 											if(wrk->readFn != nullptr)
 												// Выводим функцию обратного вызова
@@ -1157,7 +1157,7 @@ void awh::client::Core::transfer(const method_t method, const size_t aid) noexce
 											wrk->readFn(buffer, bytes, aid, wrk->wid, reinterpret_cast <awh::core_t *> (this));
 									} break;
 									// Если тип протокола подключения unix-сокет
-									case (uint8_t) family_t::SONIX: {
+									case (uint8_t) family_t::NIX: {
 										// Если функция обратного вызова установлена
 										if(wrk->readFn != nullptr)
 											// Выводим функцию обратного вызова

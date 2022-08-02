@@ -1,6 +1,6 @@
 /**
  * @file: engine.cpp
- * @date: 2022-07-31
+ * @date: 2022-08-03
  * @license: GPL-3.0
  *
  * @telegram: @forman
@@ -508,7 +508,7 @@ void awh::Engine::Address::init(const string & ip, const u_int port, const type_
 	// Если IP адрес передан
 	if(!ip.empty() && (port > 0) && (port <= 65535) && !this->network.empty()){
 		// Если список сетевых интерфейсов установлен
-		if((this->family == AF_INET) || (this->family == AF_INET6)){			
+		if((this->family == AF_INET) || (this->family == AF_INET6)){
 			// Адрес сервера для биндинга
 			string host = "";
 			// Размер структуры подключения
@@ -811,14 +811,6 @@ void awh::Engine::Context::clear() noexcept {
 	this->addr = nullptr;
 }
 /**
- * wrapped Метод првоерки на активацию контекста
- * @return результат проверки
- */
-bool awh::Engine::Context::wrapped() const noexcept {
-	// Выводим результат проверки
-	return (this->addr->fd > -1);
-}
-/**
  * read Метод чтения данных из сокета
  * @param buffer буфер данных для чтения
  * @param size   размер буфера данных
@@ -828,7 +820,7 @@ int64_t awh::Engine::Context::read(char * buffer, const size_t size) noexcept {
 	// Результат работы функции
 	int64_t result = 0;
 	// Если буфер данных передан
-	if((buffer != nullptr) && (size > 0) && (this->type != type_t::NONE) && this->wrapped()){
+	if((buffer != nullptr) && (size > 0) && (this->type != type_t::NONE) && (this->addr->fd > -1)){
 		// Выполняем зануление буфера
 		memset(buffer, 0, size);
 		// Если защищённый режим работы разрешён
@@ -974,7 +966,7 @@ int64_t awh::Engine::Context::write(const char * buffer, const size_t size) noex
 	// Результат работы функции
 	int64_t result = 0;
 	// Если буфер данных передан
-	if((buffer != nullptr) && (size > 0) && (this->type != type_t::NONE) && this->wrapped()){
+	if((buffer != nullptr) && (size > 0) && (this->type != type_t::NONE) && (this->addr->fd > -1)){
 		// Если защищённый режим работы разрешён
 		if(this->mode){
 			// Выполняем очистку ошибок OpenSSL
@@ -990,7 +982,7 @@ int64_t awh::Engine::Context::write(const char * buffer, const size_t size) noex
 				// Выполняем отправку данных в TCP/IP сокет
 				result = ::send(this->addr->fd, buffer, size, 0);
 			// Если сокет установлен UDP
-			else if(this->addr->type == SOCK_DGRAM) {				
+			else if(this->addr->type == SOCK_DGRAM) {
 				// Размер объекта подключения
 				socklen_t socklen = 0;
 				// Создаём объект подключения
@@ -1118,7 +1110,7 @@ int awh::Engine::Context::block() noexcept {
 	// Результат работы функции
 	int result = 0;
 	// Если защищённый режим работы разрешён
-	if(this->mode && this->wrapped()){
+	if(this->mode && (this->addr->fd > -1)){
 		// Переводим сокет в блокирующий режим
 		this->addr->socket.blocking(this->addr->fd);
 		// Устанавливаем блокирующий режим ввода/вывода для сокета
@@ -1137,7 +1129,7 @@ int awh::Engine::Context::noblock() noexcept {
 	// Результат работы функции
 	int result = 0;
 	// Если файловый дескриптор активен
-	if(this->mode && this->wrapped()){
+	if(this->mode && (this->addr->fd > -1)){
 		// Переводим сокет в не блокирующий режим
 		this->addr->socket.nonBlocking(this->addr->fd);
 		// Устанавливаем неблокирующий режим ввода/вывода для сокета
@@ -1154,7 +1146,7 @@ int awh::Engine::Context::noblock() noexcept {
  */
 int awh::Engine::Context::isblock() noexcept {
 	// Выводим результат проверки
-	return (this->wrapped() ? this->addr->socket.isBlocking(this->addr->fd) : -1);
+	return (this->addr->fd > -1 ? this->addr->socket.isBlocking(this->addr->fd) : -1);
 }
 /**
  * buffer Метод установки размеров буфера
@@ -1165,7 +1157,7 @@ int awh::Engine::Context::isblock() noexcept {
  */
 int awh::Engine::Context::buffer(const int read, const int write, const u_int total) noexcept {
 	// Если подключение выполнено
-	return (this->wrapped() ? this->addr->socket.bufferSize(this->addr->fd, read, write, total) : -1);
+	return (this->addr->fd > -1 ? this->addr->socket.bufferSize(this->addr->fd, read, write, total) : -1);
 }
  /**
  * ~Context Деструктор
@@ -1327,7 +1319,7 @@ int awh::Engine::verifyHost(X509_STORE_CTX * x509, void * ctx) noexcept {
 				case (uint8_t) engine_t::validate_t::NoSANPresent:         status = "NoSANPresent";         break;
 				case (uint8_t) engine_t::validate_t::MalformedCertificate: status = "MalformedCertificate"; break;
 				case (uint8_t) engine_t::validate_t::Error:                status = "Error";                break;
-				default:                                                status = "WTF!";
+				default:                                                   status = "WTF!";
 			}
 		}
 		// Запрашиваем имя домена
@@ -1673,7 +1665,7 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address) noexcept {
 		// Устанавливаем тип приложения
 		target.type = type_t::SERVER;
 		// Если объект фреймворка существует
-		if(target.wrapped() && !this->privkey.empty() && !this->fullchain.empty()){
+		if((target.addr->fd > -1) && !this->privkey.empty() && !this->fullchain.empty()){
 			// Активируем рандомный генератор
 			if(RAND_poll() == 0){
 				// Выводим в лог сообщение
@@ -1870,7 +1862,7 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const ctx_t & source) n
 		// Устанавливаем тип приложения
 		target.type = type_t::SERVER;
 		// Если тип подключения является клиент
-		if(target.wrapped() && source.mode){
+		if((target.addr->fd > -1) && source.mode){
 			// Извлекаем BIO cthdthf
 			target.bio = SSL_get_rbio(source.ssl);
 			// Устанавливаем сокет клиента
@@ -1914,7 +1906,7 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const bool mode) noexce
 		// Если обёртывание выполнять не нужно, выходим
 		if(!mode) return;
 		// Если объект фреймворка существует
-		if(target.wrapped() && !this->privkey.empty() && !this->fullchain.empty()){
+		if((target.addr->fd > -1) && !this->privkey.empty() && !this->fullchain.empty()){
 			// Активируем рандомный генератор
 			if(RAND_poll() == 0){
 				// Выводим в лог сообщение
@@ -2138,7 +2130,7 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const uri_t::url_t & ur
 		// Устанавливаем тип приложения
 		target.type = type_t::CLIENT;
 		// Если объект фреймворка существует
-		if(target.wrapped() && (!url.domain.empty() || !url.ip.empty()) && ((url.schema.compare("https") == 0) || (url.schema.compare("wss") == 0))){
+		if((target.addr->fd > -1) && (!url.domain.empty() || !url.ip.empty()) && ((url.schema.compare("https") == 0) || (url.schema.compare("wss") == 0))){
 			// Активируем рандомный генератор
 			if(RAND_poll() == 0){
 				// Выводим в лог сообщение

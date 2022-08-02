@@ -1,6 +1,6 @@
 /**
  * @file: engine.hpp
- * @date: 2022-07-31
+ * @date: 2022-08-03
  * @license: GPL-3.0
  *
  * @telegram: @forman
@@ -325,12 +325,6 @@ namespace awh {
 					 * clear Метод очистки контекста
 					 */
 					void clear() noexcept;
-				public:
-					/**
-					 * wrapped Метод првоерки на активацию контекста
-					 * @return результат проверки
-					 */
-					bool wrapped() const noexcept;
 				public:
 					/**
 					 * read Метод чтения данных из сокета

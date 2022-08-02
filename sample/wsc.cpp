@@ -244,7 +244,7 @@ int main(int argc, char * argv[]) noexcept {
 	// Устанавливаем адрес сертификата
 	core.setTrusted("./ca/cert.pem");
 	// Устанавливаем тип сокета unix-сокет
-	// core.setFamily(core_t::family_t::SONIX);
+	// core.setFamily(core_t::family_t::NIX);
 	// Устанавливаем тип сокета UDP
 	// core.setSockType(core_t::sonet_t::UDP_SOCK);
 	// Устанавливаем логин и пароль пользователя

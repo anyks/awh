@@ -146,7 +146,7 @@ int main(int argc, char * argv[]){
 	// Устанавливаем название сервера
 	// core.setNameServer("anyks");
 	// Устанавливаем тип сокета unix-сокет
-	// core.setFamily(core_t::family_t::SONIX);
+	// core.setFamily(core_t::family_t::NIX);
 	// Устанавливаем тип сокета UDP
 	// core.setSockType(core_t::sonet_t::UDP_SOCK);
 	// Выполняем активацию многопоточности
