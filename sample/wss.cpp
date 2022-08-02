@@ -148,7 +148,7 @@ int main(int argc, char * argv[]){
 	// Устанавливаем тип сокета unix-сокет
 	// core.setFamily(core_t::family_t::NIX);
 	// Устанавливаем тип сокета UDP
-	// core.setSockType(core_t::sonet_t::UDP_SOCK);
+	// core.setSockType(core_t::sonet_t::UDP);
 	// Выполняем активацию многопоточности
 	// ws.multiThreads(22);
 	// Устанавливаем название сервера

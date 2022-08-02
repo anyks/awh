@@ -246,7 +246,7 @@ int main(int argc, char * argv[]) noexcept {
 	// Устанавливаем тип сокета unix-сокет
 	// core.setFamily(core_t::family_t::NIX);
 	// Устанавливаем тип сокета UDP
-	// core.setSockType(core_t::sonet_t::UDP_SOCK);
+	// core.setSockType(core_t::sonet_t::UDP);
 	// Устанавливаем логин и пароль пользователя
 	// ws.setUser("user", "password");
 	// Выполняем активацию многопоточности

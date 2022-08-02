@@ -185,14 +185,14 @@ void awh::client::Core::connect(const size_t wid) noexcept {
 				// Определяем тип сокета
 				switch((uint8_t) this->net.sonet){
 					// Если тип сокета UDP
-					case (uint8_t) sonet_t::UDP_SOCK: {
+					case (uint8_t) sonet_t::UDP: {
 						// Устанавливаем тип сокета
 						adj->addr.type = SOCK_DGRAM;
 						// Устанавливаем тип протокола
 						adj->addr.protocol = IPPROTO_UDP;
 					} break;
 					// Если тип сокета TCP
-					case (uint8_t) sonet_t::TCP_SOCK: {
+					case (uint8_t) sonet_t::TCP: {
 						// Устанавливаем тип сокета
 						adj->addr.type = SOCK_STREAM;
 						// Устанавливаем тип протокола
@@ -882,7 +882,7 @@ void awh::client::Core::close(const size_t aid) noexcept {
  */
 void awh::client::Core::switchProxy(const size_t aid) noexcept {
 	// Если подключение производится по IPv4 или IPv6 и по хосту с портом
-	if((this->net.sonet == sonet_t::TCP_SOCK) && ((this->net.family == family_t::IPV4) || (this->net.family == family_t::IPV6))){
+	if((this->net.sonet == sonet_t::TCP) && ((this->net.family == family_t::IPV4) || (this->net.family == family_t::IPV6))){
 		// Выполняем блокировку потока
 		const lock_guard <recursive_mutex> lock(this->mtx.proxy);
 		// Выполняем извлечение адъютанта
@@ -1069,7 +1069,7 @@ void awh::client::Core::transfer(const method_t method, const size_t aid) noexce
 					// Создаём буфер входящих данных
 					char buffer[BUFFER_SIZE];
 					// Если тип сокета установлен как UDP, останавливаем чтение
-					if(this->net.sonet == sonet_t::UDP_SOCK)
+					if(this->net.sonet == sonet_t::UDP)
 						// Останавливаем чтение данных с клиента
 						adj->bev.event.read.stop();
 					// Выполняем перебор бесконечным циклом пока это разрешено
@@ -1095,7 +1095,7 @@ void awh::client::Core::transfer(const method_t method, const size_t aid) noexce
 						 */
 						#if defined(_WIN32) || defined(_WIN64)
 							// Запускаем чтение данных снова (Для Windows)
-							if((bytes != 0) && (this->net.sonet == sonet_t::TCP_SOCK))
+							if((bytes != 0) && (this->net.sonet == sonet_t::TCP))
 								// Запускаем чтение снова
 								adj->bev.event.read.start();
 						#endif
@@ -1251,7 +1251,7 @@ void awh::client::Core::transfer(const method_t method, const size_t aid) noexce
 							wrk->writeFn(nullptr, 0, aid, wrk->wid, reinterpret_cast <awh::core_t *> (this));
 					}
 					// Если тип сокета установлен как UDP, и данных для записи больше нет, запускаем чтение
-					if(adj->buffer.empty() && (this->net.sonet == sonet_t::UDP_SOCK))
+					if(adj->buffer.empty() && (this->net.sonet == sonet_t::UDP))
 						// Запускаем чтение данных с клиента
 						adj->bev.event.read.start();
 				} break;

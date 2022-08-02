@@ -79,9 +79,9 @@ namespace awh {
 			/**
 			 * Тип сокета подключения
 			 */
-			enum class sonet_t : uint8_t {TCP_SOCK, UDP_SOCK};
+			enum class sonet_t : uint8_t {TCP, UDP};
 			/**
-			 * Тип интернет-подключения
+			 * Семейство протоколов интернета
 			 */
 			enum class family_t : uint8_t {IPV4, IPV6, NIX};
 			/**
@@ -159,7 +159,7 @@ namespace awh {
 			 * Network Структура текущих параметров сети
 			 */
 			typedef struct Network {
-				// Тип сокета подключения (TCP_SOCK / UDP_SOCK)
+				// Тип сокета подключения (TCP / UDP)
 				sonet_t sonet;
 				// Тип протокола интернета (IPV4 / IPV6 / NIX)
 				family_t family;
@@ -173,7 +173,7 @@ namespace awh {
 				 * Network Конструктор
 				 */
 				Network() noexcept :
-				 sonet(sonet_t::TCP_SOCK), family(family_t::IPV4), filename(""),
+				 sonet(sonet_t::TCP), family(family_t::IPV4), filename(""),
 				 v4({{"0.0.0.0"}, IPV4_RESOLVER}), v6({{"[::0]"}, IPV6_RESOLVER}) {}
 			} net_t;
 		private:
@@ -535,7 +535,7 @@ namespace awh {
 		public:
 			/**
 			 * sonet Метод извлечения типа сокета подключения
-			 * @return тип сокета подключения (TCP_SOCK / UDP_SOCK)
+			 * @return тип сокета подключения (TCP / UDP)
 			 */
 			sonet_t sonet() const noexcept;
 			/**
@@ -580,15 +580,15 @@ namespace awh {
 			 */
 			void setCipher(const vector <string> & cipher) noexcept;
 			/**
+			 * setSockType Метод установки типа сокета подключения
+			 * @param sonet тип сокета подключения (TCP / UDP)
+			 */
+			void setSockType(const sonet_t sonet = sonet_t::TCP) noexcept;
+			/**
 			 * setFamily Метод установки тип протокола интернета
 			 * @param family тип протокола интернета (IPV4 / IPV6 / NIX)
 			 */
 			void setFamily(const family_t family = family_t::IPV4) noexcept;
-			/**
-			 * setSockType Метод установки типа сокета подключения
-			 * @param sonet тип сокета подключения (TCP_SOCK / UDP_SOCK)
-			 */
-			void setSockType(const sonet_t sonet = sonet_t::TCP_SOCK) noexcept;
 			/**
 			 * setTrusted Метод установки доверенного сертификата (CA-файла)
 			 * @param trusted адрес доверенного сертификата (CA-файла)
@@ -600,18 +600,18 @@ namespace awh {
 			 * @param ip     список IP адресов компьютера с которых разрешено выходить в интернет
 			 * @param ns     список серверов имён, через которые необходимо производить резолвинг доменов
 			 * @param family тип протокола интернета (IPV4 / IPV6 / NIX)
-			 * @param sonet  тип сокета подключения (TCP_SOCK / UDP_SOCK)
+			 * @param sonet  тип сокета подключения (TCP / UDP)
 			 */
-			void setNet(const vector <string> & ip = {}, const vector <string> & ns = {}, const family_t family = family_t::IPV4, const sonet_t sonet = sonet_t::TCP_SOCK) noexcept;
+			void setNet(const vector <string> & ip = {}, const vector <string> & ns = {}, const family_t family = family_t::IPV4, const sonet_t sonet = sonet_t::TCP) noexcept;
 		public:
 			/**
 			 * Core Конструктор
 			 * @param fmk    объект фреймворка
 			 * @param log    объект для работы с логами
 			 * @param family тип протокола интернета (IPV4 / IPV6 / NIX)
-			 * @param sonet  тип сокета подключения (TCP_SOCK / UDP_SOCK)
+			 * @param sonet  тип сокета подключения (TCP / UDP)
 			 */
-			Core(const fmk_t * fmk, const log_t * log, const family_t family = family_t::IPV4, const sonet_t sonet = sonet_t::TCP_SOCK) noexcept;
+			Core(const fmk_t * fmk, const log_t * log, const family_t family = family_t::IPV4, const sonet_t sonet = sonet_t::TCP) noexcept;
 			/**
 			 * ~Core Деструктор
 			 */

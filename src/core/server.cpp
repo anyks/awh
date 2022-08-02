@@ -450,12 +450,12 @@ void awh::server::Core::forking(const size_t wid, const size_t index, const size
 							// Определяем тип сокета
 							switch((uint8_t) this->net.sonet){
 								// Если тип сокета установлен как UDP
-								case (uint8_t) sonet_t::UDP_SOCK:
+								case (uint8_t) sonet_t::UDP:
 									// Выполняем активацию сервера
 									this->accept(1, wid);
 								break;
 								// Если тип сокета установлен как TCP/IP
-								case (uint8_t) sonet_t::TCP_SOCK: {
+								case (uint8_t) sonet_t::TCP: {
 									// Устанавливаем базу событий
 									wrk->io.set(this->dispatch.base);
 									// Устанавливаем событие на чтение данных подключения
@@ -560,7 +560,7 @@ void awh::server::Core::resolver(const string & ip, worker_t * wrk) noexcept {
 		// Определяем тип сокета
 		switch((uint8_t) core->net.sonet){
 			// Если тип сокета установлен как UDP
-			case (uint8_t) sonet_t::UDP_SOCK: {
+			case (uint8_t) sonet_t::UDP: {
 				// Если разрешено выводить информационные сообщения
 				if(!core->noinfo){
 					// Если unix-сокет используется
@@ -582,7 +582,7 @@ void awh::server::Core::resolver(const string & ip, worker_t * wrk) noexcept {
 				return;
 			} break;
 			// Если тип сокета установлен как TCP/IP
-			case (uint8_t) sonet_t::TCP_SOCK: {
+			case (uint8_t) sonet_t::TCP: {
 				// Определяем тип протокола подключения
 				switch((uint8_t) core->net.family){
 					// Если тип протокола подключения IPv4
@@ -613,14 +613,14 @@ void awh::server::Core::resolver(const string & ip, worker_t * wrk) noexcept {
 				// Определяем тип сокета
 				switch((uint8_t) core->net.sonet){
 					// Если тип сокета UDP
-					case (uint8_t) sonet_t::UDP_SOCK: {
+					case (uint8_t) sonet_t::UDP: {
 						// Устанавливаем тип сокета
 						wrk->addr.type = SOCK_DGRAM;
 						// Устанавливаем тип протокола
 						wrk->addr.protocol = IPPROTO_UDP;
 					} break;
 					// Если тип сокета TCP
-					case (uint8_t) sonet_t::TCP_SOCK: {
+					case (uint8_t) sonet_t::TCP: {
 						// Устанавливаем тип сокета
 						wrk->addr.type = SOCK_STREAM;
 						// Устанавливаем тип протокола
@@ -695,7 +695,7 @@ void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 			// Определяем тип сокета
 			switch((uint8_t) this->net.sonet){
 				// Если тип сокета установлен как UDP
-				case (uint8_t) sonet_t::UDP_SOCK: {
+				case (uint8_t) sonet_t::UDP: {
 					// Создаём бъект адъютанта
 					unique_ptr <awh::worker_t::adj_t> adj(new awh::worker_t::adj_t(wrk, this->fmk, this->log));
 					// Определяем тип протокола подключения
@@ -728,14 +728,14 @@ void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 					// Определяем тип сокета
 					switch((uint8_t) this->net.sonet){
 						// Если тип сокета UDP
-						case (uint8_t) sonet_t::UDP_SOCK: {
+						case (uint8_t) sonet_t::UDP: {
 							// Устанавливаем тип сокета
 							adj->addr.type = SOCK_DGRAM;
 							// Устанавливаем тип протокола
 							adj->addr.protocol = IPPROTO_UDP;
 						} break;
 						// Если тип сокета TCP
-						case (uint8_t) sonet_t::TCP_SOCK: {
+						case (uint8_t) sonet_t::TCP: {
 							// Устанавливаем тип сокета
 							adj->addr.type = SOCK_STREAM;
 							// Устанавливаем тип протокола
@@ -790,7 +790,7 @@ void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 					} else this->log->print("accepting for client is broken", log_t::flag_t::CRITICAL);
 				} break;
 				// Если тип сокета установлен как TCP/IP
-				case (uint8_t) sonet_t::TCP_SOCK: {
+				case (uint8_t) sonet_t::TCP: {
 					// Если количество подключившихся клиентов, больше максимально-допустимого количества клиентов
 					if(wrk->adjutants.size() >= (size_t) wrk->total){
 						// Выводим в консоль информацию
@@ -819,14 +819,14 @@ void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 					// Определяем тип сокета
 					switch((uint8_t) this->net.sonet){
 						// Если тип сокета UDP
-						case (uint8_t) sonet_t::UDP_SOCK: {
+						case (uint8_t) sonet_t::UDP: {
 							// Устанавливаем тип сокета
 							adj->addr.type = SOCK_DGRAM;
 							// Устанавливаем тип протокола
 							adj->addr.protocol = IPPROTO_UDP;
 						} break;
 						// Если тип сокета TCP
-						case (uint8_t) sonet_t::TCP_SOCK: {
+						case (uint8_t) sonet_t::TCP: {
 							// Устанавливаем тип сокета
 							adj->addr.type = SOCK_STREAM;
 							// Устанавливаем тип протокола
@@ -1145,7 +1145,7 @@ void awh::server::Core::close(const size_t aid) noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->mtx.close);
 	// Если тип сокета установлен как TCP/IP, останавливаем чтение
-	if(this->net.sonet == sonet_t::TCP_SOCK){
+	if(this->net.sonet == sonet_t::TCP){
 		// Если блокировка адъютанта не установлена
 		if(this->locking.count(aid) < 1){
 			// Выполняем блокировку адъютанта
@@ -1249,7 +1249,7 @@ void awh::server::Core::transfer(const method_t method, const size_t aid) noexce
 				// Создаём буфер входящих данных
 				char buffer[BUFFER_SIZE];
 				// Если тип сокета установлен как UDP, останавливаем чтение
-				if(this->net.sonet == sonet_t::UDP_SOCK)
+				if(this->net.sonet == sonet_t::UDP)
 					// Останавливаем чтение данных с клиента
 					adj->bev.event.read.stop();
 				// Выполняем перебор бесконечным циклом пока это разрешено
@@ -1269,7 +1269,7 @@ void awh::server::Core::transfer(const method_t method, const size_t aid) noexce
 					 */
 					#if defined(_WIN32) || defined(_WIN64)
 						// Запускаем чтение данных снова (Для Windows)
-						if((bytes != 0) && (this->net.sonet == sonet_t::TCP_SOCK))
+						if((bytes != 0) && (this->net.sonet == sonet_t::TCP))
 							// Запускаем чтение снова
 							adj->bev.event.read.start();
 					#endif
@@ -1380,7 +1380,7 @@ void awh::server::Core::transfer(const method_t method, const size_t aid) noexce
 						wrk->writeFn(nullptr, 0, aid, wrk->wid, reinterpret_cast <awh::core_t *> (this));
 				}
 				// Если тип сокета установлен как UDP, и данных для записи больше нет, запускаем чтение
-				if(adj->buffer.empty() && (this->net.sonet == sonet_t::UDP_SOCK))
+				if(adj->buffer.empty() && (this->net.sonet == sonet_t::UDP))
 					// Запускаем чтение данных с клиента
 					adj->bev.event.read.start();
 			} break;

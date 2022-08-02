@@ -976,7 +976,7 @@ void awh::Core::write(const char * buffer, const size_t size, const size_t aid) 
 					// Определяем тип сокета
 					switch((uint8_t) this->net.sonet){
 						// Если тип сокета UDP
-						case (uint8_t) sonet_t::UDP_SOCK: {
+						case (uint8_t) sonet_t::UDP: {
 							// Если сокет подключения активен
 							if(adj->addr.fd > -1){
 								// Разрешаем запись данных в сокет
@@ -986,7 +986,7 @@ void awh::Core::write(const char * buffer, const size_t size, const size_t aid) 
 							}
 						} break;
 						// Если тип сокета TCP
-						case (uint8_t) sonet_t::TCP_SOCK:
+						case (uint8_t) sonet_t::TCP:
 							// Разрешаем выполнение записи в сокет
 							this->enabled(method_t::WRITE, it->first);
 						break;
@@ -1315,7 +1315,7 @@ bool awh::Core::setUnixSocket(const string & socket) noexcept {
 }
 /**
  * sonet Метод извлечения типа сокета подключения
- * @return тип сокета подключения (TCP_SOCK / UDP_SOCK)
+ * @return тип сокета подключения (TCP / UDP)
  */
 awh::Core::sonet_t awh::Core::sonet() const noexcept {
 	// Выполняем вывод тип сокета подключения
@@ -1402,6 +1402,16 @@ void awh::Core::setCipher(const vector <string> & cipher) noexcept {
 	this->engine.setCipher(cipher);
 }
 /**
+ * setSockType Метод установки типа сокета подключения
+ * @param sonet тип сокета подключения (TCP / UDP)
+ */
+void awh::Core::setSockType(const sonet_t sonet) noexcept {
+	// Выполняем блокировку потока
+	const lock_guard <recursive_mutex> lock(this->mtx.main);
+	// Устанавливаем тип сокета
+	this->net.sonet = sonet;
+}
+/**
  * setFamily Метод установки тип протокола интернета
  * @param family тип протокола интернета (IPV4 / IPV6 / NIX)
  */
@@ -1420,16 +1430,6 @@ void awh::Core::setFamily(const family_t family) noexcept {
 		this->unsetUnixSocket();
 }
 /**
- * setSockType Метод установки типа сокета подключения
- * @param sonet тип сокета подключения (TCP_SOCK / UDP_SOCK)
- */
-void awh::Core::setSockType(const sonet_t sonet) noexcept {
-	// Выполняем блокировку потока
-	const lock_guard <recursive_mutex> lock(this->mtx.main);
-	// Устанавливаем тип сокета
-	this->net.sonet = sonet;
-}
-/**
  * setTrusted Метод установки доверенного сертификата (CA-файла)
  * @param trusted адрес доверенного сертификата (CA-файла)
  * @param path    адрес каталога где находится сертификат (CA-файл)
@@ -1445,7 +1445,7 @@ void awh::Core::setTrusted(const string & trusted, const string & path) noexcept
  * @param ip     список IP адресов компьютера с которых разрешено выходить в интернет
  * @param ns     список серверов имён, через которые необходимо производить резолвинг доменов
  * @param family тип протокола интернета (IPV4 / IPV6 / NIX)
- * @param sonet  тип сокета подключения (TCP_SOCK / UDP_SOCK)
+ * @param sonet  тип сокета подключения (TCP / UDP)
  */
 void awh::Core::setNet(const vector <string> & ip, const vector <string> & ns, const family_t family, const sonet_t sonet) noexcept {
 	// Выполняем блокировку потока
@@ -1489,7 +1489,7 @@ void awh::Core::setNet(const vector <string> & ip, const vector <string> & ns, c
  * @param fmk    объект фреймворка
  * @param log    объект для работы с логами
  * @param family тип протокола интернета (IPV4 / IPV6 / NIX)
- * @param sonet  тип сокета подключения (TCP_SOCK / UDP_SOCK)
+ * @param sonet  тип сокета подключения (TCP / UDP)
  */
 awh::Core::Core(const fmk_t * fmk, const log_t * log, const family_t family, const sonet_t sonet) noexcept : nwk(fmk), uri(fmk, &nwk), engine(fmk, log, &uri), /* dns4(fmk, log, &nwk), dns6(fmk, log, &nwk),*/ dispatch(this), fmk(fmk), log(log) {
 	// Устанавливаем тип сокета
