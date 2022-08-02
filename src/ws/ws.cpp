@@ -119,14 +119,34 @@ bool awh::WS::isHandshake() noexcept {
 	if(!result){
 		// Выполняем проверку на удачное завершение запроса
 		result = (this->stath == stath_t::GOOD);
-		// Если результат удачный, проверяем версию протокола
-		if(result) result = this->checkVer();
+		// Если результат удачный
+		if(result)
+			// Выполняем проверку версии протокола
+			result = this->checkVer();
+		// Если подключение не выполнено
+		else return result;
 		// Если результат удачный, проверяем произошло ли переключение протокола
 		if(result) result = this->checkUpgrade();
+		// Если версия протокола не соответствует
+		else {
+			// Выводим сообщение об ошибке
+			this->log->print("protocol version not supported", log_t::flag_t::CRITICAL);
+			// Выходим из функции
+			return result;
+		}
 		// Если результат удачный, проверяем ключ клиента
 		if(result) result = this->checkKey();
+		// Если протокол не был переключён
+		else {
+			// Выводим сообщение об ошибке
+			this->log->print("protocol not upgraded", log_t::flag_t::CRITICAL);
+			// Выходим из функции
+			return result;
+		}
 		// Если рукопожатие выполнено, устанавливаем стейт рукопожатия
 		if(result) this->state = state_t::HANDSHAKE;
+		// Если ключ клиента и сервера не согласованы, выводим сообщение об ошибке
+		else this->log->print("client and server keys are inconsistent", log_t::flag_t::CRITICAL);
 	}
 	// Выводим результат
 	return result;

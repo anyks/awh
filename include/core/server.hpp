@@ -217,11 +217,6 @@ namespace awh {
 				void resolver(const string & ip, worker_t * wrk) noexcept;
 			private:
 				/**
-				 * close Метод закрытия сокета
-				 * @param fd файловый дескриптор (сокет) для закрытия
-				 */
-				void close(const int fd) noexcept;
-				/**
 				 * accept Функция подключения к серверу
 				 * @param fd  файловый дескриптор (сокет) подключившегося клиента
 				 * @param wid идентификатор воркера

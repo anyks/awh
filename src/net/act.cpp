@@ -359,9 +359,9 @@ bool awh::Actuator::Sock::accept(const int fd) noexcept {
 			// Для протокола unix-сокета
 			case AF_UNIX: {
 				// Устанавливаем адрес сервера
-				this->ip = this->ifnet.ip(this->family);
+				this->ip = this->ifnet.ip(AF_INET);
 				// Получаем данные мак адреса клиента
-				this->mac = this->ifnet.mac(this->ip, this->family);
+				this->mac = this->ifnet.mac(this->ip, AF_INET);
 			} break;
 		#endif
 	}
