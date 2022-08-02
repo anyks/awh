@@ -910,7 +910,7 @@ void awh::server::Core::close() noexcept {
 						awh::worker_t::adj_t * adj = const_cast <awh::worker_t::adj_t *> (it->second.get());
 						// Выполняем очистку буфера событий
 						this->clean(it->first);
-						// Выполняем очистку контекста актуатора
+						// Выполняем очистку контекста двигателя
 						adj->engine.clear();
 						// Удаляем адъютанта из списка подключений
 						this->adjutants.erase(it->first);
@@ -965,7 +965,7 @@ void awh::server::Core::remove() noexcept {
 						awh::worker_t::adj_t * adj = const_cast <awh::worker_t::adj_t *> (jt->second.get());
 						// Выполняем очистку буфера событий
 						this->clean(jt->first);
-						// Выполняем очистку контекста актуатора
+						// Выполняем очистку контекста двигателя
 						adj->engine.clear();
 						// Удаляем адъютанта из списка подключений
 						this->adjutants.erase(jt->first);
@@ -1100,7 +1100,7 @@ void awh::server::Core::remove(const size_t wid) noexcept {
 						awh::worker_t::adj_t * adj = const_cast <awh::worker_t::adj_t *> (jt->second.get());
 						// Выполняем очистку буфера событий
 						this->clean(jt->first);
-						// Выполняем очистку контекста актуатора
+						// Выполняем очистку контекста двигателя
 						adj->engine.clear();
 						// Выводим функцию обратного вызова
 						if(wrk->disconnectFn != nullptr)
@@ -1162,7 +1162,7 @@ void awh::server::Core::close(const size_t aid) noexcept {
 				const core_t * core = reinterpret_cast <const core_t *> (wrk->core);
 				// Выполняем очистку буфера событий
 				this->clean(aid);
-				// Выполняем очистку контекста актуатора
+				// Выполняем очистку контекста двигателя
 				adj->engine.clear();
 				// Удаляем адъютанта из списка адъютантов
 				wrk->adjutants.erase(aid);

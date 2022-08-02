@@ -140,7 +140,7 @@ void awh::client::Core::connect(const size_t wid) noexcept {
 							awh::worker_t::adj_t * adj = const_cast <awh::worker_t::adj_t *> (it->second.get());
 							// Выполняем очистку буфера событий
 							this->clean(it->first);
-							// Выполняем очистку контекста актуатора
+							// Выполняем очистку контекста двигателя
 							adj->engine.clear();
 							// Удаляем адъютанта из списка подключений
 							this->adjutants.erase(it->first);
@@ -619,7 +619,7 @@ void awh::client::Core::close() noexcept {
 						awh::worker_t::adj_t * adj = const_cast <awh::worker_t::adj_t *> (it->second.get());
 						// Выполняем очистку буфера событий
 						this->clean(it->first);
-						// Выполняем очистку контекста актуатора
+						// Выполняем очистку контекста двигателя
 						adj->engine.clear();
 						// Удаляем адъютанта из списка подключений
 						this->adjutants.erase(it->first);
@@ -680,7 +680,7 @@ void awh::client::Core::remove() noexcept {
 						awh::worker_t::adj_t * adj = const_cast <awh::worker_t::adj_t *> (jt->second.get());
 						// Выполняем очистку буфера событий
 						this->clean(jt->first);
-						// Выполняем очистку контекста актуатора
+						// Выполняем очистку контекста двигателя
 						adj->engine.clear();
 						// Удаляем адъютанта из списка подключений
 						this->adjutants.erase(jt->first);
@@ -849,7 +849,7 @@ void awh::client::Core::close(const size_t aid) noexcept {
 			if((wrk->proxy.type != proxy_t::type_t::NONE) && !wrk->isProxy())
 				// Выполняем переключение обратно на прокси-сервер
 				wrk->switchConnect();
-			// Выполняем очистку контекста актуатора
+			// Выполняем очистку контекста двигателя
 			adj->engine.clear();
 			// Удаляем адъютанта из списка адъютантов
 			wrk->adjutants.erase(aid);
