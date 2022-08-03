@@ -1226,10 +1226,6 @@ int awh::Engine::verifyHost(X509_STORE_CTX * x509, void * ctx) noexcept {
  * @return       результат проверки
  */
 int awh::Engine::generateCookie(SSL * ssl, u_char * cookie, u_int * size) noexcept {
-	// Создаём объект фреймворка
-	fmk_t fmk;
-	// Создаём объект для работы с логами
-	log_t log(&fmk);
 	// Смещение в буфере и размер сгенерированных печенок
 	u_int offset = 0, length = 0;
 	// Буфер под генерацию печенок
@@ -1244,8 +1240,10 @@ int awh::Engine::generateCookie(SSL * ssl, u_char * cookie, u_int * size) noexce
 	if(!cookieInit){
 		// Выполняем произвольно генерацию байт в буфере печенок
 		if(!(cookieInit = RAND_bytes(cookies, sizeof(cookies)))){
+			// Создаём объект фреймворка
+			fmk_t fmk;
 			// Выводим в лог сообщение
-			log.print("setting random cookie secret", log_t::flag_t::CRITICAL);
+			log_t(&fmk).print("setting random cookie secret", log_t::flag_t::CRITICAL);
 			// Выходим и сообщаем, что генерация куков не удалась
 			return 0;
 		}
@@ -1273,8 +1271,10 @@ int awh::Engine::generateCookie(SSL * ssl, u_char * cookie, u_int * size) noexce
 	u_char * buffer = (u_char *) OPENSSL_malloc(offset);
 	// Если память для буфера данных не выделена
 	if(buffer == nullptr){
+		// Создаём объект фреймворка
+		fmk_t fmk;
 		// Выводим в лог сообщение
-		log.print("out of memory cookie", log_t::flag_t::CRITICAL);
+		log_t(&fmk).print("out of memory cookie", log_t::flag_t::CRITICAL);
 		// Выходим и сообщаем, что генерация куков не удалась
 		return 0;
 	}
@@ -1316,10 +1316,6 @@ int awh::Engine::generateCookie(SSL * ssl, u_char * cookie, u_int * size) noexce
  * @return       результат проверки
  */
 int awh::Engine::verifyCookie(SSL * ssl, const u_char * cookie, u_int size) noexcept {
-	// Создаём объект фреймворка
-	fmk_t fmk;
-	// Создаём объект для работы с логами
-	log_t log(&fmk);
 	// Смещение в буфере и размер сгенерированных печенок
 	u_int offset = 0, length = 0;
 	// Буфер под генерацию печенок
@@ -1355,8 +1351,10 @@ int awh::Engine::verifyCookie(SSL * ssl, const u_char * cookie, u_int size) noex
 	u_char * buffer = (u_char *) OPENSSL_malloc(offset);
 	// Если память для буфера данных не выделена
 	if(buffer == nullptr){
+		// Создаём объект фреймворка
+		fmk_t fmk;
 		// Выводим в лог сообщение
-		log.print("out of memory cookie", log_t::flag_t::CRITICAL);
+		log_t(&fmk).print("out of memory cookie", log_t::flag_t::CRITICAL);
 		// Выходим и сообщаем, что генерация куков не удалась
 		return 0;
 	}
@@ -1389,6 +1387,34 @@ int awh::Engine::verifyCookie(SSL * ssl, const u_char * cookie, u_int size) noex
 		return 1;
 	// Выходим из функции с неудачей
 	return 0;
+}
+/**
+ * generateCookie Функция обратного вызова для генерации куков
+ * @param ssl    объект SSL
+ * @param cookie данные куков
+ * @param size   количество символов
+ * @return       результат проверки
+ */
+int awh::Engine::generateStatelessCookie(SSL * ssl, u_char * cookie, size_t * size) noexcept {
+	// Размер буфера с печенками
+	u_int length = 0;
+	// Выполняем генерацию печенок
+	const int result = generateCookie(ssl, cookie, &length);
+	// Получаем размер буфера с печенками
+	(* size) = length;
+	// Выводим результат работы функции
+	return result;
+}
+/**
+ * verifyCookie Функция обратного вызова для проверки куков
+ * @param ssl    объект SSL
+ * @param cookie данные куков
+ * @param size   количество символов
+ * @return       результат проверки
+ */
+int awh::Engine::verifyStatelessCookie(SSL * ssl, const u_char * cookie, size_t size) noexcept {
+	// Выполняем проверку печенок
+	return verifyCookie(ssl, cookie, (u_int) size);
 }
 /**
  * matchesCommonName Метод проверки доменного имени по данным из сертификата
@@ -1680,17 +1706,18 @@ void awh::Engine::wrap(ctx_t & target, ctx_t & source, const uri_t::url_t & url)
  * wrap Метод обертывания файлового дескриптора для сервера
  * @param target  контекст назначения
  * @param address объект подключения
+ * @param type    тип активного приложения
  * @return        объект SSL контекста
  */
-void awh::Engine::wrap(ctx_t & target, addr_t * address) noexcept {
+void awh::Engine::wrap(ctx_t & target, addr_t * address, const type_t type) noexcept {
 	// Если данные переданы
 	if(address != nullptr){
+		// Устанавливаем тип приложения
+		target.type = type;
 		// Устанавливаем файловый дескриптор
 		target.addr = address;
-		// Устанавливаем тип приложения
-		target.type = type_t::SERVER;
 		// Если объект фреймворка существует
-		if((target.addr->fd > -1) && !this->privkey.empty() && !this->fullchain.empty()){
+		if((target.addr->fd > -1) && ((!this->privkey.empty() && !this->fullchain.empty()) || (type == type_t::CLIENT))){
 			// Активируем рандомный генератор
 			if(RAND_poll() == 0){
 				// Выводим в лог сообщение
@@ -1698,18 +1725,40 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address) noexcept {
 				// Выходим
 				return;
 			}
-			// Определяем тип входящего сокета
-			switch(target.addr->type){
-				// Если сокет установлен TCP/IP
-				case SOCK_STREAM:
-					// Получаем контекст OpenSSL
-					target.ctx = SSL_CTX_new(TLSv1_2_server_method());
-				break;
-				// Если сокет установлен UDP
-				case SOCK_DGRAM:
-					// Получаем контекст OpenSSL
-					target.ctx = SSL_CTX_new(DTLSv1_server_method());
-				break;
+			// Определяем тип активного приложения
+			switch((uint8_t) type){
+				// Если приложение является клиентом
+				case (uint8_t) type_t::CLIENT: {
+					// Определяем тип входящего сокета
+					switch(target.addr->type){
+						// Если сокет установлен TCP/IP
+						case SOCK_STREAM:
+							// Получаем контекст OpenSSL
+							target.ctx = SSL_CTX_new(TLSv1_2_client_method());
+						break;
+						// Если сокет установлен UDP
+						case SOCK_DGRAM:
+							// Получаем контекст OpenSSL
+							target.ctx = SSL_CTX_new(DTLSv1_client_method());
+						break;
+					}
+				} break;
+				// Если приложение является сервером
+				case (uint8_t) type_t::SERVER: {
+					// Определяем тип входящего сокета
+					switch(target.addr->type){
+						// Если сокет установлен TCP/IP
+						case SOCK_STREAM:
+							// Получаем контекст OpenSSL
+							target.ctx = SSL_CTX_new(TLSv1_2_server_method());
+						break;
+						// Если сокет установлен UDP
+						case SOCK_DGRAM:
+							// Получаем контекст OpenSSL
+							target.ctx = SSL_CTX_new(DTLSv1_server_method());
+						break;
+					}
+				} break;
 			}
 			// Если контекст не создан
 			if(target.ctx == nullptr){
@@ -1725,9 +1774,9 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address) noexcept {
 			// Устанавливаем максимально-возможную версию TLS
 			SSL_CTX_set_max_proto_version(target.ctx, TLS1_3_VERSION);
 			// Если нужно установить основные алгоритмы шифрования
-			if(!this->cipher.empty()){
+			if(!this->cipher.empty() && (type == type_t::SERVER)){
 				// Устанавливаем все основные алгоритмы шифрования
-				if(!SSL_CTX_set_cipher_list(target.ctx, this->cipher.c_str())){
+				if(SSL_CTX_set_cipher_list(target.ctx, this->cipher.c_str()) == 0){
 					// Очищаем созданный контекст
 					target.clear();
 					// Выводим в лог сообщение
@@ -1739,7 +1788,7 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address) noexcept {
 				SSL_CTX_set_options(target.ctx, SSL_OP_CIPHER_SERVER_PREFERENCE);
 			}
 			// Устанавливаем поддерживаемые кривые
-			if(!SSL_CTX_set_ecdh_auto(target.ctx, 1)){
+			if(SSL_CTX_set_ecdh_auto(target.ctx, 1) == 0){
 				// Очищаем созданный контекст
 				target.clear();
 				// Выводим в лог сообщение
@@ -1758,38 +1807,41 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address) noexcept {
 			SSL_CTX_set_quiet_shutdown(target.ctx, 1);
 			// Запускаем кэширование
 			SSL_CTX_set_session_cache_mode(target.ctx, SSL_SESS_CACHE_SERVER | SSL_SESS_CACHE_NO_INTERNAL);
-			// Если цепочка сертификатов установлена
-			if(!this->fullchain.empty()){
-				// Если цепочка сертификатов не установлена
-				if(SSL_CTX_use_certificate_chain_file(target.ctx, this->fullchain.c_str()) < 1){
+			// Если приложение является сервером
+			if(type == type_t::SERVER){
+				// Если цепочка сертификатов установлена
+				if(!this->fullchain.empty()){
+					// Если цепочка сертификатов не установлена
+					if(SSL_CTX_use_certificate_chain_file(target.ctx, this->fullchain.c_str()) < 1){
+						// Выводим в лог сообщение
+						this->log->print("%s", log_t::flag_t::CRITICAL, "certificate fullchain cannot be set");
+						// Очищаем созданный контекст
+						target.clear();
+						// Выходим
+						return;
+					}
+				}
+				// Если приватный ключ установлен
+				if(!this->privkey.empty()){
+					// Если приватный ключ не может быть установлен
+					if(SSL_CTX_use_PrivateKey_file(target.ctx, this->privkey.c_str(), SSL_FILETYPE_PEM) < 1){
+						// Выводим в лог сообщение
+						this->log->print("%s", log_t::flag_t::CRITICAL, "private key cannot be set");
+						// Очищаем созданный контекст
+						target.clear();
+						// Выходим
+						return;
+					}
+				}	
+				// Если приватный ключ недействителен
+				if(SSL_CTX_check_private_key(target.ctx) < 1){
 					// Выводим в лог сообщение
-					this->log->print("%s", log_t::flag_t::CRITICAL, "certificate fullchain cannot be set");
+					this->log->print("%s", log_t::flag_t::CRITICAL, "private key is not valid");
 					// Очищаем созданный контекст
 					target.clear();
 					// Выходим
 					return;
 				}
-			}
-			// Если приватный ключ установлен
-			if(!this->privkey.empty()){
-				// Если приватный ключ не может быть установлен
-				if(SSL_CTX_use_PrivateKey_file(target.ctx, this->privkey.c_str(), SSL_FILETYPE_PEM) < 1){
-					// Выводим в лог сообщение
-					this->log->print("%s", log_t::flag_t::CRITICAL, "private key cannot be set");
-					// Очищаем созданный контекст
-					target.clear();
-					// Выходим
-					return;
-				}
-			}	
-			// Если приватный ключ недействителен
-			if(SSL_CTX_check_private_key(target.ctx) < 1){
-				// Выводим в лог сообщение
-				this->log->print("%s", log_t::flag_t::CRITICAL, "private key is not valid");
-				// Очищаем созданный контекст
-				target.clear();
-				// Выходим
-				return;
 			}
 			// Если доверенный сертификат недействителен
 			if(SSL_CTX_set_default_verify_file(target.ctx) < 1){
@@ -1806,12 +1858,22 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address) noexcept {
 			SSL_CTX_set_verify(target.ctx, SSL_VERIFY_PEER | SSL_VERIFY_CLIENT_ONCE, &verifyCert);
 			// Устанавливаем, что мы должны читать как можно больше входных байтов
 			SSL_CTX_set_read_ahead(target.ctx, 1);
-			// Если подключение выполняется по сетевому протоколу UDP
-			if(target.addr->type == SOCK_DGRAM){
-				// Выполняем проверку файлов печенок
-				SSL_CTX_set_cookie_verify_cb(target.ctx, &verifyCookie);
-				// Выполняем генерацию файлов печенок
-				SSL_CTX_set_cookie_generate_cb(target.ctx, &generateCookie);
+			// Определяем тип входящего сокета
+			switch(target.addr->type){
+				// Если сокет установлен UDP
+				case SOCK_DGRAM: {
+					// Выполняем проверку файлов печенок
+					SSL_CTX_set_cookie_verify_cb(target.ctx, &verifyCookie);
+					// Выполняем генерацию файлов печенок
+					SSL_CTX_set_cookie_generate_cb(target.ctx, &generateCookie);
+				} break;
+				// Если сокет установлен TCP/IP
+				case SOCK_STREAM: {
+					// Выполняем проверку файлов печенок
+					SSL_CTX_set_stateless_cookie_verify_cb(target.ctx, &verifyStatelessCookie);
+					// Выполняем генерацию файлов печенок
+					SSL_CTX_set_stateless_cookie_generate_cb(target.ctx, &generateStatelessCookie);
+				} break;
 			}
 			// Создаем SSL объект
 			target.ssl = SSL_new(target.ctx);
@@ -1828,6 +1890,19 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address) noexcept {
 				case SOCK_DGRAM: {
 					// Выполняем обёртывание сокета UDP в BIO SSL
 					target.bio = BIO_new_dgram(target.addr->fd, BIO_NOCLOSE);
+					// Определяем тип активного приложения
+					switch((uint8_t) type){
+						// Если приложение является клиентом
+						case (uint8_t) type_t::CLIENT:
+							// Выполняем установку объекта подключения в BIO
+							BIO_ctrl(target.bio, BIO_CTRL_DGRAM_SET_CONNECTED, 0, (struct sockaddr *) &target.addr->peer.server);
+						break;
+						// Если приложение является сервером
+						case (uint8_t) type_t::SERVER:
+							// Выполняем установку объекта подключения в BIO
+							BIO_ctrl(target.bio, BIO_CTRL_DGRAM_SET_CONNECTED, 0, (struct sockaddr *) &target.addr->peer.client);
+						break;
+					}
 				} break;
 			}
 			// Если BIO SSL создано
@@ -1836,10 +1911,8 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address) noexcept {
 				target.noblock();
 				// Выполняем установку BIO SSL
 				SSL_set_bio(target.ssl, target.bio, target.bio);
-				// Если подключение выполняется по сетевому протоколу UDP
-				if(target.addr->type == SOCK_DGRAM)
-					// Включаем обмен куками
-					SSL_set_options(target.ssl, SSL_OP_COOKIE_EXCHANGE);
+				// Включаем обмен куками
+				SSL_set_options(target.ssl, SSL_OP_COOKIE_EXCHANGE);
 			// Если BIO SSL не создано
 			} else {
 				// Очищаем созданный контекст
@@ -1913,19 +1986,8 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const bool mode) noexce
 				// Выходим
 				return;
 			}
-			// Определяем тип входящего сокета
-			switch(target.addr->type){
-				// Если сокет установлен TCP/IP
-				case SOCK_STREAM:
-					// Получаем контекст OpenSSL
-					target.ctx = SSL_CTX_new(TLSv1_2_server_method());
-				break;
-				// Если сокет установлен UDP
-				case SOCK_DGRAM:
-					// Получаем контекст OpenSSL
-					target.ctx = SSL_CTX_new(DTLSv1_server_method());
-				break;
-			}
+			// Получаем контекст OpenSSL
+			target.ctx = SSL_CTX_new(TLSv1_2_server_method());
 			// Если контекст не создан
 			if(target.ctx == nullptr){
 				// Выводим в лог сообщение
@@ -2019,13 +2081,12 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const bool mode) noexce
 			SSL_CTX_set_mode(target.ctx, SSL_MODE_AUTO_RETRY);
 			// Запрещаем выполнять првоерку сертификата пользователя
 			SSL_CTX_set_verify(target.ctx, SSL_VERIFY_NONE, nullptr);
-			// Если подключение выполняется по сетевому протоколу UDP
-			if(target.addr->type == SOCK_DGRAM){
-				// Выполняем проверку файлов печенок
-				SSL_CTX_set_cookie_verify_cb(target.ctx, &verifyCookie);
-				// Выполняем генерацию файлов печенок
-				SSL_CTX_set_cookie_generate_cb(target.ctx, &generateCookie);
-			}
+			/*
+			// Выполняем проверку файлов печенок
+			SSL_CTX_set_stateless_cookie_verify_cb(target.ctx, &verifyCookie);
+			// Выполняем генерацию файлов печенок
+			SSL_CTX_set_stateless_cookie_generate_cb(target.ctx, &generateCookie);
+			*/
 			// Создаем SSL объект
 			target.ssl = SSL_new(target.ctx);
 			// Проверяем рукопожатие
@@ -2042,31 +2103,16 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const bool mode) noexce
 					return;
 				}
 			}
-			// Определяем тип входящего сокета
-			switch(target.addr->type){
-				// Если сокет установлен TCP/IP
-				case SOCK_STREAM:
-					// Выполняем обёртывание сокета в BIO SSL
-					target.bio = BIO_new_socket(target.addr->fd, BIO_NOCLOSE);
-				break;
-				// Если сокет установлен UDP
-				case SOCK_DGRAM: {
-					// Выполняем обёртывание сокета UDP в BIO SSL
-					target.bio = BIO_new_dgram(target.addr->fd, BIO_NOCLOSE);
-					// Выполняем установку объекта подключения в BIO
-					BIO_ctrl(target.bio, BIO_CTRL_DGRAM_SET_CONNECTED, 0, (struct sockaddr *) &target.addr->peer.client);
-				} break;
-			}
+			// Выполняем обёртывание сокета в BIO SSL
+			target.bio = BIO_new_socket(target.addr->fd, BIO_NOCLOSE);
 			// Если BIO SSL создано
 			if(target.bio != nullptr){
 				// Устанавливаем неблокирующий режим ввода/вывода для сокета
 				target.noblock();
 				// Выполняем установку BIO SSL
 				SSL_set_bio(target.ssl, target.bio, target.bio);
-				// Если подключение выполняется по сетевому протоколу UDP
-				if(target.addr->type == SOCK_DGRAM)
-					// Включаем обмен куками
-					SSL_set_options(target.ssl, SSL_OP_COOKIE_EXCHANGE);
+				// Включаем обмен куками
+				// SSL_set_options(target.ssl, SSL_OP_COOKIE_EXCHANGE);
 				// Выполняем активацию сервера SSL
 				SSL_set_accept_state(target.ssl);
 			// Если BIO SSL не создано
@@ -2113,19 +2159,8 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const uri_t::url_t & ur
 				// Выходим
 				return;
 			}
-			// Определяем тип входящего сокета
-			switch(target.addr->type){
-				// Если сокет установлен TCP/IP
-				case SOCK_STREAM:
-					// Получаем контекст OpenSSL
-					target.ctx = SSL_CTX_new(TLSv1_2_client_method());
-				break;
-				// Если сокет установлен UDP
-				case SOCK_DGRAM:
-					// Получаем контекст OpenSSL
-					target.ctx = SSL_CTX_new(DTLSv1_client_method());
-				break;
-			}
+			// Получаем контекст OpenSSL
+			target.ctx = SSL_CTX_new(TLSv1_2_client_method());
 			// Если контекст не создан
 			if(target.ctx == nullptr){
 				// Выводим в лог сообщение
@@ -2156,13 +2191,12 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const uri_t::url_t & ur
 				SSL_CTX_set_verify_depth(target.ctx, 4);
 			// Запрещаем выполнять првоерку сертификата пользователя
 			} else SSL_CTX_set_verify(target.ctx, SSL_VERIFY_NONE, nullptr);
-			// Если подключение выполняется по сетевому протоколу UDP
-			if(target.addr->type == SOCK_DGRAM){
-				// Выполняем проверку файлов печенок
-				SSL_CTX_set_cookie_verify_cb(target.ctx, &verifyCookie);
-				// Выполняем генерацию файлов печенок
-				SSL_CTX_set_cookie_generate_cb(target.ctx, &generateCookie);
-			}
+			/*
+			// Выполняем проверку файлов печенок
+			SSL_CTX_set_stateless_cookie_verify_cb(target.ctx, &verifyCookie);
+			// Выполняем генерацию файлов печенок
+			SSL_CTX_set_stateless_cookie_generate_cb(target.ctx, &generateCookie);
+			*/
 			// Создаем SSL объект
 			target.ssl = SSL_new(target.ctx);
 			/**
@@ -2193,31 +2227,16 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const uri_t::url_t & ur
 					this->log->print("certificate chain validation failed: %s", log_t::flag_t::CRITICAL, X509_verify_cert_error_string(verify));
 				}
 			}
-			// Определяем тип входящего сокета
-			switch(target.addr->type){
-				// Если сокет установлен TCP/IP
-				case SOCK_STREAM:
-					// Выполняем обёртывание сокета TCP в BIO SSL
-					target.bio = BIO_new_socket(target.addr->fd, BIO_NOCLOSE);
-				break;
-				// Если сокет установлен UDP
-				case SOCK_DGRAM: {
-					// Выполняем обёртывание сокета UDP в BIO SSL
-					target.bio = BIO_new_dgram(target.addr->fd, BIO_NOCLOSE);
-					// Выполняем установку объекта подключения в BIO
-					BIO_ctrl(target.bio, BIO_CTRL_DGRAM_SET_CONNECTED, 0, (struct sockaddr *) &target.addr->peer.server);
-				} break;
-			}
+			// Выполняем обёртывание сокета TCP в BIO SSL
+			target.bio = BIO_new_socket(target.addr->fd, BIO_NOCLOSE);
 			// Если BIO SSL создано
 			if(target.bio != nullptr){
 				// Устанавливаем блокирующий режим ввода/вывода для сокета
 				target.block();
 				// Выполняем установку BIO SSL
 				SSL_set_bio(target.ssl, target.bio, target.bio);
-				// Если подключение выполняется по сетевому протоколу UDP
-				if(target.addr->type == SOCK_DGRAM)
-					// Включаем обмен куками
-					SSL_set_options(target.ssl, SSL_OP_COOKIE_EXCHANGE);
+				// Включаем обмен куками
+				// SSL_set_options(target.ssl, SSL_OP_COOKIE_EXCHANGE);
 				// Выполняем активацию клиента SSL
 				SSL_set_connect_state(target.ssl);
 			// Если BIO SSL не создано

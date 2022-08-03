@@ -446,6 +446,22 @@ namespace awh {
 			 * @return       результат проверки
 			 */
 			static int verifyCookie(SSL * ssl, const u_char * cookie, u_int size) noexcept;
+			/**
+			 * generateCookie Функция обратного вызова для генерации куков
+			 * @param ssl    объект SSL
+			 * @param cookie данные куков
+			 * @param size   количество символов
+			 * @return       результат проверки
+			 */
+			static int generateStatelessCookie(SSL * ssl, u_char * cookie, size_t * size) noexcept;
+			/**
+			 * verifyCookie Функция обратного вызова для проверки куков
+			 * @param ssl    объект SSL
+			 * @param cookie данные куков
+			 * @param size   количество символов
+			 * @return       результат проверки
+			 */
+			static int verifyStatelessCookie(SSL * ssl, const u_char * cookie, size_t size) noexcept;
 		private:
 			/**
 			 * matchesCommonName Метод проверки доменного имени по данным из сертификата
@@ -497,9 +513,10 @@ namespace awh {
 			 * wrap Метод обертывания файлового дескриптора для сервера
 			 * @param target  контекст назначения
 			 * @param address объект подключения
+			 * @param type    тип активного приложения
 			 * @return        объект SSL контекста
 			 */
-			void wrap(ctx_t & target, addr_t * address) noexcept;
+			void wrap(ctx_t & target, addr_t * address, const type_t type) noexcept;
 			/**
 			 * wrap Метод обертывания файлового дескриптора для клиента
 			 * @param target  контекст назначения
