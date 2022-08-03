@@ -896,10 +896,10 @@ void awh::server::Core::close() noexcept {
 		const lock_guard <recursive_mutex> lock(this->mtx.close);
 		// Переходим по всему списку воркеров
 		for(auto & worker : this->workers){
+			// Получаем объект воркера
+			worker_t * wrk = (worker_t *) const_cast <awh::worker_t *> (worker.second);
 			// Если в воркере есть подключённые клиенты
-			if(!worker.second->adjutants.empty()){
-				// Получаем объект воркера
-				worker_t * wrk = (worker_t *) const_cast <awh::worker_t *> (worker.second);
+			if(!wrk->adjutants.empty()){
 				// Переходим по всему списку адъютанта
 				for(auto it = wrk->adjutants.begin(); it != wrk->adjutants.end();){
 					// Если блокировка адъютанта не установлена
@@ -938,6 +938,10 @@ void awh::server::Core::close() noexcept {
 					}
 				#endif
 			}
+			// Останавливаем работу сервера
+			wrk->io.stop();
+			// Выполняем закрытие подключение сервера
+			wrk->addr.close();
 		}
 	}
 }
