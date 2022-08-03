@@ -1973,6 +1973,7 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const bool mode) noexce
 				// Выходим
 				return;
 			}
+			*/
 			// Выполняем инициализацию доверенного сертификата
 			if(!this->initTrustedStore(target.ctx)){
 				// Очищаем созданный контекст
@@ -1980,10 +1981,6 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const bool mode) noexce
 				// Выходим
 				return;
 			}
-			*/
-
-			int errCode = SSL_CTX_set_default_verify_paths(target.ctx);
-
 			// Устанавливаем флаг quiet shutdown
 			// SSL_CTX_set_quiet_shutdown(target.ctx, 1);
 			// Запускаем кэширование
@@ -2030,7 +2027,7 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const bool mode) noexce
 				// Выходим
 				return;
 			}
-			/*
+			
 			// Хост адрес текущего сервера
 			const string host = "mimi.anyks.net";
 			// Если нужно произвести проверку
@@ -2043,11 +2040,11 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const bool mode) noexce
 				SSL_CTX_set_cert_verify_callback(target.ctx, &verifyHost, target.verify);
 			// Запрещаем выполнять првоерку сертификата пользователя
 			} else SSL_CTX_set_verify(target.ctx, SSL_VERIFY_NONE, nullptr);
-			*/
+			
 			// Запрещаем выполнять првоерку сертификата пользователя
 			// SSL_CTX_set_verify(target.ctx, SSL_VERIFY_NONE, nullptr);
 			// Выполняем проверку сертификата клиента
-			SSL_CTX_set_verify(target.ctx, SSL_VERIFY_PEER, &verifyCert);
+			// SSL_CTX_set_verify(target.ctx, SSL_VERIFY_PEER, &verifyCert);
 			// Если подключение выполняется по сетевому протоколу UDP
 			if(target.addr->type == SOCK_DGRAM){
 				// Выполняем проверку файлов печенок
