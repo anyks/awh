@@ -15,6 +15,10 @@
 // Подключаем заголовочный файл
 #include <net/engine.hpp>
 
+// Буфер секретного слова печенок
+u_char awh::Engine::cookies[16];
+// Флаг инициализации куков
+bool awh::Engine::cookieInit = false;
 /**
  * list Метод активации прослушивания сокета
  * @return результат выполнения операции
@@ -68,25 +72,10 @@ bool awh::Engine::Address::close() noexcept {
 		#endif
 		// Выполняем сброс сокета
 		this->fd = -1;
-		/**
-		 * Если операционной системой не является Windows
-		 */
-		#if !defined(_WIN32) && !defined(_WIN64)
-			// Зануляем размер структуры
-			this->usock.size = 0;
-			// Зануляем структуру для unix-сокетов клиента
-			memset(&this->usock.client, 0, sizeof(this->usock.client));
-			// Зануляем структуру для unix-сокетов сервера
-			memset(&this->usock.server, 0, sizeof(this->usock.server));
-		#endif
-		// Зануляем структуру клиента IPv4
-		memset(&this->ipv4.client, 0, sizeof(this->ipv4.client));
-		// Зануляем структуру сервера IPv4
-		memset(&this->ipv4.server, 0, sizeof(this->ipv4.server));
-		// Зануляем структуру клиента IPv6
-		memset(&this->ipv6.client, 0, sizeof(this->ipv6.client));
-		// Зануляем структуру сервера IPv6
-		memset(&this->ipv6.server, 0, sizeof(this->ipv6.server));
+		// Зануляем структуру клиента
+		memset(&this->peer.client, 0, sizeof(this->peer.client));
+		// Зануляем структуру сервера
+		memset(&this->peer.server, 0, sizeof(this->peer.server));
 	}
 	// Выводим результат
 	return result;
@@ -100,41 +89,34 @@ bool awh::Engine::Address::connect() noexcept {
 	this->status = status_t::DISCONNECTED;
 	// Если сокет установлен TCP/IP
 	if(this->type == SOCK_STREAM){
-		// Размер объекта подключения
-		socklen_t size = 0;
-		// Создаём объект подключения
-		struct sockaddr * addr = nullptr;
 		// Определяем тип подключения
-		switch(this->family){
+		switch(this->peer.server.ss_family){
 			// Для протокола IPv4
-			case AF_INET: {
+			case AF_INET:
 				// Запоминаем размер структуры
-				size = sizeof(this->ipv4.server);
-				// Запоминаем полученную структуру
-				addr = reinterpret_cast <struct sockaddr *> (&this->ipv4.server);
-			} break;
+				this->peer.size = sizeof(struct sockaddr_in);
+			break;
 			// Для протокола IPv6
-			case AF_INET6: {
+			case AF_INET6:
 				// Запоминаем размер структуры
-				size = sizeof(this->ipv6.server);
-				// Запоминаем полученную структуру
-				addr = reinterpret_cast <struct sockaddr *> (&this->ipv6.server);
-			} break;
+				this->peer.size = sizeof(struct sockaddr_in6);
+			break;
 			/**
 			 * Если операционной системой не является Windows
 			 */
 			#if !defined(_WIN32) && !defined(_WIN64)
 				// Для протокола unix-сокета
-				case AF_UNIX: {
-					// Запоминаем полученную структуру
-					addr = reinterpret_cast <struct sockaddr *> (&this->usock.server);
+				case AF_UNIX:
 					// Получаем размер объекта сокета
-					size = (offsetof(struct sockaddr_un, sun_path) + strlen(this->usock.server.sun_path));
-				} break;
+					this->peer.size = (
+						offsetof(struct sockaddr_un, sun_path) +
+						strlen(((struct sockaddr_un *) (&this->peer.server))->sun_path)
+					);
+				break;
 			#endif
 		}
 		// Если подключение не выполненно то сообщаем об этом, выполняем подключение к удаленному серверу
-		if(::connect(this->fd, (struct sockaddr *) addr, size) == 0)
+		if((this->peer.size > 0) && (::connect(this->fd, (struct sockaddr *) (&this->peer.server), this->peer.size) == 0))
 			// Устанавливаем статус подключения
 			this->status = status_t::CONNECTED;
 	// Если сокет установлен UDP
@@ -146,75 +128,35 @@ bool awh::Engine::Address::connect() noexcept {
 }
 /**
  * connect Метод выполнения подключения сервера к клиенту для UDP
- * @param sock объект подключения сервера
+ * @param addr объект подключения сервера
  */
-bool awh::Engine::Address::connect(Address & sock) noexcept {
+bool awh::Engine::Address::connect(Address & addr) noexcept {
 	// Если тип подключения UDP
 	if(this->type == SOCK_DGRAM){
-		// Размер структуры подключения
-		socklen_t size = 0;
-		// Объект подключения к серверу
-		struct sockaddr * addrin = nullptr;
-		// Объект подключения к клиенту
-		struct sockaddr * addrout = nullptr;
 		// Определяем тип подключения
-		switch(this->family){
+		switch(addr.peer.server.ss_family){
 			// Для протокола IPv4
-			case AF_INET: {
+			case AF_INET:
 				// Запоминаем размер структуры
-				size = sizeof(sock.ipv4.server);
-				// Запоминаем полученную структуру
-				addrin = reinterpret_cast <struct sockaddr *> (&sock.ipv4.server);
-			} break;
+				this->peer.size = sizeof(struct sockaddr_in);
+			break;
 			// Для протокола IPv6
-			case AF_INET6: {
+			case AF_INET6:
 				// Запоминаем размер структуры
-				size = sizeof(sock.ipv6.server);
-				// Запоминаем полученную структуру
-				addrin = reinterpret_cast <struct sockaddr *> (&sock.ipv6.server);
-			} break;
+				this->peer.size = sizeof(struct sockaddr_in6);
+			break;
 		}
 		// Выполняем бинд на сокет
-		if(::bind(this->fd, (struct sockaddr *) addrin, size) < 0){
+		if((this->peer.size > 0) && (::bind(this->fd, (struct sockaddr *) (&addr.peer.server), this->peer.size) < 0)){
 			// Хост подключённого клиента
-			string client = "";
-			// Определяем тип подключения
-			switch(this->family){
-				// Для протокола IPv4
-				case AF_INET:
-					// Получаем данные подключившегося клиента
-					client = this->ifnet.ip((struct sockaddr *) &this->ipv4.client, this->family);
-				break;
-				// Для протокола IPv6
-				case AF_INET6:
-					// Получаем данные подключившегося клиента
-					client = this->ifnet.ip((struct sockaddr *) &this->ipv6.client, this->family);
-				break;
-			}
+			const string & client = this->ifnet.ip((struct sockaddr *) &this->peer.client, this->peer.client.ss_family);
 			// Выводим в лог сообщение
 			this->log->print("bind client for UDP protocol [%s]", log_t::flag_t::CRITICAL, client.c_str());
 			// Выходим
 			return false;
 		}
-		// Определяем тип подключения
-		switch(this->family){
-			// Для протокола IPv4
-			case AF_INET: {
-				// Запоминаем размер структуры
-				size = sizeof(this->ipv4.client);
-				// Запоминаем полученную структуру
-				addrout = reinterpret_cast <struct sockaddr *> (&this->ipv4.client);
-			} break;
-			// Для протокола IPv6
-			case AF_INET6: {
-				// Запоминаем размер структуры
-				size = sizeof(this->ipv6.client);
-				// Запоминаем полученную структуру
-				addrout = reinterpret_cast <struct sockaddr *> (&this->ipv6.client);
-			} break;
-		}
 		// Если подключение не выполненно то сообщаем об этом, выполняем подключение к удаленному серверу
-		if(::connect(this->fd, (struct sockaddr *) addrout, size) == 0)
+		if(::connect(this->fd, (struct sockaddr *) (&this->peer.client), this->peer.size) == 0)
 			// Устанавливаем статус подключения
 			this->status = status_t::CONNECTED;
 		// Устанавливаем статус отключения
@@ -225,19 +167,20 @@ bool awh::Engine::Address::connect(Address & sock) noexcept {
 }
 /**
  * accept Метод согласования подключения
- * @param sock объект подключения сервера
+ * @param addr объект подключения сервера
  * @return     результат выполнения операции
  */
-bool awh::Engine::Address::accept(Address & sock) noexcept {
+bool awh::Engine::Address::accept(Address & addr) noexcept {
 	// Выполняем вызов метода согласование
-	return this->accept(sock.fd);
+	return this->accept(addr.fd, addr.peer.server.ss_family);
 }
 /**
  * accept Метод согласования подключения
- * @param fd файловый дескриптор сервера
- * @return   результат выполнения операции
+ * @param fd     файловый дескриптор сервера
+ * @param family семейство сокета (AF_INET / AF_INET6 / AF_UNIX)
+ * @return       результат выполнения операции
  */
-bool awh::Engine::Address::accept(const int fd) noexcept {
+bool awh::Engine::Address::accept(const int fd, const int family) noexcept {
 	// Устанавливаем статус отключения
 	this->status = status_t::DISCONNECTED;
 	// Определяем тип сокета
@@ -245,24 +188,32 @@ bool awh::Engine::Address::accept(const int fd) noexcept {
 		// Если сокет установлен TCP/IP
 		case SOCK_STREAM: {
 			// Определяем тип подключения
-			switch(this->family){
+			switch(family){
 				// Для протокола IPv4
 				case AF_INET: {
-					// Размер структуры подключения
-					socklen_t size = sizeof(this->ipv4.client);
-					// Определяем разрешено ли подключение к прокси серверу
-					this->fd = ::accept(fd, reinterpret_cast <struct sockaddr *> (&this->ipv4.client), &size);
-					// Если сокет не создан тогда выходим
-					if(this->fd < 0) return false;
+					// Создаём объект клиента
+					struct sockaddr_in client;
+					// Очищаем всю структуру для клиента
+					memset(&client, 0, sizeof(client));
+					// Устанавливаем протокол интернета
+					client.sin_family = family;
+					// Запоминаем размер структуры
+					this->peer.size = sizeof(client);
+					// Выполняем копирование объекта подключения клиента
+					memcpy(&this->peer.client, &client, this->peer.size);
 				} break;
 				// Для протокола IPv6
 				case AF_INET6: {
-					// Размер структуры подключения
-					socklen_t size = sizeof(this->ipv6.client);
-					// Определяем разрешено ли подключение к прокси серверу
-					this->fd = ::accept(fd, reinterpret_cast <struct sockaddr *> (&this->ipv6.client), &size);
-					// Если сокет не создан тогда выходим
-					if(this->fd < 0) return false;
+					// Создаём объект клиента
+					struct sockaddr_in6 client;
+					// Очищаем всю структуру для клиента
+					memset(&client, 0, sizeof(client));
+					// Устанавливаем протокол интернета
+					client.sin6_family = family;
+					// Запоминаем размер структуры
+					this->peer.size = sizeof(client);
+					// Выполняем копирование объекта подключения клиента
+					memcpy(&this->peer.client, &client, this->peer.size);
 				} break;
 				/**
 				 * Если операционной системой не является Windows
@@ -270,21 +221,29 @@ bool awh::Engine::Address::accept(const int fd) noexcept {
 				#if !defined(_WIN32) && !defined(_WIN64)
 					// Для протокола unix-сокета
 					case AF_UNIX: {
-						// Размер структуры подключения
-						socklen_t size = sizeof(this->usock.client);
-						// Определяем разрешено ли подключение к прокси серверу
-						this->fd = ::accept(fd, reinterpret_cast <struct sockaddr *> (&this->usock.client), &size);
-						// Если сокет не создан тогда выходим
-						if(this->fd < 0) return false;
+						// Создаём объект подключения для клиента
+						struct sockaddr_un client;
+						// Очищаем всю структуру для клиента
+						memset(&client, 0, sizeof(client));
+						// Устанавливаем протокол интернета
+						client.sun_family = family;
+						// Запоминаем размер структуры
+						this->peer.size = sizeof(client);
+						// Выполняем копирование объект подключения клиента в сторейдж
+						memcpy(&this->peer.client, &client, sizeof(client));
 					} break;
 				#endif
 			}
+			// Определяем разрешено ли подключение к прокси серверу
+			this->fd = ::accept(fd, (struct sockaddr *) (&this->peer.client), &this->peer.size);
+			// Если сокет не создан тогда выходим
+			if(this->fd < 0) return false;
 		} break;
 		// Если сокет установлен UDP
 		case SOCK_DGRAM: this->fd = fd; break;
 	}
 	// Определяем тип подключения
-	switch(this->family){
+	switch(this->peer.client.ss_family){
 		// Для протокола IPv4
 		case AF_INET:
 		// Для протокола IPv6
@@ -333,25 +292,20 @@ bool awh::Engine::Address::accept(const int fd) noexcept {
 		#endif
 	}
 	// Определяем тип подключения
-	switch(this->family){
+	switch(this->peer.client.ss_family){
 		// Для протокола IPv4
-		case AF_INET: {
-			// Получаем данные подключившегося клиента
-			this->ip = this->ifnet.ip((struct sockaddr *) &this->ipv4.client, this->family);
-			// Если IP адрес получен пустой, устанавливаем адрес сервера
-			if(this->ip.compare("0.0.0.0") == 0) this->ip = this->ifnet.ip(this->family);
-			// Получаем данные мак адреса клиента
-			this->mac = this->ifnet.mac(this->ip, this->family);
-		} break;
+		case AF_INET:
 		// Для протокола IPv6
 		case AF_INET6: {
 			// Получаем данные подключившегося клиента
-			this->ip = this->ifnet.ip((struct sockaddr *) &this->ipv6.client, this->family);
-			// Если IP адрес получен пустой, устанавливаем адрес сервера
-			if(this->ip.compare("::") == 0) this->ip = this->ifnet.ip(this->family);
+			this->ip = this->ifnet.ip((struct sockaddr *) &this->peer.client, this->peer.client.ss_family);
+			// Если IP адрес получен пустой
+			if((this->ip.compare("0.0.0.0") == 0) || (this->ip.compare("::") == 0))
+				// Получаем IP адрес локального сервера
+				this->ip = this->ifnet.ip(this->peer.client.ss_family);
 			// Получаем данные мак адреса клиента
-			this->mac = this->ifnet.mac(this->ip, this->family);
-		} break;
+			this->mac = this->ifnet.mac(this->ip, this->peer.client.ss_family);
+		}
 		/**
 		 * Если операционной системой не является Windows
 		 */
@@ -377,7 +331,7 @@ bool awh::Engine::Address::accept(const int fd) noexcept {
  */
 void awh::Engine::Address::init(const string & unixsocket, const type_t type) noexcept {
 	// Если unix-сокет передан
-	if(!unixsocket.empty() && (this->family == AF_UNIX)){		
+	if(!unixsocket.empty()){		
 		/**
 		 * Если операционной системой не является Windows
 		 */
@@ -390,7 +344,7 @@ void awh::Engine::Address::init(const string & unixsocket, const type_t type) no
 					::unlink(unixsocket.c_str());
 			}
 			// Создаем сокет подключения
-			this->fd = ::socket(this->family, this->type, 0);
+			this->fd = ::socket(AF_UNIX, this->type, 0);
 			// Если сокет не создан то выходим
 			if(this->fd < 0){
 				// Выводим сообщение в консоль
@@ -409,31 +363,39 @@ void awh::Engine::Address::init(const string & unixsocket, const type_t type) no
 				// Переводим сокет в не блокирующий режим
 				this->socket.nonBlocking(this->fd);
 			}
+			// Создаём объект подключения для клиента
+			struct sockaddr_un client;
+			// Создаём объект подключения для сервера
+			struct sockaddr_un server;
 			// Зануляем изначальную структуру данных клиента
-			memset(&this->usock.client, 0, sizeof(this->usock.client));
+			memset(&client, 0, sizeof(client));
 			// Зануляем изначальную структуру данных сервера
-			memset(&this->usock.server, 0, sizeof(this->usock.server));
+			memset(&server, 0, sizeof(server));
+			// Устанавливаем размер объекта подключения
+			this->peer.size = sizeof(struct sockaddr_un);
 			// Определяем тип сокета
 			switch(this->type){
 				// Если сокет установлен TCP/IP
 				case SOCK_STREAM: {
 					// Устанавливаем протокол интернета
-					this->usock.server.sun_family = this->family;
+					server.sun_family = AF_UNIX;
 					// Очищаем всю структуру для сервера
-					memset(&this->usock.server.sun_path, 0, sizeof(this->usock.server.sun_path));
+					memset(&server.sun_path, 0, sizeof(server.sun_path));
 					// Копируем адрес сокета сервера
-					strncpy(this->usock.server.sun_path, unixsocket.c_str(), sizeof(this->usock.server.sun_path));
+					strncpy(server.sun_path, unixsocket.c_str(), sizeof(server.sun_path));
+					// Выполняем копирование объект подключения сервера в сторейдж
+					memcpy(&this->peer.server, &server, sizeof(server));
 				} break;
 				// Если сокет установлен UDP
 				case SOCK_DGRAM: {
 					// Устанавливаем протокол интернета для клиента
-					this->usock.client.sun_family = this->family;
+					client.sun_family = AF_UNIX;
 					// Устанавливаем протокол интернета для сервера
-					this->usock.server.sun_family = this->family;
+					server.sun_family = AF_UNIX;
 					// Очищаем всю структуру для клиента
-					memset(&this->usock.client.sun_path, 0, sizeof(this->usock.client.sun_path));
+					memset(&client.sun_path, 0, sizeof(client.sun_path));
 					// Очищаем всю структуру для сервера
-					memset(&this->usock.server.sun_path, 0, sizeof(this->usock.server.sun_path));
+					memset(&server.sun_path, 0, sizeof(server.sun_path));
 					// Выполняем поиск последнего слеша разделителя
 					const size_t pos = unixsocket.rfind("/");
 					// Если разделитель найден
@@ -464,15 +426,19 @@ void awh::Engine::Address::init(const string & unixsocket, const type_t type) no
 							} break;
 						}
 						// Копируем адрес сокета сервера
-						strncpy(this->usock.server.sun_path, serverName.c_str(), sizeof(this->usock.server.sun_path));
+						strncpy(server.sun_path, serverName.c_str(), sizeof(server.sun_path));
+						// Выполняем копирование объект подключения сервера в сторейдж
+						memcpy(&this->peer.server, &server, sizeof(server));
 						// Если приложение является клиентом
 						if(type == type_t::CLIENT){
 							// Копируем адрес сокета клиента
-							strncpy(this->usock.client.sun_path, clientName.c_str(), sizeof(this->usock.client.sun_path));
+							strncpy(client.sun_path, clientName.c_str(), sizeof(client.sun_path));
+							// Выполняем копирование объект подключения клиента в сторейдж
+							memcpy(&this->peer.client, &client, sizeof(client));
 							// Получаем размер объекта сокета
-							const socklen_t size = (offsetof(struct sockaddr_un, sun_path) + strlen(this->usock.client.sun_path));
+							const socklen_t size = (offsetof(struct sockaddr_un, sun_path) + strlen(client.sun_path));
 							// Выполняем бинд на сокет
-							if(::bind(this->fd, (struct sockaddr *) &this->usock.client, size) < 0){
+							if(::bind(this->fd, (struct sockaddr *) &this->peer.client, size) < 0){
 								// Выводим в лог сообщение
 								this->log->print("bind local network for client [%s]", log_t::flag_t::CRITICAL, clientName.c_str());
 								// Выходим
@@ -485,38 +451,32 @@ void awh::Engine::Address::init(const string & unixsocket, const type_t type) no
 			// Если приложение является сервером
 			if(type == type_t::SERVER){
 				// Получаем размер объекта сокета
-				const socklen_t size = (offsetof(struct sockaddr_un, sun_path) + strlen(this->usock.server.sun_path));
+				const socklen_t size = (offsetof(struct sockaddr_un, sun_path) + strlen(server.sun_path));
 				// Выполняем бинд на сокет
-				if(::bind(this->fd, (struct sockaddr *) &this->usock.server, size) < 0){
+				if(::bind(this->fd, (struct sockaddr *) &this->peer.server, size) < 0)
 					// Выводим в лог сообщение
 					this->log->print("bind local network for server [%s]", log_t::flag_t::CRITICAL, unixsocket.c_str());
-					// Выходим
-					return;
-				}
 			}
 		#endif
 	}
 }
 /**
  * init Метод инициализации адресного пространства сокета
- * @param ip   адрес для которого нужно создать сокет
- * @param port порт сервера для которого нужно создать сокет
- * @param type тип приложения (клиент или сервер)
- * @return     параметры подключения к серверу
+ * @param ip     адрес для которого нужно создать сокет
+ * @param port   порт сервера для которого нужно создать сокет
+ * @param family семейство сокета (AF_INET / AF_INET6 / AF_UNIX)
+ * @param type   тип приложения (клиент или сервер)
+ * @return       параметры подключения к серверу
  */
-void awh::Engine::Address::init(const string & ip, const u_int port, const type_t type) noexcept {
+void awh::Engine::Address::init(const string & ip, const u_int port, const int family, const type_t type) noexcept {
 	// Если IP адрес передан
 	if(!ip.empty() && (port > 0) && (port <= 65535) && !this->network.empty()){
 		// Если список сетевых интерфейсов установлен
-		if((this->family == AF_INET) || (this->family == AF_INET6)){
+		if((family == AF_INET) || (family == AF_INET6)){
 			// Адрес сервера для биндинга
 			string host = "";
-			// Размер структуры подключения
-			socklen_t size = 0;
-			// Объект подключения
-			struct sockaddr * sin = nullptr;
 			// Определяем тип подключения
-			switch(this->family){
+			switch(family){
 				// Для протокола IPv4
 				case AF_INET: {
 					// Если приложение является клиентом
@@ -529,36 +489,39 @@ void awh::Engine::Address::init(const string & ip, const u_int port, const type_
 							host = this->network.at(rand() % this->network.size());
 						// Выводим только первый элемент
 						} else host = this->network.front();
+						// Создаём объект клиента
+						struct sockaddr_in client;
 						// Очищаем всю структуру для клиента
-						memset(&this->ipv4.client, 0, sizeof(this->ipv4.client));
-						// Устанавливаем произвольный порт для локального подключения
-						this->ipv4.client.sin_port = htons(0);
+						memset(&client, 0, sizeof(client));
 						// Устанавливаем протокол интернета
-						this->ipv4.client.sin_family = this->family;
+						client.sin_family = family;
+						// Устанавливаем произвольный порт для локального подключения
+						client.sin_port = htons(0);
 						// Устанавливаем адрес для локальго подключения
-						this->ipv4.client.sin_addr.s_addr = inet_addr(host.c_str());
+						client.sin_addr.s_addr = inet_addr(host.c_str());
 						// Запоминаем размер структуры
-						size = sizeof(this->ipv4.client);
-						// Запоминаем полученную структуру
-						sin = reinterpret_cast <struct sockaddr *> (&this->ipv4.client);
+						this->peer.size = sizeof(client);
+						// Выполняем копирование объекта подключения клиента
+						memcpy(&this->peer.client, &client, this->peer.size);
 					}
+					// Создаём объект сервера
+					struct sockaddr_in server;
 					// Очищаем всю структуру для сервера
-					memset(&this->ipv4.server, 0, sizeof(this->ipv4.server));
-					// Устанавливаем порт для локального подключения
-					this->ipv4.server.sin_port = htons(port);
+					memset(&server, 0, sizeof(server));
 					// Устанавливаем протокол интернета
-					this->ipv4.server.sin_family = this->family;
+					server.sin_family = family;
+					// Устанавливаем порт для локального подключения
+					server.sin_port = htons(port);
 					// Устанавливаем адрес для удаленного подключения
-					this->ipv4.server.sin_addr.s_addr = inet_addr(ip.c_str());
+					server.sin_addr.s_addr = inet_addr(ip.c_str());
 					// Если ядро является сервером
-					if(type == type_t::SERVER){
+					if(type == type_t::SERVER)
 						// Запоминаем размер структуры
-						size = sizeof(this->ipv4.server);
-						// Запоминаем полученную структуру
-						sin = reinterpret_cast <struct sockaddr *> (&this->ipv4.server);
-					}
+						this->peer.size = sizeof(server);
+					// Выполняем копирование объекта подключения сервера
+					memcpy(&this->peer.server, &server, this->peer.size);
 					// Обнуляем серверную структуру
-					memset(&this->ipv4.server.sin_zero, 0, sizeof(this->ipv4.server.sin_zero));
+					memset(&((struct sockaddr_in *) (&this->peer.server))->sin_zero, 0, sizeof(server.sin_zero));
 				} break;
 				// Для протокола IPv6
 				case AF_INET6: {
@@ -574,36 +537,39 @@ void awh::Engine::Address::init(const string & ip, const u_int port, const type_
 						} else host = this->network.front();
 						// Переводим ip адрес в полноценный вид
 						host = move(this->nwk.setLowIp6(host));
+						// Создаём объект клиента
+						struct sockaddr_in6 client;
 						// Очищаем всю структуру для клиента
-						memset(&this->ipv6.client, 0, sizeof(this->ipv6.client));
-						// Устанавливаем произвольный порт для локального подключения
-						this->ipv6.client.sin6_port = htons(0);
+						memset(&client, 0, sizeof(client));
 						// Устанавливаем протокол интернета
-						this->ipv6.client.sin6_family = this->family;
+						client.sin6_family = family;
+						// Устанавливаем произвольный порт для локального подключения
+						client.sin6_port = htons(0);
 						// Указываем адрес IPv6 для клиента
-						inet_pton(this->family, host.c_str(), &this->ipv6.client.sin6_addr);
-						// inet_ntop(this->family, &this->ipv6.client.sin6_addr, hostClient, sizeof(hostClient));
+						inet_pton(family, host.c_str(), &client.sin6_addr);
+						// inet_ntop(family, &client.sin6_addr, hostClient, sizeof(hostClient));
 						// Запоминаем размер структуры
-						size = sizeof(this->ipv6.client);
-						// Запоминаем полученную структуру
-						sin = reinterpret_cast <struct sockaddr *> (&this->ipv6.client);
+						this->peer.size = sizeof(client);
+						// Выполняем копирование объекта подключения клиента
+						memcpy(&this->peer.client, &client, this->peer.size);
 					}
+					// Создаём объект сервера
+					struct sockaddr_in6 server;
 					// Очищаем всю структуру для сервера
-					memset(&this->ipv6.server, 0, sizeof(this->ipv6.server));
-					// Устанавливаем порт для локального подключения
-					this->ipv6.server.sin6_port = htons(port);
+					memset(&server, 0, sizeof(server));
 					// Устанавливаем протокол интернета
-					this->ipv6.server.sin6_family = this->family;
+					server.sin6_family = family;
+					// Устанавливаем порт для локального подключения
+					server.sin6_port = htons(port);
 					// Указываем адрес IPv6 для сервера
-					inet_pton(this->family, ip.c_str(), &this->ipv6.server.sin6_addr);
-					// inet_ntop(this->family, &this->ipv6.server.sin6_addr, hostServer, sizeof(hostServer));
+					inet_pton(family, ip.c_str(), &server.sin6_addr);
+					// inet_ntop(family, &server.sin6_addr, hostServer, sizeof(hostServer));
 					// Если приложение является сервером
-					if(type == type_t::SERVER){
+					if(type == type_t::SERVER)
 						// Запоминаем размер структуры
-						size = sizeof(this->ipv6.server);
-						// Запоминаем полученную структуру
-						sin = reinterpret_cast <struct sockaddr *> (&this->ipv6.server);
-					}
+						this->peer.size = sizeof(server);
+					// Выполняем копирование объекта подключения сервера
+					memcpy(&this->peer.server, &server, this->peer.size);
 				} break;
 				// Если тип сети не определен
 				default: {
@@ -614,7 +580,7 @@ void awh::Engine::Address::init(const string & ip, const u_int port, const type_
 				}
 			}
 			// Создаем сокет подключения
-			this->fd = ::socket(this->family, this->type, this->protocol);
+			this->fd = ::socket(family, this->type, this->protocol);
 			// Если сокет не создан то выходим
 			if(this->fd < 0){
 				// Выводим сообщение в консоль
@@ -635,7 +601,7 @@ void awh::Engine::Address::init(const string & ip, const u_int port, const type_
 				// Если приложение является сервером
 				if(type == type_t::SERVER){
 					// Включаем отображение сети IPv4 в IPv6
-					if(this->family == AF_INET6) this->socket.ipV6only(this->fd, this->v6only);
+					if(family == AF_INET6) this->socket.ipV6only(this->fd, this->v6only);
 				// Если приложение является клиентом и сокет установлен TCP/IP
 				} else if(this->type == SOCK_STREAM)
 					// Активируем KeepAlive
@@ -647,7 +613,7 @@ void awh::Engine::Address::init(const string & ip, const u_int port, const type_
 				// Если приложение является сервером
 				if(type == type_t::SERVER){
 					// Включаем отображение сети IPv4 в IPv6
-					if(this->family == AF_INET6) this->socket.ipV6only(this->fd, this->v6only);
+					if(family == AF_INET6) this->socket.ipV6only(this->fd, this->v6only);
 				// Если приложение является клиентом и сокет установлен TCP/IP
 				} else if(this->type == SOCK_STREAM)
 					// Активируем KeepAlive
@@ -668,16 +634,24 @@ void awh::Engine::Address::init(const string & ip, const u_int port, const type_
 				// Устанавливаем разрешение на повторное использование сокета
 				this->socket.reuseable(this->fd);
 			}
-			// Если приложение является сервером
-			if(type == type_t::SERVER)
-				// Получаем настоящий хост сервера
-				host = this->ifnet.ip(this->family);
-			// Выполняем бинд на сокет
-			if(::bind(this->fd, sin, size) < 0){
-				// Выводим в лог сообщение
-				this->log->print("bind local network [%s]", log_t::flag_t::CRITICAL, host.c_str());
-				// Выходим
-				return;
+			// Определяем тип запускаемого приложения
+			switch((uint8_t) type){
+				// Если приложение является сервером
+				case (uint8_t) type_t::SERVER: {
+					// Получаем настоящий хост сервера
+					host = this->ifnet.ip(family);
+					// Выполняем бинд на сокет
+					if(::bind(this->fd, (struct sockaddr *) (&this->peer.server), this->peer.size) < 0)
+						// Выводим в лог сообщение
+						this->log->print("bind local network [%s]", log_t::flag_t::CRITICAL, host.c_str());
+				} break;
+				// Если приложение является клиентом
+				case (uint8_t) type_t::CLIENT: {
+					// Выполняем бинд на сокет
+					if(::bind(this->fd, (struct sockaddr *) (&this->peer.client), this->peer.size) < 0)
+						// Выводим в лог сообщение
+						this->log->print("bind local network [%s]", log_t::flag_t::CRITICAL, host.c_str());
+				} break;
 			}
 		}
 	}
@@ -839,85 +813,23 @@ int64_t awh::Engine::Context::read(char * buffer, const size_t size) noexcept {
 				result = ::recv(this->addr->fd, buffer, size, 0);
 			// Если сокет установлен UDP
 			else if(this->addr->type == SOCK_DGRAM) {
-				// Размер объекта подключения
-				socklen_t socklen = 0;
 				// Создаём объект подключения
-				struct sockaddr * sock = nullptr;
-				// Если тип подключения IPv4 или IPv6
-				if((this->addr->family == AF_INET) || (this->addr->family == AF_INET6)){
-					// Определяем тип подключения
-					switch((uint8_t) this->addr->status){
-						// Если статус установлен как подключение клиентом
-						case (uint8_t) addr_t::status_t::CONNECTED: {
-							// Определяем тип подключения
-							switch(this->addr->family){
-								// Для протокола IPv4
-								case AF_INET: {
-									// Запоминаем размер структуры
-									socklen = sizeof(this->addr->ipv4.server);
-									// Запоминаем полученную структуру
-									sock = reinterpret_cast <struct sockaddr *> (&this->addr->ipv4.server);
-								} break;
-								// Для протокола IPv6
-								case AF_INET6: {
-									// Запоминаем размер структуры
-									socklen = sizeof(this->addr->ipv6.server);
-									// Запоминаем полученную структуру
-									sock = reinterpret_cast <struct sockaddr *> (&this->addr->ipv6.server);
-								} break;
-							}
-						} break;
-						// Если статус установлен как разрешение подключения к серверу
-						case (uint8_t) addr_t::status_t::ACCEPTED: {
-							// Определяем тип подключения
-							switch(this->addr->family){
-								// Для протокола IPv4
-								case AF_INET: {
-									// Запоминаем размер структуры
-									socklen = sizeof(this->addr->ipv4.client);
-									// Запоминаем полученную структуру
-									sock = reinterpret_cast <struct sockaddr *> (&this->addr->ipv4.client);
-								} break;
-								// Для протокола IPv6
-								case AF_INET6: {
-									// Запоминаем размер структуры
-									socklen = sizeof(this->addr->ipv6.client);
-									// Запоминаем полученную структуру
-									sock = reinterpret_cast <struct sockaddr *> (&this->addr->ipv6.client);
-								} break;
-							}
-						} break;
-					}
-					// Выполняем чтение данных из сокета
-					result = ::recvfrom(this->addr->fd, buffer, size, 0, sock, &socklen);
-				// Если подключение производится по unix-сокету
-				} else {
-					/**
-					 * Если операционной системой не является Windows
-					 */
-					#if !defined(_WIN32) && !defined(_WIN64)
-						// Для протокола unix-сокета
-						if(this->addr->family == AF_UNIX){
-							// Устанавливаем размер счтиываемой структуры данных
-							this->addr->usock.size = sizeof(struct sockaddr_un);
-							// Определяем тип подключения
-							switch((uint8_t) this->addr->status){
-								// Если статус установлен как подключение клиентом
-								case (uint8_t) addr_t::status_t::CONNECTED:
-									// Запоминаем полученную структуру
-									sock = reinterpret_cast <struct sockaddr *> (&this->addr->usock.server);
-								break;
-								// Если статус установлен как разрешение подключения к серверу
-								case (uint8_t) addr_t::status_t::ACCEPTED:
-									// Запоминаем полученную структуру
-									sock = reinterpret_cast <struct sockaddr *> (&this->addr->usock.client);
-								break;
-							}
-							// Выполняем чтение данных из сокета
-							result = ::recvfrom(this->addr->fd, buffer, size, 0, sock, &this->addr->usock.size);
-						}
-					#endif
+				struct sockaddr * addr = nullptr;
+				// Определяем тип подключения
+				switch((uint8_t) this->addr->status){
+					// Если статус установлен как подключение клиентом
+					case (uint8_t) addr_t::status_t::CONNECTED:
+						// Запоминаем полученную структуру
+						addr = (struct sockaddr *) (&this->addr->peer.server);
+					break;
+					// Если статус установлен как разрешение подключения к серверу
+					case (uint8_t) addr_t::status_t::ACCEPTED:
+						// Запоминаем полученную структуру
+						addr = (struct sockaddr *) (&this->addr->peer.client);
+					break;
 				}
+				// Выполняем чтение данных из сокета
+				result = ::recvfrom(this->addr->fd, buffer, size, 0, addr, &this->addr->peer.size);
 			}
 		}
 		// Если данные прочитать не удалось
@@ -983,87 +895,47 @@ int64_t awh::Engine::Context::write(const char * buffer, const size_t size) noex
 				result = ::send(this->addr->fd, buffer, size, 0);
 			// Если сокет установлен UDP
 			else if(this->addr->type == SOCK_DGRAM) {
-				// Размер объекта подключения
-				socklen_t socklen = 0;
 				// Создаём объект подключения
-				struct sockaddr * sock = nullptr;
-				// Если тип подключения IPv4 или IPv6
-				if((this->addr->family == AF_INET) || (this->addr->family == AF_INET6)){
-					// Определяем тип подключения
-					switch((uint8_t) this->addr->status){
-						// Если статус установлен как подключение клиентом
-						case (uint8_t) addr_t::status_t::CONNECTED: {
-							// Определяем тип подключения
-							switch(this->addr->family){
-								// Для протокола IPv4
-								case AF_INET: {
-									// Запоминаем размер структуры
-									socklen = sizeof(this->addr->ipv4.server);
-									// Запоминаем полученную структуру
-									sock = reinterpret_cast <struct sockaddr *> (&this->addr->ipv4.server);
-								} break;
-								// Для протокола IPv6
-								case AF_INET6: {
-									// Запоминаем размер структуры
-									socklen = sizeof(this->addr->ipv6.server);
-									// Запоминаем полученную структуру
-									sock = reinterpret_cast <struct sockaddr *> (&this->addr->ipv6.server);
-								} break;
-							}
-						} break;
-						// Если статус установлен как разрешение подключения к серверу
-						case (uint8_t) addr_t::status_t::ACCEPTED: {
-							// Определяем тип подключения
-							switch(this->addr->family){
-								// Для протокола IPv4
-								case AF_INET: {
-									// Запоминаем размер структуры
-									socklen = sizeof(this->addr->ipv4.client);
-									// Запоминаем полученную структуру
-									sock = reinterpret_cast <struct sockaddr *> (&this->addr->ipv4.client);
-								} break;
-								// Для протокола IPv6
-								case AF_INET6: {
-									// Запоминаем размер структуры
-									socklen = sizeof(this->addr->ipv6.client);
-									// Запоминаем полученную структуру
-									sock = reinterpret_cast <struct sockaddr *> (&this->addr->ipv6.client);
-								} break;
-							}
-						} break;
-					}
-					// Выполняем запись данных в сокет
-					result = ::sendto(this->addr->fd, buffer, size, 0, sock, socklen);
-				// Если подключение производится по unix-сокету
-				} else {
-					/**
-					 * Если операционной системой не является Windows
-					 */
-					#if !defined(_WIN32) && !defined(_WIN64)
-						// Для протокола unix-сокета
-						if(this->addr->family == AF_UNIX){
-							// Определяем тип подключения
-							switch((uint8_t) this->addr->status){
-								// Если статус установлен как подключение клиентом
-								case (uint8_t) addr_t::status_t::CONNECTED: {
-									// Запоминаем полученную структуру
-									sock = reinterpret_cast <struct sockaddr *> (&this->addr->usock.server);
-									// Получаем размер объекта сокета
-									this->addr->usock.size = (offsetof(struct sockaddr_un, sun_path) + strlen(this->addr->usock.server.sun_path));
-								} break;
-								// Если статус установлен как разрешение подключения к серверу
-								case (uint8_t) addr_t::status_t::ACCEPTED: {
-									// Запоминаем полученную структуру
-									sock = reinterpret_cast <struct sockaddr *> (&this->addr->usock.client);
-									// Получаем размер объекта сокета
-									this->addr->usock.size = (offsetof(struct sockaddr_un, sun_path) + strlen(this->addr->usock.client.sun_path));
-								} break;
-							}
-							// Выполняем запись данных в сокет
-							result = ::sendto(this->addr->fd, buffer, size, 0, sock, this->addr->usock.size);
-						}
-					#endif
+				struct sockaddr * addr = nullptr;
+				// Определяем тип подключения
+				switch((uint8_t) this->addr->status){
+					// Если статус установлен как подключение клиентом
+					case (uint8_t) addr_t::status_t::CONNECTED: {
+						// Запоминаем полученную структуру
+						addr = (struct sockaddr *) (&this->addr->peer.server);
+						/**
+						 * Если операционной системой не является Windows
+						 */
+						#if !defined(_WIN32) && !defined(_WIN64)
+							// Для протокола unix-сокета
+							if(this->addr->peer.server.ss_family == AF_UNIX)
+								// Получаем размер объекта сокета
+								this->addr->peer.size = (
+									offsetof(struct sockaddr_un, sun_path) +
+									strlen(((struct sockaddr_un *) (&this->addr->peer.server))->sun_path)
+								);
+						#endif
+					} break;
+					// Если статус установлен как разрешение подключения к серверу
+					case (uint8_t) addr_t::status_t::ACCEPTED: {
+						// Запоминаем полученную структуру
+						addr = (struct sockaddr *) (&this->addr->peer.client);
+						/**
+						 * Если операционной системой не является Windows
+						 */
+						#if !defined(_WIN32) && !defined(_WIN64)
+							// Для протокола unix-сокета
+							if(this->addr->peer.client.ss_family == AF_UNIX)
+								// Получаем размер объекта сокета
+								this->addr->peer.size = (
+									offsetof(struct sockaddr_un, sun_path) +
+									strlen(((struct sockaddr_un *) (&this->addr->peer.client))->sun_path)
+								);
+						#endif
+					} break;
 				}
+				// Выполняем запись данных в сокет
+				result = ::sendto(this->addr->fd, buffer, size, 0, addr, this->addr->peer.size);
 			}
 		}
 		// Если данные записать не удалось
@@ -1282,10 +1154,10 @@ const bool awh::Engine::certHostcheck(const string & host, const string & patt) 
  * @return     результат проверки
  */
 int awh::Engine::verifyCert(const int ok, X509_STORE_CTX * x509) noexcept {
-
-	cout << " ====================2 " << x509 << " == " << ok << endl;
-
-	// Выводим положительный ответ
+	// Экранируем ошибку неиспользуемой переменной
+	(void) ok;
+	(void) x509;
+	// Сообщаем, что всегда доверяем пользовательскому сертификату
 	return 1;
 }
 /**
@@ -1295,9 +1167,6 @@ int awh::Engine::verifyCert(const int ok, X509_STORE_CTX * x509) noexcept {
  * @return     результат проверки
  */
 int awh::Engine::verifyHost(X509_STORE_CTX * x509, void * ctx) noexcept {
-
-	cout << " ====================1 " << x509 << " == " << ctx << endl;
-
 	// Если объекты переданы верно
 	if((x509 != nullptr) && (ctx != nullptr)){
 		// Буфер данных сертификатов из хранилища
@@ -1357,6 +1226,83 @@ int awh::Engine::verifyHost(X509_STORE_CTX * x509, void * ctx) noexcept {
  * @return       результат проверки
  */
 int awh::Engine::generateCookie(SSL * ssl, u_char * cookie, u_int * size) noexcept {
+	// Буфер под генерацию печенок
+	u_char result[EVP_MAX_MD_SIZE];
+	// Смещение в буфере и размер сгенерированных печенок
+	u_int offset = 0, length = 0;
+	// Создаём объединение адресов
+	union {
+		struct sockaddr_in s4;
+		struct sockaddr_in6 s6;
+		struct sockaddr_storage ss;
+	} peer;
+
+	/* Initialize a random secret */
+	if (!cookieInit)
+		{
+		if (!RAND_bytes(cookies, sizeof(cookies)))
+		{
+		printf("error setting random cookie secret\n");
+		return 0;
+		}
+		cookieInit = true;
+		}
+
+	/* Read peer information */
+	(void) BIO_dgram_get_peer(SSL_get_rbio(ssl), &peer);
+
+	/* Create buffer with peer's address and port */
+	offset = 0;
+	switch (peer.ss.ss_family) {
+	case AF_INET:
+		offset += sizeof(struct in_addr);
+		break;
+	case AF_INET6:
+		offset += sizeof(struct in6_addr);
+		break;
+	default:
+		OPENSSL_assert(0);
+		break;
+	}
+	offset += sizeof(in_port_t);
+	u_char * buffer = (unsigned char*) OPENSSL_malloc(offset);
+
+	if (buffer == NULL)
+		{
+		printf("out of memory\n");
+		return 0;
+		}
+
+	switch (peer.ss.ss_family) {
+	case AF_INET:
+		memcpy(buffer,
+		&peer.s4.sin_port,
+		sizeof(in_port_t));
+		memcpy(buffer + sizeof(peer.s4.sin_port),
+		&peer.s4.sin_addr,
+		sizeof(struct in_addr));
+		break;
+	case AF_INET6:
+		memcpy(buffer,
+		&peer.s6.sin6_port,
+		sizeof(in_port_t));
+		memcpy(buffer + sizeof(in_port_t),
+		&peer.s6.sin6_addr,
+		sizeof(struct in6_addr));
+		break;
+	default:
+		OPENSSL_assert(0);
+		break;
+	}
+
+	/* Calculate HMAC of buffer using the secret */
+	HMAC(EVP_sha1(), (const void*) cookies, sizeof(cookies),
+		(const unsigned char*) buffer, offset, result, &length);
+	OPENSSL_free(buffer);
+
+	memcpy(cookie, result, length);
+	*size = length;
+	
 	// Выводим положительный ответ
 	return 1;
 }
@@ -1368,8 +1314,74 @@ int awh::Engine::generateCookie(SSL * ssl, u_char * cookie, u_int * size) noexce
  * @return       результат проверки
  */
 int awh::Engine::verifyCookie(SSL * ssl, const u_char * cookie, u_int size) noexcept {
-	// Выводим положительный ответ
-	return 1;
+	u_char * buffer, result[EVP_MAX_MD_SIZE];
+	u_int length = 0, resultlength;
+	union {
+		struct sockaddr_storage ss;
+		struct sockaddr_in6 s6;
+		struct sockaddr_in s4;
+	} peer;
+
+	/* If secret isn't initialized yet, the cookie can't be valid */
+	if (!cookieInit)
+		return 0;
+
+	/* Read peer information */
+	(void) BIO_dgram_get_peer(SSL_get_rbio(ssl), &peer);
+
+	/* Create buffer with peer's address and port */
+	length = 0;
+	switch (peer.ss.ss_family) {
+	case AF_INET:
+		length += sizeof(struct in_addr);
+		break;
+	case AF_INET6:
+		length += sizeof(struct in6_addr);
+		break;
+	default:
+		OPENSSL_assert(0);
+		break;
+	}
+	length += sizeof(in_port_t);
+	buffer = (unsigned char*) OPENSSL_malloc(length);
+
+	if (buffer == NULL)
+		{
+		printf("out of memory\n");
+		return 0;
+		}
+
+	switch (peer.ss.ss_family) {
+	case AF_INET:
+		memcpy(buffer,
+		&peer.s4.sin_port,
+		sizeof(in_port_t));
+		memcpy(buffer + sizeof(in_port_t),
+		&peer.s4.sin_addr,
+		sizeof(struct in_addr));
+		break;
+	case AF_INET6:
+		memcpy(buffer,
+		&peer.s6.sin6_port,
+		sizeof(in_port_t));
+		memcpy(buffer + sizeof(in_port_t),
+		&peer.s6.sin6_addr,
+		sizeof(struct in6_addr));
+		break;
+	default:
+		OPENSSL_assert(0);
+		break;
+	}
+
+	/* Calculate HMAC of buffer using the secret */
+	HMAC(EVP_sha1(), (const void*) cookies, sizeof(cookies),
+		(const unsigned char*) buffer, length, result, &resultlength);
+	OPENSSL_free(buffer);
+
+	if (size == resultlength && memcmp(result, cookie, resultlength) == 0)
+		return 1;
+
+	return 0;
 }
 /**
  * matchesCommonName Метод проверки доменного имени по данным из сертификата
@@ -1781,24 +1793,12 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address) noexcept {
 				// Выходим
 				return;
 			}
-			/*
-			// Хост адрес текущего сервера
-			const string host = "mimi.anyks.net";
-			// Если нужно произвести проверку
-			if(this->verify && !host.empty()){
-				// Создаём объект проверки домена
-				target.verify = new verify_t(host, this);
-				// Выполняем проверку сертификата
-				SSL_CTX_set_verify(target.ctx, SSL_VERIFY_PEER | SSL_VERIFY_CLIENT_ONCE, nullptr);
-				// Выполняем проверку всех дочерних сертификатов
-				SSL_CTX_set_cert_verify_callback(target.ctx, &verifyHost, target.verify);
-			// Запрещаем выполнять првоерку сертификата пользователя
-			} else SSL_CTX_set_verify(target.ctx, SSL_VERIFY_NONE, nullptr);
-			*/
-			// Запрещаем выполнять првоерку сертификата пользователя
-			SSL_CTX_set_verify(target.ctx, SSL_VERIFY_NONE, nullptr);
+			// Заставляем OpenSSL автоматические повторные попытки после событий сеанса TLS
+			SSL_CTX_set_mode(target.ctx, SSL_MODE_AUTO_RETRY);
 			// Выполняем проверку сертификата клиента
-			// SSL_CTX_set_verify(target.ctx, SSL_VERIFY_PEER, &verifyCert);
+			SSL_CTX_set_verify(target.ctx, SSL_VERIFY_PEER | SSL_VERIFY_CLIENT_ONCE, &verifyCert);
+			// Устанавливаем, что мы должны читать как можно больше входных байтов
+			SSL_CTX_set_read_ahead(target.ctx, 1);
 			// Если подключение выполняется по сетевому протоколу UDP
 			if(target.addr->type == SOCK_DGRAM){
 				// Выполняем проверку файлов печенок
@@ -1874,25 +1874,10 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const ctx_t & source) n
 			target.bio = SSL_get_rbio(source.ssl);
 			// Устанавливаем сокет клиента
 			BIO_set_fd(target.bio, target.addr->fd, BIO_NOCLOSE);
-			// Определяем тип входящего сокета
-			switch(target.addr->type){
-				// Если сокет установлен UDP
-				case SOCK_DGRAM: {
-					// Определяем тип подключения
-					switch(target.addr->family){
-						// Для протокола IPv4
-						case AF_INET:
-							// Выполняем установку объекта подключения в BIO
-							BIO_ctrl(target.bio, BIO_CTRL_DGRAM_SET_CONNECTED, 0, &target.addr->ipv4.client);
-						break;
-						// Для протокола IPv6
-						case AF_INET6:
-							// Выполняем установку объекта подключения в BIO
-							BIO_ctrl(target.bio, BIO_CTRL_DGRAM_SET_CONNECTED, 0, &target.addr->ipv6.client);
-						break;
-					}
-				} break;
-			}
+			// Если тип протокола UDP
+			if(target.addr->type == SOCK_DGRAM)
+				// Выполняем установку объекта подключения в BIO
+				BIO_ctrl(target.bio, BIO_CTRL_DGRAM_SET_CONNECTED, 0, (struct sockaddr *) &target.addr->peer.client);
 		}
 	}
 }
@@ -2023,26 +2008,10 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const bool mode) noexce
 				// Выходим
 				return;
 			}
-			
-			/*
-			// Хост адрес текущего сервера
-			const string host = "mimi.anyks.net";
-			// Если нужно произвести проверку
-			if(this->verify && !host.empty()){
-				// Создаём объект проверки домена
-				target.verify = new verify_t(host, this);
-				// Выполняем проверку сертификата
-				SSL_CTX_set_verify(target.ctx, SSL_VERIFY_PEER | SSL_VERIFY_CLIENT_ONCE, nullptr);
-				// Выполняем проверку всех дочерних сертификатов
-				SSL_CTX_set_cert_verify_callback(target.ctx, &verifyHost, target.verify);
+			// Заставляем OpenSSL автоматические повторные попытки после событий сеанса TLS
+			SSL_CTX_set_mode(target.ctx, SSL_MODE_AUTO_RETRY);
 			// Запрещаем выполнять првоерку сертификата пользователя
-			} else SSL_CTX_set_verify(target.ctx, SSL_VERIFY_NONE, nullptr);
-			*/
-			
-			// Запрещаем выполнять првоерку сертификата пользователя
-			// SSL_CTX_set_verify(target.ctx, SSL_VERIFY_NONE, nullptr);
-			// Выполняем проверку сертификата клиента
-			SSL_CTX_set_verify(target.ctx, SSL_VERIFY_PEER, &verifyCert);
+			SSL_CTX_set_verify(target.ctx, SSL_VERIFY_NONE, nullptr);
 			// Если подключение выполняется по сетевому протоколу UDP
 			if(target.addr->type == SOCK_DGRAM){
 				// Выполняем проверку файлов печенок
@@ -2050,14 +2019,6 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const bool mode) noexce
 				// Выполняем генерацию файлов печенок
 				SSL_CTX_set_cookie_generate_cb(target.ctx, &generateCookie);
 			}
-
-			int verificationDepth;
-			
-			SSL_CTX_set_verify_depth(target.ctx, verificationDepth);
-			SSL_CTX_set_mode(target.ctx, SSL_MODE_AUTO_RETRY);
-			SSL_CTX_set_session_cache_mode(target.ctx, SSL_SESS_CACHE_OFF);
-
-
 			// Создаем SSL объект
 			target.ssl = SSL_new(target.ctx);
 			// Проверяем рукопожатие
@@ -2085,19 +2046,8 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const bool mode) noexce
 				case SOCK_DGRAM: {
 					// Выполняем обёртывание сокета UDP в BIO SSL
 					target.bio = BIO_new_dgram(target.addr->fd, BIO_NOCLOSE);
-					// Определяем тип подключения
-					switch(target.addr->family){
-						// Для протокола IPv4
-						case AF_INET:
-							// Выполняем установку объекта подключения в BIO
-							BIO_ctrl(target.bio, BIO_CTRL_DGRAM_SET_CONNECTED, 0, &target.addr->ipv4.client);
-						break;
-						// Для протокола IPv6
-						case AF_INET6:
-							// Выполняем установку объекта подключения в BIO
-							BIO_ctrl(target.bio, BIO_CTRL_DGRAM_SET_CONNECTED, 0, &target.addr->ipv6.client);
-						break;
-					}
+					// Выполняем установку объекта подключения в BIO
+					BIO_ctrl(target.bio, BIO_CTRL_DGRAM_SET_CONNECTED, 0, (struct sockaddr *) &target.addr->peer.client);
 				} break;
 			}
 			// Если BIO SSL создано
@@ -2185,6 +2135,8 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const uri_t::url_t & ur
 				// Выходим
 				return;
 			}
+			// Заставляем OpenSSL автоматические повторные попытки после событий сеанса TLS
+			SSL_CTX_set_mode(target.ctx, SSL_MODE_AUTO_RETRY);
 			// Если нужно произвести проверку
 			if(this->verify && !url.domain.empty()){
 				// Создаём объект проверки домена
@@ -2193,6 +2145,8 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const uri_t::url_t & ur
 				SSL_CTX_set_verify(target.ctx, SSL_VERIFY_PEER | SSL_VERIFY_CLIENT_ONCE, nullptr);
 				// Выполняем проверку всех дочерних сертификатов
 				SSL_CTX_set_cert_verify_callback(target.ctx, &verifyHost, target.verify);
+				// Устанавливаем глубину проверки
+				SSL_CTX_set_verify_depth(target.ctx, 4);
 			// Запрещаем выполнять првоерку сертификата пользователя
 			} else SSL_CTX_set_verify(target.ctx, SSL_VERIFY_NONE, nullptr);
 			// Если подключение выполняется по сетевому протоколу UDP
@@ -2243,19 +2197,8 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const uri_t::url_t & ur
 				case SOCK_DGRAM: {
 					// Выполняем обёртывание сокета UDP в BIO SSL
 					target.bio = BIO_new_dgram(target.addr->fd, BIO_NOCLOSE);
-					// Определяем тип подключения
-					switch(target.addr->family){
-						// Для протокола IPv4
-						case AF_INET:
-							// Выполняем установку объекта подключения в BIO
-							BIO_ctrl(target.bio, BIO_CTRL_DGRAM_SET_CONNECTED, 0, &target.addr->ipv4.server);
-						break;
-						// Для протокола IPv6
-						case AF_INET6:
-							// Выполняем установку объекта подключения в BIO
-							BIO_ctrl(target.bio, BIO_CTRL_DGRAM_SET_CONNECTED, 0, &target.addr->ipv6.server);
-						break;
-					}
+					// Выполняем установку объекта подключения в BIO
+					BIO_ctrl(target.bio, BIO_CTRL_DGRAM_SET_CONNECTED, 0, (struct sockaddr *) &target.addr->peer.server);
 				} break;
 			}
 			// Если BIO SSL создано

@@ -255,9 +255,9 @@ vector <char> awh::WS::response() noexcept {
 			// Добавляем заголовок сабпротокола
 			this->addHeader("Sec-WebSocket-Protocol", this->sub.c_str());
 		// Добавляем заголовок подключения
-		this->addHeader("Connection", "upgrade");
+		this->addHeader("Connection", "Upgrade");
 		// Добавляем заголовок апгрейд
-		this->addHeader("Upgrade", "websocket");
+		this->addHeader("Upgrade", "WebSocket");
 		// Добавляем заголовок хеша ключа
 		this->addHeader("Sec-WebSocket-Accept", hash.c_str());
 		// Выводим результат
@@ -341,21 +341,21 @@ vector <char> awh::WS::request(const uri_t::url_t & url) noexcept {
 	// Добавляем заголовок Accept
 	this->addHeader("Accept", "*/*");
 	// Добавляем заголовок апгрейд
-	this->addHeader("Upgrade", "websocket");
+	this->addHeader("Upgrade", "WebSocket");
 	// Добавляем заголовок подключения
-	this->addHeader("Connection", "keep-alive, Upgrade");
+	this->addHeader("Connection", "Keep-Alive, Upgrade");
 	// Добавляем заголовок версии WebSocket
 	this->addHeader("Sec-WebSocket-Version", to_string(WS_VERSION));
 	// Добавляем заголовок ключ клиента
 	this->addHeader("Sec-WebSocket-Key", this->key);
 	// Добавляем заголовок отключения кеширования
-	this->addHeader("Pragma", "no-cache");
+	this->addHeader("Pragma", "No-Cache");
 	// Добавляем заголовок отключения кеширования
-	this->addHeader("Cache-Control", "no-cache");
+	this->addHeader("Cache-Control", "No-Cache");
 	// Устанавливаем заголовок типа запроса
-	this->addHeader("Sec-Fetch-Mode", "websocket");
+	this->addHeader("Sec-Fetch-Mode", "WebSocket");
 	// Устанавливаем заголовок места назначения запроса
-	this->addHeader("Sec-Fetch-Dest", "websocket");
+	this->addHeader("Sec-Fetch-Dest", "WebSocket");
 	// Устанавливаем заголовок требования сжимать содержимое ответов
 	this->addHeader("Accept-Encoding", "gzip, deflate, br");
 	// Устанавливаем заголовок поддерживаемых языков

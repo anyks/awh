@@ -586,19 +586,15 @@ void awh::server::Core::resolver(const string & ip, worker_t * wrk) noexcept {
 				// Определяем тип протокола подключения
 				switch((uint8_t) core->net.family){
 					// Если тип протокола подключения IPv4
-					case (uint8_t) family_t::IPV4: {
-						// Устанавливаем тип протокола подключения IPv4
-						wrk->addr.family = AF_INET;
+					case (uint8_t) family_t::IPV4:
 						// Устанавливаем сеть, для выхода в интернет
 						wrk->addr.network.assign(
 							core->net.v4.first.begin(),
 							core->net.v4.first.end()
 						);
-					} break;
+					break;
 					// Если тип протокола подключения IPv6
 					case (uint8_t) family_t::IPV6: {
-						// Устанавливаем тип протокола подключения IPv6
-						wrk->addr.family = AF_INET6;
 						// Устанавливаем использование только IPv6
 						wrk->addr.v6only = core->ipV6only;
 						// Устанавливаем сеть, для выхода в интернет
@@ -607,8 +603,6 @@ void awh::server::Core::resolver(const string & ip, worker_t * wrk) noexcept {
 							core->net.v6.first.end()
 						);
 					} break;
-					// Если тип протокола подключения unix-сокет
-					case (uint8_t) family_t::NIX: wrk->addr.family = AF_UNIX; break;
 				}
 				// Определяем тип сокета
 				switch((uint8_t) core->net.sonet){
@@ -632,7 +626,7 @@ void awh::server::Core::resolver(const string & ip, worker_t * wrk) noexcept {
 					// Выполняем инициализацию сокета
 					wrk->addr.init(core->net.filename, engine_t::type_t::SERVER);
 				// Если unix-сокет не используется, выполняем инициализацию сокета
-				else wrk->addr.init(wrk->host, wrk->port, engine_t::type_t::SERVER);
+				else wrk->addr.init(wrk->host, wrk->port, (core->net.family == family_t::IPV6 ? AF_INET6 : AF_INET), engine_t::type_t::SERVER);
 				// Если сокет подключения получен
 				if(wrk->addr.fd > -1){
 					// Если повесить прослушку на порт не вышло
@@ -701,19 +695,15 @@ void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 					// Определяем тип протокола подключения
 					switch((uint8_t) this->net.family){
 						// Если тип протокола подключения IPv4
-						case (uint8_t) family_t::IPV4: {
-							// Устанавливаем тип протокола подключения IPv4
-							adj->addr.family = AF_INET;
+						case (uint8_t) family_t::IPV4:
 							// Устанавливаем сеть, для выхода в интернет
 							adj->addr.network.assign(
 								this->net.v4.first.begin(),
 								this->net.v4.first.end()
 							);
-						} break;
+						break;
 						// Если тип протокола подключения IPv6
 						case (uint8_t) family_t::IPV6: {
-							// Устанавливаем тип протокола подключения IPv6
-							adj->addr.family = AF_INET6;
 							// Устанавливаем использование только IPv6
 							adj->addr.v6only = this->ipV6only;
 							// Устанавливаем сеть, для выхода в интернет
@@ -722,8 +712,6 @@ void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 								this->net.v6.first.end()
 							);
 						} break;
-						// Если тип протокола подключения unix-сокет
-						case (uint8_t) family_t::NIX: adj->addr.family = AF_UNIX; break;
 					}
 					// Определяем тип сокета
 					switch((uint8_t) this->net.sonet){
@@ -747,9 +735,9 @@ void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 						// Выполняем инициализацию сокета
 						adj->addr.init(this->net.filename, engine_t::type_t::SERVER);
 					// Если unix-сокет не используется, выполняем инициализацию сокета
-					else adj->addr.init(wrk->host, wrk->port, engine_t::type_t::SERVER);
+					else adj->addr.init(wrk->host, wrk->port, (this->net.family == family_t::IPV6 ? AF_INET6 : AF_INET), engine_t::type_t::SERVER);
 					// Выполняем разрешение подключения
-					if(adj->addr.accept(adj->addr.fd)){
+					if(adj->addr.accept(adj->addr.fd, 0)){
 						// Получаем адрес подключения клиента
 						adj->ip = adj->addr.ip;
 						// Получаем аппаратный адрес клиента
@@ -807,15 +795,6 @@ void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 					#endif
 					// Создаём бъект адъютанта
 					unique_ptr <awh::worker_t::adj_t> adj(new awh::worker_t::adj_t(wrk, this->fmk, this->log));
-					// Определяем тип протокола подключения
-					switch((uint8_t) this->net.family){
-						// Если тип протокола подключения IPv4
-						case (uint8_t) family_t::IPV4: adj->addr.family = AF_INET; break;
-						// Если тип протокола подключения IPv6
-						case (uint8_t) family_t::IPV6: adj->addr.family = AF_INET6; break;
-						// Если тип протокола подключения unix-сокет
-						case (uint8_t) family_t::NIX: adj->addr.family = AF_UNIX; break;
-					}
 					// Определяем тип сокета
 					switch((uint8_t) this->net.sonet){
 						// Если тип сокета UDP
@@ -834,7 +813,7 @@ void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 						} break;
 					}
 					// Выполняем разрешение подключения
-					if(adj->addr.accept(fd)){
+					if(adj->addr.accept(wrk->addr)){
 						// Получаем адрес подключения клиента
 						adj->ip = adj->addr.ip;
 						// Получаем аппаратный адрес клиента

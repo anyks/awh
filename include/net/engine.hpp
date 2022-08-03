@@ -90,40 +90,17 @@ namespace awh {
 			};
 		private:
 			/**
-			 * IPv4 Структура протокола IPv4
+			 * Peer Структура подключения
 			 */
-			typedef struct IPv4 {
-				// Параметры подключения клиента
-				struct sockaddr_in client;
-				// Параметры подключения сервера
-				struct sockaddr_in server;
-			} ipv4_t;
-			/**
-			 * IPv6 Структура протокола IPv6
-			 */
-			typedef struct IPv6 {
-				// Параметры подключения клиента
-				struct sockaddr_in6 client;
-				// Параметры подключения сервера
-				struct sockaddr_in6 server;
-			} ipv6_t;
-			/**
-			 * Если операционной системой не является Windows
-			 */
-			#if !defined(_WIN32) && !defined(_WIN64)
+			typedef struct Peer {
+				socklen_t size;                 // Размер объекта подключения
+				struct sockaddr_storage client; // Параметры подключения клиента
+				struct sockaddr_storage server; // Параметры подключения сервера
 				/**
-				 * UnixSocket Структура протокола unix-сокета
+				 * Peer Конструктор
 				 */
-				typedef struct UnixSocket {
-					socklen_t size;            // Размер объекта подключения
-					struct sockaddr_un client; // Параметры подключения для unix-сокет клиента
-					struct sockaddr_un server; // Параметры подключения для unix-сокет сервера
-					/**
-					 * UnixSocket Конструктор
-					 */
-					UnixSocket() noexcept : size(0) {}
-				} usock_t;
-			#endif
+				Peer() noexcept : size(0) {}
+			} peer_t;
 		public:
 			/**
 			 * KeepAlive Структура с параметрами для постоянного подключения
@@ -160,8 +137,6 @@ namespace awh {
 					int fd;
 					// Тип сокета (SOCK_STREAM / SOCK_DGRAM)
 					int type;
-					// Семейство сокета (AF_INET / AF_INET6 / AF_UNIX)
-					int family;
 					// Протокол сокета (IPPROTO_TCP / IPPROTO_UDP)
 					int protocol;
 				public:
@@ -177,6 +152,8 @@ namespace awh {
 					// Параметры постоянного подключения
 					alive_t alive;
 				private:
+					// Объект подключения
+					peer_t peer;
 					// Создаем объект сети
 					network_t nwk;
 					// Объект для работы с сетевым интерфейсом
@@ -189,18 +166,6 @@ namespace awh {
 				public:
 					// Объект SSL
 					SSL * ssl;
-				private:
-					// Объект протокола IPv4
-					ipv4_t ipv4;
-					// Объект протокола IPv6
-					ipv6_t ipv6;
-					/**
-					 * Если операционной системой не является Windows
-					 */
-					#if !defined(_WIN32) && !defined(_WIN64)
-						// Объект протокола unix-сокет
-						usock_t usock;
-					#endif
 				public:
 					// Создаём объект фреймворка
 					const fmk_t * fmk = nullptr;
@@ -225,22 +190,23 @@ namespace awh {
 					bool connect() noexcept;
 					/**
 					 * connect Метод выполнения подключения сервера к клиенту для UDP
-					 * @param sock объект подключения сервера
+					 * @param addr объект подключения сервера
 					 */
-					bool connect(Address & sock) noexcept;
+					bool connect(Address & addr) noexcept;
 				public:
 					/**
 					 * accept Метод согласования подключения
-					 * @param sock объект подключения сервера
+					 * @param addr объект подключения сервера
 					 * @return     результат выполнения операции
 					 */
-					bool accept(Address & sock) noexcept;
+					bool accept(Address & addr) noexcept;
 					/**
 					 * accept Метод согласования подключения
-					 * @param fd файловый дескриптор сервера
-					 * @return   результат выполнения операции
+					 * @param fd     файловый дескриптор сервера
+					 * @param family семейство сокета (AF_INET / AF_INET6 / AF_UNIX)
+					 * @return       результат выполнения операции
 					 */
-					bool accept(const int fd) noexcept;
+					bool accept(const int fd, const int family) noexcept;
 				public:
 					/**
 					 * init Метод инициализации адресного пространства сокета
@@ -250,12 +216,13 @@ namespace awh {
 					void init(const string & unixsocket, const type_t type) noexcept;
 					/**
 					 * init Метод инициализации адресного пространства сокета
-					 * @param ip   адрес для которого нужно создать сокет
-					 * @param port порт сервера для которого нужно создать сокет
-					 * @param type тип приложения (клиент или сервер)
-					 * @return     параметры подключения к серверу
+					 * @param ip     адрес для которого нужно создать сокет
+					 * @param port   порт сервера для которого нужно создать сокет
+					 * @param family семейство сокета (AF_INET / AF_INET6 / AF_UNIX)
+					 * @param type   тип приложения (клиент или сервер)
+					 * @return       параметры подключения к серверу
 					 */
-					void init(const string & ip, const u_int port, const type_t type) noexcept;
+					void init(const string & ip, const u_int port, const int family, const type_t type) noexcept;
 				public:
 					/**
 					 * Address Конструктор
@@ -263,11 +230,9 @@ namespace awh {
 					 * @param log объект для работы с логами
 					 */
 					Address(const fmk_t * fmk, const log_t * log) noexcept :
-					 fd(-1), type(SOCK_STREAM), family(AF_INET),
-					 protocol(IPPROTO_TCP), v6only(false),
-					 status(status_t::DISCONNECTED), ip(""), mac(""),
-					 nwk(fmk), ifnet(fmk, log), socket(log),
-					 ssl(nullptr), fmk(fmk), log(log) {}
+					 fd(-1), type(SOCK_STREAM), protocol(IPPROTO_TCP), v6only(false),
+					 status(status_t::DISCONNECTED), ip(""), mac(""), nwk(fmk),
+					 ifnet(fmk, log), socket(log), ssl(nullptr), fmk(fmk), log(log) {}
 					/**
 					 * ~Address Деструктор
 					 */
@@ -406,6 +371,11 @@ namespace awh {
 			string path = "";
 			// Доверенный сертификат (CA-файл)
 			mutable string trusted = SSL_CA_FILE;
+		private:
+			// Флаг инициализации куков
+			static bool cookieInit;
+			// Буфер для создания куков
+			static u_char cookies[16];
 		private:
 			// Создаём объект фреймворка
 			const fmk_t * fmk = nullptr;

@@ -1093,9 +1093,9 @@ vector <char> awh::Http::proxy(const uri_t::url_t & url) noexcept {
 			// Добавляем в чёрный список заголовок Accept-Encoding
 			this->addBlack("Accept-Encoding");
 			// Добавляем поддержку постоянного подключения
-			this->addHeader("Connection", "keep-alive");
+			this->addHeader("Connection", "Keep-Alive");
 			// Добавляем поддержку постоянного подключения для прокси-сервера
-			this->addHeader("Proxy-Connection", "keep-alive");
+			this->addHeader("Proxy-Connection", "Keep-Alive");
 			// Получаем параметры авторизации
 			const string & auth = this->auth.client.getHeader("connect", true);
 			// Если данные авторизации получены
@@ -1127,9 +1127,9 @@ vector <char> awh::Http::reject(const u_int code, const string & mess) const noe
 		// Если требуется ввод авторизационных данных
 		if((code == 401) || (code == 407))
 			// Добавляем заголовок закрытия подключения
-			this->web.addHeader("Connection", "keep-alive");
+			this->web.addHeader("Connection", "Keep-Alive");
 		// Добавляем заголовок закрытия подключения
-		else this->web.addHeader("Connection", "close");
+		else this->web.addHeader("Connection", "Close");
 		// Добавляем заголовок тип контента
 		this->web.addHeader("Content-type", "text/html; charset=utf-8");
 		// Если запрос должен содержать тело сообщения

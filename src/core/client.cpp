@@ -160,27 +160,21 @@ void awh::client::Core::connect(const size_t wid) noexcept {
 				// Определяем тип протокола подключения
 				switch((uint8_t) this->net.family){
 					// Если тип протокола подключения IPv4
-					case (uint8_t) family_t::IPV4: {
-						// Устанавливаем тип протокола подключения IPv4
-						adj->addr.family = AF_INET;
+					case (uint8_t) family_t::IPV4:
 						// Устанавливаем сеть, для выхода в интернет
 						adj->addr.network.assign(
 							this->net.v4.first.begin(),
 							this->net.v4.first.end()
 						);
-					} break;
+					break;
 					// Если тип протокола подключения IPv6
-					case (uint8_t) family_t::IPV6: {
-						// Устанавливаем тип протокола подключения IPv6
-						adj->addr.family = AF_INET6;
+					case (uint8_t) family_t::IPV6:
 						// Устанавливаем сеть, для выхода в интернет
 						adj->addr.network.assign(
 							this->net.v6.first.begin(),
 							this->net.v6.first.end()
 						);
-					} break;
-					// Если тип протокола подключения unix-сокет
-					case (uint8_t) family_t::NIX: adj->addr.family = AF_UNIX; break;
+					break;
 				}
 				// Определяем тип сокета
 				switch((uint8_t) this->net.sonet){
@@ -204,7 +198,7 @@ void awh::client::Core::connect(const size_t wid) noexcept {
 					// Выполняем инициализацию сокета
 					adj->addr.init(this->net.filename, engine_t::type_t::CLIENT);
 				// Если unix-сокет не используется, выполняем инициализацию сокета
-				else adj->addr.init(url.ip, url.port, engine_t::type_t::CLIENT);
+				else adj->addr.init(url.ip, url.port, (this->net.family == family_t::IPV6 ? AF_INET6 : AF_INET), engine_t::type_t::CLIENT);
 				// Если сокет подключения получен
 				if(adj->addr.fd > -1){
 					// Устанавливаем идентификатор адъютанта
@@ -381,7 +375,7 @@ void awh::client::Core::reconnect(const size_t wid) noexcept {
 					// Получаем URL параметры запроса
 					const uri_t::url_t & url = (wrk->isProxy() ? wrk->proxy.url : wrk->url);
 
-					
+					/*
 					// Структура определяющая тип адреса
 					struct sockaddr_in serv_addr;
 
@@ -405,7 +399,7 @@ void awh::client::Core::reconnect(const size_t wid) noexcept {
 					printf("IP address: %s\n", ip);
 					
 					const_cast <uri_t::url_t *> (&url)->ip = ip;
-					
+					*/
 					
 
 					// Выполняем запуск системы
@@ -728,7 +722,7 @@ void awh::client::Core::open(const size_t wid) noexcept {
 						const uri_t::url_t & url = (wrk->isProxy() ? wrk->proxy.url : wrk->url);
 
 
-						
+						/*
 						// Структура определяющая тип адреса
 						struct sockaddr_in serv_addr;
 
@@ -752,7 +746,7 @@ void awh::client::Core::open(const size_t wid) noexcept {
 						printf("IP address: %s\n", ip);
 
 						const_cast <uri_t::url_t *> (&url)->ip = ip;
-						
+						*/
 						
 						
 						
