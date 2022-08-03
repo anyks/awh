@@ -1292,6 +1292,9 @@ int awh::Engine::verifyCert(const int ok, X509_STORE_CTX * x509) noexcept {
  * @return     результат проверки
  */
 int awh::Engine::verifyHost(X509_STORE_CTX * x509, void * ctx) noexcept {
+
+	cout << " ==================== " << x509 << " == " << ctx << endl;
+
 	// Если объекты переданы верно
 	if((x509 != nullptr) && (ctx != nullptr)){
 		// Буфер данных сертификатов из хранилища
@@ -1793,10 +1796,13 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address) noexcept {
 			SSL_CTX_set_verify(target.ctx, SSL_VERIFY_NONE, nullptr);
 			// Выполняем проверку сертификата клиента
 			// SSL_CTX_set_verify(target.ctx, SSL_VERIFY_PEER, &verifyCert);
-			// Выполняем проверку файлов печенок
-			// SSL_CTX_set_cookie_verify_cb(target.ctx, &verifyCookie);
-			// Выполняем генерацию файлов печенок
-			// SSL_CTX_set_cookie_generate_cb(target.ctx, &generateCookie);
+			// Если подключение выполняется по сетевому протоколу UDP
+			if(target.addr->type == SOCK_DGRAM){
+				// Выполняем проверку файлов печенок
+				SSL_CTX_set_cookie_verify_cb(target.ctx, &verifyCookie);
+				// Выполняем генерацию файлов печенок
+				SSL_CTX_set_cookie_generate_cb(target.ctx, &generateCookie);
+			}
 			// Создаем SSL объект
 			target.ssl = SSL_new(target.ctx);
 			// Устанавливаем объект SSL подключения
@@ -1820,12 +1826,10 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address) noexcept {
 				target.noblock();
 				// Выполняем установку BIO SSL
 				SSL_set_bio(target.ssl, target.bio, target.bio);
-				/*
-				// Если подключение производится по UDP
+				// Если подключение выполняется по сетевому протоколу UDP
 				if(target.addr->type == SOCK_DGRAM)
 					// Включаем обмен куками
 					SSL_set_options(target.ssl, SSL_OP_COOKIE_EXCHANGE);
-				*/
 			// Если BIO SSL не создано
 			} else {
 				// Очищаем созданный контекст
@@ -2016,7 +2020,7 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const bool mode) noexce
 				// Выходим
 				return;
 			}
-			/*
+			
 			// Хост адрес текущего сервера
 			const string host = "mimi.anyks.net";
 			// Если нужно произвести проверку
@@ -2029,15 +2033,18 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const bool mode) noexce
 				SSL_CTX_set_cert_verify_callback(target.ctx, &verifyHost, target.verify);
 			// Запрещаем выполнять првоерку сертификата пользователя
 			} else SSL_CTX_set_verify(target.ctx, SSL_VERIFY_NONE, nullptr);
-			*/
+			
 			// Запрещаем выполнять првоерку сертификата пользователя
-			SSL_CTX_set_verify(target.ctx, SSL_VERIFY_NONE, nullptr);
+			// SSL_CTX_set_verify(target.ctx, SSL_VERIFY_NONE, nullptr);
 			// Выполняем проверку сертификата клиента
 			// SSL_CTX_set_verify(target.ctx, SSL_VERIFY_PEER, &verifyCert);
-			// Выполняем проверку файлов печенок
-			// SSL_CTX_set_cookie_verify_cb(target.ctx, &verifyCookie);
-			// Выполняем генерацию файлов печенок
-			// SSL_CTX_set_cookie_generate_cb(target.ctx, &generateCookie);
+			// Если подключение выполняется по сетевому протоколу UDP
+			if(target.addr->type == SOCK_DGRAM){
+				// Выполняем проверку файлов печенок
+				SSL_CTX_set_cookie_verify_cb(target.ctx, &verifyCookie);
+				// Выполняем генерацию файлов печенок
+				SSL_CTX_set_cookie_generate_cb(target.ctx, &generateCookie);
+			}
 			// Создаем SSL объект
 			target.ssl = SSL_new(target.ctx);
 			// Проверяем рукопожатие
@@ -2086,12 +2093,10 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const bool mode) noexce
 				target.noblock();
 				// Выполняем установку BIO SSL
 				SSL_set_bio(target.ssl, target.bio, target.bio);
-				/*
-				// Если подключение производится по UDP
+				// Если подключение выполняется по сетевому протоколу UDP
 				if(target.addr->type == SOCK_DGRAM)
 					// Включаем обмен куками
 					SSL_set_options(target.ssl, SSL_OP_COOKIE_EXCHANGE);
-				*/
 				// Выполняем активацию сервера SSL
 				SSL_set_accept_state(target.ssl);
 			// Если BIO SSL не создано
@@ -2177,10 +2182,13 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const uri_t::url_t & ur
 				SSL_CTX_set_cert_verify_callback(target.ctx, &verifyHost, target.verify);
 			// Запрещаем выполнять првоерку сертификата пользователя
 			} else SSL_CTX_set_verify(target.ctx, SSL_VERIFY_NONE, nullptr);
-			// Выполняем проверку файлов печенок
-			// SSL_CTX_set_cookie_verify_cb(target.ctx, &verifyCookie);
-			// Выполняем генерацию файлов печенок
-			// SSL_CTX_set_cookie_generate_cb(target.ctx, &generateCookie);
+			// Если подключение выполняется по сетевому протоколу UDP
+			if(target.addr->type == SOCK_DGRAM){
+				// Выполняем проверку файлов печенок
+				SSL_CTX_set_cookie_verify_cb(target.ctx, &verifyCookie);
+				// Выполняем генерацию файлов печенок
+				SSL_CTX_set_cookie_generate_cb(target.ctx, &generateCookie);
+			}
 			// Создаем SSL объект
 			target.ssl = SSL_new(target.ctx);
 			/**
@@ -2243,12 +2251,10 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const uri_t::url_t & ur
 				target.block();
 				// Выполняем установку BIO SSL
 				SSL_set_bio(target.ssl, target.bio, target.bio);
-				/*
-				// Если подключение производится по UDP
+				// Если подключение выполняется по сетевому протоколу UDP
 				if(target.addr->type == SOCK_DGRAM)
 					// Включаем обмен куками
 					SSL_set_options(target.ssl, SSL_OP_COOKIE_EXCHANGE);
-				*/
 				// Выполняем активацию клиента SSL
 				SSL_set_connect_state(target.ssl);
 			// Если BIO SSL не создано
