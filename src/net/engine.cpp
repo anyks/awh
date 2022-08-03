@@ -2024,10 +2024,11 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const bool mode) noexce
 				return;
 			}
 			
+			/*
 			// Хост адрес текущего сервера
 			const string host = "mimi.anyks.net";
 			// Если нужно произвести проверку
-			// if(this->verify && !host.empty()){
+			if(this->verify && !host.empty()){
 				// Создаём объект проверки домена
 				target.verify = new verify_t(host, this);
 				// Выполняем проверку сертификата
@@ -2035,12 +2036,13 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const bool mode) noexce
 				// Выполняем проверку всех дочерних сертификатов
 				SSL_CTX_set_cert_verify_callback(target.ctx, &verifyHost, target.verify);
 			// Запрещаем выполнять првоерку сертификата пользователя
-			// } else SSL_CTX_set_verify(target.ctx, SSL_VERIFY_NONE, nullptr);
+			} else SSL_CTX_set_verify(target.ctx, SSL_VERIFY_NONE, nullptr);
+			*/
 			
 			// Запрещаем выполнять првоерку сертификата пользователя
 			// SSL_CTX_set_verify(target.ctx, SSL_VERIFY_NONE, nullptr);
 			// Выполняем проверку сертификата клиента
-			// SSL_CTX_set_verify(target.ctx, SSL_VERIFY_PEER, &verifyCert);
+			SSL_CTX_set_verify(target.ctx, SSL_VERIFY_PEER, &verifyCert);
 			// Если подключение выполняется по сетевому протоколу UDP
 			if(target.addr->type == SOCK_DGRAM){
 				// Выполняем проверку файлов печенок
