@@ -1914,7 +1914,6 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const bool mode) noexce
 		if(!mode) return;
 		// Если объект фреймворка существует
 		if((target.addr->fd > -1) && !this->privkey.empty() && !this->fullchain.empty()){
-			/*
 			// Активируем рандомный генератор
 			if(RAND_poll() == 0){
 				// Выводим в лог сообщение
@@ -1922,7 +1921,6 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const bool mode) noexce
 				// Выходим
 				return;
 			}
-			*/
 			// Определяем тип входящего сокета
 			switch(target.addr->type){
 				// Если сокет установлен TCP/IP
@@ -1949,7 +1947,6 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const bool mode) noexce
 			SSL_CTX_set_min_proto_version(target.ctx, 0);
 			// Устанавливаем максимально-возможную версию TLS
 			SSL_CTX_set_max_proto_version(target.ctx, TLS1_3_VERSION);
-			/*
 			// Если нужно установить основные алгоритмы шифрования
 			if(!this->cipher.empty()){
 				// Устанавливаем все основные алгоритмы шифрования
@@ -1973,7 +1970,6 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const bool mode) noexce
 				// Выходим
 				return;
 			}
-			*/
 			// Выполняем инициализацию доверенного сертификата
 			if(!this->initTrustedStore(target.ctx)){
 				// Очищаем созданный контекст
@@ -1982,9 +1978,9 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const bool mode) noexce
 				return;
 			}
 			// Устанавливаем флаг quiet shutdown
-			// SSL_CTX_set_quiet_shutdown(target.ctx, 1);
+			SSL_CTX_set_quiet_shutdown(target.ctx, 1);
 			// Запускаем кэширование
-			// SSL_CTX_set_session_cache_mode(target.ctx, SSL_SESS_CACHE_SERVER | SSL_SESS_CACHE_NO_INTERNAL);
+			SSL_CTX_set_session_cache_mode(target.ctx, SSL_SESS_CACHE_SERVER | SSL_SESS_CACHE_NO_INTERNAL);
 			// Если цепочка сертификатов установлена
 			if(!this->fullchain.empty()){
 				// Если цепочка сертификатов не установлена
@@ -2051,22 +2047,6 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const bool mode) noexce
 				SSL_CTX_set_cookie_verify_cb(target.ctx, &verifyCookie);
 				// Выполняем генерацию файлов печенок
 				SSL_CTX_set_cookie_generate_cb(target.ctx, &generateCookie);
-			}
-
-
-			// Если нужно установить основные алгоритмы шифрования
-			if(!this->cipher.empty()){
-				// Устанавливаем все основные алгоритмы шифрования
-				if(!SSL_CTX_set_cipher_list(target.ctx, this->cipher.c_str())){
-					// Очищаем созданный контекст
-					target.clear();
-					// Выводим в лог сообщение
-					this->log->print("%s", log_t::flag_t::CRITICAL, "set ssl ciphers");
-					// Выходим
-					return;
-				}
-				// Заставляем серверные алгоритмы шифрования использовать в приоритете
-				SSL_CTX_set_options(target.ctx, SSL_OP_CIPHER_SERVER_PREFERENCE);
 			}
 
 			int verificationDepth;
