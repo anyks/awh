@@ -1282,6 +1282,9 @@ const bool awh::Engine::certHostcheck(const string & host, const string & patt) 
  * @return     результат проверки
  */
 int awh::Engine::verifyCert(const int ok, X509_STORE_CTX * x509) noexcept {
+
+	cout << " ====================2 " << x509 << " == " << ok << endl;
+
 	// Выводим положительный ответ
 	return 1;
 }
@@ -1293,7 +1296,7 @@ int awh::Engine::verifyCert(const int ok, X509_STORE_CTX * x509) noexcept {
  */
 int awh::Engine::verifyHost(X509_STORE_CTX * x509, void * ctx) noexcept {
 
-	cout << " ==================== " << x509 << " == " << ctx << endl;
+	cout << " ====================1 " << x509 << " == " << ctx << endl;
 
 	// Если объекты переданы верно
 	if((x509 != nullptr) && (ctx != nullptr)){
@@ -2020,7 +2023,7 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const bool mode) noexce
 				// Выходим
 				return;
 			}
-			
+			/*
 			// Хост адрес текущего сервера
 			const string host = "mimi.anyks.net";
 			// Если нужно произвести проверку
@@ -2033,11 +2036,11 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const bool mode) noexce
 				SSL_CTX_set_cert_verify_callback(target.ctx, &verifyHost, target.verify);
 			// Запрещаем выполнять првоерку сертификата пользователя
 			} else SSL_CTX_set_verify(target.ctx, SSL_VERIFY_NONE, nullptr);
-			
+			*/
 			// Запрещаем выполнять првоерку сертификата пользователя
 			// SSL_CTX_set_verify(target.ctx, SSL_VERIFY_NONE, nullptr);
 			// Выполняем проверку сертификата клиента
-			// SSL_CTX_set_verify(target.ctx, SSL_VERIFY_PEER, &verifyCert);
+			SSL_CTX_set_verify(target.ctx, SSL_VERIFY_PEER, &verifyCert);
 			// Если подключение выполняется по сетевому протоколу UDP
 			if(target.addr->type == SOCK_DGRAM){
 				// Выполняем проверку файлов печенок
