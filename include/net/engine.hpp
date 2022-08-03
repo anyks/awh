@@ -461,14 +461,6 @@ namespace awh {
 			static int verifyHost(X509_STORE_CTX * x509, void * ctx = nullptr) noexcept;
 		private:
 			/**
-			 * verifyCookie Функция обратного вызова для проверки куков
-			 * @param ssl    объект SSL
-			 * @param cookie данные куков
-			 * @param size   количество символов
-			 * @return       результат проверки
-			 */
-			static int verifyCookie(SSL * ssl, u_char * cookie, u_int size) noexcept;
-			/**
 			 * generateCookie Функция обратного вызова для генерации куков
 			 * @param ssl    объект SSL
 			 * @param cookie данные куков
@@ -476,6 +468,14 @@ namespace awh {
 			 * @return       результат проверки
 			 */
 			static int generateCookie(SSL * ssl, u_char * cookie, u_int * size) noexcept;
+			/**
+			 * verifyCookie Функция обратного вызова для проверки куков
+			 * @param ssl    объект SSL
+			 * @param cookie данные куков
+			 * @param size   количество символов
+			 * @return       результат проверки
+			 */
+			static int verifyCookie(SSL * ssl, const u_char * cookie, u_int size) noexcept;
 		private:
 			/**
 			 * matchesCommonName Метод проверки доменного имени по данным из сертификата

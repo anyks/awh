@@ -1347,17 +1347,6 @@ int awh::Engine::verifyHost(X509_STORE_CTX * x509, void * ctx) noexcept {
 	return 0;
 }
 /**
- * verifyCookie Функция обратного вызова для проверки куков
- * @param ssl    объект SSL
- * @param cookie данные куков
- * @param size   количество символов
- * @return       результат проверки
- */
-int awh::Engine::verifyCookie(SSL * ssl, u_char * cookie, u_int size) noexcept {
-	// Выводим положительный ответ
-	return 1;
-}
-/**
  * generateCookie Функция обратного вызова для генерации куков
  * @param ssl    объект SSL
  * @param cookie данные куков
@@ -1365,6 +1354,17 @@ int awh::Engine::verifyCookie(SSL * ssl, u_char * cookie, u_int size) noexcept {
  * @return       результат проверки
  */
 int awh::Engine::generateCookie(SSL * ssl, u_char * cookie, u_int * size) noexcept {
+	// Выводим положительный ответ
+	return 1;
+}
+/**
+ * verifyCookie Функция обратного вызова для проверки куков
+ * @param ssl    объект SSL
+ * @param cookie данные куков
+ * @param size   количество символов
+ * @return       результат проверки
+ */
+int awh::Engine::verifyCookie(SSL * ssl, const u_char * cookie, u_int size) noexcept {
 	// Выводим положительный ответ
 	return 1;
 }
