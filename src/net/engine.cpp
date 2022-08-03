@@ -1226,83 +1226,85 @@ int awh::Engine::verifyHost(X509_STORE_CTX * x509, void * ctx) noexcept {
  * @return       результат проверки
  */
 int awh::Engine::generateCookie(SSL * ssl, u_char * cookie, u_int * size) noexcept {
-	// Буфер под генерацию печенок
-	u_char result[EVP_MAX_MD_SIZE];
+	// Создаём объект фреймворка
+	fmk_t fmk;
+	// Создаём объект для работы с логами
+	log_t log(&fmk);
 	// Смещение в буфере и размер сгенерированных печенок
 	u_int offset = 0, length = 0;
+	// Буфер под генерацию печенок
+	u_char result[EVP_MAX_MD_SIZE];
 	// Создаём объединение адресов
 	union {
-		struct sockaddr_in s4;
-		struct sockaddr_in6 s6;
-		struct sockaddr_storage ss;
+		struct sockaddr_in s4;      // Объект IPv4
+		struct sockaddr_in6 s6;     // Объект IPv6
+		struct sockaddr_storage ss; // Объект хранилища
 	} peer;
-
-	/* Initialize a random secret */
-	if (!cookieInit)
-		{
-		if (!RAND_bytes(cookies, sizeof(cookies)))
-		{
-		printf("error setting random cookie secret\n");
-		return 0;
+	// Если печенки еще не проинициализированны
+	if(!cookieInit){
+		// Выполняем произвольно генерацию байт в буфере печенок
+		if(!(cookieInit = RAND_bytes(cookies, sizeof(cookies)))){
+			// Выводим в лог сообщение
+			log.print("setting random cookie secret", log_t::flag_t::CRITICAL);
+			// Выходим и сообщаем, что генерация куков не удалась
+			return 0;
 		}
-		cookieInit = true;
-		}
-
-	/* Read peer information */
+	}
+	// Выполняем чтение из подключения информации
 	(void) BIO_dgram_get_peer(SSL_get_rbio(ssl), &peer);
-
-	/* Create buffer with peer's address and port */
-	offset = 0;
-	switch (peer.ss.ss_family) {
-	case AF_INET:
-		offset += sizeof(struct in_addr);
+	// Выполняем определение протокола интернета
+	switch(peer.ss.ss_family){
+		// Для протокола IPv4
+		case AF_INET:
+			// Увеличиваем смещение на размер структуры данных протокола IPv4
+			offset += sizeof(struct in_addr);
 		break;
-	case AF_INET6:
-		offset += sizeof(struct in6_addr);
+		// Для протокола IPv6
+		case AF_INET6:
+			// Увеличиваем смещение на размер структуры данных протокола IPv6
+			offset += sizeof(struct in6_addr);
 		break;
-	default:
-		OPENSSL_assert(0);
-		break;
+		// Если производится работа с другими протоколами, выходим
+		default: OPENSSL_assert(0);
 	}
+	// Увеличиваем смещение на размер буфера входящих данных
 	offset += sizeof(in_port_t);
-	u_char * buffer = (unsigned char*) OPENSSL_malloc(offset);
-
-	if (buffer == NULL)
-		{
-		printf("out of memory\n");
+	// Выполняем выделение память для буфера данных
+	u_char * buffer = (u_char *) OPENSSL_malloc(offset);
+	// Если память для буфера данных не выделена
+	if(buffer == nullptr){
+		// Выводим в лог сообщение
+		log.print("out of memory cookie", log_t::flag_t::CRITICAL);
+		// Выходим и сообщаем, что генерация куков не удалась
 		return 0;
-		}
-
-	switch (peer.ss.ss_family) {
-	case AF_INET:
-		memcpy(buffer,
-		&peer.s4.sin_port,
-		sizeof(in_port_t));
-		memcpy(buffer + sizeof(peer.s4.sin_port),
-		&peer.s4.sin_addr,
-		sizeof(struct in_addr));
-		break;
-	case AF_INET6:
-		memcpy(buffer,
-		&peer.s6.sin6_port,
-		sizeof(in_port_t));
-		memcpy(buffer + sizeof(in_port_t),
-		&peer.s6.sin6_addr,
-		sizeof(struct in6_addr));
-		break;
-	default:
-		OPENSSL_assert(0);
-		break;
 	}
-
-	/* Calculate HMAC of buffer using the secret */
-	HMAC(EVP_sha1(), (const void*) cookies, sizeof(cookies),
-		(const unsigned char*) buffer, offset, result, &length);
+	// Выполняем определение протокола интернета
+	switch(peer.ss.ss_family){
+		// Для протокола IPv4
+		case AF_INET: {
+			// Выполняем чтение в буфер данных данные порта
+			memcpy(buffer, &peer.s4.sin_port, sizeof(in_port_t));
+			// Выполняем чтение в буфер данных данные структуры подключения
+			memcpy(buffer + sizeof(peer.s4.sin_port), &peer.s4.sin_addr, sizeof(struct in_addr));
+		} break;
+		// Для протокола IPv6
+		case AF_INET6: {
+			// Выполняем чтение в буфер данных данные порта
+			memcpy(buffer, &peer.s6.sin6_port, sizeof(in_port_t));
+			// Выполняем чтение в буфер данных данные структуры подключения
+			memcpy(buffer + sizeof(in_port_t), &peer.s6.sin6_addr, sizeof(struct in6_addr));
+		} break;
+		// Если производится работа с другими протоколами, выходим
+		default: OPENSSL_assert(0);
+	}
+	// Выполняем расчёт HMAC в буфере, с использованием секретного ключа
+	HMAC(EVP_sha1(), (const void *) cookies, sizeof(cookies), (const u_char *) buffer, offset, result, &length);
+	// Очищаем ранее выделенную память
 	OPENSSL_free(buffer);
-
+	// Выполняем копирование полученного результата в буфер печенок
 	memcpy(cookie, result, length);
-	*size = length;
-	
+	// Устанавливаем размер буфера печенок
+	(* size) = length;
 	// Выводим положительный ответ
 	return 1;
 }
@@ -1314,73 +1316,78 @@ int awh::Engine::generateCookie(SSL * ssl, u_char * cookie, u_int * size) noexce
  * @return       результат проверки
  */
 int awh::Engine::verifyCookie(SSL * ssl, const u_char * cookie, u_int size) noexcept {
-	u_char * buffer, result[EVP_MAX_MD_SIZE];
-	u_int length = 0, resultlength;
+	// Создаём объект фреймворка
+	fmk_t fmk;
+	// Создаём объект для работы с логами
+	log_t log(&fmk);
+	// Смещение в буфере и размер сгенерированных печенок
+	u_int offset = 0, length = 0;
+	// Буфер под генерацию печенок
+	u_char result[EVP_MAX_MD_SIZE];
+	// Создаём объединение адресов
 	union {
-		struct sockaddr_storage ss;
-		struct sockaddr_in6 s6;
-		struct sockaddr_in s4;
+		struct sockaddr_in s4;      // Объект IPv4
+		struct sockaddr_in6 s6;     // Объект IPv6
+		struct sockaddr_storage ss; // Объект хранилища
 	} peer;
-
-	/* If secret isn't initialized yet, the cookie can't be valid */
-	if (!cookieInit)
-		return 0;
-
-	/* Read peer information */
+	// Если печенки не проинициализированы, значит куки не валидные
+	if(!cookieInit) return 0;
+	// Выполняем чтение из подключения информации
 	(void) BIO_dgram_get_peer(SSL_get_rbio(ssl), &peer);
-
-	/* Create buffer with peer's address and port */
-	length = 0;
-	switch (peer.ss.ss_family) {
-	case AF_INET:
-		length += sizeof(struct in_addr);
+	// Выполняем определение протокола интернета
+	switch(peer.ss.ss_family){
+		// Для протокола IPv4
+		case AF_INET:
+			// Увеличиваем смещение на размер структуры данных протокола IPv4
+			offset += sizeof(struct in_addr);
 		break;
-	case AF_INET6:
-		length += sizeof(struct in6_addr);
+		// Для протокола IPv6
+		case AF_INET6:
+			// Увеличиваем смещение на размер структуры данных протокола IPv6
+			offset += sizeof(struct in6_addr);
 		break;
-	default:
-		OPENSSL_assert(0);
-		break;
+		// Если производится работа с другими протоколами, выходим
+		default: OPENSSL_assert(0);
 	}
-	length += sizeof(in_port_t);
-	buffer = (unsigned char*) OPENSSL_malloc(length);
-
-	if (buffer == NULL)
-		{
-		printf("out of memory\n");
+	// Увеличиваем смещение на размер буфера входящих данных
+	offset += sizeof(in_port_t);
+	// Выполняем выделение память для буфера данных
+	u_char * buffer = (u_char *) OPENSSL_malloc(offset);
+	// Если память для буфера данных не выделена
+	if(buffer == nullptr){
+		// Выводим в лог сообщение
+		log.print("out of memory cookie", log_t::flag_t::CRITICAL);
+		// Выходим и сообщаем, что генерация куков не удалась
 		return 0;
-		}
-
-	switch (peer.ss.ss_family) {
-	case AF_INET:
-		memcpy(buffer,
-		&peer.s4.sin_port,
-		sizeof(in_port_t));
-		memcpy(buffer + sizeof(in_port_t),
-		&peer.s4.sin_addr,
-		sizeof(struct in_addr));
-		break;
-	case AF_INET6:
-		memcpy(buffer,
-		&peer.s6.sin6_port,
-		sizeof(in_port_t));
-		memcpy(buffer + sizeof(in_port_t),
-		&peer.s6.sin6_addr,
-		sizeof(struct in6_addr));
-		break;
-	default:
-		OPENSSL_assert(0);
-		break;
 	}
-
-	/* Calculate HMAC of buffer using the secret */
-	HMAC(EVP_sha1(), (const void*) cookies, sizeof(cookies),
-		(const unsigned char*) buffer, length, result, &resultlength);
+	// Выполняем определение протокола интернета
+	switch(peer.ss.ss_family){
+		// Для протокола IPv4
+		case AF_INET: {
+			// Выполняем чтение в буфер данных данные порта
+			memcpy(buffer, &peer.s4.sin_port, sizeof(in_port_t));
+			// Выполняем чтение в буфер данных данные структуры подключения
+			memcpy(buffer + sizeof(in_port_t), &peer.s4.sin_addr, sizeof(struct in_addr));
+		} break;
+		// Для протокола IPv6
+		case AF_INET6: {
+			// Выполняем чтение в буфер данных данные порта
+			memcpy(buffer, &peer.s6.sin6_port, sizeof(in_port_t));
+			// Выполняем чтение в буфер данных данные структуры подключения
+			memcpy(buffer + sizeof(in_port_t), &peer.s6.sin6_addr, sizeof(struct in6_addr));
+		} break;
+		// Если производится работа с другими протоколами, выходим
+		default: OPENSSL_assert(0);
+	}
+	// Выполняем расчёт HMAC в буфере, с использованием секретного ключа
+	HMAC(EVP_sha1(), (const void *) cookies, sizeof(cookies), (const u_char *) buffer, offset, result, &length);
+	// Очищаем ранее выделенную память
 	OPENSSL_free(buffer);
-
-	if (size == resultlength && memcmp(result, cookie, resultlength) == 0)
+	// Выполняем проверку печенок, если печенки совпадают, значит всё хорошо
+	if((size == length) && (memcmp(result, cookie, length) == 0))
+		// Выходим из функции с удачей
 		return 1;
-
+	// Выходим из функции с неудачей
 	return 0;
 }
 /**
