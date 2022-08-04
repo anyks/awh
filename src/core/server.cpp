@@ -770,6 +770,8 @@ void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 							// Выполняем разрешение на отправку сообщения
 							this->jacks.at(this->index)->write.start();
 						}
+
+
 						// Выполняем ожидание входящих подключений
 						this->engine.wait(adj->engine);
 
