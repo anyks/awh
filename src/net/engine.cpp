@@ -1738,12 +1738,17 @@ void awh::Engine::wait(ctx_t & target) noexcept {
 		// Если сокет установлен UDP
 		case SOCK_DGRAM:
 
-
+			// Если объект подключения BIO ещё не создан
+			if(target.abio == nullptr)
+				// Создаём объект подключения клиента
+				target.abio = BIO_ADDR_new();
+			// Если объект подключения клиента уже создан
+			else BIO_ADDR_clear(target.abio);
 
 			cout << " !!!!!!!!!!!!!!! " << target.addr->fd << " === " << &target.addr->peer.client << " == " << target.addr->peer.size << endl;
 
 			// Выполняем ожидание подключения
-			while(DTLSv1_listen(target.ssl, (BIO_ADDR *) &target.addr->peer.client) < 1){
+			while(DTLSv1_listen(target.ssl, target.abio) < 1){
 
 				cout << " +++++++++++++++ STOP " << endl;
 
