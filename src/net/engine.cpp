@@ -1716,9 +1716,6 @@ bool awh::Engine::initTrustedStore(SSL_CTX * ctx) const noexcept {
  * @param target контекст назначения
  */
 void awh::Engine::wait(ctx_t & target) noexcept {
-
-	cout << " $$$$$$$$$$$$$$2 " << target.addr << endl;
-
 	// Определяем тип входящего сокета
 	switch(target.addr->type){
 		// Если сокет установлен TCP/IP
@@ -1795,9 +1792,6 @@ void awh::Engine::wrap1(ctx_t & target, addr_t * address, const type_t type) noe
 		target.type = type;
 		// Устанавливаем файловый дескриптор
 		target.addr = address;
-
-		cout << " $$$$$$$$$$$$$$1 " << target.addr << endl;
-
 		// Если объект фреймворка существует
 		if((target.addr->fd > -1) && ((!this->privkey.empty() && !this->fullchain.empty()) || (type == type_t::CLIENT))){
 			// Активируем рандомный генератор

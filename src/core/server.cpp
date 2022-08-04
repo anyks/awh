@@ -773,16 +773,16 @@ void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 
 
 						// Выполняем ожидание входящих подключений
-						this->engine.wait(adj->engine);
+						this->engine.wait(ret.first->second->engine);
 
 						engine_t::addr_t addr(this->fmk, this->log);
 
 						// Если подключение выполнено
-						if(addr.connect(adj->addr)){
+						if(addr.connect(ret.first->second->addr)){
 
 							engine_t::ctx_t target(this->fmk, this->log);
 
-							this->engine.wrap2(target, &addr, adj->engine);
+							this->engine.wrap2(target, &addr, ret.first->second->engine);
 
 							cout << " ###################### GET CONTACT " << endl;
 
