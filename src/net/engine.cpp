@@ -157,31 +157,10 @@ bool awh::Engine::Address::connect(Address & addr) noexcept {
 			// Выходим
 			return false;
 		}
-		// Определяем тип подключения
-		switch(addr.peer.server.ss_family){
-			// Для протокола IPv4
-			case AF_INET: {
-				// Создаём объект клиента
-				struct sockaddr_in client;
-				// Очищаем всю структуру для клиента
-				memset(&client, 0, sizeof(client));
-				// Устанавливаем протокол интернета
-				client.sin_family = addr.peer.server.ss_family;
-				// Выполняем копирование объекта подключения клиента
-				memcpy(&this->peer.client, &client, this->peer.size);
-			} break;
-			// Для протокола IPv6
-			case AF_INET6: {
-				// Создаём объект клиента
-				struct sockaddr_in6 client;
-				// Очищаем всю структуру для клиента
-				memset(&client, 0, sizeof(client));
-				// Устанавливаем протокол интернета
-				client.sin6_family = addr.peer.server.ss_family;
-				// Выполняем копирование объекта подключения клиента
-				memcpy(&this->peer.client, &client, this->peer.size);
-			} break;
-		}
+
+		memcpy(&this->peer.client, &addr.peer.client, sizeof(struct sockaddr_storage));
+
+		
 		// Если подключение не выполненно то сообщаем об этом, выполняем подключение к удаленному серверу
 		if(::connect(this->fd, (struct sockaddr *) (&this->peer.client), this->peer.size) == 0)
 			// Устанавливаем статус подключения
@@ -1730,13 +1709,36 @@ void awh::Engine::wait(ctx_t & target) noexcept {
 		break;
 		// Если сокет установлен UDP
 		case SOCK_DGRAM:
-			
 
+			union {
+				struct sockaddr_storage ss;
+				struct sockaddr_in s4;
+				struct sockaddr_in6 s6;
+			} client;
+
+			memset(&client, 0, sizeof(struct sockaddr_storage));
+
+			// Выполняем ожидание подключения
+			while(DTLSv1_listen(target.ssl,(BIO_ADDR *) &client) < 1){
+
+				cout << " +++++++++++++++ STOP " << endl;
+
+				// Очищаем созданный контекст
+				target.clear();
+				// Выходим из цикла
+				break;
+			}
+
+			memcpy(&target.addr->peer.client, &client, sizeof(struct sockaddr_storage));
+			
+			/*
 			struct timeval timeout;
 			timeout.tv_sec = 10;
 			timeout.tv_usec = 0;
 			BIO_ctrl(target.bio, BIO_CTRL_DGRAM_SET_RECV_TIMEOUT, 0, &timeout);
+			*/
 
+			/*
 			// Если объект подключения BIO ещё не создан
 			if(target.abio == nullptr)
 				// Создаём объект подключения клиента
@@ -1750,6 +1752,7 @@ void awh::Engine::wait(ctx_t & target) noexcept {
 				// Выходим из цикла
 				break;
 			}
+			*/
 		break;
 	}
 }
