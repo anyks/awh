@@ -1740,7 +1740,7 @@ void awh::Engine::wait(ctx_t & target) noexcept {
 
 
 
-			cout << " !!!!!!!!!!!!!!! " << target.addr->fd << " === " << &target.addr->peer.client << " == " << &target.addr->peer.size << endl;
+			cout << " !!!!!!!!!!!!!!! " << target.addr->fd << " === " << &target.addr->peer.client << " == " << target.addr->peer.size << endl;
 
 			// Выполняем ожидание подключения
 			while(DTLSv1_listen(target.ssl, (BIO_ADDR *) &target.addr->peer.client) < 1){
