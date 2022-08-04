@@ -135,6 +135,7 @@ namespace awh {
 				public:
 					// Файловый дескриптор
 					int fd;
+				private:
 					// Тип сокета (SOCK_STREAM / SOCK_DGRAM)
 					int type;
 					// Протокол сокета (IPPROTO_TCP / IPPROTO_UDP)
@@ -146,6 +147,8 @@ namespace awh {
 					// Статус подключения
 					status_t status;
 				public:
+					// Порт клиента
+					u_int port;
 					// Адрес интернет подключения и аппаратный
 					string ip, mac;
 				public:
@@ -163,9 +166,6 @@ namespace awh {
 				public:
 					// Список сетевых интерфейсов
 					vector <string> network;
-				public:
-					// Объект SSL
-					SSL * ssl;
 				public:
 					// Создаём объект фреймворка
 					const fmk_t * fmk = nullptr;
@@ -209,6 +209,13 @@ namespace awh {
 					bool accept(const int fd, const int family) noexcept;
 				public:
 					/**
+					 * sonet Метод установки параметров сокета
+					 * @param type     тип сокета (SOCK_STREAM / SOCK_DGRAM)
+					 * @param protocol протокол сокета (IPPROTO_TCP / IPPROTO_UDP)
+					 */
+					void sonet(const int type = SOCK_STREAM, const int protocol = IPPROTO_TCP) noexcept;
+				public:
+					/**
 					 * init Метод инициализации адресного пространства сокета
 					 * @param unixsocket адрес unxi-сокета в файловой системе
 					 * @param type       тип приложения (клиент или сервер)
@@ -231,8 +238,8 @@ namespace awh {
 					 */
 					Address(const fmk_t * fmk, const log_t * log) noexcept :
 					 fd(-1), type(SOCK_STREAM), protocol(IPPROTO_TCP), v6only(false),
-					 status(status_t::DISCONNECTED), ip(""), mac(""), nwk(fmk),
-					 ifnet(fmk, log), socket(log), ssl(nullptr), fmk(fmk), log(log) {}
+					 status(status_t::DISCONNECTED), port(0), ip(""), mac(""),
+					 nwk(fmk), ifnet(fmk, log), socket(log), fmk(fmk), log(log) {}
 					/**
 					 * ~Address Деструктор
 					 */
@@ -269,9 +276,7 @@ namespace awh {
 					// Тип активного приложения
 					type_t type;
 				private:
-					BIO * bio;       // Объект BIO
-					BIO_ADDR * abio; // Объект подключения BIO
-				private:
+					BIO * bio;         // Объект BIO
 					SSL * ssl;         // Объект SSL
 					SSL_CTX * ctx;     // Контекст SSL
 					addr_t * addr;     // Объект подключения
@@ -339,8 +344,7 @@ namespace awh {
 					 */
 					Context(const fmk_t * fmk, const log_t * log) noexcept :
 					 mode(false), type(type_t::NONE), addr(nullptr),
-					 bio(nullptr), abio(nullptr), ssl(nullptr),
-					 ctx(nullptr), verify(nullptr), log(log) {}
+					 bio(nullptr), ssl(nullptr), ctx(nullptr), verify(nullptr), log(log) {}
 					/**
 					 * ~Context Деструктор
 					 */
@@ -360,6 +364,8 @@ namespace awh {
 		private:
 			// Флаг проверки сертификата доменного имени
 			bool verify = true;
+			// Флаг вывода информации о подключении
+			bool verbose = true;
 		private:
 			// Список алгоритмов шифрования
 			string cipher = "";
@@ -496,6 +502,12 @@ namespace awh {
 			bool initTrustedStore(SSL_CTX * ctx) const noexcept;
 		public:
 			/**
+			 * info Метод вывода информации о сертификате
+			 * @param ctx контекст подключения
+			 */
+			void info(ctx_t & ctx) const noexcept;
+		public:
+			/**
 			 * wait Метод ожидания рукопожатия
 			 * @param target контекст назначения
 			 */
@@ -533,6 +545,8 @@ namespace awh {
 			 * @return        объект SSL контекста
 			 */
 			void wrap2(ctx_t & target, addr_t * address, const ctx_t & source) noexcept;
+
+			void wrap3(ctx_t & target) noexcept;
 		public:
 			/**
 			 * wrap Метод обертывания файлового дескриптора для сервера
@@ -556,6 +570,11 @@ namespace awh {
 			 * @param mode флаг состояния разрешения проверки
 			 */
 			void setVerify(const bool mode) noexcept;
+			/**
+			 * setVerbose Метод установки флага, вывода информации о сертификате
+			 * @param mode флаг разрешающий вывод информации
+			 */
+			void setVerbose(const bool mode) noexcept;
 			/**
 			 * setCipher Метод установки алгоритмов шифрования
 			 * @param cipher список алгоритмов шифрования для установки

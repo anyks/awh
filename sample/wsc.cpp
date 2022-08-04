@@ -247,6 +247,9 @@ int main(int argc, char * argv[]) noexcept {
 	// core.setFamily(core_t::family_t::NIX);
 	// Устанавливаем тип сокета UDP
 	core.setSockType(core_t::sonet_t::UDP);
+
+	core.setCert("./certs/client-cert.pem", "./certs/client-key.pem");
+
 	// Устанавливаем логин и пароль пользователя
 	// ws.setUser("user", "password");
 	// Выполняем активацию многопоточности
@@ -263,8 +266,8 @@ int main(int argc, char * argv[]) noexcept {
 	// ws.setAuthTypeProxy();
 	// Выполняем инициализацию WebSocket клиента
 	// ws.init("wss://stream.binance.com:9443/stream", http_t::compress_t::DEFLATE);
-	// ws.init("ws://127.0.0.1:2222", http_t::compress_t::DEFLATE);
-	ws.init("wss://mimi.anyks.net:2222", http_t::compress_t::DEFLATE);
+	ws.init("ws://127.0.0.1:2222", http_t::compress_t::DEFLATE);
+	// ws.init("wss://mimi.anyks.net:2222", http_t::compress_t::DEFLATE);
 	// ws.init("anyks", http_t::compress_t::DEFLATE);
 	// Устанавливаем шифрование
 	// ws.setCrypt("PASS");

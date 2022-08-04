@@ -124,9 +124,9 @@ namespace awh {
 				 * Mutex Объект основных мютексов
 				 */
 				typedef struct Mutex {
+					recursive_mutex main;   // Для установки системных параметров
 					recursive_mutex close;  // Для закрытия подключения
 					recursive_mutex accept; // Для одобрения подключения
-					recursive_mutex system; // Для установки системных параметров
 				} mtx_t;
 			private:
 				// Мютекс для блокировки основного потока
@@ -285,12 +285,6 @@ namespace awh {
 				 * @param total максимальное количество одновременных подключений
 				 */
 				void setTotal(const size_t wid, const u_short total) noexcept;
-				/**
-				 * setCert Метод установки файлов сертификата
-				 * @param chain файл цепочки сертификатов
-				 * @param key   приватный ключ сертификата
-				 */
-				void setCert(const string & chain, const string & key) noexcept;
 				/**
 				 * init Метод инициализации сервера
 				 * @param wid  идентификатор воркера

@@ -570,14 +570,70 @@ void awh::server::Core::resolver(const string & ip, worker_t * wrk) noexcept {
 					// Если unix-сокет не используется, выводим сообщение о запущенном сервере за порту
 					else core->log->print("run server [%s:%u]", log_t::flag_t::INFO, wrk->host.c_str(), wrk->port);
 				}
-				// Получаем тип операционной системы
-				const fmk_t::os_t os = core->fmk->os();
-				// Если операционная система является Windows или количество процессов всего один
-				if((this->interception = ((os == fmk_t::os_t::WIND32) || (os == fmk_t::os_t::WIND64) || (this->forks == 1))))
-					// Выполняем активацию сервера
-					core->accept(1, wrk->wid);
-				// Выполняем создание дочерних процессов
-				else this->forking(wrk->wid);
+				// Определяем тип активного шифрования
+				switch((uint8_t) core->ssl){
+					// Если подключение зашифрованно
+					case (uint8_t) ssl_t::DTLS: {
+						// Определяем тип протокола подключения
+						switch((uint8_t) core->net.family){
+							// Если тип протокола подключения IPv4
+							case (uint8_t) family_t::IPV4:
+								// Устанавливаем сеть, для выхода в интернет
+								wrk->addr.network.assign(
+									core->net.v4.first.begin(),
+									core->net.v4.first.end()
+								);
+							break;
+							// Если тип протокола подключения IPv6
+							case (uint8_t) family_t::IPV6: {
+								// Устанавливаем использование только IPv6
+								wrk->addr.v6only = core->ipV6only;
+								// Устанавливаем сеть, для выхода в интернет
+								wrk->addr.network.assign(
+									core->net.v6.first.begin(),
+									core->net.v6.first.end()
+								);
+							} break;
+						}
+						// Устанавливаем параметры сокета
+						wrk->addr.sonet(SOCK_DGRAM, IPPROTO_UDP);
+						// Если unix-сокет не используется, выполняем инициализацию сокета
+						wrk->addr.init(wrk->host, wrk->port, (core->net.family == family_t::IPV6 ? AF_INET6 : AF_INET), engine_t::type_t::SERVER);
+						// Если сокет подключения получен
+						if(wrk->addr.fd > -1){
+							// Получаем тип операционной системы
+							const fmk_t::os_t os = core->fmk->os();
+							// Если операционная система является Windows или количество процессов всего один
+							if((this->interception = ((os == fmk_t::os_t::WIND32) || (os == fmk_t::os_t::WIND64) || (this->forks == 1)))){
+
+								// Выполняем получение контекста сертификата
+								core->engine.wrap1(wrk->engine, &wrk->addr, engine_t::type_t::SERVER);
+
+
+								// Выполняем ожидание входящих подключений
+								core->engine.wait(wrk->engine);
+								// Выполняем активацию подключения
+								core->accept(wrk->addr.fd, wrk->wid);
+								
+							// Выполняем создание дочерних процессов
+							} else this->forking(wrk->wid);
+							// Выходим из функции
+							return;
+						// Если сокет не создан, выводим в консоль информацию
+						} else core->log->print("server cannot be started [%s:%u]", log_t::flag_t::CRITICAL, wrk->host.c_str(), wrk->port);
+					} break;
+					// Если подключение не зашифрованно
+					case (uint8_t) ssl_t::NONE: {
+						// Получаем тип операционной системы
+						const fmk_t::os_t os = core->fmk->os();
+						// Если операционная система является Windows или количество процессов всего один
+						if((this->interception = ((os == fmk_t::os_t::WIND32) || (os == fmk_t::os_t::WIND64) || (this->forks == 1))))
+							// Выполняем активацию сервера
+							core->accept(1, wrk->wid);
+						// Выполняем создание дочерних процессов
+						else this->forking(wrk->wid);
+					} break;
+				}
 				// Выходим из функции
 				return;
 			} break;
@@ -604,23 +660,8 @@ void awh::server::Core::resolver(const string & ip, worker_t * wrk) noexcept {
 						);
 					} break;
 				}
-				// Определяем тип сокета
-				switch((uint8_t) core->net.sonet){
-					// Если тип сокета UDP
-					case (uint8_t) sonet_t::UDP: {
-						// Устанавливаем тип сокета
-						wrk->addr.type = SOCK_DGRAM;
-						// Устанавливаем тип протокола
-						wrk->addr.protocol = IPPROTO_UDP;
-					} break;
-					// Если тип сокета TCP
-					case (uint8_t) sonet_t::TCP: {
-						// Устанавливаем тип сокета
-						wrk->addr.type = SOCK_STREAM;
-						// Устанавливаем тип протокола
-						wrk->addr.protocol = IPPROTO_TCP;
-					} break;
-				}
+				// Устанавливаем параметры сокета
+				wrk->addr.sonet(SOCK_STREAM, IPPROTO_TCP);
 				// Если unix-сокет используется
 				if(core->net.family == family_t::NIX)
 					// Выполняем инициализацию сокета
@@ -690,165 +731,131 @@ void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 			switch((uint8_t) this->net.sonet){
 				// Если тип сокета установлен как UDP
 				case (uint8_t) sonet_t::UDP: {
-					// Создаём бъект адъютанта
-					unique_ptr <awh::worker_t::adj_t> adj(new awh::worker_t::adj_t(wrk, this->fmk, this->log));
-					// Определяем тип протокола подключения
-					switch((uint8_t) this->net.family){
-						// Если тип протокола подключения IPv4
-						case (uint8_t) family_t::IPV4:
-							// Устанавливаем сеть, для выхода в интернет
-							adj->addr.network.assign(
-								this->net.v4.first.begin(),
-								this->net.v4.first.end()
-							);
-						break;
-						// Если тип протокола подключения IPv6
-						case (uint8_t) family_t::IPV6: {
-							// Устанавливаем использование только IPv6
-							adj->addr.v6only = this->ipV6only;
-							// Устанавливаем сеть, для выхода в интернет
-							adj->addr.network.assign(
-								this->net.v6.first.begin(),
-								this->net.v6.first.end()
-							);
+					// Определяем тип активного шифрования
+					switch((uint8_t) this->ssl){
+						// Если подключение зашифрованно
+						case (uint8_t) ssl_t::DTLS: {
+							// Создаём бъект адъютанта
+							unique_ptr <awh::worker_t::adj_t> adj(new awh::worker_t::adj_t(wrk, this->fmk, this->log));
+							// Устанавливаем параметры сокета
+							adj->addr.sonet(SOCK_DGRAM, IPPROTO_UDP);
+							// Если подключение выполнено
+							if(adj->addr.connect(wrk->addr)){
+								// Устанавливаем идентификатор адъютанта
+								adj->aid = this->fmk->unixTimestamp();
+								// Выполняем получение контекста сертификата
+								this->engine.wrap2(adj->engine, &adj->addr, wrk->engine);
+								// Получаем адрес подключения клиента
+								adj->ip = adj->addr.ip;
+								// Получаем аппаратный адрес клиента
+								adj->mac = adj->addr.mac;
+								// Выполняем блокировку потока
+								this->mtx.accept.lock();
+								// Добавляем созданного адъютанта в список адъютантов
+								auto ret = wrk->adjutants.emplace(adj->aid, move(adj));
+								// Добавляем адъютанта в список подключений
+								this->adjutants.emplace(ret.first->first, ret.first->second.get());
+								// Выполняем блокировку потока
+								this->mtx.accept.unlock();
+								// Если процесс не является основным
+								if((this->pid != getpid()) && !this->jacks.empty()){
+									// Устанавливаем активное событие подключения
+									this->event = event_t::CONNECT;
+									// Выполняем разрешение на отправку сообщения
+									this->jacks.at(this->index)->write.start();
+								}
+								// Запускаем чтение данных
+								this->enabled(method_t::READ, ret.first->first);
+								// Если вывод информационных данных не запрещён
+								if(!this->noinfo)
+									// Выводим в консоль информацию
+									this->log->print(
+										"client connect to server, host = %s, mac = %s, socket = %d, pid = %d",
+										log_t::flag_t::INFO,
+										ret.first->second->ip.c_str(),
+										ret.first->second->mac.c_str(),
+										ret.first->second->addr.fd, getpid()
+									);
+								// Выполняем функцию обратного вызова
+								if(wrk->connectFn != nullptr) wrk->connectFn(ret.first->first, wrk->wid, this);
+							// Подключение не установлено, выводим сообщение об ошибке
+							} else this->log->print("accepting for client is broken", log_t::flag_t::CRITICAL);
+						} break;
+						// Если подключение не зашифрованно
+						case (uint8_t) ssl_t::NONE: {
+							// Создаём бъект адъютанта
+							unique_ptr <awh::worker_t::adj_t> adj(new awh::worker_t::adj_t(wrk, this->fmk, this->log));
+							// Определяем тип протокола подключения
+							switch((uint8_t) this->net.family){
+								// Если тип протокола подключения IPv4
+								case (uint8_t) family_t::IPV4:
+									// Устанавливаем сеть, для выхода в интернет
+									adj->addr.network.assign(
+										this->net.v4.first.begin(),
+										this->net.v4.first.end()
+									);
+								break;
+								// Если тип протокола подключения IPv6
+								case (uint8_t) family_t::IPV6: {
+									// Устанавливаем использование только IPv6
+									adj->addr.v6only = this->ipV6only;
+									// Устанавливаем сеть, для выхода в интернет
+									adj->addr.network.assign(
+										this->net.v6.first.begin(),
+										this->net.v6.first.end()
+									);
+								} break;
+							}
+							// Устанавливаем параметры сокета
+							adj->addr.sonet(SOCK_DGRAM, IPPROTO_UDP);
+							// Если unix-сокет используется
+							if(this->net.family == family_t::NIX)
+								// Выполняем инициализацию сокета
+								adj->addr.init(this->net.filename, engine_t::type_t::SERVER);
+							// Если unix-сокет не используется, выполняем инициализацию сокета
+							else adj->addr.init(wrk->host, wrk->port, (this->net.family == family_t::IPV6 ? AF_INET6 : AF_INET), engine_t::type_t::SERVER);
+							// Выполняем разрешение подключения
+							if(adj->addr.accept(adj->addr.fd, 0)){
+								// Получаем адрес подключения клиента
+								adj->ip = adj->addr.ip;
+								// Получаем аппаратный адрес клиента
+								adj->mac = adj->addr.mac;
+								// Устанавливаем идентификатор адъютанта
+								adj->aid = this->fmk->unixTimestamp();
+								// Выполняем получение контекста сертификата
+								this->engine.wrap(adj->engine, &adj->addr, this->net.family != family_t::NIX);
+								// Если подключение не обёрнуто
+								if(adj->addr.fd < 0){
+									// Выводим сообщение об ошибке
+									this->log->print("wrap engine context is failed", log_t::flag_t::CRITICAL);
+									// Выходим из функции
+									return;
+								}
+								// Выполняем блокировку потока
+								this->mtx.accept.lock();
+								// Добавляем созданного адъютанта в список адъютантов
+								auto ret = wrk->adjutants.emplace(adj->aid, move(adj));
+								// Добавляем адъютанта в список подключений
+								this->adjutants.emplace(ret.first->first, ret.first->second.get());
+								// Выполняем блокировку потока
+								this->mtx.accept.unlock();
+								// Если процесс не является основным
+								if((this->pid != getpid()) && !this->jacks.empty()){
+									// Устанавливаем активное событие подключения
+									this->event = event_t::CONNECT;
+									// Выполняем разрешение на отправку сообщения
+									this->jacks.at(this->index)->write.start();
+								}
+								// Запускаем чтение данных
+								this->enabled(method_t::READ, ret.first->first);
+								// Выполняем функцию обратного вызова
+								if(wrk->connectFn != nullptr) wrk->connectFn(ret.first->first, wrk->wid, this);
+								// Выходим из функции
+								return;
+							// Подключение не установлено, выводим сообщение об ошибке
+							} else this->log->print("accepting for client is broken", log_t::flag_t::CRITICAL);
 						} break;
 					}
-					// Определяем тип сокета
-					switch((uint8_t) this->net.sonet){
-						// Если тип сокета UDP
-						case (uint8_t) sonet_t::UDP: {
-							// Устанавливаем тип сокета
-							adj->addr.type = SOCK_DGRAM;
-							// Устанавливаем тип протокола
-							adj->addr.protocol = IPPROTO_UDP;
-						} break;
-						// Если тип сокета TCP
-						case (uint8_t) sonet_t::TCP: {
-							// Устанавливаем тип сокета
-							adj->addr.type = SOCK_STREAM;
-							// Устанавливаем тип протокола
-							adj->addr.protocol = IPPROTO_TCP;
-						} break;
-					}
-					// Если unix-сокет используется
-					if(this->net.family == family_t::NIX)
-						// Выполняем инициализацию сокета
-						adj->addr.init(this->net.filename, engine_t::type_t::SERVER);
-					// Если unix-сокет не используется, выполняем инициализацию сокета
-					else adj->addr.init(wrk->host, wrk->port, (this->net.family == family_t::IPV6 ? AF_INET6 : AF_INET), engine_t::type_t::SERVER);
-					// Выполняем разрешение подключения
-					if(adj->addr.accept(adj->addr.fd, 0)){
-						// Получаем адрес подключения клиента
-						adj->ip = adj->addr.ip;
-						// Получаем аппаратный адрес клиента
-						adj->mac = adj->addr.mac;
-						// Устанавливаем идентификатор адъютанта
-						adj->aid = this->fmk->unixTimestamp();
-
-
-						cout << " ++++++++++++++++++++1 " << endl;
-
-
-						// Выполняем получение контекста сертификата
-						this->engine.wrap1(adj->engine, &adj->addr, engine_t::type_t::SERVER);
-
-						cout << " ++++++++++++++++++++2 " << endl;
-
-						// Если подключение не обёрнуто
-						if(adj->addr.fd < 0){
-							// Выводим сообщение об ошибке
-							this->log->print("wrap engine context is failed", log_t::flag_t::CRITICAL);
-							// Выходим из функции
-							return;
-						}
-
-						cout << " ++++++++++++++++++++3 " << endl;
-
-						/*
-						// Выполняем блокировку потока
-						this->mtx.accept.lock();
-						// Добавляем созданного адъютанта в список адъютантов
-						auto ret = wrk->adjutants.emplace(adj->aid, move(adj));
-						// Добавляем адъютанта в список подключений
-						this->adjutants.emplace(ret.first->first, ret.first->second.get());
-						// Выполняем блокировку потока
-						this->mtx.accept.unlock();
-						// Если процесс не является основным
-						if((this->pid != getpid()) && !this->jacks.empty()){
-							// Устанавливаем активное событие подключения
-							this->event = event_t::CONNECT;
-							// Выполняем разрешение на отправку сообщения
-							this->jacks.at(this->index)->write.start();
-						}
-						*/
-
-
-						// Выполняем ожидание входящих подключений
-						this->engine.wait(adj->engine);
-
-						cout << " ++++++++++++++++++++4 " << endl;
-
-						engine_t::addr_t addr(this->fmk, this->log);
-
-						cout << " ++++++++++++++++++++5 " << endl;
-
-						// Если подключение выполнено
-						if(addr.connect(adj->addr)){
-
-							engine_t::ctx_t target(this->fmk, this->log);
-
-							cout << " ++++++++++++++++++++6 " << endl;
-
-							this->engine.wrap2(target, &addr, adj->engine);
-
-							cout << " ###################### GET CONTACT " << endl;
-
-							/*
-							// Запускаем чтение данных
-							this->enabled(method_t::READ, ret.first->first);
-							// Выполняем функцию обратного вызова
-							if(wrk->connectFn != nullptr) wrk->connectFn(ret.first->first, wrk->wid, this);
-							*/
-						}
-						// Выходим из функции
-						return;
-
-
-
-						/*
-						// Выполняем получение контекста сертификата
-						this->engine.wrap(adj->engine, &adj->addr, this->net.family != family_t::NIX);
-						// Если подключение не обёрнуто
-						if(adj->addr.fd < 0){
-							// Выводим сообщение об ошибке
-							this->log->print("wrap engine context is failed", log_t::flag_t::CRITICAL);
-							// Выходим из функции
-							return;
-						}
-						// Выполняем блокировку потока
-						this->mtx.accept.lock();
-						// Добавляем созданного адъютанта в список адъютантов
-						auto ret = wrk->adjutants.emplace(adj->aid, move(adj));
-						// Добавляем адъютанта в список подключений
-						this->adjutants.emplace(ret.first->first, ret.first->second.get());
-						// Выполняем блокировку потока
-						this->mtx.accept.unlock();
-						// Если процесс не является основным
-						if((this->pid != getpid()) && !this->jacks.empty()){
-							// Устанавливаем активное событие подключения
-							this->event = event_t::CONNECT;
-							// Выполняем разрешение на отправку сообщения
-							this->jacks.at(this->index)->write.start();
-						}
-						// Запускаем чтение данных
-						this->enabled(method_t::READ, ret.first->first);
-						// Выполняем функцию обратного вызова
-						if(wrk->connectFn != nullptr) wrk->connectFn(ret.first->first, wrk->wid, this);
-						// Выходим из функции
-						return;
-						*/
-					// Подключение не установлено, выводим сообщение об ошибке
-					} else this->log->print("accepting for client is broken", log_t::flag_t::CRITICAL);
 				} break;
 				// Если тип сокета установлен как TCP/IP
 				case (uint8_t) sonet_t::TCP: {
@@ -868,23 +875,8 @@ void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 					#endif
 					// Создаём бъект адъютанта
 					unique_ptr <awh::worker_t::adj_t> adj(new awh::worker_t::adj_t(wrk, this->fmk, this->log));
-					// Определяем тип сокета
-					switch((uint8_t) this->net.sonet){
-						// Если тип сокета UDP
-						case (uint8_t) sonet_t::UDP: {
-							// Устанавливаем тип сокета
-							adj->addr.type = SOCK_DGRAM;
-							// Устанавливаем тип протокола
-							adj->addr.protocol = IPPROTO_UDP;
-						} break;
-						// Если тип сокета TCP
-						case (uint8_t) sonet_t::TCP: {
-							// Устанавливаем тип сокета
-							adj->addr.type = SOCK_STREAM;
-							// Устанавливаем тип протокола
-							adj->addr.protocol = IPPROTO_TCP;
-						} break;
-					}
+					// Устанавливаем параметры сокета
+					adj->addr.sonet(SOCK_STREAM, IPPROTO_TCP);
 					// Выполняем разрешение подключения
 					if(adj->addr.accept(wrk->addr)){
 						// Получаем адрес подключения клиента
@@ -1482,7 +1474,7 @@ void awh::server::Core::setBandwidth(const size_t aid, const string & read, cons
  */
 void awh::server::Core::setIpV6only(const bool mode) noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <recursive_mutex> lock(this->mtx.system);
+	const lock_guard <recursive_mutex> lock(this->mtx.main);
 	// Устанавливаем флаг использования только сети IPv6
 	this->ipV6only = mode;
 }
@@ -1507,7 +1499,7 @@ void awh::server::Core::setTotal(const size_t wid, const u_short total) noexcept
 	// Если идентификатор воркера передан
 	if(wid > 0){
 		// Выполняем блокировку потока
-		const lock_guard <recursive_mutex> lock(this->mtx.system);
+		const lock_guard <recursive_mutex> lock(this->mtx.main);
 		// Выполняем поиск воркера
 		auto it = this->workers.find(wid);
 		// Если воркер найден, устанавливаем максимальное количество одновременных подключений
@@ -1515,17 +1507,6 @@ void awh::server::Core::setTotal(const size_t wid, const u_short total) noexcept
 			// Устанавливаем максимальное количество одновременных подключений
 			((worker_t *) const_cast <awh::worker_t *> (it->second))->total = total;
 	}
-}
-/**
- * setCert Метод установки файлов сертификата
- * @param chain файл цепочки сертификатов
- * @param key   приватный ключ сертификата
- */
-void awh::server::Core::setCert(const string & chain, const string & key) noexcept {
-	// Выполняем блокировку потока
-	const lock_guard <recursive_mutex> lock(this->mtx.system);
-	// Устанавливаем файлы сертификата
-	this->engine.setCertificate(chain, key);
 }
 /**
  * init Метод инициализации сервера
@@ -1541,7 +1522,7 @@ void awh::server::Core::init(const size_t wid, const u_int port, const string & 
 		// Если воркер найден, устанавливаем максимальное количество одновременных подключений
 		if(it != this->workers.end()){
 			// Выполняем блокировку потока
-			const lock_guard <recursive_mutex> lock(this->mtx.system);
+			const lock_guard <recursive_mutex> lock(this->mtx.main);
 			// Получаем объект подключения
 			worker_t * wrk = (worker_t *) const_cast <awh::worker_t *> (it->second);
 			// Если порт передан, устанавливаем

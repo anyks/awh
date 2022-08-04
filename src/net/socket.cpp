@@ -177,19 +177,42 @@ int awh::Socket::noSigpipe(const int fd) const noexcept {
  * @return   результат работы функции
  */
 int awh::Socket::reuseable(const int fd) const noexcept {
+	// Устанавливаем параметр
+	const int on = 1;
 	/**
-	 * Методы только не для OS Windows
+	 * Методы только для OS Windows
 	 */
-	#if !defined(_WIN32) && !defined(_WIN64)
-		// Устанавливаем параметр
-		int reuseaddr = 1;
+	#if defined(_WIN32) || defined(_WIN64)
 		// Разрешаем повторно использовать тот же host:port после отключения
-		if(setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, (char *) &reuseaddr, sizeof(reuseaddr)) < 0){
+		if(setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, (const char *) &on, (socklen_t) sizeof(on)) < 0){
 			// Выводим в лог информацию
 			this->log->print("cannot set SO_REUSEADDR option on socket %d", log_t::flag_t::CRITICAL, fd);
 			// Выходим
 			return -1;
 		}
+	/**
+	 * Для всех остальных операционных систем
+	 */
+	#else
+		// Разрешаем повторно использовать тот же host:port после отключения
+		if(setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, (const void *) &on, (socklen_t) sizeof(on)) < 0){
+			// Выводим в лог информацию
+			this->log->print("cannot set SO_REUSEADDR option on socket %d", log_t::flag_t::CRITICAL, fd);
+			// Выходим
+			return -1;
+		}
+		/**
+		 * Если операционная система не является Linux
+		 */
+		#if !defined(__linux__)
+			// Разрешаем повторно использовать тот же host:port после отключения
+			if(setsockopt(fd, SOL_SOCKET, SO_REUSEPORT, (const void *) &on, (socklen_t) sizeof(on)) < 0){
+				// Выводим в лог информацию
+				this->log->print("cannot set SO_REUSEPORT option on socket %d", log_t::flag_t::CRITICAL, fd);
+				// Выходим
+				return -1;
+			}
+		#endif
 	#endif
 	// Все удачно
 	return 0;

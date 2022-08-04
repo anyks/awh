@@ -179,19 +179,15 @@ void awh::client::Core::connect(const size_t wid) noexcept {
 				// Определяем тип сокета
 				switch((uint8_t) this->net.sonet){
 					// Если тип сокета UDP
-					case (uint8_t) sonet_t::UDP: {
-						// Устанавливаем тип сокета
-						adj->addr.type = SOCK_DGRAM;
-						// Устанавливаем тип протокола
-						adj->addr.protocol = IPPROTO_UDP;
-					} break;
+					case (uint8_t) sonet_t::UDP:
+						// Устанавливаем параметры сокета
+						adj->addr.sonet(SOCK_DGRAM, IPPROTO_UDP);
+					break;
 					// Если тип сокета TCP
-					case (uint8_t) sonet_t::TCP: {
-						// Устанавливаем тип сокета
-						adj->addr.type = SOCK_STREAM;
-						// Устанавливаем тип протокола
-						adj->addr.protocol = IPPROTO_TCP;
-					} break;
+					case (uint8_t) sonet_t::TCP:
+						// Устанавливаем параметры сокета
+						adj->addr.sonet(SOCK_STREAM, IPPROTO_TCP);
+					break;
 				}
 				// Если unix-сокет используется
 				if(this->net.family == family_t::NIX)
@@ -207,9 +203,6 @@ void awh::client::Core::connect(const size_t wid) noexcept {
 
 					// Выполняем получение контекста сертификата
 					this->engine.wrap1(adj->engine, &adj->addr, engine_t::type_t::CLIENT);
-
-
-
 
 					// Выполняем получение контекста сертификата
 					// this->engine.wrap(adj->engine, &adj->addr, url);
@@ -280,6 +273,9 @@ void awh::client::Core::connect(const size_t wid) noexcept {
 						// Выходим из функции
 						return;
 					}
+
+					this->engine.wrap3(ret.first->second->engine);
+
 					// Разрешаем выполнение работы
 					wrk->status.work = worker_t::work_t::ALLOW;
 					// Если статус подключения изменился
@@ -405,6 +401,7 @@ void awh::client::Core::reconnect(const size_t wid) noexcept {
 					char * ip = inet_ntoa(serv_addr.sin_addr);
 
 					printf("IP address: %s\n", ip);
+					
 					
 					const_cast <uri_t::url_t *> (&url)->ip = ip;
 					*/
@@ -728,7 +725,6 @@ void awh::client::Core::open(const size_t wid) noexcept {
 						wrk->status.wait = worker_t::mode_t::CONNECT;
 						// Получаем URL параметры запроса
 						const uri_t::url_t & url = (wrk->isProxy() ? wrk->proxy.url : wrk->url);
-
 
 						/*
 						// Структура определяющая тип адреса

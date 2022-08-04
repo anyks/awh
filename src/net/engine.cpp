@@ -147,7 +147,9 @@ bool awh::Engine::Address::connect(Address & addr) noexcept {
 			break;
 		}
 		// Создаем сокет подключения
-		this->fd = ::socket(AF_INET6, SOCK_DGRAM, 0);
+		this->fd = ::socket(addr.peer.server.ss_family, SOCK_DGRAM, 0);
+		// Устанавливаем разрешение на повторное использование сокета
+		this->socket.reuseable(this->fd);
 		// Выполняем бинд на сокет
 		if((this->peer.size > 0) && (::bind(this->fd, (struct sockaddr *) (&addr.peer.server), this->peer.size) < 0)){
 			// Хост подключённого клиента
@@ -162,11 +164,42 @@ bool awh::Engine::Address::connect(Address & addr) noexcept {
 
 		
 		// Если подключение не выполненно то сообщаем об этом, выполняем подключение к удаленному серверу
-		if(::connect(this->fd, (struct sockaddr *) (&this->peer.client), this->peer.size) == 0)
+		if(::connect(this->fd, (struct sockaddr *) (&this->peer.client), this->peer.size) == 0){
+			// Буфер для получения IP адреса
+			char buffer[INET6_ADDRSTRLEN];
+			// Выполняем зануление буфера данных
+			memset(buffer, 0, sizeof(buffer));
 			// Устанавливаем статус подключения
 			this->status = status_t::CONNECTED;
+			// Определяем тип протокола интернета
+			switch(this->peer.client.ss_family){
+				// Если протокол интернета IPv4
+				case AF_INET:
+					// Получаем IP адрес
+					this->ip = inet_ntop(AF_INET, &((struct sockaddr_in *) &this->peer.client)->sin_addr, buffer, sizeof(buffer));
+					// Получаем порт клиента
+					this->port = ntohs(((struct sockaddr_in *) &this->peer.client)->sin_port);
+				break;
+				// Если протокол интернета IPv6
+				case AF_INET6:
+					// Получаем IP адрес
+					this->ip = inet_ntop(AF_INET6, &((struct sockaddr_in6 *) &this->peer.client)->sin6_addr, buffer, sizeof(buffer));
+					// Получаем порт клиента
+					this->port = ntohs(((struct sockaddr_in6 *) &this->peer.client)->sin6_port);
+				break;
+			}
+			// Получаем данные подключившегося клиента
+			string ip = this->ifnet.ip((struct sockaddr *) &this->peer.client, this->peer.client.ss_family);
+			// Если IP адрес получен пустой
+			if((ip.compare("0.0.0.0") == 0) || (ip.compare("::") == 0)){
+				// Получаем IP адрес локального сервера
+				ip = this->ifnet.ip(this->peer.client.ss_family);
+				// Получаем данные MAC адреса внутреннего клиента
+				this->mac = this->ifnet.mac(ip, this->peer.client.ss_family);
+			// Получаем данные MAC адреса внешнего клиента
+			} else this->mac = this->ifnet.mac(this->ip, this->peer.client.ss_family);
 		// Устанавливаем статус отключения
-		else this->status = status_t::DISCONNECTED;
+		} else this->status = status_t::DISCONNECTED;
 	}
 	// Выводим результат
 	return (this->status == status_t::CONNECTED);
@@ -303,14 +336,37 @@ bool awh::Engine::Address::accept(const int fd, const int family) noexcept {
 		case AF_INET:
 		// Для протокола IPv6
 		case AF_INET6: {
+			// Буфер для получения IP адреса
+			char buffer[INET6_ADDRSTRLEN];
+			// Выполняем зануление буфера данных
+			memset(buffer, 0, sizeof(buffer));
+			// Определяем тип протокола интернета
+			switch(this->peer.client.ss_family){
+				// Если протокол интернета IPv4
+				case AF_INET:
+					// Получаем IP адрес
+					this->ip = inet_ntop(AF_INET, &((struct sockaddr_in *) &this->peer.client)->sin_addr, buffer, sizeof(buffer));
+					// Получаем порт клиента
+					this->port = ntohs(((struct sockaddr_in *) &this->peer.client)->sin_port);
+				break;
+				// Если протокол интернета IPv6
+				case AF_INET6:
+					// Получаем IP адрес
+					this->ip = inet_ntop(AF_INET6, &((struct sockaddr_in6 *) &this->peer.client)->sin6_addr, buffer, sizeof(buffer));
+					// Получаем порт клиента
+					this->port = ntohs(((struct sockaddr_in6 *) &this->peer.client)->sin6_port);
+				break;
+			}
 			// Получаем данные подключившегося клиента
-			this->ip = this->ifnet.ip((struct sockaddr *) &this->peer.client, this->peer.client.ss_family);
+			string ip = this->ifnet.ip((struct sockaddr *) &this->peer.client, this->peer.client.ss_family);
 			// Если IP адрес получен пустой
-			if((this->ip.compare("0.0.0.0") == 0) || (this->ip.compare("::") == 0))
+			if((ip.compare("0.0.0.0") == 0) || (ip.compare("::") == 0)){
 				// Получаем IP адрес локального сервера
-				this->ip = this->ifnet.ip(this->peer.client.ss_family);
-			// Получаем данные мак адреса клиента
-			this->mac = this->ifnet.mac(this->ip, this->peer.client.ss_family);
+				ip = this->ifnet.ip(this->peer.client.ss_family);
+				// Получаем данные MAC адреса внутреннего клиента
+				this->mac = this->ifnet.mac(ip, this->peer.client.ss_family);
+			// Получаем данные MAC адреса внешнего клиента
+			} else this->mac = this->ifnet.mac(this->ip, this->peer.client.ss_family);
 		}
 		/**
 		 * Если операционной системой не является Windows
@@ -329,6 +385,17 @@ bool awh::Engine::Address::accept(const int fd, const int family) noexcept {
 	this->status = status_t::ACCEPTED;
 	// Выводим результат
 	return true;
+}
+/**
+ * sonet Метод установки параметров сокета
+ * @param type     тип сокета (SOCK_STREAM / SOCK_DGRAM)
+ * @param protocol протокол сокета (IPPROTO_TCP / IPPROTO_UDP)
+ */
+void awh::Engine::Address::sonet(const int type, const int protocol) noexcept {
+	// Устанавливаем тип сокета
+	this->type = type;
+	// Устанавливаем протокол сокета
+	this->protocol = protocol;
 }
 /**
  * init Метод инициализации адресного пространства сокета
@@ -360,12 +427,12 @@ void awh::Engine::Address::init(const string & unixsocket, const type_t type) no
 			}
 			// Выполняем игнорирование сигнала неверной инструкции процессора
 			this->socket.noSigill();
+			// Устанавливаем разрешение на повторное использование сокета
+			this->socket.reuseable(this->fd);
 			// Если сокет установлен TCP/IP
 			if(this->type == SOCK_STREAM){
 				// Отключаем сигнал записи в оборванное подключение
 				this->socket.noSigpipe(this->fd);
-				// Устанавливаем разрешение на повторное использование сокета
-				this->socket.reuseable(this->fd);
 				// Переводим сокет в не блокирующий режим
 				this->socket.nonBlocking(this->fd);
 			}
@@ -665,9 +732,9 @@ void awh::Engine::Address::init(const string & ip, const u_int port, const int f
 				BIO_set_tcp_ndelay(this->fd, 1);
 				// Устанавливаем разрешение на закрытие сокета при неиспользовании
 				// this->socket.closeonexec(this->fd);
-				// Устанавливаем разрешение на повторное использование сокета
-				this->socket.reuseable(this->fd);
 			}
+			// Устанавливаем разрешение на повторное использование сокета
+			this->socket.reuseable(this->fd);
 			// Определяем тип запускаемого приложения
 			switch((uint8_t) type){
 				// Если приложение является сервером
@@ -782,13 +849,6 @@ void awh::Engine::Context::clear() noexcept {
 		// Зануляем объект верификации
 		this->verify = nullptr;
 	}
-	// Если объект подключения BIO установлен
-	if(this->abio != nullptr){
-		// Выполняем очистку выделенной памяти
-		BIO_ADDR_free(this->abio);
-		// Зануляем объект подключения BIO
-		this->abio = nullptr;
-	}
 	// Если контекст SSL создан
 	if(this->ssl != nullptr){
 		// Выключаем получение данных SSL
@@ -799,10 +859,6 @@ void awh::Engine::Context::clear() noexcept {
 		SSL_free(this->ssl);
 		// Зануляем контекст сервера
 		this->ssl = nullptr;
-		// Если объект подключения существует
-		if(this->addr != nullptr)
-			// Зануляем контекст подключения
-			this->addr->ssl = nullptr;
 	}
 	// Если контекст SSL сервер был поднят
 	if(this->ctx != nullptr){
@@ -842,10 +898,13 @@ int64_t awh::Engine::Context::read(char * buffer, const size_t size) noexcept {
 		if(this->mode){
 			// Выполняем очистку ошибок OpenSSL
 			ERR_clear_error();
-			// Если подключение выполнено
-			if((result = ((this->type == type_t::SERVER) ? SSL_accept(this->ssl) : SSL_connect(this->ssl))))
-				// Выполняем чтение из защищённого сокета
-				result = SSL_read(this->ssl, buffer, size);
+			// Если подключение ещё активно
+			if(!(SSL_get_shutdown(this->ssl) & SSL_RECEIVED_SHUTDOWN)){
+				// Если подключение выполнено
+				if((result = ((this->type == type_t::SERVER) ? SSL_accept(this->ssl) : SSL_connect(this->ssl))) > 0)
+					// Выполняем чтение из защищённого сокета
+					result = SSL_read(this->ssl, buffer, size);
+			}
 		// Выполняем чтение из буфера данных стандартным образом
 		} else {
 			// Если сокет установлен как TCP/IP
@@ -924,10 +983,13 @@ int64_t awh::Engine::Context::write(const char * buffer, const size_t size) noex
 		if(this->mode){
 			// Выполняем очистку ошибок OpenSSL
 			ERR_clear_error();
-			// Если подключение выполнено
-			if((result = ((this->type == type_t::SERVER) ? SSL_accept(this->ssl) : SSL_connect(this->ssl))))
-				// Выполняем отправку сообщения через защищённый канал
-				result = SSL_write(this->ssl, buffer, size);
+			// Если подключение ещё активно
+			if(!(SSL_get_shutdown(this->ssl) & SSL_RECEIVED_SHUTDOWN)){
+				// Если подключение выполнено
+				if((result = ((this->type == type_t::SERVER) ? SSL_accept(this->ssl) : SSL_connect(this->ssl))) > 0)
+					// Выполняем отправку сообщения через защищённый канал
+					result = SSL_write(this->ssl, buffer, size);
+			}
 		// Выполняем отправку сообщения в сокет
 		} else {
 			// Если сокет установлен как TCP/IP
@@ -1709,14 +1771,53 @@ bool awh::Engine::initTrustedStore(SSL_CTX * ctx) const noexcept {
 				if((addCertToStoreFn(store, "CA") < 0) || (addCertToStoreFn(store, "AuthRoot") < 0) || (addCertToStoreFn(store, "ROOT") < 0)) return result;
 			#endif
 			// Если стор не устанавливается, тогда выводим ошибку
-			if(X509_STORE_set_default_paths(store) != 1){
+			if(X509_STORE_set_default_paths(store) != 1)
 				// Выводим в лог сообщение
 				this->log->print("%s", log_t::flag_t::CRITICAL, "set default paths for x509 store is not allow");
-			}
 		}
 	}
 	// Выводим результат
 	return result;
+}
+/**
+ * info Метод вывода информации о сертификате
+ * @param ctx контекст подключения
+ */
+void awh::Engine::info(ctx_t & ctx) const noexcept {
+	// Если версия OpenSSL не соответствует указанной при сборке
+	if(OpenSSL_version_num() != OPENSSL_VERSION_NUMBER){
+		// Выводим в лог сообщение
+		this->log->print(
+			"OpenSSL version mismatch!\r\n"
+			"Compiled against %s\r\n"
+			"Linked against   %s",
+			log_t::flag_t::WARNING,
+			OPENSSL_VERSION_TEXT,
+			OpenSSL_version(OPENSSL_VERSION)
+		);
+		// Если мажорная и минорная версия OpenSSL не совпадают
+		if((OpenSSL_version_num() >> 20) != (OPENSSL_VERSION_NUMBER >> 20)){
+			// Выводим в лог сообщение
+			this->log->print("major and minor version numbers must match, exiting", log_t::flag_t::CRITICAL);
+			// Выходим из приложения
+			exit(EXIT_FAILURE);
+		}
+	// Если всё хорошо, выводим версию OpenSSL
+	} else this->log->print("Using %s", log_t::flag_t::INFO, OpenSSL_version(OPENSSL_VERSION));
+	// Если версия OpenSSL ниже установленной минимальной
+	if(OPENSSL_VERSION_NUMBER < 0x1010102fL){
+		// Выводим в лог сообщение
+		this->log->print("%s is unsupported, use OpenSSL Version 1.1.1a or higher", log_t::flag_t::CRITICAL, OpenSSL_version(OPENSSL_VERSION));
+		// Выходим из приложения
+		exit(EXIT_FAILURE);
+	}
+	// Если объект подключения создан и сертификат передан
+	if((ctx.ssl != nullptr) && SSL_get_peer_certificate(ctx.ssl)){
+		printf ("------------------------------------------------------------\n");
+		X509_NAME_print_ex_fp(stdout, X509_get_subject_name(SSL_get_peer_certificate(ctx.ssl)), 1, XN_FLAG_MULTILINE);
+		printf("\n\n Cipher: %s", SSL_CIPHER_get_name(SSL_get_current_cipher(ctx.ssl)));
+		printf ("\n------------------------------------------------------------\n\n");
+	}
 }
 /**
  * wait Метод ожидания рукопожатия
@@ -1738,6 +1839,32 @@ void awh::Engine::wait(ctx_t & target) noexcept {
 		// Если сокет установлен UDP
 		case SOCK_DGRAM:
 
+
+			/*
+			struct timeval timeout;
+			timeout.tv_sec = 10;
+			timeout.tv_usec = 0;
+			BIO_ctrl(target.bio, BIO_CTRL_DGRAM_SET_RECV_TIMEOUT, 0, &timeout);
+			*/
+
+			memset(&target.addr->peer.client, 0, sizeof(struct sockaddr_storage));
+		
+			// Выполняем ожидание подключения
+			while(DTLSv1_listen(target.ssl, (BIO_ADDR *) &target.addr->peer.client) < 1);
+
+			
+
+			cout << " ------------------ LISTEN " << endl;
+				
+		
+
+			
+
+			
+
+
+
+			/*
 			// Если объект подключения BIO ещё не создан
 			if(target.abio == nullptr)
 				// Создаём объект подключения клиента
@@ -1757,6 +1884,11 @@ void awh::Engine::wait(ctx_t & target) noexcept {
 				// Выходим из цикла
 				break;
 			}
+			*/
+
+
+			// Выполняем установку объекта подключения в BIO
+					// BIO_ctrl(target.bio, BIO_CTRL_DGRAM_SET_CONNECTED, 0, (struct sockaddr *) &target.addr->peer.client);
 			
 			/*
 			struct timeval timeout;
@@ -1823,48 +1955,23 @@ void awh::Engine::wrap1(ctx_t & target, addr_t * address, const type_t type) noe
 		// Устанавливаем файловый дескриптор
 		target.addr = address;
 		// Если объект фреймворка существует
-		if((target.addr->fd > -1) && ((!this->privkey.empty() && !this->fullchain.empty()) || (type == type_t::CLIENT))){
-			// Активируем рандомный генератор
-			if(RAND_poll() < 1){
-				// Выводим в лог сообщение
-				this->log->print("%s", log_t::flag_t::CRITICAL, "rand poll is not allow");
-				// Выходим
-				return;
-			}
+		if((target.addr->fd > -1) && !this->privkey.empty() && !this->fullchain.empty()){
+			// Выполняем инициализацию алгоритмов
+			OpenSSL_add_ssl_algorithms();
+			// Выполняем загрузку всех ошибок OpenSSL
+			SSL_load_error_strings();
 			// Определяем тип активного приложения
 			switch((uint8_t) type){
 				// Если приложение является клиентом
-				case (uint8_t) type_t::CLIENT: {
-					// Определяем тип входящего сокета
-					switch(target.addr->type){
-						// Если сокет установлен TCP/IP
-						case SOCK_STREAM:
-							// Получаем контекст OpenSSL
-							target.ctx = SSL_CTX_new(TLSv1_2_client_method());
-						break;
-						// Если сокет установлен UDP
-						case SOCK_DGRAM:
-							// Получаем контекст OpenSSL
-							target.ctx = SSL_CTX_new(DTLSv1_client_method());
-						break;
-					}
-				} break;
+				case (uint8_t) type_t::CLIENT:
+					// Получаем контекст OpenSSL
+					target.ctx = SSL_CTX_new(DTLSv1_client_method());
+				break;
 				// Если приложение является сервером
-				case (uint8_t) type_t::SERVER: {
-					// Определяем тип входящего сокета
-					switch(target.addr->type){
-						// Если сокет установлен TCP/IP
-						case SOCK_STREAM:
-							// Получаем контекст OpenSSL
-							target.ctx = SSL_CTX_new(TLSv1_2_server_method());
-						break;
-						// Если сокет установлен UDP
-						case SOCK_DGRAM:
-							// Получаем контекст OpenSSL
-							target.ctx = SSL_CTX_new(DTLSv1_server_method());
-						break;
-					}
-				} break;
+				case (uint8_t) type_t::SERVER:
+					// Получаем контекст OpenSSL
+					target.ctx = SSL_CTX_new(DTLSv1_server_method());
+				break;
 			}
 			// Если контекст не создан
 			if(target.ctx == nullptr){
@@ -1873,161 +1980,62 @@ void awh::Engine::wrap1(ctx_t & target, addr_t * address, const type_t type) noe
 				// Выходим
 				return;
 			}
-			// Устанавливаем опции запроса
-			SSL_CTX_set_options(target.ctx, SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3);
-			// Устанавливаем минимально-возможную версию TLS
-			SSL_CTX_set_min_proto_version(target.ctx, 0);
-			// Устанавливаем максимально-возможную версию TLS
-			SSL_CTX_set_max_proto_version(target.ctx, TLS1_3_VERSION);
-			// Если нужно установить основные алгоритмы шифрования
-			if(!this->cipher.empty() && (type == type_t::SERVER)){
-				// Устанавливаем все основные алгоритмы шифрования
-				if(SSL_CTX_set_cipher_list(target.ctx, this->cipher.c_str()) < 1){
-					// Очищаем созданный контекст
-					target.clear();
-					// Выводим в лог сообщение
-					this->log->print("%s", log_t::flag_t::CRITICAL, "set ssl ciphers");
-					// Выходим
-					return;
-				}
-				// Заставляем серверные алгоритмы шифрования использовать в приоритете
-				SSL_CTX_set_options(target.ctx, SSL_OP_CIPHER_SERVER_PREFERENCE);
-			}
-			// Устанавливаем поддерживаемые кривые
-			if(SSL_CTX_set_ecdh_auto(target.ctx, 1) < 1){
-				// Очищаем созданный контекст
-				target.clear();
-				// Выводим в лог сообщение
-				this->log->print("%s", log_t::flag_t::CRITICAL, "set ssl ecdh");
-				// Выходим
-				return;
-			}
-			// Выполняем инициализацию доверенного сертификата
-			if(!this->initTrustedStore(target.ctx)){
-				// Очищаем созданный контекст
-				target.clear();
-				// Выходим
-				return;
-			}
-			// Устанавливаем флаг quiet shutdown
-			SSL_CTX_set_quiet_shutdown(target.ctx, 1);
-			// Запускаем кэширование
-			SSL_CTX_set_session_cache_mode(target.ctx, SSL_SESS_CACHE_SERVER | SSL_SESS_CACHE_NO_INTERNAL);
 			// Если приложение является сервером
-			if(type == type_t::SERVER){
-				// Если цепочка сертификатов установлена
-				if(!this->fullchain.empty()){
-					// Если цепочка сертификатов не установлена
-					if(SSL_CTX_use_certificate_chain_file(target.ctx, this->fullchain.c_str()) < 1){
-						// Выводим в лог сообщение
-						this->log->print("%s", log_t::flag_t::CRITICAL, "certificate fullchain cannot be set");
-						// Очищаем созданный контекст
-						target.clear();
-						// Выходим
-						return;
-					}
-				}
-				// Если приватный ключ установлен
-				if(!this->privkey.empty()){
-					// Если приватный ключ не может быть установлен
-					if(SSL_CTX_use_PrivateKey_file(target.ctx, this->privkey.c_str(), SSL_FILETYPE_PEM) < 1){
-						// Выводим в лог сообщение
-						this->log->print("%s", log_t::flag_t::CRITICAL, "private key cannot be set");
-						// Очищаем созданный контекст
-						target.clear();
-						// Выходим
-						return;
-					}
-				}	
-				// Если приватный ключ недействителен
-				if(SSL_CTX_check_private_key(target.ctx) < 1){
+			if(type == type_t::SERVER)
+				// Выполняем отключение SSL кеша
+				SSL_CTX_set_session_cache_mode(target.ctx, SSL_SESS_CACHE_OFF);
+			// Если цепочка сертификатов установлена
+			if(!this->fullchain.empty()){
+				// Если цепочка сертификатов не установлена
+				if(SSL_CTX_use_certificate_file(target.ctx, this->fullchain.c_str(), SSL_FILETYPE_PEM) < 1){
 					// Выводим в лог сообщение
-					this->log->print("%s", log_t::flag_t::CRITICAL, "private key is not valid");
+					this->log->print("%s", log_t::flag_t::CRITICAL, "certificate cannot be set");
 					// Очищаем созданный контекст
 					target.clear();
 					// Выходим
 					return;
 				}
 			}
-			// Если доверенный сертификат недействителен
-			if(SSL_CTX_set_default_verify_file(target.ctx) < 1){
+			// Если приватный ключ установлен
+			if(!this->privkey.empty()){
+				// Если приватный ключ не может быть установлен
+				if(SSL_CTX_use_PrivateKey_file(target.ctx, this->privkey.c_str(), SSL_FILETYPE_PEM) < 1){
+					// Выводим в лог сообщение
+					this->log->print("%s", log_t::flag_t::CRITICAL, "private key cannot be set");
+					// Очищаем созданный контекст
+					target.clear();
+					// Выходим
+					return;
+				}
+			}
+			// Если приватный ключ недействителен
+			if(SSL_CTX_check_private_key(target.ctx) < 1){
 				// Выводим в лог сообщение
-				this->log->print("%s", log_t::flag_t::CRITICAL, "trusted certificate is invalid");
+				this->log->print("%s", log_t::flag_t::CRITICAL, "private key is not valid");
 				// Очищаем созданный контекст
 				target.clear();
 				// Выходим
 				return;
 			}
-			// Заставляем OpenSSL автоматические повторные попытки после событий сеанса TLS
-			SSL_CTX_set_mode(target.ctx, SSL_MODE_AUTO_RETRY);
-			// Выполняем проверку сертификата клиента
-			SSL_CTX_set_verify(target.ctx, SSL_VERIFY_PEER | SSL_VERIFY_CLIENT_ONCE, &verifyCert);
+			// Если приложение является сервером
+			if(type == type_t::SERVER)
+				// Выполняем проверку сертификата клиента
+				SSL_CTX_set_verify(target.ctx, SSL_VERIFY_PEER | SSL_VERIFY_CLIENT_ONCE, &verifyCert);
+			// Если приложение является клиентом
+			if(type == type_t::CLIENT)
+				// Устанавливаем глубину проверки
+				SSL_CTX_set_verify_depth(target.ctx, 2);
 			// Устанавливаем, что мы должны читать как можно больше входных байтов
 			SSL_CTX_set_read_ahead(target.ctx, 1);
-			// Определяем тип входящего сокета
-			switch(target.addr->type){
-				// Если сокет установлен UDP
-				case SOCK_DGRAM: {
-					// Выполняем проверку файлов печенок
-					SSL_CTX_set_cookie_verify_cb(target.ctx, &verifyCookie);
-					// Выполняем генерацию файлов печенок
-					SSL_CTX_set_cookie_generate_cb(target.ctx, &generateCookie);
-				} break;
-				// Если сокет установлен TCP/IP
-				case SOCK_STREAM: {
-					// Выполняем проверку файлов печенок
-					SSL_CTX_set_stateless_cookie_verify_cb(target.ctx, &verifyStatelessCookie);
-					// Выполняем генерацию файлов печенок
-					SSL_CTX_set_stateless_cookie_generate_cb(target.ctx, &generateStatelessCookie);
-				} break;
+			// Если приложение является сервером
+			if(type == type_t::SERVER){
+				// Выполняем проверку файлов печенок
+				SSL_CTX_set_cookie_verify_cb(target.ctx, &verifyCookie);
+				// Выполняем генерацию файлов печенок
+				SSL_CTX_set_cookie_generate_cb(target.ctx, &generateCookie);
 			}
 			// Создаем SSL объект
 			target.ssl = SSL_new(target.ctx);
-			// Устанавливаем объект SSL подключения
-			target.addr->ssl = target.ssl;
-			// Определяем тип входящего сокета
-			switch(target.addr->type){
-				// Если сокет установлен TCP/IP
-				case SOCK_STREAM:
-					// Выполняем обёртывание сокета в BIO SSL
-					target.bio = BIO_new_socket(target.addr->fd, BIO_NOCLOSE);
-				break;
-				// Если сокет установлен UDP
-				case SOCK_DGRAM: {
-					// Выполняем обёртывание сокета UDP в BIO SSL
-					target.bio = BIO_new_dgram(target.addr->fd, BIO_NOCLOSE);
-					// Определяем тип активного приложения
-					switch((uint8_t) type){
-						// Если приложение является клиентом
-						case (uint8_t) type_t::CLIENT:
-							// Выполняем установку объекта подключения в BIO
-							BIO_ctrl(target.bio, BIO_CTRL_DGRAM_SET_CONNECTED, 0, (struct sockaddr *) &target.addr->peer.server);
-						break;
-						// Если приложение является сервером
-						case (uint8_t) type_t::SERVER:
-							// Выполняем установку объекта подключения в BIO
-							// BIO_ctrl(target.bio, BIO_CTRL_DGRAM_SET_CONNECTED, 0, (struct sockaddr *) &target.addr->peer.client);
-						break;
-					}
-				} break;
-			}
-			// Если BIO SSL создано
-			if(target.bio != nullptr){
-				// Устанавливаем неблокирующий режим ввода/вывода для сокета
-				target.noblock();
-				// Выполняем установку BIO SSL
-				SSL_set_bio(target.ssl, target.bio, target.bio);
-				// Включаем обмен куками
-				SSL_set_options(target.ssl, SSL_OP_COOKIE_EXCHANGE);
-			// Если BIO SSL не создано
-			} else {
-				// Очищаем созданный контекст
-				target.clear();
-				// Выводим сообщение об ошибке
-				this->log->print("BIO new socket is failed", log_t::flag_t::CRITICAL);
-				// Выходим из функции
-				return;
-			}
 			// Если объект не создан
 			if(!(target.mode = (target.ssl != nullptr))){
 				// Очищаем созданный контекст
@@ -2037,7 +2045,38 @@ void awh::Engine::wrap1(ctx_t & target, addr_t * address, const type_t type) noe
 				// Выходим
 				return;
 			}
-		}
+			// Если нужно вывести информацию о сертификате
+			if(this->verbose) this->info(target);
+			// Выполняем обёртывание сокета UDP в BIO SSL
+			target.bio = BIO_new_dgram(target.addr->fd, BIO_NOCLOSE);
+			/*
+			// Если приложение является клиентом
+			if(type == type_t::CLIENT)
+				// Выполняем установку объекта подключения в BIO
+				BIO_ctrl(target.bio, BIO_CTRL_DGRAM_SET_CONNECTED, 0, (struct sockaddr *) &target.addr->peer.server);
+			*/
+			// Если BIO SSL создано
+			if(target.bio != nullptr){
+				// Если приложение является сервером
+				if(type == type_t::SERVER){
+					// Устанавливаем неблокирующий режим ввода/вывода для сокета
+					target.noblock();
+					// Выполняем установку BIO SSL
+					SSL_set_bio(target.ssl, target.bio, target.bio);
+					// Включаем обмен куками
+					SSL_set_options(target.ssl, SSL_OP_COOKIE_EXCHANGE);
+				}
+			// Если BIO SSL не создано
+			} else {
+				// Очищаем созданный контекст
+				target.clear();
+				// Выводим сообщение об ошибке
+				this->log->print("BIO new socket is failed", log_t::flag_t::CRITICAL);
+				// Выходим из функции
+				return;
+			}
+		// Очищаем созданный контекст
+		} else target.clear();
 	}
 }
 /**
@@ -2060,13 +2099,73 @@ void awh::Engine::wrap2(ctx_t & target, addr_t * address, const ctx_t & source) 
 			target.bio = SSL_get_rbio(source.ssl);
 			// Устанавливаем сокет клиента
 			BIO_set_fd(target.bio, target.addr->fd, BIO_NOCLOSE);
-			// Если тип протокола UDP
-			if(target.addr->type == SOCK_DGRAM)
-				// Выполняем установку объекта подключения в BIO
-				BIO_ctrl(target.bio, BIO_CTRL_DGRAM_SET_CONNECTED, 0, (struct sockaddr *) &target.addr->peer.client);
-		}
+			// Выполняем установку объекта подключения в BIO
+			BIO_ctrl(target.bio, BIO_CTRL_DGRAM_SET_CONNECTED, 0, (struct sockaddr *) &target.addr->peer.client);
+			// Если нужно вывести информацию о сертификате
+			if(this->verbose) this->info(target);
+		// Очищаем созданный контекст
+		} else target.clear();
 	}
 }
+
+void awh::Engine::wrap3(ctx_t & target) noexcept {
+
+	if (target.addr->peer.server.ss_family == AF_INET) {
+		if (::connect(target.addr->fd, (struct sockaddr *) &target.addr->peer.server, sizeof(struct sockaddr_in))) {
+			
+			cout << " ######################1 " << endl;
+
+			perror("connect");
+		}
+	} else {
+		if (::connect(target.addr->fd, (struct sockaddr *) &target.addr->peer.server, sizeof(struct sockaddr_in6))) {
+			perror("connect");
+		}
+	}
+
+	BIO_ctrl(target.bio, BIO_CTRL_DGRAM_SET_CONNECTED, 0,  (struct sockaddr *) &target.addr->peer.server);
+
+	SSL_set_bio(target.ssl, target.bio, target.bio);
+
+	int retval = SSL_connect(target.ssl);
+
+	if (retval <= 0) {
+		switch (SSL_get_error(target.ssl, retval)) {
+			case SSL_ERROR_ZERO_RETURN:
+				fprintf(stderr, "SSL_connect failed with SSL_ERROR_ZERO_RETURN\n");
+				break;
+			case SSL_ERROR_WANT_READ:
+				fprintf(stderr, "SSL_connect failed with SSL_ERROR_WANT_READ\n");
+				break;
+			case SSL_ERROR_WANT_WRITE:
+				fprintf(stderr, "SSL_connect failed with SSL_ERROR_WANT_WRITE\n");
+				break;
+			case SSL_ERROR_WANT_CONNECT:
+				fprintf(stderr, "SSL_connect failed with SSL_ERROR_WANT_CONNECT\n");
+				break;
+			case SSL_ERROR_WANT_ACCEPT:
+				fprintf(stderr, "SSL_connect failed with SSL_ERROR_WANT_ACCEPT\n");
+				break;
+			case SSL_ERROR_WANT_X509_LOOKUP:
+				fprintf(stderr, "SSL_connect failed with SSL_ERROR_WANT_X509_LOOKUP\n");
+				break;
+			case SSL_ERROR_SYSCALL:
+				fprintf(stderr, "SSL_connect failed with SSL_ERROR_SYSCALL\n");
+				break;
+			case SSL_ERROR_SSL:
+				fprintf(stderr, "SSL_connect failed with SSL_ERROR_SSL\n");
+				break;
+			default:
+				fprintf(stderr, "SSL_connect failed with unknown error\n");
+				break;
+		}
+		exit(EXIT_FAILURE);
+	}
+
+	// Если нужно вывести информацию о сертификате
+	if(this->verbose) this->info(target);
+}
+
 /**
  * wrap Метод обертывания файлового дескриптора для сервера
  * @param target  контекст назначения
@@ -2189,12 +2288,23 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const bool mode) noexce
 			SSL_CTX_set_verify(target.ctx, SSL_VERIFY_NONE, nullptr);
 			/*
 			// Выполняем проверку файлов печенок
-			SSL_CTX_set_stateless_cookie_verify_cb(target.ctx, &verifyCookie);
+			SSL_CTX_set_stateless_cookie_verify_cb(target.ctx, &verifyStatelessCookie);
 			// Выполняем генерацию файлов печенок
-			SSL_CTX_set_stateless_cookie_generate_cb(target.ctx, &generateCookie);
+			SSL_CTX_set_stateless_cookie_generate_cb(target.ctx, &generateStatelessCookie);
 			*/
 			// Создаем SSL объект
 			target.ssl = SSL_new(target.ctx);
+			// Если объект не создан
+			if(!(target.mode = (target.ssl != nullptr))){
+				// Очищаем созданный контекст
+				target.clear();
+				// Выводим в лог сообщение
+				this->log->print("%s", log_t::flag_t::CRITICAL, "ssl initialization is not allow");
+				// Выходим
+				return;
+			}
+			// Если нужно вывести информацию о сертификате
+			if(this->verbose) this->info(target);
 			// Проверяем рукопожатие
 			if(SSL_do_handshake(target.ssl) < 1){
 				// Выполняем проверку рукопожатия
@@ -2230,16 +2340,8 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const bool mode) noexce
 				// Выходим из функции
 				return;
 			}
-			// Если объект не создан
-			if(!(target.mode = (target.ssl != nullptr))){
-				// Очищаем созданный контекст
-				target.clear();
-				// Выводим в лог сообщение
-				this->log->print("%s", log_t::flag_t::CRITICAL, "ssl initialization is not allow");
-				// Выходим
-				return;
-			}
-		}
+		// Очищаем созданный контекст
+		} else target.clear();
 	}
 }
 /**
@@ -2297,14 +2399,19 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const uri_t::url_t & ur
 				SSL_CTX_set_verify_depth(target.ctx, 4);
 			// Запрещаем выполнять првоерку сертификата пользователя
 			} else SSL_CTX_set_verify(target.ctx, SSL_VERIFY_NONE, nullptr);
-			/*
-			// Выполняем проверку файлов печенок
-			SSL_CTX_set_stateless_cookie_verify_cb(target.ctx, &verifyCookie);
-			// Выполняем генерацию файлов печенок
-			SSL_CTX_set_stateless_cookie_generate_cb(target.ctx, &generateCookie);
-			*/
 			// Создаем SSL объект
 			target.ssl = SSL_new(target.ctx);
+			// Если объект не создан
+			if(!(target.mode = (target.ssl != nullptr))){
+				// Очищаем созданный контекст
+				target.clear();
+				// Выводим в лог сообщение
+				this->log->print("%s", log_t::flag_t::CRITICAL, "ssl initialization is not allow");
+				// Выходим
+				return;
+			}
+			// Если нужно вывести информацию о сертификате
+			if(this->verbose) this->info(target);
 			/**
 			 * Если нужно установить TLS расширение
 			 */
@@ -2341,8 +2448,6 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const uri_t::url_t & ur
 				target.block();
 				// Выполняем установку BIO SSL
 				SSL_set_bio(target.ssl, target.bio, target.bio);
-				// Включаем обмен куками
-				// SSL_set_options(target.ssl, SSL_OP_COOKIE_EXCHANGE);
 				// Выполняем активацию клиента SSL
 				SSL_set_connect_state(target.ssl);
 			// Если BIO SSL не создано
@@ -2354,16 +2459,8 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const uri_t::url_t & ur
 				// Выходим из функции
 				return;
 			}
-			// Если объект не создан
-			if(!(target.mode = (target.ssl != nullptr))){
-				// Очищаем созданный контекст
-				target.clear();
-				// Выводим в лог сообщение
-				this->log->print("%s", log_t::flag_t::CRITICAL, "ssl initialization is not allow");
-				// Выходим
-				return;
-			}
-		}
+		// Очищаем созданный контекст
+		} else target.clear();
 	}
 }
 /**
@@ -2373,6 +2470,14 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const uri_t::url_t & ur
 void awh::Engine::setVerify(const bool mode) noexcept {
 	// Устанавливаем флаг проверки
 	this->verify = mode;
+}
+/**
+ * setVerbose Метод установки флага, вывода информации о сертификате
+ * @param mode флаг разрешающий вывод информации
+ */
+void awh::Engine::setVerbose(const bool mode) noexcept {
+	// Устанавливаем флаг вывода информации о сертификате
+	this->verbose = mode;
 }
 /**
  * setCipher Метод установки алгоритмов шифрования

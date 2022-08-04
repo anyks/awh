@@ -81,6 +81,10 @@ namespace awh {
 			 */
 			enum class sonet_t : uint8_t {TCP, UDP};
 			/**
+			 * Флаги активного типа шифрования
+			 */
+			enum class ssl_t : uint8_t {NONE, STLS, DTLS};
+			/**
 			 * Семейство протоколов интернета
 			 */
 			enum class family_t : uint8_t {IPV4, IPV6, NIX};
@@ -288,6 +292,8 @@ namespace awh {
 				sig_t sig;
 			#endif
 		protected:
+			// Тип активной версии шифрования
+			ssl_t ssl = ssl_t::NONE;
 			// Статус сетевого ядра
 			status_t status = status_t::STOP;
 			// Тип запускаемого ядра
@@ -589,6 +595,12 @@ namespace awh {
 			 * @param family тип протокола интернета (IPV4 / IPV6 / NIX)
 			 */
 			void setFamily(const family_t family = family_t::IPV4) noexcept;
+			/**
+			 * setCert Метод установки файлов сертификата
+			 * @param chain файл цепочки сертификатов
+			 * @param key   приватный ключ сертификата
+			 */
+			void setCert(const string & chain, const string & key) noexcept;
 			/**
 			 * setTrusted Метод установки доверенного сертификата (CA-файла)
 			 * @param trusted адрес доверенного сертификата (CA-файла)

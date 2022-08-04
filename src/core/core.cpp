@@ -1410,6 +1410,22 @@ void awh::Core::setSockType(const sonet_t sonet) noexcept {
 	const lock_guard <recursive_mutex> lock(this->mtx.main);
 	// Устанавливаем тип сокета
 	this->net.sonet = sonet;
+	// Если тип шифрования уже установлен
+	if(this->ssl != ssl_t::NONE){
+		// Определяем тип сокета
+		switch((uint8_t) this->net.sonet){
+			// Если тип сокета TCP
+			case (uint8_t) sonet_t::TCP:
+				// Устанавливаем тип шифрования
+				this->ssl = ssl_t::STLS;
+			break;
+			// Если тип сокета UDP
+			case (uint8_t) sonet_t::UDP:
+				// Устанавливаем тип шифрования
+				this->ssl = ssl_t::DTLS;
+			break;
+		}
+	}
 }
 /**
  * setFamily Метод установки тип протокола интернета
@@ -1428,6 +1444,33 @@ void awh::Core::setFamily(const family_t family) noexcept {
 	else if(this->net.family != family_t::NIX)
 		// Выполняем очистку адреса файла unix-сокета
 		this->unsetUnixSocket();
+}
+/**
+ * setCert Метод установки файлов сертификата
+ * @param chain файл цепочки сертификатов
+ * @param key   приватный ключ сертификата
+ */
+void awh::Core::setCert(const string & chain, const string & key) noexcept {
+	// Выполняем блокировку потока
+	const lock_guard <recursive_mutex> lock(this->mtx.main);
+	// Устанавливаем файлы сертификата
+	this->engine.setCertificate(chain, key);
+	// Если и сертификат и ключ сертификата получены
+	if(fs_t::isfile(chain) && fs_t::isfile(key)){
+		// Определяем тип сокета
+		switch((uint8_t) this->net.sonet){
+			// Если тип сокета TCP
+			case (uint8_t) sonet_t::TCP:
+				// Устанавливаем тип шифрования
+				this->ssl = ssl_t::STLS;
+			break;
+			// Если тип сокета UDP
+			case (uint8_t) sonet_t::UDP:
+				// Устанавливаем тип шифрования
+				this->ssl = ssl_t::DTLS;
+			break;
+		}
+	}
 }
 /**
  * setTrusted Метод установки доверенного сертификата (CA-файла)
