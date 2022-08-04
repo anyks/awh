@@ -485,30 +485,44 @@ void awh::Engine::Address::init(const string & ip, const u_int port, const int f
 			switch(family){
 				// Для протокола IPv4
 				case AF_INET: {
-					// Если приложение является клиентом
-					if(type == type_t::CLIENT){
-						// Если количество элементов больше 1
-						if(this->network.size() > 1){
-							// рандомизация генератора случайных чисел
-							srand(time(0));
-							// Получаем ip адрес
-							host = this->network.at(rand() % this->network.size());
-						// Выводим только первый элемент
-						} else host = this->network.front();
-						// Создаём объект клиента
-						struct sockaddr_in client;
-						// Очищаем всю структуру для клиента
-						memset(&client, 0, sizeof(client));
-						// Устанавливаем протокол интернета
-						client.sin_family = family;
-						// Устанавливаем произвольный порт для локального подключения
-						client.sin_port = htons(0);
-						// Устанавливаем адрес для локальго подключения
-						client.sin_addr.s_addr = inet_addr(host.c_str());
-						// Запоминаем размер структуры
-						this->peer.size = sizeof(client);
-						// Выполняем копирование объекта подключения клиента
-						memcpy(&this->peer.client, &client, this->peer.size);
+					// Определяем тип приложения
+					switch((uint8_t) type){
+						// Если приложение является клиентом
+						case (uint8_t) type_t::CLIENT: {
+							// Если количество элементов больше 1
+							if(this->network.size() > 1){
+								// рандомизация генератора случайных чисел
+								srand(time(0));
+								// Получаем ip адрес
+								host = this->network.at(rand() % this->network.size());
+							// Выводим только первый элемент
+							} else host = this->network.front();
+							// Создаём объект клиента
+							struct sockaddr_in client;
+							// Очищаем всю структуру для клиента
+							memset(&client, 0, sizeof(client));
+							// Устанавливаем протокол интернета
+							client.sin_family = family;
+							// Устанавливаем произвольный порт для локального подключения
+							client.sin_port = htons(0);
+							// Устанавливаем адрес для локальго подключения
+							client.sin_addr.s_addr = inet_addr(host.c_str());
+							// Запоминаем размер структуры
+							this->peer.size = sizeof(client);
+							// Выполняем копирование объекта подключения клиента
+							memcpy(&this->peer.client, &client, this->peer.size);
+						} break;
+						// Если приложение является сервером
+						case (uint8_t) type_t::SERVER: {
+							// Создаём объект клиента
+							struct sockaddr_in client;
+							// Очищаем всю структуру для клиента
+							memset(&client, 0, sizeof(client));
+							// Устанавливаем протокол интернета
+							client.sin_family = family;
+							// Выполняем копирование объекта подключения клиента
+							memcpy(&this->peer.client, &client, sizeof(client));
+						} break;
 					}
 					// Создаём объект сервера
 					struct sockaddr_in server;
@@ -531,33 +545,47 @@ void awh::Engine::Address::init(const string & ip, const u_int port, const int f
 				} break;
 				// Для протокола IPv6
 				case AF_INET6: {
-					// Если приложение является клиентом
-					if(type == type_t::CLIENT){
-						// Если количество элементов больше 1
-						if(this->network.size() > 1){
-							// рандомизация генератора случайных чисел
-							srand(time(0));
-							// Получаем ip адрес
-							host = this->network.at(rand() % this->network.size());
-						// Выводим только первый элемент
-						} else host = this->network.front();
-						// Переводим ip адрес в полноценный вид
-						host = move(this->nwk.setLowIp6(host));
-						// Создаём объект клиента
-						struct sockaddr_in6 client;
-						// Очищаем всю структуру для клиента
-						memset(&client, 0, sizeof(client));
-						// Устанавливаем протокол интернета
-						client.sin6_family = family;
-						// Устанавливаем произвольный порт для локального подключения
-						client.sin6_port = htons(0);
-						// Указываем адрес IPv6 для клиента
-						inet_pton(family, host.c_str(), &client.sin6_addr);
-						// inet_ntop(family, &client.sin6_addr, hostClient, sizeof(hostClient));
-						// Запоминаем размер структуры
-						this->peer.size = sizeof(client);
-						// Выполняем копирование объекта подключения клиента
-						memcpy(&this->peer.client, &client, this->peer.size);
+					// Определяем тип приложения
+					switch((uint8_t) type){
+						// Если приложение является клиентом
+						case (uint8_t) type_t::CLIENT: {
+							// Если количество элементов больше 1
+							if(this->network.size() > 1){
+								// рандомизация генератора случайных чисел
+								srand(time(0));
+								// Получаем ip адрес
+								host = this->network.at(rand() % this->network.size());
+							// Выводим только первый элемент
+							} else host = this->network.front();
+							// Переводим ip адрес в полноценный вид
+							host = move(this->nwk.setLowIp6(host));
+							// Создаём объект клиента
+							struct sockaddr_in6 client;
+							// Очищаем всю структуру для клиента
+							memset(&client, 0, sizeof(client));
+							// Устанавливаем протокол интернета
+							client.sin6_family = family;
+							// Устанавливаем произвольный порт для локального подключения
+							client.sin6_port = htons(0);
+							// Указываем адрес IPv6 для клиента
+							inet_pton(family, host.c_str(), &client.sin6_addr);
+							// inet_ntop(family, &client.sin6_addr, hostClient, sizeof(hostClient));
+							// Запоминаем размер структуры
+							this->peer.size = sizeof(client);
+							// Выполняем копирование объекта подключения клиента
+							memcpy(&this->peer.client, &client, this->peer.size);
+						} break;
+						// Если приложение является сервером
+						case (uint8_t) type_t::SERVER: {
+							// Создаём объект клиента
+							struct sockaddr_in6 client;
+							// Очищаем всю структуру для клиента
+							memset(&client, 0, sizeof(client));
+							// Устанавливаем протокол интернета
+							client.sin6_family = family;
+							// Выполняем копирование объекта подключения клиента
+							memcpy(&this->peer.client, &client, sizeof(client));
+						} break;
 					}
 					// Создаём объект сервера
 					struct sockaddr_in6 server;
@@ -1710,16 +1738,12 @@ void awh::Engine::wait(ctx_t & target) noexcept {
 		// Если сокет установлен UDP
 		case SOCK_DGRAM:
 
-			union {
-				struct sockaddr_storage ss;
-				struct sockaddr_in s4;
-				struct sockaddr_in6 s6;
-			} client;
 
-			memset(&client, 0, sizeof(struct sockaddr_storage));
+
+			
 
 			// Выполняем ожидание подключения
-			while(DTLSv1_listen(target.ssl,(BIO_ADDR *) &client) < 1){
+			while(DTLSv1_listen(target.ssl, (BIO_ADDR *) &target.addr->peer.client) < 1){
 
 				cout << " +++++++++++++++ STOP " << endl;
 
@@ -1728,8 +1752,6 @@ void awh::Engine::wait(ctx_t & target) noexcept {
 				// Выходим из цикла
 				break;
 			}
-
-			memcpy(&target.addr->peer.client, &client, sizeof(struct sockaddr_storage));
 			
 			/*
 			struct timeval timeout;
