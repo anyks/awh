@@ -1719,7 +1719,7 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const type_t type) noex
 		// Если объект фреймворка существует
 		if((target.addr->fd > -1) && ((!this->privkey.empty() && !this->fullchain.empty()) || (type == type_t::CLIENT))){
 			// Активируем рандомный генератор
-			if(RAND_poll() == 0){
+			if(RAND_poll() < 1){
 				// Выводим в лог сообщение
 				this->log->print("%s", log_t::flag_t::CRITICAL, "rand poll is not allow");
 				// Выходим
@@ -1776,7 +1776,7 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const type_t type) noex
 			// Если нужно установить основные алгоритмы шифрования
 			if(!this->cipher.empty() && (type == type_t::SERVER)){
 				// Устанавливаем все основные алгоритмы шифрования
-				if(SSL_CTX_set_cipher_list(target.ctx, this->cipher.c_str()) == 0){
+				if(SSL_CTX_set_cipher_list(target.ctx, this->cipher.c_str()) < 1){
 					// Очищаем созданный контекст
 					target.clear();
 					// Выводим в лог сообщение
@@ -1788,7 +1788,7 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const type_t type) noex
 				SSL_CTX_set_options(target.ctx, SSL_OP_CIPHER_SERVER_PREFERENCE);
 			}
 			// Устанавливаем поддерживаемые кривые
-			if(SSL_CTX_set_ecdh_auto(target.ctx, 1) == 0){
+			if(SSL_CTX_set_ecdh_auto(target.ctx, 1) < 1){
 				// Очищаем созданный контекст
 				target.clear();
 				// Выводим в лог сообщение
@@ -1980,7 +1980,7 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const bool mode) noexce
 		// Если объект фреймворка существует
 		if((target.addr->fd > -1) && !this->privkey.empty() && !this->fullchain.empty()){
 			// Активируем рандомный генератор
-			if(RAND_poll() == 0){
+			if(RAND_poll() < 1){
 				// Выводим в лог сообщение
 				this->log->print("%s", log_t::flag_t::CRITICAL, "rand poll is not allow");
 				// Выходим
@@ -2004,7 +2004,7 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const bool mode) noexce
 			// Если нужно установить основные алгоритмы шифрования
 			if(!this->cipher.empty()){
 				// Устанавливаем все основные алгоритмы шифрования
-				if(!SSL_CTX_set_cipher_list(target.ctx, this->cipher.c_str())){
+				if(SSL_CTX_set_cipher_list(target.ctx, this->cipher.c_str()) < 1){
 					// Очищаем созданный контекст
 					target.clear();
 					// Выводим в лог сообщение
@@ -2016,7 +2016,7 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const bool mode) noexce
 				SSL_CTX_set_options(target.ctx, SSL_OP_CIPHER_SERVER_PREFERENCE);
 			}
 			// Устанавливаем поддерживаемые кривые
-			if(!SSL_CTX_set_ecdh_auto(target.ctx, 1)){
+			if(SSL_CTX_set_ecdh_auto(target.ctx, 1) < 1){
 				// Очищаем созданный контекст
 				target.clear();
 				// Выводим в лог сообщение
@@ -2090,7 +2090,7 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const bool mode) noexce
 			// Создаем SSL объект
 			target.ssl = SSL_new(target.ctx);
 			// Проверяем рукопожатие
-			if(SSL_do_handshake(target.ssl) <= 0){
+			if(SSL_do_handshake(target.ssl) < 1){
 				// Выполняем проверку рукопожатия
 				const long verify = SSL_get_verify_result(target.ssl);
 				// Если рукопожатие не выполнено
@@ -2153,7 +2153,7 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const uri_t::url_t & ur
 		// Если объект фреймворка существует
 		if((target.addr->fd > -1) && (!url.domain.empty() || !url.ip.empty()) && ((url.schema.compare("https") == 0) || (url.schema.compare("wss") == 0))){
 			// Активируем рандомный генератор
-			if(RAND_poll() == 0){
+			if(RAND_poll() < 1){
 				// Выводим в лог сообщение
 				this->log->print("%s", log_t::flag_t::CRITICAL, "rand poll is not allow");
 				// Выходим
@@ -2207,7 +2207,7 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const uri_t::url_t & ur
 				SSL_set_tlsext_host_name(target.ssl, (!url.domain.empty() ? url.domain : url.ip).c_str());
 			#endif
 			// Активируем верификацию доменного имени
-			if(!X509_VERIFY_PARAM_set1_host(SSL_get0_param(target.ssl), (!url.domain.empty() ? url.domain : url.ip).c_str(), 0)){
+			if(X509_VERIFY_PARAM_set1_host(SSL_get0_param(target.ssl), (!url.domain.empty() ? url.domain : url.ip).c_str(), 0) < 1){
 				// Очищаем созданный контекст
 				target.clear();
 				// Выводим в лог сообщение
@@ -2216,7 +2216,7 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const uri_t::url_t & ur
 				return;
 			}
 			// Проверяем рукопожатие
-			if(SSL_do_handshake(target.ssl) <= 0){
+			if(SSL_do_handshake(target.ssl) < 1){
 				// Выполняем проверку рукопожатия
 				const long verify = SSL_get_verify_result(target.ssl);
 				// Если рукопожатие не выполнено
