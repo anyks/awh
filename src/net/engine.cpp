@@ -146,6 +146,8 @@ bool awh::Engine::Address::connect(Address & addr) noexcept {
 				this->peer.size = sizeof(struct sockaddr_in6);
 			break;
 		}
+		// Создаем сокет подключения
+		this->fd = ::socket(AF_INET6, SOCK_DGRAM, 0);
 		// Выполняем бинд на сокет
 		if((this->peer.size > 0) && (::bind(this->fd, (struct sockaddr *) (&addr.peer.server), this->peer.size) < 0)){
 			// Хост подключённого клиента
@@ -154,6 +156,31 @@ bool awh::Engine::Address::connect(Address & addr) noexcept {
 			this->log->print("bind client for UDP protocol [%s]", log_t::flag_t::CRITICAL, client.c_str());
 			// Выходим
 			return false;
+		}
+		// Определяем тип подключения
+		switch(addr.peer.server.ss_family){
+			// Для протокола IPv4
+			case AF_INET: {
+				// Создаём объект клиента
+				struct sockaddr_in client;
+				// Очищаем всю структуру для клиента
+				memset(&client, 0, sizeof(client));
+				// Устанавливаем протокол интернета
+				client.sin_family = addr.peer.server.ss_family;
+				// Выполняем копирование объекта подключения клиента
+				memcpy(&this->peer.client, &client, this->peer.size);
+			} break;
+			// Для протокола IPv6
+			case AF_INET6: {
+				// Создаём объект клиента
+				struct sockaddr_in6 client;
+				// Очищаем всю структуру для клиента
+				memset(&client, 0, sizeof(client));
+				// Устанавливаем протокол интернета
+				client.sin6_family = addr.peer.server.ss_family;
+				// Выполняем копирование объекта подключения клиента
+				memcpy(&this->peer.client, &client, this->peer.size);
+			} break;
 		}
 		// Если подключение не выполненно то сообщаем об этом, выполняем подключение к удаленному серверу
 		if(::connect(this->fd, (struct sockaddr *) (&this->peer.client), this->peer.size) == 0)
@@ -747,6 +774,13 @@ void awh::Engine::Context::clear() noexcept {
 		delete this->verify;
 		// Зануляем объект верификации
 		this->verify = nullptr;
+	}
+	// Если объект подключения BIO установлен
+	if(this->abio != nullptr){
+		// Выполняем очистку выделенной памяти
+		BIO_ADDR_free(this->abio);
+		// Зануляем объект подключения BIO
+		this->abio = nullptr;
 	}
 	// Если контекст SSL создан
 	if(this->ssl != nullptr){
@@ -1678,6 +1712,48 @@ bool awh::Engine::initTrustedStore(SSL_CTX * ctx) const noexcept {
 	return result;
 }
 /**
+ * wait Метод ожидания рукопожатия
+ * @param target контекст назначения
+ */
+void awh::Engine::wait(ctx_t & target) noexcept {
+	// Определяем тип входящего сокета
+	switch(target.addr->type){
+		// Если сокет установлен TCP/IP
+		case SOCK_STREAM:
+			// Выполняем ожидание подключения
+			while(SSL_stateless(target.ssl) < 1){
+				// Очищаем созданный контекст
+				target.clear();
+				// Выходим из цикла
+				break;
+			}
+		break;
+		// Если сокет установлен UDP
+		case SOCK_DGRAM:
+			
+
+			struct timeval timeout;
+			timeout.tv_sec = 10;
+			timeout.tv_usec = 0;
+			BIO_ctrl(target.bio, BIO_CTRL_DGRAM_SET_RECV_TIMEOUT, 0, &timeout);
+
+			// Если объект подключения BIO ещё не создан
+			if(target.abio == nullptr)
+				// Создаём объект подключения клиента
+				target.abio = BIO_ADDR_new();
+			// Если объект подключения клиента уже создан
+			else BIO_ADDR_clear(target.abio);
+			// Выполняем ожидание подключения
+			while(DTLSv1_listen(target.ssl, target.abio) < 1){
+				// Очищаем созданный контекст
+				target.clear();
+				// Выходим из цикла
+				break;
+			}
+		break;
+	}
+}
+/**
  * wrap Метод обертывания файлового дескриптора для сервера
  * @param target контекст назначения
  * @param source исходный контекст
@@ -1703,13 +1779,13 @@ void awh::Engine::wrap(ctx_t & target, ctx_t & source, const uri_t::url_t & url)
 		this->wrap(target, source.addr, url);
 }
 /**
- * wrap Метод обертывания файлового дескриптора для сервера
+ * wrap1 Метод обертывания файлового дескриптора для сервера
  * @param target  контекст назначения
  * @param address объект подключения
  * @param type    тип активного приложения
  * @return        объект SSL контекста
  */
-void awh::Engine::wrap(ctx_t & target, addr_t * address, const type_t type) noexcept {
+void awh::Engine::wrap1(ctx_t & target, addr_t * address, const type_t type) noexcept {
 	// Если данные переданы
 	if(address != nullptr){
 		// Устанавливаем тип приложения
@@ -1900,7 +1976,7 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const type_t type) noex
 						// Если приложение является сервером
 						case (uint8_t) type_t::SERVER:
 							// Выполняем установку объекта подключения в BIO
-							BIO_ctrl(target.bio, BIO_CTRL_DGRAM_SET_CONNECTED, 0, (struct sockaddr *) &target.addr->peer.client);
+							// BIO_ctrl(target.bio, BIO_CTRL_DGRAM_SET_CONNECTED, 0, (struct sockaddr *) &target.addr->peer.client);
 						break;
 					}
 				} break;
@@ -1935,13 +2011,13 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const type_t type) noex
 	}
 }
 /**
- * wrap Метод обертывания файлового дескриптора для клиента
+ * wrap2 Метод обертывания файлового дескриптора для клиента
  * @param target  контекст назначения
  * @param address объект подключения
  * @param source  исходный контекст
  * @return        объект SSL контекста
  */
-void awh::Engine::wrap(ctx_t & target, addr_t * address, const ctx_t & source) noexcept {
+void awh::Engine::wrap2(ctx_t & target, addr_t * address, const ctx_t & source) noexcept {
 	// Если данные переданы
 	if(address != nullptr){
 		// Устанавливаем файловый дескриптор

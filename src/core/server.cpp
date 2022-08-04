@@ -744,6 +744,59 @@ void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 						adj->mac = adj->addr.mac;
 						// Устанавливаем идентификатор адъютанта
 						adj->aid = this->fmk->unixTimestamp();
+
+
+						// Выполняем получение контекста сертификата
+						this->engine.wrap1(adj->engine, &adj->addr, engine_t::type_t::SERVER);
+						// Если подключение не обёрнуто
+						if(adj->addr.fd < 0){
+							// Выводим сообщение об ошибке
+							this->log->print("wrap engine context is failed", log_t::flag_t::CRITICAL);
+							// Выходим из функции
+							return;
+						}
+						// Выполняем блокировку потока
+						this->mtx.accept.lock();
+						// Добавляем созданного адъютанта в список адъютантов
+						auto ret = wrk->adjutants.emplace(adj->aid, move(adj));
+						// Добавляем адъютанта в список подключений
+						this->adjutants.emplace(ret.first->first, ret.first->second.get());
+						// Выполняем блокировку потока
+						this->mtx.accept.unlock();
+						// Если процесс не является основным
+						if((this->pid != getpid()) && !this->jacks.empty()){
+							// Устанавливаем активное событие подключения
+							this->event = event_t::CONNECT;
+							// Выполняем разрешение на отправку сообщения
+							this->jacks.at(this->index)->write.start();
+						}
+						// Выполняем ожидание входящих подключений
+						this->engine.wait(adj->engine);
+
+						engine_t::addr_t addr(this->fmk, this->log);
+
+						// Если подключение выполнено
+						if(addr.connect(adj->addr)){
+
+							engine_t::ctx_t target(this->fmk, this->log);
+
+							this->engine.wrap2(target, &addr, adj->engine);
+
+							cout << " ###################### GET CONTACT " << endl;
+
+							/*
+							// Запускаем чтение данных
+							this->enabled(method_t::READ, ret.first->first);
+							// Выполняем функцию обратного вызова
+							if(wrk->connectFn != nullptr) wrk->connectFn(ret.first->first, wrk->wid, this);
+							*/
+						}
+						// Выходим из функции
+						return;
+
+
+
+						/*
 						// Выполняем получение контекста сертификата
 						this->engine.wrap(adj->engine, &adj->addr, this->net.family != family_t::NIX);
 						// Если подключение не обёрнуто
@@ -774,6 +827,7 @@ void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 						if(wrk->connectFn != nullptr) wrk->connectFn(ret.first->first, wrk->wid, this);
 						// Выходим из функции
 						return;
+						*/
 					// Подключение не установлено, выводим сообщение об ошибке
 					} else this->log->print("accepting for client is broken", log_t::flag_t::CRITICAL);
 				} break;

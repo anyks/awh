@@ -269,7 +269,9 @@ namespace awh {
 					// Тип активного приложения
 					type_t type;
 				private:
-					BIO * bio;         // Объект BIO
+					BIO * bio;       // Объект BIO
+					BIO_ADDR * abio; // Объект подключения BIO
+				private:
 					SSL * ssl;         // Объект SSL
 					SSL_CTX * ctx;     // Контекст SSL
 					addr_t * addr;     // Объект подключения
@@ -337,8 +339,8 @@ namespace awh {
 					 */
 					Context(const fmk_t * fmk, const log_t * log) noexcept :
 					 mode(false), type(type_t::NONE), addr(nullptr),
-					 bio(nullptr), ssl(nullptr), ctx(nullptr),
-					 verify(nullptr), log(log) {}
+					 bio(nullptr), abio(nullptr), ssl(nullptr),
+					 ctx(nullptr), verify(nullptr), log(log) {}
 					/**
 					 * ~Context Деструктор
 					 */
@@ -494,6 +496,12 @@ namespace awh {
 			bool initTrustedStore(SSL_CTX * ctx) const noexcept;
 		public:
 			/**
+			 * wait Метод ожидания рукопожатия
+			 * @param target контекст назначения
+			 */
+			void wait(ctx_t & target) noexcept;
+		public:
+			/**
 			 * wrap Метод обертывания файлового дескриптора для сервера
 			 * @param target контекст назначения
 			 * @param source исходный контекст
@@ -510,21 +518,21 @@ namespace awh {
 			void wrap(ctx_t & target, ctx_t & source, const uri_t::url_t & url) noexcept;
 		public:
 			/**
-			 * wrap Метод обертывания файлового дескриптора для сервера
+			 * wrap1 Метод обертывания файлового дескриптора для сервера
 			 * @param target  контекст назначения
 			 * @param address объект подключения
 			 * @param type    тип активного приложения
 			 * @return        объект SSL контекста
 			 */
-			void wrap(ctx_t & target, addr_t * address, const type_t type) noexcept;
+			void wrap1(ctx_t & target, addr_t * address, const type_t type) noexcept;
 			/**
-			 * wrap Метод обертывания файлового дескриптора для клиента
+			 * wrap2 Метод обертывания файлового дескриптора для клиента
 			 * @param target  контекст назначения
 			 * @param address объект подключения
 			 * @param source  исходный контекст
 			 * @return        объект SSL контекста
 			 */
-			void wrap(ctx_t & target, addr_t * address, const ctx_t & source) noexcept;
+			void wrap2(ctx_t & target, addr_t * address, const ctx_t & source) noexcept;
 		public:
 			/**
 			 * wrap Метод обертывания файлового дескриптора для сервера

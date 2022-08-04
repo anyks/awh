@@ -203,8 +203,16 @@ void awh::client::Core::connect(const size_t wid) noexcept {
 				if(adj->addr.fd > -1){
 					// Устанавливаем идентификатор адъютанта
 					adj->aid = this->fmk->unixTimestamp();
+
+
 					// Выполняем получение контекста сертификата
-					this->engine.wrap(adj->engine, &adj->addr, url);
+					this->engine.wrap1(adj->engine, &adj->addr, engine_t::type_t::CLIENT);
+
+
+
+
+					// Выполняем получение контекста сертификата
+					// this->engine.wrap(adj->engine, &adj->addr, url);
 					// Если подключение не обёрнуто
 					if(adj->addr.fd < 0){
 						// Запрещаем чтение данных с сервера
