@@ -746,8 +746,14 @@ void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 						adj->aid = this->fmk->unixTimestamp();
 
 
+						cout << " ++++++++++++++++++++1 " << endl;
+
+
 						// Выполняем получение контекста сертификата
 						this->engine.wrap1(adj->engine, &adj->addr, engine_t::type_t::SERVER);
+
+						cout << " ++++++++++++++++++++2 " << endl;
+
 						// Если подключение не обёрнуто
 						if(adj->addr.fd < 0){
 							// Выводим сообщение об ошибке
@@ -755,6 +761,10 @@ void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 							// Выходим из функции
 							return;
 						}
+
+						cout << " ++++++++++++++++++++3 " << endl;
+
+						/*
 						// Выполняем блокировку потока
 						this->mtx.accept.lock();
 						// Добавляем созданного адъютанта в список адъютантов
@@ -770,19 +780,26 @@ void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 							// Выполняем разрешение на отправку сообщения
 							this->jacks.at(this->index)->write.start();
 						}
+						*/
 
 
 						// Выполняем ожидание входящих подключений
-						this->engine.wait(ret.first->second->engine);
+						this->engine.wait(adj->engine);
+
+						cout << " ++++++++++++++++++++4 " << endl;
 
 						engine_t::addr_t addr(this->fmk, this->log);
 
+						cout << " ++++++++++++++++++++5 " << endl;
+
 						// Если подключение выполнено
-						if(addr.connect(ret.first->second->addr)){
+						if(addr.connect(adj->addr)){
 
 							engine_t::ctx_t target(this->fmk, this->log);
 
-							this->engine.wrap2(target, &addr, ret.first->second->engine);
+							cout << " ++++++++++++++++++++6 " << endl;
+
+							this->engine.wrap2(target, &addr, adj->engine);
 
 							cout << " ###################### GET CONTACT " << endl;
 
