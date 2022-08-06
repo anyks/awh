@@ -960,7 +960,8 @@ int64_t awh::Engine::Context::read(char * buffer, const size_t size) noexcept {
 						}
 					#endif
 					// Выполняем чтение из защищённого сокета
-					result = BIO_read(this->_bio, buffer, size);
+					// result = BIO_read(this->_bio, buffer, size);
+					result = SSL_read(this->_ssl, buffer, size);
 				}
 			}
 		// Выполняем чтение из буфера данных стандартным образом
@@ -1058,7 +1059,8 @@ int64_t awh::Engine::Context::write(const char * buffer, const size_t size) noex
 						}
 					#endif
 					// Выполняем отправку сообщения через защищённый канал
-					result = BIO_write(this->_bio, buffer, size);
+					// result = BIO_write(this->_bio, buffer, size);
+					result = SSL_write(this->_ssl, buffer, size);
 				}
 			}
 		// Выполняем отправку сообщения в сокет
@@ -2225,7 +2227,6 @@ void awh::Engine::wrapServer(ctx_t & target, addr_t * address) noexcept {
 				// Выходим
 				return;
 			}
-			/*
 			// Выполняем инициализацию доверенного сертификата
 			if(!this->storeCA(target._ctx)){
 				// Очищаем созданный контекст
@@ -2233,7 +2234,6 @@ void awh::Engine::wrapServer(ctx_t & target, addr_t * address) noexcept {
 				// Выходим
 				return;
 			}
-			*/
 			// Устанавливаем флаг quiet shutdown
 			SSL_CTX_set_quiet_shutdown(target._ctx, 1);
 			// Запускаем кэширование
