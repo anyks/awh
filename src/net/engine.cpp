@@ -1003,7 +1003,7 @@ int64_t awh::Engine::Context::read(char * buffer, const size_t size) noexcept {
 
 
 					int nZero = 0;
-					setsockopt(this->_addr->fd, SOL_SOCKET, SO_SNDBUF, (char *)&nZero, sizeof(nZero));
+					setsockopt(this->_addr->fd, SOL_SOCKET, SO_RCVBUF, (char *)&nZero, sizeof(nZero));
 				}
 			}
 		// Выполняем чтение из буфера данных стандартным образом
