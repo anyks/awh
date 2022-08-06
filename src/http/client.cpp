@@ -23,20 +23,20 @@ awh::Http::stath_t awh::client::Http::checkAuth() noexcept {
 	// Результат работы функции
 	stath_t result = stath_t::FAULT;
 	// Получаем объект параметров запроса
-	web_t::query_t query = this->web.getQuery();
+	web_t::query_t query = this->web.query();
 	// Проверяем код ответа
 	switch(query.code){
 		// Если требуется авторизация
 		case 401:
 		case 407: {
 			// Если попытки провести аутентификацию ещё небыло, пробуем ещё раз
-			if(!this->failAuth && (this->auth.client.getType() == awh::auth_t::type_t::DIGEST)){
+			if(!this->failAuth && (this->auth.client.type() == awh::auth_t::type_t::DIGEST)){
 				// Получаем параметры авторизации
-				const string & auth = this->web.getHeader(query.code == 401 ? "www-authenticate" : "proxy-authenticate");
+				const string & auth = this->web.header(query.code == 401 ? "www-authenticate" : "proxy-authenticate");
 				// Если параметры авторизации найдены
 				if((this->failAuth = !auth.empty())){
 					// Устанавливаем заголовок HTTP в параметры авторизации
-					this->auth.client.setHeader(auth);
+					this->auth.client.header(auth);
 					// Просим повторить авторизацию ещё раз
 					result = stath_t::RETRY;
 				}
@@ -50,11 +50,11 @@ awh::Http::stath_t awh::client::Http::checkAuth() noexcept {
 		case 307:
 		case 308: {
 			// Получаем параметры переадресации
-			const string & location = this->web.getHeader("location");
+			const string & location = this->web.header("location");
 			// Если адрес перенаправления найден
 			if(!location.empty()){
 				// Выполняем парсинг URL
-				uri_t::url_t tmp = this->uri->parseUrl(location);
+				uri_t::url_t tmp = this->uri->parse(location);
 				/*
 				// Если параметры URL существуют
 				if(!this->url.params.empty())
@@ -91,27 +91,27 @@ awh::Http::stath_t awh::client::Http::checkAuth() noexcept {
 	return result;
 }
 /**
- * setUser Метод установки параметров авторизации
+ * user Метод установки параметров авторизации
  * @param user логин пользователя для авторизации на сервере
  * @param pass пароль пользователя для авторизации на сервере
  */
-void awh::client::Http::setUser(const string & user, const string & pass) noexcept {
+void awh::client::Http::user(const string & user, const string & pass) noexcept {
 	// Если пользователь и пароль переданы
 	if(!user.empty() && !pass.empty()){
 		// Устанавливаем логин пользователя
-		this->auth.client.setUser(user);
+		this->auth.client.user(user);
 		// Устанавливаем пароль пользователя
-		this->auth.client.setPass(pass);
+		this->auth.client.pass(pass);
 	}
 }
 /**
- * setAuthType Метод установки типа авторизации
+ * authType Метод установки типа авторизации
  * @param type тип авторизации
  * @param hash алгоритм шифрования для Digest авторизации
  */
-void awh::client::Http::setAuthType(const awh::auth_t::type_t type, const awh::auth_t::hash_t hash) noexcept {
+void awh::client::Http::authType(const awh::auth_t::type_t type, const awh::auth_t::hash_t hash) noexcept {
 	// Устанавливаем тип авторизации
-	this->auth.client.setType(type, hash);
+	this->auth.client.type(type, hash);
 }
 /**
  * Http Конструктор

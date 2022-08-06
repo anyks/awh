@@ -36,10 +36,10 @@ namespace awh {
 		 */
 		typedef class Socks5 : public awh::socks5_t {
 			private:
-				// Логин пользователя
-				string login;
 				// Пароль пользователя
-				string password;
+				string _pass;
+				// Логин пользователя
+				string _login;
 			private:
 				/**
 				 * reqCmd Метод получения бинарного буфера запроса
@@ -71,19 +71,17 @@ namespace awh {
 				 */
 				void clearUser() noexcept;
 				/**
-				 * setUser Метод установки параметров авторизации
-				 * @param login    логин пользователя для авторизации на сервере
-				 * @param password пароль пользователя для авторизации на сервере
+				 * user Метод установки параметров авторизации
+				 * @param login логин пользователя для авторизации на сервере
+				 * @param pass  пароль пользователя для авторизации на сервере
 				 */
-				void setUser(const string & login, const string & password) noexcept;
+				void user(const string & login, const string & pass) noexcept;
 			public:
 				/**
 				 * Socks5 Конструктор
-				 * @param fmk объект фреймворка
 				 * @param log объект для работы с логами
-				 * @param uri объект для работы с URI
 				 */
-				Socks5(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcept : awh::socks5_t(fmk, log, uri), login(""), password("") {}
+				Socks5(const log_t * log) noexcept : awh::socks5_t(log), _pass(""), _login("") {}
 				/**
 				 * ~Socks5 Деструктор
 				 */

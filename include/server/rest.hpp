@@ -54,60 +54,51 @@ namespace awh {
 				};
 			private:
 				// Хости сервера
-				string host = "";
+				string _host = "";
 				// Порт сервера
-				u_int port = SERVER_PORT;
+				u_int _port = SERVER_PORT;
 			private:
 				// Объект рабочего
-				workerRest_t worker;
+				workerRest_t _worker;
 			private:
 				// Название сервера
-				string name = AWH_NAME;
+				string _name = AWH_NAME;
 				// Идентификатор сервера
-				string sid = AWH_SHORT_NAME;
+				string _sid = AWH_SHORT_NAME;
 				// Версия сервера
-				string version = AWH_VERSION;
+				string _version = AWH_VERSION;
 			private:
 				// Пароль шифрования передаваемых данных
-				string pass = "";
+				string _pass = "";
 				// Соль шифрования передаваемых данных
-				string salt = "";
+				string _salt = "";
 				// Размер шифрования передаваемых данных
-				hash_t::aes_t aes = hash_t::aes_t::AES128;
+				hash_t::aes_t _aes = hash_t::aes_t::AES128;
 			private:
 				// Название сервера
-				string realm = "";
-				// Уникальный ключ клиента
-				string nonce = "";
+				string _realm = "";
 				// Временный ключ сессии сервера
-				string opaque = "";
+				string _opaque = "";
 				// Алгоритм шифрования для Digest авторизации
-				auth_t::hash_t authHash = auth_t::hash_t::MD5;
+				auth_t::hash_t _authHash = auth_t::hash_t::MD5;
 				// Тип авторизации
-				auth_t::type_t authType = auth_t::type_t::NONE;
+				auth_t::type_t _authType = auth_t::type_t::NONE;
 				// Функция обратного вызова для извлечения пароля
-				function <string (const string &, void *)> extractPassFn = nullptr;
+				function <string (const string &)> _extractPassFn = nullptr;
 				// Функция обратного вызова для обработки авторизации
-				function <bool (const string &, const string &, void *)> checkAuthFn = nullptr;
+				function <bool (const string &, const string &)> _checkAuthFn = nullptr;
 			private:
 				// Флаг шифрования сообщений
-				bool crypt = false;
+				bool _crypt = false;
 				// Флаг долгоживущего подключения
-				bool alive = false;
+				bool _alive = false;
 			private:
 				// Размер одного чанка
-				size_t chunkSize = BUFFER_CHUNK;
+				size_t _chunkSize = BUFFER_CHUNK;
 				// Максимальный интервал времени жизни подключения
-				size_t keepAlive = KEEPALIVE_TIMEOUT;
+				size_t _keepAlive = KEEPALIVE_TIMEOUT;
 				// Максимальное количество запросов
-				size_t maxRequests = SERVER_MAX_REQUESTS;
-			private:
-				// Список контекстов передаваемых объектов
-				vector <void *> ctx = {
-					nullptr, nullptr,
-					nullptr, nullptr,
-					nullptr, nullptr
-				};
+				size_t _maxRequests = SERVER_MAX_REQUESTS;
 			private:
 				// Создаём объект фреймворка
 				const fmk_t * fmk = nullptr;
@@ -117,65 +108,59 @@ namespace awh {
 				const server::core_t * core = nullptr;
 			private:
 				// Функция обратного вызова, при получении HTTP чанков от клиента
-				function <void (const vector <char> &, const awh::http_t *, void *)> chunkingFn = nullptr;
+				function <void (const vector <char> &, const awh::http_t *)> _chunkingFn = nullptr;
 			private:
 				// Функция обратного вызова, при запуске или остановки подключения к серверу
-				function <void (const size_t, const mode_t, Rest *, void *)> activeFn = nullptr;
+				function <void (const size_t, const mode_t, Rest *)> _activeFn = nullptr;
 				// Функция обратного вызова, при получении сообщения с сервера
-				function <void (const size_t, const awh::http_t *, Rest *, void *)> messageFn = nullptr;
+				function <void (const size_t, const awh::http_t *, Rest *)> _messageFn = nullptr;
 			private:
 				// Функция разрешения подключения клиента на сервере
-				function <bool (const string &, const string &, Rest *, void *)> acceptFn = nullptr;
+				function <bool (const string &, const string &, Rest *)> _acceptFn = nullptr;
 			private:
 				/**
 				 * chunking Метод обработки получения чанков
 				 * @param chunk бинарный буфер чанка
 				 * @param http  объект модуля HTTP
-				 * @param ctx   передаваемый контекст модуля
 				 */
-				static void chunking(const vector <char> & chunk, const awh::http_t * http, void * ctx) noexcept;
+				static void chunking(const vector <char> & chunk, const awh::http_t * http) noexcept;
 			private:
 				/**
 				 * openCallback Функция обратного вызова при запуске работы
 				 * @param wid  идентификатор воркера
 				 * @param core объект биндинга TCP/IP
-				 * @param ctx  передаваемый контекст модуля
 				 */
-				static void openCallback(const size_t wid, awh::core_t * core, void * ctx) noexcept;
+				static void openCallback(const size_t wid, awh::core_t * core) noexcept;
 				/**
 				 * persistCallback Функция персистентного вызова
 				 * @param aid  идентификатор адъютанта
 				 * @param wid  идентификатор воркера
 				 * @param core объект биндинга TCP/IP
-				 * @param ctx  передаваемый контекст модуля
 				 */
-				static void persistCallback(const size_t aid, const size_t wid, awh::core_t * core, void * ctx) noexcept;
+				static void persistCallback(const size_t aid, const size_t wid, awh::core_t * core) noexcept;
 				/**
 				 * connectCallback Функция обратного вызова при подключении к серверу
 				 * @param aid  идентификатор адъютанта
 				 * @param wid  идентификатор воркера
 				 * @param core объект биндинга TCP/IP
-				 * @param ctx  передаваемый контекст модуля
 				 */
-				static void connectCallback(const size_t aid, const size_t wid, awh::core_t * core, void * ctx) noexcept;
+				static void connectCallback(const size_t aid, const size_t wid, awh::core_t * core) noexcept;
 				/**
 				 * disconnectCallback Функция обратного вызова при отключении от сервера
 				 * @param aid  идентификатор адъютанта
 				 * @param wid  идентификатор воркера
 				 * @param core объект биндинга TCP/IP
-				 * @param ctx  передаваемый контекст модуля
 				 */
-				static void disconnectCallback(const size_t aid, const size_t wid, awh::core_t * core, void * ctx) noexcept;
+				static void disconnectCallback(const size_t aid, const size_t wid, awh::core_t * core) noexcept;
 				/**
 				 * acceptCallback Функция обратного вызова при проверке подключения клиента
 				 * @param ip   адрес интернет подключения клиента
 				 * @param mac  мак-адрес подключившегося клиента
 				 * @param wid  идентификатор воркера
 				 * @param core объект биндинга TCP/IP
-				 * @param ctx  передаваемый контекст модуля
 				 * @return     результат разрешения к подключению клиента
 				 */
-				static bool acceptCallback(const string & ip, const string & mac, const size_t wid, awh::core_t * core, void * ctx) noexcept;
+				static bool acceptCallback(const string & ip, const string & mac, const size_t wid, awh::core_t * core) noexcept;
 				/**
 				 * readCallback Функция обратного вызова при чтении сообщения с клиента
 				 * @param buffer бинарный буфер содержащий сообщение
@@ -183,9 +168,8 @@ namespace awh {
 				 * @param aid    идентификатор адъютанта
 				 * @param wid    идентификатор воркера
 				 * @param core   объект биндинга TCP/IP
-				 * @param ctx    передаваемый контекст модуля
 				 */
-				static void readCallback(const char * buffer, const size_t size, const size_t aid, const size_t wid, awh::core_t * core, void * ctx) noexcept;
+				static void readCallback(const char * buffer, const size_t size, const size_t aid, const size_t wid, awh::core_t * core) noexcept;
 				/**
 				 * writeCallback Функция обратного вызова при записи сообщения на клиенте
 				 * @param buffer бинарный буфер содержащий сообщение
@@ -193,9 +177,8 @@ namespace awh {
 				 * @param aid    идентификатор адъютанта
 				 * @param wid    идентификатор воркера
 				 * @param core   объект биндинга TCP/IP
-				 * @param ctx    передаваемый контекст модуля
 				 */
-				static void writeCallback(const char * buffer, const size_t size, const size_t aid, const size_t wid, awh::core_t * core, void * ctx) noexcept;
+				static void writeCallback(const char * buffer, const size_t size, const size_t aid, const size_t wid, awh::core_t * core) noexcept;
 			public:
 				/**
 				 * init Метод инициализации WebSocket клиента
@@ -207,41 +190,35 @@ namespace awh {
 			public:
 				/**
 				 * on Метод установки функции обратного вызова на событие запуска или остановки подключения
-				 * @param ctx      контекст для вывода в сообщении
 				 * @param callback функция обратного вызова
 				 */
-				void on(void * ctx, function <void (const size_t, const mode_t, Rest *, void *)> callback) noexcept;
+				void on(function <void (const size_t, const mode_t, Rest *)> callback) noexcept;
 				/**
 				 * on Метод установки функции обратного вызова на событие получения сообщений
-				 * @param ctx      контекст для вывода в сообщении
 				 * @param callback функция обратного вызова
 				 */
-				void on(void * ctx, function <void (const size_t, const awh::http_t *, Rest *, void *)> callback) noexcept;
+				void on(function <void (const size_t, const awh::http_t *, Rest *)> callback) noexcept;
 			public:
 				/**
 				 * on Метод добавления функции извлечения пароля
-				 * @param ctx      контекст для вывода в сообщении
 				 * @param callback функция обратного вызова для извлечения пароля
 				 */
-				void on(void * ctx, function <string (const string &, void *)> callback) noexcept;
+				void on(function <string (const string &)> callback) noexcept;
 				/**
 				 * on Метод добавления функции обработки авторизации
-				 * @param ctx      контекст для вывода в сообщении
 				 * @param callback функция обратного вызова для обработки авторизации
 				 */
-				void on(void * ctx, function <bool (const string &, const string &, void *)> callback) noexcept;
+				void on(function <bool (const string &, const string &)> callback) noexcept;
 				/**
 				 * on Метод установки функции обратного вызова для получения чанков
-				 * @param ctx      контекст для вывода в сообщении
 				 * @param callback функция обратного вызова
 				 */
-				void on(void * ctx, function <void (const vector <char> &, const awh::http_t *, void *)> callback) noexcept;
+				void on(function <void (const vector <char> &, const awh::http_t *)> callback) noexcept;
 				/**
 				 * on Метод установки функции обратного вызова на событие активации клиента на сервере
-				 * @param ctx      контекст для вывода в сообщении
 				 * @param callback функция обратного вызова
 				 */
-				void on(void * ctx, function <bool (const string &, const string &, Rest *, void *)> callback) noexcept;
+				void on(function <bool (const string &, const string &, Rest *)> callback) noexcept;
 			public:
 				/**
 				 * reject Метод отправки сообщения об ошибке

@@ -27,9 +27,9 @@ void awh::server::Proxy::runCallback(const bool mode, awh::core_t * core, void *
 		// Получаем контекст модуля
 		proxy_t * proxy = reinterpret_cast <proxy_t *> (ctx);
 		// Выполняем биндинг базы событий для клиента
-		if(mode) proxy->core.server.bind(reinterpret_cast <awh::core_t *> (&proxy->core.client));
+		if(mode) proxy->_core.server.bind(reinterpret_cast <awh::core_t *> (&proxy->_core.client));
 		// Выполняем анбиндинг базы событий клиента
-		else proxy->core.server.unbind(reinterpret_cast <awh::core_t *> (&proxy->core.client));
+		else proxy->_core.server.unbind(reinterpret_cast <awh::core_t *> (&proxy->_core.client));
 	}
 }
 /**
@@ -56,7 +56,7 @@ void awh::server::Proxy::openServerCallback(const size_t wid, awh::core_t * core
 		// Получаем контекст модуля
 		proxy_t * proxy = reinterpret_cast <proxy_t *> (ctx);
 		// Устанавливаем хост сервера
-		reinterpret_cast <server::core_t *> (core)->init(wid, proxy->port, proxy->host);
+		reinterpret_cast <server::core_t *> (core)->init(wid, proxy->_port, proxy->_host);
 		// Выполняем запуск сервера
 		reinterpret_cast <server::core_t *> (core)->run(wid);
 	}
@@ -74,9 +74,9 @@ void awh::server::Proxy::persistServerCallback(const size_t aid, const size_t wi
 		// Получаем контекст модуля
 		proxy_t * proxy = reinterpret_cast <proxy_t *> (ctx);
 		// Получаем параметры подключения адъютанта
-		workerProxy_t::adjp_t * adj = const_cast <workerProxy_t::adjp_t *> (proxy->worker.getAdj(aid));
+		workerProxy_t::adjp_t * adj = const_cast <workerProxy_t::adjp_t *> (proxy->_worker.getAdj(aid));
 		// Если параметры подключения адъютанта получены
-		if((adj != nullptr) && ((adj->method != web_t::method_t::CONNECT) || adj->close) && ((!adj->alive && !proxy->alive) || adj->close)){
+		if((adj != nullptr) && ((adj->method != web_t::method_t::CONNECT) || adj->close) && ((!adj->_alive && !proxy->_alive) || adj->close)){
 			// Если клиент давно должен был быть отключён, отключаем его
 			if(adj->close || !adj->srv.isAlive()) proxy->close(aid);
 			// Иначе проверяем прошедшее время
@@ -84,7 +84,7 @@ void awh::server::Proxy::persistServerCallback(const size_t aid, const size_t wi
 				// Получаем текущий штамп времени
 				const time_t stamp = proxy->fmk->unixTimestamp();
 				// Если адъютант не ответил на пинг больше двух интервалов, отключаем его
-				if((stamp - adj->checkPoint) >= proxy->keepAlive)
+				if((stamp - adj->checkPoint) >= proxy->_keepAlive)
 					// Завершаем работу
 					proxy->close(aid);
 			}
@@ -104,11 +104,11 @@ void awh::server::Proxy::connectClientCallback(const size_t aid, const size_t wi
 		// Получаем контекст модуля
 		proxy_t * proxy = reinterpret_cast <proxy_t *> (ctx);
 		// Ищем идентификатор адъютанта пары
-		auto it = proxy->worker.pairs.find(wid);
+		auto it = proxy->_worker.pairs.find(wid);
 		// Если адъютант получен
-		if(it != proxy->worker.pairs.end()){
+		if(it != proxy->_worker.pairs.end()){
 			// Получаем параметры подключения адъютанта
-			workerProxy_t::adjp_t * adj = const_cast <workerProxy_t::adjp_t *> (proxy->worker.getAdj(it->second));
+			workerProxy_t::adjp_t * adj = const_cast <workerProxy_t::adjp_t *> (proxy->_worker.getAdj(it->second));
 			// Если подключение не выполнено
 			if(!adj->connect){
 				// Разрешаем обработки данных
@@ -128,16 +128,16 @@ void awh::server::Proxy::connectClientCallback(const size_t aid, const size_t wi
 						// Тело полезной нагрузки
 						vector <char> payload;
 						// Отправляем ответ клиенту
-						reinterpret_cast <awh::core_t *> (&proxy->core.server)->write(response.data(), response.size(), it->second);
+						reinterpret_cast <awh::core_t *> (&proxy->_core.server)->write(response.data(), response.size(), it->second);
 						// Получаем данные тела запроса
 						while(!(payload = adj->srv.payload()).empty()){
 							// Отправляем тело на сервер
-							reinterpret_cast <awh::core_t *> (&proxy->core.server)->write(payload.data(), payload.size(), it->second);
+							reinterpret_cast <awh::core_t *> (&proxy->_core.server)->write(payload.data(), payload.size(), it->second);
 						}
 					// Выполняем отключение клиента
 					} else proxy->close(it->second);
 				// Отправляем сообщение на сервер, так-как оно пришло от клиента
-				} else proxy->prepare(it->second, proxy->worker.wid, reinterpret_cast <awh::core_t *> (&proxy->core.server));
+				} else proxy->prepare(it->second, proxy->_worker.wid, reinterpret_cast <awh::core_t *> (&proxy->_core.server));
 			}
 		}
 	}
@@ -155,77 +155,77 @@ void awh::server::Proxy::connectServerCallback(const size_t aid, const size_t wi
 		// Получаем контекст модуля
 		proxy_t * proxy = reinterpret_cast <proxy_t *> (ctx);
 		// Создаём адъютанта
-		proxy->worker.createAdj(aid);
+		proxy->_worker.createAdj(aid);
 		// Получаем параметры подключения адъютанта
-		workerProxy_t::adjp_t * adj = const_cast <workerProxy_t::adjp_t *> (proxy->worker.getAdj(aid));
+		workerProxy_t::adjp_t * adj = const_cast <workerProxy_t::adjp_t *> (proxy->_worker.getAdj(aid));
 		// Устанавливаем размер чанка
-		adj->cli.setChunkSize(proxy->chunkSize);
-		adj->srv.setChunkSize(proxy->chunkSize);
+		adj->cli.setChunkSize(proxy->_chunkSize);
+		adj->srv.setChunkSize(proxy->_chunkSize);
 		// Устанавливаем данные сервиса
-		adj->cli.setServ(proxy->sid, proxy->name, proxy->version);
-		adj->srv.setServ(proxy->sid, proxy->name, proxy->version);
+		adj->cli.setServ(proxy->_sid, proxy->_name, proxy->_version);
+		adj->srv.setServ(proxy->_sid, proxy->_name, proxy->_version);
 		// Если функция обратного вызова для обработки чанков установлена
-		if(proxy->chunkingFn != nullptr)
+		if(proxy->_chunkingFn != nullptr)
 			// Устанавливаем внешнюю функцию обработки вызова для получения чанков
-			adj->cli.setChunkingFn(proxy->ctx.at(5), proxy->chunkingFn);
+			adj->cli.setChunkingFn(proxy->ctx.at(5), proxy->_chunkingFn);
 		// Устанавливаем функцию обработки вызова для получения чанков
 		else adj->cli.setChunkingFn(proxy, &chunkingCallback);
 		// Устанавливаем функцию обработки вызова для получения чанков
 		adj->srv.setChunkingFn(proxy, &chunkingCallback);
 		// Устанавливаем метод компрессии поддерживаемый клиентом
-		adj->cli.setCompress(proxy->worker.compress);
+		adj->cli.setCompress(proxy->_worker.compress);
 		// Устанавливаем метод компрессии поддерживаемый сервером
-		adj->srv.setCompress(proxy->worker.compress);
+		adj->srv.setCompress(proxy->_worker.compress);
 		// Если данные будем передавать в зашифрованном виде
-		if(proxy->crypt){
+		if(proxy->_crypt){
 			// Устанавливаем параметры шифрования
-			adj->cli.setCrypt(proxy->pass, proxy->salt, proxy->aes);
-			adj->srv.setCrypt(proxy->pass, proxy->salt, proxy->aes);
+			adj->cli.setCrypt(proxy->_pass, proxy->_salt, proxy->_aes);
+			adj->srv.setCrypt(proxy->_pass, proxy->_salt, proxy->_aes);
 		}
 		// Если сервер требует авторизацию
-		if(proxy->authType != auth_t::type_t::NONE){
+		if(proxy->_authType != auth_t::type_t::NONE){
 			// Определяем тип авторизации
-			switch((uint8_t) proxy->authType){
+			switch((uint8_t) proxy->_authType){
 				// Если тип авторизации Basic
 				case (uint8_t) auth_t::type_t::BASIC: {
 					// Устанавливаем параметры авторизации
-					adj->srv.setAuthType(proxy->authType);
+					adj->srv.setAuthType(proxy->_authType);
 					// Устанавливаем функцию проверки авторизации
-					adj->srv.setAuthCallback(proxy->ctx.at(4), proxy->checkAuthFn);
+					adj->srv.setAuthCallback(proxy->ctx.at(4), proxy->_checkAuthFn);
 				} break;
 				// Если тип авторизации Digest
 				case (uint8_t) auth_t::type_t::DIGEST: {
 					// Устанавливаем название сервера
-					adj->srv.setRealm(proxy->realm);
+					adj->srv.setRealm(proxy->_realm);
 					// Устанавливаем временный ключ сессии сервера
-					adj->srv.setOpaque(proxy->opaque);
+					adj->srv.setOpaque(proxy->_opaque);
 					// Устанавливаем параметры авторизации
-					adj->srv.setAuthType(proxy->authType, proxy->authHash);
+					adj->srv.setAuthType(proxy->_authType, proxy->_authHash);
 					// Устанавливаем функцию извлечения пароля
-					adj->srv.setExtractPassCallback(proxy->ctx.at(3), proxy->extractPassFn);
+					adj->srv.setExtractPassCallback(proxy->ctx.at(3), proxy->_extractPassFn);
 				} break;
 			}
 		}
 		// Устанавливаем контекст сообщения
-		adj->worker.ctx = proxy;
+		adj->_worker.ctx = proxy;
 		// Устанавливаем флаг ожидания входящих сообщений
-		adj->worker.wait = proxy->worker.wait;
+		adj->_worker.wait = proxy->_worker.wait;
 		// Устанавливаем количество секунд на чтение
-		adj->worker.timeRead = proxy->worker.timeRead;
+		adj->_worker.timeRead = proxy->_worker.timeRead;
 		// Устанавливаем количество секунд на запись
-		adj->worker.timeWrite = proxy->worker.timeWrite;
+		adj->_worker.timeWrite = proxy->_worker.timeWrite;
 		// Устанавливаем функцию чтения данных
-		adj->worker.readFn = readClientCallback;
+		adj->_worker.readFn = readClientCallback;
 		// Устанавливаем событие подключения
-		adj->worker.connectFn = connectClientCallback;
+		adj->_worker.connectFn = connectClientCallback;
 		// Устанавливаем событие отключения
-		adj->worker.disconnectFn = disconnectClientCallback;
+		adj->_worker.disconnectFn = disconnectClientCallback;
 		// Добавляем воркер в биндер TCP/IP
-		proxy->core.client.add(&adj->worker);
+		proxy->_core.client.add(&adj->_worker);
 		// Создаём пару клиента и сервера
-		proxy->worker.pairs.emplace(adj->worker.wid, aid);
+		proxy->_worker.pairs.emplace(adj->_worker.wid, aid);
 		// Если функция обратного вызова установлена, выполняем
-		if(proxy->activeFn != nullptr) proxy->activeFn(aid, mode_t::CONNECT, proxy, proxy->ctx.at(0));
+		if(proxy->_activeFn != nullptr) proxy->_activeFn(aid, mode_t::CONNECT, proxy, proxy->ctx.at(0));
 	}
 }
 /**
@@ -241,15 +241,15 @@ void awh::server::Proxy::disconnectClientCallback(const size_t aid, const size_t
 		// Получаем контекст модуля
 		proxy_t * proxy = reinterpret_cast <proxy_t *> (ctx);
 		// Ищем идентификатор адъютанта пары
-		auto it = proxy->worker.pairs.find(wid);
+		auto it = proxy->_worker.pairs.find(wid);
 		// Если адъютант получен
-		if(it != proxy->worker.pairs.end()){
+		if(it != proxy->_worker.pairs.end()){
 			// Получаем идентификатор адъютанта
 			const size_t aid = it->second;
 			// Удаляем пару клиента и сервера
-			proxy->worker.pairs.erase(it);
+			proxy->_worker.pairs.erase(it);
 			// Получаем параметры подключения адъютанта
-			workerProxy_t::adjp_t * adj = const_cast <workerProxy_t::adjp_t *> (proxy->worker.getAdj(aid));
+			workerProxy_t::adjp_t * adj = const_cast <workerProxy_t::adjp_t *> (proxy->_worker.getAdj(aid));
 			// Если подключение не выполнено, отправляем ответ клиенту
 			if(!adj->connect)
 				// Выполняем реджект
@@ -272,7 +272,7 @@ void awh::server::Proxy::disconnectServerCallback(const size_t aid, const size_t
 		// Получаем контекст модуля
 		proxy_t * proxy = reinterpret_cast <proxy_t *> (ctx);
 		// Получаем параметры подключения адъютанта
-		workerProxy_t::adjp_t * adj = const_cast <workerProxy_t::adjp_t *> (proxy->worker.getAdj(aid));
+		workerProxy_t::adjp_t * adj = const_cast <workerProxy_t::adjp_t *> (proxy->_worker.getAdj(aid));
 		// Выполняем отключение клиента от стороннего сервера
 		if(adj != nullptr) adj->close = true;
 	}
@@ -294,7 +294,7 @@ bool awh::server::Proxy::acceptServerCallback(const string & ip, const string & 
 		// Получаем контекст модуля
 		proxy_t * proxy = reinterpret_cast <proxy_t *> (ctx);
 		// Если функция обратного вызова установлена, проверяем
-		if(proxy->acceptFn != nullptr) result = proxy->acceptFn(ip, mac, proxy, proxy->ctx.at(6));
+		if(proxy->_acceptFn != nullptr) result = proxy->_acceptFn(ip, mac, proxy, proxy->ctx.at(6));
 	}
 	// Разрешаем подключение клиенту
 	return result;
@@ -314,15 +314,15 @@ void awh::server::Proxy::readClientCallback(const char * buffer, const size_t si
 		// Получаем контекст модуля
 		proxy_t * proxy = reinterpret_cast <proxy_t *> (ctx);
 		// Ищем идентификатор адъютанта пары
-		auto it = proxy->worker.pairs.find(wid);
+		auto it = proxy->_worker.pairs.find(wid);
 		// Если адъютант получен
-		if(it != proxy->worker.pairs.end()){
+		if(it != proxy->_worker.pairs.end()){
 			// Получаем параметры подключения адъютанта
-			workerProxy_t::adjp_t * adj = const_cast <workerProxy_t::adjp_t *> (proxy->worker.getAdj(it->second));
+			workerProxy_t::adjp_t * adj = const_cast <workerProxy_t::adjp_t *> (proxy->_worker.getAdj(it->second));
 			// Если подключение выполнено, отправляем ответ клиенту
 			if(adj->connect){
 				// Если указан метод не CONNECT и функция обработки сообщения установлена
-				if((proxy->messageFn != nullptr) && (adj->method != web_t::method_t::CONNECT)){
+				if((proxy->_messageFn != nullptr) && (adj->method != web_t::method_t::CONNECT)){
 					// Добавляем полученные данные в буфер
 					adj->client.insert(adj->client.end(), buffer, buffer + size);
 					// Выполняем обработку полученных данных
@@ -352,7 +352,7 @@ void awh::server::Proxy::readClientCallback(const char * buffer, const size_t si
 								}
 							#endif
 							// Выводим сообщение
-							if(proxy->messageFn(it->second, event_t::RESPONSE, &adj->cli, proxy, proxy->ctx.at(1))){
+							if(proxy->_messageFn(it->second, event_t::RESPONSE, &adj->cli, proxy, proxy->ctx.at(1))){
 								// Получаем данные ответа
 								const auto & response = adj->cli.response();
 								// Если данные ответа получены
@@ -360,11 +360,11 @@ void awh::server::Proxy::readClientCallback(const char * buffer, const size_t si
 									// Тело REST сообщения
 									vector <char> entity;
 									// Отправляем ответ клиенту
-									reinterpret_cast <awh::core_t *> (&proxy->core.server)->write(response.data(), response.size(), it->second);
+									reinterpret_cast <awh::core_t *> (&proxy->_core.server)->write(response.data(), response.size(), it->second);
 									// Получаем данные тела ответа
 									while(!(entity = adj->cli.payload()).empty()){
 										// Отправляем тело клиенту
-										reinterpret_cast <awh::core_t *> (&proxy->core.server)->write(entity.data(), entity.size(), it->second);
+										reinterpret_cast <awh::core_t *> (&proxy->_core.server)->write(entity.data(), entity.size(), it->second);
 									}
 								}
 							}
@@ -387,13 +387,13 @@ void awh::server::Proxy::readClientCallback(const char * buffer, const size_t si
 				// Передаём данные так-как они есть
 				} else {
 					// Если функция обратного вызова установлена, выполняем
-					if(proxy->binaryFn != nullptr){
+					if(proxy->_binaryFn != nullptr){
 						// Выводим сообщение
-						if(proxy->binaryFn(it->second, event_t::RESPONSE, buffer, size, proxy, proxy->ctx.at(2)))
+						if(proxy->_binaryFn(it->second, event_t::RESPONSE, buffer, size, proxy, proxy->ctx.at(2)))
 							// Отправляем ответ клиенту
-							reinterpret_cast <awh::core_t *> (&proxy->core.server)->write(buffer, size, it->second);
+							reinterpret_cast <awh::core_t *> (&proxy->_core.server)->write(buffer, size, it->second);
 					// Отправляем ответ клиенту
-					} else reinterpret_cast <awh::core_t *> (&proxy->core.server)->write(buffer, size, it->second);
+					} else reinterpret_cast <awh::core_t *> (&proxy->_core.server)->write(buffer, size, it->second);
 				}
 			}
 		}
@@ -414,23 +414,23 @@ void awh::server::Proxy::readServerCallback(const char * buffer, const size_t si
 		// Получаем контекст модуля
 		proxy_t * proxy = reinterpret_cast <proxy_t *> (ctx);
 		// Получаем параметры подключения адъютанта
-		workerProxy_t::adjp_t * adj = const_cast <workerProxy_t::adjp_t *> (proxy->worker.getAdj(aid));
+		workerProxy_t::adjp_t * adj = const_cast <workerProxy_t::adjp_t *> (proxy->_worker.getAdj(aid));
 		// Если параметры подключения адъютанта получены
 		if(adj != nullptr){
 			// Если указан метод CONNECT
 			if(adj->connect && (adj->method == web_t::method_t::CONNECT)){
 				// Получаем идентификатор адъютанта
-				const size_t aid = adj->worker.getAid();
+				const size_t aid = adj->_worker.getAid();
 				// Отправляем запрос на внешний сервер
 				if(aid > 0){
 					// Если функция обратного вызова установлена, выполняем
-					if(proxy->binaryFn != nullptr){
+					if(proxy->_binaryFn != nullptr){
 						// Выводим сообщение
-						if(proxy->binaryFn(aid, event_t::REQUEST, buffer, size, proxy, proxy->ctx.at(2)))
+						if(proxy->_binaryFn(aid, event_t::REQUEST, buffer, size, proxy, proxy->ctx.at(2)))
 							// Отправляем запрос на внешний сервер
-							reinterpret_cast <awh::core_t *> (&proxy->core.client)->write(buffer, size, aid);
+							reinterpret_cast <awh::core_t *> (&proxy->_core.client)->write(buffer, size, aid);
 					// Отправляем запрос на внешний сервер
-					} else reinterpret_cast <awh::core_t *> (&proxy->core.client)->write(buffer, size, aid);
+					} else reinterpret_cast <awh::core_t *> (&proxy->_core.client)->write(buffer, size, aid);
 				}
 			// Если подключение ещё не выполнено
 			} else {
@@ -457,7 +457,7 @@ void awh::server::Proxy::writeServerCallback(const char * buffer, const size_t s
 		// Получаем контекст модуля
 		proxy_t * proxy = reinterpret_cast <proxy_t *> (ctx);
 		// Получаем параметры подключения адъютанта
-		workerProxy_t::adjp_t * adj = const_cast <workerProxy_t::adjp_t *> (proxy->worker.getAdj(aid));
+		workerProxy_t::adjp_t * adj = const_cast <workerProxy_t::adjp_t *> (proxy->_worker.getAdj(aid));
 		// Если параметры подключения адъютанта получены
 		if((adj != nullptr) && (adj->stopBytes > 0)){
 			// Запоминаем количество прочитанных байт
@@ -477,7 +477,7 @@ void awh::server::Proxy::prepare(const size_t aid, const size_t wid, awh::core_t
 	// Если данные существуют
 	if((aid > 0) && (wid > 0) && (core != nullptr)){
 		// Получаем параметры подключения адъютанта
-		workerProxy_t::adjp_t * adj = const_cast <workerProxy_t::adjp_t *> (this->worker.getAdj(aid));
+		workerProxy_t::adjp_t * adj = const_cast <workerProxy_t::adjp_t *> (this->_worker.getAdj(aid));
 		// Если параметры подключения адъютанта получены
 		if((adj != nullptr) && !adj->locked){
 			// Выполняем обработку полученных данных
@@ -505,11 +505,11 @@ void awh::server::Proxy::prepare(const size_t aid, const size_t wid, awh::core_t
 						}
 					#endif
 					// Если подключение не установлено как постоянное
-					if(!this->alive && !adj->alive){
+					if(!this->_alive && !adj->_alive){
 						// Увеличиваем количество выполненных запросов
 						adj->requests++;
 						// Если количество выполненных запросов превышает максимальный
-						if(adj->requests >= this->maxRequests)
+						if(adj->requests >= this->_maxRequests)
 							// Устанавливаем флаг закрытия подключения
 							adj->close = true;
 						// Получаем текущий штамп времени
@@ -521,7 +521,7 @@ void awh::server::Proxy::prepare(const size_t aid, const size_t wid, awh::core_t
 						// Если запрос выполнен удачно
 						case (uint8_t) http_t::stath_t::GOOD: {
 							// Получаем флаг шифрованных данных
-							adj->crypt = adj->srv.isCrypt();
+							adj->_crypt = adj->srv.isCrypt();
 							// Получаем поддерживаемый метод компрессии
 							adj->compress = adj->srv.getCompress();
 							// Если подключение не выполнено
@@ -529,7 +529,7 @@ void awh::server::Proxy::prepare(const size_t aid, const size_t wid, awh::core_t
 								// Получаем данные запроса
 								const auto & query = adj->srv.getQuery();
 								// Выполняем проверку разрешено ли нам выполнять подключение
-								const bool allow = (!this->noConnect || (query.method != web_t::method_t::CONNECT));
+								const bool allow = (!this->_noConnect || (query.method != web_t::method_t::CONNECT));
 								// Получаем хост сервера
 								const auto & host = adj->srv.getHeader("host");
 								// Сообщение запрета подключения
@@ -539,9 +539,9 @@ void awh::server::Proxy::prepare(const size_t aid, const size_t wid, awh::core_t
 									// Запоминаем метод подключения
 									adj->method = query.method;
 									// Формируем адрес подключения
-									adj->worker.url = this->worker.uri.parseUrl(this->fmk->format("http://%s", host.c_str()));
+									adj->_worker.url = this->_worker.uri.parseUrl(this->fmk->format("http://%s", host.c_str()));
 									// Выполняем запрос на сервер
-									this->core.client.open(adj->worker.wid);
+									this->_core.client.open(adj->_worker.wid);
 									// Выходим из функции
 									return;
 								// Если хост не получен
@@ -582,9 +582,9 @@ void awh::server::Proxy::prepare(const size_t aid, const size_t wid, awh::core_t
 									// Если заголовок получен
 									if(!via.empty())
 										// Устанавливаем Via заголовок
-										via = this->fmk->format("%s, %.1f %s:%u", via.c_str(), query.ver, this->host.c_str(), this->port);
+										via = this->fmk->format("%s, %.1f %s:%u", via.c_str(), query.ver, this->_host.c_str(), this->_port);
 									// Иначе просто формируем заголовок Via
-									else via = this->fmk->format("%.1f %s:%u", query.ver, this->host.c_str(), this->port);
+									else via = this->fmk->format("%.1f %s:%u", query.ver, this->_host.c_str(), this->_port);
 									// Устанавливаем заголовок Via
 									adj->srv.addHeader("Via", via);
 								}{
@@ -607,28 +607,28 @@ void awh::server::Proxy::prepare(const size_t aid, const size_t wid, awh::core_t
 										case (uint8_t) fmk_t::os_t::FREEBSD: os = "FreeBSD"; break;
 									}
 									// Устанавливаем наименование агента
-									adj->srv.addHeader("X-Proxy-Agent", this->fmk->format("(%s; %s) %s/%s", os, this->name.c_str(), this->sid.c_str(), this->version.c_str()));
+									adj->srv.addHeader("X-Proxy-Agent", this->fmk->format("(%s; %s) %s/%s", os, this->_name.c_str(), this->_sid.c_str(), this->_version.c_str()));
 								}
 								// Если функция обратного вызова установлена, выполняем
-								if(this->messageFn != nullptr){
+								if(this->_messageFn != nullptr){
 									// Выводим сообщение
-									if(this->messageFn(aid, event_t::REQUEST, &adj->srv, this, this->ctx.at(1))){
+									if(this->_messageFn(aid, event_t::REQUEST, &adj->srv, this, this->ctx.at(1))){
 										// Получаем данные запроса
 										const auto & request = adj->srv.request();
 										// Если данные запроса получены
 										if(!request.empty()){
 											// Получаем идентификатор адъютанта
-											const size_t aid = adj->worker.getAid();
+											const size_t aid = adj->_worker.getAid();
 											// Отправляем запрос на внешний сервер
 											if(aid > 0){
 												// Тело REST сообщения
 												vector <char> entity;
 												// Отправляем серверу сообщение
-												reinterpret_cast <awh::core_t *> (&this->core.client)->write(request.data(), request.size(), aid);
+												reinterpret_cast <awh::core_t *> (&this->_core.client)->write(request.data(), request.size(), aid);
 												// Получаем данные тела запроса
 												while(!(entity = adj->srv.payload()).empty()){
 													// Отправляем тело на сервер
-													reinterpret_cast <awh::core_t *> (&this->core.client)->write(entity.data(), entity.size(), aid);
+													reinterpret_cast <awh::core_t *> (&this->_core.client)->write(entity.data(), entity.size(), aid);
 												}
 											}
 										}
@@ -636,7 +636,7 @@ void awh::server::Proxy::prepare(const size_t aid, const size_t wid, awh::core_t
 								// Если функция обратного вызова не установлена
 								} else {
 									// Получаем идентификатор адъютанта
-									const size_t aid = adj->worker.getAid();
+									const size_t aid = adj->_worker.getAid();
 									// Отправляем запрос на внешний сервер
 									if(aid > 0){
 										// Получаем данные запроса
@@ -646,17 +646,17 @@ void awh::server::Proxy::prepare(const size_t aid, const size_t wid, awh::core_t
 											// Тело REST сообщения
 											vector <char> entity;
 											// Если функция обратного вызова установлена, выполняем
-											if(this->binaryFn != nullptr){
+											if(this->_binaryFn != nullptr){
 												// Выводим сообщение
-												if(this->binaryFn(aid, event_t::REQUEST, request.data(), request.size(), this, this->ctx.at(2)))
+												if(this->_binaryFn(aid, event_t::REQUEST, request.data(), request.size(), this, this->ctx.at(2)))
 													// Отправляем запрос на внешний сервер
-													reinterpret_cast <awh::core_t *> (&this->core.client)->write(request.data(), request.size(), aid);
+													reinterpret_cast <awh::core_t *> (&this->_core.client)->write(request.data(), request.size(), aid);
 											// Отправляем запрос на внешний сервер
-											} else reinterpret_cast <awh::core_t *> (&this->core.client)->write(request.data(), request.size(), aid);
+											} else reinterpret_cast <awh::core_t *> (&this->_core.client)->write(request.data(), request.size(), aid);
 											// Получаем данные тела запроса
 											while(!(entity = adj->srv.payload()).empty()){
 												// Отправляем тело на сервер
-												reinterpret_cast <awh::core_t *> (&this->core.client)->write(entity.data(), entity.size(), aid);
+												reinterpret_cast <awh::core_t *> (&this->_core.client)->write(entity.data(), entity.size(), aid);
 											}
 										}
 									}
@@ -727,88 +727,67 @@ void awh::server::Proxy::prepare(const size_t aid, const size_t wid, awh::core_t
  */
 void awh::server::Proxy::init(const u_int port, const string & host, const http_t::compress_t compress) noexcept {
 	// Устанавливаем порт сервера
-	this->port = port;
+	this->_port = port;
 	// Устанавливаем хост сервера
-	this->host = host;
+	this->_host = host;
 	// Устанавливаем тип компрессии
-	this->worker.compress = compress;
+	this->_worker.compress = compress;
 }
 /**
  * on Метод установки функции обратного вызова на событие запуска или остановки подключения
- * @param ctx      контекст для вывода в сообщении
  * @param callback функция обратного вызова
  */
-void awh::server::Proxy::on(void * ctx, function <void (const size_t, const mode_t, Proxy *, void *)> callback) noexcept {
-	// Устанавливаем контекст передаваемого объекта
-	this->ctx.at(0) = ctx;
+void awh::server::Proxy::on(function <void (const size_t, const mode_t, Proxy *, void *)> callback) noexcept {
 	// Устанавливаем функцию запуска и остановки
-	this->activeFn = callback;
+	this->_activeFn = callback;
 }
 /**
  * on Метод установки функции обратного вызова на событие получения сообщений
- * @param ctx      контекст для вывода в сообщении
  * @param callback функция обратного вызова
  */
-void awh::server::Proxy::on(void * ctx, function <bool (const size_t, const event_t, http_t *, Proxy *, void *)> callback) noexcept {
-	// Устанавливаем контекст передаваемого объекта
-	this->ctx.at(1) = ctx;
+void awh::server::Proxy::on(function <bool (const size_t, const event_t, http_t *, Proxy *, void *)> callback) noexcept {
 	// Устанавливаем функцию получения сообщений с сервера
-	this->messageFn = callback;
+	this->_messageFn = callback;
 }
 /**
  * on Метод установки функции обратного вызова на событие получения сообщений в бинарном виде
- * @param ctx      контекст для вывода в сообщении
  * @param callback функция обратного вызова
  */
-void awh::server::Proxy::on(void * ctx, function <bool (const size_t, const event_t, const char *, const size_t, Proxy *, void *)> callback) noexcept {
-	// Устанавливаем контекст передаваемого объекта
-	this->ctx.at(2) = ctx;
+void awh::server::Proxy::on(function <bool (const size_t, const event_t, const char *, const size_t, Proxy *, void *)> callback) noexcept {
 	// Устанавливаем функцию получения сообщений в бинарном виде с сервера
-	this->binaryFn = callback;
+	this->_binaryFn = callback;
 }
 /**
  * on Метод добавления функции извлечения пароля
- * @param ctx      контекст для вывода в сообщении
  * @param callback функция обратного вызова для извлечения пароля
  */
-void awh::server::Proxy::on(void * ctx, function <string (const string &, void *)> callback) noexcept {
-	// Устанавливаем контекст передаваемого объекта
-	this->ctx.at(3) = ctx;
+void awh::server::Proxy::on(function <string (const string &, void *)> callback) noexcept {
 	// Устанавливаем функцию обратного вызова для извлечения пароля
-	this->extractPassFn = callback;
+	this->_extractPassFn = callback;
 }
 /**
  * on Метод добавления функции обработки авторизации
- * @param ctx      контекст для вывода в сообщении
  * @param callback функция обратного вызова для обработки авторизации
  */
-void awh::server::Proxy::on(void * ctx, function <bool (const string &, const string &, void *)> callback) noexcept {
-	// Устанавливаем контекст передаваемого объекта
-	this->ctx.at(4) = ctx;
+void awh::server::Proxy::on(function <bool (const string &, const string &, void *)> callback) noexcept {
 	// Устанавливаем функцию обратного вызова для обработки авторизации
-	this->checkAuthFn = callback;
+	this->_checkAuthFn = callback;
 }
 /**
  * on Метод установки функции обратного вызова для получения чанков
- * @param ctx      контекст для вывода в сообщении
  * @param callback функция обратного вызова
  */
-void awh::server::Proxy::on(void * ctx, function <void (const vector <char> &, const http_t *, void *)> callback) noexcept {
-	// Устанавливаем контекст передаваемого объекта
-	this->ctx.at(5) = ctx;
+void awh::server::Proxy::on(function <void (const vector <char> &, const http_t *, void *)> callback) noexcept {
 	// Устанавливаем функцию обратного вызова для получения чанков
-	this->chunkingFn = callback;
+	this->_chunkingFn = callback;
 }
 /**
  * on Метод установки функции обратного вызова на событие активации клиента на сервере
- * @param ctx      контекст для вывода в сообщении
  * @param callback функция обратного вызова
  */
-void awh::server::Proxy::on(void * ctx, function <bool (const string &, const string &, Proxy *, void *)> callback) noexcept {
-	// Устанавливаем контекст передаваемого объекта
-	this->ctx.at(6) = ctx;
+void awh::server::Proxy::on(function <bool (const string &, const string &, Proxy *, void *)> callback) noexcept {
 	// Устанавливаем функцию запуска и остановки
-	this->acceptFn = callback;
+	this->_acceptFn = callback;
 }
 /**
  * reject Метод отправки сообщения об ошибке
@@ -820,9 +799,9 @@ void awh::server::Proxy::on(void * ctx, function <bool (const string &, const st
  */
 void awh::server::Proxy::reject(const size_t aid, const u_int code, const string & mess, const vector <char> & entity, const unordered_multimap <string, string> & headers) const noexcept {
 	// Если подключение выполнено
-	if(this->core.server.working()){
+	if(this->_core.server.working()){
 		// Получаем параметры подключения адъютанта
-		workerProxy_t::adjp_t * adj = const_cast <workerProxy_t::adjp_t *> (this->worker.getAdj(aid));
+		workerProxy_t::adjp_t * adj = const_cast <workerProxy_t::adjp_t *> (this->_worker.getAdj(aid));
 		// Если отправка сообщений разблокированна
 		if(adj != nullptr){
 			// Тело полезной нагрузки
@@ -832,9 +811,9 @@ void awh::server::Proxy::reject(const size_t aid, const u_int code, const string
 			// Устанавливаем заголовки ответа
 			adj->srv.setHeaders(headers);
 			// Если подключение не установлено как постоянное, но подключение долгоживущее
-			if(!this->alive && !adj->alive && adj->srv.isAlive())
+			if(!this->_alive && !adj->_alive && adj->srv.isAlive())
 				// Указываем сколько запросов разрешено выполнить за указанный интервал времени
-				adj->srv.addHeader("Keep-Alive", this->fmk->format("timeout=%d, max=%d", this->keepAlive / 1000, this->maxRequests));
+				adj->srv.addHeader("Keep-Alive", this->fmk->format("timeout=%d, max=%d", this->_keepAlive / 1000, this->_maxRequests));
 			// Формируем запрос авторизации
 			const auto & response = adj->srv.reject(code, mess);
 			// Если включён режим отладки
@@ -847,7 +826,7 @@ void awh::server::Proxy::reject(const size_t aid, const u_int code, const string
 			// Устанавливаем размер стопбайт
 			if(!adj->srv.isAlive()) adj->stopBytes = response.size();
 			// Отправляем серверу сообщение
-			((awh::core_t *) const_cast <server::core_t *> (&this->core.server))->write(response.data(), response.size(), aid);
+			((awh::core_t *) const_cast <server::core_t *> (&this->_core.server))->write(response.data(), response.size(), aid);
 			// Получаем данные полезной нагрузки ответа
 			while(!(payload = adj->srv.payload()).empty()){
 				// Если включён режим отладки
@@ -858,7 +837,7 @@ void awh::server::Proxy::reject(const size_t aid, const u_int code, const string
 				// Устанавливаем размер стопбайт
 				if(!adj->srv.isAlive()) adj->stopBytes += payload.size();
 				// Отправляем тело на сервер
-				((awh::core_t *) const_cast <server::core_t *> (&this->core.server))->write(payload.data(), payload.size(), aid);
+				((awh::core_t *) const_cast <server::core_t *> (&this->_core.server))->write(payload.data(), payload.size(), aid);
 			}
 		}
 	}
@@ -873,9 +852,9 @@ void awh::server::Proxy::reject(const size_t aid, const u_int code, const string
  */
 void awh::server::Proxy::response(const size_t aid, const u_int code, const string & mess, const vector <char> & entity, const unordered_multimap <string, string> & headers) const noexcept {
 	// Если подключение выполнено
-	if(this->core.server.working()){
+	if(this->_core.server.working()){
 		// Получаем параметры подключения адъютанта
-		workerProxy_t::adjp_t * adj = const_cast <workerProxy_t::adjp_t *> (this->worker.getAdj(aid));
+		workerProxy_t::adjp_t * adj = const_cast <workerProxy_t::adjp_t *> (this->_worker.getAdj(aid));
 		// Если отправка сообщений разблокированна
 		if(adj != nullptr){
 			// Тело полезной нагрузки
@@ -885,9 +864,9 @@ void awh::server::Proxy::response(const size_t aid, const u_int code, const stri
 			// Устанавливаем заголовки ответа
 			adj->srv.setHeaders(headers);
 			// Если подключение не установлено как постоянное, но подключение долгоживущее
-			if(!this->alive && !adj->alive && adj->srv.isAlive())
+			if(!this->_alive && !adj->_alive && adj->srv.isAlive())
 				// Указываем сколько запросов разрешено выполнить за указанный интервал времени
-				adj->srv.addHeader("Keep-Alive", this->fmk->format("timeout=%d, max=%d", this->keepAlive / 1000, this->maxRequests));
+				adj->srv.addHeader("Keep-Alive", this->fmk->format("timeout=%d, max=%d", this->_keepAlive / 1000, this->_maxRequests));
 			// Формируем запрос авторизации
 			const auto & response = adj->srv.response(code, mess);
 			// Если включён режим отладки
@@ -900,7 +879,7 @@ void awh::server::Proxy::response(const size_t aid, const u_int code, const stri
 			// Устанавливаем размер стопбайт
 			if(!adj->srv.isAlive()) adj->stopBytes = response.size();
 			// Отправляем серверу сообщение
-			((awh::core_t *) const_cast <server::core_t *> (&this->core.server))->write(response.data(), response.size(), aid);
+			((awh::core_t *) const_cast <server::core_t *> (&this->_core.server))->write(response.data(), response.size(), aid);
 			// Получаем данные полезной нагрузки ответа
 			while(!(payload = adj->srv.payload()).empty()){
 				// Если включён режим отладки
@@ -911,7 +890,7 @@ void awh::server::Proxy::response(const size_t aid, const u_int code, const stri
 				// Устанавливаем размер стопбайт
 				if(!adj->srv.isAlive()) adj->stopBytes += payload.size();
 				// Отправляем тело на сервер
-				((awh::core_t *) const_cast <server::core_t *> (&this->core.server))->write(payload.data(), payload.size(), aid);
+				((awh::core_t *) const_cast <server::core_t *> (&this->_core.server))->write(payload.data(), payload.size(), aid);
 			}
 		}
 	}
@@ -923,7 +902,7 @@ void awh::server::Proxy::response(const size_t aid, const u_int code, const stri
  */
 const string & awh::server::Proxy::ip(const size_t aid) const noexcept {
 	// Выводим результат
-	return this->worker.ip(aid);
+	return this->_worker.ip(aid);
 }
 /**
  * mac Метод получения MAC адреса адъютанта
@@ -932,7 +911,7 @@ const string & awh::server::Proxy::ip(const size_t aid) const noexcept {
  */
 const string & awh::server::Proxy::mac(const size_t aid) const noexcept {
 	// Выводим результат
-	return this->worker.mac(aid);
+	return this->_worker.mac(aid);
 }
 /**
  * setAlive Метод установки долгоживущего подключения
@@ -940,7 +919,7 @@ const string & awh::server::Proxy::mac(const size_t aid) const noexcept {
  */
 void awh::server::Proxy::setAlive(const bool mode) noexcept {
 	// Устанавливаем флаг долгоживущего подключения
-	this->alive = mode;
+	this->_alive = mode;
 }
 /**
  * setAlive Метод установки долгоживущего подключения
@@ -949,27 +928,27 @@ void awh::server::Proxy::setAlive(const bool mode) noexcept {
  */
 void awh::server::Proxy::setAlive(const size_t aid, const bool mode) noexcept {
 	// Получаем параметры подключения адъютанта
-	workerProxy_t::adjp_t * adj = const_cast <workerProxy_t::adjp_t *> (this->worker.getAdj(aid));
+	workerProxy_t::adjp_t * adj = const_cast <workerProxy_t::adjp_t *> (this->_worker.getAdj(aid));
 	// Если параметры подключения адъютанта получены, устанавливаем флаг пдолгоживущего подключения
-	if(adj != nullptr) adj->alive = mode;
+	if(adj != nullptr) adj->_alive = mode;
 }
 /**
  * start Метод запуска клиента
  */
 void awh::server::Proxy::start() noexcept {
 	// Если биндинг не запущен, выполняем запуск биндинга
-	if(!this->core.server.working())
+	if(!this->_core.server.working())
 		// Выполняем запуск биндинга
-		this->core.server.start();
+		this->_core.server.start();
 }
 /**
  * stop Метод остановки клиента
  */
 void awh::server::Proxy::stop() noexcept {
 	// Если подключение выполнено
-	if(this->core.server.working())
+	if(this->_core.server.working())
 		// Завершаем работу, если разрешено остановить
-		this->core.server.stop();
+		this->_core.server.stop();
 }
 /**
  * close Метод закрытия подключения клиента
@@ -977,18 +956,18 @@ void awh::server::Proxy::stop() noexcept {
  */
 void awh::server::Proxy::close(const size_t aid) noexcept {
 	// Получаем параметры подключения адъютанта
-	workerProxy_t::adjp_t * adj = const_cast <workerProxy_t::adjp_t *> (this->worker.getAdj(aid));
+	workerProxy_t::adjp_t * adj = const_cast <workerProxy_t::adjp_t *> (this->_worker.getAdj(aid));
 	// Если параметры подключения адъютанта получены, устанавливаем флаг закрытия подключения
 	if(adj != nullptr){
 		// Выполняем отключение всех дочерних клиентов
-		reinterpret_cast <awh::core_t *> (&this->core.client)->close(adj->worker.getAid());
+		reinterpret_cast <awh::core_t *> (&this->_core.client)->close(adj->_worker.getAid());
 		// Выполняем удаление параметров адъютанта
-		this->worker.removeAdj(aid);
+		this->_worker.removeAdj(aid);
 	}
 	// Отключаем клиента от сервера
-	reinterpret_cast <awh::core_t *> (&this->core.server)->close(aid);
+	reinterpret_cast <awh::core_t *> (&this->_core.server)->close(aid);
 	// Если функция обратного вызова установлена, выполняем
-	if(this->activeFn != nullptr) this->activeFn(aid, mode_t::DISCONNECT, this, this->ctx.at(0));
+	if(this->_activeFn != nullptr) this->_activeFn(aid, mode_t::DISCONNECT, this, this->ctx.at(0));
 }
 /**
  * setRealm Метод установки название сервера
@@ -996,7 +975,7 @@ void awh::server::Proxy::close(const size_t aid) noexcept {
  */
 void awh::server::Proxy::setRealm(const string & realm) noexcept {
 	// Устанавливаем название сервера
-	this->realm = realm;
+	this->_realm = realm;
 }
 /**
  * setOpaque Метод установки временного ключа сессии сервера
@@ -1004,7 +983,7 @@ void awh::server::Proxy::setRealm(const string & realm) noexcept {
  */
 void awh::server::Proxy::setOpaque(const string & opaque) noexcept {
 	// Устанавливаем временный ключ сессии сервера
-	this->opaque = opaque;
+	this->_opaque = opaque;
 }
 /**
  * setAuthType Метод установки типа авторизации
@@ -1013,9 +992,9 @@ void awh::server::Proxy::setOpaque(const string & opaque) noexcept {
  */
 void awh::server::Proxy::setAuthType(const auth_t::type_t type, const auth_t::hash_t hash) noexcept {
 	// Устанавливаем алгоритм шифрования для Digest авторизации
-	this->authHash = hash;
+	this->_authHash = hash;
 	// Устанавливаем тип авторизации
-	this->authType = type;
+	this->_authType = type;
 }
 /**
  * setMode Метод установки флага модуля
@@ -1023,15 +1002,15 @@ void awh::server::Proxy::setAuthType(const auth_t::type_t type, const auth_t::ha
  */
 void awh::server::Proxy::setMode(const u_short flag) noexcept {
 	// Устанавливаем флаг запрещающий метод CONNECT
-	this->noConnect = (flag & (uint8_t) flag_t::NOCONNECT);
+	this->_noConnect = (flag & (uint8_t) flag_t::NOCONNECT);
 	// Устанавливаем флаг ожидания входящих сообщений
-	this->worker.wait = (flag & (uint8_t) flag_t::WAITMESS);
+	this->_worker.wait = (flag & (uint8_t) flag_t::WAITMESS);
 	// Устанавливаем флаг отложенных вызовов событий сокета
-	this->core.client.setDefer(flag & (uint8_t) flag_t::DEFER);
-	this->core.server.setDefer(flag & (uint8_t) flag_t::DEFER);
+	this->_core.client.setDefer(flag & (uint8_t) flag_t::DEFER);
+	this->_core.server.setDefer(flag & (uint8_t) flag_t::DEFER);
 	// Устанавливаем флаг запрещающий вывод информационных сообщений
-	this->core.client.setNoInfo(flag & (uint8_t) flag_t::NOINFO);
-	this->core.server.setNoInfo(flag & (uint8_t) flag_t::NOINFO);
+	this->_core.client.setNoInfo(flag & (uint8_t) flag_t::NOINFO);
+	this->_core.server.setNoInfo(flag & (uint8_t) flag_t::NOINFO);
 }
 /**
  * setTotal Метод установки максимального количества одновременных подключений
@@ -1039,7 +1018,7 @@ void awh::server::Proxy::setMode(const u_short flag) noexcept {
  */
 void awh::server::Proxy::setTotal(const u_short total) noexcept {
 	// Устанавливаем максимальное количество одновременных подключений
-	this->core.server.setTotal(this->worker.wid, total);
+	this->_core.server.setTotal(this->_worker.wid, total);
 }
 /**
  * setChunkSize Метод установки размера чанка
@@ -1047,7 +1026,7 @@ void awh::server::Proxy::setTotal(const u_short total) noexcept {
  */
 void awh::server::Proxy::setChunkSize(const size_t size) noexcept {
 	// Устанавливаем размер чанка
-	this->chunkSize = (size > 0 ? size : BUFFER_CHUNK);
+	this->_chunkSize = (size > 0 ? size : BUFFER_CHUNK);
 }
 /**
  * setKeepAlive Метод установки времени жизни подключения
@@ -1055,7 +1034,7 @@ void awh::server::Proxy::setChunkSize(const size_t size) noexcept {
  */
 void awh::server::Proxy::setKeepAlive(const size_t time) noexcept {
 	// Устанавливаем время жизни подключения
-	this->keepAlive = time;
+	this->_keepAlive = time;
 }
 /**
  * setMaxRequests Метод установки максимального количества запросов
@@ -1063,7 +1042,7 @@ void awh::server::Proxy::setKeepAlive(const size_t time) noexcept {
  */
 void awh::server::Proxy::setMaxRequests(const size_t max) noexcept {
 	// Устанавливаем максимальное количество запросов
-	this->maxRequests = max;
+	this->_maxRequests = max;
 }
 /**
  * setCompress Метод установки метода сжатия
@@ -1071,7 +1050,7 @@ void awh::server::Proxy::setMaxRequests(const size_t max) noexcept {
  */
 void awh::server::Proxy::setCompress(const http_t::compress_t compress) noexcept {
 	// Устанавливаем метод компрессии
-	this->worker.compress = compress;
+	this->_worker.compress = compress;
 }
 /**
  * setWaitTimeDetect Метод детекции сообщений по количеству секунд
@@ -1080,9 +1059,9 @@ void awh::server::Proxy::setCompress(const http_t::compress_t compress) noexcept
  */
 void awh::server::Proxy::setWaitTimeDetect(const time_t read, const time_t write) noexcept {
 	// Устанавливаем количество секунд на чтение
-	this->worker.timeRead = read;
+	this->_worker.timeRead = read;
 	// Устанавливаем количество секунд на запись
-	this->worker.timeWrite = write;
+	this->_worker.timeWrite = write;
 }
 /**
  * setServ Метод установки данных сервиса
@@ -1092,11 +1071,11 @@ void awh::server::Proxy::setWaitTimeDetect(const time_t read, const time_t write
  */
 void awh::server::Proxy::setServ(const string & id, const string & name, const string & ver) noexcept {
 	// Устанавливаем идентификатор сервера
-	this->sid = id;
+	this->_sid = id;
 	// Устанавливаем название сервера
-	this->name = name;
+	this->_name = name;
 	// Устанавливаем версию сервера
-	this->version = ver;
+	this->_version = ver;
 }
 /**
  * setBytesDetect Метод детекции сообщений по количеству байт
@@ -1105,9 +1084,9 @@ void awh::server::Proxy::setServ(const string & id, const string & name, const s
  */
 void awh::server::Proxy::setBytesDetect(const worker_t::mark_t read, const worker_t::mark_t write) noexcept {
 	// Устанавливаем количество байт на чтение
-	this->worker.markRead = read;
+	this->_worker.markRead = read;
 	// Устанавливаем количество байт на запись
-	this->worker.markWrite = write;
+	this->_worker.markWrite = write;
 }
 /**
  * setCrypt Метод установки параметров шифрования
@@ -1117,13 +1096,13 @@ void awh::server::Proxy::setBytesDetect(const worker_t::mark_t read, const worke
  */
 void awh::server::Proxy::setCrypt(const string & pass, const string & salt, const hash_t::aes_t aes) noexcept {
 	// Устанавливаем флаг шифрования
-	if((this->crypt = !pass.empty())){
+	if((this->_crypt = !pass.empty())){
 		// Размер шифрования передаваемых данных
-		this->aes = aes;
+		this->_aes = aes;
 		// Пароль шифрования передаваемых данных
-		this->pass = pass;
+		this->_pass = pass;
 		// Соль шифрования передаваемых данных
-		this->salt = salt;
+		this->_salt = salt;
 	}
 }
 /**
@@ -1133,27 +1112,27 @@ void awh::server::Proxy::setCrypt(const string & pass, const string & salt, cons
  */
 awh::server::Proxy::Proxy(const fmk_t * fmk, const log_t * log) noexcept : core(fmk, log), worker(fmk, log), fmk(fmk), log(log) {
 	// Устанавливаем контекст сообщения
-	this->worker.ctx = this;
+	this->_worker.ctx = this;
 	// Устанавливаем событие на запуск системы
-	this->worker.openFn = openServerCallback;
+	this->_worker.openFn = openServerCallback;
 	// Устанавливаем функцию чтения данных
-	this->worker.readFn = readServerCallback;
+	this->_worker.readFn = readServerCallback;
 	// Устанавливаем функцию записи данных
-	this->worker.writeFn = writeServerCallback;
+	this->_worker.writeFn = writeServerCallback;
 	// Добавляем событие аццепта клиента
-	this->worker.acceptFn = acceptServerCallback;
+	this->_worker.acceptFn = acceptServerCallback;
 	// Устанавливаем функцию персистентного вызова
-	this->worker.persistFn = persistServerCallback;
+	this->_worker.persistFn = persistServerCallback;
 	// Устанавливаем событие подключения
-	this->worker.connectFn = connectServerCallback;
+	this->_worker.connectFn = connectServerCallback;
 	// Устанавливаем событие отключения
-	this->worker.disconnectFn = disconnectServerCallback;
+	this->_worker.disconnectFn = disconnectServerCallback;
 	// Активируем персистентный запуск для работы пингов
-	this->core.server.setPersist(true);
+	this->_core.server.setPersist(true);
 	// Добавляем воркер в биндер TCP/IP
-	this->core.server.add(&this->worker);
+	this->_core.server.add(&this->_worker);
 	// Устанавливаем функцию активации ядра сервера
-	this->core.server.setCallback(this, &runCallback);
+	this->_core.server.setCallback(this, &runCallback);
 	// Устанавливаем интервал персистентного таймера для работы пингов
-	this->core.server.setPersistInterval(KEEPALIVE_TIMEOUT / 2);
+	this->_core.server.setPersistInterval(KEEPALIVE_TIMEOUT / 2);
 }

@@ -92,7 +92,7 @@ int main(int argc, char * argv[]) noexcept {
 	 * 2. Устанавливаем ожидание входящих сообщений
 	 * 3. Устанавливаем валидацию SSL сертификата
 	 */
-	rest.setMode(
+	rest.mode(
 		// (uint8_t) client::rest_t::flag_t::NOINFO |
 		(uint8_t) client::rest_t::flag_t::WAITMESS |
 		(uint8_t) client::rest_t::flag_t::REDIRECTS |
@@ -101,31 +101,31 @@ int main(int argc, char * argv[]) noexcept {
 	// Устанавливаем простое чтение базы событий
 	// core.easily(true);
 	// Устанавливаем адрес сертификата
-	core.setTrusted("./ca/cert.pem");
+	core.ca("./ca/cert.pem");
 	// Устанавливаем логин и пароль пользователя
-	rest.setUser("user", "password");
+	rest.user("user", "password");
 	// Устанавливаем данные прокси-сервера
-	// rest.setProxy("http://qKseEr:t5QrcW@212.102.146.33:8000");
-	// rest.setProxy("socks5://3JMFxD:CWv6MP@45.130.126.236:8000");
-	// rest.setProxy("http://fn3nzc:GZJAeP@217.29.62.232:11283");
-	// rest.setProxy("socks5://xYkj89:eqCQJA@85.195.81.167:12387");
+	// rest.proxy("http://qKseEr:t5QrcW@212.102.146.33:8000");
+	// rest.proxy("socks5://3JMFxD:CWv6MP@45.130.126.236:8000");
+	// rest.proxy("http://fn3nzc:GZJAeP@217.29.62.232:11283");
+	// rest.proxy("socks5://xYkj89:eqCQJA@85.195.81.167:12387");
 	// Устанавливаем тип компрессии
-	rest.setCompress(http_t::compress_t::ALL_COMPRESS);
+	rest.compress(http_t::compress_t::ALL_COMPRESS);
 	// Устанавливаем тип авторизации прокси-сервера
-	// rest.setAuthTypeProxy();
+	// rest.authTypeProxy();
 	// Выполняем инициализацию типа авторизации
-	// rest.setAuthType();
-	// rest.setAuthType(auth_t::type_t::DIGEST, auth_t::hash_t::MD5);
+	// rest.authType();
+	// rest.authType(auth_t::type_t::DIGEST, auth_t::hash_t::MD5);
 	// Выполняем получение URL адреса сервера
-	// uri_t::url_t url = uri.parseUrl("https://2ip.ru");
-	// uri_t::url_t url = uri.parseUrl("https://ipv6.google.com");
-	// uri_t::url_t url = uri.parseUrl("http://localhost/test");
-	// uri_t::url_t url = uri.parseUrl("https://www.anyks.com");
-	uri_t::url_t url = uri.parseUrl("https://apple.com/ru/mac");
-	// uri_t::url_t url = uri.parseUrl("https://ru.wikipedia.org/wiki/HTTP");
-	// uri_t::url_t url = uri.parseUrl("https://api.binance.com/api/v3/exchangeInfo?symbol=BTCUSDT");
-	// uri_t::url_t url = uri.parseUrl("https://testnet.binance.vision/api/v3/exchangeInfo");
-	// uri_t::url_t url = uri.parseUrl("https://api.coingecko.com/api/v3/coins/list?include_platform=true");
+	// uri_t::url_t url = uri.parse("https://2ip.ru");
+	// uri_t::url_t url = uri.parse("https://ipv6.google.com");
+	// uri_t::url_t url = uri.parse("http://localhost/test");
+	// uri_t::url_t url = uri.parse("https://www.anyks.com");
+	uri_t::url_t url = uri.parse("https://apple.com/ru/mac");
+	// uri_t::url_t url = uri.parse("https://ru.wikipedia.org/wiki/HTTP");
+	// uri_t::url_t url = uri.parse("https://api.binance.com/api/v3/exchangeInfo?symbol=BTCUSDT");
+	// uri_t::url_t url = uri.parse("https://testnet.binance.vision/api/v3/exchangeInfo");
+	// uri_t::url_t url = uri.parse("https://api.coingecko.com/api/v3/coins/list?include_platform=true");
 	// Подписываемся на событие коннекта и дисконнекта клиента
 	rest.on(bind(&WebClient::active, &executor, _1, _2));
 	// Подписываемся на событие получения сообщения
@@ -136,9 +136,9 @@ int main(int argc, char * argv[]) noexcept {
 	// Создаём объект запроса
 	client::rest_t::req_t req1, req2, req3;
 	// Устанавливаем URL адрес запроса
-	req1.url = uri.parseUrl("http://127.0.0.1:2222/action/1/?test=12&goga=124");
-	req2.url = uri.parseUrl("http://127.0.0.1:2222/action/2/?test=13&goga=125");
-	req3.url = uri.parseUrl("http://127.0.0.1:2222/action/3/?test=14&goga=126");
+	req1.url = uri.parse("http://127.0.0.1:2222/action/1/?test=12&goga=124");
+	req2.url = uri.parse("http://127.0.0.1:2222/action/2/?test=13&goga=125");
+	req3.url = uri.parse("http://127.0.0.1:2222/action/3/?test=14&goga=126");
 	// Устанавливаем метод запроса
 	req1.method = web_t::method_t::GET;
 	req2.method = web_t::method_t::GET;

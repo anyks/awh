@@ -55,16 +55,16 @@ namespace awh {
 				} serv_t;
 			private:
 				// Параметры запрашиваемого сервера
-				serv_t server;
+				serv_t _server;
 			private:
 				// Внешняя функция проверки авторизации
-				function <bool (const string &, const string &)> authFn;
+				function <bool (const string &, const string &)> _auth;
 			public:
 				/**
-				 * getServer Метод извлечения параметров запрашиваемого сервера
+				 * server Метод извлечения параметров запрашиваемого сервера
 				 * @return параметры запрашиваемого сервера
 				 */
-				const serv_t & getServer() const noexcept;
+				const serv_t & server() const noexcept;
 			public:
 				/**
 				 * resCmd Метод получения бинарного буфера ответа
@@ -96,18 +96,16 @@ namespace awh {
 				void reset() noexcept;
 			public:
 				/**
-				 * setAuthCallback Метод добавления функции обработки авторизации
+				 * authCallback Метод добавления функции обработки авторизации
 				 * @param callback функция обратного вызова для обработки авторизации
 				 */
-				void setAuthCallback(function <bool (const string &, const string &)> callback) noexcept;
+				void authCallback(function <bool (const string &, const string &)> callback) noexcept;
 			public:
 				/**
 				 * Socks5 Конструктор
-				 * @param fmk объект фреймворка
 				 * @param log объект для работы с логами
-				 * @param uri объект для работы с URI
 				 */
-				Socks5(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcept : awh::socks5_t(fmk, log, uri), authFn(nullptr) {}
+				Socks5(const log_t * log) noexcept : awh::socks5_t(log), _auth(nullptr) {}
 				/**
 				 * ~Socks5 Деструктор
 				 */

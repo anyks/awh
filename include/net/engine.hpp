@@ -124,6 +124,7 @@ namespace awh {
 					 */
 					enum class status_t : uint8_t {
 						ACCEPTED     = 0x01, // Статус подключения (разрешено)
+						ATTACHED     = 0x03, // Статус подключения (прикреплено)
 						CONNECTED    = 0x02, // Статус подключения (подключено)
 						DISCONNECTED = 0x00  // Статус подключения (отключено)
 					};
@@ -137,12 +138,12 @@ namespace awh {
 					int fd;
 				private:
 					// Тип сокета (SOCK_STREAM / SOCK_DGRAM)
-					int type;
+					int _type;
 					// Протокол сокета (IPPROTO_TCP / IPPROTO_UDP)
-					int protocol;
-				public:
-					// Флаг разрешающий работу только с IPv6
-					bool v6only;
+					int _protocol;
+				private:
+					// Флаг инициализации шифрования TLS
+					bool _tls;
 				public:
 					// Статус подключения
 					status_t status;
@@ -156,21 +157,21 @@ namespace awh {
 					alive_t alive;
 				private:
 					// Объект подключения
-					peer_t peer;
+					peer_t _peer;
 					// Создаем объект сети
-					network_t nwk;
+					network_t _nwk;
 					// Объект для работы с сетевым интерфейсом
-					ifnet_t ifnet;
+					ifnet_t _ifnet;
 					// Объект для работы с сокетами
-					socket_t socket;
+					socket_t _socket;
 				public:
 					// Список сетевых интерфейсов
 					vector <string> network;
-				public:
+				private:
 					// Создаём объект фреймворка
-					const fmk_t * fmk = nullptr;
+					const fmk_t * _fmk;
 					// Создаём объект работы с логами
-					const log_t * log = nullptr;
+					const log_t * _log;
 				public:
 					/**
 					 * list Метод активации прослушивания сокета
@@ -188,11 +189,12 @@ namespace awh {
 					 * @return результат выполнения операции
 					 */
 					bool connect() noexcept;
+				public:
 					/**
-					 * connect Метод выполнения подключения сервера к клиенту для UDP
+					 * attach Метод прикрепления клиента к серверу
 					 * @param addr объект подключения сервера
 					 */
-					bool connect(Address & addr) noexcept;
+					bool attach(Address & addr) noexcept;
 				public:
 					/**
 					 * accept Метод согласования подключения
@@ -227,9 +229,10 @@ namespace awh {
 					 * @param port   порт сервера для которого нужно создать сокет
 					 * @param family семейство сокета (AF_INET / AF_INET6 / AF_UNIX)
 					 * @param type   тип приложения (клиент или сервер)
+					 * @param onlyV6 флаг разрешающий использовать только IPv6 подключение
 					 * @return       параметры подключения к серверу
 					 */
-					void init(const string & ip, const u_int port, const int family, const type_t type) noexcept;
+					void init(const string & ip, const u_int port, const int family, const type_t type, const bool onlyV6 = false) noexcept;
 				public:
 					/**
 					 * Address Конструктор
@@ -237,9 +240,9 @@ namespace awh {
 					 * @param log объект для работы с логами
 					 */
 					Address(const fmk_t * fmk, const log_t * log) noexcept :
-					 fd(-1), type(SOCK_STREAM), protocol(IPPROTO_TCP), v6only(false),
+					 fd(-1), _type(SOCK_STREAM), _protocol(IPPROTO_TCP), _tls(false),
 					 status(status_t::DISCONNECTED), port(0), ip(""), mac(""),
-					 nwk(fmk), ifnet(fmk, log), socket(log), fmk(fmk), log(log) {}
+					 _nwk(fmk), _ifnet(fmk, log), _socket(log), _fmk(fmk), _log(log) {}
 					/**
 					 * ~Address Деструктор
 					 */
@@ -270,22 +273,24 @@ namespace awh {
 					 */
 					friend class Engine;
 				private:
-					// Флаг инициализации
-					bool mode;
+					// Флаг инициализации шифрования TLS
+					bool _tls;
+					// Флаг вывода информации об OpenSSL
+					bool _verb;
 				private:
 					// Тип активного приложения
-					type_t type;
+					type_t _type;
 				private:
-					BIO * bio;         // Объект BIO
-					SSL * ssl;         // Объект SSL
-					SSL_CTX * ctx;     // Контекст SSL
-					addr_t * addr;     // Объект подключения
-					verify_t * verify; // Параметры валидации домена
+					BIO * _bio;         // Объект BIO
+					SSL * _ssl;         // Объект SSL
+					SSL_CTX * _ctx;     // Контекст SSL
+					addr_t * _addr;     // Объект подключения
+					verify_t * _verify; // Параметры валидации домена
 				private:
 					// Создаём объект фреймворка
-					const fmk_t * fmk = nullptr;
+					const fmk_t * _fmk;
 					// Создаём объект работы с логами
-					const log_t * log = nullptr;
+					const log_t * _log;
 				private:
 					/**
 					 * error Метод вывода информации об ошибке
@@ -297,6 +302,11 @@ namespace awh {
 					 * clear Метод очистки контекста
 					 */
 					void clear() noexcept;
+				public:
+					/**
+					 * info Метод вывода информации о сертификате
+					 */
+					void info() const noexcept;
 				public:
 					/**
 					 * read Метод чтения данных из сокета
@@ -343,8 +353,9 @@ namespace awh {
 					 * @param log объект для работы с логами
 					 */
 					Context(const fmk_t * fmk, const log_t * log) noexcept :
-					 mode(false), type(type_t::NONE), addr(nullptr),
-					 bio(nullptr), ssl(nullptr), ctx(nullptr), verify(nullptr), log(log) {}
+					 _tls(false), _verb(false), _type(type_t::NONE),
+					 _bio(nullptr), _ssl(nullptr), _ctx(nullptr),
+					 _addr(nullptr), _verify(nullptr), _fmk(fmk), _log(log) {}
 					/**
 					 * ~Context Деструктор
 					 */
@@ -363,34 +374,32 @@ namespace awh {
 			};
 		private:
 			// Флаг проверки сертификата доменного имени
-			bool verify = true;
-			// Флаг вывода информации о подключении
-			bool verbose = true;
+			bool _verify;
 		private:
 			// Список алгоритмов шифрования
-			string cipher = "";
+			string _cipher;
 		private:
+			// Основной сертификат или цепочка сертификатов
+			string _chain;
 			// Приватный ключ сертификата
-			string privkey = "";
-			// Основная цепочка сертификатов
-			string fullchain = "";
+			string _privkey;
 		private:
 			// Каталог с доверенными сертификатами (CA-файлами)
-			string path = "";
+			string _path;
 			// Доверенный сертификат (CA-файл)
-			mutable string trusted = SSL_CA_FILE;
+			mutable string _ca;
 		private:
 			// Флаг инициализации куков
-			static bool cookieInit;
+			static bool _cookieInit;
 			// Буфер для создания куков
-			static u_char cookies[16];
+			static u_char _cookies[16];
 		private:
 			// Создаём объект фреймворка
-			const fmk_t * fmk = nullptr;
+			const fmk_t * _fmk;
 			// Создаём объект работы с логами
-			const log_t * log = nullptr;
+			const log_t * _log;
 			// Создаём объект работы с URI
-			const uri_t * uri = nullptr;
+			const uri_t * _uri;
 		private:
 			/**
 			 * rawEqual Метод проверки на эквивалентность доменных имён
@@ -495,17 +504,11 @@ namespace awh {
 			const validate_t validateHostname(const string & host, const X509 * cert = nullptr) const noexcept;
 		private:
 			/**
-			 * initTrustedStore Метод инициализации магазина доверенных сертификатов
+			 * storeCA Метод инициализации магазина доверенных сертификатов
 			 * @param ctx объект контекста SSL
 			 * @return    результат инициализации
 			 */
-			bool initTrustedStore(SSL_CTX * ctx) const noexcept;
-		public:
-			/**
-			 * info Метод вывода информации о сертификате
-			 * @param ctx контекст подключения
-			 */
-			void info(ctx_t & ctx) const noexcept;
+			bool storeCA(SSL_CTX * ctx) const noexcept;
 		public:
 			/**
 			 * wait Метод ожидания рукопожатия
@@ -514,84 +517,76 @@ namespace awh {
 			void wait(ctx_t & target) noexcept;
 		public:
 			/**
-			 * wrap Метод обертывания файлового дескриптора для сервера
-			 * @param target контекст назначения
-			 * @param source исходный контекст
-			 * @return       объект SSL контекста
+			 * attach Метод прикрепления контекста клиента к контексту сервера
+			 * @param target  контекст назначения
+			 * @param address объект подключения
+			 * @return        объект SSL контекста
 			 */
-			void wrap(ctx_t & target, ctx_t & source) noexcept;
-			/**
-			 * wrap Метод обертывания файлового дескриптора для клиента
-			 * @param target контекст назначения
-			 * @param source исходный контекст
-			 * @param url    параметры URL адреса для инициализации
-			 * @return       объект SSL контекста
-			 */
-			void wrap(ctx_t & target, ctx_t & source, const uri_t::url_t & url) noexcept;
+			void attach(ctx_t & target, addr_t * address) noexcept;
 		public:
 			/**
-			 * wrap1 Метод обертывания файлового дескриптора для сервера
+			 * wrap Метод обертывания файлового дескриптора для сервера
 			 * @param target  контекст назначения
 			 * @param address объект подключения
 			 * @param type    тип активного приложения
 			 * @return        объект SSL контекста
 			 */
-			void wrap1(ctx_t & target, addr_t * address, const type_t type) noexcept;
-			/**
-			 * wrap2 Метод обертывания файлового дескриптора для клиента
-			 * @param target  контекст назначения
-			 * @param address объект подключения
-			 * @param source  исходный контекст
-			 * @return        объект SSL контекста
-			 */
-			void wrap2(ctx_t & target, addr_t * address, const ctx_t & source) noexcept;
-
-			void wrap3(ctx_t & target) noexcept;
+			void wrap(ctx_t & target, addr_t * address, const type_t type) noexcept;
 		public:
 			/**
-			 * wrap Метод обертывания файлового дескриптора для сервера
+			 * wrapServer Метод обертывания файлового дескриптора для сервера
+			 * @param target контекст назначения
+			 * @param source исходный контекст
+			 * @return       объект SSL контекста
+			 */
+			void wrapServer(ctx_t & target, ctx_t & source) noexcept;
+			/**
+			 * wrapServer Метод обертывания файлового дескриптора для сервера
 			 * @param target  контекст назначения
 			 * @param address объект подключения
-			 * @param mode    флаг выполнения обертывания файлового дескриптора
 			 * @return        объект SSL контекста
 			 */
-			void wrap(ctx_t & target, addr_t * address, const bool mode) noexcept;
+			void wrapServer(ctx_t & target, addr_t * address) noexcept;
+		public:
 			/**
-			 * wrap Метод обертывания файлового дескриптора для клиента
+			 * wrapClient Метод обертывания файлового дескриптора для клиента
+			 * @param target контекст назначения
+			 * @param source исходный контекст
+			 * @param url    параметры URL адреса для инициализации
+			 * @return       объект SSL контекста
+			 */
+			void wrapClient(ctx_t & target, ctx_t & source, const uri_t::url_t & url) noexcept;
+			/**
+			 * wrapClient Метод обертывания файлового дескриптора для клиента
 			 * @param target  контекст назначения
 			 * @param address объект подключения
 			 * @param url     параметры URL адреса для инициализации
 			 * @return        объект SSL контекста
 			 */
-			void wrap(ctx_t & target, addr_t * address, const uri_t::url_t & url) noexcept;
+			void wrapClient(ctx_t & target, addr_t * address, const uri_t::url_t & url) noexcept;
 		public:
 			/**
-			 * setVerify Метод разрешающий или запрещающий, выполнять проверку соответствия, сертификата домену
+			 * verifyEnable Метод разрешающий или запрещающий, выполнять проверку соответствия, сертификата домену
 			 * @param mode флаг состояния разрешения проверки
 			 */
-			void setVerify(const bool mode) noexcept;
+			void verifyEnable(const bool mode) noexcept;
 			/**
-			 * setVerbose Метод установки флага, вывода информации о сертификате
-			 * @param mode флаг разрешающий вывод информации
+			 * ciphers Метод установки алгоритмов шифрования
+			 * @param ciphers список алгоритмов шифрования для установки
 			 */
-			void setVerbose(const bool mode) noexcept;
+			void ciphers(const vector <string> & ciphers) noexcept;
 			/**
-			 * setCipher Метод установки алгоритмов шифрования
-			 * @param cipher список алгоритмов шифрования для установки
-			 */
-			void setCipher(const vector <string> & cipher) noexcept;
-			/**
-			 * setTrusted Метод установки доверенного сертификата (CA-файла)
+			 * ca Метод установки доверенного сертификата (CA-файла)
 			 * @param trusted адрес доверенного сертификата (CA-файла)
 			 * @param path    адрес каталога где находится сертификат (CA-файл)
 			 */
-			void setTrusted(const string & trusted, const string & path = "") noexcept;
+			void ca(const string & trusted, const string & path = "") noexcept;
 			/**
 			 * setCert Метод установки файлов сертификата
 			 * @param chain файл цепочки сертификатов
 			 * @param key   приватный ключ сертификата (если требуется)
 			 */
-			void setCertificate(const string & chain, const string & key = "") noexcept;
+			void certificate(const string & chain, const string & key = "") noexcept;
 		public:
 			/**
 			 * Engine Конструктор

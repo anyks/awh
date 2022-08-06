@@ -22,11 +22,11 @@ void awh::server::WorkerWebSocket::clear() noexcept {
 	// Очищаем данные вокера
 	worker_t::clear();
 	// Очищаем список параметров адъютантов
-	this->coffers.clear();
+	this->_coffers.clear();
 	// Сбрасываем тип компрессии
 	this->compress = http_t::compress_t::NONE;
 	// Освобождаем выделенную память
-	map <size_t, unique_ptr <coffer_t>> ().swap(this->coffers);
+	map <size_t, unique_ptr <coffer_t>> ().swap(this->_coffers);
 }
 /**
  * set Метод создания параметров адъютанта
@@ -34,11 +34,11 @@ void awh::server::WorkerWebSocket::clear() noexcept {
  */
 void awh::server::WorkerWebSocket::set(const size_t aid) noexcept {
 	// Если идентификатор адъютанта передан
-	if((aid > 0) && (this->coffers.count(aid) < 1)){
+	if((aid > 0) && (this->_coffers.count(aid) < 1)){
 		// Добавляем адъютанта в список адъютантов
-		auto ret = this->coffers.emplace(aid, unique_ptr <coffer_t> (new coffer_t(this->fmk, this->log, &this->uri)));
+		auto ret = this->_coffers.emplace(aid, unique_ptr <coffer_t> (new coffer_t(this->fmk, this->log, &this->uri)));
 		// Устанавливаем метод сжатия
-		ret.first->second->http.setCompress(this->compress);
+		ret.first->second->http.compress(this->compress);
 		// Устанавливаем контрольную точку
 		ret.first->second->checkPoint = this->fmk->unixTimestamp();
 	}
@@ -51,9 +51,9 @@ void awh::server::WorkerWebSocket::rm(const size_t aid) noexcept {
 	// Если идентификатор адъютанта передан
 	if(aid > 0){
 		// Выполняем поиск адъютанта
-		auto it = this->coffers.find(aid);
+		auto it = this->_coffers.find(aid);
 		// Если адъютант найден, удаляем его
-		if(it != this->coffers.end()) this->coffers.erase(it);
+		if(it != this->_coffers.end()) this->_coffers.erase(it);
 	}
 }
 /**
@@ -67,9 +67,9 @@ const awh::server::WorkerWebSocket::coffer_t * awh::server::WorkerWebSocket::get
 	// Если идентификатор адъютанта передан
 	if(aid > 0){
 		// Выполняем поиск адъютанта
-		auto it = this->coffers.find(aid);
+		auto it = this->_coffers.find(aid);
 		// Если адъютант найден, выводим его параметры
-		if(it != this->coffers.end()) result = it->second.get();
+		if(it != this->_coffers.end()) result = it->second.get();
 	}
 	// Выводим результат
 	return result;

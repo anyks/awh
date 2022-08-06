@@ -118,13 +118,13 @@ namespace awh {
 			 * Стейты работы модуля
 			 */
 			enum class state_t : uint8_t {
-				AUTH,     // Режим ожидания прохождения аутентификации
-				METHOD,   // Режим ожидания получения метода
-				BROKEN,   // Режим бракованных данных
-				CONNECT,  // Режим выполнения подключения
-				REQUEST,  // Режим ожидания получения запроса
-				RESPONSE, // Режим ожидания получения ответа
-				HANDSHAKE // Режим выполненного рукопожатия
+				AUTH      = 0x01, // Режим ожидания прохождения аутентификации
+				METHOD    = 0x02, // Режим ожидания получения метода
+				BROKEN    = 0x03, // Режим бракованных данных
+				CONNECT   = 0x04, // Режим выполнения подключения
+				REQUEST   = 0x05, // Режим ожидания получения запроса
+				RESPONSE  = 0x06, // Режим ожидания получения ответа
+				HANDSHAKE = 0x07  // Режим выполненного рукопожатия
 			};
 			// Устанавливаем версию прокси-протокола
 			static constexpr uint8_t VER = 0x05;
@@ -192,22 +192,18 @@ namespace awh {
 			} __attribute__((packed)) ip_t;
 		protected:
 			// URL параметры REST запроса
-			uri_t::url_t url;
+			uri_t::url_t _url;
 		protected:
 			// Код сообщения
-			uint8_t code;
+			uint8_t _code;
 			// Стейт текущего запроса
-			state_t state;
+			state_t _state;
 		protected:
 			// Буфер бинарных данных
-			mutable vector <char> buffer;
+			mutable vector <char> _buffer;
 		protected:
-			// Создаём объект фреймворка
-			const fmk_t * fmk;
 			// Создаём объект работы с логами
-			const log_t * log;
-			// Создаём объект работы с URI ссылками
-			const uri_t * uri;
+			const log_t * _log;
 		protected:
 			/**
 			 * ipToHex Метод конвертации IP адреса в бинарный буфер
@@ -226,26 +222,26 @@ namespace awh {
 			string hexToIp(const char * buffer, const size_t size, const int family = AF_INET) const noexcept;
 		protected:
 			/**
-			 * setText Метод установки в буфер текстовых данных
+			 * text Метод установки в буфер текстовых данных
 			 * @param text текст для установки
 			 * @return     текущее значение смещения
 			 */
-			u_short setText(const string & text) const noexcept;
+			u_short text(const string & text) const noexcept;
 			/**
-			 * getText Метод извлечения текстовых данных из буфера
+			 * text Метод извлечения текстовых данных из буфера
 			 * @param buffer буфер данных для извлечения текста
 			 * @param size   размер буфера данных
 			 * @return       текст содержащийся в буфере данных
 			 */
-			const string getText(const char * buffer, const size_t size) const noexcept;
+			const string text(const char * buffer, const size_t size) const noexcept;
 		protected:
 			/**
-			 * setOctet Метод установки октета
+			 * octet Метод установки октета
 			 * @param octet  октет для установки
 			 * @param offset размер смещения в буфере
 			 * @return       текущее значение смещения
 			 */
-			u_short setOctet(const uint8_t octet, const u_short offset = 0) const noexcept;
+			u_short octet(const uint8_t octet, const u_short offset = 0) const noexcept;
 		public:
 			/**
 			 * isEnd Метод проверки завершения обработки
@@ -264,16 +260,16 @@ namespace awh {
 			bool isHandshake() const noexcept;
 		public:
 			/**
-			 * getCode Метод получения кода сообщения
+			 * code Метод получения кода сообщения
 			 * @return код сообщения
 			 */
-			uint8_t getCode() const noexcept;
+			uint8_t code() const noexcept;
 			/**
-			 * getMessage Метод получения сообщения
+			 * message Метод получения сообщения
 			 * @param code код сообщения
 			 * @return     текстовое значение кода
 			 */
-			const string & getMessage(const uint8_t code) const noexcept;
+			const string & message(const uint8_t code) const noexcept;
 		public:
 			/**
 			 * get Метод извлечения буфера запроса/ответа
@@ -294,18 +290,16 @@ namespace awh {
 			virtual void reset() noexcept = 0;
 		public:
 			/**
-			 * setUrl Метод установки URL параметров REST запроса
+			 * url Метод установки URL параметров REST запроса
 			 * @param url параметры REST запроса
 			 */
-			void setUrl(const uri_t::url_t & url) noexcept;
+			void url(const uri_t::url_t & url) noexcept;
 		public:
 			/**
 			 * Socks5 Конструктор
-			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
-			 * @param uri объект для работы с URI
 			 */
-			Socks5(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcept : code(0x00), state(state_t::METHOD), fmk(fmk), log(log), uri(uri) {}
+			Socks5(const log_t * log) noexcept : _code(0x00), _state(state_t::METHOD), _log(log) {}
 			/**
 			 * ~Socks5 Деструктор
 			 */

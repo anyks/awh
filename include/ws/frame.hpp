@@ -174,9 +174,9 @@ namespace awh {
 			} head_t;
 		private:
 			// Создаём объект фреймворка
-			const fmk_t * fmk = nullptr;
+			const fmk_t * _fmk;
 			// Создаём объект работы с логами
-			const log_t * log = nullptr;
+			const log_t * _log;
 		private:
 			/**
 			 * head Метод извлечения заголовка фрейма
@@ -244,7 +244,7 @@ namespace awh {
 			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
 			 */
-			Frame(const fmk_t * fmk, const log_t * log) noexcept : fmk(fmk), log(log) {}
+			Frame(const fmk_t * fmk, const log_t * log) noexcept : _fmk(fmk), _log(log) {}
 	} frame_t;
 };
 

@@ -24,7 +24,7 @@ void awh::server::WS::update() noexcept {
 	// Список доступных расширений
 	vector <wstring> extensions;
 	// Получаем значение заголовка Sec-Websocket-Extensions
-	const string & ext = this->web.getHeader("sec-websocket-extensions");
+	const string & ext = this->web.header("sec-websocket-extensions");
 	// Если заголовки расширений найдены
 	if(!ext.empty()){
 		// Выполняем разделение параметров расширений
@@ -40,58 +40,58 @@ void awh::server::WS::update() noexcept {
 					// Определяем размер шифрования
 					switch(stoi(val.substr(19))){
 						// Если шифрование произведено 128 битным ключём
-						case 128: this->hash.setAES(hash_t::aes_t::AES128); break;
+						case 128: this->hash.cipher(hash_t::cipher_t::AES128); break;
 						// Если шифрование произведено 192 битным ключём
-						case 192: this->hash.setAES(hash_t::aes_t::AES192); break;
+						case 192: this->hash.cipher(hash_t::cipher_t::AES192); break;
 						// Если шифрование произведено 256 битным ключём
-						case 256: this->hash.setAES(hash_t::aes_t::AES256); break;
+						case 256: this->hash.cipher(hash_t::cipher_t::AES256); break;
 					}
 				// Если клиент просит отключить перехват контекста сжатия для сервера
 				} else if(val.compare(L"server_no_context_takeover") == 0) {
 					// Выполняем отключение перехвата контекста
-					this->noServerTakeover = true;
+					this->_noServerTakeover = true;
 					// Выполняем отключение перехвата контекста
-					this->noClientTakeover = true;
+					this->_noClientTakeover = true;
 				// Если клиент просит отключить перехват контекста сжатия для клиента
 				} else if(val.compare(L"client_no_context_takeover") == 0)
 					// Выполняем отключение перехвата контекста
-					this->noClientTakeover = true;
+					this->_noClientTakeover = true;
 				// Если получены заголовки требующие сжимать передаваемые фреймы методом Deflate
 				else if((val.compare(L"permessage-deflate") == 0) || (val.compare(L"perframe-deflate") == 0)) {
 					// Устанавливаем требование выполнять компрессию полезной нагрузки
-					if((this->compress != compress_t::DEFLATE) && (this->compress != compress_t::ALL_COMPRESS)) this->compress = compress_t::NONE;
+					if((this->_compress != compress_t::DEFLATE) && (this->_compress != compress_t::ALL_COMPRESS)) this->_compress = compress_t::NONE;
 				// Если получены заголовки требующие сжимать передаваемые фреймы методом GZip
 				} else if((val.compare(L"permessage-gzip") == 0) || (val.compare(L"perframe-gzip") == 0)) {
 					// Устанавливаем требование выполнять компрессию полезной нагрузки
-					if((this->compress != compress_t::GZIP) && (this->compress != compress_t::ALL_COMPRESS)) this->compress = compress_t::NONE;
+					if((this->_compress != compress_t::GZIP) && (this->_compress != compress_t::ALL_COMPRESS)) this->_compress = compress_t::NONE;
 				// Если получены заголовки требующие сжимать передаваемые фреймы методом Brotli
 				} else if((val.compare(L"permessage-br") == 0) || (val.compare(L"perframe-br") == 0)) {
 					// Устанавливаем требование выполнять компрессию полезной нагрузки
-					if((this->compress != compress_t::BROTLI) && (this->compress != compress_t::ALL_COMPRESS)) this->compress = compress_t::NONE;
+					if((this->_compress != compress_t::BROTLI) && (this->_compress != compress_t::ALL_COMPRESS)) this->_compress = compress_t::NONE;
 				// Если размер скользящего окна для клиента получен
 				} else if(val.find(L"client_max_window_bits=") != wstring::npos) {
 					// Устанавливаем размер скользящего окна
-					if(this->compress != compress_t::NONE) this->wbitClient = stoi(val.substr(23));
+					if(this->_compress != compress_t::NONE) this->_wbitClient = stoi(val.substr(23));
 				// Если разрешено использовать максимальный размер скользящего окна для клиента
 				} else if(val.compare(L"client_max_window_bits") == 0) {
 					// Устанавливаем максимальный размер скользящего окна
-					if(this->compress != compress_t::NONE) this->wbitClient = GZIP_MAX_WBITS;
+					if(this->_compress != compress_t::NONE) this->_wbitClient = GZIP_MAX_WBITS;
 				}
 			}
 		}
 	}
 	// Если протоколы установлены и система является сервером
-	if(!this->subs.empty()){
+	if(!this->_subs.empty()){
 		// Получаем список доступных заголовков
-		const auto & headers = this->web.getHeaders();
+		const auto & headers = this->web.headers();
 		// Получаем список подпротоколов
 		auto ret = headers.equal_range("sec-websocket-protocol");
 		// Перебираем все варианты желаемой версии
 		for(auto it = ret.first; it != ret.second; ++it){
 			// Проверяем, соответствует ли желаемый подпротокол нашему
-			if((this->subs.count(it->second) > 0)){
+			if((this->_subs.count(it->second) > 0)){
 				// Устанавливаем выбранный подпротокол
-				this->sub = it->second;
+				this->_sub = it->second;
 				// Выходим из цикла
 				break;
 			}
@@ -106,11 +106,11 @@ bool awh::server::WS::checkKey() noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Получаем параметры ключа клиента
-	const string & key = this->web.getHeader("sec-websocket-key");
+	const string & key = this->web.header("sec-websocket-key");
 	// Если параметры авторизации найдены
 	if((result = !key.empty()))
 		// Устанавливаем ключ клиента
-		this->key = key;
+		this->_key = key;
 	// Выводим результат
 	return result;
 }
@@ -122,7 +122,7 @@ bool awh::server::WS::checkVer() noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Получаем список доступных заголовков
-	const auto & headers = this->web.getHeaders();
+	const auto & headers = this->web.headers();
 	// Получаем список версий протоколов
 	auto ret = headers.equal_range("sec-websocket-version");
 	// Перебираем все варианты желаемой версии
@@ -143,13 +143,13 @@ awh::Http::stath_t awh::server::WS::checkAuth() noexcept {
 	// Результат работы функции
 	http_t::stath_t result = http_t::stath_t::FAULT;
 	// Если авторизация требуется
-	if(this->auth.server.getType() != awh::auth_t::type_t::NONE){
+	if(this->auth.server.type() != awh::auth_t::type_t::NONE){
 		// Получаем параметры авторизации
-		const string & auth = this->web.getHeader("authorization");
+		const string & auth = this->web.header("authorization");
 		// Если параметры авторизации найдены
 		if(!auth.empty()){
 			// Устанавливаем заголовок HTTP в параметры авторизации
-			this->auth.server.setHeader(auth);
+			this->auth.server.header(auth);
 			// Выполняем проверку авторизации
 			if(this->auth.server.check("get"))
 				// Устанавливаем успешный результат авторизации
@@ -161,43 +161,43 @@ awh::Http::stath_t awh::server::WS::checkAuth() noexcept {
 	return result;
 }
 /**
- * setRealm Метод установки название сервера
+ * realm Метод установки название сервера
  * @param realm название сервера
  */
-void awh::server::WS::setRealm(const string & realm) noexcept {
+void awh::server::WS::realm(const string & realm) noexcept {
 	// Если название сервера передано
-	if(!realm.empty()) this->auth.server.setRealm(realm);
+	if(!realm.empty()) this->auth.server.realm(realm);
 }
 /**
- * setOpaque Метод установки временного ключа сессии сервера
+ * opaque Метод установки временного ключа сессии сервера
  * @param opaque временный ключ сессии сервера
  */
-void awh::server::WS::setOpaque(const string & opaque) noexcept {
+void awh::server::WS::opaque(const string & opaque) noexcept {
 	// Если временный ключ сессии сервера передан
-	if(!opaque.empty()) this->auth.server.setOpaque(opaque);
+	if(!opaque.empty()) this->auth.server.opaque(opaque);
 }
 /**
- * setExtractPassCallback Метод добавления функции извлечения пароля
+ * extractPassCallback Метод добавления функции извлечения пароля
  * @param callback функция обратного вызова для извлечения пароля
  */
-void awh::server::WS::setExtractPassCallback(function <string (const string &)> callback) noexcept {
+void awh::server::WS::extractPassCallback(function <string (const string &)> callback) noexcept {
 	// Устанавливаем внешнюю функцию
-	this->auth.server.setExtractPassCallback(callback);
+	this->auth.server.extractPassCallback(callback);
 }
 /**
- * setAuthCallback Метод добавления функции обработки авторизации
+ * authCallback Метод добавления функции обработки авторизации
  * @param callback функция обратного вызова для обработки авторизации
  */
-void awh::server::WS::setAuthCallback(function <bool (const string &, const string &)> callback) noexcept {
+void awh::server::WS::authCallback(function <bool (const string &, const string &)> callback) noexcept {
 	// Устанавливаем внешнюю функцию
-	this->auth.server.setAuthCallback(callback);
+	this->auth.server.authCallback(callback);
 }
 /**
- * setAuthType Метод установки типа авторизации
+ * authType Метод установки типа авторизации
  * @param type тип авторизации
  * @param hash алгоритм шифрования для Digest авторизации
  */
-void awh::server::WS::setAuthType(const awh::auth_t::type_t type, const awh::auth_t::hash_t hash) noexcept {
+void awh::server::WS::authType(const awh::auth_t::type_t type, const awh::auth_t::hash_t hash) noexcept {
 	// Устанавливаем тип авторизации
-	this->auth.server.setType(type, hash);
+	this->auth.server.type(type, hash);
 }

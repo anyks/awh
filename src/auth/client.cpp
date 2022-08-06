@@ -16,46 +16,46 @@
 #include <auth/client.hpp>
 
 /**
- * setUri Метод установки параметров HTTP запроса
+ * uri Метод установки параметров HTTP запроса
  * @param uri строка параметров HTTP запроса
  */
-void awh::client::Auth::setUri(const string & uri) noexcept {
+void awh::client::Auth::uri(const string & uri) noexcept {
 	// Если параметры HTTP запроса переданы
-	if(!uri.empty()) this->digest.uri = uri;
+	if(!uri.empty()) this->_digest.uri = uri;
 }
 /**
- * setUser Метод установки логина пользователя
+ * user Метод установки логина пользователя
  * @param user логин пользователя для установки
  */
-void awh::client::Auth::setUser(const string & user) noexcept {
+void awh::client::Auth::user(const string & user) noexcept {
 	// Устанавливаем пользователя
-	this->user = user;
+	this->_user = user;
 }
 /**
- * setPass Метод установки пароля пользователя
+ * pass Метод установки пароля пользователя
  * @param pass пароль пользователя для установки
  */
-void awh::client::Auth::setPass(const string & pass) noexcept {
+void awh::client::Auth::pass(const string & pass) noexcept {
 	// Устанавливаем пароль пользвоателя
-	this->pass = pass;
+	this->_pass = pass;
 }
 /**
- * setHeader Метод установки параметров авторизации из заголовков
+ * header Метод установки параметров авторизации из заголовков
  * @param header заголовок HTTP с параметрами авторизации
  */
-void awh::client::Auth::setHeader(const string & header) noexcept {
+void awh::client::Auth::header(const string & header) noexcept {
 	// Если заголовок передан
-	if(!header.empty() && (this->fmk != nullptr)){
+	if(!header.empty() && (this->_fmk != nullptr)){
 		// Выполняем поиск авторизации
 		size_t pos = string::npos;
 		// Если тип авторизации Basic получен
 		if((pos = header.find("Basic")) != string::npos)
 			// Устанавливаем тип авторизации
-			this->type = type_t::BASIC;
+			this->_type = type_t::BASIC;
 		// Если тип авторизации Digest получен
 		else if((pos = header.find("Digest")) != string::npos) {
 			// Устанавливаем тип авторизации
-			this->type = type_t::DIGEST;
+			this->_type = type_t::DIGEST;
 			// Получаем параметры авторизации
 			const string & digest = header.substr(pos + 7);
 			// Если параметры дайджест авторизации получены
@@ -63,7 +63,7 @@ void awh::client::Auth::setHeader(const string & header) noexcept {
 				// Список параметров
 				vector <wstring> params;
 				// Выполняем разделение параметров расширений
-				this->fmk->split(digest, ",", params);
+				this->_fmk->split(digest, ",", params);
 				// Если список параметров получен
 				if(!params.empty()){
 					// Ключ и значение параметра
@@ -81,37 +81,37 @@ void awh::client::Auth::setHeader(const string & header) noexcept {
 								// Удаляем кавычки
 								value.assign(value.begin() + 1, value.end() - 1);
 								// Устанавливаем relam
-								this->digest.realm = this->fmk->convert(value);
+								this->_digest.realm = this->_fmk->convert(value);
 							// Если параметр является ключём сгенерированным сервером
 							} else if(key.compare(L"nonce") == 0) {
 								// Удаляем кавычки
 								value.assign(value.begin() + 1, value.end() - 1);
 								// Устанавливаем nonce
-								this->digest.nonce = this->fmk->convert(value);
+								this->_digest.nonce = this->_fmk->convert(value);
 							// Если параметр является ключём сервера
 							} else if(key.compare(L"opaque") == 0) {
 								// Удаляем кавычки
 								value.assign(value.begin() + 1, value.end() - 1);
 								// Устанавливаем opaque
-								this->digest.opaque = this->fmk->convert(value);
+								this->_digest.opaque = this->_fmk->convert(value);
 							// Если параметр является алгоритмом
 							} else if(key.compare(L"algorithm") == 0) {
 								// Удаляем кавычки
 								value.assign(value.begin() + 1, value.end() - 1);
 								// Переводим в нижний регистр
-								value = this->fmk->toLower(value);
+								value = this->_fmk->toLower(value);
 								// Если алгоритм является MD5
-								if(value.compare(L"md5") == 0) this->digest.hash = hash_t::MD5;
+								if(value.compare(L"md5") == 0) this->_digest.hash = hash_t::MD5;
 								// Если алгоритм является SHA1
-								else if(value.compare(L"sha1") == 0) this->digest.hash = hash_t::SHA1;
+								else if(value.compare(L"sha1") == 0) this->_digest.hash = hash_t::SHA1;
 								// Если алгоритм является SHA256
-								else if(value.compare(L"sha256") == 0) this->digest.hash = hash_t::SHA256;
+								else if(value.compare(L"sha256") == 0) this->_digest.hash = hash_t::SHA256;
 								// Если алгоритм является SHA512
-								else if(value.compare(L"sha512") == 0) this->digest.hash = hash_t::SHA512;
+								else if(value.compare(L"sha512") == 0) this->_digest.hash = hash_t::SHA512;
 							// Если параметр является типом авторизации
 							} else if(key.compare(L"qop") == 0)
 								// Если тип авторизации передан верно
-								if(value.find(L"auth") != wstring::npos) this->digest.qop = "auth";
+								if(value.find(L"auth") != wstring::npos) this->_digest.qop = "auth";
 						}
 					}
 				}
@@ -120,12 +120,12 @@ void awh::client::Auth::setHeader(const string & header) noexcept {
 	}
 }
 /**
- * getHeader Метод получения строки авторизации HTTP заголовка
+ * header Метод получения строки авторизации HTTP заголовка
  * @param method метод HTTP запроса
  * @param mode   режим вывода только значения заголовка
  * @return       строка авторизации
  */
-const string awh::client::Auth::getHeader(const string & method, const bool mode) noexcept {
+const string awh::client::Auth::header(const string & method, const bool mode) noexcept {
 	// Результат работы функции
 	string result = "";
 	/**
@@ -133,68 +133,68 @@ const string awh::client::Auth::getHeader(const string & method, const bool mode
 	 */
 	try {
 		// Если логин и пароль установлены
-		if(!this->user.empty() && !this->pass.empty()){
+		if(!this->_user.empty() && !this->_pass.empty()){
 			// Определяем тип авторизации
-			switch((uint8_t) this->type){
+			switch((uint8_t) this->_type){
 				// Если тип авторизации Digest
 				case (uint8_t) type_t::DIGEST: {
 					// Если данные необходимые для продолжения работы переданы сервером
-					if(!method.empty() && !this->digest.nonce.empty() && !this->digest.opaque.empty()){
+					if(!method.empty() && !this->_digest.nonce.empty() && !this->_digest.opaque.empty()){
 						// Параметры проверки дайджест авторизации
 						digest_t digest;
 						// Если ключ клиента не создан, создаём его
-						if(this->digest.cnonce.empty()){
+						if(this->_digest.cnonce.empty()){
 							// Устанавливаем ключ клиента
-							this->digest.cnonce = this->fmk->md5(to_string(time(nullptr)));
+							this->_digest.cnonce = this->_fmk->md5(to_string(time(nullptr)));
 							// Обрезаем лишние символы
-							this->digest.cnonce.assign(this->digest.cnonce.begin() + 12, this->digest.cnonce.end() - 12);
+							this->_digest.cnonce.assign(this->_digest.cnonce.begin() + 12, this->_digest.cnonce.end() - 12);
 						}
 						// Выполняем инкрементацию счётчика
-						this->digest.nc = this->fmk->decToHex((this->fmk->hexToDec(this->digest.nc) + 1));
+						this->_digest.nc = this->_fmk->decToHex((this->_fmk->hexToDec(this->_digest.nc) + 1));
 						// Добавляем нули в начало счётчика
-						for(u_short i = 0; i < (8 - this->digest.nc.size()); i++)
+						for(u_short i = 0; i < (8 - this->_digest.nc.size()); i++)
 							// Добавляем ноль в начало счётчика
-							this->digest.nc.insert(0, "0");
+							this->_digest.nc.insert(0, "0");
 						// Устанавливаем параметры для проверки
-						digest.nc     = this->digest.nc;
-						digest.uri    = this->digest.uri;
-						digest.qop    = this->digest.qop;
-						digest.hash   = this->digest.hash;
-						digest.realm  = this->digest.realm;
-						digest.nonce  = this->digest.nonce;
-						digest.opaque = this->digest.opaque;
-						digest.cnonce = this->digest.cnonce;
+						digest.nc     = this->_digest.nc;
+						digest.uri    = this->_digest.uri;
+						digest.qop    = this->_digest.qop;
+						digest.hash   = this->_digest.hash;
+						digest.realm  = this->_digest.realm;
+						digest.nonce  = this->_digest.nonce;
+						digest.opaque = this->_digest.opaque;
+						digest.cnonce = this->_digest.cnonce;
 						// Формируем ответ серверу
-						const string & response = this->response(this->fmk->toUpper(method), this->user, this->pass, digest);
+						const string & response = this->response(this->_fmk->toUpper(method), this->_user, this->_pass, digest);
 						// Если ответ получен
 						if(!response.empty()){
 							// Если нужно вывести только значение заголовка
 							if(mode)
 								// Создаём строку запроса авторизации
-								result = this->fmk->format(
+								result = this->_fmk->format(
 									"Digest username=\"%s\", realm=\"%s\", nonce=\"%s\", uri=\"%s\", qop=%s, nc=%s, cnonce=\"%s\", opaque=\"%s\", response=\"%s\"",
-									this->user.c_str(),
-									this->digest.realm.c_str(),
-									this->digest.nonce.c_str(),
-									this->digest.uri.c_str(),
-									this->digest.qop.c_str(),
-									this->digest.nc.c_str(),
-									this->digest.cnonce.c_str(),
-									this->digest.opaque.c_str(),
+									this->_user.c_str(),
+									this->_digest.realm.c_str(),
+									this->_digest.nonce.c_str(),
+									this->_digest.uri.c_str(),
+									this->_digest.qop.c_str(),
+									this->_digest.nc.c_str(),
+									this->_digest.cnonce.c_str(),
+									this->_digest.opaque.c_str(),
 									response.c_str()
 								);
 							// Если нужно вывести полную строку запроса
 							else {
-								result = this->fmk->format(
+								result = this->_fmk->format(
 									"Authorization: Digest username=\"%s\", realm=\"%s\", nonce=\"%s\", uri=\"%s\", qop=%s, nc=%s, cnonce=\"%s\", opaque=\"%s\", response=\"%s\"\r\n",
-									this->user.c_str(),
-									this->digest.realm.c_str(),
-									this->digest.nonce.c_str(),
-									this->digest.uri.c_str(),
-									this->digest.qop.c_str(),
-									this->digest.nc.c_str(),
-									this->digest.cnonce.c_str(),
-									this->digest.opaque.c_str(),
+									this->_user.c_str(),
+									this->_digest.realm.c_str(),
+									this->_digest.nonce.c_str(),
+									this->_digest.uri.c_str(),
+									this->_digest.qop.c_str(),
+									this->_digest.nc.c_str(),
+									this->_digest.cnonce.c_str(),
+									this->_digest.opaque.c_str(),
 									response.c_str()
 								);
 							}
@@ -204,20 +204,20 @@ const string awh::client::Auth::getHeader(const string & method, const bool mode
 				// Если тип авторизации Basic
 				case (uint8_t) type_t::BASIC: {					
 					// Выводим результат
-					result = base64_t().encode(this->fmk->format("%s:%s", this->user.c_str(), this->pass.c_str()));
+					result = base64_t().encode(this->_fmk->format("%s:%s", this->_user.c_str(), this->_pass.c_str()));
 					// Если нужно вывести только значение заголовка
 					if(mode)
 						// Формируем заголовок авторизации
-						result = this->fmk->format("Basic %s", result.c_str());
+						result = this->_fmk->format("Basic %s", result.c_str());
 					// Если нужно вывести полную строку запроса
-					else result = this->fmk->format("Authorization: Basic %s\r\n", result.c_str());
+					else result = this->_fmk->format("Authorization: Basic %s\r\n", result.c_str());
 				} break;
 			}
 		}
 	// Выполняем прехват ошибки
 	} catch(const exception & error) {
 		// Выводим в лог сообщение
-		this->log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 	}
 	// Выводим результат
 	return result;

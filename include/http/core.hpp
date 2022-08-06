@@ -158,10 +158,10 @@ namespace awh {
 			 * Стейты работы модуля
 			 */
 			enum class state_t : uint8_t {
-				NONE,     // Режим стейта не выставлен
-				GOOD,     // Режим удачного выполнения запроса
-				BROKEN,   // Режим бракованных данных
-				HANDSHAKE // Режим выполненного рукопожатия
+				NONE      = 0x00, // Режим стейта не выставлен
+				GOOD      = 0x01, // Режим удачного выполнения запроса
+				BROKEN    = 0x02, // Режим бракованных данных
+				HANDSHAKE = 0x03  // Режим выполненного рукопожатия
 			};
 		protected:
 			// Создаём объект HTTP парсера
@@ -178,45 +178,49 @@ namespace awh {
 			mutable uri_t::url_t url;
 		protected:
 			// Флаг зашифрованных данных
-			mutable bool crypt = false;
+			mutable bool crypt;
 			// Флаг проверки аутентификации
-			mutable bool failAuth = false;
+			mutable bool failAuth;
+		private:
 			// Флаг разрешающий передавать тело чанками
-			mutable bool chunking = false;
-		protected:
+			mutable bool _chunking;
+		private:
 			// Размер одного чанка
-			size_t chunkSize = BUFFER_CHUNK;
-		protected:
-			// Название сервиса
-			string servName = AWH_NAME;
-			// Версия библиотеки приложения
-			string servVer = AWH_VERSION;
+			size_t _chunk;
+		private:
 			// Идентификатор сервиса
-			string servId = AWH_SHORT_NAME;
+			string _servId;
+			// Версия библиотеки приложения
+			string _servVer;
+			// Название сервиса
+			string _servName;
+		private:
 			// User-Agent для HTTP запроса
-			mutable string userAgent = HTTP_HEADER_AGENT;
+			mutable string _userAgent;
 		protected:
 			// Стейт проверки авторизации
-			stath_t stath = stath_t::NONE;
+			stath_t stath;
 			// Стейт текущего запроса
-			state_t state = state_t::NONE;
+			state_t state;
+		private:
 			// Метод компрессии отправляемых данных
-			compress_t compress = compress_t::NONE;
+			compress_t _compress;
+		protected:
 			// Тип используемого HTTP модуля
-			web_t::hid_t httpType = web_t::hid_t::NONE;
+			web_t::hid_t httpType;
 		protected:
 			// Чёрный список заголовков
 			mutable unordered_set <string> black;
 		private:
 			// Функция вызова при получении чанка
-			function <void (const vector <char> &, const Http *)> chunkingFn = nullptr;
+			function <void (const vector <char> &, const Http *)> _fn;
 		protected:
 			// Создаём объект фреймворка
-			const fmk_t * fmk = nullptr;
+			const fmk_t * fmk;
 			// Создаём объект работы с логами
-			const log_t * log = nullptr;
+			const log_t * log;
 			// Создаём объект работы с URI
-			const uri_t * uri = nullptr;
+			const uri_t * uri;
 		private:
 			/**
 			 * chunkingCallback Функция вывода полученных чанков полезной нагрузки
@@ -264,39 +268,27 @@ namespace awh {
 			size_t parse(const char * buffer, const size_t size) noexcept;
 		public:
 			/**
-			 * setBody Метод установки данных тела
-			 * @param body буфер тела для установки
-			 */
-			void setBody(const vector <char> & body) noexcept;
-			/**
-			 * addBody Метод добавления буфера тела данных запроса
-			 * @param buffer буфер данных тела запроса
-			 * @param size   размер буфера данных
-			 */
-			void addBody(const char * buffer, const size_t size) noexcept;
-		public:
-			/**
-			 * addHeader Метод добавления заголовка
-			 * @param key ключ заголовка
-			 * @param val значение заголовка
-			 */
-			void addHeader(const string & key, const string & val) noexcept;
-			/**
-			 * setHeaders Метод установки списка заголовков
-			 * @param headers список заголовков для установки
-			 */
-			void setHeaders(const unordered_multimap <string, string> & headers) noexcept;
-		public:
-			/**
 			 * payload Метод чтения чанка тела запроса
 			 * @return текущий чанк запроса
 			 */
 			const vector <char> payload() const noexcept;
+		public:
 			/**
-			 * getBody Метод получения данных тела запроса
+			 * body Метод получения данных тела запроса
 			 * @return буфер данных тела запроса
 			 */
-			const vector <char> & getBody() const noexcept;
+			const vector <char> & body() const noexcept;
+			/**
+			 * body Метод установки данных тела
+			 * @param body буфер тела для установки
+			 */
+			void body(const vector <char> & body) noexcept;
+			/**
+			 * body Метод добавления буфера тела данных запроса
+			 * @param buffer буфер данных тела запроса
+			 * @param size   размер буфера данных
+			 */
+			void body(const char * buffer, const size_t size) noexcept;
 		public:
 			/**
 			 * rmHeader Метод удаления заголовка
@@ -304,16 +296,28 @@ namespace awh {
 			 */
 			void rmHeader(const string & key) noexcept;
 			/**
-			 * getHeader Метод получения данных заголовка
+			 * header Метод получения данных заголовка
 			 * @param key ключ заголовка
 			 * @return    значение заголовка
 			 */
-			const string & getHeader(const string & key) const noexcept;
+			const string & header(const string & key) const noexcept;
 			/**
-			 * getHeaders Метод получения списка заголовков
+			 * header Метод добавления заголовка
+			 * @param key ключ заголовка
+			 * @param val значение заголовка
+			 */
+			void header(const string & key, const string & val) noexcept;
+		public:
+			/**
+			 * headers Метод получения списка заголовков
 			 * @return список существующих заголовков
 			 */
-			const unordered_multimap <string, string> & getHeaders() const noexcept;
+			const unordered_multimap <string, string> & headers() const noexcept;
+			/**
+			 * headers Метод установки списка заголовков
+			 * @param headers список заголовков для установки
+			 */
+			void headers(const unordered_multimap <string, string> & headers) noexcept;
 		public:
 			/**
 			 * getAuth Метод проверки статуса авторизации
@@ -322,20 +326,20 @@ namespace awh {
 			stath_t getAuth() const noexcept;
 		public:
 			/**
-			 * extractCompression Метод извлечения метода компрессии
+			 * compression Метод извлечения метода компрессии
 			 * @return метод компрессии
 			 */
-			compress_t extractCompression() const noexcept;
+			compress_t compression() const noexcept;
 			/**
-			 * getCompress Метод получения метода компрессии
+			 * compress Метод получения метода компрессии
 			 * @return метод компрессии сообщений
 			 */
-			virtual compress_t getCompress() const noexcept;
+			virtual compress_t compress() const noexcept;
 			/**
-			 * setCompress Метод установки метода компрессии
+			 * compress Метод установки метода компрессии
 			 * @param compress метод компрессии сообщений
 			 */
-			virtual void setCompress(const compress_t compress) noexcept;
+			virtual void compress(const compress_t compress) noexcept;
 		public:
 			/**
 			 * getUrl Метод извлечения параметров запроса
@@ -377,15 +381,15 @@ namespace awh {
 			bool isHeader(const string & key) const noexcept;
 		public:
 			/**
-			 * getQuery Метод получения объекта запроса сервера
+			 * query Метод получения объекта запроса сервера
 			 * @return объект запроса сервера
 			 */
-			const web_t::query_t & getQuery() const noexcept;
+			const web_t::query_t & query() const noexcept;
 			/**
-			 * setQuery Метод добавления объекта запроса клиента
+			 * query Метод добавления объекта запроса клиента
 			 * @param query объект запроса клиента
 			 */
-			void setQuery(const web_t::query_t & query) noexcept;
+			void query(const web_t::query_t & query) noexcept;
 		public:
 			/**
 			 * date Метод получения текущей даты для HTTP запроса
@@ -394,11 +398,11 @@ namespace awh {
 			 */
 			const string date(const time_t stamp = 0) const noexcept;
 			/**
-			 * getMessage Метод получения HTTP сообщения
+			 * message Метод получения HTTP сообщения
 			 * @param code код сообщения для получение
 			 * @return     соответствующее коду HTTP сообщение
 			 */
-			const string & getMessage(const u_int code) const noexcept;
+			const string & message(const u_int code) const noexcept;
 		public:
 			/**
 			 * decode Метод декодирования полученных чанков
@@ -455,36 +459,36 @@ namespace awh {
 			vector <char> request(const uri_t::url_t & url, const web_t::method_t method) const noexcept;
 		public:
 			/**
-			 * setChunkingFn Метод установки функции обратного вызова для получения чанков
+			 * chunking Метод установки функции обратного вызова для получения чанков
 			 * @param callback функция обратного вызова
 			 */
-			void setChunkingFn(function <void (const vector <char> &, const Http *)> callback) noexcept;
+			void chunking(function <void (const vector <char> &, const Http *)> callback) noexcept;
 		public:
 			/**
-			 * setChunkSize Метод установки размера чанка
+			 * chunk Метод установки размера чанка
 			 * @param size размер чанка для установки
 			 */
-			void setChunkSize(const size_t size) noexcept;
+			void chunk(const size_t size) noexcept;
 			/**
-			 * setUserAgent Метод установки User-Agent для HTTP запроса
+			 * userAgent Метод установки User-Agent для HTTP запроса
 			 * @param userAgent агент пользователя для HTTP запроса
 			 */
-			void setUserAgent(const string & userAgent) noexcept;
+			void userAgent(const string & userAgent) noexcept;
 		public:
 			/**
-			 * setServ Метод установки данных сервиса
+			 * serv Метод установки данных сервиса
 			 * @param id   идентификатор сервиса
 			 * @param name название сервиса
 			 * @param ver  версия сервиса
 			 */
-			void setServ(const string & id, const string & name, const string & ver) noexcept;
+			void serv(const string & id, const string & name, const string & ver) noexcept;
 			/**
-			 * setCrypt Метод установки параметров шифрования
+			 * crypto Метод установки параметров шифрования
 			 * @param pass пароль шифрования передаваемых данных
 			 * @param salt соль шифрования передаваемых данных
 			 * @param aes  размер шифрования передаваемых данных
 			 */
-			void setCrypt(const string & pass, const string & salt = "", const hash_t::aes_t aes = hash_t::aes_t::AES128) noexcept;
+			void crypto(const string & pass, const string & salt = "", const hash_t::cipher_t aes = hash_t::cipher_t::AES128) noexcept;
 		public:
 			/**
 			 * Http Конструктор

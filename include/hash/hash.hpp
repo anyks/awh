@@ -72,58 +72,70 @@ namespace awh {
 			/**
 			 * State Стрейт шифрования
 			 */
-			mutable struct StateAES {
+			mutable struct State {
 				// Количество обработанных байт
 				int num;
 				// Буфер данных для шифрования
 				u_char ivec[AES_BLOCK_SIZE];
 				/**
-				 * StateAES Конструктор
+				 * State Конструктор
 				 */
-				StateAES() : num(0) {}
-			} stateAES;
+				State() : num(0) {}
+			} _state;
 		public:
 			// Уровень сжатия
 			u_int levelGzip = Z_DEFAULT_COMPRESSION;
 			/**
 			 * Набор размеров шифрования
 			 */
-			enum class aes_t : u_short {AES128 = 128, AES192 = 192, AES256 = 256};
+			enum class cipher_t : uint16_t {
+				AES128 = 128, // Размер шифрования 128 бит
+				AES192 = 192, // Размер шифрования 192 бит
+				AES256 = 256  // Размер шифрования 256 бит
+			};
+			/**
+			 * Методы компрессии
+			 */
+			enum class method_t : uint8_t {
+				GZIP    = 0x01, // Метод сжатия GZIP
+				BROTLI  = 0x02, // Метод сжатия BROTLI
+				DEFLATE = 0x03  // Метод сжатия DEFLATE
+			};
 		private:
-			// Устанавливаем количество раундов
-			int roundsAES = 5;
 			// Размер скользящего окна
-			short wbit = MAX_WBITS;
+			short _wbit;
+			// Устанавливаем количество раундов
+			int _rounds;
+		private:
 			// Соль и пароль для шифрования
-			string salt = "", password = "";
+			string _salt, _pass;
 		private:
 			// Флаг переиспользования контекста компрессии
-			bool takeOverCompress = false;
+			bool _takeOverCompress;
 			// Флаг переиспользования контекста декомпрессии
-			bool takeOverDecompress = false;
+			bool _takeOverDecompress;
 		private:
 			// Хвостовой буфер для удаления из финального сообщения
-			const char btype[4] = {
+			const char _btype[4] = {
 				static_cast <char> (0x00),
 				static_cast <char> (0x00),
 				static_cast <char> (0xFF),
 				static_cast <char> (0xFF)
 			};
 		private:
-			// Ключ шифрования
-			mutable AES_KEY aesKey;
 			// Определяем размер шифрования по умолчанию
-			aes_t aesSize = aes_t::AES128;
+			cipher_t _cipher;
+		private:
+			// Ключ шифрования
+			mutable AES_KEY _key;
 		private:
 			// Создаем поток ZLib для декомпрессии
-			mutable z_stream zinf = {0};
+			mutable z_stream _zinf;
 			// Создаем поток ZLib для компрессии
-			mutable z_stream zdef = {0};
+			mutable z_stream _zdef;
 		private:
-			// Создаём объект фреймворка
-			const fmk_t * fmk = nullptr;
 			// Создаём объект работы с логами
-			const log_t * log = nullptr;
+			const log_t * _log;
 		private:
 			// Устанавливаем уровень сжатия
 			static constexpr u_short DEFAULT_MEM_LEVEL = 4;
@@ -131,16 +143,21 @@ namespace awh {
 			static constexpr u_int CHUNK_BUFFER_SIZE = 0x4000;
 		private:
 			/**
-			 * initAES Метод инициализации AES шифрования
+			 * init Метод инициализации AES шифрования
 			 * @return результат инициализации
 			 */
-			bool initAES() const;
+			bool init() const;
 		public:
 			/**
-			 * getAES Метод получения размера шифрования
+			 * cipher Метод получения размера шифрования
 			 * @return размер шифрования
 			 */
-			aes_t getAES() const;
+			cipher_t cipher() const;
+			/**
+			 * cipher Метод установки размера шифрования
+			 * @param cipher размер шифрования (128, 192, 256)
+			 */
+			void cipher(const cipher_t cipher) noexcept;
 		public:
 			/**
 			 * rmTail Метод удаления хвостовых данных
@@ -152,6 +169,51 @@ namespace awh {
 			 * @param buffer буфер для добавления хвоста
 			 */
 			void setTail(vector <char> & buffer) const noexcept;
+		private:
+			/**
+			 * compressBrotli Метод компрессии данных в Brotli
+			 * @param buffer буфер данных для компрессии
+			 * @param size   размер данных для компрессии
+			 * @return       результат компрессии
+			 */
+			vector <char> compressBrotli(const char * buffer, const size_t size) noexcept;
+			/**
+			 * decompressBrotli Метод декомпрессии данных в Brotli
+			 * @param buffer буфер данных для декомпрессии
+			 * @param size   размер данных для декомпрессии
+			 * @return       результат декомпрессии
+			 */
+			vector <char> decompressBrotli(const char * buffer, const size_t size) noexcept;
+		private:
+			/**
+			 * compressGzip Метод компрессии данных в GZIP
+			 * @param buffer буфер данных для компрессии
+			 * @param size   размер данных для компрессии
+			 * @return       результат компрессии
+			 */
+			vector <char> compressGzip(const char * buffer, const size_t size) const noexcept;
+			/**
+			 * decompressGzip Метод декомпрессии данных в GZIP
+			 * @param buffer буфер данных для декомпрессии
+			 * @param size   размер данных для декомпрессии
+			 * @return       результат декомпрессии
+			 */
+			vector <char> decompressGzip(const char * buffer, const size_t size) const noexcept;
+		private:
+			/**
+			 * compressDeflate Метод компрессии данных в DEFLATE
+			 * @param buffer буфер данных для компрессии
+			 * @param size   размер данных для компрессии
+			 * @return       результат компрессии
+			 */
+			vector <char> compressDeflate(const char * buffer, const size_t size) const noexcept;
+			/**
+			 * decompressDeflate Метод декомпрессии данных в DEFLATE
+			 * @param buffer буфер данных для декомпрессии
+			 * @param size   размер данных для декомпрессии
+			 * @return       результат декомпрессии
+			 */
+			vector <char> decompressDeflate(const char * buffer, const size_t size) const noexcept;
 		public:
 			/**
 			 * encrypt Метод шифрования текста
@@ -159,103 +221,72 @@ namespace awh {
 			 * @param size   размер данных для шифрования
 			 * @return       результат шифрования
 			 */
-			const vector <char> encrypt(const char * buffer, const size_t size) const noexcept;
+			vector <char> encrypt(const char * buffer, const size_t size) const noexcept;
 			/**
 			 * decrypt Метод дешифрования текста
 			 * @param buffer буфер данных для дешифрования
 			 * @param size   размер данных для дешифрования
 			 * @return       результат дешифрования
 			 */
-			const vector <char> decrypt(const char * buffer, const size_t size) const noexcept;
+			vector <char> decrypt(const char * buffer, const size_t size) const noexcept;
 		public:
 			/**
 			 * compress Метод компрессии данных
 			 * @param buffer буфер данных для компрессии
 			 * @param size   размер данных для компрессии
+			 * @param method метод компрессии
 			 * @return       результат компрессии
 			 */
-			const vector <char> compress(const char * buffer, const size_t size) const noexcept;
+			vector <char> compress(const char * buffer, const size_t size, const method_t method) noexcept;
 			/**
 			 * decompress Метод декомпрессии данных
 			 * @param buffer буфер данных для декомпрессии
 			 * @param size   размер данных для декомпрессии
+			 * @param method метод компрессии
 			 * @return       результат декомпрессии
 			 */
-			const vector <char> decompress(const char * buffer, const size_t size) const noexcept;
+			vector <char> decompress(const char * buffer, const size_t size, const method_t method) noexcept;
 		public:
 			/**
-			 * compressGzip Метод компрессии данных в GZIP
-			 * @param buffer буфер данных для компрессии
-			 * @param size   размер данных для компрессии
-			 * @return       результат компрессии
-			 */
-			const vector <char> compressGzip(const char * buffer, const size_t size) const noexcept;
-			/**
-			 * decompressGzip Метод декомпрессии данных в GZIP
-			 * @param buffer буфер данных для декомпрессии
-			 * @param size   размер данных для декомпрессии
-			 * @return       результат декомпрессии
-			 */
-			const vector <char> decompressGzip(const char * buffer, const size_t size) const noexcept;
-		public:
-			/**
-			 * compressBrotli Метод компрессии данных в Brotli
-			 * @param buffer буфер данных для компрессии
-			 * @param size   размер данных для компрессии
-			 * @return       результат компрессии
-			 */
-			const vector <char> compressBrotli(const char * buffer, const size_t size) noexcept;
-			/**
-			 * decompressBrotli Метод декомпрессии данных в Brotli
-			 * @param buffer буфер данных для декомпрессии
-			 * @param size   размер данных для декомпрессии
-			 * @return       результат декомпрессии
-			 */
-			const vector <char> decompressBrotli(const char * buffer, const size_t size) noexcept;
-		public:
-			/**
-			 * setAES Метод установки размера шифрования
-			 * @param size размер шифрования (128, 192, 256)
-			 */
-			void setAES(const aes_t size) noexcept;
-			/**
-			 * setWbit Метод установки размера скользящего окна
+			 * wbit Метод установки размера скользящего окна
 			 * @param wbit размер скользящего окна
 			 */
-			void setWbit(const short wbit) noexcept;
+			void wbit(const short wbit) noexcept;
 			/**
-			 * setRoundAES Метод установки количества раундов шифрования
+			 * round Метод установки количества раундов шифрования
 			 * @param round количество раундов шифрования
 			 */
-			void setRoundAES(const int round) noexcept;
+			void round(const int round) noexcept;
 			/**
-			 * setSalt Метод установки соли шифрования
+			 * salt Метод установки соли шифрования
 			 * @param salt соль для шифрования
 			 */
-			void setSalt(const string & salt) noexcept;
+			void salt(const string & salt) noexcept;
 			/**
-			 * setPassword Метод установки пароля шифрования
-			 * @param password пароль шифрования
+			 * pass Метод установки пароля шифрования
+			 * @param pass пароль шифрования
 			 */
-			void setPassword(const string & password) noexcept;
+			void pass(const string & pass) noexcept;
 		public:
 			/**
-			 * setTakeoverCompress Метод установки флага переиспользования контекста компрессии
+			 * takeoverCompress Метод установки флага переиспользования контекста компрессии
 			 * @param flag флаг переиспользования контекста компрессии
 			 */
-			void setTakeoverCompress(const bool flag) noexcept;
+			void takeoverCompress(const bool flag) noexcept;
 			/**
-			 * setTakeoverDecompress Метод установки флага переиспользования контекста декомпрессии
+			 * takeoverDecompress Метод установки флага переиспользования контекста декомпрессии
 			 * @param flag флаг переиспользования контекста декомпрессии
 			 */
-			void setTakeoverDecompress(const bool flag) noexcept;
+			void takeoverDecompress(const bool flag) noexcept;
 		public:
 			/**
 			 * Hash Конструктор
-			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
 			 */
-			Hash(const fmk_t * fmk, const log_t * log) noexcept : fmk(fmk), log(log) {}
+			Hash(const log_t * log) noexcept :
+			 _wbit(MAX_WBITS), _rounds(5), _salt(""), _pass(""),
+			 _takeOverCompress(false), _takeOverDecompress(false),
+			 _cipher(cipher_t::AES128), _zinf({0}), _zdef({0}), _log(log) {}
 			/**
 			 * ~Hash Деструктор
 			 */

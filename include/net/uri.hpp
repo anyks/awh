@@ -65,7 +65,7 @@ namespace awh {
 				/**
 				 * Params Конструктор
 				 */
-				Params() : port(0), host(""), user(""), pass("") {}
+				Params() noexcept : port(0), host(""), user(""), pass("") {}
 			} params_t;
 			/**
 			 * URL Структура URL адреса
@@ -73,31 +73,28 @@ namespace awh {
 			typedef class URL {
 				public:
 					// Порт сервера
-					u_int port = 0;
+					u_int port;
 				public:
 					// Тип протокола интернета AF_INET или AF_INET6
-					int family = AF_INET;
+					int family;
 				public:
-					string ip   = ""; // IP адрес сервера
-					string host = ""; // Хост сервера
+					string ip;   // IP адрес сервера
+					string host; // Хост сервера
 				public:
-					string user = ""; // Пользователь
-					string pass = ""; // Пароль
+					string user; // Пользователь
+					string pass; // Пароль
 				public:
-					string domain = ""; // Доменное имя
-					string schema = ""; // Протокол передачи данных
-					string anchor = ""; // Якорь URL запроса
+					string domain; // Доменное имя
+					string schema; // Протокол передачи данных
+					string anchor; // Якорь URL запроса
 				public:
 					// Путь URL запроса
 					vector <string> path;
 					// Параметры URL запроса
 					vector <pair <string, string>> params;
 				public:
-					// Передаваемый промежуточный контекст
-					void * ctx = nullptr;
-				public:
 					// Функция генерации цифровой подписи запроса
-					function <string (const URL *, const URI *, void * ctx)> sign = nullptr;
+					function <string (const URL *, const URI *)> sign;
 				public:
 					/**
 					 * clear Метод очистки
@@ -109,12 +106,27 @@ namespace awh {
 					 * @return результат проверки
 					 */
 					bool empty() const noexcept;
+				public:
+					/**
+					 * URL Конструктор
+					 */
+					URL() noexcept :
+					 port(0), family(AF_INET), ip(""), host(""),
+					 user(""), pass(""), domain(""), schema(""),
+					 anchor(""), sign(nullptr) {}
 			} url_t;
 		private:
 			// Создаём объект фреймворка
-			const fmk_t * fmk = nullptr;
+			const fmk_t * _fmk;
 			// Создаем объект сети
-			const network_t * nwk = nullptr;
+			const network_t * _nwk;
+		public:
+			/**
+			 * parse Метод получения параметров URL запроса
+			 * @param url строка URL запроса для получения параметров
+			 * @return    параметры URL запроса
+			 */
+			const url_t parse(const string & url) const noexcept;
 		public:
 			/**
 			 * etag Метод генерации ETag хэша текста
@@ -123,43 +135,36 @@ namespace awh {
 			 */
 			const string etag(const string & text) const noexcept;
 			/**
-			 * urlEncode Метод кодирования строки в url адресе
+			 * encode Метод кодирования строки в url адресе
 			 * @param str строка для кодирования
 			 * @return    результат кодирования
 			 */
-			const string urlEncode(const string & str) const noexcept;
+			const string encode(const string & str) const noexcept;
 			/**
-			 * urlDecode Метод декодирования строки в url адресе
+			 * decode Метод декодирования строки в url адресе
 			 * @param str строка для декодирования
 			 * @return    результат декодирования
 			 */
-			const string urlDecode(const string & str) const noexcept;
+			const string decode(const string & str) const noexcept;
 		public:
 			/**
-			 * createUrl Метод создания строки URL запросы из параметров
+			 * url Метод создания строки URL запросы из параметров
 			 * @param url параметры URL запроса
 			 * @return    URL запрос в виде строки
 			 */
-			const string createUrl(const url_t & url) const noexcept;
+			const string url(const url_t & url) const noexcept;
 			/**
-			 * createQuery Метод создания строки запроса из параметров
+			 * query Метод создания строки запроса из параметров
 			 * @param url параметры URL запроса
 			 * @return    URL запрос в виде строки
 			 */
-			const string createQuery(const url_t & url) const noexcept;
+			const string query(const url_t & url) const noexcept;
 			/**
-			 * createOrigin Метод создания заголовка [origin], для HTTP запроса
+			 * origin Метод создания заголовка [origin], для HTTP запроса
 			 * @param url параметры URL запроса
 			 * @return    заголовок [origin]
 			 */
-			const string createOrigin(const url_t & url) const noexcept;
-			/**
-			 * parseUrl Метод получения параметров URL запроса
-			 * @param url строка URL запроса для получения параметров
-			 * @param ctx промежуточный передаваемый контекст (если требуется)
-			 * @return    параметры URL запроса
-			 */
-			const url_t parseUrl(const string & url, void * ctx = nullptr) const noexcept;
+			const string origin(const url_t & url) const noexcept;
 		public:
 			/**
 			 * split Метод сплита URI на составные части
@@ -208,7 +213,7 @@ namespace awh {
 			 * @param fmk объект фреймворка
 			 * @param nwk объект методов для работы с сетью
 			 */
-			URI(const fmk_t * fmk, const network_t * nwk) noexcept : fmk(fmk), nwk(nwk) {}
+			URI(const fmk_t * fmk, const network_t * nwk) noexcept : _fmk(fmk), _nwk(nwk) {}
 			/**
 			 * ~URI Деструктор
 			 */

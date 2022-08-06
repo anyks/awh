@@ -59,17 +59,17 @@ namespace awh {
 				stath_t checkAuth() noexcept;
 			public:
 				/**
-				 * setUser Метод установки параметров авторизации
+				 * user Метод установки параметров авторизации
 				 * @param user логин пользователя для авторизации на сервере
 				 * @param pass пароль пользователя для авторизации на сервере
 				 */
-				void setUser(const string & user, const string & pass) noexcept;
+				void user(const string & user, const string & pass) noexcept;
 				/**
-				 * setAuthType Метод установки типа авторизации
+				 * authType Метод установки типа авторизации
 				 * @param type тип авторизации
 				 * @param hash алгоритм шифрования для Digest авторизации
 				 */
-				void setAuthType(const awh::auth_t::type_t type = awh::auth_t::type_t::BASIC, const awh::auth_t::hash_t hash = awh::auth_t::hash_t::MD5) noexcept;
+				void authType(const awh::auth_t::type_t type = awh::auth_t::type_t::BASIC, const awh::auth_t::hash_t hash = awh::auth_t::hash_t::MD5) noexcept;
 			public:
 				/**
 				 * WS Конструктор

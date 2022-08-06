@@ -23,17 +23,17 @@ awh::Http::stath_t awh::server::Http::checkAuth() noexcept {
 	// Результат работы функции
 	stath_t result = stath_t::FAULT;
 	// Если авторизация требуется
-	if(this->auth.server.getType() != awh::auth_t::type_t::NONE){
+	if(this->auth.server.type() != awh::auth_t::type_t::NONE){
 		// Получаем параметры авторизации
-		const string & auth = this->web.getHeader("authorization");
+		const string & auth = this->web.header("authorization");
 		// Если параметры авторизации найдены
 		if(!auth.empty()){
 			// Метод HTTP запроса
 			string method = "";
 			// Устанавливаем заголовок HTTP в параметры авторизации
-			this->auth.server.setHeader(auth);
+			this->auth.server.header(auth);
 			// Определяем метод запроса
-			switch((uint8_t) this->web.getQuery().method){
+			switch((uint8_t) this->web.query().method){
 				// Если метод запроса указан как GET
 				case (uint8_t) web_t::method_t::GET: method = "get"; break;
 				// Если метод запроса указан как PUT
@@ -64,45 +64,45 @@ awh::Http::stath_t awh::server::Http::checkAuth() noexcept {
 	return result;
 }
 /**
- * setRealm Метод установки название сервера
+ * realm Метод установки название сервера
  * @param realm название сервера
  */
-void awh::server::Http::setRealm(const string & realm) noexcept {
+void awh::server::Http::realm(const string & realm) noexcept {
 	// Если название сервера передано
-	if(!realm.empty()) this->auth.server.setRealm(realm);
+	if(!realm.empty()) this->auth.server.realm(realm);
 }
 /**
- * setOpaque Метод установки временного ключа сессии сервера
+ * opaque Метод установки временного ключа сессии сервера
  * @param opaque временный ключ сессии сервера
  */
-void awh::server::Http::setOpaque(const string & opaque) noexcept {
+void awh::server::Http::opaque(const string & opaque) noexcept {
 	// Если временный ключ сессии сервера передан
-	if(!opaque.empty()) this->auth.server.setOpaque(opaque);
+	if(!opaque.empty()) this->auth.server.opaque(opaque);
 }
 /**
- * setExtractPassCallback Метод добавления функции извлечения пароля
+ * extractPassCallback Метод добавления функции извлечения пароля
  * @param callback функция обратного вызова для извлечения пароля
  */
-void awh::server::Http::setExtractPassCallback(function <string (const string &)> callback) noexcept {
+void awh::server::Http::extractPassCallback(function <string (const string &)> callback) noexcept {
 	// Устанавливаем внешнюю функцию
-	this->auth.server.setExtractPassCallback(callback);
+	this->auth.server.extractPassCallback(callback);
 }
 /**
- * setAuthCallback Метод добавления функции обработки авторизации
+ * authCallback Метод добавления функции обработки авторизации
  * @param callback функция обратного вызова для обработки авторизации
  */
-void awh::server::Http::setAuthCallback(function <bool (const string &, const string &)> callback) noexcept {
+void awh::server::Http::authCallback(function <bool (const string &, const string &)> callback) noexcept {
 	// Устанавливаем внешнюю функцию
-	this->auth.server.setAuthCallback(callback);
+	this->auth.server.authCallback(callback);
 }
 /**
- * setAuthType Метод установки типа авторизации
+ * authType Метод установки типа авторизации
  * @param type тип авторизации
  * @param hash алгоритм шифрования для Digest авторизации
  */
-void awh::server::Http::setAuthType(const awh::auth_t::type_t type, const awh::auth_t::hash_t hash) noexcept {
+void awh::server::Http::authType(const awh::auth_t::type_t type, const awh::auth_t::hash_t hash) noexcept {
 	// Устанавливаем тип авторизации
-	this->auth.server.setType(type, hash);
+	this->auth.server.type(type, hash);
 }
 /**
  * Http Конструктор

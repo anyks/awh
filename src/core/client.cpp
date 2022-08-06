@@ -34,7 +34,7 @@ void awh::client::Core::Timeout::callback(ev::timer & timer, int revents) noexce
 			// Выполняем перебор всех подключенных адъютантов
 			for(auto & adjutant : it->second->adjutants){
 				// Если блокировка адъютанта не установлена
-				disallow = (this->core->locking.count(adjutant.first) > 0);
+				disallow = (this->core->_locking.count(adjutant.first) > 0);
 				// Если в списке есть заблокированные адъютанты, выходим из цикла
 				if(disallow) break;
 			}
@@ -105,7 +105,9 @@ void awh::client::Core::resolver(const string & ip, worker_t * wrk) noexcept {
 		return;
 	}
 	// Выводим функцию обратного вызова
-	if(wrk->disconnectFn != nullptr) wrk->disconnectFn(0, wrk->wid, const_cast <awh::core_t *> (wrk->core));
+	if(wrk->callback.disconnect != nullptr)
+		// Выполняем функцию обратного вызова
+		wrk->callback.disconnect(0, wrk->wid, const_cast <awh::core_t *> (wrk->core));
 }
 /**
  * connect Метод создания подключения к удаленному серверу
@@ -135,13 +137,13 @@ void awh::client::Core::connect(const size_t wid) noexcept {
 					// Переходим по всему списку адъютанта
 					for(auto it = wrk->adjutants.begin(); it != wrk->adjutants.end();){
 						// Если блокировка адъютанта не установлена
-						if(this->locking.count(it->first) < 1){
+						if(this->_locking.count(it->first) < 1){
 							// Получаем объект адъютанта
 							awh::worker_t::adj_t * adj = const_cast <awh::worker_t::adj_t *> (it->second.get());
 							// Выполняем очистку буфера событий
 							this->clean(it->first);
 							// Выполняем очистку контекста двигателя
-							adj->engine.clear();
+							adj->ectx.clear();
 							// Удаляем адъютанта из списка подключений
 							this->adjutants.erase(it->first);
 							// Удаляем адъютанта из списка
@@ -180,11 +182,15 @@ void awh::client::Core::connect(const size_t wid) noexcept {
 				switch((uint8_t) this->net.sonet){
 					// Если тип сокета UDP
 					case (uint8_t) sonet_t::UDP:
+					// Если тип сокета UDP TLS
+					case (uint8_t) sonet_t::DTLS:
 						// Устанавливаем параметры сокета
 						adj->addr.sonet(SOCK_DGRAM, IPPROTO_UDP);
 					break;
 					// Если тип сокета TCP
 					case (uint8_t) sonet_t::TCP:
+					// Если тип сокета TCP TLS
+					case (uint8_t) sonet_t::TLS:
 						// Устанавливаем параметры сокета
 						adj->addr.sonet(SOCK_STREAM, IPPROTO_TCP);
 					break;
@@ -199,13 +205,12 @@ void awh::client::Core::connect(const size_t wid) noexcept {
 				if(adj->addr.fd > -1){
 					// Устанавливаем идентификатор адъютанта
 					adj->aid = this->fmk->unixTimestamp();
-
-
+					// Если подключение выполняется по защищённому каналу DTLS
+					if(this->net.sonet == sonet_t::DTLS)
+						// Выполняем получение контекста сертификата
+						this->engine.wrap(adj->ectx, &adj->addr, engine_t::type_t::CLIENT);
 					// Выполняем получение контекста сертификата
-					this->engine.wrap1(adj->engine, &adj->addr, engine_t::type_t::CLIENT);
-
-					// Выполняем получение контекста сертификата
-					// this->engine.wrap(adj->engine, &adj->addr, url);
+					else this->engine.wrapClient(adj->ectx, &adj->addr, url);
 					// Если подключение не обёрнуто
 					if(adj->addr.fd < 0){
 						// Запрещаем чтение данных с сервера
@@ -226,13 +231,13 @@ void awh::client::Core::connect(const size_t wid) noexcept {
 						return;
 					}
 					// Выполняем блокировку потока
-					this->mtx.connect.lock();
+					this->_mtx.connect.lock();
 					// Добавляем созданного адъютанта в список адъютантов
 					auto ret = wrk->adjutants.emplace(adj->aid, move(adj));
 					// Добавляем адъютанта в список подключений
 					this->adjutants.emplace(ret.first->first, ret.first->second.get());
 					// Выполняем блокировку потока
-					this->mtx.connect.unlock();
+					this->_mtx.connect.unlock();
 					// Если подключение к серверу не выполнено
 					if(!ret.first->second->addr.connect()){
 						// Запрещаем чтение данных с сервера
@@ -273,9 +278,6 @@ void awh::client::Core::connect(const size_t wid) noexcept {
 						// Выходим из функции
 						return;
 					}
-
-					this->engine.wrap3(ret.first->second->engine);
-
 					// Разрешаем выполнение работы
 					wrk->status.work = worker_t::work_t::ALLOW;
 					// Если статус подключения изменился
@@ -349,7 +351,7 @@ void awh::client::Core::connect(const size_t wid) noexcept {
 					// Выводим сообщение об ошибке
 					if(!this->noinfo) this->log->print("%s", log_t::flag_t::INFO, "disconnected from the server");
 					// Выводим функцию обратного вызова
-					if(wrk->disconnectFn != nullptr) wrk->disconnectFn(0, wrk->wid, this);
+					if(wrk->callback.disconnect != nullptr) wrk->callback.disconnect(0, wrk->wid, this);
 				}
 			}
 		}
@@ -448,19 +450,19 @@ void awh::client::Core::createTimeout(const size_t wid, const worker_t::mode_t m
 		// Объект таймаута
 		timeout_t * timeout = nullptr;
 		// Выполняем поиск существующего таймаута
-		auto it = this->timeouts.find(wid);
+		auto it = this->_timeouts.find(wid);
 		// Если таймаут найден
-		if(it != this->timeouts.end())
+		if(it != this->_timeouts.end())
 			// Получаем объект таймаута
 			timeout = it->second.get();
 		// Если таймаут ещё не существует
 		else {
 			// Выполняем блокировку потока
-			this->mtx.timeout.lock();
+			this->_mtx.timeout.lock();
 			// Получаем объект таймаута
-			timeout = this->timeouts.emplace(wid, unique_ptr <timeout_t> (new timeout_t)).first->second.get();
+			timeout = this->_timeouts.emplace(wid, unique_ptr <timeout_t> (new timeout_t)).first->second.get();
 			// Выполняем разблокировку потока
-			this->mtx.timeout.unlock();
+			this->_mtx.timeout.unlock();
 		}
 		// Устанавливаем идентификатор таймаута
 		timeout->wid = wid;
@@ -482,7 +484,7 @@ void awh::client::Core::createTimeout(const size_t wid, const worker_t::mode_t m
  */
 void awh::client::Core::sendTimeout(const size_t aid) noexcept {
 	// Если блокировка адъютанта не установлена
-	if(this->locking.count(aid) < 1){
+	if(this->_locking.count(aid) < 1){
 		// Если адъютант существует
 		if(this->adjutants.count(aid) > 0)
 			// Выполняем отключение от сервера
@@ -490,7 +492,7 @@ void awh::client::Core::sendTimeout(const size_t aid) noexcept {
 		// Если адъютант не существует
 		else if(!this->workers.empty()) {
 			// Выполняем блокировку потока
-			const lock_guard <recursive_mutex> lock(this->mtx.reset);
+			const lock_guard <recursive_mutex> lock(this->_mtx.reset);
 			// Переходим по всему списку воркеров
 			for(auto & worker : this->workers){
 				// Получаем объект воркера
@@ -565,17 +567,17 @@ void awh::client::Core::sendTimeout(const size_t aid) noexcept {
  */
 void awh::client::Core::clearTimeout(const size_t wid) noexcept {
 	// Если список таймеров не пустой
-	if(!this->timeouts.empty()){
+	if(!this->_timeouts.empty()){
 		// Выполняем поиск таймера
-		auto it = this->timeouts.find(wid);
+		auto it = this->_timeouts.find(wid);
 		// Если таймер найден
-		if(it != this->timeouts.end()){
+		if(it != this->_timeouts.end()){
 			// Выполняем блокировку потока
-			this->mtx.timeout.lock();
+			this->_mtx.timeout.lock();
 			// Останавливаем работу таймера
 			it->second->timer.stop();
 			// Выполняем разблокировку потока
-			this->mtx.timeout.unlock();
+			this->_mtx.timeout.unlock();
 		}
 	}
 }
@@ -584,11 +586,11 @@ void awh::client::Core::clearTimeout(const size_t wid) noexcept {
  */
 void awh::client::Core::close() noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <recursive_mutex> lock(this->mtx.close);
+	const lock_guard <recursive_mutex> lock(this->_mtx.close);
 	// Если список активных таймеров существует
-	if(!this->timeouts.empty()){
+	if(!this->_timeouts.empty()){
 		// Переходим по всему списку активных таймеров
-		for(auto & timeout : this->timeouts)
+		for(auto & timeout : this->_timeouts)
 			// Останавливаем работу таймера
 			timeout.second->timer.stop();
 	}
@@ -611,23 +613,23 @@ void awh::client::Core::close() noexcept {
 				// Переходим по всему списку адъютанта
 				for(auto it = wrk->adjutants.begin(); it != wrk->adjutants.end();){
 					// Если блокировка адъютанта не установлена
-					if(this->locking.count(it->first) < 1){
+					if(this->_locking.count(it->first) < 1){
 						// Выполняем блокировку адъютанта
-						this->locking.emplace(it->first);
+						this->_locking.emplace(it->first);
 						// Получаем объект адъютанта
 						awh::worker_t::adj_t * adj = const_cast <awh::worker_t::adj_t *> (it->second.get());
 						// Выполняем очистку буфера событий
 						this->clean(it->first);
 						// Выполняем очистку контекста двигателя
-						adj->engine.clear();
+						adj->ectx.clear();
 						// Удаляем адъютанта из списка подключений
 						this->adjutants.erase(it->first);
 						// Выводим функцию обратного вызова
-						if(wrk->disconnectFn != nullptr)
+						if(wrk->callback.disconnect != nullptr)
 							// Выполняем функцию обратного вызова
-							wrk->disconnectFn(it->first, worker.first, this);
+							wrk->callback.disconnect(it->first, worker.first, this);
 						// Удаляем блокировку адъютанта
-						this->locking.erase(it->first);
+						this->_locking.erase(it->first);
 						// Удаляем адъютанта из списка
 						it = wrk->adjutants.erase(it);
 					// Иначе продолжаем дальше
@@ -642,21 +644,21 @@ void awh::client::Core::close() noexcept {
  */
 void awh::client::Core::remove() noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <recursive_mutex> lock(this->mtx.close);
+	const lock_guard <recursive_mutex> lock(this->_mtx.close);
 	// Если список воркеров активен
 	if(!this->workers.empty()){
 		// Если список активных таймеров существует
-		if(!this->timeouts.empty()){
+		if(!this->_timeouts.empty()){
 			// Переходим по всему списку активных таймеров
-			for(auto it = this->timeouts.begin(); it != this->timeouts.end();){
+			for(auto it = this->_timeouts.begin(); it != this->_timeouts.end();){
 				// Выполняем блокировку потока
-				this->mtx.timeout.lock();
+				this->_mtx.timeout.lock();
 				// Останавливаем работу таймера
 				it->second->timer.stop();
 				// Выполняем удаление текущего таймаута
-				it = this->timeouts.erase(it);
+				it = this->_timeouts.erase(it);
 				// Выполняем разблокировку потока
-				this->mtx.timeout.unlock();
+				this->_mtx.timeout.unlock();
 			}
 		}
 		// Переходим по всему списку воркеров
@@ -672,23 +674,23 @@ void awh::client::Core::remove() noexcept {
 				// Переходим по всему списку адъютанта
 				for(auto jt = wrk->adjutants.begin(); jt != wrk->adjutants.end();){
 					// Если блокировка адъютанта не установлена
-					if(this->locking.count(jt->first) < 1){
+					if(this->_locking.count(jt->first) < 1){
 						// Выполняем блокировку адъютанта
-						this->locking.emplace(jt->first);
+						this->_locking.emplace(jt->first);
 						// Получаем объект адъютанта
 						awh::worker_t::adj_t * adj = const_cast <awh::worker_t::adj_t *> (jt->second.get());
 						// Выполняем очистку буфера событий
 						this->clean(jt->first);
 						// Выполняем очистку контекста двигателя
-						adj->engine.clear();
+						adj->ectx.clear();
 						// Удаляем адъютанта из списка подключений
 						this->adjutants.erase(jt->first);
 						// Выводим функцию обратного вызова
-						if(wrk->disconnectFn != nullptr)
+						if(wrk->callback.disconnect != nullptr)
 							// Выполняем функцию обратного вызова
-							wrk->disconnectFn(jt->first, it->first, this);
+							wrk->callback.disconnect(jt->first, it->first, this);
 						// Удаляем блокировку адъютанта
-						this->locking.erase(jt->first);
+						this->_locking.erase(jt->first);
 						// Удаляем адъютанта из списка
 						jt = wrk->adjutants.erase(jt);
 					// Иначе продолжаем дальше
@@ -795,7 +797,7 @@ void awh::client::Core::remove(const size_t wid) noexcept {
 	// Если идентификатор воркера передан
 	if(wid > 0){
 		// Выполняем блокировку потока
-		const lock_guard <recursive_mutex> lock(this->mtx.close);
+		const lock_guard <recursive_mutex> lock(this->_mtx.close);
 		// Выполняем поиск воркера
 		auto it = this->workers.find(wid);
 		// Если воркер найден
@@ -803,17 +805,17 @@ void awh::client::Core::remove(const size_t wid) noexcept {
 			// Выполняем удаление уоркера из списка
 			this->workers.erase(it);
 			// Выполняем поиск активного таймаута
-			auto it = this->timeouts.find(wid);
+			auto it = this->_timeouts.find(wid);
 			// Если таймаут найден, удаляем его
-			if(it != this->timeouts.end()){
+			if(it != this->_timeouts.end()){
 				// Выполняем блокировку потока
-				this->mtx.timeout.lock();
+				this->_mtx.timeout.lock();
 				// Останавливаем работу таймера
 				it->second->timer.stop();
 				// Выполняем удаление текущего таймаута
-				this->timeouts.erase(it);
+				this->_timeouts.erase(it);
 				// Выполняем разблокировку потока
-				this->mtx.timeout.unlock();
+				this->_mtx.timeout.unlock();
 			}
 		}
 	}
@@ -824,11 +826,11 @@ void awh::client::Core::remove(const size_t wid) noexcept {
  */
 void awh::client::Core::close(const size_t aid) noexcept {
 	// Выполняем блокировку потока
-	const lock_guard <recursive_mutex> lock(this->mtx.close);
+	const lock_guard <recursive_mutex> lock(this->_mtx.close);
 	// Если блокировка адъютанта не установлена
-	if(this->locking.count(aid) < 1){
+	if(this->_locking.count(aid) < 1){
 		// Выполняем блокировку адъютанта
-		this->locking.emplace(aid);
+		this->_locking.emplace(aid);
 		// Выполняем извлечение адъютанта
 		auto it = this->adjutants.find(aid);
 		// Если адъютант получен
@@ -848,7 +850,7 @@ void awh::client::Core::close(const size_t aid) noexcept {
 				// Выполняем переключение обратно на прокси-сервер
 				wrk->switchConnect();
 			// Выполняем очистку контекста двигателя
-			adj->engine.clear();
+			adj->ectx.clear();
 			// Удаляем адъютанта из списка адъютантов
 			wrk->adjutants.erase(aid);
 			// Удаляем адъютанта из списка подключений
@@ -866,12 +868,12 @@ void awh::client::Core::close(const size_t aid) noexcept {
 					// Выводим сообщение об ошибке
 					if(!core->noinfo) this->log->print("%s", log_t::flag_t::INFO, "disconnected from the server");
 					// Выводим функцию обратного вызова
-					if(wrk->disconnectFn != nullptr) wrk->disconnectFn(aid, wrk->wid, this);
+					if(wrk->callback.disconnect != nullptr) wrk->callback.disconnect(aid, wrk->wid, this);
 				}
 			}
 		}
 		// Удаляем блокировку адъютанта
-		this->locking.erase(aid);
+		this->_locking.erase(aid);
 	}
 }
 /**
@@ -882,7 +884,7 @@ void awh::client::Core::switchProxy(const size_t aid) noexcept {
 	// Если подключение производится по IPv4 или IPv6 и по хосту с портом
 	if((this->net.sonet == sonet_t::TCP) && ((this->net.family == family_t::IPV4) || (this->net.family == family_t::IPV6))){
 		// Выполняем блокировку потока
-		const lock_guard <recursive_mutex> lock(this->mtx.proxy);
+		const lock_guard <recursive_mutex> lock(this->_mtx.proxy);
 		// Выполняем извлечение адъютанта
 		auto it = this->adjutants.find(aid);
 		// Если адъютант получен
@@ -896,7 +898,7 @@ void awh::client::Core::switchProxy(const size_t aid) noexcept {
 				// Выполняем переключение на работу с сервером
 				wrk->switchConnect();
 				// Выполняем получение контекста сертификата
-				this->engine.wrap(adj->engine, adj->engine, wrk->url);
+				this->engine.wrapClient(adj->ectx, adj->ectx, wrk->url);
 				// Если подключение не обёрнуто
 				if(adj->addr.fd < 0){
 					// Выводим сообщение об ошибке
@@ -1020,10 +1022,12 @@ void awh::client::Core::connected(const size_t aid) noexcept {
 					if(!this->noinfo) this->log->print("connect client to server [%s:%d]", log_t::flag_t::INFO, host.c_str(), url.port);
 					// Если подключение производится через, прокси-сервер
 					if(wrk->isProxy()){
-						// Выполняем функцию обратного вызова для прокси-сервера
-						if(wrk->connectProxyFn != nullptr) wrk->connectProxyFn(it->first, wrk->wid, const_cast <awh::core_t *> (wrk->core));
+						// Если функция обратного вызова для прокси-сервера
+						if(wrk->callback.connectProxy != nullptr)
+							// Выполняем функцию обратного вызова
+							wrk->callback.connectProxy(it->first, wrk->wid, const_cast <awh::core_t *> (wrk->core));
 					// Выполняем функцию обратного вызова
-					} else if(wrk->connectFn != nullptr) wrk->connectFn(it->first, wrk->wid, const_cast <awh::core_t *> (wrk->core));
+					} else if(wrk->callback.connect != nullptr) wrk->callback.connect(it->first, wrk->wid, const_cast <awh::core_t *> (wrk->core));
 				} break;
 				// Если тип протокола подключения unix-сокет
 				case (uint8_t) family_t::NIX: {
@@ -1032,7 +1036,7 @@ void awh::client::Core::connected(const size_t aid) noexcept {
 					// Выводим в лог сообщение
 					if(!this->noinfo) this->log->print("connect client to server [%s]", log_t::flag_t::INFO, this->net.filename.c_str());
 					// Выполняем функцию обратного вызова
-					if(wrk->connectFn != nullptr) wrk->connectFn(it->first, wrk->wid, const_cast <awh::core_t *> (wrk->core));
+					if(wrk->callback.connect != nullptr) wrk->callback.connect(it->first, wrk->wid, const_cast <awh::core_t *> (wrk->core));
 				} break;
 			}
 			// Выходим из функции
@@ -1073,11 +1077,11 @@ void awh::client::Core::transfer(const method_t method, const size_t aid) noexce
 					// Выполняем перебор бесконечным циклом пока это разрешено
 					while(!adj->bev.locked.read && (wrk->status.real == worker_t::mode_t::CONNECT)){
 						// Если дочерние активные подключения есть и сокет блокирующий
-						if((this->cores > 0) && (adj->engine.isblock() == 1))
+						if((this->cores > 0) && (adj->ectx.isblock() == 1))
 							// Переводим BIO в не блокирующий режим
-							adj->engine.noblock();
+							adj->ectx.noblock();
 						// Выполняем получение сообщения от клиента
-						bytes = adj->engine.read(buffer, sizeof(buffer));
+						bytes = adj->ectx.read(buffer, sizeof(buffer));
 						// Если время ожидания чтения данных установлено
 						if(wrk->wait && (adj->timeouts.read > 0)){
 							// Устанавливаем время ожидания на получение данных
@@ -1087,13 +1091,13 @@ void awh::client::Core::transfer(const method_t method, const size_t aid) noexce
 						// Останавливаем таймаут ожидания на чтение из сокета
 						} else adj->bev.timer.read.stop();
 						// Выполняем принудительное исполнение таймеров
-						if(adj->engine.isblock() != 0) this->executeTimers();
+						if(adj->ectx.isblock() != 0) this->executeTimers();
 						/**
 						 * Если операционной системой является MS Windows
 						 */
 						#if defined(_WIN32) || defined(_WIN64)
 							// Запускаем чтение данных снова (Для Windows)
-							if((bytes != 0) && (this->net.sonet == sonet_t::TCP))
+							if((bytes != 0) && (this->net.sonet != sonet_t::UDP))
 								// Запускаем чтение снова
 								adj->bev.event.read.start();
 						#endif
@@ -1116,20 +1120,20 @@ void awh::client::Core::transfer(const method_t method, const size_t aid) noexce
 											// Если подключение производится через, прокси-сервер
 											if(wrk->isProxy()){
 												// Если функция обратного вызова для вывода записи существует
-												if(wrk->readProxyFn != nullptr)
+												if(wrk->callback.readProxy != nullptr)
 													// Выводим функцию обратного вызова
-													wrk->readProxyFn(buffer + offset, actual, aid, wrk->wid, reinterpret_cast <awh::core_t *> (this));
+													wrk->callback.readProxy(buffer + offset, actual, aid, wrk->wid, reinterpret_cast <awh::core_t *> (this));
 											// Если прокси-сервер не используется
-											} else if(wrk->readFn != nullptr)
+											} else if(wrk->callback.read != nullptr)
 												// Выводим функцию обратного вызова
-												wrk->readFn(buffer + offset, actual, aid, wrk->wid, reinterpret_cast <awh::core_t *> (this));
+												wrk->callback.read(buffer + offset, actual, aid, wrk->wid, reinterpret_cast <awh::core_t *> (this));
 										} break;
 										// Если тип протокола подключения unix-сокет
 										case (uint8_t) family_t::NIX: {
 											// Если функция обратного вызова установлена
-											if(wrk->readFn != nullptr)
+											if(wrk->callback.read != nullptr)
 												// Выводим функцию обратного вызова
-												wrk->readFn(buffer + offset, actual, aid, wrk->wid, reinterpret_cast <awh::core_t *> (this));
+												wrk->callback.read(buffer + offset, actual, aid, wrk->wid, reinterpret_cast <awh::core_t *> (this));
 										} break;
 									}
 									// Увеличиваем смещение в буфере
@@ -1146,20 +1150,20 @@ void awh::client::Core::transfer(const method_t method, const size_t aid) noexce
 										// Если подключение производится через, прокси-сервер
 										if(wrk->isProxy()){
 											// Если функция обратного вызова для вывода записи существует
-											if(wrk->readProxyFn != nullptr)
+											if(wrk->callback.readProxy != nullptr)
 												// Выводим функцию обратного вызова
-												wrk->readProxyFn(buffer, bytes, aid, wrk->wid, reinterpret_cast <awh::core_t *> (this));
+												wrk->callback.readProxy(buffer, bytes, aid, wrk->wid, reinterpret_cast <awh::core_t *> (this));
 										// Если прокси-сервер не используется
-										} else if(wrk->readFn != nullptr)
+										} else if(wrk->callback.read != nullptr)
 											// Выводим функцию обратного вызова
-											wrk->readFn(buffer, bytes, aid, wrk->wid, reinterpret_cast <awh::core_t *> (this));
+											wrk->callback.read(buffer, bytes, aid, wrk->wid, reinterpret_cast <awh::core_t *> (this));
 									} break;
 									// Если тип протокола подключения unix-сокет
 									case (uint8_t) family_t::NIX: {
 										// Если функция обратного вызова установлена
-										if(wrk->readFn != nullptr)
+										if(wrk->callback.read != nullptr)
 											// Выводим функцию обратного вызова
-											wrk->readFn(buffer, bytes, aid, wrk->wid, reinterpret_cast <awh::core_t *> (this));
+											wrk->callback.read(buffer, bytes, aid, wrk->wid, reinterpret_cast <awh::core_t *> (this));
 									} break;
 								}
 							}
@@ -1198,13 +1202,13 @@ void awh::client::Core::transfer(const method_t method, const size_t aid) noexce
 							// Определяем размер отправляемых данных
 							actual = ((size >= adj->marker.write.max) ? adj->marker.write.max : size);
 							// Выполняем отправку сообщения клиенту
-							bytes = adj->engine.write(adj->buffer.data() + offset, actual);
+							bytes = adj->ectx.write(adj->buffer.data() + offset, actual);
 							// Если данные записаны удачно
 							if(bytes > 0)
 								// Добавляем записанные байты в буфер
 								buffer.insert(buffer.end(), adj->buffer.data() + offset, (adj->buffer.data() + offset) + bytes);
 							// Выполняем принудительное исполнение таймеров
-							if(adj->engine.isblock() != 0) this->executeTimers();
+							if(adj->ectx.isblock() != 0) this->executeTimers();
 							// Если время ожидания записи данных установлено
 							if(adj->timeouts.write > 0){
 								// Устанавливаем время ожидания на запись данных
@@ -1236,17 +1240,17 @@ void awh::client::Core::transfer(const method_t method, const size_t aid) noexce
 						// Останавливаем запись данных
 						if(adj->buffer.empty()) this->disabled(method_t::WRITE, aid);
 						// Если функция обратного вызова на запись данных установлена
-						if(wrk->writeFn != nullptr)
+						if(wrk->callback.write != nullptr)
 							// Выводим функцию обратного вызова
-							wrk->writeFn(buffer.data(), buffer.size(), aid, wrk->wid, reinterpret_cast <awh::core_t *> (this));
+							wrk->callback.write(buffer.data(), buffer.size(), aid, wrk->wid, reinterpret_cast <awh::core_t *> (this));
 					// Если данных недостаточно для записи в сокет
 					} else {
 						// Останавливаем запись данных
 						this->disabled(method_t::WRITE, aid);
 						// Если функция обратного вызова на запись данных установлена
-						if(wrk->writeFn != nullptr)
+						if(wrk->callback.write != nullptr)
 							// Выводим функцию обратного вызова
-							wrk->writeFn(nullptr, 0, aid, wrk->wid, reinterpret_cast <awh::core_t *> (this));
+							wrk->callback.write(nullptr, 0, aid, wrk->wid, reinterpret_cast <awh::core_t *> (this));
 					}
 					// Если тип сокета установлен как UDP, и данных для записи больше нет, запускаем чтение
 					if(adj->buffer.empty() && (this->net.sonet == sonet_t::UDP))
@@ -1266,12 +1270,12 @@ void awh::client::Core::transfer(const method_t method, const size_t aid) noexce
 	}
 }
 /**
- * setBandwidth Метод установки пропускной способности сети
+ * bandWidth Метод установки пропускной способности сети
  * @param aid   идентификатор адъютанта
  * @param read  пропускная способность на чтение (bps, kbps, Mbps, Gbps)
  * @param write пропускная способность на запись (bps, kbps, Mbps, Gbps)
  */
-void awh::client::Core::setBandwidth(const size_t aid, const string & read, const string & write) noexcept {
+void awh::client::Core::bandWidth(const size_t aid, const string & read, const string & write) noexcept {
 	// Выполняем извлечение адъютанта
 	auto it = this->adjutants.find(aid);
 	// Если адъютант получен
@@ -1283,7 +1287,7 @@ void awh::client::Core::setBandwidth(const size_t aid, const string & read, cons
 			// Получаем объект адъютанта
 			awh::worker_t::adj_t * adj = const_cast <awh::worker_t::adj_t *> (it->second);
 			// Устанавливаем размер буфера
-			adj->engine.buffer(
+			adj->ectx.buffer(
 				(!read.empty() ? this->fmk->sizeBuffer(read) : 0),
 				(!write.empty() ? this->fmk->sizeBuffer(write) : 0), 1
 			);

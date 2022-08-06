@@ -49,10 +49,10 @@ namespace awh {
 				// Событие подключения к серверу
 				ev::io io;
 			protected:
+				// Контекст двигателя для работы с передачей данных
+				engine_t::ctx_t ectx;
 				// Объект подключения
 				engine_t::addr_t addr;
-				// Контекст двигателя для работы с передачей данных
-				engine_t::ctx_t engine;
 			protected:
 				// Порт сервера
 				u_int port;
@@ -61,9 +61,6 @@ namespace awh {
 			protected:
 				// Максимальное количество одновременных подключений
 				u_int total;
-			public:
-				// Функция обратного вызова при подключении нового клиента
-				function <bool (const string &, const string &, const size_t, awh::Core *)> acceptFn;
 			public:
 				/**
 				 * clear Метод очистки
@@ -83,8 +80,8 @@ namespace awh {
 				 * @param log объект для работы с логами
 				 */
 				Worker(const fmk_t * fmk, const log_t * log) noexcept :
-				 awh::worker_t(fmk, log), addr(fmk, log), engine(fmk, log),
-				 port(SERVER_PORT), host(SERVER_HOST), total(SERVER_TOTAL_CONNECT), acceptFn(nullptr) {}
+				 awh::worker_t(fmk, log), ectx(fmk, log), addr(fmk, log),
+				 port(SERVER_PORT), host(SERVER_HOST), total(SERVER_TOTAL_CONNECT) {}
 				/**
 				 * ~Worker Деструктор
 				 */

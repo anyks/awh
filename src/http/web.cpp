@@ -25,41 +25,41 @@ size_t awh::Web::readPayload(const char * buffer, const size_t size) noexcept {
 	// Результат работы функции
 	size_t result = 0;
 	// Если данные переданы
-	if((buffer != nullptr) && (size > 0) && (this->state != state_t::END)){
+	if((buffer != nullptr) && (size > 0) && (this->_state != state_t::END)){
 		// Если мы собираем тело полезной нагрузки
-		if(this->state == state_t::BODY){
+		if(this->_state == state_t::BODY){
 			// Если размер тела сообщения получен
-			if(this->bodySize > -1){
+			if(this->_bodySize > -1){
 				// Если размер тела не получен
-				if(this->bodySize == 0){
+				if(this->_bodySize == 0){
 					// Запоминаем количество обработанных байт
 					result = size;
 					// Заполняем собранные данные тела
-					this->chunk.data.assign(buffer, buffer + result);
+					this->_chunk.data.assign(buffer, buffer + result);
 					// Если функция обратного вызова установлена
-					if(this->chunkingFn != nullptr)
+					if(this->_fn != nullptr)
 						// Выводим функцию обратного вызова
-						this->chunkingFn(this->chunk.data, this);
+						this->_fn(this->_chunk.data, this);
 				// Если размер установлен конкретный
 				} else {
 					// Получаем актуальный размер тела
-					result = (this->bodySize - this->body.size());
+					result = (this->_bodySize - this->_body.size());
 					// Фиксируем актуальный размер тела
 					result = (size > result ? result : size);
 					// Увеличиваем общий размер полученных данных
-					this->chunk.size += result;
+					this->_chunk.size += result;
 					// Заполняем собранные данные тела
-					this->chunk.data.assign(buffer, buffer + result);
+					this->_chunk.data.assign(buffer, buffer + result);
 					// Если функция обратного вызова установлена
-					if(this->chunkingFn != nullptr)
+					if(this->_fn != nullptr)
 						// Выводим функцию обратного вызова
-						this->chunkingFn(this->chunk.data, this);
+						this->_fn(this->_chunk.data, this);
 					// Если тело сообщения полностью собранно
-					if(this->bodySize == this->chunk.size){
+					if(this->_bodySize == this->_chunk.size){
 						// Очищаем собранные данные
-						this->chunk.clear();
+						this->_chunk.clear();
 						// Тело в запросе не передано
-						this->state = state_t::END;
+						this->_state = state_t::END;
 						// Выходим из функции
 						return result;
 					}
@@ -73,30 +73,30 @@ size_t awh::Web::readPayload(const char * buffer, const size_t size) noexcept {
 				// Переходим по всему буферу данных
 				for(size_t i = 0; i < size; i++){
 					// Определяем стейт чанка
-					switch((uint8_t) this->chunk.state){
+					switch((uint8_t) this->_chunk.state){
 						// Если мы ожидаем получения размера тела чанка
 						case (uint8_t) cstate_t::SIZE: {
 							// Если мы получили возврат каретки
 							if(buffer[i] == '\r'){
 								// Меняем стейт чанка
-								this->chunk.state = cstate_t::ENDSIZE;
+								this->_chunk.state = cstate_t::ENDSIZE;
 								// Получаем размер чанка
-								this->chunk.size = this->fmk->hexToDec(string(
-									this->chunk.data.begin(),
-									this->chunk.data.end()
+								this->_chunk.size = this->_fmk->hexToDec(string(
+									this->_chunk.data.begin(),
+									this->_chunk.data.end()
 								));
 								// Устанавливаем смещение
 								offset = (i + 1);
 								// Запоминаем количество обработанных байт
 								result = offset;
 								// Выполняем сброс тела данных
-								this->chunk.data.clear();
+								this->_chunk.data.clear();
 							// Выполняем сборку 16-го размера чанка
 							} else {
 								// Запоминаем количество обработанных байт
 								result = (i + 1);
 								// Выполняем сборку размера чанка
-								this->chunk.data.push_back(buffer[i]);
+								this->_chunk.data.push_back(buffer[i]);
 							}
 						} break;
 						// Если мы ожидаем получение окончания сбора размера тела чанка
@@ -108,19 +108,19 @@ size_t awh::Web::readPayload(const char * buffer, const size_t size) noexcept {
 							// Если мы получили перевод строки
 							if(buffer[i] == '\n'){
 								// Если размер получен 0-й значит мы завершили сбор данных
-								if(this->chunk.size == 0)
+								if(this->_chunk.size == 0)
 									// Меняем стейт чанка
-									this->chunk.state = cstate_t::STOPBODY;
+									this->_chunk.state = cstate_t::STOPBODY;
 								// Если данные собраны не полностью
 								else {
 									// Если количества байт достаточно для сбора тела чанка
-									if((size - offset) >= this->chunk.size){
+									if((size - offset) >= this->_chunk.size){
 										// Меняем стейт чанка
-										this->chunk.state = cstate_t::STOPBODY;
+										this->_chunk.state = cstate_t::STOPBODY;
 										// Определяем конец буфера
-										size_t end = (offset + this->chunk.size);
+										size_t end = (offset + this->_chunk.size);
 										// Собираем тело чанка
-										this->chunk.data.insert(this->chunk.data.end(), buffer + offset, buffer + end);
+										this->_chunk.data.insert(this->_chunk.data.end(), buffer + offset, buffer + end);
 										// Выполняем смещение итератора
 										i = (end - 1);
 										// Увеличиваем смещение
@@ -130,9 +130,9 @@ size_t awh::Web::readPayload(const char * buffer, const size_t size) noexcept {
 									// Если количества байт не достаточно для сбора тела
 									} else {
 										// Меняем стейт чанка
-										this->chunk.state = cstate_t::BODY;
+										this->_chunk.state = cstate_t::BODY;
 										// Собираем тело чанка
-										this->chunk.data.insert(this->chunk.data.end(), buffer + offset, buffer + size);
+										this->_chunk.data.insert(this->_chunk.data.end(), buffer + offset, buffer + size);
 										// Запоминаем количество обработанных байт
 										result = size;
 										// Выходим из функции
@@ -150,13 +150,13 @@ size_t awh::Web::readPayload(const char * buffer, const size_t size) noexcept {
 						// Если мы ожидаем сбора тела чанка
 						case (uint8_t) cstate_t::BODY: {
 							// Определяем количество необходимых байт
-							size_t rem = (this->chunk.size - this->chunk.data.size());
+							size_t rem = (this->_chunk.size - this->_chunk.data.size());
 							// Если количества байт достаточно для сбора тела чанка
 							if(size >= rem){
 								// Меняем стейт чанка
-								this->chunk.state = cstate_t::STOPBODY;
+								this->_chunk.state = cstate_t::STOPBODY;
 								// Собираем тело чанка
-								this->chunk.data.insert(this->chunk.data.end(), buffer, buffer + rem);
+								this->_chunk.data.insert(this->_chunk.data.end(), buffer, buffer + rem);
 								// Выполняем смещение итератора
 								i = (rem - 1);
 								// Увеличиваем смещение
@@ -166,7 +166,7 @@ size_t awh::Web::readPayload(const char * buffer, const size_t size) noexcept {
 							// Если количества байт не достаточно для сбора тела
 							} else {
 								// Собираем тело чанка
-								this->chunk.data.insert(this->chunk.data.end(), buffer, buffer + size);
+								this->_chunk.data.insert(this->_chunk.data.end(), buffer, buffer + size);
 								// Запоминаем количество обработанных байт
 								result = size;
 								// Выходим из функции
@@ -182,7 +182,7 @@ size_t awh::Web::readPayload(const char * buffer, const size_t size) noexcept {
 							// Если мы получили возврат каретки
 							if(buffer[i] == '\r')
 								// Меняем стейт чанка
-								this->chunk.state = cstate_t::ENDBODY;
+								this->_chunk.state = cstate_t::ENDBODY;
 							// Если символ отличается, значит ошибка
 							else {
 								// Устанавливаем символ ошибки
@@ -200,13 +200,13 @@ size_t awh::Web::readPayload(const char * buffer, const size_t size) noexcept {
 							// Если мы получили перевод строки
 							if(buffer[i] == '\n'){
 								// Если размер получен 0-й значит мы завершили сбор данных
-								if(this->chunk.size == 0) goto Stop;
+								if(this->_chunk.size == 0) goto Stop;
 								// Если функция обратного вызова установлена
-								else if(this->chunkingFn != nullptr)
+								else if(this->_fn != nullptr)
 									// Выводим функцию обратного вызова
-									this->chunkingFn(this->chunk.data, this);
+									this->_fn(this->_chunk.data, this);
 								// Выполняем очистку чанка
-								this->chunk.clear();
+								this->_chunk.clear();
 							// Если символ отличается, значит ошибка
 							} else {
 								// Устанавливаем символ ошибки
@@ -222,11 +222,11 @@ size_t awh::Web::readPayload(const char * buffer, const size_t size) noexcept {
 				// Устанавливаем метку выхода
 				Stop:
 				// Выполняем очистку чанка
-				this->chunk.clear();
+				this->_chunk.clear();
 				// Тело в запросе не передано
-				this->state = state_t::END;
+				this->_state = state_t::END;
 				// Сообщаем, что переданное тело содержит ошибки
-				if(error != '\0') this->log->print("body chunk contains errors, [\\%c] is expected", log_t::flag_t::WARNING, error);
+				if(error != '\0') this->_log->print("body chunk contains errors, [\\%c] is expected", log_t::flag_t::WARNING, error);
 			}
 		}
 	}
@@ -243,15 +243,15 @@ size_t awh::Web::readHeaders(const char * buffer, const size_t size) noexcept {
 	// Результат работы функции
 	size_t result = 0;
 	// Если данные переданы
-	if((buffer != nullptr) && (size > 0) && (this->state != state_t::END)){
+	if((buffer != nullptr) && (size > 0) && (this->_state != state_t::END)){
 		// Если мы собираем заголовки или стартовый запрос
-		if((this->state == state_t::HEADERS) || (this->state == state_t::QUERY)){
+		if((this->_state == state_t::HEADERS) || (this->_state == state_t::QUERY)){
 			// Определяем статус режима работы
-			switch((uint8_t) this->state){
+			switch((uint8_t) this->_state){
 				// Если - это режим ожидания получения запроса
-				case (uint8_t) state_t::QUERY: this->sep = ' '; break;
+				case (uint8_t) state_t::QUERY: this->_sep = ' '; break;
 				// Если - это режим получения заголовков
-				case (uint8_t) state_t::HEADERS: this->sep = ':'; break;
+				case (uint8_t) state_t::HEADERS: this->_sep = ':'; break;
 			}
 			/**
 			 * Выполняем парсинг заголовков запроса
@@ -262,44 +262,44 @@ size_t awh::Web::readHeaders(const char * buffer, const size_t size) noexcept {
 				// Если все данные получены
 				if(stop){
 					// Получаем размер тела
-					auto it = this->headers.find("content-length");
+					auto it = this->_headers.find("content-length");
 					// Если размер запроса передан
-					if(it != this->headers.end()){
+					if(it != this->_headers.end()){
 						// Запоминаем размер тела сообщения
-						this->bodySize = stoull(it->second);
+						this->_bodySize = stoull(it->second);
 						// Если размер тела не получен
-						if(this->bodySize == 0){
+						if(this->_bodySize == 0){
 							// Запрашиваем заголовок подключения
-							const string & header = this->getHeader("connection");
+							const string & header = this->header("connection");
 							// Если заголовок подключения найден
 							if(header.empty() || (header.compare("close") != 0)){
 								// Тело в запросе не передано
-								this->state = state_t::END;
+								this->_state = state_t::END;
 								// Выходим из функции
 								return;
 							}
 						}
 						// Устанавливаем стейт поиска тела запроса
-						this->state = state_t::BODY;
+						this->_state = state_t::BODY;
 						// Продолжаем работу
 						goto end;
 					// Если тело приходит
 					} else {
 						// Получаем размер тела
-						it = this->headers.find("transfer-encoding");
+						it = this->_headers.find("transfer-encoding");
 						// Если размер запроса передан
-						if(it != this->headers.end()){
+						if(it != this->_headers.end()){
 							// Если нужно получать размер тела чанками
 							if(it->second.find("chunked") != string::npos){
 								// Устанавливаем стейт поиска тела запроса
-								this->state = state_t::BODY;
+								this->_state = state_t::BODY;
 								// Продолжаем работу
 								goto end;
 							}
 						}
 					}
 					// Тело в запросе не передано
-					this->state = state_t::END;
+					this->_state = state_t::END;
 					// Устанавливаем метку завершения работы
 					end:
 					// Выходим из функции
@@ -307,11 +307,11 @@ size_t awh::Web::readHeaders(const char * buffer, const size_t size) noexcept {
 				// Если необходимо  получить оставшиеся данные
 				} else {
 					// Определяем статус режима работы
-					switch((uint8_t) this->state){
+					switch((uint8_t) this->_state){
 						// Если - это режим ожидания получения запроса
 						case (uint8_t) state_t::QUERY: {
 							// Определяем тип HTTP модуля
-							switch((uint8_t) this->httpType){
+							switch((uint8_t) this->_httpType){
 								// Если мы работаем с клиентом
 								case (uint8_t) hid_t::CLIENT: {
 									// Создаём буфер для проверки
@@ -325,23 +325,23 @@ size_t awh::Web::readHeaders(const char * buffer, const size_t size) noexcept {
 										// Выполняем очистку всех ранее полученных данных
 										this->clear();
 										// Устанавливаем разделитель
-										this->sep = ':';
+										this->_sep = ':';
 										// Выполняем сброс размера тела
-										this->bodySize = -1;
+										this->_bodySize = -1;
 										// Устанавливаем стейт ожидания получения заголовков
-										this->state = state_t::HEADERS;
+										this->_state = state_t::HEADERS;
 										// Получаем версию протокол запроса
-										this->query.ver = stof(string(buffer + 5, this->pos[0] - 5));
+										this->_query.ver = stof(string(buffer + 5, this->_pos[0] - 5));
 										// Получаем сообщение ответа
-										this->query.message.assign(buffer + (this->pos[1] + 1), size - (this->pos[1] + 1));
+										this->_query.message.assign(buffer + (this->_pos[1] + 1), size - (this->_pos[1] + 1));
 										// Получаем код ответа
-										this->query.code = stoi(string(buffer + (this->pos[0] + 1), this->pos[1] - (this->pos[0] + 1)));
+										this->_query.code = stoi(string(buffer + (this->_pos[0] + 1), this->_pos[1] - (this->_pos[0] + 1)));
 									// Если данные пришли неправильные
 									} else {
 										// Выполняем очистку всех ранее полученных данных
 										this->clear();
 										// Сообщаем, что переданное тело содержит ошибки
-										this->log->print("%s", log_t::flag_t::WARNING, "broken response server");
+										this->_log->print("%s", log_t::flag_t::WARNING, "broken response server");
 									}
 								} break;
 								// Если мы работаем с сервером
@@ -349,7 +349,7 @@ size_t awh::Web::readHeaders(const char * buffer, const size_t size) noexcept {
 									// Создаём буфер для проверки
 									char temp[5];
 									// Копируем полученную строку
-									strncpy(temp, buffer + (this->pos[1] + 1), 4);
+									strncpy(temp, buffer + (this->_pos[1] + 1), 4);
 									// Устанавливаем конец строки
 									temp[4] = '\0';
 									// Если мы получили ответ от сервера
@@ -357,41 +357,41 @@ size_t awh::Web::readHeaders(const char * buffer, const size_t size) noexcept {
 										// Выполняем очистку всех ранее полученных данных
 										this->clear();
 										// Устанавливаем разделитель
-										this->sep = ':';
+										this->_sep = ':';
 										// Выполняем сброс размера тела
-										this->bodySize = -1;
+										this->_bodySize = -1;
 										// Выполняем смену стейта
-										this->state = state_t::HEADERS;
+										this->_state = state_t::HEADERS;
 										// Получаем метод запроса
-										const string & method = this->fmk->toLower(string(buffer, this->pos[0]));
+										const string & method = this->_fmk->toLower(string(buffer, this->_pos[0]));
 										// Получаем версию протокол запроса
-										this->query.ver = stof(string(buffer + (this->pos[1] + 6), size - (this->pos[1] + 6)));
+										this->_query.ver = stof(string(buffer + (this->_pos[1] + 6), size - (this->_pos[1] + 6)));
 										// Получаем URI запроса
-										this->query.uri.assign(buffer + (this->pos[0] + 1), this->pos[1] - (this->pos[0] + 1));
+										this->_query.uri.assign(buffer + (this->_pos[0] + 1), this->_pos[1] - (this->_pos[0] + 1));
 										// Если метод определён как GET
-										if(method.compare("get") == 0) this->query.method = method_t::GET;
+										if(method.compare("get") == 0) this->_query.method = method_t::GET;
 										// Если метод определён как PUT
-										else if(method.compare("put") == 0) this->query.method = method_t::PUT;
+										else if(method.compare("put") == 0) this->_query.method = method_t::PUT;
 										// Если метод определён как POST
-										else if(method.compare("post") == 0) this->query.method = method_t::POST;
+										else if(method.compare("post") == 0) this->_query.method = method_t::POST;
 										// Если метод определён как HEAD
-										else if(method.compare("head") == 0) this->query.method = method_t::HEAD;
+										else if(method.compare("head") == 0) this->_query.method = method_t::HEAD;
 										// Если метод определён как DELETE
-										else if(method.compare("delete") == 0) this->query.method = method_t::DEL;
+										else if(method.compare("delete") == 0) this->_query.method = method_t::DEL;
 										// Если метод определён как PATCH
-										else if(method.compare("patch") == 0) this->query.method = method_t::PATCH;
+										else if(method.compare("patch") == 0) this->_query.method = method_t::PATCH;
 										// Если метод определён как TRACE
-										else if(method.compare("trace") == 0) this->query.method = method_t::TRACE;
+										else if(method.compare("trace") == 0) this->_query.method = method_t::TRACE;
 										// Если метод определён как OPTIONS
-										else if(method.compare("options") == 0) this->query.method = method_t::OPTIONS;
+										else if(method.compare("options") == 0) this->_query.method = method_t::OPTIONS;
 										// Если метод определён как CONNECT
-										else if(method.compare("connect") == 0) this->query.method = method_t::CONNECT;
+										else if(method.compare("connect") == 0) this->_query.method = method_t::CONNECT;
 									// Если данные пришли неправильные
 									} else {
 										// Выполняем очистку всех ранее полученных данных
 										this->clear();
 										// Сообщаем, что переданное тело содержит ошибки
-										this->log->print("%s", log_t::flag_t::WARNING, "broken request client");
+										this->_log->print("%s", log_t::flag_t::WARNING, "broken request client");
 									}
 								} break;
 							}
@@ -399,13 +399,13 @@ size_t awh::Web::readHeaders(const char * buffer, const size_t size) noexcept {
 						// Если - это режим получения заголовков
 						case (uint8_t) state_t::HEADERS: {
 							// Получаем ключ заголовка
-							const string & key = string(buffer, this->pos[0]);
+							const string & key = string(buffer, this->_pos[0]);
 							// Получаем значение заголовка
-							const string & val = string(buffer + (this->pos[0] + 1), size - (this->pos[0] + 1));
+							const string & val = string(buffer + (this->_pos[0] + 1), size - (this->_pos[0] + 1));
 							// Добавляем заголовок в список заголовков
 							if(!key.empty() && !val.empty())
 								// Добавляем заголовок в список
-								this->headers.emplace(this->fmk->toLower(key), this->fmk->trim(val));
+								this->_headers.emplace(this->_fmk->toLower(key), this->_fmk->trim(val));
 						} break;
 					}
 				}
@@ -431,7 +431,7 @@ void awh::Web::prepare(const char * buffer, const size_t size, function <void (c
 		// Смещение в буфере и длина полученной строки
 		size_t offset = 0, length = 0, count = 0;
 		// Выполняем сброс массива сепараторов
-		memset(this->pos, -1, sizeof(this->pos));
+		memset(this->_pos, -1, sizeof(this->_pos));
 		// Переходим по всему буферу
 		for(size_t i = 0; i < size; i++){
 			// Получаем значение текущей буквы
@@ -446,9 +446,9 @@ void awh::Web::prepare(const char * buffer, const size_t size, function <void (c
 			// Если предыдущий символ был переносом строки а текущий возврат каретки
 			if((old == '\n') && (letter == '\r')) stop = true;
 			// Если сепаратор найден, добавляем его в массив
-			if((this->sep != '\0') && (letter == this->sep) && (count < 2)){
+			if((this->_sep != '\0') && (letter == this->_sep) && (count < 2)){
 				// Устанавливаем позицию найденного разделителя
-				this->pos[count] = (i - offset);
+				this->_pos[count] = (i - offset);
 				// Увеличиваем количество найденных разделителей
 				count++;
 			}
@@ -461,11 +461,11 @@ void awh::Web::prepare(const char * buffer, const size_t size, function <void (c
 				// Если длина слова получена, выводим полученную строку
 				callback(buffer + offset, length, i + 1, stop);
 				// Если массив сепараторов получен
-				if(this->sep != '\0'){
+				if(this->_sep != '\0'){
 					// Выполняем сброс количество найденных сепараторов
 					count = 0;
 					// Выполняем сброс массива сепараторов
-					memset(this->pos, -1, sizeof(this->pos));
+					memset(this->_pos, -1, sizeof(this->_pos));
 				}
 				// Выполняем смещение
 				offset = (i + 1);
@@ -485,9 +485,9 @@ size_t awh::Web::parse(const char * buffer, const size_t size) noexcept {
 	// Результат работы функции
 	size_t result = 0;
 	// Если данные переданы или обработка полностью выполнена
-	if((buffer != nullptr) && (size > 0) && (this->state != state_t::END)){
+	if((buffer != nullptr) && (size > 0) && (this->_state != state_t::END)){
 		// Определяем текущий стейт
-		switch((uint8_t) this->state){
+		switch((uint8_t) this->_state){
 			// Если установлен стейт чтения параметров запроса/ответа
 			case (uint8_t) state_t::QUERY:
 			// Если установлен стейт чтения заголовков
@@ -495,7 +495,7 @@ size_t awh::Web::parse(const char * buffer, const size_t size) noexcept {
 				// Выполняем чтение заголовков
 				result = this->readHeaders(buffer, size);
 				// Если требуется продолжить извлечение данных тела сообщения
-				if((result < size) && (this->state == state_t::BODY))
+				if((result < size) && (this->_state == state_t::BODY))
 					// Выполняем извлечение данных тела сообщения
 					result += this->readPayload(buffer + result, size - result);
 			} break;
@@ -511,42 +511,42 @@ size_t awh::Web::parse(const char * buffer, const size_t size) noexcept {
  */
 void awh::Web::clear() noexcept {
 	// Выполняем очистку тела HTTP запроса
-	this->body.clear();
+	this->_body.clear();
 	// Выполняем сброс параметров чанка
-	this->chunk.clear();
+	this->_chunk.clear();
 	// Выполняем сброс полученных HTTP заголовков
-	this->headers.clear();
+	this->_headers.clear();
 	// Выполняем сброс параметров запроса
-	this->query = query_t();
+	this->_query = query_t();
 }
 /**
  * reset Метод сброса стейтов парсера
  */
 void awh::Web::reset() noexcept {
 	// Устанавливаем разделитель
-	this->sep = '\0';
+	this->_sep = '\0';
 	// Выполняем сброс размера тела
-	this->bodySize = -1;
+	this->_bodySize = -1;
 	// Выполняем сброс стейта текущего запроса
-	this->state = state_t::QUERY;
+	this->_state = state_t::QUERY;
 	// Выполняем сброс массива сепараторов
-	memset(this->pos, -1, sizeof(this->pos));
+	memset(this->_pos, -1, sizeof(this->_pos));
 }
 /**
- * getQuery Метод получения объекта запроса сервера
+ * query Метод получения объекта запроса сервера
  * @return объект запроса сервера
  */
-const awh::Web::query_t & awh::Web::getQuery() const noexcept {
+const awh::Web::query_t & awh::Web::query() const noexcept {
 	// Выводим объект запроса сервера
-	return this->query;
+	return this->_query;
 }
 /**
- * setQuery Метод добавления объекта запроса клиента
+ * query Метод добавления объекта запроса клиента
  * @param query объект запроса клиента
  */
-void awh::Web::setQuery(const query_t & query) noexcept {
+void awh::Web::query(const query_t & query) noexcept {
 	// Устанавливаем объект запроса клиента
-	this->query = query;
+	this->_query = query;
 }
 /**
  * isEnd Метод проверки завершения обработки
@@ -554,7 +554,7 @@ void awh::Web::setQuery(const query_t & query) noexcept {
  */
 bool awh::Web::isEnd() const noexcept {
 	// Выводрим результат проверки
-	return (this->state == state_t::END);
+	return (this->_state == state_t::END);
 }
 /**
  * isHeader Метод проверки существования заголовка
@@ -567,11 +567,11 @@ bool awh::Web::isHeader(const string & key) const noexcept {
 	// Если ключ передан
 	if(!key.empty()){
 		// Получаем название заголовка
-		const string & name = this->fmk->toLower(key);
+		const string & name = this->_fmk->toLower(key);
 		// Выполняем перебор всех заголовков
-		for(auto & header : this->headers){
+		for(auto & header : this->_headers){
 			// Выполняем проверку существования заголовка
-			result = (this->fmk->toLower(header.first).compare(name) == 0);
+			result = (this->_fmk->toLower(header.first).compare(name) == 0);
 			// Выходим из цилка если заголовок найден
 			if(result) break;
 		}
@@ -584,60 +584,41 @@ bool awh::Web::isHeader(const string & key) const noexcept {
  */
 void awh::Web::clearBody() noexcept {
 	// Выполняем очистку данных тела
-	this->body.clear();
+	this->_body.clear();
 }
 /**
  * clearHeaders Метод очистки списка заголовков
  */
 void awh::Web::clearHeaders() noexcept {
 	// Выполняем очистку заголовков
-	this->headers.clear();
+	this->_headers.clear();
 }
 /**
- * getBody Метод получения данных тела запроса
+ * body Метод получения данных тела запроса
  * @return буфер данных тела запроса
  */
-const vector <char> & awh::Web::getBody() const noexcept {
+const vector <char> & awh::Web::body() const noexcept {
 	// Выводим данные тела
-	return this->body;
+	return this->_body;
 }
 /**
- * setBody Метод установки данных тела
+ * body Метод установки данных тела
  * @param body буфер тела для установки
  */
-void awh::Web::setBody(const vector <char> & body) noexcept {
+void awh::Web::body(const vector <char> & body) noexcept {
 	// Выполняем установку данных тела
-	this->body.assign(body.begin(), body.end());
+	this->_body.assign(body.begin(), body.end());
 }
 /**
- * addBody Метод добавления буфера тела данных запроса
+ * body Метод добавления буфера тела данных запроса
  * @param buffer буфер данных тела запроса
  * @param size   размер буфера данных
  */
-void awh::Web::addBody(const char * buffer, const size_t size) noexcept {
+void awh::Web::body(const char * buffer, const size_t size) noexcept {
 	// Если даныне переданы
 	if((buffer != nullptr) && (size > 0))
 		// Добавляем данные буфера в буфер тела
-		this->body.insert(this->body.end(), buffer, buffer + size);
-}
-/**
- * addHeader Метод добавления заголовка
- * @param key ключ заголовка
- * @param val значение заголовка
- */
-void awh::Web::addHeader(const string & key, const string & val) noexcept {
-	// Если даныне заголовка переданы
-	if(!key.empty() && !val.empty())
-		// Выполняем добавление передаваемого заголовка
-		this->headers.emplace(key, val);
-}
-/**
- * setHeaders Метод установки списка заголовков
- * @param headers список заголовков для установки
- */
-void awh::Web::setHeaders(const unordered_multimap <string, string> & headers) noexcept {
-	// Выполняем установку заголовков
-	this->headers = headers;
+		this->_body.insert(this->_body.end(), buffer, buffer + size);
 }
 /**
  * rmHeader Метод удаления заголовка
@@ -647,46 +628,65 @@ void awh::Web::rmHeader(const string & key) noexcept {
 	// Если ключ заголовка передан
 	if(!key.empty()){
 		// Получаем название заголовка
-		const string & name = this->fmk->toLower(key);
+		const string & name = this->_fmk->toLower(key);
 		// Выполняем перебор всех заголовков
-		for(auto it = this->headers.begin(); it != this->headers.end();){
+		for(auto it = this->_headers.begin(); it != this->_headers.end();){
 			// Выполняем проверку существования заголовка
-			if(this->fmk->toLower(it->first).compare(name) == 0)
+			if(this->_fmk->toLower(it->first).compare(name) == 0)
 				// Выполняем удаление указанного заголовка
-				it = this->headers.erase(it);
+				it = this->_headers.erase(it);
 			// Иначе ищем заголовок дальше
 			else it++;
 		}
 	}
 }
 /**
- * getHeader Метод получения данных заголовка
+ * header Метод получения данных заголовка
  * @param key ключ заголовка
  * @return    значение заголовка
  */
-const string & awh::Web::getHeader(const string & key) const noexcept {
+const string & awh::Web::header(const string & key) const noexcept {
 	// Если ключ заголовка передан
 	if(!key.empty()){
 		// Получаем название заголовка
-		const string & name = this->fmk->toLower(key);
+		const string & name = this->_fmk->toLower(key);
 		// Выполняем перебор всех заголовков
-		for(auto & header : this->headers){
+		for(auto & header : this->_headers){
 			// Выполняем проверку существования заголовка
-			if(this->fmk->toLower(header.first).compare(name) == 0)
+			if(this->_fmk->toLower(header.first).compare(name) == 0)
 				// Выводим найденный заголовок
 				return header.second;
 		}
 	}
 	// Выводим результат
-	return this->header;
+	return this->_header;
 }
 /**
- * getHeaders Метод получения списка заголовков
+ * header Метод добавления заголовка
+ * @param key ключ заголовка
+ * @param val значение заголовка
+ */
+void awh::Web::header(const string & key, const string & val) noexcept {
+	// Если даныне заголовка переданы
+	if(!key.empty() && !val.empty())
+		// Выполняем добавление передаваемого заголовка
+		this->_headers.emplace(key, val);
+}
+/**
+ * headers Метод получения списка заголовков
  * @return список существующих заголовков
  */
-const unordered_multimap <string, string> & awh::Web::getHeaders() const noexcept {
+const unordered_multimap <string, string> & awh::Web::headers() const noexcept {
 	// Выводим список доступных заголовков
-	return this->headers;
+	return this->_headers;
+}
+/**
+ * headers Метод установки списка заголовков
+ * @param headers список заголовков для установки
+ */
+void awh::Web::headers(const unordered_multimap <string, string> & headers) noexcept {
+	// Выполняем установку заголовков
+	this->_headers = headers;
 }
 /**
  * init Метод инициализации модуля
@@ -694,13 +694,13 @@ const unordered_multimap <string, string> & awh::Web::getHeaders() const noexcep
  */
 void awh::Web::init(const hid_t hid) noexcept {
 	// Устанавливаем тип используемого HTTP мдуля
-	this->httpType = hid;
+	this->_httpType = hid;
 }
 /**
- * setChunkingFn Метод установки функции обратного вызова для получения чанков
+ * chunking Метод установки функции обратного вызова для получения чанков
  * @param callback функция обратного вызова
  */
-void awh::Web::setChunkingFn(function <void (const vector <char> &, const Web *)> callback) noexcept {
+void awh::Web::chunking(function <void (const vector <char> &, const Web *)> callback) noexcept {
 	// Устанавливаем функцию обратного вызова
-	this->chunkingFn = callback;
+	this->_fn = callback;
 }

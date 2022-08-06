@@ -43,8 +43,8 @@ namespace awh {
 				 * Режим работы клиента
 				 */
 				enum class mode_t : uint8_t {
-					CONNECT    = 0x01,
-					DISCONNECT = 0x02
+					CONNECT    = 0x01, // Метод подключения клиента
+					DISCONNECT = 0x02  // Метод отключения клиента
 				};
 				/**
 				 * Основные флаги приложения
@@ -56,81 +56,90 @@ namespace awh {
 					TAKEOVERSRV = 0x08  // Флаг переиспользования контекста сервера
 				};
 			private:
-				// Хости сервера
-				string host = "";
+				/**
+				 * Callback Структура функций обратного вызова
+				 */
+				typedef struct Callback {
+					// Функция обратного вызова для извлечения пароля
+					function <string (const string &)> extractPass;
+					// Функция обратного вызова для обработки авторизации
+					function <bool (const string &, const string &)> checkAuth;
+					// Функция обратного вызова, при запуске или остановки подключения к серверу
+					function <void (const size_t, const mode_t, WebSocket *)> active;
+					// Функция разрешения подключения клиента на сервере
+					function <bool (const string &, const string &, WebSocket *)> accept;
+					// Функция обратного вызова, при получении ошибки работы клиента
+					function <void (const size_t, const u_int, const string &, WebSocket *)> error;
+					// Функция обратного вызова, при получении сообщения с сервера
+					function <void (const size_t, const vector <char> &, const bool, WebSocket *)> message;
+					/**
+					 * Callback Конструктор
+					 */
+					Callback() noexcept : extractPass(nullptr), checkAuth(nullptr), active(nullptr), accept(nullptr), error(nullptr), message(nullptr) {}
+				} fn_t;
+			private:
 				// Порт сервера
-				u_int port = SERVER_PORT;
+				u_int _port;
+				// Хости сервера
+				string _host;
 			private:
 				// Объект тредпула для работы с потоками
-				thr_t thr;
+				thr_t _thr;
 				// Создаём объект для работы с фреймом WebSocket
-				frame_t frame;
+				frame_t _frame;
+				// Объявляем функции обратного вызова
+				fn_t _callback;
 				// Объект рабочего
-				ws_worker_t worker;
+				ws_worker_t _worker;
+			private:
+				// Идентификатор сервера
+				string _sid;
+				// Версия сервера
+				string _ver;
+				// Название сервера
+				string _name;
 			private:
 				// Название сервера
-				string name = AWH_NAME;
-				// Идентификатор сервера
-				string sid = AWH_SHORT_NAME;
-				// Версия сервера
-				string version = AWH_VERSION;
+				string _realm;
+				// Временный ключ сессии сервера
+				string _opaque;
 			private:
 				// Пароль шифрования передаваемых данных
-				string pass = "";
+				string _pass;
 				// Соль шифрования передаваемых данных
-				string salt = "";
+				string _salt;
 				// Размер шифрования передаваемых данных
-				hash_t::aes_t aes = hash_t::aes_t::AES128;
-			private:
-				// Название сервера
-				string realm = "";
-				// Уникальный ключ клиента
-				string nonce = "";
-				// Временный ключ сессии сервера
-				string opaque = "";
+				hash_t::cipher_t _cipher;
 			private:
 				// Алгоритм шифрования для Digest авторизации
-				auth_t::hash_t authHash = auth_t::hash_t::MD5;
+				auth_t::hash_t _authHash;
 				// Тип авторизации
-				auth_t::type_t authType = auth_t::type_t::NONE;
-			private:
-				// Поддерживаемые сабпротоколы
-				vector <string> subs;
-			private:
-				// Количество активных потоков
-				size_t threadsCount = 0;
-				// Флаг активации работы тредпула
-				bool threadsEnabled = false;
+				auth_t::type_t _authType;
 			private:
 				// Флаг шифрования сообщений
-				bool crypt = false;
+				bool _crypt;
 				// Флаг переиспользования контекста клиента
-				bool takeOverCli = false;
+				bool _takeOverCli;
 				// Флаг переиспользования контекста сервера
-				bool takeOverSrv = false;
+				bool _takeOverSrv;
+			private:
 				// Минимальный размер сегмента
-				size_t frameSize = 0xFA000;
+				size_t _frameSize;
+			private:
+				// Количество активных потоков
+				size_t _threadsCount;
+				// Флаг активации работы тредпула
+				bool _threadsEnabled;
+			private:
+				// Поддерживаемые сабпротоколы
+				vector <string> _subs;
 			private:
 				// Создаём объект фреймворка
-				const fmk_t * fmk = nullptr;
+				const fmk_t * _fmk;
 				// Создаём объект работы с логами
-				const log_t * log = nullptr;
+				const log_t * _log;
 				// Создаём объект биндинга TCP/IP
-				const server::core_t * core = nullptr;
-			private:
-				// Функция обратного вызова для извлечения пароля
-				function <string (const string &)> extractPassFn = nullptr;
-				// Функция обратного вызова для обработки авторизации
-				function <bool (const string &, const string &)> checkAuthFn = nullptr;
-			private:
-				// Функция обратного вызова, при запуске или остановки подключения к серверу
-				function <void (const size_t, const mode_t, WebSocket *)> activeFn = nullptr;
-				// Функция разрешения подключения клиента на сервере
-				function <bool (const string &, const string &, WebSocket *)> acceptFn = nullptr;
-				// Функция обратного вызова, при получении ошибки работы клиента
-				function <void (const size_t, const u_int, const string &, WebSocket *)> errorFn = nullptr;
-				// Функция обратного вызова, при получении сообщения с сервера
-				function <void (const size_t, const vector <char> &, const bool, WebSocket *)> messageFn = nullptr;
+				const server::core_t * _core;
 			private:
 				/**
 				 * openCallback Функция обратного вызова при запуске работы
@@ -329,34 +338,34 @@ namespace awh {
 				void multiThreads(const size_t threads = 0, const bool mode = true) noexcept;
 			public:
 				/**
-				 * setSub Метод установки подпротокола поддерживаемого сервером
+				 * sub Метод установки подпротокола поддерживаемого сервером
 				 * @param sub подпротокол для установки
 				 */
-				void setSub(const string & sub) noexcept;
+				void sub(const string & sub) noexcept;
 				/**
-				 * setSubs Метод установки списка подпротоколов поддерживаемых сервером
+				 * subs Метод установки списка подпротоколов поддерживаемых сервером
 				 * @param subs подпротоколы для установки
 				 */
-				void setSubs(const vector <string> & subs) noexcept;
+				void subs(const vector <string> & subs) noexcept;
 				/**
-				 * getSub Метод получения выбранного сабпротокола
+				 * sub Метод получения выбранного сабпротокола
 				 * @param aid идентификатор адъютанта
 				 * @return    название поддерживаемого сабпротокола
 				 */
-				const string getSub(const size_t aid) const noexcept;
+				const string sub(const size_t aid) const noexcept;
 			public:
 				/**
-				 * setWaitTimeDetect Метод детекции сообщений по количеству секунд
+				 * waitTimeDetect Метод детекции сообщений по количеству секунд
 				 * @param read  количество секунд для детекции по чтению
 				 * @param write количество секунд для детекции по записи
 				 */
-				void setWaitTimeDetect(const time_t read, const time_t write) noexcept;
+				void waitTimeDetect(const time_t read, const time_t write) noexcept;
 				/**
-				 * setBytesDetect Метод детекции сообщений по количеству байт
+				 * bytesDetect Метод детекции сообщений по количеству байт
 				 * @param read  количество байт для детекции по чтению
 				 * @param write количество байт для детекции по записи
 				 */
-				void setBytesDetect(const worker_t::mark_t read, const worker_t::mark_t write) noexcept;
+				void bytesDetect(const worker_t::mark_t read, const worker_t::mark_t write) noexcept;
 			public:
 				/**
 				 * setRealm Метод установки название сервера
@@ -370,46 +379,46 @@ namespace awh {
 				void setOpaque(const string & opaque) noexcept;
 			public:
 				/**
-				 * setAuthType Метод установки типа авторизации
+				 * authType Метод установки типа авторизации
 				 * @param type тип авторизации
 				 * @param hash алгоритм шифрования для Digest авторизации
 				 */
-				void setAuthType(const auth_t::type_t type = auth_t::type_t::BASIC, const auth_t::hash_t hash = auth_t::hash_t::MD5) noexcept;
+				void authType(const auth_t::type_t type = auth_t::type_t::BASIC, const auth_t::hash_t hash = auth_t::hash_t::MD5) noexcept;
 			public:
 				/**
-				 * setMode Метод установки флага модуля
+				 * mode Метод установки флага модуля
 				 * @param flag флаг модуля для установки
 				 */
-				void setMode(const u_short flag) noexcept;
+				void mode(const u_short flag) noexcept;
 				/**
-				 * setTotal Метод установки максимального количества одновременных подключений
+				 * total Метод установки максимального количества одновременных подключений
 				 * @param total максимальное количество одновременных подключений
 				 */
-				void setTotal(const u_short total) noexcept;
+				void total(const u_short total) noexcept;
 				/**
-				 * setFrameSize Метод установки размеров сегментов фрейма
+				 * segmentSize Метод установки размеров сегментов фрейма
 				 * @param size минимальный размер сегмента
 				 */
-				void setFrameSize(const size_t size) noexcept;
+				void segmentSize(const size_t size) noexcept;
 				/**
-				 * setCompress Метод установки метода сжатия
+				 * compress Метод установки метода сжатия
 				 * @param метод сжатия сообщений
 				 */
-				void setCompress(const http_t::compress_t compress) noexcept;
+				void compress(const http_t::compress_t compress) noexcept;
 				/**
-				 * setServ Метод установки данных сервиса
+				 * serv Метод установки данных сервиса
 				 * @param id   идентификатор сервиса
 				 * @param name название сервиса
 				 * @param ver  версия сервиса
 				 */
-				void setServ(const string & id, const string & name, const string & ver) noexcept;
+				void serv(const string & id, const string & name, const string & ver) noexcept;
 				/**
-				 * setCrypt Метод установки параметров шифрования
-				 * @param pass пароль шифрования передаваемых данных
-				 * @param salt соль шифрования передаваемых данных
-				 * @param aes  размер шифрования передаваемых данных
+				 * crypto Метод установки параметров шифрования
+				 * @param pass   пароль шифрования передаваемых данных
+				 * @param salt   соль шифрования передаваемых данных
+				 * @param cipher размер шифрования передаваемых данных
 				 */
-				void setCrypt(const string & pass, const string & salt = "", const hash_t::aes_t aes = hash_t::aes_t::AES128) noexcept;
+				void crypto(const string & pass, const string & salt = "", const hash_t::cipher_t cipher = hash_t::cipher_t::AES128) noexcept;
 			public:
 				/**
 				 * WebSocket Конструктор

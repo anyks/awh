@@ -1094,12 +1094,47 @@ bool awh::Framework::isDecimal(const wstring & word) const noexcept {
 	return result;
 }
 /**
- * getZones Метод извлечения списка пользовательских зон интернета
+ * domainZone Метод установки пользовательской зоны
+ * @param zone пользовательская зона
+ */
+void awh::Framework::domainZone(const string & zone) noexcept {
+	// Если зона передана, устанавливаем её
+	if(!zone.empty()) this->nwt.zone(this->convert(zone));
+}
+/**
+ * domainZone Метод установки пользовательской зоны
+ * @param zone пользовательская зона
+ */
+void awh::Framework::domainZone(const wstring & zone) noexcept {
+	// Если зона передана, устанавливаем её
+	if(!zone.empty()) this->nwt.zone(zone);
+}
+/**
+ * domainZones Метод установки списка пользовательских зон
+ * @param zones список доменных зон интернета
+ */
+void awh::Framework::domainZones(const std::set <string> & zones) noexcept {
+	// Устанавливаем список доменных зон
+	if(!zones.empty()){
+		// Переходим по всему списку доменных зон
+		for(auto & zone : zones) this->domainZone(zone);
+	}
+}
+/**
+ * domainZones Метод установки списка пользовательских зон
+ * @param zones список доменных зон интернета
+ */
+void awh::Framework::domainZones(const std::set <wstring> & zones) noexcept {
+	// Устанавливаем список доменных зон
+	if(!zones.empty()) this->nwt.zones(zones);
+}
+/**
+ * domainZones Метод извлечения списка пользовательских зон интернета
  * @return список доменных зон
  */
-const std::set <wstring> & awh::Framework::getZones() const noexcept {
+const std::set <wstring> & awh::Framework::domainZones() const noexcept {
 	// Выводим список доменных зон интернета
-	return this->nwt.getZones();
+	return this->nwt.zones();
 }
 /**
  * urls Метод извлечения координат url адресов в строке
@@ -1200,41 +1235,6 @@ void awh::Framework::split(const string & str, const string & delim, list <wstri
 void awh::Framework::split(const string & str, const string & delim, vector <wstring> & v) const noexcept {
 	// Выполняем сплит строки
 	::split(this->convert(str), this->convert(delim), v);
-}
-/**
- * setZone Метод установки пользовательской зоны
- * @param zone пользовательская зона
- */
-void awh::Framework::setZone(const string & zone) noexcept {
-	// Если зона передана, устанавливаем её
-	if(!zone.empty()) this->nwt.setZone(this->convert(zone));
-}
-/**
- * setZone Метод установки пользовательской зоны
- * @param zone пользовательская зона
- */
-void awh::Framework::setZone(const wstring & zone) noexcept {
-	// Если зона передана, устанавливаем её
-	if(!zone.empty()) this->nwt.setZone(zone);
-}
-/**
- * setZones Метод установки списка пользовательских зон
- * @param zones список доменных зон интернета
- */
-void awh::Framework::setZones(const std::set <string> & zones) noexcept {
-	// Устанавливаем список доменных зон
-	if(!zones.empty()){
-		// Переходим по всему списку доменных зон
-		for(auto & zone : zones) this->setZone(zone);
-	}
-}
-/**
- * setZones Метод установки списка пользовательских зон
- * @param zones список доменных зон интернета
- */
-void awh::Framework::setZones(const std::set <wstring> & zones) noexcept {
-	// Устанавливаем список доменных зон
-	if(!zones.empty()) this->nwt.setZones(zones);
 }
 /**
  * setLocale Метод установки локали

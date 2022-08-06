@@ -50,11 +50,20 @@ namespace awh {
 			/**
 			 * Тип авторизации
 			 */
-			enum class type_t : uint8_t {NONE, BASIC, DIGEST};
+			enum class type_t : uint8_t {
+				NONE   = 0x00, // Авторизация не установлена
+				BASIC  = 0x01, // BASIC авторизация
+				DIGEST = 0x02  // DIGEST авторизация
+			};
 			/**
 			 * Алгоритм шифрования для авторизации Digest
 			 */
-			enum class hash_t : uint8_t {MD5, SHA1, SHA256, SHA512};
+			enum class hash_t : uint8_t {
+				MD5    = 0x01, // Хэш-ключ MD5
+				SHA1   = 0x02, // Хэш-ключ SHA1
+				SHA256 = 0x03, // Хэш-ключ SHA256
+				SHA512 = 0x04  // Хэш-ключ SHA512
+			};
 		protected:
 			/**
 			 * Digest Структура параметров дайджест авторизации
@@ -73,40 +82,33 @@ namespace awh {
 				/**
 				 * Digest Конструктор
 				 */
-				Digest() :
-					nc("00000000"), uri(""),
-					qop("auth"), realm(AWH_HOST),
-					nonce(""), opaque(""),
-					cnonce(""), resp(""),
-					stamp(0), hash(hash_t::MD5) {}
+				Digest() noexcept :
+				 nc("00000000"), uri(""), qop("auth"),
+				 realm(AWH_HOST), nonce(""), opaque(""),
+				 cnonce(""), resp(""), stamp(0), hash(hash_t::MD5) {}
 			} digest_t;
 		protected:
 			// Тип авторизации
-			type_t type;
+			type_t _type;
 			// Параметры Digest авторизации
-			digest_t digest;
+			digest_t _digest;
 		protected:
 			// Создаём объект фреймворка
-			const fmk_t * fmk = nullptr;
+			const fmk_t * _fmk;
 			// Создаём объект работы с логами
-			const log_t * log = nullptr;
+			const log_t * _log;
 		public:
 			/**
-			 * getType Метод получени типа авторизации
-			 * @return тип авторизации
-			 */
-			const type_t getType() const noexcept;
-			/**
-			 * getDigest Метод получения параметров Digest авторизации
+			 * digest Метод получения параметров Digest авторизации
 			 * @return параметры Digest авторизации
 			 */
-			const digest_t & getDigest() const noexcept;
+			const digest_t & digest() const noexcept;
 		public:
 			/**
-			 * setHeader Метод установки параметров авторизации из заголовков
+			 * header Метод установки параметров авторизации из заголовков
 			 * @param header заголовок HTTP с параметрами авторизации
 			 */
-			virtual void setHeader(const string & header) noexcept = 0;
+			virtual void header(const string & header) noexcept = 0;
 		protected:
 			/**
 			 * response Метод создания ответа на дайджест авторизацию
@@ -119,18 +121,23 @@ namespace awh {
 			const string response(const string & method, const string & user, const string & pass, const digest_t & digest) const noexcept;
 		public:
 			/**
-			 * setType Метод установки типа авторизации
+			 * type Метод получени типа авторизации
+			 * @return тип авторизации
+			 */
+			const type_t type() const noexcept;
+			/**
+			 * type Метод установки типа авторизации
 			 * @param type тип авторизации
 			 * @param hash алгоритм шифрования для Digest авторизации
 			 */
-			void setType(const type_t type, const hash_t hash = hash_t::MD5) noexcept;
+			void type(const type_t type, const hash_t hash = hash_t::MD5) noexcept;
 		public:
 			/**
 			 * Authorization Конструктор
 			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
 			 */
-			Authorization(const fmk_t * fmk, const log_t * log) noexcept : type(type_t::NONE), fmk(fmk), log(log) {}
+			Authorization(const fmk_t * fmk, const log_t * log) noexcept : _type(type_t::NONE), _fmk(fmk), _log(log) {}
 			/*
 			 * ~Authorization Деструктор
 			 */

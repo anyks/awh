@@ -122,15 +122,12 @@ namespace awh {
 	 */
 	typedef class IfNet {
 		private:
-			// Результат работы функции
-			string result = "";
-		private:
 			// Список сетевых интерфейсов
-			unordered_map <string, string> ifs;
+			unordered_map <string, string> _ifs;
 			// Список интернет-адресов
-			unordered_map <string, string> ips;
+			unordered_map <string, string> _ips;
 			// Список интернет-адресов
-			unordered_map <string, string> ips6;
+			unordered_map <string, string> _ips6;
 		private:
 			// Максимальная длина сетевого интерфейса
 			static constexpr u_short MAX_ADDRS = 32;
@@ -138,9 +135,9 @@ namespace awh {
 			static constexpr u_short IF_BUFFER_SIZE = 4000;
 		private:
 			// Создаём объект фреймворка
-			const fmk_t * fmk = nullptr;
+			const fmk_t * _fmk;
 			// Создаём объект работы с логами
-			const log_t * log = nullptr;
+			const log_t * _log;
 		private:
 			/**
 			 * getIPAddresses Метод извлечения IP адресов
@@ -215,7 +212,7 @@ namespace awh {
 			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
 			 */
-			IfNet(const fmk_t * fmk, const log_t * log) noexcept : fmk(fmk), log(log) {}
+			IfNet(const fmk_t * fmk, const log_t * log) noexcept : _fmk(fmk), _log(log) {}
 			/**
 			 * ~IfNet Деструктор
 			 */

@@ -19,25 +19,23 @@
  * clear Метод очистки
  */
 void awh::client::Worker::clear() noexcept {
-	// Очищаем количество попыток
-	this->attempt = 0;
 	// Выполняем очистку объекта запроса
 	this->url.clear();
 	// Очищаем данные вокера
 	awh::worker_t::clear();
 	// Устанавливаем тип подключения
-	this->connect = (this->proxy.type != proxy_t::type_t::NONE ? connect_t::PROXY : connect_t::SERVER);
+	this->_connect = (this->proxy.type != proxy_t::type_t::NONE ? connect_t::PROXY : connect_t::SERVER);
 }
 /**
  * switchConnect Метод переключения типа подключения
  */
 void awh::client::Worker::switchConnect() noexcept {
 	// Определяем тип подключения
-	switch((uint8_t) this->connect){
+	switch((uint8_t) this->_connect){
 		// Если подключение выполняется через прокси-сервер
-		case (uint8_t) connect_t::PROXY: this->connect = connect_t::SERVER; break;
+		case (uint8_t) connect_t::PROXY: this->_connect = connect_t::SERVER; break;
 		// Если подключение выполняется через сервер
-		case (uint8_t) connect_t::SERVER: this->connect = connect_t::PROXY; break;
+		case (uint8_t) connect_t::SERVER: this->_connect = connect_t::PROXY; break;
 	}
 }
 /**
@@ -46,7 +44,7 @@ void awh::client::Worker::switchConnect() noexcept {
  */
 bool awh::client::Worker::isProxy() const noexcept {
 	// Выполняем проверку типа подключения
-	return (this->connect == connect_t::PROXY);
+	return (this->_connect == connect_t::PROXY);
 }
 /**
  * getAid Метод получения идентификатора адъютанта

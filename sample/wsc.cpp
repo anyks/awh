@@ -186,7 +186,7 @@ class WebSocket {
 					// Создаём объект JSON
 					json data = json::parse(buffer.begin(), buffer.end());
 					// Выводим полученный результат
-					cout << " +++++++++++++ " << data.dump(4) << " == " << ws->getSub() << endl;
+					cout << " +++++++++++++ " << data.dump(4) << " == " << ws->sub() << endl;
 				// Обрабатываем ошибку
 				} catch(const exception & e) {}
 			// Сообщаем количество полученных байт
@@ -227,7 +227,7 @@ int main(int argc, char * argv[]) noexcept {
 	 * 3. Устанавливаем валидацию SSL сертификата
 	 * 4. Устанавливаем флаг поддержания активным подключение
 	 */
-	ws.setMode(
+	ws.mode(
 		// (uint8_t) client::ws_t::flag_t::NOTSTOP |
 		// (uint8_t) client::ws_t::flag_t::WAITMESS |
 		(uint8_t) client::ws_t::flag_t::TAKEOVERCLI |
@@ -236,43 +236,43 @@ int main(int argc, char * argv[]) noexcept {
 		(uint8_t) client::ws_t::flag_t::KEEPALIVE
 	);
 	// Разрешаем простое чтение базы событий
-	// core.setFrequency(0);
+	// core.frequency(0);
 	// Устанавливаем простое чтение базы событий
 	// core.easily(true);
 	// Устанавливаем название сервера
-	// core.setNameServer("anyks");
+	// core.nameServer("anyks");
 	// Устанавливаем адрес сертификата
-	core.setTrusted("./ca/cert.pem");
+	core.ca("./ca/cert.pem");
 	// Устанавливаем тип сокета unix-сокет
-	// core.setFamily(core_t::family_t::NIX);
-	// Устанавливаем тип сокета UDP
-	core.setSockType(core_t::sonet_t::UDP);
+	// core.family(core_t::family_t::NIX);
+	// Устанавливаем тип сокета UDP TLS
+	core.sonet(core_t::sonet_t::DTLS);
 
-	core.setCert("./certs/client-cert.pem", "./certs/client-key.pem");
+	core.certificate("./certs/client-cert.pem", "./certs/client-key.pem");
 
 	// Устанавливаем логин и пароль пользователя
-	// ws.setUser("user", "password");
+	// ws.user("user", "password");
 	// Выполняем активацию многопоточности
 	// ws.multiThreads(22);
 	// Устанавливаем данные прокси-сервера
-	// ws.setProxy("http://qKseEr:t5QrcW@212.102.146.33:8000");
-	// ws.setProxy("socks5://3JMFxD:CWv6MP@45.130.126.236:8000");
-	// ws.setProxy("http://fn3nzc:GZJAeP@217.29.62.232:11283");
-	// ws.setProxy("socks5://xYkj89:eqCQJA@85.195.81.167:12387");
+	// ws.proxy("http://qKseEr:t5QrcW@212.102.146.33:8000");
+	// ws.proxy("socks5://3JMFxD:CWv6MP@45.130.126.236:8000");
+	// ws.proxy("http://fn3nzc:GZJAeP@217.29.62.232:11283");
+	// ws.proxy("socks5://xYkj89:eqCQJA@85.195.81.167:12387");
 	// Выполняем инициализацию типа авторизации
-	// ws.setAuthType();
-	// ws.setAuthType(auth_t::type_t::DIGEST, auth_t::hash_t::SHA256);
+	// ws.authType();
+	// ws.authType(auth_t::type_t::DIGEST, auth_t::hash_t::SHA256);
 	// Устанавливаем тип авторизации прокси-сервера
-	// ws.setAuthTypeProxy();
+	// ws.authTypeProxy();
 	// Выполняем инициализацию WebSocket клиента
 	// ws.init("wss://stream.binance.com:9443/stream", http_t::compress_t::DEFLATE);
 	ws.init("ws://127.0.0.1:2222", http_t::compress_t::DEFLATE);
 	// ws.init("wss://mimi.anyks.net:2222", http_t::compress_t::DEFLATE);
 	// ws.init("anyks", http_t::compress_t::DEFLATE);
 	// Устанавливаем шифрование
-	// ws.setCrypt("PASS");
+	// ws.crypto("PASS");
 	// Устанавливаем сабпротоколы
-	// ws.setSubs({"test2", "test8", "test9"});
+	// ws.subs({"test2", "test8", "test9"});
 	// Выполняем подписку на получение логов
 	log.subscribe(bind(&WebSocket::subscribe, &executor, _1, _2));
 	// Подписываемся на событие запуска и остановки сервера

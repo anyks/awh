@@ -46,11 +46,26 @@ namespace awh {
 			/**
 			 * Тип используемого HTTP модуля
 			 */
-			enum class hid_t : uint8_t {NONE, CLIENT, SERVER};
+			enum class hid_t : uint8_t {
+				NONE   = 0x00, // HTTP модуль не инициализирован
+				CLIENT = 0x01, // HTTP модуль является клиентом
+				SERVER = 0x02  // HTTP модуль является сервером
+			};
 			/**
 			 * Методы HTTP запроса
 			 */
-			enum class method_t : uint8_t {NONE, GET, PUT, DEL, POST, HEAD, PATCH, TRACE, OPTIONS, CONNECT};
+			enum class method_t : uint8_t {
+				NONE    = 0x00, // Метод не установлен
+				GET     = 0x01, // Метод GET
+				PUT     = 0x02, // Метод PUT
+				DEL     = 0x03, // Метод DELETE
+				POST    = 0x04, // Метод POST
+				HEAD    = 0x05, // Метод HEAD
+				PATCH   = 0x06, // Метод PATCH
+				TRACE   = 0x07, // Метод TRACE
+				OPTIONS = 0x08, // Метод OPTIONS
+				CONNECT = 0x09  // Метод CONNECT
+			};
 			/**
 			 * Query Структура запроса
 			 */
@@ -63,27 +78,27 @@ namespace awh {
 				/**
 				 * Query Конструктор
 				 */
-				Query() : code(0), ver(HTTP_VERSION), method(method_t::NONE), uri(""), message("") {}
+				Query() noexcept : code(0), ver(HTTP_VERSION), method(method_t::NONE), uri(""), message("") {}
 			} query_t;
 		private:
 			/**
 			 * Стейты работы чанка
 			 */
 			enum class cstate_t : uint8_t {
-				SIZE,    // Ожидание получения размера
-				BODY,    // Ожидание сбора тела данных
-				ENDSIZE, // Ожидание получения перевода строки после получения размера чанка
-				ENDBODY, // Ожидание получения перевода строки после получения тела чанка
-				STOPBODY // Ожидание получения возврата каретки после получения тела чанка
+				SIZE     = 0x01, // Ожидание получения размера
+				BODY     = 0x02, // Ожидание сбора тела данных
+				ENDSIZE  = 0x03, // Ожидание получения перевода строки после получения размера чанка
+				ENDBODY  = 0x04, // Ожидание получения перевода строки после получения тела чанка
+				STOPBODY = 0x05  // Ожидание получения возврата каретки после получения тела чанка
 			};
 			/**
 			 * Стейты работы модуля
 			 */
 			enum class state_t : uint8_t {
-				END,    // Режим завершения сбора данных
-				BODY,   // Режим чтения тела сообщения
-				QUERY,  // Режим ожидания получения запроса
-				HEADERS // Режим чтения заголовков
+				END     = 0x01, // Режим завершения сбора данных
+				BODY    = 0x02, // Режим чтения тела сообщения
+				QUERY   = 0x03, // Режим ожидания получения запроса
+				HEADERS = 0x04  // Режим чтения заголовков
 			};
 			/**
 			 * Chunk Структура собираемого чанка
@@ -109,40 +124,40 @@ namespace awh {
 					/**
 					 * Chunk Конструктор
 					 */
-					Chunk() : size(0), state(cstate_t::SIZE) {}
+					Chunk() noexcept : size(0), state(cstate_t::SIZE) {}
 			} chunk_t;
 		private:
 			// Сепаратор для детекции в буфере
-			char sep = '\0';
+			char _sep;
 			// Размер тела сообщения
-			int64_t bodySize = -1;
+			int64_t _bodySize;
 			// Массив позиций в буфере сепаратора
-			int64_t pos[2] = {-1, -1};
+			int64_t _pos[2] = {-1, -1};
 		private:
 			// Объект параметров запроса
-			query_t query;
+			query_t _query;
 			// Объект собираемого чанка
-			chunk_t chunk;
+			chunk_t _chunk;
 		private:
-			// Тип используемого HTTP модуля
-			hid_t httpType = hid_t::NONE;
 			// Стейт текущего запроса
-			state_t state = state_t::QUERY;
+			state_t _state;
+			// Тип используемого HTTP модуля
+			hid_t _httpType;
 		private:
 			// Данные пустого заголовка
-			string header = "";
+			string _header;
 			// Полученное тело HTTP запроса
-			vector <char> body;
+			vector <char> _body;
 			// Полученные HTTP заголовки
-			unordered_multimap <string, string> headers;
+			unordered_multimap <string, string> _headers;
 		private:
 			// Функция вызова при получении чанка
-			function <void (const vector <char> &, const Web *)> chunkingFn = nullptr;
+			function <void (const vector <char> &, const Web *)> _fn;
 		private:
 			// Создаём объект фреймворка
-			const fmk_t * fmk = nullptr;
+			const fmk_t * _fmk;
 			// Создаём объект работы с логами
-			const log_t * log = nullptr;
+			const log_t * _log;
 		private:
 			/**
 			 * parseBody Метод извлечения полезной нагрузки
@@ -185,15 +200,15 @@ namespace awh {
 			void reset() noexcept;
 		public:
 			/**
-			 * getQuery Метод получения объекта запроса сервера
+			 * query Метод получения объекта запроса сервера
 			 * @return объект запроса сервера
 			 */
-			const query_t & getQuery() const noexcept;
+			const query_t & query() const noexcept;
 			/**
-			 * setQuery Метод добавления объекта запроса клиента
+			 * query Метод добавления объекта запроса клиента
 			 * @param query объект запроса клиента
 			 */
-			void setQuery(const query_t & query) noexcept;
+			void query(const query_t & query) noexcept;
 		public:
 			/**
 			 * isEnd Метод проверки завершения обработки
@@ -217,33 +232,21 @@ namespace awh {
 			void clearHeaders() noexcept;
 		public:
 			/**
-			 * getBody Метод получения данных тела запроса
+			 * body Метод получения данных тела запроса
 			 * @return буфер данных тела запроса
 			 */
-			const vector <char> & getBody() const noexcept;
+			const vector <char> & body() const noexcept;
 			/**
-			 * setBody Метод установки данных тела
+			 * body Метод установки данных тела
 			 * @param body буфер тела для установки
 			 */
-			void setBody(const vector <char> & body) noexcept;
+			void body(const vector <char> & body) noexcept;
 			/**
 			 * addBody Метод добавления буфера тела данных запроса
 			 * @param buffer буфер данных тела запроса
 			 * @param size   размер буфера данных
 			 */
-			void addBody(const char * buffer, const size_t size) noexcept;
-		public:
-			/**
-			 * addHeader Метод добавления заголовка
-			 * @param key ключ заголовка
-			 * @param val значение заголовка
-			 */
-			void addHeader(const string & key, const string & val) noexcept;
-			/**
-			 * setHeaders Метод установки списка заголовков
-			 * @param headers список заголовков для установки
-			 */
-			void setHeaders(const unordered_multimap <string, string> & headers) noexcept;
+			void body(const char * buffer, const size_t size) noexcept;
 		public:
 			/**
 			 * rmHeader Метод удаления заголовка
@@ -251,16 +254,28 @@ namespace awh {
 			 */
 			void rmHeader(const string & key) noexcept;
 			/**
-			 * getHeader Метод получения данных заголовка
+			 * header Метод получения данных заголовка
 			 * @param key ключ заголовка
 			 * @return    значение заголовка
 			 */
-			const string & getHeader(const string & key) const noexcept;
+			const string & header(const string & key) const noexcept;
 			/**
-			 * getHeaders Метод получения списка заголовков
+			 * header Метод добавления заголовка
+			 * @param key ключ заголовка
+			 * @param val значение заголовка
+			 */
+			void header(const string & key, const string & val) noexcept;
+		public:
+			/**
+			 * headers Метод получения списка заголовков
 			 * @return список существующих заголовков
 			 */
-			const unordered_multimap <string, string> & getHeaders() const noexcept;
+			const unordered_multimap <string, string> & headers() const noexcept;
+			/**
+			 * headers Метод установки списка заголовков
+			 * @param headers список заголовков для установки
+			 */
+			void headers(const unordered_multimap <string, string> & headers) noexcept;			
 		public:
 			/**
 			 * init Метод инициализации модуля
@@ -269,17 +284,19 @@ namespace awh {
 			void init(const hid_t hid) noexcept;
 		public:
 			/**
-			 * setChunkingFn Метод установки функции обратного вызова для получения чанков
+			 * chunking Метод установки функции обратного вызова для получения чанков
 			 * @param callback функция обратного вызова
 			 */
-			void setChunkingFn(function <void (const vector <char> &, const Web *)> callback) noexcept;
+			void chunking(function <void (const vector <char> &, const Web *)> callback) noexcept;
 		public:
 			/**
 			 * Web Конструктор
 			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
 			 */
-			Web(const fmk_t * fmk, const log_t * log) noexcept : fmk(fmk), log(log) {}
+			Web(const fmk_t * fmk, const log_t * log) noexcept :
+			 _sep('\0'), _bodySize(-1), _state(state_t::QUERY),
+			 _httpType(hid_t::NONE), _header(""), _fn(nullptr), _fmk(fmk), _log(log) {}
 			/**
 			 * ~Web Деструктор
 			 */

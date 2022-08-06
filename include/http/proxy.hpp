@@ -40,33 +40,33 @@ namespace awh {
 			stath_t checkAuth() noexcept;
 		public:
 			/**
-			 * setRealm Метод установки название сервера
+			 * realm Метод установки название сервера
 			 * @param realm название сервера
 			 */
-			void setRealm(const string & realm) noexcept;
+			void realm(const string & realm) noexcept;
 			/**
-			 * setOpaque Метод установки временного ключа сессии сервера
+			 * opaque Метод установки временного ключа сессии сервера
 			 * @param opaque временный ключ сессии сервера
 			 */
-			void setOpaque(const string & opaque) noexcept;
+			void opaque(const string & opaque) noexcept;
 		public:
 			/**
-			 * setExtractPassCallback Метод добавления функции извлечения пароля
+			 * extractPassCallback Метод добавления функции извлечения пароля
 			 * @param callback функция обратного вызова для извлечения пароля
 			 */
-			void setExtractPassCallback(function <string (const string &)> callback) noexcept;
+			void extractPassCallback(function <string (const string &)> callback) noexcept;
 			/**
-			 * setAuthCallback Метод добавления функции обработки авторизации
+			 * authCallback Метод добавления функции обработки авторизации
 			 * @param callback функция обратного вызова для обработки авторизации
 			 */
-			void setAuthCallback(function <bool (const string &, const string &)> callback) noexcept;
+			void authCallback(function <bool (const string &, const string &)> callback) noexcept;
 		public:
 			/**
-			 * setAuthType Метод установки типа авторизации
+			 * authType Метод установки типа авторизации
 			 * @param type тип авторизации
 			 * @param hash алгоритм шифрования для Digest авторизации
 			 */
-			void setAuthType(const awh::auth_t::type_t type = awh::auth_t::type_t::BASIC, const awh::auth_t::hash_t hash = awh::auth_t::hash_t::MD5) noexcept;
+			void authType(const awh::auth_t::type_t type = awh::auth_t::type_t::BASIC, const awh::auth_t::hash_t hash = awh::auth_t::hash_t::MD5) noexcept;
 		public:
 			/**
 			 * HttpProxy Конструктор

@@ -89,12 +89,12 @@ namespace awh {
 				} timeout_t;
 			private:
 				// Мютекс для блокировки основного потока
-				mtx_t mtx;
+				mtx_t _mtx;
 			private:
 				// Список блокированных объектов
-				set <size_t> locking;
+				set <size_t> _locking;
 				// Список таймеров
-				map <size_t, unique_ptr <timeout_t>> timeouts;
+				map <size_t, unique_ptr <timeout_t>> _timeouts;
 			private:
 				/**
 				 * resolver Функция выполнения резолвинга домена
@@ -181,12 +181,12 @@ namespace awh {
 				void transfer(const method_t method, const size_t aid) noexcept;
 			public:
 				/**
-				 * setBandwidth Метод установки пропускной способности сети
+				 * bandWidth Метод установки пропускной способности сети
 				 * @param aid   идентификатор адъютанта
 				 * @param read  пропускная способность на чтение (bps, kbps, Mbps, Gbps)
 				 * @param write пропускная способность на запись (bps, kbps, Mbps, Gbps)
 				 */
-				void setBandwidth(const size_t aid, const string & read, const string & write) noexcept;
+				void bandWidth(const size_t aid, const string & read, const string & write) noexcept;
 			public:
 				/**
 				 * Core Конструктор

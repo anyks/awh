@@ -93,6 +93,8 @@ namespace awh {
 					bool close;                  // Флаг требования закрыть адъютанта
 					bool stopped;                // Флаг принудительной остановки
 					bool compressed;             // Флаг переданных сжатых данных
+					short wbitClient;            // Размер скользящего окна клиента
+					short wbitServer;            // Размер скользящего окна сервера
 					action_t action;             // Экшен активного события
 					time_t checkPoint;           // Контрольная точка ответа на пинг
 					hash_t hash;                 // Создаём объект для компрессии-декомпрессии данных
@@ -107,14 +109,11 @@ namespace awh {
 					 * Coffer Конструктор
 					 */
 					Coffer(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcept :
-					 crypt(false),
-					 close(false),
-					 stopped(false),
-					 compressed(false),
-					 action(action_t::NONE),
-					 checkPoint(0),
-					 hash(fmk, log),
-					 http(fmk, log, uri),
+					 crypt(false), close(false),
+					 stopped(false), compressed(false),
+					 wbitClient(-1), wbitServer(-1),
+					 action(action_t::NONE), checkPoint(0),
+					 hash(log), http(fmk, log, uri),
 					 opcode(frame_t::opcode_t::TEXT),
 					 compress(http_t::compress_t::NONE) {}
 					/**
@@ -132,7 +131,7 @@ namespace awh {
 				http_t::compress_t compress;
 			private:
 				// Параметры подключения адъютантов
-				map <size_t, unique_ptr <coffer_t>> coffers;
+				map <size_t, unique_ptr <coffer_t>> _coffers;
 			private:
 				// Создаём объект фреймворка
 				const fmk_t * fmk;

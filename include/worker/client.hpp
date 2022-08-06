@@ -41,7 +41,11 @@ namespace awh {
 				/**
 				 * Типы прокси-сервера
 				 */
-				enum class type_t : uint8_t {NONE, HTTP, SOCKS5};
+				enum class type_t : uint8_t {
+					NONE   = 0x00, // Прокси-сервер не установлен
+					HTTP   = 0x01, // Прокси-сервер HTTP(S)
+					SOCKS5 = 0x02  // Прокси-сервер Socks5
+				};
 			public:
 				// Тип прокси-сервера
 				type_t type;
@@ -69,10 +73,8 @@ namespace awh {
 				 */
 				Proxy(const fmk_t * fmk, const log_t * log) noexcept :
 				 nwk(fmk), uri(fmk, &nwk),
-				 http(fmk, log, &uri),
-				 socks5(fmk, log, &uri),
-				 fmk(fmk), log(log),
-				 type(type_t::NONE) {}
+				 http(fmk, log, &uri), socks5(log),
+				 fmk(fmk), log(log), type(type_t::NONE) {}
 				/**
 				 * ~Proxy Деструктор
 				 */
@@ -95,15 +97,26 @@ namespace awh {
 				/**
 				 * Разрешения на выполнение работы
 				 */
-				enum class work_t : uint8_t {ALLOW, DISALLOW};
+				enum class work_t : uint8_t {
+					ALLOW    = 0x01, // Разрешено
+					DISALLOW = 0x02  // Запрещено
+				};
 				/**
 				 * Формат сжатия тела запроса
 				 */
-				enum class connect_t : uint8_t {SERVER, PROXY};
+				enum class connect_t : uint8_t {
+					SERVER = 0x01, // Сервер
+					PROXY  = 0x02  // Прокси-сервер
+				};
 				/**
 				 * Режимы работы клиента
 				 */
-				enum class mode_t : uint8_t {CONNECT, PRECONNECT, RECONNECT, DISCONNECT};
+				enum class mode_t : uint8_t {
+					CONNECT    = 0x01, // Подключение выполнено
+					PRECONNECT = 0x02, // Производится подготовка к подключению
+					RECONNECT  = 0x03, // Производится переподключение
+					DISCONNECT = 0x00  // Подключение не выполнено
+				};
 			private:
 				/**
 				 * Status Структура статуса подключения
@@ -120,9 +133,6 @@ namespace awh {
 			public:
 				// Идентификатор DNS запроса
 				size_t did;
-			private:
-				// Текущее количество попыток
-				u_short attempt;
 			public:
 				// Выполнять остановку работы воркера, после закрытия подключения
 				bool stop;
@@ -137,12 +147,7 @@ namespace awh {
 				uri_t::url_t url;
 			private:
 				// Устанавливаем тип подключения
-				connect_t connect;
-			public:
-				// Функция обратного вызова при открытии подключения к прокси-серверу
-				function <void (const size_t, const size_t, awh::Core *)> connectProxyFn;
-				// Функция обратного вызова при получении данных с прокси-сервера
-				function <void (const char *, const size_t, const size_t, const size_t, awh::Core *)> readProxyFn;
+				connect_t _connect;
 			public:
 				/**
 				 * clear Метод очистки
@@ -170,9 +175,8 @@ namespace awh {
 				 * @param log объект для работы с логами
 				 */
 				Worker(const fmk_t * fmk, const log_t * log) noexcept :
-				 awh::worker_t(fmk, log), did(0), attempt(0),
-				 stop(false), acquisition(false), proxy(fmk, log),
-				 connect(connect_t::SERVER), connectProxyFn(nullptr), readProxyFn(nullptr) {}
+				 awh::worker_t(fmk, log), did(0), stop(false), acquisition(false),
+				 proxy(fmk, log), _connect(connect_t::SERVER) {}
 				/**
 				 * ~Worker Деструктор
 				 */

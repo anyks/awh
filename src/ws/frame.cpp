@@ -216,9 +216,9 @@ awh::mess_t awh::Frame::message(const vector <char> & buffer) const noexcept {
 			// Выполняем прехват ошибки
 			} catch(const exception & error) {
 				// Выводим в лог сообщение
-				this->log->print("%s", log_t::flag_t::CRITICAL, error.what());
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 				// Устанавливаем текст ошибки
-				result = this->fmk->format("%s", error.what());
+				result = this->_fmk->format("%s", error.what());
 			}
 		// Запоминаем размер смещения
 		} else result = 1007;

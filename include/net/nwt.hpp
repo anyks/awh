@@ -42,14 +42,14 @@ namespace awh {
 		public:
 			// Типы n-грамм
 			enum class types_t : uint8_t {
-				MAC = 0x0,    // MAC адрес
-				IPV4 = 0x1,   // IPv4 адрес
-				IPV6 = 0x2,   // IPv6 адрес
-				NONE = 0x3,   // Тип не определён
-				EMAIL = 0x4,  // Электронная почта
-				WRONG = 0x5,  // Сломанный адрес
-				DHOST = 0x6,  // Доменное имя
-				NETWORK = 0x7 // Параметры сети
+				MAC     = 0x00, // MAC адрес
+				IPV4    = 0x01, // IPv4 адрес
+				IPV6    = 0x02, // IPv6 адрес
+				NONE    = 0x03, // Тип не определён
+				EMAIL   = 0x04, // Электронная почта
+				WRONG   = 0x05, // Сломанный адрес
+				DHOST   = 0x06, // Доменное имя
+				NETWORK = 0x07  // Параметры сети
 			};
 		public:
 			/**
@@ -69,21 +69,33 @@ namespace awh {
 				/**
 				 * Data Конструктор
 				 */
-				Data() : type(types_t::NONE), uri(L""), data(L""), path(L""), domain(L""), params(L""), protocol(L"") {}
+				Data() noexcept : type(types_t::NONE), uri(L""), data(L""), path(L""), domain(L""), params(L""), protocol(L"") {}
 			} data_t;
 		private:
 			// Список букв разрешенных в последовательности
-			wstring letters = L"";
+			wstring _letters;
 		private:
 			// Списки доменных зон интернета
-			set <wstring> general, national, user;
+			set <wstring> _general, _national, _user;
 			// Основные регулярные выражения модуля
-			wregex expressEmail, expressDomain, expressIP;
+			wregex _expressEmail, _expressDomain, _expressIP;
 		public:
 			/**
-			 * getZones Метод извлечения списка пользовательских зон интернета
+			 * zone Метод установки пользовательской зоны
+			 * @param zone пользовательская зона
 			 */
-			const set <wstring> & getZones() const noexcept;
+			void zone(const wstring & zone) noexcept;
+		public:
+			/**
+			 * zones Метод извлечения списка пользовательских зон интернета
+			 */
+			const set <wstring> & zones() const noexcept;
+			/**
+			 * zones Метод установки списка пользовательских зон
+			 * @param zones список доменных зон интернета
+			 */
+			void zones(const set <wstring> & zones) noexcept;
+		public:
 			/**
 			 * parse Метод парсинга URI строки
 			 * @param text текст для парсинга
@@ -96,20 +108,10 @@ namespace awh {
 			 */
 			void clear() noexcept;
 			/**
-			 * setZone Метод установки пользовательской зоны
-			 * @param zone пользовательская зона
-			 */
-			void setZone(const wstring & zone) noexcept;
-			/**
-			 * setLetters Метод добавления букв алфавита
+			 * letters Метод добавления букв алфавита
 			 * @param letters список букв алфавита
 			 */
-			void setLetters(const wstring & letters) noexcept;
-			/**
-			 * setZones Метод установки списка пользовательских зон
-			 * @param zones список доменных зон интернета
-			 */
-			void setZones(const set <wstring> & zones) noexcept;
+			void letters(const wstring & letters) noexcept;
 			/**
 			 * NWT Конструктор
 			 * @param letters список букв алфавита

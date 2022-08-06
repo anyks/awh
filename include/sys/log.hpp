@@ -56,28 +56,33 @@ namespace awh {
 			/**
 			 * flag_t Флаги логирования
 			 */
-			enum class flag_t : uint8_t {NONE, INFO, WARNING, CRITICAL};
+			enum class flag_t : uint8_t {
+				NONE     = 0x00, // Флаг не установлен
+				INFO     = 0x01, // Информационное сообщение
+				WARNING  = 0x02, // Предупреждающее сообщение
+				CRITICAL = 0x03  // Критическое сообщение
+			};
 		private:
 			// Флаг разрешения вывода логов в файл
-			bool fileMode = true;
+			bool _fileMode;
 			// Флаг разрешения вывода логов в консоль
-			bool consoleMode = true;
+			bool _consoleMode;
 		private:
 			// Максимальный размер файла лога
-			size_t maxFileSize = MAX_SIZE_LOGFILE;
+			size_t _maxFileSize;
 		private:
 			// Адрес файла для сохранения логов
-			string logFile = "";
-			// Формат даты и времени для вывода лога
-			string logFormat = DATE_FORMAT;
+			string _logFile;
 			// Название сервиса для вывода лога
-			string logName = AWH_SHORT_NAME;
+			string _logName;
+			// Формат даты и времени для вывода лога
+			string _logFormat;
 		private:
 			// Функция обратного вызова которая срабатывает, при появлении лога
-			function <void (const flag_t, const string &)> subscribeFn = nullptr;
+			function <void (const flag_t, const string &)> _fn;
 		private:
 			// Создаём объект фреймворка
-			const fmk_t * fmk = nullptr;
+			const fmk_t * _fmk;
 		private:
 			/**
 			 * rotate Метод выполнения ротации логов
@@ -141,7 +146,10 @@ namespace awh {
 			 * @param fmk      объект фреймворка
 			 * @param filename адрес файла для сохранения логов
 			 */
-			Log(const fmk_t * fmk, const string & filename = "") noexcept : fmk(fmk), logFile(filename) {}
+			Log(const fmk_t * fmk, const string & filename = "") noexcept :
+			 _fmk(fmk), _fileMode(true), _consoleMode(true),
+			 _maxFileSize(MAX_SIZE_LOGFILE), _logFile(filename),
+			 _logName(AWH_SHORT_NAME), _logFormat(DATE_FORMAT), _fn(nullptr) {}
 			/**
 			 * ~Log Деструктор
 			 */

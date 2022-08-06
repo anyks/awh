@@ -27,7 +27,7 @@ const string awh::Network::IPdata::str() const noexcept {
 		// Если строка уже не пустая, добавляем разделитель
 		if(!result.empty()) result.append(".");
 		// Добавляем в строку значение ip адреса
-		result.append(to_string(this->ptr[i]));
+		result.append(to_string(this->_ptr[i]));
 	}
 	// Выводим результат
 	return result;
@@ -38,7 +38,7 @@ const string awh::Network::IPdata::str() const noexcept {
  */
 const u_int awh::Network::IPdata::size() const noexcept {
 	// Выводим размер массива
-	return (sizeof(this->ptr) / sizeof(u_int));
+	return (sizeof(this->_ptr) / sizeof(u_int));
 }
 /**
  * get Метод получения данных масива
@@ -46,7 +46,7 @@ const u_int awh::Network::IPdata::size() const noexcept {
  */
 const u_int * awh::Network::IPdata::get() const noexcept {
 	// Выводим результат
-	return this->ptr;
+	return this->_ptr;
 }
 /**
  * set Метод установки данных ip адреса
@@ -54,10 +54,10 @@ const u_int * awh::Network::IPdata::get() const noexcept {
  */
 void awh::Network::IPdata::set(const u_int ptr1, const u_int ptr2, const u_int ptr3, const u_int ptr4) noexcept {
 	// Если проверки пройдены тогда добавляем данные массива
-	if(ptr1 <= 255) this->ptr[0] = ptr1;
-	if(ptr2 <= 255) this->ptr[1] = ptr2;
-	if(ptr3 <= 255) this->ptr[2] = ptr3;
-	if(ptr4 <= 255) this->ptr[3] = ptr4;
+	if(ptr1 <= 255) this->_ptr[0] = ptr1;
+	if(ptr2 <= 255) this->_ptr[1] = ptr2;
+	if(ptr3 <= 255) this->_ptr[2] = ptr3;
+	if(ptr4 <= 255) this->_ptr[3] = ptr4;
 }
 /**
  * setZerroToStrIp Метод дописывает указанное количестов нулей к строке
@@ -69,7 +69,7 @@ void awh::Network::setZerroToStrIp(string & str) const noexcept {
 		// Дописываем количество нулей
 		for(u_int i = 0; i < (4 - str.length()); i++)
 			// Прописываем нули в начало строки
-			str = this->fmk->format("0%s", str.c_str());
+			str = this->_fmk->format("0%s", str.c_str());
 	}
 }
 /**
@@ -284,7 +284,7 @@ const string awh::Network::setLow1Ip6(const string & ip) const noexcept {
 					// Дописываем столько нулей, сколько необходимо
 					for(size_t j = 0; j < (4 - size); j++)
 						// Добавляем недостающие нули
-						value = this->fmk->format("0%s", value.c_str());
+						value = this->_fmk->format("0%s", value.c_str());
 				}
 				// Формируем результат
 				result.append(value);
@@ -447,7 +447,7 @@ const awh::Network::ntdata_t awh::Network::getMaskByString(const string & value)
 			this->setZerroToStrIp(oct3);
 			this->setZerroToStrIp(oct4);
 			// Формируем ip адрес
-			const string & ip = this->fmk->format("%s.%s.%s.%s", oct1.c_str(), oct2.c_str(), oct3.c_str(), oct4.c_str());
+			const string & ip = this->_fmk->format("%s.%s.%s.%s", oct1.c_str(), oct2.c_str(), oct3.c_str(), oct4.c_str());
 			// Переходим по всему массиву масок и ищем нашу
 			for(auto & value : this->masks){
 				// Если нашли нашу маску то выводим результат
@@ -527,7 +527,7 @@ const bool awh::Network::isPort(const string & str) const noexcept {
 	// Если строка существует
 	if(!str.empty()){
 		// Преобразуем строку в цифры
-		if(this->fmk->isNumber(str)){
+		if(this->_fmk->isNumber(str)){
 			// Получаем порт
 			u_int port = stoi(str);
 			// Проверяем диапазон портов
@@ -596,7 +596,7 @@ const bool awh::Network::compareIP6(const string & ip1, const string & ip2) cons
 	// Если ip адреса переданы
 	if(!ip1.empty() && !ip2.empty())
 		// Если ip адреса совпадают то запоминаем это
-		result = (this->fmk->toLower(this->setLowIp6(ip1)).compare(this->fmk->toLower(this->setLowIp6(ip2))) == 0);
+		result = (this->_fmk->toLower(this->setLowIp6(ip1)).compare(this->_fmk->toLower(this->setLowIp6(ip2))) == 0);
 	// Выводим результат сравнения
 	return result;
 }
@@ -654,7 +654,7 @@ const bool awh::Network::checkIPByNetwork6(const string & ip, const string & nwk
 			// Хексеты IP адреса
 			vector <wstring> mip;
 			// Формируем вектор данных ip адреса
-			this->fmk->split(this->fmk->toLower(this->setLowIp6(this->imposePrefix6(ip, stoi(match[2].str())))), ":", mip);
+			this->_fmk->split(this->_fmk->toLower(this->setLowIp6(this->imposePrefix6(ip, stoi(match[2].str())))), ":", mip);
 			// Если данные получены
 			if(!mip.empty()){
 				// Если первый хекстет нулевой значит это локальный адрес
@@ -664,7 +664,7 @@ const bool awh::Network::checkIPByNetwork6(const string & ip, const string & nwk
 					// Хексеты сети IPv6
 					vector <wstring> nwk;
 					// Формируем вектор данных сети
-					this->fmk->split(this->fmk->toLower(this->setLowIp6(match[1].str())), ":", nwk);
+					this->_fmk->split(this->_fmk->toLower(this->setLowIp6(match[1].str())), ":", nwk);
 					// Если хексеты сети получены
 					if(!nwk.empty() && (mip.size() == nwk.size())){
 						// Начинаем проверять совпадения
@@ -719,9 +719,9 @@ const bool awh::Network::checkDomainByMask(const string & domain, const string &
 		// Составляющие адреса
 		vector <wstring> msk, dom;
 		// Выполняем разбиение маски
-		this->fmk->split(this->fmk->toLower(mask), ".", msk);
+		this->_fmk->split(this->_fmk->toLower(mask), ".", msk);
 		// Выполняем разбиение домена на составляющие
-		this->fmk->split(this->fmk->toLower(domain), ".", dom);
+		this->_fmk->split(this->_fmk->toLower(domain), ".", dom);
 		// Выполняем реверс данных
 		reverse(begin(dom), end(dom));
 		reverse(begin(msk), end(msk));
@@ -804,7 +804,7 @@ const string awh::Network::setLowIp(const string & ip) const noexcept {
 			this->setZerroToStrIp(oct3);
 			this->setZerroToStrIp(oct4);
 			// Формируем ip адрес
-			result = this->fmk->format("%s.%s.%s.%s", oct1.c_str(), oct2.c_str(), oct3.c_str(), oct4.c_str());
+			result = this->_fmk->format("%s.%s.%s.%s", oct1.c_str(), oct2.c_str(), oct3.c_str(), oct4.c_str());
 		}
 	}
 	// Выводим результат
@@ -839,7 +839,7 @@ const string awh::Network::getLowIp(const string & ip) const noexcept {
 			this->rmZerroToStrIp(oct3);
 			this->rmZerroToStrIp(oct4);
 			// Формируем ip адрес
-			result = this->fmk->format("%s.%s.%s.%s", oct1.c_str(), oct2.c_str(), oct3.c_str(), oct4.c_str());
+			result = this->_fmk->format("%s.%s.%s.%s", oct1.c_str(), oct2.c_str(), oct3.c_str(), oct4.c_str());
 		}
 	}
 	// Выводим результат
@@ -989,7 +989,7 @@ const string awh::Network::addToPath(const string & path, const string & file) c
 		// Формируем регулярное выражение
 		regex pe("\\/+$"), fe("^[\\/\\.\\~]+");
 		// Формируем результирующий адрес
-		result = this->fmk->format("%s/%s", regex_replace(path, pe, "").c_str(), regex_replace(file, fe, "").c_str());
+		result = this->_fmk->format("%s/%s", regex_replace(path, pe, "").c_str(), regex_replace(file, fe, "").c_str());
 	}
 	// Выводим результат
 	return result;
@@ -1221,7 +1221,7 @@ const u_int awh::Network::getPrefixByNetwork(const string & nwk) const noexcept 
 			// Получаем значение маски
 			const string & mask = match[1].str();
 			// Если это число
-			if(this->fmk->isNumber(mask)) result = stoi(mask);
+			if(this->_fmk->isNumber(mask)) result = stoi(mask);
 			// Если это не число то преобразуем маску
 			else {
 				// Получаем данные маски
@@ -1304,7 +1304,7 @@ const int awh::Network::isLocal6(const string & ip) const noexcept {
 				// Хексеты IP адреса
 				vector <wstring> mip;
 				// Формируем вектор данных ip адреса
-				this->fmk->split(this->fmk->toLower(this->setLowIp6(this->imposePrefix6(ip, local6.prefix))), ":", mip);
+				this->_fmk->split(this->_fmk->toLower(this->setLowIp6(this->imposePrefix6(ip, local6.prefix))), ":", mip);
 				// Если данные получены
 				if(!mip.empty()){
 					// Если первый хекстет нулевой значит это локальный адрес
@@ -1314,7 +1314,7 @@ const int awh::Network::isLocal6(const string & ip) const noexcept {
 						// Хексеты сети IPv6
 						vector <wstring> nwk;
 						// Формируем вектор данных сети
-						this->fmk->split(this->fmk->toLower(this->setLowIp6(local6.ip)), ":", nwk);
+						this->_fmk->split(this->_fmk->toLower(this->setLowIp6(local6.ip)), ":", nwk);
 						// Если хексеты сети получены
 						if(!nwk.empty() && (mip.size() == nwk.size())){
 							// Начинаем проверять совпадения

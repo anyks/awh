@@ -38,7 +38,7 @@ void awh::server::WorkerRest::createAdj(const size_t aid) noexcept {
 		// Добавляем адъютанта в список адъютантов
 		auto ret = this->adjParams.emplace(aid, move(adjp_t(this->fmk, this->log, &this->uri)));
 		// Устанавливаем метод сжатия
-		ret.first->second.http.setCompress(this->compress);
+		ret.first->second.http.compress(this->compress);
 	}
 }
 /**

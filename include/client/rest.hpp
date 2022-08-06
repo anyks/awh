@@ -82,7 +82,7 @@ namespace awh {
 				 * Request Структура запроса клиента
 				 */
 				typedef struct Request {
-					uint8_t attempts;                            // Количество попыток
+					uint8_t attempt;                             // Количество выполненных попыток
 					web_t::method_t method;                      // Метод запроса
 					uri_t::url_t url;                            // Параметры адреса для запроса
 					vector <char> entity;                        // Тело запроса
@@ -90,7 +90,7 @@ namespace awh {
 					/**
 					 * Request Конструктор
 					 */
-					Request() noexcept : attempts(0), method(web_t::method_t::NONE) {}
+					Request() noexcept : attempt(0), method(web_t::method_t::NONE) {}
 				} req_t;
 				/**
 				 * Response Структура ответа сервера
@@ -118,55 +118,66 @@ namespace awh {
 					 */
 					Locker() noexcept : mode(false) {}
 				} locker_t;
+				/**
+				 * Callback Структура функций обратного вызова
+				 */
+				typedef struct Callback {
+					// Функция обратного вызова при подключении/отключении
+					function <void (const mode_t, Rest *)> active;
+					// Функция обратного вызова, вывода сообщения при его получении
+					function <void (const res_t &, Rest *)> message;
+					/**
+					 * Callback Конструктор
+					 */
+					Callback() noexcept : active(nullptr), message(nullptr) {}
+				} fn_t;
 			private:
 				// Объект для работы с сетью
-				network_t nwk;
+				network_t _nwk;
 			private:
 				// Объект работы с URI ссылками
-				uri_t uri;
+				uri_t _uri;
 				// Объект для работы с HTTP
-				http_t http;
+				http_t _http;
+				// Объявляем функции обратного вызова
+				fn_t _callback;
 				// Объект рабочего
-				worker_t worker;
+				worker_t _worker;
 				// Объект блокировщика
-				locker_t locker;
+				locker_t _locker;
 				// Экшен события
-				action_t action;
+				action_t _action;
+			private:
 				// Метод компрессии данных
-				awh::http_t::compress_t compress;
+				awh::http_t::compress_t _compress;
 			private:
 				// Буфер бинарных данных
-				vector <char> buffer;
+				vector <char> _buffer;
 			private:
 				// Список запросов
-				vector <req_t> requests;
+				vector <req_t> _requests;
 				// Список ответов
-				vector <res_t> responses;
+				vector <res_t> _responses;
 			private:
 				// Идентификатор подключения
-				size_t aid = 0;
+				size_t _aid;
 			private:
 				// Выполнять анбиндинг после завершения запроса
-				bool unbind = true;
+				bool _unbind;
 				// Флаг принудительного отключения
-				bool active = false;
+				bool _active;
 				// Флаг выполнения редиректов
-				bool redirects = false;
+				bool _redirects;
 			private:
 				// Общее количество попыток
-				uint8_t totalAttempts = 10;
+				uint8_t _attempts;
 			private:
 				// Создаём объект фреймворка
-				const fmk_t * fmk = nullptr;
+				const fmk_t * _fmk;
 				// Создаём объект работы с логами
-				const log_t * log = nullptr;
+				const log_t * _log;
 				// Создаём объект биндинга TCP/IP
-				const client::core_t * core = nullptr;
-			private:
-				// Функция обратного вызова при подключении/отключении
-				function <void (const mode_t, Rest *)> activeFn = nullptr;
-				// Функция обратного вызова, вывода сообщения при его получении
-				function <void (const res_t &, Rest *)> messageFn = nullptr;
+				const client::core_t * _core;
 			private:
 				/**
 				 * chunking Метод обработки получения чанков
@@ -413,81 +424,82 @@ namespace awh {
 				void on(function <void (const vector <char> &, const awh::http_t *)> callback) noexcept;
 			public:
 				/**
-				 * setBytesDetect Метод детекции сообщений по количеству байт
+				 * bytesDetect Метод детекции сообщений по количеству байт
 				 * @param read  количество байт для детекции по чтению
 				 * @param write количество байт для детекции по записи
 				 */
-				void setBytesDetect(const worker_t::mark_t read, const worker_t::mark_t write) noexcept;
+				void bytesDetect(const worker_t::mark_t read, const worker_t::mark_t write) noexcept;
 				/**
-				 * setWaitTimeDetect Метод детекции сообщений по количеству секунд
+				 * waitTimeDetect Метод детекции сообщений по количеству секунд
 				 * @param read    количество секунд для детекции по чтению
 				 * @param write   количество секунд для детекции по записи
 				 * @param connect количество секунд для детекции по подключению
 				 */
-				void setWaitTimeDetect(const time_t read = READ_TIMEOUT, const time_t write = WRITE_TIMEOUT, const time_t connect = CONNECT_TIMEOUT) noexcept;
+				void waitTimeDetect(const time_t read = READ_TIMEOUT, const time_t write = WRITE_TIMEOUT, const time_t connect = CONNECT_TIMEOUT) noexcept;
 			public:
 				/**
-				 * setMode Метод установки флага модуля
+				 * mode Метод установки флага модуля
 				 * @param flag флаг модуля для установки
 				 */
-				void setMode(const u_short flag) noexcept;
+				void mode(const u_short flag) noexcept;
 				/**
-				 * setProxy Метод установки прокси-сервера
-				 * @param uri параметры прокси-сервера
-				 */
-				void setProxy(const string & uri) noexcept;
-				/**
-				 * setChunkSize Метод установки размера чанка
+				 * chunk Метод установки размера чанка
 				 * @param size размер чанка для установки
 				 */
-				void setChunkSize(const size_t size) noexcept;
+				void chunk(const size_t size) noexcept;
 				/**
-				 * setAttempts Метод установки общего количества попыток
+				 * proxy Метод установки прокси-сервера
+				 * @param uri параметры прокси-сервера
+				 */
+				void proxy(const string & uri) noexcept;
+				/**
+				 * attempts Метод установки общего количества попыток
 				 * @param attempts общее количество попыток
 				 */
-				void setAttempts(const uint8_t attempts) noexcept;
+				void attempts(const uint8_t attempts) noexcept;
 				/**
-				 * setUserAgent Метод установки User-Agent для HTTP запроса
+				 * userAgent Метод установки User-Agent для HTTP запроса
 				 * @param userAgent агент пользователя для HTTP запроса
 				 */
-				void setUserAgent(const string & userAgent) noexcept;
+				void userAgent(const string & userAgent) noexcept;
 				/**
-				 * setCompress Метод установки метода компрессии
+				 * compress Метод установки метода компрессии
 				 * @param compress метод компрессии сообщений
 				 */
-				void setCompress(const awh::http_t::compress_t compress) noexcept;
+				void compress(const awh::http_t::compress_t compress) noexcept;
 				/**
-				 * setUser Метод установки параметров авторизации
+				 * user Метод установки параметров авторизации
 				 * @param login    логин пользователя для авторизации на сервере
 				 * @param password пароль пользователя для авторизации на сервере
 				 */
-				void setUser(const string & login, const string & password) noexcept;
+				void user(const string & login, const string & password) noexcept;
 				/**
-				 * setServ Метод установки данных сервиса
+				 * serv Метод установки данных сервиса
 				 * @param id   идентификатор сервиса
 				 * @param name название сервиса
 				 * @param ver  версия сервиса
 				 */
-				void setServ(const string & id, const string & name, const string & ver) noexcept;
+				void serv(const string & id, const string & name, const string & ver) noexcept;
 				/**
-				 * setCrypt Метод установки параметров шифрования
-				 * @param pass пароль шифрования передаваемых данных
-				 * @param salt соль шифрования передаваемых данных
-				 * @param aes  размер шифрования передаваемых данных
+				 * crypto Метод установки параметров шифрования
+				 * @param pass   пароль шифрования передаваемых данных
+				 * @param salt   соль шифрования передаваемых данных
+				 * @param cipher размер шифрования передаваемых данных
 				 */
-				void setCrypt(const string & pass, const string & salt = "", const hash_t::aes_t aes = hash_t::aes_t::AES128) noexcept;
+				void crypto(const string & pass, const string & salt = "", const hash_t::cipher_t cipher = hash_t::cipher_t::AES128) noexcept;
+			public:
 				/**
-				 * setAuthType Метод установки типа авторизации
+				 * authType Метод установки типа авторизации
 				 * @param type тип авторизации
 				 * @param hash алгоритм шифрования для Digest авторизации
 				 */
-				void setAuthType(const auth_t::type_t type = auth_t::type_t::BASIC, const auth_t::hash_t hash = auth_t::hash_t::MD5) noexcept;
+				void authType(const auth_t::type_t type = auth_t::type_t::BASIC, const auth_t::hash_t hash = auth_t::hash_t::MD5) noexcept;
 				/**
-				 * setAuthTypeProxy Метод установки типа авторизации прокси-сервера
+				 * authTypeProxy Метод установки типа авторизации прокси-сервера
 				 * @param type тип авторизации
 				 * @param hash алгоритм шифрования для Digest авторизации
 				 */
-				void setAuthTypeProxy(const auth_t::type_t type = auth_t::type_t::BASIC, const auth_t::hash_t hash = auth_t::hash_t::MD5) noexcept;
+				void authTypeProxy(const auth_t::type_t type = auth_t::type_t::BASIC, const auth_t::hash_t hash = auth_t::hash_t::MD5) noexcept;
 			public:
 				/**
 				 * Rest Конструктор

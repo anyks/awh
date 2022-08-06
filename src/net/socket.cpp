@@ -35,7 +35,7 @@ int awh::Socket::noSigill() const noexcept {
 		// Устанавливаем блокировку сигнала
 		if(sigaction(SIGILL, &act, nullptr)){
 			// Выводим в лог информацию
-			this->log->print("%s", log_t::flag_t::CRITICAL, "cannot set SIG_IGN on signal SIGILL");
+			this->_log->print("%s", log_t::flag_t::CRITICAL, "cannot set SIG_IGN on signal SIGILL");
 			// Выходим
 			return -1;
 		}
@@ -58,7 +58,7 @@ int awh::Socket::tcpCork(const int fd) const noexcept {
 		// Устанавливаем TCP_CORK
 		if(setsockopt(fd, IPPROTO_TCP, TCP_CORK, &tcpCork, sizeof(tcpCork)) < 0){
 			// Выводим в лог информацию
-			this->log->print("cannot set TCP_CORK option on socket %d", log_t::flag_t::CRITICAL, fd);
+			this->_log->print("cannot set TCP_CORK option on socket %d", log_t::flag_t::CRITICAL, fd);
 			// Выходим
 			return -1;
 		}
@@ -69,7 +69,7 @@ int awh::Socket::tcpCork(const int fd) const noexcept {
 		// Устанавливаем TCP_NOPUSH
 		if(setsockopt(fd, IPPROTO_TCP, TCP_NOPUSH, &tcpCork, sizeof(tcpCork)) < 0){
 			// Выводим в лог информацию
-			this->log->print("cannot set TCP_NOPUSH option on socket %d", log_t::flag_t::CRITICAL, fd);
+			this->_log->print("cannot set TCP_NOPUSH option on socket %d", log_t::flag_t::CRITICAL, fd);
 			// Выходим
 			return -1;
 		}
@@ -93,7 +93,7 @@ int awh::Socket::blocking(const int fd) const noexcept {
 			// Выполняем разблокировку сокета
 			if(ioctlsocket(fd, FIONBIO, &nonblocking) == SOCKET_ERROR){
 				// Выводим в лог информацию
-				this->log->print("cannot set BLOCK option on socket %d", log_t::flag_t::CRITICAL, fd);
+				this->_log->print("cannot set BLOCK option on socket %d", log_t::flag_t::CRITICAL, fd);
 				// Выходим
 				return -1;
 			}
@@ -108,7 +108,7 @@ int awh::Socket::blocking(const int fd) const noexcept {
 			// Получаем флаги файлового дескриптора
 			if((flags = fcntl(fd, F_GETFL, nullptr)) < 0){
 				// Выводим в лог информацию
-				this->log->print("cannot set BLOCK option on socket %d", log_t::flag_t::CRITICAL, fd);
+				this->_log->print("cannot set BLOCK option on socket %d", log_t::flag_t::CRITICAL, fd);
 				// Выходим
 				return -1;
 			}
@@ -117,7 +117,7 @@ int awh::Socket::blocking(const int fd) const noexcept {
 				// Устанавливаем неблокирующий режим
 				if(fcntl(fd, F_SETFL, flags ^ O_NONBLOCK) == -1){
 					// Выводим в лог информацию
-					this->log->print("cannot set NON_BLOCK option on socket %d", log_t::flag_t::CRITICAL, fd);
+					this->_log->print("cannot set NON_BLOCK option on socket %d", log_t::flag_t::CRITICAL, fd);
 					// Выходим
 					return -1;
 				}
@@ -148,7 +148,7 @@ int awh::Socket::noSigpipe(const int fd) const noexcept {
 		// Устанавливаем блокировку сигнала
 		if(sigaction(SIGPIPE, &act, nullptr)){
 			// Выводим в лог информацию
-			this->log->print("%s", log_t::flag_t::CRITICAL, "cannot set SIG_IGN on signal SIGPIPE");
+			this->_log->print("%s", log_t::flag_t::CRITICAL, "cannot set SIG_IGN on signal SIGPIPE");
 			// Выходим
 			return -1;
 		}
@@ -163,7 +163,7 @@ int awh::Socket::noSigpipe(const int fd) const noexcept {
 		// Устанавливаем SO_NOSIGPIPE
 		if(setsockopt(fd, SOL_SOCKET, SO_NOSIGPIPE, &noSigpipe, sizeof(noSigpipe)) < 0){
 			// Выводим в лог информацию
-			this->log->print("cannot set SO_NOSIGPIPE option on socket %d", log_t::flag_t::CRITICAL, fd);
+			this->_log->print("cannot set SO_NOSIGPIPE option on socket %d", log_t::flag_t::CRITICAL, fd);
 			// Выходим
 			return -1;
 		}
@@ -186,7 +186,7 @@ int awh::Socket::reuseable(const int fd) const noexcept {
 		// Разрешаем повторно использовать тот же host:port после отключения
 		if(setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, (const char *) &on, (socklen_t) sizeof(on)) < 0){
 			// Выводим в лог информацию
-			this->log->print("cannot set SO_REUSEADDR option on socket %d", log_t::flag_t::CRITICAL, fd);
+			this->_log->print("cannot set SO_REUSEADDR option on socket %d", log_t::flag_t::CRITICAL, fd);
 			// Выходим
 			return -1;
 		}
@@ -197,7 +197,7 @@ int awh::Socket::reuseable(const int fd) const noexcept {
 		// Разрешаем повторно использовать тот же host:port после отключения
 		if(setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, (const void *) &on, (socklen_t) sizeof(on)) < 0){
 			// Выводим в лог информацию
-			this->log->print("cannot set SO_REUSEADDR option on socket %d", log_t::flag_t::CRITICAL, fd);
+			this->_log->print("cannot set SO_REUSEADDR option on socket %d", log_t::flag_t::CRITICAL, fd);
 			// Выходим
 			return -1;
 		}
@@ -208,7 +208,7 @@ int awh::Socket::reuseable(const int fd) const noexcept {
 			// Разрешаем повторно использовать тот же host:port после отключения
 			if(setsockopt(fd, SOL_SOCKET, SO_REUSEPORT, (const void *) &on, (socklen_t) sizeof(on)) < 0){
 				// Выводим в лог информацию
-				this->log->print("cannot set SO_REUSEPORT option on socket %d", log_t::flag_t::CRITICAL, fd);
+				this->_log->print("cannot set SO_REUSEPORT option on socket %d", log_t::flag_t::CRITICAL, fd);
 				// Выходим
 				return -1;
 			}
@@ -228,7 +228,7 @@ int awh::Socket::tcpNodelay(const int fd) const noexcept {
 	// Устанавливаем TCP_NODELAY
 	if(setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, (char *) &tcpNodelay, sizeof(tcpNodelay)) < 0){
 		// Выводим в лог информацию
-		this->log->print("cannot set TCP_NODELAY option on socket %d", log_t::flag_t::CRITICAL, fd);
+		this->_log->print("cannot set TCP_NODELAY option on socket %d", log_t::flag_t::CRITICAL, fd);
 		// Выходим
 		return -1;
 	}
@@ -271,7 +271,7 @@ int awh::Socket::isBlocking(const int fd) const noexcept {
 			// Получаем флаги файлового дескриптора
 			if((flags = fcntl(fd, F_GETFL, nullptr)) < 0){
 				// Выводим в лог информацию
-				this->log->print("cannot set BLOCK option on socket %d", log_t::flag_t::CRITICAL, fd);
+				this->_log->print("cannot set BLOCK option on socket %d", log_t::flag_t::CRITICAL, fd);
 				// Выходим
 				return -1;
 			}
@@ -301,7 +301,7 @@ int awh::Socket::closeonexec(const int fd) const noexcept {
 		// Получаем флаги файлового дескриптора 
 		if((flags = fcntl(fd, F_GETFD, nullptr)) < 0){
 			// Выводим в лог информацию
-			this->log->print("cannot set CLOSE_ON_EXEC option on socket %d", log_t::flag_t::CRITICAL, fd);
+			this->_log->print("cannot set CLOSE_ON_EXEC option on socket %d", log_t::flag_t::CRITICAL, fd);
 			// Выходим
 			return -1;
 		}
@@ -310,7 +310,7 @@ int awh::Socket::closeonexec(const int fd) const noexcept {
 			// Устанавливаем флаги для файлового дескриптора
 			if(fcntl(fd, F_SETFD, flags | FD_CLOEXEC) == -1){
 				// Выводим в лог информацию
-				this->log->print("cannot set CLOSE_ON_EXEC option on socket %d", log_t::flag_t::CRITICAL, fd);
+				this->_log->print("cannot set CLOSE_ON_EXEC option on socket %d", log_t::flag_t::CRITICAL, fd);
 				// Выходим
 				return -1;
 			}
@@ -335,7 +335,7 @@ int awh::Socket::nonBlocking(const int fd) const noexcept {
 			// Выполняем разблокировку сокета
 			if(ioctlsocket(fd, FIONBIO, &nonblocking) == SOCKET_ERROR){
 				// Выводим в лог информацию
-				this->log->print("cannot set NON_BLOCK option on socket %d", log_t::flag_t::CRITICAL, fd);
+				this->_log->print("cannot set NON_BLOCK option on socket %d", log_t::flag_t::CRITICAL, fd);
 				// Выходим
 				return -1;
 			}
@@ -350,7 +350,7 @@ int awh::Socket::nonBlocking(const int fd) const noexcept {
 			// Получаем флаги файлового дескриптора
 			if((flags = fcntl(fd, F_GETFL, nullptr)) < 0){
 				// Выводим в лог информацию
-				this->log->print("cannot set NON_BLOCK option on socket %d", log_t::flag_t::CRITICAL, fd);
+				this->_log->print("cannot set NON_BLOCK option on socket %d", log_t::flag_t::CRITICAL, fd);
 				// Выходим
 				return -1;
 			}
@@ -359,7 +359,7 @@ int awh::Socket::nonBlocking(const int fd) const noexcept {
 				// Устанавливаем неблокирующий режим
 				if(fcntl(fd, F_SETFL, flags | O_NONBLOCK) == -1){
 					// Выводим в лог информацию
-					this->log->print("cannot set NON_BLOCK option on socket %d", log_t::flag_t::CRITICAL, fd);
+					this->_log->print("cannot set NON_BLOCK option on socket %d", log_t::flag_t::CRITICAL, fd);
 					// Выходим
 					return -1;
 				}
@@ -381,7 +381,7 @@ int awh::Socket::ipV6only(const int fd, const bool mode) const noexcept {
 	// Разрешаем повторно использовать тот же host:port после отключения
 	if(setsockopt(fd, IPPROTO_IPV6, IPV6_V6ONLY, (char *) &only6, sizeof(only6)) < 0){
 		// Выводим в лог информацию
-		this->log->print("cannot set IPV6_V6ONLY option on socket %d", log_t::flag_t::CRITICAL, fd);
+		this->_log->print("cannot set IPV6_V6ONLY option on socket %d", log_t::flag_t::CRITICAL, fd);
 		// Выходим
 		return -1;
 	}
@@ -411,7 +411,7 @@ int awh::Socket::keepAlive(const int fd, const int cnt, const int idle, const in
 			// Если мы получили ошибку, выходим сообщение
 			if(result == SOCKET_ERROR){
 				// Выводим в лог информацию
-				this->log->print("setsockopt for SO_KEEPALIVE failed with error: %u", log_t::flag_t::CRITICAL, WSAGetLastError());
+				this->_log->print("setsockopt for SO_KEEPALIVE failed with error: %u", log_t::flag_t::CRITICAL, WSAGetLastError());
 				// Выходим
 				return -1;
 			}
@@ -425,7 +425,7 @@ int awh::Socket::keepAlive(const int fd, const int cnt, const int idle, const in
 			// Если мы получили ошибку, выходим сообщение
 			if(result == SOCKET_ERROR){
 				// Выводим в лог информацию
-				this->log->print("getsockopt for SO_KEEPALIVE failed with error: %u", log_t::flag_t::CRITICAL, WSAGetLastError());
+				this->_log->print("getsockopt for SO_KEEPALIVE failed with error: %u", log_t::flag_t::CRITICAL, WSAGetLastError());
 				// Выходим
 				return -1;
 			}
@@ -439,14 +439,14 @@ int awh::Socket::keepAlive(const int fd, const int cnt, const int idle, const in
 		// Активация постоянного подключения
 		if(setsockopt(fd, SOL_SOCKET, SO_KEEPALIVE, &keepAlive, sizeof(int))){
 			// Выводим в лог информацию
-			this->log->print("cannot set SO_KEEPALIVE option on socket %d", log_t::flag_t::CRITICAL, fd);
+			this->_log->print("cannot set SO_KEEPALIVE option on socket %d", log_t::flag_t::CRITICAL, fd);
 			// Выходим
 			return -1;
 		}
 		// Максимальное количество попыток
 		if(setsockopt(fd, IPPROTO_TCP, TCP_KEEPCNT, &cnt, sizeof(int))){
 			// Выводим в лог информацию
-			this->log->print("cannot set TCP_KEEPCNT option on socket %d", log_t::flag_t::CRITICAL, fd);
+			this->_log->print("cannot set TCP_KEEPCNT option on socket %d", log_t::flag_t::CRITICAL, fd);
 			// Выходим
 			return -1;
 		}
@@ -457,7 +457,7 @@ int awh::Socket::keepAlive(const int fd, const int cnt, const int idle, const in
 			// Время через которое происходит проверка подключения
 			if(setsockopt(fd, IPPROTO_TCP, TCP_KEEPALIVE, &idle, sizeof(int))){
 				// Выводим в лог информацию
-				this->log->print("cannot set TCP_KEEPALIVE option on socket %d", log_t::flag_t::CRITICAL, fd);
+				this->_log->print("cannot set TCP_KEEPALIVE option on socket %d", log_t::flag_t::CRITICAL, fd);
 				// Выходим
 				return -1;
 			}
@@ -468,7 +468,7 @@ int awh::Socket::keepAlive(const int fd, const int cnt, const int idle, const in
 			// Время через которое происходит проверка подключения
 			if(setsockopt(fd, IPPROTO_TCP, TCP_KEEPIDLE, &idle, sizeof(int))){
 				// Выводим в лог информацию
-				this->log->print("cannot set TCP_KEEPIDLE option on socket %d", log_t::flag_t::CRITICAL, fd);
+				this->_log->print("cannot set TCP_KEEPIDLE option on socket %d", log_t::flag_t::CRITICAL, fd);
 				// Выходим
 				return -1;
 			}
@@ -476,7 +476,7 @@ int awh::Socket::keepAlive(const int fd, const int cnt, const int idle, const in
 		// Время между попытками
 		if(setsockopt(fd, IPPROTO_TCP, TCP_KEEPINTVL, &intvl, sizeof(int))){
 			// Выводим в лог информацию
-			this->log->print("cannot set TCP_KEEPINTVL option on socket %d", log_t::flag_t::CRITICAL, fd);
+			this->_log->print("cannot set TCP_KEEPINTVL option on socket %d", log_t::flag_t::CRITICAL, fd);
 			// Выходим
 			return -1;
 		}
@@ -517,7 +517,7 @@ int awh::Socket::bufferSize(const int fd, const int read, const int write, const
 	if((getsockopt(fd, SOL_SOCKET, SO_RCVBUF, (char *) &readSize, &rlen) < 0) ||
 	   (getsockopt(fd, SOL_SOCKET, SO_SNDBUF, (char *) &writeSize, &wlen) < 0)){
 		// Выводим в лог информацию
-		this->log->print("get buffer wrong on socket %d", log_t::flag_t::CRITICAL, fd);
+		this->_log->print("get buffer wrong on socket %d", log_t::flag_t::CRITICAL, fd);
 		// Выходим
 		return -1;
 	}

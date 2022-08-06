@@ -20,48 +20,48 @@
  */
 void awh::client::Socks5::reqCmd() const noexcept {
 	// Очищаем бинарный буфер данных
-	this->buffer.clear();
+	this->_buffer.clear();
 	// Если IP адрес или доменное имя установлены
-	if(!this->url.ip.empty() || !this->url.domain.empty()){
+	if(!this->_url.ip.empty() || !this->_url.domain.empty()){
 		// Бинарные данные буфера
 		const char * data = nullptr;
 		// Получаем значение порта
-		const uint16_t port = htons(this->url.port);
+		const uint16_t port = htons(this->_url.port);
 		// Увеличиваем память на 4 октета
-		this->buffer.resize(sizeof(uint8_t) * 4, 0x0);
+		this->_buffer.resize(sizeof(uint8_t) * 4, 0x0);
 		// Устанавливаем версию протокола
-		u_short offset = this->setOctet(VER);
+		u_short offset = this->octet(VER);
 		// Устанавливаем комманду запроса
-		offset = this->setOctet((uint8_t) cmd_t::CONNECT, offset);
+		offset = this->octet((uint8_t) cmd_t::CONNECT, offset);
 		// Устанавливаем RSV октет
-		offset = this->setOctet(0x00, offset);
+		offset = this->octet(0x00, offset);
 		// Если IP адрес получен
-		if(!this->url.ip.empty()){
+		if(!this->_url.ip.empty()){
 			// Получаем бинарные буфер IP адреса
-			const auto & ip = this->ipToHex(this->url.ip, this->url.family);
+			const auto & ip = this->ipToHex(this->_url.ip, this->_url.family);
 			// Если буфер IP адреса получен
 			if(!ip.empty()){
 				// Определяем тип подключения
-				switch(this->url.family){
+				switch(this->_url.family){
 					// Устанавливаем тип адреса [IPv4]
-					case AF_INET: offset = this->setOctet((uint8_t) atyp_t::IPv4, offset); break;
+					case AF_INET: offset = this->octet((uint8_t) atyp_t::IPv4, offset); break;
 					// Устанавливаем тип адреса [IPv6]
-					case AF_INET6: offset = this->setOctet((uint8_t) atyp_t::IPv6, offset); break;
+					case AF_INET6: offset = this->octet((uint8_t) atyp_t::IPv6, offset); break;
 				}
 				// Устанавливаем полученный буфер IP адреса
-				this->buffer.insert(this->buffer.end(), ip.begin(), ip.end());
+				this->_buffer.insert(this->_buffer.end(), ip.begin(), ip.end());
 			}
 		// Устанавливаем доменное имя
 		} else {
 			// Устанавливаем тип адреса [Доменное имя]
-			offset = this->setOctet((uint8_t) atyp_t::DMNAME, offset);
+			offset = this->octet((uint8_t) atyp_t::DMNAME, offset);
 			// Добавляем в буфер доменное имя
-			this->setText(this->url.domain);
+			this->text(this->_url.domain);
 		}
 		// Получаем бинарные данные порта
 		data = (const char *) &port;
 		// Устанавливаем порт запроса
-		this->buffer.insert(this->buffer.end(), data, data + sizeof(port));
+		this->_buffer.insert(this->_buffer.end(), data, data + sizeof(port));
 	}
 }
 /**
@@ -69,17 +69,17 @@ void awh::client::Socks5::reqCmd() const noexcept {
  */
 void awh::client::Socks5::reqAuth() const noexcept {
 	// Очищаем бинарный буфер данных
-	this->buffer.clear();
+	this->_buffer.clear();
 	// Если логин и пароль переданы
-	if(!this->login.empty() && !this->password.empty()){
+	if(!this->_login.empty() && !this->_pass.empty()){
 		// Увеличиваем память на 4 октета
-		this->buffer.resize(sizeof(uint8_t), 0x0);
+		this->_buffer.resize(sizeof(uint8_t), 0x0);
 		// Устанавливаем версию протокола
-		this->setOctet(AVER);
+		this->octet(AVER);
 		// Добавляем в буфер логин пользователя
-		this->setText(this->login);
+		this->text(this->_login);
 		// Добавляем в буфер пароль пользователя
-		this->setText(this->password);
+		this->text(this->_pass);
 	}
 }
 /**
@@ -87,17 +87,17 @@ void awh::client::Socks5::reqAuth() const noexcept {
  */
 void awh::client::Socks5::reqMethods() const noexcept {
 	// Очищаем бинарный буфер данных
-	this->buffer.clear();
+	this->_buffer.clear();
 	// Увеличиваем память на 4 октета
-	this->buffer.resize(sizeof(uint8_t) * 4, 0x0);
+	this->_buffer.resize(sizeof(uint8_t) * 4, 0x0);
 	// Устанавливаем версию протокола
-	u_short offset = this->setOctet(VER);
+	u_short offset = this->octet(VER);
 	// Устанавливаем количество методов авторизации
-	offset = this->setOctet(2, offset);
+	offset = this->octet(2, offset);
 	// Устанавливаем первый метод авторизации (без авторизации)
-	offset = this->setOctet((uint8_t) method_t::NOAUTH, offset);
+	offset = this->octet((uint8_t) method_t::NOAUTH, offset);
 	// Устанавливаем второй метод авторизации (по паролю)
-	offset = this->setOctet((uint8_t) method_t::PASSWD, offset);
+	offset = this->octet((uint8_t) method_t::PASSWD, offset);
 }
 /**
  * parse Метод парсинга входящих данных
@@ -106,11 +106,11 @@ void awh::client::Socks5::reqMethods() const noexcept {
  */
 void awh::client::Socks5::parse(const char * buffer, const size_t size) noexcept {
 	// Очищаем буфер данных
-	this->buffer.clear();
+	this->_buffer.clear();
 	// Если данные буфера переданы
 	if((buffer != nullptr) && (size > 0)){
 		// Определяем текущий стейт
-		switch((uint8_t) this->state){
+		switch((uint8_t) this->_state){
 			// Если установлен стейт, выбора метода
 			case (uint8_t) state_t::METHOD: {
 				// Если данных достаточно для получения ответа
@@ -124,37 +124,37 @@ void awh::client::Socks5::parse(const char * buffer, const size_t size) noexcept
 						// Если авторизацию производить не нужно
 						if(resp.method == (uint8_t) method_t::NOAUTH){
 							// Устанавливаем статус ожидания ответа
-							this->state = state_t::RESPONSE;
+							this->_state = state_t::RESPONSE;
 							// Формируем запрос для доступа к сайту
 							this->reqCmd();
 						// Если сервер требует авторизацию
 						} else if(resp.method == (uint8_t) method_t::PASSWD) {
 							// Проверяем установлен ли логин с паролем
-							if(!this->login.empty() && !this->password.empty()){
+							if(!this->_login.empty() && !this->_pass.empty()){
 								// Устанавливаем статус ожидания ответа на авторизацию
-								this->state = state_t::AUTH;
+								this->_state = state_t::AUTH;
 								// Формируем запрос авторизации
 								this->reqAuth();
 							// Если логин и пароль не установлены
 							} else {
 								// Устанавливаем код сообщения
-								this->code = 0x10;
+								this->_code = 0x10;
 								// Устанавливаем статус ошибки
-								this->state = state_t::BROKEN;
+								this->_state = state_t::BROKEN;
 							}
 						// Если пришёл не поддерживаемый метод
 						} else {
 							// Устанавливаем код сообщения
-							this->code = 0x07;
+							this->_code = 0x07;
 							// Устанавливаем статус ошибки
-							this->state = state_t::BROKEN;
+							this->_state = state_t::BROKEN;
 						}
 					// Если версия прокси-сервера не соответствует
 					} else {
 						// Устанавливаем код сообщения
-						this->code = 0x11;
+						this->_code = 0x11;
 						// Устанавливаем статус ошибки
-						this->state = state_t::BROKEN;
+						this->_state = state_t::BROKEN;
 					}
 				}
 			} break;
@@ -171,22 +171,22 @@ void awh::client::Socks5::parse(const char * buffer, const size_t size) noexcept
 						// Если авторизация пройдера нуспешно
 						if(resp.status == (uint8_t) rep_t::SUCCESS){
 							// Устанавливаем статус ожидания ответа
-							this->state = state_t::RESPONSE;
+							this->_state = state_t::RESPONSE;
 							// Формируем запрос для доступа к сайту
 							this->reqCmd();
 						// Если авторизация не пройдена
 						} else {
 							// Устанавливаем код сообщения
-							this->code = 0x12;
+							this->_code = 0x12;
 							// Устанавливаем статус ошибки
-							this->state = state_t::BROKEN;
+							this->_state = state_t::BROKEN;
 						}
 					// Если версия прокси-сервера не соответствует
 					} else {
 						// Устанавливаем код сообщения
-						this->code = 0x13;
+						this->_code = 0x13;
 						// Устанавливаем статус ошибки
-						this->state = state_t::BROKEN;
+						this->_state = state_t::BROKEN;
 					}
 				}
 			} break;
@@ -221,10 +221,10 @@ void awh::client::Socks5::parse(const char * buffer, const size_t size) noexcept
 											// Если включён режим отладки
 											#if defined(DEBUG_MODE)
 												// Выводим сообщение о данных сервера
-												this->log->print("%s %s:%u %s", log_t::flag_t::INFO, "socks5 proxy server", ip.c_str(), server.port, "is accepted");
+												this->_log->print("%s %s:%u %s", log_t::flag_t::INFO, "socks5 proxy server", ip.c_str(), server.port, "is accepted");
 											#endif
 											// Устанавливаем стейт рукопожатия
-											this->state = state_t::HANDSHAKE;
+											this->_state = state_t::HANDSHAKE;
 										}
 									}
 								} break;
@@ -245,10 +245,10 @@ void awh::client::Socks5::parse(const char * buffer, const size_t size) noexcept
 											// Если включён режим отладки
 											#if defined(DEBUG_MODE)
 												// Выводим сообщение о данных сервера
-												this->log->print("%s [%s]:%u %s", log_t::flag_t::INFO, "socks5 proxy server", ip.c_str(), server.port, "is accepted");
+												this->_log->print("%s [%s]:%u %s", log_t::flag_t::INFO, "socks5 proxy server", ip.c_str(), server.port, "is accepted");
 											#endif
 											// Устанавливаем стейт рукопожатия
-											this->state = state_t::HANDSHAKE;
+											this->_state = state_t::HANDSHAKE;
 										}
 									}
 								} break;
@@ -257,7 +257,7 @@ void awh::client::Socks5::parse(const char * buffer, const size_t size) noexcept
 									// Если буфер пришел достаточного размера
 									if(size >= (sizeof(res_t) + sizeof(uint16_t))){
 										// Извлекаем доменное имя
-										const string & domain = this->getText(buffer + sizeof(res_t), size);
+										const string & domain = this->text(buffer + sizeof(res_t), size);
 										// Получаем размер смещения
 										u_short offset = (sizeof(res_t) + sizeof(uint8_t) + domain.size());
 										// Если доменное имя получено
@@ -271,10 +271,10 @@ void awh::client::Socks5::parse(const char * buffer, const size_t size) noexcept
 											// Если включён режим отладки
 											#if defined(DEBUG_MODE)
 												// Выводим сообщение о данных сервера
-												this->log->print("%s %s:%u %s", log_t::flag_t::INFO, "socks5 proxy server", domain.c_str(), port, "is accepted");
+												this->_log->print("%s %s:%u %s", log_t::flag_t::INFO, "socks5 proxy server", domain.c_str(), port, "is accepted");
 											#endif
 											// Устанавливаем стейт рукопожатия
-											this->state = state_t::HANDSHAKE;
+											this->_state = state_t::HANDSHAKE;
 										}
 									}
 								} break;
@@ -282,51 +282,51 @@ void awh::client::Socks5::parse(const char * buffer, const size_t size) noexcept
 						// Если авторизация не пройдена
 						} else {
 							// Устанавливаем код сообщения
-							this->code = res.rep;
+							this->_code = res.rep;
 							// Устанавливаем статус ошибки
-							this->state = state_t::BROKEN;
+							this->_state = state_t::BROKEN;
 						}
 					// Если версия прокси-сервера не соответствует
 					} else {
 						// Устанавливаем код сообщения
-						this->code = 0x11;
+						this->_code = 0x11;
 						// Устанавливаем статус ошибки
-						this->state = state_t::BROKEN;
+						this->_state = state_t::BROKEN;
 					}
 				}
 			} break;
 		}
 	// Иначе подготавливаем буфер для запроса доступных методов
-	} else if(this->state == state_t::METHOD) this->reqMethods();
+	} else if(this->_state == state_t::METHOD) this->reqMethods();
 }
 /**
  * reset Метод сброса собранных данных
  */
 void awh::client::Socks5::reset() noexcept {
 	// Выполняем сброс статуса ошибки
-	this->code = 0x00;
+	this->_code = 0x00;
 	// Выполняем очистку буфера данных
-	this->buffer.clear();
+	this->_buffer.clear();
 	// Выполняем сброс стейта
-	this->state = state_t::METHOD;
+	this->_state = state_t::METHOD;
 }
 /**
  * clearUser Метод очистки списка пользователей
  */
 void awh::client::Socks5::clearUser() noexcept {
-	// Выполняем очистку пользователя
-	this->login.clear();
 	// Выполняем очистку пароля пользователя
-	this->password.clear();
+	this->_pass.clear();
+	// Выполняем очистку пользователя
+	this->_login.clear();
 }
 /**
- * setUser Метод установки параметров авторизации
- * @param login    логин пользователя для авторизации на сервере
- * @param password пароль пользователя для авторизации на сервере
+ * user Метод установки параметров авторизации
+ * @param login логин пользователя для авторизации на сервере
+ * @param pass  пароль пользователя для авторизации на сервере
  */
-void awh::client::Socks5::setUser(const string & login, const string & password) noexcept {
-	// Устанавливаем данные пользователя
-	this->login = login;
+void awh::client::Socks5::user(const string & login, const string & pass) noexcept {
 	// Устанавливаем пароль пользователя
-	this->password = password;
+	this->_pass = pass;
+	// Устанавливаем данные пользователя
+	this->_login = login;
 }

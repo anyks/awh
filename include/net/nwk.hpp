@@ -63,7 +63,7 @@ namespace awh {
 			typedef class IPdata {
 				private:
 					// Параметры ip адреса
-					u_int ptr[4] = {256, 256, 256, 256};
+					u_int _ptr[4] = {256, 256, 256, 256};
 				public:
 					/**
 					 * str Метод вывода результата в виде строки
@@ -143,24 +143,26 @@ namespace awh {
 				/**
 				 * Url Конструктор
 				 */
-				Url() : ssl(false), port(0), host(""), query("") {}
+				Url() noexcept : ssl(false), port(0), host(""), query("") {}
 			} url_t;
 			/**
-			 * type_t Флаги типа адреса
+			 * Флаги типа адреса
 			 */
 			enum class type_t : uint8_t {
-				MAC,        // Аппаратный адрес сетевого интерфейса
-				IPV4,       // Адрес подключения IPv4
-				IPV6,       // Адрес подключения IPv6
-				NONE,       // Не определено
-				DOMNAME,    // Доменное имя
-				NETWORK,    // Адрес/Маска сети
-				ADDRESS,    // Адрес в файловой системе
-				HTTPMETHOD, // HTTP метод
-				HTTPADDRESS // HTTP адрес
+				MAC         = 0x01, // Аппаратный адрес сетевого интерфейса
+				IPV4        = 0x02, // Адрес подключения IPv4
+				IPV6        = 0x03, // Адрес подключения IPv6
+				NONE        = 0x00, // Не определено
+				DOMNAME     = 0x04, // Доменное имя
+				NETWORK     = 0x05, // Адрес/Маска сети
+				ADDRESS     = 0x06, // Адрес в файловой системе
+				HTTPMETHOD  = 0x07, // HTTP метод
+				HTTPADDRESS = 0x08  // HTTP адрес
 			};
 		private:
-			// Набор локальных сетей IPv6
+			/**
+			 * Набор локальных сетей IPv6
+			 */
 			const vector <nldata6_t> locals6 = {
 				{"::1", "", 128, true},
 				{"2001::", "", 32, false},
@@ -172,7 +174,9 @@ namespace awh {
 				{"fc00::", "", 7, true},
 				{"ff00::", "", 8, false}
 			};
-			// Набор локальных сетей
+			/**
+			 * Набор локальных сетей
+			 */
 			const vector <nldata_t> locals = {
 				{"0.0.0.0", "0.0.0.0", 8, false},
 				{"0.0.0.0", "0.0.0.0", 32, false},
@@ -199,7 +203,9 @@ namespace awh {
 				{"198.18.0.0", "198.18.0.0", 15, true},
 				{"203.0.113.0", "203.0.113.0", 24, true}
 			};
-			// Набор масок подсетей
+			/**
+			 * Набор масок подсетей
+			 */
 			const vector <ntdata_t> masks = {
 				{"000.000.000.000", "255.0.0.0", "0.0.0.0", "127.255.255.255", "255.255.255.255", "С.Х.Х.Х", "A", 256, 0, 0, 4294967296, 128, 16777214, false}, // 0
 				{"128.000.000.000", "255.0.0.0", "0.0.0.0", "127.255.255.255", "127.255.255.255", "С.Х.Х.Х", "A", 128, 1, 0, 2147483648, 128, 16777214, false}, // 1
@@ -237,7 +243,7 @@ namespace awh {
 			};
 		private:
 			// Создаём объект фреймворка
-			const fmk_t * fmk = nullptr;
+			const fmk_t * _fmk;
 		private:
 			/**
 			 * setZerroToStrIp Метод дописывает указанное количестов нулей к строке
@@ -524,7 +530,7 @@ namespace awh {
 			 * Network Конструктор
 			 * @param fmk объект фреймворка
 			 */
-			Network(const fmk_t * fmk) noexcept : fmk(fmk) {}
+			Network(const fmk_t * fmk) noexcept : _fmk(fmk) {}
 	} network_t;
 };
 

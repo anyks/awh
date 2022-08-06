@@ -77,17 +77,13 @@ namespace awh {
 			enum class status_t : uint8_t {STOP, START};
 		public:
 			/**
-			 * Тип сокета подключения
-			 */
-			enum class sonet_t : uint8_t {TCP, UDP};
-			/**
-			 * Флаги активного типа шифрования
-			 */
-			enum class ssl_t : uint8_t {NONE, STLS, DTLS};
-			/**
 			 * Семейство протоколов интернета
 			 */
 			enum class family_t : uint8_t {IPV4, IPV6, NIX};
+			/**
+			 * Тип сокета подключения
+			 */
+			enum class sonet_t : uint8_t {TCP, UDP, TLS, DTLS};
 			/**
 			 * Основные методы режимов работы
 			 */
@@ -190,25 +186,25 @@ namespace awh {
 					friend class Core;
 				private:
 					// Объект ядра
-					Core * core;
+					Core * _core;
 				private:
 					// Флаг простого чтения базы событий
-					bool easy;
+					bool _easy;
 					// Флаг разрешения работы
-					bool mode;
+					bool _mode;
 					// Флаг работы модуля
-					bool work;
+					bool _work;
 					// Флаг инициализации базы событий
-					bool init;
+					bool _init;
 				public:
 					// База событий
 					ev::loop_ref base;
 				private:
 					// Мютекс для блокировки потока
-					recursive_mutex mtx;
+					recursive_mutex _mtx;
 				private:
 					// Частота обновления базы событий
-					chrono::milliseconds freq;
+					chrono::milliseconds _freq;
 				public:
 					/**
 					 * kick Метод отправки пинка
@@ -245,10 +241,10 @@ namespace awh {
 					 */
 					void setBase(struct ev_loop * base) noexcept;
 					/**
-					 * setFrequency Метод установки частоты обновления базы событий
+					 * frequency Метод установки частоты обновления базы событий
 					 * @param msec частота обновления базы событий в миллисекундах
 					 */
-					void setFrequency(const uint8_t msec = 10) noexcept;
+					void frequency(const uint8_t msec = 10) noexcept;
 				public:
 					/**
 					 * Dispatch Конструктор
@@ -261,7 +257,7 @@ namespace awh {
 			} dispatch_t;
 		protected:
 			// Создаем объект сети
-			network_t nwk;
+			network_t _nwk;
 		protected:
 			// Создаём объект работы с URI
 			uri_t uri;
@@ -279,28 +275,26 @@ namespace awh {
 			dispatch_t dispatch;
 		private:
 			// Объект события таймера
-			timer_t timer;
-		protected:
+			timer_t _timer;
+		private:
 			// Мютекс для блокировки основного потока
-			mutable mtx_t mtx;
+			mutable mtx_t _mtx;
 		private:
 			/**
 			 * Методы только для OS Windows
 			 */
 			#if defined(_WIN32) || defined(_WIN64)
 				// Объект работы с сигналами
-				sig_t sig;
+				sig_t _sig;
 			#endif
 		protected:
-			// Тип активной версии шифрования
-			ssl_t ssl = ssl_t::NONE;
 			// Статус сетевого ядра
-			status_t status = status_t::STOP;
+			status_t status;
 			// Тип запускаемого ядра
-			engine_t::type_t type = engine_t::type_t::CLIENT;
+			engine_t::type_t type;
 		private:
 			// Список активных таймеров
-			map <u_short, unique_ptr <timer_t>> timers;
+			map <u_short, unique_ptr <timer_t>> _timers;
 		protected:
 			// Список активных воркеров
 			map <size_t, const worker_t *> workers;
@@ -308,28 +302,28 @@ namespace awh {
 			map <size_t, const worker_t::adj_t *> adjutants;
 		protected:
 			// Флаг разрешения работы
-			bool mode = false;
+			bool mode;
 			// Флаг запрета вывода информационных сообщений
-			bool noinfo = false;
+			bool noinfo;
 			// Флаг персистентного запуска каллбека
-			bool persist = false;
+			bool persist;
 		protected:
 			// Количество подключённых внешних ядер
-			u_int cores = 0;
+			u_int cores;
 		protected:
 			// Название сервера по умолчанию
-			string serverName = AWH_SHORT_NAME;
+			string servName;
 		private:
 			// Интервал персистентного таймера в миллисекундах
-			time_t persistInterval = PERSIST_INTERVAL;
+			time_t _persIntvl;
 		protected:
 			// Создаём объект фреймворка
-			const fmk_t * fmk = nullptr;
+			const fmk_t * fmk;
 			// Создаём объект работы с логами
-			const log_t * log = nullptr;
-		protected:
+			const log_t * log;
+		private:
 			// Функция обратного вызова при запуске/остановке модуля
-			function <void (const bool, Core * core)> callbackFn = nullptr;
+			function <void (const bool, Core * core)> _fn;
 		private:
 			/**
 			 * launching Метод вызова при активации базы событий
@@ -370,10 +364,10 @@ namespace awh {
 			void unbind(Core * core) noexcept;
 		public:
 			/**
-			 * setCallback Метод установки функции обратного вызова при запуске/остановки работы модуля
+			 * callback Метод установки функции обратного вызова при запуске/остановки работы модуля
 			 * @param callback функция обратного вызова для установки
 			 */
-			void setCallback(function <void (const bool, Core * core)> callback) noexcept;
+			void callback(function <void (const bool, Core * core)> callback) noexcept;
 		public:
 			/**
 			 * stop Метод остановки клиента
@@ -435,12 +429,12 @@ namespace awh {
 			virtual void transfer(const method_t method, const size_t aid) noexcept;
 		public:
 			/**
-			 * setBandwidth Метод установки пропускной способности сети
+			 * bandWidth Метод установки пропускной способности сети
 			 * @param aid   идентификатор адъютанта
 			 * @param read  пропускная способность на чтение (bps, kbps, Mbps, Gbps)
 			 * @param write пропускная способность на запись (bps, kbps, Mbps, Gbps)
 			 */
-			virtual void setBandwidth(const size_t aid, const string & read, const string & write) noexcept;
+			virtual void bandWidth(const size_t aid, const string & read, const string & write) noexcept;
 		public:
 			/**
 			 * rebase Метод пересоздания базы событий
@@ -469,27 +463,27 @@ namespace awh {
 			void write(const char * buffer, const size_t size, const size_t aid) noexcept;
 		public:
 			/**
-			 * setLockMethod Метод блокировки метода режима работы
+			 * lockMethod Метод блокировки метода режима работы
 			 * @param method метод режима работы
 			 * @param mode   флаг блокировки метода
 			 * @param aid    идентификатор адъютанта
 			 */
-			void setLockMethod(const method_t method, const bool mode, const size_t aid) noexcept;
+			void lockMethod(const method_t method, const bool mode, const size_t aid) noexcept;
 			/**
-			 * setDataTimeout Метод установки таймаута ожидания появления данных
+			 * dataTimeout Метод установки таймаута ожидания появления данных
 			 * @param method  метод режима работы
 			 * @param seconds время ожидания в секундах
 			 * @param aid     идентификатор адъютанта
 			 */
-			void setDataTimeout(const method_t method, const time_t seconds, const size_t aid) noexcept;
+			void dataTimeout(const method_t method, const time_t seconds, const size_t aid) noexcept;
 			/**
-			 * setMark Метод установки маркера на размер детектируемых байт
+			 * marker Метод установки маркера на размер детектируемых байт
 			 * @param method метод режима работы
 			 * @param min    минимальный размер детектируемых байт
 			 * @param min    максимальный размер детектируемых байт
 			 * @param aid    идентификатор адъютанта
 			 */
-			void setMark(const method_t method, const size_t min, const size_t max, const size_t aid) noexcept;
+			void marker(const method_t method, const size_t min, const size_t max, const size_t aid) noexcept;
 		public:
 			/**
 			 * clearTimers Метод очистки всех таймеров
@@ -528,16 +522,16 @@ namespace awh {
 			void freeze(const bool mode) noexcept;
 		public:
 			/**
-			 * unsetUnixSocket Метод удаления unix-сокета
+			 * removeUnixSocket Метод удаления unix-сокета
 			 * @return результат выполнения операции
 			 */
-			bool unsetUnixSocket() noexcept;
+			bool removeUnixSocket() noexcept;
 			/**
-			 * setUnixSocket Метод установки адреса файла unix-сокета
+			 * unixSocket Метод установки адреса файла unix-сокета
 			 * @param socket адрес файла unix-сокета
 			 * @return       результат установки unix-сокета
 			 */
-			bool setUnixSocket(const string & socket = "") noexcept;
+			bool unixSocket(const string & socket = "") noexcept;
 		public:
 			/**
 			 * sonet Метод извлечения типа сокета подключения
@@ -545,83 +539,84 @@ namespace awh {
 			 */
 			sonet_t sonet() const noexcept;
 			/**
+			 * sonet Метод установки типа сокета подключения
+			 * @param sonet тип сокета подключения (TCP / UDP)
+			 */
+			void sonet(const sonet_t sonet = sonet_t::TCP) noexcept;
+		public:
+			/**
 			 * family Метод извлечения типа протокола интернета
 			 * @return тип протокола интернета (IPV4 / IPV6 / NIX)
 			 */
 			family_t family() const noexcept;
-		public:
 			/**
-			 * setNoInfo Метод установки флага запрета вывода информационных сообщений
-			 * @param mode флаг запрета вывода информационных сообщений
-			 */
-			void setNoInfo(const bool mode) noexcept;
-			/**
-			 * setPersist Метод установки персистентного флага
-			 * @param mode флаг персистентного запуска каллбека
-			 */
-			void setPersist(const bool mode) noexcept;
-			/**
-			 * setVerifySSL Метод разрешающий или запрещающий, выполнять проверку соответствия, сертификата домену
-			 * @param mode флаг состояния разрешения проверки
-			 */
-			void setVerifySSL(const bool mode) noexcept;
-			/**
-			 * setPersistInterval Метод установки персистентного таймера
-			 * @param itv интервал персистентного таймера в миллисекундах
-			 */
-			void setPersistInterval(const time_t itv) noexcept;
-			/**
-			 * setFrequency Метод установки частоты обновления базы событий
-			 * @param msec частота обновления базы событий в миллисекундах
-			 */
-			void setFrequency(const uint8_t msec = 10) noexcept;
-			/**
-			 * setServerName Метод добавления названия сервера
-			 * @param name название сервера для добавления
-			 */
-			void setServerName(const string & name = "") noexcept;
-			/**
-			 * setCipher Метод установки алгоритмов шифрования
-			 * @param cipher список алгоритмов шифрования для установки
-			 */
-			void setCipher(const vector <string> & cipher) noexcept;
-			/**
-			 * setSockType Метод установки типа сокета подключения
-			 * @param sonet тип сокета подключения (TCP / UDP)
-			 */
-			void setSockType(const sonet_t sonet = sonet_t::TCP) noexcept;
-			/**
-			 * setFamily Метод установки тип протокола интернета
+			 * family Метод установки тип протокола интернета
 			 * @param family тип протокола интернета (IPV4 / IPV6 / NIX)
 			 */
-			void setFamily(const family_t family = family_t::IPV4) noexcept;
+			void family(const family_t family = family_t::IPV4) noexcept;
+		public:
 			/**
-			 * setCert Метод установки файлов сертификата
-			 * @param chain файл цепочки сертификатов
-			 * @param key   приватный ключ сертификата
+			 * noInfo Метод установки флага запрета вывода информационных сообщений
+			 * @param mode флаг запрета вывода информационных сообщений
 			 */
-			void setCert(const string & chain, const string & key) noexcept;
+			void noInfo(const bool mode) noexcept;
 			/**
-			 * setTrusted Метод установки доверенного сертификата (CA-файла)
+			 * verifySSL Метод разрешающий или запрещающий, выполнять проверку соответствия, сертификата домену
+			 * @param mode флаг состояния разрешения проверки
+			 */
+			void verifySSL(const bool mode) noexcept;
+			/**
+			 * persistEnable Метод установки персистентного флага
+			 * @param mode флаг персистентного запуска каллбека
+			 */
+			void persistEnable(const bool mode) noexcept;
+			/**
+			 * persistInterval Метод установки персистентного таймера
+			 * @param itv интервал персистентного таймера в миллисекундах
+			 */
+			void persistInterval(const time_t itv) noexcept;
+			/**
+			 * frequency Метод установки частоты обновления базы событий
+			 * @param msec частота обновления базы событий в миллисекундах
+			 */
+			void frequency(const uint8_t msec = 10) noexcept;
+			/**
+			 * serverName Метод добавления названия сервера
+			 * @param name название сервера для добавления
+			 */
+			void serverName(const string & name = "") noexcept;
+			/**
+			 * ciphers Метод установки алгоритмов шифрования
+			 * @param ciphers список алгоритмов шифрования для установки
+			 */
+			void ciphers(const vector <string> & ciphers) noexcept;
+			/**
+			 * ca Метод установки доверенного сертификата (CA-файла)
 			 * @param trusted адрес доверенного сертификата (CA-файла)
 			 * @param path    адрес каталога где находится сертификат (CA-файл)
 			 */
-			void setTrusted(const string & trusted, const string & path = "") noexcept;
+			void ca(const string & trusted, const string & path = "") noexcept;
 			/**
-			 * setNet Метод установки параметров сети
+			 * certificate Метод установки файлов сертификата
+			 * @param chain файл цепочки сертификатов
+			 * @param key   приватный ключ сертификата
+			 */
+			void certificate(const string & chain, const string & key) noexcept;
+			/**
+			 * network Метод установки параметров сети
 			 * @param ip     список IP адресов компьютера с которых разрешено выходить в интернет
 			 * @param ns     список серверов имён, через которые необходимо производить резолвинг доменов
 			 * @param family тип протокола интернета (IPV4 / IPV6 / NIX)
 			 * @param sonet  тип сокета подключения (TCP / UDP)
 			 */
-			void setNet(const vector <string> & ip = {}, const vector <string> & ns = {}, const family_t family = family_t::IPV4, const sonet_t sonet = sonet_t::TCP) noexcept;
+			void network(const vector <string> & ip = {}, const vector <string> & ns = {}, const family_t family = family_t::IPV4, const sonet_t sonet = sonet_t::TCP) noexcept;
 		public:
 			/**
 			 * Core Конструктор
 			 * @param fmk    объект фреймворка
 			 * @param log    объект для работы с логами
 			 * @param family тип протокола интернета (IPV4 / IPV6 / NIX)
-			 * @param sonet  тип сокета подключения (TCP / UDP)
+			 * @param sonet  тип сокета подключения (TCP / UDP / TLS / DTLS)
 			 */
 			Core(const fmk_t * fmk, const log_t * log, const family_t family = family_t::IPV4, const sonet_t sonet = sonet_t::TCP) noexcept;
 			/**

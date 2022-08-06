@@ -48,35 +48,36 @@ namespace awh {
 			static constexpr int GZIP_MAX_WBITS = 15;
 		protected:
 			// Размер скользящего окна клиента
-			short wbitClient = GZIP_MAX_WBITS;
+			short _wbitClient;
 			// Размер скользящего окна сервера
-			short wbitServer = GZIP_MAX_WBITS;
+			short _wbitServer;
+		protected:
 			// Метод сжатия данных запроса/ответа
-			compress_t compress = compress_t::DEFLATE;
+			compress_t _compress;
 		protected:
 			// Поддерживаемый сабпротокол
-			string sub = "";
+			string _sub;
 			// Ключ клиента
-			mutable string key = "";
+			mutable string _key;
 		protected:
 			// Флаг запрета переиспользования контекста компрессии для клиента
-			bool noClientTakeover = true;
+			bool _noClientTakeover;
 			// Флаг запрета переиспользования контекста компрессии для сервера
-			bool noServerTakeover = true;
+			bool _noServerTakeover;
 		protected:
 			// Поддерживаемые сабпротоколы
-			set <string> subs;
+			set <string> _subs;
 		protected:
 			/**
-			 * getKey Метод генерации ключа
+			 * key Метод генерации ключа
 			 * @return сгенерированный ключ
 			 */
-			const string getKey() const noexcept;
+			const string key() const noexcept;
 			/**
-			 * getHash Метод генерации хэша ключа
+			 * sha1 Метод генерации хэша SHA1 ключа
 			 * @return сгенерированный хэш ключа клиента
 			 */
-			const string getHash() const noexcept;
+			const string sha1() const noexcept;
 		protected:
 			/**
 			 * update Метод обновления входящих данных
@@ -105,16 +106,15 @@ namespace awh {
 			void clean() noexcept;
 		public:
 			/**
-			 * getCompress Метод получения метода компрессии
+			 * compress Метод получения метода компрессии
 			 * @return метод компрессии сообщений
 			 */
-			compress_t getCompress() const noexcept;
-		public:
+			compress_t compress() const noexcept;
 			/**
-			 * setCompress Метод установки метода компрессии
+			 * compress Метод установки метода компрессии
 			 * @param compress метод компрессии сообщений
 			 */
-			void setCompress(const compress_t compress) noexcept;
+			void compress(const compress_t compress) noexcept;
 		public:
 			/**
 			 * isHandshake Метод получения флага рукопожатия
@@ -128,21 +128,15 @@ namespace awh {
 			bool checkUpgrade() const noexcept;
 		public:
 			/**
-			 * getWbitClient Метод получения размер скользящего окна для клиента
+			 * wbitClient Метод получения размер скользящего окна для клиента
 			 * @return размер скользящего окна
 			 */
-			short getWbitClient() const noexcept;
+			short wbitClient() const noexcept;
 			/**
-			 * getWbitServer Метод получения размер скользящего окна для сервера
+			 * wbitServer Метод получения размер скользящего окна для сервера
 			 * @return размер скользящего окна
 			 */
-			short getWbitServer() const noexcept;
-		public:
-			/**
-			 * getSub Метод получения выбранного сабпротокола
-			 * @return выбранный сабпротокол
-			 */
-			const string & getSub() const noexcept;
+			short wbitServer() const noexcept;			
 		public:
 			/**
 			 * response Метод создания ответа
@@ -157,37 +151,42 @@ namespace awh {
 			vector <char> request(const uri_t::url_t & url) noexcept;
 		public:
 			/**
-			 * setSub Метод установки подпротокола поддерживаемого сервером
+			 * sub Метод получения выбранного сабпротокола
+			 * @return выбранный сабпротокол
+			 */
+			const string & sub() const noexcept;
+			/**
+			 * sub Метод установки подпротокола поддерживаемого сервером
 			 * @param sub подпротокол для установки
 			 */
-			void setSub(const string & sub) noexcept;
+			void sub(const string & sub) noexcept;
 			/**
-			 * setSubs Метод установки списка подпротоколов поддерживаемых сервером
+			 * subs Метод установки списка подпротоколов поддерживаемых сервером
 			 * @param subs подпротоколы для установки
 			 */
-			void setSubs(const vector <string> & subs) noexcept;
+			void subs(const vector <string> & subs) noexcept;
 		public:
 			/**
-			 * getClientTakeover Метод получения флага переиспользования контекста компрессии для клиента
+			 * clientTakeover Метод получения флага переиспользования контекста компрессии для клиента
 			 * @return флаг запрета переиспользования контекста компрессии для клиента
 			 */
-			bool getClientTakeover() const noexcept;
+			bool clientTakeover() const noexcept;
 			/**
-			 * getServerTakeover Метод получения флага переиспользования контекста компрессии для сервера
-			 * @return флаг запрета переиспользования контекста компрессии для сервера
-			 */
-			bool getServerTakeover() const noexcept;
-		public:
-			/**
-			 * setClientTakeover Метод установки флага переиспользования контекста компрессии для клиента
+			 * clientTakeover Метод установки флага переиспользования контекста компрессии для клиента
 			 * @param flag флаг запрета переиспользования контекста компрессии для клиента
 			 */
-			void setClientTakeover(const bool flag) noexcept;
+			void clientTakeover(const bool flag) noexcept;
+		public:
 			/**
-			 * setServerTakeover Метод установки флага переиспользования контекста компрессии для сервера
+			 * serverTakeover Метод получения флага переиспользования контекста компрессии для сервера
+			 * @return флаг запрета переиспользования контекста компрессии для сервера
+			 */
+			bool serverTakeover() const noexcept;
+			/**
+			 * serverTakeover Метод установки флага переиспользования контекста компрессии для сервера
 			 * @param flag флаг запрета переиспользования контекста компрессии для сервера
 			 */
-			void setServerTakeover(const bool flag) noexcept;
+			void serverTakeover(const bool flag) noexcept;
 		public:
 			/**
 			 * WS Конструктор
@@ -195,7 +194,10 @@ namespace awh {
 			 * @param log объект для работы с логами
 			 * @param uri объект работы с URI
 			 */
-			WS(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcept : http_t(fmk, log, uri) {}
+			WS(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcept :
+			 http_t(fmk, log, uri), _wbitClient(GZIP_MAX_WBITS),
+			 _wbitServer(GZIP_MAX_WBITS), _compress(compress_t::DEFLATE),
+			 _sub(""), _key(""), _noClientTakeover(true), _noServerTakeover(true) {}
 			/**
 			 * ~WS Деструктор
 			 */

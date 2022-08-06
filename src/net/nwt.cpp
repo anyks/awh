@@ -16,18 +16,37 @@
 #include <net/nwt.hpp>
 
 /**
- * getZones Метод извлечения списка пользовательских зон интернета
+ * zone Метод установки пользовательской зоны
+ * @param zone пользовательская зона
  */
-const set <wstring> & awh::NWT::getZones() const noexcept {
+void awh::NWT::zone(const wstring & zone) noexcept {
+	// Если зона передана и она не существует
+	if(!zone.empty() && (this->_national.count(zone) < 1) && (this->_general.count(zone) < 1)){
+		// Добавляем зону в список
+		this->_user.emplace(zone);
+	}
+}
+/**
+ * zones Метод извлечения списка пользовательских зон интернета
+ */
+const set <wstring> & awh::NWT::zones() const noexcept {
 	// Выводим список пользовательских зон интернета
-	return this->user;
+	return this->_user;
+}
+/**
+ * zones Метод установки списка пользовательских зон
+ * @param zones список доменных зон интернета
+ */
+void awh::NWT::zones(const set <wstring> & zones) noexcept {
+	// Если список зон не пустой
+	if(!zones.empty()) this->_user = zones;
 }
 /**
  * clear Метод очистки результатов парсинга
  */
 void awh::NWT::clear() noexcept {
 	// Очищаем список пользовательских зон
-	this->user.clear();
+	this->_user.clear();
 }
 /**
  * parse Метод парсинга URI строки
@@ -51,7 +70,7 @@ const awh::NWT::data_t awh::NWT::parse(const wstring & text) noexcept {
 				// Результат работы регулярного выражения
 				wsmatch match;
 				// Выполняем проверку электронной почты
-				regex_search(text, match, this->expressEmail);
+				regex_search(text, match, this->_expressEmail);
 				// Если результат найден
 				if(!match.empty() && (match.size() >= 5)){
 					// Запоминаем тип параметра
@@ -81,7 +100,7 @@ const awh::NWT::data_t awh::NWT::parse(const wstring & text) noexcept {
 				// Результат работы регулярного выражения
 				wsmatch match;
 				// Выполняем проверку адреса сайта
-				regex_search(text, match, this->expressDomain);
+				regex_search(text, match, this->_expressDomain);
 				// Если результат найден
 				if(!match.empty() && (match.size() >= 7)){
 					// Запоминаем тип параметра
@@ -103,9 +122,9 @@ const awh::NWT::data_t awh::NWT::parse(const wstring & text) noexcept {
 					// Если протокол не указан
 					if(result.protocol.empty()){
 						// Если домен верхнего уровня не является таковым, очищаем все
-						if((this->national.count(result.domain) < 1)
-						&& (this->general.count(result.domain) < 1)
-						&& (this->user.count(result.domain) < 1)){
+						if((this->_national.count(result.domain) < 1)
+						&& (this->_general.count(result.domain) < 1)
+						&& (this->_user.count(result.domain) < 1)){
 							// Очищаем блок полученных данных
 							result.path.clear();
 							result.port.clear();
@@ -133,7 +152,7 @@ const awh::NWT::data_t awh::NWT::parse(const wstring & text) noexcept {
 				// Результат работы регулярного выражения
 				wsmatch match;
 				// Выполняем проверку
-				regex_search(text, match, this->expressIP);
+				regex_search(text, match, this->_expressIP);
 				// Если результат найден
 				if(!match.empty() && (match.size() >= 5)){
 					// Запоминаем uri адрес
@@ -199,51 +218,40 @@ const awh::NWT::data_t awh::NWT::parse(const wstring & text) noexcept {
 	return result;
 }
 /**
- * setZone Метод установки пользовательской зоны
- * @param zone пользовательская зона
- */
-void awh::NWT::setZone(const wstring & zone) noexcept {
-	// Если зона передана и она не существует
-	if(!zone.empty() && (this->national.count(zone) < 1) && (this->general.count(zone) < 1)){
-		// Добавляем зону в список
-		this->user.emplace(zone);
-	}
-}
-/**
- * setLetters Метод добавления букв алфавита
+ * letters Метод добавления букв алфавита
  * @param letters список букв алфавита
  */
-void awh::NWT::setLetters(const wstring & letters) noexcept {
+void awh::NWT::letters(const wstring & letters) noexcept {
 	// Если буквы переданы запоминаем их
 	if(!letters.empty()){
 		// Устанавливаем буквы алфавита
-		this->letters = letters;
+		this->_letters = letters;
 		// Устанавливаем регулярное выражение для проверки электронной почты
-		this->expressEmail = wregex(
+		this->_expressEmail = wregex(
 			wstring(L"((?:([\\w\\-")
-			+ this->letters
+			+ this->_letters
 			+ wstring(L"]+)\\@)(\\[(?:\\:\\:ffff\\:\\d{1,3}(?:\\.\\d{1,3}){3}|(?:[a-f\\d]{1,4}(?:(?:\\:[a-f\\d]{1,4})|\\:){1,6}\\:[a-f\\d]{1,4})|(?:[a-f\\d]{1,4}(?:(?:\\:[a-f\\d]{1,4}){7}|(?:\\:[a-f\\d]{1,4}){1,6}\\:\\:|\\:\\:)|\\:\\:))\\]|(?:\\d{1,3}(?:\\.\\d{1,3}){3})|(?:(?:xn\\-\\-[\\w\\d]+\\.){0,100}(?:xn\\-\\-[\\w\\d]+)|(?:[\\w\\-")
-			+ this->letters
+			+ this->_letters
 			+ wstring(L"]+\\.){0,100}[\\w\\-")
-			+ this->letters
+			+ this->_letters
 			+ wstring(L"]+)\\.(xn\\-\\-[\\w\\d]+|[a-z")
-			+ this->letters
+			+ this->_letters
 			+ wstring(L"]+)))"),
 			wregex::ECMAScript | wregex::icase
 		);
 		// Устанавливаем правило регулярного выражения
-		this->expressDomain = wregex(
+		this->_expressDomain = wregex(
 			wstring(L"(?:(http[s]?)\\:\\/\\/)?(\\[(?:\\:\\:ffff\\:\\d{1,3}(?:\\.\\d{1,3}){3}|(?:[a-f\\d]{1,4}(?:(?:\\:[a-f\\d]{1,4})|\\:){1,6}\\:[a-f\\d]{1,4})|(?:[a-f\\d]{1,4}(?:(?:\\:[a-f\\d]{1,4}){7}|(?:\\:[a-f\\d]{1,4}){1,6}\\:\\:|\\:\\:)|\\:\\:))\\]|(?:\\d{1,3}(?:\\.\\d{1,3}){3})|(?:(?:xn\\-\\-[\\w\\d]+\\.){0,100}(?:xn\\-\\-[\\w\\d]+)|(?:[\\w\\-")
-			+ this->letters
+			+ this->_letters
 			+ wstring(L"]+\\.){0,100}[\\w\\-")
-			+ this->letters
+			+ this->_letters
 			+ wstring(L"]+)\\.(xn\\-\\-[\\w\\d]+|[a-z")
-			+ this->letters
+			+ this->_letters
 			+ wstring(L"]+))(?:\\:(\\d+))?((?:\\/[\\w\\-]+){0,100}(?:$|\\/|\\.[\\w]+)|\\/)?(\\?(?:[\\w\\-\\.\\~\\:\\#\\[\\]\\@\\!\\$\\&\\'\\(\\)\\*\\+\\,\\;\\=]+)?)?"),
 			wregex::ECMAScript | wregex::icase
 		);
 		// Устанавливаем правило регулярного выражения
-		this->expressIP = wregex(
+		this->_expressIP = wregex(
 			// Если это сеть
 			L"(?:((?:\\d{1,3}(?:\\.\\d{1,3}){3}|(?:[a-f\\d]{1,4}(?:(?:\\:[a-f\\d]{1,4})|\\:){1,6}\\:[a-f\\d]{1,4})|(?:[a-f\\d]{1,4}(?:(?:\\:[a-f\\d]{1,4}){7}|(?:\\:[a-f\\d]{1,4}){1,6}[\\:]{2}|[\\:]{2})|[\\:]{2}))\\/(?:\\d{1,3}(?:\\.\\d{1,3}){3}|\\d+))|"
 			// Определение мак адреса
@@ -257,372 +265,364 @@ void awh::NWT::setLetters(const wstring & letters) noexcept {
 	}
 }
 /**
- * setZones Метод установки списка пользовательских зон
- * @param zones список доменных зон интернета
- */
-void awh::NWT::setZones(const set <wstring> & zones) noexcept {
-	// Если список зон не пустой
-	if(!zones.empty()) this->user = zones;
-}
-/**
  * NWT Конструктор
  * @param letters список букв алфавита
  * @param text    текст для парсинга
  */
-awh::NWT::NWT(const wstring & letters, const wstring & text) noexcept {
+awh::NWT::NWT(const wstring & letters, const wstring & text) noexcept : _letters(L"") {
 	// Создаем список национальных доменов
-	this->national.emplace(L"ac");
-	this->national.emplace(L"ad");
-	this->national.emplace(L"ae");
-	this->national.emplace(L"af");
-	this->national.emplace(L"ag");
-	this->national.emplace(L"ai");
-	this->national.emplace(L"al");
-	this->national.emplace(L"am");
-	this->national.emplace(L"an");
-	this->national.emplace(L"ao");
-	this->national.emplace(L"aq");
-	this->national.emplace(L"ar");
-	this->national.emplace(L"as");
-	this->national.emplace(L"at");
-	this->national.emplace(L"au");
-	this->national.emplace(L"aw");
-	this->national.emplace(L"ax");
-	this->national.emplace(L"az");
-	this->national.emplace(L"ba");
-	this->national.emplace(L"bb");
-	this->national.emplace(L"bd");
-	this->national.emplace(L"be");
-	this->national.emplace(L"bf");
-	this->national.emplace(L"bg");
-	this->national.emplace(L"bh");
-	this->national.emplace(L"bi");
-	this->national.emplace(L"bj");
-	this->national.emplace(L"bm");
-	this->national.emplace(L"bn");
-	this->national.emplace(L"bo");
-	this->national.emplace(L"br");
-	this->national.emplace(L"bs");
-	this->national.emplace(L"bt");
-	this->national.emplace(L"bv");
-	this->national.emplace(L"bw");
-	this->national.emplace(L"by");
-	this->national.emplace(L"bz");
-	this->national.emplace(L"ca");
-	this->national.emplace(L"cc");
-	this->national.emplace(L"cd");
-	this->national.emplace(L"cf");
-	this->national.emplace(L"cg");
-	this->national.emplace(L"ch");
-	this->national.emplace(L"ci");
-	this->national.emplace(L"ck");
-	this->national.emplace(L"cl");
-	this->national.emplace(L"cm");
-	this->national.emplace(L"cn");
-	this->national.emplace(L"co");
-	this->national.emplace(L"cr");
-	this->national.emplace(L"cu");
-	this->national.emplace(L"cv");
-	this->national.emplace(L"cx");
-	this->national.emplace(L"cy");
-	this->national.emplace(L"cz");
-	this->national.emplace(L"dd");
-	this->national.emplace(L"de");
-	this->national.emplace(L"dj");
-	this->national.emplace(L"dk");
-	this->national.emplace(L"dm");
-	this->national.emplace(L"do");
-	this->national.emplace(L"dz");
-	this->national.emplace(L"ec");
-	this->national.emplace(L"ee");
-	this->national.emplace(L"eg");
-	this->national.emplace(L"er");
-	this->national.emplace(L"es");
-	this->national.emplace(L"et");
-	this->national.emplace(L"eu");
-	this->national.emplace(L"fi");
-	this->national.emplace(L"fj");
-	this->national.emplace(L"fk");
-	this->national.emplace(L"fm");
-	this->national.emplace(L"fo");
-	this->national.emplace(L"fr");
-	this->national.emplace(L"ga");
-	this->national.emplace(L"gb");
-	this->national.emplace(L"gd");
-	this->national.emplace(L"ge");
-	this->national.emplace(L"gf");
-	this->national.emplace(L"gg");
-	this->national.emplace(L"gh");
-	this->national.emplace(L"gi");
-	this->national.emplace(L"gl");
-	this->national.emplace(L"gm");
-	this->national.emplace(L"gn");
-	this->national.emplace(L"gp");
-	this->national.emplace(L"gq");
-	this->national.emplace(L"gr");
-	this->national.emplace(L"gs");
-	this->national.emplace(L"gt");
-	this->national.emplace(L"gu");
-	this->national.emplace(L"gw");
-	this->national.emplace(L"gy");
-	this->national.emplace(L"hk");
-	this->national.emplace(L"hm");
-	this->national.emplace(L"hn");
-	this->national.emplace(L"hr");
-	this->national.emplace(L"ht");
-	this->national.emplace(L"hu");
-	this->national.emplace(L"id");
-	this->national.emplace(L"ie");
-	this->national.emplace(L"il");
-	this->national.emplace(L"im");
-	this->national.emplace(L"in");
-	this->national.emplace(L"io");
-	this->national.emplace(L"iq");
-	this->national.emplace(L"ir");
-	this->national.emplace(L"is");
-	this->national.emplace(L"it");
-	this->national.emplace(L"je");
-	this->national.emplace(L"jm");
-	this->national.emplace(L"jo");
-	this->national.emplace(L"jp");
-	this->national.emplace(L"ke");
-	this->national.emplace(L"kg");
-	this->national.emplace(L"kh");
-	this->national.emplace(L"ki");
-	this->national.emplace(L"km");
-	this->national.emplace(L"kn");
-	this->national.emplace(L"kp");
-	this->national.emplace(L"kr");
-	this->national.emplace(L"kw");
-	this->national.emplace(L"ky");
-	this->national.emplace(L"kz");
-	this->national.emplace(L"la");
-	this->national.emplace(L"lb");
-	this->national.emplace(L"lc");
-	this->national.emplace(L"li");
-	this->national.emplace(L"lk");
-	this->national.emplace(L"lr");
-	this->national.emplace(L"ls");
-	this->national.emplace(L"lt");
-	this->national.emplace(L"lu");
-	this->national.emplace(L"lv");
-	this->national.emplace(L"ly");
-	this->national.emplace(L"ma");
-	this->national.emplace(L"mc");
-	this->national.emplace(L"md");
-	this->national.emplace(L"me");
-	this->national.emplace(L"mg");
-	this->national.emplace(L"mh");
-	this->national.emplace(L"mk");
-	this->national.emplace(L"ml");
-	this->national.emplace(L"mm");
-	this->national.emplace(L"mn");
-	this->national.emplace(L"mo");
-	this->national.emplace(L"mp");
-	this->national.emplace(L"mq");
-	this->national.emplace(L"mr");
-	this->national.emplace(L"ms");
-	this->national.emplace(L"mt");
-	this->national.emplace(L"mu");
-	this->national.emplace(L"mv");
-	this->national.emplace(L"mw");
-	this->national.emplace(L"mx");
-	this->national.emplace(L"my");
-	this->national.emplace(L"mz");
-	this->national.emplace(L"na");
-	this->national.emplace(L"nc");
-	this->national.emplace(L"ne");
-	this->national.emplace(L"nf");
-	this->national.emplace(L"ng");
-	this->national.emplace(L"ni");
-	this->national.emplace(L"nl");
-	this->national.emplace(L"no");
-	this->national.emplace(L"np");
-	this->national.emplace(L"nr");
-	this->national.emplace(L"nu");
-	this->national.emplace(L"nz");
-	this->national.emplace(L"om");
-	this->national.emplace(L"pa");
-	this->national.emplace(L"pe");
-	this->national.emplace(L"pf");
-	this->national.emplace(L"pg");
-	this->national.emplace(L"ph");
-	this->national.emplace(L"pk");
-	this->national.emplace(L"pl");
-	this->national.emplace(L"pm");
-	this->national.emplace(L"pn");
-	this->national.emplace(L"pr");
-	this->national.emplace(L"ps");
-	this->national.emplace(L"pt");
-	this->national.emplace(L"pw");
-	this->national.emplace(L"py");
-	this->national.emplace(L"qa");
-	this->national.emplace(L"re");
-	this->national.emplace(L"ro");
-	this->national.emplace(L"rs");
-	this->national.emplace(L"ru");
-	this->national.emplace(L"рф");
-	this->national.emplace(L"ру");
-	this->national.emplace(L"су");
-	this->national.emplace(L"rw");
-	this->national.emplace(L"sa");
-	this->national.emplace(L"sb");
-	this->national.emplace(L"sc");
-	this->national.emplace(L"sd");
-	this->national.emplace(L"se");
-	this->national.emplace(L"sg");
-	this->national.emplace(L"sh");
-	this->national.emplace(L"si");
-	this->national.emplace(L"sj");
-	this->national.emplace(L"sk");
-	this->national.emplace(L"sl");
-	this->national.emplace(L"sm");
-	this->national.emplace(L"sn");
-	this->national.emplace(L"so");
-	this->national.emplace(L"sr");
-	this->national.emplace(L"st");
-	this->national.emplace(L"su");
-	this->national.emplace(L"sv");
-	this->national.emplace(L"sy");
-	this->national.emplace(L"sz");
-	this->national.emplace(L"tc");
-	this->national.emplace(L"td");
-	this->national.emplace(L"tf");
-	this->national.emplace(L"tg");
-	this->national.emplace(L"th");
-	this->national.emplace(L"tj");
-	this->national.emplace(L"tk");
-	this->national.emplace(L"tl");
-	this->national.emplace(L"tm");
-	this->national.emplace(L"tn");
-	this->national.emplace(L"to");
-	this->national.emplace(L"tp");
-	this->national.emplace(L"tr");
-	this->national.emplace(L"tt");
-	this->national.emplace(L"tv");
-	this->national.emplace(L"tw");
-	this->national.emplace(L"tz");
-	this->national.emplace(L"ua");
-	this->national.emplace(L"ug");
-	this->national.emplace(L"uk");
-	this->national.emplace(L"us");
-	this->national.emplace(L"uy");
-	this->national.emplace(L"uz");
-	this->national.emplace(L"va");
-	this->national.emplace(L"vc");
-	this->national.emplace(L"ve");
-	this->national.emplace(L"vg");
-	this->national.emplace(L"vi");
-	this->national.emplace(L"vn");
-	this->national.emplace(L"vu");
-	this->national.emplace(L"wf");
-	this->national.emplace(L"ws");
-	this->national.emplace(L"ye");
-	this->national.emplace(L"yt");
-	this->national.emplace(L"za");
-	this->national.emplace(L"zm");
-	this->national.emplace(L"zw");
-	this->national.emplace(L"krd");
-	this->national.emplace(L"укр");
-	this->national.emplace(L"срб");
-	this->national.emplace(L"мон");
-	this->national.emplace(L"бел");
-	this->national.emplace(L"ком");
-	this->national.emplace(L"нет");
-	this->national.emplace(L"биз");
-	this->national.emplace(L"орг");
-	this->national.emplace(L"инфо");
+	this->_national.emplace(L"ac");
+	this->_national.emplace(L"ad");
+	this->_national.emplace(L"ae");
+	this->_national.emplace(L"af");
+	this->_national.emplace(L"ag");
+	this->_national.emplace(L"ai");
+	this->_national.emplace(L"al");
+	this->_national.emplace(L"am");
+	this->_national.emplace(L"an");
+	this->_national.emplace(L"ao");
+	this->_national.emplace(L"aq");
+	this->_national.emplace(L"ar");
+	this->_national.emplace(L"as");
+	this->_national.emplace(L"at");
+	this->_national.emplace(L"au");
+	this->_national.emplace(L"aw");
+	this->_national.emplace(L"ax");
+	this->_national.emplace(L"az");
+	this->_national.emplace(L"ba");
+	this->_national.emplace(L"bb");
+	this->_national.emplace(L"bd");
+	this->_national.emplace(L"be");
+	this->_national.emplace(L"bf");
+	this->_national.emplace(L"bg");
+	this->_national.emplace(L"bh");
+	this->_national.emplace(L"bi");
+	this->_national.emplace(L"bj");
+	this->_national.emplace(L"bm");
+	this->_national.emplace(L"bn");
+	this->_national.emplace(L"bo");
+	this->_national.emplace(L"br");
+	this->_national.emplace(L"bs");
+	this->_national.emplace(L"bt");
+	this->_national.emplace(L"bv");
+	this->_national.emplace(L"bw");
+	this->_national.emplace(L"by");
+	this->_national.emplace(L"bz");
+	this->_national.emplace(L"ca");
+	this->_national.emplace(L"cc");
+	this->_national.emplace(L"cd");
+	this->_national.emplace(L"cf");
+	this->_national.emplace(L"cg");
+	this->_national.emplace(L"ch");
+	this->_national.emplace(L"ci");
+	this->_national.emplace(L"ck");
+	this->_national.emplace(L"cl");
+	this->_national.emplace(L"cm");
+	this->_national.emplace(L"cn");
+	this->_national.emplace(L"co");
+	this->_national.emplace(L"cr");
+	this->_national.emplace(L"cu");
+	this->_national.emplace(L"cv");
+	this->_national.emplace(L"cx");
+	this->_national.emplace(L"cy");
+	this->_national.emplace(L"cz");
+	this->_national.emplace(L"dd");
+	this->_national.emplace(L"de");
+	this->_national.emplace(L"dj");
+	this->_national.emplace(L"dk");
+	this->_national.emplace(L"dm");
+	this->_national.emplace(L"do");
+	this->_national.emplace(L"dz");
+	this->_national.emplace(L"ec");
+	this->_national.emplace(L"ee");
+	this->_national.emplace(L"eg");
+	this->_national.emplace(L"er");
+	this->_national.emplace(L"es");
+	this->_national.emplace(L"et");
+	this->_national.emplace(L"eu");
+	this->_national.emplace(L"fi");
+	this->_national.emplace(L"fj");
+	this->_national.emplace(L"fk");
+	this->_national.emplace(L"fm");
+	this->_national.emplace(L"fo");
+	this->_national.emplace(L"fr");
+	this->_national.emplace(L"ga");
+	this->_national.emplace(L"gb");
+	this->_national.emplace(L"gd");
+	this->_national.emplace(L"ge");
+	this->_national.emplace(L"gf");
+	this->_national.emplace(L"gg");
+	this->_national.emplace(L"gh");
+	this->_national.emplace(L"gi");
+	this->_national.emplace(L"gl");
+	this->_national.emplace(L"gm");
+	this->_national.emplace(L"gn");
+	this->_national.emplace(L"gp");
+	this->_national.emplace(L"gq");
+	this->_national.emplace(L"gr");
+	this->_national.emplace(L"gs");
+	this->_national.emplace(L"gt");
+	this->_national.emplace(L"gu");
+	this->_national.emplace(L"gw");
+	this->_national.emplace(L"gy");
+	this->_national.emplace(L"hk");
+	this->_national.emplace(L"hm");
+	this->_national.emplace(L"hn");
+	this->_national.emplace(L"hr");
+	this->_national.emplace(L"ht");
+	this->_national.emplace(L"hu");
+	this->_national.emplace(L"id");
+	this->_national.emplace(L"ie");
+	this->_national.emplace(L"il");
+	this->_national.emplace(L"im");
+	this->_national.emplace(L"in");
+	this->_national.emplace(L"io");
+	this->_national.emplace(L"iq");
+	this->_national.emplace(L"ir");
+	this->_national.emplace(L"is");
+	this->_national.emplace(L"it");
+	this->_national.emplace(L"je");
+	this->_national.emplace(L"jm");
+	this->_national.emplace(L"jo");
+	this->_national.emplace(L"jp");
+	this->_national.emplace(L"ke");
+	this->_national.emplace(L"kg");
+	this->_national.emplace(L"kh");
+	this->_national.emplace(L"ki");
+	this->_national.emplace(L"km");
+	this->_national.emplace(L"kn");
+	this->_national.emplace(L"kp");
+	this->_national.emplace(L"kr");
+	this->_national.emplace(L"kw");
+	this->_national.emplace(L"ky");
+	this->_national.emplace(L"kz");
+	this->_national.emplace(L"la");
+	this->_national.emplace(L"lb");
+	this->_national.emplace(L"lc");
+	this->_national.emplace(L"li");
+	this->_national.emplace(L"lk");
+	this->_national.emplace(L"lr");
+	this->_national.emplace(L"ls");
+	this->_national.emplace(L"lt");
+	this->_national.emplace(L"lu");
+	this->_national.emplace(L"lv");
+	this->_national.emplace(L"ly");
+	this->_national.emplace(L"ma");
+	this->_national.emplace(L"mc");
+	this->_national.emplace(L"md");
+	this->_national.emplace(L"me");
+	this->_national.emplace(L"mg");
+	this->_national.emplace(L"mh");
+	this->_national.emplace(L"mk");
+	this->_national.emplace(L"ml");
+	this->_national.emplace(L"mm");
+	this->_national.emplace(L"mn");
+	this->_national.emplace(L"mo");
+	this->_national.emplace(L"mp");
+	this->_national.emplace(L"mq");
+	this->_national.emplace(L"mr");
+	this->_national.emplace(L"ms");
+	this->_national.emplace(L"mt");
+	this->_national.emplace(L"mu");
+	this->_national.emplace(L"mv");
+	this->_national.emplace(L"mw");
+	this->_national.emplace(L"mx");
+	this->_national.emplace(L"my");
+	this->_national.emplace(L"mz");
+	this->_national.emplace(L"na");
+	this->_national.emplace(L"nc");
+	this->_national.emplace(L"ne");
+	this->_national.emplace(L"nf");
+	this->_national.emplace(L"ng");
+	this->_national.emplace(L"ni");
+	this->_national.emplace(L"nl");
+	this->_national.emplace(L"no");
+	this->_national.emplace(L"np");
+	this->_national.emplace(L"nr");
+	this->_national.emplace(L"nu");
+	this->_national.emplace(L"nz");
+	this->_national.emplace(L"om");
+	this->_national.emplace(L"pa");
+	this->_national.emplace(L"pe");
+	this->_national.emplace(L"pf");
+	this->_national.emplace(L"pg");
+	this->_national.emplace(L"ph");
+	this->_national.emplace(L"pk");
+	this->_national.emplace(L"pl");
+	this->_national.emplace(L"pm");
+	this->_national.emplace(L"pn");
+	this->_national.emplace(L"pr");
+	this->_national.emplace(L"ps");
+	this->_national.emplace(L"pt");
+	this->_national.emplace(L"pw");
+	this->_national.emplace(L"py");
+	this->_national.emplace(L"qa");
+	this->_national.emplace(L"re");
+	this->_national.emplace(L"ro");
+	this->_national.emplace(L"rs");
+	this->_national.emplace(L"ru");
+	this->_national.emplace(L"рф");
+	this->_national.emplace(L"ру");
+	this->_national.emplace(L"су");
+	this->_national.emplace(L"rw");
+	this->_national.emplace(L"sa");
+	this->_national.emplace(L"sb");
+	this->_national.emplace(L"sc");
+	this->_national.emplace(L"sd");
+	this->_national.emplace(L"se");
+	this->_national.emplace(L"sg");
+	this->_national.emplace(L"sh");
+	this->_national.emplace(L"si");
+	this->_national.emplace(L"sj");
+	this->_national.emplace(L"sk");
+	this->_national.emplace(L"sl");
+	this->_national.emplace(L"sm");
+	this->_national.emplace(L"sn");
+	this->_national.emplace(L"so");
+	this->_national.emplace(L"sr");
+	this->_national.emplace(L"st");
+	this->_national.emplace(L"su");
+	this->_national.emplace(L"sv");
+	this->_national.emplace(L"sy");
+	this->_national.emplace(L"sz");
+	this->_national.emplace(L"tc");
+	this->_national.emplace(L"td");
+	this->_national.emplace(L"tf");
+	this->_national.emplace(L"tg");
+	this->_national.emplace(L"th");
+	this->_national.emplace(L"tj");
+	this->_national.emplace(L"tk");
+	this->_national.emplace(L"tl");
+	this->_national.emplace(L"tm");
+	this->_national.emplace(L"tn");
+	this->_national.emplace(L"to");
+	this->_national.emplace(L"tp");
+	this->_national.emplace(L"tr");
+	this->_national.emplace(L"tt");
+	this->_national.emplace(L"tv");
+	this->_national.emplace(L"tw");
+	this->_national.emplace(L"tz");
+	this->_national.emplace(L"ua");
+	this->_national.emplace(L"ug");
+	this->_national.emplace(L"uk");
+	this->_national.emplace(L"us");
+	this->_national.emplace(L"uy");
+	this->_national.emplace(L"uz");
+	this->_national.emplace(L"va");
+	this->_national.emplace(L"vc");
+	this->_national.emplace(L"ve");
+	this->_national.emplace(L"vg");
+	this->_national.emplace(L"vi");
+	this->_national.emplace(L"vn");
+	this->_national.emplace(L"vu");
+	this->_national.emplace(L"wf");
+	this->_national.emplace(L"ws");
+	this->_national.emplace(L"ye");
+	this->_national.emplace(L"yt");
+	this->_national.emplace(L"za");
+	this->_national.emplace(L"zm");
+	this->_national.emplace(L"zw");
+	this->_national.emplace(L"krd");
+	this->_national.emplace(L"укр");
+	this->_national.emplace(L"срб");
+	this->_national.emplace(L"мон");
+	this->_national.emplace(L"бел");
+	this->_national.emplace(L"ком");
+	this->_national.emplace(L"нет");
+	this->_national.emplace(L"биз");
+	this->_national.emplace(L"орг");
+	this->_national.emplace(L"инфо");
 	// Создаем список общих доменов
-	this->general.emplace(L"app");
-	this->general.emplace(L"biz");
-	this->general.emplace(L"cat");
-	this->general.emplace(L"com");
-	this->general.emplace(L"edu");
-	this->general.emplace(L"eus");
-	this->general.emplace(L"gov");
-	this->general.emplace(L"int");
-	this->general.emplace(L"mil");
-	this->general.emplace(L"net");
-	this->general.emplace(L"one");
-	this->general.emplace(L"ong");
-	this->general.emplace(L"onl");
-	this->general.emplace(L"ooo");
-	this->general.emplace(L"org");
-	this->general.emplace(L"pro");
-	this->general.emplace(L"red");
-	this->general.emplace(L"ren");
-	this->general.emplace(L"tel");
-	this->general.emplace(L"xxx");
-	this->general.emplace(L"xyz");
-	this->general.emplace(L"rent");
-	this->general.emplace(L"name");
-	this->general.emplace(L"aero");
-	this->general.emplace(L"mobi");
-	this->general.emplace(L"jobs");
-	this->general.emplace(L"info");
-	this->general.emplace(L"coop");
-	this->general.emplace(L"asia");
-	this->general.emplace(L"army");
-	this->general.emplace(L"pics");
-	this->general.emplace(L"pink");
-	this->general.emplace(L"plus");
-	this->general.emplace(L"porn");
-	this->general.emplace(L"post");
-	this->general.emplace(L"prof");
-	this->general.emplace(L"qpon");
-	this->general.emplace(L"rest");
-	this->general.emplace(L"rich");
-	this->general.emplace(L"site");
-	this->general.emplace(L"yoga");
-	this->general.emplace(L"zone");
-	this->general.emplace(L"rehab");
-	this->general.emplace(L"press");
-	this->general.emplace(L"poker");
-	this->general.emplace(L"parts");
-	this->general.emplace(L"party");
-	this->general.emplace(L"audio");
-	this->general.emplace(L"archi");
-	this->general.emplace(L"dance");
-	this->general.emplace(L"actor");
-	this->general.emplace(L"adult");
-	this->general.emplace(L"photo");
-	this->general.emplace(L"pizza");
-	this->general.emplace(L"place");
-	this->general.emplace(L"travel");
-	this->general.emplace(L"review");
-	this->general.emplace(L"repair");
-	this->general.emplace(L"report");
-	this->general.emplace(L"racing");
-	this->general.emplace(L"photos");
-	this->general.emplace(L"physio");
-	this->general.emplace(L"online");
-	this->general.emplace(L"museum");
-	this->general.emplace(L"agency");
-	this->general.emplace(L"active");
-	this->general.emplace(L"reviews");
-	this->general.emplace(L"rentals");
-	this->general.emplace(L"recipes");
-	this->general.emplace(L"organic");
-	this->general.emplace(L"academy");
-	this->general.emplace(L"auction");
-	this->general.emplace(L"plumbing");
-	this->general.emplace(L"pharmacy");
-	this->general.emplace(L"airforce");
-	this->general.emplace(L"attorney");
-	this->general.emplace(L"partners");
-	this->general.emplace(L"pictures");
-	this->general.emplace(L"feedback");
-	this->general.emplace(L"property");
-	this->general.emplace(L"republican");
-	this->general.emplace(L"associates");
-	this->general.emplace(L"apartments");
-	this->general.emplace(L"accountant");
-	this->general.emplace(L"properties");
-	this->general.emplace(L"photography");
-	this->general.emplace(L"accountants");
-	this->general.emplace(L"productions");
+	this->_general.emplace(L"app");
+	this->_general.emplace(L"biz");
+	this->_general.emplace(L"cat");
+	this->_general.emplace(L"com");
+	this->_general.emplace(L"edu");
+	this->_general.emplace(L"eus");
+	this->_general.emplace(L"gov");
+	this->_general.emplace(L"int");
+	this->_general.emplace(L"mil");
+	this->_general.emplace(L"net");
+	this->_general.emplace(L"one");
+	this->_general.emplace(L"ong");
+	this->_general.emplace(L"onl");
+	this->_general.emplace(L"ooo");
+	this->_general.emplace(L"org");
+	this->_general.emplace(L"pro");
+	this->_general.emplace(L"red");
+	this->_general.emplace(L"ren");
+	this->_general.emplace(L"tel");
+	this->_general.emplace(L"xxx");
+	this->_general.emplace(L"xyz");
+	this->_general.emplace(L"rent");
+	this->_general.emplace(L"name");
+	this->_general.emplace(L"aero");
+	this->_general.emplace(L"mobi");
+	this->_general.emplace(L"jobs");
+	this->_general.emplace(L"info");
+	this->_general.emplace(L"coop");
+	this->_general.emplace(L"asia");
+	this->_general.emplace(L"army");
+	this->_general.emplace(L"pics");
+	this->_general.emplace(L"pink");
+	this->_general.emplace(L"plus");
+	this->_general.emplace(L"porn");
+	this->_general.emplace(L"post");
+	this->_general.emplace(L"prof");
+	this->_general.emplace(L"qpon");
+	this->_general.emplace(L"rest");
+	this->_general.emplace(L"rich");
+	this->_general.emplace(L"site");
+	this->_general.emplace(L"yoga");
+	this->_general.emplace(L"zone");
+	this->_general.emplace(L"rehab");
+	this->_general.emplace(L"press");
+	this->_general.emplace(L"poker");
+	this->_general.emplace(L"parts");
+	this->_general.emplace(L"party");
+	this->_general.emplace(L"audio");
+	this->_general.emplace(L"archi");
+	this->_general.emplace(L"dance");
+	this->_general.emplace(L"actor");
+	this->_general.emplace(L"adult");
+	this->_general.emplace(L"photo");
+	this->_general.emplace(L"pizza");
+	this->_general.emplace(L"place");
+	this->_general.emplace(L"travel");
+	this->_general.emplace(L"review");
+	this->_general.emplace(L"repair");
+	this->_general.emplace(L"report");
+	this->_general.emplace(L"racing");
+	this->_general.emplace(L"photos");
+	this->_general.emplace(L"physio");
+	this->_general.emplace(L"online");
+	this->_general.emplace(L"museum");
+	this->_general.emplace(L"agency");
+	this->_general.emplace(L"active");
+	this->_general.emplace(L"reviews");
+	this->_general.emplace(L"rentals");
+	this->_general.emplace(L"recipes");
+	this->_general.emplace(L"organic");
+	this->_general.emplace(L"academy");
+	this->_general.emplace(L"auction");
+	this->_general.emplace(L"plumbing");
+	this->_general.emplace(L"pharmacy");
+	this->_general.emplace(L"airforce");
+	this->_general.emplace(L"attorney");
+	this->_general.emplace(L"partners");
+	this->_general.emplace(L"pictures");
+	this->_general.emplace(L"feedback");
+	this->_general.emplace(L"property");
+	this->_general.emplace(L"republican");
+	this->_general.emplace(L"associates");
+	this->_general.emplace(L"apartments");
+	this->_general.emplace(L"accountant");
+	this->_general.emplace(L"properties");
+	this->_general.emplace(L"photography");
+	this->_general.emplace(L"accountants");
+	this->_general.emplace(L"productions");
 	// Если буквы переданы запоминаем их
-	this->setLetters(letters);
+	this->letters(letters);
 	// Если текст передан то выполняем парсинг
 	if(!text.empty()) this->parse(text);
 }

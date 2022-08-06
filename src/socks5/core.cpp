@@ -56,9 +56,9 @@ vector <char> awh::Socks5::ipToHex(const string & ip, const int family) const no
 			// Если формат IP адреса не верный
 			if(conv == 0)
 				// Выводим сообщение об ошибке
-				this->log->print("%s: [%s]", log_t::flag_t::CRITICAL, "not in presentation format", ip.c_str());
+				this->_log->print("%s: [%s]", log_t::flag_t::CRITICAL, "not in presentation format", ip.c_str());
 			// Иначе это ошибка функции конвертации
-			else this->log->print("%s: [%s]", log_t::flag_t::CRITICAL, "address conversion could not be performed", ip.c_str());
+			else this->_log->print("%s: [%s]", log_t::flag_t::CRITICAL, "address conversion could not be performed", ip.c_str());
 			// Очищаем бинарный буфер
 			result.clear();
 		}
@@ -87,7 +87,7 @@ string awh::Socks5::hexToIp(const char * buffer, const size_t size, const int fa
 				// Выполняем конвертацию
 				if(inet_ntop(family, buffer, str, INET_ADDRSTRLEN) == nullptr)
 					// Выводим сообщение об ошибке
-					this->log->print("%s", log_t::flag_t::CRITICAL, "ip address could not be obtained");
+					this->_log->print("%s", log_t::flag_t::CRITICAL, "ip address could not be obtained");
 				// Получаем IPv4 адрес
 				else result = str;
 			} break;
@@ -98,7 +98,7 @@ string awh::Socks5::hexToIp(const char * buffer, const size_t size, const int fa
 				// Выполняем конвертацию
 				if(inet_ntop(family, buffer, str, INET6_ADDRSTRLEN) == nullptr)
 					// Выводим сообщение об ошибке
-					this->log->print("%s", log_t::flag_t::CRITICAL, "ip address could not be obtained");
+					this->_log->print("%s", log_t::flag_t::CRITICAL, "ip address could not be obtained");
 				// Получаем IPv6 адрес
 				else result = str;
 			} break;
@@ -108,30 +108,30 @@ string awh::Socks5::hexToIp(const char * buffer, const size_t size, const int fa
 	return result;
 }
 /**
- * setText Метод установки в буфер текстовых данных
+ * text Метод установки в буфер текстовых данных
  * @param text текст для установки
  * @return     текущее значение смещения
  */
-u_short awh::Socks5::setText(const string & text) const noexcept {
+u_short awh::Socks5::text(const string & text) const noexcept {
 	// Результат работы функции
 	u_short result = 0;
 	// Если текст передан
 	if(!text.empty()){
 		// Добавляем в буфер размер текста
-		this->buffer.push_back(static_cast <char> (text.size()));
+		this->_buffer.push_back(static_cast <char> (text.size()));
 		// Добавляем в буфер сам текст
-		this->buffer.insert(this->buffer.end(), text.begin(), text.end());
+		this->_buffer.insert(this->_buffer.end(), text.begin(), text.end());
 	}
 	// Выводим результат
 	return result;
 }
 /**
- * getText Метод извлечения текстовых данных из буфера
+ * text Метод извлечения текстовых данных из буфера
  * @param buffer буфер данных для извлечения текста
  * @param size   размер буфера данных
  * @return       текст содержащийся в буфере данных
  */
-const string awh::Socks5::getText(const char * buffer, const size_t size) const noexcept {
+const string awh::Socks5::text(const char * buffer, const size_t size) const noexcept {
 	// Результат работы функции
 	string result = "";
 	// Если буфер данных передан
@@ -147,14 +147,14 @@ const string awh::Socks5::getText(const char * buffer, const size_t size) const 
 	return result;
 }
 /**
- * setOctet Метод установки октета
+ * octet Метод установки октета
  * @param octet  октет для установки
  * @param offset размер смещения в буфере
  * @return       текущее значение смещения
  */
-u_short awh::Socks5::setOctet(const uint8_t octet, const u_short offset) const noexcept {
+u_short awh::Socks5::octet(const uint8_t octet, const u_short offset) const noexcept {
 	// Устанавливаем первый октет
-	memcpy(this->buffer.data() + offset, &octet, sizeof(octet));
+	memcpy(this->_buffer.data() + offset, &octet, sizeof(octet));
 	// Выводим размер смещения
 	return (offset + sizeof(octet));
 }
@@ -165,9 +165,9 @@ u_short awh::Socks5::setOctet(const uint8_t octet, const u_short offset) const n
 bool awh::Socks5::isEnd() const noexcept {
 	// Выполняем проверку завершения работы
 	return (
-		(this->state == state_t::BROKEN) ||
-		(this->state == state_t::CONNECT) ||
-		(this->state == state_t::HANDSHAKE)
+		(this->_state == state_t::BROKEN) ||
+		(this->_state == state_t::CONNECT) ||
+		(this->_state == state_t::HANDSHAKE)
 	);
 }
 /**
@@ -176,7 +176,7 @@ bool awh::Socks5::isEnd() const noexcept {
  */
 bool awh::Socks5::isConnected() const noexcept {
 	// Выполняем проверку запроса клиента
-	return (this->state == state_t::CONNECT);
+	return (this->_state == state_t::CONNECT);
 }
 /**
  * isHandshake Метод проверки рукопожатия
@@ -184,22 +184,22 @@ bool awh::Socks5::isConnected() const noexcept {
  */
 bool awh::Socks5::isHandshake() const noexcept{
 	// Выполняем проверку рукопожатия
-	return (this->state == state_t::HANDSHAKE);
+	return (this->_state == state_t::HANDSHAKE);
 }
 /**
- * getCode Метод получения кода сообщения
+ * code Метод получения кода сообщения
  * @return код сообщения
  */
-uint8_t awh::Socks5::getCode() const noexcept {
+uint8_t awh::Socks5::code() const noexcept {
 	// Выводим код сообщения
-	return this->code;
+	return this->_code;
 }
 /**
- * getMessage Метод получения сообщения
+ * message Метод получения сообщения
  * @param code код сообщения
  * @return     текстовое значение кода
  */
-const string & awh::Socks5::getMessage(const uint8_t code) const noexcept {
+const string & awh::Socks5::message(const uint8_t code) const noexcept {
 	// Результат работы функции
 	static const string result = "";
 	// Выполняем поиск кода сообщения
@@ -215,13 +215,13 @@ const string & awh::Socks5::getMessage(const uint8_t code) const noexcept {
  */
 const vector <char> & awh::Socks5::get() const noexcept {
 	// Выводим бинарный буфер
-	return this->buffer;
+	return this->_buffer;
 }
 /**
- * setUrl Метод установки URL параметров REST запроса
+ * url Метод установки URL параметров REST запроса
  * @param url параметры REST запроса
  */
-void awh::Socks5::setUrl(const uri_t::url_t & url) noexcept {
+void awh::Socks5::url(const uri_t::url_t & url) noexcept {
 	// Устанавливаем URL адрес REST запроса
-	this->url = url;
+	this->_url = url;
 }

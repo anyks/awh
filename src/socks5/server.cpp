@@ -16,12 +16,12 @@
 #include <socks5/server.hpp>
 
 /**
- * getServer Метод извлечения параметров запрашиваемого сервера
+ * server Метод извлечения параметров запрашиваемого сервера
  * @return параметры запрашиваемого сервера
  */
-const awh::server::Socks5::serv_t & awh::server::Socks5::getServer() const noexcept {
+const awh::server::Socks5::serv_t & awh::server::Socks5::server() const noexcept {
 	// Выводим запрашиваемый сервер
-	return this->server;
+	return this->_server;
 }
 /**
  * resCmd Метод получения бинарного буфера ответа
@@ -91,7 +91,7 @@ void awh::server::Socks5::resMethod(const vector <uint8_t> & methods) const noex
 			// Если метод авторизации выбран логин/пароль пользователя
 			if(method == (uint8_t) method_t::PASSWD){
 				// Если пользователи установлены
-				if(this->authFn != nullptr){
+				if(this->_auth != nullptr){
 					// Устанавливаем метод прокси-сервера
 					response.method = (uint8_t) method;
 					// Выходим из цикла
@@ -100,7 +100,7 @@ void awh::server::Socks5::resMethod(const vector <uint8_t> & methods) const noex
 			// Если пользователь выбрал метод без авторизации
 			} else if(method == (uint8_t) method_t::NOAUTH) {
 				// Если пользователи не установлены
-				if(this->authFn == nullptr){
+				if(this->_auth == nullptr){
 					// Устанавливаем метод прокси-сервера
 					response.method = (uint8_t) method;
 					// Выходим из цикла
@@ -129,9 +129,9 @@ void awh::server::Socks5::resAuth(const string & login, const string & password)
 	// Устанавливаем ответ отказа об авторизации
 	response.status = (uint8_t) rep_t::FORBIDDEN;
 	// Если пользователи установлены
-	if(!login.empty() && !password.empty() && (this->authFn != nullptr)){
+	if(!login.empty() && !password.empty() && (this->_auth != nullptr)){
 		// Если авторизация выполнена
-		if(this->authFn(login, password))
+		if(this->_auth(login, password))
 			// Разрешаем авторизацию пользователя
 			response.status = (uint8_t) rep_t::SUCCESS;
 	}
@@ -299,15 +299,15 @@ void awh::server::Socks5::parse(const char * buffer, const size_t size) noexcept
 										// Создаём объект данных сервера
 										ip_t server;
 										// Устанавливаем тип хоста сервера
-										this->server.family = AF_INET;
+										this->_server.family = AF_INET;
 										// Копируем в буфер наши данные IP адреса
 										memcpy(&server, buffer + sizeof(req_t), sizeof(server));
 										// Выполняем получение IP адреса
-										this->server.host = this->hexToIp((const char *) &server.host, sizeof(server.host), AF_INET);
+										this->_server.host = this->hexToIp((const char *) &server.host, sizeof(server.host), AF_INET);
 										// Если IP адрес получен
-										if(!this->server.host.empty()){
+										if(!this->_server.host.empty()){
 											// Заменяем порт сервера
-											this->server.port = ntohs(server.port);
+											this->_server.port = ntohs(server.port);
 											// Устанавливаем стейт выполнения проверки
 											this->state = state_t::CONNECT;
 										}
@@ -320,15 +320,15 @@ void awh::server::Socks5::parse(const char * buffer, const size_t size) noexcept
 										// Создаём объект данных сервера
 										ip_t server;
 										// Устанавливаем тип хоста сервера
-										this->server.family = AF_INET6;
+										this->_server.family = AF_INET6;
 										// Копируем в буфер наши данные IP адреса
 										memcpy(&server, buffer + sizeof(req_t), sizeof(server));
 										// Выполняем получение IP адреса
-										this->server.host = this->hexToIp((const char *) &server.host, sizeof(server.host), AF_INET6);
+										this->_server.host = this->hexToIp((const char *) &server.host, sizeof(server.host), AF_INET6);
 										// Если IP адрес получен
-										if(!this->server.host.empty()){
+										if(!this->_server.host.empty()){
 											// Заменяем порт сервера
-											this->server.port = ntohs(server.port);
+											this->_server.port = ntohs(server.port);
 											// Устанавливаем стейт выполнения проверки
 											this->state = state_t::CONNECT;
 										}
@@ -339,17 +339,17 @@ void awh::server::Socks5::parse(const char * buffer, const size_t size) noexcept
 									// Если буфер пришел достаточного размера
 									if(size >= (sizeof(req_t) + sizeof(uint16_t))){
 										// Извлекаем доменное имя
-										this->server.host = this->getText(buffer + sizeof(req_t), size);
+										this->_server.host = this->getText(buffer + sizeof(req_t), size);
 										// Получаем размер смещения
-										u_short offset = (sizeof(req_t) + sizeof(uint8_t) + this->server.host.size());
+										u_short offset = (sizeof(req_t) + sizeof(uint8_t) + this->_server.host.size());
 										// Если доменное имя получено
-										if(!this->server.host.empty() && (size >= (offset + sizeof(uint16_t)))){
+										if(!this->_server.host.empty() && (size >= (offset + sizeof(uint16_t)))){
 											// Создаём порт сервера
 											uint16_t port = 0;
 											// Выполняем извлечение порта сервера
 											memcpy(&port, buffer + offset, sizeof(uint16_t));
 											// Заменяем порт сервера
-											this->server.port = ntohs(port);
+											this->_server.port = ntohs(port);
 											// Устанавливаем стейт выполнения проверки
 											this->state = state_t::CONNECT;
 										}
@@ -393,10 +393,10 @@ void awh::server::Socks5::reset() noexcept {
 	this->state = state_t::METHOD;
 }
 /**
- * setAuthCallback Метод добавления функции обработки авторизации
+ * authCallback Метод добавления функции обработки авторизации
  * @param callback функция обратного вызова для обработки авторизации
  */
-void awh::server::Socks5::setAuthCallback(function <bool (const string &, const string &)> callback) noexcept {
+void awh::server::Socks5::authCallback(function <bool (const string &, const string &)> callback) noexcept {
 	// Устанавливаем функцию проверки авторизации
-	this->authFn = callback;
+	this->_auth = callback;
 }

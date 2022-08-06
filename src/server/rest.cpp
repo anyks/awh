@@ -39,7 +39,7 @@ void awh::server::Rest::openCallback(const size_t wid, awh::core_t * core, void 
 		// Получаем контекст модуля
 		rest_t * web = reinterpret_cast <rest_t *> (ctx);
 		// Устанавливаем хост сервера
-		reinterpret_cast <server::core_t *> (core)->init(wid, web->port, web->host);
+		reinterpret_cast <server::core_t *> (core)->init(wid, web->_port, web->_host);
 		// Выполняем запуск сервера
 		reinterpret_cast <server::core_t *> (core)->run(wid);
 	}
@@ -57,9 +57,9 @@ void awh::server::Rest::persistCallback(const size_t aid, const size_t wid, awh:
 		// Получаем контекст модуля
 		rest_t * web = reinterpret_cast <rest_t *> (ctx);
 		// Получаем параметры подключения адъютанта
-		workerRest_t::adjp_t * adj = const_cast <workerRest_t::adjp_t *> (web->worker.getAdj(aid));
+		workerRest_t::adjp_t * adj = const_cast <workerRest_t::adjp_t *> (web->_worker.getAdj(aid));
 		// Если параметры подключения адъютанта получены
-		if((adj != nullptr) && ((!adj->alive && !web->alive) || adj->close)){
+		if((adj != nullptr) && ((!adj->_alive && !web->_alive) || adj->close)){
 			// Если клиент давно должен был быть отключён, отключаем его
 			if(adj->close || !adj->http.isAlive()) reinterpret_cast <server::core_t *> (core)->close(aid);
 			// Иначе проверяем прошедшее время
@@ -67,7 +67,7 @@ void awh::server::Rest::persistCallback(const size_t aid, const size_t wid, awh:
 				// Получаем текущий штамп времени
 				const time_t stamp = web->fmk->unixTimestamp();
 				// Если адъютант не ответил на пинг больше двух интервалов, отключаем его
-				if((stamp - adj->checkPoint) >= web->keepAlive)
+				if((stamp - adj->checkPoint) >= web->_keepAlive)
 					// Завершаем работу
 					reinterpret_cast <server::core_t *> (core)->close(aid);
 			}
@@ -87,49 +87,49 @@ void awh::server::Rest::connectCallback(const size_t aid, const size_t wid, awh:
 		// Получаем контекст модуля
 		rest_t * web = reinterpret_cast <rest_t *> (ctx);
 		// Создаём адъютанта
-		web->worker.createAdj(aid);
+		web->_worker.createAdj(aid);
 		// Получаем параметры подключения адъютанта
-		workerRest_t::adjp_t * adj = const_cast <workerRest_t::adjp_t *> (web->worker.getAdj(aid));
+		workerRest_t::adjp_t * adj = const_cast <workerRest_t::adjp_t *> (web->_worker.getAdj(aid));
 		// Устанавливаем размер чанка
-		adj->http.setChunkSize(web->chunkSize);
+		adj->http.setChunkSize(web->_chunkSize);
 		// Устанавливаем данные сервиса
-		adj->http.setServ(web->sid, web->name, web->version);
+		adj->http.setServ(web->_sid, web->_name, web->_version);
 		// Если функция обратного вызова для обработки чанков установлена
-		if(web->chunkingFn != nullptr)
+		if(web->_chunkingFn != nullptr)
 			// Устанавливаем внешнюю функцию обработки вызова для получения чанков
-			adj->http.setChunkingFn(web->ctx.at(4), web->chunkingFn);
+			adj->http.setChunkingFn(web->ctx.at(4), web->_chunkingFn);
 		// Устанавливаем функцию обработки вызова для получения чанков
 		else adj->http.setChunkingFn(web, &chunking);
 		// Устанавливаем метод компрессии поддерживаемый сервером
-		adj->http.setCompress(web->worker.compress);
+		adj->http.setCompress(web->_worker.compress);
 		// Устанавливаем параметры шифрования
-		if(web->crypt) adj->http.setCrypt(web->pass, web->salt, web->aes);
+		if(web->_crypt) adj->http.setCrypt(web->_pass, web->_salt, web->_aes);
 		// Если сервер требует авторизацию
-		if(web->authType != auth_t::type_t::NONE){
+		if(web->_authType != auth_t::type_t::NONE){
 			// Определяем тип авторизации
-			switch((uint8_t) web->authType){
+			switch((uint8_t) web->_authType){
 				// Если тип авторизации Basic
 				case (uint8_t) auth_t::type_t::BASIC: {
 					// Устанавливаем параметры авторизации
-					adj->http.setAuthType(web->authType);
+					adj->http.setAuthType(web->_authType);
 					// Устанавливаем функцию проверки авторизации
-					adj->http.setAuthCallback(web->ctx.at(3), web->checkAuthFn);
+					adj->http.setAuthCallback(web->ctx.at(3), web->_checkAuthFn);
 				} break;
 				// Если тип авторизации Digest
 				case (uint8_t) auth_t::type_t::DIGEST: {
 					// Устанавливаем название сервера
-					adj->http.setRealm(web->realm);
+					adj->http.setRealm(web->_realm);
 					// Устанавливаем временный ключ сессии сервера
-					adj->http.setOpaque(web->opaque);
+					adj->http.setOpaque(web->_opaque);
 					// Устанавливаем параметры авторизации
-					adj->http.setAuthType(web->authType, web->authHash);
+					adj->http.setAuthType(web->_authType, web->_authHash);
 					// Устанавливаем функцию извлечения пароля
-					adj->http.setExtractPassCallback(web->ctx.at(2), web->extractPassFn);
+					adj->http.setExtractPassCallback(web->ctx.at(2), web->_extractPassFn);
 				} break;
 			}
 		}
 		// Если функция обратного вызова установлена, выполняем
-		if(web->activeFn != nullptr) web->activeFn(aid, mode_t::CONNECT, web, web->ctx.at(0));
+		if(web->_activeFn != nullptr) web->_activeFn(aid, mode_t::CONNECT, web, web->ctx.at(0));
 	}
 }
 /**
@@ -145,13 +145,13 @@ void awh::server::Rest::disconnectCallback(const size_t aid, const size_t wid, a
 		// Получаем контекст модуля
 		rest_t * web = reinterpret_cast <rest_t *> (ctx);
 		// Получаем параметры подключения адъютанта
-		workerRest_t::adjp_t * adj = const_cast <workerRest_t::adjp_t *> (web->worker.getAdj(aid));
+		workerRest_t::adjp_t * adj = const_cast <workerRest_t::adjp_t *> (web->_worker.getAdj(aid));
 		// Если параметры подключения адъютанта получены
 		adj->close = (adj != nullptr);
 		// Выполняем удаление параметров адъютанта
-		web->worker.removeAdj(aid);
+		web->_worker.removeAdj(aid);
 		// Если функция обратного вызова установлена, выполняем
-		if(web->activeFn != nullptr) web->activeFn(aid, mode_t::DISCONNECT, web, web->ctx.at(0));
+		if(web->_activeFn != nullptr) web->_activeFn(aid, mode_t::DISCONNECT, web, web->ctx.at(0));
 	}
 }
 /**
@@ -171,7 +171,7 @@ bool awh::server::Rest::acceptCallback(const string & ip, const string & mac, co
 		// Получаем контекст модуля
 		rest_t * web = reinterpret_cast <rest_t *> (ctx);
 		// Если функция обратного вызова установлена, проверяем
-		if(web->acceptFn != nullptr) result = web->acceptFn(ip, mac, web, web->ctx.at(5));
+		if(web->_acceptFn != nullptr) result = web->_acceptFn(ip, mac, web, web->ctx.at(5));
 	}
 	// Разрешаем подключение клиенту
 	return result;
@@ -191,7 +191,7 @@ void awh::server::Rest::readCallback(const char * buffer, const size_t size, con
 		// Получаем контекст модуля
 		rest_t * web = reinterpret_cast <rest_t *> (ctx);
 		// Получаем параметры подключения адъютанта
-		workerRest_t::adjp_t * adj = const_cast <workerRest_t::adjp_t *> (web->worker.getAdj(aid));
+		workerRest_t::adjp_t * adj = const_cast <workerRest_t::adjp_t *> (web->_worker.getAdj(aid));
 		// Если параметры подключения адъютанта получены
 		if(adj != nullptr){
 			// Добавляем полученные данные в буфер
@@ -221,11 +221,11 @@ void awh::server::Rest::readCallback(const char * buffer, const size_t size, con
 						}
 					#endif
 					// Если подключение не установлено как постоянное
-					if(!web->alive && !adj->alive){
+					if(!web->_alive && !adj->_alive){
 						// Увеличиваем количество выполненных запросов
 						adj->requests++;
 						// Если количество выполненных запросов превышает максимальный
-						if(adj->requests >= web->maxRequests)
+						if(adj->requests >= web->_maxRequests)
 							// Устанавливаем флаг закрытия подключения
 							adj->close = true;
 						// Получаем текущий штамп времени
@@ -237,11 +237,11 @@ void awh::server::Rest::readCallback(const char * buffer, const size_t size, con
 						// Если запрос выполнен удачно
 						case (uint8_t) awh::http_t::stath_t::GOOD: {
 							// Получаем флаг шифрованных данных
-							adj->crypt = adj->http.isCrypt();
+							adj->_crypt = adj->http.isCrypt();
 							// Получаем поддерживаемый метод компрессии
 							adj->compress = adj->http.getCompress();
 							// Если функция обратного вызова установлена, выполняем
-							if(web->messageFn != nullptr) web->messageFn(aid, &adj->http, web, web->ctx.at(1));
+							if(web->_messageFn != nullptr) web->_messageFn(aid, &adj->http, web, web->ctx.at(1));
 							// Выполняем сброс состояния HTTP парсера
 							adj->http.clear();
 							// Выполняем сброс состояния HTTP парсера
@@ -314,7 +314,7 @@ void awh::server::Rest::writeCallback(const char * buffer, const size_t size, co
 		// Получаем контекст модуля
 		rest_t * web = reinterpret_cast <rest_t *> (ctx);
 		// Получаем параметры подключения адъютанта
-		workerRest_t::adjp_t * adj = const_cast <workerRest_t::adjp_t *> (web->worker.getAdj(aid));
+		workerRest_t::adjp_t * adj = const_cast <workerRest_t::adjp_t *> (web->_worker.getAdj(aid));
 		// Если параметры подключения адъютанта получены
 		if((adj != nullptr) && (adj->stopBytes > 0)){
 			// Запоминаем количество прочитанных байт
@@ -332,77 +332,59 @@ void awh::server::Rest::writeCallback(const char * buffer, const size_t size, co
  */
 void awh::server::Rest::init(const u_int port, const string & host, const awh::http_t::compress_t compress) noexcept {
 	// Устанавливаем порт сервера
-	this->port = port;
+	this->_port = port;
 	// Устанавливаем хост сервера
-	this->host = host;
+	this->_host = host;
 	// Устанавливаем тип компрессии
-	this->worker.compress = compress;
+	this->_worker.compress = compress;
 }
 /**
  * on Метод установки функции обратного вызова на событие запуска или остановки подключения
- * @param ctx      контекст для вывода в сообщении
  * @param callback функция обратного вызова
  */
-void awh::server::Rest::on(void * ctx, function <void (const size_t, const mode_t, Rest *, void *)> callback) noexcept {
-	// Устанавливаем контекст передаваемого объекта
-	this->ctx.at(0) = ctx;
+void awh::server::Rest::on(function <void (const size_t, const mode_t, Rest *)> callback) noexcept {
 	// Устанавливаем функцию запуска и остановки
-	this->activeFn = callback;
+	this->_activeFn = callback;
 }
 /**
  * on Метод установки функции обратного вызова на событие получения сообщений
- * @param ctx      контекст для вывода в сообщении
  * @param callback функция обратного вызова
  */
-void awh::server::Rest::on(void * ctx, function <void (const size_t, const awh::http_t *, Rest *, void *)> callback) noexcept {
-	// Устанавливаем контекст передаваемого объекта
-	this->ctx.at(1) = ctx;
+void awh::server::Rest::on(function <void (const size_t, const awh::http_t *, Rest *)> callback) noexcept {
 	// Устанавливаем функцию получения сообщений с сервера
-	this->messageFn = callback;
+	this->_messageFn = callback;
 }
 /**
  * on Метод добавления функции извлечения пароля
- * @param ctx      контекст для вывода в сообщении
  * @param callback функция обратного вызова для извлечения пароля
  */
-void awh::server::Rest::on(void * ctx, function <string (const string &, void *)> callback) noexcept {
-	// Устанавливаем контекст передаваемого объекта
-	this->ctx.at(2) = ctx;
+void awh::server::Rest::on(function <string (const string &)> callback) noexcept {
 	// Устанавливаем функцию обратного вызова для извлечения пароля
-	this->extractPassFn = callback;
+	this->_extractPassFn = callback;
 }
 /**
  * on Метод добавления функции обработки авторизации
- * @param ctx      контекст для вывода в сообщении
  * @param callback функция обратного вызова для обработки авторизации
  */
-void awh::server::Rest::on(void * ctx, function <bool (const string &, const string &, void *)> callback) noexcept {
-	// Устанавливаем контекст передаваемого объекта
-	this->ctx.at(3) = ctx;
+void awh::server::Rest::on(function <bool (const string &, const string &)> callback) noexcept {
 	// Устанавливаем функцию обратного вызова для обработки авторизации
-	this->checkAuthFn = callback;
+	this->_checkAuthFn = callback;
 }
 /**
  * on Метод установки функции обратного вызова для получения чанков
- * @param ctx      контекст для вывода в сообщении
  * @param callback функция обратного вызова
  */
-void awh::server::Rest::on(void * ctx, function <void (const vector <char> &, const awh::http_t *, void *)> callback) noexcept {
-	// Устанавливаем контекст передаваемого объекта
-	this->ctx.at(4) = ctx;
+void awh::server::Rest::on(function <void (const vector <char> &, const awh::http_t *)> callback) noexcept {
 	// Устанавливаем функцию обратного вызова для получения чанков
-	this->chunkingFn = callback;
+	this->_chunkingFn = callback;
 }
 /**
  * on Метод установки функции обратного вызова на событие активации клиента на сервере
- * @param ctx      контекст для вывода в сообщении
  * @param callback функция обратного вызова
  */
-void awh::server::Rest::on(void * ctx, function <bool (const string &, const string &, Rest *, void *)> callback) noexcept {
-	// Устанавливаем контекст передаваемого объекта
-	this->ctx.at(5) = ctx;
+void awh::server::Rest::on(function <bool (const string &, const string &, Rest *)> callback) noexcept {
 	// Устанавливаем функцию запуска и остановки
-	this->acceptFn = callback;
+	this->_acceptFn = callback;
 }
 /**
  * reject Метод отправки сообщения об ошибке
@@ -416,7 +398,7 @@ void awh::server::Rest::reject(const size_t aid, const u_int code, const string 
 	// Если подключение выполнено
 	if(this->core->working()){
 		// Получаем параметры подключения адъютанта
-		workerRest_t::adjp_t * adj = const_cast <workerRest_t::adjp_t *> (this->worker.getAdj(aid));
+		workerRest_t::adjp_t * adj = const_cast <workerRest_t::adjp_t *> (this->_worker.getAdj(aid));
 		// Если отправка сообщений разблокированна
 		if(adj != nullptr){
 			// Тело полезной нагрузки
@@ -426,9 +408,9 @@ void awh::server::Rest::reject(const size_t aid, const u_int code, const string 
 			// Устанавливаем заголовки ответа
 			adj->http.setHeaders(headers);
 			// Если подключение не установлено как постоянное, но подключение долгоживущее
-			if(!this->alive && !adj->alive && adj->http.isAlive())
+			if(!this->_alive && !adj->_alive && adj->http.isAlive())
 				// Указываем сколько запросов разрешено выполнить за указанный интервал времени
-				adj->http.addHeader("Keep-Alive", this->fmk->format("timeout=%d, max=%d", this->keepAlive / 1000, this->maxRequests));
+				adj->http.addHeader("Keep-Alive", this->fmk->format("timeout=%d, max=%d", this->_keepAlive / 1000, this->_maxRequests));
 			// Формируем запрос авторизации
 			const auto & response = adj->http.reject(code, mess);
 			// Если включён режим отладки
@@ -469,7 +451,7 @@ void awh::server::Rest::response(const size_t aid, const u_int code, const strin
 	// Если подключение выполнено
 	if(this->core->working()){
 		// Получаем параметры подключения адъютанта
-		workerRest_t::adjp_t * adj = const_cast <workerRest_t::adjp_t *> (this->worker.getAdj(aid));
+		workerRest_t::adjp_t * adj = const_cast <workerRest_t::adjp_t *> (this->_worker.getAdj(aid));
 		// Если отправка сообщений разблокированна
 		if(adj != nullptr){
 			// Тело полезной нагрузки
@@ -479,9 +461,9 @@ void awh::server::Rest::response(const size_t aid, const u_int code, const strin
 			// Устанавливаем заголовки ответа
 			adj->http.setHeaders(headers);
 			// Если подключение не установлено как постоянное, но подключение долгоживущее
-			if(!this->alive && !adj->alive && adj->http.isAlive())
+			if(!this->_alive && !adj->_alive && adj->http.isAlive())
 				// Указываем сколько запросов разрешено выполнить за указанный интервал времени
-				adj->http.addHeader("Keep-Alive", this->fmk->format("timeout=%d, max=%d", this->keepAlive / 1000, this->maxRequests));
+				adj->http.addHeader("Keep-Alive", this->fmk->format("timeout=%d, max=%d", this->_keepAlive / 1000, this->_maxRequests));
 			// Формируем запрос авторизации
 			const auto & response = adj->http.response(code, mess);
 			// Если включён режим отладки
@@ -517,7 +499,7 @@ void awh::server::Rest::response(const size_t aid, const u_int code, const strin
  */
 const string & awh::server::Rest::ip(const size_t aid) const noexcept {
 	// Выводим результат
-	return this->worker.ip(aid);
+	return this->_worker.ip(aid);
 }
 /**
  * mac Метод получения MAC адреса адъютанта
@@ -526,7 +508,7 @@ const string & awh::server::Rest::ip(const size_t aid) const noexcept {
  */
 const string & awh::server::Rest::mac(const size_t aid) const noexcept {
 	// Выводим результат
-	return this->worker.mac(aid);
+	return this->_worker.mac(aid);
 }
 /**
  * setAlive Метод установки долгоживущего подключения
@@ -534,7 +516,7 @@ const string & awh::server::Rest::mac(const size_t aid) const noexcept {
  */
 void awh::server::Rest::setAlive(const bool mode) noexcept {
 	// Устанавливаем флаг долгоживущего подключения
-	this->alive = mode;
+	this->_alive = mode;
 }
 /**
  * setAlive Метод установки долгоживущего подключения
@@ -543,9 +525,9 @@ void awh::server::Rest::setAlive(const bool mode) noexcept {
  */
 void awh::server::Rest::setAlive(const size_t aid, const bool mode) noexcept {
 	// Получаем параметры подключения адъютанта
-	workerRest_t::adjp_t * adj = const_cast <workerRest_t::adjp_t *> (this->worker.getAdj(aid));
+	workerRest_t::adjp_t * adj = const_cast <workerRest_t::adjp_t *> (this->_worker.getAdj(aid));
 	// Если параметры подключения адъютанта получены, устанавливаем флаг пдолгоживущего подключения
-	if(adj != nullptr) adj->alive = mode;
+	if(adj != nullptr) adj->_alive = mode;
 }
 /**
  * start Метод запуска клиента
@@ -571,7 +553,7 @@ void awh::server::Rest::stop() noexcept {
  */
 void awh::server::Rest::close(const size_t aid) noexcept {
 	// Получаем параметры подключения адъютанта
-	workerRest_t::adjp_t * adj = const_cast <workerRest_t::adjp_t *> (this->worker.getAdj(aid));
+	workerRest_t::adjp_t * adj = const_cast <workerRest_t::adjp_t *> (this->_worker.getAdj(aid));
 	// Если параметры подключения адъютанта получены, устанавливаем флаг закрытия подключения
 	if(adj != nullptr) adj->close = true;
 }
@@ -582,9 +564,9 @@ void awh::server::Rest::close(const size_t aid) noexcept {
  */
 void awh::server::Rest::setWaitTimeDetect(const time_t read, const time_t write) noexcept {
 	// Устанавливаем количество секунд на чтение
-	this->worker.timeRead = read;
+	this->_worker.timeRead = read;
 	// Устанавливаем количество секунд на запись
-	this->worker.timeWrite = write;
+	this->_worker.timeWrite = write;
 }
 /**
  * setBytesDetect Метод детекции сообщений по количеству байт
@@ -593,9 +575,9 @@ void awh::server::Rest::setWaitTimeDetect(const time_t read, const time_t write)
  */
 void awh::server::Rest::setBytesDetect(const worker_t::mark_t read, const worker_t::mark_t write) noexcept {
 	// Устанавливаем количество байт на чтение
-	this->worker.markRead = read;
+	this->_worker.markRead = read;
 	// Устанавливаем количество байт на запись
-	this->worker.markWrite = write;
+	this->_worker.markWrite = write;
 }
 /**
  * setRealm Метод установки название сервера
@@ -603,7 +585,7 @@ void awh::server::Rest::setBytesDetect(const worker_t::mark_t read, const worker
  */
 void awh::server::Rest::setRealm(const string & realm) noexcept {
 	// Устанавливаем название сервера
-	this->realm = realm;
+	this->_realm = realm;
 }
 /**
  * setOpaque Метод установки временного ключа сессии сервера
@@ -611,7 +593,7 @@ void awh::server::Rest::setRealm(const string & realm) noexcept {
  */
 void awh::server::Rest::setOpaque(const string & opaque) noexcept {
 	// Устанавливаем временный ключ сессии сервера
-	this->opaque = opaque;
+	this->_opaque = opaque;
 }
 /**
  * setAuthType Метод установки типа авторизации
@@ -620,9 +602,9 @@ void awh::server::Rest::setOpaque(const string & opaque) noexcept {
  */
 void awh::server::Rest::setAuthType(const auth_t::type_t type, const auth_t::hash_t hash) noexcept {
 	// Устанавливаем алгоритм шифрования для Digest авторизации
-	this->authHash = hash;
+	this->_authHash = hash;
 	// Устанавливаем тип авторизации
-	this->authType = type;
+	this->_authType = type;
 }
 /**
  * setMode Метод установки флага модуля
@@ -630,7 +612,7 @@ void awh::server::Rest::setAuthType(const auth_t::type_t type, const auth_t::has
  */
 void awh::server::Rest::setMode(const u_short flag) noexcept {
 	// Устанавливаем флаг ожидания входящих сообщений
-	this->worker.wait = (flag & (uint8_t) flag_t::WAITMESS);
+	this->_worker.wait = (flag & (uint8_t) flag_t::WAITMESS);
 	// Устанавливаем флаг отложенных вызовов событий сокета
 	const_cast <server::core_t *> (this->core)->setDefer(flag & (uint8_t) flag_t::DEFER);
 	// Устанавливаем флаг запрещающий вывод информационных сообщений
@@ -642,7 +624,7 @@ void awh::server::Rest::setMode(const u_short flag) noexcept {
  */
 void awh::server::Rest::setTotal(const u_short total) noexcept {
 	// Устанавливаем максимальное количество одновременных подключений
-	const_cast <server::core_t *> (this->core)->setTotal(this->worker.wid, total);
+	const_cast <server::core_t *> (this->core)->setTotal(this->_worker.wid, total);
 }
 /**
  * setChunkSize Метод установки размера чанка
@@ -650,7 +632,7 @@ void awh::server::Rest::setTotal(const u_short total) noexcept {
  */
 void awh::server::Rest::setChunkSize(const size_t size) noexcept {
 	// Устанавливаем размер чанка
-	this->chunkSize = (size > 0 ? size : BUFFER_CHUNK);
+	this->_chunkSize = (size > 0 ? size : BUFFER_CHUNK);
 }
 /**
  * setKeepAlive Метод установки времени жизни подключения
@@ -658,7 +640,7 @@ void awh::server::Rest::setChunkSize(const size_t size) noexcept {
  */
 void awh::server::Rest::setKeepAlive(const size_t time) noexcept {
 	// Устанавливаем время жизни подключения
-	this->keepAlive = time;
+	this->_keepAlive = time;
 }
 /**
  * setMaxRequests Метод установки максимального количества запросов
@@ -666,7 +648,7 @@ void awh::server::Rest::setKeepAlive(const size_t time) noexcept {
  */
 void awh::server::Rest::setMaxRequests(const size_t max) noexcept {
 	// Устанавливаем максимальное количество запросов
-	this->maxRequests = max;
+	this->_maxRequests = max;
 }
 /**
  * setCompress Метод установки метода сжатия
@@ -674,7 +656,7 @@ void awh::server::Rest::setMaxRequests(const size_t max) noexcept {
  */
 void awh::server::Rest::setCompress(const awh::http_t::compress_t compress) noexcept {
 	// Устанавливаем метод компрессии
-	this->worker.compress = compress;
+	this->_worker.compress = compress;
 }
 /**
  * setServ Метод установки данных сервиса
@@ -684,11 +666,11 @@ void awh::server::Rest::setCompress(const awh::http_t::compress_t compress) noex
  */
 void awh::server::Rest::setServ(const string & id, const string & name, const string & ver) noexcept {
 	// Устанавливаем идентификатор сервера
-	this->sid = id;
+	this->_sid = id;
 	// Устанавливаем название сервера
-	this->name = name;
+	this->_name = name;
 	// Устанавливаем версию сервера
-	this->version = ver;
+	this->_version = ver;
 }
 /**
  * setCrypt Метод установки параметров шифрования
@@ -698,13 +680,13 @@ void awh::server::Rest::setServ(const string & id, const string & name, const st
  */
 void awh::server::Rest::setCrypt(const string & pass, const string & salt, const hash_t::aes_t aes) noexcept {
 	// Устанавливаем флаг шифрования
-	if((this->crypt = !pass.empty())){
+	if((this->_crypt = !pass.empty())){
 		// Размер шифрования передаваемых данных
-		this->aes = aes;
+		this->_aes = aes;
 		// Пароль шифрования передаваемых данных
-		this->pass = pass;
+		this->_pass = pass;
 		// Соль шифрования передаваемых данных
-		this->salt = salt;
+		this->_salt = salt;
 	}
 }
 /**
@@ -715,25 +697,25 @@ void awh::server::Rest::setCrypt(const string & pass, const string & salt, const
  */
 awh::server::Rest::Rest(const server::core_t * core, const fmk_t * fmk, const log_t * log) noexcept : core(core), fmk(fmk), log(log), worker(fmk, log) {
 	// Устанавливаем контекст сообщения
-	this->worker.ctx = this;
+	this->_worker.ctx = this;
 	// Устанавливаем событие на запуск системы
-	this->worker.openFn = openCallback;
+	this->_worker.openFn = openCallback;
 	// Устанавливаем функцию чтения данных
-	this->worker.readFn = readCallback;
+	this->_worker.readFn = readCallback;
 	// Устанавливаем функцию записи данных
-	this->worker.writeFn = writeCallback;
+	this->_worker.writeFn = writeCallback;
 	// Добавляем событие аццепта клиента
-	this->worker.acceptFn = acceptCallback;
+	this->_worker.acceptFn = acceptCallback;
 	// Устанавливаем функцию персистентного вызова
-	this->worker.persistFn = persistCallback;
+	this->_worker.persistFn = persistCallback;
 	// Устанавливаем событие подключения
-	this->worker.connectFn = connectCallback;
+	this->_worker.connectFn = connectCallback;
 	// Устанавливаем событие отключения
-	this->worker.disconnectFn = disconnectCallback;
+	this->_worker.disconnectFn = disconnectCallback;
 	// Активируем персистентный запуск для работы пингов
 	const_cast <server::core_t *> (this->core)->setPersist(true);
 	// Добавляем воркер в биндер TCP/IP
-	const_cast <server::core_t *> (this->core)->add(&this->worker);
+	const_cast <server::core_t *> (this->core)->add(&this->_worker);
 	// Устанавливаем интервал персистентного таймера для работы пингов
 	const_cast <server::core_t *> (this->core)->setPersistInterval(KEEPALIVE_TIMEOUT / 2);
 }

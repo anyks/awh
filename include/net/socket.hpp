@@ -71,7 +71,7 @@ namespace awh {
 	typedef class Socket {
 		private:
 			// Создаём объект работы с логами
-			const log_t * log = nullptr;
+			const log_t * _log;
 		public:
 			/**
 			 * noSigill Метод блокировки сигнала SIGILL
@@ -156,7 +156,7 @@ namespace awh {
 			 * Socket Конструктор
 			 * @param log объект для работы с логами
 			 */
-			Socket(const log_t * log) noexcept : log(log) {}
+			Socket(const log_t * log) noexcept : _log(log) {}
 			/**
 			 * ~Socket Деструктор
 			 */

@@ -130,39 +130,39 @@ namespace awh {
 				} mtx_t;
 			private:
 				// Мютекс для блокировки основного потока
-				mtx_t mtx;
+				mtx_t _mtx;
 				/**
 				 * Если операционной системой не является Windows
 				 */
 				#if !defined(_WIN32) && !defined(_WIN64)
 					// Объект работы с сигналами
-					sig_t sig;
+					sig_t _sig;
 				#endif
 			private:
 				// Идентификатор процесса
-				pid_t pid;
+				pid_t _pid;
 				// Индекс работника в списке
-				size_t index;
+				size_t _index;
 				// Активное событие
-				event_t event;
-				// Флаг активации перехвата подключения
-				bool interception;
+				event_t _event;
 			private:
 				// Количество рабочих процессов
-				size_t forks;
+				size_t _forks;
 			private:
 				// Флаг работы в режиме только IPv6
-				bool ipV6only;
+				bool _ipV6only;
+				// Флаг активации перехвата подключения
+				bool _interception;
 			private:
 				// Список блокированных объектов
-				set <size_t> locking;
+				set <size_t> _locking;
 			private:
 				/**
 				 * Если операционной системой не является Windows
 				 */
 				#if !defined(_WIN32) && !defined(_WIN64)
 					// Список дочерних работников
-					vector <unique_ptr <jack_t>> jacks;
+					vector <unique_ptr <jack_t>> _jacks;
 				#endif
 			private:
 				/**
@@ -262,29 +262,29 @@ namespace awh {
 				void transfer(const method_t method, const size_t aid) noexcept;
 			public:
 				/**
-				 * setBandwidth Метод установки пропускной способности сети
+				 * bandWidth Метод установки пропускной способности сети
 				 * @param aid   идентификатор адъютанта
 				 * @param read  пропускная способность на чтение (bps, kbps, Mbps, Gbps)
 				 * @param write пропускная способность на запись (bps, kbps, Mbps, Gbps)
 				 */
-				void setBandwidth(const size_t aid, const string & read, const string & write) noexcept;
+				void bandWidth(const size_t aid, const string & read, const string & write) noexcept;
 			public:
 				/**
-				 * setIpV6only Метод установки флага использования только сети IPv6
+				 * ipV6only Метод установки флага использования только сети IPv6
 				 * @param mode флаг для установки
 				 */
-				void setIpV6only(const bool mode) noexcept;
+				void ipV6only(const bool mode) noexcept;
 				/**
-				 * setForks Метод установки количества процессов
+				 * cluster Метод установки количества процессов
 				 * @param forks количество рабочих процессов
 				 */
-				void setForks(const size_t forks = 0) noexcept;
+				void cluster(const size_t forks = 0) noexcept;
 				/**
-				 * setTotal Метод установки максимального количества одновременных подключений
+				 * total Метод установки максимального количества одновременных подключений
 				 * @param wid   идентификатор воркера
 				 * @param total максимальное количество одновременных подключений
 				 */
-				void setTotal(const size_t wid, const u_short total) noexcept;
+				void total(const size_t wid, const u_short total) noexcept;
 				/**
 				 * init Метод инициализации сервера
 				 * @param wid  идентификатор воркера

@@ -160,6 +160,36 @@ namespace awh {
 			} marker_t;
 		public:
 			/**
+			 * Callback Структура функций обратного вызова
+			 */
+			typedef struct Callback {
+				// Функция обратного вызова при открытии приложения
+				function <void (const size_t, Core *)> open;
+				// Функция обратного вызова для персистентного вызова
+				function <void (const size_t, const size_t, Core *)> persist;
+				// Функция обратного вызова при запуске подключения
+				function <void (const size_t, const size_t, Core *)> connect;
+				// Функция обратного вызова при закрытии подключения
+				function <void (const size_t, const size_t, Core *)> disconnect;
+				// Функция обратного вызова при подключении нового клиента
+				function <bool (const string &, const string &, const size_t, awh::Core *)> accept;
+				// Функция обратного вызова при получении данных
+				function <void (const char *, const size_t, const size_t, const size_t, Core *)> read;
+				// Функция обратного вызова при записи данных
+				function <void (const char *, const size_t, const size_t, const size_t, Core *)> write;
+				// Функция обратного вызова при открытии подключения к прокси-серверу
+				function <void (const size_t, const size_t, awh::Core *)> connectProxy;
+				// Функция обратного вызова при получении данных с прокси-сервера
+				function <void (const char *, const size_t, const size_t, const size_t, awh::Core *)> readProxy;
+				/**
+				 * Callback Конструктор
+				 */
+				Callback() noexcept :
+				 open(nullptr), persist(nullptr), connect(nullptr),
+				 disconnect(nullptr), accept(nullptr), read(nullptr),
+				 write(nullptr), connectProxy(nullptr), readProxy(nullptr) {}
+			} fn_t;
+			/**
 			 * Adjutant Структура адъютанта
 			 */
 			typedef struct Adjutant {
@@ -198,10 +228,10 @@ namespace awh {
 					// Объект таймаутов
 					timeouts_t timeouts;
 				private:
+					// Контекст двигателя для работы с передачей данных
+					engine_t::ctx_t ectx;
 					// Создаём объект подключения клиента
 					engine_t::addr_t addr;
-					// Контекст двигателя для работы с передачей данных
-					engine_t::ctx_t engine;
 				private:
 					// Бинарный буфер для записи данных в сокет
 					vector <char> buffer;
@@ -245,7 +275,7 @@ namespace awh {
 					 * @param log    объект для работы с логами
 					 */
 					Adjutant(const Worker * parent, const fmk_t * fmk, const log_t * log) noexcept :
-					 aid(0), ip(""), mac(""), engine(fmk, log), addr(fmk, log), fmk(fmk), log(log), parent(parent) {}
+					 aid(0), ip(""), mac(""), ectx(fmk, log), addr(fmk, log), fmk(fmk), log(log), parent(parent) {}
 					/**
 					 * ~Adjutant Деструктор
 					 */
@@ -259,6 +289,9 @@ namespace awh {
 			bool wait;
 			// Флаг автоматического поддержания подключения
 			bool alive;
+		public:
+			// Объявляем функции обратного вызова
+			fn_t callback;
 		public:
 			// Маркер размера детектируемых байт
 			marker_t marker;
@@ -275,19 +308,6 @@ namespace awh {
 			const log_t * log;
 			// Создаём объект фреймворка
 			const Core * core;
-		public:
-			// Функция обратного вызова при открытии приложения
-			function <void (const size_t, Core *)> openFn;
-			// Функция обратного вызова для персистентного вызова
-			function <void (const size_t, const size_t, Core *)> persistFn;
-			// Функция обратного вызова при запуске подключения
-			function <void (const size_t, const size_t, Core *)> connectFn;
-			// Функция обратного вызова при закрытии подключения
-			function <void (const size_t, const size_t, Core *)> disconnectFn;
-			// Функция обратного вызова при получении данных
-			function <void (const char *, const size_t, const size_t, const size_t, Core *)> readFn;
-			// Функция обратного вызова при записи данных
-			function <void (const char *, const size_t, const size_t, const size_t, Core *)> writeFn;
 		public:
 			/**
 			 * clear Метод очистки
@@ -312,11 +332,7 @@ namespace awh {
 			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
 			 */
-			Worker(const fmk_t * fmk, const log_t * log) noexcept :
-			 wid(0), wait(false), alive(false),
-			 fmk(fmk), log(log), core(nullptr),
-			 openFn(nullptr), writeFn(nullptr), persistFn(nullptr),
-			 connectFn(nullptr), disconnectFn(nullptr), readFn(nullptr) {}
+			Worker(const fmk_t * fmk, const log_t * log) noexcept : wid(0), wait(false), alive(false), fmk(fmk), log(log), core(nullptr) {}
 			/**
 			 * ~Worker Деструктор
 			 */

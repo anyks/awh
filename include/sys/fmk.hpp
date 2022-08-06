@@ -406,10 +406,31 @@ namespace awh {
 			bool isDecimal(const wstring & word) const noexcept;
 		public:
 			/**
-			 * getZones Метод извлечения списка пользовательских зон интернета
+			 * domainZone Метод установки пользовательской зоны
+			 * @param zone пользовательская зона
+			 */
+			void domainZone(const string & zone) noexcept;
+			/**
+			 * domainZone Метод установки пользовательской зоны
+			 * @param zone пользовательская зона
+			 */
+			void domainZone(const wstring & zone) noexcept;
+			/**
+			 * domainZones Метод установки списка пользовательских зон
+			 * @param zones список доменных зон интернета
+			 */
+			void domainZones(const std::set <string> & zones) noexcept;
+			/**
+			 * domainZones Метод установки списка пользовательских зон
+			 * @param zones список доменных зон интернета
+			 */
+			void domainZones(const std::set <wstring> & zones) noexcept;
+			/**
+			 * domainZones Метод извлечения списка пользовательских зон интернета
 			 * @return список доменных зон
 			 */
-			const std::set <wstring> & getZones() const noexcept;
+			const std::set <wstring> & domainZones() const noexcept;
+		public:
 			/**
 			 * urls Метод извлечения координат url адресов в строке
 			 * @param text текст для извлечения url адресов
@@ -460,28 +481,6 @@ namespace awh {
 			 * @param v     результирующий вектор
 			 */
 			void split(const string & str, const string & delim, vector <wstring> & v) const noexcept;
-		public:
-			/**
-			 * setZone Метод установки пользовательской зоны
-			 * @param zone пользовательская зона
-			 */
-			void setZone(const string & zone) noexcept;
-			/**
-			 * setZone Метод установки пользовательской зоны
-			 * @param zone пользовательская зона
-			 */
-			void setZone(const wstring & zone) noexcept;
-		public:
-			/**
-			 * setZones Метод установки списка пользовательских зон
-			 * @param zones список доменных зон интернета
-			 */
-			void setZones(const std::set <string> & zones) noexcept;
-			/**
-			 * setZones Метод установки списка пользовательских зон
-			 * @param zones список доменных зон интернета
-			 */
-			void setZones(const std::set <wstring> & zones) noexcept;
 		public:
 			/**
 			 * setLocale Метод установки локали

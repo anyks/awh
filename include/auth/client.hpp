@@ -37,46 +37,46 @@ namespace awh {
 		typedef class Auth : public auth_t {
 			private:
 				// Логин пользователя
-				string user = "";
+				string _user;
 				// Пароль пользователя
-				string pass = "";
+				string _pass;
 			public:
 				/**
-				 * setUri Метод установки параметров HTTP запроса
+				 * uri Метод установки параметров HTTP запроса
 				 * @param uri строка параметров HTTP запроса
 				 */
-				void setUri(const string & uri) noexcept;
+				void uri(const string & uri) noexcept;
 			public:
 				/**
-				 * setUser Метод установки логина пользователя
+				 * user Метод установки логина пользователя
 				 * @param user логин пользователя для установки
 				 */
-				void setUser(const string & user) noexcept;
+				void user(const string & user) noexcept;
 				/**
-				 * setPass Метод установки пароля пользователя
+				 * pass Метод установки пароля пользователя
 				 * @param pass пароль пользователя для установки
 				 */
-				void setPass(const string & pass) noexcept;
+				void pass(const string & pass) noexcept;
 			public:
 				/**
-				 * setHeader Метод установки параметров авторизации из заголовков
+				 * header Метод установки параметров авторизации из заголовков
 				 * @param header заголовок HTTP с параметрами авторизации
 				 */
-				void setHeader(const string & header) noexcept;
+				void header(const string & header) noexcept;
 				/**
-				 * getHeader Метод получения строки авторизации HTTP заголовка
+				 * header Метод получения строки авторизации HTTP заголовка
 				 * @param method метод HTTP запроса
 				 * @param mode   режим вывода только значения заголовка
 				 * @return       строка авторизации
 				 */
-				const string getHeader(const string & method, const bool mode = false) noexcept;
+				const string header(const string & method, const bool mode) noexcept;
 			public:
 				/**
 				 * Auth Конструктор
 				 * @param fmk объект фреймворка
 				 * @param log объект для работы с логами
 				 */
-				Auth(const fmk_t * fmk, const log_t * log) noexcept : auth_t(fmk, log) {}
+				Auth(const fmk_t * fmk, const log_t * log) noexcept : auth_t(fmk, log), _user(""), _pass("") {}
 		} auth_t;
 	};
 };
