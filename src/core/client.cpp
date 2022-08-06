@@ -387,7 +387,7 @@ void awh::client::Core::reconnect(const size_t wid) noexcept {
 					// Получаем URL параметры запроса
 					const uri_t::url_t & url = (wrk->isProxy() ? wrk->proxy.url : wrk->url);
 
-					/*
+					
 					// Структура определяющая тип адреса
 					struct sockaddr_in serv_addr;
 
@@ -412,7 +412,7 @@ void awh::client::Core::reconnect(const size_t wid) noexcept {
 					
 					
 					const_cast <uri_t::url_t *> (&url)->ip = ip;
-					*/
+					
 					
 
 					// Выполняем запуск системы
@@ -734,7 +734,7 @@ void awh::client::Core::open(const size_t wid) noexcept {
 						// Получаем URL параметры запроса
 						const uri_t::url_t & url = (wrk->isProxy() ? wrk->proxy.url : wrk->url);
 
-						/*
+						
 						// Структура определяющая тип адреса
 						struct sockaddr_in serv_addr;
 
@@ -758,7 +758,7 @@ void awh::client::Core::open(const size_t wid) noexcept {
 						printf("IP address: %s\n", ip);
 
 						const_cast <uri_t::url_t *> (&url)->ip = ip;
-						*/
+						
 						
 						
 						

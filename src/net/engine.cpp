@@ -809,6 +809,9 @@ void awh::Engine::Context::error(const int status) const noexcept {
 			} break;
 			// Для всех остальных ошибок
 			default: {
+				
+				cout << " ^^^^^^^^^^^^^^^^^^ " << endl;
+
 				// Получаем данные описание ошибки
 				u_long error = 0;
 				// Выполняем чтение ошибок OpenSSL
@@ -2255,7 +2258,7 @@ void awh::Engine::wrapServer(ctx_t & target, addr_t * address) noexcept {
 				return;
 			}
 			// Устанавливаем флаг quiet shutdown
-			SSL_CTX_set_quiet_shutdown(target._ctx, 1);
+			// SSL_CTX_set_quiet_shutdown(target._ctx, 1);
 			// Запускаем кэширование
 			SSL_CTX_set_session_cache_mode(target._ctx, SSL_SESS_CACHE_SERVER | SSL_SESS_CACHE_NO_INTERNAL);
 			// Если цепочка сертификатов установлена
@@ -2339,8 +2342,6 @@ void awh::Engine::wrapServer(ctx_t & target, addr_t * address) noexcept {
 				target.noblock();
 				// Выполняем установку BIO SSL
 				SSL_set_bio(target._ssl, target._bio, target._bio);
-				// Выполняем активацию сервера SSL
-				// SSL_set_accept_state(target._ssl);
 			// Если BIO SSL не создано
 			} else {
 				// Очищаем созданный контекст
@@ -2515,8 +2516,6 @@ void awh::Engine::wrapClient(ctx_t & target, addr_t * address, const uri_t::url_
 				target.block();
 				// Выполняем установку BIO SSL
 				SSL_set_bio(target._ssl, target._bio, target._bio);
-				// Выполняем активацию клиента SSL
-				// SSL_set_connect_state(target._ssl);
 			// Если BIO SSL не создано
 			} else {
 				// Очищаем созданный контекст
