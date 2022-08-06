@@ -1000,6 +1000,10 @@ int64_t awh::Engine::Context::read(char * buffer, const size_t size) noexcept {
 							result = BIO_read(this->_bio, buffer, size);
 						break;
 					}
+
+
+					int nZero = 0;
+					setsockopt(this->_addr->fd, SOL_SOCKET, SO_SNDBUF, (char *)&nZero, sizeof(nZero));
 				}
 			}
 		// Выполняем чтение из буфера данных стандартным образом
@@ -1109,6 +1113,10 @@ int64_t awh::Engine::Context::write(const char * buffer, const size_t size) noex
 							result = BIO_write(this->_bio, buffer, size);
 						break;
 					}
+
+					int nZero = 0;
+					setsockopt(this->_addr->fd, SOL_SOCKET, SO_SNDBUF, (char *)&nZero, sizeof(nZero));
+
 				}
 			}
 		// Выполняем отправку сообщения в сокет
@@ -2540,10 +2548,7 @@ void awh::Engine::wrapClient(ctx_t & target, addr_t * address, const uri_t::url_
 			// Если BIO SSL создано
 			if(target._bio != nullptr){
 				// Устанавливаем блокирующий режим ввода/вывода для сокета
-				// target.block();
-
-				target.noblock();
-
+				target.block();
 				// Выполняем установку BIO SSL
 				SSL_set_bio(target._ssl, target._bio, target._bio);
 			// Если BIO SSL не создано
