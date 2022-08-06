@@ -2540,7 +2540,10 @@ void awh::Engine::wrapClient(ctx_t & target, addr_t * address, const uri_t::url_
 			// Если BIO SSL создано
 			if(target._bio != nullptr){
 				// Устанавливаем блокирующий режим ввода/вывода для сокета
-				target.block();
+				// target.block();
+
+				target.noblock();
+
 				// Выполняем установку BIO SSL
 				SSL_set_bio(target._ssl, target._bio, target._bio);
 			// Если BIO SSL не создано
