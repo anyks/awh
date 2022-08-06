@@ -1002,8 +1002,12 @@ int64_t awh::Engine::Context::read(char * buffer, const size_t size) noexcept {
 					}
 
 
-					int nZero = 0;
-					setsockopt(this->_addr->fd, SOL_SOCKET, SO_RCVBUF, (char *)&nZero, sizeof(nZero));
+					// int nZero = 0;
+					// setsockopt(this->_addr->fd, SOL_SOCKET, SO_RCVBUF, (char *)&nZero, sizeof(nZero));
+
+					struct timeval timeout={0,0};//3s
+					int ret=setsockopt(sock_fd,SOL_SOCKET,SO_SNDTIMEO,&timeout,sizeof(timeout));
+					int ret=setsockopt(sock_fd,SOL_SOCKET,SO_RCVTIMEO,&timeout,sizeof(timeout));
 				}
 			}
 		// Выполняем чтение из буфера данных стандартным образом
@@ -1114,8 +1118,13 @@ int64_t awh::Engine::Context::write(const char * buffer, const size_t size) noex
 						break;
 					}
 
+					/*
 					int nZero = 0;
 					setsockopt(this->_addr->fd, SOL_SOCKET, SO_SNDBUF, (char *)&nZero, sizeof(nZero));
+					*/
+					struct timeval timeout={0,0};//3s
+					int ret=setsockopt(sock_fd,SOL_SOCKET,SO_SNDTIMEO,&timeout,sizeof(timeout));
+					int ret=setsockopt(sock_fd,SOL_SOCKET,SO_RCVTIMEO,&timeout,sizeof(timeout));
 
 				}
 			}
