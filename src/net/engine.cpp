@@ -346,9 +346,20 @@ bool awh::Engine::Address::accept(const int fd, const int family) noexcept {
 				// Выполняем игнорирование сигнала неверной инструкции процессора
 				this->_socket.noSigill();
 				// Если сокет установлен TCP/IP
-				if(this->_type == SOCK_STREAM)
+				if(this->_type == SOCK_STREAM){
 					// Отключаем сигнал записи в оборванное подключение
 					this->_socket.noSigpipe(this->fd);
+					// Активируем KeepAlive
+					this->_socket.keepAlive(this->fd, this->alive.cnt, this->alive.idle, this->alive.intvl);
+				}
+			/**
+			 * Если операционной системой является MS Windows
+			 */
+			#else
+				// Если сокет установлен TCP/IP
+				if(this->_type == SOCK_STREAM)
+					// Активируем KeepAlive
+					this->_socket.keepAlive(this->fd);
 			#endif
 			// Если сокет установлен TCP/IP
 			if(this->_type == SOCK_STREAM){
@@ -710,7 +721,7 @@ void awh::Engine::Address::init(const string & ip, const u_int port, const int f
 				// Если приложение является клиентом и сокет установлен TCP/IP
 				} else if(this->_type == SOCK_STREAM)
 					// Активируем KeepAlive
-					this->_socket.keepAlive(this->fd, this->alive.keepcnt, this->alive.keepidle, this->alive.keepintvl);
+					this->_socket.keepAlive(this->fd, this->alive.cnt, this->alive.idle, this->alive.intvl);
 			/**
 			 * Если операционной системой является MS Windows
 			 */
@@ -809,9 +820,6 @@ void awh::Engine::Context::error(const int status) const noexcept {
 			} break;
 			// Для всех остальных ошибок
 			default: {
-				
-				cout << " ^^^^^^^^^^^^^^^^^^ " << endl;
-
 				// Получаем данные описание ошибки
 				u_long error = 0;
 				// Выполняем чтение ошибок OpenSSL
@@ -1000,14 +1008,6 @@ int64_t awh::Engine::Context::read(char * buffer, const size_t size) noexcept {
 							result = BIO_read(this->_bio, buffer, size);
 						break;
 					}
-
-
-					// int nZero = 0;
-					// setsockopt(this->_addr->fd, SOL_SOCKET, SO_RCVBUF, (char *)&nZero, sizeof(nZero));
-
-					struct timeval timeout={0,0};//3s
-					// int ret1 = setsockopt(this->_addr->fd, SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof(timeout));
-					int ret2 = setsockopt(this->_addr->fd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
 				}
 			}
 		// Выполняем чтение из буфера данных стандартным образом
@@ -1040,7 +1040,7 @@ int64_t awh::Engine::Context::read(char * buffer, const size_t size) noexcept {
 		// Если данные прочитать не удалось
 		if(result <= 0){
 			// Получаем статус сокета
-			const int status = this->_addr->_socket.isBlocking(this->_addr->fd);
+			const int status = this->_addr->_socket.isBlocking(this->_addr->fd);			
 			// Если сокет находится в блокирующем режиме
 			if((result < 0) && (status != 0))
 				// Выполняем обработку ошибок
@@ -1117,15 +1117,6 @@ int64_t awh::Engine::Context::write(const char * buffer, const size_t size) noex
 							result = BIO_write(this->_bio, buffer, size);
 						break;
 					}
-
-					/*
-					int nZero = 0;
-					setsockopt(this->_addr->fd, SOL_SOCKET, SO_SNDBUF, (char *)&nZero, sizeof(nZero));
-					*/
-					struct timeval timeout={0,0};//3s
-					int ret1 = setsockopt(this->_addr->fd, SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof(timeout));
-					// int ret2 = setsockopt(this->_addr->fd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
-
 				}
 			}
 		// Выполняем отправку сообщения в сокет
@@ -2450,7 +2441,6 @@ void awh::Engine::wrapClient(ctx_t & target, addr_t * address, const uri_t::url_
 				// Выходим
 				return;
 			}
-			/*
 			// Если нужно установить основные алгоритмы шифрования
 			if(!this->_cipher.empty()){
 				// Устанавливаем все основные алгоритмы шифрования
@@ -2465,7 +2455,6 @@ void awh::Engine::wrapClient(ctx_t & target, addr_t * address, const uri_t::url_
 			}
 			// Заставляем OpenSSL автоматические повторные попытки после событий сеанса TLS
 			SSL_CTX_set_mode(target._ctx, SSL_MODE_AUTO_RETRY);
-			*/
 			// Если цепочка сертификатов установлена
 			if(!this->_chain.empty()){
 				// Если цепочка сертификатов не установлена

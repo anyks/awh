@@ -106,13 +106,13 @@ namespace awh {
 			 * KeepAlive Структура с параметрами для постоянного подключения
 			 */
 			typedef struct KeepAlive {
-				int keepcnt;   // Максимальное количество попыток
-				int keepidle;  // Интервал времени в секундах через которое происходит проверка подключения
-				int keepintvl; // Интервал времени в секундах между попытками
+				int cnt;   // Максимальное количество попыток
+				int idle;  // Интервал времени в секундах через которое происходит проверка подключения
+				int intvl; // Интервал времени в секундах между попытками
 				/**
 				 * KeepAlive Конструктор
 				 */
-				KeepAlive() noexcept : keepcnt(3), keepidle(1), keepintvl(2) {}
+				KeepAlive() noexcept : cnt(3), idle(1), intvl(2) {}
 			} __attribute__((packed)) alive_t;
 			/**
 			 * Address Класс сетевого пространства

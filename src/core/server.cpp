@@ -859,6 +859,8 @@ void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 					#endif
 					// Создаём бъект адъютанта
 					unique_ptr <awh::worker_t::adj_t> adj(new awh::worker_t::adj_t(wrk, this->fmk, this->log));
+					// Устанавливаем время жизни подключения
+					adj->addr.alive = wrk->keepAlive;
 					// Устанавливаем параметры сокета
 					adj->addr.sonet(SOCK_STREAM, IPPROTO_TCP);
 					// Выполняем разрешение подключения

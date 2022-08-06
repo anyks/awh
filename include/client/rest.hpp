@@ -474,6 +474,13 @@ namespace awh {
 				 */
 				void user(const string & login, const string & password) noexcept;
 				/**
+				 * keepAlive Метод установки жизни подключения
+				 * @param cnt   максимальное количество попыток
+				 * @param idle  интервал времени в секундах через которое происходит проверка подключения
+				 * @param intvl интервал времени в секундах между попытками
+				 */
+				void keepAlive(const int cnt, const int idle, const int intvl) noexcept;
+				/**
 				 * serv Метод установки данных сервиса
 				 * @param id   идентификатор сервиса
 				 * @param name название сервиса

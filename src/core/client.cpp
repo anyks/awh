@@ -159,6 +159,8 @@ void awh::client::Core::connect(const size_t wid) noexcept {
 				}
 				// Создаём бъект адъютанта
 				unique_ptr <awh::worker_t::adj_t> adj(new awh::worker_t::adj_t(wrk, this->fmk, this->log));
+				// Устанавливаем время жизни подключения
+				adj->addr.alive = wrk->keepAlive;
 				// Определяем тип протокола подключения
 				switch((uint8_t) this->net.family){
 					// Если тип протокола подключения IPv4

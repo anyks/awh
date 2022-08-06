@@ -1640,6 +1640,20 @@ void awh::client::Rest::user(const string & login, const string & password) noex
 		this->_http.user(login, password);
 }
 /**
+ * keepAlive Метод установки жизни подключения
+ * @param cnt   максимальное количество попыток
+ * @param idle  интервал времени в секундах через которое происходит проверка подключения
+ * @param intvl интервал времени в секундах между попытками
+ */
+void awh::client::Rest::keepAlive(const int cnt, const int idle, const int intvl) noexcept {
+	// Выполняем установку максимального количества попыток
+	this->_worker.keepAlive.cnt = cnt;
+	// Выполняем установку интервала времени в секундах через которое происходит проверка подключения
+	this->_worker.keepAlive.idle = idle;
+	// Выполняем установку интервала времени в секундах между попытками
+	this->_worker.keepAlive.intvl = intvl;
+}
+/**
  * serv Метод установки данных сервиса
  * @param id   идентификатор сервиса
  * @param name название сервиса

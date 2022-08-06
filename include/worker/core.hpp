@@ -301,6 +301,9 @@ namespace awh {
 		public:
 			// Объект таймаутов
 			timeouts_t timeouts;
+		public:
+			// Время жизни подключения
+			engine_t::alive_t keepAlive;
 		protected:
 			// Список подключённых адъютантов
 			map <size_t, unique_ptr <adj_t>> adjutants;
