@@ -149,8 +149,8 @@ int main(int argc, char * argv[]){
 	// Устанавливаем тип сокета unix-сокет
 	// core.family(core_t::family_t::NIX);
 	// Устанавливаем тип сокета UDP TLS
-	core.sonet(core_t::sonet_t::DTLS);
-	// core.sonet(core_t::sonet_t::TLS);
+	// core.sonet(core_t::sonet_t::DTLS);
+	core.sonet(core_t::sonet_t::TLS);
 	// core.sonet(core_t::sonet_t::UDP);
 	// core.sonet(core_t::sonet_t::TCP);
 
