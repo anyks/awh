@@ -172,6 +172,11 @@ namespace awh {
 					const fmk_t * _fmk;
 					// Создаём объект работы с логами
 					const log_t * _log;
+				private:
+					/**
+					 * client Метод извлечения данных клиента
+					 */
+					void client() noexcept;
 				public:
 					/**
 					 * list Метод активации прослушивания сокета

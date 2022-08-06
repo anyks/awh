@@ -103,17 +103,18 @@ void awh::server::WebSocket::disconnectCallback(const size_t aid, const size_t w
  * acceptCallback Функция обратного вызова при проверке подключения клиента
  * @param ip   адрес интернет подключения клиента
  * @param mac  мак-адрес подключившегося клиента
+ * @param port порт подключившегося клиента
  * @param wid  идентификатор воркера
  * @param core объект биндинга TCP/IP
  * @return     результат разрешения к подключению клиента
  */
-bool awh::server::WebSocket::acceptCallback(const string & ip, const string & mac, const size_t wid, awh::core_t * core) noexcept {
+bool awh::server::WebSocket::acceptCallback(const string & ip, const string & mac, const u_int port, const size_t wid, awh::core_t * core) noexcept {
 	// Результат работы функции
 	bool result = true;
 	// Если данные существуют
 	if(!ip.empty() && !mac.empty() && (wid > 0) && (core != nullptr)){
 		// Если функция обратного вызова установлена, проверяем
-		if(this->_callback.accept != nullptr) result = this->_callback.accept(ip, mac, this);
+		if(this->_callback.accept != nullptr) result = this->_callback.accept(ip, mac, port, this);
 	}
 	// Разрешаем подключение клиенту
 	return result;
@@ -893,7 +894,7 @@ void awh::server::WebSocket::on(function <bool (const string &, const string &)>
  * on Метод установки функции обратного вызова на событие активации клиента на сервере
  * @param callback функция обратного вызова
  */
-void awh::server::WebSocket::on(function <bool (const string &, const string &, WebSocket *)> callback) noexcept {
+void awh::server::WebSocket::on(function <bool (const string &, const string &, const u_int, WebSocket *)> callback) noexcept {
 	// Устанавливаем функцию запуска и остановки
 	this->_callback.accept = callback;
 }
@@ -1079,13 +1080,22 @@ void awh::server::WebSocket::send(const size_t aid, const char * message, const 
 	}
 }
 /**
+ * port Метод получения порта подключения адъютанта
+ * @param aid идентификатор адъютанта
+ * @return    порт подключения адъютанта
+ */
+u_int awh::server::WebSocket::port(const size_t aid) const noexcept {
+	// Выводим результат
+	return this->_worker.getPort(aid);
+}
+/**
  * ip Метод получения IP адреса адъютанта
  * @param aid идентификатор адъютанта
  * @return    адрес интернет подключения адъютанта
  */
 const string & awh::server::WebSocket::ip(const size_t aid) const noexcept {
 	// Выводим результат
-	return this->_worker.ip(aid);
+	return this->_worker.getIp(aid);
 }
 /**
  * mac Метод получения MAC адреса адъютанта
@@ -1094,7 +1104,7 @@ const string & awh::server::WebSocket::ip(const size_t aid) const noexcept {
  */
 const string & awh::server::WebSocket::mac(const size_t aid) const noexcept {
 	// Выводим результат
-	return this->_worker.mac(aid);
+	return this->_worker.getMac(aid);
 }
 /**
  * stop Метод остановки клиента
@@ -1309,14 +1319,14 @@ awh::server::WebSocket::WebSocket(const server::core_t * core, const fmk_t * fmk
 	this->_worker.callback.persist = std::bind(&awh::server::WebSocket::persistCallback, this, _1, _2, _3);
 	// Устанавливаем событие подключения
 	this->_worker.callback.connect = std::bind(&awh::server::WebSocket::connectCallback, this, _1, _2, _3);
-	// Добавляем событие аццепта клиента
-	this->_worker.callback.accept = std::bind(&awh::server::WebSocket::acceptCallback, this, _1, _2, _3, _4);
 	// Устанавливаем функцию чтения данных
 	this->_worker.callback.read = std::bind(&awh::server::WebSocket::readCallback, this, _1, _2, _3, _4, _5);
 	// Устанавливаем функцию записи данных
 	this->_worker.callback.write = std::bind(&awh::server::WebSocket::writeCallback, this, _1, _2, _3, _4, _5);
 	// Устанавливаем событие отключения
 	this->_worker.callback.disconnect = std::bind(&awh::server::WebSocket::disconnectCallback, this, _1, _2, _3);
+	// Добавляем событие аццепта клиента
+	this->_worker.callback.accept = std::bind(&awh::server::WebSocket::acceptCallback, this, _1, _2, _3, _4, _5);
 	// Активируем персистентный запуск для работы пингов
 	const_cast <server::core_t *> (this->_core)->persistEnable(true);
 	// Добавляем воркер в биндер TCP/IP

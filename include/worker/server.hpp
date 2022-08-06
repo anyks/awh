@@ -54,13 +54,13 @@ namespace awh {
 				// Объект подключения
 				engine_t::addr_t addr;
 			protected:
+				// Максимальное количество одновременных подключений
+				u_int total;
+			protected:
 				// Порт сервера
 				u_int port;
 				// Хост сервера
 				string host;
-			protected:
-				// Максимальное количество одновременных подключений
-				u_int total;
 			public:
 				/**
 				 * clear Метод очистки
@@ -81,7 +81,7 @@ namespace awh {
 				 */
 				Worker(const fmk_t * fmk, const log_t * log) noexcept :
 				 awh::worker_t(fmk, log), ectx(fmk, log), addr(fmk, log),
-				 port(SERVER_PORT), host(SERVER_HOST), total(SERVER_TOTAL_CONNECT) {}
+				 total(SERVER_TOTAL_CONNECT), port(SERVER_PORT), host(SERVER_HOST) {}
 				/**
 				 * ~Worker Деструктор
 				 */

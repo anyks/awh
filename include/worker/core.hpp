@@ -171,8 +171,6 @@ namespace awh {
 				function <void (const size_t, const size_t, Core *)> connect;
 				// Функция обратного вызова при закрытии подключения
 				function <void (const size_t, const size_t, Core *)> disconnect;
-				// Функция обратного вызова при подключении нового клиента
-				function <bool (const string &, const string &, const size_t, awh::Core *)> accept;
 				// Функция обратного вызова при получении данных
 				function <void (const char *, const size_t, const size_t, const size_t, Core *)> read;
 				// Функция обратного вызова при записи данных
@@ -181,13 +179,15 @@ namespace awh {
 				function <void (const size_t, const size_t, awh::Core *)> connectProxy;
 				// Функция обратного вызова при получении данных с прокси-сервера
 				function <void (const char *, const size_t, const size_t, const size_t, awh::Core *)> readProxy;
+				// Функция обратного вызова при подключении нового клиента
+				function <bool (const string &, const string &, const u_int, const size_t, awh::Core *)> accept;
 				/**
 				 * Callback Конструктор
 				 */
 				Callback() noexcept :
 				 open(nullptr), persist(nullptr), connect(nullptr),
-				 disconnect(nullptr), accept(nullptr), read(nullptr),
-				 write(nullptr), connectProxy(nullptr), readProxy(nullptr) {}
+				 disconnect(nullptr), read(nullptr), write(nullptr),
+				 connectProxy(nullptr), readProxy(nullptr), accept(nullptr) {}
 			} fn_t;
 			/**
 			 * Adjutant Структура адъютанта
@@ -214,10 +214,12 @@ namespace awh {
 					// Идентификатор адъютанта
 					size_t aid;
 				private:
-					// Адрес интернет подключения клиента
+					// Адрес интернет-подключения клиента
 					string ip;
 					// Мак адрес подключившегося клиента
 					string mac;
+					// Порт интернет-подключения клиента
+					u_int port;
 				private:
 					// Объект буфера событий
 					bev_t bev;
@@ -275,7 +277,8 @@ namespace awh {
 					 * @param log    объект для работы с логами
 					 */
 					Adjutant(const Worker * parent, const fmk_t * fmk, const log_t * log) noexcept :
-					 aid(0), ip(""), mac(""), ectx(fmk, log), addr(fmk, log), fmk(fmk), log(log), parent(parent) {}
+					 aid(0), ip(""), mac(""), port(0), ectx(fmk, log),
+					 addr(fmk, log), fmk(fmk), log(log), parent(parent) {}
 					/**
 					 * ~Adjutant Деструктор
 					 */
@@ -315,17 +318,23 @@ namespace awh {
 			virtual void clear() noexcept;
 		public:
 			/**
-			 * ip Метод получения IP адреса адъютанта
+			 * getPort Метод получения порта подключения адъютанта
+			 * @param aid идентификатор адъютанта
+			 * @return   порт подключения адъютанта
+			 */
+			u_int getPort(const size_t aid) const noexcept;
+			/**
+			 * getIp Метод получения IP адреса адъютанта
 			 * @param aid идентификатор адъютанта
 			 * @return    адрес интернет подключения адъютанта
 			 */
-			const string & ip(const size_t aid) const noexcept;
+			const string & getIp(const size_t aid) const noexcept;
 			/**
-			 * mac Метод получения MAC адреса адъютанта
+			 * getMac Метод получения MAC адреса адъютанта
 			 * @param aid идентификатор адъютанта
 			 * @return    адрес устройства адъютанта
 			 */
-			const string & mac(const size_t aid) const noexcept;
+			const string & getMac(const size_t aid) const noexcept;
 		public:
 			/**
 			 * Worker Конструктор

@@ -278,6 +278,12 @@ void awh::client::Core::connect(const size_t wid) noexcept {
 						// Выходим из функции
 						return;
 					}
+					// Получаем адрес подключения клиента
+					ret.first->second->ip = url.ip;
+					// Получаем порт подключения клиента
+					ret.first->second->port = url.port;
+					// Получаем аппаратный адрес клиента
+					ret.first->second->mac = ret.first->second->addr.mac;
 					// Разрешаем выполнение работы
 					wrk->status.work = worker_t::work_t::ALLOW;
 					// Если статус подключения изменился

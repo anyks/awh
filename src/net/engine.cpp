@@ -19,6 +19,63 @@
 u_char awh::Engine::_cookies[16];
 // Флаг инициализации куков
 bool awh::Engine::_cookieInit = false;
+
+/**
+ * client Метод извлечения данных клиента
+ */
+void awh::Engine::Address::client() noexcept {
+	// Определяем тип подключения
+	switch(this->_peer.client.ss_family){
+		// Для протокола IPv4
+		case AF_INET:
+		// Для протокола IPv6
+		case AF_INET6: {
+			// Буфер для получения IP адреса
+			char buffer[INET6_ADDRSTRLEN];
+			// Выполняем зануление буфера данных
+			memset(buffer, 0, sizeof(buffer));
+			// Определяем тип протокола интернета
+			switch(this->_peer.client.ss_family){
+				// Если протокол интернета IPv4
+				case AF_INET: {
+					// Получаем порт клиента
+					this->port = ntohs(((struct sockaddr_in *) &this->_peer.client)->sin_port);
+					// Получаем IP адрес
+					this->ip = inet_ntop(AF_INET, &((struct sockaddr_in *) &this->_peer.client)->sin_addr, buffer, sizeof(buffer));
+				} break;
+				// Если протокол интернета IPv6
+				case AF_INET6: {
+					// Получаем порт клиента
+					this->port = ntohs(((struct sockaddr_in6 *) &this->_peer.client)->sin6_port);
+					// Получаем IP адрес
+					this->ip = inet_ntop(AF_INET6, &((struct sockaddr_in6 *) &this->_peer.client)->sin6_addr, buffer, sizeof(buffer));
+				} break;
+			}
+			// Получаем данные подключившегося клиента
+			string ip = this->_ifnet.ip((struct sockaddr *) &this->_peer.client, this->_peer.client.ss_family);
+			// Если IP адрес получен пустой
+			if((ip.compare("0.0.0.0") == 0) || (ip.compare("::") == 0)){
+				// Получаем IP адрес локального сервера
+				ip = this->_ifnet.ip(this->_peer.client.ss_family);
+				// Получаем данные MAC адреса внутреннего клиента
+				this->mac = this->_ifnet.mac(ip, this->_peer.client.ss_family);
+			// Получаем данные MAC адреса внешнего клиента
+			} else this->mac = this->_ifnet.mac(this->ip, this->_peer.client.ss_family);
+		} break;
+		/**
+		 * Если операционной системой не является Windows
+		 */
+		#if !defined(_WIN32) && !defined(_WIN64)
+			// Для протокола unix-сокета
+			case AF_UNIX: {
+				// Устанавливаем адрес сервера
+				this->ip = this->_ifnet.ip(AF_INET);
+				// Получаем данные мак адреса клиента
+				this->mac = this->_ifnet.mac(this->ip, AF_INET);
+			} break;
+		#endif
+	}
+}
 /**
  * list Метод активации прослушивания сокета
  * @return результат выполнения операции
@@ -145,6 +202,10 @@ bool awh::Engine::Address::connect() noexcept {
 		// Устанавливаем статус подключения
 		} else this->status = status_t::CONNECTED;
 	}
+	// Если подключение выполнено
+	if(this->status == status_t::CONNECTED)
+		// Выполняем извлечение данных клиента
+		this->client();
 	// Выводим результат
 	return (this->status == status_t::CONNECTED);
 }
@@ -187,39 +248,10 @@ bool awh::Engine::Address::attach(Address & addr) noexcept {
 	}
 	// Если подключение не выполненно то сообщаем об этом, выполняем подключение к удаленному серверу
 	if(::connect(this->fd, (struct sockaddr *) (&this->_peer.client), this->_peer.size) == 0){
-		// Буфер для получения IP адреса
-		char buffer[INET6_ADDRSTRLEN];
-		// Выполняем зануление буфера данных
-		memset(buffer, 0, sizeof(buffer));
+		// Выполняем извлечение данных клиента
+		this->client();
 		// Устанавливаем статус подключения
 		this->status = status_t::ATTACHED;
-		// Определяем тип протокола интернета
-		switch(this->_peer.client.ss_family){
-			// Если протокол интернета IPv4
-			case AF_INET: {
-				// Получаем порт клиента
-				this->port = ntohs(((struct sockaddr_in *) &this->_peer.client)->sin_port);
-				// Получаем IP адрес
-				this->ip = inet_ntop(AF_INET, &((struct sockaddr_in *) &this->_peer.client)->sin_addr, buffer, sizeof(buffer));
-			} break;
-			// Если протокол интернета IPv6
-			case AF_INET6: {
-				// Получаем порт клиента
-				this->port = ntohs(((struct sockaddr_in6 *) &this->_peer.client)->sin6_port);
-				// Получаем IP адрес
-				this->ip = inet_ntop(AF_INET6, &((struct sockaddr_in6 *) &this->_peer.client)->sin6_addr, buffer, sizeof(buffer));
-			} break;
-		}
-		// Получаем данные подключившегося клиента
-		string ip = this->_ifnet.ip((struct sockaddr *) &this->_peer.client, this->_peer.client.ss_family);
-		// Если IP адрес получен пустой
-		if((ip.compare("0.0.0.0") == 0) || (ip.compare("::") == 0)){
-			// Получаем IP адрес локального сервера
-			ip = this->_ifnet.ip(this->_peer.client.ss_family);
-			// Получаем данные MAC адреса внутреннего клиента
-			this->mac = this->_ifnet.mac(ip, this->_peer.client.ss_family);
-		// Получаем данные MAC адреса внешнего клиента
-		} else this->mac = this->_ifnet.mac(this->ip, this->_peer.client.ss_family);
 	}
 	// Выводим результат
 	return (this->status == status_t::ATTACHED);
@@ -350,57 +382,8 @@ bool awh::Engine::Address::accept(const int fd, const int family) noexcept {
 			} break;
 		#endif
 	}
-	// Определяем тип подключения
-	switch(this->_peer.client.ss_family){
-		// Для протокола IPv4
-		case AF_INET:
-		// Для протокола IPv6
-		case AF_INET6: {
-			// Буфер для получения IP адреса
-			char buffer[INET6_ADDRSTRLEN];
-			// Выполняем зануление буфера данных
-			memset(buffer, 0, sizeof(buffer));
-			// Определяем тип протокола интернета
-			switch(this->_peer.client.ss_family){
-				// Если протокол интернета IPv4
-				case AF_INET: {
-					// Получаем порт клиента
-					this->port = ntohs(((struct sockaddr_in *) &this->_peer.client)->sin_port);
-					// Получаем IP адрес
-					this->ip = inet_ntop(AF_INET, &((struct sockaddr_in *) &this->_peer.client)->sin_addr, buffer, sizeof(buffer));
-				} break;
-				// Если протокол интернета IPv6
-				case AF_INET6: {
-					// Получаем порт клиента
-					this->port = ntohs(((struct sockaddr_in6 *) &this->_peer.client)->sin6_port);
-					// Получаем IP адрес
-					this->ip = inet_ntop(AF_INET6, &((struct sockaddr_in6 *) &this->_peer.client)->sin6_addr, buffer, sizeof(buffer));
-				} break;
-			}
-			// Получаем данные подключившегося клиента
-			string ip = this->_ifnet.ip((struct sockaddr *) &this->_peer.client, this->_peer.client.ss_family);
-			// Если IP адрес получен пустой
-			if((ip.compare("0.0.0.0") == 0) || (ip.compare("::") == 0)){
-				// Получаем IP адрес локального сервера
-				ip = this->_ifnet.ip(this->_peer.client.ss_family);
-				// Получаем данные MAC адреса внутреннего клиента
-				this->mac = this->_ifnet.mac(ip, this->_peer.client.ss_family);
-			// Получаем данные MAC адреса внешнего клиента
-			} else this->mac = this->_ifnet.mac(this->ip, this->_peer.client.ss_family);
-		}
-		/**
-		 * Если операционной системой не является Windows
-		 */
-		#if !defined(_WIN32) && !defined(_WIN64)
-			// Для протокола unix-сокета
-			case AF_UNIX: {
-				// Устанавливаем адрес сервера
-				this->ip = this->_ifnet.ip(AF_INET);
-				// Получаем данные мак адреса клиента
-				this->mac = this->_ifnet.mac(this->ip, AF_INET);
-			} break;
-		#endif
-	}
+	// Выполняем извлечение данных клиента
+	this->client();
 	// Устанавливаем статус подключения
 	this->status = status_t::ACCEPTED;
 	// Выводим результат
@@ -1716,7 +1699,7 @@ bool awh::Engine::storeCA(SSL_CTX * ctx) const noexcept {
 	// Если контекст SSL передан
 	if(ctx != nullptr){
 		// Если доверенный сертификат (CA-файл) найден и адрес файла указан
-		if(!this->_ca.empty()){
+		if(!this->_ca.empty() && (fs_t::isfile(this->_ca) || fs_t::isdir(this->_path))){
 			// Определяем путь где хранятся сертификаты
 			const char * path = (!this->_path.empty() ? this->_path.c_str() : nullptr);
 			// Выполняем проверку
@@ -1796,7 +1779,8 @@ bool awh::Engine::storeCA(SSL_CTX * ctx) const noexcept {
 			} else if((result = fs_t::isfile(this->_ca)))
 				// Выполняем проверку доверенного сертификата
 				SSL_CTX_set_client_CA_list(ctx, SSL_load_client_CA_file(this->_ca.c_str()));
-		}
+		// Выполняем очистку адреса доверенного сертификата
+		} else this->_ca.clear();
 		// Метка следующей итерации
 		Next:
 		// Если доверенный сертификат не указан
@@ -1859,7 +1843,7 @@ bool awh::Engine::storeCA(SSL_CTX * ctx) const noexcept {
 				if((addCertToStoreFn(store, "CA") < 0) || (addCertToStoreFn(store, "AuthRoot") < 0) || (addCertToStoreFn(store, "ROOT") < 0)) return result;
 			#endif
 			// Если стор не устанавливается, тогда выводим ошибку
-			if(X509_STORE_set_default_paths(store) != 1)
+			if(!(result = (X509_STORE_set_default_paths(store) == 1)))
 				// Выводим в лог сообщение
 				this->_log->print("%s", log_t::flag_t::CRITICAL, "set default paths for x509 store is not allow");
 		}
@@ -2184,7 +2168,7 @@ void awh::Engine::wrapServer(ctx_t & target, addr_t * address) noexcept {
 		// Устанавливаем тип приложения
 		target._type = type_t::SERVER;
 		// Проверяем семейство протоколов сервера
-		switch(target._addr->_peer.server.ss_family){
+		switch(target._addr->_peer.client.ss_family){
 			// Если семейство протоколов IPv4
 			case AF_INET:
 			// Если семейство протоколов IPv6
@@ -2192,6 +2176,8 @@ void awh::Engine::wrapServer(ctx_t & target, addr_t * address) noexcept {
 			// Если семейство протоколов другое, выходим
 			default: return;
 		}
+		// Если тип сокетов установлен не как потоковые, выходим
+		if(target._addr->_type != SOCK_STREAM) return;
 		// Если объект фреймворка существует
 		if((target._addr->fd > -1) && !this->_privkey.empty() && !this->_chain.empty()){
 			// Активируем рандомный генератор

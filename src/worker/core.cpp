@@ -23,11 +23,29 @@ void awh::Worker::clear() noexcept {
 	this->adjutants.clear();
 }
 /**
- * ip Метод получения IP адреса адъютанта
+ * getPort Метод получения порта подключения адъютанта
+ * @param aid идентификатор адъютанта
+ * @return   порт подключения адъютанта
+ */
+u_int awh::Worker::getPort(const size_t aid) const noexcept {
+	// Результат работы функции
+	u_int result = 0;
+	// Если идентификатор адъютанта передан
+	if(aid > 0){
+		// Выполняем поиск адъютанта
+		auto it = this->adjutants.find(aid);
+		// Если адъютант найден, выводим IP адрес
+		if(it != this->adjutants.end()) return it->second->port;
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * getIp Метод получения IP адреса адъютанта
  * @param aid идентификатор адъютанта
  * @return    адрес интернет подключения адъютанта
  */
-const string & awh::Worker::ip(const size_t aid) const noexcept {
+const string & awh::Worker::getIp(const size_t aid) const noexcept {
 	// Результат работы функции
 	static const string result = "";
 	// Если идентификатор адъютанта передан
@@ -41,11 +59,11 @@ const string & awh::Worker::ip(const size_t aid) const noexcept {
 	return result;
 }
 /**
- * mac Метод получения MAC адреса адъютанта
+ * getMac Метод получения MAC адреса адъютанта
  * @param aid идентификатор адъютанта
  * @return    адрес устройства адъютанта
  */
-const string & awh::Worker::mac(const size_t aid) const noexcept {
+const string & awh::Worker::getMac(const size_t aid) const noexcept {
 	// Результат работы функции
 	static const string result = "";
 	// Если идентификатор адъютанта передан

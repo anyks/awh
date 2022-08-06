@@ -66,16 +66,16 @@ namespace awh {
 					function <bool (const string &, const string &)> checkAuth;
 					// Функция обратного вызова, при запуске или остановки подключения к серверу
 					function <void (const size_t, const mode_t, WebSocket *)> active;
-					// Функция разрешения подключения клиента на сервере
-					function <bool (const string &, const string &, WebSocket *)> accept;
 					// Функция обратного вызова, при получении ошибки работы клиента
 					function <void (const size_t, const u_int, const string &, WebSocket *)> error;
+					// Функция разрешения подключения клиента на сервере
+					function <bool (const string &, const string &, const u_int, WebSocket *)> accept;
 					// Функция обратного вызова, при получении сообщения с сервера
 					function <void (const size_t, const vector <char> &, const bool, WebSocket *)> message;
 					/**
 					 * Callback Конструктор
 					 */
-					Callback() noexcept : extractPass(nullptr), checkAuth(nullptr), active(nullptr), accept(nullptr), error(nullptr), message(nullptr) {}
+					Callback() noexcept : extractPass(nullptr), checkAuth(nullptr), active(nullptr), error(nullptr), accept(nullptr), message(nullptr) {}
 				} fn_t;
 			private:
 				// Порт сервера
@@ -169,15 +169,6 @@ namespace awh {
 				 */
 				void disconnectCallback(const size_t aid, const size_t wid, awh::core_t * core) noexcept;
 				/**
-				 * acceptCallback Функция обратного вызова при проверке подключения клиента
-				 * @param ip   адрес интернет подключения клиента
-				 * @param mac  мак-адрес подключившегося клиента
-				 * @param wid  идентификатор воркера
-				 * @param core объект биндинга TCP/IP
-				 * @return     результат разрешения к подключению клиента
-				 */
-				bool acceptCallback(const string & ip, const string & mac, const size_t wid, awh::core_t * core) noexcept;
-				/**
 				 * readCallback Функция обратного вызова при чтении сообщения с клиента
 				 * @param buffer бинарный буфер содержащий сообщение
 				 * @param size   размер бинарного буфера содержащего сообщение
@@ -195,6 +186,16 @@ namespace awh {
 				 * @param core   объект биндинга TCP/IP
 				 */
 				void writeCallback(const char * buffer, const size_t size, const size_t aid, const size_t wid, awh::core_t * core) noexcept;
+				/**
+				 * acceptCallback Функция обратного вызова при проверке подключения клиента
+				 * @param ip   адрес интернет подключения клиента
+				 * @param mac  мак-адрес подключившегося клиента
+				 * @param port порт подключившегося клиента
+				 * @param wid  идентификатор воркера
+				 * @param core объект биндинга TCP/IP
+				 * @return     результат разрешения к подключению клиента
+				 */
+				bool acceptCallback(const string & ip, const string & mac, const u_int port, const size_t wid, awh::core_t * core) noexcept;
 			private:
 				/**
 				 * handler Метод управления входящими методами
@@ -291,7 +292,7 @@ namespace awh {
 				 * on Метод установки функции обратного вызова на событие активации клиента на сервере
 				 * @param callback функция обратного вызова
 				 */
-				void on(function <bool (const string &, const string &, WebSocket *)> callback) noexcept;
+				void on(function <bool (const string &, const string &, const u_int, WebSocket *)> callback) noexcept;
 			public:
 				/**
 				 * sendError Метод отправки сообщения об ошибке
@@ -308,6 +309,12 @@ namespace awh {
 				 */
 				void send(const size_t aid, const char * message, const size_t size, const bool utf8 = true) noexcept;
 			public:
+				/**
+				 * port Метод получения порта подключения адъютанта
+				 * @param aid идентификатор адъютанта
+				 * @return    порт подключения адъютанта
+				 */
+				u_int port(const size_t aid) const noexcept;
 				/**
 				 * ip Метод получения IP адреса адъютанта
 				 * @param aid идентификатор адъютанта

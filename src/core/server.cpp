@@ -718,6 +718,8 @@ void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 						adj->ip = adj->addr.ip;
 						// Получаем аппаратный адрес клиента
 						adj->mac = adj->addr.mac;
+						// Получаем порт подключения клиента
+						adj->port = adj->addr.port;
 						// Устанавливаем идентификатор адъютанта
 						adj->aid = this->fmk->unixTimestamp();
 						// Выполняем получение контекста сертификата
@@ -787,6 +789,23 @@ void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 						adj->ip = adj->addr.ip;
 						// Получаем аппаратный адрес клиента
 						adj->mac = adj->addr.mac;
+						// Получаем порт подключения клиента
+						adj->port = adj->addr.port;
+						// Если функция обратного вызова проверки подключения установлена, выполняем проверку, если проверка не пройдена?
+						if((wrk->callback.accept != nullptr) && !wrk->callback.accept(adj->ip, adj->mac, adj->port, wrk->wid, this)){
+							// Выводим сообщение об ошибке
+							this->log->print(
+								"access to the server is denied for the client [%s:%d], mac = %s, socket = %d, pid = %d",
+								log_t::flag_t::WARNING,
+								adj->ip.c_str(),
+								adj->port,
+								adj->mac.c_str(),
+								adj->addr.fd,
+								getpid()
+							);
+							// Выходим
+							break;
+						}
 						// Выполняем блокировку потока
 						this->_mtx.accept.lock();
 						// Добавляем созданного адъютанта в список адъютантов
@@ -808,9 +827,10 @@ void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 						if(!this->noinfo)
 							// Выводим в консоль информацию
 							this->log->print(
-								"client connect to server, host = %s, mac = %s, socket = %d, pid = %d",
+								"connect to server client [%s:%d], mac = %s, socket = %d, pid = %d",
 								log_t::flag_t::INFO,
 								ret.first->second->ip.c_str(),
+								ret.first->second->port,
 								ret.first->second->mac.c_str(),
 								ret.first->second->addr.fd, getpid()
 							);
@@ -847,6 +867,23 @@ void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 						adj->ip = adj->addr.ip;
 						// Получаем аппаратный адрес клиента
 						adj->mac = adj->addr.mac;
+						// Получаем порт подключения клиента
+						adj->port = adj->addr.port;
+						// Если функция обратного вызова проверки подключения установлена, выполняем проверку, если проверка не пройдена?
+						if((wrk->callback.accept != nullptr) && !wrk->callback.accept(adj->ip, adj->mac, adj->port, wrk->wid, this)){
+							// Выводим сообщение об ошибке
+							this->log->print(
+								"access to the server is denied for the client [%s:%d], mac = %s, socket = %d, pid = %d",
+								log_t::flag_t::WARNING,
+								adj->ip.c_str(),
+								adj->port,
+								adj->mac.c_str(),
+								adj->addr.fd,
+								getpid()
+							);
+							// Выходим
+							break;
+						}
 						// Устанавливаем идентификатор адъютанта
 						adj->aid = this->fmk->unixTimestamp();
 						// Выполняем получение контекста сертификата
@@ -879,9 +916,10 @@ void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 						if(!this->noinfo)
 							// Выводим в консоль информацию
 							this->log->print(
-								"client connect to server, host = %s, mac = %s, socket = %d, pid = %d",
+								"connect to server client [%s:%d], mac = %s, socket = %d, pid = %d",
 								log_t::flag_t::INFO,
 								ret.first->second->ip.c_str(),
+								ret.first->second->port,
 								ret.first->second->mac.c_str(),
 								ret.first->second->addr.fd, getpid()
 							);
