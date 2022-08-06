@@ -922,11 +922,36 @@ void awh::Engine::Context::info() const noexcept {
 		exit(EXIT_FAILURE);
 	}
 	// Если объект подключения создан и сертификат передан
-	if((this->_ssl != nullptr) && SSL_get_peer_certificate(this->_ssl)){
-		printf ("------------------------------------------------------------\n");
-		X509_NAME_print_ex_fp(stdout, X509_get_subject_name(SSL_get_peer_certificate(this->_ssl)), 1, XN_FLAG_MULTILINE);
-		printf("\n\n Cipher: %s", SSL_CIPHER_get_name(SSL_get_current_cipher(this->_ssl)));
-		printf ("\n------------------------------------------------------------\n\n");
+	if(this->_ssl != nullptr){
+		// Выполняем получение сертификата сервера
+		X509 * cert = SSL_get_peer_certificate(this->_ssl);
+		// Если сертификат сервера получен
+		if(cert != nullptr){
+			// Строка для извлечения данных сертификата
+			char * str;
+			// Выводим начальный разделитель
+			printf ("------------------------------------------------------------\n\n");
+			// Выводим заголовок
+			printf("Server certificates:\n");
+			// Получаем название сертификата
+			str = X509_NAME_oneline(X509_get_subject_name(cert), 0, 0);
+			// Выводим название сертификата
+			printf("Subject: %s\n", str);
+			// Очищаем выделенную память
+			free(str);
+			// Получаем эмитента выпустившего сертификат
+			str = X509_NAME_oneline(X509_get_issuer_name(cert), 0, 0);
+			// Выводим эмитента сертификата
+			printf("Issuer: %s\n", str);
+			// Очищаем выделенную память
+			free(str);
+			// Выводим параметры шифрования
+			printf("Cipher: %s\n", SSL_CIPHER_get_name(SSL_get_current_cipher(this->_ssl)));
+			// Выводим конечный разделитель
+			printf ("\n------------------------------------------------------------\n\n");
+			// Очищаем объект сертификата
+			X509_free(cert);
+		}
 	}
 }
 /**
@@ -2408,6 +2433,7 @@ void awh::Engine::wrapClient(ctx_t & target, addr_t * address, const uri_t::url_
 				// Выходим
 				return;
 			}
+			/*
 			// Если нужно установить основные алгоритмы шифрования
 			if(!this->_cipher.empty()){
 				// Устанавливаем все основные алгоритмы шифрования
@@ -2422,6 +2448,7 @@ void awh::Engine::wrapClient(ctx_t & target, addr_t * address, const uri_t::url_
 			}
 			// Заставляем OpenSSL автоматические повторные попытки после событий сеанса TLS
 			SSL_CTX_set_mode(target._ctx, SSL_MODE_AUTO_RETRY);
+			*/
 			// Если цепочка сертификатов установлена
 			if(!this->_chain.empty()){
 				// Если цепочка сертификатов не установлена
