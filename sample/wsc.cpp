@@ -272,7 +272,7 @@ int main(int argc, char * argv[]) noexcept {
 	// ws.init("ws://127.0.0.1:2222", http_t::compress_t::DEFLATE);
 	ws.init("wss://mimi.anyks.net:2222", http_t::compress_t::DEFLATE);
 	// Устанавливаем длительное подключение
-	ws.keepAlive(100, 30, 10);
+	// ws.keepAlive(100, 30, 10);
 	// ws.init("anyks", http_t::compress_t::DEFLATE);
 	// Устанавливаем шифрование
 	// ws.crypto("PASS");
