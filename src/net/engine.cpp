@@ -959,9 +959,19 @@ int64_t awh::Engine::Context::read(char * buffer, const size_t size) noexcept {
 							this->info();
 						}
 					#endif
-					// Выполняем чтение из защищённого сокета
-					// result = BIO_read(this->_bio, buffer, size);
-					result = SSL_read(this->_ssl, buffer, size);
+					// Определяем сокет подключения
+					switch(this->_addr->_type){
+						// Если сокет установлен как TCP/IP
+						case SOCK_STREAM:
+							// Выполняем чтение из защищённого сокета
+							result = SSL_read(this->_ssl, buffer, size);
+						break;
+						// Если сокет установлен UDP
+						case SOCK_DGRAM:
+							// Выполняем чтение из защищённого сокета
+							result = BIO_read(this->_bio, buffer, size);
+						break;
+					}
 				}
 			}
 		// Выполняем чтение из буфера данных стандартным образом
@@ -1058,9 +1068,19 @@ int64_t awh::Engine::Context::write(const char * buffer, const size_t size) noex
 							this->info();
 						}
 					#endif
-					// Выполняем отправку сообщения через защищённый канал
-					// result = BIO_write(this->_bio, buffer, size);
-					result = SSL_write(this->_ssl, buffer, size);
+					// Определяем сокет подключения
+					switch(this->_addr->_type){
+						// Если сокет установлен как TCP/IP
+						case SOCK_STREAM:
+							// Выполняем отправку сообщения через защищённый канал
+							result = SSL_write(this->_ssl, buffer, size);
+						break;
+						// Если сокет установлен UDP
+						case SOCK_DGRAM:
+							// Выполняем отправку сообщения через защищённый канал
+							result = BIO_write(this->_bio, buffer, size);
+						break;
+					}
 				}
 			}
 		// Выполняем отправку сообщения в сокет
