@@ -2225,6 +2225,7 @@ void awh::Engine::wrapServer(ctx_t & target, addr_t * address) noexcept {
 				// Выходим
 				return;
 			}
+			/*
 			// Выполняем инициализацию доверенного сертификата
 			if(!this->storeCA(target._ctx)){
 				// Очищаем созданный контекст
@@ -2232,6 +2233,7 @@ void awh::Engine::wrapServer(ctx_t & target, addr_t * address) noexcept {
 				// Выходим
 				return;
 			}
+			*/
 			// Устанавливаем флаг quiet shutdown
 			SSL_CTX_set_quiet_shutdown(target._ctx, 1);
 			// Запускаем кэширование
