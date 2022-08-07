@@ -456,32 +456,32 @@ void awh::Core::signals(const int signal) noexcept {
 			// Если возникает сигнал ручной остановкой процесса
 			case SIGINT:
 				// Выводим сообщение об завершении работы процесса
-				this->log->print("child process was closed, goodbye!", log_t::flag_t::INFO);
+				this->log->print("child process terminated, goodbye!", log_t::flag_t::INFO);
 			break;
 			// Если возникает сигнал ошибки выполнения арифметической операции
 			case SIGFPE:
 				// Выводим сообщение об завершении работы процесса
-				this->log->print("child process was closed with signal [%s]", log_t::flag_t::WARNING, "SIGFPE");
+				this->log->print("child process was terminated by a signal [%s]", log_t::flag_t::WARNING, "SIGFPE");
 			break;
 			// Если возникает сигнал выполнения неверной инструкции
 			case SIGILL:
 				// Выводим сообщение об завершении работы процесса
-				this->log->print("child process was closed with signal [%s]", log_t::flag_t::WARNING, "SIGILL");
+				this->log->print("child process was terminated by a signal [%s]", log_t::flag_t::WARNING, "SIGILL");
 			break;
 			// Если возникает сигнал запроса принудительного завершения процесса
 			case SIGTERM:
 				// Выводим сообщение об завершении работы процесса
-				this->log->print("child process was closed with signal [%s]", log_t::flag_t::WARNING, "SIGTERM");
+				this->log->print("child process was terminated by a signal [%s]", log_t::flag_t::WARNING, "SIGTERM");
 			break;
 			// Если возникает сигнал сегментации памяти (обращение к несуществующему адресу памяти)
 			case SIGSEGV:
 				// Выводим сообщение об завершении работы процесса
-				this->log->print("child process was closed with signal [%s]", log_t::flag_t::WARNING, "SIGSEGV");
+				this->log->print("child process was terminated by a signal [%s]", log_t::flag_t::WARNING, "SIGSEGV");
 			break;
 			// Если возникает сигнал запроса принудительное закрытие приложения из кода программы
 			case SIGABRT:
 				// Выводим сообщение об завершении работы процесса
-				this->log->print("child process was closed with signal [%s]", log_t::flag_t::WARNING, "SIGABRT");
+				this->log->print("child process was terminated by a signal [%s]", log_t::flag_t::WARNING, "SIGABRT");
 			break;
 		}
 		// Выполняем остановку работы
