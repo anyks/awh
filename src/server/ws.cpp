@@ -272,6 +272,8 @@ void awh::server::WebSocket::actionRead(const size_t aid) noexcept {
 									adj->http.clear();
 									// Получаем бинарные данные REST запроса
 									buffer = adj->http.reject(400, "Unsupported protocol version");
+									// Если бинарные данные запроса получены, отправляем на сервер
+									adj->stopped = !buffer.empty();
 									// Завершаем работу
 									break;
 								}
@@ -281,6 +283,8 @@ void awh::server::WebSocket::actionRead(const size_t aid) noexcept {
 									adj->http.clear();
 									// Получаем бинарные данные REST запроса
 									buffer = adj->http.reject(400, "Wrong client key");
+									// Если бинарные данные запроса получены, отправляем на сервер
+									adj->stopped = !buffer.empty();
 									// Завершаем работу
 									break;
 								}
@@ -345,6 +349,8 @@ void awh::server::WebSocket::actionRead(const size_t aid) noexcept {
 									adj->buffer.payload.clear();
 									// Формируем ответ, что страница не доступна
 									buffer = adj->http.reject(500);
+									// Если бинарные данные запроса получены, отправляем на сервер
+									adj->stopped = !buffer.empty();
 								}
 							// Сообщаем, что рукопожатие не выполнено
 							} else {
@@ -356,6 +362,8 @@ void awh::server::WebSocket::actionRead(const size_t aid) noexcept {
 								adj->buffer.payload.clear();
 								// Формируем ответ, что страница не доступна
 								buffer = adj->http.reject(403);
+								// Если бинарные данные запроса получены, отправляем на сервер
+								adj->stopped = !buffer.empty();
 							}
 						} break;
 						// Если запрос неудачный
@@ -371,7 +379,7 @@ void awh::server::WebSocket::actionRead(const size_t aid) noexcept {
 						} break;
 					}
 					// Если бинарные данные запроса получены, отправляем на сервер
-					if((adj->stopped = !buffer.empty())){
+					if(!buffer.empty()){
 						// Тело полезной нагрузки
 						vector <char> payload;
 						/**
@@ -399,8 +407,10 @@ void awh::server::WebSocket::actionRead(const size_t aid) noexcept {
 							// Выполняем отправку чанков
 							core->write(payload.data(), payload.size(), aid);
 						}
-						// Выполняем запрет на получение входящих данных
-						core->disabled(core_t::method_t::READ, aid);
+						// Если получение данных нужно остановить
+						if(adj->stopped)
+							// Выполняем запрет на получение входящих данных
+							core->disabled(core_t::method_t::READ, aid);
 						// Если экшен соответствует, выполняем его сброс
 						if(adj->action == ws_worker_t::action_t::READ)
 							// Выполняем сброс экшена
@@ -1206,18 +1216,18 @@ void awh::server::WebSocket::bytesDetect(const worker_t::mark_t read, const work
 		this->_worker.marker.write.max = BUFFER_WRITE_MAX;
 }
 /**
- * setRealm Метод установки название сервера
+ * realm Метод установки название сервера
  * @param realm название сервера
  */
-void awh::server::WebSocket::setRealm(const string & realm) noexcept {
+void awh::server::WebSocket::realm(const string & realm) noexcept {
 	// Устанавливаем название сервера
 	this->_realm = realm;
 }
 /**
- * setOpaque Метод установки временного ключа сессии сервера
+ * opaque Метод установки временного ключа сессии сервера
  * @param opaque временный ключ сессии сервера
  */
-void awh::server::WebSocket::setOpaque(const string & opaque) noexcept {
+void awh::server::WebSocket::opaque(const string & opaque) noexcept {
 	// Устанавливаем временный ключ сессии сервера
 	this->_opaque = opaque;
 }

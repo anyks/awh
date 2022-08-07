@@ -263,7 +263,7 @@ int main(int argc, char * argv[]) noexcept {
 	// ws.proxy("http://fn3nzc:GZJAeP@217.29.62.232:11283");
 	// ws.proxy("socks5://xYkj89:eqCQJA@85.195.81.167:12387");
 	// Выполняем инициализацию типа авторизации
-	// ws.authType();
+	// ws.authType(auth_t::type_t::BASIC);
 	// ws.authType(auth_t::type_t::DIGEST, auth_t::hash_t::SHA256);
 	// Устанавливаем тип авторизации прокси-сервера
 	// ws.authTypeProxy();
@@ -272,12 +272,12 @@ int main(int argc, char * argv[]) noexcept {
 	// ws.init("ws://127.0.0.1:2222", http_t::compress_t::DEFLATE);
 	ws.init("wss://mimi.anyks.net:2222", http_t::compress_t::DEFLATE);
 	// Устанавливаем длительное подключение
-	// ws.keepAlive(100, 30, 10);
+	ws.keepAlive(100, 30, 10);
 	// ws.init("anyks", http_t::compress_t::DEFLATE);
 	// Устанавливаем шифрование
 	// ws.crypto("PASS");
 	// Устанавливаем сабпротоколы
-	// ws.subs({"test2", "test8", "test9"});
+	ws.subs({"test2", "test8", "test9"});
 	// Выполняем подписку на получение логов
 	log.subscribe(bind(&WebSocket::subscribe, &executor, _1, _2));
 	// Подписываемся на событие запуска и остановки сервера

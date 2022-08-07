@@ -1910,6 +1910,15 @@ bool awh::Engine::storeCA(SSL_CTX * ctx) const noexcept {
 	return result;
 }
 /**
+ * isTLS Метод проверки на активацию режима шифрования
+ * @param ctx  контекст подключения
+ * @return     результат проверки
+ */
+bool awh::Engine::isTLS(ctx_t & ctx) const noexcept {
+	// Выводим результат проверки
+	return ctx._tls;
+}
+/**
  * wait Метод ожидания рукопожатия
  * @param target контекст назначения
  */

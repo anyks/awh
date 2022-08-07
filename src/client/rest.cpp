@@ -245,10 +245,10 @@ void awh::client::Rest::actionRead() noexcept {
 						request.url = this->_http.getUrl();
 						// Если адрес запроса получен
 						if(!request.url.empty()){
-							// Выполняем очистку оставшихся данных
-							this->_buffer.clear();
 							// Увеличиваем количество попыток
 							request.attempt++;
+							// Выполняем очистку оставшихся данных
+							this->_buffer.clear();
 							// Если соединение является постоянным
 							if(this->_http.isAlive())
 								// Устанавливаем новый экшен выполнения

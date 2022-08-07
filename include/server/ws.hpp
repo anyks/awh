@@ -375,15 +375,15 @@ namespace awh {
 				void bytesDetect(const worker_t::mark_t read, const worker_t::mark_t write) noexcept;
 			public:
 				/**
-				 * setRealm Метод установки название сервера
+				 * realm Метод установки название сервера
 				 * @param realm название сервера
 				 */
-				void setRealm(const string & realm) noexcept;
+				void realm(const string & realm) noexcept;
 				/**
-				 * setOpaque Метод установки временного ключа сессии сервера
+				 * opaque Метод установки временного ключа сессии сервера
 				 * @param opaque временный ключ сессии сервера
 				 */
-				void setOpaque(const string & opaque) noexcept;
+				void opaque(const string & opaque) noexcept;
 			public:
 				/**
 				 * authType Метод установки типа авторизации

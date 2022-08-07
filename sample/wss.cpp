@@ -157,11 +157,12 @@ int main(int argc, char * argv[]){
 	// Выполняем активацию многопоточности
 	// ws.multiThreads(22);
 	// Устанавливаем название сервера
-	// ws.setRealm("ANYKS");
+	// ws.realm("ANYKS");
 	// Устанавливаем временный ключ сессии
-	// ws.setOpaque("keySession");
+	// ws.opaque("keySession");
 	// Устанавливаем тип авторизации
-	// ws.setAuthType(auth_t::type_t::DIGEST, auth_t::hash_t::SHA256);
+	// ws.authType(auth_t::type_t::DIGEST, auth_t::hash_t::SHA256);
+	// ws.authType(auth_t::type_t::BASIC);
 	// Выполняем инициализацию WebSocket сервера
 	// ws.init(2222, "127.0.0.1", http_t::compress_t::DEFLATE);
 	ws.init(2222, "", http_t::compress_t::DEFLATE);
@@ -182,9 +183,9 @@ int main(int argc, char * argv[]){
 	// core.certificate("./certs/server-cert.pem", "./certs/server-key.pem");
 
 	// Устанавливаем шифрование
-	// ws.setCrypt("PASS");
+	// ws.crypto("PASS");
 	// Устанавливаем сабпротоколы
-	// ws.setSubs({"test1", "test2", "test3"});
+	ws.subs({"test1", "test2", "test3"});
 	// Устанавливаем функцию извлечения пароля
 	// ws.on((function <string (const string &)>) bind(&WebSocket::password, &executor, _1));
 	// Устанавливаем функцию проверки авторизации

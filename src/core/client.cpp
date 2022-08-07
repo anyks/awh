@@ -213,6 +213,24 @@ void awh::client::Core::connect(const size_t wid) noexcept {
 						this->engine.wrap(adj->ectx, &adj->addr, engine_t::type_t::CLIENT);
 					// Выполняем получение контекста сертификата
 					else this->engine.wrapClient(adj->ectx, &adj->addr, url);
+					// Если мы хотим работать в зашифрованном режиме
+					if(this->net.sonet == sonet_t::TLS){
+						// Если сертификаты не приняты, выходим
+						if(!this->engine.isTLS(adj->ectx)){
+							// Разрешаем выполнение работы
+							wrk->status.work = worker_t::work_t::ALLOW;
+							// Устанавливаем статус подключения
+							wrk->status.real = worker_t::mode_t::DISCONNECT;
+							// Выводим сообщение об ошибке
+							this->log->print("encryption mode cannot be activated", log_t::flag_t::CRITICAL);
+							// Выводим сообщение об ошибке
+							if(!this->noinfo) this->log->print("%s", log_t::flag_t::INFO, "disconnected from the server");
+							// Выводим функцию обратного вызова
+							if(wrk->callback.disconnect != nullptr) wrk->callback.disconnect(0, wrk->wid, this);
+							// Выходим из функции
+							return;
+						}
+					}
 					// Если подключение не обёрнуто
 					if(adj->addr.fd < 0){
 						// Запрещаем чтение данных с сервера

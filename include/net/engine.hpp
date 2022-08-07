@@ -516,6 +516,13 @@ namespace awh {
 			bool storeCA(SSL_CTX * ctx) const noexcept;
 		public:
 			/**
+			 * isTLS Метод проверки на активацию режима шифрования
+			 * @param ctx контекст подключения
+			 * @return    результат проверки
+			 */
+			bool isTLS(ctx_t & ctx) const noexcept;
+		public:
+			/**
 			 * wait Метод ожидания рукопожатия
 			 * @param target контекст назначения
 			 */

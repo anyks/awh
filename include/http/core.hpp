@@ -179,8 +179,6 @@ namespace awh {
 		protected:
 			// Флаг зашифрованных данных
 			mutable bool crypt;
-			// Флаг проверки аутентификации
-			mutable bool failAuth;
 		private:
 			// Флаг разрешающий передавать тело чанками
 			mutable bool _chunking;

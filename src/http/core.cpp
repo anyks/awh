@@ -247,8 +247,6 @@ void awh::Http::reset() noexcept {
 	this->web.reset();
 	// Выполняем сброс параметров запроса
 	this->url.clear();
-	// Обнуляем флаг проверки авторизации
-	this->failAuth = false;
 	// Выполняем сброс стейта авторизации
 	this->stath = stath_t::NONE;
 	// Выполняем сброс стейта текущего запроса
@@ -1092,10 +1090,14 @@ vector <char> awh::Http::proxy(const uri_t::url_t & url) noexcept {
 			this->addBlack("Accept-Language");
 			// Добавляем в чёрный список заголовок Accept-Encoding
 			this->addBlack("Accept-Encoding");
-			// Добавляем поддержку постоянного подключения
-			this->header("Connection", "Keep-Alive");
-			// Добавляем поддержку постоянного подключения для прокси-сервера
-			this->header("Proxy-Connection", "Keep-Alive");
+			// Если заголовок подключения ещё не существует
+			if(!this->web.isHeader("connection"))
+				// Добавляем поддержку постоянного подключения
+				this->header("Connection", "Keep-Alive");
+			// Если заголовок подключения прокси ещё не существует
+			if(!this->web.isHeader("proxy-connection"))
+				// Добавляем поддержку постоянного подключения для прокси-сервера
+				this->header("Proxy-Connection", "Keep-Alive");
 			// Получаем параметры авторизации
 			const string & auth = this->auth.client.header("connect", true);
 			// Если данные авторизации получены
@@ -1124,14 +1126,19 @@ vector <char> awh::Http::reject(const u_int code, const string & mess) const noe
 	query.message = (!mess.empty() ? mess : this->message(code));
 	// Если сообщение получено
 	if(!query.message.empty()){
-		// Если требуется ввод авторизационных данных
-		if((code == 401) || (code == 407))
+		// Если заголовок подключения ещё не существует
+		if(!this->web.isHeader("connection")){
+			// Если требуется ввод авторизационных данных
+			if((code == 401) || (code == 407))
+				// Добавляем заголовок закрытия подключения
+				this->web.header("Connection", "Keep-Alive");
 			// Добавляем заголовок закрытия подключения
-			this->web.header("Connection", "Keep-Alive");
-		// Добавляем заголовок закрытия подключения
-		else this->web.header("Connection", "Close");
-		// Добавляем заголовок тип контента
-		this->web.header("Content-type", "text/html; charset=utf-8");
+			else this->web.header("Connection", "Close");
+		}
+		// Если заголовок типа контента не существует
+		if(!this->web.isHeader("content-type"))
+			// Добавляем заголовок тип контента
+			this->web.header("Content-type", "text/html; charset=utf-8");
 		// Если запрос должен содержать тело сообщения
 		if((code >= 200) && (code != 204) && (code != 304) && (code != 308)){
 			// Получаем данные тела
@@ -1146,6 +1153,8 @@ vector <char> awh::Http::reject(const u_int code, const string & mess) const noe
 				// Добавляем тело сообщения
 				this->web.body(body.data(), body.size());
 			}
+			// Удаляем размер передаваемого контента
+			this->web.rmHeader("content-length");
 			// Добавляем заголовок тела сообщения
 			this->web.header("Content-Length", to_string(body.size()));
 		}
@@ -1730,9 +1739,9 @@ void awh::Http::crypto(const string & pass, const string & salt, const hash_t::c
  * @param uri объект работы с URI
  */
 awh::Http::Http(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcept :
- web(fmk, log), auth(fmk, log), hash(log), dhash(log), crypt(false), failAuth(false),
- _chunking(false), _chunk(BUFFER_CHUNK), _servId(AWH_SHORT_NAME), _servVer(AWH_VERSION),
- _servName(AWH_NAME), _userAgent(HTTP_HEADER_AGENT), stath(stath_t::NONE), state(state_t::NONE),
+ web(fmk, log), auth(fmk, log), hash(log), dhash(log), crypt(false), _chunking(false),
+ _chunk(BUFFER_CHUNK), _servId(AWH_SHORT_NAME), _servVer(AWH_VERSION), _servName(AWH_NAME),
+ _userAgent(HTTP_HEADER_AGENT), stath(stath_t::NONE), state(state_t::NONE),
  _compress(compress_t::NONE), httpType(web_t::hid_t::NONE), _fn(nullptr), fmk(fmk), log(log), uri(uri) {
 	// Устанавливаем функцию обратного вызова для получения чанков
 	this->web.chunking(std::bind(&awh::Http::chunkingCallback, this, _1, _2));

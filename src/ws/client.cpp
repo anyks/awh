@@ -132,17 +132,25 @@ awh::Http::stath_t awh::client::WS::checkAuth() noexcept {
 	switch(query.code){
 		// Если требуется авторизация
 		case 401: {
-			// Если попытки провести аутентификацию ещё небыло, пробуем ещё раз
-			if(!this->failAuth && (this->auth.client.type() == awh::auth_t::type_t::DIGEST)){
-				// Получаем параметры авторизации
-				const string & auth = this->web.header("www-authenticate");
-				// Если параметры авторизации найдены
-				if((this->failAuth = !auth.empty())){
-					// Устанавливаем заголовок HTTP в параметры авторизации
-					this->auth.client.header(auth);
+			// Определяем тип авторизации
+			switch((uint8_t) this->auth.client.type()){
+				// Если производится авторизация DIGEST
+				case (uint8_t) awh::auth_t::type_t::DIGEST: {
+					// Получаем параметры авторизации
+					const string & auth = this->web.header("www-authenticate");
+					// Если параметры авторизации найдены
+					if(!auth.empty()){
+						// Устанавливаем заголовок HTTP в параметры авторизации
+						this->auth.client.header(auth);
+						// Просим повторить авторизацию ещё раз
+						result = http_t::stath_t::RETRY;
+					}
+				} break;
+				// Если производится авторизация BASIC
+				case (uint8_t) awh::auth_t::type_t::BASIC:
 					// Просим повторить авторизацию ещё раз
 					result = http_t::stath_t::RETRY;
-				}
+				break;
 			}
 		} break;
 		// Если нужно произвести редирект
