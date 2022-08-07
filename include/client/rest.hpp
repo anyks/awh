@@ -166,6 +166,8 @@ namespace awh {
 				bool _unbind;
 				// Флаг принудительного отключения
 				bool _active;
+				// Флаг принудительной остановки
+				bool _stopped;
 				// Флаг выполнения редиректов
 				bool _redirects;
 			private:

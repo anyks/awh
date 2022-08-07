@@ -266,8 +266,8 @@ void awh::client::Rest::actionRead() noexcept {
 							return;
 						}
 					}
-					// Устанавливаем код ответа
-					response.code = 403;
+					// Устанавливаем флаг принудительной остановки
+					this->_stopped = true;
 				} break;
 				// Если запрос выполнен удачно
 				case (uint8_t) awh::http_t::stath_t::GOOD: {
@@ -311,10 +311,10 @@ void awh::client::Rest::actionRead() noexcept {
 					goto Next;
 				} break;
 				// Если запрос неудачный
-				case (uint8_t) awh::http_t::stath_t::FAULT: {
-					// Запрещаем бесконечный редирект при запросе авторизации
-					if((response.code == 401) || (response.code == 407)) response.code = 403;
-				} break;
+				case (uint8_t) awh::http_t::stath_t::FAULT:
+					// Устанавливаем флаг принудительной остановки
+					this->_stopped = true;
+				break;
 			}
 			// Выполняем очистку оставшихся данных
 			this->_buffer.clear();
@@ -434,10 +434,9 @@ void awh::client::Rest::actionDisconnect() noexcept {
 		// Получаем объект ответа
 		const res_t & response = this->_responses.front();
 		// Если нужно произвести запрос заново
-		if((response.code == 201) || (response.code == 301) ||
-		   (response.code == 302) || (response.code == 303) ||
-		   (response.code == 307) || (response.code == 308) ||
-		   (response.code == 401) || (response.code == 407)){
+		if(!this->_stopped && ((response.code == 201) || (response.code == 301) ||
+		   (response.code == 302) || (response.code == 303) || (response.code == 307) ||
+		   (response.code == 308) || (response.code == 401) || (response.code == 407))){
 			// Если статус ответа требует произвести авторизацию или заголовок перенаправления указан
 			if((response.code == 401) || (response.code == 407) || this->_http.isHeader("location")){
 				// Получаем объект запроса
@@ -647,8 +646,8 @@ void awh::client::Rest::actionProxyRead() noexcept {
 								return;
 							}
 						}
-						// Устанавливаем код ответа
-						response.code = 403;
+						// Устанавливаем флаг принудительной остановки
+						this->_stopped = true;
 					} break;
 					// Если запрос выполнен удачно
 					case (uint8_t) awh::http_t::stath_t::GOOD: {
@@ -665,10 +664,8 @@ void awh::client::Rest::actionProxyRead() noexcept {
 					} break;
 					// Если запрос неудачный
 					case (uint8_t) awh::http_t::stath_t::FAULT: {
-						// Запрещаем бесконечный редирект при запросе авторизации
-						if((response.code == 401) || (response.code == 407))
-							// Устанавливаем код ответа
-							response.code = 403;
+						// Устанавливаем флаг принудительной остановки
+						this->_stopped = true;
 						// Получаем тело запроса
 						const auto & entity = this->_worker.proxy.http.body();
 						// Устанавливаем заголовки ответа
@@ -768,6 +765,8 @@ void awh::client::Rest::actionProxyConnect() noexcept {
 void awh::client::Rest::flush() noexcept {
 	// Сбрасываем флаг принудительной остановки
 	this->_active = false;
+	// Снимаем флаг принудительной остановки
+	this->_stopped = false;
 	// Выполняем очистку оставшихся данных
 	this->_buffer.clear();
 }
@@ -1701,8 +1700,8 @@ void awh::client::Rest::authTypeProxy(const auth_t::type_t type, const auth_t::h
  */
 awh::client::Rest::Rest(const client::core_t * core, const fmk_t * fmk, const log_t * log) noexcept :
  _nwk(fmk), _uri(fmk, &_nwk), _http(fmk, log, &_uri), _worker(fmk, log), _action(action_t::NONE),
- _compress(awh::http_t::compress_t::NONE), _aid(0), _unbind(true), _active(false), _redirects(false),
- _attempts(10), _fmk(fmk), _log(log), _core(core) {
+ _compress(awh::http_t::compress_t::NONE), _aid(0), _unbind(true), _active(false), _stopped(false),
+ _redirects(false), _attempts(10), _fmk(fmk), _log(log), _core(core) {
 	// Устанавливаем событие на запуск системы
 	this->_worker.callback.open = std::bind(&awh::client::Rest::openCallback, this, _1, _2);
 	// Устанавливаем событие подключения

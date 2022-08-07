@@ -279,8 +279,8 @@ void awh::client::WebSocket::actionRead() noexcept {
 							return;
 						}
 					}
-					// Устанавливаем код ответа
-					this->_code = 403;
+					// Устанавливаем флаг принудительной остановки
+					this->_stopped = true;
 					// Создаём сообщение
 					mess = mess_t(this->_code, this->_http.message(this->_code));
 					// Выводим сообщение
@@ -342,17 +342,12 @@ void awh::client::WebSocket::actionRead() noexcept {
 				case (uint8_t) http_t::stath_t::FAULT: {
 					// Получаем параметры запроса
 					const auto & query = this->_http.query();
+					// Устанавливаем флаг принудительной остановки
+					this->_stopped = true;
 					// Устанавливаем код ответа
 					this->_code = query.code;
 					// Создаём сообщение
 					mess = mess_t(this->_code, query.message);
-					// Запрещаем бесконечный редирект при запросе авторизации
-					if((this->_code == 401) || (this->_code == 407)){
-						// Устанавливаем код ответа
-						this->_code = 403;
-						// Присваиваем сообщению, новое значение кода
-						mess = this->_code;
-					}
 					// Выводим сообщение
 					this->error(mess);
 				} break;
@@ -568,8 +563,7 @@ void awh::client::WebSocket::actionConnect() noexcept {
  */
 void awh::client::WebSocket::actionDisconnect() noexcept {
 	// Если нужно произвести запрос заново
-	if((this->_code == 301) || (this->_code == 308) ||
-	   (this->_code == 401) || (this->_code == 407)){
+	if(!this->_stopped && ((this->_code == 301) || (this->_code == 308) || (this->_code == 401) || (this->_code == 407))){
 		// Если статус ответа требует произвести авторизацию или заголовок перенаправления указан
 		if((this->_code == 401) || (this->_code == 407) || this->_http.isHeader("location")){
 			// Выполняем установку следующего экшена на открытие подключения
@@ -726,10 +720,8 @@ void awh::client::WebSocket::actionProxyRead() noexcept {
 								return;
 							}
 						}
-						// Устанавливаем код ответа
-						this->_code = 403;
-						// Присваиваем сообщению, новое значение кода
-						mess = this->_code;
+						// Устанавливаем флаг принудительной остановки
+						this->_stopped = true;
 					} break;
 					// Если запрос выполнен удачно
 					case (uint8_t) http_t::stath_t::GOOD: {
@@ -745,15 +737,10 @@ void awh::client::WebSocket::actionProxyRead() noexcept {
 						return;
 					} break;
 					// Если запрос неудачный
-					case (uint8_t) http_t::stath_t::FAULT: {
-						// Запрещаем бесконечный редирект при запросе авторизации
-						if((this->_code == 401) || (this->_code == 407)){
-							// Устанавливаем код ответа
-							this->_code = 403;
-							// Присваиваем сообщению, новое значение кода
-							mess = this->_code;
-						}
-					} break;
+					case (uint8_t) http_t::stath_t::FAULT:
+						// Устанавливаем флаг принудительной остановки
+						this->_stopped = true;
+					break;
 				}
 				// Выводим сообщение
 				this->error(mess);
