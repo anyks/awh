@@ -1541,7 +1541,7 @@ int awh::Engine::generateCookie(SSL * ssl, u_char * cookie, u_int * size) noexce
 		default: OPENSSL_assert(0);
 	}
 	// Увеличиваем смещение на размер буфера входящих данных
-	offset += sizeof(in_port_t);
+	offset += sizeof(u_short);
 	// Выполняем выделение память для буфера данных
 	u_char * buffer = (u_char *) OPENSSL_malloc(offset);
 	// Если память для буфера данных не выделена
@@ -1558,16 +1558,16 @@ int awh::Engine::generateCookie(SSL * ssl, u_char * cookie, u_int * size) noexce
 		// Для протокола IPv4
 		case AF_INET: {
 			// Выполняем чтение в буфер данных данные порта
-			memcpy(buffer, &peer.s4.sin_port, sizeof(in_port_t));
+			memcpy(buffer, &peer.s4.sin_port, sizeof(u_short));
 			// Выполняем чтение в буфер данных данные структуры подключения
 			memcpy(buffer + sizeof(peer.s4.sin_port), &peer.s4.sin_addr, sizeof(struct in_addr));
 		} break;
 		// Для протокола IPv6
 		case AF_INET6: {
 			// Выполняем чтение в буфер данных данные порта
-			memcpy(buffer, &peer.s6.sin6_port, sizeof(in_port_t));
+			memcpy(buffer, &peer.s6.sin6_port, sizeof(u_short));
 			// Выполняем чтение в буфер данных данные структуры подключения
-			memcpy(buffer + sizeof(in_port_t), &peer.s6.sin6_addr, sizeof(struct in6_addr));
+			memcpy(buffer + sizeof(u_short), &peer.s6.sin6_addr, sizeof(struct in6_addr));
 		} break;
 		// Если производится работа с другими протоколами, выходим
 		default: OPENSSL_assert(0);
@@ -1621,7 +1621,7 @@ int awh::Engine::verifyCookie(SSL * ssl, const u_char * cookie, u_int size) noex
 		default: OPENSSL_assert(0);
 	}
 	// Увеличиваем смещение на размер буфера входящих данных
-	offset += sizeof(in_port_t);
+	offset += sizeof(u_short);
 	// Выполняем выделение память для буфера данных
 	u_char * buffer = (u_char *) OPENSSL_malloc(offset);
 	// Если память для буфера данных не выделена
@@ -1638,16 +1638,16 @@ int awh::Engine::verifyCookie(SSL * ssl, const u_char * cookie, u_int size) noex
 		// Для протокола IPv4
 		case AF_INET: {
 			// Выполняем чтение в буфер данных данные порта
-			memcpy(buffer, &peer.s4.sin_port, sizeof(in_port_t));
+			memcpy(buffer, &peer.s4.sin_port, sizeof(u_short));
 			// Выполняем чтение в буфер данных данные структуры подключения
-			memcpy(buffer + sizeof(in_port_t), &peer.s4.sin_addr, sizeof(struct in_addr));
+			memcpy(buffer + sizeof(u_short), &peer.s4.sin_addr, sizeof(struct in_addr));
 		} break;
 		// Для протокола IPv6
 		case AF_INET6: {
 			// Выполняем чтение в буфер данных данные порта
-			memcpy(buffer, &peer.s6.sin6_port, sizeof(in_port_t));
+			memcpy(buffer, &peer.s6.sin6_port, sizeof(u_short));
 			// Выполняем чтение в буфер данных данные структуры подключения
-			memcpy(buffer + sizeof(in_port_t), &peer.s6.sin6_addr, sizeof(struct in6_addr));
+			memcpy(buffer + sizeof(u_short), &peer.s6.sin6_addr, sizeof(struct in6_addr));
 		} break;
 		// Если производится работа с другими протоколами, выходим
 		default: OPENSSL_assert(0);
