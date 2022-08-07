@@ -381,9 +381,9 @@ int awh::Socket::readTimeout(const int fd, const time_t msec) const noexcept {
 	 */
 	#if defined(_WIN32) || defined(_WIN64)
 		// Устанавливаем время таймаута в миллисекундах
-		int timeout = msec;
+		const int timeout = msec;
 		// Выполняем установку таймаута на чтение данных из сокета
-		if(setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout)) < 0){
+		if(setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, (const char *) &timeout, sizeof(timeout)) < 0){
 			// Выводим в лог информацию
 			this->_log->print("cannot set SO_RCVTIMEO option on socket %d", log_t::flag_t::CRITICAL, fd);
 			// Выходим
@@ -422,9 +422,9 @@ int awh::Socket::writeTimeout(const int fd, const time_t msec) const noexcept {
 	 */
 	#if defined(_WIN32) || defined(_WIN64)
 		// Устанавливаем время таймаута в миллисекундах
-		int timeout = msec;
+		const int timeout = msec;
 		// Выполняем установку таймаута на чтение данных из сокета
-		if(setsockopt(fd, SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof(timeout)) < 0){
+		if(setsockopt(fd, SOL_SOCKET, SO_SNDTIMEO, (const char *) &timeout, sizeof(timeout)) < 0){
 			// Выводим в лог информацию
 			this->_log->print("cannot set SO_SNDTIMEO option on socket %d", log_t::flag_t::CRITICAL, fd);
 			// Выходим
