@@ -657,13 +657,18 @@ void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 						this->adjutants.emplace(ret.first->first, ret.first->second.get());
 						// Выполняем блокировку потока
 						this->_mtx.accept.unlock();
-						// Если процесс не является основным
-						if((this->_pid != getpid()) && !this->_jacks.empty()){
-							// Устанавливаем активное событие подключения
-							this->_event = event_t::CONNECT;
-							// Выполняем разрешение на отправку сообщения
-							this->_jacks.at(this->_index)->write.start();
-						}
+						/**
+						 * Если операционной системой не является Windows
+						 */
+						#if !defined(_WIN32) && !defined(_WIN64)
+							// Если процесс не является основным
+							if((this->_pid != getpid()) && !this->_jacks.empty()){
+								// Устанавливаем активное событие подключения
+								this->_event = event_t::CONNECT;
+								// Выполняем разрешение на отправку сообщения
+								this->_jacks.at(this->_index)->write.start();
+							}
+						#endif
 						// Запускаем чтение данных
 						this->enabled(engine_t::method_t::READ, ret.first->first);
 						// Выполняем функцию обратного вызова
@@ -732,13 +737,18 @@ void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 						this->adjutants.emplace(ret.first->first, ret.first->second.get());
 						// Выполняем блокировку потока
 						this->_mtx.accept.unlock();
-						// Если процесс не является основным
-						if((this->_pid != getpid()) && !this->_jacks.empty()){
-							// Устанавливаем активное событие подключения
-							this->_event = event_t::CONNECT;
-							// Выполняем разрешение на отправку сообщения
-							this->_jacks.at(this->_index)->write.start();
-						}
+						/**
+						 * Если операционной системой не является Windows
+						 */
+						#if !defined(_WIN32) && !defined(_WIN64)
+							// Если процесс не является основным
+							if((this->_pid != getpid()) && !this->_jacks.empty()){
+								// Устанавливаем активное событие подключения
+								this->_event = event_t::CONNECT;
+								// Выполняем разрешение на отправку сообщения
+								this->_jacks.at(this->_index)->write.start();
+							}
+						#endif
 						// Запускаем чтение данных
 						this->enabled(engine_t::method_t::READ, ret.first->first);
 						// Если вывод информационных данных не запрещён
@@ -833,13 +843,18 @@ void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 						this->adjutants.emplace(ret.first->first, ret.first->second.get());
 						// Выполняем блокировку потока
 						this->_mtx.accept.unlock();
-						// Если процесс не является основным
-						if((this->_pid != getpid()) && !this->_jacks.empty()){
-							// Устанавливаем активное событие подключения
-							this->_event = event_t::CONNECT;
-							// Выполняем разрешение на отправку сообщения
-							this->_jacks.at(this->_index)->write.start();
-						}
+						/**
+						 * Если операционной системой не является Windows
+						 */
+						#if !defined(_WIN32) && !defined(_WIN64)
+							// Если процесс не является основным
+							if((this->_pid != getpid()) && !this->_jacks.empty()){
+								// Устанавливаем активное событие подключения
+								this->_event = event_t::CONNECT;
+								// Выполняем разрешение на отправку сообщения
+								this->_jacks.at(this->_index)->write.start();
+							}
+						#endif
 						// Запускаем чтение данных
 						this->enabled(engine_t::method_t::READ, ret.first->first);
 						// Если вывод информационных данных не запрещён
