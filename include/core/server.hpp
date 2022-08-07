@@ -76,17 +76,6 @@ namespace awh {
 				 */
 				#if !defined(_WIN32) && !defined(_WIN64)
 					/**
-					 * Signals Структура событий сигналов
-					 */
-					typedef struct Signals {
-						ev::sig sint;  // Перехватчик сигнала SIGINT
-						ev::sig sfpe;  // Перехватчик сигнала SIGFPE
-						ev::sig sill;  // Перехватчик сигнала SIGILL
-						ev::sig sterm; // Перехватчик сигнала SIGTERM
-						ev::sig sabrt; // Перехватчик сигнала SIGABRT
-						ev::sig ssegv; // Перехватчик сигнала SIGSEGV
-					} sig_t;
-					/**
 					 * Message Структура межпроцессного сообщения
 					 */
 					typedef struct Message {
@@ -131,16 +120,7 @@ namespace awh {
 			private:
 				// Мютекс для блокировки основного потока
 				mtx_t _mtx;
-				/**
-				 * Если операционной системой не является Windows
-				 */
-				#if !defined(_WIN32) && !defined(_WIN64)
-					// Объект работы с сигналами
-					sig_t _sig;
-				#endif
 			private:
-				// Идентификатор процесса
-				pid_t _pid;
 				// Индекс работника в списке
 				size_t _index;
 				// Активное событие
@@ -187,12 +167,6 @@ namespace awh {
 				 * Если операционной системой не является Windows
 				 */
 				#if !defined(_WIN32) && !defined(_WIN64)
-					/**
-					 * signal Функция обратного вызова при возникновении сигнала
-					 * @param watcher объект события сигнала
-					 * @param revents идентификатор события
-					 */
-					void signal(ev::sig & watcher, int revents) noexcept;
 					/**
 					 * children Функция обратного вызова при завершении работы процесса
 					 * @param watcher объект события дочернего процесса

@@ -53,6 +53,7 @@
 #include <net/engine.hpp>
 // #include <net/dns.hpp>
 #include <worker/core.hpp>
+#include <sys/signals.hpp>
 
 // Подписываемся на стандартное пространство имён
 using namespace std;
@@ -74,35 +75,29 @@ namespace awh {
 			/**
 			 * Статус работы сетевого ядра
 			 */
-			enum class status_t : uint8_t {STOP, START};
+			enum class status_t : uint8_t {
+				STOP  = 0x02, // Статус остановки
+				START = 0x01  // Статус запуска
+			};
 		public:
 			/**
 			 * Семейство протоколов интернета
 			 */
-			enum class family_t : uint8_t {IPV4, IPV6, NIX};
+			enum class family_t : uint8_t {
+				IPV4 = 0x01, // Протокол IPv4
+				IPV6 = 0x02, // Протокол IPv6
+				NIX  = 0x03  // Протокол unix-сокет
+			};
 			/**
 			 * Тип сокета подключения
 			 */
-			enum class sonet_t : uint8_t {TCP, UDP, TLS, DTLS};
+			enum class sonet_t : uint8_t {
+				TCP  = 0x01, // Нешифрованное подключение TCP
+				UDP  = 0x02, // Нешифрованное подключение UDP
+				TLS  = 0x03, // Шифрованное подключение TCP
+				DTLS = 0x04  // Шифрованное подключение UDP
+			};
 		private:
-			/**
-			 * Методы только для OS Windows
-			 */
-			#if defined(_WIN32) || defined(_WIN64)
-				// Устанавливаем прототип функции обработчика сигнала
-				typedef void (* SignalHandlerPointer)(int);
-				/**
-				 * Signals Структура событий сигналов
-				 */
-				typedef struct Signals {
-					SignalHandlerPointer sint;  // Перехватчик сигнала SIGINT
-					SignalHandlerPointer sfpe;  // Перехватчик сигнала SIGFPE
-					SignalHandlerPointer sill;  // Перехватчик сигнала SIGILL
-					SignalHandlerPointer sabrt; // Перехватчик сигнала SIGABRT
-					SignalHandlerPointer sterm; // Перехватчик сигнала SIGTERM
-					SignalHandlerPointer ssegv; // Перехватчик сигнала SIGSEGV
-				} sig_t;
-			#endif
 			/**
 			 * Timer Класс таймера
 			 */
@@ -252,6 +247,9 @@ namespace awh {
 					~Dispatch() noexcept;
 			} dispatch_t;
 		protected:
+			// Идентификатор процесса
+			pid_t _pid;
+		protected:
 			// Создаем объект сети
 			network_t _nwk;
 		protected:
@@ -270,19 +268,14 @@ namespace awh {
 			// Объект для работы с чтением базы событий
 			dispatch_t dispatch;
 		private:
+			// Объект работы с сигналами
+			sig_t _sig;
+		private:
 			// Объект события таймера
 			timer_t _timer;
 		private:
 			// Мютекс для блокировки основного потока
 			mutable mtx_t _mtx;
-		private:
-			/**
-			 * Методы только для OS Windows
-			 */
-			#if defined(_WIN32) || defined(_WIN64)
-				// Объект работы с сигналами
-				sig_t _sig;
-			#endif
 		protected:
 			// Статус сетевого ядра
 			status_t status;
@@ -319,7 +312,7 @@ namespace awh {
 			const log_t * log;
 		private:
 			// Функция обратного вызова при запуске/остановке модуля
-			function <void (const bool, Core * core)> _fn;
+			function <void (const bool, Core *)> _fn;
 		private:
 			/**
 			 * launching Метод вызова при активации базы событий
@@ -341,6 +334,11 @@ namespace awh {
 			 * @param revents идентификатор события
 			 */
 			void persistent(ev::timer & timer, int revents) noexcept;
+		private:
+			/**
+			 * signals Метод вывода полученного сигнала
+			 */
+			void signals(const int signal) noexcept;
 		protected:
 			/**
 			 * clean Метод буфера событий

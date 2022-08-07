@@ -16,22 +16,6 @@
 #include <core/core.hpp>
 
 /**
- * Методы только для OS Windows
- */
-#if defined(_WIN32) || defined(_WIN64)
-	/**
-	 * winHandler Функция фильтр перехватчика сигналов
-	 * @param except объект исключения
-	 * @return       тип полученного исключения
-	 */
-	static void SignalHandler(int signal) noexcept {
-		// Очищаем сетевой контекст
-		WSACleanup();
-		// Завершаем работу основного процесса
-		exit(signal);
-	}
-#endif
-/**
  * read Функция обратного вызова при чтении данных с сокета
  * @param watcher объект события чтения
  * @param revents идентификатор события
@@ -456,6 +440,62 @@ void awh::Core::persistent(ev::timer & timer, int revents) noexcept {
 	timer.start(this->_timer.delay);
 }
 /**
+ * signals Метод вывода полученного сигнала
+ */
+void awh::Core::signals(const int signal) noexcept {
+	// Выполняем функцию завершения работы
+	this->closedown();
+	// Если процесс является родительским
+	if(this->_pid == getpid())
+		// Выполняем остановку работы
+		this->stop();
+	// Если процесс является дочерним
+	else {
+		// Определяем тип сигнала
+		switch(signal){
+			// Если возникает сигнал ручной остановкой процесса
+			case SIGINT:
+				// Выводим сообщение об завершении работы процесса
+				this->log->print("child process was closed, goodbye!", log_t::flag_t::INFO);
+			break;
+			// Если возникает сигнал ошибки выполнения арифметической операции
+			case SIGFPE:
+				// Выводим сообщение об завершении работы процесса
+				this->log->print("child process was closed with signal [%s]", log_t::flag_t::WARNING, "SIGFPE");
+			break;
+			// Если возникает сигнал выполнения неверной инструкции
+			case SIGILL:
+				// Выводим сообщение об завершении работы процесса
+				this->log->print("child process was closed with signal [%s]", log_t::flag_t::WARNING, "SIGILL");
+			break;
+			// Если возникает сигнал запроса принудительного завершения процесса
+			case SIGTERM:
+				// Выводим сообщение об завершении работы процесса
+				this->log->print("child process was closed with signal [%s]", log_t::flag_t::WARNING, "SIGTERM");
+			break;
+			// Если возникает сигнал сегментации памяти (обращение к несуществующему адресу памяти)
+			case SIGSEGV:
+				// Выводим сообщение об завершении работы процесса
+				this->log->print("child process was closed with signal [%s]", log_t::flag_t::WARNING, "SIGSEGV");
+			break;
+			// Если возникает сигнал запроса принудительное закрытие приложения из кода программы
+			case SIGABRT:
+				// Выводим сообщение об завершении работы процесса
+				this->log->print("child process was closed with signal [%s]", log_t::flag_t::WARNING, "SIGABRT");
+			break;
+		}
+		// Выполняем остановку работы
+		this->stop();
+	}
+	/**
+	 * Методы только для OS Windows
+	 */
+	#if defined(_WIN32) || defined(_WIN64)
+		// Очищаем сетевой контекст
+		WSACleanup();
+	#endif
+}
+/**
  * clean Метод буфера событий
  * @param aid идентификатор адъютанта
  */
@@ -765,8 +805,14 @@ void awh::Core::rebase() noexcept {
 		}
 		// Выполняем остановку работы
 		this->stop();
+		// Выполняем остановку отслеживания сигналов
+		this->_sig.stop();
 		// Выполняем пересоздание базы событий
 		this->dispatch.rebase();
+		// Выполняем установку новой базы событий
+		this->_sig.base(this->dispatch.base);
+		// Выполняем запуск отслеживания сигналов
+		this->_sig.start();
 		/*
 		// Добавляем базу событий для DNS резолвера IPv4
 		this->dns4.setBase(this->dispatch.base);
@@ -1502,8 +1548,8 @@ void awh::Core::network(const vector <string> & ip, const vector <string> & ns, 
  * @param sonet  тип сокета подключения (TCP / UDP)
  */
 awh::Core::Core(const fmk_t * fmk, const log_t * log, const family_t family, const sonet_t sonet) noexcept :
- _nwk(fmk), uri(fmk, &_nwk), engine(fmk, log, &uri), /* dns4(fmk, log, &nwk), dns6(fmk, log, &nwk),*/
- dispatch(this), status(status_t::STOP), type(engine_t::type_t::CLIENT), mode(false), noinfo(false),
+ _pid(getpid()), _nwk(fmk), uri(fmk, &_nwk), engine(fmk, log, &uri), /* dns4(fmk, log, &nwk), dns6(fmk, log, &nwk),*/
+ dispatch(this), _sig(dispatch.base), status(status_t::STOP), type(engine_t::type_t::CLIENT), mode(false), noinfo(false),
  persist(false), cores(0), servName(AWH_SHORT_NAME), _persIntvl(PERSIST_INTERVAL), fmk(fmk), log(log), _fn(nullptr) {
 	// Устанавливаем тип сокета
 	this->net.sonet = sonet;
@@ -1554,19 +1600,11 @@ awh::Core::Core(const fmk_t * fmk, const log_t * log, const family_t family, con
 			// Выходим из приложения
 			exit(EXIT_FAILURE);
 		}
-		// Создаём обработчик сигнала для SIGFPE
-		this->_sig.sfpe = signal(SIGFPE, SignalHandler);
-		// Создаём обработчик сигнала для SIGILL
-		this->_sig.sill = signal(SIGILL, SignalHandler);
-		// Создаём обработчик сигнала для SIGINT
-		this->_sig.sint = signal(SIGINT, SignalHandler);
-		// Создаём обработчик сигнала для SIGABRT
-		this->_sig.sabrt = signal(SIGABRT, SignalHandler);
-		// Создаём обработчик сигнала для SIGSEGV
-		this->_sig.ssegv = signal(SIGSEGV, SignalHandler);
-		// Создаём обработчик сигнала для SIGTERM
-		this->_sig.sterm = signal(SIGTERM, SignalHandler);
 	#endif
+	// Устанавливаем функцию обработки сигналов
+	this->_sig.on(std::bind(&core_t::signals, this, placeholders::_1));
+	// Выполняем запуск отслеживания сигналов
+	this->_sig.start();
 }
 /**
  * ~Core Деструктор

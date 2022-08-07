@@ -207,61 +207,6 @@ void awh::server::worker_t::accept(ev::io & watcher, int revents) noexcept {
 		}
 	}
 	/**
-	 * signal Функция обратного вызова при возникновении сигнала
-	 * @param watcher объект события сигнала
-	 * @param revents идентификатор события
-	 */
-	void awh::server::Core::signal(ev::sig & watcher, int revents) noexcept {
-		// Останавливаем сигнал
-		watcher.stop();
-		// Если процесс является родительским
-		if(this->_pid == getpid()){
-			// Выполняем остановку работы
-			this->stop();
-			// Завершаем работу основного процесса
-			exit(watcher.signum);
-		// Если процесс является дочерним
-		} else {
-			// Определяем тип сигнала
-			switch(watcher.signum){
-				// Если возникает сигнал ручной остановкой процесса
-				case SIGINT:
-					// Выводим сообщение об завершении работы процесса
-					this->log->print("child process was closed, goodbye!", log_t::flag_t::INFO);
-				break;
-				// Если возникает сигнал ошибки выполнения арифметической операции
-				case SIGFPE:
-					// Выводим сообщение об завершении работы процесса
-					this->log->print("child process was closed with signal [%s]", log_t::flag_t::WARNING, "SIGFPE");
-				break;
-				// Если возникает сигнал выполнения неверной инструкции
-				case SIGILL:
-					// Выводим сообщение об завершении работы процесса
-					this->log->print("child process was closed with signal [%s]", log_t::flag_t::WARNING, "SIGILL");
-				break;
-				// Если возникает сигнал запроса принудительного завершения процесса
-				case SIGTERM:
-					// Выводим сообщение об завершении работы процесса
-					this->log->print("child process was closed with signal [%s]", log_t::flag_t::WARNING, "SIGTERM");
-				break;
-				// Если возникает сигнал сегментации памяти (обращение к несуществующему адресу памяти)
-				case SIGSEGV:
-					// Выводим сообщение об завершении работы процесса
-					this->log->print("child process was closed with signal [%s]", log_t::flag_t::WARNING, "SIGSEGV");
-				break;
-				// Если возникает сигнал запроса принудительное закрытие приложения из кода программы
-				case SIGABRT:
-					// Выводим сообщение об завершении работы процесса
-					this->log->print("child process was closed with signal [%s]", log_t::flag_t::WARNING, "SIGABRT");
-				break;
-			}
-			// Выполняем остановку работы
-			this->stop();
-			// Завершаем работу дочернего процесса
-			exit(watcher.signum);
-		}
-	}
-	/**
 	 * children Функция обратного вызова при завершении работы процесса
 	 * @param watcher объект события дочернего процесса
 	 * @param revents идентификатор события
@@ -498,37 +443,10 @@ void awh::server::Core::forking(const size_t wid, const size_t index, const size
 						jack->read.start();
 						// Если это первый воркер, активируем его
 						if(initialization){
-							{
-								// Выполняем игнорирование сигналов SIGPIPE и SIGABRT
-								::signal(SIGPIPE, SIG_IGN);
-								::signal(SIGABRT, SIG_IGN);
-								// Устанавливаем базу событий для сигналов
-								this->_sig.sint.set(this->dispatch.base);
-								this->_sig.sfpe.set(this->dispatch.base);
-								this->_sig.sill.set(this->dispatch.base);
-								this->_sig.sterm.set(this->dispatch.base);
-								this->_sig.sabrt.set(this->dispatch.base);
-								this->_sig.ssegv.set(this->dispatch.base);
-								// Устанавливаем событие на отслеживание сигнала
-								this->_sig.sint.set <core_t, &core_t::signal> (this);
-								this->_sig.sfpe.set <core_t, &core_t::signal> (this);
-								this->_sig.sill.set <core_t, &core_t::signal> (this);
-								this->_sig.sterm.set <core_t, &core_t::signal> (this);
-								this->_sig.sabrt.set <core_t, &core_t::signal> (this);
-								this->_sig.ssegv.set <core_t, &core_t::signal> (this);
-								// Выполняем отслеживание возникающего сигнала
-								this->_sig.sint.start(SIGINT);
-								this->_sig.sfpe.start(SIGFPE);
-								this->_sig.sill.start(SIGILL);
-								this->_sig.sterm.start(SIGTERM);
-								this->_sig.sabrt.start(SIGABRT);
-								this->_sig.ssegv.start(SIGSEGV);
-							}{
-								// Устанавливаем тип сообщения
-								this->_event = event_t::SELECT;
-								// Запускаем запись данных дочернему процессу
-								jack->write.start();
-							}
+							// Устанавливаем тип сообщения
+							this->_event = event_t::SELECT;
+							// Запускаем запись данных дочернему процессу
+							jack->write.start();
 						}
 						// Устанавливаем базу событий
 						jack->cw.set(this->dispatch.base);
@@ -1572,10 +1490,8 @@ void awh::server::Core::init(const size_t wid, const u_int port, const string & 
  * @param log объект для работы с логами
  */
 awh::server::Core::Core(const fmk_t * fmk, const log_t * log) noexcept :
- awh::core_t(fmk, log), _pid(-1), _index(0), _event(event_t::NONE),
+ awh::core_t(fmk, log), _index(0), _event(event_t::NONE),
  _forks(1), _ipV6only(false), _interception(false) {
-	// Устанавливаем идентификатор процесса
-	this->_pid = getpid();
 	// Устанавливаем тип запускаемого ядра
 	this->type = engine_t::type_t::SERVER;
 }
