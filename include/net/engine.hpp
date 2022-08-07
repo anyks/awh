@@ -34,6 +34,13 @@
 #include <sys/types.h>
 
 /**
+ * Если операционной системой является Linux
+ */
+#ifdef  __linux__
+	#include <netinet/sctp.h>
+#endif
+
+/**
  * Если операционной системой является MS Windows
  */
 #if defined(_WIN32) || defined(_WIN64)
@@ -147,7 +154,7 @@ namespace awh {
 				private:
 					// Тип сокета (SOCK_STREAM / SOCK_DGRAM)
 					int _type;
-					// Протокол сокета (IPPROTO_TCP / IPPROTO_UDP)
+					// Протокол сокета (IPPROTO_TCP / IPPROTO_UDP / IPPROTO_SCTP)
 					int _protocol;
 				private:
 					// Флаг инициализации шифрования TLS

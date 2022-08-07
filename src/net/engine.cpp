@@ -935,24 +935,20 @@ void awh::Engine::Context::info() const noexcept {
 		X509 * cert = SSL_get_peer_certificate(this->_ssl);
 		// Если сертификат сервера получен
 		if(cert != nullptr){
-			// Строка для извлечения данных сертификата
-			char * str;
+			// Буфер данных для получения данных
+			char buffer[256];
 			// Выводим начальный разделитель
 			printf ("------------------------------------------------------------\n\n");
 			// Выводим заголовок
-			printf("Server certificates:\n");
+			printf("Peer certificates:\n");
 			// Получаем название сертификата
-			str = X509_NAME_oneline(X509_get_subject_name(cert), 0, 0);
+			X509_NAME_oneline(X509_get_subject_name(cert), buffer, sizeof(buffer));
 			// Выводим название сертификата
-			printf("Subject: %s\n", str);
-			// Очищаем выделенную память
-			free(str);
+			printf("Subject: %s\n", buffer);
 			// Получаем эмитента выпустившего сертификат
-			str = X509_NAME_oneline(X509_get_issuer_name(cert), 0, 0);
+			X509_NAME_oneline(X509_get_issuer_name(cert), buffer, sizeof(buffer));
 			// Выводим эмитента сертификата
-			printf("Issuer: %s\n", str);
-			// Очищаем выделенную память
-			free(str);
+			printf("Issuer: %s\n", buffer);
 			// Выводим параметры шифрования
 			printf("Cipher: %s\n", SSL_CIPHER_get_name(SSL_get_current_cipher(this->_ssl)));
 			// Выводим конечный разделитель
@@ -1407,11 +1403,37 @@ const bool awh::Engine::certHostcheck(const string & host, const string & patt) 
  * @return     результат проверки
  */
 int awh::Engine::verifyCert(const int ok, X509_STORE_CTX * x509) noexcept {
-	// Экранируем ошибку неиспользуемой переменной
-	(void) ok;
-	(void) x509;
-	// Сообщаем, что всегда доверяем пользовательскому сертификату
-	return 1;
+	// Буфер данных для получения данных
+	char buffer[256];
+	// Если проверка не выполнена
+	if(!ok){
+		// Получаем данные ошибки
+		int error = X509_STORE_CTX_get_error(x509);
+		// Получаем глубину ошибки
+		int depth = X509_STORE_CTX_get_error_depth(x509);
+		// Выполняем извлечение сертификата
+		X509 * cert = X509_STORE_CTX_get_current_cert(x509);
+		// Выводим начальный разделитель
+		printf ("------------------------------------------------------------\n\n");
+		// Выводим заголовок
+		printf("Current certificate verification:\n");
+		// Получаем название сертификата
+		X509_NAME_oneline(X509_get_subject_name(cert), buffer, sizeof(buffer));
+		// Выводим название сертификата
+		printf("Subject: %s\n", buffer);
+		// Получаем эмитента выпустившего сертификат
+		X509_NAME_oneline(X509_get_issuer_name(cert), buffer, sizeof(buffer));
+		// Выводим эмитента сертификата
+		printf("Issuer: %s\n", buffer);
+		// Выводим информацию о ошибке
+		printf("Error: %s\n", X509_verify_cert_error_string(error));
+		// Выводим конечный разделитель
+		printf ("\n------------------------------------------------------------\n\n");
+		// Очищаем объект сертификата
+		X509_free(cert);
+	}
+	// Выводим результат
+	return ok;
 }
 /**
  * verifyHost Функция обратного вызова для проверки валидности хоста
@@ -2135,19 +2157,14 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const type_t type) noex
 					return;
 				}
 			}
-			// Определяем тип активного приложения
-			switch((uint8_t) type){
-				// Если приложение является клиентом
-				case (uint8_t) type_t::CLIENT:
-					// Устанавливаем глубину проверки
-					SSL_CTX_set_verify_depth(target._ctx, 2);
-				break;
-				// Если приложение является сервером
-				case (uint8_t) type_t::SERVER:
-					// Выполняем проверку сертификата клиента
-					SSL_CTX_set_verify(target._ctx, SSL_VERIFY_PEER | SSL_VERIFY_CLIENT_ONCE, &verifyCert);
-				break;
-			}
+			// Если нужно произвести проверку
+			if(this->_verify){
+				// Устанавливаем глубину проверки
+				SSL_CTX_set_verify_depth(target._ctx, 2);
+				// Выполняем проверку сертификата клиента
+				SSL_CTX_set_verify(target._ctx, SSL_VERIFY_PEER | SSL_VERIFY_CLIENT_ONCE, &verifyCert);
+			// Запрещаем выполнять првоерку сертификата пользователя
+			} else SSL_CTX_set_verify(target._ctx, SSL_VERIFY_NONE, nullptr);
 			// Устанавливаем, что мы должны читать как можно больше входных байтов
 			SSL_CTX_set_read_ahead(target._ctx, 1);
 			// Если приложение является сервером

@@ -149,10 +149,13 @@ int main(int argc, char * argv[]){
 	// Устанавливаем тип сокета unix-сокет
 	// core.family(core_t::family_t::NIX);
 	// Устанавливаем тип сокета UDP TLS
-	// core.sonet(core_t::sonet_t::DTLS);
+	core.sonet(core_t::sonet_t::DTLS);
 	// core.sonet(core_t::sonet_t::TLS);
 	// core.sonet(core_t::sonet_t::UDP);
-	core.sonet(core_t::sonet_t::TCP);
+	// core.sonet(core_t::sonet_t::TCP);
+
+	// Отключаем валидацию сертификата
+	core.verifySSL(false);
 
 	// Выполняем активацию многопоточности
 	// ws.multiThreads(22);
@@ -180,10 +183,10 @@ int main(int argc, char * argv[]){
 	*/
 	
 
-	// core.certificate("./certs/server-cert.pem", "./certs/server-key.pem");
+	core.certificate("./certs/server-cert.pem", "./certs/server-key.pem");
 
 	// Устанавливаем шифрование
-	// ws.crypto("PASS");
+	ws.crypto("PASS");
 	// Устанавливаем сабпротоколы
 	ws.subs({"test1", "test2", "test3"});
 	// Устанавливаем функцию извлечения пароля
