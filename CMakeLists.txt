@@ -132,6 +132,7 @@ set(SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/src/sys/fmk.cpp"
     "${CMAKE_SOURCE_DIR}/src/sys/log.cpp"
     "${CMAKE_SOURCE_DIR}/src/sys/signals.cpp"
+    "${CMAKE_SOURCE_DIR}/src/sys/cluster.cpp"
     "${CMAKE_SOURCE_DIR}/src/ws/ws.cpp"
     "${CMAKE_SOURCE_DIR}/src/ws/frame.cpp"
     "${CMAKE_SOURCE_DIR}/src/ws/client.cpp"
