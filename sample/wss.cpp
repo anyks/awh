@@ -149,8 +149,8 @@ int main(int argc, char * argv[]){
 	// Устанавливаем тип сокета unix-сокет
 	// core.family(core_t::family_t::NIX);
 	// Устанавливаем тип сокета UDP TLS
-	// core.sonet(core_t::sonet_t::DTLS);
-	core.sonet(core_t::sonet_t::TLS);
+	core.sonet(core_t::sonet_t::DTLS);
+	// core.sonet(core_t::sonet_t::TLS);
 	// core.sonet(core_t::sonet_t::UDP);
 	// core.sonet(core_t::sonet_t::TCP);
 
@@ -171,16 +171,16 @@ int main(int argc, char * argv[]){
 	// Устанавливаем длительное подключение
 	ws.keepAlive(100, 30, 10);
 
-	
+	/*
 	// Устанавливаем SSL сертификаты сервера
 	core.certificate(
 		"/usr/local/etc/letsencrypt/live/anyks.net/fullchain.pem",
 		"/usr/local/etc/letsencrypt/live/anyks.net/privkey.pem"
 	);
-	
+	*/
 	
 
-	// core.certificate("./certs/server-cert.pem", "./certs/server-key.pem");
+	core.certificate("./certs/server-cert.pem", "./certs/server-key.pem");
 
 	// Устанавливаем шифрование
 	// ws.crypto("PASS");
