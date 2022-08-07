@@ -1253,6 +1253,27 @@ int awh::Engine::Context::isblock() noexcept {
 	return (this->_addr->fd > -1 ? this->_addr->_socket.isBlocking(this->_addr->fd) : -1);
 }
 /**
+ * timeout Метод установки таймаута
+ * @param msec   количество миллисекунд
+ * @param method метод для установки таймаута
+ * @return       результат установки таймаута
+ */
+int awh::Engine::Context::timeout(const time_t msec, const method_t method) noexcept {
+	// Определяем тип метода
+	switch((uint8_t) method){
+		// Если установлен метод чтения
+		case (uint8_t) method_t::READ:
+			// Выполняем установку таймера на чтение данных из сокета
+			return (this->_addr->fd > -1 ? this->_addr->_socket.readTimeout(this->_addr->fd, msec) : -1);
+		// Если установлен метод записи
+		case (uint8_t) method_t::WRITE:
+			// Выполняем установку таймера на запись данных в сокет
+			return (this->_addr->fd > -1 ? this->_addr->_socket.writeTimeout(this->_addr->fd, msec) : -1);
+	}
+	// Сообщаем, что операция не выполнена
+	return -1;
+}
+/**
  * buffer Метод установки размеров буфера
  * @param read  размер буфера на чтение
  * @param write размер буфера на запись

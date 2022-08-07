@@ -412,7 +412,7 @@ void awh::server::WebSocket::actionRead(const size_t aid) noexcept {
 						// Если получение данных нужно остановить
 						if(adj->stopped)
 							// Выполняем запрет на получение входящих данных
-							core->disabled(core_t::method_t::READ, aid);
+							core->disabled(engine_t::method_t::READ, aid);
 						// Если экшен соответствует, выполняем его сброс
 						if(adj->action == ws_worker_t::action_t::READ)
 							// Выполняем сброс экшена
@@ -758,7 +758,7 @@ void awh::server::WebSocket::extraction(const size_t aid, const vector <char> & 
 				// Если данные сообщения получены
 				if((adj->stopped = !data.empty())){
 					// Выполняем запрет на получение входящих данных
-					const_cast <server::core_t *> (this->_core)->disabled(core_t::method_t::READ, aid);
+					const_cast <server::core_t *> (this->_core)->disabled(engine_t::method_t::READ, aid);
 					// Выполняем отправку сообщения клиенту
 					const_cast <server::core_t *> (this->_core)->write(data.data(), data.size(), aid);
 				// Завершаем работу
@@ -927,7 +927,7 @@ void awh::server::WebSocket::sendError(const size_t aid, const mess_t & mess) co
 				// Запрещаем получение данных
 				adj->allow.receive = false;
 				// Выполняем остановку получения данных
-				core->disabled(core_t::method_t::READ, aid);
+				core->disabled(engine_t::method_t::READ, aid);
 			}
 			// Если отправка сообщений разблокированна
 			if((adj != nullptr) && adj->allow.send){

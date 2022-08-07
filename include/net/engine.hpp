@@ -81,6 +81,14 @@ namespace awh {
 	typedef class Engine {
 		public:
 			/**
+			 * Основные методы режимов работы
+			 */
+			enum class method_t : uint8_t {
+				READ    = 0x01, // Метод чтения из сокета
+				WRITE   = 0x02, // Метод записи в сокет
+				CONNECT = 0x03  // Метод подключения к серверу
+			};
+			/**
 			 * Тип активного приложения
 			 */
 			enum class type_t : uint8_t {
@@ -343,6 +351,13 @@ namespace awh {
 					 * @return результат работы функции
 					 */
 					int isblock() noexcept;
+					/**
+					 * timeout Метод установки таймаута
+					 * @param msec   количество миллисекунд
+					 * @param method метод для установки таймаута
+					 * @return       результат установки таймаута
+					 */
+					int timeout(const time_t msec, const method_t method) noexcept;
 					/**
 					 * buffer Метод установки размеров буфера
 					 * @param read  размер буфера на чтение

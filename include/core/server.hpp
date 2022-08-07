@@ -259,7 +259,7 @@ namespace awh {
 				 * @param method метод режима работы
 				 * @param aid    идентификатор адъютанта
 				 */
-				void transfer(const method_t method, const size_t aid) noexcept;
+				void transfer(const engine_t::method_t method, const size_t aid) noexcept;
 			public:
 				/**
 				 * bandWidth Метод установки пропускной способности сети

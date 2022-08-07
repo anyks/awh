@@ -44,17 +44,17 @@ void awh::worker_t::adj_t::read(ev::io & watcher, int revents) noexcept {
 	// Если разрешено выполнять чтения данных из сокета
 	if(!this->bev.locked.read)
 		// Выполняем передачу данных
-		core->transfer(core_t::method_t::READ, this->aid);
+		core->transfer(engine_t::method_t::READ, this->aid);
 	// Если выполнять чтение данных запрещено
 	else {
 		// Если запрещено выполнять чтение данных из сокета
 		if(this->bev.locked.read)
 			// Останавливаем чтение данных
-			core->disabled(core_t::method_t::READ, this->aid);
+			core->disabled(engine_t::method_t::READ, this->aid);
 		// Если запрещено выполнять запись данных в сокет
 		if(this->bev.locked.write)
 			// Останавливаем запись данных
-			core->disabled(core_t::method_t::WRITE, this->aid);
+			core->disabled(engine_t::method_t::WRITE, this->aid);
 		// Если запрещено и читать и записывать в сокет
 		if(this->bev.locked.read && this->bev.locked.write)
 			// Выполняем отключение от сервера
@@ -74,17 +74,17 @@ void awh::worker_t::adj_t::write(ev::io & watcher, int revents) noexcept {
 	// Если разрешено выполнять запись данных в сокет
 	if(!this->bev.locked.write)
 		// Выполняем передачу данных
-		core->transfer(core_t::method_t::WRITE, this->aid);
+		core->transfer(engine_t::method_t::WRITE, this->aid);
 	// Если выполнять запись данных запрещено
 	else {
 		// Если запрещено выполнять чтение данных из сокета
 		if(this->bev.locked.read)
 			// Останавливаем чтение данных
-			core->disabled(core_t::method_t::READ, this->aid);
+			core->disabled(engine_t::method_t::READ, this->aid);
 		// Если запрещено выполнять запись данных в сокет
 		if(this->bev.locked.write)
 			// Останавливаем запись данных
-			core->disabled(core_t::method_t::WRITE, this->aid);
+			core->disabled(engine_t::method_t::WRITE, this->aid);
 		// Если запрещено и читать и записывать в сокет
 		if(this->bev.locked.read && this->bev.locked.write)
 			// Выполняем отключение от сервера
@@ -104,7 +104,7 @@ void awh::worker_t::adj_t::connect(ev::io & watcher, int revents) noexcept {
 	// Получаем объект ядра клиента
 	core_t * core = const_cast <core_t *> (wrk->core);
 	// Останавливаем подключение
-	core->disabled(core_t::method_t::CONNECT, this->aid);
+	core->disabled(engine_t::method_t::CONNECT, this->aid);
 	// Выполняем передачу данных об удачном подключении к серверу
 	core->connected(this->aid);
 }
@@ -467,9 +467,9 @@ void awh::Core::clean(const size_t aid) const noexcept {
 		// Получаем объект адъютанта
 		awh::worker_t::adj_t * adj = const_cast <awh::worker_t::adj_t *> (it->second);
 		// Останавливаем чтение данных
-		const_cast <core_t *> (this)->disabled(method_t::READ, it->first);
+		const_cast <core_t *> (this)->disabled(engine_t::method_t::READ, it->first);
 		// Останавливаем запись данных
-		const_cast <core_t *> (this)->disabled(method_t::WRITE, it->first);
+		const_cast <core_t *> (this)->disabled(engine_t::method_t::WRITE, it->first);
 		// Выполняем блокировку на чтение/запись данных
 		adj->bev.locked = worker_t::locked_t();
 	}
@@ -702,7 +702,7 @@ void awh::Core::connected(const size_t aid) noexcept {
  * @param method метод режима работы
  * @param aid    идентификатор адъютанта
  */
-void awh::Core::transfer(const method_t method, const size_t aid) noexcept {
+void awh::Core::transfer(const engine_t::method_t method, const size_t aid) noexcept {
 	// Экранируем ошибку неиспользуемой переменной
 	(void) aid;
 	(void) method;
@@ -797,7 +797,7 @@ void awh::Core::rebase() noexcept {
  * @param method метод события сокета
  * @param aid    идентификатор адъютанта
  */
-void awh::Core::enabled(const method_t method, const size_t aid) noexcept {
+void awh::Core::enabled(const engine_t::method_t method, const size_t aid) noexcept {
 	// Если работа базы событий продолжается
 	if(this->working()){
 		// Выполняем извлечение адъютанта
@@ -813,7 +813,7 @@ void awh::Core::enabled(const method_t method, const size_t aid) noexcept {
 				// Определяем метод события сокета
 				switch((uint8_t) method){
 					// Если событием является чтение
-					case (uint8_t) method_t::READ: {
+					case (uint8_t) engine_t::method_t::READ: {
 						// Разрешаем чтение данных из сокета
 						adj->bev.locked.read = false;
 						// Устанавливаем размер детектируемых байт на чтение
@@ -845,7 +845,7 @@ void awh::Core::enabled(const method_t method, const size_t aid) noexcept {
 						}
 					} break;
 					// Если событием является запись
-					case (uint8_t) method_t::WRITE: {
+					case (uint8_t) engine_t::method_t::WRITE: {
 						// Разрешаем запись данных в сокет
 						adj->bev.locked.write = false;
 						// Устанавливаем размер детектируемых байт на запись
@@ -877,7 +877,7 @@ void awh::Core::enabled(const method_t method, const size_t aid) noexcept {
 						}
 					} break;
 					// Если событием является подключение
-					case (uint8_t) method_t::CONNECT: {
+					case (uint8_t) engine_t::method_t::CONNECT: {
 						// Устанавливаем время ожидания записи данных
 						adj->timeouts.connect = wrk->timeouts.connect;
 						// Устанавливаем приоритет выполнения для события на чтения
@@ -910,7 +910,7 @@ void awh::Core::enabled(const method_t method, const size_t aid) noexcept {
  * @param method метод события сокета
  * @param aid    идентификатор адъютанта
  */
-void awh::Core::disabled(const method_t method, const size_t aid) noexcept {
+void awh::Core::disabled(const engine_t::method_t method, const size_t aid) noexcept {
 	// Если работа базы событий продолжается
 	if(this->working()){
 		// Выполняем извлечение адъютанта
@@ -922,7 +922,7 @@ void awh::Core::disabled(const method_t method, const size_t aid) noexcept {
 			// Определяем метод события сокета
 			switch((uint8_t) method){
 				// Если событием является чтение
-				case (uint8_t) method_t::READ: {
+				case (uint8_t) engine_t::method_t::READ: {
 					// Запрещаем чтение данных из сокета
 					adj->bev.locked.read = true;
 					// Останавливаем ожидание чтения данных
@@ -931,7 +931,7 @@ void awh::Core::disabled(const method_t method, const size_t aid) noexcept {
 					adj->bev.event.read.stop();
 				} break;
 				// Если событием является запись
-				case (uint8_t) method_t::WRITE: {
+				case (uint8_t) engine_t::method_t::WRITE: {
 					// Запрещаем запись данных в сокет
 					adj->bev.locked.write = true;
 					// Останавливаем ожидание записи данных
@@ -940,7 +940,7 @@ void awh::Core::disabled(const method_t method, const size_t aid) noexcept {
 					adj->bev.event.write.stop();
 				} break;
 				// Если событием является подключение
-				case (uint8_t) method_t::CONNECT: {
+				case (uint8_t) engine_t::method_t::CONNECT: {
 					// Останавливаем ожидание подключения
 					adj->bev.timer.connect.stop();
 					// Останавливаем подключение
@@ -982,13 +982,13 @@ void awh::Core::write(const char * buffer, const size_t size, const size_t aid) 
 								// Разрешаем запись данных в сокет
 								adj->bev.locked.write = false;
 								// Выполняем передачу данных
-								this->transfer(core_t::method_t::WRITE, it->first);
+								this->transfer(engine_t::method_t::WRITE, it->first);
 							}
 						} break;
 						// Для всех остальных сокетов
 						default:
 							// Разрешаем выполнение записи в сокет
-							this->enabled(method_t::WRITE, it->first);
+							this->enabled(engine_t::method_t::WRITE, it->first);
 					}
 				/**
 				 * Если операционной системой является MS Windows
@@ -999,7 +999,7 @@ void awh::Core::write(const char * buffer, const size_t size, const size_t aid) 
 						// Разрешаем запись данных в сокет
 						adj->bev.locked.write = false;
 						// Выполняем передачу данных
-						this->transfer(core_t::method_t::WRITE, it->first);
+						this->transfer(engine_t::method_t::WRITE, it->first);
 					}
 				#endif
 			}
@@ -1012,7 +1012,7 @@ void awh::Core::write(const char * buffer, const size_t size, const size_t aid) 
  * @param mode   флаг блокировки метода
  * @param aid    идентификатор адъютанта
  */
-void awh::Core::lockMethod(const method_t method, const bool mode, const size_t aid) noexcept {
+void awh::Core::lockMethod(const engine_t::method_t method, const bool mode, const size_t aid) noexcept {
 	// Выполняем извлечение адъютанта
 	auto it = this->adjutants.find(aid);
 	// Если адъютант получен
@@ -1020,7 +1020,7 @@ void awh::Core::lockMethod(const method_t method, const bool mode, const size_t 
 		// Определяем метод режима работы
 		switch((uint8_t) method){
 			// Режим работы ЧТЕНИЕ
-			case (uint8_t) method_t::READ: {
+			case (uint8_t) engine_t::method_t::READ: {
 				// Если нужно заблокировать метод
 				if(mode)
 					// Запрещаем чтение данных из сокета
@@ -1029,7 +1029,7 @@ void awh::Core::lockMethod(const method_t method, const bool mode, const size_t 
 				else const_cast <worker_t::adj_t *> (it->second)->bev.locked.read = false;
 			} break;
 			// Режим работы ЗАПИСЬ
-			case (uint8_t) method_t::WRITE:
+			case (uint8_t) engine_t::method_t::WRITE:
 				// Если нужно заблокировать метод
 				if(mode)
 					// Запрещаем запись данных в сокет
@@ -1046,7 +1046,7 @@ void awh::Core::lockMethod(const method_t method, const bool mode, const size_t 
  * @param seconds время ожидания в секундах
  * @param aid     идентификатор адъютанта
  */
-void awh::Core::dataTimeout(const method_t method, const time_t seconds, const size_t aid) noexcept {
+void awh::Core::dataTimeout(const engine_t::method_t method, const time_t seconds, const size_t aid) noexcept {
 	// Выполняем извлечение адъютанта
 	auto it = this->adjutants.find(aid);
 	// Если адъютант получен
@@ -1054,17 +1054,17 @@ void awh::Core::dataTimeout(const method_t method, const time_t seconds, const s
 		// Определяем метод режима работы
 		switch((uint8_t) method){
 			// Режим работы ЧТЕНИЕ
-			case (uint8_t) method_t::READ:
+			case (uint8_t) engine_t::method_t::READ:
 				// Устанавливаем время ожидания на входящие данные
 				const_cast <worker_t::adj_t *> (it->second)->timeouts.read = seconds;
 			break;
 			// Режим работы ЗАПИСЬ
-			case (uint8_t) method_t::WRITE:
+			case (uint8_t) engine_t::method_t::WRITE:
 				// Устанавливаем время ожидания на исходящие данные
 				const_cast <worker_t::adj_t *> (it->second)->timeouts.write = seconds;
 			break;
 			// Режим работы ПОДКЛЮЧЕНИЕ
-			case (uint8_t) method_t::CONNECT:
+			case (uint8_t) engine_t::method_t::CONNECT:
 				// Устанавливаем время ожидания на исходящие данные
 				const_cast <worker_t::adj_t *> (it->second)->timeouts.connect = seconds;
 			break;
@@ -1078,7 +1078,7 @@ void awh::Core::dataTimeout(const method_t method, const time_t seconds, const s
  * @param min    максимальный размер детектируемых байт
  * @param aid    идентификатор адъютанта
  */
-void awh::Core::marker(const method_t method, const size_t min, const size_t max, const size_t aid) noexcept {
+void awh::Core::marker(const engine_t::method_t method, const size_t min, const size_t max, const size_t aid) noexcept {
 	// Выполняем извлечение адъютанта
 	auto it = this->adjutants.find(aid);
 	// Если адъютант получен
@@ -1086,7 +1086,7 @@ void awh::Core::marker(const method_t method, const size_t min, const size_t max
 		// Определяем метод режима работы
 		switch((uint8_t) method){
 			// Режим работы ЧТЕНИЕ
-			case (uint8_t) method_t::READ: {
+			case (uint8_t) engine_t::method_t::READ: {
 				// Устанавливаем минимальный размер байт
 				const_cast <worker_t::adj_t *> (it->second)->marker.read.min = min;
 				// Устанавливаем максимальный размер байт
@@ -1097,7 +1097,7 @@ void awh::Core::marker(const method_t method, const size_t min, const size_t max
 					const_cast <worker_t::adj_t *> (it->second)->marker.read.min = BUFFER_READ_MIN;
 			} break;
 			// Режим работы ЗАПИСЬ
-			case (uint8_t) method_t::WRITE: {
+			case (uint8_t) engine_t::method_t::WRITE: {
 				// Устанавливаем минимальный размер байт
 				const_cast <worker_t::adj_t *> (it->second)->marker.write.min = min;
 				// Устанавливаем максимальный размер байт

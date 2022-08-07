@@ -747,7 +747,7 @@ void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 							this->_jacks.at(this->_index)->write.start();
 						}
 						// Запускаем чтение данных
-						this->enabled(method_t::READ, ret.first->first);
+						this->enabled(engine_t::method_t::READ, ret.first->first);
 						// Выполняем функцию обратного вызова
 						if(wrk->callback.connect != nullptr) wrk->callback.connect(ret.first->first, wrk->wid, this);
 						// Выходим из функции
@@ -822,7 +822,7 @@ void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 							this->_jacks.at(this->_index)->write.start();
 						}
 						// Запускаем чтение данных
-						this->enabled(method_t::READ, ret.first->first);
+						this->enabled(engine_t::method_t::READ, ret.first->first);
 						// Если вывод информационных данных не запрещён
 						if(!this->noinfo)
 							// Выводим в консоль информацию
@@ -923,7 +923,7 @@ void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 							this->_jacks.at(this->_index)->write.start();
 						}
 						// Запускаем чтение данных
-						this->enabled(method_t::READ, ret.first->first);
+						this->enabled(engine_t::method_t::READ, ret.first->first);
 						// Если вывод информационных данных не запрещён
 						if(!this->noinfo)
 							// Выводим в консоль информацию
@@ -1281,9 +1281,9 @@ void awh::server::Core::timeout(const size_t aid) noexcept {
 			break;
 		}
 		// Останавливаем чтение данных
-		this->disabled(method_t::READ, it->first);
+		this->disabled(engine_t::method_t::READ, it->first);
 		// Останавливаем запись данных
-		this->disabled(method_t::WRITE, it->first);
+		this->disabled(engine_t::method_t::WRITE, it->first);
 		// Выполняем отключение клиента
 		this->close(aid);
 	}
@@ -1293,7 +1293,7 @@ void awh::server::Core::timeout(const size_t aid) noexcept {
  * @param method метод режима работы
  * @param aid    идентификатор адъютанта
  */
-void awh::server::Core::transfer(const method_t method, const size_t aid) noexcept {
+void awh::server::Core::transfer(const engine_t::method_t method, const size_t aid) noexcept {
 	// Выполняем извлечение адъютанта
 	auto it = this->adjutants.find(aid);
 	// Если адъютант получен
@@ -1305,7 +1305,7 @@ void awh::server::Core::transfer(const method_t method, const size_t aid) noexce
 		// Определяем метод работы
 		switch((uint8_t) method){
 			// Если производится чтение данных
-			case (uint8_t) method_t::READ: {
+			case (uint8_t) engine_t::method_t::READ: {
 				// Количество полученных байт
 				int64_t bytes = -1;
 				// Создаём буфер входящих данных
@@ -1375,7 +1375,7 @@ void awh::server::Core::transfer(const method_t method, const size_t aid) noexce
 				}
 			} break;
 			// Если производится запись данных
-			case (uint8_t) method_t::WRITE: {
+			case (uint8_t) engine_t::method_t::WRITE: {
 				// Останавливаем таймаут ожидания на запись в сокет
 				adj->bev.timer.write.stop();
 				// Если данных достаточно для записи в сокет
@@ -1427,7 +1427,7 @@ void awh::server::Core::transfer(const method_t method, const size_t aid) noexce
 					// Иначе просто очищаем буфер данных
 					else adj->buffer.clear();
 					// Останавливаем запись данных
-					if(adj->buffer.empty()) this->disabled(method_t::WRITE, aid);
+					if(adj->buffer.empty()) this->disabled(engine_t::method_t::WRITE, aid);
 					// Если функция обратного вызова на запись данных установлена
 					if(wrk->callback.write != nullptr)
 						// Выводим функцию обратного вызова
@@ -1435,7 +1435,7 @@ void awh::server::Core::transfer(const method_t method, const size_t aid) noexce
 				// Если данных недостаточно для записи в сокет
 				} else {
 					// Останавливаем запись данных
-					this->disabled(method_t::WRITE, aid);
+					this->disabled(engine_t::method_t::WRITE, aid);
 					// Если функция обратного вызова на запись данных установлена
 					if(wrk->callback.write != nullptr)
 						// Выводим функцию обратного вызова

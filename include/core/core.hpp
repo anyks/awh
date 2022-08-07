@@ -84,10 +84,6 @@ namespace awh {
 			 * Тип сокета подключения
 			 */
 			enum class sonet_t : uint8_t {TCP, UDP, TLS, DTLS};
-			/**
-			 * Основные методы режимов работы
-			 */
-			enum class method_t : uint8_t {READ, WRITE, CONNECT};
 		private:
 			/**
 			 * Методы только для OS Windows
@@ -426,7 +422,7 @@ namespace awh {
 			 * @param method метод режима работы
 			 * @param aid    идентификатор адъютанта
 			 */
-			virtual void transfer(const method_t method, const size_t aid) noexcept;
+			virtual void transfer(const engine_t::method_t method, const size_t aid) noexcept;
 		public:
 			/**
 			 * bandWidth Метод установки пропускной способности сети
@@ -446,13 +442,13 @@ namespace awh {
 			 * @param method метод события сокета
 			 * @param aid    идентификатор адъютанта
 			 */
-			void enabled(const method_t method, const size_t aid) noexcept;
+			void enabled(const engine_t::method_t method, const size_t aid) noexcept;
 			/**
 			 * disabled Метод деактивации метода события сокета
 			 * @param method метод события сокета
 			 * @param aid    идентификатор адъютанта
 			 */
-			void disabled(const method_t method, const size_t aid) noexcept;
+			void disabled(const engine_t::method_t method, const size_t aid) noexcept;
 		public:
 			/**
 			 * write Метод записи буфера данных воркером
@@ -468,14 +464,14 @@ namespace awh {
 			 * @param mode   флаг блокировки метода
 			 * @param aid    идентификатор адъютанта
 			 */
-			void lockMethod(const method_t method, const bool mode, const size_t aid) noexcept;
+			void lockMethod(const engine_t::method_t method, const bool mode, const size_t aid) noexcept;
 			/**
 			 * dataTimeout Метод установки таймаута ожидания появления данных
 			 * @param method  метод режима работы
 			 * @param seconds время ожидания в секундах
 			 * @param aid     идентификатор адъютанта
 			 */
-			void dataTimeout(const method_t method, const time_t seconds, const size_t aid) noexcept;
+			void dataTimeout(const engine_t::method_t method, const time_t seconds, const size_t aid) noexcept;
 			/**
 			 * marker Метод установки маркера на размер детектируемых байт
 			 * @param method метод режима работы
@@ -483,7 +479,7 @@ namespace awh {
 			 * @param min    максимальный размер детектируемых байт
 			 * @param aid    идентификатор адъютанта
 			 */
-			void marker(const method_t method, const size_t min, const size_t max, const size_t aid) noexcept;
+			void marker(const engine_t::method_t method, const size_t min, const size_t max, const size_t aid) noexcept;
 		public:
 			/**
 			 * clearTimers Метод очистки всех таймеров

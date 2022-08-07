@@ -32,15 +32,21 @@
 #include <cstring>
 #include <stdlib.h>
 
-// Если - это Windows
+/**
+ * Методы только для OS Windows
+ */
 #if defined(_WIN32) || defined(_WIN64)
+	#include <time.h>
 	#include <winsock2.h>
 	#include <ws2tcpip.h>
 	#include <getopt.h>
 	// Используем библиотеку ws2_32.lib
 	#pragma comment(lib, "Ws2_32.lib")
-// Если - это Unix
+/**
+ * Для всех остальных операционных систем
+ */
 #else
+	#include <ctime>
 	#include <vector>
 	#include <fcntl.h>
 	#include <signal.h>
@@ -126,6 +132,20 @@ namespace awh {
 			 * @return   результат работы функции
 			 */
 			int nonBlocking(const int fd) const noexcept;
+			/**
+			 * readTimeout Метод установки таймаута на чтение из сокета
+			 * @param fd   файловый дескриптор (сокет)
+			 * @param msec время таймаута в миллисекундах
+			 * @return     результат работы функции
+			 */
+			int readTimeout(const int fd, const time_t msec) const noexcept;
+			/**
+			 * writeTimeout Метод установки таймаута на запись в сокет
+			 * @param fd   файловый дескриптор (сокет)
+			 * @param msec время таймаута в миллисекундах
+			 * @return     результат работы функции
+			 */
+			int writeTimeout(const int fd, const time_t msec) const noexcept;
 			/**
 			 * ipV6only Метод включающая или отключающая режим отображения IPv4 на IPv6
 			 * @param fd   файловый дескриптор (сокет)

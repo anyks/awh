@@ -315,7 +315,7 @@ void awh::client::Core::connect(const size_t wid) noexcept {
 					// Если статус подключения не изменился
 					} else {
 						// Активируем ожидание подключения
-						this->enabled(method_t::CONNECT, ret.first->first);
+						this->enabled(engine_t::method_t::CONNECT, ret.first->first);
 						// Если разрешено выводить информационные сообщения
 						if(!this->noinfo){
 							// Если unix-сокет используется
@@ -933,11 +933,11 @@ void awh::client::Core::switchProxy(const size_t aid) noexcept {
 					return;
 				}
 				// Останавливаем чтение данных
-				this->disabled(method_t::READ, it->first);
+				this->disabled(engine_t::method_t::READ, it->first);
 				// Останавливаем запись данных
-				this->disabled(method_t::WRITE, it->first);
+				this->disabled(engine_t::method_t::WRITE, it->first);
 				// Активируем ожидание подключения
-				this->enabled(method_t::CONNECT, it->first);
+				this->enabled(engine_t::method_t::CONNECT, it->first);
 			}
 		}
 	}
@@ -985,9 +985,9 @@ void awh::client::Core::timeout(const size_t aid) noexcept {
 			break;
 		}
 		// Останавливаем чтение данных
-		this->disabled(method_t::READ, it->first);
+		this->disabled(engine_t::method_t::READ, it->first);
 		// Останавливаем запись данных
-		this->disabled(method_t::WRITE, it->first);
+		this->disabled(engine_t::method_t::WRITE, it->first);
 		// Выполняем отключение от сервера
 		this->close(aid);
 	}
@@ -1043,7 +1043,7 @@ void awh::client::Core::connected(const size_t aid) noexcept {
 					*/
 
 					// Запускаем чтение данных
-					this->enabled(method_t::READ, it->first);
+					this->enabled(engine_t::method_t::READ, it->first);
 					// Выводим в лог сообщение
 					if(!this->noinfo) this->log->print("connect client to server [%s:%d]", log_t::flag_t::INFO, host.c_str(), url.port);
 					// Если подключение производится через, прокси-сервер
@@ -1058,7 +1058,7 @@ void awh::client::Core::connected(const size_t aid) noexcept {
 				// Если тип протокола подключения unix-сокет
 				case (uint8_t) family_t::NIX: {
 					// Запускаем чтение данных
-					this->enabled(method_t::READ, it->first);
+					this->enabled(engine_t::method_t::READ, it->first);
 					// Выводим в лог сообщение
 					if(!this->noinfo) this->log->print("connect client to server [%s]", log_t::flag_t::INFO, this->net.filename.c_str());
 					// Выполняем функцию обратного вызова
@@ -1077,7 +1077,7 @@ void awh::client::Core::connected(const size_t aid) noexcept {
  * @param method метод режима работы
  * @param aid    идентификатор адъютанта
  */
-void awh::client::Core::transfer(const method_t method, const size_t aid) noexcept {
+void awh::client::Core::transfer(const engine_t::method_t method, const size_t aid) noexcept {
 	// Выполняем извлечение адъютанта
 	auto it = this->adjutants.find(aid);
 	// Если адъютант получен
@@ -1091,7 +1091,7 @@ void awh::client::Core::transfer(const method_t method, const size_t aid) noexce
 			// Определяем метод работы
 			switch((uint8_t) method){
 				// Если производится чтение данных
-				case (uint8_t) method_t::READ: {
+				case (uint8_t) engine_t::method_t::READ: {
 					// Количество полученных байт
 					int64_t bytes = -1;
 					// Создаём буфер входящих данных
@@ -1212,7 +1212,7 @@ void awh::client::Core::transfer(const method_t method, const size_t aid) noexce
 					}
 				} break;
 				// Если производится запись данных
-				case (uint8_t) method_t::WRITE: {
+				case (uint8_t) engine_t::method_t::WRITE: {
 					// Если данных достаточно для записи в сокет
 					if(adj->buffer.size() >= adj->marker.write.min){
 						// Получаем буфер отправляемых данных
@@ -1264,7 +1264,7 @@ void awh::client::Core::transfer(const method_t method, const size_t aid) noexce
 						// Иначе просто очищаем буфер данных
 						else adj->buffer.clear();
 						// Останавливаем запись данных
-						if(adj->buffer.empty()) this->disabled(method_t::WRITE, aid);
+						if(adj->buffer.empty()) this->disabled(engine_t::method_t::WRITE, aid);
 						// Если функция обратного вызова на запись данных установлена
 						if(wrk->callback.write != nullptr)
 							// Выводим функцию обратного вызова
@@ -1272,7 +1272,7 @@ void awh::client::Core::transfer(const method_t method, const size_t aid) noexce
 					// Если данных недостаточно для записи в сокет
 					} else {
 						// Останавливаем запись данных
-						this->disabled(method_t::WRITE, aid);
+						this->disabled(engine_t::method_t::WRITE, aid);
 						// Если функция обратного вызова на запись данных установлена
 						if(wrk->callback.write != nullptr)
 							// Выводим функцию обратного вызова
@@ -1287,9 +1287,9 @@ void awh::client::Core::transfer(const method_t method, const size_t aid) noexce
 		// Если подключение завершено
 		} else {
 			// Останавливаем чтение данных
-			this->disabled(method_t::READ, it->first);
+			this->disabled(engine_t::method_t::READ, it->first);
 			// Останавливаем запись данных
-			this->disabled(method_t::WRITE, it->first);
+			this->disabled(engine_t::method_t::WRITE, it->first);
 			// Выполняем отключение от сервера
 			this->close(aid);
 		}

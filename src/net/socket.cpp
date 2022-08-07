@@ -370,6 +370,88 @@ int awh::Socket::nonBlocking(const int fd) const noexcept {
 	return 0;
 }
 /**
+ * readTimeout Метод установки таймаута на чтение из сокета
+ * @param fd   файловый дескриптор (сокет)
+ * @param msec время таймаута в миллисекундах
+ * @return     результат работы функции
+ */
+int awh::Socket::readTimeout(const int fd, const time_t msec) const noexcept {
+	/**
+	 * Методы только для OS Windows
+	 */
+	#if defined(_WIN32) || defined(_WIN64)
+		// Устанавливаем время таймаута в миллисекундах
+		int timeout = msec;
+		// Выполняем установку таймаута на чтение данных из сокета
+		if(setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout)) < 0){
+			// Выводим в лог информацию
+			this->_log->print("cannot set SO_RCVTIMEO option on socket %d", log_t::flag_t::CRITICAL, fd);
+			// Выходим
+			return -1;
+		}
+	/**
+	 * Для всех остальных операционных систем
+	 */
+	#else
+		// Создаём объект таймаута
+		struct timeval timeout = {1, 0};
+		// Устанавливаем время в секундах
+		timeout.tv_sec = (msec > 0 ? (msec / 1000) : 0);
+		// Устанавливаем время счётчика (микросекунды)
+		timeout.tv_usec = (msec > 0 ? ((msec % 1000) * 1000) : 0);
+		// Выполняем установку таймаута на чтение данных из сокета
+		if(setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, (char *) &timeout, sizeof(timeout)) < 0){
+			// Выводим в лог информацию
+			this->_log->print("cannot set SO_RCVTIMEO option on socket %d", log_t::flag_t::CRITICAL, fd);
+			// Выходим
+			return -1;
+		}
+	#endif
+	// Все удачно
+	return 0;
+}
+/**
+ * writeTimeout Метод установки таймаута на запись в сокет
+ * @param fd   файловый дескриптор (сокет)
+ * @param msec время таймаута в миллисекундах
+ * @return     результат работы функции
+ */
+int awh::Socket::writeTimeout(const int fd, const time_t msec) const noexcept {
+	/**
+	 * Методы только для OS Windows
+	 */
+	#if defined(_WIN32) || defined(_WIN64)
+		// Устанавливаем время таймаута в миллисекундах
+		int timeout = msec;
+		// Выполняем установку таймаута на чтение данных из сокета
+		if(setsockopt(fd, SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof(timeout)) < 0){
+			// Выводим в лог информацию
+			this->_log->print("cannot set SO_SNDTIMEO option on socket %d", log_t::flag_t::CRITICAL, fd);
+			// Выходим
+			return -1;
+		}
+	/**
+	 * Для всех остальных операционных систем
+	 */
+	#else
+		// Создаём объект таймаута
+		struct timeval timeout;
+		// Устанавливаем время в секундах
+		timeout.tv_sec = (msec > 0 ? (msec / 1000) : 0);
+		// Устанавливаем время счётчика (микросекунды)
+		timeout.tv_usec = (msec > 0 ? ((msec % 1000) * 1000) : 0);
+		// Выполняем установку таймаута на запись данных в сокет
+		if(setsockopt(fd, SOL_SOCKET, SO_SNDTIMEO, (char *) &timeout, sizeof(timeout)) < 0){
+			// Выводим в лог информацию
+			this->_log->print("cannot set SO_SNDTIMEO option on socket %d", log_t::flag_t::CRITICAL, fd);
+			// Выходим
+			return -1;
+		}
+	#endif
+	// Все удачно
+	return 0;
+}
+/**
  * ipV6only Метод включающая или отключающая режим отображения IPv4 на IPv6
  * @param fd   файловый дескриптор (сокет)
  * @param mode активация или деактивация режима
