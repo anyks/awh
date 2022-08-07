@@ -266,6 +266,8 @@ void awh::server::WebSocket::actionRead(const size_t aid) noexcept {
 							if(adj->http.isHandshake()){
 								// Получаем метод компрессии HTML данных
 								compress = adj->http.compression();
+								// Устанавливаем параметры шифрования
+								if(this->_crypt) adj->http.crypto(this->_pass, this->_salt, this->_cipher);
 								// Проверяем версию протокола
 								if(!adj->http.checkVer()){
 									// Выполняем сброс состояния HTTP парсера
@@ -613,8 +615,6 @@ void awh::server::WebSocket::actionConnect(const size_t aid) noexcept {
 			if(!this->_subs.empty()) adj->http.subs(this->_subs);
 			// Устанавливаем метод компрессии поддерживаемый сервером
 			adj->http.compress(this->_worker.compress);
-			// Устанавливаем параметры шифрования
-			if(this->_crypt) adj->http.crypto(this->_pass, this->_salt, this->_cipher);
 			// Если сервер требует авторизацию
 			if(this->_authType != auth_t::type_t::NONE){
 				// Определяем тип авторизации
