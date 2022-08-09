@@ -443,57 +443,55 @@ void awh::Core::persistent(ev::timer & timer, int revents) noexcept {
  * signals Метод вывода полученного сигнала
  */
 void awh::Core::signals(const int signal) noexcept {
-	// Выполняем функцию завершения работы
-	this->closedown();
-	// Если процесс является родительским
-	if(this->_pid == getpid())
-		// Выполняем остановку работы
-		this->stop();
 	// Если процесс является дочерним
-	else {
+	if(this->_pid != getpid()){
 		// Определяем тип сигнала
 		switch(signal){
 			// Если возникает сигнал ручной остановкой процесса
 			case SIGINT:
 				// Выводим сообщение об завершении работы процесса
-				this->log->print("child process terminated, goodbye!", log_t::flag_t::INFO);
+				this->log->print("child process pid = %u has been terminated, goodbye!", log_t::flag_t::INFO, getpid());
 			break;
 			// Если возникает сигнал ошибки выполнения арифметической операции
 			case SIGFPE:
 				// Выводим сообщение об завершении работы процесса
-				this->log->print("child process was terminated by a signal [%s]", log_t::flag_t::WARNING, "SIGFPE");
+				this->log->print("child process pid = %u was terminated by [%s] signal", log_t::flag_t::WARNING, getpid(), "SIGFPE");
 			break;
 			// Если возникает сигнал выполнения неверной инструкции
 			case SIGILL:
 				// Выводим сообщение об завершении работы процесса
-				this->log->print("child process was terminated by a signal [%s]", log_t::flag_t::WARNING, "SIGILL");
+				this->log->print("child process pid = %u was terminated by [%s] signal", log_t::flag_t::WARNING, getpid(), "SIGILL");
 			break;
 			// Если возникает сигнал запроса принудительного завершения процесса
 			case SIGTERM:
 				// Выводим сообщение об завершении работы процесса
-				this->log->print("child process was terminated by a signal [%s]", log_t::flag_t::WARNING, "SIGTERM");
+				this->log->print("child process pid = %u was terminated by [%s] signal", log_t::flag_t::WARNING, getpid(), "SIGTERM");
 			break;
 			// Если возникает сигнал сегментации памяти (обращение к несуществующему адресу памяти)
 			case SIGSEGV:
 				// Выводим сообщение об завершении работы процесса
-				this->log->print("child process was terminated by a signal [%s]", log_t::flag_t::WARNING, "SIGSEGV");
+				this->log->print("child process pid = %u was terminated by [%s] signal", log_t::flag_t::WARNING, getpid(), "SIGSEGV");
 			break;
 			// Если возникает сигнал запроса принудительное закрытие приложения из кода программы
 			case SIGABRT:
 				// Выводим сообщение об завершении работы процесса
-				this->log->print("child process was terminated by a signal [%s]", log_t::flag_t::WARNING, "SIGABRT");
+				this->log->print("child process pid = %u was terminated by [%s] signal", log_t::flag_t::WARNING, getpid(), "SIGABRT");
 			break;
 		}
+	// Если процесс является родительским
+	} else {
+		// Выполняем функцию завершения работы
+		this->closedown();
 		// Выполняем остановку работы
 		this->stop();
+		/**
+		 * Методы только для OS Windows
+		 */
+		#if defined(_WIN32) || defined(_WIN64)
+			// Очищаем сетевой контекст
+			WSACleanup();
+		#endif
 	}
-	/**
-	 * Методы только для OS Windows
-	 */
-	#if defined(_WIN32) || defined(_WIN64)
-		// Очищаем сетевой контекст
-		WSACleanup();
-	#endif
 }
 /**
  * clean Метод буфера событий

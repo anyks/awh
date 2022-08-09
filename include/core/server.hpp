@@ -18,29 +18,20 @@
 /**
  * Стандартная библиотека
  */
+#include <map>
 #include <set>
 #include <vector>
-
-/**
- * Для OS Windows
- */
-#if defined(_WIN32) || defined(_WIN64)
-	#include <windows.h>
-/**
- * Для *nix подобных систем
- */
-#else
-	#include <signal.h>
-#endif
 
 /**
  * Наши модули
  */
 #include <core/core.hpp>
+#include <sys/cluster.hpp>
 #include <worker/server.hpp>
 
 // Подписываемся на стандартное пространство имён
 using namespace std;
+using namespace std::placeholders;
 
 /**
  * awh пространство имён
@@ -72,42 +63,18 @@ namespace awh {
 				};
 			private:
 				/**
-				 * Если операционной системой не является Windows
+				 * Message Структура межпроцессного сообщения
 				 */
-				#if !defined(_WIN32) && !defined(_WIN64)
+				typedef struct Data {
+					bool fin;            // Сообщение является финальным
+					size_t count;        // Количество подключений
+					event_t event;       // Активное событие
+					u_char buffer[4079]; // Буфер полезной нагрузки
 					/**
-					 * Message Структура межпроцессного сообщения
+					 * Data Конструктор
 					 */
-					typedef struct Message {
-						pid_t pid;     // Пид активного процесса
-						size_t index;  // Индекс работника в списке
-						size_t count;  // Количество подключений
-						event_t event; // Активное событие
-						/**
-						 * Message Конструктор
-						 */
-						Message() noexcept : pid(0), index(0), count(0), event(event_t::NONE) {}
-					} __attribute__((packed)) mess_t;
-					/**
-					 * Jack Структура работника
-					 */
-					typedef struct Jack {
-						pid_t pid;    // Пид активного процесса
-						int mfds[2];  // Список файловых дескрипторов родительского процесса
-						int cfds[2];  // Список файловых дескрипторов дочернего процесса
-						ev::io read;  // Объект события на чтение
-						ev::io write; // Объект события на запись
-						ev::child cw; // Объект работы с дочерними процессами
-						size_t wid;   // Идентификатор основного воркера
-						time_t date;  // Время начала жизни процесса
-						size_t index; // Индекс работника в списке
-						size_t count; // Количество подключений
-						/**
-						 * Jack Конструктор
-						 */
-						Jack() noexcept : pid(0), wid(0), date(0), index(0), count(0) {}
-					} jack_t;
-				#endif
+					Data() noexcept : fin(true), count(0), event(event_t::NONE) {}
+				} __attribute__((packed)) data_t;
 			private:
 				/**
 				 * Mutex Объект основных мютексов
@@ -124,64 +91,46 @@ namespace awh {
 				// Индекс работника в списке
 				size_t _index;
 				// Активное событие
-				event_t _event;
-			private:
-				// Количество рабочих процессов
-				size_t _forks;
+				// event_t _event;
+				// Объект кластера
+				cluster_t _cluster;
 			private:
 				// Флаг работы в режиме только IPv6
 				bool _ipV6only;
 				// Флаг активации перехвата подключения
 				bool _interception;
 			private:
+				// Размер кластера
+				uint16_t _clusterSize;
+			private:
 				// Список блокированных объектов
 				set <size_t> _locking;
 			private:
-				/**
-				 * Если операционной системой не является Windows
-				 */
-				#if !defined(_WIN32) && !defined(_WIN64)
-					// Список дочерних работников
-					vector <unique_ptr <jack_t>> _jacks;
-				#endif
+				// Нагрузка на дочерние процессы
+				map <int16_t, size_t> burden; // ++++++++++++++++++= Реализовать поддержку IDW и очистку объекта, при остановки процесса
 			private:
 				/**
-				 * Если операционной системой не является Windows
+				 * message Метод получения сообщения от родительского или дочернего процесса
+				 * @param wid  идентификатор воркера
+				 * @param mess объект полученного сообщения
 				 */
-				#if !defined(_WIN32) && !defined(_WIN64)
-					/**
-					 * readJack Функция обратного вызова при чтении данных с сокета
-					 * @param watcher объект события чтения
-					 * @param revents идентификатор события
-					 */
-					void readJack(ev::io & watcher, int revents) noexcept;
-					/**
-					 * writeJack Функция обратного вызова при записи данных в сокет
-					 * @param watcher объект события записи
-					 * @param revents идентификатор события
-					 */
-					void writeJack(ev::io & watcher, int revents) noexcept;
-				#endif
+				void message(const size_t wid, const cluster_t::mess_t & mess) noexcept;
+				/**
+				 * cluster Метод события ЗАПУСКА/ОСТАНОВКИ кластера
+				 * @param wid   идентификатор воркера
+				 * @param event идентификатор события
+				 * @param index индекс процесса
+				 * @param pid   идентификатор процесса
+				 */
+				void cluster(const size_t wid, const cluster_t::event_t event, const int16_t index) noexcept;
 			private:
 				/**
-				 * Если операционной системой не является Windows
+				 * sendToProccess Метод отправки сообщения дочернему процессу
+				 * @param wid   идентификатор воркера
+				 * @param index индекс процесса для получения сообщения
+				 * @param event активное событие на сервере
 				 */
-				#if !defined(_WIN32) && !defined(_WIN64)
-					/**
-					 * children Функция обратного вызова при завершении работы процесса
-					 * @param watcher объект события дочернего процесса
-					 * @param revents идентификатор события
-					 */
-					void children(ev::child & watcher, int revents) noexcept;
-				#endif
-			private:
-				/**
-				 * forking Метод разъяснения (создание дочерних процессов)
-				 * @param wid   wid идентификатор воркера
-				 * @param index индекс инициализированного процесса
-				 * @param stop  флаг остановки итерации создания дочерних процессов
-				 */
-				void forking(const size_t wid, const size_t index = 0, const size_t stop = false) noexcept;
+				void sendToProccess(const size_t wid, const int16_t index, const event_t event) noexcept;
 			private:
 				/**
 				 * resolver Функция выполнения резолвинга домена
@@ -249,10 +198,10 @@ namespace awh {
 				 */
 				void ipV6only(const bool mode) noexcept;
 				/**
-				 * cluster Метод установки количества процессов
-				 * @param forks количество рабочих процессов
+				 * clusterSize Метод установки количества процессов кластера
+				 * @param size количество рабочих процессов
 				 */
-				void cluster(const size_t forks = 0) noexcept;
+				void clusterSize(const size_t size = 0) noexcept;
 				/**
 				 * total Метод установки максимального количества одновременных подключений
 				 * @param wid   идентификатор воркера
