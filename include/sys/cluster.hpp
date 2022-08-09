@@ -53,7 +53,7 @@ namespace awh {
 				STOP  = 0x02, // Событие остановки процесса
 				START = 0x01  // Событие запуска процесса
 			};
-		public:
+		private:
 			/**
 			 * Message Структура межпроцессного сообщения
 			 */
@@ -67,7 +67,6 @@ namespace awh {
 				 */
 				Message() noexcept : stop(false), pid(0), index(0) {}
 			} __attribute__((packed)) mess_t;
-		private:
 			/**
 			 * Worker Класс воркера
 			 */
@@ -117,14 +116,14 @@ namespace awh {
 			 * Callback Структура функций обратного вызова
 			 */
 			typedef struct Callback {
-				// Функция обратного вызова при получении сообщения
-				function <void (const size_t, const mess_t &)> message;
 				// Функция обратного вызова при ЗАПУСКЕ/ОСТАНОВКИ процесса
 				function <void (const size_t, const event_t, const int16_t)> process;
+				// Функция обратного вызова при получении сообщения
+				function <void (const size_t, const int16_t, const pid_t, const char *, const size_t)> message;
 				/**
 				 * Callback Конструктор
 				 */
-				Callback() noexcept : message(nullptr), process(nullptr) {}
+				Callback() noexcept : process(nullptr), message(nullptr) {}
 			} fn_t;
 		private:
 			// Идентификатор родительского процесса
@@ -166,24 +165,27 @@ namespace awh {
 		public:
 			/**
 			 * send Метод отправки сообщения родительскому процессу
-			 * @param wid  идентификатор воркера
-			 * @param mess отправляемое сообщение
+			 * @param wid    идентификатор воркера
+			 * @param buffer бинарный буфер для отправки сообщения
+			 * @param size   размер бинарного буфера для отправки сообщения
 			 */
-			void send(const size_t wid, const mess_t & mess) noexcept;
+			void send(const size_t wid, const char * buffer, const size_t size) noexcept;
 			/**
 			 * send Метод отправки сообщения дочернему процессу
-			 * @param wid   идентификатор воркера
-			 * @param index индекс процесса для получения сообщения
-			 * @param mess  отправляемое сообщение
+			 * @param wid    идентификатор воркера
+			 * @param index  индекс процесса для получения сообщения
+			 * @param buffer бинарный буфер для отправки сообщения
+			 * @param size   размер бинарного буфера для отправки сообщения
 			 */
-			void send(const size_t wid, const int16_t index, const mess_t & mess) noexcept;
+			void send(const size_t wid, const int16_t index, const char * buffer, const size_t size) noexcept;
 		public:
 			/**
 			 * broadcast Метод отправки сообщения всем дочерним процессам
-			 * @param wid  идентификатор воркера
-			 * @param mess отправляемое сообщение
+			 * @param wid    идентификатор воркера
+			 * @param buffer бинарный буфер для отправки сообщения
+			 * @param size   размер бинарного буфера для отправки сообщения
 			 */
-			void broadcast(const size_t wid, const mess_t & mess) noexcept;
+			void broadcast(const size_t wid, const char * buffer, const size_t size) noexcept;
 		public:
 			/**
 			 * clear Метод очистки всех выделенных ресурсов
@@ -235,15 +237,15 @@ namespace awh {
 			void init(const size_t wid, const uint16_t count = 1) noexcept;
 		public:
 			/**
-			 * onMessage Метод установки функции обратного вызова при получении сообщения
-			 * @param callback функция обратного вызова
-			 */
-			void on(function <void (const size_t, const mess_t &)> callback) noexcept;
-			/**
 			 * onMessage Метод установки функции обратного вызова при ЗАПУСКЕ/ОСТАНОВКИ процесса
 			 * @param callback функция обратного вызова
 			 */
 			void on(function <void (const size_t, const event_t, const int16_t)> callback) noexcept;
+			/**
+			 * onMessage Метод установки функции обратного вызова при получении сообщения
+			 * @param callback функция обратного вызова
+			 */
+			void on(function <void (const size_t, const int16_t, const pid_t, const char *, const size_t)> callback) noexcept;
 		public:
 			/**
 			 * Cluster Конструктор

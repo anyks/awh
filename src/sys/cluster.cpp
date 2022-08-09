@@ -29,6 +29,8 @@ void awh::Cluster::Worker::message(ev::io & watcher, int revents) noexcept {
 	if(this->cluster->_pid == getpid()){
 		// Создаём объект сообщения
 		mess_t message;
+		// Выполняем зануление буфера данных полезной нагрузки
+		memset(message.payload, 0, sizeof(message.payload));
 		// Выполняем чтение полученного сообщения
 		const int bytes = ::read(watcher.fd, buffer, sizeof(buffer));
 		// Если данные прочитаны правильно
@@ -38,7 +40,7 @@ void awh::Cluster::Worker::message(ev::io & watcher, int revents) noexcept {
 			// Если функция обратного вызова установлена, выводим её
 			if(this->cluster->callback.message != nullptr)
 				// Выводим функцию обратного вызова
-				this->cluster->callback.message(this->wid, message);
+				this->cluster->callback.message(this->wid, message.index, message.pid, (const char *) message.payload, sizeof(message.payload));
 		// Если данные не прочитаны
 		} else this->cluster->_log->print("data from child process could not be received", log_t::flag_t::CRITICAL);
 	// Если процесс является дочерним
@@ -70,6 +72,8 @@ void awh::Cluster::Worker::message(ev::io & watcher, int revents) noexcept {
 			}
 			// Создаём объект сообщения
 			mess_t message;
+			// Выполняем зануление буфера данных полезной нагрузки
+			memset(message.payload, 0, sizeof(message.payload));
 			// Выполняем чтение полученного сообщения
 			const int bytes = ::read(watcher.fd, buffer, sizeof(buffer));
 			// Если данные прочитаны правильно
@@ -85,7 +89,7 @@ void awh::Cluster::Worker::message(ev::io & watcher, int revents) noexcept {
 				// Если функция обратного вызова установлена, выводим её
 				} else if(this->cluster->callback.message != nullptr)
 					// Выводим функцию обратного вызова
-					this->cluster->callback.message(this->wid, message);
+					this->cluster->callback.message(this->wid, message.index, message.pid, (const char *) message.payload, sizeof(message.payload));
 			// Если данные не прочитаны
 			} else this->cluster->_log->print("data from main process could not be received", log_t::flag_t::CRITICAL);
 		}
@@ -321,64 +325,97 @@ bool awh::Cluster::working(const size_t wid) const noexcept {
 }
 /**
  * send Метод отправки сообщения родительскому процессу
- * @param wid  идентификатор воркера
- * @param mess отправляемое сообщение
+ * @param wid    идентификатор воркера
+ * @param buffer бинарный буфер для отправки сообщения
+ * @param size   размер бинарного буфера для отправки сообщения
  */
-void awh::Cluster::send(const size_t wid, const mess_t & mess) noexcept {
+void awh::Cluster::send(const size_t wid, const char * buffer, const size_t size) noexcept {
 	// Если процесс не является родительским
-	if(this->_pid != getpid()){
-		// Выполняем поиск работников
-		auto jt = this->_jacks.find(wid);
-		// Если работник найден
-		if((jt != this->_jacks.end()) && (this->_index < jt->second.size())){
-			// Устанавливаем пид процесса отправившего сообщение
-			const_cast <mess_t *> (&mess)->pid = getpid();
-			// Устанавливаем индекс процесса отправившего сообщение
-			const_cast <mess_t *> (&mess)->index = this->_index;
-			// Выполняем отправку сообщения дочернему процессу
-			::write(jt->second.at(this->_index)->mfds[1], &mess, sizeof(mess));
-		}
+	if((this->_pid != getpid()) && (size > 0)){
+		// Если отправляемый размер данных умещается в наш буфер сообщения
+		if(size <= sizeof(mess_t::payload)){
+			// Выполняем поиск работников
+			auto jt = this->_jacks.find(wid);
+			// Если работник найден
+			if((jt != this->_jacks.end()) && (this->_index < jt->second.size())){
+				// Создаём объект сообщения
+				mess_t message;
+				// Устанавливаем пид процесса отправившего сообщение
+				message.pid = getpid();
+				// Устанавливаем индекс процесса отправившего сообщение
+				message.index = this->_index;
+				// Выполняем зануление буфер данных полезной нагрузки
+				memset(message.payload, 0, sizeof(message.payload));
+				// Выполняем копирование данных бинарного буфера
+				memcpy(message.payload, buffer, size);
+				// Выполняем отправку сообщения дочернему процессу
+				::write(jt->second.at(this->_index)->mfds[1], &message, sizeof(message));
+			}
+		// Выводим в лог сообщение
+		} else this->_log->print("transfer data size is %zu bytes, buffer size is %zu bytes", log_t::flag_t::WARNING, size, sizeof(mess_t::payload));
 	}
 }
 /**
  * send Метод отправки сообщения дочернему процессу
- * @param wid   идентификатор воркера
- * @param index индекс процесса для получения сообщения
- * @param mess  отправляемое сообщение
+ * @param wid    идентификатор воркера
+ * @param index  индекс процесса для получения сообщения
+ * @param buffer бинарный буфер для отправки сообщения
+ * @param size   размер бинарного буфера для отправки сообщения
  */
-void awh::Cluster::send(const size_t wid, const int16_t index, const mess_t & mess) noexcept {
+void awh::Cluster::send(const size_t wid, const int16_t index, const char * buffer, const size_t size) noexcept {
 	// Если процесс является родительским
-	if(this->_pid == getpid()){
-		// Выполняем поиск работников
-		auto jt = this->_jacks.find(wid);
-		// Если работник найден
-		if((jt != this->_jacks.end()) && (index < jt->second.size())){
-			// Устанавливаем пид процесса отправившего сообщение
-			const_cast <mess_t *> (&mess)->pid = this->_pid;
-			// Выполняем отправку сообщения дочернему процессу
-			::write(jt->second.at(index)->cfds[1], &mess, sizeof(mess));
-		}
+	if((this->_pid == getpid()) && (size > 0)){
+		// Если отправляемый размер данных умещается в наш буфер сообщения
+		if(size <= sizeof(mess_t::payload)){
+			// Выполняем поиск работников
+			auto jt = this->_jacks.find(wid);
+			// Если работник найден
+			if((jt != this->_jacks.end()) && (index < jt->second.size())){
+				// Создаём объект сообщения
+				mess_t message;
+				// Устанавливаем пид процесса отправившего сообщение
+				message.pid = this->_pid;
+				// Выполняем зануление буфер данных полезной нагрузки
+				memset(message.payload, 0, sizeof(message.payload));
+				// Выполняем копирование данных бинарного буфера
+				memcpy(message.payload, buffer, size);
+				// Выполняем отправку сообщения дочернему процессу
+				::write(jt->second.at(index)->cfds[1], &message, sizeof(message));
+			}
+		// Выводим в лог сообщение
+		} else this->_log->print("transfer data size is %zu bytes, buffer size is %zu bytes", log_t::flag_t::WARNING, size, sizeof(mess_t::payload));
 	}
 }
 /**
  * broadcast Метод отправки сообщения всем дочерним процессам
- * @param wid  идентификатор воркера
- * @param mess отправляемое сообщение
+ * @param wid    идентификатор воркера
+ * @param buffer бинарный буфер для отправки сообщения
+ * @param size   размер бинарного буфера для отправки сообщения
  */
-void awh::Cluster::broadcast(const size_t wid, const mess_t & mess) noexcept {
+void awh::Cluster::broadcast(const size_t wid, const char * buffer, const size_t size) noexcept {
 	// Если процесс является родительским
-	if(this->_pid == getpid()){
-		// Выполняем поиск работников
-		auto jt = this->_jacks.find(wid);
-		// Если работник найден
-		if((jt != this->_jacks.end()) && !jt->second.empty()){
-			// Устанавливаем пид процесса отправившего сообщение
-			const_cast <mess_t *> (&mess)->pid = this->_pid;
-			// Переходим по всем дочерним процессам
-			for(auto & jack : jt->second)
-				// Выполняем отправку сообщения дочернему процессу
-				::write(jack->cfds[1], &mess, sizeof(mess));
-		}
+	if((this->_pid == getpid()) && (size > 0)){
+		// Если отправляемый размер данных умещается в наш буфер сообщения
+		if(size <= sizeof(mess_t::payload)){
+			// Выполняем поиск работников
+			auto jt = this->_jacks.find(wid);
+			// Если работник найден
+			if((jt != this->_jacks.end()) && !jt->second.empty()){
+				// Создаём объект сообщения
+				mess_t message;
+				// Устанавливаем пид процесса отправившего сообщение
+				message.pid = this->_pid;
+				// Выполняем зануление буфер данных полезной нагрузки
+				memset(message.payload, 0, sizeof(message.payload));
+				// Выполняем копирование данных бинарного буфера
+				memcpy(message.payload, buffer, size);
+				// Переходим по всем дочерним процессам
+				for(auto & jack : jt->second)
+					// Выполняем отправку сообщения дочернему процессу
+					::write(jack->cfds[1], &message, sizeof(message));
+			}
+		// Выводим в лог сообщение
+		} else this->_log->print("transfer data size is %zu bytes, buffer size is %zu bytes", log_t::flag_t::WARNING, size, sizeof(mess_t::payload));
 	}
 }
 /**
@@ -429,14 +466,16 @@ void awh::Cluster::stop(const size_t wid) noexcept {
 			mess_t message;
 			// Устанавливаем флаг остановки процесса
 			message.stop = true;
+			// Устанавливаем пид процесса отправившего сообщение
+			message.pid = this->_pid;
 			// Переходим по всему списку работников
 			for(auto & jack : jt->second){
 				// Останавливаем обработку получения статуса процессов
 				jack->cw.stop();
 				// Останавливаем чтение данных с дочернего процесса
 				jack->mess.stop();
-				// Отправляем сообщение об остановке, всем процессам
-				this->send(jt->first, jack->index, message);
+				// Выполняем отправку сообщения дочернему процессу
+				::write(jack->cfds[1], &message, sizeof(message));
 				// Выполняем закрытие файловых дескрипторов
 				::close(jack->mfds[0]);
 				::close(jack->cfds[1]);
@@ -454,8 +493,8 @@ void awh::Cluster::stop(const size_t wid) noexcept {
 				// Останавливаем чтение данных с родительского процесса
 				jack->mess.stop();
 				// Выполняем закрытие файловых дескрипторов
-				::close(jack->mfds[0]);
-				::close(jack->cfds[1]);
+				::close(jack->cfds[0]);
+				::close(jack->mfds[1]);
 			}
 			// Очищаем список работников
 			jt->second.clear();
@@ -557,18 +596,18 @@ void awh::Cluster::init(const size_t wid, const uint16_t count) noexcept {
 	this->count(wid, count);
 }
 /**
- * onMessage Метод установки функции обратного вызова при получении сообщения
- * @param callback функция обратного вызова
- */
-void awh::Cluster::on(function <void (const size_t, const mess_t &)> callback) noexcept {
-	// Устанавливаем функцию обратного вызова
-	this->callback.message = callback;
-}
-/**
  * onMessage Метод установки функции обратного вызова при ЗАПУСКЕ/ОСТАНОВКИ процесса
  * @param callback функция обратного вызова
  */
 void awh::Cluster::on(function <void (const size_t, const event_t, const int16_t)> callback) noexcept {
 	// Устанавливаем функцию обратного вызова
 	this->callback.process = callback;
+}
+/**
+ * onMessage Метод установки функции обратного вызова при получении сообщения
+ * @param callback функция обратного вызова
+ */
+void awh::Cluster::on(function <void (const size_t, const int16_t, const pid_t, const char *, const size_t)> callback) noexcept {
+	// Устанавливаем функцию обратного вызова
+	this->callback.message = callback;
 }

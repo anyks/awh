@@ -57,9 +57,10 @@ namespace awh {
 				enum class event_t : uint8_t {
 					NONE       = 0x00, // Флаг не установлен
 					SELECT     = 0x01, // Флаг выбора работника
-					UNSELECT   = 0x02, // Флаг снятия выбора с работника
-					CONNECT    = 0x03, // Флаг подключения
-					DISCONNECT = 0x04  // Флаг отключения
+					ONLINE     = 0x02, // Флаг подключения дочернего процесса
+					UNSELECT   = 0x03, // Флаг снятия выбора с работника
+					CONNECT    = 0x04, // Флаг подключения
+					DISCONNECT = 0x05  // Флаг отключения
 				};
 			private:
 				/**
@@ -107,14 +108,8 @@ namespace awh {
 				set <size_t> _locking;
 			private:
 				// Нагрузка на дочерние процессы
-				map <int16_t, size_t> burden; // ++++++++++++++++++= Реализовать поддержку IDW и очистку объекта, при остановки процесса
+				map <size_t, map <int16_t, size_t>> burden;
 			private:
-				/**
-				 * message Метод получения сообщения от родительского или дочернего процесса
-				 * @param wid  идентификатор воркера
-				 * @param mess объект полученного сообщения
-				 */
-				void message(const size_t wid, const cluster_t::mess_t & mess) noexcept;
 				/**
 				 * cluster Метод события ЗАПУСКА/ОСТАНОВКИ кластера
 				 * @param wid   идентификатор воркера
@@ -123,6 +118,15 @@ namespace awh {
 				 * @param pid   идентификатор процесса
 				 */
 				void cluster(const size_t wid, const cluster_t::event_t event, const int16_t index) noexcept;
+				/**
+				 * message Метод получения сообщения от родительского или дочернего процесса
+				 * @param wid    идентификатор воркера
+				 * @param index  индекс процесса
+				 * @param pid    идентификатор процесса
+				 * @param buffer буфер получаемых данных
+				 * @param size   размер получаемых данных
+				 */
+				void message(const size_t wid, const int16_t index, const pid_t pid, const char * buffer, const size_t size) noexcept;
 			private:
 				/**
 				 * sendMessage Метод отправки сообщения дочернему процессу

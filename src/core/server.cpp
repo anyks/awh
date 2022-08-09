@@ -27,99 +27,6 @@ void awh::server::worker_t::accept(ev::io & watcher, int revents) noexcept {
 	core->accept(watcher.fd, this->wid);
 }
 /**
- * message Метод получения сообщения от родительского или дочернего процесса
- * @param wid  идентификатор воркера
- * @param mess объект полученного сообщения
- */
-void awh::server::Core::message(const size_t wid, const cluster_t::mess_t & mess) noexcept {
-	// Создаём объект данных
-	data_t data;
-	// Извлекаем данные сообщения
-	memcpy(&data, &mess.payload, sizeof(data));
-	// Если процесс является родительским
-	if(this->_pid == getpid()){
-		// Определяем тип события
-		switch((uint8_t) data.event){
-			// Если событием является подключение
-			case (uint8_t) event_t::CONNECT: {
-				// Индекс выбранного процесса
-				this->_index = mess.index;
-				// Выполняем поиск процесс в списке нагрузки
-				auto it = this->burden.find(this->_index);
-				// Если процесс в списке нагрузке найден
-				if(it != this->burden.end())
-					// Устанавливаем количество подключений
-					it->second = data.count;
-				// Если такой процесс не существует, создаём новый
-				else {
-					// Получаем список работников
-					const uint16_t count = this->_cluster.count(wid);
-					// Выполняем инициализацию списка нагрузки
-					for(uint16_t i = 0; i < count; i++){
-						// Если индекс соответствует указанному в сообщении
-						if(i == this->_index)
-							// Выполняем установку количества подключений
-							this->burden.emplace(this->_index, data.count);
-						// Инициализируем список нагрузки для других работников
-						else this->burden.emplace(i, 0);
-					}	
-				}
-				// Выполняем перебор всех процессов и ищем тот, где меньше всего нагрузка
-				for(auto & item : this->burden){
-					// Если текущее количество подключений меньше чем передано
-					if((item.second < data.count) || (item.second == 0)){
-						// Запоминаем новый индекс процесса
-						this->_index = item.first;
-						// Выходим из цикла
-						break;
-					}
-				}
-				// Выводим сообщени об активном сервисе
-				if(!this->noinfo) this->log->print("%d clients are connected to the process, pid = %d", log_t::flag_t::INFO, data.count, mess.pid);
-				// Если был выбран новый процесс для обработки запросов
-				if(this->_index != mess.index){
-					// Выполняем переключение процесса на активную работу
-					this->sendMessage(wid, this->_index, event_t::SELECT);
-					// Снимаем процесс с активной работы
-					this->sendMessage(wid, mess.index, event_t::UNSELECT);
-				}
-			} break;
-			// Если событием является отключение
-			case (uint8_t) event_t::DISCONNECT:
-				// Выводим сообщени об активном сервисе
-				if(!this->noinfo) this->log->print("client disconnected from process, %d connections left, pid = %d", log_t::flag_t::INFO, data.count, mess.pid);
-				// Выполняем поиск процесс в списке нагрузки
-				auto it = this->burden.find(mess.index);
-				// Если процесс в списке нагрузке найден
-				if(it != this->burden.end())
-					// Устанавливаем количество подключений
-					it->second = data.count;
-				// Если такой процесс не существует, создаём новый
-				else this->burden.emplace(mess.index, data.count);
-			break;
-		}
-	// Если процесс является дочерним
-	} else {
-		// Определяем тип события
-		switch((uint8_t) data.event){
-			// Если событием является выбор работника
-			case (uint8_t) event_t::SELECT:
-				// Устанавливаем флаг активации перехвата подключения
-				this->_interception = true;
-				// Выводим сообщени об активном сервисе
-				if(!this->noinfo) this->log->print("a process has been activated to intercept connections, pid = %d", log_t::flag_t::INFO, getpid());
-			break;
-			// Если событием является снятия выбора с работника
-			case (uint8_t) event_t::UNSELECT:
-				// Снимаем флаг активации перехвата подключения
-				this->_interception = false;
-				// Выводим сообщени об активном сервисе
-				if(!this->noinfo) this->log->print("a process has been deactivated to intercept connections, pid = %d", log_t::flag_t::INFO, getpid());
-			break;
-		}
-	}
-}
-/**
  * cluster Метод события ЗАПУСКА/ОСТАНОВКИ кластера
  * @param wid   идентификатор воркера
  * @param event идентификатор события
@@ -164,12 +71,139 @@ void awh::server::Core::cluster(const size_t wid, const cluster_t::event_t event
 							wrk->io.start();
 						}
 					}
+					// Сообщаем родительскому процессу, что дочерний процесс подключён
+					this->sendMessage(it->first, -1, event_t::ONLINE);
 				}
 			} break;
 			// Если производится остановка процесса
-			case (uint8_t) cluster_t::event_t::STOP:
-				// Останавливаем чтение данных с клиента
-				wrk->io.stop();
+			case (uint8_t) cluster_t::event_t::STOP: {
+				// Выполняем поиск воркера
+				auto it = this->burden.find(wid);
+				// Если активный воркер найден
+				if(it != this->burden.end()){
+					// Выполняем поиск процесс в списке нагрузки
+					auto jt = it->second.find(index);
+					// Если процесс в списке нагрузке найден
+					if(jt != it->second.end())
+						// Удаляем процесс из списка нагрузки
+						it->second.erase(jt);
+					// Если список нагрузки пустой, удаляем весь объект
+					if(it->second.empty())
+						// Удаляем весь объект нагрузок
+						this->burden.erase(it);
+				}
+			} break;
+		}
+	}
+}
+/**
+ * message Метод получения сообщения от родительского или дочернего процесса
+ * @param wid    идентификатор воркера
+ * @param index  индекс процесса
+ * @param pid    идентификатор процесса
+ * @param buffer буфер получаемых данных
+ * @param size   размер получаемых данных
+ */
+void awh::server::Core::message(const size_t wid, const int16_t index, const pid_t pid, const char * buffer, const size_t size) noexcept {
+	// Создаём объект данных
+	data_t data;
+	// Извлекаем данные сообщения
+	memcpy(&data, buffer, size);
+	// Если процесс является родительским
+	if(this->_pid == getpid()){
+		// Определяем тип события
+		switch((uint8_t) data.event){
+			// Если событием является подключение дочернего процесса
+			case (uint8_t) event_t::ONLINE: {
+				// Выполняем поиск активного воркера
+				auto it = this->burden.find(wid);
+				// Если воркер существует
+				if(it != this->burden.end())
+					// Добавляем в список нулевую нагрузку
+					it->second.emplace(index, 0);
+				// Если воркер не существует, выполняем создание объекта нагрузки
+				else {
+					// Создаём объект нагрузки
+					map <int16_t, size_t> burden;
+					// Выполняем инициализацию нагрузки
+					burden.emplace(index, 0);
+					// Выполняем установку объекта нагрузки
+					this->burden.emplace(wid, move(burden));
+				}
+			} break;
+			// Если событием является подключение
+			case (uint8_t) event_t::CONNECT: {
+				// Индекс выбранного процесса
+				this->_index = index;
+				// Выполняем поиск воркера
+				auto it = this->burden.find(wid);
+				// Если активный воркер найден
+				if(it != this->burden.end()){
+					// Выполняем поиск процесс в списке нагрузки
+					auto jt = it->second.find(this->_index);
+					// Если процесс в списке нагрузке найден
+					if(jt != it->second.end())
+						// Устанавливаем количество подключений
+						jt->second = data.count;
+					// Если процесс в списке нагрузке не наден
+					else it->second.emplace(this->_index, data.count);
+					// Выполняем перебор всех процессов и ищем тот, где меньше всего нагрузка
+					for(auto & item : it->second){
+						// Если текущее количество подключений меньше чем передано
+						if((item.second < data.count) || (item.second == 0)){
+							// Запоминаем новый индекс процесса
+							this->_index = item.first;
+							// Выходим из цикла
+							break;
+						}
+					}
+					// Выводим сообщени об активном сервисе
+					if(!this->noinfo) this->log->print("%d clients are connected to the process, pid = %d", log_t::flag_t::INFO, data.count, pid);
+					// Если был выбран новый процесс для обработки запросов
+					if(this->_index != index){
+						// Выполняем переключение процесса на активную работу
+						this->sendMessage(wid, this->_index, event_t::SELECT);
+						// Снимаем процесс с активной работы
+						this->sendMessage(wid, index, event_t::UNSELECT);
+					}
+				}
+			} break;
+			// Если событием является отключение
+			case (uint8_t) event_t::DISCONNECT:
+				// Выводим сообщени об активном сервисе
+				if(!this->noinfo) this->log->print("client disconnected from process, %d connections left, pid = %d", log_t::flag_t::INFO, data.count, pid);
+				// Выполняем поиск воркера
+				auto it = this->burden.find(wid);
+				// Если активный воркер найден
+				if(it != this->burden.end()){
+					// Выполняем поиск процесс в списке нагрузки
+					auto jt = it->second.find(index);
+					// Если процесс в списке нагрузке найден
+					if(jt != it->second.end())
+						// Устанавливаем количество подключений
+						jt->second = data.count;
+					// Если такой процесс не существует, создаём новый
+					else it->second.emplace(index, data.count);
+				}
+			break;
+		}
+	// Если процесс является дочерним
+	} else {
+		// Определяем тип события
+		switch((uint8_t) data.event){
+			// Если событием является выбор работника
+			case (uint8_t) event_t::SELECT:
+				// Устанавливаем флаг активации перехвата подключения
+				this->_interception = true;
+				// Выводим сообщени об активном сервисе
+				if(!this->noinfo) this->log->print("a process has been activated to intercept connections, pid = %d", log_t::flag_t::INFO, getpid());
+			break;
+			// Если событием является снятия выбора с работника
+			case (uint8_t) event_t::UNSELECT:
+				// Снимаем флаг активации перехвата подключения
+				this->_interception = false;
+				// Выводим сообщени об активном сервисе
+				if(!this->noinfo) this->log->print("a process has been deactivated to intercept connections, pid = %d", log_t::flag_t::INFO, getpid());
 			break;
 		}
 	}
@@ -185,16 +219,10 @@ void awh::server::Core::sendMessage(const size_t wid, const int16_t index, const
 	data_t data;
 	// Устанавливаем событие сообщения
 	data.event = event;
-	// Создаём буфер отправляемого сообщения
-	cluster_t::mess_t message;
-	// Выполняем зануление буфера данных
-	memset(&message.payload, 0, sizeof(message.payload));
 	// Если процесс является родительским
 	if(this->_pid == getpid()){
-		// Выполняем копирование полезной нагрузки
-		memcpy(&message.payload, &data, sizeof(data));
 		// Отправляем сообщение дочернему процессу
-		this->_cluster.send(wid, index, message);
+		this->_cluster.send(wid, index, (const char *) &data, sizeof(data));
 	// Если процесс является дочерним
 	} else {
 		// Определяем тип события
@@ -209,10 +237,8 @@ void awh::server::Core::sendMessage(const size_t wid, const int16_t index, const
 					data.count += wrk.second->adjutants.size();
 			} break;
 		}
-		// Выполняем копирование полезной нагрузки
-		memcpy(&message.payload, &data, sizeof(data));
 		// Отправляем сообщение дочернему процессу
-		this->_cluster.send(wid, message);
+		this->_cluster.send(wid, (const char *) &data, sizeof(data));
 	}
 }
 /**
@@ -1210,10 +1236,10 @@ void awh::server::Core::init(const size_t wid, const u_int port, const string & 
 awh::server::Core::Core(const fmk_t * fmk, const log_t * log) noexcept : awh::core_t(fmk, log), _index(0), _cluster(fmk, log), _ipV6only(false), _interception(false), _clusterSize(1) {
 	// Устанавливаем тип запускаемого ядра
 	this->type = engine_t::type_t::SERVER;
-	// Устанавливаем функцию получения сообщений кластера
-	this->_cluster.on(std::bind(&core_t::message, this, _1, _2));
 	// Устанавливаем функцию получения статуса кластера
 	this->_cluster.on(std::bind(&core_t::cluster, this, _1, _2, _3));
+	// Устанавливаем функцию получения сообщений кластера
+	this->_cluster.on(std::bind(&core_t::message, this, _1, _2, _3, _4, _5));
 }
 /**
  * ~Core Деструктор
