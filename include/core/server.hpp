@@ -125,12 +125,12 @@ namespace awh {
 				void cluster(const size_t wid, const cluster_t::event_t event, const int16_t index) noexcept;
 			private:
 				/**
-				 * sendToProccess Метод отправки сообщения дочернему процессу
+				 * sendMessage Метод отправки сообщения дочернему процессу
 				 * @param wid   идентификатор воркера
 				 * @param index индекс процесса для получения сообщения
 				 * @param event активное событие на сервере
 				 */
-				void sendToProccess(const size_t wid, const int16_t index, const event_t event) noexcept;
+				void sendMessage(const size_t wid, const int16_t index, const event_t event) noexcept;
 			private:
 				/**
 				 * resolver Функция выполнения резолвинга домена

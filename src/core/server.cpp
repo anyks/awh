@@ -79,9 +79,9 @@ void awh::server::Core::message(const size_t wid, const cluster_t::mess_t & mess
 				// Если был выбран новый процесс для обработки запросов
 				if(this->_index != mess.index){
 					// Выполняем переключение процесса на активную работу
-					this->sendToProccess(wid, this->_index, event_t::SELECT);
+					this->sendMessage(wid, this->_index, event_t::SELECT);
 					// Снимаем процесс с активной работы
-					this->sendToProccess(wid, mess.index, event_t::UNSELECT);
+					this->sendMessage(wid, mess.index, event_t::UNSELECT);
 				}
 			} break;
 			// Если событием является отключение
@@ -140,7 +140,7 @@ void awh::server::Core::cluster(const size_t wid, const cluster_t::event_t event
 				// Если процесс является родительским
 				if(this->_pid == getpid())
 					// Выбираем активный рабочий процесс
-					this->sendToProccess(it->first, this->_index, event_t::SELECT);
+					this->sendMessage(it->first, this->_index, event_t::SELECT);
 				// Если процесс является дочерним
 				else {
 					// Запоминаем текущий индекс процесса
@@ -175,12 +175,12 @@ void awh::server::Core::cluster(const size_t wid, const cluster_t::event_t event
 	}
 }
 /**
- * sendToProccess Метод отправки сообщения дочернему процессу
+ * sendMessage Метод отправки сообщения дочернему процессу
  * @param wid   идентификатор воркера
  * @param index индекс процесса для получения сообщения
  * @param event активное событие на сервере
  */
-void awh::server::Core::sendToProccess(const size_t wid, const int16_t index, const event_t event) noexcept {
+void awh::server::Core::sendMessage(const size_t wid, const int16_t index, const event_t event) noexcept {
 	// Создаём объект сообщения
 	data_t data;
 	// Устанавливаем событие сообщения
@@ -413,7 +413,7 @@ void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 						// Если процесс не является основным
 						if((this->_pid != getpid()) && this->_cluster.working(wrk->wid))
 							// Выполняем разрешение на отправку сообщения
-							this->sendToProccess(wrk->wid, -1, event_t::CONNECT);
+							this->sendMessage(wrk->wid, -1, event_t::CONNECT);
 						// Запускаем чтение данных
 						this->enabled(engine_t::method_t::READ, ret.first->first);
 						// Выполняем функцию обратного вызова
@@ -485,7 +485,7 @@ void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 						// Если процесс не является основным
 						if((this->_pid != getpid()) && this->_cluster.working(wrk->wid))
 							// Выполняем разрешение на отправку сообщения
-							this->sendToProccess(wrk->wid, -1, event_t::CONNECT);
+							this->sendMessage(wrk->wid, -1, event_t::CONNECT);
 						// Запускаем чтение данных
 						this->enabled(engine_t::method_t::READ, ret.first->first);
 						// Если вывод информационных данных не запрещён
@@ -583,7 +583,7 @@ void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 						// Если процесс не является основным
 						if((this->_pid != getpid()) && this->_cluster.working(wrk->wid))
 							// Выполняем разрешение на отправку сообщения
-							this->sendToProccess(wrk->wid, -1, event_t::CONNECT);
+							this->sendMessage(wrk->wid, -1, event_t::CONNECT);
 						// Запускаем чтение данных
 						this->enabled(engine_t::method_t::READ, ret.first->first);
 						// Если вывод информационных данных не запрещён
@@ -648,7 +648,7 @@ void awh::server::Core::close() noexcept {
 				// Если процесс не является основным
 				if((this->_pid != getpid()) && this->_cluster.working(wrk->wid))
 					// Выполняем разрешение на отправку сообщения
-					this->sendToProccess(wrk->wid, -1, event_t::DISCONNECT);
+					this->sendMessage(wrk->wid, -1, event_t::DISCONNECT);
 				// Останавливаем работу кластера
 				this->_cluster.stop(wrk->wid);
 			}
@@ -701,7 +701,7 @@ void awh::server::Core::remove() noexcept {
 				// Если процесс не является основным
 				if((this->_pid != getpid()) && this->_cluster.working(wrk->wid))
 					// Выполняем разрешение на отправку сообщения
-					this->sendToProccess(wrk->wid, -1, event_t::DISCONNECT);
+					this->sendMessage(wrk->wid, -1, event_t::DISCONNECT);
 				// Останавливаем работу кластера
 				this->_cluster.stop(wrk->wid);
 			}
@@ -834,7 +834,7 @@ void awh::server::Core::remove(const size_t wid) noexcept {
 				// Если процесс не является основным
 				if((this->_pid != getpid()) && this->_cluster.working(wrk->wid))
 					// Выполняем разрешение на отправку сообщения
-					this->sendToProccess(wrk->wid, -1, event_t::DISCONNECT);
+					this->sendMessage(wrk->wid, -1, event_t::DISCONNECT);
 			}
 			// Останавливаем работу сервера
 			wrk->io.stop();
@@ -879,7 +879,7 @@ void awh::server::Core::close(const size_t aid) noexcept {
 				// Если процесс не является основным
 				if((this->_pid != getpid()) && this->_cluster.working(wrk->wid))
 					// Выполняем разрешение на отправку сообщения
-					this->sendToProccess(wrk->wid, -1, event_t::DISCONNECT);
+					this->sendMessage(wrk->wid, -1, event_t::DISCONNECT);
 				// Выводим сообщение об ошибке
 				if(!core->noinfo) this->log->print("%s", log_t::flag_t::INFO, "disconnect client from server");
 				// Выводим функцию обратного вызова
