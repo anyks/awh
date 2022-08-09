@@ -450,32 +450,32 @@ void awh::Core::signals(const int signal) noexcept {
 			// Если возникает сигнал ручной остановкой процесса
 			case SIGINT:
 				// Выводим сообщение об завершении работы процесса
-				this->log->print("child process pid = %u has been terminated, goodbye!", log_t::flag_t::INFO, getpid());
+				this->log->print("child process [%u] has been terminated, goodbye!", log_t::flag_t::INFO, getpid());
 			break;
 			// Если возникает сигнал ошибки выполнения арифметической операции
 			case SIGFPE:
 				// Выводим сообщение об завершении работы процесса
-				this->log->print("child process pid = %u was terminated by [%s] signal", log_t::flag_t::WARNING, getpid(), "SIGFPE");
+				this->log->print("child process [%u] was terminated by [%s] signal", log_t::flag_t::WARNING, getpid(), "SIGFPE");
 			break;
 			// Если возникает сигнал выполнения неверной инструкции
 			case SIGILL:
 				// Выводим сообщение об завершении работы процесса
-				this->log->print("child process pid = %u was terminated by [%s] signal", log_t::flag_t::WARNING, getpid(), "SIGILL");
+				this->log->print("child process [%u] was terminated by [%s] signal", log_t::flag_t::WARNING, getpid(), "SIGILL");
 			break;
 			// Если возникает сигнал запроса принудительного завершения процесса
 			case SIGTERM:
 				// Выводим сообщение об завершении работы процесса
-				this->log->print("child process pid = %u was terminated by [%s] signal", log_t::flag_t::WARNING, getpid(), "SIGTERM");
+				this->log->print("child process [%u] was terminated by [%s] signal", log_t::flag_t::WARNING, getpid(), "SIGTERM");
 			break;
 			// Если возникает сигнал сегментации памяти (обращение к несуществующему адресу памяти)
 			case SIGSEGV:
 				// Выводим сообщение об завершении работы процесса
-				this->log->print("child process pid = %u was terminated by [%s] signal", log_t::flag_t::WARNING, getpid(), "SIGSEGV");
+				this->log->print("child process [%u] was terminated by [%s] signal", log_t::flag_t::WARNING, getpid(), "SIGSEGV");
 			break;
 			// Если возникает сигнал запроса принудительное закрытие приложения из кода программы
 			case SIGABRT:
 				// Выводим сообщение об завершении работы процесса
-				this->log->print("child process pid = %u was terminated by [%s] signal", log_t::flag_t::WARNING, getpid(), "SIGABRT");
+				this->log->print("child process [%u] was terminated by [%s] signal", log_t::flag_t::WARNING, getpid(), "SIGABRT");
 			break;
 		}
 	// Если процесс является родительским
