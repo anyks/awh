@@ -57,6 +57,8 @@ void awh::Cluster::Worker::message(ev::io & watcher, int revents) noexcept {
 				for(auto & item : jt->second){
 					// Если работник не является текущим работником
 					if((jack->cfds[0] != item->cfds[0]) && (jack->mfds[1] != item->mfds[1])){
+						// Останавливаем чтение
+						item->mess.stop();
 						// Закрываем файловый дескриптор на чтение из дочернего процесса
 						::close(item->cfds[0]);
 						// Закрываем файловый дескриптор на запись в основной процесс
