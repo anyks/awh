@@ -248,10 +248,10 @@ namespace awh {
 			} dispatch_t;
 		protected:
 			// Идентификатор процесса
-			pid_t _pid;
+			pid_t pid;
 		protected:
 			// Создаем объект сети
-			network_t _nwk;
+			network_t nwk;
 		protected:
 			// Создаём объект работы с URI
 			uri_t uri;

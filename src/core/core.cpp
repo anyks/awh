@@ -444,7 +444,7 @@ void awh::Core::persistent(ev::timer & timer, int revents) noexcept {
  */
 void awh::Core::signals(const int signal) noexcept {
 	// Если процесс является дочерним
-	if(this->_pid != getpid()){
+	if(this->pid != getpid()){
 		// Определяем тип сигнала
 		switch(signal){
 			// Если возникает сигнал ручной остановкой процесса
@@ -1546,7 +1546,7 @@ void awh::Core::network(const vector <string> & ip, const vector <string> & ns, 
  * @param sonet  тип сокета подключения (TCP / UDP)
  */
 awh::Core::Core(const fmk_t * fmk, const log_t * log, const family_t family, const sonet_t sonet) noexcept :
- _pid(getpid()), _nwk(fmk), uri(fmk, &_nwk), engine(fmk, log, &uri), /* dns4(fmk, log, &nwk), dns6(fmk, log, &nwk),*/
+ pid(getpid()), nwk(fmk), uri(fmk, &nwk), engine(fmk, log, &uri), /* dns4(fmk, log, &nwk), dns6(fmk, log, &nwk),*/
  dispatch(this), _sig(dispatch.base), status(status_t::STOP), type(engine_t::type_t::CLIENT), mode(false), noinfo(false),
  persist(false), cores(0), servName(AWH_SHORT_NAME), _persIntvl(PERSIST_INTERVAL), fmk(fmk), log(log), _fn(nullptr) {
 	// Устанавливаем тип сокета

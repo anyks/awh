@@ -89,10 +89,8 @@ namespace awh {
 				// Мютекс для блокировки основного потока
 				mtx_t _mtx;
 			private:
-				// Индекс работника в списке
-				size_t _index;
-				// Активное событие
-				// event_t _event;
+				// Идентификатор активного дочернего прцоесса
+				size_t _pid;
 				// Объект кластера
 				cluster_t _cluster;
 			private:
@@ -108,33 +106,31 @@ namespace awh {
 				set <size_t> _locking;
 			private:
 				// Нагрузка на дочерние процессы
-				map <size_t, map <int16_t, size_t>> burden;
+				map <size_t, map <pid_t, size_t>> burden;
 			private:
 				/**
 				 * cluster Метод события ЗАПУСКА/ОСТАНОВКИ кластера
 				 * @param wid   идентификатор воркера
-				 * @param event идентификатор события
-				 * @param index индекс процесса
 				 * @param pid   идентификатор процесса
+				 * @param event идентификатор события
 				 */
-				void cluster(const size_t wid, const cluster_t::event_t event, const int16_t index) noexcept;
+				void cluster(const size_t wid, const pid_t pid, const cluster_t::event_t event) noexcept;
 				/**
 				 * message Метод получения сообщения от родительского или дочернего процесса
 				 * @param wid    идентификатор воркера
-				 * @param index  индекс процесса
 				 * @param pid    идентификатор процесса
 				 * @param buffer буфер получаемых данных
 				 * @param size   размер получаемых данных
 				 */
-				void message(const size_t wid, const int16_t index, const pid_t pid, const char * buffer, const size_t size) noexcept;
+				void message(const size_t wid, const pid_t pid, const char * buffer, const size_t size) noexcept;
 			private:
 				/**
 				 * sendMessage Метод отправки сообщения дочернему процессу
 				 * @param wid   идентификатор воркера
-				 * @param index индекс процесса для получения сообщения
+				 * @param pid   идентификатор процесса
 				 * @param event активное событие на сервере
 				 */
-				void sendMessage(const size_t wid, const int16_t index, const event_t event) noexcept;
+				void sendMessage(const size_t wid, const pid_t pid, const event_t event) noexcept;
 			private:
 				/**
 				 * resolver Функция выполнения резолвинга домена

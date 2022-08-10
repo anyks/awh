@@ -60,12 +60,11 @@ namespace awh {
 			typedef struct Message {
 				bool stop;            // Флаг остановки работы процесса
 				pid_t pid;            // Пид активного процесса
-				int16_t index;        // Индекс работника в списке
 				u_char payload[4089]; // Буфер полезной нагрузки
 				/**
 				 * Message Конструктор
 				 */
-				Message() noexcept : stop(false), pid(0), index(0) {}
+				Message() noexcept : stop(false), pid(0) {}
 			} __attribute__((packed)) mess_t;
 			/**
 			 * Worker Класс воркера
@@ -106,20 +105,19 @@ namespace awh {
 				ev::io mess;  // Объект события на получения сообщений
 				ev::child cw; // Объект работы с дочерними процессами
 				time_t date;  // Время начала жизни процесса
-				size_t index; // Индекс работника в списке
 				/**
 				 * Jack Конструктор
 				 */
-				Jack() noexcept : pid(0), date(0), index(0) {}
+				Jack() noexcept : pid(0), date(0) {}
 			} jack_t;
 			/**
 			 * Callback Структура функций обратного вызова
 			 */
 			typedef struct Callback {
 				// Функция обратного вызова при ЗАПУСКЕ/ОСТАНОВКИ процесса
-				function <void (const size_t, const event_t, const int16_t)> process;
+				function <void (const size_t, const pid_t, const event_t)> process;
 				// Функция обратного вызова при получении сообщения
-				function <void (const size_t, const int16_t, const pid_t, const char *, const size_t)> message;
+				function <void (const size_t, const pid_t, const char *, const size_t)> message;
 				/**
 				 * Callback Конструктор
 				 */
@@ -129,12 +127,11 @@ namespace awh {
 			// Идентификатор родительского процесса
 			pid_t _pid;
 		private:
-			// Индекс работника в списке
-			int16_t _index;
-		private:
 			// Объявляем функции обратного вызова
-			fn_t callback;
+			fn_t _callback;
 		private:
+			// Список активных дочерних процессов
+			map <pid_t, uint16_t> _pids;
 			// Список активных воркеров
 			map <size_t, worker_t> _workers;
 			// Список дочерних работников
@@ -154,7 +151,7 @@ namespace awh {
 			 * @param index индекс инициализированного процесса
 			 * @param stop  флаг остановки итерации создания дочерних процессов
 			 */
-			void fork(const size_t wid, const int16_t index = 0, const bool stop = false) noexcept;
+			void fork(const size_t wid, const uint16_t index = 0, const bool stop = false) noexcept;
 		public:
 			/**
 			 * working Метод проверки на запуск работы кластера
@@ -173,11 +170,11 @@ namespace awh {
 			/**
 			 * send Метод отправки сообщения дочернему процессу
 			 * @param wid    идентификатор воркера
-			 * @param index  индекс процесса для получения сообщения
+			 * @param pid    идентификатор процесса для получения сообщения
 			 * @param buffer бинарный буфер для отправки сообщения
 			 * @param size   размер бинарного буфера для отправки сообщения
 			 */
-			void send(const size_t wid, const int16_t index, const char * buffer, const size_t size) noexcept;
+			void send(const size_t wid, const pid_t pid, const char * buffer, const size_t size) noexcept;
 		public:
 			/**
 			 * broadcast Метод отправки сообщения всем дочерним процессам
@@ -240,26 +237,26 @@ namespace awh {
 			 * onMessage Метод установки функции обратного вызова при ЗАПУСКЕ/ОСТАНОВКИ процесса
 			 * @param callback функция обратного вызова
 			 */
-			void on(function <void (const size_t, const event_t, const int16_t)> callback) noexcept;
+			void on(function <void (const size_t, const pid_t, const event_t)> callback) noexcept;
 			/**
 			 * onMessage Метод установки функции обратного вызова при получении сообщения
 			 * @param callback функция обратного вызова
 			 */
-			void on(function <void (const size_t, const int16_t, const pid_t, const char *, const size_t)> callback) noexcept;
+			void on(function <void (const size_t, const pid_t, const char *, const size_t)> callback) noexcept;
 		public:
 			/**
 			 * Cluster Конструктор
 			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
 			 */
-			Cluster(const fmk_t * fmk, const log_t * log) noexcept : _pid(getpid()), _index(0), _fmk(fmk), _log(log) {}
+			Cluster(const fmk_t * fmk, const log_t * log) noexcept : _pid(getpid()), _fmk(fmk), _log(log) {}
 			/**
 			 * Cluster Конструктор
 			 * @param base база событий
 			 * @param fmk  объект фреймворка
 			 * @param log  объект для работы с логами
 			 */
-			Cluster(struct ev_loop * base, const fmk_t * fmk, const log_t * log) noexcept : _pid(getpid()), _index(0), _base(base), _fmk(fmk), _log(log) {}
+			Cluster(struct ev_loop * base, const fmk_t * fmk, const log_t * log) noexcept : _pid(getpid()), _base(base), _fmk(fmk), _log(log) {}
 	} cluster_t;
 };
 
