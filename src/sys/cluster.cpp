@@ -413,7 +413,7 @@ void awh::Cluster::send(const size_t wid, const pid_t pid, const char * buffer, 
 		// Выводим в лог сообщение
 		} else this->_log->print("transfer data size is %zu bytes, buffer size is %zu bytes", log_t::flag_t::WARNING, size, sizeof(mess_t::payload));
 	// Если процесс превратился в зомби
-	} if((this->_pid != getpid()) && (this->_pid != getppid())){
+	} if((this->_pid != getpid()) && (this->_pid != getppid())) {
 		// Процесс превратился в зомби, самоликвидируем его
 		this->_log->print("the process [%u] has turned into a zombie, we perform self-destruction", log_t::flag_t::CRITICAL, getpid());
 		// Выходим из приложения
@@ -451,7 +451,7 @@ void awh::Cluster::broadcast(const size_t wid, const char * buffer, const size_t
 		// Выводим в лог сообщение
 		} else this->_log->print("transfer data size is %zu bytes, buffer size is %zu bytes", log_t::flag_t::WARNING, size, sizeof(mess_t::payload));
 	// Если процесс превратился в зомби
-	} if((this->_pid != getpid()) && (this->_pid != getppid())){
+	} if((this->_pid != getpid()) && (this->_pid != getppid())) {
 		// Процесс превратился в зомби, самоликвидируем его
 		this->_log->print("the process [%u] has turned into a zombie, we perform self-destruction", log_t::flag_t::CRITICAL, getpid());
 		// Выходим из приложения
