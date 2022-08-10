@@ -44,7 +44,7 @@ void awh::Cluster::Worker::message(ev::io & watcher, int revents) noexcept {
 		// Если данные не прочитаны
 		} else this->cluster->_log->print("data from child process could not be received", log_t::flag_t::CRITICAL);
 	// Если процесс является дочерним
-	} else {
+	} else if(this->cluster->_pid == getppid()) {
 		// Выполняем поиск текущего работника
 		auto jt = this->cluster->_jacks.find(this->wid);
 		// Если текущий работник найден
@@ -95,6 +95,12 @@ void awh::Cluster::Worker::message(ev::io & watcher, int revents) noexcept {
 			// Если данные не прочитаны
 			} else this->cluster->_log->print("data from main process could not be received", log_t::flag_t::CRITICAL);
 		}
+	// Если процесс превратился в зомби
+	} else {
+		// Процесс превратился в зомби, самоликвидируем его
+		this->cluster->_log->print("the process [%u] has turned into a zombie, we perform self-destruction", log_t::flag_t::CRITICAL, getpid());
+		// Выходим из приложения
+		exit(EXIT_FAILURE);
 	}
 }
 /**
@@ -239,38 +245,47 @@ void awh::Cluster::fork(const size_t wid, const uint16_t index, const bool stop)
 					} break;
 					// Если - это дочерний поток значит все нормально
 					case 0: {
-						// Получаем идентификатор текущего процесса
-						const pid_t pid = getpid();
-						// Добавляем в список дочерних процессов, идентификатор процесса
-						this->_pids.emplace(pid, index);
-						// Активируем флаг запуска кластера
-						it->second.working = true;
-						{
-							// Получаем объект текущего работника
-							jack_t * jack = jt->second.at(index).get();
-							// Закрываем файловый дескриптор на запись в дочерний процесс
-							::close(jack->cfds[1]);
-							// Закрываем файловый дескриптор на чтение из основного процесса
-							::close(jack->mfds[0]);
-							// Устанавливаем идентификатор процесса
-							jack->pid = pid;
-							// Устанавливаем время начала жизни процесса
-							jack->date = this->_fmk->unixTimestamp();
-							// Устанавливаем базу событий для чтения
-							jack->mess.set(this->_base);
-							// Устанавливаем событие на чтение данных от основного процесса
-							jack->mess.set <worker_t, &worker_t::message> (&it->second);
-							// Устанавливаем сокет для чтения
-							jack->mess.set(jack->cfds[0], ev::READ);
-							// Запускаем чтение данных с основного процесса
-							jack->mess.start();
-							// Если функция обратного вызова установлена, выводим её
-							if(this->_callback.process != nullptr)
-								// Выводим функцию обратного вызова
-								this->_callback.process(it->first, pid, event_t::START);
+						// Если процесс является дочерним
+						if(this->_pid == getppid()){
+							// Получаем идентификатор текущего процесса
+							const pid_t pid = getpid();
+							// Добавляем в список дочерних процессов, идентификатор процесса
+							this->_pids.emplace(pid, index);
+							// Активируем флаг запуска кластера
+							it->second.working = true;
+							{
+								// Получаем объект текущего работника
+								jack_t * jack = jt->second.at(index).get();
+								// Закрываем файловый дескриптор на запись в дочерний процесс
+								::close(jack->cfds[1]);
+								// Закрываем файловый дескриптор на чтение из основного процесса
+								::close(jack->mfds[0]);
+								// Устанавливаем идентификатор процесса
+								jack->pid = pid;
+								// Устанавливаем время начала жизни процесса
+								jack->date = this->_fmk->unixTimestamp();
+								// Устанавливаем базу событий для чтения
+								jack->mess.set(this->_base);
+								// Устанавливаем событие на чтение данных от основного процесса
+								jack->mess.set <worker_t, &worker_t::message> (&it->second);
+								// Устанавливаем сокет для чтения
+								jack->mess.set(jack->cfds[0], ev::READ);
+								// Запускаем чтение данных с основного процесса
+								jack->mess.start();
+								// Если функция обратного вызова установлена, выводим её
+								if(this->_callback.process != nullptr)
+									// Выводим функцию обратного вызова
+									this->_callback.process(it->first, pid, event_t::START);
+							}
+							// Выполняем активацию базы событий
+							ev_loop_fork(this->_base);
+						// Если процесс превратился в зомби
+						} else {
+							// Процесс превратился в зомби, самоликвидируем его
+							this->_log->print("the process [%u] has turned into a zombie, we perform self-destruction", log_t::flag_t::CRITICAL, getpid());
+							// Выходим из приложения
+							exit(EXIT_FAILURE);
 						}
-						// Выполняем активацию базы событий
-						ev_loop_fork(this->_base);
 					} break;
 					// Если - это родительский процесс
 					default: {
@@ -339,8 +354,14 @@ bool awh::Cluster::working(const size_t wid) const noexcept {
 void awh::Cluster::send(const size_t wid, const char * buffer, const size_t size) noexcept {
 	// Получаем идентификатор текущего процесса
 	const pid_t pid = getpid();
+	// Если процесс превратился в зомби
+	if((this->_pid != pid) && (this->_pid != getppid())){
+		// Процесс превратился в зомби, самоликвидируем его
+		this->_log->print("the process [%u] has turned into a zombie, we perform self-destruction", log_t::flag_t::CRITICAL, pid);
+		// Выходим из приложения
+		exit(EXIT_FAILURE);
 	// Если процесс не является родительским
-	if((this->_pid != pid) && (size > 0)){
+	} else if((this->_pid != pid) && (size > 0)) {
 		// Если отправляемый размер данных умещается в наш буфер сообщения
 		if(size <= sizeof(mess_t::payload)){
 			// Выполняем поиск работников
@@ -391,6 +412,12 @@ void awh::Cluster::send(const size_t wid, const pid_t pid, const char * buffer, 
 			}
 		// Выводим в лог сообщение
 		} else this->_log->print("transfer data size is %zu bytes, buffer size is %zu bytes", log_t::flag_t::WARNING, size, sizeof(mess_t::payload));
+	// Если процесс превратился в зомби
+	} if((this->_pid != getpid()) && (this->_pid != getppid())){
+		// Процесс превратился в зомби, самоликвидируем его
+		this->_log->print("the process [%u] has turned into a zombie, we perform self-destruction", log_t::flag_t::CRITICAL, getpid());
+		// Выходим из приложения
+		exit(EXIT_FAILURE);
 	}
 }
 /**
@@ -423,6 +450,12 @@ void awh::Cluster::broadcast(const size_t wid, const char * buffer, const size_t
 			}
 		// Выводим в лог сообщение
 		} else this->_log->print("transfer data size is %zu bytes, buffer size is %zu bytes", log_t::flag_t::WARNING, size, sizeof(mess_t::payload));
+	// Если процесс превратился в зомби
+	} if((this->_pid != getpid()) && (this->_pid != getppid())){
+		// Процесс превратился в зомби, самоликвидируем его
+		this->_log->print("the process [%u] has turned into a zombie, we perform self-destruction", log_t::flag_t::CRITICAL, getpid());
+		// Выходим из приложения
+		exit(EXIT_FAILURE);
 	}
 }
 /**
@@ -494,7 +527,7 @@ void awh::Cluster::stop(const size_t wid) noexcept {
 			// Очищаем список работников
 			jt->second.clear();
 		// Если процесс является дочерним
-		} else {
+		} else if(this->_pid == getppid()) {
 			// Переходим по всему списку работников
 			for(auto & jack : jt->second){
 				// Останавливаем чтение данных с родительского процесса
@@ -505,6 +538,12 @@ void awh::Cluster::stop(const size_t wid) noexcept {
 			}
 			// Очищаем список работников
 			jt->second.clear();
+		// Если процесс превратился в зомби
+		} else {
+			// Процесс превратился в зомби, самоликвидируем его
+			this->_log->print("the process [%u] has turned into a zombie, we perform self-destruction", log_t::flag_t::CRITICAL, getpid());
+			// Выходим из приложения
+			exit(EXIT_FAILURE);
 		}
 		// Если воркер найден, снимаем флаг запуска кластера
 		if(it != this->_workers.end())
