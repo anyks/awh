@@ -144,7 +144,7 @@ void awh::server::Core::message(const size_t wid, const pid_t pid, const char * 
 						// Устанавливаем количество подключений
 						jt->second = data.count;
 					// Если процесс в списке нагрузке не наден
-					else it->second.emplace(this->_pid, data.count);
+					else it->second.emplace(this->_pid, (size_t) data.count);
 					// Выполняем перебор всех процессов и ищем тот, где меньше всего нагрузка
 					for(auto & item : it->second){
 						// Если текущее количество подключений меньше чем передано
@@ -181,7 +181,7 @@ void awh::server::Core::message(const size_t wid, const pid_t pid, const char * 
 						// Устанавливаем количество подключений
 						jt->second = data.count;
 					// Если такой процесс не существует, создаём новый
-					else it->second.emplace(pid, data.count);
+					else it->second.emplace(pid, (size_t) data.count);
 				}
 			break;
 		}
