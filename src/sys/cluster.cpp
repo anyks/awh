@@ -351,16 +351,22 @@ void awh::Cluster::fork(const size_t wid, const uint16_t index, const bool stop)
 
 		std::thread::id this_id = std::this_thread::get_id();
 
-		cout << " =========================1 " << (pid_t) this_id << endl;
+		
+
+		std::stringstream ss;
+		ss << std::this_thread::get_id();
+		uint64_t id = std::stoull(ss.str());
+
+		cout << " =========================1 " << id << endl;
 
 		// Выполняем обработку полученных данных в отдельном потоке
-		std::thread thr([](const pid_t pid) noexcept {
+		std::thread thr([](std::thread::id pid) noexcept {
 
-			cout << " =========================2 " << (pid_t) std::this_thread::get_id() << " === " << pid << endl;
+			cout << " =========================2 " << std::this_thread::get_id() << " === " << pid << endl;
 
 			
 
-		}, (pid_t) this_id);
+		}, this_id);
 		// Отсоединяем поток
 		thr.detach();
 
