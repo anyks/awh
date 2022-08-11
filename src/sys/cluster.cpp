@@ -379,10 +379,10 @@ void awh::Cluster::fork(const size_t wid, const uint16_t index, const bool stop)
 
 			cout << " +++++++++++++++++++++++2 " << getpid() << " === " << getppid() << endl;
 
-			cout << " +++++++++++++++++++++++3 " << piProcInfo.hProcess << " === " << piProcInfo.hThread << endl;
+			cout << " +++++++++++++++++++++++3 " << (pid_t) piProcInfo.hProcess << " === " << (pid_t) piProcInfo.hThread << endl;
 
-			CloseHandle(piProcInfo.hProcess);
-      		CloseHandle(piProcInfo.hThread);
+			// CloseHandle(piProcInfo.hProcess);
+      		// CloseHandle(piProcInfo.hThread);
 
 		}
 
