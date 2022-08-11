@@ -445,13 +445,15 @@ void awh::Cluster::fork(const size_t wid, const uint16_t index, const bool stop)
 		
 		cout << " +++++++++++++++++++++++1 " << getpid() << " === " << getppid() << endl;
 
-		wchar_t *hotkeyexe = L"cmd";
+		char *hotkeyexe = "cmd";
 		PROCESS_INFORMATION pi;
 		STARTUPINFO si;
 		ZeroMemory(&si, sizeof(si));
 		ZeroMemory(&pi, sizeof(pi));
 
-		if(!CreateProcess(hotkeyexe, "", 0, 0, 0, 0, 0, 0, &si, &pi))
+		TCHAR szCmdline[]=TEXT("child");
+
+		if(!CreateProcess(hotkeyexe, szCmdline, 0, 0, 0, 0, 0, 0, &si, &pi))
 			printf("error");
 			scanf("%d");
 		}
@@ -461,6 +463,7 @@ void awh::Cluster::fork(const size_t wid, const uint16_t index, const bool stop)
 		cout << " +++++++++++++++++++++++3 " << pi.hProcess << " === " << pi.hThread << endl;
 
 		
+
 
 	#endif
 }
