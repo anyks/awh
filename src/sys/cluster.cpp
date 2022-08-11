@@ -198,9 +198,9 @@ void awh::Cluster::fork(const size_t wid, const uint16_t index, const bool stop)
 
 	cout << " ----------------2 " << GetCurrentProcessId() << endl;
 
-	HANDLE Process = PROCESS_QUERY_INFORMATION;
+	int Process = PROCESS_QUERY_INFORMATION;
 
-	cout << " ----------------3 " << GetProcessId(Process) << endl;
+	cout << " ----------------3 " << GetProcessId(&Process) << endl;
 	
 	/**
 	 * Если операционной системой не является Windows
