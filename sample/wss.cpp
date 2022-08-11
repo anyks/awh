@@ -158,6 +158,8 @@ int main(int argc, char * argv[]){
 	// Активируем максимальное количество рабочих процессов
 	core.clusterSize();
 
+	// ws.needleEye(true);
+
 	// Выполняем активацию многопоточности
 	// ws.multiThreads(22);
 	// Устанавливаем название сервера
@@ -170,7 +172,7 @@ int main(int argc, char * argv[]){
 	// Выполняем инициализацию WebSocket сервера
 	// ws.init(2222, "127.0.0.1", http_t::compress_t::DEFLATE);
 	// ws.init(2222, "", http_t::compress_t::DEFLATE);
-	ws.init(2222, "127.0.0.1", http_t::compress_t::NONE);
+	ws.init(2222, "127.0.0.1", http_t::compress_t::DEFLATE);
 	// ws.init("anyks", http_t::compress_t::DEFLATE);
 	// Устанавливаем длительное подключение
 	// ws.keepAlive(100, 30, 10);

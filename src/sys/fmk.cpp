@@ -1285,6 +1285,16 @@ time_t awh::Framework::unixTimestamp() const noexcept {
 	return ms.count();
 }
 /**
+ * nanoTimestamp Метод получения штампа времени в наносекундах
+ * @return штамп времени в наносекундах
+ */
+time_t awh::Framework::nanoTimestamp() const noexcept {
+	// Получаем штамп времени в наносекундах
+	chrono::nanoseconds ns = chrono::duration_cast <chrono::nanoseconds> (chrono::system_clock::now().time_since_epoch());
+	// Выводим результат
+	return ns.count();
+}
+/**
  * timeToStr Метод преобразования UnixTimestamp в строку
  * @param date   дата в UnixTimestamp
  * @param format формат даты

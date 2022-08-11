@@ -198,7 +198,7 @@ void awh::Cluster::Worker::message(ev::io & watcher, int revents) noexcept {
  * @param index индекс инициализированного процесса
  * @param stop  флаг остановки итерации создания дочерних процессов
  */
-void awh::Cluster::fork(const size_t wid, const uint16_t index, const bool stop) noexcept {	
+void awh::Cluster::fork(const size_t wid, const uint16_t index, const bool stop) noexcept {
 	/**
 	 * Если операционной системой не является Windows
 	 */

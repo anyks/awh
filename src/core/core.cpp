@@ -485,7 +485,7 @@ void awh::Core::signals(const int signal) noexcept {
 		// Выполняем остановку работы
 		this->stop();
 		/**
-		 * Методы только для OS Windows
+		 * Если операционной системой является MS Windows
 		 */
 		#if defined(_WIN32) || defined(_WIN64)
 			// Очищаем сетевой контекст

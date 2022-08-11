@@ -78,6 +78,9 @@ namespace awh {
 					Callback() noexcept : extractPass(nullptr), checkAuth(nullptr), active(nullptr), error(nullptr), accept(nullptr), message(nullptr) {}
 				} fn_t;
 			private:
+				// Идентификатор основного процесса
+				pid_t _pid;
+			private:
 				// Порт сервера
 				u_int _port;
 				// Хости сервера
@@ -118,6 +121,8 @@ namespace awh {
 			private:
 				// Флаг шифрования сообщений
 				bool _crypt;
+				// Флаг игольного ушка
+				bool _needleEye;
 				// Флаг переиспользования контекста клиента
 				bool _takeOverCli;
 				// Флаг переиспользования контекста сервера
@@ -196,6 +201,16 @@ namespace awh {
 				 * @return     результат разрешения к подключению клиента
 				 */
 				bool acceptCallback(const string & ip, const string & mac, const u_int port, const size_t wid, awh::core_t * core) noexcept;
+				/**
+				 * messageCallback Функция обратного вызова при получении сообщений сервера
+				 * @param buffer бинарный буфер содержащий сообщение
+				 * @param size   размер бинарного буфера содержащего сообщение
+				 * @param wid    идентификатор воркера
+				 * @param aid    идентификатор адъютанта
+				 * @param pid    идентификатор дочернего процесса
+				 * @param core   объект биндинга TCP/IP
+				 */
+				void messageCallback(const char * buffer, const size_t size, const size_t wid, const size_t aid, const pid_t pid, awh::core_t * core) noexcept;
 			private:
 				/**
 				 * handler Метод управления входящими методами
@@ -402,6 +417,11 @@ namespace awh {
 				 * @param total максимальное количество одновременных подключений
 				 */
 				void total(const u_short total) noexcept;
+				/**
+				 * needleEye Метод установки флага использования игольного ушка
+				 * @param mode флаг активации
+				 */
+				void needleEye(const bool mode) noexcept;
 				/**
 				 * segmentSize Метод установки размеров сегментов фрейма
 				 * @param size минимальный размер сегмента

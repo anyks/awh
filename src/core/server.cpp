@@ -46,7 +46,7 @@ void awh::server::Core::cluster(const size_t wid, const pid_t pid, const cluster
 				// Если процесс является родительским
 				if(this->pid == getpid())
 					// Выбираем активный рабочий процесс
-					this->sendMessage(it->first, pid, event_t::SELECT);
+					this->sendEvent(it->first, 0, pid, event_t::SELECT);
 				// Если процесс является дочерним
 				else {
 					// Запоминаем текущий идентификатор процесса
@@ -71,15 +71,15 @@ void awh::server::Core::cluster(const size_t wid, const pid_t pid, const cluster
 						}
 					}
 					// Сообщаем родительскому процессу, что дочерний процесс подключён
-					this->sendMessage(it->first, this->_pid, event_t::ONLINE);
+					this->sendEvent(it->first, 0, this->_pid, event_t::ONLINE);
 				}
 			} break;
 			// Если производится остановка процесса
 			case (uint8_t) cluster_t::event_t::STOP: {
 				// Выполняем поиск воркера
-				auto it = this->burden.find(wid);
+				auto it = this->_burden.find(wid);
 				// Если активный воркер найден
-				if(it != this->burden.end()){
+				if(it != this->_burden.end()){
 					// Выполняем поиск процесс в списке нагрузки
 					auto jt = it->second.find(pid);
 					// Если процесс в списке нагрузке найден
@@ -89,7 +89,7 @@ void awh::server::Core::cluster(const size_t wid, const pid_t pid, const cluster
 					// Если список нагрузки пустой, удаляем весь объект
 					if(it->second.empty())
 						// Удаляем весь объект нагрузок
-						this->burden.erase(it);
+						this->_burden.erase(it);
 				}
 			} break;
 		}
@@ -114,19 +114,19 @@ void awh::server::Core::message(const size_t wid, const pid_t pid, const char * 
 			// Если событием является подключение дочернего процесса
 			case (uint8_t) event_t::ONLINE: {
 				// Выполняем поиск активного воркера
-				auto it = this->burden.find(wid);
+				auto it = this->_burden.find(wid);
 				// Если воркер существует
-				if(it != this->burden.end())
+				if(it != this->_burden.end())
 					// Добавляем в список нулевую нагрузку
 					it->second.emplace(pid, 0);
 				// Если воркер не существует, выполняем создание объекта нагрузки
 				else {
 					// Создаём объект нагрузки
-					map <pid_t, size_t> burden;
+					map <pid_t, size_t> _burden;
 					// Выполняем инициализацию нагрузки
-					burden.emplace(pid, 0);
+					_burden.emplace(pid, 0);
 					// Выполняем установку объекта нагрузки
-					this->burden.emplace(wid, move(burden));
+					this->_burden.emplace(wid, move(_burden));
 				}
 			} break;
 			// Если событием является подключение
@@ -134,9 +134,9 @@ void awh::server::Core::message(const size_t wid, const pid_t pid, const char * 
 				// Устанавливаем идентификатор выбранного процесса
 				this->_pid = pid;
 				// Выполняем поиск воркера
-				auto it = this->burden.find(wid);
+				auto it = this->_burden.find(wid);
 				// Если активный воркер найден
-				if(it != this->burden.end()){
+				if(it != this->_burden.end()){
 					// Выполняем поиск процесс в списке нагрузки
 					auto jt = it->second.find(this->_pid);
 					// Если процесс в списке нагрузке найден
@@ -160,20 +160,22 @@ void awh::server::Core::message(const size_t wid, const pid_t pid, const char * 
 					// Если был выбран новый процесс для обработки запросов
 					if(this->_pid != pid){
 						// Выполняем переключение процесса на активную работу
-						this->sendMessage(wid, this->_pid, event_t::SELECT);
+						this->sendEvent(wid, 0, this->_pid, event_t::SELECT);
 						// Снимаем процесс с активной работы
-						this->sendMessage(wid, pid, event_t::UNSELECT);
+						this->sendEvent(wid, 0, pid, event_t::UNSELECT);
 					}
+					// Добавляем подключившегося клиента в список клиентов
+					this->_adjutants.emplace(data.aid, pid);
 				}
 			} break;
 			// Если событием является отключение
-			case (uint8_t) event_t::DISCONNECT:
+			case (uint8_t) event_t::DISCONNECT: {
 				// Выводим сообщени об активном сервисе
 				if(!this->noinfo) this->log->print("client disconnected from process, %d connections left, pid = %d", log_t::flag_t::INFO, data.count, pid);
 				// Выполняем поиск воркера
-				auto it = this->burden.find(wid);
+				auto it = this->_burden.find(wid);
 				// Если активный воркер найден
-				if(it != this->burden.end()){
+				if(it != this->_burden.end()){
 					// Выполняем поиск процесс в списке нагрузки
 					auto jt = it->second.find(pid);
 					// Если процесс в списке нагрузке найден
@@ -182,47 +184,164 @@ void awh::server::Core::message(const size_t wid, const pid_t pid, const char * 
 						jt->second = data.count;
 					// Если такой процесс не существует, создаём новый
 					else it->second.emplace(pid, (size_t) data.count);
+					// Удаляем отключившегося клиента из списока клиентов
+					this->_adjutants.erase(data.aid);
 				}
-			break;
+			} break;
+			// Если событием является сообщение
+			case (uint8_t) event_t::MESSAGE: {
+				// Выполняем поиск предыдущей части сообщения
+				auto it = this->_messages.find(pid);
+				// Если данные предыдущей части сообщения найдены
+				if((it != this->_messages.end()) && (it->second.count(data.aid) > 0)){
+					// Выполняем поиск идентификатор адъютанта
+					auto jt = it->second.find(data.aid);
+					// Добавляем очередную часть сообщения в буфер
+					jt->second.insert(jt->second.end(), data.buffer, data.buffer + data.size);
+					// Если данные получены полностью
+					if(data.fin){
+						// Выполняем поиск воркера
+						auto kt = this->workers.find(wid);
+						// Если воркер найден, устанавливаем максимальное количество одновременных подключений
+						if(kt != this->workers.end()){
+							// Получаем объект подключения
+							worker_t * wrk = (worker_t *) const_cast <awh::worker_t *> (kt->second);
+							// Если функция обратного вызова на получение данных установлена
+							if(wrk->callback.mess != nullptr)
+								// Выводим функцию обратного вызова
+								wrk->callback.mess(jt->second.data(), jt->second.size(), wrk->wid, data.aid, pid, reinterpret_cast <awh::core_t *> (this));
+						}
+						// Удаляем буфер данных адъютанта
+						it->second.erase(jt);
+						// Если адъютантов в списке процесса больше нет
+						if(it->second.empty())
+							// Очищаем буфер сообщения
+							this->_messages.erase(it);
+					}
+				// Если данные предыдущей части сообщения не найдены
+				} else {
+					// Если данные получены полностью
+					if(data.fin){
+						// Выполняем поиск воркера
+						auto jt = this->workers.find(wid);
+						// Если воркер найден, устанавливаем максимальное количество одновременных подключений
+						if(jt != this->workers.end()){
+							// Получаем объект подключения
+							worker_t * wrk = (worker_t *) const_cast <awh::worker_t *> (jt->second);
+							// Если функция обратного вызова на получение данных установлена
+							if(wrk->callback.mess != nullptr)
+								// Выводим функцию обратного вызова
+								wrk->callback.mess((const char *) data.buffer, data.size, wrk->wid, data.aid, pid, reinterpret_cast <awh::core_t *> (this));
+						}
+					// Если данные получены не полностью
+					} else {
+						// Выполняем инициализацию буфера сообщения
+						auto ret1 = this->_messages.emplace(pid, map <size_t, vector <char>> ());
+						// Добавляем адъютанта в объект буфера данных
+						auto ret2 = ret1.first->second.emplace(data.aid, vector <char> ());
+						// Добавляем в буфер полученные данные
+						ret2.first->second.insert(ret2.first->second.end(), data.buffer, data.buffer + data.size);
+					}
+				}
+			} break;
 		}
 	// Если процесс является дочерним
 	} else {
 		// Определяем тип события
 		switch((uint8_t) data.event){
 			// Если событием является выбор работника
-			case (uint8_t) event_t::SELECT:
+			case (uint8_t) event_t::SELECT: {
 				// Устанавливаем флаг активации перехвата подключения
 				this->_interception = true;
 				// Выводим сообщени об активном сервисе
 				if(!this->noinfo) this->log->print("a process has been activated to intercept connections, pid = %d", log_t::flag_t::INFO, getpid());
-			break;
+			} break;
 			// Если событием является снятия выбора с работника
-			case (uint8_t) event_t::UNSELECT:
+			case (uint8_t) event_t::UNSELECT: {
 				// Снимаем флаг активации перехвата подключения
 				this->_interception = false;
 				// Выводим сообщени об активном сервисе
 				if(!this->noinfo) this->log->print("a process has been deactivated to intercept connections, pid = %d", log_t::flag_t::INFO, getpid());
-			break;
+			} break;
+			// Если событием является сообщение
+			case (uint8_t) event_t::MESSAGE: {
+				// Выполняем поиск предыдущей части сообщения
+				auto it = this->_messages.find(pid);
+				// Если данные предыдущей части сообщения найдены
+				if((it != this->_messages.end()) && (it->second.count(data.aid) > 0)){
+					// Выполняем поиск идентификатор адъютанта
+					auto jt = it->second.find(data.aid);
+					// Добавляем очередную часть сообщения в буфер
+					jt->second.insert(jt->second.end(), data.buffer, data.buffer + data.size);
+					// Если данные получены полностью
+					if(data.fin){
+						// Выполняем поиск воркера
+						auto kt = this->workers.find(wid);
+						// Если воркер найден, устанавливаем максимальное количество одновременных подключений
+						if(kt != this->workers.end()){
+							// Получаем объект подключения
+							worker_t * wrk = (worker_t *) const_cast <awh::worker_t *> (kt->second);
+							// Если функция обратного вызова на получение данных установлена
+							if(wrk->callback.mess != nullptr)
+								// Выводим функцию обратного вызова
+								wrk->callback.mess(jt->second.data(), jt->second.size(), wrk->wid, data.aid, pid, reinterpret_cast <awh::core_t *> (this));
+						}
+						// Удаляем буфер данных адъютанта
+						it->second.erase(jt);
+						// Если адъютантов в списке процесса больше нет
+						if(it->second.empty())
+							// Очищаем буфер сообщения
+							this->_messages.erase(it);
+					}
+				// Если данные предыдущей части сообщения не найдены
+				} else {
+					// Если данные получены полностью
+					if(data.fin){
+						// Выполняем поиск воркера
+						auto jt = this->workers.find(wid);
+						// Если воркер найден, устанавливаем максимальное количество одновременных подключений
+						if(jt != this->workers.end()){
+							// Получаем объект подключения
+							worker_t * wrk = (worker_t *) const_cast <awh::worker_t *> (jt->second);
+							// Если функция обратного вызова на получение данных установлена
+							if(wrk->callback.mess != nullptr)
+								// Выводим функцию обратного вызова
+								wrk->callback.mess((const char *) data.buffer, data.size, wrk->wid, data.aid, pid, reinterpret_cast <awh::core_t *> (this));
+						}
+					// Если данные получены не полностью
+					} else {
+						// Выполняем инициализацию буфера сообщения
+						auto ret1 = this->_messages.emplace(pid, map <size_t, vector <char>> ());
+						// Добавляем адъютанта в объект буфера данных
+						auto ret2 = ret1.first->second.emplace(data.aid, vector <char> ());
+						// Добавляем в буфер полученные данные
+						ret2.first->second.insert(ret2.first->second.end(), data.buffer, data.buffer + data.size);
+					}
+				}
+			} break;
 		}
 	}
 }
 /**
- * sendMessage Метод отправки сообщения дочернему процессу
+ * sendEvent Метод отправки события родительскому и дочернему процессу
  * @param wid   идентификатор воркера
+ * @param aid   идентификатор адъютанта
  * @param pid   идентификатор процесса
  * @param event активное событие на сервере
  */
-void awh::server::Core::sendMessage(const size_t wid, const pid_t pid, const event_t event) noexcept {
+void awh::server::Core::sendEvent(const size_t wid, const size_t aid, const pid_t pid, const event_t event) noexcept {	
 	// Создаём объект сообщения
 	data_t data;
+	// Устанавливаем идентификатор адъютанта
+	data.aid = aid;
 	// Устанавливаем событие сообщения
 	data.event = event;
 	// Если процесс является родительским
-	if(this->pid == getpid()){
+	if(this->pid == getpid())
 		// Отправляем сообщение дочернему процессу
 		this->_cluster.send(wid, pid, (const char *) &data, sizeof(data));
 	// Если процесс является дочерним
-	} else {
+	else {
 		// Определяем тип события
 		switch((uint8_t) data.event){
 			// Если событием является подключение
@@ -237,6 +356,72 @@ void awh::server::Core::sendMessage(const size_t wid, const pid_t pid, const eve
 		}
 		// Отправляем сообщение дочернему процессу
 		this->_cluster.send(wid, (const char *) &data, sizeof(data));
+	}
+}
+/**
+ * sendMessage Метод отправки сообщения родительскому процессу
+ * @param wid    идентификатор воркера
+ * @param aid    идентификатор адъютанта
+ * @param pid    идентификатор процесса
+ * @param buffer буфер передаваемых данных
+ * @param size   размер передаваемых данных
+ */
+void awh::server::Core::sendMessage(const size_t wid, const size_t aid, const pid_t pid, const char * buffer, const size_t size) noexcept {	
+	// Создаём объект сообщения
+	data_t data;
+	// Устанавливаем идентификатор адъютанта
+	data.aid = aid;
+	// Количество переданных данных
+	size_t bytes = 0, actual = 0;
+	// Устанавливаем событие сообщения
+	data.event = event_t::MESSAGE;
+	// Если процесс является дочерним и данные переданы
+	if((buffer != nullptr) && (size > 0) && (this->pid != getpid())){
+		// Если данные ещё не все переданы, выполняем передачу
+		while(bytes < size){
+			// Получаем размер передаваемых данных
+			actual = ((size - bytes) > sizeof(data.buffer) ? sizeof(data.buffer) : (size - bytes));
+			// Устанавливаем размер передаваемых данных
+			data.size = actual;
+			// Устанавливаем флаг финального заголовка
+			data.fin = ((bytes + actual) == size);
+			// Выполняем зануление буфера данных
+			memset(data.buffer, 0, sizeof(data.buffer));
+			// Выполняем копирование данных в буфер сообщения
+			memcpy(data.buffer, buffer + bytes, actual);
+			// Отправляем сообщение дочернему процессу
+			this->_cluster.send(wid, (const char *) &data, sizeof(data));
+			// Устанавливаем задержку передачи данных в 10мс
+			this_thread::sleep_for(10ms);
+			// Увеличиваем размер переданных данных
+			bytes += actual;
+		}
+	// Если сообщение отсылается родительским процессовм
+	} else if((buffer != nullptr) && (size > 0) && (this->pid == getpid()) && this->_cluster.working(wid)) {		
+		// Выполняем поиск идентификатора процесса по его адъютанту
+		auto it = this->_adjutants.find(aid);
+		// Если идентификатор процесса получен
+		if(it != this->_adjutants.end()){
+			// Если данные ещё не все переданы, выполняем передачу
+			while(bytes < size){
+				// Получаем размер передаваемых данных
+				actual = ((size - bytes) > sizeof(data.buffer) ? sizeof(data.buffer) : (size - bytes));
+				// Устанавливаем размер передаваемых данных
+				data.size = actual;
+				// Устанавливаем флаг финального заголовка
+				data.fin = ((bytes + actual) == size);
+				// Выполняем зануление буфера данных
+				memset(data.buffer, 0, sizeof(data.buffer));
+				// Выполняем копирование данных в буфер сообщения
+				memcpy(data.buffer, buffer + bytes, actual);
+				// Отправляем сообщение дочернему процессу
+				this->_cluster.send(wid, it->second, (const char *) &data, sizeof(data));
+				// Устанавливаем задержку передачи данных в 10мс
+				this_thread::sleep_for(10ms);
+				// Увеличиваем размер переданных данных
+				bytes += actual;
+			}
+		}
 	}
 }
 /**
@@ -416,7 +601,7 @@ void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 						// Получаем порт подключения клиента
 						adj->port = adj->addr.port;
 						// Устанавливаем идентификатор адъютанта
-						adj->aid = this->fmk->unixTimestamp();
+						adj->aid = this->fmk->nanoTimestamp();
 						// Выполняем получение контекста сертификата
 						this->engine.wrapServer(adj->ectx, &adj->addr);
 						// Если подключение не обёрнуто
@@ -437,7 +622,9 @@ void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 						// Если процесс не является основным
 						if((this->pid != getpid()) && this->_cluster.working(wrk->wid))
 							// Выполняем разрешение на отправку сообщения
-							this->sendMessage(wrk->wid, this->_pid, event_t::CONNECT);
+							this->sendEvent(wrk->wid, ret.first->first, this->_pid, event_t::CONNECT);
+						// Добавляем подлючившегося клиента в список клиентов
+						else this->_adjutants.emplace(ret.first->first, getpid());
 						// Запускаем чтение данных
 						this->enabled(engine_t::method_t::READ, ret.first->first);
 						// Выполняем функцию обратного вызова
@@ -474,7 +661,7 @@ void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 					// Если прикрепление клиента к серверу выполнено
 					if(adj->addr.attach(wrk->addr)){
 						// Устанавливаем идентификатор адъютанта
-						adj->aid = this->fmk->unixTimestamp();
+						adj->aid = this->fmk->nanoTimestamp();
 						// Выполняем прикрепление контекста клиента к контексту сервера
 						this->engine.attach(adj->ectx, &adj->addr);
 						// Получаем адрес подключения клиента
@@ -509,7 +696,9 @@ void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 						// Если процесс не является основным
 						if((this->pid != getpid()) && this->_cluster.working(wrk->wid))
 							// Выполняем разрешение на отправку сообщения
-							this->sendMessage(wrk->wid, this->_pid, event_t::CONNECT);
+							this->sendEvent(wrk->wid, ret.first->first, this->_pid, event_t::CONNECT);
+						// Добавляем подлючившегося клиента в список клиентов
+						else this->_adjutants.emplace(ret.first->first, getpid());
 						// Запускаем чтение данных
 						this->enabled(engine_t::method_t::READ, ret.first->first);
 						// Если вывод информационных данных не запрещён
@@ -539,13 +728,6 @@ void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 						// Выходим
 						break;
 					}
-					/**
-					 * Если операционной системой является MS Windows
-					 */
-					#if defined(_WIN32) || defined(_WIN64)
-						// Запускаем запись данных на сервер (Для Windows)
-						// wrk->io.start();
-					#endif
 					// Создаём бъект адъютанта
 					unique_ptr <awh::worker_t::adj_t> adj(new awh::worker_t::adj_t(wrk, this->fmk, this->log));
 					// Устанавливаем время жизни подключения
@@ -576,7 +758,7 @@ void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 							break;
 						}
 						// Устанавливаем идентификатор адъютанта
-						adj->aid = this->fmk->unixTimestamp();
+						adj->aid = this->fmk->nanoTimestamp();
 						// Выполняем получение контекста сертификата
 						this->engine.wrapServer(adj->ectx, &adj->addr);
 						// Если мы хотим работать в зашифрованном режиме
@@ -607,7 +789,9 @@ void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 						// Если процесс не является основным
 						if((this->pid != getpid()) && this->_cluster.working(wrk->wid))
 							// Выполняем разрешение на отправку сообщения
-							this->sendMessage(wrk->wid, this->_pid, event_t::CONNECT);
+							this->sendEvent(wrk->wid, ret.first->first, this->_pid, event_t::CONNECT);
+						// Добавляем подлючившегося клиента в список клиентов
+						else this->_adjutants.emplace(ret.first->first, getpid());
 						// Запускаем чтение данных
 						this->enabled(engine_t::method_t::READ, ret.first->first);
 						// Если вывод информационных данных не запрещён
@@ -662,6 +846,12 @@ void awh::server::Core::close() noexcept {
 						if(wrk->callback.disconnect != nullptr)
 							// Выполняем функцию обратного вызова
 							wrk->callback.disconnect(it->first, worker.first, this);
+						// Если процесс не является основным
+						if((this->pid != getpid()) && this->_cluster.working(wrk->wid))
+							// Выполняем разрешение на отправку сообщения
+							this->sendEvent(wrk->wid, it->first, this->_pid, event_t::DISCONNECT);
+						// Удаляем отключившегося клиента из списока клиентов
+						else this->_adjutants.erase(it->first);
 						// Удаляем блокировку адъютанта
 						this->_locking.erase(it->first);
 						// Удаляем адъютанта из списка
@@ -669,10 +859,6 @@ void awh::server::Core::close() noexcept {
 					// Иначе продолжаем дальше
 					} else ++it;
 				}
-				// Если процесс не является основным
-				if((this->pid != getpid()) && this->_cluster.working(wrk->wid))
-					// Выполняем разрешение на отправку сообщения
-					this->sendMessage(wrk->wid, this->_pid, event_t::DISCONNECT);
 				// Останавливаем работу кластера
 				this->_cluster.stop(wrk->wid);
 			}
@@ -681,6 +867,8 @@ void awh::server::Core::close() noexcept {
 			// Выполняем закрытие подключение сервера
 			wrk->addr.close();
 		}
+		// Выполняем очистку буфера сообщений дочерних процессов
+		this->_messages.clear();
 	}
 }
 /**
@@ -715,6 +903,12 @@ void awh::server::Core::remove() noexcept {
 						if(wrk->callback.disconnect != nullptr)
 							// Выполняем функцию обратного вызова
 							wrk->callback.disconnect(jt->first, it->first, this);
+						// Если процесс не является основным
+						if((this->pid != getpid()) && this->_cluster.working(wrk->wid))
+							// Выполняем разрешение на отправку сообщения
+							this->sendEvent(wrk->wid, jt->first, this->_pid, event_t::DISCONNECT);
+						// Удаляем отключившегося клиента из списока клиентов
+						else this->_adjutants.erase(jt->first);
 						// Удаляем блокировку адъютанта
 						this->_locking.erase(jt->first);
 						// Удаляем адъютанта из списка
@@ -722,10 +916,6 @@ void awh::server::Core::remove() noexcept {
 					// Иначе продолжаем дальше
 					} else ++jt;
 				}
-				// Если процесс не является основным
-				if((this->pid != getpid()) && this->_cluster.working(wrk->wid))
-					// Выполняем разрешение на отправку сообщения
-					this->sendMessage(wrk->wid, this->_pid, event_t::DISCONNECT);
 				// Останавливаем работу кластера
 				this->_cluster.stop(wrk->wid);
 			}
@@ -736,6 +926,8 @@ void awh::server::Core::remove() noexcept {
 			// Выполняем удаление воркера
 			it = this->workers.erase(it);
 		}
+		// Выполняем очистку буфера сообщений дочерних процессов
+		this->_messages.clear();
 	}
 }
 /**
@@ -848,6 +1040,12 @@ void awh::server::Core::remove(const size_t wid) noexcept {
 							wrk->callback.disconnect(jt->first, it->first, this);
 						// Удаляем адъютанта из списка подключений
 						this->adjutants.erase(jt->first);
+						// Если процесс не является основным
+						if((this->pid != getpid()) && this->_cluster.working(wrk->wid))
+							// Выполняем разрешение на отправку сообщения
+							this->sendEvent(wrk->wid, jt->first, this->_pid, event_t::DISCONNECT);
+						// Удаляем отключившегося клиента из списока клиентов
+						else this->_adjutants.erase(jt->first);
 						// Удаляем блокировку адъютанта
 						this->_locking.erase(jt->first);
 						// Удаляем адъютанта из списка
@@ -855,10 +1053,6 @@ void awh::server::Core::remove(const size_t wid) noexcept {
 					// Иначе продолжаем дальше
 					} else ++jt;
 				}
-				// Если процесс не является основным
-				if((this->pid != getpid()) && this->_cluster.working(wrk->wid))
-					// Выполняем разрешение на отправку сообщения
-					this->sendMessage(wrk->wid, this->_pid, event_t::DISCONNECT);
 			}
 			// Останавливаем работу сервера
 			wrk->io.stop();
@@ -903,7 +1097,9 @@ void awh::server::Core::close(const size_t aid) noexcept {
 				// Если процесс не является основным
 				if((this->pid != getpid()) && this->_cluster.working(wrk->wid))
 					// Выполняем разрешение на отправку сообщения
-					this->sendMessage(wrk->wid, this->_pid, event_t::DISCONNECT);
+					this->sendEvent(wrk->wid, aid, this->_pid, event_t::DISCONNECT);
+				// Удаляем отключившегося клиента из списока клиентов
+				else this->_adjutants.erase(aid);
 				// Выводим сообщение об ошибке
 				if(!core->noinfo) this->log->print("%s", log_t::flag_t::INFO, "disconnect client from server");
 				// Выводим функцию обратного вызова

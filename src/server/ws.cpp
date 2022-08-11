@@ -100,26 +100,6 @@ void awh::server::WebSocket::disconnectCallback(const size_t aid, const size_t w
 	}
 }
 /**
- * acceptCallback Функция обратного вызова при проверке подключения клиента
- * @param ip   адрес интернет подключения клиента
- * @param mac  мак-адрес подключившегося клиента
- * @param port порт подключившегося клиента
- * @param wid  идентификатор воркера
- * @param core объект биндинга TCP/IP
- * @return     результат разрешения к подключению клиента
- */
-bool awh::server::WebSocket::acceptCallback(const string & ip, const string & mac, const u_int port, const size_t wid, awh::core_t * core) noexcept {
-	// Результат работы функции
-	bool result = true;
-	// Если данные существуют
-	if(!ip.empty() && !mac.empty() && (wid > 0) && (core != nullptr)){
-		// Если функция обратного вызова установлена, проверяем
-		if(this->_callback.accept != nullptr) result = this->_callback.accept(ip, mac, port, this);
-	}
-	// Разрешаем подключение клиенту
-	return result;
-}
-/**
  * readCallback Функция обратного вызова при чтении сообщения с клиента
  * @param buffer бинарный буфер содержащий сообщение
  * @param size   размер бинарного буфера содержащего сообщение
@@ -179,6 +159,51 @@ void awh::server::WebSocket::writeCallback(const char * buffer, const size_t siz
 				const_cast <server::core_t *> (this->_core)->close(aid);
 			}
 		}
+	}
+}
+/**
+ * acceptCallback Функция обратного вызова при проверке подключения клиента
+ * @param ip   адрес интернет подключения клиента
+ * @param mac  мак-адрес подключившегося клиента
+ * @param port порт подключившегося клиента
+ * @param wid  идентификатор воркера
+ * @param core объект биндинга TCP/IP
+ * @return     результат разрешения к подключению клиента
+ */
+bool awh::server::WebSocket::acceptCallback(const string & ip, const string & mac, const u_int port, const size_t wid, awh::core_t * core) noexcept {
+	// Результат работы функции
+	bool result = true;
+	// Если данные существуют
+	if(!ip.empty() && !mac.empty() && (wid > 0) && (core != nullptr)){
+		// Если функция обратного вызова установлена, проверяем
+		if(this->_callback.accept != nullptr) result = this->_callback.accept(ip, mac, port, this);
+	}
+	// Разрешаем подключение клиенту
+	return result;
+}
+/**
+ * messageCallback Функция обратного вызова при получении сообщений сервера
+ * @param buffer бинарный буфер содержащий сообщение
+ * @param size   размер бинарного буфера содержащего сообщение
+ * @param wid    идентификатор воркера
+ * @param aid    идентификатор адъютанта
+ * @param pid    идентификатор дочернего процесса
+ * @param core   объект биндинга TCP/IP
+ */
+void awh::server::WebSocket::messageCallback(const char * buffer, const size_t size, const size_t wid, const size_t aid, const pid_t pid, awh::core_t * core) noexcept {
+	// Если активирована система игольного ушка
+	if(this->_needleEye){
+		// Если процесс является родительским
+		if(this->_pid == getpid()){
+			// Если функция обратного вызова установлена
+			if(this->_callback.message != nullptr){
+				// Создаём буфер бинарных данных
+				vector <char> data(buffer, buffer + size);
+				// Иначе выводим сообщение так - как оно пришло
+				this->_callback.message(aid, data, false, const_cast <WebSocket *> (this));
+			}
+		// Если процесс является дочерним, отправляем сообщение
+		} else this->send(aid, buffer, size, false);
 	}
 }
 /**
@@ -744,11 +769,23 @@ void awh::server::WebSocket::extraction(const size_t aid, const vector <char> & 
 					// Выполняем шифрование переданных данных
 					const auto & res = adj->hash.decrypt(data.data(), data.size());
 					// Отправляем полученный результат
-					if(!res.empty()) this->_callback.message(aid, res, utf8, const_cast <WebSocket *> (this));
-					// Иначе выводим сообщение так - как оно пришло
-					else this->_callback.message(aid, data, utf8, const_cast <WebSocket *> (this));
-				// Отправляем полученный результат
-				} else this->_callback.message(aid, data, utf8, const_cast <WebSocket *> (this));
+					if(!res.empty()){
+						// Если активирована система игольного ушка
+						if(this->_needleEye && (this->_pid != getpid()))
+							// Отправляем сообщение родительскому процессу
+							const_cast <server::core_t *> (this->_core)->sendMessage(this->_worker.wid, aid, getpid(), res.data(), res.size());
+						// Отправляем полученный результат
+						else this->_callback.message(aid, res, utf8, const_cast <WebSocket *> (this));
+						// Выходим из функции
+						return;
+					}
+				}
+				// Если активирована система игольного ушка
+				if(this->_needleEye && (this->_pid != getpid()))
+					// Отправляем сообщение родительскому процессу
+					const_cast <server::core_t *> (this->_core)->sendMessage(this->_worker.wid, aid, getpid(), data.data(), data.size());
+				// Выводим сообщение так - как оно пришло
+				else this->_callback.message(aid, data, utf8, const_cast <WebSocket *> (this));
 			// Выводим сообщение об ошибке
 			} else {
 				// Создаём сообщение
@@ -771,11 +808,23 @@ void awh::server::WebSocket::extraction(const size_t aid, const vector <char> & 
 				// Выполняем шифрование переданных данных
 				const auto & res = adj->hash.decrypt(buffer.data(), buffer.size());
 				// Отправляем полученный результат
-				if(!res.empty()) this->_callback.message(aid, res, utf8, const_cast <WebSocket *> (this));
-				// Иначе выводим сообщение так - как оно пришло
-				else this->_callback.message(aid, buffer, utf8, const_cast <WebSocket *> (this));
-			// Отправляем полученный результат
-			} else this->_callback.message(aid, buffer, utf8, const_cast <WebSocket *> (this));
+				if(!res.empty()){
+					// Если активирована система игольного ушка
+					if(this->_needleEye && (this->_pid != getpid()))
+						// Отправляем сообщение родительскому процессу
+						const_cast <server::core_t *> (this->_core)->sendMessage(this->_worker.wid, aid, getpid(), res.data(), res.size());
+					// Отправляем полученный результат
+					else this->_callback.message(aid, res, utf8, const_cast <WebSocket *> (this));
+					// Выходим из функции
+					return;
+				}
+			}
+			// Если активирована система игольного ушка
+			if(this->_needleEye && (this->_pid != getpid()))
+				// Отправляем сообщение родительскому процессу
+				const_cast <server::core_t *> (this->_core)->sendMessage(this->_worker.wid, aid, getpid(), buffer.data(), buffer.size());
+			// Выводим сообщение так - как оно пришло
+			else this->_callback.message(aid, buffer, utf8, const_cast <WebSocket *> (this));
 		}
 	}
 }
@@ -965,127 +1014,134 @@ void awh::server::WebSocket::sendError(const size_t aid, const mess_t & mess) co
 void awh::server::WebSocket::send(const size_t aid, const char * message, const size_t size, const bool utf8) noexcept {
 	// Если подключение выполнено
 	if(this->_core->working() && (aid > 0) && (size > 0) && (message != nullptr)){
-		// Получаем параметры подключения адъютанта
-		ws_worker_t::coffer_t * adj = const_cast <ws_worker_t::coffer_t *> (this->_worker.get(aid));
-		// Если отправка сообщений разблокированна
-		if((adj != nullptr) && adj->allow.send){
-			// Выполняем блокировку отправки сообщения
-			adj->allow.send = !adj->allow.send;
-			// Если рукопожатие выполнено
-			if(adj->http.isHandshake()){
-				/**
-				 * Если включён режим отладки
-				 */
-				#if defined(DEBUG_MODE)
-					// Выводим заголовок ответа
-					cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
-					// Если отправляемое сообщение является текстом
-					if(utf8)
-						// Выводим параметры ответа
-						cout << string(message, size) << endl << endl;
-					// Выводим сообщение о выводе чанка полезной нагрузки
-					else cout << this->_fmk->format("<bytes %u>", size) << endl << endl;
-				#endif
-				// Буфер сжатых данных
-				vector <char> buffer;
-				// Создаём объект заголовка для отправки
-				frame_t::head_t head(true, false);
-				// Если нужно производить шифрование
-				if(this->_crypt){
-					// Выполняем шифрование переданных данных
-					buffer = adj->hash.encrypt(message, size);
-					// Если данные зашифрованны
-					if(!buffer.empty()){
-						// Заменяем сообщение для передачи
-						message = buffer.data();
-						// Заменяем размер сообщения
-						(* const_cast <size_t *> (&size)) = buffer.size();
+		// Если активирована система игольного ушка
+		if(this->_needleEye && (this->_pid == getpid()))
+			// Отправляем сообщение родительскому процессу
+			const_cast <server::core_t *> (this->_core)->sendMessage(this->_worker.wid, aid, getpid(), message, size);
+		// Иначе просто отправляем сообщение клиенту
+		else {
+			// Получаем параметры подключения адъютанта
+			ws_worker_t::coffer_t * adj = const_cast <ws_worker_t::coffer_t *> (this->_worker.get(aid));
+			// Если отправка сообщений разблокированна
+			if((adj != nullptr) && adj->allow.send){
+				// Выполняем блокировку отправки сообщения
+				adj->allow.send = !adj->allow.send;
+				// Если рукопожатие выполнено
+				if(adj->http.isHandshake()){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Выводим заголовок ответа
+						cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
+						// Если отправляемое сообщение является текстом
+						if(utf8)
+							// Выводим параметры ответа
+							cout << string(message, size) << endl << endl;
+						// Выводим сообщение о выводе чанка полезной нагрузки
+						else cout << this->_fmk->format("<bytes %u>", size) << endl << endl;
+					#endif
+					// Буфер сжатых данных
+					vector <char> buffer;
+					// Создаём объект заголовка для отправки
+					frame_t::head_t head(true, false);
+					// Если нужно производить шифрование
+					if(this->_crypt){
+						// Выполняем шифрование переданных данных
+						buffer = adj->hash.encrypt(message, size);
+						// Если данные зашифрованны
+						if(!buffer.empty()){
+							// Заменяем сообщение для передачи
+							message = buffer.data();
+							// Заменяем размер сообщения
+							(* const_cast <size_t *> (&size)) = buffer.size();
+						}
 					}
-				}
-				// Устанавливаем опкод сообщения
-				head.optcode = (utf8 ? frame_t::opcode_t::TEXT : frame_t::opcode_t::BINARY);
-				// Указываем, что сообщение передаётся в сжатом виде
-				head.rsv[0] = ((size >= 1024) && (adj->compress != http_t::compress_t::NONE));
-				// Если необходимо сжимать сообщение перед отправкой
-				if(head.rsv[0]){
-					// Компрессионные данные
-					vector <char> data;
-					// Определяем метод компрессии
-					switch((uint8_t) adj->compress){
-						// Если метод компрессии выбран Deflate
-						case (uint8_t) http_t::compress_t::DEFLATE: {
-							// Устанавливаем размер скользящего окна
-							adj->hash.wbit(adj->wbitServer);
-							// Выполняем компрессию полученных данных
-							data = adj->hash.compress(message, size, hash_t::method_t::DEFLATE);
-							// Удаляем хвост в полученных данных
-							adj->hash.rmTail(data);
-						} break;
-						// Если метод компрессии выбран GZip
-						case (uint8_t) http_t::compress_t::GZIP:
-							// Выполняем компрессию полученных данных
-							data = adj->hash.compress(message, size, hash_t::method_t::GZIP);
-						break;
-						// Если метод компрессии выбран Brotli
-						case (uint8_t) http_t::compress_t::BROTLI:
-							// Выполняем компрессию полученных данных
-							data = adj->hash.compress(message, size, hash_t::method_t::BROTLI);
-						break;
+					// Устанавливаем опкод сообщения
+					head.optcode = (utf8 ? frame_t::opcode_t::TEXT : frame_t::opcode_t::BINARY);
+					// Указываем, что сообщение передаётся в сжатом виде
+					head.rsv[0] = ((size >= 1024) && (adj->compress != http_t::compress_t::NONE));
+					// Если необходимо сжимать сообщение перед отправкой
+					if(head.rsv[0]){
+						// Компрессионные данные
+						vector <char> data;
+						// Определяем метод компрессии
+						switch((uint8_t) adj->compress){
+							// Если метод компрессии выбран Deflate
+							case (uint8_t) http_t::compress_t::DEFLATE: {
+								// Устанавливаем размер скользящего окна
+								adj->hash.wbit(adj->wbitServer);
+								// Выполняем компрессию полученных данных
+								data = adj->hash.compress(message, size, hash_t::method_t::DEFLATE);
+								// Удаляем хвост в полученных данных
+								adj->hash.rmTail(data);
+							} break;
+							// Если метод компрессии выбран GZip
+							case (uint8_t) http_t::compress_t::GZIP:
+								// Выполняем компрессию полученных данных
+								data = adj->hash.compress(message, size, hash_t::method_t::GZIP);
+							break;
+							// Если метод компрессии выбран Brotli
+							case (uint8_t) http_t::compress_t::BROTLI:
+								// Выполняем компрессию полученных данных
+								data = adj->hash.compress(message, size, hash_t::method_t::BROTLI);
+							break;
+						}
+						// Если сжатие данных прошло удачно
+						if(!data.empty()){
+							// Выполняем перемещение данных
+							buffer = move(data);
+							// Заменяем сообщение для передачи
+							message = buffer.data();
+							// Заменяем размер сообщения
+							(* const_cast <size_t *> (&size)) = buffer.size();
+						// Снимаем флаг сжатых данных
+						} else head.rsv[0] = false;
 					}
-					// Если сжатие данных прошло удачно
-					if(!data.empty()){
-						// Выполняем перемещение данных
-						buffer = move(data);
-						// Заменяем сообщение для передачи
-						message = buffer.data();
-						// Заменяем размер сообщения
-						(* const_cast <size_t *> (&size)) = buffer.size();
-					// Снимаем флаг сжатых данных
-					} else head.rsv[0] = false;
-				}
-				// Если требуется фрагментация сообщения
-				if(size > this->_frameSize){
-					// Бинарный буфер чанка данных
-					vector <char> chunk(this->_frameSize);
-					// Смещение в бинарном буфере
-					size_t start = 0, stop = this->_frameSize;
-					// Выполняем разбивку полезной нагрузки на сегменты
-					while(stop < size){
-						// Увеличиваем длину чанка
-						stop += this->_frameSize;
-						// Если длина чанка слишком большая, компенсируем
-						stop = (stop > size ? size : stop);
-						// Устанавливаем флаг финального сообщения
-						head.fin = (stop == size);
-						// Формируем чанк бинарных данных
-						chunk.assign(message + start, message + stop);
+					// Если требуется фрагментация сообщения
+					if(size > this->_frameSize){
+						// Бинарный буфер чанка данных
+						vector <char> chunk(this->_frameSize);
+						// Смещение в бинарном буфере
+						size_t start = 0, stop = this->_frameSize;
+						// Выполняем разбивку полезной нагрузки на сегменты
+						while(stop < size){
+							// Увеличиваем длину чанка
+							stop += this->_frameSize;
+							// Если длина чанка слишком большая, компенсируем
+							stop = (stop > size ? size : stop);
+							// Устанавливаем флаг финального сообщения
+							head.fin = (stop == size);
+							// Формируем чанк бинарных данных
+							chunk.assign(message + start, message + stop);
+							// Создаём буфер для отправки
+							const auto & buffer = this->_frame.set(head, chunk.data(), chunk.size());
+							// Если бинарный буфер для отправки данных получен
+							if(!buffer.empty())
+								// Отправляем серверу сообщение
+								const_cast <server::core_t *> (this->_core)->write(buffer.data(), buffer.size(), aid);
+							// Иначе просто выходим
+							else break;
+							// Выполняем сброс RSV1
+							head.rsv[0] = false;
+							// Устанавливаем опкод сообщения
+							head.optcode = frame_t::opcode_t::CONTINUATION;
+							// Увеличиваем смещение в буфере
+							start = stop;
+						}
+					// Если фрагментация сообщения не требуется
+					} else {
 						// Создаём буфер для отправки
-						const auto & buffer = this->_frame.set(head, chunk.data(), chunk.size());
+						const auto & buffer = this->_frame.set(head, message, size);
 						// Если бинарный буфер для отправки данных получен
 						if(!buffer.empty())
 							// Отправляем серверу сообщение
 							const_cast <server::core_t *> (this->_core)->write(buffer.data(), buffer.size(), aid);
-						// Иначе просто выходим
-						else break;
-						// Выполняем сброс RSV1
-						head.rsv[0] = false;
-						// Устанавливаем опкод сообщения
-						head.optcode = frame_t::opcode_t::CONTINUATION;
-						// Увеличиваем смещение в буфере
-						start = stop;
 					}
-				// Если фрагментация сообщения не требуется
-				} else {
-					// Создаём буфер для отправки
-					const auto & buffer = this->_frame.set(head, message, size);
-					// Если бинарный буфер для отправки данных получен
-					if(!buffer.empty())
-						// Отправляем серверу сообщение
-						const_cast <server::core_t *> (this->_core)->write(buffer.data(), buffer.size(), aid);
 				}
+				// Выполняем разблокировку отправки сообщения
+				adj->allow.send = !adj->allow.send;
 			}
-			// Выполняем разблокировку отправки сообщения
-			adj->allow.send = !adj->allow.send;
 		}
 	}
 }
@@ -1265,6 +1321,29 @@ void awh::server::WebSocket::total(const u_short total) noexcept {
 	const_cast <server::core_t *> (this->_core)->total(this->_worker.wid, total);
 }
 /**
+ * needleEye Метод установки флага использования игольного ушка
+ * @param mode флаг активации
+ */
+void awh::server::WebSocket::needleEye(const bool mode) noexcept {
+	/**
+	 * Если операционной системой является Nix-подобная
+	 */
+	#if !defined(_WIN32) && !defined(_WIN64)
+		// Если установка производится в родительском процессе
+		if(this->_pid == getpid())
+			// Выполняем активацию игольного ушка
+			this->_needleEye = mode;
+		// Иначе выводим предупреждение
+		else this->_log->print("activation of the eye of the needle is only allowed to the parent process", log_t::flag_t::WARNING);
+	/**
+	 * Если операционной системой является MS Windows
+	 */
+	#else
+		// Выводим предупреждение
+		this->_log->print("activation of the eye of the needle is prohibited in the MS Windows", log_t::flag_t::WARNING);
+	#endif
+}
+/**
  * segmentSize Метод установки размеров сегментов фрейма
  * @param size минимальный размер сегмента
  */
@@ -1332,11 +1411,11 @@ void awh::server::WebSocket::crypto(const string & pass, const string & salt, co
  * @param log  объект для работы с логами
  */
 awh::server::WebSocket::WebSocket(const server::core_t * core, const fmk_t * fmk, const log_t * log) noexcept :
- _port(SERVER_PORT), _host(""), _frame(fmk, log), _worker(fmk, log), _sid(AWH_SHORT_NAME),
- _ver(AWH_VERSION), _name(AWH_NAME), _realm(""), _opaque(""), _pass(""), _salt(""),
+ _pid(getpid()), _port(SERVER_PORT), _host(""), _frame(fmk, log), _worker(fmk, log),
+ _sid(AWH_SHORT_NAME), _ver(AWH_VERSION), _name(AWH_NAME), _realm(""), _opaque(""), _pass(""), _salt(""),
  _cipher(hash_t::cipher_t::AES128), _authHash(auth_t::hash_t::MD5), _authType(auth_t::type_t::NONE),
- _crypt(false), _takeOverCli(false), _takeOverSrv(false), _frameSize(0xFA000), _threadsCount(0),
- _threadsEnabled(false), _fmk(fmk), _log(log), _core(core) {
+ _crypt(false), _needleEye(false), _takeOverCli(false), _takeOverSrv(false), _frameSize(0xFA000),
+ _threadsCount(0), _threadsEnabled(false), _fmk(fmk), _log(log), _core(core) {
 	// Устанавливаем событие на запуск системы
 	this->_worker.callback.open = std::bind(&awh::server::WebSocket::openCallback, this, _1, _2);
 	// Устанавливаем функцию персистентного вызова
@@ -1351,6 +1430,8 @@ awh::server::WebSocket::WebSocket(const server::core_t * core, const fmk_t * fmk
 	this->_worker.callback.disconnect = std::bind(&awh::server::WebSocket::disconnectCallback, this, _1, _2, _3);
 	// Добавляем событие аццепта клиента
 	this->_worker.callback.accept = std::bind(&awh::server::WebSocket::acceptCallback, this, _1, _2, _3, _4, _5);
+	// Добавляем событие на получение сообщений сервера
+	this->_worker.callback.mess = std::bind(&awh::server::WebSocket::messageCallback, this, _1, _2, _3, _4, _5, _6);
 	// Активируем персистентный запуск для работы пингов
 	const_cast <server::core_t *> (this->_core)->persistEnable(true);
 	// Добавляем воркер в биндер TCP/IP

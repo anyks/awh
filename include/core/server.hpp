@@ -56,11 +56,12 @@ namespace awh {
 				 */
 				enum class event_t : uint8_t {
 					NONE       = 0x00, // Флаг не установлен
-					SELECT     = 0x01, // Флаг выбора работника
-					ONLINE     = 0x02, // Флаг подключения дочернего процесса
-					UNSELECT   = 0x03, // Флаг снятия выбора с работника
-					CONNECT    = 0x04, // Флаг подключения
-					DISCONNECT = 0x05  // Флаг отключения
+					ONLINE     = 0x01, // Флаг подключения дочернего процесса
+					MESSAGE    = 0x02, // Флаг передачи внутреннего сообщения
+					SELECT     = 0x03, // Флаг выбора работника
+					UNSELECT   = 0x04, // Флаг снятия выбора с работника
+					CONNECT    = 0x05, // Флаг подключения
+					DISCONNECT = 0x06  // Флаг отключения
 				};
 			private:
 				/**
@@ -68,13 +69,15 @@ namespace awh {
 				 */
 				typedef struct Data {
 					bool fin;            // Сообщение является финальным
+					size_t aid;          // Идентификатор адъютанта
+					size_t size;         // Размер полезной нагрузки
 					size_t count;        // Количество подключений
 					event_t event;       // Активное событие
-					u_char buffer[4079]; // Буфер полезной нагрузки
+					u_char buffer[4063]; // Буфер полезной нагрузки
 					/**
 					 * Data Конструктор
 					 */
-					Data() noexcept : fin(true), count(0), event(event_t::NONE) {}
+					Data() noexcept : fin(true), aid(0), size(0), count(0), event(event_t::NONE) {}
 				} __attribute__((packed)) data_t;
 			private:
 				/**
@@ -105,8 +108,12 @@ namespace awh {
 				// Список блокированных объектов
 				set <size_t> _locking;
 			private:
+				// Список адъютантов
+				map <size_t, pid_t> _adjutants;
 				// Нагрузка на дочерние процессы
-				map <size_t, map <pid_t, size_t>> burden;
+				map <size_t, map <pid_t, size_t>> _burden;
+				// Буферы сообщений дочерних процессов
+				map <pid_t, map <size_t, vector <char>>> _messages;
 			private:
 				/**
 				 * cluster Метод события ЗАПУСКА/ОСТАНОВКИ кластера
@@ -125,12 +132,23 @@ namespace awh {
 				void message(const size_t wid, const pid_t pid, const char * buffer, const size_t size) noexcept;
 			private:
 				/**
-				 * sendMessage Метод отправки сообщения дочернему процессу
+				 * sendEvent Метод отправки события родительскому и дочернему процессу
 				 * @param wid   идентификатор воркера
+				 * @param aid   идентификатор адъютанта
 				 * @param pid   идентификатор процесса
 				 * @param event активное событие на сервере
 				 */
-				void sendMessage(const size_t wid, const pid_t pid, const event_t event) noexcept;
+				void sendEvent(const size_t wid, const size_t aid, const pid_t pid, const event_t event) noexcept;
+			public:
+				/**
+				 * sendMessage Метод отправки сообщения родительскому процессу
+				 * @param wid    идентификатор воркера
+				 * @param aid    идентификатор адъютанта
+				 * @param pid    идентификатор процесса
+				 * @param buffer буфер передаваемых данных
+				 * @param size   размер передаваемых данных
+				 */
+				void sendMessage(const size_t wid, const size_t aid, const pid_t pid, const char * buffer, const size_t size) noexcept;
 			private:
 				/**
 				 * resolver Функция выполнения резолвинга домена

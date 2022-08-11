@@ -493,6 +493,11 @@ namespace awh {
 			 * @return штамп времени в миллисекундах
 			 */
 			time_t unixTimestamp() const noexcept;
+			/**
+			 * nanoTimestamp Метод получения штампа времени в наносекундах
+			 * @return штамп времени в наносекундах
+			 */
+			time_t nanoTimestamp() const noexcept;
 		public:
 			/**
 			 * timeToStr Метод преобразования UnixTimestamp в строку

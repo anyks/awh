@@ -206,7 +206,7 @@ void awh::client::Core::connect(const size_t wid) noexcept {
 				// Если сокет подключения получен
 				if(adj->addr.fd > -1){
 					// Устанавливаем идентификатор адъютанта
-					adj->aid = this->fmk->unixTimestamp();
+					adj->aid = this->fmk->nanoTimestamp();
 					// Если подключение выполняется по защищённому каналу DTLS
 					if(this->net.sonet == sonet_t::DTLS)
 						// Выполняем получение контекста сертификата

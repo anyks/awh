@@ -181,13 +181,17 @@ namespace awh {
 				function <void (const char *, const size_t, const size_t, const size_t, awh::Core *)> readProxy;
 				// Функция обратного вызова при подключении нового клиента
 				function <bool (const string &, const string &, const u_int, const size_t, awh::Core *)> accept;
+				// Функция обратного вызова при получении сообщения от сервера
+				function <void (const char *, const size_t, const size_t, const size_t, const pid_t, Core *)> mess;
 				/**
 				 * Callback Конструктор
 				 */
 				Callback() noexcept :
-				 open(nullptr), persist(nullptr), connect(nullptr),
-				 disconnect(nullptr), read(nullptr), write(nullptr),
-				 connectProxy(nullptr), readProxy(nullptr), accept(nullptr) {}
+				 open(nullptr), persist(nullptr),
+				 connect(nullptr), disconnect(nullptr),
+				 read(nullptr), write(nullptr),
+				 connectProxy(nullptr), readProxy(nullptr),
+				 accept(nullptr), mess(nullptr) {}
 			} fn_t;
 			/**
 			 * Adjutant Структура адъютанта
