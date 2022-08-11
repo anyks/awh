@@ -193,6 +193,15 @@ void awh::Cluster::Worker::message(ev::io & watcher, int revents) noexcept {
  * @param stop  флаг остановки итерации создания дочерних процессов
  */
 void awh::Cluster::fork(const size_t wid, const uint16_t index, const bool stop) noexcept {
+	
+	cout << " ----------------1 " << getpid() << endl;
+
+	cout << " ----------------2 " << GetCurrentProcessId() << endl;
+
+	HANDLE Process = PROCESS_QUERY_INFORMATION;
+
+	cout << " ----------------3 " << GetProcessId(Process) << endl;
+	
 	/**
 	 * Если операционной системой не является Windows
 	 */
