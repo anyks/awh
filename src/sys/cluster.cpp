@@ -349,28 +349,27 @@ void awh::Cluster::fork(const size_t wid, const uint16_t index, const bool stop)
 	 */
 	#else
 
-		PROCESS_INFORMATION piProcInfo;
-		TCHAR szCmdline[] = TEXT("child");
+		
+		
 
-		STARTUPINFO siStartInfo;
-		ZeroMemory(&siStartInfo, sizeof(STARTUPINFO));
-		siStartInfo.cb = sizeof(STARTUPINFO);
-		siStartInfo.dwFlags |= STARTF_USESTDHANDLES;
+		STARTUPINFO sti = {0};
+		PROCESS_INFORMATION pi = {0};
 
-		ZeroMemory(&piProcInfo, sizeof(PROCESS_INFORMATION));
+		wstring commandLine(L"Child.exe");
+		LPWSTR lpwCmdLine = &commandLine[0];
 
 		cout << " +++++++++++++++++++++++1 " << getpid() << " === " << getppid() << endl;
 
 		bool bSuccess = CreateProcess(nullptr, 
-			szCmdline,     // command line 
+			lpwCmdLine,     // command line 
 			nullptr,          // process security attributes 
 			nullptr,          // primary thread security attributes 
 			true,          // handles are inherited 
 			0,             // creation flags 
 			nullptr,          // use parent's environment 
 			nullptr,          // use parent's current directory 
-			&siStartInfo,  // STARTUPINFO pointer 
-			&piProcInfo);  // receives PROCESS_INFORMATION 
+			&sti,  // STARTUPINFO pointer 
+			&pi);  // receives PROCESS_INFORMATION 
 		
 		if(!bSuccess){
 			cout << " ------------------- ERROR " << endl;
@@ -378,7 +377,7 @@ void awh::Cluster::fork(const size_t wid, const uint16_t index, const bool stop)
 
 			cout << " +++++++++++++++++++++++2 " << getpid() << " === " << getppid() << endl;
 
-			cout << " +++++++++++++++++++++++3 " << piProcInfo.hProcess << " === " << piProcInfo.hThread << endl;
+			cout << " +++++++++++++++++++++++3 " << pi.hProcess << " === " << pi.hThread << endl;
 
 		}
 
