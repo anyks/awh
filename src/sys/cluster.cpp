@@ -360,14 +360,15 @@ void awh::Cluster::fork(const size_t wid, const uint16_t index, const bool stop)
 
 		cout << " +++++++++++++++++++++++1 " << getpid() << " === " << getppid() << endl;
 
-		bool bSuccess = CreateProcess(nullptr, 
+		bool bSuccess = CreateProcess(
+			NULL, 
 			lpwCmdLine,     // command line 
-			nullptr,          // process security attributes 
-			nullptr,          // primary thread security attributes 
-			true,          // handles are inherited 
+			NULL,          // process security attributes 
+			NULL,          // primary thread security attributes 
+			TRUE,          // handles are inherited 
 			0,             // creation flags 
-			nullptr,          // use parent's environment 
-			nullptr,          // use parent's current directory 
+			NULL,          // use parent's environment 
+			NULL,          // use parent's current directory 
 			&sti,  // STARTUPINFO pointer 
 			&pi);  // receives PROCESS_INFORMATION 
 		
