@@ -332,9 +332,6 @@ void awh::server::Core::resolver(const string & ip, worker_t * wrk) noexcept {
 					const fmk_t::os_t os = core->fmk->os();
 					// Если операционная система является Windows или количество процессов всего один
 					if((this->_interception = (this->_cluster.count(wrk->wid) == 1))){
-						
-						cout << " --------------------------- " << this->_cluster.count(wrk->wid) << endl;
-						
 						// Устанавливаем базу событий
 						wrk->io.set(this->dispatch.base);
 						// Устанавливаем событие на чтение данных подключения
@@ -547,7 +544,7 @@ void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 					 */
 					#if defined(_WIN32) || defined(_WIN64)
 						// Запускаем запись данных на сервер (Для Windows)
-						wrk->io.start();
+						// wrk->io.start();
 					#endif
 					// Создаём бъект адъютанта
 					unique_ptr <awh::worker_t::adj_t> adj(new awh::worker_t::adj_t(wrk, this->fmk, this->log));
