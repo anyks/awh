@@ -1159,10 +1159,21 @@ void awh::server::Core::ipV6only(const bool mode) noexcept {
  * @param size количество рабочих процессов
  */
 void awh::server::Core::clusterSize(const size_t size) noexcept {
-	// Выполняем блокировку потока
-	const lock_guard <recursive_mutex> lock(this->_mtx.main);
-	// Устанавливаем количество рабочих процессов кластера
-	this->_clusterSize = size;
+	/**
+	 * Если операционной системой не является Windows
+	 */
+	#if !defined(_WIN32) && !defined(_WIN64)
+		// Выполняем блокировку потока
+		const lock_guard <recursive_mutex> lock(this->_mtx.main);
+		// Устанавливаем количество рабочих процессов кластера
+		this->_clusterSize = size;
+	/**
+	 * Если операционной системой является Windows
+	 */
+	#else
+		// Выводим предупредительное сообщение в лог
+		this->log->print("MS Windows OS, does not support cluster mode", log_t::flag_t::WARNING);
+	#endif
 }
 /**
  * total Метод установки максимального количества одновременных подключений

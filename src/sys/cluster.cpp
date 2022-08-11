@@ -202,7 +202,7 @@ void awh::Cluster::fork(const size_t wid, const uint16_t index, const bool stop)
 	/**
 	 * Если операционной системой не является Windows
 	 */
-	#if !defined(_WIN32) && !defined(_WIN64)		
+	#if !defined(_WIN32) && !defined(_WIN64)
 		// Выполняем поиск воркера
 		auto it = this->_workers.find(wid);
 		// Если воркер найден
@@ -344,34 +344,6 @@ void awh::Cluster::fork(const size_t wid, const uint16_t index, const bool stop)
 				}
 			}
 		}
-	/**
-	 * Если операционной системой является Windows
-	 */
-	#else
-
-		std::thread::id this_id = std::this_thread::get_id();
-
-		
-
-		std::stringstream ss;
-		ss << std::this_thread::get_id();
-		uint64_t id = std::stoull(ss.str());
-
-		cout << " =========================1 " << id << endl;
-
-		// Выполняем обработку полученных данных в отдельном потоке
-		std::thread thr([](std::thread::id pid) noexcept {
-
-			cout << " =========================2 " << std::this_thread::get_id() << " === " << pid << endl;
-
-			
-
-		}, this_id);
-		// Отсоединяем поток
-		thr.detach();
-
-
-
 	#endif
 }
 /**
