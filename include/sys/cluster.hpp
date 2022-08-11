@@ -84,11 +84,16 @@ namespace awh {
 					 */
 					void message(ev::io & watcher, int revents) noexcept;
 					/**
-					 * child Функция обратного вызова при завершении работы процесса
-					 * @param watcher объект события дочернего процесса
-					 * @param revents идентификатор события
+					 * Если операционной системой не является Windows
 					 */
-					void child(ev::child & watcher, int revents) noexcept;
+					#if !defined(_WIN32) && !defined(_WIN64)
+						/**
+						 * child Функция обратного вызова при завершении работы процесса
+						 * @param watcher объект события дочернего процесса
+						 * @param revents идентификатор события
+						 */
+						void child(ev::child & watcher, int revents) noexcept;
+					#endif
 				public:
 					/**
 					 * Worker Конструктор

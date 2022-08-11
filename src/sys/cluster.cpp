@@ -109,15 +109,15 @@ void awh::Cluster::Worker::message(ev::io & watcher, int revents) noexcept {
 	#endif
 }
 /**
- * child Функция обратного вызова при завершении работы процесса
- * @param watcher объект события дочернего процесса
- * @param revents идентификатор события
+ * Если операционной системой не является Windows
  */
-void awh::Cluster::Worker::child(ev::child & watcher, int revents) noexcept {
+#if !defined(_WIN32) && !defined(_WIN64)
 	/**
-	 * Если операционной системой не является Windows
+	 * child Функция обратного вызова при завершении работы процесса
+	 * @param watcher объект события дочернего процесса
+	 * @param revents идентификатор события
 	 */
-	#if !defined(_WIN32) && !defined(_WIN64)
+	void awh::Cluster::Worker::child(ev::child & watcher, int revents) noexcept {
 		// Останавливаем сигнал
 		watcher.stop();
 		// Выполняем поиск работника
@@ -184,8 +184,8 @@ void awh::Cluster::Worker::child(ev::child & watcher, int revents) noexcept {
 			// Просто удаляем процесс из списка процессов
 			} else this->cluster->_pids.erase(watcher.rpid);
 		}
-	#endif
-}
+	}
+#endif
 /**
  * fork Метод отделения от основного процесса (создание дочерних процессов)
  * @param wid   идентификатор воркера
