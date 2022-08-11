@@ -24,6 +24,7 @@
 	 */
 	#include <windows.h>
 	#include <process.h>
+	#include <processthreadsapi.h>
 	// Заменяем типы данных
 	#define u_int uint32_t         // unsigned int
 	#define u_char unsigned char   // unsigned char
@@ -31,6 +32,7 @@
 	#define __uint64_t uint64_t    // unsigned int 64
 	// Заменяем вызов функции
 	#define getpid _getpid
+	#define getppid GetCurrentProcessId
 	// Файловый разделитель Windows
 	#define FS_SEPARATOR "\\"
 	// Устанавливаем кодировку UTF-8
