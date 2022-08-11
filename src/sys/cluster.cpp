@@ -349,38 +349,40 @@ void awh::Cluster::fork(const size_t wid, const uint16_t index, const bool stop)
 	 */
 	#else
 
-		
-		
+		PROCESS_INFORMATION piProcInfo;
+		TCHAR szCmdline[] = TEXT("wss");
 
-		STARTUPINFO sti = {0};
-		PROCESS_INFORMATION pi = {0};
+		STARTUPINFO siStartInfo;
+		ZeroMemory(&siStartInfo, sizeof(STARTUPINFO));
+		siStartInfo.cb = sizeof(STARTUPINFO);
+		siStartInfo.dwFlags |= STARTF_USESTDHANDLES;
 
-		string commandLine("wss.exe");
-		LPSTR lpwCmdLine = &commandLine[0];
+		ZeroMemory(&piProcInfo, sizeof(PROCESS_INFORMATION));
 
 		cout << " +++++++++++++++++++++++1 " << getpid() << " === " << getppid() << endl;
 
-		bool bSuccess = CreateProcess(
-			nullptr, 
-			lpwCmdLine,     // command line 
+		bool bSuccess = CreateProcess(nullptr, 
+			szCmdline,     // command line 
 			nullptr,          // process security attributes 
 			nullptr,          // primary thread security attributes 
 			true,          // handles are inherited 
 			0,             // creation flags 
 			nullptr,          // use parent's environment 
 			nullptr,          // use parent's current directory 
-			&sti,  // STARTUPINFO pointer 
-			&pi);  // receives PROCESS_INFORMATION 
-		
+			&siStartInfo,  // STARTUPINFO pointer 
+			&piProcInfo);  // receives PROCESS_INFORMATION 
 		
 		if(!bSuccess){
 			cout << " ------------------- ERROR " << endl;
 		} else {
-		
+			
 
 			cout << " +++++++++++++++++++++++2 " << getpid() << " === " << getppid() << endl;
 
-			cout << " +++++++++++++++++++++++3 " << pi.hProcess << " === " << pi.hThread << endl;
+			cout << " +++++++++++++++++++++++3 " << piProcInfo.hProcess << " === " << piProcInfo.hThread << endl;
+
+			CloseHandle(piProcInfo.hProcess);
+      		CloseHandle(piProcInfo.hThread);
 
 		}
 
