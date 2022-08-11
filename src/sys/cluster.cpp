@@ -44,7 +44,7 @@ void awh::Cluster::Worker::message(ev::io & watcher, int revents) noexcept {
 		// Если данные не прочитаны
 		} else this->cluster->_log->print("data from child process could not be received", log_t::flag_t::CRITICAL);
 	// Если процесс является дочерним
-	} else if(this->cluster->_pid == getppid()) {
+	} else if(this->cluster->_pid == (pid_t) getppid()) {
 		// Выполняем поиск текущего работника
 		auto jt = this->cluster->_jacks.find(this->wid);
 		// Если текущий работник найден
@@ -262,7 +262,7 @@ void awh::Cluster::fork(const size_t wid, const uint16_t index, const bool stop)
 					// Если - это дочерний поток значит все нормально
 					case 0: {
 						// Если процесс является дочерним
-						if(this->_pid == getppid()){
+						if(this->_pid == (pid_t) getppid()){
 							// Получаем идентификатор текущего процесса
 							const pid_t pid = getpid();
 							// Добавляем в список дочерних процессов, идентификатор процесса
@@ -344,6 +344,44 @@ void awh::Cluster::fork(const size_t wid, const uint16_t index, const bool stop)
 				}
 			}
 		}
+	/**
+	 * Если операционной системой является Windows
+	 */
+	#else
+
+		PROCESS_INFORMATION piProcInfo;
+		TCHAR szCmdline[] = TEXT("child");
+
+		STARTUPINFO siStartInfo;
+		ZeroMemory(&siStartInfo, sizeof(STARTUPINFO));
+		siStartInfo.cb = sizeof(STARTUPINFO);
+		siStartInfo.dwFlags |= STARTF_USESTDHANDLES;
+
+		ZeroMemory(&piProcInfo, sizeof(PROCESS_INFORMATION));
+
+		cout << " +++++++++++++++++++++++1 " << getpid() << " === " << getppid() << endl;
+
+		bool bSuccess = CreateProcess(nullptr, 
+			szCmdline,     // command line 
+			nullptr,          // process security attributes 
+			nullptr,          // primary thread security attributes 
+			true,          // handles are inherited 
+			0,             // creation flags 
+			nullptr,          // use parent's environment 
+			nullptr,          // use parent's current directory 
+			&siStartInfo,  // STARTUPINFO pointer 
+			&piProcInfo);  // receives PROCESS_INFORMATION 
+		
+		if(!bSuccess){
+			cout << " ------------------- ERROR " << endl;
+		} else {
+
+			cout << " +++++++++++++++++++++++2 " << getpid() << " === " << getppid() << endl;
+
+			cout << " +++++++++++++++++++++++3 " << piProcInfo.hProcess << " === " << piProcInfo.hThread << endl;
+
+		}
+
 	#endif
 }
 /**
@@ -371,7 +409,7 @@ void awh::Cluster::send(const size_t wid, const char * buffer, const size_t size
 	// Получаем идентификатор текущего процесса
 	const pid_t pid = getpid();
 	// Если процесс превратился в зомби
-	if((this->_pid != pid) && (this->_pid != getppid())){
+	if((this->_pid != pid) && (this->_pid != (pid_t) getppid())){
 		// Процесс превратился в зомби, самоликвидируем его
 		this->_log->print("the process [%u] has turned into a zombie, we perform self-destruction", log_t::flag_t::CRITICAL, pid);
 		// Выходим из приложения
@@ -429,7 +467,7 @@ void awh::Cluster::send(const size_t wid, const pid_t pid, const char * buffer, 
 		// Выводим в лог сообщение
 		} else this->_log->print("transfer data size is %zu bytes, buffer size is %zu bytes", log_t::flag_t::WARNING, size, sizeof(mess_t::payload));
 	// Если процесс превратился в зомби
-	} if((this->_pid != getpid()) && (this->_pid != getppid())) {
+	} if((this->_pid != getpid()) && (this->_pid != (pid_t) getppid())) {
 		// Процесс превратился в зомби, самоликвидируем его
 		this->_log->print("the process [%u] has turned into a zombie, we perform self-destruction", log_t::flag_t::CRITICAL, getpid());
 		// Выходим из приложения
@@ -467,7 +505,7 @@ void awh::Cluster::broadcast(const size_t wid, const char * buffer, const size_t
 		// Выводим в лог сообщение
 		} else this->_log->print("transfer data size is %zu bytes, buffer size is %zu bytes", log_t::flag_t::WARNING, size, sizeof(mess_t::payload));
 	// Если процесс превратился в зомби
-	} if((this->_pid != getpid()) && (this->_pid != getppid())) {
+	} if((this->_pid != getpid()) && (this->_pid != (pid_t) getppid())) {
 		// Процесс превратился в зомби, самоликвидируем его
 		this->_log->print("the process [%u] has turned into a zombie, we perform self-destruction", log_t::flag_t::CRITICAL, getpid());
 		// Выходим из приложения
@@ -548,7 +586,7 @@ void awh::Cluster::stop(const size_t wid) noexcept {
 			// Очищаем список работников
 			jt->second.clear();
 		// Если процесс является дочерним
-		} else if(this->_pid == getppid()) {
+		} else if(this->_pid == (pid_t) getppid()) {
 			// Переходим по всему списку работников
 			for(auto & jack : jt->second){
 				// Останавливаем чтение данных с родительского процесса
