@@ -91,6 +91,20 @@ void awh::server::Core::cluster(const size_t wid, const pid_t pid, const cluster
 						// Удаляем весь объект нагрузок
 						this->_burden.erase(it);
 				}
+				// Если список адъютантов не пустой
+				if(!this->_adjutants.empty()){
+					// Переходим по всему списку адъютантов
+					for(auto it = this->_adjutants.begin(); it != this->_adjutants.end();){
+						// Если идентификатор процесса найден
+						if(it->second == pid)
+							// Удаляем адъютанта из списка
+							it = this->_adjutants.erase(it);
+						// Иначе продолжаем поиск дальше
+						else ++it;
+					}
+				}
+				// Удаляем буферы сообщений
+				this->_messages.erase(pid);
 			} break;
 		}
 	}
