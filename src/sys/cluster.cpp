@@ -355,6 +355,8 @@ void awh::Cluster::fork(const size_t wid, const uint16_t index, const bool stop)
 		STARTUPINFO sti = {0};
 		PROCESS_INFORMATION pi = {0};
 
+		string commandLine("Child.exe");
+
 		cout << " +++++++++++++++++++++++1 " << getpid() << " === " << getppid() << endl;
 
 		bool bSuccess = CreateProcess(nullptr, 
