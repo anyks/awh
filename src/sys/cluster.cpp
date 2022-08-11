@@ -192,6 +192,101 @@ void awh::Cluster::Worker::message(ev::io & watcher, int revents) noexcept {
 		}
 	}
 #endif
+
+
+HANDLE g_hChildStd_IN_Rd = NULL;
+HANDLE g_hChildStd_IN_Wr = NULL;
+HANDLE g_hChildStd_OUT_Rd = NULL;
+HANDLE g_hChildStd_OUT_Wr = NULL;
+
+HANDLE g_hInputFile = NULL;
+
+void CreateChildProcess()
+// Create a child process that uses the previously created pipes for STDIN and STDOUT.
+{ 
+   TCHAR szCmdline[]=TEXT("wss");
+   PROCESS_INFORMATION piProcInfo; 
+   STARTUPINFO siStartInfo;
+   BOOL bSuccess = FALSE; 
+
+   SECURITY_ATTRIBUTES saAttr; 
+ 
+   printf("\n->Start of parent execution.\n");
+
+// Set the bInheritHandle flag so pipe handles are inherited. 
+ 
+   saAttr.nLength = sizeof(SECURITY_ATTRIBUTES); 
+   saAttr.bInheritHandle = TRUE; 
+   saAttr.lpSecurityDescriptor = NULL; 
+
+// Create a pipe for the child process's STDOUT. 
+ 
+   if ( ! CreatePipe(&g_hChildStd_OUT_Rd, &g_hChildStd_OUT_Wr, &saAttr, 0) ) 
+      cout << " ============ " << "StdoutRd CreatePipe" << endl;
+
+// Ensure the read handle to the pipe for STDOUT is not inherited.
+
+   if ( ! SetHandleInformation(g_hChildStd_OUT_Rd, HANDLE_FLAG_INHERIT, 0) )
+      cout << " ============ " << "Stdout SetHandleInformation" << endl;
+
+// Create a pipe for the child process's STDIN. 
+ 
+   if (! CreatePipe(&g_hChildStd_IN_Rd, &g_hChildStd_IN_Wr, &saAttr, 0)) 
+      cout << " ============ " << "Stdin CreatePipe" << endl;
+
+// Ensure the write handle to the pipe for STDIN is not inherited. 
+ 
+   if ( ! SetHandleInformation(g_hChildStd_IN_Wr, HANDLE_FLAG_INHERIT, 0) )
+      cout << " ============ " << "Stdin SetHandleInformation" << endl;
+ 
+// Set up members of the PROCESS_INFORMATION structure. 
+ 
+   ZeroMemory( &piProcInfo, sizeof(PROCESS_INFORMATION) );
+ 
+// Set up members of the STARTUPINFO structure. 
+// This structure specifies the STDIN and STDOUT handles for redirection.
+ 
+   ZeroMemory( &siStartInfo, sizeof(STARTUPINFO) );
+   siStartInfo.cb = sizeof(STARTUPINFO); 
+   siStartInfo.hStdError = g_hChildStd_OUT_Wr;
+   siStartInfo.hStdOutput = g_hChildStd_OUT_Wr;
+   siStartInfo.hStdInput = g_hChildStd_IN_Rd;
+   siStartInfo.dwFlags |= STARTF_USESTDHANDLES;
+ 
+// Create the child process. 
+    
+   bSuccess = CreateProcess(NULL, 
+      szCmdline,     // command line 
+      NULL,          // process security attributes 
+      NULL,          // primary thread security attributes 
+      TRUE,          // handles are inherited 
+      0,             // creation flags 
+      NULL,          // use parent's environment 
+      NULL,          // use parent's current directory 
+      &siStartInfo,  // STARTUPINFO pointer 
+      &piProcInfo);  // receives PROCESS_INFORMATION 
+   
+   // If an error occurs, exit the application. 
+   if ( ! bSuccess ) 
+      cout << " ============ " << "CreateProcess" << endl;
+   else 
+   {
+      // Close handles to the child process and its primary thread.
+      // Some applications might keep these handles to monitor the status
+      // of the child process, for example. 
+
+      CloseHandle(piProcInfo.hProcess);
+      CloseHandle(piProcInfo.hThread);
+      
+      // Close handles to the stdin and stdout pipes no longer needed by the child process.
+      // If they are not explicitly closed, there is no way to recognize that the child process has ended.
+      
+      CloseHandle(g_hChildStd_OUT_Wr);
+      CloseHandle(g_hChildStd_IN_Rd);
+   }
+}
+
+
 /**
  * fork Метод отделения от основного процесса (создание дочерних процессов)
  * @param wid   идентификатор воркера
@@ -349,42 +444,18 @@ void awh::Cluster::fork(const size_t wid, const uint16_t index, const bool stop)
 	 */
 	#else
 
-		PROCESS_INFORMATION piProcInfo;
-		TCHAR szCmdline[] = TEXT("wss");
-
-		STARTUPINFO siStartInfo;
-		ZeroMemory(&siStartInfo, sizeof(STARTUPINFO));
-		siStartInfo.cb = sizeof(STARTUPINFO);
-		siStartInfo.dwFlags |= STARTF_USESTDHANDLES;
-
-		ZeroMemory(&piProcInfo, sizeof(PROCESS_INFORMATION));
+		
 
 		cout << " +++++++++++++++++++++++1 " << getpid() << " === " << getppid() << endl;
 
-		bool bSuccess = CreateProcess(nullptr, 
-			szCmdline,     // command line 
-			nullptr,          // process security attributes 
-			nullptr,          // primary thread security attributes 
-			true,          // handles are inherited 
-			0,             // creation flags 
-			nullptr,          // use parent's environment 
-			nullptr,          // use parent's current directory 
-			&siStartInfo,  // STARTUPINFO pointer 
-			&piProcInfo);  // receives PROCESS_INFORMATION 
-		
-		if(!bSuccess){
-			cout << " ------------------- ERROR " << endl;
-		} else {
+		CreateChildProcess();
 			
 
-			cout << " +++++++++++++++++++++++2 " << getpid() << " === " << getppid() << endl;
+		cout << " +++++++++++++++++++++++2 " << getpid() << " === " << getppid() << endl;
 
-			cout << " +++++++++++++++++++++++3 " << (pid_t) * piProcInfo.hProcess << " === " << (pid_t) * piProcInfo.hThread << endl;
+		// cout << " +++++++++++++++++++++++3 " << (pid_t) * piProcInfo.hProcess << " === " << (pid_t) * piProcInfo.hThread << endl;
 
-			// CloseHandle(piProcInfo.hProcess);
-      		// CloseHandle(piProcInfo.hThread);
 
-		}
 
 	#endif
 }
