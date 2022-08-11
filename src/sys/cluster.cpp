@@ -371,15 +371,17 @@ void awh::Cluster::fork(const size_t wid, const uint16_t index, const bool stop)
 			&sti,  // STARTUPINFO pointer 
 			&pi);  // receives PROCESS_INFORMATION 
 		
+		/*
 		if(!bSuccess){
 			cout << " ------------------- ERROR " << endl;
 		} else {
+		*/
 
 			cout << " +++++++++++++++++++++++2 " << getpid() << " === " << getppid() << endl;
 
 			cout << " +++++++++++++++++++++++3 " << pi.hProcess << " === " << pi.hThread << endl;
 
-		}
+		// }
 
 	#endif
 }
