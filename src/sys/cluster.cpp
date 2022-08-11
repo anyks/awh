@@ -445,11 +445,20 @@ void awh::Cluster::fork(const size_t wid, const uint16_t index, const bool stop)
 		
 		cout << " +++++++++++++++++++++++1 " << getpid() << " === " << getppid() << endl;
 
-		CreateChildProcess();
+		char *hotkeyexe = "cmd";
+		PROCESS_INFORMATION pi;
+		STARTUPINFO si;
+		ZeroMemory(&si, sizeof(si));
+		ZeroMemory(&pi, sizeof(pi));
+
+		if(!CreateProcess(hotkeyexe, "", 0, 0, 0, 0, 0, 0, &si, &pi))
+			printf("error");
+			scanf("%d");
+		}
 
 		cout << " +++++++++++++++++++++++2 " << getpid() << " === " << getppid() << endl;
 
-		// cout << " +++++++++++++++++++++++3 " << pi.hProcess << " === " << pi.hThread << endl;
+		cout << " +++++++++++++++++++++++3 " << pi.hProcess << " === " << pi.hThread << endl;
 
 		
 
