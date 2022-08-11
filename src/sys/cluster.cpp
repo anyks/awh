@@ -445,7 +445,7 @@ void awh::Cluster::fork(const size_t wid, const uint16_t index, const bool stop)
 		
 		cout << " +++++++++++++++++++++++1 " << getpid() << " === " << getppid() << endl;
 
-		char *hotkeyexe = "cmd";
+		wchar_t *hotkeyexe = L"cmd";
 		PROCESS_INFORMATION pi;
 		STARTUPINFO si;
 		ZeroMemory(&si, sizeof(si));
