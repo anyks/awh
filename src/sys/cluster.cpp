@@ -217,22 +217,22 @@ void CreateChildProcess()
    // Create a pipe for the child process's STDOUT. 
  
    if ( ! CreatePipe(&g_hChildStd_OUT_Rd, &g_hChildStd_OUT_Wr, &saAttr, 0) ) 
-      ErrorExit(TEXT("StdoutRd CreatePipe")); 
+	  cout << " ==================== StdoutRd CreatePipe " << endl;
 
 // Ensure the read handle to the pipe for STDOUT is not inherited.
 
    if ( ! SetHandleInformation(g_hChildStd_OUT_Rd, HANDLE_FLAG_INHERIT, 0) )
-      ErrorExit(TEXT("Stdout SetHandleInformation")); 
+	  cout << " ==================== Stdout SetHandleInformation " << endl;
 
 // Create a pipe for the child process's STDIN. 
  
    if (! CreatePipe(&g_hChildStd_IN_Rd, &g_hChildStd_IN_Wr, &saAttr, 0)) 
-      ErrorExit(TEXT("Stdin CreatePipe")); 
+	  cout << " ==================== Stdin CreatePipe " << endl;
 
 // Ensure the write handle to the pipe for STDIN is not inherited. 
  
    if ( ! SetHandleInformation(g_hChildStd_IN_Wr, HANDLE_FLAG_INHERIT, 0) )
-      ErrorExit(TEXT("Stdin SetHandleInformation")); 
+	  cout << " ==================== Stdin SetHandleInformation " << endl;
  
 // Set up members of the PROCESS_INFORMATION structure. 
  
@@ -264,7 +264,7 @@ void CreateChildProcess()
    
    // If an error occurs, exit the application. 
    if ( ! bSuccess ) 
-      ErrorExit(TEXT("CreateProcess"));
+      cout << " ==================== CreateProcess " << endl;
    else 
    {
       // Close handles to the child process and its primary thread.
