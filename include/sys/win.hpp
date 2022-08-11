@@ -19,11 +19,18 @@
  * Если операционной системой является MS Windows
  */
 #if defined(_WIN32) || defined(_WIN64)
+	/**
+	 * Подключаем основные заголовочные файлы
+	 */
 	#include <windows.h>
+	#include <process.h>
+	// Заменяем типы данных
 	#define u_int uint32_t         // unsigned int
 	#define u_char unsigned char   // unsigned char
 	#define u_short unsigned short // unsigned short
 	#define __uint64_t uint64_t    // unsigned int 64
+	// Заменяем вызов функции
+	#define getpid _getpid
 	// Файловый разделитель Windows
 	#define FS_SEPARATOR "\\"
 	// Устанавливаем кодировку UTF-8

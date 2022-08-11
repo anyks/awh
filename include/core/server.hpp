@@ -16,7 +16,7 @@
 #define __AWH_CORE_SERVER__
 
 /**
- * Стандартная библиотека
+ * Стандартные библиотеки
  */
 #include <map>
 #include <set>
