@@ -86,8 +86,19 @@ void awh::Cluster::Worker::message(ev::io & watcher, int revents) noexcept {
 				if(message.stop){
 					// Останавливаем чтение данных с родительского процесса
 					this->cluster->stop(this->wid);
-					// Выходим из приложения
-					exit(SIGCHLD);
+					/**
+					 * Если операционной системой не является Windows
+					 */
+					#if !defined(_WIN32) && !defined(_WIN64)
+						// Выходим из приложения
+						exit(SIGCHLD);
+					/**
+					 * Если операционной системой является Windows
+					 */
+					#else
+						// Выходим из приложения
+						exit(SIGINT);
+					#endif
 				// Если функция обратного вызова установлена, выводим её
 				} else if(this->cluster->_callback.message != nullptr)
 					// Выводим функцию обратного вызова
@@ -515,8 +526,13 @@ void awh::Cluster::stop(const size_t wid) noexcept {
 			message.pid = this->_pid;
 			// Переходим по всему списку работников
 			for(auto & jack : jt->second){
-				// Останавливаем обработку получения статуса процессов
-				jack->cw.stop();
+				/**
+				 * Если операционной системой не является Windows
+				 */
+				#if !defined(_WIN32) && !defined(_WIN64)
+					// Останавливаем обработку получения статуса процессов
+					jack->cw.stop();
+				#endif
 				// Останавливаем чтение данных с дочернего процесса
 				jack->mess.stop();
 				// Выполняем отправку сообщения дочернему процессу
