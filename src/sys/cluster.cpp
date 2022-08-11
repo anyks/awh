@@ -356,11 +356,12 @@ void awh::Cluster::fork(const size_t wid, const uint16_t index, const bool stop)
 		PROCESS_INFORMATION pi = {0};
 
 		string commandLine("Child.exe");
+		LPSTR lpwCmdLine = &commandLine[0];
 
 		cout << " +++++++++++++++++++++++1 " << getpid() << " === " << getppid() << endl;
 
 		bool bSuccess = CreateProcess(nullptr, 
-			commandLine.c_str(),     // command line 
+			lpwCmdLine,     // command line 
 			nullptr,          // process security attributes 
 			nullptr,          // primary thread security attributes 
 			true,          // handles are inherited 
