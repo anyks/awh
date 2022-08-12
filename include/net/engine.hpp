@@ -16,6 +16,11 @@
 #define __AWH_ENGINE__
 
 /**
+ * Настройка системы для высокой нагрузки:
+ * url: https://romantelychko.com/blog/1300
+ */
+
+/**
  * Отключаем Deprecated для Apple
  */
 #if defined(__APPLE__) && defined(__clang__)
