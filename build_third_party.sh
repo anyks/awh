@@ -115,7 +115,7 @@ if [ ! -f "$src/.stamp_done" ]; then
 	cd "$src" || exit 1
 
 	# Версия OpenSSL
-	ver="q"
+	ver="p"
 
 	# Переключаемся на master
 	git checkout master
@@ -128,10 +128,11 @@ if [ ! -f "$src/.stamp_done" ]; then
 
 	# Выполняем конфигурацию проекта
 	./config \
-	no-shared no-async \
-	--prefix="$PREFIX" \
-	--openssldir="$PREFIX" \
-	-Wl,-rpath,"$PREFIX/lib"  || exit 1
+	 no-async \
+	 no-shared \
+	 --prefix="$PREFIX" \
+	 --openssldir="$PREFIX" \
+	 -Wl,-rpath,"$PREFIX/lib" || exit 1
 
 	# Выполняем сборку на всех логических ядрах
 	$BUILD -j"$numproc" || exit 1
@@ -186,10 +187,10 @@ if [ ! -f "$src/.stamp_done" ]; then
 		 .. || exit 1
 	else
 		./configure \
-		--prefix="$PREFIX" \
-		--libdir="$PREFIX/lib" \
-		--includedir="$PREFIX/include/zlib" \
-		--static || exit 1
+		 --prefix="$PREFIX" \
+		 --libdir="$PREFIX/lib" \
+		 --includedir="$PREFIX/include/zlib" \
+		 --static || exit 1
 	fi
 
 	# Выполняем сборку на всех логических ядрах
@@ -332,12 +333,12 @@ else
 
 		# Выполняем конфигурирование сборки
 		./configure \
-		--with-pic=use \
-		--enable-static=yes \
-		--enable-shared=no \
-		--prefix=$PREFIX \
-		--includedir="$PREFIX/include/libev" \
-		--libdir="$PREFIX/lib"
+		 --with-pic=use \
+		 --enable-static=yes \
+		 --enable-shared=no \
+		 --prefix=$PREFIX \
+		 --includedir="$PREFIX/include/libev" \
+		 --libdir="$PREFIX/lib"
 		
 		# Выполняем сборку проекта
 		$BUILD || exit 1
