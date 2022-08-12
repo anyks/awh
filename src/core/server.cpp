@@ -179,7 +179,7 @@ void awh::server::Core::message(const size_t wid, const pid_t pid, const char * 
 						this->sendEvent(wid, 0, pid, event_t::UNSELECT);
 					}
 					// Добавляем подключившегося клиента в список клиентов
-					this->_adjutants.emplace(data.aid, pid);
+					this->_adjutants.emplace((size_t) data.aid, pid);
 				}
 			} break;
 			// Если событием является отключение
@@ -252,7 +252,7 @@ void awh::server::Core::message(const size_t wid, const pid_t pid, const char * 
 						// Выполняем инициализацию буфера сообщения
 						auto ret1 = this->_messages.emplace(pid, map <size_t, vector <char>> ());
 						// Добавляем адъютанта в объект буфера данных
-						auto ret2 = ret1.first->second.emplace(data.aid, vector <char> ());
+						auto ret2 = ret1.first->second.emplace((size_t) data.aid, vector <char> ());
 						// Добавляем в буфер полученные данные
 						ret2.first->second.insert(ret2.first->second.end(), data.buffer, data.buffer + data.size);
 					}
@@ -327,7 +327,7 @@ void awh::server::Core::message(const size_t wid, const pid_t pid, const char * 
 						// Выполняем инициализацию буфера сообщения
 						auto ret1 = this->_messages.emplace(pid, map <size_t, vector <char>> ());
 						// Добавляем адъютанта в объект буфера данных
-						auto ret2 = ret1.first->second.emplace(data.aid, vector <char> ());
+						auto ret2 = ret1.first->second.emplace((size_t) data.aid, vector <char> ());
 						// Добавляем в буфер полученные данные
 						ret2.first->second.insert(ret2.first->second.end(), data.buffer, data.buffer + data.size);
 					}
