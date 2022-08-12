@@ -86,7 +86,6 @@ find_package(Zlib REQUIRED)
 find_package(Brotli REQUIRED)
 find_package(LibEv REQUIRED)
 find_package(OpenSSL REQUIRED)
-find_package(UsrSCTP REQUIRED)
 
 # Провекра OpenSSL
 if (OpenSSL_FOUND)
@@ -120,20 +119,11 @@ else()
     message(FATAL_ERROR "LibEv not found")
 endif()
 
-# Провекра UsrSCTP
-if (UsrSCTP_FOUND)
-    message(STATUS "UsrSCTP libs found: " ${USRSCTP_LIBRARY})
-    message(STATUS "UsrSCTP include dir found: " ${USRSCTP_INCLUDE_DIR})
-else()
-    message(FATAL_ERROR "UsrSCTP not found")
-endif()
-
 # Выполняем подключение хидеров
 include_directories(${ZLIB_INCLUDE_DIR})
 include_directories(${LIBEV_INCLUDE_DIR})
 include_directories(${BROTLI_INCLUDE_DIRS})
 include_directories(${OPENSSL_INCLUDE_DIR})
-include_directories(${USRSCTP_INCLUDE_DIR})
 include_directories(${CMAKE_SOURCE_DIR}/include)
 include_directories(${CMAKE_SOURCE_DIR}/contrib/include)
 
@@ -229,7 +219,6 @@ if (ENABLE_CONSOLE_APP)
         ${CURRENT_LIB_NAME}
         ${ZLIB_LIBRARY}
         ${LIBEV_LIBRARY}
-        ${USRSCTP_LIBRARY}
         ${BROTLI_LIBRARIES}
         ${OPENSSL_LIBRARIES}
         ${WINFLAGS}
@@ -239,7 +228,6 @@ if (ENABLE_CONSOLE_APP)
         ${CURRENT_LIB_NAME}
         ${ZLIB_LIBRARY}
         ${LIBEV_LIBRARY}
-        ${USRSCTP_LIBRARY}
         ${BROTLI_LIBRARIES}
         ${OPENSSL_LIBRARIES}
         ${WINFLAGS}
@@ -249,7 +237,6 @@ if (ENABLE_CONSOLE_APP)
 #        ${CURRENT_LIB_NAME}
 #        ${ZLIB_LIBRARY}
 #        ${LIBEV_LIBRARY}
-#        ${USRSCTP_LIBRARY}
 #        ${BROTLI_LIBRARIES}
 #        ${OPENSSL_LIBRARIES}
 #        ${WINFLAGS}
@@ -259,7 +246,6 @@ if (ENABLE_CONSOLE_APP)
         ${CURRENT_LIB_NAME}
         ${ZLIB_LIBRARY}
         ${LIBEV_LIBRARY}
-        ${USRSCTP_LIBRARY}
         ${BROTLI_LIBRARIES}
         ${OPENSSL_LIBRARIES}
         ${WINFLAGS}
@@ -268,7 +254,6 @@ if (ENABLE_CONSOLE_APP)
 #    target_link_libraries(${TIMER_APP_NAME}
 #        ${CURRENT_LIB_NAME}
 #        ${ZLIB_LIBRARY}
-#        ${USRSCTP_LIBRARY}
 #        ${BROTLI_LIBRARIES}
 #        ${OPENSSL_LIBRARIES}
 #        ${LIBEVENT_LIBRARIES}
@@ -278,7 +263,6 @@ if (ENABLE_CONSOLE_APP)
 #    target_link_libraries(${PROXY_APP_NAME}
 #        ${CURRENT_LIB_NAME}
 #        ${ZLIB_LIBRARY}
-#        ${USRSCTP_LIBRARY}
 #        ${BROTLI_LIBRARIES}
 #        ${OPENSSL_LIBRARIES}
 #        ${LIBEVENT_LIBRARIES}
@@ -288,7 +272,6 @@ if (ENABLE_CONSOLE_APP)
 #    target_link_libraries(${SOCKS5_APP_NAME}
 #        ${CURRENT_LIB_NAME}
 #        ${ZLIB_LIBRARY}
-#        ${USRSCTP_LIBRARY}
 #        ${BROTLI_LIBRARIES}
 #        ${OPENSSL_LIBRARIES}
 #        ${LIBEVENT_LIBRARIES}
@@ -316,7 +299,6 @@ install(TARGETS ${REST_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAK
 
 # Устанавливаем хидеры сторонних библиотек
 install(DIRECTORY "${ZLIB_INCLUDE_DIR}" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h")
-install(DIRECTORY "${USRSCTP_INCLUDE_DIR}" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h")
 install(DIRECTORY "${BROTLI_INCLUDE_ENCODE_DIR}" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h")
 install(DIRECTORY "${LIBEV_INCLUDE_DIR}/libev" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h")
 install(DIRECTORY "${OPENSSL_INCLUDE_DIR}/openssl" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h")
@@ -324,6 +306,5 @@ install(DIRECTORY "${OPENSSL_INCLUDE_DIR}/openssl" DESTINATION "${CMAKE_INSTALL_
 # Устанавливаем стороние библиотеки
 install(FILES ${ZLIB_LIBRARY} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
 install(FILES ${LIBEV_LIBRARY} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
-install(FILES ${USRSCTP_LIBRARY} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
 install(FILES ${BROTLI_LIBRARIES} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
 install(FILES ${OPENSSL_LIBRARIES} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")

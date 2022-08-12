@@ -351,68 +351,6 @@ else
 	fi
 fi
 
-# Сборка SCTP
-src="$ROOT/submodules/usrsctp"
-if [ ! -f "$src/.stamp_done" ]; then
-	printf "\n****** UsrSCTP ******\n"
-	cd "$src" || exit 1
-
-	# Создаём каталог сборки
-	mkdir -p "build" || exit 1
-	# Переходим в каталог
-	cd "build" || exit 1
-
-	# Удаляем старый файл кэша
-	rm -rf ./CMakeCache.txt
-
-	# Если операционной системой является Windows
-	if [ $OS = "Windows" ]; then # Windows
-		# Выполняем конфигурацию проекта
-		cmake \
-		 -DCMAKE_BUILD_TYPE="Release" \
-		 -DCMAKE_SYSTEM_NAME="Windows" \
-		 -G "MinGW Makefiles" \
-		 .. || exit 1
-	# Для всех остальных версий операционных систем
-	else
-		# Выполняем конфигурацию проекта
-		cmake \
-		 .. || exit 1
-	fi
-
-	 # Выполняем сборку на всех логических ядрах
-	$BUILD -j"$numproc" || exit 1
-
-	# Производим установку библиотеки по нужному пути
-	echo "Install \"$ROOT/submodules/usrsctp/build/usrsctplib/libusrsctp.a\" to \"$PREFIX/lib/libusrsctp.a\""
-	${INSTALL_CMD} "$ROOT/submodules/usrsctp/build/usrsctplib/libusrsctp.a" "$PREFIX/lib/libusrsctp.a" || exit 1
-
-	# Производим установку заголовочных файлов по нужному пути
-	for i in $(ls "$ROOT/submodules/usrsctp/usrsctplib" | grep \\.h$);
-	do
-		echo "Install \"$ROOT/submodules/usrsctp/usrsctplib/$i\" to \"$PREFIX/include/usrsctp/$i\""
-		${INSTALL_CMD} "$ROOT/submodules/usrsctp/usrsctplib/$i" "$PREFIX/include/usrsctp/$i" || exit 1
-	done
-
-	# Производим установку заголовочных файлов по нужному пути
-	for i in $(ls "$ROOT/submodules/usrsctp/usrsctplib/netinet" | grep \\.h$);
-	do
-		echo "Install \"$ROOT/submodules/usrsctp/usrsctplib/netinet/$i\" to \"$PREFIX/include/usrsctp/netinet/$i\""
-		${INSTALL_CMD} "$ROOT/submodules/usrsctp/usrsctplib/netinet/$i" "$PREFIX/include/usrsctp/netinet/$i" || exit 1
-	done
-
-	# Производим установку заголовочных файлов по нужному пути
-	for i in $(ls "$ROOT/submodules/usrsctp/usrsctplib/netinet6" | grep \\.h$);
-	do
-		echo "Install \"$ROOT/submodules/usrsctp/usrsctplib/netinet6/$i\" to \"$PREFIX/include/usrsctp/netinet6/$i\""
-		${INSTALL_CMD} "$ROOT/submodules/usrsctp/usrsctplib/netinet6/$i" "$PREFIX/include/usrsctp/netinet6/$i" || exit 1
-	done
-
-	# Помечаем флагом, что сборка и установка произведена
-	touch "$src/.stamp_done"
-	cd "$ROOT" || exit 1
-fi
-
 # Переименовываем расширение библиотек для Windows
 if [ $OS = "Windows" ]; then # Windows
 	for i in $(ls "$PREFIX/lib" | grep .a$);

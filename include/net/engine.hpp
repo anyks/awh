@@ -34,13 +34,6 @@
 #include <sys/types.h>
 
 /**
- * Если операционной системой является Linux
- */
-#ifdef  __linux__
-	#include <netinet/sctp.h>
-#endif
-
-/**
  * Если операционной системой является MS Windows
  */
 #if defined(_WIN32) || defined(_WIN64)
@@ -69,8 +62,7 @@
  * Подключаем OpenSSL
  */
 #include <openssl/ssl.h>
-#include <openssl/err.h>
-#include <openssl/ssl.h>
+#include <openssl/bio.h>
 #include <openssl/err.h>
 #include <openssl/rand.h>
 #include <openssl/x509v3.h>
@@ -154,7 +146,7 @@ namespace awh {
 				private:
 					// Тип сокета (SOCK_STREAM / SOCK_DGRAM)
 					int _type;
-					// Протокол сокета (IPPROTO_TCP / IPPROTO_UDP / IPPROTO_SCTP)
+					// Протокол сокета (IPPROTO_TCP / IPPROTO_UDP)
 					int _protocol;
 				private:
 					// Флаг инициализации шифрования TLS
