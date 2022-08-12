@@ -31,7 +31,6 @@ if [ -n "$1" ]; then
 		clean_submodule "libev-win"
 		clean_submodule "brotli"
 		clean_submodule "openssl"
-		clean_submodule "usrsctp"
 
 		# Удаляем сборочную директорию
 		rm -rf "$ROOT/third_party"
