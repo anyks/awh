@@ -13,3 +13,6 @@
 [submodule "submodules/libev"]
 	path = submodules/libev
 	url = https://github.com/enki/libev
+[submodule "submodules/usrsctp"]
+	path = submodules/usrsctp
+	url = https://github.com/sctplab/usrsctp
