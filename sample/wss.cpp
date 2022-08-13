@@ -157,7 +157,7 @@ int main(int argc, char * argv[]){
 	core.verifySSL(false);
 
 	// Активируем максимальное количество рабочих процессов
-	// core.clusterSize();
+	core.clusterSize();
 
 	// ws.needleEye(true);
 
