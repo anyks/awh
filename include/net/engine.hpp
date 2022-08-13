@@ -225,7 +225,7 @@ namespace awh {
 					/**
 					 * sonet Метод установки параметров сокета
 					 * @param type     тип сокета (SOCK_STREAM / SOCK_DGRAM)
-					 * @param protocol протокол сокета (IPPROTO_TCP / IPPROTO_UDP)
+					 * @param protocol протокол сокета (IPPROTO_TCP / IPPROTO_UDP / IPPROTO_SCTP)
 					 */
 					void sonet(const int type = SOCK_STREAM, const int protocol = IPPROTO_TCP) noexcept;
 				public:

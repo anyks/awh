@@ -471,7 +471,7 @@ bool awh::Engine::Address::accept(const int fd, const int family) noexcept {
 /**
  * sonet Метод установки параметров сокета
  * @param type     тип сокета (SOCK_STREAM / SOCK_DGRAM)
- * @param protocol протокол сокета (IPPROTO_TCP / IPPROTO_UDP)
+ * @param protocol протокол сокета (IPPROTO_TCP / IPPROTO_UDP / IPPROTO_SCTP)
  */
 void awh::Engine::Address::sonet(const int type, const int protocol) noexcept {
 	// Устанавливаем тип сокета
@@ -763,6 +763,9 @@ void awh::Engine::Address::init(const string & ip, const u_int port, const int f
 					return;
 				}
 			}
+
+			cout << " ----------------------- " << ::socket(AF_INET, SOCK_STREAM, IPPROTO_SCTP) << endl;
+
 			// Создаем сокет подключения
 			this->fd = ::socket(family, this->_type, this->_protocol);
 			// Если сокет не создан то выходим
