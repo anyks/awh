@@ -164,6 +164,8 @@ namespace awh {
 				private:
 					// Флаг инициализации шифрования TLS
 					bool _tls;
+				private:
+					struct sctp_event event;
 				public:
 					// Статус подключения
 					status_t status;

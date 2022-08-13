@@ -110,7 +110,7 @@ void awh::Engine::Address::client() noexcept {
 					SCTP_PARTIAL_DELIVERY_EVENT
 				};
 				// Создаём объект события
-				struct sctp_event event;
+				// struct sctp_event event;
 				// Зануляем объект события
 				memset(&event, 0, sizeof(event));
 				// Активируем получение события
