@@ -676,22 +676,41 @@ void awh::server::WebSocket::actionConnect(const size_t aid) noexcept {
  * @param aid идентификатор адъютанта
  */
 void awh::server::WebSocket::actionDisconnect(const size_t aid) noexcept {
+	
+	cout << " ----------------- actionDisconnect1 " << endl;
+	
 	// Если данные существуют
 	if(aid > 0){
+
+		cout << " ----------------- actionDisconnect2 " << endl;
+
 		// Получаем параметры подключения адъютанта
 		ws_worker_t::coffer_t * adj = const_cast <ws_worker_t::coffer_t *> (this->_worker.get(aid));
 		// Если объект адъютанта получен
 		if(adj != nullptr){
+
+			cout << " ----------------- actionDisconnect3 " << endl;
+
 			// Если функция обратного вызова установлена, выполняем
 			if(this->_callback.active != nullptr) this->_callback.active(aid, mode_t::DISCONNECT, this);
+
+			cout << " ----------------- actionDisconnect4 " << endl;
+
 			// Если экшен соответствует, выполняем его сброс
 			if(adj->action == ws_worker_t::action_t::DISCONNECT)
 				// Выполняем сброс экшена
 				adj->action = ws_worker_t::action_t::NONE;
+			
+			cout << " ----------------- actionDisconnect5 " << endl;
+
 			// Выполняем удаление параметров адъютанта
 			this->_worker.rm(aid);
+
+			cout << " ----------------- actionDisconnect6 " << endl;
 		}
 	}
+
+	cout << " ----------------- actionDisconnect7 " << endl;
 }
 /**
  * error Метод вывода сообщений об ошибках работы клиента

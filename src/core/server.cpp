@@ -575,9 +575,6 @@ void awh::server::Core::resolver(const string & ip, worker_t * wrk) noexcept {
  * @param wid идентификатор воркера
  */
 void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
-
-	cout << " ====================================== accept " << fd << " === " << wid << endl;
-
 	// Если идентификатор воркера передан
 	if((wid > 0) && (fd >= 0) && this->_interception){
 		// Выполняем поиск воркера
