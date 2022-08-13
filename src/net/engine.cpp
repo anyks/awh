@@ -93,7 +93,7 @@ void awh::Engine::Address::client() noexcept {
 				// Выводим в лог информацию
 				this->_log->print("cannot set SCTP_RECVRCVINFO option on socket %d", log_t::flag_t::CRITICAL, this->fd);
 				// Выходим из функции
-				return result;
+				return;
 			}
 			// Если порт инкапсуляции установлен
 			if(this->_encapsPort > -1){
@@ -110,7 +110,7 @@ void awh::Engine::Address::client() noexcept {
 					// Выводим в лог информацию
 					this->_log->print("cannot set SCTP_REMOTE_UDP_ENCAPS_PORT option on socket %d", log_t::flag_t::CRITICAL, this->fd);
 					// Выходим из функции
-					return result;
+					return;
 				}
 			}
 			/**
@@ -141,7 +141,7 @@ void awh::Engine::Address::client() noexcept {
 						// Выводим в лог информацию
 						this->_log->print("cannot set SCTP_EVENT option on socket %d", log_t::flag_t::CRITICAL, this->fd);
 						// Выходим из функции
-						return result;
+						return;
 					}
 				}
 			#endif
