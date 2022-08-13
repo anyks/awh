@@ -95,26 +95,6 @@ void awh::Engine::Address::client() noexcept {
 				// Выходим из функции
 				return;
 			}
-			/*
-			// Если порт инкапсуляции установлен
-			if(this->_encapsPort > -1){
-				// Создаём объект инкапсуляции под UDP
-				struct sctp_udpencaps encaps;
-				// Выполняем зануление объекта инкапсуляции
-				memset(&encaps, 0, sizeof(encaps));
-				// Устанавливаем семейство интернет-протокола
-				encaps.sue_address.ss_family = this->_peer.server.ss_family;
-				// Устанавливаем UDP порт
-				encaps.sue_port = htons(this->_encapsPort == 0 ? ENCAPS_PORT : this->_encapsPort);
-				// Разрешаем выполнять инкапсуляцию за UDP подключением
-				if(setsockopt(this->fd, IPPROTO_SCTP, SCTP_REMOTE_UDP_ENCAPS_PORT, &encaps, sizeof(encaps)) < 0){
-					// Выводим в лог информацию
-					this->_log->print("cannot set SCTP_REMOTE_UDP_ENCAPS_PORT option on socket %d", log_t::flag_t::CRITICAL, this->fd);
-					// Выходим из функции
-					return;
-				}
-			}
-			*/
 			/**
 			 * Если включён режим отладки
 			 */
@@ -324,25 +304,6 @@ bool awh::Engine::Address::connect() noexcept {
 		this->client();
 	// Выводим результат
 	return (this->status == status_t::CONNECTED);
-}
-/**
- * encapsPort Метод установки порта инкапсуляции SCTP UDP
- * @param port номер порта для установки
- */
-void awh::Engine::Address::encapsPort(const int port) noexcept {
-	/**
-	 * Если операционной системой является Linux
-	 */
-	#ifdef __linux__
-		// Выполняем установку порта инкапсуляции SCTP UDP
-		this->_encapsPort = port;
-	/**
-	 * Если операционная система не является Linux
-	 */
-	#else
-		// Выводим в лог информацию
-		this->_log->print("SCTP UDP encapsulation port cannot be installed on a non-linux operating system", log_t::flag_t::WARNING);
-	#endif
 }
 /**
  * attach Метод прикрепления клиента к серверу

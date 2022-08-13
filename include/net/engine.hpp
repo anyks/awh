@@ -162,8 +162,6 @@ namespace awh {
 					// Протокол сокета (IPPROTO_TCP / IPPROTO_UDP / IPPROTO_SCTP)
 					int _protocol;
 				private:
-					int _encapsPort;
-				private:
 					// Флаг инициализации шифрования TLS
 					bool _tls;
 				public:
@@ -231,12 +229,6 @@ namespace awh {
 					bool connect() noexcept;
 				public:
 					/**
-					 * encapsPort Метод установки порта инкапсуляции SCTP UDP
-					 * @param port номер порта для установки
-					 */
-					void encapsPort(const int port) noexcept;
-				public:
-					/**
 					 * attach Метод прикрепления клиента к серверу
 					 * @param addr объект подключения сервера
 					 */
@@ -286,9 +278,9 @@ namespace awh {
 					 * @param log объект для работы с логами
 					 */
 					Address(const fmk_t * fmk, const log_t * log) noexcept :
-					 fd(-1), _type(SOCK_STREAM), _protocol(IPPROTO_TCP), _encapsPort(-1),
-					 _tls(false), status(status_t::DISCONNECTED), port(0), ip(""), mac(""),
-					 _nwk(fmk), _ifnet(fmk, log), _socket(log), _bio(nullptr), _fmk(fmk), _log(log) {}
+					 fd(-1), _type(SOCK_STREAM), _protocol(IPPROTO_TCP), _tls(false),
+					 status(status_t::DISCONNECTED), port(0), ip(""), mac(""), _nwk(fmk),
+					 _ifnet(fmk, log), _socket(log), _bio(nullptr), _fmk(fmk), _log(log) {}
 					/**
 					 * ~Address Деструктор
 					 */
