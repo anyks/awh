@@ -1148,7 +1148,9 @@ int64_t awh::Engine::Context::read(char * buffer, const size_t size) noexcept {
 						// Если сокет установлен как TCP/IP
 						case SOCK_STREAM:
 							// Выполняем чтение из защищённого сокета
-							result = SSL_read(this->_ssl, buffer, size);
+							// result = SSL_read(this->_ssl, buffer, size);
+
+							result = BIO_read(this->_bio, buffer, size);
 
 							cout << " ++++++++++++++++++++++ READ1 " << result << endl;
 						break;
