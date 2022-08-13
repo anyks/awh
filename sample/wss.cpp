@@ -159,7 +159,7 @@ int main(int argc, char * argv[]){
 	// Активируем максимальное количество рабочих процессов
 	core.clusterSize();
 
-	// ws.needleEye(true);
+	ws.needleEye(true);
 
 	// Выполняем активацию многопоточности
 	// ws.multiThreads(22);
