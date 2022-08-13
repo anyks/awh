@@ -1199,7 +1199,7 @@ int64_t awh::Engine::Context::read(char * buffer, const size_t size) noexcept {
 					// Выводим в лог сообщение
 					this->_log->print("%s", log_t::flag_t::CRITICAL, ERR_error_string(error, nullptr));
 
-				cout << " =============== " << k << " === " << SSL_ERROR_ZERO_RETURN << " === " << SSL_ERROR_SYSCALL << " ||| " << errno << endl;
+				cout << " =============== " << k << " === " << SSL_ERROR_ZERO_RETURN << " === " << SSL_ERROR_SYSCALL << " === " << SSL_ERROR_NONE << " === " << SSL_ERROR_WANT_READ << " === " << SSL_ERROR_WANT_WRITE << " === " << SSL_ERROR_WANT_CONNECT << " === " << SSL_ERROR_WANT_ACCEPT << " === " << SSL_ERROR_WANT_X509_LOOKUP << " === " << SSL_ERROR_WANT_ASYNC << " === " << SSL_ERROR_WANT_ASYNC_JOB << " === " << SSL_ERROR_WANT_CLIENT_HELLO_CB << " === " << SSL_ERROR_SSL << " ||| " << errno << endl;
 			}
 
 
@@ -2734,18 +2734,6 @@ void awh::Engine::wrapServer(ctx_t & target, addr_t * address) noexcept {
 			SSL_CTX_set_session_cache_mode(target._ctx, SSL_SESS_CACHE_SERVER | SSL_SESS_CACHE_NO_INTERNAL);
 			// Если цепочка сертификатов установлена
 			if(!this->_chain.empty()){
-				
-				// Если цепочка сертификатов не установлена
-				if(SSL_CTX_use_certificate_file(target._ctx, this->_chain.c_str(), SSL_FILETYPE_PEM) < 1){
-					// Выводим в лог сообщение
-					this->_log->print("certificate cannot be set", log_t::flag_t::CRITICAL);
-					// Очищаем созданный контекст
-					target.clear();
-					// Выходим
-					return;
-				}
-				
-				/*
 				// Если цепочка сертификатов не установлена
 				if(SSL_CTX_use_certificate_chain_file(target._ctx, this->_chain.c_str()) < 1){
 					// Выводим в лог сообщение
@@ -2755,7 +2743,6 @@ void awh::Engine::wrapServer(ctx_t & target, addr_t * address) noexcept {
 					// Выходим
 					return;
 				}
-				*/
 			}
 			// Если приватный ключ установлен
 			if(!this->_privkey.empty()){
