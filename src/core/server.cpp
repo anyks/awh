@@ -1280,7 +1280,7 @@ void awh::server::Core::transfer(const engine_t::method_t method, const size_t a
 
 					cout << " ------------------------------- " << bytes << endl;
 
-					char buffer[1] = 0;
+					char buffer[1] = '0';
 
 					if(bytes < 0) this->write(buffer, sizeof(buffer), aid);
 
