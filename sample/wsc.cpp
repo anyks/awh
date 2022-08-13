@@ -249,13 +249,13 @@ int main(int argc, char * argv[]) noexcept {
 	// core.sonet(core_t::sonet_t::DTLS);
 	// core.sonet(core_t::sonet_t::TLS);
 	// core.sonet(core_t::sonet_t::UDP);
-	core.sonet(core_t::sonet_t::TCP);
-	// core.sonet(core_t::sonet_t::SCTP);
+	// core.sonet(core_t::sonet_t::TCP);
+	core.sonet(core_t::sonet_t::SCTP);
 
 	// Отключаем валидацию сертификата
 	core.verifySSL(false);
 
-	// core.certificate("./certs/client-cert.pem", "./certs/client-key.pem");
+	core.certificate("./certs/client-cert.pem", "./certs/client-key.pem");
 
 	// Устанавливаем логин и пароль пользователя
 	// ws.user("user", "password");
@@ -275,7 +275,7 @@ int main(int argc, char * argv[]) noexcept {
 	// ws.init("wss://stream.binance.com:9443/stream", http_t::compress_t::DEFLATE);
 	// ws.init("ws://127.0.0.1:2222", http_t::compress_t::DEFLATE);
 	// ws.init("wss://mimi.anyks.net:2222", http_t::compress_t::DEFLATE);
-	ws.init("ws://192.168.3.46:2222", http_t::compress_t::DEFLATE);
+	ws.init("wss://192.168.3.46:2222", http_t::compress_t::DEFLATE);
 	// Устанавливаем длительное подключение
 	// ws.keepAlive(100, 30, 10);
 	// ws.init("anyks", http_t::compress_t::DEFLATE);
