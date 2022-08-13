@@ -1349,7 +1349,7 @@ int64_t awh::Engine::Context::write(const char * buffer, const size_t size) noex
 						// Если статус установлен как разрешение подключения к серверу
 						case (uint8_t) addr_t::status_t::ACCEPTED:
 							// Выводим в лог информационное сообщение
-							this->_log->print("wrote %d bytes, stream: %u, ssn: %u, ppid: %u, tsn: %u", log_t::flag_t::INFO, (int) result, info.scv_sid, info.scv_ssn, info.scv_ppid, info.scv_tsn);
+							this->_log->print("wrote %d bytes, stream: %u, ssn: %u, ppid: %u, tsn: %u", log_t::flag_t::INFO, (int) result, info.snd_sid, info.snd_ssn, info.snd_ppid, info.snd_tsn);
 						break;
 					}
 				}
