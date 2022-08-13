@@ -224,7 +224,7 @@ void awh::server::WebSocket::handler(const size_t aid) noexcept {
 			// Выполняем обработку всех экшенов
 			while(adj->action != ws_worker_t::action_t::NONE){
 
-				cout << " ----------------------- " << (ws_worker_t::action_t::DISCONNECT == adj->action) << endl;
+				cout << " ----------------------- " << ((u_short) adj->action) << endl;
 
 				// Определяем обрабатываемый экшен
 				switch((uint8_t) adj->action){
