@@ -157,13 +157,19 @@ bool awh::Engine::Address::list() noexcept {
 					// Выполняем инициализацию SCTP протокола
 					this->initSCTP();
 					// Если подключение зашифрованно
-					if(this->_tls){
+					// if(this->_tls){
+
+						cout << " =========================LIST1 " << this->fd << endl;
+
 						/**
 						 * Создаём BIO, чтобы установить все необходимые параметры для
 						 * следующего соединения, например. SCTP-АУТЕНТИФИКАЦИЯ.
 						 * Не будет использоваться.
 						 */
 						this->_bio = BIO_new_dgram_sctp(this->fd, BIO_NOCLOSE);
+
+						cout << " =========================LIST2 " << this->fd << " === " << this->_bio << endl;
+
 						// Если BIO не создано, выходим
 						if(this->_bio == nullptr){
 							// Выводим в лог информацию
@@ -171,7 +177,7 @@ bool awh::Engine::Address::list() noexcept {
 							// Выходим из приложения
 							exit(EXIT_FAILURE);
 						}
-					}
+					// }
 				}
 			#endif
 		} break;
@@ -421,8 +427,14 @@ bool awh::Engine::Address::accept(const int fd, const int family) noexcept {
 					} break;
 				#endif
 			}
+
+			cout << " =========================ACCEPT1 " << fd << endl;
+
 			// Определяем разрешено ли подключение к прокси серверу
 			this->fd = ::accept(fd, (struct sockaddr *) (&this->_peer.client), &this->_peer.size);
+
+			cout << " =========================ACCEPT2 " << this->fd << endl;
+
 			// Если сокет не создан тогда выходим
 			if(this->fd < 0) return false;
 		} break;
