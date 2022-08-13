@@ -97,7 +97,7 @@ bool awh::Engine::Address::list() noexcept {
 			/**
 			 * Если операционной системой является Linux или FreeBSD
 			 */
-			#ifdef __linux__ || __FreeBSD__
+			#if defined(__linux__) || defined(__FreeBSD__)
 				// Если протокол интернета установлен как SCTP
 				if(this->_protocol == IPPROTO_SCTP){
 					// Выполняем инициализацию SCTP протокола
@@ -207,7 +207,7 @@ bool awh::Engine::Address::connect() noexcept {
 		/**
 		 * Если операционной системой является Linux или FreeBSD
 		 */
-		#ifdef __linux__ || __FreeBSD__
+		#if defined(__linux__) || defined(__FreeBSD__)
 			// Если протокол интернета установлен как SCTP
 			if(this->_protocol == IPPROTO_SCTP)
 				// Выполняем инициализацию SCTP протокола
@@ -391,7 +391,7 @@ bool awh::Engine::Address::accept(const int fd, const int family) noexcept {
 					/**
 					 * Если операционной системой является Linux или FreeBSD
 					 */
-					#ifdef __linux__ || __FreeBSD__
+					#if defined(__linux__) || defined(__FreeBSD__)
 						// Если протокол интернета установлен как SCTP
 						if(this->_protocol != IPPROTO_SCTP)
 							// Активируем KeepAlive
@@ -422,7 +422,7 @@ bool awh::Engine::Address::accept(const int fd, const int family) noexcept {
 				/**
 				 * Если операционной системой является Linux или FreeBSD
 				 */
-				#ifdef __linux__ || __FreeBSD__
+				#if defined(__linux__) || defined(__FreeBSD__)
 					// Если протокол интернета установлен как SCTP
 					if(this->_protocol != IPPROTO_SCTP){
 						// Отключаем алгоритм Нейгла для сервера и клиента
@@ -791,7 +791,7 @@ void awh::Engine::Address::init(const string & ip, const u_int port, const int f
 					/**
 					 * Если операционной системой является Linux или FreeBSD
 					 */
-					#ifdef __linux__ || __FreeBSD__
+					#if defined(__linux__) || defined(__FreeBSD__)
 						// Если протокол интернета установлен как SCTP
 						if(this->_protocol != IPPROTO_SCTP)
 							// Активируем KeepAlive
@@ -826,7 +826,7 @@ void awh::Engine::Address::init(const string & ip, const u_int port, const int f
 				/**
 				 * Если операционной системой является Linux или FreeBSD
 				 */
-				#ifdef __linux__ || __FreeBSD__
+				#if defined(__linux__) || defined(__FreeBSD__)
 					// Если протокол интернета установлен как SCTP
 					if(this->_protocol != IPPROTO_SCTP){
 						// Отключаем алгоритм Нейгла для сервера и клиента
@@ -1207,7 +1207,7 @@ int64_t awh::Engine::Context::write(const char * buffer, const size_t size) noex
 					/**
 					 * Если операционной системой является Linux или FreeBSD
 					 */
-					#ifdef __linux__ || __FreeBSD__
+					#if defined(__linux__) || defined(__FreeBSD__)
 						// Если протокол интернета установлен как SCTP
 						if((this->_addr->_protocol == IPPROTO_SCTP) && (this->_addr->status == addr_t::status_t::CONNECTED)){
 							// Создаём объект получения информационных событий
@@ -1564,7 +1564,7 @@ const bool awh::Engine::certHostcheck(const string & host, const string & patt) 
 /**
  * Если операционной системой является Linux или FreeBSD
  */
-#ifdef __linux__ || __FreeBSD__
+#if defined(__linux__) || defined(__FreeBSD__)
 	/**
 	 * notificationsSCTP Функция обработки нотификации SCTP
 	 * @param bio    объект подключения BIO
@@ -2577,7 +2577,7 @@ void awh::Engine::wrapServer(ctx_t & target, addr_t * address) noexcept {
 			/**
 			 * Если операционной системой является Linux или FreeBSD
 			 */
-			#ifdef __linux__ || __FreeBSD__
+			#if defined(__linux__) || defined(__FreeBSD__)
 				// Определяем тип протокола подключения
 				switch(target._addr->_protocol){
 					// Если протокол подключения UDP
@@ -2740,7 +2740,7 @@ void awh::Engine::wrapServer(ctx_t & target, addr_t * address) noexcept {
 			/**
 			 * Если операционной системой является Linux или FreeBSD
 			 */
-			#ifdef __linux__ || __FreeBSD__
+			#if defined(__linux__) || defined(__FreeBSD__)
 				// Определяем тип протокола подключения
 				switch(target._addr->_protocol){
 					// Если протокол подключения UDP
@@ -2832,7 +2832,7 @@ void awh::Engine::wrapClient(ctx_t & target, addr_t * address, const uri_t::url_
 			/**
 			 * Если операционной системой является Linux или FreeBSD
 			 */
-			#ifdef __linux__ || __FreeBSD__
+			#if defined(__linux__) || defined(__FreeBSD__)
 				// Определяем тип протокола подключения
 				switch(target._addr->_protocol){
 					// Если протокол подключения UDP
@@ -2976,7 +2976,7 @@ void awh::Engine::wrapClient(ctx_t & target, addr_t * address, const uri_t::url_
 			/**
 			 * Если операционной системой является Linux или FreeBSD
 			 */
-			#ifdef __linux__ || __FreeBSD__
+			#if defined(__linux__) || defined(__FreeBSD__)
 				// Определяем тип протокола подключения
 				switch(target._addr->_protocol){
 					// Если протокол подключения UDP

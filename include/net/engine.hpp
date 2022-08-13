@@ -454,7 +454,7 @@ namespace awh {
 			/**
 			 * Если операционной системой является Linux или FreeBSD
 			 */
-			#ifdef __linux__ || __FreeBSD__
+			#if defined(__linux__) || defined(__FreeBSD__)
 				/**
 				 * notificationsSCTP Функция обработки нотификации SCTP
 				 * @param bio    объект подключения BIO

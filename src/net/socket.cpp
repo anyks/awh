@@ -295,7 +295,7 @@ int awh::Socket::sctpEvents(const int fd) const noexcept {
 	/**
 	 * Если операционной системой является Linux или FreeBSD
 	 */
-	#ifdef __linux__ || __FreeBSD__
+	#if defined(__linux__) || defined(__FreeBSD__)
 		// Создаём объект подписки на события
 		struct sctp_event_subscribe event;
 		// Зануляем объект события

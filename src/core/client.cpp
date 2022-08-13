@@ -190,9 +190,9 @@ void awh::client::Core::connect(const size_t wid) noexcept {
 						adj->addr.sonet(SOCK_DGRAM, IPPROTO_UDP);
 					break;
 					/**
-					 * Если операционной системой является Linux
+					 * Если операционной системой является Linux или FreeBSD
 					 */
-					#ifdef __linux__
+					#if defined(__linux__) || defined(__FreeBSD__)
 						// Если тип сокета установлен как SCTP
 						case (uint8_t) sonet_t::SCTP:
 							// Устанавливаем параметры сокета

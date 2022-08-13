@@ -62,7 +62,7 @@
 /**
  * Если операционной системой является Linux или FreeBSD
  */
-#ifdef __linux__ || __FreeBSD__
+#if defined(__linux__) || defined(__FreeBSD__)
 	#include <netinet/sctp.h>
 #endif
 

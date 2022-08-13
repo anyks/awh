@@ -1376,7 +1376,7 @@ void awh::Core::sonet(const sonet_t sonet) noexcept {
 	/**
 	 * Если операционной системой не является Linux или FreeBSD
 	 */
-	#ifndef __linux__ || __FreeBSD__
+	#if !defined(__linux__) && !defined(__FreeBSD__)
 		// Если установлен протокол SCTP
 		if(this->net.sonet == sonet_t::SCTP){
 			// Выводим в лог сообщение

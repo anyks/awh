@@ -506,7 +506,7 @@ void awh::server::Core::resolver(const string & ip, worker_t * wrk) noexcept {
 					/**
 					 * Если операционной системой является Linux или FreeBSD
 					 */
-					#ifdef __linux__ || __FreeBSD__
+					#if defined(__linux__) || defined(__FreeBSD__)
 						// Если тип сокета установлен как SCTP
 						case (uint8_t) sonet_t::SCTP:
 							// Устанавливаем параметры сокета
@@ -763,7 +763,7 @@ void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 						/**
 						 * Если операционной системой является Linux или FreeBSD
 						 */
-						#ifdef __linux__ || __FreeBSD__
+						#if defined(__linux__) || defined(__FreeBSD__)
 							// Если тип сокета установлен как SCTP
 							case (uint8_t) sonet_t::SCTP:
 								// Устанавливаем параметры сокета
