@@ -3051,6 +3051,8 @@ void awh::Engine::wrapClient(ctx_t & target, addr_t * address, const uri_t::url_
 
 						// Выполняем обёртывание сокета в BIO SSL
 						target._bio = BIO_new_dgram_sctp(target._addr->fd, BIO_NOCLOSE);
+
+						cout << " ===================3 " << target._bio << "  ===  " << target._addr->fd << endl;
 					break;
 					// Если протокол подключения TCP
 					case IPPROTO_TCP:
@@ -3066,7 +3068,7 @@ void awh::Engine::wrapClient(ctx_t & target, addr_t * address, const uri_t::url_
 				target._bio = BIO_new_socket(target._addr->fd, BIO_NOCLOSE);
 			#endif
 
-			cout << " ===================4 " << target._bio << endl;
+			cout << " ===================3 " << target._bio << endl;
 
 			// Если BIO SSL создано
 			if(target._bio != nullptr){
