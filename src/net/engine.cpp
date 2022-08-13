@@ -472,7 +472,7 @@ bool awh::Engine::Address::accept(const int fd, const int family) noexcept {
 				// Устанавливаем разрешение на повторное использование сокета
 				this->_socket.reuseable(this->fd);
 				// Переводим сокет в не блокирующий режим
-				this->_socket.nonBlocking(this->fd);
+				// this->_socket.nonBlocking(this->fd);
 				/**
 				 * Если операционной системой является Linux
 				 */
@@ -510,7 +510,7 @@ bool awh::Engine::Address::accept(const int fd, const int family) noexcept {
 					// Устанавливаем разрешение на повторное использование сокета
 					this->_socket.reuseable(this->fd);
 					// Переводим сокет в не блокирующий режим
-					this->_socket.nonBlocking(this->fd);
+					// this->_socket.nonBlocking(this->fd);
 				}
 			} break;
 		#endif
@@ -570,7 +570,7 @@ void awh::Engine::Address::init(const string & unixsocket, const type_t type) no
 				// Отключаем сигнал записи в оборванное подключение
 				this->_socket.noSigpipe(this->fd);
 				// Переводим сокет в не блокирующий режим
-				this->_socket.nonBlocking(this->fd);
+				// this->_socket.nonBlocking(this->fd);
 			}
 			// Создаём объект подключения для клиента
 			struct sockaddr_un client;
@@ -873,10 +873,12 @@ void awh::Engine::Address::init(const string & ip, const u_int port, const int f
 			#endif
 			// Если сокет установлен TCP/IP
 			if(this->_type == SOCK_STREAM){
+				/*
 				// Если приложение является сервером
 				if(type == type_t::SERVER)
 					// Переводим сокет в не блокирующий режим
 					this->_socket.nonBlocking(this->fd);
+				*/
 				/**
 				 * Если операционной системой является Linux
 				 */
@@ -1189,9 +1191,6 @@ int64_t awh::Engine::Context::read(char * buffer, const size_t size) noexcept {
 		if(result <= 0){
 			// Получаем статус сокета
 			const int status = this->_addr->_socket.isBlocking(this->_addr->fd);
-
-			cout << " ++++++++++++++++++++++++++++++ " << status << endl;
-
 			// Если сокет находится в блокирующем режиме
 			if((result < 0) && (status != 0))
 				// Выполняем обработку ошибок
