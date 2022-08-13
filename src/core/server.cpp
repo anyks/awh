@@ -1214,6 +1214,9 @@ void awh::server::Core::transfer(const engine_t::method_t method, const size_t a
 				int64_t bytes = -1;
 				// Создаём буфер входящих данных
 				char buffer[BUFFER_SIZE];
+
+				adj->bev.event.read.stop();
+
 				// Если тип сокета установлен как UDP, останавливаем чтение
 				if(this->net.sonet == sonet_t::UDP)
 					// Останавливаем чтение данных с клиента
