@@ -574,7 +574,10 @@ void awh::server::Core::resolver(const string & ip, worker_t * wrk) noexcept {
  * @param fd  файловый дескриптор (сокет) подключившегося клиента
  * @param wid идентификатор воркера
  */
-void awh::server::Core::accept(const int fd, const size_t wid) noexcept {	
+void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
+
+	cout << " ====================================== accept " << fd << " === " << wid << endl;
+
 	// Если идентификатор воркера передан
 	if((wid > 0) && (fd >= 0) && this->_interception){
 		// Выполняем поиск воркера
@@ -1146,15 +1149,24 @@ void awh::server::Core::close(const size_t aid) noexcept {
 					this->sendEvent(wrk->wid, aid, this->_pid, event_t::DISCONNECT);
 				// Удаляем отключившегося клиента из списока клиентов
 				else this->_adjutants.erase(aid);
+
+				cout << " ====================================== 1 " << endl;
+
 				// Выводим сообщение об ошибке
 				if(!core->noinfo) this->log->print("%s", log_t::flag_t::INFO, "disconnect client from server");
 				// Выводим функцию обратного вызова
 				if(wrk->callback.disconnect != nullptr) wrk->callback.disconnect(aid, wrk->wid, this);
+
+				cout << " ====================================== 2 " << endl;
 			}
 			// Удаляем блокировку адъютанта
 			this->_locking.erase(aid);
+
+			cout << " ====================================== 3 " << endl;
 		}
 	}
+
+	cout << " ====================================== 4 " << endl;
 }
 /**
  * timeout Функция обратного вызова при срабатывании таймаута
