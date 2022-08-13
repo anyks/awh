@@ -3034,6 +3034,9 @@ void awh::Engine::wrapClient(ctx_t & target, addr_t * address, const uri_t::url_
 			 * Если операционной системой является Linux
 			 */
 			#ifdef __linux__
+
+				cout << " ===================1 " << endl;
+
 				// Определяем тип протокола подключения
 				switch(target._addr->_protocol){
 					// Если протокол подключения UDP
@@ -3043,6 +3046,9 @@ void awh::Engine::wrapClient(ctx_t & target, addr_t * address, const uri_t::url_
 					break;
 					// Если протокол подключения SCTP
 					case IPPROTO_SCTP:
+
+						cout << " ===================2 " << endl;
+
 						// Выполняем обёртывание сокета в BIO SSL
 						target._bio = BIO_new_dgram_sctp(target._addr->fd, BIO_NOCLOSE);
 					break;
@@ -3059,6 +3065,9 @@ void awh::Engine::wrapClient(ctx_t & target, addr_t * address, const uri_t::url_
 				// Выполняем обёртывание сокета в BIO SSL
 				target._bio = BIO_new_socket(target._addr->fd, BIO_NOCLOSE);
 			#endif
+
+			cout << " ===================4 " << target._bio << endl;
+
 			// Если BIO SSL создано
 			if(target._bio != nullptr){
 				// Устанавливаем блокирующий режим ввода/вывода для сокета
