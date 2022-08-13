@@ -179,10 +179,12 @@ void awh::client::WebSocket::handler() noexcept {
 	if(!this->_locker.mode){
 		// Выполняем блокировку потока
 		const lock_guard <recursive_mutex> lock(this->_locker.mtx);
+		// Флаг разрешающий циклический перебор экшенов
+		bool loop = true;
 		// Выполняем блокировку обработчика
 		this->_locker.mode = true;
 		// Выполняем обработку всех экшенов
-		while(this->_action != action_t::NONE){
+		while(loop && (this->_action != action_t::NONE)){
 			// Определяем обрабатываемый экшен
 			switch((uint8_t) this->_action){
 				// Если необходимо запустить экшен открытия подключения
@@ -197,6 +199,8 @@ void awh::client::WebSocket::handler() noexcept {
 				case (uint8_t) action_t::PROXY_READ: this->actionProxyRead(); break;
 				// Если необходимо запустить экшен обработки подключения к прокси-серверу
 				case (uint8_t) action_t::PROXY_CONNECT: this->actionProxyConnect(); break;
+				// Если сработал неизвестный экшен, выходим
+				default: loop = false;
 			}
 		}
 		// Выполняем разблокировку обработчика

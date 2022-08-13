@@ -1146,24 +1146,15 @@ void awh::server::Core::close(const size_t aid) noexcept {
 					this->sendEvent(wrk->wid, aid, this->_pid, event_t::DISCONNECT);
 				// Удаляем отключившегося клиента из списока клиентов
 				else this->_adjutants.erase(aid);
-
-				cout << " ====================================== 1 " << endl;
-
 				// Выводим сообщение об ошибке
 				if(!core->noinfo) this->log->print("%s", log_t::flag_t::INFO, "disconnect client from server");
 				// Выводим функцию обратного вызова
 				if(wrk->callback.disconnect != nullptr) wrk->callback.disconnect(aid, wrk->wid, this);
-
-				cout << " ====================================== 2 " << endl;
 			}
 			// Удаляем блокировку адъютанта
 			this->_locking.erase(aid);
-
-			cout << " ====================================== 3 " << endl;
 		}
 	}
-
-	cout << " ====================================== 4 " << endl;
 }
 /**
  * timeout Функция обратного вызова при срабатывании таймаута

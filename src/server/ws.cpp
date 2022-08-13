@@ -219,7 +219,7 @@ void awh::server::WebSocket::handler(const size_t aid) noexcept {
 		if(!adj->locker.mode){
 			// Выполняем блокировку потока
 			const lock_guard <recursive_mutex> lock(adj->locker.mtx);
-			// Флаг принудительного выхода из цикла
+			// Флаг разрешающий циклический перебор экшенов
 			bool loop = true;
 			// Выполняем блокировку обработчика
 			adj->locker.mode = true;
