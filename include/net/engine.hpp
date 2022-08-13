@@ -21,6 +21,19 @@
  */
 
 /**
+ * Активация протокола SCTP:
+ * 
+ * Под Ubuntu Linux:
+ * # sudo apt install libsctp-dev
+ * # sudo modprobe sctp
+ * # sudo sysctl -w net.sctp.auth_enable=1
+ * 
+ * Под FreeBSD:
+ * # sudo kldload sctp
+ * 
+ */
+
+/**
  * Отключаем Deprecated для Apple
  */
 #if defined(__APPLE__) && defined(__clang__)

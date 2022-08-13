@@ -763,9 +763,6 @@ void awh::Engine::Address::init(const string & ip, const u_int port, const int f
 					return;
 				}
 			}
-
-			cout << " ----------------------- " << ::socket(AF_INET, SOCK_STREAM, IPPROTO_SCTP) << endl;
-
 			// Создаем сокет подключения
 			this->fd = ::socket(family, this->_type, this->_protocol);
 			// Если сокет не создан то выходим
