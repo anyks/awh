@@ -1187,20 +1187,6 @@ int64_t awh::Engine::Context::read(char * buffer, const size_t size) noexcept {
 		}
 		// Если данные прочитать не удалось
 		if(result <= 0){
-			
-
-			if(result < 0){
-				int k = SSL_get_error(this->_ssl, result);
-
-				if(k == SSL_ERROR_WANT_READ){
-
-					cout << " ++++++++++++++++++++ " << endl;
-					return -2;
-				}
-			}
-
-
-			
 			// Получаем статус сокета
 			const int status = this->_addr->_socket.isBlocking(this->_addr->fd);			
 			// Если сокет находится в блокирующем режиме
@@ -1232,9 +1218,6 @@ int64_t awh::Engine::Context::read(char * buffer, const size_t size) noexcept {
 			if(result == 0) this->_addr->status = addr_t::status_t::DISCONNECTED;
 		// Если данные получены удачно
 		} else {
-
-			cout << " ++++++++++++++++++++++ READ2 " << SSL_get_error(this->_ssl, result) << endl;
-
 			/**
 			 * Если операционной системой является Linux и включён режим отладки
 			 */
