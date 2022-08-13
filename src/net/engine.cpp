@@ -3077,7 +3077,7 @@ void awh::Engine::wrapClient(ctx_t & target, addr_t * address, const uri_t::url_
 
 
 
-			cout << " ===================4 " << BIO_new_dgram_sctp(fd1, BIO_NOCLOSE) << " === " << BIO_new_dgram_sctp(f2, BIO_NOCLOSE) << endl;
+			cout << " ===================4 " << BIO_new_dgram_sctp(fd1, BIO_NOCLOSE) << " === " << BIO_new_dgram_sctp(fd2, BIO_NOCLOSE) << endl;
 
 
 			// Если BIO SSL создано
