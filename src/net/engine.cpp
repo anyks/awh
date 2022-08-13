@@ -2701,7 +2701,6 @@ void awh::Engine::wrapServer(ctx_t & target, addr_t * address) noexcept {
 				// Заставляем серверные алгоритмы шифрования использовать в приоритете
 				SSL_CTX_set_options(target._ctx, SSL_OP_CIPHER_SERVER_PREFERENCE);
 			}
-			/*
 			// Получаем идентификатор процесса
 			const pid_t pid = getpid();
 			// Выполняем установку идентификатора сессии
@@ -2713,7 +2712,6 @@ void awh::Engine::wrapServer(ctx_t & target, addr_t * address) noexcept {
 				// Выходим
 				return;
 			}
-			*/
 			// Устанавливаем поддерживаемые кривые
 			if(SSL_CTX_set_ecdh_auto(target._ctx, 1) < 1){
 				// Очищаем созданный контекст
@@ -2736,6 +2734,18 @@ void awh::Engine::wrapServer(ctx_t & target, addr_t * address) noexcept {
 			SSL_CTX_set_session_cache_mode(target._ctx, SSL_SESS_CACHE_SERVER | SSL_SESS_CACHE_NO_INTERNAL);
 			// Если цепочка сертификатов установлена
 			if(!this->_chain.empty()){
+				
+				// Если цепочка сертификатов не установлена
+				if(SSL_CTX_use_certificate_file(target._ctx, this->_chain.c_str(), SSL_FILETYPE_PEM) < 1){
+					// Выводим в лог сообщение
+					this->_log->print("certificate cannot be set", log_t::flag_t::CRITICAL);
+					// Очищаем созданный контекст
+					target.clear();
+					// Выходим
+					return;
+				}
+				
+				/*
 				// Если цепочка сертификатов не установлена
 				if(SSL_CTX_use_certificate_chain_file(target._ctx, this->_chain.c_str()) < 1){
 					// Выводим в лог сообщение
@@ -2745,6 +2755,7 @@ void awh::Engine::wrapServer(ctx_t & target, addr_t * address) noexcept {
 					// Выходим
 					return;
 				}
+				*/
 			}
 			// Если приватный ключ установлен
 			if(!this->_privkey.empty()){
