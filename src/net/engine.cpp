@@ -2809,13 +2809,8 @@ void awh::Engine::wrapServer(ctx_t & target, addr_t * address) noexcept {
 					break;
 					// Если протокол подключения SCTP
 					case IPPROTO_SCTP:
-
-						cout << " -----------------------1 " << target._addr->fd << endl;
-
 						// Выполняем обёртывание сокета в BIO SSL
 						target._bio = BIO_new_dgram_sctp(target._addr->fd, BIO_NOCLOSE);
-
-						cout << " -----------------------2 " << target._addr->fd << " === " << target._bio << endl;
 					break;
 					// Если протокол подключения TCP
 					case IPPROTO_TCP:
