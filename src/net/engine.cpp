@@ -98,14 +98,16 @@ void awh::Engine::Address::client() noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			/*
 			#if defined(DEBUG_MODE)
 				// Устанавливаем список событий которые может принять сервер
-				const uint16_t eventTypes[4] = {
+				const uint16_t eventTypes[6] = {
 					SCTP_ASSOC_CHANGE,
 					SCTP_PEER_ADDR_CHANGE,
+					// SCTP_SEND_FAILED_EVENT,
+					SCTP_REMOTE_ERROR,
 					SCTP_SHUTDOWN_EVENT,
-					SCTP_ADAPTATION_INDICATION
+					SCTP_ADAPTATION_INDICATION,
+					SCTP_PARTIAL_DELIVERY_EVENT
 				};
 				// Создаём объект события
 				struct sctp_event event;
@@ -128,7 +130,6 @@ void awh::Engine::Address::client() noexcept {
 					}
 				}
 			#endif
-			*/
 		}
 	}
 #endif
