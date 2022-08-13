@@ -437,11 +437,11 @@ bool awh::Engine::Address::accept(const int fd, const int family) noexcept {
 			 */
 			#if !defined(_WIN32) && !defined(_WIN64)
 				// Выполняем игнорирование сигнала неверной инструкции процессора
-				this->_socket.noSigill();
+				// this->_socket.noSigill();
 				// Если сокет установлен TCP/IP
 				if(this->_type == SOCK_STREAM){
 					// Отключаем сигнал записи в оборванное подключение
-					this->_socket.noSigpipe(this->fd);
+					// this->_socket.noSigpipe(this->fd);
 					/**
 					 * Если операционной системой является Linux
 					 */
@@ -472,7 +472,7 @@ bool awh::Engine::Address::accept(const int fd, const int family) noexcept {
 				// Устанавливаем разрешение на повторное использование сокета
 				this->_socket.reuseable(this->fd);
 				// Переводим сокет в не блокирующий режим
-				// this->_socket.nonBlocking(this->fd);
+				this->_socket.nonBlocking(this->fd);
 				/**
 				 * Если операционной системой является Linux
 				 */
