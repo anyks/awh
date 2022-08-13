@@ -2639,7 +2639,7 @@ void awh::Engine::wrapServer(ctx_t & target, addr_t * address) noexcept {
 					// Если протокол подключения SCTP
 					case IPPROTO_SCTP:
 						// Получаем контекст OpenSSL
-						target._ctx = SSL_CTX_new(DTLS_server_method());
+						target._ctx = SSL_CTX_new(DTLSv1_2_server_method());
 					break;
 					// Если протокол подключения TCP
 					case IPPROTO_TCP:
@@ -2894,7 +2894,7 @@ void awh::Engine::wrapClient(ctx_t & target, addr_t * address, const uri_t::url_
 					// Если протокол подключения SCTP
 					case IPPROTO_SCTP:
 						// Получаем контекст OpenSSL
-						target._ctx = SSL_CTX_new(DTLS_client_method());
+						target._ctx = SSL_CTX_new(DTLSv1_2_client_method());
 					break;
 					// Если протокол подключения TCP
 					case IPPROTO_TCP:

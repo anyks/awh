@@ -145,7 +145,7 @@ int main(int argc, char * argv[]){
 	// Устанавливаем название сервера
 	// core.nameServer("anyks");
 	// Устанавливаем тип сокета unix-сокет
-	core.family(core_t::family_t::NIX);
+	// core.family(core_t::family_t::NIX);
 	// Устанавливаем тип сокета UDP TLS
 	// core.sonet(core_t::sonet_t::DTLS);
 	// core.sonet(core_t::sonet_t::TLS);
@@ -171,10 +171,10 @@ int main(int argc, char * argv[]){
 	// ws.authType(auth_t::type_t::DIGEST, auth_t::hash_t::SHA256);
 	// ws.authType(auth_t::type_t::BASIC);
 	// Выполняем инициализацию WebSocket сервера
-	// ws.init(2222, "192.168.3.46", http_t::compress_t::DEFLATE);
+	ws.init(2222, "192.168.3.46", http_t::compress_t::DEFLATE);
 	// ws.init(2222, "", http_t::compress_t::DEFLATE);
 	// ws.init(2222, "127.0.0.1", http_t::compress_t::DEFLATE);
-	ws.init("anyks", http_t::compress_t::DEFLATE);
+	// ws.init("anyks", http_t::compress_t::DEFLATE);
 	// Устанавливаем длительное подключение
 	// ws.keepAlive(100, 30, 10);
 
@@ -187,7 +187,7 @@ int main(int argc, char * argv[]){
 	*/
 	
 
-	// core.certificate("./certs/server-cert.pem", "./certs/server-key.pem");
+	core.certificate("./certs/server-cert.pem", "./certs/server-key.pem");
 
 	// Устанавливаем шифрование
 	// ws.crypto("PASS");
