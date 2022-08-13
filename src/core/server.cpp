@@ -1278,10 +1278,12 @@ void awh::server::Core::transfer(const engine_t::method_t method, const size_t a
 				// Если тип сокета не установлен как UDP, запускаем чтение дальше
 				if(this->net.sonet != sonet_t::UDP){
 
-					cout << " ------------------------------- " << endl;
+					cout << " ------------------------------- " << bytes << endl;
 
 					// Запускаем чтение данных с клиента
 					adj->bev.event.read.start();
+
+
 				}
 			} break;
 			// Если производится запись данных
