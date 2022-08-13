@@ -95,6 +95,7 @@ void awh::Engine::Address::client() noexcept {
 				// Выходим из функции
 				return;
 			}
+			/*
 			// Если порт инкапсуляции установлен
 			if(this->_encapsPort > -1){
 				// Создаём объект инкапсуляции под UDP
@@ -113,6 +114,7 @@ void awh::Engine::Address::client() noexcept {
 					return;
 				}
 			}
+			*/
 			/**
 			 * Если включён режим отладки
 			 */
