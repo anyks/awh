@@ -1333,24 +1333,30 @@ int64_t awh::Engine::Context::write(const char * buffer, const size_t size) noex
 			#if defined(__linux__) && defined(DEBUG_MODE)
 				// Если протокол интернета установлен как SCTP
 				if((this->_addr->_protocol == IPPROTO_SCTP) && (SSL_get_error(this->_ssl, result) == SSL_ERROR_NONE)){
-					// Создаём объект получения информационных событий
-					struct bio_dgram_sctp_sndinfo info;
-					// Выполняем зануление объекта информационного события
-					memset(&info, 0, sizeof(info));
-					// Выполняем извлечение события
-					BIO_ctrl(this->_bio, BIO_CTRL_DGRAM_SCTP_GET_SNDINFO, sizeof(info), &info);
 					// Определяем тип подключения
 					switch((uint8_t) this->_addr->status){
 						// Если статус установлен как подключение клиентом
-						case (uint8_t) addr_t::status_t::CONNECTED:
+						case (uint8_t) addr_t::status_t::CONNECTED: {
+							// Создаём объект получения информационных событий
+							struct bio_dgram_sctp_sndinfo info;
+							// Выполняем зануление объекта информационного события
+							memset(&info, 0, sizeof(info));
+							// Выполняем извлечение события
+							BIO_ctrl(this->_bio, BIO_CTRL_DGRAM_SCTP_GET_SNDINFO, sizeof(info), &info);
 							// Выводим в лог информационное сообщение
 							this->_log->print("wrote %d bytes, stream: %u, ppid: %u", log_t::flag_t::INFO, (int) result, info.snd_sid, info.snd_ppid);
-						break;
+						} break;
 						// Если статус установлен как разрешение подключения к серверу
-						case (uint8_t) addr_t::status_t::ACCEPTED:
+						case (uint8_t) addr_t::status_t::ACCEPTED: {
+							// Создаём объект получения информационных событий
+							struct bio_dgram_sctp_rcvinfo info;
+							// Выполняем зануление объекта информационного события
+							memset(&info, 0, sizeof(info));
+							// Выполняем извлечение события
+							BIO_ctrl(this->_bio, BIO_CTRL_DGRAM_SCTP_GET_SNDINFO, sizeof(info), &info);
 							// Выводим в лог информационное сообщение
-							this->_log->print("wrote %d bytes, stream: %u, ssn: %u, ppid: %u, tsn: %u", log_t::flag_t::INFO, (int) result, info.snd_sid, info.snd_ssn, info.snd_ppid, info.snd_tsn);
-						break;
+							this->_log->print("wrote %d bytes, stream: %u, ssn: %u, ppid: %u, tsn: %u", log_t::flag_t::INFO, (int) result, info.rcv_sid, info.rcv_ssn, info.rcv_ppid, info.rcv_tsn);
+						} break;
 					}
 				}
 			#endif
