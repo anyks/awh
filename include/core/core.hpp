@@ -95,7 +95,8 @@ namespace awh {
 				TCP  = 0x01, // Нешифрованное подключение TCP
 				UDP  = 0x02, // Нешифрованное подключение UDP
 				TLS  = 0x03, // Шифрованное подключение TCP
-				DTLS = 0x04  // Шифрованное подключение UDP
+				DTLS = 0x04, // Шифрованное подключение UDP
+				SCTP = 0x05  // Шифрованное подключение SCTP
 			};
 		private:
 			/**
@@ -529,12 +530,12 @@ namespace awh {
 		public:
 			/**
 			 * sonet Метод извлечения типа сокета подключения
-			 * @return тип сокета подключения (TCP / UDP)
+			 * @return тип сокета подключения (TCP / UDP / SCTP)
 			 */
 			sonet_t sonet() const noexcept;
 			/**
 			 * sonet Метод установки типа сокета подключения
-			 * @param sonet тип сокета подключения (TCP / UDP)
+			 * @param sonet тип сокета подключения (TCP / UDP / SCTP)
 			 */
 			void sonet(const sonet_t sonet = sonet_t::TCP) noexcept;
 		public:

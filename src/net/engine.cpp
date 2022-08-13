@@ -77,6 +77,78 @@ void awh::Engine::Address::client() noexcept {
 	}
 }
 /**
+ * Если операционной системой является Linux
+ */
+#ifdef __linux__
+	/**
+	 * initSCTP Метод инициализации протокола SCTP
+	 */
+	void awh::Engine::Address::initSCTP() noexcept {
+		// Если протокол интернета установлен как SCTP
+		if(this->_protocol == IPPROTO_SCTP){
+			// Устанавливаем переменную активации
+			const int on = 1;
+			// Разрешаем получение информации SCTP из сокета
+			if(setsockopt(this->fd, IPPROTO_SCTP, SCTP_RECVRCVINFO, &on, sizeof(on)) < 0){
+				// Выводим в лог информацию
+				this->_log->print("cannot set SCTP_RECVRCVINFO option on socket %d", log_t::flag_t::CRITICAL, this->fd);
+				// Выходим из функции
+				return result;
+			}
+			// Если порт инкапсуляции установлен
+			if(this->_encapsPort > -1){
+				// Создаём объект инкапсуляции под UDP
+				struct sctp_udpencaps encaps;
+				// Выполняем зануление объекта инкапсуляции
+				memset(&encaps, 0, sizeof(encaps));
+				// Устанавливаем семейство интернет-протокола
+				encaps.sue_address.ss_family = this->_peer.server.ss_family;
+				// Устанавливаем UDP порт
+				encaps.sue_port = htons(this->_encapsPort == 0 ? ENCAPS_PORT : this->_encapsPort);
+				// Разрешаем выполнять инкапсуляцию за UDP подключением
+				if(setsockopt(this->fd, IPPROTO_SCTP, SCTP_REMOTE_UDP_ENCAPS_PORT, &encaps, sizeof(encaps)) < 0){
+					// Выводим в лог информацию
+					this->_log->print("cannot set SCTP_REMOTE_UDP_ENCAPS_PORT option on socket %d", log_t::flag_t::CRITICAL, this->fd);
+					// Выходим из функции
+					return result;
+				}
+			}
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Устанавливаем список событий которые может принять сервер
+				const uint16_t eventTypes[4] = {
+					SCTP_ASSOC_CHANGE,
+					SCTP_PEER_ADDR_CHANGE,
+					SCTP_SHUTDOWN_EVENT,
+					SCTP_ADAPTATION_INDICATION
+				};
+				// Создаём объект события
+				struct sctp_event event;
+				// Зануляем объект события
+				memset(&event, 0, sizeof(event));
+				// Активируем получение события
+				event.se_on = 1;
+				// Устанавливаем идентификатор ассоциации будущего
+				event.se_assoc_id = SCTP_FUTURE_ASSOC;
+				// Переходим по всему списку типов событий
+				for(uint8_t i = 0; i < (uint8_t) (sizeof(eventTypes) / sizeof(uint16_t)); i++){
+					// Устанавливаем тип события
+					event.se_type = eventTypes[i];
+					// Выполняем установку события SCTP для сокета
+					if(setsockopt(this->fd, IPPROTO_SCTP, SCTP_EVENT, &event, sizeof(event)) < 0){
+						// Выводим в лог информацию
+						this->_log->print("cannot set SCTP_EVENT option on socket %d", log_t::flag_t::CRITICAL, this->fd);
+						// Выходим из функции
+						return result;
+					}
+				}
+			#endif
+		}
+	}
+#endif
+/**
  * list Метод активации прослушивания сокета
  * @return результат выполнения операции
  */
@@ -94,6 +166,32 @@ bool awh::Engine::Address::list() noexcept {
 				// Выходим из функции
 				return result;
 			}
+			/**
+			 * Если операционной системой является Linux
+			 */
+			#ifdef __linux__
+				// Если протокол интернета установлен как SCTP
+				if(this->_protocol == IPPROTO_SCTP){
+					// Выполняем инициализацию SCTP протокола
+					this->initSCTP();
+					// Если подключение зашифрованно
+					if(this->_tls){
+						/**
+						 * Создаём BIO, чтобы установить все необходимые параметры для
+						 * следующего соединения, например. SCTP-АУТЕНТИФИКАЦИЯ.
+						 * Не будет использоваться.
+						 */
+						this->_bio = BIO_new_dgram_sctp(this->fd, BIO_NOCLOSE);
+						// Если BIO не создано, выходим
+						if(this->_bio == nullptr){
+							// Выводим в лог информацию
+							this->_log->print("unable to create BIO for SCTP protocol", log_t::flag_t::CRITICAL);
+							// Выходим из приложения
+							exit(EXIT_FAILURE);
+						}
+					}
+				}
+			#endif
 		} break;
 		// Если сокет установлен UDP
 		case SOCK_DGRAM: return true;
@@ -127,6 +225,13 @@ bool awh::Engine::Address::close() noexcept {
 			// Выполняем закрытие сокета
 			::close(this->fd);
 		#endif
+		// Если BIO создано
+		if(this->_bio != nullptr){
+			// Выполняем очистку BIO
+			BIO_free(this->_bio);
+			// Зануляем контекст BIO
+			this->_bio = nullptr;
+		}
 		// Выполняем сброс сокета
 		this->fd = -1;
 		// Сбрасываем флаг инициализации
@@ -174,6 +279,15 @@ bool awh::Engine::Address::connect() noexcept {
 				break;
 			#endif
 		}
+		/**
+		 * Если операционной системой является Linux
+		 */
+		#ifdef __linux__
+			// Если протокол интернета установлен как SCTP
+			if(this->_protocol == IPPROTO_SCTP)
+				// Выполняем инициализацию SCTP протокола
+				this->initSCTP();
+		#endif
 		// Если подключение не выполненно то сообщаем об этом, выполняем подключение к удаленному серверу
 		if((this->_peer.size > 0) && (::connect(this->fd, (struct sockaddr *) (&this->_peer.server), this->_peer.size) == 0))
 			// Устанавливаем статус подключения
@@ -208,6 +322,25 @@ bool awh::Engine::Address::connect() noexcept {
 		this->client();
 	// Выводим результат
 	return (this->status == status_t::CONNECTED);
+}
+/**
+ * encapsPort Метод установки порта инкапсуляции SCTP UDP
+ * @param port номер порта для установки
+ */
+void awh::Engine::Address::encapsPort(const int port) noexcept {
+	/**
+	 * Если операционной системой является Linux
+	 */
+	#ifdef __linux__
+		// Выполняем установку порта инкапсуляции SCTP UDP
+		this->_encapsPort = port;
+	/**
+	 * Если операционная система не является Linux
+	 */
+	#else
+		// Выводим в лог информацию
+		this->_log->print("SCTP UDP encapsulation port cannot be installed on a non-linux operating system", log_t::flag_t::WARNING);
+	#endif
 }
 /**
  * attach Метод прикрепления клиента к серверу
@@ -1064,6 +1197,24 @@ int64_t awh::Engine::Context::read(char * buffer, const size_t size) noexcept {
 				result = 0;
 			// Если произошло отключение
 			if(result == 0) this->_addr->status = addr_t::status_t::DISCONNECTED;
+		// Если данные получены удачно
+		} else {
+			/**
+			 * Если операционной системой является Linux и включён режим отладки
+			 */
+			#if defined(__linux__) && defined(DEBUG_MODE)
+				// Если протокол интернета установлен как SCTP
+				if((this->_addr->_protocol == IPPROTO_SCTP) && (SSL_get_error(this->_ssl, result) == SSL_ERROR_NONE)){
+					// Создаём объект получения информационных событий
+					struct bio_dgram_sctp_rcvinfo info;
+					// Выполняем зануление объекта информационного события
+					memset(&info, 0, sizeof(info));
+					// Выполняем извлечение события
+					BIO_ctrl(this->_bio, BIO_CTRL_DGRAM_SCTP_GET_RCVINFO, sizeof(info), &info);
+					// Выводим в лог информационное сообщение
+					this->_log->print("read %d bytes, stream: %u, ssn: %u, ppid: %u, tsn: %u", log_t::flag_t::INFO, (int) result, info.rcv_sid, info.rcv_ssn, info.rcv_ppid, info.rcv_tsn);
+				}
+			#endif
 		}
 	}
 	// Выводим результат
@@ -1088,6 +1239,20 @@ int64_t awh::Engine::Context::write(const char * buffer, const size_t size) noex
 			if(!(SSL_get_shutdown(this->_ssl) & SSL_RECEIVED_SHUTDOWN)){
 				// Если подключение выполнено
 				if((result = ((this->_type == type_t::SERVER) ? SSL_accept(this->_ssl) : SSL_connect(this->_ssl))) > 0){
+					/**
+					 * Если операционной системой является Linux
+					 */
+					#ifdef __linux__
+						// Если протокол интернета установлен как SCTP
+						if((this->_addr->_protocol == IPPROTO_SCTP) && (this->_addr->status == addr_t::status_t::CONNECTED)){
+							// Создаём объект получения информационных событий
+							struct bio_dgram_sctp_sndinfo info;
+							// Выполняем зануление объекта информационного события
+							memset(&info, 0, sizeof(info));
+							// Выполняем установку события
+							BIO_ctrl(this->_bio, BIO_CTRL_DGRAM_SCTP_SET_SNDINFO, sizeof(info), &info);
+						}
+					#endif
 					/**
 					 * Если включён режим отладки
 					 */
@@ -1197,6 +1362,35 @@ int64_t awh::Engine::Context::write(const char * buffer, const size_t size) noex
 				result = 0;
 			// Если произошло отключение
 			if(result == 0) this->_addr->status = addr_t::status_t::DISCONNECTED;
+		// Если данные отправлены удачно
+		} else {
+			/**
+			 * Если операционной системой является Linux и включён режим отладки
+			 */
+			#if defined(__linux__) && defined(DEBUG_MODE)
+				// Если протокол интернета установлен как SCTP
+				if((this->_addr->_protocol == IPPROTO_SCTP) && (SSL_get_error(this->_ssl, result) == SSL_ERROR_NONE)){
+					// Создаём объект получения информационных событий
+					struct bio_dgram_sctp_sndinfo info;
+					// Выполняем зануление объекта информационного события
+					memset(&info, 0, sizeof(info));
+					// Выполняем извлечение события
+					BIO_ctrl(this->_bio, BIO_CTRL_DGRAM_SCTP_GET_SNDINFO, sizeof(info), &info);
+					// Определяем тип подключения
+					switch((uint8_t) this->_addr->status){
+						// Если статус установлен как подключение клиентом
+						case (uint8_t) addr_t::status_t::CONNECTED:
+							// Выводим в лог информационное сообщение
+							this->_log->print("wrote %d bytes, stream: %u, ppid: %u", log_t::flag_t::INFO, (int) result, info.snd_sid, info.snd_ppid);
+						break;
+						// Если статус установлен как разрешение подключения к серверу
+						case (uint8_t) addr_t::status_t::ACCEPTED:
+							// Выводим в лог информационное сообщение
+							this->_log->print("wrote %d bytes, stream: %u, ssn: %u, ppid: %u, tsn: %u", log_t::flag_t::INFO, (int) result, info.rcv_sid, info.rcv_ssn, info.rcv_ppid, info.rcv_tsn);
+						break;
+					}
+				}
+			#endif
 		}
 	}
 	// Выводим результат
@@ -1396,6 +1590,123 @@ const bool awh::Engine::certHostcheck(const string & host, const string & patt) 
 	// Выводим результат
 	return result;
 }
+/**
+ * Если операционной системой является Linux
+ */
+#ifdef __linux__
+	/**
+	 * notificationsSCTP Функция обработки нотификации SCTP
+	 * @param bio    объект подключения BIO
+	 * @param ctx    промежуточный передаваемый контекст
+	 * @param buffer буфер передаваемых данных
+	 */
+	void awh::Engine::notificationsSCTP(BIO * bio, void * ctx, void * buffer) noexcept {
+		// Если данные переданы
+		if((bio != nullptr) && (ctx != nullptr) && (buffer != nullptr)){
+			// Получаем объект модуля подключения
+			ctx_t * context = reinterpret_cast <ctx_t *> (ctx);
+			// Создаём объект событий SCTP
+			union sctp_notification * snp = reinterpret_cast <union sctp_notification *> (buffer);
+			// Определяем тип события
+			switch(snp->sn_header.sn_type){
+				// Если произошло событие изменения ассоциации
+				case SCTP_ASSOC_CHANGE: {
+					// Получаем ассоциацию
+					struct sctp_assoc_change * sac = &snp->sn_assoc_change;
+					// Выводим в лог информационное сообщение
+					context->_log->print("assoc_change: state = %hu, error = %hu, instr = %hu, outstr = %hu", log_t::flag_t::INFO, sac->sac_state, sac->sac_error, sac->sac_inbound_streams, sac->sac_outbound_streams);
+				} break;
+				// Если изменился адрес подключения клиента
+				case SCTP_PEER_ADDR_CHANGE: {
+					// Адрес интернет-подключения
+					string ip = "";
+					// Объект данных подключения
+					char buffer[INET6_ADDRSTRLEN];
+					// Выполняем зануление буфера данных
+					memset(buffer, 0, sizeof(buffer));
+					// Создаём объединение адресов
+					union {
+						struct sockaddr_in s4;      // Объект IPv4
+						struct sockaddr_in6 s6;     // Объект IPv6
+						struct sockaddr_storage ss; // Объект хранилища
+					} peer;
+					// Получаем данные изменившегося адреса
+					struct sctp_paddr_change * spc = &snp->sn_paddr_change;
+					// Устанавливаем новое значение подключения
+					peer.ss = spc->spc_aaddr;
+					// Определяем семейство интернет-протокола
+					switch(peer.ss.ss_family){
+						// Если подключение производится по IPv4
+						case AF_INET:
+							// Получаем IP адрес IPv4
+							ip = inet_ntop(AF_INET, &peer.s4.sin_addr, buffer, sizeof(buffer));
+						break;
+						// Если подключение производится по IPv6
+						case AF_INET6:
+							// Получаем IP адрес IPv6
+							ip = inet_ntop(AF_INET6, &peer.s6.sin6_addr, buffer, sizeof(buffer));
+						break;
+					}
+					// Выводим в лог информационное сообщение
+					context->_log->print("intf_change: ip = %s, state = %d, error = %d", log_t::flag_t::INFO, ip.c_str(), spc->spc_state, spc->spc_error);
+				} break;
+				// Если произошла ошибка удалённого подключения
+				case SCTP_REMOTE_ERROR: {
+					// Получаем данные ошибки удалённого подключения
+					struct sctp_remote_error * sre = &snp->sn_remote_error;
+					// Выводим в лог информационное сообщение
+					context->_log->print("remote_error: err = %hu, len = %hu", log_t::flag_t::INFO, ntohs(sre->sre_error), ntohs(sre->sre_length));
+				} break;
+				// Если произошло событие неудачной отправки
+				case SCTP_SEND_FAILED: {
+					// Получаем объект ошибки
+					struct sctp_send_failed * ssf = &snp->sn_send_failed;
+					// Выводим в лог информационное сообщение
+					context->_log->print("sendfailed: err = %d, len = %u", log_t::flag_t::INFO, ssf->ssf_error, ssf->ssf_length);
+				} break;
+				// Если произошло событие отключения подключения
+				case SCTP_SHUTDOWN_EVENT:
+					// Выводим в лог информационное сообщение
+					context->_log->print("shutdown event", log_t::flag_t::INFO);
+				break;
+				// Если произошло событие адаптации
+				case SCTP_ADAPTATION_INDICATION:
+					// Выводим в лог информационное сообщение
+					context->_log->print("adaptation event", log_t::flag_t::INFO);
+				break;
+				// Если произошло сообщение частичной передачи данных
+				case SCTP_PARTIAL_DELIVERY_EVENT:
+					// Выводим в лог информационное сообщение
+					context->_log->print("partial delivery", log_t::flag_t::INFO);
+				break;
+				/**
+				 * Если требуется аутентификация
+				 */
+				#ifdef SCTP_AUTHENTICATION_EVENT
+					// Если произошло событие аутентификации
+					case SCTP_AUTHENTICATION_EVENT:
+						// Выводим в лог информационное сообщение
+						context->_log->print("authentication event", log_t::flag_t::INFO);
+					break;
+				#endif
+				/**
+				 * Если требуется отображение сухих событий
+				 */
+				#ifdef SCTP_SENDER_DRY_EVENT
+					// Отправитель прислал сухое событие
+					case SCTP_SENDER_DRY_EVENT:
+						// Выводим в лог информационное сообщение
+						context->_log->print("sender dry event", log_t::flag_t::INFO);
+					break;
+				#endif
+				// Если произошло неизвестное событие
+				default:
+					// Выводим в лог информационное сообщение
+					context->_log->print("unknown type: %hu", log_t::flag_t::INFO, snp->sn_header.sn_type);
+			}
+		}
+	}
+#endif
 /**
  * verifyCert Функция обратного вызова для проверки валидности сертификата
  * @param ok   результат получения сертификата
@@ -1806,7 +2117,7 @@ bool awh::Engine::storeCA(SSL_CTX * ctx) const noexcept {
 			// Выполняем проверку
 			if(SSL_CTX_load_verify_locations(ctx, this->_ca.c_str(), path) != 1){
 				// Выводим в лог сообщение
-				this->_log->print("%s", log_t::flag_t::CRITICAL, "ssl verify locations is not allow");
+				this->_log->print("ssl verify locations is not allow", log_t::flag_t::CRITICAL);
 				// Выходим
 				return result;
 			}
@@ -1910,7 +2221,7 @@ bool awh::Engine::storeCA(SSL_CTX * ctx) const noexcept {
 						// Если системный стор не получен
 						if(!sys){
 							// Выводим в лог сообщение
-							this->_log->print("%s", log_t::flag_t::CRITICAL, "failed to open system certificate store");
+							this->_log->print("failed to open system certificate store", log_t::flag_t::CRITICAL);
 							// Выходим
 							return -1;
 						}
@@ -1946,7 +2257,7 @@ bool awh::Engine::storeCA(SSL_CTX * ctx) const noexcept {
 			// Если стор не устанавливается, тогда выводим ошибку
 			if(!(result = (X509_STORE_set_default_paths(store) == 1)))
 				// Выводим в лог сообщение
-				this->_log->print("%s", log_t::flag_t::CRITICAL, "set default paths for x509 store is not allow");
+				this->_log->print("set default paths for x509 store is not allow", log_t::flag_t::CRITICAL);
 		}
 	}
 	// Выводим результат
@@ -2025,7 +2336,7 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const type_t type) noex
 			// Активируем рандомный генератор
 			if(RAND_poll() < 1){
 				// Выводим в лог сообщение
-				this->_log->print("%s", log_t::flag_t::CRITICAL, "rand poll is not allow");
+				this->_log->print("rand poll is not allow", log_t::flag_t::CRITICAL);
 				// Выходим
 				return;
 			}
@@ -2067,7 +2378,7 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const type_t type) noex
 			// Если контекст не создан
 			if(target._ctx == nullptr){
 				// Выводим в лог сообщение
-				this->_log->print("%s", log_t::flag_t::CRITICAL, "context ssl is not initialization");
+				this->_log->print("context ssl is not initialization", log_t::flag_t::CRITICAL);
 				// Выходим
 				return;
 			}
@@ -2084,7 +2395,7 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const type_t type) noex
 					// Очищаем созданный контекст
 					target.clear();
 					// Выводим в лог сообщение
-					this->_log->print("%s", log_t::flag_t::CRITICAL, "set ssl ciphers");
+					this->_log->print("set ssl ciphers", log_t::flag_t::CRITICAL);
 					// Выходим
 					return;
 				}
@@ -2098,7 +2409,7 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const type_t type) noex
 				// Очищаем созданный контекст
 				target.clear();
 				// Выводим в лог сообщение
-				this->_log->print("%s", log_t::flag_t::CRITICAL, "set ssl ecdh");
+				this->_log->print("set ssl ecdh", log_t::flag_t::CRITICAL);
 				// Выходим
 				return;
 			}
@@ -2115,7 +2426,7 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const type_t type) noex
 						// Если цепочка сертификатов не установлена
 						if(SSL_CTX_use_certificate_file(target._ctx, this->_chain.c_str(), SSL_FILETYPE_PEM) < 1){
 							// Выводим в лог сообщение
-							this->_log->print("%s", log_t::flag_t::CRITICAL, "certificate cannot be set");
+							this->_log->print("certificate cannot be set", log_t::flag_t::CRITICAL);
 							// Очищаем созданный контекст
 							target.clear();
 							// Выходим
@@ -2127,7 +2438,7 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const type_t type) noex
 						// Если цепочка сертификатов не установлена
 						if(SSL_CTX_use_certificate_chain_file(target._ctx, this->_chain.c_str()) < 1){
 							// Выводим в лог сообщение
-							this->_log->print("%s", log_t::flag_t::CRITICAL, "certificate cannot be set");
+							this->_log->print("certificate cannot be set", log_t::flag_t::CRITICAL);
 							// Очищаем созданный контекст
 							target.clear();
 							// Выходим
@@ -2141,7 +2452,7 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const type_t type) noex
 				// Если приватный ключ не может быть установлен
 				if(SSL_CTX_use_PrivateKey_file(target._ctx, this->_privkey.c_str(), SSL_FILETYPE_PEM) < 1){
 					// Выводим в лог сообщение
-					this->_log->print("%s", log_t::flag_t::CRITICAL, "private key cannot be set");
+					this->_log->print("private key cannot be set", log_t::flag_t::CRITICAL);
 					// Очищаем созданный контекст
 					target.clear();
 					// Выходим
@@ -2150,7 +2461,7 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const type_t type) noex
 				// Если приватный ключ недействителен
 				if(SSL_CTX_check_private_key(target._ctx) < 1){
 					// Выводим в лог сообщение
-					this->_log->print("%s", log_t::flag_t::CRITICAL, "private key is not valid");
+					this->_log->print("private key is not valid", log_t::flag_t::CRITICAL);
 					// Очищаем созданный контекст
 					target.clear();
 					// Выходим
@@ -2194,7 +2505,7 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const type_t type) noex
 				// Очищаем созданный контекст
 				target.clear();
 				// Выводим в лог сообщение
-				this->_log->print("%s", log_t::flag_t::CRITICAL, "ssl initialization is not allow");
+				this->_log->print("ssl initialization is not allow", log_t::flag_t::CRITICAL);
 				// Выходим
 				return;
 			}
@@ -2288,16 +2599,40 @@ void awh::Engine::wrapServer(ctx_t & target, addr_t * address) noexcept {
 			// Активируем рандомный генератор
 			if(RAND_poll() < 1){
 				// Выводим в лог сообщение
-				this->_log->print("%s", log_t::flag_t::CRITICAL, "rand poll is not allow");
+				this->_log->print("rand poll is not allow", log_t::flag_t::CRITICAL);
 				// Выходим
 				return;
 			}
-			// Получаем контекст OpenSSL
-			target._ctx = SSL_CTX_new(TLSv1_2_server_method());
+			/**
+			 * Если операционной системой является Linux
+			 */
+			#ifdef __linux__
+				// Определяем тип протокола подключения
+				switch(target._addr->_protocol){
+					// Если протокол подключения UDP
+					case IPPROTO_UDP:
+					// Если протокол подключения SCTP
+					case IPPROTO_SCTP:
+						// Получаем контекст OpenSSL
+						target._ctx = SSL_CTX_new(DTLS_server_method());
+					break;
+					// Если протокол подключения TCP
+					case IPPROTO_TCP:
+						// Получаем контекст OpenSSL
+						target._ctx = SSL_CTX_new(TLSv1_2_server_method());
+					break;
+				}
+			/**
+			 * Если операционная система не является Linux
+			 */
+			#else
+				// Получаем контекст OpenSSL
+				target._ctx = SSL_CTX_new(TLSv1_2_server_method());
+			#endif
 			// Если контекст не создан
 			if(target._ctx == nullptr){
 				// Выводим в лог сообщение
-				this->_log->print("%s", log_t::flag_t::CRITICAL, "context ssl is not initialization");
+				this->_log->print("context ssl is not initialization", log_t::flag_t::CRITICAL);
 				// Выходим
 				return;
 			}
@@ -2314,19 +2649,30 @@ void awh::Engine::wrapServer(ctx_t & target, addr_t * address) noexcept {
 					// Очищаем созданный контекст
 					target.clear();
 					// Выводим в лог сообщение
-					this->_log->print("%s", log_t::flag_t::CRITICAL, "set ssl ciphers");
+					this->_log->print("set ssl ciphers", log_t::flag_t::CRITICAL);
 					// Выходим
 					return;
 				}
 				// Заставляем серверные алгоритмы шифрования использовать в приоритете
 				SSL_CTX_set_options(target._ctx, SSL_OP_CIPHER_SERVER_PREFERENCE);
 			}
+			// Получаем идентификатор процесса
+			const pid_t pid = getpid();
+			// Выполняем установку идентификатора сессии
+			if(SSL_CTX_set_session_id_context(target._ctx, (const u_char *) &pid, sizeof(pid)) < 1){
+				// Очищаем созданный контекст
+				target.clear();
+				// Выводим в лог сообщение
+				this->_log->print("failed to set session ID", log_t::flag_t::CRITICAL);
+				// Выходим
+				return;
+			}
 			// Устанавливаем поддерживаемые кривые
 			if(SSL_CTX_set_ecdh_auto(target._ctx, 1) < 1){
 				// Очищаем созданный контекст
 				target.clear();
 				// Выводим в лог сообщение
-				this->_log->print("%s", log_t::flag_t::CRITICAL, "set ssl ecdh");
+				this->_log->print("set ssl ecdh", log_t::flag_t::CRITICAL);
 				// Выходим
 				return;
 			}
@@ -2346,7 +2692,7 @@ void awh::Engine::wrapServer(ctx_t & target, addr_t * address) noexcept {
 				// Если цепочка сертификатов не установлена
 				if(SSL_CTX_use_certificate_chain_file(target._ctx, this->_chain.c_str()) < 1){
 					// Выводим в лог сообщение
-					this->_log->print("%s", log_t::flag_t::CRITICAL, "certificate cannot be set");
+					this->_log->print("certificate cannot be set", log_t::flag_t::CRITICAL);
 					// Очищаем созданный контекст
 					target.clear();
 					// Выходим
@@ -2358,7 +2704,7 @@ void awh::Engine::wrapServer(ctx_t & target, addr_t * address) noexcept {
 				// Если приватный ключ не может быть установлен
 				if(SSL_CTX_use_PrivateKey_file(target._ctx, this->_privkey.c_str(), SSL_FILETYPE_PEM) < 1){
 					// Выводим в лог сообщение
-					this->_log->print("%s", log_t::flag_t::CRITICAL, "private key cannot be set");
+					this->_log->print("private key cannot be set", log_t::flag_t::CRITICAL);
 					// Очищаем созданный контекст
 					target.clear();
 					// Выходим
@@ -2367,7 +2713,7 @@ void awh::Engine::wrapServer(ctx_t & target, addr_t * address) noexcept {
 				// Если приватный ключ недействителен
 				if(SSL_CTX_check_private_key(target._ctx) < 1){
 					// Выводим в лог сообщение
-					this->_log->print("%s", log_t::flag_t::CRITICAL, "private key is not valid");
+					this->_log->print("private key is not valid", log_t::flag_t::CRITICAL);
 					// Очищаем созданный контекст
 					target.clear();
 					// Выходим
@@ -2377,7 +2723,7 @@ void awh::Engine::wrapServer(ctx_t & target, addr_t * address) noexcept {
 			// Если доверенный сертификат недействителен
 			if(SSL_CTX_set_default_verify_file(target._ctx) < 1){
 				// Выводим в лог сообщение
-				this->_log->print("%s", log_t::flag_t::CRITICAL, "trusted certificate is invalid");
+				this->_log->print("trusted certificate is invalid", log_t::flag_t::CRITICAL);
 				// Очищаем созданный контекст
 				target.clear();
 				// Выходим
@@ -2385,8 +2731,14 @@ void awh::Engine::wrapServer(ctx_t & target, addr_t * address) noexcept {
 			}
 			// Заставляем OpenSSL автоматические повторные попытки после событий сеанса TLS
 			SSL_CTX_set_mode(target._ctx, SSL_MODE_AUTO_RETRY);
+			// Если нужно произвести проверку
+			if(this->_verify){
+				// Устанавливаем глубину проверки
+				SSL_CTX_set_verify_depth(target._ctx, 2);
+				// Выполняем проверку сертификата клиента
+				SSL_CTX_set_verify(target._ctx, SSL_VERIFY_PEER | SSL_VERIFY_CLIENT_ONCE, &verifyCert);
 			// Запрещаем выполнять првоерку сертификата пользователя
-			SSL_CTX_set_verify(target._ctx, SSL_VERIFY_NONE, nullptr);
+			} else SSL_CTX_set_verify(target._ctx, SSL_VERIFY_NONE, nullptr);
 			// Создаем SSL объект
 			target._ssl = SSL_new(target._ctx);
 			// Если объект не создан
@@ -2394,7 +2746,7 @@ void awh::Engine::wrapServer(ctx_t & target, addr_t * address) noexcept {
 				// Очищаем созданный контекст
 				target.clear();
 				// Выводим в лог сообщение
-				this->_log->print("%s", log_t::flag_t::CRITICAL, "ssl initialization is not allow");
+				this->_log->print("ssl initialization is not allow", log_t::flag_t::CRITICAL);
 				// Выходим
 				return;
 			}
@@ -2414,14 +2766,50 @@ void awh::Engine::wrapServer(ctx_t & target, addr_t * address) noexcept {
 			}
 			// Устанавливаем флаг активации TLS
 			target._addr->_tls = target._tls;
-			// Выполняем обёртывание сокета в BIO SSL
-			target._bio = BIO_new_socket(target._addr->fd, BIO_NOCLOSE);
+			/**
+			 * Если операционной системой является Linux
+			 */
+			#ifdef __linux__
+				// Определяем тип протокола подключения
+				switch(target._addr->_protocol){
+					// Если протокол подключения UDP
+					case IPPROTO_UDP:
+						// Выполняем обёртывание сокета UDP в BIO SSL
+						target._bio = BIO_new_dgram(target._addr->fd, BIO_NOCLOSE);
+					break;
+					// Если протокол подключения SCTP
+					case IPPROTO_SCTP:
+						// Выполняем обёртывание сокета в BIO SSL
+						target._bio = BIO_new_dgram_sctp(target._addr->fd, BIO_NOCLOSE);
+					break;
+					// Если протокол подключения TCP
+					case IPPROTO_TCP:
+						// Выполняем обёртывание сокета в BIO SSL
+						target._bio = BIO_new_socket(target._addr->fd, BIO_NOCLOSE);
+					break;
+				}
+			/**
+			 * Если операционная система не является Linux
+			 */
+			#else
+				// Выполняем обёртывание сокета в BIO SSL
+				target._bio = BIO_new_socket(target._addr->fd, BIO_NOCLOSE);
+			#endif
 			// Если BIO SSL создано
 			if(target._bio != nullptr){
 				// Устанавливаем неблокирующий режим ввода/вывода для сокета
 				target.noblock();
 				// Выполняем установку BIO SSL
 				SSL_set_bio(target._ssl, target._bio, target._bio);
+				/**
+				 * Если операционной системой является Linux и включён режим отладки
+				 */
+				#if defined(__linux__) && defined(DEBUG_MODE)
+					// Если протокол интернета установлен как SCTP
+					if(target._addr->_protocol == IPPROTO_SCTP)
+						// Устанавливаем функцию нотификации
+						BIO_dgram_sctp_notification_cb(target._bio, &notificationsSCTP, &target);
+				#endif
 			// Если BIO SSL не создано
 			} else {
 				// Очищаем созданный контекст
@@ -2466,16 +2854,40 @@ void awh::Engine::wrapClient(ctx_t & target, addr_t * address, const uri_t::url_
 			// Активируем рандомный генератор
 			if(RAND_poll() < 1){
 				// Выводим в лог сообщение
-				this->_log->print("%s", log_t::flag_t::CRITICAL, "rand poll is not allow");
+				this->_log->print("rand poll is not allow", log_t::flag_t::CRITICAL);
 				// Выходим
 				return;
 			}
-			// Получаем контекст OpenSSL
-			target._ctx = SSL_CTX_new(TLSv1_2_client_method());
+			/**
+			 * Если операционной системой является Linux
+			 */
+			#ifdef __linux__
+				// Определяем тип протокола подключения
+				switch(target._addr->_protocol){
+					// Если протокол подключения UDP
+					case IPPROTO_UDP:
+					// Если протокол подключения SCTP
+					case IPPROTO_SCTP:
+						// Получаем контекст OpenSSL
+						target._ctx = SSL_CTX_new(DTLS_client_method());
+					break;
+					// Если протокол подключения TCP
+					case IPPROTO_TCP:
+						// Получаем контекст OpenSSL
+						target._ctx = SSL_CTX_new(TLSv1_2_client_method());
+					break;
+				}
+			/**
+			 * Если операционная система не является Linux
+			 */
+			#else
+				// Получаем контекст OpenSSL
+				target._ctx = SSL_CTX_new(TLSv1_2_client_method());
+			#endif
 			// Если контекст не создан
 			if(target._ctx == nullptr){
 				// Выводим в лог сообщение
-				this->_log->print("%s", log_t::flag_t::CRITICAL, "context ssl is not initialization");
+				this->_log->print("context ssl is not initialization", log_t::flag_t::CRITICAL);
 				// Выходим
 				return;
 			}
@@ -2495,7 +2907,7 @@ void awh::Engine::wrapClient(ctx_t & target, addr_t * address, const uri_t::url_
 					// Очищаем созданный контекст
 					target.clear();
 					// Выводим в лог сообщение
-					this->_log->print("%s", log_t::flag_t::CRITICAL, "set ssl ciphers");
+					this->_log->print("set ssl ciphers", log_t::flag_t::CRITICAL);
 					// Выходим
 					return;
 				}
@@ -2507,7 +2919,7 @@ void awh::Engine::wrapClient(ctx_t & target, addr_t * address, const uri_t::url_
 				// Если цепочка сертификатов не установлена
 				if(SSL_CTX_use_certificate_file(target._ctx, this->_chain.c_str(), SSL_FILETYPE_PEM) < 1){
 					// Выводим в лог сообщение
-					this->_log->print("%s", log_t::flag_t::CRITICAL, "certificate cannot be set");
+					this->_log->print("certificate cannot be set", log_t::flag_t::CRITICAL);
 					// Очищаем созданный контекст
 					target.clear();
 					// Выходим
@@ -2519,7 +2931,7 @@ void awh::Engine::wrapClient(ctx_t & target, addr_t * address, const uri_t::url_
 				// Если приватный ключ не может быть установлен
 				if(SSL_CTX_use_PrivateKey_file(target._ctx, this->_privkey.c_str(), SSL_FILETYPE_PEM) < 1){
 					// Выводим в лог сообщение
-					this->_log->print("%s", log_t::flag_t::CRITICAL, "private key cannot be set");
+					this->_log->print("private key cannot be set", log_t::flag_t::CRITICAL);
 					// Очищаем созданный контекст
 					target.clear();
 					// Выходим
@@ -2528,7 +2940,7 @@ void awh::Engine::wrapClient(ctx_t & target, addr_t * address, const uri_t::url_
 				// Если приватный ключ недействителен
 				if(SSL_CTX_check_private_key(target._ctx) < 1){
 					// Выводим в лог сообщение
-					this->_log->print("%s", log_t::flag_t::CRITICAL, "private key is not valid");
+					this->_log->print("private key is not valid", log_t::flag_t::CRITICAL);
 					// Очищаем созданный контекст
 					target.clear();
 					// Выходим
@@ -2547,6 +2959,8 @@ void awh::Engine::wrapClient(ctx_t & target, addr_t * address, const uri_t::url_
 				SSL_CTX_set_verify_depth(target._ctx, 4);
 			// Запрещаем выполнять првоерку сертификата пользователя
 			} else SSL_CTX_set_verify(target._ctx, SSL_VERIFY_NONE, nullptr);
+			// Устанавливаем, что мы должны читать как можно больше входных байтов
+			SSL_CTX_set_read_ahead(target._ctx, 1);
 			// Создаем SSL объект
 			target._ssl = SSL_new(target._ctx);
 			// Если объект не создан
@@ -2554,7 +2968,7 @@ void awh::Engine::wrapClient(ctx_t & target, addr_t * address, const uri_t::url_
 				// Очищаем созданный контекст
 				target.clear();
 				// Выводим в лог сообщение
-				this->_log->print("%s", log_t::flag_t::CRITICAL, "ssl initialization is not allow");
+				this->_log->print("ssl initialization is not allow", log_t::flag_t::CRITICAL);
 				// Выходим
 				return;
 			}
@@ -2570,7 +2984,7 @@ void awh::Engine::wrapClient(ctx_t & target, addr_t * address, const uri_t::url_
 				// Очищаем созданный контекст
 				target.clear();
 				// Выводим в лог сообщение
-				this->_log->print("%s", log_t::flag_t::CRITICAL, "domain ssl verification failed");
+				this->_log->print("domain ssl verification failed", log_t::flag_t::CRITICAL);
 				// Выходим
 				return;
 			}
@@ -2588,14 +3002,50 @@ void awh::Engine::wrapClient(ctx_t & target, addr_t * address, const uri_t::url_
 			}
 			// Устанавливаем флаг активации TLS
 			target._addr->_tls = target._tls;
-			// Выполняем обёртывание сокета TCP в BIO SSL
-			target._bio = BIO_new_socket(target._addr->fd, BIO_NOCLOSE);
+			/**
+			 * Если операционной системой является Linux
+			 */
+			#ifdef __linux__
+				// Определяем тип протокола подключения
+				switch(target._addr->_protocol){
+					// Если протокол подключения UDP
+					case IPPROTO_UDP:
+						// Выполняем обёртывание сокета UDP в BIO SSL
+						target._bio = BIO_new_dgram(target._addr->fd, BIO_NOCLOSE);
+					break;
+					// Если протокол подключения SCTP
+					case IPPROTO_SCTP:
+						// Выполняем обёртывание сокета в BIO SSL
+						target._bio = BIO_new_dgram_sctp(target._addr->fd, BIO_NOCLOSE);
+					break;
+					// Если протокол подключения TCP
+					case IPPROTO_TCP:
+						// Выполняем обёртывание сокета в BIO SSL
+						target._bio = BIO_new_socket(target._addr->fd, BIO_NOCLOSE);
+					break;
+				}
+			/**
+			 * Если операционная система не является Linux
+			 */
+			#else
+				// Выполняем обёртывание сокета в BIO SSL
+				target._bio = BIO_new_socket(target._addr->fd, BIO_NOCLOSE);
+			#endif
 			// Если BIO SSL создано
 			if(target._bio != nullptr){
 				// Устанавливаем блокирующий режим ввода/вывода для сокета
 				target.block();
 				// Выполняем установку BIO SSL
 				SSL_set_bio(target._ssl, target._bio, target._bio);
+				/**
+				 * Если операционной системой является Linux и включён режим отладки
+				 */
+				#if defined(__linux__) && defined(DEBUG_MODE)
+					// Если протокол интернета установлен как SCTP
+					if(target._addr->_protocol == IPPROTO_SCTP)
+						// Устанавливаем функцию нотификации
+						BIO_dgram_sctp_notification_cb(target._bio, &notificationsSCTP, &target);
+				#endif
 			// Если BIO SSL не создано
 			} else {
 				// Очищаем созданный контекст

@@ -1358,7 +1358,7 @@ bool awh::Core::unixSocket(const string & socket) noexcept {
 }
 /**
  * sonet Метод извлечения типа сокета подключения
- * @return тип сокета подключения (TCP / UDP)
+ * @return тип сокета подключения (TCP / UDP / SCTP)
  */
 awh::Core::sonet_t awh::Core::sonet() const noexcept {
 	// Выполняем вывод тип сокета подключения
@@ -1366,13 +1366,25 @@ awh::Core::sonet_t awh::Core::sonet() const noexcept {
 }
 /**
  * sonet Метод установки типа сокета подключения
- * @param sonet тип сокета подключения (TCP / UDP)
+ * @param sonet тип сокета подключения (TCP / UDP / SCTP)
  */
 void awh::Core::sonet(const sonet_t sonet) noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->_mtx.main);
 	// Устанавливаем тип сокета
 	this->net.sonet = sonet;
+	/**
+	 * Если операционной системой не является Linux
+	 */
+	#ifndef __linux__
+		// Если установлен протокол SCTP
+		if(this->net.sonet == sonet_t::SCTP){
+			// Выводим в лог сообщение
+			this->log->print("SCTP protocol is allowed to be used only in the Linux operating system", log_t::flag_t::CRITICAL);
+			// Выходим принудительно из приложения
+			exit(EXIT_FAILURE);
+		}
+	#endif
 }
 /**
  * family Метод извлечения типа протокола интернета

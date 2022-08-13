@@ -503,6 +503,16 @@ void awh::server::Core::resolver(const string & ip, worker_t * wrk) noexcept {
 						// Устанавливаем параметры сокета
 						wrk->addr.sonet(SOCK_DGRAM, IPPROTO_UDP);
 					break;
+					/**
+					 * Если операционной системой является Linux
+					 */
+					#ifdef __linux__
+						// Если тип сокета установлен как SCTP
+						case (uint8_t) sonet_t::SCTP:
+							// Устанавливаем параметры сокета
+							wrk->addr.sonet(SOCK_STREAM, IPPROTO_SCTP);
+						break;
+					#endif
 					// Для всех остальных типов сокетов
 					default:
 						// Устанавливаем параметры сокета
@@ -734,7 +744,9 @@ void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 				// Если тип сокета установлен как TCP/IP
 				case (uint8_t) sonet_t::TCP:
 				// Если тип сокета установлен как TCP/IP TLS
-				case (uint8_t) sonet_t::TLS: {
+				case (uint8_t) sonet_t::TLS:
+				// Если тип сокета установлен как SCTP DTLS
+				case (uint8_t) sonet_t::SCTP: {
 					// Если количество подключившихся клиентов, больше максимально-допустимого количества клиентов
 					if(wrk->adjutants.size() >= (size_t) wrk->total){
 						// Выводим в консоль информацию
@@ -746,8 +758,23 @@ void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 					unique_ptr <awh::worker_t::adj_t> adj(new awh::worker_t::adj_t(wrk, this->fmk, this->log));
 					// Устанавливаем время жизни подключения
 					adj->addr.alive = wrk->keepAlive;
-					// Устанавливаем параметры сокета
-					adj->addr.sonet(SOCK_STREAM, IPPROTO_TCP);
+					// Определяем тип сокета
+					switch((uint8_t) this->net.sonet){
+						/**
+						 * Если операционной системой является Linux
+						 */
+						#ifdef __linux__
+							// Если тип сокета установлен как SCTP
+							case (uint8_t) sonet_t::SCTP:
+								// Устанавливаем параметры сокета
+								adj->addr.sonet(SOCK_STREAM, IPPROTO_SCTP);
+							break;
+						#endif
+						// Для всех остальных типов сокетов
+						default:
+							// Устанавливаем параметры сокета
+							adj->addr.sonet(SOCK_STREAM, IPPROTO_TCP);
+					}
 					// Выполняем разрешение подключения
 					if(adj->addr.accept(wrk->addr)){
 						// Получаем адрес подключения клиента

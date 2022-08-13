@@ -126,13 +126,26 @@ if [ ! -f "$src/.stamp_done" ]; then
 	# Выполняем переключение на указанную версию
 	git checkout tags/OpenSSL_1_1_1${ver} -b v1.1.1${ver}-branch
 
-	# Выполняем конфигурацию проекта
-	./config \
-	 no-async \
-	 no-shared \
-	 --prefix="$PREFIX" \
-	 --openssldir="$PREFIX" \
-	 -Wl,-rpath,"$PREFIX/lib" || exit 1
+	# Выполняем конфигурацию проекта под Linux
+	if [[ $OS = "Linux" ]]; then
+		# Выполняем конфигурацию проекта
+		./config \
+		 sctp \
+		 no-async \
+		 no-shared \
+		 --prefix="$PREFIX" \
+		 --openssldir="$PREFIX" \
+		 -Wl,-rpath,"$PREFIX/lib" || exit 1
+	# Выполняем конфигурацию проекта под все остальные операционные системы
+	else
+		# Выполняем конфигурацию проекта
+		./config \
+		 no-async \
+		 no-shared \
+		 --prefix="$PREFIX" \
+		 --openssldir="$PREFIX" \
+		 -Wl,-rpath,"$PREFIX/lib" || exit 1
+	fi
 
 	# Выполняем сборку на всех логических ядрах
 	$BUILD -j"$numproc" || exit 1

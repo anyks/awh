@@ -39,6 +39,13 @@
 #include <sys/types.h>
 
 /**
+ * Если операционной системой является Linux
+ */
+#ifdef __linux__
+	#include <netinet/sctp.h>
+#endif
+
+/**
  * Если операционной системой является MS Windows
  */
 #if defined(_WIN32) || defined(_WIN64)
@@ -151,8 +158,10 @@ namespace awh {
 				private:
 					// Тип сокета (SOCK_STREAM / SOCK_DGRAM)
 					int _type;
-					// Протокол сокета (IPPROTO_TCP / IPPROTO_UDP)
+					// Протокол сокета (IPPROTO_TCP / IPPROTO_UDP / IPPROTO_SCTP)
 					int _protocol;
+				private:
+					int _encapsPort;
 				private:
 					// Флаг инициализации шифрования TLS
 					bool _tls;
@@ -180,6 +189,9 @@ namespace awh {
 					// Список сетевых интерфейсов
 					vector <string> network;
 				private:
+					// Объект BIO
+					BIO * _bio;
+				private:
 					// Создаём объект фреймворка
 					const fmk_t * _fmk;
 					// Создаём объект работы с логами
@@ -189,6 +201,16 @@ namespace awh {
 					 * client Метод извлечения данных клиента
 					 */
 					void client() noexcept;
+				private:
+					/**
+					 * Если операционной системой является Linux
+					 */
+					#ifdef __linux__
+						/**
+						 * initSCTP Метод инициализации протокола SCTP
+						 */
+						void initSCTP() noexcept;
+					#endif
 				public:
 					/**
 					 * list Метод активации прослушивания сокета
@@ -206,6 +228,12 @@ namespace awh {
 					 * @return результат выполнения операции
 					 */
 					bool connect() noexcept;
+				public:
+					/**
+					 * encapsPort Метод установки порта инкапсуляции SCTP UDP
+					 * @param port номер порта для установки
+					 */
+					void encapsPort(const int port) noexcept;
 				public:
 					/**
 					 * attach Метод прикрепления клиента к серверу
@@ -257,9 +285,9 @@ namespace awh {
 					 * @param log объект для работы с логами
 					 */
 					Address(const fmk_t * fmk, const log_t * log) noexcept :
-					 fd(-1), _type(SOCK_STREAM), _protocol(IPPROTO_TCP), _tls(false),
-					 status(status_t::DISCONNECTED), port(0), ip(""), mac(""),
-					 _nwk(fmk), _ifnet(fmk, log), _socket(log), _fmk(fmk), _log(log) {}
+					 fd(-1), _type(SOCK_STREAM), _protocol(IPPROTO_TCP), _encapsPort(-1),
+					 _tls(false), status(status_t::DISCONNECTED), port(0), ip(""), mac(""),
+					 _nwk(fmk), _ifnet(fmk, log), _socket(log), _bio(nullptr), _fmk(fmk), _log(log) {}
 					/**
 					 * ~Address Деструктор
 					 */
@@ -455,6 +483,19 @@ namespace awh {
 			 * @return     результат проверки
 			 */
 			const bool certHostcheck(const string & host, const string & patt) const noexcept;
+		private:
+			/**
+			 * Если операционной системой является Linux
+			 */
+			#ifdef __linux__
+				/**
+				 * notificationsSCTP Функция обработки нотификации SCTP
+				 * @param bio    объект подключения BIO
+				 * @param ctx    промежуточный передаваемый контекст
+				 * @param buffer буфер передаваемых данных
+				 */
+				static void notificationsSCTP(BIO * bio, void * ctx, void * buffer) noexcept;
+			#endif
 		private:
 			/**
 			 * verifyCert Функция обратного вызова для проверки валидности сертификата

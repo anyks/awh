@@ -189,6 +189,16 @@ void awh::client::Core::connect(const size_t wid) noexcept {
 						// Устанавливаем параметры сокета
 						adj->addr.sonet(SOCK_DGRAM, IPPROTO_UDP);
 					break;
+					/**
+					 * Если операционной системой является Linux
+					 */
+					#ifdef __linux__
+						// Если тип сокета установлен как SCTP
+						case (uint8_t) sonet_t::SCTP:
+							// Устанавливаем параметры сокета
+							adj->addr.sonet(SOCK_STREAM, IPPROTO_SCTP);
+						break;
+					#endif
 					// Если тип сокета TCP
 					case (uint8_t) sonet_t::TCP:
 					// Если тип сокета TCP TLS
@@ -908,7 +918,8 @@ void awh::client::Core::close(const size_t aid) noexcept {
  */
 void awh::client::Core::switchProxy(const size_t aid) noexcept {
 	// Если подключение производится по IPv4 или IPv6 и по хосту с портом
-	if((this->net.sonet == sonet_t::TCP) && ((this->net.family == family_t::IPV4) || (this->net.family == family_t::IPV6))){
+	if(((this->net.sonet == sonet_t::TCP) || (this->net.sonet == sonet_t::SCTP)) &&
+	  ((this->net.family == family_t::IPV4) || (this->net.family == family_t::IPV6))){
 		// Выполняем блокировку потока
 		const lock_guard <recursive_mutex> lock(this->_mtx.proxy);
 		// Выполняем извлечение адъютанта
