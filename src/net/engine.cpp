@@ -86,6 +86,28 @@ void awh::Engine::Address::client() noexcept {
 	void awh::Engine::Address::initSCTP() noexcept {
 		// Если протокол интернета установлен как SCTP
 		if(this->_protocol == IPPROTO_SCTP){
+
+
+			struct sctp_event_subscribe event;
+
+
+			memset(&event, 0, sizeof(event));
+			event.sctp_data_io_event = 1;
+			if (setsockopt(this->fd, IPPROTO_SCTP, SCTP_EVENTS, &event, sizeof(event)) != 0) {
+				// Выводим в лог информацию
+				this->_log->print("cannot set SCTP_EVENTS option on socket %d", log_t::flag_t::CRITICAL, this->fd);
+				// Выходим из функции
+				return;
+			}
+			memset(&event, 1, sizeof(event));
+			if (setsockopt(this->fd, IPPROTO_SCTP, SCTP_EVENTS, &event, sizeof(event)) != 0) {
+				// Выводим в лог информацию
+				this->_log->print("cannot set SCTP_EVENTS option on socket %d", log_t::flag_t::CRITICAL, this->fd);
+				// Выходим из функции
+				return;
+			}
+
+			/*
 			// Устанавливаем переменную активации
 			const int on = 1;
 			// Разрешаем получение информации SCTP из сокета
@@ -95,9 +117,11 @@ void awh::Engine::Address::client() noexcept {
 				// Выходим из функции
 				return;
 			}
+			*/
 			/**
 			 * Если включён режим отладки
 			 */
+			/*
 			#if defined(DEBUG_MODE)
 				// Устанавливаем список событий которые может принять сервер
 				const uint16_t eventTypes[6] = {
@@ -110,7 +134,7 @@ void awh::Engine::Address::client() noexcept {
 					SCTP_PARTIAL_DELIVERY_EVENT
 				};
 				// Создаём объект события
-				// struct sctp_event event;
+				struct sctp_event event;
 				// Зануляем объект события
 				memset(&event, 0, sizeof(event));
 				// Активируем получение события
@@ -130,6 +154,7 @@ void awh::Engine::Address::client() noexcept {
 					}
 				}
 			#endif
+			*/
 		}
 	}
 #endif
