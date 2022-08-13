@@ -1296,7 +1296,10 @@ int64_t awh::Engine::Context::write(const char * buffer, const size_t size) noex
 						// Если сокет установлен как TCP/IP
 						case SOCK_STREAM:
 							// Выполняем отправку сообщения через защищённый канал
-							result = SSL_write(this->_ssl, buffer, size);
+							// result = SSL_write(this->_ssl, buffer, size);
+
+							result = BIO_write(this->_bio, buffer, size);
+
 						break;
 						// Если сокет установлен UDP
 						case SOCK_DGRAM:
