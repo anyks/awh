@@ -90,7 +90,7 @@ void awh::Engine::Address::client() noexcept {
 
 			struct sctp_event_subscribe event;
 
-
+			/*
 			memset(&event, 0, sizeof(event));
 			event.sctp_data_io_event = 1;
 			if (setsockopt(this->fd, IPPROTO_SCTP, SCTP_EVENTS, &event, sizeof(event)) != 0) {
@@ -99,7 +99,8 @@ void awh::Engine::Address::client() noexcept {
 				// Выходим из функции
 				return;
 			}
-			/*
+			*/
+			
 			memset(&event, 1, sizeof(event));
 			if (setsockopt(this->fd, IPPROTO_SCTP, SCTP_EVENTS, &event, sizeof(event)) != 0) {
 				// Выводим в лог информацию
@@ -107,7 +108,7 @@ void awh::Engine::Address::client() noexcept {
 				// Выходим из функции
 				return;
 			}
-			*/
+			
 
 			/*
 			// Устанавливаем переменную активации
