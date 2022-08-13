@@ -98,6 +98,7 @@ void awh::Engine::Address::client() noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
+			/*
 			#if defined(DEBUG_MODE)
 				// Устанавливаем список событий которые может принять сервер
 				const uint16_t eventTypes[4] = {
@@ -127,6 +128,7 @@ void awh::Engine::Address::client() noexcept {
 					}
 				}
 			#endif
+			*/
 		}
 	}
 #endif
@@ -1261,7 +1263,6 @@ int64_t awh::Engine::Context::write(const char * buffer, const size_t size) noex
 					/**
 					 * Если операционной системой является Linux
 					 */
-					/*
 					#ifdef __linux__
 						// Если протокол интернета установлен как SCTP
 						if((this->_addr->_protocol == IPPROTO_SCTP) && (this->_addr->status == addr_t::status_t::CONNECTED)){
@@ -1273,7 +1274,6 @@ int64_t awh::Engine::Context::write(const char * buffer, const size_t size) noex
 							BIO_ctrl(this->_bio, BIO_CTRL_DGRAM_SCTP_SET_SNDINFO, sizeof(info), &info);
 						}
 					#endif
-					*/
 					/**
 					 * Если включён режим отладки
 					 */
