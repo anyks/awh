@@ -3070,6 +3070,10 @@ void awh::Engine::wrapClient(ctx_t & target, addr_t * address, const uri_t::url_
 
 			cout << " ===================3 " << target._bio << endl;
 
+
+			cout << " ===================4 " << BIO_new_socket(::socket(AF_INET, SOCK_DGRAM, IPPROTO_SCTP)) << " === " << BIO_new_socket(::socket(AF_INET, SOCK_STREAM, IPPROTO_SCTP)) << endl;
+
+
 			// Если BIO SSL создано
 			if(target._bio != nullptr){
 				// Устанавливаем блокирующий режим ввода/вывода для сокета
