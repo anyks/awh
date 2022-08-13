@@ -171,9 +171,9 @@ int main(int argc, char * argv[]){
 	// ws.authType(auth_t::type_t::DIGEST, auth_t::hash_t::SHA256);
 	// ws.authType(auth_t::type_t::BASIC);
 	// Выполняем инициализацию WebSocket сервера
-	// ws.init(2222, "192.168.3.46", http_t::compress_t::DEFLATE);
+	ws.init(2222, "192.168.3.46", http_t::compress_t::DEFLATE);
 	// ws.init(2222, "", http_t::compress_t::DEFLATE);
-	ws.init(2222, "127.0.0.1", http_t::compress_t::DEFLATE);
+	// ws.init(2222, "127.0.0.1", http_t::compress_t::DEFLATE);
 	// ws.init("anyks", http_t::compress_t::DEFLATE);
 	// Устанавливаем длительное подключение
 	// ws.keepAlive(100, 30, 10);
