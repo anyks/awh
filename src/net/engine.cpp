@@ -156,28 +156,19 @@ bool awh::Engine::Address::list() noexcept {
 				if(this->_protocol == IPPROTO_SCTP){
 					// Выполняем инициализацию SCTP протокола
 					this->initSCTP();
-					// Если подключение зашифрованно
-					// if(this->_tls){
-
-						cout << " =========================LIST1 " << this->fd << endl;
-
-						/**
-						 * Создаём BIO, чтобы установить все необходимые параметры для
-						 * следующего соединения, например. SCTP-АУТЕНТИФИКАЦИЯ.
-						 * Не будет использоваться.
-						 */
-						this->_bio = BIO_new_dgram_sctp(this->fd, BIO_NOCLOSE);
-
-						cout << " =========================LIST2 " << this->fd << " === " << this->_bio << endl;
-
-						// Если BIO не создано, выходим
-						if(this->_bio == nullptr){
-							// Выводим в лог информацию
-							this->_log->print("unable to create BIO for SCTP protocol", log_t::flag_t::CRITICAL);
-							// Выходим из приложения
-							exit(EXIT_FAILURE);
-						}
-					// }
+					/**
+					 * Создаём BIO, чтобы установить все необходимые параметры для
+					 * следующего соединения, например. SCTP-АУТЕНТИФИКАЦИЯ.
+					 * Не будет использоваться.
+					 */
+					this->_bio = BIO_new_dgram_sctp(this->fd, BIO_NOCLOSE);
+					// Если BIO не создано, выходим
+					if(this->_bio == nullptr){
+						// Выводим в лог информацию
+						this->_log->print("unable to create BIO for SCTP protocol", log_t::flag_t::CRITICAL);
+						// Выходим из приложения
+						exit(EXIT_FAILURE);
+					}
 				}
 			#endif
 		} break;
@@ -427,14 +418,8 @@ bool awh::Engine::Address::accept(const int fd, const int family) noexcept {
 					} break;
 				#endif
 			}
-
-			cout << " =========================ACCEPT1 " << fd << endl;
-
 			// Определяем разрешено ли подключение к прокси серверу
 			this->fd = ::accept(fd, (struct sockaddr *) (&this->_peer.client), &this->_peer.size);
-
-			cout << " =========================ACCEPT2 " << this->fd << endl;
-
 			// Если сокет не создан тогда выходим
 			if(this->fd < 0) return false;
 		} break;
@@ -1164,6 +1149,8 @@ int64_t awh::Engine::Context::read(char * buffer, const size_t size) noexcept {
 						case SOCK_STREAM:
 							// Выполняем чтение из защищённого сокета
 							result = SSL_read(this->_ssl, buffer, size);
+
+							cout << " ++++++++++++++++++++++ READ1 " << result << endl;
 						break;
 						// Если сокет установлен UDP
 						case SOCK_DGRAM:
@@ -1233,6 +1220,9 @@ int64_t awh::Engine::Context::read(char * buffer, const size_t size) noexcept {
 			if(result == 0) this->_addr->status = addr_t::status_t::DISCONNECTED;
 		// Если данные получены удачно
 		} else {
+
+			cout << " ++++++++++++++++++++++ READ2 " << SSL_get_error(this->_ssl, result) << endl;
+
 			/**
 			 * Если операционной системой является Linux и включён режим отладки
 			 */
