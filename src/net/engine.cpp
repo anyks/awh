@@ -3071,13 +3071,13 @@ void awh::Engine::wrapClient(ctx_t & target, addr_t * address, const uri_t::url_
 			cout << " ===================3 " << target._bio << endl;
 
 			int fd1 = ::socket(AF_INET, SOCK_DGRAM, IPPROTO_SCTP);
-			// int fd2 = ::socket(AF_INET, SOCK_STREAM, IPPROTO_SCTP);
+			int fd2 = ::socket(AF_INET, SOCK_STREAM, IPPROTO_SCTP);
 
 
 
 
 
-			cout << " ===================4 " << BIO_new_socket(fd1, BIO_NOCLOSE) << " === " << BIO_new_socket(target._addr->fd, BIO_NOCLOSE) << endl;
+			cout << " ===================4 " << BIO_new_dgram_sctp(fd1, BIO_NOCLOSE) << " === " << BIO_new_dgram_sctp(f2, BIO_NOCLOSE) << endl;
 
 
 			// Если BIO SSL создано
