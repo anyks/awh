@@ -1009,6 +1009,7 @@ void awh::server::Core::run(const size_t wid) noexcept {
 				}
 			}
 
+			/*
 			// Структура определяющая тип адреса
 			struct sockaddr_in serv_addr;
 
@@ -1033,6 +1034,10 @@ void awh::server::Core::run(const size_t wid) noexcept {
 
 			// Выполняем запуск системы
 			resolver(ip, wrk);
+			*/
+
+			// Выполняем запуск системы
+			resolver(wrk->host, wrk);
 
 			/*
 			// Определяем тип подключения
