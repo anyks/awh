@@ -223,6 +223,9 @@ void awh::server::WebSocket::handler(const size_t aid) noexcept {
 			adj->locker.mode = true;
 			// Выполняем обработку всех экшенов
 			while(adj->action != ws_worker_t::action_t::NONE){
+
+				cout << " ----------------------- " << (ws_worker_t::action_t::DISCONNECT == adj->action) << endl;
+
 				// Определяем обрабатываемый экшен
 				switch((uint8_t) adj->action){
 					// Если необходимо запустить экшен обработки данных поступающих с сервера
