@@ -77,91 +77,6 @@ void awh::Engine::Address::client() noexcept {
 	}
 }
 /**
- * Если операционной системой является Linux
- */
-#ifdef __linux__
-	/**
-	 * initSCTP Метод инициализации протокола SCTP
-	 */
-	void awh::Engine::Address::initSCTP() noexcept {
-		// Если протокол интернета установлен как SCTP
-		if(this->_protocol == IPPROTO_SCTP){
-
-
-			struct sctp_event_subscribe event;
-
-			/*
-			memset(&event, 0, sizeof(event));
-			event.sctp_data_io_event = 1;
-			if (setsockopt(this->fd, IPPROTO_SCTP, SCTP_EVENTS, &event, sizeof(event)) != 0) {
-				// Выводим в лог информацию
-				this->_log->print("cannot set SCTP_EVENTS option on socket %d", log_t::flag_t::CRITICAL, this->fd);
-				// Выходим из функции
-				return;
-			}
-			*/
-			
-			memset(&event, 1, sizeof(event));
-			if (setsockopt(this->fd, IPPROTO_SCTP, SCTP_EVENTS, &event, sizeof(event)) != 0) {
-				// Выводим в лог информацию
-				this->_log->print("cannot set SCTP_EVENTS option on socket %d", log_t::flag_t::CRITICAL, this->fd);
-				// Выходим из функции
-				return;
-			}
-			
-
-			/*
-			// Устанавливаем переменную активации
-			const int on = 1;
-			// Разрешаем получение информации SCTP из сокета
-			if(setsockopt(this->fd, IPPROTO_SCTP, SCTP_RECVRCVINFO, &on, sizeof(on)) < 0){
-				// Выводим в лог информацию
-				this->_log->print("cannot set SCTP_RECVRCVINFO option on socket %d", log_t::flag_t::CRITICAL, this->fd);
-				// Выходим из функции
-				return;
-			}
-			*/
-			/**
-			 * Если включён режим отладки
-			 */
-			/*
-			#if defined(DEBUG_MODE)
-				// Устанавливаем список событий которые может принять сервер
-				const uint16_t eventTypes[6] = {
-					SCTP_ASSOC_CHANGE,
-					SCTP_PEER_ADDR_CHANGE,
-					// SCTP_SEND_FAILED_EVENT,
-					SCTP_REMOTE_ERROR,
-					SCTP_SHUTDOWN_EVENT,
-					SCTP_ADAPTATION_INDICATION,
-					SCTP_PARTIAL_DELIVERY_EVENT
-				};
-				// Создаём объект события
-				struct sctp_event event;
-				// Зануляем объект события
-				memset(&event, 0, sizeof(event));
-				// Активируем получение события
-				event.se_on = 1;
-				// Устанавливаем идентификатор ассоциации будущего
-				event.se_assoc_id = SCTP_FUTURE_ASSOC;
-				// Переходим по всему списку типов событий
-				for(uint8_t i = 0; i < (uint8_t) (sizeof(eventTypes) / sizeof(uint16_t)); i++){
-					// Устанавливаем тип события
-					event.se_type = eventTypes[i];
-					// Выполняем установку события SCTP для сокета
-					if(setsockopt(this->fd, IPPROTO_SCTP, SCTP_EVENT, &event, sizeof(event)) < 0){
-						// Выводим в лог информацию
-						this->_log->print("cannot set SCTP_EVENT option on socket %d", log_t::flag_t::CRITICAL, this->fd);
-						// Выходим из функции
-						return;
-					}
-				}
-			#endif
-			*/
-		}
-	}
-#endif
-/**
  * list Метод активации прослушивания сокета
  * @return результат выполнения операции
  */
@@ -186,7 +101,7 @@ bool awh::Engine::Address::list() noexcept {
 				// Если протокол интернета установлен как SCTP
 				if(this->_protocol == IPPROTO_SCTP){
 					// Выполняем инициализацию SCTP протокола
-					this->initSCTP();
+					this->_socket.sctpEvents(this->fd);
 					/**
 					 * Создаём BIO, чтобы установить все необходимые параметры для
 					 * следующего соединения, например. SCTP-АУТЕНТИФИКАЦИЯ.
@@ -296,7 +211,7 @@ bool awh::Engine::Address::connect() noexcept {
 			// Если протокол интернета установлен как SCTP
 			if(this->_protocol == IPPROTO_SCTP)
 				// Выполняем инициализацию SCTP протокола
-				this->initSCTP();
+				this->_socket.sctpEvents(this->fd);
 		#endif
 		// Если подключение не выполненно то сообщаем об этом, выполняем подключение к удаленному серверу
 		if((this->_peer.size > 0) && (::connect(this->fd, (struct sockaddr *) (&this->_peer.server), this->_peer.size) == 0))

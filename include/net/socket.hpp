@@ -60,6 +60,13 @@
 #endif
 
 /**
+ * Если операционной системой является Linux
+ */
+#ifdef __linux__
+	#include <netinet/sctp.h>
+#endif
+
+/**
  * Наши модули
  */
 #include <sys/log.hpp>
@@ -120,6 +127,12 @@ namespace awh {
 			 * @return   результат работы функции
 			 */
 			int isBlocking(const int fd) const noexcept;
+			/**
+			 * sctpEvents Метод активации получения событий SCTP для сокета
+			 * @param fd файловый дескриптор (сокет)
+			 * @return   результат работы функции
+			 */
+			int sctpEvents(const int fd) const noexcept;
 			/**
 			 * closeonexec Метод разрешения закрывать сокет, после запуска
 			 * @param fd файловый дескриптор (сокет)

@@ -36,7 +36,7 @@ int awh::Socket::noSigill() const noexcept {
 		if(sigaction(SIGILL, &act, nullptr)){
 			// Выводим в лог информацию
 			this->_log->print("%s", log_t::flag_t::CRITICAL, "cannot set SIG_IGN on signal SIGILL");
-			// Выходим
+			// Все очень плохо
 			return -1;
 		}
 	#endif
@@ -59,7 +59,7 @@ int awh::Socket::tcpCork(const int fd) const noexcept {
 		if(setsockopt(fd, IPPROTO_TCP, TCP_CORK, &tcpCork, sizeof(tcpCork)) < 0){
 			// Выводим в лог информацию
 			this->_log->print("cannot set TCP_CORK option on socket %d", log_t::flag_t::CRITICAL, fd);
-			// Выходим
+			// Все очень плохо
 			return -1;
 		}
 	/**
@@ -70,7 +70,7 @@ int awh::Socket::tcpCork(const int fd) const noexcept {
 		if(setsockopt(fd, IPPROTO_TCP, TCP_NOPUSH, &tcpCork, sizeof(tcpCork)) < 0){
 			// Выводим в лог информацию
 			this->_log->print("cannot set TCP_NOPUSH option on socket %d", log_t::flag_t::CRITICAL, fd);
-			// Выходим
+			// Все очень плохо
 			return -1;
 		}
 	#endif
@@ -94,7 +94,7 @@ int awh::Socket::blocking(const int fd) const noexcept {
 			if(ioctlsocket(fd, FIONBIO, &nonblocking) == SOCKET_ERROR){
 				// Выводим в лог информацию
 				this->_log->print("cannot set BLOCK option on socket %d", log_t::flag_t::CRITICAL, fd);
-				// Выходим
+				// Все очень плохо
 				return -1;
 			}
 		}
@@ -109,7 +109,7 @@ int awh::Socket::blocking(const int fd) const noexcept {
 			if((flags = fcntl(fd, F_GETFL, nullptr)) < 0){
 				// Выводим в лог информацию
 				this->_log->print("cannot set BLOCK option on socket %d", log_t::flag_t::CRITICAL, fd);
-				// Выходим
+				// Все очень плохо
 				return -1;
 			}
 			// Если флаг уже установлен
@@ -118,7 +118,7 @@ int awh::Socket::blocking(const int fd) const noexcept {
 				if(fcntl(fd, F_SETFL, flags ^ O_NONBLOCK) == -1){
 					// Выводим в лог информацию
 					this->_log->print("cannot set NON_BLOCK option on socket %d", log_t::flag_t::CRITICAL, fd);
-					// Выходим
+					// Все очень плохо
 					return -1;
 				}
 			}
@@ -149,7 +149,7 @@ int awh::Socket::noSigpipe(const int fd) const noexcept {
 		if(sigaction(SIGPIPE, &act, nullptr)){
 			// Выводим в лог информацию
 			this->_log->print("%s", log_t::flag_t::CRITICAL, "cannot set SIG_IGN on signal SIGPIPE");
-			// Выходим
+			// Все очень плохо
 			return -1;
 		}
 		// Отключаем вывод сигнала записи в пустой сокет
@@ -164,7 +164,7 @@ int awh::Socket::noSigpipe(const int fd) const noexcept {
 		if(setsockopt(fd, SOL_SOCKET, SO_NOSIGPIPE, &noSigpipe, sizeof(noSigpipe)) < 0){
 			// Выводим в лог информацию
 			this->_log->print("cannot set SO_NOSIGPIPE option on socket %d", log_t::flag_t::CRITICAL, fd);
-			// Выходим
+			// Все очень плохо
 			return -1;
 		}
 	#endif
@@ -187,7 +187,7 @@ int awh::Socket::reuseable(const int fd) const noexcept {
 		if(setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, (const char *) &on, (socklen_t) sizeof(on)) < 0){
 			// Выводим в лог информацию
 			this->_log->print("cannot set SO_REUSEADDR option on socket %d", log_t::flag_t::CRITICAL, fd);
-			// Выходим
+			// Все очень плохо
 			return -1;
 		}
 	/**
@@ -198,7 +198,7 @@ int awh::Socket::reuseable(const int fd) const noexcept {
 		if(setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, (const void *) &on, (socklen_t) sizeof(on)) < 0){
 			// Выводим в лог информацию
 			this->_log->print("cannot set SO_REUSEADDR option on socket %d", log_t::flag_t::CRITICAL, fd);
-			// Выходим
+			// Все очень плохо
 			return -1;
 		}
 		/**
@@ -209,7 +209,7 @@ int awh::Socket::reuseable(const int fd) const noexcept {
 			if(setsockopt(fd, SOL_SOCKET, SO_REUSEPORT, (const void *) &on, (socklen_t) sizeof(on)) < 0){
 				// Выводим в лог информацию
 				this->_log->print("cannot set SO_REUSEPORT option on socket %d", log_t::flag_t::CRITICAL, fd);
-				// Выходим
+				// Все очень плохо
 				return -1;
 			}
 		#endif
@@ -229,7 +229,7 @@ int awh::Socket::tcpNodelay(const int fd) const noexcept {
 	if(setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, (char *) &tcpNodelay, sizeof(tcpNodelay)) < 0){
 		// Выводим в лог информацию
 		this->_log->print("cannot set TCP_NODELAY option on socket %d", log_t::flag_t::CRITICAL, fd);
-		// Выходим
+		// Все очень плохо
 		return -1;
 	}
 	// Все удачно
@@ -272,7 +272,7 @@ int awh::Socket::isBlocking(const int fd) const noexcept {
 			if((flags = fcntl(fd, F_GETFL, nullptr)) < 0){
 				// Выводим в лог информацию
 				this->_log->print("cannot set BLOCK option on socket %d", log_t::flag_t::CRITICAL, fd);
-				// Выходим
+				// Все очень плохо
 				return -1;
 			}
 			// Если флаг неблокирующего режима работы установлен
@@ -283,7 +283,34 @@ int awh::Socket::isBlocking(const int fd) const noexcept {
 			else return 1;
 		}
 	#endif
-	// Все удачно
+	// Все очень плохо
+	return -1;
+}
+/**
+ * sctpEvents Метод активации получения событий SCTP для сокета
+ * @param fd файловый дескриптор (сокет)
+ * @return   результат работы функции
+ */
+int awh::Socket::sctpEvents(const int fd) const noexcept {
+	/**
+	 * Если операционной системой является Linux
+	 */
+	#ifdef __linux__
+		// Создаём объект подписки на события
+		struct sctp_event_subscribe event;
+		// Зануляем объект события
+		memset(&event, 0, sizeof(event));
+		// Активируем получение входящих событий
+		event.sctp_data_io_event = 1;
+		// Выполняем активацию получения событий SCTP для сокета
+		if(setsockopt(fd, IPPROTO_SCTP, SCTP_EVENTS, &event, sizeof(event)) != 0){
+			// Выводим в лог информацию
+			this->_log->print("cannot set SCTP_EVENTS option on socket %d", log_t::flag_t::CRITICAL, fd);
+			// Все очень плохо
+			return -1;
+		}
+	#endif
+	// Все очень плохо
 	return -1;
 }
 /**
@@ -302,7 +329,7 @@ int awh::Socket::closeonexec(const int fd) const noexcept {
 		if((flags = fcntl(fd, F_GETFD, nullptr)) < 0){
 			// Выводим в лог информацию
 			this->_log->print("cannot set CLOSE_ON_EXEC option on socket %d", log_t::flag_t::CRITICAL, fd);
-			// Выходим
+			// Все очень плохо
 			return -1;
 		}
 		// Если флаг ещё не установлен
@@ -311,7 +338,7 @@ int awh::Socket::closeonexec(const int fd) const noexcept {
 			if(fcntl(fd, F_SETFD, flags | FD_CLOEXEC) == -1){
 				// Выводим в лог информацию
 				this->_log->print("cannot set CLOSE_ON_EXEC option on socket %d", log_t::flag_t::CRITICAL, fd);
-				// Выходим
+				// Все очень плохо
 				return -1;
 			}
 		}
@@ -336,7 +363,7 @@ int awh::Socket::nonBlocking(const int fd) const noexcept {
 			if(ioctlsocket(fd, FIONBIO, &nonblocking) == SOCKET_ERROR){
 				// Выводим в лог информацию
 				this->_log->print("cannot set NON_BLOCK option on socket %d", log_t::flag_t::CRITICAL, fd);
-				// Выходим
+				// Все очень плохо
 				return -1;
 			}
 		}
@@ -351,7 +378,7 @@ int awh::Socket::nonBlocking(const int fd) const noexcept {
 			if((flags = fcntl(fd, F_GETFL, nullptr)) < 0){
 				// Выводим в лог информацию
 				this->_log->print("cannot set NON_BLOCK option on socket %d", log_t::flag_t::CRITICAL, fd);
-				// Выходим
+				// Все очень плохо
 				return -1;
 			}
 			// Если флаг ещё не установлен
@@ -360,7 +387,7 @@ int awh::Socket::nonBlocking(const int fd) const noexcept {
 				if(fcntl(fd, F_SETFL, flags | O_NONBLOCK) == -1){
 					// Выводим в лог информацию
 					this->_log->print("cannot set NON_BLOCK option on socket %d", log_t::flag_t::CRITICAL, fd);
-					// Выходим
+					// Все очень плохо
 					return -1;
 				}
 			}
@@ -386,7 +413,7 @@ int awh::Socket::readTimeout(const int fd, const time_t msec) const noexcept {
 		if(setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, (const char *) &timeout, sizeof(timeout)) < 0){
 			// Выводим в лог информацию
 			this->_log->print("cannot set SO_RCVTIMEO option on socket %d", log_t::flag_t::CRITICAL, fd);
-			// Выходим
+			// Все очень плохо
 			return -1;
 		}
 	/**
@@ -403,7 +430,7 @@ int awh::Socket::readTimeout(const int fd, const time_t msec) const noexcept {
 		if(setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, (char *) &timeout, sizeof(timeout)) < 0){
 			// Выводим в лог информацию
 			this->_log->print("cannot set SO_RCVTIMEO option on socket %d", log_t::flag_t::CRITICAL, fd);
-			// Выходим
+			// Все очень плохо
 			return -1;
 		}
 	#endif
@@ -427,7 +454,7 @@ int awh::Socket::writeTimeout(const int fd, const time_t msec) const noexcept {
 		if(setsockopt(fd, SOL_SOCKET, SO_SNDTIMEO, (const char *) &timeout, sizeof(timeout)) < 0){
 			// Выводим в лог информацию
 			this->_log->print("cannot set SO_SNDTIMEO option on socket %d", log_t::flag_t::CRITICAL, fd);
-			// Выходим
+			// Все очень плохо
 			return -1;
 		}
 	/**
@@ -444,7 +471,7 @@ int awh::Socket::writeTimeout(const int fd, const time_t msec) const noexcept {
 		if(setsockopt(fd, SOL_SOCKET, SO_SNDTIMEO, (char *) &timeout, sizeof(timeout)) < 0){
 			// Выводим в лог информацию
 			this->_log->print("cannot set SO_SNDTIMEO option on socket %d", log_t::flag_t::CRITICAL, fd);
-			// Выходим
+			// Все очень плохо
 			return -1;
 		}
 	#endif
@@ -464,7 +491,7 @@ int awh::Socket::ipV6only(const int fd, const bool mode) const noexcept {
 	if(setsockopt(fd, IPPROTO_IPV6, IPV6_V6ONLY, (char *) &only6, sizeof(only6)) < 0){
 		// Выводим в лог информацию
 		this->_log->print("cannot set IPV6_V6ONLY option on socket %d", log_t::flag_t::CRITICAL, fd);
-		// Выходим
+		// Все очень плохо
 		return -1;
 	}
 	// Все удачно
@@ -494,7 +521,7 @@ int awh::Socket::keepAlive(const int fd, const int cnt, const int idle, const in
 			if(result == SOCKET_ERROR){
 				// Выводим в лог информацию
 				this->_log->print("setsockopt for SO_KEEPALIVE failed with error: %u", log_t::flag_t::CRITICAL, WSAGetLastError());
-				// Выходим
+				// Все очень плохо
 				return -1;
 			}
 		}{
@@ -508,7 +535,7 @@ int awh::Socket::keepAlive(const int fd, const int cnt, const int idle, const in
 			if(result == SOCKET_ERROR){
 				// Выводим в лог информацию
 				this->_log->print("getsockopt for SO_KEEPALIVE failed with error: %u", log_t::flag_t::CRITICAL, WSAGetLastError());
-				// Выходим
+				// Все очень плохо
 				return -1;
 			}
 		}
@@ -522,14 +549,14 @@ int awh::Socket::keepAlive(const int fd, const int cnt, const int idle, const in
 		if(setsockopt(fd, SOL_SOCKET, SO_KEEPALIVE, &keepAlive, sizeof(int))){
 			// Выводим в лог информацию
 			this->_log->print("cannot set SO_KEEPALIVE option on socket %d", log_t::flag_t::CRITICAL, fd);
-			// Выходим
+			// Все очень плохо
 			return -1;
 		}
 		// Максимальное количество попыток
 		if(setsockopt(fd, IPPROTO_TCP, TCP_KEEPCNT, &cnt, sizeof(int))){
 			// Выводим в лог информацию
 			this->_log->print("cannot set TCP_KEEPCNT option on socket %d", log_t::flag_t::CRITICAL, fd);
-			// Выходим
+			// Все очень плохо
 			return -1;
 		}
 		/**
@@ -540,7 +567,7 @@ int awh::Socket::keepAlive(const int fd, const int cnt, const int idle, const in
 			if(setsockopt(fd, IPPROTO_TCP, TCP_KEEPALIVE, &idle, sizeof(int))){
 				// Выводим в лог информацию
 				this->_log->print("cannot set TCP_KEEPALIVE option on socket %d", log_t::flag_t::CRITICAL, fd);
-				// Выходим
+				// Все очень плохо
 				return -1;
 			}
 		/**
@@ -551,7 +578,7 @@ int awh::Socket::keepAlive(const int fd, const int cnt, const int idle, const in
 			if(setsockopt(fd, IPPROTO_TCP, TCP_KEEPIDLE, &idle, sizeof(int))){
 				// Выводим в лог информацию
 				this->_log->print("cannot set TCP_KEEPIDLE option on socket %d", log_t::flag_t::CRITICAL, fd);
-				// Выходим
+				// Все очень плохо
 				return -1;
 			}
 		#endif
@@ -559,7 +586,7 @@ int awh::Socket::keepAlive(const int fd, const int cnt, const int idle, const in
 		if(setsockopt(fd, IPPROTO_TCP, TCP_KEEPINTVL, &intvl, sizeof(int))){
 			// Выводим в лог информацию
 			this->_log->print("cannot set TCP_KEEPINTVL option on socket %d", log_t::flag_t::CRITICAL, fd);
-			// Выходим
+			// Все очень плохо
 			return -1;
 		}
 	#endif
@@ -600,7 +627,7 @@ int awh::Socket::bufferSize(const int fd, const int read, const int write, const
 	   (getsockopt(fd, SOL_SOCKET, SO_SNDBUF, (char *) &writeSize, &wlen) < 0)){
 		// Выводим в лог информацию
 		this->_log->print("get buffer wrong on socket %d", log_t::flag_t::CRITICAL, fd);
-		// Выходим
+		// Все очень плохо
 		return -1;
 	}
 	// Все удачно

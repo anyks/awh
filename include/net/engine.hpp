@@ -39,26 +39,10 @@
 #include <sys/types.h>
 
 /**
- * Если операционной системой является MS Windows
- */
-#if defined(_WIN32) || defined(_WIN64)
-	#include <winsock2.h>
-	#include <ws2tcpip.h>
-/**
  * Если операционной системой является Nix-подобная
  */
-#else
+#if !defined(_WIN32) && !defined(_WIN64)
 	#include <sys/un.h>
-	#include <sys/socket.h>
-	#include <arpa/inet.h>
-	#include <netinet/in.h>
-#endif
-
-/**
- * Если операционной системой является Linux
- */
-#ifdef __linux__
-	#include <netinet/sctp.h>
 #endif
 
 /**
@@ -200,16 +184,6 @@ namespace awh {
 					 * client Метод извлечения данных клиента
 					 */
 					void client() noexcept;
-				private:
-					/**
-					 * Если операционной системой является Linux
-					 */
-					#ifdef __linux__
-						/**
-						 * initSCTP Метод инициализации протокола SCTP
-						 */
-						void initSCTP() noexcept;
-					#endif
 				public:
 					/**
 					 * list Метод активации прослушивания сокета
