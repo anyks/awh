@@ -445,8 +445,21 @@ bool awh::Engine::Address::accept(const int fd, const int family) noexcept {
 				if(this->_type == SOCK_STREAM){
 					// Отключаем сигнал записи в оборванное подключение
 					this->_socket.noSigpipe(this->fd);
-					// Активируем KeepAlive
-					this->_socket.keepAlive(this->fd, this->alive.cnt, this->alive.idle, this->alive.intvl);
+					/**
+					 * Если операционной системой является Linux
+					 */
+					#ifdef __linux__
+						// Если протокол интернета установлен как SCTP
+						if(this->_protocol != IPPROTO_SCTP)
+							// Активируем KeepAlive
+							this->_socket.keepAlive(this->fd, this->alive.cnt, this->alive.idle, this->alive.intvl);
+					/**
+					 * Если операционной системой не является Linux
+					 */
+					#else
+						// Активируем KeepAlive
+						this->_socket.keepAlive(this->fd, this->alive.cnt, this->alive.idle, this->alive.intvl);
+					#endif
 				}
 			/**
 			 * Если операционной системой является MS Windows
@@ -831,9 +844,23 @@ void awh::Engine::Address::init(const string & ip, const u_int port, const int f
 					// Включаем отображение сети IPv4 в IPv6
 					if(family == AF_INET6) this->_socket.ipV6only(this->fd, onlyV6);
 				// Если приложение является клиентом и сокет установлен TCP/IP
-				} else if(this->_type == SOCK_STREAM)
-					// Активируем KeepAlive
-					this->_socket.keepAlive(this->fd, this->alive.cnt, this->alive.idle, this->alive.intvl);
+				} else if(this->_type == SOCK_STREAM) {
+					/**
+					 * Если операционной системой является Linux
+					 */
+					#ifdef __linux__
+						// Если протокол интернета установлен как SCTP
+						if(this->_protocol != IPPROTO_SCTP)
+							// Активируем KeepAlive
+							this->_socket.keepAlive(this->fd, this->alive.cnt, this->alive.idle, this->alive.intvl);
+					/**
+					 * Если операционной системой не является Linux
+					 */
+					#else
+						// Активируем KeepAlive
+						this->_socket.keepAlive(this->fd, this->alive.cnt, this->alive.idle, this->alive.intvl);
+					#endif
+				}
 			/**
 			 * Если операционной системой является MS Windows
 			 */
