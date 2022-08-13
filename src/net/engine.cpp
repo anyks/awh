@@ -2433,8 +2433,6 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const type_t type) noex
 			SSL_CTX_set_min_proto_version(target._ctx, 0);
 			// Устанавливаем максимально-возможную версию TLS
 			SSL_CTX_set_max_proto_version(target._ctx, TLS1_3_VERSION);
-
-			/*
 			// Если нужно установить основные алгоритмы шифрования
 			if(!this->_cipher.empty()){
 				// Устанавливаем все основные алгоритмы шифрования
@@ -2451,8 +2449,6 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const type_t type) noex
 					// Заставляем серверные алгоритмы шифрования использовать в приоритете
 					SSL_CTX_set_options(target._ctx, SSL_OP_CIPHER_SERVER_PREFERENCE);
 			}
-			*/
-
 			// Устанавливаем поддерживаемые кривые
 			if(SSL_CTX_set_ecdh_auto(target._ctx, 1) < 1){
 				// Очищаем созданный контекст
@@ -2691,8 +2687,6 @@ void awh::Engine::wrapServer(ctx_t & target, addr_t * address) noexcept {
 			SSL_CTX_set_min_proto_version(target._ctx, 0);
 			// Устанавливаем максимально-возможную версию TLS
 			SSL_CTX_set_max_proto_version(target._ctx, TLS1_3_VERSION);
-
-			/*
 			// Если нужно установить основные алгоритмы шифрования
 			if(!this->_cipher.empty()){
 				// Устанавливаем все основные алгоритмы шифрования
@@ -2707,8 +2701,7 @@ void awh::Engine::wrapServer(ctx_t & target, addr_t * address) noexcept {
 				// Заставляем серверные алгоритмы шифрования использовать в приоритете
 				SSL_CTX_set_options(target._ctx, SSL_OP_CIPHER_SERVER_PREFERENCE);
 			}
-			*/
-
+			/*
 			// Получаем идентификатор процесса
 			const pid_t pid = getpid();
 			// Выполняем установку идентификатора сессии
@@ -2720,6 +2713,7 @@ void awh::Engine::wrapServer(ctx_t & target, addr_t * address) noexcept {
 				// Выходим
 				return;
 			}
+			*/
 			// Устанавливаем поддерживаемые кривые
 			if(SSL_CTX_set_ecdh_auto(target._ctx, 1) < 1){
 				// Очищаем созданный контекст
@@ -2953,8 +2947,6 @@ void awh::Engine::wrapClient(ctx_t & target, addr_t * address, const uri_t::url_
 				// Выходим
 				return;
 			}
-
-			/*
 			// Если нужно установить основные алгоритмы шифрования
 			if(!this->_cipher.empty()){
 				// Устанавливаем все основные алгоритмы шифрования
@@ -2967,8 +2959,6 @@ void awh::Engine::wrapClient(ctx_t & target, addr_t * address, const uri_t::url_
 					return;
 				}
 			}
-			*/
-
 			// Заставляем OpenSSL автоматические повторные попытки после событий сеанса TLS
 			SSL_CTX_set_mode(target._ctx, SSL_MODE_AUTO_RETRY);
 			// Если цепочка сертификатов установлена
