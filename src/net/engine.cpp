@@ -1192,14 +1192,7 @@ int64_t awh::Engine::Context::read(char * buffer, const size_t size) noexcept {
 			if(result < 0){
 				int k = SSL_get_error(this->_ssl, result);
 
-				// Получаем данные описание ошибки
-				u_long error = 0;
-				// Выполняем чтение ошибок OpenSSL
-				while((error = ERR_get_error()))
-					// Выводим в лог сообщение
-					this->_log->print("%s", log_t::flag_t::CRITICAL, ERR_error_string(error, nullptr));
-
-				cout << " =============== " << k << " === " << SSL_ERROR_ZERO_RETURN << " === " << SSL_ERROR_SYSCALL << " === " << SSL_ERROR_NONE << " === " << SSL_ERROR_WANT_READ << " === " << SSL_ERROR_WANT_WRITE << " === " << SSL_ERROR_WANT_CONNECT << " === " << SSL_ERROR_WANT_ACCEPT << " === " << SSL_ERROR_WANT_X509_LOOKUP << " === " << SSL_ERROR_WANT_ASYNC << " === " << SSL_ERROR_WANT_ASYNC_JOB << " === " << SSL_ERROR_WANT_CLIENT_HELLO_CB << " === " << SSL_ERROR_SSL << " ||| " << errno << endl;
+				if(k == SSL_ERROR_WANT_READ) return -1;
 			}
 
 
