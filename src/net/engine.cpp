@@ -1192,7 +1192,11 @@ int64_t awh::Engine::Context::read(char * buffer, const size_t size) noexcept {
 			if(result < 0){
 				int k = SSL_get_error(this->_ssl, result);
 
-				if(k == SSL_ERROR_WANT_READ) return -1;
+				if(k == SSL_ERROR_WANT_READ){
+
+					cout << " ++++++++++++++++++++ " << endl;
+					return -1;
+				}
 			}
 
 
