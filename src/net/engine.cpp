@@ -1148,11 +1148,7 @@ int64_t awh::Engine::Context::read(char * buffer, const size_t size) noexcept {
 						// Если сокет установлен как TCP/IP
 						case SOCK_STREAM:
 							// Выполняем чтение из защищённого сокета
-							// result = SSL_read(this->_ssl, buffer, size);
-
-							result = BIO_read(this->_bio, buffer, size);
-
-							cout << " ++++++++++++++++++++++ READ1 " << result << endl;
+							result = SSL_read(this->_ssl, buffer, size);
 						break;
 						// Если сокет установлен UDP
 						case SOCK_DGRAM:
@@ -1191,6 +1187,23 @@ int64_t awh::Engine::Context::read(char * buffer, const size_t size) noexcept {
 		}
 		// Если данные прочитать не удалось
 		if(result <= 0){
+			
+
+			if(result < 0){
+				int k = SSL_get_error(this->_ssl, result);
+
+				// Получаем данные описание ошибки
+				u_long error = 0;
+				// Выполняем чтение ошибок OpenSSL
+				while((error = ERR_get_error()))
+					// Выводим в лог сообщение
+					this->_log->print("%s", log_t::flag_t::CRITICAL, ERR_error_string(error, nullptr));
+
+				cout << " =============== " << k << " === " << errno << endl;
+			}
+
+
+			
 			// Получаем статус сокета
 			const int status = this->_addr->_socket.isBlocking(this->_addr->fd);			
 			// Если сокет находится в блокирующем режиме
@@ -1296,10 +1309,7 @@ int64_t awh::Engine::Context::write(const char * buffer, const size_t size) noex
 						// Если сокет установлен как TCP/IP
 						case SOCK_STREAM:
 							// Выполняем отправку сообщения через защищённый канал
-							// result = SSL_write(this->_ssl, buffer, size);
-
-							result = BIO_write(this->_bio, buffer, size);
-
+							result = SSL_write(this->_ssl, buffer, size);
 						break;
 						// Если сокет установлен UDP
 						case SOCK_DGRAM:
