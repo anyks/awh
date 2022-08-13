@@ -99,7 +99,6 @@ void awh::Engine::Address::client() noexcept {
 			 * Если включён режим отладки
 			 */
 			#if defined(DEBUG_MODE)
-				/*
 				// Устанавливаем список событий которые может принять сервер
 				const uint16_t eventTypes[4] = {
 					SCTP_ASSOC_CHANGE,
@@ -127,7 +126,6 @@ void awh::Engine::Address::client() noexcept {
 						return;
 					}
 				}
-				*/
 			#endif
 		}
 	}
@@ -1223,7 +1221,6 @@ int64_t awh::Engine::Context::read(char * buffer, const size_t size) noexcept {
 			/**
 			 * Если операционной системой является Linux и включён режим отладки
 			 */
-			/*
 			#if defined(__linux__) && defined(DEBUG_MODE)
 				// Если протокол интернета установлен как SCTP
 				if((this->_addr->_protocol == IPPROTO_SCTP) && (SSL_get_error(this->_ssl, result) == SSL_ERROR_NONE)){
@@ -1237,7 +1234,6 @@ int64_t awh::Engine::Context::read(char * buffer, const size_t size) noexcept {
 					this->_log->print("read %d bytes, stream: %u, ssn: %u, ppid: %u, tsn: %u", log_t::flag_t::INFO, (int) result, info.rcv_sid, info.rcv_ssn, info.rcv_ppid, info.rcv_tsn);
 				}
 			#endif
-			*/
 		}
 	}
 	// Выводим результат
@@ -1392,7 +1388,6 @@ int64_t awh::Engine::Context::write(const char * buffer, const size_t size) noex
 			/**
 			 * Если операционной системой является Linux и включён режим отладки
 			 */
-			/*
 			#if defined(__linux__) && defined(DEBUG_MODE)
 				// Если протокол интернета установлен как SCTP
 				if((this->_addr->_protocol == IPPROTO_SCTP) && (SSL_get_error(this->_ssl, result) == SSL_ERROR_NONE)){
@@ -1423,7 +1418,6 @@ int64_t awh::Engine::Context::write(const char * buffer, const size_t size) noex
 					}
 				}
 			#endif
-			*/
 		}
 	}
 	// Выводим результат
@@ -2838,12 +2832,10 @@ void awh::Engine::wrapServer(ctx_t & target, addr_t * address) noexcept {
 				 * Если операционной системой является Linux и включён режим отладки
 				 */
 				#if defined(__linux__) && defined(DEBUG_MODE)
-					/*
 					// Если протокол интернета установлен как SCTP
 					if(target._addr->_protocol == IPPROTO_SCTP)
 						// Устанавливаем функцию нотификации
 						BIO_dgram_sctp_notification_cb(target._bio, &notificationsSCTP, &target);
-					*/
 				#endif
 			// Если BIO SSL не создано
 			} else {
@@ -3076,12 +3068,10 @@ void awh::Engine::wrapClient(ctx_t & target, addr_t * address, const uri_t::url_
 				 * Если операционной системой является Linux и включён режим отладки
 				 */
 				#if defined(__linux__) && defined(DEBUG_MODE)
-					/*
 					// Если протокол интернета установлен как SCTP
 					if(target._addr->_protocol == IPPROTO_SCTP)
 						// Устанавливаем функцию нотификации
 						BIO_dgram_sctp_notification_cb(target._bio, &notificationsSCTP, &target);
-					*/
 				#endif
 			// Если BIO SSL не создано
 			} else {
