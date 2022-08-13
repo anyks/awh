@@ -39,13 +39,6 @@
 #include <sys/types.h>
 
 /**
- * Если операционной системой является Linux
- */
-#ifdef __linux__
-	#include <netinet/sctp.h>
-#endif
-
-/**
  * Если операционной системой является MS Windows
  */
 #if defined(_WIN32) || defined(_WIN64)
@@ -57,7 +50,15 @@
 #else
 	#include <sys/un.h>
 	#include <sys/socket.h>
+	#include <arpa/inet.h>
 	#include <netinet/in.h>
+#endif
+
+/**
+ * Если операционной системой является Linux
+ */
+#ifdef __linux__
+	#include <netinet/sctp.h>
 #endif
 
 /**
