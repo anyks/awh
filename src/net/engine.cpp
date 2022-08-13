@@ -95,9 +95,9 @@ bool awh::Engine::Address::list() noexcept {
 				return result;
 			}
 			/**
-			 * Если операционной системой является Linux
+			 * Если операционной системой является Linux или FreeBSD
 			 */
-			#ifdef __linux__
+			#ifdef __linux__ || __FreeBSD__
 				// Если протокол интернета установлен как SCTP
 				if(this->_protocol == IPPROTO_SCTP){
 					// Выполняем инициализацию SCTP протокола
@@ -205,9 +205,9 @@ bool awh::Engine::Address::connect() noexcept {
 			#endif
 		}
 		/**
-		 * Если операционной системой является Linux
+		 * Если операционной системой является Linux или FreeBSD
 		 */
-		#ifdef __linux__
+		#ifdef __linux__ || __FreeBSD__
 			// Если протокол интернета установлен как SCTP
 			if(this->_protocol == IPPROTO_SCTP)
 				// Выполняем инициализацию SCTP протокола
@@ -389,9 +389,9 @@ bool awh::Engine::Address::accept(const int fd, const int family) noexcept {
 					// Отключаем сигнал записи в оборванное подключение
 					this->_socket.noSigpipe(this->fd);
 					/**
-					 * Если операционной системой является Linux
+					 * Если операционной системой является Linux или FreeBSD
 					 */
-					#ifdef __linux__
+					#ifdef __linux__ || __FreeBSD__
 						// Если протокол интернета установлен как SCTP
 						if(this->_protocol != IPPROTO_SCTP)
 							// Активируем KeepAlive
@@ -420,9 +420,9 @@ bool awh::Engine::Address::accept(const int fd, const int family) noexcept {
 				// Переводим сокет в не блокирующий режим
 				this->_socket.nonBlocking(this->fd);
 				/**
-				 * Если операционной системой является Linux
+				 * Если операционной системой является Linux или FreeBSD
 				 */
-				#ifdef __linux__
+				#ifdef __linux__ || __FreeBSD__
 					// Если протокол интернета установлен как SCTP
 					if(this->_protocol != IPPROTO_SCTP){
 						// Отключаем алгоритм Нейгла для сервера и клиента
@@ -789,9 +789,9 @@ void awh::Engine::Address::init(const string & ip, const u_int port, const int f
 				// Если приложение является клиентом и сокет установлен TCP/IP
 				} else if(this->_type == SOCK_STREAM) {
 					/**
-					 * Если операционной системой является Linux
+					 * Если операционной системой является Linux или FreeBSD
 					 */
-					#ifdef __linux__
+					#ifdef __linux__ || __FreeBSD__
 						// Если протокол интернета установлен как SCTP
 						if(this->_protocol != IPPROTO_SCTP)
 							// Активируем KeepAlive
@@ -824,9 +824,9 @@ void awh::Engine::Address::init(const string & ip, const u_int port, const int f
 					// Переводим сокет в не блокирующий режим
 					this->_socket.nonBlocking(this->fd);
 				/**
-				 * Если операционной системой является Linux
+				 * Если операционной системой является Linux или FreeBSD
 				 */
-				#ifdef __linux__
+				#ifdef __linux__ || __FreeBSD__
 					// Если протокол интернета установлен как SCTP
 					if(this->_protocol != IPPROTO_SCTP){
 						// Отключаем алгоритм Нейгла для сервера и клиента
@@ -1165,9 +1165,9 @@ int64_t awh::Engine::Context::read(char * buffer, const size_t size) noexcept {
 		// Если данные получены удачно
 		} else {
 			/**
-			 * Если операционной системой является Linux и включён режим отладки
+			 * Если операционной системой является Linux или FreeBSD и включён режим отладки
 			 */
-			#if defined(__linux__) && defined(DEBUG_MODE)
+			#if (defined(__linux__) || defined(__FreeBSD__)) && defined(DEBUG_MODE)
 				// Если протокол интернета установлен как SCTP
 				if((this->_addr->_protocol == IPPROTO_SCTP) && (SSL_get_error(this->_ssl, result) == SSL_ERROR_NONE)){
 					// Создаём объект получения информационных событий
@@ -1205,9 +1205,9 @@ int64_t awh::Engine::Context::write(const char * buffer, const size_t size) noex
 				// Если подключение выполнено
 				if((result = ((this->_type == type_t::SERVER) ? SSL_accept(this->_ssl) : SSL_connect(this->_ssl))) > 0){
 					/**
-					 * Если операционной системой является Linux
+					 * Если операционной системой является Linux или FreeBSD
 					 */
-					#ifdef __linux__
+					#ifdef __linux__ || __FreeBSD__
 						// Если протокол интернета установлен как SCTP
 						if((this->_addr->_protocol == IPPROTO_SCTP) && (this->_addr->status == addr_t::status_t::CONNECTED)){
 							// Создаём объект получения информационных событий
@@ -1330,9 +1330,9 @@ int64_t awh::Engine::Context::write(const char * buffer, const size_t size) noex
 		// Если данные отправлены удачно
 		} else {
 			/**
-			 * Если операционной системой является Linux и включён режим отладки
+			 * Если операционной системой является Linux или FreeBSD и включён режим отладки
 			 */
-			#if defined(__linux__) && defined(DEBUG_MODE)
+			#if (defined(__linux__) || defined(__FreeBSD__)) && defined(DEBUG_MODE)
 				// Если протокол интернета установлен как SCTP
 				if((this->_addr->_protocol == IPPROTO_SCTP) && (SSL_get_error(this->_ssl, result) == SSL_ERROR_NONE)){
 					// Определяем тип подключения
@@ -1562,9 +1562,9 @@ const bool awh::Engine::certHostcheck(const string & host, const string & patt) 
 	return result;
 }
 /**
- * Если операционной системой является Linux
+ * Если операционной системой является Linux или FreeBSD
  */
-#ifdef __linux__
+#ifdef __linux__ || __FreeBSD__
 	/**
 	 * notificationsSCTP Функция обработки нотификации SCTP
 	 * @param bio    объект подключения BIO
@@ -2575,9 +2575,9 @@ void awh::Engine::wrapServer(ctx_t & target, addr_t * address) noexcept {
 				return;
 			}
 			/**
-			 * Если операционной системой является Linux
+			 * Если операционной системой является Linux или FreeBSD
 			 */
-			#ifdef __linux__
+			#ifdef __linux__ || __FreeBSD__
 				// Определяем тип протокола подключения
 				switch(target._addr->_protocol){
 					// Если протокол подключения UDP
@@ -2738,9 +2738,9 @@ void awh::Engine::wrapServer(ctx_t & target, addr_t * address) noexcept {
 			// Устанавливаем флаг активации TLS
 			target._addr->_tls = target._tls;
 			/**
-			 * Если операционной системой является Linux
+			 * Если операционной системой является Linux или FreeBSD
 			 */
-			#ifdef __linux__
+			#ifdef __linux__ || __FreeBSD__
 				// Определяем тип протокола подключения
 				switch(target._addr->_protocol){
 					// Если протокол подключения UDP
@@ -2773,9 +2773,9 @@ void awh::Engine::wrapServer(ctx_t & target, addr_t * address) noexcept {
 				// Выполняем установку BIO SSL
 				SSL_set_bio(target._ssl, target._bio, target._bio);
 				/**
-				 * Если операционной системой является Linux и включён режим отладки
+				 * Если операционной системой является Linux или FreeBSD и включён режим отладки
 				 */
-				#if defined(__linux__) && defined(DEBUG_MODE)
+				#if (defined(__linux__) || defined(__FreeBSD__)) && defined(DEBUG_MODE)
 					// Если протокол интернета установлен как SCTP
 					if(target._addr->_protocol == IPPROTO_SCTP)
 						// Устанавливаем функцию нотификации
@@ -2830,9 +2830,9 @@ void awh::Engine::wrapClient(ctx_t & target, addr_t * address, const uri_t::url_
 				return;
 			}
 			/**
-			 * Если операционной системой является Linux
+			 * Если операционной системой является Linux или FreeBSD
 			 */
-			#ifdef __linux__
+			#ifdef __linux__ || __FreeBSD__
 				// Определяем тип протокола подключения
 				switch(target._addr->_protocol){
 					// Если протокол подключения UDP
@@ -2974,9 +2974,9 @@ void awh::Engine::wrapClient(ctx_t & target, addr_t * address, const uri_t::url_
 			// Устанавливаем флаг активации TLS
 			target._addr->_tls = target._tls;
 			/**
-			 * Если операционной системой является Linux
+			 * Если операционной системой является Linux или FreeBSD
 			 */
-			#ifdef __linux__
+			#ifdef __linux__ || __FreeBSD__
 				// Определяем тип протокола подключения
 				switch(target._addr->_protocol){
 					// Если протокол подключения UDP
@@ -3009,9 +3009,9 @@ void awh::Engine::wrapClient(ctx_t & target, addr_t * address, const uri_t::url_
 				// Выполняем установку BIO SSL
 				SSL_set_bio(target._ssl, target._bio, target._bio);
 				/**
-				 * Если операционной системой является Linux и включён режим отладки
+				 * Если операционной системой является Linux или FreeBSD и включён режим отладки
 				 */
-				#if defined(__linux__) && defined(DEBUG_MODE)
+				#if (defined(__linux__) || defined(__FreeBSD__)) && defined(DEBUG_MODE)
 					// Если протокол интернета установлен как SCTP
 					if(target._addr->_protocol == IPPROTO_SCTP)
 						// Устанавливаем функцию нотификации

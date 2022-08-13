@@ -60,9 +60,9 @@
 #endif
 
 /**
- * Если операционной системой является Linux
+ * Если операционной системой является Linux или FreeBSD
  */
-#ifdef __linux__
+#ifdef __linux__ || __FreeBSD__
 	#include <netinet/sctp.h>
 #endif
 

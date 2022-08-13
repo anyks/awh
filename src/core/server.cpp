@@ -504,9 +504,9 @@ void awh::server::Core::resolver(const string & ip, worker_t * wrk) noexcept {
 						wrk->addr.sonet(SOCK_DGRAM, IPPROTO_UDP);
 					break;
 					/**
-					 * Если операционной системой является Linux
+					 * Если операционной системой является Linux или FreeBSD
 					 */
-					#ifdef __linux__
+					#ifdef __linux__ || __FreeBSD__
 						// Если тип сокета установлен как SCTP
 						case (uint8_t) sonet_t::SCTP:
 							// Устанавливаем параметры сокета
@@ -761,9 +761,9 @@ void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 					// Определяем тип сокета
 					switch((uint8_t) this->net.sonet){
 						/**
-						 * Если операционной системой является Linux
+						 * Если операционной системой является Linux или FreeBSD
 						 */
-						#ifdef __linux__
+						#ifdef __linux__ || __FreeBSD__
 							// Если тип сокета установлен как SCTP
 							case (uint8_t) sonet_t::SCTP:
 								// Устанавливаем параметры сокета

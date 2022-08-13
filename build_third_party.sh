@@ -126,8 +126,8 @@ if [ ! -f "$src/.stamp_done" ]; then
 	# Выполняем переключение на указанную версию
 	git checkout tags/OpenSSL_1_1_1${ver} -b v1.1.1${ver}-branch
 
-	# Выполняем конфигурацию проекта под Linux
-	if [[ $OS = "Linux" ]]; then
+	# Выполняем конфигурацию проекта под Linux или FreeBSD
+	if [[ $OS = "Linux" ]] || [[ $OS = "FreeBSD" ]]; then
 		# Выполняем конфигурацию проекта
 		./config \
 		 sctp \

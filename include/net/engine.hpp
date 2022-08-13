@@ -452,9 +452,9 @@ namespace awh {
 			const bool certHostcheck(const string & host, const string & patt) const noexcept;
 		private:
 			/**
-			 * Если операционной системой является Linux
+			 * Если операционной системой является Linux или FreeBSD
 			 */
-			#ifdef __linux__
+			#ifdef __linux__ || __FreeBSD__
 				/**
 				 * notificationsSCTP Функция обработки нотификации SCTP
 				 * @param bio    объект подключения BIO

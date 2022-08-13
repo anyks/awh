@@ -1374,13 +1374,13 @@ void awh::Core::sonet(const sonet_t sonet) noexcept {
 	// Устанавливаем тип сокета
 	this->net.sonet = sonet;
 	/**
-	 * Если операционной системой не является Linux
+	 * Если операционной системой не является Linux или FreeBSD
 	 */
-	#ifndef __linux__
+	#ifndef __linux__ || __FreeBSD__
 		// Если установлен протокол SCTP
 		if(this->net.sonet == sonet_t::SCTP){
 			// Выводим в лог сообщение
-			this->log->print("SCTP protocol is allowed to be used only in the Linux operating system", log_t::flag_t::CRITICAL);
+			this->log->print("SCTP protocol is allowed to be used only in the Linux or FreeBSD operating system", log_t::flag_t::CRITICAL);
 			// Выходим принудительно из приложения
 			exit(EXIT_FAILURE);
 		}
