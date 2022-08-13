@@ -461,12 +461,28 @@ bool awh::Engine::Address::accept(const int fd, const int family) noexcept {
 			if(this->_type == SOCK_STREAM){
 				// Устанавливаем разрешение на повторное использование сокета
 				this->_socket.reuseable(this->fd);
-				// Отключаем алгоритм Нейгла для сервера и клиента
-				this->_socket.tcpNodelay(this->fd);
 				// Переводим сокет в не блокирующий режим
 				this->_socket.nonBlocking(this->fd);
-				// Отключаем алгоритм Нейгла
-				BIO_set_tcp_ndelay(this->fd, 1);
+				/**
+				 * Если операционной системой является Linux
+				 */
+				#ifdef __linux__
+					// Если протокол интернета установлен как SCTP
+					if(this->_protocol != IPPROTO_SCTP){
+						// Отключаем алгоритм Нейгла для сервера и клиента
+						this->_socket.tcpNodelay(this->fd);
+						// Отключаем алгоритм Нейгла
+						BIO_set_tcp_ndelay(this->fd, 1);
+					}
+				/**
+				 * Если операционной системой не является Linux
+				 */
+				#else
+					// Отключаем алгоритм Нейгла для сервера и клиента
+					this->_socket.tcpNodelay(this->fd);
+					// Отключаем алгоритм Нейгла
+					BIO_set_tcp_ndelay(this->fd, 1);
+				#endif
 			}
 		} break;
 		/**
@@ -837,10 +853,26 @@ void awh::Engine::Address::init(const string & ip, const u_int port, const int f
 				if(type == type_t::SERVER)
 					// Переводим сокет в не блокирующий режим
 					this->_socket.nonBlocking(this->fd);
-				// Отключаем алгоритм Нейгла для сервера и клиента
-				this->_socket.tcpNodelay(this->fd);
-				// Отключаем алгоритм Нейгла
-				BIO_set_tcp_ndelay(this->fd, 1);
+				/**
+				 * Если операционной системой является Linux
+				 */
+				#ifdef __linux__
+					// Если протокол интернета установлен как SCTP
+					if(this->_protocol != IPPROTO_SCTP){
+						// Отключаем алгоритм Нейгла для сервера и клиента
+						this->_socket.tcpNodelay(this->fd);
+						// Отключаем алгоритм Нейгла
+						BIO_set_tcp_ndelay(this->fd, 1);
+					}
+				/**
+				 * Если операционной системой не является Linux
+				 */
+				#else
+					// Отключаем алгоритм Нейгла для сервера и клиента
+					this->_socket.tcpNodelay(this->fd);
+					// Отключаем алгоритм Нейгла
+					BIO_set_tcp_ndelay(this->fd, 1);
+				#endif
 				// Устанавливаем разрешение на закрытие сокета при неиспользовании
 				// this->_socket.closeonexec(this->fd);
 			}
