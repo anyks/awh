@@ -1188,7 +1188,10 @@ int64_t awh::Engine::Context::read(char * buffer, const size_t size) noexcept {
 		// Если данные прочитать не удалось
 		if(result <= 0){
 			// Получаем статус сокета
-			const int status = this->_addr->_socket.isBlocking(this->_addr->fd);			
+			const int status = this->_addr->_socket.isBlocking(this->_addr->fd);
+
+			cout << " ++++++++++++++++++++++++++++++ " << status << endl;
+
 			// Если сокет находится в блокирующем режиме
 			if((result < 0) && (status != 0))
 				// Выполняем обработку ошибок
