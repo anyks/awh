@@ -219,13 +219,12 @@ void awh::server::WebSocket::handler(const size_t aid) noexcept {
 		if(!adj->locker.mode){
 			// Выполняем блокировку потока
 			const lock_guard <recursive_mutex> lock(adj->locker.mtx);
+			// Флаг принудительного выхода из цикла
+			bool loop = true;
 			// Выполняем блокировку обработчика
 			adj->locker.mode = true;
 			// Выполняем обработку всех экшенов
-			while(adj->action != ws_worker_t::action_t::NONE){
-
-				cout << " ----------------------- " << ((u_short) adj->action) << endl;
-
+			while(loop && (adj->action != ws_worker_t::action_t::NONE)){
 				// Определяем обрабатываемый экшен
 				switch((uint8_t) adj->action){
 					// Если необходимо запустить экшен обработки данных поступающих с сервера
@@ -234,6 +233,8 @@ void awh::server::WebSocket::handler(const size_t aid) noexcept {
 					case (uint8_t) ws_worker_t::action_t::CONNECT: this->actionConnect(aid); break;
 					// Если необходимо запустить экшен обработки отключения от сервера
 					case (uint8_t) ws_worker_t::action_t::DISCONNECT: this->actionDisconnect(aid); break;
+					// Если сработал неизвестный экшен, выходим
+					default: loop = false;
 				}
 			}
 			// Выполняем разблокировку обработчика
