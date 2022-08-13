@@ -2318,12 +2318,12 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const type_t type) noex
 						// Если приложение является клиентом
 						case (uint8_t) type_t::CLIENT:
 							// Получаем контекст OpenSSL
-							target._ctx = SSL_CTX_new(DTLSv1_client_method());
+							target._ctx = SSL_CTX_new(DTLSv1_2_client_method());
 						break;
 						// Если приложение является сервером
 						case (uint8_t) type_t::SERVER:
 							// Получаем контекст OpenSSL
-							target._ctx = SSL_CTX_new(DTLSv1_server_method());
+							target._ctx = SSL_CTX_new(DTLSv1_2_server_method());
 						break;
 					}
 				} break;
