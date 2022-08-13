@@ -1195,7 +1195,7 @@ int64_t awh::Engine::Context::read(char * buffer, const size_t size) noexcept {
 				if(k == SSL_ERROR_WANT_READ){
 
 					cout << " ++++++++++++++++++++ " << endl;
-					return -1;
+					return -2;
 				}
 			}
 
