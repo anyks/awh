@@ -2375,6 +2375,20 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const type_t type) noex
 					// Заставляем серверные алгоритмы шифрования использовать в приоритете
 					SSL_CTX_set_options(target._ctx, SSL_OP_CIPHER_SERVER_PREFERENCE);
 			}
+			// Если приложение является сервером
+			if(type == type_t::SERVER){
+				// Получаем идентификатор процесса
+				const pid_t pid = getpid();
+				// Выполняем установку идентификатора сессии
+				if(SSL_CTX_set_session_id_context(target._ctx, (const u_char *) &pid, sizeof(pid)) < 1){
+					// Очищаем созданный контекст
+					target.clear();
+					// Выводим в лог сообщение
+					this->_log->print("failed to set session ID", log_t::flag_t::CRITICAL);
+					// Выходим
+					return;
+				}
+			}
 			// Устанавливаем поддерживаемые кривые
 			if(SSL_CTX_set_ecdh_auto(target._ctx, 1) < 1){
 				// Очищаем созданный контекст

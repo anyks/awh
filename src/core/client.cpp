@@ -1220,7 +1220,7 @@ void awh::client::Core::transfer(const engine_t::method_t method, const size_t a
 						break;
 					}
 					// Если тип сокета не установлен как UDP, запускаем чтение дальше
-					if(this->net.sonet != sonet_t::UDP)
+					if((this->net.sonet != sonet_t::UDP) && (this->adjutants.count(aid) > 0))
 						// Запускаем чтение данных с клиента
 						adj->bev.event.read.start();
 				} break;
@@ -1264,8 +1264,8 @@ void awh::client::Core::transfer(const engine_t::method_t method, const size_t a
 							else if(bytes == 0) {
 								// Выполняем отключение клиента
 								this->close(aid);
-								// Выходим из цикла
-								break;
+								// Выходим из функции
+								return;
 							}
 							// Увеличиваем смещение в буфере
 							offset += actual;
@@ -1292,7 +1292,7 @@ void awh::client::Core::transfer(const engine_t::method_t method, const size_t a
 							wrk->callback.write(nullptr, 0, aid, wrk->wid, reinterpret_cast <awh::core_t *> (this));
 					}
 					// Если тип сокета установлен как UDP, и данных для записи больше нет, запускаем чтение
-					if(adj->buffer.empty() && (this->net.sonet == sonet_t::UDP))
+					if(adj->buffer.empty() && (this->net.sonet == sonet_t::UDP) && (this->adjutants.count(aid) > 0))
 						// Запускаем чтение данных с клиента
 						adj->bev.event.read.start();
 				} break;
