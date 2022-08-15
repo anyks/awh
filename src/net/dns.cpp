@@ -400,114 +400,124 @@ bool awh::DNS::Worker::request(const string & domain) noexcept {
 	bool result = false;
 	// Если доменное имя передано
 	if(!domain.empty()){
-		// Размер объекта подключения
-		socklen_t size = 0;
-		// Параметры подключения сервера
-		struct sockaddr_storage addr;
-		// Получаем адрес сервера
-		const auto & server = const_cast <dns_t *> (this->_dns)->server(this->_family);
-		// Определяем тип подключения
-		switch(this->_family){
-			// Для протокола IPv4
-			case AF_INET: {
-				// Создаём объект клиента
-				struct sockaddr_in client;
-				// Очищаем всю структуру для клиента
-				memset(&client, 0, sizeof(client));
-				// Устанавливаем протокол интернета
-				client.sin_family = this->_family;
-				// Устанавливаем произвольный порт
-				client.sin_port = htons(server.port);
-				// Устанавливаем адрес для локальго подключения
-				client.sin_addr.s_addr = inet_addr(server.host.c_str());
-				// Запоминаем размер структуры
-				size = sizeof(client);
-				// Выполняем копирование объекта подключения клиента
-				memcpy(&addr, &client, size);
-			} break;
-			// Для протокола IPv6
-			case AF_INET6: {
-				// Создаём объект клиента
-				struct sockaddr_in6 client;
-				// Очищаем всю структуру для клиента
-				memset(&client, 0, sizeof(client));
-				// Устанавливаем протокол интернета
-				client.sin6_family = this->_family;
-				// Устанавливаем произвольный порт для
-				client.sin6_port = htons(server.port);
-				// Указываем адрес IPv6 для клиента
-				inet_pton(this->_family, server.host.c_str(), &client.sin6_addr);
-				// Запоминаем размер структуры
-				size = sizeof(client);
-				// Выполняем копирование объекта подключения клиента
-				memcpy(&addr, &client, size);
-			} break;
-		}
-		// Устанавливаем сокет для чтения
-		this->_io.set(this->_fd, ev::READ);
-		// Устанавливаем базу событий
-		this->_io.set(this->_base);
-		// Устанавливаем базу событий
-		this->_timer.set(this->_base);
-		// Устанавливаем событие на чтение данных подключения
-		this->_io.set <worker_t, &worker_t::response> (this);
-		// Устанавливаем функцию обратного вызова
-		this->_timer.set <worker_t, &worker_t::timeout> (this);
-		// Запускаем работу таймера
-		this->_timer.start(30.);
-		// Выполняем подключение к серверу DNS
-		if((result = (::connect(this->_fd, (struct sockaddr *) &addr, size) == 0))){
-			// Запоминаем запрашиваемое доменное имя
-			this->_domain = domain;
-			// Буфер пакета данных
-			u_char buffer[65536];
-			// Выполняем зануление буфера данных
-			memset(buffer, 0, sizeof(buffer));
-			// Получаем объект заголовка
-			head_t * header = reinterpret_cast <head_t *> (&buffer);
-			// Устанавливаем идентификатор заголовка
-			header->id = (u_short) htons(getpid());
-			// Заполняем оставшуюся структуру пакетов
-			header->z = 0;
-			header->qr = 0;
-			header->aa = 0;
-			header->tc = 0;
-			header->rd = 1;
-			header->ra = 0;
-			header->rcode = 0;
-			header->opcode = 0;
-			header->ancount = 0x0000;
-			header->nscount = 0x0000;
-			header->arcount = 0x0000;
-			header->qdcount = htons((u_short) 1);
-			// Получаем размер запроса
-			size_t size = sizeof(head_t);
-			// Получаем доменное имя в нужном формате
-			const string & domain = this->split(this->_domain);
-			// Выполняем копирование домена
-			memcpy(&buffer[size], domain.data(), domain.size());
-			// Увеличиваем размер запроса
-			size += (domain.size() + 1);
-			// Создаём части флагов вопроса пакета запроса
-			qflags_t * qflags = reinterpret_cast <qflags_t *> (&buffer[size]);
-			// Устанавливаем тип флага запроса
-			qflags->qtype = htons(0x0001);
-			// Устанавливаем класс флага запроса
-			qflags->qclass = htons(0x0001);
-			// Увеличиваем размер запроса
-			size += sizeof(qflags_t);
-			// Отправляем запрос на DNS сервер
-			if((result = (::write(this->_fd, (u_char *) buffer, size) > 0))){
-				// Запускаем чтение данных с клиента
-				this->_io.start();
-				// Выходим из функции
-				return result;
+		// Выполняем поиск интернет-протокола для получения DNS сервера
+		auto it = const_cast <dns_t *> (this->_dns)->_servers.find(this->_family);
+		// Если интернет протокол сервера получен
+		if((result = (it != this->_dns->_servers.end()))){
+			// Создаём объект рандомайзера
+			random_device rd;
+			// Выбираем стаднарт рандомайзера
+			mt19937 generator(rd());
+			// Выполняем рандомную сортировку списка DNS серверов
+			shuffle(it->second.begin(), it->second.end(), generator);
+			// Переходим по всему списку DNS серверов
+			for(auto & server : it->second){
+				// Размер объекта подключения
+				socklen_t size = 0;
+				// Параметры подключения сервера
+				struct sockaddr_storage addr;
+				// Определяем тип подключения
+				switch(this->_family){
+					// Для протокола IPv4
+					case AF_INET: {
+						// Создаём объект клиента
+						struct sockaddr_in client;
+						// Очищаем всю структуру для клиента
+						memset(&client, 0, sizeof(client));
+						// Устанавливаем протокол интернета
+						client.sin_family = this->_family;
+						// Устанавливаем произвольный порт
+						client.sin_port = htons(server.port);
+						// Устанавливаем адрес для локальго подключения
+						client.sin_addr.s_addr = inet_addr(server.host.c_str());
+						// Запоминаем размер структуры
+						size = sizeof(client);
+						// Выполняем копирование объекта подключения клиента
+						memcpy(&addr, &client, size);
+					} break;
+					// Для протокола IPv6
+					case AF_INET6: {
+						// Создаём объект клиента
+						struct sockaddr_in6 client;
+						// Очищаем всю структуру для клиента
+						memset(&client, 0, sizeof(client));
+						// Устанавливаем протокол интернета
+						client.sin6_family = this->_family;
+						// Устанавливаем произвольный порт для
+						client.sin6_port = htons(server.port);
+						// Указываем адрес IPv6 для клиента
+						inet_pton(this->_family, server.host.c_str(), &client.sin6_addr);
+						// Запоминаем размер структуры
+						size = sizeof(client);
+						// Выполняем копирование объекта подключения клиента
+						memcpy(&addr, &client, size);
+					} break;
+				}
+				// Выполняем подключение к серверу DNS
+				if((result = (::connect(this->_fd, (struct sockaddr *) &addr, size) == 0))){
+					// Запоминаем запрашиваемое доменное имя
+					this->_domain = domain;
+					// Буфер пакета данных
+					u_char buffer[65536];
+					// Выполняем зануление буфера данных
+					memset(buffer, 0, sizeof(buffer));
+					// Получаем объект заголовка
+					head_t * header = reinterpret_cast <head_t *> (&buffer);
+					// Устанавливаем идентификатор заголовка
+					header->id = (u_short) htons(getpid());
+					// Заполняем оставшуюся структуру пакетов
+					header->z = 0;
+					header->qr = 0;
+					header->aa = 0;
+					header->tc = 0;
+					header->rd = 1;
+					header->ra = 0;
+					header->rcode = 0;
+					header->opcode = 0;
+					header->ancount = 0x0000;
+					header->nscount = 0x0000;
+					header->arcount = 0x0000;
+					header->qdcount = htons((u_short) 1);
+					// Получаем размер запроса
+					size_t size = sizeof(head_t);
+					// Получаем доменное имя в нужном формате
+					const string & domain = this->split(this->_domain);
+					// Выполняем копирование домена
+					memcpy(&buffer[size], domain.data(), domain.size());
+					// Увеличиваем размер запроса
+					size += (domain.size() + 1);
+					// Создаём части флагов вопроса пакета запроса
+					qflags_t * qflags = reinterpret_cast <qflags_t *> (&buffer[size]);
+					// Устанавливаем тип флага запроса
+					qflags->qtype = htons(0x0001);
+					// Устанавливаем класс флага запроса
+					qflags->qclass = htons(0x0001);
+					// Увеличиваем размер запроса
+					size += sizeof(qflags_t);
+					// Отправляем запрос на DNS сервер
+					if((result = (::write(this->_fd, (u_char *) buffer, size) > 0))){
+						// Устанавливаем сокет для чтения
+						this->_io.set(this->_fd, ev::READ);
+						// Устанавливаем базу событий
+						this->_io.set(this->_base);
+						// Устанавливаем базу событий
+						this->_timer.set(this->_base);
+						// Устанавливаем событие на чтение данных подключения
+						this->_io.set <worker_t, &worker_t::response> (this);
+						// Устанавливаем функцию обратного вызова
+						this->_timer.set <worker_t, &worker_t::timeout> (this);
+						// Запускаем работу таймера
+						this->_timer.start(this->_dns->_timeout);
+						// Запускаем чтение данных с клиента
+						this->_io.start();
+						// Выходим из функции
+						return result;
+					}
+				}
 			}
 		}
 		// Выполняем закрытие подключения
 		this->close();
-		// Останавливаем работу таймера
-		this->_timer.stop();
 	}
 	// Выводим результат
 	return result;
@@ -728,6 +738,16 @@ bool awh::DNS::cancel(const size_t did) noexcept {
 	}
 	// Выводим результат
 	return result;
+}
+/**
+ * timeout Метод установки времени ожидания выполнения запроса
+ * @param sec интервал времени выполнения запроса в секундах
+ */
+void awh::DNS::timeout(const time_t sec) noexcept {
+	// Выполняем блокировку потока
+	const lock_guard <recursive_mutex> lock(this->_mtx.hold);
+	// Выполняем установку таймаута ожидания выполнения запроса
+	this->_timeout = sec;
 }
 /**
  * cache Метод получения IP адреса из кэша
@@ -1153,7 +1173,7 @@ size_t awh::DNS::resolve(const string & host, const int family) noexcept {
  * @param log объект для работы с логами
  * @param nwk объект методов для работы с сетью
  */
-awh::DNS::DNS(const fmk_t * fmk, const log_t * log, const network_t * nwk) noexcept : _fn(nullptr), _fmk(fmk), _log(log), _nwk(nwk), _base(nullptr) {
+awh::DNS::DNS(const fmk_t * fmk, const log_t * log, const network_t * nwk) noexcept : _timeout(30), _fn(nullptr), _fmk(fmk), _log(log), _nwk(nwk), _base(nullptr) {
 	// Устанавливаем список серверов IPv4
 	this->replace(AF_INET);
 	// Устанавливаем список серверов IPv6
@@ -1166,7 +1186,7 @@ awh::DNS::DNS(const fmk_t * fmk, const log_t * log, const network_t * nwk) noexc
  * @param nwk  объект методов для работы с сетью
  * @param base база событий
  */
-awh::DNS::DNS(const fmk_t * fmk, const log_t * log, const network_t * nwk, struct ev_loop * base) noexcept : _fn(nullptr), _fmk(fmk), _log(log), _nwk(nwk), _base(base) {
+awh::DNS::DNS(const fmk_t * fmk, const log_t * log, const network_t * nwk, struct ev_loop * base) noexcept : _timeout(30), _fn(nullptr), _fmk(fmk), _log(log), _nwk(nwk), _base(base) {
 	// Устанавливаем список серверов IPv4
 	this->replace(AF_INET);
 	// Устанавливаем список серверов IPv6

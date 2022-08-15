@@ -286,6 +286,9 @@ namespace awh {
 					~Worker() noexcept;
 			} worker_t;
 		private:
+			// Таймаут ожидания выполнения запроса (в секундах)
+			time_t _timeout;
+		private:
 			// Мютекс для блокировки основного потока
 			mtx_t _mtx;
 			// Статус работы DNS резолвера
@@ -352,6 +355,12 @@ namespace awh {
 			 * @return    результат работы функции
 			 */
 			bool cancel(const size_t did = 0) noexcept;
+		public:
+			/**
+			 * timeout Метод установки времени ожидания выполнения запроса
+			 * @param sec интервал времени выполнения запроса в секундах
+			 */
+			void timeout(const time_t sec) noexcept;
 		public:
 			/**
 			 * cache Метод получения IP адреса из кэша
