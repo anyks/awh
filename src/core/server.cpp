@@ -1009,6 +1009,28 @@ void awh::server::Core::run(const size_t wid) noexcept {
 				}
 			}
 
+
+			this->dns = new dns_t(this->fmk, this->log, &this->nwk, this->dispatch.base);
+
+			
+			this->dns->on([](const string & ip, const int family, const size_t did) noexcept {
+				cout << " ============================= " << ip << endl;
+			});
+
+			cout << " --------------------- " << this->dns->resolve("testnet.binance.vision", AF_INET) << endl;
+			
+			// cout << " --------------------- " << this->dns->resolve("api.binance.com", AF_INET) << endl;
+
+			
+			{
+				dns_t::serv_t serv;
+				serv.host = "ns1.yandex.net";
+
+				this->dns->server(AF_INET, serv);
+			}
+			
+			
+
 			/*
 			// Структура определяющая тип адреса
 			struct sockaddr_in serv_addr;

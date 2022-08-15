@@ -157,7 +157,7 @@ int main(int argc, char * argv[]){
 	core.verifySSL(false);
 
 	// Активируем максимальное количество рабочих процессов
-	core.clusterSize();
+	// core.clusterSize();
 
 	// ws.needleEye(true);
 
@@ -172,19 +172,19 @@ int main(int argc, char * argv[]){
 	// ws.authType(auth_t::type_t::BASIC);
 	// Выполняем инициализацию WebSocket сервера
 	// ws.init(2222, "127.0.0.1", http_t::compress_t::DEFLATE);
-	ws.init(2222, "", http_t::compress_t::DEFLATE);
-	// ws.init(2222, "127.0.0.1", http_t::compress_t::DEFLATE);
+	// ws.init(2222, "", http_t::compress_t::DEFLATE);
+	ws.init(2222, "127.0.0.1", http_t::compress_t::DEFLATE);
 	// ws.init("anyks", http_t::compress_t::DEFLATE);
 	// Устанавливаем длительное подключение
 	// ws.keepAlive(100, 30, 10);
 
-	
+	/*
 	// Устанавливаем SSL сертификаты сервера
 	core.certificate(
 		"/usr/local/etc/letsencrypt/live/anyks.net/fullchain.pem",
 		"/usr/local/etc/letsencrypt/live/anyks.net/privkey.pem"
 	);
-	
+	*/
 	
 
 	// core.certificate("./certs/server-cert.pem", "./certs/server-key.pem");

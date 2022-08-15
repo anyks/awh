@@ -50,8 +50,8 @@
 /**
  * Наши модули
  */
+#include <net/dns.hpp>
 #include <net/engine.hpp>
-// #include <net/dns.hpp>
 #include <worker/core.hpp>
 #include <sys/signals.hpp>
 
@@ -306,6 +306,10 @@ namespace awh {
 		private:
 			// Интервал персистентного таймера в миллисекундах
 			time_t _persIntvl;
+
+		protected:
+			dns_t * dns = nullptr;
+
 		protected:
 			// Создаём объект фреймворка
 			const fmk_t * fmk;
