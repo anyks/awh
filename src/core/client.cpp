@@ -62,54 +62,6 @@ void awh::client::Core::Timeout::callback(ev::timer & timer, int revents) noexce
 	}
 }
 /**
- * resolver Функция выполнения резолвинга домена
- * @param ip  полученный IP адрес
- * @param wrk объект воркера
- */
-void awh::client::Core::resolver(const string & ip, worker_t * wrk) noexcept {
-	// Если IP адрес получен
-	if(!ip.empty()){
-		// Если прокси-сервер активен
-		if(wrk->isProxy())
-			// Запоминаем полученный IP адрес для прокси-сервера
-			wrk->proxy.url.ip = ip;
-		// Запоминаем полученный IP адрес
-		else wrk->url.ip = ip;
-		// Получаем объект ядра подключения
-		core_t * core = (core_t *) const_cast <awh::core_t *> (wrk->core);
-		// Определяем режим работы клиента
-		switch((uint8_t) wrk->status.wait){
-			// Если режим работы клиента - это подключение
-			case (uint8_t) worker_t::mode_t::CONNECT:
-				// Выполняем новое подключение к серверу
-				core->connect(wrk->wid);
-			break;
-			// Если режим работы клиента - это переподключение
-			case (uint8_t) worker_t::mode_t::RECONNECT:
-				// Выполняем ещё одну попытку переподключиться к серверу
-				core->createTimeout(wrk->wid, worker_t::mode_t::CONNECT);
-			break;
-		}
-		// Выходим из функции
-		return;
-	// Если IP адрес не получен но нужно поддерживать постоянное подключение
-	} else if(wrk->alive) {
-		// Если ожидание переподключения не остановлено ранее
-		if(wrk->status.wait != worker_t::mode_t::DISCONNECT){
-			// Получаем объект ядра подключения
-			core_t * core = (core_t *) const_cast <awh::core_t *> (wrk->core);
-			// Выполняем ещё одну попытку переподключиться к серверу
-			core->createTimeout(wrk->wid, worker_t::mode_t::RECONNECT);
-		}
-		// Выходим из функции, чтобы попытаться подключиться ещё раз
-		return;
-	}
-	// Выводим функцию обратного вызова
-	if(wrk->callback.disconnect != nullptr)
-		// Выполняем функцию обратного вызова
-		wrk->callback.disconnect(0, wrk->wid, const_cast <awh::core_t *> (wrk->core));
-}
-/**
  * connect Метод создания подключения к удаленному серверу
  * @param wid идентификатор воркера
  */
@@ -284,25 +236,21 @@ void awh::client::Core::connect(const size_t wid) noexcept {
 							this->log->print("connecting to socket = %s", log_t::flag_t::CRITICAL, this->net.filename.c_str());
 						// Выводим ионформацию об обрыве подключении по хосту и порту
 						else this->log->print("connecting to host = %s, port = %u", log_t::flag_t::CRITICAL, url.ip.c_str(), url.port);
-						/*
-						// Определяем тип протокола подключения
+						// Выполняем сброс кэша резолвера
+						this->dns.flush();
+						// Определяем тип подключения
 						switch((uint8_t) this->net.family){
 							// Если тип протокола подключения IPv4
-							case (uint8_t) family_t::IPV4: {
-								// Выполняем сброс кэша резолвера
-								this->dns4.flush();
+							case (uint8_t) family_t::IPV4:
 								// Добавляем бракованный IPv4 адрес в список адресов
-								this->dns4.setToBlackList(url.ip); 
-							} break;
+								this->dns.setToBlackList(AF_INET, url.ip); 
+							break;
 							// Если тип протокола подключения IPv6
-							case (uint8_t) family_t::IPV6: {
-								// Выполняем сброс кэша резолвера
-								this->dns6.flush();
+							case (uint8_t) family_t::IPV6:
 								// Добавляем бракованный IPv6 адрес в список адресов
-								this->dns6.setToBlackList(url.ip);
-							} break;
+								this->dns.setToBlackList(AF_INET6, url.ip);
+							break;
 						}
-						*/
 						// Выполняем отключение от сервера
 						this->close(ret.first->first);
 						// Выходим из функции
@@ -365,25 +313,21 @@ void awh::client::Core::connect(const size_t wid) noexcept {
 					wrk->status.work = worker_t::work_t::ALLOW;
 					// Устанавливаем статус подключения
 					wrk->status.real = worker_t::mode_t::DISCONNECT;
-					/*
+					// Выполняем сброс кэша резолвера
+					this->dns.flush();
 					// Определяем тип подключения
 					switch((uint8_t) this->net.family){
 						// Если тип протокола подключения IPv4
-						case (uint8_t) family_t::IPV4: {
-							// Выполняем сброс кэша резолвера
-							this->dns4.flush();
+						case (uint8_t) family_t::IPV4:
 							// Добавляем бракованный IPv4 адрес в список адресов
-							this->dns4.setToBlackList(url.ip); 
-						} break;
+							this->dns.setToBlackList(AF_INET, url.ip); 
+						break;
 						// Если тип протокола подключения IPv6
-						case (uint8_t) family_t::IPV6: {
-							// Выполняем сброс кэша резолвера
-							this->dns6.flush();
+						case (uint8_t) family_t::IPV6:
 							// Добавляем бракованный IPv6 адрес в список адресов
-							this->dns6.setToBlackList(url.ip);
-						} break;
+							this->dns.setToBlackList(AF_INET6, url.ip);
+						break;
 					}
-					*/
 					// Выводим сообщение об ошибке
 					if(!this->noinfo) this->log->print("%s", log_t::flag_t::INFO, "disconnected from the server");
 					// Выводим функцию обратного вызова
@@ -416,53 +360,19 @@ void awh::client::Core::reconnect(const size_t wid) noexcept {
 					wrk->status.wait = worker_t::mode_t::RECONNECT;
 					// Получаем URL параметры запроса
 					const uri_t::url_t & url = (wrk->isProxy() ? wrk->proxy.url : wrk->url);
-
-					
-					// Структура определяющая тип адреса
-					struct sockaddr_in serv_addr;
-
-					#if defined(_WIN32) || defined(_WIN64)
-						// Выполняем резолвинг доменного имени
-						struct hostent * server = gethostbyname(url.domain.c_str());
-					#else
-						// Выполняем резолвинг доменного имени
-						struct hostent * server = gethostbyname2(url.domain.c_str(), AF_INET);
-					#endif
-
-					// Заполняем структуру типа адреса нулями
-					memset(&serv_addr, 0, sizeof(serv_addr));
-					// Устанавливаем что удаленный адрес это ИНТЕРНЕТ
-					serv_addr.sin_family = AF_INET;
-					// Выполняем копирование данных типа подключения
-					memcpy(&serv_addr.sin_addr.s_addr, server->h_addr, server->h_length);
-					// Получаем IP адрес
-					char * ip = inet_ntoa(serv_addr.sin_addr);
-
-					printf("IP address: %s\n", ip);
-					
-					
-					const_cast <uri_t::url_t *> (&url)->ip = ip;
-					
-					
-
-					// Выполняем запуск системы
-					resolver(url.ip, wrk);
-
-					/*
 					// Определяем тип протокола подключения
 					switch((uint8_t) this->net.family){
 						// Если тип протокола подключения IPv4
 						case (uint8_t) family_t::IPV4:
 							// Выполняем резолвинг домена
-							wrk->did = this->dns4.resolve(wrk, (!url.domain.empty() ? url.domain : url.ip), AF_INET, &resolver);
+							wrk->did = this->dns.resolve(url.domain, AF_INET);
 						break;
 						// Если тип протокола подключения IPv6
 						case (uint8_t) family_t::IPV6:
 							// Выполняем резолвинг домена
-							wrk->did = this->dns6.resolve(wrk, (!url.domain.empty() ? url.domain : url.ip), AF_INET6, &resolver);
+							wrk->did = this->dns.resolve(url.domain, AF_INET6);
 						break;
 					}
-					*/
 				} break;
 				// Если тип протокола подключения unix-сокет
 				case (uint8_t) family_t::NIX:
@@ -561,25 +471,21 @@ void awh::client::Core::sendTimeout(const size_t aid) noexcept {
 			}
 			// Если необходимо поддерживать постоянное подключение
 			if(alive){
-				/*
+				// Добавляем базу событий для DNS резолвера
+				this->dns.base(this->dispatch.base);
 				// Определяем тип протокола подключения
 				switch((uint8_t) this->net.family){
 					// Если тип протокола подключения IPv4
-					case (uint8_t) family_t::IPV4: {
-						// Добавляем базу событий для DNS резолвера IPv4
-						this->dns4.setBase(this->dispatch.base);
+					case (uint8_t) family_t::IPV4:
 						// Выполняем установку нейм-серверов для DNS резолвера IPv4
-						this->dns4.replaceServers(this->net.v4.second);
-					} break;
+						this->dns.replace(AF_INET, this->net.v4.second);
+					break;
 					// Если тип протокола подключения IPv6
-					case (uint8_t) family_t::IPV6: {
-						// Добавляем базу событий для DNS резолвера IPv6
-						this->dns4.setBase(this->dispatch.base);
+					case (uint8_t) family_t::IPV6:
 						// Выполняем установку нейм-серверов для DNS резолвера IPv6
-						this->dns4.replaceServers(this->net.v4.second);
-					} break;
+						this->dns.replace(AF_INET6, this->net.v4.second);
+					break;
 				}
-				*/
 			}
 			// Переходим по всему списку воркеров
 			for(auto & worker : this->workers){
@@ -763,57 +669,39 @@ void awh::client::Core::open(const size_t wid) noexcept {
 						wrk->status.wait = worker_t::mode_t::CONNECT;
 						// Получаем URL параметры запроса
 						const uri_t::url_t & url = (wrk->isProxy() ? wrk->proxy.url : wrk->url);
-
-						
-						// Структура определяющая тип адреса
-						struct sockaddr_in serv_addr;
-
-						#if defined(_WIN32) || defined(_WIN64)
-							// Выполняем резолвинг доменного имени
-							struct hostent * server = gethostbyname(url.domain.c_str());
-						#else
-							// Выполняем резолвинг доменного имени
-							struct hostent * server = gethostbyname2(url.domain.c_str(), AF_INET);
-						#endif
-
-						// Заполняем структуру типа адреса нулями
-						memset(&serv_addr, 0, sizeof(serv_addr));
-						// Устанавливаем что удаленный адрес это ИНТЕРНЕТ
-						serv_addr.sin_family = AF_INET;
-						// Выполняем копирование данных типа подключения
-						memcpy(&serv_addr.sin_addr.s_addr, server->h_addr, server->h_length);
-						// Получаем IP адрес
-						char * ip = inet_ntoa(serv_addr.sin_addr);
-
-						printf("IP address: %s\n", ip);
-
-						const_cast <uri_t::url_t *> (&url)->ip = ip;
-						
-						
-						
-						
-						// Выполняем запуск системы
-						resolver(url.ip, wrk);
-
-						/*
 						// Если IP адрес не получен
-						if(url.ip.empty() && !url.domain.empty())
+						if(url.ip.empty() && !url.domain.empty()){
+							// Устанавливаем событие на получение данных с DNS сервера
+							this->dns.on(std::bind(&worker_t::resolving, wrk, _1, _2, _3));
 							// Определяем тип протокола подключения
 							switch((uint8_t) this->net.family){
 								// Если тип протокола подключения IPv4
 								case (uint8_t) family_t::IPV4:
-									// Выполняем резолвинг доменного имени
-									wrk->did = this->dns4.resolve(wrk, url.domain, AF_INET, &resolver);
+									// Выполняем резолвинг домена
+									wrk->did = this->dns.resolve(url.domain, AF_INET);
 								break;
 								// Если тип протокола подключения IPv6
 								case (uint8_t) family_t::IPV6:
-									// Выполняем резолвинг доменного имени
-									wrk->did = this->dns6.resolve(wrk, url.domain, AF_INET6, &resolver);
+									// Выполняем резолвинг домена
+									wrk->did = this->dns.resolve(url.domain, AF_INET6);
 								break;
 							}
 						// Выполняем запуск системы
-						else if(!url.ip.empty()) resolver(url.ip, wrk);
-						*/
+						} else if(!url.ip.empty()) {
+							// Определяем тип протокола подключения
+							switch((uint8_t) this->net.family){
+								// Если тип протокола подключения IPv4
+								case (uint8_t) family_t::IPV4:
+									// Выполняем резолвинг домена
+									this->resolving(wrk->wid, url.ip, AF_INET, 0);
+								break;
+								// Если тип протокола подключения IPv6
+								case (uint8_t) family_t::IPV6:
+									// Выполняем резолвинг домена
+									this->resolving(wrk->wid, url.ip, AF_INET6, 0);
+								break;
+							}
+						}
 					} break;
 					// Если тип протокола подключения unix-сокет
 					case (uint8_t) family_t::NIX:
@@ -976,15 +864,13 @@ void awh::client::Core::timeout(const size_t aid) noexcept {
 				const uri_t::url_t & url = (wrk->isProxy() ? wrk->proxy.url : wrk->url);
 				// Если данные ещё ни разу не получены
 				if(!wrk->acquisition && !url.ip.empty()){
-					/*
 					// Определяем тип протокола подключения
 					switch((uint8_t) this->net.family){
 						// Резолвер IPv4, добавляем бракованный IPv4 адрес в список адресов
-						case (uint8_t) family_t::IPV4: this->dns4.setToBlackList(url.ip); break;
+						case (uint8_t) family_t::IPV4: this->dns.setToBlackList(AF_INET, url.ip); break;
 						// Резолвер IPv6, добавляем бракованный IPv6 адрес в список адресов
-						case (uint8_t) family_t::IPV6: this->dns6.setToBlackList(url.ip); break;
+						case (uint8_t) family_t::IPV6: this->dns.setToBlackList(AF_INET6, url.ip); break;
 					}
-					*/
 				}			
 				// Выводим сообщение в лог, о таймауте подключения
 				this->log->print("timeout host %s [%s%d]", log_t::flag_t::WARNING, url.domain.c_str(), (!url.ip.empty() ? (url.ip + ":").c_str() : ""), url.port);
@@ -1036,23 +922,8 @@ void awh::client::Core::connected(const size_t aid) noexcept {
 					const uri_t::url_t & url = (wrk->isProxy() ? wrk->proxy.url : wrk->url);
 					// Получаем хост сервера
 					const string & host = (!url.ip.empty() ? url.ip : url.domain);
-
-					/*
-					// Определяем тип протокола подключения
-					switch((uint8_t) this->net.family){
-						// Резолвер IPv4, создаём резолвер
-						case (uint8_t) family_t::IPV4:
-							// Выполняем отмену ранее выполненных запросов DNS
-							this->dns4.cancel(wrk->did);
-						break;
-						// Резолвер IPv6, создаём резолвер
-						case (uint8_t) family_t::IPV6:
-							// Выполняем отмену ранее выполненных запросов DNS
-							this->dns6.cancel(wrk->did);
-						break;
-					}
-					*/
-
+					// Выполняем отмену ранее выполненных запросов DNS
+					this->dns.cancel(wrk->did);
 					// Запускаем чтение данных
 					this->enabled(engine_t::method_t::READ, it->first);
 					// Выводим в лог сообщение
@@ -1305,6 +1176,61 @@ void awh::client::Core::transfer(const engine_t::method_t method, const size_t a
 			this->disabled(engine_t::method_t::WRITE, it->first);
 			// Выполняем отключение от сервера
 			this->close(aid);
+		}
+	}
+}
+/**
+ * resolving Метод получения IP адреса доменного имени
+ * @param wid    идентификатор воркера
+ * @param ip     адрес интернет-подключения
+ * @param family тип интернет-протокола AF_INET, AF_INET6
+ * @param did    идентификатор DNS запроса
+ */
+void awh::client::Core::resolving(const size_t wid, const string & ip, const int family, const size_t did) noexcept {
+	// Если идентификатор воркера передан
+	if(wid > 0){
+		// Выполняем поиск воркера
+		auto it = this->workers.find(wid);
+		// Если воркер найден
+		if(it != this->workers.end()){
+			// Получаем объект воркера
+			worker_t * wrk = (worker_t *) const_cast <awh::worker_t *> (it->second);
+			// Если IP адрес получен
+			if(!ip.empty()){
+				// Если прокси-сервер активен
+				if(wrk->isProxy())
+					// Запоминаем полученный IP адрес для прокси-сервера
+					wrk->proxy.url.ip = ip;
+				// Запоминаем полученный IP адрес
+				else wrk->url.ip = ip;
+				// Определяем режим работы клиента
+				switch((uint8_t) wrk->status.wait){
+					// Если режим работы клиента - это подключение
+					case (uint8_t) worker_t::mode_t::CONNECT:
+						// Выполняем новое подключение к серверу
+						this->connect(wrk->wid);
+					break;
+					// Если режим работы клиента - это переподключение
+					case (uint8_t) worker_t::mode_t::RECONNECT:
+						// Выполняем ещё одну попытку переподключиться к серверу
+						this->createTimeout(wrk->wid, worker_t::mode_t::CONNECT);
+					break;
+				}
+				// Выходим из функции
+				return;
+			// Если IP адрес не получен но нужно поддерживать постоянное подключение
+			} else if(wrk->alive) {
+				// Если ожидание переподключения не остановлено ранее
+				if(wrk->status.wait != worker_t::mode_t::DISCONNECT)
+					// Выполняем ещё одну попытку переподключиться к серверу
+					this->createTimeout(wrk->wid, worker_t::mode_t::RECONNECT);
+				// Выходим из функции, чтобы попытаться подключиться ещё раз
+				return;
+			}
+			// Выводим функцию обратного вызова
+			if(wrk->callback.disconnect != nullptr)
+				// Выполняем функцию обратного вызова
+				wrk->callback.disconnect(0, wrk->wid, this);
 		}
 	}
 }

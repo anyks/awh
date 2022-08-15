@@ -151,13 +151,6 @@ namespace awh {
 				void sendMessage(const size_t wid, const size_t aid, const pid_t pid, const char * buffer, const size_t size) noexcept;
 			private:
 				/**
-				 * resolver Функция выполнения резолвинга домена
-				 * @param ip  полученный IP адрес
-				 * @param wrk объект воркера
-				 */
-				void resolver(const string & ip, worker_t * wrk) noexcept;
-			private:
-				/**
 				 * accept Функция подключения к серверу
 				 * @param fd  файловый дескриптор (сокет) подключившегося клиента
 				 * @param wid идентификатор воркера
@@ -201,6 +194,14 @@ namespace awh {
 				 * @param aid    идентификатор адъютанта
 				 */
 				void transfer(const engine_t::method_t method, const size_t aid) noexcept;
+				/**
+				 * resolving Метод получения IP адреса доменного имени
+				 * @param wid    идентификатор воркера
+				 * @param ip     адрес интернет-подключения
+				 * @param family тип интернет-протокола AF_INET, AF_INET6
+				 * @param did    идентификатор DNS запроса
+				 */
+				void resolving(const size_t wid, const string & ip, const int family, const size_t did) noexcept;
 			public:
 				/**
 				 * bandWidth Метод установки пропускной способности сети

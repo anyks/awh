@@ -108,6 +108,16 @@ void awh::worker_t::adj_t::timeout(ev::timer & timer, int revents) noexcept {
 	core->timeout(this->aid);
 }
 /**
+ * resolving Метод получения IP адреса доменного имени
+ * @param ip     адрес интернет-подключения
+ * @param family тип интернет-протокола AF_INET, AF_INET6
+ * @param did    идентификатор DNS запроса
+ */
+void awh::worker_t::resolving(const string & ip, const int family, const size_t did) noexcept {
+	// Выполняем передачу данных резолвинга
+	const_cast <core_t *> (this->core)->resolving(this->wid, ip, family, did);
+}
+/**
  * callback Функция обратного вызова
  * @param timer   объект события таймера
  * @param revents идентификатор события
@@ -531,16 +541,12 @@ void awh::Core::bind(Core * core) noexcept {
 		this->cores++;
 		// Устанавливаем флаг запуска
 		core->mode = true;
-		/*
-		// Добавляем базу событий для DNS резолвера IPv4
-		core->dns4.setBase(core->dispatch.base);
-		// Добавляем базу событий для DNS резолвера IPv6
-		core->dns6.setBase(core->dispatch.base);
+		// Добавляем базу событий для DNS резолвера
+		core->dns.base(core->dispatch.base);
 		// Выполняем установку нейм-серверов для DNS резолвера IPv4
-		core->dns4.replaceServers(core->net.v4.second);
+		core->dns.replace(AF_INET, core->net.v4.second);
 		// Выполняем установку нейм-серверов для DNS резолвера IPv6
-		core->dns6.replaceServers(core->net.v6.second);
-		*/
+		core->dns.replace(AF_INET6, core->net.v6.second);
 		// Выполняем разблокировку потока
 		core->_mtx.status.unlock();
 		// Выполняем запуск управляющей функции
@@ -581,12 +587,8 @@ void awh::Core::unbind(Core * core) noexcept {
 		core->close();
 		// Зануляем базу событий
 		core->dispatch.rebase(false);
-		/*
-		// Выполняем удаление модуля DNS резолвера IPv4
-		core->dns4.remove();
-		// Выполняем удаление модуля DNS резолвера IPv6
-		core->dns6.remove();
-		*/
+		// Выполняем удаление модуля DNS резолвера
+		core->dns.clear();
 		// Запускаем метод деактивации базы событий
 		core->closedown();
 	}
@@ -746,6 +748,20 @@ void awh::Core::transfer(const engine_t::method_t method, const size_t aid) noex
 	(void) method;
 }
 /**
+ * resolving Метод получения IP адреса доменного имени
+ * @param wid    идентификатор воркера
+ * @param ip     адрес интернет-подключения
+ * @param family тип интернет-протокола AF_INET, AF_INET6
+ * @param did    идентификатор DNS запроса
+ */
+void awh::Core::resolving(const size_t wid, const string & ip, const int family, const size_t did) noexcept {
+	// Экранируем ошибку неиспользуемой переменной
+	(void) wid;
+	(void) ip;
+	(void) family;
+	(void) did;
+}
+/**
  * bandWidth Метод установки пропускной способности сети
  * @param aid   идентификатор адъютанта
  * @param read  пропускная способность на чтение (bps, kbps, Mbps, Gbps)
@@ -811,16 +827,12 @@ void awh::Core::rebase() noexcept {
 		this->_sig.base(this->dispatch.base);
 		// Выполняем запуск отслеживания сигналов
 		this->_sig.start();
-		/*
-		// Добавляем базу событий для DNS резолвера IPv4
-		this->dns4.setBase(this->dispatch.base);
-		// Добавляем базу событий для DNS резолвера IPv6
-		this->dns6.setBase(this->dispatch.base);
+		// Добавляем базу событий для DNS резолвера
+		this->dns.base(this->dispatch.base);
 		// Выполняем установку нейм-серверов для DNS резолвера IPv4
-		this->dns4.replaceServers(this->net.v4.second);
+		this->dns.replace(AF_INET, this->net.v4.second);
 		// Выполняем установку нейм-серверов для DNS резолвера IPv6
-		this->dns6.replaceServers(this->net.v6.second);
-		*/
+		this->dns.replace(AF_INET6, this->net.v6.second);
 		// Если список таймеров получен
 		if(!mainTimers.empty()){
 			// Переходим по всему списку таймеров
@@ -1535,18 +1547,38 @@ void awh::Core::network(const vector <string> & ip, const vector <string> & ns, 
 			// Если IP адреса переданы, устанавливаем их
 			if(!ip.empty()) this->net.v4.first.assign(ip.cbegin(), ip.cend());
 			// Если сервера имён переданы, устанавливаем их
-			if(!ns.empty()) this->net.v4.second.assign(ns.cbegin(), ns.cend());
-			// Выполняем установку нейм-серверов для DNS резолвера IPv4
-			// this->dns4.replaceServers(this->net.v4.second);
+			if(!ns.empty()){
+				// Создаём список серверов имён
+				vector <dns_t::serv_t> servers(ns.size());
+				// Переходим по всему списку серверов
+				for(uint8_t i = 0; i < (uint8_t) ns.size(); i++){
+					// Заполняем список серверов
+					servers[i].host = ns[i];
+				}
+				// Устанавливаем полученный список серверов имён
+				this->net.v4.second.assign(servers.cbegin(), servers.cend());
+				// Выполняем установку нейм-серверов для DNS резолвера IPv4
+				this->dns.replace(AF_INET, this->net.v4.second);
+			}
 		} break;
 		// Если - это интернет-протокол IPv6
 		case (uint8_t) family_t::IPV6: {
 			// Если IP адреса переданы, устанавливаем их
 			if(!ip.empty()) this->net.v6.first.assign(ip.cbegin(), ip.cend());
 			// Если сервера имён переданы, устанавливаем их
-			if(!ns.empty()) this->net.v6.second.assign(ns.cbegin(), ns.cend());
-			// Выполняем установку нейм-серверов для DNS резолвера IPv6
-			// this->dns6.replaceServers(this->net.v6.second);
+			if(!ns.empty()){
+				// Создаём список серверов имён
+				vector <dns_t::serv_t> servers(ns.size());
+				// Переходим по всему списку серверов
+				for(uint8_t i = 0; i < (uint8_t) ns.size(); i++){
+					// Заполняем список серверов
+					servers[i].host = ns[i];
+				}
+				// Устанавливаем полученный список серверов имён
+				this->net.v6.second.assign(servers.cbegin(), servers.cend());
+				// Выполняем установку нейм-серверов для DNS резолвера IPv6
+				this->dns.replace(AF_INET6, this->net.v6.second);
+			}
 		} break;
 	}
 }
@@ -1558,9 +1590,11 @@ void awh::Core::network(const vector <string> & ip, const vector <string> & ns, 
  * @param sonet  тип сокета подключения (TCP / UDP)
  */
 awh::Core::Core(const fmk_t * fmk, const log_t * log, const family_t family, const sonet_t sonet) noexcept :
- pid(getpid()), nwk(fmk), uri(fmk, &nwk), engine(fmk, log, &uri), /* dns4(fmk, log, &nwk), dns6(fmk, log, &nwk),*/
- dispatch(this), _sig(dispatch.base), status(status_t::STOP), type(engine_t::type_t::CLIENT), mode(false), noinfo(false),
- persist(false), cores(0), servName(AWH_SHORT_NAME), _persIntvl(PERSIST_INTERVAL), fmk(fmk), log(log), _fn(nullptr) {
+ pid(getpid()), nwk(fmk), uri(fmk, &nwk), engine(fmk, log, &uri),
+ dns(fmk, log, &nwk), dispatch(this), _sig(dispatch.base),
+ status(status_t::STOP), type(engine_t::type_t::CLIENT), mode(false),
+ noinfo(false), persist(false), cores(0), servName(AWH_SHORT_NAME),
+ _persIntvl(PERSIST_INTERVAL), fmk(fmk), log(log), _fn(nullptr) {
 	// Устанавливаем тип сокета
 	this->net.sonet = sonet;
 	// Устанавливаем тип активного интернет-подключения
@@ -1569,25 +1603,8 @@ awh::Core::Core(const fmk_t * fmk, const log_t * log, const family_t family, con
 	if(this->net.family == family_t::NIX)
 		// Выполняем активацию адреса файла сокета
 		this->unixSocket();
-	/*
-	// Определяем тип интернет-протокола
-	switch((uint8_t) this->net.family){
-		// Если - это интернет-протокол IPv4
-		case (uint8_t) family_t::IPV4: {
-			// Добавляем базу событий для DNS резолвера IPv4
-			this->dns4.setBase(this->dispatch.base);
-			// Выполняем установку нейм-серверов для DNS резолвера IPv4
-			this->dns4.replaceServers(this->net.v4.second);
-		} break;
-		// Если - это интернет-протокол IPv6
-		case (uint8_t) family_t::IPV6: {
-			// Добавляем базу событий для DNS резолвера IPv6
-			this->dns4.setBase(this->dispatch.base);
-			// Выполняем установку нейм-серверов для DNS резолвера IPv6
-			this->dns4.replaceServers(this->net.v4.second);
-		} break;
-	}
-	*/
+	// Устанавливаем базу событий для DNS резолвера
+	this->dns.base(this->dispatch.base);
 	/**
 	 * Методы только для OS Windows
 	 */
@@ -1622,12 +1639,8 @@ awh::Core::Core(const fmk_t * fmk, const log_t * log, const family_t family, con
 awh::Core::~Core() noexcept {
 	// Выполняем остановку сервиса
 	this->stop();
-	/*
-	// Выполняем удаление модуля DNS резолвера IPv4
-	this->dns4.remove();
-	// Выполняем удаление модуля DNS резолвера IPv6
-	this->dns6.remove();
-	*/
+	// Выполняем удаление модуля DNS резолвера
+	this->dns.clear();
 	// Выполняем блокировку потока
 	this->_mtx.status.lock();
 	// Выполняем удаление активных таймеров

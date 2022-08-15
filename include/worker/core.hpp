@@ -318,6 +318,14 @@ namespace awh {
 			const log_t * log;
 			// Создаём объект фреймворка
 			const Core * core;
+		private:
+			/**
+			 * resolving Метод получения IP адреса доменного имени
+			 * @param ip     адрес интернет-подключения
+			 * @param family тип интернет-протокола AF_INET, AF_INET6
+			 * @param did    идентификатор DNS запроса
+			 */
+			void resolving(const string & ip, const int family, const size_t did) noexcept;
 		public:
 			/**
 			 * clear Метод очистки

@@ -158,15 +158,15 @@ namespace awh {
 				// Адрес файла unix-сокета
 				string filename;
 				// Параметры для сети IPv4
-				pair <vector <string>, vector <string>> v4;
+				pair <vector <string>, vector <dns_t::serv_t>> v4;
 				// Параметры для сети IPv6
-				pair <vector <string>, vector <string>> v6;
+				pair <vector <string>, vector <dns_t::serv_t>> v6;
 				/**
 				 * Network Конструктор
 				 */
 				Network() noexcept :
 				 sonet(sonet_t::TCP), family(family_t::IPV4), filename(""),
-				 v4({{"0.0.0.0"}, IPV4_RESOLVER}), v6({{"[::0]"}, IPV6_RESOLVER}) {}
+				 v4({{"0.0.0.0"}, {}}), v6({{"[::0]"}, {}}) {}
 			} net_t;
 		private:
 			/**
@@ -258,14 +258,10 @@ namespace awh {
 			uri_t uri;
 			// Сетевые параметры
 			net_t net;
+			// Создаём объект DNS резолвера
+			dns_t dns;
 			// Создаём объект для работы с актуатором
 			engine_t engine;
-			/*
-			// Создаём объект DNS IPv4 резолвера
-			dns_t dns4;
-			// Создаём объект DNS IPv6 резолвера
-			dns_t dns6;
-			*/
 			// Объект для работы с чтением базы событий
 			dispatch_t dispatch;
 		private:
@@ -306,10 +302,6 @@ namespace awh {
 		private:
 			// Интервал персистентного таймера в миллисекундах
 			time_t _persIntvl;
-
-		protected:
-			dns_t * dns = nullptr;
-
 		protected:
 			// Создаём объект фреймворка
 			const fmk_t * fmk;
@@ -426,6 +418,14 @@ namespace awh {
 			 * @param aid    идентификатор адъютанта
 			 */
 			virtual void transfer(const engine_t::method_t method, const size_t aid) noexcept;
+			/**
+			 * resolving Метод получения IP адреса доменного имени
+			 * @param wid    идентификатор воркера
+			 * @param ip     адрес интернет-подключения
+			 * @param family тип интернет-протокола AF_INET, AF_INET6
+			 * @param did    идентификатор DNS запроса
+			 */
+			virtual void resolving(const size_t wid, const string & ip, const int family, const size_t did) noexcept;
 		public:
 			/**
 			 * bandWidth Метод установки пропускной способности сети

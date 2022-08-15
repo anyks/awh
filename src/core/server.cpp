@@ -439,137 +439,6 @@ void awh::server::Core::sendMessage(const size_t wid, const size_t aid, const pi
 	}
 }
 /**
- * resolver Функция выполнения резолвинга домена
- * @param ip  полученный IP адрес
- * @param wrk объект воркера
- */
-void awh::server::Core::resolver(const string & ip, worker_t * wrk) noexcept {
-	// Получаем объект ядра подключения
-	core_t * core = (core_t *) const_cast <awh::core_t *> (wrk->core);
-	// Если IP адрес получен
-	if(!ip.empty()){
-		// sudo lsof -i -P | grep 1080
-		// Обновляем хост сервера
-		wrk->host = ip;
-		// Определяем тип сокета
-		switch((uint8_t) core->net.sonet){
-			// Если тип сокета установлен как UDP
-			case (uint8_t) sonet_t::UDP: {
-				// Если разрешено выводить информационные сообщения
-				if(!core->noinfo){
-					// Если unix-сокет используется
-					if(core->net.family == family_t::NIX)
-						// Выводим информацию о запущенном сервере на unix-сокете
-						core->log->print("run server [%s]", log_t::flag_t::INFO, core->net.filename.c_str());
-					// Если unix-сокет не используется, выводим сообщение о запущенном сервере за порту
-					else core->log->print("run server [%s:%u]", log_t::flag_t::INFO, wrk->host.c_str(), wrk->port);
-				}
-				// Получаем тип операционной системы
-				const fmk_t::os_t os = core->fmk->os();
-				// Если операционная система является Windows или количество процессов всего один
-				if((this->_interception = (this->_cluster.count(wrk->wid) == 1)))
-					// Выполняем активацию сервера
-					core->accept(1, wrk->wid);
-				// Выполняем запуск кластера
-				else this->_cluster.start(wrk->wid);
-				// Выходим из функции
-				return;
-			} break;
-			// Для всех остальных типов сокетов
-			default: {
-				// Определяем тип протокола подключения
-				switch((uint8_t) core->net.family){
-					// Если тип протокола подключения IPv4
-					case (uint8_t) family_t::IPV4:
-						// Устанавливаем сеть, для выхода в интернет
-						wrk->addr.network.assign(
-							core->net.v4.first.begin(),
-							core->net.v4.first.end()
-						);
-					break;
-					// Если тип протокола подключения IPv6
-					case (uint8_t) family_t::IPV6:
-						// Устанавливаем сеть, для выхода в интернет
-						wrk->addr.network.assign(
-							core->net.v6.first.begin(),
-							core->net.v6.first.end()
-						);
-					break;
-				}
-				// Определяем тип сокета
-				switch((uint8_t) core->net.sonet){
-					// Если тип сокета установлен как UDP TLS
-					case (uint8_t) sonet_t::DTLS:
-						// Устанавливаем параметры сокета
-						wrk->addr.sonet(SOCK_DGRAM, IPPROTO_UDP);
-					break;
-					/**
-					 * Если операционной системой является Linux или FreeBSD
-					 */
-					#if defined(__linux__) || defined(__FreeBSD__)
-						// Если тип сокета установлен как SCTP
-						case (uint8_t) sonet_t::SCTP:
-							// Устанавливаем параметры сокета
-							wrk->addr.sonet(SOCK_STREAM, IPPROTO_SCTP);
-						break;
-					#endif
-					// Для всех остальных типов сокетов
-					default:
-						// Устанавливаем параметры сокета
-						wrk->addr.sonet(SOCK_STREAM, IPPROTO_TCP);
-				}
-				// Если unix-сокет используется
-				if(core->net.family == family_t::NIX)
-					// Выполняем инициализацию сокета
-					wrk->addr.init(core->net.filename, engine_t::type_t::SERVER);
-				// Если unix-сокет не используется, выполняем инициализацию сокета
-				else wrk->addr.init(wrk->host, wrk->port, (core->net.family == family_t::IPV6 ? AF_INET6 : AF_INET), engine_t::type_t::SERVER, core->_ipV6only);
-				// Если сокет подключения получен
-				if(wrk->addr.fd > -1){
-					// Если повесить прослушку на порт не вышло, выходим из условия
-					if(!wrk->addr.list()) break;
-					// Если разрешено выводить информационные сообщения
-					if(!core->noinfo){
-						// Если unix-сокет используется
-						if(core->net.family == family_t::NIX)
-							// Выводим информацию о запущенном сервере на unix-сокете
-							core->log->print("run server [%s]", log_t::flag_t::INFO, core->net.filename.c_str());
-						// Если unix-сокет не используется, выводим сообщение о запущенном сервере за порту
-						else core->log->print("run server [%s:%u]", log_t::flag_t::INFO, wrk->host.c_str(), wrk->port);
-					}
-					// Получаем тип операционной системы
-					const fmk_t::os_t os = core->fmk->os();
-					// Если операционная система является Windows или количество процессов всего один
-					if((this->_interception = (this->_cluster.count(wrk->wid) == 1))){
-						// Устанавливаем базу событий
-						wrk->io.set(this->dispatch.base);
-						// Устанавливаем событие на чтение данных подключения
-						wrk->io.set <worker_t, &worker_t::accept> (wrk);
-						// Устанавливаем сокет для чтения
-						wrk->io.set(wrk->addr.fd, ev::READ);
-						// Запускаем чтение данных с клиента
-						wrk->io.start();
-					// Выполняем запуск кластера
-					} else this->_cluster.start(wrk->wid);
-					// Выходим из функции
-					return;
-				// Если сокет не создан, выводим в консоль информацию
-				} else {
-					// Если unix-сокет используется
-					if(core->net.family == family_t::NIX)
-						// Выводим информацию об незапущенном сервере на unix-сокете
-						core->log->print("server cannot be started [%s]", log_t::flag_t::CRITICAL, core->net.filename.c_str());
-					// Если unix-сокет не используется, выводим сообщение об незапущенном сервере за порту
-					else core->log->print("server cannot be started [%s:%u]", log_t::flag_t::CRITICAL, wrk->host.c_str(), wrk->port);
-				}
-			}
-		}
-	// Если IP адрес сервера не получен, выводим в консоль информацию
-	} else core->log->print("broken host server %s", log_t::flag_t::CRITICAL, wrk->host.c_str());
-	// Останавливаем работу сервера
-	core->stop();
-}
-/**
  * accept Функция подключения к серверу
  * @param fd  файловый дескриптор (сокет) подключившегося клиента
  * @param wid идентификатор воркера
@@ -1008,68 +877,38 @@ void awh::server::Core::run(const size_t wid) noexcept {
 					break;
 				}
 			}
+			// Устанавливаем событие на получение данных с DNS сервера
+			this->dns.on(std::bind(&worker_t::resolving, wrk, _1, _2, _3));
+			// Определяем тип протокола подключения
+			switch((uint8_t) this->net.family){
+				// Если тип протокола подключения IPv4
+				case (uint8_t) family_t::IPV4:
+					// Выполняем резолвинг домена
+					this->dns.resolve(wrk->host, AF_INET);
+				break;
+				// Если тип протокола подключения IPv6
+				case (uint8_t) family_t::IPV6:
+					// Выполняем резолвинг домена
+					this->dns.resolve(wrk->host, AF_INET6);
+				break;
+			}
 
-
-			this->dns = new dns_t(this->fmk, this->log, &this->nwk, this->dispatch.base);
-
-			
-			this->dns->on([](const string & ip, const int family, const size_t did) noexcept {
+			this->dns.on([](const string & ip, const int family, const size_t did) noexcept {
 				cout << " ============================= " << ip << endl;
 			});
 
-			cout << " --------------------- " << this->dns->resolve("testnet.binance.vision", AF_INET) << endl;
+			cout << " --------------------- " << this->dns.resolve("testnet.binance.vision", AF_INET) << endl;
 			
-			// cout << " --------------------- " << this->dns->resolve("api.binance.com", AF_INET) << endl;
+			// cout << " --------------------- " << this->dns.resolve("api.binance.com", AF_INET) << endl;
 
 			
 			{
 				dns_t::serv_t serv;
 				serv.host = "ns1.yandex.net";
 
-				this->dns->server(AF_INET, serv);
+				this->dns.server(AF_INET, serv);
 			}
-			
-			
 
-			/*
-			// Структура определяющая тип адреса
-			struct sockaddr_in serv_addr;
-
-			#if defined(_WIN32) || defined(_WIN64)
-				// Выполняем резолвинг доменного имени
-				struct hostent * server = gethostbyname(wrk->host.c_str());
-			#else
-				// Выполняем резолвинг доменного имени
-				struct hostent * server = gethostbyname2(wrk->host.c_str(), AF_INET);
-			#endif
-
-			// Заполняем структуру типа адреса нулями
-			memset(&serv_addr, 0, sizeof(serv_addr));
-			// Устанавливаем что удаленный адрес это ИНТЕРНЕТ
-			serv_addr.sin_family = AF_INET;
-			// Выполняем копирование данных типа подключения
-			memcpy(&serv_addr.sin_addr.s_addr, server->h_addr, server->h_length);
-			// Получаем IP адрес
-			char * ip = inet_ntoa(serv_addr.sin_addr);
-
-			printf("IP address: %s\n", ip);
-
-			// Выполняем запуск системы
-			resolver(ip, wrk);
-			*/
-
-			// Выполняем запуск системы
-			resolver(wrk->host, wrk);
-
-			/*
-			// Определяем тип подключения
-			switch(this->net.family){
-				// Резолвер IPv4, создаём резолвер
-				case AF_INET: this->dns4.resolve(wrk, wrk->host, AF_INET, resolver); break;
-				// Резолвер IPv6, создаём резолвер
-				case AF_INET6: this->dns6.resolve(wrk, wrk->host, AF_INET6, resolver); break;
-			}
-			*/
 		}
 	}
 }
@@ -1374,6 +1213,147 @@ void awh::server::Core::transfer(const engine_t::method_t method, const size_t a
 					// Запускаем чтение данных с клиента
 					adj->bev.event.read.start();
 			} break;
+		}
+	}
+}
+/**
+ * resolving Метод получения IP адреса доменного имени
+ * @param wid    идентификатор воркера
+ * @param ip     адрес интернет-подключения
+ * @param family тип интернет-протокола AF_INET, AF_INET6
+ * @param did    идентификатор DNS запроса
+ */
+void awh::server::Core::resolving(const size_t wid, const string & ip, const int family, const size_t did) noexcept {
+	// Если идентификатор воркера передан
+	if(wid > 0){
+		// Выполняем поиск воркера
+		auto it = this->workers.find(wid);
+		// Если воркер найден, устанавливаем максимальное количество одновременных подключений
+		if(it != this->workers.end()){
+			// Получаем объект подключения
+			worker_t * wrk = (worker_t *) const_cast <awh::worker_t *> (it->second);
+			// Если IP адрес получен
+			if(!ip.empty()){
+				// sudo lsof -i -P | grep 1080
+				// Обновляем хост сервера
+				wrk->host = ip;
+				// Определяем тип сокета
+				switch((uint8_t) this->net.sonet){
+					// Если тип сокета установлен как UDP
+					case (uint8_t) sonet_t::UDP: {
+						// Если разрешено выводить информационные сообщения
+						if(!this->noinfo){
+							// Если unix-сокет используется
+							if(this->net.family == family_t::NIX)
+								// Выводим информацию о запущенном сервере на unix-сокете
+								this->log->print("run server [%s]", log_t::flag_t::INFO, this->net.filename.c_str());
+							// Если unix-сокет не используется, выводим сообщение о запущенном сервере за порту
+							else this->log->print("run server [%s:%u]", log_t::flag_t::INFO, wrk->host.c_str(), wrk->port);
+						}
+						// Получаем тип операционной системы
+						const fmk_t::os_t os = this->fmk->os();
+						// Если операционная система является Windows или количество процессов всего один
+						if((this->_interception = (this->_cluster.count(wrk->wid) == 1)))
+							// Выполняем активацию сервера
+							this->accept(1, wrk->wid);
+						// Выполняем запуск кластера
+						else this->_cluster.start(wrk->wid);
+						// Выходим из функции
+						return;
+					} break;
+					// Для всех остальных типов сокетов
+					default: {
+						// Определяем тип протокола подключения
+						switch((uint8_t) this->net.family){
+							// Если тип протокола подключения IPv4
+							case (uint8_t) family_t::IPV4:
+								// Устанавливаем сеть, для выхода в интернет
+								wrk->addr.network.assign(
+									this->net.v4.first.begin(),
+									this->net.v4.first.end()
+								);
+							break;
+							// Если тип протокола подключения IPv6
+							case (uint8_t) family_t::IPV6:
+								// Устанавливаем сеть, для выхода в интернет
+								wrk->addr.network.assign(
+									this->net.v6.first.begin(),
+									this->net.v6.first.end()
+								);
+							break;
+						}
+						// Определяем тип сокета
+						switch((uint8_t) this->net.sonet){
+							// Если тип сокета установлен как UDP TLS
+							case (uint8_t) sonet_t::DTLS:
+								// Устанавливаем параметры сокета
+								wrk->addr.sonet(SOCK_DGRAM, IPPROTO_UDP);
+							break;
+							/**
+							 * Если операционной системой является Linux или FreeBSD
+							 */
+							#if defined(__linux__) || defined(__FreeBSD__)
+								// Если тип сокета установлен как SCTP
+								case (uint8_t) sonet_t::SCTP:
+									// Устанавливаем параметры сокета
+									wrk->addr.sonet(SOCK_STREAM, IPPROTO_SCTP);
+								break;
+							#endif
+							// Для всех остальных типов сокетов
+							default:
+								// Устанавливаем параметры сокета
+								wrk->addr.sonet(SOCK_STREAM, IPPROTO_TCP);
+						}
+						// Если unix-сокет используется
+						if(this->net.family == family_t::NIX)
+							// Выполняем инициализацию сокета
+							wrk->addr.init(this->net.filename, engine_t::type_t::SERVER);
+						// Если unix-сокет не используется, выполняем инициализацию сокета
+						else wrk->addr.init(wrk->host, wrk->port, (this->net.family == family_t::IPV6 ? AF_INET6 : AF_INET), engine_t::type_t::SERVER, this->_ipV6only);
+						// Если сокет подключения получен
+						if(wrk->addr.fd > -1){
+							// Если повесить прослушку на порт не вышло, выходим из условия
+							if(!wrk->addr.list()) break;
+							// Если разрешено выводить информационные сообщения
+							if(!this->noinfo){
+								// Если unix-сокет используется
+								if(this->net.family == family_t::NIX)
+									// Выводим информацию о запущенном сервере на unix-сокете
+									this->log->print("run server [%s]", log_t::flag_t::INFO, this->net.filename.c_str());
+								// Если unix-сокет не используется, выводим сообщение о запущенном сервере за порту
+								else this->log->print("run server [%s:%u]", log_t::flag_t::INFO, wrk->host.c_str(), wrk->port);
+							}
+							// Получаем тип операционной системы
+							const fmk_t::os_t os = this->fmk->os();
+							// Если операционная система является Windows или количество процессов всего один
+							if((this->_interception = (this->_cluster.count(wrk->wid) == 1))){
+								// Устанавливаем базу событий
+								wrk->io.set(this->dispatch.base);
+								// Устанавливаем событие на чтение данных подключения
+								wrk->io.set <worker_t, &worker_t::accept> (wrk);
+								// Устанавливаем сокет для чтения
+								wrk->io.set(wrk->addr.fd, ev::READ);
+								// Запускаем чтение данных с клиента
+								wrk->io.start();
+							// Выполняем запуск кластера
+							} else this->_cluster.start(wrk->wid);
+							// Выходим из функции
+							return;
+						// Если сокет не создан, выводим в консоль информацию
+						} else {
+							// Если unix-сокет используется
+							if(this->net.family == family_t::NIX)
+								// Выводим информацию об незапущенном сервере на unix-сокете
+								this->log->print("server cannot be started [%s]", log_t::flag_t::CRITICAL, this->net.filename.c_str());
+							// Если unix-сокет не используется, выводим сообщение об незапущенном сервере за порту
+							else this->log->print("server cannot be started [%s:%u]", log_t::flag_t::CRITICAL, wrk->host.c_str(), wrk->port);
+						}
+					}
+				}
+			// Если IP адрес сервера не получен, выводим в консоль информацию
+			} else this->log->print("broken host server %s", log_t::flag_t::CRITICAL, wrk->host.c_str());
+			// Останавливаем работу сервера
+			this->stop();
 		}
 	}
 }
