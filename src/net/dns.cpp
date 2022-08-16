@@ -100,7 +100,7 @@ void awh::DNS::Worker::response(ev::io & io, int revents) noexcept {
 		// Выполняем перебор всех полученных записей
 		for(u_short i = 0; i < count; ++i){
 			// Выполняем извлечение названия записи
-			name[i] = this->join(this->extract(buffer, size));
+			name[i] = this->join((const char *) this->extract(buffer, size).data());
 			// Увеличиваем размер полученных данных
 			size += 2;
 			// Создаём части флагов вопроса пакета ответа
@@ -125,7 +125,7 @@ void awh::DNS::Worker::response(ev::io & io, int revents) noexcept {
 			// Если получено каноническое имя
 			if(ntohs(rrflags->rtype) == 5){
 				// Выполняем извлечение значение записи
-				rdata[i] = this->join(this->extract(buffer, size));
+				rdata[i] = this->join((const char *) this->extract(buffer, size).data());
 				// Устанавливаем тип полученных данных
 				type[i] = ntohs(rrflags->rtype);
 			}
@@ -262,11 +262,11 @@ void awh::DNS::Worker::timeout(ev::timer & timer, int revents) noexcept {
  * @param domain доменное имя для восстановления
  * @return       восстановленное доменное имя
  */
-string awh::DNS::Worker::join(const string & domain) const noexcept {
+string awh::DNS::Worker::join(const char * domain) const noexcept {
 	// Результат работы функции
 	string result = "";
 	// Если доменное имя передано
-	if(!domain.empty()){
+	if(domain != nullptr){
 		// Создаём итератор перебора
 		int i = 0;
 		// Буфер пакета данных
@@ -274,7 +274,7 @@ string awh::DNS::Worker::join(const string & domain) const noexcept {
 		// Выполняем зануление буфера данных
 		memset(buffer, 0, sizeof(buffer));
 		// Копируем полученное доменное имя
-		memcpy(buffer, domain.data(), sizeof(buffer));
+		memcpy(buffer, domain, sizeof(buffer));
 		// Выполняем перебор полученного доменного имени
 		for(i = 0; i < strlen((const char *) buffer); ++i){
 			// Получаем числовой идентификатор символа
@@ -302,44 +302,27 @@ string awh::DNS::Worker::join(const string & domain) const noexcept {
  * @param domain доменное имя для разбивки
  * @return       разбитое доменное имя
  */
-string awh::DNS::Worker::split(const string & domain) const noexcept {
+vector <u_char> awh::DNS::Worker::split(const string & domain) const noexcept {
 	// Результат работы функции
-	string result = "";
+	vector <u_char> result;
 	// Если доменное имя передано
 	if(!domain.empty()){
-		// Буфер пакета данных
-		u_char buffer[254];
-		// Позиция в строке и её размер
-		int pos = 0, len = 0;
-		// Выполняем зануление буфера данных
-		memset(buffer, 0, sizeof(buffer));
-		// Получаем доменное имя
-		char * str = const_cast <char *> (domain.c_str());
-		// Выполняем поиск точки в доменном имени
-		strcat(str, ".");
-		// Переходим по всему домену
-		for(int i = 0; i < (int) strlen(str); ++i){
-			// Если найдена точка разделитель
-			if(str[i] == '.'){
-				// Устанавливаем значение символа
-				buffer[pos] = (i - len);
-				// Выполняем увеличение позиции
-				++pos;
-				// Записываем оставшиеся символы
-				for(; len < i; ++len){
-					// Копируем оставшиеся символы
-					buffer[pos] = str[len];
-					// Выполняем увеличение позиции
-					++pos;
-				}
-				// Увеличиваем длину названия
-				len++;
+		// Секции доменного имени
+		vector <wstring> sections;
+		// Выполняем сплит доменного имени
+		this->_dns->_fmk->split(domain, ".", sections);
+		// Если секции доменного имени получены
+		if(!sections.empty()){
+			// Переходим по всему списку секций
+			for(auto & section : sections){
+				// Добавляем в буфер данных размер записи
+				result.push_back((u_char) section.size());
+				// Получаем строку для добавления в буфер данных
+				const string & data = this->_dns->_fmk->convert(section);
+				// Добавляем в буфер данные секции
+				result.insert(result.end(), data.begin(), data.end());
 			}
 		}
-		// Устанавливаем конец строки
-		buffer[pos] = '\0';
-		// Выполняем получение результата
-		result = (char *) move(buffer);
 	}
 	// Выводим результат
 	return result;
@@ -350,17 +333,15 @@ string awh::DNS::Worker::split(const string & domain) const noexcept {
  * @param pos  позиция в буфере данных
  * @return     запись в текстовом виде из ответа DNS
  */
-string awh::DNS::Worker::extract(u_char * data, const size_t pos) const noexcept {
+vector <u_char> awh::DNS::Worker::extract(u_char * data, const size_t pos) const noexcept {
 	// Результат работы функции
-	string result = "";
+	vector <u_char> result;
 	// Если данные переданы
 	if(data != nullptr){
 		// Устанавливаем итератор перебора
 		int j = 0;
-		// Буфер пакета данных
-		u_char buffer[254];
-		// Выполняем зануление буфера данных
-		memset(buffer, 0, sizeof(buffer));
+		// Перераспределяем результирующий буфер
+		result.resize(254, 0);
 		// Получаем временное значение буфера данных
 		u_char * temp = (u_char *) &data[pos];
 		// Выполняем перебор полученного буфера данных
@@ -374,7 +355,7 @@ string awh::DNS::Worker::extract(u_char * data, const size_t pos) const noexcept
 			// Если значение не найдено
 			} else {
 				// Устанавливаем новое значение буфера
-				buffer[j] = (* temp);
+				result[j] = (* temp);
 				// Увеличивам значение итератора
 				++j;
 				// Увеличивам значение в буфере
@@ -382,9 +363,7 @@ string awh::DNS::Worker::extract(u_char * data, const size_t pos) const noexcept
 			}
 		}
 		// Устанавливаем конец строки
-		buffer[j] = '\0';
-		// Выполняем получение результата
-		result = (char *) move(buffer);
+		result[j] = '\0';
 	}
 	// Выводим результат
 	return result;
@@ -508,7 +487,7 @@ bool awh::DNS::Worker::request(const string & domain) noexcept {
 					// Получаем размер запроса
 					size_t size = sizeof(head_t);
 					// Получаем доменное имя в нужном формате
-					const string & domain = this->split(this->_domain);
+					const auto & domain = this->split(this->_domain);
 					// Выполняем копирование домена
 					memcpy(&buffer[size], domain.data(), domain.size());
 					// Увеличиваем размер запроса

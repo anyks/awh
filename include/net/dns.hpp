@@ -261,20 +261,21 @@ namespace awh {
 					 * @param domain доменное имя для восстановления
 					 * @return       восстановленное доменное имя
 					 */
-					string join(const string & domain) const noexcept;
+					string join(const char * domain) const noexcept;
 					/**
 					 * split Метод разбивки доменного имени
 					 * @param domain доменное имя для разбивки
 					 * @return       разбитое доменное имя
 					 */
-					string split(const string & domain) const noexcept;
+					vector <u_char> split(const string & domain) const noexcept;
+				private:
 					/**
 					 * extract Метод извлечения записи из ответа DNS
 					 * @param data буфер данных из которого нужно извлечь запись
 					 * @param pos  позиция в буфере данных
 					 * @return     запись в текстовом виде из ответа DNS
 					 */
-					string extract(u_char * data, const size_t pos) const noexcept;
+					vector <u_char> extract(u_char * data, const size_t pos) const noexcept;
 				public:
 					/**
 					 * close Метод закрытия подключения
