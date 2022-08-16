@@ -137,16 +137,20 @@ bool awh::Engine::Address::close() noexcept {
 		 * Если операционной системой является Windows
 		 */
 		#if defined(_WIN32) || defined(_WIN64)
-			// Запрещаем работу с сокетом
-			// shutdown(this->fd, SD_BOTH);
+			// Если тип сокета не диграммы
+			if(this->_type != SOCK_DGRAM)
+				// Запрещаем работу с сокетом
+				shutdown(this->fd, SD_BOTH);
 			// Выполняем закрытие сокета
 			closesocket(this->fd);
 		/**
 		 * Если операционной системой является Nix-подобная
 		 */
 		#else
-			// Запрещаем работу с сокетом
-			shutdown(this->fd, SHUT_RDWR);
+			// Если тип сокета не диграммы
+			if(this->_type != SOCK_DGRAM)
+				// Запрещаем работу с сокетом
+				shutdown(this->fd, SHUT_RDWR);
 			// Выполняем закрытие сокета
 			::close(this->fd);
 		#endif

@@ -100,7 +100,7 @@ void awh::DNS::Worker::response(ev::io & io, int revents) noexcept {
 		// Выполняем перебор всех полученных записей
 		for(u_short i = 0; i < count; ++i){
 			// Выполняем извлечение названия записи
-			name[i] = this->join((const char *) this->extract(buffer, size).data());
+			name[i] = this->join(this->extract(buffer, size));
 			// Увеличиваем размер полученных данных
 			size += 2;
 			// Создаём части флагов вопроса пакета ответа
@@ -125,7 +125,7 @@ void awh::DNS::Worker::response(ev::io & io, int revents) noexcept {
 			// Если получено каноническое имя
 			if(ntohs(rrflags->rtype) == 5){
 				// Выполняем извлечение значение записи
-				rdata[i] = this->join((const char *) this->extract(buffer, size).data());
+				rdata[i] = this->join(this->extract(buffer, size));
 				// Устанавливаем тип полученных данных
 				type[i] = ntohs(rrflags->rtype);
 			}
@@ -269,32 +269,66 @@ string awh::DNS::Worker::join(const char * domain) const noexcept {
 	string result = "";
 	// Если доменное имя передано
 	if(domain != nullptr){
-		// Создаём итератор перебора
-		int i = 0;
 		// Буфер пакета данных
 		u_char buffer[254];
+		// Количество символов в слове
+		uint16_t length = 0, offset = 0;
 		// Выполняем зануление буфера данных
 		memset(buffer, 0, sizeof(buffer));
 		// Копируем полученное доменное имя
 		memcpy(buffer, domain, sizeof(buffer));
-		// Выполняем перебор полученного доменного имени
-		for(i = 0; i < strlen((const char *) buffer); ++i){
-			// Получаем числовой идентификатор символа
-			u_int len = buffer[i];
+		// Переходим по всему доменному имени
+		for(uint16_t i = 0; i < (uint16_t) strlen((const char *) buffer); ++i){
+			// Получаем количество символов
+			length = (uint16_t) buffer[i];
 			// Выполняем перебор всех символов
-			for(int j = 0; j < len; ++j){
-				// Заменяем байты в доменном имени
-				buffer[i] = buffer[i + 1];
+			for(uint16_t j = 0; j < length; ++j){
+				// Добавляем поддомен в строку результата
+				result.append(1, buffer[j + 1 + offset]);
 				// Выполняем смещение в строке
 				++i;
 			}
-			// Заменяем пробелы точками разделителями
-			buffer[i] = '.';
+			// Запоминаем значение смещения
+			offset = (i + 1);
+			// Если получили нулевой символ, выходим
+			if(buffer[i + 1] == 0) break;
+			// Добавляем разделительную точку
+			result.append(1, '.');
 		}
-		// Устанавливаем конец строки
-		buffer[i - 1] = '\0';
-		// Выполняем получение результата
-		result = (char *) move(buffer);
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * join Метод восстановления доменного имени
+ * @param domain доменное имя для восстановления
+ * @return       восстановленное доменное имя
+ */
+string awh::DNS::Worker::join(const vector <u_char> & domain) const noexcept {
+	// Результат работы функции
+	string result = "";
+	// Если доменное имя передано
+	if(!domain.empty()){
+		// Количество символов в слове
+		uint16_t length = 0, offset = 0;
+		// Переходим по всему доменному имени
+		for(uint16_t i = 0; i < (uint16_t) domain.size(); ++i){
+			// Получаем количество символов
+			length = (uint16_t) domain[i];
+			// Выполняем перебор всех символов
+			for(uint16_t j = 0; j < length; ++j){
+				// Добавляем поддомен в строку результата
+				result.append(1, domain[j + 1 + offset]);
+				// Выполняем смещение в строке
+				++i;
+			}
+			// Запоминаем значение смещения
+			offset = (i + 1);
+			// Если получили нулевой символ, выходим
+			if(domain[i + 1] == 0) break;
+			// Добавляем разделительную точку
+			result.append(1, '.');
+		}
 	}
 	// Выводим результат
 	return result;
@@ -380,16 +414,12 @@ void awh::DNS::Worker::close() noexcept {
 		 * Если операционной системой является Windows
 		 */
 		#if defined(_WIN32) || defined(_WIN64)
-			// Запрещаем работу с сокетом
-			// shutdown(this->_fd, SD_BOTH);
 			// Выполняем закрытие сокета
 			closesocket(this->_fd);
 		/**
 		 * Если операционной системой является Nix-подобная
 		 */
 		#else
-			// Запрещаем работу с сокетом
-			shutdown(this->_fd, SHUT_RDWR);
 			// Выполняем закрытие сокета
 			::close(this->_fd);
 		#endif
