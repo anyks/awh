@@ -523,11 +523,11 @@ bool awh::DNS::Worker::request(const string & domain) noexcept {
 						// Выходим из функции
 						return result;
 					}
+					// Выполняем закрытие подключения
+					this->close();
 				}
 			}
 		}
-		// Выполняем закрытие подключения
-		this->close();
 	}
 	// Выводим результат
 	return result;
