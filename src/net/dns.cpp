@@ -381,7 +381,7 @@ void awh::DNS::Worker::close() noexcept {
 		 */
 		#if defined(_WIN32) || defined(_WIN64)
 			// Запрещаем работу с сокетом
-			shutdown(this->_fd, SD_BOTH);
+			// shutdown(this->_fd, SD_BOTH);
 			// Выполняем закрытие сокета
 			closesocket(this->_fd);
 		/**
@@ -514,8 +514,6 @@ bool awh::DNS::Worker::request(const string & domain) noexcept {
 					} else {
 						// Устанавливаем разрешение на повторное использование сокета
 						this->_socket.reuseable(this->_fd);
-						// Переводим сокет в не блокирующий режим
-						this->_socket.nonBlocking(this->_fd);
 						// Устанавливаем разрешение на закрытие сокета при неиспользовании
 						this->_socket.closeonexec(this->_fd);
 						// Если запрос на сервер DNS успешно отправлен

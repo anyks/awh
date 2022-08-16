@@ -138,7 +138,7 @@ bool awh::Engine::Address::close() noexcept {
 		 */
 		#if defined(_WIN32) || defined(_WIN64)
 			// Запрещаем работу с сокетом
-			shutdown(this->fd, SD_BOTH);
+			// shutdown(this->fd, SD_BOTH);
 			// Выполняем закрытие сокета
 			closesocket(this->fd);
 		/**
