@@ -507,7 +507,7 @@ bool awh::DNS::Worker::request(const string & domain) noexcept {
 						// Устанавливаем функцию обратного вызова
 						this->_timer.set <worker_t, &worker_t::timeout> (this);
 						// Запускаем работу таймера
-						this->_timer.start(this->_dns->_timeout);
+						this->_timer.start((double) this->_dns->_timeout);
 						// Запускаем чтение данных с клиента
 						this->_io.start();
 						// Выходим из функции
@@ -743,7 +743,7 @@ bool awh::DNS::cancel(const size_t did) noexcept {
  * timeout Метод установки времени ожидания выполнения запроса
  * @param sec интервал времени выполнения запроса в секундах
  */
-void awh::DNS::timeout(const time_t sec) noexcept {
+void awh::DNS::timeout(const uint8_t sec) noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->_mtx.hold);
 	// Выполняем установку таймаута ожидания выполнения запроса

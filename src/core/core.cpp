@@ -1445,6 +1445,16 @@ void awh::Core::verifySSL(const bool mode) noexcept {
 	this->engine.verifyEnable(mode);
 }
 /**
+ * timeoutDNS Метод установки времени ожидания выполнения DNS запроса
+ * @param sec интервал времени ожидания в секундах
+ */
+void awh::Core::timeoutDNS(const uint8_t sec) noexcept {
+	// Выполняем блокировку потока
+	const lock_guard <recursive_mutex> lock(this->_mtx.main);
+	// Выполняем установку времени ожидания выполнения запроса
+	this->dns.timeout(sec);
+}
+/**
  * persistEnable Метод установки персистентного флага
  * @param mode флаг персистентного запуска каллбека
  */
@@ -1548,12 +1558,22 @@ void awh::Core::network(const vector <string> & ip, const vector <string> & ns, 
 			if(!ip.empty()) this->net.v4.first.assign(ip.cbegin(), ip.cend());
 			// Если сервера имён переданы, устанавливаем их
 			if(!ns.empty()){
+				// Позиция разделителя порта в строке
+				size_t pos = string::npos;
 				// Создаём список серверов имён
 				vector <dns_t::serv_t> servers(ns.size());
 				// Переходим по всему списку серверов
 				for(uint8_t i = 0; i < (uint8_t) ns.size(); i++){
-					// Заполняем список серверов
-					servers[i].host = ns[i];
+					// Выполняем поиск разделителя порта
+					pos = ns[i].rfind(":");
+					// Если позиция разделителя найдена
+					if(pos != string::npos){
+						// Запоминаем полученный сервер
+						servers[i].host = ns[i].substr(0, pos);
+						// Запоминаем полученный порт
+						servers[i].port = stoi(ns[i].substr(pos + 1));
+					// Заполняем полученный сервер
+					} else servers[i].host = ns[i];
 				}
 				// Устанавливаем полученный список серверов имён
 				this->net.v4.second.assign(servers.cbegin(), servers.cend());
@@ -1567,12 +1587,28 @@ void awh::Core::network(const vector <string> & ip, const vector <string> & ns, 
 			if(!ip.empty()) this->net.v6.first.assign(ip.cbegin(), ip.cend());
 			// Если сервера имён переданы, устанавливаем их
 			if(!ns.empty()){
+				// Позиция разделителя порта в строке
+				size_t pos = string::npos;
 				// Создаём список серверов имён
 				vector <dns_t::serv_t> servers(ns.size());
 				// Переходим по всему списку серверов
 				for(uint8_t i = 0; i < (uint8_t) ns.size(); i++){
-					// Заполняем список серверов
-					servers[i].host = ns[i];
+					// Если первый символ является разделителем
+					if(ns[i].front() == '['){
+						// Выполняем поиск разделителя порта
+						pos = ns[i].rfind("]:");
+						// Если позиция разделителя найдена
+						if(pos != string::npos){
+							// Запоминаем полученный сервер
+							servers[i].host = ns[i].substr(1, pos - 1);
+							// Запоминаем полученный порт
+							servers[i].port = stoi(ns[i].substr(pos + 2));
+						// Заполняем полученный сервер
+						} else if(ns[i].back() == ']')
+							// Добавляем адрес сервера, как он есть
+							servers[i].host = ns[i].substr(1, ns[i].size() - 2);
+					// Заполняем полученный сервер
+					} else if(ns[i].back() != ']') servers[i].host = ns[i];
 				}
 				// Устанавливаем полученный список серверов имён
 				this->net.v6.second.assign(servers.cbegin(), servers.cend());

@@ -287,7 +287,7 @@ namespace awh {
 			} worker_t;
 		private:
 			// Таймаут ожидания выполнения запроса (в секундах)
-			time_t _timeout;
+			uint8_t _timeout;
 		private:
 			// Мютекс для блокировки основного потока
 			mtx_t _mtx;
@@ -360,7 +360,7 @@ namespace awh {
 			 * timeout Метод установки времени ожидания выполнения запроса
 			 * @param sec интервал времени выполнения запроса в секундах
 			 */
-			void timeout(const time_t sec) noexcept;
+			void timeout(const uint8_t sec) noexcept;
 		public:
 			/**
 			 * cache Метод получения IP адреса из кэша

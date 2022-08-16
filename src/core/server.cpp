@@ -876,22 +876,128 @@ void awh::server::Core::run(const size_t wid) noexcept {
 						wrk->host = ifnet.ip(AF_INET6);
 					break;
 				}
+			// Если хост сервера является доменным именем
+			} else {
+				// Определяем тип передаваемого сервера
+				switch((uint8_t) this->nwk.parseHost(wrk->host)){
+					// Если хост является аппаратным адресом сетевого интерфейса
+					case (uint8_t) network_t::type_t::MAC: break;
+					// Если хост является доменом или IPv4 адресом
+					case (uint8_t) network_t::type_t::IPV4: break;
+					// Если хост является доменом или IPv6 адресом
+					case (uint8_t) network_t::type_t::IPV6: break;
+					// Если хост является адресом/Маски сети
+					case (uint8_t) network_t::type_t::NETWORK: break;
+					// Если хост является адресом в файловой системе
+					case (uint8_t) network_t::type_t::ADDRESS: break;
+					// Если хост является HTTP методом
+					case (uint8_t) network_t::type_t::HTTPMETHOD: break;
+					// Если хост является HTTP адресом
+					case (uint8_t) network_t::type_t::HTTPADDRESS: break;
+					// Значит скорее всего, садрес является доменным именем
+					default: {
+						// Определяем тип протокола подключения
+						switch((uint8_t) this->net.family){
+							// Если тип протокола подключения IPv4
+							case (uint8_t) family_t::IPV4: {
+								/**
+								 * Методы только для OS Windows
+								 */
+								#if defined(_WIN32) || defined(_WIN64)
+									// Выполняем резолвинг доменного имени
+									struct hostent * host = gethostbyname(wrk->host.c_str());
+								/**
+								 * Если операционной системой является Nix-подобная
+								 */
+								#else
+									// Выполняем резолвинг доменного имени
+									struct hostent * host = gethostbyname2(wrk->host.c_str(), AF_INET);
+								#endif
+								// Если полученный IP адрес не соответствует сети IPv4
+								if(host->h_addrtype != AF_INET){
+									// Объект для работы с сетевым интерфейсом
+									ifnet_t ifnet(this->fmk, this->log);
+									// Устанавливаем хост сервера
+									wrk->host = ifnet.ip(AF_INET);
+								// Если IP адрес соответствует сети IPv4
+								} else {
+									// Создаём объект сервера
+									struct sockaddr_in server;
+									// Очищаем всю структуру для сервера
+									memset(&server, 0, sizeof(server));
+									// Создаем буфер для получения ip адреса
+									char buffer[INET_ADDRSTRLEN];
+									// Заполняем структуру нулями
+									memset(buffer, 0, sizeof(buffer));
+									// Устанавливаем протокол интернета
+									server.sin_family = AF_INET;
+									// Выполняем копирование данных типа подключения
+									memcpy(&server.sin_addr.s_addr, host->h_addr, host->h_length);
+									// Копируем полученные данные
+									inet_ntop(AF_INET, &server.sin_addr, buffer, sizeof(buffer));
+									// Устанавливаем хост сервера
+									wrk->host = buffer;
+								}
+							} break;
+							// Если тип протокола подключения IPv6
+							case (uint8_t) family_t::IPV6: {
+								/**
+								 * Методы только для OS Windows
+								 */
+								#if defined(_WIN32) || defined(_WIN64)
+									// Выполняем резолвинг доменного имени
+									struct hostent * host = gethostbyname(wrk->host.c_str());
+								/**
+								 * Если операционной системой является Nix-подобная
+								 */
+								#else
+									// Выполняем резолвинг доменного имени
+									struct hostent * host = gethostbyname2(wrk->host.c_str(), AF_INET6);
+								#endif
+								// Если полученный IP адрес не соответствует сети IPv6
+								if(host->h_addrtype != AF_INET6){
+									// Объект для работы с сетевым интерфейсом
+									ifnet_t ifnet(this->fmk, this->log);
+									// Устанавливаем хост сервера
+									wrk->host = ifnet.ip(AF_INET6);
+								// Если IP адрес соответствует сети IPv6
+								} else {
+									// Создаём объект сервера
+									struct sockaddr_in6 server;
+									// Очищаем всю структуру для сервера
+									memset(&server, 0, sizeof(server));
+									// Создаем буфер для получения ip адреса
+									char buffer[INET6_ADDRSTRLEN];
+									// Заполняем структуру нулями
+									memset(buffer, 0, sizeof(buffer));
+									// Устанавливаем протокол интернета
+									server.sin6_family = AF_INET6;
+									// Выполняем копирование данных типа подключения
+									memcpy(&server.sin6_addr.s6_addr, host->h_addr, host->h_length);
+									// Копируем полученные данные
+									inet_ntop(AF_INET6, &server.sin6_addr, buffer, sizeof(buffer));
+									// Устанавливаем хост сервера
+									wrk->host = buffer;
+								}
+							} break;
+						}
+					}
+				}
 			}
-			// Устанавливаем событие на получение данных с DNS сервера
-			this->dns.on(std::bind(&worker_t::resolving, wrk, _1, _2, _3));
-			// Определяем тип протокола подключения
-			switch((uint8_t) this->net.family){
-				// Если тип протокола подключения IPv4
-				case (uint8_t) family_t::IPV4:
-					// Выполняем резолвинг домена
-					this->dns.resolve(wrk->host, AF_INET);
+			// Определяем тип передаваемого сервера
+			switch((uint8_t) this->nwk.parseHost(wrk->host)){
+				// Если хост является доменом или IPv4 адресом
+				case (uint8_t) network_t::type_t::IPV4:
+					// Выполняем запуск сервера
+					this->resolving(wrk->wid, wrk->host, AF_INET, 0);
 				break;
-				// Если тип протокола подключения IPv6
-				case (uint8_t) family_t::IPV6:
-					// Выполняем резолвинг домена
-					this->dns.resolve(wrk->host, AF_INET6);
+				// Если хост является доменом или IPv6 адресом
+				case (uint8_t) network_t::type_t::IPV6:
+					// Выполняем запуск сервера
+					this->resolving(wrk->wid, wrk->host, AF_INET6, 0);
 				break;
 			}
+
 
 			this->dns.on([](const string & ip, const int family, const size_t did) noexcept {
 				cout << " ============================= " << ip << endl;
