@@ -413,7 +413,7 @@ bool awh::DNS::Worker::request(const string & domain) noexcept {
 			// Переходим по всему списку DNS серверов
 			for(auto & server : it->second){
 				// Размер объекта подключения
-				socklen_t size = 0;
+				socklen_t socklen = 0;
 				// Параметры подключения сервера
 				struct sockaddr_storage addr;
 				// Определяем тип подключения
@@ -431,9 +431,9 @@ bool awh::DNS::Worker::request(const string & domain) noexcept {
 						// Устанавливаем адрес для локальго подключения
 						client.sin_addr.s_addr = inet_addr(server.host.c_str());
 						// Запоминаем размер структуры
-						size = sizeof(client);
+						socklen = sizeof(client);
 						// Выполняем копирование объекта подключения клиента
-						memcpy(&addr, &client, size);
+						memcpy(&addr, &client, socklen);
 					} break;
 					// Для протокола IPv6
 					case AF_INET6: {
@@ -448,13 +448,11 @@ bool awh::DNS::Worker::request(const string & domain) noexcept {
 						// Указываем адрес IPv6 для клиента
 						inet_pton(this->_family, server.host.c_str(), &client.sin6_addr);
 						// Запоминаем размер структуры
-						size = sizeof(client);
+						socklen = sizeof(client);
 						// Выполняем копирование объекта подключения клиента
-						memcpy(&addr, &client, size);
+						memcpy(&addr, &client, socklen);
 					} break;
-				}
-				// Выполняем подключение к серверу DNS
-				if((result = (::connect(this->_fd, (struct sockaddr *) &addr, size) == 0))){
+				}{
 					// Запоминаем запрашиваемое доменное имя
 					this->_domain = domain;
 					// Буфер пакета данных
@@ -495,7 +493,7 @@ bool awh::DNS::Worker::request(const string & domain) noexcept {
 					// Увеличиваем размер запроса
 					size += sizeof(qflags_t);
 					// Отправляем запрос на DNS сервер
-					if((result = (::write(this->_fd, (u_char *) buffer, size) > 0))){
+					if((result = (::sendto(this->_fd, buffer, size, 0, (struct sockaddr *) &addr, socklen) > 0))){
 						// Устанавливаем сокет для чтения
 						this->_io.set(this->_fd, ev::READ);
 						// Устанавливаем базу событий
