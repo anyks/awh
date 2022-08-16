@@ -426,6 +426,8 @@ bool awh::DNS::Worker::request(const string & domain) noexcept {
 	bool result = false;
 	// Если доменное имя передано
 	if(!domain.empty()){
+		// Запоминаем запрашиваемое доменное имя
+		this->_domain = domain;
 		// Выполняем поиск интернет-протокола для получения DNS сервера
 		auto it = const_cast <dns_t *> (this->_dns)->_servers.find(this->_family);
 		// Если интернет протокол сервера получен
@@ -482,8 +484,6 @@ bool awh::DNS::Worker::request(const string & domain) noexcept {
 						memcpy(&this->_addr, &client, this->_socklen);
 					} break;
 				}{
-					// Запоминаем запрашиваемое доменное имя
-					this->_domain = domain;
 					// Буфер пакета данных
 					u_char buffer[65536];
 					// Выполняем зануление буфера данных
@@ -523,33 +523,36 @@ bool awh::DNS::Worker::request(const string & domain) noexcept {
 					size += sizeof(qflags_t);
 					// Создаём сокет подключения
 					this->_fd = ::socket(this->_family, SOCK_DGRAM, IPPROTO_UDP);
-					// Устанавливаем разрешение на повторное использование сокета
-					this->_socket.reuseable(this->_fd);
-					// Переводим сокет в не блокирующий режим
-					this->_socket.nonBlocking(this->_fd);
-					// Устанавливаем разрешение на закрытие сокета при неиспользовании
-					this->_socket.closeonexec(this->_fd);
 					// Если сокет не создан создан
 					if(this->_fd < 0){
 						// Выводим в лог сообщение
 						this->_dns->_log->print("file descriptor needed for the DNS request could not be allocated", log_t::flag_t::WARNING);
 						// Выходим из приложения
 						continue;
-					// Если сокет создан удачно и данные на сервер DNS успешно отправлены
-					} else if((result = (::sendto(this->_fd, (const char *) buffer, size, 0, (struct sockaddr *) &this->_addr, this->_socklen) > 0))){
-						// Устанавливаем сокет для чтения
-						this->_io.set(this->_fd, ev::READ);
-						// Устанавливаем базу событий
-						this->_io.set(this->_base);
-						// Устанавливаем событие на чтение данных подключения
-						this->_io.set <worker_t, &worker_t::response> (this);
-						// Запускаем чтение данных с клиента
-						this->_io.start();
-						// Выходим из функции
-						return result;
+					// Если сокет создан удачно
+					} else {
+						// Устанавливаем разрешение на повторное использование сокета
+						this->_socket.reuseable(this->_fd);
+						// Переводим сокет в не блокирующий режим
+						this->_socket.nonBlocking(this->_fd);
+						// Устанавливаем разрешение на закрытие сокета при неиспользовании
+						this->_socket.closeonexec(this->_fd);
+						// Если запрос на сервер DNS успешно отправлен
+						if((result = (::sendto(this->_fd, (const char *) buffer, size, 0, (struct sockaddr *) &this->_addr, this->_socklen) > 0))){
+							// Устанавливаем сокет для чтения
+							this->_io.set(this->_fd, ev::READ);
+							// Устанавливаем базу событий
+							this->_io.set(this->_base);
+							// Устанавливаем событие на чтение данных подключения
+							this->_io.set <worker_t, &worker_t::response> (this);
+							// Запускаем чтение данных с клиента
+							this->_io.start();
+							// Выходим из функции
+							return result;
+						}
+						// Выполняем закрытие подключения
+						this->close();
 					}
-					// Выполняем закрытие подключения
-					this->close();
 				}
 			}
 			// Если запрос отправлен не был, но время ещё есть
@@ -557,7 +560,7 @@ bool awh::DNS::Worker::request(const string & domain) noexcept {
 				// Выполняем пересортировку серверов DNS
 				this->shuffle();
 				// Выполняем запрос снова
-				this->request(domain);
+				return this->request(domain);
 			}
 		}
 	}
