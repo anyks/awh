@@ -80,7 +80,7 @@ void awh::DNS::Worker::response(ev::io & io, int revents) noexcept {
 		// Получаем размер ответа
 		size_t size = sizeof(head_t);
 		// Получаем название доменного имени
-		const string & qname = this->join((const char *) &buffer[size]);
+		const string & qname = this->join(vector <u_char> (buffer + size, buffer + (size + 255)));
 		// Увеличиваем размер буфера полученных данных
 		size += (qname.size() + 2);
 		// Создаём части флагов вопроса пакета ответа
@@ -229,16 +229,20 @@ void awh::DNS::Worker::response(ev::io & io, int revents) noexcept {
 	}
 	// Выполняем закрытие подключения
 	this->close();
+	// Получаем идентификатор DNS запроса
+	const size_t did = this->_did;
+	// Получаем тип протокола интернета
+	const int family = this->_family;
 	// Выполняем блокировку потока
 	dns->_mtx.worker.lock();
 	// Удаляем домен из списка доменов
-	dns->_workers.erase(this->_did);
+	dns->_workers.erase(did);
 	// Выполняем разблокировку потока
 	dns->_mtx.worker.unlock();
 	// Если функция обратного вызова установлена
 	if(dns->_fn != nullptr)
 		// Выводим полученный IP адрес
-		dns->_fn(ip, this->_family, this->_did);
+		dns->_fn(ip, family, did);
 }
 /**
  * timeout Функция выполняемая по таймеру для чистки мусора
@@ -258,46 +262,6 @@ void awh::DNS::Worker::timeout(ev::timer & timer, int revents) noexcept {
 	this->_dns->_log->print("%s request failed", log_t::flag_t::CRITICAL, this->_domain.c_str());
 	// Выполняем отмену DNS запроса
 	const_cast <dns_t *> (this->_dns)->cancel(this->_did);
-}
-/**
- * join Метод восстановления доменного имени
- * @param domain доменное имя для восстановления
- * @return       восстановленное доменное имя
- */
-string awh::DNS::Worker::join(const char * domain) const noexcept {
-	// Результат работы функции
-	string result = "";
-	// Если доменное имя передано
-	if(domain != nullptr){
-		// Буфер пакета данных
-		u_char buffer[254];
-		// Количество символов в слове
-		uint16_t length = 0, offset = 0;
-		// Выполняем зануление буфера данных
-		memset(buffer, 0, sizeof(buffer));
-		// Копируем полученное доменное имя
-		memcpy(buffer, domain, sizeof(buffer));
-		// Переходим по всему доменному имени
-		for(uint16_t i = 0; i < (uint16_t) strlen((const char *) buffer); ++i){
-			// Получаем количество символов
-			length = (uint16_t) buffer[i];
-			// Выполняем перебор всех символов
-			for(uint16_t j = 0; j < length; ++j){
-				// Добавляем поддомен в строку результата
-				result.append(1, buffer[j + 1 + offset]);
-				// Выполняем смещение в строке
-				++i;
-			}
-			// Запоминаем значение смещения
-			offset = (i + 1);
-			// Если получили нулевой символ, выходим
-			if(buffer[i + 1] == 0) break;
-			// Добавляем разделительную точку
-			result.append(1, '.');
-		}
-	}
-	// Выводим результат
-	return result;
 }
 /**
  * join Метод восстановления доменного имени
@@ -639,18 +603,23 @@ void awh::DNS::resolving(const string & ip, const int family, const size_t did) 
 	auto it = this->_servers.find(family);
 	// Если интернет-протокол найден
 	if(it != this->_servers.end()){
-		// Выполняем переход по всем серверам
-		for(auto jt = it->second.begin(); jt != it->second.end(); ++jt){
-			// Если сервер является доменным именем
-			if(this->_nwk->parseHost(jt->host) == network_t::type_t::DOMNAME){
-				// Если IP адрес получен
-				if(!ip.empty())
-					// Заменяем доменное имя на полученный IP адрес
-					jt->host = ip;
-				// Если IP адрес не получен, удаляем доменное имя из списка и выходим
-				else it->second.erase(jt);
-				// Выходим из цикла
-				break;
+		// Выполняем извлечение локального DNS резолвера
+		const string & domain = (this->_dns.count(did) > 0 ? this->_dns.at(did)->_domain : "");
+		// Если доменное имя локального DNS резолвера получено
+		if(!domain.empty()){
+			// Выполняем переход по всем серверам
+			for(auto jt = it->second.begin(); jt != it->second.end(); ++jt){
+				// Если доменное имя совпадает с сервером имён
+				if(domain.compare(jt->host) == 0){
+					// Если IP адрес получен
+					if(!ip.empty())
+						// Заменяем доменное имя на полученный IP адрес
+						jt->host = ip;
+					// Если IP адрес не получен, удаляем доменное имя из списка и выходим
+					else it->second.erase(jt);
+					// Выходим из цикла
+					break;
+				}
 			}
 		}
 	}
@@ -680,6 +649,8 @@ bool awh::DNS::clear() noexcept {
 		this->replace(AF_INET);
 		// Выполняем сброс списока серверов IPv6
 		this->replace(AF_INET6);
+		// Очищаем доменное имя локального DNS резолвера
+		this->_domain.clear();
 	}
 	// Выводим результат
 	return result;
@@ -1020,10 +991,12 @@ void awh::DNS::server(const int family, const serv_t & server) noexcept {
 			case (uint8_t) network_t::type_t::IPV6: result.host = this->_nwk->setLowIp6(server.host); break;
 			// Если хост является доменным именем
 			case (uint8_t) network_t::type_t::DOMNAME: {
-				// Устанавливаем хост сервера
-				result.host = server.host;
 				// Создаём объект DNS
 				unique_ptr <dns_t> dns(new dns_t(this->_fmk, this->_log, this->_nwk, this->_base));
+				// Устанавливаем доменное имя локального DNS резолвера
+				dns->_domain = server.host;
+				// Устанавливаем хост сервера
+				result.host = dns->_domain;
 				// Устанавливаем событие на получение данных с DNS сервера
 				dns->on(std::bind(&dns_t::resolving, this, _1, _2, _3));
 				// Выполняем резолвинг домена
@@ -1207,7 +1180,7 @@ size_t awh::DNS::resolve(const string & host, const int family) noexcept {
  * @param log объект для работы с логами
  * @param nwk объект методов для работы с сетью
  */
-awh::DNS::DNS(const fmk_t * fmk, const log_t * log, const network_t * nwk) noexcept : _timeout(30), _fn(nullptr), _fmk(fmk), _log(log), _nwk(nwk), _base(nullptr) {
+awh::DNS::DNS(const fmk_t * fmk, const log_t * log, const network_t * nwk) noexcept : _domain(""), _timeout(30), _fn(nullptr), _fmk(fmk), _log(log), _nwk(nwk), _base(nullptr) {
 	// Устанавливаем список серверов IPv4
 	this->replace(AF_INET);
 	// Устанавливаем список серверов IPv6
@@ -1220,7 +1193,7 @@ awh::DNS::DNS(const fmk_t * fmk, const log_t * log, const network_t * nwk) noexc
  * @param nwk  объект методов для работы с сетью
  * @param base база событий
  */
-awh::DNS::DNS(const fmk_t * fmk, const log_t * log, const network_t * nwk, struct ev_loop * base) noexcept : _timeout(30), _fn(nullptr), _fmk(fmk), _log(log), _nwk(nwk), _base(base) {
+awh::DNS::DNS(const fmk_t * fmk, const log_t * log, const network_t * nwk, struct ev_loop * base) noexcept : _domain(""), _timeout(30), _fn(nullptr), _fmk(fmk), _log(log), _nwk(nwk), _base(base) {
 	// Устанавливаем список серверов IPv4
 	this->replace(AF_INET);
 	// Устанавливаем список серверов IPv6

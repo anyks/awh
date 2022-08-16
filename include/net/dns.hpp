@@ -262,12 +262,6 @@ namespace awh {
 					 * @param domain доменное имя для восстановления
 					 * @return       восстановленное доменное имя
 					 */
-					string join(const char * domain) const noexcept;
-					/**
-					 * join Метод восстановления доменного имени
-					 * @param domain доменное имя для восстановления
-					 * @return       восстановленное доменное имя
-					 */
 					string join(const vector <u_char> & domain) const noexcept;
 					/**
 					 * split Метод разбивки доменного имени
@@ -310,6 +304,9 @@ namespace awh {
 					 */
 					~Worker() noexcept;
 			} worker_t;
+		private:
+			// Доменное имя локального DNS резолвера
+			string _domain;
 		private:
 			// Таймаут ожидания выполнения запроса (в секундах)
 			uint8_t _timeout;
