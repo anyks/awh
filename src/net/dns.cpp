@@ -60,7 +60,7 @@ void awh::DNS::Worker::response(ev::io & io, int revents) noexcept {
 	// Получаем объект DNS сервера
 	dns_t * dns = const_cast <dns_t *> (this->_dns);
 	// Выполняем чтение ответа от сервера
-	if(::read(io.fd, (u_char *) buffer, sizeof(buffer)) > 0){
+	if(::recvfrom(io.fd, (void *) buffer, sizeof(buffer), 0, (struct sockaddr *) &this->_addr, &this->_socklen) > 0){
 		// Получаем объект заголовка
 		head_t * header = reinterpret_cast <head_t *> (&buffer);
 		// Получаем размер ответа
@@ -412,10 +412,6 @@ bool awh::DNS::Worker::request(const string & domain) noexcept {
 			shuffle(it->second.begin(), it->second.end(), generator);
 			// Переходим по всему списку DNS серверов
 			for(auto & server : it->second){
-				// Размер объекта подключения
-				socklen_t socklen = 0;
-				// Параметры подключения сервера
-				struct sockaddr_storage addr;
 				// Определяем тип подключения
 				switch(this->_family){
 					// Для протокола IPv4
@@ -431,9 +427,9 @@ bool awh::DNS::Worker::request(const string & domain) noexcept {
 						// Устанавливаем адрес для локальго подключения
 						client.sin_addr.s_addr = inet_addr(server.host.c_str());
 						// Запоминаем размер структуры
-						socklen = sizeof(client);
+						this->_socklen = sizeof(client);
 						// Выполняем копирование объекта подключения клиента
-						memcpy(&addr, &client, socklen);
+						memcpy(&this->_addr, &client, this->_socklen);
 					} break;
 					// Для протокола IPv6
 					case AF_INET6: {
@@ -448,9 +444,9 @@ bool awh::DNS::Worker::request(const string & domain) noexcept {
 						// Указываем адрес IPv6 для клиента
 						inet_pton(this->_family, server.host.c_str(), &client.sin6_addr);
 						// Запоминаем размер структуры
-						socklen = sizeof(client);
+						this->_socklen = sizeof(client);
 						// Выполняем копирование объекта подключения клиента
-						memcpy(&addr, &client, socklen);
+						memcpy(&this->_addr, &client, this->_socklen);
 					} break;
 				}{
 					// Запоминаем запрашиваемое доменное имя
@@ -493,7 +489,7 @@ bool awh::DNS::Worker::request(const string & domain) noexcept {
 					// Увеличиваем размер запроса
 					size += sizeof(qflags_t);
 					// Отправляем запрос на DNS сервер
-					if((result = (::sendto(this->_fd, (const char *) buffer, size, 0, (struct sockaddr *) &addr, socklen) > 0))){
+					if((result = (::sendto(this->_fd, (const char *) buffer, size, 0, (struct sockaddr *) &this->_addr, this->_socklen) > 0))){
 						// Устанавливаем сокет для чтения
 						this->_io.set(this->_fd, ev::READ);
 						// Устанавливаем базу событий
@@ -527,7 +523,7 @@ bool awh::DNS::Worker::request(const string & domain) noexcept {
  * @param base   база событий
  * @param dns    объект DNS резолвера
  */
-awh::DNS::Worker::Worker(const size_t did, const int family, struct ev_loop * base, const DNS * dns) noexcept : _did(did), _fd(-1), _family(family), _domain(""), _dns(dns), _base(base) {
+awh::DNS::Worker::Worker(const size_t did, const int family, struct ev_loop * base, const DNS * dns) noexcept : _did(did), _fd(-1), _family(family), _domain(""), _socklen(0), _dns(dns), _base(base) {
 	// Объект для работы с сокетами
 	socket_t socket(this->_dns->_log);
 	// Создаём сокет подключения

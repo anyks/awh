@@ -216,6 +216,11 @@ namespace awh {
 					// Название искомого домена
 					string _domain;
 				private:
+					// Размер объекта подключения
+					socklen_t _socklen;
+					// Параметры подключения сервера
+					struct sockaddr_storage _addr;
+				private:
 					// Объект работы резолвера
 					ev::io _io;
 					// Объект события таймера
