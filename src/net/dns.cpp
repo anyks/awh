@@ -60,7 +60,7 @@ void awh::DNS::Worker::response(ev::io & io, int revents) noexcept {
 	// Получаем объект DNS сервера
 	dns_t * dns = const_cast <dns_t *> (this->_dns);
 	// Выполняем чтение ответа от сервера
-	if(::recvfrom(io.fd, (void *) buffer, sizeof(buffer), 0, (struct sockaddr *) &this->_addr, &this->_socklen) > 0){
+	if(::recvfrom(io.fd, (char *) buffer, sizeof(buffer), 0, (struct sockaddr *) &this->_addr, &this->_socklen) > 0){
 		// Получаем объект заголовка
 		head_t * header = reinterpret_cast <head_t *> (&buffer);
 		// Получаем размер ответа
