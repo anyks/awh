@@ -284,7 +284,8 @@ namespace awh {
 					 * @param base   база событий
 					 * @param dns    объект DNS резолвера
 					 */
-					Worker(const size_t did, const int family, struct ev_loop * base, const DNS * dns) noexcept;
+					Worker(const size_t did, const int family, struct ev_loop * base, const DNS * dns) noexcept :
+					 _did(did), _fd(-1), _family(family), _domain(""), _socklen(0), _dns(dns), _base(base) {}
 					/**
 					 * ~Worker Деструктор
 					 */

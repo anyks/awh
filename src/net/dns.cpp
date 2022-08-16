@@ -408,6 +408,8 @@ bool awh::DNS::Worker::request(const string & domain) noexcept {
 			random_device rd;
 			// Выбираем стаднарт рандомайзера
 			mt19937 generator(rd());
+			// Объект для работы с сокетами
+			socket_t socket(this->_dns->_log);
 			// Выполняем рандомную сортировку списка DNS серверов
 			shuffle(it->second.begin(), it->second.end(), generator);
 			// Переходим по всему списку DNS серверов
@@ -488,8 +490,22 @@ bool awh::DNS::Worker::request(const string & domain) noexcept {
 					qflags->qclass = htons(0x0001);
 					// Увеличиваем размер запроса
 					size += sizeof(qflags_t);
-					// Отправляем запрос на DNS сервер
-					if((result = (::sendto(this->_fd, (const char *) buffer, size, 0, (struct sockaddr *) &this->_addr, this->_socklen) > 0))){
+					// Создаём сокет подключения
+					this->_fd = ::socket(this->_family, SOCK_DGRAM, IPPROTO_UDP);
+					// Устанавливаем разрешение на повторное использование сокета
+					socket.reuseable(this->_fd);
+					// Переводим сокет в не блокирующий режим
+					socket.nonBlocking(this->_fd);
+					// Устанавливаем разрешение на закрытие сокета при неиспользовании
+					socket.closeonexec(this->_fd);
+					// Если сокет не создан создан
+					if(this->_fd < 0){
+						// Выводим в лог сообщение
+						this->_dns->_log->print("file descriptor needed for the DNS request could not be allocated", log_t::flag_t::WARNING);
+						// Выходим из приложения
+						continue;
+					// Если сокет создан удачно и данные на сервер DNS успешно отправлены
+					} else if((result = (::sendto(this->_fd, (const char *) buffer, size, 0, (struct sockaddr *) &this->_addr, this->_socklen) > 0))){
 						// Устанавливаем сокет для чтения
 						this->_io.set(this->_fd, ev::READ);
 						// Устанавливаем базу событий
@@ -515,33 +531,6 @@ bool awh::DNS::Worker::request(const string & domain) noexcept {
 	}
 	// Выводим результат
 	return result;
-}
-/**
- * Worker Конструктор
- * @param did    идентификатор DNS запроса
- * @param family тип протокола интернета AF_INET или AF_INET6
- * @param base   база событий
- * @param dns    объект DNS резолвера
- */
-awh::DNS::Worker::Worker(const size_t did, const int family, struct ev_loop * base, const DNS * dns) noexcept :
- _did(did), _fd(-1), _family(family), _domain(""), _socklen(0), _dns(dns), _base(base) {
-	// Объект для работы с сокетами
-	socket_t socket(this->_dns->_log);
-	// Создаём сокет подключения
-	this->_fd = ::socket(family, SOCK_DGRAM, IPPROTO_UDP);
-	// Устанавливаем разрешение на повторное использование сокета
-	socket.reuseable(this->_fd);
-	// Переводим сокет в не блокирующий режим
-	socket.nonBlocking(this->_fd);
-	// Устанавливаем разрешение на закрытие сокета при неиспользовании
-	socket.closeonexec(this->_fd);
-	// Если сокет не создан создан
-	if(this->_fd < 0){
-		// Выводим в лог сообщение
-		this->_dns->_log->print("file descriptor needed for the DNS request could not be allocated", log_t::flag_t::CRITICAL);
-		// Выходим из приложения
-		exit(EXIT_FAILURE);
-	}
 }
 /**
  * ~Worker Деструктор
