@@ -557,7 +557,7 @@ bool awh::DNS::Worker::request(const string & domain) noexcept {
 				// Выполняем пересортировку серверов DNS
 				this->shuffle();
 				// Выполняем запрос снова
-				this->request(this->_domain);
+				this->request(domain);
 			}
 		}
 	}
