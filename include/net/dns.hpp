@@ -216,6 +216,9 @@ namespace awh {
 					// Название искомого домена
 					string _domain;
 				private:
+					// Объект для работы с сокетами
+					socket_t _socket;
+				private:
 					// Размер объекта подключения
 					socklen_t _socklen;
 					// Параметры подключения сервера
@@ -284,8 +287,7 @@ namespace awh {
 					 * @param base   база событий
 					 * @param dns    объект DNS резолвера
 					 */
-					Worker(const size_t did, const int family, struct ev_loop * base, const DNS * dns) noexcept :
-					 _did(did), _fd(-1), _family(family), _domain(""), _socklen(0), _dns(dns), _base(base) {}
+					Worker(const size_t did, const int family, struct ev_loop * base, const DNS * dns) noexcept;
 					/**
 					 * ~Worker Деструктор
 					 */

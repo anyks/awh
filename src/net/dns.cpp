@@ -200,6 +200,14 @@ void awh::DNS::Worker::response(ev::io & io, int revents) noexcept {
 		} else if(!dns->emptyBlackList(this->_family))
 			// Выполняем очистку чёрного списка
 			dns->clearBlackList(this->_family);
+	// Если возникла ошибка чтения из сокета
+	} else if(errno == EBADF) {
+		// Выполняем закрытие подключения
+		this->close();
+		// Выполняем запрос снова
+		this->request(this->_domain);
+		// Выходим из функции
+		return;
 	}
 	// Выполняем закрытие подключения
 	this->close();
@@ -404,16 +412,10 @@ bool awh::DNS::Worker::request(const string & domain) noexcept {
 		auto it = const_cast <dns_t *> (this->_dns)->_servers.find(this->_family);
 		// Если интернет протокол сервера получен
 		if((result = (it != this->_dns->_servers.end()))){
-			// Создаём объект рандомайзера
-			random_device rd;
-			// Выбираем стаднарт рандомайзера
-			mt19937 generator(rd());
-			// Объект для работы с сокетами
-			socket_t socket(this->_dns->_log);
-			// Выполняем рандомную сортировку списка DNS серверов
-			shuffle(it->second.begin(), it->second.end(), generator);
 			// Переходим по всему списку DNS серверов
 			for(auto & server : it->second){
+				// Очищаем всю структуру клиента
+				memset(&this->_addr, 0, sizeof(this->_addr));
 				// Определяем тип подключения
 				switch(this->_family){
 					// Для протокола IPv4
@@ -493,11 +495,11 @@ bool awh::DNS::Worker::request(const string & domain) noexcept {
 					// Создаём сокет подключения
 					this->_fd = ::socket(this->_family, SOCK_DGRAM, IPPROTO_UDP);
 					// Устанавливаем разрешение на повторное использование сокета
-					socket.reuseable(this->_fd);
+					this->_socket.reuseable(this->_fd);
 					// Переводим сокет в не блокирующий режим
-					socket.nonBlocking(this->_fd);
+					this->_socket.nonBlocking(this->_fd);
 					// Устанавливаем разрешение на закрытие сокета при неиспользовании
-					socket.closeonexec(this->_fd);
+					this->_socket.closeonexec(this->_fd);
 					// Если сокет не создан создан
 					if(this->_fd < 0){
 						// Выводим в лог сообщение
@@ -532,6 +534,27 @@ bool awh::DNS::Worker::request(const string & domain) noexcept {
 	// Выводим результат
 	return result;
 }
+/**
+ * Worker Конструктор
+ * @param did    идентификатор DNS запроса
+ * @param family тип протокола интернета AF_INET или AF_INET6
+ * @param base   база событий
+ * @param dns    объект DNS резолвера
+ */
+awh::DNS::Worker::Worker(const size_t did, const int family, struct ev_loop * base, const DNS * dns) noexcept :
+ _did(did), _fd(-1), _family(family), _domain(""), _socket(dns->_log), _socklen(0), _dns(dns), _base(base) {
+	// Выполняем поиск интернет-протокола для получения DNS сервера
+	auto it = const_cast <dns_t *> (dns)->_servers.find(family);
+	// Если интернет протокол сервера получен
+	if(it != dns->_servers.end()){
+		// Создаём объект рандомайзера
+		random_device rd;
+		// Выбираем стаднарт рандомайзера
+		mt19937 generator(rd());
+		// Выполняем рандомную сортировку списка DNS серверов
+		shuffle(it->second.begin(), it->second.end(), generator);
+	}
+ }
 /**
  * ~Worker Деструктор
  */
