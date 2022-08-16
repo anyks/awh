@@ -220,6 +220,8 @@ void awh::DNS::Worker::response(ev::io & io, int revents) noexcept {
 		this->close();
 		// Выполняем пересортировку серверов DNS
 		this->shuffle();
+		// Замораживаем поток на период времени в 100ms
+		this_thread::sleep_for(100ms);
 		// Выполняем запрос снова
 		this->request(this->_domain);
 		// Выходим из функции
@@ -538,6 +540,8 @@ bool awh::DNS::Worker::request(const string & domain) noexcept {
 			if(this->_mode){
 				// Выполняем пересортировку серверов DNS
 				this->shuffle();
+				// Замораживаем поток на период времени в 100ms
+				this_thread::sleep_for(100ms);
 				// Выполняем запрос снова
 				return this->request(domain);
 			}
