@@ -65,6 +65,8 @@ void awh::DNS::Worker::shuffle() noexcept {
 void awh::DNS::Worker::response(ev::io & io, int revents) noexcept {
 	// Выводимый IP адрес
 	string ip = "";
+	// Выполняем остановку чтения сокета
+	this->_io.stop();
 	// Буфер пакета данных
 	u_char buffer[65536];
 	// Выполняем зануление буфера данных
@@ -219,7 +221,7 @@ void awh::DNS::Worker::response(ev::io & io, int revents) noexcept {
 		// Выполняем пересортировку серверов DNS
 		this->shuffle();
 		// Выполняем запрос снова
-		// this->request(this->_domain);
+		this->request(this->_domain);
 		// Выходим из функции
 		return;
 	}
