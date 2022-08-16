@@ -214,7 +214,7 @@ void awh::DNS::Worker::response(ev::io & io, int revents) noexcept {
 		} else if(!dns->emptyBlackList(this->_family))
 			// Выполняем очистку чёрного списка
 			dns->clearBlackList(this->_family);
-	// Если возникла ошибка чтения из сокета
+	// Если ответ получен не был, но время ещё есть
 	} else if(this->_mode) {
 		// Выполняем закрытие подключения
 		this->close();
@@ -430,6 +430,17 @@ bool awh::DNS::Worker::request(const string & domain) noexcept {
 		auto it = const_cast <dns_t *> (this->_dns)->_servers.find(this->_family);
 		// Если интернет протокол сервера получен
 		if((result = (it != this->_dns->_servers.end()))){
+			// Если режим работы не запущен
+			if(!this->_mode){
+				// Запоминаем, что работа началась
+				this->_mode = !this->_mode;
+				// Устанавливаем базу событий
+				this->_timer.set(this->_base);
+				// Устанавливаем функцию обратного вызова
+				this->_timer.set <worker_t, &worker_t::timeout> (this);
+				// Запускаем работу таймера
+				this->_timer.start((double) this->_dns->_timeout);
+			}
 			// Переходим по всему списку DNS серверов
 			for(auto & server : it->second){
 				// Очищаем всю структуру клиента
@@ -534,23 +545,19 @@ bool awh::DNS::Worker::request(const string & domain) noexcept {
 						this->_io.set <worker_t, &worker_t::response> (this);
 						// Запускаем чтение данных с клиента
 						this->_io.start();
-						// Если режим работы не запущен
-						if(!this->_mode){
-							// Запоминаем, что работа началась
-							this->_mode = !this->_mode;
-							// Устанавливаем базу событий
-							this->_timer.set(this->_base);
-							// Устанавливаем функцию обратного вызова
-							this->_timer.set <worker_t, &worker_t::timeout> (this);
-							// Запускаем работу таймера
-							this->_timer.start((double) this->_dns->_timeout);
-						}
 						// Выходим из функции
 						return result;
 					}
 					// Выполняем закрытие подключения
 					this->close();
 				}
+			}
+			// Если запрос отправлен не был, но время ещё есть
+			if(this->_mode){
+				// Выполняем пересортировку серверов DNS
+				this->shuffle();
+				// Выполняем запрос снова
+				this->request(this->_domain);
 			}
 		}
 	}
