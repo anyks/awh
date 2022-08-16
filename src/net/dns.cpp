@@ -523,11 +523,12 @@ bool awh::DNS::Worker::request(const string & domain) noexcept {
  * @param base   база событий
  * @param dns    объект DNS резолвера
  */
-awh::DNS::Worker::Worker(const size_t did, const int family, struct ev_loop * base, const DNS * dns) noexcept : _did(did), _fd(-1), _family(family), _domain(""), _socklen(0), _dns(dns), _base(base) {
+awh::DNS::Worker::Worker(const size_t did, const int family, struct ev_loop * base, const DNS * dns) noexcept :
+ _did(did), _fd(-1), _family(family), _domain(""), _socklen(0), _dns(dns), _base(base) {
 	// Объект для работы с сокетами
 	socket_t socket(this->_dns->_log);
 	// Создаём сокет подключения
-	this->_fd = ::socket(family, SOCK_DGRAM, 0);
+	this->_fd = ::socket(family, SOCK_DGRAM, IPPROTO_UDP);
 	// Устанавливаем разрешение на повторное использование сокета
 	socket.reuseable(this->_fd);
 	// Переводим сокет в не блокирующий режим
