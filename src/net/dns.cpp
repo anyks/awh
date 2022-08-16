@@ -493,7 +493,7 @@ bool awh::DNS::Worker::request(const string & domain) noexcept {
 					// Увеличиваем размер запроса
 					size += sizeof(qflags_t);
 					// Отправляем запрос на DNS сервер
-					if((result = (::sendto(this->_fd, buffer, size, 0, (struct sockaddr *) &addr, socklen) > 0))){
+					if((result = (::sendto(this->_fd, (const char *) buffer, size, 0, (struct sockaddr *) &addr, socklen) > 0))){
 						// Устанавливаем сокет для чтения
 						this->_io.set(this->_fd, ev::READ);
 						// Устанавливаем базу событий
