@@ -208,6 +208,9 @@ namespace awh {
 					// Идентификатор DNS запроса
 					size_t _did;
 				private:
+					// Флаг запуска работы
+					bool _mode;
+				private:
 					// Файловый дескриптор (сокет)
 					int _fd;
 					// Тип протокола интернета AF_INET или AF_INET6
@@ -234,6 +237,11 @@ namespace awh {
 				private:
 					// База событий
 					struct ev_loop * _base;
+				private:
+					/**
+					 * shuffle Метод пересортировки серверов DNS
+					 */
+					void shuffle() noexcept;
 				private:
 					/**
 					 * response Событие срабатывающееся при получении данных с DNS сервера
@@ -287,7 +295,8 @@ namespace awh {
 					 * @param base   база событий
 					 * @param dns    объект DNS резолвера
 					 */
-					Worker(const size_t did, const int family, struct ev_loop * base, const DNS * dns) noexcept;
+					Worker(const size_t did, const int family, struct ev_loop * base, const DNS * dns) noexcept :
+					 _did(did), _mode(false), _fd(-1), _family(family), _domain(""), _socket(dns->_log), _socklen(0), _dns(dns), _base(base) {}
 					/**
 					 * ~Worker Деструктор
 					 */

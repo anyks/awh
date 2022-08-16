@@ -42,15 +42,27 @@ awh::DNS::Holder::~Holder() noexcept {
 	if(this->_flag) this->_status->pop();
 }
 /**
+ * shuffle Метод пересортировки серверов DNS
+ */
+void awh::DNS::Worker::shuffle() noexcept {
+	// Выполняем поиск интернет-протокола для получения DNS сервера
+	auto it = const_cast <dns_t *> (this->_dns)->_servers.find(this->_family);
+	// Если интернет протокол сервера получен
+	if(it != this->_dns->_servers.end()){
+		// Создаём объект рандомайзера
+		random_device rd;
+		// Выбираем стаднарт рандомайзера
+		mt19937 generator(rd());
+		// Выполняем рандомную сортировку списка DNS серверов
+		::shuffle(it->second.begin(), it->second.end(), generator);
+	}
+}
+/**
  * response Событие срабатывающееся при получении данных с DNS сервера
  * @param io      объект события чтения
  * @param revents идентификатор события
  */
 void awh::DNS::Worker::response(ev::io & io, int revents) noexcept {
-	// Выполняем остановку чтения сокета
-	this->_io.stop();
-	// Выполняем остановку работы таймера
-	this->_timer.stop();
 	// Выводимый IP адрес
 	string ip = "";
 	// Буфер пакета данных
@@ -201,11 +213,13 @@ void awh::DNS::Worker::response(ev::io & io, int revents) noexcept {
 			// Выполняем очистку чёрного списка
 			dns->clearBlackList(this->_family);
 	// Если возникла ошибка чтения из сокета
-	} else if(errno == EBADF) {
+	} else if(this->_mode) {
 		// Выполняем закрытие подключения
 		this->close();
+		// Выполняем пересортировку серверов DNS
+		this->shuffle();
 		// Выполняем запрос снова
-		this->request(this->_domain);
+		// this->request(this->_domain);
 		// Выходим из функции
 		return;
 	}
@@ -234,6 +248,8 @@ void awh::DNS::Worker::timeout(ev::timer & timer, int revents) noexcept {
 	this->_io.stop();
 	// Выполняем закрытие подключения
 	this->close();
+	// Выполняем остановку работы
+	this->_mode = false;
 	// Если возникла ошибка, выводим в лог сообщение
 	this->_dns->_log->print("%s request failed", log_t::flag_t::CRITICAL, this->_domain.c_str());
 	// Выполняем отмену DNS запроса
@@ -512,16 +528,21 @@ bool awh::DNS::Worker::request(const string & domain) noexcept {
 						this->_io.set(this->_fd, ev::READ);
 						// Устанавливаем базу событий
 						this->_io.set(this->_base);
-						// Устанавливаем базу событий
-						this->_timer.set(this->_base);
 						// Устанавливаем событие на чтение данных подключения
 						this->_io.set <worker_t, &worker_t::response> (this);
-						// Устанавливаем функцию обратного вызова
-						this->_timer.set <worker_t, &worker_t::timeout> (this);
-						// Запускаем работу таймера
-						this->_timer.start((double) this->_dns->_timeout);
 						// Запускаем чтение данных с клиента
 						this->_io.start();
+						// Если режим работы не запущен
+						if(!this->_mode){
+							// Запоминаем, что работа началась
+							this->_mode = !this->_mode;
+							// Устанавливаем базу событий
+							this->_timer.set(this->_base);
+							// Устанавливаем функцию обратного вызова
+							this->_timer.set <worker_t, &worker_t::timeout> (this);
+							// Запускаем работу таймера
+							this->_timer.start((double) this->_dns->_timeout);
+						}
 						// Выходим из функции
 						return result;
 					}
@@ -534,27 +555,6 @@ bool awh::DNS::Worker::request(const string & domain) noexcept {
 	// Выводим результат
 	return result;
 }
-/**
- * Worker Конструктор
- * @param did    идентификатор DNS запроса
- * @param family тип протокола интернета AF_INET или AF_INET6
- * @param base   база событий
- * @param dns    объект DNS резолвера
- */
-awh::DNS::Worker::Worker(const size_t did, const int family, struct ev_loop * base, const DNS * dns) noexcept :
- _did(did), _fd(-1), _family(family), _domain(""), _socket(dns->_log), _socklen(0), _dns(dns), _base(base) {
-	// Выполняем поиск интернет-протокола для получения DNS сервера
-	auto it = const_cast <dns_t *> (dns)->_servers.find(family);
-	// Если интернет протокол сервера получен
-	if(it != dns->_servers.end()){
-		// Создаём объект рандомайзера
-		random_device rd;
-		// Выбираем стаднарт рандомайзера
-		mt19937 generator(rd());
-		// Выполняем рандомную сортировку списка DNS серверов
-		shuffle(it->second.begin(), it->second.end(), generator);
-	}
- }
 /**
  * ~Worker Деструктор
  */
