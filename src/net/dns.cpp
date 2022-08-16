@@ -534,6 +534,10 @@ awh::DNS::Worker::Worker(const size_t did, const int family, struct ev_loop * ba
 	this->_fd = ::socket(family, SOCK_DGRAM, 0);
 	// Устанавливаем разрешение на повторное использование сокета
 	socket.reuseable(this->_fd);
+	// Переводим сокет в не блокирующий режим
+	socket.nonBlocking(this->_fd);
+	// Устанавливаем разрешение на закрытие сокета при неиспользовании
+	socket.closeonexec(this->_fd);
 	// Если сокет не создан создан
 	if(this->_fd < 0){
 		// Выводим в лог сообщение
