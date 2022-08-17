@@ -712,10 +712,6 @@ bool awh::DNS::cancel(const size_t did) noexcept {
 				auto it = this->_workers.find(did);
 				// Если воркер найден
 				if(it != this->_workers.end()){
-					// Останавливаем события ожидания появления в сокете данных
-					it->second->_io.stop();
-					// Останавливаем таймер ожидания выполнения запроса
-					it->second->_timer.stop();
 					// Если функция обратного вызова установлена
 					if(this->_fn != nullptr)
 						// Выводим полученный IP адрес
@@ -727,10 +723,6 @@ bool awh::DNS::cancel(const size_t did) noexcept {
 			} else {
 				// Переходим по всем воркерам
 				for(auto it = this->_workers.begin(); it != this->_workers.end();){
-					// Останавливаем события ожидания появления в сокете данных
-					it->second->_io.stop();
-					// Останавливаем таймер ожидания выполнения запроса
-					it->second->_timer.stop();
 					// Если функция обратного вызова установлена
 					if(this->_fn != nullptr)
 						// Выводим полученный IP адрес
@@ -1113,61 +1105,154 @@ size_t awh::DNS::resolve(const string & host, const int family) noexcept {
 		this->clearZombie();
 		// Если домен передан
 		if(!host.empty()){
-			// Результат работы регулярного выражения
-			smatch match;
-			// Устанавливаем правило регулярного выражения
-			regex e("^\\[?(\\d{1,3}(?:\\.\\d{1,3}){3}|[a-f\\d\\:]{2,39})\\]?$", regex::ECMAScript | regex::icase);
-			// Выполняем поиск протокола
-			regex_search(host, match, e);
-			// Если данные найдены
-			if(match.empty()){
-				// Выполняем поиск IP адреса в кэше DNS
-				const string & ip = this->cache(family, host);
-				// Если IP адрес получен
-				if(!ip.empty()){
-					// Получаем идентификатор резолвинга
-					result = this->_fmk->unixTimestamp();
+			// Определяем тип передаваемого сервера
+			switch((uint8_t) this->_nwk->parseHost(host)){
+				// Если домен является IPv4 адресом
+				case (uint8_t) network_t::type_t::IPV4:
+				// Если домен является IPv6 адресом
+				case (uint8_t) network_t::type_t::IPV6: {
 					// Если функция обратного вызова установлена
 					if(this->_fn != nullptr)
 						// Выводим полученный IP адрес
-						this->_fn(ip, family, result);
-					// Выходим из функции
-					return result;
-				}
-				// Если база событий установлена
-				if(this->_base != nullptr){
-					// Выполняем блокировку потока
-					this->_mtx.worker.lock();
-					// Получаем идентификатор воркера
-					result = this->_fmk->unixTimestamp();
-					// Добавляем воркер резолвинга в список воркеров
-					auto ret = this->_workers.emplace(result, unique_ptr <worker_t> (new worker_t(result, family, this->_base, this)));
-					// Выполняем разблокировку потока
-					this->_mtx.worker.unlock();
-					// Если запрос на сервер не выполнен
-					if(!ret.first->second->request(host)){
-						// Выполняем блокировку потока
-						this->_mtx.worker.lock();
-						// Удаляем объект воркера
-						this->_workers.erase(result);
-						// Выполняем разблокировку потока
-						this->_mtx.worker.unlock();
-						// Выводим в лог сообщение
-						this->_log->print("request for %s returned immediately", log_t::flag_t::CRITICAL, host.c_str());
+						this->_fn(host, family, result);
+				} break;
+				// Если домен является аппаратным адресом сетевого интерфейса
+				case (uint8_t) network_t::type_t::MAC:
+				// Если домен является адресом/Маски сети
+				case (uint8_t) network_t::type_t::NETWORK:
+				// Если домен является адресом в файловой системе
+				case (uint8_t) network_t::type_t::ADDRESS:
+				// Если домен является HTTP методом
+				case (uint8_t) network_t::type_t::HTTPMETHOD:
+				// Если домен является HTTP адресом
+				case (uint8_t) network_t::type_t::HTTPADDRESS: {
+					// Если функция обратного вызова установлена
+					if(this->_fn != nullptr)
+						// Выводим полученный IP адрес
+						this->_fn("", family, result);
+				} break;
+				// Если домен является доменным именем
+				case (uint8_t) network_t::type_t::DOMNAME: {
+					// Выполняем поиск IP адреса в кэше DNS
+					const string & ip = this->cache(family, host);
+					// Если IP адрес получен
+					if(!ip.empty()){
 						// Если функция обратного вызова установлена
 						if(this->_fn != nullptr)
 							// Выводим полученный IP адрес
-							this->_fn("", family, result);
+							this->_fn(ip, family, result);
+						// Выходим из функции
+						return result;
 					}
+					// Если база событий установлена
+					if(this->_base != nullptr){
+						// Выполняем блокировку потока
+						this->_mtx.worker.lock();
+						// Получаем идентификатор воркера
+						result = this->_fmk->unixTimestamp();
+						// Добавляем воркер резолвинга в список воркеров
+						auto ret = this->_workers.emplace(result, unique_ptr <worker_t> (new worker_t(result, family, this->_base, this)));
+						// Выполняем разблокировку потока
+						this->_mtx.worker.unlock();
+						// Если запрос на сервер не выполнен
+						if(!ret.first->second->request(host)){
+							// Выполняем блокировку потока
+							this->_mtx.worker.lock();
+							// Удаляем объект воркера
+							this->_workers.erase(result);
+							// Выполняем разблокировку потока
+							this->_mtx.worker.unlock();
+							// Выводим в лог сообщение
+							this->_log->print("request for %s returned immediately", log_t::flag_t::CRITICAL, host.c_str());
+							// Выполняем обнуление результата
+							result = 0;
+							// Если функция обратного вызова установлена
+							if(this->_fn != nullptr)
+								// Выводим полученный IP адрес
+								this->_fn("", family, result);
+						}
+					}
+				} break;
+				// Значит скорее всего, садрес является доменным именем
+				default: {
+					// Если доменное имя является локальным
+					if(this->_fmk->isLatian(this->_fmk->convert(host))){
+						// Определяем тип протокола подключения
+						switch(family){
+							// Если тип протокола подключения IPv4
+							case AF_INET: {
+								/**
+								 * Методы только для OS Windows
+								 */
+								#if defined(_WIN32) || defined(_WIN64)
+									// Выполняем резолвинг доменного имени
+									struct hostent * domain = gethostbyname(host.c_str());
+								/**
+								 * Если операционной системой является Nix-подобная
+								 */
+								#else
+									// Выполняем резолвинг доменного имени
+									struct hostent * domain = gethostbyname2(host.c_str(), AF_INET);
+								#endif
+								// Создаём объект сервера
+								struct sockaddr_in server;
+								// Очищаем всю структуру для сервера
+								memset(&server, 0, sizeof(server));
+								// Создаем буфер для получения ip адреса
+								char buffer[INET_ADDRSTRLEN];
+								// Заполняем структуру нулями
+								memset(buffer, 0, sizeof(buffer));
+								// Устанавливаем протокол интернета
+								server.sin_family = AF_INET;
+								// Выполняем копирование данных типа подключения
+								memcpy(&server.sin_addr.s_addr, domain->h_addr, domain->h_length);
+								// Копируем полученные данные
+								inet_ntop(AF_INET, &server.sin_addr, buffer, sizeof(buffer));
+								// Если функция обратного вызова установлена
+								if(this->_fn != nullptr)
+									// Выводим полученный IP адрес
+									this->_fn(buffer, family, result);
+							} break;
+							// Если тип протокола подключения IPv6
+							case AF_INET6: {
+								/**
+								 * Методы только для OS Windows
+								 */
+								#if defined(_WIN32) || defined(_WIN64)
+									// Выполняем резолвинг доменного имени
+									struct hostent * domain = gethostbyname(host.c_str());
+								/**
+								 * Если операционной системой является Nix-подобная
+								 */
+								#else
+									// Выполняем резолвинг доменного имени
+									struct hostent * domain = gethostbyname2(host.c_str(), AF_INET6);
+								#endif
+								// Создаём объект сервера
+								struct sockaddr_in6 server;
+								// Очищаем всю структуру для сервера
+								memset(&server, 0, sizeof(server));
+								// Создаем буфер для получения ip адреса
+								char buffer[INET6_ADDRSTRLEN];
+								// Заполняем структуру нулями
+								memset(buffer, 0, sizeof(buffer));
+								// Устанавливаем протокол интернета
+								server.sin6_family = AF_INET6;
+								// Выполняем копирование данных типа подключения
+								memcpy(&server.sin6_addr.s6_addr, domain->h_addr, domain->h_length);
+								// Копируем полученные данные
+								inet_ntop(AF_INET6, &server.sin6_addr, buffer, sizeof(buffer));
+								// Если функция обратного вызова установлена
+								if(this->_fn != nullptr)
+									// Выводим полученный IP адрес
+									this->_fn(buffer, family, result);
+							} break;
+						}
+					// Если в качестве хоста, прислали какую-то чушь и функция обратного вызова установлена
+					} else if(this->_fn != nullptr)
+						// Выводим полученный IP адрес
+						this->_fn("", family, result);
 				}
-			// Если передан IP адрес то возвращаем его
-			} else {
-				// Получаем идентификатор резолвинга
-				result = this->_fmk->unixTimestamp();
-				// Если функция обратного вызова установлена
-				if(this->_fn != nullptr)
-					// Выводим полученный IP адрес
-					this->_fn(match[1].str(), family, result);
 			}
 		}
 	}

@@ -22,7 +22,6 @@
 #include <map>
 #include <stack>
 #include <mutex>
-#include <regex>
 #include <thread>
 #include <cstdio>
 #include <string>

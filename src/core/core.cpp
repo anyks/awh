@@ -1310,6 +1310,72 @@ void awh::Core::freeze(const bool mode) noexcept {
 	this->dispatch.freeze(mode);
 }
 /**
+ * resolving2 Метод получения IP адреса доменного имени
+ * @param ip     адрес интернет-подключения
+ * @param family тип интернет-протокола AF_INET, AF_INET6
+ * @param did    идентификатор DNS запроса
+ */
+void awh::Core::resolving2(const string & ip, const int family, const size_t did) noexcept {
+	// Выполняем поиск идентификатора запроса
+	auto it = this->_dids.find(did);
+	// Если идентификатор запроса получен
+	if(it != this->_dids.end()){
+		// Определяем тип протокола подключения
+		switch(family){
+			// Если тип протокола подключения IPv4
+			case AF_INET:
+				// Выполняем функцию обратного вызова
+				it->second(ip, family_t::IPV4);
+			break;
+			// Если тип протокола подключения IPv6
+			case AF_INET6:
+				// Выполняем функцию обратного вызова
+				it->second(ip, family_t::IPV6);
+			break;
+		}
+		// Выполняем удаление объекта запроса
+		this->_dids.erase(it);
+	}
+}
+/**
+ * resolve Метод выполнения резолвинга доменного имени
+ * @param domain   доменное имя для резолвинга
+ * @param family   тип протокола интернета (IPV4 / IPV6)
+ * @param callback функция обратного вызова
+ */
+void awh::Core::resolve(const string & domain, const family_t family, function <void (const string &, const family_t)> callback) noexcept {
+	// Если доменное имя передано
+	if(!domain.empty() && (callback != nullptr)){
+		// Идентификатор DNS запроса
+		size_t did = 0;
+		// Устанавливаем событие на получение данных с DNS сервера
+		this->dns.on(std::bind(&core_t::resolving2, this, _1, _2, _3));
+		// Выполняем поиск нулевой позиции (при мгновенном получении результата)
+		auto it = this->_dids.find(did);
+		// Если нулевой идентификатор получен
+		if(it != this->_dids.end())
+			// Устанавливаем функцию обратного вызова
+			it->second = callback;
+		// Иначе просто добавляем функцию обратного вызова в нулевое значение
+		else this->_dids.emplace(did, callback);
+		// Определяем тип протокола подключения
+		switch((uint8_t) family){
+			// Если тип протокола подключения IPv4
+			case (uint8_t) family_t::IPV4:
+				// Выполняем резолвинг домена
+				did = this->dns.resolve(domain, AF_INET);
+			break;
+			// Если тип протокола подключения IPv6
+			case (uint8_t) family_t::IPV6:
+				// Выполняем резолвинг домена
+				did = this->dns.resolve(domain, AF_INET6);
+			break;
+		}
+		// Выполняем резолвинг домена
+		if(did > 0) this->_dids.emplace(did, callback);
+	}
+}
+/**
  * removeUnixSocket Метод удаления unix-сокета
  * @return результат выполнения операции
  */

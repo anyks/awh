@@ -281,11 +281,13 @@ namespace awh {
 		private:
 			// Список активных таймеров
 			map <u_short, unique_ptr <timer_t>> _timers;
+			// Список функций обратного вызова при выполнении резолвинга
+			map <size_t, function <void (const string &, const family_t)>> _dids;
 		protected:
 			// Список активных воркеров
 			map <size_t, const worker_t *> workers;
 			// Список подключённых клиентов
-			map <size_t, const worker_t::adj_t *> adjutants;
+			map <size_t, const worker_t::adj_t *> adjutants;			
 		protected:
 			// Флаг разрешения работы
 			bool mode;
@@ -519,6 +521,22 @@ namespace awh {
 			 * @param mode флаг активации заморозки чтения данных
 			 */
 			void freeze(const bool mode) noexcept;
+		private:
+			/**
+			 * resolving2 Метод получения IP адреса доменного имени
+			 * @param ip     адрес интернет-подключения
+			 * @param family тип интернет-протокола AF_INET, AF_INET6
+			 * @param did    идентификатор DNS запроса
+			 */
+			void resolving2(const string & ip, const int family, const size_t did) noexcept;
+		public:
+			/**
+			 * resolve Метод выполнения резолвинга доменного имени
+			 * @param domain   доменное имя для резолвинга
+			 * @param family   тип протокола интернета (IPV4 / IPV6)
+			 * @param callback функция обратного вызова
+			 */
+			void resolve(const string & domain, const family_t family, function <void (const string &, const family_t)> callback) noexcept;
 		public:
 			/**
 			 * removeUnixSocket Метод удаления unix-сокета

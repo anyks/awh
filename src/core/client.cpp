@@ -360,6 +360,8 @@ void awh::client::Core::reconnect(const size_t wid) noexcept {
 					wrk->status.wait = worker_t::mode_t::RECONNECT;
 					// Получаем URL параметры запроса
 					const uri_t::url_t & url = (wrk->isProxy() ? wrk->proxy.url : wrk->url);
+					// Устанавливаем событие на получение данных с DNS сервера
+					this->dns.on(std::bind(&worker_t::resolving, wrk, _1, _2, _3));
 					// Определяем тип протокола подключения
 					switch((uint8_t) this->net.family){
 						// Если тип протокола подключения IPv4
