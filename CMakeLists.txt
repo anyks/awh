@@ -38,8 +38,8 @@ else()
     set(DEBUGGER "")
 endif()
 
-# Enable C++14
-set(CMAKE_CXX_STANDARD 14)
+# Enable C++17
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Устанавливаем опции компилятора
