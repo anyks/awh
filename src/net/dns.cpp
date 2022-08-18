@@ -485,7 +485,7 @@ bool awh::DNS::Worker::request(const string & domain) noexcept {
 					header->qr = 0;
 					header->aa = 0;
 					header->tc = 0;
-					header->rd = 1;
+					header->rd = 2;
 					header->ra = 0;
 					header->rcode = 0;
 					header->opcode = 0;
