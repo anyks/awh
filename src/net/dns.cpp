@@ -144,9 +144,9 @@ void awh::DNS::Worker::response(ev::io & io, int revents) noexcept {
 					// Выполняем зануление буфера данных
 					memset(data, 0, sizeof(data));
 					// Выполняем парсинг IPv6 адреса
-					for(int j = 0; j < ntohs(rrflags->rdlength); ++j)
+					for(int j = 0; j < (ntohs(rrflags->rdlength) * 8); ++j)
 						// Выполняем парсинг IP адреса
-						data[j] = (u_char) buffer[size + j];
+						data[j] = (u_char) buffer[size + j];					
 					// Добавляем запись в список записей
 					rdata[i] = move((const char *) &data);
 					// Устанавливаем тип полученных данных
