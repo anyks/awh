@@ -98,7 +98,7 @@ void awh::DNS::Worker::response(ev::io & io, int revents) noexcept {
 		// Получаем список значений записей
 		vector <string> rdata(count, "");
 
-		cout << " ^^^^^^^^^^^^^^^^^^1 " << ntohs(header->ancount) << " ==== " << ntohs(header->arcount) << endl;
+		cout << " ^^^^^^^^^^^^^^^^^^1 " << ntohs(header->ancount) << " ==== " << (u_short) header->rcode << endl;
 
 		// Выполняем перебор всех полученных записей
 		for(u_short i = 0; i < count; ++i){
@@ -117,6 +117,10 @@ void awh::DNS::Worker::response(ev::io & io, int revents) noexcept {
 
 			// Определяем тип записи
 			switch(ntohs(rrflags->rtype)){
+				// Если запись является интернет-протоколом IPv6
+				case 28: {
+					cout << " =================== IPV6 " << endl;
+				} break;
 				// Если запись является интернет-протоколом IPv4
 				case 1: {
 					cout << " =================== IPV4 " << endl;
@@ -526,6 +530,8 @@ bool awh::DNS::Worker::request(const string & domain) noexcept {
 						this->_socket.reuseable(this->_fd);
 						// Устанавливаем разрешение на закрытие сокета при неиспользовании
 						this->_socket.closeonexec(this->_fd);
+						// Устанавливаем размер буфера передачи данных
+						this->_socket.bufferSize(this->_fd, sizeof(buffer), sizeof(buffer), 1);
 						// Если запрос на сервер DNS успешно отправлен
 						if((result = (::sendto(this->_fd, (const char *) buffer, size, 0, (struct sockaddr *) &this->_addr, this->_socklen) > 0))){
 							// Устанавливаем сокет для чтения
