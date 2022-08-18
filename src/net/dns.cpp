@@ -98,7 +98,7 @@ void awh::DNS::Worker::response(ev::io & io, int revents) noexcept {
 		// Получаем список значений записей
 		vector <string> rdata(count, "");
 
-		cout << " ^^^^^^^^^^^^^^^^^^1 " << ntohs(header->ancount) << " ==== " << (u_short) header->rcode << endl;
+		cout << " ^^^^^^^^^^^^^^^^^^1 " << ntohs(header->ancount) << " ==== " << ntohs(header->arcount) << " ==== " << (u_short) header->rcode << endl;
 
 		// Выполняем перебор всех полученных записей
 		for(u_short i = 0; i < count; ++i){
@@ -144,7 +144,7 @@ void awh::DNS::Worker::response(ev::io & io, int revents) noexcept {
 					// Выполняем зануление буфера данных
 					memset(data, 0, sizeof(data));
 					// Выполняем парсинг IPv6 адреса
-					for(int j = 0; j < (ntohs(rrflags->rdlength) * 8); ++j)
+					for(int j = 0; j < ntohs(rrflags->rdlength); ++j)
 						// Выполняем парсинг IP адреса
 						data[j] = (u_char) buffer[size + j];					
 					// Добавляем запись в список записей
