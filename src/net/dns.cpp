@@ -118,43 +118,21 @@ void awh::DNS::Worker::response(ev::io & io, int revents) noexcept {
 			// Определяем тип записи
 			switch(ntohs(rrflags->rtype)){
 				// Если запись является интернет-протоколом IPv4
-				case 1: {
-					cout << " =================== IPV4 " << endl;
-
-					// Создаём буфер данных
-					u_char data[254];
-					// Выполняем зануление буфера данных
-					memset(data, 0, sizeof(data));
-					// Выполняем парсинг IPv4 адреса
-					for(int j = 0; j < ntohs(rrflags->rdlength); ++j)
-						// Выполняем парсинг IP адреса
-						data[j] = (u_char) buffer[size + j];
-					// Добавляем запись в список записей
-					rdata[i] = move((const char *) &data);
-					// Устанавливаем тип полученных данных
-					type[i] = ntohs(rrflags->rtype);
-				} break;
+				case 1:
 				// Если запись является интернет-протоколом IPv6
 				case 28: {
-					cout << " ===================1 IPV6 " << ntohs(rrflags->rdlength) << endl;
-
-
 					// Создаём буфер данных
 					u_char data[254];
 					// Выполняем зануление буфера данных
 					memset(data, 0, sizeof(data));
-					// Выполняем парсинг IPv6 адреса
+					// Выполняем парсинг IP адреса
 					for(int j = 0; j < ntohs(rrflags->rdlength); ++j)
 						// Выполняем парсинг IP адреса
 						data[j] = (u_char) buffer[size + j];
 					// Добавляем запись в список записей
 					rdata[i] = move((const char *) &data);
-
-					cout << " ===================2 IPV6 " << rdata[i].size() << endl;
-
 					// Устанавливаем тип полученных данных
 					type[i] = ntohs(rrflags->rtype);
-
 				} break;
 				// Если запись является каноническим именем
 				case 5: {
@@ -196,7 +174,10 @@ void awh::DNS::Worker::response(ev::io & io, int revents) noexcept {
 						// Зануляем буфер данных
 						memset(buffer, 0, sizeof(buffer));
 
-						cout << " -------------------!!!!!!!!! " << rdata[i].size() << endl;
+						for(size_t i = 0; i < 18; i++)
+							cout << " -------------------!!!!!!!!!1 " << (u_int) rdata[i] << endl;
+
+						cout << " -------------------!!!!!!!!!2 " << rdata[i].size() << endl;
 
 						// Получаем IP адрес принадлежащий доменному имени
 						const string ip = inet_ntop(this->_family, rdata[i].c_str(), buffer, sizeof(buffer));
@@ -491,9 +472,6 @@ bool awh::DNS::Worker::request(const string & domain) noexcept {
 						client.sin6_family = this->_family;
 						// Устанавливаем произвольный порт для
 						client.sin6_port = htons(server.port);
-
-						cout << " ^^^^^^^^^^^^^^^^^^^^^^^ " << server.host << endl;
-
 						// Указываем адрес IPv6 для клиента
 						inet_pton(this->_family, server.host.c_str(), &client.sin6_addr);
 						// Запоминаем размер структуры
@@ -533,8 +511,19 @@ bool awh::DNS::Worker::request(const string & domain) noexcept {
 					size += (domain.size() + 1);
 					// Создаём части флагов вопроса пакета запроса
 					qflags_t * qflags = reinterpret_cast <qflags_t *> (&buffer[size]);
-					// Устанавливаем тип флага запроса
-					qflags->qtype = htons(28);// htons(0x0001);
+					// Определяем тип подключения
+					switch(this->_family){
+						// Для протокола IPv4
+						case AF_INET:
+							// Устанавливаем тип флага запроса
+							qflags->qtype = htons(0x0001);
+						break;
+						// Для протокола IPv6
+						case AF_INET6:
+							// Устанавливаем тип флага запроса
+							qflags->qtype = htons(0x1C);
+						break;
+					}
 					// Устанавливаем класс флага запроса
 					qflags->qclass = htons(0x0001);
 					// Увеличиваем размер запроса
