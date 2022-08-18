@@ -109,6 +109,9 @@ void awh::DNS::Worker::response(ev::io & io, int revents) noexcept {
 			size = ((size + sizeof(rrflags_t)) - 2);
 			// Если адрес получен IPv4
 			if(ntohs(rrflags->rtype) == 1){
+
+				cout << " =================== IPV4 " << endl;
+
 				// Создаём буфер данных
 				u_char data[254];
 				// Выполняем зануление буфера данных
