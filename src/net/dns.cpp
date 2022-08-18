@@ -98,7 +98,7 @@ void awh::DNS::Worker::response(ev::io & io, int revents) noexcept {
 		// Получаем список значений записей
 		vector <string> rdata(count, "");
 
-		cout << " ^^^^^^^^^^^^^^^^^^1 " << ntohs(header->ancount) << endl;
+		cout << " ^^^^^^^^^^^^^^^^^^1 " << ntohs(header->ancount) << " ==== " << (u_short) header->rcode << endl;
 
 		// Выполняем перебор всех полученных записей
 		for(u_short i = 0; i < count; ++i){
@@ -485,7 +485,7 @@ bool awh::DNS::Worker::request(const string & domain) noexcept {
 					header->qr = 0;
 					header->aa = 0;
 					header->tc = 0;
-					header->rd = 0;
+					header->rd = 1;
 					header->ra = 0;
 					header->rcode = 0;
 					header->opcode = 0;

@@ -120,22 +120,22 @@ namespace awh {
 			} mtx_t;
 		private:
 			/**
-			 * Header Структура заголовка запроса DNS
+			 * Header Структура заголовка DNS
 			 */
 			typedef struct Header {
-				u_short id;
-				u_char rd : 1;
-				u_char tc : 1;
-				u_char aa : 1;
-				u_char opcode : 4;
-				u_char qr : 1;
-				u_char rcode : 4;
-				u_char z : 3;
-				u_char ra : 1;
-				u_short qdcount;
-				u_short ancount;
-				u_short nscount;
-				u_short arcount;
+				u_short id;        // Идентификатор операции
+				u_char rd : 1;     // Флаг выполнения желаемой рекурсии
+				u_char tc : 1;     // Флаг усечения сообщения если оно слишком большое
+				u_char aa : 1;     // Флаг авторитетного ответа сервера
+				u_char opcode : 4; // Опкод операции
+				u_char qr : 1;     // Тип запроса или ответа
+				u_char rcode : 4;  // Код выполнения операции
+				u_char z : 3;      // Зарезервированно для использования в будущем
+				u_char ra : 1;     // Флаг активации рекурсивных запросов на сервере
+				u_short qdcount;   // Количество записей в разделе запроса
+				u_short ancount;   // Количество записей в разделе ответа
+				u_short nscount;   // Номер имени записи ресурсов сервера
+				u_short arcount;   // Количество записей ресурсов в разделе дополнительных записей
 				/**
 				 * Header Конструктор
 				 */
