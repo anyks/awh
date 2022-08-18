@@ -136,7 +136,7 @@ void awh::DNS::Worker::response(ev::io & io, int revents) noexcept {
 				} break;
 				// Если запись является интернет-протоколом IPv6
 				case 28: {
-					cout << " ===================1 IPV6 " << ntohs(rrflags->rdlength) << endl;
+					cout << " =================== IPV6 " << ntohs(rrflags->rdlength) << endl;
 
 
 					// Создаём буфер данных
@@ -144,12 +144,9 @@ void awh::DNS::Worker::response(ev::io & io, int revents) noexcept {
 					// Выполняем зануление буфера данных
 					memset(data, 0, sizeof(data));
 					// Выполняем парсинг IPv6 адреса
-					for(int j = 0; j < ntohs(rrflags->rdlength); ++j){
+					for(int j = 0; j < ntohs(rrflags->rdlength); ++j)
 						// Выполняем парсинг IP адреса
 						data[j] = (u_char) buffer[size + j];
-
-						cout << " ===================2 IPV6 " << (u_short) data[j] << endl;
-					}
 					// Добавляем запись в список записей
 					rdata[i] = move((const char *) &data);
 					// Устанавливаем тип полученных данных
@@ -189,11 +186,15 @@ void awh::DNS::Worker::response(ev::io & io, int revents) noexcept {
 					case 5: printf("CNAME: %s\n", rdata[i].c_str()); break;
 					// Если тип полученной записи IPv4
 					case 1:
+					// Если тип полученной записи IPv6
 					case 28: {
 						// Создаём буфер данных
 						char buffer[INET6_ADDRSTRLEN];
 						// Зануляем буфер данных
 						memset(buffer, 0, sizeof(buffer));
+
+						cout << " -------------------!!!!!!!!! " << rdata[i].size() << endl;
+
 						// Получаем IP адрес принадлежащий доменному имени
 						const string ip = inet_ntop(this->_family, rdata[i].c_str(), buffer, sizeof(buffer));
 						// Если IP адрес получен
@@ -221,12 +222,12 @@ void awh::DNS::Worker::response(ev::io & io, int revents) noexcept {
 			char buffer[INET6_ADDRSTRLEN];
 			// Переходим по всему списку записей
 			for(int i = 0; i < count; ++i){
-				// Если тип полученной записи IPv4
-				if(type[i] == 1 || type[i] == 28){
+				// Если тип полученной записи IPv4 или IPv6
+				if((type[i] == 1) || (type[i] == 28)){
 					// Зануляем буфер данных
 					memset(buffer, 0, sizeof(buffer));
 					// Получаем IP адрес принадлежащий доменному имени
-					const string ip = inet_ntop(AF_INET, rdata[i].c_str(), buffer, sizeof(buffer));
+					const string ip = inet_ntop(this->_family, rdata[i].c_str(), buffer, sizeof(buffer));
 					// Если IP адрес получен
 					if(!ip.empty()){
 						// Если чёрный список IP адресов получен
