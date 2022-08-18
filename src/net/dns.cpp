@@ -77,146 +77,177 @@ void awh::DNS::Worker::response(ev::io & io, int revents) noexcept {
 	if(::recvfrom(io.fd, (char *) buffer, sizeof(buffer), 0, (struct sockaddr *) &this->_addr, &this->_socklen) > 0){
 		// Получаем объект заголовка
 		head_t * header = reinterpret_cast <head_t *> (&buffer);
-		// Получаем размер ответа
-		size_t size = sizeof(head_t);
-		// Получаем название доменного имени
-		const string & qname = this->join(vector <u_char> (buffer + size, buffer + (size + 255)));
-		// Увеличиваем размер буфера полученных данных
-		size += (qname.size() + 2);
-		// Создаём части флагов вопроса пакета ответа
-		rrflags_t * rrflags = nullptr;
-		// Создаём части флагов вопроса пакета ответа
-		qflags_t * qflags = reinterpret_cast <qflags_t *> (&buffer[size]);
-		// Увеличиваем размер ответа
-		size += sizeof(qflags_t);
-		// Получаем количество записей
-		const u_short count = ntohs(header->ancount);
-		// Создаём список полученных типов записей
-		vector <u_int> type(count, 0);
-		// Получаем список названий записей
-		vector <string> name(count, "");
-		// Получаем список значений записей
-		vector <string> rdata(count, "");
-		// Выполняем перебор всех полученных записей
-		for(u_short i = 0; i < count; ++i){
-			// Выполняем извлечение названия записи
-			name[i] = this->join(this->extract(buffer, size));
-			// Увеличиваем размер полученных данных
-			size += 2;
-			// Создаём части флагов вопроса пакета ответа
-			rrflags = reinterpret_cast <rrflags_t *> (&buffer[size]);
-			// Увеличиваем размер ответа
-			size = ((size + sizeof(rrflags_t)) - 2);
-			// Определяем тип записи
-			switch(ntohs(rrflags->rtype)){
-				// Если запись является интернет-протоколом IPv4
-				case 1:
-				// Если запись является интернет-протоколом IPv6
-				case 28: {
-					// Изменяем размер извлекаемых данных
-					rdata[i].resize(ntohs(rrflags->rdlength), 0);
-					// Выполняем парсинг IP адреса
-					for(int j = 0; j < ntohs(rrflags->rdlength); ++j)
-						// Выполняем парсинг IP адреса
-						rdata[i][j] = (u_char) buffer[size + j];
-					// Устанавливаем тип полученных данных
-					type[i] = ntohs(rrflags->rtype);
-				} break;
-				// Если запись является каноническим именем
-				case 5: {
-					// Выполняем извлечение значение записи
-					rdata[i] = this->join(this->extract(buffer, size));
-					// Устанавливаем тип полученных данных
-					type[i] = ntohs(rrflags->rtype);
-				} break;
-			}
-			// Увеличиваем размер полученных данных
-			size += ntohs(rrflags->rdlength);
-		}
-		// Список IP адресов
-		vector <string> ips;
-		/**
-		 * Если включён режим отладки
-		 */
-		#if defined(DEBUG_MODE)
-			// Выводим начальный разделитель
-			printf ("------------------------------------------------------------\n\n");
-			// Выводим заголовок
-			printf("DNS server response:\n");
-			// Выводим название доменного имени
-			printf("QNAME: %s\n", qname.c_str());
-			// Переходим по всему списку записей
-			for(int i = 0; i < count; ++i){
-				// Выводим название записи
-				printf("\nNAME: %s\n", name[i].c_str());
-				// Определяем тип записи
-				switch(type[i]){
-					// Если тип полученной записи CNAME
-					case 5: printf("CNAME: %s\n", rdata[i].c_str()); break;
-					// Если тип полученной записи IPv4
-					case 1:
-					// Если тип полученной записи IPv6
-					case 28: {
-						// Создаём буфер данных
-						char buffer[INET6_ADDRSTRLEN];
-						// Зануляем буфер данных
-						memset(buffer, 0, sizeof(buffer));
-						// Получаем IP адрес принадлежащий доменному имени
-						const string ip = inet_ntop(this->_family, rdata[i].c_str(), buffer, sizeof(buffer));
-						// Если IP адрес получен
-						if(!ip.empty()){
-							// Если чёрный список IP адресов получен
-							if(!dns->isInBlackList(this->_family, ip)){
-								// Добавляем IP адрес в список адресов
-								ips.push_back(ip);
-								// Записываем данные в кэш
-								dns->setToCache(this->_family, this->_domain, ip);
-							}
-							// Выводим информацию об IP адресе
-							printf("IPv4: %s\n", ip.c_str());
-						}
-					} break;
+		// Определяем код выполнения операции
+		switch(header->rcode){
+			// Если операция выполнена удачно
+			case 0: {
+				// Получаем размер ответа
+				size_t size = sizeof(head_t);
+				// Получаем название доменного имени
+				const string & qname = this->join(vector <u_char> (buffer + size, buffer + (size + 255)));
+				// Увеличиваем размер буфера полученных данных
+				size += (qname.size() + 2);
+				// Создаём части флагов вопроса пакета ответа
+				rrflags_t * rrflags = nullptr;
+				// Создаём части флагов вопроса пакета ответа
+				qflags_t * qflags = reinterpret_cast <qflags_t *> (&buffer[size]);
+				// Увеличиваем размер ответа
+				size += sizeof(qflags_t);
+				// Получаем количество записей
+				const u_short count = ntohs(header->ancount);
+				// Создаём список полученных типов записей
+				vector <u_int> type(count, 0);
+				// Получаем список названий записей
+				vector <string> name(count, "");
+				// Получаем список значений записей
+				vector <string> rdata(count, "");
+				// Выполняем перебор всех полученных записей
+				for(u_short i = 0; i < count; ++i){
+					// Выполняем извлечение названия записи
+					name[i] = this->join(this->extract(buffer, size));
+					// Увеличиваем размер полученных данных
+					size += 2;
+					// Создаём части флагов вопроса пакета ответа
+					rrflags = reinterpret_cast <rrflags_t *> (&buffer[size]);
+					// Увеличиваем размер ответа
+					size = ((size + sizeof(rrflags_t)) - 2);
+					// Определяем тип записи
+					switch(ntohs(rrflags->rtype)){
+						// Если запись является интернет-протоколом IPv4
+						case 1:
+						// Если запись является интернет-протоколом IPv6
+						case 28: {
+							// Изменяем размер извлекаемых данных
+							rdata[i].resize(ntohs(rrflags->rdlength), 0);
+							// Выполняем парсинг IP адреса
+							for(int j = 0; j < ntohs(rrflags->rdlength); ++j)
+								// Выполняем парсинг IP адреса
+								rdata[i][j] = (u_char) buffer[size + j];
+							// Устанавливаем тип полученных данных
+							type[i] = ntohs(rrflags->rtype);
+						} break;
+						// Если запись является каноническим именем
+						case 5: {
+							// Выполняем извлечение значение записи
+							rdata[i] = this->join(this->extract(buffer, size));
+							// Устанавливаем тип полученных данных
+							type[i] = ntohs(rrflags->rtype);
+						} break;
+					}
+					// Увеличиваем размер полученных данных
+					size += ntohs(rrflags->rdlength);
 				}
-			}
-			// Выводим конечный разделитель
-			printf ("\n------------------------------------------------------------\n\n");
-		/**
-		 * Если режим отладки отключён
-		 */
-		#else
-			// Создаём буфер данных
-			char buffer[INET6_ADDRSTRLEN];
-			// Переходим по всему списку записей
-			for(int i = 0; i < count; ++i){
-				// Если тип полученной записи IPv4 или IPv6
-				if((type[i] == 1) || (type[i] == 28)){
-					// Зануляем буфер данных
-					memset(buffer, 0, sizeof(buffer));
-					// Получаем IP адрес принадлежащий доменному имени
-					const string ip = inet_ntop(this->_family, rdata[i].c_str(), buffer, sizeof(buffer));
-					// Если IP адрес получен
-					if(!ip.empty()){
-						// Если чёрный список IP адресов получен
-						if(!dns->isInBlackList(this->_family, ip)){
-							// Добавляем IP адрес в список адресов
-							ips.push_back(ip);
-							// Записываем данные в кэш
-							dns->setToCache(this->_family, this->_domain, ip);
+				// Список IP адресов
+				vector <string> ips;
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Выводим начальный разделитель
+					printf ("------------------------------------------------------------\n\n");
+					// Выводим заголовок
+					printf("DNS server response:\n");
+					// Выводим название доменного имени
+					printf("QNAME: %s\n", qname.c_str());
+					// Переходим по всему списку записей
+					for(int i = 0; i < count; ++i){
+						// Выводим название записи
+						printf("\nNAME: %s\n", name[i].c_str());
+						// Определяем тип записи
+						switch(type[i]){
+							// Если тип полученной записи CNAME
+							case 5: printf("CNAME: %s\n", rdata[i].c_str()); break;
+							// Если тип полученной записи IPv4
+							case 1:
+							// Если тип полученной записи IPv6
+							case 28: {
+								// Создаём буфер данных
+								char buffer[INET6_ADDRSTRLEN];
+								// Зануляем буфер данных
+								memset(buffer, 0, sizeof(buffer));
+								// Получаем IP адрес принадлежащий доменному имени
+								const string ip = inet_ntop(this->_family, rdata[i].c_str(), buffer, sizeof(buffer));
+								// Если IP адрес получен
+								if(!ip.empty()){
+									// Если чёрный список IP адресов получен
+									if(!dns->isInBlackList(this->_family, ip)){
+										// Добавляем IP адрес в список адресов
+										ips.push_back(ip);
+										// Записываем данные в кэш
+										dns->setToCache(this->_family, this->_domain, ip);
+									}
+									// Выводим информацию об IP адресе
+									printf("IPv4: %s\n", ip.c_str());
+								}
+							} break;
 						}
 					}
-				}
-			}
-		#endif
-		// Если список IP адресов получен
-		if(!ips.empty()){
-			// Выполняем рандомизацию генератора случайных чисел
-			srand(dns->_fmk->nanoTimestamp());
-			// Выполняем установку IP адреса
-			ip = ips.at(rand() % ips.size());
-		// Если чёрный список доменных имён не пустой
-		} else if(!dns->emptyBlackList(this->_family))
-			// Выполняем очистку чёрного списка
-			dns->clearBlackList(this->_family);
+					// Выводим конечный разделитель
+					printf ("\n------------------------------------------------------------\n\n");
+				/**
+				 * Если режим отладки отключён
+				 */
+				#else
+					// Создаём буфер данных
+					char buffer[INET6_ADDRSTRLEN];
+					// Переходим по всему списку записей
+					for(int i = 0; i < count; ++i){
+						// Если тип полученной записи IPv4 или IPv6
+						if((type[i] == 1) || (type[i] == 28)){
+							// Зануляем буфер данных
+							memset(buffer, 0, sizeof(buffer));
+							// Получаем IP адрес принадлежащий доменному имени
+							const string ip = inet_ntop(this->_family, rdata[i].c_str(), buffer, sizeof(buffer));
+							// Если IP адрес получен
+							if(!ip.empty()){
+								// Если чёрный список IP адресов получен
+								if(!dns->isInBlackList(this->_family, ip)){
+									// Добавляем IP адрес в список адресов
+									ips.push_back(ip);
+									// Записываем данные в кэш
+									dns->setToCache(this->_family, this->_domain, ip);
+								}
+							}
+						}
+					}
+				#endif
+				// Если список IP адресов получен
+				if(!ips.empty()){
+					// Выполняем рандомизацию генератора случайных чисел
+					srand(dns->_fmk->nanoTimestamp());
+					// Выполняем установку IP адреса
+					ip = ips.at(rand() % ips.size());
+				// Если чёрный список доменных имён не пустой
+				} else if(!dns->emptyBlackList(this->_family))
+					// Выполняем очистку чёрного списка
+					dns->clearBlackList(this->_family);
+			} break;
+			// Если сервер DNS не смог интерпретировать запрос
+			case 1:
+				// Выводим в лог сообщение
+				this->_dns->_log->print("DNS query format error [%s]", log_t::flag_t::CRITICAL, this->_domain.c_str());
+			break;
+			// Если проблемы возникли на DNS сервера
+			case 2:
+				// Выводим в лог сообщение
+				this->_dns->_log->print("DNS server failure [%s]", log_t::flag_t::CRITICAL, this->_domain.c_str());
+			break;
+			// Если доменное имя указанное в запросе не существует
+			case 3:
+				// Выводим в лог сообщение
+				this->_dns->_log->print("the domain name referenced in the query does not exist [%s]", log_t::flag_t::CRITICAL, this->_domain.c_str());
+			break;
+			// Если DNS сервер не поддерживает подобный тип запросов
+			case 4:
+				// Выводим в лог сообщение
+				this->_dns->_log->print("DNS server is not implemented [%s]", log_t::flag_t::CRITICAL, this->_domain.c_str());
+			break;
+			// Если DNS сервер отказался выполнять наш запрос (например по политическим причинам)
+			case 5:
+				// Выводим в лог сообщение
+				this->_dns->_log->print("DNS request is refused [%s]", log_t::flag_t::CRITICAL, this->_domain.c_str());
+			break;
+		}
 	// Если ответ получен не был, но время ещё есть
 	} else if(this->_mode) {
 		// Выполняем закрытие подключения
