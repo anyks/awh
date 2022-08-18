@@ -108,32 +108,36 @@ void awh::DNS::Worker::response(ev::io & io, int revents) noexcept {
 			// Увеличиваем размер ответа
 			size = ((size + sizeof(rrflags_t)) - 2);
 
-			cout << " ^^^^^^^^^^^^^^^^^^ " << (u_short) ntohs(rrflags->rtype) << " === " << (u_short) ntohs(rrflags->rdlength) << endl;
+			
 
-			// Если адрес получен IPv4
-			if(ntohs(rrflags->rtype) == 1){
+			cout << " ^^^^^^^^^^^^^^^^^^ " << (u_short) ntohs(rrflags->rtype) << " === " << (u_short) ntohs(rrflags->rdlength) << " ||| " << count << endl;
 
-				cout << " =================== IPV4 " << endl;
+			// Определяем тип записи
+			switch(ntohs(rrflags->rtype)){
+				// Если запись является интернет-протоколом IPv4
+				case 1: {
+					cout << " =================== IPV4 " << endl;
 
-				// Создаём буфер данных
-				u_char data[254];
-				// Выполняем зануление буфера данных
-				memset(data, 0, sizeof(data));
-				// Выполняем парсинг IPv4 адреса
-				for(int j = 0; j < ntohs(rrflags->rdlength); ++j)
-					// Выполняем парсинг IP адреса
-					data[j] = (u_char) buffer[size + j];
-				// Добавляем запись в список записей
-				rdata[i] = move((const char *) &data);
-				// Устанавливаем тип полученных данных
-				type[i] = ntohs(rrflags->rtype);
-			}
-			// Если получено каноническое имя
-			if(ntohs(rrflags->rtype) == 5){
-				// Выполняем извлечение значение записи
-				rdata[i] = this->join(this->extract(buffer, size));
-				// Устанавливаем тип полученных данных
-				type[i] = ntohs(rrflags->rtype);
+					// Создаём буфер данных
+					u_char data[254];
+					// Выполняем зануление буфера данных
+					memset(data, 0, sizeof(data));
+					// Выполняем парсинг IPv4 адреса
+					for(int j = 0; j < ntohs(rrflags->rdlength); ++j)
+						// Выполняем парсинг IP адреса
+						data[j] = (u_char) buffer[size + j];
+					// Добавляем запись в список записей
+					rdata[i] = move((const char *) &data);
+					// Устанавливаем тип полученных данных
+					type[i] = ntohs(rrflags->rtype);
+				} break;
+				// Если запись является каноническим именем
+				case 5: {
+					// Выполняем извлечение значение записи
+					rdata[i] = this->join(this->extract(buffer, size));
+					// Устанавливаем тип полученных данных
+					type[i] = ntohs(rrflags->rtype);
+				} break;
 			}
 			// Увеличиваем размер полученных данных
 			size += ntohs(rrflags->rdlength);
@@ -170,7 +174,7 @@ void awh::DNS::Worker::response(ev::io & io, int revents) noexcept {
 						// Получаем IP адрес принадлежащий доменному имени
 						// const string ip = inet_ntop(this->_family, rdata[i].c_str(), buffer, sizeof(buffer));
 						
-						const string ip = inet_ntop(AF_INET, rdata[i].c_str(), buffer, sizeof(buffer));
+						const string ip = inet_ntop(AF_INET6, rdata[i].c_str(), buffer, sizeof(buffer));
 						
 						// Если IP адрес получен
 						if(!ip.empty()){
