@@ -498,7 +498,7 @@ bool awh::DNS::Worker::request(const string & domain) noexcept {
 					header->opcode = 0;
 					header->ancount = 0x0000;
 					header->nscount = 0x0000;
-					header->arcount = 1;// 0x0000;
+					header->arcount = 0x0000;
 					header->qdcount = htons((u_short) 1);
 					// Получаем размер запроса
 					size_t size = sizeof(head_t);
@@ -511,7 +511,7 @@ bool awh::DNS::Worker::request(const string & domain) noexcept {
 					// Создаём части флагов вопроса пакета запроса
 					qflags_t * qflags = reinterpret_cast <qflags_t *> (&buffer[size]);
 					// Устанавливаем тип флага запроса
-					qflags->qtype = htons(0x0001);
+					qflags->qtype = htons(28);// htons(0x0001);
 					// Устанавливаем класс флага запроса
 					qflags->qclass = htons(0x0001);
 					// Увеличиваем размер запроса
