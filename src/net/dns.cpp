@@ -498,7 +498,7 @@ bool awh::DNS::Worker::request(const string & domain) noexcept {
 					header->opcode = 0;
 					header->ancount = 0x0000;
 					header->nscount = 0x0000;
-					header->arcount = 2;// 0x0000;
+					header->arcount = 1;// 0x0000;
 					header->qdcount = htons((u_short) 1);
 					// Получаем размер запроса
 					size_t size = sizeof(head_t);
