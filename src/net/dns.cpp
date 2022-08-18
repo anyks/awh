@@ -464,6 +464,9 @@ bool awh::DNS::Worker::request(const string & domain) noexcept {
 						client.sin6_family = this->_family;
 						// Устанавливаем произвольный порт для
 						client.sin6_port = htons(server.port);
+
+						cout << " ^^^^^^^^^^^^^^^^^^^^^^^ " << server.host << endl;
+
 						// Указываем адрес IPv6 для клиента
 						inet_pton(this->_family, server.host.c_str(), &client.sin6_addr);
 						// Запоминаем размер структуры

@@ -905,9 +905,9 @@ void awh::server::Core::run(const size_t wid) noexcept {
 			});
 
 			// cout << " --------------------- " << this->dns.resolve("testnet.binance.vision", AF_INET) << endl;
-			// cout << " --------------------- " << this->dns.resolve("ipv6.google.com", AF_INET6) << endl;
+			cout << " --------------------- " << this->dns.resolve("ipv6.google.com", AF_INET6) << endl;
 
-			cout << " --------------------- " << this->dns.resolve("ipv6.l.google.com", AF_INET6) << endl;
+			// cout << " --------------------- " << this->dns.resolve("ipv6.l.google.com", AF_INET6) << endl;
 			
 
 			// cout << " --------------------- " << this->dns.resolve("api.binance.com", AF_INET) << endl;
