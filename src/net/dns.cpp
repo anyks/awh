@@ -136,7 +136,7 @@ void awh::DNS::Worker::response(ev::io & io, int revents) noexcept {
 				} break;
 				// Если запись является интернет-протоколом IPv6
 				case 28: {
-					cout << " =================== IPV6 " << endl;
+					cout << " =================== IPV6 " << ntohs(rrflags->rdlength) << endl;
 
 
 					// Создаём буфер данных
@@ -185,7 +185,8 @@ void awh::DNS::Worker::response(ev::io & io, int revents) noexcept {
 					// Если тип полученной записи CNAME
 					case 5: printf("CNAME: %s\n", rdata[i].c_str()); break;
 					// Если тип полученной записи IPv4
-					case 1: {
+					case 1:
+					case 28: {
 						// Создаём буфер данных
 						char buffer[INET6_ADDRSTRLEN];
 						// Зануляем буфер данных
@@ -218,7 +219,7 @@ void awh::DNS::Worker::response(ev::io & io, int revents) noexcept {
 			// Переходим по всему списку записей
 			for(int i = 0; i < count; ++i){
 				// Если тип полученной записи IPv4
-				if(type[i] == 1){
+				if(type[i] == 1 || type[i] == 28){
 					// Зануляем буфер данных
 					memset(buffer, 0, sizeof(buffer));
 					// Получаем IP адрес принадлежащий доменному имени
