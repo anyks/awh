@@ -174,8 +174,8 @@ void awh::DNS::Worker::response(ev::io & io, int revents) noexcept {
 						// Зануляем буфер данных
 						memset(buffer, 0, sizeof(buffer));
 
-						for(size_t i = 0; i < 18; i++)
-							cout << " -------------------!!!!!!!!!1 " << (u_int) rdata[i] << endl;
+						for(size_t j = 0; j < 18; j++)
+							cout << " -------------------!!!!!!!!!1 " << (u_int) rdata[i].c_str()[j] << endl;
 
 						cout << " -------------------!!!!!!!!!2 " << rdata[i].size() << endl;
 
