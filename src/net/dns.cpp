@@ -117,10 +117,6 @@ void awh::DNS::Worker::response(ev::io & io, int revents) noexcept {
 
 			// Определяем тип записи
 			switch(ntohs(rrflags->rtype)){
-				// Если запись является интернет-протоколом IPv6
-				case 28: {
-					cout << " =================== IPV6 " << endl;
-				} break;
 				// Если запись является интернет-протоколом IPv4
 				case 1: {
 					cout << " =================== IPV4 " << endl;
@@ -137,6 +133,10 @@ void awh::DNS::Worker::response(ev::io & io, int revents) noexcept {
 					rdata[i] = move((const char *) &data);
 					// Устанавливаем тип полученных данных
 					type[i] = ntohs(rrflags->rtype);
+				} break;
+				// Если запись является интернет-протоколом IPv6
+				case 28: {
+					cout << " =================== IPV6 " << endl;
 				} break;
 				// Если запись является каноническим именем
 				case 5: {
@@ -498,7 +498,7 @@ bool awh::DNS::Worker::request(const string & domain) noexcept {
 					header->opcode = 0;
 					header->ancount = 0x0000;
 					header->nscount = 0x0000;
-					header->arcount = 0x0000;
+					header->arcount = 2;// 0x0000;
 					header->qdcount = htons((u_short) 1);
 					// Получаем размер запроса
 					size_t size = sizeof(head_t);
