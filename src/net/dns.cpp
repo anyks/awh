@@ -126,9 +126,12 @@ void awh::DNS::Worker::response(ev::io & io, int revents) noexcept {
 					// Выполняем зануление буфера данных
 					memset(data, 0, sizeof(data));
 					// Выполняем парсинг IP адреса
-					for(int j = 0; j < ntohs(rrflags->rdlength); ++j)
+					for(int j = 0; j < ntohs(rrflags->rdlength); ++j){
 						// Выполняем парсинг IP адреса
 						data[j] = (u_char) buffer[size + j];
+
+						cout << " ±±±±±±±±±±±±±±±±±±1 " << (u_int) data[j] << endl;
+					}
 					// Добавляем запись в список записей
 					rdata[i] = move((const char *) &data);
 					// Устанавливаем тип полученных данных
