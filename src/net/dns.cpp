@@ -137,6 +137,21 @@ void awh::DNS::Worker::response(ev::io & io, int revents) noexcept {
 				// Если запись является интернет-протоколом IPv6
 				case 28: {
 					cout << " =================== IPV6 " << endl;
+
+
+					// Создаём буфер данных
+					u_char data[254];
+					// Выполняем зануление буфера данных
+					memset(data, 0, sizeof(data));
+					// Выполняем парсинг IPv6 адреса
+					for(int j = 0; j < ntohs(rrflags->rdlength); ++j)
+						// Выполняем парсинг IP адреса
+						data[j] = (u_char) buffer[size + j];
+					// Добавляем запись в список записей
+					rdata[i] = move((const char *) &data);
+					// Устанавливаем тип полученных данных
+					type[i] = ntohs(rrflags->rtype);
+
 				} break;
 				// Если запись является каноническим именем
 				case 5: {
