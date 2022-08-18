@@ -121,19 +121,12 @@ void awh::DNS::Worker::response(ev::io & io, int revents) noexcept {
 				case 1:
 				// Если запись является интернет-протоколом IPv6
 				case 28: {
-					// Создаём буфер данных
-					u_char data[254];
-					// Выполняем зануление буфера данных
-					memset(data, 0, sizeof(data));
+					// Изменяем размер извлекаемых данных
+					rdata[i].resize(ntohs(rrflags->rdlength), 0);
 					// Выполняем парсинг IP адреса
-					for(int j = 0; j < ntohs(rrflags->rdlength); ++j){
+					for(int j = 0; j < ntohs(rrflags->rdlength); ++j)
 						// Выполняем парсинг IP адреса
-						data[j] = (u_char) buffer[size + j];
-
-						cout << " ±±±±±±±±±±±±±±±±±±1 " << (u_int) data[j] << endl;
-					}
-					// Добавляем запись в список записей
-					rdata[i] = move((const char *) &data);
+						rdata[i][j] = (u_char) buffer[size + j];
 					// Устанавливаем тип полученных данных
 					type[i] = ntohs(rrflags->rtype);
 				} break;
