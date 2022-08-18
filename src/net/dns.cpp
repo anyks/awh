@@ -107,6 +107,9 @@ void awh::DNS::Worker::response(ev::io & io, int revents) noexcept {
 			rrflags = reinterpret_cast <rrflags_t *> (&buffer[size]);
 			// Увеличиваем размер ответа
 			size = ((size + sizeof(rrflags_t)) - 2);
+
+			cout << " ^^^^^^^^^^^^^^^^^^ " << (u_short) ntohs(rrflags->rtype) << " === " << (u_short) ntohs(rrflags->rdlength) << endl;
+
 			// Если адрес получен IPv4
 			if(ntohs(rrflags->rtype) == 1){
 
@@ -161,8 +164,14 @@ void awh::DNS::Worker::response(ev::io & io, int revents) noexcept {
 						char buffer[INET6_ADDRSTRLEN];
 						// Зануляем буфер данных
 						memset(buffer, 0, sizeof(buffer));
+
+						
+
 						// Получаем IP адрес принадлежащий доменному имени
-						const string ip = inet_ntop(this->_family, rdata[i].c_str(), buffer, sizeof(buffer));
+						// const string ip = inet_ntop(this->_family, rdata[i].c_str(), buffer, sizeof(buffer));
+						
+						const string ip = inet_ntop(AF_INET, rdata[i].c_str(), buffer, sizeof(buffer));
+						
 						// Если IP адрес получен
 						if(!ip.empty()){
 							// Если чёрный список IP адресов получен
