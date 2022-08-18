@@ -912,14 +912,14 @@ void awh::server::Core::run(const size_t wid) noexcept {
 
 			// cout << " --------------------- " << this->dns.resolve("api.binance.com", AF_INET) << endl;
 
-			/*
+			
 			{
 				dns_t::serv_t serv;
 				serv.host = "ns1.yandex.net";
 
 				this->dns.server(AF_INET, serv);
 			}
-			*/
+			
 
 		}
 	}

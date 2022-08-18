@@ -97,9 +97,6 @@ void awh::DNS::Worker::response(ev::io & io, int revents) noexcept {
 		vector <string> name(count, "");
 		// Получаем список значений записей
 		vector <string> rdata(count, "");
-
-		cout << " ^^^^^^^^^^^^^^^^^^1 " << ntohs(header->ancount) << " ==== " << ntohs(header->arcount) << " ==== " << (u_short) header->rcode << endl;
-
 		// Выполняем перебор всех полученных записей
 		for(u_short i = 0; i < count; ++i){
 			// Выполняем извлечение названия записи
@@ -110,11 +107,6 @@ void awh::DNS::Worker::response(ev::io & io, int revents) noexcept {
 			rrflags = reinterpret_cast <rrflags_t *> (&buffer[size]);
 			// Увеличиваем размер ответа
 			size = ((size + sizeof(rrflags_t)) - 2);
-
-			
-
-			cout << " ^^^^^^^^^^^^^^^^^^2 " << (u_short) ntohs(rrflags->rtype) << " === " << (u_short) ntohs(rrflags->rdlength) << " ||| " << count << endl;
-
 			// Определяем тип записи
 			switch(ntohs(rrflags->rtype)){
 				// Если запись является интернет-протоколом IPv4
@@ -169,12 +161,6 @@ void awh::DNS::Worker::response(ev::io & io, int revents) noexcept {
 						char buffer[INET6_ADDRSTRLEN];
 						// Зануляем буфер данных
 						memset(buffer, 0, sizeof(buffer));
-
-						for(size_t j = 0; j < 18; j++)
-							cout << " -------------------!!!!!!!!!1 " << (u_int) rdata[i].c_str()[j] << endl;
-
-						cout << " -------------------!!!!!!!!!2 " << rdata[i].size() << endl;
-
 						// Получаем IP адрес принадлежащий доменному имени
 						const string ip = inet_ntop(this->_family, rdata[i].c_str(), buffer, sizeof(buffer));
 						// Если IP адрес получен
