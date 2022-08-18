@@ -97,6 +97,9 @@ void awh::DNS::Worker::response(ev::io & io, int revents) noexcept {
 		vector <string> name(count, "");
 		// Получаем список значений записей
 		vector <string> rdata(count, "");
+
+		cout << " ^^^^^^^^^^^^^^^^^^1 " << ntohs(header->ancount) << endl;
+
 		// Выполняем перебор всех полученных записей
 		for(u_short i = 0; i < count; ++i){
 			// Выполняем извлечение названия записи
@@ -110,7 +113,7 @@ void awh::DNS::Worker::response(ev::io & io, int revents) noexcept {
 
 			
 
-			cout << " ^^^^^^^^^^^^^^^^^^ " << (u_short) ntohs(rrflags->rtype) << " === " << (u_short) ntohs(rrflags->rdlength) << " ||| " << count << endl;
+			cout << " ^^^^^^^^^^^^^^^^^^2 " << (u_short) ntohs(rrflags->rtype) << " === " << (u_short) ntohs(rrflags->rdlength) << " ||| " << count << endl;
 
 			// Определяем тип записи
 			switch(ntohs(rrflags->rtype)){
