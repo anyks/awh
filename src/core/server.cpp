@@ -898,33 +898,6 @@ void awh::server::Core::run(const size_t wid) noexcept {
 					break;
 				}
 			}
-
-
-
-			this->dns.on([](const string & ip, const int family, const size_t did) noexcept {
-				cout << " ============================= " << ip << endl;
-			});
-
-			// cout << " --------------------- " << this->dns.resolve("testnet.binance.vision", AF_INET) << endl;
-			// cout << " --------------------- " << this->dns.resolve("ipv6.google.com", AF_INET6) << endl;
-
-			// cout << " --------------------- " << this->dns.resolve("ipv6.l.google.com", AF_INET6) << endl;
-
-
-			cout << " ---------------------1 " << this->dns.idnEncode("почта.ру") << endl;
-
-			cout << " ---------------------2 " << this->dns.idnDecode("xn--80a1acny.xn--p1ag") << endl;
-			
-
-			// cout << " --------------------- " << this->dns.resolve("api.binance.com", AF_INET) << endl;
-
-			
-			{
-				dns_t::serv_t serv;
-				serv.host = "ns1.yandex.net";
-
-				this->dns.server(AF_INET, serv);
-			}
 		}
 	}
 }
