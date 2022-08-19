@@ -156,8 +156,7 @@ namespace awh {
 				DOMNAME     = 0x04, // Доменное имя
 				NETWORK     = 0x05, // Адрес/Маска сети
 				ADDRESS     = 0x06, // Адрес в файловой системе
-				HTTPMETHOD  = 0x07, // HTTP метод
-				HTTPADDRESS = 0x08  // HTTP адрес
+				HTTPADDRESS = 0x07  // HTTP адрес
 			};
 		private:
 			/**

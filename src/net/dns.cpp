@@ -674,6 +674,63 @@ void awh::DNS::resolving(const string & ip, const int family, const size_t did) 
 	this->_dns.erase(did);
 }
 /**
+ * Если используется модуль IDN
+ */
+#if defined(AWH_IDN)
+	/**
+	 * idnEncode Метод кодирования интернационального доменного имени
+	 * @param domain доменное имя для кодирования
+	 * @return       результат работы кодирования
+	 */
+	string awh::DNS::idnEncode(const string & domain) const noexcept {
+		// Результат работы функции
+		string result = "";
+		// Если доменное имя передано
+		if(!domain.empty()){
+			// Результирующий буфер данных
+			char * buffer = nullptr;
+			// Выполняем кодирования доменного имени
+			const int rc = idn2_to_ascii_8z(domain.c_str(), &buffer, IDN2_NONTRANSITIONAL);
+			// Если кодирование не выполнено
+			if(rc != IDNA_SUCCESS)
+				// Выводим в лог сообщение
+				this->_log->print("idn encode failed (%d): %s", log_t::flag_t::CRITICAL, rc, idn2_strerror(rc));
+			// Получаем результат кодирования
+			else result = buffer;
+			// Очищаем буфер данных
+			delete [] buffer;
+		}
+		// Выводим результат
+		return result;
+	}
+	/**
+	 * idnDecode Метод декодирования интернационального доменного имени
+	 * @param domain доменное имя для декодирования
+	 * @return       результат работы декодирования
+	 */
+	string awh::DNS::idnDecode(const string & domain) const noexcept {
+		// Результат работы функции
+		string result = "";
+		// Если доменное имя передано
+		if(!domain.empty()){
+			// Результирующий буфер данных
+			char * buffer = nullptr;
+			// Выполняем декодирования доменного имени
+			const int rc = idn2_to_unicode_8z8z(domain.c_str(), &buffer, 0);
+			// Если кодирование не выполнено
+			if(rc != IDNA_SUCCESS)
+				// Выводим в лог сообщение
+				this->_log->print("idn decode failed (%d): %s", log_t::flag_t::CRITICAL, rc, idn2_strerror(rc));
+			// Получаем результат декодирования
+			else result = buffer;
+			// Очищаем буфер данных
+			delete [] buffer;
+		}
+		// Выводим результат
+		return result;
+	}
+#endif
+/**
  * clear Метод сброса кэша резолвера
  * @return результат работы функции
  */
@@ -1152,8 +1209,21 @@ size_t awh::DNS::resolve(const string & host, const int family) noexcept {
 		this->clearZombie();
 		// Если домен передан
 		if(!host.empty()){
+			/**
+			 * Если используется модуль IDN
+			 */
+			#if AWH_IDN
+				// Получаем доменное имя в интернациональном виде
+				const string & domain = this->idnEncode(host);
+			/**
+			 * Если модуль IDN не используется
+			 */
+			#else
+				// Получаем доменное имя как оно есть
+				const string & domain = host;
+			#endif
 			// Определяем тип передаваемого сервера
-			switch((uint8_t) this->_nwk->parseHost(host)){
+			switch((uint8_t) this->_nwk->parseHost(domain)){
 				// Если домен является IPv4 адресом
 				case (uint8_t) network_t::type_t::IPV4:
 				// Если домен является IPv6 адресом
@@ -1169,8 +1239,6 @@ size_t awh::DNS::resolve(const string & host, const int family) noexcept {
 				case (uint8_t) network_t::type_t::NETWORK:
 				// Если домен является адресом в файловой системе
 				case (uint8_t) network_t::type_t::ADDRESS:
-				// Если домен является HTTP методом
-				case (uint8_t) network_t::type_t::HTTPMETHOD:
 				// Если домен является HTTP адресом
 				case (uint8_t) network_t::type_t::HTTPADDRESS: {
 					// Если функция обратного вызова установлена
@@ -1181,7 +1249,7 @@ size_t awh::DNS::resolve(const string & host, const int family) noexcept {
 				// Если домен является доменным именем
 				case (uint8_t) network_t::type_t::DOMNAME: {
 					// Выполняем поиск IP адреса в кэше DNS
-					const string & ip = this->cache(family, host);
+					const string & ip = this->cache(family, domain);
 					// Если IP адрес получен
 					if(!ip.empty()){
 						// Если функция обратного вызова установлена
@@ -1202,7 +1270,7 @@ size_t awh::DNS::resolve(const string & host, const int family) noexcept {
 						// Выполняем разблокировку потока
 						this->_mtx.worker.unlock();
 						// Если запрос на сервер не выполнен
-						if(!ret.first->second->request(host)){
+						if(!ret.first->second->request(domain)){
 							// Выполняем блокировку потока
 							this->_mtx.worker.lock();
 							// Удаляем объект воркера

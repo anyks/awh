@@ -58,6 +58,13 @@
 #endif
 
 /**
+ * Если используется модуль IDN
+ */
+#if defined(AWH_IDN)
+	#include <idn2.h>
+#endif
+
+/**
  * Наши модули
  */
 #include <sys/fmk.hpp>
@@ -352,6 +359,24 @@ namespace awh {
 			 * @param did    идентификатор DNS запроса
 			 */
 			void resolving(const string & ip, const int family, const size_t did) noexcept;
+		public:
+			/**
+			 * Если используется модуль IDN
+			 */
+			#if defined(AWH_IDN)
+				/**
+				 * idnEncode Метод кодирования интернационального доменного имени
+				 * @param domain доменное имя для кодирования
+				 * @return       результат работы кодирования
+				 */
+				string idnEncode(const string & domain) const noexcept;
+				/**
+				 * idnDecode Метод декодирования интернационального доменного имени
+				 * @param domain доменное имя для декодирования
+				 * @return       результат работы декодирования
+				 */
+				string idnDecode(const string & domain) const noexcept;
+			#endif
 		public:
 			/**
 			 * clear Метод сброса кэша резолвера

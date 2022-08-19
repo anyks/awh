@@ -18,6 +18,12 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 message(STATUS "Build Type: ${CMAKE_BUILD_TYPE}\n")
 
+# Сборка модуля AWH_IDN
+if(CMAKE_BUILD_IDN)
+    add_compile_definitions(AWH_IDN)
+    message(STATUS "Build AWH IDN: ${CMAKE_BUILD_IDN}\n")
+endif()
+
 # Получаем архитектуру
 EXECUTE_PROCESS( COMMAND uname -m COMMAND tr -d '\n' OUTPUT_VARIABLE ARCHITECTURE )
 message( STATUS "Architecture: ${ARCHITECTURE}" )
@@ -89,6 +95,12 @@ find_package(Brotli REQUIRED)
 find_package(LibEv REQUIRED)
 find_package(OpenSSL REQUIRED)
 
+# Сборка модуля AWH_IDN
+if(CMAKE_BUILD_IDN)
+    find_package(Iconv REQUIRED)
+    find_package(Idn2 REQUIRED)
+endif()
+
 # Провекра OpenSSL
 if (OpenSSL_FOUND)
     message(STATUS "OpenSSL libs found: " ${OPENSSL_SSL_LIBRARY} ${OPENSSL_CRYPTO_LIBRARY})
@@ -121,6 +133,24 @@ else()
     message(FATAL_ERROR "LibEv not found")
 endif()
 
+# Сборка модуля AWH_IDN
+if(CMAKE_BUILD_IDN)
+    # Провекра ICONV
+    if (Iconv_FOUND)
+        message(STATUS "ICONV libs found: " ${ICONV_LIBRARY})
+        message(STATUS "ICONV include dir found: " ${ICONV_INCLUDE_DIR})
+    else()
+        message(FATAL_ERROR "ICONV not found")
+    endif()
+    # Провекра IDN2
+    if (Idn2_FOUND)
+        message(STATUS "IDN2 libs found: " ${IDN2_LIBRARY})
+        message(STATUS "IDN2 include dir found: " ${IDN2_INCLUDE_DIR})
+    else()
+        message(FATAL_ERROR "IDN2 not found")
+    endif()
+endif()
+
 # Выполняем подключение хидеров
 include_directories(${ZLIB_INCLUDE_DIR})
 include_directories(${LIBEV_INCLUDE_DIR})
@@ -128,6 +158,12 @@ include_directories(${BROTLI_INCLUDE_DIRS})
 include_directories(${OPENSSL_INCLUDE_DIR})
 include_directories(${CMAKE_SOURCE_DIR}/include)
 include_directories(${CMAKE_SOURCE_DIR}/contrib/include)
+
+# Сборка модуля AWH_IDN
+if(CMAKE_BUILD_IDN)
+    include_directories(${ICONV_INCLUDE_DIR})
+    include_directories(${IDN2_INCLUDE_DIR})
+endif()
 
 # Выполняем подключение исходников
 set(SOURCE_FILES
@@ -217,68 +253,105 @@ if (ENABLE_CONSOLE_APP)
 #    add_executable(${PROXY_APP_NAME} sample/proxy.cpp ${RES_FILES})
 #    add_executable(${SOCKS5_APP_NAME} sample/socks5.cpp ${RES_FILES})
 
-    target_link_libraries(${WSC_APP_NAME}
-        ${CURRENT_LIB_NAME}
-        ${ZLIB_LIBRARY}
-        ${LIBEV_LIBRARY}
-        ${BROTLI_LIBRARIES}
-        ${OPENSSL_LIBRARIES}
-        ${WINFLAGS}
-    )
+    # Сборка модуля AWH_IDN
+    if(CMAKE_BUILD_IDN)
+        target_link_libraries(${WSC_APP_NAME}
+            ${CURRENT_LIB_NAME}
+            ${ICONV_LIBRARY}
+            ${IDN2_LIBRARY}
+            ${ZLIB_LIBRARY}
+            ${LIBEV_LIBRARY}
+            ${BROTLI_LIBRARIES}
+            ${OPENSSL_LIBRARIES}
+            ${WINFLAGS}
+        )
 
-    target_link_libraries(${WSS_APP_NAME}
-        ${CURRENT_LIB_NAME}
-        ${ZLIB_LIBRARY}
-        ${LIBEV_LIBRARY}
-        ${BROTLI_LIBRARIES}
-        ${OPENSSL_LIBRARIES}
-        ${WINFLAGS}
-    )
+        target_link_libraries(${WSS_APP_NAME}
+            ${CURRENT_LIB_NAME}
+            ${ICONV_LIBRARY}
+            ${IDN2_LIBRARY}
+            ${ZLIB_LIBRARY}
+            ${LIBEV_LIBRARY}
+            ${BROTLI_LIBRARIES}
+            ${OPENSSL_LIBRARIES}
+            ${WINFLAGS}
+        )
 
-#    target_link_libraries(${WEB_APP_NAME}
-#        ${CURRENT_LIB_NAME}
-#        ${ZLIB_LIBRARY}
-#        ${LIBEV_LIBRARY}
-#        ${BROTLI_LIBRARIES}
-#        ${OPENSSL_LIBRARIES}
-#        ${WINFLAGS}
-#    )
+        target_link_libraries(${REST_APP_NAME}
+            ${CURRENT_LIB_NAME}
+            ${ICONV_LIBRARY}
+            ${IDN2_LIBRARY}
+            ${ZLIB_LIBRARY}
+            ${LIBEV_LIBRARY}
+            ${BROTLI_LIBRARIES}
+            ${OPENSSL_LIBRARIES}
+            ${WINFLAGS}
+        )
+    else()
+        target_link_libraries(${WSC_APP_NAME}
+            ${CURRENT_LIB_NAME}
+            ${ZLIB_LIBRARY}
+            ${LIBEV_LIBRARY}
+            ${BROTLI_LIBRARIES}
+            ${OPENSSL_LIBRARIES}
+            ${WINFLAGS}
+        )
 
-    target_link_libraries(${REST_APP_NAME}
-        ${CURRENT_LIB_NAME}
-        ${ZLIB_LIBRARY}
-        ${LIBEV_LIBRARY}
-        ${BROTLI_LIBRARIES}
-        ${OPENSSL_LIBRARIES}
-        ${WINFLAGS}
-    )
+        target_link_libraries(${WSS_APP_NAME}
+            ${CURRENT_LIB_NAME}
+            ${ZLIB_LIBRARY}
+            ${LIBEV_LIBRARY}
+            ${BROTLI_LIBRARIES}
+            ${OPENSSL_LIBRARIES}
+            ${WINFLAGS}
+            ${AWH_IDN}
+        )
 
-#    target_link_libraries(${TIMER_APP_NAME}
-#        ${CURRENT_LIB_NAME}
-#        ${ZLIB_LIBRARY}
-#        ${BROTLI_LIBRARIES}
-#        ${OPENSSL_LIBRARIES}
-#        ${LIBEVENT_LIBRARIES}
-#        ${WINFLAGS}
-#    )
+        target_link_libraries(${REST_APP_NAME}
+            ${CURRENT_LIB_NAME}
+            ${ZLIB_LIBRARY}
+            ${LIBEV_LIBRARY}
+            ${BROTLI_LIBRARIES}
+            ${OPENSSL_LIBRARIES}
+            ${WINFLAGS}
+        )
 
-#    target_link_libraries(${PROXY_APP_NAME}
-#        ${CURRENT_LIB_NAME}
-#        ${ZLIB_LIBRARY}
-#        ${BROTLI_LIBRARIES}
-#        ${OPENSSL_LIBRARIES}
-#        ${LIBEVENT_LIBRARIES}
-#        ${WINFLAGS}
-#    )
+    #    target_link_libraries(${WEB_APP_NAME}
+    #        ${CURRENT_LIB_NAME}
+    #        ${ZLIB_LIBRARY}
+    #        ${LIBEV_LIBRARY}
+    #        ${BROTLI_LIBRARIES}
+    #        ${OPENSSL_LIBRARIES}
+    #        ${WINFLAGS}
+    #    )
 
-#    target_link_libraries(${SOCKS5_APP_NAME}
-#        ${CURRENT_LIB_NAME}
-#        ${ZLIB_LIBRARY}
-#        ${BROTLI_LIBRARIES}
-#        ${OPENSSL_LIBRARIES}
-#        ${LIBEVENT_LIBRARIES}
-#        ${WINFLAGS}
-#    )
+    #    target_link_libraries(${TIMER_APP_NAME}
+    #        ${CURRENT_LIB_NAME}
+    #        ${ZLIB_LIBRARY}
+    #        ${BROTLI_LIBRARIES}
+    #        ${OPENSSL_LIBRARIES}
+    #        ${LIBEVENT_LIBRARIES}
+    #        ${WINFLAGS}
+    #    )
+
+    #    target_link_libraries(${PROXY_APP_NAME}
+    #        ${CURRENT_LIB_NAME}
+    #        ${ZLIB_LIBRARY}
+    #        ${BROTLI_LIBRARIES}
+    #        ${OPENSSL_LIBRARIES}
+    #        ${LIBEVENT_LIBRARIES}
+    #        ${WINFLAGS}
+    #    )
+
+    #    target_link_libraries(${SOCKS5_APP_NAME}
+    #        ${CURRENT_LIB_NAME}
+    #        ${ZLIB_LIBRARY}
+    #        ${BROTLI_LIBRARIES}
+    #        ${OPENSSL_LIBRARIES}
+    #        ${LIBEVENT_LIBRARIES}
+    #        ${WINFLAGS}
+    #    )
+    endif()
 endif()
 
 # Устанавливаем адрес установки, запрет установки в /usr/local
@@ -305,8 +378,20 @@ install(DIRECTORY "${BROTLI_INCLUDE_ENCODE_DIR}" DESTINATION "${CMAKE_INSTALL_PR
 install(DIRECTORY "${LIBEV_INCLUDE_DIR}/libev" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h")
 install(DIRECTORY "${OPENSSL_INCLUDE_DIR}/openssl" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h")
 
+# Сборка модуля AWH_IDN
+if(CMAKE_BUILD_IDN)
+    install(DIRECTORY "${ICONV_INCLUDE_DIR}" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h")
+    install(DIRECTORY "${IDN2_INCLUDE_DIR}" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h")
+endif()
+
 # Устанавливаем стороние библиотеки
 install(FILES ${ZLIB_LIBRARY} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
 install(FILES ${LIBEV_LIBRARY} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
 install(FILES ${BROTLI_LIBRARIES} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
 install(FILES ${OPENSSL_LIBRARIES} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
+
+# Сборка модуля AWH_IDN
+if(CMAKE_BUILD_IDN)
+    install(FILES ${ICONV_LIBRARY} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
+    install(FILES ${IDN2_LIBRARY} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
+endif()

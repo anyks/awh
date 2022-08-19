@@ -1409,23 +1409,21 @@ const awh::Network::type_t awh::Network::parseHost(const string & str) const noe
 		// Результат работы регулярного выражения
 		smatch match;
 		// Устанавливаем правило регулярного выражения
-		regex e(
-			// Определение домена
-			"^(?:((?:\\*\\.)?[\\w\\-\\.\\*]+\\.[a-z]+)|"
+		regex e(			
 			// Определение мак адреса
-			"([a-f\\d]{2}(?:\\:[a-f\\d]{2}){5})|"
+			"^(?:([a-f\\d]{2}(?:\\:[a-f\\d]{2}){5})|"
 			// Определение ip4 адреса
 			"(\\d{1,3}(?:\\.\\d{1,3}){3})|"
 			// Определение ip6 адреса
 			"(?:\\[?(\\:\\:ffff\\:\\d{1,3}(?:\\.\\d{1,3}){3}|(?:[a-f\\d]{1,4}(?:(?:\\:[a-f\\d]{1,4})|\\:){1,6}\\:[a-f\\d]{1,4})|(?:[a-f\\d]{1,4}(?:(?:\\:[a-f\\d]{1,4}){7}|(?:\\:[a-f\\d]{1,4}){1,6}\\:\\:|\\:\\:)|\\:\\:))\\]?)|"
-			// Если это сеть
+			// Определение сети
 			"((?:\\d{1,3}(?:\\.\\d{1,3}){3}|(?:[a-f\\d]{1,4}(?:(?:\\:[a-f\\d]{1,4})|\\:){1,6}\\:[a-f\\d]{1,4})|(?:[a-f\\d]{1,4}(?:(?:\\:[a-f\\d]{1,4}){7}|(?:\\:[a-f\\d]{1,4}){1,6}\\:\\:|\\:\\:)|\\:\\:))\\/(?:\\d{1,3}(?:\\.\\d{1,3}){3}|\\d+))|"
+			// Определение домена
+			"((?:\\*\\.)?[\\w\\-\\.\\*]+\\.(?:xn\\-{2})?[a-z1]+)|"
 			// Определение http адреса
-			"(https?\\:\\/\\/[\\w\\-\\.]+\\.[a-z]+\\/[^\\r\\n\\t\\s]+)|"
+			"(https?\\:\\/\\/[^\\r\\n\\t\\s]+(?:\\/(?:[^\\r\\n\\t\\s]+)?)?)|"
 			// Определение адреса
-			"(\\.{0,2}\\/\\w+(?:\\/[\\w\\.\\-]+)*)|"
-			// Если это метод
-			"(OPTIONS|GET|HEAD|POST|PUT|PATCH|DELETE|TRACE|CONNECT))$",
+			"(\\.{0,2}\\/\\w+(?:\\/[\\w\\.\\-]+)*))$",
 			regex::ECMAScript | regex::icase
 		);
 		// Выполняем проверку
@@ -1433,14 +1431,13 @@ const awh::Network::type_t awh::Network::parseHost(const string & str) const noe
 		// Если результат найден
 		if(!match.empty()){
 			// Извлекаем полученные данные
-			const string & domain = match[1].str();
-			const string & mac = match[2].str();
-			const string & ip4 = match[3].str();
-			const string & ip6 = match[4].str();
-			const string & network = match[5].str();
+			const string & mac      = match[1].str();
+			const string & ip4      = match[2].str();
+			const string & ip6      = match[3].str();
+			const string & network  = match[4].str();
+			const string & domain   = match[5].str();
 			const string & httpaddr = match[6].str();
-			const string & address = match[7].str();
-			const string & method = match[8].str();
+			const string & address  = match[7].str();
 			// Определяем тип данных
 			if(!domain.empty())        result = type_t::DOMNAME;
 			else if(!mac.empty())      result = type_t::MAC;
@@ -1449,7 +1446,6 @@ const awh::Network::type_t awh::Network::parseHost(const string & str) const noe
 			else if(!network.empty())  result = type_t::NETWORK;
 			else if(!address.empty())  result = type_t::ADDRESS;
 			else if(!httpaddr.empty()) result = type_t::HTTPADDRESS;
-			else if(!method.empty())   result = type_t::HTTPMETHOD;
 		}
 	}
 	// Выводим результат
