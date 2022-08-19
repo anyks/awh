@@ -692,11 +692,11 @@ void awh::DNS::resolving(const string & ip, const int family, const size_t did) 
 			 */
 			#if defined(_WIN32) || defined(_WIN64)
 				// Результирующий буфер данных
-				wchar_t buffer[IDN_MAX_LENGTH];
+				wchar_t buffer[255];
 				// Выполняем кодирования доменного имени
-				if(IdnToAscii(0, this->_fmk->convert(domain).c_str(), -1, buffer, IDN_MAX_LENGTH) == 0)
+				if(IdnToAscii(0, this->_fmk->convert(domain).c_str(), -1, buffer, sizeof(buffer)) == 0)
 					// Выводим в лог сообщение
-					this->_log->print("idn encode failed (%d)", log_t::flag_t::CRITICAL, rc, GetLastError());
+					this->_log->print("idn encode failed (%d)", log_t::flag_t::CRITICAL, GetLastError());
 				// Получаем результат кодирования
 				else result = this->_fmk->convert(wstring(buffer));
 			/**
@@ -735,11 +735,11 @@ void awh::DNS::resolving(const string & ip, const int family, const size_t did) 
 			 */
 			#if defined(_WIN32) || defined(_WIN64)
 				// Результирующий буфер данных
-				wchar_t buffer[IDN_MAX_LENGTH];
+				wchar_t buffer[255];
 				// Выполняем кодирования доменного имени
-				if(IdnToUnicode(0, this->_fmk->convert(domain).c_str(), -1, buffer, IDN_MAX_LENGTH) == 0)
+				if(IdnToUnicode(0, this->_fmk->convert(domain).c_str(), -1, buffer, sizeof(buffer)) == 0)
 					// Выводим в лог сообщение
-					this->_log->print("idn decode failed (%d)", log_t::flag_t::CRITICAL, rc, GetLastError());
+					this->_log->print("idn decode failed (%d)", log_t::flag_t::CRITICAL, GetLastError());
 				// Получаем результат кодирования
 				else result = this->_fmk->convert(wstring(buffer));
 			/**
