@@ -190,7 +190,7 @@ class WebSocket {
 				// Обрабатываем ошибку
 				} catch(const exception & e) {}
 			// Сообщаем количество полученных байт
-			} else cout << " +++++++++++++ " << buffer.size() << " bytes" << endl;
+			} else cout << " +++++++++++++ " << buffer.size() << " bytes" << " == " << ws->sub() << endl;
 		}
 	public:
 		/**
@@ -247,9 +247,9 @@ int main(int argc, char * argv[]) noexcept {
 	// core.family(core_t::family_t::NIX);
 	// Устанавливаем тип сокета UDP TLS
 	// core.sonet(core_t::sonet_t::DTLS);
-	// core.sonet(core_t::sonet_t::TLS);
+	core.sonet(core_t::sonet_t::TLS);
 	// core.sonet(core_t::sonet_t::UDP);
-	core.sonet(core_t::sonet_t::TCP);
+	// core.sonet(core_t::sonet_t::TCP);
 	// core.sonet(core_t::sonet_t::SCTP);
 
 	// Отключаем валидацию сертификата

@@ -148,9 +148,9 @@ int main(int argc, char * argv[]){
 	// core.family(core_t::family_t::NIX);
 	// Устанавливаем тип сокета UDP TLS
 	// core.sonet(core_t::sonet_t::DTLS);
-	core.sonet(core_t::sonet_t::TLS);
+	// core.sonet(core_t::sonet_t::TLS);
 	// core.sonet(core_t::sonet_t::UDP);
-	// core.sonet(core_t::sonet_t::TCP);
+	core.sonet(core_t::sonet_t::TCP);
 	// core.sonet(core_t::sonet_t::SCTP);
 
 	// Отключаем валидацию сертификата

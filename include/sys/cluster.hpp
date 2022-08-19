@@ -65,7 +65,7 @@ namespace awh {
 				 * Message Конструктор
 				 */
 				Message() noexcept : stop(false), pid(0) {}
-			} mess_t;
+			} __attribute__((packed)) mess_t;
 			/**
 			 * Worker Класс воркера
 			 */

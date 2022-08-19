@@ -38,13 +38,23 @@ namespace awh {
 		 * WebSocket Класс работы с WebSocket сервером
 		 */
 		typedef class WebSocket {
+			private:
+				/**
+				 * Статусы игольного ушка
+				 */
+				enum class needle_t : uint8_t {
+					NONE       = 0x00, // Статус не установлен
+					MESSAGE    = 0x01, // Сообщение
+					CONNECT    = 0x02, // Подключение
+					DISCONNECT = 0x03  // Отключение
+				};
 			public:
 				/**
-				 * Режим работы клиента
+				 * Режим работы адъютанта
 				 */
 				enum class mode_t : uint8_t {
-					CONNECT    = 0x01, // Метод подключения клиента
-					DISCONNECT = 0x02  // Метод отключения клиента
+					CONNECT    = 0x01, // Метод подключения адъютанта
+					DISCONNECT = 0x02  // Метод отключения адъютанта
 				};
 				/**
 				 * Основные флаги приложения
@@ -57,6 +67,19 @@ namespace awh {
 				};
 			private:
 				/**
+				 * Adjutant Структура активного адъютанта при работе с игольным ушком
+				 */
+				typedef struct Adjutant {
+					u_int port; // Порт адъютанта
+					string ip;  // IP адрес адъютанта
+					string mac; // MAC адрес адъютанта
+					string sub; // Выбранный сабпротокол
+					/**
+					 * Adjutant Конструктор
+					 */
+					Adjutant() noexcept : port(0), ip(""), mac(""), sub("") {}
+				} adjutant_t;
+				/**
 				 * Callback Структура функций обратного вызова
 				 */
 				typedef struct Callback {
@@ -66,9 +89,9 @@ namespace awh {
 					function <bool (const string &, const string &)> checkAuth;
 					// Функция обратного вызова, при запуске или остановки подключения к серверу
 					function <void (const size_t, const mode_t, WebSocket *)> active;
-					// Функция обратного вызова, при получении ошибки работы клиента
+					// Функция обратного вызова, при получении ошибки работы адъютанта
 					function <void (const size_t, const u_int, const string &, WebSocket *)> error;
-					// Функция разрешения подключения клиента на сервере
+					// Функция разрешения подключения адъютанта на сервере
 					function <bool (const string &, const string &, const u_int, WebSocket *)> accept;
 					// Функция обратного вызова, при получении сообщения с сервера
 					function <void (const size_t, const vector <char> &, const bool, WebSocket *)> message;
@@ -139,6 +162,9 @@ namespace awh {
 				// Поддерживаемые сабпротоколы
 				vector <string> _subs;
 			private:
+				// Список активных адъютантов при работе с игольным ушком
+				map <size_t, adjutant_t> _adjutants;
+			private:
 				// Создаём объект фреймворка
 				const fmk_t * _fmk;
 				// Создаём объект работы с логами
@@ -174,7 +200,7 @@ namespace awh {
 				 */
 				void disconnectCallback(const size_t aid, const size_t wid, awh::core_t * core) noexcept;
 				/**
-				 * readCallback Функция обратного вызова при чтении сообщения с клиента
+				 * readCallback Функция обратного вызова при чтении сообщения с адъютанта
 				 * @param buffer бинарный буфер содержащий сообщение
 				 * @param size   размер бинарного буфера содержащего сообщение
 				 * @param aid    идентификатор адъютанта
@@ -183,7 +209,7 @@ namespace awh {
 				 */
 				void readCallback(const char * buffer, const size_t size, const size_t aid, const size_t wid, awh::core_t * core) noexcept;
 				/**
-				 * writeCallback Функция обратного вызова при записи сообщения на клиенте
+				 * writeCallback Функция обратного вызова при записи сообщений адъютанту
 				 * @param buffer бинарный буфер содержащий сообщение
 				 * @param size   размер бинарного буфера содержащего сообщение
 				 * @param aid    идентификатор адъютанта
@@ -192,13 +218,13 @@ namespace awh {
 				 */
 				void writeCallback(const char * buffer, const size_t size, const size_t aid, const size_t wid, awh::core_t * core) noexcept;
 				/**
-				 * acceptCallback Функция обратного вызова при проверке подключения клиента
-				 * @param ip   адрес интернет подключения клиента
-				 * @param mac  мак-адрес подключившегося клиента
-				 * @param port порт подключившегося клиента
+				 * acceptCallback Функция обратного вызова при проверке подключения адъютанта
+				 * @param ip   адрес интернет подключения адъютанта
+				 * @param mac  мак-адрес подключившегося адъютанта
+				 * @param port порт подключившегося адъютанта
 				 * @param wid  идентификатор воркера
 				 * @param core объект биндинга TCP/IP
-				 * @return     результат разрешения к подключению клиента
+				 * @return     результат разрешения к подключению адъютанта
 				 */
 				bool acceptCallback(const string & ip, const string & mac, const u_int port, const size_t wid, awh::core_t * core) noexcept;
 				/**
@@ -235,7 +261,7 @@ namespace awh {
 				void actionDisconnect(const size_t aid) noexcept;
 			private:
 				/**
-				 * error Метод вывода сообщений об ошибках работы клиента
+				 * error Метод вывода сообщений об ошибках работы адъютанта
 				 * @param aid     идентификатор адъютанта
 				 * @param message сообщение с описанием ошибки
 				 */
@@ -264,13 +290,13 @@ namespace awh {
 				void ping(const size_t aid, awh::core_t * core, const string & message = "") noexcept;
 			public:
 				/**
-				 * init Метод инициализации WebSocket клиента
+				 * init Метод инициализации WebSocket адъютанта
 				 * @param socket   unix socket для биндинга
 				 * @param compress метод сжатия передаваемых сообщений
 				 */
 				void init(const string & socket, const http_t::compress_t compress = http_t::compress_t::DEFLATE) noexcept;
 				/**
-				 * init Метод инициализации WebSocket клиента
+				 * init Метод инициализации WebSocket адъютанта
 				 * @param port     порт сервера
 				 * @param host     хост сервера
 				 * @param compress метод сжатия передаваемых сообщений
@@ -304,7 +330,7 @@ namespace awh {
 				 */
 				void on(function <bool (const string &, const string &)> callback) noexcept;
 				/**
-				 * on Метод установки функции обратного вызова на событие активации клиента на сервере
+				 * on Метод установки функции обратного вызова на событие активации адъютанта на сервере
 				 * @param callback функция обратного вызова
 				 */
 				void on(function <bool (const string &, const string &, const u_int, WebSocket *)> callback) noexcept;
@@ -344,11 +370,11 @@ namespace awh {
 				const string & mac(const size_t aid) const noexcept;
 			public:
 				/**
-				 * stop Метод остановки клиента
+				 * stop Метод остановки сервера
 				 */
 				void stop() noexcept;
 				/**
-				 * start Метод запуска клиента
+				 * start Метод запуска сервера
 				 */
 				void start() noexcept;
 			public:

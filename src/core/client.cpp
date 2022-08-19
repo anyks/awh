@@ -341,7 +341,7 @@ void awh::client::Core::connect(const size_t wid) noexcept {
  * reconnect Метод восстановления подключения
  * @param wid идентификатор воркера
  */
-void awh::client::Core::reconnect(const size_t wid) noexcept {
+void awh::client::Core::reconnect(const size_t wid) noexcept {	
 	// Выполняем поиск воркера
 	auto it = this->workers.find(wid);
 	// Если воркер найден
@@ -349,7 +349,7 @@ void awh::client::Core::reconnect(const size_t wid) noexcept {
 		// Получаем объект воркера
 		worker_t * wrk = (worker_t *) const_cast <awh::worker_t *> (it->second);
 		// Если параметры URL запроса переданы и выполнение работы разрешено
-		if(!wrk->url.empty() && (wrk->status.wait == worker_t::mode_t::DISCONNECT) && (wrk->status.work == worker_t::work_t::ALLOW)){
+		if(!wrk->url.empty() && (wrk->status.wait == worker_t::mode_t::DISCONNECT) && (wrk->status.work == worker_t::work_t::ALLOW)){			
 			// Определяем тип протокола подключения
 			switch((uint8_t) this->net.family){
 				// Если тип протокола подключения IPv4
@@ -360,20 +360,38 @@ void awh::client::Core::reconnect(const size_t wid) noexcept {
 					wrk->status.wait = worker_t::mode_t::RECONNECT;
 					// Получаем URL параметры запроса
 					const uri_t::url_t & url = (wrk->isProxy() ? wrk->proxy.url : wrk->url);
-					// Устанавливаем событие на получение данных с DNS сервера
-					this->dns.on(std::bind(&worker_t::resolving, wrk, _1, _2, _3));
-					// Определяем тип протокола подключения
-					switch((uint8_t) this->net.family){
-						// Если тип протокола подключения IPv4
-						case (uint8_t) family_t::IPV4:
-							// Выполняем резолвинг домена
-							wrk->did = this->dns.resolve(url.domain, AF_INET);
-						break;
-						// Если тип протокола подключения IPv6
-						case (uint8_t) family_t::IPV6:
-							// Выполняем резолвинг домена
-							wrk->did = this->dns.resolve(url.domain, AF_INET6);
-						break;
+					// Если IP адрес не получен
+					if(url.ip.empty() && !url.domain.empty()){
+						// Устанавливаем событие на получение данных с DNS сервера
+						this->dns.on(std::bind(&worker_t::resolving, wrk, _1, _2, _3));
+						// Определяем тип протокола подключения
+						switch((uint8_t) this->net.family){
+							// Если тип протокола подключения IPv4
+							case (uint8_t) family_t::IPV4:
+								// Выполняем резолвинг домена
+								wrk->did = this->dns.resolve(url.domain, AF_INET);
+							break;
+							// Если тип протокола подключения IPv6
+							case (uint8_t) family_t::IPV6:
+								// Выполняем резолвинг домена
+								wrk->did = this->dns.resolve(url.domain, AF_INET6);
+							break;
+						}
+					// Выполняем запуск системы
+					} else if(!url.ip.empty()) {
+						// Определяем тип протокола подключения
+						switch((uint8_t) this->net.family){
+							// Если тип протокола подключения IPv4
+							case (uint8_t) family_t::IPV4:
+								// Выполняем резолвинг домена
+								this->resolving(wrk->wid, url.ip, AF_INET, 0);
+							break;
+							// Если тип протокола подключения IPv6
+							case (uint8_t) family_t::IPV6:
+								// Выполняем резолвинг домена
+								this->resolving(wrk->wid, url.ip, AF_INET6, 0);
+							break;
+						}
 					}
 				} break;
 				// Если тип протокола подключения unix-сокет

@@ -78,7 +78,7 @@ namespace awh {
 					 * Data Конструктор
 					 */
 					Data() noexcept : fin(true), aid(0), size(0), count(0), event(event_t::NONE) {}
-				} data_t;
+				} __attribute__((packed)) data_t;
 			private:
 				/**
 				 * Mutex Объект основных мютексов

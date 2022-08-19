@@ -100,7 +100,7 @@ void awh::server::WebSocket::disconnectCallback(const size_t aid, const size_t w
 	}
 }
 /**
- * readCallback Функция обратного вызова при чтении сообщения с клиента
+ * readCallback Функция обратного вызова при чтении сообщений адъютанта
  * @param buffer бинарный буфер содержащий сообщение
  * @param size   размер бинарного буфера содержащего сообщение
  * @param aid    идентификатор адъютанта
@@ -137,7 +137,7 @@ void awh::server::WebSocket::readCallback(const char * buffer, const size_t size
 	}
 }
 /**
- * writeCallback Функция обратного вызова при записи сообщения на клиенте
+ * writeCallback Функция обратного вызова при записи сообщений адъютанту
  * @param buffer бинарный буфер содержащий сообщение
  * @param size   размер бинарного буфера содержащего сообщение
  * @param aid    идентификатор адъютанта
@@ -162,13 +162,13 @@ void awh::server::WebSocket::writeCallback(const char * buffer, const size_t siz
 	}
 }
 /**
- * acceptCallback Функция обратного вызова при проверке подключения клиента
- * @param ip   адрес интернет подключения клиента
- * @param mac  мак-адрес подключившегося клиента
- * @param port порт подключившегося клиента
+ * acceptCallback Функция обратного вызова при проверке подключения адъютанта
+ * @param ip   адрес интернет подключения адъютанта
+ * @param mac  мак-адрес подключившегося адъютанта
+ * @param port порт подключившегося адъютанта
  * @param wid  идентификатор воркера
  * @param core объект биндинга TCP/IP
- * @return     результат разрешения к подключению клиента
+ * @return     результат разрешения к подключению адъютанта
  */
 bool awh::server::WebSocket::acceptCallback(const string & ip, const string & mac, const u_int port, const size_t wid, awh::core_t * core) noexcept {
 	// Результат работы функции
@@ -178,7 +178,7 @@ bool awh::server::WebSocket::acceptCallback(const string & ip, const string & ma
 		// Если функция обратного вызова установлена, проверяем
 		if(this->_callback.accept != nullptr) result = this->_callback.accept(ip, mac, port, this);
 	}
-	// Разрешаем подключение клиенту
+	// Разрешаем подключение адъютанту
 	return result;
 }
 /**
@@ -195,15 +195,70 @@ void awh::server::WebSocket::messageCallback(const char * buffer, const size_t s
 	if(this->_needleEye){
 		// Если процесс является родительским
 		if(this->_pid == getpid()){
-			// Если функция обратного вызова установлена
-			if(this->_callback.message != nullptr){
-				// Создаём буфер бинарных данных
-				vector <char> data(buffer, buffer + size);
-				// Иначе выводим сообщение так - как оно пришло
-				this->_callback.message(aid, data, false, const_cast <WebSocket *> (this));
+			// Определяем тип сигнала
+			switch((uint8_t) buffer[0]){
+				// Если сигнал получения сообщения
+				case (uint8_t) needle_t::MESSAGE: {
+					// Если функция обратного вызова установлена
+					if(this->_callback.message != nullptr)
+						// Иначе выводим сообщение так - как оно пришло
+						this->_callback.message(aid, vector <char> (buffer + 1, (buffer + 1) + (size - 1)), false, const_cast <WebSocket *> (this));
+				} break;
+				// Если сигнал подключения
+				case (uint8_t) needle_t::CONNECT: {
+					// Создаём объект адъютанта
+					adjutant_t adjutant;
+					// Размер строковой записи
+					size_t length = 0, offset = 1;
+					// Выполняем извлечение порта пользователя
+					memcpy((void *) &adjutant.port, buffer + offset, sizeof(adjutant.port));
+					// Увеличиваем смещение в буфере данных
+					offset += sizeof(adjutant.port);
+					// Выполняем извлечение длины IP адреса пользователя
+					memcpy(&length, buffer + offset, sizeof(length));
+					// Увеличиваем смещение в буфере данных
+					offset += sizeof(length);
+					// Выделяем память для IP адреса
+					adjutant.ip.resize(length, 0);
+					// Копируем полученные данные IP адреса
+					memcpy((void *) adjutant.ip.data(), buffer + offset, length);
+					// Увеличиваем смещение в буфере данных
+					offset += length;
+					// Выполняем извлечение длины MAC адреса пользователя
+					memcpy(&length, buffer + offset, sizeof(length));
+					// Увеличиваем смещение в буфере данных
+					offset += sizeof(length);
+					// Выделяем память для MAC адреса
+					adjutant.mac.resize(length, 0);
+					// Копируем полученные данные MAC адреса
+					memcpy((void *) adjutant.mac.data(), buffer + offset, length);
+					// Увеличиваем смещение в буфере данных
+					offset += length;
+					// Выполняем извлечение длины выбранного сабпротокола
+					memcpy(&length, buffer + offset, sizeof(length));
+					// Увеличиваем смещение в буфере данных
+					offset += sizeof(length);
+					// Выделяем память для выбранного сабпротокола
+					adjutant.sub.resize(length, 0);
+					// Копируем полученные данные сабпротокола
+					memcpy((void *) adjutant.sub.data(), buffer + offset, length);
+					// Выполняем добавление адъютанта в список адъютантов
+					this->_adjutants.emplace(aid, move(adjutant));
+					// Если функция обратного вызова установлена, выполняем
+					if(this->_callback.active != nullptr) this->_callback.active(aid, mode_t::CONNECT, this);
+				} break;
+				// Если сигнал отключения
+				case (uint8_t) needle_t::DISCONNECT: {
+					// Выполняем удаление адъютанта из списка адъютантов
+					this->_adjutants.erase(aid);
+					// Если функция обратного вызова установлена, выполняем
+					if(this->_callback.active != nullptr) this->_callback.active(aid, mode_t::DISCONNECT, this);
+				} break;
 			}
 		// Если процесс является дочерним, отправляем сообщение
-		} else this->send(aid, buffer, size, false);
+		} else if((uint8_t) buffer[0] == (uint8_t) needle_t::MESSAGE)
+			// Отправляем сообщение адъютанту
+			this->send(aid, buffer + 1, size - 1, false);
 	}
 }
 /**
@@ -308,7 +363,7 @@ void awh::server::WebSocket::actionRead(const size_t aid) noexcept {
 									// Завершаем работу
 									break;
 								}
-								// Проверяем ключ клиента
+								// Проверяем ключ адъютанта
 								if(!adj->http.checkKey()){
 									// Выполняем сброс состояния HTTP парсера
 									adj->http.clear();
@@ -350,10 +405,46 @@ void awh::server::WebSocket::actionRead(const size_t aid) noexcept {
 										// Выводим параметры ответа
 										cout << string(buffer.begin(), buffer.end()) << endl << endl;
 									#endif
-									// Выполняем отправку данных клиенту
+									// Выполняем отправку данных адъютанту
 									core->write(buffer.data(), buffer.size(), aid);
+									// Если активирована система игольного ушка
+									if(this->_needleEye && (this->_pid != getpid())){
+										// Размер строковой записи
+										size_t length = 0;
+										// Получаем порт адъютанта
+										const u_int port = this->port(aid);
+										// Получаем IP адрес адъютанта
+										const string & ip = this->ip(aid);
+										// Получаем MAC адрес адъютанта
+										const string & mac = this->mac(aid);
+										// Получаем выбранный сабпротокол
+										const string & sub = this->sub(aid);
+										// Создаём буфер отправляемого сообщения
+										vector <char> buffer(1, (char) needle_t::CONNECT);
+										// Добавляем порт адъютанта в буфер сообщения
+										buffer.insert(buffer.end(), (const char *) &port, (const char *) &port + sizeof(port));
+										// Получаем размер записи IP адреса адъютанта
+										length = ip.size();
+										// Добавляем размер IP адреса адъютанта
+										buffer.insert(buffer.end(), (const char *) &length, (const char *) &length + sizeof(length));
+										// Добавляем сами данные IP адреса адъютанта
+										buffer.insert(buffer.end(), ip.begin(), ip.end());
+										// Получаем размер записи MAC адреса адъютанта
+										length = mac.size();
+										// Добавляем размер MAC адреса адъютанта
+										buffer.insert(buffer.end(), (const char *) &length, (const char *) &length + sizeof(length));
+										// Добавляем сами данные MAC адреса адъютанта
+										buffer.insert(buffer.end(), mac.begin(), mac.end());
+										// Получаем размер записи выбранного сабпротокола
+										length = sub.size();
+										// Добавляем размер выбранного сабпротокола
+										buffer.insert(buffer.end(), (const char *) &length, (const char *) &length + sizeof(length));
+										// Добавляем сами данные выбранного сабпротокола
+										buffer.insert(buffer.end(), sub.begin(), sub.end());
+										// Отправляем сообщение родительскому процессу
+										const_cast <server::core_t *> (this->_core)->sendMessage(this->_worker.wid, aid, getpid(), buffer.data(), buffer.size());
 									// Если функция обратного вызова установлена, выполняем
-									if(this->_callback.active != nullptr) this->_callback.active(aid, mode_t::CONNECT, this);
+									} else if(this->_callback.active != nullptr) this->_callback.active(aid, mode_t::CONNECT, this);
 									// Есла данных передано больше чем обработано
 									if(adj->buffer.payload.size() > bytes)
 										// Удаляем количество обработанных байт
@@ -479,7 +570,7 @@ void awh::server::WebSocket::actionRead(const size_t aid) noexcept {
 						if(head.rsv[1] || head.rsv[2]){
 							// Создаём сообщение
 							mess = mess_t(1002, "RSV2 and RSV3 must be clear");
-							// Выполняем отключение клиента
+							// Выполняем отключение адъютанта
 							goto Stop;
 						}
 						// Если флаг компресси включён а данные пришли не сжатые
@@ -488,21 +579,21 @@ void awh::server::WebSocket::actionRead(const size_t aid) noexcept {
 						  (((uint8_t) head.optcode > 0x07) && ((uint8_t) head.optcode < 0x0b)))){
 							// Создаём сообщение
 							mess = mess_t(1002, "RSV1 must be clear");
-							// Выполняем отключение клиента
+							// Выполняем отключение адъютанта
 							goto Stop;
 						}
 						// Если опкоды требуют финального фрейма
 						if(!head.fin && ((uint8_t) head.optcode > 0x07) && ((uint8_t) head.optcode < 0x0b)){
 							// Создаём сообщение
 							mess = mess_t(1002, "FIN must be set");
-							// Выполняем отключение клиента
+							// Выполняем отключение адъютанта
 							goto Stop;
 						}
 						// Определяем тип ответа
 						switch((uint8_t) head.optcode){
 							// Если ответом является PING
 							case (uint8_t) frame_t::opcode_t::PING:
-								// Отправляем ответ клиенту
+								// Отправляем ответ адъютанту
 								this->pong(aid, core, string(data.begin(), data.end()));
 							break;
 							// Если ответом является PONG
@@ -524,7 +615,7 @@ void awh::server::WebSocket::actionRead(const size_t aid) noexcept {
 								if(!head.mask){
 									// Создаём сообщение
 									mess = mess_t(1002, "not masked frame from client");
-									// Выполняем отключение клиента
+									// Выполняем отключение адъютанта
 									goto Stop;
 								// Если список фрагментированных сообщений существует
 								} else if(!adj->buffer.fragmes.empty()) {
@@ -532,7 +623,7 @@ void awh::server::WebSocket::actionRead(const size_t aid) noexcept {
 									adj->buffer.fragmes.clear();
 									// Создаём сообщение
 									mess = mess_t(1002, "opcode for subsequent fragmented messages should not be set");
-									// Выполняем отключение клиента
+									// Выполняем отключение адъютанта
 									goto Stop;
 								// Если сообщение является не последнем
 								} else if(!head.fin)
@@ -599,7 +690,7 @@ void awh::server::WebSocket::actionRead(const size_t aid) noexcept {
 				// Выходим из функции
 				return;
 			}
-			// Устанавливаем метку остановки клиента
+			// Устанавливаем метку остановки адъютанта
 			Stop:
 			// Отправляем серверу сообщение
 			this->sendError(aid, mess);
@@ -686,8 +777,14 @@ void awh::server::WebSocket::actionDisconnect(const size_t aid) noexcept {
 		ws_worker_t::coffer_t * adj = const_cast <ws_worker_t::coffer_t *> (this->_worker.get(aid));
 		// Если объект адъютанта получен
 		if(adj != nullptr){
+			// Если активирована система игольного ушка
+			if(this->_needleEye && (this->_pid != getpid())){
+				// Создаём буфер отправляемого сообщения
+				vector <char> buffer(1, (char) needle_t::DISCONNECT);
+				// Отправляем сообщение родительскому процессу
+				const_cast <server::core_t *> (this->_core)->sendMessage(this->_worker.wid, aid, getpid(), buffer.data(), buffer.size());
 			// Если функция обратного вызова установлена, выполняем
-			if(this->_callback.active != nullptr) this->_callback.active(aid, mode_t::DISCONNECT, this);
+			} else if(this->_callback.active != nullptr) this->_callback.active(aid, mode_t::DISCONNECT, this);
 			// Если экшен соответствует, выполняем его сброс
 			if(adj->action == ws_worker_t::action_t::DISCONNECT)
 				// Выполняем сброс экшена
@@ -698,7 +795,7 @@ void awh::server::WebSocket::actionDisconnect(const size_t aid) noexcept {
 	}
 }
 /**
- * error Метод вывода сообщений об ошибках работы клиента
+ * error Метод вывода сообщений об ошибках работы адъютанта
  * @param aid     идентификатор адъютанта
  * @param message сообщение с описанием ошибки
  */
@@ -775,21 +872,29 @@ void awh::server::WebSocket::extraction(const size_t aid, const vector <char> & 
 					// Отправляем полученный результат
 					if(!res.empty()){
 						// Если активирована система игольного ушка
-						if(this->_needleEye && (this->_pid != getpid()))
+						if(this->_needleEye && (this->_pid != getpid())){
+							// Получаем тип сообщения
+							const uint8_t type = (uint8_t) needle_t::MESSAGE;
+							// Добавляем в буфер данных, тип сообщения
+							const_cast <vector <char> *> (&res)->insert(res.begin(), (const char *) &type, (const char *) &type + sizeof(type));
 							// Отправляем сообщение родительскому процессу
 							const_cast <server::core_t *> (this->_core)->sendMessage(this->_worker.wid, aid, getpid(), res.data(), res.size());
 						// Отправляем полученный результат
-						else this->_callback.message(aid, res, utf8, const_cast <WebSocket *> (this));
+						} else this->_callback.message(aid, res, utf8, const_cast <WebSocket *> (this));
 						// Выходим из функции
 						return;
 					}
 				}
 				// Если активирована система игольного ушка
-				if(this->_needleEye && (this->_pid != getpid()))
+				if(this->_needleEye && (this->_pid != getpid())){
+					// Получаем тип сообщения
+					const uint8_t type = (uint8_t) needle_t::MESSAGE;
+					// Добавляем в буфер данных, тип сообщения
+					const_cast <vector <char> *> (&data)->insert(data.begin(), (const char *) &type, (const char *) &type + sizeof(type));
 					// Отправляем сообщение родительскому процессу
 					const_cast <server::core_t *> (this->_core)->sendMessage(this->_worker.wid, aid, getpid(), data.data(), data.size());
 				// Выводим сообщение так - как оно пришло
-				else this->_callback.message(aid, data, utf8, const_cast <WebSocket *> (this));
+				} else this->_callback.message(aid, data, utf8, const_cast <WebSocket *> (this));
 			// Выводим сообщение об ошибке
 			} else {
 				// Создаём сообщение
@@ -800,7 +905,7 @@ void awh::server::WebSocket::extraction(const size_t aid, const vector <char> & 
 				if((adj->stopped = !data.empty())){
 					// Выполняем запрет на получение входящих данных
 					const_cast <server::core_t *> (this->_core)->disabled(engine_t::method_t::READ, aid);
-					// Выполняем отправку сообщения клиенту
+					// Выполняем отправку сообщения адъютанту
 					const_cast <server::core_t *> (this->_core)->write(data.data(), data.size(), aid);
 				// Завершаем работу
 				} else const_cast <server::core_t *> (this->_core)->close(aid);
@@ -814,21 +919,29 @@ void awh::server::WebSocket::extraction(const size_t aid, const vector <char> & 
 				// Отправляем полученный результат
 				if(!res.empty()){
 					// Если активирована система игольного ушка
-					if(this->_needleEye && (this->_pid != getpid()))
+					if(this->_needleEye && (this->_pid != getpid())){
+						// Получаем тип сообщения
+						const uint8_t type = (uint8_t) needle_t::MESSAGE;
+						// Добавляем в буфер данных, тип сообщения
+						const_cast <vector <char> *> (&res)->insert(res.begin(), (const char *) &type, (const char *) &type + sizeof(type));
 						// Отправляем сообщение родительскому процессу
 						const_cast <server::core_t *> (this->_core)->sendMessage(this->_worker.wid, aid, getpid(), res.data(), res.size());
 					// Отправляем полученный результат
-					else this->_callback.message(aid, res, utf8, const_cast <WebSocket *> (this));
+					} else this->_callback.message(aid, res, utf8, const_cast <WebSocket *> (this));
 					// Выходим из функции
 					return;
 				}
 			}
 			// Если активирована система игольного ушка
-			if(this->_needleEye && (this->_pid != getpid()))
+			if(this->_needleEye && (this->_pid != getpid())){
+				// Получаем тип сообщения
+				const uint8_t type = (uint8_t) needle_t::MESSAGE;
+				// Добавляем в буфер данных, тип сообщения
+				const_cast <vector <char> *> (&buffer)->insert(buffer.begin(), (const char *) &type, (const char *) &type + sizeof(type));
 				// Отправляем сообщение родительскому процессу
 				const_cast <server::core_t *> (this->_core)->sendMessage(this->_worker.wid, aid, getpid(), buffer.data(), buffer.size());
 			// Выводим сообщение так - как оно пришло
-			else this->_callback.message(aid, buffer, utf8, const_cast <WebSocket *> (this));
+			} else this->_callback.message(aid, buffer, utf8, const_cast <WebSocket *> (this));
 		}
 	}
 }
@@ -849,7 +962,7 @@ void awh::server::WebSocket::pong(const size_t aid, awh::core_t * core, const st
 			const auto & buffer = this->_frame.pong(message);
 			// Если буфер данных получен
 			if(!buffer.empty())
-				// Выполняем отправку сообщения клиенту
+				// Выполняем отправку сообщения адъютанту
 				core->write(buffer.data(), buffer.size(), aid);
 		}
 	}
@@ -871,13 +984,13 @@ void awh::server::WebSocket::ping(const size_t aid, awh::core_t * core, const st
 			const auto & buffer = this->_frame.ping(message);
 			// Если буфер данных получен
 			if(!buffer.empty())
-				// Выполняем отправку сообщения клиенту
+				// Выполняем отправку сообщения адъютанту
 				core->write(buffer.data(), buffer.size(), aid);
 		}
 	}
 }
 /**
- * init Метод инициализации WebSocket клиента
+ * init Метод инициализации WebSocket адъютанта
  * @param socket   unix socket для биндинга
  * @param compress метод сжатия передаваемых сообщений
  */
@@ -893,7 +1006,7 @@ void awh::server::WebSocket::init(const string & socket, const http_t::compress_
 	#endif
 }
 /**
- * init Метод инициализации WebSocket клиента
+ * init Метод инициализации WebSocket адъютанта
  * @param port     порт сервера
  * @param host     хост сервера
  * @param compress метод сжатия передаваемых сообщений
@@ -954,7 +1067,7 @@ void awh::server::WebSocket::on(function <bool (const string &, const string &)>
 	this->_callback.checkAuth = callback;
 }
 /**
- * on Метод установки функции обратного вызова на событие активации клиента на сервере
+ * on Метод установки функции обратного вызова на событие активации адъютанта на сервере
  * @param callback функция обратного вызова
  */
 void awh::server::WebSocket::on(function <bool (const string &, const string &, const u_int, WebSocket *)> callback) noexcept {
@@ -997,7 +1110,7 @@ void awh::server::WebSocket::sendError(const size_t aid, const mess_t & mess) co
 						// Выводим отправляемое сообщение
 						cout << this->_fmk->format("%s [%u]", mess.text.c_str(), mess.code) << endl << endl;
 					#endif
-					// Выполняем отправку сообщения клиенту
+					// Выполняем отправку сообщения адъютанту
 					core->write(buffer.data(), buffer.size(), aid);
 					// Выходим из функции
 					return;
@@ -1019,11 +1132,15 @@ void awh::server::WebSocket::send(const size_t aid, const char * message, const 
 	// Если подключение выполнено
 	if(this->_core->working() && (aid > 0) && (size > 0) && (message != nullptr)){
 		// Если активирована система игольного ушка
-		if(this->_needleEye && (this->_pid == getpid()))
+		if(this->_needleEye && (this->_pid == getpid())){
+			// Создаём буфер данных для отправки сообщения
+			vector <char> buffer(1, (char) needle_t::MESSAGE);
+			// Добавляем отправляемое сообщение в буфер данных
+			buffer.insert(buffer.end(), message, message + size);
 			// Отправляем сообщение родительскому процессу
-			const_cast <server::core_t *> (this->_core)->sendMessage(this->_worker.wid, aid, getpid(), message, size);
-		// Иначе просто отправляем сообщение клиенту
-		else {
+			const_cast <server::core_t *> (this->_core)->sendMessage(this->_worker.wid, aid, getpid(), buffer.data(), buffer.size());
+		// Иначе просто отправляем сообщение адъютанту
+		} else {
 			// Получаем параметры подключения адъютанта
 			ws_worker_t::coffer_t * adj = const_cast <ws_worker_t::coffer_t *> (this->_worker.get(aid));
 			// Если отправка сообщений разблокированна
@@ -1155,8 +1272,18 @@ void awh::server::WebSocket::send(const size_t aid, const char * message, const 
  * @return    порт подключения адъютанта
  */
 u_int awh::server::WebSocket::port(const size_t aid) const noexcept {
+	// Результат работы функции
+	u_int result = 0;
+	// Если активирована система игольного ушка
+	if(this->_needleEye && (this->_pid == getpid())){
+		// Выполняем поиск идентификатора адъютанта
+		auto it = this->_adjutants.find(aid);
+		// Если идентификатор адъютанта найден
+		if(it != this->_adjutants.end()) result = it->second.port;
+	// Запрашиваем порт адъютанта у рабочего
+	} else result = this->_worker.getPort(aid);
 	// Выводим результат
-	return this->_worker.getPort(aid);
+	return result;
 }
 /**
  * ip Метод получения IP адреса адъютанта
@@ -1164,8 +1291,18 @@ u_int awh::server::WebSocket::port(const size_t aid) const noexcept {
  * @return    адрес интернет подключения адъютанта
  */
 const string & awh::server::WebSocket::ip(const size_t aid) const noexcept {
+	// Результат работы функции
+	const static string result = "";
+	// Если активирована система игольного ушка
+	if(this->_needleEye && (this->_pid == getpid())){
+		// Выполняем поиск идентификатора адъютанта
+		auto it = this->_adjutants.find(aid);
+		// Если идентификатор адъютанта найден
+		if(it != this->_adjutants.end()) return it->second.ip;
+	// Запрашиваем IP адрес адъютанта у рабочего
+	} else return this->_worker.getIp(aid);
 	// Выводим результат
-	return this->_worker.getIp(aid);
+	return result;
 }
 /**
  * mac Метод получения MAC адреса адъютанта
@@ -1173,11 +1310,21 @@ const string & awh::server::WebSocket::ip(const size_t aid) const noexcept {
  * @return    адрес устройства адъютанта
  */
 const string & awh::server::WebSocket::mac(const size_t aid) const noexcept {
+	// Результат работы функции
+	const static string result = "";
+	// Если активирована система игольного ушка
+	if(this->_needleEye && (this->_pid == getpid())){
+		// Выполняем поиск идентификатора адъютанта
+		auto it = this->_adjutants.find(aid);
+		// Если идентификатор адъютанта найден
+		if(it != this->_adjutants.end()) return it->second.mac;
+	// Запрашиваем MAC адрес адъютанта у рабочего
+	} else return this->_worker.getMac(aid);
 	// Выводим результат
-	return this->_worker.getMac(aid);
+	return result;
 }
 /**
- * stop Метод остановки клиента
+ * stop Метод остановки сервера
  */
 void awh::server::WebSocket::stop() noexcept {
 	// Если подключение выполнено
@@ -1186,7 +1333,7 @@ void awh::server::WebSocket::stop() noexcept {
 		const_cast <server::core_t *> (this->_core)->stop();
 }
 /**
- * start Метод запуска клиента
+ * start Метод запуска сервера
  */
 void awh::server::WebSocket::start() noexcept {
 	// Если биндинг не запущен, выполняем запуск биндинга
@@ -1237,10 +1384,19 @@ const string awh::server::WebSocket::sub(const size_t aid) const noexcept {
 	string result = "";
 	// Если идентификатор адъютанта передан
 	if(aid > 0){
-		// Получаем параметры подключения адъютанта
-		ws_worker_t::coffer_t * adj = const_cast <ws_worker_t::coffer_t *> (this->_worker.get(aid));
-		// Если отправка сообщений разблокированна
-		if(adj != nullptr) result = adj->http.sub();
+		// Если активирована система игольного ушка
+		if(this->_needleEye && (this->_pid == getpid())){
+			// Выполняем поиск идентификатора адъютанта
+			auto it = this->_adjutants.find(aid);
+			// Если идентификатор адъютанта найден
+			if(it != this->_adjutants.end()) result = it->second.sub;
+		// Запрашиваем выбранный сабпротокол у рабочего
+		} else {
+			// Получаем параметры подключения адъютанта
+			ws_worker_t::coffer_t * adj = const_cast <ws_worker_t::coffer_t *> (this->_worker.get(aid));
+			// Если отправка сообщений разблокированна
+			if(adj != nullptr) result = adj->http.sub();
+		}
 	}
 	// Выводим результат
 	return result;
@@ -1432,7 +1588,7 @@ awh::server::WebSocket::WebSocket(const server::core_t * core, const fmk_t * fmk
 	this->_worker.callback.write = std::bind(&awh::server::WebSocket::writeCallback, this, _1, _2, _3, _4, _5);
 	// Устанавливаем событие отключения
 	this->_worker.callback.disconnect = std::bind(&awh::server::WebSocket::disconnectCallback, this, _1, _2, _3);
-	// Добавляем событие аццепта клиента
+	// Добавляем событие аццепта адъютанта
 	this->_worker.callback.accept = std::bind(&awh::server::WebSocket::acceptCallback, this, _1, _2, _3, _4, _5);
 	// Добавляем событие на получение сообщений сервера
 	this->_worker.callback.mess = std::bind(&awh::server::WebSocket::messageCallback, this, _1, _2, _3, _4, _5, _6);
