@@ -95,8 +95,8 @@ find_package(Brotli REQUIRED)
 find_package(LibEv REQUIRED)
 find_package(OpenSSL REQUIRED)
 
-# Сборка модуля AWH_IDN
-if(CMAKE_BUILD_IDN)
+# Сборка модуля AWH_IDN, если операционной системой не является Windows
+if(CMAKE_BUILD_IDN AND (NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Windows"))
     find_package(Iconv REQUIRED)
     find_package(Idn2 REQUIRED)
 endif()
@@ -133,8 +133,8 @@ else()
     message(FATAL_ERROR "LibEv not found")
 endif()
 
-# Сборка модуля AWH_IDN
-if(CMAKE_BUILD_IDN)
+# Сборка модуля AWH_IDN, если операционной системой не является Windows
+if(CMAKE_BUILD_IDN AND (NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Windows"))
     # Провекра ICONV
     if (Iconv_FOUND)
         message(STATUS "ICONV libs found: " ${ICONV_LIBRARY})
@@ -159,8 +159,8 @@ include_directories(${OPENSSL_INCLUDE_DIR})
 include_directories(${CMAKE_SOURCE_DIR}/include)
 include_directories(${CMAKE_SOURCE_DIR}/contrib/include)
 
-# Сборка модуля AWH_IDN
-if(CMAKE_BUILD_IDN)
+# Сборка модуля AWH_IDN, если операционной системой не является Windows
+if(CMAKE_BUILD_IDN AND (NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Windows"))
     include_directories(${ICONV_INCLUDE_DIR})
     include_directories(${IDN2_INCLUDE_DIR})
 endif()
@@ -253,8 +253,8 @@ if (ENABLE_CONSOLE_APP)
 #    add_executable(${PROXY_APP_NAME} sample/proxy.cpp ${RES_FILES})
 #    add_executable(${SOCKS5_APP_NAME} sample/socks5.cpp ${RES_FILES})
 
-    # Сборка модуля AWH_IDN
-    if(CMAKE_BUILD_IDN)
+    # Сборка примеров с поддержкой модуля AWH_IDN, если операционной системой не является Windows
+    if(CMAKE_BUILD_IDN AND (NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Windows"))
         target_link_libraries(${WSC_APP_NAME}
             ${CURRENT_LIB_NAME}
             ${ICONV_LIBRARY}
@@ -287,6 +287,7 @@ if (ENABLE_CONSOLE_APP)
             ${OPENSSL_LIBRARIES}
             ${WINFLAGS}
         )
+    # Сборка примеров в обычном виде
     else()
         target_link_libraries(${WSC_APP_NAME}
             ${CURRENT_LIB_NAME}
@@ -378,8 +379,8 @@ install(DIRECTORY "${BROTLI_INCLUDE_ENCODE_DIR}" DESTINATION "${CMAKE_INSTALL_PR
 install(DIRECTORY "${LIBEV_INCLUDE_DIR}/libev" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h")
 install(DIRECTORY "${OPENSSL_INCLUDE_DIR}/openssl" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h")
 
-# Сборка модуля AWH_IDN
-if(CMAKE_BUILD_IDN)
+# Сборка модуля AWH_IDN, если операционной системой не является Windows
+if(CMAKE_BUILD_IDN AND (NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Windows"))
     install(DIRECTORY "${ICONV_INCLUDE_DIR}" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h")
     install(DIRECTORY "${IDN2_INCLUDE_DIR}" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h")
 endif()
@@ -390,8 +391,8 @@ install(FILES ${LIBEV_LIBRARY} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
 install(FILES ${BROTLI_LIBRARIES} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
 install(FILES ${OPENSSL_LIBRARIES} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
 
-# Сборка модуля AWH_IDN
-if(CMAKE_BUILD_IDN)
+# Сборка модуля AWH_IDN, если операционной системой не является Windows
+if(CMAKE_BUILD_IDN AND (NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Windows"))
     install(FILES ${ICONV_LIBRARY} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
     install(FILES ${IDN2_LIBRARY} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
 endif()

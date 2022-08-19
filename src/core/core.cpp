@@ -1708,7 +1708,7 @@ awh::Core::Core(const fmk_t * fmk, const log_t * log, const family_t family, con
 	// Устанавливаем базу событий для DNS резолвера
 	this->dns.base(this->dispatch.base);
 	/**
-	 * Методы только для OS Windows
+	 * Если операционной системой является Windows
 	 */
 	#if defined(_WIN32) || defined(_WIN64)
 		// Идентификатор ошибки

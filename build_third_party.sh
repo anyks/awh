@@ -35,10 +35,13 @@ if [ -n "$1" ]; then
 		clean_submodule "brotli"
 		clean_submodule "openssl"
 
-		# Удаляем сборочную дирректорию LibIconv
-		rm -rf "$ROOT/submodules/libiconv"
-		# Удаляем сборочную дирректорию LibIDN2
-		rm -rf "$ROOT/submodules/libidn2"
+		# Если операционная система не является Windows
+		if [[ ! $OS = "Windows" ]]; then
+			# Удаляем сборочную дирректорию LibIconv
+			rm -rf "$ROOT/submodules/libiconv"
+			# Удаляем сборочную дирректорию LibIDN2
+			rm -rf "$ROOT/submodules/libidn2"
+		fi
 
 		# Удаляем сборочную директорию
 		rm -rf "$ROOT/third_party"
@@ -374,8 +377,8 @@ else
 	fi
 fi
 
-# Если нужно собрать модуль IDN
-if [ $IDN = "yes" ]; then
+# Если нужно собрать модуль IDN и операционная система не является Windows
+if [[ $IDN = "yes" ]] && [[ ! $OS = "Windows" ]]; then
 	# Сборка ICONV
 	src="$ROOT/submodules/libiconv"
 	if [ ! -f "$src/.stamp_done" ]; then
@@ -452,37 +455,17 @@ if [ $IDN = "yes" ]; then
 			# Переходим в каталог сборки
 			cd "$src" || exit 1
 
-			# Если операционной системой является Windows
-			if [ $OS = "Windows" ]; then # Windows
-				# Выполняем конфигурацию модуля
-				./configure \
-				 --host=x86_64-w64-mingw32 \
-				 --enable-shared=no \
-				 --enable-gtk-doc=no \
-				 --enable-gtk-doc-html=no \
-				 --enable-gtk-doc-pdf=no \
-				 --disable-doc \
-				 --includedir="$PREFIX/include/idn2" \
-				 --oldincludedir="$PREFIX/include/iconv" \
-				 --libdir="$PREFIX/lib" \
-				 --prefix=$PREFIX \
-				 CC=x86_64-w64-mingw32-gcc \
-				 CPPFLAGS="-I/usr/local/mingw64/include -Wall" \
-				 LDFLAGS="-L/usr/local/mingw64/lib"
-			# Для всех остальных версий операционных систем
-			else
-				# Выполняем конфигурацию модуля
-				./configure \
-				 --prefix=$PREFIX \
-				 --enable-shared=no \
-				 --enable-gtk-doc=no \
-				 --enable-gtk-doc-html=no \
-				 --enable-gtk-doc-pdf=no \
-				 --disable-doc \
-				 --includedir="$PREFIX/include/idn2" \
-				 --oldincludedir="$PREFIX/include/iconv" \
-				 --libdir="$PREFIX/lib"
-			fi
+			# Выполняем конфигурацию модуля
+			./configure \
+			 --prefix=$PREFIX \
+			 --enable-shared=no \
+			 --enable-gtk-doc=no \
+			 --enable-gtk-doc-html=no \
+			 --enable-gtk-doc-pdf=no \
+			 --disable-doc \
+			 --includedir="$PREFIX/include/idn2" \
+			 --oldincludedir="$PREFIX/include/iconv" \
+			 --libdir="$PREFIX/lib"
 
 			# Выполняем сборку проекта
 			$BUILD || exit 1

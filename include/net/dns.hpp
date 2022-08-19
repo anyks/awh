@@ -58,9 +58,9 @@
 #endif
 
 /**
- * Если используется модуль IDN
+ * Если используется модуль IDN и операционная система не MS Windows
  */
-#if defined(AWH_IDN)
+#if defined(AWH_IDN) && !defined(_WIN32) && !defined(_WIN64)
 	#include <idn2.h>
 #endif
 

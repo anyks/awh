@@ -687,18 +687,35 @@ void awh::DNS::resolving(const string & ip, const int family, const size_t did) 
 		string result = "";
 		// Если доменное имя передано
 		if(!domain.empty()){
-			// Результирующий буфер данных
-			char * buffer = nullptr;
-			// Выполняем кодирования доменного имени
-			const int rc = idn2_to_ascii_8z(domain.c_str(), &buffer, IDN2_NONTRANSITIONAL);
-			// Если кодирование не выполнено
-			if(rc != IDNA_SUCCESS)
-				// Выводим в лог сообщение
-				this->_log->print("idn encode failed (%d): %s", log_t::flag_t::CRITICAL, rc, idn2_strerror(rc));
-			// Получаем результат кодирования
-			else result = buffer;
-			// Очищаем буфер данных
-			delete [] buffer;
+			/**
+			 * Если операционной системой является Windows
+			 */
+			#if defined(_WIN32) || defined(_WIN64)
+				// Результирующий буфер данных
+				wchar_t buffer[IDN_MAX_LENGTH];
+				// Выполняем кодирования доменного имени
+				if(IdnToAscii(0, this->_fmk->convert(domain).c_str(), -1, buffer, IDN_MAX_LENGTH) == 0)
+					// Выводим в лог сообщение
+					this->_log->print("idn encode failed (%d)", log_t::flag_t::CRITICAL, rc, GetLastError());
+				// Получаем результат кодирования
+				else result = this->_fmk->convert(wstring(buffer));
+			/**
+			 * Если операционной системой является Nix-подобная
+			 */
+			#else
+				// Результирующий буфер данных
+				char * buffer = nullptr;
+				// Выполняем кодирования доменного имени
+				const int rc = idn2_to_ascii_8z(domain.c_str(), &buffer, IDN2_NONTRANSITIONAL);
+				// Если кодирование не выполнено
+				if(rc != IDNA_SUCCESS)
+					// Выводим в лог сообщение
+					this->_log->print("idn encode failed (%d): %s", log_t::flag_t::CRITICAL, rc, idn2_strerror(rc));
+				// Получаем результат кодирования
+				else result = buffer;
+				// Очищаем буфер данных
+				delete [] buffer;
+			#endif
 		}
 		// Выводим результат
 		return result;
@@ -713,18 +730,35 @@ void awh::DNS::resolving(const string & ip, const int family, const size_t did) 
 		string result = "";
 		// Если доменное имя передано
 		if(!domain.empty()){
-			// Результирующий буфер данных
-			char * buffer = nullptr;
-			// Выполняем декодирования доменного имени
-			const int rc = idn2_to_unicode_8z8z(domain.c_str(), &buffer, 0);
-			// Если кодирование не выполнено
-			if(rc != IDNA_SUCCESS)
-				// Выводим в лог сообщение
-				this->_log->print("idn decode failed (%d): %s", log_t::flag_t::CRITICAL, rc, idn2_strerror(rc));
-			// Получаем результат декодирования
-			else result = buffer;
-			// Очищаем буфер данных
-			delete [] buffer;
+			/**
+			 * Если операционной системой является Windows
+			 */
+			#if defined(_WIN32) || defined(_WIN64)
+				// Результирующий буфер данных
+				wchar_t buffer[IDN_MAX_LENGTH];
+				// Выполняем кодирования доменного имени
+				if(IdnToUnicode(0, this->_fmk->convert(domain).c_str(), -1, buffer, IDN_MAX_LENGTH) == 0)
+					// Выводим в лог сообщение
+					this->_log->print("idn decode failed (%d)", log_t::flag_t::CRITICAL, rc, GetLastError());
+				// Получаем результат кодирования
+				else result = this->_fmk->convert(wstring(buffer));
+			/**
+			 * Если операционной системой является Nix-подобная
+			 */
+			#else
+				// Результирующий буфер данных
+				char * buffer = nullptr;
+				// Выполняем декодирования доменного имени
+				const int rc = idn2_to_unicode_8z8z(domain.c_str(), &buffer, 0);
+				// Если кодирование не выполнено
+				if(rc != IDNA_SUCCESS)
+					// Выводим в лог сообщение
+					this->_log->print("idn decode failed (%d): %s", log_t::flag_t::CRITICAL, rc, idn2_strerror(rc));
+				// Получаем результат декодирования
+				else result = buffer;
+				// Очищаем буфер данных
+				delete [] buffer;
+			#endif
 		}
 		// Выводим результат
 		return result;
