@@ -281,12 +281,6 @@ namespace awh {
 			 * @param body буфер тела для установки
 			 */
 			void body(const vector <char> & body) noexcept;
-			/**
-			 * body Метод добавления буфера тела данных запроса
-			 * @param buffer буфер данных тела запроса
-			 * @param size   размер буфера данных
-			 */
-			void body(const char * buffer, const size_t size) noexcept;
 		public:
 			/**
 			 * rmHeader Метод удаления заголовка

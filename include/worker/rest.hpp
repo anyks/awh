@@ -45,12 +45,49 @@ namespace awh {
 		typedef struct WorkerRest : public worker_t {
 			public:
 				/**
-				 * AdjParam Структура параметров адъютанта
+				 * Основные экшены
 				 */
-				typedef struct AdjParam {
+				enum class action_t : uint8_t {
+					NONE       = 0x01, // Отсутствие события
+					READ       = 0x02, // Событие чтения с сервера
+					CONNECT    = 0x03, // Событие подключения к серверу
+					DISCONNECT = 0x04  // Событие отключения от сервера
+				};
+			public:
+				/**
+				 * Locker Структура локера
+				 */
+				typedef struct Locker {
+					bool mode;           // Флаг блокировки
+					recursive_mutex mtx; // Мютекс для блокировки потока
+					/**
+					 * Locker Конструктор
+					 */
+					Locker() noexcept : mode(false) {}
+				} locker_t;
+				/**
+				 * Allow Структура флагов разрешения обменом данных
+				 */
+				typedef struct Allow {
+					bool send;    // Флаг разрешения отправки данных
+					bool receive; // Флаг разрешения чтения данных
+					/**
+					 * Allow Конструктор
+					 */
+					Allow() noexcept : send(true), receive(true) {}
+				} allow_t;
+			public:
+				/**
+				 * Coffer Структура сундука параметров
+				 */
+				typedef struct Coffer {
 					bool crypt;                       // Флаг шифрования сообщений
 					bool alive;                       // Флаг долгоживущего подключения
 					bool close;                       // Флаг требования закрыть адъютанта
+					bool stopped;                     // Флаг принудительной остановки
+					action_t action;                  // Экшен активного события
+					allow_t allow;                    // Объект разрешения обмена данными
+					locker_t locker;                  // Объект блокировщика
 					size_t requests;                  // Количество выполненных запросов
 					size_t readBytes;                 // Количество полученных байт для закрытия подключения
 					size_t stopBytes;                 // Количество байт для закрытия подключения
@@ -59,42 +96,37 @@ namespace awh {
 					vector <char> buffer;             // Буфер бинарных необработанных данных
 					awh::http_t::compress_t compress; // Метод компрессии данных
 					/**
-					 * AdjParam Конструктор
+					 * Coffer Конструктор
 					 * @param fmk объект фреймворка
 					 * @param log объект для работы с логами
 					 * @param uri объект работы с URI ссылками
 					 */
-					AdjParam(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcept :
-					 crypt(false),
-					 alive(false),
-					 close(false),
-					 requests(0),
-					 readBytes(0),
-					 stopBytes(0),
-					 checkPoint(0),
-					 http(fmk, log, uri),
-					 compress(awh::http_t::compress_t::NONE) {}
+					Coffer(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcept :
+					 crypt(false), alive(false), close(false),
+					 stopped(false), action(action_t::NONE), requests(0),
+					 readBytes(0), stopBytes(0), checkPoint(0),
+					 http(fmk, log, uri), compress(awh::http_t::compress_t::NONE) {}
 					/**
-					 * ~AdjParam Деструктор
+					 * ~Coffer Деструктор
 					 */
-					~AdjParam() noexcept {}
-				} adjp_t;
+					~Coffer() noexcept {}
+				} coffer_t;
 			public:
 				// Создаём объект работы с URI ссылками
 				uri_t uri;
 				// Создаем объект для работы с сетью
 				network_t nwk;
-			private:
-				// Параметры подключения адъютантов
-				map <size_t, adjp_t> adjParams;
 			public:
 				// Флаги работы с сжатыми данными
-				awh::http_t::compress_t compress = awh::http_t::compress_t::NONE;
+				awh::http_t::compress_t compress;
+			private:
+				// Параметры подключения адъютантов
+				map <size_t, unique_ptr <coffer_t>> _coffers;
 			private:
 				// Создаём объект фреймворка
-				const fmk_t * fmk = nullptr;
+				const fmk_t * _fmk;
 				// Создаём объект работы с логами
-				const log_t * log = nullptr;
+				const log_t * _log;
 			public:
 				/**
 				 * clear Метод очистки
@@ -102,33 +134,36 @@ namespace awh {
 				void clear() noexcept;
 			public:
 				/**
-				 * createAdj Метод создания параметров адъютанта
+				 * set Метод создания параметров адъютанта
 				 * @param aid идентификатор адъютанта
 				 */
-				void createAdj(const size_t aid) noexcept;
+				void set(const size_t aid) noexcept;
 				/**
-				 * removeAdj Метод удаления параметров подключения адъютанта
+				 * rm Метод удаления параметров подключения адъютанта
 				 * @param aid идентификатор адъютанта
 				 */
-				void removeAdj(const size_t aid) noexcept;
+				void rm(const size_t aid) noexcept;
 				/**
-				 * getAdj Метод получения параметров подключения адъютанта
+				 * get Метод получения параметров подключения адъютанта
 				 * @param aid идентификатор адъютанта
 				 * @return    параметры подключения адъютанта
 				 */
-				const adjp_t * getAdj(const size_t aid) const noexcept;
+				const coffer_t * get(const size_t aid) const noexcept;
 			public:
 				/**
 				 * WorkerRest Конструктор
 				 * @param fmk объект фреймворка
 				 * @param log объект для работы с логами
 				 */
-				WorkerRest(const fmk_t * fmk, const log_t * log) noexcept : worker_t(fmk, log), nwk(fmk), uri(fmk, &nwk), fmk(fmk), log(log) {}
+				WorkerRest(const fmk_t * fmk, const log_t * log) noexcept :
+				 worker_t(fmk, log), nwk(fmk),
+				 compress(http_t::compress_t::NONE),
+				 uri(fmk, &nwk), _fmk(fmk), _log(log) {}
 				/**
 				 * ~WorkerRest Деструктор
 				 */
 				~WorkerRest() noexcept {}
-		} workerRest_t;
+		} rest_worker_t;
 	};
 };
 

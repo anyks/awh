@@ -134,9 +134,9 @@ namespace awh {
 				map <size_t, unique_ptr <coffer_t>> _coffers;
 			private:
 				// Создаём объект фреймворка
-				const fmk_t * fmk;
+				const fmk_t * _fmk;
 				// Создаём объект работы с логами
-				const log_t * log;
+				const log_t * _log;
 			public:
 				/**
 				 * clear Метод очистки
@@ -168,7 +168,7 @@ namespace awh {
 				WorkerWebSocket(const fmk_t * fmk, const log_t * log) noexcept :
 				 worker_t(fmk, log), nwk(fmk),
 				 compress(http_t::compress_t::NONE),
-				 uri(fmk, &nwk), fmk(fmk), log(log) {}
+				 uri(fmk, &nwk), _fmk(fmk), _log(log) {}
 				/**
 				 * ~WorkerWebSocket Деструктор
 				 */

@@ -22,7 +22,7 @@
  */
 void awh::client::Rest::chunking(const vector <char> & chunk, const awh::http_t * http) noexcept {
 	// Если данные получены, формируем тело сообщения
-	if(!chunk.empty()) const_cast <awh::http_t *> (http)->body(chunk.data(), chunk.size());
+	if(!chunk.empty()) const_cast <awh::http_t *> (http)->body(chunk);
 }
 /**
  * openCallback Метод обратного вызова при запуске работы

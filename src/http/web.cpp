@@ -795,19 +795,10 @@ const vector <char> & awh::Web::body() const noexcept {
  * @param body буфер тела для установки
  */
 void awh::Web::body(const vector <char> & body) noexcept {
-	// Выполняем установку данных тела
-	this->_body.assign(body.begin(), body.end());
-}
-/**
- * body Метод добавления буфера тела данных запроса
- * @param buffer буфер данных тела запроса
- * @param size   размер буфера данных
- */
-void awh::Web::body(const char * buffer, const size_t size) noexcept {
-	// Если даныне переданы
-	if((buffer != nullptr) && (size > 0))
-		// Добавляем данные буфера в буфер тела
-		this->_body.insert(this->_body.end(), buffer, buffer + size);
+	// Если тело данных передано
+	if(!body.empty())
+		// Выполняем установку данных тела
+		this->_body.insert(this->_body.end(), body.begin(), body.end());
 }
 /**
  * rmHeader Метод удаления заголовка

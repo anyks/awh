@@ -379,17 +379,6 @@ void awh::Http::body(const vector <char> & body) noexcept {
 	this->web.body(body);
 }
 /**
- * body Метод добавления буфера тела данных запроса
- * @param buffer буфер данных тела запроса
- * @param size   размер буфера данных
- */
-void awh::Http::body(const char * buffer, const size_t size) noexcept {
-	// Если даныне переданы
-	if((buffer != nullptr) && (size > 0))
-		// Добавляем данные буфера в буфер тела
-		this->web.body(buffer, size);
-}
-/**
  * rmHeader Метод удаления заголовка
  * @param key ключ заголовка
  */
@@ -1358,7 +1347,7 @@ vector <char> awh::Http::reject(const u_int code, const string & mess) const noe
 					code, query.message.c_str(), code, query.message.c_str()
 				);
 				// Добавляем тело сообщения
-				this->web.body(body.data(), body.size());
+				this->web.body(vector <char> (body.begin(), body.end()));
 			}
 			// Удаляем размер передаваемого контента
 			this->web.rmHeader("content-length");

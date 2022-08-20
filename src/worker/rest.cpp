@@ -22,52 +22,54 @@ void awh::server::WorkerRest::clear() noexcept {
 	// Очищаем данные вокера
 	worker_t::clear();
 	// Очищаем список параметров адъютантов
-	this->adjParams.clear();
-	// Освобождаем выделенную память
-	map <size_t, adjp_t> ().swap(this->adjParams);
+	this->_coffers.clear();
 	// Сбрасываем тип компрессии
 	this->compress = http_t::compress_t::NONE;
+	// Освобождаем выделенную память
+	map <size_t, unique_ptr <coffer_t>> ().swap(this->_coffers);
 }
 /**
- * createAdj Метод создания параметров адъютанта
+ * set Метод создания параметров адъютанта
  * @param aid идентификатор адъютанта
  */
-void awh::server::WorkerRest::createAdj(const size_t aid) noexcept {
+void awh::server::WorkerRest::set(const size_t aid) noexcept {
 	// Если идентификатор адъютанта передан
-	if((aid > 0) && (this->adjParams.count(aid) < 1)){
+	if((aid > 0) && (this->_coffers.count(aid) < 1)){
 		// Добавляем адъютанта в список адъютантов
-		auto ret = this->adjParams.emplace(aid, move(adjp_t(this->fmk, this->log, &this->uri)));
+		auto ret = this->_coffers.emplace(aid, unique_ptr <coffer_t> (new coffer_t(this->_fmk, this->_log, &this->uri)));
 		// Устанавливаем метод сжатия
-		ret.first->second.http.compress(this->compress);
+		ret.first->second->http.compress(this->compress);
+		// Устанавливаем контрольную точку
+		ret.first->second->checkPoint = this->fmk->unixTimestamp();
 	}
 }
 /**
- * removeAdj Метод удаления параметров подключения адъютанта
+ * rm Метод удаления параметров подключения адъютанта
  * @param aid идентификатор адъютанта
  */
-void awh::server::WorkerRest::removeAdj(const size_t aid) noexcept {
+void awh::server::WorkerRest::rm(const size_t aid) noexcept {
 	// Если идентификатор адъютанта передан
 	if(aid > 0){
 		// Выполняем поиск адъютанта
-		auto it = this->adjParams.find(aid);
+		auto it = this->_coffers.find(aid);
 		// Если адъютант найден, удаляем его
-		if(it != this->adjParams.end()) this->adjParams.erase(it);
+		if(it != this->_coffers.end()) this->_coffers.erase(it);
 	}
 }
 /**
- * getAdj Метод получения параметров подключения адъютанта
+ * get Метод получения параметров подключения адъютанта
  * @param aid идентификатор адъютанта
  * @return    параметры подключения адъютанта
  */
-const awh::server::WorkerRest::adjp_t * awh::server::WorkerRest::getAdj(const size_t aid) const noexcept {
+const awh::server::WorkerRest::coffer_t * awh::server::WorkerRest::get(const size_t aid) const noexcept {
 	// Результат работы функции
-	adjp_t * result = nullptr;
+	coffer_t * result = nullptr;
 	// Если идентификатор адъютанта передан
 	if(aid > 0){
 		// Выполняем поиск адъютанта
-		auto it = this->adjParams.find(aid);
+		auto it = this->_coffers.find(aid);
 		// Если адъютант найден, выводим его параметры
-		if(it != this->adjParams.end()) result = (adjp_t *) &it->second;
+		if(it != this->_coffers.end()) result = it->second.get();
 	}
 	// Выводим результат
 	return result;
