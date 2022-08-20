@@ -76,6 +76,147 @@ const string awh::WS::sha1() const noexcept {
 	return result;
 }
 /**
+ * dump Метод получения бинарного дампа
+ * @return бинарный дамп данных
+ */
+vector <char> awh::WS::dump() const noexcept {
+	// Результат работы функции
+	vector <char> result;
+	{
+		// Длина строки, количество элементов
+		size_t length = 0, count = 0;
+		// Выполняем получение дампа основного класса
+		const auto & dump = reinterpret_cast <http_t *> (const_cast <ws_t *> (this))->dump();
+		// Получаем размер дамп бинарных данных модуля
+		length = dump.size();
+		// Устанавливаем размер дампа бинарных данных модуля
+		result.insert(result.end(), (const char *) &length, (const char *) &length + sizeof(length));
+		// Добавляем дамп бинарных данных модуля
+		result.insert(result.end(), dump.begin(), dump.end());
+		// Устанавливаем размер скользящего окна клиента
+		result.insert(result.end(), (const char *) &this->_wbitClient, (const char *) &this->_wbitClient + sizeof(this->_wbitClient));
+		// Устанавливаем размер скользящего окна сервера
+		result.insert(result.end(), (const char *) &this->_wbitServer, (const char *) &this->_wbitServer + sizeof(this->_wbitServer));
+		// Устанавливаем флаг запрета переиспользования контекста компрессии для клиента
+		result.insert(result.end(), (const char *) &this->_noClientTakeover, (const char *) &this->_noClientTakeover + sizeof(this->_noClientTakeover));
+		// Устанавливаем флаг запрета переиспользования контекста компрессии для сервера
+		result.insert(result.end(), (const char *) &this->_noServerTakeover, (const char *) &this->_noServerTakeover + sizeof(this->_noServerTakeover));
+		// Устанавливаем метод сжатия данных запроса/ответа
+		result.insert(result.end(), (const char *) &this->_compress, (const char *) &this->_compress + sizeof(this->_compress));
+		// Получаем размер поддерживаемого сабпротокола
+		length = this->_sub.size();
+		// Устанавливаем размер поддерживаемого сабпротокола
+		result.insert(result.end(), (const char *) &length, (const char *) &length + sizeof(length));
+		// Добавляем поддерживаемый сабпротокол
+		result.insert(result.end(), this->_sub.begin(), this->_sub.end());
+		// Получаем размер ключа клиента
+		length = this->_key.size();
+		// Устанавливаем размер ключа клиента
+		result.insert(result.end(), (const char *) &length, (const char *) &length + sizeof(length));
+		// Добавляем ключ клиента
+		result.insert(result.end(), this->_key.begin(), this->_key.end());
+		// Получаем количество поддерживаемых сабпротоколов
+		count = this->_subs.size();
+		// Устанавливаем количество поддерживаемых сабпротоколов
+		result.insert(result.end(), (const char *) &count, (const char *) &count + sizeof(count));
+		// Выполняем перебор всех поддерживаемых сабпротоколов
+		for(auto & sub : this->_subs){
+			// Получаем размер поддерживаемого сабпротокола
+			length = sub.size();
+			// Устанавливаем размер поддерживаемого сабпротокола
+			result.insert(result.end(), (const char *) &length, (const char *) &length + sizeof(length));
+			// Устанавливаем данные поддерживаемого сабпротокола
+			result.insert(result.end(), sub.begin(), sub.end());
+		}
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * dump Метод установки бинарного дампа
+ * @param data бинарный дамп данных
+ */
+void awh::WS::dump(const vector <char> & data) noexcept {
+	// Если данные бинарного дампа переданы
+	if(!data.empty()){
+		// Длина строки, количество элементов и смещение в буфере
+		size_t length = 0, count = 0, offset = 0;
+		// Выполняем получение размера дампа бинарных данных модуля
+		memcpy((void *) &length, data.data() + offset, sizeof(length));
+		// Выполняем смещение в буфере
+		offset += sizeof(length);
+		// Создаём бинарный буфер дампа
+		vector <char> dump(length, 0);
+		// Выполняем получение бинарного буфера дампа
+		memcpy((void *) dump.data(), data.data() + offset, length);
+		// Выполняем смещение в буфере
+		offset += length;
+		// Выполняем установку бинарного буфера данных
+		reinterpret_cast <http_t *> (const_cast <ws_t *> (this))->dump(dump);
+		// Выполняем получение размера скользящего окна клиента
+		memcpy((void *) &this->_wbitClient, data.data() + offset, sizeof(this->_wbitClient));
+		// Выполняем смещение в буфере
+		offset += sizeof(this->_wbitClient);
+		// Выполняем получение размера скользящего окна сервера
+		memcpy((void *) &this->_wbitServer, data.data() + offset, sizeof(this->_wbitServer));
+		// Выполняем смещение в буфере
+		offset += sizeof(this->_wbitServer);
+		// Выполняем получение размера флага запрета переиспользования контекста компрессии для клиента
+		memcpy((void *) &this->_noClientTakeover, data.data() + offset, sizeof(this->_noClientTakeover));
+		// Выполняем смещение в буфере
+		offset += sizeof(this->_noClientTakeover);
+		// Выполняем получение размера флага запрета переиспользования контекста компрессии для сервера
+		memcpy((void *) &this->_noServerTakeover, data.data() + offset, sizeof(this->_noServerTakeover));
+		// Выполняем смещение в буфере
+		offset += sizeof(this->_noServerTakeover);
+		// Выполняем получение метода сжатия данных запроса/ответа
+		memcpy((void *) &this->_compress, data.data() + offset, sizeof(this->_compress));
+		// Выполняем смещение в буфере
+		offset += sizeof(this->_compress);
+		// Выполняем получение размера поддерживаемого сабпротокола
+		memcpy((void *) &length, data.data() + offset, sizeof(length));
+		// Выполняем смещение в буфере
+		offset += sizeof(length);
+		// Выполняем выделение памяти для поддерживаемого сабпротокола
+		this->_sub.resize(length, 0);
+		// Выполняем получение поддерживаемого сабпротокола
+		memcpy((void *) this->_sub.data(), data.data() + offset, length);
+		// Выполняем смещение в буфере
+		offset += length;
+		// Выполняем получение размера ключа клиента
+		memcpy((void *) &length, data.data() + offset, sizeof(length));
+		// Выполняем смещение в буфере
+		offset += sizeof(length);
+		// Выполняем выделение памяти для ключа клиента
+		this->_key.resize(length, 0);
+		// Выполняем получение ключа клиента
+		memcpy((void *) this->_key.data(), data.data() + offset, length);
+		// Выполняем смещение в буфере
+		offset += length;
+		// Выполняем получение количества поддерживаемых сабпротоколов
+		memcpy((void *) &count, data.data() + offset, sizeof(count));
+		// Выполняем смещение в буфере
+		offset += sizeof(count);
+		// Выполняем сброс списка поддерживаемых сабпротоколов
+		this->_subs.clear();
+		// Выполняем последовательную загрузку всех поддерживаемых сабпротоколов
+		for(size_t i = 0; i < count; i++){
+			// Выполняем получение размера поддерживаемого сабпротокола
+			memcpy((void *) &length, data.data() + offset, sizeof(length));
+			// Выполняем смещение в буфере
+			offset += sizeof(length);
+			// Выделяем память для поддерживаемого сабпротокола
+			string sub(length, 0);
+			// Выполняем получение поддерживаемого сабпротокола
+			memcpy((void *) sub.data(), data.data() + offset, length);
+			// Выполняем смещение в буфере
+			offset += length;
+			// Если сабпротокол получен, добавляем его в список
+			if(!sub.empty()) this->_subs.emplace(move(sub));
+		}
+	}
+}
+/**
  * clean Метод очистки собранных данных
  */
 void awh::WS::clean() noexcept {

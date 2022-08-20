@@ -183,6 +183,17 @@ namespace awh {
 			void prepare(const char * buffer, const size_t size, function <void (const char *, const size_t, const size_t, const bool)> callback) noexcept;
 		public:
 			/**
+			 * dump Метод получения бинарного дампа
+			 * @return бинарный дамп данных
+			 */
+			vector <char> dump() const noexcept;
+			/**
+			 * dump Метод установки бинарного дампа
+			 * @param data бинарный дамп данных
+			 */
+			void dump(const vector <char> & data) noexcept;
+		public:
+			/**
 			 * parse Метод выполнения парсинга HTTP буфера данных
 			 * @param buffer буфер данных для парсинга
 			 * @param size   размер буфера данных для парсинга

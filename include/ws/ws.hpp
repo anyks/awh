@@ -101,6 +101,17 @@ namespace awh {
 			virtual stath_t checkAuth() noexcept = 0;
 		public:
 			/**
+			 * dump Метод получения бинарного дампа
+			 * @return бинарный дамп данных
+			 */
+			vector <char> dump() const noexcept;
+			/**
+			 * dump Метод установки бинарного дампа
+			 * @param data бинарный дамп данных
+			 */
+			void dump(const vector <char> & data) noexcept;
+		public:
+			/**
 			 * clean Метод очистки собранных данных
 			 */
 			void clean() noexcept;

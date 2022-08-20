@@ -536,13 +536,6 @@ void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 						// Выходим
 						break;
 					}
-					/**
-					 * Если операционной системой является MS Windows
-					 */
-					#if defined(_WIN32) || defined(_WIN64)
-						// Запускаем запись данных на сервер (Для Windows)
-						wrk->io.start();
-					#endif
 					// Создаём бъект адъютанта
 					unique_ptr <awh::worker_t::adj_t> adj(new awh::worker_t::adj_t(wrk, this->fmk, this->log));
 					// Выполняем получение контекста сертификата

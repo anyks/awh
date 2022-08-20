@@ -169,9 +169,9 @@ namespace awh {
 			// Создаём объект для работы с авторизацией
 			mutable auth_t auth;
 		protected:
-			// Создаём объект для работы с жатыми данными
+			// Создаём объект для работы с сжатыми данными
 			mutable hash_t hash;
-			// Создаём объект для работы с временными жатыми данными
+			// Создаём объект для работы с временными сжатыми данными
 			mutable hash_t dhash;
 		protected:
 			// Параметры выполняемого запроса
@@ -188,7 +188,7 @@ namespace awh {
 		private:
 			// Идентификатор сервиса
 			string _servId;
-			// Версия библиотеки приложения
+			// Версия модуля приложения
 			string _servVer;
 			// Название сервиса
 			string _servName;
@@ -344,6 +344,17 @@ namespace awh {
 			 * @return установленные параметры запроса
 			 */
 			const uri_t::url_t & getUrl() const noexcept;
+		public:
+			/**
+			 * dump Метод получения бинарного дампа
+			 * @return бинарный дамп данных
+			 */
+			vector <char> dump() const noexcept;
+			/**
+			 * dump Метод установки бинарного дампа
+			 * @param data бинарный дамп данных
+			 */
+			void dump(const vector <char> & data) noexcept;
 		public:
 			/**
 			 * isEnd Метод проверки завершения обработки

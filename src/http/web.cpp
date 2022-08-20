@@ -476,6 +476,195 @@ void awh::Web::prepare(const char * buffer, const size_t size, function <void (c
 	}
 }
 /**
+ * dump Метод получения бинарного дампа
+ * @return бинарный дамп данных
+ */
+vector <char> awh::Web::dump() const noexcept {
+	// Результат работы функции
+	vector <char> result;
+	{
+		// Длина строки, количество элементов
+		size_t length = 0, count = 0;
+		// Устанавливаем сепаратор для детекции в буфере
+		result.insert(result.end(), (const char *) &this->_sep, (const char *) &this->_sep + sizeof(this->_sep));
+		// Устанавливаем размер тела сообщения
+		result.insert(result.end(), (const char *) &this->_bodySize, (const char *) &this->_bodySize + sizeof(this->_bodySize));
+		// Устанавливаем массив позиций в буфере сепаратора
+		result.insert(result.end(), (const char *) &this->_pos, (const char *) &this->_pos + sizeof(this->_pos));
+		// Устанавливаем стейт текущего запроса
+		result.insert(result.end(), (const char *) &this->_state, (const char *) &this->_state + sizeof(this->_state));
+		// Устанавливаем тип используемого HTTP модуля
+		result.insert(result.end(), (const char *) &this->_httpType, (const char *) &this->_httpType + sizeof(this->_httpType));
+		// Устанавливаем версию протокола HTTP запроса
+		result.insert(result.end(), (const char *) &this->_query.ver, (const char *) &this->_query.ver + sizeof(this->_query.ver));
+		// Устанавливаем код ответа на HTTP запрос
+		result.insert(result.end(), (const char *) &this->_query.code, (const char *) &this->_query.code + sizeof(this->_query.code));
+		// Устанавливаем метод HTTP запроса
+		result.insert(result.end(), (const char *) &this->_query.method, (const char *) &this->_query.method + sizeof(this->_query.method));
+		// Получаем размер записи параметров HTTP запроса
+		length = this->_query.uri.size();
+		// Устанавливаем размер записи параметров HTTP запроса
+		result.insert(result.end(), (const char *) &length, (const char *) &length + sizeof(length));
+		// Устанавливаем параметры HTTP запроса
+		result.insert(result.end(), this->_query.uri.begin(), this->_query.uri.end());
+		// Получаем размер сообщения HTTP ответа
+		length = this->_query.message.size();
+		// Устанавливаем размер сообщения HTTP ответа
+		result.insert(result.end(), (const char *) &length, (const char *) &length + sizeof(length));
+		// Устанавливаем данные сообщения HTTP ответа
+		result.insert(result.end(), this->_query.message.begin(), this->_query.message.end());
+		// Получаем размер HTTP заголовка
+		length = this->_header.size();
+		// Устанавливаем размер HTTP заголовка
+		result.insert(result.end(), (const char *) &length, (const char *) &length + sizeof(length));
+		// Устанавливаем данные HTTP заголовка
+		result.insert(result.end(), this->_header.begin(), this->_header.end());
+		// Получаем размер тела сообщения
+		length = this->_body.size();
+		// Устанавливаем размер тела сообщения
+		result.insert(result.end(), (const char *) &length, (const char *) &length + sizeof(length));
+		// Устанавливаем данные тела сообщения
+		result.insert(result.end(), this->_body.begin(), this->_body.end());
+		// Получаем количество HTTP заголовков
+		count = this->_headers.size();
+		// Устанавливаем количество HTTP заголовков
+		result.insert(result.end(), (const char *) &count, (const char *) &count + sizeof(count));
+		// Выполняем перебор всех HTTP заголовков
+		for(auto & header : this->_headers){
+			// Получаем размер названия HTTP заголовка
+			length = header.first.size();
+			// Устанавливаем размер названия HTTP заголовка
+			result.insert(result.end(), (const char *) &length, (const char *) &length + sizeof(length));
+			// Устанавливаем данные названия HTTP заголовка
+			result.insert(result.end(), header.first.begin(), header.first.end());
+			// Получаем размер значения HTTP заголовка
+			length = header.second.size();
+			// Устанавливаем размер значения HTTP заголовка
+			result.insert(result.end(), (const char *) &length, (const char *) &length + sizeof(length));
+			// Устанавливаем данные значения HTTP заголовка
+			result.insert(result.end(), header.second.begin(), header.second.end());
+		}	
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * dump Метод установки бинарного дампа
+ * @param data бинарный дамп данных
+ */
+void awh::Web::dump(const vector <char> & data) noexcept {
+	// Если данные бинарного дампа переданы
+	if(!data.empty()){
+		// Длина строки, количество элементов и смещение в буфере
+		size_t length = 0, count = 0, offset = 0;
+		// Выполняем получение сепаратора для детекции в буфере
+		memcpy((void *) &this->_sep, data.data() + offset, sizeof(this->_sep));
+		// Выполняем смещение в буфере
+		offset += sizeof(this->_sep);
+		// Выполняем получение размера тела сообщения
+		memcpy((void *) &this->_bodySize, data.data() + offset, sizeof(this->_bodySize));
+		// Выполняем смещение в буфере
+		offset += sizeof(this->_bodySize);
+		// Выполняем получение массива позиций в буфере сепаратора
+		memcpy((void *) &this->_pos, data.data() + offset, sizeof(this->_pos));
+		// Выполняем смещение в буфере
+		offset += sizeof(this->_pos);
+		// Выполняем получение стейта текущего запроса
+		memcpy((void *) &this->_state, data.data() + offset, sizeof(this->_state));
+		// Выполняем смещение в буфере
+		offset += sizeof(this->_state);
+		// Выполняем получение типа используемого HTTP модуля
+		memcpy((void *) &this->_httpType, data.data() + offset, sizeof(this->_httpType));
+		// Выполняем смещение в буфере
+		offset += sizeof(this->_httpType);
+		// Выполняем получение версии протокола HTTP запроса
+		memcpy((void *) &this->_query.ver, data.data() + offset, sizeof(this->_query.ver));
+		// Выполняем смещение в буфере
+		offset += sizeof(this->_query.ver);
+		// Выполняем получение кода ответа на HTTP запрос
+		memcpy((void *) &this->_query.code, data.data() + offset, sizeof(this->_query.code));
+		// Выполняем смещение в буфере
+		offset += sizeof(this->_query.code);
+		// Выполняем получение метода HTTP запроса
+		memcpy((void *) &this->_query.method, data.data() + offset, sizeof(this->_query.method));
+		// Выполняем смещение в буфере
+		offset += sizeof(this->_query.method);
+		// Выполняем получение размера записи параметров HTTP запроса
+		memcpy((void *) &length, data.data() + offset, sizeof(length));
+		// Выполняем смещение в буфере
+		offset += sizeof(length);
+		// Выделяем память для параметров HTTP запроса
+		this->_query.uri.resize(length, 0);
+		// Выполняем получение параметров HTTP запроса
+		memcpy((void *) this->_query.uri.data(), data.data() + offset, length);
+		// Выполняем смещение в буфере
+		offset += length;
+		// Выполняем получение размера сообщения HTTP ответа
+		memcpy((void *) &length, data.data() + offset, sizeof(length));
+		// Выполняем смещение в буфере
+		offset += sizeof(length);
+		// Выделяем память для сообщения HTTP ответа
+		this->_query.message.resize(length, 0);
+		// Выполняем получение сообщения HTTP ответа
+		memcpy((void *) this->_query.message.data(), data.data() + offset, length);
+		// Выполняем смещение в буфере
+		offset += length;
+		// Выполняем получение размера HTTP заголовка
+		memcpy((void *) &length, data.data() + offset, sizeof(length));
+		// Выполняем смещение в буфере
+		offset += sizeof(length);
+		// Выделяем память для данных HTTP заголовка
+		this->_header.resize(length, 0);
+		// Выполняем получение данных HTTP заголовка
+		memcpy((void *) this->_header.data(), data.data() + offset, length);
+		// Выполняем смещение в буфере
+		offset += length;
+		// Выполняем получение размера тела сообщения
+		memcpy((void *) &length, data.data() + offset, sizeof(length));
+		// Выполняем смещение в буфере
+		offset += sizeof(length);
+		// Выделяем память для данных тела сообщения
+		this->_body.resize(length, 0);
+		// Выполняем получение данных тела сообщения
+		memcpy((void *) this->_body.data(), data.data() + offset, length);
+		// Выполняем смещение в буфере
+		offset += length;
+		// Выполняем получение количества HTTP заголовков
+		memcpy((void *) &count, data.data() + offset, sizeof(count));
+		// Выполняем смещение в буфере
+		offset += sizeof(count);
+		// Выполняем сброс заголовков
+		this->_headers.clear();
+		// Выполняем последовательную загрузку всех заголовков
+		for(size_t i = 0; i < count; i++){
+			// Выполняем получение размера названия HTTP заголовка
+			memcpy((void *) &length, data.data() + offset, sizeof(length));
+			// Выполняем смещение в буфере
+			offset += sizeof(length);
+			// Выпделяем память для ключа заголовка
+			string key(length, 0);
+			// Выполняем получение ключа заголовка
+			memcpy((void *) key.data(), data.data() + offset, length);
+			// Выполняем смещение в буфере
+			offset += length;
+			// Выполняем получение размера значения HTTP заголовка
+			memcpy((void *) &length, data.data() + offset, sizeof(length));
+			// Выполняем смещение в буфере
+			offset += sizeof(length);
+			// Выпделяем память для значения заголовка
+			string value(length, 0);
+			// Выполняем получение значения заголовка
+			memcpy((void *) value.data(), data.data() + offset, length);
+			// Выполняем смещение в буфере
+			offset += length;
+			// Если и ключ и значение заголовка получены
+			if(!key.empty() && !value.empty())
+				// Добавляем заголовок в список заголовков
+				this->_headers.emplace(move(key), move(value));
+		}
+	}
+}
+/**
  * parse Метод выполнения парсинга HTTP буфера данных
  * @param buffer буфер данных для парсинга
  * @param size   размер буфера данных для парсинга

@@ -527,6 +527,213 @@ const awh::uri_t::url_t & awh::Http::getUrl() const noexcept {
 	return this->url;
 }
 /**
+ * dump Метод получения бинарного дампа
+ * @return бинарный дамп данных
+ */
+vector <char> awh::Http::dump() const noexcept {
+	// Результат работы функции
+	vector <char> result;
+	{
+		// Длина строки, количество элементов
+		size_t length = 0, count = 0;
+		// Устанавливаем тип HTTP модуля
+		result.insert(result.end(), (const char *) &this->httpType, (const char *) &this->httpType + sizeof(this->httpType));
+		// Устанавливаем метод компрессии отправляемых данных
+		result.insert(result.end(), (const char *) &this->_compress, (const char *) &this->_compress + sizeof(this->_compress));
+		// Устанавливаем стейт проверки авторизации
+		result.insert(result.end(), (const char *) &this->stath, (const char *) &this->stath + sizeof(this->stath));
+		// Устанавливаем стейт текущего запроса
+		result.insert(result.end(), (const char *) &this->state, (const char *) &this->state + sizeof(this->state));
+		// Устанавливаем флаг зашифрованных данных
+		result.insert(result.end(), (const char *) &this->crypt, (const char *) &this->crypt + sizeof(this->crypt));
+		// Устанавливаем флаг разрешающий передавать тело запроса чанками
+		result.insert(result.end(), (const char *) &this->_chunking, (const char *) &this->_chunking + sizeof(this->_chunking));
+		// Устанавливаем размер одного чанка
+		result.insert(result.end(), (const char *) &this->_chunk, (const char *) &this->_chunk + sizeof(this->_chunk));
+		// Получаем размер идентификатора сервиса
+		length = this->_servId.size();
+		// Устанавливаем размер идентификатора сервиса
+		result.insert(result.end(), (const char *) &length, (const char *) &length + sizeof(length));
+		// Устанавливаем данные идентификатора сервиса
+		result.insert(result.end(), this->_servId.begin(), this->_servId.end());
+		// Получаем размер версии модуля приложения
+		length = this->_servVer.size();
+		// Устанавливаем размер версии модуля приложения
+		result.insert(result.end(), (const char *) &length, (const char *) &length + sizeof(length));
+		// Устанавливаем данные версии модуля приложения
+		result.insert(result.end(), this->_servVer.begin(), this->_servVer.end());
+		// Получаем размер названия сервиса
+		length = this->_servName.size();
+		// Устанавливаем размер названия сервиса
+		result.insert(result.end(), (const char *) &length, (const char *) &length + sizeof(length));
+		// Устанавливаем данные названия сервиса
+		result.insert(result.end(), this->_servName.begin(), this->_servName.end());
+		// Получаем размер User-Agent для HTTP запроса
+		length = this->_userAgent.size();
+		// Устанавливаем размер User-Agent для HTTP запроса
+		result.insert(result.end(), (const char *) &length, (const char *) &length + sizeof(length));
+		// Устанавливаем данные User-Agent для HTTP запроса
+		result.insert(result.end(), this->_userAgent.begin(), this->_userAgent.end());
+		// Получаем URL адрес HTTP запроса
+		const string & url = this->uri->url(this->url);
+		// Получаем размер URL адреса HTTP запроса
+		length = url.size();
+		// Устанавливаем размер URL адреса HTTP запроса
+		result.insert(result.end(), (const char *) &length, (const char *) &length + sizeof(length));
+		// Устанавливаем данные URL адреса HTTP запроса
+		result.insert(result.end(), url.begin(), url.end());
+		// Получаем количество записей чёрного списка
+		count = this->black.size();
+		// Устанавливаем количество записей чёрного списка
+		result.insert(result.end(), (const char *) &count, (const char *) &count + sizeof(count));
+		// Выполняем переход по всему чёрному списку
+		for(auto & header : this->black){
+			// Получаем размер заголовка из чёрного списка
+			length = header.size();
+			// Устанавливаем размер заголовка из чёрного списка
+			result.insert(result.end(), (const char *) &length, (const char *) &length + sizeof(length));
+			// Устанавливаем данные заголовка из чёрного списка
+			result.insert(result.end(), header.begin(), header.end());
+		}
+		// Получаем дамп WEB данных
+		const auto & web = this->web.dump();
+		// Получаем размер буфера WEB данных
+		length = web.size();
+		// Устанавливаем размер буфера WEB данных
+		result.insert(result.end(), (const char *) &length, (const char *) &length + sizeof(length));
+		// Устанавливаем данные буфера WEB данных
+		result.insert(result.end(), web.begin(), web.end());			
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * dump Метод установки бинарного дампа
+ * @param data бинарный дамп данных
+ */
+void awh::Http::dump(const vector <char> & data) noexcept {
+	// Если данные бинарного дампа переданы
+	if(!data.empty()){
+		// Длина строки, количество элементов и смещение в буфере
+		size_t length = 0, count = 0, offset = 0;
+		// Выполняем получение типа HTTP модуля
+		memcpy((void *) &this->httpType, data.data() + offset, sizeof(this->httpType));
+		// Выполняем смещение в буфере
+		offset += sizeof(this->httpType);
+		// Выполняем получение метода компрессии отправляемых данных
+		memcpy((void *) &this->_compress, data.data() + offset, sizeof(this->_compress));
+		// Выполняем смещение в буфере
+		offset += sizeof(this->_compress);
+		// Выполняем получение стейта проверки авторизации
+		memcpy((void *) &this->stath, data.data() + offset, sizeof(this->stath));
+		// Выполняем смещение в буфере
+		offset += sizeof(this->stath);
+		// Выполняем получение стейта текущего запроса
+		memcpy((void *) &this->state, data.data() + offset, sizeof(this->state));
+		// Выполняем смещение в буфере
+		offset += sizeof(this->state);
+		// Выполняем получение флага зашифрованных данных
+		memcpy((void *) &this->crypt, data.data() + offset, sizeof(this->crypt));
+		// Выполняем смещение в буфере
+		offset += sizeof(this->crypt);
+		// Выполняем получение флага разрешающий передавать тело запроса чанками
+		memcpy((void *) &this->_chunking, data.data() + offset, sizeof(this->_chunking));
+		// Выполняем смещение в буфере
+		offset += sizeof(this->_chunking);
+		// Выполняем получение размера одного чанка
+		memcpy((void *) &this->_chunk, data.data() + offset, sizeof(this->_chunk));
+		// Выполняем смещение в буфере
+		offset += sizeof(this->_chunk);
+		// Выполняем получение размера идентификатора сервиса
+		memcpy((void *) &length, data.data() + offset, sizeof(length));
+		// Выполняем смещение в буфере
+		offset += sizeof(length);
+		// Выделяем память для данных идентификатора сервиса
+		this->_servId.resize(length, 0);
+		// Выполняем получение данных идентификатора сервиса
+		memcpy((void *) this->_servId.data(), data.data() + offset, length);
+		// Выполняем смещение в буфере
+		offset += length;
+		// Выполняем получение размера версии модуля приложения
+		memcpy((void *) &length, data.data() + offset, sizeof(length));
+		// Выполняем смещение в буфере
+		offset += sizeof(length);
+		// Выделяем память для данных версии модуля приложения
+		this->_servVer.resize(length, 0);
+		// Выполняем получение данных версии модуля приложения
+		memcpy((void *) this->_servVer.data(), data.data() + offset, length);
+		// Выполняем смещение в буфере
+		offset += length;
+		// Выполняем получение размера названия сервиса
+		memcpy((void *) &length, data.data() + offset, sizeof(length));
+		// Выполняем смещение в буфере
+		offset += sizeof(length);
+		// Выделяем память для данных названия сервиса
+		this->_servName.resize(length, 0);
+		// Выполняем получение данных названия сервиса
+		memcpy((void *) this->_servName.data(), data.data() + offset, length);
+		// Выполняем смещение в буфере
+		offset += length;
+		// Выполняем получение размера User-Agent для HTTP запроса
+		memcpy((void *) &length, data.data() + offset, sizeof(length));
+		// Выполняем смещение в буфере
+		offset += sizeof(length);
+		// Выделяем память для данных User-Agent для HTTP запроса
+		this->_userAgent.resize(length, 0);
+		// Выполняем получение данных User-Agent для HTTP запроса
+		memcpy((void *) this->_userAgent.data(), data.data() + offset, length);
+		// Выполняем смещение в буфере
+		offset += length;
+		// Выполняем получение размера URL адреса HTTP запроса
+		memcpy((void *) &length, data.data() + offset, sizeof(length));
+		// Выполняем смещение в буфере
+		offset += sizeof(length);
+		// Выделяем память для данных URL адрес HTTP запроса
+		string url(length, 0);
+		// Выполняем получение данных URL адрес HTTP запроса
+		memcpy((void *) url.data(), data.data() + offset, length);
+		// Выполняем смещение в буфере
+		offset += length;
+		// Устанавливаем полученный URL адрес
+		this->url = this->uri->parse(url);
+		// Выполняем получение количества записей чёрного списка
+		memcpy((void *) &count, data.data() + offset, sizeof(count));
+		// Выполняем смещение в буфере
+		offset += sizeof(count);
+		// Выполняем сброс заголовков чёрного списка
+		this->black.clear();
+		// Выполняем последовательную загрузку всех заголовков
+		for(size_t i = 0; i < count; i++){
+			// Выполняем получение размера заголовка из чёрного списка
+			memcpy((void *) &length, data.data() + offset, sizeof(length));
+			// Выполняем смещение в буфере
+			offset += sizeof(length);
+			// Выделяем память для заголовка чёрного списка
+			string header(length, 0);
+			// Выполняем получение заголовка чёрного списка
+			memcpy((void *) header.data(), data.data() + offset, length);
+			// Выполняем смещение в буфере
+			offset += length;
+			// Если заголовок чёрного списка получен
+			if(!header.empty())
+				// Выполняем добавление заголовка чёрного списка
+				this->black.emplace(move(header));
+		}
+		// Выполняем получение размера дампа WEB данных
+		memcpy((void *) &length, data.data() + offset, sizeof(length));
+		// Выполняем смещение в буфере
+		offset += sizeof(length);
+		// Выделяем память для дампа WEB данных
+		vector <char> buffer(length, 0);
+		// Выполняем получение дампа WEB данных
+		memcpy((void *) buffer.data(), data.data() + offset, length);
+		// Выполняем смещение в буфере
+		offset += length;
+		// Если дамп WEB данных получен, устанавливаем его
+		if(!buffer.empty()) this->web.dump(move(buffer));
+	}
+}
+/**
  * isEnd Метод проверки завершения обработки
  * @return результат проверки
  */
