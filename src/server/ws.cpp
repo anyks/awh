@@ -1577,21 +1577,21 @@ awh::server::WebSocket::WebSocket(const server::core_t * core, const fmk_t * fmk
  _crypt(false), _needleEye(false), _takeOverCli(false), _takeOverSrv(false), _frameSize(0xFA000),
  _threadsCount(0), _threadsEnabled(false), _fmk(fmk), _log(log), _core(core) {
 	// Устанавливаем событие на запуск системы
-	this->_worker.callback.open = std::bind(&awh::server::WebSocket::openCallback, this, _1, _2);
+	this->_worker.callback.open = std::bind(&WebSocket::openCallback, this, _1, _2);
 	// Устанавливаем функцию персистентного вызова
-	this->_worker.callback.persist = std::bind(&awh::server::WebSocket::persistCallback, this, _1, _2, _3);
+	this->_worker.callback.persist = std::bind(&WebSocket::persistCallback, this, _1, _2, _3);
 	// Устанавливаем событие подключения
-	this->_worker.callback.connect = std::bind(&awh::server::WebSocket::connectCallback, this, _1, _2, _3);
+	this->_worker.callback.connect = std::bind(&WebSocket::connectCallback, this, _1, _2, _3);
 	// Устанавливаем функцию чтения данных
-	this->_worker.callback.read = std::bind(&awh::server::WebSocket::readCallback, this, _1, _2, _3, _4, _5);
+	this->_worker.callback.read = std::bind(&WebSocket::readCallback, this, _1, _2, _3, _4, _5);
 	// Устанавливаем функцию записи данных
-	this->_worker.callback.write = std::bind(&awh::server::WebSocket::writeCallback, this, _1, _2, _3, _4, _5);
+	this->_worker.callback.write = std::bind(&WebSocket::writeCallback, this, _1, _2, _3, _4, _5);
 	// Устанавливаем событие отключения
-	this->_worker.callback.disconnect = std::bind(&awh::server::WebSocket::disconnectCallback, this, _1, _2, _3);
+	this->_worker.callback.disconnect = std::bind(&WebSocket::disconnectCallback, this, _1, _2, _3);
 	// Добавляем событие аццепта адъютанта
-	this->_worker.callback.accept = std::bind(&awh::server::WebSocket::acceptCallback, this, _1, _2, _3, _4, _5);
+	this->_worker.callback.accept = std::bind(&WebSocket::acceptCallback, this, _1, _2, _3, _4, _5);
 	// Добавляем событие на получение сообщений сервера
-	this->_worker.callback.mess = std::bind(&awh::server::WebSocket::messageCallback, this, _1, _2, _3, _4, _5, _6);
+	this->_worker.callback.mess = std::bind(&WebSocket::messageCallback, this, _1, _2, _3, _4, _5, _6);
 	// Активируем персистентный запуск для работы пингов
 	const_cast <server::core_t *> (this->_core)->persistEnable(true);
 	// Добавляем воркер в биндер TCP/IP

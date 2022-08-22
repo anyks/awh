@@ -487,11 +487,11 @@ namespace awh {
 			void serv(const string & id, const string & name, const string & ver) noexcept;
 			/**
 			 * crypto Метод установки параметров шифрования
-			 * @param pass пароль шифрования передаваемых данных
-			 * @param salt соль шифрования передаваемых данных
-			 * @param aes  размер шифрования передаваемых данных
+			 * @param pass   пароль шифрования передаваемых данных
+			 * @param salt   соль шифрования передаваемых данных
+			 * @param cipher размер шифрования передаваемых данных
 			 */
-			void crypto(const string & pass, const string & salt = "", const hash_t::cipher_t aes = hash_t::cipher_t::AES128) noexcept;
+			void crypto(const string & pass, const string & salt = "", const hash_t::cipher_t cipher = hash_t::cipher_t::AES128) noexcept;
 		public:
 			/**
 			 * Http Конструктор

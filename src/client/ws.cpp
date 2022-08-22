@@ -1527,21 +1527,21 @@ awh::client::WebSocket::WebSocket(const client::core_t * core, const fmk_t * fmk
  _takeOverSrv(false), _attempt(0), _attempts(10), _wbitClient(0), _wbitServer(0), _aid(0), _code(0),
  _checkPoint(0), _frameSize(0xFA000), _fmk(fmk), _log(log), _core(core) {
 	// Устанавливаем событие на запуск системы
-	this->_worker.callback.open = std::bind(&awh::client::WebSocket::openCallback, this, _1, _2);
+	this->_worker.callback.open = std::bind(&WebSocket::openCallback, this, _1, _2);
 	// Устанавливаем функцию персистентного вызова
-	this->_worker.callback.persist = std::bind(&awh::client::WebSocket::persistCallback, this, _1, _2, _3);
+	this->_worker.callback.persist = std::bind(&WebSocket::persistCallback, this, _1, _2, _3);
 	// Устанавливаем событие подключения
-	this->_worker.callback.connect = std::bind(&awh::client::WebSocket::connectCallback, this, _1, _2, _3);
+	this->_worker.callback.connect = std::bind(&WebSocket::connectCallback, this, _1, _2, _3);
 	// Устанавливаем функцию чтения данных
-	this->_worker.callback.read = std::bind(&awh::client::WebSocket::readCallback, this, _1, _2, _3, _4, _5);
+	this->_worker.callback.read = std::bind(&WebSocket::readCallback, this, _1, _2, _3, _4, _5);
 	// Устанавливаем функцию записи данных
-	this->_worker.callback.write = std::bind(&awh::client::WebSocket::writeCallback, this, _1, _2, _3, _4, _5);
+	this->_worker.callback.write = std::bind(&WebSocket::writeCallback, this, _1, _2, _3, _4, _5);
 	// Устанавливаем событие отключения
-	this->_worker.callback.disconnect = std::bind(&awh::client::WebSocket::disconnectCallback, this, _1, _2, _3);
+	this->_worker.callback.disconnect = std::bind(&WebSocket::disconnectCallback, this, _1, _2, _3);
 	// Устанавливаем событие на подключение к прокси-серверу
-	this->_worker.callback.connectProxy = std::bind(&awh::client::WebSocket::proxyConnectCallback, this, _1, _2, _3);
+	this->_worker.callback.connectProxy = std::bind(&WebSocket::proxyConnectCallback, this, _1, _2, _3);
 	// Устанавливаем событие на чтение данных с прокси-сервера
-	this->_worker.callback.readProxy = std::bind(&awh::client::WebSocket::proxyReadCallback, this, _1, _2, _3, _4, _5);
+	this->_worker.callback.readProxy = std::bind(&WebSocket::proxyReadCallback, this, _1, _2, _3, _4, _5);
 	// Активируем персистентный запуск для работы пингов
 	const_cast <client::core_t *> (this->_core)->persistEnable(true);
 	// Добавляем воркер в биндер TCP/IP

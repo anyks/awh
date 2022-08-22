@@ -1905,11 +1905,11 @@ void awh::Http::serv(const string & id, const string & name, const string & ver)
 }
 /**
  * crypto Метод установки параметров шифрования
- * @param pass пароль шифрования передаваемых данных
- * @param salt соль шифрования передаваемых данных
- * @param aes  размер шифрования передаваемых данных
+ * @param pass   пароль шифрования передаваемых данных
+ * @param salt   соль шифрования передаваемых данных
+ * @param cipher размер шифрования передаваемых данных
  */
-void awh::Http::crypto(const string & pass, const string & salt, const hash_t::cipher_t aes) noexcept {
+void awh::Http::crypto(const string & pass, const string & salt, const hash_t::cipher_t cipher) noexcept {
 	// Устанавливаем флаг шифрования
 	this->crypt = !pass.empty();
 	{
@@ -1918,14 +1918,14 @@ void awh::Http::crypto(const string & pass, const string & salt, const hash_t::c
 		// Устанавливаем пароль шифрования
 		this->hash.pass(pass);
 		// Устанавливаем размер шифрования
-		this->hash.cipher(aes);
+		this->hash.cipher(cipher);
 	}{
 		// Устанавливаем соль шифрования
 		this->dhash.salt(salt);
 		// Устанавливаем пароль шифрования
 		this->dhash.pass(pass);
 		// Устанавливаем размер шифрования
-		this->dhash.cipher(aes);
+		this->dhash.cipher(cipher);
 	}
 }
 /**

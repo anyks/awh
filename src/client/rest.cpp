@@ -1707,19 +1707,19 @@ awh::client::Rest::Rest(const client::core_t * core, const fmk_t * fmk, const lo
  _compress(awh::http_t::compress_t::NONE), _aid(0), _unbind(true), _active(false), _stopped(false),
  _redirects(false), _attempts(10), _fmk(fmk), _log(log), _core(core) {
 	// Устанавливаем событие на запуск системы
-	this->_worker.callback.open = std::bind(&awh::client::Rest::openCallback, this, _1, _2);
+	this->_worker.callback.open = std::bind(&Rest::openCallback, this, _1, _2);
 	// Устанавливаем событие подключения
-	this->_worker.callback.connect = std::bind(&awh::client::Rest::connectCallback, this, _1, _2, _3);
+	this->_worker.callback.connect = std::bind(&Rest::connectCallback, this, _1, _2, _3);
 	// Устанавливаем функцию чтения данных
-	this->_worker.callback.read = std::bind(&awh::client::Rest::readCallback, this, _1, _2, _3, _4, _5);
+	this->_worker.callback.read = std::bind(&Rest::readCallback, this, _1, _2, _3, _4, _5);
 	// Устанавливаем событие отключения
-	this->_worker.callback.disconnect = std::bind(&awh::client::Rest::disconnectCallback, this, _1, _2, _3);
+	this->_worker.callback.disconnect = std::bind(&Rest::disconnectCallback, this, _1, _2, _3);
 	// Устанавливаем событие на подключение к прокси-серверу
-	this->_worker.callback.connectProxy = std::bind(&awh::client::Rest::proxyConnectCallback, this, _1, _2, _3);
+	this->_worker.callback.connectProxy = std::bind(&Rest::proxyConnectCallback, this, _1, _2, _3);
 	// Устанавливаем событие на чтение данных с прокси-сервера
-	this->_worker.callback.readProxy = std::bind(&awh::client::Rest::proxyReadCallback, this, _1, _2, _3, _4, _5);
+	this->_worker.callback.readProxy = std::bind(&Rest::proxyReadCallback, this, _1, _2, _3, _4, _5);
 	// Устанавливаем функцию обработки вызова для получения чанков
-	this->_http.chunking(std::bind(&awh::client::Rest::chunking, this, _1, _2));
+	this->_http.chunking(std::bind(&Rest::chunking, this, _1, _2));
 	// Добавляем воркер в биндер TCP/IP
 	const_cast <client::core_t *> (this->_core)->add(&this->_worker);
 }
