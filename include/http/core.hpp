@@ -272,6 +272,15 @@ namespace awh {
 			const vector <char> payload() const noexcept;
 		public:
 			/**
+			 * clearBody Метод очистки данных тела
+			 */
+			void clearBody() const noexcept;
+			/**
+			 * clearHeaders Метод очистки списка заголовков
+			 */
+			void clearHeaders() const noexcept;
+		public:
+			/**
 			 * body Метод получения данных тела запроса
 			 * @return буфер данных тела запроса
 			 */

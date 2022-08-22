@@ -48,9 +48,14 @@ void awh::Http::update() noexcept {
 				case 256: this->hash.cipher(hash_t::cipher_t::AES256); break;
 			}
 			// Выполняем дешифрование полученных данных
-			const auto & res = this->hash.decrypt(body.data(), body.size());
-			// Если данные расшифрованны, заменяем тело данных
-			if(!res.empty()) this->web.body(res);
+			const auto & result = this->hash.decrypt(body.data(), body.size());
+			// Заменяем полученное тело
+			if(!result.empty()){
+				// Очищаем тело сообщения
+				this->clearBody();
+				// Формируем новое тело сообщения
+				this->web.body(result);
+			}
 		}
 		// Проверяем пришли ли сжатые данные
 		const string & encoding = this->web.header("content-encoding");
@@ -61,17 +66,27 @@ void awh::Http::update() noexcept {
 				// Устанавливаем требование выполнять декомпрессию тела сообщения
 				this->_compress = compress_t::BROTLI;
 				// Выполняем декомпрессию данных
-				const auto & res = this->hash.decompress(body.data(), body.size(), hash_t::method_t::BROTLI);
+				const auto & result = this->hash.decompress(body.data(), body.size(), hash_t::method_t::BROTLI);
 				// Заменяем полученное тело
-				if(!res.empty()) this->web.body(res);
+				if(!result.empty()){
+					// Очищаем тело сообщения
+					this->clearBody();
+					// Формируем новое тело сообщения
+					this->web.body(result);
+				}
 			// Если данные пришли сжатые методом GZip
 			} else if(encoding.compare("gzip") == 0) {
 				// Устанавливаем требование выполнять декомпрессию тела сообщения
 				this->_compress = compress_t::GZIP;
 				// Выполняем декомпрессию данных
-				const auto & res = this->hash.decompress(body.data(), body.size(), hash_t::method_t::GZIP);
+				const auto & result = this->hash.decompress(body.data(), body.size(), hash_t::method_t::GZIP);
 				// Заменяем полученное тело
-				if(!res.empty()) this->web.body(res);
+				if(!result.empty()){
+					// Очищаем тело сообщения
+					this->clearBody();
+					// Формируем новое тело сообщения
+					this->web.body(result);
+				}
 			// Если данные пришли сжатые методом Deflate
 			} else if(encoding.compare("deflate") == 0) {
 				// Устанавливаем требование выполнять декомпрессию тела сообщения
@@ -81,9 +96,14 @@ void awh::Http::update() noexcept {
 				// Добавляем хвост в полученные данные
 				this->hash.setTail(buffer);
 				// Выполняем декомпрессию данных
-				const auto & res = this->hash.decompress(buffer.data(), buffer.size(), hash_t::method_t::DEFLATE);
+				const auto & result = this->hash.decompress(buffer.data(), buffer.size(), hash_t::method_t::DEFLATE);
 				// Заменяем полученное тело
-				if(!res.empty()) this->web.body(res);
+				if(!result.empty()){
+					// Очищаем тело сообщения
+					this->clearBody();
+					// Формируем новое тело сообщения
+					this->web.body(result);
+				}
 			// Отключаем сжатие тела сообщения
 			} else this->_compress = compress_t::NONE;
 		// Отключаем сжатие тела сообщения
@@ -361,6 +381,20 @@ const vector <char> awh::Http::payload() const noexcept {
 	}
 	// Выводим результат
 	return result;
+}
+/**
+ * clearBody Метод очистки данных тела
+ */
+void awh::Http::clearBody() const noexcept {
+	// Выполняем очистку данных тела
+	this->web.clearBody();
+}
+/**
+ * clearHeaders Метод очистки списка заголовков
+ */
+void awh::Http::clearHeaders() const noexcept {
+	// Выполняем очистку списка заголовков
+	this->web.clearHeaders();
 }
 /**
  * body Метод получения данных тела запроса
@@ -1087,6 +1121,8 @@ vector <char> awh::Http::request(const bool nobody) const noexcept {
 				if(crypto.encrypt || crypto.compress){
 					// Если флаг запрета подготовки тела полезной нагрузки не установлен
 					if(!nobody){
+						// Выполняем очистку тела сообщения
+						this->clearBody();
 						// Заменяем тело данных
 						this->web.body(crypto.data);
 						// Заменяем размер тела данных
@@ -1128,7 +1164,7 @@ vector <char> awh::Http::request(const bool nobody) const noexcept {
 					// Устанавливаем размер передаваемого тела Content-Length
 					request.append(this->fmk->format("Content-Length: %zu\r\n", length));
 			// Очищаем тела сообщения
-			} else this->web.clearBody();
+			} else this->clearBody();
 			// Устанавливаем завершающий разделитель
 			request.append("\r\n");
 			// Формируем результат запроса
@@ -1213,6 +1249,8 @@ vector <char> awh::Http::response(const bool nobody) const noexcept {
 				if(crypto.encrypt || crypto.compress){
 					// Если флаг запрета подготовки тела полезной нагрузки не установлен
 					if(!nobody){
+						// Выполняем очистку тела сообщения
+						this->clearBody();
 						// Заменяем тело данных
 						this->web.body(crypto.data);
 						// Заменяем размер тела данных
@@ -1254,7 +1292,7 @@ vector <char> awh::Http::response(const bool nobody) const noexcept {
 					// Устанавливаем размер передаваемого тела Content-Length
 					response.append(this->fmk->format("Content-Length: %zu\r\n", length));
 			// Очищаем тела сообщения
-			} else this->web.clearBody();
+			} else this->clearBody();
 			// Устанавливаем завершающий разделитель
 			response.append("\r\n");
 			// Формируем результат ответа
@@ -1346,6 +1384,8 @@ vector <char> awh::Http::reject(const u_int code, const string & mess) const noe
 					"<html>\n<head>\n<title>%u %s</title>\n</head>\n<body>\n<h2>%u %s</h2>\n</body>\n</html>\n",
 					code, query.message.c_str(), code, query.message.c_str()
 				);
+				// Выполняем очистку тела сообщения
+				this->clearBody();
 				// Добавляем тело сообщения
 				this->web.body(vector <char> (body.begin(), body.end()));
 			}
@@ -1491,6 +1531,8 @@ vector <char> awh::Http::response(const u_int code, const string & mess) const n
 			this->_chunking = (!available[2] || ((length > 0) && (length != body.size())));
 			// Если данные были сжаты, либо зашифрованы
 			if(crypto.encrypt || crypto.compress){
+				// Выполняем очистку тела сообщения
+				this->clearBody();
 				// Заменяем тело данных
 				this->web.body(crypto.data);
 				// Заменяем размер тела данных
@@ -1814,6 +1856,8 @@ vector <char> awh::Http::request(const uri_t::url_t & url, const web_t::method_t
 				this->_chunking = (!available[5] || ((length > 0) && (length != body.size())));
 				// Если данные были сжаты, либо зашифрованы
 				if(crypto.encrypt || crypto.compress){
+					// Выполняем очистку тела сообщения
+					this->clearBody();
 					// Заменяем тело данных
 					this->web.body(crypto.data);
 					// Заменяем размер тела данных

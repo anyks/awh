@@ -67,13 +67,17 @@ namespace awh {
 				 * Adjutant Структура активного адъютанта при работе с игольным ушком
 				 */
 				typedef struct Adjutant {
-					u_int port; // Порт адъютанта
-					string ip;  // IP адрес адъютанта
-					string mac; // MAC адрес адъютанта
+					u_int port;  // Порт адъютанта
+					string ip;   // IP адрес адъютанта
+					string mac;  // MAC адрес адъютанта
+					http_t http; // Создаём объект для работы с HTTP
 					/**
 					 * Adjutant Конструктор
+					 * @param fmk объект фреймворка
+					 * @param log объект для работы с логами
+					 * @param uri объект работы с URI ссылками
 					 */
-					Adjutant() noexcept : port(0), ip(""), mac("") {}
+					Adjutant(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcept : port(0), ip(""), mac(""), http(fmk, log, uri) {}
 				} adjutant_t;
 				/**
 				 * Callback Структура функций обратного вызова
@@ -104,6 +108,12 @@ namespace awh {
 				u_int _port;
 				// Хости сервера
 				string _host;
+			private:
+				// Объект для работы с сетью
+				network_t _nwk;
+			private:
+				// Объект работы с URI ссылками
+				uri_t _uri;
 			private:
 				// Объект тредпула для работы с потоками
 				thr_t _thr;
@@ -156,7 +166,7 @@ namespace awh {
 				bool _threadsEnabled;
 			private:
 				// Список активных адъютантов при работе с игольным ушком
-				map <size_t, adjutant_t> _adjutants;
+				map <size_t, unique_ptr <adjutant_t>> _adjutants;
 			private:
 				// Создаём объект фреймворка
 				const fmk_t * _fmk;
