@@ -89,8 +89,6 @@ namespace awh {
 					allow_t allow;                    // Объект разрешения обмена данными
 					locker_t locker;                  // Объект блокировщика
 					size_t requests;                  // Количество выполненных запросов
-					size_t readBytes;                 // Количество полученных байт для закрытия подключения
-					size_t stopBytes;                 // Количество байт для закрытия подключения
 					time_t checkPoint;                // Контрольная точка ответа на пинг
 					http_t http;                      // Создаём объект для работы с HTTP
 					vector <char> buffer;             // Буфер бинарных необработанных данных
@@ -102,9 +100,8 @@ namespace awh {
 					 * @param uri объект работы с URI ссылками
 					 */
 					Coffer(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcept :
-					 crypt(false), alive(false), close(false),
-					 stopped(false), action(action_t::NONE), requests(0),
-					 readBytes(0), stopBytes(0), checkPoint(0),
+					 crypt(false), alive(false), close(false), stopped(false),
+					 action(action_t::NONE), requests(0), checkPoint(0),
 					 http(fmk, log, uri), compress(awh::http_t::compress_t::NONE) {}
 					/**
 					 * ~Coffer Деструктор

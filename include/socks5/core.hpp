@@ -141,7 +141,7 @@ namespace awh {
 				 * ResMethod Конструктор
 				 */
 				ResMethod() noexcept : ver(0x0), method(0x0) {}
-			} resMet_t;
+			} __attribute__((packed)) resMet_t;
 			/**
 			 * ResAuth Структура ответа на авторизацию
 			 */
@@ -152,7 +152,7 @@ namespace awh {
 				 * ResAuth Конструктор
 				 */
 				ResAuth() noexcept : ver(0x0), status(0x0) {}
-			} resAuth_t;
+			} __attribute__((packed)) resAuth_t;
 			/**
 			 * Req Структура запроса
 			 */
@@ -165,7 +165,7 @@ namespace awh {
 				 * Req Конструктор
 				 */
 				Req() noexcept : ver(0x0), cmd(0x0), rsv(0x0), atyp(0x0) {}
-			} req_t;
+			} __attribute__((packed)) req_t;
 			/**
 			 * Res Структура ответа
 			 */
@@ -178,7 +178,7 @@ namespace awh {
 				 * Resp Конструктор
 				 */
 				Res() noexcept : ver(0x0), rep(0x0), rsv(0x0), atyp(0x0) {}
-			} res_t;
+			} __attribute__((packed)) res_t;
 			/**
 			 * IP Структура ip адреса сервера
 			 */
@@ -189,7 +189,7 @@ namespace awh {
 				 * IP Конструктор
 				 */
 				IP() noexcept : host(0x0), port(0x0) {}
-			} ip_t;
+			} __attribute__((packed)) ip_t;
 		protected:
 			// URL параметры REST запроса
 			uri_t::url_t _url;

@@ -530,25 +530,38 @@ void awh::Core::bind(Core * core) noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(core->_mtx.bind);
 	// Если база событий активна и она отличается от текущей базы событий
-	if((core != nullptr) && (core != this) && (core->dispatch.base != this->dispatch.base)){
-		// Выполняем остановку базы событий
-		core->stop();
-		// Устанавливаем новую базу событий
-		core->dispatch.setBase(this->dispatch.base);
-		// Выполняем блокировку потока
-		core->_mtx.status.lock();
-		// Увеличиваем количество подключённых потоков
-		this->cores++;
-		// Устанавливаем флаг запуска
-		core->mode = true;
-		// Добавляем базу событий для DNS резолвера
-		core->dns.base(core->dispatch.base);
-		// Выполняем установку нейм-серверов для DNS резолвера IPv4
-		core->dns.replace(AF_INET, core->net.v4.second);
-		// Выполняем установку нейм-серверов для DNS резолвера IPv6
-		core->dns.replace(AF_INET6, core->net.v6.second);
-		// Выполняем разблокировку потока
-		core->_mtx.status.unlock();
+	if((core != nullptr) && (core != this)){
+		// Если базы событий отличаются
+		if(core->dispatch.base != this->dispatch.base){
+			// Выполняем остановку базы событий
+			core->stop();
+			// Устанавливаем новую базу событий
+			core->dispatch.setBase(this->dispatch.base);
+			// Выполняем блокировку потока
+			core->_mtx.status.lock();
+			// Увеличиваем количество подключённых потоков
+			this->cores++;
+			// Устанавливаем флаг запуска
+			core->mode = true;
+			// Добавляем базу событий для DNS резолвера
+			core->dns.base(core->dispatch.base);
+			// Выполняем установку нейм-серверов для DNS резолвера IPv4
+			core->dns.replace(AF_INET, core->net.v4.second);
+			// Выполняем установку нейм-серверов для DNS резолвера IPv6
+			core->dns.replace(AF_INET6, core->net.v6.second);
+			// Выполняем разблокировку потока
+			core->_mtx.status.unlock();
+		// Если базы событий совпадают
+		} else {
+			// Выполняем блокировку потока
+			core->_mtx.status.lock();
+			// Увеличиваем количество подключённых потоков
+			this->cores++;
+			// Устанавливаем флаг запуска
+			core->mode = true;
+			// Выполняем разблокировку потока
+			core->_mtx.status.unlock();
+		}
 		// Выполняем запуск управляющей функции
 		core->launching();
 	}
@@ -1473,7 +1486,7 @@ awh::Core::family_t awh::Core::family() const noexcept {
 	return this->net.family;
 }
 /**
- * family Метод установки тип протокола интернета
+ * family Метод установки типа протокола интернета
  * @param family тип протокола интернета (IPV4 / IPV6 / NIX)
  */
 void awh::Core::family(const family_t family) noexcept {

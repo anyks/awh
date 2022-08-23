@@ -567,7 +567,7 @@ namespace awh {
 			 */
 			family_t family() const noexcept;
 			/**
-			 * family Метод установки тип протокола интернета
+			 * family Метод установки типа протокола интернета
 			 * @param family тип протокола интернета (IPV4 / IPV6 / NIX)
 			 */
 			void family(const family_t family = family_t::IPV4) noexcept;

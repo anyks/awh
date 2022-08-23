@@ -197,18 +197,18 @@ set(SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/src/server/ws.cpp"
     "${CMAKE_SOURCE_DIR}/src/server/rest.cpp"
 #    "${CMAKE_SOURCE_DIR}/src/server/proxy.cpp"
-#    "${CMAKE_SOURCE_DIR}/src/server/socks5.cpp"
+    "${CMAKE_SOURCE_DIR}/src/server/socks5.cpp"
     "${CMAKE_SOURCE_DIR}/src/core/core.cpp"
     "${CMAKE_SOURCE_DIR}/src/core/client.cpp"
     "${CMAKE_SOURCE_DIR}/src/core/server.cpp"
     "${CMAKE_SOURCE_DIR}/src/socks5/core.cpp"
     "${CMAKE_SOURCE_DIR}/src/socks5/client.cpp"
-#    "${CMAKE_SOURCE_DIR}/src/socks5/server.cpp"
+    "${CMAKE_SOURCE_DIR}/src/socks5/server.cpp"
     "${CMAKE_SOURCE_DIR}/src/worker/ws.cpp"
     "${CMAKE_SOURCE_DIR}/src/worker/core.cpp"
     "${CMAKE_SOURCE_DIR}/src/worker/rest.cpp"
 #    "${CMAKE_SOURCE_DIR}/src/worker/proxy.cpp"
-#    "${CMAKE_SOURCE_DIR}/src/worker/socks5.cpp"
+    "${CMAKE_SOURCE_DIR}/src/worker/socks5.cpp"
     "${CMAKE_SOURCE_DIR}/src/worker/client.cpp"
     "${CMAKE_SOURCE_DIR}/src/worker/server.cpp"
 )
@@ -220,7 +220,7 @@ set(WEB_APP_NAME web)
 set(REST_APP_NAME rest)
 #set(TIMER_APP_NAME timer)
 #set(PROXY_APP_NAME proxy)
-#set(SOCKS5_APP_NAME socks5)
+set(SOCKS5_APP_NAME socks5)
 set(CURRENT_LIB_NAME ${PROJECT_NAME})
 set(CURRENT_APP_NAME ${PROJECT_NAME}_bin)
 
@@ -251,7 +251,7 @@ if (ENABLE_CONSOLE_APP)
     add_executable(${REST_APP_NAME} sample/rest.cpp ${RES_FILES})
 #    add_executable(${TIMER_APP_NAME} sample/timer.cpp ${RES_FILES})
 #    add_executable(${PROXY_APP_NAME} sample/proxy.cpp ${RES_FILES})
-#    add_executable(${SOCKS5_APP_NAME} sample/socks5.cpp ${RES_FILES})
+    add_executable(${SOCKS5_APP_NAME} sample/socks5.cpp ${RES_FILES})
 
     # Сборка примеров с поддержкой модуля AWH_IDN, если операционной системой не является Windows
     if(CMAKE_BUILD_IDN AND (NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Windows"))
@@ -289,6 +289,17 @@ if (ENABLE_CONSOLE_APP)
         )
 
         target_link_libraries(${WEB_APP_NAME}
+            ${CURRENT_LIB_NAME}
+            ${ICONV_LIBRARY}
+            ${IDN2_LIBRARY}
+            ${ZLIB_LIBRARY}
+            ${LIBEV_LIBRARY}
+            ${BROTLI_LIBRARIES}
+            ${OPENSSL_LIBRARIES}
+            ${WINFLAGS}
+        )
+
+        target_link_libraries(${SOCKS5_APP_NAME}
             ${CURRENT_LIB_NAME}
             ${ICONV_LIBRARY}
             ${IDN2_LIBRARY}
@@ -337,6 +348,15 @@ if (ENABLE_CONSOLE_APP)
             ${WINFLAGS}
         )
 
+        target_link_libraries(${SOCKS5_APP_NAME}
+            ${CURRENT_LIB_NAME}
+            ${ZLIB_LIBRARY}
+            ${LIBEV_LIBRARY}
+            ${BROTLI_LIBRARIES}
+            ${OPENSSL_LIBRARIES}
+            ${WINFLAGS}
+        )
+
     #    target_link_libraries(${TIMER_APP_NAME}
     #        ${CURRENT_LIB_NAME}
     #        ${ZLIB_LIBRARY}
@@ -347,15 +367,6 @@ if (ENABLE_CONSOLE_APP)
     #    )
 
     #    target_link_libraries(${PROXY_APP_NAME}
-    #        ${CURRENT_LIB_NAME}
-    #        ${ZLIB_LIBRARY}
-    #        ${BROTLI_LIBRARIES}
-    #        ${OPENSSL_LIBRARIES}
-    #        ${LIBEVENT_LIBRARIES}
-    #        ${WINFLAGS}
-    #    )
-
-    #    target_link_libraries(${SOCKS5_APP_NAME}
     #        ${CURRENT_LIB_NAME}
     #        ${ZLIB_LIBRARY}
     #        ${BROTLI_LIBRARIES}
@@ -382,7 +393,7 @@ install(TARGETS ${WEB_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE
 install(TARGETS ${REST_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
 #install(TARGETS ${TIMER_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
 #install(TARGETS ${PROXY_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
-#install(TARGETS ${SOCKS5_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
+install(TARGETS ${SOCKS5_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
 
 # Устанавливаем хидеры сторонних библиотек
 install(DIRECTORY "${ZLIB_INCLUDE_DIR}" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h")
