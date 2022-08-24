@@ -52,35 +52,6 @@ namespace awh {
 				friend class Worker;
 			private:
 				/**
-				 * События работы сервера
-				 */
-				enum class event_t : uint8_t {
-					NONE       = 0x00, // Флаг не установлен
-					ONLINE     = 0x01, // Флаг подключения дочернего процесса
-					MESSAGE    = 0x02, // Флаг передачи внутреннего сообщения
-					SELECT     = 0x03, // Флаг выбора работника
-					UNSELECT   = 0x04, // Флаг снятия выбора с работника
-					CONNECT    = 0x05, // Флаг подключения
-					DISCONNECT = 0x06  // Флаг отключения
-				};
-			private:
-				/**
-				 * Message Структура межпроцессного сообщения
-				 */
-				typedef struct Data {
-					bool fin;            // Сообщение является финальным
-					size_t aid;          // Идентификатор адъютанта
-					size_t size;         // Размер полезной нагрузки
-					size_t count;        // Количество подключений
-					event_t event;       // Активное событие
-					u_char buffer[4063]; // Буфер полезной нагрузки
-					/**
-					 * Data Конструктор
-					 */
-					Data() noexcept : fin(true), aid(0), size(0), count(0), event(event_t::NONE) {}
-				} __attribute__((packed)) data_t;
-			private:
-				/**
 				 * Mutex Объект основных мютексов
 				 */
 				typedef struct Mutex {
@@ -99,21 +70,14 @@ namespace awh {
 			private:
 				// Флаг работы в режиме только IPv6
 				bool _ipV6only;
-				// Флаг активации перехвата подключения
-				bool _interception;
 			private:
 				// Размер кластера
 				uint16_t _clusterSize;
+				// Флаг автоматического перезапуска упавших процессов
+				bool _clusterAutoRestart;
 			private:
 				// Список блокированных объектов
 				set <size_t> _locking;
-			private:
-				// Список адъютантов
-				map <size_t, pid_t> _adjutants;
-				// Нагрузка на дочерние процессы
-				map <size_t, map <pid_t, size_t>> _burden;
-				// Буферы сообщений дочерних процессов
-				map <pid_t, map <size_t, vector <char>>> _messages;
 			private:
 				/**
 				 * cluster Метод события ЗАПУСКА/ОСТАНОВКИ кластера
@@ -122,33 +86,6 @@ namespace awh {
 				 * @param event идентификатор события
 				 */
 				void cluster(const size_t wid, const pid_t pid, const cluster_t::event_t event) noexcept;
-				/**
-				 * message Метод получения сообщения от родительского или дочернего процесса
-				 * @param wid    идентификатор воркера
-				 * @param pid    идентификатор процесса
-				 * @param buffer буфер получаемых данных
-				 * @param size   размер получаемых данных
-				 */
-				void message(const size_t wid, const pid_t pid, const char * buffer, const size_t size) noexcept;
-			private:
-				/**
-				 * sendEvent Метод отправки события родительскому и дочернему процессу
-				 * @param wid   идентификатор воркера
-				 * @param aid   идентификатор адъютанта
-				 * @param pid   идентификатор процесса
-				 * @param event активное событие на сервере
-				 */
-				void sendEvent(const size_t wid, const size_t aid, const pid_t pid, const event_t event) noexcept;
-			public:
-				/**
-				 * sendMessage Метод отправки сообщения родительскому процессу
-				 * @param wid    идентификатор воркера
-				 * @param aid    идентификатор адъютанта
-				 * @param pid    идентификатор процесса
-				 * @param buffer буфер передаваемых данных
-				 * @param size   размер передаваемых данных
-				 */
-				void sendMessage(const size_t wid, const size_t aid, const pid_t pid, const char * buffer, const size_t size) noexcept;
 			private:
 				/**
 				 * accept Функция подключения к серверу
@@ -212,15 +149,22 @@ namespace awh {
 				void bandWidth(const size_t aid, const string & read, const string & write) noexcept;
 			public:
 				/**
-				 * ipV6only Метод установки флага использования только сети IPv6
-				 * @param mode флаг для установки
-				 */
-				void ipV6only(const bool mode) noexcept;
-				/**
 				 * clusterSize Метод установки количества процессов кластера
 				 * @param size количество рабочих процессов
 				 */
 				void clusterSize(const size_t size = 0) noexcept;
+				/**
+				 * clusterAutoRestart Метод установки флага перезапуска процессов
+				 * @param wid  идентификатор воркера
+				 * @param mode флаг перезапуска процессов
+				 */
+				void clusterAutoRestart(const size_t wid, const bool mode) noexcept;
+			public:
+				/**
+				 * ipV6only Метод установки флага использования только сети IPv6
+				 * @param mode флаг для установки
+				 */
+				void ipV6only(const bool mode) noexcept;
 				/**
 				 * total Метод установки максимального количества одновременных подключений
 				 * @param wid   идентификатор воркера

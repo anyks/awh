@@ -78,7 +78,7 @@ void awh::server::Rest::connectCallback(const size_t aid, const size_t wid, awh:
 		this->_worker.set(aid);
 		// Получаем параметры подключения адъютанта
 		rest_worker_t::coffer_t * adj = const_cast <rest_worker_t::coffer_t *> (this->_worker.get(aid));
-		// Если объект адъютанта получен
+		// Если параметры подключения адъютанта получены
 		if(adj != nullptr){
 			// Если нужно активировать многопоточность и она не активирована
 			if(this->_threadsEnabled && !this->_thr.is())
@@ -102,7 +102,7 @@ void awh::server::Rest::disconnectCallback(const size_t aid, const size_t wid, a
 	if((aid > 0) && (wid > 0) && (core != nullptr)){
 		// Получаем параметры подключения адъютанта
 		rest_worker_t::coffer_t * adj = const_cast <rest_worker_t::coffer_t *> (this->_worker.get(aid));
-		// Если объект адъютанта получен
+		// Если параметры подключения адъютанта получены
 		if(adj != nullptr){
 			// Устанавливаем экшен выполнения
 			adj->action = rest_worker_t::action_t::DISCONNECT;
@@ -124,7 +124,7 @@ void awh::server::Rest::readCallback(const char * buffer, const size_t size, con
 	if((buffer != nullptr) && (size > 0) && (aid > 0) && (wid > 0)){
 		// Получаем параметры подключения адъютанта
 		rest_worker_t::coffer_t * adj = const_cast <rest_worker_t::coffer_t *> (this->_worker.get(aid));
-		// Если объект адъютанта получен
+		// Если параметры подключения адъютанта получены
 		if(adj != nullptr){
 			// Если дисконнекта ещё не произошло
 			if((adj->action == rest_worker_t::action_t::NONE) || (adj->action == rest_worker_t::action_t::READ)){
@@ -161,7 +161,7 @@ void awh::server::Rest::writeCallback(const char * buffer, const size_t size, co
 	if((aid > 0) && (wid > 0) && (core != nullptr)){
 		// Получаем параметры подключения адъютанта
 		rest_worker_t::coffer_t * adj = const_cast <rest_worker_t::coffer_t *> (this->_worker.get(aid));
-		// Если объект адъютанта получен
+		// Если параметры подключения адъютанта получены
 		if(adj != nullptr){
 			// Если необходимо выполнить закрыть подключение
 			if(!adj->close && adj->stopped){
@@ -194,117 +194,13 @@ bool awh::server::Rest::acceptCallback(const string & ip, const string & mac, co
 	return result;
 }
 /**
- * messageCallback Функция обратного вызова при получении сообщений сервера
- * @param buffer бинарный буфер содержащий сообщение
- * @param size   размер бинарного буфера содержащего сообщение
- * @param wid    идентификатор воркера
- * @param aid    идентификатор адъютанта
- * @param pid    идентификатор дочернего процесса
- * @param core   объект биндинга TCP/IP
- */
-void awh::server::Rest::messageCallback(const char * buffer, const size_t size, const size_t wid, const size_t aid, const pid_t pid, awh::core_t * core) noexcept {
-	// Если активирована система игольного ушка
-	if(this->_needleEye){
-		// Если процесс является родительским
-		if(this->_pid == getpid()){
-			// Определяем тип сигнала
-			switch((uint8_t) buffer[0]){
-				// Если сигнал получения сообщения
-				case (uint8_t) needle_t::MESSAGE: {
-					// Получаем объект подключения
-					auto it = this->_adjutants.find(aid);
-					// Если объект подключения получен
-					if(it != this->_adjutants.end()){
-						// Выполняем установку дампа HTTP данных
-						it->second->http.dump(vector <char> (buffer + 1, (buffer + 1) + (size - 1)));
-						// Если функция обратного вызова, установлена
-						if(this->_callback.message != nullptr)
-							// Отправляем полученный результат
-							this->_callback.message(aid, &it->second->http, const_cast <Rest *> (this));
-					}
-				} break;
-				// Если сигнал подключения
-				case (uint8_t) needle_t::CONNECT: {
-					// Создаём бъект адъютанта
-					unique_ptr <adjutant_t> adjutant(new adjutant_t(this->_fmk, this->_log, &this->_uri));
-					// Размер строковой записи
-					size_t length = 0, offset = 1;
-					// Выполняем извлечение порта пользователя
-					memcpy((void *) &adjutant->port, buffer + offset, sizeof(adjutant->port));
-					// Увеличиваем смещение в буфере данных
-					offset += sizeof(adjutant->port);
-					// Выполняем извлечение длины IP адреса пользователя
-					memcpy(&length, buffer + offset, sizeof(length));
-					// Увеличиваем смещение в буфере данных
-					offset += sizeof(length);
-					// Выделяем память для IP адреса
-					adjutant->ip.resize(length, 0);
-					// Копируем полученные данные IP адреса
-					memcpy((void *) adjutant->ip.data(), buffer + offset, length);
-					// Увеличиваем смещение в буфере данных
-					offset += length;
-					// Выполняем извлечение длины MAC адреса пользователя
-					memcpy(&length, buffer + offset, sizeof(length));
-					// Увеличиваем смещение в буфере данных
-					offset += sizeof(length);
-					// Выделяем память для MAC адреса
-					adjutant->mac.resize(length, 0);
-					// Копируем полученные данные MAC адреса
-					memcpy((void *) adjutant->mac.data(), buffer + offset, length);
-					// Увеличиваем смещение в буфере данных
-					offset += length;
-					// Выполняем добавление адъютанта в список адъютантов
-					this->_adjutants.emplace(aid, move(adjutant));
-					// Если функция обратного вызова установлена, выполняем
-					if(this->_callback.active != nullptr) this->_callback.active(aid, mode_t::CONNECT, this);
-				} break;
-				// Если сигнал отключения
-				case (uint8_t) needle_t::DISCONNECT: {
-					// Выполняем удаление адъютанта из списка адъютантов
-					this->_adjutants.erase(aid);
-					// Если функция обратного вызова установлена, выполняем
-					if(this->_callback.active != nullptr) this->_callback.active(aid, mode_t::DISCONNECT, this);
-				} break;
-			}
-		// Если процесс является дочерним, отправляем сообщение
-		} else {
-			// Определяем тип сигнала
-			switch((uint8_t) buffer[0]){
-				// Если сигнал получения сообщения
-				case (uint8_t) needle_t::MESSAGE: {
-					// Получаем параметры подключения адъютанта
-					rest_worker_t::coffer_t * adj = const_cast <rest_worker_t::coffer_t *> (this->_worker.get(aid));
-					// Если объект адъютанта получен
-					if(adj != nullptr)
-						// Устанавливаем флаг закрытия подключения
-						adj->stopped = true;
-					// Отправляем тело на сервер
-					((awh::core_t *) const_cast <server::core_t *> (this->_core))->write(buffer + 1, size - 1, aid);
-				} break;
-				// Если сигнал отключения
-				case (uint8_t) needle_t::DISCONNECT: {
-					// Получаем параметры подключения адъютанта
-					rest_worker_t::coffer_t * adj = const_cast <rest_worker_t::coffer_t *> (this->_worker.get(aid));
-					// Если параметры подключения адъютанта получены, устанавливаем флаг закрытия подключения
-					if(adj != nullptr){
-						// Устанавливаем флаг закрытия подключения адъютанта
-						adj->close = true;
-						// Выполняем отключение адъютанта
-						const_cast <server::core_t *> (this->_core)->close(aid);
-					}
-				} break;
-			}
-		}
-	}
-}
-/**
  * handler Метод управления входящими методами
  * @param aid идентификатор адъютанта
  */
 void awh::server::Rest::handler(const size_t aid) noexcept {
 	// Получаем параметры подключения адъютанта
 	rest_worker_t::coffer_t * adj = const_cast <rest_worker_t::coffer_t *> (this->_worker.get(aid));
-	// Если объект адъютанта получен
+	// Если параметры подключения адъютанта получены
 	if(adj != nullptr){
 		// Если управляющий блокировщик не заблокирован
 		if(!adj->locker.mode){
@@ -342,7 +238,7 @@ void awh::server::Rest::actionRead(const size_t aid) noexcept {
 	if(aid > 0){
 		// Получаем параметры подключения адъютанта
 		rest_worker_t::coffer_t * adj = const_cast <rest_worker_t::coffer_t *> (this->_worker.get(aid));
-		// Если объект адъютанта получен
+		// Если параметры подключения адъютанта получены
 		if(adj != nullptr){
 			// Выполняем обработку полученных данных
 			while(!adj->close){
@@ -390,18 +286,8 @@ void awh::server::Rest::actionRead(const size_t aid) noexcept {
 							adj->crypt = adj->http.isCrypt();
 							// Получаем поддерживаемый метод компрессии
 							adj->compress = adj->http.compress();
-							// Если активирована система игольного ушка
-							if(this->_needleEye && (this->_pid != getpid())){
-								// Получаем дамп HTTP объекта
-								vector <char> buffer = adj->http.dump();
-								// Получаем тип сообщения
-								const uint8_t type = (uint8_t) needle_t::MESSAGE;
-								// Добавляем тип сообщения
-								buffer.insert(buffer.begin(), (const char *) &type, (const char *) &type + sizeof(type));
-								// Отправляем сообщение родительскому процессу
-								const_cast <server::core_t *> (this->_core)->sendMessage(this->_worker.wid, aid, getpid(), buffer.data(), buffer.size());
 							// Если функция обратного вызова, установлена
-							} else if(this->_callback.message != nullptr)
+							if(this->_callback.message != nullptr)
 								// Отправляем полученный результат
 								this->_callback.message(aid, &adj->http, const_cast <Rest *> (this));
 							// Выполняем сброс состояния HTTP парсера
@@ -452,8 +338,6 @@ void awh::server::Rest::actionRead(const size_t aid) noexcept {
 					if(adj->buffer.size() >= bytes)
 						// Удаляем количество обработанных байт
 						adj->buffer.assign(adj->buffer.begin() + bytes, adj->buffer.end());
-						// Удаляем количество обработанных байт
-						// vector <decltype(adj->buffer)::value_type> (adj->buffer.begin() + bytes, adj->buffer.end()).swap(adj->buffer);
 					// Если байт в буфере меньше, просто очищаем буфер
 					else adj->buffer.clear();
 					// Если данных для обработки не осталось, выходим
@@ -477,7 +361,7 @@ void awh::server::Rest::actionConnect(const size_t aid) noexcept {
 	if(aid > 0){
 		// Получаем параметры подключения адъютанта
 		rest_worker_t::coffer_t * adj = const_cast <rest_worker_t::coffer_t *> (this->_worker.get(aid));
-		// Если объект адъютанта получен
+		// Если параметры подключения адъютанта получены
 		if(adj != nullptr){
 			// Устанавливаем размер чанка
 			adj->http.chunk(this->_chunkSize);
@@ -521,36 +405,8 @@ void awh::server::Rest::actionConnect(const size_t aid) noexcept {
 			if(adj->action == rest_worker_t::action_t::CONNECT)
 				// Выполняем сброс экшена
 				adj->action = rest_worker_t::action_t::NONE;
-			// Если активирована система игольного ушка
-			if(this->_needleEye && (this->_pid != getpid())){
-				// Размер строковой записи
-				size_t length = 0;
-				// Получаем порт адъютанта
-				const u_int port = this->port(aid);
-				// Получаем IP адрес адъютанта
-				const string & ip = this->ip(aid);
-				// Получаем MAC адрес адъютанта
-				const string & mac = this->mac(aid);
-				// Создаём буфер отправляемого сообщения
-				vector <char> buffer(1, (char) needle_t::CONNECT);
-				// Добавляем порт адъютанта в буфер сообщения
-				buffer.insert(buffer.end(), (const char *) &port, (const char *) &port + sizeof(port));
-				// Получаем размер записи IP адреса адъютанта
-				length = ip.size();
-				// Добавляем размер IP адреса адъютанта
-				buffer.insert(buffer.end(), (const char *) &length, (const char *) &length + sizeof(length));
-				// Добавляем сами данные IP адреса адъютанта
-				buffer.insert(buffer.end(), ip.begin(), ip.end());
-				// Получаем размер записи MAC адреса адъютанта
-				length = mac.size();
-				// Добавляем размер MAC адреса адъютанта
-				buffer.insert(buffer.end(), (const char *) &length, (const char *) &length + sizeof(length));
-				// Добавляем сами данные MAC адреса адъютанта
-				buffer.insert(buffer.end(), mac.begin(), mac.end());
-				// Отправляем сообщение родительскому процессу
-				const_cast <server::core_t *> (this->_core)->sendMessage(this->_worker.wid, aid, getpid(), buffer.data(), buffer.size());
 			// Если функция обратного вызова установлена, выполняем
-			} else if(this->_callback.active != nullptr) this->_callback.active(aid, mode_t::CONNECT, this);
+			if(this->_callback.active != nullptr) this->_callback.active(aid, mode_t::CONNECT, this);
 		}
 	}
 }
@@ -563,18 +419,12 @@ void awh::server::Rest::actionDisconnect(const size_t aid) noexcept {
 	if(aid > 0){
 		// Получаем параметры подключения адъютанта
 		rest_worker_t::coffer_t * adj = const_cast <rest_worker_t::coffer_t *> (this->_worker.get(aid));
-		// Если объект адъютанта получен
+		// Если параметры подключения адъютанта получены
 		if(adj != nullptr){
 			// Устанавливаем флаг отключения
 			adj->close = true;
-			// Если активирована система игольного ушка
-			if(this->_needleEye && (this->_pid != getpid())){
-				// Создаём буфер отправляемого сообщения
-				vector <char> buffer(1, (char) needle_t::DISCONNECT);
-				// Отправляем сообщение родительскому процессу
-				const_cast <server::core_t *> (this->_core)->sendMessage(this->_worker.wid, aid, getpid(), buffer.data(), buffer.size());
 			// Если функция обратного вызова установлена, выполняем
-			} else if(this->_callback.active != nullptr) this->_callback.active(aid, mode_t::DISCONNECT, this);
+			if(this->_callback.active != nullptr) this->_callback.active(aid, mode_t::DISCONNECT, this);
 			// Если экшен соответствует, выполняем его сброс
 			if(adj->action == rest_worker_t::action_t::DISCONNECT)
 				// Выполняем сброс экшена
@@ -680,88 +530,43 @@ void awh::server::Rest::on(function <bool (const string &, const string &, const
 void awh::server::Rest::reject(const size_t aid, const u_int code, const string & mess, const vector <char> & entity, const unordered_multimap <string, string> & headers) const noexcept {
 	// Если подключение выполнено
 	if(this->_core->working()){
-		// Если активирована система игольного ушка
-		if(this->_needleEye && (this->_pid == getpid())){
-			// Получаем объект подключения
-			auto it = this->_adjutants.find(aid);
-			// Если объект подключения получен
-			if(it != this->_adjutants.end()){
-				// Тело полезной нагрузки
-				vector <char> payload;
-				// Создаём буфер данных для отправки сообщения
-				vector <char> buffer(1, (char) needle_t::MESSAGE);
-				// Устанавливаем полезную нагрузку
-				it->second->http.body(entity);
-				// Устанавливаем заголовки ответа
-				it->second->http.headers(headers);
-				// Если подключение не установлено как постоянное, но подключение долгоживущее
-				if(!this->_alive && it->second->http.isAlive())
-					// Указываем сколько запросов разрешено выполнить за указанный интервал времени
-					it->second->http.header("Keep-Alive", this->_fmk->format("timeout=%d, max=%d", this->_timeAlive / 1000, this->_maxRequests));
-				// Формируем запрос авторизации
-				const auto & response = it->second->http.reject(code, mess);
+		// Получаем параметры подключения адъютанта
+		rest_worker_t::coffer_t * adj = const_cast <rest_worker_t::coffer_t *> (this->_worker.get(aid));
+		// Если параметры подключения адъютанта получены
+		if(adj != nullptr){
+			// Тело полезной нагрузки
+			vector <char> payload;
+			// Устанавливаем полезную нагрузку
+			adj->http.body(entity);
+			// Устанавливаем заголовки ответа
+			adj->http.headers(headers);
+			// Если подключение не установлено как постоянное, но подключение долгоживущее
+			if(!this->_alive && !adj->alive && adj->http.isAlive())
+				// Указываем сколько запросов разрешено выполнить за указанный интервал времени
+				adj->http.header("Keep-Alive", this->_fmk->format("timeout=%d, max=%d", this->_timeAlive / 1000, this->_maxRequests));
+			// Формируем запрос авторизации
+			const auto & response = adj->http.reject(code, mess);
+			// Если включён режим отладки
+			#if defined(DEBUG_MODE)
+				// Выводим заголовок ответа
+				cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
+				// Выводим параметры ответа
+				cout << string(response.begin(), response.end()) << endl;
+			#endif
+			// Отправляем серверу сообщение
+			((awh::core_t *) const_cast <server::core_t *> (this->_core))->write(response.data(), response.size(), aid);
+			// Получаем данные полезной нагрузки ответа
+			while(!(payload = adj->http.payload()).empty()){
 				// Если включён режим отладки
 				#if defined(DEBUG_MODE)
-					// Выводим заголовок ответа
-					cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
-					// Выводим параметры ответа
-					cout << string(response.begin(), response.end()) << endl;
+					// Выводим сообщение о выводе чанка полезной нагрузки
+					cout << this->_fmk->format("<chunk %u>", payload.size()) << endl;
 				#endif
-				// Добавляем в буфер бинарные данные заголовков
-				buffer.insert(buffer.end(), response.begin(), response.end());
-				// Получаем данные полезной нагрузки ответа
-				while(!(payload = it->second->http.payload()).empty()){
-					// Если включён режим отладки
-					#if defined(DEBUG_MODE)
-						// Выводим сообщение о выводе чанка полезной нагрузки
-						cout << this->_fmk->format("<chunk %u>", payload.size()) << endl;
-					#endif
-					// Добавляем в буфер бинарные данные тела сообщения
-					buffer.insert(buffer.end(), payload.begin(), payload.end());
-				}
-				// Отправляем сообщение дочернему процессу
-				const_cast <server::core_t *> (this->_core)->sendMessage(this->_worker.wid, aid, getpid(), buffer.data(), buffer.size());
+				// Отправляем тело на сервер
+				((awh::core_t *) const_cast <server::core_t *> (this->_core))->write(payload.data(), payload.size(), aid);
 			}
-		// Иначе просто отправляем сообщение адъютанту
-		} else {
-			// Получаем параметры подключения адъютанта
-			rest_worker_t::coffer_t * adj = const_cast <rest_worker_t::coffer_t *> (this->_worker.get(aid));
-			// Если отправка сообщений разблокированна
-			if(adj != nullptr){
-				// Тело полезной нагрузки
-				vector <char> payload;
-				// Устанавливаем полезную нагрузку
-				adj->http.body(entity);
-				// Устанавливаем заголовки ответа
-				adj->http.headers(headers);
-				// Если подключение не установлено как постоянное, но подключение долгоживущее
-				if(!this->_alive && !adj->alive && adj->http.isAlive())
-					// Указываем сколько запросов разрешено выполнить за указанный интервал времени
-					adj->http.header("Keep-Alive", this->_fmk->format("timeout=%d, max=%d", this->_timeAlive / 1000, this->_maxRequests));
-				// Формируем запрос авторизации
-				const auto & response = adj->http.reject(code, mess);
-				// Если включён режим отладки
-				#if defined(DEBUG_MODE)
-					// Выводим заголовок ответа
-					cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
-					// Выводим параметры ответа
-					cout << string(response.begin(), response.end()) << endl;
-				#endif
-				// Отправляем серверу сообщение
-				((awh::core_t *) const_cast <server::core_t *> (this->_core))->write(response.data(), response.size(), aid);
-				// Получаем данные полезной нагрузки ответа
-				while(!(payload = adj->http.payload()).empty()){
-					// Если включён режим отладки
-					#if defined(DEBUG_MODE)
-						// Выводим сообщение о выводе чанка полезной нагрузки
-						cout << this->_fmk->format("<chunk %u>", payload.size()) << endl;
-					#endif
-					// Отправляем тело на сервер
-					((awh::core_t *) const_cast <server::core_t *> (this->_core))->write(payload.data(), payload.size(), aid);
-				}
-				// Устанавливаем флаг завершения работы
-				adj->stopped = true;
-			}
+			// Устанавливаем флаг завершения работы
+			adj->stopped = true;
 		}
 	}
 }
@@ -776,88 +581,43 @@ void awh::server::Rest::reject(const size_t aid, const u_int code, const string 
 void awh::server::Rest::response(const size_t aid, const u_int code, const string & mess, const vector <char> & entity, const unordered_multimap <string, string> & headers) const noexcept {
 	// Если подключение выполнено
 	if(this->_core->working()){
-		// Если активирована система игольного ушка
-		if(this->_needleEye && (this->_pid == getpid())){
-			// Получаем объект подключения
-			auto it = this->_adjutants.find(aid);
-			// Если объект подключения получен
-			if(it != this->_adjutants.end()){
-				// Тело полезной нагрузки
-				vector <char> payload;
-				// Создаём буфер данных для отправки сообщения
-				vector <char> buffer(1, (char) needle_t::MESSAGE);
-				// Устанавливаем полезную нагрузку
-				it->second->http.body(entity);
-				// Устанавливаем заголовки ответа
-				it->second->http.headers(headers);
-				// Если подключение не установлено как постоянное, но подключение долгоживущее
-				if(!this->_alive && it->second->http.isAlive())
-					// Указываем сколько запросов разрешено выполнить за указанный интервал времени
-					it->second->http.header("Keep-Alive", this->_fmk->format("timeout=%d, max=%d", this->_timeAlive / 1000, this->_maxRequests));
-				// Формируем запрос авторизации
-				const auto & response = it->second->http.response(code, mess);
+		// Получаем параметры подключения адъютанта
+		rest_worker_t::coffer_t * adj = const_cast <rest_worker_t::coffer_t *> (this->_worker.get(aid));
+		// Если параметры подключения адъютанта получены
+		if(adj != nullptr){
+			// Тело полезной нагрузки
+			vector <char> payload;
+			// Устанавливаем полезную нагрузку
+			adj->http.body(entity);
+			// Устанавливаем заголовки ответа
+			adj->http.headers(headers);
+			// Если подключение не установлено как постоянное, но подключение долгоживущее
+			if(!this->_alive && !adj->alive && adj->http.isAlive())
+				// Указываем сколько запросов разрешено выполнить за указанный интервал времени
+				adj->http.header("Keep-Alive", this->_fmk->format("timeout=%d, max=%d", this->_timeAlive / 1000, this->_maxRequests));
+			// Формируем запрос авторизации
+			const auto & response = adj->http.response(code, mess);
+			// Если включён режим отладки
+			#if defined(DEBUG_MODE)
+				// Выводим заголовок ответа
+				cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
+				// Выводим параметры ответа
+				cout << string(response.begin(), response.end()) << endl;
+			#endif
+			// Отправляем серверу сообщение
+			((awh::core_t *) const_cast <server::core_t *> (this->_core))->write(response.data(), response.size(), aid);
+			// Получаем данные полезной нагрузки ответа
+			while(!(payload = adj->http.payload()).empty()){
 				// Если включён режим отладки
 				#if defined(DEBUG_MODE)
-					// Выводим заголовок ответа
-					cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
-					// Выводим параметры ответа
-					cout << string(response.begin(), response.end()) << endl;
+					// Выводим сообщение о выводе чанка полезной нагрузки
+					cout << this->_fmk->format("<chunk %u>", payload.size()) << endl;
 				#endif
-				// Добавляем в буфер бинарные данные заголовков
-				buffer.insert(buffer.end(), response.begin(), response.end());
-				// Получаем данные полезной нагрузки ответа
-				while(!(payload = it->second->http.payload()).empty()){
-					// Если включён режим отладки
-					#if defined(DEBUG_MODE)
-						// Выводим сообщение о выводе чанка полезной нагрузки
-						cout << this->_fmk->format("<chunk %u>", payload.size()) << endl;
-					#endif
-					// Добавляем в буфер бинарные данные тела сообщения
-					buffer.insert(buffer.end(), payload.begin(), payload.end());
-				}
-				// Отправляем сообщение дочернему процессу
-				const_cast <server::core_t *> (this->_core)->sendMessage(this->_worker.wid, aid, getpid(), buffer.data(), buffer.size());
+				// Отправляем тело на сервер
+				((awh::core_t *) const_cast <server::core_t *> (this->_core))->write(payload.data(), payload.size(), aid);
 			}
-		// Иначе просто отправляем сообщение адъютанту
-		} else {
-			// Получаем параметры подключения адъютанта
-			rest_worker_t::coffer_t * adj = const_cast <rest_worker_t::coffer_t *> (this->_worker.get(aid));
-			// Если отправка сообщений разблокированна
-			if(adj != nullptr){
-				// Тело полезной нагрузки
-				vector <char> payload;
-				// Устанавливаем полезную нагрузку
-				adj->http.body(entity);
-				// Устанавливаем заголовки ответа
-				adj->http.headers(headers);
-				// Если подключение не установлено как постоянное, но подключение долгоживущее
-				if(!this->_alive && !adj->alive && adj->http.isAlive())
-					// Указываем сколько запросов разрешено выполнить за указанный интервал времени
-					adj->http.header("Keep-Alive", this->_fmk->format("timeout=%d, max=%d", this->_timeAlive / 1000, this->_maxRequests));
-				// Формируем запрос авторизации
-				const auto & response = adj->http.response(code, mess);
-				// Если включён режим отладки
-				#if defined(DEBUG_MODE)
-					// Выводим заголовок ответа
-					cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
-					// Выводим параметры ответа
-					cout << string(response.begin(), response.end()) << endl;
-				#endif
-				// Отправляем серверу сообщение
-				((awh::core_t *) const_cast <server::core_t *> (this->_core))->write(response.data(), response.size(), aid);
-				// Получаем данные полезной нагрузки ответа
-				while(!(payload = adj->http.payload()).empty()){
-					// Если включён режим отладки
-					#if defined(DEBUG_MODE)
-						// Выводим сообщение о выводе чанка полезной нагрузки
-						cout << this->_fmk->format("<chunk %u>", payload.size()) << endl;
-					#endif
-					// Отправляем тело на сервер
-					((awh::core_t *) const_cast <server::core_t *> (this->_core))->write(payload.data(), payload.size(), aid);
-				}
-				// Устанавливаем флаг завершения работы
-				adj->stopped = true;
-			}
+			// Устанавливаем флаг завершения работы
+			adj->stopped = true;
 		}
 	}
 }
@@ -867,18 +627,8 @@ void awh::server::Rest::response(const size_t aid, const u_int code, const strin
  * @return    порт подключения адъютанта
  */
 u_int awh::server::Rest::port(const size_t aid) const noexcept {
-	// Результат работы функции
-	u_int result = 0;
-	// Если активирована система игольного ушка
-	if(this->_needleEye && (this->_pid == getpid())){
-		// Выполняем поиск идентификатора адъютанта
-		auto it = this->_adjutants.find(aid);
-		// Если идентификатор адъютанта найден
-		if(it != this->_adjutants.end()) result = it->second->port;
-	// Запрашиваем порт адъютанта у рабочего
-	} else result = this->_worker.getPort(aid);
 	// Выводим результат
-	return result;
+	return this->_worker.getPort(aid);
 }
 /**
  * ip Метод получения IP адреса адъютанта
@@ -886,18 +636,8 @@ u_int awh::server::Rest::port(const size_t aid) const noexcept {
  * @return    адрес интернет подключения адъютанта
  */
 const string & awh::server::Rest::ip(const size_t aid) const noexcept {
-	// Результат работы функции
-	const static string result = "";
-	// Если активирована система игольного ушка
-	if(this->_needleEye && (this->_pid == getpid())){
-		// Выполняем поиск идентификатора адъютанта
-		auto it = this->_adjutants.find(aid);
-		// Если идентификатор адъютанта найден
-		if(it != this->_adjutants.end()) return it->second->ip;
-	// Запрашиваем IP адрес адъютанта у рабочего
-	} else return this->_worker.getIp(aid);
 	// Выводим результат
-	return result;
+	return this->_worker.getIp(aid);
 }
 /**
  * mac Метод получения MAC адреса адъютанта
@@ -905,18 +645,8 @@ const string & awh::server::Rest::ip(const size_t aid) const noexcept {
  * @return    адрес устройства адъютанта
  */
 const string & awh::server::Rest::mac(const size_t aid) const noexcept {
-	// Результат работы функции
-	const static string result = "";
-	// Если активирована система игольного ушка
-	if(this->_needleEye && (this->_pid == getpid())){
-		// Выполняем поиск идентификатора адъютанта
-		auto it = this->_adjutants.find(aid);
-		// Если идентификатор адъютанта найден
-		if(it != this->_adjutants.end()) return it->second->mac;
-	// Запрашиваем MAC адрес адъютанта у рабочего
-	} else return this->_worker.getMac(aid);
 	// Выводим результат
-	return result;
+	return this->_worker.getMac(aid);
 }
 /**
  * alive Метод установки долгоживущего подключения
@@ -968,23 +698,14 @@ void awh::server::Rest::start() noexcept {
  * @param aid идентификатор адъютанта
  */
 void awh::server::Rest::close(const size_t aid) noexcept {
-	// Если активирована система игольного ушка
-	if(this->_needleEye && (this->_pid == getpid())){
-		// Создаём буфер данных для отправки сообщения
-		vector <char> buffer(1, (char) needle_t::DISCONNECT);
-		// Отправляем сообщение дочернему процессу
-		const_cast <server::core_t *> (this->_core)->sendMessage(this->_worker.wid, aid, getpid(), buffer.data(), buffer.size());
-	// Иначе просто отправляем сообщение адъютанту
-	} else {
-		// Получаем параметры подключения адъютанта
-		rest_worker_t::coffer_t * adj = const_cast <rest_worker_t::coffer_t *> (this->_worker.get(aid));
-		// Если параметры подключения адъютанта получены, устанавливаем флаг закрытия подключения
-		if(adj != nullptr){
-			// Устанавливаем флаг закрытия подключения адъютанта
-			adj->close = true;
-			// Выполняем отключение адъютанта
-			const_cast <server::core_t *> (this->_core)->close(aid);
-		}
+	// Получаем параметры подключения адъютанта
+	rest_worker_t::coffer_t * adj = const_cast <rest_worker_t::coffer_t *> (this->_worker.get(aid));
+	// Если параметры подключения адъютанта получены, устанавливаем флаг закрытия подключения
+	if(adj != nullptr){
+		// Устанавливаем флаг закрытия подключения адъютанта
+		adj->close = true;
+		// Выполняем отключение адъютанта
+		const_cast <server::core_t *> (this->_core)->close(aid);
 	}
 }
 /**
@@ -1080,29 +801,6 @@ void awh::server::Rest::total(const u_short total) noexcept {
 	const_cast <server::core_t *> (this->_core)->total(this->_worker.wid, total);
 }
 /**
- * needleEye Метод установки флага использования игольного ушка
- * @param mode флаг активации
- */
-void awh::server::Rest::needleEye(const bool mode) noexcept {
-	/**
-	 * Если операционной системой является Nix-подобная
-	 */
-	#if !defined(_WIN32) && !defined(_WIN64)
-		// Если установка производится в родительском процессе
-		if(this->_pid == getpid())
-			// Выполняем активацию игольного ушка
-			this->_needleEye = mode;
-		// Иначе выводим предупреждение
-		else this->_log->print("activation of the eye of the needle is only allowed to the parent process", log_t::flag_t::WARNING);
-	/**
-	 * Если операционной системой является MS Windows
-	 */
-	#else
-		// Выводим предупреждение
-		this->_log->print("activation of the eye of the needle is prohibited in the MS Windows", log_t::flag_t::WARNING);
-	#endif
-}
-/**
  * chunkSize Метод установки размера чанка
  * @param size размер чанка для установки
  */
@@ -1181,10 +879,10 @@ awh::server::Rest::Rest(const server::core_t * core, const fmk_t * fmk, const lo
  _pid(getpid()), _port(SERVER_PORT), _host(""), _nwk(fmk), _uri(fmk, &_nwk),
  _worker(fmk, log), _sid(AWH_SHORT_NAME), _ver(AWH_VERSION), _name(AWH_NAME),
  _realm(""), _opaque(""), _pass(""), _salt(""), _cipher(hash_t::cipher_t::AES128),
- _authHash(auth_t::hash_t::MD5), _authType(auth_t::type_t::NONE),
- _crypt(false), _alive(false), _needleEye(false), _chunkSize(BUFFER_CHUNK),
- _timeAlive(KEEPALIVE_TIMEOUT), _maxRequests(SERVER_MAX_REQUESTS),
- _threadsCount(0), _threadsEnabled(false), _fmk(fmk), _log(log), _core(core) {
+ _authHash(auth_t::hash_t::MD5), _authType(auth_t::type_t::NONE), _crypt(false),
+ _alive(false), _chunkSize(BUFFER_CHUNK), _timeAlive(KEEPALIVE_TIMEOUT),
+ _maxRequests(SERVER_MAX_REQUESTS), _threadsCount(0), _threadsEnabled(false),
+ _fmk(fmk), _log(log), _core(core) {
 	// Устанавливаем событие на запуск системы
 	this->_worker.callback.open = std::bind(&Rest::openCallback, this, _1, _2);
 	// Устанавливаем функцию персистентного вызова
@@ -1199,10 +897,8 @@ awh::server::Rest::Rest(const server::core_t * core, const fmk_t * fmk, const lo
 	this->_worker.callback.disconnect = std::bind(&Rest::disconnectCallback, this, _1, _2, _3);
 	// Добавляем событие аццепта адъютанта
 	this->_worker.callback.accept = std::bind(&Rest::acceptCallback, this, _1, _2, _3, _4, _5);
-	// Добавляем событие на получение сообщений сервера
-	this->_worker.callback.mess = std::bind(&Rest::messageCallback, this, _1, _2, _3, _4, _5, _6);
 	// Активируем персистентный запуск для работы пингов
 	const_cast <server::core_t *> (this->_core)->persistEnable(true);
-	// Добавляем воркер в биндер TCP/IP
+	// Добавляем воркер в сетевое ядро
 	const_cast <server::core_t *> (this->_core)->add(&this->_worker);
 }

@@ -122,13 +122,6 @@ namespace awh {
 				 */
 				void openServerCallback(const size_t wid, awh::core_t * core) noexcept;
 				/**
-				 * persistServerCallback Функция персистентного вызова
-				 * @param aid  идентификатор адъютанта
-				 * @param wid  идентификатор воркера
-				 * @param core объект биндинга TCP/IP
-				 */
-				void persistServerCallback(const size_t aid, const size_t wid, awh::core_t * core) noexcept;
-				/**
 				 * connectClientCallback Функция обратного вызова при подключении к серверу
 				 * @param aid  идентификатор адъютанта
 				 * @param wid  идентификатор воркера
@@ -193,18 +186,6 @@ namespace awh {
 				 * @param core   объект биндинга TCP/IP
 				 */
 				void writeServerCallback(const char * buffer, const size_t size, const size_t aid, const size_t wid, awh::core_t * core) noexcept;
-			private:
-				/**
-				 * handler Метод управления входящими методами
-				 * @param aid идентификатор адъютанта
-				 */
-				void handler(const size_t aid) noexcept;
-			private:
-				/**
-				 * actionConnect Метод обработки экшена подключения к серверу
-				 * @param aid идентификатор адъютанта
-				 */
-				void actionConnect(const size_t aid) noexcept;
 			public:
 				/**
 				 * init Метод инициализации WebSocket адъютанта

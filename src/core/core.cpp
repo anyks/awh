@@ -490,10 +490,6 @@ void awh::Core::signals(const int signal) noexcept {
 		}
 	// Если процесс является родительским
 	} else {
-		// Выполняем функцию завершения работы
-		this->closedown();
-		// Выполняем остановку работы
-		this->stop();
 		/**
 		 * Если операционной системой является MS Windows
 		 */
@@ -688,7 +684,7 @@ size_t awh::Core::add(const worker_t * worker) noexcept {
 		// Получаем объект воркера
 		worker_t * wrk = const_cast <worker_t *> (worker);
 		// Получаем идентификатор воркера
-		result = (1 + this->workers.size());
+		result = this->fmk->nanoTimestamp();
 		// Устанавливаем родительский объект
 		wrk->core = this;
 		// Устанавливаем идентификатор воркера

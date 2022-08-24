@@ -46,14 +46,6 @@ namespace awh {
 		typedef struct WorkerSocks5 : public worker_t {
 			public:
 				/**
-				 * Основные экшены
-				 */
-				enum class action_t : uint8_t {
-					NONE    = 0x01, // Отсутствие события
-					CONNECT = 0x02  // Событие подключения к серверу
-				};
-			public:
-				/**
 				 * Locker Структура локера
 				 */
 				typedef struct Locker {
@@ -80,11 +72,9 @@ namespace awh {
 				 * Coffer Структура сундука параметров
 				 */
 				typedef struct Coffer {
-					bool close;              // Флаг требования закрыть адъютанта
 					bool locked;             // Флаг блокировки обработки запроса
 					bool connect;            // Флаг выполненного подключения
 					bool stopped;            // Флаг принудительной остановки
-					action_t action;         // Экшен активного события
 					allow_t allow;           // Объект разрешения обмена данными
 					locker_t locker;         // Объект блокировщика
 					client::worker_t worker; // Объект рабочего для клиента
@@ -96,8 +86,7 @@ namespace awh {
 					 * @param uri объект работы с URI ссылками
 					 */
 					Coffer(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcept :
-					 close(false), locked(false), connect(false), stopped(false),
-					 action(action_t::NONE), worker(fmk, log), socks5(log) {}
+					 locked(false), connect(false), stopped(false), worker(fmk, log), socks5(log) {}
 					/**
 					 * ~Coffer Деструктор
 					 */

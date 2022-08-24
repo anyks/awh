@@ -38,16 +38,6 @@ namespace awh {
 		 * WebSocket Класс работы с WebSocket сервером
 		 */
 		typedef class WebSocket {
-			private:
-				/**
-				 * Статусы игольного ушка
-				 */
-				enum class needle_t : uint8_t {
-					NONE       = 0x00, // Статус не установлен
-					MESSAGE    = 0x01, // Сообщение
-					CONNECT    = 0x02, // Подключение
-					DISCONNECT = 0x03  // Отключение
-				};
 			public:
 				/**
 				 * Режим работы адъютанта
@@ -66,19 +56,6 @@ namespace awh {
 					TAKEOVERSRV = 0x08  // Флаг переиспользования контекста сервера
 				};
 			private:
-				/**
-				 * Adjutant Структура активного адъютанта при работе с игольным ушком
-				 */
-				typedef struct Adjutant {
-					u_int port; // Порт адъютанта
-					string ip;  // IP адрес адъютанта
-					string mac; // MAC адрес адъютанта
-					string sub; // Выбранный сабпротокол
-					/**
-					 * Adjutant Конструктор
-					 */
-					Adjutant() noexcept : port(0), ip(""), mac(""), sub("") {}
-				} adjutant_t;
 				/**
 				 * Callback Структура функций обратного вызова
 				 */
@@ -144,8 +121,6 @@ namespace awh {
 			private:
 				// Флаг шифрования сообщений
 				bool _crypt;
-				// Флаг игольного ушка
-				bool _needleEye;
 				// Флаг переиспользования контекста клиента
 				bool _takeOverCli;
 				// Флаг переиспользования контекста сервера
@@ -161,9 +136,6 @@ namespace awh {
 			private:
 				// Поддерживаемые сабпротоколы
 				vector <string> _subs;
-			private:
-				// Список активных адъютантов при работе с игольным ушком
-				map <size_t, adjutant_t> _adjutants;
 			private:
 				// Создаём объект фреймворка
 				const fmk_t * _fmk;
@@ -227,16 +199,6 @@ namespace awh {
 				 * @return     результат разрешения к подключению адъютанта
 				 */
 				bool acceptCallback(const string & ip, const string & mac, const u_int port, const size_t wid, awh::core_t * core) noexcept;
-				/**
-				 * messageCallback Функция обратного вызова при получении сообщений сервера
-				 * @param buffer бинарный буфер содержащий сообщение
-				 * @param size   размер бинарного буфера содержащего сообщение
-				 * @param wid    идентификатор воркера
-				 * @param aid    идентификатор адъютанта
-				 * @param pid    идентификатор дочернего процесса
-				 * @param core   объект биндинга TCP/IP
-				 */
-				void messageCallback(const char * buffer, const size_t size, const size_t wid, const size_t aid, const pid_t pid, awh::core_t * core) noexcept;
 			private:
 				/**
 				 * handler Метод управления входящими методами
@@ -443,11 +405,6 @@ namespace awh {
 				 * @param total максимальное количество одновременных подключений
 				 */
 				void total(const u_short total) noexcept;
-				/**
-				 * needleEye Метод установки флага использования игольного ушка
-				 * @param mode флаг активации
-				 */
-				void needleEye(const bool mode) noexcept;
 				/**
 				 * segmentSize Метод установки размеров сегментов фрейма
 				 * @param size минимальный размер сегмента

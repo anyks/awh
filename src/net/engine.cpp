@@ -317,6 +317,8 @@ bool awh::Engine::Address::accept(Address & addr) noexcept {
 bool awh::Engine::Address::accept(const int fd, const int family) noexcept {
 	// Устанавливаем статус отключения
 	this->status = status_t::DISCONNECTED;
+	// Заполняем структуру клиента нулями
+	memset(&this->_peer.client, 0, sizeof(this->_peer.client));
 	// Определяем тип сокета
 	switch(this->_type){
 		// Если сокет установлен TCP/IP

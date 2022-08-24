@@ -1544,6 +1544,6 @@ awh::client::WebSocket::WebSocket(const client::core_t * core, const fmk_t * fmk
 	this->_worker.callback.readProxy = std::bind(&WebSocket::proxyReadCallback, this, _1, _2, _3, _4, _5);
 	// Активируем персистентный запуск для работы пингов
 	const_cast <client::core_t *> (this->_core)->persistEnable(true);
-	// Добавляем воркер в биндер TCP/IP
+	// Добавляем воркер в сетевое ядро
 	const_cast <client::core_t *> (this->_core)->add(&this->_worker);
 }

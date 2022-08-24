@@ -110,18 +110,18 @@ int main(int argc, char * argv[]) noexcept {
 	// proxy.sonet(awh::core_t::sonet_t::SCTP);
 	
 	// Отключаем валидацию сертификата
-	proxy.verifySSL(false);
+	proxy.verifySSL(true);
 
 	// Активируем максимальное количество рабочих процессов
 	proxy.clusterSize();
 
 	// Устанавливаем таймаут ожидания получения сообщений
-	proxy.waitTimeDetect(30, 15);
+	// proxy.waitTimeDetect(60, 60);
 	// Выполняем инициализацию WebSocket сервера
 	proxy.init(2222, "127.0.0.1");
 	// proxy.init("anyks");
 	// Устанавливаем длительное подключение
-	proxy.keepAlive(100, 30, 10);
+	// proxy.keepAlive(100, 30, 10);
 
 	/*
 	// Устанавливаем SSL сертификаты сервера

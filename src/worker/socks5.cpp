@@ -42,9 +42,9 @@ void awh::server::WorkerSocks5::set(const size_t aid) noexcept {
  * rm Метод удаления параметров подключения адъютанта
  * @param aid идентификатор адъютанта
  */
-void awh::server::WorkerSocks5::rm(const size_t aid) noexcept {
+void awh::server::WorkerSocks5::rm(const size_t aid) noexcept {	
 	// Если идентификатор адъютанта передан
-	if(aid > 0){
+	if((aid > 0) && !this->_coffers.empty()){
 		// Выполняем поиск адъютанта
 		auto it = this->_coffers.find(aid);
 		// Если адъютант найден, удаляем его
@@ -60,7 +60,7 @@ const awh::server::WorkerSocks5::coffer_t * awh::server::WorkerSocks5::get(const
 	// Результат работы функции
 	coffer_t * result = nullptr;
 	// Если идентификатор адъютанта передан
-	if(aid > 0){
+	if((aid > 0) && !this->_coffers.empty()){
 		// Выполняем поиск адъютанта
 		auto it = this->_coffers.find(aid);
 		// Если адъютант найден, выводим его параметры

@@ -44,21 +44,6 @@ void awh::server::ProxySocks5::openServerCallback(const size_t wid, awh::core_t 
 	}
 }
 /**
- * persistServerCallback Функция персистентного вызова
- * @param aid  идентификатор адъютанта
- * @param wid  идентификатор воркера
- * @param core объект биндинга TCP/IP
- */
-void awh::server::ProxySocks5::persistServerCallback(const size_t aid, const size_t wid, awh::core_t * core) noexcept {
-	// Если данные существуют
-	if((aid > 0) && (wid > 0) && (core != nullptr)){
-		// Получаем параметры подключения адъютанта
-		socks5_worker_t::coffer_t * adj = const_cast <socks5_worker_t::coffer_t *> (this->_worker.get(aid));
-		// Если параметры подключения адъютанта получены
-		if((adj != nullptr) && adj->close) this->close(aid);
-	}
-}
-/**
  * connectClientCallback Функция обратного вызова при подключении к серверу
  * @param aid  идентификатор адъютанта
  * @param wid  идентификатор воркера
@@ -74,7 +59,7 @@ void awh::server::ProxySocks5::connectClientCallback(const size_t aid, const siz
 			// Получаем параметры подключения адъютанта
 			socks5_worker_t::coffer_t * adj = const_cast <socks5_worker_t::coffer_t *> (this->_worker.get(it->second));
 			// Если подключение не выполнено
-			if(!adj->connect){
+			if((adj != nullptr) && !adj->connect){
 				// Разрешаем обработки данных
 				adj->locked = false;
 				// Запоминаем, что подключение выполнено
@@ -102,12 +87,62 @@ void awh::server::ProxySocks5::connectServerCallback(const size_t aid, const siz
 		this->_worker.set(aid);
 		// Получаем параметры подключения адъютанта
 		socks5_worker_t::coffer_t * adj = const_cast <socks5_worker_t::coffer_t *> (this->_worker.get(aid));
-		// Если объект адъютанта получен
+		// Если параметры подключения адъютанта получены
 		if(adj != nullptr){
-			// Устанавливаем экшен выполнения
-			adj->action = socks5_worker_t::action_t::CONNECT;
-			// Выполняем запуск обработчика событий
-			this->handler(aid);
+			// Устанавливаем флаг ожидания входящих сообщений
+			adj->worker.wait = this->_worker.wait;
+			// Устанавливаем количество секунд на чтение
+			adj->worker.timeouts.read = this->_worker.timeouts.read;
+			// Устанавливаем количество секунд на запись
+			adj->worker.timeouts.write = this->_worker.timeouts.write;
+			// Выполняем установку максимального количества попыток
+			adj->worker.keepAlive.cnt = this->_worker.keepAlive.cnt;
+			// Выполняем установку интервала времени в секундах через которое происходит проверка подключения
+			adj->worker.keepAlive.idle = this->_worker.keepAlive.idle;
+			// Выполняем установку интервала времени в секундах между попытками
+			adj->worker.keepAlive.intvl = this->_worker.keepAlive.intvl;
+			// Устанавливаем функцию чтения данных
+			adj->worker.callback.read = std::bind(&ProxySocks5::readClientCallback, this, _1, _2, _3, _4, _5);
+			// Устанавливаем событие подключения
+			adj->worker.callback.connect = std::bind(&ProxySocks5::connectClientCallback, this, _1, _2, _3);
+			// Устанавливаем событие отключения
+			adj->worker.callback.disconnect = std::bind(&ProxySocks5::disconnectClientCallback, this, _1, _2, _3);
+			// Добавляем воркер в сетевое ядро
+			this->_core.client.add(&adj->worker);
+			// Создаём пару клиента и сервера
+			this->_worker.pairs.emplace(adj->worker.wid, aid);
+			// Устанавливаем функцию проверки авторизации
+			adj->socks5.authCallback(this->_callback.checkAuth);
+			// Определяем тип хоста сервера
+			switch((uint8_t) this->_worker.nwk.parseHost(this->_host)){
+				// Если хост является адресом IPv4
+				case (uint8_t) network_t::type_t::IPV4: {
+					// Устанавливаем хост сервера
+					adj->worker.url.ip = this->_host;
+					// Устанавливаем тип сети
+					adj->worker.url.family = AF_INET;
+				} break;
+				// Если хост является адресом IPv6
+				case (uint8_t) network_t::type_t::IPV6: {
+					// Устанавливаем хост сервера
+					adj->worker.url.ip = this->_host;
+					// Устанавливаем тип сети
+					adj->worker.url.family = AF_INET6;
+				} break;
+				// Если хост является доменным именем
+				case (uint8_t) network_t::type_t::DOMNAME:
+					// Устанавливаем хост сервера
+					adj->worker.url.domain = this->_host;
+				break;
+			}
+			// Устанавливаем порт сервера
+			adj->worker.url.port = this->_port;
+			// Устанавливаем URL адрес запроса
+			adj->socks5.url(adj->worker.url);
+			// Если функция обратного вызова установлена
+			if(this->_callback.active != nullptr)
+				// Выполняем функцию обратного вызова
+				this->_callback.active(aid, mode_t::CONNECT, this);
 		}
 	}
 }
@@ -131,7 +166,7 @@ void awh::server::ProxySocks5::disconnectClientCallback(const size_t aid, const 
 			// Получаем параметры подключения адъютанта
 			socks5_worker_t::coffer_t * adj = const_cast <socks5_worker_t::coffer_t *> (this->_worker.get(aid));
 			// Если подключение не выполнено, отправляем ответ клиенту
-			if(!adj->connect){
+			if((adj != nullptr) && !adj->connect){
 				// Устанавливаем флаг запрещающий подключение
 				adj->socks5.resCmd(socks5_t::rep_t::DENIED);
 				// Получаем данные запроса
@@ -139,12 +174,15 @@ void awh::server::ProxySocks5::disconnectClientCallback(const size_t aid, const 
 				// Если данные получены
 				if((adj->stopped = !socks5.empty()))
 					// Отправляем сообщение клиенту
-					reinterpret_cast <awh::core_t *> (&this->_core.server)->write(socks5.data(), socks5.size(), aid);
-				// Устанавливаем флаг отключения клиента
-				else adj->close = true;
-			// Устанавливаем флаг отключения клиента
-			} else adj->close = true;
+					this->_core.server.write(socks5.data(), socks5.size(), aid);
+			}
+			// Выполняем отключение клиента
+			this->close(aid);
+			// Выходим из функции
+			return;
 		}
+		// Выполняем отключение клиента
+		this->_core.client.close(aid);
 	}
 }
 /**
@@ -153,14 +191,9 @@ void awh::server::ProxySocks5::disconnectClientCallback(const size_t aid, const 
  * @param wid  идентификатор воркера
  * @param core объект биндинга TCP/IP
  */
-void awh::server::ProxySocks5::disconnectServerCallback(const size_t aid, const size_t wid, awh::core_t * core) noexcept {
-	// Если данные существуют
-	if((wid > 0) && (core != nullptr)){
-		// Получаем параметры подключения адъютанта
-		socks5_worker_t::coffer_t * adj = const_cast <socks5_worker_t::coffer_t *> (this->_worker.get(aid));
-		// Выполняем отключение клиента от стороннего сервера
-		if(adj != nullptr) adj->close = true;
-	}
+void awh::server::ProxySocks5::disconnectServerCallback(const size_t aid, const size_t wid, awh::core_t * core) noexcept {	
+	// Принудительно выполняем отключение лкиента
+	if(aid > 0) this->close(aid);
 }
 /**
  * acceptServerCallback Функция обратного вызова при проверке подключения клиента
@@ -202,15 +235,15 @@ void awh::server::ProxySocks5::readClientCallback(const char * buffer, const siz
 			// Получаем параметры подключения адъютанта
 			socks5_worker_t::coffer_t * adj = const_cast <socks5_worker_t::coffer_t *> (this->_worker.get(it->second));
 			// Если подключение выполнено, отправляем ответ клиенту
-			if(adj->connect){
+			if((adj != nullptr) && adj->connect){
 				// Если функция обратного вызова установлена, выполняем
 				if(this->_callback.message != nullptr){
 					// Выводим сообщение
 					if(this->_callback.message(it->second, event_t::RESPONSE, buffer, size, this))
 						// Отправляем ответ клиенту
-						reinterpret_cast <awh::core_t *> (&this->_core.server)->write(buffer, size, it->second);
+						this->_core.server.write(buffer, size, it->second);
 				// Отправляем ответ клиенту
-				} else reinterpret_cast <awh::core_t *> (&this->_core.server)->write(buffer, size, it->second);
+				} else this->_core.server.write(buffer, size, it->second);
 			}
 		}
 	}
@@ -225,7 +258,7 @@ void awh::server::ProxySocks5::readClientCallback(const char * buffer, const siz
  */
 void awh::server::ProxySocks5::readServerCallback(const char * buffer, const size_t size, const size_t aid, const size_t wid, awh::core_t * core) noexcept {	
 	// Если данные существуют
-	if((buffer != nullptr) && (size > 0) && (aid > 0) && (wid > 0)){		
+	if((buffer != nullptr) && (size > 0) && (aid > 0) && (wid > 0)){
 		// Получаем параметры подключения адъютанта
 		socks5_worker_t::coffer_t * adj = const_cast <socks5_worker_t::coffer_t *> (this->_worker.get(aid));
 		// Если параметры подключения адъютанта получены
@@ -260,8 +293,8 @@ void awh::server::ProxySocks5::readServerCallback(const char * buffer, const siz
 						if((adj->stopped = !socks5.empty()))
 							// Отправляем сообщение клиенту
 							this->_core.server.write(socks5.data(), socks5.size(), aid);
-						// Устанавливаем флаг отключения клиента
-						else adj->close = true;
+						// Принудительно выполняем отключение лкиента
+						else this->close(aid);
 					}
 				}
 			// Если подключение выполнено
@@ -297,116 +330,9 @@ void awh::server::ProxySocks5::writeServerCallback(const char * buffer, const si
 		// Получаем параметры подключения адъютанта
 		socks5_worker_t::coffer_t * adj = const_cast <socks5_worker_t::coffer_t *> (this->_worker.get(aid));
 		// Если объект адъютанта получен
-		if(adj != nullptr){
-			// Если необходимо выполнить закрыть подключение
-			if(!adj->close && adj->stopped){
-				// Устанавливаем флаг закрытия подключения
-				adj->close = !adj->close;
-				// Принудительно выполняем отключение лкиента
-				this->_core.server.close(aid);
-			}
-		}
-	}
-}
-/**
- * handler Метод управления входящими методами
- * @param aid идентификатор адъютанта
- */
-void awh::server::ProxySocks5::handler(const size_t aid) noexcept {
-	// Получаем параметры подключения адъютанта
-	socks5_worker_t::coffer_t * adj = const_cast <socks5_worker_t::coffer_t *> (this->_worker.get(aid));
-	// Если объект адъютанта получен
-	if(adj != nullptr){
-		// Если управляющий блокировщик не заблокирован
-		if(!adj->locker.mode){
-			// Выполняем блокировку потока
-			const lock_guard <recursive_mutex> lock(adj->locker.mtx);
-			// Флаг разрешающий циклический перебор экшенов
-			bool loop = true;
-			// Выполняем блокировку обработчика
-			adj->locker.mode = true;
-			// Выполняем обработку всех экшенов
-			while(loop && (adj->action != socks5_worker_t::action_t::NONE)){
-				// Определяем обрабатываемый экшен
-				switch((uint8_t) adj->action){
-					// Если необходимо запустить экшен обработки подключения к серверу
-					case (uint8_t) socks5_worker_t::action_t::CONNECT: this->actionConnect(aid); break;
-					// Если сработал неизвестный экшен, выходим
-					default: loop = false;
-				}
-			}
-			// Выполняем разблокировку обработчика
-			adj->locker.mode = false;
-		}
-	}
-}
-/**
- * actionConnect Метод обработки экшена подключения к серверу
- * @param aid идентификатор адъютанта
- */
-void awh::server::ProxySocks5::actionConnect(const size_t aid) noexcept {
-	// Если данные существуют
-	if(aid > 0){
-		// Получаем параметры подключения адъютанта
-		socks5_worker_t::coffer_t * adj = const_cast <socks5_worker_t::coffer_t *> (this->_worker.get(aid));
-		// Устанавливаем флаг ожидания входящих сообщений
-		adj->worker.wait = this->_worker.wait;
-		// Устанавливаем количество секунд на чтение
-		adj->worker.timeouts.read = this->_worker.timeouts.read;
-		// Устанавливаем количество секунд на запись
-		adj->worker.timeouts.write = this->_worker.timeouts.write;
-		// Выполняем установку максимального количества попыток
-		adj->worker.keepAlive.cnt = this->_worker.keepAlive.cnt;
-		// Выполняем установку интервала времени в секундах через которое происходит проверка подключения
-		adj->worker.keepAlive.idle = this->_worker.keepAlive.idle;
-		// Выполняем установку интервала времени в секундах между попытками
-		adj->worker.keepAlive.intvl = this->_worker.keepAlive.intvl;
-		// Устанавливаем функцию чтения данных
-		adj->worker.callback.read = std::bind(&ProxySocks5::readClientCallback, this, _1, _2, _3, _4, _5);
-		// Устанавливаем событие подключения
-		adj->worker.callback.connect = std::bind(&ProxySocks5::connectClientCallback, this, _1, _2, _3);
-		// Устанавливаем событие отключения
-		adj->worker.callback.disconnect = std::bind(&ProxySocks5::disconnectClientCallback, this, _1, _2, _3);
-		// Добавляем воркер в биндер TCP/IP
-		this->_core.client.add(&adj->worker);
-		// Создаём пару клиента и сервера
-		this->_worker.pairs.emplace(adj->worker.wid, aid);
-		// Устанавливаем функцию проверки авторизации
-		adj->socks5.authCallback(this->_callback.checkAuth);
-		// Определяем тип хоста сервера
-		switch((uint8_t) this->_worker.nwk.parseHost(this->_host)){
-			// Если хост является адресом IPv4
-			case (uint8_t) network_t::type_t::IPV4: {
-				// Устанавливаем хост сервера
-				adj->worker.url.ip = this->_host;
-				// Устанавливаем тип сети
-				adj->worker.url.family = AF_INET;
-			} break;
-			// Если хост является адресом IPv6
-			case (uint8_t) network_t::type_t::IPV6: {
-				// Устанавливаем хост сервера
-				adj->worker.url.ip = this->_host;
-				// Устанавливаем тип сети
-				adj->worker.url.family = AF_INET6;
-			} break;
-			// Если хост является доменным именем
-			case (uint8_t) network_t::type_t::DOMNAME:
-				// Устанавливаем хост сервера
-				adj->worker.url.domain = this->_host;
-			break;
-		}
-		// Устанавливаем порт сервера
-		adj->worker.url.port = this->_port;
-		// Устанавливаем URL адрес запроса
-		adj->socks5.url(adj->worker.url);
-		// Если функция обратного вызова установлена
-		if(this->_callback.active != nullptr)
-			// Выполняем функцию обратного вызова
-			this->_callback.active(aid, mode_t::CONNECT, this);
-		// Если экшен соответствует, выполняем его сброс
-		if(adj->action == socks5_worker_t::action_t::CONNECT)
-			// Выполняем сброс экшена
-			adj->action = socks5_worker_t::action_t::NONE;
+		if((adj != nullptr) && adj->stopped)
+			// Выполняем закрытие подключения
+			this->close(aid);
 	}
 }
 /**
@@ -537,16 +463,18 @@ void awh::server::ProxySocks5::close(const size_t aid) noexcept {
 	// Если параметры подключения адъютанта получены, устанавливаем флаг закрытия подключения
 	if(adj != nullptr){
 		// Выполняем отключение всех дочерних клиентов
-		reinterpret_cast <awh::core_t *> (&this->_core.client)->close(adj->worker.getAid());
-		// Выполняем удаление параметров адъютанта
-		this->_worker.rm(aid);
+		this->_core.client.close(adj->worker.getAid());
+		// Удаляем воркер из сетевого ядра
+		this->_core.client.remove(adj->worker.wid);
 	}
 	// Отключаем клиента от сервера
-	reinterpret_cast <awh::core_t *> (&this->_core.server)->close(aid);
+	this->_core.server.close(aid);
 	// Если функция обратного вызова установлена
 	if(this->_callback.active != nullptr)
 		// Выполняем функцию обратного вызова
 		this->_callback.active(aid, mode_t::DISCONNECT, this);
+	// Выполняем удаление параметров адъютанта
+	if(adj != nullptr) this->_worker.rm(aid);
 }
 /**
  * waitTimeDetect Метод детекции сообщений по количеству секунд
@@ -586,7 +514,6 @@ void awh::server::ProxySocks5::mode(const u_short flag) noexcept {
 	// Устанавливаем флаг ожидания входящих сообщений
 	this->_worker.wait = (flag & (uint8_t) flag_t::WAITMESS);
 	// Устанавливаем флаг запрещающий вывод информационных сообщений
-	this->_core.client.noInfo(flag & (uint8_t) flag_t::NOINFO);
 	this->_core.server.noInfo(flag & (uint8_t) flag_t::NOINFO);
 }
 /**
@@ -708,14 +635,14 @@ void awh::server::ProxySocks5::certificate(const string & chain, const string & 
  * @param log объект для работы с логами
  */
 awh::server::ProxySocks5::ProxySocks5(const fmk_t * fmk, const log_t * log) noexcept : _port(SERVER_PORT), _host(""), _core(fmk, log), _worker(fmk, log), _fmk(fmk), _log(log) {
+	// Устанавливаем флаг запрещающий вывод информационных сообщений для клиента
+	this->_core.client.noInfo(true);
 	// Устанавливаем протокол интернет-подключения
 	this->_core.server.sonet(awh::core_t::sonet_t::TCP);
 	// Устанавливаем событие на запуск системы
 	this->_worker.callback.open = std::bind(&ProxySocks5::openServerCallback, this, _1, _2);
 	// Устанавливаем событие подключения
 	this->_worker.callback.connect = std::bind(&ProxySocks5::connectServerCallback, this, _1, _2, _3);
-	// Устанавливаем функцию персистентного вызова
-	this->_worker.callback.persist = std::bind(&ProxySocks5::persistServerCallback, this, _1, _2, _3);
 	// Устанавливаем функцию чтения данных
 	this->_worker.callback.read = std::bind(&ProxySocks5::readServerCallback, this, _1, _2, _3, _4, _5);
 	// Устанавливаем функцию записи данных
@@ -724,10 +651,10 @@ awh::server::ProxySocks5::ProxySocks5(const fmk_t * fmk, const log_t * log) noex
 	this->_worker.callback.accept = std::bind(&ProxySocks5::acceptServerCallback, this, _1, _2, _3, _4, _5);
 	// Устанавливаем событие отключения
 	this->_worker.callback.disconnect = std::bind(&ProxySocks5::disconnectServerCallback, this, _1, _2, _3);
-	// Активируем персистентный запуск для работы пингов
-	this->_core.server.persistEnable(true);
-	// Добавляем воркер в биндер TCP/IP
+	// Добавляем воркер в сетевое ядро
 	this->_core.server.add(&this->_worker);
+	// Разрешаем автоматический перезапуск упавших процессов
+	this->_core.server.clusterAutoRestart(this->_worker.wid, true);
 	// Устанавливаем функцию активации ядра сервера
 	this->_core.server.callback(std::bind(&ProxySocks5::runCallback, this, _1, _2));
 }

@@ -55,18 +55,6 @@ namespace awh {
 			};
 		private:
 			/**
-			 * Message Структура межпроцессного сообщения
-			 */
-			typedef struct Message {
-				bool stop;            // Флаг остановки работы процесса
-				pid_t pid;            // Пид активного процесса
-				u_char payload[4089]; // Буфер полезной нагрузки
-				/**
-				 * Message Конструктор
-				 */
-				Message() noexcept : stop(false), pid(0) {}
-			} __attribute__((packed)) mess_t;
-			/**
 			 * Worker Класс воркера
 			 */
 			typedef class Worker {
@@ -77,12 +65,6 @@ namespace awh {
 					uint16_t count;    // Количество рабочих процессов
 					Cluster * cluster; // Родительский объект кластера
 				public:
-					/**
-					 * message Функция обратного вызова получении сообщений
-					 * @param watcher объект события чтения
-					 * @param revents идентификатор события
-					 */
-					void message(ev::io & watcher, int revents) noexcept;
 					/**
 					 * Если операционной системой не является Windows
 					 */
@@ -109,9 +91,6 @@ namespace awh {
 				 */
 				typedef struct Jack {
 					pid_t pid;    // Пид активного процесса
-					int mfds[2];  // Список файловых дескрипторов родительского процесса
-					int cfds[2];  // Список файловых дескрипторов дочернего процесса
-					ev::io mess;  // Объект события на получения сообщений
 					ev::child cw; // Объект работы с дочерними процессами
 					time_t date;  // Время начала жизни процесса
 					/**
@@ -128,9 +107,6 @@ namespace awh {
 				 */
 				typedef struct Jack {
 					pid_t pid;    // Пид активного процесса
-					int mfds[2];  // Список файловых дескрипторов родительского процесса
-					int cfds[2];  // Список файловых дескрипторов дочернего процесса
-					ev::io mess;  // Объект события на получения сообщений
 					time_t date;  // Время начала жизни процесса
 					/**
 					 * Jack Конструктор
@@ -138,25 +114,9 @@ namespace awh {
 					Jack() noexcept : pid(0), date(0) {}
 				} jack_t;
 			#endif
-			/**
-			 * Callback Структура функций обратного вызова
-			 */
-			typedef struct Callback {
-				// Функция обратного вызова при ЗАПУСКЕ/ОСТАНОВКИ процесса
-				function <void (const size_t, const pid_t, const event_t)> process;
-				// Функция обратного вызова при получении сообщения
-				function <void (const size_t, const pid_t, const char *, const size_t)> message;
-				/**
-				 * Callback Конструктор
-				 */
-				Callback() noexcept : process(nullptr), message(nullptr) {}
-			} fn_t;
 		private:
 			// Идентификатор родительского процесса
 			pid_t _pid;
-		private:
-			// Объявляем функции обратного вызова
-			fn_t _callback;
 		private:
 			// Список активных дочерних процессов
 			map <pid_t, uint16_t> _pids;
@@ -164,6 +124,9 @@ namespace awh {
 			map <size_t, worker_t> _workers;
 			// Список дочерних работников
 			map <size_t, vector <unique_ptr <jack_t>>> _jacks;
+		private:
+			// Функция обратного вызова при ЗАПУСКЕ/ОСТАНОВКИ процесса
+			function <void (const size_t, const pid_t, const event_t)> _fn;
 		private:
 			// Объект работы с базой событий
 			struct ev_loop * _base;
@@ -187,30 +150,6 @@ namespace awh {
 			 * @return    результат работы проверки
 			 */
 			bool working(const size_t wid) const noexcept;
-		public:
-			/**
-			 * send Метод отправки сообщения родительскому процессу
-			 * @param wid    идентификатор воркера
-			 * @param buffer бинарный буфер для отправки сообщения
-			 * @param size   размер бинарного буфера для отправки сообщения
-			 */
-			void send(const size_t wid, const char * buffer, const size_t size) noexcept;
-			/**
-			 * send Метод отправки сообщения дочернему процессу
-			 * @param wid    идентификатор воркера
-			 * @param pid    идентификатор процесса для получения сообщения
-			 * @param buffer бинарный буфер для отправки сообщения
-			 * @param size   размер бинарного буфера для отправки сообщения
-			 */
-			void send(const size_t wid, const pid_t pid, const char * buffer, const size_t size) noexcept;
-		public:
-			/**
-			 * broadcast Метод отправки сообщения всем дочерним процессам
-			 * @param wid    идентификатор воркера
-			 * @param buffer бинарный буфер для отправки сообщения
-			 * @param size   размер бинарного буфера для отправки сообщения
-			 */
-			void broadcast(const size_t wid, const char * buffer, const size_t size) noexcept;
 		public:
 			/**
 			 * clear Метод очистки всех выделенных ресурсов
@@ -266,11 +205,6 @@ namespace awh {
 			 * @param callback функция обратного вызова
 			 */
 			void on(function <void (const size_t, const pid_t, const event_t)> callback) noexcept;
-			/**
-			 * onMessage Метод установки функции обратного вызова при получении сообщения
-			 * @param callback функция обратного вызова
-			 */
-			void on(function <void (const size_t, const pid_t, const char *, const size_t)> callback) noexcept;
 		public:
 			/**
 			 * Cluster Конструктор
@@ -284,7 +218,7 @@ namespace awh {
 			 * @param fmk  объект фреймворка
 			 * @param log  объект для работы с логами
 			 */
-			Cluster(struct ev_loop * base, const fmk_t * fmk, const log_t * log) noexcept : _pid(getpid()), _base(base), _fmk(fmk), _log(log) {}
+			Cluster(struct ev_loop * base, const fmk_t * fmk, const log_t * log) noexcept : _pid(getpid()), _fn(nullptr), _base(base), _fmk(fmk), _log(log) {}
 	} cluster_t;
 };
 
