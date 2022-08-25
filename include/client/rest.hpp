@@ -440,6 +440,13 @@ namespace awh {
 				void waitTimeDetect(const time_t read = READ_TIMEOUT, const time_t write = WRITE_TIMEOUT, const time_t connect = CONNECT_TIMEOUT) noexcept;
 			public:
 				/**
+				 * proxy Метод установки прокси-сервера
+				 * @param uri    параметры прокси-сервера
+				 * @param family семейстово интернет протоколов (IPV4 / IPV6 / NIX)
+				 */
+				void proxy(const string & uri, const worker_t::family_t family = worker_t::family_t::IPV4) noexcept;
+			public:
+				/**
 				 * mode Метод установки флага модуля
 				 * @param flag флаг модуля для установки
 				 */
@@ -449,11 +456,6 @@ namespace awh {
 				 * @param size размер чанка для установки
 				 */
 				void chunk(const size_t size) noexcept;
-				/**
-				 * proxy Метод установки прокси-сервера
-				 * @param uri параметры прокси-сервера
-				 */
-				void proxy(const string & uri) noexcept;
 				/**
 				 * attempts Метод установки общего количества попыток
 				 * @param attempts общее количество попыток

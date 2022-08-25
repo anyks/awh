@@ -620,7 +620,7 @@ void awh::client::WebSocket::actionProxyRead() noexcept {
 					// Выполняем очистку буфера данных
 					this->_buffer.payload.clear();
 					// Если рукопожатие выполнено
-					if(this->_worker.proxy.socks5.isHandshake()){
+					if(this->_worker.proxy.socks5.isHandshake()){						
 						// Выполняем переключение на работу с сервером
 						core->switchProxy(this->_aid);
 						// Если экшен соответствует, выполняем его сброс
@@ -630,7 +630,7 @@ void awh::client::WebSocket::actionProxyRead() noexcept {
 						// Завершаем работу
 						return;
 					// Если рукопожатие не выполнено
-					} else {
+					} else {						
 						// Устанавливаем код ответа
 						this->_code = this->_worker.proxy.socks5.code();
 						// Создаём сообщение
@@ -979,7 +979,7 @@ void awh::client::WebSocket::ping(const string & message) noexcept {
  */
 void awh::client::WebSocket::init(const string & url, const http_t::compress_t compress) noexcept {
 	// Если unix-сокет установлен
-	if(this->_core->family() == core_t::family_t::NIX){
+	if(this->_core->family() == worker_t::family_t::NIX){
 		// Выполняем очистку воркера
 		this->_worker.clear();
 		// Устанавливаем метод компрессии сообщений
@@ -1344,6 +1344,40 @@ void awh::client::WebSocket::multiThreads(const size_t threads, const bool mode)
 	} else this->_thr.wait();
 }
 /**
+ * proxy Метод установки прокси-сервера
+ * @param uri    параметры прокси-сервера
+ * @param family семейстово интернет протоколов (IPV4 / IPV6 / NIX)
+ */
+void awh::client::WebSocket::proxy(const string & uri, const worker_t::family_t family) noexcept {
+	// Если URI параметры переданы
+	if(!uri.empty()){
+		// Устанавливаем семейство интернет протоколов
+		this->_worker.proxy.family = family;
+		// Устанавливаем параметры прокси-сервера
+		this->_worker.proxy.url = this->_uri.parse(uri);
+		// Если данные параметров прокси-сервера получены
+		if(!this->_worker.proxy.url.empty()){
+			// Если протокол подключения SOCKS5
+			if(this->_worker.proxy.url.schema.compare("socks5") == 0){
+				// Устанавливаем тип прокси-сервера
+				this->_worker.proxy.type = proxy_t::type_t::SOCKS5;
+				// Если требуется авторизация на прокси-сервере
+				if(!this->_worker.proxy.url.user.empty() && !this->_worker.proxy.url.pass.empty())
+					// Устанавливаем данные пользователя
+					this->_worker.proxy.socks5.user(this->_worker.proxy.url.user, this->_worker.proxy.url.pass);
+			// Если протокол подключения HTTP
+			} else if((this->_worker.proxy.url.schema.compare("http") == 0) || (this->_worker.proxy.url.schema.compare("https") == 0)) {
+				// Устанавливаем тип прокси-сервера
+				this->_worker.proxy.type = proxy_t::type_t::HTTP;
+				// Если требуется авторизация на прокси-сервере
+				if(!this->_worker.proxy.url.user.empty() && !this->_worker.proxy.url.pass.empty())
+					// Устанавливаем данные пользователя
+					this->_worker.proxy.http.user(this->_worker.proxy.url.user, this->_worker.proxy.url.pass);
+			}
+		}
+	}
+}
+/**
  * mode Метод установки флага модуля
  * @param flag флаг модуля для установки
  */
@@ -1372,37 +1406,6 @@ void awh::client::WebSocket::mode(const u_short flag) noexcept {
 void awh::client::WebSocket::chunk(const size_t size) noexcept {
 	// Устанавливаем размер чанка
 	this->_http.chunk(size);
-}
-/**
- * proxy Метод установки прокси-сервера
- * @param uri параметры прокси-сервера
- */
-void awh::client::WebSocket::proxy(const string & uri) noexcept {
-	// Если URI параметры переданы
-	if(!uri.empty()){
-		// Устанавливаем параметры прокси-сервера
-		this->_worker.proxy.url = this->_uri.parse(uri);
-		// Если данные параметров прокси-сервера получены
-		if(!this->_worker.proxy.url.empty()){
-			// Если протокол подключения SOCKS5
-			if(this->_worker.proxy.url.schema.compare("socks5") == 0){
-				// Устанавливаем тип прокси-сервера
-				this->_worker.proxy.type = proxy_t::type_t::SOCKS5;
-				// Если требуется авторизация на прокси-сервере
-				if(!this->_worker.proxy.url.user.empty() && !this->_worker.proxy.url.pass.empty())
-					// Устанавливаем данные пользователя
-					this->_worker.proxy.socks5.user(this->_worker.proxy.url.user, this->_worker.proxy.url.pass);
-			// Если протокол подключения HTTP
-			} else if((this->_worker.proxy.url.schema.compare("http") == 0) || (this->_worker.proxy.url.schema.compare("https") == 0)) {
-				// Устанавливаем тип прокси-сервера
-				this->_worker.proxy.type = proxy_t::type_t::HTTP;
-				// Если требуется авторизация на прокси-сервере
-				if(!this->_worker.proxy.url.user.empty() && !this->_worker.proxy.url.pass.empty())
-					// Устанавливаем данные пользователя
-					this->_worker.proxy.http.user(this->_worker.proxy.url.user, this->_worker.proxy.url.pass);
-			}
-		}
-	}
 }
 /**
  * segmentSize Метод установки размеров сегментов фрейма

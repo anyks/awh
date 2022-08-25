@@ -107,9 +107,9 @@ int main(int argc, char * argv[]) noexcept {
 	// Устанавливаем данные прокси-сервера
 	// rest.proxy("http://qKseEr:t5QrcW@212.102.146.33:8000");
 	// rest.proxy("socks5://3JMFxD:CWv6MP@45.130.126.236:8000");
-
-	rest.proxy("socks5://127.0.0.1:2222");
-
+	// rest.proxy("socks5://127.0.0.1:2222");
+	// rest.proxy("socks5://test1:test@127.0.0.1:2222");
+	// rest.proxy("socks5://unix:anyks", awh::worker_t::family_t::NIX);
 	// rest.proxy("http://fn3nzc:GZJAeP@217.29.62.232:11283");
 	// rest.proxy("socks5://xYkj89:eqCQJA@85.195.81.167:12387");
 	// Устанавливаем тип компрессии
@@ -124,11 +124,11 @@ int main(int argc, char * argv[]) noexcept {
 	// uri_t::url_t url = uri.parse("https://ipv6.google.com");
 	// uri_t::url_t url = uri.parse("http://localhost/test");
 	// uri_t::url_t url = uri.parse("https://www.anyks.com");
-	// uri_t::url_t url = uri.parse("https://apple.com/ru/mac");
+	uri_t::url_t url = uri.parse("https://apple.com/ru/mac");
 	// uri_t::url_t url = uri.parse("https://ru.wikipedia.org/wiki/HTTP");
 	// uri_t::url_t url = uri.parse("https://api.binance.com/api/v3/exchangeInfo?symbol=BTCUSDT");
 	// uri_t::url_t url = uri.parse("https://testnet.binance.vision/api/v3/exchangeInfo");
-	uri_t::url_t url = uri.parse("https://api.coingecko.com/api/v3/coins/list?include_platform=true");
+	// uri_t::url_t url = uri.parse("https://api.coingecko.com/api/v3/coins/list?include_platform=true");
 	// Подписываемся на событие коннекта и дисконнекта клиента
 	rest.on(bind(&WebClient::active, &executor, _1, _2));
 	// Подписываемся на событие получения сообщения

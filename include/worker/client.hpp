@@ -47,15 +47,19 @@ namespace awh {
 					SOCKS5 = 0x02  // Прокси-сервер Socks5
 				};
 			public:
+				// Семейство интернет-протоколов
+				worker_t::family_t family;
+			public:
 				// Тип прокси-сервера
 				type_t type;
 				// Параметры сокет-сервера
 				uri_t::url_t url;
 			public:
-				// Создаём объект работы с URI
-				uri_t uri;
 				// Создаем объект сети
 				network_t nwk;
+			public:
+				// Создаём объект работы с URI
+				uri_t uri;
 				// Создаём объект для работы с Socks5
 				socks5_t socks5;
 				// Создаём объект для работы с HTTP
@@ -72,9 +76,8 @@ namespace awh {
 				 * @param log объект для работы с логами
 				 */
 				Proxy(const fmk_t * fmk, const log_t * log) noexcept :
-				 nwk(fmk), uri(fmk, &nwk),
-				 http(fmk, log, &uri), socks5(log),
-				 fmk(fmk), log(log), type(type_t::NONE) {}
+				 family(worker_t::family_t::IPV4), type(type_t::NONE), nwk(fmk),
+				 uri(fmk, &nwk), socks5(log), http(fmk, log, &uri), fmk(fmk), log(log) {}
 				/**
 				 * ~Proxy Деструктор
 				 */

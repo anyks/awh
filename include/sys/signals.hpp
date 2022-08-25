@@ -92,6 +92,9 @@ namespace awh {
 				} ev_t;
 			#endif
 		private:
+			// Флаг запуска отслежиявания сигналов
+			bool _mode;
+		private:
 			// Объект работы с сигналами
 			ev_t _ev;
 		private:
@@ -138,7 +141,7 @@ namespace awh {
 			 * Signals Конструктор
 			 * @param base база событий
 			 */
-			Signals(struct ev_loop * base) noexcept : _fn(nullptr), _base(base) {}
+			Signals(struct ev_loop * base) noexcept : _mode(false), _fn(nullptr), _base(base) {}
 	} sig_t;
 };
 

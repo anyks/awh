@@ -79,25 +79,6 @@ namespace awh {
 				STOP  = 0x02, // Статус остановки
 				START = 0x01  // Статус запуска
 			};
-		public:
-			/**
-			 * Семейство протоколов интернета
-			 */
-			enum class family_t : uint8_t {
-				IPV4 = 0x01, // Протокол IPv4
-				IPV6 = 0x02, // Протокол IPv6
-				NIX  = 0x03  // Протокол unix-сокет
-			};
-			/**
-			 * Тип сокета подключения
-			 */
-			enum class sonet_t : uint8_t {
-				TCP  = 0x01, // Нешифрованное подключение TCP
-				UDP  = 0x02, // Нешифрованное подключение UDP
-				TLS  = 0x03, // Шифрованное подключение TCP
-				DTLS = 0x04, // Шифрованное подключение UDP
-				SCTP = 0x05  // Шифрованное подключение SCTP
-			};
 		private:
 			/**
 			 * Timer Класс таймера
@@ -151,12 +132,12 @@ namespace awh {
 			 * Network Структура текущих параметров сети
 			 */
 			typedef struct Network {
-				// Тип сокета подключения (TCP / UDP)
-				sonet_t sonet;
-				// Тип протокола интернета (IPV4 / IPV6 / NIX)
-				family_t family;
 				// Адрес файла unix-сокета
 				string filename;
+				// Тип сокета подключения (TCP / UDP)
+				worker_t::sonet_t sonet;
+				// Тип протокола интернета (IPV4 / IPV6 / NIX)
+				worker_t::family_t family;
 				// Параметры для сети IPv4
 				pair <vector <string>, vector <dns_t::serv_t>> v4;
 				// Параметры для сети IPv6
@@ -165,7 +146,9 @@ namespace awh {
 				 * Network Конструктор
 				 */
 				Network() noexcept :
-				 sonet(sonet_t::TCP), family(family_t::IPV4), filename(""),
+				 filename(""),
+				 sonet(worker_t::sonet_t::TCP),
+				 family(worker_t::family_t::IPV4),
 				 v4({{"0.0.0.0"}, {}}), v6({{"[::0]"}, {}}) {}
 			} net_t;
 		private:
@@ -282,7 +265,7 @@ namespace awh {
 			// Список активных таймеров
 			map <u_short, unique_ptr <timer_t>> _timers;
 			// Список функций обратного вызова при выполнении резолвинга
-			map <size_t, function <void (const string &, const family_t)>> _dids;
+			map <size_t, function <void (const string &, const worker_t::family_t)>> _dids;
 		protected:
 			// Список активных воркеров
 			map <size_t, const worker_t *> workers;
@@ -536,7 +519,7 @@ namespace awh {
 			 * @param family   тип протокола интернета (IPV4 / IPV6)
 			 * @param callback функция обратного вызова
 			 */
-			void resolve(const string & domain, const family_t family, function <void (const string &, const family_t)> callback) noexcept;
+			void resolve(const string & domain, const worker_t::family_t family, function <void (const string &, const worker_t::family_t)> callback) noexcept;
 		public:
 			/**
 			 * removeUnixSocket Метод удаления unix-сокета
@@ -554,23 +537,23 @@ namespace awh {
 			 * sonet Метод извлечения типа сокета подключения
 			 * @return тип сокета подключения (TCP / UDP / SCTP)
 			 */
-			sonet_t sonet() const noexcept;
+			worker_t::sonet_t sonet() const noexcept;
 			/**
 			 * sonet Метод установки типа сокета подключения
 			 * @param sonet тип сокета подключения (TCP / UDP / SCTP)
 			 */
-			void sonet(const sonet_t sonet = sonet_t::TCP) noexcept;
+			void sonet(const worker_t::sonet_t sonet = worker_t::sonet_t::TCP) noexcept;
 		public:
 			/**
 			 * family Метод извлечения типа протокола интернета
 			 * @return тип протокола интернета (IPV4 / IPV6 / NIX)
 			 */
-			family_t family() const noexcept;
+			worker_t::family_t family() const noexcept;
 			/**
 			 * family Метод установки типа протокола интернета
 			 * @param family тип протокола интернета (IPV4 / IPV6 / NIX)
 			 */
-			void family(const family_t family = family_t::IPV4) noexcept;
+			void family(const worker_t::family_t family = worker_t::family_t::IPV4) noexcept;
 		public:
 			/**
 			 * noInfo Метод установки флага запрета вывода информационных сообщений
@@ -631,7 +614,7 @@ namespace awh {
 			 * @param family тип протокола интернета (IPV4 / IPV6 / NIX)
 			 * @param sonet  тип сокета подключения (TCP / UDP)
 			 */
-			void network(const vector <string> & ip = {}, const vector <string> & ns = {}, const family_t family = family_t::IPV4, const sonet_t sonet = sonet_t::TCP) noexcept;
+			void network(const vector <string> & ip = {}, const vector <string> & ns = {}, const worker_t::family_t family = worker_t::family_t::IPV4, const worker_t::sonet_t sonet = worker_t::sonet_t::TCP) noexcept;
 		public:
 			/**
 			 * Core Конструктор
@@ -640,7 +623,7 @@ namespace awh {
 			 * @param family тип протокола интернета (IPV4 / IPV6 / NIX)
 			 * @param sonet  тип сокета подключения (TCP / UDP / TLS / DTLS)
 			 */
-			Core(const fmk_t * fmk, const log_t * log, const family_t family = family_t::IPV4, const sonet_t sonet = sonet_t::TCP) noexcept;
+			Core(const fmk_t * fmk, const log_t * log, const worker_t::family_t family = worker_t::family_t::IPV4, const worker_t::sonet_t sonet = worker_t::sonet_t::TCP) noexcept;
 			/**
 			 * ~Core Деструктор
 			 */

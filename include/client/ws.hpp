@@ -412,6 +412,13 @@ namespace awh {
 				void multiThreads(const size_t threads = 0, const bool mode = true) noexcept;
 			public:
 				/**
+				 * proxy Метод установки прокси-сервера
+				 * @param uri    параметры прокси-сервера
+				 * @param family семейстово интернет протоколов (IPV4 / IPV6 / NIX)
+				 */
+				void proxy(const string & uri, const worker_t::family_t family = worker_t::family_t::IPV4) noexcept;
+			public:
+				/**
 				 * mode Метод установки флага модуля
 				 * @param flag флаг модуля для установки
 				 */
@@ -421,11 +428,6 @@ namespace awh {
 				 * @param size размер чанка для установки
 				 */
 				void chunk(const size_t size) noexcept;
-				/**
-				 * proxy Метод установки прокси-сервера
-				 * @param uri параметры прокси-сервера
-				 */
-				void proxy(const string & uri) noexcept;
 				/**
 				 * segmentSize Метод установки размеров сегментов фрейма
 				 * @param size минимальный размер сегмента

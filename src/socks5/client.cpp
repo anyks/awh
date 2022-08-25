@@ -220,8 +220,12 @@ void awh::client::Socks5::parse(const char * buffer, const size_t size) noexcept
 											server.port = ntohs(server.port);
 											// Если включён режим отладки
 											#if defined(DEBUG_MODE)
-												// Выводим сообщение о данных сервера
-												this->_log->print("%s %s:%u %s", log_t::flag_t::INFO, "socks5 proxy server", ip.c_str(), server.port, "is accepted");
+												// Если порт установлен
+												if(server.port > 0)
+													// Выводим сообщение о данных сервера
+													this->_log->print("%s [%s:%u] %s", log_t::flag_t::INFO, "socks5 proxy server", ip.c_str(), server.port, "is accepted");
+												// Если порт не установлен, выводим сообщение о данных сервера
+												else this->_log->print("%s [%s] %s", log_t::flag_t::INFO, "socks5 proxy server", ip.c_str(), "is accepted");
 											#endif
 											// Устанавливаем стейт рукопожатия
 											this->_state = state_t::HANDSHAKE;
@@ -244,8 +248,12 @@ void awh::client::Socks5::parse(const char * buffer, const size_t size) noexcept
 											server.port = ntohs(server.port);
 											// Если включён режим отладки
 											#if defined(DEBUG_MODE)
-												// Выводим сообщение о данных сервера
-												this->_log->print("%s [%s]:%u %s", log_t::flag_t::INFO, "socks5 proxy server", ip.c_str(), server.port, "is accepted");
+												// Если порт установлен
+												if(server.port > 0)
+													// Выводим сообщение о данных сервера
+													this->_log->print("%s [[%s]:%u] %s", log_t::flag_t::INFO, "socks5 proxy server", ip.c_str(), server.port, "is accepted");
+												// Если порт не установлен, выводим сообщение о данных сервера
+												else this->_log->print("%s [%s] %s", log_t::flag_t::INFO, "socks5 proxy server", ip.c_str(), "is accepted");
 											#endif
 											// Устанавливаем стейт рукопожатия
 											this->_state = state_t::HANDSHAKE;
@@ -270,8 +278,12 @@ void awh::client::Socks5::parse(const char * buffer, const size_t size) noexcept
 											port = ntohs(port);
 											// Если включён режим отладки
 											#if defined(DEBUG_MODE)
-												// Выводим сообщение о данных сервера
-												this->_log->print("%s %s:%u %s", log_t::flag_t::INFO, "socks5 proxy server", domain.c_str(), port, "is accepted");
+												// Если порт установлен
+												if(port > 0)
+													// Выводим сообщение о данных сервера
+													this->_log->print("%s [%s:%u] %s", log_t::flag_t::INFO, "socks5 proxy server", domain.c_str(), port, "is accepted");
+												// Если порт не установлен, выводим сообщение о данных сервера
+												else this->_log->print("%s [%s] %s", log_t::flag_t::INFO, "socks5 proxy server", domain.c_str(), "is accepted");
 											#endif
 											// Устанавливаем стейт рукопожатия
 											this->_state = state_t::HANDSHAKE;

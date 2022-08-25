@@ -1546,6 +1546,40 @@ void awh::client::Rest::waitTimeDetect(const time_t read, const time_t write, co
 	this->_worker.timeouts.connect = connect;
 }
 /**
+ * proxy Метод установки прокси-сервера
+ * @param uri    параметры прокси-сервера
+ * @param family семейстово интернет протоколов (IPV4 / IPV6 / NIX)
+ */
+void awh::client::Rest::proxy(const string & uri, const worker_t::family_t family) noexcept {
+	// Если URI параметры переданы
+	if(!uri.empty()){
+		// Устанавливаем семейство интернет протоколов
+		this->_worker.proxy.family = family;
+		// Устанавливаем параметры прокси-сервера
+		this->_worker.proxy.url = this->_uri.parse(uri);
+		// Если данные параметров прокси-сервера получены
+		if(!this->_worker.proxy.url.empty()){
+			// Если протокол подключения SOCKS5
+			if(this->_worker.proxy.url.schema.compare("socks5") == 0){
+				// Устанавливаем тип прокси-сервера
+				this->_worker.proxy.type = proxy_t::type_t::SOCKS5;
+				// Если требуется авторизация на прокси-сервере
+				if(!this->_worker.proxy.url.user.empty() && !this->_worker.proxy.url.pass.empty())
+					// Устанавливаем данные пользователя
+					this->_worker.proxy.socks5.user(this->_worker.proxy.url.user, this->_worker.proxy.url.pass);
+			// Если протокол подключения HTTP
+			} else if((this->_worker.proxy.url.schema.compare("http") == 0) || (this->_worker.proxy.url.schema.compare("https") == 0)) {
+				// Устанавливаем тип прокси-сервера
+				this->_worker.proxy.type = proxy_t::type_t::HTTP;
+				// Если требуется авторизация на прокси-сервере
+				if(!this->_worker.proxy.url.user.empty() && !this->_worker.proxy.url.pass.empty())
+					// Устанавливаем данные пользователя
+					this->_worker.proxy.http.user(this->_worker.proxy.url.user, this->_worker.proxy.url.pass);
+			}
+		}
+	}
+}
+/**
  * mode Метод установки флага модуля
  * @param flag флаг модуля для установки
  */
@@ -1570,37 +1604,6 @@ void awh::client::Rest::mode(const u_short flag) noexcept {
 void awh::client::Rest::chunk(const size_t size) noexcept {
 	// Устанавливаем размер чанка
 	this->_http.chunk(size);
-}
-/**
- * proxy Метод установки прокси-сервера
- * @param uri параметры прокси-сервера
- */
-void awh::client::Rest::proxy(const string & uri) noexcept {
-	// Если URI параметры переданы
-	if(!uri.empty()){
-		// Устанавливаем параметры прокси-сервера
-		this->_worker.proxy.url = this->_uri.parse(uri);
-		// Если данные параметров прокси-сервера получены
-		if(!this->_worker.proxy.url.empty()){
-			// Если протокол подключения SOCKS5
-			if(this->_worker.proxy.url.schema.compare("socks5") == 0){
-				// Устанавливаем тип прокси-сервера
-				this->_worker.proxy.type = proxy_t::type_t::SOCKS5;
-				// Если требуется авторизация на прокси-сервере
-				if(!this->_worker.proxy.url.user.empty() && !this->_worker.proxy.url.pass.empty())
-					// Устанавливаем данные пользователя
-					this->_worker.proxy.socks5.user(this->_worker.proxy.url.user, this->_worker.proxy.url.pass);
-			// Если протокол подключения HTTP
-			} else if((this->_worker.proxy.url.schema.compare("http") == 0) || (this->_worker.proxy.url.schema.compare("https") == 0)) {
-				// Устанавливаем тип прокси-сервера
-				this->_worker.proxy.type = proxy_t::type_t::HTTP;
-				// Если требуется авторизация на прокси-сервере
-				if(!this->_worker.proxy.url.user.empty() && !this->_worker.proxy.url.pass.empty())
-					// Устанавливаем данные пользователя
-					this->_worker.proxy.http.user(this->_worker.proxy.url.user, this->_worker.proxy.url.pass);
-			}
-		}
-	}
 }
 /**
  * attempts Метод установки общего количества попыток

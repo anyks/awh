@@ -244,13 +244,13 @@ int main(int argc, char * argv[]) noexcept {
 	// Устанавливаем адрес сертификата
 	core.ca("./ca/cert.pem");
 	// Устанавливаем тип сокета unix-сокет
-	// core.family(core_t::family_t::NIX);
+	// core.family(awh::worker_t::family_t::NIX);
 	// Устанавливаем тип сокета UDP TLS
-	// core.sonet(core_t::sonet_t::DTLS);
-	core.sonet(core_t::sonet_t::TLS);
-	// core.sonet(core_t::sonet_t::UDP);
-	// core.sonet(core_t::sonet_t::TCP);
-	// core.sonet(core_t::sonet_t::SCTP);
+	// core.sonet(awh::worker_t::sonet_t::DTLS);
+	core.sonet(awh::worker_t::sonet_t::TLS);
+	// core.sonet(awh::worker_t::sonet_t::UDP);
+	// core.sonet(awh::worker_t::sonet_t::TCP);
+	// core.sonet(awh::worker_t::sonet_t::SCTP);
 
 	// Отключаем валидацию сертификата
 	core.verifySSL(false);
@@ -266,6 +266,9 @@ int main(int argc, char * argv[]) noexcept {
 	// ws.proxy("socks5://3JMFxD:CWv6MP@45.130.126.236:8000");
 	// ws.proxy("http://fn3nzc:GZJAeP@217.29.62.232:11283");
 	// ws.proxy("socks5://xYkj89:eqCQJA@85.195.81.167:12387");
+	// ws.proxy("socks5://test1:test@127.0.0.1:2222");
+	// ws.proxy("socks5://unix:anyks", awh::worker_t::family_t::NIX);
+
 	// Выполняем инициализацию типа авторизации
 	// ws.authType(auth_t::type_t::BASIC);
 	// ws.authType(auth_t::type_t::DIGEST, auth_t::hash_t::SHA256);

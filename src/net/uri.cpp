@@ -70,6 +70,18 @@ const awh::URI::url_t awh::URI::parse(const string & url) const noexcept {
 			result.schema = this->_fmk->toLower(split.front());
 			// Определяем сколько элементов мы получили
 			switch(split.size()){
+				// Если количество элементов равно 2
+				case 2: {
+					// Выполняем поиск параметра unix-сокета
+					const size_t pos = split.back().find("unix:");
+					// Если идентификатор unix-сокета получен
+					if(pos != string::npos){
+						// Получаем название unix-сокета
+						result.host = split.back().substr(pos + 5);
+						// Выходим из функции
+						return result;
+					}
+				} break;
 				// Если количество элементов равно 3
 				case 3: {
 					// Проверяем путь запроса

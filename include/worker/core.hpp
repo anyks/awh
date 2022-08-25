@@ -84,6 +84,25 @@ namespace awh {
 			friend class server::Core;
 		public:
 			/**
+			 * Семейство протоколов интернета
+			 */
+			enum class family_t : uint8_t {
+				IPV4 = 0x01, // Протокол IPv4
+				IPV6 = 0x02, // Протокол IPv6
+				NIX  = 0x03  // Протокол unix-сокет
+			};
+			/**
+			 * Тип сокета подключения
+			 */
+			enum class sonet_t : uint8_t {
+				TCP  = 0x01, // Нешифрованное подключение TCP
+				UDP  = 0x02, // Нешифрованное подключение UDP
+				TLS  = 0x03, // Шифрованное подключение TCP
+				DTLS = 0x04, // Шифрованное подключение UDP
+				SCTP = 0x05  // Шифрованное подключение SCTP
+			};
+		public:
+			/**
 			 * Timer Структура таймаута
 			 */
 			typedef struct Timer {

@@ -49,7 +49,7 @@ void awh::server::ProxySocks5::openServerCallback(const size_t wid, awh::core_t 
  * @param wid  идентификатор воркера
  * @param core объект биндинга TCP/IP
  */
-void awh::server::ProxySocks5::connectClientCallback(const size_t aid, const size_t wid, awh::core_t * core) noexcept {	
+void awh::server::ProxySocks5::connectClientCallback(const size_t aid, const size_t wid, awh::core_t * core) noexcept {
 	// Если данные существуют
 	if((aid > 0) && (wid > 0) && (core != nullptr)){
 		// Ищем идентификатор адъютанта пары
@@ -113,30 +113,39 @@ void awh::server::ProxySocks5::connectServerCallback(const size_t aid, const siz
 			this->_worker.pairs.emplace(adj->worker.wid, aid);
 			// Устанавливаем функцию проверки авторизации
 			adj->socks5.authCallback(this->_callback.checkAuth);
-			// Определяем тип хоста сервера
-			switch((uint8_t) this->_worker.nwk.parseHost(this->_host)){
-				// Если хост является адресом IPv4
-				case (uint8_t) network_t::type_t::IPV4: {
-					// Устанавливаем хост сервера
-					adj->worker.url.ip = this->_host;
-					// Устанавливаем тип сети
-					adj->worker.url.family = AF_INET;
-				} break;
-				// Если хост является адресом IPv6
-				case (uint8_t) network_t::type_t::IPV6: {
-					// Устанавливаем хост сервера
-					adj->worker.url.ip = this->_host;
-					// Устанавливаем тип сети
-					adj->worker.url.family = AF_INET6;
-				} break;
-				// Если хост является доменным именем
-				case (uint8_t) network_t::type_t::DOMNAME:
-					// Устанавливаем хост сервера
-					adj->worker.url.domain = this->_host;
-				break;
+			// Если unix-сокет установлен
+			if(!this->_usock.empty()){
+				// Устанавливаем хост сервера
+				adj->worker.url.host = this->_usock;
+				// Устанавливаем тип сети
+				adj->worker.url.family = AF_UNIX;
+			// Если сервер слушает порт
+			} else {
+				// Определяем тип хоста сервера
+				switch((uint8_t) this->_worker.nwk.parseHost(this->_host)){
+					// Если хост является адресом IPv4
+					case (uint8_t) network_t::type_t::IPV4: {
+						// Устанавливаем хост сервера
+						adj->worker.url.ip = this->_host;
+						// Устанавливаем тип сети
+						adj->worker.url.family = AF_INET;
+					} break;
+					// Если хост является адресом IPv6
+					case (uint8_t) network_t::type_t::IPV6: {
+						// Устанавливаем хост сервера
+						adj->worker.url.ip = this->_host;
+						// Устанавливаем тип сети
+						adj->worker.url.family = AF_INET6;
+					} break;
+					// Если хост является доменным именем
+					case (uint8_t) network_t::type_t::DOMNAME:
+						// Устанавливаем хост сервера
+						adj->worker.url.domain = this->_host;
+					break;
+				}
+				// Устанавливаем порт сервера
+				adj->worker.url.port = this->_port;
 			}
-			// Устанавливаем порт сервера
-			adj->worker.url.port = this->_port;
 			// Устанавливаем URL адрес запроса
 			adj->socks5.url(adj->worker.url);
 			// Если функция обратного вызова установлена
@@ -272,7 +281,7 @@ void awh::server::ProxySocks5::readServerCallback(const char * buffer, const siz
 				// Если данные получены
 				if(!socks5.empty()) this->_core.server.write(socks5.data(), socks5.size(), aid);
 				// Если данные все получены
-				else if(adj->socks5.isEnd()) {					
+				else if(adj->socks5.isEnd()) {
 					// Если рукопожатие выполнено
 					if((adj->locked = adj->socks5.isConnected())){
 						// Получаем данные запрашиваемого сервера
@@ -298,7 +307,7 @@ void awh::server::ProxySocks5::readServerCallback(const char * buffer, const siz
 					}
 				}
 			// Если подключение выполнено
-			} else {				
+			} else {
 				// Получаем идентификатор адъютанта
 				const size_t aid = adj->worker.getAid();
 				// Отправляем запрос на внешний сервер
@@ -344,10 +353,12 @@ void awh::server::ProxySocks5::init(const string & socket) noexcept {
 	 * Если операционной системой не является Windows
 	 */
 	#if !defined(_WIN32) && !defined(_WIN64)
+		// Устанавливаем unix-сокет сервера
+		this->_usock = socket;
 		// Выполняем установку unix-сокет
 		this->_core.server.unixSocket(socket);
 		// Устанавливаем тип сокета unix-сокет
-		this->_core.server.family(awh::core_t::family_t::NIX);
+		this->_core.server.family(worker_t::family_t::NIX);
 	#endif
 }
 /**
@@ -364,6 +375,8 @@ void awh::server::ProxySocks5::init(const u_int port, const string & host) noexc
 	 * Если операционной системой не является Windows
 	 */
 	#if !defined(_WIN32) && !defined(_WIN64)
+		// Удаляем unix-сокет сервера
+		this->_usock.clear();
 		// Удаляем unix-сокет ранее установленный
 		this->_core.server.removeUnixSocket();
 	#endif
@@ -558,7 +571,7 @@ void awh::server::ProxySocks5::keepAlive(const int cnt, const int idle, const in
  * sonet Метод установки типа сокета подключения
  * @param sonet тип сокета подключения (TCP / UDP / SCTP)
  */
-void awh::server::ProxySocks5::sonet(const awh::core_t::sonet_t sonet) noexcept {
+void awh::server::ProxySocks5::sonet(const worker_t::sonet_t sonet) noexcept {
 	// Устанавливаем тип сокета подключения
 	this->_core.server.sonet(sonet);
 }
@@ -566,7 +579,7 @@ void awh::server::ProxySocks5::sonet(const awh::core_t::sonet_t sonet) noexcept 
  * family Метод установки типа протокола интернета
  * @param family тип протокола интернета (IPV4 / IPV6 / NIX)
  */
-void awh::server::ProxySocks5::family(const awh::core_t::family_t family) noexcept {
+void awh::server::ProxySocks5::family(const worker_t::family_t family) noexcept {
 	// Устанавливаем тип протокола интернета
 	this->_core.server.family(family);
 }
@@ -587,7 +600,7 @@ void awh::server::ProxySocks5::bandWidth(const size_t aid, const string & read, 
  * @param family тип протокола интернета (IPV4 / IPV6 / NIX)
  * @param sonet  тип сокета подключения (TCP / UDP)
  */
-void awh::server::ProxySocks5::network(const vector <string> & ip, const vector <string> & ns, const awh::core_t::family_t family, const awh::core_t::sonet_t sonet) noexcept {
+void awh::server::ProxySocks5::network(const vector <string> & ip, const vector <string> & ns, const worker_t::family_t family, const worker_t::sonet_t sonet) noexcept {
 	// Устанавливаем параметры сети клиента
 	this->_core.client.network(ip, ns);
 	// Устанавливаем параметры сети сервера
@@ -634,11 +647,11 @@ void awh::server::ProxySocks5::certificate(const string & chain, const string & 
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
  */
-awh::server::ProxySocks5::ProxySocks5(const fmk_t * fmk, const log_t * log) noexcept : _port(SERVER_PORT), _host(""), _core(fmk, log), _worker(fmk, log), _fmk(fmk), _log(log) {
+awh::server::ProxySocks5::ProxySocks5(const fmk_t * fmk, const log_t * log) noexcept : _port(SERVER_PORT), _host(""), _usock(""), _core(fmk, log), _worker(fmk, log), _fmk(fmk), _log(log) {
 	// Устанавливаем флаг запрещающий вывод информационных сообщений для клиента
 	this->_core.client.noInfo(true);
 	// Устанавливаем протокол интернет-подключения
-	this->_core.server.sonet(awh::core_t::sonet_t::TCP);
+	this->_core.server.sonet(worker_t::sonet_t::TCP);
 	// Устанавливаем событие на запуск системы
 	this->_worker.callback.open = std::bind(&ProxySocks5::openServerCallback, this, _1, _2);
 	// Устанавливаем событие подключения

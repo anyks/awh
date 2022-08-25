@@ -31,7 +31,7 @@ void awh::server::Socks5::resCmd(const rep_t rep) const noexcept {
 	// Очищаем бинарный буфер данных
 	this->_buffer.clear();
 	// Если IP адрес или доменное имя установлены
-	if(!this->_url.ip.empty() || !this->_url.domain.empty()){
+	if(!this->_url.ip.empty() || !this->_url.domain.empty() || !this->_url.host.empty()){
 		// Бинарные данные буфера
 		const char * data = nullptr;
 		// Получаем значение порта
@@ -65,7 +65,7 @@ void awh::server::Socks5::resCmd(const rep_t rep) const noexcept {
 			// Устанавливаем тип адреса [Доменное имя]
 			offset = this->octet((uint8_t) atyp_t::DMNAME, offset);
 			// Добавляем в буфер доменное имя
-			this->text(this->_url.domain);
+			this->text(!this->_url.domain.empty() ? this->_url.domain : this->_url.host);
 		}
 		// Получаем бинарные данные порта
 		data = (const char *) &port;

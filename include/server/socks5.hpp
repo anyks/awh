@@ -95,6 +95,8 @@ namespace awh {
 				u_int _port;
 				// Хости сервера
 				string _host;
+				// unix-сокет сервера
+				string _usock;
 			private:
 				// Объект биндинга TCP/IP
 				core_t _core;
@@ -306,12 +308,12 @@ namespace awh {
 				 * sonet Метод установки типа сокета подключения
 				 * @param sonet тип сокета подключения (TCP / UDP / SCTP)
 				 */
-				void sonet(const awh::core_t::sonet_t sonet = awh::core_t::sonet_t::TCP) noexcept;
+				void sonet(const worker_t::sonet_t sonet = worker_t::sonet_t::TCP) noexcept;
 				/**
 				 * family Метод установки типа протокола интернета
 				 * @param family тип протокола интернета (IPV4 / IPV6 / NIX)
 				 */
-				void family(const awh::core_t::family_t family = awh::core_t::family_t::IPV4) noexcept;
+				void family(const worker_t::family_t family = worker_t::family_t::IPV4) noexcept;
 				/**
 				 * bandWidth Метод установки пропускной способности сети
 				 * @param aid   идентификатор адъютанта
@@ -326,7 +328,7 @@ namespace awh {
 				 * @param family тип протокола интернета (IPV4 / IPV6 / NIX)
 				 * @param sonet  тип сокета подключения (TCP / UDP)
 				 */
-				void network(const vector <string> & ip = {}, const vector <string> & ns = {}, const awh::core_t::family_t family = awh::core_t::family_t::IPV4, const awh::core_t::sonet_t sonet = awh::core_t::sonet_t::TCP) noexcept;
+				void network(const vector <string> & ip = {}, const vector <string> & ns = {}, const worker_t::family_t family = worker_t::family_t::IPV4, const worker_t::sonet_t sonet = worker_t::sonet_t::TCP) noexcept;
 			public:
 				/**
 				 * verifySSL Метод разрешающий или запрещающий, выполнять проверку соответствия, сертификата домену
