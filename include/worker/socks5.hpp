@@ -93,10 +93,11 @@ namespace awh {
 					~Coffer() noexcept {}
 				} coffer_t;
 			public:
-				// Создаём объект работы с URI ссылками
-				uri_t uri;
 				// Создаем объект для работы с сетью
 				network_t nwk;
+			public:
+				// Создаём объект работы с URI ссылками
+				uri_t uri;
 			public:
 				// Список пар клиентов
 				map <size_t, size_t> pairs;

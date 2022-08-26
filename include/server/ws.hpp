@@ -253,7 +253,7 @@ namespace awh {
 			public:
 				/**
 				 * init Метод инициализации WebSocket адъютанта
-				 * @param socket   unix socket для биндинга
+				 * @param socket   unix-сокет для биндинга
 				 * @param compress метод сжатия передаваемых сообщений
 				 */
 				void init(const string & socket, const http_t::compress_t compress = http_t::compress_t::DEFLATE) noexcept;

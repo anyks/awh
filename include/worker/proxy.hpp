@@ -21,7 +21,6 @@
 #include <map>
 #include <ctime>
 #include <vector>
-#include <event2/event.h>
 
 /**
  * Наши модули
@@ -47,70 +46,86 @@ namespace awh {
 		typedef struct WorkerProxy : public worker_t {
 			public:
 				/**
-				 * AdjParam Структура параметров адъютанта
+				 * Locker Структура локера
 				 */
-				typedef struct AdjParam {
+				typedef struct Locker {
+					bool mode;           // Флаг блокировки
+					recursive_mutex mtx; // Мютекс для блокировки потока
+					/**
+					 * Locker Конструктор
+					 */
+					Locker() noexcept : mode(false) {}
+				} locker_t;
+				/**
+				 * Allow Структура флагов разрешения обменом данных
+				 */
+				typedef struct Allow {
+					bool send;    // Флаг разрешения отправки данных
+					bool receive; // Флаг разрешения чтения данных
+					/**
+					 * Allow Конструктор
+					 */
+					Allow() noexcept : send(true), receive(true) {}
+				} allow_t;
+			public:
+				/**
+				 * Coffer Структура сундука параметров
+				 */
+				typedef struct Coffer {
 					bool crypt;                       // Флаг шифрования сообщений
 					bool alive;                       // Флаг долгоживущего подключения
 					bool close;                       // Флаг требования закрыть адъютанта
 					bool locked;                      // Флаг блокировки обработки запроса
 					bool connect;                     // Флаг выполненного подключения
+					bool stopped;                     // Флаг принудительной остановки
+					allow_t allow;                    // Объект разрешения обмена данными
+					locker_t locker;                  // Объект блокировщика
 					size_t requests;                  // Количество выполненных запросов
-					size_t readBytes;                 // Количество полученных байт для закрытия подключения
-					size_t stopBytes;                 // Количество байт для закрытия подключения
 					time_t checkPoint;                // Контрольная точка ответа на пинг
 					httpProxy_t srv;                  // Создаём объект для работы с HTTP сервером
 					client::http_t cli;               // Создаём объект для работы с HTTP клиентом
 					client::worker_t worker;          // Объект рабочего для клиента
-					web_t::method_t method;           // Метод HTTP выполняемого запроса
 					vector <char> client;             // Буфер бинарных необработанных данных клиента
 					vector <char> server;             // Буфер бинарных необработанных данных сервера
+					web_t::method_t method;           // Метод HTTP выполняемого запроса
 					awh::http_t::compress_t compress; // Метод компрессии данных
 					/**
-					 * AdjParam Конструктор
+					 * Coffer Конструктор
 					 * @param fmk объект фреймворка
 					 * @param log объект для работы с логами
 					 * @param uri объект работы с URI ссылками
 					 */
-					AdjParam(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcept :
-					 crypt(false),
-					 alive(false),
-					 close(false),
-					 locked(false),
-					 connect(false),
-					 requests(0),
-					 readBytes(0),
-					 stopBytes(0),
-					 checkPoint(0),
-					 srv(fmk, log, uri),
-					 cli(fmk, log, uri),
-					 worker(fmk, log),
+					Coffer(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcept :
+					 crypt(false), alive(false), close(false), locked(false),
+					 connect(false), stopped(false), requests(0), checkPoint(0),
+					 srv(fmk, log, uri), cli(fmk, log, uri), worker(fmk, log),
 					 method(web_t::method_t::NONE),
 					 compress(awh::http_t::compress_t::NONE) {}
 					/**
-					 * ~AdjParam Деструктор
+					 * ~Coffer Деструктор
 					 */
-					~AdjParam() noexcept {}
-				} adjp_t;
+					~Coffer() noexcept {}
+				} coffer_t;
+			public:
+				// Создаем объект для работы с сетью
+				network_t nwk;
 			public:
 				// Создаём объект работы с URI ссылками
 				uri_t uri;
-				// Создаем объект для работы с сетью
-				network_t nwk;
 			public:
 				// Список пар клиентов
 				map <size_t, size_t> pairs;
 			private:
 				// Параметры подключения адъютантов
-				map <size_t, unique_ptr <adjp_t>> adjParams;
+				map <size_t, unique_ptr <coffer_t>> _coffers;
 			public:
 				// Флаги работы с сжатыми данными
-				awh::http_t::compress_t compress = awh::http_t::compress_t::NONE;
+				awh::http_t::compress_t compress;
 			private:
 				// Создаём объект фреймворка
-				const fmk_t * fmk = nullptr;
+				const fmk_t * _fmk;
 				// Создаём объект работы с логами
-				const log_t * log = nullptr;
+				const log_t * _log;
 			public:
 				/**
 				 * clear Метод очистки
@@ -118,33 +133,35 @@ namespace awh {
 				void clear() noexcept;
 			public:
 				/**
-				 * createAdj Метод создания параметров адъютанта
+				 * set Метод создания параметров адъютанта
 				 * @param aid идентификатор адъютанта
 				 */
-				void createAdj(const size_t aid) noexcept;
+				void set(const size_t aid) noexcept;
 				/**
-				 * removeAdj Метод удаления параметров подключения адъютанта
+				 * rm Метод удаления параметров подключения адъютанта
 				 * @param aid идентификатор адъютанта
 				 */
-				void removeAdj(const size_t aid) noexcept;
+				void rm(const size_t aid) noexcept;
 				/**
-				 * getAdj Метод получения параметров подключения адъютанта
+				 * get Метод получения параметров подключения адъютанта
 				 * @param aid идентификатор адъютанта
 				 * @return    параметры подключения адъютанта
 				 */
-				const adjp_t * getAdj(const size_t aid) const noexcept;
+				const coffer_t * get(const size_t aid) const noexcept;
 			public:
 				/**
 				 * WorkerProxy Конструктор
 				 * @param fmk объект фреймворка
 				 * @param log объект для работы с логами
 				 */
-				WorkerProxy(const fmk_t * fmk, const log_t * log) noexcept : worker_t(fmk, log), nwk(fmk), uri(fmk, &nwk), fmk(fmk), log(log) {}
+				WorkerProxy(const fmk_t * fmk, const log_t * log) noexcept :
+				 worker_t(fmk, log), nwk(fmk), uri(fmk, &nwk),
+				 compress(awh::http_t::compress_t::NONE), _fmk(fmk), _log(log) {}
 				/**
 				 * ~WorkerProxy Деструктор
 				 */
 				~WorkerProxy() noexcept {}
-		} workerProxy_t;
+		} proxy_worker_t;
 	};
 };
 

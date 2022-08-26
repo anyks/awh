@@ -346,7 +346,7 @@ void awh::server::ProxySocks5::writeServerCallback(const char * buffer, const si
 }
 /**
  * init Метод инициализации WebSocket адъютанта
- * @param socket unix socket для биндинга
+ * @param socket unix-сокет для биндинга
  */
 void awh::server::ProxySocks5::init(const string & socket) noexcept {
 	/**
@@ -449,15 +449,6 @@ const string & awh::server::ProxySocks5::mac(const size_t aid) const noexcept {
 	return this->_worker.getMac(aid);
 }
 /**
- * start Метод запуска клиента
- */
-void awh::server::ProxySocks5::start() noexcept {
-	// Если биндинг не запущен, выполняем запуск биндинга
-	if(!this->_core.server.working())
-		// Выполняем запуск биндинга
-		this->_core.server.start();
-}
-/**
  * stop Метод остановки клиента
  */
 void awh::server::ProxySocks5::stop() noexcept {
@@ -465,6 +456,15 @@ void awh::server::ProxySocks5::stop() noexcept {
 	if(this->_core.server.working())
 		// Завершаем работу, если разрешено остановить
 		this->_core.server.stop();
+}
+/**
+ * start Метод запуска клиента
+ */
+void awh::server::ProxySocks5::start() noexcept {
+	// Если биндинг не запущен, выполняем запуск биндинга
+	if(!this->_core.server.working())
+		// Выполняем запуск биндинга
+		this->_core.server.start();
 }
 /**
  * close Метод закрытия подключения клиента

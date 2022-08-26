@@ -56,10 +56,9 @@ namespace awh {
 				 * Основные флаги приложения
 				 */
 				enum class flag_t : uint8_t {
-					DEFER     = 0x01, // Флаг отложенных вызовов событий сокета
-					NOINFO    = 0x02, // Флаг запрещающий вывод информационных сообщений
-					WAITMESS  = 0x04, // Флаг ожидания входящих сообщений
-					NOCONNECT = 0x08  // Флаг запрещающий метод CONNECT
+					NOINFO    = 0x01, // Флаг запрещающий вывод информационных сообщений
+					WAITMESS  = 0x02, // Флаг ожидания входящих сообщений
+					NOCONNECT = 0x04  // Флаг запрещающий метод CONNECT
 				};
 			private:
 				/**
@@ -75,139 +74,155 @@ namespace awh {
 					 */
 					Core(const fmk_t * fmk, const log_t * log) noexcept : client(fmk, log), server(fmk, log) {}
 				} core_t;
+				/**
+				 * Callback Структура функций обратного вызова
+				 */
+				typedef struct Callback {
+					// Функция обратного вызова для извлечения пароля
+					function <string (const string &)> extractPass;
+					// Функция обратного вызова для обработки авторизации
+					function <bool (const string &, const string &)> checkAuth;
+					// Функция обратного вызова, при запуске или остановки подключения к серверу
+					function <void (const size_t, const mode_t, Proxy *)> active;
+					// Функция обратного вызова, при получении HTTP чанков от адъютанта
+					function <void (const vector <char> &, const awh::http_t *)> chunking;
+					// Функция обратного вызова, при получении сообщения с сервера
+					function <bool (const size_t, const event_t, http_t *, Proxy *)> message;
+					// Функция разрешения подключения адъютанта на сервере
+					function <bool (const string &, const string &, const u_int, Proxy *)> accept;
+					// Функция обратного вызова, при получении сообщения с сервера
+					function <bool (const size_t, const event_t, const char *, const size_t, Proxy *)> binary;
+					/**
+					 * Callback Конструктор
+					 */
+					Callback() noexcept :
+					 extractPass(nullptr), checkAuth(nullptr), active(nullptr),
+					 chunking(nullptr), message(nullptr), accept(nullptr), binary(nullptr) {}
+				} fn_t;
 			private:
-				// Хости сервера
-				string _host = "";
 				// Порт сервера
-				u_int _port = SERVER_PORT;
+				u_int _port;
+				// Хости сервера
+				string _host;
+				// unix-сокет сервера
+				string _usock;
 			private:
 				// Объект биндинга TCP/IP
 				core_t _core;
+				// Объявляем функции обратного вызова
+				fn_t _callback;
 				// Объект рабочего для сервера
-				workerProxy_t _worker;
+				proxy_worker_t _worker;
+			private:
+				// Идентификатор сервера
+				string _sid;
+				// Версия сервера
+				string _ver;
+				// Название сервера
+				string _name;
 			private:
 				// Название сервера
-				string _name = AWH_NAME;
-				// Идентификатор сервера
-				string _sid = AWH_SHORT_NAME;
-				// Версия сервера
-				string _version = AWH_VERSION;
+				string _realm;
+				// Временный ключ сессии сервера
+				string _opaque;
 			private:
 				// Пароль шифрования передаваемых данных
-				string _pass = "";
+				string _pass;
 				// Соль шифрования передаваемых данных
-				string _salt = "";
+				string _salt;
 				// Размер шифрования передаваемых данных
-				hash_t::aes_t _aes = hash_t::aes_t::AES128;
+				hash_t::cipher_t _cipher;
 			private:
-				// Название сервера
-				string _realm = "";
-				// Временный ключ сессии сервера
-				string _opaque = "";
 				// Алгоритм шифрования для Digest авторизации
-				auth_t::hash_t _authHash = auth_t::hash_t::MD5;
+				auth_t::hash_t _authHash;
 				// Тип авторизации
-				auth_t::type_t _authType = auth_t::type_t::NONE;
-				// Функция обратного вызова для извлечения пароля
-				function <string (const string &)> _extractPassFn = nullptr;
-				// Функция обратного вызова для обработки авторизации
-				function <bool (const string &, const string &)> _checkAuthFn = nullptr;
+				auth_t::type_t _authType;
 			private:
 				// Флаг шифрования сообщений
-				bool _crypt = false;
+				bool _crypt;
 				// Флаг долгоживущего подключения
-				bool _alive = false;
+				bool _alive;
 				// Флаг запрещающий метод CONNECT
-				bool _noConnect = false;
+				bool _noConnect;
 			private:
 				// Размер одного чанка
-				size_t _chunkSize = BUFFER_CHUNK;
+				size_t _chunkSize;
 				// Максимальный интервал времени жизни подключения
-				size_t _keepAlive = KEEPALIVE_TIMEOUT;
+				size_t _timeAlive;
 				// Максимальное количество запросов
-				size_t _maxRequests = SERVER_MAX_REQUESTS;
+				size_t _maxRequests;
 			private:
 				// Создаём объект фреймворка
-				const fmk_t * fmk = nullptr;
+				const fmk_t * _fmk;
 				// Создаём объект работы с логами
-				const log_t * log = nullptr;
-			private:
-				// Функция обратного вызова, при получении HTTP чанков от клиента
-				function <void (const vector <char> &, const http_t *)> _chunkingFn = nullptr;
-			private:
-				// Функция обратного вызова, при запуске или остановки подключения к серверу
-				function <void (const size_t, const mode_t, Proxy *)> _activeFn = nullptr;
-				// Функция обратного вызова, при получении сообщения с сервера
-				function <bool (const size_t, const event_t, http_t *, Proxy *)> _messageFn = nullptr;
-				// Функция обратного вызова, при получении сообщения в бинарном виде с сервера
-				function <bool (const size_t, const event_t, const char *, const size_t, Proxy *)> _binaryFn = nullptr;
-			private:
-				// Функция разрешения подключения клиента на сервере
-				function <bool (const string &, const string &, Proxy *)> _acceptFn = nullptr;
+				const log_t * _log;
 			private:
 				/**
 				 * runCallback Функция обратного вызова при активации ядра сервера
 				 * @param mode флаг запуска/остановки
 				 * @param core объект биндинга TCP/IP
 				 */
-				static void runCallback(const bool mode, awh::core_t * core) noexcept;
+				void runCallback(const bool mode, awh::core_t * core) noexcept;
+			private:
 				/**
-				 * chunkingCallback Функция обработки получения чанков
+				 * chunking Метод обработки получения чанков
 				 * @param chunk бинарный буфер чанка
 				 * @param http  объект модуля HTTP
 				 */
-				static void chunkingCallback(const vector <char> & chunk, const http_t * http) noexcept;
+				void chunking(const vector <char> & chunk, const awh::http_t * http) noexcept;
 			private:
-				/**
-				 * openServerCallback Функция обратного вызова при запуске работы
-				 * @param wid  идентификатор воркера
-				 * @param core объект биндинга TCP/IP
-				 */
-				static void openServerCallback(const size_t wid, awh::core_t * core) noexcept;
 				/**
 				 * persistServerCallback Функция персистентного вызова
 				 * @param aid  идентификатор адъютанта
 				 * @param wid  идентификатор воркера
 				 * @param core объект биндинга TCP/IP
 				 */
-				static void persistServerCallback(const size_t aid, const size_t wid, awh::core_t * core) noexcept;
+				void persistCallback(const size_t aid, const size_t wid, awh::core_t * core) noexcept;
+			private:
+				/**
+				 * openServerCallback Функция обратного вызова при запуске работы
+				 * @param wid  идентификатор воркера
+				 * @param core объект биндинга TCP/IP
+				 */
+				void openServerCallback(const size_t wid, awh::core_t * core) noexcept;
 				/**
 				 * connectClientCallback Функция обратного вызова при подключении к серверу
 				 * @param aid  идентификатор адъютанта
 				 * @param wid  идентификатор воркера
 				 * @param core объект биндинга TCP/IP
 				 */
-				static void connectClientCallback(const size_t aid, const size_t wid, awh::core_t * core) noexcept;
+				void connectClientCallback(const size_t aid, const size_t wid, awh::core_t * core) noexcept;
 				/**
 				 * connectServerCallback Функция обратного вызова при подключении к серверу
 				 * @param aid  идентификатор адъютанта
 				 * @param wid  идентификатор воркера
 				 * @param core объект биндинга TCP/IP
 				 */
-				static void connectServerCallback(const size_t aid, const size_t wid, awh::core_t * core) noexcept;
+				void connectServerCallback(const size_t aid, const size_t wid, awh::core_t * core) noexcept;
 				/**
 				 * disconnectClientCallback Функция обратного вызова при отключении от сервера
 				 * @param aid  идентификатор адъютанта
 				 * @param wid  идентификатор воркера
 				 * @param core объект биндинга TCP/IP
 				 */
-				static void disconnectClientCallback(const size_t aid, const size_t wid, awh::core_t * core) noexcept;
+				void disconnectClientCallback(const size_t aid, const size_t wid, awh::core_t * core) noexcept;
 				/**
 				 * disconnectServerCallback Функция обратного вызова при отключении от сервера
 				 * @param aid  идентификатор адъютанта
 				 * @param wid  идентификатор воркера
 				 * @param core объект биндинга TCP/IP
 				 */
-				static void disconnectServerCallback(const size_t aid, const size_t wid, awh::core_t * core) noexcept;
+				void disconnectServerCallback(const size_t aid, const size_t wid, awh::core_t * core) noexcept;
 				/**
 				 * acceptServerCallback Функция обратного вызова при проверке подключения клиента
 				 * @param ip   адрес интернет подключения клиента
 				 * @param mac  мак-адрес подключившегося клиента
+				 * @param port порт подключившегося адъютанта
 				 * @param wid  идентификатор воркера
 				 * @param core объект биндинга TCP/IP
 				 * @return     результат разрешения к подключению клиента
 				 */
-				static bool acceptServerCallback(const string & ip, const string & mac, const size_t wid, awh::core_t * core) noexcept;
+				bool acceptServerCallback(const string & ip, const string & mac, const u_int port, const size_t wid, awh::core_t * core) noexcept;
 				/**
 				 * readClientCallback Функция обратного вызова при чтении сообщения с сервера
 				 * @param buffer бинарный буфер содержащий сообщение
@@ -216,7 +231,7 @@ namespace awh {
 				 * @param wid    идентификатор воркера
 				 * @param core   объект биндинга TCP/IP
 				 */
-				static void readClientCallback(const char * buffer, const size_t size, const size_t aid, const size_t wid, awh::core_t * core) noexcept;
+				void readClientCallback(const char * buffer, const size_t size, const size_t aid, const size_t wid, awh::core_t * core) noexcept;
 				/**
 				 * readServerCallback Функция обратного вызова при чтении сообщения с клиента
 				 * @param buffer бинарный буфер содержащий сообщение
@@ -225,7 +240,7 @@ namespace awh {
 				 * @param wid    идентификатор воркера
 				 * @param core   объект биндинга TCP/IP
 				 */
-				static void readServerCallback(const char * buffer, const size_t size, const size_t aid, const size_t wid, awh::core_t * core) noexcept;
+				void readServerCallback(const char * buffer, const size_t size, const size_t aid, const size_t wid, awh::core_t * core) noexcept;
 				/**
 				 * writeServerCallback Функция обратного вызова при записи сообщения на клиенте
 				 * @param buffer бинарный буфер содержащий сообщение
@@ -234,7 +249,7 @@ namespace awh {
 				 * @param wid    идентификатор воркера
 				 * @param core   объект биндинга TCP/IP
 				 */
-				static void writeServerCallback(const char * buffer, const size_t size, const size_t aid, const size_t wid, awh::core_t * core) noexcept;
+				void writeServerCallback(const char * buffer, const size_t size, const size_t aid, const size_t wid, awh::core_t * core) noexcept;
 			private:
 				/**
 				 * prepare Метод обработки входящих данных
@@ -244,6 +259,12 @@ namespace awh {
 				 */
 				void prepare(const size_t aid, const size_t wid, awh::core_t * core) noexcept;
 			public:
+				/**
+				 * init Метод инициализации WebSocket адъютанта
+				 * @param socket   unix-сокет для биндинга
+				 * @param compress метод сжатия передаваемых сообщений
+				 */
+				void init(const string & socket, const http_t::compress_t compress = http_t::compress_t::NONE) noexcept;
 				/**
 				 * init Метод инициализации WebSocket клиента
 				 * @param port     порт сервера
@@ -309,6 +330,12 @@ namespace awh {
 				void response(const size_t aid, const u_int code = 200, const string & mess = "", const vector <char> & entity = {}, const unordered_multimap <string, string> & headers = {}) const noexcept;
 			public:
 				/**
+				 * port Метод получения порта подключения адъютанта
+				 * @param aid идентификатор адъютанта
+				 * @return    порт подключения адъютанта
+				 */
+				u_int port(const size_t aid) const noexcept;
+				/**
 				 * ip Метод получения IP адреса адъютанта
 				 * @param aid идентификатор адъютанта
 				 * @return    адрес интернет подключения адъютанта
@@ -322,25 +349,30 @@ namespace awh {
 				const string & mac(const size_t aid) const noexcept;
 			public:
 				/**
-				 * setAlive Метод установки долгоживущего подключения
+				 * alive Метод установки долгоживущего подключения
 				 * @param mode флаг долгоживущего подключения
 				 */
-				void setAlive(const bool mode) noexcept;
+				void alive(const bool mode) noexcept;
 				/**
-				 * setAlive Метод установки долгоживущего подключения
+				 * alive Метод установки времени жизни подключения
+				 * @param time время жизни подключения
+				 */
+				void alive(const size_t time) noexcept;
+				/**
+				 * alive Метод установки долгоживущего подключения
 				 * @param aid  идентификатор адъютанта
 				 * @param mode флаг долгоживущего подключения
 				 */
-				void setAlive(const size_t aid, const bool mode) noexcept;
+				void alive(const size_t aid, const bool mode) noexcept;
 			public:
-				/**
-				 * start Метод запуска клиента
-				 */
-				void start() noexcept;
 				/**
 				 * stop Метод остановки клиента
 				 */
 				void stop() noexcept;
+				/**
+				 * start Метод запуска клиента
+				 */
+				void start() noexcept;
 			public:
 				/**
 				 * close Метод закрытия подключения клиента
@@ -349,79 +381,148 @@ namespace awh {
 				void close(const size_t aid) noexcept;
 			public:
 				/**
-				 * setRealm Метод установки название сервера
-				 * @param realm название сервера
-				 */
-				void setRealm(const string & realm) noexcept;
-				/**
-				 * setOpaque Метод установки временного ключа сессии сервера
-				 * @param opaque временный ключ сессии сервера
-				 */
-				void setOpaque(const string & opaque) noexcept;
-			public:
-				/**
-				 * setAuthType Метод установки типа авторизации
-				 * @param type тип авторизации
-				 * @param hash алгоритм шифрования для Digest авторизации
-				 */
-				void setAuthType(const auth_t::type_t type = auth_t::type_t::BASIC, const auth_t::hash_t hash = auth_t::hash_t::MD5) noexcept;
-			public:
-				/**
-				 * setMode Метод установки флага модуля
-				 * @param flag флаг модуля для установки
-				 */
-				void setMode(const u_short flag) noexcept;
-				/**
-				 * setTotal Метод установки максимального количества одновременных подключений
-				 * @param total максимальное количество одновременных подключений
-				 */
-				void setTotal(const u_short total) noexcept;
-				/**
-				 * setChunkSize Метод установки размера чанка
-				 * @param size размер чанка для установки
-				 */
-				void setChunkSize(const size_t size) noexcept;
-				/**
-				 * setKeepAlive Метод установки времени жизни подключения
-				 * @param time время жизни подключения
-				 */
-				void setKeepAlive(const size_t time) noexcept;
-				/**
-				 * setMaxRequests Метод установки максимального количества запросов
-				 * @param max максимальное количество запросов
-				 */
-				void setMaxRequests(const size_t max) noexcept;
-				/**
-				 * setCompress Метод установки метода сжатия
-				 * @param метод сжатия сообщений
-				 */
-				void setCompress(const http_t::compress_t compress) noexcept;
-				/**
-				 * setWaitTimeDetect Метод детекции сообщений по количеству секунд
+				 * waitTimeDetect Метод детекции сообщений по количеству секунд
 				 * @param read  количество секунд для детекции по чтению
 				 * @param write количество секунд для детекции по записи
 				 */
-				void setWaitTimeDetect(const time_t read, const time_t write) noexcept;
+				void waitTimeDetect(const time_t read, const time_t write) noexcept;
 				/**
-				 * setServ Метод установки данных сервиса
+				 * bytesDetect Метод детекции сообщений по количеству байт
+				 * @param read  количество байт для детекции по чтению
+				 * @param write количество байт для детекции по записи
+				 */
+				void bytesDetect(const worker_t::mark_t read, const worker_t::mark_t write) noexcept;
+			public:
+				/**
+				 * realm Метод установки название сервера
+				 * @param realm название сервера
+				 */
+				void realm(const string & realm) noexcept;
+				/**
+				 * opaque Метод установки временного ключа сессии сервера
+				 * @param opaque временный ключ сессии сервера
+				 */
+				void opaque(const string & opaque) noexcept;
+			public:
+				/**
+				 * authType Метод установки типа авторизации
+				 * @param type тип авторизации
+				 * @param hash алгоритм шифрования для Digest авторизации
+				 */
+				void authType(const auth_t::type_t type = auth_t::type_t::BASIC, const auth_t::hash_t hash = auth_t::hash_t::MD5) noexcept;
+			public:
+				/**
+				 * mode Метод установки флага модуля
+				 * @param flag флаг модуля для установки
+				 */
+				void mode(const u_short flag) noexcept;
+				/**
+				 * total Метод установки максимального количества одновременных подключений
+				 * @param total максимальное количество одновременных подключений
+				 */
+				void total(const u_short total) noexcept;
+				/**
+				 * clusterSize Метод установки количества процессов кластера
+				 * @param size количество рабочих процессов
+				 */
+				void clusterSize(const size_t size = 0) noexcept;
+			public:
+				/**
+				 * ipV6only Метод установки флага использования только сети IPv6
+				 * @param mode флаг для установки
+				 */
+				void ipV6only(const bool mode) noexcept;
+				/**
+				 * keepAlive Метод установки жизни подключения
+				 * @param cnt   максимальное количество попыток
+				 * @param idle  интервал времени в секундах через которое происходит проверка подключения
+				 * @param intvl интервал времени в секундах между попытками
+				 */
+				void keepAlive(const int cnt, const int idle, const int intvl) noexcept;
+				/**
+				 * sonet Метод установки типа сокета подключения
+				 * @param sonet тип сокета подключения (TCP / UDP / SCTP)
+				 */
+				void sonet(const worker_t::sonet_t sonet = worker_t::sonet_t::TCP) noexcept;
+				/**
+				 * family Метод установки типа протокола интернета
+				 * @param family тип протокола интернета (IPV4 / IPV6 / NIX)
+				 */
+				void family(const worker_t::family_t family = worker_t::family_t::IPV4) noexcept;
+				/**
+				 * bandWidth Метод установки пропускной способности сети
+				 * @param aid   идентификатор адъютанта
+				 * @param read  пропускная способность на чтение (bps, kbps, Mbps, Gbps)
+				 * @param write пропускная способность на запись (bps, kbps, Mbps, Gbps)
+				 */
+				void bandWidth(const size_t aid, const string & read, const string & write) noexcept;
+				/**
+				 * network Метод установки параметров сети
+				 * @param ip     список IP адресов компьютера с которых разрешено выходить в интернет
+				 * @param ns     список серверов имён, через которые необходимо производить резолвинг доменов
+				 * @param family тип протокола интернета (IPV4 / IPV6 / NIX)
+				 * @param sonet  тип сокета подключения (TCP / UDP)
+				 */
+				void network(const vector <string> & ip = {}, const vector <string> & ns = {}, const worker_t::family_t family = worker_t::family_t::IPV4, const worker_t::sonet_t sonet = worker_t::sonet_t::TCP) noexcept;
+			public:
+				/**
+				 * verifySSL Метод разрешающий или запрещающий, выполнять проверку соответствия, сертификата домену
+				 * @param mode флаг состояния разрешения проверки
+				 */
+				void verifySSL(const bool mode) noexcept;
+				/**
+				 * ciphers Метод установки алгоритмов шифрования
+				 * @param ciphers список алгоритмов шифрования для установки
+				 */
+				void ciphers(const vector <string> & ciphers) noexcept;
+				/**
+				 * ca Метод установки доверенного сертификата (CA-файла)
+				 * @param trusted адрес доверенного сертификата (CA-файла)
+				 * @param path    адрес каталога где находится сертификат (CA-файл)
+				 */
+				void ca(const string & trusted, const string & path = "") noexcept;
+				/**
+				 * certificate Метод установки файлов сертификата
+				 * @param chain файл цепочки сертификатов
+				 * @param key   приватный ключ сертификата
+				 */
+				void certificate(const string & chain, const string & key) noexcept;
+			public:
+				/**
+				 * serverName Метод добавления названия сервера
+				 * @param name название сервера для добавления
+				 */
+				void serverName(const string & name = "") noexcept;
+			public:
+				/**
+				 * chunkSize Метод установки размера чанка
+				 * @param size размер чанка для установки
+				 */
+				void chunkSize(const size_t size) noexcept;
+				/**
+				 * maxRequests Метод установки максимального количества запросов
+				 * @param max максимальное количество запросов
+				 */
+				void maxRequests(const size_t max) noexcept;
+				/**
+				 * compress Метод установки метода сжатия
+				 * @param метод сжатия сообщений
+				 */
+				void compress(const http_t::compress_t compress) noexcept;
+				/**
+				 * serv Метод установки данных сервиса
 				 * @param id   идентификатор сервиса
 				 * @param name название сервиса
 				 * @param ver  версия сервиса
 				 */
-				void setServ(const string & id, const string & name, const string & ver) noexcept;
+				void serv(const string & id, const string & name, const string & ver) noexcept;
 				/**
-				 * setBytesDetect Метод детекции сообщений по количеству байт
-				 * @param read  количество байт для детекции по чтению
-				 * @param write количество байт для детекции по записи
+				 * crypto Метод установки параметров шифрования
+				 * @param pass   пароль шифрования передаваемых данных
+				 * @param salt   соль шифрования передаваемых данных
+				 * @param cipher размер шифрования передаваемых данных
 				 */
-				void setBytesDetect(const worker_t::mark_t read, const worker_t::mark_t write) noexcept;
-				/**
-				 * setCrypt Метод установки параметров шифрования
-				 * @param pass пароль шифрования передаваемых данных
-				 * @param salt соль шифрования передаваемых данных
-				 * @param aes  размер шифрования передаваемых данных
-				 */
-				void setCrypt(const string & pass, const string & salt = "", const hash_t::aes_t aes = hash_t::aes_t::AES128) noexcept;
+				void crypto(const string & pass, const string & salt = "", const hash_t::cipher_t cipher = hash_t::cipher_t::AES128) noexcept;
 			public:
 				/**
 				 * Proxy Конструктор

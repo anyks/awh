@@ -191,7 +191,7 @@ namespace awh {
 			public:
 				/**
 				 * init Метод инициализации WebSocket адъютанта
-				 * @param socket unix socket для биндинга
+				 * @param socket unix-сокет для биндинга
 				 */
 				void init(const string & socket) noexcept;
 				/**
@@ -249,13 +249,13 @@ namespace awh {
 				const string & mac(const size_t aid) const noexcept;
 			public:
 				/**
-				 * start Метод запуска клиента
-				 */
-				void start() noexcept;
-				/**
 				 * stop Метод остановки клиента
 				 */
 				void stop() noexcept;
+				/**
+				 * start Метод запуска клиента
+				 */
+				void start() noexcept;
 			public:
 				/**
 				 * close Метод закрытия подключения клиента

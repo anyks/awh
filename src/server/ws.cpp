@@ -840,7 +840,7 @@ void awh::server::WebSocket::ping(const size_t aid, awh::core_t * core, const st
 }
 /**
  * init Метод инициализации WebSocket адъютанта
- * @param socket   unix socket для биндинга
+ * @param socket   unix-сокет для биндинга
  * @param compress метод сжатия передаваемых сообщений
  */
 void awh::server::WebSocket::init(const string & socket, const http_t::compress_t compress) noexcept {

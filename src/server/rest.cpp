@@ -436,7 +436,7 @@ void awh::server::Rest::actionDisconnect(const size_t aid) noexcept {
 }
 /**
  * init Метод инициализации Rest адъютанта
- * @param socket   unix socket для биндинга
+ * @param socket   unix-сокет для биндинга
  * @param compress метод сжатия передаваемых сообщений
  */
 void awh::server::Rest::init(const string & socket, const http_t::compress_t compress) noexcept {

@@ -24,53 +24,53 @@ void awh::server::WorkerProxy::clear() noexcept {
 	// Очищаем список пар клиентов
 	this->pairs.clear();
 	// Очищаем список параметров адъютантов
-	this->adjParams.clear();
+	this->_coffers.clear();
 	// Освобождаем выделенную память
-	map <size_t, unique_ptr <adjp_t>> ().swap(this->adjParams);
+	map <size_t, unique_ptr <coffer_t>> ().swap(this->_coffers);
 	// Сбрасываем тип компрессии
 	this->compress = http_t::compress_t::NONE;
 }
 /**
- * createAdj Метод создания параметров адъютанта
+ * set Метод создания параметров адъютанта
  * @param aid идентификатор адъютанта
  */
-void awh::server::WorkerProxy::createAdj(const size_t aid) noexcept {
+void awh::server::WorkerProxy::set(const size_t aid) noexcept {
 	// Если идентификатор адъютанта передан
-	if((aid > 0) && (this->adjParams.count(aid) < 1)){
+	if((aid > 0) && (this->_coffers.count(aid) < 1)){
 		// Добавляем адъютанта в список адъютантов
-		auto ret = this->adjParams.emplace(aid, unique_ptr <adjp_t> (new adjp_t(this->fmk, this->log, &this->uri)));
+		auto ret = this->_coffers.emplace(aid, unique_ptr <coffer_t> (new coffer_t(this->_fmk, this->_log, &this->uri)));
 		// Устанавливаем метод сжатия
-		ret.first->second->cli.setCompress(this->compress);
-		ret.first->second->srv.setCompress(this->compress);
+		ret.first->second->cli.compress(this->compress);
+		ret.first->second->srv.compress(this->compress);
 	}
 }
 /**
- * removeAdj Метод удаления параметров подключения адъютанта
+ * rm Метод удаления параметров подключения адъютанта
  * @param aid идентификатор адъютанта
  */
-void awh::server::WorkerProxy::removeAdj(const size_t aid) noexcept {
+void awh::server::WorkerProxy::rm(const size_t aid) noexcept {	
 	// Если идентификатор адъютанта передан
-	if(aid > 0){
+	if((aid > 0) && !this->_coffers.empty()){
 		// Выполняем поиск адъютанта
-		auto it = this->adjParams.find(aid);
+		auto it = this->_coffers.find(aid);
 		// Если адъютант найден, удаляем его
-		if(it != this->adjParams.end()) this->adjParams.erase(it);
+		if(it != this->_coffers.end()) this->_coffers.erase(it);
 	}
 }
 /**
- * getAdj Метод получения параметров подключения адъютанта
+ * get Метод получения параметров подключения адъютанта
  * @param aid идентификатор адъютанта
  * @return    параметры подключения адъютанта
  */
-const awh::server::WorkerProxy::adjp_t * awh::server::WorkerProxy::getAdj(const size_t aid) const noexcept {
+const awh::server::WorkerProxy::coffer_t * awh::server::WorkerProxy::get(const size_t aid) const noexcept {
 	// Результат работы функции
-	adjp_t * result = nullptr;
+	coffer_t * result = nullptr;
 	// Если идентификатор адъютанта передан
-	if(aid > 0){
+	if((aid > 0) && !this->_coffers.empty()){
 		// Выполняем поиск адъютанта
-		auto it = this->adjParams.find(aid);
+		auto it = this->_coffers.find(aid);
 		// Если адъютант найден, выводим его параметры
-		if(it != this->adjParams.end()) result = (adjp_t *) &it->second;
+		if(it != this->_coffers.end()) result = it->second.get();
 	}
 	// Выводим результат
 	return result;
