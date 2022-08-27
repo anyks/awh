@@ -42,15 +42,15 @@ namespace awh {
 				 * Режим работы адъютанта
 				 */
 				enum class mode_t : uint8_t {
-					CONNECT    = 0x01,
-					DISCONNECT = 0x02
+					CONNECT    = 0x01, // Режим подключения
+					DISCONNECT = 0x02  // Режим отключения
 				};
 				/**
 				 * Режим событие адъютанта
 				 */
 				enum class event_t : uint8_t {
-					REQUEST  = 0x01,
-					RESPONSE = 0x02
+					REQUEST  = 0x01, // Режим запроса
+					RESPONSE = 0x02  // Режим ответа
 				};
 				/**
 				 * Основные флаги приложения

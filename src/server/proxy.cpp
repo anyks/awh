@@ -138,7 +138,7 @@ void awh::server::Proxy::connectServerCallback(const size_t aid, const size_t wi
 		// Создаём адъютанта
 		this->_worker.set(aid);
 		// Получаем параметры подключения адъютанта
-		proxy_worker_t::coffer_t * adj = const_cast <proxy_worker_t::coffer_t *> (this->_worker.get(aid));		
+		proxy_worker_t::coffer_t * adj = const_cast <proxy_worker_t::coffer_t *> (this->_worker.get(aid));
 		// Если параметры подключения адъютанта получены
 		if(adj != nullptr){
 			// Устанавливаем размер чанка
