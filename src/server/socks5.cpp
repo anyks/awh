@@ -69,7 +69,7 @@ void awh::server::ProxySocks5::connectClientCallback(const size_t aid, const siz
 				// Получаем данные запроса
 				const auto & socks5 = adj->socks5.get();
 				// Если данные получены
-				if(!socks5.empty()) reinterpret_cast <awh::core_t *> (&this->_core.server)->write(socks5.data(), socks5.size(), it->second);
+				if(!socks5.empty()) this->_core.server.write(socks5.data(), socks5.size(), it->second);
 			}
 		}
 	}

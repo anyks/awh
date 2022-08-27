@@ -405,8 +405,10 @@ void awh::server::Rest::actionConnect(const size_t aid) noexcept {
 			if(adj->action == rest_worker_t::action_t::CONNECT)
 				// Выполняем сброс экшена
 				adj->action = rest_worker_t::action_t::NONE;
-			// Если функция обратного вызова установлена, выполняем
-			if(this->_callback.active != nullptr) this->_callback.active(aid, mode_t::CONNECT, this);
+			// Если функция обратного вызова установлена
+			if(this->_callback.active != nullptr)
+				// Выполняем функцию обратного вызова
+				this->_callback.active(aid, mode_t::CONNECT, this);
 		}
 	}
 }
@@ -662,7 +664,7 @@ void awh::server::Rest::alive(const bool mode) noexcept {
  */
 void awh::server::Rest::alive(const size_t time) noexcept {
 	// Устанавливаем время жизни подключения
-	this->_alive = time;
+	this->_timeAlive = time;
 }
 /**
  * alive Метод установки долгоживущего подключения
