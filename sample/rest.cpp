@@ -109,6 +109,8 @@ int main(int argc, char * argv[]) noexcept {
 	// rest.proxy("socks5://3JMFxD:CWv6MP@45.130.126.236:8000");
 	// rest.proxy("socks5://127.0.0.1:2222");
 	// rest.proxy("socks5://test1:test@127.0.0.1:2222");
+	// rest.proxy("http://test1:password@127.0.0.1:2222");
+	rest.proxy("http://127.0.0.1:2222");
 	// rest.proxy("socks5://unix:anyks", awh::worker_t::family_t::NIX);
 	// rest.proxy("http://fn3nzc:GZJAeP@217.29.62.232:11283");
 	// rest.proxy("socks5://xYkj89:eqCQJA@85.195.81.167:12387");
@@ -116,6 +118,7 @@ int main(int argc, char * argv[]) noexcept {
 	rest.compress(http_t::compress_t::ALL_COMPRESS);
 	// Устанавливаем тип авторизации прокси-сервера
 	// rest.authTypeProxy();
+	// rest.authTypeProxy(auth_t::type_t::DIGEST, auth_t::hash_t::MD5);
 	// Выполняем инициализацию типа авторизации
 	// rest.authType();
 	// rest.authType(auth_t::type_t::DIGEST, auth_t::hash_t::MD5);

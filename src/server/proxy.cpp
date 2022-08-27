@@ -165,29 +165,26 @@ void awh::server::Proxy::connectServerCallback(const size_t aid, const size_t wi
 				adj->cli.crypto(this->_pass, this->_salt, this->_cipher);
 				adj->srv.crypto(this->_pass, this->_salt, this->_cipher);
 			}
-			// Если сервер требует авторизацию
-			if(this->_authType != auth_t::type_t::NONE){
-				// Определяем тип авторизации
-				switch((uint8_t) this->_authType){
-					// Если тип авторизации Basic
-					case (uint8_t) auth_t::type_t::BASIC: {
-						// Устанавливаем параметры авторизации
-						adj->srv.authType(this->_authType);
-						// Устанавливаем функцию проверки авторизации
-						adj->srv.authCallback(this->_callback.checkAuth);
-					} break;
-					// Если тип авторизации Digest
-					case (uint8_t) auth_t::type_t::DIGEST: {
-						// Устанавливаем название сервера
-						adj->srv.realm(this->_realm);
-						// Устанавливаем временный ключ сессии сервера
-						adj->srv.opaque(this->_opaque);
-						// Устанавливаем параметры авторизации
-						adj->srv.authType(this->_authType, this->_authHash);
-						// Устанавливаем функцию извлечения пароля
-						adj->srv.extractPassCallback(this->_callback.extractPass);
-					} break;
-				}
+			// Определяем тип авторизации
+			switch((uint8_t) this->_authType){
+				// Если тип авторизации Basic
+				case (uint8_t) auth_t::type_t::BASIC: {
+					// Устанавливаем параметры авторизации
+					adj->srv.authType(this->_authType);
+					// Устанавливаем функцию проверки авторизации
+					adj->srv.authCallback(this->_callback.checkAuth);
+				} break;
+				// Если тип авторизации Digest
+				case (uint8_t) auth_t::type_t::DIGEST: {
+					// Устанавливаем название сервера
+					adj->srv.realm(this->_realm);
+					// Устанавливаем временный ключ сессии сервера
+					adj->srv.opaque(this->_opaque);
+					// Устанавливаем параметры авторизации
+					adj->srv.authType(this->_authType, this->_authHash);
+					// Устанавливаем функцию извлечения пароля
+					adj->srv.extractPassCallback(this->_callback.extractPass);
+				} break;
 			}
 			// Устанавливаем флаг ожидания входящих сообщений
 			adj->worker.wait = this->_worker.wait;

@@ -377,29 +377,26 @@ void awh::server::Rest::actionConnect(const size_t aid) noexcept {
 			adj->http.compress(this->_worker.compress);
 			// Устанавливаем параметры шифрования
 			if(this->_crypt) adj->http.crypto(this->_pass, this->_salt, this->_cipher);
-			// Если сервер требует авторизацию
-			if(this->_authType != auth_t::type_t::NONE){
-				// Определяем тип авторизации
-				switch((uint8_t) this->_authType){
-					// Если тип авторизации Basic
-					case (uint8_t) auth_t::type_t::BASIC: {
-						// Устанавливаем параметры авторизации
-						adj->http.authType(this->_authType);
-						// Устанавливаем функцию проверки авторизации
-						adj->http.authCallback(this->_callback.checkAuth);
-					} break;
-					// Если тип авторизации Digest
-					case (uint8_t) auth_t::type_t::DIGEST: {
-						// Устанавливаем название сервера
-						adj->http.realm(this->_realm);
-						// Устанавливаем временный ключ сессии сервера
-						adj->http.opaque(this->_opaque);
-						// Устанавливаем параметры авторизации
-						adj->http.authType(this->_authType, this->_authHash);
-						// Устанавливаем функцию извлечения пароля
-						adj->http.extractPassCallback(this->_callback.extractPass);
-					} break;
-				}
+			// Определяем тип авторизации
+			switch((uint8_t) this->_authType){
+				// Если тип авторизации Basic
+				case (uint8_t) auth_t::type_t::BASIC: {
+					// Устанавливаем параметры авторизации
+					adj->http.authType(this->_authType);
+					// Устанавливаем функцию проверки авторизации
+					adj->http.authCallback(this->_callback.checkAuth);
+				} break;
+				// Если тип авторизации Digest
+				case (uint8_t) auth_t::type_t::DIGEST: {
+					// Устанавливаем название сервера
+					adj->http.realm(this->_realm);
+					// Устанавливаем временный ключ сессии сервера
+					adj->http.opaque(this->_opaque);
+					// Устанавливаем параметры авторизации
+					adj->http.authType(this->_authType, this->_authHash);
+					// Устанавливаем функцию извлечения пароля
+					adj->http.extractPassCallback(this->_callback.extractPass);
+				} break;
 			}
 			// Если экшен соответствует, выполняем его сброс
 			if(adj->action == rest_worker_t::action_t::CONNECT)

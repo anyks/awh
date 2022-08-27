@@ -266,14 +266,19 @@ int main(int argc, char * argv[]) noexcept {
 	// ws.proxy("socks5://3JMFxD:CWv6MP@45.130.126.236:8000");
 	// ws.proxy("http://fn3nzc:GZJAeP@217.29.62.232:11283");
 	// ws.proxy("socks5://xYkj89:eqCQJA@85.195.81.167:12387");
-	// ws.proxy("socks5://test1:test@127.0.0.1:2222");
+	// ws.proxy("socks5://test1:password@127.0.0.1:2222");
+	ws.proxy("http://127.0.0.1:2222");
+	// ws.proxy("http://test1:password@127.0.0.1:2222");
 	// ws.proxy("socks5://unix:anyks", awh::worker_t::family_t::NIX);
+	// ws.proxy("http://unix:anyks", awh::worker_t::family_t::NIX);
 
 	// Выполняем инициализацию типа авторизации
 	// ws.authType(auth_t::type_t::BASIC);
 	// ws.authType(auth_t::type_t::DIGEST, auth_t::hash_t::SHA256);
 	// Устанавливаем тип авторизации прокси-сервера
 	// ws.authTypeProxy();
+	// Устанавливаем тип авторизации прокси-сервера
+	// ws.authTypeProxy(auth_t::type_t::DIGEST, auth_t::hash_t::MD5);
 	// Выполняем инициализацию WebSocket клиента
 	ws.init("wss://stream.binance.com:9443/stream", http_t::compress_t::DEFLATE);
 	// ws.init("ws://127.0.0.1:2222", http_t::compress_t::DEFLATE);
