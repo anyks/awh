@@ -1332,6 +1332,8 @@ vector <char> awh::Http::proxy(const uri_t::url_t & url) noexcept {
 			if(!this->web.isHeader("proxy-connection"))
 				// Добавляем поддержку постоянного подключения для прокси-сервера
 				this->header("Proxy-Connection", "Keep-Alive");
+			// Устанавливаем параметры REST запроса
+			this->auth.client.uri(this->uri->url(url));
 			// Получаем параметры авторизации
 			const string & auth = this->auth.client.header("connect", true);
 			// Если данные авторизации получены

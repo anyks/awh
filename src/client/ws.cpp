@@ -701,8 +701,6 @@ void awh::client::WebSocket::actionProxyRead() noexcept {
 					case (uint8_t) http_t::stath_t::RETRY: {
 						// Если попытка повторить авторизацию ещё не проводилась
 						if(this->_attempt < this->_attempts){
-							// Получаем новый адрес запроса
-							this->_worker.proxy.url = this->_worker.proxy.http.getUrl();
 							// Если адрес запроса получен
 							if(!this->_worker.proxy.url.empty()){
 								// Увеличиваем количество попыток

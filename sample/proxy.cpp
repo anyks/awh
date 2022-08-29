@@ -134,7 +134,7 @@ int main(int argc, char * argv[]) noexcept {
 	// proxy.sonet(awh::worker_t::sonet_t::DTLS);
 	// proxy.sonet(awh::worker_t::sonet_t::TLS);
 	// proxy.sonet(awh::worker_t::sonet_t::UDP);
-	// proxy.sonet(awh::worker_t::sonet_t::TCP);
+	proxy.sonet(awh::worker_t::sonet_t::TCP);
 	// proxy.sonet(awh::worker_t::sonet_t::SCTP);
 	
 	// Отключаем валидацию сертификата

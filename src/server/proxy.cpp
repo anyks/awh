@@ -494,16 +494,16 @@ void awh::server::Proxy::prepare(const size_t aid, const size_t wid) noexcept {
 								const auto & query = adj->srv.query();
 								// Выполняем проверку разрешено ли нам выполнять подключение
 								const bool allow = (!this->_noConnect || (query.method != web_t::method_t::CONNECT));
-								// Получаем хост сервера
-								const auto & host = adj->srv.header("host");
+								// Получаем URI запрос для сервера
+								const auto & uri = (query.method == web_t::method_t::CONNECT ? query.uri : adj->srv.header("host"));
 								// Сообщение запрета подключения
 								const string message = (allow ? "" : "Connect method prohibited");
-								// Если хост сервера получен
-								if(allow && (adj->locked = !host.empty())){
+								// Если URI запрос для сервера получен
+								if(allow && (adj->locked = !uri.empty())){
 									// Запоминаем метод подключения
 									adj->method = query.method;
 									// Формируем адрес подключения
-									adj->worker.url = this->_worker.uri.parse(this->_fmk->format("http://%s", host.c_str()));
+									adj->worker.url = this->_worker.uri.parse(this->_fmk->format("http://%s", uri.c_str()));
 									// Выполняем запрос на сервер
 									this->_core.client.open(adj->worker.wid);
 									// Выходим из функции
@@ -662,7 +662,7 @@ void awh::server::Proxy::prepare(const size_t aid, const size_t wid) noexcept {
 									// Отправляем тело на сервер
 									this->_core.server.write(payload.data(), payload.size(), aid);
 								// Устанавливаем флаг завершения работы
-								adj->stopped = true;
+								adj->stopped = !adj->srv.isAlive();
 								// Выходим из функции
 								return;
 							}
