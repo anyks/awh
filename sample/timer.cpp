@@ -18,6 +18,80 @@ using namespace std;
 using namespace awh;
 
 /**
+ * Timer Класс объекта исполнителя
+ */
+class Timer {
+	private:
+		// Замеряем время начала работы для таймера
+		chrono::time_point <chrono::system_clock> ts;
+		// Замеряем время начала работы для интервала времени
+		chrono::time_point <chrono::system_clock> is;
+	private:
+		// Идентификаторы таймеров
+		u_short count;
+	private:
+		// Объект логирования
+		log_t * log;
+	public:
+		/**
+		 * interval Метод интервала
+		 * @param id   идентификатор таймера
+		 * @param core объект сетевого ядра
+		 */
+		void interval(const u_short id, core_t * core) noexcept {
+			// Замеряем время начала работы для интервала времени
+			auto shift = chrono::system_clock::now();
+			// Выводим информацию в лог
+			this->log->print("Interval: %u seconds", log_t::flag_t::INFO, chrono::duration_cast <chrono::seconds> (shift - this->is).count());
+			// Замеряем время начала работы для интервала времени
+			this->is = shift;
+			// Если таймер отработал 10 раз, выходим
+			if((this->count++) >= 10){
+				// Останавливаем работу таймера
+				core->clearTimer(id);
+				// Останавливаем работу модуля
+				core->stop();
+			}
+		}
+		/**
+		 * timeout Метод таймаута
+		 * @param id   идентификатор таймера
+		 * @param core объект сетевого ядра
+		 */
+		void timeout(const u_short id, core_t * core) noexcept {
+			// Выводим информацию в лог
+			this->log->print("Timeout: %u seconds", log_t::flag_t::INFO, chrono::duration_cast <chrono::seconds> (chrono::system_clock::now() - this->ts).count());
+		}
+		/**
+		 * run Метод запуска сетевого ядра
+		 * @param mode флаг запуска сетевого ядра
+		 * @param core объект сетевого ядра
+		 */
+		void run(const bool mode, Core * core) noexcept {
+			// Если система запущена
+			if(mode){
+				// Замеряем время начала работы для таймера
+				this->ts = chrono::system_clock::now();
+				// Замеряем время начала работы для интервала времени
+				this->is = chrono::system_clock::now();
+				// Выводим информацию в лог
+				this->log->print("%s", log_t::flag_t::INFO, "Start timer");
+				// Устанавливаем задержку времени на 10 секунд
+				core->setTimeout(10000, (function <void (const u_short, core_t *)>) bind(&Timer::timeout, this, _1, _2));
+				// Устанавливаем интервал времени времени на 5 секунд
+				core->setInterval(5000, (function <void (const u_short, core_t *)>) bind(&Timer::interval, this, _1, _2));
+			// Выводим информацию в лог
+			} else this->log->print("%s", log_t::flag_t::INFO, "Stop timer");
+		}
+	public:
+		/**
+		 * Timer Конструктор
+		 * @param log объект логирования
+		 */
+		Timer(log_t * log) noexcept : ts(chrono::system_clock::now()), is(chrono::system_clock::now()), count(0), log(log) {}
+};
+
+/**
  * main Главная функция приложения
  * @param argc длина массива параметров
  * @param argv массив параметров
@@ -28,58 +102,16 @@ int main(int argc, char * argv[]) noexcept {
 	fmk_t fmk;
 	// Создаём объект для работы с логами
 	log_t log(&fmk);
+	// Создаём объект исполнителя
+	Timer executor(&log);
 	// Создаём биндинг
 	core_t core(&fmk, &log);
 	// Устанавливаем название сервиса
 	log.setLogName("Timer");
 	// Устанавливаем формат времени
 	log.setLogFormat("%H:%M:%S %d.%m.%Y");
-	// Идентификаторы таймеров
-	u_short count = 0;
-	// Замеряем время начала работы для таймера
-	auto ts = chrono::system_clock::now();
-	// Замеряем время начала работы для интервала времени
-	auto is = chrono::system_clock::now();
 	// Устанавливаем функцию обратного вызова на запуск системы
-	core.setCallback(&log, [&ts, &is, &count](const bool mode, core_t * core, void * ctx) noexcept {
-		// Получаем объект логирования
-		log_t * log = reinterpret_cast <log_t *> (ctx);
-		// Если система запущена
-		if(mode){
-			// Замеряем время начала работы для таймера
-			ts = chrono::system_clock::now();
-			// Замеряем время начала работы для интервала времени
-			is = chrono::system_clock::now();
-			// Выводим информацию в лог
-			log->print("%s", log_t::flag_t::INFO, "Start timer");
-			// Устанавливаем задержку времени на 10 секунд
-			core->setTimeout(log, 10000, [&ts](const u_short id, core_t * core, void * ctx){
-				// Получаем объект логирования
-				log_t * log = reinterpret_cast <log_t *> (ctx);
-				// Выводим информацию в лог
-				log->print("Timeout: %u seconds", log_t::flag_t::INFO, chrono::duration_cast <chrono::seconds> (chrono::system_clock::now() - ts).count());
-			});
-			// Устанавливаем интервал времени времени на 5 секунд
-			core->setInterval(log, 5000, [&is, &count](const u_short id, core_t * core, void * ctx){
-				// Получаем объект логирования
-				log_t * log = reinterpret_cast <log_t *> (ctx);
-				// Замеряем время начала работы для интервала времени
-				auto shift = chrono::system_clock::now();
-				// Выводим информацию в лог
-				log->print("Interval: %u seconds", log_t::flag_t::INFO, chrono::duration_cast <chrono::seconds> (shift - is).count());
-				// Замеряем время начала работы для интервала времени
-				is = shift;
-				// Если таймер отработал 10 раз, выходим
-				if((count++) >= 10){
-					// Останавливаем работу таймера
-					core->clearTimer(id);
-					// Останавливаем работу модуля
-					core->stop();
-				}
-			});
-		// Выводим информацию в лог
-		} else log->print("%s", log_t::flag_t::INFO, "Stop timer");
-	});
+	core.callback((function <void (const bool, core_t *)>) bind(&Timer::run, &executor, _1, _2));
 	// Выполняем запуск таймера
 	core.start();
 	// Выводим результат

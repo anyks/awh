@@ -606,7 +606,7 @@ void awh::Core::unbind(Core * core) noexcept {
  * callback Метод установки функции обратного вызова при запуске/остановки работы модуля
  * @param callback функция обратного вызова для установки
  */
-void awh::Core::callback(function <void (const bool, Core * core)> callback) noexcept {
+void awh::Core::callback(function <void (const bool, Core *)> callback) noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->_mtx.main);
 	// Устанавливаем функцию обратного вызова

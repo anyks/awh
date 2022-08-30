@@ -343,7 +343,7 @@ namespace awh {
 			 * callback Метод установки функции обратного вызова при запуске/остановки работы модуля
 			 * @param callback функция обратного вызова для установки
 			 */
-			void callback(function <void (const bool, Core * core)> callback) noexcept;
+			void callback(function <void (const bool, Core *)> callback) noexcept;
 		public:
 			/**
 			 * stop Метод остановки клиента
