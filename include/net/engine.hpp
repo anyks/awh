@@ -43,6 +43,7 @@
 /**
  * Стандартная библиотека
  */
+#include <thread>
 #include <cstdio>
 #include <string>
 #include <vector>

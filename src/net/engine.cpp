@@ -2259,14 +2259,18 @@ void awh::Engine::wait(ctx_t & target) noexcept {
 		// Если сокет установлен TCP/IP
 		case SOCK_STREAM:
 			// Выполняем ожидание подключения
-			while(SSL_stateless(target._ssl) < 1);
+			while(SSL_stateless(target._ssl) < 1)
+				// Замораживаем поток на период времени на 100мс
+				this_thread::sleep_for(100ms);
 		break;
 		// Если сокет установлен UDP
 		case SOCK_DGRAM: {
 			// Выполняем зануление структуры подключения клиента
 			memset(&target._addr->_peer.client, 0, sizeof(struct sockaddr_storage));
 			// Выполняем ожидание подключения
-			while(DTLSv1_listen(target._ssl, (BIO_ADDR *) &target._addr->_peer.client) < 1);
+			while(DTLSv1_listen(target._ssl, (BIO_ADDR *) &target._addr->_peer.client) < 1)
+				// Замораживаем поток на период времени на 100мс
+				this_thread::sleep_for(100ms);
 		} break;
 	}
 }

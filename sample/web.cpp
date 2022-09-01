@@ -63,7 +63,7 @@ class Rest {
 			return true;
 		}
 		/**
-		 * active Метод идентификации активности на WebSocket сервере
+		 * active Метод идентификации активности на Web сервере
 		 * @param aid  идентификатор адъютанта (клиента)
 		 * @param mode режим события подключения
 		 * @param web  объект WEB сервера
@@ -135,7 +135,7 @@ int main(int argc, char * argv[]) noexcept {
 	 * 1. Устанавливаем ожидание входящих сообщений
 	 */
 	/*
-	rest.setMode((uint8_t) server::rest_t::flag_t::WAITMESS);
+	rest.mode((uint8_t) server::rest_t::flag_t::WAITMESS);
 	*/
 
 	// Устанавливаем простое чтение базы событий

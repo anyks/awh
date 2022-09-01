@@ -773,17 +773,6 @@ void awh::client::Rest::flush() noexcept {
 	this->_buffer.clear();
 }
 /**
- * start Метод запуска клиента
- */
-void awh::client::Rest::start() noexcept {
-	// Если биндинг не запущен
-	if(!this->_core->working())
-		// Выполняем запуск биндинга
-		const_cast <client::core_t *> (this->_core)->start();
-	// Если биндинг уже запущен, выполняем запрос на сервер
-	else const_cast <client::core_t *> (this->_core)->open(this->_worker.wid);
-}
-/**
  * stop Метод остановки клиента
  */
 void awh::client::Rest::stop() noexcept {
@@ -800,6 +789,17 @@ void awh::client::Rest::stop() noexcept {
 		// Завершаем работу, если разрешено остановить
 		const_cast <client::core_t *> (this->_core)->stop();
 	}
+}
+/**
+ * start Метод запуска клиента
+ */
+void awh::client::Rest::start() noexcept {
+	// Если биндинг не запущен
+	if(!this->_core->working())
+		// Выполняем запуск биндинга
+		const_cast <client::core_t *> (this->_core)->start();
+	// Если биндинг уже запущен, выполняем запрос на сервер
+	else const_cast <client::core_t *> (this->_core)->open(this->_worker.wid);
 }
 /**
  * close Метод закрытия подключения клиента

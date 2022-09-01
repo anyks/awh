@@ -1,6 +1,6 @@
 /**
- * @file: ws.hpp
- * @date: 2021-12-19
+ * @file: sample.hpp
+ * @date: 2022-09-01
  * @license: GPL-3.0
  *
  * @telegram: @forman
@@ -9,11 +9,11 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
- * @copyright: Copyright © 2021
+ * @copyright: Copyright © 2022
  */
 
-#ifndef __AWH_WORKER_WSS_SERVER__
-#define __AWH_WORKER_WSS_SERVER__
+#ifndef __AWH_WORKER_SAMPLE_SERVER__
+#define __AWH_WORKER_SAMPLE_SERVER__
 
 /**
  * Стандартная библиотека
@@ -25,8 +25,7 @@
 /**
  * Наши модули
  */
-#include <ws/frame.hpp>
-#include <ws/server.hpp>
+#include <http/server.hpp>
 #include <worker/server.hpp>
 
 // Подписываемся на стандартное пространство имён
@@ -41,9 +40,9 @@ namespace awh {
 	 */
 	namespace server {
 		/**
-		 * WorkerWS Структура WebSocket сервера воркера
+		 * WorkerSample Структура SAMPLE сервера воркера
 		 */
-		typedef struct WorkerWebSocket : public worker_t {
+		typedef struct WorkerSample : public worker_t {
 			public:
 				/**
 				 * Основные экшены
@@ -55,13 +54,6 @@ namespace awh {
 					DISCONNECT = 0x04  // Событие отключения от сервера
 				};
 			public:
-				/**
-				 * Buffer Структура буфера данных
-				 */
-				typedef struct Buffer {
-					vector <char> payload; // Бинарный буфер полезной нагрузки
-					vector <char> fragmes; // Данные фрагметрированного сообщения
-				} buffer_t;
 				/**
 				 * Locker Структура локера
 				 */
@@ -89,33 +81,20 @@ namespace awh {
 				 * Coffer Структура сундука параметров
 				 */
 				typedef struct Coffer {
-					bool crypt;                  // Флаг шифрования сообщений
-					bool close;                  // Флаг требования закрыть адъютанта
-					bool stopped;                // Флаг принудительной остановки
-					bool compressed;             // Флаг переданных сжатых данных
-					short wbitClient;            // Размер скользящего окна клиента
-					short wbitServer;            // Размер скользящего окна сервера
-					action_t action;             // Экшен активного события
-					time_t checkPoint;           // Контрольная точка ответа на пинг
-					hash_t hash;                 // Создаём объект для компрессии-декомпрессии данных
-					allow_t allow;               // Объект разрешения обмена данными
-					locker_t locker;             // Объект блокировщика
-					buffer_t buffer;             // Объект буфера данных
-					server::wss_t http;          // Создаём объект для работы с HTTP
-					recursive_mutex mtx;         // Мютекс для блокировки потока
-					frame_t::opcode_t opcode;    // Полученный опкод сообщения
-					http_t::compress_t compress; // Метод компрессии данных
+					bool alive;           // Флаг долгоживущего подключения
+					bool close;           // Флаг требования закрыть адъютанта
+					bool stopped;         // Флаг принудительной остановки
+					action_t action;      // Экшен активного события
+					allow_t allow;        // Объект разрешения обмена данными
+					locker_t locker;      // Объект блокировщика
+					vector <char> buffer; // Буфер бинарных необработанных данных
 					/**
 					 * Coffer Конструктор
+					 * @param fmk объект фреймворка
+					 * @param log объект для работы с логами
 					 */
-					Coffer(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcept :
-					 crypt(false), close(false),
-					 stopped(false), compressed(false),
-					 wbitClient(-1), wbitServer(-1),
-					 action(action_t::NONE), checkPoint(0),
-					 hash(log), http(fmk, log, uri),
-					 opcode(frame_t::opcode_t::TEXT),
-					 compress(http_t::compress_t::NONE) {}
+					Coffer(const fmk_t * fmk, const log_t * log) noexcept :
+					 alive(false), close(false), stopped(false), action(action_t::NONE) {}
 					/**
 					 * ~Coffer Деструктор
 					 */
@@ -127,9 +106,6 @@ namespace awh {
 			public:
 				// Создаём объект работы с URI ссылками
 				uri_t uri;
-			public:
-				// Флаги работы с сжатыми данными
-				http_t::compress_t compress;
 			private:
 				// Параметры подключения адъютантов
 				map <size_t, unique_ptr <coffer_t>> _coffers;
@@ -162,19 +138,18 @@ namespace awh {
 				const coffer_t * get(const size_t aid) const noexcept;
 			public:
 				/**
-				 * WorkerWebSocket Конструктор
+				 * WorkerSample Конструктор
 				 * @param fmk объект фреймворка
 				 * @param log объект для работы с логами
 				 */
-				WorkerWebSocket(const fmk_t * fmk, const log_t * log) noexcept :
-				 worker_t(fmk, log), nwk(fmk), uri(fmk, &nwk),
-				 compress(http_t::compress_t::NONE), _fmk(fmk), _log(log) {}
+				WorkerSample(const fmk_t * fmk, const log_t * log) noexcept :
+				 worker_t(fmk, log), nwk(fmk), uri(fmk, &nwk), _fmk(fmk), _log(log) {}
 				/**
-				 * ~WorkerWebSocket Деструктор
+				 * ~WorkerSample Деструктор
 				 */
-				~WorkerWebSocket() noexcept {}
-		} ws_worker_t;
+				~WorkerSample() noexcept {}
+		} sample_worker_t;
 	};
 };
 
-#endif // __AWH_WORKER_WSS_SERVER__
+#endif // __AWH_WORKER_SAMPLE_SERVER__

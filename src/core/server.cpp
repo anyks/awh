@@ -256,6 +256,8 @@ void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 						}
 						// Выполняем функцию обратного вызова
 						if(wrk->callback.connect != nullptr) wrk->callback.connect(ret.first->first, wrk->wid, this);
+						// Выходим из функции
+						return;
 					// Подключение не установлено, выводим сообщение об ошибке
 					} else this->log->print("accepting failed, pid = %d", log_t::flag_t::WARNING, getpid());
 				} break;

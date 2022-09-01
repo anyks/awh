@@ -109,10 +109,11 @@ namespace awh {
 					~Coffer() noexcept {}
 				} coffer_t;
 			public:
-				// Создаём объект работы с URI ссылками
-				uri_t uri;
 				// Создаем объект для работы с сетью
 				network_t nwk;
+			public:
+				// Создаём объект работы с URI ссылками
+				uri_t uri;
 			public:
 				// Флаги работы с сжатыми данными
 				awh::http_t::compress_t compress;
@@ -153,9 +154,8 @@ namespace awh {
 				 * @param log объект для работы с логами
 				 */
 				WorkerRest(const fmk_t * fmk, const log_t * log) noexcept :
-				 worker_t(fmk, log), nwk(fmk),
-				 compress(http_t::compress_t::NONE),
-				 uri(fmk, &nwk), _fmk(fmk), _log(log) {}
+				 worker_t(fmk, log), nwk(fmk), uri(fmk, &nwk),
+				 compress(http_t::compress_t::NONE), _fmk(fmk), _log(log) {}
 				/**
 				 * ~WorkerRest Деструктор
 				 */
