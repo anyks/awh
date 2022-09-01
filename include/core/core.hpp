@@ -265,7 +265,7 @@ namespace awh {
 			// Список активных таймеров
 			map <u_short, unique_ptr <timer_t>> _timers;
 			// Список функций обратного вызова при выполнении резолвинга
-			map <size_t, function <void (const string &, const worker_t::family_t)>> _dids;
+			map <size_t, function <void (const string &, const worker_t::family_t, Core *)>> _dids;
 		protected:
 			// Список активных воркеров
 			map <size_t, const worker_t *> workers;
@@ -519,7 +519,7 @@ namespace awh {
 			 * @param family   тип протокола интернета (IPV4 / IPV6)
 			 * @param callback функция обратного вызова
 			 */
-			void resolve(const string & domain, const worker_t::family_t family, function <void (const string &, const worker_t::family_t)> callback) noexcept;
+			void resolve(const string & domain, const worker_t::family_t family, function <void (const string &, const worker_t::family_t, Core *)> callback) noexcept;
 		public:
 			/**
 			 * removeUnixSocket Метод удаления unix-сокета

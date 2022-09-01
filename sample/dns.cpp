@@ -1,0 +1,47 @@
+/**
+ * author:    Yuriy Lobarev
+ * telegram:  @forman
+ * phone:     +7(910)983-95-90
+ * email:     forman@anyks.com
+ * site:      https://anyks.com
+ * copyright: © Yuriy Lobarev
+ */
+
+/**
+ * Подключаем заголовочные файлы проекта
+ */
+#include <core/core.hpp>
+
+// Подключаем пространство имён
+using namespace std;
+using namespace awh;
+
+/**
+ * main Главная функция приложения
+ * @param argc длина массива параметров
+ * @param argv массив параметров
+ * @return     код выхода из приложения
+ */
+int main(int argc, char * argv[]) noexcept {
+	// Создаём объект фреймворка
+	fmk_t fmk;
+	// Создаём объект для работы с логами
+	log_t log(&fmk);
+	// Создаём биндинг
+	core_t core(&fmk, &log);
+	// Устанавливаем название сервиса
+	log.setLogName("DNS");
+	// Устанавливаем формат времени
+	log.setLogFormat("%H:%M:%S %d.%m.%Y");
+	// Выполняем резолвинг для доменного имени
+	core.resolve("google.com", worker_t::family_t::IPV4, [&log](const string & ip, const worker_t::family_t family, core_t * core){
+		// Выводим результат получения IP адреса
+		log.print("IP: %s", log_t::flag_t::INFO, ip.c_str());
+		// Завершаем работу
+		core->stop();
+	});
+	// Выполняем запуск таймера
+	core.start();
+	// Выводим результат
+	return 0;
+}

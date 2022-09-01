@@ -217,6 +217,7 @@ set(SOURCE_FILES
 set(WSC_APP_NAME wsc)
 set(WSS_APP_NAME wss)
 set(WEB_APP_NAME web)
+set(DNS_APP_NAME dns)
 set(REST_APP_NAME rest)
 set(TIMER_APP_NAME timer)
 set(PROXY_APP_NAME proxy)
@@ -248,6 +249,7 @@ if (ENABLE_CONSOLE_APP)
     add_executable(${WSC_APP_NAME} sample/wsc.cpp ${RES_FILES})
     add_executable(${WSS_APP_NAME} sample/wss.cpp ${RES_FILES})
     add_executable(${WEB_APP_NAME} sample/web.cpp ${RES_FILES})
+    add_executable(${DNS_APP_NAME} sample/dns.cpp ${RES_FILES})
     add_executable(${REST_APP_NAME} sample/rest.cpp ${RES_FILES})
     add_executable(${TIMER_APP_NAME} sample/timer.cpp ${RES_FILES})
     add_executable(${PROXY_APP_NAME} sample/proxy.cpp ${RES_FILES})
@@ -289,6 +291,17 @@ if (ENABLE_CONSOLE_APP)
         )
 
         target_link_libraries(${WEB_APP_NAME}
+            ${CURRENT_LIB_NAME}
+            ${ICONV_LIBRARY}
+            ${IDN2_LIBRARY}
+            ${ZLIB_LIBRARY}
+            ${LIBEV_LIBRARY}
+            ${BROTLI_LIBRARIES}
+            ${OPENSSL_LIBRARIES}
+            ${WINFLAGS}
+        )
+
+        target_link_libraries(${DNS_APP_NAME}
             ${CURRENT_LIB_NAME}
             ${ICONV_LIBRARY}
             ${IDN2_LIBRARY}
@@ -370,6 +383,15 @@ if (ENABLE_CONSOLE_APP)
             ${WINFLAGS}
         )
 
+        target_link_libraries(${DNS_APP_NAME}
+            ${CURRENT_LIB_NAME}
+            ${ZLIB_LIBRARY}
+            ${LIBEV_LIBRARY}
+            ${BROTLI_LIBRARIES}
+            ${OPENSSL_LIBRARIES}
+            ${WINFLAGS}
+        )
+
         target_link_libraries(${SOCKS5_APP_NAME}
             ${CURRENT_LIB_NAME}
             ${ZLIB_LIBRARY}
@@ -412,6 +434,7 @@ install(TARGETS ${CURRENT_LIB_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
 install(TARGETS ${WSC_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
 install(TARGETS ${WSS_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
 install(TARGETS ${WEB_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
+install(TARGETS ${DNS_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
 install(TARGETS ${REST_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
 install(TARGETS ${TIMER_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
 install(TARGETS ${PROXY_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")

@@ -1334,12 +1334,12 @@ void awh::Core::resolving2(const string & ip, const int family, const size_t did
 			// Если тип протокола подключения IPv4
 			case AF_INET:
 				// Выполняем функцию обратного вызова
-				it->second(ip, worker_t::family_t::IPV4);
+				it->second(ip, worker_t::family_t::IPV4, this);
 			break;
 			// Если тип протокола подключения IPv6
 			case AF_INET6:
 				// Выполняем функцию обратного вызова
-				it->second(ip, worker_t::family_t::IPV6);
+				it->second(ip, worker_t::family_t::IPV6, this);
 			break;
 		}
 		// Выполняем удаление объекта запроса
@@ -1352,7 +1352,7 @@ void awh::Core::resolving2(const string & ip, const int family, const size_t did
  * @param family   тип протокола интернета (IPV4 / IPV6)
  * @param callback функция обратного вызова
  */
-void awh::Core::resolve(const string & domain, const worker_t::family_t family, function <void (const string &, const worker_t::family_t)> callback) noexcept {
+void awh::Core::resolve(const string & domain, const worker_t::family_t family, function <void (const string &, const worker_t::family_t, Core *)> callback) noexcept {
 	// Если доменное имя передано
 	if(!domain.empty() && (callback != nullptr)){
 		// Идентификатор DNS запроса
