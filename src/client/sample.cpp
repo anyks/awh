@@ -145,19 +145,6 @@ void awh::client::Sample::actionRead() noexcept {
 void awh::client::Sample::actionConnect() noexcept {
 	// Выполняем очистку оставшихся данных
 	this->_buffer.clear();
-	// Создаём текст сообщения для сервера
-	const string message = "Hello World!!!";
-	/**
-	 * Если включён режим отладки
-	 */
-	#if defined(DEBUG_MODE)
-		// Выводим заголовок запроса
-		cout << "\x1B[33m\x1B[1m^^^^^^^^^ REQUEST ^^^^^^^^^\x1B[0m" << endl;
-		// Выводим параметры запроса
-		cout << message << endl << endl;
-	#endif
-	// Выполняем отправку заголовков запроса на сервер
-	const_cast <client::core_t *> (this->_core)->write(message.data(), message.size(), this->_aid);	
 	// Если экшен соответствует, выполняем его сброс
 	if(this->_action == action_t::CONNECT)
 		// Выполняем сброс экшена
@@ -235,14 +222,15 @@ void awh::client::Sample::init(const string & socket) noexcept {
  * init Метод инициализации Rest адъютанта
  * @param port порт сервера
  * @param host хост сервера
+ * @param tls  флаг активации зашифрованного подключения
  */
-void awh::client::Sample::init(const u_int port, const string & host) noexcept {
+void awh::client::Sample::init(const u_int port, const string & host, const bool tls) noexcept {
 	// Если параметры подключения переданы
 	if((port > 0) && !host.empty()){
 		// Создаём объект работы с URI ссылками
 		uri_t uri(this->_fmk, &this->_nwk);
 		// Получаем новый адрес запроса для воркера
-		this->_worker.url = uri.parse(this->_fmk->format("https://%s:%u", host.c_str(), port));
+		this->_worker.url = uri.parse(this->_fmk->format("http%s://%s:%u", (tls ? "s" : ""), host.c_str(), port));
 	}
 }
 /**
@@ -260,6 +248,25 @@ void awh::client::Sample::on(function <void (const mode_t, Sample *)> callback) 
 void awh::client::Sample::on(function <void (const vector <char> &, Sample *)> callback) noexcept {
 	// Устанавливаем функцию обратного вызова
 	this->_callback.message = callback;
+}
+/**
+ * response Метод отправки сообщения адъютанту
+ * @param buffer буфер бинарных данных для отправки
+ * @param size   размер бинарных данных для отправки
+ */
+void awh::client::Sample::send(const char * buffer, const size_t size) const noexcept {
+	// Если подключение выполнено
+	if(this->_core->working()){
+		// Если включён режим отладки
+		#if defined(DEBUG_MODE)
+			// Выводим заголовок ответа
+			cout << "\x1B[33m\x1B[1m^^^^^^^^^ REQUEST ^^^^^^^^^\x1B[0m" << endl;
+			// Выводим параметры ответа
+			cout << string(buffer, size) << endl;
+		#endif
+		// Отправляем тело на сервер
+		((awh::core_t *) const_cast <client::core_t *> (this->_core))->write(buffer, size, this->_aid);
+	}
 }
 /**
  * bytesDetect Метод детекции сообщений по количеству байт

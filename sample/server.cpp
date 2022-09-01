@@ -120,7 +120,7 @@ int main(int argc, char * argv[]) noexcept {
 	// Устанавливаем длительное подключение
 	// sample.keepAlive(100, 30, 10);
 	// Устанавливаем SSL сертификаты сервера
-	// core.certificate("./certs/server-cert.pem", "./certs/server-key.pem");
+	core.certificate("./certs/server-cert.pem", "./certs/server-key.pem");
 	// Установливаем функцию обратного вызова на событие получения сообщений
 	sample.on((function <void (const size_t, const vector <char> &, server::sample_t *)>) bind(&Server::message, &executor, _1, _2, _3));
 	// Установливаем функцию обратного вызова на событие запуска или остановки подключения

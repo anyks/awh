@@ -32,6 +32,13 @@ class Client {
 		void active(const client::sample_t::mode_t mode, client::sample_t * sample){
 			// Выводим информацию в лог
 			this->log->print("%s client", log_t::flag_t::INFO, (mode == client::sample_t::mode_t::CONNECT ? "Connect" : "Disconnect"));
+			// Если подключение выполнено
+			if(mode == client::sample_t::mode_t::CONNECT){
+				// Создаём текст сообщения для сервера
+				const string message = "Hello World!!!";
+				// Выполняем отправку сообщения серверу
+				sample->send(message.data(), message.size());
+			}
 		}
 		/**
 		 * message Метод получения сообщений
@@ -104,7 +111,7 @@ int main(int argc, char * argv[]) noexcept {
 	// Устанавливаем длительное подключение
 	// ws.keepAlive(100, 30, 10);
 	// Подключаем сертификаты
-	// core.certificate("./certs/client-cert.pem", "./certs/client-key.pem");
+	core.certificate("./certs/client-cert.pem", "./certs/client-key.pem");
 	// Отключаем валидацию сертификата
 	core.verifySSL(false);
 	// Подписываемся на событие коннекта и дисконнекта клиента

@@ -199,8 +199,9 @@ namespace awh {
 				 * init Метод инициализации Rest адъютанта
 				 * @param port порт сервера
 				 * @param host хост сервера
+				 * @param tls  флаг активации зашифрованного подключения
 				 */
-				void init(const u_int port, const string & host) noexcept;
+				void init(const u_int port, const string & host, const bool tls = false) noexcept;
 			public:
 				/**
 				 * on Метод установки функции обратного вызова при подключении/отключении
@@ -212,6 +213,13 @@ namespace awh {
 				 * @param callback функция обратного вызова
 				 */
 				void on(function <void (const vector <char> &, Sample *)> callback) noexcept;
+			public:
+				/**
+				 * response Метод отправки сообщения адъютанту
+				 * @param buffer буфер бинарных данных для отправки
+				 * @param size   размер бинарных данных для отправки
+				 */
+				void send(const char * buffer, const size_t size) const noexcept;
 			public:
 				/**
 				 * bytesDetect Метод детекции сообщений по количеству байт
