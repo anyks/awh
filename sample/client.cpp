@@ -120,6 +120,7 @@ int main(int argc, char * argv[]) noexcept {
 	sample.on(bind(&Client::message, &executor, _1, _2));
 	// Выполняем инициализацию подключения
 	sample.init(2222, "127.0.0.1");
+	// sample.init("anyks");
 	// Выполняем запуск работы клиента
 	sample.start();
 	// Выводим результат

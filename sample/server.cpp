@@ -112,11 +112,10 @@ int main(int argc, char * argv[]) noexcept {
 	// core.sonet(awh::worker_t::sonet_t::TCP);
 	// Отключаем валидацию сертификата
 	core.verifySSL(false);
-	// Выполняем инициализацию WebSocket сервера
-	// sample.init(2222, "127.0.0.1");
+	// Выполняем инициализацию Sample сервера
 	// sample.init(2222);
-	sample.init(2222, "127.0.0.1");
 	// sample.init("anyks");
+	sample.init(2222, "127.0.0.1");
 	// Устанавливаем длительное подключение
 	// sample.keepAlive(100, 30, 10);
 	// Устанавливаем SSL сертификаты сервера

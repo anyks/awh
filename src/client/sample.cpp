@@ -212,10 +212,17 @@ void awh::client::Sample::close() noexcept {
 void awh::client::Sample::init(const string & socket) noexcept {
 	// Если unix-сокет передан
 	if(!socket.empty()){
-		// Устанавливаем хост сервера
-		this->_worker.url.host = socket;
-		// Устанавливаем тип сети
-		this->_worker.url.family = AF_UNIX;
+		// Создаём объект работы с URI ссылками
+		uri_t uri(this->_fmk, &this->_nwk);
+		// Устанавливаем URL адрес запроса (как заглушка)
+		this->_worker.url = uri.parse("http://unixsocket");
+		/**
+		 * Если операционной системой не является Windows
+		 */
+		#if !defined(_WIN32) && !defined(_WIN64)
+			// Выполняем установку unix-сокет
+			const_cast <client::core_t *> (this->_core)->unixSocket(socket);
+		#endif
 	}
 }
 /**
@@ -232,6 +239,13 @@ void awh::client::Sample::init(const u_int port, const string & host, const bool
 		// Получаем новый адрес запроса для воркера
 		this->_worker.url = uri.parse(this->_fmk->format("http%s://%s:%u", (tls ? "s" : ""), host.c_str(), port));
 	}
+	/**
+	 * Если операционной системой не является Windows
+	 */
+	#if !defined(_WIN32) && !defined(_WIN64)
+		// Удаляем unix-сокет ранее установленный
+		const_cast <client::core_t *> (this->_core)->removeUnixSocket();
+	#endif
 }
 /**
  * on Метод установки функции обратного вызова при подключении/отключении
