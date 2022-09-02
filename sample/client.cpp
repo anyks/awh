@@ -119,7 +119,7 @@ int main(int argc, char * argv[]) noexcept {
 	// Подписываемся на событие получения сообщения
 	sample.on(bind(&Client::message, &executor, _1, _2));
 	// Выполняем инициализацию подключения
-	sample.init(2222, "127.0.0.1");
+	sample.init(2222, "127.0.0.1", true);
 	// sample.init("anyks");
 	// Выполняем запуск работы клиента
 	sample.start();

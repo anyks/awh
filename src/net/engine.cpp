@@ -2314,13 +2314,6 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const type_t type) noex
 		target._addr = address;
 		// Если объект фреймворка существует
 		if(target._addr->fd > -1){
-			// Активируем рандомный генератор
-			if(RAND_poll() < 1){
-				// Выводим в лог сообщение
-				this->_log->print("rand poll is not allow", log_t::flag_t::CRITICAL);
-				// Выходим
-				return;
-			}
 			// Определяем тип сокета
 			switch(target._addr->_type){
 				// Если тип сокета - диграммы
@@ -2591,13 +2584,6 @@ void awh::Engine::wrapServer(ctx_t & target, addr_t * address) noexcept {
 		if(target._addr->_type != SOCK_STREAM) return;
 		// Если объект фреймворка существует
 		if((target._addr->fd > -1) && !this->_privkey.empty() && !this->_chain.empty()){
-			// Активируем рандомный генератор
-			if(RAND_poll() < 1){
-				// Выводим в лог сообщение
-				this->_log->print("rand poll is not allow", log_t::flag_t::CRITICAL);
-				// Выходим
-				return;
-			}
 			/**
 			 * Если операционной системой является Linux или FreeBSD
 			 */
@@ -2846,13 +2832,6 @@ void awh::Engine::wrapClient(ctx_t & target, addr_t * address, const uri_t::url_
 		target._type = type_t::CLIENT;
 		// Если объект фреймворка существует
 		if((target._addr->fd > -1) && (!url.domain.empty() || !url.ip.empty()) && ((url.schema.compare("https") == 0) || (url.schema.compare("wss") == 0))){
-			// Активируем рандомный генератор
-			if(RAND_poll() < 1){
-				// Выводим в лог сообщение
-				this->_log->print("rand poll is not allow", log_t::flag_t::CRITICAL);
-				// Выходим
-				return;
-			}
 			/**
 			 * Если операционной системой является Linux или FreeBSD
 			 */
@@ -3179,6 +3158,13 @@ awh::Engine::Engine(const fmk_t * fmk, const log_t * log, const uri_t * uri) noe
 		// Выполняем инициализацию OpenSSL
 		OPENSSL_init_ssl(OPENSSL_INIT_SSL_DEFAULT, nullptr);
 	#endif
+	// Активируем рандомный генератор
+	if(RAND_poll() < 1){
+		// Выводим в лог сообщение
+		this->_log->print("rand poll is not allow", log_t::flag_t::CRITICAL);
+		// Выходим из приложения
+		exit(EXIT_FAILURE);
+	}
 }
 /**
  * ~Engine Деструктор

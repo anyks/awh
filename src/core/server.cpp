@@ -156,8 +156,6 @@ void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 						this->enabled(engine_t::method_t::READ, ret.first->first);
 						// Выполняем функцию обратного вызова
 						if(wrk->callback.connect != nullptr) wrk->callback.connect(ret.first->first, wrk->wid, this);
-						// Выходим из функции
-						return;
 					// Подключение не установлено, выводим сообщение об ошибке
 					} else this->log->print("accepting failed, pid = %d", log_t::flag_t::WARNING, getpid());
 				} break;
@@ -256,10 +254,10 @@ void awh::server::Core::accept(const int fd, const size_t wid) noexcept {
 						}
 						// Выполняем функцию обратного вызова
 						if(wrk->callback.connect != nullptr) wrk->callback.connect(ret.first->first, wrk->wid, this);
-						// Выходим из функции
-						return;
 					// Подключение не установлено, выводим сообщение об ошибке
 					} else this->log->print("accepting failed, pid = %d", log_t::flag_t::WARNING, getpid());
+					// Останавливаем работу сервера
+					wrk->io.stop();
 				} break;
 				// Если тип сокета установлен как TCP/IP
 				case (uint8_t) worker_t::sonet_t::TCP:
@@ -649,6 +647,13 @@ void awh::server::Core::close(const size_t aid) noexcept {
 				if(!core->noinfo) this->log->print("%s", log_t::flag_t::INFO, "disconnect client from server");
 				// Выводим функцию обратного вызова
 				if(wrk->callback.disconnect != nullptr) wrk->callback.disconnect(aid, wrk->wid, this);
+				// Если тип сокета установлен как DTLS, запускаем ожидание новых подключений
+				if(this->net.sonet == worker_t::sonet_t::DTLS){
+					// Очищаем контекст сервера
+					wrk->ectx.clear();
+					// Выполняем запуск сервера вновь
+					this->run(wrk->wid);
+				}
 			}
 			// Удаляем блокировку адъютанта
 			this->_locking.erase(aid);
