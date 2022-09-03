@@ -130,14 +130,12 @@ int main(int argc, char * argv[]) noexcept {
 	log.setLogName("Rest Server");
 	// Устанавливаем формат времени
 	log.setLogFormat("%H:%M:%S %d.%m.%Y");
-
 	/**
 	 * 1. Устанавливаем ожидание входящих сообщений
 	 */
 	/*
 	rest.mode((uint8_t) server::rest_t::flag_t::WAITMESS);
 	*/
-
 	// Устанавливаем простое чтение базы событий
 	// core.easily(true);
 	// Устанавливаем адрес сертификата
@@ -151,19 +149,15 @@ int main(int argc, char * argv[]) noexcept {
 	// core.sonet(awh::scheme_t::sonet_t::TLS);
 	// core.sonet(awh::scheme_t::sonet_t::UDP);
 	core.sonet(awh::scheme_t::sonet_t::TCP);
-
 	// Отключаем валидацию сертификата
 	core.verifySSL(false);
-
 	// Активируем максимальное количество рабочих процессов
 	core.clusterSize();
-
 	/**
 	 * 1. Устанавливаем ожидание входящих сообщений
 	 */
 	// Устанавливаем режим мультипоточной обработки
 	// core.multiThreads(22);
-
 	// Устанавливаем название сервера
 	// rest.realm("ANYKS");
 	// Устанавливаем временный ключ сессии
@@ -178,8 +172,6 @@ int main(int argc, char * argv[]) noexcept {
 	// rest.init("anyks", http_t::compress_t::ALL_COMPRESS);
 	// Устанавливаем длительное подключение
 	// rest.keepAlive(100, 30, 10);
-
-
 	/*
 	// Устанавливаем SSL сертификаты сервера
 	core.certificate(
@@ -187,14 +179,9 @@ int main(int argc, char * argv[]) noexcept {
 		"/usr/local/etc/letsencrypt/live/anyks.net/privkey.pem"
 	);
 	*/
-	
-
 	// core.certificate("./certs/server-cert.pem", "./certs/server-key.pem");
-
 	// Устанавливаем шифрование
 	// rest.crypto("PASS");
-
-
 	// Устанавливаем функцию извлечения пароля
 	// rest.on((function <string (const string &)>) bind(&Rest::password, &executor, _1));
 	// Устанавливаем функцию проверки авторизации

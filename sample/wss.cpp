@@ -152,13 +152,10 @@ int main(int argc, char * argv[]){
 	// core.sonet(awh::scheme_t::sonet_t::UDP);
 	core.sonet(awh::scheme_t::sonet_t::TCP);
 	// core.sonet(awh::scheme_t::sonet_t::SCTP);
-
 	// Отключаем валидацию сертификата
 	// core.verifySSL(false);
-
 	// Активируем максимальное количество рабочих процессов
 	// core.clusterSize();
-
 	// Выполняем активацию многопоточности
 	// ws.multiThreads(22);
 	// Устанавливаем название сервера
@@ -175,7 +172,6 @@ int main(int argc, char * argv[]){
 	// ws.init("anyks", http_t::compress_t::DEFLATE);
 	// Устанавливаем длительное подключение
 	// ws.keepAlive(100, 30, 10);
-
 	/*
 	// Устанавливаем SSL сертификаты сервера
 	core.certificate(
@@ -183,10 +179,7 @@ int main(int argc, char * argv[]){
 		"/usr/local/etc/letsencrypt/live/anyks.net/privkey.pem"
 	);
 	*/
-	
-
 	// core.certificate("./certs/server-cert.pem", "./certs/server-key.pem");
-
 	// Устанавливаем шифрование
 	// ws.crypto("PASS");
 	// Устанавливаем сабпротоколы

@@ -136,16 +136,12 @@ int main(int argc, char * argv[]) noexcept {
 	// proxy.sonet(awh::scheme_t::sonet_t::UDP);
 	proxy.sonet(awh::scheme_t::sonet_t::TCP);
 	// proxy.sonet(awh::scheme_t::sonet_t::SCTP);
-	
 	// Отключаем валидацию сертификата
 	proxy.verifySSL(true);
-
 	// Активируем максимальное количество рабочих процессов
 	proxy.clusterSize();
-
 	// Устанавливаем таймаут ожидания получения сообщений
 	// proxy.waitTimeDetect(60, 60);
-
 	// Устанавливаем название сервера
 	// proxy.realm("ANYKS");
 	// Устанавливаем временный ключ сессии
@@ -160,8 +156,6 @@ int main(int argc, char * argv[]) noexcept {
 	// proxy.init("anyks", http_t::compress_t::GZIP);
 	// Устанавливаем длительное подключение
 	// proxy.keepAlive(100, 30, 10);
-
-
 	/*
 	// Устанавливаем SSL сертификаты сервера
 	proxy.certificate(
@@ -169,13 +163,9 @@ int main(int argc, char * argv[]) noexcept {
 		"/usr/local/etc/letsencrypt/live/anyks.net/privkey.pem"
 	);
 	*/
-
 	// proxy.certificate("./certs/server-cert.pem", "./certs/server-key.pem");
-
 	// Устанавливаем шифрование
 	// proxy.crypto("PASS");
-
-	
 	// Устанавливаем функцию извлечения пароля
 	// proxy.on((function <string (const string &)>) bind(&Proxy::password, &executor, _1));
 	// Устанавливаем функцию проверки авторизации

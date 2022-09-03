@@ -251,12 +251,9 @@ int main(int argc, char * argv[]) noexcept {
 	// core.sonet(awh::scheme_t::sonet_t::UDP);
 	core.sonet(awh::scheme_t::sonet_t::TCP);
 	// core.sonet(awh::scheme_t::sonet_t::SCTP);
-
 	// Отключаем валидацию сертификата
 	// core.verifySSL(false);
-
 	// core.certificate("./certs/client-cert.pem", "./certs/client-key.pem");
-
 	// Устанавливаем логин и пароль пользователя
 	// ws.user("user", "password");
 	// Выполняем активацию многопоточности
@@ -271,7 +268,6 @@ int main(int argc, char * argv[]) noexcept {
 	// ws.proxy("http://test1:password@127.0.0.1:2222");
 	// ws.proxy("socks5://unix:anyks", awh::scheme_t::family_t::NIX);
 	// ws.proxy("http://unix:anyks", awh::scheme_t::family_t::NIX);
-
 	// Выполняем инициализацию типа авторизации
 	// ws.authType(auth_t::type_t::BASIC);
 	// ws.authType(auth_t::type_t::DIGEST, auth_t::hash_t::SHA256);
