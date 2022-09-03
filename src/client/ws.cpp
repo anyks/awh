@@ -620,7 +620,7 @@ void awh::client::WebSocket::actionProxyRead() noexcept {
 					// Выполняем очистку буфера данных
 					this->_buffer.payload.clear();
 					// Если рукопожатие выполнено
-					if(this->_scheme.proxy.socks5.isHandshake()){						
+					if(this->_scheme.proxy.socks5.isHandshake()){
 						// Выполняем переключение на работу с сервером
 						core->switchProxy(this->_aid);
 						// Если экшен соответствует, выполняем его сброс
@@ -630,7 +630,7 @@ void awh::client::WebSocket::actionProxyRead() noexcept {
 						// Завершаем работу
 						return;
 					// Если рукопожатие не выполнено
-					} else {						
+					} else {
 						// Устанавливаем код ответа
 						this->_code = this->_scheme.proxy.socks5.code();
 						// Создаём сообщение
@@ -692,7 +692,7 @@ void awh::client::WebSocket::actionProxyRead() noexcept {
 						// Если тело ответа существует
 						if(!this->_scheme.proxy.http.body().empty())
 							// Выводим сообщение о выводе чанка тела
-							cout << this->_fmk->format("<body %u>", this->_scheme.proxy.http.body().size())  << endl;
+							cout << this->_fmk->format("<body %u>", this->_scheme.proxy.http.body().size()) << endl;
 					}
 				#endif
 				// Выполняем проверку авторизации

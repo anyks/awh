@@ -606,7 +606,7 @@ void awh::client::Rest::actionProxyRead() noexcept {
 							// Если тело ответа существует
 							if(!this->_scheme.proxy.http.body().empty())
 								// Выводим сообщение о выводе чанка тела
-								cout << this->_fmk->format("<body %u>", this->_scheme.proxy.http.body().size())  << endl;
+								cout << this->_fmk->format("<body %u>", this->_scheme.proxy.http.body().size()) << endl;
 						}
 					}
 				#endif

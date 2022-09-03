@@ -98,6 +98,9 @@ namespace awh {
 				// unix-сокет сервера
 				string _usock;
 			private:
+				// Объект для работы с сетью
+				network_t _nwk;
+			private:
 				// Объект биндинга TCP/IP
 				core_t _core;
 				// Объявляем функции обратного вызова

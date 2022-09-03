@@ -343,7 +343,7 @@ void awh::client::Core::connect(const size_t sid) noexcept {
  * reconnect Метод восстановления подключения
  * @param sid идентификатор схемы сети
  */
-void awh::client::Core::reconnect(const size_t sid) noexcept {	
+void awh::client::Core::reconnect(const size_t sid) noexcept {
 	// Выполняем поиск идентификатора схемы сети
 	auto it = this->schemes.find(sid);
 	// Если идентификатор схемы сети найден
@@ -351,7 +351,7 @@ void awh::client::Core::reconnect(const size_t sid) noexcept {
 		// Получаем объект схемы сети
 		scheme_t * shm = (scheme_t *) const_cast <awh::scheme_t *> (it->second);
 		// Если параметры URL запроса переданы и выполнение работы разрешено
-		if(!shm->url.empty() && (shm->status.wait == scheme_t::mode_t::DISCONNECT) && (shm->status.work == scheme_t::work_t::ALLOW)){			
+		if(!shm->url.empty() && (shm->status.wait == scheme_t::mode_t::DISCONNECT) && (shm->status.work == scheme_t::work_t::ALLOW)){
 			// Получаем семейство интернет-протоколов
 			const scheme_t::family_t family = (shm->isProxy() ? shm->proxy.family : this->net.family);
 			// Определяем тип протокола подключения

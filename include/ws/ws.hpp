@@ -147,7 +147,7 @@ namespace awh {
 			 * wbitServer Метод получения размер скользящего окна для сервера
 			 * @return размер скользящего окна
 			 */
-			short wbitServer() const noexcept;			
+			short wbitServer() const noexcept;
 		public:
 			/**
 			 * response Метод создания ответа

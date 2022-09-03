@@ -1085,9 +1085,9 @@ vector <char> awh::Http::request(const bool nobody) const noexcept {
 					if(available[i]) continue;
 					// Выполняем првоерку заголовка
 					switch(i){
-						case 1:  available[i] = (head.compare("content-encoding") == 0);      break;
-						case 2:  available[i] = (head.compare("transfer-encoding") == 0);     break;
-						case 3:  available[i] = (head.compare("x-awh-encryption") == 0);      break;
+						case 1: available[i] = (head.compare("content-encoding") == 0);  break;
+						case 2: available[i] = (head.compare("transfer-encoding") == 0); break;
+						case 3: available[i] = (head.compare("x-awh-encryption") == 0);  break;
 						case 0: {
 							// Запоминаем, что мы нашли заголовок размера тела
 							available[i] = (head.compare("content-length") == 0);
@@ -1213,9 +1213,9 @@ vector <char> awh::Http::response(const bool nobody) const noexcept {
 					if(available[i]) continue;
 					// Выполняем првоерку заголовка
 					switch(i){
-						case 1: available[i] = (head.compare("content-encoding") == 0);   break;
-						case 2: available[i] = (head.compare("transfer-encoding") == 0);  break;
-						case 3: available[i] = (head.compare("x-awh-encryption") == 0);   break;
+						case 1: available[i] = (head.compare("content-encoding") == 0);  break;
+						case 2: available[i] = (head.compare("transfer-encoding") == 0); break;
+						case 3: available[i] = (head.compare("x-awh-encryption") == 0);  break;
 						case 0: {
 							// Запоминаем, что мы нашли заголовок размера тела
 							available[i] = (head.compare("content-length") == 0);

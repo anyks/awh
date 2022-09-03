@@ -286,8 +286,28 @@ void awh::server::ProxySocks5::readServerCallback(const char * buffer, const siz
 					if((adj->locked = adj->socks5.isConnected())){
 						// Получаем данные запрашиваемого сервера
 						const auto & server = adj->socks5.server();
-						// Формируем адрес подключения
-						adj->scheme.url = this->_scheme.uri.parse(this->_fmk->format("http://%s:%u", server.host.c_str(), server.port));
+						// Устанавливаем порт сервера
+						adj->scheme.url.port = server.port;
+						// Устанавливаем хост сервера
+						adj->scheme.url.host = server.host;
+						// Определяем тип передаваемого сервера
+						switch((uint8_t) this->_nwk.parseHost(server.host)){
+							// Если хост является доменом или IPv4 адресом
+							case (uint8_t) network_t::type_t::IPV4:
+								// Устанавливаем IP адрес
+								adj->scheme.url.ip = server.host;
+							break;
+							// Если хост является IPv6 адресом, переводим ip адрес в полную форму
+							case (uint8_t) network_t::type_t::IPV6:
+								// Устанавливаем IP адрес
+								adj->scheme.url.ip = this->_nwk.setLowIp6(server.host);
+							break;
+							// Если хост является доменным именем
+							case (uint8_t) network_t::type_t::DOMNAME:
+								// Устанавливаем доменное имя
+								adj->scheme.url.domain = server.host;
+							break;
+						}
 						// Выполняем запрос на сервер
 						this->_core.client.open(adj->scheme.sid);
 						// Выходим из функции
@@ -647,7 +667,7 @@ void awh::server::ProxySocks5::certificate(const string & chain, const string & 
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
  */
-awh::server::ProxySocks5::ProxySocks5(const fmk_t * fmk, const log_t * log) noexcept : _port(SERVER_PORT), _host(""), _usock(""), _core(fmk, log), _scheme(fmk, log), _fmk(fmk), _log(log) {
+awh::server::ProxySocks5::ProxySocks5(const fmk_t * fmk, const log_t * log) noexcept : _port(SERVER_PORT), _host(""), _usock(""), _nwk(fmk), _core(fmk, log), _scheme(fmk, log), _fmk(fmk), _log(log) {
 	// Устанавливаем флаг запрещающий вывод информационных сообщений для клиента
 	this->_core.client.noInfo(true);
 	// Устанавливаем протокол интернет-подключения

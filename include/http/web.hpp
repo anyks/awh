@@ -280,7 +280,7 @@ namespace awh {
 			 * headers Метод установки списка заголовков
 			 * @param headers список заголовков для установки
 			 */
-			void headers(const unordered_multimap <string, string> & headers) noexcept;			
+			void headers(const unordered_multimap <string, string> & headers) noexcept;
 		public:
 			/**
 			 * init Метод инициализации модуля
