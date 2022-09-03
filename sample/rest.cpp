@@ -111,8 +111,8 @@ int main(int argc, char * argv[]) noexcept {
 	// rest.proxy("socks5://test1:test@127.0.0.1:2222");
 	// rest.proxy("http://test1:password@127.0.0.1:2222");
 	// rest.proxy("http://127.0.0.1:2222");
-	// rest.proxy("socks5://unix:anyks", awh::worker_t::family_t::NIX);
-	// rest.proxy("http://unix:anyks", awh::worker_t::family_t::NIX);
+	// rest.proxy("socks5://unix:anyks", awh::scheme_t::family_t::NIX);
+	// rest.proxy("http://unix:anyks", awh::scheme_t::family_t::NIX);
 	// rest.proxy("http://fn3nzc:GZJAeP@217.29.62.232:11283");
 	// rest.proxy("socks5://xYkj89:eqCQJA@85.195.81.167:12387");
 	// Устанавливаем тип компрессии

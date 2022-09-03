@@ -1,6 +1,6 @@
 /**
  * @file: proxy.hpp
- * @date: 2021-12-19
+ * @date: 2022-09-03
  * @license: GPL-3.0
  *
  * @telegram: @forman
@@ -9,7 +9,7 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
- * @copyright: Copyright © 2021
+ * @copyright: Copyright © 2022
  */
 
 #ifndef __AWH_PROXY_SERVER__
@@ -20,7 +20,7 @@
  */
 #include <core/client.hpp>
 #include <core/server.hpp>
-#include <worker/proxy.hpp>
+#include <scheme/proxy.hpp>
 
 // Подписываемся на стандартное пространство имён
 using namespace std;
@@ -112,7 +112,7 @@ namespace awh {
 				// Объявляем функции обратного вызова
 				fn_t _callback;
 				// Объект рабочего для сервера
-				proxy_worker_t _worker;
+				proxy_scheme_t _scheme;
 			private:
 				// Идентификатор сервера
 				string _sid;
@@ -160,7 +160,7 @@ namespace awh {
 				/**
 				 * runCallback Функция обратного вызова при активации ядра сервера
 				 * @param mode флаг запуска/остановки
-				 * @param core объект биндинга TCP/IP
+				 * @param core объект сетевого ядра
 				 */
 				void runCallback(const bool mode, awh::core_t * core) noexcept;
 			private:
@@ -174,89 +174,89 @@ namespace awh {
 				/**
 				 * persistServerCallback Функция персистентного вызова
 				 * @param aid  идентификатор адъютанта
-				 * @param wid  идентификатор воркера
-				 * @param core объект биндинга TCP/IP
+				 * @param sid  идентификатор схемы сети
+				 * @param core объект сетевого ядра
 				 */
-				void persistCallback(const size_t aid, const size_t wid, awh::core_t * core) noexcept;
+				void persistCallback(const size_t aid, const size_t sid, awh::core_t * core) noexcept;
 			private:
 				/**
 				 * openServerCallback Функция обратного вызова при запуске работы
-				 * @param wid  идентификатор воркера
-				 * @param core объект биндинга TCP/IP
+				 * @param sid  идентификатор схемы сети
+				 * @param core объект сетевого ядра
 				 */
-				void openServerCallback(const size_t wid, awh::core_t * core) noexcept;
+				void openServerCallback(const size_t sid, awh::core_t * core) noexcept;
 				/**
 				 * connectClientCallback Функция обратного вызова при подключении к серверу
 				 * @param aid  идентификатор адъютанта
-				 * @param wid  идентификатор воркера
-				 * @param core объект биндинга TCP/IP
+				 * @param sid  идентификатор схемы сети
+				 * @param core объект сетевого ядра
 				 */
-				void connectClientCallback(const size_t aid, const size_t wid, awh::core_t * core) noexcept;
+				void connectClientCallback(const size_t aid, const size_t sid, awh::core_t * core) noexcept;
 				/**
 				 * connectServerCallback Функция обратного вызова при подключении к серверу
 				 * @param aid  идентификатор адъютанта
-				 * @param wid  идентификатор воркера
-				 * @param core объект биндинга TCP/IP
+				 * @param sid  идентификатор схемы сети
+				 * @param core объект сетевого ядра
 				 */
-				void connectServerCallback(const size_t aid, const size_t wid, awh::core_t * core) noexcept;
+				void connectServerCallback(const size_t aid, const size_t sid, awh::core_t * core) noexcept;
 				/**
 				 * disconnectClientCallback Функция обратного вызова при отключении от сервера
 				 * @param aid  идентификатор адъютанта
-				 * @param wid  идентификатор воркера
-				 * @param core объект биндинга TCP/IP
+				 * @param sid  идентификатор схемы сети
+				 * @param core объект сетевого ядра
 				 */
-				void disconnectClientCallback(const size_t aid, const size_t wid, awh::core_t * core) noexcept;
+				void disconnectClientCallback(const size_t aid, const size_t sid, awh::core_t * core) noexcept;
 				/**
 				 * disconnectServerCallback Функция обратного вызова при отключении от сервера
 				 * @param aid  идентификатор адъютанта
-				 * @param wid  идентификатор воркера
-				 * @param core объект биндинга TCP/IP
+				 * @param sid  идентификатор схемы сети
+				 * @param core объект сетевого ядра
 				 */
-				void disconnectServerCallback(const size_t aid, const size_t wid, awh::core_t * core) noexcept;
+				void disconnectServerCallback(const size_t aid, const size_t sid, awh::core_t * core) noexcept;
 				/**
 				 * acceptServerCallback Функция обратного вызова при проверке подключения адъютанта
 				 * @param ip   адрес интернет подключения адъютанта
 				 * @param mac  мак-адрес подключившегося адъютанта
 				 * @param port порт подключившегося адъютанта
-				 * @param wid  идентификатор воркера
-				 * @param core объект биндинга TCP/IP
+				 * @param sid  идентификатор схемы сети
+				 * @param core объект сетевого ядра
 				 * @return     результат разрешения к подключению адъютанта
 				 */
-				bool acceptServerCallback(const string & ip, const string & mac, const u_int port, const size_t wid, awh::core_t * core) noexcept;
+				bool acceptServerCallback(const string & ip, const string & mac, const u_int port, const size_t sid, awh::core_t * core) noexcept;
 				/**
 				 * readClientCallback Функция обратного вызова при чтении сообщения с сервера
 				 * @param buffer бинарный буфер содержащий сообщение
 				 * @param size   размер бинарного буфера содержащего сообщение
 				 * @param aid    идентификатор адъютанта
-				 * @param wid    идентификатор воркера
-				 * @param core   объект биндинга TCP/IP
+				 * @param sid    идентификатор схемы сети
+				 * @param core   объект сетевого ядра
 				 */
-				void readClientCallback(const char * buffer, const size_t size, const size_t aid, const size_t wid, awh::core_t * core) noexcept;
+				void readClientCallback(const char * buffer, const size_t size, const size_t aid, const size_t sid, awh::core_t * core) noexcept;
 				/**
 				 * readServerCallback Функция обратного вызова при чтении сообщения с адъютанта
 				 * @param buffer бинарный буфер содержащий сообщение
 				 * @param size   размер бинарного буфера содержащего сообщение
 				 * @param aid    идентификатор адъютанта
-				 * @param wid    идентификатор воркера
-				 * @param core   объект биндинга TCP/IP
+				 * @param sid    идентификатор схемы сети
+				 * @param core   объект сетевого ядра
 				 */
-				void readServerCallback(const char * buffer, const size_t size, const size_t aid, const size_t wid, awh::core_t * core) noexcept;
+				void readServerCallback(const char * buffer, const size_t size, const size_t aid, const size_t sid, awh::core_t * core) noexcept;
 				/**
 				 * writeServerCallback Функция обратного вызова при записи сообщения на адъютанте
 				 * @param buffer бинарный буфер содержащий сообщение
 				 * @param size   размер записанных в сокет байт
 				 * @param aid    идентификатор адъютанта
-				 * @param wid    идентификатор воркера
-				 * @param core   объект биндинга TCP/IP
+				 * @param sid    идентификатор схемы сети
+				 * @param core   объект сетевого ядра
 				 */
-				void writeServerCallback(const char * buffer, const size_t size, const size_t aid, const size_t wid, awh::core_t * core) noexcept;
+				void writeServerCallback(const char * buffer, const size_t size, const size_t aid, const size_t sid, awh::core_t * core) noexcept;
 			private:
 				/**
 				 * prepare Метод обработки входящих данных
 				 * @param aid идентификатор адъютанта
-				 * @param wid идентификатор воркера
+				 * @param sid идентификатор схемы сети
 				 */
-				void prepare(const size_t aid, const size_t wid) noexcept;
+				void prepare(const size_t aid, const size_t sid) noexcept;
 			public:
 				/**
 				 * init Метод инициализации WebSocket адъютанта
@@ -390,7 +390,7 @@ namespace awh {
 				 * @param read  количество байт для детекции по чтению
 				 * @param write количество байт для детекции по записи
 				 */
-				void bytesDetect(const worker_t::mark_t read, const worker_t::mark_t write) noexcept;
+				void bytesDetect(const scheme_t::mark_t read, const scheme_t::mark_t write) noexcept;
 			public:
 				/**
 				 * realm Метод установки название сервера
@@ -442,12 +442,12 @@ namespace awh {
 				 * sonet Метод установки типа сокета подключения
 				 * @param sonet тип сокета подключения (TCP / UDP / SCTP)
 				 */
-				void sonet(const worker_t::sonet_t sonet = worker_t::sonet_t::TCP) noexcept;
+				void sonet(const scheme_t::sonet_t sonet = scheme_t::sonet_t::TCP) noexcept;
 				/**
 				 * family Метод установки типа протокола интернета
 				 * @param family тип протокола интернета (IPV4 / IPV6 / NIX)
 				 */
-				void family(const worker_t::family_t family = worker_t::family_t::IPV4) noexcept;
+				void family(const scheme_t::family_t family = scheme_t::family_t::IPV4) noexcept;
 				/**
 				 * bandWidth Метод установки пропускной способности сети
 				 * @param aid   идентификатор адъютанта
@@ -462,7 +462,7 @@ namespace awh {
 				 * @param family тип протокола интернета (IPV4 / IPV6 / NIX)
 				 * @param sonet  тип сокета подключения (TCP / UDP)
 				 */
-				void network(const vector <string> & ip = {}, const vector <string> & ns = {}, const worker_t::family_t family = worker_t::family_t::IPV4, const worker_t::sonet_t sonet = worker_t::sonet_t::TCP) noexcept;
+				void network(const vector <string> & ip = {}, const vector <string> & ns = {}, const scheme_t::family_t family = scheme_t::family_t::IPV4, const scheme_t::sonet_t sonet = scheme_t::sonet_t::TCP) noexcept;
 			public:
 				/**
 				 * verifySSL Метод разрешающий или запрещающий, выполнять проверку соответствия, сертификата домену

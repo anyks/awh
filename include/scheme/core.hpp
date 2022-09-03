@@ -1,6 +1,6 @@
 /**
  * @file: core.hpp
- * @date: 2021-12-19
+ * @date: 2022-09-03
  * @license: GPL-3.0
  *
  * @telegram: @forman
@@ -9,11 +9,11 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
- * @copyright: Copyright © 2021
+ * @copyright: Copyright © 2022
  */
 
-#ifndef __AWH_WORKER__
-#define __AWH_WORKER__
+#ifndef __AWH_SCHEME__
+#define __AWH_SCHEME__
 
 /**
  * Стандартная библиотека
@@ -66,9 +66,9 @@ namespace awh {
 	 */
 	class Core;
 	/**
-	 * Worker Структура воркера
+	 * Scheme Структура схемы сети
 	 */
-	typedef struct Worker {
+	typedef struct Scheme {
 		private:
 			/**
 			 * Core Устанавливаем дружбу с классом ядра
@@ -177,7 +177,7 @@ namespace awh {
 				 */
 				Marker() noexcept : read(BUFFER_READ_MIN, BUFFER_READ_MAX), write(BUFFER_WRITE_MIN, BUFFER_WRITE_MAX) {}
 			} marker_t;
-		public:
+		private:
 			/**
 			 * Callback Структура функций обратного вызова
 			 */
@@ -200,8 +200,6 @@ namespace awh {
 				function <void (const char *, const size_t, const size_t, const size_t, awh::Core *)> readProxy;
 				// Функция обратного вызова при подключении нового клиента
 				function <bool (const string &, const string &, const u_int, const size_t, awh::Core *)> accept;
-				// Функция обратного вызова при получении сообщения от сервера
-				function <void (const char *, const size_t, const size_t, const size_t, const pid_t, Core *)> mess;
 				/**
 				 * Callback Конструктор
 				 */
@@ -209,9 +207,9 @@ namespace awh {
 				 open(nullptr), persist(nullptr),
 				 connect(nullptr), disconnect(nullptr),
 				 read(nullptr), write(nullptr),
-				 connectProxy(nullptr), readProxy(nullptr),
-				 accept(nullptr), mess(nullptr) {}
+				 connectProxy(nullptr), readProxy(nullptr), accept(nullptr) {}
 			} fn_t;
+		private:
 			/**
 			 * Adjutant Структура адъютанта
 			 */
@@ -222,9 +220,9 @@ namespace awh {
 					 */
 					friend class Core;
 					/**
-					 * Worker Устанавливаем дружбу с родительским объектом
+					 * Scheme Устанавливаем дружбу с родительским объектом
 					 */
-					friend class Worker;
+					friend class Scheme;
 					/**
 					 * Client Core Устанавливаем дружбу с клиентским классом ядра
 					 */
@@ -265,8 +263,8 @@ namespace awh {
 					const fmk_t * fmk;
 					// Создаём объект работы с логами
 					const log_t * log;
-					// Объект родительского воркера
-					const Worker * parent;
+					// Объект родительской схемы
+					const Scheme * parent;
 				private:
 					/**
 					 * read Функция обратного вызова при чтении данных с сокета
@@ -295,11 +293,11 @@ namespace awh {
 				public:
 					/**
 					 * Adjutant Конструктор
-					 * @param parent объект родительского воркера
+					 * @param parent объект родительской схемы сети
 					 * @param fmk    объект фреймворка
 					 * @param log    объект для работы с логами
 					 */
-					Adjutant(const Worker * parent, const fmk_t * fmk, const log_t * log) noexcept :
+					Adjutant(const Scheme * parent, const fmk_t * fmk, const log_t * log) noexcept :
 					 aid(0), ip(""), mac(""), port(0), ectx(fmk, log),
 					 addr(fmk, log), fmk(fmk), log(log), parent(parent) {}
 					/**
@@ -308,8 +306,8 @@ namespace awh {
 					~Adjutant() noexcept {}
 			} adj_t;
 		public:
-			// Идентификатор воркера
-			size_t wid;
+			// Идентификатор родительской схемы
+			size_t sid;
 		public:
 			// Флаг ожидания входящих сообщений
 			bool wait;
@@ -371,16 +369,16 @@ namespace awh {
 			const string & getMac(const size_t aid) const noexcept;
 		public:
 			/**
-			 * Worker Конструктор
+			 * Scheme Конструктор
 			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
 			 */
-			Worker(const fmk_t * fmk, const log_t * log) noexcept : wid(0), wait(false), alive(false), fmk(fmk), log(log), core(nullptr) {}
+			Scheme(const fmk_t * fmk, const log_t * log) noexcept : sid(0), wait(false), alive(false), fmk(fmk), log(log), core(nullptr) {}
 			/**
-			 * ~Worker Деструктор
+			 * ~Scheme Деструктор
 			 */
-			virtual ~Worker() noexcept {}
-	} worker_t;
+			virtual ~Scheme() noexcept {}
+	} scheme_t;
 };
 
-#endif // __AWH_WORKER__
+#endif // __AWH_SCHEME__

@@ -1,6 +1,6 @@
 /**
- * @file: ws.cpp
- * @date: 2021-12-19
+ * @file: rest.cpp
+ * @date: 2022-09-03
  * @license: GPL-3.0
  *
  * @telegram: @forman
@@ -9,18 +9,18 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
- * @copyright: Copyright © 2021
+ * @copyright: Copyright © 2022
  */
 
 // Подключаем заголовочный файл
-#include <worker/ws.hpp>
+#include <scheme/rest.hpp>
 
 /**
  * clear Метод очистки
  */
-void awh::server::WorkerWebSocket::clear() noexcept {
+void awh::server::SchemeRest::clear() noexcept {
 	// Очищаем данные вокера
-	worker_t::clear();
+	scheme_t::clear();
 	// Очищаем список параметров адъютантов
 	this->_coffers.clear();
 	// Сбрасываем тип компрессии
@@ -32,7 +32,7 @@ void awh::server::WorkerWebSocket::clear() noexcept {
  * set Метод создания параметров адъютанта
  * @param aid идентификатор адъютанта
  */
-void awh::server::WorkerWebSocket::set(const size_t aid) noexcept {
+void awh::server::SchemeRest::set(const size_t aid) noexcept {
 	// Если идентификатор адъютанта передан
 	if((aid > 0) && (this->_coffers.count(aid) < 1)){
 		// Добавляем адъютанта в список адъютантов
@@ -47,7 +47,7 @@ void awh::server::WorkerWebSocket::set(const size_t aid) noexcept {
  * rm Метод удаления параметров подключения адъютанта
  * @param aid идентификатор адъютанта
  */
-void awh::server::WorkerWebSocket::rm(const size_t aid) noexcept {
+void awh::server::SchemeRest::rm(const size_t aid) noexcept {
 	// Если идентификатор адъютанта передан
 	if(aid > 0){
 		// Выполняем поиск адъютанта
@@ -61,7 +61,7 @@ void awh::server::WorkerWebSocket::rm(const size_t aid) noexcept {
  * @param aid идентификатор адъютанта
  * @return    параметры подключения адъютанта
  */
-const awh::server::WorkerWebSocket::coffer_t * awh::server::WorkerWebSocket::get(const size_t aid) const noexcept {
+const awh::server::SchemeRest::coffer_t * awh::server::SchemeRest::get(const size_t aid) const noexcept {
 	// Результат работы функции
 	coffer_t * result = nullptr;
 	// Если идентификатор адъютанта передан

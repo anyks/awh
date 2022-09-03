@@ -1,6 +1,6 @@
 /**
  * @file: socks5.cpp
- * @date: 2021-12-19
+ * @date: 2022-09-03
  * @license: GPL-3.0
  *
  * @telegram: @forman
@@ -9,18 +9,18 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
- * @copyright: Copyright © 2021
+ * @copyright: Copyright © 2022
  */
 
 // Подключаем заголовочный файл
-#include <worker/socks5.hpp>
+#include <scheme/socks5.hpp>
 
 /**
  * clear Метод очистки
  */
-void awh::server::WorkerSocks5::clear() noexcept {
+void awh::server::SchemeSocks5::clear() noexcept {
 	// Очищаем данные вокера
-	worker_t::clear();
+	scheme_t::clear();
 	// Очищаем список пар клиентов
 	this->pairs.clear();
 	// Очищаем список параметров адъютантов
@@ -32,7 +32,7 @@ void awh::server::WorkerSocks5::clear() noexcept {
  * set Метод создания параметров адъютанта
  * @param aid идентификатор адъютанта
  */
-void awh::server::WorkerSocks5::set(const size_t aid) noexcept {
+void awh::server::SchemeSocks5::set(const size_t aid) noexcept {
 	// Если идентификатор адъютанта передан
 	if((aid > 0) && (this->_coffers.count(aid) < 1))
 		// Добавляем адъютанта в список адъютантов
@@ -42,7 +42,7 @@ void awh::server::WorkerSocks5::set(const size_t aid) noexcept {
  * rm Метод удаления параметров подключения адъютанта
  * @param aid идентификатор адъютанта
  */
-void awh::server::WorkerSocks5::rm(const size_t aid) noexcept {	
+void awh::server::SchemeSocks5::rm(const size_t aid) noexcept {	
 	// Если идентификатор адъютанта передан
 	if((aid > 0) && !this->_coffers.empty()){
 		// Выполняем поиск адъютанта
@@ -56,7 +56,7 @@ void awh::server::WorkerSocks5::rm(const size_t aid) noexcept {
  * @param aid идентификатор адъютанта
  * @return    параметры подключения адъютанта
  */
-const awh::server::WorkerSocks5::coffer_t * awh::server::WorkerSocks5::get(const size_t aid) const noexcept {
+const awh::server::SchemeSocks5::coffer_t * awh::server::SchemeSocks5::get(const size_t aid) const noexcept {
 	// Результат работы функции
 	coffer_t * result = nullptr;
 	// Если идентификатор адъютанта передан

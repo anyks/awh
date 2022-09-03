@@ -1,6 +1,6 @@
 /**
  * @file: server.cpp
- * @date: 2021-12-19
+ * @date: 2022-09-03
  * @license: GPL-3.0
  *
  * @telegram: @forman
@@ -9,18 +9,18 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
- * @copyright: Copyright © 2021
+ * @copyright: Copyright © 2022
  */
 
 // Подключаем заголовочный файл
-#include <worker/server.hpp>
+#include <scheme/server.hpp>
 
 /**
  * clear Метод очистки
  */
-void awh::server::Worker::clear() noexcept {
+void awh::server::Scheme::clear() noexcept {
 	// Очищаем данные вокера
-	awh::worker_t::clear();
+	awh::scheme_t::clear();
 	// Восстанавливаем порт сервера
 	this->port = SERVER_PORT;
 	// Восстанавливаем хост сервера

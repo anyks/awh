@@ -1,6 +1,6 @@
 /**
  * @file: client.cpp
- * @date: 2021-12-19
+ * @date: 2022-09-03
  * @license: GPL-3.0
  *
  * @telegram: @forman
@@ -9,27 +9,27 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
- * @copyright: Copyright © 2021
+ * @copyright: Copyright © 2022
  */
 
 // Подключаем заголовочный файл
-#include <worker/client.hpp>
+#include <scheme/client.hpp>
 
 /**
  * clear Метод очистки
  */
-void awh::client::Worker::clear() noexcept {
+void awh::client::Scheme::clear() noexcept {
 	// Выполняем очистку объекта запроса
 	this->url.clear();
 	// Очищаем данные вокера
-	awh::worker_t::clear();
+	awh::scheme_t::clear();
 	// Устанавливаем тип подключения
 	this->_connect = (this->proxy.type != proxy_t::type_t::NONE ? connect_t::PROXY : connect_t::SERVER);
 }
 /**
  * switchConnect Метод переключения типа подключения
  */
-void awh::client::Worker::switchConnect() noexcept {
+void awh::client::Scheme::switchConnect() noexcept {
 	// Определяем тип подключения
 	switch((uint8_t) this->_connect){
 		// Если подключение выполняется через прокси-сервер
@@ -42,7 +42,7 @@ void awh::client::Worker::switchConnect() noexcept {
  * isProxy Метод проверки на подключение к прокси-серверу
  * @return результат проверки
  */
-bool awh::client::Worker::isProxy() const noexcept {
+bool awh::client::Scheme::isProxy() const noexcept {
 	// Выполняем проверку типа подключения
 	return (this->_connect == connect_t::PROXY);
 }
@@ -50,7 +50,7 @@ bool awh::client::Worker::isProxy() const noexcept {
  * getAid Метод получения идентификатора адъютанта
  * @return идентификатор адъютанта
  */
-size_t awh::client::Worker::getAid() const noexcept {
+size_t awh::client::Scheme::getAid() const noexcept {
 	// Результат работы функции
 	size_t result = 0;
 	// Если список адъютантов получен

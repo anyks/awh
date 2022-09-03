@@ -1,6 +1,6 @@
 /**
  * @file: server.hpp
- * @date: 2021-12-19
+ * @date: 2022-09-03
  * @license: GPL-3.0
  *
  * @telegram: @forman
@@ -9,17 +9,17 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
- * @copyright: Copyright © 2021
+ * @copyright: Copyright © 2022
  */
 
-#ifndef __AWH_WORKER_SERVER__
-#define __AWH_WORKER_SERVER__
+#ifndef __AWH_SCHEME_SERVER__
+#define __AWH_SCHEME_SERVER__
 
 /**
  * Наши модули
  */
 #include <net/engine.hpp>
-#include <worker/core.hpp>
+#include <scheme/core.hpp>
 
 // Подписываемся на стандартное пространство имён
 using namespace std;
@@ -33,9 +33,9 @@ namespace awh {
 	 */
 	namespace server {
 		/**
-		 * Worker Структура сервера воркера
+		 * Scheme Структура схемы сети сервера
 		 */
-		typedef struct Worker : public awh::worker_t {
+		typedef struct Scheme : public awh::scheme_t {
 			private:
 				/**
 				 * Server Core Устанавливаем дружбу с серверным классом ядра
@@ -75,19 +75,19 @@ namespace awh {
 				void accept(ev::io & watcher, int revents) noexcept;
 			public:
 				/**
-				 * Worker Конструктор
+				 * Scheme Конструктор
 				 * @param fmk объект фреймворка
 				 * @param log объект для работы с логами
 				 */
-				Worker(const fmk_t * fmk, const log_t * log) noexcept :
-				 awh::worker_t(fmk, log), ectx(fmk, log), addr(fmk, log),
+				Scheme(const fmk_t * fmk, const log_t * log) noexcept :
+				 awh::scheme_t(fmk, log), ectx(fmk, log), addr(fmk, log),
 				 total(SERVER_TOTAL_CONNECT), port(SERVER_PORT), host(SERVER_HOST) {}
 				/**
-				 * ~Worker Деструктор
+				 * ~Scheme Деструктор
 				 */
-				~Worker() noexcept {}
-		} worker_t;
+				~Scheme() noexcept {}
+		} scheme_t;
 	};
 };
 
-#endif // __AWH_WORKER_SERVER__
+#endif // __AWH_SCHEME_SERVER__

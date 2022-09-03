@@ -1,6 +1,6 @@
 /**
  * @file: rest.hpp
- * @date: 2021-12-19
+ * @date: 2022-09-03
  * @license: GPL-3.0
  *
  * @telegram: @forman
@@ -9,7 +9,7 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
- * @copyright: Copyright © 2021
+ * @copyright: Copyright © 2022
  */
 
 #ifndef __AWH_REST_CLIENT__
@@ -141,8 +141,8 @@ namespace awh {
 				http_t _http;
 				// Объявляем функции обратного вызова
 				fn_t _callback;
-				// Объект рабочего
-				worker_t _worker;
+				// Объект сетевой схемы
+				scheme_t _scheme;
 				// Объект блокировщика
 				locker_t _locker;
 				// Экшен события
@@ -178,7 +178,7 @@ namespace awh {
 				const fmk_t * _fmk;
 				// Создаём объект работы с логами
 				const log_t * _log;
-				// Создаём объект биндинга TCP/IP
+				// Создаём объект сетевого ядра
 				const client::core_t * _core;
 			private:
 				/**
@@ -190,50 +190,50 @@ namespace awh {
 			private:
 				/**
 				 * openCallback Метод обратного вызова при запуске работы
-				 * @param wid  идентификатор воркера
-				 * @param core объект биндинга TCP/IP
+				 * @param sid  идентификатор схемы сети
+				 * @param core объект сетевого ядра
 				 */
-				void openCallback(const size_t wid, awh::core_t * core) noexcept;
+				void openCallback(const size_t sid, awh::core_t * core) noexcept;
 				/**
 				 * connectCallback Метод обратного вызова при подключении к серверу
 				 * @param aid  идентификатор адъютанта
-				 * @param wid  идентификатор воркера
-				 * @param core объект биндинга TCP/IP
+				 * @param sid  идентификатор схемы сети
+				 * @param core объект сетевого ядра
 				 */
-				void connectCallback(const size_t aid, const size_t wid, awh::core_t * core) noexcept;
+				void connectCallback(const size_t aid, const size_t sid, awh::core_t * core) noexcept;
 				/**
 				 * disconnectCallback Метод обратного вызова при отключении от сервера
 				 * @param aid  идентификатор адъютанта
-				 * @param wid  идентификатор воркера
-				 * @param core объект биндинга TCP/IP
+				 * @param sid  идентификатор схемы сети
+				 * @param core объект сетевого ядра
 				 */
-				void disconnectCallback(const size_t aid, const size_t wid, awh::core_t * core) noexcept;
+				void disconnectCallback(const size_t aid, const size_t sid, awh::core_t * core) noexcept;
 				/**
 				 * readCallback Метод обратного вызова при чтении сообщения с сервера
 				 * @param buffer бинарный буфер содержащий сообщение
 				 * @param size   размер бинарного буфера содержащего сообщение
 				 * @param aid    идентификатор адъютанта
-				 * @param wid    идентификатор воркера
-				 * @param core   объект биндинга TCP/IP
+				 * @param sid    идентификатор схемы сети
+				 * @param core   объект сетевого ядра
 				 */
-				void readCallback(const char * buffer, const size_t size, const size_t aid, const size_t wid, awh::core_t * core) noexcept;
+				void readCallback(const char * buffer, const size_t size, const size_t aid, const size_t sid, awh::core_t * core) noexcept;
 			private:
 				/**
 				 * proxyConnectCallback Метод обратного вызова при подключении к прокси-серверу
 				 * @param aid  идентификатор адъютанта
-				 * @param wid  идентификатор воркера
-				 * @param core объект биндинга TCP/IP
+				 * @param sid  идентификатор схемы сети
+				 * @param core объект сетевого ядра
 				 */
-				void proxyConnectCallback(const size_t aid, const size_t wid, awh::core_t * core) noexcept;
+				void proxyConnectCallback(const size_t aid, const size_t sid, awh::core_t * core) noexcept;
 				/**
 				 * proxyReadCallback Метод обратного вызова при чтении сообщения с прокси-сервера
 				 * @param buffer бинарный буфер содержащий сообщение
 				 * @param size   размер бинарного буфера содержащего сообщение
 				 * @param aid    идентификатор адъютанта
-				 * @param wid    идентификатор воркера
-				 * @param core   объект биндинга TCP/IP
+				 * @param sid    идентификатор схемы сети
+				 * @param core   объект сетевого ядра
 				 */
-				void proxyReadCallback(const char * buffer, const size_t size, const size_t aid, const size_t wid, awh::core_t * core) noexcept;
+				void proxyReadCallback(const char * buffer, const size_t size, const size_t aid, const size_t sid, awh::core_t * core) noexcept;
 			private:
 				/**
 				 * handler Метод управления входящими методами
@@ -430,7 +430,7 @@ namespace awh {
 				 * @param read  количество байт для детекции по чтению
 				 * @param write количество байт для детекции по записи
 				 */
-				void bytesDetect(const worker_t::mark_t read, const worker_t::mark_t write) noexcept;
+				void bytesDetect(const scheme_t::mark_t read, const scheme_t::mark_t write) noexcept;
 				/**
 				 * waitTimeDetect Метод детекции сообщений по количеству секунд
 				 * @param read    количество секунд для детекции по чтению
@@ -444,7 +444,7 @@ namespace awh {
 				 * @param uri    параметры прокси-сервера
 				 * @param family семейстово интернет протоколов (IPV4 / IPV6 / NIX)
 				 */
-				void proxy(const string & uri, const worker_t::family_t family = worker_t::family_t::IPV4) noexcept;
+				void proxy(const string & uri, const scheme_t::family_t family = scheme_t::family_t::IPV4) noexcept;
 			public:
 				/**
 				 * mode Метод установки флага модуля
@@ -514,7 +514,7 @@ namespace awh {
 			public:
 				/**
 				 * Rest Конструктор
-				 * @param core объект биндинга TCP/IP
+				 * @param core объект сетевого ядра
 				 * @param fmk  объект фреймворка
 				 * @param log  объект для работы с логами
 				 */

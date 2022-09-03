@@ -1,6 +1,6 @@
 /**
  * @file: ws.hpp
- * @date: 2021-12-19
+ * @date: 2022-09-03
  * @license: GPL-3.0
  *
  * @telegram: @forman
@@ -9,11 +9,11 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
- * @copyright: Copyright © 2021
+ * @copyright: Copyright © 2022
  */
 
-#ifndef __AWH_WORKER_WSS_SERVER__
-#define __AWH_WORKER_WSS_SERVER__
+#ifndef __AWH_SCHEME_WSS_SERVER__
+#define __AWH_SCHEME_WSS_SERVER__
 
 /**
  * Стандартная библиотека
@@ -27,7 +27,7 @@
  */
 #include <ws/frame.hpp>
 #include <ws/server.hpp>
-#include <worker/server.hpp>
+#include <scheme/server.hpp>
 
 // Подписываемся на стандартное пространство имён
 using namespace std;
@@ -41,9 +41,9 @@ namespace awh {
 	 */
 	namespace server {
 		/**
-		 * WorkerWS Структура WebSocket сервера воркера
+		 * SchemeWS Структура схемы сети WebSocket сервера
 		 */
-		typedef struct WorkerWebSocket : public worker_t {
+		typedef struct SchemeWebSocket : public scheme_t {
 			public:
 				/**
 				 * Основные экшены
@@ -162,19 +162,19 @@ namespace awh {
 				const coffer_t * get(const size_t aid) const noexcept;
 			public:
 				/**
-				 * WorkerWebSocket Конструктор
+				 * SchemeWebSocket Конструктор
 				 * @param fmk объект фреймворка
 				 * @param log объект для работы с логами
 				 */
-				WorkerWebSocket(const fmk_t * fmk, const log_t * log) noexcept :
-				 worker_t(fmk, log), nwk(fmk), uri(fmk, &nwk),
+				SchemeWebSocket(const fmk_t * fmk, const log_t * log) noexcept :
+				 scheme_t(fmk, log), nwk(fmk), uri(fmk, &nwk),
 				 compress(http_t::compress_t::NONE), _fmk(fmk), _log(log) {}
 				/**
-				 * ~WorkerWebSocket Деструктор
+				 * ~SchemeWebSocket Деструктор
 				 */
-				~WorkerWebSocket() noexcept {}
-		} ws_worker_t;
+				~SchemeWebSocket() noexcept {}
+		} ws_scheme_t;
 	};
 };
 
-#endif // __AWH_WORKER_WSS_SERVER__
+#endif // __AWH_SCHEME_WSS_SERVER__

@@ -1,6 +1,6 @@
 /**
  * @file: server.hpp
- * @date: 2021-12-19
+ * @date: 2022-09-03
  * @license: GPL-3.0
  *
  * @telegram: @forman
@@ -9,7 +9,7 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
- * @copyright: Copyright © 2021
+ * @copyright: Copyright © 2022
  */
 
 #ifndef __AWH_CORE_SERVER__
@@ -27,7 +27,7 @@
  */
 #include <core/core.hpp>
 #include <sys/cluster.hpp>
-#include <worker/server.hpp>
+#include <scheme/server.hpp>
 
 // Подписываемся на стандартное пространство имён
 using namespace std;
@@ -47,9 +47,9 @@ namespace awh {
 		typedef class Core : public awh::core_t {
 			private:
 				/**
-				 * Worker Устанавливаем дружбу с классом сетевого ядра
+				 * Scheme Устанавливаем дружбу с схемой сети
 				 */
-				friend class Worker;
+				friend class Scheme;
 			private:
 				/**
 				 * Mutex Объект основных мютексов
@@ -81,41 +81,41 @@ namespace awh {
 			private:
 				/**
 				 * cluster Метод события ЗАПУСКА/ОСТАНОВКИ кластера
-				 * @param wid   идентификатор воркера
+				 * @param sid   идентификатор схемы сети
 				 * @param pid   идентификатор процесса
 				 * @param event идентификатор события
 				 */
-				void cluster(const size_t wid, const pid_t pid, const cluster_t::event_t event) noexcept;
+				void cluster(const size_t sid, const pid_t pid, const cluster_t::event_t event) noexcept;
 			private:
 				/**
 				 * accept Функция подключения к серверу
 				 * @param fd  файловый дескриптор (сокет) подключившегося клиента
-				 * @param wid идентификатор воркера
+				 * @param sid идентификатор схемы сети
 				 */
-				void accept(const int fd, const size_t wid) noexcept;
+				void accept(const int fd, const size_t sid) noexcept;
 			public:
 				/**
-				 * close Метод отключения всех воркеров
+				 * close Метод отключения всех адъютантов
 				 */
 				void close() noexcept;
 				/**
-				 * remove Метод удаления всех воркеров
+				 * remove Метод удаления всех активных схем сети
 				 */
 				void remove() noexcept;
 			public:
 				/**
-				 * run Метод запуска сервера воркером
-				 * @param wid идентификатор воркера
+				 * run Метод запуска сервера
+				 * @param sid идентификатор схемы сети
 				 */
-				void run(const size_t wid) noexcept;
+				void run(const size_t sid) noexcept;
 				/**
-				 * remove Метод удаления воркера
-				 * @param wid идентификатор воркера
+				 * remove Метод удаления схемы сети
+				 * @param sid идентификатор схемы сети
 				 */
-				void remove(const size_t wid) noexcept;
+				void remove(const size_t sid) noexcept;
 			public:
 				/**
-				 * close Метод закрытия подключения воркера
+				 * close Метод закрытия подключения адъютанта
 				 * @param aid идентификатор адъютанта
 				 */
 				void close(const size_t aid) noexcept;
@@ -133,12 +133,12 @@ namespace awh {
 				void transfer(const engine_t::method_t method, const size_t aid) noexcept;
 				/**
 				 * resolving Метод получения IP адреса доменного имени
-				 * @param wid    идентификатор воркера
+				 * @param sid    идентификатор схемы сети
 				 * @param ip     адрес интернет-подключения
 				 * @param family тип интернет-протокола AF_INET, AF_INET6
 				 * @param did    идентификатор DNS запроса
 				 */
-				void resolving(const size_t wid, const string & ip, const int family, const size_t did) noexcept;
+				void resolving(const size_t sid, const string & ip, const int family, const size_t did) noexcept;
 			public:
 				/**
 				 * bandWidth Метод установки пропускной способности сети
@@ -155,10 +155,10 @@ namespace awh {
 				void clusterSize(const size_t size = 0) noexcept;
 				/**
 				 * clusterAutoRestart Метод установки флага перезапуска процессов
-				 * @param wid  идентификатор воркера
+				 * @param sid  идентификатор схемы сети
 				 * @param mode флаг перезапуска процессов
 				 */
-				void clusterAutoRestart(const size_t wid, const bool mode) noexcept;
+				void clusterAutoRestart(const size_t sid, const bool mode) noexcept;
 			public:
 				/**
 				 * ipV6only Метод установки флага использования только сети IPv6
@@ -167,17 +167,17 @@ namespace awh {
 				void ipV6only(const bool mode) noexcept;
 				/**
 				 * total Метод установки максимального количества одновременных подключений
-				 * @param wid   идентификатор воркера
+				 * @param sid   идентификатор схемы сети
 				 * @param total максимальное количество одновременных подключений
 				 */
-				void total(const size_t wid, const u_short total) noexcept;
+				void total(const size_t sid, const u_short total) noexcept;
 				/**
 				 * init Метод инициализации сервера
-				 * @param wid  идентификатор воркера
+				 * @param sid  идентификатор схемы сети
 				 * @param port порт сервера
 				 * @param host хост сервера
 				 */
-				void init(const size_t wid, const u_int port, const string & host = "") noexcept;
+				void init(const size_t sid, const u_int port, const string & host = "") noexcept;
 			public:
 				/**
 				 * Core Конструктор

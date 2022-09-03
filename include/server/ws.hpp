@@ -1,6 +1,6 @@
 /**
  * @file: ws.hpp
- * @date: 2021-12-19
+ * @date: 2022-09-03
  * @license: GPL-3.0
  *
  * @telegram: @forman
@@ -9,7 +9,7 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
- * @copyright: Copyright © 2021
+ * @copyright: Copyright © 2022
  */
 
 #ifndef __AWH_WEBSOCKET_SERVER__
@@ -18,7 +18,7 @@
 /**
  * Наши модули
  */
-#include <worker/ws.hpp>
+#include <scheme/ws.hpp>
 #include <core/server.hpp>
 #include <sys/threadpool.hpp>
 
@@ -93,7 +93,7 @@ namespace awh {
 				// Объявляем функции обратного вызова
 				fn_t _callback;
 				// Объект рабочего
-				ws_worker_t _worker;
+				ws_scheme_t _scheme;
 			private:
 				// Идентификатор сервера
 				string _sid;
@@ -141,64 +141,64 @@ namespace awh {
 				const fmk_t * _fmk;
 				// Создаём объект работы с логами
 				const log_t * _log;
-				// Создаём объект биндинга TCP/IP
+				// Создаём объект сетевого ядра
 				const server::core_t * _core;
 			private:
 				/**
 				 * openCallback Функция обратного вызова при запуске работы
-				 * @param wid  идентификатор воркера
-				 * @param core объект биндинга TCP/IP
+				 * @param sid  идентификатор схемы сети
+				 * @param core объект сетевого ядра
 				 */
-				void openCallback(const size_t wid, awh::core_t * core) noexcept;
+				void openCallback(const size_t sid, awh::core_t * core) noexcept;
 				/**
 				 * persistCallback Функция персистентного вызова
 				 * @param aid  идентификатор адъютанта
-				 * @param wid  идентификатор воркера
-				 * @param core объект биндинга TCP/IP
+				 * @param sid  идентификатор схемы сети
+				 * @param core объект сетевого ядра
 				 */
-				void persistCallback(const size_t aid, const size_t wid, awh::core_t * core) noexcept;
+				void persistCallback(const size_t aid, const size_t sid, awh::core_t * core) noexcept;
 				/**
 				 * connectCallback Функция обратного вызова при подключении к серверу
 				 * @param aid  идентификатор адъютанта
-				 * @param wid  идентификатор воркера
-				 * @param core объект биндинга TCP/IP
+				 * @param sid  идентификатор схемы сети
+				 * @param core объект сетевого ядра
 				 */
-				void connectCallback(const size_t aid, const size_t wid, awh::core_t * core) noexcept;
+				void connectCallback(const size_t aid, const size_t sid, awh::core_t * core) noexcept;
 				/**
 				 * disconnectCallback Функция обратного вызова при отключении от сервера
 				 * @param aid  идентификатор адъютанта
-				 * @param wid  идентификатор воркера
-				 * @param core объект биндинга TCP/IP
+				 * @param sid  идентификатор схемы сети
+				 * @param core объект сетевого ядра
 				 */
-				void disconnectCallback(const size_t aid, const size_t wid, awh::core_t * core) noexcept;
+				void disconnectCallback(const size_t aid, const size_t sid, awh::core_t * core) noexcept;
 				/**
 				 * readCallback Функция обратного вызова при чтении сообщения с адъютанта
 				 * @param buffer бинарный буфер содержащий сообщение
 				 * @param size   размер бинарного буфера содержащего сообщение
 				 * @param aid    идентификатор адъютанта
-				 * @param wid    идентификатор воркера
-				 * @param core   объект биндинга TCP/IP
+				 * @param sid    идентификатор схемы сети
+				 * @param core   объект сетевого ядра
 				 */
-				void readCallback(const char * buffer, const size_t size, const size_t aid, const size_t wid, awh::core_t * core) noexcept;
+				void readCallback(const char * buffer, const size_t size, const size_t aid, const size_t sid, awh::core_t * core) noexcept;
 				/**
 				 * writeCallback Функция обратного вызова при записи сообщений адъютанту
 				 * @param buffer бинарный буфер содержащий сообщение
 				 * @param size   размер бинарного буфера содержащего сообщение
 				 * @param aid    идентификатор адъютанта
-				 * @param wid    идентификатор воркера
-				 * @param core   объект биндинга TCP/IP
+				 * @param sid    идентификатор схемы сети
+				 * @param core   объект сетевого ядра
 				 */
-				void writeCallback(const char * buffer, const size_t size, const size_t aid, const size_t wid, awh::core_t * core) noexcept;
+				void writeCallback(const char * buffer, const size_t size, const size_t aid, const size_t sid, awh::core_t * core) noexcept;
 				/**
 				 * acceptCallback Функция обратного вызова при проверке подключения адъютанта
 				 * @param ip   адрес интернет подключения адъютанта
 				 * @param mac  мак-адрес подключившегося адъютанта
 				 * @param port порт подключившегося адъютанта
-				 * @param wid  идентификатор воркера
-				 * @param core объект биндинга TCP/IP
+				 * @param sid  идентификатор схемы сети
+				 * @param core объект сетевого ядра
 				 * @return     результат разрешения к подключению адъютанта
 				 */
-				bool acceptCallback(const string & ip, const string & mac, const u_int port, const size_t wid, awh::core_t * core) noexcept;
+				bool acceptCallback(const string & ip, const string & mac, const u_int port, const size_t sid, awh::core_t * core) noexcept;
 			private:
 				/**
 				 * handler Метод управления входящими методами
@@ -239,14 +239,14 @@ namespace awh {
 				/**
 				 * pong Метод ответа на проверку о доступности сервера
 				 * @param aid  идентификатор адъютанта
-				 * @param core объект биндинга TCP/IP
+				 * @param core объект сетевого ядра
 				 * @param      message сообщение для отправки
 				 */
 				void pong(const size_t aid, awh::core_t * core, const string & message = "") noexcept;
 				/**
 				 * ping Метод проверки доступности сервера
 				 * @param aid  идентификатор адъютанта
-				 * @param core объект биндинга TCP/IP
+				 * @param core объект сетевого ядра
 				 * @param      message сообщение для отправки
 				 */
 				void ping(const size_t aid, awh::core_t * core, const string & message = "") noexcept;
@@ -375,7 +375,7 @@ namespace awh {
 				 * @param read  количество байт для детекции по чтению
 				 * @param write количество байт для детекции по записи
 				 */
-				void bytesDetect(const worker_t::mark_t read, const worker_t::mark_t write) noexcept;
+				void bytesDetect(const scheme_t::mark_t read, const scheme_t::mark_t write) noexcept;
 			public:
 				/**
 				 * realm Метод установки название сервера
@@ -439,7 +439,7 @@ namespace awh {
 			public:
 				/**
 				 * WebSocket Конструктор
-				 * @param core объект биндинга TCP/IP
+				 * @param core объект сетевого ядра
 				 * @param fmk  объект фреймворка
 				 * @param log  объект для работы с логами
 				 */

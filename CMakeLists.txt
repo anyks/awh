@@ -206,14 +206,14 @@ set(SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/src/socks5/core.cpp"
     "${CMAKE_SOURCE_DIR}/src/socks5/client.cpp"
     "${CMAKE_SOURCE_DIR}/src/socks5/server.cpp"
-    "${CMAKE_SOURCE_DIR}/src/worker/ws.cpp"
-    "${CMAKE_SOURCE_DIR}/src/worker/core.cpp"
-    "${CMAKE_SOURCE_DIR}/src/worker/rest.cpp"
-    "${CMAKE_SOURCE_DIR}/src/worker/proxy.cpp"
-    "${CMAKE_SOURCE_DIR}/src/worker/socks5.cpp"
-    "${CMAKE_SOURCE_DIR}/src/worker/client.cpp"
-    "${CMAKE_SOURCE_DIR}/src/worker/server.cpp"
-    "${CMAKE_SOURCE_DIR}/src/worker/sample.cpp"
+    "${CMAKE_SOURCE_DIR}/src/scheme/ws.cpp"
+    "${CMAKE_SOURCE_DIR}/src/scheme/core.cpp"
+    "${CMAKE_SOURCE_DIR}/src/scheme/rest.cpp"
+    "${CMAKE_SOURCE_DIR}/src/scheme/proxy.cpp"
+    "${CMAKE_SOURCE_DIR}/src/scheme/socks5.cpp"
+    "${CMAKE_SOURCE_DIR}/src/scheme/client.cpp"
+    "${CMAKE_SOURCE_DIR}/src/scheme/server.cpp"
+    "${CMAKE_SOURCE_DIR}/src/scheme/sample.cpp"
 )
 
 # Задаем именя библиотеки и бинарника

@@ -1,6 +1,6 @@
 /**
  * @file: client.hpp
- * @date: 2021-12-19
+ * @date: 2022-09-03
  * @license: GPL-3.0
  *
  * @telegram: @forman
@@ -9,16 +9,16 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
- * @copyright: Copyright © 2021
+ * @copyright: Copyright © 2022
  */
 
-#ifndef __AWH_WORKER_CLIENT__
-#define __AWH_WORKER_CLIENT__
+#ifndef __AWH_SCHEME_CLIENT__
+#define __AWH_SCHEME_CLIENT__
 
 /**
  * Наши модули
  */
-#include <worker/core.hpp>
+#include <scheme/core.hpp>
 #include <http/client.hpp>
 #include <socks5/client.hpp>
 
@@ -48,7 +48,7 @@ namespace awh {
 				};
 			public:
 				// Семейство интернет-протоколов
-				worker_t::family_t family;
+				scheme_t::family_t family;
 			public:
 				// Тип прокси-сервера
 				type_t type;
@@ -76,7 +76,7 @@ namespace awh {
 				 * @param log объект для работы с логами
 				 */
 				Proxy(const fmk_t * fmk, const log_t * log) noexcept :
-				 family(worker_t::family_t::IPV4), type(type_t::NONE), nwk(fmk),
+				 family(scheme_t::family_t::IPV4), type(type_t::NONE), nwk(fmk),
 				 uri(fmk, &nwk), socks5(log), http(fmk, log, &uri), fmk(fmk), log(log) {}
 				/**
 				 * ~Proxy Деструктор
@@ -84,9 +84,9 @@ namespace awh {
 				~Proxy() noexcept {}
 		} proxy_t;
 		/**
-		 * Worker Структура клиента воркера
+		 * Scheme Структура схемы сети клиента
 		 */
-		typedef struct Worker : public awh::worker_t {
+		typedef struct Scheme : public awh::scheme_t {
 			private:
 				/**
 				 * Client Core Устанавливаем дружбу с клиентским классом ядра
@@ -137,7 +137,7 @@ namespace awh {
 				// Идентификатор DNS запроса
 				size_t did;
 			public:
-				// Выполнять остановку работы воркера, после закрытия подключения
+				// Выполнять остановку работы, после закрытия подключения
 				bool stop;
 				// Флаг получения данных
 				bool acquisition;
@@ -173,19 +173,19 @@ namespace awh {
 				size_t getAid() const noexcept;
 			public:
 				/**
-				 * Worker Конструктор
+				 * Scheme Конструктор
 				 * @param fmk объект фреймворка
 				 * @param log объект для работы с логами
 				 */
-				Worker(const fmk_t * fmk, const log_t * log) noexcept :
-				 awh::worker_t(fmk, log), did(0), stop(false), acquisition(false),
+				Scheme(const fmk_t * fmk, const log_t * log) noexcept :
+				 awh::scheme_t(fmk, log), did(0), stop(false), acquisition(false),
 				 proxy(fmk, log), _connect(connect_t::SERVER) {}
 				/**
-				 * ~Worker Деструктор
+				 * ~Scheme Деструктор
 				 */
-				~Worker() noexcept {}
-		} worker_t;
+				~Scheme() noexcept {}
+		} scheme_t;
 	};
 };
 
-#endif // __AWH_WORKER_CLIENT__
+#endif // __AWH_SCHEME_CLIENT__

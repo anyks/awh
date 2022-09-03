@@ -1,6 +1,6 @@
 /**
  * @file: client.hpp
- * @date: 2021-12-19
+ * @date: 2022-09-03
  * @license: GPL-3.0
  *
  * @telegram: @forman
@@ -9,7 +9,7 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
- * @copyright: Copyright © 2021
+ * @copyright: Copyright © 2022
  */
 
 #ifndef __AWH_CORE_CLIENT__
@@ -24,7 +24,7 @@
  * Наши модули
  */
 #include <core/core.hpp>
-#include <worker/client.hpp>
+#include <scheme/client.hpp>
 
 // Подписываемся на стандартное пространство имён
 using namespace std;
@@ -43,9 +43,9 @@ namespace awh {
 		typedef class Core : public awh::core_t {
 			private:
 				/**
-				 * Worker Устанавливаем дружбу с классом сетевого ядра
+				 * Scheme Устанавливаем дружбу с схемой сети
 				 */
-				friend class Worker;
+				friend class Scheme;
 			private:
 				/**
 				 * Mutex Структура основных мютексов
@@ -62,10 +62,10 @@ namespace awh {
 				 */
 				typedef class Timeout {
 					public:
-						size_t wid;            // Идентификатор воркера
+						size_t sid;            // идентификатор схемы сети
 						Core * core;           // Объект ядра клиента
 						ev::timer timer;       // Объект события таймера
-						worker_t::mode_t mode; // Режим работы клиента
+						scheme_t::mode_t mode; // Режим работы клиента
 					public:
 						/**
 						 * callback Функция обратного вызова
@@ -77,7 +77,7 @@ namespace awh {
 						/**
 						 * Timeout Конструктор
 						 */
-						Timeout() noexcept : wid(0), core(nullptr), mode(worker_t::mode_t::DISCONNECT) {}
+						Timeout() noexcept : sid(0), core(nullptr), mode(scheme_t::mode_t::DISCONNECT) {}
 				} timeout_t;
 			private:
 				// Мютекс для блокировки основного потока
@@ -90,21 +90,21 @@ namespace awh {
 			private:
 				/**
 				 * connect Метод создания подключения к удаленному серверу
-				 * @param wid идентификатор воркера
+				 * @param sid идентификатор схемы сети
 				 */
-				void connect(const size_t wid) noexcept;
+				void connect(const size_t sid) noexcept;
 				/**
 				 * reconnect Метод восстановления подключения
-				 * @param wid идентификатор воркера
+				 * @param sid идентификатор схемы сети
 				 */
-				void reconnect(const size_t wid) noexcept;
+				void reconnect(const size_t sid) noexcept;
 			private:
 				/**
 				 * createTimeout Метод создания таймаута
-				 * @param wid  идентификатор воркера
+				 * @param sid  идентификатор схемы сети
 				 * @param mode режим работы клиента
 				 */
-				void createTimeout(const size_t wid, const worker_t::mode_t mode) noexcept;
+				void createTimeout(const size_t sid, const scheme_t::mode_t mode) noexcept;
 			public:
 				/**
 				 * sendTimeout Метод отправки принудительного таймаута
@@ -113,32 +113,32 @@ namespace awh {
 				void sendTimeout(const size_t aid) noexcept;
 				/**
 				 * clearTimeout Метод удаления установленного таймаута
-				 * @param wid идентификатор воркера
+				 * @param sid идентификатор схемы сети
 				 */
-				void clearTimeout(const size_t wid) noexcept;
+				void clearTimeout(const size_t sid) noexcept;
 			public:
 				/**
-				 * close Метод отключения всех воркеров
+				 * close Метод отключения всех адъютантов
 				 */
 				void close() noexcept;
 				/**
-				 * remove Метод удаления всех воркеров
+				 * remove Метод удаления всех схем сети
 				 */
 				void remove() noexcept;
 			public:
 				/**
-				 * open Метод открытия подключения воркером
-				 * @param wid идентификатор воркера
+				 * open Метод открытия подключения
+				 * @param sid идентификатор схемы сети
 				 */
-				void open(const size_t wid) noexcept;
+				void open(const size_t sid) noexcept;
 				/**
-				 * remove Метод удаления воркера из биндинга
-				 * @param wid идентификатор воркера
+				 * remove Метод удаления схемы сети
+				 * @param sid идентификатор схемы сети
 				 */
-				void remove(const size_t wid) noexcept;
+				void remove(const size_t sid) noexcept;
 			public:
 				/**
-				 * close Метод закрытия подключения воркера
+				 * close Метод закрытия подключения
 				 * @param aid идентификатор адъютанта
 				 */
 				void close(const size_t aid) noexcept;
@@ -166,12 +166,12 @@ namespace awh {
 				void transfer(const engine_t::method_t method, const size_t aid) noexcept;
 				/**
 				 * resolving Метод получения IP адреса доменного имени
-				 * @param wid    идентификатор воркера
+				 * @param sid    идентификатор схемы сети
 				 * @param ip     адрес интернет-подключения
 				 * @param family тип интернет-протокола AF_INET, AF_INET6
 				 * @param did    идентификатор DNS запроса
 				 */
-				void resolving(const size_t wid, const string & ip, const int family, const size_t did) noexcept;
+				void resolving(const size_t sid, const string & ip, const int family, const size_t did) noexcept;
 			public:
 				/**
 				 * bandWidth Метод установки пропускной способности сети

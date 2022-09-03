@@ -1,6 +1,6 @@
 /**
  * @file: proxy.cpp
- * @date: 2021-12-19
+ * @date: 2022-09-03
  * @license: GPL-3.0
  *
  * @telegram: @forman
@@ -9,7 +9,7 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
- * @copyright: Copyright © 2021
+ * @copyright: Copyright © 2022
  */
 
 // Подключаем заголовочный файл
@@ -18,7 +18,7 @@
 /**
  * runCallback Функция обратного вызова при активации ядра сервера
  * @param mode флаг запуска/остановки
- * @param core объект биндинга TCP/IP
+ * @param core объект сетевого ядра
  */
 void awh::server::Proxy::runCallback(const bool mode, awh::core_t * core) noexcept {
 	// Если данные существуют
@@ -41,14 +41,14 @@ void awh::server::Proxy::chunking(const vector <char> & chunk, const awh::http_t
 /**
  * persistServerCallback Функция персистентного вызова
  * @param aid  идентификатор адъютанта
- * @param wid  идентификатор воркера
- * @param core объект биндинга TCP/IP
+ * @param sid  идентификатор схемы сети
+ * @param core объект сетевого ядра
  */
-void awh::server::Proxy::persistCallback(const size_t aid, const size_t wid, awh::core_t * core) noexcept {
+void awh::server::Proxy::persistCallback(const size_t aid, const size_t sid, awh::core_t * core) noexcept {
 	// Если данные существуют
-	if((aid > 0) && (wid > 0) && (core != nullptr)){
+	if((aid > 0) && (sid > 0) && (core != nullptr)){
 		// Получаем параметры подключения адъютанта
-		proxy_worker_t::coffer_t * adj = const_cast <proxy_worker_t::coffer_t *> (this->_worker.get(aid));
+		proxy_scheme_t::coffer_t * adj = const_cast <proxy_scheme_t::coffer_t *> (this->_scheme.get(aid));
 		// Если параметры подключения адъютанта получены
 		if((adj != nullptr) && ((adj->method != web_t::method_t::CONNECT) || adj->close) && ((!adj->alive && !this->_alive) || adj->close)){
 			// Если адъютант давно должен был быть отключён, отключаем его
@@ -67,33 +67,33 @@ void awh::server::Proxy::persistCallback(const size_t aid, const size_t wid, awh
 }
 /**
  * openServerCallback Функция обратного вызова при запуске работы
- * @param wid  идентификатор воркера
- * @param core объект биндинга TCP/IP
+ * @param sid  идентификатор схемы сети
+ * @param core объект сетевого ядра
  */
-void awh::server::Proxy::openServerCallback(const size_t wid, awh::core_t * core) noexcept {
+void awh::server::Proxy::openServerCallback(const size_t sid, awh::core_t * core) noexcept {
 	// Если данные существуют
-	if((wid > 0) && (core != nullptr)){
+	if((sid > 0) && (core != nullptr)){
 		// Устанавливаем хост сервера
-		reinterpret_cast <server::core_t *> (core)->init(wid, this->_port, this->_host);
+		reinterpret_cast <server::core_t *> (core)->init(sid, this->_port, this->_host);
 		// Выполняем запуск сервера
-		reinterpret_cast <server::core_t *> (core)->run(wid);
+		reinterpret_cast <server::core_t *> (core)->run(sid);
 	}
 }
 /**
  * connectClientCallback Функция обратного вызова при подключении к серверу
  * @param aid  идентификатор адъютанта
- * @param wid  идентификатор воркера
- * @param core объект биндинга TCP/IP
+ * @param sid  идентификатор схемы сети
+ * @param core объект сетевого ядра
  */
-void awh::server::Proxy::connectClientCallback(const size_t aid, const size_t wid, awh::core_t * core) noexcept {
+void awh::server::Proxy::connectClientCallback(const size_t aid, const size_t sid, awh::core_t * core) noexcept {
 	// Если данные существуют
-	if((aid > 0) && (wid > 0) && (core != nullptr)){
+	if((aid > 0) && (sid > 0) && (core != nullptr)){
 		// Ищем идентификатор адъютанта пары
-		auto it = this->_worker.pairs.find(wid);
+		auto it = this->_scheme.pairs.find(sid);
 		// Если адъютант получен
-		if(it != this->_worker.pairs.end()){
+		if(it != this->_scheme.pairs.end()){
 			// Получаем параметры подключения адъютанта
-			proxy_worker_t::coffer_t * adj = const_cast <proxy_worker_t::coffer_t *> (this->_worker.get(it->second));
+			proxy_scheme_t::coffer_t * adj = const_cast <proxy_scheme_t::coffer_t *> (this->_scheme.get(it->second));
 			// Если подключение не выполнено
 			if((adj != nullptr) && !adj->connect){
 				// Разрешаем обработки данных
@@ -121,7 +121,7 @@ void awh::server::Proxy::connectClientCallback(const size_t aid, const size_t wi
 					// Выполняем отключение адъютанта
 					} else this->close(it->second);
 				// Отправляем сообщение на сервер, так-как оно пришло от адъютанта
-				} else this->prepare(it->second, this->_worker.wid);
+				} else this->prepare(it->second, this->_scheme.sid);
 			}
 		}
 	}
@@ -129,16 +129,16 @@ void awh::server::Proxy::connectClientCallback(const size_t aid, const size_t wi
 /**
  * connectServerCallback Функция обратного вызова при подключении к серверу
  * @param aid  идентификатор адъютанта
- * @param wid  идентификатор воркера
- * @param core объект биндинга TCP/IP
+ * @param sid  идентификатор схемы сети
+ * @param core объект сетевого ядра
  */
-void awh::server::Proxy::connectServerCallback(const size_t aid, const size_t wid, awh::core_t * core) noexcept {
+void awh::server::Proxy::connectServerCallback(const size_t aid, const size_t sid, awh::core_t * core) noexcept {
 	// Если данные существуют
-	if((aid > 0) && (wid > 0) && (core != nullptr)){
+	if((aid > 0) && (sid > 0) && (core != nullptr)){
 		// Создаём адъютанта
-		this->_worker.set(aid);
+		this->_scheme.set(aid);
 		// Получаем параметры подключения адъютанта
-		proxy_worker_t::coffer_t * adj = const_cast <proxy_worker_t::coffer_t *> (this->_worker.get(aid));
+		proxy_scheme_t::coffer_t * adj = const_cast <proxy_scheme_t::coffer_t *> (this->_scheme.get(aid));
 		// Если параметры подключения адъютанта получены
 		if(adj != nullptr){
 			// Устанавливаем размер чанка
@@ -156,9 +156,9 @@ void awh::server::Proxy::connectServerCallback(const size_t aid, const size_t wi
 			// Устанавливаем функцию обработки вызова для получения чанков
 			adj->srv.chunking(std::bind(&Proxy::chunking, this, _1, _2));
 			// Устанавливаем метод компрессии поддерживаемый клиентом
-			adj->cli.compress(this->_worker.compress);
+			adj->cli.compress(this->_scheme.compress);
 			// Устанавливаем метод компрессии поддерживаемый сервером
-			adj->srv.compress(this->_worker.compress);
+			adj->srv.compress(this->_scheme.compress);
 			// Если данные будем передавать в зашифрованном виде
 			if(this->_crypt){
 				// Устанавливаем параметры шифрования
@@ -187,27 +187,27 @@ void awh::server::Proxy::connectServerCallback(const size_t aid, const size_t wi
 				} break;
 			}
 			// Устанавливаем флаг ожидания входящих сообщений
-			adj->worker.wait = this->_worker.wait;
+			adj->scheme.wait = this->_scheme.wait;
 			// Устанавливаем количество секунд на чтение
-			adj->worker.timeouts.read = this->_worker.timeouts.read;
+			adj->scheme.timeouts.read = this->_scheme.timeouts.read;
 			// Устанавливаем количество секунд на запись
-			adj->worker.timeouts.write = this->_worker.timeouts.write;
+			adj->scheme.timeouts.write = this->_scheme.timeouts.write;
 			// Выполняем установку максимального количества попыток
-			adj->worker.keepAlive.cnt = this->_worker.keepAlive.cnt;
+			adj->scheme.keepAlive.cnt = this->_scheme.keepAlive.cnt;
 			// Выполняем установку интервала времени в секундах через которое происходит проверка подключения
-			adj->worker.keepAlive.idle = this->_worker.keepAlive.idle;
+			adj->scheme.keepAlive.idle = this->_scheme.keepAlive.idle;
 			// Выполняем установку интервала времени в секундах между попытками
-			adj->worker.keepAlive.intvl = this->_worker.keepAlive.intvl;
+			adj->scheme.keepAlive.intvl = this->_scheme.keepAlive.intvl;
 			// Устанавливаем функцию чтения данных
-			adj->worker.callback.read = std::bind(&Proxy::readClientCallback, this, _1, _2, _3, _4, _5);
+			adj->scheme.callback.read = std::bind(&Proxy::readClientCallback, this, _1, _2, _3, _4, _5);
 			// Устанавливаем событие подключения
-			adj->worker.callback.connect = std::bind(&Proxy::connectClientCallback, this, _1, _2, _3);
+			adj->scheme.callback.connect = std::bind(&Proxy::connectClientCallback, this, _1, _2, _3);
 			// Устанавливаем событие отключения
-			adj->worker.callback.disconnect = std::bind(&Proxy::disconnectClientCallback, this, _1, _2, _3);
-			// Добавляем воркер в сетевое ядро
-			this->_core.client.add(&adj->worker);
+			adj->scheme.callback.disconnect = std::bind(&Proxy::disconnectClientCallback, this, _1, _2, _3);
+			// Добавляем схему сети в сетевое ядро
+			this->_core.client.add(&adj->scheme);
 			// Создаём пару клиента и сервера
-			this->_worker.pairs.emplace(adj->worker.wid, aid);
+			this->_scheme.pairs.emplace(adj->scheme.sid, aid);
 		}
 		// Если функция обратного вызова установлена
 		if(this->_callback.active != nullptr)
@@ -218,22 +218,22 @@ void awh::server::Proxy::connectServerCallback(const size_t aid, const size_t wi
 /**
  * disconnectClientCallback Функция обратного вызова при отключении от сервера
  * @param aid  идентификатор адъютанта
- * @param wid  идентификатор воркера
- * @param core объект биндинга TCP/IP
+ * @param sid  идентификатор схемы сети
+ * @param core объект сетевого ядра
  */
-void awh::server::Proxy::disconnectClientCallback(const size_t aid, const size_t wid, awh::core_t * core) noexcept {
+void awh::server::Proxy::disconnectClientCallback(const size_t aid, const size_t sid, awh::core_t * core) noexcept {
 	// Если данные существуют
-	if((wid > 0) && (core != nullptr)){
+	if((sid > 0) && (core != nullptr)){
 		// Ищем идентификатор адъютанта пары
-		auto it = this->_worker.pairs.find(wid);
+		auto it = this->_scheme.pairs.find(sid);
 		// Если адъютант получен
-		if(it != this->_worker.pairs.end()){
+		if(it != this->_scheme.pairs.end()){
 			// Получаем идентификатор адъютанта
 			const size_t aid = it->second;
 			// Удаляем пару адъютанта и сервера
-			this->_worker.pairs.erase(it);
+			this->_scheme.pairs.erase(it);
 			// Получаем параметры подключения адъютанта
-			proxy_worker_t::coffer_t * adj = const_cast <proxy_worker_t::coffer_t *> (this->_worker.get(aid));
+			proxy_scheme_t::coffer_t * adj = const_cast <proxy_scheme_t::coffer_t *> (this->_scheme.get(aid));
 			// Если подключение не выполнено, отправляем ответ адъютанту
 			if((adj != nullptr) && !adj->connect)
 				// Выполняем реджект
@@ -250,10 +250,10 @@ void awh::server::Proxy::disconnectClientCallback(const size_t aid, const size_t
 /**
  * disconnectServerCallback Функция обратного вызова при отключении от сервера
  * @param aid  идентификатор адъютанта
- * @param wid  идентификатор воркера
- * @param core объект биндинга TCP/IP
+ * @param sid  идентификатор схемы сети
+ * @param core объект сетевого ядра
  */
-void awh::server::Proxy::disconnectServerCallback(const size_t aid, const size_t wid, awh::core_t * core) noexcept {
+void awh::server::Proxy::disconnectServerCallback(const size_t aid, const size_t sid, awh::core_t * core) noexcept {
 	// Принудительно выполняем отключение лкиента
 	if(aid > 0) this->close(aid);
 }
@@ -262,15 +262,15 @@ void awh::server::Proxy::disconnectServerCallback(const size_t aid, const size_t
  * @param ip   адрес интернет подключения адъютанта
  * @param mac  мак-адрес подключившегося адъютанта
  * @param port порт подключившегося адъютанта
- * @param wid  идентификатор воркера
- * @param core объект биндинга TCP/IP
+ * @param sid  идентификатор схемы сети
+ * @param core объект сетевого ядра
  * @return     результат разрешения к подключению адъютанта
  */
-bool awh::server::Proxy::acceptServerCallback(const string & ip, const string & mac, const u_int port, const size_t wid, awh::core_t * core) noexcept {
+bool awh::server::Proxy::acceptServerCallback(const string & ip, const string & mac, const u_int port, const size_t sid, awh::core_t * core) noexcept {
 	// Результат работы функции
 	bool result = true;
 	// Если данные существуют
-	if(!ip.empty() && !mac.empty() && (wid > 0) && (core != nullptr)){
+	if(!ip.empty() && !mac.empty() && (sid > 0) && (core != nullptr)){
 		// Если функция обратного вызова установлена
 		if(this->_callback.accept != nullptr)
 			// Выполняем проверку клиента на разрешение подключения
@@ -284,18 +284,18 @@ bool awh::server::Proxy::acceptServerCallback(const string & ip, const string & 
  * @param buffer бинарный буфер содержащий сообщение
  * @param size   размер бинарного буфера содержащего сообщение
  * @param aid    идентификатор адъютанта
- * @param wid    идентификатор воркера
- * @param core   объект биндинга TCP/IP
+ * @param sid    идентификатор схемы сети
+ * @param core   объект сетевого ядра
  */
-void awh::server::Proxy::readClientCallback(const char * buffer, const size_t size, const size_t aid, const size_t wid, awh::core_t * core) noexcept {
+void awh::server::Proxy::readClientCallback(const char * buffer, const size_t size, const size_t aid, const size_t sid, awh::core_t * core) noexcept {
 	// Если данные существуют
-	if((size > 0) && (aid > 0) && (wid > 0) && (buffer != nullptr) && (core != nullptr)){
+	if((size > 0) && (aid > 0) && (sid > 0) && (buffer != nullptr) && (core != nullptr)){
 		// Ищем идентификатор адъютанта пары
-		auto it = this->_worker.pairs.find(wid);
+		auto it = this->_scheme.pairs.find(sid);
 		// Если адъютант получен
-		if(it != this->_worker.pairs.end()){
+		if(it != this->_scheme.pairs.end()){
 			// Получаем параметры подключения адъютанта
-			proxy_worker_t::coffer_t * adj = const_cast <proxy_worker_t::coffer_t *> (this->_worker.get(it->second));
+			proxy_scheme_t::coffer_t * adj = const_cast <proxy_scheme_t::coffer_t *> (this->_scheme.get(it->second));
 			// Если подключение выполнено, отправляем ответ адъютанту
 			if((adj != nullptr) && adj->connect){
 				// Если указан метод не CONNECT и функция обработки сообщения установлена
@@ -378,20 +378,20 @@ void awh::server::Proxy::readClientCallback(const char * buffer, const size_t si
  * @param buffer бинарный буфер содержащий сообщение
  * @param size   размер бинарного буфера содержащего сообщение
  * @param aid    идентификатор адъютанта
- * @param wid    идентификатор воркера
- * @param core   объект биндинга TCP/IP
+ * @param sid    идентификатор схемы сети
+ * @param core   объект сетевого ядра
  */
-void awh::server::Proxy::readServerCallback(const char * buffer, const size_t size, const size_t aid, const size_t wid, awh::core_t * core) noexcept {
+void awh::server::Proxy::readServerCallback(const char * buffer, const size_t size, const size_t aid, const size_t sid, awh::core_t * core) noexcept {
 	// Если данные существуют
-	if((size > 0) && (aid > 0) && (wid > 0) && (buffer != nullptr) && (core != nullptr)){
+	if((size > 0) && (aid > 0) && (sid > 0) && (buffer != nullptr) && (core != nullptr)){
 		// Получаем параметры подключения адъютанта
-		proxy_worker_t::coffer_t * adj = const_cast <proxy_worker_t::coffer_t *> (this->_worker.get(aid));
+		proxy_scheme_t::coffer_t * adj = const_cast <proxy_scheme_t::coffer_t *> (this->_scheme.get(aid));
 		// Если параметры подключения адъютанта получены
 		if(adj != nullptr){
 			// Если указан метод CONNECT
 			if(adj->connect && (adj->method == web_t::method_t::CONNECT)){
 				// Получаем идентификатор адъютанта
-				const size_t aid = adj->worker.getAid();
+				const size_t aid = adj->scheme.getAid();
 				// Отправляем запрос на внешний сервер
 				if(aid > 0){
 					// Если функция обратного вызова установлена, выполняем
@@ -408,7 +408,7 @@ void awh::server::Proxy::readServerCallback(const char * buffer, const size_t si
 				// Добавляем полученные данные в буфер
 				adj->server.insert(adj->server.end(), buffer, buffer + size);
 				// Выполняем обработку полученных данных
-				this->prepare(aid, wid);
+				this->prepare(aid, sid);
 			}
 		}
 	}
@@ -418,14 +418,14 @@ void awh::server::Proxy::readServerCallback(const char * buffer, const size_t si
  * @param buffer бинарный буфер содержащий сообщение
  * @param size   размер записанных в сокет байт
  * @param aid    идентификатор адъютанта
- * @param wid    идентификатор воркера
- * @param core   объект биндинга TCP/IP
+ * @param sid    идентификатор схемы сети
+ * @param core   объект сетевого ядра
  */
-void awh::server::Proxy::writeServerCallback(const char * buffer, const size_t size, const size_t aid, const size_t wid, awh::core_t * core) noexcept {
+void awh::server::Proxy::writeServerCallback(const char * buffer, const size_t size, const size_t aid, const size_t sid, awh::core_t * core) noexcept {
 	// Если данные существуют
-	if((size > 0) && (aid > 0) && (wid > 0) && (core != nullptr)){
+	if((size > 0) && (aid > 0) && (sid > 0) && (core != nullptr)){
 		// Получаем параметры подключения адъютанта
-		proxy_worker_t::coffer_t * adj = const_cast <proxy_worker_t::coffer_t *> (this->_worker.get(aid));
+		proxy_scheme_t::coffer_t * adj = const_cast <proxy_scheme_t::coffer_t *> (this->_scheme.get(aid));
 		// Если параметры подключения адъютанта получены
 		if((adj != nullptr) && adj->stopped)
 			// Выполняем закрытие подключения
@@ -435,13 +435,13 @@ void awh::server::Proxy::writeServerCallback(const char * buffer, const size_t s
 /**
  * prepare Метод обработки входящих данных
  * @param aid идентификатор адъютанта
- * @param wid идентификатор воркера
+ * @param sid идентификатор схемы сети
  */
-void awh::server::Proxy::prepare(const size_t aid, const size_t wid) noexcept {
+void awh::server::Proxy::prepare(const size_t aid, const size_t sid) noexcept {
 	// Если данные существуют
-	if((aid > 0) && (wid > 0)){
+	if((aid > 0) && (sid > 0)){
 		// Получаем параметры подключения адъютанта
-		proxy_worker_t::coffer_t * adj = const_cast <proxy_worker_t::coffer_t *> (this->_worker.get(aid));
+		proxy_scheme_t::coffer_t * adj = const_cast <proxy_scheme_t::coffer_t *> (this->_scheme.get(aid));
 		// Если параметры подключения адъютанта получены
 		if((adj != nullptr) && !adj->locked){
 			// Выполняем обработку полученных данных
@@ -503,9 +503,9 @@ void awh::server::Proxy::prepare(const size_t aid, const size_t wid) noexcept {
 									// Запоминаем метод подключения
 									adj->method = query.method;
 									// Формируем адрес подключения
-									adj->worker.url = this->_worker.uri.parse(this->_fmk->format("http://%s", uri.c_str()));
+									adj->scheme.url = this->_scheme.uri.parse(this->_fmk->format("http://%s", uri.c_str()));
 									// Выполняем запрос на сервер
-									this->_core.client.open(adj->worker.wid);
+									this->_core.client.open(adj->scheme.sid);
 									// Выходим из функции
 									return;
 								// Если хост не получен
@@ -592,7 +592,7 @@ void awh::server::Proxy::prepare(const size_t aid, const size_t wid) noexcept {
 										// Если данные запроса получены
 										if(!request.empty()){
 											// Получаем идентификатор адъютанта
-											const size_t aid = adj->worker.getAid();
+											const size_t aid = adj->scheme.getAid();
 											// Отправляем запрос на внешний сервер
 											if(aid > 0){
 												// Тело REST сообщения
@@ -609,7 +609,7 @@ void awh::server::Proxy::prepare(const size_t aid, const size_t wid) noexcept {
 								// Если функция обратного вызова не установлена
 								} else {
 									// Получаем идентификатор адъютанта
-									const size_t aid = adj->worker.getAid();
+									const size_t aid = adj->scheme.getAid();
 									// Отправляем запрос на внешний сервер
 									if(aid > 0){
 										// Получаем данные запроса
@@ -706,7 +706,7 @@ void awh::server::Proxy::init(const string & socket, const http_t::compress_t co
 		// Выполняем установку unix-сокет
 		this->_core.server.unixSocket(socket);
 		// Устанавливаем тип сокета unix-сокет
-		this->_core.server.family(worker_t::family_t::NIX);
+		this->_core.server.family(scheme_t::family_t::NIX);
 	#endif
 }
 /**
@@ -798,7 +798,7 @@ void awh::server::Proxy::reject(const size_t aid, const u_int code, const string
 	// Если подключение выполнено
 	if(this->_core.server.working()){
 		// Получаем параметры подключения адъютанта
-		proxy_worker_t::coffer_t * adj = const_cast <proxy_worker_t::coffer_t *> (this->_worker.get(aid));
+		proxy_scheme_t::coffer_t * adj = const_cast <proxy_scheme_t::coffer_t *> (this->_scheme.get(aid));
 		// Если отправка сообщений разблокированна
 		if(adj != nullptr){
 			// Тело полезной нагрузки
@@ -849,7 +849,7 @@ void awh::server::Proxy::response(const size_t aid, const u_int code, const stri
 	// Если подключение выполнено
 	if(this->_core.server.working()){
 		// Получаем параметры подключения адъютанта
-		proxy_worker_t::coffer_t * adj = const_cast <proxy_worker_t::coffer_t *> (this->_worker.get(aid));
+		proxy_scheme_t::coffer_t * adj = const_cast <proxy_scheme_t::coffer_t *> (this->_scheme.get(aid));
 		// Если отправка сообщений разблокированна
 		if(adj != nullptr){
 			// Тело полезной нагрузки
@@ -895,7 +895,7 @@ void awh::server::Proxy::response(const size_t aid, const u_int code, const stri
  */
 u_int awh::server::Proxy::port(const size_t aid) const noexcept {
 	// Выводим результат
-	return this->_worker.getPort(aid);
+	return this->_scheme.getPort(aid);
 }
 /**
  * ip Метод получения IP адреса адъютанта
@@ -904,7 +904,7 @@ u_int awh::server::Proxy::port(const size_t aid) const noexcept {
  */
 const string & awh::server::Proxy::ip(const size_t aid) const noexcept {
 	// Выводим результат
-	return this->_worker.getIp(aid);
+	return this->_scheme.getIp(aid);
 }
 /**
  * mac Метод получения MAC адреса адъютанта
@@ -913,7 +913,7 @@ const string & awh::server::Proxy::ip(const size_t aid) const noexcept {
  */
 const string & awh::server::Proxy::mac(const size_t aid) const noexcept {
 	// Выводим результат
-	return this->_worker.getMac(aid);
+	return this->_scheme.getMac(aid);
 }
 /**
  * alive Метод установки долгоживущего подключения
@@ -938,7 +938,7 @@ void awh::server::Proxy::alive(const size_t time) noexcept {
  */
 void awh::server::Proxy::alive(const size_t aid, const bool mode) noexcept {
 	// Получаем параметры подключения адъютанта
-	proxy_worker_t::coffer_t * adj = const_cast <proxy_worker_t::coffer_t *> (this->_worker.get(aid));
+	proxy_scheme_t::coffer_t * adj = const_cast <proxy_scheme_t::coffer_t *> (this->_scheme.get(aid));
 	// Если параметры подключения адъютанта получены, устанавливаем флаг пдолгоживущего подключения
 	if(adj != nullptr) adj->alive = mode;
 }
@@ -966,13 +966,13 @@ void awh::server::Proxy::start() noexcept {
  */
 void awh::server::Proxy::close(const size_t aid) noexcept {
 	// Получаем параметры подключения адъютанта
-	proxy_worker_t::coffer_t * adj = const_cast <proxy_worker_t::coffer_t *> (this->_worker.get(aid));
+	proxy_scheme_t::coffer_t * adj = const_cast <proxy_scheme_t::coffer_t *> (this->_scheme.get(aid));
 	// Если параметры подключения адъютанта получены, устанавливаем флаг закрытия подключения
 	if(adj != nullptr){
 		// Выполняем отключение всех дочерних адъютантов
-		this->_core.client.close(adj->worker.getAid());
-		// Удаляем воркер из сетевого ядра
-		this->_core.client.remove(adj->worker.wid);
+		this->_core.client.close(adj->scheme.getAid());
+		// Удаляем схему сети из сетевого ядра
+		this->_core.client.remove(adj->scheme.sid);
 	}
 	// Отключаем адъютанта от сервера
 	this->_core.server.close(aid);
@@ -981,7 +981,7 @@ void awh::server::Proxy::close(const size_t aid) noexcept {
 		// Выполняем функцию обратного вызова
 		this->_callback.active(aid, mode_t::DISCONNECT, this);
 	// Выполняем удаление параметров адъютанта
-	if(adj != nullptr) this->_worker.rm(aid);
+	if(adj != nullptr) this->_scheme.rm(aid);
 }
 /**
  * waitTimeDetect Метод детекции сообщений по количеству секунд
@@ -990,28 +990,28 @@ void awh::server::Proxy::close(const size_t aid) noexcept {
  */
 void awh::server::Proxy::waitTimeDetect(const time_t read, const time_t write) noexcept {
 	// Устанавливаем количество секунд на чтение
-	this->_worker.timeouts.read = read;
+	this->_scheme.timeouts.read = read;
 	// Устанавливаем количество секунд на запись
-	this->_worker.timeouts.write = write;
+	this->_scheme.timeouts.write = write;
 }
 /**
  * bytesDetect Метод детекции сообщений по количеству байт
  * @param read  количество байт для детекции по чтению
  * @param write количество байт для детекции по записи
  */
-void awh::server::Proxy::bytesDetect(const worker_t::mark_t read, const worker_t::mark_t write) noexcept {
+void awh::server::Proxy::bytesDetect(const scheme_t::mark_t read, const scheme_t::mark_t write) noexcept {
 	// Устанавливаем количество байт на чтение
-	this->_worker.marker.read = read;
+	this->_scheme.marker.read = read;
 	// Устанавливаем количество байт на запись
-	this->_worker.marker.write = write;
+	this->_scheme.marker.write = write;
 	// Если минимальный размер данных для чтения, не установлен
-	if(this->_worker.marker.read.min == 0)
+	if(this->_scheme.marker.read.min == 0)
 		// Устанавливаем размер минимальных для чтения данных по умолчанию
-		this->_worker.marker.read.min = BUFFER_READ_MIN;
+		this->_scheme.marker.read.min = BUFFER_READ_MIN;
 	// Если максимальный размер данных для записи не установлен, устанавливаем по умолчанию
-	if(this->_worker.marker.write.max == 0)
+	if(this->_scheme.marker.write.max == 0)
 		// Устанавливаем размер максимальных записываемых данных по умолчанию
-		this->_worker.marker.write.max = BUFFER_WRITE_MAX;
+		this->_scheme.marker.write.max = BUFFER_WRITE_MAX;
 }
 /**
  * realm Метод установки название сервера
@@ -1048,7 +1048,7 @@ void awh::server::Proxy::mode(const u_short flag) noexcept {
 	// Устанавливаем флаг запрещающий метод CONNECT
 	this->_noConnect = (flag & (uint8_t) flag_t::NOCONNECT);
 	// Устанавливаем флаг ожидания входящих сообщений
-	this->_worker.wait = (flag & (uint8_t) flag_t::WAITMESS);
+	this->_scheme.wait = (flag & (uint8_t) flag_t::WAITMESS);
 	// Устанавливаем флаг запрещающий вывод информационных сообщений
 	this->_core.server.noInfo(flag & (uint8_t) flag_t::NOINFO);
 }
@@ -1058,7 +1058,7 @@ void awh::server::Proxy::mode(const u_short flag) noexcept {
  */
 void awh::server::Proxy::total(const u_short total) noexcept {
 	// Устанавливаем максимальное количество одновременных подключений
-	this->_core.server.total(this->_worker.wid, total);
+	this->_core.server.total(this->_scheme.sid, total);
 }
 /**
  * clusterSize Метод установки количества процессов кластера
@@ -1084,17 +1084,17 @@ void awh::server::Proxy::ipV6only(const bool mode) noexcept {
  */
 void awh::server::Proxy::keepAlive(const int cnt, const int idle, const int intvl) noexcept {
 	// Выполняем установку максимального количества попыток
-	this->_worker.keepAlive.cnt = cnt;
+	this->_scheme.keepAlive.cnt = cnt;
 	// Выполняем установку интервала времени в секундах через которое происходит проверка подключения
-	this->_worker.keepAlive.idle = idle;
+	this->_scheme.keepAlive.idle = idle;
 	// Выполняем установку интервала времени в секундах между попытками
-	this->_worker.keepAlive.intvl = intvl;
+	this->_scheme.keepAlive.intvl = intvl;
 }
 /**
  * sonet Метод установки типа сокета подключения
  * @param sonet тип сокета подключения (TCP / UDP / SCTP)
  */
-void awh::server::Proxy::sonet(const worker_t::sonet_t sonet) noexcept {
+void awh::server::Proxy::sonet(const scheme_t::sonet_t sonet) noexcept {
 	// Устанавливаем тип сокета подключения
 	this->_core.server.sonet(sonet);
 }
@@ -1102,7 +1102,7 @@ void awh::server::Proxy::sonet(const worker_t::sonet_t sonet) noexcept {
  * family Метод установки типа протокола интернета
  * @param family тип протокола интернета (IPV4 / IPV6 / NIX)
  */
-void awh::server::Proxy::family(const worker_t::family_t family) noexcept {
+void awh::server::Proxy::family(const scheme_t::family_t family) noexcept {
 	// Устанавливаем тип протокола интернета
 	this->_core.server.family(family);
 }
@@ -1123,7 +1123,7 @@ void awh::server::Proxy::bandWidth(const size_t aid, const string & read, const 
  * @param family тип протокола интернета (IPV4 / IPV6 / NIX)
  * @param sonet  тип сокета подключения (TCP / UDP)
  */
-void awh::server::Proxy::network(const vector <string> & ip, const vector <string> & ns, const worker_t::family_t family, const worker_t::sonet_t sonet) noexcept {
+void awh::server::Proxy::network(const vector <string> & ip, const vector <string> & ns, const scheme_t::family_t family, const scheme_t::sonet_t sonet) noexcept {
 	// Устанавливаем параметры сети адъютанта
 	this->_core.client.network(ip, ns);
 	// Устанавливаем параметры сети сервера
@@ -1195,7 +1195,7 @@ void awh::server::Proxy::maxRequests(const size_t max) noexcept {
  */
 void awh::server::Proxy::compress(const http_t::compress_t compress) noexcept {
 	// Устанавливаем метод компрессии
-	this->_worker.compress = compress;
+	this->_scheme.compress = compress;
 }
 /**
  * serv Метод установки данных сервиса
@@ -1234,7 +1234,7 @@ void awh::server::Proxy::crypto(const string & pass, const string & salt, const 
  * @param log объект для работы с логами
  */
 awh::server::Proxy::Proxy(const fmk_t * fmk, const log_t * log) noexcept :
- _port(SERVER_PORT), _host(""), _usock(""), _core(fmk, log), _worker(fmk, log),
+ _port(SERVER_PORT), _host(""), _usock(""), _core(fmk, log), _scheme(fmk, log),
  _sid(AWH_SHORT_NAME), _ver(AWH_VERSION), _name(AWH_NAME), _realm(""), _opaque(""),
  _pass(""), _salt(""), _cipher(hash_t::cipher_t::AES128), _authHash(auth_t::hash_t::MD5),
  _authType(auth_t::type_t::NONE), _crypt(false), _alive(false), _noConnect(false),
@@ -1242,27 +1242,27 @@ awh::server::Proxy::Proxy(const fmk_t * fmk, const log_t * log) noexcept :
 	// Устанавливаем флаг запрещающий вывод информационных сообщений для адъютанта
 	this->_core.client.noInfo(true);
 	// Устанавливаем протокол интернет-подключения
-	this->_core.server.sonet(worker_t::sonet_t::TCP);
+	this->_core.server.sonet(scheme_t::sonet_t::TCP);
 	// Устанавливаем событие на запуск системы
-	this->_worker.callback.open = std::bind(&Proxy::openServerCallback, this, _1, _2);
+	this->_scheme.callback.open = std::bind(&Proxy::openServerCallback, this, _1, _2);
 	// Устанавливаем функцию персистентного вызова
-	this->_worker.callback.persist = std::bind(&Proxy::persistCallback, this, _1, _2, _3);
+	this->_scheme.callback.persist = std::bind(&Proxy::persistCallback, this, _1, _2, _3);
 	// Устанавливаем событие подключения
-	this->_worker.callback.connect = std::bind(&Proxy::connectServerCallback, this, _1, _2, _3);
+	this->_scheme.callback.connect = std::bind(&Proxy::connectServerCallback, this, _1, _2, _3);
 	// Устанавливаем функцию чтения данных
-	this->_worker.callback.read = std::bind(&Proxy::readServerCallback, this, _1, _2, _3, _4, _5);
+	this->_scheme.callback.read = std::bind(&Proxy::readServerCallback, this, _1, _2, _3, _4, _5);
 	// Устанавливаем функцию записи данных
-	this->_worker.callback.write = std::bind(&Proxy::writeServerCallback, this, _1, _2, _3, _4, _5);
+	this->_scheme.callback.write = std::bind(&Proxy::writeServerCallback, this, _1, _2, _3, _4, _5);
 	// Добавляем событие аццепта адъютанта
-	this->_worker.callback.accept = std::bind(&Proxy::acceptServerCallback, this, _1, _2, _3, _4, _5);
+	this->_scheme.callback.accept = std::bind(&Proxy::acceptServerCallback, this, _1, _2, _3, _4, _5);
 	// Устанавливаем событие отключения
-	this->_worker.callback.disconnect = std::bind(&Proxy::disconnectServerCallback, this, _1, _2, _3);
+	this->_scheme.callback.disconnect = std::bind(&Proxy::disconnectServerCallback, this, _1, _2, _3);
 	// Активируем персистентный запуск для работы пингов
 	this->_core.server.persistEnable(true);
-	// Добавляем воркер в сетевое ядро
-	this->_core.server.add(&this->_worker);
+	// Добавляем схему сети в сетевое ядро
+	this->_core.server.add(&this->_scheme);
 	// Разрешаем автоматический перезапуск упавших процессов
-	this->_core.server.clusterAutoRestart(this->_worker.wid, true);
+	this->_core.server.clusterAutoRestart(this->_scheme.sid, true);
 	// Устанавливаем функцию активации ядра сервера
 	this->_core.server.callback(std::bind(&Proxy::runCallback, this, _1, _2));
 }

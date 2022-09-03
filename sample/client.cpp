@@ -101,13 +101,13 @@ int main(int argc, char * argv[]) noexcept {
 	// Устанавливаем название сервера
 	// core.nameServer("anyks");
 	// Устанавливаем тип сокета unix-сокет
-	// core.family(awh::worker_t::family_t::NIX);
+	// core.family(awh::scheme_t::family_t::NIX);
 	// Устанавливаем тип сокета UDP TLS
-	core.sonet(awh::worker_t::sonet_t::DTLS);
-	// core.sonet(awh::worker_t::sonet_t::TLS);
-	// core.sonet(awh::worker_t::sonet_t::UDP);
-	// core.sonet(awh::worker_t::sonet_t::TCP);
-	// core.sonet(awh::worker_t::sonet_t::SCTP);
+	core.sonet(awh::scheme_t::sonet_t::DTLS);
+	// core.sonet(awh::scheme_t::sonet_t::TLS);
+	// core.sonet(awh::scheme_t::sonet_t::UDP);
+	// core.sonet(awh::scheme_t::sonet_t::TCP);
+	// core.sonet(awh::scheme_t::sonet_t::SCTP);
 	// Устанавливаем длительное подключение
 	// ws.keepAlive(100, 30, 10);
 	// Подключаем сертификаты

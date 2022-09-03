@@ -34,7 +34,7 @@ int main(int argc, char * argv[]) noexcept {
 	// Устанавливаем формат времени
 	log.setLogFormat("%H:%M:%S %d.%m.%Y");
 	// Выполняем резолвинг для доменного имени
-	core.resolve("google.com", worker_t::family_t::IPV4, [&log](const string & ip, const worker_t::family_t family, core_t * core){
+	core.resolve("google.com", scheme_t::family_t::IPV4, [&log](const string & ip, const scheme_t::family_t family, core_t * core){
 		// Выводим результат получения IP адреса
 		log.print("IP: %s", log_t::flag_t::INFO, ip.c_str());
 		// Завершаем работу

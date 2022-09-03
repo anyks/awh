@@ -1,6 +1,6 @@
 /**
  * @file: core.cpp
- * @date: 2021-02-06
+ * @date: 2022-09-03
  * @license: GPL-3.0
  *
  * @telegram: @forman
@@ -13,12 +13,12 @@
  */
 
 // Подключаем заголовочный файл
-#include <worker/core.hpp>
+#include <scheme/core.hpp>
 
 /**
  * clear Метод очистки
  */
-void awh::Worker::clear() noexcept {
+void awh::Scheme::clear() noexcept {
 	// Выполняем очистку списка адъютантов
 	this->adjutants.clear();
 }
@@ -27,7 +27,7 @@ void awh::Worker::clear() noexcept {
  * @param aid идентификатор адъютанта
  * @return   порт подключения адъютанта
  */
-u_int awh::Worker::getPort(const size_t aid) const noexcept {
+u_int awh::Scheme::getPort(const size_t aid) const noexcept {
 	// Результат работы функции
 	u_int result = 0;
 	// Если идентификатор адъютанта передан
@@ -45,7 +45,7 @@ u_int awh::Worker::getPort(const size_t aid) const noexcept {
  * @param aid идентификатор адъютанта
  * @return    адрес интернет подключения адъютанта
  */
-const string & awh::Worker::getIp(const size_t aid) const noexcept {
+const string & awh::Scheme::getIp(const size_t aid) const noexcept {
 	// Результат работы функции
 	static const string result = "";
 	// Если идентификатор адъютанта передан
@@ -63,7 +63,7 @@ const string & awh::Worker::getIp(const size_t aid) const noexcept {
  * @param aid идентификатор адъютанта
  * @return    адрес устройства адъютанта
  */
-const string & awh::Worker::getMac(const size_t aid) const noexcept {
+const string & awh::Scheme::getMac(const size_t aid) const noexcept {
 	// Результат работы функции
 	static const string result = "";
 	// Если идентификатор адъютанта передан

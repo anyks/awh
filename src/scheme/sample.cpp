@@ -1,6 +1,6 @@
 /**
- * @file: proxy.cpp
- * @date: 2021-12-19
+ * @file: sample.cpp
+ * @date: 2022-09-01
  * @license: GPL-3.0
  *
  * @telegram: @forman
@@ -9,48 +9,40 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
- * @copyright: Copyright © 2021
+ * @copyright: Copyright © 2022
  */
 
 // Подключаем заголовочный файл
-#include <worker/proxy.hpp>
+#include <scheme/sample.hpp>
 
 /**
  * clear Метод очистки
  */
-void awh::server::WorkerProxy::clear() noexcept {
+void awh::server::SchemeSample::clear() noexcept {
 	// Очищаем данные вокера
-	worker_t::clear();
-	// Очищаем список пар клиентов
-	this->pairs.clear();
+	scheme_t::clear();
 	// Очищаем список параметров адъютантов
 	this->_coffers.clear();
 	// Освобождаем выделенную память
 	map <size_t, unique_ptr <coffer_t>> ().swap(this->_coffers);
-	// Сбрасываем тип компрессии
-	this->compress = http_t::compress_t::NONE;
 }
 /**
  * set Метод создания параметров адъютанта
  * @param aid идентификатор адъютанта
  */
-void awh::server::WorkerProxy::set(const size_t aid) noexcept {
+void awh::server::SchemeSample::set(const size_t aid) noexcept {
 	// Если идентификатор адъютанта передан
-	if((aid > 0) && (this->_coffers.count(aid) < 1)){
+	if((aid > 0) && (this->_coffers.count(aid) < 1))
 		// Добавляем адъютанта в список адъютантов
-		auto ret = this->_coffers.emplace(aid, unique_ptr <coffer_t> (new coffer_t(this->_fmk, this->_log, &this->uri)));
-		// Устанавливаем метод сжатия
-		ret.first->second->cli.compress(this->compress);
-		ret.first->second->srv.compress(this->compress);
-	}
+		this->_coffers.emplace(aid, unique_ptr <coffer_t> (new coffer_t(this->_fmk, this->_log)));
 }
 /**
  * rm Метод удаления параметров подключения адъютанта
  * @param aid идентификатор адъютанта
  */
-void awh::server::WorkerProxy::rm(const size_t aid) noexcept {	
+void awh::server::SchemeSample::rm(const size_t aid) noexcept {
 	// Если идентификатор адъютанта передан
-	if((aid > 0) && !this->_coffers.empty()){
+	if(aid > 0){
 		// Выполняем поиск адъютанта
 		auto it = this->_coffers.find(aid);
 		// Если адъютант найден, удаляем его
@@ -62,11 +54,11 @@ void awh::server::WorkerProxy::rm(const size_t aid) noexcept {
  * @param aid идентификатор адъютанта
  * @return    параметры подключения адъютанта
  */
-const awh::server::WorkerProxy::coffer_t * awh::server::WorkerProxy::get(const size_t aid) const noexcept {
+const awh::server::SchemeSample::coffer_t * awh::server::SchemeSample::get(const size_t aid) const noexcept {
 	// Результат работы функции
 	coffer_t * result = nullptr;
 	// Если идентификатор адъютанта передан
-	if((aid > 0) && !this->_coffers.empty()){
+	if(aid > 0){
 		// Выполняем поиск адъютанта
 		auto it = this->_coffers.find(aid);
 		// Если адъютант найден, выводим его параметры

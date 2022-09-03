@@ -1,6 +1,6 @@
 /**
  * @file: core.hpp
- * @date: 2021-12-19
+ * @date: 2022-09-03
  * @license: GPL-3.0
  *
  * @telegram: @forman
@@ -9,7 +9,7 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
- * @copyright: Copyright © 2021
+ * @copyright: Copyright © 2022
  */
 
 #ifndef __AWH_CORE__
@@ -52,7 +52,7 @@
  */
 #include <net/dns.hpp>
 #include <net/engine.hpp>
-#include <worker/core.hpp>
+#include <scheme/core.hpp>
 #include <sys/signals.hpp>
 
 // Подписываемся на стандартное пространство имён
@@ -68,9 +68,9 @@ namespace awh {
 	typedef class Core {
 		private:
 			/**
-			 * Worker Устанавливаем дружбу с классом воркера
+			 * Scheme Устанавливаем дружбу с схемой сети
 			 */
-			friend class Worker;
+			friend class Scheme;
 		protected:
 			/**
 			 * Статус работы сетевого ядра
@@ -126,7 +126,7 @@ namespace awh {
 				recursive_mutex main;   // Для работы с параметрами модуля
 				recursive_mutex timer;  // Для работы с таймерами
 				recursive_mutex status; // Для контроля запуска модуля
-				recursive_mutex worker; // Для работы с воркерами
+				recursive_mutex scheme; // Для работы с схемой сети
 			} mtx_t;
 			/**
 			 * Network Структура текущих параметров сети
@@ -135,9 +135,9 @@ namespace awh {
 				// Адрес файла unix-сокета
 				string filename;
 				// Тип сокета подключения (TCP / UDP)
-				worker_t::sonet_t sonet;
+				scheme_t::sonet_t sonet;
 				// Тип протокола интернета (IPV4 / IPV6 / NIX)
-				worker_t::family_t family;
+				scheme_t::family_t family;
 				// Параметры для сети IPv4
 				pair <vector <string>, vector <dns_t::serv_t>> v4;
 				// Параметры для сети IPv6
@@ -147,8 +147,8 @@ namespace awh {
 				 */
 				Network() noexcept :
 				 filename(""),
-				 sonet(worker_t::sonet_t::TCP),
-				 family(worker_t::family_t::IPV4),
+				 sonet(scheme_t::sonet_t::TCP),
+				 family(scheme_t::family_t::IPV4),
 				 v4({{"0.0.0.0"}, {}}), v6({{"[::0]"}, {}}) {}
 			} net_t;
 		private:
@@ -265,12 +265,12 @@ namespace awh {
 			// Список активных таймеров
 			map <u_short, unique_ptr <timer_t>> _timers;
 			// Список функций обратного вызова при выполнении резолвинга
-			map <size_t, function <void (const string &, const worker_t::family_t, Core *)>> _dids;
+			map <size_t, function <void (const string &, const scheme_t::family_t, Core *)>> _dids;
 		protected:
-			// Список активных воркеров
-			map <size_t, const worker_t *> workers;
+			// Список активных схем сети
+			map <size_t, const scheme_t *> schemes;
 			// Список подключённых клиентов
-			map <size_t, const worker_t::adj_t *> adjutants;			
+			map <size_t, const scheme_t::adj_t *> adjutants;
 		protected:
 			// Флаг разрешения работы
 			bool mode;
@@ -361,31 +361,31 @@ namespace awh {
 			bool working() const noexcept;
 		public:
 			/**
-			 * add Метод добавления воркера в биндинг
-			 * @param worker воркер для добавления
-			 * @return       идентификатор воркера в биндинге
+			 * add Метод добавления схемы сети
+			 * @param scheme схема рабочей сети
+			 * @return       идентификатор схемы сети
 			 */
-			size_t add(const worker_t * worker) noexcept;
+			size_t add(const scheme_t * scheme) noexcept;
 		public:
 			/**
-			 * close Метод отключения всех воркеров
+			 * close Метод отключения всех адъютантов
 			 */
 			virtual void close() noexcept;
 			/**
-			 * remove Метод удаления всех воркеров
+			 * remove Метод удаления всех схем сети
 			 */
 			virtual void remove() noexcept;
 		public:
 			/**
-			 * close Метод закрытия подключения воркера
+			 * close Метод закрытия подключения адъютанта
 			 * @param aid идентификатор адъютанта
 			 */
 			virtual void close(const size_t aid) noexcept;
 			/**
-			 * remove Метод удаления воркера из биндинга
-			 * @param wid идентификатор воркера
+			 * remove Метод удаления схемы сети
+			 * @param sid идентификатор схемы сети
 			 */
-			virtual void remove(const size_t wid) noexcept;
+			virtual void remove(const size_t sid) noexcept;
 		private:
 			/**
 			 * timeout Функция обратного вызова при срабатывании таймаута
@@ -405,12 +405,12 @@ namespace awh {
 			virtual void transfer(const engine_t::method_t method, const size_t aid) noexcept;
 			/**
 			 * resolving Метод получения IP адреса доменного имени
-			 * @param wid    идентификатор воркера
+			 * @param sid    идентификатор схемы сети
 			 * @param ip     адрес интернет-подключения
 			 * @param family тип интернет-протокола AF_INET, AF_INET6
 			 * @param did    идентификатор DNS запроса
 			 */
-			virtual void resolving(const size_t wid, const string & ip, const int family, const size_t did) noexcept;
+			virtual void resolving(const size_t sid, const string & ip, const int family, const size_t did) noexcept;
 		public:
 			/**
 			 * bandWidth Метод установки пропускной способности сети
@@ -439,7 +439,7 @@ namespace awh {
 			void disabled(const engine_t::method_t method, const size_t aid) noexcept;
 		public:
 			/**
-			 * write Метод записи буфера данных воркером
+			 * write Метод записи буфера данных в сокет
 			 * @param buffer буфер для записи данных
 			 * @param size   размер записываемых данных
 			 * @param aid    идентификатор адъютанта
@@ -519,7 +519,7 @@ namespace awh {
 			 * @param family   тип протокола интернета (IPV4 / IPV6)
 			 * @param callback функция обратного вызова
 			 */
-			void resolve(const string & domain, const worker_t::family_t family, function <void (const string &, const worker_t::family_t, Core *)> callback) noexcept;
+			void resolve(const string & domain, const scheme_t::family_t family, function <void (const string &, const scheme_t::family_t, Core *)> callback) noexcept;
 		public:
 			/**
 			 * removeUnixSocket Метод удаления unix-сокета
@@ -537,23 +537,23 @@ namespace awh {
 			 * sonet Метод извлечения типа сокета подключения
 			 * @return тип сокета подключения (TCP / UDP / SCTP)
 			 */
-			worker_t::sonet_t sonet() const noexcept;
+			scheme_t::sonet_t sonet() const noexcept;
 			/**
 			 * sonet Метод установки типа сокета подключения
 			 * @param sonet тип сокета подключения (TCP / UDP / SCTP)
 			 */
-			void sonet(const worker_t::sonet_t sonet = worker_t::sonet_t::TCP) noexcept;
+			void sonet(const scheme_t::sonet_t sonet = scheme_t::sonet_t::TCP) noexcept;
 		public:
 			/**
 			 * family Метод извлечения типа протокола интернета
 			 * @return тип протокола интернета (IPV4 / IPV6 / NIX)
 			 */
-			worker_t::family_t family() const noexcept;
+			scheme_t::family_t family() const noexcept;
 			/**
 			 * family Метод установки типа протокола интернета
 			 * @param family тип протокола интернета (IPV4 / IPV6 / NIX)
 			 */
-			void family(const worker_t::family_t family = worker_t::family_t::IPV4) noexcept;
+			void family(const scheme_t::family_t family = scheme_t::family_t::IPV4) noexcept;
 		public:
 			/**
 			 * noInfo Метод установки флага запрета вывода информационных сообщений
@@ -614,7 +614,7 @@ namespace awh {
 			 * @param family тип протокола интернета (IPV4 / IPV6 / NIX)
 			 * @param sonet  тип сокета подключения (TCP / UDP)
 			 */
-			void network(const vector <string> & ip = {}, const vector <string> & ns = {}, const worker_t::family_t family = worker_t::family_t::IPV4, const worker_t::sonet_t sonet = worker_t::sonet_t::TCP) noexcept;
+			void network(const vector <string> & ip = {}, const vector <string> & ns = {}, const scheme_t::family_t family = scheme_t::family_t::IPV4, const scheme_t::sonet_t sonet = scheme_t::sonet_t::TCP) noexcept;
 		public:
 			/**
 			 * Core Конструктор
@@ -623,7 +623,7 @@ namespace awh {
 			 * @param family тип протокола интернета (IPV4 / IPV6 / NIX)
 			 * @param sonet  тип сокета подключения (TCP / UDP / TLS / DTLS)
 			 */
-			Core(const fmk_t * fmk, const log_t * log, const worker_t::family_t family = worker_t::family_t::IPV4, const worker_t::sonet_t sonet = worker_t::sonet_t::TCP) noexcept;
+			Core(const fmk_t * fmk, const log_t * log, const scheme_t::family_t family = scheme_t::family_t::IPV4, const scheme_t::sonet_t sonet = scheme_t::sonet_t::TCP) noexcept;
 			/**
 			 * ~Core Деструктор
 			 */

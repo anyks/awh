@@ -17,10 +17,10 @@
 
 /**
  * openCallback Метод обратного вызова при запуске работы
- * @param wid  идентификатор воркера
- * @param core объект биндинга TCP/IP
+ * @param sid  идентификатор схемы сети
+ * @param core объект сетевого ядра
  */
-void awh::client::Sample::openCallback(const size_t wid, awh::core_t * core) noexcept {
+void awh::client::Sample::openCallback(const size_t sid, awh::core_t * core) noexcept {
 	// Если дисконнекта ещё не произошло
 	if(this->_action == action_t::NONE){
 		// Устанавливаем экшен выполнения
@@ -32,12 +32,12 @@ void awh::client::Sample::openCallback(const size_t wid, awh::core_t * core) noe
 /**
  * connectCallback Метод обратного вызова при подключении к серверу
  * @param aid  идентификатор адъютанта
- * @param wid  идентификатор воркера
- * @param core объект биндинга TCP/IP
+ * @param sid  идентификатор схемы сети
+ * @param core объект сетевого ядра
  */
-void awh::client::Sample::connectCallback(const size_t aid, const size_t wid, awh::core_t * core) noexcept {
+void awh::client::Sample::connectCallback(const size_t aid, const size_t sid, awh::core_t * core) noexcept {
 	// Если данные переданы верные
-	if((aid > 0) && (wid > 0) && (core != nullptr)){
+	if((aid > 0) && (sid > 0) && (core != nullptr)){
 		// Запоминаем идентификатор адъютанта
 		this->_aid = aid;
 		// Устанавливаем экшен выполнения
@@ -49,12 +49,12 @@ void awh::client::Sample::connectCallback(const size_t aid, const size_t wid, aw
 /**
  * disconnectCallback Метод обратного вызова при отключении от сервера
  * @param aid  идентификатор адъютанта
- * @param wid  идентификатор воркера
- * @param core объект биндинга TCP/IP
+ * @param sid  идентификатор схемы сети
+ * @param core объект сетевого ядра
  */
-void awh::client::Sample::disconnectCallback(const size_t aid, const size_t wid, awh::core_t * core) noexcept {
+void awh::client::Sample::disconnectCallback(const size_t aid, const size_t sid, awh::core_t * core) noexcept {
 	// Если данные переданы верные
-	if((wid > 0) && (core != nullptr)){
+	if((sid > 0) && (core != nullptr)){
 		// Устанавливаем экшен выполнения
 		this->_action = action_t::DISCONNECT;
 		// Выполняем запуск обработчика событий
@@ -66,12 +66,12 @@ void awh::client::Sample::disconnectCallback(const size_t aid, const size_t wid,
  * @param buffer бинарный буфер содержащий сообщение
  * @param size   размер бинарного буфера содержащего сообщение
  * @param aid    идентификатор адъютанта
- * @param wid    идентификатор воркера
- * @param core   объект биндинга TCP/IP
+ * @param sid    идентификатор схемы сети
+ * @param core   объект сетевого ядра
  */
-void awh::client::Sample::readCallback(const char * buffer, const size_t size, const size_t aid, const size_t wid, awh::core_t * core) noexcept {
+void awh::client::Sample::readCallback(const char * buffer, const size_t size, const size_t aid, const size_t sid, awh::core_t * core) noexcept {
 	// Если данные существуют
-	if((buffer != nullptr) && (size > 0) && (aid > 0) && (wid > 0)){
+	if((buffer != nullptr) && (size > 0) && (aid > 0) && (sid > 0)){
 		// Если дисконнекта ещё не произошло
 		if((this->_action == action_t::NONE) || (this->_action == action_t::READ)){
 			// Устанавливаем экшен выполнения
@@ -120,7 +120,7 @@ void awh::client::Sample::handler() noexcept {
  */
 void awh::client::Sample::actionOpen() noexcept {
 	// Выполняем подключение
-	const_cast <client::core_t *> (this->_core)->open(this->_worker.wid);
+	const_cast <client::core_t *> (this->_core)->open(this->_scheme.sid);
 	// Если экшен соответствует, выполняем его сброс
 	if(this->_action == action_t::OPEN)
 		// Выполняем сброс экшена
@@ -161,7 +161,7 @@ void awh::client::Sample::actionDisconnect() noexcept {
 	// Выполняем очистку оставшихся данных
 	this->_buffer.clear();
 	// Очищаем адрес сервера
-	this->_worker.url.clear();
+	this->_scheme.url.clear();
 	// Завершаем работу
 	if(this->_unbind) const_cast <client::core_t *> (this->_core)->stop();
 	// Если экшен соответствует, выполняем его сброс
@@ -180,7 +180,7 @@ void awh::client::Sample::stop() noexcept {
 	// Если подключение выполнено
 	if(this->_core->working()){
 		// Очищаем адрес сервера
-		this->_worker.url.clear();
+		this->_scheme.url.clear();
 		// Завершаем работу, если разрешено остановить
 		const_cast <client::core_t *> (this->_core)->stop();
 	}
@@ -194,7 +194,7 @@ void awh::client::Sample::start() noexcept {
 		// Выполняем запуск биндинга
 		const_cast <client::core_t *> (this->_core)->start();
 	// Если биндинг уже запущен, выполняем запрос на сервер
-	else const_cast <client::core_t *> (this->_core)->open(this->_worker.wid);
+	else const_cast <client::core_t *> (this->_core)->open(this->_scheme.sid);
 }
 /**
  * close Метод закрытия подключения клиента
@@ -215,7 +215,7 @@ void awh::client::Sample::init(const string & socket) noexcept {
 		// Создаём объект работы с URI ссылками
 		uri_t uri(this->_fmk, &this->_nwk);
 		// Устанавливаем URL адрес запроса (как заглушка)
-		this->_worker.url = uri.parse("http://unixsocket");
+		this->_scheme.url = uri.parse("http://unixsocket");
 		/**
 		 * Если операционной системой не является Windows
 		 */
@@ -234,25 +234,25 @@ void awh::client::Sample::init(const u_int port, const string & host) noexcept {
 	// Если параметры подключения переданы
 	if((port > 0) && !host.empty()){
 		// Устанавливаем порт сервера
-		this->_worker.url.port = port;
+		this->_scheme.url.port = port;
 		// Устанавливаем хост сервера
-		this->_worker.url.host = host;
+		this->_scheme.url.host = host;
 		// Определяем тип передаваемого сервера
 		switch((uint8_t) this->_nwk.parseHost(host)){
 			// Если хост является доменом или IPv4 адресом
 			case (uint8_t) network_t::type_t::IPV4:
 				// Устанавливаем IP адрес
-				this->_worker.url.ip = host;
+				this->_scheme.url.ip = host;
 			break;
 			// Если хост является IPv6 адресом, переводим ip адрес в полную форму
 			case (uint8_t) network_t::type_t::IPV6:
 				// Устанавливаем IP адрес
-				this->_worker.url.ip = this->_nwk.setLowIp6(host);
+				this->_scheme.url.ip = this->_nwk.setLowIp6(host);
 			break;
 			// Если хост является доменным именем
 			case (uint8_t) network_t::type_t::DOMNAME:
 				// Устанавливаем доменное имя
-				this->_worker.url.domain = host;
+				this->_scheme.url.domain = host;
 			break;
 		}
 	}
@@ -304,19 +304,19 @@ void awh::client::Sample::send(const char * buffer, const size_t size) const noe
  * @param read  количество байт для детекции по чтению
  * @param write количество байт для детекции по записи
  */
-void awh::client::Sample::bytesDetect(const worker_t::mark_t read, const worker_t::mark_t write) noexcept {
+void awh::client::Sample::bytesDetect(const scheme_t::mark_t read, const scheme_t::mark_t write) noexcept {
 	// Устанавливаем количество байт на чтение
-	this->_worker.marker.read = read;
+	this->_scheme.marker.read = read;
 	// Устанавливаем количество байт на запись
-	this->_worker.marker.write = write;
+	this->_scheme.marker.write = write;
 	// Если минимальный размер данных для чтения, не установлен
-	if(this->_worker.marker.read.min == 0)
+	if(this->_scheme.marker.read.min == 0)
 		// Устанавливаем размер минимальных для чтения данных по умолчанию
-		this->_worker.marker.read.min = BUFFER_READ_MIN;
+		this->_scheme.marker.read.min = BUFFER_READ_MIN;
 	// Если максимальный размер данных для записи не установлен, устанавливаем по умолчанию
-	if(this->_worker.marker.write.max == 0)
+	if(this->_scheme.marker.write.max == 0)
 		// Устанавливаем размер максимальных записываемых данных по умолчанию
-		this->_worker.marker.write.max = BUFFER_WRITE_MAX;
+		this->_scheme.marker.write.max = BUFFER_WRITE_MAX;
 }
 /**
  * waitTimeDetect Метод детекции сообщений по количеству секунд
@@ -326,11 +326,11 @@ void awh::client::Sample::bytesDetect(const worker_t::mark_t read, const worker_
  */
 void awh::client::Sample::waitTimeDetect(const time_t read, const time_t write, const time_t connect) noexcept {
 	// Устанавливаем количество секунд на чтение
-	this->_worker.timeouts.read = read;
+	this->_scheme.timeouts.read = read;
 	// Устанавливаем количество секунд на запись
-	this->_worker.timeouts.write = write;
+	this->_scheme.timeouts.write = write;
 	// Устанавливаем количество секунд на подключение
-	this->_worker.timeouts.connect = connect;
+	this->_scheme.timeouts.connect = connect;
 }
 /**
  * mode Метод установки флага модуля
@@ -340,9 +340,9 @@ void awh::client::Sample::mode(const u_short flag) noexcept {
 	// Устанавливаем флаг анбиндинга ядра сетевого модуля
 	this->_unbind = !(flag & (uint8_t) flag_t::NOTSTOP);
 	// Устанавливаем флаг ожидания входящих сообщений
-	this->_worker.wait = (flag & (uint8_t) flag_t::WAITMESS);
+	this->_scheme.wait = (flag & (uint8_t) flag_t::WAITMESS);
 	// Устанавливаем флаг поддержания автоматического подключения
-	this->_worker.alive = (flag & (uint8_t) flag_t::KEEPALIVE);
+	this->_scheme.alive = (flag & (uint8_t) flag_t::KEEPALIVE);
 	// Устанавливаем флаг запрещающий вывод информационных сообщений
 	const_cast <client::core_t *> (this->_core)->noInfo(flag & (uint8_t) flag_t::NOINFO);
 	// Выполняем установку флага проверки домена
@@ -356,29 +356,29 @@ void awh::client::Sample::mode(const u_short flag) noexcept {
  */
 void awh::client::Sample::keepAlive(const int cnt, const int idle, const int intvl) noexcept {
 	// Выполняем установку максимального количества попыток
-	this->_worker.keepAlive.cnt = cnt;
+	this->_scheme.keepAlive.cnt = cnt;
 	// Выполняем установку интервала времени в секундах через которое происходит проверка подключения
-	this->_worker.keepAlive.idle = idle;
+	this->_scheme.keepAlive.idle = idle;
 	// Выполняем установку интервала времени в секундах между попытками
-	this->_worker.keepAlive.intvl = intvl;
+	this->_scheme.keepAlive.intvl = intvl;
 }
 /**
  * Sample Конструктор
- * @param core объект биндинга TCP/IP
+ * @param core объект сетевого ядра
  * @param fmk  объект фреймворка
  * @param log  объект для работы с логами
  */
 awh::client::Sample::Sample(const client::core_t * core, const fmk_t * fmk, const log_t * log) noexcept :
- _nwk(fmk), _worker(fmk, log), _action(action_t::NONE),
+ _nwk(fmk), _scheme(fmk, log), _action(action_t::NONE),
  _aid(0), _unbind(true), _fmk(fmk), _log(log), _core(core) {
 	// Устанавливаем событие на запуск системы
-	this->_worker.callback.open = std::bind(&Sample::openCallback, this, _1, _2);
+	this->_scheme.callback.open = std::bind(&Sample::openCallback, this, _1, _2);
 	// Устанавливаем событие подключения
-	this->_worker.callback.connect = std::bind(&Sample::connectCallback, this, _1, _2, _3);
+	this->_scheme.callback.connect = std::bind(&Sample::connectCallback, this, _1, _2, _3);
 	// Устанавливаем функцию чтения данных
-	this->_worker.callback.read = std::bind(&Sample::readCallback, this, _1, _2, _3, _4, _5);
+	this->_scheme.callback.read = std::bind(&Sample::readCallback, this, _1, _2, _3, _4, _5);
 	// Устанавливаем событие отключения
-	this->_worker.callback.disconnect = std::bind(&Sample::disconnectCallback, this, _1, _2, _3);
-	// Добавляем воркер в биндер TCP/IP
-	const_cast <client::core_t *> (this->_core)->add(&this->_worker);
+	this->_scheme.callback.disconnect = std::bind(&Sample::disconnectCallback, this, _1, _2, _3);
+	// Добавляем схему сети в сетевое ядро
+	const_cast <client::core_t *> (this->_core)->add(&this->_scheme);
 }

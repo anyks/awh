@@ -1,6 +1,6 @@
 /**
  * @file: ws.cpp
- * @date: 2021-12-19
+ * @date: 2022-09-03
  * @license: GPL-3.0
  *
  * @telegram: @forman
@@ -9,7 +9,7 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
- * @copyright: Copyright © 2021
+ * @copyright: Copyright © 2022
  */
 
 // Подключаем заголовочный файл
@@ -17,10 +17,10 @@
 
 /**
  * openCallback Метод обратного вызова при запуске работы
- * @param wid  идентификатор воркера
- * @param core объект биндинга TCP/IP
+ * @param sid  идентификатор схемы сети
+ * @param core объект сетевого ядра
  */
-void awh::client::WebSocket::openCallback(const size_t wid, awh::core_t * core) noexcept {
+void awh::client::WebSocket::openCallback(const size_t sid, awh::core_t * core) noexcept {
 	// Если дисконнекта ещё не произошло
 	if(this->_action == action_t::NONE){
 		// Устанавливаем экшен выполнения
@@ -32,12 +32,12 @@ void awh::client::WebSocket::openCallback(const size_t wid, awh::core_t * core) 
 /**
  * persistCallback Метод персистентного вызова
  * @param aid  идентификатор адъютанта
- * @param wid  идентификатор воркера
- * @param core объект биндинга TCP/IP
+ * @param sid  идентификатор схемы сети
+ * @param core объект сетевого ядра
  */
-void awh::client::WebSocket::persistCallback(const size_t aid, const size_t wid, awh::core_t * core) noexcept {
+void awh::client::WebSocket::persistCallback(const size_t aid, const size_t sid, awh::core_t * core) noexcept {
 	// Если данные существуют
-	if((aid > 0) && (wid > 0) && (core != nullptr)){
+	if((aid > 0) && (sid > 0) && (core != nullptr)){
 		// Получаем текущий штамп времени
 		const time_t stamp = this->_fmk->unixTimestamp();
 		// Если адъютант не ответил на пинг больше двух интервалов, отключаем его
@@ -51,12 +51,12 @@ void awh::client::WebSocket::persistCallback(const size_t aid, const size_t wid,
 /**
  * connectCallback Метод обратного вызова при подключении к серверу
  * @param aid  идентификатор адъютанта
- * @param wid  идентификатор воркера
- * @param core объект биндинга TCP/IP
+ * @param sid  идентификатор схемы сети
+ * @param core объект сетевого ядра
  */
-void awh::client::WebSocket::connectCallback(const size_t aid, const size_t wid, awh::core_t * core) noexcept {
+void awh::client::WebSocket::connectCallback(const size_t aid, const size_t sid, awh::core_t * core) noexcept {
 	// Если данные переданы верные
-	if((aid > 0) && (wid > 0) && (core != nullptr)){
+	if((aid > 0) && (sid > 0) && (core != nullptr)){
 		// Запоминаем идентификатор адъютанта
 		this->_aid = aid;
 		// Устанавливаем экшен выполнения
@@ -68,12 +68,12 @@ void awh::client::WebSocket::connectCallback(const size_t aid, const size_t wid,
 /**
  * disconnectCallback Метод обратного вызова при отключении от сервера
  * @param aid  идентификатор адъютанта
- * @param wid  идентификатор воркера
- * @param core объект биндинга TCP/IP
+ * @param sid  идентификатор схемы сети
+ * @param core объект сетевого ядра
  */
-void awh::client::WebSocket::disconnectCallback(const size_t aid, const size_t wid, awh::core_t * core) noexcept {
+void awh::client::WebSocket::disconnectCallback(const size_t aid, const size_t sid, awh::core_t * core) noexcept {
 	// Если данные переданы верные
-	if((wid > 0) && (core != nullptr)){
+	if((sid > 0) && (core != nullptr)){
 		// Устанавливаем экшен выполнения
 		this->_action = action_t::DISCONNECT;
 		// Выполняем запуск обработчика событий
@@ -85,12 +85,12 @@ void awh::client::WebSocket::disconnectCallback(const size_t aid, const size_t w
  * @param buffer бинарный буфер содержащий сообщение
  * @param size   размер бинарного буфера содержащего сообщение
  * @param aid    идентификатор адъютанта
- * @param wid    идентификатор воркера
- * @param core   объект биндинга TCP/IP
+ * @param sid    идентификатор схемы сети
+ * @param core   объект сетевого ядра
  */
-void awh::client::WebSocket::readCallback(const char * buffer, const size_t size, const size_t aid, const size_t wid, awh::core_t * core) noexcept {
+void awh::client::WebSocket::readCallback(const char * buffer, const size_t size, const size_t aid, const size_t sid, awh::core_t * core) noexcept {
 	// Если данные существуют
-	if((buffer != nullptr) && (size > 0) && (aid > 0) && (wid > 0)){
+	if((buffer != nullptr) && (size > 0) && (aid > 0) && (sid > 0)){
 		// Если дисконнекта ещё не произошло
 		if((this->_action == action_t::NONE) || (this->_action == action_t::READ)){
 			// Если подключение закрыто
@@ -117,12 +117,12 @@ void awh::client::WebSocket::readCallback(const char * buffer, const size_t size
  * @param buffer бинарный буфер содержащий сообщение
  * @param size   размер бинарного буфера содержащего сообщение
  * @param aid    идентификатор адъютанта
- * @param wid    идентификатор воркера
- * @param core   объект биндинга TCP/IP
+ * @param sid    идентификатор схемы сети
+ * @param core   объект сетевого ядра
  */
-void awh::client::WebSocket::writeCallback(const char * buffer, const size_t size, const size_t aid, const size_t wid, awh::core_t * core) noexcept {
+void awh::client::WebSocket::writeCallback(const char * buffer, const size_t size, const size_t aid, const size_t sid, awh::core_t * core) noexcept {
 	// Если данные существуют
-	if((aid > 0) && (wid > 0) && (core != nullptr)){
+	if((aid > 0) && (sid > 0) && (core != nullptr)){
 		// Если необходимо выполнить закрыть подключение
 		if(!this->_close && this->_stopped){
 			// Устанавливаем флаг закрытия подключения
@@ -135,12 +135,12 @@ void awh::client::WebSocket::writeCallback(const char * buffer, const size_t siz
 /**
  * proxyConnectCallback Метод обратного вызова при подключении к прокси-серверу
  * @param aid  идентификатор адъютанта
- * @param wid  идентификатор воркера
- * @param core объект биндинга TCP/IP
+ * @param sid  идентификатор схемы сети
+ * @param core объект сетевого ядра
  */
-void awh::client::WebSocket::proxyConnectCallback(const size_t aid, const size_t wid, awh::core_t * core) noexcept {
+void awh::client::WebSocket::proxyConnectCallback(const size_t aid, const size_t sid, awh::core_t * core) noexcept {
 	// Если данные переданы верные
-	if((aid > 0) && (wid > 0) && (core != nullptr)){
+	if((aid > 0) && (sid > 0) && (core != nullptr)){
 		// Запоминаем идентификатор адъютанта
 		this->_aid = aid;
 		// Устанавливаем экшен выполнения
@@ -154,12 +154,12 @@ void awh::client::WebSocket::proxyConnectCallback(const size_t aid, const size_t
  * @param buffer бинарный буфер содержащий сообщение
  * @param size   размер бинарного буфера содержащего сообщение
  * @param aid    идентификатор адъютанта
- * @param wid    идентификатор воркера
- * @param core   объект биндинга TCP/IP
+ * @param sid    идентификатор схемы сети
+ * @param core   объект сетевого ядра
  */
-void awh::client::WebSocket::proxyReadCallback(const char * buffer, const size_t size, const size_t aid, const size_t wid, awh::core_t * core) noexcept {
+void awh::client::WebSocket::proxyReadCallback(const char * buffer, const size_t size, const size_t aid, const size_t sid, awh::core_t * core) noexcept {
 	// Если данные существуют
-	if((buffer != nullptr) && (size > 0) && (aid > 0) && (wid > 0)){
+	if((buffer != nullptr) && (size > 0) && (aid > 0) && (sid > 0)){
 		// Если дисконнекта ещё не произошло
 		if((this->_action == action_t::NONE) || (this->_action == action_t::PROXY_READ)){
 			// Устанавливаем экшен выполнения
@@ -212,7 +212,7 @@ void awh::client::WebSocket::handler() noexcept {
  */
 void awh::client::WebSocket::actionOpen() noexcept {
 	// Выполняем подключение
-	const_cast <client::core_t *> (this->_core)->open(this->_worker.wid);
+	const_cast <client::core_t *> (this->_core)->open(this->_scheme.sid);
 	// Если экшен соответствует, выполняем его сброс
 	if(this->_action == action_t::OPEN)
 		// Выполняем сброс экшена
@@ -259,9 +259,9 @@ void awh::client::WebSocket::actionRead() noexcept {
 					// Если попытка повторить авторизацию ещё не проводилась
 					if(this->_attempt < this->_attempts){
 						// Получаем новый адрес запроса
-						this->_worker.url = this->_http.getUrl();
+						this->_scheme.url = this->_http.getUrl();
 						// Если адрес запроса получен
-						if(!this->_worker.url.empty()){
+						if(!this->_scheme.url.empty()){
 							// Увеличиваем количество попыток
 							this->_attempt++;
 							// Выполняем очистку оставшихся данных
@@ -542,7 +542,7 @@ void awh::client::WebSocket::actionConnect() noexcept {
 	// Разрешаем перехватывать контекст декомпрессии
 	this->_hash.takeoverDecompress(this->_takeOverSrv);
 	// Получаем бинарные данные REST запроса
-	const auto & buffer = this->_http.request(this->_worker.url);
+	const auto & buffer = this->_http.request(this->_scheme.url);
 	// Если бинарные данные запроса получены
 	if(!buffer.empty()){
 		/**
@@ -594,15 +594,15 @@ void awh::client::WebSocket::actionProxyRead() noexcept {
 	// Получаем объект биндинга ядра TCP/IP
 	client::core_t * core = const_cast <client::core_t *> (this->_core);
 	// Определяем тип прокси-сервера
-	switch((uint8_t) this->_worker.proxy.type){
+	switch((uint8_t) this->_scheme.proxy.type){
 		// Если прокси-сервер является Socks5
 		case (uint8_t) proxy_t::type_t::SOCKS5: {
 			// Если данные не получены
-			if(!this->_worker.proxy.socks5.isEnd()){
+			if(!this->_scheme.proxy.socks5.isEnd()){
 				// Выполняем парсинг входящих данных
-				this->_worker.proxy.socks5.parse(this->_buffer.payload.data(), this->_buffer.payload.size());
+				this->_scheme.proxy.socks5.parse(this->_buffer.payload.data(), this->_buffer.payload.size());
 				// Получаем данные запроса
-				const auto & buffer = this->_worker.proxy.socks5.get();
+				const auto & buffer = this->_scheme.proxy.socks5.get();
 				// Если данные получены
 				if(!buffer.empty()){
 					// Выполняем очистку буфера данных
@@ -616,11 +616,11 @@ void awh::client::WebSocket::actionProxyRead() noexcept {
 					// Завершаем работу
 					return;
 				// Если данные все получены
-				} else if(this->_worker.proxy.socks5.isEnd()) {
+				} else if(this->_scheme.proxy.socks5.isEnd()) {
 					// Выполняем очистку буфера данных
 					this->_buffer.payload.clear();
 					// Если рукопожатие выполнено
-					if(this->_worker.proxy.socks5.isHandshake()){						
+					if(this->_scheme.proxy.socks5.isHandshake()){						
 						// Выполняем переключение на работу с сервером
 						core->switchProxy(this->_aid);
 						// Если экшен соответствует, выполняем его сброс
@@ -632,11 +632,11 @@ void awh::client::WebSocket::actionProxyRead() noexcept {
 					// Если рукопожатие не выполнено
 					} else {						
 						// Устанавливаем код ответа
-						this->_code = this->_worker.proxy.socks5.code();
+						this->_code = this->_scheme.proxy.socks5.code();
 						// Создаём сообщение
 						mess_t mess(this->_code);
 						// Устанавливаем сообщение ответа
-						mess = this->_worker.proxy.socks5.message(this->_code);
+						mess = this->_scheme.proxy.socks5.message(this->_code);
 						/**
 						 * Если включён режим отладки
 						 */
@@ -668,11 +668,11 @@ void awh::client::WebSocket::actionProxyRead() noexcept {
 		// Если прокси-сервер является HTTP
 		case (uint8_t) proxy_t::type_t::HTTP: {
 			// Выполняем парсинг полученных данных
-			this->_worker.proxy.http.parse(this->_buffer.payload.data(), this->_buffer.payload.size());
+			this->_scheme.proxy.http.parse(this->_buffer.payload.data(), this->_buffer.payload.size());
 			// Если все данные получены
-			if(this->_worker.proxy.http.isEnd()){
+			if(this->_scheme.proxy.http.isEnd()){
 				// Получаем параметры запроса
-				const auto & query = this->_worker.proxy.http.query();
+				const auto & query = this->_scheme.proxy.http.query();
 				// Устанавливаем код ответа
 				this->_code = query.code;
 				// Создаём сообщение
@@ -682,7 +682,7 @@ void awh::client::WebSocket::actionProxyRead() noexcept {
 				 */
 				#if defined(DEBUG_MODE)
 					// Получаем данные ответа
-					const auto & response = this->_worker.proxy.http.response(true);
+					const auto & response = this->_scheme.proxy.http.response(true);
 					// Если параметры ответа получены
 					if(!response.empty()){
 						// Выводим заголовок ответа
@@ -690,23 +690,23 @@ void awh::client::WebSocket::actionProxyRead() noexcept {
 						// Выводим параметры ответа
 						cout << string(response.begin(), response.end()) << endl;
 						// Если тело ответа существует
-						if(!this->_worker.proxy.http.body().empty())
+						if(!this->_scheme.proxy.http.body().empty())
 							// Выводим сообщение о выводе чанка тела
-							cout << this->_fmk->format("<body %u>", this->_worker.proxy.http.body().size())  << endl;
+							cout << this->_fmk->format("<body %u>", this->_scheme.proxy.http.body().size())  << endl;
 					}
 				#endif
 				// Выполняем проверку авторизации
-				switch((uint8_t) this->_worker.proxy.http.getAuth()){
+				switch((uint8_t) this->_scheme.proxy.http.getAuth()){
 					// Если нужно попытаться ещё раз
 					case (uint8_t) http_t::stath_t::RETRY: {
 						// Если попытка повторить авторизацию ещё не проводилась
 						if(this->_attempt < this->_attempts){
 							// Если адрес запроса получен
-							if(!this->_worker.proxy.url.empty()){
+							if(!this->_scheme.proxy.url.empty()){
 								// Увеличиваем количество попыток
 								this->_attempt++;
 								// Если соединение является постоянным
-								if(this->_worker.proxy.http.isAlive())
+								if(this->_scheme.proxy.http.isAlive())
 									// Устанавливаем новый экшен выполнения
 									this->_action = action_t::PROXY_CONNECT;
 								// Если соединение должно быть закрыто
@@ -776,17 +776,17 @@ void awh::client::WebSocket::actionProxyConnect() noexcept {
 	// Получаем объект биндинга ядра TCP/IP
 	client::core_t * core = const_cast <client::core_t *> (this->_core);
 	// Определяем тип прокси-сервера
-	switch((uint8_t) this->_worker.proxy.type){
+	switch((uint8_t) this->_scheme.proxy.type){
 		// Если прокси-сервер является Socks5
 		case (uint8_t) proxy_t::type_t::SOCKS5: {
 			// Выполняем сброс состояния Socks5 парсера
-			this->_worker.proxy.socks5.reset();
+			this->_scheme.proxy.socks5.reset();
 			// Устанавливаем URL адрес запроса
-			this->_worker.proxy.socks5.url(this->_worker.url);
+			this->_scheme.proxy.socks5.url(this->_scheme.url);
 			// Выполняем создание буфера запроса
-			this->_worker.proxy.socks5.parse();
+			this->_scheme.proxy.socks5.parse();
 			// Получаем данные запроса
-			const auto & buffer = this->_worker.proxy.socks5.get();
+			const auto & buffer = this->_scheme.proxy.socks5.get();
 			// Если данные получены
 			if(!buffer.empty())
 				// Выполняем отправку сообщения на сервер
@@ -795,11 +795,11 @@ void awh::client::WebSocket::actionProxyConnect() noexcept {
 		// Если прокси-сервер является HTTP
 		case (uint8_t) proxy_t::type_t::HTTP: {
 			// Выполняем сброс состояния HTTP парсера
-			this->_worker.proxy.http.reset();
+			this->_scheme.proxy.http.reset();
 			// Выполняем очистку параметров HTTP запроса
-			this->_worker.proxy.http.clear();
+			this->_scheme.proxy.http.clear();
 			// Получаем бинарные данные REST запроса
-			const auto & buffer = this->_worker.proxy.http.proxy(this->_worker.url);
+			const auto & buffer = this->_scheme.proxy.http.proxy(this->_scheme.url);
 			// Если бинарные данные запроса получены
 			if(!buffer.empty()){
 				/**
@@ -977,13 +977,13 @@ void awh::client::WebSocket::ping(const string & message) noexcept {
  */
 void awh::client::WebSocket::init(const string & url, const http_t::compress_t compress) noexcept {
 	// Если unix-сокет установлен
-	if(this->_core->family() == worker_t::family_t::NIX){
-		// Выполняем очистку воркера
-		this->_worker.clear();
+	if(this->_core->family() == scheme_t::family_t::NIX){
+		// Выполняем очистку схемы сети
+		this->_scheme.clear();
 		// Устанавливаем метод компрессии сообщений
 		this->_compress = compress;
 		// Устанавливаем URL адрес запроса (как заглушка)
-		this->_worker.url = this->_uri.parse("ws://unixsocket");
+		this->_scheme.url = this->_uri.parse("ws://unixsocket");
 		/**
 		 * Если операционной системой не является Windows
 		 */
@@ -995,10 +995,10 @@ void awh::client::WebSocket::init(const string & url, const http_t::compress_t c
 	} else {
 		// Если адрес сервера передан
 		if(!url.empty()){
-			// Выполняем очистку воркера
-			this->_worker.clear();
+			// Выполняем очистку схемы сети
+			this->_scheme.clear();
 			// Устанавливаем URL адрес запроса
-			this->_worker.url = this->_uri.parse(url);
+			this->_scheme.url = this->_uri.parse(url);
 			/**
 			 * Если операционной системой не является Windows
 			 */
@@ -1227,13 +1227,13 @@ void awh::client::WebSocket::stop() noexcept {
 			 * нам нужно заблокировать автоматический реконнект.
 			 */
 			// Считываем значение флага
-			const bool alive = this->_worker.alive;
+			const bool alive = this->_scheme.alive;
 			// Выполняем отключение флага постоянного подключения
-			this->_worker.alive = false;
+			this->_scheme.alive = false;
 			// Выполняем отключение клиента
 			const_cast <client::core_t *> (this->_core)->close(this->_aid);
 			// Восстанавливаем предыдущее значение флага
-			this->_worker.alive = alive;
+			this->_scheme.alive = alive;
 		}
 		// Если функция обратного вызова установлена, выполняем
 		if(this->_callback.active != nullptr) this->_callback.active(mode_t::DISCONNECT, this);
@@ -1244,13 +1244,13 @@ void awh::client::WebSocket::stop() noexcept {
  */
 void awh::client::WebSocket::start() noexcept {
 	// Если адрес URL запроса передан
-	if(!this->_freeze && !this->_worker.url.empty()){
+	if(!this->_freeze && !this->_scheme.url.empty()){
 		// Если биндинг не запущен, выполняем запуск биндинга
 		if(!this->_core->working())
 			// Выполняем запуск биндинга
 			const_cast <client::core_t *> (this->_core)->start();
 		// Выполняем запрос на сервер
-		else const_cast <client::core_t *> (this->_core)->open(this->_worker.wid);
+		else const_cast <client::core_t *> (this->_core)->open(this->_scheme.sid);
 	}
 	// Снимаем с паузы клиент
 	this->_freeze = false;
@@ -1291,19 +1291,19 @@ void awh::client::WebSocket::subs(const vector <string> & subs) noexcept {
  * @param read  количество байт для детекции по чтению
  * @param write количество байт для детекции по записи
  */
-void awh::client::WebSocket::bytesDetect(const worker_t::mark_t read, const worker_t::mark_t write) noexcept {
+void awh::client::WebSocket::bytesDetect(const scheme_t::mark_t read, const scheme_t::mark_t write) noexcept {
 	// Устанавливаем количество байт на чтение
-	this->_worker.marker.read = read;
+	this->_scheme.marker.read = read;
 	// Устанавливаем количество байт на запись
-	this->_worker.marker.write = write;
+	this->_scheme.marker.write = write;
 	// Если минимальный размер данных для чтения, не установлен
-	if(this->_worker.marker.read.min == 0)
+	if(this->_scheme.marker.read.min == 0)
 		// Устанавливаем размер минимальных для чтения данных по умолчанию
-		this->_worker.marker.read.min = BUFFER_READ_MIN;
+		this->_scheme.marker.read.min = BUFFER_READ_MIN;
 	// Если максимальный размер данных для записи не установлен, устанавливаем по умолчанию
-	if(this->_worker.marker.write.max == 0)
+	if(this->_scheme.marker.write.max == 0)
 		// Устанавливаем размер максимальных записываемых данных по умолчанию
-		this->_worker.marker.write.max = BUFFER_WRITE_MAX;
+		this->_scheme.marker.write.max = BUFFER_WRITE_MAX;
 }
 /**
  * waitTimeDetect Метод детекции сообщений по количеству секунд
@@ -1313,11 +1313,11 @@ void awh::client::WebSocket::bytesDetect(const worker_t::mark_t read, const work
  */
 void awh::client::WebSocket::waitTimeDetect(const time_t read, const time_t write, const time_t connect) noexcept {
 	// Устанавливаем количество секунд на чтение
-	this->_worker.timeouts.read = read;
+	this->_scheme.timeouts.read = read;
 	// Устанавливаем количество секунд на запись
-	this->_worker.timeouts.write = write;
+	this->_scheme.timeouts.write = write;
 	// Устанавливаем количество секунд на подключение
-	this->_worker.timeouts.connect = connect;
+	this->_scheme.timeouts.connect = connect;
 }
 /**
  * multiThreads Метод активации многопоточности
@@ -1346,31 +1346,31 @@ void awh::client::WebSocket::multiThreads(const size_t threads, const bool mode)
  * @param uri    параметры прокси-сервера
  * @param family семейстово интернет протоколов (IPV4 / IPV6 / NIX)
  */
-void awh::client::WebSocket::proxy(const string & uri, const worker_t::family_t family) noexcept {
+void awh::client::WebSocket::proxy(const string & uri, const scheme_t::family_t family) noexcept {
 	// Если URI параметры переданы
 	if(!uri.empty()){
 		// Устанавливаем семейство интернет протоколов
-		this->_worker.proxy.family = family;
+		this->_scheme.proxy.family = family;
 		// Устанавливаем параметры прокси-сервера
-		this->_worker.proxy.url = this->_uri.parse(uri);
+		this->_scheme.proxy.url = this->_uri.parse(uri);
 		// Если данные параметров прокси-сервера получены
-		if(!this->_worker.proxy.url.empty()){
+		if(!this->_scheme.proxy.url.empty()){
 			// Если протокол подключения SOCKS5
-			if(this->_worker.proxy.url.schema.compare("socks5") == 0){
+			if(this->_scheme.proxy.url.schema.compare("socks5") == 0){
 				// Устанавливаем тип прокси-сервера
-				this->_worker.proxy.type = proxy_t::type_t::SOCKS5;
+				this->_scheme.proxy.type = proxy_t::type_t::SOCKS5;
 				// Если требуется авторизация на прокси-сервере
-				if(!this->_worker.proxy.url.user.empty() && !this->_worker.proxy.url.pass.empty())
+				if(!this->_scheme.proxy.url.user.empty() && !this->_scheme.proxy.url.pass.empty())
 					// Устанавливаем данные пользователя
-					this->_worker.proxy.socks5.user(this->_worker.proxy.url.user, this->_worker.proxy.url.pass);
+					this->_scheme.proxy.socks5.user(this->_scheme.proxy.url.user, this->_scheme.proxy.url.pass);
 			// Если протокол подключения HTTP
-			} else if((this->_worker.proxy.url.schema.compare("http") == 0) || (this->_worker.proxy.url.schema.compare("https") == 0)) {
+			} else if((this->_scheme.proxy.url.schema.compare("http") == 0) || (this->_scheme.proxy.url.schema.compare("https") == 0)) {
 				// Устанавливаем тип прокси-сервера
-				this->_worker.proxy.type = proxy_t::type_t::HTTP;
+				this->_scheme.proxy.type = proxy_t::type_t::HTTP;
 				// Если требуется авторизация на прокси-сервере
-				if(!this->_worker.proxy.url.user.empty() && !this->_worker.proxy.url.pass.empty())
+				if(!this->_scheme.proxy.url.user.empty() && !this->_scheme.proxy.url.pass.empty())
 					// Устанавливаем данные пользователя
-					this->_worker.proxy.http.user(this->_worker.proxy.url.user, this->_worker.proxy.url.pass);
+					this->_scheme.proxy.http.user(this->_scheme.proxy.url.user, this->_scheme.proxy.url.pass);
 			}
 		}
 	}
@@ -1385,9 +1385,9 @@ void awh::client::WebSocket::mode(const u_short flag) noexcept {
 	// Устанавливаем флаг анбиндинга ядра сетевого модуля
 	this->_unbind = !(flag & (uint8_t) flag_t::NOTSTOP);
 	// Устанавливаем флаг ожидания входящих сообщений
-	this->_worker.wait = (flag & (uint8_t) flag_t::WAITMESS);
+	this->_scheme.wait = (flag & (uint8_t) flag_t::WAITMESS);
 	// Устанавливаем флаг поддержания автоматического подключения
-	this->_worker.alive = (flag & (uint8_t) flag_t::KEEPALIVE);
+	this->_scheme.alive = (flag & (uint8_t) flag_t::KEEPALIVE);
 	// Устанавливаем флаг перехвата контекста компрессии для клиента
 	this->_takeOverCli = (flag & (uint8_t) flag_t::TAKEOVERCLI);
 	// Устанавливаем флаг перехвата контекста компрессии для сервера
@@ -1431,7 +1431,7 @@ void awh::client::WebSocket::userAgent(const string & userAgent) noexcept {
 		// Устанавливаем пользовательского агента
 		this->_http.userAgent(userAgent);
 		// Устанавливаем пользовательского агента для прокси-сервера
-		this->_worker.proxy.http.userAgent(userAgent);
+		this->_scheme.proxy.http.userAgent(userAgent);
 	}
 }
 /**
@@ -1461,11 +1461,11 @@ void awh::client::WebSocket::user(const string & login, const string & password)
  */
 void awh::client::WebSocket::keepAlive(const int cnt, const int idle, const int intvl) noexcept {
 	// Выполняем установку максимального количества попыток
-	this->_worker.keepAlive.cnt = cnt;
+	this->_scheme.keepAlive.cnt = cnt;
 	// Выполняем установку интервала времени в секундах через которое происходит проверка подключения
-	this->_worker.keepAlive.idle = idle;
+	this->_scheme.keepAlive.idle = idle;
 	// Выполняем установку интервала времени в секундах между попытками
-	this->_worker.keepAlive.intvl = intvl;
+	this->_scheme.keepAlive.intvl = intvl;
 }
 /**
  * serv Метод установки данных сервиса
@@ -1477,7 +1477,7 @@ void awh::client::WebSocket::serv(const string & id, const string & name, const 
 	// Устанавливаем данные сервиса
 	this->_http.serv(id, name, ver);
 	// Устанавливаем данные сервиса для прокси-сервера
-	this->_worker.proxy.http.serv(id, name, ver);
+	this->_scheme.proxy.http.serv(id, name, ver);
 }
 /**
  * crypto Метод установки параметров шифрования
@@ -1513,38 +1513,38 @@ void awh::client::WebSocket::authType(const auth_t::type_t type, const auth_t::h
  */
 void awh::client::WebSocket::authTypeProxy(const auth_t::type_t type, const auth_t::hash_t hash) noexcept {
 	// Если объект авторизации создан
-	this->_worker.proxy.http.authType(type, hash);
+	this->_scheme.proxy.http.authType(type, hash);
 }
 /**
  * WebSocket Конструктор
- * @param core объект биндинга TCP/IP
+ * @param core объект сетевого ядра
  * @param fmk  объект фреймворка
  * @param log  объект для работы с логами
  */
 awh::client::WebSocket::WebSocket(const client::core_t * core, const fmk_t * fmk, const log_t * log) noexcept :
- _nwk(fmk), _hash(log), _uri(fmk, &_nwk), _http(fmk, log, &_uri), _frame(fmk, log), _worker(fmk, log),
+ _nwk(fmk), _hash(log), _uri(fmk, &_nwk), _http(fmk, log, &_uri), _frame(fmk, log), _scheme(fmk, log),
  _action(action_t::NONE), _opcode(frame_t::opcode_t::TEXT), _compress(http_t::compress_t::NONE), _crypt(false),
  _close(false), _unbind(true), _freeze(false), _noinfo(false), _stopped(false), _compressed(false), _takeOverCli(false),
  _takeOverSrv(false), _attempt(0), _attempts(10), _wbitClient(0), _wbitServer(0), _aid(0), _code(0),
  _checkPoint(0), _frameSize(0xFA000), _fmk(fmk), _log(log), _core(core) {
 	// Устанавливаем событие на запуск системы
-	this->_worker.callback.open = std::bind(&WebSocket::openCallback, this, _1, _2);
+	this->_scheme.callback.open = std::bind(&WebSocket::openCallback, this, _1, _2);
 	// Устанавливаем функцию персистентного вызова
-	this->_worker.callback.persist = std::bind(&WebSocket::persistCallback, this, _1, _2, _3);
+	this->_scheme.callback.persist = std::bind(&WebSocket::persistCallback, this, _1, _2, _3);
 	// Устанавливаем событие подключения
-	this->_worker.callback.connect = std::bind(&WebSocket::connectCallback, this, _1, _2, _3);
+	this->_scheme.callback.connect = std::bind(&WebSocket::connectCallback, this, _1, _2, _3);
 	// Устанавливаем функцию чтения данных
-	this->_worker.callback.read = std::bind(&WebSocket::readCallback, this, _1, _2, _3, _4, _5);
+	this->_scheme.callback.read = std::bind(&WebSocket::readCallback, this, _1, _2, _3, _4, _5);
 	// Устанавливаем функцию записи данных
-	this->_worker.callback.write = std::bind(&WebSocket::writeCallback, this, _1, _2, _3, _4, _5);
+	this->_scheme.callback.write = std::bind(&WebSocket::writeCallback, this, _1, _2, _3, _4, _5);
 	// Устанавливаем событие отключения
-	this->_worker.callback.disconnect = std::bind(&WebSocket::disconnectCallback, this, _1, _2, _3);
+	this->_scheme.callback.disconnect = std::bind(&WebSocket::disconnectCallback, this, _1, _2, _3);
 	// Устанавливаем событие на подключение к прокси-серверу
-	this->_worker.callback.connectProxy = std::bind(&WebSocket::proxyConnectCallback, this, _1, _2, _3);
+	this->_scheme.callback.connectProxy = std::bind(&WebSocket::proxyConnectCallback, this, _1, _2, _3);
 	// Устанавливаем событие на чтение данных с прокси-сервера
-	this->_worker.callback.readProxy = std::bind(&WebSocket::proxyReadCallback, this, _1, _2, _3, _4, _5);
+	this->_scheme.callback.readProxy = std::bind(&WebSocket::proxyReadCallback, this, _1, _2, _3, _4, _5);
 	// Активируем персистентный запуск для работы пингов
 	const_cast <client::core_t *> (this->_core)->persistEnable(true);
-	// Добавляем воркер в сетевое ядро
-	const_cast <client::core_t *> (this->_core)->add(&this->_worker);
+	// Добавляем схему сети в сетевое ядро
+	const_cast <client::core_t *> (this->_core)->add(&this->_scheme);
 }

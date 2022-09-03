@@ -12,8 +12,8 @@
  * @copyright: Copyright © 2022
  */
 
-#ifndef __AWH_WORKER_SAMPLE_SERVER__
-#define __AWH_WORKER_SAMPLE_SERVER__
+#ifndef __AWH_SCHEME_SAMPLE_SERVER__
+#define __AWH_SCHEME_SAMPLE_SERVER__
 
 /**
  * Стандартная библиотека
@@ -26,7 +26,7 @@
  * Наши модули
  */
 #include <http/server.hpp>
-#include <worker/server.hpp>
+#include <scheme/server.hpp>
 
 // Подписываемся на стандартное пространство имён
 using namespace std;
@@ -40,9 +40,9 @@ namespace awh {
 	 */
 	namespace server {
 		/**
-		 * WorkerSample Структура SAMPLE сервера воркера
+		 * SchemeSample Структура схемы сети SAMPLE сервера
 		 */
-		typedef struct WorkerSample : public worker_t {
+		typedef struct SchemeSample : public scheme_t {
 			public:
 				/**
 				 * Основные экшены
@@ -138,18 +138,18 @@ namespace awh {
 				const coffer_t * get(const size_t aid) const noexcept;
 			public:
 				/**
-				 * WorkerSample Конструктор
+				 * SchemeSample Конструктор
 				 * @param fmk объект фреймворка
 				 * @param log объект для работы с логами
 				 */
-				WorkerSample(const fmk_t * fmk, const log_t * log) noexcept :
-				 worker_t(fmk, log), nwk(fmk), uri(fmk, &nwk), _fmk(fmk), _log(log) {}
+				SchemeSample(const fmk_t * fmk, const log_t * log) noexcept :
+				 scheme_t(fmk, log), nwk(fmk), uri(fmk, &nwk), _fmk(fmk), _log(log) {}
 				/**
-				 * ~WorkerSample Деструктор
+				 * ~SchemeSample Деструктор
 				 */
-				~WorkerSample() noexcept {}
-		} sample_worker_t;
+				~SchemeSample() noexcept {}
+		} sample_scheme_t;
 	};
 };
 
-#endif // __AWH_WORKER_SAMPLE_SERVER__
+#endif // __AWH_SCHEME_SAMPLE_SERVER__
