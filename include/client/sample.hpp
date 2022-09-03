@@ -199,9 +199,8 @@ namespace awh {
 				 * init Метод инициализации Rest адъютанта
 				 * @param port порт сервера
 				 * @param host хост сервера
-				 * @param tls  флаг активации зашифрованного подключения
 				 */
-				void init(const u_int port, const string & host, const bool tls = false) noexcept;
+				void init(const u_int port, const string & host) noexcept;
 			public:
 				/**
 				 * on Метод установки функции обратного вызова при подключении/отключении

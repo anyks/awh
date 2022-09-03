@@ -2831,7 +2831,9 @@ void awh::Engine::wrapClient(ctx_t & target, addr_t * address, const uri_t::url_
 		// Устанавливаем тип приложения
 		target._type = type_t::CLIENT;
 		// Если объект фреймворка существует
-		if((target._addr->fd > -1) && (!url.domain.empty() || !url.ip.empty()) && ((url.schema.compare("https") == 0) || (url.schema.compare("wss") == 0))){
+		if((target._addr->fd > -1) && (!url.domain.empty() || !url.ip.empty()) &&
+		  ((!this->_privkey.empty() && !this->_chain.empty()) ||
+		  ((url.schema.compare("https") == 0) || (url.schema.compare("wss") == 0)))){
 			/**
 			 * Если операционной системой является Linux или FreeBSD
 			 */

@@ -229,15 +229,32 @@ void awh::client::Sample::init(const string & socket) noexcept {
  * init Метод инициализации Rest адъютанта
  * @param port порт сервера
  * @param host хост сервера
- * @param tls  флаг активации зашифрованного подключения
  */
-void awh::client::Sample::init(const u_int port, const string & host, const bool tls) noexcept {
+void awh::client::Sample::init(const u_int port, const string & host) noexcept {
 	// Если параметры подключения переданы
 	if((port > 0) && !host.empty()){
-		// Создаём объект работы с URI ссылками
-		uri_t uri(this->_fmk, &this->_nwk);
-		// Получаем новый адрес запроса для воркера
-		this->_worker.url = uri.parse(this->_fmk->format("http%s://%s:%u", (tls ? "s" : ""), host.c_str(), port));
+		// Устанавливаем порт сервера
+		this->_worker.url.port = port;
+		// Устанавливаем хост сервера
+		this->_worker.url.host = host;
+		// Определяем тип передаваемого сервера
+		switch((uint8_t) this->_nwk.parseHost(host)){
+			// Если хост является доменом или IPv4 адресом
+			case (uint8_t) network_t::type_t::IPV4:
+				// Устанавливаем IP адрес
+				this->_worker.url.ip = host;
+			break;
+			// Если хост является IPv6 адресом, переводим ip адрес в полную форму
+			case (uint8_t) network_t::type_t::IPV6:
+				// Устанавливаем IP адрес
+				this->_worker.url.ip = this->_nwk.setLowIp6(host);
+			break;
+			// Если хост является доменным именем
+			case (uint8_t) network_t::type_t::DOMNAME:
+				// Устанавливаем доменное имя
+				this->_worker.url.domain = host;
+			break;
+		}
 	}
 	/**
 	 * Если операционной системой не является Windows

@@ -50,7 +50,7 @@ void awh::URI::URL::clear() noexcept {
  */
 bool awh::URI::URL::empty() const noexcept {
 	// Выполняем проверку на существование данных
-	return (this->schema.empty() || this->host.empty());
+	return (this->schema.empty() && this->host.empty() && this->ip.empty() && this->domain.empty());
 }
 /**
  * parse Метод получения параметров URL запроса

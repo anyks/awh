@@ -77,7 +77,7 @@ namespace awh {
 						/**
 						 * Timeout Конструктор
 						 */
-						Timeout() : wid(0), core(nullptr), mode(worker_t::mode_t::DISCONNECT) {}
+						Timeout() noexcept : wid(0), core(nullptr), mode(worker_t::mode_t::DISCONNECT) {}
 				} timeout_t;
 			private:
 				// Мютекс для блокировки основного потока
