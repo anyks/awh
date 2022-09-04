@@ -16,6 +16,9 @@
 - [Brotli](https://github.com/google/brotli)
 - [OpenSSL](https://www.openssl.org)
 - [LibEv](http://software.schmorp.de/pkg/libev.html)
+- [LibIconv](https://www.gnu.org/software/libiconv)
+- [LibIdn2](https://www.gnu.org/software/libidn)
+- [Libev-Win](https://github.com/disenone/libev-win)
 - [NLohmann::json](https://github.com/nlohmann/json)
 
 ## To build and launch the project
