@@ -26,7 +26,7 @@ using json = nlohmann::json;
 class WebSocket {
 	private:
 		// Объект логирования
-		log_t * log;
+		log_t * _log;
 	public:
 		/**
 		 * subscribe Метод подписки на сообщения логов
@@ -45,7 +45,7 @@ class WebSocket {
 		 */
 		void active(const client::ws_t::mode_t mode, client::ws_t * ws){
 			// Выводим информацию в лог
-			this->log->print("%s server", log_t::flag_t::INFO, (mode == client::ws_t::mode_t::CONNECT ? "Start" : "Stop"));
+			this->_log->print("%s server", log_t::flag_t::INFO, (mode == client::ws_t::mode_t::CONNECT ? "Start" : "Stop"));
 			// Если подключение произошло удачно
 			if(mode == client::ws_t::mode_t::CONNECT){
 				// Создаём объект JSON
@@ -171,7 +171,7 @@ class WebSocket {
 		 */
 		void error(const u_int code, const string & mess, client::ws_t * ws){
 			// Выводим информацию в лог
-			this->log->print("%s [%u]", log_t::flag_t::CRITICAL, mess.c_str(), code);
+			this->_log->print("%s [%u]", log_t::flag_t::CRITICAL, mess.c_str(), code);
 		}
 		/**
 		 * message Метод получения сообщений
@@ -197,7 +197,7 @@ class WebSocket {
 		 * WebSocket Конструктор
 		 * @param log объект логирования
 		 */
-		WebSocket(log_t * log) : log(log) {}
+		WebSocket(log_t * log) : _log(log) {}
 };
 
 /**
@@ -206,7 +206,7 @@ class WebSocket {
  * @param argv массив параметров
  * @return     код выхода из приложения
  */
-int main(int argc, char * argv[]) noexcept {
+int main(int argc, char * argv[]){
 	// Создаём объект фреймворка
 	fmk_t fmk;
 	// Создаём объект для работы с логами
@@ -253,7 +253,7 @@ int main(int argc, char * argv[]) noexcept {
 	// core.sonet(awh::scheme_t::sonet_t::SCTP);
 	// Отключаем валидацию сертификата
 	// core.verifySSL(false);
-	// core.certificate("./certs/client-cert.pem", "./certs/client-key.pem");
+	// core.certificate("./ca/certs/client-cert.pem", "./ca/certs/client-key.pem");
 	// Устанавливаем логин и пароль пользователя
 	// ws.user("user", "password");
 	// Выполняем активацию многопоточности

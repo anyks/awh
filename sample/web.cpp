@@ -17,21 +17,21 @@ using namespace std;
 using namespace awh;
 
 /**
- * Rest Класс объекта исполнителя
+ * WebServer Класс объекта исполнителя
  */
-class Rest {
+class WebServer {
 	private:
 		// Объект логирования
-		log_t * log;
+		log_t * _log;
 	public:
 		/**
 		 * password Метод извлечения пароля (для авторизации методом Digest)
 		 * @param login логин пользователя
 		 * @return      пароль пользователя хранящийся в базе данных
 		 */
-		string password(const string & login) noexcept {
+		string password(const string & login){
 			// Выводим информацию в лог
-			this->log->print("USER: %s, PASS: %s", log_t::flag_t::INFO, login.c_str(), "password");
+			this->_log->print("USER: %s, PASS: %s", log_t::flag_t::INFO, login.c_str(), "password");
 			// Выводим пароль
 			return "password";
 		}
@@ -41,9 +41,9 @@ class Rest {
 		 * @param password пароль пользователя (от клиента)
 		 * @return         результат авторизации
 		 */
-		bool auth(const string & login, const string & password) noexcept {
+		bool auth(const string & login, const string & password){
 			// Выводим информацию в лог
-			this->log->print("USER: %s, PASS: %s", log_t::flag_t::INFO, login.c_str(), password.c_str());
+			this->_log->print("USER: %s, PASS: %s", log_t::flag_t::INFO, login.c_str(), password.c_str());
 			// Разрешаем авторизацию
 			return true;
 		}
@@ -56,9 +56,9 @@ class Rest {
 		 * @param web  объект WEB сервера
 		 * @return     результат проверки
 		 */
-		bool accept(const string & ip, const string & mac, const u_int port, server::rest_t * web) noexcept {
+		bool accept(const string & ip, const string & mac, const u_int port, server::rest_t * web){
 			// Выводим информацию в лог
-			this->log->print("ACCEPT: ip = %s, mac = %s, port = %d", log_t::flag_t::INFO, ip.c_str(), mac.c_str(), port);
+			this->_log->print("ACCEPT: ip = %s, mac = %s, port = %d", log_t::flag_t::INFO, ip.c_str(), mac.c_str(), port);
 			// Разрешаем подключение клиенту
 			return true;
 		}
@@ -68,9 +68,9 @@ class Rest {
 		 * @param mode режим события подключения
 		 * @param web  объект WEB сервера
 		 */
-		void active(const size_t aid, const server::rest_t::mode_t mode, server::rest_t * web) noexcept {
+		void active(const size_t aid, const server::rest_t::mode_t mode, server::rest_t * web){
 			// Выводим информацию в лог
-			this->log->print("%s client", log_t::flag_t::INFO, (mode == server::rest_t::mode_t::CONNECT ? "Connect" : "Disconnect"));
+			this->_log->print("%s client", log_t::flag_t::INFO, (mode == server::rest_t::mode_t::CONNECT ? "Connect" : "Disconnect"));
 		}
 		/**
 		 * message Метод получения сообщений
@@ -78,7 +78,7 @@ class Rest {
 		 * @param http объект http запроса
 		 * @param web  объект WEB сервера
 		 */
-		void message(const size_t aid, const awh::http_t * http, server::rest_t * web) noexcept {
+		void message(const size_t aid, const awh::http_t * http, server::rest_t * web){
 			// Получаем данные запроса
 			const auto & query = http->query();
 			// Если пришёл запрос на фавиконку
@@ -103,10 +103,10 @@ class Rest {
 		}
 	public:
 		/**
-		 * Rest Конструктор
+		 * WebServer Конструктор
 		 * @param log объект логирования
 		 */
-		Rest(log_t * log) : log(log) {}
+		WebServer(log_t * log) : _log(log) {}
 };
 
 /**
@@ -115,13 +115,13 @@ class Rest {
  * @param argv массив параметров
  * @return     код выхода из приложения
  */
-int main(int argc, char * argv[]) noexcept {
+int main(int argc, char * argv[]){
 	// Создаём объект фреймворка
 	fmk_t fmk;
 	// Создаём объект для работы с логами
 	log_t log(&fmk);
 	// Создаём объект исполнителя
-	Rest executor(&log);
+	WebServer executor(&log);
 	// Создаём биндинг
 	server::core_t core(&fmk, &log);
 	// Создаём объект REST запроса
@@ -179,19 +179,19 @@ int main(int argc, char * argv[]) noexcept {
 		"/usr/local/etc/letsencrypt/live/anyks.net/privkey.pem"
 	);
 	*/
-	// core.certificate("./certs/server-cert.pem", "./certs/server-key.pem");
+	// core.certificate("./ca/certs/server-cert.pem", "./ca/certs/server-key.pem");
 	// Устанавливаем шифрование
 	// rest.crypto("PASS");
 	// Устанавливаем функцию извлечения пароля
-	// rest.on((function <string (const string &)>) bind(&Rest::password, &executor, _1));
+	// rest.on((function <string (const string &)>) bind(&WebServer::password, &executor, _1));
 	// Устанавливаем функцию проверки авторизации
-	// rest.on((function <bool (const string &, const string &)>) bind(&Rest::auth, &executor, _1, _2));
+	// rest.on((function <bool (const string &, const string &)>) bind(&WebServer::auth, &executor, _1, _2));
 	// Установливаем функцию обратного вызова на событие получения сообщений
-	rest.on((function <void (const size_t, const awh::http_t *, server::rest_t *)>) bind(&Rest::message, &executor, _1, _2, _3));
+	rest.on((function <void (const size_t, const awh::http_t *, server::rest_t *)>) bind(&WebServer::message, &executor, _1, _2, _3));
 	// Установливаем функцию обратного вызова на событие запуска или остановки подключения
-	rest.on((function <void (const size_t, const server::rest_t::mode_t, server::rest_t *)>) bind(&Rest::active, &executor, _1, _2, _3));
+	rest.on((function <void (const size_t, const server::rest_t::mode_t, server::rest_t *)>) bind(&WebServer::active, &executor, _1, _2, _3));
 	// Установливаем функцию обратного вызова на событие активации клиента на сервере
-	rest.on((function <bool (const string &, const string &, const u_int, server::rest_t *)>) bind(&Rest::accept, &executor, _1, _2, _3, _4));
+	rest.on((function <bool (const string &, const string &, const u_int, server::rest_t *)>) bind(&WebServer::accept, &executor, _1, _2, _3, _4));
 	// Выполняем запуск REST сервер
 	rest.start();
 	// Выводим результат

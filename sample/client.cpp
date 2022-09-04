@@ -22,7 +22,7 @@ using namespace awh;
 class Client {
 	private:
 		// Объект логирования
-		log_t * log;
+		log_t * _log;
 	public:
 		/**
 		 * active Метод идентификации активности на клиенте
@@ -31,7 +31,7 @@ class Client {
 		 */
 		void active(const client::sample_t::mode_t mode, client::sample_t * sample){
 			// Выводим информацию в лог
-			this->log->print("%s client", log_t::flag_t::INFO, (mode == client::sample_t::mode_t::CONNECT ? "Connect" : "Disconnect"));
+			this->_log->print("%s client", log_t::flag_t::INFO, (mode == client::sample_t::mode_t::CONNECT ? "Connect" : "Disconnect"));
 			// Если подключение выполнено
 			if(mode == client::sample_t::mode_t::CONNECT){
 				// Создаём текст сообщения для сервера
@@ -49,7 +49,7 @@ class Client {
 			// Получаем сообщение
 			const string message(buffer.begin(), buffer.end());
 			// Выводим информацию в лог
-			this->log->print("%s", log_t::flag_t::INFO, message.c_str());
+			this->_log->print("%s", log_t::flag_t::INFO, message.c_str());
 			// Останавливаем работу модуля
 			sample->stop();
 		}
@@ -58,7 +58,7 @@ class Client {
 		 * Client Конструктор
 		 * @param log объект логирования
 		 */
-		Client(log_t * log) : log(log) {}
+		Client(log_t * log) : _log(log) {}
 };
 
 /**
@@ -67,7 +67,7 @@ class Client {
  * @param argv массив параметров
  * @return     код выхода из приложения
  */
-int main(int argc, char * argv[]) noexcept {
+int main(int argc, char * argv[]){
 	// Создаём объект фреймворка
 	fmk_t fmk;
 	// Создаём объект для работы с логами
@@ -111,7 +111,7 @@ int main(int argc, char * argv[]) noexcept {
 	// Устанавливаем длительное подключение
 	// ws.keepAlive(100, 30, 10);
 	// Подключаем сертификаты
-	core.certificate("./certs/client-cert.pem", "./certs/client-key.pem");
+	core.certificate("./ca/certs/client-cert.pem", "./ca/certs/client-key.pem");
 	// Отключаем валидацию сертификата
 	core.verifySSL(false);
 	// Подписываемся на событие коннекта и дисконнекта клиента

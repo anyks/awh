@@ -29,7 +29,7 @@ class Proxy {
 		 * @param login логин пользователя
 		 * @return      пароль пользователя хранящийся в базе данных
 		 */
-		string password(const string & login) noexcept {
+		string password(const string & login){
 			// Выводим информацию в лог
 			this->_log->print("USER: %s, PASS: %s", log_t::flag_t::INFO, login.c_str(), "password");
 			// Выводим пароль
@@ -41,7 +41,7 @@ class Proxy {
 		 * @param password пароль пользователя (от клиента)
 		 * @return         результат авторизации
 		 */
-		bool auth(const string & login, const string & password) noexcept {
+		bool auth(const string & login, const string & password){
 			// Выводим информацию в лог
 			this->_log->print("USER: %s, PASS: %s", log_t::flag_t::INFO, login.c_str(), password.c_str());
 			// Разрешаем авторизацию
@@ -80,7 +80,7 @@ class Proxy {
 		 * @param proxy объект прокси-сервера
 		 * @return      результат обработки запроса
 		 */
-		bool message(const size_t aid, const server::proxy_t::event_t event, awh::http_t * http, server::proxy_t * proxy) noexcept {
+		bool message(const size_t aid, const server::proxy_t::event_t event, awh::http_t * http, server::proxy_t * proxy){
 			// Определяем тип запроса
 			cout << (event == server::proxy_t::event_t::REQUEST ? "REQUEST" : "RESPONSE") << endl;
 			// Выводим список полученных заголовков
@@ -104,7 +104,7 @@ class Proxy {
  * @param argv массив параметров
  * @return     код выхода из приложения
  */
-int main(int argc, char * argv[]) noexcept {
+int main(int argc, char * argv[]){
 	// Создаём объект фреймворка
 	fmk_t fmk;
 	// Создаём объект для работы с логами
@@ -163,7 +163,7 @@ int main(int argc, char * argv[]) noexcept {
 		"/usr/local/etc/letsencrypt/live/anyks.net/privkey.pem"
 	);
 	*/
-	// proxy.certificate("./certs/server-cert.pem", "./certs/server-key.pem");
+	// proxy.certificate("./ca/certs/server-cert.pem", "./ca/certs/server-key.pem");
 	// Устанавливаем шифрование
 	// proxy.crypto("PASS");
 	// Устанавливаем функцию извлечения пароля

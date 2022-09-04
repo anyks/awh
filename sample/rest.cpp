@@ -22,7 +22,7 @@ using namespace awh;
 class WebClient {
 	private:
 		// Объект логирования
-		log_t * log;
+		log_t * _log;
 	public:
 		/**
 		 * active Метод идентификации активности на WebClient клиенте
@@ -31,7 +31,7 @@ class WebClient {
 		 */
 		void active(const client::rest_t::mode_t mode, client::rest_t * web){
 			// Выводим информацию в лог
-			this->log->print("%s client", log_t::flag_t::INFO, (mode == client::rest_t::mode_t::CONNECT ? "Connect" : "Disconnect"));
+			this->_log->print("%s client", log_t::flag_t::INFO, (mode == client::rest_t::mode_t::CONNECT ? "Connect" : "Disconnect"));
 		}
 		/**
 		 * message Метод получения сообщений
@@ -42,7 +42,7 @@ class WebClient {
 			// Переходим по всем заголовкам
 			for(auto & header : res.headers){
 				// Выводим информацию в лог
-				this->log->print("%s : %s", log_t::flag_t::INFO, header.first.c_str(), header.second.c_str());
+				this->_log->print("%s : %s", log_t::flag_t::INFO, header.first.c_str(), header.second.c_str());
 			}
 			// Получаем результат
 			const string result(res.entity.begin(), res.entity.end());
@@ -59,7 +59,7 @@ class WebClient {
 		 * WebClient Конструктор
 		 * @param log объект логирования
 		 */
-		WebClient(log_t * log) : log(log) {}
+		WebClient(log_t * log) : _log(log) {}
 };
 
 /**
@@ -68,7 +68,7 @@ class WebClient {
  * @param argv массив параметров
  * @return     код выхода из приложения
  */
-int main(int argc, char * argv[]) noexcept {
+int main(int argc, char * argv[]){
 	// Создаём объект фреймворка
 	fmk_t fmk;
 	// Создаём объект для работы с логами

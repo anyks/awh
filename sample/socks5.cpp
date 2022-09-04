@@ -23,7 +23,7 @@ using namespace server;
 class Proxy {
 	private:
 		// Объект логирования
-		log_t * log;
+		log_t * _log;
 	public:
 		/**
 		 * auth Метод проверки авторизации пользователя (для авторизации методом Basic)
@@ -33,7 +33,7 @@ class Proxy {
 		 */
 		bool auth(const string & login, const string & password){
 			// Выводим информацию в лог
-			this->log->print("USER: %s, PASS: %s", log_t::flag_t::INFO, login.c_str(), password.c_str());
+			this->_log->print("USER: %s, PASS: %s", log_t::flag_t::INFO, login.c_str(), password.c_str());
 			// Разрешаем авторизацию
 			return true;
 		}
@@ -48,7 +48,7 @@ class Proxy {
 		 */
 		bool accept(const string & ip, const string & mac, const u_int port, proxy_socks5_t * proxy){
 			// Выводим информацию в лог
-			this->log->print("ACCEPT: ip = %s, mac = %s, port = %d", log_t::flag_t::INFO, ip.c_str(), mac.c_str(), port);
+			this->_log->print("ACCEPT: ip = %s, mac = %s, port = %d", log_t::flag_t::INFO, ip.c_str(), mac.c_str(), port);
 			// Разрешаем подключение клиенту
 			return true;
 		}
@@ -60,14 +60,14 @@ class Proxy {
 		 */
 		void active(const size_t aid, const proxy_socks5_t::mode_t mode, proxy_socks5_t * proxy){
 			// Выводим информацию в лог
-			this->log->print("%s client", log_t::flag_t::INFO, (mode == proxy_socks5_t::mode_t::CONNECT ? "Connect" : "Disconnect"));
+			this->_log->print("%s client", log_t::flag_t::INFO, (mode == proxy_socks5_t::mode_t::CONNECT ? "Connect" : "Disconnect"));
 		}
 	public:
 		/**
 		 * Proxy Конструктор
 		 * @param log объект логирования
 		 */
-		Proxy(log_t * log) : log(log) {}
+		Proxy(log_t * log) : _log(log) {}
 };
 
 /**
@@ -76,7 +76,7 @@ class Proxy {
  * @param argv массив параметров
  * @return     код выхода из приложения
  */
-int main(int argc, char * argv[]) noexcept {
+int main(int argc, char * argv[]){
 	// Создаём объект фреймворка
 	fmk_t fmk;
 	// Создаём объект для работы с логами
@@ -126,7 +126,7 @@ int main(int argc, char * argv[]) noexcept {
 		"/usr/local/etc/letsencrypt/live/anyks.net/privkey.pem"
 	);
 	*/
-	// proxy.certificate("./certs/server-cert.pem", "./certs/server-key.pem");
+	// proxy.certificate("./ca/certs/server-cert.pem", "./ca/certs/server-key.pem");
 	// Устанавливаем функцию проверки авторизации
 	// proxy.on((function <bool (const string &, const string &)>) bind(&Proxy::auth, &executor, _1, _2));
 	// Установливаем функцию обратного вызова на событие запуска или остановки подключения

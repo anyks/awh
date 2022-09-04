@@ -22,7 +22,7 @@ using namespace awh;
 class WebSocket {
 	private:
 		// Объект логирования
-		log_t * log;
+		log_t * _log;
 	public:
 		/**
 		 * password Метод извлечения пароля (для авторизации методом Digest)
@@ -31,7 +31,7 @@ class WebSocket {
 		 */
 		string password(const string & login){
 			// Выводим информацию в лог
-			this->log->print("USER: %s, PASS: %s", log_t::flag_t::INFO, login.c_str(), "password");
+			this->_log->print("USER: %s, PASS: %s", log_t::flag_t::INFO, login.c_str(), "password");
 			// Выводим пароль
 			return "password";
 		}
@@ -43,7 +43,7 @@ class WebSocket {
 		 */
 		bool auth(const string & login, const string & password){
 			// Выводим информацию в лог
-			this->log->print("USER: %s, PASS: %s", log_t::flag_t::INFO, login.c_str(), password.c_str());
+			this->_log->print("USER: %s, PASS: %s", log_t::flag_t::INFO, login.c_str(), password.c_str());
 			// Разрешаем авторизацию
 			return true;
 		}
@@ -58,7 +58,7 @@ class WebSocket {
 		 */
 		bool accept(const string & ip, const string & mac, const u_int port, server::ws_t * ws){
 			// Выводим информацию в лог
-			this->log->print("ACCEPT: ip = %s, mac = %s, port = %d", log_t::flag_t::INFO, ip.c_str(), mac.c_str(), port);
+			this->_log->print("ACCEPT: ip = %s, mac = %s, port = %d", log_t::flag_t::INFO, ip.c_str(), mac.c_str(), port);
 			// Разрешаем подключение клиенту
 			return true;
 		}
@@ -70,7 +70,7 @@ class WebSocket {
 		 */
 		void active(const size_t aid, const server::ws_t::mode_t mode, server::ws_t * ws){
 			// Выводим информацию в лог
-			this->log->print("%s client", log_t::flag_t::INFO, (mode == server::ws_t::mode_t::CONNECT ? "Connect" : "Disconnect"));
+			this->_log->print("%s client", log_t::flag_t::INFO, (mode == server::ws_t::mode_t::CONNECT ? "Connect" : "Disconnect"));
 		}
 		/**
 		 * error Метод вывода ошибок WebSocket сервера
@@ -81,7 +81,7 @@ class WebSocket {
 		 */
 		void error(const size_t aid, const u_int code, const string & mess, server::ws_t * ws){
 			// Выводим информацию в лог
-			this->log->print("%s [%u]", log_t::flag_t::CRITICAL, mess.c_str(), code);
+			this->_log->print("%s [%u]", log_t::flag_t::CRITICAL, mess.c_str(), code);
 		}
 		/**
 		 * message Метод получения сообщений
@@ -94,7 +94,7 @@ class WebSocket {
 			// Если даныне получены
 			if(!buffer.empty()){
 				// Выводим информацию в лог
-				this->log->print("message: %s [%s]", log_t::flag_t::INFO, string(buffer.begin(), buffer.end()).c_str(), ws->sub(aid).c_str());
+				this->_log->print("message: %s [%s]", log_t::flag_t::INFO, string(buffer.begin(), buffer.end()).c_str(), ws->sub(aid).c_str());
 				// Отправляем сообщение обратно
 				ws->send(aid, buffer.data(), buffer.size(), utf8);
 			}
@@ -104,7 +104,7 @@ class WebSocket {
 		 * WebSocket Конструктор
 		 * @param log объект логирования
 		 */
-		WebSocket(log_t * log) : log(log) {}
+		WebSocket(log_t * log) : _log(log) {}
 };
 
 /**
@@ -179,7 +179,7 @@ int main(int argc, char * argv[]){
 		"/usr/local/etc/letsencrypt/live/anyks.net/privkey.pem"
 	);
 	*/
-	// core.certificate("./certs/server-cert.pem", "./certs/server-key.pem");
+	// core.certificate("./ca/certs/server-cert.pem", "./ca/certs/server-key.pem");
 	// Устанавливаем шифрование
 	// ws.crypto("PASS");
 	// Устанавливаем сабпротоколы

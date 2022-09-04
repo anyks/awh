@@ -22,7 +22,7 @@ using namespace awh;
 class Server {
 	private:
 		// Объект логирования
-		log_t * log;
+		log_t * _log;
 	public:
 		/**
 		 * accept Метод активации клиента на сервере
@@ -32,9 +32,9 @@ class Server {
 		 * @param sample объект сервера
 		 * @return       результат проверки
 		 */
-		bool accept(const string & ip, const string & mac, const u_int port, server::sample_t * sample) noexcept {
+		bool accept(const string & ip, const string & mac, const u_int port, server::sample_t * sample){
 			// Выводим информацию в лог
-			this->log->print("ACCEPT: ip = %s, mac = %s, port = %d", log_t::flag_t::INFO, ip.c_str(), mac.c_str(), port);
+			this->_log->print("ACCEPT: ip = %s, mac = %s, port = %d", log_t::flag_t::INFO, ip.c_str(), mac.c_str(), port);
 			// Разрешаем подключение клиенту
 			return true;
 		}
@@ -44,9 +44,9 @@ class Server {
 		 * @param mode   режим события подключения
 		 * @param sample объект сервера
 		 */
-		void active(const size_t aid, const server::sample_t::mode_t mode, server::sample_t * sample) noexcept {
+		void active(const size_t aid, const server::sample_t::mode_t mode, server::sample_t * sample){
 			// Выводим информацию в лог
-			this->log->print("%s client", log_t::flag_t::INFO, (mode == server::sample_t::mode_t::CONNECT ? "Connect" : "Disconnect"));
+			this->_log->print("%s client", log_t::flag_t::INFO, (mode == server::sample_t::mode_t::CONNECT ? "Connect" : "Disconnect"));
 		}
 		/**
 		 * message Метод получения сообщений
@@ -54,11 +54,11 @@ class Server {
 		 * @param buffer буфер входящих данных
 		 * @param sample объект сервера
 		 */
-		void message(const size_t aid, const vector <char> & buffer, server::sample_t * sample) noexcept {
+		void message(const size_t aid, const vector <char> & buffer, server::sample_t * sample){
 			// Получаем сообщение
 			const string message(buffer.begin(), buffer.end());
 			// Выводим информацию в лог
-			this->log->print("%s", log_t::flag_t::INFO, message.c_str());
+			this->_log->print("%s", log_t::flag_t::INFO, message.c_str());
 			// Отправляем сообщение обратно
 			sample->send(aid, buffer.data(), buffer.size());
 		}
@@ -67,7 +67,7 @@ class Server {
 		 * Server Конструктор
 		 * @param log объект логирования
 		 */
-		Server(log_t * log) : log(log) {}
+		Server(log_t * log) : _log(log) {}
 };
 
 /**
@@ -76,7 +76,7 @@ class Server {
  * @param argv массив параметров
  * @return     код выхода из приложения
  */
-int main(int argc, char * argv[]) noexcept {
+int main(int argc, char * argv[]){
 	// Создаём объект фреймворка
 	fmk_t fmk;
 	// Создаём объект для работы с логами
@@ -119,7 +119,7 @@ int main(int argc, char * argv[]) noexcept {
 	// Устанавливаем длительное подключение
 	// sample.keepAlive(100, 30, 10);
 	// Устанавливаем SSL сертификаты сервера
-	core.certificate("./certs/server-cert.pem", "./certs/server-key.pem");
+	core.certificate("./ca/certs/server-cert.pem", "./ca/certs/server-key.pem");
 	// Установливаем функцию обратного вызова на событие получения сообщений
 	sample.on((function <void (const size_t, const vector <char> &, server::sample_t *)>) bind(&Server::message, &executor, _1, _2, _3));
 	// Установливаем функцию обратного вызова на событие запуска или остановки подключения

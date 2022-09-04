@@ -31,18 +31,18 @@ class Timer {
 		u_short count;
 	private:
 		// Объект логирования
-		log_t * log;
+		log_t * _log;
 	public:
 		/**
 		 * interval Метод интервала
 		 * @param id   идентификатор таймера
 		 * @param core объект сетевого ядра
 		 */
-		void interval(const u_short id, core_t * core) noexcept {
+		void interval(const u_short id, core_t * core){
 			// Замеряем время начала работы для интервала времени
 			auto shift = chrono::system_clock::now();
 			// Выводим информацию в лог
-			this->log->print("Interval: %u seconds", log_t::flag_t::INFO, chrono::duration_cast <chrono::seconds> (shift - this->is).count());
+			this->_log->print("Interval: %u seconds", log_t::flag_t::INFO, chrono::duration_cast <chrono::seconds> (shift - this->is).count());
 			// Замеряем время начала работы для интервала времени
 			this->is = shift;
 			// Если таймер отработал 10 раз, выходим
@@ -58,16 +58,16 @@ class Timer {
 		 * @param id   идентификатор таймера
 		 * @param core объект сетевого ядра
 		 */
-		void timeout(const u_short id, core_t * core) noexcept {
+		void timeout(const u_short id, core_t * core){
 			// Выводим информацию в лог
-			this->log->print("Timeout: %u seconds", log_t::flag_t::INFO, chrono::duration_cast <chrono::seconds> (chrono::system_clock::now() - this->ts).count());
+			this->_log->print("Timeout: %u seconds", log_t::flag_t::INFO, chrono::duration_cast <chrono::seconds> (chrono::system_clock::now() - this->ts).count());
 		}
 		/**
 		 * run Метод запуска сетевого ядра
 		 * @param mode флаг запуска сетевого ядра
 		 * @param core объект сетевого ядра
 		 */
-		void run(const bool mode, Core * core) noexcept {
+		void run(const bool mode, Core * core){
 			// Если система запущена
 			if(mode){
 				// Замеряем время начала работы для таймера
@@ -75,20 +75,20 @@ class Timer {
 				// Замеряем время начала работы для интервала времени
 				this->is = chrono::system_clock::now();
 				// Выводим информацию в лог
-				this->log->print("%s", log_t::flag_t::INFO, "Start timer");
+				this->_log->print("%s", log_t::flag_t::INFO, "Start timer");
 				// Устанавливаем задержку времени на 10 секунд
 				core->setTimeout(10000, (function <void (const u_short, core_t *)>) bind(&Timer::timeout, this, _1, _2));
 				// Устанавливаем интервал времени времени на 5 секунд
 				core->setInterval(5000, (function <void (const u_short, core_t *)>) bind(&Timer::interval, this, _1, _2));
 			// Выводим информацию в лог
-			} else this->log->print("%s", log_t::flag_t::INFO, "Stop timer");
+			} else this->_log->print("%s", log_t::flag_t::INFO, "Stop timer");
 		}
 	public:
 		/**
 		 * Timer Конструктор
 		 * @param log объект логирования
 		 */
-		Timer(log_t * log) noexcept : ts(chrono::system_clock::now()), is(chrono::system_clock::now()), count(0), log(log) {}
+		Timer(log_t * log) : ts(chrono::system_clock::now()), is(chrono::system_clock::now()), count(0), _log(log) {}
 };
 
 /**
@@ -97,7 +97,7 @@ class Timer {
  * @param argv массив параметров
  * @return     код выхода из приложения
  */
-int main(int argc, char * argv[]) noexcept {
+int main(int argc, char * argv[]){
 	// Создаём объект фреймворка
 	fmk_t fmk;
 	// Создаём объект для работы с логами
