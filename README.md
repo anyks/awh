@@ -29,7 +29,7 @@
 $ git clone --recursive https://github.com/anyks/awh.git
 ```
 
-### Activate SCTP (FreeBSD / Linux - only)
+### Activate SCTP only (FreeBSD / Linux)
 
 #### FreeBSD
 
