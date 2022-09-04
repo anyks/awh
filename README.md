@@ -457,13 +457,13 @@ int main(int argc, char * argv[]){
 	log.setLogFormat("%H:%M:%S %d.%m.%Y");
 
 	proxy.mode(
-		(uint8_t) server::proxy_t::flag_t::NOIFNO |
+		(uint8_t) server::proxy_t::flag_t::NOINFO |
 		(uint8_t) server::proxy_t::flag_t::WAITMESS
 	);
 	proxy.clusterSize();
 
-	proxy.realm("ANYKS");
-	proxy.opaque("keySession");
+	// proxy.realm("ANYKS");
+	// proxy.opaque("keySession");
 
 	proxy.authType(auth_t::type_t::BASIC);
 	// proxy.authType(auth_t::type_t::DIGEST, auth_t::hash_t::MD5);
@@ -523,7 +523,7 @@ int main(int argc, char * argv[]){
 	log.setLogFormat("%H:%M:%S %d.%m.%Y");
 
 	proxy.mode(
-		(uint8_t) proxy_socks5_t::flag_t::NOIFNO |
+		(uint8_t) proxy_socks5_t::flag_t::NOINFO |
 		(uint8_t) proxy_socks5_t::flag_t::WAITMESS
 	);
 	proxy.clusterSize();
@@ -582,7 +582,7 @@ class Timer {
 
 				core->setTimeout(10000, (function <void (const u_short, core_t *)>) bind(&Timer::timeout, this, _1, _2));
 				core->setInterval(5000, (function <void (const u_short, core_t *)>) bind(&Timer::interval, this, _1, _2));
-			} else this->log->print("%s", log_t::flag_t::INFO, "Stop timer");
+			} else this->_log->print("%s", log_t::flag_t::INFO, "Stop timer");
 		}
 	public:
 		Timer(log_t * log) : ts(chrono::system_clock::now()), is(chrono::system_clock::now()), count(0), _log(log) {}
