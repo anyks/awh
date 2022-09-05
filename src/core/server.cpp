@@ -27,6 +27,102 @@ void awh::server::scheme_t::accept(ev::io & watcher, int revents) noexcept {
 	core->accept(watcher.fd, this->sid);
 }
 /**
+ * callback Функция обратного вызова
+ * @param timer   объект события таймера
+ * @param revents идентификатор события
+ */
+void awh::server::Core::DTLS::callback(ev::timer & timer, int revents) noexcept {	
+	// Останавливаем работу таймера
+	timer.stop();
+	// Выполняем извлечение адъютанта
+	auto it = this->core->adjutants.find(this->aid);
+	// Если адъютант получен
+	if(it != this->core->adjutants.end()){
+		// Получаем объект адъютанта
+		awh::scheme_t::adj_t * adj = const_cast <awh::scheme_t::adj_t *> (it->second);
+		// Получаем объект схемы сети
+		scheme_t * shm = (scheme_t *) const_cast <awh::scheme_t *> (adj->parent);
+		// Выполняем ожидание входящих подключений
+		if(this->core->engine.wait(adj->ectx)){
+			// Устанавливаем параметры сокета
+			adj->addr.sonet(SOCK_DGRAM, IPPROTO_UDP);
+			// Если прикрепление клиента к серверу выполнено
+			if(adj->addr.attach(shm->addr)){
+				// Выполняем прикрепление контекста клиента к контексту сервера
+				this->core->engine.attach(adj->ectx, &adj->addr);
+				// Получаем адрес подключения клиента
+				adj->ip = adj->addr.ip;
+				// Получаем аппаратный адрес клиента
+				adj->mac = adj->addr.mac;
+				// Получаем порт подключения клиента
+				adj->port = adj->addr.port;
+				// Если функция обратного вызова проверки подключения установлена, выполняем проверку, если проверка не пройдена?
+				if((shm->callback.accept != nullptr) && !shm->callback.accept(adj->ip, adj->mac, adj->port, shm->sid, this->core)){
+					// Если порт установлен
+					if(adj->port > 0){
+						// Выводим сообщение об ошибке
+						this->core->log->print(
+							"access to the server is denied for the client [%s:%d], mac = %s, socket = %d, pid = %d",
+							log_t::flag_t::WARNING,
+							adj->ip.c_str(),
+							adj->port,
+							adj->mac.c_str(),
+							adj->addr.fd,
+							getpid()
+						);
+					// Если порт не установлен
+					} else {
+						// Выводим сообщение об ошибке
+						this->core->log->print(
+							"access to the server is denied for the client [%s], mac = %s, socket = %d, pid = %d",
+							log_t::flag_t::WARNING,
+							adj->ip.c_str(),
+							adj->mac.c_str(),
+							adj->addr.fd,
+							getpid()
+						);
+					}
+					// Выполняем отключение адъютанта
+					this->core->close(this->aid);
+					// Выходим
+					return;
+				}
+				// Запускаем чтение данных
+				this->core->enabled(engine_t::method_t::READ, this->aid);
+				// Если вывод информационных данных не запрещён
+				if(!this->core->noinfo){
+					// Если порт установлен
+					if(adj->port > 0){
+						// Выводим в консоль информацию
+						this->core->log->print(
+							"connect to server client [%s:%d], mac = %s, socket = %d, pid = %d",
+							log_t::flag_t::INFO,
+							adj->ip.c_str(),
+							adj->port,
+							adj->mac.c_str(),
+							adj->addr.fd, getpid()
+						);
+					// Если порт не установлен
+					} else {
+						// Выводим в консоль информацию
+						this->core->log->print(
+							"connect to server client [%s], mac = %s, socket = %d, pid = %d",
+							log_t::flag_t::INFO,
+							adj->ip.c_str(),
+							adj->mac.c_str(),
+							adj->addr.fd, getpid()
+						);
+					}
+				}
+				// Выполняем функцию обратного вызова
+				if(shm->callback.connect != nullptr) shm->callback.connect(this->aid, shm->sid, this->core);
+			// Подключение не установлено, выводим сообщение об ошибке
+			} else this->core->log->print("accepting failed, pid = %d", log_t::flag_t::WARNING, getpid());
+		// Запускаем таймер вновь на 100мс
+		} else timer.start(.1);
+	}
+}
+/**
  * cluster Метод события ЗАПУСКА/ОСТАНОВКИ кластера
  * @param sid   идентификатор схемы сети
  * @param pid   идентификатор процесса
@@ -168,94 +264,32 @@ void awh::server::Core::accept(const int fd, const size_t sid) noexcept {
 						// Выходим
 						break;
 					}
+					// Создаём объект для работы с DTLS
+					unique_ptr <dtls_t> dtls(new dtls_t());
 					// Создаём бъект адъютанта
 					unique_ptr <awh::scheme_t::adj_t> adj(new awh::scheme_t::adj_t(shm, this->fmk, this->log));
+					// Устанавливаем идентификатор адъютанта
+					adj->aid = this->fmk->nanoTimestamp();
+					// Устанавливаем объект сетевого ядра
+					dtls->core = this;
+					// Устанавливаем идентификатор адъютанта
+					dtls->aid = adj->aid;
 					// Выполняем получение контекста сертификата
 					this->engine.wrap(adj->ectx, &shm->addr, engine_t::type_t::SERVER);
-					// Выполняем ожидание входящих подключений
-					this->engine.wait(adj->ectx);
-					// Устанавливаем параметры сокета
-					adj->addr.sonet(SOCK_DGRAM, IPPROTO_UDP);
-					// Если прикрепление клиента к серверу выполнено
-					if(adj->addr.attach(shm->addr)){
-						// Устанавливаем идентификатор адъютанта
-						adj->aid = this->fmk->nanoTimestamp();
-						// Выполняем прикрепление контекста клиента к контексту сервера
-						this->engine.attach(adj->ectx, &adj->addr);
-						// Получаем адрес подключения клиента
-						adj->ip = adj->addr.ip;
-						// Получаем аппаратный адрес клиента
-						adj->mac = adj->addr.mac;
-						// Получаем порт подключения клиента
-						adj->port = adj->addr.port;
-						// Если функция обратного вызова проверки подключения установлена, выполняем проверку, если проверка не пройдена?
-						if((shm->callback.accept != nullptr) && !shm->callback.accept(adj->ip, adj->mac, adj->port, shm->sid, this)){
-							// Если порт установлен
-							if(adj->port > 0){
-								// Выводим сообщение об ошибке
-								this->log->print(
-									"access to the server is denied for the client [%s:%d], mac = %s, socket = %d, pid = %d",
-									log_t::flag_t::WARNING,
-									adj->ip.c_str(),
-									adj->port,
-									adj->mac.c_str(),
-									adj->addr.fd,
-									getpid()
-								);
-							// Если порт не установлен
-							} else {
-								// Выводим сообщение об ошибке
-								this->log->print(
-									"access to the server is denied for the client [%s], mac = %s, socket = %d, pid = %d",
-									log_t::flag_t::WARNING,
-									adj->ip.c_str(),
-									adj->mac.c_str(),
-									adj->addr.fd,
-									getpid()
-								);
-							}
-							// Выходим
-							break;
-						}
-						// Выполняем блокировку потока
-						this->_mtx.accept.lock();
-						// Добавляем созданного адъютанта в список адъютантов
-						auto ret = shm->adjutants.emplace(adj->aid, move(adj));
-						// Добавляем адъютанта в список подключений
-						this->adjutants.emplace(ret.first->first, ret.first->second.get());
-						// Выполняем блокировку потока
-						this->_mtx.accept.unlock();
-						// Запускаем чтение данных
-						this->enabled(engine_t::method_t::READ, ret.first->first);
-						// Если вывод информационных данных не запрещён
-						if(!this->noinfo){
-							// Если порт установлен
-							if(ret.first->second->port > 0){
-								// Выводим в консоль информацию
-								this->log->print(
-									"connect to server client [%s:%d], mac = %s, socket = %d, pid = %d",
-									log_t::flag_t::INFO,
-									ret.first->second->ip.c_str(),
-									ret.first->second->port,
-									ret.first->second->mac.c_str(),
-									ret.first->second->addr.fd, getpid()
-								);
-							// Если порт не установлен
-							} else {
-								// Выводим в консоль информацию
-								this->log->print(
-									"connect to server client [%s], mac = %s, socket = %d, pid = %d",
-									log_t::flag_t::INFO,
-									ret.first->second->ip.c_str(),
-									ret.first->second->mac.c_str(),
-									ret.first->second->addr.fd, getpid()
-								);
-							}
-						}
-						// Выполняем функцию обратного вызова
-						if(shm->callback.connect != nullptr) shm->callback.connect(ret.first->first, shm->sid, this);
-					// Подключение не установлено, выводим сообщение об ошибке
-					} else this->log->print("accepting failed, pid = %d", log_t::flag_t::WARNING, getpid());
+					// Устанавливаем базу событий
+					dtls->timer.set(this->dispatch.base);
+					// Устанавливаем событие на работу таймера проверки подключения DTLS
+					dtls->timer.set <dtls_t, &dtls_t::callback> (dtls.get());
+					// Выполняем блокировку потока
+					this->_mtx.accept.lock();
+					// Добавляем созданного адъютанта в список адъютантов
+					auto ret = shm->adjutants.emplace(adj->aid, move(adj));
+					// Добавляем адъютанта в список подключений
+					this->adjutants.emplace(ret.first->first, ret.first->second.get());
+					// Добавляем объект для работы с DTLS в список
+					this->_dtls.emplace(ret.first->second->aid, move(dtls)).first->second->timer.start(.1);
+					// Выполняем блокировку потока
+					this->_mtx.accept.unlock();
 					// Останавливаем работу сервера
 					shm->io.stop();
 				} break;
@@ -427,6 +461,10 @@ void awh::server::Core::close() noexcept {
 						if(shm->callback.disconnect != nullptr)
 							// Выполняем функцию обратного вызова
 							shm->callback.disconnect(it->first, item.first, this);
+						// Если список объектов DTLS не пустой
+						if(!this->_dtls.empty())
+							// Удаляем объект для работы DTLS из списка
+							this->_dtls.erase(it->first);
 						// Удаляем блокировку адъютанта
 						this->_locking.erase(it->first);
 						// Удаляем адъютанта из списка
@@ -476,6 +514,10 @@ void awh::server::Core::remove() noexcept {
 						if(shm->callback.disconnect != nullptr)
 							// Выполняем функцию обратного вызова
 							shm->callback.disconnect(jt->first, it->first, this);
+						// Если список объектов DTLS не пустой
+						if(!this->_dtls.empty())
+							// Удаляем объект для работы DTLS из списка
+							this->_dtls.erase(jt->first);
 						// Удаляем блокировку адъютанта
 						this->_locking.erase(jt->first);
 						// Удаляем адъютанта из списка
@@ -595,6 +637,10 @@ void awh::server::Core::remove(const size_t sid) noexcept {
 							shm->callback.disconnect(jt->first, it->first, this);
 						// Удаляем адъютанта из списка подключений
 						this->adjutants.erase(jt->first);
+						// Если список объектов DTLS не пустой
+						if(!this->_dtls.empty())
+							// Удаляем объект для работы DTLS из списка
+							this->_dtls.erase(jt->first);
 						// Удаляем блокировку адъютанта
 						this->_locking.erase(jt->first);
 						// Удаляем адъютанта из списка
@@ -651,6 +697,10 @@ void awh::server::Core::close(const size_t aid) noexcept {
 				if(this->net.sonet == scheme_t::sonet_t::DTLS){
 					// Очищаем контекст сервера
 					shm->ectx.clear();
+					// Если список объектов DTLS не пустой
+					if(!this->_dtls.empty())
+						// Удаляем объект для работы DTLS из списка
+						this->_dtls.erase(aid);
 					// Выполняем запуск сервера вновь
 					this->run(shm->sid);
 				}

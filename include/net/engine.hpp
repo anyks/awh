@@ -566,8 +566,9 @@ namespace awh {
 			/**
 			 * wait Метод ожидания рукопожатия
 			 * @param target контекст назначения
+			 * @return       результат проверки
 			 */
-			void wait(ctx_t & target) noexcept;
+			bool wait(ctx_t & target) noexcept;
 		public:
 			/**
 			 * attach Метод прикрепления контекста клиента к контексту сервера

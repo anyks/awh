@@ -59,6 +59,27 @@ namespace awh {
 					recursive_mutex close;  // Для закрытия подключения
 					recursive_mutex accept; // Для одобрения подключения
 				} mtx_t;
+				/**
+				 * DTLS Класс проверки подключения для протокола UDP TLS
+				 */
+				typedef class DTLS {
+					public:
+						size_t aid;      // Идентификатор адъютанта
+						Core * core;     // Объект ядра клиента
+						ev::timer timer; // Объект события таймера
+					public:
+						/**
+						 * callback Функция обратного вызова
+						 * @param timer   объект события таймера
+						 * @param revents идентификатор события
+						 */
+						void callback(ev::timer & timer, int revents) noexcept;
+					public:
+						/**
+						 * DTLS Конструктор
+						 */
+						DTLS() noexcept : aid(0), core(nullptr) {}
+				} dtls_t;
 			private:
 				// Мютекс для блокировки основного потока
 				mtx_t _mtx;
@@ -78,6 +99,8 @@ namespace awh {
 			private:
 				// Список блокированных объектов
 				set <size_t> _locking;
+				// Список серверов DTLS
+				map <size_t, unique_ptr <dtls_t>> _dtls;
 			private:
 				/**
 				 * cluster Метод события ЗАПУСКА/ОСТАНОВКИ кластера

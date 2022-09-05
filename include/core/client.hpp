@@ -62,7 +62,7 @@ namespace awh {
 				 */
 				typedef class Timeout {
 					public:
-						size_t sid;            // идентификатор схемы сети
+						size_t sid;            // Идентификатор схемы сети
 						Core * core;           // Объект ядра клиента
 						ev::timer timer;       // Объект события таймера
 						scheme_t::mode_t mode; // Режим работы клиента

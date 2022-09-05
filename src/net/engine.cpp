@@ -2252,27 +2252,26 @@ bool awh::Engine::isTLS(ctx_t & ctx) const noexcept {
 /**
  * wait Метод ожидания рукопожатия
  * @param target контекст назначения
+ * @return       результат проверки
  */
-void awh::Engine::wait(ctx_t & target) noexcept {
+bool awh::Engine::wait(ctx_t & target) noexcept {
 	// Определяем тип входящего сокета
 	switch(target._addr->_type){
 		// Если сокет установлен TCP/IP
 		case SOCK_STREAM:
 			// Выполняем ожидание подключения
-			while(SSL_stateless(target._ssl) < 1)
-				// Замораживаем поток на период времени на 100мс
-				this_thread::sleep_for(100ms);
+			return (SSL_stateless(target._ssl) > 0);
 		break;
 		// Если сокет установлен UDP
 		case SOCK_DGRAM: {
 			// Выполняем зануление структуры подключения клиента
 			memset(&target._addr->_peer.client, 0, sizeof(struct sockaddr_storage));
 			// Выполняем ожидание подключения
-			while(DTLSv1_listen(target._ssl, (BIO_ADDR *) &target._addr->_peer.client) < 1)
-				// Замораживаем поток на период времени на 100мс
-				this_thread::sleep_for(100ms);
+			return (DTLSv1_listen(target._ssl, (BIO_ADDR *) &target._addr->_peer.client) > 0);
 		} break;
 	}
+	// Сообщаем, что ничего не обработано
+	return false;
 }
 /**
  * attach Метод прикрепления контекста клиента к контексту сервера
