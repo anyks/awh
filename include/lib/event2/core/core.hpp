@@ -54,7 +54,7 @@
  */
 #include <net/dns.hpp>
 #include <net/engine.hpp>
-#include <scheme/core2.hpp>
+#include <scheme/core.hpp>
 #include <sys/signals.hpp>
 
 // Подписываемся на стандартное пространство имён

@@ -16,8 +16,23 @@
 #define __AWH_LIB_CORE_CLIENT__
 
 /**
- * Библиотеки LibEv
+ * Если используется модуль LibEvent2
  */
-#include <lib/ev/core/client.hpp>
+#if defined(AWH_EVENT2)
+	/**
+	 * Библиотеки LibEvent2
+	 */
+	#include <lib/event2/core/client.hpp>
+#endif
+
+/**
+ * Если используется модуль LibEv
+ */
+#if defined(AWH_EV)
+	/**
+	 * Библиотеки LibEv
+	 */
+	#include <lib/ev/core/client.hpp>
+#endif
 
 #endif // __AWH_LIB_CORE_CLIENT__

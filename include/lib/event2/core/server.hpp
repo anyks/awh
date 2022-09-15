@@ -27,7 +27,7 @@
  */
 #include <core/core.hpp>
 #include <sys/cluster.hpp>
-#include <scheme/server2.hpp>
+#include <scheme/server.hpp>
 
 // Подписываемся на стандартное пространство имён
 using namespace std;

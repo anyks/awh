@@ -16,8 +16,23 @@
 #define __AWH_LIB_CORE_SERVER__
 
 /**
- * Библиотеки LibEv
+ * Если используется модуль LibEvent2
  */
-#include <lib/ev/core/server.hpp>
+#if defined(AWH_EVENT2)
+	/**
+	 * Библиотеки LibEvent2
+	 */
+	#include <lib/event2/core/server.hpp>
+#endif
+
+/**
+ * Если используется модуль LibEv
+ */
+#if defined(AWH_EV)
+	/**
+	 * Библиотеки LibEv
+	 */
+	#include <lib/ev/core/server.hpp>
+#endif
 
 #endif // __AWH_LIB_CORE_SERVER__

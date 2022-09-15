@@ -13,3 +13,6 @@
 [submodule "submodules/libev"]
 	path = submodules/libev
 	url = https://github.com/enki/libev
+[submodule "submodules/libevent"]
+	path = submodules/libevent
+	url = https://github.com/libevent/libevent.git

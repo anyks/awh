@@ -71,7 +71,7 @@
 #include <sys/log.hpp>
 #include <net/nwk.hpp>
 #include <net/socket.hpp>
-#include <scheme/core2.hpp>
+#include <scheme/core.hpp>
 
 // Устанавливаем область видимости
 using namespace std;

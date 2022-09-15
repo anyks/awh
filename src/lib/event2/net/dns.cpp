@@ -101,7 +101,7 @@ void awh::DNS::Worker::response(evutil_socket_t fd, short event, void * ctx) noe
 	// Получаем объект DNS сервера
 	dns_t * dns = const_cast <dns_t *> (wrk->_dns);
 	// Выполняем чтение ответа от сервера
-	if(::recvfrom(io.fd, (char *) buffer, sizeof(buffer), 0, (struct sockaddr *) &wrk->_addr, &wrk->_socklen) > 0){
+	if(::recvfrom(fd, (char *) buffer, sizeof(buffer), 0, (struct sockaddr *) &wrk->_addr, &wrk->_socklen) > 0){
 		// Получаем объект заголовка
 		head_t * header = reinterpret_cast <head_t *> (&buffer);
 		// Определяем код выполнения операции

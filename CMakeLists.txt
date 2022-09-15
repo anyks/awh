@@ -24,6 +24,15 @@ if(CMAKE_BUILD_IDN)
     message(STATUS "Build AWH IDN: ${CMAKE_BUILD_IDN}\n")
 endif()
 
+# Сборка модуля AWH_EVENT2
+if(CMAKE_BUILD_EVENT2)
+    add_compile_definitions(AWH_EVENT2)
+    message(STATUS "Build AWH LIBEVENT2: ${CMAKE_BUILD_EVENT2}\n")
+else()
+    add_compile_definitions(AWH_EV)
+    message(STATUS "Build AWH LIBEV: ${CMAKE_BUILD_EV}\n")
+endif()
+
 # Получаем архитектуру
 EXECUTE_PROCESS( COMMAND uname -m COMMAND tr -d '\n' OUTPUT_VARIABLE ARCHITECTURE )
 message( STATUS "Architecture: ${ARCHITECTURE}" )
@@ -92,13 +101,20 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 # Выполняем поиск нужных библиотек
 find_package(Zlib REQUIRED)
 find_package(Brotli REQUIRED)
-find_package(LibEv REQUIRED)
 find_package(OpenSSL REQUIRED)
 
 # Сборка модуля AWH_IDN, если операционной системой не является Windows
 if(CMAKE_BUILD_IDN AND (NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Windows"))
     find_package(Iconv REQUIRED)
     find_package(Idn2 REQUIRED)
+endif()
+
+# Сборка модуля AWH_EVENT2
+if(CMAKE_BUILD_EVENT2)
+    find_package(LibEvent REQUIRED)
+# Сборка модуля AWH_EV
+else()
+    find_package(LibEv REQUIRED)
 endif()
 
 # Провекра OpenSSL
@@ -125,14 +141,6 @@ else()
     message(FATAL_ERROR "Brotli not found")
 endif()
 
-# Провекра LibEv
-if (LibEv_FOUND)
-    message(STATUS "LibEv libs found: " ${LIBEV_LIBRARY})
-    message(STATUS "LibEv include dir found: " ${LIBEV_INCLUDE_DIR})
-else()
-    message(FATAL_ERROR "LibEv not found")
-endif()
-
 # Сборка модуля AWH_IDN, если операционной системой не является Windows
 if(CMAKE_BUILD_IDN AND (NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Windows"))
     # Провекра ICONV
@@ -151,9 +159,30 @@ if(CMAKE_BUILD_IDN AND (NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Windows"))
     endif()
 endif()
 
+# Сборка модуля AWH_EVENT2
+if(CMAKE_BUILD_EVENT2)
+    # Провекра LibEvent2
+    if (LibEvent_FOUND)
+        set(EVENT_LIBRARY ${LIBEVENT_LIBRARIES})
+        message(STATUS "LibEvent2 libs found: " ${LIBEVENT_LIBRARIES})
+        message(STATUS "LibEvent2 include dir found: " ${LIBEVENT_INCLUDE_DIR})
+    else()
+        message(FATAL_ERROR "LibEvent2 not found")
+    endif()
+# Сборка модуля AWH_EV
+else()
+    # Провекра LibEv
+    if (LibEv_FOUND)
+        set(EVENT_LIBRARY ${LIBEV_LIBRARY})
+        message(STATUS "LibEv libs found: " ${LIBEV_LIBRARY})
+        message(STATUS "LibEv include dir found: " ${LIBEV_INCLUDE_DIR})
+    else()
+        message(FATAL_ERROR "LibEv not found")
+    endif()
+endif()
+
 # Выполняем подключение хидеров
 include_directories(${ZLIB_INCLUDE_DIR})
-include_directories(${LIBEV_INCLUDE_DIR})
 include_directories(${BROTLI_INCLUDE_DIRS})
 include_directories(${OPENSSL_INCLUDE_DIR})
 include_directories(${CMAKE_SOURCE_DIR}/include)
@@ -165,15 +194,37 @@ if(CMAKE_BUILD_IDN AND (NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Windows"))
     include_directories(${IDN2_INCLUDE_DIR})
 endif()
 
-# Выполняем подключение исходников для LibEv
-set(SOURCE_FILES
-    "${CMAKE_SOURCE_DIR}/src/lib/ev/sys/signals.cpp"
-    "${CMAKE_SOURCE_DIR}/src/lib/ev/sys/cluster.cpp"
-    "${CMAKE_SOURCE_DIR}/src/lib/ev/net/dns.cpp"
-    "${CMAKE_SOURCE_DIR}/src/lib/ev/core/core.cpp"
-    "${CMAKE_SOURCE_DIR}/src/lib/ev/core/client.cpp"
-    "${CMAKE_SOURCE_DIR}/src/lib/ev/core/server.cpp"
-)
+# Сборка модуля AWH_EVENT2
+if(CMAKE_BUILD_EVENT2)
+    include_directories(${LIBEVENT_INCLUDE_DIR})
+# Сборка модуля AWH_EV
+else()
+    include_directories(${LIBEV_INCLUDE_DIR})
+endif()
+
+# Сборка модуля AWH_EVENT2
+if(CMAKE_BUILD_EVENT2)
+     # Выполняем подключение исходников для LibEvent2
+     set(SOURCE_FILES
+        "${CMAKE_SOURCE_DIR}/src/lib/event2/sys/signals.cpp"
+        "${CMAKE_SOURCE_DIR}/src/lib/event2/sys/cluster.cpp"
+        "${CMAKE_SOURCE_DIR}/src/lib/event2/net/dns.cpp"
+        "${CMAKE_SOURCE_DIR}/src/lib/event2/core/core.cpp"
+        "${CMAKE_SOURCE_DIR}/src/lib/event2/core/client.cpp"
+        "${CMAKE_SOURCE_DIR}/src/lib/event2/core/server.cpp"
+    )
+# Сборка модуля AWH_EV
+else()
+    # Выполняем подключение исходников для LibEv
+    set(SOURCE_FILES
+        "${CMAKE_SOURCE_DIR}/src/lib/ev/sys/signals.cpp"
+        "${CMAKE_SOURCE_DIR}/src/lib/ev/sys/cluster.cpp"
+        "${CMAKE_SOURCE_DIR}/src/lib/ev/net/dns.cpp"
+        "${CMAKE_SOURCE_DIR}/src/lib/ev/core/core.cpp"
+        "${CMAKE_SOURCE_DIR}/src/lib/ev/core/client.cpp"
+        "${CMAKE_SOURCE_DIR}/src/lib/ev/core/server.cpp"
+    )
+endif()
 
 # Выполняем подключение исходников
 set(SOURCE_FILES
@@ -274,7 +325,7 @@ if (ENABLE_CONSOLE_APP)
             ${ICONV_LIBRARY}
             ${IDN2_LIBRARY}
             ${ZLIB_LIBRARY}
-            ${LIBEV_LIBRARY}
+            ${EVENT_LIBRARY}
             ${BROTLI_LIBRARIES}
             ${OPENSSL_LIBRARIES}
             ${WINFLAGS}
@@ -285,7 +336,7 @@ if (ENABLE_CONSOLE_APP)
             ${ICONV_LIBRARY}
             ${IDN2_LIBRARY}
             ${ZLIB_LIBRARY}
-            ${LIBEV_LIBRARY}
+            ${EVENT_LIBRARY}
             ${BROTLI_LIBRARIES}
             ${OPENSSL_LIBRARIES}
             ${WINFLAGS}
@@ -296,7 +347,7 @@ if (ENABLE_CONSOLE_APP)
             ${ICONV_LIBRARY}
             ${IDN2_LIBRARY}
             ${ZLIB_LIBRARY}
-            ${LIBEV_LIBRARY}
+            ${EVENT_LIBRARY}
             ${BROTLI_LIBRARIES}
             ${OPENSSL_LIBRARIES}
             ${WINFLAGS}
@@ -307,7 +358,7 @@ if (ENABLE_CONSOLE_APP)
             ${ICONV_LIBRARY}
             ${IDN2_LIBRARY}
             ${ZLIB_LIBRARY}
-            ${LIBEV_LIBRARY}
+            ${EVENT_LIBRARY}
             ${BROTLI_LIBRARIES}
             ${OPENSSL_LIBRARIES}
             ${WINFLAGS}
@@ -318,7 +369,7 @@ if (ENABLE_CONSOLE_APP)
             ${ICONV_LIBRARY}
             ${IDN2_LIBRARY}
             ${ZLIB_LIBRARY}
-            ${LIBEV_LIBRARY}
+            ${EVENT_LIBRARY}
             ${BROTLI_LIBRARIES}
             ${OPENSSL_LIBRARIES}
             ${WINFLAGS}
@@ -329,7 +380,7 @@ if (ENABLE_CONSOLE_APP)
             ${ICONV_LIBRARY}
             ${IDN2_LIBRARY}
             ${ZLIB_LIBRARY}
-            ${LIBEV_LIBRARY}
+            ${EVENT_LIBRARY}
             ${BROTLI_LIBRARIES}
             ${OPENSSL_LIBRARIES}
             ${WINFLAGS}
@@ -340,7 +391,7 @@ if (ENABLE_CONSOLE_APP)
             ${ICONV_LIBRARY}
             ${IDN2_LIBRARY}
             ${ZLIB_LIBRARY}
-            ${LIBEV_LIBRARY}
+            ${EVENT_LIBRARY}
             ${BROTLI_LIBRARIES}
             ${OPENSSL_LIBRARIES}
             ${WINFLAGS}
@@ -351,7 +402,7 @@ if (ENABLE_CONSOLE_APP)
             ${ICONV_LIBRARY}
             ${IDN2_LIBRARY}
             ${ZLIB_LIBRARY}
-            ${LIBEV_LIBRARY}
+            ${EVENT_LIBRARY}
             ${BROTLI_LIBRARIES}
             ${OPENSSL_LIBRARIES}
             ${WINFLAGS}
@@ -362,7 +413,7 @@ if (ENABLE_CONSOLE_APP)
             ${ICONV_LIBRARY}
             ${IDN2_LIBRARY}
             ${ZLIB_LIBRARY}
-            ${LIBEV_LIBRARY}
+            ${EVENT_LIBRARY}
             ${BROTLI_LIBRARIES}
             ${OPENSSL_LIBRARIES}
             ${WINFLAGS}
@@ -373,7 +424,7 @@ if (ENABLE_CONSOLE_APP)
             ${ICONV_LIBRARY}
             ${IDN2_LIBRARY}
             ${ZLIB_LIBRARY}
-            ${LIBEV_LIBRARY}
+            ${EVENT_LIBRARY}
             ${BROTLI_LIBRARIES}
             ${OPENSSL_LIBRARIES}
             ${WINFLAGS}
@@ -383,7 +434,7 @@ if (ENABLE_CONSOLE_APP)
         target_link_libraries(${WSC_APP_NAME}
             ${CURRENT_LIB_NAME}
             ${ZLIB_LIBRARY}
-            ${LIBEV_LIBRARY}
+            ${EVENT_LIBRARY}
             ${BROTLI_LIBRARIES}
             ${OPENSSL_LIBRARIES}
             ${WINFLAGS}
@@ -392,7 +443,7 @@ if (ENABLE_CONSOLE_APP)
         target_link_libraries(${WSS_APP_NAME}
             ${CURRENT_LIB_NAME}
             ${ZLIB_LIBRARY}
-            ${LIBEV_LIBRARY}
+            ${EVENT_LIBRARY}
             ${BROTLI_LIBRARIES}
             ${OPENSSL_LIBRARIES}
             ${WINFLAGS}
@@ -402,7 +453,7 @@ if (ENABLE_CONSOLE_APP)
         target_link_libraries(${REST_APP_NAME}
             ${CURRENT_LIB_NAME}
             ${ZLIB_LIBRARY}
-            ${LIBEV_LIBRARY}
+            ${EVENT_LIBRARY}
             ${BROTLI_LIBRARIES}
             ${OPENSSL_LIBRARIES}
             ${WINFLAGS}
@@ -411,7 +462,7 @@ if (ENABLE_CONSOLE_APP)
         target_link_libraries(${WEB_APP_NAME}
             ${CURRENT_LIB_NAME}
             ${ZLIB_LIBRARY}
-            ${LIBEV_LIBRARY}
+            ${EVENT_LIBRARY}
             ${BROTLI_LIBRARIES}
             ${OPENSSL_LIBRARIES}
             ${WINFLAGS}
@@ -420,7 +471,7 @@ if (ENABLE_CONSOLE_APP)
         target_link_libraries(${DNS_APP_NAME}
             ${CURRENT_LIB_NAME}
             ${ZLIB_LIBRARY}
-            ${LIBEV_LIBRARY}
+            ${EVENT_LIBRARY}
             ${BROTLI_LIBRARIES}
             ${OPENSSL_LIBRARIES}
             ${WINFLAGS}
@@ -429,7 +480,7 @@ if (ENABLE_CONSOLE_APP)
         target_link_libraries(${SOCKS5_APP_NAME}
             ${CURRENT_LIB_NAME}
             ${ZLIB_LIBRARY}
-            ${LIBEV_LIBRARY}
+            ${EVENT_LIBRARY}
             ${BROTLI_LIBRARIES}
             ${OPENSSL_LIBRARIES}
             ${WINFLAGS}
@@ -438,7 +489,7 @@ if (ENABLE_CONSOLE_APP)
         target_link_libraries(${PROXY_APP_NAME}
             ${CURRENT_LIB_NAME}
             ${ZLIB_LIBRARY}
-            ${LIBEV_LIBRARY}
+            ${EVENT_LIBRARY}
             ${BROTLI_LIBRARIES}
             ${OPENSSL_LIBRARIES}
             ${WINFLAGS}
@@ -447,7 +498,7 @@ if (ENABLE_CONSOLE_APP)
         target_link_libraries(${TIMER_APP_NAME}
             ${CURRENT_LIB_NAME}
             ${ZLIB_LIBRARY}
-            ${LIBEV_LIBRARY}
+            ${EVENT_LIBRARY}
             ${BROTLI_LIBRARIES}
             ${OPENSSL_LIBRARIES}
             ${WINFLAGS}
@@ -456,7 +507,7 @@ if (ENABLE_CONSOLE_APP)
         target_link_libraries(${CLIENT_APP_NAME}
             ${CURRENT_LIB_NAME}
             ${ZLIB_LIBRARY}
-            ${LIBEV_LIBRARY}
+            ${EVENT_LIBRARY}
             ${BROTLI_LIBRARIES}
             ${OPENSSL_LIBRARIES}
             ${WINFLAGS}
@@ -465,7 +516,7 @@ if (ENABLE_CONSOLE_APP)
         target_link_libraries(${SERVER_APP_NAME}
             ${CURRENT_LIB_NAME}
             ${ZLIB_LIBRARY}
-            ${LIBEV_LIBRARY}
+            ${EVENT_LIBRARY}
             ${BROTLI_LIBRARIES}
             ${OPENSSL_LIBRARIES}
             ${WINFLAGS}
@@ -497,8 +548,15 @@ install(TARGETS ${SERVER_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CM
 # Устанавливаем хидеры сторонних библиотек
 install(DIRECTORY "${ZLIB_INCLUDE_DIR}" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h")
 install(DIRECTORY "${BROTLI_INCLUDE_ENCODE_DIR}" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h")
-install(DIRECTORY "${LIBEV_INCLUDE_DIR}/libev" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h")
 install(DIRECTORY "${OPENSSL_INCLUDE_DIR}/openssl" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h")
+
+# Сборка модуля AWH_EVENT2
+if(CMAKE_BUILD_EVENT2)
+    install(DIRECTORY "${LIBEVENT_INCLUDE_DIR}/event2" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h")
+# Сборка модуля AWH_EV
+else()
+    install(DIRECTORY "${LIBEV_INCLUDE_DIR}/libev" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h")
+endif()
 
 # Сборка модуля AWH_IDN, если операционной системой не является Windows
 if(CMAKE_BUILD_IDN AND (NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Windows"))
@@ -508,9 +566,16 @@ endif()
 
 # Устанавливаем стороние библиотеки
 install(FILES ${ZLIB_LIBRARY} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
-install(FILES ${LIBEV_LIBRARY} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
 install(FILES ${BROTLI_LIBRARIES} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
 install(FILES ${OPENSSL_LIBRARIES} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
+
+# Сборка модуля AWH_EVENT2
+if(CMAKE_BUILD_EVENT2)
+    install(FILES ${LIBEVENT_LIBRARIES} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
+# Сборка модуля AWH_EV
+else()
+    install(FILES ${LIBEV_LIBRARY} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
+endif()
 
 # Сборка модуля AWH_IDN, если операционной системой не является Windows
 if(CMAKE_BUILD_IDN AND (NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Windows"))

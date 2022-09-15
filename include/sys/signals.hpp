@@ -16,8 +16,23 @@
 #define __AWH_LIB_SIGNALS__
 
 /**
- * Библиотеки LibEv
+ * Если используется модуль LibEvent2
  */
-#include <lib/ev/sys/signals.hpp>
+#if defined(AWH_EVENT2)
+	/**
+	 * Библиотеки LibEvent2
+	 */
+	#include <lib/event2/sys/signals.hpp>
+#endif
+
+/**
+ * Если используется модуль LibEv
+ */
+#if defined(AWH_EV)
+	/**
+	 * Библиотеки LibEv
+	 */
+	#include <lib/ev/sys/signals.hpp>
+#endif
 
 #endif // __AWH_LIB_SIGNALS__

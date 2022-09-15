@@ -1273,13 +1273,13 @@ u_short awh::Core::setTimeout(const time_t delay, function <void (const u_short,
 		// Устанавливаем текущий штамп времени
 		ret.first->second->stamp = this->fmk->unixTimestamp();
 		// Устанавливаем время в секундах
-		ret.first->second.event.tv.tv_sec = (delay / 1000);
+		ret.first->second->event.tv.tv_sec = (delay / 1000);
 		// Устанавливаем время счётчика (микросекунды)
-		ret.first->second.event.tv.tv_usec = ((delay % 1000) * 1000);
+		ret.first->second->event.tv.tv_usec = ((delay % 1000) * 1000);
 		// Создаём событие на активацию базы событий
-		evtimer_assign(&ret.first->second.event.ev, this->dispatch.base, &timer_t::callback, ret.first->second.get());
+		evtimer_assign(&ret.first->second->event.ev, this->dispatch.base, &timer_t::callback, ret.first->second.get());
 		// Создаём событие таймаута на активацию базы событий
-		evtimer_add(&ret.first->second.event.ev, &ret.first->second.event.tv);
+		evtimer_add(&ret.first->second->event.ev, &ret.first->second->event.tv);
 	}
 	// Выводим результат
 	return result;
@@ -1314,13 +1314,13 @@ u_short awh::Core::setInterval(const time_t delay, function <void (const u_short
 		// Устанавливаем текущий штамп времени
 		ret.first->second->stamp = this->fmk->unixTimestamp();
 		// Устанавливаем время в секундах
-		ret.first->second.event.tv.tv_sec = (delay / 1000);
+		ret.first->second->event.tv.tv_sec = (delay / 1000);
 		// Устанавливаем время счётчика (микросекунды)
-		ret.first->second.event.tv.tv_usec = ((delay % 1000) * 1000);
+		ret.first->second->event.tv.tv_usec = ((delay % 1000) * 1000);
 		// Создаём событие на активацию базы событий
-		evtimer_assign(&ret.first->second.event.ev, this->dispatch.base, &timer_t::callback, ret.first->second.get());
+		evtimer_assign(&ret.first->second->event.ev, this->dispatch.base, &timer_t::callback, ret.first->second.get());
 		// Создаём событие таймаута на активацию базы событий
-		evtimer_add(&ret.first->second.event.ev, &ret.first->second.event.tv);
+		evtimer_add(&ret.first->second->event.ev, &ret.first->second->event.tv);
 	}
 	// Выводим результат
 	return result;

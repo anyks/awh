@@ -23,7 +23,7 @@
  */
 void awh::server::scheme_t::accept(evutil_socket_t fd, short event, void * ctx) noexcept {
 	// Получаем объект подключения
-	scheme_t * shm = reinterpret_cast <awh::scheme_t *> (ctx);
+	scheme_t * shm = (scheme_t *) reinterpret_cast <awh::scheme_t *> (ctx);
 	// Получаем объект подключения
 	core_t * core = (core_t *) const_cast <awh::core_t *> (shm->core);
 	// Выполняем подключение клиента
@@ -297,7 +297,7 @@ void awh::server::Core::accept(const int fd, const size_t sid) noexcept {
 					// Выполняем получение контекста сертификата
 					this->engine.wrap(adj->ectx, &shm->addr, engine_t::type_t::SERVER);
 					// Устанавливаем событие на работу таймера проверки подключения DTLS
-					evtimer_assign(&dtls->timer.ev, this->dispatch.base, &dtls_t::callback, dtls.get());
+					evtimer_assign(&dtls->event.ev, this->dispatch.base, &dtls_t::callback, dtls.get());
 					// Выполняем блокировку потока
 					this->_mtx.accept.lock();
 					// Добавляем созданного адъютанта в список адъютантов
@@ -306,13 +306,13 @@ void awh::server::Core::accept(const int fd, const size_t sid) noexcept {
 					this->adjutants.emplace(ret.first->first, ret.first->second.get());
 					{
 						// Добавляем объект для работы с DTLS в список
-						auto ret = this->_dtls.emplace(ret.first->second->aid, move(dtls));
+						auto ret = this->_dtls.emplace(adj->aid, move(dtls));
 						// Устанавливаем время в секундах
-						ret.first->second->timer.tv.tv_sec = 0;
+						ret.first->second->event.tv.tv_sec = 0;
 						// Устанавливаем время счётчика (микросекунды)
-						ret.first->second->timer.tv.tv_usec = 100000;
+						ret.first->second->event.tv.tv_usec = 100000;
 						// Создаём событие таймаута на активацию базы событий
-						evtimer_add(&ret.first->second->timer.ev, &ret.first->second->timer.tv);
+						evtimer_add(&ret.first->second->event.ev, &ret.first->second->event.tv);
 					}
 					// Выполняем блокировку потока
 					this->_mtx.accept.unlock();
@@ -860,8 +860,10 @@ void awh::server::Core::transfer(const engine_t::method_t method, const size_t a
 			} break;
 			// Если производится запись данных
 			case (uint8_t) engine_t::method_t::WRITE: {
+				// Очищаем объект таймера записи данных
+				evutil_timerclear(&adj->bev.timer.write.tv);
 				// Останавливаем таймаут ожидания на запись в сокет
-				adj->bev.timer.write.stop();
+				event_del(&adj->bev.timer.write.ev);
 				// Если данных достаточно для записи в сокет
 				if(adj->buffer.size() >= adj->marker.write.min){
 					// Получаем буфер отправляемых данных

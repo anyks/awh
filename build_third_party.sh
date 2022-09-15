@@ -9,6 +9,9 @@ OS=$(uname -a | awk '{print $1}')
 # Флаг активации модуля IDN
 IDN="no"
 
+# Флаг активации сборки LibEvent2
+LIBEVENT2="no"
+
 if [[ $OS =~ "MINGW64" ]]; then
 	OS="Windows"
 fi
@@ -34,6 +37,7 @@ if [ -n "$1" ]; then
 		clean_submodule "libev-win"
 		clean_submodule "brotli"
 		clean_submodule "openssl"
+		clean_submodule "libevent"
 
 		# Если операционная система не является Windows
 		if [[ ! $OS = "Windows" ]]; then
@@ -54,6 +58,11 @@ if [ -n "$1" ]; then
 		exit 0
 	elif [ $1 = "--idn" ]; then
 		IDN="yes"
+		if [ $2 = "--event2" ]; then
+			LIBEVENT2="yes"
+		fi
+	elif [ $1 = "--event2" ]; then
+		LIBEVENT2="yes"
 	else
 		printf "Usage: config [options]\n"
 		printf " --clean - Cleaning all submodules and build directory\n"
@@ -308,13 +317,25 @@ if [ ! -f "$src/.stamp_done" ]; then
 	cd "$ROOT" || exit 1
 fi
 
-# Если операционной системой является Windows
-if [ $OS = "Windows" ]; then # Windows
-	# Сборка LibEv под Windows
-	src="$ROOT/submodules/libev-win"
+# Если нужно собрать модуль LibEvent2
+if [[ $LIBEVENT2 = "yes" ]]; then
+	# Сборка LibEvent2
+	src="$ROOT/submodules/libevent"
 	if [ ! -f "$src/.stamp_done" ]; then
-		printf "\n****** LibEv ******\n"
+		printf "\n****** LibEvent2 ******\n"
 		cd "$src" || exit 1
+
+		# Версия LibEvent2
+		ver="2.1.12"
+
+		# Переключаемся на master
+		git checkout master
+		# Закачиваем все теги
+		git fetch --all --tags
+		# Удаляем старую ветку
+		git branch -D v${ver}-branch
+		# Выполняем переключение на указанную версию
+		git checkout tags/release-${ver}-stable -b v${ver}-branch
 
 		# Создаём каталог сборки
 		mkdir -p "build" || exit 1
@@ -325,55 +346,116 @@ if [ $OS = "Windows" ]; then # Windows
 		rm -rf ./CMakeCache.txt
 
 		# Выполняем конфигурацию проекта
-		cmake \
-		 -DCMAKE_BUILD_TYPE="Release" \
-		 -DCMAKE_SYSTEM_NAME="Windows" \
-		 -G "MinGW Makefiles" \
-		 .. || exit 1
+		if [[ $OS = "Windows" ]]; then
+			cmake \
+			-DCMAKE_C_COMPILER="gcc" \
+			-DCMAKE_BUILD_TYPE="Release" \
+			-DCMAKE_SYSTEM_NAME="Windows" \
+			-DEVENT__LIBRARY_TYPE="STATIC" \
+			-DEVENT__DISABLE_DEBUG_MODE="ON" \
+			-DEVENT__DISABLE_BENCHMARK="ON" \
+			-DEVENT__DISABLE_SAMPLES="ON" \
+			-DEVENT__DISABLE_TESTS="ON" \
+			-DEVENT__DISABLE_THREAD_SUPPORT="ON" \
+			-DCMAKE_INSTALL_PREFIX="$PREFIX" \
+			-DOPENSSL_ROOT_DIR="$PREFIX" \
+			-DOPENSSL_LIBRARIES="$PREFIX/lib" \
+			-DOPENSSL_INCLUDE_DIR="$PREFIX/include" \
+			-G "MinGW Makefiles" \
+			.. || exit 1
+		else
+			cmake \
+			-DEVENT__LIBRARY_TYPE="STATIC" \
+			-DEVENT__DISABLE_DEBUG_MODE="ON" \
+			-DEVENT__DISABLE_BENCHMARK="ON" \
+			-DEVENT__DISABLE_SAMPLES="ON" \
+			-DEVENT__DISABLE_TESTS="ON" \
+			-DEVENT__DISABLE_THREAD_SUPPORT="ON" \
+			-DCMAKE_INSTALL_PREFIX="$PREFIX" \
+			-DOPENSSL_ROOT_DIR="$PREFIX" \
+			-DOPENSSL_LIBRARIES="$PREFIX/lib" \
+			-DOPENSSL_INCLUDE_DIR="$PREFIX/include" \
+			.. || exit 1
+		fi
 
 		# Выполняем сборку на всех логических ядрах
 		$BUILD -j"$numproc" || exit 1
-
-		# Производим установку библиотеки по нужному пути
-		echo "Install \"$ROOT/submodules/libev-win/build/liblibev_static.a\" to \"$PREFIX/lib/libev.a\""
-		${INSTALL_CMD} "$ROOT/submodules/libev-win/build/liblibev_static.a" "$PREFIX/lib/libev.a" || exit 1
-
-		# Производим установку заголовочных файлов по нужному пути
-		for i in $(ls "$ROOT/submodules/libev-win" | grep \\.h$);
-		do
-			echo "Install \"$ROOT/submodules/libev-win/$i\" to \"$PREFIX/include/libev/$i\""
-			${INSTALL_CMD} "$ROOT/submodules/libev-win/$i" "$PREFIX/include/libev/$i" || exit 1
-		done
-		
-		# Помечаем флагом, что сборка и установка произведена
-		touch "$src/.stamp_done"
-		cd "$ROOT" || exit 1
-	fi
-# Для всех остальных версий операционных систем
-else
-	# Сборка LibEv
-	src="$ROOT/submodules/libev"
-	if [ ! -f "$src/.stamp_done" ]; then
-		printf "\n****** LibEv ******\n"
-		cd "$src" || exit 1
-
-		# Выполняем конфигурирование сборки
-		./configure \
-		 --with-pic=use \
-		 --enable-static=yes \
-		 --enable-shared=no \
-		 --prefix=$PREFIX \
-		 --includedir="$PREFIX/include/libev" \
-		 --libdir="$PREFIX/lib"
-		
-		# Выполняем сборку проекта
-		$BUILD || exit 1
 		# Выполняем установку проекта
 		$BUILD install || exit 1
 
 		# Помечаем флагом, что сборка и установка произведена
 		touch "$src/.stamp_done"
 		cd "$ROOT" || exit 1
+	fi
+# Если нужно собрать модуль LibEv
+else
+	# Если операционной системой является Windows
+	if [ $OS = "Windows" ]; then # Windows
+		# Сборка LibEv под Windows
+		src="$ROOT/submodules/libev-win"
+		if [ ! -f "$src/.stamp_done" ]; then
+			printf "\n****** LibEv ******\n"
+			cd "$src" || exit 1
+
+			# Создаём каталог сборки
+			mkdir -p "build" || exit 1
+			# Переходим в каталог
+			cd "build" || exit 1
+
+			# Удаляем старый файл кэша
+			rm -rf ./CMakeCache.txt
+
+			# Выполняем конфигурацию проекта
+			cmake \
+			-DCMAKE_BUILD_TYPE="Release" \
+			-DCMAKE_SYSTEM_NAME="Windows" \
+			-G "MinGW Makefiles" \
+			.. || exit 1
+
+			# Выполняем сборку на всех логических ядрах
+			$BUILD -j"$numproc" || exit 1
+
+			# Производим установку библиотеки по нужному пути
+			echo "Install \"$ROOT/submodules/libev-win/build/liblibev_static.a\" to \"$PREFIX/lib/libev.a\""
+			${INSTALL_CMD} "$ROOT/submodules/libev-win/build/liblibev_static.a" "$PREFIX/lib/libev.a" || exit 1
+
+			# Производим установку заголовочных файлов по нужному пути
+			for i in $(ls "$ROOT/submodules/libev-win" | grep \\.h$);
+			do
+				echo "Install \"$ROOT/submodules/libev-win/$i\" to \"$PREFIX/include/libev/$i\""
+				${INSTALL_CMD} "$ROOT/submodules/libev-win/$i" "$PREFIX/include/libev/$i" || exit 1
+			done
+			
+			# Помечаем флагом, что сборка и установка произведена
+			touch "$src/.stamp_done"
+			cd "$ROOT" || exit 1
+		fi
+	# Для всех остальных версий операционных систем
+	else
+		# Сборка LibEv
+		src="$ROOT/submodules/libev"
+		if [ ! -f "$src/.stamp_done" ]; then
+			printf "\n****** LibEv ******\n"
+			cd "$src" || exit 1
+
+			# Выполняем конфигурирование сборки
+			./configure \
+			--with-pic=use \
+			--enable-static=yes \
+			--enable-shared=no \
+			--prefix=$PREFIX \
+			--includedir="$PREFIX/include/libev" \
+			--libdir="$PREFIX/lib"
+			
+			# Выполняем сборку проекта
+			$BUILD || exit 1
+			# Выполняем установку проекта
+			$BUILD install || exit 1
+
+			# Помечаем флагом, что сборка и установка произведена
+			touch "$src/.stamp_done"
+			cd "$ROOT" || exit 1
+		fi
 	fi
 fi
 

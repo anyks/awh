@@ -69,7 +69,7 @@
 					// Удаляем процесс из списка процессов
 					cluster->_pids.erase(pid);
 					// Устанавливаем дочерний процесс
-					jt->second.at(index) = move(jack);
+					worker.second.at(index) = move(jack);
 					// Замораживаем поток на период в 5 секунд
 					this_thread::sleep_for(5s);
 					// Выполняем создание нового процесса
