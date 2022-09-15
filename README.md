@@ -50,10 +50,15 @@ $ cd ./ca
 $ ./cert.sh
 ```
 
-### Build third party
+### Build third party for MacOS X, Linux and FreeBSD
 
 ```bash
 $ ./build_third_party.sh --idn
+```
+
+### Build third party for MS Windows
+```bash
+$ ./build_third_party.sh --event2
 ```
 
 ### Build on MacOS X, Linux and FreeBSD
@@ -106,6 +111,7 @@ $ cd ./build
 $ cmake \
  -G "MinGW Makefiles" \
  -DCMAKE_BUILD_IDN=yes \
+ -DCMAKE_BUILD_EVENT2=yes \
  -DCMAKE_BUILD_TYPE=Release \
  -DCMAKE_SYSTEM_NAME=Windows \
  ..
