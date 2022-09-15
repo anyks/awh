@@ -951,9 +951,7 @@ void awh::Core::enabled(const engine_t::method_t method, const size_t aid) noexc
 						// Если флаг ожидания входящих сообщений, активирован
 						if(adj->timeouts.read > 0){
 							// Устанавливаем время в секундах
-							adj->bev.timer.read.tv.tv_sec = (adj->timeouts.read / 1000);
-							// Устанавливаем время счётчика (микросекунды)
-							adj->bev.timer.read.tv.tv_usec = ((adj->timeouts.read % 1000) * 1000);
+							adj->bev.timer.read.tv.tv_sec = adj->timeouts.read;
 							// Создаём событие на активацию базы событий
 							evtimer_assign(&adj->bev.timer.read.ev, this->dispatch.base, &awh::scheme_t::adj_t::timeout, adj);
 							// Создаём событие таймаута на активацию базы событий
@@ -975,9 +973,7 @@ void awh::Core::enabled(const engine_t::method_t method, const size_t aid) noexc
 						// Если флаг ожидания исходящих сообщений, активирован
 						if(adj->timeouts.write > 0){
 							// Устанавливаем время в секундах
-							adj->bev.timer.write.tv.tv_sec = (adj->timeouts.write / 1000);
-							// Устанавливаем время счётчика (микросекунды)
-							adj->bev.timer.write.tv.tv_usec = ((adj->timeouts.write % 1000) * 1000);
+							adj->bev.timer.write.tv.tv_sec = adj->timeouts.write;
 							// Создаём событие на активацию базы событий
 							evtimer_assign(&adj->bev.timer.write.ev, this->dispatch.base, &awh::scheme_t::adj_t::timeout, adj);
 							// Создаём событие таймаута на активацию базы событий
@@ -995,9 +991,7 @@ void awh::Core::enabled(const engine_t::method_t method, const size_t aid) noexc
 						// Если время ожидания записи данных установлено
 						if(adj->timeouts.connect > 0){
 							// Устанавливаем время в секундах
-							adj->bev.timer.connect.tv.tv_sec = (adj->timeouts.connect / 1000);
-							// Устанавливаем время счётчика (микросекунды)
-							adj->bev.timer.connect.tv.tv_usec = ((adj->timeouts.connect % 1000) * 1000);
+							adj->bev.timer.connect.tv.tv_sec = adj->timeouts.connect;
 							// Создаём событие на активацию базы событий
 							evtimer_assign(&adj->bev.timer.connect.ev, this->dispatch.base, &awh::scheme_t::adj_t::timeout, adj);
 							// Создаём событие таймаута на активацию базы событий
