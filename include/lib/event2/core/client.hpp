@@ -1,0 +1,203 @@
+/**
+ * @file: client.hpp
+ * @date: 2022-09-08
+ * @license: GPL-3.0
+ *
+ * @telegram: @forman
+ * @author: Yuriy Lobarev
+ * @phone: +7 (910) 983-95-90
+ * @email: forman@anyks.com
+ * @site: https://anyks.com
+ *
+ * @copyright: Copyright © 2022
+ */
+
+#ifndef __AWH_CORE_CLIENT__
+#define __AWH_CORE_CLIENT__
+
+/**
+ * Стандартная библиотека
+ */
+#include <set>
+
+/**
+ * Наши модули
+ */
+#include <core/core.hpp>
+#include <scheme/client.hpp>
+
+// Подписываемся на стандартное пространство имён
+using namespace std;
+
+/**
+ * awh пространство имён
+ */
+namespace awh {
+	/**
+	 * client клиентское пространство имён
+	 */
+	namespace client {
+		/**
+		 * Core Класс клиентского ядра биндинга TCP/IP
+		 */
+		typedef class Core : public awh::core_t {
+			private:
+				/**
+				 * Scheme Устанавливаем дружбу с схемой сети
+				 */
+				friend class Scheme;
+			private:
+				/**
+				 * Mutex Структура основных мютексов
+				 */
+				typedef struct Mutex {
+					recursive_mutex close;   // Для закрытия подключения
+					recursive_mutex reset;   // Для сброса параметров таймаута
+					recursive_mutex proxy;   // Для работы с прокси-сервером
+					recursive_mutex connect; // Для выполнения подключения
+					recursive_mutex timeout; // Для установки таймаутов
+				} mtx_t;
+				/**
+				 * Timeout Класс работы таймаута
+				 */
+				typedef class Timeout {
+					public:
+						size_t sid;             // Идентификатор схемы сети
+						Core * core;            // Объект ядра клиента
+						scheme_t::mode_t mode;  // Режим работы клиента
+						scheme_t::evtm_t event; // Объект события таймера
+					public:
+						/**
+						 * callback Функция обратного вызова
+						 * @param fd    файловый дескриптор (сокет)
+						 * @param event произошедшее событие
+						 * @param ctx   передаваемый контекст
+						 */
+						static void callback(evutil_socket_t fd, short event, void * ctx) noexcept;
+					public:
+						/**
+						 * Timeout Конструктор
+						 */
+						Timeout() noexcept : sid(0), core(nullptr), mode(scheme_t::mode_t::DISCONNECT) {}
+						/**
+						 * ~Timeout Деструктор
+						 */
+						~Timeout() noexcept;
+				} timeout_t;
+			private:
+				// Мютекс для блокировки основного потока
+				mtx_t _mtx;
+			private:
+				// Список блокированных объектов
+				set <size_t> _locking;
+				// Список таймеров
+				map <size_t, unique_ptr <timeout_t>> _timeouts;
+			private:
+				/**
+				 * connect Метод создания подключения к удаленному серверу
+				 * @param sid идентификатор схемы сети
+				 */
+				void connect(const size_t sid) noexcept;
+				/**
+				 * reconnect Метод восстановления подключения
+				 * @param sid идентификатор схемы сети
+				 */
+				void reconnect(const size_t sid) noexcept;
+			private:
+				/**
+				 * createTimeout Метод создания таймаута
+				 * @param sid  идентификатор схемы сети
+				 * @param mode режим работы клиента
+				 */
+				void createTimeout(const size_t sid, const scheme_t::mode_t mode) noexcept;
+			public:
+				/**
+				 * sendTimeout Метод отправки принудительного таймаута
+				 * @param aid идентификатор адъютанта
+				 */
+				void sendTimeout(const size_t aid) noexcept;
+				/**
+				 * clearTimeout Метод удаления установленного таймаута
+				 * @param sid идентификатор схемы сети
+				 */
+				void clearTimeout(const size_t sid) noexcept;
+			public:
+				/**
+				 * close Метод отключения всех адъютантов
+				 */
+				void close() noexcept;
+				/**
+				 * remove Метод удаления всех схем сети
+				 */
+				void remove() noexcept;
+			public:
+				/**
+				 * open Метод открытия подключения
+				 * @param sid идентификатор схемы сети
+				 */
+				void open(const size_t sid) noexcept;
+				/**
+				 * remove Метод удаления схемы сети
+				 * @param sid идентификатор схемы сети
+				 */
+				void remove(const size_t sid) noexcept;
+			public:
+				/**
+				 * close Метод закрытия подключения
+				 * @param aid идентификатор адъютанта
+				 */
+				void close(const size_t aid) noexcept;
+				/**
+				 * switchProxy Метод переключения с прокси-сервера
+				 * @param aid идентификатор адъютанта
+				 */
+				void switchProxy(const size_t aid) noexcept;
+			private:
+				/**
+				 * timeout Функция обратного вызова при срабатывании таймаута
+				 * @param aid идентификатор адъютанта
+				 */
+				void timeout(const size_t aid) noexcept;
+				/**
+				 * connected Функция обратного вызова при удачном подключении к серверу
+				 * @param aid идентификатор адъютанта
+				 */
+				void connected(const size_t aid) noexcept;
+				/**
+				 * write Функция обратного вызова при записи данных в сокет
+				 * @param method метод режима работы
+				 * @param aid    идентификатор адъютанта
+				 */
+				void transfer(const engine_t::method_t method, const size_t aid) noexcept;
+				/**
+				 * resolving Метод получения IP адреса доменного имени
+				 * @param sid    идентификатор схемы сети
+				 * @param ip     адрес интернет-подключения
+				 * @param family тип интернет-протокола AF_INET, AF_INET6
+				 * @param did    идентификатор DNS запроса
+				 */
+				void resolving(const size_t sid, const string & ip, const int family, const size_t did) noexcept;
+			public:
+				/**
+				 * bandWidth Метод установки пропускной способности сети
+				 * @param aid   идентификатор адъютанта
+				 * @param read  пропускная способность на чтение (bps, kbps, Mbps, Gbps)
+				 * @param write пропускная способность на запись (bps, kbps, Mbps, Gbps)
+				 */
+				void bandWidth(const size_t aid, const string & read, const string & write) noexcept;
+			public:
+				/**
+				 * Core Конструктор
+				 * @param fmk объект фреймворка
+				 * @param log объект для работы с логами
+				 */
+				Core(const fmk_t * fmk, const log_t * log) noexcept;
+				/**
+				 * ~Core Деструктор
+				 */
+				~Core() noexcept;
+		} core_t;
+	};
+};
+
+#endif // __AWH_CORE_CLIENT__

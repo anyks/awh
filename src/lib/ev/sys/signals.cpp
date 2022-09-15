@@ -13,7 +13,7 @@
  */
 
 // Подключаем заголовочный файл
-#include <sys/signals.hpp>
+#include <lib/ev/sys/signals.hpp>
 
 /**
  * Если операционной системой не является Windows

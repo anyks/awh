@@ -1,6 +1,6 @@
 /**
  * @file: server.cpp
- * @date: 2022-09-03
+ * @date: 2022-09-08
  * @license: GPL-3.0
  *
  * @telegram: @forman
@@ -13,43 +13,51 @@
  */
 
 // Подключаем заголовочный файл
-#include <core/server.hpp>
+#include <lib/event2/core/server.hpp>
 
 /**
  * accept Функция подключения к серверу
- * @param watcher объект события подключения
- * @param revents идентификатор события
+ * @param fd    файловый дескриптор (сокет)
+ * @param event произошедшее событие
+ * @param ctx   передаваемый контекст
  */
-void awh::server::scheme_t::accept(ev::io & watcher, int revents) noexcept {
+void awh::server::scheme_t::accept(evutil_socket_t fd, short event, void * ctx) noexcept {
 	// Получаем объект подключения
-	core_t * core = (core_t *) const_cast <awh::core_t *> (this->core);
+	scheme_t * shm = reinterpret_cast <awh::scheme_t *> (ctx);
+	// Получаем объект подключения
+	core_t * core = (core_t *) const_cast <awh::core_t *> (shm->core);
 	// Выполняем подключение клиента
-	core->accept(watcher.fd, this->sid);
+	core->accept(fd, shm->sid);
 }
 /**
  * callback Функция обратного вызова
- * @param timer   объект события таймера
- * @param revents идентификатор события
+ * @param fd    файловый дескриптор (сокет)
+ * @param event произошедшее событие
+ * @param ctx   передаваемый контекст
  */
-void awh::server::Core::DTLS::callback(ev::timer & timer, int revents) noexcept {	
-	// Останавливаем работу таймера
-	timer.stop();
+void awh::server::Core::DTLS::callback(evutil_socket_t fd, short event, void * ctx) noexcept {
+	// Получаем объект DTLS таймаута
+	dtls_t * dtls = reinterpret_cast <dtls_t *> (ctx);
+	// Очищаем объект DTLS таймаута
+	evutil_timerclear(&dtls->event.tv);
+	// Удаляем событие таймера
+	evtimer_del(&dtls->event.ev);
 	// Выполняем извлечение адъютанта
-	auto it = this->core->adjutants.find(this->aid);
+	auto it = dtls->core->adjutants.find(dtls->aid);
 	// Если адъютант получен
-	if(it != this->core->adjutants.end()){
+	if(it != dtls->core->adjutants.end()){
 		// Получаем объект адъютанта
 		awh::scheme_t::adj_t * adj = const_cast <awh::scheme_t::adj_t *> (it->second);
 		// Получаем объект схемы сети
 		scheme_t * shm = (scheme_t *) const_cast <awh::scheme_t *> (adj->parent);
 		// Выполняем ожидание входящих подключений
-		if(this->core->engine.wait(adj->ectx)){
+		if(dtls->core->engine.wait(adj->ectx)){
 			// Устанавливаем параметры сокета
 			adj->addr.sonet(SOCK_DGRAM, IPPROTO_UDP);
 			// Если прикрепление клиента к серверу выполнено
 			if(adj->addr.attach(shm->addr)){
 				// Выполняем прикрепление контекста клиента к контексту сервера
-				this->core->engine.attach(adj->ectx, &adj->addr);
+				dtls->core->engine.attach(adj->ectx, &adj->addr);
 				// Получаем адрес подключения клиента
 				adj->ip = adj->addr.ip;
 				// Получаем аппаратный адрес клиента
@@ -57,11 +65,11 @@ void awh::server::Core::DTLS::callback(ev::timer & timer, int revents) noexcept 
 				// Получаем порт подключения клиента
 				adj->port = adj->addr.port;
 				// Если функция обратного вызова проверки подключения установлена, выполняем проверку, если проверка не пройдена?
-				if((shm->callback.accept != nullptr) && !shm->callback.accept(adj->ip, adj->mac, adj->port, shm->sid, this->core)){
+				if((shm->callback.accept != nullptr) && !shm->callback.accept(adj->ip, adj->mac, adj->port, shm->sid, dtls->core)){
 					// Если порт установлен
 					if(adj->port > 0){
 						// Выводим сообщение об ошибке
-						this->core->log->print(
+						dtls->core->log->print(
 							"access to the server is denied for the client [%s:%d], mac = %s, socket = %d, pid = %d",
 							log_t::flag_t::WARNING,
 							adj->ip.c_str(),
@@ -73,7 +81,7 @@ void awh::server::Core::DTLS::callback(ev::timer & timer, int revents) noexcept 
 					// Если порт не установлен
 					} else {
 						// Выводим сообщение об ошибке
-						this->core->log->print(
+						dtls->core->log->print(
 							"access to the server is denied for the client [%s], mac = %s, socket = %d, pid = %d",
 							log_t::flag_t::WARNING,
 							adj->ip.c_str(),
@@ -83,18 +91,18 @@ void awh::server::Core::DTLS::callback(ev::timer & timer, int revents) noexcept 
 						);
 					}
 					// Выполняем отключение адъютанта
-					this->core->close(this->aid);
+					dtls->core->close(dtls->aid);
 					// Выходим
 					return;
 				}
 				// Запускаем чтение данных
-				this->core->enabled(engine_t::method_t::READ, this->aid);
+				dtls->core->enabled(engine_t::method_t::READ, dtls->aid);
 				// Если вывод информационных данных не запрещён
-				if(!this->core->noinfo){
+				if(!dtls->core->noinfo){
 					// Если порт установлен
 					if(adj->port > 0){
 						// Выводим в консоль информацию
-						this->core->log->print(
+						dtls->core->log->print(
 							"connect to server client [%s:%d], mac = %s, socket = %d, pid = %d",
 							log_t::flag_t::INFO,
 							adj->ip.c_str(),
@@ -105,7 +113,7 @@ void awh::server::Core::DTLS::callback(ev::timer & timer, int revents) noexcept 
 					// Если порт не установлен
 					} else {
 						// Выводим в консоль информацию
-						this->core->log->print(
+						dtls->core->log->print(
 							"connect to server client [%s], mac = %s, socket = %d, pid = %d",
 							log_t::flag_t::INFO,
 							adj->ip.c_str(),
@@ -115,12 +123,28 @@ void awh::server::Core::DTLS::callback(ev::timer & timer, int revents) noexcept 
 					}
 				}
 				// Выполняем функцию обратного вызова
-				if(shm->callback.connect != nullptr) shm->callback.connect(this->aid, shm->sid, this->core);
+				if(shm->callback.connect != nullptr) shm->callback.connect(dtls->aid, shm->sid, dtls->core);
 			// Подключение не установлено, выводим сообщение об ошибке
-			} else this->core->log->print("accepting failed, pid = %d", log_t::flag_t::WARNING, getpid());
+			} else dtls->core->log->print("accepting failed, pid = %d", log_t::flag_t::WARNING, getpid());
 		// Запускаем таймер вновь на 100мс
-		} else timer.start(.1);
+		} else {
+			// Устанавливаем время в секундах
+			dtls->event.tv.tv_sec = 0;
+			// Устанавливаем время счётчика (микросекунды)
+			dtls->event.tv.tv_usec = 100000;
+			// Создаём событие таймаута на ожидание подключения новых клиентов
+			event_add(&dtls->event.ev, &dtls->event.tv);
+		}
 	}
+}
+/**
+ * ~DTLS Деструктор
+ */
+awh::server::Core::DTLS::~DTLS() noexcept {
+	// Очищаем объект таймера
+	evutil_timerclear(&this->event.tv);
+	// Удаляем событие таймера
+	evtimer_del(&this->event.ev);
 }
 /**
  * cluster Метод события ЗАПУСКА/ОСТАНОВКИ кластера
@@ -152,14 +176,10 @@ void awh::server::Core::cluster(const size_t sid, const pid_t pid, const cluster
 						break;
 						// Для всех остальных типов сокетов
 						default: {
-							// Устанавливаем базу событий
-							shm->io.set(this->dispatch.base);
-							// Устанавливаем событие на чтение данных подключения
-							shm->io.set <scheme_t, &scheme_t::accept> (shm);
-							// Устанавливаем сокет для чтения
-							shm->io.set(shm->addr.fd, ev::READ);
-							// Запускаем чтение данных с клиента
-							shm->io.start();
+							// Создаём событие на активацию базы событий
+							event_assign(&shm->ev, this->dispatch.base, shm->addr.fd, EV_READ, &scheme_t::accept, shm);
+							// Создаём событие на чтение базы событий
+							event_add(&shm->ev, nullptr);
 						}
 					}
 				}
@@ -169,7 +189,7 @@ void awh::server::Core::cluster(const size_t sid, const pid_t pid, const cluster
 				// Если тип сокета не установлен как UDP
 				if(this->net.sonet != scheme_t::sonet_t::UDP)
 					// Останавливаем чтение данных с клиента
-					shm->io.stop();
+					event_del(&shm->ev);
 			} break;
 		}
 	}
@@ -276,22 +296,28 @@ void awh::server::Core::accept(const int fd, const size_t sid) noexcept {
 					dtls->aid = adj->aid;
 					// Выполняем получение контекста сертификата
 					this->engine.wrap(adj->ectx, &shm->addr, engine_t::type_t::SERVER);
-					// Устанавливаем базу событий
-					dtls->timer.set(this->dispatch.base);
 					// Устанавливаем событие на работу таймера проверки подключения DTLS
-					dtls->timer.set <dtls_t, &dtls_t::callback> (dtls.get());
+					evtimer_assign(&dtls->timer.ev, this->dispatch.base, &dtls_t::callback, dtls.get());
 					// Выполняем блокировку потока
 					this->_mtx.accept.lock();
 					// Добавляем созданного адъютанта в список адъютантов
 					auto ret = shm->adjutants.emplace(adj->aid, move(adj));
 					// Добавляем адъютанта в список подключений
 					this->adjutants.emplace(ret.first->first, ret.first->second.get());
-					// Добавляем объект для работы с DTLS в список
-					this->_dtls.emplace(ret.first->second->aid, move(dtls)).first->second->timer.start(.1);
+					{
+						// Добавляем объект для работы с DTLS в список
+						auto ret = this->_dtls.emplace(ret.first->second->aid, move(dtls));
+						// Устанавливаем время в секундах
+						ret.first->second->timer.tv.tv_sec = 0;
+						// Устанавливаем время счётчика (микросекунды)
+						ret.first->second->timer.tv.tv_usec = 100000;
+						// Создаём событие таймаута на активацию базы событий
+						evtimer_add(&ret.first->second->timer.ev, &ret.first->second->timer.tv);
+					}
 					// Выполняем блокировку потока
 					this->_mtx.accept.unlock();
 					// Останавливаем работу сервера
-					shm->io.stop();
+					event_del(&shm->ev);
 				} break;
 				// Если тип сокета установлен как TCP/IP
 				case (uint8_t) scheme_t::sonet_t::TCP:
@@ -476,7 +502,7 @@ void awh::server::Core::close() noexcept {
 				this->_cluster.stop(shm->sid);
 			}
 			// Останавливаем работу сервера
-			shm->io.stop();
+			event_del(&shm->ev);
 			// Выполняем закрытие подключение сервера
 			shm->addr.close();
 		}
@@ -529,7 +555,7 @@ void awh::server::Core::remove() noexcept {
 				this->_cluster.stop(shm->sid);
 			}
 			// Останавливаем работу сервера
-			shm->io.stop();
+			event_del(&shm->ev);
 			// Выполняем закрытие подключение сервера
 			shm->addr.close();
 			// Выполняем удаление схемы сети
@@ -650,7 +676,7 @@ void awh::server::Core::remove(const size_t sid) noexcept {
 				}
 			}
 			// Останавливаем работу сервера
-			shm->io.stop();
+			event_del(&shm->ev);
 			// Выполняем закрытие подключение сервера
 			shm->addr.close();
 			// Выполняем удаление схемы сети
@@ -769,28 +795,26 @@ void awh::server::Core::transfer(const engine_t::method_t method, const size_t a
 				// Создаём буфер входящих данных
 				char buffer[BUFFER_SIZE];
 				// Останавливаем чтение данных с клиента
-				adj->bev.event.read.stop();
+				event_del(&adj->bev.event.read);
 				// Выполняем перебор бесконечным циклом пока это разрешено
 				while(!adj->bev.locked.read){
 					// Выполняем получение сообщения от клиента
 					bytes = adj->ectx.read(buffer, sizeof(buffer));
 					// Если время ожидания чтения данных установлено
 					if(shm->wait && (adj->timeouts.read > 0)){
-						// Устанавливаем время ожидания на получение данных
-						adj->bev.timer.read.repeat = adj->timeouts.read;
-						// Запускаем повторное ожидание
-						adj->bev.timer.read.again();
+						// Устанавливаем время в секундах
+						adj->bev.timer.read.tv.tv_sec = (adj->timeouts.read / 1000);
+						// Устанавливаем время счётчика (микросекунды)
+						adj->bev.timer.read.tv.tv_usec = ((adj->timeouts.read % 1000) * 1000);
+						// Создаём событие таймаута на активацию базы событий
+						event_add(&adj->bev.timer.read.ev, &adj->bev.timer.read.tv);
 					// Останавливаем таймаут ожидания на чтение из сокета
-					} else adj->bev.timer.read.stop();
-					/**
-					 * Если операционной системой является MS Windows
-					 */
-					#if defined(_WIN32) || defined(_WIN64)
-						// Запускаем чтение данных снова (Для Windows)
-						if((bytes != 0) && (this->net.sonet != scheme_t::sonet_t::UDP))
-							// Запускаем чтение снова
-							adj->bev.event.read.start();
-					#endif
+					} else {
+						// Очищаем объект таймера чтения данных
+						evutil_timerclear(&adj->bev.timer.read.tv);
+						// Удаляем событие таймера чтения данных
+						evtimer_del(&adj->bev.timer.read.ev);
+					}
 					// Если данные получены
 					if(bytes > 0){
 						// Если данные считанные из буфера, больше размера ожидающего буфера
@@ -831,8 +855,8 @@ void awh::server::Core::transfer(const engine_t::method_t method, const size_t a
 				}
 				// Если тип сокета не установлен как UDP, запускаем чтение дальше
 				if((this->net.sonet != scheme_t::sonet_t::UDP) && (this->adjutants.count(aid) > 0))
-					// Запускаем чтение данных с клиента
-					adj->bev.event.read.start();
+					// Создаём событие на чтение базы событий
+					event_add(&adj->bev.event.read, nullptr);
 			} break;
 			// Если производится запись данных
 			case (uint8_t) engine_t::method_t::WRITE: {
@@ -860,12 +884,19 @@ void awh::server::Core::transfer(const engine_t::method_t method, const size_t a
 							buffer.insert(buffer.end(), adj->buffer.data() + offset, (adj->buffer.data() + offset) + bytes);
 						// Если время ожидания записи данных установлено
 						if(adj->timeouts.write > 0){
-							// Устанавливаем время ожидания на запись данных
-							adj->bev.timer.write.repeat = adj->timeouts.write;
-							// Запускаем повторное ожидание
-							adj->bev.timer.write.again();
+							// Устанавливаем время в секундах
+							adj->bev.timer.write.tv.tv_sec = (adj->timeouts.write / 1000);
+							// Устанавливаем время счётчика (микросекунды)
+							adj->bev.timer.write.tv.tv_usec = ((adj->timeouts.write % 1000) * 1000);
+							// Создаём событие таймаута на активацию базы событий
+							event_add(&adj->bev.timer.write.ev, &adj->bev.timer.write.tv);
 						// Останавливаем таймаут ожидания на запись в сокет
-						} else adj->bev.timer.write.stop();
+						} else {
+							// Очищаем объект таймера записи данных
+							evutil_timerclear(&adj->bev.timer.write.tv);
+							// Удаляем событие таймера записи данных
+							evtimer_del(&adj->bev.timer.write.ev);
+						}
 						// Если нужно повторить попытку
 						if(bytes == -2) continue;
 						// Если нужно выйти из цикла
@@ -903,8 +934,8 @@ void awh::server::Core::transfer(const engine_t::method_t method, const size_t a
 				}
 				// Если тип сокета установлен как UDP, и данных для записи больше нет, запускаем чтение
 				if(adj->buffer.empty() && (this->net.sonet == scheme_t::sonet_t::UDP) && (this->adjutants.count(aid) > 0))
-					// Запускаем чтение данных с клиента
-					adj->bev.event.read.start();
+					// Создаём событие на чтение базы событий
+					event_add(&adj->bev.event.read, nullptr);
 			} break;
 		}
 	}
@@ -1016,14 +1047,10 @@ void awh::server::Core::resolving(const size_t sid, const string & ip, const int
 							}
 							// Если операционная система является Windows или количество процессов всего один
 							if(this->_cluster.count(shm->sid) == 1){
-								// Устанавливаем базу событий
-								shm->io.set(this->dispatch.base);
-								// Устанавливаем событие на чтение данных подключения
-								shm->io.set <scheme_t, &scheme_t::accept> (shm);
-								// Устанавливаем сокет для чтения
-								shm->io.set(shm->addr.fd, ev::READ);
-								// Запускаем чтение данных с клиента
-								shm->io.start();
+								// Создаём событие на активацию базы событий
+								event_assign(&shm->ev, this->dispatch.base, shm->addr.fd, EV_READ, &scheme_t::accept, shm);
+								// Создаём событие на чтение базы событий
+								event_add(&shm->ev, nullptr);
 							// Выполняем запуск кластера
 							} else this->_cluster.start(shm->sid);
 							// Выходим из функции

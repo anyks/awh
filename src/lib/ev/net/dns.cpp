@@ -13,7 +13,7 @@
  */
 
 // Подключаем заголовочный файл
-#include <net/dns.hpp>
+#include <lib/ev/net/dns.hpp>
 
 /**
  * access Метод проверки на разрешение выполнения операции
@@ -88,7 +88,7 @@ void awh::DNS::Worker::response(ev::io & io, int revents) noexcept {
 				// Увеличиваем размер буфера полученных данных
 				size += (qname.size() + 2);
 				// Создаём части флагов вопроса пакета ответа
-				rrflags_t * rrflags = nullptr;
+				rr_flags_t * rrflags = nullptr;
 				// Создаём части флагов вопроса пакета ответа
 				qflags_t * qflags = reinterpret_cast <qflags_t *> (&buffer[size]);
 				// Увеличиваем размер ответа
@@ -108,9 +108,9 @@ void awh::DNS::Worker::response(ev::io & io, int revents) noexcept {
 					// Увеличиваем размер полученных данных
 					size += 2;
 					// Создаём части флагов вопроса пакета ответа
-					rrflags = reinterpret_cast <rrflags_t *> (&buffer[size]);
+					rrflags = reinterpret_cast <rr_flags_t *> (&buffer[size]);
 					// Увеличиваем размер ответа
-					size = ((size + sizeof(rrflags_t)) - 2);
+					size = ((size + sizeof(rr_flags_t)) - 2);
 					// Определяем тип записи
 					switch(ntohs(rrflags->rtype)){
 						// Если запись является интернет-протоколом IPv4

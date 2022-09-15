@@ -1,6 +1,6 @@
 /**
  * @file: client.cpp
- * @date: 2022-09-03
+ * @date: 2022-09-08
  * @license: GPL-3.0
  *
  * @telegram: @forman
@@ -13,20 +13,25 @@
  */
 
 // Подключаем заголовочный файл
-#include <core/client.hpp>
+#include <lib/event2/core/client.hpp>
 
 /**
  * callback Функция обратного вызова
- * @param timer   объект события таймера
- * @param revents идентификатор события
+ * @param fd    файловый дескриптор (сокет)
+ * @param event произошедшее событие
+ * @param ctx   передаваемый контекст
  */
-void awh::client::Core::Timeout::callback(ev::timer & timer, int revents) noexcept {
-	// Останавливаем работу таймера
-	timer.stop();
+void awh::client::Core::Timeout::callback(evutil_socket_t fd, short event, void * ctx) noexcept {
+	// Получаем объект таймаута
+	timeout_t * timeout = reinterpret_cast <timeout_t *> (ctx);
+	// Очищаем объект таймаута
+	evutil_timerclear(&timeout->event.tv);
+	// Удаляем событие таймера
+	evtimer_del(&timeout->event.ev);
 	// Выполняем поиск идентификатора схемы сети
-	auto it = this->core->schemes.find(this->sid);
+	auto it = timeout->core->schemes.find(timeout->sid);
 	// Если идентификатор схемы сети найден
-	if(it != this->core->schemes.end()){
+	if(it != timeout->core->schemes.end()){
 		// Флаг запрещения выполнения операции
 		bool disallow = false;
 		// Если в схеме сети есть подключённые клиенты
@@ -34,7 +39,7 @@ void awh::client::Core::Timeout::callback(ev::timer & timer, int revents) noexce
 			// Выполняем перебор всех подключенных адъютантов
 			for(auto & adjutant : it->second->adjutants){
 				// Если блокировка адъютанта не установлена
-				disallow = (this->core->_locking.count(adjutant.first) > 0);
+				disallow = (timeout->core->_locking.count(adjutant.first) > 0);
 				// Если в списке есть заблокированные адъютанты, выходим из цикла
 				if(disallow) break;
 			}
@@ -42,11 +47,11 @@ void awh::client::Core::Timeout::callback(ev::timer & timer, int revents) noexce
 		// Если разрешено выполнять дальнейшую операцию
 		if(!disallow){
 			// Определяем режим работы клиента
-			switch((uint8_t) this->mode){
+			switch((uint8_t) timeout->mode){
 				// Если режим работы клиента - это подключение
 				case (uint8_t) scheme_t::mode_t::CONNECT:
 					// Выполняем новое подключение
-					this->core->connect(this->sid);
+					timeout->core->connect(timeout->sid);
 				break;
 				// Если режим работы клиента - это переподключение
 				case (uint8_t) scheme_t::mode_t::RECONNECT: {
@@ -55,11 +60,20 @@ void awh::client::Core::Timeout::callback(ev::timer & timer, int revents) noexce
 					// Устанавливаем флаг ожидания статуса
 					shm->status.wait = scheme_t::mode_t::DISCONNECT;
 					// Выполняем новую попытку подключиться
-					this->core->reconnect(shm->sid);
+					timeout->core->reconnect(shm->sid);
 				} break;
 			}
 		}
 	}
+}
+/**
+ * ~Timeout Деструктор
+ */
+awh::client::Core::Timeout::~Timeout() noexcept {
+	// Очищаем объект таймера
+	evutil_timerclear(&this->event.tv);
+	// Удаляем событие таймера
+	evtimer_del(&this->event.ev);
 }
 /**
  * connect Метод создания подключения к удаленному серверу
@@ -440,12 +454,12 @@ void awh::client::Core::createTimeout(const size_t sid, const scheme_t::mode_t m
 		timeout->mode = mode;
 		// Устанавливаем ядро клиента
 		timeout->core = this;
-		// Устанавливаем базу событий
-		timeout->timer.set(this->dispatch.base);
-		// Устанавливаем функцию обратного вызова
-		timeout->timer.set <timeout_t, &timeout_t::callback> (timeout);
-		// Запускаем работу таймера
-		timeout->timer.start(5.);
+		// Устанавливаем время в секундах
+		timeout->event.tv.tv_sec = 5;
+		// Создаём событие на активацию базы событий
+		evtimer_assign(&timeout->event.ev, this->dispatch.base, &timeout_t::callback, timeout);
+		// Создаём событие таймаута на активацию базы событий
+		evtimer_add(&timeout->event.ev, &timeout->event.tv);
 	}
 }
 /**
@@ -540,8 +554,10 @@ void awh::client::Core::clearTimeout(const size_t sid) noexcept {
 		if(it != this->_timeouts.end()){
 			// Выполняем блокировку потока
 			this->_mtx.timeout.lock();
-			// Останавливаем работу таймера
-			it->second->timer.stop();
+			// Очищаем объект таймера
+			evutil_timerclear(&it->second->event.tv);
+			// Удаляем событие таймера
+			evtimer_del(&it->second->event.ev);
 			// Выполняем разблокировку потока
 			this->_mtx.timeout.unlock();
 		}
@@ -556,9 +572,12 @@ void awh::client::Core::close() noexcept {
 	// Если список активных таймеров существует
 	if(!this->_timeouts.empty()){
 		// Переходим по всему списку активных таймеров
-		for(auto & timeout : this->_timeouts)
-			// Останавливаем работу таймера
-			timeout.second->timer.stop();
+		for(auto & timeout : this->_timeouts){
+			// Очищаем объект таймера
+			evutil_timerclear(&timeout.second->event.tv);
+			// Удаляем событие таймера
+			evtimer_del(&timeout.second->event.ev);
+		}
 	}
 	// Если список схем сети активен
 	if(!this->schemes.empty()){
@@ -619,8 +638,6 @@ void awh::client::Core::remove() noexcept {
 			for(auto it = this->_timeouts.begin(); it != this->_timeouts.end();){
 				// Выполняем блокировку потока
 				this->_mtx.timeout.lock();
-				// Останавливаем работу таймера
-				it->second->timer.stop();
 				// Выполняем удаление текущего таймаута
 				it = this->_timeouts.erase(it);
 				// Выполняем разблокировку потока
@@ -764,8 +781,6 @@ void awh::client::Core::remove(const size_t sid) noexcept {
 			if(it != this->_timeouts.end()){
 				// Выполняем блокировку потока
 				this->_mtx.timeout.lock();
-				// Останавливаем работу таймера
-				it->second->timer.stop();
 				// Выполняем удаление текущего таймаута
 				this->_timeouts.erase(it);
 				// Выполняем разблокировку потока
@@ -1018,7 +1033,7 @@ void awh::client::Core::transfer(const engine_t::method_t method, const size_t a
 					// Создаём буфер входящих данных
 					char buffer[BUFFER_SIZE];
 					// Останавливаем чтение данных с клиента
-					adj->bev.event.read.stop();
+					event_del(&adj->bev.event.read);
 					// Выполняем перебор бесконечным циклом пока это разрешено
 					while(!adj->bev.locked.read && (shm->status.real == scheme_t::mode_t::CONNECT)){
 						// Если дочерние активные подключения есть и сокет блокирующий
@@ -1029,23 +1044,21 @@ void awh::client::Core::transfer(const engine_t::method_t method, const size_t a
 						bytes = adj->ectx.read(buffer, sizeof(buffer));
 						// Если время ожидания чтения данных установлено
 						if(shm->wait && (adj->timeouts.read > 0)){
-							// Устанавливаем время ожидания на получение данных
-							adj->bev.timer.read.repeat = adj->timeouts.read;
-							// Запускаем повторное ожидание
-							adj->bev.timer.read.again();
+							// Устанавливаем время в секундах
+							adj->bev.timer.read.tv.tv_sec = (adj->timeouts.read / 1000);
+							// Устанавливаем время счётчика (микросекунды)
+							adj->bev.timer.read.tv.tv_usec = ((adj->timeouts.read % 1000) * 1000);
+							// Создаём событие таймаута на активацию базы событий
+							event_add(&adj->bev.timer.read.ev, &adj->bev.timer.read.tv);
 						// Останавливаем таймаут ожидания на чтение из сокета
-						} else adj->bev.timer.read.stop();
+						} else {
+							// Очищаем объект таймера чтения данных
+							evutil_timerclear(&adj->bev.timer.read.tv);
+							// Удаляем событие таймера чтения данных
+							evtimer_del(&adj->bev.timer.read.ev);
+						}
 						// Выполняем принудительное исполнение таймеров
 						if(adj->ectx.isblock() != 0) this->executeTimers();
-						/**
-						 * Если операционной системой является MS Windows
-						 */
-						#if defined(_WIN32) || defined(_WIN64)
-							// Запускаем чтение данных снова (Для Windows)
-							if((bytes != 0) && (this->net.sonet != scheme_t::sonet_t::UDP))
-								// Запускаем чтение снова
-								adj->bev.event.read.start();
-						#endif
 						// Если данные получены
 						if(bytes > 0){
 							// Если данные считанные из буфера, больше размера ожидающего буфера
@@ -1101,8 +1114,8 @@ void awh::client::Core::transfer(const engine_t::method_t method, const size_t a
 					}
 					// Если тип сокета не установлен как UDP, запускаем чтение дальше
 					if((this->net.sonet != scheme_t::sonet_t::UDP) && (this->adjutants.count(aid) > 0))
-						// Запускаем чтение данных с клиента
-						adj->bev.event.read.start();
+						// Создаём событие на чтение базы событий
+						event_add(&adj->bev.event.read, nullptr);
 				} break;
 				// Если производится запись данных
 				case (uint8_t) engine_t::method_t::WRITE: {
@@ -1130,12 +1143,19 @@ void awh::client::Core::transfer(const engine_t::method_t method, const size_t a
 							if(adj->ectx.isblock() != 0) this->executeTimers();
 							// Если время ожидания записи данных установлено
 							if(adj->timeouts.write > 0){
-								// Устанавливаем время ожидания на запись данных
-								adj->bev.timer.write.repeat = adj->timeouts.write;
-								// Запускаем повторное ожидание
-								adj->bev.timer.write.again();
+								// Устанавливаем время в секундах
+								adj->bev.timer.write.tv.tv_sec = (adj->timeouts.write / 1000);
+								// Устанавливаем время счётчика (микросекунды)
+								adj->bev.timer.write.tv.tv_usec = ((adj->timeouts.write % 1000) * 1000);
+								// Создаём событие таймаута на активацию базы событий
+								event_add(&adj->bev.timer.write.ev, &adj->bev.timer.write.tv);
 							// Останавливаем таймаут ожидания на запись в сокет
-							} else adj->bev.timer.write.stop();
+							} else {
+								// Очищаем объект таймера записи данных
+								evutil_timerclear(&adj->bev.timer.write.tv);
+								// Удаляем событие таймера записи данных
+								evtimer_del(&adj->bev.timer.write.ev);
+							}
 							// Если нужно повторить попытку
 							if(bytes == -2) continue;
 							// Если нужно выйти из цикла
@@ -1173,8 +1193,8 @@ void awh::client::Core::transfer(const engine_t::method_t method, const size_t a
 					}
 					// Если тип сокета установлен как UDP, и данных для записи больше нет, запускаем чтение
 					if(adj->buffer.empty() && (this->net.sonet == scheme_t::sonet_t::UDP) && (this->adjutants.count(aid) > 0))
-						// Запускаем чтение данных с клиента
-						adj->bev.event.read.start();
+						// Создаём событие на чтение базы событий
+						event_add(&adj->bev.event.read, nullptr);
 				} break;
 			}
 		// Если подключение завершено

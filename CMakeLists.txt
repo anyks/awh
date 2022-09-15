@@ -165,12 +165,21 @@ if(CMAKE_BUILD_IDN AND (NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Windows"))
     include_directories(${IDN2_INCLUDE_DIR})
 endif()
 
+# Выполняем подключение исходников для LibEv
+set(SOURCE_FILES
+    "${CMAKE_SOURCE_DIR}/src/lib/ev/sys/signals.cpp"
+    "${CMAKE_SOURCE_DIR}/src/lib/ev/sys/cluster.cpp"
+    "${CMAKE_SOURCE_DIR}/src/lib/ev/net/dns.cpp"
+    "${CMAKE_SOURCE_DIR}/src/lib/ev/core/core.cpp"
+    "${CMAKE_SOURCE_DIR}/src/lib/ev/core/client.cpp"
+    "${CMAKE_SOURCE_DIR}/src/lib/ev/core/server.cpp"
+)
+
 # Выполняем подключение исходников
 set(SOURCE_FILES
+    "${SOURCE_FILES}"
     "${CMAKE_SOURCE_DIR}/src/sys/fmk.cpp"
     "${CMAKE_SOURCE_DIR}/src/sys/log.cpp"
-    "${CMAKE_SOURCE_DIR}/src/sys/signals.cpp"
-    "${CMAKE_SOURCE_DIR}/src/sys/cluster.cpp"
     "${CMAKE_SOURCE_DIR}/src/ws/ws.cpp"
     "${CMAKE_SOURCE_DIR}/src/ws/frame.cpp"
     "${CMAKE_SOURCE_DIR}/src/ws/client.cpp"
@@ -178,7 +187,6 @@ set(SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/src/net/if.cpp"
     "${CMAKE_SOURCE_DIR}/src/net/nwt.cpp"
     "${CMAKE_SOURCE_DIR}/src/net/nwk.cpp"
-    "${CMAKE_SOURCE_DIR}/src/net/dns.cpp"
     "${CMAKE_SOURCE_DIR}/src/net/uri.cpp"
     "${CMAKE_SOURCE_DIR}/src/net/engine.cpp"
     "${CMAKE_SOURCE_DIR}/src/net/socket.cpp"
@@ -200,9 +208,6 @@ set(SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/src/server/proxy.cpp"
     "${CMAKE_SOURCE_DIR}/src/server/socks5.cpp"
     "${CMAKE_SOURCE_DIR}/src/server/sample.cpp"
-    "${CMAKE_SOURCE_DIR}/src/core/core.cpp"
-    "${CMAKE_SOURCE_DIR}/src/core/client.cpp"
-    "${CMAKE_SOURCE_DIR}/src/core/server.cpp"
     "${CMAKE_SOURCE_DIR}/src/socks5/core.cpp"
     "${CMAKE_SOURCE_DIR}/src/socks5/client.cpp"
     "${CMAKE_SOURCE_DIR}/src/socks5/server.cpp"

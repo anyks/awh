@@ -53,7 +53,7 @@ $ ./cert.sh
 ### Build third party
 
 ```bash
-$ ./build_third_party.sh
+$ ./build_third_party.sh --idn
 ```
 
 ### Build on MacOS X, Linux and FreeBSD
@@ -63,6 +63,7 @@ $ mkdir ./build
 $ cd ./build
 
 $ cmake \
+ -DCMAKE_BUILD_IDN=yes \
  -DCMAKE_BUILD_TYPE=Release \
  ..
 
@@ -104,6 +105,7 @@ $ cd ./build
 
 $ cmake \
  -G "MinGW Makefiles" \
+ -DCMAKE_BUILD_IDN=yes \
  -DCMAKE_BUILD_TYPE=Release \
  -DCMAKE_SYSTEM_NAME=Windows \
  ..
