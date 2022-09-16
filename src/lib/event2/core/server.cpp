@@ -177,7 +177,7 @@ void awh::server::Core::cluster(const size_t sid, const pid_t pid, const cluster
 						// Для всех остальных типов сокетов
 						default: {
 							// Создаём событие на активацию базы событий
-							event_assign(&shm->ev, this->dispatch.base, shm->addr.fd, EV_READ, &scheme_t::accept, shm);
+							event_assign(&shm->ev, this->dispatch.base, shm->addr.fd, EV_READ | EV_PERSIST, &scheme_t::accept, shm);
 							// Создаём событие на чтение базы событий
 							event_add(&shm->ev, nullptr);
 						}
@@ -1046,7 +1046,7 @@ void awh::server::Core::resolving(const size_t sid, const string & ip, const int
 							// Если операционная система является Windows или количество процессов всего один
 							if(this->_cluster.count(shm->sid) == 1){
 								// Создаём событие на активацию базы событий
-								event_assign(&shm->ev, this->dispatch.base, shm->addr.fd, EV_READ, &scheme_t::accept, shm);
+								event_assign(&shm->ev, this->dispatch.base, shm->addr.fd, EV_READ | EV_PERSIST, &scheme_t::accept, shm);
 								// Создаём событие на чтение базы событий
 								event_add(&shm->ev, nullptr);
 							// Выполняем запуск кластера
