@@ -19,6 +19,7 @@
 - [LibIconv](https://www.gnu.org/software/libiconv)
 - [LibIdn2](https://www.gnu.org/software/libidn)
 - [Libev-Win](https://github.com/disenone/libev-win)
+- [LibEvent2](https://github.com/libevent/libevent)
 - [NLohmann::json](https://github.com/nlohmann/json)
 
 ## To build and launch the project
