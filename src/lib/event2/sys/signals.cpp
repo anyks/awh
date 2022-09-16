@@ -28,8 +28,8 @@
 	void awh::Signals::intCallback(evutil_socket_t fd, short event, void * ctx) noexcept {
 		// Получаем объект сигнала
 		sig_t * sig = reinterpret_cast <sig_t *> (ctx);
-		// Удаляем событие сигнала
-		evsignal_del(sig->_ev.sint);
+		// Выполняем очистку памяти сигнала
+		sig->clear(&sig->_ev.sint);
 		// Если функция обратного вызова установлена, выводим её
 		if(sig->_fn != nullptr)
 			// Выполняем функцию обратного вызова
@@ -46,8 +46,8 @@
 	void awh::Signals::fpeCallback(evutil_socket_t fd, short event, void * ctx) noexcept {
 		// Получаем объект сигнала
 		sig_t * sig = reinterpret_cast <sig_t *> (ctx);
-		// Удаляем событие сигнала
-		evsignal_del(sig->_ev.sfpe);
+		// Выполняем очистку памяти сигнала
+		sig->clear(&sig->_ev.sfpe);
 		// Если функция обратного вызова установлена, выводим её
 		if(sig->_fn != nullptr)
 			// Выполняем функцию обратного вызова
@@ -64,8 +64,8 @@
 	void awh::Signals::illCallback(evutil_socket_t fd, short event, void * ctx) noexcept {
 		// Получаем объект сигнала
 		sig_t * sig = reinterpret_cast <sig_t *> (ctx);
-		// Удаляем событие сигнала
-		evsignal_del(sig->_ev.sill);
+		// Выполняем очистку памяти сигнала
+		sig->clear(&sig->_ev.sill);
 		// Если функция обратного вызова установлена, выводим её
 		if(sig->_fn != nullptr)
 			// Выполняем функцию обратного вызова
@@ -82,8 +82,8 @@
 	void awh::Signals::termCallback(evutil_socket_t fd, short event, void * ctx) noexcept {
 		// Получаем объект сигнала
 		sig_t * sig = reinterpret_cast <sig_t *> (ctx);
-		// Удаляем событие сигнала
-		evsignal_del(sig->_ev.sterm);
+		// Выполняем очистку памяти сигнала
+		sig->clear(&sig->_ev.sterm);
 		// Если функция обратного вызова установлена, выводим её
 		if(sig->_fn != nullptr)
 			// Выполняем функцию обратного вызова
@@ -100,8 +100,8 @@
 	void awh::Signals::abrtCallback(evutil_socket_t fd, short event, void * ctx) noexcept {
 		// Получаем объект сигнала
 		sig_t * sig = reinterpret_cast <sig_t *> (ctx);
-		// Удаляем событие сигнала
-		evsignal_del(sig->_ev.sabrt);
+		// Выполняем очистку памяти сигнала
+		sig->clear(&sig->_ev.sabrt);
 		// Если функция обратного вызова установлена, выводим её
 		if(sig->_fn != nullptr)
 			// Выполняем функцию обратного вызова
@@ -118,8 +118,8 @@
 	void awh::Signals::segvCallback(evutil_socket_t fd, short event, void * ctx) noexcept {
 		// Получаем объект сигнала
 		sig_t * sig = reinterpret_cast <sig_t *> (ctx);
-		// Удаляем событие сигнала
-		evsignal_del(sig->_ev.ssegv);
+		// Выполняем очистку памяти сигнала
+		sig->clear(&sig->_ev.ssegv);
 		// Если функция обратного вызова установлена, выводим её
 		if(sig->_fn != nullptr)
 			// Выполняем функцию обратного вызова
@@ -148,6 +148,26 @@
 	}
 #endif
 /**
+ * Если операционной системой не является Windows
+ */
+#if !defined(_WIN32) && !defined(_WIN64)
+	/**
+	 * clear Метод очистки сигнала
+	 * @param signal сигнал для очистки
+	 */
+	void awh::Signals::clear(struct event ** signal) noexcept {
+		// Если сигнал передан
+		if((signal != nullptr) && (* signal != nullptr)){
+			// Выполняем остановку отслеживания сигнала
+			evsignal_del(* signal);
+			// Выполняем очистку памяти сигнала
+			event_free(* signal);
+			// Зануляем объект сигнала
+			(* signal) = nullptr;
+		}
+	}
+#endif
+/**
  * stop Метод остановки обработки сигналов
  */
 void awh::Signals::stop() noexcept {
@@ -159,13 +179,13 @@ void awh::Signals::stop() noexcept {
 		 * Если операционной системой не является Windows
 		 */
 		#if !defined(_WIN32) && !defined(_WIN64)
-			// Выполняем остановку отслеживания сигналов
-			evsignal_del(this->_ev.sint);
-			evsignal_del(this->_ev.sfpe);
-			evsignal_del(this->_ev.sill);
-			evsignal_del(this->_ev.sterm);
-			evsignal_del(this->_ev.sabrt);
-			evsignal_del(this->_ev.ssegv);
+			// Выполняем очистку памяти сигналов
+			this->clear(&this->_ev.sint);
+			this->clear(&this->_ev.sfpe);
+			this->clear(&this->_ev.sill);
+			this->clear(&this->_ev.sterm);
+			this->clear(&this->_ev.sabrt);
+			this->clear(&this->_ev.ssegv);
 		/**
 		 * Если операционной системой является MS Windows
 		 */
@@ -261,4 +281,11 @@ void awh::Signals::on(function <void (const int)> callback) noexcept {
 		// Выполняем установку функцию обратного вызова
 		fn = callback;
 	#endif
+}
+/**
+ * ~Signals Деструктор
+ */
+awh::Signals::~Signals() noexcept {
+	// Останавливаем работу отслеживания событий
+	this->stop();
 }

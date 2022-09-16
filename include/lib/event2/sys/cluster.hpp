@@ -103,9 +103,12 @@ namespace awh {
 					 */
 					~Jack() noexcept {
 						// Если объект работы с дочерними процессами установлен
-						if(this->ev != nullptr)
+						if(this->ev != nullptr){
 							// Удаляем объект работы с дочерними процессами
 							evsignal_del(this->ev);
+							// Выполняем очистку памяти сигнала
+							event_free(this->ev);
+						}
 					}
 				} jack_t;
 			/**

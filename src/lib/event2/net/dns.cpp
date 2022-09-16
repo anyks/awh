@@ -454,9 +454,7 @@ bool awh::DNS::Worker::request(const string & domain) noexcept {
 				// Запоминаем, что работа началась
 				this->_mode = !this->_mode;
 				// Устанавливаем время в секундах
-				this->_timer.tv.tv_sec = this->_dns->_timeout;
-				// Устанавливаем время счётчика (микросекунды)
-				this->_timer.tv.tv_usec = (this->_dns->_timeout * 1000);
+				this->_timer.tv = {this->_dns->_timeout, 0};
 				// Создаём событие на активацию базы событий
 				evtimer_assign(&this->_timer.ev, this->_base, &worker_t::timeout, this);
 				// Создаём событие таймаута на активацию базы событий

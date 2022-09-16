@@ -155,6 +155,17 @@ namespace awh {
 				 */
 				static void segvCallback(evutil_socket_t fd, short event, void * ctx) noexcept;
 			#endif
+		private:
+			/**
+			 * Если операционной системой не является Windows
+			 */
+			#if !defined(_WIN32) && !defined(_WIN64)
+				/**
+				 * clear Метод очистки сигнала
+				 * @param signal сигнал для очистки
+				 */
+				void clear(struct event ** signal) noexcept;
+			#endif
 		public:
 			/**
 			 * stop Метод остановки обработки сигналов
@@ -182,6 +193,10 @@ namespace awh {
 			 * @param base база событий
 			 */
 			Signals(struct event_base * base) noexcept : _mode(false), _fn(nullptr), _base(base) {}
+			/**
+			 * ~Signals Деструктор
+			 */
+			~Signals() noexcept;
 	} sig_t;
 };
 

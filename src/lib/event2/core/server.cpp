@@ -803,7 +803,7 @@ void awh::server::Core::transfer(const engine_t::method_t method, const size_t a
 					// Если время ожидания чтения данных установлено
 					if(shm->wait && (adj->timeouts.read > 0)){
 						// Устанавливаем время в секундах
-						adj->bev.timer.read.tv.tv_sec = adj->timeouts.read;
+						adj->bev.timer.read.tv = {adj->timeouts.read, 0};
 						// Создаём событие таймаута на активацию базы событий
 						event_add(&adj->bev.timer.read.ev, &adj->bev.timer.read.tv);
 					// Останавливаем таймаут ожидания на чтение из сокета
@@ -885,7 +885,7 @@ void awh::server::Core::transfer(const engine_t::method_t method, const size_t a
 						// Если время ожидания записи данных установлено
 						if(adj->timeouts.write > 0){
 							// Устанавливаем время в секундах
-							adj->bev.timer.write.tv.tv_sec = adj->timeouts.write;
+							adj->bev.timer.write.tv = {adj->timeouts.write, 0};
 							// Создаём событие таймаута на активацию базы событий
 							event_add(&adj->bev.timer.write.ev, &adj->bev.timer.write.tv);
 						// Останавливаем таймаут ожидания на запись в сокет

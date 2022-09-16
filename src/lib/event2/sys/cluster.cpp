@@ -47,13 +47,22 @@
 							// Выводим функцию обратного вызова
 							cluster->_fn(worker.first, pid, event_t::STOP);
 						// Если статус сигнала, ручной остановкой процесса
-						if(status == SIGINT)
+						if(status == SIGINT){
+							// Удаляем событие сигнала
+							evsignal_del(jack->ev);
+							// Выполняем очистку памяти сигнала
+							event_free(jack->ev);
 							// Выходим из приложения
 							exit(SIGINT);
 						// Если время жизни процесса составляет меньше 3-х минут
-						else if((cluster->_fmk->unixTimestamp() - jack->date) <= 180000)
+						} else if((cluster->_fmk->unixTimestamp() - jack->date) <= 180000) {
+							// Удаляем событие сигнала
+							evsignal_del(jack->ev);
+							// Выполняем очистку памяти сигнала
+							event_free(jack->ev);
 							// Выходим из приложения
 							exit(EXIT_FAILURE);
+						}
 						// Выходим из цикла
 						break;
 					}
@@ -265,6 +274,8 @@ void awh::Cluster::stop(const size_t wid) noexcept {
 					if(jack->ev != nullptr){
 						// Удаляем объект работы с дочерними процессами
 						evsignal_del(jack->ev);
+						// Выполняем очистку памяти сигнала
+						event_free(jack->ev);
 						// Зануляем объект события
 						jack->ev = nullptr;
 					}

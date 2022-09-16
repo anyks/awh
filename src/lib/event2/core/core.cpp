@@ -381,7 +381,9 @@ void awh::Core::launching() noexcept {
 		// Устанавливаем время задержки персистентного вызова
 		this->_timer.delay = (this->_persIntvl / 1000);
 		// Устанавливаем интервал таймаута
-		this->_timer.event.tv.tv_sec = this->_timer.delay;
+		this->_timer.event.tv = {this->_timer.delay, 0};
+		// Устанавливаем текущий штамп времени
+		this->_timer.stamp = this->fmk->unixTimestamp();
 		// Создаём событие на активацию базы событий
 		evtimer_assign(&this->_timer.event.ev, this->dispatch.base, &persistent, this);
 		// Создаём событие таймаута на активацию базы событий
@@ -423,7 +425,7 @@ void awh::Core::executeTimers() noexcept {
 			// Переходим по всем таймерам
 			for(auto it = this->_timers.begin(); it != this->_timers.end();){
 				// Если таймер не исполнился в заданное время
-				if(((date - it->second->stamp) / 1000) >= it->second->delay){
+				if((date - it->second->stamp) >= it->second->delay){
 					// Очищаем объект таймаута
 					evutil_timerclear(&it->second->event.tv);
 					// Удаляем событие таймера
@@ -488,7 +490,7 @@ void awh::Core::persistent(evutil_socket_t fd, short event, void * ctx) noexcept
 	// Устанавливаем время задержки персистентного вызова
 	core->_timer.delay = (core->_persIntvl / 1000);
 	// Устанавливаем интервал таймаута
-	core->_timer.event.tv.tv_sec = core->_timer.delay;
+	core->_timer.event.tv = {core->_timer.delay, 0};
 	// Создаём событие таймаута на активацию базы событий
 	event_add(&core->_timer.event.ev, &core->_timer.event.tv);
 }
@@ -951,7 +953,7 @@ void awh::Core::enabled(const engine_t::method_t method, const size_t aid) noexc
 						// Если флаг ожидания входящих сообщений, активирован
 						if(adj->timeouts.read > 0){
 							// Устанавливаем время в секундах
-							adj->bev.timer.read.tv.tv_sec = adj->timeouts.read;
+							adj->bev.timer.read.tv = {adj->timeouts.read, 0};
 							// Создаём событие на активацию базы событий
 							evtimer_assign(&adj->bev.timer.read.ev, this->dispatch.base, &awh::scheme_t::adj_t::timeout, adj);
 							// Создаём событие таймаута на активацию базы событий
@@ -973,7 +975,7 @@ void awh::Core::enabled(const engine_t::method_t method, const size_t aid) noexc
 						// Если флаг ожидания исходящих сообщений, активирован
 						if(adj->timeouts.write > 0){
 							// Устанавливаем время в секундах
-							adj->bev.timer.write.tv.tv_sec = adj->timeouts.write;
+							adj->bev.timer.write.tv = {adj->timeouts.write, 0};
 							// Создаём событие на активацию базы событий
 							evtimer_assign(&adj->bev.timer.write.ev, this->dispatch.base, &awh::scheme_t::adj_t::timeout, adj);
 							// Создаём событие таймаута на активацию базы событий
@@ -991,7 +993,7 @@ void awh::Core::enabled(const engine_t::method_t method, const size_t aid) noexc
 						// Если время ожидания записи данных установлено
 						if(adj->timeouts.connect > 0){
 							// Устанавливаем время в секундах
-							adj->bev.timer.connect.tv.tv_sec = adj->timeouts.connect;
+							adj->bev.timer.connect.tv = {adj->timeouts.connect, 0};
 							// Создаём событие на активацию базы событий
 							evtimer_assign(&adj->bev.timer.connect.ev, this->dispatch.base, &awh::scheme_t::adj_t::timeout, adj);
 							// Создаём событие таймаута на активацию базы событий
@@ -1264,6 +1266,8 @@ u_short awh::Core::setTimeout(const time_t delay, function <void (const u_short,
 		ret.first->second->id = result;
 		// Устанавливаем функцию обратного вызова
 		ret.first->second->fn = callback;
+		// Устанавливаем время задрежки таймера
+		ret.first->second->delay = delay;
 		// Устанавливаем текущий штамп времени
 		ret.first->second->stamp = this->fmk->unixTimestamp();
 		// Устанавливаем время в секундах
@@ -1288,7 +1292,7 @@ u_short awh::Core::setInterval(const time_t delay, function <void (const u_short
 	// Результат работы функции
 	u_short result = 0;
 	// Если данные переданы
-	if((delay > 0) && (callback != nullptr)){
+	if((delay > 0) && (callback != nullptr)){		
 		// Выполняем блокировку потока
 		this->_mtx.timer.lock();
 		// Создаём объект таймера
@@ -1303,6 +1307,8 @@ u_short awh::Core::setInterval(const time_t delay, function <void (const u_short
 		ret.first->second->id = result;
 		// Устанавливаем функцию обратного вызова
 		ret.first->second->fn = callback;
+		// Устанавливаем время задрежки таймера
+		ret.first->second->delay = delay;
 		// Устанавливаем флаг персистентной работы
 		ret.first->second->persist = true;
 		// Устанавливаем текущий штамп времени
