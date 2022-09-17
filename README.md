@@ -57,11 +57,6 @@ $ ./cert.sh
 $ ./build_third_party.sh --idn
 ```
 
-### Build third party for MS Windows
-```bash
-$ ./build_third_party.sh --event2
-```
-
 ### Build on MacOS X, Linux and FreeBSD
 
 ```bash
@@ -101,6 +96,11 @@ $ pacman -S clang
 $ pacman -S git
 $ pacman -S --needed base-devel mingw-w64-x86_64-toolchain
 $ pacman -S mingw-w64-x86_64-dlfcn
+```
+
+### Build third party for MS Windows
+```bash
+$ ./build_third_party.sh --event2
 ```
 
 #### Project build
