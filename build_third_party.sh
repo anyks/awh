@@ -58,7 +58,7 @@ if [ -n "$1" ]; then
 		exit 0
 	elif [ $1 = "--idn" ]; then
 		IDN="yes"
-		if [ $2 = "--event2" ]; then
+		if [[ -z "$2" ]] && [[ $2 = "--event2" ]]; then
 			LIBEVENT2="yes"
 		fi
 	elif [ $1 = "--event2" ]; then
