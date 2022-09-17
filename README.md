@@ -644,6 +644,347 @@ int main(int argc, char * argv[]){
 
 ```
 
+### Example TCP Client
+
+```c++
+#include <client/sample.hpp>
+
+using namespace std;
+using namespace awh;
+
+class Client {
+	private:
+		log_t * _log;
+	public:
+		void active(const client::sample_t::mode_t mode, client::sample_t * sample){
+			this->_log->print("%s client", log_t::flag_t::INFO, (mode == client::sample_t::mode_t::CONNECT ? "Connect" : "Disconnect"));
+			if(mode == client::sample_t::mode_t::CONNECT){
+				const string message = "Hello World!!!";
+				sample->send(message.data(), message.size());
+			}
+		}
+		void message(const vector <char> & buffer, client::sample_t * sample){
+			const string message(buffer.begin(), buffer.end());
+			this->_log->print("%s", log_t::flag_t::INFO, message.c_str());
+			sample->stop();
+		}
+	public:
+		Client(log_t * log) : _log(log) {}
+};
+
+int main(int argc, char * argv[]){
+	fmk_t fmk;
+	log_t log(&fmk);
+	network_t nwk(&fmk);
+
+	Client executor(&log);
+
+	client::core_t core(&fmk, &log);
+	client::sample_t sample(&core, &fmk, &log);
+
+	log.setLogName("SAMPLE Client");
+	log.setLogFormat("%H:%M:%S %d.%m.%Y");
+
+	sample.mode(
+		// (uint8_t) client::sample_t::flag_t::NOINFO |
+		(uint8_t) client::sample_t::flag_t::WAITMESS |
+		(uint8_t) client::sample_t::flag_t::VERIFYSSL
+	);
+	core.sonet(awh::scheme_t::sonet_t::TCP);
+
+	sample.init(2222, "127.0.0.1");
+	sample.on(bind(&Client::active, &executor, _1, _2));
+	sample.on(bind(&Client::message, &executor, _1, _2));
+
+	sample.start();
+
+	return 0;
+}
+```
+
+### Example TCP Server
+
+```c++
+#include <server/sample.hpp>
+
+using namespace std;
+using namespace awh;
+
+class Server {
+	private:
+		log_t * _log;
+	public:
+		bool accept(const string & ip, const string & mac, const u_int port, server::sample_t * sample){
+			this->_log->print("ACCEPT: ip = %s, mac = %s, port = %d", log_t::flag_t::INFO, ip.c_str(), mac.c_str(), port);
+			return true;
+		}
+		void active(const size_t aid, const server::sample_t::mode_t mode, server::sample_t * sample){
+			this->_log->print("%s client", log_t::flag_t::INFO, (mode == server::sample_t::mode_t::CONNECT ? "Connect" : "Disconnect"));
+		}
+		void message(const size_t aid, const vector <char> & buffer, server::sample_t * sample){
+			const string message(buffer.begin(), buffer.end());
+			this->_log->print("%s", log_t::flag_t::INFO, message.c_str());
+			sample->send(aid, buffer.data(), buffer.size());
+		}
+	public:
+		Server(log_t * log) : _log(log) {}
+};
+
+int main(int argc, char * argv[]){
+	fmk_t fmk;
+	log_t log(&fmk);
+	network_t nwk(&fmk);
+
+	Server executor(&log);
+
+	server::core_t core(&fmk, &log);
+	server::sample_t sample(&core, &fmk, &log);
+
+	log.setLogName("SAMPLE Server");
+	log.setLogFormat("%H:%M:%S %d.%m.%Y");
+
+	core.sonet(awh::scheme_t::sonet_t::TCP);
+
+	sample.init(2222, "127.0.0.1");
+	sample.on((function <void (const size_t, const vector <char> &, server::sample_t *)>) bind(&Server::message, &executor, _1, _2, _3));
+	sample.on((function <void (const size_t, const server::sample_t::mode_t, server::sample_t *)>) bind(&Server::active, &executor, _1, _2, _3));
+	sample.on((function <bool (const string &, const string &, const u_int, server::sample_t *)>) bind(&Server::accept, &executor, _1, _2, _3, _4));
+
+	sample.start();
+
+	return 0;
+}
+```
+
+### Example TLS Client
+
+```c++
+#include <client/sample.hpp>
+
+using namespace std;
+using namespace awh;
+
+class Client {
+	private:
+		log_t * _log;
+	public:
+		void active(const client::sample_t::mode_t mode, client::sample_t * sample){
+			this->_log->print("%s client", log_t::flag_t::INFO, (mode == client::sample_t::mode_t::CONNECT ? "Connect" : "Disconnect"));
+			if(mode == client::sample_t::mode_t::CONNECT){
+				const string message = "Hello World!!!";
+				sample->send(message.data(), message.size());
+			}
+		}
+		void message(const vector <char> & buffer, client::sample_t * sample){
+			const string message(buffer.begin(), buffer.end());
+			this->_log->print("%s", log_t::flag_t::INFO, message.c_str());
+			sample->stop();
+		}
+	public:
+		Client(log_t * log) : _log(log) {}
+};
+
+int main(int argc, char * argv[]){
+	fmk_t fmk;
+	log_t log(&fmk);
+	network_t nwk(&fmk);
+
+	Client executor(&log);
+
+	client::core_t core(&fmk, &log);
+	client::sample_t sample(&core, &fmk, &log);
+
+	log.setLogName("SAMPLE Client");
+	log.setLogFormat("%H:%M:%S %d.%m.%Y");
+
+	sample.mode(
+		// (uint8_t) client::sample_t::flag_t::NOINFO |
+		(uint8_t) client::sample_t::flag_t::WAITMESS |
+		(uint8_t) client::sample_t::flag_t::VERIFYSSL
+	);
+	core.verifySSL(false);
+	core.ca("./ca/cert.pem");
+	core.sonet(awh::scheme_t::sonet_t::TLS);
+	core.certificate("./ca/certs/client-cert.pem", "./ca/certs/client-key.pem");
+
+	sample.init(2222, "127.0.0.1");
+	sample.on(bind(&Client::active, &executor, _1, _2));
+	sample.on(bind(&Client::message, &executor, _1, _2));
+
+	sample.start();
+
+	return 0;
+}
+```
+
+### Example TLS Server
+
+```c++
+#include <server/sample.hpp>
+
+using namespace std;
+using namespace awh;
+
+class Server {
+	private:
+		log_t * _log;
+	public:
+		bool accept(const string & ip, const string & mac, const u_int port, server::sample_t * sample){
+			this->_log->print("ACCEPT: ip = %s, mac = %s, port = %d", log_t::flag_t::INFO, ip.c_str(), mac.c_str(), port);
+			return true;
+		}
+		void active(const size_t aid, const server::sample_t::mode_t mode, server::sample_t * sample){
+			this->_log->print("%s client", log_t::flag_t::INFO, (mode == server::sample_t::mode_t::CONNECT ? "Connect" : "Disconnect"));
+		}
+		void message(const size_t aid, const vector <char> & buffer, server::sample_t * sample){
+			const string message(buffer.begin(), buffer.end());
+			this->_log->print("%s", log_t::flag_t::INFO, message.c_str());
+			sample->send(aid, buffer.data(), buffer.size());
+		}
+	public:
+		Server(log_t * log) : _log(log) {}
+};
+
+int main(int argc, char * argv[]){
+	fmk_t fmk;
+	log_t log(&fmk);
+	network_t nwk(&fmk);
+
+	Server executor(&log);
+
+	server::core_t core(&fmk, &log);
+	server::sample_t sample(&core, &fmk, &log);
+
+	log.setLogName("SAMPLE Server");
+	log.setLogFormat("%H:%M:%S %d.%m.%Y");
+
+	core.verifySSL(false);
+	core.sonet(awh::scheme_t::sonet_t::TLS);
+	core.certificate("./ca/certs/server-cert.pem", "./ca/certs/server-key.pem");
+
+	sample.init(2222, "127.0.0.1");
+	sample.on((function <void (const size_t, const vector <char> &, server::sample_t *)>) bind(&Server::message, &executor, _1, _2, _3));
+	sample.on((function <void (const size_t, const server::sample_t::mode_t, server::sample_t *)>) bind(&Server::active, &executor, _1, _2, _3));
+	sample.on((function <bool (const string &, const string &, const u_int, server::sample_t *)>) bind(&Server::accept, &executor, _1, _2, _3, _4));
+
+	sample.start();
+
+	return 0;
+}
+```
+
+### Example UDP Client
+
+```c++
+#include <client/sample.hpp>
+
+using namespace std;
+using namespace awh;
+
+class Client {
+	private:
+		log_t * _log;
+	public:
+		void active(const client::sample_t::mode_t mode, client::sample_t * sample){
+			this->_log->print("%s client", log_t::flag_t::INFO, (mode == client::sample_t::mode_t::CONNECT ? "Connect" : "Disconnect"));
+			if(mode == client::sample_t::mode_t::CONNECT){
+				const string message = "Hello World!!!";
+				sample->send(message.data(), message.size());
+			}
+		}
+		void message(const vector <char> & buffer, client::sample_t * sample){
+			const string message(buffer.begin(), buffer.end());
+			this->_log->print("%s", log_t::flag_t::INFO, message.c_str());
+			sample->stop();
+		}
+	public:
+		Client(log_t * log) : _log(log) {}
+};
+
+int main(int argc, char * argv[]){
+	fmk_t fmk;
+	log_t log(&fmk);
+	network_t nwk(&fmk);
+
+	Client executor(&log);
+
+	client::core_t core(&fmk, &log);
+	client::sample_t sample(&core, &fmk, &log);
+
+	log.setLogName("SAMPLE Client");
+	log.setLogFormat("%H:%M:%S %d.%m.%Y");
+
+	sample.mode(
+		// (uint8_t) client::sample_t::flag_t::NOINFO |
+		(uint8_t) client::sample_t::flag_t::WAITMESS |
+		(uint8_t) client::sample_t::flag_t::VERIFYSSL
+	);
+	core.sonet(awh::scheme_t::sonet_t::UDP);
+
+	sample.init(2222, "127.0.0.1");
+	sample.on(bind(&Client::active, &executor, _1, _2));
+	sample.on(bind(&Client::message, &executor, _1, _2));
+
+	sample.start();
+
+	return 0;
+}
+```
+
+### Example UDP Server
+
+```c++
+#include <server/sample.hpp>
+
+using namespace std;
+using namespace awh;
+
+class Server {
+	private:
+		log_t * _log;
+	public:
+		bool accept(const string & ip, const string & mac, const u_int port, server::sample_t * sample){
+			this->_log->print("ACCEPT: ip = %s, mac = %s, port = %d", log_t::flag_t::INFO, ip.c_str(), mac.c_str(), port);
+			return true;
+		}
+		void active(const size_t aid, const server::sample_t::mode_t mode, server::sample_t * sample){
+			this->_log->print("%s client", log_t::flag_t::INFO, (mode == server::sample_t::mode_t::CONNECT ? "Connect" : "Disconnect"));
+		}
+		void message(const size_t aid, const vector <char> & buffer, server::sample_t * sample){
+			const string message(buffer.begin(), buffer.end());
+			this->_log->print("%s", log_t::flag_t::INFO, message.c_str());
+			sample->send(aid, buffer.data(), buffer.size());
+		}
+	public:
+		Server(log_t * log) : _log(log) {}
+};
+
+int main(int argc, char * argv[]){
+	fmk_t fmk;
+	log_t log(&fmk);
+	network_t nwk(&fmk);
+
+	Server executor(&log);
+
+	server::core_t core(&fmk, &log);
+	server::sample_t sample(&core, &fmk, &log);
+
+	log.setLogName("SAMPLE Server");
+	log.setLogFormat("%H:%M:%S %d.%m.%Y");
+
+	core.sonet(awh::scheme_t::sonet_t::UDP);
+
+	sample.init(2222, "127.0.0.1");
+	sample.on((function <void (const size_t, const vector <char> &, server::sample_t *)>) bind(&Server::message, &executor, _1, _2, _3));
+	sample.on((function <void (const size_t, const server::sample_t::mode_t, server::sample_t *)>) bind(&Server::active, &executor, _1, _2, _3));
+	sample.on((function <bool (const string &, const string &, const u_int, server::sample_t *)>) bind(&Server::accept, &executor, _1, _2, _3, _4));
+
+	sample.start();
+
+	return 0;
+}
+```
+
 ### Example SCTP Client
 
 ```c++
@@ -992,7 +1333,7 @@ int main(int argc, char * argv[]){
 }
 ```
 
-### Example UDP Client
+### Example UDP UnixSocket Client
 
 ```c++
 #include <client/sample.hpp>
@@ -1039,8 +1380,9 @@ int main(int argc, char * argv[]){
 		(uint8_t) client::sample_t::flag_t::VERIFYSSL
 	);
 	core.sonet(awh::scheme_t::sonet_t::UDP);
+	core.family(awh::scheme_t::family_t::NIX);
 
-	sample.init(2222, "127.0.0.1");
+	sample.init("anyks");
 	sample.on(bind(&Client::active, &executor, _1, _2));
 	sample.on(bind(&Client::message, &executor, _1, _2));
 
@@ -1050,7 +1392,7 @@ int main(int argc, char * argv[]){
 }
 ```
 
-### Example UDP Server
+### Example UDP UnixSocket Server
 
 ```c++
 #include <server/sample.hpp>
@@ -1092,8 +1434,9 @@ int main(int argc, char * argv[]){
 	log.setLogFormat("%H:%M:%S %d.%m.%Y");
 
 	core.sonet(awh::scheme_t::sonet_t::UDP);
+	core.family(awh::scheme_t::family_t::NIX);
 
-	sample.init(2222, "127.0.0.1");
+	sample.init("anyks");
 	sample.on((function <void (const size_t, const vector <char> &, server::sample_t *)>) bind(&Server::message, &executor, _1, _2, _3));
 	sample.on((function <void (const size_t, const server::sample_t::mode_t, server::sample_t *)>) bind(&Server::active, &executor, _1, _2, _3));
 	sample.on((function <bool (const string &, const string &, const u_int, server::sample_t *)>) bind(&Server::accept, &executor, _1, _2, _3, _4));
