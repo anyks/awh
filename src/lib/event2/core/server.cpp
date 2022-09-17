@@ -296,7 +296,7 @@ void awh::server::Core::accept(const int fd, const size_t sid) noexcept {
 					// Добавляем адъютанта в список подключений
 					this->adjutants.emplace(ret.first->first, ret.first->second.get());
 					// Добавляем объект для работы с DTLS в список
-					this->_dtls.emplace(adj->aid, move(dtls)).first->second->event.start(100);
+					this->_dtls.emplace(ret.first->first, move(dtls)).first->second->event.start(100);
 					// Выполняем блокировку потока
 					this->_mtx.accept.unlock();
 					// Останавливаем работу сервера
