@@ -306,6 +306,29 @@ void awh::Core::Dispatch::frequency(const uint8_t msec) noexcept {
  * Dispatch Конструктор
  */
 awh::Core::Dispatch::Dispatch(Core * core) noexcept : _core(core), _easy(false), _work(false), _init(true), base(nullptr), _freq(10ms) {
+	/**
+	 * Если операционной системой является Windows
+	 */
+	#if defined(_WIN32) || defined(_WIN64)
+		// Идентификатор ошибки
+		int error = 0;
+		// Объект данных запроса
+		WSADATA wsaData;
+		// Выполняем инициализацию сетевого контекста
+		if((error = WSAStartup(MAKEWORD(2, 2), &wsaData)) != 0){
+			// Очищаем сетевой контекст
+			WSACleanup();
+			// Выходим из приложения
+			exit(EXIT_FAILURE);
+		}
+		// Выполняем проверку версии WinSocket
+		if((2 != LOBYTE(wsaData.wVersion)) || (2 != HIBYTE(wsaData.wVersion))){
+			// Очищаем сетевой контекст
+			WSACleanup();
+			// Выходим из приложения
+			exit(EXIT_FAILURE);
+		}
+	#endif
 	// Выполняем инициализацию базы событий
 	this->rebase(false);
 }
@@ -1732,29 +1755,6 @@ awh::Core::Core(const fmk_t * fmk, const log_t * log, const scheme_t::family_t f
 		this->unixSocket();
 	// Устанавливаем базу событий для DNS резолвера
 	this->dns.base(this->dispatch.base);
-	/**
-	 * Если операционной системой является Windows
-	 */
-	#if defined(_WIN32) || defined(_WIN64)
-		// Идентификатор ошибки
-		int error = 0;
-		// Объект данных запроса
-		WSADATA wsaData;
-		// Выполняем инициализацию сетевого контекста
-		if((error = WSAStartup(MAKEWORD(2, 2), &wsaData)) != 0){
-			// Очищаем сетевой контекст
-			WSACleanup();
-			// Выходим из приложения
-			exit(EXIT_FAILURE);
-		}
-		// Выполняем проверку версии WinSocket
-		if((2 != LOBYTE(wsaData.wVersion)) || (2 != HIBYTE(wsaData.wVersion))){
-			// Очищаем сетевой контекст
-			WSACleanup();
-			// Выходим из приложения
-			exit(EXIT_FAILURE);
-		}
-	#endif
 	// Устанавливаем функцию обработки сигналов
 	this->_sig.on(std::bind(&core_t::signals, this, placeholders::_1));
 	// Если тип сокета подключения не является unix-сокетом
