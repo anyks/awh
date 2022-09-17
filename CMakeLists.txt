@@ -206,6 +206,7 @@ endif()
 if(CMAKE_BUILD_EVENT2)
      # Выполняем подключение исходников для LibEvent2
      set(SOURCE_FILES
+        "${CMAKE_SOURCE_DIR}/src/lib/event2/sys/events.cpp"
         "${CMAKE_SOURCE_DIR}/src/lib/event2/sys/signals.cpp"
         "${CMAKE_SOURCE_DIR}/src/lib/event2/sys/cluster.cpp"
         "${CMAKE_SOURCE_DIR}/src/lib/event2/net/dns.cpp"

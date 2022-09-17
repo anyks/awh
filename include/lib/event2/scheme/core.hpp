@@ -30,6 +30,7 @@
 #include <sys/fmk.hpp>
 #include <sys/log.hpp>
 #include <net/engine.hpp>
+#include <lib/event2/sys/events.hpp>
 
 // Подписываемся на стандартное пространство имён
 using namespace std;
@@ -104,28 +105,21 @@ namespace awh {
 			};
 		public:
 			/**
-			 * EventTimer Структура события таймера
+			 * Timers Структура таймеров
 			 */
-			typedef struct EventTimer {
-				struct event ev;   // Объект события
-				struct timeval tv; // Параметры интервала времени
-			} evtm_t;
+			typedef struct Timers {
+				event_t read;    // Событие таймера таймаута на чтение из сокета
+				event_t write;   // Событие таймера таймаута на запись в сокет
+				event_t connect; // Событие таймера таймаута на подключение к серверу
+			} timers_t;
 			/**
-			 * Timer Структура таймаута
+			 * Events Структура событий
 			 */
-			typedef struct Timer {
-				evtm_t read;    // Событие таймера таймаута на чтение из сокета
-				evtm_t write;   // Событие таймера таймаута на запись в сокет
-				evtm_t connect; // Событие таймера таймаута на подключение к серверу
-			} timer_t;
-			/**
-			 * Event Структура события
-			 */
-			typedef struct Event {
-				struct event read;    // Событие на чтение
-				struct event write;   // Событие на запись
-				struct event connect; // Событие на подключение
-			} event_t;
+			typedef struct Events {
+				event_t read;    // Событие на чтение
+				event_t write;   // Событие на запись
+				event_t connect; // Событие на подключение
+			} events_t;
 			/**
 			 * Timeouts Структура таймаутов
 			 */
@@ -153,8 +147,8 @@ namespace awh {
 			 * BufferEvent Структура буфера событий
 			 */
 			typedef struct BufferEvent {
-				event_t event;   // Событие чтения/записи
-				timer_t timer;   // Собатие таймера на чтение/запись
+				events_t events; // События чтения/записи
+				timers_t timers; // Собатия таймера на чтение/запись
 				locked_t locked; // Блокиратор чтения/записи
 				/**
 				 * BufferEvent Конструктор
@@ -278,30 +272,26 @@ namespace awh {
 					 * read Функция обратного вызова при чтении данных с сокета
 					 * @param fd    файловый дескриптор (сокет)
 					 * @param event произошедшее событие
-					 * @param ctx   передаваемый контекст
 					 */
-					static void read(evutil_socket_t fd, short event, void * ctx) noexcept;
+					void read(const evutil_socket_t fd, const short event) noexcept;
 					/**
 					 * write Функция обратного вызова при записи данных в сокет
 					 * @param fd    файловый дескриптор (сокет)
 					 * @param event произошедшее событие
-					 * @param ctx   передаваемый контекст
 					 */
-					static void write(evutil_socket_t fd, short event, void * ctx) noexcept;
+					void write(const evutil_socket_t fd, const short event) noexcept;
 					/**
 					 * connect Функция обратного вызова при подключении к серверу
 					 * @param fd    файловый дескриптор (сокет)
 					 * @param event произошедшее событие
-					 * @param ctx   передаваемый контекст
 					 */
-					static void connect(evutil_socket_t fd, short event, void * ctx) noexcept;
+					void connect(const evutil_socket_t fd, const short event) noexcept;
 					/**
 					 * timeout Функция обратного вызова при срабатывании таймаута
 					 * @param fd    файловый дескриптор (сокет)
 					 * @param event произошедшее событие
-					 * @param ctx   передаваемый контекст
 					 */
-					static void timeout(evutil_socket_t fd, short event, void * ctx) noexcept;
+					void timeout(const evutil_socket_t fd, const short event) noexcept;
 				public:
 					/**
 					 * Adjutant Конструктор

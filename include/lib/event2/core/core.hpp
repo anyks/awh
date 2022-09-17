@@ -99,7 +99,7 @@ namespace awh {
 					time_t stamp;
 				public:
 					// Объект события таймера
-					scheme_t::evtm_t event;
+					event_t event;
 				public:
 					// Родительский объект
 					Core * core;
@@ -111,9 +111,8 @@ namespace awh {
 					 * callback Функция обратного вызова
 					 * @param fd    файловый дескриптор (сокет)
 					 * @param event произошедшее событие
-					 * @param ctx   передаваемый контекст
 					 */
-					static void callback(evutil_socket_t fd, short event, void * ctx) noexcept;
+					void callback(const evutil_socket_t fd, const short event) noexcept;
 				public:
 					/**
 					 * Timer Конструктор
@@ -321,9 +320,8 @@ namespace awh {
 			 * persistent Функция персистентного вызова по таймеру
 			 * @param fd    файловый дескриптор (сокет)
 			 * @param event произошедшее событие
-			 * @param ctx   передаваемый контекст
 			 */
-			static void persistent(evutil_socket_t fd, short event, void * ctx) noexcept;
+			void persistent(const evutil_socket_t fd, const short event) noexcept;
 		private:
 			/**
 			 * signals Метод вывода полученного сигнала

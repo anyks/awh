@@ -19,115 +19,97 @@
  * read Функция обратного вызова при чтении данных с сокета
  * @param fd    файловый дескриптор (сокет)
  * @param event произошедшее событие
- * @param ctx   передаваемый контекст
  */
-void awh::scheme_t::adj_t::read(evutil_socket_t fd, short event, void * ctx) noexcept {
-	// Получаем объект адъютанта
-	scheme_t::adj_t * adj = reinterpret_cast <scheme_t::adj_t *> (ctx);
+void awh::scheme_t::adj_t::read(const evutil_socket_t fd, const short event) noexcept {
 	// Получаем объект подключения
-	scheme_t * shm = const_cast <scheme_t *> (adj->parent);
+	scheme_t * shm = const_cast <scheme_t *> (this->parent);
 	// Получаем объект ядра клиента
 	core_t * core = const_cast <core_t *> (shm->core);
 	// Если разрешено выполнять чтения данных из сокета
-	if(!adj->bev.locked.read)
+	if(!this->bev.locked.read)
 		// Выполняем передачу данных
-		core->transfer(engine_t::method_t::READ, adj->aid);
+		core->transfer(engine_t::method_t::READ, this->aid);
 	// Если выполнять чтение данных запрещено
 	else {
 		// Если запрещено выполнять чтение данных из сокета
-		if(adj->bev.locked.read)
+		if(this->bev.locked.read)
 			// Останавливаем чтение данных
-			core->disabled(engine_t::method_t::READ, adj->aid);
+			core->disabled(engine_t::method_t::READ, this->aid);
 		// Если запрещено выполнять запись данных в сокет
-		if(adj->bev.locked.write)
+		if(this->bev.locked.write)
 			// Останавливаем запись данных
-			core->disabled(engine_t::method_t::WRITE, adj->aid);
+			core->disabled(engine_t::method_t::WRITE, this->aid);
 		// Если запрещено и читать и записывать в сокет
-		if(adj->bev.locked.read && adj->bev.locked.write)
+		if(this->bev.locked.read && this->bev.locked.write)
 			// Выполняем отключение от сервера
-			core->close(adj->aid);
+			core->close(this->aid);
 	}
 }
 /**
  * write Функция обратного вызова при записи данных в сокет
  * @param fd    файловый дескриптор (сокет)
  * @param event произошедшее событие
- * @param ctx   передаваемый контекст
  */
-void awh::scheme_t::adj_t::write(evutil_socket_t fd, short event, void * ctx) noexcept {
-	// Получаем объект адъютанта
-	scheme_t::adj_t * adj = reinterpret_cast <scheme_t::adj_t *> (ctx);
+void awh::scheme_t::adj_t::write(const evutil_socket_t fd, const short event) noexcept {
 	// Получаем объект подключения
-	scheme_t * shm = const_cast <scheme_t *> (adj->parent);
+	scheme_t * shm = const_cast <scheme_t *> (this->parent);
 	// Получаем объект ядра клиента
 	core_t * core = const_cast <core_t *> (shm->core);
 	// Если разрешено выполнять запись данных в сокет
-	if(!adj->bev.locked.write)
+	if(!this->bev.locked.write)
 		// Выполняем передачу данных
-		core->transfer(engine_t::method_t::WRITE, adj->aid);
+		core->transfer(engine_t::method_t::WRITE, this->aid);
 	// Если выполнять запись данных запрещено
 	else {
 		// Если запрещено выполнять чтение данных из сокета
-		if(adj->bev.locked.read)
+		if(this->bev.locked.read)
 			// Останавливаем чтение данных
-			core->disabled(engine_t::method_t::READ, adj->aid);
+			core->disabled(engine_t::method_t::READ, this->aid);
 		// Если запрещено выполнять запись данных в сокет
-		if(adj->bev.locked.write)
+		if(this->bev.locked.write)
 			// Останавливаем запись данных
-			core->disabled(engine_t::method_t::WRITE, adj->aid);
+			core->disabled(engine_t::method_t::WRITE, this->aid);
 		// Если запрещено и читать и записывать в сокет
-		if(adj->bev.locked.read && adj->bev.locked.write)
+		if(this->bev.locked.read && this->bev.locked.write)
 			// Выполняем отключение от сервера
-			core->close(adj->aid);
+			core->close(this->aid);
 	}
 }
 /**
  * connect Функция обратного вызова при подключении к серверу
  * @param fd    файловый дескриптор (сокет)
  * @param event произошедшее событие
- * @param ctx   передаваемый контекст
  */
-void awh::scheme_t::adj_t::connect(evutil_socket_t fd, short event, void * ctx) noexcept {
-	// Получаем объект адъютанта
-	scheme_t::adj_t * adj = reinterpret_cast <scheme_t::adj_t *> (ctx);
+void awh::scheme_t::adj_t::connect(const evutil_socket_t fd, const short event) noexcept {
 	// Удаляем событие коннекта
-	event_del(&adj->bev.event.connect);
+	this->bev.events.connect.stop();
 	// Получаем объект подключения
-	scheme_t * shm = const_cast <scheme_t *> (adj->parent);
+	scheme_t * shm = const_cast <scheme_t *> (this->parent);
 	// Получаем объект ядра клиента
 	core_t * core = const_cast <core_t *> (shm->core);
 	// Останавливаем подключение
-	core->disabled(engine_t::method_t::CONNECT, adj->aid);
+	core->disabled(engine_t::method_t::CONNECT, this->aid);
 	// Выполняем передачу данных об удачном подключении к серверу
-	core->connected(adj->aid);
+	core->connected(this->aid);
 }
 /**
  * timeout Функция обратного вызова при срабатывании таймаута
  * @param fd    файловый дескриптор (сокет)
  * @param event произошедшее событие
- * @param ctx   передаваемый контекст
  */
-void awh::scheme_t::adj_t::timeout(evutil_socket_t fd, short event, void * ctx) noexcept {
-	// Получаем объект адъютанта
-	scheme_t::adj_t * adj = reinterpret_cast <scheme_t::adj_t *> (ctx);
-	// Очищаем объект таймаута чтения данных
-	evutil_timerclear(&adj->bev.timer.read.tv);
-	// Очищаем объект таймаута записи данных
-	evutil_timerclear(&adj->bev.timer.write.tv);
-	// Очищаем объект таймаута коннекта
-	evutil_timerclear(&adj->bev.timer.connect.tv);
-	// Удаляем событие таймера чтения данных
-	evtimer_del(&adj->bev.timer.read.ev);
-	// Удаляем событие таймера записи данных
-	evtimer_del(&adj->bev.timer.write.ev);
-	// Удаляем событие таймера коннекта
-	evtimer_del(&adj->bev.timer.connect.ev);
+void awh::scheme_t::adj_t::timeout(const evutil_socket_t fd, const short event) noexcept {
+	// Останавливаем событие таймера чтения данных
+	this->bev.timers.read.stop();
+	// Останавливаем событие таймера записи данных
+	this->bev.timers.write.stop();
+	// Останавливаем событие таймера коннекта
+	this->bev.timers.connect.stop();
 	// Получаем объект подключения
-	scheme_t * shm = const_cast <scheme_t *> (adj->parent);
+	scheme_t * shm = const_cast <scheme_t *> (this->parent);
 	// Получаем объект ядра клиента
 	core_t * core = const_cast <core_t *> (shm->core);
 	// Выполняем передачу данных
-	core->timeout(adj->aid);
+	core->timeout(this->aid);
 }
 /**
  * resolving Метод получения IP адреса доменного имени
@@ -143,43 +125,29 @@ void awh::scheme_t::resolving(const string & ip, const int family, const size_t 
  * callback Функция обратного вызова
  * @param fd    файловый дескриптор (сокет)
  * @param event произошедшее событие
- * @param ctx   передаваемый контекст
  */
-void awh::Core::Timer::callback(evutil_socket_t fd, short event, void * ctx) noexcept {
-	// Получаем объект таймера
-	timer_t * timer = reinterpret_cast <timer_t *> (ctx);
-	// Очищаем объект таймаута
-	evutil_timerclear(&timer->event.tv);
-	// Удаляем событие таймера
-	evtimer_del(&timer->event.ev);
+void awh::Core::Timer::callback(const evutil_socket_t fd, const short event) noexcept {
+	// Останавливаем событие таймера
+	this->event.stop();
 	// Устанавливаем текущий штамп времени
-	timer->stamp = timer->core->fmk->unixTimestamp();
+	this->stamp = this->core->fmk->unixTimestamp();
 	// Если функция обратного вызова установлена
-	if(timer->fn != nullptr) timer->fn(timer->id, timer->core);
+	if(this->fn != nullptr) this->fn(this->id, this->core);
 	// Если персистентная работа не установлена, удаляем таймер
-	if(!timer->persist){
+	if(!this->persist){
 		// Если родительский объект установлен
-		if(timer->core != nullptr)
+		if(this->core != nullptr)
 			// Удаляем объект таймера
-			timer->core->_timers.erase(timer->id);
+			this->core->_timers.erase(this->id);
 	// Если нужно продолжить работу таймера
-	} else {
-		// Устанавливаем время в секундах
-		timer->event.tv.tv_sec = (timer->delay / 1000);
-		// Устанавливаем время счётчика (микросекунды)
-		timer->event.tv.tv_usec = ((timer->delay % 1000) * 1000);
-		// Создаём событие таймаута на активацию базы событий
-		event_add(&timer->event.ev, &timer->event.tv);
-	}
+	} else this->event.start();
 }
 /**
  * ~Timer Деструктор
  */
 awh::Core::Timer::~Timer() noexcept {
-	// Очищаем объект таймера
-	evutil_timerclear(&this->event.tv);
-	// Удаляем событие таймера
-	evtimer_del(&this->event.ev);
+	// Останавливаем работу таймера
+	this->event.stop();
 }
 /**
  * kick Метод отправки пинка
@@ -374,20 +342,20 @@ void awh::Core::launching() noexcept {
 	if(!this->noinfo) this->log->print("[+] start service: pid = %u", log_t::flag_t::INFO, getpid());
 	// Если таймер периодического запуска коллбека активирован, запускаем персистентную работу
 	if(this->persist){
-		// Очищаем объект таймаута базы событий
-		evutil_timerclear(&this->_timer.event.tv);
 		// Устанавливаем флаг персистентного вызова
 		this->_timer.persist = this->persist;
 		// Устанавливаем время задержки персистентного вызова
-		this->_timer.delay = (this->_persIntvl / 1000);
-		// Устанавливаем интервал таймаута
-		this->_timer.event.tv = {this->_timer.delay, 0};
+		this->_timer.delay = this->_persIntvl;
 		// Устанавливаем текущий штамп времени
 		this->_timer.stamp = this->fmk->unixTimestamp();
-		// Создаём событие на активацию базы событий
-		evtimer_assign(&this->_timer.event.ev, this->dispatch.base, &persistent, this);
-		// Создаём событие таймаута на активацию базы событий
-		evtimer_add(&this->_timer.event.ev, &this->_timer.event.tv);
+		// Устанавливаем тип таймера
+		this->_timer.event.set(-1, EV_TIMEOUT);
+		// Устанавливаем базу данных событий
+		this->_timer.event.set(this->dispatch.base);
+		// Устанавливаем функцию обратного вызова
+		this->_timer.event.set(std::bind(&core_t::persistent, this, _1, _2));
+		// Выполняем запуск работы таймера
+		this->_timer.event.start(this->_timer.delay);
 	}
 }
 /**
@@ -416,9 +384,9 @@ void awh::Core::executeTimers() noexcept {
 		// Если таймер периодического запуска коллбека активирован
 		if(this->persist){
 			// Если таймер не исполнился в заданное время
-			if(((date - this->_timer.stamp) / 1000) >= this->_timer.delay)
+			if((date - this->_timer.stamp) >= this->_timer.delay)
 				// Выполняем функцию обратного вызова таймера
-				persistent(-1, EV_TIMEOUT, this);
+				this->persistent(-1, EV_TIMEOUT);
 		}
 		// Если список таймеров не пустой
 		if(!this->_timers.empty()){
@@ -426,10 +394,8 @@ void awh::Core::executeTimers() noexcept {
 			for(auto it = this->_timers.begin(); it != this->_timers.end();){
 				// Если таймер не исполнился в заданное время
 				if((date - it->second->stamp) >= it->second->delay){
-					// Очищаем объект таймаута
-					evutil_timerclear(&it->second->event.tv);
-					// Удаляем событие таймера
-					evtimer_del(&it->second->event.ev);
+					// Останавливаем работу таймера
+					it->second->event.stop();
 					// Устанавливаем текущий штамп времени
 					it->second->stamp = date;
 					// Если функция обратного вызова установлена
@@ -442,12 +408,8 @@ void awh::Core::executeTimers() noexcept {
 						it = this->_timers.erase(it);
 					// Если нужно продолжить работу таймера
 					else {
-						// Устанавливаем время в секундах
-						it->second->event.tv.tv_sec = (it->second->delay / 1000);
-						// Устанавливаем время счётчика (микросекунды)
-						it->second->event.tv.tv_usec = ((it->second->delay % 1000) * 1000);
-						// Создаём событие таймаута на активацию базы событий
-						event_add(&it->second->event.ev, &it->second->event.tv);
+						// Запускаем работу таймера
+						it->second->event.start();
 						// Выполняем смещение итератора
 						++it;
 					}
@@ -461,21 +423,16 @@ void awh::Core::executeTimers() noexcept {
  * persistent Функция персистентного вызова по таймеру
  * @param fd    файловый дескриптор (сокет)
  * @param event произошедшее событие
- * @param ctx   передаваемый контекст
  */
-void awh::Core::persistent(evutil_socket_t fd, short event, void * ctx) noexcept {
-	// Получаем объект сетевого ядра
-	core_t * core = reinterpret_cast <core_t *> (ctx);
-	// Очищаем объект таймаута
-	evutil_timerclear(&core->_timer.event.tv);
-	// Удаляем событие таймера
-	evtimer_del(&core->_timer.event.ev);
+void awh::Core::persistent(const evutil_socket_t fd, const short event) noexcept {
+	// Останавливаем работу таймера
+	this->_timer.event.stop();
 	// Устанавливаем текущий штамп времени
-	core->_timer.stamp = core->fmk->unixTimestamp();
+	this->_timer.stamp = this->fmk->unixTimestamp();
 	// Если список схем сети существует
-	if(!core->schemes.empty()){
+	if(!this->schemes.empty()){
 		// Переходим по всему списку схем сети
-		for(auto & item : core->schemes){
+		for(auto & item : this->schemes){
 			// Получаем объект схемы сети
 			scheme_t * shm = const_cast <scheme_t *> (item.second);
 			// Если функция обратного вызова установлена и адъютанты существуют
@@ -483,16 +440,12 @@ void awh::Core::persistent(evutil_socket_t fd, short event, void * ctx) noexcept
 				// Переходим по всему списку адъютантов и формируем список их идентификаторов
 				for(auto & adj : shm->adjutants)
 					// Выполняем функцию обратного вызова
-					shm->callback.persist(adj.first, item.first, core);
+					shm->callback.persist(adj.first, item.first, this);
 			}
 		}
 	}
-	// Устанавливаем время задержки персистентного вызова
-	core->_timer.delay = (core->_persIntvl / 1000);
-	// Устанавливаем интервал таймаута
-	core->_timer.event.tv = {core->_timer.delay, 0};
-	// Создаём событие таймаута на активацию базы событий
-	event_add(&core->_timer.event.ev, &core->_timer.event.tv);
+	// Запускаем работу таймера
+	this->_timer.event.start();
 }
 /**
  * signals Метод вывода полученного сигнала
@@ -632,12 +585,9 @@ void awh::Core::unbind(Core * core) noexcept {
 		// Выполняем блокировку потока
 		core->_mtx.status.lock();
 		// Если таймер периодического запуска коллбека активирован
-		if(core->persist){
-			// Очищаем объект таймаута
-			evutil_timerclear(&core->_timer.event.tv);
-			// Удаляем событие таймера
-			evtimer_del(&core->_timer.event.ev);
-		}
+		if(core->persist)
+			// Останавливаем работу таймера
+			core->_timer.event.stop();
 		// Выполняем разблокировку потока
 		core->_mtx.status.unlock();
 		// Выполняем отключение всех клиентов
@@ -680,12 +630,9 @@ void awh::Core::stop() noexcept {
 		// Выполняем блокировку потока
 		this->_mtx.status.lock();
 		// Если таймер периодического запуска коллбека активирован
-		if(this->persist){
-			// Очищаем объект таймаута
-			evutil_timerclear(&this->_timer.event.tv);
-			// Удаляем событие таймера
-			evtimer_del(&this->_timer.event.ev);
-		}
+		if(this->persist)
+			// Останавливаем работу таймера
+			this->_timer.event.stop();
 		// Выполняем разблокировку потока
 		this->_mtx.status.unlock();
 		// Выполняем отключение всех клиентов
@@ -864,10 +811,8 @@ void awh::Core::rebase() noexcept {
 			for(auto it = this->_timers.begin(); it != this->_timers.end();){
 				// Выполняем блокировку потока
 				this->_mtx.timer.lock();
-				// Очищаем объект таймаута
-				evutil_timerclear(&it->second->event.tv);
-				// Удаляем событие таймера
-				evtimer_del(&it->second->event.ev);
+				// Останавливаем работу таймера
+				it->second->event.stop();
 				// Устанавливаем функцию обратного вызова
 				mainTimers.at(index).fn = it->second->fn;
 				// Устанавливаем задержку времени в миллисекундах
@@ -946,18 +891,24 @@ void awh::Core::enabled(const engine_t::method_t method, const size_t aid) noexc
 						adj->marker.read = shm->marker.read;
 						// Устанавливаем время ожидания чтения данных
 						adj->timeouts.read = shm->timeouts.read;
-						// Создаём событие на активацию базы событий
-						event_assign(&adj->bev.event.read, this->dispatch.base, adj->addr.fd, EV_READ, &awh::scheme_t::adj_t::read, adj);
-						// Создаём событие на чтение базы событий
-						event_add(&adj->bev.event.read, nullptr);
+						// Устанавливаем тип события
+						adj->bev.events.read.set(adj->addr.fd, EV_READ);
+						// Устанавливаем базу данных событий
+						adj->bev.events.read.set(this->dispatch.base);
+						// Устанавливаем функцию обратного вызова
+						adj->bev.events.read.set(std::bind(&awh::scheme_t::adj_t::read, adj, _1, _2));
+						// Выполняем запуск работы события
+						adj->bev.events.read.start();
 						// Если флаг ожидания входящих сообщений, активирован
 						if(adj->timeouts.read > 0){
-							// Устанавливаем время в секундах
-							adj->bev.timer.read.tv = {adj->timeouts.read, 0};
-							// Создаём событие на активацию базы событий
-							evtimer_assign(&adj->bev.timer.read.ev, this->dispatch.base, &awh::scheme_t::adj_t::timeout, adj);
-							// Создаём событие таймаута на активацию базы событий
-							evtimer_add(&adj->bev.timer.read.ev, &adj->bev.timer.read.tv);
+							// Устанавливаем тип таймера
+							adj->bev.timers.read.set(-1, EV_TIMEOUT);
+							// Устанавливаем базу данных событий
+							adj->bev.timers.read.set(this->dispatch.base);
+							// Устанавливаем функцию обратного вызова
+							adj->bev.timers.read.set(std::bind(&awh::scheme_t::adj_t::timeout, adj, _1, _2));
+							// Выполняем запуск работы таймера
+							adj->bev.timers.read.start(adj->timeouts.read * 1000);
 						}
 					} break;
 					// Если событием является запись
@@ -968,36 +919,48 @@ void awh::Core::enabled(const engine_t::method_t method, const size_t aid) noexc
 						adj->marker.write = shm->marker.write;
 						// Устанавливаем время ожидания записи данных
 						adj->timeouts.write = shm->timeouts.write;
-						// Создаём событие на активацию базы событий
-						event_assign(&adj->bev.event.write, this->dispatch.base, adj->addr.fd, EV_WRITE, &awh::scheme_t::adj_t::write, adj);
-						// Создаём событие на чтение базы событий
-						event_add(&adj->bev.event.write, nullptr);
+						// Устанавливаем тип события
+						adj->bev.events.write.set(adj->addr.fd, EV_WRITE);
+						// Устанавливаем базу данных событий
+						adj->bev.events.write.set(this->dispatch.base);
+						// Устанавливаем функцию обратного вызова
+						adj->bev.events.write.set(std::bind(&awh::scheme_t::adj_t::write, adj, _1, _2));
+						// Выполняем запуск работы события
+						adj->bev.events.write.start();
 						// Если флаг ожидания исходящих сообщений, активирован
 						if(adj->timeouts.write > 0){
-							// Устанавливаем время в секундах
-							adj->bev.timer.write.tv = {adj->timeouts.write, 0};
-							// Создаём событие на активацию базы событий
-							evtimer_assign(&adj->bev.timer.write.ev, this->dispatch.base, &awh::scheme_t::adj_t::timeout, adj);
-							// Создаём событие таймаута на активацию базы событий
-							evtimer_add(&adj->bev.timer.write.ev, &adj->bev.timer.write.tv);
+							// Устанавливаем тип таймера
+							adj->bev.timers.write.set(-1, EV_TIMEOUT);
+							// Устанавливаем базу данных событий
+							adj->bev.timers.write.set(this->dispatch.base);
+							// Устанавливаем функцию обратного вызова
+							adj->bev.timers.write.set(std::bind(&awh::scheme_t::adj_t::timeout, adj, _1, _2));
+							// Выполняем запуск работы таймера
+							adj->bev.timers.write.start(adj->timeouts.write * 1000);
 						}
 					} break;
 					// Если событием является подключение
 					case (uint8_t) engine_t::method_t::CONNECT: {
 						// Устанавливаем время ожидания записи данных
 						adj->timeouts.connect = shm->timeouts.connect;
-						// Создаём событие на активацию базы событий
-						event_assign(&adj->bev.event.connect, this->dispatch.base, adj->addr.fd, EV_WRITE, &awh::scheme_t::adj_t::connect, adj);
-						// Создаём событие на чтение базы событий
-						event_add(&adj->bev.event.connect, nullptr);
+						// Устанавливаем тип события
+						adj->bev.events.connect.set(adj->addr.fd, EV_WRITE);
+						// Устанавливаем базу данных событий
+						adj->bev.events.connect.set(this->dispatch.base);
+						// Устанавливаем функцию обратного вызова
+						adj->bev.events.connect.set(std::bind(&awh::scheme_t::adj_t::connect, adj, _1, _2));
+						// Выполняем запуск работы события
+						adj->bev.events.connect.start();
 						// Если время ожидания записи данных установлено
 						if(adj->timeouts.connect > 0){
-							// Устанавливаем время в секундах
-							adj->bev.timer.connect.tv = {adj->timeouts.connect, 0};
-							// Создаём событие на активацию базы событий
-							evtimer_assign(&adj->bev.timer.connect.ev, this->dispatch.base, &awh::scheme_t::adj_t::timeout, adj);
-							// Создаём событие таймаута на активацию базы событий
-							evtimer_add(&adj->bev.timer.connect.ev, &adj->bev.timer.connect.tv);
+							// Устанавливаем тип таймера
+							adj->bev.timers.connect.set(-1, EV_TIMEOUT);
+							// Устанавливаем базу данных событий
+							adj->bev.timers.connect.set(this->dispatch.base);
+							// Устанавливаем функцию обратного вызова
+							adj->bev.timers.connect.set(std::bind(&awh::scheme_t::adj_t::timeout, adj, _1, _2));
+							// Выполняем запуск работы таймера
+							adj->bev.timers.connect.start(adj->timeouts.connect * 1000);
 						}
 					} break;
 				}
@@ -1025,32 +988,26 @@ void awh::Core::disabled(const engine_t::method_t method, const size_t aid) noex
 				case (uint8_t) engine_t::method_t::READ: {
 					// Запрещаем чтение данных из сокета
 					adj->bev.locked.read = true;
-					// Очищаем объект таймера чтения данных
-					evutil_timerclear(&adj->bev.timer.read.tv);
-					// Удаляем событие таймера чтения данных
-					evtimer_del(&adj->bev.timer.read.ev);
-					// Удаляем событие чтения данных
-					event_del(&adj->bev.event.read);
+					// Останавливаем работу таймера
+					adj->bev.timers.read.stop();
+					// Останавливаем работу события
+					adj->bev.events.read.stop();
 				} break;
 				// Если событием является запись
 				case (uint8_t) engine_t::method_t::WRITE: {
 					// Запрещаем запись данных в сокет
 					adj->bev.locked.write = true;
-					// Очищаем объект таймера записи данных
-					evutil_timerclear(&adj->bev.timer.write.tv);
-					// Удаляем событие таймера записи данных
-					evtimer_del(&adj->bev.timer.write.ev);
-					// Удаляем событие записи данных
-					event_del(&adj->bev.event.write);
+					// Останавливаем работу таймера
+					adj->bev.timers.write.stop();
+					// Останавливаем работу события
+					adj->bev.events.write.stop();
 				} break;
 				// Если событием является подключение
 				case (uint8_t) engine_t::method_t::CONNECT: {
-					// Очищаем объект таймера ожидания подключения
-					evutil_timerclear(&adj->bev.timer.connect.tv);
-					// Удаляем событие таймера ожидания подключения
-					evtimer_del(&adj->bev.timer.connect.ev);
-					// Удаляем событие ожидания подключения
-					event_del(&adj->bev.event.connect);
+					// Останавливаем работу таймера
+					adj->bev.timers.connect.stop();
+					// Останавливаем работу события
+					adj->bev.events.connect.stop();
 				} break;
 			}
 		}
@@ -1210,10 +1167,8 @@ void awh::Core::clearTimers() noexcept {
 		const lock_guard <recursive_mutex> lock(this->_mtx.timer);
 		// Переходим по всем таймерам
 		for(auto it = this->_timers.begin(); it != this->_timers.end();){
-			// Очищаем объект таймера
-			evutil_timerclear(&it->second->event.tv);
-			// Удаляем событие таймера
-			evtimer_del(&it->second->event.ev);
+			// Останавливаем работу таймера
+			it->second->event.stop();
 			// Удаляем таймер из списка
 			it = this->_timers.erase(it);
 		}
@@ -1232,10 +1187,8 @@ void awh::Core::clearTimer(const u_short id) noexcept {
 		auto it = this->_timers.find(id);
 		// Если идентификатор таймера найден
 		if(it != this->_timers.end()){
-			// Очищаем объект таймера
-			evutil_timerclear(&it->second->event.tv);
-			// Удаляем событие таймера
-			evtimer_del(&it->second->event.ev);
+			// Останавливаем работу таймера
+			it->second->event.stop();
 			// Удаляем объект таймера
 			this->_timers.erase(it);
 		}
@@ -1270,14 +1223,14 @@ u_short awh::Core::setTimeout(const time_t delay, function <void (const u_short,
 		ret.first->second->delay = delay;
 		// Устанавливаем текущий штамп времени
 		ret.first->second->stamp = this->fmk->unixTimestamp();
-		// Устанавливаем время в секундах
-		ret.first->second->event.tv.tv_sec = (delay / 1000);
-		// Устанавливаем время счётчика (микросекунды)
-		ret.first->second->event.tv.tv_usec = ((delay % 1000) * 1000);
-		// Создаём событие на активацию базы событий
-		evtimer_assign(&ret.first->second->event.ev, this->dispatch.base, &timer_t::callback, ret.first->second.get());
-		// Создаём событие таймаута на активацию базы событий
-		evtimer_add(&ret.first->second->event.ev, &ret.first->second->event.tv);
+		// Устанавливаем тип таймера
+		ret.first->second->event.set(-1, EV_TIMEOUT);
+		// Устанавливаем базу данных событий
+		ret.first->second->event.set(this->dispatch.base);
+		// Устанавливаем функцию обратного вызова
+		ret.first->second->event.set(std::bind(&timer_t::callback, ret.first->second.get(), _1, _2));
+		// Выполняем запуск работы таймера
+		ret.first->second->event.start(ret.first->second->delay);
 	}
 	// Выводим результат
 	return result;
@@ -1313,14 +1266,14 @@ u_short awh::Core::setInterval(const time_t delay, function <void (const u_short
 		ret.first->second->persist = true;
 		// Устанавливаем текущий штамп времени
 		ret.first->second->stamp = this->fmk->unixTimestamp();
-		// Устанавливаем время в секундах
-		ret.first->second->event.tv.tv_sec = (delay / 1000);
-		// Устанавливаем время счётчика (микросекунды)
-		ret.first->second->event.tv.tv_usec = ((delay % 1000) * 1000);
-		// Создаём событие на активацию базы событий
-		evtimer_assign(&ret.first->second->event.ev, this->dispatch.base, &timer_t::callback, ret.first->second.get());
-		// Создаём событие таймаута на активацию базы событий
-		evtimer_add(&ret.first->second->event.ev, &ret.first->second->event.tv);
+		// Устанавливаем тип таймера
+		ret.first->second->event.set(-1, EV_TIMEOUT);
+		// Устанавливаем базу данных событий
+		ret.first->second->event.set(this->dispatch.base);
+		// Устанавливаем функцию обратного вызова
+		ret.first->second->event.set(std::bind(&timer_t::callback, ret.first->second.get(), _1, _2));
+		// Выполняем запуск работы таймера
+		ret.first->second->event.start(ret.first->second->delay);
 	}
 	// Выводим результат
 	return result;

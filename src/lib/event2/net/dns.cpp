@@ -61,47 +61,39 @@ void awh::DNS::Worker::shuffle() noexcept {
  * timeout Функция выполняемая по таймеру для чистки мусора
  * @param fd    файловый дескриптор (сокет)
  * @param event произошедшее событие
- * @param ctx   передаваемый контекст
  */
-void awh::DNS::Worker::timeout(evutil_socket_t fd, short event, void * ctx) noexcept {
-	// Получаем объект воркера
-	worker_t * wrk = reinterpret_cast <worker_t *> (ctx);
-	// Очищаем объект таймаута события таймера
-	evutil_timerclear(&wrk->_timer.tv);
-	// Удаляем событие таймаута
-	evtimer_del(&wrk->_timer.ev);
-	// Удаляем событие резолвера
-	event_del(&wrk->_ev);
+void awh::DNS::Worker::timeout(const evutil_socket_t fd, const short event) noexcept {
+	// Останавливаем работу таймера
+	this->_timer.stop();
+	// Останавливаем работу события
+	this->_event.stop();
 	// Выполняем закрытие подключения
-	wrk->close();
+	this->close();
 	// Выполняем остановку работы
-	wrk->_mode = false;
+	this->_mode = false;
 	// Если возникла ошибка, выводим в лог сообщение
-	wrk->_dns->_log->print("%s request failed", log_t::flag_t::CRITICAL, wrk->_domain.c_str());
+	this->_dns->_log->print("%s request failed", log_t::flag_t::CRITICAL, this->_domain.c_str());
 	// Выполняем отмену DNS запроса
-	const_cast <dns_t *> (wrk->_dns)->cancel(wrk->_did);
+	const_cast <dns_t *> (this->_dns)->cancel(this->_did);
 }
 /**
  * response Событие срабатывающееся при получении данных с DNS сервера
  * @param fd    файловый дескриптор (сокет)
  * @param event произошедшее событие
- * @param ctx   передаваемый контекст
  */
-void awh::DNS::Worker::response(evutil_socket_t fd, short event, void * ctx) noexcept {
+void awh::DNS::Worker::response(const evutil_socket_t fd, const short event) noexcept {
 	// Выводимый IP адрес
 	string ip = "";
 	// Буфер пакета данных
 	u_char buffer[65536];
 	// Выполняем зануление буфера данных
 	memset(buffer, 0, sizeof(buffer));
-	// Получаем объект воркера
-	worker_t * wrk = reinterpret_cast <worker_t *> (ctx);
-	// Удаляем событие резолвера
-	event_del(&wrk->_ev);
+	// Останавливаем работу резолвера
+	this->_event.stop();
 	// Получаем объект DNS сервера
-	dns_t * dns = const_cast <dns_t *> (wrk->_dns);
+	dns_t * dns = const_cast <dns_t *> (this->_dns);
 	// Выполняем чтение ответа от сервера
-	if(::recvfrom(fd, (char *) buffer, sizeof(buffer), 0, (struct sockaddr *) &wrk->_addr, &wrk->_socklen) > 0){
+	if(::recvfrom(fd, (char *) buffer, sizeof(buffer), 0, (struct sockaddr *) &this->_addr, &this->_socklen) > 0){
 		// Получаем объект заголовка
 		head_t * header = reinterpret_cast <head_t *> (&buffer);
 		// Определяем код выполнения операции
@@ -111,7 +103,7 @@ void awh::DNS::Worker::response(evutil_socket_t fd, short event, void * ctx) noe
 				// Получаем размер ответа
 				size_t size = sizeof(head_t);
 				// Получаем название доменного имени
-				const string & qname = wrk->join(vector <u_char> (buffer + size, buffer + (size + 255)));
+				const string & qname = this->join(vector <u_char> (buffer + size, buffer + (size + 255)));
 				// Увеличиваем размер буфера полученных данных
 				size += (qname.size() + 2);
 				// Создаём части флагов вопроса пакета ответа
@@ -131,7 +123,7 @@ void awh::DNS::Worker::response(evutil_socket_t fd, short event, void * ctx) noe
 				// Выполняем перебор всех полученных записей
 				for(u_short i = 0; i < count; ++i){
 					// Выполняем извлечение названия записи
-					name[i] = wrk->join(wrk->extract(buffer, size));
+					name[i] = this->join(this->extract(buffer, size));
 					// Увеличиваем размер полученных данных
 					size += 2;
 					// Создаём части флагов вопроса пакета ответа
@@ -156,7 +148,7 @@ void awh::DNS::Worker::response(evutil_socket_t fd, short event, void * ctx) noe
 						// Если запись является каноническим именем
 						case 5: {
 							// Выполняем извлечение значение записи
-							rdata[i] = wrk->join(wrk->extract(buffer, size));
+							rdata[i] = this->join(this->extract(buffer, size));
 							// Устанавливаем тип полученных данных
 							type[i] = ntohs(rrflags->rtype);
 						} break;
@@ -193,15 +185,15 @@ void awh::DNS::Worker::response(evutil_socket_t fd, short event, void * ctx) noe
 								// Зануляем буфер данных
 								memset(buffer, 0, sizeof(buffer));
 								// Получаем IP адрес принадлежащий доменному имени
-								const string ip = inet_ntop(wrk->_family, rdata[i].c_str(), buffer, sizeof(buffer));
+								const string ip = inet_ntop(this->_family, rdata[i].c_str(), buffer, sizeof(buffer));
 								// Если IP адрес получен
 								if(!ip.empty()){
 									// Если чёрный список IP адресов получен
-									if(!dns->isInBlackList(wrk->_family, ip)){
+									if(!dns->isInBlackList(this->_family, ip)){
 										// Добавляем IP адрес в список адресов
 										ips.push_back(ip);
 										// Записываем данные в кэш
-										dns->setToCache(wrk->_family, wrk->_domain, ip);
+										dns->setToCache(this->_family, this->_domain, ip);
 									}
 									// Выводим информацию об IP адресе
 									printf("IPv4: %s\n", ip.c_str());
@@ -224,15 +216,15 @@ void awh::DNS::Worker::response(evutil_socket_t fd, short event, void * ctx) noe
 							// Зануляем буфер данных
 							memset(buffer, 0, sizeof(buffer));
 							// Получаем IP адрес принадлежащий доменному имени
-							const string ip = inet_ntop(wrk->_family, rdata[i].c_str(), buffer, sizeof(buffer));
+							const string ip = inet_ntop(this->_family, rdata[i].c_str(), buffer, sizeof(buffer));
 							// Если IP адрес получен
 							if(!ip.empty()){
 								// Если чёрный список IP адресов получен
-								if(!dns->isInBlackList(wrk->_family, ip)){
+								if(!dns->isInBlackList(this->_family, ip)){
 									// Добавляем IP адрес в список адресов
 									ips.push_back(ip);
 									// Записываем данные в кэш
-									dns->setToCache(wrk->_family, wrk->_domain, ip);
+									dns->setToCache(this->_family, this->_domain, ip);
 								}
 							}
 						}
@@ -245,55 +237,55 @@ void awh::DNS::Worker::response(evutil_socket_t fd, short event, void * ctx) noe
 					// Выполняем установку IP адреса
 					ip = ips.at(rand() % ips.size());
 				// Если чёрный список доменных имён не пустой
-				} else if(!dns->emptyBlackList(wrk->_family))
+				} else if(!dns->emptyBlackList(this->_family))
 					// Выполняем очистку чёрного списка
-					dns->clearBlackList(wrk->_family);
+					dns->clearBlackList(this->_family);
 			} break;
 			// Если сервер DNS не смог интерпретировать запрос
 			case 1:
 				// Выводим в лог сообщение
-				wrk->_dns->_log->print("DNS query format error [%s]", log_t::flag_t::CRITICAL, wrk->_domain.c_str());
+				this->_dns->_log->print("DNS query format error [%s]", log_t::flag_t::CRITICAL, this->_domain.c_str());
 			break;
 			// Если проблемы возникли на DNS сервера
 			case 2:
 				// Выводим в лог сообщение
-				wrk->_dns->_log->print("DNS server failure [%s]", log_t::flag_t::CRITICAL, wrk->_domain.c_str());
+				this->_dns->_log->print("DNS server failure [%s]", log_t::flag_t::CRITICAL, this->_domain.c_str());
 			break;
 			// Если доменное имя указанное в запросе не существует
 			case 3:
 				// Выводим в лог сообщение
-				wrk->_dns->_log->print("the domain name referenced in the query does not exist [%s]", log_t::flag_t::CRITICAL, wrk->_domain.c_str());
+				this->_dns->_log->print("the domain name referenced in the query does not exist [%s]", log_t::flag_t::CRITICAL, this->_domain.c_str());
 			break;
 			// Если DNS сервер не поддерживает подобный тип запросов
 			case 4:
 				// Выводим в лог сообщение
-				wrk->_dns->_log->print("DNS server is not implemented [%s]", log_t::flag_t::CRITICAL, wrk->_domain.c_str());
+				this->_dns->_log->print("DNS server is not implemented [%s]", log_t::flag_t::CRITICAL, this->_domain.c_str());
 			break;
 			// Если DNS сервер отказался выполнять наш запрос (например по политическим причинам)
 			case 5:
 				// Выводим в лог сообщение
-				wrk->_dns->_log->print("DNS request is refused [%s]", log_t::flag_t::CRITICAL, wrk->_domain.c_str());
+				this->_dns->_log->print("DNS request is refused [%s]", log_t::flag_t::CRITICAL, this->_domain.c_str());
 			break;
 		}
 	// Если ответ получен не был, но время ещё есть
-	} else if(wrk->_mode) {
+	} else if(this->_mode) {
 		// Выполняем закрытие подключения
-		wrk->close();
+		this->close();
 		// Выполняем пересортировку серверов DNS
-		wrk->shuffle();
+		this->shuffle();
 		// Замораживаем поток на период времени в 100ms
 		this_thread::sleep_for(10ms);
 		// Выполняем запрос снова
-		wrk->request(wrk->_domain);
+		this->request(this->_domain);
 		// Выходим из функции
 		return;
 	}
 	// Выполняем закрытие подключения
-	wrk->close();
+	this->close();
 	// Получаем идентификатор DNS запроса
-	const size_t did = wrk->_did;
+	const size_t did = this->_did;
 	// Получаем тип протокола интернета
-	const int family = wrk->_family;
+	const int family = this->_family;
 	// Выполняем блокировку потока
 	dns->_mtx.worker.lock();
 	// Удаляем домен из списка доменов
@@ -453,12 +445,14 @@ bool awh::DNS::Worker::request(const string & domain) noexcept {
 			if(!this->_mode){
 				// Запоминаем, что работа началась
 				this->_mode = !this->_mode;
-				// Устанавливаем время в секундах
-				this->_timer.tv = {this->_dns->_timeout, 0};
-				// Создаём событие на активацию базы событий
-				evtimer_assign(&this->_timer.ev, this->_base, &worker_t::timeout, this);
-				// Создаём событие таймаута на активацию базы событий
-				evtimer_add(&this->_timer.ev, &this->_timer.tv);
+				// Устанавливаем базу данных событий
+				this->_timer.set(this->_base);
+				// Устанавливаем тип таймера
+				this->_timer.set(-1, EV_TIMEOUT);
+				// Устанавливаем функцию обратного вызова
+				this->_timer.set(std::bind(&worker_t::timeout, this, _1, _2));
+				// Выполняем запуск работы таймера
+				this->_timer.start(this->_dns->_timeout * 1000);
 			}
 			// Переходим по всему списку DNS серверов
 			for(auto & server : it->second){
@@ -567,10 +561,14 @@ bool awh::DNS::Worker::request(const string & domain) noexcept {
 						this->_socket.bufferSize(this->_fd, sizeof(buffer), sizeof(buffer), 1);
 						// Если запрос на сервер DNS успешно отправлен
 						if((result = (::sendto(this->_fd, (const char *) buffer, size, 0, (struct sockaddr *) &this->_addr, this->_socklen) > 0))){
-							// Устанавливаем событие на чтение данных подключения
-							event_assign(&this->_ev, this->_base, this->_fd, EV_READ, &worker_t::response, this);
-							// Запускаем чтение данных с клиента
-							event_add(&this->_ev, nullptr);
+							// Устанавливаем базу данных событий
+							this->_event.set(this->_base);
+							// Устанавливаем тип события
+							this->_event.set(this->_fd, EV_READ | EV_PERSIST);
+							// Устанавливаем функцию обратного вызова
+							this->_event.set(std::bind(&worker_t::response, this, _1, _2));
+							// Выполняем запуск работы события
+							this->_event.start();
 							// Выходим из функции
 							return result;
 						}
@@ -597,12 +595,10 @@ bool awh::DNS::Worker::request(const string & domain) noexcept {
  * ~Worker Деструктор
  */
 awh::DNS::Worker::~Worker() noexcept {
-	// Очищаем объект таймаута события таймера
-	evutil_timerclear(&this->_timer.tv);
-	// Удаляем событие таймаута
-	evtimer_del(&this->_timer.ev);
-	// Удаляем событие резолвера
-	event_del(&this->_ev);
+	// Останавливаем работу таймера
+	this->_timer.stop();
+	// Останавливаем работу события резолвера
+	this->_event.stop();
 	// Выполняем закрытие файлового дерскриптора (сокета)
 	this->close();
 }
@@ -628,12 +624,10 @@ void awh::DNS::clearZombie() noexcept {
 			for(auto & worker : this->_workers){
 				// Если DNS запрос устарел на 3-и минуты, убиваем его
 				if((date - worker.first) >= 180000){
-					// Очищаем объект таймаута события таймера
-					evutil_timerclear(&worker.second->_timer.tv);
-					// Удаляем событие таймаута
-					evtimer_del(&worker.second->_timer.ev);
-					// Удаляем событие резолвера
-					event_del(&worker.second->_ev);
+					// Останавливаем работу таймера
+					worker.second->_timer.stop();
+					// Останавливаем работу события
+					worker.second->_event.stop();
 					// Добавляем идентификатор воркеров в список зомби
 					zombie.push_back(worker.first);
 				}

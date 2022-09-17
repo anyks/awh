@@ -235,10 +235,10 @@ namespace awh {
 					// Параметры подключения сервера
 					struct sockaddr_storage _addr;
 				private:
-					// Объект события резолвера
-					struct event _ev;
 					// Объект события таймера
-					scheme_t::evtm_t _timer;
+					event_t _timer;
+					// Объект события резолвера
+					event_t _event;
 				private:
 					// Объект DNS резолвера
 					const DNS * _dns;
@@ -255,16 +255,14 @@ namespace awh {
 					 * timeout Функция выполняемая по таймеру для чистки мусора
 					 * @param fd    файловый дескриптор (сокет)
 					 * @param event произошедшее событие
-					 * @param ctx   передаваемый контекст
 					 */
-					static void timeout(evutil_socket_t fd, short event, void * ctx) noexcept;
+					void timeout(const evutil_socket_t fd, const short event) noexcept;
 					/**
 					 * response Событие срабатывающееся при получении данных с DNS сервера
 					 * @param fd    файловый дескриптор (сокет)
 					 * @param event произошедшее событие
-					 * @param ctx   передаваемый контекст
 					 */
-					static void response(evutil_socket_t fd, short event, void * ctx) noexcept;
+					void response(const evutil_socket_t fd, const short event) noexcept;
 				private:
 					/**
 					 * join Метод восстановления доменного имени

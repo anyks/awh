@@ -47,7 +47,7 @@ namespace awh {
 				friend class awh::Core;
 			protected:
 				// Событие подключения к серверу
-				struct event ev;
+				event_t event;
 			protected:
 				// Контекст двигателя для работы с передачей данных
 				engine_t::ctx_t ectx;
@@ -71,9 +71,8 @@ namespace awh {
 				 * accept Функция подключения к серверу
 				 * @param fd    файловый дескриптор (сокет)
 				 * @param event произошедшее событие
-				 * @param ctx   передаваемый контекст
 				 */
-				static void accept(evutil_socket_t fd, short event, void * ctx) noexcept;
+				void accept(const evutil_socket_t fd, const short event) noexcept;
 			public:
 				/**
 				 * Scheme Конструктор

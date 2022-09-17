@@ -64,17 +64,16 @@ namespace awh {
 				 */
 				typedef class DTLS {
 					public:
-						size_t aid;             // Идентификатор адъютанта
-						Core * core;            // Объект ядра клиента
-						scheme_t::evtm_t event; // Объект события таймера
+						size_t aid;    // Идентификатор адъютанта
+						Core * core;   // Объект ядра клиента
+						event_t event; // Объект события таймера
 					public:
 						/**
 						 * callback Функция обратного вызова
 						 * @param fd    файловый дескриптор (сокет)
 						 * @param event произошедшее событие
-						 * @param ctx   передаваемый контекст
 						 */
-						static void callback(evutil_socket_t fd, short event, void * ctx) noexcept;
+						void callback(const evutil_socket_t fd, const short event) noexcept;
 					public:
 						/**
 						 * DTLS Конструктор

@@ -62,18 +62,17 @@ namespace awh {
 				 */
 				typedef class Timeout {
 					public:
-						size_t sid;             // Идентификатор схемы сети
-						Core * core;            // Объект ядра клиента
-						scheme_t::mode_t mode;  // Режим работы клиента
-						scheme_t::evtm_t event; // Объект события таймера
+						size_t sid;            // Идентификатор схемы сети
+						Core * core;           // Объект ядра клиента
+						event_t event;         // Объект события таймера
+						scheme_t::mode_t mode; // Режим работы клиента
 					public:
 						/**
 						 * callback Функция обратного вызова
 						 * @param fd    файловый дескриптор (сокет)
 						 * @param event произошедшее событие
-						 * @param ctx   передаваемый контекст
 						 */
-						static void callback(evutil_socket_t fd, short event, void * ctx) noexcept;
+						void callback(const evutil_socket_t fd, const short event) noexcept;
 					public:
 						/**
 						 * Timeout Конструктор
