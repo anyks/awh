@@ -625,13 +625,12 @@ namespace awh {
 		 * @param filename адрес файла для чтения
 		 * @param log      объект для работы с логами
 		 * @param callback функция обратного вызова
-		 * @param ctx      контекст для вывода в сообщении
 		 */
-		static void rfile(const string & filename, const log_t * log, function <void (const string &, const uintmax_t, void *)> callback, void * ctx = nullptr) noexcept {
+		static void rfile(const string & filename, const log_t * log, function <void (const string &, const uintmax_t)> callback) noexcept {
 			// Если - это Windows
 			#if defined(_WIN32) || defined(_WIN64)
 				// Вызываем метод рекурсивного получения всех строк файла, старым способом
-				rfile2(filename, log, callback, ctx);
+				rfile2(filename, log, callback);
 			// Если - это Unix
 			#else
 				// Если адрес файла передан
@@ -677,7 +676,7 @@ namespace awh {
 										// Если это конец файла, корректируем размер последнего байта
 										if(length == 0) length = 1;
 										// Если длина слова получена, выводим полученную строку
-										callback(string((char *) buffer + offset, length), size, ctx);
+										callback(string((char *) buffer + offset, length), size);
 										// Выполняем смещение
 										offset = (i + 1);
 									}
@@ -685,7 +684,7 @@ namespace awh {
 									old = letter;
 								}
 								// Если данные не все прочитаны, выводим как есть
-								if((offset == 0) && (size > 0)) callback(string((char *) buffer, size), size, ctx);
+								if((offset == 0) && (size > 0)) callback(string((char *) buffer, size), size);
 							}
 						}
 						// Если файл открыт, закрываем его
@@ -700,9 +699,8 @@ namespace awh {
 		 * @param filename адрес файла для чтения
 		 * @param log      объект для работы с логами
 		 * @param callback функция обратного вызова
-		 * @param ctx      контекст для вывода в сообщении
 		 */
-		static void rfile2(const string & filename, const log_t * log, function <void (const string &, const uintmax_t, void *)> callback, void * ctx = nullptr) noexcept {
+		static void rfile2(const string & filename, const log_t * log, function <void (const string &, const uintmax_t)> callback) noexcept {
 			// Если адрес файла передан
 			if(!filename.empty() && (log != nullptr)){
 				// Если файл существует
@@ -742,7 +740,7 @@ namespace awh {
 									// Если это конец файла, корректируем размер последнего байта
 									if(length == 0) length = 1;
 									// Если длина слова получена, выводим полученную строку
-									callback(string(data + offset, length), size, ctx);
+									callback(string(data + offset, length), size);
 									// Выполняем смещение
 									offset = (i + 1);
 								}
@@ -750,7 +748,7 @@ namespace awh {
 								old = letter;
 							}
 							// Если данные не все прочитаны, выводим как есть
-							if((offset == 0) && (size > 0)) callback(string(data, size), size, ctx);
+							if((offset == 0) && (size > 0)) callback(string(data, size), size);
 							// Очищаем буфер данных
 							buffer.clear();
 							// Освобождаем выделенную память
@@ -772,9 +770,8 @@ namespace awh {
 		 * @param fmk      объект фреймворка для работы
 		 * @param log      объект для работы с логами
 		 * @param callback функция обратного вызова
-		 * @param ctx      контекст для вывода в сообщении
 		 */
-		static void rdir(const string & path, const string & ext, const fmk_t * fmk, const log_t * log, function <void (const string &, const uintmax_t, void *)> callback, void * ctx = nullptr) noexcept {
+		static void rdir(const string & path, const string & ext, const fmk_t * fmk, const log_t * log, function <void (const string &, const uintmax_t)> callback) noexcept {
 			// Если адрес каталога и расширение файлов переданы
 			if(!path.empty() && !ext.empty() && (fmk != nullptr) && (log != nullptr)){
 				// Если каталог существует
@@ -798,12 +795,12 @@ namespace awh {
 								// Если расширение файла соответствует
 								if(string(fsp.extension().c_str()).rfind(ext) != string::npos){
 									// Выводим полный путь файла
-									callback(realPath(fsp), size, ctx);
+									callback(realPath(fsp), size);
 								}
 							}
 						}
 					// Сообщаем что каталог пустой
-					} else callback("", 0, ctx);
+					} else callback("", 0);
 				// Выводим сообщение об ошибке
 				} else log->print("the path name: \"%s\" is not found", log_t::flag_t::CRITICAL, path.c_str());
 			}
@@ -817,9 +814,8 @@ namespace awh {
 		 * @param fmk      объект фреймворка для работы
 		 * @param log      объект для работы с логами
 		 * @param callback функция обратного вызова
-		 * @param ctx      контекст для вывода в сообщении
 		 */
-		static void rdir(const string & path, const string & ext, const fmk_t * fmk, const log_t * log, function <void (const string &, const uintmax_t, void *)> callback, void * ctx = nullptr) noexcept {
+		static void rdir(const string & path, const string & ext, const fmk_t * fmk, const log_t * log, function <void (const string &, const uintmax_t)> callback) noexcept {
 			// Если адрес каталога и расширение файлов переданы
 			if(!path.empty() && !ext.empty() && (fmk != nullptr) && (log != nullptr)){
 				// Если каталог существует
@@ -867,7 +863,7 @@ namespace awh {
 											// Если расширение файла найдено
 											if(address.substr(address.length() - length, length).compare(extension) == 0){
 												// Выводим полный путь файла
-												callback(realPath(address), sizeDir, ctx);
+												callback(realPath(address), sizeDir);
 											}
 										}
 									}
@@ -879,7 +875,7 @@ namespace awh {
 						// Запрашиваем данные первого каталога
 						readFn(path, ext);
 					// Сообщаем что каталог пустой
-					} else callback("", 0, ctx);
+					} else callback("", 0);
 				// Выводим сообщение об ошибке
 				} else log->print("the path name: \"%s\" is not found", log_t::flag_t::CRITICAL, path.c_str());
 			}
@@ -892,21 +888,20 @@ namespace awh {
 		 * @param fmk      объект фреймворка для работы
 		 * @param log      объект для работы с логами
 		 * @param callback функция обратного вызова
-		 * @param ctx      контекст для вывода в сообщении
 		 */
-		static void rfdir(const string & path, const string & ext, const fmk_t * fmk, const log_t * log, function <void (const string &, const string &, const uintmax_t, const uintmax_t, void *)> callback, void * ctx = nullptr) noexcept {
+		static void rfdir(const string & path, const string & ext, const fmk_t * fmk, const log_t * log, function <void (const string &, const string &, const uintmax_t, const uintmax_t)> callback) noexcept {
 			// Если адрес каталога и расширение файлов переданы
 			if(!path.empty() && !ext.empty() && (fmk != nullptr) && (log != nullptr)){
 				// Если каталог существует
 				if(isdir(path)){
 					// Переходим по всему списку файлов в каталоге
-					rdir(path, ext, fmk, log, [&](const string & filename, const uintmax_t dirSize, void * ctx){
+					rdir(path, ext, fmk, log, [&](const string & filename, const uintmax_t dirSize){
 						// Выполняем считывание всех строк текста
-						rfile2(filename, log, [&](const string & str, const uintmax_t fileSize, void * ctx){
+						rfile2(filename, log, [&](const string & str, const uintmax_t fileSize){
 							// Если текст получен
-							if(!str.empty()) callback(str, filename, fileSize, dirSize, ctx);
-						}, ctx);
-					}, ctx);
+							if(!str.empty()) callback(str, filename, fileSize, dirSize);
+						});
+					});
 				// Выводим сообщение об ошибке
 				} else log->print("the path name: \"%s\" is not found", log_t::flag_t::CRITICAL, path.c_str());
 			}
