@@ -114,9 +114,9 @@ int main(int argc, char * argv[]){
 	// Создаём объект PROXY сервера
 	server::proxy_t proxy(&fmk, &log);
 	// Устанавливаем название сервиса
-	log.setLogName("Proxy Server");
+	log.name("Proxy Server");
 	// Устанавливаем формат времени
-	log.setLogFormat("%H:%M:%S %d.%m.%Y");
+	log.format("%H:%M:%S %d.%m.%Y");
 	/**
 	 * 1. Устанавливаем ожидание входящих сообщений
 	 */

@@ -30,9 +30,9 @@ int main(int argc, char * argv[]){
 	// Создаём биндинг
 	core_t core(&fmk, &log);
 	// Устанавливаем название сервиса
-	log.setLogName("DNS");
+	log.name("DNS");
 	// Устанавливаем формат времени
-	log.setLogFormat("%H:%M:%S %d.%m.%Y");
+	log.format("%H:%M:%S %d.%m.%Y");
 	// Выполняем резолвинг для доменного имени
 	core.resolve("google.com", scheme_t::family_t::IPV4, [&log](const string & ip, const scheme_t::family_t family, core_t * core){
 		// Выводим результат получения IP адреса

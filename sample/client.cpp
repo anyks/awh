@@ -81,9 +81,9 @@ int main(int argc, char * argv[]){
 	// Создаём объект SAMPLE запроса
 	client::sample_t sample(&core, &fmk, &log);
 	// Устанавливаем название сервиса
-	log.setLogName("SAMPLE Client");
+	log.name("SAMPLE Client");
 	// Устанавливаем формат времени
-	log.setLogFormat("%H:%M:%S %d.%m.%Y");
+	log.format("%H:%M:%S %d.%m.%Y");
 	/**
 	 * 1. Устанавливаем отложенные вызовы
 	 * 2. Устанавливаем ожидание входящих сообщений

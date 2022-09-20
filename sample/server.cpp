@@ -90,9 +90,9 @@ int main(int argc, char * argv[]){
 	// Создаём объект SAMPLE запроса
 	server::sample_t sample(&core, &fmk, &log);
 	// Устанавливаем название сервиса
-	log.setLogName("SAMPLE Server");
+	log.name("SAMPLE Server");
 	// Устанавливаем формат времени
-	log.setLogFormat("%H:%M:%S %d.%m.%Y");
+	log.format("%H:%M:%S %d.%m.%Y");
 	/**
 	 * 1. Устанавливаем ожидание входящих сообщений
 	 */

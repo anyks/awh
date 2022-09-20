@@ -20,7 +20,7 @@
  */
 void awh::Log::rotate() const noexcept {
 	// Открываем файл на чтение
-	ifstream file(this->_logFile, ios::in);
+	ifstream file(this->_filename, ios::in);
 	// Если файл открыт
 	if(file.is_open()){
 		// Перемещаем указатель в конец файла
@@ -46,13 +46,13 @@ void awh::Log::rotate() const noexcept {
 			// Копируем в буфер полученную дату и время
 			strftime(date, sizeof(date), format.c_str(), timeinfo);
 			// Открываем файл на чтение
-			ifstream file(this->_logFile, ios::in);
+			ifstream file(this->_filename, ios::in);
 			// Если файл открыт
 			if(file.is_open()){
 				// Прочитанная строка из файла
 				string filedata = "";
 				// Открываем файл на сжатие
-				gzFile gz = gzopen(this->_fmk->format("%s.gz", this->_logFile.c_str()).c_str(), "wb9h");
+				gzFile gz = gzopen(this->_fmk->format("%s.gz", this->_filename.c_str()).c_str(), "wb9h");
 				// Считываем до тех пор пока все удачно
 				while(file.good()){
 					// Считываем строку из файла
@@ -67,7 +67,7 @@ void awh::Log::rotate() const noexcept {
 				// Закрываем файл
 				file.close();
 				// Удаляем исходный файл логов
-				::unlink(this->_logFile.c_str());
+				::unlink(this->_filename.c_str());
 			}
 		}
 	}
@@ -107,7 +107,7 @@ void awh::Log::print(const string & format, flag_t flag, ...) const noexcept {
 			// Получаем структуру локального времени
 			struct tm * timeinfo = localtime(&seconds);
 			// Копируем в буфер полученную дату и время
-			strftime(date, sizeof(date), this->_logFormat.c_str(), timeinfo);
+			strftime(date, sizeof(date), this->_format.c_str(), timeinfo);
 			// Если размер буфера меньше 3-х байт
 			if(size < 3){
 				// Создаём строку для проверки
@@ -116,9 +116,9 @@ void awh::Log::print(const string & format, flag_t flag, ...) const noexcept {
 				isEnd = ((str.compare("\r\n") == 0) || (str.compare("\n") == 0));
 			}
 			// Если файл для вывода лога указан
-			if(this->_fileMode && !this->_logFile.empty()){
+			if(this->_fileMode && !this->_filename.empty()){
 				// Открываем файл на запись
-				ofstream file(this->_logFile, ios::out | ios::app);
+				ofstream file(this->_filename, ios::out | ios::app);
 				// Если файл открыт
 				if(file.is_open()){
 					// Определяем тип сообщения
@@ -131,17 +131,17 @@ void awh::Log::print(const string & format, flag_t flag, ...) const noexcept {
 						// Выводим информационное сообщение
 						case (uint8_t) flag_t::INFO:
 							// Формируем текстовый вид лога
-							logData = this->_fmk->format("Info %s %s : %s%s", date, this->_logName.c_str(), buffer.data(), (!isEnd ? "\r\n\r\n" : ""));
+							logData = this->_fmk->format("Info %s %s : %s%s", date, this->_name.c_str(), buffer.data(), (!isEnd ? "\r\n\r\n" : ""));
 						break;
 						// Выводим сообщение об ошибке
 						case (uint8_t) flag_t::CRITICAL:
 							// Формируем текстовый вид лога
-							logData = this->_fmk->format("Error %s %s : %s%s", date, this->_logName.c_str(), buffer.data(), (!isEnd ? "\r\n\r\n" : ""));
+							logData = this->_fmk->format("Error %s %s : %s%s", date, this->_name.c_str(), buffer.data(), (!isEnd ? "\r\n\r\n" : ""));
 						break;
 						// Выводим сообщение предупреждения
 						case (uint8_t) flag_t::WARNING:
 							// Формируем текстовый вид лога
-							logData = this->_fmk->format("Warning %s %s : %s%s", date, this->_logName.c_str(), buffer.data(), (!isEnd ? "\r\n\r\n" : ""));
+							logData = this->_fmk->format("Warning %s %s : %s%s", date, this->_name.c_str(), buffer.data(), (!isEnd ? "\r\n\r\n" : ""));
 						break;
 					}
 					// Выполняем запись в файл
@@ -162,17 +162,17 @@ void awh::Log::print(const string & format, flag_t flag, ...) const noexcept {
 				// Выводим информационное сообщение
 				case (uint8_t) flag_t::INFO:
 					// Формируем текстовый вид лога
-					logData = this->_fmk->format("\x1B[32m\x1B[1mInfo\x1B[0m \x1B[32m%s %s :\x1B[0m %s%s", date, this->_logName.c_str(), buffer.data(), (!isEnd ? "\r\n\r\n" : ""));
+					logData = this->_fmk->format("\x1B[32m\x1B[1mInfo\x1B[0m \x1B[32m%s %s :\x1B[0m %s%s", date, this->_name.c_str(), buffer.data(), (!isEnd ? "\r\n\r\n" : ""));
 				break;
 				// Выводим сообщение об ошибке
 				case (uint8_t) flag_t::CRITICAL:
 					// Формируем текстовый вид лога
-					logData = this->_fmk->format("\x1B[31m\x1B[1mError\x1B[0m \x1B[31m%s %s :\x1B[0m %s%s", date, this->_logName.c_str(), buffer.data(), (!isEnd ? "\r\n\r\n" : ""));
+					logData = this->_fmk->format("\x1B[31m\x1B[1mError\x1B[0m \x1B[31m%s %s :\x1B[0m %s%s", date, this->_name.c_str(), buffer.data(), (!isEnd ? "\r\n\r\n" : ""));
 				break;
 				// Выводим сообщение предупреждения
 				case (uint8_t) flag_t::WARNING:
 					// Формируем текстовый вид лога
-					logData = this->_fmk->format("\x1B[33m\x1B[1mWarning\x1B[0m \x1B[33m%s %s :\x1B[0m %s%s", date, this->_logName.c_str(), buffer.data(), (!isEnd ? "\r\n\r\n" : ""));
+					logData = this->_fmk->format("\x1B[33m\x1B[1mWarning\x1B[0m \x1B[33m%s %s :\x1B[0m %s%s", date, this->_name.c_str(), buffer.data(), (!isEnd ? "\r\n\r\n" : ""));
 				break;
 			}
 			// Если вывод сообщения в консоль разрешён
@@ -213,7 +213,7 @@ void awh::Log::print(const string & format, flag_t flag, const vector <string> &
 		// Получаем структуру локального времени
 		struct tm * timeinfo = localtime(&seconds);
 		// Копируем в буфер полученную дату и время
-		strftime(date, sizeof(date), this->_logFormat.c_str(), timeinfo);
+		strftime(date, sizeof(date), this->_format.c_str(), timeinfo);
 		// Создаём строку для проверки
 		const string & str = this->_fmk->format(format, items);
 		// Если размер буфера меньше 3-х байт
@@ -221,9 +221,9 @@ void awh::Log::print(const string & format, flag_t flag, const vector <string> &
 			// Проверяем является ли это переводом строки
 			isEnd = ((str.compare("\r\n") == 0) || (str.compare("\n") == 0));
 		// Если файл для вывода лога указан
-		if(this->_fileMode && !this->_logFile.empty()){
+		if(this->_fileMode && !this->_filename.empty()){
 			// Открываем файл на запись
-			ofstream file(this->_logFile, ios::out | ios::app);
+			ofstream file(this->_filename, ios::out | ios::app);
 			// Если файл открыт
 			if(file.is_open()){
 				// Определяем тип сообщения
@@ -236,17 +236,17 @@ void awh::Log::print(const string & format, flag_t flag, const vector <string> &
 					// Выводим информационное сообщение
 					case (uint8_t) flag_t::INFO:
 						// Формируем текстовый вид лога
-						logData = this->_fmk->format("Info %s %s : %s%s", date, this->_logName.c_str(), str.c_str(), (!isEnd ? "\n\n" : ""));
+						logData = this->_fmk->format("Info %s %s : %s%s", date, this->_name.c_str(), str.c_str(), (!isEnd ? "\n\n" : ""));
 					break;
 					// Выводим сообщение об ошибке
 					case (uint8_t) flag_t::CRITICAL:
 						// Формируем текстовый вид лога
-						logData = this->_fmk->format("Error %s %s : %s%s", date, this->_logName.c_str(), str.c_str(), (!isEnd ? "\n\n" : ""));
+						logData = this->_fmk->format("Error %s %s : %s%s", date, this->_name.c_str(), str.c_str(), (!isEnd ? "\n\n" : ""));
 					break;
 					// Выводим сообщение предупреждения
 					case (uint8_t) flag_t::WARNING:
 						// Формируем текстовый вид лога
-						logData = this->_fmk->format("Warning %s %s : %s%s", date, this->_logName.c_str(), str.c_str(), (!isEnd ? "\n\n" : ""));
+						logData = this->_fmk->format("Warning %s %s : %s%s", date, this->_name.c_str(), str.c_str(), (!isEnd ? "\n\n" : ""));
 					break;
 				}
 				// Выполняем запись в файл
@@ -267,17 +267,17 @@ void awh::Log::print(const string & format, flag_t flag, const vector <string> &
 			// Выводим информационное сообщение
 			case (uint8_t) flag_t::INFO:
 				// Формируем текстовый вид лога
-				logData = this->_fmk->format("\x1B[32m\x1B[1mInfo\x1B[0m \x1B[32m%s %s :\x1B[0m %s%s", date, this->_logName.c_str(), str.c_str(), (!isEnd ? "\r\n\r\n" : ""));
+				logData = this->_fmk->format("\x1B[32m\x1B[1mInfo\x1B[0m \x1B[32m%s %s :\x1B[0m %s%s", date, this->_name.c_str(), str.c_str(), (!isEnd ? "\r\n\r\n" : ""));
 			break;
 			// Выводим сообщение об ошибке
 			case (uint8_t) flag_t::CRITICAL:
 				// Формируем текстовый вид лога
-				logData = this->_fmk->format("\x1B[31m\x1B[1mError\x1B[0m \x1B[31m%s %s :\x1B[0m %s%s", date, this->_logName.c_str(), str.c_str(), (!isEnd ? "\r\n\r\n" : ""));
+				logData = this->_fmk->format("\x1B[31m\x1B[1mError\x1B[0m \x1B[31m%s %s :\x1B[0m %s%s", date, this->_name.c_str(), str.c_str(), (!isEnd ? "\r\n\r\n" : ""));
 			break;
 			// Выводим сообщение предупреждения
 			case (uint8_t) flag_t::WARNING:
 				// Формируем текстовый вид лога
-				logData = this->_fmk->format("\x1B[33m\x1B[1mWarning\x1B[0m \x1B[33m%s %s :\x1B[0m %s%s", date, this->_logName.c_str(), str.c_str(), (!isEnd ? "\r\n\r\n" : ""));
+				logData = this->_fmk->format("\x1B[33m\x1B[1mWarning\x1B[0m \x1B[33m%s %s :\x1B[0m %s%s", date, this->_name.c_str(), str.c_str(), (!isEnd ? "\r\n\r\n" : ""));
 			break;
 		}
 		// Если вывод сообщения в консоль разрешён
@@ -310,36 +310,36 @@ void awh::Log::allowConsole(const bool mode) noexcept {
 	this->_consoleMode = mode;
 }
 /**
- * setLogName Метод установки название сервиса для вывода лога
+ * name Метод установки название сервиса для вывода лога
  * @param name название сервиса для вывода лога
  */
-void awh::Log::setLogName(const string & name) noexcept {
+void awh::Log::name(const string & name) noexcept {
 	// Устанавливаем название сервиса для вывода лога
-	this->_logName = name;
+	this->_name = name;
 }
 /**
- * setLogMaxFileSize Метод установки максимального размера файла логов
+ * maxFileSize Метод установки максимального размера файла логов
  * @param size максимальный размер файла логов
  */
-void awh::Log::setLogMaxFileSize(const float size) noexcept {
+void awh::Log::maxFileSize(const float size) noexcept {
 	// Устанавливаем максимальный размер файла логов
 	this->_maxFileSize = size;
 }
 /**
- * setLogFormat Метод установки формата даты и времени для вывода лога
+ * format Метод установки формата даты и времени для вывода лога
  * @param format формат даты и времени для вывода лога
  */
-void awh::Log::setLogFormat(const string & format) noexcept {
+void awh::Log::format(const string & format) noexcept {
 	// Устанавливаем формат даты и времени для вывода лога
-	this->_logFormat = format;
+	this->_format = format;
 }
 /**
- * setLogFilename Метод установки файла для сохранения логов
+ * filename Метод установки файла для сохранения логов
  * @param filename адрес файла для сохранения логов
  */
-void awh::Log::setLogFilename(const string & filename) noexcept {
+void awh::Log::filename(const string & filename) noexcept {
 	// Устанавливаем адрес файла для сохранения логов
-	this->_logFile = filename;
+	this->_filename = filename;
 }
 /**
  * subscribe Метод подписки на события логов

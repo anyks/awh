@@ -107,9 +107,9 @@ int main(int argc, char * argv[]){
 	// Создаём биндинг
 	core_t core(&fmk, &log);
 	// Устанавливаем название сервиса
-	log.setLogName("Timer");
+	log.name("Timer");
 	// Устанавливаем формат времени
-	log.setLogFormat("%H:%M:%S %d.%m.%Y");
+	log.format("%H:%M:%S %d.%m.%Y");
 	// Устанавливаем функцию обратного вызова на запуск системы
 	core.callback((function <void (const bool, core_t *)>) bind(&Timer::run, &executor, _1, _2));
 	// Выполняем запуск таймера

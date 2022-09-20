@@ -84,9 +84,9 @@ int main(int argc, char * argv[]){
 	// Создаём объект REST запроса
 	client::rest_t rest(&core, &fmk, &log);
 	// Устанавливаем название сервиса
-	log.setLogName("REST Client");
+	log.name("REST Client");
 	// Устанавливаем формат времени
-	log.setLogFormat("%H:%M:%S %d.%m.%Y");
+	log.format("%H:%M:%S %d.%m.%Y");
 	/**
 	 * 1. Устанавливаем отложенные вызовы
 	 * 2. Устанавливаем ожидание входящих сообщений

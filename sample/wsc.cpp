@@ -218,9 +218,9 @@ int main(int argc, char * argv[]){
 	// Создаём объект WebSocket клиента
 	client::ws_t ws(&core, &fmk, &log);
 	// Устанавливаем название сервиса
-	log.setLogName("WebSocket Client");
+	log.name("WebSocket Client");
 	// Устанавливаем формат времени
-	log.setLogFormat("%H:%M:%S %d.%m.%Y");
+	log.format("%H:%M:%S %d.%m.%Y");
 	/**
 	 * 1. Устанавливаем запрет остановки сервиса
 	 * 2. Устанавливаем ожидание входящих сообщений

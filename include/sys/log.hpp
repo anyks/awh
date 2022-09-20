@@ -71,12 +71,12 @@ namespace awh {
 			// Максимальный размер файла лога
 			size_t _maxFileSize;
 		private:
-			// Адрес файла для сохранения логов
-			string _logFile;
 			// Название сервиса для вывода лога
-			string _logName;
+			string _name;
 			// Формат даты и времени для вывода лога
-			string _logFormat;
+			string _format;
+			// Адрес файла для сохранения логов
+			string _filename;
 		private:
 			// Функция обратного вызова которая срабатывает, при появлении лога
 			function <void (const flag_t, const string &)> _fn;
@@ -115,25 +115,25 @@ namespace awh {
 			void allowConsole(const bool mode) noexcept;
 		public:
 			/**
-			 * setLogName Метод установки название сервиса для вывода лога
+			 * name Метод установки название сервиса для вывода лога
 			 * @param name название сервиса для вывода лога
 			 */
-			void setLogName(const string & name) noexcept;
+			void name(const string & name) noexcept;
 			/**
-			 * setLogMaxFileSize Метод установки максимального размера файла логов
+			 * maxFileSize Метод установки максимального размера файла логов
 			 * @param size максимальный размер файла логов
 			 */
-			void setLogMaxFileSize(const float size) noexcept;
+			void maxFileSize(const float size) noexcept;
 			/**
-			 * setLogFormat Метод установки формата даты и времени для вывода лога
+			 * format Метод установки формата даты и времени для вывода лога
 			 * @param format формат даты и времени для вывода лога
 			 */
-			void setLogFormat(const string & format) noexcept;
+			void format(const string & format) noexcept;
 			/**
-			 * setLogFilename Метод установки файла для сохранения логов
+			 * filename Метод установки файла для сохранения логов
 			 * @param filename адрес файла для сохранения логов
 			 */
-			void setLogFilename(const string & filename) noexcept;
+			void filename(const string & filename) noexcept;
 		public:
 			/**
 			 * subscribe Метод подписки на события логов
@@ -147,9 +147,10 @@ namespace awh {
 			 * @param filename адрес файла для сохранения логов
 			 */
 			Log(const fmk_t * fmk, const string & filename = "") noexcept :
-			 _fmk(fmk), _fileMode(true), _consoleMode(true),
-			 _maxFileSize(MAX_SIZE_LOGFILE), _logFile(filename),
-			 _logName(AWH_SHORT_NAME), _logFormat(DATE_FORMAT), _fn(nullptr) {}
+			 _fileMode(true), _consoleMode(true),
+			 _maxFileSize(MAX_SIZE_LOGFILE),
+			 _name(AWH_SHORT_NAME), _format(DATE_FORMAT),
+			 _filename(filename), _fn(nullptr), _fmk(fmk) {}
 			/**
 			 * ~Log Деструктор
 			 */

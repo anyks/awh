@@ -125,9 +125,9 @@ int main(int argc, char * argv[]){
 	// Создаём объект REST запроса
 	server::ws_t ws(&core, &fmk, &log);
 	// Устанавливаем название сервиса
-	log.setLogName("WebSocket Server");
+	log.name("WebSocket Server");
 	// Устанавливаем формат времени
-	log.setLogFormat("%H:%M:%S %d.%m.%Y");
+	log.format("%H:%M:%S %d.%m.%Y");
 	/**
 	 * 1. Устанавливаем ожидание входящих сообщений
 	 */
