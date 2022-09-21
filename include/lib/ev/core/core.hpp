@@ -291,8 +291,10 @@ namespace awh {
 			// Создаём объект работы с логами
 			const log_t * log;
 		private:
+			// Функция обратного вызова при краше приложения
+			function <void (const int)> _crash;
 			// Функция обратного вызова при запуске/остановке модуля
-			function <void (const bool, Core *)> _fn;
+			function <void (const bool, Core *)> _active;
 		private:
 			/**
 			 * launching Метод вызова при активации базы событий
@@ -337,6 +339,11 @@ namespace awh {
 			 */
 			void unbind(Core * core) noexcept;
 		public:
+			/**
+			 * crash Метод установки функции обратного вызова при краше приложения
+			 * @param callback функция обратного вызова для установки
+			 */
+			void crash(function <void (const int)> callback) noexcept;
 			/**
 			 * callback Метод установки функции обратного вызова при запуске/остановки работы модуля
 			 * @param callback функция обратного вызова для установки
