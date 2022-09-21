@@ -511,6 +511,10 @@ void awh::Core::signals(const int signal) noexcept {
 		}
 	// Если процесс является родительским
 	} else {
+		// Если функция обратного вызова установлена
+		if(this->_crash != nullptr)
+			// Выполняем функцию обратного вызова
+			this->_crash(signal);
 		/**
 		 * Если операционной системой является MS Windows
 		 */
@@ -624,6 +628,16 @@ void awh::Core::unbind(Core * core) noexcept {
 	}
 }
 /**
+ * crash Метод установки функции обратного вызова при краше приложения
+ * @param callback функция обратного вызова для установки
+ */
+void awh::Core::crash(function <void (const int)> callback) noexcept {
+	// Выполняем блокировку потока
+	const lock_guard <recursive_mutex> lock(this->_mtx.main);
+	// Устанавливаем функцию обратного вызова
+	this->_crash = callback;
+}
+/**
  * callback Метод установки функции обратного вызова при запуске/остановки работы модуля
  * @param callback функция обратного вызова для установки
  */
@@ -631,7 +645,7 @@ void awh::Core::callback(function <void (const bool, Core *)> callback) noexcept
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->_mtx.main);
 	// Устанавливаем функцию обратного вызова
-	this->_fn = callback;
+	this->_active = callback;
 }
 /**
  * stop Метод остановки клиента
@@ -1720,7 +1734,7 @@ awh::Core::Core(const fmk_t * fmk, const log_t * log, const scheme_t::family_t f
  dns(fmk, log, &nwk), dispatch(this), _sig(dispatch.base),
  status(status_t::STOP), type(engine_t::type_t::CLIENT), mode(false),
  noinfo(false), persist(false), cores(0), servName(AWH_SHORT_NAME),
- _persIntvl(PERSIST_INTERVAL), fmk(fmk), log(log), _fn(nullptr) {
+ _persIntvl(PERSIST_INTERVAL), fmk(fmk), log(log), _crash(nullptr), _active(nullptr) {
 	// Устанавливаем тип сокета
 	this->net.sonet = sonet;
 	// Устанавливаем тип активного интернет-подключения
