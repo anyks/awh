@@ -302,29 +302,34 @@ void awh::Core::Dispatch::frequency(const uint8_t msec) noexcept {
 }
 /**
  * Dispatch Конструктор
+ * @param main флаг основого приложения
+ * @param core объект сетевого ядра
  */
-awh::Core::Dispatch::Dispatch(Core * core) noexcept : _core(core), _easy(false), _work(false), _init(true), _freeze(false), base(nullptr), _freq(10ms) {
+awh::Core::Dispatch::Dispatch(const bool main, core_t * core) noexcept : _core(core), _main(main), _easy(false), _work(false), _init(true), _freeze(false), base(nullptr), _freq(10ms) {
 	/**
 	 * Если операционной системой является Windows
 	 */
 	#if defined(_WIN32) || defined(_WIN64)
-		// Идентификатор ошибки
-		int error = 0;
-		// Объект данных запроса
-		WSADATA wsaData;
-		// Выполняем инициализацию сетевого контекста
-		if((error = WSAStartup(MAKEWORD(2, 2), &wsaData)) != 0){
-			// Очищаем сетевой контекст
-			WSACleanup();
-			// Выходим из приложения
-			exit(EXIT_FAILURE);
-		}
-		// Выполняем проверку версии WinSocket
-		if((2 != LOBYTE(wsaData.wVersion)) || (2 != HIBYTE(wsaData.wVersion))){
-			// Очищаем сетевой контекст
-			WSACleanup();
-			// Выходим из приложения
-			exit(EXIT_FAILURE);
+		// Если приложение является основным
+		if(main){
+			// Идентификатор ошибки
+			int error = 0;
+			// Объект данных запроса
+			WSADATA wsaData;
+			// Выполняем инициализацию сетевого контекста
+			if((error = WSAStartup(MAKEWORD(2, 2), &wsaData)) != 0){
+				// Очищаем сетевой контекст
+				WSACleanup();
+				// Выходим из приложения
+				exit(EXIT_FAILURE);
+			}
+			// Выполняем проверку версии WinSocket
+			if((2 != LOBYTE(wsaData.wVersion)) || (2 != HIBYTE(wsaData.wVersion))){
+				// Очищаем сетевой контекст
+				WSACleanup();
+				// Выходим из приложения
+				exit(EXIT_FAILURE);
+			}
 		}
 	#endif
 	// Выполняем инициализацию базы событий
@@ -340,6 +345,13 @@ awh::Core::Dispatch::~Dispatch() noexcept {
 	if(this->base != nullptr)
 		// Удаляем объект базы событий
 		event_base_free(this->base);
+	/**
+	 * Если операционной системой является MS Windows
+	 */
+	#if defined(_WIN32) || defined(_WIN64)
+		// Очищаем сетевой контекст
+		if(this->_main) WSACleanup();
+	#endif
 }
 /**
  * launching Метод вызова при активации базы событий
@@ -509,20 +521,10 @@ void awh::Core::signals(const int signal) noexcept {
 				this->log->print("child process [%u] was terminated by [%s] signal", log_t::flag_t::WARNING, getpid(), "SIGABRT");
 			break;
 		}
-	// Если процесс является родительским
-	} else {
-		// Если функция обратного вызова установлена
-		if(this->_crash != nullptr)
-			// Выполняем функцию обратного вызова
-			this->_crash(signal);
-		/**
-		 * Если операционной системой является MS Windows
-		 */
-		#if defined(_WIN32) || defined(_WIN64)
-			// Очищаем сетевой контекст
-			WSACleanup();
-		#endif
-	}
+	// Если процесс является родительским и функция обратного вызова установлена
+	} else if(this->_crash != nullptr)
+		// Выполняем функцию обратного вызова
+		this->_crash(signal);
 }
 /**
  * clean Метод буфера событий
@@ -1724,14 +1726,15 @@ void awh::Core::network(const vector <string> & ip, const vector <string> & ns, 
 }
 /**
  * Core Конструктор
+ * @param main   флаг основого приложения
  * @param fmk    объект фреймворка
  * @param log    объект для работы с логами
  * @param family тип протокола интернета (IPV4 / IPV6 / NIX)
  * @param sonet  тип сокета подключения (TCP / UDP)
  */
-awh::Core::Core(const fmk_t * fmk, const log_t * log, const scheme_t::family_t family, const scheme_t::sonet_t sonet) noexcept :
- pid(getpid()), nwk(fmk), uri(fmk, &nwk), engine(fmk, log, &uri),
- dns(fmk, log, &nwk), dispatch(this), _sig(dispatch.base),
+awh::Core::Core(const bool main, const fmk_t * fmk, const log_t * log, const scheme_t::family_t family, const scheme_t::sonet_t sonet) noexcept :
+ _main(main), pid(getpid()), nwk(fmk), uri(fmk, &nwk), engine(fmk, log, &uri),
+ dns(fmk, log, &nwk), dispatch(main, this), _sig(dispatch.base),
  status(status_t::STOP), type(engine_t::type_t::CLIENT), mode(false),
  noinfo(false), persist(false), cores(0), servName(AWH_SHORT_NAME),
  _persIntvl(PERSIST_INTERVAL), fmk(fmk), log(log), _crash(nullptr), _active(nullptr) {
@@ -1745,12 +1748,15 @@ awh::Core::Core(const fmk_t * fmk, const log_t * log, const scheme_t::family_t f
 		this->unixSocket();
 	// Устанавливаем базу событий для DNS резолвера
 	this->dns.base(this->dispatch.base);
-	// Устанавливаем функцию обработки сигналов
-	this->_sig.on(std::bind(&core_t::signals, this, placeholders::_1));
-	// Если тип сокета подключения не является unix-сокетом
-	if(this->net.family != scheme_t::family_t::NIX)
-		// Выполняем запуск отслеживания сигналов
-		this->_sig.start();
+	// Если приложение является основным
+	if(main){
+		// Устанавливаем функцию обработки сигналов
+		this->_sig.on(std::bind(&core_t::signals, this, placeholders::_1));
+		// Если тип сокета подключения не является unix-сокетом
+		if(this->net.family != scheme_t::family_t::NIX)
+			// Выполняем запуск отслеживания сигналов
+			this->_sig.start();
+	}
 }
 /**
  * ~Core Деструктор
@@ -1784,4 +1790,8 @@ awh::Core::~Core() noexcept {
 	}
 	// Выполняем разблокировку потока
 	this->_mtx.status.unlock();
+	// Если приложение является основным и тип сокета подключения не является unix-сокетом
+	if(this->_main && (this->net.family != scheme_t::family_t::NIX))
+		// Выполняем остановку отслеживания сигналов
+		this->_sig.stop();
 }

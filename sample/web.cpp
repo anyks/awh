@@ -123,7 +123,7 @@ int main(int argc, char * argv[]){
 	// Создаём объект исполнителя
 	WebServer executor(&log);
 	// Создаём биндинг
-	server::core_t core(&fmk, &log);
+	server::core_t core(true, &fmk, &log);
 	// Создаём объект REST запроса
 	server::rest_t rest(&core, &fmk, &log);
 	// Устанавливаем название сервиса

@@ -80,7 +80,7 @@ int main(int argc, char * argv[]){
 	// Создаём объект исполнителя
 	WebClient executor(&log);
 	// Создаём биндинг
-	client::core_t core(&fmk, &log);
+	client::core_t core(true, &fmk, &log);
 	// Создаём объект REST запроса
 	client::rest_t rest(&core, &fmk, &log);
 	// Устанавливаем название сервиса

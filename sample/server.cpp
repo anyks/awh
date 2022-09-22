@@ -86,7 +86,7 @@ int main(int argc, char * argv[]){
 	// Создаём объект исполнителя
 	Server executor(&log);
 	// Создаём биндинг
-	server::core_t core(&fmk, &log);
+	server::core_t core(true, &fmk, &log);
 	// Создаём объект SAMPLE запроса
 	server::sample_t sample(&core, &fmk, &log);
 	// Устанавливаем название сервиса

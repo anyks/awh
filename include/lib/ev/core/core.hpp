@@ -163,6 +163,8 @@ namespace awh {
 					// Объект ядра
 					Core * _core;
 				private:
+					// Флаг основного приложения
+					bool _main;
 					// Флаг простого чтения базы событий
 					bool _easy;
 					// Флаг работы модуля
@@ -221,13 +223,18 @@ namespace awh {
 				public:
 					/**
 					 * Dispatch Конструктор
+					 * @param main флаг основого приложения
+					 * @param core объект сетевого ядра
 					 */
-					Dispatch(Core * core) noexcept;
+					Dispatch(const bool main, Core * core) noexcept;
 					/**
 					 * ~Dispatch Деструктор
 					 */
 					~Dispatch() noexcept;
 			} dispatch_t;
+		private:
+			// Флаг основного приложения
+			bool _main;
 		protected:
 			// Идентификатор процесса
 			pid_t pid;
@@ -623,12 +630,13 @@ namespace awh {
 		public:
 			/**
 			 * Core Конструктор
+			 * @param main   флаг основого приложения
 			 * @param fmk    объект фреймворка
 			 * @param log    объект для работы с логами
 			 * @param family тип протокола интернета (IPV4 / IPV6 / NIX)
 			 * @param sonet  тип сокета подключения (TCP / UDP / TLS / DTLS)
 			 */
-			Core(const fmk_t * fmk, const log_t * log, const scheme_t::family_t family = scheme_t::family_t::IPV4, const scheme_t::sonet_t sonet = scheme_t::sonet_t::TCP) noexcept;
+			Core(const bool main, const fmk_t * fmk, const log_t * log, const scheme_t::family_t family = scheme_t::family_t::IPV4, const scheme_t::sonet_t sonet = scheme_t::sonet_t::TCP) noexcept;
 			/**
 			 * ~Core Деструктор
 			 */

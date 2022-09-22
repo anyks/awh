@@ -105,7 +105,7 @@ int main(int argc, char * argv[]){
 	// Создаём объект исполнителя
 	Timer executor(&log);
 	// Создаём биндинг
-	core_t core(&fmk, &log);
+	core_t core(true, &fmk, &log);
 	// Устанавливаем название сервиса
 	log.name("Timer");
 	// Устанавливаем формат времени
