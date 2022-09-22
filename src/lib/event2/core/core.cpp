@@ -360,7 +360,7 @@ void awh::Core::launching() noexcept {
 		}
 	}
 	// Если функция обратного вызова установлена, выполняем
-	if(this->_fn != nullptr) this->_fn(true, this);
+	if(this->_active != nullptr) this->_active(true, this);
 	// Выводим в консоль информацию
 	if(!this->noinfo) this->log->print("[+] start service: pid = %u", log_t::flag_t::INFO, getpid());
 	// Если таймер периодического запуска коллбека активирован, запускаем персистентную работу
@@ -392,7 +392,7 @@ void awh::Core::closedown() noexcept {
 	// Устанавливаем статус сетевого ядра
 	this->status = status_t::STOP;
 	// Если функция обратного вызова установлена, выполняем
-	if(this->_fn != nullptr) this->_fn(false, this);
+	if(this->_active != nullptr) this->_active(false, this);
 	// Выводим в консоль информацию
 	if(!this->noinfo) this->log->print("[-] stop service: pid = %u", log_t::flag_t::INFO, getpid());
 }
