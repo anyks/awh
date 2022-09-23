@@ -160,8 +160,17 @@ void awh::Core::Dispatch::stop() noexcept {
 		const lock_guard <recursive_mutex> lock(this->_mtx);
 		// Снимаем флаг работы модуля
 		this->_work = false;
-		// Выполняем пинок
-		this->kick();
+		// Если ядро является основным
+		if(this->_main)
+			// Выполняем пинок
+			this->kick();
+		// Если ядро является дополнительным
+		else {
+			// Разблокируем обещание
+			this->_pms.set_value();
+			// Создаём новое обещание
+			this->_pms = promise <void>();
+		}
 	}
 }
 /**
@@ -178,19 +187,28 @@ void awh::Core::Dispatch::start() noexcept {
 		this->_mtx.unlock();
 		// Выполняем запуск функции активации базы событий
 		std::bind(&awh::Core::launching, this->_core)();
-		// Выполняем чтение базы событий пока это разрешено
-		while(this->_work){
-			// Если база событий проинициализированна
-			if(this->_init){
-				// Если не нужно использовать простой режим чтения
-				if(!this->_easy)
-					// Выполняем чтение базы событий
-					this->base.run();
-				// Выполняем чтение базы событий в простом режиме
-				else this->base.run(ev::NOWAIT);
+		// Если ядро является основным
+		if(this->_main){
+			// Выполняем чтение базы событий пока это разрешено
+			while(this->_work){
+				// Если база событий проинициализированна
+				if(this->_init){
+					// Если не нужно использовать простой режим чтения
+					if(!this->_easy)
+						// Выполняем чтение базы событий
+						this->base.run();
+					// Выполняем чтение базы событий в простом режиме
+					else this->base.run(ev::NOWAIT);
+				}
+				// Замораживаем поток на период времени частоты обновления базы событий
+				this_thread::sleep_for(this->_freq);
 			}
-			// Замораживаем поток на период времени частоты обновления базы событий
-			this_thread::sleep_for(this->_freq);
+		// Если ядро является дополнительным
+		} else {
+			// Создаём объект будущего
+			shared_future <void> future = this->_pms.get_future();
+			// Выполняем блокировку
+			future.wait();
 		}
 		// Выполняем остановку функции активации базы событий
 		std::bind(&awh::Core::closedown, this->_core)();

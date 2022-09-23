@@ -20,6 +20,7 @@
  */
 #include <map>
 #include <mutex>
+#include <future>
 #include <chrono>
 #include <thread>
 #include <string>
@@ -174,6 +175,9 @@ namespace awh {
 				public:
 					// База событий
 					ev::loop_ref base;
+				private:
+					// Создаём объект обещания
+					promise <void> _pms;
 				private:
 					// Мютекс для блокировки потока
 					recursive_mutex _mtx;
