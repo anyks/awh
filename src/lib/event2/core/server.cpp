@@ -792,13 +792,13 @@ void awh::server::Core::transfer(const engine_t::method_t method, const size_t a
 					// Если данные получены
 					if(bytes > 0){
 						// Если данные считанные из буфера, больше размера ожидающего буфера
-						if((adj->marker.write.max > 0) && (bytes >= adj->marker.write.max)){
+						if((adj->marker.read.max > 0) && (bytes >= adj->marker.read.max)){
 							// Смещение в буфере и отправляемый размер данных
 							size_t offset = 0, actual = 0;
 							// Выполняем пересылку всех полученных данных
 							while((bytes - offset) > 0){
 								// Определяем размер отправляемых данных
-								actual = ((bytes - offset) >= adj->marker.write.max ? adj->marker.write.max : (bytes - offset));
+								actual = ((bytes - offset) >= adj->marker.read.max ? adj->marker.read.max : (bytes - offset));
 								// Если функция обратного вызова на получение данных установлена
 								if(shm->callback.read != nullptr)
 									// Выводим функцию обратного вызова
@@ -810,6 +810,8 @@ void awh::server::Core::transfer(const engine_t::method_t method, const size_t a
 						} else if(shm->callback.read != nullptr)
 							// Выводим функцию обратного вызова
 							shm->callback.read(buffer, bytes, aid, shm->sid, reinterpret_cast <awh::core_t *> (this));
+						// Продолжаем получение данных дальше
+						continue;
 					// Если данные не могут быть прочитаны
 					} else {
 						// Если нужно повторить попытку

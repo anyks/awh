@@ -133,6 +133,7 @@ int main(int argc, char * argv[]){
 	// uri_t::url_t url = uri.parse("https://api.binance.com/api/v3/exchangeInfo?symbol=BTCUSDT");
 	// uri_t::url_t url = uri.parse("https://testnet.binance.vision/api/v3/exchangeInfo");
 	// uri_t::url_t url = uri.parse("https://api.coingecko.com/api/v3/coins/list?include_platform=true");
+	// uri_t::url_t url = uri.parse("https://api.coingecko.com/api/v3/simple/price?ids=tron&vs_currencies=usd");
 	// Подписываемся на событие коннекта и дисконнекта клиента
 	rest.on(bind(&WebClient::active, &executor, _1, _2));
 	// Подписываемся на событие получения сообщения

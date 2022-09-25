@@ -1022,14 +1022,12 @@ void awh::client::Core::transfer(const engine_t::method_t method, const size_t a
 					int64_t bytes = -1;
 					// Создаём буфер входящих данных
 					char buffer[BUFFER_SIZE];
+					// Переводим BIO в блокирующий режим
+					adj->ectx.block();
 					// Останавливаем чтение данных с клиента
 					adj->bev.events.read.stop();
 					// Выполняем перебор бесконечным циклом пока это разрешено
 					while(!adj->bev.locked.read && (shm->status.real == scheme_t::mode_t::CONNECT)){
-						// Если дочерние активные подключения есть и сокет блокирующий
-						if((this->cores > 0) && (adj->ectx.isblock() == 1))
-							// Переводим BIO в не блокирующий режим
-							adj->ectx.noblock();
 						// Выполняем получение сообщения от клиента
 						bytes = adj->ectx.read(buffer, sizeof(buffer));
 						// Если время ожидания чтения данных установлено
@@ -1043,13 +1041,13 @@ void awh::client::Core::transfer(const engine_t::method_t method, const size_t a
 						// Если данные получены
 						if(bytes > 0){
 							// Если данные считанные из буфера, больше размера ожидающего буфера
-							if((adj->marker.write.max > 0) && (bytes >= adj->marker.write.max)){
+							if((adj->marker.read.max > 0) && (bytes >= adj->marker.read.max)){
 								// Смещение в буфере и отправляемый размер данных
 								size_t offset = 0, actual = 0;
 								// Выполняем пересылку всех полученных данных
 								while((bytes - offset) > 0){
 									// Определяем размер отправляемых данных
-									actual = ((bytes - offset) >= adj->marker.write.max ? adj->marker.write.max : (bytes - offset));
+									actual = ((bytes - offset) >= adj->marker.read.max ? adj->marker.read.max : (bytes - offset));
 									// Если подключение производится через, прокси-сервер
 									if(shm->isProxy()){
 										// Если функция обратного вызова для вывода записи существует
@@ -1076,6 +1074,10 @@ void awh::client::Core::transfer(const engine_t::method_t method, const size_t a
 									// Выводим функцию обратного вызова
 									shm->callback.read(buffer, bytes, aid, shm->sid, reinterpret_cast <awh::core_t *> (this));
 							}
+							// Переводим BIO в неблокирующий режим
+							adj->ectx.noblock();
+							// Продолжаем получение данных дальше
+							continue;
 						// Если данные не могут быть прочитаны
 						} else {
 							// Если нужно повторить попытку
