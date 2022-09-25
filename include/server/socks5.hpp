@@ -339,6 +339,11 @@ namespace awh {
 				 */
 				void verifySSL(const bool mode) noexcept;
 				/**
+				 * clusterAutoRestart Метод установки флага перезапуска процессов
+				 * @param mode флаг перезапуска процессов
+				 */
+				void clusterAutoRestart(const bool mode) noexcept;
+				/**
 				 * ciphers Метод установки алгоритмов шифрования
 				 * @param ciphers список алгоритмов шифрования для установки
 				 */

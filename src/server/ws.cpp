@@ -1288,6 +1288,14 @@ void awh::server::WebSocket::segmentSize(const size_t size) noexcept {
 	if(size > 0) this->_frameSize = size;
 }
 /**
+ * clusterAutoRestart Метод установки флага перезапуска процессов
+ * @param mode флаг перезапуска процессов
+ */
+void awh::server::WebSocket::clusterAutoRestart(const bool mode) noexcept {
+	// Выполняем установку флага автоматического перезапуска
+	const_cast <server::core_t *> (this->_core)->clusterAutoRestart(this->_scheme.sid, mode);
+}
+/**
  * compress Метод установки метода сжатия
  * @param метод сжатия сообщений
  */

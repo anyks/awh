@@ -411,6 +411,11 @@ namespace awh {
 				 */
 				void segmentSize(const size_t size) noexcept;
 				/**
+				 * clusterAutoRestart Метод установки флага перезапуска процессов
+				 * @param mode флаг перезапуска процессов
+				 */
+				void clusterAutoRestart(const bool mode) noexcept;
+				/**
 				 * compress Метод установки метода сжатия
 				 * @param метод сжатия сообщений
 				 */

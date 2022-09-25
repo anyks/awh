@@ -637,6 +637,14 @@ void awh::server::ProxySocks5::verifySSL(const bool mode) noexcept {
 	this->_core.server.verifySSL(mode);
 }
 /**
+ * clusterAutoRestart Метод установки флага перезапуска процессов
+ * @param mode флаг перезапуска процессов
+ */
+void awh::server::ProxySocks5::clusterAutoRestart(const bool mode) noexcept {
+	// Выполняем установку флага автоматического перезапуска
+	this->_core.server.clusterAutoRestart(this->_scheme.sid, mode);
+}
+/**
  * ciphers Метод установки алгоритмов шифрования
  * @param ciphers список алгоритмов шифрования для установки
  */

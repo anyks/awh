@@ -404,6 +404,11 @@ namespace awh {
 				 */
 				void maxRequests(const size_t max) noexcept;
 				/**
+				 * clusterAutoRestart Метод установки флага перезапуска процессов
+				 * @param mode флаг перезапуска процессов
+				 */
+				void clusterAutoRestart(const bool mode) noexcept;
+				/**
 				 * compress Метод установки метода сжатия
 				 * @param метод сжатия сообщений
 				 */

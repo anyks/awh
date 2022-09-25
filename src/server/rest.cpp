@@ -816,6 +816,14 @@ void awh::server::Rest::maxRequests(const size_t max) noexcept {
 	this->_maxRequests = max;
 }
 /**
+ * clusterAutoRestart Метод установки флага перезапуска процессов
+ * @param mode флаг перезапуска процессов
+ */
+void awh::server::Rest::clusterAutoRestart(const bool mode) noexcept {
+	// Выполняем установку флага автоматического перезапуска
+	const_cast <server::core_t *> (this->_core)->clusterAutoRestart(this->_scheme.sid, mode);
+}
+/**
  * compress Метод установки метода сжатия
  * @param метод сжатия сообщений
  */

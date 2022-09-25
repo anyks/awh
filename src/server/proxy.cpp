@@ -1190,6 +1190,14 @@ void awh::server::Proxy::maxRequests(const size_t max) noexcept {
 	this->_maxRequests = max;
 }
 /**
+ * clusterAutoRestart Метод установки флага перезапуска процессов
+ * @param mode флаг перезапуска процессов
+ */
+void awh::server::Proxy::clusterAutoRestart(const bool mode) noexcept {
+	// Выполняем установку флага автоматического перезапуска
+	this->_core.server.clusterAutoRestart(this->_scheme.sid, mode);
+}
+/**
  * compress Метод установки метода сжатия
  * @param метод сжатия сообщений
  */

@@ -31,46 +31,49 @@
 		auto jt = this->cluster->_jacks.find(this->wid);
 		// Если работник найден
 		if(jt != this->cluster->_jacks.end()){
-			// Выполняем поиск завершившегося процесса
-			for(auto & jack : jt->second){
-				// Если процесс найден
-				if(jack->pid == watcher.rpid){
-					// Выводим сообщение об ошибке, о невозможности отправкить сообщение
-					this->cluster->_log->print("child process stopped, pid = %d, status = %x", log_t::flag_t::CRITICAL, jack->pid, watcher.rstatus);
-					// Если был завершён активный процесс и функция обратного вызова установлена
-					if(this->cluster->_fn != nullptr)
-						// Выводим функцию обратного вызова
-						this->cluster->_fn(this->wid, watcher.rpid, event_t::STOP);
-					// Если статус сигнала, ручной остановкой процесса
-					if(watcher.rstatus == SIGINT)
-						// Выходим из приложения
-						exit(SIGINT);
-					// Если время жизни процесса составляет меньше 3-х минут
-					else if((this->cluster->_fmk->unixTimestamp() - jack->date) <= 180000)
-						// Выходим из приложения
-						exit(EXIT_FAILURE);
-					// Выходим из цикла
-					break;
-				}
-			}
 			// Выполняем поиск воркера
 			auto it = this->cluster->_workers.find(this->wid);
-			// Если запрашиваемый воркер найден и флаг автоматического перезапуска активен
-			if((it != this->cluster->_workers.end()) && it->second.restart){
-				// Создаём объект работника
-				unique_ptr <jack_t> jack(new jack_t);
-				// Получаем индекс упавшего процесса
-				const uint16_t index = this->cluster->_pids.at(watcher.rpid);
-				// Удаляем процесс из списка процессов
-				this->cluster->_pids.erase(watcher.rpid);
-				// Устанавливаем дочерний процесс
-				jt->second.at(index) = move(jack);
-				// Замораживаем поток на период в 5 секунд
-				this_thread::sleep_for(5s);
-				// Выполняем создание нового процесса
-				this->cluster->fork(it->first, index, it->second.restart);
-			// Просто удаляем процесс из списка процессов
-			} else this->cluster->_pids.erase(watcher.rpid);
+			// Если запрашиваемый воркер найден
+			if(it != this->cluster->_workers.end()){
+				// Выполняем поиск завершившегося процесса
+				for(auto & jack : jt->second){
+					// Если процесс найден
+					if(jack->pid == watcher.rpid){
+						// Выводим сообщение об ошибке, о невозможности отправкить сообщение
+						this->cluster->_log->print("child process stopped, pid = %d, status = %x", log_t::flag_t::CRITICAL, jack->pid, watcher.rstatus);
+						// Если был завершён активный процесс и функция обратного вызова установлена
+						if(this->cluster->_fn != nullptr)
+							// Выводим функцию обратного вызова
+							this->cluster->_fn(this->wid, watcher.rpid, event_t::STOP);
+						// Если статус сигнала, ручной остановкой процесса
+						if((watcher.rstatus == SIGINT) || !it->second.restart)
+							// Выходим из приложения
+							exit(SIGINT);
+						// Если время жизни процесса составляет меньше 3-х минут
+						else if((this->cluster->_fmk->unixTimestamp() - jack->date) <= 180000)
+							// Выходим из приложения
+							exit(EXIT_FAILURE);
+						// Выходим из цикла
+						break;
+					}
+				}
+				// Если флаг автоматического перезапуска активен
+				if(it->second.restart){
+					// Создаём объект работника
+					unique_ptr <jack_t> jack(new jack_t);
+					// Получаем индекс упавшего процесса
+					const uint16_t index = this->cluster->_pids.at(watcher.rpid);
+					// Удаляем процесс из списка процессов
+					this->cluster->_pids.erase(watcher.rpid);
+					// Устанавливаем дочерний процесс
+					jt->second.at(index) = move(jack);
+					// Замораживаем поток на период в 5 секунд
+					this_thread::sleep_for(5s);
+					// Выполняем создание нового процесса
+					this->cluster->fork(it->first, index, it->second.restart);
+				// Просто удаляем процесс из списка процессов
+				} else this->cluster->_pids.erase(watcher.rpid);
+			}
 		}
 	}
 #endif
@@ -161,6 +164,8 @@ void awh::Cluster::fork(const size_t wid, const uint16_t index, const bool stop)
 					} break;
 					// Если - это родительский процесс
 					default: {
+						// Активируем флаг запуска кластера
+						it->second.working = true;
 						// Добавляем в список дочерних процессов, идентификатор процесса
 						this->_pids.emplace(pid, index);
 						// Получаем объект текущего работника
@@ -170,12 +175,9 @@ void awh::Cluster::fork(const size_t wid, const uint16_t index, const bool stop)
 						// Устанавливаем время начала жизни процесса
 						jack->date = this->_fmk->unixTimestamp();
 						// Если функция обратного вызова установлена, выводим её
-						if(initialization && (this->_fn != nullptr)){
-							// Активируем флаг запуска кластера
-							it->second.working = true;
+						if(this->_fn != nullptr)
 							// Выводим функцию обратного вызова
 							this->_fn(it->first, pid, event_t::START);
-						}
 						// Устанавливаем базу событий
 						jack->cw.set(this->_base);
 						// Устанавливаем событие на выход дочернего процесса
