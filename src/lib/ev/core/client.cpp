@@ -1033,8 +1033,6 @@ void awh::client::Core::transfer(const engine_t::method_t method, const size_t a
 							adj->bev.timer.read.again();
 						// Останавливаем таймаут ожидания на чтение из сокета
 						} else adj->bev.timer.read.stop();
-						// Выполняем принудительное исполнение таймеров
-						if(adj->ectx.isblock() != 0) this->executeTimers();
 						/**
 						 * Если операционной системой является MS Windows
 						 */
@@ -1130,8 +1128,6 @@ void awh::client::Core::transfer(const engine_t::method_t method, const size_t a
 							if(bytes > 0)
 								// Добавляем записанные байты в буфер
 								buffer.insert(buffer.end(), adj->buffer.data() + offset, (adj->buffer.data() + offset) + bytes);
-							// Выполняем принудительное исполнение таймеров
-							if(adj->ectx.isblock() != 0) this->executeTimers();
 							// Если время ожидания записи данных установлено
 							if(adj->timeouts.write > 0){
 								// Устанавливаем время ожидания на запись данных

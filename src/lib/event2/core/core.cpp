@@ -129,8 +129,6 @@ void awh::scheme_t::resolving(const string & ip, const int family, const size_t 
 void awh::Core::Timer::callback(const evutil_socket_t fd, const short event) noexcept {
 	// Останавливаем событие таймера
 	this->event.stop();
-	// Устанавливаем текущий штамп времени
-	this->stamp = this->core->fmk->unixTimestamp();
 	// Если функция обратного вызова установлена
 	if(this->fn != nullptr) this->fn(this->id, this->core);
 	// Если персистентная работа не установлена, удаляем таймер
@@ -381,8 +379,6 @@ void awh::Core::launching() noexcept {
 		this->_timer.persist = this->persist;
 		// Устанавливаем время задержки персистентного вызова
 		this->_timer.delay = this->_persIntvl;
-		// Устанавливаем текущий штамп времени
-		this->_timer.stamp = this->fmk->unixTimestamp();
 		// Устанавливаем тип таймера
 		this->_timer.event.set(-1, EV_TIMEOUT);
 		// Устанавливаем базу данных событий
@@ -409,52 +405,6 @@ void awh::Core::closedown() noexcept {
 	if(!this->noinfo) this->log->print("[-] stop service: pid = %u", log_t::flag_t::INFO, getpid());
 }
 /**
- * executeTimers Метод принудительного исполнения работы таймеров
- */
-void awh::Core::executeTimers() noexcept {
-	// Если персистентный таймер или пользовательские таймеры активны
-	if((this->type == engine_t::type_t::CLIENT) && (this->persist || !this->_timers.empty())){
-		// Выполняем получение текущего значения времени
-		const time_t date = this->fmk->unixTimestamp();
-		// Если таймер периодического запуска коллбека активирован
-		if(this->persist){
-			// Если таймер не исполнился в заданное время
-			if((date - this->_timer.stamp) >= this->_timer.delay)
-				// Выполняем функцию обратного вызова таймера
-				this->persistent(-1, EV_TIMEOUT);
-		}
-		// Если список таймеров не пустой
-		if(!this->_timers.empty()){
-			// Переходим по всем таймерам
-			for(auto it = this->_timers.begin(); it != this->_timers.end();){
-				// Если таймер не исполнился в заданное время
-				if((date - it->second->stamp) >= it->second->delay){
-					// Останавливаем работу таймера
-					it->second->event.stop();
-					// Устанавливаем текущий штамп времени
-					it->second->stamp = date;
-					// Если функция обратного вызова установлена
-					if(it->second->fn != nullptr)
-						// Выполняем функцию обратного вызова
-						it->second->fn(it->first, this);
-					// Если персистентная работа не установлена, удаляем таймер
-					if(!it->second->persist)
-						// Удаляем объект таймера
-						it = this->_timers.erase(it);
-					// Если нужно продолжить работу таймера
-					else {
-						// Запускаем работу таймера
-						it->second->event.start();
-						// Выполняем смещение итератора
-						++it;
-					}
-				// Выполняем смещение итератора
-				} else ++it;
-			}
-		}
-	}
-}
-/**
  * persistent Функция персистентного вызова по таймеру
  * @param fd    файловый дескриптор (сокет)
  * @param event произошедшее событие
@@ -462,8 +412,6 @@ void awh::Core::executeTimers() noexcept {
 void awh::Core::persistent(const evutil_socket_t fd, const short event) noexcept {
 	// Останавливаем работу таймера
 	this->_timer.event.stop();
-	// Устанавливаем текущий штамп времени
-	this->_timer.stamp = this->fmk->unixTimestamp();
 	// Если список схем сети существует
 	if(!this->schemes.empty()){
 		// Переходим по всему списку схем сети
@@ -1260,8 +1208,6 @@ u_short awh::Core::setTimeout(const time_t delay, function <void (const u_short,
 		ret.first->second->fn = callback;
 		// Устанавливаем время задрежки таймера
 		ret.first->second->delay = delay;
-		// Устанавливаем текущий штамп времени
-		ret.first->second->stamp = this->fmk->unixTimestamp();
 		// Устанавливаем тип таймера
 		ret.first->second->event.set(-1, EV_TIMEOUT);
 		// Устанавливаем базу данных событий
@@ -1303,8 +1249,6 @@ u_short awh::Core::setInterval(const time_t delay, function <void (const u_short
 		ret.first->second->delay = delay;
 		// Устанавливаем флаг персистентной работы
 		ret.first->second->persist = true;
-		// Устанавливаем текущий штамп времени
-		ret.first->second->stamp = this->fmk->unixTimestamp();
 		// Устанавливаем тип таймера
 		ret.first->second->event.set(-1, EV_TIMEOUT);
 		// Устанавливаем базу данных событий

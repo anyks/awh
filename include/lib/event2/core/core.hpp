@@ -95,8 +95,6 @@ namespace awh {
 				public:
 					// Задержка времени в секундах
 					time_t delay;
-					// Штамп времени исполнения
-					time_t stamp;
 				public:
 					// Объект события таймера
 					event_t event;
@@ -117,7 +115,7 @@ namespace awh {
 					/**
 					 * Timer Конструктор
 					 */
-					Timer() noexcept : id(0), persist(false), delay(0), stamp(0), core(nullptr), fn(nullptr) {}
+					Timer() noexcept : id(0), persist(false), delay(0), core(nullptr), fn(nullptr) {}
 					/**
 					 * ~Timer Деструктор
 					 */
@@ -319,11 +317,6 @@ namespace awh {
 			 * closedown Метод вызова при деакцтивации базы событий
 			 */
 			void closedown() noexcept;
-		protected:
-			/**
-			 * executeTimers Метод принудительного исполнения работы таймеров
-			 */
-			void executeTimers() noexcept;
 		private:
 			/**
 			 * persistent Функция персистентного вызова по таймеру

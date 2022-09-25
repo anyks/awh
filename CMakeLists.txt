@@ -309,7 +309,7 @@ if (ENABLE_CONSOLE_APP)
         SET(CMAKE_RC_COMPILE_OBJECT "<CMAKE_RC_COMPILER> <FLAGS> -O coff <DEFINES> -i <SOURCE> -o <OBJECT>")
     endif(MINGW)
 
-    add_executable(${WSC_APP_NAME} sample/wsc.cpp ${RES_FILES})
+    add_executable(${WSC_APP_NAME} sample/wsc2.cpp ${RES_FILES})
     add_executable(${WSS_APP_NAME} sample/wss.cpp ${RES_FILES})
     add_executable(${WEB_APP_NAME} sample/web.cpp ${RES_FILES})
     add_executable(${DNS_APP_NAME} sample/dns.cpp ${RES_FILES})

@@ -1036,8 +1036,6 @@ void awh::client::Core::transfer(const engine_t::method_t method, const size_t a
 							adj->bev.timers.read.start(adj->timeouts.read * 1000);
 						// Останавливаем таймаут ожидания на чтение из сокета
 						else adj->bev.timers.read.stop();
-						// Выполняем принудительное исполнение таймеров
-						if(adj->ectx.isblock() != 0) this->executeTimers();
 						// Если данные получены
 						if(bytes > 0){
 							// Если данные считанные из буфера, больше размера ожидающего буфера
@@ -1124,8 +1122,6 @@ void awh::client::Core::transfer(const engine_t::method_t method, const size_t a
 							if(bytes > 0)
 								// Добавляем записанные байты в буфер
 								buffer.insert(buffer.end(), adj->buffer.data() + offset, (adj->buffer.data() + offset) + bytes);
-							// Выполняем принудительное исполнение таймеров
-							if(adj->ectx.isblock() != 0) this->executeTimers();
 							// Если время ожидания записи данных установлено
 							if(adj->timeouts.write > 0)
 								// Запускаем работу таймера

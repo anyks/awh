@@ -125,8 +125,6 @@ void awh::scheme_t::resolving(const string & ip, const int family, const size_t 
 void awh::Core::Timer::callback(ev::timer & timer, int revents) noexcept {
 	// Выполняем остановку таймера
 	timer.stop();
-	// Устанавливаем текущий штамп времени
-	this->stamp = this->core->fmk->unixTimestamp();
 	// Если функция обратного вызова установлена
 	if(this->fn != nullptr) this->fn(this->id, this->core);
 	// Если персистентная работа не установлена, удаляем таймер
@@ -399,8 +397,6 @@ void awh::Core::launching() noexcept {
 		ev_set_priority(&this->_timer.io, 2);
 		// Устанавливаем базу событий
 		this->_timer.io.set(this->dispatch.base);
-		// Устанавливаем текущий штамп времени
-		this->_timer.stamp = this->fmk->unixTimestamp();
 		// Устанавливаем время задержки персистентного вызова
 		this->_timer.delay = (this->_persIntvl / (float) 1000.f);
 		// Устанавливаем функцию обратного вызова
@@ -425,52 +421,6 @@ void awh::Core::closedown() noexcept {
 	if(!this->noinfo) this->log->print("[-] stop service: pid = %u", log_t::flag_t::INFO, getpid());
 }
 /**
- * executeTimers Метод принудительного исполнения работы таймеров
- */
-void awh::Core::executeTimers() noexcept {
-	// Если персистентный таймер или пользовательские таймеры активны
-	if((this->type == engine_t::type_t::CLIENT) && (this->persist || !this->_timers.empty())){
-		// Выполняем получение текущего значения времени
-		const time_t date = this->fmk->unixTimestamp();
-		// Если таймер периодического запуска коллбека активирован
-		if(this->persist){
-			// Если таймер не исполнился в заданное время
-			if(((date - this->_timer.stamp) / (float) 1000.f) >= this->_timer.delay)
-				// Выполняем функцию обратного вызова таймера
-				this->persistent(this->_timer.io, ev::TIMER);
-		}
-		// Если список таймеров не пустой
-		if(!this->_timers.empty()){
-			// Переходим по всем таймерам
-			for(auto it = this->_timers.begin(); it != this->_timers.end();){
-				// Если таймер не исполнился в заданное время
-				if(((date - it->second->stamp) / (float) 1000.f) >= it->second->delay){
-					// Выполняем остановку таймера
-					it->second->io.stop();
-					// Устанавливаем текущий штамп времени
-					it->second->stamp = date;
-					// Если функция обратного вызова установлена
-					if(it->second->fn != nullptr)
-						// Выполняем функцию обратного вызова
-						it->second->fn(it->first, this);
-					// Если персистентная работа не установлена, удаляем таймер
-					if(!it->second->persist)
-						// Удаляем объект таймера
-						it = this->_timers.erase(it);
-					// Если нужно продолжить работу таймера
-					else {
-						// Запускаем таймер снова
-						it->second->io.start(it->second->delay);
-						// Выполняем смещение итератора
-						++it;
-					}
-				// Выполняем смещение итератора
-				} else ++it;
-			}
-		}
-	}
-}
-/**
  * persistent Функция персистентного вызова по таймеру
  * @param timer   объект события таймера
  * @param revents идентификатор события
@@ -478,8 +428,6 @@ void awh::Core::executeTimers() noexcept {
 void awh::Core::persistent(ev::timer & timer, int revents) noexcept {
 	// Выполняем остановку таймера
 	timer.stop();
-	// Устанавливаем текущий штамп времени
-	this->_timer.stamp = this->fmk->unixTimestamp();
 	// Если список схем сети существует
 	if(!this->schemes.empty()){
 		// Переходим по всему списку схем сети
@@ -1304,8 +1252,6 @@ u_short awh::Core::setTimeout(const time_t delay, function <void (const u_short,
 		ret.first->second->fn = callback;
 		// Устанавливаем задержку времени в миллисекундах
 		ret.first->second->delay = (delay / (float) 1000.f);
-		// Устанавливаем текущий штамп времени
-		ret.first->second->stamp = this->fmk->unixTimestamp();
 		// Устанавливаем базу событий
 		ret.first->second->io.set(this->dispatch.base);
 		// Устанавливаем функцию обратного вызова
@@ -1347,8 +1293,6 @@ u_short awh::Core::setInterval(const time_t delay, function <void (const u_short
 		ret.first->second->persist = true;
 		// Устанавливаем задержку времени в миллисекундах
 		ret.first->second->delay = (delay / (float) 1000.f);
-		// Устанавливаем текущий штамп времени
-		ret.first->second->stamp = this->fmk->unixTimestamp();
 		// Устанавливаем базу событий
 		ret.first->second->io.set(this->dispatch.base);
 		// Устанавливаем функцию обратного вызова
