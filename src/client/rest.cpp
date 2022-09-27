@@ -338,8 +338,8 @@ void awh::client::Rest::actionRead() noexcept {
 				core->close(this->_aid);
 			// Завершаем работу
 			} else core->close(this->_aid);
-			// Выходим из функции
-			return;
+			// Выполняем завершение работы
+			goto Stop;
 		}
 		// Устанавливаем метку продолжения обработки пайплайна
 		Next:
