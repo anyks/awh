@@ -491,12 +491,14 @@ void awh::Core::signals(const int signal) noexcept {
 		}
 		// Выходим принудительно из приложения
 		exit(EXIT_FAILURE);
-	// Если процесс является родительским и функция обратного вызова установлена
-	} else if(this->_crash != nullptr) {
-		// Выполняем функцию обратного вызова
-		this->_crash(signal);
+	// Если процесс является родительским
+	} else {
+		// Если функция обратного вызова установлена
+		if(this->_crash != nullptr)
+			// Выполняем функцию обратного вызова
+			this->_crash(signal);
 		// Выходим из приложения
-		exit(signal);
+		else exit(signal);
 	}
 }
 /**
