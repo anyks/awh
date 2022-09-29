@@ -460,6 +460,8 @@ void awh::Core::signals(const int signal) noexcept {
 			case SIGINT:
 				// Выводим сообщение об завершении работы процесса
 				this->log->print("child process [%u] has been terminated, goodbye!", log_t::flag_t::INFO, getpid());
+				// Выходим из приложения
+				exit(0);
 			break;
 			// Если возникает сигнал ошибки выполнения арифметической операции
 			case SIGFPE:
@@ -487,10 +489,15 @@ void awh::Core::signals(const int signal) noexcept {
 				this->log->print("child process [%u] was terminated by [%s] signal", log_t::flag_t::WARNING, getpid(), "SIGABRT");
 			break;
 		}
+		// Выходим принудительно из приложения
+		exit(EXIT_FAILURE);
 	// Если процесс является родительским и функция обратного вызова установлена
-	} else if(this->_crash != nullptr)
+	} else if(this->_crash != nullptr) {
 		// Выполняем функцию обратного вызова
 		this->_crash(signal);
+		// Выходим из приложения
+		exit(signal);
+	}
 }
 /**
  * clean Метод буфера событий
