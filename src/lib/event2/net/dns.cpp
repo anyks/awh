@@ -84,12 +84,14 @@ void awh::DNS::Worker::timeout(const evutil_socket_t fd, const short event) noex
 void awh::DNS::Worker::response(const evutil_socket_t fd, const short event) noexcept {
 	// Выводимый IP адрес
 	string ip = "";
+	// Останавливаем работу таймера
+	this->_timer.stop();
+	// Останавливаем работу резолвера
+	this->_event.stop();
 	// Буфер пакета данных
 	u_char buffer[65536];
 	// Выполняем зануление буфера данных
 	memset(buffer, 0, sizeof(buffer));
-	// Останавливаем работу резолвера
-	this->_event.stop();
 	// Получаем объект DNS сервера
 	dns_t * dns = const_cast <dns_t *> (this->_dns);
 	// Выполняем чтение ответа от сервера

@@ -67,6 +67,8 @@ void awh::DNS::Worker::response(ev::io & io, int revents) noexcept {
 	string ip = "";
 	// Выполняем остановку чтения сокета
 	this->_io.stop();
+	// Останавливаем работу таймера
+	this->_timer.stop();
 	// Буфер пакета данных
 	u_char buffer[65536];
 	// Выполняем зануление буфера данных
