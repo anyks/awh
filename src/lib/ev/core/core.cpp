@@ -379,12 +379,21 @@ void awh::Core::launching() noexcept {
 	this->status = status_t::START;
 	// Если список схем сети существует
 	if(!this->schemes.empty()){
+		// Список функций обратного вызова
+		map <size_t, function <void (const size_t, core_t *)>> callbacks;
 		// Переходим по всему списку схем сети
 		for(auto & scheme : this->schemes){
 			// Если функция обратного вызова установлена
 			if(scheme.second->callback.open != nullptr)
+				// Устанавливаем полученную функцию обратного вызова
+				callbacks.emplace(scheme.first, scheme.second->callback.open);
+		}
+		// Если список функций обратного вызова получен
+		if(!callbacks.empty()){
+			// Переходим по всем функциям обратного вызова
+			for(auto & item : callbacks)
 				// Выполняем функцию обратного вызова
-				scheme.second->callback.open(scheme.first, this);
+				item.second(item.first, this);
 		}
 	}
 	// Если функция обратного вызова установлена, выполняем
@@ -411,10 +420,14 @@ void awh::Core::launching() noexcept {
 void awh::Core::closedown() noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->_mtx.status);
-	// Выполняем отключение всех адъютантов
-	this->close();
 	// Устанавливаем статус сетевого ядра
 	this->status = status_t::STOP;
+	// Если таймер периодического запуска коллбека активирован
+	if(this->persist)
+		// Останавливаем работу таймера
+		this->_timer.io.stop();
+	// Выполняем отключение всех адъютантов
+	this->close();
 	// Если функция обратного вызова установлена, выполняем
 	if(this->_active != nullptr) this->_active(false, this);
 	// Выводим в консоль информацию
@@ -428,25 +441,37 @@ void awh::Core::closedown() noexcept {
 void awh::Core::persistent(ev::timer & timer, int revents) noexcept {
 	// Выполняем остановку таймера
 	timer.stop();
-	// Если список схем сети существует
-	if(!this->schemes.empty()){
-		// Переходим по всему списку схем сети
-		for(auto & item : this->schemes){
-			// Получаем объект схемы сети
-			scheme_t * shm = const_cast <scheme_t *> (item.second);
-			// Если функция обратного вызова установлена и адъютанты существуют
-			if((shm->callback.persist != nullptr) && !shm->adjutants.empty()){
-				// Переходим по всему списку адъютантов и формируем список их идентификаторов
-				for(auto & adj : shm->adjutants)
+	// Если работа сетевого ядра запущена
+	if(this->status == status_t::START){
+		// Если список схем сети существует
+		if(!this->schemes.empty() && !this->adjutants.empty()){
+			// Список функций обратного вызова
+			map <pair <size_t, size_t>, function <void (const size_t, const size_t, core_t *)>> callbacks;
+			// Переходим по всему списку схем сети
+			for(auto & item : this->schemes){
+				// Получаем объект схемы сети
+				scheme_t * shm = const_cast <scheme_t *> (item.second);
+				// Если функция обратного вызова установлена и адъютанты существуют
+				if((shm->callback.persist != nullptr) && !shm->adjutants.empty()){
+					// Переходим по всему списку адъютантов и формируем список их идентификаторов
+					for(auto & adj : shm->adjutants)
+						// Получаем функцию обратного вызова
+						callbacks.emplace(make_pair(adj.first, item.first), shm->callback.persist);
+				}
+			}
+			// Если список функций обратного вызова получен
+			if(!callbacks.empty()){
+				// Переходим по всем функциям обратного вызова
+				for(auto & item : callbacks)
 					// Выполняем функцию обратного вызова
-					shm->callback.persist(adj.first, item.first, this);
+					item.second(item.first.first, item.first.second, this);
 			}
 		}
+		// Устанавливаем время задержки персистентного вызова
+		this->_timer.delay = (this->_persIntvl / (float) 1000.f);
+		// Если нужно продолжить работу таймера
+		timer.start(this->_timer.delay);
 	}
-	// Устанавливаем время задержки персистентного вызова
-	this->_timer.delay = (this->_persIntvl / (float) 1000.f);
-	// Если нужно продолжить работу таймера
-	timer.start(this->_timer.delay);
 }
 /**
  * signals Метод вывода полученного сигнала
