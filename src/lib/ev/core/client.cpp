@@ -1044,6 +1044,8 @@ void awh::client::Core::transfer(const engine_t::method_t method, const size_t a
 						#endif
 						// Если данные получены
 						if(bytes > 0){
+							// Переводим BIO в неблокирующий режим
+							adj->ectx.noblock();
 							// Если данные считанные из буфера, больше размера ожидающего буфера
 							if((adj->marker.read.max > 0) && (bytes >= adj->marker.read.max)){
 								// Смещение в буфере и отправляемый размер данных
@@ -1078,8 +1080,6 @@ void awh::client::Core::transfer(const engine_t::method_t method, const size_t a
 									// Выводим функцию обратного вызова
 									shm->callback.read(buffer, bytes, aid, shm->sid, reinterpret_cast <awh::core_t *> (this));
 							}
-							// Переводим BIO в неблокирующий режим
-							adj->ectx.noblock();
 							// Продолжаем получение данных дальше
 							continue;
 						// Если данные не могут быть прочитаны
