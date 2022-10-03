@@ -24,9 +24,18 @@
 #include <string>
 #include <unistd.h>
 #include <signal.h>
-#include <sys/wait.h>
 #include <sys/types.h>
 #include <event2/event.h>
+
+/**
+ * Если операционной системой не является Windows
+ */
+#if !defined(_WIN32) && !defined(_WIN64)
+	/**
+	 * Стандартные библиотеки
+	 */
+	#include <sys/wait.h>
+#endif
 
 /**
  * Наши модули
