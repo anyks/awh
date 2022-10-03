@@ -1081,7 +1081,7 @@ void awh::client::Core::transfer(const engine_t::method_t method, const size_t a
 									shm->callback.read(buffer, bytes, aid, shm->sid, reinterpret_cast <awh::core_t *> (this));
 							}
 							// Продолжаем получение данных дальше
-							continue;
+							if(shm->status.real == scheme_t::mode_t::CONNECT) continue;
 						// Если данные не могут быть прочитаны
 						} else {
 							// Если нужно повторить попытку
