@@ -1269,13 +1269,24 @@ void awh::client::Core::bandWidth(const size_t aid, const string & read, const s
 }
 /**
  * Core Конструктор
- * @param main   флаг основого приложения
  * @param fmk    объект фреймворка
  * @param log    объект для работы с логами
  * @param family тип протокола интернета (IPV4 / IPV6 / NIX)
  * @param sonet  тип сокета подключения (TCP / UDP)
  */
-awh::client::Core::Core(const bool main, const fmk_t * fmk, const log_t * log, const scheme_t::family_t family, const scheme_t::sonet_t sonet) noexcept : awh::core_t(main, fmk, log, family, sonet) {
+awh::client::Core::Core(const fmk_t * fmk, const log_t * log, const scheme_t::family_t family, const scheme_t::sonet_t sonet) noexcept : awh::core_t(fmk, log, family, sonet) {
+	// Устанавливаем тип запускаемого ядра
+	this->type = engine_t::type_t::CLIENT;
+}
+/**
+ * Core Конструктор
+ * @param affiliation принадлежность модуля
+ * @param fmk         объект фреймворка
+ * @param log         объект для работы с логами
+ * @param family      тип протокола интернета (IPV4 / IPV6 / NIX)
+ * @param sonet       тип сокета подключения (TCP / UDP)
+ */
+awh::client::Core::Core(const affiliation_t affiliation, const fmk_t * fmk, const log_t * log, const scheme_t::family_t family, const scheme_t::sonet_t sonet) noexcept : awh::core_t(affiliation, fmk, log, family, sonet) {
 	// Устанавливаем тип запускаемого ядра
 	this->type = engine_t::type_t::CLIENT;
 }

@@ -253,7 +253,7 @@ class WebSocket {
 		 * @param fmk  объект фреймворка
 		 * @param core объект основного ядра
 		 */
-		WebSocket(fmk_t * fmk, log_t * log, client::core_t * core) : _fmk(fmk), _log(log), _main(core), _count(0), _nwk(fmk), _uri(fmk, &_nwk), _core(false, fmk, log), _rest(&_core, fmk, log) {
+		WebSocket(fmk_t * fmk, log_t * log, client::core_t * core) : _fmk(fmk), _log(log), _main(core), _count(0), _nwk(fmk), _uri(fmk, &_nwk), _core(fmk, log), _rest(&_core, fmk, log) {
 			/**
 			 * 1. Устанавливаем отложенные вызовы
 			 * 2. Устанавливаем ожидание входящих сообщений
@@ -286,7 +286,7 @@ int main(int argc, char * argv[]){
 	// Создаём объект для работы с логами
 	log_t log(&fmk);
 	// Создаём биндинг сетевого ядра
-	client::core_t core(true, &fmk, &log);
+	client::core_t core(awh::core_t::affiliation_t::PRIMARY, &fmk, &log);
 	// Создаём объект WebSocket клиента
 	client::ws_t ws(&core, &fmk, &log);
 	// Создаём объект исполнителя

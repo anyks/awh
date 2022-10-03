@@ -121,7 +121,7 @@ int main(int argc, char * argv[]){
 	// Создаём объект исполнителя
 	WebSocket executor(&log);
 	// Создаём биндинг
-	server::core_t core(true, &fmk, &log);
+	server::core_t core(awh::core_t::affiliation_t::PRIMARY, &fmk, &log);
 	// Создаём объект REST запроса
 	server::ws_t ws(&core, &fmk, &log);
 	// Устанавливаем название сервиса

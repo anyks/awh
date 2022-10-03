@@ -28,7 +28,7 @@ int main(int argc, char * argv[]){
 	// Создаём объект для работы с логами
 	log_t log(&fmk);
 	// Создаём биндинг
-	core_t core(true, &fmk, &log);
+	core_t core(awh::core_t::affiliation_t::PRIMARY, &fmk, &log);
 	// Устанавливаем название сервиса
 	log.name("DNS");
 	// Устанавливаем формат времени

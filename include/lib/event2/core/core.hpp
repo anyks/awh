@@ -81,6 +81,14 @@ namespace awh {
 				STOP  = 0x02, // Статус остановки
 				START = 0x01  // Статус запуска
 			};
+		public:
+			/**
+			 * Принадлежность модуля
+			 */
+			enum class affiliation_t : uint8_t {
+				PRIMARY   = 0x01, // Первичная
+				SECONDARY = 0x02  // Вторичная
+			};
 		private:
 			/**
 			 * Timer Класс таймера
@@ -167,8 +175,6 @@ namespace awh {
 					// Объект ядра
 					Core * _core;
 				private:
-					// Флаг основного приложения
-					bool _main;
 					// Флаг простого чтения базы событий
 					bool _easy;
 					// Флаг работы модуля
@@ -186,6 +192,14 @@ namespace awh {
 				public:
 					// База данных событий
 					struct event_base * base;
+				private:
+					/**
+					 * Если операционной системой является Windows
+					 */
+					#if defined(_WIN32) || defined(_WIN64)
+						// Объект данных запроса
+						WSADATA _wsaData;
+					#endif
 				public:
 					/**
 					 * kick Метод отправки пинка
@@ -229,10 +243,9 @@ namespace awh {
 				public:
 					/**
 					 * Dispatch Конструктор
-					 * @param main флаг основого приложения
 					 * @param core объект сетевого ядра
 					 */
-					Dispatch(const bool main, Core * core) noexcept;
+					Dispatch(Core * core) noexcept;
 					/**
 					 * ~Dispatch Деструктор
 					 */
@@ -272,6 +285,9 @@ namespace awh {
 			status_t status;
 			// Тип запускаемого ядра
 			engine_t::type_t type;
+		private:
+			// Принадлежность модуля
+			affiliation_t _affiliation;
 		private:
 			// Список активных таймеров
 			map <u_short, unique_ptr <timer_t>> _timers;
@@ -609,6 +625,11 @@ namespace awh {
 			 */
 			void ciphers(const vector <string> & ciphers) noexcept;
 			/**
+			 * affiliation Метод установки принадлежности модуля
+			 * @param affiliation принадлежность модуля
+			 */
+			void affiliation(const affiliation_t affiliation) noexcept;
+			/**
 			 * ca Метод установки доверенного сертификата (CA-файла)
 			 * @param trusted адрес доверенного сертификата (CA-файла)
 			 * @param path    адрес каталога где находится сертификат (CA-файл)
@@ -631,13 +652,21 @@ namespace awh {
 		public:
 			/**
 			 * Core Конструктор
-			 * @param main   флаг основого приложения
 			 * @param fmk    объект фреймворка
 			 * @param log    объект для работы с логами
 			 * @param family тип протокола интернета (IPV4 / IPV6 / NIX)
 			 * @param sonet  тип сокета подключения (TCP / UDP / TLS / DTLS)
 			 */
-			Core(const bool main, const fmk_t * fmk, const log_t * log, const scheme_t::family_t family = scheme_t::family_t::IPV4, const scheme_t::sonet_t sonet = scheme_t::sonet_t::TCP) noexcept;
+			Core(const fmk_t * fmk, const log_t * log, const scheme_t::family_t family = scheme_t::family_t::IPV4, const scheme_t::sonet_t sonet = scheme_t::sonet_t::TCP) noexcept;
+			/**
+			 * Core Конструктор
+			 * @param affiliation принадлежность модуля
+			 * @param fmk         объект фреймворка
+			 * @param log         объект для работы с логами
+			 * @param family      тип протокола интернета (IPV4 / IPV6 / NIX)
+			 * @param sonet       тип сокета подключения (TCP / UDP / TLS / DTLS)
+			 */
+			Core(const affiliation_t affiliation, const fmk_t * fmk, const log_t * log, const scheme_t::family_t family = scheme_t::family_t::IPV4, const scheme_t::sonet_t sonet = scheme_t::sonet_t::TCP) noexcept;
 			/**
 			 * ~Core Деструктор
 			 */
