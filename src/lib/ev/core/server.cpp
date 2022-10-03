@@ -16,7 +16,7 @@
 #include <lib/ev/core/server.hpp>
 
 /**
- * accept Функция подключения к серверу
+ * accept Метод вызова при подключении к серверу
  * @param watcher объект события подключения
  * @param revents идентификатор события
  */
@@ -27,7 +27,7 @@ void awh::server::scheme_t::accept(ev::io & watcher, int revents) noexcept {
 	core->accept(watcher.fd, this->sid);
 }
 /**
- * callback Функция обратного вызова
+ * callback Метод обратного вызова
  * @param timer   объект события таймера
  * @param revents идентификатор события
  */
@@ -175,7 +175,7 @@ void awh::server::Core::cluster(const size_t sid, const pid_t pid, const cluster
 	}
 }
 /**
- * accept Функция подключения к серверу
+ * accept Метод вызова при подключении к серверу
  * @param fd  файловый дескриптор (сокет) подключившегося клиента
  * @param sid идентификатор схемы сети
  */
@@ -711,7 +711,7 @@ void awh::server::Core::close(const size_t aid) noexcept {
 	}
 }
 /**
- * timeout Функция обратного вызова при срабатывании таймаута
+ * timeout Метод вызова при срабатывании таймаута
  * @param aid идентификатор адъютанта
  */
 void awh::server::Core::timeout(const size_t aid) noexcept {
@@ -747,7 +747,7 @@ void awh::server::Core::timeout(const size_t aid) noexcept {
 	}
 }
 /**
- * write Функция обратного вызова при записи данных в сокет
+ * transfer Метед передачи данных между клиентом и сервером
  * @param method метод режима работы
  * @param aid    идентификатор адъютанта
  */

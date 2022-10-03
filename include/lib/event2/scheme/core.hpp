@@ -269,25 +269,25 @@ namespace awh {
 					const Scheme * parent;
 				private:
 					/**
-					 * read Функция обратного вызова при чтении данных с сокета
+					 * read Метод вызова при чтении данных с сокета
 					 * @param fd    файловый дескриптор (сокет)
 					 * @param event произошедшее событие
 					 */
 					void read(const evutil_socket_t fd, const short event) noexcept;
 					/**
-					 * write Функция обратного вызова при записи данных в сокет
+					 * write Метод вызова при записи данных в сокет
 					 * @param fd    файловый дескриптор (сокет)
 					 * @param event произошедшее событие
 					 */
 					void write(const evutil_socket_t fd, const short event) noexcept;
 					/**
-					 * connect Функция обратного вызова при подключении к серверу
+					 * connect Метод вызова при подключении к серверу
 					 * @param fd    файловый дескриптор (сокет)
 					 * @param event произошедшее событие
 					 */
 					void connect(const evutil_socket_t fd, const short event) noexcept;
 					/**
-					 * timeout Функция обратного вызова при срабатывании таймаута
+					 * timeout Метод вызова при срабатывании таймаута
 					 * @param fd    файловый дескриптор (сокет)
 					 * @param event произошедшее событие
 					 */

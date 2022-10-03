@@ -69,7 +69,7 @@ namespace awh {
 						ev::timer timer; // Объект события таймера
 					public:
 						/**
-						 * callback Функция обратного вызова
+						 * callback Метод обратного вызова
 						 * @param timer   объект события таймера
 						 * @param revents идентификатор события
 						 */
@@ -111,7 +111,7 @@ namespace awh {
 				void cluster(const size_t sid, const pid_t pid, const cluster_t::event_t event) noexcept;
 			private:
 				/**
-				 * accept Функция подключения к серверу
+				 * accept Метод вызова при подключении к серверу
 				 * @param fd  файловый дескриптор (сокет) подключившегося клиента
 				 * @param sid идентификатор схемы сети
 				 */
@@ -144,12 +144,12 @@ namespace awh {
 				void close(const size_t aid) noexcept;
 			private:
 				/**
-				 * timeout Функция обратного вызова при срабатывании таймаута
+				 * timeout Метод вызова при срабатывании таймаута
 				 * @param aid идентификатор адъютанта
 				 */
 				void timeout(const size_t aid) noexcept;
 				/**
-				 * write Функция обратного вызова при записи данных в сокет
+				 * transfer Метед передачи данных между клиентом и сервером
 				 * @param method метод режима работы
 				 * @param aid    идентификатор адъютанта
 				 */

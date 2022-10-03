@@ -16,7 +16,7 @@
 #include <lib/ev/core/core.hpp>
 
 /**
- * read Функция обратного вызова при чтении данных с сокета
+ * read Метод вызова при чтении данных с сокета
  * @param watcher объект события чтения
  * @param revents идентификатор события
  */
@@ -46,7 +46,7 @@ void awh::scheme_t::adj_t::read(ev::io & watcher, int revents) noexcept {
 	}
 }
 /**
- * write Функция обратного вызова при записи данных в сокет
+ * write Метод вызова при записи данных в сокет
  * @param watcher объект события записи
  * @param revents идентификатор события
  */
@@ -76,7 +76,7 @@ void awh::scheme_t::adj_t::write(ev::io & watcher, int revents) noexcept {
 	}
 }
 /**
- * connect Функция обратного вызова при подключении к серверу
+ * connect Метод вызова при подключении к серверу
  * @param watcher объект события подключения
  * @param revents идентификатор события
  */
@@ -93,7 +93,7 @@ void awh::scheme_t::adj_t::connect(ev::io & watcher, int revents) noexcept {
 	core->connected(this->aid);
 }
 /**
- * timeout Функция обратного вызова при срабатывании таймаута
+ * timeout Метод вызова при срабатывании таймаута
  * @param timer   объект события таймаута
  * @param revents идентификатор события
  */
@@ -118,7 +118,7 @@ void awh::scheme_t::resolving(const string & ip, const int family, const size_t 
 	const_cast <core_t *> (this->core)->resolving(this->sid, ip, family, did);
 }
 /**
- * callback Функция обратного вызова
+ * callback Метод обратного вызова
  * @param timer   объект события таймера
  * @param revents идентификатор события
  */
@@ -456,7 +456,7 @@ void awh::Core::closedown() noexcept {
 	if(!this->noinfo) this->log->print("[-] stop service: pid = %u", log_t::flag_t::INFO, getpid());
 }
 /**
- * persistent Функция персистентного вызова по таймеру
+ * persistent Метод персистентного вызова по таймеру
  * @param timer   объект события таймера
  * @param revents идентификатор события
  */
@@ -790,7 +790,7 @@ void awh::Core::remove(const size_t sid) noexcept {
 	}
 }
 /**
- * timeout Функция обратного вызова при срабатывании таймаута
+ * timeout Метод вызова при срабатывании таймаута
  * @param aid идентификатор адъютанта
  */
 void awh::Core::timeout(const size_t aid) noexcept {
@@ -798,7 +798,7 @@ void awh::Core::timeout(const size_t aid) noexcept {
 	(void) aid;
 }
 /**
- * connected Функция обратного вызова при удачном подключении к серверу
+ * connected Метод вызова при удачном подключении к серверу
  * @param aid идентификатор адъютанта
  */
 void awh::Core::connected(const size_t aid) noexcept {
@@ -806,7 +806,7 @@ void awh::Core::connected(const size_t aid) noexcept {
 	(void) aid;
 }
 /**
- * write Функция обратного вызова при записи данных в сокет
+ * transfer Метед передачи данных между клиентом и сервером
  * @param method метод режима работы
  * @param aid    идентификатор адъютанта
  */

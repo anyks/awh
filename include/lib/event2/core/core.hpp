@@ -114,7 +114,7 @@ namespace awh {
 					function <void (const u_short, Core *)> fn;
 				public:
 					/**
-					 * callback Функция обратного вызова
+					 * callback Метод обратного вызова
 					 * @param fd    файловый дескриптор (сокет)
 					 * @param event произошедшее событие
 					 */
@@ -335,7 +335,7 @@ namespace awh {
 			void closedown() noexcept;
 		private:
 			/**
-			 * persistent Функция персистентного вызова по таймеру
+			 * persistent Метод персистентного вызова по таймеру
 			 * @param fd    файловый дескриптор (сокет)
 			 * @param event произошедшее событие
 			 */
@@ -417,17 +417,17 @@ namespace awh {
 			virtual void remove(const size_t sid) noexcept;
 		private:
 			/**
-			 * timeout Функция обратного вызова при срабатывании таймаута
+			 * timeout Метод вызова при срабатывании таймаута
 			 * @param aid идентификатор адъютанта
 			 */
 			virtual void timeout(const size_t aid) noexcept;
 			/**
-			 * connected Функция обратного вызова при удачном подключении к серверу
+			 * connected Метод вызова при удачном подключении к серверу
 			 * @param aid идентификатор адъютанта
 			 */
 			virtual void connected(const size_t aid) noexcept;
 			/**
-			 * write Функция обратного вызова при записи данных в сокет
+			 * transfer Метед передачи данных между клиентом и сервером
 			 * @param method метод режима работы
 			 * @param aid    идентификатор адъютанта
 			 */

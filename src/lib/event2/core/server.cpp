@@ -16,7 +16,7 @@
 #include <lib/event2/core/server.hpp>
 
 /**
- * accept Функция подключения к серверу
+ * accept Метод вызова при подключении к серверу
  * @param fd    файловый дескриптор (сокет)
  * @param event произошедшее событие
  */
@@ -27,7 +27,7 @@ void awh::server::scheme_t::accept(const evutil_socket_t fd, const short event) 
 	core->accept(fd, this->sid);
 }
 /**
- * callback Функция обратного вызова
+ * callback Метод обратного вызова
  * @param fd    файловый дескриптор (сокет)
  * @param event произошедшее событие
  */
@@ -182,7 +182,7 @@ void awh::server::Core::cluster(const size_t sid, const pid_t pid, const cluster
 	}
 }
 /**
- * accept Функция подключения к серверу
+ * accept Метод вызова при подключении к серверу
  * @param fd  файловый дескриптор (сокет) подключившегося клиента
  * @param sid идентификатор схемы сети
  */
@@ -720,7 +720,7 @@ void awh::server::Core::close(const size_t aid) noexcept {
 	}
 }
 /**
- * timeout Функция обратного вызова при срабатывании таймаута
+ * timeout Метод вызова при срабатывании таймаута
  * @param aid идентификатор адъютанта
  */
 void awh::server::Core::timeout(const size_t aid) noexcept {
@@ -756,7 +756,7 @@ void awh::server::Core::timeout(const size_t aid) noexcept {
 	}
 }
 /**
- * write Функция обратного вызова при записи данных в сокет
+ * transfer Метед передачи данных между клиентом и сервером
  * @param method метод режима работы
  * @param aid    идентификатор адъютанта
  */

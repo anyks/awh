@@ -68,7 +68,7 @@ namespace awh {
 				void clear() noexcept;
 			private:
 				/**
-				 * accept Функция подключения к серверу
+				 * accept Метод вызова при подключении к серверу
 				 * @param fd    файловый дескриптор (сокет)
 				 * @param event произошедшее событие
 				 */

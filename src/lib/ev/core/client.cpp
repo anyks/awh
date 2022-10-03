@@ -16,7 +16,7 @@
 #include <lib/ev/core/client.hpp>
 
 /**
- * callback Функция обратного вызова
+ * callback Метод обратного вызова
  * @param timer   объект события таймера
  * @param revents идентификатор события
  */
@@ -879,7 +879,7 @@ void awh::client::Core::switchProxy(const size_t aid) noexcept {
 	}
 }
 /**
- * timeout Функция обратного вызова при срабатывании таймаута
+ * timeout Метод вызова при срабатывании таймаута
  * @param aid идентификатор адъютанта
  */
 void awh::client::Core::timeout(const size_t aid) noexcept {
@@ -929,7 +929,7 @@ void awh::client::Core::timeout(const size_t aid) noexcept {
 	}
 }
 /**
- * connected Функция обратного вызова при удачном подключении к серверу
+ * connected Метод вызова при удачном подключении к серверу
  * @param aid идентификатор адъютанта
  */
 void awh::client::Core::connected(const size_t aid) noexcept {
@@ -994,7 +994,7 @@ void awh::client::Core::connected(const size_t aid) noexcept {
 	}
 }
 /**
- * write Функция обратного вызова при записи данных в сокет
+ * transfer Метед передачи данных между клиентом и сервером
  * @param method метод режима работы
  * @param aid    идентификатор адъютанта
  */
