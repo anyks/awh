@@ -779,8 +779,12 @@ void awh::server::Core::transfer(const engine_t::method_t method, const size_t a
 				char buffer[BUFFER_SIZE];
 				// Останавливаем чтение данных с клиента
 				adj->bev.events.read.stop();
-				// Выполняем перебор бесконечным циклом пока это разрешено
-				while(!adj->bev.locked.read){
+				// Устанавливаем метку чтения данных
+				Read:
+				// Если подключение выполнено и чтение данных разрешено
+				if(!adj->bev.locked.read){
+					// Выполняем обнуление буфера данных
+					memset(buffer, 0, sizeof(buffer));
 					// Выполняем получение сообщения от клиента
 					bytes = adj->ectx.read(buffer, sizeof(buffer));
 					// Если время ожидания чтения данных установлено
@@ -811,13 +815,11 @@ void awh::server::Core::transfer(const engine_t::method_t method, const size_t a
 							// Выводим функцию обратного вызова
 							shm->callback.read(buffer, bytes, aid, shm->sid, reinterpret_cast <awh::core_t *> (this));
 						// Продолжаем получение данных дальше
-						continue;
+						if(this->adjutants.find(aid) != this->adjutants.end()) goto Read;
 					// Если данные не могут быть прочитаны
 					} else {
 						// Если нужно повторить попытку
-						if(bytes == -2) continue;
-						// Если нужно выйти из цикла
-						else if(bytes == -1) break;
+						if(bytes == -2) goto Read;
 						// Если нужно завершить работу
 						else if(bytes == 0) {
 							/**
@@ -831,8 +833,6 @@ void awh::server::Core::transfer(const engine_t::method_t method, const size_t a
 							#endif
 						}
 					}
-					// Выходим из цикла
-					break;
 				}
 				// Если тип сокета не установлен как UDP, запускаем чтение дальше
 				if((this->net.sonet != scheme_t::sonet_t::UDP) && (this->adjutants.count(aid) > 0))
