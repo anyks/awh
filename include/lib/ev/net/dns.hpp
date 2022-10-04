@@ -246,11 +246,6 @@ namespace awh {
 					struct ev_loop * _base;
 				private:
 					/**
-					 * shuffle Метод пересортировки серверов DNS
-					 */
-					void shuffle() noexcept;
-				private:
-					/**
 					 * response Событие срабатывающееся при получении данных с DNS сервера
 					 * @param io      объект события чтения
 					 * @param revents идентификатор события
@@ -388,6 +383,12 @@ namespace awh {
 			 * @return результат работы функции
 			 */
 			bool flush() noexcept;
+		public:
+			/**
+			 * shuffle Метод пересортировки серверов DNS
+			 * @param family тип интернет-протокола AF_INET, AF_INET6
+			 */
+			void shuffle(const int family) noexcept;
 		public:
 			/**
 			 * base Метод установки базы событий

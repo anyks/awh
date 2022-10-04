@@ -1020,6 +1020,8 @@ void awh::client::Core::transfer(const engine_t::method_t method, const size_t a
 				case (uint8_t) engine_t::method_t::READ: {
 					// Количество полученных байт
 					int64_t bytes = -1;
+					// Флаг перевода сокета в неблокирующий режим
+					bool noblock = false;
 					// Создаём буфер входящих данных
 					char buffer[BUFFER_SIZE];
 					// Переводим BIO в блокирующий режим
@@ -1038,6 +1040,8 @@ void awh::client::Core::transfer(const engine_t::method_t method, const size_t a
 						else adj->bev.timers.read.stop();
 						// Если данные получены
 						if(bytes > 0){
+							// Устанавливаем флаг перевода сокета в неблокирующий режим
+							noblock = true;
 							// Переводим BIO в неблокирующий режим
 							adj->ectx.noblock();
 							// Если данные считанные из буфера, больше размера ожидающего буфера
@@ -1083,7 +1087,7 @@ void awh::client::Core::transfer(const engine_t::method_t method, const size_t a
 							// Если нужно выйти из цикла
 							else if(bytes == -1) break;
 							// Если нужно завершить работу
-							else if(bytes == 0) {
+							else if((bytes == 0) && !noblock) {
 								// Выполняем отключение от сервера
 								this->close(aid);
 								// Выходим из функции
@@ -1095,7 +1099,7 @@ void awh::client::Core::transfer(const engine_t::method_t method, const size_t a
 					}
 					// Если тип сокета не установлен как UDP, запускаем чтение дальше
 					if((this->net.sonet != scheme_t::sonet_t::UDP) && (this->adjutants.count(aid) > 0))
-						// Запускаем событие на чтение базы событий
+						// Запускаем чтение данных с клиента
 						adj->bev.events.read.start();
 				} break;
 				// Если производится запись данных
@@ -1110,6 +1114,8 @@ void awh::client::Core::transfer(const engine_t::method_t method, const size_t a
 						int64_t bytes = -1;
 						// Cмещение в буфере и отправляемый размер данных
 						size_t offset = 0, actual = 0, size = 0;
+						// Переводим BIO в блокирующий режим
+						adj->ectx.block();
 						// Выполняем отправку данных пока всё не отправим
 						while(!adj->bev.locked.write && ((adj->buffer.size() - offset) > 0)){
 							// Получаем общий размер буфера данных
@@ -1165,7 +1171,7 @@ void awh::client::Core::transfer(const engine_t::method_t method, const size_t a
 					}
 					// Если тип сокета установлен как UDP, и данных для записи больше нет, запускаем чтение
 					if(adj->buffer.empty() && (this->net.sonet == scheme_t::sonet_t::UDP) && (this->adjutants.count(aid) > 0))
-						// Запускаем событие на чтение базы событий
+						// Запускаем чтение данных с клиента
 						adj->bev.events.read.start();
 				} break;
 			}

@@ -247,11 +247,6 @@ namespace awh {
 					struct event_base * _base;
 				private:
 					/**
-					 * shuffle Метод пересортировки серверов DNS
-					 */
-					void shuffle() noexcept;
-				private:
-					/**
 					 * timeout Функция выполняемая по таймеру для чистки мусора
 					 * @param fd    файловый дескриптор (сокет)
 					 * @param event произошедшее событие
@@ -389,6 +384,12 @@ namespace awh {
 			 * @return результат работы функции
 			 */
 			bool flush() noexcept;
+		public:
+			/**
+			 * shuffle Метод пересортировки серверов DNS
+			 * @param family тип интернет-протокола AF_INET, AF_INET6
+			 */
+			void shuffle(const int family) noexcept;
 		public:
 			/**
 			 * base Метод установки базы событий

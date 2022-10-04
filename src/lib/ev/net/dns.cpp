@@ -42,22 +42,6 @@ awh::DNS::Holder::~Holder() noexcept {
 	if(this->_flag) this->_status->pop();
 }
 /**
- * shuffle Метод пересортировки серверов DNS
- */
-void awh::DNS::Worker::shuffle() noexcept {
-	// Выполняем поиск интернет-протокола для получения DNS сервера
-	auto it = const_cast <dns_t *> (this->_dns)->_servers.find(this->_family);
-	// Если интернет протокол сервера получен
-	if(it != this->_dns->_servers.end()){
-		// Создаём объект рандомайзера
-		random_device rd;
-		// Выбираем стаднарт рандомайзера
-		mt19937 generator(rd());
-		// Выполняем рандомную сортировку списка DNS серверов
-		::shuffle(it->second.begin(), it->second.end(), generator);
-	}
-}
-/**
  * response Событие срабатывающееся при получении данных с DNS сервера
  * @param io      объект события чтения
  * @param revents идентификатор события
@@ -254,14 +238,12 @@ void awh::DNS::Worker::response(ev::io & io, int revents) noexcept {
 	} else if(this->_mode) {
 		// Выполняем закрытие подключения
 		this->close();
-		// Выполняем пересортировку серверов DNS
-		this->shuffle();
-		// Замораживаем поток на период времени в 100ms
+		// Замораживаем поток на период времени в 10ms
 		this_thread::sleep_for(10ms);
-		// Выполняем запрос снова
-		this->request(this->_domain);
-		// Выходим из функции
-		return;
+		// Если запрос на сервер выполнен
+		if(this->request(this->_domain))
+			// Выходим из функции
+			return;
 	}
 	// Выполняем закрытие подключения
 	this->close();
@@ -439,6 +421,8 @@ bool awh::DNS::Worker::request(const string & domain) noexcept {
 	if(!domain.empty()){
 		// Запоминаем запрашиваемое доменное имя
 		this->_domain = domain;
+		// Выполняем пересортировку серверов DNS
+		const_cast <dns_t *> (this->_dns)->shuffle(this->_family);
 		// Выполняем поиск интернет-протокола для получения DNS сервера
 		auto it = const_cast <dns_t *> (this->_dns)->_servers.find(this->_family);
 		// Если интернет протокол сервера получен
@@ -576,15 +560,6 @@ bool awh::DNS::Worker::request(const string & domain) noexcept {
 						this->close();
 					}
 				}
-			}
-			// Если запрос отправлен не был, но время ещё есть
-			if(this->_mode){
-				// Выполняем пересортировку серверов DNS
-				this->shuffle();
-				// Замораживаем поток на период времени в 100ms
-				this_thread::sleep_for(1s);
-				// Выполняем запрос снова
-				return this->request(domain);
 			}
 		}
 	}
@@ -815,6 +790,25 @@ bool awh::DNS::flush() noexcept {
 	}
 	// Выводим результат
 	return result;
+}
+/**
+ * shuffle Метод пересортировки серверов DNS
+ * @param family тип интернет-протокола AF_INET, AF_INET6
+ */
+void awh::DNS::shuffle(const int family) noexcept {
+	// Выполняем блокировку потока
+	const lock_guard <recursive_mutex> lock(this->_mtx.hold);
+	// Выполняем поиск интернет-протокола для получения DNS сервера
+	auto it = this->_servers.find(family);
+	// Если интернет протокол сервера получен
+	if(it != this->_servers.end()){
+		// Создаём объект рандомайзера
+		random_device rd;
+		// Выбираем стаднарт рандомайзера
+		mt19937 generator(rd());
+		// Выполняем рандомную сортировку списка DNS серверов
+		::shuffle(it->second.begin(), it->second.end(), generator);
+	}
 }
 /**
  * base Метод установки базы событий
