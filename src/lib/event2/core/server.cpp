@@ -811,7 +811,7 @@ void awh::server::Core::transfer(const engine_t::method_t method, const size_t a
 							// Выводим функцию обратного вызова
 							shm->callback.read(buffer, bytes, aid, shm->sid, reinterpret_cast <awh::core_t *> (this));
 						// Продолжаем получение данных дальше
-						if(!adj->bev.locked.read) continue;
+						continue;
 					// Если данные не могут быть прочитаны
 					} else {
 						// Если нужно повторить попытку
@@ -820,10 +820,15 @@ void awh::server::Core::transfer(const engine_t::method_t method, const size_t a
 						else if(bytes == -1) break;
 						// Если нужно завершить работу
 						else if(bytes == 0) {
-							// Выполняем отключение клиента
-							this->close(aid);
-							// Выходим из функции
-							return;
+							/**
+							 * Если операционной системой не является Windows
+							 */
+							#if !defined(_WIN32) && !defined(_WIN64)
+								// Выполняем отключение клиента
+								this->close(aid);
+								// Выходим из функции
+								return;
+							#endif
 						}
 					}
 					// Выходим из цикла

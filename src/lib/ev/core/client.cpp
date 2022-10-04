@@ -1015,12 +1015,10 @@ void awh::client::Core::transfer(const engine_t::method_t method, const size_t a
 				case (uint8_t) engine_t::method_t::READ: {
 					// Количество полученных байт
 					int64_t bytes = -1;
-					// Флаг перевода сокета в неблокирующий режим
-					bool noblock = false;
 					// Создаём буфер входящих данных
 					char buffer[BUFFER_SIZE];
-					// Переводим BIO в блокирующий режим
-					adj->ectx.block();
+					// Переводим BIO в неблокирующий режим
+					adj->ectx.noblock();
 					// Останавливаем чтение данных с клиента
 					adj->bev.event.read.stop();
 					// Выполняем перебор бесконечным циклом пока это разрешено
@@ -1046,10 +1044,6 @@ void awh::client::Core::transfer(const engine_t::method_t method, const size_t a
 						#endif
 						// Если данные получены
 						if(bytes > 0){
-							// Устанавливаем флаг перевода сокета в неблокирующий режим
-							noblock = true;
-							// Переводим BIO в неблокирующий режим
-							adj->ectx.noblock();
 							// Если данные считанные из буфера, больше размера ожидающего буфера
 							if((adj->marker.read.max > 0) && (bytes >= adj->marker.read.max)){
 								// Смещение в буфере и отправляемый размер данных
@@ -1085,7 +1079,7 @@ void awh::client::Core::transfer(const engine_t::method_t method, const size_t a
 									shm->callback.read(buffer, bytes, aid, shm->sid, reinterpret_cast <awh::core_t *> (this));
 							}
 							// Продолжаем получение данных дальше
-							if(shm->status.real == scheme_t::mode_t::CONNECT) continue;
+							continue;
 						// Если данные не могут быть прочитаны
 						} else {
 							// Если нужно повторить попытку
@@ -1093,11 +1087,16 @@ void awh::client::Core::transfer(const engine_t::method_t method, const size_t a
 							// Если нужно выйти из цикла
 							else if(bytes == -1) break;
 							// Если нужно завершить работу
-							else if((bytes == 0) && !noblock) {
-								// Выполняем отключение от сервера
-								this->close(aid);
-								// Выходим из функции
-								return;
+							else if(bytes == 0) {
+								/**
+								 * Если операционной системой не является Windows
+								 */
+								#if !defined(_WIN32) && !defined(_WIN64)
+									// Выполняем отключение клиента
+									this->close(aid);
+									// Выходим из функции
+									return;
+								#endif
 							}
 						}
 						// Выходим из цикла
@@ -1120,7 +1119,7 @@ void awh::client::Core::transfer(const engine_t::method_t method, const size_t a
 						int64_t bytes = -1;
 						// Cмещение в буфере и отправляемый размер данных
 						size_t offset = 0, actual = 0, size = 0;
-						// Переводим BIO в блокирующий режим
+						// Переводим BIO в неблокирующий режим
 						adj->ectx.block();
 						// Выполняем отправку данных пока всё не отправим
 						while(!adj->bev.locked.write && ((adj->buffer.size() - offset) > 0)){
