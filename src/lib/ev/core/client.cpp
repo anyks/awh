@@ -1130,7 +1130,7 @@ void awh::client::Core::transfer(const engine_t::method_t method, const size_t a
 							// Выполняем отправку сообщения клиенту
 							bytes = adj->ectx.write(adj->buffer.data() + offset, actual);
 							// Если данные записаны удачно
-							if(bytes > 0)
+							if((bytes > 0) && (shm->callback.write != nullptr))
 								// Добавляем записанные байты в буфер
 								buffer.insert(buffer.end(), adj->buffer.data() + offset, (adj->buffer.data() + offset) + bytes);
 							// Если время ожидания записи данных установлено
@@ -1155,18 +1155,21 @@ void awh::client::Core::transfer(const engine_t::method_t method, const size_t a
 							// Увеличиваем смещение в буфере
 							offset += actual;
 						}
-						// Если данных в буфере больше чем количество записанных байт
-						if(adj->buffer.size() > offset)
-							// Выполняем удаление из буфера данных количество отправленных байт
-							adj->buffer.assign(adj->buffer.begin() + offset, adj->buffer.end());
-						// Иначе просто очищаем буфер данных
-						else adj->buffer.clear();
-						// Останавливаем запись данных
-						if(adj->buffer.empty()) this->disabled(engine_t::method_t::WRITE, aid);
-						// Если функция обратного вызова на запись данных установлена
-						if(shm->callback.write != nullptr)
-							// Выводим функцию обратного вызова
-							shm->callback.write(buffer.data(), buffer.size(), aid, shm->sid, reinterpret_cast <awh::core_t *> (this));
+						// Если адъютант ещё существует и подключён
+						if(this->adjutants.find(aid) != this->adjutants.end()){
+							// Если данных в буфере больше чем количество записанных байт
+							if(adj->buffer.size() > offset)
+								// Выполняем удаление из буфера данных количество отправленных байт
+								adj->buffer.assign(adj->buffer.begin() + offset, adj->buffer.end());
+							// Иначе просто очищаем буфер данных
+							else adj->buffer.clear();
+							// Останавливаем запись данных
+							if(adj->buffer.empty()) this->disabled(engine_t::method_t::WRITE, aid);
+							// Если функция обратного вызова на запись данных установлена
+							if(shm->callback.write != nullptr)
+								// Выводим функцию обратного вызова
+								shm->callback.write((!buffer.empty() ? buffer.data() : nullptr), buffer.size(), aid, shm->sid, reinterpret_cast <awh::core_t *> (this));
+						}
 					// Если данных недостаточно для записи в сокет
 					} else {
 						// Останавливаем запись данных
