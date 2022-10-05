@@ -1464,14 +1464,6 @@ bool awh::Core::removeUnixSocket() noexcept {
 		if((result = !this->working()))
 			// Выполняем очистку unix-сокета
 			this->net.filename.clear();
-	/**
-	 * Если операционной системой является MS Windows
-	 */
-	#else
-		// Выводим в лог сообщение
-		this->log->print("Microsoft Windows does not support Unix sockets", log_t::flag_t::CRITICAL);
-		// Выходим принудительно из приложения
-		exit(EXIT_FAILURE);
 	#endif
 	// Выводим результат
 	return result;
