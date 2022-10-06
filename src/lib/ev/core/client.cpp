@@ -1109,30 +1109,28 @@ void awh::client::Core::transfer(const engine_t::method_t method, const size_t a
 				} break;
 				// Если производится запись данных
 				case (uint8_t) engine_t::method_t::WRITE: {
+					// Устанавливаем метку записи данных
+					Write:
 					// Останавливаем таймаут ожидания на запись в сокет
 					adj->bev.timer.write.stop();
 					// Если данных достаточно для записи в сокет
 					if(adj->buffer.size() >= adj->marker.write.min){
-						// Получаем буфер отправляемых данных
-						vector <char> buffer;
 						// Количество полученных байт
 						int64_t bytes = -1;
 						// Cмещение в буфере и отправляемый размер данных
 						size_t offset = 0, actual = 0, size = 0;
 						// Переводим BIO в неблокирующий режим
 						adj->ectx.block();
+						// Получаем буфер отправляемых данных
+						const vector <char> buffer = std::forward <vector <char> > (adj->buffer);
 						// Выполняем отправку данных пока всё не отправим
-						while(!adj->bev.locked.write && ((adj->buffer.size() - offset) > 0)){
+						while(!adj->bev.locked.write && ((buffer.size() - offset) > 0)){
 							// Получаем общий размер буфера данных
-							size = (adj->buffer.size() - offset);
+							size = (buffer.size() - offset);
 							// Определяем размер отправляемых данных
 							actual = ((size >= adj->marker.write.max) ? adj->marker.write.max : size);
 							// Выполняем отправку сообщения клиенту
-							bytes = adj->ectx.write(adj->buffer.data() + offset, actual);
-							// Если данные записаны удачно
-							if((bytes > 0) && (shm->callback.write != nullptr))
-								// Добавляем записанные байты в буфер
-								buffer.insert(buffer.end(), adj->buffer.data() + offset, (adj->buffer.data() + offset) + bytes);
+							bytes = adj->ectx.write(buffer.data() + offset, actual);
 							// Если время ожидания записи данных установлено
 							if(adj->timeouts.write > 0){
 								// Устанавливаем время ожидания на запись данных
@@ -1153,22 +1151,20 @@ void awh::client::Core::transfer(const engine_t::method_t method, const size_t a
 								return;
 							}
 							// Увеличиваем смещение в буфере
-							offset += actual;
+							offset += bytes;
 						}
+						// Останавливаем запись данных
+						this->disabled(engine_t::method_t::WRITE, aid);
+						// Если функция обратного вызова на запись данных установлена
+						if(shm->callback.write != nullptr)
+							// Выводим функцию обратного вызова
+							shm->callback.write((!buffer.empty() ? buffer.data() : nullptr), offset, aid, shm->sid, reinterpret_cast <awh::core_t *> (this));
 						// Если адъютант ещё существует и подключён
-						if(this->adjutants.find(aid) != this->adjutants.end()){
-							// Если данных в буфере больше чем количество записанных байт
-							if(adj->buffer.size() > offset)
-								// Выполняем удаление из буфера данных количество отправленных байт
-								adj->buffer.assign(adj->buffer.begin() + offset, adj->buffer.end());
-							// Иначе просто очищаем буфер данных
-							else adj->buffer.clear();
-							// Останавливаем запись данных
-							if(adj->buffer.empty()) this->disabled(engine_t::method_t::WRITE, aid);
-							// Если функция обратного вызова на запись данных установлена
-							if(shm->callback.write != nullptr)
-								// Выводим функцию обратного вызова
-								shm->callback.write((!buffer.empty() ? buffer.data() : nullptr), buffer.size(), aid, shm->sid, reinterpret_cast <awh::core_t *> (this));
+						if((this->adjutants.find(aid) != this->adjutants.end()) && adj->bev.locked.write && !adj->buffer.empty()){
+							// Снимаем блокировку с записи данных
+							adj->bev.locked.write = !adj->bev.locked.write;
+							// Выполняем запись в сокет оставшихся данных из буфера
+							goto Write;
 						}
 					// Если данных недостаточно для записи в сокет
 					} else {
