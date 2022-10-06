@@ -841,70 +841,74 @@ void awh::server::Core::transfer(const engine_t::method_t method, const size_t a
 			} break;
 			// Если производится запись данных
 			case (uint8_t) engine_t::method_t::WRITE: {
-				// Устанавливаем метку записи данных
-				Write:
 				// Останавливаем работу таймера
 				adj->bev.timers.write.stop();
-				// Если данных достаточно для записи в сокет
-				if(adj->buffer.size() >= adj->marker.write.min){
-					// Количество полученных байт
-					int64_t bytes = -1;
-					// Cмещение в буфере и отправляемый размер данных
-					size_t offset = 0, actual = 0, size = 0;
-					// Получаем буфер отправляемых данных
-					const vector <char> buffer = std::forward <vector <char> > (adj->buffer);
-					// Выполняем отправку данных пока всё не отправим
-					while(!adj->bev.locked.write && ((buffer.size() - offset) > 0)){
-						// Получаем общий размер буфера данных
-						size = (buffer.size() - offset);
-						// Определяем размер отправляемых данных
-						actual = ((size >= adj->marker.write.max) ? adj->marker.write.max : size);
-						// Выполняем отправку сообщения клиенту
-						bytes = adj->ectx.write(buffer.data() + offset, actual);
-						// Если время ожидания записи данных установлено
-						if(adj->timeouts.write > 0)
-							// Запускаем работу таймера
-							adj->bev.timers.write.start(adj->timeouts.write * 1000);
-						// Останавливаем таймаут ожидания на запись в сокет
-						else adj->bev.timers.write.stop();
-						// Если нужно повторить попытку
-						if(bytes == -2) continue;
-						// Если нужно выйти из цикла
-						else if(bytes == -1) break;
-						// Если нужно завершить работу
-						else if(bytes == 0) {
-							// Выполняем отключение клиента
-							this->close(aid);
-							// Выходим из функции
-							return;
+				// Выполняем отправку всех данных
+				for(;;){
+					// Если данных достаточно для записи в сокет
+					if(!adj->buffer.empty() && (adj->buffer.size() >= adj->marker.write.min)){
+						// Количество полученных байт
+						int64_t bytes = -1;
+						// Cмещение в буфере и отправляемый размер данных
+						size_t offset = 0, actual = 0, size = 0;
+						// Получаем буфер отправляемых данных
+						const vector <char> buffer = std::forward <vector <char>> (adj->buffer);
+						// Выполняем отправку данных пока всё не отправим
+						while(!adj->bev.locked.write && ((buffer.size() - offset) > 0)){
+							// Получаем общий размер буфера данных
+							size = (buffer.size() - offset);
+							// Определяем размер отправляемых данных
+							actual = ((size >= adj->marker.write.max) ? adj->marker.write.max : size);
+							// Выполняем отправку сообщения клиенту
+							bytes = adj->ectx.write(buffer.data() + offset, actual);
+							// Если время ожидания записи данных установлено
+							if(adj->timeouts.write > 0)
+								// Запускаем работу таймера
+								adj->bev.timers.write.start(adj->timeouts.write * 1000);
+							// Останавливаем таймаут ожидания на запись в сокет
+							else adj->bev.timers.write.stop();
+							// Если нужно повторить попытку
+							if(bytes == -2) continue;
+							// Если нужно выйти из цикла
+							else if(bytes == -1) break;
+							// Если нужно завершить работу
+							else if(bytes == 0) {
+								// Выполняем отключение клиента
+								this->close(aid);
+								// Выходим из функции
+								return;
+							}
+							// Увеличиваем смещение в буфере
+							offset += bytes;
 						}
-						// Увеличиваем смещение в буфере
-						offset += bytes;
+						// Останавливаем запись данных
+						this->disabled(engine_t::method_t::WRITE, aid);
+						// Если функция обратного вызова на запись данных установлена
+						if(shm->callback.write != nullptr)
+							// Выводим функцию обратного вызова
+							shm->callback.write((!buffer.empty() ? buffer.data() : nullptr), offset, aid, shm->sid, reinterpret_cast <awh::core_t *> (this));
+					// Если данных недостаточно для записи в сокет
+					} else {
+						// Останавливаем запись данных
+						this->disabled(engine_t::method_t::WRITE, aid);
+						// Если функция обратного вызова на запись данных установлена
+						if(shm->callback.write != nullptr)
+							// Выводим функцию обратного вызова
+							shm->callback.write(nullptr, 0, aid, shm->sid, reinterpret_cast <awh::core_t *> (this));
 					}
-					// Останавливаем запись данных
-					this->disabled(engine_t::method_t::WRITE, aid);
-					// Если функция обратного вызова на запись данных установлена
-					if(shm->callback.write != nullptr)
-						// Выводим функцию обратного вызова
-						shm->callback.write((!buffer.empty() ? buffer.data() : nullptr), offset, aid, shm->sid, reinterpret_cast <awh::core_t *> (this));
 					// Если адъютант ещё существует и подключён
-					if((this->adjutants.find(aid) != this->adjutants.end()) && adj->bev.locked.write && !adj->buffer.empty()){
+					if((this->adjutants.count(aid) > 0) && adj->bev.locked.write &&
+					   !adj->buffer.empty() && (adj->buffer.size() >= adj->marker.write.min)){
 						// Снимаем блокировку с записи данных
 						adj->bev.locked.write = !adj->bev.locked.write;
 						// Выполняем запись в сокет оставшихся данных из буфера
-						goto Write;
+						continue;
 					}
-				// Если данных недостаточно для записи в сокет
-				} else {
-					// Останавливаем запись данных
-					this->disabled(engine_t::method_t::WRITE, aid);
-					// Если функция обратного вызова на запись данных установлена
-					if(shm->callback.write != nullptr)
-						// Выводим функцию обратного вызова
-						shm->callback.write(nullptr, 0, aid, shm->sid, reinterpret_cast <awh::core_t *> (this));
+					// Выходим из цикла
+					break;
 				}
 				// Если тип сокета установлен как UDP, и данных для записи больше нет, запускаем чтение
-				if(adj->buffer.empty() && (this->net.sonet == scheme_t::sonet_t::UDP) && (this->adjutants.count(aid) > 0))
+				if((this->net.sonet == scheme_t::sonet_t::UDP) && (this->adjutants.count(aid) > 0) && adj->buffer.empty())
 					// Запускаем событие на чтение базы событий
 					adj->bev.events.read.start();
 			} break;
