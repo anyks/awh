@@ -586,6 +586,24 @@ namespace awh {
 			void family(const scheme_t::family_t family = scheme_t::family_t::IPV4) noexcept;
 		public:
 			/**
+			 * clearBlackListDNS Метод очистки чёрного списка
+			 * @param family тип протокола интернета (IPV4 / IPV6)
+			 */
+			void clearBlackListDNS(const scheme_t::family_t family) noexcept;
+			/**
+			 * delInBlackListDNS Метод удаления IP адреса из чёрного списока
+			 * @param family тип протокола интернета (IPV4 / IPV6)
+			 * @param ip     адрес для удаления из чёрного списка
+			 */
+			void delInBlackListDNS(const scheme_t::family_t family, const string & ip) noexcept;
+			/**
+			 * setToBlackListDNS Метод добавления IP адреса в чёрный список
+			 * @param family тип протокола интернета (IPV4 / IPV6)
+			 * @param ip     адрес для добавления в чёрный список
+			 */
+			void setToBlackListDNS(const scheme_t::family_t family, const string & ip) noexcept;
+		public:
+			/**
 			 * noInfo Метод установки флага запрета вывода информационных сообщений
 			 * @param mode флаг запрета вывода информационных сообщений
 			 */

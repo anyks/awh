@@ -1492,6 +1492,65 @@ void awh::Core::family(const scheme_t::family_t family) noexcept {
 	}
 }
 /**
+ * clearBlackListDNS Метод очистки чёрного списка
+ * @param family тип протокола интернета (IPV4 / IPV6)
+ */
+void awh::Core::clearBlackListDNS(const scheme_t::family_t family) noexcept {
+	// Определяем тип интернет-протокола
+	switch((uint8_t) family){
+		// Если тип протокола интернета IPv4
+		case (uint8_t) scheme_t::family_t::IPV4:
+			// Выполняем очистку чёрного списка IP адресов
+			this->dns.clearBlackList(AF_INET);
+		break;
+		// Если тип протокола интернета IPv6
+		case (uint8_t) scheme_t::family_t::IPV6:
+			// Выполняем очистку чёрного списка IP адресов
+			this->dns.clearBlackList(AF_INET6);
+		break;
+	}
+}
+/**
+ * delInBlackListDNS Метод удаления IP адреса из чёрного списока
+ * @param family тип протокола интернета (IPV4 / IPV6)
+ * @param ip     адрес для удаления из чёрного списка
+ */
+void awh::Core::delInBlackListDNS(const scheme_t::family_t family, const string & ip) noexcept {
+	// Определяем тип интернет-протокола
+	switch((uint8_t) family){
+		// Если тип протокола интернета IPv4
+		case (uint8_t) scheme_t::family_t::IPV4:
+			// Выполняем удаление из чёрного списка IP адреса
+			this->dns.delInBlackList(AF_INET, ip);
+		break;
+		// Если тип протокола интернета IPv6
+		case (uint8_t) scheme_t::family_t::IPV6:
+			// Выполняем удаление из чёрного списка IP адреса
+			this->dns.delInBlackList(AF_INET6, ip);
+		break;
+	}
+}
+/**
+ * setToBlackListDNS Метод добавления IP адреса в чёрный список
+ * @param family тип протокола интернета (IPV4 / IPV6)
+ * @param ip     адрес для добавления в чёрный список
+ */
+void awh::Core::setToBlackListDNS(const scheme_t::family_t family, const string & ip) noexcept {
+	// Определяем тип интернет-протокола
+	switch((uint8_t) family){
+		// Если тип протокола интернета IPv4
+		case (uint8_t) scheme_t::family_t::IPV4:
+			// Выполняем установку в чёрный список IP адреса
+			this->dns.setToBlackList(AF_INET, ip);
+		break;
+		// Если тип протокола интернета IPv6
+		case (uint8_t) scheme_t::family_t::IPV6:
+			// Выполняем установку в чёрный список IP адреса
+			this->dns.setToBlackList(AF_INET6, ip);
+		break;
+	}
+}
+/**
  * noInfo Метод установки флага запрета вывода информационных сообщений
  * @param mode флаг запрета вывода информационных сообщений
  */
