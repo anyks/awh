@@ -267,16 +267,16 @@ void awh::server::Sample::actionDisconnect(const size_t aid) noexcept {
 			adj->close = true;
 			// Выполняем очистку оставшихся данных
 			adj->buffer.clear();
-			// Если функция обратного вызова установлена, выполняем
-			if(this->_callback.active != nullptr)
-				// Выполняем функцию обратного вызова
-				this->_callback.active(aid, mode_t::DISCONNECT, this);
 			// Если экшен соответствует, выполняем его сброс
 			if(adj->action == sample_scheme_t::action_t::DISCONNECT)
 				// Выполняем сброс экшена
 				adj->action = sample_scheme_t::action_t::NONE;
 			// Выполняем удаление параметров адъютанта
 			this->_scheme.rm(aid);
+			// Если функция обратного вызова установлена, выполняем
+			if(this->_callback.active != nullptr)
+				// Выполняем функцию обратного вызова
+				this->_callback.active(aid, mode_t::DISCONNECT, this);
 		}
 	}
 }

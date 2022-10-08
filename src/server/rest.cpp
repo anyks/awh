@@ -422,14 +422,16 @@ void awh::server::Rest::actionDisconnect(const size_t aid) noexcept {
 		if(adj != nullptr){
 			// Устанавливаем флаг отключения
 			adj->close = true;
-			// Если функция обратного вызова установлена, выполняем
-			if(this->_callback.active != nullptr) this->_callback.active(aid, mode_t::DISCONNECT, this);
 			// Если экшен соответствует, выполняем его сброс
 			if(adj->action == rest_scheme_t::action_t::DISCONNECT)
 				// Выполняем сброс экшена
 				adj->action = rest_scheme_t::action_t::NONE;
 			// Выполняем удаление параметров адъютанта
 			this->_scheme.rm(aid);
+			// Если функция обратного вызова установлена, выполняем
+			if(this->_callback.active != nullptr)
+				// Выполняем функцию обратного вызова
+				this->_callback.active(aid, mode_t::DISCONNECT, this);
 		}
 	}
 }

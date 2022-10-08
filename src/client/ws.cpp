@@ -586,6 +586,10 @@ void awh::client::WebSocket::actionDisconnect() noexcept {
 	if(this->_action == action_t::DISCONNECT)
 		// Выполняем сброс экшена
 		this->_action = action_t::NONE;
+	// Если функция обратного вызова установлена, выполняем
+	if(this->_callback.active != nullptr)
+		// Выполняем функцию обратного вызова
+		this->_callback.active(mode_t::DISCONNECT, this);
 }
 /**
  * actionProxyRead Метод обработки экшена чтения с прокси-сервера
@@ -1235,8 +1239,6 @@ void awh::client::WebSocket::stop() noexcept {
 			// Восстанавливаем предыдущее значение флага
 			this->_scheme.alive = alive;
 		}
-		// Если функция обратного вызова установлена, выполняем
-		if(this->_callback.active != nullptr) this->_callback.active(mode_t::DISCONNECT, this);
 	}
 }
 /**

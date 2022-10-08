@@ -661,14 +661,16 @@ void awh::server::WebSocket::actionDisconnect(const size_t aid) noexcept {
 		ws_scheme_t::coffer_t * adj = const_cast <ws_scheme_t::coffer_t *> (this->_scheme.get(aid));
 		// Если параметры подключения адъютанта получены
 		if(adj != nullptr){
-			// Если функция обратного вызова установлена, выполняем
-			if(this->_callback.active != nullptr) this->_callback.active(aid, mode_t::DISCONNECT, this);
 			// Если экшен соответствует, выполняем его сброс
 			if(adj->action == ws_scheme_t::action_t::DISCONNECT)
 				// Выполняем сброс экшена
 				adj->action = ws_scheme_t::action_t::NONE;
 			// Выполняем удаление параметров адъютанта
 			this->_scheme.rm(aid);
+			// Если функция обратного вызова установлена, выполняем
+			if(this->_callback.active != nullptr)
+				// Выполняем функцию обратного вызова
+				this->_callback.active(aid, mode_t::DISCONNECT, this);
 		}
 	}
 }

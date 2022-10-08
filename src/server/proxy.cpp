@@ -976,12 +976,12 @@ void awh::server::Proxy::close(const size_t aid) noexcept {
 	}
 	// Отключаем адъютанта от сервера
 	this->_core.server.close(aid);
+	// Выполняем удаление параметров адъютанта
+	if(adj != nullptr) this->_scheme.rm(aid);
 	// Если функция обратного вызова установлена
 	if(this->_callback.active != nullptr)
 		// Выполняем функцию обратного вызова
 		this->_callback.active(aid, mode_t::DISCONNECT, this);
-	// Выполняем удаление параметров адъютанта
-	if(adj != nullptr) this->_scheme.rm(aid);
 }
 /**
  * waitTimeDetect Метод детекции сообщений по количеству секунд
