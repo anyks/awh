@@ -597,12 +597,8 @@ void awh::Core::unbind(Core * core) noexcept {
 			core->_timer.event.stop();
 		// Выполняем разблокировку потока
 		core->_mtx.status.unlock();
-		// Выполняем отключение всех клиентов
-		core->close();
-		// Зануляем базу событий
-		core->dispatch.rebase(false);
 		// Выполняем удаление модуля DNS резолвера
-		core->dns.clear();
+		core->dns.clear();		
 		// Запускаем метод деактивации базы событий
 		core->closedown();
 	}

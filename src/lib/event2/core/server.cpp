@@ -115,7 +115,9 @@ void awh::server::Core::DTLS::callback(const evutil_socket_t fd, const short eve
 					}
 				}
 				// Выполняем функцию обратного вызова
-				if(shm->callback.connect != nullptr) shm->callback.connect(this->aid, shm->sid, this->core);
+				if(shm->callback.connect != nullptr)
+					// Выполняем функцию обратного вызова
+					shm->callback.connect(this->aid, shm->sid, this->core);
 			// Подключение не установлено, выводим сообщение об ошибке
 			} else this->core->log->print("accepting failed, pid = %d", log_t::flag_t::WARNING, getpid());
 		// Запускаем таймер вновь на 100мс
@@ -258,7 +260,9 @@ void awh::server::Core::accept(const int fd, const size_t sid) noexcept {
 						// Запускаем чтение данных
 						this->enabled(engine_t::method_t::READ, ret.first->first);
 						// Выполняем функцию обратного вызова
-						if(shm->callback.connect != nullptr) shm->callback.connect(ret.first->first, shm->sid, this);
+						if(shm->callback.connect != nullptr)
+							// Выполняем функцию обратного вызова
+							shm->callback.connect(ret.first->first, shm->sid, this);
 					// Подключение не установлено, выводим сообщение об ошибке
 					} else this->log->print("accepting failed, pid = %d", log_t::flag_t::WARNING, getpid());
 				} break;
@@ -430,7 +434,9 @@ void awh::server::Core::accept(const int fd, const size_t sid) noexcept {
 							}
 						}
 						// Выполняем функцию обратного вызова
-						if(shm->callback.connect != nullptr) shm->callback.connect(ret.first->first, shm->sid, this);
+						if(shm->callback.connect != nullptr)
+							// Выполняем функцию обратного вызова
+							shm->callback.connect(ret.first->first, shm->sid, this);
 					// Если подключение не установлено, выводим сообщение об ошибке
 					} else this->log->print("accepting failed, pid = %d", log_t::flag_t::WARNING, getpid());
 				} break;
@@ -446,6 +452,8 @@ void awh::server::Core::close() noexcept {
 	if(!this->schemes.empty()){
 		// Выполняем блокировку потока
 		const lock_guard <recursive_mutex> lock(this->_mtx.close);
+		// Список функций обратного вызова
+		map <pair <size_t, size_t>, function <void (const size_t, const size_t, core_t *)>> callbacks;
 		// Переходим по всему списку схем сети
 		for(auto & item : this->schemes){
 			// Получаем объект схемы сети
@@ -468,8 +476,8 @@ void awh::server::Core::close() noexcept {
 						this->adjutants.erase(it->first);
 						// Выводим функцию обратного вызова
 						if(shm->callback.disconnect != nullptr)
-							// Выполняем функцию обратного вызова
-							shm->callback.disconnect(it->first, item.first, this);
+							// Формируем список функций обратного вызова
+							callbacks.emplace(make_pair(it->first, item.first), shm->callback.disconnect);
 						// Если список объектов DTLS не пустой
 						if(!this->_dtls.empty())
 							// Удаляем объект для работы DTLS из списка
@@ -499,6 +507,8 @@ void awh::server::Core::remove() noexcept {
 	if(!this->schemes.empty()){
 		// Выполняем блокировку потока
 		const lock_guard <recursive_mutex> lock(this->_mtx.close);
+		// Список функций обратного вызова
+		map <pair <size_t, size_t>, function <void (const size_t, const size_t, core_t *)>> callbacks;
 		// Переходим по всему списку схем сети
 		for(auto it = this->schemes.begin(); it != this->schemes.end();){
 			// Получаем объект схемы сети
@@ -521,8 +531,8 @@ void awh::server::Core::remove() noexcept {
 						this->adjutants.erase(jt->first);
 						// Выводим функцию обратного вызова
 						if(shm->callback.disconnect != nullptr)
-							// Выполняем функцию обратного вызова
-							shm->callback.disconnect(jt->first, it->first, this);
+							// Формируем список функций обратного вызова
+							callbacks.emplace(make_pair(jt->first, it->first), shm->callback.disconnect);
 						// Если список объектов DTLS не пустой
 						if(!this->_dtls.empty())
 							// Удаляем объект для работы DTLS из списка
@@ -543,6 +553,13 @@ void awh::server::Core::remove() noexcept {
 			shm->addr.close();
 			// Выполняем удаление схемы сети
 			it = this->schemes.erase(it);
+		}
+		// Если список функций обратного вызова существуют
+		if(!callbacks.empty()){
+			// Переходим по всему списку функций обратного вызова
+			for(auto & callback : callbacks)
+				// Выполняем функцию обратного вызова
+				callback.second(callback.first.first, callback.first.second, this);
 		}
 	}
 }
@@ -626,6 +643,8 @@ void awh::server::Core::remove(const size_t sid) noexcept {
 		if(it != this->schemes.end()){
 			// Получаем объект схемы сети
 			scheme_t * shm = (scheme_t *) const_cast <awh::scheme_t *> (it->second);
+			// Список функций обратного вызова
+			map <pair <size_t, size_t>, function <void (const size_t, const size_t, core_t *)>> callbacks;
 			// Если в схеме сети есть подключённые клиенты
 			if(!shm->adjutants.empty()){
 				// Переходим по всему списку адъютанта
@@ -642,8 +661,8 @@ void awh::server::Core::remove(const size_t sid) noexcept {
 						adj->ectx.clear();
 						// Выводим функцию обратного вызова
 						if(shm->callback.disconnect != nullptr)
-							// Выполняем функцию обратного вызова
-							shm->callback.disconnect(jt->first, it->first, this);
+							// Формируем список функций обратного вызова
+							callbacks.emplace(make_pair(jt->first, it->first), shm->callback.disconnect);
 						// Удаляем адъютанта из списка подключений
 						this->adjutants.erase(jt->first);
 						// Если список объектов DTLS не пустой
@@ -664,6 +683,13 @@ void awh::server::Core::remove(const size_t sid) noexcept {
 			shm->addr.close();
 			// Выполняем удаление схемы сети
 			this->schemes.erase(sid);
+			// Если список функций обратного вызова существуют
+			if(!callbacks.empty()){
+				// Переходим по всему списку функций обратного вызова
+				for(auto & callback : callbacks)
+					// Выполняем функцию обратного вызова
+					callback.second(callback.first.first, callback.first.second, this);
+			}
 		}
 	}
 }
@@ -701,7 +727,9 @@ void awh::server::Core::close(const size_t aid) noexcept {
 				// Выводим сообщение об ошибке
 				if(!core->noinfo) this->log->print("%s", log_t::flag_t::INFO, "disconnect client from server");
 				// Выводим функцию обратного вызова
-				if(shm->callback.disconnect != nullptr) shm->callback.disconnect(aid, shm->sid, this);
+				if(shm->callback.disconnect != nullptr)
+					// Выполняем функцию обратного вызова
+					shm->callback.disconnect(aid, shm->sid, this);
 				// Если тип сокета установлен как DTLS, запускаем ожидание новых подключений
 				if(this->net.sonet == scheme_t::sonet_t::DTLS){
 					// Очищаем контекст сервера

@@ -190,7 +190,9 @@ void awh::client::Core::connect(const size_t sid) noexcept {
 							// Выводим сообщение об ошибке
 							if(!this->noinfo) this->log->print("%s", log_t::flag_t::INFO, "disconnected from the server");
 							// Выводим функцию обратного вызова
-							if(shm->callback.disconnect != nullptr) shm->callback.disconnect(0, shm->sid, this);
+							if(shm->callback.disconnect != nullptr)
+								// Выполняем функцию обратного вызова
+								shm->callback.disconnect(0, shm->sid, this);
 							// Выходим из функции
 							return;
 						}
@@ -333,7 +335,9 @@ void awh::client::Core::connect(const size_t sid) noexcept {
 					// Выводим сообщение об ошибке
 					if(!this->noinfo) this->log->print("%s", log_t::flag_t::INFO, "disconnected from the server");
 					// Выводим функцию обратного вызова
-					if(shm->callback.disconnect != nullptr) shm->callback.disconnect(0, shm->sid, this);
+					if(shm->callback.disconnect != nullptr)
+						// Выполняем функцию обратного вызова
+						shm->callback.disconnect(0, shm->sid, this);
 				}
 			}
 		}
@@ -562,6 +566,8 @@ void awh::client::Core::close() noexcept {
 	}
 	// Если список схем сети активен
 	if(!this->schemes.empty()){
+		// Список функций обратного вызова
+		map <pair <size_t, size_t>, function <void (const size_t, const size_t, core_t *)>> callbacks;
 		// Переходим по всему списку схем сети
 		for(auto & item : this->schemes){
 			// Если в схеме сети есть подключённые клиенты
@@ -592,8 +598,8 @@ void awh::client::Core::close() noexcept {
 						this->adjutants.erase(it->first);
 						// Выводим функцию обратного вызова
 						if(shm->callback.disconnect != nullptr)
-							// Выполняем функцию обратного вызова
-							shm->callback.disconnect(it->first, item.first, this);
+							// Формируем список функций обратного вызова
+							callbacks.emplace(make_pair(it->first, item.first), shm->callback.disconnect);
 						// Удаляем блокировку адъютанта
 						this->_locking.erase(it->first);
 						// Удаляем адъютанта из списка
@@ -602,6 +608,13 @@ void awh::client::Core::close() noexcept {
 					} else ++it;
 				}
 			}
+		}
+		// Если список функций обратного вызова существуют
+		if(!callbacks.empty()){
+			// Переходим по всему списку функций обратного вызова
+			for(auto & callback : callbacks)
+				// Выполняем функцию обратного вызова
+				callback.second(callback.first.first, callback.first.second, this);
 		}
 	}
 }
@@ -613,6 +626,8 @@ void awh::client::Core::remove() noexcept {
 	const lock_guard <recursive_mutex> lock(this->_mtx.close);
 	// Если список схем сети активен
 	if(!this->schemes.empty()){
+		// Список функций обратного вызова
+		map <pair <size_t, size_t>, function <void (const size_t, const size_t, core_t *)>> callbacks;
 		// Если список активных таймеров существует
 		if(!this->_timeouts.empty()){
 			// Переходим по всему списку активных таймеров
@@ -653,8 +668,8 @@ void awh::client::Core::remove() noexcept {
 						this->adjutants.erase(jt->first);
 						// Выводим функцию обратного вызова
 						if(shm->callback.disconnect != nullptr)
-							// Выполняем функцию обратного вызова
-							shm->callback.disconnect(jt->first, it->first, this);
+							// Формируем список функций обратного вызова
+							callbacks.emplace(make_pair(jt->first, it->first), shm->callback.disconnect);
 						// Удаляем блокировку адъютанта
 						this->_locking.erase(jt->first);
 						// Удаляем адъютанта из списка
@@ -665,6 +680,13 @@ void awh::client::Core::remove() noexcept {
 			}
 			// Выполняем удаление схемы сети
 			it = this->schemes.erase(it);
+		}
+		// Если список функций обратного вызова существуют
+		if(!callbacks.empty()){
+			// Переходим по всему списку функций обратного вызова
+			for(auto & callback : callbacks)
+				// Выполняем функцию обратного вызова
+				callback.second(callback.first.first, callback.first.second, this);
 		}
 	}
 }
@@ -756,6 +778,42 @@ void awh::client::Core::remove(const size_t sid) noexcept {
 		auto it = this->schemes.find(sid);
 		// Если идентификатор схемы сети найден
 		if(it != this->schemes.end()){
+			// Получаем объект схемы сети
+			scheme_t * shm = (scheme_t *) const_cast <awh::scheme_t *> (it->second);
+			// Устанавливаем флаг ожидания статуса
+			shm->status.wait = scheme_t::mode_t::DISCONNECT;
+			// Устанавливаем статус сетевого ядра
+			shm->status.real = scheme_t::mode_t::DISCONNECT;
+			// Список функций обратного вызова
+			map <pair <size_t, size_t>, function <void (const size_t, const size_t, core_t *)>> callbacks;
+			// Если в схеме сети есть подключённые клиенты
+			if(!shm->adjutants.empty()){
+				// Переходим по всему списку адъютанта
+				for(auto jt = shm->adjutants.begin(); jt != shm->adjutants.end();){
+					// Если блокировка адъютанта не установлена
+					if(this->_locking.count(jt->first) < 1){
+						// Выполняем блокировку адъютанта
+						this->_locking.emplace(jt->first);
+						// Получаем объект адъютанта
+						awh::scheme_t::adj_t * adj = const_cast <awh::scheme_t::adj_t *> (jt->second.get());
+						// Выполняем очистку буфера событий
+						this->clean(jt->first);
+						// Выполняем очистку контекста двигателя
+						adj->ectx.clear();
+						// Удаляем адъютанта из списка подключений
+						this->adjutants.erase(jt->first);
+						// Выводим функцию обратного вызова
+						if(shm->callback.disconnect != nullptr)
+							// Формируем список функций обратного вызова
+							callbacks.emplace(make_pair(jt->first, it->first), shm->callback.disconnect);
+						// Удаляем блокировку адъютанта
+						this->_locking.erase(jt->first);
+						// Удаляем адъютанта из списка
+						jt = shm->adjutants.erase(jt);
+					// Иначе продолжаем дальше
+					} else ++jt;
+				}
+			}
 			// Выполняем удаление уоркера из списка
 			this->schemes.erase(it);
 			// Выполняем поиск активного таймаута
@@ -771,6 +829,13 @@ void awh::client::Core::remove(const size_t sid) noexcept {
 				// Выполняем разблокировку потока
 				this->_mtx.timeout.unlock();
 			}
+			// Если список функций обратного вызова существуют
+			if(!callbacks.empty()){
+				// Переходим по всему списку функций обратного вызова
+				for(auto & callback : callbacks)
+					// Выполняем функцию обратного вызова
+					callback.second(callback.first.first, callback.first.second, this);
+			}
 		}
 	}
 }
@@ -785,6 +850,10 @@ void awh::client::Core::close(const size_t aid) noexcept {
 	if(this->_locking.count(aid) < 1){
 		// Выполняем блокировку адъютанта
 		this->_locking.emplace(aid);
+		// Идентификатор схемы сети
+		size_t sid = 0;
+		// Функция обратного вызова
+		function <void (const size_t, const size_t, core_t *)> disconnect = nullptr;
 		// Выполняем извлечение адъютанта
 		auto it = this->adjutants.find(aid);
 		// Если адъютант получен
@@ -795,10 +864,12 @@ void awh::client::Core::close(const size_t aid) noexcept {
 			scheme_t * shm = (scheme_t *) const_cast <awh::scheme_t *> (adj->parent);
 			// Получаем объект ядра клиента
 			const core_t * core = reinterpret_cast <const core_t *> (shm->core);
+			// Запоминаем идентификатор схемы сети
+			sid = shm->sid;
 			// Выполняем очистку буфера событий
 			this->clean(aid);
 			// Удаляем установленный таймаут, если он существует
-			this->clearTimeout(shm->sid);
+			this->clearTimeout(sid);
 			// Если прокси-сервер активирован но уже переключён на работу с сервером
 			if((shm->proxy.type != proxy_t::type_t::NONE) && !shm->isProxy())
 				// Выполняем переключение обратно на прокси-сервер
@@ -816,18 +887,24 @@ void awh::client::Core::close(const size_t aid) noexcept {
 			// Если не нужно выполнять принудительную остановку работы схемы сети
 			if(!shm->stop){
 				// Если нужно выполнить автоматическое переподключение
-				if(shm->alive) this->reconnect(shm->sid);
+				if(shm->alive) this->reconnect(sid);
 				// Если автоматическое подключение выполнять не нужно
 				else {
 					// Выводим сообщение об ошибке
 					if(!core->noinfo) this->log->print("%s", log_t::flag_t::INFO, "disconnected from the server");
 					// Выводим функцию обратного вызова
-					if(shm->callback.disconnect != nullptr) shm->callback.disconnect(aid, shm->sid, this);
+					if(shm->callback.disconnect != nullptr)
+						// Устанавливаем функцию обратного вызова
+						disconnect = shm->callback.disconnect;
 				}
 			}
 		}
 		// Удаляем блокировку адъютанта
 		this->_locking.erase(aid);
+		// Если функция обратного вызова установлена
+		if(disconnect != nullptr)
+			// Выполняем функцию обратного вызова
+			disconnect(aid, sid, this);
 	}
 }
 /**
@@ -985,7 +1062,9 @@ void awh::client::Core::connected(const size_t aid) noexcept {
 					// Выполняем функцию обратного вызова
 					shm->callback.connectProxy(it->first, shm->sid, const_cast <awh::core_t *> (shm->core));
 			// Выполняем функцию обратного вызова
-			} else if(shm->callback.connect != nullptr) shm->callback.connect(it->first, shm->sid, const_cast <awh::core_t *> (shm->core));
+			} else if(shm->callback.connect != nullptr)
+				// Выполняем функцию обратного вызова
+				shm->callback.connect(it->first, shm->sid, const_cast <awh::core_t *> (shm->core));
 			// Выходим из функции
 			return;
 		}
