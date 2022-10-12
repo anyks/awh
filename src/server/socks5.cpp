@@ -265,7 +265,7 @@ void awh::server::ProxySocks5::readClientCallback(const char * buffer, const siz
  * @param sid    идентификатор схемы сети
  * @param core   объект сетевого ядра
  */
-void awh::server::ProxySocks5::readServerCallback(const char * buffer, const size_t size, const size_t aid, const size_t sid, awh::core_t * core) noexcept {	
+void awh::server::ProxySocks5::readServerCallback(const char * buffer, const size_t size, const size_t aid, const size_t sid, awh::core_t * core) noexcept {
 	// Если данные существуют
 	if((buffer != nullptr) && (size > 0) && (aid > 0) && (sid > 0)){
 		// Получаем параметры подключения адъютанта

@@ -3095,8 +3095,8 @@ void awh::Engine::certificate(const string & chain, const string & key) noexcept
  * @param uri объект работы с URI
  */
 awh::Engine::Engine(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcept :
- _verify(true), _cipher(""), _chain(""), _privkey(""), _path(""),
- _ca(SSL_CA_FILE), _fmk(fmk), _uri(uri), _log(log) {
+ _verify(true), _cipher(""), _chain(""), _privkey(""),
+ _path(""), _ca(SSL_CA_FILE), _fmk(fmk), _uri(uri), _log(log) {
 	// Выполняем модификацию доверенного сертификата (CA-файла)
 	this->_ca = fs_t::realPath(this->_ca);
 	// Выполняем установку алгоритмов шифрования

@@ -357,22 +357,17 @@ void awh::Core::launching() noexcept {
 	this->status = status_t::START;
 	// Если список схем сети существует
 	if(!this->schemes.empty()){
-		// Список функций обратного вызова
-		map <size_t, function <void (const size_t, core_t *)>> callbacks;
+		// Объект работы с функциями обратного вызова
+		fn_t callback(this->log);
 		// Переходим по всему списку схем сети
 		for(auto & scheme : this->schemes){
 			// Если функция обратного вызова установлена
-			if(scheme.second->callback.open != nullptr)
+			if(scheme.second->callback.is("open"))
 				// Устанавливаем полученную функцию обратного вызова
-				callbacks.emplace(scheme.first, scheme.second->callback.open);
+				callback.set <void (const size_t, core_t *)> (to_string(scheme.first), scheme.second->callback.get <void (const size_t, core_t *)> ("open"), scheme.first, this);
 		}
-		// Если список функций обратного вызова получен
-		if(!callbacks.empty()){
-			// Переходим по всем функциям обратного вызова
-			for(auto & item : callbacks)
-				// Выполняем функцию обратного вызова
-				item.second(item.first, this);
-		}
+		// Выполняем все функции обратного вызова
+		callback.bind <const size_t, core_t *> ();
 	}
 	// Если функция обратного вызова установлена, выполняем
 	if(this->_active != nullptr) this->_active(true, this);
@@ -425,27 +420,22 @@ void awh::Core::persistent(const evutil_socket_t fd, const short event) noexcept
 	if(this->status == status_t::START){
 		// Если список схем сети существует
 		if(!this->schemes.empty() && !this->adjutants.empty()){
-			// Список функций обратного вызова
-			map <pair <size_t, size_t>, function <void (const size_t, const size_t, core_t *)>> callbacks;
+			// Объект работы с функциями обратного вызова
+			fn_t callback(this->log);
 			// Переходим по всему списку схем сети
 			for(auto & item : this->schemes){
 				// Получаем объект схемы сети
 				scheme_t * shm = const_cast <scheme_t *> (item.second);
 				// Если функция обратного вызова установлена и адъютанты существуют
-				if((shm->callback.persist != nullptr) && !this->adjutants.empty()){
+				if(shm->callback.is("persist") && !this->adjutants.empty()){
 					// Переходим по всему списку адъютантов и формируем список их идентификаторов
 					for(auto & adj : this->adjutants)
 						// Получаем функцию обратного вызова
-						callbacks.emplace(make_pair(adj.first, item.first), shm->callback.persist);
+						callback.set <void (const size_t, const size_t, core_t *)> (to_string(adj.first), shm->callback.get <void (const size_t, const size_t, core_t *)> ("persist"), adj.first, item.first, this);
 				}
 			}
-			// Если список функций обратного вызова получен
-			if(!callbacks.empty()){
-				// Переходим по всем функциям обратного вызова
-				for(auto & item : callbacks)
-					// Выполняем функцию обратного вызова
-					item.second(item.first.first, item.first.second, this);
-			}
+			// Выполняем все функции обратного вызова
+			callback.bind <const size_t, const size_t, core_t *> ();
 		}
 		// Запускаем работу таймера
 		this->_timer.event.start();

@@ -109,9 +109,9 @@ int main(int argc, char * argv[]){
 	// proxy.sonet(awh::scheme_t::sonet_t::TCP);
 	// proxy.sonet(awh::scheme_t::sonet_t::SCTP);
 	// Отключаем валидацию сертификата
-	proxy.verifySSL(true);
+	// proxy.verifySSL(true);
 	// Активируем максимальное количество рабочих процессов
-	proxy.clusterSize();
+	// proxy.clusterSize();
 	// Устанавливаем таймаут ожидания получения сообщений
 	// proxy.waitTimeDetect(60, 60);
 	// Выполняем инициализацию WebSocket сервера

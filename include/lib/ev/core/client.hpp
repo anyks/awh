@@ -84,9 +84,9 @@ namespace awh {
 				mtx_t _mtx;
 			private:
 				// Список блокированных объектов
-				std::set <size_t> _locking;
+				set <size_t> _locking;
 				// Список таймеров
-				std::map <size_t, unique_ptr <timeout_t>> _timeouts;
+				map <size_t, unique_ptr <timeout_t>> _timeouts;
 			private:
 				/**
 				 * connect Метод создания подключения к удаленному серверу
