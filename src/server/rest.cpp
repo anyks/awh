@@ -893,19 +893,19 @@ awh::server::Rest::Rest(const server::core_t * core, const fmk_t * fmk, const lo
  _maxRequests(SERVER_MAX_REQUESTS), _threadsCount(0), _threadsEnabled(false),
  _fmk(fmk), _log(log), _core(core) {
 	// Устанавливаем событие на запуск системы
-	this->_scheme.callback.open = std::bind(&Rest::openCallback, this, _1, _2);
+	this->_scheme.callback.set <void (const size_t, awh::core_t *)> ("open", std::bind(&Rest::openCallback, this, _1, _2));
 	// Устанавливаем функцию персистентного вызова
-	this->_scheme.callback.persist = std::bind(&Rest::persistCallback, this, _1, _2, _3);
+	this->_scheme.callback.set <void (const size_t, const size_t, awh::core_t *)> ("persist", std::bind(&Rest::persistCallback, this, _1, _2, _3));
 	// Устанавливаем событие подключения
-	this->_scheme.callback.connect = std::bind(&Rest::connectCallback, this, _1, _2, _3);
-	// Устанавливаем функцию чтения данных
-	this->_scheme.callback.read = std::bind(&Rest::readCallback, this, _1, _2, _3, _4, _5);
-	// Устанавливаем функцию записи данных
-	this->_scheme.callback.write = std::bind(&Rest::writeCallback, this, _1, _2, _3, _4, _5);
+	this->_scheme.callback.set <void (const size_t, const size_t, awh::core_t *)> ("connect", std::bind(&Rest::connectCallback, this, _1, _2, _3));
 	// Устанавливаем событие отключения
-	this->_scheme.callback.disconnect = std::bind(&Rest::disconnectCallback, this, _1, _2, _3);
+	this->_scheme.callback.set <void (const size_t, const size_t, awh::core_t *)> ("disconnect", std::bind(&Rest::disconnectCallback, this, _1, _2, _3));
+	// Устанавливаем функцию чтения данных
+	this->_scheme.callback.set <void (const char *, const size_t, const size_t, const size_t, awh::core_t *)> ("read", std::bind(&Rest::readCallback, this, _1, _2, _3, _4, _5));
+	// Устанавливаем функцию записи данных
+	this->_scheme.callback.set <void (const char *, const size_t, const size_t, const size_t, awh::core_t *)> ("write", std::bind(&Rest::writeCallback, this, _1, _2, _3, _4, _5));
 	// Добавляем событие аццепта адъютанта
-	this->_scheme.callback.accept = std::bind(&Rest::acceptCallback, this, _1, _2, _3, _4, _5);
+	this->_scheme.callback.set <bool (const string &, const string &, const u_int, const size_t, awh::core_t *)> ("accept", std::bind(&Rest::acceptCallback, this, _1, _2, _3, _4, _5));
 	// Активируем персистентный запуск для работы пингов
 	const_cast <server::core_t *> (this->_core)->persistEnable(true);
 	// Добавляем схему сети в сетевое ядро

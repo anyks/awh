@@ -372,13 +372,13 @@ awh::client::Sample::Sample(const client::core_t * core, const fmk_t * fmk, cons
  _nwk(fmk), _scheme(fmk, log), _action(action_t::NONE),
  _aid(0), _unbind(true), _fmk(fmk), _log(log), _core(core) {
 	// Устанавливаем событие на запуск системы
-	this->_scheme.callback.open = std::bind(&Sample::openCallback, this, _1, _2);
+	this->_scheme.callback.set <void (const size_t, awh::core_t *)> ("open", std::bind(&Sample::openCallback, this, _1, _2));
 	// Устанавливаем событие подключения
-	this->_scheme.callback.connect = std::bind(&Sample::connectCallback, this, _1, _2, _3);
-	// Устанавливаем функцию чтения данных
-	this->_scheme.callback.read = std::bind(&Sample::readCallback, this, _1, _2, _3, _4, _5);
+	this->_scheme.callback.set <void (const size_t, const size_t, awh::core_t *)> ("connect", std::bind(&Sample::connectCallback, this, _1, _2, _3));
 	// Устанавливаем событие отключения
-	this->_scheme.callback.disconnect = std::bind(&Sample::disconnectCallback, this, _1, _2, _3);
+	this->_scheme.callback.set <void (const size_t, const size_t, awh::core_t *)> ("disconnect", std::bind(&Sample::disconnectCallback, this, _1, _2, _3));
+	// Устанавливаем функцию чтения данных
+	this->_scheme.callback.set <void (const char *, const size_t, const size_t, const size_t, awh::core_t *)> ("read", std::bind(&Sample::readCallback, this, _1, _2, _3, _4, _5));
 	// Добавляем схему сети в сетевое ядро
 	const_cast <client::core_t *> (this->_core)->add(&this->_scheme);
 }

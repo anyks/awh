@@ -275,7 +275,6 @@ namespace awh {
 		private:
 			// Объект работы с сигналами
 			sig_t _sig;
-		private:
 			// Объект события таймера
 			timer_t _timer;
 		private:

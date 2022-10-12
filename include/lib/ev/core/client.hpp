@@ -18,7 +18,7 @@
 /**
  * Стандартная библиотека
  */
-#include <set>
+// #include <set>
 
 /**
  * Наши модули
@@ -84,9 +84,9 @@ namespace awh {
 				mtx_t _mtx;
 			private:
 				// Список блокированных объектов
-				set <size_t> _locking;
+				std::set <size_t> _locking;
 				// Список таймеров
-				map <size_t, unique_ptr <timeout_t>> _timeouts;
+				std::map <size_t, unique_ptr <timeout_t>> _timeouts;
 			private:
 				/**
 				 * connect Метод создания подключения к удаленному серверу

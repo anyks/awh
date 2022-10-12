@@ -17,9 +17,11 @@
 /**
  * Стандартная библиотека
  */
+#include <tuple>
 #include <string>
 #include <vector>
 #include <memory>
+#include <utility>
 #include <variant>
 #include <iostream>
 #include <functional>
@@ -108,9 +110,18 @@ namespace awh {
 			 * @param name название функции обратного вызова
 			 * @return     результат проверки
 			 */
-			bool is(const string & name) noexcept {
+			bool is(const string & name) const noexcept {
 				// Выводим результат проверки
 				return (!name.empty() && !this->_callbacks.empty() && (this->_callbacks.find(name) != this->_callbacks.end()));
+			}
+			/**
+			 * clear Метод очистки параметров модуля
+			 */
+			void clear() noexcept {
+				// Выполняем очистку параметров функций обратного вызова
+				this->_params.clear();
+				// Выполняем очистку функций обратного вызова
+				this->_callbacks.clear();
 			}
 			/**
 			 * rm Метод удаления функции обратного вызова
@@ -248,7 +259,7 @@ namespace awh {
 						 */
 						} catch(const std::bad_function_call & error) {
 							// Выводим сообщение об ошибке
-							this->_log.print("%s", log_t::flag_t::CRITICAL, error.what());
+							this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 						}
 					}
 				}
@@ -280,7 +291,7 @@ namespace awh {
 						 */
 						} catch(const std::bad_function_call & error) {
 							// Выводим сообщение об ошибке
-							this->_log.print("%s", log_t::flag_t::CRITICAL, error.what());
+							this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 						}
 					}
 				}
@@ -290,13 +301,13 @@ namespace awh {
 			 * @tparam A    сигнатура функции
 			 * @tparam Args аргументы функции обратного вызова
 			 */
-			template <typename... A, class ... Args>
+			template <typename... A, class... Args>
 			/**
 			 * call Метод вызова функции обратного вызова
 			 * @param name название функции обратного вызова
 			 * @param args аргументы передаваемые в функцию обратного вызова
 			 */
-			void call(const string & name, Args ... args) const noexcept {
+			void call(const string & name, Args... args) const noexcept {
 				// Если название функции передано
 				if(!name.empty() && !this->_callbacks.empty() && (this->_callbacks.find(name) != this->_callbacks.end())){
 					// Получаем функцию обратного вызова
@@ -314,7 +325,7 @@ namespace awh {
 						 */
 						} catch(const std::bad_function_call & error) {
 							// Выводим сообщение об ошибке
-							this->_log.print("%s", log_t::flag_t::CRITICAL, error.what());
+							this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 						}
 					}
 				}
@@ -348,7 +359,7 @@ namespace awh {
 						 */
 						} catch(const std::bad_function_call & error) {
 							// Выводим сообщение об ошибке
-							this->_log.print("%s", log_t::flag_t::CRITICAL, error.what());
+							this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 						}
 					}
 				}
@@ -385,7 +396,7 @@ namespace awh {
 						 */
 						} catch(const std::bad_function_call & error) {
 							// Выводим сообщение об ошибке
-							this->_log.print("%s", log_t::flag_t::CRITICAL, error.what());
+							this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 						}
 					}
 				}
@@ -424,7 +435,7 @@ namespace awh {
 						 */
 						} catch(const std::bad_function_call & error) {
 							// Выводим сообщение об ошибке
-							this->_log.print("%s", log_t::flag_t::CRITICAL, error.what());
+							this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 						}
 					}
 				}
@@ -467,7 +478,7 @@ namespace awh {
 						 */
 						} catch(const std::bad_function_call & error) {
 							// Выводим сообщение об ошибке
-							this->_log.print("%s", log_t::flag_t::CRITICAL, error.what());
+							this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 						}
 					}
 				}
@@ -506,7 +517,7 @@ namespace awh {
 						 */
 						} catch(const std::bad_function_call & error) {
 							// Выводим сообщение об ошибке
-							this->_log.print("%s", log_t::flag_t::CRITICAL, error.what());
+							this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 						}
 					}
 				}
@@ -553,7 +564,7 @@ namespace awh {
 						 */
 						} catch(const std::bad_function_call & error) {
 							// Выводим сообщение об ошибке
-							this->_log.print("%s", log_t::flag_t::CRITICAL, error.what());
+							this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 						}
 					}
 				}
@@ -597,7 +608,7 @@ namespace awh {
 						 */
 						} catch(const std::bad_function_call & error) {
 							// Выводим сообщение об ошибке
-							this->_log.print("%s", log_t::flag_t::CRITICAL, error.what());
+							this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 						}
 					}
 				}

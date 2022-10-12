@@ -26,6 +26,7 @@
 /**
  * Наши модули
  */
+#include <sys/fn.hpp>
 #include <sys/fmk.hpp>
 #include <sys/log.hpp>
 #include <net/engine.hpp>
@@ -177,38 +178,6 @@ namespace awh {
 				 */
 				Marker() noexcept : read(BUFFER_READ_MIN, BUFFER_READ_MAX), write(BUFFER_WRITE_MIN, BUFFER_WRITE_MAX) {}
 			} marker_t;
-		private:
-			/**
-			 * Callback Структура функций обратного вызова
-			 */
-			typedef struct Callback {
-				// Функция обратного вызова при открытии приложения
-				function <void (const size_t, Core *)> open;
-				// Функция обратного вызова для персистентного вызова
-				function <void (const size_t, const size_t, Core *)> persist;
-				// Функция обратного вызова при запуске подключения
-				function <void (const size_t, const size_t, Core *)> connect;
-				// Функция обратного вызова при закрытии подключения
-				function <void (const size_t, const size_t, Core *)> disconnect;
-				// Функция обратного вызова при получении данных
-				function <void (const char *, const size_t, const size_t, const size_t, Core *)> read;
-				// Функция обратного вызова при записи данных
-				function <void (const char *, const size_t, const size_t, const size_t, Core *)> write;
-				// Функция обратного вызова при открытии подключения к прокси-серверу
-				function <void (const size_t, const size_t, awh::Core *)> connectProxy;
-				// Функция обратного вызова при получении данных с прокси-сервера
-				function <void (const char *, const size_t, const size_t, const size_t, awh::Core *)> readProxy;
-				// Функция обратного вызова при подключении нового клиента
-				function <bool (const string &, const string &, const u_int, const size_t, awh::Core *)> accept;
-				/**
-				 * Callback Конструктор
-				 */
-				Callback() noexcept :
-				 open(nullptr), persist(nullptr),
-				 connect(nullptr), disconnect(nullptr),
-				 read(nullptr), write(nullptr),
-				 connectProxy(nullptr), readProxy(nullptr), accept(nullptr) {}
-			} fn_t;
 		private:
 			/**
 			 * Adjutant Структура адъютанта
@@ -373,7 +342,7 @@ namespace awh {
 			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
 			 */
-			Scheme(const fmk_t * fmk, const log_t * log) noexcept : sid(0), wait(false), alive(false), fmk(fmk), log(log), core(nullptr) {}
+			Scheme(const fmk_t * fmk, const log_t * log) noexcept : sid(0), wait(false), alive(false), callback(log), fmk(fmk), log(log), core(nullptr) {}
 			/**
 			 * ~Scheme Деструктор
 			 */

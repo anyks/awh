@@ -1708,17 +1708,17 @@ awh::client::Rest::Rest(const client::core_t * core, const fmk_t * fmk, const lo
  _compress(awh::http_t::compress_t::NONE), _aid(0), _unbind(true), _active(false), _stopped(false),
  _redirects(false), _attempts(10), _fmk(fmk), _log(log), _core(core) {
 	// Устанавливаем событие на запуск системы
-	this->_scheme.callback.open = std::bind(&Rest::openCallback, this, _1, _2);
+	this->_scheme.callback.set <void (const size_t, awh::core_t *)> ("open", std::bind(&Rest::openCallback, this, _1, _2));
 	// Устанавливаем событие подключения
-	this->_scheme.callback.connect = std::bind(&Rest::connectCallback, this, _1, _2, _3);
-	// Устанавливаем функцию чтения данных
-	this->_scheme.callback.read = std::bind(&Rest::readCallback, this, _1, _2, _3, _4, _5);
+	this->_scheme.callback.set <void (const size_t, const size_t, awh::core_t *)> ("connect", std::bind(&Rest::connectCallback, this, _1, _2, _3));
 	// Устанавливаем событие отключения
-	this->_scheme.callback.disconnect = std::bind(&Rest::disconnectCallback, this, _1, _2, _3);
+	this->_scheme.callback.set <void (const size_t, const size_t, awh::core_t *)> ("disconnect", std::bind(&Rest::disconnectCallback, this, _1, _2, _3));
 	// Устанавливаем событие на подключение к прокси-серверу
-	this->_scheme.callback.connectProxy = std::bind(&Rest::proxyConnectCallback, this, _1, _2, _3);
+	this->_scheme.callback.set <void (const size_t, const size_t, awh::core_t *)> ("connectProxy", std::bind(&Rest::proxyConnectCallback, this, _1, _2, _3));
+	// Устанавливаем функцию чтения данных
+	this->_scheme.callback.set <void (const char *, const size_t, const size_t, const size_t, awh::core_t *)> ("read", std::bind(&Rest::readCallback, this, _1, _2, _3, _4, _5));
 	// Устанавливаем событие на чтение данных с прокси-сервера
-	this->_scheme.callback.readProxy = std::bind(&Rest::proxyReadCallback, this, _1, _2, _3, _4, _5);
+	this->_scheme.callback.set <void (const char *, const size_t, const size_t, const size_t, awh::core_t *)> ("readProxy", std::bind(&Rest::proxyReadCallback, this, _1, _2, _3, _4, _5));
 	// Устанавливаем функцию обработки вызова для получения чанков
 	this->_http.chunking(std::bind(&Rest::chunking, this, _1, _2));
 	// Добавляем схемы сети в сетевое ядро

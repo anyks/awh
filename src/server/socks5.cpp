@@ -101,12 +101,12 @@ void awh::server::ProxySocks5::connectServerCallback(const size_t aid, const siz
 			adj->scheme.keepAlive.idle = this->_scheme.keepAlive.idle;
 			// Выполняем установку интервала времени в секундах между попытками
 			adj->scheme.keepAlive.intvl = this->_scheme.keepAlive.intvl;
-			// Устанавливаем функцию чтения данных
-			adj->scheme.callback.read = std::bind(&ProxySocks5::readClientCallback, this, _1, _2, _3, _4, _5);
 			// Устанавливаем событие подключения
-			adj->scheme.callback.connect = std::bind(&ProxySocks5::connectClientCallback, this, _1, _2, _3);
+			adj->scheme.callback.set <void (const size_t, const size_t, awh::core_t *)> ("connect", std::bind(&ProxySocks5::connectClientCallback, this, _1, _2, _3));
 			// Устанавливаем событие отключения
-			adj->scheme.callback.disconnect = std::bind(&ProxySocks5::disconnectClientCallback, this, _1, _2, _3);
+			adj->scheme.callback.set <void (const size_t, const size_t, awh::core_t *)> ("disconnect", std::bind(&ProxySocks5::disconnectClientCallback, this, _1, _2, _3));
+			// Устанавливаем функцию чтения данных
+			adj->scheme.callback.set <void (const char *, const size_t, const size_t, const size_t, awh::core_t *)> ("read", std::bind(&ProxySocks5::readClientCallback, this, _1, _2, _3, _4, _5));
 			// Добавляем схему сети в сетевое ядро
 			this->_core.client.add(&adj->scheme);
 			// Создаём пару клиента и сервера
@@ -681,17 +681,17 @@ awh::server::ProxySocks5::ProxySocks5(const fmk_t * fmk, const log_t * log) noex
 	// Устанавливаем протокол интернет-подключения
 	this->_core.server.sonet(scheme_t::sonet_t::TCP);
 	// Устанавливаем событие на запуск системы
-	this->_scheme.callback.open = std::bind(&ProxySocks5::openServerCallback, this, _1, _2);
+	this->_scheme.callback.set <void (const size_t, awh::core_t *)> ("open", std::bind(&ProxySocks5::openServerCallback, this, _1, _2));
 	// Устанавливаем событие подключения
-	this->_scheme.callback.connect = std::bind(&ProxySocks5::connectServerCallback, this, _1, _2, _3);
-	// Устанавливаем функцию чтения данных
-	this->_scheme.callback.read = std::bind(&ProxySocks5::readServerCallback, this, _1, _2, _3, _4, _5);
-	// Устанавливаем функцию записи данных
-	this->_scheme.callback.write = std::bind(&ProxySocks5::writeServerCallback, this, _1, _2, _3, _4, _5);
-	// Добавляем событие аццепта адъютанта
-	this->_scheme.callback.accept = std::bind(&ProxySocks5::acceptServerCallback, this, _1, _2, _3, _4, _5);
+	this->_scheme.callback.set <void (const size_t, const size_t, awh::core_t *)> ("connect", std::bind(&ProxySocks5::connectServerCallback, this, _1, _2, _3));
 	// Устанавливаем событие отключения
-	this->_scheme.callback.disconnect = std::bind(&ProxySocks5::disconnectServerCallback, this, _1, _2, _3);
+	this->_scheme.callback.set <void (const size_t, const size_t, awh::core_t *)> ("disconnect", std::bind(&ProxySocks5::disconnectServerCallback, this, _1, _2, _3));
+	// Устанавливаем функцию чтения данных
+	this->_scheme.callback.set <void (const char *, const size_t, const size_t, const size_t, awh::core_t *)> ("read", std::bind(&ProxySocks5::readServerCallback, this, _1, _2, _3, _4, _5));
+	// Устанавливаем функцию записи данных
+	this->_scheme.callback.set <void (const char *, const size_t, const size_t, const size_t, awh::core_t *)> ("write", std::bind(&ProxySocks5::writeServerCallback, this, _1, _2, _3, _4, _5));
+	// Добавляем событие аццепта адъютанта
+	this->_scheme.callback.set <bool (const string &, const string &, const u_int, const size_t, awh::Core *)> ("accept", std::bind(&ProxySocks5::acceptServerCallback, this, _1, _2, _3, _4, _5));
 	// Добавляем схему сети в сетевое ядро
 	this->_core.server.add(&this->_scheme);
 	// Разрешаем автоматический перезапуск упавших процессов

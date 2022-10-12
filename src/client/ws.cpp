@@ -1530,21 +1530,21 @@ awh::client::WebSocket::WebSocket(const client::core_t * core, const fmk_t * fmk
  _takeOverSrv(false), _attempt(0), _attempts(10), _wbitClient(0), _wbitServer(0), _aid(0), _code(0),
  _checkPoint(0), _frameSize(0xFA000), _fmk(fmk), _log(log), _core(core) {
 	// Устанавливаем событие на запуск системы
-	this->_scheme.callback.open = std::bind(&WebSocket::openCallback, this, _1, _2);
+	this->_scheme.callback.set <void (const size_t, awh::core_t *)> ("open", std::bind(&WebSocket::openCallback, this, _1, _2));
 	// Устанавливаем функцию персистентного вызова
-	this->_scheme.callback.persist = std::bind(&WebSocket::persistCallback, this, _1, _2, _3);
+	this->_scheme.callback.set <void (const size_t, const size_t, awh::core_t *)> ("persist", std::bind(&WebSocket::persistCallback, this, _1, _2, _3));
 	// Устанавливаем событие подключения
-	this->_scheme.callback.connect = std::bind(&WebSocket::connectCallback, this, _1, _2, _3);
-	// Устанавливаем функцию чтения данных
-	this->_scheme.callback.read = std::bind(&WebSocket::readCallback, this, _1, _2, _3, _4, _5);
-	// Устанавливаем функцию записи данных
-	this->_scheme.callback.write = std::bind(&WebSocket::writeCallback, this, _1, _2, _3, _4, _5);
+	this->_scheme.callback.set <void (const size_t, const size_t, awh::core_t *)> ("connect", std::bind(&WebSocket::connectCallback, this, _1, _2, _3));
 	// Устанавливаем событие отключения
-	this->_scheme.callback.disconnect = std::bind(&WebSocket::disconnectCallback, this, _1, _2, _3);
+	this->_scheme.callback.set <void (const size_t, const size_t, awh::core_t *)> ("disconnect", std::bind(&WebSocket::disconnectCallback, this, _1, _2, _3));
 	// Устанавливаем событие на подключение к прокси-серверу
-	this->_scheme.callback.connectProxy = std::bind(&WebSocket::proxyConnectCallback, this, _1, _2, _3);
+	this->_scheme.callback.set <void (const size_t, const size_t, awh::core_t *)> ("connectProxy", std::bind(&WebSocket::proxyConnectCallback, this, _1, _2, _3));
+	// Устанавливаем функцию чтения данных
+	this->_scheme.callback.set <void (const char *, const size_t, const size_t, const size_t, awh::core_t *)> ("read", std::bind(&WebSocket::readCallback, this, _1, _2, _3, _4, _5));
+	// Устанавливаем функцию записи данных
+	this->_scheme.callback.set <void (const char *, const size_t, const size_t, const size_t, awh::core_t *)> ("write", std::bind(&WebSocket::writeCallback, this, _1, _2, _3, _4, _5));
 	// Устанавливаем событие на чтение данных с прокси-сервера
-	this->_scheme.callback.readProxy = std::bind(&WebSocket::proxyReadCallback, this, _1, _2, _3, _4, _5);
+	this->_scheme.callback.set <void (const char *, const size_t, const size_t, const size_t, awh::core_t *)> ("readProxy", std::bind(&WebSocket::proxyReadCallback, this, _1, _2, _3, _4, _5));
 	// Активируем персистентный запуск для работы пингов
 	const_cast <client::core_t *> (this->_core)->persistEnable(true);
 	// Добавляем схему сети в сетевое ядро
