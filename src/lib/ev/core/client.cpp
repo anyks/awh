@@ -1075,14 +1075,14 @@ void awh::client::Core::transfer(const engine_t::method_t method, const size_t a
 					int64_t bytes = -1;
 					// Создаём буфер входящих данных
 					char buffer[BUFFER_SIZE];
-					// Переводим BIO в неблокирующий режим
-					adj->ectx.noblock();
 					// Останавливаем чтение данных с клиента
 					adj->bev.event.read.stop();
 					// Устанавливаем метку чтения данных
 					Read:
 					// Если подключение выполнено
 					if(!adj->bev.locked.read && (shm->status.real == scheme_t::mode_t::CONNECT)){
+						// Переводим BIO в неблокирующий режим
+						adj->ectx.noblock();
 						// Выполняем обнуление буфера данных
 						memset(buffer, 0, sizeof(buffer));
 						// Выполняем получение сообщения от клиента
@@ -1141,7 +1141,7 @@ void awh::client::Core::transfer(const engine_t::method_t method, const size_t a
 									shm->callback.call <const char *, const size_t, const size_t, const size_t, awh::core_t *> ("read", buffer, bytes, aid, shm->sid, reinterpret_cast <awh::core_t *> (this));
 							}
 							// Продолжаем получение данных дальше
-							// if(this->adjutants.find(aid) != this->adjutants.end()) goto Read;
+							if(this->adjutants.find(aid) != this->adjutants.end()) goto Read;
 						// Если данные не могут быть прочитаны
 						} else {
 							// Если нужно повторить попытку

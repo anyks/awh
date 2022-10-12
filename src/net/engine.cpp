@@ -1381,13 +1381,16 @@ int awh::Engine::Context::block() noexcept {
 	// Результат работы функции
 	int result = 0;
 	// Если защищённый режим работы разрешён
-	if(this->_tls && (this->_addr->fd > -1)){
+	if(this->_addr->fd > -1){
 		// Переводим сокет в блокирующий режим
 		this->_addr->_socket.blocking(this->_addr->fd);
-		// Устанавливаем блокирующий режим ввода/вывода для сокета
-		BIO_set_nbio(this->_bio, 0);
-		// Флаг необходимо установить только для неблокирующего сокета
-		SSL_clear_mode(this->_ssl, SSL_MODE_ENABLE_PARTIAL_WRITE);
+		// Если шифрование включено
+		if(this->_tls){
+			// Устанавливаем блокирующий режим ввода/вывода для сокета
+			BIO_set_nbio(this->_bio, 0);
+			// Флаг необходимо установить только для неблокирующего сокета
+			SSL_clear_mode(this->_ssl, SSL_MODE_ENABLE_PARTIAL_WRITE);
+		}
 	}
 	// Выводим результат
 	return result;
@@ -1400,13 +1403,16 @@ int awh::Engine::Context::noblock() noexcept {
 	// Результат работы функции
 	int result = 0;
 	// Если файловый дескриптор активен
-	if(this->_tls && (this->_addr->fd > -1)){
+	if(this->_addr->fd > -1){
 		// Переводим сокет в не блокирующий режим
 		this->_addr->_socket.nonBlocking(this->_addr->fd);
-		// Устанавливаем неблокирующий режим ввода/вывода для сокета
-		BIO_set_nbio(this->_bio, 1);
-		// Флаг необходимо установить только для неблокирующего сокета
-		SSL_set_mode(this->_ssl, SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER);
+		// Если шифрование включено
+		if(this->_tls){
+			// Устанавливаем неблокирующий режим ввода/вывода для сокета
+			BIO_set_nbio(this->_bio, 1);
+			// Флаг необходимо установить только для неблокирующего сокета
+			SSL_set_mode(this->_ssl, SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER);
+		}
 	}
 	// Выводим результат
 	return result;
