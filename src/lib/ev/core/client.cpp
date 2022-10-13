@@ -198,7 +198,7 @@ void awh::client::Core::connect(const size_t sid) noexcept {
 							this->log->print("encryption mode cannot be activated", log_t::flag_t::CRITICAL);
 							// Выводим сообщение об ошибке
 							if(!this->noinfo) this->log->print("%s", log_t::flag_t::INFO, "disconnected from the server");
-							// Выводим функцию обратного вызова
+							// Если функция обратного вызова установлена
 							if(shm->callback.is("disconnect"))
 								// Выполняем функцию обратного вызова
 								shm->callback.call <const size_t, const size_t, awh::core_t *> ("disconnect", 0, shm->sid, this);
@@ -343,7 +343,7 @@ void awh::client::Core::connect(const size_t sid) noexcept {
 					}
 					// Выводим сообщение об ошибке
 					if(!this->noinfo) this->log->print("%s", log_t::flag_t::INFO, "disconnected from the server");
-					// Выводим функцию обратного вызова
+					// Если функция обратного вызова установлена
 					if(shm->callback.is("disconnect"))
 						// Выполняем функцию обратного вызова
 						shm->callback.call <const size_t, const size_t, awh::core_t *> ("disconnect", 0, shm->sid, this);
@@ -605,7 +605,7 @@ void awh::client::Core::close() noexcept {
 						adj->ectx.clear();
 						// Удаляем адъютанта из списка подключений
 						this->adjutants.erase(it->first);
-						// Выводим функцию обратного вызова
+						// Если функция обратного вызова установлена
 						if(shm->callback.is("disconnect"))
 							// Устанавливаем полученную функцию обратного вызова
 							callback.set <void (const size_t, const size_t, awh::core_t *)> (to_string(it->first), shm->callback.get <void (const size_t, const size_t, awh::core_t *)> ("disconnect"), it->first, item.first, this);
@@ -670,7 +670,7 @@ void awh::client::Core::remove() noexcept {
 						adj->ectx.clear();
 						// Удаляем адъютанта из списка подключений
 						this->adjutants.erase(jt->first);
-						// Выводим функцию обратного вызова
+						// Если функция обратного вызова установлена
 						if(shm->callback.is("disconnect"))
 							// Устанавливаем полученную функцию обратного вызова
 							callback.set <void (const size_t, const size_t, awh::core_t *)> (to_string(jt->first), shm->callback.get <void (const size_t, const size_t, awh::core_t *)> ("disconnect"), jt->first, it->first, this);
@@ -801,7 +801,7 @@ void awh::client::Core::remove(const size_t sid) noexcept {
 						adj->ectx.clear();
 						// Удаляем адъютанта из списка подключений
 						this->adjutants.erase(jt->first);
-						// Выводим функцию обратного вызова
+						// Если функция обратного вызова установлена
 						if(shm->callback.is("disconnect"))
 							// Устанавливаем полученную функцию обратного вызова
 							callback.set <void (const size_t, const size_t, awh::core_t *)> (to_string(jt->first), shm->callback.get <void (const size_t, const size_t, awh::core_t *)> ("disconnect"), jt->first, it->first, this);
@@ -882,7 +882,7 @@ void awh::client::Core::close(const size_t aid) noexcept {
 				else {
 					// Выводим сообщение об ошибке
 					if(!core->noinfo) this->log->print("%s", log_t::flag_t::INFO, "disconnected from the server");
-					// Выводим функцию обратного вызова
+					// Если функция обратного вызова установлена
 					if(shm->callback.is("disconnect"))
 						// Устанавливаем полученную функцию обратного вызова
 						callback.set <void (const size_t, const size_t, awh::core_t *)> (to_string(it->first), shm->callback.get <void (const size_t, const size_t, awh::core_t *)> ("disconnect"), aid, shm->sid, this);
@@ -1055,7 +1055,7 @@ void awh::client::Core::connected(const size_t aid) noexcept {
 				if(shm->callback.is("connectProxy"))
 					// Выполняем функцию обратного вызова
 					shm->callback.call <const size_t, const size_t, awh::core_t *> ("connectProxy", it->first, shm->sid, const_cast <awh::core_t *> (shm->core));
-			// Выполняем функцию обратного вызова
+			// Если функция обратного вызова установлена
 			} else if(shm->callback.is("connect"))
 				// Выполняем функцию обратного вызова
 				shm->callback.call <const size_t, const size_t, awh::core_t *> ("connect", it->first, shm->sid, const_cast <awh::core_t *> (shm->core));
@@ -1302,7 +1302,7 @@ void awh::client::Core::resolving(const size_t sid, const string & ip, const int
 				// Выходим из функции, чтобы попытаться подключиться ещё раз
 				return;
 			}
-			// Выводим функцию обратного вызова
+			// Если функция обратного вызова установлена
 			if(shm->callback.is("disconnect"))
 				// Выполняем функцию обратного вызова
 				shm->callback.call <const size_t, const size_t, awh::core_t *> ("disconnect", 0, shm->sid, this);

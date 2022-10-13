@@ -110,6 +110,7 @@ int main(int argc, char * argv[]){
 	// core.sonet(awh::scheme_t::sonet_t::TLS);
 	// core.sonet(awh::scheme_t::sonet_t::UDP);
 	// core.sonet(awh::scheme_t::sonet_t::TCP);
+	// core.sonet(awh::scheme_t::sonet_t::SCTP);
 	// Отключаем валидацию сертификата
 	core.verifySSL(false);
 	// Выполняем инициализацию Sample сервера

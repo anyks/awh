@@ -355,10 +355,10 @@ void awh::server::Sample::send(const size_t aid, const char * buffer, const size
 				// Выводим параметры ответа
 				cout << string(buffer, size) << endl;
 			#endif
-			// Отправляем тело на сервер
-			((awh::core_t *) const_cast <server::core_t *> (this->_core))->write(buffer, size, aid);
 			// Устанавливаем флаг завершения работы
 			adj->stopped = true;
+			// Отправляем тело на сервер
+			((awh::core_t *) const_cast <server::core_t *> (this->_core))->write(buffer, size, aid);
 		}
 	}
 }

@@ -655,14 +655,14 @@ void awh::server::Proxy::prepare(const size_t aid, const size_t sid) noexcept {
 							if(!response.empty()){
 								// Тело полезной нагрузки
 								vector <char> payload;
+								// Устанавливаем флаг завершения работы
+								adj->stopped = !adj->srv.isAlive();
 								// Отправляем ответ адъютанту
 								this->_core.server.write(response.data(), response.size(), aid);
 								// Получаем данные тела запроса
 								while(!(payload = adj->srv.payload()).empty())
 									// Отправляем тело на сервер
 									this->_core.server.write(payload.data(), payload.size(), aid);
-								// Устанавливаем флаг завершения работы
-								adj->stopped = !adj->srv.isAlive();
 								// Выходим из функции
 								return;
 							}
@@ -820,6 +820,8 @@ void awh::server::Proxy::reject(const size_t aid, const u_int code, const string
 				// Выводим параметры ответа
 				cout << string(response.begin(), response.end()) << endl;
 			#endif
+			// Устанавливаем флаг завершения работы
+			adj->stopped = true;
 			// Отправляем серверу сообщение
 			this->_core.server.write(response.data(), response.size(), aid);
 			// Получаем данные полезной нагрузки ответа
@@ -832,8 +834,6 @@ void awh::server::Proxy::reject(const size_t aid, const u_int code, const string
 				// Отправляем тело на сервер
 				this->_core.server.write(payload.data(), payload.size(), aid);
 			}
-			// Устанавливаем флаг завершения работы
-			adj->stopped = true;
 		}
 	}
 }
@@ -871,6 +871,8 @@ void awh::server::Proxy::response(const size_t aid, const u_int code, const stri
 				// Выводим параметры ответа
 				cout << string(response.begin(), response.end()) << endl;
 			#endif
+			// Устанавливаем флаг завершения работы
+			adj->stopped = true;
 			// Отправляем серверу сообщение
 			this->_core.server.write(response.data(), response.size(), aid);
 			// Получаем данные полезной нагрузки ответа
@@ -883,8 +885,6 @@ void awh::server::Proxy::response(const size_t aid, const u_int code, const stri
 				// Отправляем тело на сервер
 				this->_core.server.write(payload.data(), payload.size(), aid);
 			}
-			// Устанавливаем флаг завершения работы
-			adj->stopped = true;
 		}
 	}
 }

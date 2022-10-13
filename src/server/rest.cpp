@@ -311,14 +311,14 @@ void awh::server::Rest::actionRead(const size_t aid) noexcept {
 							if(!response.empty()){
 								// Тело полезной нагрузки
 								vector <char> payload;
+								// Устанавливаем флаг закрытия подключения
+								adj->stopped = true;
 								// Отправляем ответ адъютанту
 								core->write(response.data(), response.size(), aid);
 								// Получаем данные тела запроса
 								while(!(payload = adj->http.payload()).empty())
 									// Отправляем тело на сервер
 									core->write(payload.data(), payload.size(), aid);
-								// Устанавливаем флаг закрытия подключения
-								adj->stopped = true;
 							// Выполняем отключение адъютанта
 							} else core->close(aid);
 							// Если экшен соответствует, выполняем его сброс
@@ -554,6 +554,8 @@ void awh::server::Rest::reject(const size_t aid, const u_int code, const string 
 				// Выводим параметры ответа
 				cout << string(response.begin(), response.end()) << endl;
 			#endif
+			// Устанавливаем флаг завершения работы
+			adj->stopped = true;
 			// Отправляем серверу сообщение
 			((awh::core_t *) const_cast <server::core_t *> (this->_core))->write(response.data(), response.size(), aid);
 			// Получаем данные полезной нагрузки ответа
@@ -566,8 +568,6 @@ void awh::server::Rest::reject(const size_t aid, const u_int code, const string 
 				// Отправляем тело на сервер
 				((awh::core_t *) const_cast <server::core_t *> (this->_core))->write(payload.data(), payload.size(), aid);
 			}
-			// Устанавливаем флаг завершения работы
-			adj->stopped = true;
 		}
 	}
 }
@@ -605,6 +605,8 @@ void awh::server::Rest::response(const size_t aid, const u_int code, const strin
 				// Выводим параметры ответа
 				cout << string(response.begin(), response.end()) << endl;
 			#endif
+			// Устанавливаем флаг завершения работы
+			adj->stopped = true;
 			// Отправляем серверу сообщение
 			((awh::core_t *) const_cast <server::core_t *> (this->_core))->write(response.data(), response.size(), aid);
 			// Получаем данные полезной нагрузки ответа
@@ -617,8 +619,6 @@ void awh::server::Rest::response(const size_t aid, const u_int code, const strin
 				// Отправляем тело на сервер
 				((awh::core_t *) const_cast <server::core_t *> (this->_core))->write(payload.data(), payload.size(), aid);
 			}
-			// Устанавливаем флаг завершения работы
-			adj->stopped = true;
 		}
 	}
 }

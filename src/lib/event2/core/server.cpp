@@ -114,7 +114,7 @@ void awh::server::Core::DTLS::callback(const evutil_socket_t fd, const short eve
 						);
 					}
 				}
-				// Выполняем функцию обратного вызова
+				// Если функция обратного вызова установлена
 				if(shm->callback.is("connect"))
 					// Выполняем функцию обратного вызова
 					shm->callback.call <const size_t, const size_t, awh::core_t *> ("connect", this->aid, shm->sid, this->core);
@@ -259,7 +259,7 @@ void awh::server::Core::accept(const int fd, const size_t sid) noexcept {
 						this->_mtx.accept.unlock();
 						// Запускаем чтение данных
 						this->enabled(engine_t::method_t::READ, ret.first->first);
-						// Выполняем функцию обратного вызова
+						// Если функция обратного вызова установлена
 						if(shm->callback.is("connect"))
 							// Выполняем функцию обратного вызова
 							shm->callback.call <const size_t, const size_t, awh::core_t *> ("connect", ret.first->first, shm->sid, this);
@@ -433,7 +433,7 @@ void awh::server::Core::accept(const int fd, const size_t sid) noexcept {
 								);
 							}
 						}
-						// Выполняем функцию обратного вызова
+						// Если функция обратного вызова установлена
 						if(shm->callback.is("connect"))
 							// Выполняем функцию обратного вызова
 							shm->callback.call <const size_t, const size_t, awh::core_t *> ("connect", ret.first->first, shm->sid, this);
@@ -474,7 +474,7 @@ void awh::server::Core::close() noexcept {
 						adj->ectx.clear();
 						// Удаляем адъютанта из списка подключений
 						this->adjutants.erase(it->first);
-						// Выводим функцию обратного вызова
+						// Если функция обратного вызова установлена
 						if(shm->callback.is("disconnect"))
 							// Устанавливаем полученную функцию обратного вызова
 							callback.set <void (const size_t, const size_t, awh::core_t *)> (to_string(it->first), shm->callback.get <void (const size_t, const size_t, awh::core_t *)> ("disconnect"), it->first, item.first, this);
@@ -531,7 +531,7 @@ void awh::server::Core::remove() noexcept {
 						adj->ectx.clear();
 						// Удаляем адъютанта из списка подключений
 						this->adjutants.erase(jt->first);
-						// Выводим функцию обратного вызова
+						// Если функция обратного вызова установлена
 						if(shm->callback.is("disconnect"))
 							// Устанавливаем полученную функцию обратного вызова
 							callback.set <void (const size_t, const size_t, awh::core_t *)> (to_string(jt->first), shm->callback.get <void (const size_t, const size_t, awh::core_t *)> ("disconnect"), jt->first, it->first, this);
@@ -656,7 +656,7 @@ void awh::server::Core::remove(const size_t sid) noexcept {
 						this->clean(jt->first);
 						// Выполняем очистку контекста двигателя
 						adj->ectx.clear();
-						// Выводим функцию обратного вызова
+						// Если функция обратного вызова установлена
 						if(shm->callback.is("disconnect"))
 							// Устанавливаем полученную функцию обратного вызова
 							callback.set <void (const size_t, const size_t, awh::core_t *)> (to_string(jt->first), shm->callback.get <void (const size_t, const size_t, awh::core_t *)> ("disconnect"), jt->first, it->first, this);
@@ -720,12 +720,19 @@ void awh::server::Core::close(const size_t aid) noexcept {
 				this->adjutants.erase(aid);
 				// Выводим сообщение об ошибке
 				if(!core->noinfo) this->log->print("%s", log_t::flag_t::INFO, "disconnect client from server");
-				// Выводим функцию обратного вызова
+				// Если функция обратного вызова установлена
 				if(shm->callback.is("disconnect"))
 					// Устанавливаем полученную функцию обратного вызова
-					callback.set <void (const size_t, const size_t, awh::core_t *)> (to_string(it->first), shm->callback.get <void (const size_t, const size_t, awh::core_t *)> ("disconnect"), aid, shm->sid, this);
+					callback.set <void (const size_t, const size_t, awh::core_t *)> (to_string(aid), shm->callback.get <void (const size_t, const size_t, awh::core_t *)> ("disconnect"), aid, shm->sid, this);
 				// Если тип сокета установлен как DTLS, запускаем ожидание новых подключений
 				if(this->net.sonet == scheme_t::sonet_t::DTLS){
+					// Если функция обратного вызова установлена
+					if(callback.is(to_string(aid))){
+						// Выполняем все функции обратного вызова
+						callback.bind <const size_t, const size_t, awh::core_t *> (to_string(aid));
+						// Очищаем список функций обратного вызова
+						callback.rm(to_string(aid));
+					}
 					// Очищаем контекст сервера
 					shm->ectx.clear();
 					// Если список объектов DTLS не пустой
@@ -738,8 +745,10 @@ void awh::server::Core::close(const size_t aid) noexcept {
 			}
 			// Удаляем блокировку адъютанта
 			this->_locking.erase(aid);
-			// Выполняем все функции обратного вызова
-			callback.bind <const size_t, const size_t, awh::core_t *> ();
+			// Если функция обратного вызова установлена
+			if(callback.is(to_string(aid)))
+				// Выполняем все функции обратного вызова
+				callback.bind <const size_t, const size_t, awh::core_t *> (to_string(aid));
 		}
 	}
 }

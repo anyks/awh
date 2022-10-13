@@ -1035,10 +1035,12 @@ void awh::Core::write(const char * buffer, const size_t size, const size_t aid) 
 			adj->buffer.insert(adj->buffer.end(), buffer, buffer + size);
 			// Если запись в сокет заблокирована
 			if(adj->bev.locked.write){
-				// Определяем тип сокета
+				// Определяем протокол подключения
 				switch((uint8_t) this->net.sonet){
-					// Если тип сокета UDP
-					case (uint8_t) scheme_t::sonet_t::UDP: {
+					// Если протокол подключения UDP
+					case (uint8_t) scheme_t::sonet_t::UDP:
+					// Если протокол подключения DTLS
+					case (uint8_t) scheme_t::sonet_t::DTLS: {
 						// Если сокет подключения активен
 						if(adj->addr.fd > -1){
 							// Разрешаем запись данных в сокет
