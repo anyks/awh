@@ -415,6 +415,9 @@ else
 			# Выполняем сборку на всех логических ядрах
 			$BUILD -j"$numproc" || exit 1
 
+			# Применяем патч
+			apply_patch "libev" "libev.patch"
+
 			# Производим установку библиотеки по нужному пути
 			echo "Install \"$ROOT/submodules/libev-win/build/liblibev_static.a\" to \"$PREFIX/lib/libev.a\""
 			${INSTALL_CMD} "$ROOT/submodules/libev-win/build/liblibev_static.a" "$PREFIX/lib/libev.a" || exit 1
@@ -425,7 +428,7 @@ else
 				echo "Install \"$ROOT/submodules/libev-win/$i\" to \"$PREFIX/include/libev/$i\""
 				${INSTALL_CMD} "$ROOT/submodules/libev-win/$i" "$PREFIX/include/libev/$i" || exit 1
 			done
-			
+
 			# Помечаем флагом, что сборка и установка произведена
 			touch "$src/.stamp_done"
 			cd "$ROOT" || exit 1
@@ -446,6 +449,9 @@ else
 			--prefix=$PREFIX \
 			--includedir="$PREFIX/include/libev" \
 			--libdir="$PREFIX/lib"
+
+			# Применяем патч
+			apply_patch "libev" "libev.patch"
 			
 			# Выполняем сборку проекта
 			$BUILD || exit 1
