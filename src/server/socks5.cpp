@@ -303,10 +303,12 @@ void awh::server::ProxySocks5::readServerCallback(const char * buffer, const siz
 								adj->scheme.url.ip = this->_nwk.setLowIp6(server.host);
 							break;
 							// Если хост является доменным именем
-							case (uint8_t) network_t::type_t::DOMNAME:
+							case (uint8_t) network_t::type_t::DOMNAME: {
+								// Выполняем очистку IP адреса
+								adj->scheme.url.ip.clear();
 								// Устанавливаем доменное имя
 								adj->scheme.url.domain = server.host;
-							break;
+							} break;
 						}
 						// Выполняем запрос на сервер
 						this->_core.client.open(adj->scheme.sid);

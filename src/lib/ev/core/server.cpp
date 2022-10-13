@@ -842,23 +842,8 @@ void awh::server::Core::transfer(const engine_t::method_t method, const size_t a
 							shm->callback.call <const char *, const size_t, const size_t, const size_t, awh::core_t *> ("read", buffer, bytes, aid, shm->sid, reinterpret_cast <awh::core_t *> (this));
 						// Продолжаем получение данных дальше
 						if(this->adjutants.find(aid) != this->adjutants.end()) goto Read;
-					// Если данные не могут быть прочитаны
-					} else {
-						// Если нужно повторить попытку
-						if(bytes == -2) goto Read;
-						// Если нужно завершить работу
-						else if(bytes == 0) {
-							/**
-							 * Если операционной системой не является Windows
-							 */
-							#if !defined(_WIN32) && !defined(_WIN64)
-								// Выполняем отключение клиента
-								this->close(aid);
-								// Выходим из функции
-								return;
-							#endif
-						}
-					}
+					// Если нужно повторить попытку
+					} else if(bytes == -2) goto Read;
 				}
 				// Если тип сокета не установлен как UDP, запускаем чтение дальше
 				if((this->net.sonet != scheme_t::sonet_t::UDP) && (this->adjutants.count(aid) > 0))

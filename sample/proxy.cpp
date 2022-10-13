@@ -139,7 +139,7 @@ int main(int argc, char * argv[]){
 	// Отключаем валидацию сертификата
 	proxy.verifySSL(true);
 	// Активируем максимальное количество рабочих процессов
-	// proxy.clusterSize();
+	proxy.clusterSize();
 	// Устанавливаем таймаут ожидания получения сообщений
 	// proxy.waitTimeDetect(60, 60);
 	// Устанавливаем название сервера

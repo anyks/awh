@@ -1080,14 +1080,14 @@ void awh::client::Core::transfer(const engine_t::method_t method, const size_t a
 					int64_t bytes = -1;
 					// Создаём буфер входящих данных
 					char buffer[BUFFER_SIZE];
-					// Переводим BIO в неблокирующий режим
-					adj->ectx.noblock();
 					// Останавливаем чтение данных с клиента
 					adj->bev.events.read.stop();
 					// Устанавливаем метку чтения данных
 					Read:
 					// Если подключение выполнено
 					if(!adj->bev.locked.read && (shm->status.real == scheme_t::mode_t::CONNECT)){
+						// Переводим BIO в неблокирующий режим
+						adj->ectx.noblock();
 						// Выполняем обнуление буфера данных
 						memset(buffer, 0, sizeof(buffer));
 						// Выполняем получение сообщения от клиента
@@ -1136,23 +1136,8 @@ void awh::client::Core::transfer(const engine_t::method_t method, const size_t a
 							}
 							// Продолжаем получение данных дальше
 							if(this->adjutants.find(aid) != this->adjutants.end()) goto Read;
-						// Если данные не могут быть прочитаны
-						} else {
-							// Если нужно повторить попытку
-							if(bytes == -2) goto Read;
-							// Если нужно завершить работу
-							else if(bytes == 0) {
-								/**
-								 * Если операционной системой не является Windows
-								 */
-								#if !defined(_WIN32) && !defined(_WIN64)
-									// Выполняем отключение клиента
-									this->close(aid);
-									// Выходим из функции
-									return;
-								#endif
-							}
-						}
+						// Если нужно повторить попытку
+						} else if(bytes == -2) goto Read;
 					}
 					// Если тип сокета не установлен как UDP, запускаем чтение дальше
 					if((this->net.sonet != scheme_t::sonet_t::UDP) && (this->adjutants.count(aid) > 0))

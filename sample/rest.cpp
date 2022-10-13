@@ -107,7 +107,7 @@ int main(int argc, char * argv[]){
 	// Устанавливаем данные прокси-сервера
 	// rest.proxy("http://qKseEr:t5QrcW@212.102.146.33:8000");
 	// rest.proxy("socks5://3JMFxD:CWv6MP@45.130.126.236:8000");
-	rest.proxy("socks5://127.0.0.1:2222");
+	// rest.proxy("socks5://127.0.0.1:2222");
 	// rest.proxy("socks5://test1:test@127.0.0.1:2222");
 	// rest.proxy("http://test1:password@127.0.0.1:2222");
 	// rest.proxy("http://127.0.0.1:2222");
