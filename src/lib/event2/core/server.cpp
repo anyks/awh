@@ -384,7 +384,7 @@ void awh::server::Core::accept(const int fd, const size_t sid) noexcept {
 						// Если мы хотим работать в зашифрованном режиме
 						if(this->net.sonet == scheme_t::sonet_t::TLS){
 							// Если сертификаты не приняты, выходим
-							if(!this->engine.isTLS(adj->ectx)){
+							if(!this->engine.tls(adj->ectx)){
 								// Выводим сообщение об ошибке
 								this->log->print("encryption mode cannot be activated", log_t::flag_t::CRITICAL);
 								// Выходим

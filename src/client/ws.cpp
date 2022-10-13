@@ -133,6 +133,22 @@ void awh::client::WebSocket::writeCallback(const char * buffer, const size_t siz
 	}
 }
 /**
+ * enableTLSCallback Метод активации зашифрованного канала TLS
+ * @param url  адрес сервера для которого выполняется активация зашифрованного канала TLS
+ * @param aid  идентификатор адъютанта
+ * @param sid  идентификатор схемы сети
+ * @param core объект сетевого ядра
+ * @return     результат активации зашифрованного канала TLS
+ */
+bool awh::client::WebSocket::enableTLSCallback(const uri_t::url_t & url, const size_t aid, const size_t sid, awh::core_t * core) noexcept {
+	// Блокируем переменные которые не используем
+	(void) aid;
+	(void) sid;
+	(void) core;
+	// Выводим результат активации
+	return (!url.empty() && (url.schema.compare("wss") == 0));
+}
+/**
  * proxyConnectCallback Метод обратного вызова при подключении к прокси-серверу
  * @param aid  идентификатор адъютанта
  * @param sid  идентификатор схемы сети
@@ -1545,6 +1561,8 @@ awh::client::WebSocket::WebSocket(const client::core_t * core, const fmk_t * fmk
 	this->_scheme.callback.set <void (const char *, const size_t, const size_t, const size_t, awh::core_t *)> ("write", std::bind(&WebSocket::writeCallback, this, _1, _2, _3, _4, _5));
 	// Устанавливаем событие на чтение данных с прокси-сервера
 	this->_scheme.callback.set <void (const char *, const size_t, const size_t, const size_t, awh::core_t *)> ("readProxy", std::bind(&WebSocket::proxyReadCallback, this, _1, _2, _3, _4, _5));
+	// Устанавливаем событие на активацию шифрованного TLS канала
+	this->_scheme.callback.set <bool (const uri_t::url_t &, const size_t, const size_t, awh::core_t *)> ("tls", std::bind(&WebSocket::enableTLSCallback, this, _1, _2, _3, _4));
 	// Активируем персистентный запуск для работы пингов
 	const_cast <client::core_t *> (this->_core)->persistEnable(true);
 	// Добавляем схему сети в сетевое ядро

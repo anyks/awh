@@ -246,6 +246,16 @@ namespace awh {
 				void writeCallback(const char * buffer, const size_t size, const size_t aid, const size_t sid, awh::core_t * core) noexcept;
 			private:
 				/**
+				 * enableTLSCallback Метод активации зашифрованного канала TLS
+				 * @param url  адрес сервера для которого выполняется активация зашифрованного канала TLS
+				 * @param aid  идентификатор адъютанта
+				 * @param sid  идентификатор схемы сети
+				 * @param core объект сетевого ядра
+				 * @return     результат активации зашифрованного канала TLS
+				 */
+				bool enableTLSCallback(const uri_t::url_t & url, const size_t aid, const size_t sid, awh::core_t * core) noexcept;
+			private:
+				/**
 				 * proxyConnectCallback Метод обратного вызова при подключении к прокси-серверу
 				 * @param aid  идентификатор адъютанта
 				 * @param sid  идентификатор схемы сети

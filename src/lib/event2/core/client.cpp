@@ -182,12 +182,21 @@ void awh::client::Core::connect(const size_t sid) noexcept {
 					if(this->net.sonet == scheme_t::sonet_t::DTLS)
 						// Выполняем получение контекста сертификата
 						this->engine.wrap(adj->ectx, &adj->addr, engine_t::type_t::CLIENT);
-					// Выполняем получение контекста сертификата
-					else this->engine.wrapClient(adj->ectx, &adj->addr, url);
+					// Если подключение выполняется не по защищённому каналу DTLS
+					else {
+						// Получаем хост сервера
+						const string & host = (!url.domain.empty() ? url.domain : (!url.ip.empty() ? url.ip : ""));
+						// Если функция обратного вызова активации шифрованного TLS канала установлена
+						if((shm->callback.is("tls")))
+							// Выполняем активацию шифрованного TLS канала
+							this->engine.tls(shm->callback.apply <bool, const uri_t::url_t &, const size_t, const size_t, awh::core_t *> ("tls", url, adj->aid, shm->sid, this), adj->ectx);
+						// Выполняем активацию контекста подключения
+						this->engine.wrapClient(adj->ectx, &adj->addr, host);
+					}
 					// Если мы хотим работать в зашифрованном режиме
 					if(!shm->isProxy() && (this->net.sonet == scheme_t::sonet_t::TLS)){
 						// Если сертификаты не приняты, выходим
-						if(!this->engine.isTLS(adj->ectx)){
+						if(!this->engine.tls(adj->ectx)){
 							// Разрешаем выполнение работы
 							shm->status.work = scheme_t::work_t::ALLOW;
 							// Устанавливаем статус подключения
@@ -921,8 +930,14 @@ void awh::client::Core::switchProxy(const size_t aid) noexcept {
 		if((shm->proxy.type != proxy_t::type_t::NONE) && shm->isProxy()){
 			// Выполняем переключение на работу с сервером
 			shm->switchConnect();
+			// Получаем хост сервера
+			const string & host = (!shm->url.domain.empty() ? shm->url.domain : (!shm->url.ip.empty() ? shm->url.ip : ""));			
+			// Если функция обратного вызова активации шифрованного TLS канала установлена
+			if((shm->callback.is("tls")))
+				// Выполняем активацию шифрованного TLS канала
+				this->engine.tls(shm->callback.apply <bool, const uri_t::url_t &, const size_t, const size_t, awh::core_t *> ("tls", shm->url, aid, shm->sid, this), adj->ectx);			
 			// Выполняем получение контекста сертификата
-			this->engine.wrapClient(adj->ectx, adj->ectx, shm->url);
+			this->engine.wrapClient(adj->ectx, adj->ectx, host);
 			// Если подключение не обёрнуто
 			if(adj->addr.fd < 0){
 				// Выводим сообщение об ошибке

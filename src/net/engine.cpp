@@ -1073,10 +1073,8 @@ int64_t awh::Engine::Context::read(char * buffer, const size_t size) noexcept {
 	int64_t result = 0;
 	// Если буфер данных передан
 	if((buffer != nullptr) && (size > 0) && (this->_type != type_t::NONE) && (this->_addr->fd > -1)){
-		// Выполняем зануление буфера
-		memset(buffer, 0, size);
 		// Если защищённый режим работы разрешён
-		if(this->_tls){
+		if(this->_tls && (this->_ssl != nullptr)){
 			// Выполняем очистку ошибок OpenSSL
 			ERR_clear_error();
 			// Если подключение ещё активно
@@ -1150,7 +1148,7 @@ int64_t awh::Engine::Context::read(char * buffer, const size_t size) noexcept {
 				// Если произошёл системный сигнал попробовать ещё раз
 				if(errno == EINTR) return -2;
 				// Если защищённый режим работы разрешён
-				if(this->_tls){
+				if(this->_tls && (this->_ssl != nullptr)){
 					// Получаем данные описание ошибки
 					if(SSL_get_error(this->_ssl, result) == SSL_ERROR_WANT_READ)
 						// Выполняем пропуск попытки
@@ -1203,7 +1201,7 @@ int64_t awh::Engine::Context::write(const char * buffer, const size_t size) noex
 	// Если буфер данных передан
 	if((buffer != nullptr) && (size > 0) && (this->_type != type_t::NONE) && (this->_addr->fd > -1)){
 		// Если защищённый режим работы разрешён
-		if(this->_tls){
+		if(this->_tls && (this->_ssl != nullptr)){
 			// Выполняем очистку ошибок OpenSSL
 			ERR_clear_error();
 			// Если подключение ещё активно
@@ -1385,7 +1383,7 @@ int awh::Engine::Context::block() noexcept {
 		// Переводим сокет в блокирующий режим
 		this->_addr->_socket.blocking(this->_addr->fd);
 		// Если шифрование включено
-		if(this->_tls){
+		if(this->_tls && (this->_ssl != nullptr)){
 			// Устанавливаем блокирующий режим ввода/вывода для сокета
 			BIO_set_nbio(this->_bio, 0);
 			// Флаг необходимо установить только для неблокирующего сокета
@@ -1407,7 +1405,7 @@ int awh::Engine::Context::noblock() noexcept {
 		// Переводим сокет в не блокирующий режим
 		this->_addr->_socket.nonBlocking(this->_addr->fd);
 		// Если шифрование включено
-		if(this->_tls){
+		if(this->_tls && (this->_ssl != nullptr)){
 			// Устанавливаем неблокирующий режим ввода/вывода для сокета
 			BIO_set_nbio(this->_bio, 1);
 			// Флаг необходимо установить только для неблокирующего сокета
@@ -2247,13 +2245,22 @@ bool awh::Engine::storeCA(SSL_CTX * ctx) const noexcept {
 	return result;
 }
 /**
- * isTLS Метод проверки на активацию режима шифрования
+ * tls Метод проверки на активацию режима шифрования
  * @param ctx  контекст подключения
  * @return     результат проверки
  */
-bool awh::Engine::isTLS(ctx_t & ctx) const noexcept {
+bool awh::Engine::tls(ctx_t & ctx) const noexcept {
 	// Выводим результат проверки
 	return ctx._tls;
+}
+/**
+ * tls Метод установки флага режима шифрования
+ * @param mode флаг режима шифрования
+ * @param ctx  контекст подключения
+ */
+void awh::Engine::tls(const bool mode, ctx_t & ctx) noexcept {
+	// Устанавливаем флаг шифрования
+	ctx._tls = mode;
 }
 /**
  * wait Метод ожидания рукопожатия
@@ -2812,33 +2819,31 @@ void awh::Engine::wrapServer(ctx_t & target, addr_t * address) noexcept {
  * wrapClient Метод обертывания файлового дескриптора для клиента
  * @param target контекст назначения
  * @param source исходный контекст
- * @param url    параметры URL адреса для инициализации
+ * @param host   хост удалённого сервера
  * @return       объект SSL контекста
  */
-void awh::Engine::wrapClient(ctx_t & target, ctx_t & source, const uri_t::url_t & url) noexcept {
+void awh::Engine::wrapClient(ctx_t & target, ctx_t & source, const string & host) noexcept {
 	// Если объект ещё не обёрнут в SSL контекст
-	if(!source._tls && (source._addr != nullptr))
+	if((source._ssl == nullptr) && (source._addr != nullptr))
 		// Выполняем обёртывание уже активного SSL контекста
-		this->wrapClient(target, source._addr, url);
+		this->wrapClient(target, source._addr, host);
 }
 /**
  * wrapClient Метод обертывания файлового дескриптора для клиента
  * @param target  контекст назначения
  * @param address объект подключения
- * @param url     параметры URL адреса для инициализации
+ * @param host    хост удалённого сервера
  * @return        объект SSL контекста
  */
-void awh::Engine::wrapClient(ctx_t & target, addr_t * address, const uri_t::url_t & url) noexcept {
+void awh::Engine::wrapClient(ctx_t & target, addr_t * address, const string & host) noexcept {
 	// Если данные переданы
-	if((address != nullptr) && !url.empty()){
+	if((address != nullptr) && !host.empty()){
 		// Устанавливаем файловый дескриптор
 		target._addr = address;
 		// Устанавливаем тип приложения
 		target._type = type_t::CLIENT;
 		// Если объект фреймворка существует
-		if((target._addr->fd > -1) && (!url.domain.empty() || !url.ip.empty()) &&
-		  ((!this->_privkey.empty() && !this->_chain.empty()) ||
-		  ((url.schema.compare("https") == 0) || (url.schema.compare("wss") == 0)))){
+		if((target._addr->fd > -1) && ((!this->_privkey.empty() && !this->_chain.empty()) || this->tls(target))){
 			/**
 			 * Если операционной системой является Linux или FreeBSD
 			 */
@@ -2929,9 +2934,9 @@ void awh::Engine::wrapClient(ctx_t & target, addr_t * address, const uri_t::url_
 				}
 			}
 			// Если нужно произвести проверку
-			if(this->_verify && !url.domain.empty()){
+			if(this->_verify){
 				// Создаём объект проверки домена
-				target._verify = new verify_t(url.domain, this);
+				target._verify = new verify_t(host, this);
 				// Выполняем проверку сертификата
 				SSL_CTX_set_verify(target._ctx, SSL_VERIFY_PEER | SSL_VERIFY_CLIENT_ONCE, nullptr);
 				// Выполняем проверку всех дочерних сертификатов
@@ -2958,14 +2963,14 @@ void awh::Engine::wrapClient(ctx_t & target, addr_t * address, const uri_t::url_
 			 */
 			#ifdef SSL_CTRL_SET_TLSEXT_HOSTNAME
 				// Устанавливаем имя хоста для SNI расширения
-				SSL_set_tlsext_host_name(target._ssl, (!url.domain.empty() ? url.domain : url.ip).c_str());
+				SSL_set_tlsext_host_name(target._ssl, host.c_str());
 			#endif
 			// Активируем верификацию доменного имени
-			if(X509_VERIFY_PARAM_set1_host(SSL_get0_param(target._ssl), (!url.domain.empty() ? url.domain : url.ip).c_str(), 0) < 1){
+			if(X509_VERIFY_PARAM_set1_host(SSL_get0_param(target._ssl), host.c_str(), 0) < 1){
 				// Очищаем созданный контекст
 				target.clear();
 				// Выводим в лог сообщение
-				this->_log->print("domain ssl verification failed", log_t::flag_t::CRITICAL);
+				this->_log->print("host ssl verification failed", log_t::flag_t::CRITICAL);
 				// Выходим
 				return;
 			}

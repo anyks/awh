@@ -93,6 +93,22 @@ void awh::client::Rest::readCallback(const char * buffer, const size_t size, con
 	}
 }
 /**
+ * enableTLSCallback Метод активации зашифрованного канала TLS
+ * @param url  адрес сервера для которого выполняется активация зашифрованного канала TLS
+ * @param aid  идентификатор адъютанта
+ * @param sid  идентификатор схемы сети
+ * @param core объект сетевого ядра
+ * @return     результат активации зашифрованного канала TLS
+ */
+bool awh::client::Rest::enableTLSCallback(const uri_t::url_t & url, const size_t aid, const size_t sid, awh::core_t * core) noexcept {
+	// Блокируем переменные которые не используем
+	(void) aid;
+	(void) sid;
+	(void) core;
+	// Выводим результат активации
+	return (!url.empty() && (url.schema.compare("https") == 0));
+}
+/**
  * proxyConnectCallback Метод обратного вызова при подключении к прокси-серверу
  * @param aid  идентификатор адъютанта
  * @param sid  идентификатор схемы сети
@@ -1719,6 +1735,8 @@ awh::client::Rest::Rest(const client::core_t * core, const fmk_t * fmk, const lo
 	this->_scheme.callback.set <void (const char *, const size_t, const size_t, const size_t, awh::core_t *)> ("read", std::bind(&Rest::readCallback, this, _1, _2, _3, _4, _5));
 	// Устанавливаем событие на чтение данных с прокси-сервера
 	this->_scheme.callback.set <void (const char *, const size_t, const size_t, const size_t, awh::core_t *)> ("readProxy", std::bind(&Rest::proxyReadCallback, this, _1, _2, _3, _4, _5));
+	// Устанавливаем событие на активацию шифрованного TLS канала
+	this->_scheme.callback.set <bool (const uri_t::url_t &, const size_t, const size_t, awh::core_t *)> ("tls", std::bind(&Rest::enableTLSCallback, this, _1, _2, _3, _4));
 	// Устанавливаем функцию обработки вызова для получения чанков
 	this->_http.chunking(std::bind(&Rest::chunking, this, _1, _2));
 	// Добавляем схемы сети в сетевое ядро

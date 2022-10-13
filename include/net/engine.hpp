@@ -557,11 +557,17 @@ namespace awh {
 			bool storeCA(SSL_CTX * ctx) const noexcept;
 		public:
 			/**
-			 * isTLS Метод проверки на активацию режима шифрования
+			 * tls Метод проверки на активацию режима шифрования
 			 * @param ctx контекст подключения
 			 * @return    результат проверки
 			 */
-			bool isTLS(ctx_t & ctx) const noexcept;
+			bool tls(ctx_t & ctx) const noexcept;
+			/**
+			 * tls Метод установки флага режима шифрования
+			 * @param mode флаг режима шифрования
+			 * @param ctx  контекст подключения
+			 */
+			void tls(const bool mode, ctx_t & ctx) noexcept;
 		public:
 			/**
 			 * wait Метод ожидания рукопожатия
@@ -606,18 +612,18 @@ namespace awh {
 			 * wrapClient Метод обертывания файлового дескриптора для клиента
 			 * @param target контекст назначения
 			 * @param source исходный контекст
-			 * @param url    параметры URL адреса для инициализации
+			 * @param host   хост удалённого сервера
 			 * @return       объект SSL контекста
 			 */
-			void wrapClient(ctx_t & target, ctx_t & source, const uri_t::url_t & url) noexcept;
+			void wrapClient(ctx_t & target, ctx_t & source, const string & host) noexcept;
 			/**
 			 * wrapClient Метод обертывания файлового дескриптора для клиента
 			 * @param target  контекст назначения
 			 * @param address объект подключения
-			 * @param url     параметры URL адреса для инициализации
+			 * @param host    хост удалённого сервера
 			 * @return        объект SSL контекста
 			 */
-			void wrapClient(ctx_t & target, addr_t * address, const uri_t::url_t & url) noexcept;
+			void wrapClient(ctx_t & target, addr_t * address, const string & host) noexcept;
 		public:
 			/**
 			 * verifyEnable Метод разрешающий или запрещающий, выполнять проверку соответствия, сертификата домену
