@@ -538,6 +538,18 @@ int awh::Socket::keepAlive(const int fd, const int cnt, const int idle, const in
 				// Все очень плохо
 				return -1;
 			}
+		}{
+			// Количество возвращаемых байт
+			size_t numBytesReturned = 0;
+			// Структура данных времени для установки
+			tcp_keepalive ka {1, idle * 1000, intvl * 1000};
+			// Устанавливаем оставшиеся параметры (время через которое происходит проверка подключения и время между попытками)
+			if(WSAIoctl(fd, SIO_KEEPALIVE_VALS, &ka, sizeof(ka), nullptr, 0, &numBytesReturned, 0, nullptr) != 0){
+				// Выводим в лог информацию
+				this->_log->print("getsockopt for TCP_KEEPIDLE and TCP_KEEPINTVL failed with error: %u", log_t::flag_t::CRITICAL, WSAGetLastError());
+				// Все очень плохо
+				return -1;
+			}
 		}
 	/**
 	 * Методы только для *Nix-подобных операционных систем
@@ -590,6 +602,46 @@ int awh::Socket::keepAlive(const int fd, const int cnt, const int idle, const in
 			return -1;
 		}
 	#endif
+	// Выводим результат
+	return result;
+}
+/**
+ * bufferSizeRead Метод получения размера буфера для чтения
+ * @param fd файловый дескриптор (сокет)
+ * @return   размер буфера для чтения
+ */
+int awh::Socket::bufferSizeRead(const int fd) const noexcept {
+	// Результат работы функции
+	int result = 0;
+	// Размер результата
+	socklen_t size = sizeof(result);
+	// Считываем установленный размер буфера
+	if(getsockopt(fd, SOL_SOCKET, SO_RCVBUF, (char *) &result, &size) < 0){
+		// Выводим в лог информацию
+		this->_log->print("get buffer read size wrong on socket %d", log_t::flag_t::CRITICAL, fd);
+		// Все очень плохо
+		return -1;
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * bufferSizeWrite Метод получения размера буфера для записи
+ * @param fd файловый дескриптор (сокет)
+ * @return   размер буфера для записи
+ */
+int awh::Socket::bufferSizeWrite(const int fd) const noexcept {
+	// Результат работы функции
+	int result = 0;
+	// Размер результата
+	socklen_t size = sizeof(result);
+	// Считываем установленный размер буфера
+	if(getsockopt(fd, SOL_SOCKET, SO_SNDBUF, (char *) &result, &size) < 0){
+		// Выводим в лог информацию
+		this->_log->print("get buffer write size wrong on socket %d", log_t::flag_t::CRITICAL, fd);
+		// Все очень плохо
+		return -1;
+	}
 	// Выводим результат
 	return result;
 }

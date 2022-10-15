@@ -186,12 +186,12 @@ void awh::server::Proxy::connectServerCallback(const size_t aid, const size_t si
 					adj->srv.extractPassCallback(this->_callback.extractPass);
 				} break;
 			}
+			// Устанавливаем количество секунд на чтение
+			adj->scheme.timeouts.read = 30;
+			// Устанавливаем количество секунд на запись
+			adj->scheme.timeouts.write = 10;
 			// Устанавливаем флаг ожидания входящих сообщений
 			adj->scheme.wait = this->_scheme.wait;
-			// Устанавливаем количество секунд на чтение
-			adj->scheme.timeouts.read = this->_scheme.timeouts.read;
-			// Устанавливаем количество секунд на запись
-			adj->scheme.timeouts.write = this->_scheme.timeouts.write;
 			// Выполняем установку максимального количества попыток
 			adj->scheme.keepAlive.cnt = this->_scheme.keepAlive.cnt;
 			// Выполняем установку интервала времени в секундах через которое происходит проверка подключения
@@ -204,6 +204,8 @@ void awh::server::Proxy::connectServerCallback(const size_t aid, const size_t si
 			adj->scheme.callback.set <void (const size_t, const size_t, awh::core_t *)> ("disconnect", std::bind(&Proxy::disconnectClientCallback, this, _1, _2, _3));
 			// Устанавливаем функцию чтения данных
 			adj->scheme.callback.set <void (const char *, const size_t, const size_t, const size_t, awh::core_t *)> ("read", std::bind(&Proxy::readClientCallback, this, _1, _2, _3, _4, _5));
+			// Активируем асинхронный режим работы
+			this->_core.client.async(true);
 			// Добавляем схему сети в сетевое ядро
 			this->_core.client.add(&adj->scheme);
 			// Создаём пару клиента и сервера

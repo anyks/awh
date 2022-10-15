@@ -175,7 +175,7 @@ void awh::client::Core::connect(const size_t sid) noexcept {
 				// Если unix-сокет не используется, выполняем инициализацию сокета
 				else adj->addr.init(url.ip, url.port, (family == scheme_t::family_t::IPV6 ? AF_INET6 : AF_INET), engine_t::type_t::CLIENT);
 				// Если сокет подключения получен
-				if(adj->addr.fd > -1){
+				if(adj->addr.fd != INVALID_SOCKET){
 					// Устанавливаем идентификатор адъютанта
 					adj->aid = this->fmk->nanoTimestamp();
 					// Если подключение выполняется по защищённому каналу DTLS
@@ -214,7 +214,7 @@ void awh::client::Core::connect(const size_t sid) noexcept {
 						}
 					}
 					// Если подключение не обёрнуто
-					if(adj->addr.fd < 0){
+					if(adj->addr.fd == INVALID_SOCKET){
 						// Запрещаем чтение данных с сервера
 						adj->bev.locked.read = true;
 						// Запрещаем запись данных на сервер
@@ -235,7 +235,7 @@ void awh::client::Core::connect(const size_t sid) noexcept {
 					// Выполняем блокировку потока
 					this->_mtx.connect.lock();
 					// Добавляем созданного адъютанта в список адъютантов
-					auto ret = shm->adjutants.emplace(adj->aid, move(adj));
+					auto ret = shm->adjutants.emplace(adj->aid, std::forward <unique_ptr <awh::scheme_t::adj_t>> (adj));
 					// Добавляем адъютанта в список подключений
 					this->adjutants.emplace(ret.first->first, ret.first->second.get());
 					// Выполняем блокировку потока
@@ -697,6 +697,16 @@ void awh::client::Core::remove() noexcept {
 	}
 }
 /**
+ * async Метод активации асинхронного режима работы
+ * @param mode флаг активации асинхронного режима работы
+ */
+void awh::client::Core::async(const bool mode) noexcept {
+	// Выполняем блокировку потока
+	const lock_guard <recursive_mutex> lock(this->_mtx.main);
+	// Устанавливаем флаг активации асинхронного режима работы
+	this->_async = mode;
+}
+/**
  * open Метод открытия подключения
  * @param sid идентификатор схемы сети
  */
@@ -939,7 +949,7 @@ void awh::client::Core::switchProxy(const size_t aid) noexcept {
 			// Выполняем получение контекста сертификата
 			this->engine.wrapClient(adj->ectx, adj->ectx, host);
 			// Если подключение не обёрнуто
-			if(adj->addr.fd < 0){
+			if(adj->addr.fd == INVALID_SOCKET){
 				// Выводим сообщение об ошибке
 				this->log->print("wrap engine context is failed", log_t::flag_t::CRITICAL);
 				// Выходим из функции
@@ -1087,77 +1097,94 @@ void awh::client::Core::transfer(const engine_t::method_t method, const size_t a
 		scheme_t * shm = (scheme_t *) const_cast <awh::scheme_t *> (adj->parent);
 		// Если подключение установлено
 		if((shm->acquisition = (shm->status.real == scheme_t::mode_t::CONNECT))){
+			// Устанавливаем текущий метод режима работы
+			adj->method = method;
 			// Определяем метод работы
-			switch((uint8_t) method){
+			switch((uint8_t) adj->method){
 				// Если производится чтение данных
 				case (uint8_t) engine_t::method_t::READ: {
-					// Количество полученных байт
-					int64_t bytes = -1;
-					// Создаём буфер входящих данных
-					char buffer[BUFFER_SIZE];
 					// Останавливаем чтение данных с клиента
 					adj->bev.events.read.stop();
-					// Устанавливаем метку чтения данных
-					Read:
-					// Если подключение выполнено
-					if(!adj->bev.locked.read && (shm->status.real == scheme_t::mode_t::CONNECT)){
-						// Переводим BIO в неблокирующий режим
-						adj->ectx.noblock();
-						// Выполняем обнуление буфера данных
-						memset(buffer, 0, sizeof(buffer));
-						// Выполняем получение сообщения от клиента
-						bytes = adj->ectx.read(buffer, sizeof(buffer));
-						// Если время ожидания чтения данных установлено
-						if(shm->wait && (adj->timeouts.read > 0))
-							// Запускаем работу таймера
-							adj->bev.timers.read.start(adj->timeouts.read * 1000);
-						// Останавливаем таймаут ожидания на чтение из сокета
-						else adj->bev.timers.read.stop();
-						// Если данные получены
-						if(bytes > 0){
-							// Если данные считанные из буфера, больше размера ожидающего буфера
-							if((adj->marker.read.max > 0) && (bytes >= adj->marker.read.max)){
-								// Смещение в буфере и отправляемый размер данных
-								size_t offset = 0, actual = 0;
-								// Выполняем пересылку всех полученных данных
-								while((bytes - offset) > 0){
-									// Определяем размер отправляемых данных
-									actual = ((bytes - offset) >= adj->marker.read.max ? adj->marker.read.max : (bytes - offset));
-									// Если подключение производится через, прокси-сервер
-									if(shm->isProxy()){
-										// Если функция обратного вызова для вывода записи существует
-										if(shm->callback.is("readProxy"))
+					// Получаем максимальный размер буфера
+					const int64_t size = adj->ectx.buffer(engine_t::method_t::READ);
+					// Если размер буфера получен
+					if(size > 0){
+						// Количество полученных байт
+						int64_t bytes = -1;
+						// Создаём буфер входящих данных
+						unique_ptr <char []> buffer(new char [size]);
+						// Если нужно использовать асинхронный режим работы
+						if(this->_async)
+							// Переводим сокет в неблокирующий режим
+							adj->ectx.noblock();
+						// Выполняем чтение данных с сокета
+						do {
+							// Если подключение выполнено
+							if(!adj->bev.locked.read && (shm->status.real == scheme_t::mode_t::CONNECT)){
+								// Выполняем обнуление буфера данных
+								memset(buffer.get(), 0, size);
+								// Выполняем получение сообщения от клиента
+								bytes = adj->ectx.read(buffer.get(), size);
+								// Если время ожидания чтения данных установлено
+								if(shm->wait && (adj->timeouts.read > 0))
+									// Запускаем работу таймера
+									adj->bev.timers.read.start(adj->timeouts.read * 1000);
+								// Останавливаем таймаут ожидания на чтение из сокета
+								else adj->bev.timers.read.stop();
+								// Если данные получены
+								if(bytes > 0){
+									// Если данные считанные из буфера, больше размера ожидающего буфера
+									if((adj->marker.read.max > 0) && (bytes >= adj->marker.read.max)){
+										// Смещение в буфере и отправляемый размер данных
+										size_t offset = 0, actual = 0;
+										// Выполняем пересылку всех полученных данных
+										while((bytes - offset) > 0){
+											// Определяем размер отправляемых данных
+											actual = ((bytes - offset) >= adj->marker.read.max ? adj->marker.read.max : (bytes - offset));
+											// Если подключение производится через, прокси-сервер
+											if(shm->isProxy()){
+												// Если функция обратного вызова для вывода записи существует
+												if(shm->callback.is("readProxy"))
+													// Выводим функцию обратного вызова
+													shm->callback.call <const char *, const size_t, const size_t, const size_t, awh::core_t *> ("readProxy", buffer.get() + offset, actual, aid, shm->sid, reinterpret_cast <awh::core_t *> (this));
+											// Если прокси-сервер не используется
+											} else if(shm->callback.is("read"))
+												// Выводим функцию обратного вызова
+												shm->callback.call <const char *, const size_t, const size_t, const size_t, awh::core_t *> ("read", buffer.get() + offset, actual, aid, shm->sid, reinterpret_cast <awh::core_t *> (this));
+											// Увеличиваем смещение в буфере
+											offset += actual;
+										}
+									// Если данных достаточно
+									} else {
+										// Если подключение производится через, прокси-сервер
+										if(shm->isProxy()){
+											// Если функция обратного вызова для вывода записи существует
+											if(shm->callback.is("readProxy"))
+												// Выводим функцию обратного вызова
+												shm->callback.call <const char *, const size_t, const size_t, const size_t, awh::core_t *> ("readProxy", buffer.get(), bytes, aid, shm->sid, reinterpret_cast <awh::core_t *> (this));
+										// Если прокси-сервер не используется
+										} else if(shm->callback.is("read"))
 											// Выводим функцию обратного вызова
-											shm->callback.call <const char *, const size_t, const size_t, const size_t, awh::core_t *> ("readProxy", buffer + offset, actual, aid, shm->sid, reinterpret_cast <awh::core_t *> (this));
-									// Если прокси-сервер не используется
-									} else if(shm->callback.is("read"))
-										// Выводим функцию обратного вызова
-										shm->callback.call <const char *, const size_t, const size_t, const size_t, awh::core_t *> ("read", buffer + offset, actual, aid, shm->sid, reinterpret_cast <awh::core_t *> (this));
-									// Увеличиваем смещение в буфере
-									offset += actual;
-								}
-							// Если данных достаточно
-							} else {
-								// Если подключение производится через, прокси-сервер
-								if(shm->isProxy()){
-									// Если функция обратного вызова для вывода записи существует
-									if(shm->callback.is("readProxy"))
-										// Выводим функцию обратного вызова
-										shm->callback.call <const char *, const size_t, const size_t, const size_t, awh::core_t *> ("readProxy", buffer, bytes, aid, shm->sid, reinterpret_cast <awh::core_t *> (this));
-								// Если прокси-сервер не используется
-								} else if(shm->callback.is("read"))
-									// Выводим функцию обратного вызова
-									shm->callback.call <const char *, const size_t, const size_t, const size_t, awh::core_t *> ("read", buffer, bytes, aid, shm->sid, reinterpret_cast <awh::core_t *> (this));
-							}
-							// Продолжаем получение данных дальше
-							if(this->adjutants.find(aid) != this->adjutants.end()) goto Read;
-						// Если нужно повторить попытку
-						} else if(bytes == -2) goto Read;
-					}
-					// Если тип сокета не установлен как UDP, запускаем чтение дальше
-					if((this->net.sonet != scheme_t::sonet_t::UDP) && (this->adjutants.count(aid) > 0))
-						// Запускаем чтение данных с клиента
-						adj->bev.events.read.start();
+											shm->callback.call <const char *, const size_t, const size_t, const size_t, awh::core_t *> ("read", buffer.get(), bytes, aid, shm->sid, reinterpret_cast <awh::core_t *> (this));
+									}
+								// Если данные не получены и произошёл дисконнект
+								} else if(bytes == 0) {
+									// Выполняем отключение клиента
+									this->close(aid);
+									// Выходим из функции
+									return;
+								// Выходим из цикла
+								} else break;
+							// Выходим из цикла
+							} else break;
+						// Выполняем чтение до тех пор, пока всё не прочитаем
+						} while((this->adjutants.find(aid) != this->adjutants.end()) && (adj->method == engine_t::method_t::READ) && adj->bev.locked.write);
+						// Если тип сокета не установлен как UDP, запускаем чтение дальше
+						if((this->net.sonet != scheme_t::sonet_t::UDP) && (this->adjutants.count(aid) > 0))
+							// Запускаем чтение данных с клиента
+							adj->bev.event.read.start();
+					// Выполняем отключение клиента
+					} else this->close(aid);
 				} break;
 				// Если производится запись данных
 				case (uint8_t) engine_t::method_t::WRITE: {
@@ -1171,8 +1198,10 @@ void awh::client::Core::transfer(const engine_t::method_t method, const size_t a
 							int64_t bytes = -1;
 							// Cмещение в буфере и отправляемый размер данных
 							size_t offset = 0, actual = 0, size = 0;
-							// Переводим BIO в неблокирующий режим
-							adj->ectx.block();
+							// Получаем максимальный размер буфера
+							int64_t max = adj->ectx.buffer(engine_t::method_t::WRITE);
+							// Если максимальное установленное значение больше размеров буфера для записи, корректируем
+							max = ((max > 0) && (adj->marker.write.max > max) ? max : adj->marker.write.max);
 							// Получаем буфер отправляемых данных
 							const vector <char> buffer = std::forward <vector <char>> (adj->buffer);
 							// Выполняем отправку данных пока всё не отправим
@@ -1180,7 +1209,7 @@ void awh::client::Core::transfer(const engine_t::method_t method, const size_t a
 								// Получаем общий размер буфера данных
 								size = (buffer.size() - offset);
 								// Определяем размер отправляемых данных
-								actual = ((size >= adj->marker.write.max) ? adj->marker.write.max : size);
+								actual = (size >= max ? max : size);
 								// Выполняем отправку сообщения клиенту
 								bytes = adj->ectx.write(buffer.data() + offset, actual);
 								// Если время ожидания записи данных установлено
@@ -1189,17 +1218,14 @@ void awh::client::Core::transfer(const engine_t::method_t method, const size_t a
 									adj->bev.timers.write.start(adj->timeouts.write * 1000);
 								// Останавливаем таймаут ожидания на запись в сокет
 								else adj->bev.timers.write.stop();
-								// Если нужно повторить попытку
-								if(bytes == -2) continue;
-								// Если нужно выйти из цикла
-								else if(bytes == -1) break;
 								// Если нужно завершить работу
-								else if(bytes == 0) {
+								if(bytes == 0){
 									// Выполняем отключение клиента
 									this->close(aid);
 									// Выходим из функции
 									return;
-								}
+								// Выходим из цикла
+								} else if(bytes < 0) break;
 								// Увеличиваем смещение в буфере
 								offset += bytes;
 							}
@@ -1340,7 +1366,7 @@ void awh::client::Core::bandWidth(const size_t aid, const string & read, const s
  * @param family тип протокола интернета (IPV4 / IPV6 / NIX)
  * @param sonet  тип сокета подключения (TCP / UDP)
  */
-awh::client::Core::Core(const fmk_t * fmk, const log_t * log, const scheme_t::family_t family, const scheme_t::sonet_t sonet) noexcept : awh::core_t(fmk, log, family, sonet) {
+awh::client::Core::Core(const fmk_t * fmk, const log_t * log, const scheme_t::family_t family, const scheme_t::sonet_t sonet) noexcept : awh::core_t(fmk, log, family, sonet), _async(false) {
 	// Устанавливаем тип запускаемого ядра
 	this->type = engine_t::type_t::CLIENT;
 }
@@ -1352,7 +1378,7 @@ awh::client::Core::Core(const fmk_t * fmk, const log_t * log, const scheme_t::fa
  * @param family      тип протокола интернета (IPV4 / IPV6 / NIX)
  * @param sonet       тип сокета подключения (TCP / UDP)
  */
-awh::client::Core::Core(const affiliation_t affiliation, const fmk_t * fmk, const log_t * log, const scheme_t::family_t family, const scheme_t::sonet_t sonet) noexcept : awh::core_t(affiliation, fmk, log, family, sonet) {
+awh::client::Core::Core(const affiliation_t affiliation, const fmk_t * fmk, const log_t * log, const scheme_t::family_t family, const scheme_t::sonet_t sonet) noexcept : awh::core_t(affiliation, fmk, log, family, sonet), _async(false) {
 	// Устанавливаем тип запускаемого ядра
 	this->type = engine_t::type_t::CLIENT;
 }

@@ -35,7 +35,7 @@ void awh::IfNet::getIPAddresses(const int family) noexcept {
 	// Выделяем сокет для подключения
 	const int fd = ::socket(family, SOCK_DGRAM, IPPROTO_IP);
 	// Если файловый дескриптор не создан, выходим
-	if(fd < 0){
+	if(fd == INVALID_SOCKET){
 		// Выводим сообщение об ошибке
 		this->_log->print("%s", log_t::flag_t::WARNING, "socket failed");
 		// Выходим из функции
@@ -48,7 +48,7 @@ void awh::IfNet::getIPAddresses(const int family) noexcept {
 	// Выполняем получение сетевых параметров
 	if(::ioctl(fd, SIOCGIFCONF, &ifc) < 0){
 		// Закрываем сетевой сокет
-		::close(fd);
+		this->close(fd);
 		// Выводим сообщение об ошибке
 		this->_log->print("%s", log_t::flag_t::WARNING, "ioctl failed");
 		// Выходим из функции
@@ -93,7 +93,7 @@ void awh::IfNet::getIPAddresses(const int family) noexcept {
 		}
 	}
 	// Закрываем сетевой сокет
-	::close(fd);
+	this->close(fd);
 /**
  * Если операционной системой является Linux
  */
@@ -109,7 +109,7 @@ void awh::IfNet::getIPAddresses(const int family) noexcept {
 	// Выделяем сокет для подключения
 	const int fd = ::socket(family, SOCK_DGRAM, IPPROTO_IP);
 	// Если файловый дескриптор не создан, выходим
-	if(fd < 0){
+	if(fd == INVALID_SOCKET){
 		// Выводим сообщение об ошибке
 		this->_log->print("%s", log_t::flag_t::WARNING, "socket failed");
 		// Выходим из функции
@@ -122,7 +122,7 @@ void awh::IfNet::getIPAddresses(const int family) noexcept {
 	// Выполняем получение сетевых параметров
 	if(::ioctl(fd, SIOCGIFCONF, &ifc) < 0){
 		// Закрываем сетевой сокет
-		::close(fd);
+		this->close(fd);
 		// Выводим сообщение об ошибке
 		this->_log->print("%s", log_t::flag_t::WARNING, "ioctl failed");
 		// Выходим из функции
@@ -167,7 +167,7 @@ void awh::IfNet::getIPAddresses(const int family) noexcept {
 		}
 	}
 	// Закрываем сетевой сокет
-	::close(fd);
+	this->close(fd);
 /**
  * Устанавливаем настройки для OS Windows
  */
@@ -277,7 +277,7 @@ void awh::IfNet::getHWAddresses(const int family) noexcept {
 	// Выделяем сокет для подключения
 	const int fd = ::socket(family, SOCK_DGRAM, IPPROTO_IP);
 	// Если файловый дескриптор не создан, выходим
-	if(fd < 0){
+	if(fd == INVALID_SOCKET){
 		// Выводим сообщение об ошибке
 		this->_log->print("%s", log_t::flag_t::WARNING, "socket failed");
 		// Выходим из функции
@@ -290,7 +290,7 @@ void awh::IfNet::getHWAddresses(const int family) noexcept {
 	// Выполняем получение сетевых параметров
 	if(::ioctl(fd, SIOCGIFCONF, &ifc) < 0){
 		// Закрываем сетевой сокет
-		::close(fd);
+		this->close(fd);
 		// Выводим сообщение об ошибке
 		this->_log->print("%s", log_t::flag_t::WARNING, "ioctl failed");
 		// Выходим из функции
@@ -323,7 +323,7 @@ void awh::IfNet::getHWAddresses(const int family) noexcept {
 		cp += (sizeof(ifr->ifr_name) + max(sizeof(ifr->ifr_addr), (size_t) ifr->ifr_addr.sa_len));
 	}
 	// Закрываем сетевой сокет
-	::close(fd);
+	this->close(fd);
 /**
  * Если операционной системой является Linux
  */
@@ -341,7 +341,7 @@ void awh::IfNet::getHWAddresses(const int family) noexcept {
 	// Выделяем сокет для подключения
 	const int fd = ::socket(family, SOCK_DGRAM, IPPROTO_IP);
 	// Если файловый дескриптор не создан, выходим
-	if(fd < 0){
+	if(fd == INVALID_SOCKET){
 		// Выводим сообщение об ошибке
 		this->_log->print("%s", log_t::flag_t::WARNING, "socket failed");
 		// Выходим из функции
@@ -354,7 +354,7 @@ void awh::IfNet::getHWAddresses(const int family) noexcept {
 	// Выполняем получение сетевых параметров
 	if(::ioctl(fd, SIOCGIFCONF, &ifc) < 0){
 		// Закрываем сетевой сокет
-		::close(fd);
+		this->close(fd);
 		// Выводим сообщение об ошибке
 		this->_log->print("%s", log_t::flag_t::WARNING, "ioctl failed");
 		// Выходим из функции
@@ -390,7 +390,7 @@ void awh::IfNet::getHWAddresses(const int family) noexcept {
 		} else this->_log->print("%s", log_t::flag_t::WARNING, "ioctl failed");
 	}
 	// Закрываем сетевой сокет
-	::close(fd);
+	this->close(fd);
 /**
  * Устанавливаем настройки для OS Windows
  */
@@ -459,6 +459,28 @@ void awh::IfNet::getHWAddresses(const int family) noexcept {
 	// Очищаем выделенную ранее память
 	FREE(addr);
 #endif
+}
+/**
+ * Метод закрытие подключения
+ * @param fd файловый дескриптор (сокет)
+ */
+void awh::IfNet::close(const int fd) const noexcept {
+	// Если файловый дескриптор подключён
+	if(fd != INVALID_SOCKET){
+		/**
+		 * Если операционной системой является Windows
+		 */
+		#if defined(_WIN32) || defined(_WIN64)
+			// Выполняем закрытие сокета
+			closesocket(fd);
+		/**
+		 * Если операционной системой является Nix-подобная
+		 */
+		#else
+			// Выполняем закрытие сокета
+			::close(fd);
+		#endif
+	}
 }
 /**
  * init Метод инициализации сбора информации
@@ -775,7 +797,7 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 		// Выделяем сокет для подключения
 		const int fd = ::socket(AF_INET6, SOCK_RAW, IPPROTO_IPV6);
 		// Если файловый дескриптор не создан, выходим
-		if(fd < 0){
+		if(fd == INVALID_SOCKET){
 			// Выводим сообщение об ошибке
 			this->_log->print("%s", log_t::flag_t::WARNING, "socket failed");
 			// Выходим из функции
@@ -842,7 +864,7 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 		// Очищаем объект сетевой карты
 		freeifaddrs(headIfa);
 		// Закрываем сетевой сокет
-		::close(fd);
+		this->close(fd);
 	// Если запрашиваемый адрес IPv4
 	} else if(family == AF_INET) {
 		// Числовое значение IP адреса
@@ -884,7 +906,7 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 		// Выделяем сокет для подключения
 		const int fd = ::socket(family, SOCK_DGRAM, IPPROTO_IP);
 		// Если файловый дескриптор не создан, выходим
-		if(fd < 0){
+		if(fd == INVALID_SOCKET){
 			// Выводим сообщение об ошибке
 			this->_log->print("%s", log_t::flag_t::WARNING, "socket failed");
 			// Выходим из функции
@@ -959,7 +981,7 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 			result = move(hardware);
 		}
 		// Закрываем сетевой сокет
-		::close(fd);
+		this->close(fd);
 	}
 /**
  * Устанавливаем настройки для OS Windows
@@ -1176,7 +1198,7 @@ const string awh::IfNet::ip(const int family) const noexcept {
 	// Создаем сокет
 	const int fd = ::socket(family, SOCK_DGRAM, IPPROTO_IP);
 	// Если сокет создан
-	if(fd > -1){
+	if(fd != INVALID_SOCKET){
 		// Определяем тип интернет протокола
 		switch(family){
 			// Если это IPv4
@@ -1254,6 +1276,8 @@ const string awh::IfNet::ip(const int family) const noexcept {
 				}
 			} break;
 		}
+		// Закрываем сетевой сокет
+		this->close(fd);
 	}
 	// Сообщаем что ничего не найдено
 	return result;

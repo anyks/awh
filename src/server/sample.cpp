@@ -105,13 +105,8 @@ void awh::server::Sample::readCallback(const char * buffer, const size_t size, c
 		if(adj != nullptr){
 			// Если дисконнекта ещё не произошло
 			if((adj->action == sample_scheme_t::action_t::NONE) || (adj->action == sample_scheme_t::action_t::READ)){
-				// Если подключение закрыто
-				if(adj->close){
-					// Принудительно выполняем отключение лкиента
-					reinterpret_cast <server::core_t *> (core)->close(aid);
-					// Выходим из функции
-					return;
-				}
+				// Выполняем сброс закрытия подключения
+				adj->close = false;
 				// Если разрешено получение данных
 				if(adj->allow.receive){
 					// Устанавливаем экшен выполнения

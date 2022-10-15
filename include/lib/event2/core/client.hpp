@@ -51,6 +51,7 @@ namespace awh {
 				 * Mutex Структура основных мютексов
 				 */
 				typedef struct Mutex {
+					recursive_mutex main;    // Для установки системных параметров
 					recursive_mutex close;   // Для закрытия подключения
 					recursive_mutex reset;   // Для сброса параметров таймаута
 					recursive_mutex proxy;   // Для работы с прокси-сервером
@@ -86,6 +87,9 @@ namespace awh {
 			private:
 				// Мютекс для блокировки основного потока
 				mtx_t _mtx;
+			private:
+				// Флаг асинхронного режима работы
+				bool _async;
 			private:
 				// Список блокированных объектов
 				set <size_t> _locking;
@@ -140,6 +144,12 @@ namespace awh {
 				 * @param sid идентификатор схемы сети
 				 */
 				void remove(const size_t sid) noexcept;
+			public:
+				/**
+				 * async Метод активации асинхронного режима работы
+				 * @param mode флаг активации асинхронного режима работы
+				 */
+				void async(const bool mode) noexcept;
 			public:
 				/**
 				 * close Метод закрытия подключения

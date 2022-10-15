@@ -391,7 +391,7 @@ vector <u_char> awh::DNS::Worker::extract(u_char * data, const size_t pos) const
  */
 void awh::DNS::Worker::close() noexcept {
 	// Если файловый дескриптор не закрыт
-	if(this->_fd > -1){
+	if(this->_fd != INVALID_SOCKET){
 		/**
 		 * Если операционной системой является Windows
 		 */
@@ -406,7 +406,7 @@ void awh::DNS::Worker::close() noexcept {
 			::close(this->_fd);
 		#endif
 		// Выполняем сброс файлового дескриптора
-		this->_fd = -1;
+		this->_fd = INVALID_SOCKET;
 	}
 }
 /**
@@ -532,7 +532,7 @@ bool awh::DNS::Worker::request(const string & domain) noexcept {
 					// Создаём сокет подключения
 					this->_fd = ::socket(this->_family, SOCK_DGRAM, IPPROTO_UDP);
 					// Если сокет не создан создан
-					if(this->_fd < 0){
+					if(this->_fd == INVALID_SOCKET){
 						// Выводим в лог сообщение
 						this->_dns->_log->print("file descriptor needed for the DNS request could not be allocated", log_t::flag_t::WARNING);
 						// Выходим из приложения

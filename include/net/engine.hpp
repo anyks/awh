@@ -18,6 +18,7 @@
 /**
  * Настройка системы для высокой нагрузки:
  * url: https://romantelychko.com/blog/1300
+ * количество занятых сокетов: lsof | grep 69080 | wc -l
  */
 
 /**
@@ -30,7 +31,6 @@
  * 
  * Под FreeBSD:
  * # sudo kldload sctp
- * 
  */
 
 /**
@@ -43,6 +43,7 @@
 /**
  * Стандартная библиотека
  */
+#include <set>
 #include <thread>
 #include <cstdio>
 #include <string>
@@ -57,6 +58,7 @@
  */
 #if !defined(_WIN32) && !defined(_WIN64)
 	#include <sys/un.h>
+	#define INVALID_SOCKET -1
 #endif
 
 /**
@@ -195,6 +197,10 @@ namespace awh {
 					const log_t * _log;
 				private:
 					/**
+					 * close Метод закрытия подключения
+					 */
+					bool close() noexcept;
+					/**
 					 * client Метод извлечения данных клиента
 					 */
 					void client() noexcept;
@@ -205,10 +211,10 @@ namespace awh {
 					 */
 					bool list() noexcept;
 					/**
-					 * close Метод закрытия подключения
+					 * clear Метод очистки параметров подключения
 					 * @return результат выполнения операции
 					 */
-					bool close() noexcept;
+					bool clear() noexcept;
 				public:
 					/**
 					 * connect Метод выполнения подключения
@@ -266,7 +272,7 @@ namespace awh {
 					 * @param log объект для работы с логами
 					 */
 					Address(const fmk_t * fmk, const log_t * log) noexcept :
-					 fd(-1), _type(SOCK_STREAM), _protocol(IPPROTO_TCP), _tls(false),
+					 fd(INVALID_SOCKET), _type(SOCK_STREAM), _protocol(IPPROTO_TCP), _tls(false),
 					 status(status_t::DISCONNECTED), port(0), ip(""), mac(""), _nwk(fmk),
 					 _ifnet(fmk, log), _socket(log), _bio(nullptr), _fmk(fmk), _log(log) {}
 					/**
@@ -371,6 +377,13 @@ namespace awh {
 					 * @return       результат установки таймаута
 					 */
 					int timeout(const time_t msec, const method_t method) noexcept;
+				public:
+					/**
+					 * buffer Метод получения размеров буфера
+					 * @param method метод для выполнения операции с буфером
+					 * @return       размер буфера
+					 */
+					int buffer(const method_t method) const noexcept;
 					/**
 					 * buffer Метод установки размеров буфера
 					 * @param read  размер буфера на чтение
@@ -575,6 +588,13 @@ namespace awh {
 			 * @return       результат проверки
 			 */
 			bool wait(ctx_t & target) noexcept;
+		public:
+			/**
+			 * reset Метод сброса активных сокетов
+			 * @param fd   активный файловый дескриптор (сокет)
+			 * @param type тип активного приложения
+			 */
+			void reset(const int fd, const type_t type) noexcept;
 		public:
 			/**
 			 * attach Метод прикрепления контекста клиента к контексту сервера

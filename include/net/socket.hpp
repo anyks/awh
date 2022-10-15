@@ -175,6 +175,19 @@ namespace awh {
 			 * @return      результат работы функции
 			 */
 			int keepAlive(const int fd, const int cnt = 0, const int idle = 0, const int intvl = 0) const noexcept;
+		public:
+			/**
+			 * bufferSizeRead Метод получения размера буфера для чтения
+			 * @param fd файловый дескриптор (сокет)
+			 * @return   размер буфера для чтения
+			 */
+			int bufferSizeRead(const int fd) const noexcept;
+			/**
+			 * bufferSizeWrite Метод получения размера буфера для записи
+			 * @param fd файловый дескриптор (сокет)
+			 * @return   размер буфера для записи
+			 */
+			int bufferSizeWrite(const int fd) const noexcept;
 			/**
 			 * bufferSize Метод установки размеров буфера
 			 * @param fd    файловый дескриптор (сокет)

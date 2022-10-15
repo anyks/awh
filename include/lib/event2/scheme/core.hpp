@@ -227,6 +227,9 @@ namespace awh {
 					// Создаём объект подключения клиента
 					engine_t::addr_t addr;
 				private:
+					// Метод выполняемой операции
+					engine_t::method_t method;
+				private:
 					// Бинарный буфер для записи данных в сокет
 					vector <char> buffer;
 				public:

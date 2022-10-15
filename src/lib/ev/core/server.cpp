@@ -50,74 +50,83 @@ void awh::server::Core::DTLS::callback(ev::timer & timer, int revents) noexcept 
 			if(adj->addr.attach(shm->addr)){
 				// Выполняем прикрепление контекста клиента к контексту сервера
 				this->core->engine.attach(adj->ectx, &adj->addr);
-				// Получаем адрес подключения клиента
-				adj->ip = adj->addr.ip;
-				// Получаем аппаратный адрес клиента
-				adj->mac = adj->addr.mac;
-				// Получаем порт подключения клиента
-				adj->port = adj->addr.port;
-				// Если функция обратного вызова проверки подключения установлена, выполняем проверку, если проверка не пройдена?
-				if((shm->callback.is("accept")) && !shm->callback.apply <bool, const string &, const string &, const u_int, const size_t, awh::core_t *> ("accept", adj->ip, adj->mac, adj->port, shm->sid, this->core)){
-					// Если порт установлен
-					if(adj->port > 0){
-						// Выводим сообщение об ошибке
-						this->core->log->print(
-							"access to the server is denied for the client [%s:%d], mac = %s, socket = %d, pid = %d",
-							log_t::flag_t::WARNING,
-							adj->ip.c_str(),
-							adj->port,
-							adj->mac.c_str(),
-							adj->addr.fd,
-							getpid()
-						);
-					// Если порт не установлен
-					} else {
-						// Выводим сообщение об ошибке
-						this->core->log->print(
-							"access to the server is denied for the client [%s], mac = %s, socket = %d, pid = %d",
-							log_t::flag_t::WARNING,
-							adj->ip.c_str(),
-							adj->mac.c_str(),
-							adj->addr.fd,
-							getpid()
-						);
+				// Если MAC или IP адрес не получен, тогда выходим
+				if(adj->addr.mac.empty() || adj->addr.ip.empty()){
+					// Выполняем очистку контекста двигателя
+					adj->ectx.clear();
+					// Если подключение не установлено, выводим сообщение об ошибке
+					this->core->log->print("client address not received, pid = %d", log_t::flag_t::WARNING, getpid());
+				// Если все данные получены
+				} else {
+					// Получаем адрес подключения клиента
+					adj->ip = adj->addr.ip;
+					// Получаем аппаратный адрес клиента
+					adj->mac = adj->addr.mac;
+					// Получаем порт подключения клиента
+					adj->port = adj->addr.port;
+					// Если функция обратного вызова проверки подключения установлена, выполняем проверку, если проверка не пройдена?
+					if((shm->callback.is("accept")) && !shm->callback.apply <bool, const string &, const string &, const u_int, const size_t, awh::core_t *> ("accept", adj->ip, adj->mac, adj->port, shm->sid, this->core)){
+						// Если порт установлен
+						if(adj->port > 0){
+							// Выводим сообщение об ошибке
+							this->core->log->print(
+								"access to the server is denied for the client [%s:%d], mac = %s, socket = %d, pid = %d",
+								log_t::flag_t::WARNING,
+								adj->ip.c_str(),
+								adj->port,
+								adj->mac.c_str(),
+								adj->addr.fd,
+								getpid()
+							);
+						// Если порт не установлен
+						} else {
+							// Выводим сообщение об ошибке
+							this->core->log->print(
+								"access to the server is denied for the client [%s], mac = %s, socket = %d, pid = %d",
+								log_t::flag_t::WARNING,
+								adj->ip.c_str(),
+								adj->mac.c_str(),
+								adj->addr.fd,
+								getpid()
+							);
+						}
+						// Выполняем отключение адъютанта
+						this->core->close(this->aid);
+						// Выходим
+						return;
 					}
-					// Выполняем отключение адъютанта
-					this->core->close(this->aid);
-					// Выходим
-					return;
-				}
-				// Запускаем чтение данных
-				this->core->enabled(engine_t::method_t::READ, this->aid);
-				// Если вывод информационных данных не запрещён
-				if(!this->core->noinfo){
-					// Если порт установлен
-					if(adj->port > 0){
-						// Выводим в консоль информацию
-						this->core->log->print(
-							"connect to server client [%s:%d], mac = %s, socket = %d, pid = %d",
-							log_t::flag_t::INFO,
-							adj->ip.c_str(),
-							adj->port,
-							adj->mac.c_str(),
-							adj->addr.fd, getpid()
-						);
-					// Если порт не установлен
-					} else {
-						// Выводим в консоль информацию
-						this->core->log->print(
-							"connect to server client [%s], mac = %s, socket = %d, pid = %d",
-							log_t::flag_t::INFO,
-							adj->ip.c_str(),
-							adj->mac.c_str(),
-							adj->addr.fd, getpid()
-						);
+					// Запускаем чтение данных
+					this->core->enabled(engine_t::method_t::READ, this->aid);
+					// Если вывод информационных данных не запрещён
+					if(!this->core->noinfo){
+						// Если порт установлен
+						if(adj->port > 0){
+							// Выводим в консоль информацию
+							this->core->log->print(
+								"connect to server client [%s:%d], mac = %s, socket = %d, pid = %d",
+								log_t::flag_t::INFO,
+								adj->ip.c_str(),
+								adj->port,
+								adj->mac.c_str(),
+								adj->addr.fd, getpid()
+							);
+						// Если порт не установлен
+						} else {
+							// Выводим в консоль информацию
+							this->core->log->print(
+								"connect to server client [%s], mac = %s, socket = %d, pid = %d",
+								log_t::flag_t::INFO,
+								adj->ip.c_str(),
+								adj->mac.c_str(),
+								adj->addr.fd, getpid()
+							);
+						}
 					}
+					// Если функция обратного вызова установлена
+					if(shm->callback.is("connect"))
+						// Выполняем функцию обратного вызова
+						shm->callback.call <const size_t, const size_t, awh::core_t *> ("connect", this->aid, shm->sid, this->core);
 				}
-				// Если функция обратного вызова установлена
-				if(shm->callback.is("connect"))
-					// Выполняем функцию обратного вызова
-					shm->callback.call <const size_t, const size_t, awh::core_t *> ("connect", this->aid, shm->sid, this->core);
 			// Подключение не установлено, выводим сообщение об ошибке
 			} else this->core->log->print("accepting failed, pid = %d", log_t::flag_t::WARNING, getpid());
 		// Запускаем таймер вновь на 100мс
@@ -183,7 +192,7 @@ void awh::server::Core::cluster(const size_t sid, const pid_t pid, const cluster
  */
 void awh::server::Core::accept(const int fd, const size_t sid) noexcept {
 	// Если идентификатор схемы сети передан
-	if((sid > 0) && (fd >= 0)){
+	if((sid > 0) && (fd != INVALID_SOCKET)){
 		// Выполняем поиск идентификатора схемы сети
 		auto it = this->schemes.find(sid);
 		// Если идентификатор схемы сети найден, устанавливаем максимальное количество одновременных подключений
@@ -236,7 +245,7 @@ void awh::server::Core::accept(const int fd, const size_t sid) noexcept {
 						// Выполняем получение контекста сертификата
 						this->engine.wrapServer(adj->ectx, &adj->addr);
 						// Если подключение не обёрнуто
-						if(adj->addr.fd < 0){
+						if(adj->addr.fd == INVALID_SOCKET){
 							// Выводим сообщение об ошибке
 							this->log->print("wrap engine context is failed", log_t::flag_t::CRITICAL);
 							// Выходим из функции
@@ -245,7 +254,7 @@ void awh::server::Core::accept(const int fd, const size_t sid) noexcept {
 						// Выполняем блокировку потока
 						this->_mtx.accept.lock();
 						// Добавляем созданного адъютанта в список адъютантов
-						auto ret = shm->adjutants.emplace(adj->aid, move(adj));
+						auto ret = shm->adjutants.emplace(adj->aid, std::forward <unique_ptr <awh::scheme_t::adj_t>> (adj));
 						// Добавляем адъютанта в список подключений
 						this->adjutants.emplace(ret.first->first, ret.first->second.get());
 						// Выполняем блокировку потока
@@ -287,11 +296,11 @@ void awh::server::Core::accept(const int fd, const size_t sid) noexcept {
 					// Выполняем блокировку потока
 					this->_mtx.accept.lock();
 					// Добавляем созданного адъютанта в список адъютантов
-					auto ret = shm->adjutants.emplace(adj->aid, move(adj));
+					auto ret = shm->adjutants.emplace(adj->aid, std::forward <unique_ptr <awh::scheme_t::adj_t>> (adj));
 					// Добавляем адъютанта в список подключений
 					this->adjutants.emplace(ret.first->first, ret.first->second.get());
 					// Добавляем объект для работы с DTLS в список
-					this->_dtls.emplace(ret.first->second->aid, move(dtls)).first->second->timer.start(.1);
+					this->_dtls.emplace(ret.first->second->aid, std::forward <unique_ptr <dtls_t>> (dtls)).first->second->timer.start(.1);
 					// Выполняем блокировку потока
 					this->_mtx.accept.unlock();
 					// Останавливаем работу сервера
@@ -333,101 +342,114 @@ void awh::server::Core::accept(const int fd, const size_t sid) noexcept {
 					}
 					// Выполняем разрешение подключения
 					if(adj->addr.accept(shm->addr)){
-						// Получаем адрес подключения клиента
-						adj->ip = adj->addr.ip;
-						// Получаем аппаратный адрес клиента
-						adj->mac = adj->addr.mac;
-						// Получаем порт подключения клиента
-						adj->port = adj->addr.port;
-						// Если функция обратного вызова проверки подключения установлена, выполняем проверку, если проверка не пройдена?
-						if((shm->callback.is("accept")) && !shm->callback.apply <bool, const string &, const string &, const u_int, const size_t, awh::core_t *> ("accept", adj->ip, adj->mac, adj->port, shm->sid, this)){
-							// Если порт установлен
-							if(adj->port > 0){
-								// Выводим сообщение об ошибке
-								this->log->print(
-									"access to the server is denied for the client [%s:%d], mac = %s, socket = %d, pid = %d",
-									log_t::flag_t::WARNING,
-									adj->ip.c_str(),
-									adj->port,
-									adj->mac.c_str(),
-									adj->addr.fd,
-									getpid()
-								);
-							// Если порт не установлен
-							} else {
-								// Выводим сообщение об ошибке
-								this->log->print(
-									"access to the server is denied for the client [%s], mac = %s, socket = %d, pid = %d",
-									log_t::flag_t::WARNING,
-									adj->ip.c_str(),
-									adj->mac.c_str(),
-									adj->addr.fd,
-									getpid()
-								);
-							}
-							// Выходим
-							break;
-						}
-						// Устанавливаем идентификатор адъютанта
-						adj->aid = this->fmk->nanoTimestamp();
-						// Выполняем получение контекста сертификата
-						this->engine.wrapServer(adj->ectx, &adj->addr);
-						// Если мы хотим работать в зашифрованном режиме
-						if(this->net.sonet == scheme_t::sonet_t::TLS){
-							// Если сертификаты не приняты, выходим
-							if(!this->engine.tls(adj->ectx)){
-								// Выводим сообщение об ошибке
-								this->log->print("encryption mode cannot be activated", log_t::flag_t::CRITICAL);
+						// Если MAC или IP адрес не получен, тогда выходим
+						if(adj->addr.mac.empty() || adj->addr.ip.empty()){
+							// Выполняем очистку контекста двигателя
+							adj->ectx.clear();
+							// Если подключение не установлено, выводим сообщение об ошибке
+							this->log->print("client address not received, pid = %d", log_t::flag_t::WARNING, getpid());
+						// Если все данные получены
+						} else {
+							// Получаем адрес подключения клиента
+							adj->ip = adj->addr.ip;
+							// Получаем аппаратный адрес клиента
+							adj->mac = adj->addr.mac;
+							// Получаем порт подключения клиента
+							adj->port = adj->addr.port;
+							// Если функция обратного вызова проверки подключения установлена, выполняем проверку, если проверка не пройдена?
+							if((shm->callback.is("accept")) && !shm->callback.apply <bool, const string &, const string &, const u_int, const size_t, awh::core_t *> ("accept", adj->ip, adj->mac, adj->port, shm->sid, this)){
+								// Если порт установлен
+								if(adj->port > 0){
+									// Выводим сообщение об ошибке
+									this->log->print(
+										"access to the server is denied for the client [%s:%d], mac = %s, socket = %d, pid = %d",
+										log_t::flag_t::WARNING,
+										adj->ip.c_str(),
+										adj->port,
+										adj->mac.c_str(),
+										adj->addr.fd,
+										getpid()
+									);
+								// Если порт не установлен
+								} else {
+									// Выводим сообщение об ошибке
+									this->log->print(
+										"access to the server is denied for the client [%s], mac = %s, socket = %d, pid = %d",
+										log_t::flag_t::WARNING,
+										adj->ip.c_str(),
+										adj->mac.c_str(),
+										adj->addr.fd,
+										getpid()
+									);
+								}
+								// Выполняем очистку контекста двигателя
+								adj->ectx.clear();
 								// Выходим
 								break;
 							}
-						}
-						// Если подключение не обёрнуто
-						if(adj->addr.fd < 0){
-							// Выводим сообщение об ошибке
-							this->log->print("wrap engine context is failed", log_t::flag_t::CRITICAL);
-							// Выходим
-							break;
-						}
-						// Выполняем блокировку потока
-						this->_mtx.accept.lock();
-						// Добавляем созданного адъютанта в список адъютантов
-						auto ret = shm->adjutants.emplace(adj->aid, move(adj));
-						// Добавляем адъютанта в список подключений
-						this->adjutants.emplace(ret.first->first, ret.first->second.get());
-						// Выполняем блокировку потока
-						this->_mtx.accept.unlock();
-						// Запускаем чтение данных
-						this->enabled(engine_t::method_t::READ, ret.first->first);
-						// Если вывод информационных данных не запрещён
-						if(!this->noinfo){
-							// Если порт установлен
-							if(ret.first->second->port > 0){
-								// Выводим в консоль информацию
-								this->log->print(
-									"connect to server client [%s:%d], mac = %s, socket = %d, pid = %d",
-									log_t::flag_t::INFO,
-									ret.first->second->ip.c_str(),
-									ret.first->second->port,
-									ret.first->second->mac.c_str(),
-									ret.first->second->addr.fd, getpid()
-								);
-							// Если порт не установлен
-							} else {
-								// Выводим в консоль информацию
-								this->log->print(
-									"connect to server client [%s], mac = %s, socket = %d, pid = %d",
-									log_t::flag_t::INFO,
-									ret.first->second->ip.c_str(),
-									ret.first->second->mac.c_str(),
-									ret.first->second->addr.fd, getpid()
-								);
+							// Устанавливаем идентификатор адъютанта
+							adj->aid = this->fmk->nanoTimestamp();
+							// Выполняем получение контекста сертификата
+							this->engine.wrapServer(adj->ectx, &adj->addr);
+							// Если мы хотим работать в зашифрованном режиме
+							if(this->net.sonet == scheme_t::sonet_t::TLS){
+								// Если сертификаты не приняты, выходим
+								if(!this->engine.tls(adj->ectx)){
+									// Выполняем очистку контекста двигателя
+									adj->ectx.clear();
+									// Выводим сообщение об ошибке
+									this->log->print("encryption mode cannot be activated", log_t::flag_t::CRITICAL);
+									// Выходим
+									break;
+								}
 							}
+							// Если подключение не обёрнуто
+							if(adj->addr.fd == INVALID_SOCKET){
+								// Выводим сообщение об ошибке
+								this->log->print("wrap engine context is failed", log_t::flag_t::CRITICAL);
+								// Выходим
+								break;
+							}
+							// Выполняем блокировку потока
+							this->_mtx.accept.lock();
+							// Добавляем созданного адъютанта в список адъютантов
+							auto ret = shm->adjutants.emplace(adj->aid, std::forward <unique_ptr <awh::scheme_t::adj_t>> (adj));
+							// Добавляем адъютанта в список подключений
+							this->adjutants.emplace(ret.first->first, ret.first->second.get());
+							// Выполняем блокировку потока
+							this->_mtx.accept.unlock();
+							// Запускаем чтение данных
+							this->enabled(engine_t::method_t::READ, ret.first->first);
+							// Если вывод информационных данных не запрещён
+							if(!this->noinfo){
+								// Если порт установлен
+								if(ret.first->second->port > 0){
+									// Выводим в консоль информацию
+									this->log->print(
+										"connect to server client [%s:%d], mac = %s, socket = %d, pid = %d",
+										log_t::flag_t::INFO,
+										ret.first->second->ip.c_str(),
+										ret.first->second->port,
+										ret.first->second->mac.c_str(),
+										ret.first->second->addr.fd, getpid()
+									);
+								// Если порт не установлен
+								} else {
+									// Выводим в консоль информацию
+									this->log->print(
+										"connect to server client [%s], mac = %s, socket = %d, pid = %d",
+										log_t::flag_t::INFO,
+										ret.first->second->ip.c_str(),
+										ret.first->second->mac.c_str(),
+										ret.first->second->addr.fd, getpid()
+									);
+								}
+							}
+							// Если функция обратного вызова установлена
+							if(shm->callback.is("connect"))
+								// Выполняем функцию обратного вызова
+								shm->callback.call <const size_t, const size_t, awh::core_t *> ("connect", ret.first->first, shm->sid, this);
 						}
-						// Если функция обратного вызова установлена
-						if(shm->callback.is("connect"))
-							// Выполняем функцию обратного вызова
-							shm->callback.call <const size_t, const size_t, awh::core_t *> ("connect", ret.first->first, shm->sid, this);
 					// Если подключение не установлено, выводим сообщение об ошибке
 					} else this->log->print("accepting failed, pid = %d", log_t::flag_t::WARNING, getpid());
 				} break;
@@ -486,7 +508,7 @@ void awh::server::Core::close() noexcept {
 			// Останавливаем работу сервера
 			shm->io.stop();
 			// Выполняем закрытие подключение сервера
-			shm->addr.close();
+			shm->addr.clear();
 		}
 		// Выполняем все функции обратного вызова
 		callback.bind <const size_t, const size_t, awh::core_t *> ();
@@ -543,7 +565,7 @@ void awh::server::Core::remove() noexcept {
 			// Останавливаем работу сервера
 			shm->io.stop();
 			// Выполняем закрытие подключение сервера
-			shm->addr.close();
+			shm->addr.clear();
 			// Выполняем удаление схемы сети
 			it = this->schemes.erase(it);
 		}
@@ -668,7 +690,7 @@ void awh::server::Core::remove(const size_t sid) noexcept {
 			// Останавливаем работу сервера
 			shm->io.stop();
 			// Выполняем закрытие подключение сервера
-			shm->addr.close();
+			shm->addr.clear();
 			// Выполняем удаление схемы сети
 			this->schemes.erase(sid);
 			// Выполняем все функции обратного вызова
@@ -724,8 +746,8 @@ void awh::server::Core::close(const size_t aid) noexcept {
 						// Очищаем список функций обратного вызова
 						callback.rm(to_string(aid));
 					}
-					// Очищаем контекст сервера
-					shm->ectx.clear();
+					// Выполняем закрытие подключение сервера
+					shm->addr.clear();
 					// Если список объектов DTLS не пустой
 					if(!this->_dtls.empty())
 						// Удаляем объект для работы DTLS из списка
@@ -793,71 +815,77 @@ void awh::server::Core::transfer(const engine_t::method_t method, const size_t a
 		awh::scheme_t::adj_t * adj = const_cast <awh::scheme_t::adj_t *> (it->second);
 		// Получаем объект схемы сети
 		scheme_t * shm = (scheme_t *) const_cast <awh::scheme_t *> (adj->parent);
+		// Устанавливаем текущий метод режима работы
+		adj->method = method;
 		// Определяем метод работы
-		switch((uint8_t) method){
+		switch((uint8_t) adj->method){
 			// Если производится чтение данных
 			case (uint8_t) engine_t::method_t::READ: {
-				// Количество полученных байт
-				int64_t bytes = -1;
-				// Создаём буфер входящих данных
-				char buffer[BUFFER_SIZE];
 				// Останавливаем чтение данных с клиента
 				adj->bev.event.read.stop();
-				// Устанавливаем метку чтения данных
-				Read:
-				// Если подключение выполнено и чтение данных разрешено
-				if(!adj->bev.locked.read){
-					// Выполняем обнуление буфера данных
-					memset(buffer, 0, sizeof(buffer));
-					// Выполняем получение сообщения от клиента
-					bytes = adj->ectx.read(buffer, sizeof(buffer));
-					// Если время ожидания чтения данных установлено
-					if(shm->wait && (adj->timeouts.read > 0)){
-						// Устанавливаем время ожидания на получение данных
-						adj->bev.timer.read.repeat = adj->timeouts.read;
-						// Запускаем повторное ожидание
-						adj->bev.timer.read.again();
-					// Останавливаем таймаут ожидания на чтение из сокета
-					} else adj->bev.timer.read.stop();
-					/**
-					 * Если операционной системой является MS Windows
-					 */
-					#if defined(_WIN32) || defined(_WIN64)
-						// Запускаем чтение данных снова (Для Windows)
-						if((bytes != 0) && (this->net.sonet != scheme_t::sonet_t::UDP))
-							// Запускаем чтение снова
-							adj->bev.event.read.start();
-					#endif
-					// Если данные получены
-					if(bytes > 0){
-						// Если данные считанные из буфера, больше размера ожидающего буфера
-						if((adj->marker.read.max > 0) && (bytes >= adj->marker.read.max)){
-							// Смещение в буфере и отправляемый размер данных
-							size_t offset = 0, actual = 0;
-							// Выполняем пересылку всех полученных данных
-							while((bytes - offset) > 0){
-								// Определяем размер отправляемых данных
-								actual = ((bytes - offset) >= adj->marker.read.max ? adj->marker.read.max : (bytes - offset));
-								// Если функция обратного вызова на получение данных установлена
-								if(shm->callback.is("read"))
+				// Получаем максимальный размер буфера
+				const int64_t size = adj->ectx.buffer(engine_t::method_t::READ);
+				// Если размер буфера получен
+				if(size > 0){
+					// Количество полученных байт
+					int64_t bytes = -1;
+					// Создаём буфер входящих данных
+					unique_ptr <char []> buffer(new char [size]);
+					// Выполняем чтение данных с сокета
+					do {
+						// Если подключение выполнено и чтение данных разрешено
+						if(!adj->bev.locked.read){
+							// Выполняем обнуление буфера данных
+							memset(buffer.get(), 0, size);
+							// Выполняем получение сообщения от клиента
+							bytes = adj->ectx.read(buffer.get(), size);
+							// Если время ожидания чтения данных установлено
+							if(shm->wait && (adj->timeouts.read > 0)){
+								// Устанавливаем время ожидания на получение данных
+								adj->bev.timer.read.repeat = adj->timeouts.read;
+								// Запускаем повторное ожидание
+								adj->bev.timer.read.again();
+							// Останавливаем таймаут ожидания на чтение из сокета
+							} else adj->bev.timer.read.stop();
+							// Если данные получены
+							if(bytes > 0){
+								// Если данные считанные из буфера, больше размера ожидающего буфера
+								if((adj->marker.read.max > 0) && (bytes >= adj->marker.read.max)){
+									// Смещение в буфере и отправляемый размер данных
+									size_t offset = 0, actual = 0;
+									// Выполняем пересылку всех полученных данных
+									while((bytes - offset) > 0){
+										// Определяем размер отправляемых данных
+										actual = ((bytes - offset) >= adj->marker.read.max ? adj->marker.read.max : (bytes - offset));
+										// Если функция обратного вызова на получение данных установлена
+										if(shm->callback.is("read"))
+											// Выводим функцию обратного вызова
+											shm->callback.call <const char *, const size_t, const size_t, const size_t, awh::core_t *> ("read", buffer.get() + offset, actual, aid, shm->sid, reinterpret_cast <awh::core_t *> (this));
+										// Увеличиваем смещение в буфере
+										offset += actual;
+									}
+								// Если данных достаточно и функция обратного вызова на получение данных установлена
+								} else if(shm->callback.is("read"))
 									// Выводим функцию обратного вызова
-									shm->callback.call <const char *, const size_t, const size_t, const size_t, awh::core_t *> ("read", buffer + offset, actual, aid, shm->sid, reinterpret_cast <awh::core_t *> (this));
-								// Увеличиваем смещение в буфере
-								offset += actual;
-							}
-						// Если данных достаточно и функция обратного вызова на получение данных установлена
-						} else if(shm->callback.is("read"))
-							// Выводим функцию обратного вызова
-							shm->callback.call <const char *, const size_t, const size_t, const size_t, awh::core_t *> ("read", buffer, bytes, aid, shm->sid, reinterpret_cast <awh::core_t *> (this));
-						// Продолжаем получение данных дальше
-						if(this->adjutants.find(aid) != this->adjutants.end()) goto Read;
-					// Если нужно повторить попытку
-					} else if(bytes == -2) goto Read;
-				}
-				// Если тип сокета не установлен как UDP, запускаем чтение дальше
-				if((this->net.sonet != scheme_t::sonet_t::UDP) && (this->adjutants.count(aid) > 0))
-					// Запускаем чтение данных с клиента
-					adj->bev.event.read.start();
+									shm->callback.call <const char *, const size_t, const size_t, const size_t, awh::core_t *> ("read", buffer.get(), bytes, aid, shm->sid, reinterpret_cast <awh::core_t *> (this));
+							// Если данные не получены и произошёл дисконнект
+							} else if(bytes == 0) {
+								// Выполняем отключение клиента
+								this->close(aid);
+								// Выходим из функции
+								return;
+							// Выходим из цикла
+							} else if(bytes == -1) break;
+						// Выходим из цикла
+						} else break;
+					// Выполняем чтение до тех пор, пока всё не прочитаем
+					} while((this->adjutants.find(aid) != this->adjutants.end()) && (adj->method == engine_t::method_t::READ) && adj->bev.locked.write);
+					// Если тип сокета не установлен как UDP, запускаем чтение дальше
+					if((this->net.sonet != scheme_t::sonet_t::UDP) && (this->adjutants.count(aid) > 0))
+						// Запускаем чтение данных с клиента
+						adj->bev.event.read.start();
+				// Выполняем отключение клиента
+				} else this->close(aid);
 			} break;
 			// Если производится запись данных
 			case (uint8_t) engine_t::method_t::WRITE: {
@@ -871,6 +899,10 @@ void awh::server::Core::transfer(const engine_t::method_t method, const size_t a
 						int64_t bytes = -1;
 						// Cмещение в буфере и отправляемый размер данных
 						size_t offset = 0, actual = 0, size = 0;
+						// Получаем максимальный размер буфера
+						int64_t max = adj->ectx.buffer(engine_t::method_t::WRITE);
+						// Если максимальное установленное значение больше размеров буфера для записи, корректируем
+						max = ((max > 0) && (adj->marker.write.max > max) ? max : adj->marker.write.max);
 						// Получаем буфер отправляемых данных
 						const vector <char> buffer = std::forward <vector <char>> (adj->buffer);
 						// Выполняем отправку данных пока всё не отправим
@@ -878,7 +910,7 @@ void awh::server::Core::transfer(const engine_t::method_t method, const size_t a
 							// Получаем общий размер буфера данных
 							size = (buffer.size() - offset);
 							// Определяем размер отправляемых данных
-							actual = ((size >= adj->marker.write.max) ? adj->marker.write.max : size);
+							actual = (size >= max ? max : size);
 							// Выполняем отправку сообщения клиенту
 							bytes = adj->ectx.write(buffer.data() + offset, actual);
 							// Если время ожидания записи данных установлено
@@ -1030,7 +1062,7 @@ void awh::server::Core::resolving(const size_t sid, const string & ip, const int
 						// Если unix-сокет не используется, выполняем инициализацию сокета
 						else shm->addr.init(shm->host, shm->port, (this->net.family == scheme_t::family_t::IPV6 ? AF_INET6 : AF_INET), engine_t::type_t::SERVER, this->_ipV6only);
 						// Если сокет подключения получен
-						if(shm->addr.fd > -1){
+						if(shm->addr.fd != INVALID_SOCKET){
 							// Если повесить прослушку на порт не вышло, выходим из условия
 							if(!shm->addr.list()) break;
 							// Если разрешено выводить информационные сообщения

@@ -34,6 +34,13 @@
 #include <libev/ev++.h>
 
 /**
+ * Если операционной системой является Nix-подобная
+ */
+#if !defined(_WIN32) && !defined(_WIN64)
+	#define INVALID_SOCKET -1
+#endif
+
+/**
  * Если операционной системой является MS Windows
  */
 #if defined(_WIN32) || defined(_WIN64)
@@ -299,7 +306,8 @@ namespace awh {
 					 * @param dns    объект DNS резолвера
 					 */
 					Worker(const size_t did, const int family, struct ev_loop * base, const DNS * dns) noexcept :
-					 _did(did), _mode(false), _fd(-1), _family(family), _domain(""), _socket(dns->_log), _socklen(0), _dns(dns), _base(base) {}
+					 _did(did), _mode(false), _fd(INVALID_SOCKET), _family(family), _domain(""),
+					 _socket(dns->_log), _socklen(0), _dns(dns), _base(base) {}
 					/**
 					 * ~Worker Деструктор
 					 */

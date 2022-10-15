@@ -225,6 +225,9 @@ namespace awh {
 					// Создаём объект подключения клиента
 					engine_t::addr_t addr;
 				private:
+					// Метод выполняемой операции
+					engine_t::method_t method;
+				private:
 					// Бинарный буфер для записи данных в сокет
 					vector <char> buffer;
 				public:
@@ -267,8 +270,8 @@ namespace awh {
 					 * @param log    объект для работы с логами
 					 */
 					Adjutant(const Scheme * parent, const fmk_t * fmk, const log_t * log) noexcept :
-					 aid(0), ip(""), mac(""), port(0), ectx(fmk, log),
-					 addr(fmk, log), fmk(fmk), log(log), parent(parent) {}
+					 aid(0), ip(""), mac(""), port(0), ectx(fmk, log), addr(fmk, log),
+					 method(engine_t::method_t::READ), fmk(fmk), log(log), parent(parent) {}
 					/**
 					 * ~Adjutant Деструктор
 					 */

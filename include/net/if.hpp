@@ -27,6 +27,13 @@
 #include <unordered_map>
 
 /**
+ * Если операционной системой является Nix-подобная
+ */
+#if !defined(_WIN32) && !defined(_WIN64)
+	#define INVALID_SOCKET -1
+#endif
+
+/**
  * Устанавливаем настройки для *Nix подобных систем
  */
 #if !defined(_WIN32) && !defined(_WIN64)
@@ -149,6 +156,12 @@ namespace awh {
 			 * @param family тип протокола интернета AF_INET или AF_INET6
 			 */
 			void getHWAddresses(const int family = AF_INET) noexcept;
+		private:
+			/**
+			 * Метод закрытие подключения
+			 * @param fd файловый дескриптор (сокет)
+			 */
+			void close(const int fd) const noexcept;
 		public:
 			/**
 			 * init Метод инициализации сбора информации
