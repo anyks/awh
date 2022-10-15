@@ -1182,7 +1182,7 @@ void awh::client::Core::transfer(const engine_t::method_t method, const size_t a
 						// Если тип сокета не установлен как UDP, запускаем чтение дальше
 						if((this->net.sonet != scheme_t::sonet_t::UDP) && (this->adjutants.count(aid) > 0))
 							// Запускаем чтение данных с клиента
-							adj->bev.event.read.start();
+							adj->bev.events.read.start();
 					// Выполняем отключение клиента
 					} else this->close(aid);
 				} break;
