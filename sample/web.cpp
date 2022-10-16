@@ -152,7 +152,7 @@ int main(int argc, char * argv[]){
 	// Отключаем валидацию сертификата
 	core.verifySSL(false);
 	// Активируем максимальное количество рабочих процессов
-	// core.clusterSize();
+	core.clusterSize();
 	// Разрешаем выполняем автоматический перезапуск упавшего процесса
 	rest.clusterAutoRestart(true);
 	/**
