@@ -1167,14 +1167,30 @@ void awh::client::Core::transfer(const engine_t::method_t method, const size_t a
 											// Выводим функцию обратного вызова
 											shm->callback.call <const char *, const size_t, const size_t, const size_t, awh::core_t *> ("read", buffer.get(), bytes, aid, shm->sid, reinterpret_cast <awh::core_t *> (this));
 									}
-								// Если данные не получены и произошёл дисконнект
-								} else if(bytes == 0) {
-									// Выполняем отключение клиента
-									this->close(aid);
-									// Выходим из функции
-									return;
-								// Выходим из цикла
-								} else break;
+								// Если данные не получены
+								} else {
+									// Если режим работы асинхронный
+									if(this->_async){
+										// Если нужно повторить запись
+										if(bytes == -2){
+											// Если подключение ещё существует
+											if((this->adjutants.find(aid) != this->adjutants.end()) && (adj->method == engine_t::method_t::READ) && adj->bev.locked.write)
+												// Продолжаем попытку снова
+												continue;
+										// Если запись не выполнена, входим
+										} else break;
+									// Если режим работы синхронный
+									} else {
+										// Если произошёл дисконнект
+										if(bytes == 0){
+											// Выполняем отключение клиента
+											this->close(aid);
+											// Выходим из функции
+											return;
+										// Если запись не выполнена, входим
+										} else break;
+									}
+								}
 							// Выходим из цикла
 							} else break;
 						// Выполняем чтение до тех пор, пока всё не прочитаем
@@ -1218,14 +1234,23 @@ void awh::client::Core::transfer(const engine_t::method_t method, const size_t a
 									adj->bev.timers.write.start(adj->timeouts.write * 1000);
 								// Останавливаем таймаут ожидания на запись в сокет
 								else adj->bev.timers.write.stop();
-								// Если нужно завершить работу
-								if(bytes == 0){
-									// Выполняем отключение клиента
-									this->close(aid);
-									// Выходим из функции
-									return;
-								// Выходим из цикла
-								} else if(bytes < 0) break;
+								// Если режим работы асинхронный
+								if(this->_async){
+									// Если нужно повторить запись
+									if(bytes == -2) continue;
+									// Если запись не выполнена, входим
+									else break;
+								// Если режим работы синхронный
+								} else {
+									// Если произошёл дисконнект
+									if(bytes == 0){
+										// Выполняем отключение клиента
+										this->close(aid);
+										// Выходим из функции
+										return;
+									// Если запись не выполнена, входим
+									} else break;
+								}
 								// Увеличиваем смещение в буфере
 								offset += bytes;
 							}
