@@ -1030,6 +1030,8 @@ void awh::client::Core::connected(const size_t aid) noexcept {
 			shm->status.real = scheme_t::mode_t::CONNECT;
 			// Устанавливаем флаг ожидания статуса
 			shm->status.wait = scheme_t::mode_t::DISCONNECT;
+			// Устанавливаем текущий метод режима работы
+			adj->method = engine_t::method_t::CONNECT;
 			// Выполняем очистку существующих таймаутов
 			this->clearTimeout(shm->sid);
 			// Получаем семейство интернет-протоколов
@@ -1171,7 +1173,7 @@ void awh::client::Core::transfer(const engine_t::method_t method, const size_t a
 										// Если нужно повторить запись
 										if(bytes == -2){
 											// Если подключение ещё существует
-											if((this->adjutants.find(aid) != this->adjutants.end()) && (adj->method == engine_t::method_t::READ) && adj->bev.locked.write)
+											if(this->method(aid) == engine_t::method_t::READ)
 												// Продолжаем попытку снова
 												continue;
 											// Если запись не выполнена, входим
@@ -1193,7 +1195,7 @@ void awh::client::Core::transfer(const engine_t::method_t method, const size_t a
 							// Выходим из цикла
 							} else break;
 						// Выполняем чтение до тех пор, пока всё не прочитаем
-						} while((this->adjutants.find(aid) != this->adjutants.end()) && (adj->method == engine_t::method_t::READ) && adj->bev.locked.write);
+						} while(this->method(aid) == engine_t::method_t::READ);
 						// Если тип сокета не установлен как UDP, запускаем чтение дальше
 						if((this->net.sonet != scheme_t::sonet_t::UDP) && (this->adjutants.count(aid) > 0))
 							// Запускаем чтение данных с клиента

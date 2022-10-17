@@ -455,6 +455,13 @@ namespace awh {
 			void rebase() noexcept;
 		public:
 			/**
+			 * method Метод получения текущего метода работы
+			 * @param aid идентификатор адъютанта
+			 * @return    результат работы функции
+			 */
+			engine_t::method_t method(const size_t aid) const noexcept;
+		public:
+			/**
 			 * enabled Метод активации метода события сокета
 			 * @param method метод события сокета
 			 * @param aid    идентификатор адъютанта

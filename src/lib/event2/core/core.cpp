@@ -867,6 +867,37 @@ void awh::Core::rebase() noexcept {
 	}
 }
 /**
+ * method Метод получения текущего метода работы
+ * @param aid идентификатор адъютанта
+ * @return    результат работы функции
+ */
+awh::engine_t::method_t awh::Core::method(const size_t aid) const noexcept {
+	// Результат работы функции
+	engine_t::method_t result = engine_t::method_t::DISCONNECT;
+	// Выполняем извлечение адъютанта
+	auto it = this->adjutants.find(aid);
+	// Если адъютант получен
+	if(it != this->adjutants.end()){
+		// Получаем объект адъютанта
+		awh::scheme_t::adj_t * adj = const_cast <awh::scheme_t::adj_t *> (it->second);
+		// Если подключение только установлено
+		if(adj->method == engine_t::method_t::CONNECT)
+			// Устанавливаем результат работы функции
+			result = adj->method;
+		// Если производится запись или чтение
+		else if((adj->method == engine_t::method_t::READ) || (adj->method == engine_t::method_t::WRITE)) {
+			// Устанавливаем результат работы функции
+			result = engine_t::method_t::CONNECT;
+			// Если производится чтение или запись данных
+			if(((adj->method == engine_t::method_t::READ) && !adj->bev.locked.read && adj->bev.locked.write) || ((adj->method == engine_t::method_t::WRITE) && !adj->bev.locked.write))
+				// Устанавливаем результат работы функции
+				result = adj->method;
+		}
+	}
+	// Выводим результат
+	return result;
+}
+/**
  * enabled Метод активации метода события сокета
  * @param method метод события сокета
  * @param aid    идентификатор адъютанта

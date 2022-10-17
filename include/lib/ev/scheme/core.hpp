@@ -271,7 +271,7 @@ namespace awh {
 					 */
 					Adjutant(const Scheme * parent, const fmk_t * fmk, const log_t * log) noexcept :
 					 aid(0), ip(""), mac(""), port(0), ectx(fmk, log), addr(fmk, log),
-					 method(engine_t::method_t::READ), fmk(fmk), log(log), parent(parent) {}
+					 method(engine_t::method_t::DISCONNECT), fmk(fmk), log(log), parent(parent) {}
 					/**
 					 * ~Adjutant Деструктор
 					 */
