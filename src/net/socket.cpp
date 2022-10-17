@@ -540,7 +540,7 @@ int awh::Socket::keepAlive(const SOCKET fd, const int cnt, const int idle, const
 			}
 		}{
 			// Количество возвращаемых байт
-			LPDWORD numBytesReturned = 0;
+			DWORD numBytesReturned = 0;
 			// Структура данных времени для установки
 			tcp_keepalive ka {1, idle * 1000, intvl * 1000};
 			// Устанавливаем оставшиеся параметры (время через которое происходит проверка подключения и время между попытками)
