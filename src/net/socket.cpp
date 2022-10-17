@@ -48,7 +48,7 @@ int awh::Socket::noSigill() const noexcept {
  * @param fd файловый дескриптор (сокет)
  * @return   результат работы функции
  */
-int awh::Socket::tcpCork(const int fd) const noexcept {
+int awh::Socket::tcpCork(const SOCKET fd) const noexcept {
 	// Устанавливаем параметр
 	int tcpCork = 1;
 	/**
@@ -82,7 +82,7 @@ int awh::Socket::tcpCork(const int fd) const noexcept {
  * @param fd файловый дескриптор (сокет)
  * @return   результат работы функции
  */
-int awh::Socket::blocking(const int fd) const noexcept {
+int awh::Socket::blocking(const SOCKET fd) const noexcept {
 	/**
 	 * Методы только для OS Windows
 	 */
@@ -132,7 +132,7 @@ int awh::Socket::blocking(const int fd) const noexcept {
  * @param fd файловый дескриптор (сокет)
  * @return   результат работы функции
  */
-int awh::Socket::noSigpipe(const int fd) const noexcept {
+int awh::Socket::noSigpipe(const SOCKET fd) const noexcept {
 	/**
 	 * Если это Linux
 	 */
@@ -176,7 +176,7 @@ int awh::Socket::noSigpipe(const int fd) const noexcept {
  * @param fd файловый дескриптор (сокет)
  * @return   результат работы функции
  */
-int awh::Socket::reuseable(const int fd) const noexcept {
+int awh::Socket::reuseable(const SOCKET fd) const noexcept {
 	// Устанавливаем параметр
 	const int on = 1;
 	/**
@@ -222,7 +222,7 @@ int awh::Socket::reuseable(const int fd) const noexcept {
  * @param fd файловый дескриптор (сокет)
  * @return   результат работы функции
  */
-int awh::Socket::tcpNodelay(const int fd) const noexcept {
+int awh::Socket::tcpNodelay(const SOCKET fd) const noexcept {
 	// Устанавливаем параметр
 	int tcpNodelay = 1;
 	// Устанавливаем TCP_NODELAY
@@ -240,7 +240,7 @@ int awh::Socket::tcpNodelay(const int fd) const noexcept {
  * @param fd файловый дескриптор (сокет)
  * @return   результат работы функции
  */
-int awh::Socket::isBlocking(const int fd) const noexcept {
+int awh::Socket::isBlocking(const SOCKET fd) const noexcept {
 	/**
 	 * Методы только для OS Windows
 	 */
@@ -291,7 +291,7 @@ int awh::Socket::isBlocking(const int fd) const noexcept {
  * @param fd файловый дескриптор (сокет)
  * @return   результат работы функции
  */
-int awh::Socket::sctpEvents(const int fd) const noexcept {
+int awh::Socket::sctpEvents(const SOCKET fd) const noexcept {
 	/**
 	 * Если операционной системой является Linux или FreeBSD
 	 */
@@ -318,7 +318,7 @@ int awh::Socket::sctpEvents(const int fd) const noexcept {
  * @param fd файловый дескриптор (сокет)
  * @return   результат работы функции
  */
-int awh::Socket::closeonexec(const int fd) const noexcept {
+int awh::Socket::closeonexec(const SOCKET fd) const noexcept {
 	/**
 	 * Методы только не для OS Windows
 	 */
@@ -351,7 +351,7 @@ int awh::Socket::closeonexec(const int fd) const noexcept {
  * @param fd файловый дескриптор (сокет)
  * @return   результат работы функции
  */
-int awh::Socket::nonBlocking(const int fd) const noexcept {
+int awh::Socket::nonBlocking(const SOCKET fd) const noexcept {
 	/**
 	 * Методы только для OS Windows
 	 */
@@ -402,7 +402,7 @@ int awh::Socket::nonBlocking(const int fd) const noexcept {
  * @param msec время таймаута в миллисекундах
  * @return     результат работы функции
  */
-int awh::Socket::readTimeout(const int fd, const time_t msec) const noexcept {
+int awh::Socket::readTimeout(const SOCKET fd, const time_t msec) const noexcept {
 	/**
 	 * Методы только для OS Windows
 	 */
@@ -443,7 +443,7 @@ int awh::Socket::readTimeout(const int fd, const time_t msec) const noexcept {
  * @param msec время таймаута в миллисекундах
  * @return     результат работы функции
  */
-int awh::Socket::writeTimeout(const int fd, const time_t msec) const noexcept {
+int awh::Socket::writeTimeout(const SOCKET fd, const time_t msec) const noexcept {
 	/**
 	 * Методы только для OS Windows
 	 */
@@ -484,7 +484,7 @@ int awh::Socket::writeTimeout(const int fd, const time_t msec) const noexcept {
  * @param mode активация или деактивация режима
  * @return     результат работы функции
  */
-int awh::Socket::ipV6only(const int fd, const bool mode) const noexcept {
+int awh::Socket::ipV6only(const SOCKET fd, const bool mode) const noexcept {
 	// Устанавливаем параметр
 	int only6 = (mode ? 1 : 0);
 	// Разрешаем повторно использовать тот же host:port после отключения
@@ -505,7 +505,7 @@ int awh::Socket::ipV6only(const int fd, const bool mode) const noexcept {
  * @param intvl время между попытками
  * @return      результат работы функции
  */
-int awh::Socket::keepAlive(const int fd, const int cnt, const int idle, const int intvl) const noexcept {
+int awh::Socket::keepAlive(const SOCKET fd, const int cnt, const int idle, const int intvl) const noexcept {
 	// Результат работы функции
 	int result = 0;
 	/**
@@ -540,7 +540,7 @@ int awh::Socket::keepAlive(const int fd, const int cnt, const int idle, const in
 			}
 		}{
 			// Количество возвращаемых байт
-			size_t numBytesReturned = 0;
+			LPDWORD numBytesReturned = 0;
 			// Структура данных времени для установки
 			tcp_keepalive ka {1, idle * 1000, intvl * 1000};
 			// Устанавливаем оставшиеся параметры (время через которое происходит проверка подключения и время между попытками)
@@ -610,7 +610,7 @@ int awh::Socket::keepAlive(const int fd, const int cnt, const int idle, const in
  * @param fd файловый дескриптор (сокет)
  * @return   размер буфера для чтения
  */
-int awh::Socket::bufferSizeRead(const int fd) const noexcept {
+int awh::Socket::bufferSizeRead(const SOCKET fd) const noexcept {
 	// Результат работы функции
 	int result = 0;
 	// Размер результата
@@ -630,7 +630,7 @@ int awh::Socket::bufferSizeRead(const int fd) const noexcept {
  * @param fd файловый дескриптор (сокет)
  * @return   размер буфера для записи
  */
-int awh::Socket::bufferSizeWrite(const int fd) const noexcept {
+int awh::Socket::bufferSizeWrite(const SOCKET fd) const noexcept {
 	// Результат работы функции
 	int result = 0;
 	// Размер результата
@@ -653,7 +653,7 @@ int awh::Socket::bufferSizeWrite(const int fd) const noexcept {
  * @param total максимальное количество подключений
  * @return      результат работы функции
  */
-int awh::Socket::bufferSize(const int fd, const int read, const int write, const u_int total) const noexcept {
+int awh::Socket::bufferSize(const SOCKET fd, const int read, const int write, const u_int total) const noexcept {
 	// Определяем размер массива опции
 	socklen_t rlen = sizeof(read);
 	socklen_t wlen = sizeof(write);

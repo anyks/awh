@@ -37,6 +37,7 @@
  * Если операционной системой является Nix-подобная
  */
 #if !defined(_WIN32) && !defined(_WIN64)
+	#define SOCKET int
 	#define INVALID_SOCKET -1
 #endif
 
@@ -226,7 +227,8 @@ namespace awh {
 					bool _mode;
 				private:
 					// Файловый дескриптор (сокет)
-					int _fd;
+					SOCKET _fd;
+				private:
 					// Тип протокола интернета AF_INET или AF_INET6
 					int _family;
 				private:

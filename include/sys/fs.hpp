@@ -65,7 +65,7 @@ namespace awh {
 		/**
 		 * Типы файловой системы
 		 */
-		enum class type_t : uint8_t {NONE, DIR, CHR, BLK, LNK, FILE, FIFO, SOCKET};
+		enum class type_t : uint8_t {NONE, DIR, CHR, BLK, LNK, FILE, FIFO, SOCK};
 		/**
 		 * file Функция извлечения названия и расширения файла
 		 * @param filename адрес файла для извлечения его параметров
@@ -343,7 +343,7 @@ namespace awh {
 						// Если это символьная ссылка
 						else if(S_ISLNK(info.st_mode)) result = type_t::LNK;
 						// Если это сокет
-						else if(S_ISSOCK(info.st_mode)) result = type_t::SOCKET;
+						else if(S_ISSOCK(info.st_mode)) result = type_t::SOCK;
 					#endif
 				}
 			}
@@ -375,7 +375,7 @@ namespace awh {
 		 */
 		static const bool issock(const string & name) noexcept {
 			// Выводим результат
-			return (istype(name) == type_t::SOCKET);
+			return (istype(name) == type_t::SOCK);
 		}
 		/**
 		 * fsize Функция подсчёта размера файла

@@ -58,7 +58,6 @@
  */
 #if !defined(_WIN32) && !defined(_WIN64)
 	#include <sys/un.h>
-	#define INVALID_SOCKET -1
 #endif
 
 /**
@@ -155,7 +154,7 @@ namespace awh {
 					friend class Engine;
 				public:
 					// Файловый дескриптор
-					int fd;
+					SOCKET fd;
 				private:
 					// Тип сокета (SOCK_STREAM / SOCK_DGRAM)
 					int _type;
@@ -240,7 +239,7 @@ namespace awh {
 					 * @param family семейство сокета (AF_INET / AF_INET6 / AF_UNIX)
 					 * @return       результат выполнения операции
 					 */
-					bool accept(const int fd, const int family) noexcept;
+					bool accept(const SOCKET fd, const int family) noexcept;
 				public:
 					/**
 					 * sonet Метод установки параметров сокета
@@ -588,13 +587,6 @@ namespace awh {
 			 * @return       результат проверки
 			 */
 			bool wait(ctx_t & target) noexcept;
-		public:
-			/**
-			 * reset Метод сброса активных сокетов
-			 * @param fd   активный файловый дескриптор (сокет)
-			 * @param type тип активного приложения
-			 */
-			void reset(const int fd, const type_t type) noexcept;
 		public:
 			/**
 			 * attach Метод прикрепления контекста клиента к контексту сервера

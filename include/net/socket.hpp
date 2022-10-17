@@ -24,6 +24,14 @@
 #endif
 
 /**
+ * Если операционной системой является Nix-подобная
+ */
+#if !defined(_WIN32) && !defined(_WIN64)
+	#define SOCKET int
+	#define INVALID_SOCKET -1
+#endif
+
+/**
  * Стандартная библиотека
  */
 #include <set>
@@ -96,76 +104,76 @@ namespace awh {
 			 * @param fd файловый дескриптор (сокет)
 			 * @return   результат работы функции
 			 */
-			int tcpCork(const int fd) const noexcept;
+			int tcpCork(const SOCKET fd) const noexcept;
 			/**
 			 * blocking Метод установки блокирующего сокета
 			 * @param fd файловый дескриптор (сокет)
 			 * @return   результат работы функции
 			 */
-			int blocking(const int fd) const noexcept;
+			int blocking(const SOCKET fd) const noexcept;
 			/**
 			 * noSigpipe Метод игнорирования отключения сигнала записи в убитый сокет
 			 * @param fd файловый дескриптор (сокет)
 			 * @return   результат работы функции
 			 */
-			int noSigpipe(const int fd) const noexcept;
+			int noSigpipe(const SOCKET fd) const noexcept;
 			/**
 			 * reuseable Метод разрешающая повторно использовать сокет после его удаления
 			 * @param fd файловый дескриптор (сокет)
 			 * @return   результат работы функции
 			 */
-			int reuseable(const int fd) const noexcept;
+			int reuseable(const SOCKET fd) const noexcept;
 			/**
 			 * tcpNodelay Метод отключения алгоритма Нейгла
 			 * @param fd файловый дескриптор (сокет)
 			 * @return   результат работы функции
 			 */
-			int tcpNodelay(const int fd) const noexcept;
+			int tcpNodelay(const SOCKET fd) const noexcept;
 			/**
 			 * isBlocking Метод проверки сокета блокирующий режим
 			 * @param fd файловый дескриптор (сокет)
 			 * @return   результат работы функции
 			 */
-			int isBlocking(const int fd) const noexcept;
+			int isBlocking(const SOCKET fd) const noexcept;
 			/**
 			 * sctpEvents Метод активации получения событий SCTP для сокета
 			 * @param fd файловый дескриптор (сокет)
 			 * @return   результат работы функции
 			 */
-			int sctpEvents(const int fd) const noexcept;
+			int sctpEvents(const SOCKET fd) const noexcept;
 			/**
 			 * closeonexec Метод разрешения закрывать сокет, после запуска
 			 * @param fd файловый дескриптор (сокет)
 			 * @return   результат работы функции
 			 */
-			int closeonexec(const int fd) const noexcept;
+			int closeonexec(const SOCKET fd) const noexcept;
 			/**
 			 * nonBlocking Метод установки неблокирующего сокета
 			 * @param fd файловый дескриптор (сокет)
 			 * @return   результат работы функции
 			 */
-			int nonBlocking(const int fd) const noexcept;
+			int nonBlocking(const SOCKET fd) const noexcept;
 			/**
 			 * readTimeout Метод установки таймаута на чтение из сокета
 			 * @param fd   файловый дескриптор (сокет)
 			 * @param msec время таймаута в миллисекундах
 			 * @return     результат работы функции
 			 */
-			int readTimeout(const int fd, const time_t msec) const noexcept;
+			int readTimeout(const SOCKET fd, const time_t msec) const noexcept;
 			/**
 			 * writeTimeout Метод установки таймаута на запись в сокет
 			 * @param fd   файловый дескриптор (сокет)
 			 * @param msec время таймаута в миллисекундах
 			 * @return     результат работы функции
 			 */
-			int writeTimeout(const int fd, const time_t msec) const noexcept;
+			int writeTimeout(const SOCKET fd, const time_t msec) const noexcept;
 			/**
 			 * ipV6only Метод включающая или отключающая режим отображения IPv4 на IPv6
 			 * @param fd   файловый дескриптор (сокет)
 			 * @param mode активация или деактивация режима
 			 * @return     результат работы функции
 			 */
-			int ipV6only(const int fd, const bool mode = false) const noexcept;
+			int ipV6only(const SOCKET fd, const bool mode = false) const noexcept;
 			/**
 			 * keepAlive Метод устанавливает постоянное подключение на сокет
 			 * @param fd    файловый дескриптор (сокет)
@@ -174,20 +182,20 @@ namespace awh {
 			 * @param intvl время между попытками
 			 * @return      результат работы функции
 			 */
-			int keepAlive(const int fd, const int cnt = 0, const int idle = 0, const int intvl = 0) const noexcept;
+			int keepAlive(const SOCKET fd, const int cnt = 0, const int idle = 0, const int intvl = 0) const noexcept;
 		public:
 			/**
 			 * bufferSizeRead Метод получения размера буфера для чтения
 			 * @param fd файловый дескриптор (сокет)
 			 * @return   размер буфера для чтения
 			 */
-			int bufferSizeRead(const int fd) const noexcept;
+			int bufferSizeRead(const SOCKET fd) const noexcept;
 			/**
 			 * bufferSizeWrite Метод получения размера буфера для записи
 			 * @param fd файловый дескриптор (сокет)
 			 * @return   размер буфера для записи
 			 */
-			int bufferSizeWrite(const int fd) const noexcept;
+			int bufferSizeWrite(const SOCKET fd) const noexcept;
 			/**
 			 * bufferSize Метод установки размеров буфера
 			 * @param fd    файловый дескриптор (сокет)
@@ -196,7 +204,7 @@ namespace awh {
 			 * @param total максимальное количество подключений
 			 * @return      результат работы функции
 			 */
-			int bufferSize(const int fd, const int read = 0, const int write = 0, const u_int total = 0) const noexcept;
+			int bufferSize(const SOCKET fd, const int read = 0, const int write = 0, const u_int total = 0) const noexcept;
 		public:
 			/**
 			 * Socket Конструктор

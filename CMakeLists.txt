@@ -71,11 +71,11 @@ string(TIMESTAMP CURRENT_TIME "%d.%m.%Y %H:%M:%S")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC")
 
 if (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
-    set(AWH_PARAMS "-Wno-cpp -Wno-deprecated -Wno-c++17-compat-mangling")
+    set(AWH_PARAMS "-Wno-cpp -Wno-deprecated")
 elseif(${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
     set(AWH_PARAMS "-Wno-cpp -Wno-deprecated ")
 else()
-    set(AWH_PARAMS "-Wno-unknown-attributes -Wno-c++17-compat-mangling")
+    set(AWH_PARAMS "-Wno-unknown-attributes")
 endif()
 
 if (${ARCHITECTURE} MATCHES "aarch64" OR ${ARCHITECTURE} MATCHES "arm*")

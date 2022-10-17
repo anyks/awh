@@ -325,7 +325,7 @@ bool awh::Engine::Address::accept(Address & addr) noexcept {
  * @param family семейство сокета (AF_INET / AF_INET6 / AF_UNIX)
  * @return       результат выполнения операции
  */
-bool awh::Engine::Address::accept(const int fd, const int family) noexcept {
+bool awh::Engine::Address::accept(const SOCKET fd, const int family) noexcept {
 	// Устанавливаем статус отключения
 	this->status = status_t::DISCONNECTED;
 	// Заполняем структуру клиента нулями
