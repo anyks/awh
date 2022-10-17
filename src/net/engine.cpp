@@ -1432,7 +1432,7 @@ int awh::Engine::Context::noblock() noexcept {
  */
 bool awh::Engine::Context::isblock() noexcept {
 	// Выводим результат проверки
-	return (this->_addr->fd != INVALID_SOCKET ? this->_addr->_async : false);
+	return (this->_addr->fd != INVALID_SOCKET ? !this->_addr->_async : false);
 }
 /**
  * timeout Метод установки таймаута
