@@ -1386,9 +1386,7 @@ int64_t awh::Engine::Context::write(const char * buffer, const size_t size) noex
  * block Метод установки блокирующего сокета
  * @return результат работы функции
  */
-int awh::Engine::Context::block() noexcept {
-	// Результат работы функции
-	int result = 0;
+bool awh::Engine::Context::block() noexcept {
 	// Если защищённый режим работы разрешён
 	if(this->_addr->fd != INVALID_SOCKET){
 		// Переводим сокет в блокирующий режим
@@ -1402,15 +1400,13 @@ int awh::Engine::Context::block() noexcept {
 		}
 	}
 	// Выводим результат
-	return result;
+	return !this->_addr->_async;
 }
 /**
  * noblock Метод установки неблокирующего сокета
  * @return результат работы функции
  */
-int awh::Engine::Context::noblock() noexcept {
-	// Результат работы функции
-	int result = 0;
+bool awh::Engine::Context::noblock() noexcept {
 	// Если файловый дескриптор активен
 	if(this->_addr->fd != INVALID_SOCKET){
 		// Переводим сокет в не блокирующий режим
@@ -1424,7 +1420,7 @@ int awh::Engine::Context::noblock() noexcept {
 		}
 	}
 	// Выводим результат
-	return result;
+	return this->_addr->_async;
 }
 /**
  * isblock Метод проверки на то, является ли сокет заблокированным

@@ -362,12 +362,12 @@ namespace awh {
 					 * block Метод установки блокирующего сокета
 					 * @return результат работы функции
 					 */
-					int block() noexcept;
+					bool block() noexcept;
 					/**
 					 * noblock Метод установки неблокирующего сокета
 					 * @return результат работы функции
 					 */
-					int noblock() noexcept;
+					bool noblock() noexcept;
 					/**
 					 * isblock Метод проверки на то, является ли сокет заблокированным
 					 * @return результат работы функции
