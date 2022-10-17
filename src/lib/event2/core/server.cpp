@@ -879,6 +879,8 @@ void awh::server::Core::transfer(const engine_t::method_t method, const size_t a
 								if((this->adjutants.find(aid) != this->adjutants.end()) && (adj->method == engine_t::method_t::READ) && adj->bev.locked.write)
 									// Продолжаем попытку снова
 									continue;
+								// Если запись не выполнена, входим
+								else break;
 							// Если запись не выполнена, входим
 							} else break;
 						// Выходим из цикла
@@ -925,7 +927,9 @@ void awh::server::Core::transfer(const engine_t::method_t method, const size_t a
 							// Останавливаем таймаут ожидания на запись в сокет
 							else adj->bev.timers.write.stop();
 							// Если нужно повторить запись
-							if(bytes == -2) continue;
+							if(bytes == -2)
+								// Продолжаем попытку снова
+								continue;
 							// Если запись не выполнена, входим
 							else break;
 							// Увеличиваем смещение в буфере

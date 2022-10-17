@@ -1177,6 +1177,8 @@ void awh::client::Core::transfer(const engine_t::method_t method, const size_t a
 											if((this->adjutants.find(aid) != this->adjutants.end()) && (adj->method == engine_t::method_t::READ) && adj->bev.locked.write)
 												// Продолжаем попытку снова
 												continue;
+											// Если запись не выполнена, входим
+											else break;
 										// Если запись не выполнена, входим
 										} else break;
 									// Если режим работы синхронный
@@ -1237,7 +1239,9 @@ void awh::client::Core::transfer(const engine_t::method_t method, const size_t a
 								// Если режим работы асинхронный
 								if(this->_async){
 									// Если нужно повторить запись
-									if(bytes == -2) continue;
+									if(bytes == -2)
+										// Продолжаем попытку снова
+										continue;
 									// Если запись не выполнена, входим
 									else break;
 								// Если режим работы синхронный
