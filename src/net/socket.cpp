@@ -538,7 +538,7 @@ int awh::Socket::keepAlive(const SOCKET fd, const int cnt, const int idle, const
 				// Все очень плохо
 				return -1;
 			}
-		}{
+		}/*{
 			// Количество возвращаемых байт
 			DWORD numBytesReturned = 0;
 			// Структура данных времени для установки
@@ -550,7 +550,7 @@ int awh::Socket::keepAlive(const SOCKET fd, const int cnt, const int idle, const
 				// Все очень плохо
 				return -1;
 			}
-		}
+		}*/
 	/**
 	 * Методы только для *Nix-подобных операционных систем
 	 */
