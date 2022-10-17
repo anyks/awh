@@ -838,6 +838,8 @@ void awh::server::Core::transfer(const engine_t::method_t method, const size_t a
 					int64_t bytes = -1;
 					// Создаём буфер входящих данных
 					unique_ptr <char []> buffer(new char [size]);
+					// Переводим сокет в неблокирующий режим
+					adj->ectx.noblock();
 					// Выполняем чтение данных с сокета
 					do {
 						// Если подключение выполнено и чтение данных разрешено
