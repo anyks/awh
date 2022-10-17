@@ -1149,13 +1149,13 @@ int64_t awh::Engine::Context::read(char * buffer, const size_t size) noexcept {
 		// Если данные прочитать не удалось
 		if(result <= 0){
 			// Получаем статус сокета
-			const int status = this->isblock();
+			const bool status = this->isblock();
 			// Если сокет находится в блокирующем режиме
-			if((result < 0) && (status != 0))
+			if((result < 0) && status)
 				// Выполняем обработку ошибок
 				this->error(result);
 			// Если произошла ошибка
-			else if((result < 0) && (status == 0)) {
+			else if((result < 0) && !status) {
 				// Если произошёл системный сигнал попробовать ещё раз
 				if(errno == EINTR) return -2;
 				// Если защищённый режим работы разрешён
@@ -1172,7 +1172,7 @@ int64_t awh::Engine::Context::read(char * buffer, const size_t size) noexcept {
 				result = 0;
 			}
 			// Если подключение разорвано или сокет находится в блокирующем режиме
-			if((result == 0) || (status != 0))
+			if((result == 0) || status)
 				// Выполняем отключение от сервера
 				result = 0;
 			// Если произошло отключение
@@ -1314,13 +1314,13 @@ int64_t awh::Engine::Context::write(const char * buffer, const size_t size) noex
 		// Если данные записать не удалось
 		if(result <= 0){
 			// Получаем статус сокета
-			const int status = this->isblock();
+			const bool status = this->isblock();
 			// Если сокет находится в блокирующем режиме
-			if((result < 0) && (status != 0))
+			if((result < 0) && status)
 				// Выполняем обработку ошибок
 				this->error(result);
 			// Если произошла ошибка
-			else if((result < 0) && (status == 0)) {
+			else if((result < 0) && !status) {
 				// Если произошёл системный сигнал попробовать ещё раз
 				if(errno == EINTR) return -2;
 				// Если защищённый режим работы разрешён
@@ -1337,7 +1337,7 @@ int64_t awh::Engine::Context::write(const char * buffer, const size_t size) noex
 				result = 0;
 			}
 			// Если подключение разорвано или сокет находится в блокирующем режиме
-			if((result == 0) || (status != 0))
+			if((result == 0) || status)
 				// Выполняем отключение от сервера
 				result = 0;
 			// Если произошло отключение
@@ -1430,9 +1430,9 @@ int awh::Engine::Context::noblock() noexcept {
  * isblock Метод проверки на то, является ли сокет заблокированным
  * @return результат работы функции
  */
-int awh::Engine::Context::isblock() noexcept {
+bool awh::Engine::Context::isblock() noexcept {
 	// Выводим результат проверки
-	return (this->_addr->fd != INVALID_SOCKET ? this->_addr->_async : -1);
+	return (this->_addr->fd != INVALID_SOCKET ? this->_addr->_async : false);
 }
 /**
  * timeout Метод установки таймаута

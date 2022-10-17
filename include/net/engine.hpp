@@ -372,7 +372,8 @@ namespace awh {
 					 * isblock Метод проверки на то, является ли сокет заблокированным
 					 * @return результат работы функции
 					 */
-					int isblock() noexcept;
+					bool isblock() noexcept;
+				public:
 					/**
 					 * timeout Метод установки таймаута
 					 * @param msec   количество миллисекунд
