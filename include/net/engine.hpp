@@ -164,6 +164,8 @@ namespace awh {
 				private:
 					// Флаг инициализации шифрования TLS
 					bool _tls;
+					// Флаг асинхронного режима работы сокета
+					bool _async;
 				public:
 					// Статус подключения
 					status_t status;
@@ -272,9 +274,10 @@ namespace awh {
 					 * @param log объект для работы с логами
 					 */
 					Address(const fmk_t * fmk, const log_t * log) noexcept :
-					 fd(INVALID_SOCKET), _type(SOCK_STREAM), _protocol(IPPROTO_TCP), _tls(false),
-					 status(status_t::DISCONNECTED), port(0), ip(""), mac(""), _nwk(fmk),
-					 _ifnet(fmk, log), _socket(log), _bio(nullptr), _fmk(fmk), _log(log) {}
+					 fd(INVALID_SOCKET), _type(SOCK_STREAM), _protocol(IPPROTO_TCP),
+					 _tls(false), _async(false), status(status_t::DISCONNECTED),
+					 port(0), ip(""), mac(""), _nwk(fmk), _ifnet(fmk, log),
+					 _socket(log), _bio(nullptr), _fmk(fmk), _log(log) {}
 					/**
 					 * ~Address Деструктор
 					 */

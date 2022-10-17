@@ -1149,7 +1149,7 @@ int64_t awh::Engine::Context::read(char * buffer, const size_t size) noexcept {
 		// Если данные прочитать не удалось
 		if(result <= 0){
 			// Получаем статус сокета
-			const int status = this->_addr->_socket.isBlocking(this->_addr->fd);
+			const int status = this->isblock();
 			// Если сокет находится в блокирующем режиме
 			if((result < 0) && (status != 0))
 				// Выполняем обработку ошибок
@@ -1314,7 +1314,7 @@ int64_t awh::Engine::Context::write(const char * buffer, const size_t size) noex
 		// Если данные записать не удалось
 		if(result <= 0){
 			// Получаем статус сокета
-			const int status = this->_addr->_socket.isBlocking(this->_addr->fd);
+			const int status = this->isblock();
 			// Если сокет находится в блокирующем режиме
 			if((result < 0) && (status != 0))
 				// Выполняем обработку ошибок
@@ -1392,7 +1392,7 @@ int awh::Engine::Context::block() noexcept {
 	// Если защищённый режим работы разрешён
 	if(this->_addr->fd != INVALID_SOCKET){
 		// Переводим сокет в блокирующий режим
-		this->_addr->_socket.blocking(this->_addr->fd);
+		this->_addr->_async = (this->_addr->_socket.blocking(this->_addr->fd) != 0);
 		// Если шифрование включено
 		if(this->_tls && (this->_ssl != nullptr)){
 			// Устанавливаем блокирующий режим ввода/вывода для сокета
@@ -1414,7 +1414,7 @@ int awh::Engine::Context::noblock() noexcept {
 	// Если файловый дескриптор активен
 	if(this->_addr->fd != INVALID_SOCKET){
 		// Переводим сокет в не блокирующий режим
-		this->_addr->_socket.nonBlocking(this->_addr->fd);
+		this->_addr->_async = (this->_addr->_socket.nonBlocking(this->_addr->fd) == 0);
 		// Если шифрование включено
 		if(this->_tls && (this->_ssl != nullptr)){
 			// Устанавливаем неблокирующий режим ввода/вывода для сокета
@@ -1432,7 +1432,7 @@ int awh::Engine::Context::noblock() noexcept {
  */
 int awh::Engine::Context::isblock() noexcept {
 	// Выводим результат проверки
-	return (this->_addr->fd != INVALID_SOCKET ? this->_addr->_socket.isBlocking(this->_addr->fd) : -1);
+	return (this->_addr->fd != INVALID_SOCKET ? this->_addr->_async : -1);
 }
 /**
  * timeout Метод установки таймаута
