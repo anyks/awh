@@ -926,12 +926,15 @@ void awh::server::Core::transfer(const engine_t::method_t method, const size_t a
 								adj->bev.timers.write.start(adj->timeouts.write * 1000);
 							// Останавливаем таймаут ожидания на запись в сокет
 							else adj->bev.timers.write.stop();
-							// Если нужно повторить запись
-							if(bytes == -2)
-								// Продолжаем попытку снова
-								continue;
-							// Если запись не выполнена, входим
-							else break;
+							// Если данные небыли записаны
+							if(bytes <= 0){
+								// Если нужно повторить запись
+								if(bytes == -2)
+									// Продолжаем попытку снова
+									continue;
+								// Если запись не выполнена, входим
+								else break;
+							}
 							// Увеличиваем смещение в буфере
 							offset += bytes;
 						}
