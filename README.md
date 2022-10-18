@@ -679,7 +679,6 @@ class Client {
 int main(int argc, char * argv[]){
 	fmk_t fmk;
 	log_t log(&fmk);
-	network_t nwk(&fmk);
 
 	Client executor(&log);
 
@@ -738,7 +737,6 @@ class Server {
 int main(int argc, char * argv[]){
 	fmk_t fmk;
 	log_t log(&fmk);
-	network_t nwk(&fmk);
 
 	Server executor(&log);
 
@@ -793,7 +791,6 @@ class Client {
 int main(int argc, char * argv[]){
 	fmk_t fmk;
 	log_t log(&fmk);
-	network_t nwk(&fmk);
 
 	Client executor(&log);
 
@@ -855,7 +852,6 @@ class Server {
 int main(int argc, char * argv[]){
 	fmk_t fmk;
 	log_t log(&fmk);
-	network_t nwk(&fmk);
 
 	Server executor(&log);
 
@@ -912,7 +908,6 @@ class Client {
 int main(int argc, char * argv[]){
 	fmk_t fmk;
 	log_t log(&fmk);
-	network_t nwk(&fmk);
 
 	Client executor(&log);
 
@@ -971,7 +966,6 @@ class Server {
 int main(int argc, char * argv[]){
 	fmk_t fmk;
 	log_t log(&fmk);
-	network_t nwk(&fmk);
 
 	Server executor(&log);
 
@@ -1026,7 +1020,6 @@ class Client {
 int main(int argc, char * argv[]){
 	fmk_t fmk;
 	log_t log(&fmk);
-	network_t nwk(&fmk);
 
 	Client executor(&log);
 
@@ -1088,7 +1081,6 @@ class Server {
 int main(int argc, char * argv[]){
 	fmk_t fmk;
 	log_t log(&fmk);
-	network_t nwk(&fmk);
 
 	Server executor(&log);
 
@@ -1145,7 +1137,6 @@ class Client {
 int main(int argc, char * argv[]){
 	fmk_t fmk;
 	log_t log(&fmk);
-	network_t nwk(&fmk);
 
 	Client executor(&log);
 
@@ -1207,7 +1198,6 @@ class Server {
 int main(int argc, char * argv[]){
 	fmk_t fmk;
 	log_t log(&fmk);
-	network_t nwk(&fmk);
 
 	Server executor(&log);
 
@@ -1264,7 +1254,6 @@ class Client {
 int main(int argc, char * argv[]){
 	fmk_t fmk;
 	log_t log(&fmk);
-	network_t nwk(&fmk);
 
 	Client executor(&log);
 
@@ -1324,7 +1313,6 @@ class Server {
 int main(int argc, char * argv[]){
 	fmk_t fmk;
 	log_t log(&fmk);
-	network_t nwk(&fmk);
 
 	Server executor(&log);
 
@@ -1380,7 +1368,6 @@ class Client {
 int main(int argc, char * argv[]){
 	fmk_t fmk;
 	log_t log(&fmk);
-	network_t nwk(&fmk);
 
 	Client executor(&log);
 
@@ -1440,7 +1427,6 @@ class Server {
 int main(int argc, char * argv[]){
 	fmk_t fmk;
 	log_t log(&fmk);
-	network_t nwk(&fmk);
 
 	Server executor(&log);
 
