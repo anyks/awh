@@ -363,18 +363,50 @@ string awh::Framework::format(const char * format, ...) const noexcept {
 	if(format != nullptr){
 		// Создаем список аргументов
 		va_list args;
-		// Создаем буфер
-		vector <char> buffer(BUFFER_SIZE);
-		// Заполняем буфер нулями
-		memset(buffer.data(), 0, buffer.size());
-		// Устанавливаем начальный список аргументов
+		// Запускаем инициализацию списка аргументов
 		va_start(args, format);
-		// Выполняем запись в буфер
-		const size_t size = vsprintf(buffer.data(), format, args);
+		// Создаем буфер данных
+		result.resize(1024);
+		// Выполняем перебор всех аргументов
+		while(true){
+			// Создаем список аргументов
+			va_list args2;
+			// Копируем список аргументов
+			va_copy(args2, args);
+			// Выполняем запись в буфер данных
+			size_t res = vsnprintf(result.data(), result.size(), format, args2);
+			// Если результат получен
+			if((res >= 0) && (res < result.size())){
+				// Завершаем список аргументов
+				va_end(args);
+				// Завершаем список локальных аргументов
+				va_end(args2);
+				// Если результат не получен
+				if(res == 0){
+					// Выполняем сброс результата
+					result.clear();
+					// Выходим из функции
+					return result;
+				// Выводим результат
+				} else return result.assign(result.begin(), result.begin() + res);
+			}
+			// Размер буфера данных
+			size_t size = 0;
+			// Если данные не получены, увеличиваем буфер в два раза
+			if(res < 0)
+				// Увеличиваем размер буфера в два раза
+				size = (result.size() * 2);
+			// Увеличиваем размер буфера на один байт
+			else size = (res + 1);
+			// Очищаем буфер данных
+			result.clear();
+			// Выделяем память для буфера
+			result.resize(size);
+			// Завершаем список локальных аргументов
+			va_end(args2);
+		}
 		// Завершаем список аргументов
 		va_end(args);
-		// Если размер не нулевой
-		if(size > 0) result.assign(buffer.data(), size);
 	}
 	// Выводим результат
 	return result;

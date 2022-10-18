@@ -80,20 +80,58 @@ void awh::Log::rotate() const noexcept {
 void awh::Log::print(const string & format, flag_t flag, ...) const noexcept {
 	// Если формат передан
 	if(!format.empty()){
-		// Создаем список аргументов
-		va_list args;
-		// Устанавливаем начальный список аргументов
-		va_start(args, flag);
 		// Создаем буфер
-		vector <char> buffer(BUFFER_SIZE);
-		// Заполняем буфер нулями
-		memset(buffer.data(), 0, buffer.size());
-		// Выполняем запись в буфер
-		const size_t size = vsprintf(buffer.data(), format.c_str(), args);
-		// Завершаем список аргументов
-		va_end(args);
+		vector <char> buffer;
+		{
+			// Создаем список аргументов
+			va_list args;
+			// Запускаем инициализацию списка аргументов
+			va_start(args, flag);
+			// Создаем буфер данных
+			buffer.resize(1024);
+			// Выполняем перебор всех аргументов
+			while(true){
+				// Создаем список аргументов
+				va_list args2;
+				// Копируем список аргументов
+				va_copy(args2, args);
+				// Выполняем запись в буфер данных
+				size_t res = vsnprintf(buffer.data(), buffer.size(), format.c_str(), args2);
+				// Если результат получен
+				if((res >= 0) && (res < buffer.size())){
+					// Завершаем список аргументов
+					va_end(args);
+					// Завершаем список локальных аргументов
+					va_end(args2);
+					// Если результат не получен
+					if(res == 0)
+						// Выполняем сброс результата
+						buffer.clear();
+					// Выводим результат
+					else buffer.assign(buffer.begin(), buffer.begin() + res);
+					// Выходим из цикла
+					break;
+				}
+				// Размер буфера данных
+				size_t size = 0;
+				// Если данные не получены, увеличиваем буфер в два раза
+				if(res < 0)
+					// Увеличиваем размер буфера в два раза
+					size = (buffer.size() * 2);
+				// Увеличиваем размер буфера на один байт
+				else size = (res + 1);
+				// Очищаем буфер данных
+				buffer.clear();
+				// Выделяем память для буфера
+				buffer.resize(size);
+				// Завершаем список локальных аргументов
+				va_end(args2);
+			}
+			// Завершаем список аргументов
+			va_end(args);
+		}
 		// Если строка получена
-		if(size > 0){
+		if(!buffer.empty()){
 			// Создаем буфер для хранения даты
 			char date[80];
 			// Флаг конца строки
@@ -109,7 +147,7 @@ void awh::Log::print(const string & format, flag_t flag, ...) const noexcept {
 			// Копируем в буфер полученную дату и время
 			strftime(date, sizeof(date), this->_format.c_str(), timeinfo);
 			// Если размер буфера меньше 3-х байт
-			if(size < 3){
+			if(buffer.size() < 3){
 				// Создаём строку для проверки
 				const string str = buffer.data();
 				// Проверяем является ли это переводом строки
@@ -187,7 +225,7 @@ void awh::Log::print(const string & format, flag_t flag, ...) const noexcept {
 			// Если функция подписки на логи установлена, выводим результат
 			if(this->_fn != nullptr)
 				// Выводим сообщение лога всем подписавшимся
-				this->_fn(flag, string(buffer.data(), size));
+				this->_fn(flag, string(buffer.begin(), buffer.end()));
 		}
 	}
 }
