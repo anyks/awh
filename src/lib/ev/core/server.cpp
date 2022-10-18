@@ -95,6 +95,8 @@ void awh::server::Core::DTLS::callback(ev::timer & timer, int revents) noexcept 
 						// Выходим
 						return;
 					}
+					// Переводим сокет в неблокирующий режим
+					adj->ectx.noblock();
 					// Запускаем чтение данных
 					this->core->enabled(engine_t::method_t::READ, this->aid);
 					// Если вывод информационных данных не запрещён
@@ -259,6 +261,8 @@ void awh::server::Core::accept(const int fd, const size_t sid) noexcept {
 						this->adjutants.emplace(ret.first->first, ret.first->second.get());
 						// Выполняем блокировку потока
 						this->_mtx.accept.unlock();
+						// Переводим сокет в неблокирующий режим
+						ret.first->second->ectx.noblock();
 						// Запускаем чтение данных
 						this->enabled(engine_t::method_t::READ, ret.first->first);
 						// Если функция обратного вызова установлена
@@ -418,6 +422,8 @@ void awh::server::Core::accept(const int fd, const size_t sid) noexcept {
 							this->adjutants.emplace(ret.first->first, ret.first->second.get());
 							// Выполняем блокировку потока
 							this->_mtx.accept.unlock();
+							// Переводим сокет в неблокирующий режим
+							ret.first->second->ectx.noblock();
 							// Запускаем чтение данных
 							this->enabled(engine_t::method_t::READ, ret.first->first);
 							// Если вывод информационных данных не запрещён
@@ -831,8 +837,6 @@ void awh::server::Core::transfer(const engine_t::method_t method, const size_t a
 					int64_t bytes = -1;
 					// Создаём буфер входящих данных
 					unique_ptr <char []> buffer(new char [size]);
-					// Переводим сокет в неблокирующий режим
-					adj->ectx.noblock();
 					// Выполняем чтение данных с сокета
 					do {
 						// Если подключение выполнено и чтение данных разрешено
