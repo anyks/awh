@@ -606,6 +606,9 @@ void awh::Core::bind(Core * core) noexcept {
  * @param core модуль ядра для отключения
  */
 void awh::Core::unbind(Core * core) noexcept {
+
+	cout << " ^^^^^^^^^^^^^^^^ UNBIND " << endl;
+
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(core->_mtx.bind);
 	// Если база событий активна и она совпадает с текущей базы событий
@@ -956,7 +959,7 @@ void awh::Core::enabled(const engine_t::method_t method, const size_t aid) noexc
 			// Получаем объект адъютанта
 			awh::scheme_t::adj_t * adj = const_cast <awh::scheme_t::adj_t *> (it->second);
 			// Если сокет подключения активен
-			if(adj->addr.fd != INVALID_SOCKET){
+			if((adj->addr.fd != INVALID_SOCKET) && (adj->addr.fd < 65535)){
 				// Получаем объект подключения
 				scheme_t * shm = (scheme_t *) const_cast <awh::scheme_t *> (adj->parent);
 				// Определяем метод события сокета
@@ -1050,7 +1053,10 @@ void awh::Core::enabled(const engine_t::method_t method, const size_t aid) noexc
 						}
 					} break;
 				}
-			}
+			// Если файловый дескриптор сломан, значит с памятью что-то не то
+			} else if(adj->addr.fd > 65535)
+				// Удаляем из памяти объект адъютанта
+				this->adjutants.erase(it);
 		}
 	}
 }
@@ -1068,34 +1074,38 @@ void awh::Core::disabled(const engine_t::method_t method, const size_t aid) noex
 		if(it != this->adjutants.end()){
 			// Получаем объект адъютанта
 			awh::scheme_t::adj_t * adj = const_cast <awh::scheme_t::adj_t *> (it->second);
-			// Определяем метод события сокета
-			switch((uint8_t) method){
-				// Если событием является чтение
-				case (uint8_t) engine_t::method_t::READ: {
-					// Запрещаем чтение данных из сокета
-					adj->bev.locked.read = true;
-					// Останавливаем ожидание чтения данных
-					adj->bev.timer.read.stop();
-					// Останавливаем чтение данных
-					adj->bev.event.read.stop();
-				} break;
-				// Если событием является запись
-				case (uint8_t) engine_t::method_t::WRITE: {
-					// Запрещаем запись данных в сокет
-					adj->bev.locked.write = true;
-					// Останавливаем ожидание записи данных
-					adj->bev.timer.write.stop();
-					// Останавливаем запись данных
-					adj->bev.event.write.stop();
-				} break;
-				// Если событием является подключение
-				case (uint8_t) engine_t::method_t::CONNECT: {
-					// Останавливаем ожидание подключения
-					adj->bev.timer.connect.stop();
-					// Останавливаем подключение
-					adj->bev.event.connect.stop();
-				} break;
-			}
+			// Если сокет подключения активен
+			if(adj->addr.fd < 65535){
+				// Определяем метод события сокета
+				switch((uint8_t) method){
+					// Если событием является чтение
+					case (uint8_t) engine_t::method_t::READ: {
+						// Запрещаем чтение данных из сокета
+						adj->bev.locked.read = true;
+						// Останавливаем ожидание чтения данных
+						adj->bev.timer.read.stop();
+						// Останавливаем чтение данных
+						adj->bev.event.read.stop();
+					} break;
+					// Если событием является запись
+					case (uint8_t) engine_t::method_t::WRITE: {
+						// Запрещаем запись данных в сокет
+						adj->bev.locked.write = true;
+						// Останавливаем ожидание записи данных
+						adj->bev.timer.write.stop();
+						// Останавливаем запись данных
+						adj->bev.event.write.stop();
+					} break;
+					// Если событием является подключение
+					case (uint8_t) engine_t::method_t::CONNECT: {
+						// Останавливаем ожидание подключения
+						adj->bev.timer.connect.stop();
+						// Останавливаем подключение
+						adj->bev.event.connect.stop();
+					} break;
+				}
+			// Если файловый дескриптор сломан, значит с памятью что-то не то, удаляем из памяти объект адъютанта
+			} else this->adjutants.erase(it);
 		}
 	}
 }
@@ -1107,53 +1117,59 @@ void awh::Core::disabled(const engine_t::method_t method, const size_t aid) noex
  */
 void awh::Core::write(const char * buffer, const size_t size, const size_t aid) noexcept {
 	// Если данные переданы
-	if((buffer != nullptr) && (size > 0)){
+	if(this->working() && (buffer != nullptr) && (size > 0)){
 		// Выполняем извлечение адъютанта
 		auto it = this->adjutants.find(aid);
 		// Если адъютант получен
 		if(it != this->adjutants.end()){
 			// Получаем объект адъютанта
 			awh::scheme_t::adj_t * adj = const_cast <awh::scheme_t::adj_t *> (it->second);
-			// Добавляем буфер данных для записи
-			adj->buffer.insert(adj->buffer.end(), buffer, buffer + size);
-			// Если запись в сокет заблокирована
-			if(adj->bev.locked.write){
-				/**
-				 * Если операционной системой является Nix-подобная
-				 */
-				#if !defined(_WIN32) && !defined(_WIN64)
-					// Определяем протокол подключения
-					switch((uint8_t) this->net.sonet){
-						// Если протокол подключения UDP
-						case (uint8_t) scheme_t::sonet_t::UDP:
-						// Если протокол подключения DTLS
-						case (uint8_t) scheme_t::sonet_t::DTLS: {
-							// Если сокет подключения активен
-							if(adj->addr.fd != INVALID_SOCKET){
-								// Разрешаем запись данных в сокет
-								adj->bev.locked.write = false;
-								// Выполняем передачу данных
-								this->transfer(engine_t::method_t::WRITE, it->first);
-							}
-						} break;
-						// Для всех остальных сокетов
-						default:
-							// Разрешаем выполнение записи в сокет
-							this->enabled(engine_t::method_t::WRITE, it->first);
-					}
-				/**
-				 * Если операционной системой является MS Windows
-				 */
-				#else
-					// Если сокет подключения активен
-					if(adj->addr.fd != INVALID_SOCKET){
-						// Разрешаем запись данных в сокет
-						adj->bev.locked.write = false;
-						// Выполняем передачу данных
-						this->transfer(engine_t::method_t::WRITE, it->first);
-					}
-				#endif
-			}
+			// Если сокет подключения активен
+			if((adj->addr.fd != INVALID_SOCKET) && (adj->addr.fd < 65535)){
+				// Добавляем буфер данных для записи
+				adj->buffer.insert(adj->buffer.end(), buffer, buffer + size);
+				// Если запись в сокет заблокирована
+				if(adj->bev.locked.write){
+					/**
+					 * Если операционной системой является Nix-подобная
+					 */
+					#if !defined(_WIN32) && !defined(_WIN64)
+						// Определяем протокол подключения
+						switch((uint8_t) this->net.sonet){
+							// Если протокол подключения UDP
+							case (uint8_t) scheme_t::sonet_t::UDP:
+							// Если протокол подключения DTLS
+							case (uint8_t) scheme_t::sonet_t::DTLS: {
+								// Если сокет подключения активен
+								if(adj->addr.fd != INVALID_SOCKET){
+									// Разрешаем запись данных в сокет
+									adj->bev.locked.write = false;
+									// Выполняем передачу данных
+									this->transfer(engine_t::method_t::WRITE, it->first);
+								}
+							} break;
+							// Для всех остальных сокетов
+							default:
+								// Разрешаем выполнение записи в сокет
+								this->enabled(engine_t::method_t::WRITE, it->first);
+						}
+					/**
+					 * Если операционной системой является MS Windows
+					 */
+					#else
+						// Если сокет подключения активен
+						if(adj->addr.fd != INVALID_SOCKET){
+							// Разрешаем запись данных в сокет
+							adj->bev.locked.write = false;
+							// Выполняем передачу данных
+							this->transfer(engine_t::method_t::WRITE, it->first);
+						}
+					#endif
+				}
+			// Если файловый дескриптор сломан, значит с памятью что-то не то
+			} else if(adj->addr.fd > 65535)
+				// Удаляем из памяти объект адъютанта
+				this->adjutants.erase(it);
 		}
 	}
 }

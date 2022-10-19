@@ -304,7 +304,7 @@ void awh::client::Rest::actionRead() noexcept {
 						// Устанавливаем тело ответа
 						result.entity.assign(entity.begin(), entity.end());
 						// Устанавливаем заголовки ответа
-						result.headers = move(* const_cast <unordered_multimap <string, string> *> (&headers));
+						result.headers = std::forward <const unordered_multimap <string, string>> (headers);
 					}
 					// Устанавливаем размер стопбайт
 					if(!this->_http.isAlive()){
@@ -349,7 +349,7 @@ void awh::client::Rest::actionRead() noexcept {
 				// Устанавливаем тело ответа
 				result.entity.assign(entity.begin(), entity.end());
 				// Устанавливаем заголовки ответа
-				result.headers = move(* const_cast <unordered_multimap <string, string> *> (&headers));
+				result.headers = std::forward <const unordered_multimap <string, string>> (headers);
 				// Завершаем работу
 				core->close(this->_aid);
 			// Завершаем работу
@@ -473,7 +473,7 @@ void awh::client::Rest::actionDisconnect() noexcept {
 		}
 	}
 	// Получаем объект ответа
-	res_t response = (!this->_responses.empty() ? move(this->_responses.front()) : res_t());
+	res_t response = (!this->_responses.empty() ? std::forward <res_t> (this->_responses.front()) : res_t());
 	// Если список ответов не получен, значит он был выведен ранее
 	if(this->_responses.empty())
 		// Устанавливаем код сообщения по умолчанию
@@ -486,6 +486,8 @@ void awh::client::Rest::actionDisconnect() noexcept {
 	this->_scheme.url.clear();
 	// Выполняем сброс параметров запроса
 	this->flush();
+	// Выполняем зануление идентификатора адъютанта
+	this->_aid = 0;
 	// Завершаем работу
 	if(this->_unbind) const_cast <client::core_t *> (this->_core)->stop();
 	// Если экшен соответствует, выполняем его сброс
@@ -861,7 +863,7 @@ vector <char> awh::client::Rest::GET(const uri_t::url_t & url, const unordered_m
 			web->stop();
 		});
 		// Выполняем формирование REST запроса
-		this->REST({move(req)});
+		this->REST({std::forward <req_t> (req)});
 		// Запускаем выполнение запроса
 		this->start();
 	}
@@ -901,7 +903,7 @@ vector <char> awh::client::Rest::DEL(const uri_t::url_t & url, const unordered_m
 			web->stop();
 		});
 		// Выполняем формирование REST запроса
-		this->REST({move(req)});
+		this->REST({std::forward <req_t> (req)});
 		// Запускаем выполнение запроса
 		this->start();
 	}
@@ -948,7 +950,7 @@ vector <char> awh::client::Rest::PUT(const uri_t::url_t & url, const json & enti
 			web->stop();
 		});
 		// Выполняем формирование REST запроса
-		this->REST({move(req)});
+		this->REST({std::forward <req_t> (req)});
 		// Запускаем выполнение запроса
 		this->start();
 	}
@@ -991,7 +993,7 @@ vector <char> awh::client::Rest::PUT(const uri_t::url_t & url, const vector <cha
 			web->stop();
 		});
 		// Выполняем формирование REST запроса
-		this->REST({move(req)});
+		this->REST({std::forward <req_t> (req)});
 		// Запускаем выполнение запроса
 		this->start();
 	}
@@ -1049,7 +1051,7 @@ vector <char> awh::client::Rest::PUT(const uri_t::url_t & url, const unordered_m
 			web->stop();
 		});
 		// Выполняем формирование REST запроса
-		this->REST({move(req)});
+		this->REST({std::forward <req_t> (req)});
 		// Запускаем выполнение запроса
 		this->start();
 	}
@@ -1096,7 +1098,7 @@ vector <char> awh::client::Rest::POST(const uri_t::url_t & url, const json & ent
 			web->stop();
 		});
 		// Выполняем формирование REST запроса
-		this->REST({move(req)});
+		this->REST({std::forward <req_t> (req)});
 		// Запускаем выполнение запроса
 		this->start();
 	}
@@ -1139,7 +1141,7 @@ vector <char> awh::client::Rest::POST(const uri_t::url_t & url, const vector <ch
 			web->stop();
 		});
 		// Выполняем формирование REST запроса
-		this->REST({move(req)});
+		this->REST({std::forward <req_t> (req)});
 		// Запускаем выполнение запроса
 		this->start();
 	}
@@ -1197,7 +1199,7 @@ vector <char> awh::client::Rest::POST(const uri_t::url_t & url, const unordered_
 			web->stop();
 		});
 		// Выполняем формирование REST запроса
-		this->REST({move(req)});
+		this->REST({std::forward <req_t> (req)});
 		// Запускаем выполнение запроса
 		this->start();
 	}
@@ -1244,7 +1246,7 @@ vector <char> awh::client::Rest::PATCH(const uri_t::url_t & url, const json & en
 			web->stop();
 		});
 		// Выполняем формирование REST запроса
-		this->REST({move(req)});
+		this->REST({std::forward <req_t> (req)});
 		// Запускаем выполнение запроса
 		this->start();
 	}
@@ -1287,7 +1289,7 @@ vector <char> awh::client::Rest::PATCH(const uri_t::url_t & url, const vector <c
 			web->stop();
 		});
 		// Выполняем формирование REST запроса
-		this->REST({move(req)});
+		this->REST({std::forward <req_t> (req)});
 		// Запускаем выполнение запроса
 		this->start();
 	}
@@ -1345,7 +1347,7 @@ vector <char> awh::client::Rest::PATCH(const uri_t::url_t & url, const unordered
 			web->stop();
 		});
 		// Выполняем формирование REST запроса
-		this->REST({move(req)});
+		this->REST({std::forward <req_t> (req)});
 		// Запускаем выполнение запроса
 		this->start();
 	}
@@ -1385,7 +1387,7 @@ unordered_multimap <string, string> awh::client::Rest::HEAD(const uri_t::url_t &
 			web->stop();
 		});
 		// Выполняем формирование REST запроса
-		this->REST({move(req)});
+		this->REST({std::forward <req_t> (req)});
 		// Запускаем выполнение запроса
 		this->start();
 	}
@@ -1425,7 +1427,7 @@ unordered_multimap <string, string> awh::client::Rest::TRACE(const uri_t::url_t 
 			web->stop();
 		});
 		// Выполняем формирование REST запроса
-		this->REST({move(req)});
+		this->REST({std::forward <req_t> (req)});
 		// Запускаем выполнение запроса
 		this->start();
 	}
@@ -1465,7 +1467,7 @@ unordered_multimap <string, string> awh::client::Rest::OPTIONS(const uri_t::url_
 			web->stop();
 		});
 		// Выполняем формирование REST запроса
-		this->REST({move(req)});
+		this->REST({std::forward <req_t> (req)});
 		// Запускаем выполнение запроса
 		this->start();
 	}
@@ -1479,8 +1481,6 @@ unordered_multimap <string, string> awh::client::Rest::OPTIONS(const uri_t::url_
 void awh::client::Rest::REST(const vector <req_t> & request) noexcept {
 	// Если список запросов передан
 	if(!request.empty() && (this->_callback.message != nullptr)){
-		// Выполняем очистку схемы сети
-		this->_scheme.clear();
 		// Очищаем список запросов
 		this->_requests.clear();
 		// Выполняем очистку списка ответов
@@ -1491,6 +1491,17 @@ void awh::client::Rest::REST(const vector <req_t> & request) noexcept {
 		this->_responses.assign(request.size(), res_t());
 		// Добавляем объект запроса в список запросов
 		this->_requests.assign(request.begin(), request.end());
+		// Если подключение уже установлено
+		if(this->_aid > 0){
+			// Если работа идёт с прокси-сервером
+			if(this->_scheme.isProxy())
+				// Устанавливаем экшен выполнения
+				this->_action = action_t::PROXY_CONNECT;
+			// Устанавливаем экшен выполнения
+			else this->_action = action_t::CONNECT;
+			// Выполняем запуск обработчика событий
+			this->handler();
+		}
 	}
 }
 /**

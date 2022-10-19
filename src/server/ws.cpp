@@ -514,7 +514,7 @@ void awh::server::WebSocket::actionRead(const size_t aid) noexcept {
 									// Заполняем фрагментированное сообщение
 									adj->buffer.fragmes.insert(adj->buffer.fragmes.end(), data.begin(), data.end());
 								// Если сообщение является последним
-								else buffer = move(* const_cast <vector <char> *> (&data));
+								else buffer = std::forward <const vector <char>> (data);
 							} break;
 							// Если ответом является CONTINUATION
 							case (uint8_t) frame_t::opcode_t::CONTINUATION: {
@@ -523,7 +523,7 @@ void awh::server::WebSocket::actionRead(const size_t aid) noexcept {
 								// Если сообщение является последним
 								if(head.fin){
 									// Выполняем копирование всех собранных сегментов
-									buffer = move(* const_cast <vector <char> *> (&adj->buffer.fragmes));
+									buffer = std::forward <const vector <char>> (adj->buffer.fragmes);
 									// Очищаем список фрагментированных сообщений
 									adj->buffer.fragmes.clear();
 								}
@@ -1052,7 +1052,7 @@ void awh::server::WebSocket::send(const size_t aid, const char * message, const 
 					// Если сжатие данных прошло удачно
 					if(!data.empty()){
 						// Выполняем перемещение данных
-						buffer = move(data);
+						buffer = std::forward <vector <char>> (data);
 						// Заменяем сообщение для передачи
 						message = buffer.data();
 						// Заменяем размер сообщения
