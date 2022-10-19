@@ -606,9 +606,6 @@ void awh::Core::bind(Core * core) noexcept {
  * @param core модуль ядра для отключения
  */
 void awh::Core::unbind(Core * core) noexcept {
-
-	cout << " ^^^^^^^^^^^^^^^^ UNBIND " << endl;
-
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(core->_mtx.bind);
 	// Если база событий активна и она совпадает с текущей базы событий
