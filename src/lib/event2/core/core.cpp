@@ -912,7 +912,7 @@ void awh::Core::enabled(const engine_t::method_t method, const size_t aid) noexc
 			// Получаем объект адъютанта
 			awh::scheme_t::adj_t * adj = const_cast <awh::scheme_t::adj_t *> (it->second);
 			// Если сокет подключения активен
-			if((adj->addr.fd != INVALID_SOCKET) && (adj->addr.fd < 65535)){
+			if((adj->addr.fd != INVALID_SOCKET) && (adj->addr.fd < MAX_SOCKETS)){
 				// Получаем объект подключения
 				scheme_t * shm = (scheme_t *) const_cast <awh::scheme_t *> (adj->parent);
 				// Определяем метод события сокета
@@ -1070,7 +1070,7 @@ void awh::Core::write(const char * buffer, const size_t size, const size_t aid) 
 			// Получаем объект адъютанта
 			awh::scheme_t::adj_t * adj = const_cast <awh::scheme_t::adj_t *> (it->second);
 			// Если сокет подключения активен
-			if((adj->addr.fd != INVALID_SOCKET) && (adj->addr.fd < 65535)){
+			if((adj->addr.fd != INVALID_SOCKET) && (adj->addr.fd < MAX_SOCKETS)){
 				// Добавляем буфер данных для записи
 				adj->buffer.insert(adj->buffer.end(), buffer, buffer + size);
 				// Если запись в сокет заблокирована
@@ -1081,13 +1081,10 @@ void awh::Core::write(const char * buffer, const size_t size, const size_t aid) 
 						case (uint8_t) scheme_t::sonet_t::UDP:
 						// Если протокол подключения DTLS
 						case (uint8_t) scheme_t::sonet_t::DTLS: {
-							// Если сокет подключения активен
-							if(adj->addr.fd != INVALID_SOCKET){
-								// Разрешаем запись данных в сокет
-								adj->bev.locked.write = false;
-								// Выполняем передачу данных
-								this->transfer(engine_t::method_t::WRITE, it->first);
-							}
+							// Разрешаем запись данных в сокет
+							adj->bev.locked.write = false;
+							// Выполняем передачу данных
+							this->transfer(engine_t::method_t::WRITE, it->first);
 						} break;
 						// Для всех остальных сокетов
 						default:

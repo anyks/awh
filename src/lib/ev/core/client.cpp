@@ -168,7 +168,7 @@ void awh::client::Core::connect(const size_t sid) noexcept {
 				// Если unix-сокет не используется, выполняем инициализацию сокета
 				else adj->addr.init(url.ip, url.port, (family == scheme_t::family_t::IPV6 ? AF_INET6 : AF_INET), engine_t::type_t::CLIENT);
 				// Если сокет подключения получен
-				if(adj->addr.fd != INVALID_SOCKET){
+				if((adj->addr.fd != INVALID_SOCKET) && (adj->addr.fd < MAX_SOCKETS)){
 					// Устанавливаем идентификатор адъютанта
 					adj->aid = this->fmk->nanoTimestamp();
 					// Если подключение выполняется по защищённому каналу DTLS
@@ -207,7 +207,7 @@ void awh::client::Core::connect(const size_t sid) noexcept {
 						}
 					}
 					// Если подключение не обёрнуто
-					if(adj->addr.fd == INVALID_SOCKET){
+					if((adj->addr.fd == INVALID_SOCKET) || (adj->addr.fd >= MAX_SOCKETS)){
 						// Запрещаем чтение данных с сервера
 						adj->bev.locked.read = true;
 						// Запрещаем запись данных на сервер
@@ -944,7 +944,7 @@ void awh::client::Core::switchProxy(const size_t aid) noexcept {
 			// Выполняем получение контекста сертификата
 			this->engine.wrapClient(adj->ectx, adj->ectx, host);
 			// Если подключение не обёрнуто
-			if(adj->addr.fd == INVALID_SOCKET){
+			if((adj->addr.fd == INVALID_SOCKET) || (adj->addr.fd >= MAX_SOCKETS)){
 				// Выводим сообщение об ошибке
 				this->log->print("wrap engine context is failed", log_t::flag_t::CRITICAL);
 				// Выходим из функции

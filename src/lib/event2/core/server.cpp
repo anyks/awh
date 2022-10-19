@@ -201,7 +201,7 @@ void awh::server::Core::cluster(const size_t sid, const pid_t pid, const cluster
  */
 void awh::server::Core::accept(const int fd, const size_t sid) noexcept {
 	// Если идентификатор схемы сети передан
-	if((sid > 0) && (fd != INVALID_SOCKET)){
+	if((sid > 0) && (fd != INVALID_SOCKET) && (fd < MAX_SOCKETS)){
 		// Выполняем поиск идентификатора схемы сети
 		auto it = this->schemes.find(sid);
 		// Если идентификатор схемы сети найден, устанавливаем максимальное количество одновременных подключений
@@ -254,7 +254,7 @@ void awh::server::Core::accept(const int fd, const size_t sid) noexcept {
 						// Выполняем получение контекста сертификата
 						this->engine.wrapServer(adj->ectx, &adj->addr);
 						// Если подключение не обёрнуто
-						if(adj->addr.fd == INVALID_SOCKET){
+						if((adj->addr.fd == INVALID_SOCKET) || (adj->addr.fd >= MAX_SOCKETS)){
 							// Выводим сообщение об ошибке
 							this->log->print("wrap engine context is failed", log_t::flag_t::CRITICAL);
 							// Выходим из функции
@@ -417,7 +417,7 @@ void awh::server::Core::accept(const int fd, const size_t sid) noexcept {
 								}
 							}
 							// Если подключение не обёрнуто
-							if(adj->addr.fd == INVALID_SOCKET){
+							if((adj->addr.fd == INVALID_SOCKET) || (adj->addr.fd >= MAX_SOCKETS)){
 								// Выводим сообщение об ошибке
 								this->log->print("wrap engine context is failed", log_t::flag_t::CRITICAL);
 								// Выходим
@@ -1073,7 +1073,7 @@ void awh::server::Core::resolving(const size_t sid, const string & ip, const int
 						// Если unix-сокет не используется, выполняем инициализацию сокета
 						else shm->addr.init(shm->host, shm->port, (this->net.family == scheme_t::family_t::IPV6 ? AF_INET6 : AF_INET), engine_t::type_t::SERVER, this->_ipV6only);
 						// Если сокет подключения получен
-						if(shm->addr.fd != INVALID_SOCKET){
+						if((shm->addr.fd != INVALID_SOCKET) && (shm->addr.fd < MAX_SOCKETS)){
 							// Если повесить прослушку на порт не вышло, выходим из условия
 							if(!shm->addr.list()) break;
 							// Если разрешено выводить информационные сообщения
