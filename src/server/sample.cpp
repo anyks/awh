@@ -137,6 +137,8 @@ void awh::server::Sample::writeCallback(const char * buffer, const size_t size, 
 		if(adj != nullptr){
 			// Если необходимо выполнить закрыть подключение
 			if(!adj->close && adj->stopped){
+				// Выполняем очистку оставшихся данных
+				adj->buffer.clear();
 				// Устанавливаем флаг закрытия подключения
 				adj->close = !adj->close;
 				// Принудительно выполняем отключение лкиента
