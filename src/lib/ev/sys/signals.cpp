@@ -106,7 +106,7 @@ void awh::Signals::start() noexcept {
 		#if !defined(_WIN32) && !defined(_WIN64)
 			// Выполняем игнорирование сигналов SIGPIPE и SIGABRT
 			::signal(SIGPIPE, SIG_IGN);
-			::signal(SIGABRT, SIG_IGN);
+			// ::signal(SIGABRT, SIG_IGN);
 			// Устанавливаем базу событий для сигналов
 			this->_ev.sint.set(this->_base);
 			this->_ev.sfpe.set(this->_base);
