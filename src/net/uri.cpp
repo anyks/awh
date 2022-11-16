@@ -57,95 +57,91 @@ bool awh::URI::URL::empty() const noexcept {
  * @param url строка URL запроса для получения параметров
  * @return    параметры URL запроса
  */
-const awh::URI::url_t awh::URI::parse(const string & url) const noexcept {
+awh::URI::url_t awh::URI::parse(const string & url) const noexcept {
 	// Результат работы функции
 	url_t result;
 	// Если URL адрес передан
 	if(!url.empty()){
 		// Выполняем парсинг URL адреса
-		const auto & split = this->split(url);
-		// Если список параметров получен
-		if(!split.empty() && (split.size() > 1)){
-			// Устанавливаем протокол запроса
-			result.schema = this->_fmk->toLower(split.front());
-			// Определяем сколько элементов мы получили
-			switch(split.size()){
-				// Если количество элементов равно 2
-				case 2: {
-					// Выполняем поиск параметра unix-сокета
-					const size_t pos = split.back().find("unix:");
-					// Если идентификатор unix-сокета получен
-					if(pos != string::npos){
-						// Получаем название unix-сокета
-						result.host = split.back().substr(pos + 5);
-						// Выходим из функции
-						return result;
-					}
-				} break;
-				// Если количество элементов равно 3
-				case 3: {
-					// Проверяем путь запроса
-					const string & value = split.back();
-					// Если первый символ является путём запроса
-					if(value.front() == '/') result.path = this->splitPath(value);
-					// Если же первый символ является параметром запросов
-					else if(value.front() == '?') result.params = this->splitParams(value);
-					// Если же первый символ является якорем
-					else if(value.front() == '#') result.anchor = value;
-				} break;
-				// Если количество элементов равно 4
-				case 4: {
-					// Устанавливаем путь запроса
-					result.path = this->splitPath(split.at(2));
-					// Проверяем параметры запроса
-					const string & value = split.back();
-					// Если первый символ является параметром запросов
-					if(value.front() == '?') result.params = this->splitParams(value);
-					// Если же первый символ является якорем
-					else if(value.front() == '#') result.anchor = value;
-				} break;
-				// Если количество элементов равно 5
-				case 5: {
-					// Устанавливаем якорь запроса
-					result.anchor = split.back();
-					// Устанавливаем путь запроса
-					result.path = this->splitPath(split.at(2));
-					// Устанавливаем параметры запроса
-					result.params = this->splitParams(split.at(3));
-				} break;
+		const auto & uri = this->split(url);
+		// Если сплит URL адреса, прошёл успешно
+		if(!uri.empty()){
+			// Выполняем поиск схемы протокола
+			auto it = uri.find(flag_t::SCHEMA);
+			// Если схема протокола получена
+			if(it != uri.end())
+				// Выполняем извлечение схемы протокола
+				result.schema = std::forward <const string> (it->second);
+			// Выполняем поиск пути запроса
+			it = uri.find(flag_t::PATH);
+			// Если путь запроса получен
+			if(it != uri.end()){
+				// Выполняем извлечение пути запроса
+				result.path = this->splitPath(it->second);
+				// Если схема протокола принадлежит unix-сокету
+				if(result.schema.compare("unix") == 0)
+					// Устанавливаем доменное имя
+					result.host = std::forward <const string> (it->second);
 			}
-			// Разбиваем доменное имя на параметры
-			const auto & params = this->params(split.at(1), result.schema);
-			// Устанавливаем хост сервера
-			result.host = params.host;
-			// Устанавливаем порт сервера
-			result.port = params.port;
-			// Если пользователь получен
-			if(!params.user.empty()) result.user = params.user;
-			// Если пароль получен
-			if(!params.pass.empty()) result.pass = params.pass;
-			// Определяем тип домена
-			switch(this->_nwk->checkNetworkByIp(params.host)){
-				// Если - это доменное имя
-				case 0: result.domain = this->_fmk->toLower(params.host); break;
-				// Если - это IP адрес сети v4
-				case 4: {
-					// Устанавливаем IP адрес
-					result.ip = params.host;
-					// Устанавливаем тип сети
-					result.family = AF_INET;
-				} break;
-				// Если - это IP адрес сети v6
-				case 6: {
-					// Устанавливаем IP адрес
-					result.ip = params.host;
-					// Устанавливаем тип сети
-					result.family = AF_INET6;
-					// Если у хоста обнаружены скобки
-					if((result.ip.front() == '[') && (result.ip.back() == ']'))
-						// Удаляем скобки вокруг IP адреса
-						result.ip = result.ip.substr(1, result.ip.length() - 2);
-				} break;
+			// Выполняем поиск параметров запроса
+			it = uri.find(flag_t::PARAMS);
+			// Если параметры запроса получены
+			if(it != uri.end())
+				// Выполняем извлечение параметров запроса
+				result.params = this->splitParams(it->second);
+			// Выполняем поиск якоря запроса
+			it = uri.find(flag_t::ANCHOR);
+			// Если якорь запроса получен
+			if(it != uri.end())
+				// Выполняем извлечение якоря запроса
+				result.anchor = std::forward <const string> (it->second);
+			// Выполняем поиск порта запроса
+			it = uri.find(flag_t::PORT);
+			// Если порт запроса получен
+			if(it != uri.end())
+				// Выполняем извлечение порта запроса
+				result.port = stoi(it->second);
+			// Выполняем поиск пользователя запроса
+			it = uri.find(flag_t::LOGIN);
+			// Если пользователь запроса получен
+			if(it != uri.end())
+				// Выполняем извлечение пользователя запроса
+				result.user = std::forward <const string> (it->second);
+			// Выполняем поиск пароля пользователя запроса
+			it = uri.find(flag_t::PASS);
+			// Если пароль пользователя запроса получен
+			if(it != uri.end())
+				// Выполняем извлечение пароля пользователя запроса
+				result.pass = std::forward <const string> (it->second);
+			// Выполняем поиск хоста запроса
+			it = uri.find(flag_t::HOST);
+			// Если хост запроса получен
+			if(it != uri.end()){
+				// Выполняем извлечение хоста запроса
+				result.host = std::forward <const string> (it->second);
+				// Определяем тип домена
+				switch(this->_nwk->checkNetworkByIp(result.host)){
+					// Если - это доменное имя
+					case 0: result.domain = result.host; break;
+					// Если - это IP адрес сети v4
+					case 4: {
+						// Устанавливаем IP адрес
+						result.ip = result.host;
+						// Устанавливаем тип сети
+						result.family = AF_INET;
+					} break;
+					// Если - это IP адрес сети v6
+					case 6: {
+						// Устанавливаем IP адрес
+						result.ip = result.host;
+						// Устанавливаем тип сети
+						result.family = AF_INET6;
+						// Если у хоста обнаружены скобки
+						if((result.ip.front() == '[') && (result.ip.back() == ']'))
+							// Удаляем скобки вокруг IP адреса
+							result.ip = result.ip.substr(1, result.ip.length() - 2);
+					} break;
+				}
 			}
 		}
 	}
@@ -157,7 +153,7 @@ const awh::URI::url_t awh::URI::parse(const string & url) const noexcept {
  * @param text текст для перевода в строку
  * @return     хэш etag
  */
-const string awh::URI::etag(const string & text) const noexcept {
+string awh::URI::etag(const string & text) const noexcept {
 	// Результат работы функции
 	string result = "";
 	// Если текст передан
@@ -182,7 +178,7 @@ const string awh::URI::etag(const string & text) const noexcept {
  * @param str строка для кодирования
  * @return    результат кодирования
  */
-const string awh::URI::encode(const string & str) const noexcept {
+string awh::URI::encode(const string & str) const noexcept {
 	// Результат работы функции
 	string result = "";
 	// Если строка передана
@@ -226,7 +222,7 @@ const string awh::URI::encode(const string & str) const noexcept {
  * @param str строка для декодирования
  * @return    результат декодирования
  */
-const string awh::URI::decode(const string & str) const noexcept {
+string awh::URI::decode(const string & str) const noexcept {
 	// Результат работы функции
 	string result = "";
 	// Если строка передана
@@ -264,47 +260,56 @@ const string awh::URI::decode(const string & str) const noexcept {
  * @param url параметры URL запроса
  * @return    URL запрос в виде строки
  */
-const string awh::URI::url(const url_t & url) const noexcept {
+string awh::URI::url(const url_t & url) const noexcept {
 	// Результат работы функции
 	string result = "";
 	// Если данные получены
 	if(!url.schema.empty() && !url.host.empty()){
-		// Порт сервера для URL запроса
-		u_int port = 0;
-		// Хост URL запроса и параметры авторизации
-		string host = url.domain, auth = "";
-		// Если хост не существует
-		if(host.empty()){
-			// Определяем тип хоста
-			switch(url.family){
-				// Если - это IPv4
-				case AF_INET: host = url.ip; break;
-				// Если - это IPv6
-				case AF_INET6: host = this->_fmk->format("[%s]", url.ip.c_str()); break;
+		// Если схема протокола является unix
+		if(url.schema.compare("unix") == 0){
+			// Получаем строку HTTP запроса
+			const string & query = this->query(url);
+			// Формируем адрес строки unix-сокета
+			result = this->_fmk->format("%s:%s", url.schema.c_str(), query.c_str());
+		// Иначе формируем URI адрес в обычном виде
+		} else {
+			// Порт сервера для URL запроса
+			u_int port = 0;
+			// Хост URL запроса и параметры авторизации
+			string host = url.domain, auth = "";
+			// Если хост не существует
+			if(host.empty()){
+				// Определяем тип хоста
+				switch(url.family){
+					// Если - это IPv4
+					case AF_INET: host = url.ip; break;
+					// Если - это IPv6
+					case AF_INET6: host = this->_fmk->format("[%s]", url.ip.c_str()); break;
+				}
 			}
-		}
-		// Если параметры авторизации указаны
-		if(!url.pass.empty() || !url.user.empty())
-			// Формируем параметры авторизации
-			auth = (!url.pass.empty() ? this->_fmk->format("%s:%s@", url.user.c_str(), url.pass.c_str()) : this->_fmk->format("%s@", url.user.c_str()));
-		// Если порт был указан
-		if(url.port > 0){
-			// Определяем указанный порт
-			switch(url.port){
-				// Если указан 80 порт
-				case 80: port = (url.schema.compare("http") == 0 || url.schema.compare("ws") == 0 ? 0 : url.port); break;
-				// Если указан 443 порт
-				case 443: port = (url.schema.compare("https") == 0 || url.schema.compare("wss") == 0 ? 0 : url.port); break;
-				// Если - это, любой другой порт
-				default: port = url.port;
+			// Если параметры авторизации указаны
+			if(!url.pass.empty() || !url.user.empty())
+				// Формируем параметры авторизации
+				auth = (!url.pass.empty() ? this->_fmk->format("%s:%s@", url.user.c_str(), url.pass.c_str()) : this->_fmk->format("%s@", url.user.c_str()));
+			// Если порт был указан
+			if(url.port > 0){
+				// Определяем указанный порт
+				switch(url.port){
+					// Если указан 80 порт
+					case 80: port = (url.schema.compare("http") == 0 || url.schema.compare("ws") == 0 ? 0 : url.port); break;
+					// Если указан 443 порт
+					case 443: port = (url.schema.compare("https") == 0 || url.schema.compare("wss") == 0 ? 0 : url.port); break;
+					// Если - это, любой другой порт
+					default: port = url.port;
+				}
 			}
+			// Получаем строку HTTP запроса
+			const string & query = this->query(url);
+			// Если порт не установлен, формируем URL строку запроса без порта
+			if(port == 0) result = this->_fmk->format("%s://%s%s%s", url.schema.c_str(), auth.c_str(), host.c_str(), query.c_str());
+			// Если порт установлен, формируем URL строку запроса с указанием порта
+			else result = this->_fmk->format("%s://%s%s:%u%s", url.schema.c_str(), auth.c_str(), host.c_str(), url.port, query.c_str());
 		}
-		// Получаем строку HTTP запроса
-		const string & query = this->query(url);
-		// Если порт не установлен, формируем URL строку запроса без порта
-		if(port == 0) result = this->_fmk->format("%s://%s%s%s", url.schema.c_str(), auth.c_str(), host.c_str(), query.c_str());
-		// Если порт установлен, формируем URL строку запроса с указанием порта
-		else result = this->_fmk->format("%s://%s%s:%u%s", url.schema.c_str(), auth.c_str(), host.c_str(), url.port, query.c_str());
 	}
 	// Выводим результат
 	return result;
@@ -314,7 +319,7 @@ const string awh::URI::url(const url_t & url) const noexcept {
  * @param url параметры URL запроса
  * @return    URL запрос в виде строки
  */
-const string awh::URI::query(const url_t & url) const noexcept {
+string awh::URI::query(const url_t & url) const noexcept {
 	// Результат работы функции
 	string result = "";
 	// Если данные получены
@@ -323,10 +328,12 @@ const string awh::URI::query(const url_t & url) const noexcept {
 		const string & path = this->joinPath(url.path);
 		// Выполняем сборку параметров запроса
 		const string & params = this->joinParams(url.params);
+		// Выполняем сборку якоря запроса
+		const string & anchor = (!url.anchor.empty() ? this->_fmk->format("#%s", url.anchor.c_str()) : "");
 		// Выполняем генерацию сигнатуры
 		const string signature = ((url.sign != nullptr) ? this->_fmk->format("&%s", url.sign(&url, this).c_str()) : "");
 		// Иначе порт не устанавливаем
-		result = this->_fmk->format("%s%s%s%s", path.c_str(), params.c_str(), signature.c_str(), url.anchor.c_str());
+		result = this->_fmk->format("%s%s%s%s", path.c_str(), params.c_str(), signature.c_str(), anchor.c_str());
 	}
 	// Выводим результат
 	return result;
@@ -336,7 +343,7 @@ const string awh::URI::query(const url_t & url) const noexcept {
  * @param url параметры URL запроса
  * @return    заголовок [origin]
  */
-const string awh::URI::origin(const url_t & url) const noexcept {
+string awh::URI::origin(const url_t & url) const noexcept {
 	// Результат работы функции
 	string result = "";
 	// Если данные получены
@@ -371,13 +378,51 @@ const string awh::URI::origin(const url_t & url) const noexcept {
 	return result;
 }
 /**
+ * append Метод добавления к URL адресу параметров запроса
+ * @param url    параметры URL запроса
+ * @param params параметры для добавления
+ */
+void awh::URI::append(url_t & url, const string & params) const noexcept {
+	// Если данные переданы
+	if(!url.empty() && !params.empty()){
+		// Выполняем парсинг URL адреса
+		const auto & uri = this->split(params);
+		// Если сплит URL адреса, прошёл успешно
+		if(!uri.empty()){
+			// Выполняем поиск пути запроса
+			auto it = uri.find(flag_t::PATH);
+			// Если путь запроса получен
+			if((it != uri.end()) && (it->second.compare("/") != 0)){
+				// Выполняем извлечение пути запроса
+				url.path = this->splitPath(it->second);
+				// Если схема протокола принадлежит unix-сокету
+				if(url.schema.compare("unix") == 0)
+					// Устанавливаем доменное имя
+					url.host = std::forward <const string> (it->second);
+			}
+			// Выполняем поиск параметров запроса
+			it = uri.find(flag_t::PARAMS);
+			// Если параметры запроса получены
+			if(it != uri.end())
+				// Выполняем извлечение параметров запроса
+				url.params = this->splitParams(it->second);
+			// Выполняем поиск якоря запроса
+			it = uri.find(flag_t::ANCHOR);
+			// Если якорь запроса получен
+			if(it != uri.end())
+				// Выполняем извлечение якоря запроса
+				url.anchor = std::forward <const string> (it->second);
+		}
+	}
+}
+/**
  * split Метод сплита URI на составные части
  * @param uri строка URI для сплита
  * @return    список полученных частей URI
  */
-const vector <string> awh::URI::split(const string & uri) const noexcept {
+map <awh::URI::flag_t, string> awh::URI::split(const string & uri) const noexcept {
 	// Результат работы функции
-	vector <string> result;
+	map <flag_t, string> result;
 	// Если URI передан
 	if(!uri.empty()){
 		// Результат работы регулярного выражения
@@ -388,76 +433,209 @@ const vector <string> awh::URI::split(const string & uri) const noexcept {
 		regex_search(uri, match, e);
 		// Если данные найдены
 		if(!match.empty()){
-			// Полученная строка
-			string value = "";
 			// Если данные пришли в правильном формате
 			if(!match[4].str().empty()){
 				// Переходим по всему списку полученных данных
 				for(size_t i = 0; i < match.size(); i++){
-					// Получаем значение
-					value = match[i].str();
-					/**
-					 * schema [2]
-					 * domain [4]
-					 * path [5]
-					 * params [6]
-					 * anchor [8]
-					 */
-					// Если стркоа существует и индекс соответствует
-					if(!value.empty() && ((i == 2) || (i == 4) || (i == 5) || (i == 6) || (i == 8)))
-						// Если индекс соответствует
-						result.push_back(value);
+					// Если запись получена
+					if(!match[i].str().empty()){
+						// Определяем тип записи
+						switch(i){
+							// Если типом записи является путём запроса
+							case 5: result.emplace(flag_t::PATH, match[i].str()); break;
+							// Если типом записи является параметрами запроса
+							case 7: result.emplace(flag_t::PARAMS, match[i].str()); break;
+							// Если типом записи является якорем запроса
+							case 9: result.emplace(flag_t::ANCHOR, match[i].str()); break;
+							// Если типом записи является доменным именем
+							case 4: result.emplace(flag_t::HOST, this->_fmk->toLower(match[i].str())); break;
+							// Если типом записи является протокол
+							case 2: result.emplace(flag_t::SCHEMA, this->_fmk->toLower(match[i].str())); break;
+						}
+					}
+				}
+				// Выполняем поиск хоста
+				auto it = result.find(flag_t::HOST);
+				// Если хост запроса найден
+				if(it != result.end()){
+					// Выполняем поиск разделителя порта
+					const size_t pos = it->second.rfind(":");
+					// Если разделитель порта найден
+					if(pos != string::npos){
+						// Получаем данные порта
+						const string & port = it->second.substr(pos + 1);
+						// Если данные являются портом
+						if(this->_fmk->isNumber(port)){
+							// Устанавливаем данные порта
+							result.emplace(flag_t::PORT, port);
+							// Формируем правильный хост
+							it->second = it->second.substr(0, pos);
+						}
+					}
 				}
 			// Если данные пришли в неправильном формате
 			} else {
 				// Переходим по всему списку полученных данных
 				for(size_t i = 0; i < match.size(); i++){
-					// Получаем значение
-					value = match[i].str();
-					/**
-					 * domain [2]
-					 * path [5]
-					 * params [6]
-					 * anchor [8]
-					 */
-					// Если стркоа существует и индекс соответствует
-					if(!value.empty() && ((i == 2) || (i == 5) || (i == 6) || (i == 8)))
-						// Если индекс соответствует
-						result.push_back(value);
-				}
-				// Если путь запроса получен
-				if(result.size() >= 2){
-					// Порт сервера
-					string port = "";
-					// Выполняем поиск порта
-					for(auto & letter : result.at(1)){
-						// Если число не получено, выходим
-						if(!this->_fmk->isNumber(string(1, letter))) break;
-						// Если число получено, собираем его
-						else port.append(1, letter);
-					}
-					// Если мы нашли порт сервера
-					if(!port.empty()){
-						// Удаляем порт сервера из пути
-						result.at(1).erase(0, port.size());
-						// Устанавливаем порт хоста
-						result.front() = this->_fmk->format("%s:%s", result.front().c_str(), port.c_str());
-						// Если порт указан для зашифрованного подключения
-						if(port.compare("443") == 0){
-							// Устанавливаем схему протокола
-							result.insert(result.begin(), "https");
-							// Выходим из функции
-							goto Next;
+					// Если запись получена
+					if(!match[i].str().empty()){
+						// Определяем тип записи
+						switch(i){
+							// Если типом записи является путём запроса
+							case 5: result.emplace(flag_t::PATH, match[i].str()); break;
+							// Если типом записи является параметрами запроса
+							case 7: result.emplace(flag_t::PARAMS, match[i].str()); break;
+							// Если типом записи является якорем запроса
+							case 9: result.emplace(flag_t::ANCHOR, match[i].str()); break;
+							// Если типом записи является доменным именем
+							case 2: result.emplace(flag_t::HOST, this->_fmk->toLower(match[i].str())); break;
 						}
 					}
 				}
-				// Устанавливаем схему протокола
-				result.insert(result.begin(), "http");
+				// Выполняем поиск пути запроса
+				auto it = result.find(flag_t::PATH);
+				// Если путь запроса найден
+				if(it != result.end()){
+					// Выполняем поиск разделителя пути
+					const size_t pos = it->second.find("/");
+					// Если разделитель пути найден
+					if(pos != string::npos){
+						// Если позиция не нулевая и порт является числом
+						if(pos > 0){
+							// Получаем данные хоста или порта
+							const string & data = it->second.substr(0, pos);
+							// Если данные являются портом
+							if(this->_fmk->isNumber(data))
+								// Устанавливаем данные порта
+								result.emplace(flag_t::PORT, data);
+							// Иначе если хост не установлен
+							else if(result.count(flag_t::HOST) < 1) {								
+								// Определяем тип домена
+								switch(this->_nwk->checkNetworkByIp(data)){
+									// Если - это доменное имя
+									case 0:
+									// Если - это IP адрес сети v4
+									case 4:
+									// Если - это IP адрес сети v6
+									case 6: result.emplace(flag_t::HOST, this->_fmk->toLower(data)); break;
+								}
+							}
+						}
+						// Формируем правильный путь запроса
+						it->second = it->second.substr(pos);
+					}
+				}
+			}{
+				// Выполняем поиск протокола запроса
+				auto it = result.find(flag_t::SCHEMA);
+				// Если протокол не обнаружен
+				if(it == result.end())
+					// Устанавливаем протокол запроса
+					result.emplace(flag_t::SCHEMA, "http");
+			}{
+				// Выполняем поиск пути запроса
+				auto it = result.find(flag_t::PATH);
+				// Если путь запроса не обнаружен
+				if(it == result.end())
+					// Устанавливаем протокол запроса
+					result.emplace(flag_t::PATH, "/");
+			}{
+				// Выполняем поиск хоста
+				auto it = result.find(flag_t::HOST);
+				// Если хост запроса обнаружен
+				if((it != result.end()) && it->second.compare("unix") == 0){
+					// Извлекаем путь запроса
+					const string & path = result.at(flag_t::PATH);
+					// Если в пути найдено расширение
+					if(path.rfind(".") != string::npos){
+						// Устанавливаем данные порта
+						result.emplace(flag_t::PORT, "0");
+						// Устанавливаем схему протокола
+						result.at(flag_t::SCHEMA) = it->second;
+						// Заменяем хост, на путь сокета в файловой системе
+						result.at(flag_t::HOST) = path;
+					}
+				}
+			}{
+				// Выполняем поиск порта
+				auto it = result.find(flag_t::PORT);
+				// Если порт не найден
+				if(it == result.end()){
+					// Получаем схему протокола интернета
+					const string & schema = result.at(flag_t::SCHEMA);
+					// Если протокол является HTTPS
+					if(schema.compare("https") == 0)
+						// Устанавливаем данные порта
+						result.emplace(flag_t::PORT, "443");
+					// Если протокол является HTTP
+					else if(schema.compare("http") == 0)
+						// Устанавливаем данные порта
+						result.emplace(flag_t::PORT, "80");
+					// Если протокол является WSS
+					else if(schema.compare("wss") == 0)
+						// Устанавливаем данные порта
+						result.emplace(flag_t::PORT, "443");
+					// Если протокол является WS
+					else if(schema.compare("ws") == 0)
+						// Устанавливаем данные порта
+						result.emplace(flag_t::PORT, "80");
+					// Если протокол является FTP
+					else if(schema.compare("ftp") == 0)
+						// Устанавливаем данные порта
+						result.emplace(flag_t::PORT, "21");
+					// Если протокол является MQTT
+					else if(schema.compare("mqtt") == 0)
+						// Устанавливаем данные порта
+						result.emplace(flag_t::PORT, "1883");
+					// Если протокол является REDIS
+					else if(schema.compare("redis") == 0)
+						// Устанавливаем данные порта
+						result.emplace(flag_t::PORT, "6379");
+					// Если протокол является Socks5
+					else if(schema.compare("socks5") == 0)
+						// Устанавливаем данные порта
+						result.emplace(flag_t::PORT, "1080");
+					// Если протокол является PostgreSQL
+					else if(schema.compare("postgresql") == 0)
+						// Устанавливаем данные порта
+						result.emplace(flag_t::PORT, "5432");
+					// Иначе устанавливаем порт открытого HTTP протокола
+					else result.emplace(flag_t::PORT, "80");
+				// Если порт установлен как 443
+				} else if(it->second.compare("443") == 0) {
+					// Если протокол является HTTP
+					if(result.at(flag_t::SCHEMA).compare("http") == 0)
+						// Устанавливаем протокол
+						result.at(flag_t::SCHEMA) = "https";
+				}
+			}{
+				// Выполняем поиск хоста
+				auto it = result.find(flag_t::HOST);
+				// Если хост запроса найден
+				if(it != result.end()){
+					// Выполняем поиск разделителя данных пользователя и хоста
+					size_t pos = it->second.rfind("@");
+					// Если разделитель порта найден
+					if(pos != string::npos){
+						// Получаем данные пользователя
+						const string user = it->second.substr(0, pos);
+						// Формируем правильный хост
+						it->second = it->second.substr(pos + 1);
+						// Выполняем поиск разделителя логина и пароля
+						pos = user.find(":");
+						// Если разделитель логина и пароля найден
+						if(pos != string::npos){
+							// Устанавливаем пароль пользователя
+							result.emplace(flag_t::PASS, user.substr(pos + 1));
+							// Устанавливаем логин пользователя
+							result.emplace(flag_t::LOGIN, user.substr(0, pos));
+						// Устанавливаем данные пользователя как они есть
+						} else result.emplace(flag_t::LOGIN, std::forward <const string> (user));
+					}
+				}
 			}
 		}
 	}
-	// Устанавливаем метку выхода
-	Next:
 	// Выводим результат
 	return result;
 }
@@ -466,7 +644,7 @@ const vector <string> awh::URI::split(const string & uri) const noexcept {
  * @param uri строка URI для сплита
  * @return    параметры полученные при сплите
  */
-const vector <pair <string, string>> awh::URI::splitParams(const string & uri) const noexcept {
+vector <pair <string, string>> awh::URI::splitParams(const string & uri) const noexcept {
 	// Результат работы функции
 	vector <pair <string, string>> result;
 	// Если URI передано
@@ -474,7 +652,7 @@ const vector <pair <string, string>> awh::URI::splitParams(const string & uri) c
 		// Параметры URI
 		vector <wstring> params;
 		// Выполняем сплит URI параметров
-		this->_fmk->split(uri.substr(1), "&", params);
+		this->_fmk->split(uri, "&", params);
 		// Если параметры получены
 		if(!params.empty()){
 			// Данные параметров
@@ -506,7 +684,7 @@ const vector <pair <string, string>> awh::URI::splitParams(const string & uri) c
  * @param delim сепаратор-разделитель для сплита
  * @return      список параметров пути
  */
-const vector <string> awh::URI::splitPath(const string & path, const string & delim) const noexcept {
+vector <string> awh::URI::splitPath(const string & path, const string & delim) const noexcept {
 	// Результат работы функции
 	vector <string> result;
 	// Если данные переданы
@@ -518,10 +696,9 @@ const vector <string> awh::URI::splitPath(const string & path, const string & de
 		// Если параметры получены
 		if(!params.empty()){
 			// Переходим по всему списку параметров
-			for(auto & param : params){
+			for(auto & param : params)
 				// Добавляем в список наши параметры
 				result.push_back(this->decode(this->_fmk->convert(param)));
-			}
 		}
 	}
 	// Выводим результат
@@ -532,7 +709,7 @@ const vector <string> awh::URI::splitPath(const string & path, const string & de
  * @param uri параметры URI для сборки
  * @return    строка полученная при сборке параметров URI
  */
-const string awh::URI::joinParams(const vector <pair <string, string>> & uri) const noexcept {
+string awh::URI::joinParams(const vector <pair <string, string>> & uri) const noexcept {
 	// Результат работы функции
 	string result = "";
 	// Если параметры URI переданы
@@ -560,7 +737,7 @@ const string awh::URI::joinParams(const vector <pair <string, string>> & uri) co
  * @param delim сепаратор-разделитель для сплита
  * @return      строка собранного пути
  */
-const string awh::URI::joinPath(const vector <string> & path, const string & delim) const noexcept {
+string awh::URI::joinPath(const vector <string> & path, const string & delim) const noexcept {
 	// Результат работы функции
 	string result = "";
 	// Если данные переданы
@@ -569,8 +746,10 @@ const string awh::URI::joinPath(const vector <string> & path, const string & del
 		for(auto & param : path){
 			// Добавляем разделитель
 			result.append(delim);
-			// Добавляем собранные параметры
-			result.append(this->encode(param));
+			// Если параметр существует
+			if(!param.empty())
+				// Добавляем собранные параметры
+				result.append(this->encode(param));
 		}
 	// Выводим путь из одного разделителя
 	} else result = delim;
@@ -583,7 +762,7 @@ const string awh::URI::joinPath(const vector <string> & path, const string & del
  * @param schema протокол передачи данных
  * @return       параметры полученные из URI
  */
-const awh::URI::params_t awh::URI::params(const string & uri, const string & schema) const noexcept {
+awh::URI::params_t awh::URI::params(const string & uri, const string & schema) const noexcept {
 	// Результат работы функции
 	params_t result;
 	// Если URI передан

@@ -150,8 +150,8 @@ int main(int argc, char * argv[]){
 	client::core_t core(&fmk, &log);
 	client::rest_t rest(&core, &fmk, &log);
 
-	log.setLogName("REST Client");
-	log.setLogFormat("%H:%M:%S %d.%m.%Y");
+	log.name("REST Client");
+	log.format("%H:%M:%S %d.%m.%Y");
 
 	core.ca("./ca/cert.pem");
 	// core.verifySSL(false);
@@ -236,8 +236,8 @@ int main(int argc, char * argv[]){
 	server::core_t core(&fmk, &log);
 	server::rest_t rest(&core, &fmk, &log);
 
-	log.setLogName("Web Server");
-	log.setLogFormat("%H:%M:%S %d.%m.%Y");
+	log.name("Web Server");
+	log.format("%H:%M:%S %d.%m.%Y");
 
 	core.clusterSize();
 	core.verifySSL(false);
@@ -302,8 +302,8 @@ int main(int argc, char * argv[]){
 	client::core_t core(&fmk, &log);
 	client::ws_t ws(&core, &fmk, &log);
 
-	log.setLogName("WebSocket Client");
-	log.setLogFormat("%H:%M:%S %d.%m.%Y");
+	log.name("WebSocket Client");
+	log.format("%H:%M:%S %d.%m.%Y");
 
 	ws.mode(
 		(uint8_t) client::ws_t::flag_t::TAKEOVERCLI |
@@ -390,8 +390,8 @@ int main(int argc, char * argv[]){
 	server::core_t core(&fmk, &log);
 	server::ws_t ws(&core, &fmk, &log);
 
-	log.setLogName("WebSocket Server");
-	log.setLogFormat("%H:%M:%S %d.%m.%Y");
+	log.name("WebSocket Server");
+	log.format("%H:%M:%S %d.%m.%Y");
 
 	core.clusterSize();
 	core.verifySSL(false);
@@ -466,8 +466,8 @@ int main(int argc, char * argv[]){
 
 	server::proxy_t proxy(&fmk, &log);
 
-	log.setLogName("Proxy Server");
-	log.setLogFormat("%H:%M:%S %d.%m.%Y");
+	log.name("Proxy Server");
+	log.format("%H:%M:%S %d.%m.%Y");
 
 	proxy.mode(
 		(uint8_t) server::proxy_t::flag_t::NOINFO |
@@ -532,8 +532,8 @@ int main(int argc, char * argv[]){
 
 	proxy_socks5_t proxy(&fmk, &log);
 
-	log.setLogName("Proxy Socks5 Server");
-	log.setLogFormat("%H:%M:%S %d.%m.%Y");
+	log.name("Proxy Socks5 Server");
+	log.format("%H:%M:%S %d.%m.%Y");
 
 	proxy.mode(
 		(uint8_t) proxy_socks5_t::flag_t::NOINFO |
@@ -609,8 +609,8 @@ int main(int argc, char * argv[]){
 
 	core_t core(awh::core_t::affiliation_t::PRIMARY, &fmk, &log);
 
-	log.setLogName("Timer");
-	log.setLogFormat("%H:%M:%S %d.%m.%Y");
+	log.name("Timer");
+	log.format("%H:%M:%S %d.%m.%Y");
 
 	core.callback((function <void (const bool, core_t *)>) bind(&Timer::run, &executor, _1, _2));
 
@@ -633,8 +633,8 @@ int main(int argc, char * argv[]){
 	log_t log(&fmk);
 	core_t core(awh::core_t::affiliation_t::PRIMARY, &fmk, &log);
 
-	log.setLogName("DNS");
-	log.setLogFormat("%H:%M:%S %d.%m.%Y");
+	log.name("DNS");
+	log.format("%H:%M:%S %d.%m.%Y");
 
 	core.resolve("google.com", scheme_t::family_t::IPV4, [&log](const string & ip, const scheme_t::family_t family, core_t * core){
 		log.print("IP: %s", log_t::flag_t::INFO, ip.c_str());
@@ -685,8 +685,8 @@ int main(int argc, char * argv[]){
 	client::core_t core(&fmk, &log);
 	client::sample_t sample(&core, &fmk, &log);
 
-	log.setLogName("SAMPLE Client");
-	log.setLogFormat("%H:%M:%S %d.%m.%Y");
+	log.name("SAMPLE Client");
+	log.format("%H:%M:%S %d.%m.%Y");
 
 	sample.mode(
 		// (uint8_t) client::sample_t::flag_t::NOINFO |
@@ -743,8 +743,8 @@ int main(int argc, char * argv[]){
 	server::core_t core(&fmk, &log);
 	server::sample_t sample(&core, &fmk, &log);
 
-	log.setLogName("SAMPLE Server");
-	log.setLogFormat("%H:%M:%S %d.%m.%Y");
+	log.name("SAMPLE Server");
+	log.format("%H:%M:%S %d.%m.%Y");
 
 	core.sonet(awh::scheme_t::sonet_t::TCP);
 	core.affiliation(awh::core_t::affiliation_t::PRIMARY);
@@ -797,8 +797,8 @@ int main(int argc, char * argv[]){
 	client::core_t core(&fmk, &log);
 	client::sample_t sample(&core, &fmk, &log);
 
-	log.setLogName("SAMPLE Client");
-	log.setLogFormat("%H:%M:%S %d.%m.%Y");
+	log.name("SAMPLE Client");
+	log.format("%H:%M:%S %d.%m.%Y");
 
 	sample.mode(
 		// (uint8_t) client::sample_t::flag_t::NOINFO |
@@ -858,8 +858,8 @@ int main(int argc, char * argv[]){
 	server::core_t core(&fmk, &log);
 	server::sample_t sample(&core, &fmk, &log);
 
-	log.setLogName("SAMPLE Server");
-	log.setLogFormat("%H:%M:%S %d.%m.%Y");
+	log.name("SAMPLE Server");
+	log.format("%H:%M:%S %d.%m.%Y");
 
 	core.verifySSL(false);
 	core.sonet(awh::scheme_t::sonet_t::TLS);
@@ -914,8 +914,8 @@ int main(int argc, char * argv[]){
 	client::core_t core(&fmk, &log);
 	client::sample_t sample(&core, &fmk, &log);
 
-	log.setLogName("SAMPLE Client");
-	log.setLogFormat("%H:%M:%S %d.%m.%Y");
+	log.name("SAMPLE Client");
+	log.format("%H:%M:%S %d.%m.%Y");
 
 	sample.mode(
 		// (uint8_t) client::sample_t::flag_t::NOINFO |
@@ -972,8 +972,8 @@ int main(int argc, char * argv[]){
 	server::core_t core(&fmk, &log);
 	server::sample_t sample(&core, &fmk, &log);
 
-	log.setLogName("SAMPLE Server");
-	log.setLogFormat("%H:%M:%S %d.%m.%Y");
+	log.name("SAMPLE Server");
+	log.format("%H:%M:%S %d.%m.%Y");
 
 	core.sonet(awh::scheme_t::sonet_t::UDP);
 	core.affiliation(awh::core_t::affiliation_t::PRIMARY);
@@ -1026,8 +1026,8 @@ int main(int argc, char * argv[]){
 	client::core_t core(&fmk, &log);
 	client::sample_t sample(&core, &fmk, &log);
 
-	log.setLogName("SAMPLE Client");
-	log.setLogFormat("%H:%M:%S %d.%m.%Y");
+	log.name("SAMPLE Client");
+	log.format("%H:%M:%S %d.%m.%Y");
 
 	sample.mode(
 		// (uint8_t) client::sample_t::flag_t::NOINFO |
@@ -1087,8 +1087,8 @@ int main(int argc, char * argv[]){
 	server::core_t core(&fmk, &log);
 	server::sample_t sample(&core, &fmk, &log);
 
-	log.setLogName("SAMPLE Server");
-	log.setLogFormat("%H:%M:%S %d.%m.%Y");
+	log.name("SAMPLE Server");
+	log.format("%H:%M:%S %d.%m.%Y");
 
 	core.verifySSL(false);
 	core.sonet(awh::scheme_t::sonet_t::SCTP);
@@ -1143,8 +1143,8 @@ int main(int argc, char * argv[]){
 	client::core_t core(&fmk, &log);
 	client::sample_t sample(&core, &fmk, &log);
 
-	log.setLogName("SAMPLE Client");
-	log.setLogFormat("%H:%M:%S %d.%m.%Y");
+	log.name("SAMPLE Client");
+	log.format("%H:%M:%S %d.%m.%Y");
 
 	sample.mode(
 		// (uint8_t) client::sample_t::flag_t::NOINFO |
@@ -1204,8 +1204,8 @@ int main(int argc, char * argv[]){
 	server::core_t core(&fmk, &log);
 	server::sample_t sample(&core, &fmk, &log);
 
-	log.setLogName("SAMPLE Server");
-	log.setLogFormat("%H:%M:%S %d.%m.%Y");
+	log.name("SAMPLE Server");
+	log.format("%H:%M:%S %d.%m.%Y");
 
 	core.verifySSL(false);
 	core.sonet(awh::scheme_t::sonet_t::DTLS);
@@ -1260,8 +1260,8 @@ int main(int argc, char * argv[]){
 	client::core_t core(&fmk, &log);
 	client::sample_t sample(&core, &fmk, &log);
 
-	log.setLogName("SAMPLE Client");
-	log.setLogFormat("%H:%M:%S %d.%m.%Y");
+	log.name("SAMPLE Client");
+	log.format("%H:%M:%S %d.%m.%Y");
 
 	sample.mode(
 		// (uint8_t) client::sample_t::flag_t::NOINFO |
@@ -1319,8 +1319,8 @@ int main(int argc, char * argv[]){
 	server::core_t core(&fmk, &log);
 	server::sample_t sample(&core, &fmk, &log);
 
-	log.setLogName("SAMPLE Server");
-	log.setLogFormat("%H:%M:%S %d.%m.%Y");
+	log.name("SAMPLE Server");
+	log.format("%H:%M:%S %d.%m.%Y");
 
 	core.sonet(awh::scheme_t::sonet_t::TCP);
 	core.family(awh::scheme_t::family_t::NIX);
@@ -1374,8 +1374,8 @@ int main(int argc, char * argv[]){
 	client::core_t core(&fmk, &log);
 	client::sample_t sample(&core, &fmk, &log);
 
-	log.setLogName("SAMPLE Client");
-	log.setLogFormat("%H:%M:%S %d.%m.%Y");
+	log.name("SAMPLE Client");
+	log.format("%H:%M:%S %d.%m.%Y");
 
 	sample.mode(
 		// (uint8_t) client::sample_t::flag_t::NOINFO |
@@ -1433,8 +1433,8 @@ int main(int argc, char * argv[]){
 	server::core_t core(&fmk, &log);
 	server::sample_t sample(&core, &fmk, &log);
 
-	log.setLogName("SAMPLE Server");
-	log.setLogFormat("%H:%M:%S %d.%m.%Y");
+	log.name("SAMPLE Server");
+	log.format("%H:%M:%S %d.%m.%Y");
 
 	core.sonet(awh::scheme_t::sonet_t::UDP);
 	core.family(awh::scheme_t::family_t::NIX);

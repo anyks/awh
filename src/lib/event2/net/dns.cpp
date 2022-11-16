@@ -218,10 +218,14 @@ void awh::DNS::Worker::response(const evutil_socket_t fd, const short event) noe
 				#endif
 				// Если список IP адресов получен
 				if(!ips.empty()){
-					// Выполняем рандомизацию генератора случайных чисел
-					srand(dns->_fmk->nanoTimestamp());
+					// Выполняем инициализацию генератора
+					random_device dev;
+					// Подключаем устройство генератора
+					mt19937 rng(dev());
+					// Выполняем генерирование случайного числа
+					uniform_int_distribution <mt19937::result_type> dist6(0, ips.size() - 1);
 					// Выполняем установку IP адреса
-					ip = ips.at(rand() % ips.size());
+					ip = ips.at(dist6(rng));
 				// Если чёрный список доменных имён не пустой
 				} else if(!dns->emptyBlackList(this->_family))
 					// Выполняем очистку чёрного списка
@@ -929,10 +933,14 @@ string awh::DNS::cache(const int family, const string & domain) noexcept {
 				}
 				// Если список IP адресов получен
 				if(!ips.empty()){
-					// Выполняем рандомизацию генератора случайных чисел
-					srand(this->_fmk->nanoTimestamp());
+					// Выполняем инициализацию генератора
+					random_device dev;
+					// Подключаем устройство генератора
+					mt19937 rng(dev());
+					// Выполняем генерирование случайного числа
+					uniform_int_distribution <mt19937::result_type> dist6(0, ips.size() - 1);
 					// Выполняем получение результата
-					result = move(ips.at(rand() % ips.size()));
+					result = std::forward <string> (ips.at(dist6(rng)));
 				}
 			}
 		}
@@ -1084,18 +1092,22 @@ bool awh::DNS::isInBlackList(const int family, const string & ip) const noexcept
 const awh::DNS::serv_t & awh::DNS::server(const int family) noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->_mtx.hold);
+	// Выполняем инициализацию генератора
+	random_device dev;
+	// Подключаем устройство генератора
+	mt19937 rng(dev());
 	// Если список серверов пустой
 	if(this->_servers.empty())
 		// Устанавливаем новый список имён
-		this->replace(family);	
+		this->replace(family);
 	// Выполняем поиск семейство протоколов
 	const auto & servers = this->_servers.at(family);
 	// Получаем первое значение итератора
 	auto it = servers.begin();
-	// Выполняем рандомизацию генератора случайных чисел
-	srand(this->_fmk->nanoTimestamp());
+	// Выполняем генерирование случайного числа
+	uniform_int_distribution <mt19937::result_type> dist6(0, servers.size() - 1);
 	// Выполняем выбор нужного сервера в списке, в произвольном виде
-	advance(it, (rand() % servers.size()));
+	advance(it, dist6(rng));
 	// Выводим результат
 	return (* it);
 }
@@ -1134,7 +1146,7 @@ void awh::DNS::server(const int family, const serv_t & server) noexcept {
 				// Выполняем резолвинг домена
 				const size_t did = dns->resolve(server.host, family);
 				// Выполняем добавление DNS резолвера в список внутренних DNS резолверов
-				this->_dns.emplace(did, move(dns));
+				this->_dns.emplace(did, std::forward <unique_ptr <dns_t>> (dns));
 			} break;
 		}
 		// Если сервер имён получен
@@ -1142,7 +1154,7 @@ void awh::DNS::server(const int family, const serv_t & server) noexcept {
 			// Выполняем инициализацию списка серверов
 			auto ret = this->_servers.emplace(family, vector <serv_t> ());
 			// Устанавливаем сервера имён
-			ret.first->second.push_back(move(result));
+			ret.first->second.push_back(std::forward <serv_t> (result));
 		// Если имя сервера не получено, выводим в лог сообщение
 		} else this->_log->print("name server [%s:%u] does not add", log_t::flag_t::CRITICAL, server.host.c_str(), server.port);
 	}

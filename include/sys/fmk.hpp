@@ -240,6 +240,14 @@ namespace awh {
 			string format(const string & format, const vector <string> & items) const noexcept;
 		public:
 			/**
+			 * itoa Метод конвертации чисел в указанную систему счисления
+			 * @param value число для конвертации
+			 * @param radix система счисления
+			 * @return      полученная строка в системе счисления
+			 */
+			string itoa(const int value, const uint8_t radix) const noexcept;
+		public:
+			/**
 			 * toLower Метод перевода русских букв в нижний регистр
 			 * @param str строка для перевода
 			 * @return    строка в нижнем регистре

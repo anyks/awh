@@ -18,6 +18,7 @@
 /**
  * Стандартная библиотека
  */
+#include <map>
 #include <regex>
 #include <string>
 #include <vector>
@@ -53,6 +54,20 @@ namespace awh {
 	 * URI Класс dns ресолвера
 	 */
 	typedef class URI {
+		public:
+			/**
+			 * Основные флаги приложения
+			 */
+			enum class flag_t : uint8_t {
+				SCHEMA = 0x01, // Флаг схемы запроса
+				HOST   = 0x02, // Флаг хоста запроса
+				PATH   = 0x03, // Флаг пути запроса
+				PARAMS = 0x04, // Флаг параметров запроса
+				ANCHOR = 0x05, // Флаг якоря запроса
+				PORT   = 0x06, // Флаг порта адреса
+				PASS   = 0x07, // Флаг пароля пользователя
+				LOGIN  = 0x08  // Флаг логина пользователя
+			};
 		public:
 			/**
 			 * Params Структура параметров URI
@@ -126,79 +141,86 @@ namespace awh {
 			 * @param url строка URL запроса для получения параметров
 			 * @return    параметры URL запроса
 			 */
-			const url_t parse(const string & url) const noexcept;
+			url_t parse(const string & url) const noexcept;
 		public:
 			/**
 			 * etag Метод генерации ETag хэша текста
 			 * @param text текст для перевода в строку
 			 * @return     хэш etag
 			 */
-			const string etag(const string & text) const noexcept;
+			string etag(const string & text) const noexcept;
 			/**
 			 * encode Метод кодирования строки в url адресе
 			 * @param str строка для кодирования
 			 * @return    результат кодирования
 			 */
-			const string encode(const string & str) const noexcept;
+			string encode(const string & str) const noexcept;
 			/**
 			 * decode Метод декодирования строки в url адресе
 			 * @param str строка для декодирования
 			 * @return    результат декодирования
 			 */
-			const string decode(const string & str) const noexcept;
+			string decode(const string & str) const noexcept;
 		public:
 			/**
 			 * url Метод создания строки URL запросы из параметров
 			 * @param url параметры URL запроса
 			 * @return    URL запрос в виде строки
 			 */
-			const string url(const url_t & url) const noexcept;
+			string url(const url_t & url) const noexcept;
 			/**
 			 * query Метод создания строки запроса из параметров
 			 * @param url параметры URL запроса
 			 * @return    URL запрос в виде строки
 			 */
-			const string query(const url_t & url) const noexcept;
+			string query(const url_t & url) const noexcept;
 			/**
 			 * origin Метод создания заголовка [origin], для HTTP запроса
 			 * @param url параметры URL запроса
 			 * @return    заголовок [origin]
 			 */
-			const string origin(const url_t & url) const noexcept;
+			string origin(const url_t & url) const noexcept;
+		public:
+			/**
+			 * append Метод добавления к URL адресу параметров запроса
+			 * @param url    параметры URL запроса
+			 * @param params параметры для добавления
+			 */
+			void append(url_t & url, const string & params) const noexcept;
 		public:
 			/**
 			 * split Метод сплита URI на составные части
 			 * @param uri строка URI для сплита
 			 * @return    список полученных частей URI
 			 */
-			const vector <string> split(const string & uri) const noexcept;
+			map <flag_t, string> split(const string & uri) const noexcept;
 			/**
 			 * splitParams Метод выполнения сплита параметров URI
 			 * @param uri строка URI для сплита
 			 * @return    параметры полученные при сплите
 			 */
-			const vector <pair <string, string>> splitParams(const string & uri) const noexcept;
+			vector <pair <string, string>> splitParams(const string & uri) const noexcept;
 			/**
 			 * splitPath Метод выполнения сплита пути
 			 * @param path  путь для выполнения сплита
 			 * @param delim сепаратор-разделитель для сплита
 			 * @return      список параметров пути
 			 */
-			const vector <string> splitPath(const string & path, const string & delim = "/") const noexcept;
+			vector <string> splitPath(const string & path, const string & delim = "/") const noexcept;
 		public:
 			/**
 			 * joinParams Метод сборки параметров URI
 			 * @param uri параметры URI для сборки
 			 * @return    строка полученная при сборке параметров URI
 			 */
-			const string joinParams(const vector <pair <string, string>> & uri) const noexcept;
+			string joinParams(const vector <pair <string, string>> & uri) const noexcept;
 			/**
 			 * joinPath Метод сборки пути запроса
 			 * @param path  список параметров пути запроса
 			 * @param delim сепаратор-разделитель для сплита
 			 * @return      строка собранного пути
 			 */
-			const string joinPath(const vector <string> & path, const string & delim = "/") const noexcept;
+			string joinPath(const vector <string> & path, const string & delim = "/") const noexcept;
 		public:
 			/**
 			 * params Метод получения параметров URI
@@ -206,7 +228,7 @@ namespace awh {
 			 * @param schema протокол передачи данных
 			 * @return       параметры полученные из URI
 			 */
-			const params_t params(const string & uri, const string & schema = "") const noexcept;
+			params_t params(const string & uri, const string & schema = "") const noexcept;
 		public:
 			/**
 			 * URI Конструктор

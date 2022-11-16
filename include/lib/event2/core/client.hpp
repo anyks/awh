@@ -46,6 +46,14 @@ namespace awh {
 				 * Scheme Устанавливаем дружбу с схемой сети
 				 */
 				friend class Scheme;
+			public:
+				/**
+				 * Режим работы клиента
+				 */
+				enum class mode_t : uint8_t {
+					SYNC  = 0x00, // Синхронный режим работы
+					ASYNC = 0x01  // Асинхронный режим работы
+				};
 			private:
 				/**
 				 * Mutex Структура основных мютексов
@@ -88,8 +96,8 @@ namespace awh {
 				// Мютекс для блокировки основного потока
 				mtx_t _mtx;
 			private:
-				// Флаг асинхронного режима работы
-				bool _async;
+				// Флаг режима работы
+				mode_t _mode;
 			private:
 				// Список блокированных объектов
 				set <size_t> _locking;
@@ -146,10 +154,10 @@ namespace awh {
 				void remove(const size_t sid) noexcept;
 			public:
 				/**
-				 * async Метод активации асинхронного режима работы
-				 * @param mode флаг активации асинхронного режима работы
+				 * mode Метод активации асинхронного режима работы
+				 * @param flag флаг активации асинхронного режима работы
 				 */
-				void async(const bool mode) noexcept;
+				void mode(const mode_t flag) noexcept;
 			public:
 				/**
 				 * close Метод закрытия подключения

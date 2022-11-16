@@ -461,6 +461,40 @@ string awh::Framework::format(const string & format, const vector <string> & ite
 	return result;
 }
 /**
+ * itoa Метод конвертации чисел в указанную систему счисления
+ * @param value число для конвертации
+ * @param radix система счисления
+ * @return      полученная строка в системе счисления
+ */
+string awh::Framework::itoa(const int value, const uint8_t radix) const noexcept {
+	// Результат работы функции
+	string result = "";
+	// Если данные переданы
+	if((radix > 0) && (radix < 37)){
+		// Запоминаем являлось ли число отрицательным
+		bool const sign = (value < 0);
+		// Устанавливаем числовые обозначения
+		const string digits = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+		// Убираем отрицательное значение
+		int num = abs(value);
+		// Особый случай: нулю соответствует не пустая строка, а "0"
+		if(num == 0) result.append(1, digits[0]);
+		// Раскладываем число на цифры (младшими разрядами вперёд)
+		while(num != 0){
+			// Добавляем идентификатор числа
+			result.append(1, digits[num % radix]);
+			// Выполняем финальное деление
+			num /= radix;
+		}
+		// Дописываем после старшего разряда знак
+		if(sign) result.append(1, '-');
+		// Выполняем реверс символов в строке
+		reverse(result.begin(), result.end());
+	}
+	// Выводим результат
+	return result;
+}
+/**
  * toLower Метод перевода русских букв в нижний регистр
  * @param str строка для перевода
  * @return    строка в нижнем регистре

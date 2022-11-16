@@ -44,6 +44,9 @@ class WebSocket {
 		client::core_t _core;
 		// Создаём объект REST запроса
 		client::rest_t _rest;
+	private:
+		// Флаг события Web сервера
+		client::rest_t::mode_t _webMode;
 	public:
 		/**
 		 * subscribe Метод подписки на сообщения логов
@@ -201,11 +204,46 @@ class WebSocket {
 				// Выводим сообщение о неудачном запросе
 				this->_log->print("request failed: %u %s", log_t::flag_t::WARNING, res.code, res.message.c_str());
 			// Если тело ответа получено
-			if(!res.entity.empty())
-				// Выводим результат запроса
-				cout << " =========== " << string(res.entity.begin(), res.entity.end()) << endl;
-			// Выполняем отключение ядра
-			this->_main->unbind(&this->_core);
+			if(!res.entity.empty()){
+				/**
+				 * Выполняем обработку ошибки
+				 */
+				try {
+					// Получаем результат
+					const string result(res.entity.begin(), res.entity.end());
+					// Создаём объект JSON
+					json data = json::parse(result);
+					// Выводим полученный результат
+					cout << " =========== " << data.dump(4) << endl;
+				/**
+				 * Если возникает ошибка
+				 */
+				} catch(const exception & error) {
+					// Выводим полученный результат
+					cout << " =========== " << string(res.entity.begin(), res.entity.end()) << endl;
+				}
+			}
+		}
+		/**
+		 * webActive Метод событий подключения и отключения от WEB сервера
+		 * @param web объект веб-клиента
+		 */
+		void webActive(const client::rest_t::mode_t mode, client::rest_t * web){
+			// Запоминаем событие сервера
+			this->_webMode = mode;
+			// Определяем событие WEB клиента
+			switch((uint8_t) this->_webMode){
+				// Если прозошло подключение
+				case (uint8_t) client::rest_t::mode_t::CONNECT:
+					// Выводим информацию в консоль
+					this->_log->print("WEB client: %s", log_t::flag_t::INFO, "CONNECT");
+				break;
+				// Если произошло отключение
+				case (uint8_t) client::rest_t::mode_t::DISCONNECT: {
+					// Выводим информацию в консоль
+					this->_log->print("WEB client: %s", log_t::flag_t::WARNING, "DISCONNECT");
+				} break;
+			}
 		}
 		/**
 		 * message Метод получения сообщений
@@ -222,20 +260,20 @@ class WebSocket {
 					// Выводим полученный результат
 					cout << " +++++++++++++ " << data.dump(4) << " == " << ws->sub() << endl;
 					// Если количество полученных курсов больше десяти тысячь
-					if(this->_count >= 10000){
-						// Обнуляем количество запросов
-						this->_count = 0;
-						// Создаём объект запроса
-						client::rest_t::req_t req;
-						// Устанавливаем URL адрес запроса
-						req.url = this->_uri.parse("https://api.coingecko.com/api/v3/coins/list?include_platform=true");
-						// req.url = this->_uri.parse("https://api.coingecko.com/api/v3/simple/price?ids=tron&vs_currencies=usd");
-						// Устанавливаем метод запроса
-						req.method = web_t::method_t::GET;
-						// Выполняем формирование REST запроса
-						this->_rest.REST({move(req)});
-						// Выполняем подключение ядра
-						this->_main->bind(&this->_core);
+					if(this->_count >= 1000){
+						// Если подключение не выполнено
+						if(this->_webMode == client::rest_t::mode_t::CONNECT){
+							// Обнуляем количество запросов
+							this->_count = 0;
+							// Создаём объект запроса
+							client::rest_t::req_t req;
+							// Устанавливаем метод запроса
+							req.method = web_t::method_t::GET;
+							// Устанавливаем параметры запроса
+							req.query = "/api/v3/time";
+							// Выполняем запрос на сервер
+							this->_rest.send({std::forward <client::rest_t::req_t> (req)});
+						}
 					// Увеличиваем количество запросов
 					} else this->_count++;
 				// Обрабатываем ошибку
@@ -253,24 +291,36 @@ class WebSocket {
 		 * @param fmk  объект фреймворка
 		 * @param core объект основного ядра
 		 */
-		WebSocket(fmk_t * fmk, log_t * log, client::core_t * core) : _fmk(fmk), _log(log), _main(core), _count(0), _nwk(fmk), _uri(fmk, &_nwk), _core(fmk, log), _rest(&_core, fmk, log) {
+		WebSocket(fmk_t * fmk, log_t * log, client::core_t * core) : _fmk(fmk), _log(log), _main(core), _count(0), _nwk(fmk), _uri(fmk, &_nwk), _core(fmk, log), _rest(&_core, fmk, log), _webMode(client::rest_t::mode_t::DISCONNECT) {
 			/**
 			 * 1. Устанавливаем отложенные вызовы
 			 * 2. Устанавливаем ожидание входящих сообщений
 			 * 3. Устанавливаем валидацию SSL сертификата
 			 */
 			this->_rest.mode(
-				// (uint8_t) client::rest_t::flag_t::NOINFO |
-				(uint8_t) client::rest_t::flag_t::WAITMESS |
 				(uint8_t) client::rest_t::flag_t::REDIRECTS |
-				(uint8_t) client::rest_t::flag_t::VERIFYSSL
+				(uint8_t) client::rest_t::flag_t::VERIFYSSL |
+				(uint8_t) client::rest_t::flag_t::KEEPALIVE
 			);
 			// Устанавливаем адрес сертификата
 			this->_core.ca("./ca/cert.pem");
-			// Устанавливаем тип компрессии
-			this->_rest.compress(http_t::compress_t::ALL_COMPRESS);
+			// Переводим клиента в асинхронный режим работы
+			this->_core.mode(client::core_t::mode_t::ASYNC);
+			// Выполняем инициализацию подключения
+			this->_rest.init("https://api2.binance.com");
 			// Устанавливаем метод получения результата
 			this->_rest.on(std::bind(&WebSocket::web, this, _1, _2));
+			// Устанавливаем метод активации подключения
+			this->_rest.on(std::bind(&WebSocket::webActive, this, _1, _2));
+			// Выполняем подключение ядра
+			this->_main->bind(&this->_core);
+		}
+		/**
+		 * ~WebSocket Деструктор
+		 */
+		~WebSocket(){
+			// Выполняем отключение ядра
+			this->_main->unbind(&this->_core);
 		}
 };
 

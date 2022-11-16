@@ -1563,10 +1563,10 @@ awh::client::WebSocket::WebSocket(const client::core_t * core, const fmk_t * fmk
 	this->_scheme.callback.set <void (const char *, const size_t, const size_t, const size_t, awh::core_t *)> ("readProxy", std::bind(&WebSocket::proxyReadCallback, this, _1, _2, _3, _4, _5));
 	// Устанавливаем событие на активацию шифрованного TLS канала
 	this->_scheme.callback.set <bool (const uri_t::url_t &, const size_t, const size_t, awh::core_t *)> ("tls", std::bind(&WebSocket::enableTLSCallback, this, _1, _2, _3, _4));
-	// Активируем асинхронный режим работы
-	const_cast <client::core_t *> (this->_core)->async(true);
 	// Активируем персистентный запуск для работы пингов
 	const_cast <client::core_t *> (this->_core)->persistEnable(true);
 	// Добавляем схему сети в сетевое ядро
 	const_cast <client::core_t *> (this->_core)->add(&this->_scheme);
+	// Активируем асинхронный режим работы
+	const_cast <client::core_t *> (this->_core)->mode(client::core_t::mode_t::ASYNC);
 }

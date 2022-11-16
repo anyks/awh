@@ -1,6 +1,6 @@
 /**
  * @file: rest.hpp
- * @date: 2022-09-03
+ * @date: 2022-11-14
  * @license: GPL-3.0
  *
  * @telegram: @forman
@@ -43,7 +43,7 @@ namespace awh {
 	 */
 	namespace client {
 		/**
-		 * Rest Класс работы с REST клиентом
+		 * Rest Класс работы с Rest клиентом
 		 */
 		typedef class Rest {
 			private:
@@ -64,8 +64,8 @@ namespace awh {
 				 * Режим работы клиента
 				 */
 				enum class mode_t : uint8_t {
-					CONNECT    = 0x01,
-					DISCONNECT = 0x02
+					CONNECT    = 0x01, // Флаг подключения
+					DISCONNECT = 0x02  // Флаг отключения
 				};
 				/**
 				 * Основные флаги приложения
@@ -84,13 +84,13 @@ namespace awh {
 				typedef struct Request {
 					uint8_t attempt;                             // Количество выполненных попыток
 					web_t::method_t method;                      // Метод запроса
-					uri_t::url_t url;                            // Параметры адреса для запроса
+					string query;                                // Строка HTTP запроса
 					vector <char> entity;                        // Тело запроса
 					unordered_multimap <string, string> headers; // Заголовки клиента
 					/**
 					 * Request Конструктор
 					 */
-					Request() noexcept : attempt(0), method(web_t::method_t::NONE) {}
+					Request() noexcept : attempt(0), method(web_t::method_t::NONE), query("") {}
 				} req_t;
 				/**
 				 * Response Структура ответа сервера
@@ -132,7 +132,7 @@ namespace awh {
 					Callback() noexcept : active(nullptr), message(nullptr) {}
 				} fn_t;
 			private:
-				// Объект для работы с сетью
+				// Создаем объект для работы с сетью
 				network_t _nwk;
 			private:
 				// Объект работы с URI ссылками
@@ -141,7 +141,7 @@ namespace awh {
 				http_t _http;
 				// Объявляем функции обратного вызова
 				fn_t _callback;
-				// Объект сетевой схемы
+				// Объект рабочего
 				scheme_t _scheme;
 				// Объект блокировщика
 				locker_t _locker;
@@ -149,7 +149,7 @@ namespace awh {
 				action_t _action;
 			private:
 				// Метод компрессии данных
-				awh::http_t::compress_t _compress;
+				http_t::compress_t _compress;
 			private:
 				// Буфер бинарных данных
 				vector <char> _buffer;
@@ -275,25 +275,6 @@ namespace awh {
 				 * actionProxyConnect Метод обработки экшена подключения к прокси-серверу
 				 */
 				void actionProxyConnect() noexcept;
-			private:
-				/**
-				 * flush Метод сброса параметров запроса
-				 */
-				void flush() noexcept;
-			public:
-				/**
-				 * stop Метод остановки клиента
-				 */
-				void stop() noexcept;
-				/**
-				 * start Метод запуска клиента
-				 */
-				void start() noexcept;
-			public:
-				/**
-				 * close Метод закрытия подключения клиента
-				 */
-				void close() noexcept;
 			public:
 				/**
 				 * GET Метод запроса в формате HTTP методом GET
@@ -408,23 +389,33 @@ namespace awh {
 				unordered_multimap <string, string> OPTIONS(const uri_t::url_t & url, const unordered_multimap <string, string> & headers = {}) noexcept;
 			public:
 				/**
-				 * REST Метод запроса в формате HTTP
-				 * @param request список запросов
+				 * REQUEST Метод выполнения запроса HTTP
+				 * @param method  метод запроса
+				 * @param url     адрес запроса
+				 * @param entity  тело запроса
+				 * @param headers заголовки запроса
 				 */
-				void REST(const vector <req_t> & request) noexcept;
+				void REQUEST(const web_t::method_t method, const uri_t::url_t & url, vector <char> & entity, unordered_multimap <string, string> & headers) noexcept;
+			private:
+				/**
+				 * flush Метод сброса параметров запроса
+				 */
+				void flush() noexcept;
 			public:
 				/**
-				 * sendTimeout Метод отправки сигнала таймаута
+				 * init Метод инициализации REST клиента
+				 * @param url      адрес REST сервера
+				 * @param compress метод компрессии передаваемых сообщений
 				 */
-				void sendTimeout() noexcept;
+				void init(const string & url, const http_t::compress_t compress = http_t::compress_t::ALL_COMPRESS) noexcept;
 			public:
 				/**
-				 * on Метод установки функции обратного вызова при подключении/отключении
+				 * on Метод установки функции обратного вызова на событие запуска или остановки подключения
 				 * @param callback функция обратного вызова
 				 */
 				void on(function <void (const mode_t, Rest *)> callback) noexcept;
 				/**
-				 * setMessageCallback Метод установки функции обратного вызова при получении сообщения
+				 * on Метод установки функции обратного вызова на событие получения сообщений
 				 * @param callback функция обратного вызова
 				 */
 				void on(function <void (const res_t &, Rest *)> callback) noexcept;
@@ -434,6 +425,25 @@ namespace awh {
 				 * @param callback функция обратного вызова
 				 */
 				void on(function <void (const vector <char> &, const awh::http_t *)> callback) noexcept;
+			public:
+				/**
+				 * sendTimeout Метод отправки сигнала таймаута
+				 */
+				void sendTimeout() noexcept;
+				/**
+				 * send Метод отправки сообщения на сервер
+				 * @param reqs список запросов
+				 */
+				void send(const vector <req_t> & reqs = {}) noexcept;
+			public:
+				/**
+				 * stop Метод остановки клиента
+				 */
+				void stop() noexcept;
+				/**
+				 * start Метод запуска клиента
+				 */
+				void start() noexcept;
 			public:
 				/**
 				 * bytesDetect Метод детекции сообщений по количеству байт
@@ -480,7 +490,7 @@ namespace awh {
 				 * compress Метод установки метода компрессии
 				 * @param compress метод компрессии сообщений
 				 */
-				void compress(const awh::http_t::compress_t compress) noexcept;
+				void compress(const http_t::compress_t compress) noexcept;
 				/**
 				 * user Метод установки параметров авторизации
 				 * @param login    логин пользователя для авторизации на сервере

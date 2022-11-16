@@ -204,10 +204,10 @@ void awh::server::Proxy::connectServerCallback(const size_t aid, const size_t si
 			adj->scheme.callback.set <void (const size_t, const size_t, awh::core_t *)> ("disconnect", std::bind(&Proxy::disconnectClientCallback, this, _1, _2, _3));
 			// Устанавливаем функцию чтения данных
 			adj->scheme.callback.set <void (const char *, const size_t, const size_t, const size_t, awh::core_t *)> ("read", std::bind(&Proxy::readClientCallback, this, _1, _2, _3, _4, _5));
-			// Активируем асинхронный режим работы
-			this->_core.client.async(true);
 			// Добавляем схему сети в сетевое ядро
 			this->_core.client.add(&adj->scheme);
+			// Активируем асинхронный режим работы
+			this->_core.client.mode(client::core_t::mode_t::ASYNC);
 			// Создаём пару клиента и сервера
 			this->_scheme.pairs.emplace(adj->scheme.sid, aid);
 		}

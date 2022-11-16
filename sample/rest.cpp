@@ -32,24 +32,50 @@ class WebClient {
 		void active(const client::rest_t::mode_t mode, client::rest_t * web){
 			// Выводим информацию в лог
 			this->_log->print("%s client", log_t::flag_t::INFO, (mode == client::rest_t::mode_t::CONNECT ? "Connect" : "Disconnect"));
+			// Если подключение выполнено
+			if(mode == client::rest_t::mode_t::CONNECT){
+				// Создаём объект запроса
+				client::rest_t::req_t req1, req2;
+				// Устанавливаем метод запроса
+				req1.method = web_t::method_t::GET;
+				// Устанавливаем метод запроса
+				req2.method = web_t::method_t::GET;
+				// Устанавливаем параметры запроса
+				req1.query = "/api/v3/exchangeInfo?symbol=BTCUSDT";
+				// Устанавливаем параметры запроса
+				req2.query = "/api/v3/exchangeInfo";
+				// Выполняем запрос на сервер
+				web->send({req1, req2});
+			}
 		}
 		/**
 		 * message Метод получения сообщений
-		 * @param res объект ответа с Web-сервера
+		 * @param res объект ответа с сервера
 		 * @param web объект WebClient-а
 		 */
 		void message(const client::rest_t::res_t & res, client::rest_t * web){
-			// Переходим по всем заголовкам
-			for(auto & header : res.headers){
-				// Выводим информацию в лог
-				this->_log->print("%s : %s", log_t::flag_t::INFO, header.first.c_str(), header.second.c_str());
+			/**
+			 * Выполняем обработку ошибки
+			 */
+			try {
+				// Переходим по всем заголовкам
+				for(auto & header : res.headers){
+					// Выводим информацию в лог
+					this->_log->print("%s : %s", log_t::flag_t::INFO, header.first.c_str(), header.second.c_str());
+				}
+				// Получаем результат
+				const string result(res.entity.begin(), res.entity.end());
+				// Создаём объект JSON
+				json data = json::parse(result);
+				// Выводим полученный результат
+				cout << " =========== " << data.dump(4) << endl;
+			/**
+			 * Если возникает ошибка
+			 */
+			} catch(const exception & error) {
+				// Выводим полученный результат
+				cout << " =========== " << string(res.entity.begin(), res.entity.end()) << endl;
 			}
-			// Получаем результат
-			const string result(res.entity.begin(), res.entity.end());
-			// Создаём объект JSON
-			json data = json::parse(result);
-			// Выводим полученный результат
-			cout << " =========== " << data.dump(4) << endl;
 			// cout << " =========== " << result << " == " << res.code << " == " << res.ok << endl;
 			// Выполняем остановку
 			web->stop();
@@ -94,9 +120,10 @@ int main(int argc, char * argv[]){
 	 */
 	rest.mode(
 		// (uint8_t) client::rest_t::flag_t::NOINFO |
-		(uint8_t) client::rest_t::flag_t::WAITMESS |
+		// (uint8_t) client::rest_t::flag_t::WAITMESS |
 		(uint8_t) client::rest_t::flag_t::REDIRECTS |
-		(uint8_t) client::rest_t::flag_t::VERIFYSSL
+		(uint8_t) client::rest_t::flag_t::VERIFYSSL // |
+		// (uint8_t) client::rest_t::flag_t::KEEPALIVE
 	);
 	// Устанавливаем простое чтение базы событий
 	// core.easily(true);
@@ -116,7 +143,7 @@ int main(int argc, char * argv[]){
 	// rest.proxy("http://fn3nzc:GZJAeP@217.29.62.232:11283");
 	// rest.proxy("socks5://xYkj89:eqCQJA@85.195.81.167:12387");
 	// Устанавливаем тип компрессии
-	rest.compress(http_t::compress_t::ALL_COMPRESS);
+	// rest.compress(http_t::compress_t::ALL_COMPRESS);
 	// Устанавливаем тип авторизации прокси-сервера
 	// rest.authTypeProxy();
 	// rest.authTypeProxy(auth_t::type_t::DIGEST, auth_t::hash_t::MD5);
@@ -134,30 +161,14 @@ int main(int argc, char * argv[]){
 	// uri_t::url_t url = uri.parse("https://testnet.binance.vision/api/v3/exchangeInfo");
 	// uri_t::url_t url = uri.parse("https://api.coingecko.com/api/v3/coins/list?include_platform=true");
 	// uri_t::url_t url = uri.parse("https://api.coingecko.com/api/v3/simple/price?ids=tron&vs_currencies=usd");
+	/*
 	// Подписываемся на событие коннекта и дисконнекта клиента
 	rest.on(bind(&WebClient::active, &executor, _1, _2));
 	// Подписываемся на событие получения сообщения
-	// rest.on(bind(&WebClient::message, &executor, _1, _2));
-	/*
-	// Список запросов
-	vector <client::rest_t::req_t> request;
-	// Создаём объект запроса
-	client::rest_t::req_t req1, req2, req3;
-	// Устанавливаем URL адрес запроса
-	req1.url = uri.parse("http://127.0.0.1:2222/action/1/?test=12&goga=124");
-	req2.url = uri.parse("http://127.0.0.1:2222/action/2/?test=13&goga=125");
-	req3.url = uri.parse("http://127.0.0.1:2222/action/3/?test=14&goga=126");
-	// Устанавливаем метод запроса
-	req1.method = web_t::method_t::GET;
-	req2.method = web_t::method_t::GET;
-	req3.method = web_t::method_t::GET;
-	// Добавляем объект запроса в список
-	request.push_back(req1);
-	request.push_back(req2);
-	request.push_back(req3);
-	// Формируем запрос
-	rest.REST(request);
-	// Выполняем REST запрос
+	rest.on(bind(&WebClient::message, &executor, _1, _2));
+	// Выполняем инициализацию подключения
+	rest.init("https://api.binance.com");
+	// Выполняем запуск работы
 	rest.start();
 	*/
 	// Замеряем время начала работы

@@ -194,6 +194,8 @@ void awh::client::Core::connect(const size_t sid) noexcept {
 							shm->status.work = scheme_t::work_t::ALLOW;
 							// Устанавливаем статус подключения
 							shm->status.real = scheme_t::mode_t::DISCONNECT;
+							// Устанавливаем флаг ожидания статуса
+							shm->status.wait = scheme_t::mode_t::DISCONNECT;
 							// Выводим сообщение об ошибке
 							this->log->print("encryption mode cannot be activated", log_t::flag_t::CRITICAL);
 							// Выводим сообщение об ошибке
@@ -201,7 +203,7 @@ void awh::client::Core::connect(const size_t sid) noexcept {
 							// Если функция обратного вызова установлена
 							if(shm->callback.is("disconnect"))
 								// Выполняем функцию обратного вызова
-								shm->callback.call <const size_t, const size_t, awh::core_t *> ("disconnect", 0, shm->sid, this);
+								shm->callback.call <const size_t, const size_t, awh::core_t *> ("disconnect", 0, sid, this);
 							// Выходим из функции
 							return;
 						}
@@ -243,6 +245,8 @@ void awh::client::Core::connect(const size_t sid) noexcept {
 						shm->status.work = scheme_t::work_t::ALLOW;
 						// Устанавливаем статус подключения
 						shm->status.real = scheme_t::mode_t::DISCONNECT;
+						// Устанавливаем флаг ожидания статуса
+						shm->status.wait = scheme_t::mode_t::DISCONNECT;
 						// Если unix-сокет используется
 						if(family == scheme_t::family_t::NIX)
 							// Выводим ионформацию об обрыве подключении по unix-сокету
@@ -326,6 +330,8 @@ void awh::client::Core::connect(const size_t sid) noexcept {
 					shm->status.work = scheme_t::work_t::ALLOW;
 					// Устанавливаем статус подключения
 					shm->status.real = scheme_t::mode_t::DISCONNECT;
+					// Устанавливаем флаг ожидания статуса
+					shm->status.wait = scheme_t::mode_t::DISCONNECT;
 					// Выполняем сброс кэша резолвера
 					this->dns.flush();
 					// Определяем тип подключения
@@ -346,7 +352,7 @@ void awh::client::Core::connect(const size_t sid) noexcept {
 					// Если функция обратного вызова установлена
 					if(shm->callback.is("disconnect"))
 						// Выполняем функцию обратного вызова
-						shm->callback.call <const size_t, const size_t, awh::core_t *> ("disconnect", 0, shm->sid, this);
+						shm->callback.call <const size_t, const size_t, awh::core_t *> ("disconnect", 0, sid, this);
 				}
 			}
 		}
@@ -690,14 +696,14 @@ void awh::client::Core::remove() noexcept {
 	}
 }
 /**
- * async Метод активации асинхронного режима работы
- * @param mode флаг активации асинхронного режима работы
+ * mode Метод активации асинхронного режима работы
+ * @param flag флаг активации асинхронного режима работы
  */
-void awh::client::Core::async(const bool mode) noexcept {
+void awh::client::Core::mode(const mode_t flag) noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->_mtx.main);
 	// Устанавливаем флаг активации асинхронного режима работы
-	this->_async = mode;
+	this->_mode = flag;
 }
 /**
  * open Метод открытия подключения
@@ -1111,7 +1117,7 @@ void awh::client::Core::transfer(const engine_t::method_t method, const size_t a
 						// Создаём буфер входящих данных
 						unique_ptr <char []> buffer(new char [size]);
 						// Если нужно использовать асинхронный режим работы
-						if(this->_async)
+						if(this->_mode == mode_t::ASYNC)
 							// Переводим сокет в неблокирующий режим
 							adj->ectx.noblock();
 						// Выполняем чтение данных с сокета
@@ -1169,7 +1175,7 @@ void awh::client::Core::transfer(const engine_t::method_t method, const size_t a
 								// Если данные не получены
 								} else {
 									// Если режим работы асинхронный
-									if(this->_async){
+									if(this->_mode == mode_t::ASYNC){
 										// Если нужно повторить запись
 										if(bytes == -2){
 											// Если подключение ещё существует
@@ -1240,7 +1246,7 @@ void awh::client::Core::transfer(const engine_t::method_t method, const size_t a
 								// Если данные небыли записаны
 								if(bytes <= 0){
 									// Если режим работы асинхронный
-									if(this->_async){
+									if(this->_mode == mode_t::ASYNC){
 										// Если нужно повторить запись
 										if(bytes == -2)
 											// Продолжаем попытку снова
@@ -1353,10 +1359,16 @@ void awh::client::Core::resolving(const size_t sid, const string & ip, const int
 				// Выходим из функции, чтобы попытаться подключиться ещё раз
 				return;
 			}
+			// Разрешаем выполнение работы
+			shm->status.work = scheme_t::work_t::ALLOW;
+			// Устанавливаем статус подключения
+			shm->status.real = scheme_t::mode_t::DISCONNECT;
+			// Устанавливаем флаг ожидания статуса
+			shm->status.wait = scheme_t::mode_t::DISCONNECT;
 			// Если функция обратного вызова установлена
 			if(shm->callback.is("disconnect"))
 				// Выполняем функцию обратного вызова
-				shm->callback.call <const size_t, const size_t, awh::core_t *> ("disconnect", 0, shm->sid, this);
+				shm->callback.call <const size_t, const size_t, awh::core_t *> ("disconnect", 0, sid, this);
 		}
 	}
 }
@@ -1399,7 +1411,7 @@ void awh::client::Core::bandWidth(const size_t aid, const string & read, const s
  * @param family тип протокола интернета (IPV4 / IPV6 / NIX)
  * @param sonet  тип сокета подключения (TCP / UDP)
  */
-awh::client::Core::Core(const fmk_t * fmk, const log_t * log, const scheme_t::family_t family, const scheme_t::sonet_t sonet) noexcept : awh::core_t(fmk, log, family, sonet), _async(false) {
+awh::client::Core::Core(const fmk_t * fmk, const log_t * log, const scheme_t::family_t family, const scheme_t::sonet_t sonet) noexcept : awh::core_t(fmk, log, family, sonet), _mode(mode_t::SYNC) {
 	// Устанавливаем тип запускаемого ядра
 	this->type = engine_t::type_t::CLIENT;
 }
@@ -1411,7 +1423,7 @@ awh::client::Core::Core(const fmk_t * fmk, const log_t * log, const scheme_t::fa
  * @param family      тип протокола интернета (IPV4 / IPV6 / NIX)
  * @param sonet       тип сокета подключения (TCP / UDP)
  */
-awh::client::Core::Core(const affiliation_t affiliation, const fmk_t * fmk, const log_t * log, const scheme_t::family_t family, const scheme_t::sonet_t sonet) noexcept : awh::core_t(affiliation, fmk, log, family, sonet), _async(false) {
+awh::client::Core::Core(const affiliation_t affiliation, const fmk_t * fmk, const log_t * log, const scheme_t::family_t family, const scheme_t::sonet_t sonet) noexcept : awh::core_t(affiliation, fmk, log, family, sonet), _mode(mode_t::SYNC) {
 	// Устанавливаем тип запускаемого ядра
 	this->type = engine_t::type_t::CLIENT;
 }

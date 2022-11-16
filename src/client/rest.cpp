@@ -1,6 +1,6 @@
 /**
  * @file: rest.cpp
- * @date: 2022-09-03
+ * @date: 2022-11-14
  * @license: GPL-3.0
  *
  * @telegram: @forman
@@ -262,26 +262,27 @@ void awh::client::Rest::actionRead() noexcept {
 					// Если попытка повторить авторизацию ещё не проводилась
 					if(request.attempt < this->_attempts){
 						// Получаем новый адрес запроса
-						request.url = this->_http.getUrl();
+						const uri_t::url_t & url = this->_http.getUrl();
 						// Если адрес запроса получен
-						if(!request.url.empty()){
+						if(!url.empty()){
 							// Увеличиваем количество попыток
 							request.attempt++;
+							// Устанавливаем новый адрес запроса
+							this->_scheme.url = std::forward <const uri_t::url_t> (url);
+							// Получаем параметры адреса запроса
+							request.query = this->_uri.query(this->_scheme.url);
 							// Выполняем очистку оставшихся данных
 							this->_buffer.clear();
+							// Если экшен соответствует, выполняем его сброс
+							if(this->_action == action_t::READ)
+								// Выполняем сброс экшена
+								this->_action = action_t::NONE;
 							// Если соединение является постоянным
 							if(this->_http.isAlive())
-								// Устанавливаем новый экшен выполнения
-								this->_action = action_t::CONNECT;
+								// Отправляем повторный запрос
+								this->send();
 							// Если нам необходимо отключиться
-							else {
-								// Если экшен соответствует, выполняем его сброс
-								if(this->_action == action_t::READ)
-									// Выполняем сброс экшена
-									this->_action = action_t::NONE;
-								// Завершаем работу
-								core->close(this->_aid);
-							}
+							else core->close(this->_aid);
 							// Завершаем работу
 							return;
 						}
@@ -385,57 +386,6 @@ void awh::client::Rest::actionRead() noexcept {
  * actionConnect Метод обработки экшена подключения к серверу
  */
 void awh::client::Rest::actionConnect() noexcept {
-	// Выполняем сброс параметров запроса
-	this->flush();
-	// Получаем объект биндинга ядра TCP/IP
-	client::core_t * core = const_cast <client::core_t *> (this->_core);
-	// Выполняем перебор всех подключений
-	for(auto & req : this->_requests){
-		// Выполняем сброс состояния HTTP парсера
-		this->_http.reset();
-		// Выполняем очистку параметров HTTP запроса
-		this->_http.clear();
-		// Устанавливаем метод компрессии
-		this->_http.compress(this->_compress);
-		// Если список заголовков получен
-		if(!req.headers.empty())
-			// Устанавливаем заголовоки запроса
-			this->_http.headers(req.headers);
-		// Если тело запроса существует
-		if(!req.entity.empty())
-			// Устанавливаем тело запроса
-			this->_http.body(req.entity);
-		// Получаем бинарные данные REST запроса
-		const auto & buffer = this->_http.request(req.url, req.method);
-		// Если бинарные данные запроса получены
-		if(!buffer.empty()){
-			/**
-			 * Если включён режим отладки
-			 */
-			#if defined(DEBUG_MODE)
-				// Выводим заголовок запроса
-				cout << "\x1B[33m\x1B[1m^^^^^^^^^ REQUEST ^^^^^^^^^\x1B[0m" << endl;
-				// Выводим параметры запроса
-				cout << string(buffer.begin(), buffer.end()) << endl << endl;
-			#endif
-			// Тело REST сообщения
-			vector <char> entity;
-			// Выполняем отправку заголовков запроса на сервер
-			core->write(buffer.data(), buffer.size(), this->_aid);
-			// Получаем данные тела запроса
-			while(!(entity = this->_http.payload()).empty()){
-				/**
-				 * Если включён режим отладки
-				 */
-				#if defined(DEBUG_MODE)
-					// Выводим сообщение о выводе чанка тела
-					cout << this->_fmk->format("<chunk %u>", entity.size()) << endl;
-				#endif
-				// Выполняем отправку тела запроса на сервер
-				core->write(entity.data(), entity.size(), this->_aid);
-			}
-		}
-	}
 	// Если экшен соответствует, выполняем его сброс
 	if(this->_action == action_t::CONNECT)
 		// Выполняем сброс экшена
@@ -459,16 +409,25 @@ void awh::client::Rest::actionDisconnect() noexcept {
 		   (response.code == 308) || (response.code == 401) || (response.code == 407))){
 			// Если статус ответа требует произвести авторизацию или заголовок перенаправления указан
 			if((response.code == 401) || (response.code == 407) || this->_http.isHeader("location")){
-				// Получаем объект запроса
-				req_t & request = this->_requests.front();
-				// Устанавливаем новый URL адрес запроса
-				request.url = this->_http.getUrl();
 				// Получаем новый адрес запроса
-				this->_scheme.url = request.url;
-				// Выполняем установку следующего экшена на открытие подключения
-				this->_action = action_t::OPEN;
-				// Выходим из функции
-				return;
+				const uri_t::url_t & url = this->_http.getUrl();
+				// Если адрес запроса получен
+				if(!url.empty()){
+					// Получаем объект запроса
+					req_t & request = this->_requests.front();
+					// Увеличиваем количество попыток
+					request.attempt++;
+					// Устанавливаем новый адрес запроса
+					this->_scheme.url = std::forward <const uri_t::url_t> (url);
+					// Получаем параметры адреса запроса
+					request.query = this->_uri.query(this->_scheme.url);
+					// Выполняем очистку оставшихся данных
+					this->_buffer.clear();
+					// Выполняем установку следующего экшена на открытие подключения
+					this->_action = action_t::OPEN;
+					// Завершаем работу
+					return;
+				}
 			}
 		}
 	}
@@ -727,8 +686,6 @@ void awh::client::Rest::actionProxyRead() noexcept {
  * actionProxyConnect Метод обработки экшена подключения к прокси-серверу
  */
 void awh::client::Rest::actionProxyConnect() noexcept {
-	// Получаем объект запроса
-	req_t & request = this->_requests.front();
 	// Получаем объект биндинга ядра TCP/IP
 	client::core_t * core = const_cast <client::core_t *> (this->_core);
 	// Определяем тип прокси-сервера
@@ -738,14 +695,14 @@ void awh::client::Rest::actionProxyConnect() noexcept {
 			// Выполняем сброс состояния Socks5 парсера
 			this->_scheme.proxy.socks5.reset();
 			// Устанавливаем URL адрес запроса
-			this->_scheme.proxy.socks5.url(request.url);
+			this->_scheme.proxy.socks5.url(this->_scheme.url);
 			// Выполняем создание буфера запроса
 			this->_scheme.proxy.socks5.parse();
 			// Получаем данные запроса
 			const auto & buffer = this->_scheme.proxy.socks5.get();
 			// Если данные получены
 			if(!buffer.empty())
-				// Выполняем отправку запроса на сервер
+				// Выполняем отправку сообщения на сервер
 				core->write(buffer.data(), buffer.size(), this->_aid);
 		} break;
 		// Если прокси-сервер является HTTP
@@ -755,7 +712,7 @@ void awh::client::Rest::actionProxyConnect() noexcept {
 			// Выполняем очистку параметров HTTP запроса
 			this->_scheme.proxy.http.clear();
 			// Получаем бинарные данные REST запроса
-			const auto & buffer = this->_scheme.proxy.http.proxy(request.url);
+			const auto & buffer = this->_scheme.proxy.http.proxy(this->_scheme.url);
 			// Если бинарные данные запроса получены
 			if(!buffer.empty()){
 				/**
@@ -767,7 +724,7 @@ void awh::client::Rest::actionProxyConnect() noexcept {
 					// Выводим параметры запроса
 					cout << string(buffer.begin(), buffer.end()) << endl;
 				#endif
-				// Выполняем отправку запроса на сервер
+				// Выполняем отправку сообщения на сервер
 				core->write(buffer.data(), buffer.size(), this->_aid);
 			}
 		} break;
@@ -780,6 +737,325 @@ void awh::client::Rest::actionProxyConnect() noexcept {
 		this->_action = action_t::NONE;
 }
 /**
+ * GET Метод запроса в формате HTTP методом GET
+ * @param url     адрес запроса
+ * @param headers заголовки запроса
+ * @return        результат запроса
+ */
+vector <char> awh::client::Rest::GET(const uri_t::url_t & url, const unordered_multimap <string, string> & headers) noexcept {
+	// Устанавливаем тепло запроса
+	vector <char> result;
+	// Выполняем HTTP запрос на сервер
+	this->REQUEST(web_t::method_t::GET, url, result, * const_cast <unordered_multimap <string, string> *> (&headers));
+	// Выводим результат
+	return result;
+}
+/**
+ * DEL Метод запроса в формате HTTP методом DEL
+ * @param url     адрес запроса
+ * @param headers заголовки запроса
+ * @return        результат запроса
+ */
+vector <char> awh::client::Rest::DEL(const uri_t::url_t & url, const unordered_multimap <string, string> & headers) noexcept {
+	// Устанавливаем тепло запроса
+	vector <char> result;
+	// Выполняем HTTP запрос на сервер
+	this->REQUEST(web_t::method_t::DEL, url, result, * const_cast <unordered_multimap <string, string> *> (&headers));
+	// Выводим результат
+	return result;
+}
+/**
+ * PUT Метод запроса в формате HTTP методом PUT
+ * @param url     адрес запроса
+ * @param entity  тело запроса
+ * @param headers заголовки запроса
+ * @return        результат запроса
+ */
+vector <char> awh::client::Rest::PUT(const uri_t::url_t & url, const json & entity, const unordered_multimap <string, string> & headers) noexcept {
+	// Получаем тело запроса
+	const string body = entity.dump();
+	// Устанавливаем тепло запроса
+	vector <char> result(body.begin(), body.end());
+	// Добавляем заголовок типа контента
+	const_cast <unordered_multimap <string, string> *> (&headers)->emplace("Content-Type", "application/json");
+	// Выполняем HTTP запрос на сервер
+	this->REQUEST(web_t::method_t::PUT, url, result, * const_cast <unordered_multimap <string, string> *> (&headers));
+	// Выводим результат
+	return result;
+}
+/**
+ * PUT Метод запроса в формате HTTP методом PUT
+ * @param url     адрес запроса
+ * @param entity  тело запроса
+ * @param headers заголовки запроса
+ * @return        результат запроса
+ */
+vector <char> awh::client::Rest::PUT(const uri_t::url_t & url, const vector <char> & entity, const unordered_multimap <string, string> & headers) noexcept {
+	// Устанавливаем тепло запроса
+	vector <char> result = std::forward <const vector <char>> (entity);
+	// Выполняем HTTP запрос на сервер
+	this->REQUEST(web_t::method_t::PUT, url, result, * const_cast <unordered_multimap <string, string> *> (&headers));
+	// Выводим результат
+	return result;
+}
+/**
+ * PUT Метод запроса в формате HTTP методом PUT
+ * @param url     адрес запроса
+ * @param entity  тело запроса
+ * @param headers заголовки запроса
+ * @return        результат запроса
+ */
+vector <char> awh::client::Rest::PUT(const uri_t::url_t & url, const unordered_multimap <string, string> & entity, const unordered_multimap <string, string> & headers) noexcept {
+	// Тело в формате X-WWW-Form-Urlencoded
+	string body = "";
+	// Переходим по всему списку тела запроса
+	for(auto & param : entity){
+		// Есди данные уже набраны
+		if(!body.empty()) body.append("&");
+		// Добавляем в список набор параметров
+		body.append(this->_uri.encode(param.first));
+		// Добавляем разделитель
+		body.append("=");
+		// Добавляем значение
+		body.append(this->_uri.encode(param.second));
+	}
+	// Устанавливаем тепло запроса
+	vector <char> result(body.begin(), body.end());
+	// Добавляем заголовок типа контента
+	const_cast <unordered_multimap <string, string> *> (&headers)->emplace("Content-Type", "application/x-www-form-urlencoded");
+	// Выполняем HTTP запрос на сервер
+	this->REQUEST(web_t::method_t::PUT, url, result, * const_cast <unordered_multimap <string, string> *> (&headers));
+	// Выводим результат
+	return result;
+}
+/**
+ * POST Метод запроса в формате HTTP методом POST
+ * @param url     адрес запроса
+ * @param entity  тело запроса
+ * @param headers заголовки запроса
+ * @return        результат запроса
+ */
+vector <char> awh::client::Rest::POST(const uri_t::url_t & url, const json & entity, const unordered_multimap <string, string> & headers) noexcept {
+	// Получаем тело запроса
+	const string body = entity.dump();
+	// Устанавливаем тепло запроса
+	vector <char> result(body.begin(), body.end());
+	// Добавляем заголовок типа контента
+	const_cast <unordered_multimap <string, string> *> (&headers)->emplace("Content-Type", "application/json");
+	// Выполняем HTTP запрос на сервер
+	this->REQUEST(web_t::method_t::POST, url, result, * const_cast <unordered_multimap <string, string> *> (&headers));
+	// Выводим результат
+	return result;
+}
+/**
+ * POST Метод запроса в формате HTTP методом POST
+ * @param url     адрес запроса
+ * @param entity  тело запроса
+ * @param headers заголовки запроса
+ * @return        результат запроса
+ */
+vector <char> awh::client::Rest::POST(const uri_t::url_t & url, const vector <char> & entity, const unordered_multimap <string, string> & headers) noexcept {
+	// Устанавливаем тепло запроса
+	vector <char> result = std::forward <const vector <char>> (entity);
+	// Выполняем HTTP запрос на сервер
+	this->REQUEST(web_t::method_t::POST, url, result, * const_cast <unordered_multimap <string, string> *> (&headers));
+	// Выводим результат
+	return result;
+}
+/**
+ * POST Метод запроса в формате HTTP методом POST
+ * @param url     адрес запроса
+ * @param entity  тело запроса
+ * @param headers заголовки запроса
+ * @return        результат запроса
+ */
+vector <char> awh::client::Rest::POST(const uri_t::url_t & url, const unordered_multimap <string, string> & entity, const unordered_multimap <string, string> & headers) noexcept {
+	// Тело в формате X-WWW-Form-Urlencoded
+	string body = "";
+	// Переходим по всему списку тела запроса
+	for(auto & param : entity){
+		// Есди данные уже набраны
+		if(!body.empty()) body.append("&");
+		// Добавляем в список набор параметров
+		body.append(this->_uri.encode(param.first));
+		// Добавляем разделитель
+		body.append("=");
+		// Добавляем значение
+		body.append(this->_uri.encode(param.second));
+	}
+	// Устанавливаем тепло запроса
+	vector <char> result(body.begin(), body.end());
+	// Добавляем заголовок типа контента
+	const_cast <unordered_multimap <string, string> *> (&headers)->emplace("Content-Type", "application/x-www-form-urlencoded");
+	// Выполняем HTTP запрос на сервер
+	this->REQUEST(web_t::method_t::POST, url, result, * const_cast <unordered_multimap <string, string> *> (&headers));
+	// Выводим результат
+	return result;
+}
+/**
+ * PATCH Метод запроса в формате HTTP методом PATCH
+ * @param url     адрес запроса
+ * @param entity  тело запроса
+ * @param headers заголовки запроса
+ * @return        результат запроса
+ */
+vector <char> awh::client::Rest::PATCH(const uri_t::url_t & url, const json & entity, const unordered_multimap <string, string> & headers) noexcept {
+	// Получаем тело запроса
+	const string body = entity.dump();
+	// Устанавливаем тепло запроса
+	vector <char> result(body.begin(), body.end());
+	// Добавляем заголовок типа контента
+	const_cast <unordered_multimap <string, string> *> (&headers)->emplace("Content-Type", "application/json");
+	// Выполняем HTTP запрос на сервер
+	this->REQUEST(web_t::method_t::PATCH, url, result, * const_cast <unordered_multimap <string, string> *> (&headers));
+	// Выводим результат
+	return result;
+}
+/**
+ * PATCH Метод запроса в формате HTTP методом PATCH
+ * @param url     адрес запроса
+ * @param entity  тело запроса
+ * @param headers заголовки запроса
+ * @return        результат запроса
+ */
+vector <char> awh::client::Rest::PATCH(const uri_t::url_t & url, const vector <char> & entity, const unordered_multimap <string, string> & headers) noexcept {
+	// Устанавливаем тепло запроса
+	vector <char> result = std::forward <const vector <char>> (entity);
+	// Выполняем HTTP запрос на сервер
+	this->REQUEST(web_t::method_t::PATCH, url, result, * const_cast <unordered_multimap <string, string> *> (&headers));
+	// Выводим результат
+	return result;
+}
+/**
+ * PATCH Метод запроса в формате HTTP методом PATCH
+ * @param url     адрес запроса
+ * @param entity  тело запроса
+ * @param headers заголовки запроса
+ * @return        результат запроса
+ */
+vector <char> awh::client::Rest::PATCH(const uri_t::url_t & url, const unordered_multimap <string, string> & entity, const unordered_multimap <string, string> & headers) noexcept {
+	// Тело в формате X-WWW-Form-Urlencoded
+	string body = "";
+	// Переходим по всему списку тела запроса
+	for(auto & param : entity){
+		// Есди данные уже набраны
+		if(!body.empty()) body.append("&");
+		// Добавляем в список набор параметров
+		body.append(this->_uri.encode(param.first));
+		// Добавляем разделитель
+		body.append("=");
+		// Добавляем значение
+		body.append(this->_uri.encode(param.second));
+	}
+	// Устанавливаем тепло запроса
+	vector <char> result(body.begin(), body.end());
+	// Добавляем заголовок типа контента
+	const_cast <unordered_multimap <string, string> *> (&headers)->emplace("Content-Type", "application/x-www-form-urlencoded");
+	// Выполняем HTTP запрос на сервер
+	this->REQUEST(web_t::method_t::PATCH, url, result, * const_cast <unordered_multimap <string, string> *> (&headers));
+	// Выводим результат
+	return result;
+}
+/**
+ * HEAD Метод запроса в формате HTTP методом HEAD
+ * @param url     адрес запроса
+ * @param headers заголовки запроса
+ * @return        результат запроса
+ */
+unordered_multimap <string, string> awh::client::Rest::HEAD(const uri_t::url_t & url, const unordered_multimap <string, string> & headers) noexcept {
+	// Устанавливаем тепло запроса
+	vector <char> entity;
+	// Результат работы функции
+	unordered_multimap <string, string> result = std::forward <const unordered_multimap <string, string>> (headers);
+	// Выполняем HTTP запрос на сервер
+	this->REQUEST(web_t::method_t::HEAD, url, entity, result);
+	// Выводим результат
+	return result;
+}
+/**
+ * TRACE Метод запроса в формате HTTP методом TRACE
+ * @param url     адрес запроса
+ * @param headers заголовки запроса
+ * @return        результат запроса
+ */
+unordered_multimap <string, string> awh::client::Rest::TRACE(const uri_t::url_t & url, const unordered_multimap <string, string> & headers) noexcept {
+	// Устанавливаем тепло запроса
+	vector <char> entity;
+	// Результат работы функции
+	unordered_multimap <string, string> result = std::forward <const unordered_multimap <string, string>> (headers);
+	// Выполняем HTTP запрос на сервер
+	this->REQUEST(web_t::method_t::TRACE, url, entity, result);
+	// Выводим результат
+	return result;
+}
+/**
+ * OPTIONS Метод запроса в формате HTTP методом OPTIONS
+ * @param url     адрес запроса
+ * @param headers заголовки запроса
+ * @return        результат запроса
+ */
+unordered_multimap <string, string> awh::client::Rest::OPTIONS(const uri_t::url_t & url, const unordered_multimap <string, string> & headers) noexcept {
+	// Устанавливаем тепло запроса
+	vector <char> entity;
+	// Результат работы функции
+	unordered_multimap <string, string> result = std::forward <const unordered_multimap <string, string>> (headers);
+	// Выполняем HTTP запрос на сервер
+	this->REQUEST(web_t::method_t::OPTIONS, url, entity, result);
+	// Выводим результат
+	return result;
+}
+/**
+ * REQUEST Метод выполнения запроса HTTP
+ * @param method  метод запроса
+ * @param url     адрес запроса
+ * @param entity  тело запроса
+ * @param headers заголовки запроса
+ */
+void awh::client::Rest::REQUEST(const web_t::method_t method, const uri_t::url_t & url, vector <char> & entity, unordered_multimap <string, string> & headers) noexcept {
+	// Если данные запроса переданы
+	if(!url.empty()){
+		// Подписываемся на событие коннекта и дисконнекта клиента
+		this->on([method, &url, &entity, &headers](const rest_t::mode_t mode, rest_t * web) noexcept {
+			// Если подключение выполнено
+			if(mode == client::rest_t::mode_t::CONNECT){
+				// Создаём объект запроса
+				req_t req;
+				// Устанавливаем метод запроса
+				req.method = method;
+				// Устанавливаем тепло запроса
+				req.entity = std::forward <const vector <char>> (entity);
+				// Устанавливаем параметры запроса
+				req.query = std::forward <const string> (web->_uri.query(url));
+				// Запоминаем переданные заголовки
+				req.headers = std::forward <const unordered_multimap <string, string>> (headers);
+				// Выполняем запрос на сервер
+				web->send({std::forward <req_t> (req)});
+			// Выполняем остановку работы модуля
+			} else web->stop();
+		});
+		// Подписываемся на событие получения сообщения
+		this->on([&entity, &headers](const res_t & res, rest_t * web) noexcept {
+			// Проверяем на наличие ошибок
+			if(res.code >= 300)
+				// Выводим сообщение о неудачном запросе
+				web->_log->print("request failed: %u %s", log_t::flag_t::WARNING, res.code, res.message.c_str());
+			// Если тело ответа получено
+			if(!res.entity.empty()){
+				// Формируем результат ответа
+				entity = std::forward <const vector <char>> (res.entity);
+				// Формируем список заголовков
+				headers = std::forward <const unordered_multimap <string, string>> (res.headers);
+			}
+			// Выполняем остановку
+			web->stop();
+		});
+		// Выполняем инициализацию подключения
+		this->init(this->_uri.origin(url));
+		// Выполняем запуск работы
+		this->start();
+	}
+}
+/**
  * flush Метод сброса параметров запроса
  */
 void awh::client::Rest::flush() noexcept {
@@ -789,6 +1065,146 @@ void awh::client::Rest::flush() noexcept {
 	this->_stopped = false;
 	// Выполняем очистку оставшихся данных
 	this->_buffer.clear();
+}
+/**
+ * init Метод инициализации REST клиента
+ * @param url      адрес REST сервера
+ * @param compress метод компрессии передаваемых сообщений
+ */
+void awh::client::Rest::init(const string & url, const http_t::compress_t compress) noexcept {
+	// Если unix-сокет установлен
+	if(this->_core->family() == scheme_t::family_t::NIX){
+		// Выполняем очистку схемы сети
+		this->_scheme.clear();
+		// Устанавливаем метод компрессии сообщений
+		this->_compress = compress;
+		// Устанавливаем URL адрес запроса (как заглушка)
+		this->_scheme.url = this->_uri.parse("http://unixsocket");
+		/**
+		 * Если операционной системой не является Windows
+		 */
+		#if !defined(_WIN32) && !defined(_WIN64)
+			// Выполняем установку unix-сокета 
+			const_cast <client::core_t *> (this->_core)->unixSocket(url);
+		#endif
+	// Если адрес сервера передан
+	} else if(!url.empty()) {
+		// Выполняем очистку схемы сети
+		this->_scheme.clear();
+		// Устанавливаем URL адрес запроса
+		this->_scheme.url = this->_uri.parse(url);
+		/**
+		 * Если операционной системой не является Windows
+		 */
+		#if !defined(_WIN32) && !defined(_WIN64)
+			// Удаляем unix-сокет ранее установленный
+			const_cast <client::core_t *> (this->_core)->removeUnixSocket();
+		#endif
+	}
+	// Устанавливаем метод компрессии сообщений
+	this->_compress = compress;
+}
+/**
+ * on Метод установки функции обратного вызова на событие запуска или остановки подключения
+ * @param callback функция обратного вызова
+ */
+void awh::client::Rest::on(function <void (const mode_t, Rest *)> callback) noexcept {
+	// Устанавливаем функцию обратного вызова
+	this->_callback.active = callback;
+}
+/**
+ * on Метод установки функции обратного вызова на событие получения сообщений
+ * @param callback функция обратного вызова
+ */
+void awh::client::Rest::on(function <void (const res_t &, Rest *)> callback) noexcept {
+	// Устанавливаем функцию обратного вызова
+	this->_callback.message = callback;
+}
+/**
+ * on Метод установки функции обратного вызова для получения чанков
+ * @param callback функция обратного вызова
+ */
+void awh::client::Rest::on(function <void (const vector <char> &, const awh::http_t *)> callback) noexcept {
+	// Устанавливаем функцию обработки вызова для получения чанков
+	this->_http.chunking(callback);
+}
+/**
+ * sendTimeout Метод отправки сигнала таймаута
+ */
+void awh::client::Rest::sendTimeout() noexcept {
+	// Если подключение выполнено
+	if(this->_core->working())
+		// Отправляем сигнал принудительного таймаута
+		const_cast <client::core_t *> (this->_core)->sendTimeout(this->_aid);
+}
+/**
+ * send Метод отправки сообщения на сервер
+ * @param reqs список запросов
+ */
+void awh::client::Rest::send(const vector <req_t> & reqs) noexcept {
+	// Если список запросов установлен
+	if(!reqs.empty() || !this->_requests.empty()){
+		// Выполняем сброс параметров запроса
+		this->flush();
+		// Если объект списка запросов не существует
+		if(this->_requests.empty()){
+			// Добавляем объект ответа в список ответов
+			this->_responses.assign(reqs.size(), res_t());
+			// Выполняем получение списка запросов
+			this->_requests = std::forward <const vector <req_t>> (reqs);
+		}
+		// Получаем объект биндинга ядра TCP/IP
+		client::core_t * core = const_cast <client::core_t *> (this->_core);
+		// Выполняем перебор всех подключений
+		for(auto & req : this->_requests){
+			// Выполняем сброс состояния HTTP парсера
+			this->_http.reset();
+			// Выполняем очистку параметров HTTP запроса
+			this->_http.clear();
+			// Устанавливаем метод компрессии
+			this->_http.compress(this->_compress);
+			// Если список заголовков получен
+			if(!req.headers.empty())
+				// Устанавливаем заголовоки запроса
+				this->_http.headers(req.headers);
+			// Если тело запроса существует
+			if(!req.entity.empty())
+				// Устанавливаем тело запроса
+				this->_http.body(req.entity);			
+			// Получаем URL ссылку для выполнения запроса
+			this->_uri.append(this->_scheme.url, req.query);
+			// Получаем бинарные данные REST запроса
+			const auto & buffer = this->_http.request(this->_scheme.url, req.method);
+			// Если бинарные данные запроса получены
+			if(!buffer.empty()){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Выводим заголовок запроса
+					cout << "\x1B[33m\x1B[1m^^^^^^^^^ REQUEST ^^^^^^^^^\x1B[0m" << endl;
+					// Выводим параметры запроса
+					cout << string(buffer.begin(), buffer.end()) << endl << endl;
+				#endif
+				// Тело REST сообщения
+				vector <char> entity;
+				// Выполняем отправку заголовков запроса на сервер
+				core->write(buffer.data(), buffer.size(), this->_aid);
+				// Получаем данные тела запроса
+				while(!(entity = this->_http.payload()).empty()){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Выводим сообщение о выводе чанка тела
+						cout << this->_fmk->format("<chunk %u>", entity.size()) << endl;
+					#endif
+					// Выполняем отправку тела запроса на сервер
+					core->write(entity.data(), entity.size(), this->_aid);
+				}
+			}
+		}
+	}
 }
 /**
  * stop Метод остановки клиента
@@ -805,737 +1221,37 @@ void awh::client::Rest::stop() noexcept {
 		// Очищаем адрес сервера
 		this->_scheme.url.clear();
 		// Завершаем работу, если разрешено остановить
-		const_cast <client::core_t *> (this->_core)->stop();
+		if(this->_unbind) const_cast <client::core_t *> (this->_core)->stop();
+		// Если завершать работу запрещено, просто отключаемся
+		else {
+			/**
+			 * Если установлено постоянное подключение
+			 * нам нужно заблокировать автоматический реконнект.
+			 */
+			// Считываем значение флага
+			const bool alive = this->_scheme.alive;
+			// Выполняем отключение флага постоянного подключения
+			this->_scheme.alive = false;
+			// Выполняем отключение клиента
+			const_cast <client::core_t *> (this->_core)->close(this->_aid);
+			// Восстанавливаем предыдущее значение флага
+			this->_scheme.alive = alive;
+		}
 	}
 }
 /**
  * start Метод запуска клиента
  */
 void awh::client::Rest::start() noexcept {
-	// Если биндинг не запущен
-	if(!this->_core->working())
-		// Выполняем запуск биндинга
-		const_cast <client::core_t *> (this->_core)->start();
-	// Если биндинг уже запущен, выполняем запрос на сервер
-	else const_cast <client::core_t *> (this->_core)->open(this->_scheme.sid);
-}
-/**
- * close Метод закрытия подключения клиента
- */
-void awh::client::Rest::close() noexcept {
-	// Устанавливаем флаг принудительной остановки
-	this->_active = true;
-	// Если подключение выполнено
-	if(this->_core->working())
-		// Завершаем работу, если разрешено остановить
-		const_cast <client::core_t *> (this->_core)->close(this->_aid);
-}
-/**
- * GET Метод REST запроса
- * @param url     адрес запроса
- * @param headers список http заголовков
- * @return        результат запроса
- */
-vector <char> awh::client::Rest::GET(const uri_t::url_t & url, const unordered_multimap <string, string> & headers) noexcept {
-	// Результат работы функции
-	vector <char> result;
-	// Если данные запроса переданы
-	if(!url.empty()){
-		// Создаём объект запроса
-		req_t req;
-		// Устанавливаем URL адрес запроса
-		req.url = url;
-		// Запоминаем переданные заголовки
-		req.headers = headers;
-		// Устанавливаем метод запроса
-		req.method = web_t::method_t::GET;
-		// Подписываемся на событие получения сообщения
-		this->on([&result](const res_t & res, rest_t * web) noexcept {
-			// Проверяем на наличие ошибок
-			if(res.code >= 300)
-				// Выводим сообщение о неудачном запросе
-				web->_log->print("request failed: %u %s", log_t::flag_t::WARNING, res.code, res.message.c_str());
-			// Если тело ответа получено
-			if(!res.entity.empty())
-				// Формируем результат ответа
-				result.assign(res.entity.begin(), res.entity.end());
-			// Выполняем остановку
-			web->stop();
-		});
-		// Выполняем формирование REST запроса
-		this->REST({std::forward <req_t> (req)});
-		// Запускаем выполнение запроса
-		this->start();
+	// Если адрес URL запроса передан
+	if(!this->_scheme.url.empty()){
+		// Если биндинг не запущен
+		if(!this->_core->working())
+			// Выполняем запуск биндинга
+			const_cast <client::core_t *> (this->_core)->start();
+		// Если биндинг уже запущен, выполняем запрос на сервер
+		else const_cast <client::core_t *> (this->_core)->open(this->_scheme.sid);
 	}
-	// Выводим результат
-	return result;
-}
-/**
- * DEL Метод запроса в формате HTTP методом DEL
- * @param url     адрес запроса
- * @param headers заголовки запроса
- * @return        результат запроса
- */
-vector <char> awh::client::Rest::DEL(const uri_t::url_t & url, const unordered_multimap <string, string> & headers) noexcept {
-	// Результат работы функции
-	vector <char> result;
-	// Если данные запроса переданы
-	if(!url.empty()){
-		// Создаём объект запроса
-		req_t req;
-		// Устанавливаем URL адрес запроса
-		req.url = url;
-		// Запоминаем переданные заголовки
-		req.headers = headers;
-		// Устанавливаем метод запроса
-		req.method = web_t::method_t::DEL;
-		// Подписываемся на событие получения сообщения
-		this->on([&result](const res_t & res, rest_t * web) noexcept {
-			// Проверяем на наличие ошибок
-			if(res.code >= 300)
-				// Выводим сообщение о неудачном запросе
-				web->_log->print("request failed: %u %s", log_t::flag_t::WARNING, res.code, res.message.c_str());
-			// Если тело ответа получено
-			if(!res.entity.empty())
-				// Формируем результат ответа
-				result.assign(res.entity.begin(), res.entity.end());
-			// Выполняем остановку
-			web->stop();
-		});
-		// Выполняем формирование REST запроса
-		this->REST({std::forward <req_t> (req)});
-		// Запускаем выполнение запроса
-		this->start();
-	}
-	// Выводим результат
-	return result;
-}
-/**
- * PUT Метод запроса в формате HTTP методом PUT
- * @param url     адрес запроса
- * @param entity  тело запроса
- * @param headers заголовки запроса
- * @return        результат запроса
- */
-vector <char> awh::client::Rest::PUT(const uri_t::url_t & url, const json & entity, const unordered_multimap <string, string> & headers) noexcept {
-	// Результат работы функции
-	vector <char> result;
-	// Если данные запроса переданы
-	if(!url.empty() && !entity.empty()){
-		// Создаём объект запроса
-		req_t req;
-		// Устанавливаем URL адрес запроса
-		req.url = url;
-		// Запоминаем переданные заголовки
-		req.headers = headers;
-		// Устанавливаем метод запроса
-		req.method = web_t::method_t::PUT;
-		// Получаем тело запроса
-		const string body = entity.dump();
-		// Устанавливаем тепло запроса
-		req.entity.assign(body.begin(), body.end());
-		// Добавляем заголовок типа контента
-		req.headers.emplace("Content-Type", "application/json");
-		// Подписываемся на событие получения сообщения
-		this->on([&result](const res_t & res, rest_t * web) noexcept {
-			// Проверяем на наличие ошибок
-			if(res.code >= 300)
-				// Выводим сообщение о неудачном запросе
-				web->_log->print("request failed: %u %s", log_t::flag_t::WARNING, res.code, res.message.c_str());
-			// Если тело ответа получено
-			if(!res.entity.empty())
-				// Формируем результат ответа
-				result.assign(res.entity.begin(), res.entity.end());
-			// Выполняем остановку
-			web->stop();
-		});
-		// Выполняем формирование REST запроса
-		this->REST({std::forward <req_t> (req)});
-		// Запускаем выполнение запроса
-		this->start();
-	}
-	// Выводим результат
-	return result;
-}
-/**
- * PUT Метод запроса в формате HTTP методом PUT
- * @param url     адрес запроса
- * @param entity  тело запроса
- * @param headers заголовки запроса
- * @return        результат запроса
- */
-vector <char> awh::client::Rest::PUT(const uri_t::url_t & url, const vector <char> & entity, const unordered_multimap <string, string> & headers) noexcept {
-	// Результат работы функции
-	vector <char> result;
-	// Если данные запроса переданы
-	if(!url.empty()){
-		// Создаём объект запроса
-		req_t req;
-		// Устанавливаем URL адрес запроса
-		req.url = url;
-		// Устанавливаем тепло запроса
-		req.entity = entity;
-		// Запоминаем переданные заголовки
-		req.headers = headers;
-		// Устанавливаем метод запроса
-		req.method = web_t::method_t::PUT;
-		// Подписываемся на событие получения сообщения
-		this->on([&result](const res_t & res, rest_t * web) noexcept {
-			// Проверяем на наличие ошибок
-			if(res.code >= 300)
-				// Выводим сообщение о неудачном запросе
-				web->_log->print("request failed: %u %s", log_t::flag_t::WARNING, res.code, res.message.c_str());
-			// Если тело ответа получено
-			if(!res.entity.empty())
-				// Формируем результат ответа
-				result.assign(res.entity.begin(), res.entity.end());
-			// Выполняем остановку
-			web->stop();
-		});
-		// Выполняем формирование REST запроса
-		this->REST({std::forward <req_t> (req)});
-		// Запускаем выполнение запроса
-		this->start();
-	}
-	// Выводим результат
-	return result;
-}
-/**
- * PUT Метод запроса в формате HTTP методом PUT
- * @param url     адрес запроса
- * @param entity  тело запроса
- * @param headers заголовки запроса
- * @return        результат запроса
- */
-vector <char> awh::client::Rest::PUT(const uri_t::url_t & url, const unordered_multimap <string, string> & entity, const unordered_multimap <string, string> & headers) noexcept {
-	// Результат работы функции
-	vector <char> result;
-	// Если данные запроса переданы
-	if(!url.empty() && !entity.empty()){
-		// Создаём объект запроса
-		req_t req;
-		// Устанавливаем URL адрес запроса
-		req.url = url;
-		// Тело в формате X-WWW-Form-Urlencoded
-		string body = "";
-		// Переходим по всему списку тела запроса
-		for(auto & param : entity){
-			// Есди данные уже набраны
-			if(!body.empty()) body.append("&");
-			// Добавляем в список набор параметров
-			body.append(this->_uri.encode(param.first));
-			// Добавляем разделитель
-			body.append("=");
-			// Добавляем значение
-			body.append(this->_uri.encode(param.second));
-		}
-		// Запоминаем переданные заголовки
-		req.headers = headers;
-		// Устанавливаем метод запроса
-		req.method = web_t::method_t::PUT;
-		// Устанавливаем тепло запроса
-		req.entity.assign(body.begin(), body.end());
-		// Добавляем заголовок типа контента
-		req.headers.emplace("Content-Type", "application/x-www-form-urlencoded");
-		// Подписываемся на событие получения сообщения
-		this->on([&result](const res_t & res, rest_t * web) noexcept {
-			// Проверяем на наличие ошибок
-			if(res.code >= 300)
-				// Выводим сообщение о неудачном запросе
-				web->_log->print("request failed: %u %s", log_t::flag_t::WARNING, res.code, res.message.c_str());
-			// Если тело ответа получено
-			if(!res.entity.empty())
-				// Формируем результат ответа
-				result.assign(res.entity.begin(), res.entity.end());
-			// Выполняем остановку
-			web->stop();
-		});
-		// Выполняем формирование REST запроса
-		this->REST({std::forward <req_t> (req)});
-		// Запускаем выполнение запроса
-		this->start();
-	}
-	// Выводим результат
-	return result;
-}
-/**
- * POST Метод запроса в формате HTTP методом POST
- * @param url     адрес запроса
- * @param entity  тело запроса
- * @param headers заголовки запроса
- * @return        результат запроса
- */
-vector <char> awh::client::Rest::POST(const uri_t::url_t & url, const json & entity, const unordered_multimap <string, string> & headers) noexcept {
-	// Результат работы функции
-	vector <char> result;
-	// Если данные запроса переданы
-	if(!url.empty() && !entity.empty()){
-		// Создаём объект запроса
-		req_t req;
-		// Устанавливаем URL адрес запроса
-		req.url = url;
-		// Запоминаем переданные заголовки
-		req.headers = headers;
-		// Устанавливаем метод запроса
-		req.method = web_t::method_t::POST;
-		// Получаем тело запроса
-		const string body = entity.dump();
-		// Устанавливаем тепло запроса
-		req.entity.assign(body.begin(), body.end());
-		// Добавляем заголовок типа контента
-		req.headers.emplace("Content-Type", "application/json");
-		// Подписываемся на событие получения сообщения
-		this->on([&result](const res_t & res, rest_t * web) noexcept {
-			// Проверяем на наличие ошибок
-			if(res.code >= 300)
-				// Выводим сообщение о неудачном запросе
-				web->_log->print("request failed: %u %s", log_t::flag_t::WARNING, res.code, res.message.c_str());
-			// Если тело ответа получено
-			if(!res.entity.empty())
-				// Формируем результат ответа
-				result.assign(res.entity.begin(), res.entity.end());
-			// Выполняем остановку
-			web->stop();
-		});
-		// Выполняем формирование REST запроса
-		this->REST({std::forward <req_t> (req)});
-		// Запускаем выполнение запроса
-		this->start();
-	}
-	// Выводим результат
-	return result;
-}
-/**
- * POST Метод запроса в формате HTTP методом POST
- * @param url     адрес запроса
- * @param entity  тело запроса
- * @param headers заголовки запроса
- * @return        результат запроса
- */
-vector <char> awh::client::Rest::POST(const uri_t::url_t & url, const vector <char> & entity, const unordered_multimap <string, string> & headers) noexcept {
-	// Результат работы функции
-	vector <char> result;
-	// Если данные запроса переданы
-	if(!url.empty()){
-		// Создаём объект запроса
-		req_t req;
-		// Устанавливаем URL адрес запроса
-		req.url = url;
-		// Устанавливаем тепло запроса
-		req.entity = entity;
-		// Запоминаем переданные заголовки
-		req.headers = headers;
-		// Устанавливаем метод запроса
-		req.method = web_t::method_t::POST;
-		// Подписываемся на событие получения сообщения
-		this->on([&result](const res_t & res, rest_t * web) noexcept {
-			// Проверяем на наличие ошибок
-			if(res.code >= 300)
-				// Выводим сообщение о неудачном запросе
-				web->_log->print("request failed: %u %s", log_t::flag_t::WARNING, res.code, res.message.c_str());
-			// Если тело ответа получено
-			if(!res.entity.empty())
-				// Формируем результат ответа
-				result.assign(res.entity.begin(), res.entity.end());
-			// Выполняем остановку
-			web->stop();
-		});
-		// Выполняем формирование REST запроса
-		this->REST({std::forward <req_t> (req)});
-		// Запускаем выполнение запроса
-		this->start();
-	}
-	// Выводим результат
-	return result;
-}
-/**
- * POST Метод запроса в формате HTTP методом POST
- * @param url     адрес запроса
- * @param entity  тело запроса
- * @param headers заголовки запроса
- * @return        результат запроса
- */
-vector <char> awh::client::Rest::POST(const uri_t::url_t & url, const unordered_multimap <string, string> & entity, const unordered_multimap <string, string> & headers) noexcept {
-	// Результат работы функции
-	vector <char> result;
-	// Если данные запроса переданы
-	if(!url.empty() && !entity.empty()){
-		// Создаём объект запроса
-		req_t req;
-		// Устанавливаем URL адрес запроса
-		req.url = url;
-		// Тело в формате X-WWW-Form-Urlencoded
-		string body = "";
-		// Переходим по всему списку тела запроса
-		for(auto & param : entity){
-			// Есди данные уже набраны
-			if(!body.empty()) body.append("&");
-			// Добавляем в список набор параметров
-			body.append(this->_uri.encode(param.first));
-			// Добавляем разделитель
-			body.append("=");
-			// Добавляем значение
-			body.append(this->_uri.encode(param.second));
-		}
-		// Запоминаем переданные заголовки
-		req.headers = headers;
-		// Устанавливаем метод запроса
-		req.method = web_t::method_t::POST;
-		// Устанавливаем тепло запроса
-		req.entity.assign(body.begin(), body.end());
-		// Добавляем заголовок типа контента
-		req.headers.emplace("Content-Type", "application/x-www-form-urlencoded");
-		// Подписываемся на событие получения сообщения
-		this->on([&result](const res_t & res, rest_t * web) noexcept {
-			// Проверяем на наличие ошибок
-			if(res.code >= 300)
-				// Выводим сообщение о неудачном запросе
-				web->_log->print("request failed: %u %s", log_t::flag_t::WARNING, res.code, res.message.c_str());
-			// Если тело ответа получено
-			if(!res.entity.empty())
-				// Формируем результат ответа
-				result.assign(res.entity.begin(), res.entity.end());
-			// Выполняем остановку
-			web->stop();
-		});
-		// Выполняем формирование REST запроса
-		this->REST({std::forward <req_t> (req)});
-		// Запускаем выполнение запроса
-		this->start();
-	}
-	// Выводим результат
-	return result;
-}
-/**
- * PATCH Метод запроса в формате HTTP методом PATCH
- * @param url     адрес запроса
- * @param entity  тело запроса
- * @param headers заголовки запроса
- * @return        результат запроса
- */
-vector <char> awh::client::Rest::PATCH(const uri_t::url_t & url, const json & entity, const unordered_multimap <string, string> & headers) noexcept {
-	// Результат работы функции
-	vector <char> result;
-	// Если данные запроса переданы
-	if(!url.empty() && !entity.empty()){
-		// Создаём объект запроса
-		req_t req;
-		// Устанавливаем URL адрес запроса
-		req.url = url;
-		// Запоминаем переданные заголовки
-		req.headers = headers;
-		// Устанавливаем метод запроса
-		req.method = web_t::method_t::PATCH;
-		// Получаем тело запроса
-		const string body = entity.dump();
-		// Устанавливаем тепло запроса
-		req.entity.assign(body.begin(), body.end());
-		// Добавляем заголовок типа контента
-		req.headers.emplace("Content-Type", "application/json");
-		// Подписываемся на событие получения сообщения
-		this->on([&result](const res_t & res, rest_t * web) noexcept {
-			// Проверяем на наличие ошибок
-			if(res.code >= 300)
-				// Выводим сообщение о неудачном запросе
-				web->_log->print("request failed: %u %s", log_t::flag_t::WARNING, res.code, res.message.c_str());
-			// Если тело ответа получено
-			if(!res.entity.empty())
-				// Формируем результат ответа
-				result.assign(res.entity.begin(), res.entity.end());
-			// Выполняем остановку
-			web->stop();
-		});
-		// Выполняем формирование REST запроса
-		this->REST({std::forward <req_t> (req)});
-		// Запускаем выполнение запроса
-		this->start();
-	}
-	// Выводим результат
-	return result;
-}
-/**
- * PATCH Метод запроса в формате HTTP методом PATCH
- * @param url     адрес запроса
- * @param entity  тело запроса
- * @param headers заголовки запроса
- * @return        результат запроса
- */
-vector <char> awh::client::Rest::PATCH(const uri_t::url_t & url, const vector <char> & entity, const unordered_multimap <string, string> & headers) noexcept {
-	// Результат работы функции
-	vector <char> result;
-	// Если данные запроса переданы
-	if(!url.empty()){
-		// Создаём объект запроса
-		req_t req;
-		// Устанавливаем URL адрес запроса
-		req.url = url;
-		// Устанавливаем тепло запроса
-		req.entity = entity;
-		// Запоминаем переданные заголовки
-		req.headers = headers;
-		// Устанавливаем метод запроса
-		req.method = web_t::method_t::PATCH;
-		// Подписываемся на событие получения сообщения
-		this->on([&result](const res_t & res, rest_t * web) noexcept {
-			// Проверяем на наличие ошибок
-			if(res.code >= 300)
-				// Выводим сообщение о неудачном запросе
-				web->_log->print("request failed: %u %s", log_t::flag_t::WARNING, res.code, res.message.c_str());
-			// Если тело ответа получено
-			if(!res.entity.empty())
-				// Формируем результат ответа
-				result.assign(res.entity.begin(), res.entity.end());
-			// Выполняем остановку
-			web->stop();
-		});
-		// Выполняем формирование REST запроса
-		this->REST({std::forward <req_t> (req)});
-		// Запускаем выполнение запроса
-		this->start();
-	}
-	// Выводим результат
-	return result;
-}
-/**
- * PATCH Метод запроса в формате HTTP методом PATCH
- * @param url     адрес запроса
- * @param entity  тело запроса
- * @param headers заголовки запроса
- * @return        результат запроса
- */
-vector <char> awh::client::Rest::PATCH(const uri_t::url_t & url, const unordered_multimap <string, string> & entity, const unordered_multimap <string, string> & headers) noexcept {
-	// Результат работы функции
-	vector <char> result;
-	// Если данные запроса переданы
-	if(!url.empty() && !entity.empty()){
-		// Создаём объект запроса
-		req_t req;
-		// Устанавливаем URL адрес запроса
-		req.url = url;
-		// Тело в формате X-WWW-Form-Urlencoded
-		string body = "";
-		// Переходим по всему списку тела запроса
-		for(auto & param : entity){
-			// Есди данные уже набраны
-			if(!body.empty()) body.append("&");
-			// Добавляем в список набор параметров
-			body.append(this->_uri.encode(param.first));
-			// Добавляем разделитель
-			body.append("=");
-			// Добавляем значение
-			body.append(this->_uri.encode(param.second));
-		}
-		// Запоминаем переданные заголовки
-		req.headers = headers;
-		// Устанавливаем метод запроса
-		req.method = web_t::method_t::PATCH;
-		// Устанавливаем тепло запроса
-		req.entity.assign(body.begin(), body.end());
-		// Добавляем заголовок типа контента
-		req.headers.emplace("Content-Type", "application/x-www-form-urlencoded");
-		// Подписываемся на событие получения сообщения
-		this->on([&result](const res_t & res, rest_t * web) noexcept {
-			// Проверяем на наличие ошибок
-			if(res.code >= 300)
-				// Выводим сообщение о неудачном запросе
-				web->_log->print("request failed: %u %s", log_t::flag_t::WARNING, res.code, res.message.c_str());
-			// Если тело ответа получено
-			if(!res.entity.empty())
-				// Формируем результат ответа
-				result.assign(res.entity.begin(), res.entity.end());
-			// Выполняем остановку
-			web->stop();
-		});
-		// Выполняем формирование REST запроса
-		this->REST({std::forward <req_t> (req)});
-		// Запускаем выполнение запроса
-		this->start();
-	}
-	// Выводим результат
-	return result;
-}
-/**
- * HEAD Метод запроса в формате HTTP методом HEAD
- * @param url     адрес запроса
- * @param headers заголовки запроса
- * @return        результат запроса
- */
-unordered_multimap <string, string> awh::client::Rest::HEAD(const uri_t::url_t & url, const unordered_multimap <string, string> & headers) noexcept {
-	// Результат работы функции
-	unordered_multimap <string, string> result;
-	// Если данные запроса переданы
-	if(!url.empty()){
-		// Создаём объект запроса
-		req_t req;
-		// Устанавливаем URL адрес запроса
-		req.url = url;
-		// Запоминаем переданные заголовки
-		req.headers = headers;
-		// Устанавливаем метод запроса
-		req.method = web_t::method_t::HEAD;
-		// Подписываемся на событие получения сообщения
-		this->on([&result](const res_t & res, rest_t * web) noexcept {
-			// Проверяем на наличие ошибок
-			if(res.code >= 300)
-				// Выводим сообщение о неудачном запросе
-				web->_log->print("request failed: %u %s", log_t::flag_t::WARNING, res.code, res.message.c_str());
-			// Если заголовки ответа получены
-			if(!res.headers.empty())
-				// Формируем результат ответа
-				result = res.headers;
-			// Выполняем остановку
-			web->stop();
-		});
-		// Выполняем формирование REST запроса
-		this->REST({std::forward <req_t> (req)});
-		// Запускаем выполнение запроса
-		this->start();
-	}
-	// Выводим результат
-	return result;
-}
-/**
- * TRACE Метод запроса в формате HTTP методом TRACE
- * @param url     адрес запроса
- * @param headers заголовки запроса
- * @return        результат запроса
- */
-unordered_multimap <string, string> awh::client::Rest::TRACE(const uri_t::url_t & url, const unordered_multimap <string, string> & headers) noexcept {
-	// Результат работы функции
-	unordered_multimap <string, string> result;
-	// Если данные запроса переданы
-	if(!url.empty()){
-		// Создаём объект запроса
-		req_t req;
-		// Устанавливаем URL адрес запроса
-		req.url = url;
-		// Запоминаем переданные заголовки
-		req.headers = headers;
-		// Устанавливаем метод запроса
-		req.method = web_t::method_t::TRACE;
-		// Подписываемся на событие получения сообщения
-		this->on([&result](const res_t & res, rest_t * web) noexcept {
-			// Проверяем на наличие ошибок
-			if(res.code >= 300)
-				// Выводим сообщение о неудачном запросе
-				web->_log->print("request failed: %u %s", log_t::flag_t::WARNING, res.code, res.message.c_str());
-			// Если заголовки ответа получены
-			if(!res.headers.empty())
-				// Формируем результат ответа
-				result = res.headers;
-			// Выполняем остановку
-			web->stop();
-		});
-		// Выполняем формирование REST запроса
-		this->REST({std::forward <req_t> (req)});
-		// Запускаем выполнение запроса
-		this->start();
-	}
-	// Выводим результат
-	return result;
-}
-/**
- * OPTIONS Метод запроса в формате HTTP методом OPTIONS
- * @param url     адрес запроса
- * @param headers заголовки запроса
- * @return        результат запроса
- */
-unordered_multimap <string, string> awh::client::Rest::OPTIONS(const uri_t::url_t & url, const unordered_multimap <string, string> & headers) noexcept {
-	// Результат работы функции
-	unordered_multimap <string, string> result;
-	// Если данные запроса переданы
-	if(!url.empty()){
-		// Создаём объект запроса
-		req_t req;
-		// Устанавливаем URL адрес запроса
-		req.url = url;
-		// Запоминаем переданные заголовки
-		req.headers = headers;
-		// Устанавливаем метод запроса
-		req.method = web_t::method_t::OPTIONS;
-		// Подписываемся на событие получения сообщения
-		this->on([&result](const res_t & res, rest_t * web) noexcept {
-			// Проверяем на наличие ошибок
-			if(res.code >= 300)
-				// Выводим сообщение о неудачном запросе
-				web->_log->print("request failed: %u %s", log_t::flag_t::WARNING, res.code, res.message.c_str());
-			// Если заголовки ответа получены
-			if(!res.headers.empty())
-				// Формируем результат ответа
-				result = res.headers;
-			// Выполняем остановку
-			web->stop();
-		});
-		// Выполняем формирование REST запроса
-		this->REST({std::forward <req_t> (req)});
-		// Запускаем выполнение запроса
-		this->start();
-	}
-	// Выводим результат
-	return result;
-}
-/**
- * REST Метод запроса в формате HTTP
- * @param request список запросов
- */
-void awh::client::Rest::REST(const vector <req_t> & request) noexcept {
-	// Если список запросов передан
-	if(!request.empty() && (this->_callback.message != nullptr)){
-		// Очищаем список запросов
-		this->_requests.clear();
-		// Выполняем очистку списка ответов
-		this->_responses.clear();
-		// Устанавливаем адрес подключения
-		this->_scheme.url = request.front().url;
-		// Добавляем объект ответа в список ответов
-		this->_responses.assign(request.size(), res_t());
-		// Добавляем объект запроса в список запросов
-		this->_requests.assign(request.begin(), request.end());
-		// Если подключение уже установлено
-		if(this->_aid > 0){
-			// Если работа идёт с прокси-сервером
-			if(this->_scheme.isProxy())
-				// Устанавливаем экшен выполнения
-				this->_action = action_t::PROXY_CONNECT;
-			// Устанавливаем экшен выполнения
-			else this->_action = action_t::CONNECT;
-			// Выполняем запуск обработчика событий
-			this->handler();
-		}
-	}
-}
-/**
- * sendTimeout Метод отправки сигнала таймаута
- */
-void awh::client::Rest::sendTimeout() noexcept {
-	// Если подключение выполнено
-	if(this->_core->working())
-		// Отправляем сигнал принудительного таймаута
-		const_cast <client::core_t *> (this->_core)->sendTimeout(this->_aid);
-}
-/**
- * on Метод установки функции обратного вызова при подключении/отключении
- * @param callback функция обратного вызова
- */
-void awh::client::Rest::on(function <void (const mode_t, Rest *)> callback) noexcept {
-	// Устанавливаем функцию обратного вызова
-	this->_callback.active = callback;
-}
-/**
- * on Метод установки функции обратного вызова при получении сообщения
- * @param callback функция обратного вызова
- */
-void awh::client::Rest::on(function <void (const res_t &, Rest *)> callback) noexcept {
-	// Устанавливаем функцию обратного вызова
-	this->_callback.message = callback;
-}
-/**
- * on Метод установки функции обратного вызова для получения чанков
- * @param callback функция обратного вызова
- */
-void awh::client::Rest::on(function <void (const vector <char> &, const awh::http_t *)> callback) noexcept {
-	// Устанавливаем функцию обработки вызова для получения чанков
-	this->_http.chunking(callback);
 }
 /**
  * bytesDetect Метод детекции сообщений по количеству байт
@@ -1655,7 +1371,7 @@ void awh::client::Rest::userAgent(const string & userAgent) noexcept {
  * compress Метод установки метода компрессии
  * @param compress метод компрессии сообщений
  */
-void awh::client::Rest::compress(const awh::http_t::compress_t compress) noexcept {
+void awh::client::Rest::compress(const http_t::compress_t compress) noexcept {
 	// Устанавливаем метод компрессии
 	this->_compress = compress;
 }
@@ -1732,8 +1448,8 @@ void awh::client::Rest::authTypeProxy(const auth_t::type_t type, const auth_t::h
  */
 awh::client::Rest::Rest(const client::core_t * core, const fmk_t * fmk, const log_t * log) noexcept :
  _nwk(fmk), _uri(fmk, &_nwk), _http(fmk, log, &_uri), _scheme(fmk, log), _action(action_t::NONE),
- _compress(awh::http_t::compress_t::NONE), _aid(0), _unbind(true), _active(false), _stopped(false),
- _redirects(false), _attempts(10), _fmk(fmk), _log(log), _core(core) {
+ _compress(awh::http_t::compress_t::NONE), _aid(0), _unbind(true), _active(false),
+ _stopped(false), _redirects(false), _attempts(10), _fmk(fmk), _log(log), _core(core) {
 	// Устанавливаем событие на запуск системы
 	this->_scheme.callback.set <void (const size_t, awh::core_t *)> ("open", std::bind(&Rest::openCallback, this, _1, _2));
 	// Устанавливаем событие подключения
