@@ -466,30 +466,83 @@ string awh::Framework::format(const string & format, const vector <string> & ite
  * @param radix система счисления
  * @return      полученная строка в системе счисления
  */
-string awh::Framework::itoa(const int value, const uint8_t radix) const noexcept {
+string awh::Framework::itoa(const int64_t value, const uint8_t radix) const noexcept {
 	// Результат работы функции
 	string result = "";
 	// Если данные переданы
 	if((radix > 0) && (radix < 37)){
 		// Запоминаем являлось ли число отрицательным
 		bool const sign = (value < 0);
+		// Убираем отрицательное значение
+		int64_t num = abs(value);
 		// Устанавливаем числовые обозначения
 		const string digits = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-		// Убираем отрицательное значение
-		int num = abs(value);
 		// Особый случай: нулю соответствует не пустая строка, а "0"
-		if(num == 0) result.append(1, digits[0]);
+		if(num == 0) result.insert(result.begin(), digits[0]);
 		// Раскладываем число на цифры (младшими разрядами вперёд)
 		while(num != 0){
 			// Добавляем идентификатор числа
-			result.append(1, digits[num % radix]);
+			result.insert(result.begin(), digits[num % radix]);
 			// Выполняем финальное деление
 			num /= radix;
 		}
 		// Дописываем после старшего разряда знак
-		if(sign) result.append(1, '-');
-		// Выполняем реверс символов в строке
-		reverse(result.begin(), result.end());
+		if(sign) result.insert(result.begin(), '-');
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * atoi Метод конвертации строковых чисел в десятичную систему счисления
+ * @param value число для конвертации
+ * @param radix система счисления
+ * @return      полученная строка в системе счисления
+ */
+int64_t awh::Framework::atoi(const string & value, const uint8_t radix) const noexcept {
+	// Результат работы функции
+	int64_t result = 0;
+	// Если данные для конвертации переданы
+	if(!value.empty() && (radix > 0) && (radix < 37)){
+		// Устанавливаем числовые обозначения
+		const map <char, uint8_t> digits = {
+			{'0', 0}, {'1', 1},
+			{'2', 2}, {'3', 3},
+			{'4', 4}, {'5', 5},
+			{'6', 6}, {'7', 7},
+			{'8', 8}, {'9', 9},
+			{'A', 10}, {'B', 11},
+			{'C', 12}, {'D', 13},
+			{'E', 14}, {'F', 15},
+			{'G', 16}, {'H', 17},
+			{'I', 18}, {'J', 19},
+			{'K', 20}, {'L', 21},
+			{'M', 22}, {'N', 23},
+			{'O', 24}, {'P', 25},
+			{'Q', 26}, {'R', 27},
+			{'S', 28}, {'T', 29},
+			{'U', 30}, {'V', 31},
+			{'W', 32}, {'X', 33},
+			{'Y', 34}, {'Z', 35}
+		};
+		// Запоминаем являлось ли число отрицательным
+		bool const sign = (value.front() == '-');
+		// Выполняем перевод в верхний регистр
+		const string & number = this->toUpper(std::forward <const string> (value));
+		// Начальное и конечное количество перебираемых элементов
+		const uint8_t start = (sign ? 1 : 0), stop = (sign ? number.length() - 1 : number.length());
+		// Выполняем перебор всех чисел
+		for(uint8_t i = start; i < (sign ? stop + 1 : stop); i++){
+			// Выполняем поиск символа в словаре
+			auto it = digits.find(number.at(i));
+			// Если символ найден
+			if(it != digits.end())
+				// Выполняем перевод в 10-ю систему счисления
+				result += (it->second * pow(radix, stop - (sign ? i - 1 : i) - 1));
+			// Иначе выходим из цикла
+			else return 0;
+		}
+		// Если число было отрицательным, корректируем это
+		if(sign) result *= -1;
 	}
 	// Выводим результат
 	return result;
