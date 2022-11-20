@@ -210,6 +210,14 @@ namespace awh {
 			size_t hexToDec(const string & number) const noexcept;
 		public:
 			/**
+			 * floorN Метод приведения количества символов после запятой к указанному количества
+			 * @param x число для приведения
+			 * @param n количество символов после запятой
+			 * @return  сформированное число
+			 */
+			double floorN(const double x, const uint8_t n) const noexcept;
+		public:
+			/**
 			 * noexp Метод перевода числа в безэкспоненциальную форму
 			 * @param number число для перевода
 			 * @param step   размер шага после запятой

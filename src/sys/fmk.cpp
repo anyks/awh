@@ -254,6 +254,18 @@ size_t awh::Framework::hexToDec(const string & number) const noexcept {
 	return result;
 }
 /**
+ * floorN Метод приведения количества символов после запятой к указанному количества
+ * @param x число для приведения
+ * @param n количество символов после запятой
+ * @return  сформированное число
+ */
+double awh::Framework::floorN(const double x, const uint8_t n) const noexcept {
+	// Выполняем получение разрядности числа
+	const double mult = pow(10, n);
+	// Выполняем приведение числа к указанной разрядности
+	return (floor(x * mult) / mult);
+}
+/**
  * noexp Метод перевода числа в безэкспоненциальную форму
  * @param number число для перевода
  * @param step   размер шага после запятой
