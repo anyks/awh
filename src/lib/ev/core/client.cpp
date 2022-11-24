@@ -499,36 +499,14 @@ void awh::client::Core::sendTimeout(const size_t aid) noexcept {
 			this->close();
 			// Выполняем пинок базе событий
 			this->dispatch.kick();
-			// Флаг поддержания постоянного подключения
-			bool alive = false;
 			// Переходим по всему списку схем сети
 			for(auto & item : this->schemes){
 				// Получаем объект схемы сети
 				scheme_t * shm = (scheme_t *) const_cast <awh::scheme_t *> (item.second);
-				// Если флаг поддержания постоянного подключения не установлен
-				if(!alive && shm->alive) alive = shm->alive;
 				// Устанавливаем статус подключения
 				shm->status.real = scheme_t::mode_t::DISCONNECT;
 				// Устанавливаем флаг ожидания статуса
 				shm->status.wait = scheme_t::mode_t::DISCONNECT;
-			}
-			// Если необходимо поддерживать постоянное подключение
-			if(alive){
-				// Добавляем базу событий для DNS резолвера
-				this->dns.base(this->dispatch.base);
-				// Определяем тип протокола подключения
-				switch((uint8_t) this->net.family){
-					// Если тип протокола подключения IPv4
-					case (uint8_t) scheme_t::family_t::IPV4:
-						// Выполняем установку нейм-серверов для DNS резолвера IPv4
-						this->dns.replace(AF_INET, this->net.v4.second);
-					break;
-					// Если тип протокола подключения IPv6
-					case (uint8_t) scheme_t::family_t::IPV6:
-						// Выполняем установку нейм-серверов для DNS резолвера IPv6
-						this->dns.replace(AF_INET6, this->net.v4.second);
-					break;
-				}
 			}
 			// Переходим по всему списку схем сети
 			for(auto & item : this->schemes){

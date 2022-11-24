@@ -141,7 +141,7 @@ void awh::Core::Timer::callback(ev::timer & timer, int revents) noexcept {
  */
 void awh::Core::Dispatch::kick() noexcept {
 	// Если база событий проинициализированна
-	if(this->_init){
+	if(this->_init && (this->_affiliation == affiliation_t::PRIMARY)){
 		// Выполняем блокировку потока
 		const lock_guard <recursive_mutex> lock(this->_mtx);
 		// Выполняем остановку всех событий

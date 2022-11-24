@@ -752,7 +752,7 @@ wstring awh::Framework::smartUpper(const wstring & str) const noexcept {
  * @return       римское число
  */
 wstring awh::Framework::arabic2Roman(const u_int number) const noexcept {
-		// Результат работы функции
+	// Результат работы функции
 	wstring result = L"";
 	// Если число передано верное
 	if((number >= 1) && (number <= 4999)){
