@@ -158,20 +158,29 @@ void awh::client::Sample::actionConnect() noexcept {
  * actionDisconnect Метод обработки экшена отключения от сервера
  */
 void awh::client::Sample::actionDisconnect() noexcept {
-	// Выполняем очистку оставшихся данных
-	this->_buffer.clear();
-	// Очищаем адрес сервера
-	this->_scheme.url.clear();
-	// Завершаем работу
-	if(this->_unbind) const_cast <client::core_t *> (this->_core)->stop();
-	// Если экшен соответствует, выполняем его сброс
-	if(this->_action == action_t::DISCONNECT)
-		// Выполняем сброс экшена
-		this->_action = action_t::NONE;
-	// Если функция обратного вызова существует
-	if(this->_callback.active != nullptr)
-		// Выполняем функцию обратного вызова
-		this->_callback.active(mode_t::DISCONNECT, this);
+	// Если подключение является постоянным
+	if(this->_scheme.alive){
+		// Если функция обратного вызова установлена
+		if(this->_callback.active != nullptr)
+			// Выполняем функцию обратного вызова
+			this->_callback.active(mode_t::DISCONNECT, this);
+	// Если подключение не является постоянным
+	} else {
+		// Выполняем очистку оставшихся данных
+		this->_buffer.clear();
+		// Очищаем адрес сервера
+		this->_scheme.url.clear();
+		// Завершаем работу
+		if(this->_unbind) const_cast <client::core_t *> (this->_core)->stop();
+		// Если экшен соответствует, выполняем его сброс
+		if(this->_action == action_t::DISCONNECT)
+			// Выполняем сброс экшена
+			this->_action = action_t::NONE;
+		// Если функция обратного вызова существует
+		if(this->_callback.active != nullptr)
+			// Выполняем функцию обратного вызова
+			this->_callback.active(mode_t::DISCONNECT, this);
+	}
 }
 /**
  * stop Метод остановки клиента
@@ -339,10 +348,10 @@ void awh::client::Sample::waitTimeDetect(const time_t read, const time_t write, 
 void awh::client::Sample::mode(const u_short flag) noexcept {
 	// Устанавливаем флаг анбиндинга ядра сетевого модуля
 	this->_unbind = !(flag & (uint8_t) flag_t::NOTSTOP);
+	// Устанавливаем флаг поддержания автоматического подключения
+	this->_scheme.alive = (flag & (uint8_t) flag_t::ALIVE);
 	// Устанавливаем флаг ожидания входящих сообщений
 	this->_scheme.wait = (flag & (uint8_t) flag_t::WAITMESS);
-	// Устанавливаем флаг поддержания автоматического подключения
-	this->_scheme.alive = (flag & (uint8_t) flag_t::KEEPALIVE);
 	// Устанавливаем флаг запрещающий вывод информационных сообщений
 	const_cast <client::core_t *> (this->_core)->noInfo(flag & (uint8_t) flag_t::NOINFO);
 	// Выполняем установку флага проверки домена

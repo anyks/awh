@@ -137,8 +137,6 @@ namespace awh {
 				// Идентификатор DNS запроса
 				size_t did;
 			public:
-				// Выполнять остановку работы, после закрытия подключения
-				bool stop;
 				// Флаг получения данных
 				bool acquisition;
 			public:
@@ -178,7 +176,7 @@ namespace awh {
 				 * @param log объект для работы с логами
 				 */
 				Scheme(const fmk_t * fmk, const log_t * log) noexcept :
-				 awh::scheme_t(fmk, log), did(0), stop(false), acquisition(false),
+				 awh::scheme_t(fmk, log), did(0), acquisition(false),
 				 proxy(fmk, log), _connect(connect_t::SERVER) {}
 				/**
 				 * ~Scheme Деструктор

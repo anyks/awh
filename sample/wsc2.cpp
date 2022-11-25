@@ -259,6 +259,7 @@ class WebSocket {
 					json data = json::parse(buffer.begin(), buffer.end());
 					// Выводим полученный результат
 					cout << " +++++++++++++ " << data.dump(4) << " == " << ws->sub() << endl;
+					/*
 					// Если количество полученных курсов больше десяти тысячь
 					if(this->_count >= 1000){
 						// Если подключение не выполнено
@@ -276,6 +277,7 @@ class WebSocket {
 						}
 					// Увеличиваем количество запросов
 					} else this->_count++;
+					*/
 				// Обрабатываем ошибку
 				} catch(const exception & e) {
 					// Выводим сообщение об ошибке
@@ -297,10 +299,11 @@ class WebSocket {
 			 * 2. Устанавливаем ожидание входящих сообщений
 			 * 3. Устанавливаем валидацию SSL сертификата
 			 */
+			/*
 			this->_rest.mode(
+				(uint8_t) client::rest_t::flag_t::ALIVE |
 				(uint8_t) client::rest_t::flag_t::REDIRECTS |
-				(uint8_t) client::rest_t::flag_t::VERIFYSSL |
-				(uint8_t) client::rest_t::flag_t::KEEPALIVE
+				(uint8_t) client::rest_t::flag_t::VERIFYSSL
 			);
 			// Устанавливаем адрес сертификата
 			this->_core.ca("./ca/cert.pem");
@@ -314,6 +317,7 @@ class WebSocket {
 			this->_rest.on(std::bind(&WebSocket::webActive, this, _1, _2));
 			// Выполняем подключение ядра
 			this->_main->bind(&this->_core);
+			*/
 		}
 		/**
 		 * ~WebSocket Деструктор
@@ -352,12 +356,12 @@ int main(int argc, char * argv[]){
 	 * 4. Устанавливаем флаг поддержания активным подключение
 	 */
 	ws.mode(
+		(uint8_t) client::ws_t::flag_t::ALIVE |
 		// (uint8_t) client::ws_t::flag_t::NOTSTOP |
 		// (uint8_t) client::ws_t::flag_t::WAITMESS |
 		(uint8_t) client::ws_t::flag_t::TAKEOVERCLI |
 		(uint8_t) client::ws_t::flag_t::TAKEOVERSRV |
-		(uint8_t) client::ws_t::flag_t::VERIFYSSL |
-		(uint8_t) client::ws_t::flag_t::KEEPALIVE
+		(uint8_t) client::ws_t::flag_t::VERIFYSSL
 	);
 	// Разрешаем простое чтение базы событий
 	// core.frequency(0);

@@ -495,8 +495,6 @@ void awh::client::Core::sendTimeout(const size_t aid) noexcept {
 					shm->status.work = scheme_t::work_t::DISALLOW;
 				// Если работы запрещены, выходим
 				else return;
-				// Запрещаем выполнять перезапуск
-				shm->stop = true;
 			}
 			// Выполняем отключение всех подключённых адъютантов
 			this->close();
@@ -515,8 +513,6 @@ void awh::client::Core::sendTimeout(const size_t aid) noexcept {
 			for(auto & item : this->schemes){
 				// Получаем объект схемы сети
 				scheme_t * shm = (scheme_t *) const_cast <awh::scheme_t *> (item.second);
-				// Разрешаем выполнять перезапуск
-				shm->stop = false;
 				// Если выполнение работ запрещено
 				if(shm->status.work == scheme_t::work_t::DISALLOW)
 					// Разрешаем выполнение работы
@@ -867,25 +863,26 @@ void awh::client::Core::close(const size_t aid) noexcept {
 			shm->status.wait = scheme_t::mode_t::DISCONNECT;
 			// Устанавливаем статус сетевого ядра
 			shm->status.real = scheme_t::mode_t::DISCONNECT;
-			// Если не нужно выполнять принудительную остановку работы схемы сети
-			if(!shm->stop){
-				// Если нужно выполнить автоматическое переподключение
-				if(shm->alive) this->reconnect(shm->sid);
-				// Если автоматическое подключение выполнять не нужно
-				else {
-					// Выводим сообщение об ошибке
-					if(!core->noinfo) this->log->print("%s", log_t::flag_t::INFO, "disconnected from the server");
-					// Если функция обратного вызова установлена
-					if(shm->callback.is("disconnect"))
-						// Устанавливаем полученную функцию обратного вызова
-						callback.set <void (const size_t, const size_t, awh::core_t *)> (to_string(it->first), shm->callback.get <void (const size_t, const size_t, awh::core_t *)> ("disconnect"), aid, shm->sid, this);
-				}
-			}
+			// Если функция обратного вызова установлена
+			if(shm->callback.is("disconnect"))
+				// Устанавливаем полученную функцию обратного вызова
+				callback.set <void (const size_t, const size_t, awh::core_t *)> ("disconnect", shm->callback.get <void (const size_t, const size_t, awh::core_t *)> ("disconnect"), aid, shm->sid, this);
+			// Устанавливаем функцию реконнекта
+			if(shm->alive) callback.set <void (const size_t)> ("reconnect", std::bind(&core_t::reconnect, this, _1), shm->sid);
 		}
 		// Удаляем блокировку адъютанта
 		this->_locking.erase(aid);
-		// Выполняем все функции обратного вызова
-		callback.bind <const size_t, const size_t, awh::core_t *> ();
+		// Если функция дисконнекта установлена
+		if(callback.is("disconnect")){
+			// Выводим сообщение об ошибке
+			if(!this->noinfo) this->log->print("%s", log_t::flag_t::INFO, "disconnected from the server");
+			// Выполняем функцию обратного вызова дисконнекта
+			callback.bind <const size_t, const size_t, awh::core_t *> ("disconnect");
+			// Если функция реконнекта установлена
+			if(callback.is("reconnect"))
+				// Выполняем автоматическое переподключение
+				callback.bind <const size_t> ("reconnect");
+		}
 	}
 }
 /**
@@ -1149,6 +1146,29 @@ void awh::client::Core::transfer(const engine_t::method_t method, const size_t a
 									}
 								// Если данные не получены
 								} else {
+									// Если произошёл дисконнект
+									if(bytes == 0){
+
+										cout << " ################ " << errno << endl;
+
+										// Выполняем отключение клиента
+										this->close(aid);
+										// Выходим из функции
+										return;
+									// Если режим работы асинхронный
+									} else if(this->_mode == mode_t::ASYNC) {
+										// Если нужно повторить запись
+										if(bytes == -2){
+											// Если подключение ещё существует
+											if(this->method(aid) == engine_t::method_t::READ)
+												// Продолжаем попытку снова
+												continue;
+										}
+									}
+									
+
+
+									/*
 									// Если режим работы асинхронный
 									if(this->_mode == mode_t::ASYNC){
 										// Если нужно повторить запись
@@ -1172,9 +1192,14 @@ void awh::client::Core::transfer(const engine_t::method_t method, const size_t a
 										// Если запись не выполнена, входим
 										} else break;
 									}
+									*/
 								}
 							// Выходим из цикла
-							} else break;
+							}//  else break;
+
+							// Если запись не выполнена, входим
+							break;
+
 						// Выполняем чтение до тех пор, пока всё не прочитаем
 						} while(this->method(aid) == engine_t::method_t::READ);
 						// Если тип сокета не установлен как UDP, запускаем чтение дальше

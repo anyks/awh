@@ -399,71 +399,84 @@ void awh::client::Rest::actionConnect() noexcept {
  * actionDisconnect Метод обработки экшена отключения от сервера
  */
 void awh::client::Rest::actionDisconnect() noexcept {
-	// Если список ответов получен
-	if(!this->_responses.empty() && !this->_requests.empty()){
-		// Получаем объект ответа
-		const res_t & response = this->_responses.front();
-		// Если нужно произвести запрос заново
-		if(!this->_stopped && ((response.code == 201) || (response.code == 301) ||
-		   (response.code == 302) || (response.code == 303) || (response.code == 307) ||
-		   (response.code == 308) || (response.code == 401) || (response.code == 407))){
-			// Если статус ответа требует произвести авторизацию или заголовок перенаправления указан
-			if((response.code == 401) || (response.code == 407) || this->_http.isHeader("location")){
-				// Получаем новый адрес запроса
-				const uri_t::url_t & url = this->_http.getUrl();
-				// Если адрес запроса получен
-				if(!url.empty()){
-					// Получаем объект запроса
-					req_t & request = this->_requests.front();
-					// Увеличиваем количество попыток
-					request.attempt++;
-					// Устанавливаем новый адрес запроса
-					this->_scheme.url = std::forward <const uri_t::url_t> (url);
-					// Получаем параметры адреса запроса
-					request.query = this->_uri.query(this->_scheme.url);
-					// Выполняем очистку оставшихся данных
-					this->_buffer.clear();
-					// Выполняем установку следующего экшена на открытие подключения
-					this->_action = action_t::OPEN;
-					// Завершаем работу
-					return;
+	// Если подключение является постоянным
+	if(this->_scheme.alive){
+		// Если экшен соответствует, выполняем его сброс
+		if(this->_action == action_t::DISCONNECT)
+			// Выполняем сброс экшена
+			this->_action = action_t::NONE;
+		// Если функция обратного вызова установлена
+		if(this->_callback.active != nullptr)
+			// Выполняем функцию обратного вызова
+			this->_callback.active(mode_t::DISCONNECT, this);
+	// Если подключение не является постоянным
+	} else {
+		// Если список ответов получен
+		if(!this->_responses.empty() && !this->_requests.empty()){
+			// Получаем объект ответа
+			const res_t & response = this->_responses.front();
+			// Если нужно произвести запрос заново
+			if(!this->_stopped && ((response.code == 201) || (response.code == 301) ||
+			(response.code == 302) || (response.code == 303) || (response.code == 307) ||
+			(response.code == 308) || (response.code == 401) || (response.code == 407))){
+				// Если статус ответа требует произвести авторизацию или заголовок перенаправления указан
+				if((response.code == 401) || (response.code == 407) || this->_http.isHeader("location")){
+					// Получаем новый адрес запроса
+					const uri_t::url_t & url = this->_http.getUrl();
+					// Если адрес запроса получен
+					if(!url.empty()){
+						// Получаем объект запроса
+						req_t & request = this->_requests.front();
+						// Увеличиваем количество попыток
+						request.attempt++;
+						// Устанавливаем новый адрес запроса
+						this->_scheme.url = std::forward <const uri_t::url_t> (url);
+						// Получаем параметры адреса запроса
+						request.query = this->_uri.query(this->_scheme.url);
+						// Выполняем очистку оставшихся данных
+						this->_buffer.clear();
+						// Выполняем установку следующего экшена на открытие подключения
+						this->_action = action_t::OPEN;
+						// Завершаем работу
+						return;
+					}
 				}
 			}
 		}
+		// Получаем объект ответа
+		res_t response = (!this->_responses.empty() ? std::forward <res_t> (this->_responses.front()) : res_t());
+		// Если список ответов не получен, значит он был выведен ранее
+		if(this->_responses.empty())
+			// Устанавливаем код сообщения по умолчанию
+			response.code = 1;
+		// Выполняем очистку списка запросов
+		this->_requests.clear();
+		// Выполняем очистку списка ответов
+		this->_responses.clear();
+		// Очищаем адрес сервера
+		this->_scheme.url.clear();
+		// Выполняем сброс параметров запроса
+		this->flush();
+		// Выполняем зануление идентификатора адъютанта
+		this->_aid = 0;
+		// Завершаем работу
+		if(this->_unbind) const_cast <client::core_t *> (this->_core)->stop();
+		// Если экшен соответствует, выполняем его сброс
+		if(this->_action == action_t::DISCONNECT)
+			// Выполняем сброс экшена
+			this->_action = action_t::NONE;
+		// Если функция обратного вызова установлена, выводим сообщение
+		if((response.code == 0) && (this->_callback.message != nullptr)){
+			// Устанавливаем код ответа сервера
+			response.code = 500;
+			// Выполняем функцию обратного вызова
+			this->_callback.message(response, this);
+		}
+		// Если функция обратного вызова существует
+		if(this->_callback.active != nullptr)
+			// Выполняем функцию обратного вызова
+			this->_callback.active(mode_t::DISCONNECT, this);
 	}
-	// Получаем объект ответа
-	res_t response = (!this->_responses.empty() ? std::forward <res_t> (this->_responses.front()) : res_t());
-	// Если список ответов не получен, значит он был выведен ранее
-	if(this->_responses.empty())
-		// Устанавливаем код сообщения по умолчанию
-		response.code = 1;
-	// Выполняем очистку списка запросов
-	this->_requests.clear();
-	// Выполняем очистку списка ответов
-	this->_responses.clear();
-	// Очищаем адрес сервера
-	this->_scheme.url.clear();
-	// Выполняем сброс параметров запроса
-	this->flush();
-	// Выполняем зануление идентификатора адъютанта
-	this->_aid = 0;
-	// Завершаем работу
-	if(this->_unbind) const_cast <client::core_t *> (this->_core)->stop();
-	// Если экшен соответствует, выполняем его сброс
-	if(this->_action == action_t::DISCONNECT)
-		// Выполняем сброс экшена
-		this->_action = action_t::NONE;
-	// Если функция обратного вызова установлена, выводим сообщение
-	if((response.code == 0) && (this->_callback.message != nullptr)){
-		// Устанавливаем код ответа сервера
-		response.code = 500;
-		// Выполняем функцию обратного вызова
-		this->_callback.message(response, this);
-	}
-	// Если функция обратного вызова существует
-	if(this->_callback.active != nullptr)
-		// Выполняем функцию обратного вызова
-		this->_callback.active(mode_t::DISCONNECT, this);
 }
 /**
  * actionProxyRead Метод обработки экшена чтения с прокси-сервера
@@ -1329,10 +1342,10 @@ void awh::client::Rest::mode(const u_short flag) noexcept {
 	this->_unbind = !(flag & (uint8_t) flag_t::NOTSTOP);
 	// Устанавливаем флаг разрешающий выполнять редиректы
 	this->_redirects = (flag & (uint8_t) flag_t::REDIRECTS);
+	// Устанавливаем флаг поддержания автоматического подключения
+	this->_scheme.alive = (flag & (uint8_t) flag_t::ALIVE);
 	// Устанавливаем флаг ожидания входящих сообщений
 	this->_scheme.wait = (flag & (uint8_t) flag_t::WAITMESS);
-	// Устанавливаем флаг поддержания автоматического подключения
-	this->_scheme.alive = (flag & (uint8_t) flag_t::KEEPALIVE);
 	// Устанавливаем флаг запрещающий вывод информационных сообщений
 	const_cast <client::core_t *> (this->_core)->noInfo(flag & (uint8_t) flag_t::NOINFO);
 	// Выполняем установку флага проверки домена

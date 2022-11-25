@@ -121,9 +121,9 @@ int main(int argc, char * argv[]){
 	rest.mode(
 		// (uint8_t) client::rest_t::flag_t::NOINFO |
 		// (uint8_t) client::rest_t::flag_t::WAITMESS |
+		// (uint8_t) client::rest_t::flag_t::ALIVE |
 		(uint8_t) client::rest_t::flag_t::REDIRECTS |
-		(uint8_t) client::rest_t::flag_t::VERIFYSSL // |
-		// (uint8_t) client::rest_t::flag_t::KEEPALIVE
+		(uint8_t) client::rest_t::flag_t::VERIFYSSL
 	);
 	// Устанавливаем простое чтение базы событий
 	// core.easily(true);
