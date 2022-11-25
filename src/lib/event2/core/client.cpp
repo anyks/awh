@@ -1149,7 +1149,7 @@ void awh::client::Core::transfer(const engine_t::method_t method, const size_t a
 									// Если произошёл дисконнект
 									if(bytes == 0){
 
-										cout << " ################ " << errno << endl;
+										cout << " ################ " << errno << " === " << ETIMEDOUT << " == " << EPIPE << endl;
 
 										// Выполняем отключение клиента
 										this->close(aid);
