@@ -1148,9 +1148,6 @@ void awh::client::Core::transfer(const engine_t::method_t method, const size_t a
 								} else {
 									// Если произошёл дисконнект
 									if(bytes == 0){
-
-										cout << " ################ " << errno << " === " << ETIMEDOUT << " == " << EPIPE << endl;
-
 										// Выполняем отключение клиента
 										this->close(aid);
 										// Выходим из функции
@@ -1165,41 +1162,10 @@ void awh::client::Core::transfer(const engine_t::method_t method, const size_t a
 												continue;
 										}
 									}
-									
-
-
-									/*
-									// Если режим работы асинхронный
-									if(this->_mode == mode_t::ASYNC){
-										// Если нужно повторить запись
-										if(bytes == -2){
-											// Если подключение ещё существует
-											if(this->method(aid) == engine_t::method_t::READ)
-												// Продолжаем попытку снова
-												continue;
-											// Если запись не выполнена, входим
-											else break;
-										// Если запись не выполнена, входим
-										} else break;
-									// Если режим работы синхронный
-									} else {
-										// Если произошёл дисконнект
-										if(bytes == 0){
-											// Выполняем отключение клиента
-											this->close(aid);
-											// Выходим из функции
-											return;
-										// Если запись не выполнена, входим
-										} else break;
-									}
-									*/
 								}
-							// Выходим из цикла
-							}//  else break;
-
+							}
 							// Если запись не выполнена, входим
 							break;
-
 						// Выполняем чтение до тех пор, пока всё не прочитаем
 						} while(this->method(aid) == engine_t::method_t::READ);
 						// Если тип сокета не установлен как UDP, запускаем чтение дальше

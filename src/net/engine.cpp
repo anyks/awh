@@ -2170,9 +2170,6 @@ bool awh::Engine::storeCA(SSL_CTX * ctx) const noexcept {
 							path.push_back(this->_ca);
 							// Формируем полный адарес файла
 							string filename = this->_fmk->format("%s:%s", params.at(uri_t::flag_t::HOST).c_str(), this->_uri->joinPath(path, FS_SEPARATOR).c_str());
-							
-							cout << " ^^^^^^^^^^^^^^^^^ FILENAME " << filename << endl;
-							
 							// Выполняем проверку доверенного сертификата
 							if(!filename.empty()){
 								// Выполняем декодирование адреса файла
