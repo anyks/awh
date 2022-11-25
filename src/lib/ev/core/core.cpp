@@ -374,6 +374,21 @@ awh::Core::Dispatch::Dispatch(core_t * core) noexcept : _core(core), _easy(false
 	#endif
 	// Выполняем инициализацию базы событий
 	this->rebase(false);
+	// Определяем принадлежность модуля
+	if(this->_affiliation == affiliation_t::PRIMARY){
+		// Устанавливаем функции обработки ошибок
+		ev::set_syserr_cb([](const char * msg) throw() -> void {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим заголовок запроса
+				cout << "\x1B[33m\x1B[1m^^^^^^^^^ ERROR LIBEV ^^^^^^^^^\x1B[0m" << endl;
+				// Выводим параметры запроса
+				cout << msg << endl;
+			#endif
+		});
+	}
 }
 /**
  * ~Dispatch Деструктор
