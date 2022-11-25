@@ -1162,10 +1162,11 @@ void awh::client::Core::transfer(const engine_t::method_t method, const size_t a
 												continue;
 										}
 									}
+									// Входим из цикла
+									break;
 								}
-							}
 							// Если запись не выполнена, входим
-							break;
+							} else break;
 						// Выполняем чтение до тех пор, пока всё не прочитаем
 						} while(this->method(aid) == engine_t::method_t::READ);
 						// Если тип сокета не установлен как UDP, запускаем чтение дальше

@@ -399,6 +399,38 @@ void awh::client::Rest::actionConnect() noexcept {
  * actionDisconnect Метод обработки экшена отключения от сервера
  */
 void awh::client::Rest::actionDisconnect() noexcept {
+	// Если список ответов получен
+	if(!this->_responses.empty() && !this->_requests.empty()){
+		// Получаем объект ответа
+		const res_t & response = this->_responses.front();
+		// Если нужно произвести запрос заново
+		if(!this->_stopped && ((response.code == 201) || (response.code == 301) ||
+		(response.code == 302) || (response.code == 303) || (response.code == 307) ||
+		(response.code == 308) || (response.code == 401) || (response.code == 407))){
+			// Если статус ответа требует произвести авторизацию или заголовок перенаправления указан
+			if((response.code == 401) || (response.code == 407) || this->_http.isHeader("location")){
+				// Получаем новый адрес запроса
+				const uri_t::url_t & url = this->_http.getUrl();
+				// Если адрес запроса получен
+				if(!url.empty()){
+					// Получаем объект запроса
+					req_t & request = this->_requests.front();
+					// Увеличиваем количество попыток
+					request.attempt++;
+					// Устанавливаем новый адрес запроса
+					this->_scheme.url = std::forward <const uri_t::url_t> (url);
+					// Получаем параметры адреса запроса
+					request.query = this->_uri.query(this->_scheme.url);
+					// Выполняем очистку оставшихся данных
+					this->_buffer.clear();
+					// Выполняем установку следующего экшена на открытие подключения
+					this->_action = action_t::OPEN;
+					// Завершаем работу
+					return;
+				}
+			}
+		}
+	}
 	// Если подключение является постоянным
 	if(this->_scheme.alive){
 		// Если экшен соответствует, выполняем его сброс
@@ -411,38 +443,6 @@ void awh::client::Rest::actionDisconnect() noexcept {
 			this->_callback.active(mode_t::DISCONNECT, this);
 	// Если подключение не является постоянным
 	} else {
-		// Если список ответов получен
-		if(!this->_responses.empty() && !this->_requests.empty()){
-			// Получаем объект ответа
-			const res_t & response = this->_responses.front();
-			// Если нужно произвести запрос заново
-			if(!this->_stopped && ((response.code == 201) || (response.code == 301) ||
-			(response.code == 302) || (response.code == 303) || (response.code == 307) ||
-			(response.code == 308) || (response.code == 401) || (response.code == 407))){
-				// Если статус ответа требует произвести авторизацию или заголовок перенаправления указан
-				if((response.code == 401) || (response.code == 407) || this->_http.isHeader("location")){
-					// Получаем новый адрес запроса
-					const uri_t::url_t & url = this->_http.getUrl();
-					// Если адрес запроса получен
-					if(!url.empty()){
-						// Получаем объект запроса
-						req_t & request = this->_requests.front();
-						// Увеличиваем количество попыток
-						request.attempt++;
-						// Устанавливаем новый адрес запроса
-						this->_scheme.url = std::forward <const uri_t::url_t> (url);
-						// Получаем параметры адреса запроса
-						request.query = this->_uri.query(this->_scheme.url);
-						// Выполняем очистку оставшихся данных
-						this->_buffer.clear();
-						// Выполняем установку следующего экшена на открытие подключения
-						this->_action = action_t::OPEN;
-						// Завершаем работу
-						return;
-					}
-				}
-			}
-		}
 		// Получаем объект ответа
 		res_t response = (!this->_responses.empty() ? std::forward <res_t> (this->_responses.front()) : res_t());
 		// Если список ответов не получен, значит он был выведен ранее

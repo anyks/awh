@@ -582,6 +582,16 @@ void awh::client::WebSocket::actionConnect() noexcept {
  * actionDisconnect Метод обработки экшена отключения от сервера
  */
 void awh::client::WebSocket::actionDisconnect() noexcept {
+	// Если нужно произвести запрос заново
+	if(!this->_stopped && ((this->_code == 301) || (this->_code == 308) || (this->_code == 401) || (this->_code == 407))){
+		// Если статус ответа требует произвести авторизацию или заголовок перенаправления указан
+		if((this->_code == 401) || (this->_code == 407) || this->_http.isHeader("location")){
+			// Выполняем установку следующего экшена на открытие подключения
+			this->_action = action_t::OPEN;
+			// Выходим из функции
+			return;
+		}
+	}
 	// Если подключение является постоянным
 	if(this->_scheme.alive){
 		// Если экшен соответствует, выполняем его сброс
@@ -594,16 +604,6 @@ void awh::client::WebSocket::actionDisconnect() noexcept {
 			this->_callback.active(mode_t::DISCONNECT, this);
 	// Если подключение не является постоянным
 	} else {
-		// Если нужно произвести запрос заново
-		if(!this->_stopped && ((this->_code == 301) || (this->_code == 308) || (this->_code == 401) || (this->_code == 407))){
-			// Если статус ответа требует произвести авторизацию или заголовок перенаправления указан
-			if((this->_code == 401) || (this->_code == 407) || this->_http.isHeader("location")){
-				// Выполняем установку следующего экшена на открытие подключения
-				this->_action = action_t::OPEN;
-				// Выходим из функции
-				return;
-			}
-		}
 		// Выполняем сброс параметров запроса
 		this->flush();
 		// Очищаем код ответа
