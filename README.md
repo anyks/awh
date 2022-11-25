@@ -306,10 +306,10 @@ int main(int argc, char * argv[]){
 	log.format("%H:%M:%S %d.%m.%Y");
 
 	ws.mode(
-		(uint8_t) client::ws_t::flag_t::TAKEOVERCLI |
-		(uint8_t) client::ws_t::flag_t::TAKEOVERSRV |
+		(uint8_t) client::ws_t::flag_t::ALIVE |
 		(uint8_t) client::ws_t::flag_t::VERIFYSSL |
-		(uint8_t) client::ws_t::flag_t::KEEPALIVE
+		(uint8_t) client::ws_t::flag_t::TAKEOVERCLI |
+		(uint8_t) client::ws_t::flag_t::TAKEOVERSRV
 	);
 
 	core.verifySSL(false);
