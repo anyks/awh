@@ -197,12 +197,23 @@ void awh::Core::Dispatch::start() noexcept {
 				while(this->_work){
 					// Если база событий проинициализированна
 					if(this->_init){
-						// Если не нужно использовать простой режим чтения
-						if(!this->_easy)
-							// Выполняем чтение базы событий
-							this->base.run();
-						// Выполняем чтение базы событий в простом режиме
-						else this->base.run(ev::NOWAIT);
+						/**
+						 * Выполняем обработку ошибки
+						 */
+						try {
+							// Если не нужно использовать простой режим чтения
+							if(!this->_easy)
+								// Выполняем чтение базы событий
+								this->base.run();
+							// Выполняем чтение базы событий в простом режиме
+							else this->base.run(ev::NOWAIT);
+						/**
+						 * Если возникает ошибка
+						 */
+						} catch(const exception & error) {
+							// Выводим сообщение об ошибке
+							this->_core->log->print("%s", log_t::flag_t::WARNING, error.what());
+						}
 					}
 					// Замораживаем поток на период времени частоты обновления базы событий
 					this_thread::sleep_for(this->_freq);
@@ -266,6 +277,18 @@ void awh::Core::Dispatch::rebase(const bool clear) noexcept {
 	}
 	// Удаляем объект базы событий
 	if(clear) ev_loop_destroy(this->base);
+	// Устанавливаем функции обработки ошибок
+	ev::set_syserr_cb([](const char * msg) throw() -> void {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Выводим заголовок запроса
+			cout << "\x1B[33m\x1B[1m^^^^^^^^^ ERROR LIBEV ^^^^^^^^^\x1B[0m" << endl;
+			// Выводим параметры запроса
+			cout << msg << endl;
+		#endif
+	});
 	/**
 	 * Если операционной системой является MS Windows
 	 */
@@ -374,21 +397,6 @@ awh::Core::Dispatch::Dispatch(core_t * core) noexcept : _core(core), _easy(false
 	#endif
 	// Выполняем инициализацию базы событий
 	this->rebase(false);
-	// Определяем принадлежность модуля
-	if(this->_affiliation == affiliation_t::PRIMARY){
-		// Устанавливаем функции обработки ошибок
-		ev::set_syserr_cb([](const char * msg) throw() -> void {
-			/**
-			 * Если включён режим отладки
-			 */
-			#if defined(DEBUG_MODE)
-				// Выводим заголовок запроса
-				cout << "\x1B[33m\x1B[1m^^^^^^^^^ ERROR LIBEV ^^^^^^^^^\x1B[0m" << endl;
-				// Выводим параметры запроса
-				cout << msg << endl;
-			#endif
-		});
-	}
 }
 /**
  * ~Dispatch Деструктор

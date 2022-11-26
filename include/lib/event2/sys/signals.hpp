@@ -32,7 +32,7 @@
  * Для *nix подобных систем
  */
 #else
-	#include <signal.h>
+	#include <csignal>
 #endif
 
 /**

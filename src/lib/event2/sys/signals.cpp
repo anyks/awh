@@ -26,6 +26,8 @@
 	 * @param ctx   объект сервера
 	 */
 	void awh::Signals::intCallback(evutil_socket_t fd, short event, void * ctx) noexcept {
+		// Выполняем игнорирование сигнала
+		::signal(SIGINT, SIG_IGN);
 		// Получаем объект сигнала
 		sig_t * sig = reinterpret_cast <sig_t *> (ctx);
 		// Выполняем очистку памяти сигнала
@@ -44,6 +46,8 @@
 	 * @param ctx   объект сервера
 	 */
 	void awh::Signals::fpeCallback(evutil_socket_t fd, short event, void * ctx) noexcept {
+		// Выполняем игнорирование сигнала
+		::signal(SIGFPE, SIG_IGN);
 		// Получаем объект сигнала
 		sig_t * sig = reinterpret_cast <sig_t *> (ctx);
 		// Выполняем очистку памяти сигнала
@@ -62,6 +66,8 @@
 	 * @param ctx   объект сервера
 	 */
 	void awh::Signals::illCallback(evutil_socket_t fd, short event, void * ctx) noexcept {
+		// Выполняем игнорирование сигнала
+		::signal(SIGILL, SIG_IGN);
 		// Получаем объект сигнала
 		sig_t * sig = reinterpret_cast <sig_t *> (ctx);
 		// Выполняем очистку памяти сигнала
@@ -80,6 +86,8 @@
 	 * @param ctx   объект сервера
 	 */
 	void awh::Signals::termCallback(evutil_socket_t fd, short event, void * ctx) noexcept {
+		// Выполняем игнорирование сигнала
+		::signal(SIGTERM, SIG_IGN);
 		// Получаем объект сигнала
 		sig_t * sig = reinterpret_cast <sig_t *> (ctx);
 		// Выполняем очистку памяти сигнала
@@ -98,6 +106,8 @@
 	 * @param ctx   объект сервера
 	 */
 	void awh::Signals::abrtCallback(evutil_socket_t fd, short event, void * ctx) noexcept {
+		// Выполняем игнорирование сигнала
+		::signal(SIGABRT, SIG_IGN);
 		// Получаем объект сигнала
 		sig_t * sig = reinterpret_cast <sig_t *> (ctx);
 		// Выполняем очистку памяти сигнала
@@ -116,6 +126,8 @@
 	 * @param ctx   объект сервера
 	 */
 	void awh::Signals::segvCallback(evutil_socket_t fd, short event, void * ctx) noexcept {
+		// Выполняем игнорирование сигнала
+		::signal(SIGSEGV, SIG_IGN);
 		// Получаем объект сигнала
 		sig_t * sig = reinterpret_cast <sig_t *> (ctx);
 		// Выполняем очистку памяти сигнала
@@ -219,7 +231,6 @@ void awh::Signals::start() noexcept {
 		#if !defined(_WIN32) && !defined(_WIN64)
 			// Выполняем игнорирование сигналов SIGPIPE и SIGABRT
 			::signal(SIGPIPE, SIG_IGN);
-			// ::signal(SIGABRT, SIG_IGN);
 			// Устанавливаем базу событий для сигналов
 			this->_ev.sint = evsignal_new(this->_base, SIGINT, &sig_t::intCallback, this);
 			this->_ev.sfpe = evsignal_new(this->_base, SIGFPE, &sig_t::fpeCallback, this);
@@ -234,6 +245,8 @@ void awh::Signals::start() noexcept {
 			evsignal_add(this->_ev.sterm, nullptr);
 			evsignal_add(this->_ev.sabrt, nullptr);
 			evsignal_add(this->_ev.ssegv, nullptr);
+			// Отправка сигнала для теста
+			// raise(SIGABRT);
 		/**
 		 * Если операционной системой является MS Windows
 		 */

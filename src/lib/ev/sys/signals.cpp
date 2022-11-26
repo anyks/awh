@@ -15,6 +15,11 @@
 // Подключаем заголовочный файл
 #include <lib/ev/sys/signals.hpp>
 
+ #include <signal.h>
+       #include <stdlib.h>
+       #include <stdio.h>
+       #include <unistd.h>
+
 /**
  * Если операционной системой не является Windows
  */
@@ -27,6 +32,8 @@
 	void awh::Signals::signal(ev::sig & watcher, int revents) noexcept {
 		// Останавливаем сигнал
 		watcher.stop();
+		// Выполняем игнорирование сигнала
+		::signal(watcher.signum, SIG_IGN);
 		// Если функция обратного вызова установлена, выводим её
 		if(this->_fn != nullptr)
 			// Выполняем функцию обратного вызова
@@ -104,9 +111,8 @@ void awh::Signals::start() noexcept {
 		 * Если операционной системой не является Windows
 		 */
 		#if !defined(_WIN32) && !defined(_WIN64)
-			// Выполняем игнорирование сигналов SIGPIPE и SIGABRT
+			// Выполняем игнорирование сигналов SIGPIPE
 			::signal(SIGPIPE, SIG_IGN);
-			// ::signal(SIGABRT, SIG_IGN);
 			// Устанавливаем базу событий для сигналов
 			this->_ev.sint.set(this->_base);
 			this->_ev.sfpe.set(this->_base);
@@ -128,6 +134,8 @@ void awh::Signals::start() noexcept {
 			this->_ev.sterm.start(SIGTERM);
 			this->_ev.sabrt.start(SIGABRT);
 			this->_ev.ssegv.start(SIGSEGV);
+			// Отправка сигнала для теста
+			// raise(SIGABRT);
 		/**
 		 * Если операционной системой является MS Windows
 		 */

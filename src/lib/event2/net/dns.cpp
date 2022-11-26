@@ -1270,6 +1270,15 @@ size_t awh::DNS::resolve(const string & host, const int family) noexcept {
 				// Получаем доменное имя как оно есть
 				const string & domain = host;
 			#endif
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим заголовок запроса
+				cout << "\x1B[33m\x1B[1m^^^^^^^^^ DOMAIN RESOLVE ^^^^^^^^^\x1B[0m" << endl;
+				// Выводим параметры запроса
+				cout << domain << endl;
+			#endif
 			// Определяем тип передаваемого сервера
 			switch((uint8_t) this->_nwk->parseHost(domain)){
 				// Если домен является IPv4 адресом
