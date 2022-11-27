@@ -49,8 +49,6 @@ awh::DNS::Holder::~Holder() noexcept {
 void awh::DNS::Worker::timeout(const evutil_socket_t fd, const short event) noexcept {
 	// Останавливаем работу таймера
 	this->_timer.stop();
-	// Останавливаем работу события
-	this->_event.stop();
 	// Выполняем закрытие подключения
 	this->close();
 	// Выполняем остановку работы
@@ -394,6 +392,8 @@ vector <u_char> awh::DNS::Worker::extract(u_char * data, const size_t pos) const
  * close Метод закрытия подключения
  */
 void awh::DNS::Worker::close() noexcept {
+	// Останавливаем работу события
+	this->_event.stop();
 	// Если файловый дескриптор не закрыт
 	if(this->_fd != INVALID_SOCKET){
 		/**
@@ -578,8 +578,6 @@ bool awh::DNS::Worker::request(const string & domain) noexcept {
 awh::DNS::Worker::~Worker() noexcept {
 	// Останавливаем работу таймера
 	this->_timer.stop();
-	// Останавливаем работу события резолвера
-	this->_event.stop();
 	// Выполняем закрытие файлового дерскриптора (сокета)
 	this->close();
 }

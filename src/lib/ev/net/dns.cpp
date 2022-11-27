@@ -274,8 +274,6 @@ void awh::DNS::Worker::response(ev::io & io, int revents) noexcept {
 void awh::DNS::Worker::timeout(ev::timer & timer, int revents) noexcept {
 	// Выполняем остановку работы таймера
 	timer.stop();
-	// Выполняем остановку чтения сокета
-	this->_io.stop();
 	// Выполняем закрытие подключения
 	this->close();
 	// Выполняем остановку работы
@@ -394,6 +392,8 @@ vector <u_char> awh::DNS::Worker::extract(u_char * data, const size_t pos) const
  * close Метод закрытия подключения
  */
 void awh::DNS::Worker::close() noexcept {
+	// Останавливаем чтение данных с клиента
+	this->_io.stop();
 	// Если файловый дескриптор не закрыт
 	if(this->_fd != INVALID_SOCKET){
 		/**
