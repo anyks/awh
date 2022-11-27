@@ -505,10 +505,14 @@ void awh::Core::clean(const size_t aid) const noexcept {
 	if(it != this->adjutants.end()){
 		// Получаем объект адъютанта
 		awh::scheme_t::adj_t * adj = const_cast <awh::scheme_t::adj_t *> (it->second);
+		// Получаем объект сетевого ядра
+		core_t * core = const_cast <core_t *> (this);
 		// Останавливаем чтение данных
-		const_cast <core_t *> (this)->disabled(engine_t::method_t::READ, it->first);
+		core->disabled(engine_t::method_t::READ, it->first);
 		// Останавливаем запись данных
-		const_cast <core_t *> (this)->disabled(engine_t::method_t::WRITE, it->first);
+		core->disabled(engine_t::method_t::WRITE, it->first);
+		// Останавливаем выполнения подключением
+		core->disabled(engine_t::method_t::CONNECT, it->first);
 		// Выполняем блокировку на чтение/запись данных
 		adj->bev.locked = scheme_t::locked_t();
 	}
