@@ -1208,6 +1208,14 @@ void awh::server::Proxy::compress(const http_t::compress_t compress) noexcept {
 	this->_scheme.compress = compress;
 }
 /**
+ * signalInterception Метод активации перехвата сигналов
+ * @param mode флаг активации
+ */
+void awh::server::Proxy::signalInterception(const awh::core_t::signals_t mode) noexcept {
+	// Выполняем активацию перехвата сигналов
+	this->_core.server.signalInterception(mode);
+}
+/**
  * serv Метод установки данных сервиса
  * @param id   идентификатор сервиса
  * @param name название сервиса

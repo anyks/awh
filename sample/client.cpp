@@ -77,7 +77,7 @@ int main(int argc, char * argv[]){
 	// Создаём объект исполнителя
 	Client executor(&log);
 	// Создаём биндинг
-	client::core_t core(awh::core_t::affiliation_t::PRIMARY, &fmk, &log);
+	client::core_t core(&fmk, &log);
 	// Создаём объект SAMPLE запроса
 	client::sample_t sample(&core, &fmk, &log);
 	// Устанавливаем название сервиса

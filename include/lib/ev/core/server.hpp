@@ -211,15 +211,6 @@ namespace awh {
 				 */
 				Core(const fmk_t * fmk, const log_t * log, const scheme_t::family_t family = scheme_t::family_t::IPV4, const scheme_t::sonet_t sonet = scheme_t::sonet_t::TCP) noexcept;
 				/**
-				 * Core Конструктор
-				 * @param affiliation принадлежность модуля
-				 * @param fmk         объект фреймворка
-				 * @param log         объект для работы с логами
-				 * @param family      тип протокола интернета (IPV4 / IPV6 / NIX)
-				 * @param sonet       тип сокета подключения (TCP / UDP)
-				 */
-				Core(const affiliation_t affiliation, const fmk_t * fmk, const log_t * log, const scheme_t::family_t family = scheme_t::family_t::IPV4, const scheme_t::sonet_t sonet = scheme_t::sonet_t::TCP) noexcept;
-				/**
 				 * ~Core Деструктор
 				 */
 				~Core() noexcept;

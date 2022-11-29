@@ -83,11 +83,11 @@ namespace awh {
 			};
 		public:
 			/**
-			 * Принадлежность модуля
+			 * Флаги перехвата сигналов
 			 */
-			enum class affiliation_t : uint8_t {
-				PRIMARY   = 0x01, // Первичная
-				SECONDARY = 0x02  // Вторичная
+			enum class signals_t : uint8_t {
+				ENABLED  = 0x01, // Включено
+				DISABLED = 0x00  // Отключено
 			};
 		private:
 			/**
@@ -189,6 +189,11 @@ namespace awh {
 				private:
 					// Частота обновления базы событий
 					chrono::milliseconds _freq;
+				private:
+					// Функция обратного вызова при запуске модуля
+					function <void (void)> _launching;
+					// Функция обратного вызова при остановки модуля
+					function <void (void)> _closedown;
 				public:
 					// База данных событий
 					struct event_base * base;
@@ -286,8 +291,8 @@ namespace awh {
 			// Тип запускаемого ядра
 			engine_t::type_t type;
 		private:
-			// Принадлежность модуля
-			affiliation_t _affiliation;
+			// Флаг обработки сигналов
+			signals_t _signals;
 		private:
 			// Список активных таймеров
 			map <u_short, unique_ptr <timer_t>> _timers;
@@ -342,9 +347,9 @@ namespace awh {
 			void persistent(const evutil_socket_t fd, const short event) noexcept;
 		private:
 			/**
-			 * signals Метод вывода полученного сигнала
+			 * signal Метод вывода полученного сигнала
 			 */
-			void signals(const int signal) noexcept;
+			void signal(const int signal) noexcept;
 		protected:
 			/**
 			 * clean Метод буфера событий
@@ -645,15 +650,15 @@ namespace awh {
 			 */
 			void serverName(const string & name = "") noexcept;
 			/**
+			 * signalInterception Метод активации перехвата сигналов
+			 * @param mode флаг активации
+			 */
+			void signalInterception(const signals_t mode) noexcept;
+			/**
 			 * ciphers Метод установки алгоритмов шифрования
 			 * @param ciphers список алгоритмов шифрования для установки
 			 */
 			void ciphers(const vector <string> & ciphers) noexcept;
-			/**
-			 * affiliation Метод установки принадлежности модуля
-			 * @param affiliation принадлежность модуля
-			 */
-			void affiliation(const affiliation_t affiliation) noexcept;
 			/**
 			 * ca Метод установки доверенного сертификата (CA-файла)
 			 * @param trusted адрес доверенного сертификата (CA-файла)
@@ -683,15 +688,6 @@ namespace awh {
 			 * @param sonet  тип сокета подключения (TCP / UDP / TLS / DTLS)
 			 */
 			Core(const fmk_t * fmk, const log_t * log, const scheme_t::family_t family = scheme_t::family_t::IPV4, const scheme_t::sonet_t sonet = scheme_t::sonet_t::TCP) noexcept;
-			/**
-			 * Core Конструктор
-			 * @param affiliation принадлежность модуля
-			 * @param fmk         объект фреймворка
-			 * @param log         объект для работы с логами
-			 * @param family      тип протокола интернета (IPV4 / IPV6 / NIX)
-			 * @param sonet       тип сокета подключения (TCP / UDP / TLS / DTLS)
-			 */
-			Core(const affiliation_t affiliation, const fmk_t * fmk, const log_t * log, const scheme_t::family_t family = scheme_t::family_t::IPV4, const scheme_t::sonet_t sonet = scheme_t::sonet_t::TCP) noexcept;
 			/**
 			 * ~Core Деструктор
 			 */

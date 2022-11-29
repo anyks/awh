@@ -675,6 +675,14 @@ void awh::server::ProxySocks5::certificate(const string & chain, const string & 
 	this->_core.server.certificate(chain, key);
 }
 /**
+ * signalInterception Метод активации перехвата сигналов
+ * @param mode флаг активации
+ */
+void awh::server::ProxySocks5::signalInterception(const awh::core_t::signals_t mode) noexcept {
+	// Выполняем активацию перехвата сигналов
+	this->_core.server.signalInterception(mode);
+}
+/**
  * ProxySocks5 Конструктор
  * @param fmk объект фреймворка
  * @param log объект для работы с логами

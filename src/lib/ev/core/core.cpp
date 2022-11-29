@@ -141,7 +141,7 @@ void awh::Core::Timer::callback(ev::timer & timer, int revents) noexcept {
  */
 void awh::Core::Dispatch::kick() noexcept {
 	// Если база событий проинициализированна
-	if(this->_init && (this->_affiliation == affiliation_t::PRIMARY)){
+	if(this->_init){
 		// Выполняем блокировку потока
 		const lock_guard <recursive_mutex> lock(this->_mtx);
 		// Выполняем остановку всех событий
@@ -157,22 +157,9 @@ void awh::Core::Dispatch::stop() noexcept {
 		// Выполняем блокировку потока
 		const lock_guard <recursive_mutex> lock(this->_mtx);
 		// Снимаем флаг работы модуля
-		this->_work = false;
-		// Определяем принадлежность модуля
-		switch((uint8_t) this->_affiliation){
-			// Если принадлежность модуля первичная
-			case (uint8_t) affiliation_t::PRIMARY:
-				// Выполняем пинок
-				this->kick();
-			break;
-			// Если принадлежность модуля вторичная
-			case (uint8_t) affiliation_t::SECONDARY: {
-				// Разблокируем обещание
-				this->_pms.set_value();
-				// Создаём новое обещание
-				this->_pms = promise <void>();
-			} break;
-		}
+		this->_work = !this->_work;
+		// Выполняем пинок
+		this->kick();
 	}
 }
 /**
@@ -184,51 +171,38 @@ void awh::Core::Dispatch::start() noexcept {
 	// Если чтение базы событий ещё не началось
 	if(!this->_work && this->_init){
 		// Устанавливаем флаг работы модуля
-		this->_work = true;
+		this->_work = !this->_work;
 		// Выполняем разблокировку потока
 		this->_mtx.unlock();
 		// Выполняем запуск функции активации базы событий
-		std::bind(&awh::Core::launching, this->_core)();
-		// Определяем принадлежность модуля
-		switch((uint8_t) this->_affiliation){
-			// Если принадлежность модуля первичная
-			case (uint8_t) affiliation_t::PRIMARY: {
-				// Выполняем чтение базы событий пока это разрешено
-				while(this->_work){
-					// Если база событий проинициализированна
-					if(this->_init){
-						/**
-						 * Выполняем обработку ошибки
-						 */
-						try {
-							// Если не нужно использовать простой режим чтения
-							if(!this->_easy)
-								// Выполняем чтение базы событий
-								this->base.run();
-							// Выполняем чтение базы событий в простом режиме
-							else this->base.run(ev::NOWAIT);
-						/**
-						 * Если возникает ошибка
-						 */
-						} catch(const exception & error) {
-							// Выводим сообщение об ошибке
-							this->_core->log->print("%s", log_t::flag_t::WARNING, error.what());
-						}
-					}
-					// Замораживаем поток на период времени частоты обновления базы событий
-					this_thread::sleep_for(this->_freq);
+		this->_launching();
+		// Выполняем чтение базы событий пока это разрешено
+		while(this->_work){
+			// Если база событий проинициализированна
+			if(this->_init){
+				/**
+				 * Выполняем обработку ошибки
+				 */
+				try {
+					// Если не нужно использовать простой режим чтения
+					if(!this->_easy)
+						// Выполняем чтение базы событий
+						this->base.run();
+					// Выполняем чтение базы событий в простом режиме
+					else this->base.run(ev::NOWAIT);
+				/**
+				 * Если возникает ошибка
+				 */
+				} catch(const exception & error) {
+					// Выводим сообщение об ошибке
+					this->_core->log->print("%s", log_t::flag_t::WARNING, error.what());
 				}
-			} break;
-			// Если принадлежность модуля вторичная
-			case (uint8_t) affiliation_t::SECONDARY: {
-				// Создаём объект будущего
-				shared_future <void> future = this->_pms.get_future();
-				// Выполняем блокировку
-				future.wait();
-			} break;
+			}
+			// Замораживаем поток на период времени частоты обновления базы событий
+			this_thread::sleep_for(this->_freq);
 		}
 		// Выполняем остановку функции активации базы событий
-		std::bind(&awh::Core::closedown, this->_core)();
+		this->_closedown();
 	// Выполняем разблокировку потока
 	} else this->_mtx.unlock();
 }
@@ -314,24 +288,6 @@ void awh::Core::Dispatch::rebase(const bool clear) noexcept {
 	if(this->_work) this->_init = !this->_init;
 }
 /**
- * affiliation Метод установки принадлежности модуля
- * @param affiliation принадлежность модуля
- */
-void awh::Core::Dispatch::affiliation(const affiliation_t affiliation) noexcept {
-	// Выполняем блокировку потока
-	const lock_guard <recursive_mutex> lock(this->_mtx);
-	// Если работа модуля уже запущена
-	if(this->_work){
-		// Выполняем остановку работы модуля
-		this->stop();
-		// Устанавливаем принадлежность  модуля
-		this->_affiliation = affiliation;
-		// Выполняем запуск работы модуля
-		this->start();
-	// Устанавливаем принадлежность  модуля
-	} else this->_affiliation = affiliation;
-}
-/**
  * setBase Метод установки базы событий
  * @param base база событий
  */
@@ -373,7 +329,7 @@ void awh::Core::Dispatch::frequency(const uint8_t msec) noexcept {
  * Dispatch Конструктор
  * @param core объект сетевого ядра
  */
-awh::Core::Dispatch::Dispatch(core_t * core) noexcept : _core(core), _easy(false), _work(false), _init(true), base(nullptr), _affiliation(affiliation_t::SECONDARY), _freq(10ms) {
+awh::Core::Dispatch::Dispatch(core_t * core) noexcept : _core(core), _easy(false), _work(false), _init(true), base(nullptr), _freq(10ms), _launching(nullptr), _closedown(nullptr) {
 	/**
 	 * Если операционной системой является Windows
 	 */
@@ -397,6 +353,10 @@ awh::Core::Dispatch::Dispatch(core_t * core) noexcept : _core(core), _easy(false
 			exit(EXIT_FAILURE);
 		}
 	#endif
+	// Выполняем установку функции активации базы событий
+	this->_launching = std::bind(&awh::Core::launching, this->_core);
+	// Выполняем установку функции активации базы событий
+	this->_closedown = std::bind(&awh::Core::closedown, this->_core);
 	// Выполняем инициализацию базы событий
 	this->rebase(false);
 }
@@ -511,9 +471,9 @@ void awh::Core::persistent(ev::timer & timer, int revents) noexcept {
 	}
 }
 /**
- * signals Метод вывода полученного сигнала
+ * signal Метод вывода полученного сигнала
  */
-void awh::Core::signals(const int signal) noexcept {
+void awh::Core::signal(const int signal) noexcept {
 	// Если процесс является дочерним
 	if(this->pid != getpid()){
 		// Определяем тип сигнала
@@ -695,7 +655,7 @@ void awh::Core::stop() noexcept {
 	// Если система уже запущена
 	if(this->mode){
 		// Запрещаем работу WebSocket
-		this->mode = false;
+		this->mode = !this->mode;
 		// Выполняем разблокировку потока
 		this->_mtx.status.unlock();
 		/**
@@ -905,14 +865,19 @@ void awh::Core::rebase() noexcept {
 		}
 		// Выполняем остановку работы
 		this->stop();
-		// Выполняем остановку отслеживания сигналов
-		this->_sig.stop();
+		// Если перехват сигналов активирован
+		if(this->_signals == signals_t::ENABLED)
+			// Выполняем остановку отслеживания сигналов
+			this->_sig.stop();
 		// Выполняем пересоздание базы событий
 		this->dispatch.rebase();
-		// Выполняем установку новой базы событий
-		this->_sig.base(this->dispatch.base);
-		// Выполняем запуск отслеживания сигналов
-		this->_sig.start();
+		// Если обработка сигналов включена
+		if(this->_signals == signals_t::ENABLED){
+			// Выполняем установку новой базы событий
+			this->_sig.base(this->dispatch.base);
+			// Выполняем запуск отслеживания сигналов
+			this->_sig.start();
+		}
 		// Добавляем базу событий для DNS резолвера
 		this->dns.base(this->dispatch.base);
 		// Выполняем установку нейм-серверов для DNS резолвера IPv4
@@ -1602,14 +1567,18 @@ void awh::Core::family(const scheme_t::family_t family) noexcept {
 	this->net.family = family;
 	// Если тип сокета подключения - unix-сокет
 	if((this->net.family == scheme_t::family_t::NIX) && this->net.filename.empty()){
-		// Выполняем остановку отслеживания сигналов
-		this->_sig.stop();
+		// Если перехват сигналов активирован
+		if(this->_signals == signals_t::ENABLED)
+			// Выполняем остановку отслеживания сигналов
+			this->_sig.stop();
 		// Выполняем активацию адреса файла сокета
 		this->unixSocket();
 	// Если тип сокета подключения - хост и порт
 	} else if(this->net.family != scheme_t::family_t::NIX) {
-		// Выполняем запуск отслеживания сигналов
-		this->_sig.start();
+		// Если перехват сигналов активирован
+		if(this->_signals == signals_t::ENABLED)
+			// Выполняем запуск отслеживания сигналов
+			this->_sig.start();
 		// Выполняем очистку адреса файла unix-сокета
 		this->removeUnixSocket();
 	}
@@ -1746,6 +1715,39 @@ void awh::Core::serverName(const string & name) noexcept {
 	else this->servName = AWH_SHORT_NAME;
 }
 /**
+ * signalInterception Метод активации перехвата сигналов
+ * @param mode флаг активации
+ */
+void awh::Core::signalInterception(const signals_t mode) noexcept {
+	// Выполняем блокировку потока
+	const lock_guard <recursive_mutex> lock(this->_mtx.main);
+	// Если флаг активации отличается
+	if(this->_signals != mode){
+		// Определяем флаг активации
+		switch((uint8_t) mode){
+			// Если передан флаг активации перехвата сигналов
+			case (uint8_t) signals_t::ENABLED: {
+				// Если тип сокета подключения не является unix-сокетом
+				if(this->net.family != scheme_t::family_t::NIX){
+					// Устанавливаем функцию обработки сигналов
+					this->_sig.on(std::bind(&core_t::signal, this, placeholders::_1));
+					// Выполняем запуск отслеживания сигналов
+					this->_sig.start();
+					// Устанавливаем флаг активации перехвата сигналов
+					this->_signals = mode;
+				}
+			} break;
+			// Если передан флаг деактивации перехвата сигналов
+			case (uint8_t) signals_t::DISABLED: {
+				// Выполняем остановку отслеживания сигналов
+				this->_sig.stop();
+				// Устанавливаем флаг деактивации перехвата сигналов
+				this->_signals = mode;
+			} break;
+		}
+	}
+}
+/**
  * ciphers Метод установки алгоритмов шифрования
  * @param ciphers список алгоритмов шифрования для установки
  */
@@ -1754,40 +1756,6 @@ void awh::Core::ciphers(const vector <string> & ciphers) noexcept {
 	const lock_guard <recursive_mutex> lock(this->_mtx.main);
 	// Выполняем установку алгоритмов шифрования
 	this->engine.ciphers(ciphers);
-}
-/**
- * affiliation Метод установки принадлежности модуля
- * @param affiliation принадлежность модуля
- */
-void awh::Core::affiliation(const affiliation_t affiliation) noexcept {
-	// Выполняем блокировку потока
-	const lock_guard <recursive_mutex> lock(this->_mtx.main);
-	// Если принадлежность модуля отличается
-	if(this->_affiliation != affiliation){
-		// Определяем принадлежность модуля
-		switch((uint8_t) affiliation){
-			// Если принадлежность модуля первичная
-			case (uint8_t) affiliation_t::PRIMARY: {
-				// Устанавливаем функцию обработки сигналов
-				this->_sig.on(std::bind(&core_t::signals, this, placeholders::_1));
-				// Если тип сокета подключения не является unix-сокетом
-				if(this->net.family != scheme_t::family_t::NIX)
-					// Выполняем запуск отслеживания сигналов
-					this->_sig.start();
-			} break;
-			// Если принадлежность модуля вторичная
-			case (uint8_t) affiliation_t::SECONDARY: {
-				// Если приложение является основным и тип сокета подключения не является unix-сокетом
-				if((this->_affiliation == affiliation_t::PRIMARY) && (this->net.family != scheme_t::family_t::NIX))
-					// Выполняем остановку отслеживания сигналов
-					this->_sig.stop();
-			} break;
-		}
-		// Устанавливаем принадлежность  модуля
-		this->_affiliation = affiliation;
-		// Выполняем установку принадлежности модуля для базы событий
-		this->dispatch.affiliation(affiliation);
-	}
 }
 /**
  * ca Метод установки доверенного сертификата (CA-файла)
@@ -1827,14 +1795,18 @@ void awh::Core::network(const vector <string> & ip, const vector <string> & ns, 
 	this->net.family = family;
 	// Если тип сокета подключения - unix-сокет
 	if((this->net.family == scheme_t::family_t::NIX) && this->net.filename.empty()){
-		// Выполняем остановку отслеживания сигналов
-		this->_sig.stop();
+		// Если перехват сигналов активирован
+		if(this->_signals == signals_t::ENABLED)
+			// Выполняем остановку отслеживания сигналов
+			this->_sig.stop();
 		// Выполняем активацию адреса файла сокета
 		this->unixSocket();
 	// Если тип сокета подключения - хост и порт
 	} else if(this->net.family != scheme_t::family_t::NIX) {
-		// Выполняем запуск отслеживания сигналов
-		this->_sig.start();
+		// Если перехват сигналов активирован
+		if(this->_signals == signals_t::ENABLED)
+			// Выполняем запуск отслеживания сигналов
+			this->_sig.start();
 		// Выполняем очистку адреса файла unix-сокета
 		this->removeUnixSocket();
 	}
@@ -1916,7 +1888,7 @@ void awh::Core::network(const vector <string> & ip, const vector <string> & ns, 
 awh::Core::Core(const fmk_t * fmk, const log_t * log, const scheme_t::family_t family, const scheme_t::sonet_t sonet) noexcept :
  pid(getpid()), nwk(fmk), uri(fmk, &nwk), engine(fmk, log, &uri),
  dns(fmk, log, &nwk), dispatch(this), _sig(dispatch.base),
- status(status_t::STOP), type(engine_t::type_t::CLIENT), _affiliation(affiliation_t::SECONDARY),
+ status(status_t::STOP), type(engine_t::type_t::CLIENT), _signals(signals_t::DISABLED),
  mode(false), noinfo(false), persist(false), cores(0), servName(AWH_SHORT_NAME),
  _persIntvl(PERSIST_INTERVAL), fmk(fmk), log(log), _crash(nullptr), _active(nullptr) {
 	// Устанавливаем тип сокета
@@ -1929,33 +1901,6 @@ awh::Core::Core(const fmk_t * fmk, const log_t * log, const scheme_t::family_t f
 		this->unixSocket();
 	// Устанавливаем базу событий для DNS резолвера
 	this->dns.base(this->dispatch.base);
-}
-/**
- * Core Конструктор
- * @param affiliation принадлежность модуля
- * @param fmk         объект фреймворка
- * @param log         объект для работы с логами
- * @param family      тип протокола интернета (IPV4 / IPV6 / NIX)
- * @param sonet       тип сокета подключения (TCP / UDP / TLS / DTLS)
- */
-awh::Core::Core(const affiliation_t affiliation, const fmk_t * fmk, const log_t * log, const scheme_t::family_t family, const scheme_t::sonet_t sonet) noexcept :
- pid(getpid()), nwk(fmk), uri(fmk, &nwk), engine(fmk, log, &uri),
- dns(fmk, log, &nwk), dispatch(this), _sig(dispatch.base),
- status(status_t::STOP), type(engine_t::type_t::CLIENT), _affiliation(affiliation_t::SECONDARY),
- mode(false), noinfo(false), persist(false), cores(0), servName(AWH_SHORT_NAME),
- _persIntvl(PERSIST_INTERVAL), fmk(fmk), log(log), _crash(nullptr), _active(nullptr) {
-	// Устанавливаем тип сокета
-	this->net.sonet = sonet;
-	// Устанавливаем тип активного интернет-подключения
-	this->net.family = family;
-	// Если тип сокета подключения - unix-сокет
-	if(this->net.family == scheme_t::family_t::NIX)
-		// Выполняем активацию адреса файла сокета
-		this->unixSocket();
-	// Устанавливаем базу событий для DNS резолвера
-	this->dns.base(this->dispatch.base);
-	// Устанавливаем принадлежность модуля
-	this->affiliation(affiliation);
 }
 /**
  * ~Core Деструктор
@@ -1991,8 +1936,8 @@ awh::Core::~Core() noexcept {
 	}
 	// Выполняем разблокировку потока
 	this->_mtx.status.unlock();
-	// Если приложение является основным и тип сокета подключения не является unix-сокетом
-	if((this->_affiliation == affiliation_t::PRIMARY) && (this->net.family != scheme_t::family_t::NIX))
+	// Если перехват сигналов активирован
+	if(this->_signals == signals_t::ENABLED)
 		// Выполняем остановку отслеживания сигналов
 		this->_sig.stop();
 }

@@ -72,8 +72,7 @@ namespace awh {
 					 * @param fmk объект фреймворка
 					 * @param log объект для работы с логами
 					 */
-					Core(const fmk_t * fmk, const log_t * log) noexcept :
-					 client(fmk, log), server(awh::core_t::affiliation_t::PRIMARY, fmk, log) {}
+					Core(const fmk_t * fmk, const log_t * log) noexcept : client(fmk, log), server(fmk, log) {}
 				} core_t;
 				/**
 				 * Callback Структура функций обратного вызова
@@ -514,6 +513,11 @@ namespace awh {
 				 * @param метод сжатия сообщений
 				 */
 				void compress(const http_t::compress_t compress) noexcept;
+				/**
+				 * signalInterception Метод активации перехвата сигналов
+				 * @param mode флаг активации
+				 */
+				void signalInterception(const awh::core_t::signals_t mode) noexcept;
 				/**
 				 * serv Метод установки данных сервиса
 				 * @param id   идентификатор сервиса

@@ -156,7 +156,6 @@ int main(int argc, char * argv[]){
 	core.ca("./ca/cert.pem");
 	// core.verifySSL(false);
 	core.sonet(awh::scheme_t::sonet_t::TCP);
-	core.affiliation(awh::core_t::affiliation_t::PRIMARY);
 
 	rest.mode(
 		(uint8_t) client::rest_t::flag_t::NOINFO |
@@ -242,7 +241,6 @@ int main(int argc, char * argv[]){
 	core.clusterSize();
 	core.verifySSL(false);
 	core.sonet(awh::scheme_t::sonet_t::TLS);
-	core.affiliation(awh::core_t::affiliation_t::PRIMARY);
 	core.certificate("./ca/certs/server-cert.pem", "./ca/certs/server-key.pem");
 
 	rest.realm("ANYKS");
@@ -315,7 +313,6 @@ int main(int argc, char * argv[]){
 	core.verifySSL(false);
 	core.ca("./ca/cert.pem");
 	core.sonet(awh::scheme_t::sonet_t::TLS);
-	core.affiliation(awh::core_t::affiliation_t::PRIMARY);
 	core.certificate("./ca/certs/client-cert.pem", "./ca/certs/client-key.pem");
 
 	// ws.proxy("http://user:password@host.com:port");
@@ -396,7 +393,6 @@ int main(int argc, char * argv[]){
 	core.clusterSize();
 	core.verifySSL(false);
 	core.sonet(awh::scheme_t::sonet_t::TLS);
-	core.affiliation(awh::core_t::affiliation_t::PRIMARY);
 	core.certificate("./ca/certs/server-cert.pem", "./ca/certs/server-key.pem");
 
 	ws.realm("ANYKS");
@@ -607,8 +603,6 @@ int main(int argc, char * argv[]){
 
 	Timer executor(&log);
 
-	core_t core(awh::core_t::affiliation_t::PRIMARY, &fmk, &log);
-
 	log.name("Timer");
 	log.format("%H:%M:%S %d.%m.%Y");
 
@@ -631,7 +625,7 @@ using namespace awh;
 int main(int argc, char * argv[]){
 	fmk_t fmk;
 	log_t log(&fmk);
-	core_t core(awh::core_t::affiliation_t::PRIMARY, &fmk, &log);
+	core_t core(&fmk, &log);
 
 	log.name("DNS");
 	log.format("%H:%M:%S %d.%m.%Y");
@@ -694,7 +688,6 @@ int main(int argc, char * argv[]){
 		(uint8_t) client::sample_t::flag_t::VERIFYSSL
 	);
 	core.sonet(awh::scheme_t::sonet_t::TCP);
-	core.affiliation(awh::core_t::affiliation_t::PRIMARY);
 
 	sample.init(2222, "127.0.0.1");
 	sample.on(bind(&Client::active, &executor, _1, _2));
@@ -747,7 +740,6 @@ int main(int argc, char * argv[]){
 	log.format("%H:%M:%S %d.%m.%Y");
 
 	core.sonet(awh::scheme_t::sonet_t::TCP);
-	core.affiliation(awh::core_t::affiliation_t::PRIMARY);
 
 	sample.init(2222, "127.0.0.1");
 	sample.on((function <void (const size_t, const vector <char> &, server::sample_t *)>) bind(&Server::message, &executor, _1, _2, _3));
@@ -808,7 +800,6 @@ int main(int argc, char * argv[]){
 	core.verifySSL(false);
 	core.ca("./ca/cert.pem");
 	core.sonet(awh::scheme_t::sonet_t::TLS);
-	core.affiliation(awh::core_t::affiliation_t::PRIMARY);
 	core.certificate("./ca/certs/client-cert.pem", "./ca/certs/client-key.pem");
 
 	sample.init(2222, "127.0.0.1");
@@ -863,7 +854,6 @@ int main(int argc, char * argv[]){
 
 	core.verifySSL(false);
 	core.sonet(awh::scheme_t::sonet_t::TLS);
-	core.affiliation(awh::core_t::affiliation_t::PRIMARY);
 	core.certificate("./ca/certs/server-cert.pem", "./ca/certs/server-key.pem");
 
 	sample.init(2222, "127.0.0.1");
@@ -923,7 +913,6 @@ int main(int argc, char * argv[]){
 		(uint8_t) client::sample_t::flag_t::VERIFYSSL
 	);
 	core.sonet(awh::scheme_t::sonet_t::UDP);
-	core.affiliation(awh::core_t::affiliation_t::PRIMARY);
 
 	sample.init(2222, "127.0.0.1");
 	sample.on(bind(&Client::active, &executor, _1, _2));
@@ -976,7 +965,6 @@ int main(int argc, char * argv[]){
 	log.format("%H:%M:%S %d.%m.%Y");
 
 	core.sonet(awh::scheme_t::sonet_t::UDP);
-	core.affiliation(awh::core_t::affiliation_t::PRIMARY);
 
 	sample.init(2222, "127.0.0.1");
 	sample.on((function <void (const size_t, const vector <char> &, server::sample_t *)>) bind(&Server::message, &executor, _1, _2, _3));
@@ -1037,7 +1025,6 @@ int main(int argc, char * argv[]){
 	core.verifySSL(false);
 	core.ca("./ca/cert.pem");
 	core.sonet(awh::scheme_t::sonet_t::SCTP);
-	core.affiliation(awh::core_t::affiliation_t::PRIMARY);
 	core.certificate("./ca/certs/client-cert.pem", "./ca/certs/client-key.pem");
 
 	sample.init(2222, "127.0.0.1");
@@ -1092,7 +1079,6 @@ int main(int argc, char * argv[]){
 
 	core.verifySSL(false);
 	core.sonet(awh::scheme_t::sonet_t::SCTP);
-	core.affiliation(awh::core_t::affiliation_t::PRIMARY);
 	core.certificate("./ca/certs/server-cert.pem", "./ca/certs/server-key.pem");
 
 	sample.init(2222, "127.0.0.1");
@@ -1154,7 +1140,6 @@ int main(int argc, char * argv[]){
 	core.verifySSL(false);
 	core.ca("./ca/cert.pem");
 	core.sonet(awh::scheme_t::sonet_t::DTLS);
-	core.affiliation(awh::core_t::affiliation_t::PRIMARY);
 	core.certificate("./ca/certs/client-cert.pem", "./ca/certs/client-key.pem");
 
 	sample.init(2222, "127.0.0.1");
@@ -1209,7 +1194,6 @@ int main(int argc, char * argv[]){
 
 	core.verifySSL(false);
 	core.sonet(awh::scheme_t::sonet_t::DTLS);
-	core.affiliation(awh::core_t::affiliation_t::PRIMARY);
 	core.certificate("./ca/certs/server-cert.pem", "./ca/certs/server-key.pem");
 
 	sample.init(2222, "127.0.0.1");
@@ -1270,7 +1254,6 @@ int main(int argc, char * argv[]){
 	);
 	core.sonet(awh::scheme_t::sonet_t::TCP);
 	core.family(awh::scheme_t::family_t::NIX);
-	core.affiliation(awh::core_t::affiliation_t::PRIMARY);
 
 	sample.init("anyks");
 	sample.on(bind(&Client::active, &executor, _1, _2));
@@ -1324,7 +1307,6 @@ int main(int argc, char * argv[]){
 
 	core.sonet(awh::scheme_t::sonet_t::TCP);
 	core.family(awh::scheme_t::family_t::NIX);
-	core.affiliation(awh::core_t::affiliation_t::PRIMARY);
 
 	sample.init("anyks");
 	sample.on((function <void (const size_t, const vector <char> &, server::sample_t *)>) bind(&Server::message, &executor, _1, _2, _3));
@@ -1384,7 +1366,6 @@ int main(int argc, char * argv[]){
 	);
 	core.sonet(awh::scheme_t::sonet_t::UDP);
 	core.family(awh::scheme_t::family_t::NIX);
-	core.affiliation(awh::core_t::affiliation_t::PRIMARY);
 
 	sample.init("anyks");
 	sample.on(bind(&Client::active, &executor, _1, _2));
@@ -1438,7 +1419,6 @@ int main(int argc, char * argv[]){
 
 	core.sonet(awh::scheme_t::sonet_t::UDP);
 	core.family(awh::scheme_t::family_t::NIX);
-	core.affiliation(awh::core_t::affiliation_t::PRIMARY);
 
 	sample.init("anyks");
 	sample.on((function <void (const size_t, const vector <char> &, server::sample_t *)>) bind(&Server::message, &executor, _1, _2, _3));

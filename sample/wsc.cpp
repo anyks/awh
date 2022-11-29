@@ -214,7 +214,7 @@ int main(int argc, char * argv[]){
 	// Создаём объект исполнителя
 	WebSocket executor(&log);
 	// Создаём биндинг сетевого ядра
-	client::core_t core(awh::core_t::affiliation_t::PRIMARY, &fmk, &log);
+	client::core_t core(&fmk, &log);
 	// Создаём объект WebSocket клиента
 	client::ws_t ws(&core, &fmk, &log);
 	// Устанавливаем название сервиса
