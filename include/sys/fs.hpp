@@ -22,9 +22,9 @@
 #include <fstream>
 #include <codecvt>
 #include <sstream>
+#include <cstdlib>
 #include <unistd.h>
 #include <functional>
-#include <stdlib.h>
 #include <dirent.h>
 #include <sys/file.h>
 #include <sys/stat.h>

@@ -20,12 +20,12 @@
  */
 #include <regex>
 #include <array>
+#include <cmath>
 #include <string>
 #include <vector>
 #include <sstream>
 #include <iostream>
 #include <sstream>
-#include <math.h>
 #include <sys/types.h>
 
 // Если - это Windows

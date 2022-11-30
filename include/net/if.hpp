@@ -19,6 +19,7 @@
  * Стандартные библиотеки
  */
 #include <cmath>
+#include <cerrno>
 #include <string>
 #include <cstdio>
 #include <cstdlib>
@@ -41,7 +42,6 @@
 /**
  * Стандартные библиотеки
  */
-#include <errno.h>
 #include <unistd.h>
 #include <net/if.h>
 #include <arpa/inet.h>
@@ -74,8 +74,8 @@
 	/**
 	 * Стандартные библиотеки
 	 */
+	#include <cstddef>
 	#include <ifaddrs.h>
-	#include <stddef.h>
 	#include <stdbool.h>
 	#include <net/if_arp.h>
 #endif
@@ -87,7 +87,6 @@
 	/**
 	 * Стандартные библиотеки
 	 */
-	#include <stdio.h>
 	#include <ws2tcpip.h>
 	#include <winsock2.h>
 	#include <iphlpapi.h>

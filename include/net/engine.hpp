@@ -48,9 +48,9 @@
 #include <cstdio>
 #include <string>
 #include <vector>
+#include <cerrno>
 #include <cstdlib>
 #include <iostream>
-#include <errno.h>
 #include <sys/types.h>
 
 /**

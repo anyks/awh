@@ -22,8 +22,8 @@
 #include <vector>
 #include <thread>
 #include <string>
+#include <csignal>
 #include <unistd.h>
-#include <signal.h>
 #include <sys/types.h>
 #include <event2/event.h>
 

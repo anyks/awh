@@ -40,16 +40,16 @@
  * Стандартная библиотека
  */
 #include <set>
+#include <ctime>
 #include <cstdio>
 #include <string>
 #include <cstring>
-#include <stdlib.h>
+#include <cstdlib>
 
 /**
  * Методы только для OS Windows
  */
 #if defined(_WIN32) || defined(_WIN64)
-	#include <time.h>
 	#include <winsock2.h>
 	#include <ws2tcpip.h>
 	#include <getopt.h>
@@ -59,10 +59,9 @@
  * Для всех остальных операционных систем
  */
 #else
-	#include <ctime>
 	#include <vector>
+	#include <csignal>
 	#include <fcntl.h>
-	#include <signal.h>
 	#include <unistd.h>
 	#include <sys/types.h>
 	#include <arpa/inet.h>

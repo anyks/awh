@@ -19,13 +19,15 @@
  * Стандартная библиотека
  */
 #include <map>
+#include <ctime>
 #include <mutex>
 #include <chrono>
 #include <thread>
 #include <string>
+#include <cerrno>
+#include <cstdlib>
 #include <functional>
 #include <unordered_map>
-#include <errno.h>
 #include <event2/util.h>
 #include <event2/event.h>
 #include <event2/event_struct.h>
@@ -35,17 +37,13 @@
  */
 #if defined(_WIN32) || defined(_WIN64)
 	// Подключаем заголовочный файл
-	#include <time.h>
 	#include <tchar.h>
-	#include <stdlib.h>
-	#include <signal.h>
 	#include <synchapi.h>
 /**
  * Для всех остальных операционных систем
  */
 #else
 	// Подключаем заголовочный файл
-	#include <ctime>
 	#include <unistd.h>
 #endif
 

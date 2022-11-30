@@ -18,20 +18,13 @@
 /**
  * Стандартная библиотека
  */
+#include <ctime>
 #include <string>
 #include <vector>
 #include <cstring>
 #include <zlib.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-
-// Если - это Windows
-#if defined(_WIN32) || defined(_WIN64)
-	#include <time.h>
-// Если - это Unix
-#else
-	#include <ctime>
-#endif
 
 /**
  * Подключаем Brotli

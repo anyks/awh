@@ -18,15 +18,8 @@
 /**
  * Стандартная библиотека
  */
+#include <ctime>
 #include <string>
-
-// Если - это Windows
-#if defined(_WIN32) || defined(_WIN64)
-	#include <time.h>
-// Если - это Unix
-#else
-	#include <ctime>
-#endif
 
 /**
  * Наши модули

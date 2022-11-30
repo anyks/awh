@@ -20,6 +20,7 @@
  */
 #include <set>
 #include <map>
+#include <ctime>
 #include <stack>
 #include <mutex>
 #include <thread>
@@ -27,6 +28,7 @@
 #include <string>
 #include <vector>
 #include <random>
+#include <cstring>
 #include <cstdlib>
 #include <algorithm>
 #include <functional>
@@ -45,18 +47,13 @@
  * Если операционной системой является MS Windows
  */
 #if defined(_WIN32) || defined(_WIN64)
-	#include <time.h>
 	#include <winsock2.h>
 	#include <ws2tcpip.h>
 /**
  * Если операционной системой является Nix-подобная
  */
 #else
-	#include <ctime>
 	#include <netdb.h>
-	#include <stdio.h>
-	#include <stdlib.h>
-	#include <string.h>
 	#include <unistd.h>
 	#include <sys/types.h>
 	#include <arpa/inet.h>

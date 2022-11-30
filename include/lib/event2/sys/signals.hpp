@@ -24,10 +24,10 @@
  * Для OS Windows
  */
 #if defined(_WIN32) || defined(_WIN64)
+	#include <cstdlib>
+	#include <csignal>
 	#include <windows.h>
-	#include <signal.h>
 	#include <tchar.h>
-	#include <stdlib.h>
 /**
  * Для *nix подобных систем
  */

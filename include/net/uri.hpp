@@ -25,7 +25,7 @@
 #include <cctype>
 #include <iomanip>
 #include <sstream>
-#include <stdlib.h>
+#include <cstdlib>
 
 // Если - это Windows
 #if defined(_WIN32) || defined(_WIN64)
