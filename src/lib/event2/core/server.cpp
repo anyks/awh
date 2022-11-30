@@ -1280,21 +1280,6 @@ awh::server::Core::Core(const fmk_t * fmk, const log_t * log, const scheme_t::fa
 	this->_cluster.on(std::bind(&core_t::cluster, this, _1, _2, _3));
 }
 /**
- * Core Конструктор
- * @param affiliation принадлежность модуля
- * @param fmk         объект фреймворка
- * @param log         объект для работы с логами
- * @param family      тип протокола интернета (IPV4 / IPV6 / NIX)
- * @param sonet       тип сокета подключения (TCP / UDP)
- */
-awh::server::Core::Core(const affiliation_t affiliation, const fmk_t * fmk, const log_t * log, const scheme_t::family_t family, const scheme_t::sonet_t sonet) noexcept :
- awh::core_t(affiliation, fmk, log, family, sonet), _pid(0), _cluster(fmk, log), _ipV6only(false), _clusterSize(1), _clusterAutoRestart(false) {
-	// Устанавливаем тип запускаемого ядра
-	this->type = engine_t::type_t::SERVER;
-	// Устанавливаем функцию получения статуса кластера
-	this->_cluster.on(std::bind(&core_t::cluster, this, _1, _2, _3));
-}
-/**
  * ~Core Деструктор
  */
 awh::server::Core::~Core() noexcept {
