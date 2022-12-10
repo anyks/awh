@@ -893,8 +893,6 @@ void awh::server::Core::transfer(const engine_t::method_t method, const size_t a
 							} else break;
 						// Выходим из цикла
 						} else break;
-						// Разрешаем выполнение других потоков
-						this_thread::yield();
 					// Выполняем чтение до тех пор, пока всё не прочитаем
 					} while(this->method(aid) == engine_t::method_t::READ);
 					// Если тип сокета не установлен как UDP, запускаем чтение дальше
@@ -947,8 +945,6 @@ void awh::server::Core::transfer(const engine_t::method_t method, const size_t a
 							}
 							// Увеличиваем смещение в буфере
 							offset += bytes;
-							// Разрешаем выполнение других потоков
-							this_thread::yield();
 						}
 						// Останавливаем запись данных
 						this->disabled(engine_t::method_t::WRITE, aid);

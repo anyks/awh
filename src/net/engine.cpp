@@ -929,7 +929,7 @@ void awh::Engine::Context::error(const int status) const noexcept {
 					// Если ещё есть ошибки
 					} while((error = ERR_get_error()));
 				// Если данные записаны неверно
-				} else if(status == -1)
+				} else if((status == -1) && (errno != 0))
 					// Выводим в лог сообщение
 					this->_log->print("%s", log_t::flag_t::CRITICAL, strerror(errno));
 			} break;
@@ -947,6 +947,8 @@ void awh::Engine::Context::error(const int status) const noexcept {
 	} else if(status == -1) {
 		// Определяем тип ошибки
 		switch(errno){
+			// Если ошибка не обнаружена, выходим
+			case 0: break;
 			// Если произведена неудачная запись в PIPE
 			case EPIPE:
 				// Выводим в лог сообщение
