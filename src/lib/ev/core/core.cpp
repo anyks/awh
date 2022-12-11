@@ -194,8 +194,13 @@ void awh::Core::Dispatch::start() noexcept {
 				 * Если возникает ошибка
 				 */
 				} catch(const exception & error) {
-					// Выводим сообщение об ошибке
-					this->_core->log->print("%s", log_t::flag_t::WARNING, error.what());
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Выводим сообщение об ошибке
+						this->_core->log->print("%s", log_t::flag_t::WARNING, error.what());
+					#endif
 				}
 			}
 			// Замораживаем поток на период времени частоты обновления базы событий

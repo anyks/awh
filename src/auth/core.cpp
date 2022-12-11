@@ -93,8 +93,13 @@ const string awh::Authorization::response(const string & method, const string & 
 			}
 		// Выполняем прехват ошибки
 		} catch(const exception & error) {
-			// Выводим в лог сообщение
-			if(this->_fmk != nullptr) this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
 		}
 	}
 	// Выводим результат

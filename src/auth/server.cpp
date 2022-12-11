@@ -314,8 +314,13 @@ const string awh::server::Auth::header(const bool mode) noexcept {
 			}
 		// Выполняем прехват ошибки
 		} catch(const exception & error) {
-			// Выводим в лог сообщение
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
 		}
 	}
 	// Выводим результат

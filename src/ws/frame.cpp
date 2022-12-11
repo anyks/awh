@@ -215,10 +215,15 @@ awh::mess_t awh::Frame::message(const vector <char> & buffer) const noexcept {
 				else result.text.clear();
 			// Выполняем прехват ошибки
 			} catch(const exception & error) {
-				// Выводим в лог сообщение
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 				// Устанавливаем текст ошибки
 				result = this->_fmk->format("%s", error.what());
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Выводим сообщение об ошибке
+					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+				#endif
 			}
 		// Запоминаем размер смещения
 		} else result = 1007;

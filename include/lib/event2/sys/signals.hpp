@@ -19,20 +19,15 @@
  * Стандартная библиотека
  */
 #include <string>
+#include <cstdlib>
+#include <csignal>
 
 /**
  * Для OS Windows
  */
 #if defined(_WIN32) || defined(_WIN64)
-	#include <cstdlib>
-	#include <csignal>
 	#include <windows.h>
-	#include <tchar.h>
-/**
- * Для *nix подобных систем
- */
-#else
-	#include <csignal>
+	#include <tchar.h>	
 #endif
 
 /**

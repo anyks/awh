@@ -683,8 +683,19 @@ void awh::Hash::takeoverCompress(const bool flag) noexcept {
 		if(deflateInit2(&this->_zdef, Z_DEFAULT_COMPRESSION, Z_DEFLATED, -1 * this->_wbit, DEFAULT_MEM_LEVEL, Z_HUFFMAN_ONLY) != Z_OK){
 			// Выводим сообщение об ошибке
 			this->_log->print("%s", log_t::flag_t::CRITICAL, "deflate stream is not create");
-			// Выходим из приложения
-			exit(EXIT_FAILURE);
+			/**
+			 * Если операционной системой является Nix-подобная
+			 */
+			#if !defined(_WIN32) && !defined(_WIN64)
+				// Выходим из приложения
+				raise(SIGINT);
+			/**
+			 * Если операционной системой является MS Windows
+			 */
+			#else
+				// Выходим из приложения
+				exit(EXIT_FAILURE);
+			#endif
 		}
 	}
 }
@@ -713,8 +724,19 @@ void awh::Hash::takeoverDecompress(const bool flag) noexcept {
 		if(inflateInit2(&this->_zinf, -1 * this->_wbit) != Z_OK){
 			// Выводим сообщение об ошибке
 			this->_log->print("%s", log_t::flag_t::CRITICAL, "inflate stream is not create");
-			// Выходим из приложения
-			exit(EXIT_FAILURE);
+			/**
+			 * Если операционной системой является Nix-подобная
+			 */
+			#if !defined(_WIN32) && !defined(_WIN64)
+				// Выходим из приложения
+				raise(SIGINT);
+			/**
+			 * Если операционной системой является MS Windows
+			 */
+			#else
+				// Выходим из приложения
+				exit(EXIT_FAILURE);
+			#endif
 		}
 	}
 }

@@ -21,6 +21,7 @@
 #include <ctime>
 #include <string>
 #include <vector>
+#include <csignal>
 #include <cstring>
 #include <zlib.h>
 #include <sys/stat.h>
