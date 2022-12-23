@@ -659,7 +659,7 @@ wstring awh::Framework::trim(const wstring & text) const noexcept {
  * @return    строка в utf-8
  */
 wstring awh::Framework::convert(const string & str) const noexcept {
-		// Результат работы функции
+	// Результат работы функции
 	wstring result = L"";
 	/**
 	 * Выполняем отлов ошибок
