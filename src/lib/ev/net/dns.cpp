@@ -216,11 +216,19 @@ void awh::DNS::Worker::response(ev::io & io, int revents) noexcept {
 					if(ip.empty()){
 						// Выполняем установку IP адреса
 						ip = ::move(ips.front());
-						// Очищаем список используемых IP адресов
-						dns->_using.clear();
-					}
-					// Запоминаем полученный адрес
-					dns->_using.emplace(ip);
+						// Если количество IP адресов в списке больше 1-го
+						if(ips.size() > 1){
+							// Получаем текущее значение адреса
+							auto it = ips.begin();
+							// Выполняем смещение итератора
+							std::advance(it, 1);
+							// Переходим по всему списку полученных адресов
+							for(; it != ips.end(); ++it)
+								// Очищаем список используемых IP адресов
+								dns->_using.erase(* it);
+						}
+					// Если IP адрес получен, то запоминаем полученный адрес
+					} else dns->_using.emplace(ip);
 				// Если чёрный список доменных имён не пустой
 				} else if(!dns->emptyBlackList(this->_family))
 					// Выполняем очистку чёрного списка

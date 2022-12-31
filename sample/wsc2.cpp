@@ -40,13 +40,14 @@ class WebSocket {
 		network_t _nwk;
 		// Создаём объект URI
 		uri_t _uri;
-		// Создаём объект WEB запроса
-		client::web_t _web;
 		// Создаём биндинг
 		client::core_t _core;
 	private:
 		// Флаг события Web сервера
 		client::web_t::mode_t _webMode;
+	private:
+		// Создаём объект WEB запроса
+		client::web_t * _web;
 	public:
 		/**
 		 * subscribe Метод подписки на сообщения логов
@@ -272,7 +273,7 @@ class WebSocket {
 							// Устанавливаем параметры запроса
 							req.query = "/api/v3/time";
 							// Выполняем запрос на сервер
-							this->_web.send({std::forward <client::web_t::req_t> (req)});
+							this->_web->send({std::forward <client::web_t::req_t> (req)});
 						}
 					// Увеличиваем количество запросов
 					} else this->_count++;
@@ -291,13 +292,15 @@ class WebSocket {
 		 * @param fmk  объект фреймворка
 		 * @param core объект основного ядра
 		 */
-		WebSocket(fmk_t * fmk, log_t * log, client::core_t * core) : _fmk(fmk), _log(log), _main(core), _count(0), _nwk(fmk), _uri(fmk, &_nwk), _core(fmk, log), _web(&_core, fmk, log), _webMode(client::web_t::mode_t::DISCONNECT) {
+		WebSocket(fmk_t * fmk, log_t * log, client::core_t * core) : _fmk(fmk), _log(log), _main(core), _count(0), _nwk(fmk), _uri(fmk, &_nwk), _core(fmk, log), _web(nullptr), _webMode(client::web_t::mode_t::DISCONNECT) {
+			// Выделяем память для Web-клиента
+			this->_web = new client::web_t(&this->_core, fmk, log);
 			/**
 			 * 1. Устанавливаем отложенные вызовы
 			 * 2. Устанавливаем ожидание входящих сообщений
 			 * 3. Устанавливаем валидацию SSL сертификата
 			 */
-			this->_web.mode(
+			this->_web->mode(
 				(uint8_t) client::web_t::flag_t::ALIVE |
 				(uint8_t) client::web_t::flag_t::REDIRECTS |
 				(uint8_t) client::web_t::flag_t::VERIFYSSL
@@ -307,11 +310,11 @@ class WebSocket {
 			// Переводим клиента в асинхронный режим работы
 			this->_core.mode(client::core_t::mode_t::ASYNC);
 			// Выполняем инициализацию подключения
-			this->_web.init("https://api2.binance.com");
+			this->_web->init("https://api2.binance.com");
 			// Устанавливаем метод получения результата
-			this->_web.on(std::bind(&WebSocket::web, this, _1, _2));
+			this->_web->on(std::bind(&WebSocket::web, this, _1, _2));
 			// Устанавливаем метод активации подключения
-			this->_web.on(std::bind(&WebSocket::webActive, this, _1, _2));
+			this->_web->on(std::bind(&WebSocket::webActive, this, _1, _2));
 			// Выполняем подключение ядра
 			this->_main->bind(&this->_core);
 		}
@@ -321,6 +324,8 @@ class WebSocket {
 		~WebSocket(){
 			// Выполняем отключение ядра
 			this->_main->unbind(&this->_core);
+			// Очищаем память Web-клиента
+			delete this->_web;
 		}
 };
 
