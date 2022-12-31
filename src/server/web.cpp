@@ -1,5 +1,5 @@
 /**
- * @file: rest.cpp
+ * @file: web.cpp
  * @date: 2022-09-03
  * @license: GPL-3.0
  *
@@ -13,14 +13,14 @@
  */
 
 // Подключаем заголовочный файл
-#include <server/rest.hpp>
+#include <server/web.hpp>
 
 /**
  * chunking Метод обработки получения чанков
  * @param chunk бинарный буфер чанка
  * @param http  объект модуля HTTP
  */
-void awh::server::Rest::chunking(const vector <char> & chunk, const awh::http_t * http) noexcept {
+void awh::server::WEB::chunking(const vector <char> & chunk, const awh::http_t * http) noexcept {
 	// Если данные получены, формируем тело сообщения
 	if(!chunk.empty()) const_cast <awh::http_t *> (http)->body(chunk);
 }
@@ -29,7 +29,7 @@ void awh::server::Rest::chunking(const vector <char> & chunk, const awh::http_t 
  * @param sid  идентификатор схемы сети
  * @param core объект сетевого ядра
  */
-void awh::server::Rest::openCallback(const size_t sid, awh::core_t * core) noexcept {
+void awh::server::WEB::openCallback(const size_t sid, awh::core_t * core) noexcept {
 	// Если данные существуют
 	if((sid > 0) && (core != nullptr)){
 		// Устанавливаем хост сервера
@@ -44,11 +44,11 @@ void awh::server::Rest::openCallback(const size_t sid, awh::core_t * core) noexc
  * @param sid  идентификатор схемы сети
  * @param core объект сетевого ядра
  */
-void awh::server::Rest::persistCallback(const size_t aid, const size_t sid, awh::core_t * core) noexcept {
+void awh::server::WEB::persistCallback(const size_t aid, const size_t sid, awh::core_t * core) noexcept {
 	// Если данные существуют
 	if((aid > 0) && (sid > 0) && (core != nullptr)){
 		// Получаем параметры подключения адъютанта
-		rest_scheme_t::coffer_t * adj = const_cast <rest_scheme_t::coffer_t *> (this->_scheme.get(aid));
+		web_scheme_t::coffer_t * adj = const_cast <web_scheme_t::coffer_t *> (this->_scheme.get(aid));
 		// Если параметры подключения адъютанта получены
 		if((adj != nullptr) && ((!adj->alive && !this->_alive) || adj->close)){
 			// Если адъютант давно должен был быть отключён, отключаем его
@@ -71,13 +71,13 @@ void awh::server::Rest::persistCallback(const size_t aid, const size_t sid, awh:
  * @param sid  идентификатор схемы сети
  * @param core объект сетевого ядра
  */
-void awh::server::Rest::connectCallback(const size_t aid, const size_t sid, awh::core_t * core) noexcept {
+void awh::server::WEB::connectCallback(const size_t aid, const size_t sid, awh::core_t * core) noexcept {
 	// Если данные переданы верные
 	if((aid > 0) && (sid > 0) && (core != nullptr)){
 		// Создаём адъютанта
 		this->_scheme.set(aid);
 		// Получаем параметры подключения адъютанта
-		rest_scheme_t::coffer_t * adj = const_cast <rest_scheme_t::coffer_t *> (this->_scheme.get(aid));
+		web_scheme_t::coffer_t * adj = const_cast <web_scheme_t::coffer_t *> (this->_scheme.get(aid));
 		// Если параметры подключения адъютанта получены
 		if(adj != nullptr){
 			// Если нужно активировать многопоточность и она не активирована
@@ -85,7 +85,7 @@ void awh::server::Rest::connectCallback(const size_t aid, const size_t sid, awh:
 				// Выполняем активацию тредпула
 				this->_thr.init(this->_threadsCount);
 			// Устанавливаем экшен выполнения
-			adj->action = rest_scheme_t::action_t::CONNECT;
+			adj->action = web_scheme_t::action_t::CONNECT;
 			// Выполняем запуск обработчика событий
 			this->handler(aid);
 		}
@@ -97,15 +97,15 @@ void awh::server::Rest::connectCallback(const size_t aid, const size_t sid, awh:
  * @param sid  идентификатор схемы сети
  * @param core объект сетевого ядра
  */
-void awh::server::Rest::disconnectCallback(const size_t aid, const size_t sid, awh::core_t * core) noexcept {
+void awh::server::WEB::disconnectCallback(const size_t aid, const size_t sid, awh::core_t * core) noexcept {
 	// Если данные переданы верные
 	if((aid > 0) && (sid > 0) && (core != nullptr)){
 		// Получаем параметры подключения адъютанта
-		rest_scheme_t::coffer_t * adj = const_cast <rest_scheme_t::coffer_t *> (this->_scheme.get(aid));
+		web_scheme_t::coffer_t * adj = const_cast <web_scheme_t::coffer_t *> (this->_scheme.get(aid));
 		// Если параметры подключения адъютанта получены
 		if(adj != nullptr){
 			// Устанавливаем экшен выполнения
-			adj->action = rest_scheme_t::action_t::DISCONNECT;
+			adj->action = web_scheme_t::action_t::DISCONNECT;
 			// Выполняем запуск обработчика событий
 			this->handler(aid);
 		}
@@ -119,15 +119,15 @@ void awh::server::Rest::disconnectCallback(const size_t aid, const size_t sid, a
  * @param sid    идентификатор схемы сети
  * @param core   объект сетевого ядра
  */
-void awh::server::Rest::readCallback(const char * buffer, const size_t size, const size_t aid, const size_t sid, awh::core_t * core) noexcept {
+void awh::server::WEB::readCallback(const char * buffer, const size_t size, const size_t aid, const size_t sid, awh::core_t * core) noexcept {
 	// Если данные существуют
 	if((buffer != nullptr) && (size > 0) && (aid > 0) && (sid > 0)){
 		// Получаем параметры подключения адъютанта
-		rest_scheme_t::coffer_t * adj = const_cast <rest_scheme_t::coffer_t *> (this->_scheme.get(aid));
+		web_scheme_t::coffer_t * adj = const_cast <web_scheme_t::coffer_t *> (this->_scheme.get(aid));
 		// Если параметры подключения адъютанта получены
 		if(adj != nullptr){
 			// Если дисконнекта ещё не произошло
-			if((adj->action == rest_scheme_t::action_t::NONE) || (adj->action == rest_scheme_t::action_t::READ)){
+			if((adj->action == web_scheme_t::action_t::NONE) || (adj->action == web_scheme_t::action_t::READ)){
 				// Если подключение закрыто
 				if(adj->close){
 					// Принудительно выполняем отключение лкиента
@@ -138,7 +138,7 @@ void awh::server::Rest::readCallback(const char * buffer, const size_t size, con
 				// Если разрешено получение данных
 				if(adj->allow.receive){
 					// Устанавливаем экшен выполнения
-					adj->action = rest_scheme_t::action_t::READ;
+					adj->action = web_scheme_t::action_t::READ;
 					// Добавляем полученные данные в буфер
 					adj->buffer.insert(adj->buffer.end(), buffer, buffer + size);
 					// Выполняем запуск обработчика событий
@@ -156,11 +156,11 @@ void awh::server::Rest::readCallback(const char * buffer, const size_t size, con
  * @param sid    идентификатор схемы сети
  * @param core   объект сетевого ядра
  */
-void awh::server::Rest::writeCallback(const char * buffer, const size_t size, const size_t aid, const size_t sid, awh::core_t * core) noexcept {
+void awh::server::WEB::writeCallback(const char * buffer, const size_t size, const size_t aid, const size_t sid, awh::core_t * core) noexcept {
 	// Если данные существуют
 	if((aid > 0) && (sid > 0) && (core != nullptr)){
 		// Получаем параметры подключения адъютанта
-		rest_scheme_t::coffer_t * adj = const_cast <rest_scheme_t::coffer_t *> (this->_scheme.get(aid));
+		web_scheme_t::coffer_t * adj = const_cast <web_scheme_t::coffer_t *> (this->_scheme.get(aid));
 		// Если параметры подключения адъютанта получены
 		if(adj != nullptr){
 			// Если необходимо выполнить закрыть подключение
@@ -182,7 +182,7 @@ void awh::server::Rest::writeCallback(const char * buffer, const size_t size, co
  * @param core объект сетевого ядра
  * @return     результат разрешения к подключению адъютанта
  */
-bool awh::server::Rest::acceptCallback(const string & ip, const string & mac, const u_int port, const size_t sid, awh::core_t * core) noexcept {
+bool awh::server::WEB::acceptCallback(const string & ip, const string & mac, const u_int port, const size_t sid, awh::core_t * core) noexcept {
 	// Результат работы функции
 	bool result = true;
 	// Если данные существуют
@@ -197,9 +197,9 @@ bool awh::server::Rest::acceptCallback(const string & ip, const string & mac, co
  * handler Метод управления входящими методами
  * @param aid идентификатор адъютанта
  */
-void awh::server::Rest::handler(const size_t aid) noexcept {
+void awh::server::WEB::handler(const size_t aid) noexcept {
 	// Получаем параметры подключения адъютанта
-	rest_scheme_t::coffer_t * adj = const_cast <rest_scheme_t::coffer_t *> (this->_scheme.get(aid));
+	web_scheme_t::coffer_t * adj = const_cast <web_scheme_t::coffer_t *> (this->_scheme.get(aid));
 	// Если параметры подключения адъютанта получены
 	if(adj != nullptr){
 		// Если управляющий блокировщик не заблокирован
@@ -211,15 +211,15 @@ void awh::server::Rest::handler(const size_t aid) noexcept {
 			// Выполняем блокировку обработчика
 			adj->locker.mode = true;
 			// Выполняем обработку всех экшенов
-			while(loop && (adj->action != rest_scheme_t::action_t::NONE)){
+			while(loop && (adj->action != web_scheme_t::action_t::NONE)){
 				// Определяем обрабатываемый экшен
 				switch((uint8_t) adj->action){
 					// Если необходимо запустить экшен обработки данных поступающих с сервера
-					case (uint8_t) rest_scheme_t::action_t::READ: this->actionRead(aid); break;
+					case (uint8_t) web_scheme_t::action_t::READ: this->actionRead(aid); break;
 					// Если необходимо запустить экшен обработки подключения к серверу
-					case (uint8_t) rest_scheme_t::action_t::CONNECT: this->actionConnect(aid); break;
+					case (uint8_t) web_scheme_t::action_t::CONNECT: this->actionConnect(aid); break;
 					// Если необходимо запустить экшен обработки отключения от сервера
-					case (uint8_t) rest_scheme_t::action_t::DISCONNECT: this->actionDisconnect(aid); break;
+					case (uint8_t) web_scheme_t::action_t::DISCONNECT: this->actionDisconnect(aid); break;
 					// Если сработал неизвестный экшен, выходим
 					default: loop = false;
 				}
@@ -233,11 +233,11 @@ void awh::server::Rest::handler(const size_t aid) noexcept {
  * actionRead Метод обработки экшена чтения с сервера
  * @param aid идентификатор адъютанта
  */
-void awh::server::Rest::actionRead(const size_t aid) noexcept {
+void awh::server::WEB::actionRead(const size_t aid) noexcept {
 	// Если данные существуют
 	if(aid > 0){
 		// Получаем параметры подключения адъютанта
-		rest_scheme_t::coffer_t * adj = const_cast <rest_scheme_t::coffer_t *> (this->_scheme.get(aid));
+		web_scheme_t::coffer_t * adj = const_cast <web_scheme_t::coffer_t *> (this->_scheme.get(aid));
 		// Если параметры подключения адъютанта получены
 		if(adj != nullptr){
 			// Выполняем обработку полученных данных
@@ -289,7 +289,7 @@ void awh::server::Rest::actionRead(const size_t aid) noexcept {
 							// Если функция обратного вызова, установлена
 							if(this->_callback.message != nullptr)
 								// Отправляем полученный результат
-								this->_callback.message(aid, &adj->http, const_cast <Rest *> (this));
+								this->_callback.message(aid, &adj->http, const_cast <web_t *> (this));
 							// Выполняем сброс состояния HTTP парсера
 							adj->http.clear();
 							// Выполняем сброс состояния HTTP парсера
@@ -322,9 +322,9 @@ void awh::server::Rest::actionRead(const size_t aid) noexcept {
 							// Выполняем отключение адъютанта
 							} else core->close(aid);
 							// Если экшен соответствует, выполняем его сброс
-							if(adj->action == rest_scheme_t::action_t::READ)
+							if(adj->action == web_scheme_t::action_t::READ)
 								// Выполняем сброс экшена
-								adj->action = rest_scheme_t::action_t::NONE;
+								adj->action = web_scheme_t::action_t::NONE;
 							// Выходим из функции
 							return;
 						}
@@ -346,9 +346,9 @@ void awh::server::Rest::actionRead(const size_t aid) noexcept {
 				} else break;
 			}
 			// Если экшен соответствует, выполняем его сброс
-			if(adj->action == rest_scheme_t::action_t::READ)
+			if(adj->action == web_scheme_t::action_t::READ)
 				// Выполняем сброс экшена
-				adj->action = rest_scheme_t::action_t::NONE;
+				adj->action = web_scheme_t::action_t::NONE;
 		}
 	}
 }
@@ -356,11 +356,11 @@ void awh::server::Rest::actionRead(const size_t aid) noexcept {
  * actionConnect Метод обработки экшена подключения к серверу
  * @param aid идентификатор адъютанта
  */
-void awh::server::Rest::actionConnect(const size_t aid) noexcept {
+void awh::server::WEB::actionConnect(const size_t aid) noexcept {
 	// Если данные существуют
 	if(aid > 0){
 		// Получаем параметры подключения адъютанта
-		rest_scheme_t::coffer_t * adj = const_cast <rest_scheme_t::coffer_t *> (this->_scheme.get(aid));
+		web_scheme_t::coffer_t * adj = const_cast <web_scheme_t::coffer_t *> (this->_scheme.get(aid));
 		// Если параметры подключения адъютанта получены
 		if(adj != nullptr){
 			// Устанавливаем размер чанка
@@ -372,7 +372,7 @@ void awh::server::Rest::actionConnect(const size_t aid) noexcept {
 				// Устанавливаем функцию обработки вызова для получения чанков
 				adj->http.chunking(this->_callback.chunking);
 			// Устанавливаем функцию обработки вызова для получения чанков
-			else adj->http.chunking(std::bind(&Rest::chunking, this, _1, _2));
+			else adj->http.chunking(std::bind(&web_t::chunking, this, _1, _2));
 			// Устанавливаем метод компрессии поддерживаемый сервером
 			adj->http.compress(this->_scheme.compress);
 			// Устанавливаем параметры шифрования
@@ -399,9 +399,9 @@ void awh::server::Rest::actionConnect(const size_t aid) noexcept {
 				} break;
 			}
 			// Если экшен соответствует, выполняем его сброс
-			if(adj->action == rest_scheme_t::action_t::CONNECT)
+			if(adj->action == web_scheme_t::action_t::CONNECT)
 				// Выполняем сброс экшена
-				adj->action = rest_scheme_t::action_t::NONE;
+				adj->action = web_scheme_t::action_t::NONE;
 			// Если функция обратного вызова установлена
 			if(this->_callback.active != nullptr)
 				// Выполняем функцию обратного вызова
@@ -413,19 +413,19 @@ void awh::server::Rest::actionConnect(const size_t aid) noexcept {
  * actionDisconnect Метод обработки экшена отключения от сервера
  * @param aid идентификатор адъютанта
  */
-void awh::server::Rest::actionDisconnect(const size_t aid) noexcept {
+void awh::server::WEB::actionDisconnect(const size_t aid) noexcept {
 	// Если данные существуют
 	if(aid > 0){
 		// Получаем параметры подключения адъютанта
-		rest_scheme_t::coffer_t * adj = const_cast <rest_scheme_t::coffer_t *> (this->_scheme.get(aid));
+		web_scheme_t::coffer_t * adj = const_cast <web_scheme_t::coffer_t *> (this->_scheme.get(aid));
 		// Если параметры подключения адъютанта получены
 		if(adj != nullptr){
 			// Устанавливаем флаг отключения
 			adj->close = true;
 			// Если экшен соответствует, выполняем его сброс
-			if(adj->action == rest_scheme_t::action_t::DISCONNECT)
+			if(adj->action == web_scheme_t::action_t::DISCONNECT)
 				// Выполняем сброс экшена
-				adj->action = rest_scheme_t::action_t::NONE;
+				adj->action = web_scheme_t::action_t::NONE;
 			// Выполняем удаление параметров адъютанта
 			this->_scheme.rm(aid);
 			// Если функция обратного вызова установлена, выполняем
@@ -436,11 +436,11 @@ void awh::server::Rest::actionDisconnect(const size_t aid) noexcept {
 	}
 }
 /**
- * init Метод инициализации Rest адъютанта
+ * init Метод инициализации WEB адъютанта
  * @param socket   unix-сокет для биндинга
  * @param compress метод сжатия передаваемых сообщений
  */
-void awh::server::Rest::init(const string & socket, const http_t::compress_t compress) noexcept {
+void awh::server::WEB::init(const string & socket, const http_t::compress_t compress) noexcept {
 	// Устанавливаем тип компрессии
 	this->_scheme.compress = compress;
 	/**
@@ -452,12 +452,12 @@ void awh::server::Rest::init(const string & socket, const http_t::compress_t com
 	#endif
 }
 /**
- * init Метод инициализации Rest адъютанта
+ * init Метод инициализации WEB адъютанта
  * @param port     порт сервера
  * @param host     хост сервера
  * @param compress метод сжатия передаваемых сообщений
  */
-void awh::server::Rest::init(const u_int port, const string & host, const http_t::compress_t compress) noexcept {
+void awh::server::WEB::init(const u_int port, const string & host, const http_t::compress_t compress) noexcept {
 	// Устанавливаем порт сервера
 	this->_port = port;
 	// Устанавливаем хост сервера
@@ -476,7 +476,7 @@ void awh::server::Rest::init(const u_int port, const string & host, const http_t
  * on Метод установки функции обратного вызова на событие запуска или остановки подключения
  * @param callback функция обратного вызова
  */
-void awh::server::Rest::on(function <void (const size_t, const mode_t, Rest *)> callback) noexcept {
+void awh::server::WEB::on(function <void (const size_t, const mode_t, web_t *)> callback) noexcept {
 	// Устанавливаем функцию запуска и остановки
 	this->_callback.active = callback;
 }
@@ -484,7 +484,7 @@ void awh::server::Rest::on(function <void (const size_t, const mode_t, Rest *)> 
  * on Метод установки функции обратного вызова на событие получения сообщений
  * @param callback функция обратного вызова
  */
-void awh::server::Rest::on(function <void (const size_t, const awh::http_t *, Rest *)> callback) noexcept {
+void awh::server::WEB::on(function <void (const size_t, const awh::http_t *, web_t *)> callback) noexcept {
 	// Устанавливаем функцию получения сообщений с сервера
 	this->_callback.message = callback;
 }
@@ -492,7 +492,7 @@ void awh::server::Rest::on(function <void (const size_t, const awh::http_t *, Re
  * on Метод добавления функции извлечения пароля
  * @param callback функция обратного вызова для извлечения пароля
  */
-void awh::server::Rest::on(function <string (const string &)> callback) noexcept {
+void awh::server::WEB::on(function <string (const string &)> callback) noexcept {
 	// Устанавливаем функцию обратного вызова для извлечения пароля
 	this->_callback.extractPass = callback;
 }
@@ -500,7 +500,7 @@ void awh::server::Rest::on(function <string (const string &)> callback) noexcept
  * on Метод добавления функции обработки авторизации
  * @param callback функция обратного вызова для обработки авторизации
  */
-void awh::server::Rest::on(function <bool (const string &, const string &)> callback) noexcept {
+void awh::server::WEB::on(function <bool (const string &, const string &)> callback) noexcept {
 	// Устанавливаем функцию обратного вызова для обработки авторизации
 	this->_callback.checkAuth = callback;
 }
@@ -508,7 +508,7 @@ void awh::server::Rest::on(function <bool (const string &, const string &)> call
  * on Метод установки функции обратного вызова для получения чанков
  * @param callback функция обратного вызова
  */
-void awh::server::Rest::on(function <void (const vector <char> &, const awh::http_t *)> callback) noexcept {
+void awh::server::WEB::on(function <void (const vector <char> &, const awh::http_t *)> callback) noexcept {
 	// Устанавливаем функцию обратного вызова для получения чанков
 	this->_callback.chunking = callback;
 }
@@ -516,7 +516,7 @@ void awh::server::Rest::on(function <void (const vector <char> &, const awh::htt
  * on Метод установки функции обратного вызова на событие активации адъютанта на сервере
  * @param callback функция обратного вызова
  */
-void awh::server::Rest::on(function <bool (const string &, const string &, const u_int, Rest *)> callback) noexcept {
+void awh::server::WEB::on(function <bool (const string &, const string &, const u_int, web_t *)> callback) noexcept {
 	// Устанавливаем функцию запуска и остановки
 	this->_callback.accept = callback;
 }
@@ -528,11 +528,11 @@ void awh::server::Rest::on(function <bool (const string &, const string &, const
  * @param entity  данные полезной нагрузки (тело сообщения)
  * @param headers HTTP заголовки сообщения
  */
-void awh::server::Rest::reject(const size_t aid, const u_int code, const string & mess, const vector <char> & entity, const unordered_multimap <string, string> & headers) const noexcept {
+void awh::server::WEB::reject(const size_t aid, const u_int code, const string & mess, const vector <char> & entity, const unordered_multimap <string, string> & headers) const noexcept {
 	// Если подключение выполнено
 	if(this->_core->working()){
 		// Получаем параметры подключения адъютанта
-		rest_scheme_t::coffer_t * adj = const_cast <rest_scheme_t::coffer_t *> (this->_scheme.get(aid));
+		web_scheme_t::coffer_t * adj = const_cast <web_scheme_t::coffer_t *> (this->_scheme.get(aid));
 		// Если параметры подключения адъютанта получены
 		if(adj != nullptr){
 			// Тело полезной нагрузки
@@ -579,11 +579,11 @@ void awh::server::Rest::reject(const size_t aid, const u_int code, const string 
  * @param entity  данные полезной нагрузки (тело сообщения)
  * @param headers HTTP заголовки сообщения
  */
-void awh::server::Rest::response(const size_t aid, const u_int code, const string & mess, const vector <char> & entity, const unordered_multimap <string, string> & headers) const noexcept {
+void awh::server::WEB::response(const size_t aid, const u_int code, const string & mess, const vector <char> & entity, const unordered_multimap <string, string> & headers) const noexcept {
 	// Если подключение выполнено
 	if(this->_core->working()){
 		// Получаем параметры подключения адъютанта
-		rest_scheme_t::coffer_t * adj = const_cast <rest_scheme_t::coffer_t *> (this->_scheme.get(aid));
+		web_scheme_t::coffer_t * adj = const_cast <web_scheme_t::coffer_t *> (this->_scheme.get(aid));
 		// Если параметры подключения адъютанта получены
 		if(adj != nullptr){
 			// Тело полезной нагрузки
@@ -627,7 +627,7 @@ void awh::server::Rest::response(const size_t aid, const u_int code, const strin
  * @param aid идентификатор адъютанта
  * @return    порт подключения адъютанта
  */
-u_int awh::server::Rest::port(const size_t aid) const noexcept {
+u_int awh::server::WEB::port(const size_t aid) const noexcept {
 	// Выводим результат
 	return this->_scheme.getPort(aid);
 }
@@ -636,7 +636,7 @@ u_int awh::server::Rest::port(const size_t aid) const noexcept {
  * @param aid идентификатор адъютанта
  * @return    адрес интернет подключения адъютанта
  */
-const string & awh::server::Rest::ip(const size_t aid) const noexcept {
+const string & awh::server::WEB::ip(const size_t aid) const noexcept {
 	// Выводим результат
 	return this->_scheme.getIp(aid);
 }
@@ -645,7 +645,7 @@ const string & awh::server::Rest::ip(const size_t aid) const noexcept {
  * @param aid идентификатор адъютанта
  * @return    адрес устройства адъютанта
  */
-const string & awh::server::Rest::mac(const size_t aid) const noexcept {
+const string & awh::server::WEB::mac(const size_t aid) const noexcept {
 	// Выводим результат
 	return this->_scheme.getMac(aid);
 }
@@ -653,7 +653,7 @@ const string & awh::server::Rest::mac(const size_t aid) const noexcept {
  * alive Метод установки долгоживущего подключения
  * @param mode флаг долгоживущего подключения
  */
-void awh::server::Rest::alive(const bool mode) noexcept {
+void awh::server::WEB::alive(const bool mode) noexcept {
 	// Устанавливаем флаг долгоживущего подключения
 	this->_alive = mode;
 }
@@ -661,7 +661,7 @@ void awh::server::Rest::alive(const bool mode) noexcept {
  * alive Метод установки времени жизни подключения
  * @param time время жизни подключения
  */
-void awh::server::Rest::alive(const size_t time) noexcept {
+void awh::server::WEB::alive(const size_t time) noexcept {
 	// Устанавливаем время жизни подключения
 	this->_timeAlive = time;
 }
@@ -670,16 +670,16 @@ void awh::server::Rest::alive(const size_t time) noexcept {
  * @param aid  идентификатор адъютанта
  * @param mode флаг долгоживущего подключения
  */
-void awh::server::Rest::alive(const size_t aid, const bool mode) noexcept {
+void awh::server::WEB::alive(const size_t aid, const bool mode) noexcept {
 	// Получаем параметры подключения адъютанта
-	rest_scheme_t::coffer_t * adj = const_cast <rest_scheme_t::coffer_t *> (this->_scheme.get(aid));
+	web_scheme_t::coffer_t * adj = const_cast <web_scheme_t::coffer_t *> (this->_scheme.get(aid));
 	// Если параметры подключения адъютанта получены, устанавливаем флаг пдолгоживущего подключения
 	if(adj != nullptr) adj->alive = mode;
 }
 /**
  * stop Метод остановки сервера
  */
-void awh::server::Rest::stop() noexcept {
+void awh::server::WEB::stop() noexcept {
 	// Если подключение выполнено
 	if(this->_core->working())
 		// Завершаем работу, если разрешено остановить
@@ -688,7 +688,7 @@ void awh::server::Rest::stop() noexcept {
 /**
  * start Метод запуска сервера
  */
-void awh::server::Rest::start() noexcept {
+void awh::server::WEB::start() noexcept {
 	// Если биндинг не запущен, выполняем запуск биндинга
 	if(!this->_core->working())
 		// Выполняем запуск биндинга
@@ -698,9 +698,9 @@ void awh::server::Rest::start() noexcept {
  * close Метод закрытия подключения адъютанта
  * @param aid идентификатор адъютанта
  */
-void awh::server::Rest::close(const size_t aid) noexcept {
+void awh::server::WEB::close(const size_t aid) noexcept {
 	// Получаем параметры подключения адъютанта
-	rest_scheme_t::coffer_t * adj = const_cast <rest_scheme_t::coffer_t *> (this->_scheme.get(aid));
+	web_scheme_t::coffer_t * adj = const_cast <web_scheme_t::coffer_t *> (this->_scheme.get(aid));
 	// Если параметры подключения адъютанта получены, устанавливаем флаг закрытия подключения
 	if(adj != nullptr){
 		// Устанавливаем флаг закрытия подключения адъютанта
@@ -714,7 +714,7 @@ void awh::server::Rest::close(const size_t aid) noexcept {
  * @param threads количество потоков для активации
  * @param mode    флаг активации/деактивации мультипоточности
  */
-void awh::server::Rest::multiThreads(const size_t threads, const bool mode) noexcept {
+void awh::server::WEB::multiThreads(const size_t threads, const bool mode) noexcept {
 	// Выполняем активацию тредпула
 	this->_threadsEnabled = mode;
 	// Устанавливаем количество активных потоков
@@ -731,7 +731,7 @@ void awh::server::Rest::multiThreads(const size_t threads, const bool mode) noex
  * @param read  количество секунд для детекции по чтению
  * @param write количество секунд для детекции по записи
  */
-void awh::server::Rest::waitTimeDetect(const time_t read, const time_t write) noexcept {
+void awh::server::WEB::waitTimeDetect(const time_t read, const time_t write) noexcept {
 	// Устанавливаем количество секунд на чтение
 	this->_scheme.timeouts.read = read;
 	// Устанавливаем количество секунд на запись
@@ -742,7 +742,7 @@ void awh::server::Rest::waitTimeDetect(const time_t read, const time_t write) no
  * @param read  количество байт для детекции по чтению
  * @param write количество байт для детекции по записи
  */
-void awh::server::Rest::bytesDetect(const scheme_t::mark_t read, const scheme_t::mark_t write) noexcept {
+void awh::server::WEB::bytesDetect(const scheme_t::mark_t read, const scheme_t::mark_t write) noexcept {
 	// Устанавливаем количество байт на чтение
 	this->_scheme.marker.read = read;
 	// Устанавливаем количество байт на запись
@@ -760,7 +760,7 @@ void awh::server::Rest::bytesDetect(const scheme_t::mark_t read, const scheme_t:
  * realm Метод установки название сервера
  * @param realm название сервера
  */
-void awh::server::Rest::realm(const string & realm) noexcept {
+void awh::server::WEB::realm(const string & realm) noexcept {
 	// Устанавливаем название сервера
 	this->_realm = realm;
 }
@@ -768,7 +768,7 @@ void awh::server::Rest::realm(const string & realm) noexcept {
  * opaque Метод установки временного ключа сессии сервера
  * @param opaque временный ключ сессии сервера
  */
-void awh::server::Rest::opaque(const string & opaque) noexcept {
+void awh::server::WEB::opaque(const string & opaque) noexcept {
 	// Устанавливаем временный ключ сессии сервера
 	this->_opaque = opaque;
 }
@@ -777,7 +777,7 @@ void awh::server::Rest::opaque(const string & opaque) noexcept {
  * @param type тип авторизации
  * @param hash алгоритм шифрования для Digest авторизации
  */
-void awh::server::Rest::authType(const auth_t::type_t type, const auth_t::hash_t hash) noexcept {
+void awh::server::WEB::authType(const auth_t::type_t type, const auth_t::hash_t hash) noexcept {
 	// Устанавливаем алгоритм шифрования для Digest авторизации
 	this->_authHash = hash;
 	// Устанавливаем тип авторизации
@@ -787,7 +787,7 @@ void awh::server::Rest::authType(const auth_t::type_t type, const auth_t::hash_t
  * mode Метод установки флага модуля
  * @param flag флаг модуля для установки
  */
-void awh::server::Rest::mode(const u_short flag) noexcept {
+void awh::server::WEB::mode(const u_short flag) noexcept {
 	// Устанавливаем флаг ожидания входящих сообщений
 	this->_scheme.wait = (flag & (uint8_t) flag_t::WAITMESS);
 	// Устанавливаем флаг запрещающий вывод информационных сообщений
@@ -797,7 +797,7 @@ void awh::server::Rest::mode(const u_short flag) noexcept {
  * total Метод установки максимального количества одновременных подключений
  * @param total максимальное количество одновременных подключений
  */
-void awh::server::Rest::total(const u_short total) noexcept {
+void awh::server::WEB::total(const u_short total) noexcept {
 	// Устанавливаем максимальное количество одновременных подключений
 	const_cast <server::core_t *> (this->_core)->total(this->_scheme.sid, total);
 }
@@ -805,7 +805,7 @@ void awh::server::Rest::total(const u_short total) noexcept {
  * chunkSize Метод установки размера чанка
  * @param size размер чанка для установки
  */
-void awh::server::Rest::chunkSize(const size_t size) noexcept {
+void awh::server::WEB::chunkSize(const size_t size) noexcept {
 	// Устанавливаем размер чанка
 	this->_chunkSize = (size > 0 ? size : BUFFER_CHUNK);
 }
@@ -813,7 +813,7 @@ void awh::server::Rest::chunkSize(const size_t size) noexcept {
  * maxRequests Метод установки максимального количества запросов
  * @param max максимальное количество запросов
  */
-void awh::server::Rest::maxRequests(const size_t max) noexcept {
+void awh::server::WEB::maxRequests(const size_t max) noexcept {
 	// Устанавливаем максимальное количество запросов
 	this->_maxRequests = max;
 }
@@ -821,7 +821,7 @@ void awh::server::Rest::maxRequests(const size_t max) noexcept {
  * clusterAutoRestart Метод установки флага перезапуска процессов
  * @param mode флаг перезапуска процессов
  */
-void awh::server::Rest::clusterAutoRestart(const bool mode) noexcept {
+void awh::server::WEB::clusterAutoRestart(const bool mode) noexcept {
 	// Выполняем установку флага автоматического перезапуска
 	const_cast <server::core_t *> (this->_core)->clusterAutoRestart(this->_scheme.sid, mode);
 }
@@ -829,7 +829,7 @@ void awh::server::Rest::clusterAutoRestart(const bool mode) noexcept {
  * compress Метод установки метода сжатия
  * @param метод сжатия сообщений
  */
-void awh::server::Rest::compress(const http_t::compress_t compress) noexcept {
+void awh::server::WEB::compress(const http_t::compress_t compress) noexcept {
 	// Устанавливаем метод компрессии
 	this->_scheme.compress = compress;
 }
@@ -839,7 +839,7 @@ void awh::server::Rest::compress(const http_t::compress_t compress) noexcept {
  * @param idle  интервал времени в секундах через которое происходит проверка подключения
  * @param intvl интервал времени в секундах между попытками
  */
-void awh::server::Rest::keepAlive(const int cnt, const int idle, const int intvl) noexcept {
+void awh::server::WEB::keepAlive(const int cnt, const int idle, const int intvl) noexcept {
 	// Выполняем установку максимального количества попыток
 	this->_scheme.keepAlive.cnt = cnt;
 	// Выполняем установку интервала времени в секундах через которое происходит проверка подключения
@@ -853,7 +853,7 @@ void awh::server::Rest::keepAlive(const int cnt, const int idle, const int intvl
  * @param name название сервиса
  * @param ver  версия сервиса
  */
-void awh::server::Rest::serv(const string & id, const string & name, const string & ver) noexcept {
+void awh::server::WEB::serv(const string & id, const string & name, const string & ver) noexcept {
 	// Устанавливаем идентификатор сервера
 	this->_sid = id;
 	// Устанавливаем версию сервера
@@ -867,7 +867,7 @@ void awh::server::Rest::serv(const string & id, const string & name, const strin
  * @param salt   соль шифрования передаваемых данных
  * @param cipher размер шифрования передаваемых данных
  */
-void awh::server::Rest::crypto(const string & pass, const string & salt, const hash_t::cipher_t cipher) noexcept {
+void awh::server::WEB::crypto(const string & pass, const string & salt, const hash_t::cipher_t cipher) noexcept {
 	// Устанавливаем флаг шифрования
 	if((this->_crypt = !pass.empty())){
 		// Пароль шифрования передаваемых данных
@@ -879,12 +879,12 @@ void awh::server::Rest::crypto(const string & pass, const string & salt, const h
 	}
 }
 /**
- * Rest Конструктор
+ * WEB Конструктор
  * @param core объект сетевого ядра
  * @param fmk  объект фреймворка
  * @param log  объект для работы с логами
  */
-awh::server::Rest::Rest(const server::core_t * core, const fmk_t * fmk, const log_t * log) noexcept :
+awh::server::WEB::WEB(const server::core_t * core, const fmk_t * fmk, const log_t * log) noexcept :
  _pid(getpid()), _port(SERVER_PORT), _host(""), _nwk(fmk), _uri(fmk, &_nwk),
  _scheme(fmk, log), _sid(AWH_SHORT_NAME), _ver(AWH_VERSION), _name(AWH_NAME),
  _realm(""), _opaque(""), _pass(""), _salt(""), _cipher(hash_t::cipher_t::AES128),
@@ -893,28 +893,28 @@ awh::server::Rest::Rest(const server::core_t * core, const fmk_t * fmk, const lo
  _maxRequests(SERVER_MAX_REQUESTS), _threadsCount(0), _threadsEnabled(false),
  _fmk(fmk), _log(log), _core(core) {
 	// Устанавливаем событие на запуск системы
-	this->_scheme.callback.set <void (const size_t, awh::core_t *)> ("open", std::bind(&Rest::openCallback, this, _1, _2));
+	this->_scheme.callback.set <void (const size_t, awh::core_t *)> ("open", std::bind(&web_t::openCallback, this, _1, _2));
 	// Устанавливаем функцию персистентного вызова
-	this->_scheme.callback.set <void (const size_t, const size_t, awh::core_t *)> ("persist", std::bind(&Rest::persistCallback, this, _1, _2, _3));
+	this->_scheme.callback.set <void (const size_t, const size_t, awh::core_t *)> ("persist", std::bind(&web_t::persistCallback, this, _1, _2, _3));
 	// Устанавливаем событие подключения
-	this->_scheme.callback.set <void (const size_t, const size_t, awh::core_t *)> ("connect", std::bind(&Rest::connectCallback, this, _1, _2, _3));
+	this->_scheme.callback.set <void (const size_t, const size_t, awh::core_t *)> ("connect", std::bind(&web_t::connectCallback, this, _1, _2, _3));
 	// Устанавливаем событие отключения
-	this->_scheme.callback.set <void (const size_t, const size_t, awh::core_t *)> ("disconnect", std::bind(&Rest::disconnectCallback, this, _1, _2, _3));
+	this->_scheme.callback.set <void (const size_t, const size_t, awh::core_t *)> ("disconnect", std::bind(&web_t::disconnectCallback, this, _1, _2, _3));
 	// Устанавливаем функцию чтения данных
-	this->_scheme.callback.set <void (const char *, const size_t, const size_t, const size_t, awh::core_t *)> ("read", std::bind(&Rest::readCallback, this, _1, _2, _3, _4, _5));
+	this->_scheme.callback.set <void (const char *, const size_t, const size_t, const size_t, awh::core_t *)> ("read", std::bind(&web_t::readCallback, this, _1, _2, _3, _4, _5));
 	// Устанавливаем функцию записи данных
-	this->_scheme.callback.set <void (const char *, const size_t, const size_t, const size_t, awh::core_t *)> ("write", std::bind(&Rest::writeCallback, this, _1, _2, _3, _4, _5));
+	this->_scheme.callback.set <void (const char *, const size_t, const size_t, const size_t, awh::core_t *)> ("write", std::bind(&web_t::writeCallback, this, _1, _2, _3, _4, _5));
 	// Добавляем событие аццепта адъютанта
-	this->_scheme.callback.set <bool (const string &, const string &, const u_int, const size_t, awh::core_t *)> ("accept", std::bind(&Rest::acceptCallback, this, _1, _2, _3, _4, _5));
+	this->_scheme.callback.set <bool (const string &, const string &, const u_int, const size_t, awh::core_t *)> ("accept", std::bind(&web_t::acceptCallback, this, _1, _2, _3, _4, _5));
 	// Активируем персистентный запуск для работы пингов
 	const_cast <server::core_t *> (this->_core)->persistEnable(true);
 	// Добавляем схему сети в сетевое ядро
 	const_cast <server::core_t *> (this->_core)->add(&this->_scheme);
 }
 /**
- * ~Rest Деструктор
+ * ~WEB Деструктор
  */
-awh::server::Rest::~Rest() noexcept {
+awh::server::WEB::~WEB() noexcept {
 	// Если многопоточность активированна
 	if(this->_threadsEnabled && this->_thr.is())
 		// Выполняем завершение всех потоков

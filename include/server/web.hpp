@@ -1,5 +1,5 @@
 /**
- * @file: rest.hpp
+ * @file: web.hpp
  * @date: 2022-09-03
  * @license: GPL-3.0
  *
@@ -12,14 +12,14 @@
  * @copyright: Copyright © 2022
  */
 
-#ifndef __AWH_REST_SERVER__
-#define __AWH_REST_SERVER__
+#ifndef __AWH_WEB_SERVER__
+#define __AWH_WEB_SERVER__
 
 /**
  * Наши модули
  */
+#include <scheme/web.hpp>
 #include <core/server.hpp>
-#include <scheme/rest.hpp>
 #include <sys/threadpool.hpp>
 
 // Подписываемся на стандартное пространство имён
@@ -34,9 +34,9 @@ namespace awh {
 	 */
 	namespace server {
 		/**
-		 * Rest Класс работы с REST сервером
+		 * WEB Класс работы с WEB сервером
 		 */
-		typedef class Rest {
+		typedef class WEB {
 			public:
 				/**
 				 * Режим работы адъютанта
@@ -62,13 +62,13 @@ namespace awh {
 					// Функция обратного вызова для обработки авторизации
 					function <bool (const string &, const string &)> checkAuth;
 					// Функция обратного вызова, при запуске или остановки подключения к серверу
-					function <void (const size_t, const mode_t, Rest *)> active;
+					function <void (const size_t, const mode_t, WEB *)> active;
 					// Функция обратного вызова, при получении сообщения с сервера
-					function <void (const size_t, const awh::http_t *, Rest *)> message;
+					function <void (const size_t, const awh::http_t *, WEB *)> message;
 					// Функция обратного вызова, при получении HTTP чанков от адъютанта
 					function <void (const vector <char> &, const awh::http_t *)> chunking;
 					// Функция разрешения подключения адъютанта на сервере
-					function <bool (const string &, const string &, const u_int, Rest *)> accept;
+					function <bool (const string &, const string &, const u_int, WEB *)> accept;
 					/**
 					 * Callback Конструктор
 					 */
@@ -94,7 +94,7 @@ namespace awh {
 				// Объявляем функции обратного вызова
 				fn_t _callback;
 				// Объект рабочего
-				rest_scheme_t _scheme;
+				web_scheme_t _scheme;
 			private:
 				// Идентификатор сервера
 				string _sid;
@@ -230,13 +230,13 @@ namespace awh {
 				void actionDisconnect(const size_t aid) noexcept;
 			public:
 				/**
-				 * init Метод инициализации Rest адъютанта
+				 * init Метод инициализации WEB адъютанта
 				 * @param socket   unix-сокет для биндинга
 				 * @param compress метод сжатия передаваемых сообщений
 				 */
 				void init(const string & socket, const http_t::compress_t compress = http_t::compress_t::NONE) noexcept;
 				/**
-				 * init Метод инициализации Rest адъютанта
+				 * init Метод инициализации WEB адъютанта
 				 * @param port     порт сервера
 				 * @param host     хост сервера
 				 * @param compress метод сжатия передаваемых сообщений
@@ -247,12 +247,12 @@ namespace awh {
 				 * on Метод установки функции обратного вызова на событие запуска или остановки подключения
 				 * @param callback функция обратного вызова
 				 */
-				void on(function <void (const size_t, const mode_t, Rest *)> callback) noexcept;
+				void on(function <void (const size_t, const mode_t, WEB *)> callback) noexcept;
 				/**
 				 * on Метод установки функции обратного вызова на событие получения сообщений
 				 * @param callback функция обратного вызова
 				 */
-				void on(function <void (const size_t, const awh::http_t *, Rest *)> callback) noexcept;
+				void on(function <void (const size_t, const awh::http_t *, WEB *)> callback) noexcept;
 			public:
 				/**
 				 * on Метод добавления функции извлечения пароля
@@ -273,7 +273,7 @@ namespace awh {
 				 * on Метод установки функции обратного вызова на событие активации адъютанта на сервере
 				 * @param callback функция обратного вызова
 				 */
-				void on(function <bool (const string &, const string &, const u_int, Rest *)> callback) noexcept;
+				void on(function <bool (const string &, const string &, const u_int, WEB *)> callback) noexcept;
 			public:
 				/**
 				 * reject Метод отправки сообщения об ошибке
@@ -436,18 +436,18 @@ namespace awh {
 				void crypto(const string & pass, const string & salt = "", const hash_t::cipher_t cipher = hash_t::cipher_t::AES128) noexcept;
 			public:
 				/**
-				 * Rest Конструктор
+				 * WEB Конструктор
 				 * @param core объект сетевого ядра
 				 * @param fmk  объект фреймворка
 				 * @param log  объект для работы с логами
 				 */
-				Rest(const server::core_t * core, const fmk_t * fmk, const log_t * log) noexcept;
+				WEB(const server::core_t * core, const fmk_t * fmk, const log_t * log) noexcept;
 				/**
-				 * ~Rest Деструктор
+				 * ~WEB Деструктор
 				 */
-				~Rest() noexcept;
-		} rest_t;
+				~WEB() noexcept;
+		} web_t;
 	};
 };
 
-#endif // __AWH_REST_SERVER__
+#endif // __AWH_WEB_SERVER__

@@ -1,5 +1,5 @@
 /**
- * @file: rest.cpp
+ * @file: web.cpp
  * @date: 2022-09-03
  * @license: GPL-3.0
  *
@@ -13,12 +13,12 @@
  */
 
 // Подключаем заголовочный файл
-#include <scheme/rest.hpp>
+#include <scheme/web.hpp>
 
 /**
  * clear Метод очистки
  */
-void awh::server::SchemeRest::clear() noexcept {
+void awh::server::SchemeWEB::clear() noexcept {
 	// Очищаем данные вокера
 	scheme_t::clear();
 	// Очищаем список параметров адъютантов
@@ -32,7 +32,7 @@ void awh::server::SchemeRest::clear() noexcept {
  * set Метод создания параметров адъютанта
  * @param aid идентификатор адъютанта
  */
-void awh::server::SchemeRest::set(const size_t aid) noexcept {
+void awh::server::SchemeWEB::set(const size_t aid) noexcept {
 	// Если идентификатор адъютанта передан
 	if((aid > 0) && (this->_coffers.count(aid) < 1)){
 		// Добавляем адъютанта в список адъютантов
@@ -47,7 +47,7 @@ void awh::server::SchemeRest::set(const size_t aid) noexcept {
  * rm Метод удаления параметров подключения адъютанта
  * @param aid идентификатор адъютанта
  */
-void awh::server::SchemeRest::rm(const size_t aid) noexcept {
+void awh::server::SchemeWEB::rm(const size_t aid) noexcept {
 	// Если идентификатор адъютанта передан
 	if(aid > 0){
 		// Выполняем поиск адъютанта
@@ -61,7 +61,7 @@ void awh::server::SchemeRest::rm(const size_t aid) noexcept {
  * @param aid идентификатор адъютанта
  * @return    параметры подключения адъютанта
  */
-const awh::server::SchemeRest::coffer_t * awh::server::SchemeRest::get(const size_t aid) const noexcept {
+const awh::server::SchemeWEB::coffer_t * awh::server::SchemeWEB::get(const size_t aid) const noexcept {
 	// Результат работы функции
 	coffer_t * result = nullptr;
 	// Если идентификатор адъютанта передан

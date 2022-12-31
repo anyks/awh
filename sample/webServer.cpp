@@ -10,7 +10,7 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include <server/rest.hpp>
+#include <server/web.hpp>
 
 // Подключаем пространство имён
 using namespace std;
@@ -56,7 +56,7 @@ class WebServer {
 		 * @param web  объект WEB сервера
 		 * @return     результат проверки
 		 */
-		bool accept(const string & ip, const string & mac, const u_int port, server::rest_t * web){
+		bool accept(const string & ip, const string & mac, const u_int port, server::web_t * web){
 			// Выводим информацию в лог
 			this->_log->print("ACCEPT: ip = %s, mac = %s, port = %d", log_t::flag_t::INFO, ip.c_str(), mac.c_str(), port);
 			// Разрешаем подключение клиенту
@@ -68,9 +68,9 @@ class WebServer {
 		 * @param mode режим события подключения
 		 * @param web  объект WEB сервера
 		 */
-		void active(const size_t aid, const server::rest_t::mode_t mode, server::rest_t * web){
+		void active(const size_t aid, const server::web_t::mode_t mode, server::web_t * web){
 			// Выводим информацию в лог
-			this->_log->print("%s client", log_t::flag_t::INFO, (mode == server::rest_t::mode_t::CONNECT ? "Connect" : "Disconnect"));
+			this->_log->print("%s client", log_t::flag_t::INFO, (mode == server::web_t::mode_t::CONNECT ? "Connect" : "Disconnect"));
 		}
 		/**
 		 * message Метод получения сообщений
@@ -78,7 +78,7 @@ class WebServer {
 		 * @param http объект http запроса
 		 * @param web  объект WEB сервера
 		 */
-		void message(const size_t aid, const awh::http_t * http, server::rest_t * web){
+		void message(const size_t aid, const awh::http_t * http, server::web_t * web){
 			// Получаем данные запроса
 			const auto & query = http->query();
 			// Если пришёл запрос на фавиконку
@@ -124,17 +124,17 @@ int main(int argc, char * argv[]){
 	WebServer executor(&log);
 	// Создаём биндинг
 	server::core_t core(&fmk, &log);
-	// Создаём объект REST запроса
-	server::rest_t rest(&core, &fmk, &log);
+	// Создаём объект WEB запроса
+	server::web_t web(&core, &fmk, &log);
 	// Устанавливаем название сервиса
-	log.name("Rest Server");
+	log.name("WEB Server");
 	// Устанавливаем формат времени
 	log.format("%H:%M:%S %d.%m.%Y");
 	/**
 	 * 1. Устанавливаем ожидание входящих сообщений
 	 */
 	/*
-	rest.mode((uint8_t) server::rest_t::flag_t::WAITMESS);
+	web.mode((uint8_t) server::web_t::flag_t::WAITMESS);
 	*/
 	// Устанавливаем простое чтение базы событий
 	// core.easily(true);
@@ -154,26 +154,26 @@ int main(int argc, char * argv[]){
 	// Активируем максимальное количество рабочих процессов
 	core.clusterSize();
 	// Разрешаем выполняем автоматический перезапуск упавшего процесса
-	rest.clusterAutoRestart(true);
+	web.clusterAutoRestart(true);
 	/**
 	 * 1. Устанавливаем ожидание входящих сообщений
 	 */
 	// Устанавливаем режим мультипоточной обработки
 	// core.multiThreads(22);
 	// Устанавливаем название сервера
-	// rest.realm("ANYKS");
+	// web.realm("ANYKS");
 	// Устанавливаем временный ключ сессии
-	// rest.opaque("keySession");
+	// web.opaque("keySession");
 	// Устанавливаем тип авторизации
-	// rest.authType(auth_t::type_t::DIGEST, auth_t::hash_t::MD5);
-	// rest.authType(auth_t::type_t::BASIC);
+	// web.authType(auth_t::type_t::DIGEST, auth_t::hash_t::MD5);
+	// web.authType(auth_t::type_t::BASIC);
 	// Выполняем инициализацию WebSocket сервера
-	// rest.init(2222, "127.0.0.1", http_t::compress_t::ALL_COMPRESS);
-	// rest.init(2222, "", http_t::compress_t::ALL_COMPRESS);
-	rest.init(2222, "127.0.0.1", http_t::compress_t::ALL_COMPRESS);
-	// rest.init("anyks", http_t::compress_t::ALL_COMPRESS);
+	// web.init(2222, "127.0.0.1", http_t::compress_t::ALL_COMPRESS);
+	// web.init(2222, "", http_t::compress_t::ALL_COMPRESS);
+	web.init(2222, "127.0.0.1", http_t::compress_t::ALL_COMPRESS);
+	// web.init("anyks", http_t::compress_t::ALL_COMPRESS);
 	// Устанавливаем длительное подключение
-	// rest.keepAlive(100, 30, 10);
+	// web.keepAlive(100, 30, 10);
 	/*
 	// Устанавливаем SSL сертификаты сервера
 	core.certificate(
@@ -183,19 +183,19 @@ int main(int argc, char * argv[]){
 	*/
 	// core.certificate("./ca/certs/server-cert.pem", "./ca/certs/server-key.pem");
 	// Устанавливаем шифрование
-	// rest.crypto("PASS");
+	// web.crypto("PASS");
 	// Устанавливаем функцию извлечения пароля
-	// rest.on((function <string (const string &)>) bind(&WebServer::password, &executor, _1));
+	// web.on((function <string (const string &)>) bind(&WebServer::password, &executor, _1));
 	// Устанавливаем функцию проверки авторизации
-	// rest.on((function <bool (const string &, const string &)>) bind(&WebServer::auth, &executor, _1, _2));
+	// web.on((function <bool (const string &, const string &)>) bind(&WebServer::auth, &executor, _1, _2));
 	// Установливаем функцию обратного вызова на событие получения сообщений
-	rest.on((function <void (const size_t, const awh::http_t *, server::rest_t *)>) bind(&WebServer::message, &executor, _1, _2, _3));
+	web.on((function <void (const size_t, const awh::http_t *, server::web_t *)>) bind(&WebServer::message, &executor, _1, _2, _3));
 	// Установливаем функцию обратного вызова на событие запуска или остановки подключения
-	rest.on((function <void (const size_t, const server::rest_t::mode_t, server::rest_t *)>) bind(&WebServer::active, &executor, _1, _2, _3));
+	web.on((function <void (const size_t, const server::web_t::mode_t, server::web_t *)>) bind(&WebServer::active, &executor, _1, _2, _3));
 	// Установливаем функцию обратного вызова на событие активации клиента на сервере
-	rest.on((function <bool (const string &, const string &, const u_int, server::rest_t *)>) bind(&WebServer::accept, &executor, _1, _2, _3, _4));
-	// Выполняем запуск REST сервер
-	rest.start();
+	web.on((function <bool (const string &, const string &, const u_int, server::web_t *)>) bind(&WebServer::accept, &executor, _1, _2, _3, _4));
+	// Выполняем запуск WEB сервер
+	web.start();
 	// Выводим результат
 	return 0;
 }

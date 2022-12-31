@@ -1,5 +1,5 @@
 /**
- * @file: rest.hpp
+ * @file: web.hpp
  * @date: 2022-11-14
  * @license: GPL-3.0
  *
@@ -12,8 +12,8 @@
  * @copyright: Copyright © 2022
  */
 
-#ifndef __AWH_REST_CLIENT__
-#define __AWH_REST_CLIENT__
+#ifndef __AWH_WEB_CLIENT__
+#define __AWH_WEB_CLIENT__
 
 /**
  * Стандартная библиотека
@@ -43,9 +43,9 @@ namespace awh {
 	 */
 	namespace client {
 		/**
-		 * Rest Класс работы с Rest клиентом
+		 * WEB Класс работы с WEB клиентом
 		 */
-		typedef class Rest {
+		typedef class WEB {
 			private:
 				/**
 				 * Основные экшены
@@ -123,9 +123,9 @@ namespace awh {
 				 */
 				typedef struct Callback {
 					// Функция обратного вызова при подключении/отключении
-					function <void (const mode_t, Rest *)> active;
+					function <void (const mode_t, WEB *)> active;
 					// Функция обратного вызова, вывода сообщения при его получении
-					function <void (const res_t &, Rest *)> message;
+					function <void (const res_t &, WEB *)> message;
 					/**
 					 * Callback Конструктор
 					 */
@@ -403,8 +403,8 @@ namespace awh {
 				void flush() noexcept;
 			public:
 				/**
-				 * init Метод инициализации REST клиента
-				 * @param url      адрес REST сервера
+				 * init Метод инициализации WEB клиента
+				 * @param url      адрес WEB сервера
 				 * @param compress метод компрессии передаваемых сообщений
 				 */
 				void init(const string & url, const http_t::compress_t compress = http_t::compress_t::ALL_COMPRESS) noexcept;
@@ -413,12 +413,12 @@ namespace awh {
 				 * on Метод установки функции обратного вызова на событие запуска или остановки подключения
 				 * @param callback функция обратного вызова
 				 */
-				void on(function <void (const mode_t, Rest *)> callback) noexcept;
+				void on(function <void (const mode_t, WEB *)> callback) noexcept;
 				/**
 				 * on Метод установки функции обратного вызова на событие получения сообщений
 				 * @param callback функция обратного вызова
 				 */
-				void on(function <void (const res_t &, Rest *)> callback) noexcept;
+				void on(function <void (const res_t &, WEB *)> callback) noexcept;
 			public:
 				/**
 				 * on Метод установки функции обратного вызова для получения чанков
@@ -533,18 +533,18 @@ namespace awh {
 				void authTypeProxy(const auth_t::type_t type = auth_t::type_t::BASIC, const auth_t::hash_t hash = auth_t::hash_t::MD5) noexcept;
 			public:
 				/**
-				 * Rest Конструктор
+				 * WEB Конструктор
 				 * @param core объект сетевого ядра
 				 * @param fmk  объект фреймворка
 				 * @param log  объект для работы с логами
 				 */
-				Rest(const client::core_t * core, const fmk_t * fmk, const log_t * log) noexcept;
+				WEB(const client::core_t * core, const fmk_t * fmk, const log_t * log) noexcept;
 				/**
-				 * ~Rest Деструктор
+				 * ~WEB Деструктор
 				 */
-				~Rest() noexcept {}
-		} rest_t;
+				~WEB() noexcept {}
+		} web_t;
 	};
 };
 
-#endif // __AWH_REST_CLIENT__
+#endif // __AWH_WEB_CLIENT__

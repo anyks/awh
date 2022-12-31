@@ -1,5 +1,5 @@
 /**
- * @file: rest.hpp
+ * @file: web.hpp
  * @date: 2022-09-03
  * @license: GPL-3.0
  *
@@ -12,8 +12,8 @@
  * @copyright: Copyright © 2022
  */
 
-#ifndef __AWH_SCHEME_REST_SERVER__
-#define __AWH_SCHEME_REST_SERVER__
+#ifndef __AWH_SCHEME_WEB_SERVER__
+#define __AWH_SCHEME_WEB_SERVER__
 
 /**
  * Стандартная библиотека
@@ -40,9 +40,9 @@ namespace awh {
 	 */
 	namespace server {
 		/**
-		 * SchemeRest Структура схемы сети REST сервера
+		 * SchemeWEB Структура схемы сети WEB сервера
 		 */
-		typedef struct SchemeRest : public scheme_t {
+		typedef struct SchemeWEB : public scheme_t {
 			public:
 				/**
 				 * Основные экшены
@@ -149,19 +149,19 @@ namespace awh {
 				const coffer_t * get(const size_t aid) const noexcept;
 			public:
 				/**
-				 * SchemeRest Конструктор
+				 * SchemeWEB Конструктор
 				 * @param fmk объект фреймворка
 				 * @param log объект для работы с логами
 				 */
-				SchemeRest(const fmk_t * fmk, const log_t * log) noexcept :
+				SchemeWEB(const fmk_t * fmk, const log_t * log) noexcept :
 				 scheme_t(fmk, log), nwk(fmk), uri(fmk, &nwk),
 				 compress(http_t::compress_t::NONE), _fmk(fmk), _log(log) {}
 				/**
-				 * ~SchemeRest Деструктор
+				 * ~SchemeWEB Деструктор
 				 */
-				~SchemeRest() noexcept {}
-		} rest_scheme_t;
+				~SchemeWEB() noexcept {}
+		} web_scheme_t;
 	};
 };
 
-#endif // __AWH_SCHEME_REST_SERVER__
+#endif // __AWH_SCHEME_WEB_SERVER__

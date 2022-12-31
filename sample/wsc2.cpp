@@ -11,7 +11,7 @@
  * Подключаем заголовочные файлы проекта
  */
 #include <client/ws.hpp>
-#include <client/rest.hpp>
+#include <client/web.hpp>
 #include <nlohmann/json.hpp>
 
 // Подключаем пространство имён
@@ -40,13 +40,13 @@ class WebSocket {
 		network_t _nwk;
 		// Создаём объект URI
 		uri_t _uri;
+		// Создаём объект WEB запроса
+		client::web_t _web;
 		// Создаём биндинг
 		client::core_t _core;
-		// Создаём объект REST запроса
-		client::rest_t _rest;
 	private:
 		// Флаг события Web сервера
-		client::rest_t::mode_t _webMode;
+		client::web_t::mode_t _webMode;
 	public:
 		/**
 		 * subscribe Метод подписки на сообщения логов
@@ -198,7 +198,7 @@ class WebSocket {
 		 * @param res объект ответа
 		 * @param web объект веб-клиента
 		 */
-		void web(const client::rest_t::res_t & res, client::rest_t * web){			
+		void web(const client::web_t::res_t & res, client::web_t * web){			
 			// Проверяем на наличие ошибок
 			if(res.code >= 300)
 				// Выводим сообщение о неудачном запросе
@@ -228,18 +228,18 @@ class WebSocket {
 		 * webActive Метод событий подключения и отключения от WEB сервера
 		 * @param web объект веб-клиента
 		 */
-		void webActive(const client::rest_t::mode_t mode, client::rest_t * web){
+		void webActive(const client::web_t::mode_t mode, client::web_t * web){
 			// Запоминаем событие сервера
 			this->_webMode = mode;
 			// Определяем событие WEB клиента
 			switch((uint8_t) this->_webMode){
 				// Если прозошло подключение
-				case (uint8_t) client::rest_t::mode_t::CONNECT:
+				case (uint8_t) client::web_t::mode_t::CONNECT:
 					// Выводим информацию в консоль
 					this->_log->print("WEB client: %s", log_t::flag_t::INFO, "CONNECT");
 				break;
 				// Если произошло отключение
-				case (uint8_t) client::rest_t::mode_t::DISCONNECT: {
+				case (uint8_t) client::web_t::mode_t::DISCONNECT: {
 					// Выводим информацию в консоль
 					this->_log->print("WEB client: %s", log_t::flag_t::WARNING, "DISCONNECT");
 				} break;
@@ -262,17 +262,17 @@ class WebSocket {
 					// Если количество полученных курсов больше десяти тысячь
 					if(this->_count >= 1000){
 						// Если подключение не выполнено
-						if(this->_webMode == client::rest_t::mode_t::CONNECT){
+						if(this->_webMode == client::web_t::mode_t::CONNECT){
 							// Обнуляем количество запросов
 							this->_count = 0;
 							// Создаём объект запроса
-							client::rest_t::req_t req;
+							client::web_t::req_t req;
 							// Устанавливаем метод запроса
 							req.method = web_t::method_t::GET;
 							// Устанавливаем параметры запроса
 							req.query = "/api/v3/time";
 							// Выполняем запрос на сервер
-							this->_rest.send({std::forward <client::rest_t::req_t> (req)});
+							this->_web.send({std::forward <client::web_t::req_t> (req)});
 						}
 					// Увеличиваем количество запросов
 					} else this->_count++;
@@ -291,27 +291,27 @@ class WebSocket {
 		 * @param fmk  объект фреймворка
 		 * @param core объект основного ядра
 		 */
-		WebSocket(fmk_t * fmk, log_t * log, client::core_t * core) : _fmk(fmk), _log(log), _main(core), _count(0), _nwk(fmk), _uri(fmk, &_nwk), _core(fmk, log), _rest(&_core, fmk, log), _webMode(client::rest_t::mode_t::DISCONNECT) {
+		WebSocket(fmk_t * fmk, log_t * log, client::core_t * core) : _fmk(fmk), _log(log), _main(core), _count(0), _nwk(fmk), _uri(fmk, &_nwk), _core(fmk, log), _web(&_core, fmk, log), _webMode(client::web_t::mode_t::DISCONNECT) {
 			/**
 			 * 1. Устанавливаем отложенные вызовы
 			 * 2. Устанавливаем ожидание входящих сообщений
 			 * 3. Устанавливаем валидацию SSL сертификата
 			 */
-			this->_rest.mode(
-				(uint8_t) client::rest_t::flag_t::ALIVE |
-				(uint8_t) client::rest_t::flag_t::REDIRECTS |
-				(uint8_t) client::rest_t::flag_t::VERIFYSSL
+			this->_web.mode(
+				(uint8_t) client::web_t::flag_t::ALIVE |
+				(uint8_t) client::web_t::flag_t::REDIRECTS |
+				(uint8_t) client::web_t::flag_t::VERIFYSSL
 			);
 			// Устанавливаем адрес сертификата
 			this->_core.ca("./ca/cert.pem");
 			// Переводим клиента в асинхронный режим работы
 			this->_core.mode(client::core_t::mode_t::ASYNC);
 			// Выполняем инициализацию подключения
-			this->_rest.init("https://api2.binance.com");
+			this->_web.init("https://api2.binance.com");
 			// Устанавливаем метод получения результата
-			this->_rest.on(std::bind(&WebSocket::web, this, _1, _2));
+			this->_web.on(std::bind(&WebSocket::web, this, _1, _2));
 			// Устанавливаем метод активации подключения
-			this->_rest.on(std::bind(&WebSocket::webActive, this, _1, _2));
+			this->_web.on(std::bind(&WebSocket::webActive, this, _1, _2));
 			// Выполняем подключение ядра
 			this->_main->bind(&this->_core);
 		}

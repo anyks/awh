@@ -199,14 +199,28 @@ void awh::DNS::Worker::response(ev::io & io, int revents) noexcept {
 				#endif
 				// Если список IP адресов получен
 				if(!ips.empty()){
-					// Выполняем инициализацию генератора
-					random_device dev;
-					// Подключаем устройство генератора
-					mt19937 rng(dev());
-					// Выполняем генерирование случайного числа
-					uniform_int_distribution <mt19937::result_type> dist6(0, ips.size() - 1);
-					// Выполняем установку IP адреса
-					ip = ips.at(dist6(rng));
+					// Если количество IP адресов в списке больше 1-го
+					if(ips.size() > 1){
+						// Переходим по всему списку полученных адресов
+						for(auto & addr : ips){
+							// Если IP адрес не найден в списке
+							if(dns->_using.count(addr) < 1){
+								// Выполняем установку IP адреса
+								ip = ::move(addr);
+								// Выходим из цикла
+								break;
+							}
+						}
+					}
+					// Если IP адрес не установлен
+					if(ip.empty()){
+						// Выполняем установку IP адреса
+						ip = ::move(ips.front());
+						// Очищаем список используемых IP адресов
+						dns->_using.clear();
+					}
+					// Запоминаем полученный адрес
+					dns->_using.emplace(ip);
 				// Если чёрный список доменных имён не пустой
 				} else if(!dns->emptyBlackList(this->_family))
 					// Выполняем очистку чёрного списка
@@ -215,27 +229,27 @@ void awh::DNS::Worker::response(ev::io & io, int revents) noexcept {
 			// Если сервер DNS не смог интерпретировать запрос
 			case 1:
 				// Выводим в лог сообщение
-				this->_dns->_log->print("DNS query format error [%s]", log_t::flag_t::CRITICAL, this->_domain.c_str());
+				dns->_log->print("DNS query format error [%s]", log_t::flag_t::CRITICAL, this->_domain.c_str());
 			break;
 			// Если проблемы возникли на DNS сервера
 			case 2:
 				// Выводим в лог сообщение
-				this->_dns->_log->print("DNS server failure [%s]", log_t::flag_t::CRITICAL, this->_domain.c_str());
+				dns->_log->print("DNS server failure [%s]", log_t::flag_t::CRITICAL, this->_domain.c_str());
 			break;
 			// Если доменное имя указанное в запросе не существует
 			case 3:
 				// Выводим в лог сообщение
-				this->_dns->_log->print("the domain name referenced in the query does not exist [%s]", log_t::flag_t::CRITICAL, this->_domain.c_str());
+				dns->_log->print("the domain name referenced in the query does not exist [%s]", log_t::flag_t::CRITICAL, this->_domain.c_str());
 			break;
 			// Если DNS сервер не поддерживает подобный тип запросов
 			case 4:
 				// Выводим в лог сообщение
-				this->_dns->_log->print("DNS server is not implemented [%s]", log_t::flag_t::CRITICAL, this->_domain.c_str());
+				dns->_log->print("DNS server is not implemented [%s]", log_t::flag_t::CRITICAL, this->_domain.c_str());
 			break;
 			// Если DNS сервер отказался выполнять наш запрос (например по политическим причинам)
 			case 5:
 				// Выводим в лог сообщение
-				this->_dns->_log->print("DNS request is refused [%s]", log_t::flag_t::CRITICAL, this->_domain.c_str());
+				dns->_log->print("DNS request is refused [%s]", log_t::flag_t::CRITICAL, this->_domain.c_str());
 			break;
 		}
 	// Если ответ получен не был, но время ещё есть

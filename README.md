@@ -4,7 +4,7 @@
 
 ## Project goals and features
 
-- **HTTP/HTTPS**: REST - CLIENT/SERVER.
+- **HTTP/HTTPS**: WEB - CLIENT/SERVER.
 - **WS/WSS**: WebSocket - CLIENT/SERVER.
 - **Proxy**: HTTP/SOCKS5 PROXY - CLIENT/SERVER.
 - **Compress**: GZIP/DEFLATE/BROTLI - compression support.
@@ -120,10 +120,10 @@ $ cmake \
 $ cmake --build .
 ```
 
-### Example REST Client
+### Example WEB Client
 
 ```c++
-#include <client/rest.hpp>
+#include <client/web.hpp>
 
 using namespace std;
 using namespace awh;
@@ -132,8 +132,8 @@ class WebClient {
 	private:
 		log_t * _log;
 	public:
-		void active(const client::rest_t::mode_t mode, client::rest_t * web){
-			this->_log->print("%s client", log_t::flag_t::INFO, (mode == client::rest_t::mode_t::CONNECT ? "Connect" : "Disconnect"));
+		void active(const client::web_t::mode_t mode, client::web_t * web){
+			this->_log->print("%s client", log_t::flag_t::INFO, (mode == client::web_t::mode_t::CONNECT ? "Connect" : "Disconnect"));
 		}
 	public:
 		WebClient(log_t * log) : _log(log) {}
@@ -148,27 +148,27 @@ int main(int argc, char * argv[]){
 	WebClient executor(&log);
 
 	client::core_t core(&fmk, &log);
-	client::rest_t rest(&core, &fmk, &log);
+	client::web_t web(&core, &fmk, &log);
 
-	log.name("REST Client");
+	log.name("WEB Client");
 	log.format("%H:%M:%S %d.%m.%Y");
 
 	core.ca("./ca/cert.pem");
 	// core.verifySSL(false);
 	core.sonet(awh::scheme_t::sonet_t::TCP);
 
-	rest.mode(
-		(uint8_t) client::rest_t::flag_t::NOINFO |
-		(uint8_t) client::rest_t::flag_t::WAITMESS |
-		(uint8_t) client::rest_t::flag_t::REDIRECTS |
-		(uint8_t) client::rest_t::flag_t::VERIFYSSL
+	web.mode(
+		(uint8_t) client::web_t::flag_t::NOINFO |
+		(uint8_t) client::web_t::flag_t::WAITMESS |
+		(uint8_t) client::web_t::flag_t::REDIRECTS |
+		(uint8_t) client::web_t::flag_t::VERIFYSSL
 	);
-	// rest.proxy("http://user:password@host.com:port");
-	rest.proxy("socks5://user:password@host.com:port");
-	rest.compress(http_t::compress_t::ALL_COMPRESS);
-	rest.on(bind(&WebClient::active, &executor, _1, _2));
+	// web.proxy("http://user:password@host.com:port");
+	web.proxy("socks5://user:password@host.com:port");
+	web.compress(http_t::compress_t::ALL_COMPRESS);
+	web.on(bind(&WebClient::active, &executor, _1, _2));
 
-	const auto & body = rest.GET(uri.parse("https://2ip.ru"), {{"User-Agent", "curl/7.64.1"}});
+	const auto & body = web.GET(uri.parse("https://2ip.ru"), {{"User-Agent", "curl/7.64.1"}});
 
 	log.print("ip: %s", log_t::flag_t::INFO, body.data());
 
@@ -176,10 +176,10 @@ int main(int argc, char * argv[]){
 }
 ```
 
-### Example REST Server
+### Example WEB Server
 
 ```c++
-#include <server/rest.hpp>
+#include <server/web.hpp>
 
 using namespace std;
 using namespace awh;
@@ -197,14 +197,14 @@ class WebServer {
 			return true;
 		}
 	public:
-		bool accept(const string & ip, const string & mac, const u_int port, server::rest_t * web){
+		bool accept(const string & ip, const string & mac, const u_int port, server::web_t * web){
 			this->_log->print("ACCEPT: ip = %s, mac = %s, port = %d", log_t::flag_t::INFO, ip.c_str(), mac.c_str(), port);
 			return true;
 		}
-		void active(const size_t aid, const server::rest_t::mode_t mode, server::rest_t * web){
-			this->_log->print("%s client", log_t::flag_t::INFO, (mode == server::rest_t::mode_t::CONNECT ? "Connect" : "Disconnect"));
+		void active(const size_t aid, const server::web_t::mode_t mode, server::web_t * web){
+			this->_log->print("%s client", log_t::flag_t::INFO, (mode == server::web_t::mode_t::CONNECT ? "Connect" : "Disconnect"));
 		}
-		void message(const size_t aid, const awh::http_t * http, server::rest_t * web){
+		void message(const size_t aid, const awh::http_t * http, server::web_t * web){
 			const auto & query = http->query();
 
 			if(!query.uri.empty() && (query.uri.find("favicon.ico") != string::npos))
@@ -233,7 +233,7 @@ int main(int argc, char * argv[]){
 	WebServer executor(&log);
 
 	server::core_t core(&fmk, &log);
-	server::rest_t rest(&core, &fmk, &log);
+	server::web_t web(&core, &fmk, &log);
 
 	log.name("Web Server");
 	log.format("%H:%M:%S %d.%m.%Y");
@@ -243,18 +243,18 @@ int main(int argc, char * argv[]){
 	core.sonet(awh::scheme_t::sonet_t::TLS);
 	core.certificate("./ca/certs/server-cert.pem", "./ca/certs/server-key.pem");
 
-	rest.realm("ANYKS");
-	rest.opaque("keySession");
-	rest.authType(auth_t::type_t::DIGEST, auth_t::hash_t::MD5);
-	rest.init(2222, "127.0.0.1", http_t::compress_t::ALL_COMPRESS);
+	web.realm("ANYKS");
+	web.opaque("keySession");
+	web.authType(auth_t::type_t::DIGEST, auth_t::hash_t::MD5);
+	web.init(2222, "127.0.0.1", http_t::compress_t::ALL_COMPRESS);
 
-	rest.on((function <string (const string &)>) bind(&WebServer::password, &executor, _1));
-	// rest.on((function <bool (const string &, const string &)>) bind(&WebServer::auth, &executor, _1, _2));
-	rest.on((function <void (const size_t, const awh::http_t *, server::rest_t *)>) bind(&WebServer::message, &executor, _1, _2, _3));
-	rest.on((function <void (const size_t, const server::rest_t::mode_t, server::rest_t *)>) bind(&WebServer::active, &executor, _1, _2, _3));
-	rest.on((function <bool (const string &, const string &, const u_int, server::rest_t *)>) bind(&WebServer::accept, &executor, _1, _2, _3, _4));
+	web.on((function <string (const string &)>) bind(&WebServer::password, &executor, _1));
+	// web.on((function <bool (const string &, const string &)>) bind(&WebServer::auth, &executor, _1, _2));
+	web.on((function <void (const size_t, const awh::http_t *, server::web_t *)>) bind(&WebServer::message, &executor, _1, _2, _3));
+	web.on((function <void (const size_t, const server::web_t::mode_t, server::web_t *)>) bind(&WebServer::active, &executor, _1, _2, _3));
+	web.on((function <bool (const string &, const string &, const u_int, server::web_t *)>) bind(&WebServer::accept, &executor, _1, _2, _3, _4));
 	
-	rest.start();
+	web.start();
 
 	return 0;
 }

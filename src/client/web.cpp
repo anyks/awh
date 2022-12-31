@@ -1,5 +1,5 @@
 /**
- * @file: rest.cpp
+ * @file: web.cpp
  * @date: 2022-11-14
  * @license: GPL-3.0
  *
@@ -13,14 +13,14 @@
  */
 
 // Подключаем заголовочный файл
-#include <client/rest.hpp>
+#include <client/web.hpp>
 
 /**
  * chunking Метод обработки получения чанков
  * @param chunk бинарный буфер чанка
  * @param http  объект модуля HTTP
  */
-void awh::client::Rest::chunking(const vector <char> & chunk, const awh::http_t * http) noexcept {
+void awh::client::WEB::chunking(const vector <char> & chunk, const awh::http_t * http) noexcept {
 	// Если данные получены, формируем тело сообщения
 	if(!chunk.empty()) const_cast <awh::http_t *> (http)->body(chunk);
 }
@@ -29,7 +29,7 @@ void awh::client::Rest::chunking(const vector <char> & chunk, const awh::http_t 
  * @param sid  идентификатор схемы сети
  * @param core объект сетевого ядра
  */
-void awh::client::Rest::openCallback(const size_t sid, awh::core_t * core) noexcept {
+void awh::client::WEB::openCallback(const size_t sid, awh::core_t * core) noexcept {
 	// Если дисконнекта ещё не произошло
 	if(this->_action == action_t::NONE){
 		// Устанавливаем экшен выполнения
@@ -44,7 +44,7 @@ void awh::client::Rest::openCallback(const size_t sid, awh::core_t * core) noexc
  * @param sid  идентификатор схемы сети
  * @param core объект сетевого ядра
  */
-void awh::client::Rest::connectCallback(const size_t aid, const size_t sid, awh::core_t * core) noexcept {
+void awh::client::WEB::connectCallback(const size_t aid, const size_t sid, awh::core_t * core) noexcept {
 	// Если данные переданы верные
 	if((aid > 0) && (sid > 0) && (core != nullptr)){
 		// Запоминаем идентификатор адъютанта
@@ -61,7 +61,7 @@ void awh::client::Rest::connectCallback(const size_t aid, const size_t sid, awh:
  * @param sid  идентификатор схемы сети
  * @param core объект сетевого ядра
  */
-void awh::client::Rest::disconnectCallback(const size_t aid, const size_t sid, awh::core_t * core) noexcept {
+void awh::client::WEB::disconnectCallback(const size_t aid, const size_t sid, awh::core_t * core) noexcept {
 	// Если данные переданы верные
 	if((sid > 0) && (core != nullptr)){
 		// Устанавливаем экшен выполнения
@@ -78,7 +78,7 @@ void awh::client::Rest::disconnectCallback(const size_t aid, const size_t sid, a
  * @param sid    идентификатор схемы сети
  * @param core   объект сетевого ядра
  */
-void awh::client::Rest::readCallback(const char * buffer, const size_t size, const size_t aid, const size_t sid, awh::core_t * core) noexcept {
+void awh::client::WEB::readCallback(const char * buffer, const size_t size, const size_t aid, const size_t sid, awh::core_t * core) noexcept {
 	// Если данные существуют
 	if((buffer != nullptr) && (size > 0) && (aid > 0) && (sid > 0)){
 		// Если дисконнекта ещё не произошло
@@ -100,7 +100,7 @@ void awh::client::Rest::readCallback(const char * buffer, const size_t size, con
  * @param core объект сетевого ядра
  * @return     результат активации зашифрованного канала TLS
  */
-bool awh::client::Rest::enableTLSCallback(const uri_t::url_t & url, const size_t aid, const size_t sid, awh::core_t * core) noexcept {
+bool awh::client::WEB::enableTLSCallback(const uri_t::url_t & url, const size_t aid, const size_t sid, awh::core_t * core) noexcept {
 	// Блокируем переменные которые не используем
 	(void) aid;
 	(void) sid;
@@ -114,7 +114,7 @@ bool awh::client::Rest::enableTLSCallback(const uri_t::url_t & url, const size_t
  * @param sid  идентификатор схемы сети
  * @param core объект сетевого ядра
  */
-void awh::client::Rest::proxyConnectCallback(const size_t aid, const size_t sid, awh::core_t * core) noexcept {
+void awh::client::WEB::proxyConnectCallback(const size_t aid, const size_t sid, awh::core_t * core) noexcept {
 	// Если данные переданы верные
 	if((aid > 0) && (sid > 0) && (core != nullptr)){
 		// Запоминаем идентификатор адъютанта
@@ -133,7 +133,7 @@ void awh::client::Rest::proxyConnectCallback(const size_t aid, const size_t sid,
  * @param sid    идентификатор схемы сети
  * @param core   объект сетевого ядра
  */
-void awh::client::Rest::proxyReadCallback(const char * buffer, const size_t size, const size_t aid, const size_t sid, awh::core_t * core) noexcept {
+void awh::client::WEB::proxyReadCallback(const char * buffer, const size_t size, const size_t aid, const size_t sid, awh::core_t * core) noexcept {
 	// Если данные существуют
 	if((buffer != nullptr) && (size > 0) && (aid > 0) && (sid > 0)){
 		// Если дисконнекта ещё не произошло
@@ -150,7 +150,7 @@ void awh::client::Rest::proxyReadCallback(const char * buffer, const size_t size
 /**
  * handler Метод управления входящими методами
  */
-void awh::client::Rest::handler() noexcept {
+void awh::client::WEB::handler() noexcept {
 	// Если управляющий блокировщик не заблокирован
 	if(!this->_locker.mode){
 		// Выполняем блокировку потока
@@ -186,7 +186,7 @@ void awh::client::Rest::handler() noexcept {
 /**
  * actionOpen Метод обработки экшена открытия подключения
  */
-void awh::client::Rest::actionOpen() noexcept {
+void awh::client::WEB::actionOpen() noexcept {
 	// Выполняем подключение
 	const_cast <client::core_t *> (this->_core)->open(this->_scheme.sid);
 	// Если экшен соответствует, выполняем его сброс
@@ -197,7 +197,7 @@ void awh::client::Rest::actionOpen() noexcept {
 /**
  * actionRead Метод обработки экшена чтения с сервера
  */
-void awh::client::Rest::actionRead() noexcept {
+void awh::client::WEB::actionRead() noexcept {
 	// Результат работы функции
 	res_t result;
 	// Флаг удачного получения данных
@@ -385,7 +385,7 @@ void awh::client::Rest::actionRead() noexcept {
 /**
  * actionConnect Метод обработки экшена подключения к серверу
  */
-void awh::client::Rest::actionConnect() noexcept {
+void awh::client::WEB::actionConnect() noexcept {
 	// Если экшен соответствует, выполняем его сброс
 	if(this->_action == action_t::CONNECT)
 		// Выполняем сброс экшена
@@ -398,7 +398,7 @@ void awh::client::Rest::actionConnect() noexcept {
 /**
  * actionDisconnect Метод обработки экшена отключения от сервера
  */
-void awh::client::Rest::actionDisconnect() noexcept {
+void awh::client::WEB::actionDisconnect() noexcept {
 	// Если список ответов получен
 	if(!this->_responses.empty() && !this->_requests.empty()){
 		// Получаем объект ответа
@@ -481,7 +481,7 @@ void awh::client::Rest::actionDisconnect() noexcept {
 /**
  * actionProxyRead Метод обработки экшена чтения с прокси-сервера
  */
-void awh::client::Rest::actionProxyRead() noexcept {
+void awh::client::WEB::actionProxyRead() noexcept {
 	// Получаем объект биндинга ядра TCP/IP
 	client::core_t * core = const_cast <client::core_t *> (this->_core);
 	// Определяем тип прокси-сервера
@@ -534,7 +534,7 @@ void awh::client::Rest::actionProxyRead() noexcept {
 						#if defined(DEBUG_MODE)
 							// Если заголовки получены
 							if(!response.message.empty()){
-								// Данные REST ответа
+								// Данные WEB ответа
 								const string & message = this->_fmk->format("SOCKS5 %u %s\r\n", response.code, response.message.c_str());
 								// Выводим заголовок ответа
 								cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE PROXY ^^^^^^^^^\x1B[0m" << endl;
@@ -698,7 +698,7 @@ void awh::client::Rest::actionProxyRead() noexcept {
 /**
  * actionProxyConnect Метод обработки экшена подключения к прокси-серверу
  */
-void awh::client::Rest::actionProxyConnect() noexcept {
+void awh::client::WEB::actionProxyConnect() noexcept {
 	// Получаем объект биндинга ядра TCP/IP
 	client::core_t * core = const_cast <client::core_t *> (this->_core);
 	// Определяем тип прокси-сервера
@@ -724,7 +724,7 @@ void awh::client::Rest::actionProxyConnect() noexcept {
 			this->_scheme.proxy.http.reset();
 			// Выполняем очистку параметров HTTP запроса
 			this->_scheme.proxy.http.clear();
-			// Получаем бинарные данные REST запроса
+			// Получаем бинарные данные WEB запроса
 			const auto & buffer = this->_scheme.proxy.http.proxy(this->_scheme.url);
 			// Если бинарные данные запроса получены
 			if(!buffer.empty()){
@@ -755,11 +755,11 @@ void awh::client::Rest::actionProxyConnect() noexcept {
  * @param headers заголовки запроса
  * @return        результат запроса
  */
-vector <char> awh::client::Rest::GET(const uri_t::url_t & url, const unordered_multimap <string, string> & headers) noexcept {
+vector <char> awh::client::WEB::GET(const uri_t::url_t & url, const unordered_multimap <string, string> & headers) noexcept {
 	// Устанавливаем тепло запроса
 	vector <char> result;
 	// Выполняем HTTP запрос на сервер
-	this->REQUEST(web_t::method_t::GET, url, result, * const_cast <unordered_multimap <string, string> *> (&headers));
+	this->REQUEST(awh::web_t::method_t::GET, url, result, * const_cast <unordered_multimap <string, string> *> (&headers));
 	// Выводим результат
 	return result;
 }
@@ -769,11 +769,11 @@ vector <char> awh::client::Rest::GET(const uri_t::url_t & url, const unordered_m
  * @param headers заголовки запроса
  * @return        результат запроса
  */
-vector <char> awh::client::Rest::DEL(const uri_t::url_t & url, const unordered_multimap <string, string> & headers) noexcept {
+vector <char> awh::client::WEB::DEL(const uri_t::url_t & url, const unordered_multimap <string, string> & headers) noexcept {
 	// Устанавливаем тепло запроса
 	vector <char> result;
 	// Выполняем HTTP запрос на сервер
-	this->REQUEST(web_t::method_t::DEL, url, result, * const_cast <unordered_multimap <string, string> *> (&headers));
+	this->REQUEST(awh::web_t::method_t::DEL, url, result, * const_cast <unordered_multimap <string, string> *> (&headers));
 	// Выводим результат
 	return result;
 }
@@ -784,7 +784,7 @@ vector <char> awh::client::Rest::DEL(const uri_t::url_t & url, const unordered_m
  * @param headers заголовки запроса
  * @return        результат запроса
  */
-vector <char> awh::client::Rest::PUT(const uri_t::url_t & url, const json & entity, const unordered_multimap <string, string> & headers) noexcept {
+vector <char> awh::client::WEB::PUT(const uri_t::url_t & url, const json & entity, const unordered_multimap <string, string> & headers) noexcept {
 	// Получаем тело запроса
 	const string body = entity.dump();
 	// Устанавливаем тепло запроса
@@ -792,7 +792,7 @@ vector <char> awh::client::Rest::PUT(const uri_t::url_t & url, const json & enti
 	// Добавляем заголовок типа контента
 	const_cast <unordered_multimap <string, string> *> (&headers)->emplace("Content-Type", "application/json");
 	// Выполняем HTTP запрос на сервер
-	this->REQUEST(web_t::method_t::PUT, url, result, * const_cast <unordered_multimap <string, string> *> (&headers));
+	this->REQUEST(awh::web_t::method_t::PUT, url, result, * const_cast <unordered_multimap <string, string> *> (&headers));
 	// Выводим результат
 	return result;
 }
@@ -803,11 +803,11 @@ vector <char> awh::client::Rest::PUT(const uri_t::url_t & url, const json & enti
  * @param headers заголовки запроса
  * @return        результат запроса
  */
-vector <char> awh::client::Rest::PUT(const uri_t::url_t & url, const vector <char> & entity, const unordered_multimap <string, string> & headers) noexcept {
+vector <char> awh::client::WEB::PUT(const uri_t::url_t & url, const vector <char> & entity, const unordered_multimap <string, string> & headers) noexcept {
 	// Устанавливаем тепло запроса
 	vector <char> result = std::forward <const vector <char>> (entity);
 	// Выполняем HTTP запрос на сервер
-	this->REQUEST(web_t::method_t::PUT, url, result, * const_cast <unordered_multimap <string, string> *> (&headers));
+	this->REQUEST(awh::web_t::method_t::PUT, url, result, * const_cast <unordered_multimap <string, string> *> (&headers));
 	// Выводим результат
 	return result;
 }
@@ -818,7 +818,7 @@ vector <char> awh::client::Rest::PUT(const uri_t::url_t & url, const vector <cha
  * @param headers заголовки запроса
  * @return        результат запроса
  */
-vector <char> awh::client::Rest::PUT(const uri_t::url_t & url, const unordered_multimap <string, string> & entity, const unordered_multimap <string, string> & headers) noexcept {
+vector <char> awh::client::WEB::PUT(const uri_t::url_t & url, const unordered_multimap <string, string> & entity, const unordered_multimap <string, string> & headers) noexcept {
 	// Тело в формате X-WWW-Form-Urlencoded
 	string body = "";
 	// Переходим по всему списку тела запроса
@@ -837,7 +837,7 @@ vector <char> awh::client::Rest::PUT(const uri_t::url_t & url, const unordered_m
 	// Добавляем заголовок типа контента
 	const_cast <unordered_multimap <string, string> *> (&headers)->emplace("Content-Type", "application/x-www-form-urlencoded");
 	// Выполняем HTTP запрос на сервер
-	this->REQUEST(web_t::method_t::PUT, url, result, * const_cast <unordered_multimap <string, string> *> (&headers));
+	this->REQUEST(awh::web_t::method_t::PUT, url, result, * const_cast <unordered_multimap <string, string> *> (&headers));
 	// Выводим результат
 	return result;
 }
@@ -848,7 +848,7 @@ vector <char> awh::client::Rest::PUT(const uri_t::url_t & url, const unordered_m
  * @param headers заголовки запроса
  * @return        результат запроса
  */
-vector <char> awh::client::Rest::POST(const uri_t::url_t & url, const json & entity, const unordered_multimap <string, string> & headers) noexcept {
+vector <char> awh::client::WEB::POST(const uri_t::url_t & url, const json & entity, const unordered_multimap <string, string> & headers) noexcept {
 	// Получаем тело запроса
 	const string body = entity.dump();
 	// Устанавливаем тепло запроса
@@ -856,7 +856,7 @@ vector <char> awh::client::Rest::POST(const uri_t::url_t & url, const json & ent
 	// Добавляем заголовок типа контента
 	const_cast <unordered_multimap <string, string> *> (&headers)->emplace("Content-Type", "application/json");
 	// Выполняем HTTP запрос на сервер
-	this->REQUEST(web_t::method_t::POST, url, result, * const_cast <unordered_multimap <string, string> *> (&headers));
+	this->REQUEST(awh::web_t::method_t::POST, url, result, * const_cast <unordered_multimap <string, string> *> (&headers));
 	// Выводим результат
 	return result;
 }
@@ -867,11 +867,11 @@ vector <char> awh::client::Rest::POST(const uri_t::url_t & url, const json & ent
  * @param headers заголовки запроса
  * @return        результат запроса
  */
-vector <char> awh::client::Rest::POST(const uri_t::url_t & url, const vector <char> & entity, const unordered_multimap <string, string> & headers) noexcept {
+vector <char> awh::client::WEB::POST(const uri_t::url_t & url, const vector <char> & entity, const unordered_multimap <string, string> & headers) noexcept {
 	// Устанавливаем тепло запроса
 	vector <char> result = std::forward <const vector <char>> (entity);
 	// Выполняем HTTP запрос на сервер
-	this->REQUEST(web_t::method_t::POST, url, result, * const_cast <unordered_multimap <string, string> *> (&headers));
+	this->REQUEST(awh::web_t::method_t::POST, url, result, * const_cast <unordered_multimap <string, string> *> (&headers));
 	// Выводим результат
 	return result;
 }
@@ -882,7 +882,7 @@ vector <char> awh::client::Rest::POST(const uri_t::url_t & url, const vector <ch
  * @param headers заголовки запроса
  * @return        результат запроса
  */
-vector <char> awh::client::Rest::POST(const uri_t::url_t & url, const unordered_multimap <string, string> & entity, const unordered_multimap <string, string> & headers) noexcept {
+vector <char> awh::client::WEB::POST(const uri_t::url_t & url, const unordered_multimap <string, string> & entity, const unordered_multimap <string, string> & headers) noexcept {
 	// Тело в формате X-WWW-Form-Urlencoded
 	string body = "";
 	// Переходим по всему списку тела запроса
@@ -901,7 +901,7 @@ vector <char> awh::client::Rest::POST(const uri_t::url_t & url, const unordered_
 	// Добавляем заголовок типа контента
 	const_cast <unordered_multimap <string, string> *> (&headers)->emplace("Content-Type", "application/x-www-form-urlencoded");
 	// Выполняем HTTP запрос на сервер
-	this->REQUEST(web_t::method_t::POST, url, result, * const_cast <unordered_multimap <string, string> *> (&headers));
+	this->REQUEST(awh::web_t::method_t::POST, url, result, * const_cast <unordered_multimap <string, string> *> (&headers));
 	// Выводим результат
 	return result;
 }
@@ -912,7 +912,7 @@ vector <char> awh::client::Rest::POST(const uri_t::url_t & url, const unordered_
  * @param headers заголовки запроса
  * @return        результат запроса
  */
-vector <char> awh::client::Rest::PATCH(const uri_t::url_t & url, const json & entity, const unordered_multimap <string, string> & headers) noexcept {
+vector <char> awh::client::WEB::PATCH(const uri_t::url_t & url, const json & entity, const unordered_multimap <string, string> & headers) noexcept {
 	// Получаем тело запроса
 	const string body = entity.dump();
 	// Устанавливаем тепло запроса
@@ -920,7 +920,7 @@ vector <char> awh::client::Rest::PATCH(const uri_t::url_t & url, const json & en
 	// Добавляем заголовок типа контента
 	const_cast <unordered_multimap <string, string> *> (&headers)->emplace("Content-Type", "application/json");
 	// Выполняем HTTP запрос на сервер
-	this->REQUEST(web_t::method_t::PATCH, url, result, * const_cast <unordered_multimap <string, string> *> (&headers));
+	this->REQUEST(awh::web_t::method_t::PATCH, url, result, * const_cast <unordered_multimap <string, string> *> (&headers));
 	// Выводим результат
 	return result;
 }
@@ -931,11 +931,11 @@ vector <char> awh::client::Rest::PATCH(const uri_t::url_t & url, const json & en
  * @param headers заголовки запроса
  * @return        результат запроса
  */
-vector <char> awh::client::Rest::PATCH(const uri_t::url_t & url, const vector <char> & entity, const unordered_multimap <string, string> & headers) noexcept {
+vector <char> awh::client::WEB::PATCH(const uri_t::url_t & url, const vector <char> & entity, const unordered_multimap <string, string> & headers) noexcept {
 	// Устанавливаем тепло запроса
 	vector <char> result = std::forward <const vector <char>> (entity);
 	// Выполняем HTTP запрос на сервер
-	this->REQUEST(web_t::method_t::PATCH, url, result, * const_cast <unordered_multimap <string, string> *> (&headers));
+	this->REQUEST(awh::web_t::method_t::PATCH, url, result, * const_cast <unordered_multimap <string, string> *> (&headers));
 	// Выводим результат
 	return result;
 }
@@ -946,7 +946,7 @@ vector <char> awh::client::Rest::PATCH(const uri_t::url_t & url, const vector <c
  * @param headers заголовки запроса
  * @return        результат запроса
  */
-vector <char> awh::client::Rest::PATCH(const uri_t::url_t & url, const unordered_multimap <string, string> & entity, const unordered_multimap <string, string> & headers) noexcept {
+vector <char> awh::client::WEB::PATCH(const uri_t::url_t & url, const unordered_multimap <string, string> & entity, const unordered_multimap <string, string> & headers) noexcept {
 	// Тело в формате X-WWW-Form-Urlencoded
 	string body = "";
 	// Переходим по всему списку тела запроса
@@ -965,7 +965,7 @@ vector <char> awh::client::Rest::PATCH(const uri_t::url_t & url, const unordered
 	// Добавляем заголовок типа контента
 	const_cast <unordered_multimap <string, string> *> (&headers)->emplace("Content-Type", "application/x-www-form-urlencoded");
 	// Выполняем HTTP запрос на сервер
-	this->REQUEST(web_t::method_t::PATCH, url, result, * const_cast <unordered_multimap <string, string> *> (&headers));
+	this->REQUEST(awh::web_t::method_t::PATCH, url, result, * const_cast <unordered_multimap <string, string> *> (&headers));
 	// Выводим результат
 	return result;
 }
@@ -975,13 +975,13 @@ vector <char> awh::client::Rest::PATCH(const uri_t::url_t & url, const unordered
  * @param headers заголовки запроса
  * @return        результат запроса
  */
-unordered_multimap <string, string> awh::client::Rest::HEAD(const uri_t::url_t & url, const unordered_multimap <string, string> & headers) noexcept {
+unordered_multimap <string, string> awh::client::WEB::HEAD(const uri_t::url_t & url, const unordered_multimap <string, string> & headers) noexcept {
 	// Устанавливаем тепло запроса
 	vector <char> entity;
 	// Результат работы функции
 	unordered_multimap <string, string> result = std::forward <const unordered_multimap <string, string>> (headers);
 	// Выполняем HTTP запрос на сервер
-	this->REQUEST(web_t::method_t::HEAD, url, entity, result);
+	this->REQUEST(awh::web_t::method_t::HEAD, url, entity, result);
 	// Выводим результат
 	return result;
 }
@@ -991,13 +991,13 @@ unordered_multimap <string, string> awh::client::Rest::HEAD(const uri_t::url_t &
  * @param headers заголовки запроса
  * @return        результат запроса
  */
-unordered_multimap <string, string> awh::client::Rest::TRACE(const uri_t::url_t & url, const unordered_multimap <string, string> & headers) noexcept {
+unordered_multimap <string, string> awh::client::WEB::TRACE(const uri_t::url_t & url, const unordered_multimap <string, string> & headers) noexcept {
 	// Устанавливаем тепло запроса
 	vector <char> entity;
 	// Результат работы функции
 	unordered_multimap <string, string> result = std::forward <const unordered_multimap <string, string>> (headers);
 	// Выполняем HTTP запрос на сервер
-	this->REQUEST(web_t::method_t::TRACE, url, entity, result);
+	this->REQUEST(awh::web_t::method_t::TRACE, url, entity, result);
 	// Выводим результат
 	return result;
 }
@@ -1007,13 +1007,13 @@ unordered_multimap <string, string> awh::client::Rest::TRACE(const uri_t::url_t 
  * @param headers заголовки запроса
  * @return        результат запроса
  */
-unordered_multimap <string, string> awh::client::Rest::OPTIONS(const uri_t::url_t & url, const unordered_multimap <string, string> & headers) noexcept {
+unordered_multimap <string, string> awh::client::WEB::OPTIONS(const uri_t::url_t & url, const unordered_multimap <string, string> & headers) noexcept {
 	// Устанавливаем тепло запроса
 	vector <char> entity;
 	// Результат работы функции
 	unordered_multimap <string, string> result = std::forward <const unordered_multimap <string, string>> (headers);
 	// Выполняем HTTP запрос на сервер
-	this->REQUEST(web_t::method_t::OPTIONS, url, entity, result);
+	this->REQUEST(awh::web_t::method_t::OPTIONS, url, entity, result);
 	// Выводим результат
 	return result;
 }
@@ -1024,13 +1024,13 @@ unordered_multimap <string, string> awh::client::Rest::OPTIONS(const uri_t::url_
  * @param entity  тело запроса
  * @param headers заголовки запроса
  */
-void awh::client::Rest::REQUEST(const web_t::method_t method, const uri_t::url_t & url, vector <char> & entity, unordered_multimap <string, string> & headers) noexcept {
+void awh::client::WEB::REQUEST(const awh::web_t::method_t method, const uri_t::url_t & url, vector <char> & entity, unordered_multimap <string, string> & headers) noexcept {
 	// Если данные запроса переданы
 	if(!url.empty()){
 		// Подписываемся на событие коннекта и дисконнекта клиента
-		this->on([method, &url, &entity, &headers](const rest_t::mode_t mode, rest_t * web) noexcept {
+		this->on([method, &url, &entity, &headers](const web_t::mode_t mode, web_t * web) noexcept {
 			// Если подключение выполнено
-			if(mode == client::rest_t::mode_t::CONNECT){
+			if(mode == client::web_t::mode_t::CONNECT){
 				// Создаём объект запроса
 				req_t req;
 				// Устанавливаем метод запроса
@@ -1047,7 +1047,7 @@ void awh::client::Rest::REQUEST(const web_t::method_t method, const uri_t::url_t
 			} else web->stop();
 		});
 		// Подписываемся на событие получения сообщения
-		this->on([&entity, &headers](const res_t & res, rest_t * web) noexcept {
+		this->on([&entity, &headers](const res_t & res, web_t * web) noexcept {
 			// Проверяем на наличие ошибок
 			if(res.code >= 300)
 				// Выводим сообщение о неудачном запросе
@@ -1071,7 +1071,7 @@ void awh::client::Rest::REQUEST(const web_t::method_t method, const uri_t::url_t
 /**
  * flush Метод сброса параметров запроса
  */
-void awh::client::Rest::flush() noexcept {
+void awh::client::WEB::flush() noexcept {
 	// Сбрасываем флаг принудительной остановки
 	this->_active = false;
 	// Снимаем флаг принудительной остановки
@@ -1080,11 +1080,11 @@ void awh::client::Rest::flush() noexcept {
 	this->_buffer.clear();
 }
 /**
- * init Метод инициализации REST клиента
- * @param url      адрес REST сервера
+ * init Метод инициализации WEB клиента
+ * @param url      адрес WEB сервера
  * @param compress метод компрессии передаваемых сообщений
  */
-void awh::client::Rest::init(const string & url, const http_t::compress_t compress) noexcept {
+void awh::client::WEB::init(const string & url, const http_t::compress_t compress) noexcept {
 	// Если unix-сокет установлен
 	if(this->_core->family() == scheme_t::family_t::NIX){
 		// Выполняем очистку схемы сети
@@ -1121,7 +1121,7 @@ void awh::client::Rest::init(const string & url, const http_t::compress_t compre
  * on Метод установки функции обратного вызова на событие запуска или остановки подключения
  * @param callback функция обратного вызова
  */
-void awh::client::Rest::on(function <void (const mode_t, Rest *)> callback) noexcept {
+void awh::client::WEB::on(function <void (const mode_t, web_t *)> callback) noexcept {
 	// Устанавливаем функцию обратного вызова
 	this->_callback.active = callback;
 }
@@ -1129,7 +1129,7 @@ void awh::client::Rest::on(function <void (const mode_t, Rest *)> callback) noex
  * on Метод установки функции обратного вызова на событие получения сообщений
  * @param callback функция обратного вызова
  */
-void awh::client::Rest::on(function <void (const res_t &, Rest *)> callback) noexcept {
+void awh::client::WEB::on(function <void (const res_t &, web_t *)> callback) noexcept {
 	// Устанавливаем функцию обратного вызова
 	this->_callback.message = callback;
 }
@@ -1137,14 +1137,14 @@ void awh::client::Rest::on(function <void (const res_t &, Rest *)> callback) noe
  * on Метод установки функции обратного вызова для получения чанков
  * @param callback функция обратного вызова
  */
-void awh::client::Rest::on(function <void (const vector <char> &, const awh::http_t *)> callback) noexcept {
+void awh::client::WEB::on(function <void (const vector <char> &, const awh::http_t *)> callback) noexcept {
 	// Устанавливаем функцию обработки вызова для получения чанков
 	this->_http.chunking(callback);
 }
 /**
  * sendTimeout Метод отправки сигнала таймаута
  */
-void awh::client::Rest::sendTimeout() noexcept {
+void awh::client::WEB::sendTimeout() noexcept {
 	// Если подключение выполнено
 	if(this->_core->working())
 		// Отправляем сигнал принудительного таймаута
@@ -1154,7 +1154,7 @@ void awh::client::Rest::sendTimeout() noexcept {
  * send Метод отправки сообщения на сервер
  * @param reqs список запросов
  */
-void awh::client::Rest::send(const vector <req_t> & reqs) noexcept {
+void awh::client::WEB::send(const vector <req_t> & reqs) noexcept {
 	// Если список запросов установлен
 	if(!reqs.empty() || !this->_requests.empty()){
 		// Выполняем сброс параметров запроса
@@ -1186,7 +1186,7 @@ void awh::client::Rest::send(const vector <req_t> & reqs) noexcept {
 				this->_http.body(req.entity);			
 			// Получаем URL ссылку для выполнения запроса
 			this->_uri.append(this->_scheme.url, req.query);
-			// Получаем бинарные данные REST запроса
+			// Получаем бинарные данные WEB запроса
 			const auto & buffer = this->_http.request(this->_scheme.url, req.method);
 			// Если бинарные данные запроса получены
 			if(!buffer.empty()){
@@ -1199,7 +1199,7 @@ void awh::client::Rest::send(const vector <req_t> & reqs) noexcept {
 					// Выводим параметры запроса
 					cout << string(buffer.begin(), buffer.end()) << endl << endl;
 				#endif
-				// Тело REST сообщения
+				// Тело WEB сообщения
 				vector <char> entity;
 				// Выполняем отправку заголовков запроса на сервер
 				core->write(buffer.data(), buffer.size(), this->_aid);
@@ -1222,7 +1222,7 @@ void awh::client::Rest::send(const vector <req_t> & reqs) noexcept {
 /**
  * stop Метод остановки клиента
  */
-void awh::client::Rest::stop() noexcept {
+void awh::client::WEB::stop() noexcept {
 	// Устанавливаем флаг принудительной остановки
 	this->_active = true;
 	// Если подключение выполнено
@@ -1255,7 +1255,7 @@ void awh::client::Rest::stop() noexcept {
 /**
  * start Метод запуска клиента
  */
-void awh::client::Rest::start() noexcept {
+void awh::client::WEB::start() noexcept {
 	// Если адрес URL запроса передан
 	if(!this->_scheme.url.empty()){
 		// Если биндинг не запущен
@@ -1271,7 +1271,7 @@ void awh::client::Rest::start() noexcept {
  * @param read  количество байт для детекции по чтению
  * @param write количество байт для детекции по записи
  */
-void awh::client::Rest::bytesDetect(const scheme_t::mark_t read, const scheme_t::mark_t write) noexcept {
+void awh::client::WEB::bytesDetect(const scheme_t::mark_t read, const scheme_t::mark_t write) noexcept {
 	// Устанавливаем количество байт на чтение
 	this->_scheme.marker.read = read;
 	// Устанавливаем количество байт на запись
@@ -1291,7 +1291,7 @@ void awh::client::Rest::bytesDetect(const scheme_t::mark_t read, const scheme_t:
  * @param write   количество секунд для детекции по записи
  * @param connect количество секунд для детекции по подключению
  */
-void awh::client::Rest::waitTimeDetect(const time_t read, const time_t write, const time_t connect) noexcept {
+void awh::client::WEB::waitTimeDetect(const time_t read, const time_t write, const time_t connect) noexcept {
 	// Устанавливаем количество секунд на чтение
 	this->_scheme.timeouts.read = read;
 	// Устанавливаем количество секунд на запись
@@ -1304,7 +1304,7 @@ void awh::client::Rest::waitTimeDetect(const time_t read, const time_t write, co
  * @param uri    параметры прокси-сервера
  * @param family семейстово интернет протоколов (IPV4 / IPV6 / NIX)
  */
-void awh::client::Rest::proxy(const string & uri, const scheme_t::family_t family) noexcept {
+void awh::client::WEB::proxy(const string & uri, const scheme_t::family_t family) noexcept {
 	// Если URI параметры переданы
 	if(!uri.empty()){
 		// Устанавливаем семейство интернет протоколов
@@ -1337,7 +1337,7 @@ void awh::client::Rest::proxy(const string & uri, const scheme_t::family_t famil
  * mode Метод установки флага модуля
  * @param flag флаг модуля для установки
  */
-void awh::client::Rest::mode(const u_short flag) noexcept {
+void awh::client::WEB::mode(const u_short flag) noexcept {
 	// Устанавливаем флаг анбиндинга ядра сетевого модуля
 	this->_unbind = !(flag & (uint8_t) flag_t::NOTSTOP);
 	// Устанавливаем флаг разрешающий выполнять редиректы
@@ -1355,7 +1355,7 @@ void awh::client::Rest::mode(const u_short flag) noexcept {
  * chunk Метод установки размера чанка
  * @param size размер чанка для установки
  */
-void awh::client::Rest::chunk(const size_t size) noexcept {
+void awh::client::WEB::chunk(const size_t size) noexcept {
 	// Устанавливаем размер чанка
 	this->_http.chunk(size);
 }
@@ -1363,7 +1363,7 @@ void awh::client::Rest::chunk(const size_t size) noexcept {
  * attempts Метод установки общего количества попыток
  * @param attempts общее количество попыток
  */
-void awh::client::Rest::attempts(const uint8_t attempts) noexcept {
+void awh::client::WEB::attempts(const uint8_t attempts) noexcept {
 	// Если количество попыток передано, устанавливаем его
 	if(attempts > 0) this->_attempts = attempts;
 }
@@ -1371,7 +1371,7 @@ void awh::client::Rest::attempts(const uint8_t attempts) noexcept {
  * userAgent Метод установки User-Agent для HTTP запроса
  * @param userAgent агент пользователя для HTTP запроса
  */
-void awh::client::Rest::userAgent(const string & userAgent) noexcept {
+void awh::client::WEB::userAgent(const string & userAgent) noexcept {
 	// Устанавливаем UserAgent
 	if(!userAgent.empty()){
 		// Устанавливаем пользовательского агента
@@ -1384,7 +1384,7 @@ void awh::client::Rest::userAgent(const string & userAgent) noexcept {
  * compress Метод установки метода компрессии
  * @param compress метод компрессии сообщений
  */
-void awh::client::Rest::compress(const http_t::compress_t compress) noexcept {
+void awh::client::WEB::compress(const http_t::compress_t compress) noexcept {
 	// Устанавливаем метод компрессии
 	this->_compress = compress;
 }
@@ -1393,7 +1393,7 @@ void awh::client::Rest::compress(const http_t::compress_t compress) noexcept {
  * @param login    логин пользователя для авторизации на сервере
  * @param password пароль пользователя для авторизации на сервере
  */
-void awh::client::Rest::user(const string & login, const string & password) noexcept {
+void awh::client::WEB::user(const string & login, const string & password) noexcept {
 	// Если пользователь и пароль переданы
 	if(!login.empty() && !password.empty())
 		// Устанавливаем логин и пароль пользователя
@@ -1405,7 +1405,7 @@ void awh::client::Rest::user(const string & login, const string & password) noex
  * @param idle  интервал времени в секундах через которое происходит проверка подключения
  * @param intvl интервал времени в секундах между попытками
  */
-void awh::client::Rest::keepAlive(const int cnt, const int idle, const int intvl) noexcept {
+void awh::client::WEB::keepAlive(const int cnt, const int idle, const int intvl) noexcept {
 	// Выполняем установку максимального количества попыток
 	this->_scheme.keepAlive.cnt = cnt;
 	// Выполняем установку интервала времени в секундах через которое происходит проверка подключения
@@ -1419,7 +1419,7 @@ void awh::client::Rest::keepAlive(const int cnt, const int idle, const int intvl
  * @param name название сервиса
  * @param ver  версия сервиса
  */
-void awh::client::Rest::serv(const string & id, const string & name, const string & ver) noexcept {
+void awh::client::WEB::serv(const string & id, const string & name, const string & ver) noexcept {
 	// Устанавливаем данные сервиса
 	this->_http.serv(id, name, ver);
 	// Устанавливаем данные сервиса для прокси-сервера
@@ -1431,7 +1431,7 @@ void awh::client::Rest::serv(const string & id, const string & name, const strin
  * @param salt   соль шифрования передаваемых данных
  * @param cipher размер шифрования передаваемых данных
  */
-void awh::client::Rest::crypto(const string & pass, const string & salt, const hash_t::cipher_t cipher) noexcept {
+void awh::client::WEB::crypto(const string & pass, const string & salt, const hash_t::cipher_t cipher) noexcept {
 	// Устанавливаем параметры шифрования
 	this->_http.crypto(pass, salt, cipher);
 }
@@ -1440,7 +1440,7 @@ void awh::client::Rest::crypto(const string & pass, const string & salt, const h
  * @param type тип авторизации
  * @param hash алгоритм шифрования для Digest авторизации
  */
-void awh::client::Rest::authType(const auth_t::type_t type, const auth_t::hash_t hash) noexcept {
+void awh::client::WEB::authType(const auth_t::type_t type, const auth_t::hash_t hash) noexcept {
 	// Если объект авторизации создан
 	this->_http.authType(type, hash);
 }
@@ -1449,36 +1449,36 @@ void awh::client::Rest::authType(const auth_t::type_t type, const auth_t::hash_t
  * @param type тип авторизации
  * @param hash алгоритм шифрования для Digest авторизации
  */
-void awh::client::Rest::authTypeProxy(const auth_t::type_t type, const auth_t::hash_t hash) noexcept {
+void awh::client::WEB::authTypeProxy(const auth_t::type_t type, const auth_t::hash_t hash) noexcept {
 	// Если объект авторизации создан
 	this->_scheme.proxy.http.authType(type, hash);
 }
 /**
- * Rest Конструктор
+ * WEB Конструктор
  * @param core объект сетевого ядра
  * @param fmk  объект фреймворка
  * @param log  объект для работы с логами
  */
-awh::client::Rest::Rest(const client::core_t * core, const fmk_t * fmk, const log_t * log) noexcept :
+awh::client::WEB::WEB(const client::core_t * core, const fmk_t * fmk, const log_t * log) noexcept :
  _nwk(fmk), _uri(fmk, &_nwk), _http(fmk, log, &_uri), _scheme(fmk, log), _action(action_t::NONE),
  _compress(awh::http_t::compress_t::NONE), _aid(0), _unbind(true), _active(false),
  _stopped(false), _redirects(false), _attempts(10), _fmk(fmk), _log(log), _core(core) {
 	// Устанавливаем событие на запуск системы
-	this->_scheme.callback.set <void (const size_t, awh::core_t *)> ("open", std::bind(&Rest::openCallback, this, _1, _2));
+	this->_scheme.callback.set <void (const size_t, awh::core_t *)> ("open", std::bind(&web_t::openCallback, this, _1, _2));
 	// Устанавливаем событие подключения
-	this->_scheme.callback.set <void (const size_t, const size_t, awh::core_t *)> ("connect", std::bind(&Rest::connectCallback, this, _1, _2, _3));
+	this->_scheme.callback.set <void (const size_t, const size_t, awh::core_t *)> ("connect", std::bind(&web_t::connectCallback, this, _1, _2, _3));
 	// Устанавливаем событие отключения
-	this->_scheme.callback.set <void (const size_t, const size_t, awh::core_t *)> ("disconnect", std::bind(&Rest::disconnectCallback, this, _1, _2, _3));
+	this->_scheme.callback.set <void (const size_t, const size_t, awh::core_t *)> ("disconnect", std::bind(&web_t::disconnectCallback, this, _1, _2, _3));
 	// Устанавливаем событие на подключение к прокси-серверу
-	this->_scheme.callback.set <void (const size_t, const size_t, awh::core_t *)> ("connectProxy", std::bind(&Rest::proxyConnectCallback, this, _1, _2, _3));
+	this->_scheme.callback.set <void (const size_t, const size_t, awh::core_t *)> ("connectProxy", std::bind(&web_t::proxyConnectCallback, this, _1, _2, _3));
 	// Устанавливаем функцию чтения данных
-	this->_scheme.callback.set <void (const char *, const size_t, const size_t, const size_t, awh::core_t *)> ("read", std::bind(&Rest::readCallback, this, _1, _2, _3, _4, _5));
+	this->_scheme.callback.set <void (const char *, const size_t, const size_t, const size_t, awh::core_t *)> ("read", std::bind(&web_t::readCallback, this, _1, _2, _3, _4, _5));
 	// Устанавливаем событие на чтение данных с прокси-сервера
-	this->_scheme.callback.set <void (const char *, const size_t, const size_t, const size_t, awh::core_t *)> ("readProxy", std::bind(&Rest::proxyReadCallback, this, _1, _2, _3, _4, _5));
+	this->_scheme.callback.set <void (const char *, const size_t, const size_t, const size_t, awh::core_t *)> ("readProxy", std::bind(&web_t::proxyReadCallback, this, _1, _2, _3, _4, _5));
 	// Устанавливаем событие на активацию шифрованного TLS канала
-	this->_scheme.callback.set <bool (const uri_t::url_t &, const size_t, const size_t, awh::core_t *)> ("tls", std::bind(&Rest::enableTLSCallback, this, _1, _2, _3, _4));
+	this->_scheme.callback.set <bool (const uri_t::url_t &, const size_t, const size_t, awh::core_t *)> ("tls", std::bind(&web_t::enableTLSCallback, this, _1, _2, _3, _4));
 	// Устанавливаем функцию обработки вызова для получения чанков
-	this->_http.chunking(std::bind(&Rest::chunking, this, _1, _2));
+	this->_http.chunking(std::bind(&web_t::chunking, this, _1, _2));
 	// Добавляем схемы сети в сетевое ядро
 	const_cast <client::core_t *> (this->_core)->add(&this->_scheme);
 }

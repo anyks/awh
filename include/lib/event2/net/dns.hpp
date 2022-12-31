@@ -32,6 +32,7 @@
 #include <cstdlib>
 #include <algorithm>
 #include <functional>
+#include <unordered_set>
 #include <unordered_map>
 #include <event2/event.h>
 
@@ -324,6 +325,9 @@ namespace awh {
 			mtx_t _mtx;
 			// Статус работы DNS резолвера
 			stack <status_t> _status;
+		private:
+			// Список используемых адресов
+			unordered_set <string> _using;
 		private:
 			// Чёрный список IP адресов
 			map <int, set <string>> _blacklist;
