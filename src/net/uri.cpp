@@ -21,8 +21,8 @@
 void awh::URI::URL::clear() noexcept {
 	// Выполняем сброс порта
 	this->port = 0;
-	// Зануляем функцию генерации цифровой подписи запроса
-	this->sign = nullptr;
+	// Зануляем функцию выполняемую при генерации URL адреса
+	this->fn = nullptr;
 	// Выполняем сброс протокола интернета AF_INET или AF_INET6
 	this->family = AF_INET;
 	// Выполняем очистку IP адреса
@@ -330,10 +330,10 @@ string awh::URI::query(const url_t & url) const noexcept {
 		const string & params = this->joinParams(url.params);
 		// Выполняем сборку якоря запроса
 		const string & anchor = (!url.anchor.empty() ? this->_fmk->format("#%s", url.anchor.c_str()) : "");
-		// Выполняем генерацию сигнатуры
-		const string signature = ((url.sign != nullptr) ? this->_fmk->format("&%s", url.sign(&url, this).c_str()) : "");
+		// Выполняем генерацию URL адреса
+		const string uri = ((url.fn != nullptr) ? this->_fmk->format("&%s", url.fn(&url, this).c_str()) : "");
 		// Иначе порт не устанавливаем
-		result = this->_fmk->format("%s%s%s%s", path.c_str(), params.c_str(), signature.c_str(), anchor.c_str());
+		result = this->_fmk->format("%s%s%s%s", path.c_str(), params.c_str(), uri.c_str(), anchor.c_str());
 	}
 	// Выводим результат
 	return result;

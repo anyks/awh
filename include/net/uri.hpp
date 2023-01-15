@@ -108,8 +108,8 @@ namespace awh {
 					// Параметры URL запроса
 					vector <pair <string, string>> params;
 				public:
-					// Функция генерации цифровой подписи запроса
-					function <string (const URL *, const URI *)> sign;
+					// Функция выполняемая при генерации URL адреса
+					function <string (const URL *, const URI *)> fn;
 				public:
 					/**
 					 * clear Метод очистки
@@ -128,7 +128,7 @@ namespace awh {
 					URL() noexcept :
 					 port(0), family(AF_INET), ip(""), host(""),
 					 user(""), pass(""), domain(""), schema(""),
-					 anchor(""), sign(nullptr) {}
+					 anchor(""), fn(nullptr) {}
 			} url_t;
 		private:
 			// Создаём объект фреймворка
