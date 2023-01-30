@@ -106,58 +106,6 @@ namespace awh {
 			enum class os_t : uint8_t {NONE, LINUX, MACOSX, FREEBSD, UNIX, WIND32, WIND64};
 		public:
 			/**
-			 * Шаблон класса итератора для перечислений
-			 */
-			template <typename C, C beginVal, C endVal>
-			/**
-			 * Iterator Класс итератора для перечислений
-			 */
-			class Iterator {
-				private:
-					int val;                                          // Счётчик итератора
-					typedef typename underlying_type <C>::type val_t; // Тип итератора
-				public:
-					/**
-					 * operator++ Оператор инкремента
-					 */
-					Iterator operator ++ (){
-						++val;
-						return (* this);
-					}
-					/**
-					 * operator* Оператор мультипликации
-					 */
-					C operator * (){ return static_cast <C> (val); }
-					/**
-					 * operator!= Оператор сравнения на совпадение
-					 */
-					bool operator != (const Iterator & i){ return (val != i.val); }
-					/**
-					 * begin Метод получения первого значения итератора
-					 * @return текущее значение итератора
-					 */
-					Iterator begin(){ return (* this); }
-					/**
-					 * end Метод получения последнего значения итератора
-					 * @return последнее значение итератора
-					 */
-					Iterator end(){
-						static const Iterator endIter = ++Iterator(endVal);
-						return endIter;
-					}
-				public:
-					/**
-					 * Iterator Конструктор
-					 */
-					Iterator() : val(static_cast <val_t> (beginVal)) {}
-					/**
-					 * Iterator Конструктор
-					 * @param f текущее значение итератора
-					 */
-					Iterator(const C & f) : val(static_cast <val_t> (f)) {}
-			};
-		public:
-			/**
 			 * trim Метод удаления пробелов вначале и конце текста
 			 * @param text текст для удаления пробелов
 			 * @return     результат работы функции
