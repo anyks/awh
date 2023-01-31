@@ -15,11 +15,6 @@
 // Подключаем заголовочный файл
 #include <lib/ev/sys/signals.hpp>
 
- #include <signal.h>
-       #include <stdlib.h>
-       #include <stdio.h>
-       #include <unistd.h>
-
 /**
  * Если операционной системой не является Windows
  */
@@ -30,8 +25,10 @@
 	 * @param revents идентификатор события
 	 */
 	void awh::Signals::signal(ev::sig & watcher, int revents) noexcept {
+		// Выполняем остановку всех сотальных сигналов
+		this->stop();
 		// Останавливаем сигнал
-		watcher.stop();
+		// watcher.stop();
 		// Выполняем игнорирование сигнала
 		::signal(watcher.signum, SIG_IGN);
 		// Если функция обратного вызова установлена, выводим её
@@ -45,6 +42,8 @@
  * Если операционной системой является MS Windows
  */
 #else
+	// Основной объект работы с сигналами
+	sig_t * sig = nullptr;
 	// Функция обратного вызова при получении сигнала
 	function <void (const int)> fn = nullptr;
 	/**
@@ -53,6 +52,10 @@
 	 * @return       тип полученного исключения
 	 */
 	static void SignalHandler(int signal) noexcept {
+		// Если объект сигналов установлен, останавливаем ловушки сигналов
+		if(sig != nullptr)
+			// Выполняем остановку ловушки сигналов
+			sig->stop();
 		// Если функция обратного вызова установлена, выводим её
 		if(fn != nullptr)
 			// Выполняем функцию обратного вызова
@@ -180,6 +183,8 @@ void awh::Signals::on(function <void (const int)> callback) noexcept {
 	 * Если операционной системой является MS Windows
 	 */
 	#else
+		// Выполняем установку текущего объекта сигналов
+		sig = this;
 		// Выполняем установку функцию обратного вызова
 		fn = callback;
 	#endif
