@@ -16,6 +16,20 @@
 #include <lib/event2/sys/signals.hpp>
 
 /**
+ * callback Функция обратного вызова
+ * @param sig идентификатор сигнала
+ */
+void awh::Signals::callback(const int sig) noexcept {
+	// Выполняем остановку всех сотальных сигналов
+	this->stop();
+	// Если функция обратного вызова установлена, выводим её
+	if(this->_fn != nullptr)
+		// Выполняем функцию обратного вызова
+		this->_fn(sig);
+	// Завершаем работу дочернего процесса
+	// exit(sig);
+}
+/**
  * Если операционной системой не является Windows
  */
 #if !defined(_WIN32) && !defined(_WIN64)
@@ -30,16 +44,10 @@
 		::signal(SIGINT, SIG_IGN);
 		// Получаем объект сигнала
 		sig_t * sig = reinterpret_cast <sig_t *> (ctx);
-		// Выполняем остановку всех сотальных сигналов
-		sig->stop();
 		// Выполняем очистку памяти сигнала
-		// sig->clear(&sig->_ev.sint);
-		// Если функция обратного вызова установлена, выводим её
-		if(sig->_fn != nullptr)
-			// Выполняем функцию обратного вызова
-			sig->_fn(SIGINT);
-		// Завершаем работу дочернего процесса
-		// exit(SIGINT);
+		sig->clear(&sig->_ev.sint);
+		// Выполняем функцию обратного вызова
+		std::thread(&sig_t::callback, sig, SIGINT).detach();
 	}
 	/**
 	 * fpeCallback Функция обработки информационных сигналов SIGFPE
@@ -52,16 +60,10 @@
 		::signal(SIGFPE, SIG_IGN);
 		// Получаем объект сигнала
 		sig_t * sig = reinterpret_cast <sig_t *> (ctx);
-		// Выполняем остановку всех сотальных сигналов
-		sig->stop();
 		// Выполняем очистку памяти сигнала
-		// sig->clear(&sig->_ev.sfpe);
-		// Если функция обратного вызова установлена, выводим её
-		if(sig->_fn != nullptr)
-			// Выполняем функцию обратного вызова
-			sig->_fn(SIGFPE);
-		// Завершаем работу дочернего процесса
-		// exit(SIGFPE);
+		sig->clear(&sig->_ev.sfpe);
+		// Выполняем функцию обратного вызова
+		std::thread(&sig_t::callback, sig, SIGFPE).detach();
 	}
 	/**
 	 * illCallback Функция обработки информационных сигналов SIGILL
@@ -74,16 +76,10 @@
 		::signal(SIGILL, SIG_IGN);
 		// Получаем объект сигнала
 		sig_t * sig = reinterpret_cast <sig_t *> (ctx);
-		// Выполняем остановку всех сотальных сигналов
-		sig->stop();
 		// Выполняем очистку памяти сигнала
-		// sig->clear(&sig->_ev.sill);
-		// Если функция обратного вызова установлена, выводим её
-		if(sig->_fn != nullptr)
-			// Выполняем функцию обратного вызова
-			sig->_fn(SIGILL);
-		// Завершаем работу дочернего процесса
-		// exit(SIGILL);
+		sig->clear(&sig->_ev.sill);
+		// Выполняем функцию обратного вызова
+		std::thread(&sig_t::callback, sig, SIGILL).detach();
 	}
 	/**
 	 * termCallback Функция обработки информационных сигналов SIGTERM
@@ -96,16 +92,10 @@
 		::signal(SIGTERM, SIG_IGN);
 		// Получаем объект сигнала
 		sig_t * sig = reinterpret_cast <sig_t *> (ctx);
-		// Выполняем остановку всех сотальных сигналов
-		sig->stop();
 		// Выполняем очистку памяти сигнала
-		// sig->clear(&sig->_ev.sterm);
-		// Если функция обратного вызова установлена, выводим её
-		if(sig->_fn != nullptr)
-			// Выполняем функцию обратного вызова
-			sig->_fn(SIGTERM);
-		// Завершаем работу дочернего процесса
-		// exit(SIGTERM);
+		sig->clear(&sig->_ev.sterm);
+		// Выполняем функцию обратного вызова
+		std::thread(&sig_t::callback, sig, SIGTERM).detach();
 	}
 	/**
 	 * abrtCallback Функция обработки информационных сигналов SIGABRT
@@ -118,16 +108,10 @@
 		::signal(SIGABRT, SIG_IGN);
 		// Получаем объект сигнала
 		sig_t * sig = reinterpret_cast <sig_t *> (ctx);
-		// Выполняем остановку всех сотальных сигналов
-		sig->stop();
 		// Выполняем очистку памяти сигнала
-		// sig->clear(&sig->_ev.sabrt);
-		// Если функция обратного вызова установлена, выводим её
-		if(sig->_fn != nullptr)
-			// Выполняем функцию обратного вызова
-			sig->_fn(SIGABRT);
-		// Завершаем работу дочернего процесса
-		// exit(SIGABRT);
+		sig->clear(&sig->_ev.sabrt);
+		// Выполняем функцию обратного вызова
+		std::thread(&sig_t::callback, sig, SIGABRT).detach();
 	}
 	/**
 	 * segvCallback Функция обработки информационных сигналов SIGSEGV
@@ -140,41 +124,27 @@
 		::signal(SIGSEGV, SIG_IGN);
 		// Получаем объект сигнала
 		sig_t * sig = reinterpret_cast <sig_t *> (ctx);
-		// Выполняем остановку всех сотальных сигналов
-		sig->stop();
 		// Выполняем очистку памяти сигнала
-		// sig->clear(&sig->_ev.ssegv);
-		// Если функция обратного вызова установлена, выводим её
-		if(sig->_fn != nullptr)
-			// Выполняем функцию обратного вызова
-			sig->_fn(SIGSEGV);
-		// Завершаем работу дочернего процесса
-		// exit(SIGSEGV);
+		sig->clear(&sig->_ev.ssegv);
+		// Выполняем функцию обратного вызова
+		std::thread(&sig_t::callback, sig, SIGSEGV).detach();
 	}
 /**
  * Если операционной системой является MS Windows
  */
 #else
-	// Основной объект работы с сигналами
-	sig_t * sig = nullptr;
 	// Функция обратного вызова при получении сигнала
-	function <void (const int)> fn = nullptr;
+	function <void (const int)> callbackFn = nullptr;
 	/**
 	 * winHandler Функция фильтр перехватчика сигналов
 	 * @param except объект исключения
 	 * @return       тип полученного исключения
 	 */
 	static void SignalHandler(int signal) noexcept {
-		// Если объект сигналов установлен, останавливаем ловушки сигналов
-		if(sig != nullptr)
-			// Выполняем остановку ловушки сигналов
-			sig->stop();
 		// Если функция обратного вызова установлена, выводим её
-		if(fn != nullptr)
+		if(callbackFn != nullptr)
 			// Выполняем функцию обратного вызова
-			fn(signal);
-		// Завершаем работу основного процесса
-		// exit(signal);
+			std::thread(callbackFn, signal).detach();
 	}
 #endif
 /**
@@ -299,20 +269,14 @@ void awh::Signals::base(struct event_base * base) noexcept {
  * @param callback функция обратного вызова
  */
 void awh::Signals::on(function <void (const int)> callback) noexcept {
-	/**
-	 * Если операционной системой не является Windows
-	 */
-	#if !defined(_WIN32) && !defined(_WIN64)
-		// Выполняем установку функцию обратного вызова
-		this->_fn = callback;
+	// Выполняем установку функцию обратного вызова
+	this->_fn = callback;
 	/**
 	 * Если операционной системой является MS Windows
 	 */
-	#else
-		// Выполняем установку текущего объекта сигналов
-		sig = this;
-		// Выполняем установку функцию обратного вызова
-		fn = callback;
+	#if defined(_WIN32) || defined(_WIN64)
+		// Выполняем установки функции обратного вызова
+		callbackFn = std::bind(&sig_t::callback, this, _1);
 	#endif
 }
 /**

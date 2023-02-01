@@ -16,6 +16,20 @@
 #include <lib/ev/sys/signals.hpp>
 
 /**
+ * callback Функция обратного вызова
+ * @param sig идентификатор сигнала
+ */
+void awh::Signals::callback(const int sig) noexcept {
+	// Выполняем остановку всех сотальных сигналов
+	this->stop();
+	// Если функция обратного вызова установлена, выводим её
+	if(this->_fn != nullptr)
+		// Выполняем функцию обратного вызова
+		this->_fn(sig);
+	// Завершаем работу дочернего процесса
+	// exit(watcher.signum);
+}
+/**
  * Если операционной системой не является Windows
  */
 #if !defined(_WIN32) && !defined(_WIN64)
@@ -25,43 +39,29 @@
 	 * @param revents идентификатор события
 	 */
 	void awh::Signals::signal(ev::sig & watcher, int revents) noexcept {
-		// Выполняем остановку всех сотальных сигналов
-		this->stop();
 		// Останавливаем сигнал
-		// watcher.stop();
+		watcher.stop();
 		// Выполняем игнорирование сигнала
 		::signal(watcher.signum, SIG_IGN);
-		// Если функция обратного вызова установлена, выводим её
-		if(this->_fn != nullptr)
-			// Выполняем функцию обратного вызова
-			this->_fn(watcher.signum);
-		// Завершаем работу дочернего процесса
-		// exit(watcher.signum);
+		// Выполняем функцию обратного вызова
+		std::thread(&sig_t::callback, this, watcher.signum).detach();
 	}
 /**
  * Если операционной системой является MS Windows
  */
 #else
-	// Основной объект работы с сигналами
-	sig_t * sig = nullptr;
 	// Функция обратного вызова при получении сигнала
-	function <void (const int)> fn = nullptr;
+	function <void (const int)> callbackFn = nullptr;
 	/**
 	 * winHandler Функция фильтр перехватчика сигналов
 	 * @param except объект исключения
 	 * @return       тип полученного исключения
 	 */
 	static void SignalHandler(int signal) noexcept {
-		// Если объект сигналов установлен, останавливаем ловушки сигналов
-		if(sig != nullptr)
-			// Выполняем остановку ловушки сигналов
-			sig->stop();
 		// Если функция обратного вызова установлена, выводим её
-		if(fn != nullptr)
+		if(callbackFn != nullptr)
 			// Выполняем функцию обратного вызова
-			fn(signal);
-		// Завершаем работу основного процесса
-		// exit(signal);
+			std::thread(callbackFn, signal).detach();
 	}
 #endif
 /**
@@ -173,19 +173,13 @@ void awh::Signals::base(struct ev_loop * base) noexcept {
  * @param callback функция обратного вызова
  */
 void awh::Signals::on(function <void (const int)> callback) noexcept {
-	/**
-	 * Если операционной системой не является Windows
-	 */
-	#if !defined(_WIN32) && !defined(_WIN64)
-		// Выполняем установку функцию обратного вызова
-		this->_fn = callback;
+	// Выполняем установку функцию обратного вызова
+	this->_fn = callback;
 	/**
 	 * Если операционной системой является MS Windows
 	 */
-	#else
-		// Выполняем установку текущего объекта сигналов
-		sig = this;
-		// Выполняем установку функцию обратного вызова
-		fn = callback;
+	#if defined(_WIN32) || defined(_WIN64)
+		// Выполняем установки функции обратного вызова
+		callbackFn = std::bind(&sig_t::callback, this, _1);
 	#endif
 }

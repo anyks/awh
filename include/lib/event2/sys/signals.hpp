@@ -19,6 +19,7 @@
  * Стандартная библиотека
  */
 #include <string>
+#include <thread>
 #include <cstdlib>
 #include <csignal>
 
@@ -43,6 +44,7 @@
 
 // Подписываемся на стандартное пространство имён
 using namespace std;
+using namespace std::placeholders;
 
 /**
  * awh пространство имён
@@ -102,6 +104,12 @@ namespace awh {
 		private:
 			// Объект работы с базой событий
 			struct event_base * _base;
+		private:
+			/**
+			 * callback Функция обратного вызова
+			 * @param sig идентификатор сигнала
+			 */
+			void callback(const int sig) noexcept;
 		private:
 			/**
 			 * Если операционной системой не является Windows
