@@ -511,7 +511,7 @@ void awh::Engine::Address::init(const string & unixsocket, const type_t type) no
 			// Если приложение является сервером
 			if(type == type_t::SERVER){
 				// Если сокет в файловой системе уже существует, удаляем его
-				if(fs_t::issock(unixsocket))
+				if(this->_fs.isSock(unixsocket))
 					// Удаляем файл сокета
 					::unlink(unixsocket.c_str());
 			}
@@ -585,14 +585,14 @@ void awh::Engine::Address::init(const string & unixsocket, const type_t type) no
 							// Если приложение является клиентом
 							case (uint8_t) type_t::CLIENT: {
 								// Если сокет в файловой системе уже существует, удаляем его
-								if(fs_t::issock(clientName))
+								if(this->_fs.isSock(clientName))
 									// Удаляем файл сокета
 									::unlink(clientName.c_str());
 							} break;
 							// Если приложение является сервером
 							case (uint8_t) type_t::SERVER: {
 								// Если сокет в файловой системе уже существует, удаляем его
-								if(fs_t::issock(serverName))
+								if(this->_fs.isSock(serverName))
 									// Удаляем файл сокета
 									::unlink(serverName.c_str());
 							} break;
@@ -2142,7 +2142,7 @@ bool awh::Engine::storeCA(SSL_CTX * ctx) const noexcept {
 	// Если контекст SSL передан
 	if(ctx != nullptr){
 		// Если доверенный сертификат (CA-файл) найден и адрес файла указан
-		if(!this->_ca.empty() && (fs_t::isfile(this->_ca) || fs_t::isdir(this->_path))){
+		if(!this->_ca.empty() && (this->_fs.isFile(this->_ca) || this->_fs.isDir(this->_path))){
 			// Определяем путь где хранятся сертификаты
 			const char * path = (!this->_path.empty() ? this->_path.c_str() : nullptr);
 			// Выполняем проверку
@@ -2155,9 +2155,9 @@ bool awh::Engine::storeCA(SSL_CTX * ctx) const noexcept {
 			// Если каталог получен
 			if(path != nullptr){
 				// Получаем полный адрес
-				const string & trustdir = fs_t::realPath(this->_path);
+				const string & trustdir = this->_fs.realPath(this->_path);
 				// Если адрес существует
-				if(fs_t::isdir(trustdir) && !fs_t::isfile(this->_ca)){
+				if(this->_fs.isDir(trustdir) && !this->_fs.isFile(this->_ca)){
 					/**
 					 * Если операционной системой является MS Windows
 					 */
@@ -2177,7 +2177,7 @@ bool awh::Engine::storeCA(SSL_CTX * ctx) const noexcept {
 								// Выполняем декодирование адреса файла
 								filename = this->_uri->decode(filename);
 								// Если адрес файла существует
-								if((result = fs_t::isfile(filename))){
+								if((result = this->_fs.isFile(filename))){
 									// Выполняем проверку доверенного сертификата
 									SSL_CTX_set_client_CA_list(ctx, SSL_load_client_CA_file(filename.c_str()));
 									// Переходим к следующей итерации
@@ -2202,7 +2202,7 @@ bool awh::Engine::storeCA(SSL_CTX * ctx) const noexcept {
 							// Выполняем декодирование адреса файла
 							filename = this->_uri->decode(filename);
 							// Если адрес файла существует
-							if((result = fs_t::isfile(filename))){
+							if((result = this->_fs.isFile(filename))){
 								// Выполняем проверку CA файла
 								SSL_CTX_set_client_CA_list(ctx, SSL_load_client_CA_file(filename.c_str()));
 								// Переходим к следующей итерации
@@ -2213,13 +2213,13 @@ bool awh::Engine::storeCA(SSL_CTX * ctx) const noexcept {
 						this->_ca.clear();
 					#endif
 				// Если адрес файла существует
-				} else if((result = fs_t::isfile(this->_ca)))
+				} else if((result = this->_fs.isFile(this->_ca)))
 					// Выполняем проверку доверенного сертификата
 					SSL_CTX_set_client_CA_list(ctx, SSL_load_client_CA_file(this->_ca.c_str()));
 				// Выполняем очистку адреса доверенного сертификата
 				else this->_ca.clear();
 			// Если адрес файла существует
-			} else if((result = fs_t::isfile(this->_ca)))
+			} else if((result = this->_fs.isFile(this->_ca)))
 				// Выполняем проверку доверенного сертификата
 				SSL_CTX_set_client_CA_list(ctx, SSL_load_client_CA_file(this->_ca.c_str()));
 		// Выполняем очистку адреса доверенного сертификата
@@ -3132,11 +3132,11 @@ void awh::Engine::ca(const string & trusted, const string & path) noexcept {
 	// Если адрес CA-файла передан
 	if(!trusted.empty()){
 		// Устанавливаем адрес доверенного сертификата (CA-файла)
-		this->_ca = fs_t::realPath(trusted);
+		this->_ca = this->_fs.realPath(trusted);
 		// Если адрес каталога с доверенным сертификатом (CA-файлом) передан, устанавливаем и его
-		if(!path.empty() && fs_t::isdir(path))
+		if(!path.empty() && this->_fs.isDir(path))
 			// Устанавливаем адрес каталога с доверенным сертификатом (CA-файлом)
-			this->_path = fs_t::realPath(path);
+			this->_path = this->_fs.realPath(path);
 	}
 }
 /**
@@ -3157,10 +3157,10 @@ void awh::Engine::certificate(const string & chain, const string & key) noexcept
  * @param uri объект работы с URI
  */
 awh::Engine::Engine(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcept :
- _verify(true), _cipher(""), _chain(""), _privkey(""),
+ _verify(true), _fs(fmk, log), _cipher(""), _chain(""), _privkey(""),
  _path(""), _ca(SSL_CA_FILE), _fmk(fmk), _uri(uri), _log(log) {
 	// Выполняем модификацию доверенного сертификата (CA-файла)
-	this->_ca = fs_t::realPath(this->_ca);
+	this->_ca = this->_fs.realPath(this->_ca);
 	// Выполняем установку алгоритмов шифрования
 	this->ciphers({
 		"ECDHE-RSA-AES128-GCM-SHA256",

@@ -1841,7 +1841,7 @@ void awh::Core::network(const vector <string> & ip, const vector <string> & ns, 
  */
 awh::Core::Core(const fmk_t * fmk, const log_t * log, const scheme_t::family_t family, const scheme_t::sonet_t sonet) noexcept :
  pid(getpid()), nwk(fmk), uri(fmk, &nwk), engine(fmk, log, &uri),
- dns(fmk, log, &nwk), dispatch(this), _sig(dispatch.base),
+ dns(fmk, log, &nwk), dispatch(this), _fs(fmk, log), _sig(dispatch.base),
  status(status_t::STOP), type(engine_t::type_t::CLIENT), _signals(signals_t::DISABLED),
  mode(false), noinfo(false), persist(false), cores(0), servName(AWH_SHORT_NAME),
  _persIntvl(PERSIST_INTERVAL), fmk(fmk), log(log), _crash(nullptr), _active(nullptr) {
@@ -1881,7 +1881,7 @@ awh::Core::~Core() noexcept {
 		 */
 		#if !defined(_WIN32) && !defined(_WIN64)
 			// Если сокет в файловой системе уже существует, удаляем его
-			if(fs_t::issock(this->net.filename))
+			if(this->_fs.isSock(this->net.filename))
 				// Удаляем файл сокета
 				::unlink(this->net.filename.c_str());
 		#endif

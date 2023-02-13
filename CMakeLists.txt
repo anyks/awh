@@ -231,6 +231,7 @@ endif()
 # Выполняем подключение исходников
 set(SOURCE_FILES
     "${SOURCE_FILES}"
+    "${CMAKE_SOURCE_DIR}/src/sys/fs.cpp"
     "${CMAKE_SOURCE_DIR}/src/sys/fmk.cpp"
     "${CMAKE_SOURCE_DIR}/src/sys/log.cpp"
     "${CMAKE_SOURCE_DIR}/src/ws/ws.cpp"
