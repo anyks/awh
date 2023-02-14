@@ -13,6 +13,8 @@
 #include <chrono>
 #include <core/core.hpp>
 
+#include <net/net.hpp>
+
 // Подключаем пространство имён
 using namespace std;
 using namespace awh;
@@ -102,6 +104,54 @@ int main(int argc, char * argv[]){
 	fmk_t fmk;
 	// Создаём объект для работы с логами
 	log_t log(&fmk);
+
+	net_t net(&fmk, &log);
+
+	bool status = net.parse("192.168.0.1");
+
+	cout << " ################ STATUS " << status << " == " << (u_short) net.type() << " || " << net.get(net_t::format_t::SHORT) << endl;
+
+	status = net.parse("2001:0db8:11a3:09d7:1f34:8a2e:07a0:765d");
+
+	cout << " ################ STATUS " << status << " == " << (u_short) net.type() << " || " << net.get(net_t::format_t::SHORT) << endl;
+
+	status = net.parse("2001:0db8:0000:0000:0000:0000:ae21:ad12");
+
+	cout << " ################ STATUS " << status << " == " << (u_short) net.type() << " || " << net.get(net_t::format_t::SHORT) << endl;
+
+	status = net.parse("2001:db8::ae21:ad12");
+
+	cout << " ################ STATUS " << status << " == " << (u_short) net.type() << " || " << net.get(net_t::format_t::SHORT) << endl;
+
+	status = net.parse("0000:0000:0000:0000:0000:0000:ae21:ad12");
+
+	cout << " ################ STATUS " << status << " == " << (u_short) net.type() << " || " << net.get(net_t::format_t::SHORT) << endl;
+
+	status = net.parse("::ae21:ad12");
+
+	cout << " ################ STATUS " << status << " == " << (u_short) net.type() << " || " << net.get(net_t::format_t::SHORT) << endl;
+
+	status = net.parse("2001:0db8:11a3:09d7:1f34::");
+
+	cout << " ################ STATUS " << status << " == " << (u_short) net.type() << " || " << net.get(net_t::format_t::SHORT) << endl;
+
+	status = net.parse("::ffff:192.0.2.1");
+
+	cout << " ################ STATUS " << status << " == " << (u_short) net.type() << " || " << net.get(net_t::format_t::SHORT) << endl;
+
+	status = net.parse("[2001:0db8:11a3:09d7:1f34:8a2e:07a0:765d]");
+
+	cout << " ################ STATUS " << status << " == " << (u_short) net.type() << " || " << net.get(net_t::format_t::SHORT) << endl;
+
+	status = net.parse("::0");
+
+	cout << " ################ STATUS " << status << " == " << (u_short) net.type() << " || " << net.get(net_t::format_t::SHORT) << endl;
+
+	status = net.parse("2001:4860:4860::8844");
+
+	cout << " ################ STATUS " << status << " == " << (u_short) net.type() << " || " << net.get(net_t::format_t::SHORT) << endl;
+
+	/*
 	// Создаём объект исполнителя
 	Timer executor(&log);
 	// Создаём биндинг
@@ -114,6 +164,7 @@ int main(int argc, char * argv[]){
 	core.callback((function <void (const bool, core_t *)>) bind(&Timer::run, &executor, _1, _2));
 	// Выполняем запуск таймера
 	core.start();
+	*/
 	// Выводим результат
 	return 0;
 }

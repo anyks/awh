@@ -239,6 +239,7 @@ set(SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/src/ws/client.cpp"
     "${CMAKE_SOURCE_DIR}/src/ws/server.cpp"
     "${CMAKE_SOURCE_DIR}/src/net/if.cpp"
+    "${CMAKE_SOURCE_DIR}/src/net/net.cpp"
     "${CMAKE_SOURCE_DIR}/src/net/nwt.cpp"
     "${CMAKE_SOURCE_DIR}/src/net/nwk.cpp"
     "${CMAKE_SOURCE_DIR}/src/net/uri.cpp"

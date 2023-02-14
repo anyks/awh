@@ -63,29 +63,43 @@ void split(const wstring & str, const wstring & delim, T & v) noexcept {
 	 * @param text текст для удаления пробелов
 	 * @return     результат работы функции
 	 */
-	function <const wstring (const wstring &)> trimFn = [](const wstring & text) noexcept {
-		// Получаем временный текст
-		wstring tmp = text;
-		// Выполняем удаление пробелов по краям
-		tmp.erase(tmp.begin(), find_if_not(tmp.begin(), tmp.end(), [](wchar_t c){ return iswspace(c); }));
-		tmp.erase(find_if_not(tmp.rbegin(), tmp.rend(), [](wchar_t c){ return iswspace(c); }).base(), tmp.end());
+	auto trimFn = [](const wstring & text) noexcept -> wstring {
+		// Результат работы функции
+		wstring result = text;
+		// Выполняем удаление пробелов в начале текста
+		result.erase(result.begin(), find_if_not(result.begin(),result.end(), [](wchar_t c) -> bool {
+			// Выполняем проверку символа на наличие пробела
+			return iswspace(c);
+		}));
+		// Выполняем удаление пробелов в конце текста
+		result.erase(find_if_not(result.rbegin(), result.rend(), [](wchar_t c) -> bool {
+			// Выполняем проверку символа на наличие пробела
+			return iswspace(c);
+		}).base(), result.end());
 		// Выводим результат
-		return tmp;
+		return result;
 	};
 	// Очищаем словарь
 	v.clear();
 	// Получаем счётчики перебора
 	size_t i = 0, j = str.find(delim);
-	const size_t len = delim.length();
 	// Выполняем разбиение строк
 	while(j != wstring::npos){
+		// Вставляем полученный результат в контейнер
 		v.insert(v.end(), trimFn(str.substr(i, j - i)));
-		i = ++j + (len - 1);
+		// Выполняем смещение в тексте
+		i = ++j + (delim.length() - 1);
+		// Выполняем поиск разделителя в тексте
 		j = str.find(delim, j);
-		if(j == wstring::npos) v.insert(v.end(), trimFn(str.substr(i, str.length())));
+		// Если мы дошли до конца текста
+		if(j == wstring::npos)
+			// Вставляем полученный результат в контейнер
+			v.insert(v.end(), trimFn(str.substr(i, str.length())));
 	}
 	// Если слово передано а вектор пустой, тогда создаем вектори из 1-го элемента
-	if(!str.empty() && v.empty()) v.insert(v.end(), trimFn(str));
+	if(!str.empty() && v.empty())
+		// Вставляем полученный результат в контейнер
+		v.insert(v.end(), trimFn(str));
 }
 /**
  * trim Метод удаления пробелов вначале и конце текста
@@ -93,13 +107,20 @@ void split(const wstring & str, const wstring & delim, T & v) noexcept {
  * @return     результат работы функции
  */
 string awh::Framework::trim(const string & text) const noexcept {
-	// Получаем временный текст
-	string tmp = text;
-	// Выполняем удаление пробелов по краям
-	tmp.erase(tmp.begin(), find_if_not(tmp.begin(), tmp.end(), [](char c){ return isspace(c); }));
-	tmp.erase(find_if_not(tmp.rbegin(), tmp.rend(), [](char c){ return isspace(c); }).base(), tmp.end());
+	// Результат работы функции
+	string result = text;
+	// Выполняем удаление пробелов в начале текста
+	result.erase(result.begin(), find_if_not(result.begin(),result.end(), [](char c) -> bool {
+		// Выполняем проверку символа на наличие пробела
+		return isspace(c);
+	}));
+	// Выполняем удаление пробелов в конце текста
+	result.erase(find_if_not(result.rbegin(), result.rend(), [](char c) -> bool {
+		// Выполняем проверку символа на наличие пробела
+		return isspace(c);
+	}).base(), result.end());
 	// Выводим результат
-	return tmp;
+	return result;
 }
 /**
  * convert Метод конвертирования строки utf-8 в строку
@@ -645,13 +666,20 @@ wchar_t awh::Framework::toUpper(const wchar_t letter) const noexcept {
  * @return     результат работы функции
  */
 wstring awh::Framework::trim(const wstring & text) const noexcept {
-	// Получаем временный текст
-	wstring tmp = text;
-	// Выполняем удаление пробелов по краям
-	tmp.erase(tmp.begin(), find_if_not(tmp.begin(), tmp.end(), [this](wchar_t c){ return this->isSpace(c); }));
-	tmp.erase(find_if_not(tmp.rbegin(), tmp.rend(), [this](wchar_t c){ return this->isSpace(c); }).base(), tmp.end());
+	// Результат работы функции
+	wstring result = text;
+	// Выполняем удаление пробелов в начале текста
+	result.erase(result.begin(), find_if_not(result.begin(),result.end(), [this](wchar_t c) -> bool {
+		// Выполняем проверку символа на наличие пробела
+		return this->isSpace(c);
+	}));
+	// Выполняем удаление пробелов в конце текста
+	result.erase(find_if_not(result.rbegin(), result.rend(), [this](wchar_t c) -> bool {
+		// Выполняем проверку символа на наличие пробела
+		return this->isSpace(c);
+	}).base(), result.end());
 	// Выводим результат
-	return tmp;
+	return result;
 }
 /**
  * convert Метод конвертирования строки в строку utf-8
