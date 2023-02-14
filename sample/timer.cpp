@@ -109,47 +109,63 @@ int main(int argc, char * argv[]){
 
 	bool status = net.parse("192.168.0.1");
 
-	cout << " ################ STATUS " << status << " == " << (u_short) net.type() << " || " << net.get(net_t::format_t::SHORT) << endl;
+	cout << " ################ STATUS " << status << " == " << (u_short) net.type() << " || " << net.get(net_t::format_t::SHORT) << " || " << net.v4() << endl;
 
 	status = net.parse("2001:0db8:11a3:09d7:1f34:8a2e:07a0:765d");
 
-	cout << " ################ STATUS " << status << " == " << (u_short) net.type() << " || " << net.get(net_t::format_t::SHORT) << endl;
+	cout << " ################ STATUS " << status << " == " << (u_short) net.type() << " || " << net.get(net_t::format_t::SHORT) << " || " << net.v6()[0] << " == " << net.v6()[1] << endl;
 
 	status = net.parse("2001:0db8:0000:0000:0000:0000:ae21:ad12");
 
-	cout << " ################ STATUS " << status << " == " << (u_short) net.type() << " || " << net.get(net_t::format_t::SHORT) << endl;
+	cout << " ################ STATUS " << status << " == " << (u_short) net.type() << " || " << net.get(net_t::format_t::SHORT) << " || " << net.v6()[0] << " == " << net.v6()[1] << endl;
 
 	status = net.parse("2001:db8::ae21:ad12");
 
-	cout << " ################ STATUS " << status << " == " << (u_short) net.type() << " || " << net.get(net_t::format_t::SHORT) << endl;
+	cout << " ################ STATUS " << status << " == " << (u_short) net.type() << " || " << net.get(net_t::format_t::SHORT) << " || " << net.v6()[0] << " == " << net.v6()[1] << endl;
 
 	status = net.parse("0000:0000:0000:0000:0000:0000:ae21:ad12");
 
-	cout << " ################ STATUS " << status << " == " << (u_short) net.type() << " || " << net.get(net_t::format_t::SHORT) << endl;
+	cout << " ################ STATUS " << status << " == " << (u_short) net.type() << " || " << net.get(net_t::format_t::SHORT) << " || " << net.v6()[0] << " == " << net.v6()[1] << endl;
 
 	status = net.parse("::ae21:ad12");
 
-	cout << " ################ STATUS " << status << " == " << (u_short) net.type() << " || " << net.get(net_t::format_t::SHORT) << endl;
+	cout << " ################ STATUS " << status << " == " << (u_short) net.type() << " || " << net.get(net_t::format_t::SHORT) << " || " << net.v6()[0] << " == " << net.v6()[1] << endl;
 
 	status = net.parse("2001:0db8:11a3:09d7:1f34::");
 
-	cout << " ################ STATUS " << status << " == " << (u_short) net.type() << " || " << net.get(net_t::format_t::SHORT) << endl;
+	cout << " ################ STATUS " << status << " == " << (u_short) net.type() << " || " << net.get(net_t::format_t::SHORT) << " || " << net.v6()[0] << " == " << net.v6()[1] << endl;
 
 	status = net.parse("::ffff:192.0.2.1");
 
-	cout << " ################ STATUS " << status << " == " << (u_short) net.type() << " || " << net.get(net_t::format_t::SHORT) << endl;
+	cout << " ################ STATUS " << status << " == " << (u_short) net.type() << " || " << net.get(net_t::format_t::SHORT) << " || " << net.v4() << endl;
 
 	status = net.parse("[2001:0db8:11a3:09d7:1f34:8a2e:07a0:765d]");
 
-	cout << " ################ STATUS " << status << " == " << (u_short) net.type() << " || " << net.get(net_t::format_t::SHORT) << endl;
+	cout << " ################ STATUS " << status << " == " << (u_short) net.type() << " || " << net.get(net_t::format_t::SHORT) << " || " << net.v6()[0] << " == " << net.v6()[1] << endl;
 
 	status = net.parse("::0");
 
-	cout << " ################ STATUS " << status << " == " << (u_short) net.type() << " || " << net.get(net_t::format_t::SHORT) << endl;
+	cout << " ################ STATUS " << status << " == " << (u_short) net.type() << " || " << net.get(net_t::format_t::SHORT) << " || " << net.v6()[0] << " == " << net.v6()[1] << endl;
 
 	status = net.parse("2001:4860:4860::8844");
 
-	cout << " ################ STATUS " << status << " == " << (u_short) net.type() << " || " << net.get(net_t::format_t::SHORT) << endl;
+	cout << " ################ STATUS " << status << " == " << (u_short) net.type() << " || " << net.get(net_t::format_t::SHORT) << " || " << net.v6()[0] << " == " << net.v6()[1] << endl;
+
+	net = "::ae21:ad12";
+
+	cout << " ++++++++++++++++++++1 " << net.get(net_t::format_t::LONG) << endl;
+
+	cout << " ====================1 " << net << endl;
+
+	net = "46.39.230.51";
+
+	cout << " ++++++++++++++++++++2 " << net.get(net_t::format_t::LONG) << endl;
+
+	cout << " ====================2 " << net << endl;
+
+	string k = net;
+
+	cout << " ====================3 " << k << endl;
 
 	/*
 	// Создаём объект исполнителя

@@ -22,6 +22,7 @@
 #include <regex>
 #include <string>
 #include <vector>
+#include <iostream>
 
 /**
  * Наши модули
@@ -101,6 +102,28 @@ namespace awh {
 			type_t host(const string & host) const noexcept;
 		public:
 			/**
+			 * v4 Метод извлечения адреса IPv4 в чистом виде
+			 * @return адрес IPv4 в чистом виде
+			 */
+			uint32_t v4() const noexcept;
+			/**
+			 * v4 Метод установки адреса IPv4 в чистом виде
+			 * @param addr адрес IPv4 в чистом виде
+			 */
+			void v4(const uint32_t addr) noexcept;
+		public:
+			/**
+			 * v6 Метод извлечения адреса IPv6 в чистом виде
+			 * @return адрес IPv6 в чистом виде
+			 */
+			array <uint64_t, 2> v6() const noexcept;
+			/**
+			 * v6 Метод установки адреса IPv6 в чистом виде
+			 * @param addr адрес IPv6 в чистом виде
+			 */
+			void v6(const array <uint64_t, 2> & addr) noexcept;
+		public:
+			/**
 			 * parse Метод парсинга IP адреса
 			 * @param ip адрес интернет подключения для парсинга
 			 * @return   результат работы парсинга
@@ -115,6 +138,74 @@ namespace awh {
 			string get(const format_t format = format_t::SHORT) const noexcept;
 		public:
 			/**
+			 * Оператор вывода IP адреса в качестве строки
+			 * @return IP адрес в качестве строки
+			 */
+			operator std::string() const noexcept;
+		public:
+			/**
+			 * Оператор [<] сравнения IP адреса
+			 * @param addr адрес для сравнения
+			 * @return     результат сравнения
+			 */
+			bool operator < (const Net & addr) noexcept;
+			/**
+			 * Оператор [>] сравнения IP адреса
+			 * @param addr адрес для сравнения
+			 * @return     результат сравнения
+			 */
+			bool operator > (const Net & addr) noexcept;
+			/**
+			 * Оператор [<=] сравнения IP адреса
+			 * @param addr адрес для сравнения
+			 * @return     результат сравнения
+			 */
+			bool operator <= (const Net & addr) noexcept;
+			/**
+			 * Оператор [>=] сравнения IP адреса
+			 * @param addr адрес для сравнения
+			 * @return     результат сравнения
+			 */
+			bool operator >= (const Net & addr) noexcept;
+			/**
+			 * Оператор [!=] сравнения IP адреса
+			 * @param addr адрес для сравнения
+			 * @return     результат сравнения
+			 */
+			bool operator != (const Net & addr) noexcept;
+			/**
+			 * Оператор [==] сравнения IP адреса
+			 * @param addr адрес для сравнения
+			 * @return     результат сравнения
+			 */
+			bool operator == (const Net & addr) noexcept;
+		public:
+			/**
+			 * Оператор [=] присвоения IP адреса
+			 * @param addr адрес для присвоения
+			 * @return     текущий объект
+			 */
+			Net & operator = (const Net & addr) noexcept;
+			/**
+			 * Оператор [=] присвоения IP адреса
+			 * @param ip адрес для присвоения
+			 * @return   текущий объект
+			 */
+			Net & operator = (const string & ip) noexcept;
+			/**
+			 * Оператор [=] присвоения IP адреса
+			 * @param addr адрес для присвоения
+			 * @return     текущий объект
+			 */
+			Net & operator = (const uint32_t addr) noexcept;
+			/**
+			 * Оператор [=] присвоения IP адреса
+			 * @param addr адрес для присвоения
+			 * @return     текущий объект
+			 */
+			Net & operator = (const array <uint64_t, 2> & addr) noexcept;
+		public:
+			/**
 			 * Net конструктор
 			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
@@ -125,6 +216,18 @@ namespace awh {
 			 */
 			~Net() noexcept {}
 	} net_t;
+	/**
+	 * Оператор [>>] чтения из потока IP адреса
+	 * @param is   поток для чтения
+	 * @param addr адрес для присвоения
+	 */
+	istream & operator >> (istream & is, net_t & addr) noexcept;
+	/**
+	 * Оператор [<<] вывода в поток IP адреса
+	 * @param os   поток куда нужно вывести данные
+	 * @param addr адрес для присвоения
+	 */
+	ostream & operator << (ostream & os, const net_t & addr) noexcept;
 };
 
 #endif // __AWH_NET__

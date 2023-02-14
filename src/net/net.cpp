@@ -112,6 +112,58 @@ awh::Net::type_t awh::Net::host(const string & host) const noexcept {
 	return result;
 }
 /**
+ * v4 Извлечения адреса IPv4 в чистом виде
+ * @return адрес IPv4 в чистом виде
+ */
+uint32_t awh::Net::v4() const noexcept {
+	// Результат работы функции
+	uint32_t result = 0;
+	// Если в буфере данных достаточно
+	if(this->_buffer.size() == 4)
+		// Выполняем копирование данных адреса IPv4
+		memcpy(&result, this->_buffer.data(), this->_buffer.size());
+	// Выводим результат
+	return result;
+}
+/**
+ * v4 Метод установки адреса IPv4 в чистом виде
+ * @param addr адрес IPv4 в чистом виде
+ */
+void awh::Net::v4(const uint32_t addr) noexcept {
+	// Выполняем выделение памяти для IPv4 адреса
+	this->_buffer.resize(4, 0);
+	// Если IPv4 адрес передан
+	if(addr > 0)
+		// Выполняем копирование данных адреса IPv4
+		memcpy(this->_buffer.data(), &addr, sizeof(addr));
+}
+/**
+ * v6 Извлечения адреса IPv6 в чистом виде
+ * @return адрес IPv6 в чистом виде
+ */
+array <uint64_t, 2> awh::Net::v6() const noexcept {
+	// Результат работы функции
+	array <uint64_t, 2> result;
+	// Если в буфере данных достаточно
+	if(this->_buffer.size() == 16)
+		// Выполняем копирование данных адреса IPv4
+		memcpy(result.data(), this->_buffer.data(), this->_buffer.size());
+	// Выводим результат
+	return result;
+}
+/**
+ * v6 Метод установки адреса IPv6 в чистом виде
+ * @param addr адрес IPv6 в чистом виде
+ */
+void awh::Net::v6(const array <uint64_t, 2> & addr) noexcept {
+	// Выполняем выделение памяти для IPv6 адреса
+	this->_buffer.resize(16, 0);
+	// Если IPv6 адрес передан
+	if(!addr.empty())
+		// Выполняем копирование данных адреса IPv6
+		memcpy(this->_buffer.data(), addr.data(), sizeof(addr));
+}
+/**
  * parse Метод парсинга IP адреса
  * @param ip адрес интернет подключения для парсинга
  * @return   результат работы парсинга
@@ -280,4 +332,278 @@ string awh::Net::get(const format_t format) const noexcept {
 	}
 	// Выводим результат
 	return result;
+}
+/**
+ * Оператор вывода IP адреса в качестве строки
+ * @return IP адрес в качестве строки
+ */
+awh::Net::operator std::string() const noexcept {
+	// Выводим данные IP адреса в виде строки
+	return this->get();
+}
+/**
+ * Оператор [<] сравнения IP адреса
+ * @param addr адрес для сравнения
+ * @return     результат сравнения
+ */
+bool awh::Net::operator < (const net_t & addr) noexcept {
+	// Результат работы функции
+	bool result = false;
+	// Если IP адреса принадлежат одному типу адресов
+	if(this->type() == addr.type()){
+		// Определяем тип IP адреса
+		switch((uint8_t) this->_type){
+			// Если IP адрес определён как IPv4
+			case (uint8_t) type_t::IPV4:
+				// Выполняем сравнение адресов
+				result = (this->v4() < addr.v4());
+			break;
+			// Если IP адрес определён как IPv6
+			case (uint8_t) type_t::IPV6: {
+				// Получаем данные текущего адреса IPv6
+				const auto & first = this->v6();
+				// Получаем данные сравниваемого адреса IPv6
+				const auto & second = addr.v6();
+				// Выполняем сравнение адресов
+				result = ((first[0] < second[0]) && (first[1] < second[1]));
+			} break;
+		}
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * Оператор [>] сравнения IP адреса
+ * @param addr адрес для сравнения
+ * @return     результат сравнения
+ */
+bool awh::Net::operator > (const net_t & addr) noexcept {
+	// Результат работы функции
+	bool result = false;
+	// Если IP адреса принадлежат одному типу адресов
+	if(this->type() == addr.type()){
+		// Определяем тип IP адреса
+		switch((uint8_t) this->_type){
+			// Если IP адрес определён как IPv4
+			case (uint8_t) type_t::IPV4:
+				// Выполняем сравнение адресов
+				result = (this->v4() > addr.v4());
+			break;
+			// Если IP адрес определён как IPv6
+			case (uint8_t) type_t::IPV6: {
+				// Получаем данные текущего адреса IPv6
+				const auto & first = this->v6();
+				// Получаем данные сравниваемого адреса IPv6
+				const auto & second = addr.v6();
+				// Выполняем сравнение адресов
+				result = ((first[0] > second[0]) && (first[1] > second[1]));
+			} break;
+		}
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * Оператор [<=] сравнения IP адреса
+ * @param addr адрес для сравнения
+ * @return     результат сравнения
+ */
+bool awh::Net::operator <= (const net_t & addr) noexcept {
+	// Результат работы функции
+	bool result = false;
+	// Если IP адреса принадлежат одному типу адресов
+	if(this->type() == addr.type()){
+		// Определяем тип IP адреса
+		switch((uint8_t) this->_type){
+			// Если IP адрес определён как IPv4
+			case (uint8_t) type_t::IPV4:
+				// Выполняем сравнение адресов
+				result = (this->v4() <= addr.v4());
+			break;
+			// Если IP адрес определён как IPv6
+			case (uint8_t) type_t::IPV6: {
+				// Получаем данные текущего адреса IPv6
+				const auto & first = this->v6();
+				// Получаем данные сравниваемого адреса IPv6
+				const auto & second = addr.v6();
+				// Выполняем сравнение адресов
+				result = ((first[0] <= second[0]) && (first[1] <= second[1]));
+			} break;
+		}
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * Оператор [>=] сравнения IP адреса
+ * @param addr адрес для сравнения
+ * @return     результат сравнения
+ */
+bool awh::Net::operator >= (const net_t & addr) noexcept {
+	// Результат работы функции
+	bool result = false;
+	// Если IP адреса принадлежат одному типу адресов
+	if(this->type() == addr.type()){
+		// Определяем тип IP адреса
+		switch((uint8_t) this->_type){
+			// Если IP адрес определён как IPv4
+			case (uint8_t) type_t::IPV4:
+				// Выполняем сравнение адресов
+				result = (this->v4() >= addr.v4());
+			break;
+			// Если IP адрес определён как IPv6
+			case (uint8_t) type_t::IPV6: {
+				// Получаем данные текущего адреса IPv6
+				const auto & first = this->v6();
+				// Получаем данные сравниваемого адреса IPv6
+				const auto & second = addr.v6();
+				// Выполняем сравнение адресов
+				result = ((first[0] >= second[0]) && (first[1] >= second[1]));
+			} break;
+		}
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * Оператор [!=] сравнения IP адреса
+ * @param addr адрес для сравнения
+ * @return     результат сравнения
+ */
+bool awh::Net::operator != (const net_t & addr) noexcept {
+	// Результат работы функции
+	bool result = false;
+	// Определяем тип IP адреса
+	switch((uint8_t) this->_type){
+		// Если IP адрес определён как IPv4
+		case (uint8_t) type_t::IPV4:
+			// Выполняем сравнение адресов
+			result = (this->v4() != addr.v4());
+		break;
+		// Если IP адрес определён как IPv6
+		case (uint8_t) type_t::IPV6: {
+			// Получаем данные текущего адреса IPv6
+			const auto & first = this->v6();
+			// Получаем данные сравниваемого адреса IPv6
+			const auto & second = addr.v6();
+			// Выполняем сравнение адресов
+			result = ((first[0] != second[0]) || (first[1] != second[1]));
+		} break;
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * Оператор [==] сравнения IP адреса
+ * @param addr адрес для сравнения
+ * @return     результат сравнения
+ */
+bool awh::Net::operator == (const net_t & addr) noexcept {
+	// Результат работы функции
+	bool result = false;
+	// Если IP адреса принадлежат одному типу адресов
+	if(this->type() == addr.type()){
+		// Определяем тип IP адреса
+		switch((uint8_t) this->_type){
+			// Если IP адрес определён как IPv4
+			case (uint8_t) type_t::IPV4:
+				// Выполняем сравнение адресов
+				result = (this->v4() == addr.v4());
+			break;
+			// Если IP адрес определён как IPv6
+			case (uint8_t) type_t::IPV6: {
+				// Получаем данные текущего адреса IPv6
+				const auto & first = this->v6();
+				// Получаем данные сравниваемого адреса IPv6
+				const auto & second = addr.v6();
+				// Выполняем сравнение адресов
+				result = ((first[0] == second[0]) && (first[1] == second[1]));
+			} break;
+		}
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * Оператор [=] присвоения IP адреса
+ * @param addr адрес для присвоения
+ * @return     текущий объект
+ */
+awh::Net & awh::Net::operator = (const net_t & addr) noexcept {
+	// Определяем тип IP адреса
+	switch((uint8_t) addr.type()){
+		// Если IP адрес определён как IPv4
+		case (uint8_t) type_t::IPV4:
+			// Устанавливаем IPv4 адрсе
+			this->v4(addr.v4());
+		break;
+		// Если IP адрес определён как IPv6
+		case (uint8_t) type_t::IPV6:
+			// Устанавливаем IPv6 адрсе
+			this->v6(addr.v6());
+		break;
+	}
+	// Выводим текущий объект
+	return (* this);
+}
+/**
+ * Оператор [=] присвоения IP адреса
+ * @param ip адрес для присвоения
+ * @return   текущий объект
+ */
+awh::Net & awh::Net::operator = (const string & ip) noexcept {
+	// Выполняем установку IP адреса
+	this->parse(ip);
+	// Выводим текущий объект
+	return (* this);
+}
+/**
+ * Оператор [=] присвоения IP адреса
+ * @param addr адрес для присвоения
+ * @return     текущий объект
+ */
+awh::Net & awh::Net::operator = (const uint32_t addr) noexcept {
+	// Устанавливаем IPv4
+	this->v4(addr);
+	// Выводим текущий объект
+	return (* this);
+}
+/**
+ * Оператор [=] присвоения IP адреса
+ * @param addr адрес для присвоения
+ * @return     текущий объект
+ */
+awh::Net & awh::Net::operator = (const array <uint64_t, 2> & addr) noexcept {
+	// Устанавливаем IPv4
+	this->v6(addr);
+	// Выводим текущий объект
+	return (* this);
+}
+/**
+ * Оператор [>>] чтения из потока IP адреса
+ * @param is   поток для чтения
+ * @param addr адрес для присвоения
+ */
+istream & awh::operator >> (istream & is, net_t & addr) noexcept {
+	// Адрес интернет-подключения
+	string ip = "";
+	// Считываем адрес интернет-подключения
+	is >> ip;
+	// Если адрес интернет-подключения получен
+	if(!ip.empty())
+		// Устанавливаем IP адрес
+		addr.parse(ip);
+	// Выводим результат
+	return is;
+}
+/**
+ * Оператор [<<] вывода в поток IP адреса
+ * @param os   поток куда нужно вывести данные
+ * @param addr адрес для присвоения
+ */
+ostream & awh::operator << (ostream & os, const net_t & addr) noexcept {
+	// Записываем в поток IP адрес
+	os << addr.get();
+	// Выводим результат
+	return os;
 }
