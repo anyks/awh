@@ -45,6 +45,23 @@ namespace awh {
 	typedef class Net {
 		public:
 			/**
+			 * Режим дислокации IP адреса
+			 */
+			enum class mode_t : uint8_t {
+				NONE   = 0x00, // Адрес не установлен
+				LOCAL  = 0x01, // Адрес является локальным
+				GLOBAL = 0x02, // Адрес является глобальным
+				RESERV = 0x03  // Адрес является зарезервированным
+			};
+			/**
+			 * Формат IP адреса
+			 */
+			enum class addr_t : uint8_t {
+				NONE = 0x00, // Адрес не установлен
+				HOST = 0x01, // Адрес хоста
+				NETW = 0x02  // Адрес сети
+			};
+			/**
 			 * Формат формирования IP адреса
 			 */
 			enum class format_t : uint8_t {
@@ -67,16 +84,41 @@ namespace awh {
 				HTTP = 0x07  // HTTP адрес
 			};
 		private:
+			/**
+			 * Local Структура локального адреса
+			 */
+			typedef struct Local {
+				bool reserved;          // Адрес является зарезервированным
+				uint8_t prefix;         // Префикс сети
+				unique_ptr <Net> end;   // Конечный диапазон адреса
+				unique_ptr <Net> begin; // Начальный IP адрес
+				/**
+				 * Local Конструктор
+				 * @param fmk объект фреймворка
+				 * @param log объект для работы с логами
+				 */
+				Local(const fmk_t * fmk, const log_t * log) noexcept :
+				 reserved(false), prefix(0), end(new Net(fmk, log)), begin(new Net(fmk, log)) {}
+			} local_t;
+		private:
 			// Тип обрабатываемого адреса
 			type_t _type;
 		private:
 			// Бинарный буфер данных
 			vector <uint8_t> _buffer;
 		private:
+			// Список локальных адресов
+			multimap <type_t, local_t> _locals;
+		private:
 			// Создаём объект фреймворка
 			const fmk_t * _fmk;
 			// Создаём объект работы с логами
 			const log_t * _log;
+		private:
+			/**
+			 * initLocalNet Метод инициализации списка локальных адресов
+			 */
+			void initLocalNet() noexcept;
 		private:
 			/**
 			 * zerro Метод заполнения недостающих элементов нулями
@@ -126,26 +168,39 @@ namespace awh {
 			void v6(const array <uint64_t, 2> & addr) noexcept;
 		public:
 			/**
-			 * impose Метод наложения маски сети (получение сетевого адреса)
-			 * @param mask маска сети для наложения
+			 * @tparam Шаблон извлечения дампа данных
 			 */
-			void impose(const string & mask) noexcept;
+			template <typename T>
 			/**
-			 * impose Метод наложения префикса (получение сетевого адреса)
-			 * @param prefix префикс для наложения
+			 * dump Метод получения дампа данных
+			 * @return сформированный дамп данных
 			 */
-			void impose(const uint8_t prefix) noexcept;
+			T data() noexcept {
+				// Результат работы функции
+				T result;
+				// Если бинарный буфер данных существует и мы работаем с контейнером
+				if(!this->_buffer.empty() && is_class <T>::value){
+					// Выполняем выделение памяти
+					result.resize(this->_buffer.size() / sizeof(result[0]), 0);
+					// Выполняем копирование IP адреса
+					memcpy(result.data(), this->_buffer.data(), this->_buffer.size());
+				}
+				// Выводим результат
+				return result;
+			}
 		public:
 			/**
-			 * dempose Метод наложения маски сети (получение адреса хоста)
+			 * impose Метод наложения маски сети
 			 * @param mask маска сети для наложения
+			 * @param addr тип получаемого адреса
 			 */
-			void dempose(const string & mask) noexcept;
+			void impose(const string & mask, const addr_t addr) noexcept;
 			/**
-			 * dempose Метод наложения префикса (получение адреса хоста)
+			 * impose Метод наложения префикса
 			 * @param prefix префикс для наложения
+			 * @param addr тип получаемого адреса
 			 */
-			void dempose(const uint8_t prefix) noexcept;
+			void impose(const uint8_t prefix, const addr_t addr) noexcept;
 		public:
 			/**
 			 * mask2Prefix Метод перевода маски сети в префикс адреса
@@ -159,6 +214,68 @@ namespace awh {
 			 * @return       полученная маска сети
 			 */
 			string prefix2Mask(const uint8_t prefix) const noexcept;
+		public:
+			/**
+			 * range Метод проверки вхождения IP адреса в диапазон адресов
+			 * @param begin начало диапазона адресов
+			 * @param end   конец диапазона адресов
+			 * @param mask  маска сети для перевода
+			 * @return      результат првоерки
+			 */
+			bool range(const Net & begin, const Net & end, string & mask) const noexcept;
+			/**
+			 * range Метод проверки вхождения IP адреса в диапазон адресов
+			 * @param begin  начало диапазона адресов
+			 * @param end    конец диапазона адресов
+			 * @param prefix префикс адреса для преобразования
+			 * @return       результат првоерки
+			 */
+			bool range(const Net & begin, const Net & end, const uint8_t prefix) const noexcept;
+			/**
+			 * range Метод проверки вхождения IP адреса в диапазон адресов
+			 * @param begin начало диапазона адресов
+			 * @param end   конец диапазона адресов
+			 * @param mask  маска сети для перевода
+			 * @return      результат првоерки
+			 */
+			bool range(const string & begin, const string & end, string & mask) const noexcept;
+			/**
+			 * range Метод проверки вхождения IP адреса в диапазон адресов
+			 * @param begin  начало диапазона адресов
+			 * @param end    конец диапазона адресов
+			 * @param prefix префикс адреса для преобразования
+			 * @return       результат првоерки
+			 */
+			bool range(const string & begin, const string & end, const uint8_t prefix) const noexcept;
+		public:
+			/**
+			 * mapping Метод проверки соотвествия IP адреса указанной сети
+			 * @param network сеть для проверки соответствия
+			 * @return        результат проверки
+			 */
+			bool mapping(const string & network) const noexcept;
+			/**
+			 * mapping Метод проверки соотвествия IP адреса указанной сети
+			 * @param network сеть для проверки соответствия
+			 * @param mask    маска сети для наложения
+			 * @param addr    тип получаемого адреса
+			 * @return        результат проверки
+			 */
+			bool mapping(const string & network, const string & mask, const addr_t addr) const noexcept;
+			/**
+			 * mapping Метод проверки соотвествия IP адреса указанной сети
+			 * @param network сеть для проверки соответствия
+			 * @param prefix  префикс для наложения
+			 * @param addr    тип получаемого адреса
+			 * @return        результат проверки
+			 */
+			bool mapping(const string & network, const uint8_t prefix, const addr_t addr) const noexcept;
+		public:
+			/**
+			 * mode Метод определения режима дислокации IP адреса
+			 * @return режим дислокации
+			 */
+			mode_t mode() const noexcept;
 		public:
 			/**
 			 * parse Метод парсинга IP адреса
@@ -185,37 +302,37 @@ namespace awh {
 			 * @param addr адрес для сравнения
 			 * @return     результат сравнения
 			 */
-			bool operator < (const Net & addr) noexcept;
+			bool operator < (const Net & addr) const noexcept;
 			/**
 			 * Оператор [>] сравнения IP адреса
 			 * @param addr адрес для сравнения
 			 * @return     результат сравнения
 			 */
-			bool operator > (const Net & addr) noexcept;
+			bool operator > (const Net & addr) const noexcept;
 			/**
 			 * Оператор [<=] сравнения IP адреса
 			 * @param addr адрес для сравнения
 			 * @return     результат сравнения
 			 */
-			bool operator <= (const Net & addr) noexcept;
+			bool operator <= (const Net & addr) const noexcept;
 			/**
 			 * Оператор [>=] сравнения IP адреса
 			 * @param addr адрес для сравнения
 			 * @return     результат сравнения
 			 */
-			bool operator >= (const Net & addr) noexcept;
+			bool operator >= (const Net & addr) const noexcept;
 			/**
 			 * Оператор [!=] сравнения IP адреса
 			 * @param addr адрес для сравнения
 			 * @return     результат сравнения
 			 */
-			bool operator != (const Net & addr) noexcept;
+			bool operator != (const Net & addr) const noexcept;
 			/**
 			 * Оператор [==] сравнения IP адреса
 			 * @param addr адрес для сравнения
 			 * @return     результат сравнения
 			 */
-			bool operator == (const Net & addr) noexcept;
+			bool operator == (const Net & addr) const noexcept;
 		public:
 			/**
 			 * Оператор [=] присвоения IP адреса

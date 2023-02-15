@@ -16,6 +16,355 @@
 #include <net/net.hpp>
 
 /**
+ * initLocalNet Метод инициализации списка локальных адресов
+ */
+void awh::Net::initLocalNet() noexcept {
+	// Если список локальных адресов пустой
+	if(this->_locals.empty()){
+		{
+			// Создаём объект локального адреса
+			local_t local(this->_fmk, this->_log);
+			// Устанавливаем префикс сети
+			local.prefix = 128;
+			// Устанавливаем зарезервированный флаг
+			local.reserved = true;
+			// Устанавливаем IP адрес
+			local.begin->parse("::");
+			// Добавляем адрес в список локальных адресов
+			this->_locals.emplace(type_t::IPV6, std::move(local));
+		}{
+			// Создаём объект локального адреса
+			local_t local(this->_fmk, this->_log);
+			// Устанавливаем префикс сети
+			local.prefix = 128;
+			// Устанавливаем IP адрес
+			local.begin->parse("::1");
+			// Добавляем адрес в список локальных адресов
+			this->_locals.emplace(type_t::IPV6, std::move(local));
+		}{
+			// Создаём объект локального адреса
+			local_t local(this->_fmk, this->_log);
+			// Устанавливаем префикс сети
+			local.prefix = 32;
+			// Устанавливаем зарезервированный флаг
+			local.reserved = true;
+			// Устанавливаем IP адрес
+			local.begin->parse("2001::");
+			// Добавляем адрес в список локальных адресов
+			this->_locals.emplace(type_t::IPV6, std::move(local));
+		}{
+			// Создаём объект локального адреса
+			local_t local(this->_fmk, this->_log);
+			// Устанавливаем префикс сети
+			local.prefix = 32;
+			// Устанавливаем IP адрес
+			local.begin->parse("2001:db8::");
+			// Добавляем адрес в список локальных адресов
+			this->_locals.emplace(type_t::IPV6, std::move(local));
+		}{
+			// Создаём объект локального адреса
+			local_t local(this->_fmk, this->_log);
+			// Устанавливаем префикс сети
+			local.prefix = 96;
+			// Устанавливаем зарезервированный флаг
+			local.reserved = true;
+			// Устанавливаем IP адрес
+			local.begin->parse("64:ff9b::");
+			// Добавляем адрес в список локальных адресов
+			this->_locals.emplace(type_t::IPV6, std::move(local));
+		}{
+			// Создаём объект локального адреса
+			local_t local(this->_fmk, this->_log);
+			// Устанавливаем префикс сети
+			local.prefix = 16;
+			// Устанавливаем зарезервированный флаг
+			local.reserved = true;
+			// Устанавливаем IP адрес
+			local.begin->parse("2002::");
+			// Добавляем адрес в список локальных адресов
+			this->_locals.emplace(type_t::IPV6, std::move(local));
+		}{
+			// Создаём объект локального адреса
+			local_t local(this->_fmk, this->_log);
+			// Устанавливаем префикс сети
+			local.prefix = 10;
+			// Устанавливаем IP адрес начала диапазона
+			local.begin->parse("fe80::");
+			// Устанавливаем IP адрес конца диапазона
+			local.end->parse("febf::");
+			// Добавляем адрес в список локальных адресов
+			this->_locals.emplace(type_t::IPV6, std::move(local));
+		}{
+			// Создаём объект локального адреса
+			local_t local(this->_fmk, this->_log);
+			// Устанавливаем префикс сети
+			local.prefix = 10;
+			// Устанавливаем IP адрес начала диапазона
+			local.begin->parse("fec0::");
+			// Устанавливаем IP адрес конца диапазона
+			local.end->parse("feff::");
+			// Добавляем адрес в список локальных адресов
+			this->_locals.emplace(type_t::IPV6, std::move(local));
+		}{
+			// Создаём объект локального адреса
+			local_t local(this->_fmk, this->_log);
+			// Устанавливаем префикс сети
+			local.prefix = 7;
+			// Устанавливаем IP адрес
+			local.begin->parse("fc00::");
+			// Добавляем адрес в список локальных адресов
+			this->_locals.emplace(type_t::IPV6, std::move(local));
+		}{
+			// Создаём объект локального адреса
+			local_t local(this->_fmk, this->_log);
+			// Устанавливаем префикс сети
+			local.prefix = 8;
+			// Устанавливаем зарезервированный флаг
+			local.reserved = true;
+			// Устанавливаем IP адрес
+			local.begin->parse("ff00::");
+			// Добавляем адрес в список локальных адресов
+			this->_locals.emplace(type_t::IPV6, std::move(local));
+		}{
+			// Создаём объект локального адреса
+			local_t local(this->_fmk, this->_log);
+			// Устанавливаем префикс сети
+			local.prefix = 8;
+			// Устанавливаем зарезервированный флаг
+			local.reserved = true;
+			// Устанавливаем IP адрес
+			local.begin->parse("0.0.0.0");
+			// Добавляем адрес в список локальных адресов
+			this->_locals.emplace(type_t::IPV4, std::move(local));
+		}{
+			// Создаём объект локального адреса
+			local_t local(this->_fmk, this->_log);
+			// Устанавливаем префикс сети
+			local.prefix = 32;
+			// Устанавливаем зарезервированный флаг
+			local.reserved = true;
+			// Устанавливаем IP адрес
+			local.begin->parse("0.0.0.0");
+			// Добавляем адрес в список локальных адресов
+			this->_locals.emplace(type_t::IPV4, std::move(local));
+		}{
+			// Создаём объект локального адреса
+			local_t local(this->_fmk, this->_log);
+			// Устанавливаем префикс сети
+			local.prefix = 10;
+			// Устанавливаем зарезервированный флаг
+			local.reserved = true;
+			// Устанавливаем IP адрес
+			local.begin->parse("100.64.0.0");
+			// Добавляем адрес в список локальных адресов
+			this->_locals.emplace(type_t::IPV4, std::move(local));
+		}{
+			// Создаём объект локального адреса
+			local_t local(this->_fmk, this->_log);
+			// Устанавливаем префикс сети
+			local.prefix = 16;
+			// Устанавливаем зарезервированный флаг
+			local.reserved = true;
+			// Устанавливаем IP адрес
+			local.begin->parse("169.254.0.0");
+			// Добавляем адрес в список локальных адресов
+			this->_locals.emplace(type_t::IPV4, std::move(local));
+		}{
+			// Создаём объект локального адреса
+			local_t local(this->_fmk, this->_log);
+			// Устанавливаем префикс сети
+			local.prefix = 4;
+			// Устанавливаем зарезервированный флаг
+			local.reserved = true;
+			// Устанавливаем IP адрес
+			local.begin->parse("224.0.0.0");
+			// Добавляем адрес в список локальных адресов
+			this->_locals.emplace(type_t::IPV4, std::move(local));
+		}{
+			// Создаём объект локального адреса
+			local_t local(this->_fmk, this->_log);
+			// Устанавливаем префикс сети
+			local.prefix = 24;
+			// Устанавливаем зарезервированный флаг
+			local.reserved = true;
+			// Устанавливаем IP адрес
+			local.begin->parse("224.0.0.0");
+			// Добавляем адрес в список локальных адресов
+			this->_locals.emplace(type_t::IPV4, std::move(local));
+		}{
+			// Создаём объект локального адреса
+			local_t local(this->_fmk, this->_log);
+			// Устанавливаем префикс сети
+			local.prefix = 8;
+			// Устанавливаем зарезервированный флаг
+			local.reserved = true;
+			// Устанавливаем IP адрес
+			local.begin->parse("224.0.0.0");
+			// Добавляем адрес в список локальных адресов
+			this->_locals.emplace(type_t::IPV4, std::move(local));
+		}{
+			// Создаём объект локального адреса
+			local_t local(this->_fmk, this->_log);
+			// Устанавливаем префикс сети
+			local.prefix = 8;
+			// Устанавливаем зарезервированный флаг
+			local.reserved = true;
+			// Устанавливаем IP адрес
+			local.begin->parse("239.0.0.0");
+			// Добавляем адрес в список локальных адресов
+			this->_locals.emplace(type_t::IPV4, std::move(local));
+		}{
+			// Создаём объект локального адреса
+			local_t local(this->_fmk, this->_log);
+			// Устанавливаем префикс сети
+			local.prefix = 4;
+			// Устанавливаем зарезервированный флаг
+			local.reserved = true;
+			// Устанавливаем IP адрес
+			local.begin->parse("240.0.0.0");
+			// Добавляем адрес в список локальных адресов
+			this->_locals.emplace(type_t::IPV4, std::move(local));
+		}{
+			// Создаём объект локального адреса
+			local_t local(this->_fmk, this->_log);
+			// Устанавливаем префикс сети
+			local.prefix = 32;
+			// Устанавливаем зарезервированный флаг
+			local.reserved = true;
+			// Устанавливаем IP адрес
+			local.begin->parse("255.255.255.255");
+			// Добавляем адрес в список локальных адресов
+			this->_locals.emplace(type_t::IPV4, std::move(local));
+		}{
+			// Создаём объект локального адреса
+			local_t local(this->_fmk, this->_log);
+			// Устанавливаем префикс сети
+			local.prefix = 8;
+			// Устанавливаем IP адрес
+			local.begin->parse("10.0.0.0");
+			// Добавляем адрес в список локальных адресов
+			this->_locals.emplace(type_t::IPV4, std::move(local));
+		}{
+			// Создаём объект локального адреса
+			local_t local(this->_fmk, this->_log);
+			// Устанавливаем префикс сети
+			local.prefix = 8;
+			// Устанавливаем IP адрес
+			local.begin->parse("127.0.0.0");
+			// Добавляем адрес в список локальных адресов
+			this->_locals.emplace(type_t::IPV4, std::move(local));
+		}{
+			// Создаём объект локального адреса
+			local_t local(this->_fmk, this->_log);
+			// Устанавливаем префикс сети
+			local.prefix = 12;
+			// Устанавливаем IP адрес
+			local.begin->parse("172.16.0.0");
+			// Добавляем адрес в список локальных адресов
+			this->_locals.emplace(type_t::IPV4, std::move(local));
+		}{
+			// Создаём объект локального адреса
+			local_t local(this->_fmk, this->_log);
+			// Устанавливаем префикс сети
+			local.prefix = 24;
+			// Устанавливаем IP адрес
+			local.begin->parse("192.0.0.0");
+			// Добавляем адрес в список локальных адресов
+			this->_locals.emplace(type_t::IPV4, std::move(local));
+		}{
+			// Создаём объект локального адреса
+			local_t local(this->_fmk, this->_log);
+			// Устанавливаем префикс сети
+			local.prefix = 29;
+			// Устанавливаем IP адрес
+			local.begin->parse("192.0.0.0");
+			// Добавляем адрес в список локальных адресов
+			this->_locals.emplace(type_t::IPV4, std::move(local));
+		}{
+			// Создаём объект локального адреса
+			local_t local(this->_fmk, this->_log);
+			// Устанавливаем префикс сети
+			local.prefix = 32;
+			// Устанавливаем IP адрес
+			local.begin->parse("192.0.0.170");
+			// Добавляем адрес в список локальных адресов
+			this->_locals.emplace(type_t::IPV4, std::move(local));
+		}{
+			// Создаём объект локального адреса
+			local_t local(this->_fmk, this->_log);
+			// Устанавливаем префикс сети
+			local.prefix = 32;
+			// Устанавливаем IP адрес
+			local.begin->parse("192.0.0.171");
+			// Добавляем адрес в список локальных адресов
+			this->_locals.emplace(type_t::IPV4, std::move(local));
+		}{
+			// Создаём объект локального адреса
+			local_t local(this->_fmk, this->_log);
+			// Устанавливаем префикс сети
+			local.prefix = 24;
+			// Устанавливаем IP адрес
+			local.begin->parse("192.0.2.0");
+			// Добавляем адрес в список локальных адресов
+			this->_locals.emplace(type_t::IPV4, std::move(local));
+		}{
+			// Создаём объект локального адреса
+			local_t local(this->_fmk, this->_log);
+			// Устанавливаем префикс сети
+			local.prefix = 24;
+			// Устанавливаем IP адрес
+			local.begin->parse("192.88.99.0");
+			// Добавляем адрес в список локальных адресов
+			this->_locals.emplace(type_t::IPV4, std::move(local));
+		}{
+			// Создаём объект локального адреса
+			local_t local(this->_fmk, this->_log);
+			// Устанавливаем префикс сети
+			local.prefix = 32;
+			// Устанавливаем IP адрес
+			local.begin->parse("192.88.99.1");
+			// Добавляем адрес в список локальных адресов
+			this->_locals.emplace(type_t::IPV4, std::move(local));
+		}{
+			// Создаём объект локального адреса
+			local_t local(this->_fmk, this->_log);
+			// Устанавливаем префикс сети
+			local.prefix = 16;
+			// Устанавливаем IP адрес
+			local.begin->parse("192.168.0.0");
+			// Добавляем адрес в список локальных адресов
+			this->_locals.emplace(type_t::IPV4, std::move(local));
+		}{
+			// Создаём объект локального адреса
+			local_t local(this->_fmk, this->_log);
+			// Устанавливаем префикс сети
+			local.prefix = 24;
+			// Устанавливаем IP адрес
+			local.begin->parse("198.51.100.0");
+			// Добавляем адрес в список локальных адресов
+			this->_locals.emplace(type_t::IPV4, std::move(local));
+		}{
+			// Создаём объект локального адреса
+			local_t local(this->_fmk, this->_log);
+			// Устанавливаем префикс сети
+			local.prefix = 15;
+			// Устанавливаем IP адрес
+			local.begin->parse("198.18.0.0");
+			// Добавляем адрес в список локальных адресов
+			this->_locals.emplace(type_t::IPV4, std::move(local));
+		}{
+			// Создаём объект локального адреса
+			local_t local(this->_fmk, this->_log);
+			// Устанавливаем префикс сети
+			local.prefix = 24;
+			// Устанавливаем IP адрес
+			local.begin->parse("203.0.113.0");
+			// Добавляем адрес в список локальных адресов
+			this->_locals.emplace(type_t::IPV4, std::move(local));
+		}
+	}
+}
+/**
  * zerro Метод заполнения недостающих элементов нулями
  * @param num  число для заполнения нулями
  * @param size максимальная длина строки
@@ -133,9 +482,12 @@ void awh::Net::v4(const uint32_t addr) noexcept {
 	// Выполняем выделение памяти для IPv4 адреса
 	this->_buffer.resize(4, 0);
 	// Если IPv4 адрес передан
-	if(addr > 0)
+	if(addr > 0){
+		// Устанавливаем тип IP адреса
+		this->_type = type_t::IPV4;
 		// Выполняем копирование данных адреса IPv4
 		memcpy(this->_buffer.data(), &addr, sizeof(addr));
+	}
 }
 /**
  * v6 Извлечения адреса IPv6 в чистом виде
@@ -159,115 +511,33 @@ void awh::Net::v6(const array <uint64_t, 2> & addr) noexcept {
 	// Выполняем выделение памяти для IPv6 адреса
 	this->_buffer.resize(16, 0);
 	// Если IPv6 адрес передан
-	if(!addr.empty())
+	if(!addr.empty()){
+		// Устанавливаем тип IP адреса
+		this->_type = type_t::IPV6;
 		// Выполняем копирование данных адреса IPv6
 		memcpy(this->_buffer.data(), addr.data(), sizeof(addr));
+	}
 }
 /**
- * impose Метод наложения маски сети (получение сетевого адреса)
+ * impose Метод наложения маски сети
  * @param mask маска сети для наложения
+ * @param addr тип получаемого адреса
  */
-void awh::Net::impose(const string & mask) noexcept {
+void awh::Net::impose(const string & mask, const addr_t addr) noexcept {
 	// Если бинарный буфер данных существует и маска передана
 	if(!this->_buffer.empty() && !mask.empty()){
 		// Получаем префикс сети
 		const uint8_t prefix = this->mask2Prefix(mask);
 		// Если префикс сети получен, выполняем применение префикса
-		if(prefix > 0) this->impose(prefix);
+		if(prefix > 0) this->impose(prefix, addr);
 	}
 }
 /**
- * impose Метод наложения префикса (получение сетевого адреса)
+ * impose Метод наложения префикса
  * @param prefix префикс для наложения
+ * @param addr тип получаемого адреса
  */
-void awh::Net::impose(const uint8_t prefix) noexcept {
-	// Если бинарный буфер данных существует
-	if(!this->_buffer.empty() && (prefix > 0)){
-		// Определяем тип IP адреса
-		switch((uint8_t) this->_type){
-			// Если IP адрес определён как IPv4
-			case (uint8_t) type_t::IPV4: {
-				// Если префикс укладывается в диапазон адреса
-				if(prefix <= 32){
-					// Определяем номер хексета
-					const uint8_t num = ceil(prefix / 8);
-					// Если префикс кратен 8
-					if((prefix % 8) == 0)
-						// Зануляем все остальные биты
-						memset(this->_buffer.data() + num, 0, this->_buffer.size() - num);
-					// Если префикс не кратен 8
-					else {
-						// Данные хексета
-						uint8_t oct = 0;
-						// Получаем нужное нам значение октета
-						memcpy(&oct, this->_buffer.data() + num, sizeof(oct));
-						// Переводим октет в бинарный вид
-						bitset <8> bits(oct);
-						// Зануляем все лишние элементы
-						for(uint8_t i = 0; i < (8 - (prefix % 8)); i++)
-							// Зануляем все лишние биты
-							bits.set(i, 0);
-						// Устанавливаем новое значение октета
-						oct = static_cast <uint16_t> (bits.to_ulong());
-						// Устанавливаем новое значение октета
-						memcpy(this->_buffer.data() + num, &oct, sizeof(oct));
-						// Зануляем все остальные биты
-						memset(this->_buffer.data() + (num + 1), 0, this->_buffer.size() - (num + 1));
-					}
-				}
-			} break;
-			// Если IP адрес определён как IPv6
-			case (uint8_t) type_t::IPV6: {
-				// Если префикс укладывается в диапазон адреса
-				if(prefix <= 128){
-					// Определяем номер хексета
-					const uint8_t num = ceil(prefix / 16);
-					// Если префикс кратен 16
-					if((prefix % 16) == 0)
-						// Зануляем все остальные биты
-						memset(this->_buffer.data() + (num * 2), 0, this->_buffer.size() - (num * 2));
-					// Если префикс не кратен 16
-					else {
-						// Данные хексета
-						uint16_t hex = 0;
-						// Получаем нужное нам значение хексета
-						memcpy(&hex, this->_buffer.data() + (num * 2), sizeof(hex));
-						// Переводим хексет в бинарный вид
-						bitset <16> bits(hex);
-						// Зануляем все лишние элементы
-						for(uint8_t i = 0; i < (16 - (prefix % 16)); i++)
-							// Зануляем все лишние биты
-							bits.set(i, 0);
-						// Устанавливаем новое значение хексета
-						hex = static_cast <uint16_t> (bits.to_ulong());
-						// Устанавливаем новое значение хексета
-						memcpy(this->_buffer.data() + (num * 2), &hex, sizeof(hex));
-						// Зануляем все остальные биты
-						memset(this->_buffer.data() + ((num * 2) + 2), 0, this->_buffer.size() - ((num * 2) + 2));
-					}
-				}
-			} break;
-		}
-	}
-}
-/**
- * dempose Метод наложения маски сети (получение адреса хоста)
- * @param mask маска сети для наложения
- */
-void awh::Net::dempose(const string & mask) noexcept {
-	// Если бинарный буфер данных существует и маска передана
-	if(!this->_buffer.empty() && !mask.empty()){
-		// Получаем префикс сети
-		const uint8_t prefix = this->mask2Prefix(mask);
-		// Если префикс сети получен, выполняем применение префикса
-		if(prefix > 0) this->dempose(prefix);
-	}
-}
-/**
- * dempose Метод наложения префикса (получение адреса хоста)
- * @param prefix префикс для наложения
- */
-void awh::Net::dempose(const uint8_t prefix) noexcept {
+void awh::Net::impose(const uint8_t prefix, const addr_t addr) noexcept {
 	// Если бинарный буфер данных существует
 	if(!this->_buffer.empty() && (prefix > 0)){
 		// Определяем тип IP адреса
@@ -278,24 +548,56 @@ void awh::Net::dempose(const uint8_t prefix) noexcept {
 				if(prefix <= 32){
 					// Определяем номер октета
 					const uint8_t num = ceil(prefix / 8);
-					// Зануляем все остальные биты
-					memset(this->_buffer.data(), 0, num);
-					// Если префикс не кратен 8
-					if((prefix % 8) != 0){
-						// Данные октета
-						uint8_t oct = 0;
-						// Получаем нужное нам значение октета
-						memcpy(&oct, this->_buffer.data() + num, sizeof(oct));
-						// Переводим октет в бинарный вид
-						bitset <8> bits(oct);
-						// Зануляем все лишние элементы
-						for(uint8_t i = (8 - (prefix % 8)); i < 8; i++)
-							// Зануляем все лишние биты
-							bits.set(i, 0);
-						// Устанавливаем новое значение октета
-						oct = static_cast <uint16_t> (bits.to_ulong());
-						// Устанавливаем новое значение октета
-						memcpy(this->_buffer.data() + num, &oct, sizeof(oct));
+					// Определяем тип получаемого адреса
+					switch((uint8_t) addr){
+						// Если мы хотим получить адрес хоста
+						case (uint8_t) addr_t::HOST: {
+							// Зануляем все остальные биты
+							memset(this->_buffer.data(), 0, num);
+							// Если префикс не кратен 8
+							if((prefix % 8) != 0){
+								// Данные октета
+								uint8_t oct = 0;
+								// Получаем нужное нам значение октета
+								memcpy(&oct, this->_buffer.data() + num, sizeof(oct));
+								// Переводим октет в бинарный вид
+								bitset <8> bits(oct);
+								// Зануляем все лишние элементы
+								for(uint8_t i = (8 - (prefix % 8)); i < 8; i++)
+									// Зануляем все лишние биты
+									bits.set(i, 0);
+								// Устанавливаем новое значение октета
+								oct = static_cast <uint16_t> (bits.to_ulong());
+								// Устанавливаем новое значение октета
+								memcpy(this->_buffer.data() + num, &oct, sizeof(oct));
+							}
+						} break;
+						// Если мы хотим получить сетевой адрес
+						case (uint8_t) addr_t::NETW: {
+							// Если префикс кратен 8
+							if((prefix % 8) == 0)
+								// Зануляем все остальные биты
+								memset(this->_buffer.data() + num, 0, this->_buffer.size() - num);
+							// Если префикс не кратен 8
+							else {
+								// Данные хексета
+								uint8_t oct = 0;
+								// Получаем нужное нам значение октета
+								memcpy(&oct, this->_buffer.data() + num, sizeof(oct));
+								// Переводим октет в бинарный вид
+								bitset <8> bits(oct);
+								// Зануляем все лишние элементы
+								for(uint8_t i = 0; i < (8 - (prefix % 8)); i++)
+									// Зануляем все лишние биты
+									bits.set(i, 0);
+								// Устанавливаем новое значение октета
+								oct = static_cast <uint16_t> (bits.to_ulong());
+								// Устанавливаем новое значение октета
+								memcpy(this->_buffer.data() + num, &oct, sizeof(oct));
+								// Зануляем все остальные биты
+								memset(this->_buffer.data() + (num + 1), 0, this->_buffer.size() - (num + 1));
+							}
+						} break;
 					}
 				}
 			} break;
@@ -305,24 +607,56 @@ void awh::Net::dempose(const uint8_t prefix) noexcept {
 				if(prefix <= 128){
 					// Определяем номер хексета
 					const uint8_t num = ceil(prefix / 16);
-					// Зануляем все остальные биты
-					memset(this->_buffer.data(), 0, (num * 2));
-					// Если префикс не кратен 16
-					if((prefix % 16) != 0){
-						// Данные хексета
-						uint16_t hex = 0;
-						// Получаем нужное нам значение хексета
-						memcpy(&hex, this->_buffer.data() + (num * 2), sizeof(hex));
-						// Переводим хексет в бинарный вид
-						bitset <16> bits(hex);
-						// Зануляем все лишние элементы
-						for(uint8_t i = (16 - (prefix % 16)); i < 16; i++)
-							// Зануляем все лишние биты
-							bits.set(i, 0);
-						// Устанавливаем новое значение хексета
-						hex = static_cast <uint16_t> (bits.to_ulong());
-						// Устанавливаем новое значение хексета
-						memcpy(this->_buffer.data() + (num * 2), &hex, sizeof(hex));
+					// Определяем тип получаемого адреса
+					switch((uint8_t) addr){
+						// Если мы хотим получить адрес хоста
+						case (uint8_t) addr_t::HOST: {
+							// Зануляем все остальные биты
+							memset(this->_buffer.data(), 0, (num * 2));
+							// Если префикс не кратен 16
+							if((prefix % 16) != 0){
+								// Данные хексета
+								uint16_t hex = 0;
+								// Получаем нужное нам значение хексета
+								memcpy(&hex, this->_buffer.data() + (num * 2), sizeof(hex));
+								// Переводим хексет в бинарный вид
+								bitset <16> bits(hex);
+								// Зануляем все лишние элементы
+								for(uint8_t i = (16 - (prefix % 16)); i < 16; i++)
+									// Зануляем все лишние биты
+									bits.set(i, 0);
+								// Устанавливаем новое значение хексета
+								hex = static_cast <uint16_t> (bits.to_ulong());
+								// Устанавливаем новое значение хексета
+								memcpy(this->_buffer.data() + (num * 2), &hex, sizeof(hex));
+							}
+						} break;
+						// Если мы хотим получить сетевой адрес
+						case (uint8_t) addr_t::NETW: {
+							// Если префикс кратен 16
+							if((prefix % 16) == 0)
+								// Зануляем все остальные биты
+								memset(this->_buffer.data() + (num * 2), 0, this->_buffer.size() - (num * 2));
+							// Если префикс не кратен 16
+							else {
+								// Данные хексета
+								uint16_t hex = 0;
+								// Получаем нужное нам значение хексета
+								memcpy(&hex, this->_buffer.data() + (num * 2), sizeof(hex));
+								// Переводим хексет в бинарный вид
+								bitset <16> bits(hex);
+								// Зануляем все лишние элементы
+								for(uint8_t i = 0; i < (16 - (prefix % 16)); i++)
+									// Зануляем все лишние биты
+									bits.set(i, 0);
+								// Устанавливаем новое значение хексета
+								hex = static_cast <uint16_t> (bits.to_ulong());
+								// Устанавливаем новое значение хексета
+								memcpy(this->_buffer.data() + (num * 2), &hex, sizeof(hex));
+								// Зануляем все остальные биты
+								memset(this->_buffer.data() + ((num * 2) + 2), 0, this->_buffer.size() - ((num * 2) + 2));
+							}
+						} break;
 					}
 				}
 			} break;
@@ -339,7 +673,7 @@ uint8_t awh::Net::mask2Prefix(const string & mask) const noexcept {
 	uint8_t result = 0;
 	// Если маска сети передана
 	if(!mask.empty()){
-		// Преобразуем маску в адрес
+		// Создаём объкт для работы с адресами
 		net_t net(this->_fmk, this->_log);
 		// Выполняем парсинг маски
 		if(net.parse(mask) && (this->_type == net.type())){
@@ -387,7 +721,7 @@ string awh::Net::prefix2Mask(const uint8_t prefix) const noexcept {
 	string result = "";
 	// Если маска сети передана
 	if(prefix > 0){
-		// Преобразуем маску в адрес
+		// Создаём объкт для работы с адресами
 		net_t net(this->_fmk, this->_log);
 		// Определяем тип IP адреса
 		switch((uint8_t) this->_type){
@@ -398,7 +732,7 @@ string awh::Net::prefix2Mask(const uint8_t prefix) const noexcept {
 					// Выполняем парсинг маски
 					if(net.parse("255.255.255.255")){
 						// Выполняем установку префикса
-						net.impose(prefix);
+						net.impose(prefix, addr_t::NETW);
 						// Выводим полученный адрес
 						result = net;
 					}
@@ -411,13 +745,379 @@ string awh::Net::prefix2Mask(const uint8_t prefix) const noexcept {
 					// Выполняем парсинг маски
 					if(net.parse("ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff")){
 						// Выполняем установку префикса
-						net.impose(prefix);
+						net.impose(prefix, addr_t::NETW);
 						// Выводим полученный адрес
 						result = net;
 					}
 				}
 			} break;
 		}
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * mapping Метод проверки соотвествия IP адреса указанной сети
+ * @param network сеть для проверки соответствия
+ * @return        результат проверки
+ */
+bool awh::Net::mapping(const string & network) const noexcept {
+	// Результат работы функции
+	bool result = false;
+	// Если адрес сети передан
+	if((result = !network.empty())){
+		// Создаём объкт для работы с адресами
+		net_t net(this->_fmk, this->_log);
+		// Если парсинг адреса сети выполнен
+		if((result = net.parse(network))){
+			// Если сеть и IP адрес принадлежат одной версии сети
+			if((result = (this->_type == net.type()))){
+				// Определяем тип IP адреса
+				switch((uint8_t) this->_type){
+					// Если IP адрес определён как IPv4
+					case (uint8_t) type_t::IPV4: {
+						// Буфер данных текущего адреса
+						array <uint8_t, 4> nwk, addr;
+						// Получаем значение адреса сети
+						const uint32_t ip1 = net.v4();
+						// Получаем значение текущего адреса
+						const uint32_t ip2 = this->v4();
+						// Выполняем копирование данных текущего адреса в буфер
+						memcpy(nwk.data(), &ip1, sizeof(ip1));
+						// Выполняем копирование данных текущего адреса в буфер
+						memcpy(addr.data(), &ip2, sizeof(ip2));
+						// Выполняем сравнение двух массивов
+						for(uint8_t i = 0; i < 4; i++){
+							// Если октет адреса соответствует октету сети
+							result = ((addr[i] == nwk[i]) || (nwk[i] == 0));
+							// Если проверка не вышла, выходим
+							if(!result) break;
+						}
+					} break;
+					// Если IP адрес определён как IPv6
+					case (uint8_t) type_t::IPV6: {
+						// Буфер данных текущего адреса
+						array <uint16_t, 8> nwk, addr;
+						// Получаем значение адреса сети
+						const array <uint64_t, 2> & ip1 = net.v6();
+						// Получаем значение текущего адреса
+						const array <uint64_t, 2> & ip2 = this->v6();
+						// Выполняем копирование данных текущего адреса в буфер
+						memcpy(nwk.data(), ip1.data(), sizeof(ip1));
+						// Выполняем копирование данных текущего адреса в буфер
+						memcpy(addr.data(), ip2.data(), sizeof(ip2));
+						// Выполняем сравнение двух массивов
+						for(uint8_t i = 0; i < 8; i++){
+							// Если хексет адреса соответствует хексет сети
+							result = ((addr[i] == nwk[i]) || (nwk[i] == 0));
+							// Если проверка не вышла, выходим
+							if(!result) break;
+						}
+					} break;
+				}
+			}
+		}
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * range Метод проверки вхождения IP адреса в диапазон адресов
+ * @param begin начало диапазона адресов
+ * @param end   конец диапазона адресов
+ * @param mask  маска сети для перевода
+ * @return      результат првоерки
+ */
+bool awh::Net::range(const Net & begin, const Net & end, string & mask) const noexcept {
+	// Результат работы функции
+	bool result = false;
+	// Если бинарный буфер данных существует и маска передана
+	if(!this->_buffer.empty() && !mask.empty()){
+		// Получаем префикс сети
+		const uint8_t prefix = this->mask2Prefix(mask);
+		// Если префикс сети получен, выполняем проверку вхождения адреса в диапазон адресов
+		if(prefix > 0) result = this->range(begin, end, prefix);
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * range Метод проверки вхождения IP адреса в диапазон адресов
+ * @param begin  начало диапазона адресов
+ * @param end    конец диапазона адресов
+ * @param prefix префикс адреса для преобразования
+ * @return       результат првоерки
+ */
+bool awh::Net::range(const Net & begin, const Net & end, const uint8_t prefix) const noexcept {
+	// Результат работы функции
+	bool result = false;
+	// Если типы адресов совпадают
+	if((this->type() == begin.type()) && (this->type() == end.type())){
+		// Создаём данные первого элемента
+		net_t net1(this->_fmk, this->_log);
+		// Создаём данные второго элемента
+		net_t net2(this->_fmk, this->_log);
+		// Создаём данные третьего элемента
+		net_t net3(this->_fmk, this->_log);
+		// Определяем тип IP адреса
+		switch((uint8_t) this->_type){
+			// Если IP адрес определён как IPv4
+			case (uint8_t) type_t::IPV4: {
+				// Устанавливаем новое значение адреса для первого элемента
+				net1 = this->v4();
+				// Устанавливаем новое значение адреса для второго элемента
+				net2 = begin.v4();
+				// Устанавливаем новое значение адреса для третьего элемента
+				net3 = end.v4();
+			} break;
+			// Если IP адрес определён как IPv6
+			case (uint8_t) type_t::IPV6: {
+				// Устанавливаем новое значение адреса для первого элемента
+				net1 = this->v6();
+				// Устанавливаем новое значение адреса для второго элемента
+				net2 = begin.v6();
+				// Устанавливаем новое значение адреса для третьего элемента
+				net3 = end.v6();
+			} break;
+		}
+		// Извлекаем хост для первого элемента
+		net1.impose(prefix, addr_t::HOST);
+		// Извлекаем хост для второго элемента
+		net2.impose(prefix, addr_t::HOST);
+		// Извлекаем хост для третьего элемента
+		net3.impose(prefix, addr_t::HOST);
+		// Выполняем определение результата вхождения адреса в диапазон
+		result = ((net1 >= net2) && (net1 <= net3));
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * range Метод проверки вхождения IP адреса в диапазон адресов
+ * @param begin начало диапазона адресов
+ * @param end   конец диапазона адресов
+ * @param mask  маска сети для перевода
+ * @return      результат првоерки
+ */
+bool awh::Net::range(const string & begin, const string & end, string & mask) const noexcept {
+	// Результат работы функции
+	bool result = false;
+	// Если бинарный буфер данных существует и маска передана
+	if(!this->_buffer.empty() && !mask.empty()){
+		// Получаем префикс сети
+		const uint8_t prefix = this->mask2Prefix(mask);
+		// Если префикс сети получен, выполняем проверку вхождения адреса в диапазон адресов
+		if(prefix > 0) result = this->range(begin, end, prefix);
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * range Метод проверки вхождения IP адреса в диапазон адресов
+ * @param begin  начало диапазона адресов
+ * @param end    конец диапазона адресов
+ * @param prefix префикс адреса для преобразования
+ * @return       результат првоерки
+ */
+bool awh::Net::range(const string & begin, const string & end, const uint8_t prefix) const noexcept {
+	// Результат работы функции
+	bool result = false;
+	// Если бинарный буфер данных существует
+	if(!this->_buffer.empty() && !begin.empty() && !end.empty()){
+		// Создаём данные первого элемента
+		net_t net1(this->_fmk, this->_log);
+		// Создаём данные второго элемента
+		net_t net2(this->_fmk, this->_log);
+		// Создаём данные третьего элемента
+		net_t net3(this->_fmk, this->_log);
+		// Устанавливаем новое значение адреса для второго элемента
+		net2 = begin;
+		// Устанавливаем новое значение адреса для третьего элемента
+		net3 = end;
+		// Определяем тип IP адреса
+		switch((uint8_t) this->_type){
+			// Если IP адрес определён как IPv4
+			case (uint8_t) type_t::IPV4:
+				// Устанавливаем новое значение адреса для первого элемента
+				net1 = this->v4();
+			break;
+			// Если IP адрес определён как IPv6
+			case (uint8_t) type_t::IPV6:
+				// Устанавливаем новое значение адреса для первого элемента
+				net1 = this->v6();
+			break;
+		}
+		// Если типы адресов совпадают
+		if((net1.type() == net2.type()) && (net1.type() == net3.type())){
+			// Извлекаем хост для первого элемента
+			net1.impose(prefix, addr_t::HOST);
+			// Извлекаем хост для второго элемента
+			net2.impose(prefix, addr_t::HOST);
+			// Извлекаем хост для третьего элемента
+			net3.impose(prefix, addr_t::HOST);
+			// Выполняем определение результата вхождения адреса в диапазон
+			result = ((net1 >= net2) && (net1 <= net3));
+		}
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * mapping Метод проверки соотвествия IP адреса указанной сети
+ * @param network сеть для проверки соответствия
+ * @param mask    маска сети для наложения
+ * @param addr    тип получаемого адреса
+ * @return        результат проверки
+ */
+bool awh::Net::mapping(const string & network, const string & mask, const addr_t addr) const noexcept {
+	// Результат работы функции
+	bool result = false;
+	// Если адрес сети передан
+	if((result = (!network.empty() && !mask.empty()))){
+		// Получаем префикс сети
+		const uint8_t prefix = this->mask2Prefix(mask);
+		// Если префикс сети получен, выполняем проверку адреса соответствию сети
+		if(prefix > 0) result = this->mapping(network, prefix, addr);
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * mapping Метод проверки соотвествия IP адреса указанной сети
+ * @param network сеть для проверки соответствия
+ * @param prefix  префикс для наложения
+ * @param addr    тип получаемого адреса
+ * @return        результат проверки
+ */
+bool awh::Net::mapping(const string & network, const uint8_t prefix, const addr_t addr) const noexcept {
+	// Результат работы функции
+	bool result = false;
+	// Если адрес сети передан
+	if((result = (!network.empty() && (prefix > 0)))){
+		// Создаём объкт для работы с адресами
+		net_t net(this->_fmk, this->_log);
+		// Если парсинг адреса сети выполнен
+		if((result = net.parse(network))){
+			// Если сеть и IP адрес принадлежат одной версии сети
+			if((result = (this->_type == net.type()))){
+				// Определяем тип IP адреса
+				switch((uint8_t) this->_type){
+					// Если IP адрес определён как IPv4
+					case (uint8_t) type_t::IPV4: {
+						// Копируем текущий IP адрес
+						net = this->v4();
+						// Накладываем префикс сети
+						net.impose(prefix, addr);
+						// Выводим результат проверки
+						return (net.v4() == (net = network).v4());
+					} break;
+					// Если IP адрес определён как IPv6
+					case (uint8_t) type_t::IPV6: {
+						// Копируем текущий IP адрес
+						net = this->v6();
+						// Накладываем префикс сети
+						net.impose(prefix, addr);
+						// Получаем данные IPv6 текущего адреса
+						const array <uint64_t, 2> addr = net.v6();
+						// Устанавливаем данные сети
+						net = network;
+						// Выполняем получение данных IPv6 сетевого адреса
+						const array <uint64_t, 2> nwk = net.v6();
+						// Выводим результат проверки
+						return (memcmp(addr.data(), nwk.data(), sizeof(addr)) == 0);
+					} break;
+				}
+			}
+		}
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * mode Метод определения режима дислокации IP адреса
+ * @return режим дислокации
+ */
+awh::Net::mode_t awh::Net::mode() const noexcept {
+	// Результат работы функции
+	mode_t result = mode_t::NONE;
+	// Если бинарный буфер данных существует
+	if(!this->_buffer.empty()){
+		// Создаём объкт для работы с адресами
+		net_t net(this->_fmk, this->_log);
+		// Выполняем инициализацию списка локальных адресов
+		const_cast <net_t *> (this)->initLocalNet();
+		// Выполняем группировку нужного нам вида адресов
+		auto ret = this->_locals.equal_range(this->_type);
+		// Перебираем все локальные адреса
+		for(auto it = ret.first; it != ret.second; ++it){
+			// Определяем тип IP адреса
+			switch((uint8_t) this->_type){
+				// Если IP адрес определён как IPv4
+				case (uint8_t) type_t::IPV4: {
+					// Устанавливаем IP адрес
+					net = this->v4();
+					// Если получен диапазон IP адресов
+					if(it->second.end->type() == type_t::IPV4){
+						// Если адрес входит в диапазон адресов
+						if(net.range(* it->second.begin.get(), * it->second.end.get(), it->second.prefix)){
+							// Если адрес зарезервирован
+							if(it->second.reserved)
+								// Устанавливаем результат
+								return mode_t::RESERV;
+							// Иначе устанавливаем, что адрес локальный
+							else return mode_t::LOCAL;
+						}
+					// Если диапазон адресов для этой проверки не установлен
+					} else {
+						// Устанавливаем префикс сети
+						net.impose(it->second.prefix, net_t::addr_t::NETW);
+						// Если проверяемые сети совпадают
+						if(net.v4() == it->second.begin->v4()){
+							// Если адрес зарезервирован
+							if(it->second.reserved)
+								// Устанавливаем результат
+								return mode_t::RESERV;
+							// Иначе устанавливаем, что адрес локальный
+							else return mode_t::LOCAL;
+						}
+					}
+				} break;
+				// Если IP адрес определён как IPv6
+				case (uint8_t) type_t::IPV6: {
+					// Устанавливаем IP адрес
+					net = this->v6();
+					// Если получен диапазон IP адресов
+					if(it->second.end->type() == type_t::IPV6){
+						// Если адрес входит в диапазон адресов
+						if(net.range(* it->second.begin.get(), * it->second.end.get(), it->second.prefix)){
+							// Если адрес зарезервирован
+							if(it->second.reserved)
+								// Устанавливаем результат
+								return mode_t::RESERV;
+							// Иначе устанавливаем, что адрес локальный
+							else return mode_t::LOCAL;
+						}
+					// Если диапазон адресов для этой проверки не установлен
+					} else {
+						// Устанавливаем префикс сети
+						net.impose(it->second.prefix, net_t::addr_t::NETW);
+						// Если проверяемые сети совпадают
+						if(memcmp(net.v6().data(), it->second.begin->v6().data(), (sizeof(uint64_t) * 2)) == 0){
+							// Если адрес зарезервирован
+							if(it->second.reserved)
+								// Устанавливаем результат
+								return mode_t::RESERV;
+							// Иначе устанавливаем, что адрес локальный
+							else return mode_t::LOCAL;
+						}
+					}
+				} break;
+			}
+		}
+		// Если результат не определён
+		if(result == mode_t::NONE)
+			// Устанавливаем, что файл ялвяется глобальным
+			result = mode_t::GLOBAL;
 	}
 	// Выводим результат
 	return result;
@@ -605,7 +1305,7 @@ awh::Net::operator std::string() const noexcept {
  * @param addr адрес для сравнения
  * @return     результат сравнения
  */
-bool awh::Net::operator < (const net_t & addr) noexcept {
+bool awh::Net::operator < (const net_t & addr) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Если IP адреса принадлежат одному типу адресов
@@ -636,7 +1336,7 @@ bool awh::Net::operator < (const net_t & addr) noexcept {
  * @param addr адрес для сравнения
  * @return     результат сравнения
  */
-bool awh::Net::operator > (const net_t & addr) noexcept {
+bool awh::Net::operator > (const net_t & addr) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Если IP адреса принадлежат одному типу адресов
@@ -667,7 +1367,7 @@ bool awh::Net::operator > (const net_t & addr) noexcept {
  * @param addr адрес для сравнения
  * @return     результат сравнения
  */
-bool awh::Net::operator <= (const net_t & addr) noexcept {
+bool awh::Net::operator <= (const net_t & addr) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Если IP адреса принадлежат одному типу адресов
@@ -698,7 +1398,7 @@ bool awh::Net::operator <= (const net_t & addr) noexcept {
  * @param addr адрес для сравнения
  * @return     результат сравнения
  */
-bool awh::Net::operator >= (const net_t & addr) noexcept {
+bool awh::Net::operator >= (const net_t & addr) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Если IP адреса принадлежат одному типу адресов
@@ -729,7 +1429,7 @@ bool awh::Net::operator >= (const net_t & addr) noexcept {
  * @param addr адрес для сравнения
  * @return     результат сравнения
  */
-bool awh::Net::operator != (const net_t & addr) noexcept {
+bool awh::Net::operator != (const net_t & addr) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Определяем тип IP адреса
@@ -757,7 +1457,7 @@ bool awh::Net::operator != (const net_t & addr) noexcept {
  * @param addr адрес для сравнения
  * @return     результат сравнения
  */
-bool awh::Net::operator == (const net_t & addr) noexcept {
+bool awh::Net::operator == (const net_t & addr) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Если IP адреса принадлежат одному типу адресов

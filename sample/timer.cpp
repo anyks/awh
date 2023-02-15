@@ -169,19 +169,19 @@ int main(int argc, char * argv[]){
 
 	net = "2001:1234:abcd:5678:9877:3322:5541:aabb";
 
-	net.impose(53);
+	net.impose(53, net_t::addr_t::NETW);
 
 	cout << " ++++++++++++++++++3 " << net << endl;
 
 	net = "192.168.3.192";
 
-	net.impose(9);
+	net.impose(9, net_t::addr_t::NETW);
 
-	cout << " ++++++++++++++++++4 " << net << endl;
+	cout << " ++++++++++++++++++4 " << net << " === " << net.prefix2Mask(9) << endl;
 
 	net = "192.168.3.192";
 
-	net.impose("255.255.255.0");
+	net.impose("255.255.255.0", net_t::addr_t::NETW);
 
 	cout << " ++++++++++++++++++5 " << net << endl;
 
@@ -191,21 +191,88 @@ int main(int argc, char * argv[]){
 
 	cout << " =================== PREFIX2 " << net.prefix2Mask(53) << endl;
 
-	net.impose("FFFF:FFFF:FFFF:F800::");
+	net.impose("FFFF:FFFF:FFFF:F800::", net_t::addr_t::NETW);
 
 	cout << " ++++++++++++++++++6 " << net << endl;
 
 	net = "192.168.3.192";
 
-	net.dempose(9);
+	net.impose(9, net_t::addr_t::HOST);
 
 	cout << " ++++++++++++++++++7 " << net << endl;
 
 	net = "2001:1234:abcd:5678:9877:3322:5541:aabb";
 
-	net.dempose(53);
+	net.impose(53, net_t::addr_t::HOST);
 
 	cout << " ++++++++++++++++++8 " << net << endl;
+
+
+	net = "192.168.3.192";
+
+	cout << " ++++++++++++++++++9 " << net.mapping("192.168.0.0") << endl;
+
+	net = "2001:1234:abcd:5678:9877:3322:5541:aabb";
+
+	cout << " ++++++++++++++++++10 " << net.mapping("2001:1234:abcd:5678::") << endl;
+
+	net = "192.168.3.192";
+
+	cout << " ++++++++++++++++++11 " << net.mapping("192.128.0.0", 9, net_t::addr_t::NETW) << endl;
+
+	net = "2001:1234:abcd:5678:9877:3322:5541:aabb";
+
+	cout << " ++++++++++++++++++12 " << net.mapping("2001:1234:abcd:5000::", 53, net_t::addr_t::NETW) << endl;
+
+	net = "192.168.3.192";
+
+	cout << " ++++++++++++++++++13 " << net.mapping("192.128.0.0", "255.128.0.0", net_t::addr_t::NETW) << endl;
+
+	net = "2001:1234:abcd:5678:9877:3322:5541:aabb";
+
+	cout << " ++++++++++++++++++14 " << net.mapping("2001:1234:abcd:5000::", "FFFF:FFFF:FFFF:F800::", net_t::addr_t::NETW) << endl;
+
+
+	net = "192.168.3.192";
+
+	cout << " ++++++++++++++++++15 " << net.mapping("0.40.3.192", 9, net_t::addr_t::HOST) << endl;
+
+	net = "2001:1234:abcd:5678:9877:3322:5541:aabb";
+
+	cout << " ++++++++++++++++++16 " << net.mapping("::678:9877:3322:5541:AABB", 53, net_t::addr_t::HOST) << endl;
+
+	net = "192.168.3.192";
+
+	cout << " ++++++++++++++++++17 " << net.mapping("0.40.3.192", "255.128.0.0", net_t::addr_t::HOST) << endl;
+
+	net = "2001:1234:abcd:5678:9877:3322:5541:aabb";
+
+	cout << " ++++++++++++++++++18 " << net.mapping("::678:9877:3322:5541:AABB", "FFFF:FFFF:FFFF:F800::", net_t::addr_t::HOST) << endl;
+
+	net = "192.168.3.192";
+
+	cout << " ++++++++++++++++++19 " << net.range("192.168.3.100", "192.168.3.200", 24) << endl;
+
+	net = "2001:1234:abcd:5678:9877:3322:5541:aabb";
+
+	const auto & dump = net.data <vector <uint16_t>> ();
+
+	cout << " === " << dump.size() << " || " << dump[0] << " == " << dump[1] << " == " << dump[2] << " == " << dump[3] << endl;
+
+
+	net = "::1";
+
+	net.impose(128, net_t::addr_t::NETW);
+
+	cout << " ++++++++++++++++++20 " << net << endl;
+
+	net = "46.39.230.51";
+
+	cout << " *********************1 " << (u_short) net.mode() << endl;
+
+	net = "::";
+
+	cout << " *********************2 " << (u_short) net.mode() << endl;
 
 
 	/*
