@@ -164,7 +164,7 @@ void awh::Net::v6(const array <uint64_t, 2> & addr) noexcept {
 		memcpy(this->_buffer.data(), addr.data(), sizeof(addr));
 }
 /**
- * impose Метод наложения маски сети
+ * impose Метод наложения маски сети (получение сетевого адреса)
  * @param mask маска сети для наложения
  */
 void awh::Net::impose(const string & mask) noexcept {
@@ -177,7 +177,7 @@ void awh::Net::impose(const string & mask) noexcept {
 	}
 }
 /**
- * impose Метод наложения префикса
+ * impose Метод наложения префикса (получение сетевого адреса)
  * @param prefix префикс для наложения
  */
 void awh::Net::impose(const uint8_t prefix) noexcept {
@@ -244,6 +244,85 @@ void awh::Net::impose(const uint8_t prefix) noexcept {
 						memcpy(this->_buffer.data() + (num * 2), &hex, sizeof(hex));
 						// Зануляем все остальные биты
 						memset(this->_buffer.data() + ((num * 2) + 2), 0, this->_buffer.size() - ((num * 2) + 2));
+					}
+				}
+			} break;
+		}
+	}
+}
+/**
+ * dempose Метод наложения маски сети (получение адреса хоста)
+ * @param mask маска сети для наложения
+ */
+void awh::Net::dempose(const string & mask) noexcept {
+	// Если бинарный буфер данных существует и маска передана
+	if(!this->_buffer.empty() && !mask.empty()){
+		// Получаем префикс сети
+		const uint8_t prefix = this->mask2Prefix(mask);
+		// Если префикс сети получен, выполняем применение префикса
+		if(prefix > 0) this->dempose(prefix);
+	}
+}
+/**
+ * dempose Метод наложения префикса (получение адреса хоста)
+ * @param prefix префикс для наложения
+ */
+void awh::Net::dempose(const uint8_t prefix) noexcept {
+	// Если бинарный буфер данных существует
+	if(!this->_buffer.empty() && (prefix > 0)){
+		// Определяем тип IP адреса
+		switch((uint8_t) this->_type){
+			// Если IP адрес определён как IPv4
+			case (uint8_t) type_t::IPV4: {
+				// Если префикс укладывается в диапазон адреса
+				if(prefix < 32){
+					// Определяем номер хексета
+					const uint8_t num = ceil(prefix / 8);
+					// Зануляем все остальные биты
+					memset(this->_buffer.data(), 0, num);
+					// Если префикс не кратен 8
+					if((prefix % 8) != 0){
+						// Данные хексета
+						uint16_t hex = 0;
+						// Получаем нужное нам значение хексета
+						memcpy(&hex, this->_buffer.data() + num, sizeof(hex));
+						// Переводим хексет в бинарный вид
+						bitset <8> bits(hex);
+						// Зануляем все лишние элементы
+						for(uint8_t i = (8 - (prefix % 8)); i < 8; i++)
+							// Зануляем все лишние биты
+							bits.set(i, 0);
+						// Устанавливаем новое значение хексета
+						hex = static_cast <uint16_t> (bits.to_ulong());
+						// Устанавливаем новое значение хексета
+						memcpy(this->_buffer.data() + num, &hex, sizeof(hex));
+					}
+				}
+			} break;
+			// Если IP адрес определён как IPv6
+			case (uint8_t) type_t::IPV6: {
+				// Если префикс укладывается в диапазон адреса
+				if(prefix < 128){
+					// Определяем номер хексета
+					const uint8_t num = ceil(prefix / 16);
+					// Зануляем все остальные биты
+					memset(this->_buffer.data(), 0, (num * 2));
+					// Если префикс не кратен 16
+					if((prefix % 16) != 0){
+						// Данные хексета
+						uint16_t hex = 0;
+						// Получаем нужное нам значение хексета
+						memcpy(&hex, this->_buffer.data() + (num * 2), sizeof(hex));
+						// Переводим хексет в бинарный вид
+						bitset <16> bits(hex);
+						// Зануляем все лишние элементы
+						for(uint8_t i = (16 - (prefix % 16)); i < 16; i++)
+							// Зануляем все лишние биты
+							bits.set(i, 0);
+						// Устанавливаем новое значение хексета
+						hex = static_cast <uint16_t> (bits.to_ulong());
+						// Устанавливаем новое значение хексета
+						memcpy(this->_buffer.data() + (num * 2), &hex, sizeof(hex));
 					}
 				}
 			} break;

@@ -126,15 +126,26 @@ namespace awh {
 			void v6(const array <uint64_t, 2> & addr) noexcept;
 		public:
 			/**
-			 * impose Метод наложения маски сети
+			 * impose Метод наложения маски сети (получение сетевого адреса)
 			 * @param mask маска сети для наложения
 			 */
 			void impose(const string & mask) noexcept;
 			/**
-			 * impose Метод наложения префикса
+			 * impose Метод наложения префикса (получение сетевого адреса)
 			 * @param prefix префикс для наложения
 			 */
 			void impose(const uint8_t prefix) noexcept;
+		public:
+			/**
+			 * dempose Метод наложения маски сети (получение адреса хоста)
+			 * @param mask маска сети для наложения
+			 */
+			void dempose(const string & mask) noexcept;
+			/**
+			 * dempose Метод наложения префикса (получение адреса хоста)
+			 * @param prefix префикс для наложения
+			 */
+			void dempose(const uint8_t prefix) noexcept;
 		public:
 			/**
 			 * mask2Prefix Метод перевода маски сети в префикс адреса
