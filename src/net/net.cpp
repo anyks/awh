@@ -188,7 +188,7 @@ void awh::Net::impose(const uint8_t prefix) noexcept {
 			// Если IP адрес определён как IPv4
 			case (uint8_t) type_t::IPV4: {
 				// Если префикс укладывается в диапазон адреса
-				if(prefix < 32){
+				if(prefix <= 32){
 					// Определяем номер хексета
 					const uint8_t num = ceil(prefix / 8);
 					// Если префикс кратен 8
@@ -198,19 +198,19 @@ void awh::Net::impose(const uint8_t prefix) noexcept {
 					// Если префикс не кратен 8
 					else {
 						// Данные хексета
-						uint16_t hex = 0;
-						// Получаем нужное нам значение хексета
-						memcpy(&hex, this->_buffer.data() + num, sizeof(hex));
-						// Переводим хексет в бинарный вид
-						bitset <8> bits(hex);
+						uint8_t oct = 0;
+						// Получаем нужное нам значение октета
+						memcpy(&oct, this->_buffer.data() + num, sizeof(oct));
+						// Переводим октет в бинарный вид
+						bitset <8> bits(oct);
 						// Зануляем все лишние элементы
 						for(uint8_t i = 0; i < (8 - (prefix % 8)); i++)
 							// Зануляем все лишние биты
 							bits.set(i, 0);
-						// Устанавливаем новое значение хексета
-						hex = static_cast <uint16_t> (bits.to_ulong());
-						// Устанавливаем новое значение хексета
-						memcpy(this->_buffer.data() + num, &hex, sizeof(hex));
+						// Устанавливаем новое значение октета
+						oct = static_cast <uint16_t> (bits.to_ulong());
+						// Устанавливаем новое значение октета
+						memcpy(this->_buffer.data() + num, &oct, sizeof(oct));
 						// Зануляем все остальные биты
 						memset(this->_buffer.data() + (num + 1), 0, this->_buffer.size() - (num + 1));
 					}
@@ -219,7 +219,7 @@ void awh::Net::impose(const uint8_t prefix) noexcept {
 			// Если IP адрес определён как IPv6
 			case (uint8_t) type_t::IPV6: {
 				// Если префикс укладывается в диапазон адреса
-				if(prefix < 128){
+				if(prefix <= 128){
 					// Определяем номер хексета
 					const uint8_t num = ceil(prefix / 16);
 					// Если префикс кратен 16
@@ -275,34 +275,34 @@ void awh::Net::dempose(const uint8_t prefix) noexcept {
 			// Если IP адрес определён как IPv4
 			case (uint8_t) type_t::IPV4: {
 				// Если префикс укладывается в диапазон адреса
-				if(prefix < 32){
-					// Определяем номер хексета
+				if(prefix <= 32){
+					// Определяем номер октета
 					const uint8_t num = ceil(prefix / 8);
 					// Зануляем все остальные биты
 					memset(this->_buffer.data(), 0, num);
 					// Если префикс не кратен 8
 					if((prefix % 8) != 0){
-						// Данные хексета
-						uint16_t hex = 0;
-						// Получаем нужное нам значение хексета
-						memcpy(&hex, this->_buffer.data() + num, sizeof(hex));
-						// Переводим хексет в бинарный вид
-						bitset <8> bits(hex);
+						// Данные октета
+						uint8_t oct = 0;
+						// Получаем нужное нам значение октета
+						memcpy(&oct, this->_buffer.data() + num, sizeof(oct));
+						// Переводим октет в бинарный вид
+						bitset <8> bits(oct);
 						// Зануляем все лишние элементы
 						for(uint8_t i = (8 - (prefix % 8)); i < 8; i++)
 							// Зануляем все лишние биты
 							bits.set(i, 0);
-						// Устанавливаем новое значение хексета
-						hex = static_cast <uint16_t> (bits.to_ulong());
-						// Устанавливаем новое значение хексета
-						memcpy(this->_buffer.data() + num, &hex, sizeof(hex));
+						// Устанавливаем новое значение октета
+						oct = static_cast <uint16_t> (bits.to_ulong());
+						// Устанавливаем новое значение октета
+						memcpy(this->_buffer.data() + num, &oct, sizeof(oct));
 					}
 				}
 			} break;
 			// Если IP адрес определён как IPv6
 			case (uint8_t) type_t::IPV6: {
 				// Если префикс укладывается в диапазон адреса
-				if(prefix < 128){
+				if(prefix <= 128){
 					// Определяем номер хексета
 					const uint8_t num = ceil(prefix / 16);
 					// Зануляем все остальные биты
