@@ -167,6 +167,35 @@ int main(int argc, char * argv[]){
 
 	cout << " ====================3 " << k << endl;
 
+	net = "2001:1234:abcd:5678:9877:3322:5541:aabb";
+
+	net.impose(53);
+
+	cout << " ++++++++++++++++++3 " << net << endl;
+
+	net = "192.168.3.192";
+
+	net.impose(9);
+
+	cout << " ++++++++++++++++++4 " << net << endl;
+
+	net = "192.168.3.192";
+
+	net.impose("255.255.255.0");
+
+	cout << " ++++++++++++++++++5 " << net << endl;
+
+	cout << " =================== PREFIX1 " << net.prefix2Mask(24) << endl;
+
+	net = "2001:1234:abcd:5678:9877:3322:5541:aabb";
+
+	cout << " =================== PREFIX2 " << net.prefix2Mask(53) << endl;
+
+	net.impose("FFFF:FFFF:FFFF:F800::");
+
+	cout << " ++++++++++++++++++6 " << net << endl;
+
+
 	/*
 	// Создаём объект исполнителя
 	Timer executor(&log);

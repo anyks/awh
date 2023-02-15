@@ -164,6 +164,186 @@ void awh::Net::v6(const array <uint64_t, 2> & addr) noexcept {
 		memcpy(this->_buffer.data(), addr.data(), sizeof(addr));
 }
 /**
+ * impose Метод наложения маски сети
+ * @param mask маска сети для наложения
+ */
+void awh::Net::impose(const string & mask) noexcept {
+	// Если бинарный буфер данных существует и маска передана
+	if(!this->_buffer.empty() && !mask.empty()){
+		// Получаем префикс сети
+		const uint8_t prefix = this->mask2Prefix(mask);
+		// Если префикс сети получен, выполняем применение префикса
+		if(prefix > 0) this->impose(prefix);
+	}
+}
+/**
+ * impose Метод наложения префикса
+ * @param prefix префикс для наложения
+ */
+void awh::Net::impose(const uint8_t prefix) noexcept {
+	// Если бинарный буфер данных существует
+	if(!this->_buffer.empty() && (prefix > 0)){
+		// Определяем тип IP адреса
+		switch((uint8_t) this->_type){
+			// Если IP адрес определён как IPv4
+			case (uint8_t) type_t::IPV4: {
+				// Если префикс укладывается в диапазон адреса
+				if(prefix < 32){
+					// Определяем номер хексета
+					const uint8_t num = ceil(prefix / 8);
+					// Если префикс кратен 8
+					if((prefix % 8) == 0)
+						// Зануляем все остальные биты
+						memset(this->_buffer.data() + num, 0, this->_buffer.size() - num);
+					// Если префикс не кратен 8
+					else {
+						// Данные хексета
+						uint16_t hex = 0;
+						// Получаем нужное нам значение хексета
+						memcpy(&hex, this->_buffer.data() + num, sizeof(hex));
+						// Переводим хексет в бинарный вид
+						bitset <8> bits(hex);
+						// Зануляем все лишние элементы
+						for(uint8_t i = 0; i < (8 - (prefix % 8)); i++)
+							// Зануляем все лишние биты
+							bits.set(i, 0);
+						// Устанавливаем новое значение хексета
+						hex = static_cast <uint16_t> (bits.to_ulong());
+						// Устанавливаем новое значение хексета
+						memcpy(this->_buffer.data() + num, &hex, sizeof(hex));
+						// Зануляем все остальные биты
+						memset(this->_buffer.data() + (num + 1), 0, this->_buffer.size() - (num + 1));
+					}
+				}
+			} break;
+			// Если IP адрес определён как IPv6
+			case (uint8_t) type_t::IPV6: {
+				// Если префикс укладывается в диапазон адреса
+				if(prefix < 128){
+					// Определяем номер хексета
+					const uint8_t num = ceil(prefix / 16);
+					// Если префикс кратен 16
+					if((prefix % 16) == 0)
+						// Зануляем все остальные биты
+						memset(this->_buffer.data() + (num * 2), 0, this->_buffer.size() - (num * 2));
+					// Если префикс не кратен 16
+					else {
+						// Данные хексета
+						uint16_t hex = 0;
+						// Получаем нужное нам значение хексета
+						memcpy(&hex, this->_buffer.data() + (num * 2), sizeof(hex));
+						// Переводим хексет в бинарный вид
+						bitset <16> bits(hex);
+						// Зануляем все лишние элементы
+						for(uint8_t i = 0; i < (16 - (prefix % 16)); i++)
+							// Зануляем все лишние биты
+							bits.set(i, 0);
+						// Устанавливаем новое значение хексета
+						hex = static_cast <uint16_t> (bits.to_ulong());
+						// Устанавливаем новое значение хексета
+						memcpy(this->_buffer.data() + (num * 2), &hex, sizeof(hex));
+						// Зануляем все остальные биты
+						memset(this->_buffer.data() + ((num * 2) + 2), 0, this->_buffer.size() - ((num * 2) + 2));
+					}
+				}
+			} break;
+		}
+	}
+}
+/**
+ * mask2Prefix Метод перевода маски сети в префикс адреса
+ * @param mask маска сети для перевода
+ * @return     полученный префикс адреса
+ */
+uint8_t awh::Net::mask2Prefix(const string & mask) const noexcept {
+	// Результат работы функции
+	uint8_t result = 0;
+	// Если маска сети передана
+	if(!mask.empty()){
+		// Преобразуем маску в адрес
+		net_t net(this->_fmk, this->_log);
+		// Выполняем парсинг маски
+		if(net.parse(mask) && (this->_type == net.type())){
+			// Бинарный контейнер
+			bitset <8> bits;
+			// Определяем тип IP адреса
+			switch((uint8_t) this->_type){
+				// Если IP адрес определён как IPv4
+				case (uint8_t) type_t::IPV4: {
+					// Получаем значение маски в виде адреса
+					const uint32_t num = net.v4();
+					// Выполняем перебор всего значения буфера
+					for(uint8_t i = 0; i < 4; i++){
+						// Переводим хексет в бинарный вид
+						bits = (reinterpret_cast <const uint8_t *> (&num))[i];
+						// Выполняем подсчёт префикса
+						result += bits.count();
+					}
+				} break;
+				// Если IP адрес определён как IPv6
+				case (uint8_t) type_t::IPV6: {
+					// Получаем значение маски в виде адреса
+					const array <uint64_t, 2> num = net.v6();
+					// Выполняем перебор всего значения буфера
+					for(uint8_t i = 0; i < 16; i++){
+						// Переводим хексет в бинарный вид
+						bits = reinterpret_cast <const uint8_t *> (num.data())[i];
+						// Выполняем подсчёт префикса
+						result += bits.count();
+					}
+				} break;
+			}
+		}
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * prefix2Mask Метод преобразования префикса адреса в маску сети
+ * @param prefix префикс адреса для преобразования
+ * @return       полученная маска сети
+ */
+string awh::Net::prefix2Mask(const uint8_t prefix) const noexcept {
+	// Результат работы функции
+	string result = "";
+	// Если маска сети передана
+	if(prefix > 0){
+		// Преобразуем маску в адрес
+		net_t net(this->_fmk, this->_log);
+		// Определяем тип IP адреса
+		switch((uint8_t) this->_type){
+			// Если IP адрес определён как IPv4
+			case (uint8_t) type_t::IPV4: {
+				// Если префикс укладывается в диапазон адреса
+				if(prefix < 32){
+					// Выполняем парсинг маски
+					if(net.parse("255.255.255.255")){
+						// Выполняем установку префикса
+						net.impose(prefix);
+						// Выводим полученный адрес
+						result = net;
+					}
+				}
+			} break;
+			// Если IP адрес определён как IPv6
+			case (uint8_t) type_t::IPV6: {
+				// Если префикс укладывается в диапазон адреса
+				if(prefix < 128){
+					// Выполняем парсинг маски
+					if(net.parse("ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff")){
+						// Выполняем установку префикса
+						net.impose(prefix);
+						// Выводим полученный адрес
+						result = net;
+					}
+				}
+			} break;
+		}
+	}
+	// Выводим результат
+	return result;
+}
+/**
  * parse Метод парсинга IP адреса
  * @param ip адрес интернет подключения для парсинга
  * @return   результат работы парсинга
@@ -178,7 +358,7 @@ bool awh::Net::parse(const string & ip) noexcept {
 			// Если IP адрес является адресом IPv4
 			case (uint8_t) type_t::IPV4: {
 				// Выполняем инициализацию буфера
-				this->_buffer.resize(4);
+				this->_buffer.resize(4, 0);
 				// Позиция разделителя
 				size_t start = 0, stop = 0, index = 0;
 				// Выполняем поиск разделителя
@@ -198,7 +378,7 @@ bool awh::Net::parse(const string & ip) noexcept {
 				// Создаём список всех хексетов
 				vector <wstring> data;
 				// Выполняем инициализацию буфера
-				this->_buffer.resize(16);
+				this->_buffer.resize(16, 0);
 				// Выполняем сплит данных IP адреса
 				this->_fmk->split(((ip.front() == '[') && (ip.back() == ']') ? ip.substr(1, ip.length() - 2) : ip), ":", data);
 				// Если данные IP адреса получены

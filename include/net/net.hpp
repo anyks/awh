@@ -20,6 +20,8 @@
  */
 #include <array>
 #include <regex>
+#include <cmath>
+#include <bitset>
 #include <string>
 #include <vector>
 #include <iostream>
@@ -122,6 +124,30 @@ namespace awh {
 			 * @param addr адрес IPv6 в чистом виде
 			 */
 			void v6(const array <uint64_t, 2> & addr) noexcept;
+		public:
+			/**
+			 * impose Метод наложения маски сети
+			 * @param mask маска сети для наложения
+			 */
+			void impose(const string & mask) noexcept;
+			/**
+			 * impose Метод наложения префикса
+			 * @param prefix префикс для наложения
+			 */
+			void impose(const uint8_t prefix) noexcept;
+		public:
+			/**
+			 * mask2Prefix Метод перевода маски сети в префикс адреса
+			 * @param mask маска сети для перевода
+			 * @return     полученный префикс адреса
+			 */
+			uint8_t mask2Prefix(const string & mask) const noexcept;
+			/**
+			 * prefix2Mask Метод преобразования префикса адреса в маску сети
+			 * @param prefix префикс адреса для преобразования
+			 * @return       полученная маска сети
+			 */
+			string prefix2Mask(const uint8_t prefix) const noexcept;
 		public:
 			/**
 			 * parse Метод парсинга IP адреса
