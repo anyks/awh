@@ -97,8 +97,7 @@ namespace awh {
 				} fn_t;
 			private:
 				// Объект для работы с сетью
-				network_t _nwk;
-			private:
+				net_t _net;
 				// Объявляем функции обратного вызова
 				fn_t _callback;
 				// Объект сетевой схемы

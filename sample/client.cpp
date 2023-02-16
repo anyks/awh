@@ -72,8 +72,6 @@ int main(int argc, char * argv[]){
 	fmk_t fmk;
 	// Создаём объект для работы с логами
 	log_t log(&fmk);
-	// Создаём объект сети
-	network_t nwk(&fmk);
 	// Создаём объект исполнителя
 	Client executor(&log);
 	// Создаём биндинг

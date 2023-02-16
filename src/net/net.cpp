@@ -1136,6 +1136,8 @@ bool awh::Net::parse(const string & ip) noexcept {
 		switch((uint8_t) (this->_type = this->host(ip))){
 			// Если IP адрес является адресом IPv4
 			case (uint8_t) type_t::IPV4: {
+				// Выполняем очистку буфера данных
+				this->_buffer.clear();
 				// Выполняем инициализацию буфера
 				this->_buffer.resize(4, 0);
 				// Позиция разделителя
@@ -1143,19 +1145,21 @@ bool awh::Net::parse(const string & ip) noexcept {
 				// Выполняем поиск разделителя
 				while((stop = ip.find('.', start)) != string::npos){
 					// Извлекаем полученное число
-					this->_buffer[index] = stoi(ip.substr(start, stop));
+					this->_buffer[index] = static_cast <uint8_t> (stoi(ip.substr(start, stop - start)));
 					// Выполняем смещение
 					start = (stop + 1);
 					// Увеличиваем смещение индекса
 					index++;
 				}
 				// Выполняем установку последнего октета
-				this->_buffer[index] = stoi(ip.substr(start));
+				this->_buffer[index] = static_cast <uint8_t> (stoi(ip.substr(start)));
 			} break;
 			// Если IP адрес является адресом IPv6
 			case (uint8_t) type_t::IPV6: {
 				// Создаём список всех хексетов
 				vector <wstring> data;
+				// Выполняем очистку буфера данных
+				this->_buffer.clear();
 				// Выполняем инициализацию буфера
 				this->_buffer.resize(16, 0);
 				// Выполняем сплит данных IP адреса
@@ -1166,16 +1170,40 @@ bool awh::Net::parse(const string & ip) noexcept {
 					vector <uint16_t> buffer(8, 0);
 					// Если в начале IP адреса пропущены нули
 					if(data.front().empty()){
+						// Получаем длину хексета
+						const size_t length = data.back().length();
 						// Если последний элемент массива больше 4-х символов
-						if(data.back().length() > 4){
-							// Получаем данные IPv4 адреса
+						if((result = ((length >= 7) && (length <= 15)))){
+							// Выполняем усечение лишних данных буфера
+							buffer.resize(6, 0);
+							// Устанавливаем индекс последнего элемента
+							size_t start = 0, stop = 0, index = 6;
+							// Выполняем перебор всех хексеков
+							for(auto it = data.rbegin() + 1; it != data.rend(); ++it){
+								// Если хексет установлен
+								if(!it->empty())
+									// Добавляем хексет в список
+									buffer[--index] = static_cast <uint16_t> (this->_fmk->hexToDec(this->_fmk->convert(* it)));
+								// Выходим из цикла
+								else break;
+							}
+							// Позиция разделителя
+							index = 12;
+							// Получаем IP адрес
 							const string & ip = this->_fmk->convert(data.back());
-							// Если элемент является IPv4 адресом
-							if((result = (this->host(ip) == type_t::IPV4)))
-								// Выполняем добавление адреса IPv4
-								return this->parse(ip);
+							// Выполняем поиск разделителя
+							while((stop = ip.find('.', start)) != string::npos){
+								// Извлекаем полученное число
+								this->_buffer[index] = static_cast <uint8_t> (stoi(ip.substr(start, stop - start)));
+								// Выполняем смещение
+								start = (stop + 1);
+								// Увеличиваем смещение индекса
+								index++;
+							}
+							// Выполняем установку последнего октета
+							this->_buffer[index] = static_cast <uint8_t> (stoi(ip.substr(start)));
 						// Если IP адрес состоит из нормальных хексетов
-						} else {
+						} else if((result = ((length >= 1) && (length <= 4)))) {
 							// Устанавливаем индекс последнего элемента
 							uint8_t index = 8;
 							// Выполняем перебор всех хексеков
@@ -1183,11 +1211,12 @@ bool awh::Net::parse(const string & ip) noexcept {
 								// Если хексет установлен
 								if(!it->empty())
 									// Добавляем хексет в список
-									buffer[--index] = this->_fmk->hexToDec(this->_fmk->convert(* it));
+									buffer[--index] = static_cast <uint16_t> (this->_fmk->hexToDec(this->_fmk->convert(* it)));
 								// Выходим из цикла
 								else break;
 							}
-						}
+						// Выводим результат
+						} else return result;
 					// Если IP адрес передан полностью или не до конца
 					} else {
 						// Устанавливаем индекс первого элемента
@@ -1197,7 +1226,7 @@ bool awh::Net::parse(const string & ip) noexcept {
 							// Если хексет установлен
 							if(!it->empty())
 								// Добавляем хексет в список
-								buffer[index++] = this->_fmk->hexToDec(this->_fmk->convert(* it));
+								buffer[index++] = static_cast <uint16_t> (this->_fmk->hexToDec(this->_fmk->convert(* it)));
 							// Выходим из цикла
 							else break;
 						}
@@ -1209,7 +1238,8 @@ bool awh::Net::parse(const string & ip) noexcept {
 							for(auto it = data.rbegin(); it != data.rend(); ++it){
 								// Если хексет установлен
 								if(!it->empty())
-									buffer[--index] = this->_fmk->hexToDec(this->_fmk->convert(* it));
+									// Добавляем хексет в список
+									buffer[--index] = static_cast <uint16_t> (this->_fmk->hexToDec(this->_fmk->convert(* it)));
 								// Выходим из цикла
 								else break;
 							}
@@ -1256,6 +1286,16 @@ string awh::Net::get(const format_t format) const noexcept {
 				uint16_t num = 0;
 				// Количество разделителей и количество хексетов в буфере
 				uint8_t separators = 0, count = static_cast <uint8_t> (this->_buffer.size());
+				// Создаём временный буфер данных для сравнения
+				vector <uint16_t> buffer(6, 0);
+				// Устанавливаем хексет маски
+				buffer[5] = 65535;
+				// Флаг зеркального вещания IPv6 => IPv4
+				bool mirror = false;
+				// Если буфер данных принадлежит к вещанию IPv6 => IPv4
+				if((mirror = (memcmp(buffer.data(), this->_buffer.data(), (buffer.size() * 2)) == 0)))
+					// Уменьшаем количество итераций в буфере
+					count -= 4;
 				// Переходим по всему массиву
 				for(uint8_t i = 0; i < count; i += 2){
 					// Выполняем получение значение числа
@@ -1266,7 +1306,7 @@ string awh::Net::get(const format_t format) const noexcept {
 						if(num > 0){
 							// Добавляем разделитель
 							if(!result.empty()) result.append(1, ':');
-							// Добавляем октет в версию
+							// Добавляем хексет в версию
 							result.append(this->_fmk->itoa(static_cast <int64_t> (num), 16));
 						// Заменяем нули разделителем
 						} else if((++separators < 2) || (i == (count - 2)))
@@ -1278,12 +1318,26 @@ string awh::Net::get(const format_t format) const noexcept {
 						if(!result.empty())
 							// Добавляем разделитель
 							result.append(1, ':');
-						// Добавляем октет в версию
+						// Добавляем хексет в версию
 						result.append(
 							format == format_t::LONG ?
 							this->zerro(this->_fmk->itoa(static_cast <int64_t> (num), 16), 4) :
 							this->_fmk->itoa(static_cast <int64_t> (num), 16)
 						);
+					}
+				}
+				// Если активирован флаг зеркального вещания IPv6 => IPv4
+				if(mirror){
+					// Добавляем разделитель
+					result.append(1, ':');
+					// Переходим по всему массиву
+					for(uint8_t i = 0; i < (static_cast <uint8_t> (this->_buffer.size()) - count); i++){
+						// Если строка уже существует, добавляем разделитель
+						if(i > 0)
+							// Добавляем разделитель
+							result.append(1, '.');
+						// Добавляем октет в версию
+						result.append(format == format_t::LONG ? this->zerro(to_string(this->_buffer[count + i])) : to_string(this->_buffer[count + i]));
 					}
 				}
 			} break;

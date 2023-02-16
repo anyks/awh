@@ -515,7 +515,7 @@ void awh::server::Sample::keepAlive(const int cnt, const int idle, const int int
  * @param log  объект для работы с логами
  */
 awh::server::Sample::Sample(const server::core_t * core, const fmk_t * fmk, const log_t * log) noexcept :
- _pid(getpid()), _port(SERVER_PORT), _host(""), _nwk(fmk), _uri(fmk, &_nwk), _scheme(fmk, log),
+ _pid(getpid()), _port(SERVER_PORT), _host(""), _net(fmk, log), _uri(fmk, &_net), _scheme(fmk, log),
  _cipher(hash_t::cipher_t::AES128), _alive(false), _fmk(fmk), _log(log), _core(core) {
 	// Устанавливаем событие на запуск системы
 	this->_scheme.callback.set <void (const size_t, awh::core_t *)> ("open", std::bind(&Sample::openCallback, this, _1, _2));

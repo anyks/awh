@@ -119,7 +119,7 @@ namespace awh {
 				} fn_t;
 			private:
 				// Создаем объект для работы с сетью
-				network_t _nwk;
+				net_t _net;
 			private:
 				// Объект для компрессии-декомпрессии данных
 				mutable hash_t _hash;

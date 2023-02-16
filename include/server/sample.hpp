@@ -77,8 +77,7 @@ namespace awh {
 				string _host;
 			private:
 				// Объект для работы с сетью
-				network_t _nwk;
-			private:
+				net_t _net;
 				// Объект работы с URI ссылками
 				uri_t _uri;
 			private:

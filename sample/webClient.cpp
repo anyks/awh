@@ -100,9 +100,9 @@ int main(int argc, char * argv[]){
 	// Создаём объект для работы с логами
 	log_t log(&fmk);
 	// Создаём объект сети
-	network_t nwk(&fmk);
+	net_t net(&fmk, &log);
 	// Создаём объект URI
-	uri_t uri(&fmk, &nwk);
+	uri_t uri(&fmk, &net);
 	// Создаём объект исполнителя
 	WebClient executor(&log);
 	// Создаём биндинг

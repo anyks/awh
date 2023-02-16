@@ -222,7 +222,7 @@ void awh::client::Sample::init(const string & socket) noexcept {
 	// Если unix-сокет передан
 	if(!socket.empty()){
 		// Создаём объект работы с URI ссылками
-		uri_t uri(this->_fmk, &this->_nwk);
+		uri_t uri(this->_fmk, &this->_net);
 		// Устанавливаем URL адрес запроса (как заглушка)
 		this->_scheme.url = uri.parse("http://unixsocket");
 		/**
@@ -247,19 +247,23 @@ void awh::client::Sample::init(const u_int port, const string & host) noexcept {
 		// Устанавливаем хост сервера
 		this->_scheme.url.host = host;
 		// Определяем тип передаваемого сервера
-		switch((uint8_t) this->_nwk.parseHost(host)){
+		switch((uint8_t) this->_net.host(host)){
 			// Если хост является доменом или IPv4 адресом
-			case (uint8_t) network_t::type_t::IPV4:
+			case (uint8_t) net_t::type_t::IPV4:
 				// Устанавливаем IP адрес
 				this->_scheme.url.ip = host;
 			break;
 			// Если хост является IPv6 адресом, переводим ip адрес в полную форму
-			case (uint8_t) network_t::type_t::IPV6:
+			case (uint8_t) net_t::type_t::IPV6: {
+				// Создаём объкт для работы с адресами
+				net_t net(this->_fmk, this->_log);
+				// Получаем данные хоста
+				net = host;
 				// Устанавливаем IP адрес
-				this->_scheme.url.ip = this->_nwk.setLowIp6(host);
-			break;
+				this->_scheme.url.ip = net;
+			} break;
 			// Если хост является доменным именем
-			case (uint8_t) network_t::type_t::DOMNAME:
+			case (uint8_t) net_t::type_t::DOMN:
 				// Устанавливаем доменное имя
 				this->_scheme.url.domain = host;
 			break;
@@ -378,7 +382,7 @@ void awh::client::Sample::keepAlive(const int cnt, const int idle, const int int
  * @param log  объект для работы с логами
  */
 awh::client::Sample::Sample(const client::core_t * core, const fmk_t * fmk, const log_t * log) noexcept :
- _nwk(fmk), _scheme(fmk, log), _action(action_t::NONE),
+ _net(fmk, log), _scheme(fmk, log), _action(action_t::NONE),
  _aid(0), _unbind(true), _fmk(fmk), _log(log), _core(core) {
 	// Устанавливаем событие на запуск системы
 	this->_scheme.callback.set <void (const size_t, awh::core_t *)> ("open", std::bind(&Sample::openCallback, this, _1, _2));

@@ -134,9 +134,9 @@ namespace awh {
 				recursive_mutex scheme; // Для работы с схемой сети
 			} mtx_t;
 			/**
-			 * Network Структура текущих параметров сети
+			 * Settings Структура текущих параметров сети
 			 */
-			typedef struct Network {
+			typedef struct Settings {
 				// Адрес файла unix-сокета
 				string filename;
 				// Тип сокета подключения (TCP / UDP)
@@ -148,14 +148,14 @@ namespace awh {
 				// Параметры для сети IPv6
 				pair <vector <string>, vector <dns_t::serv_t>> v6;
 				/**
-				 * Network Конструктор
+				 * Settings Конструктор
 				 */
-				Network() noexcept :
+				Settings() noexcept :
 				 filename(""),
 				 sonet(scheme_t::sonet_t::TCP),
 				 family(scheme_t::family_t::IPV4),
 				 v4({{"0.0.0.0"}, {}}), v6({{"[::0]"}, {}}) {}
-			} net_t;
+			} settings_t;
 		private:
 			/**
 			 * Dispatch Класс работы с событиями
@@ -252,16 +252,16 @@ namespace awh {
 			pid_t pid;
 		protected:
 			// Создаем объект сети
-			network_t nwk;
+			net_t net;
 		protected:
 			// Создаём объект работы с URI
 			uri_t uri;
-			// Сетевые параметры
-			net_t net;
 			// Создаём объект DNS резолвера
 			dns_t dns;
 			// Создаём объект для работы с актуатором
 			engine_t engine;
+			// Сетевые параметры
+			settings_t settings;
 			// Объект для работы с чтением базы событий
 			dispatch_t dispatch;
 		private:

@@ -724,8 +724,12 @@ void awh::Engine::Address::init(const string & ip, const u_int port, const int f
 								host = this->network.at(rand() % this->network.size());
 							// Выводим только первый элемент
 							} else host = this->network.front();
+							// Получаем хост адреса
+							net_t net(this->_fmk, this->_log);
+							// Выполняем получение IP адреса
+							net = host;
 							// Переводим ip адрес в полноценный вид
-							host = move(this->_nwk.setLowIp6(host));
+							host = net;
 							// Создаём объект клиента
 							struct sockaddr_in6 client;
 							// Очищаем всю структуру для клиента

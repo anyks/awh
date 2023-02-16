@@ -133,8 +133,7 @@ namespace awh {
 				} fn_t;
 			private:
 				// Создаем объект для работы с сетью
-				network_t _nwk;
-			private:
+				net_t _net;
 				// Объект работы с URI ссылками
 				uri_t _uri;
 				// Объект для работы с HTTP

@@ -41,7 +41,7 @@
  * Наши модули
  */
 #include <sys/fmk.hpp>
-#include <net/nwk.hpp>
+#include <net/net.hpp>
 
 // Устанавливаем область видимости
 using namespace std;
@@ -134,7 +134,7 @@ namespace awh {
 			// Создаём объект фреймворка
 			const fmk_t * _fmk;
 			// Создаем объект сети
-			const network_t * _nwk;
+			const net_t * _net;
 		public:
 			/**
 			 * parse Метод получения параметров URL запроса
@@ -233,9 +233,9 @@ namespace awh {
 			/**
 			 * URI Конструктор
 			 * @param fmk объект фреймворка
-			 * @param nwk объект методов для работы с сетью
+			 * @param net объект методов для работы с сетью
 			 */
-			URI(const fmk_t * fmk, const network_t * nwk) noexcept : _fmk(fmk), _nwk(nwk) {}
+			URI(const fmk_t * fmk, const net_t * net) noexcept : _fmk(fmk), _net(net) {}
 			/**
 			 * ~URI Деструктор
 			 */

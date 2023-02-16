@@ -37,7 +37,7 @@ class WebSocket {
 		uint16_t _count;
 	private:
 		// Создаём объект сети
-		network_t _nwk;
+		net_t _net;
 		// Создаём объект URI
 		uri_t _uri;
 		// Создаём биндинг
@@ -292,7 +292,9 @@ class WebSocket {
 		 * @param fmk  объект фреймворка
 		 * @param core объект основного ядра
 		 */
-		WebSocket(fmk_t * fmk, log_t * log, client::core_t * core) : _fmk(fmk), _log(log), _main(core), _count(0), _nwk(fmk), _uri(fmk, &_nwk), _core(fmk, log), _web(nullptr), _webMode(client::web_t::mode_t::DISCONNECT) {
+		WebSocket(fmk_t * fmk, log_t * log, client::core_t * core) noexcept :
+		 _fmk(fmk), _log(log), _main(core), _count(0), _net(fmk, log), _uri(fmk, &_net),
+		 _core(fmk, log), _web(nullptr), _webMode(client::web_t::mode_t::DISCONNECT) {
 			// Выделяем память для Web-клиента
 			this->_web = new client::web_t(&this->_core, fmk, log);
 			/**

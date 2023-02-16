@@ -182,8 +182,6 @@ namespace awh {
 					fs_t _fs;
 					// Объект подключения
 					peer_t _peer;
-					// Создаем объект сети
-					network_t _nwk;
 					// Объект для работы с сетевым интерфейсом
 					ifnet_t _ifnet;
 					// Объект для работы с сокетами
@@ -278,8 +276,8 @@ namespace awh {
 					Address(const fmk_t * fmk, const log_t * log) noexcept :
 					 fd(INVALID_SOCKET), _type(SOCK_STREAM), _protocol(IPPROTO_TCP),
 					 _tls(false), _async(false), status(status_t::DISCONNECTED),
-					 port(0), ip(""), mac(""), _fs(fmk, log), _nwk(fmk),
-					 _ifnet(fmk, log), _socket(log), _bio(nullptr), _fmk(fmk), _log(log) {}
+					 port(0), ip(""), mac(""), _fs(fmk, log), _ifnet(fmk, log),
+					 _socket(log), _bio(nullptr), _fmk(fmk), _log(log) {}
 					/**
 					 * ~Address Деструктор
 					 */

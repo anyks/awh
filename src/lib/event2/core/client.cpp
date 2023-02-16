@@ -92,7 +92,7 @@ void awh::client::Core::connect(const size_t sid) noexcept {
 				// Получаем URL параметры запроса
 				const uri_t::url_t & url = (shm->isProxy() ? shm->proxy.url : shm->url);
 				// Получаем семейство интернет-протоколов
-				const scheme_t::family_t family = (shm->isProxy() ? shm->proxy.family : this->net.family);
+				const scheme_t::family_t family = (shm->isProxy() ? shm->proxy.family : this->settings.family);
 				// Если в схеме сети есть подключённые клиенты
 				if(!shm->adjutants.empty()){
 					// Переходим по всему списку адъютанта
@@ -128,21 +128,21 @@ void awh::client::Core::connect(const size_t sid) noexcept {
 					case (uint8_t) scheme_t::family_t::IPV4:
 						// Устанавливаем сеть, для выхода в интернет
 						adj->addr.network.assign(
-							this->net.v4.first.begin(),
-							this->net.v4.first.end()
+							this->settings.v4.first.begin(),
+							this->settings.v4.first.end()
 						);
 					break;
 					// Если тип протокола подключения IPv6
 					case (uint8_t) scheme_t::family_t::IPV6:
 						// Устанавливаем сеть, для выхода в интернет
 						adj->addr.network.assign(
-							this->net.v6.first.begin(),
-							this->net.v6.first.end()
+							this->settings.v6.first.begin(),
+							this->settings.v6.first.end()
 						);
 					break;
 				}
 				// Определяем тип сокета
-				switch((uint8_t) this->net.sonet){
+				switch((uint8_t) this->settings.sonet){
 					// Если тип сокета UDP
 					case (uint8_t) scheme_t::sonet_t::UDP:
 					// Если тип сокета UDP TLS
@@ -171,7 +171,7 @@ void awh::client::Core::connect(const size_t sid) noexcept {
 				// Если unix-сокет используется
 				if(family == scheme_t::family_t::NIX)
 					// Выполняем инициализацию сокета
-					adj->addr.init(this->net.filename, engine_t::type_t::CLIENT);
+					adj->addr.init(this->settings.filename, engine_t::type_t::CLIENT);
 				// Если unix-сокет не используется, выполняем инициализацию сокета
 				else adj->addr.init(url.ip, url.port, (family == scheme_t::family_t::IPV6 ? AF_INET6 : AF_INET), engine_t::type_t::CLIENT);
 				// Если сокет подключения получен
@@ -179,7 +179,7 @@ void awh::client::Core::connect(const size_t sid) noexcept {
 					// Устанавливаем идентификатор адъютанта
 					adj->aid = this->fmk->nanoTimestamp();
 					// Если подключение выполняется по защищённому каналу DTLS
-					if(this->net.sonet == scheme_t::sonet_t::DTLS)
+					if(this->settings.sonet == scheme_t::sonet_t::DTLS)
 						// Выполняем получение контекста сертификата
 						this->engine.wrap(adj->ectx, &adj->addr, engine_t::type_t::CLIENT);
 					// Если подключение выполняется не по защищённому каналу DTLS
@@ -194,7 +194,7 @@ void awh::client::Core::connect(const size_t sid) noexcept {
 						this->engine.wrapClient(adj->ectx, &adj->addr, host);
 					}
 					// Если мы хотим работать в зашифрованном режиме
-					if(!shm->isProxy() && (this->net.sonet == scheme_t::sonet_t::TLS)){
+					if(!shm->isProxy() && (this->settings.sonet == scheme_t::sonet_t::TLS)){
 						// Если сертификаты не приняты, выходим
 						if(!this->engine.tls(adj->ectx)){
 							// Разрешаем выполнение работы
@@ -253,7 +253,7 @@ void awh::client::Core::connect(const size_t sid) noexcept {
 						// Если unix-сокет используется
 						if(family == scheme_t::family_t::NIX)
 							// Выводим ионформацию об обрыве подключении по unix-сокету
-							this->log->print("connecting to socket = %s", log_t::flag_t::CRITICAL, this->net.filename.c_str());
+							this->log->print("connecting to socket = %s", log_t::flag_t::CRITICAL, this->settings.filename.c_str());
 						// Выводим ионформацию об обрыве подключении по хосту и порту
 						else this->log->print("connecting to host = %s, port = %u", log_t::flag_t::CRITICAL, url.ip.c_str(), url.port);
 						// Выполняем сброс кэша резолвера
@@ -299,7 +299,7 @@ void awh::client::Core::connect(const size_t sid) noexcept {
 							// Если unix-сокет используется
 							if(family == scheme_t::family_t::NIX)
 								// Выводим ионформацию об удачном подключении к серверу по unix-сокету
-								this->log->print("good host %s, socket = %d", log_t::flag_t::INFO, this->net.filename.c_str(), ret.first->second->addr.fd);
+								this->log->print("good host %s, socket = %d", log_t::flag_t::INFO, this->settings.filename.c_str(), ret.first->second->addr.fd);
 							// Выводим ионформацию об удачном подключении к серверу по хосту и порту
 							else this->log->print("good host %s [%s:%d], socket = %d", log_t::flag_t::INFO, url.domain.c_str(), url.ip.c_str(), url.port, ret.first->second->addr.fd);
 						}
@@ -311,7 +311,7 @@ void awh::client::Core::connect(const size_t sid) noexcept {
 					// Если unix-сокет используется
 					if(family == scheme_t::family_t::NIX)
 						// Выводим ионформацию об неудачном подключении к серверу по unix-сокету
-						this->log->print("client cannot be started [%s]", log_t::flag_t::CRITICAL, this->net.filename.c_str());
+						this->log->print("client cannot be started [%s]", log_t::flag_t::CRITICAL, this->settings.filename.c_str());
 					// Выводим ионформацию об неудачном подключении к серверу по хосту и порту
 					else this->log->print("client cannot be started [%s:%u]", log_t::flag_t::CRITICAL, url.ip.c_str(), url.port);
 				}
@@ -373,7 +373,7 @@ void awh::client::Core::reconnect(const size_t sid) noexcept {
 		// Если параметры URL запроса переданы и выполнение работы разрешено
 		if(!shm->url.empty() && (shm->status.wait == scheme_t::mode_t::DISCONNECT) && (shm->status.work == scheme_t::work_t::ALLOW)){
 			// Получаем семейство интернет-протоколов
-			const scheme_t::family_t family = (shm->isProxy() ? shm->proxy.family : this->net.family);
+			const scheme_t::family_t family = (shm->isProxy() ? shm->proxy.family : this->settings.family);
 			// Определяем тип протокола подключения
 			switch((uint8_t) family){
 				// Если тип протокола подключения IPv4
@@ -696,7 +696,7 @@ void awh::client::Core::open(const size_t sid) noexcept {
 			// Если параметры URL запроса переданы и выполнение работы разрешено
 			if(!shm->url.empty() && (shm->status.wait == scheme_t::mode_t::DISCONNECT) && (shm->status.work == scheme_t::work_t::ALLOW)){
 				// Получаем семейство интернет-протоколов
-				const scheme_t::family_t family = (shm->isProxy() ? shm->proxy.family : this->net.family);
+				const scheme_t::family_t family = (shm->isProxy() ? shm->proxy.family : this->settings.family);
 				// Определяем тип протокола подключения
 				switch((uint8_t) family){
 					// Если тип протокола подключения IPv4
@@ -712,7 +712,7 @@ void awh::client::Core::open(const size_t sid) noexcept {
 							// Устанавливаем событие на получение данных с DNS сервера
 							this->dns.on(std::bind(&scheme_t::resolving, shm, _1, _2, _3));
 							// Определяем тип протокола подключения
-							switch((uint8_t) this->net.family){
+							switch((uint8_t) this->settings.family){
 								// Если тип протокола подключения IPv4
 								case (uint8_t) scheme_t::family_t::IPV4:
 									// Выполняем резолвинг домена
@@ -727,7 +727,7 @@ void awh::client::Core::open(const size_t sid) noexcept {
 						// Выполняем запуск системы
 						} else if(!url.ip.empty()) {
 							// Определяем тип протокола подключения
-							switch((uint8_t) this->net.family){
+							switch((uint8_t) this->settings.family){
 								// Если тип протокола подключения IPv4
 								case (uint8_t) scheme_t::family_t::IPV4:
 									// Выполняем резолвинг домена
@@ -891,7 +891,7 @@ void awh::client::Core::close(const size_t aid) noexcept {
  */
 void awh::client::Core::switchProxy(const size_t aid) noexcept {
 	// Определяем тип производимого подключения
-	switch((uint8_t) this->net.sonet){
+	switch((uint8_t) this->settings.sonet){
 		// Если подключение производится по протоколу TCP
 		case (uint8_t) scheme_t::sonet_t::TCP:
 		// Если подключение производится по протоколу TLS
@@ -953,7 +953,7 @@ void awh::client::Core::timeout(const size_t aid) noexcept {
 		// Получаем объект подключения
 		scheme_t * shm = (scheme_t *) const_cast <awh::scheme_t *> (adj->parent);
 		// Получаем семейство интернет-протоколов
-		const scheme_t::family_t family = (shm->isProxy() ? shm->proxy.family : this->net.family);
+		const scheme_t::family_t family = (shm->isProxy() ? shm->proxy.family : this->settings.family);
 		// Определяем тип протокола подключения
 		switch((uint8_t) family){
 			// Если тип протокола подключения IPv4
@@ -978,7 +978,7 @@ void awh::client::Core::timeout(const size_t aid) noexcept {
 			// Если тип протокола подключения unix-сокет
 			case (uint8_t) scheme_t::family_t::NIX:
 				// Выводим сообщение в лог, о таймауте подключения
-				this->log->print("timeout host %s", log_t::flag_t::WARNING, this->net.filename.c_str());
+				this->log->print("timeout host %s", log_t::flag_t::WARNING, this->settings.filename.c_str());
 			break;
 		}
 		// Останавливаем чтение данных
@@ -1015,7 +1015,7 @@ void awh::client::Core::connected(const size_t aid) noexcept {
 			// Выполняем очистку существующих таймаутов
 			this->clearTimeout(shm->sid);
 			// Получаем семейство интернет-протоколов
-			const scheme_t::family_t family = (shm->isProxy() ? shm->proxy.family : this->net.family);
+			const scheme_t::family_t family = (shm->isProxy() ? shm->proxy.family : this->settings.family);
 			// Определяем тип протокола подключения
 			switch((uint8_t) family){
 				// Если тип протокола подключения IPv4
@@ -1038,7 +1038,7 @@ void awh::client::Core::connected(const size_t aid) noexcept {
 					// Запускаем чтение данных
 					this->enabled(engine_t::method_t::READ, it->first);
 					// Выводим в лог сообщение
-					if(!this->noinfo) this->log->print("connect client to server [%s]", log_t::flag_t::INFO, this->net.filename.c_str());
+					if(!this->noinfo) this->log->print("connect client to server [%s]", log_t::flag_t::INFO, this->settings.filename.c_str());
 				} break;
 			}
 			// Если подключение производится через, прокси-сервер
@@ -1170,7 +1170,7 @@ void awh::client::Core::transfer(const engine_t::method_t method, const size_t a
 						// Выполняем чтение до тех пор, пока всё не прочитаем
 						} while(this->method(aid) == engine_t::method_t::READ);
 						// Если тип сокета не установлен как UDP, запускаем чтение дальше
-						if((this->net.sonet != scheme_t::sonet_t::UDP) && (this->adjutants.count(aid) > 0))
+						if((this->settings.sonet != scheme_t::sonet_t::UDP) && (this->adjutants.count(aid) > 0))
 							// Запускаем чтение данных с клиента
 							adj->bev.events.read.start();
 					// Выполняем отключение клиента
@@ -1260,7 +1260,7 @@ void awh::client::Core::transfer(const engine_t::method_t method, const size_t a
 						break;
 					}
 					// Если тип сокета установлен как UDP, и данных для записи больше нет, запускаем чтение
-					if((this->net.sonet == scheme_t::sonet_t::UDP) && (this->adjutants.count(aid) > 0) && adj->buffer.empty())
+					if((this->settings.sonet == scheme_t::sonet_t::UDP) && (this->adjutants.count(aid) > 0) && adj->buffer.empty())
 						// Запускаем чтение данных с клиента
 						adj->bev.events.read.start();
 				} break;

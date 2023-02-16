@@ -108,8 +108,7 @@ namespace awh {
 				} coffer_t;
 			public:
 				// Создаем объект для работы с сетью
-				network_t nwk;
-			public:
+				net_t net;
 				// Создаём объект работы с URI ссылками
 				uri_t uri;
 			public:
@@ -155,7 +154,7 @@ namespace awh {
 				 * @param log объект для работы с логами
 				 */
 				SchemeProxy(const fmk_t * fmk, const log_t * log) noexcept :
-				 scheme_t(fmk, log), nwk(fmk), uri(fmk, &nwk),
+				 scheme_t(fmk, log), net(fmk, log), uri(fmk, &net),
 				 compress(awh::http_t::compress_t::NONE), _fmk(fmk), _log(log) {}
 				/**
 				 * ~SchemeProxy Деструктор

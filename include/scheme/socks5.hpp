@@ -94,8 +94,7 @@ namespace awh {
 				} coffer_t;
 			public:
 				// Создаем объект для работы с сетью
-				network_t nwk;
-			public:
+				net_t net;
 				// Создаём объект работы с URI ссылками
 				uri_t uri;
 			public:
@@ -137,7 +136,7 @@ namespace awh {
 				 * @param fmk объект фреймворка
 				 * @param log объект для работы с логами
 				 */
-				SchemeSocks5(const fmk_t * fmk, const log_t * log) noexcept : scheme_t(fmk, log), nwk(fmk), uri(fmk, &nwk), _fmk(fmk), _log(log) {}
+				SchemeSocks5(const fmk_t * fmk, const log_t * log) noexcept : scheme_t(fmk, log), net(fmk, log), uri(fmk, &net), _fmk(fmk), _log(log) {}
 				/**
 				 * ~SchemeSocks5 Деструктор
 				 */

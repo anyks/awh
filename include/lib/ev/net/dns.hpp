@@ -75,7 +75,7 @@
  */
 #include <sys/fmk.hpp>
 #include <sys/log.hpp>
-#include <net/nwk.hpp>
+#include <net/net.hpp>
 #include <net/socket.hpp>
 
 // Устанавливаем область видимости
@@ -348,7 +348,7 @@ namespace awh {
 			// Создаём объект работы с логами
 			const log_t * _log;
 			// Создаем объект сети
-			const network_t * _nwk;
+			const net_t * _net;
 		private:
 			// База событий
 			struct ev_loop * _base;
@@ -516,17 +516,17 @@ namespace awh {
 			 * DNS Конструктор
 			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
-			 * @param nwk объект методов для работы с сетью
+			 * @param net объект методов для работы с сетью
 			 */
-			DNS(const fmk_t * fmk, const log_t * log, const network_t * nwk) noexcept;
+			DNS(const fmk_t * fmk, const log_t * log, const net_t * net) noexcept;
 			/**
 			 * DNS Конструктор
 			 * @param fmk  объект фреймворка
 			 * @param log  объект для работы с логами
-			 * @param nwk  объект методов для работы с сетью
+			 * @param net  объект методов для работы с сетью
 			 * @param base база событий
 			 */
-			DNS(const fmk_t * fmk, const log_t * log, const network_t * nwk, struct ev_loop * base) noexcept;
+			DNS(const fmk_t * fmk, const log_t * log, const net_t * net, struct ev_loop * base) noexcept;
 			/**
 			 * ~DNS Деструктор
 			 */

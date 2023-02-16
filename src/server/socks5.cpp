@@ -124,23 +124,23 @@ void awh::server::ProxySocks5::connectServerCallback(const size_t aid, const siz
 			// Если сервер слушает порт
 			} else {
 				// Определяем тип хоста сервера
-				switch((uint8_t) this->_scheme.nwk.parseHost(this->_host)){
+				switch((uint8_t) this->_scheme.net.host(this->_host)){
 					// Если хост является адресом IPv4
-					case (uint8_t) network_t::type_t::IPV4: {
+					case (uint8_t) net_t::type_t::IPV4: {
 						// Устанавливаем хост сервера
 						adj->scheme.url.ip = this->_host;
 						// Устанавливаем тип сети
 						adj->scheme.url.family = AF_INET;
 					} break;
 					// Если хост является адресом IPv6
-					case (uint8_t) network_t::type_t::IPV6: {
+					case (uint8_t) net_t::type_t::IPV6: {
 						// Устанавливаем хост сервера
 						adj->scheme.url.ip = this->_host;
 						// Устанавливаем тип сети
 						adj->scheme.url.family = AF_INET6;
 					} break;
 					// Если хост является доменным именем
-					case (uint8_t) network_t::type_t::DOMNAME:
+					case (uint8_t) net_t::type_t::DOMN:
 						// Устанавливаем хост сервера
 						adj->scheme.url.domain = this->_host;
 					break;
@@ -293,19 +293,23 @@ void awh::server::ProxySocks5::readServerCallback(const char * buffer, const siz
 						// Устанавливаем хост сервера
 						adj->scheme.url.host = server.host;
 						// Определяем тип передаваемого сервера
-						switch((uint8_t) this->_nwk.parseHost(server.host)){
+						switch((uint8_t) this->_net.host(server.host)){
 							// Если хост является доменом или IPv4 адресом
-							case (uint8_t) network_t::type_t::IPV4:
+							case (uint8_t) net_t::type_t::IPV4:
 								// Устанавливаем IP адрес
 								adj->scheme.url.ip = server.host;
 							break;
 							// Если хост является IPv6 адресом, переводим ip адрес в полную форму
-							case (uint8_t) network_t::type_t::IPV6:
+							case (uint8_t) net_t::type_t::IPV6: {
+								// Создаём объкт для работы с адресами
+								net_t net(this->_fmk, this->_log);
+								// Выполняем установку хоста
+								net = server.host;
 								// Устанавливаем IP адрес
-								adj->scheme.url.ip = this->_nwk.setLowIp6(server.host);
-							break;
+								adj->scheme.url.ip = net;
+							} break;
 							// Если хост является доменным именем
-							case (uint8_t) network_t::type_t::DOMNAME: {
+							case (uint8_t) net_t::type_t::DOMN: {
 								// Выполняем очистку IP адреса
 								adj->scheme.url.ip.clear();
 								// Устанавливаем доменное имя
@@ -687,7 +691,7 @@ void awh::server::ProxySocks5::signalInterception(const awh::core_t::signals_t m
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
  */
-awh::server::ProxySocks5::ProxySocks5(const fmk_t * fmk, const log_t * log) noexcept : _port(SERVER_PORT), _host(""), _usock(""), _nwk(fmk), _core(fmk, log), _scheme(fmk, log), _fmk(fmk), _log(log) {
+awh::server::ProxySocks5::ProxySocks5(const fmk_t * fmk, const log_t * log) noexcept : _port(SERVER_PORT), _host(""), _usock(""), _net(fmk, log), _core(fmk, log), _scheme(fmk, log), _fmk(fmk), _log(log) {
 	// Устанавливаем флаг запрещающий вывод информационных сообщений для клиента
 	this->_core.client.noInfo(true);
 	// Устанавливаем протокол интернет-подключения

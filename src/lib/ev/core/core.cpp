@@ -575,9 +575,9 @@ void awh::Core::bind(Core * core) noexcept {
 			// Добавляем базу событий для DNS резолвера
 			core->dns.base(core->dispatch.base);
 			// Выполняем установку нейм-серверов для DNS резолвера IPv4
-			core->dns.replace(AF_INET, core->net.v4.second);
+			core->dns.replace(AF_INET, core->settings.v4.second);
 			// Выполняем установку нейм-серверов для DNS резолвера IPv6
-			core->dns.replace(AF_INET6, core->net.v6.second);
+			core->dns.replace(AF_INET6, core->settings.v6.second);
 			// Выполняем разблокировку потока
 			core->_mtx.status.unlock();
 		// Если базы событий совпадают
@@ -886,9 +886,9 @@ void awh::Core::rebase() noexcept {
 		// Добавляем базу событий для DNS резолвера
 		this->dns.base(this->dispatch.base);
 		// Выполняем установку нейм-серверов для DNS резолвера IPv4
-		this->dns.replace(AF_INET, this->net.v4.second);
+		this->dns.replace(AF_INET, this->settings.v4.second);
 		// Выполняем установку нейм-серверов для DNS резолвера IPv6
-		this->dns.replace(AF_INET6, this->net.v6.second);
+		this->dns.replace(AF_INET6, this->settings.v6.second);
 		// Если список таймеров получен
 		if(!mainTimers.empty()){
 			// Переходим по всему списку таймеров
@@ -1131,7 +1131,7 @@ void awh::Core::write(const char * buffer, const size_t size, const size_t aid) 
 					 */
 					#if !defined(_WIN32) && !defined(_WIN64)
 						// Определяем протокол подключения
-						switch((uint8_t) this->net.sonet){
+						switch((uint8_t) this->settings.sonet){
 							// Если протокол подключения UDP
 							case (uint8_t) scheme_t::sonet_t::UDP:
 							// Если протокол подключения DTLS
@@ -1488,7 +1488,7 @@ bool awh::Core::removeUnixSocket() noexcept {
 		// Если сервер в данный момент не работает
 		if((result = !this->working()))
 			// Выполняем очистку unix-сокета
-			this->net.filename.clear();
+			this->settings.filename.clear();
 	#endif
 	// Выводим результат
 	return result;
@@ -1508,9 +1508,9 @@ bool awh::Core::unixSocket(const string & socket) noexcept {
 		// Если адрес unix-сокета передан
 		if(!socket.empty())
 			// Выполняем установку unix-сокета
-			this->net.filename = this->fmk->format("/tmp/%s.sock", this->fmk->toLower(socket).c_str());
+			this->settings.filename = this->fmk->format("/tmp/%s.sock", this->fmk->toLower(socket).c_str());
 		// Если адрес unix-сокета не передан
-		else this->net.filename = this->fmk->format("/tmp/%s.sock", this->fmk->toLower(this->servName.c_str()).c_str());
+		else this->settings.filename = this->fmk->format("/tmp/%s.sock", this->fmk->toLower(this->servName.c_str()).c_str());
 	/**
 	 * Если операционной системой является MS Windows
 	 */
@@ -1521,7 +1521,7 @@ bool awh::Core::unixSocket(const string & socket) noexcept {
 		exit(EXIT_FAILURE);
 	#endif
 	// Выводим результат
-	return !this->net.filename.empty();
+	return !this->settings.filename.empty();
 }
 /**
  * sonet Метод извлечения типа сокета подключения
@@ -1529,7 +1529,7 @@ bool awh::Core::unixSocket(const string & socket) noexcept {
  */
 awh::scheme_t::sonet_t awh::Core::sonet() const noexcept {
 	// Выполняем вывод тип сокета подключения
-	return this->net.sonet;
+	return this->settings.sonet;
 }
 /**
  * sonet Метод установки типа сокета подключения
@@ -1539,13 +1539,13 @@ void awh::Core::sonet(const scheme_t::sonet_t sonet) noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->_mtx.main);
 	// Устанавливаем тип сокета
-	this->net.sonet = sonet;
+	this->settings.sonet = sonet;
 	/**
 	 * Если операционной системой не является Linux или FreeBSD
 	 */
 	#if !defined(__linux__) && !defined(__FreeBSD__)
 		// Если установлен протокол SCTP
-		if(this->net.sonet == scheme_t::sonet_t::SCTP){
+		if(this->settings.sonet == scheme_t::sonet_t::SCTP){
 			// Выводим в лог сообщение
 			this->log->print("SCTP protocol is allowed to be used only in the Linux or FreeBSD operating system", log_t::flag_t::CRITICAL);
 			// Выходим принудительно из приложения
@@ -1559,7 +1559,7 @@ void awh::Core::sonet(const scheme_t::sonet_t sonet) noexcept {
  */
 awh::scheme_t::family_t awh::Core::family() const noexcept {
 	// Выполняем вывод тип протокола интернета
-	return this->net.family;
+	return this->settings.family;
 }
 /**
  * family Метод установки типа протокола интернета
@@ -1569,9 +1569,9 @@ void awh::Core::family(const scheme_t::family_t family) noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->_mtx.main);
 	// Устанавливаем тип активного интернет-подключения
-	this->net.family = family;
+	this->settings.family = family;
 	// Если тип сокета подключения - unix-сокет
-	if((this->net.family == scheme_t::family_t::NIX) && this->net.filename.empty()){
+	if((this->settings.family == scheme_t::family_t::NIX) && this->settings.filename.empty()){
 		// Если перехват сигналов активирован
 		if(this->_signals == signals_t::ENABLED)
 			// Выполняем остановку отслеживания сигналов
@@ -1579,7 +1579,7 @@ void awh::Core::family(const scheme_t::family_t family) noexcept {
 		// Выполняем активацию адреса файла сокета
 		this->unixSocket();
 	// Если тип сокета подключения - хост и порт
-	} else if(this->net.family != scheme_t::family_t::NIX) {
+	} else if(this->settings.family != scheme_t::family_t::NIX) {
 		// Если перехват сигналов активирован
 		if(this->_signals == signals_t::ENABLED)
 			// Выполняем запуск отслеживания сигналов
@@ -1733,7 +1733,7 @@ void awh::Core::signalInterception(const signals_t mode) noexcept {
 			// Если передан флаг активации перехвата сигналов
 			case (uint8_t) signals_t::ENABLED: {
 				// Если тип сокета подключения не является unix-сокетом
-				if(this->net.family != scheme_t::family_t::NIX){
+				if(this->settings.family != scheme_t::family_t::NIX){
 					// Устанавливаем функцию обработки сигналов
 					this->_sig.on(std::bind(&core_t::signal, this, placeholders::_1));
 					// Выполняем запуск отслеживания сигналов
@@ -1795,11 +1795,11 @@ void awh::Core::network(const vector <string> & ip, const vector <string> & ns, 
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->_mtx.main);
 	// Устанавливаем тип сокета
-	this->net.sonet = sonet;
+	this->settings.sonet = sonet;
 	// Устанавливаем тип активного интернет-подключения
-	this->net.family = family;
+	this->settings.family = family;
 	// Если тип сокета подключения - unix-сокет
-	if((this->net.family == scheme_t::family_t::NIX) && this->net.filename.empty()){
+	if((this->settings.family == scheme_t::family_t::NIX) && this->settings.filename.empty()){
 		// Если перехват сигналов активирован
 		if(this->_signals == signals_t::ENABLED)
 			// Выполняем остановку отслеживания сигналов
@@ -1807,7 +1807,7 @@ void awh::Core::network(const vector <string> & ip, const vector <string> & ns, 
 		// Выполняем активацию адреса файла сокета
 		this->unixSocket();
 	// Если тип сокета подключения - хост и порт
-	} else if(this->net.family != scheme_t::family_t::NIX) {
+	} else if(this->settings.family != scheme_t::family_t::NIX) {
 		// Если перехват сигналов активирован
 		if(this->_signals == signals_t::ENABLED)
 			// Выполняем запуск отслеживания сигналов
@@ -1816,11 +1816,11 @@ void awh::Core::network(const vector <string> & ip, const vector <string> & ns, 
 		this->removeUnixSocket();
 	}
 	// Определяем тип интернет-протокола
-	switch((uint8_t) this->net.family){
+	switch((uint8_t) this->settings.family){
 		// Если - это интернет-протокол IPv4
 		case (uint8_t) scheme_t::family_t::IPV4: {
 			// Если IP адреса переданы, устанавливаем их
-			if(!ip.empty()) this->net.v4.first.assign(ip.cbegin(), ip.cend());
+			if(!ip.empty()) this->settings.v4.first.assign(ip.cbegin(), ip.cend());
 			// Если сервера имён переданы, устанавливаем их
 			if(!ns.empty()){
 				// Позиция разделителя порта в строке
@@ -1841,15 +1841,15 @@ void awh::Core::network(const vector <string> & ip, const vector <string> & ns, 
 					} else servers[i].host = ns[i];
 				}
 				// Устанавливаем полученный список серверов имён
-				this->net.v4.second.assign(servers.cbegin(), servers.cend());
+				this->settings.v4.second.assign(servers.cbegin(), servers.cend());
 				// Выполняем установку нейм-серверов для DNS резолвера IPv4
-				this->dns.replace(AF_INET, this->net.v4.second);
+				this->dns.replace(AF_INET, this->settings.v4.second);
 			}
 		} break;
 		// Если - это интернет-протокол IPv6
 		case (uint8_t) scheme_t::family_t::IPV6: {
 			// Если IP адреса переданы, устанавливаем их
-			if(!ip.empty()) this->net.v6.first.assign(ip.cbegin(), ip.cend());
+			if(!ip.empty()) this->settings.v6.first.assign(ip.cbegin(), ip.cend());
 			// Если сервера имён переданы, устанавливаем их
 			if(!ns.empty()){
 				// Позиция разделителя порта в строке
@@ -1876,9 +1876,9 @@ void awh::Core::network(const vector <string> & ip, const vector <string> & ns, 
 					} else if(ns[i].back() != ']') servers[i].host = ns[i];
 				}
 				// Устанавливаем полученный список серверов имён
-				this->net.v6.second.assign(servers.cbegin(), servers.cend());
+				this->settings.v6.second.assign(servers.cbegin(), servers.cend());
 				// Выполняем установку нейм-серверов для DNS резолвера IPv6
-				this->dns.replace(AF_INET6, this->net.v6.second);
+				this->dns.replace(AF_INET6, this->settings.v6.second);
 			}
 		} break;
 	}
@@ -1891,17 +1891,17 @@ void awh::Core::network(const vector <string> & ip, const vector <string> & ns, 
  * @param sonet  тип сокета подключения (TCP / UDP)
  */
 awh::Core::Core(const fmk_t * fmk, const log_t * log, const scheme_t::family_t family, const scheme_t::sonet_t sonet) noexcept :
- pid(getpid()), nwk(fmk), uri(fmk, &nwk), engine(fmk, log, &uri),
- dns(fmk, log, &nwk), dispatch(this), _fs(fmk, log), _sig(dispatch.base),
+ pid(getpid()), net(fmk, log), uri(fmk, &net), engine(fmk, log, &uri),
+ dns(fmk, log, &net), dispatch(this), _fs(fmk, log), _sig(dispatch.base),
  status(status_t::STOP), type(engine_t::type_t::CLIENT), _signals(signals_t::DISABLED),
  mode(false), noinfo(false), persist(false), cores(0), servName(AWH_SHORT_NAME),
  _persIntvl(PERSIST_INTERVAL), fmk(fmk), log(log), _crash(nullptr), _active(nullptr) {
 	// Устанавливаем тип сокета
-	this->net.sonet = sonet;
+	this->settings.sonet = sonet;
 	// Устанавливаем тип активного интернет-подключения
-	this->net.family = family;
+	this->settings.family = family;
 	// Если тип сокета подключения - unix-сокет
-	if(this->net.family == scheme_t::family_t::NIX)
+	if(this->settings.family == scheme_t::family_t::NIX)
 		// Выполняем активацию адреса файла сокета
 		this->unixSocket();
 	// Устанавливаем базу событий для DNS резолвера
@@ -1928,15 +1928,15 @@ awh::Core::~Core() noexcept {
 	// Устанавливаем статус сетевого ядра
 	this->status = status_t::STOP;
 	// Если требуется использовать unix-сокет и ядро является сервером
-	if((this->net.family == scheme_t::family_t::NIX) && (this->type == engine_t::type_t::SERVER)){
+	if((this->settings.family == scheme_t::family_t::NIX) && (this->type == engine_t::type_t::SERVER)){
 		/**
 		 * Если операционной системой не является Windows
 		 */
 		#if !defined(_WIN32) && !defined(_WIN64)
 			// Если сокет в файловой системе уже существует, удаляем его
-			if(this->_fs.isSock(this->net.filename))
+			if(this->_fs.isSock(this->settings.filename))
 				// Удаляем файл сокета
-				::unlink(this->net.filename.c_str());
+				::unlink(this->settings.filename.c_str());
 		#endif
 	}
 	// Выполняем разблокировку потока

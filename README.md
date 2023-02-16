@@ -1430,3 +1430,246 @@ int main(int argc, char * argv[]){
 	return 0;
 }
 ```
+
+### Example IP Address
+
+```c++
+#include <net/net.hpp>
+
+using namespace std;
+using namespace awh;
+
+int main(int argc, char * argv[]){
+	fmk_t fmk;
+	log_t log(&fmk);
+	net_t net(&fmk, &log);
+
+	net = "[2001:0db8:11a3:09d7:1f34:8a2e:07a0:765d]";
+	cout << " [2001:0db8:11a3:09d7:1f34:8a2e:07a0:765d] == " << net << endl;
+	// -> [2001:0db8:11a3:09d7:1f34:8a2e:07a0:765d] == 2001:DB8:11A3:9D7:1F34:8A2E:7A0:765D
+
+	net = "2001:0db8:0000:0000:0000:0000:ae21:ad12";
+	cout << " 2001:0db8:0000:0000:0000:0000:ae21:ad12 == " << net << endl;
+	// -> 2001:0db8:0000:0000:0000:0000:ae21:ad12 == 2001:DB8::AE21:AD12
+
+	net = "2001:db8::ae21:ad12";
+	cout << " 2001:db8::ae21:ad12 == " << net.get(net_t::format_t::LONG) << " and " << net.get(net_t::format_t::MIDLE) << endl;
+	// -> 2001:db8::ae21:ad12 == 2001:0DB8:0000:0000:0000:0000:AE21:AD12 and 2001:DB8:0:0:0:0:AE21:AD12
+
+	net = "0000:0000:0000:0000:0000:0000:ae21:ad12";
+	cout << " 0000:0000:0000:0000:0000:0000:ae21:ad12 == " << net.get(net_t::format_t::SHORT) << endl;
+	// -> 0000:0000:0000:0000:0000:0000:ae21:ad12 == ::AE21:AD12
+
+	net = "::ae21:ad12";
+	cout << " ::ae21:ad12 == " << net.get(net_t::format_t::MIDLE) << endl;
+	// -> ::ae21:ad12 == 0:0:0:0:0:0:AE21:AD12
+
+	net = "2001:0db8:11a3:09d7:1f34::";
+	cout << " 2001:0db8:11a3:09d7:1f34:: == " << net.get(net_t::format_t::LONG) << endl;
+	// -> 2001:0db8:11a3:09d7:1f34:: == 2001:0DB8:11A3:09D7:1F34:0000:0000:0000
+
+	net = "::ffff:192.0.2.1";
+	cout << " ::ffff:192.0.2.1 == " << net << endl;
+	// -> ::ffff:192.0.2.1 == ::FFFF:192.0.2.1
+
+	net = "::1";
+	cout << " ::1 == " << net.get(net_t::format_t::LONG) << endl;
+	// -> ::1 == 0000:0000:0000:0000:0000:0000:0000:0001
+
+	net = "[::]";
+	cout << " [::] == " << net.get(net_t::format_t::LONG) << endl;
+	// -> [::] == 0000:0000:0000:0000:0000:0000:0000:0000
+
+	net = "46.39.230.51";
+	cout << " 46.39.230.51 == " << net.get(net_t::format_t::LONG) << endl;
+	// -> 46.39.230.51 == 046.039.230.051
+
+	net = "192.16.0.1";
+	cout << " 192.16.0.1 == " << net.get(net_t::format_t::LONG) << endl;
+	// -> 192.16.0.1 == 192.016.000.001
+
+	net = "2001:0db8:11a3:09d7:1f34:8a2e:07a0:765d";
+	cout << " Part of the address: 2001:0db8:11a3:09d7:1f34:8a2e:07a0:765d == " << net.v6()[0] << " and " << net.v6()[1] << endl;
+	// -> Part of the address: 2001:0db8:11a3:09d7:1f34:8a2e:07a0:765d == 709054858341654529 and 8528981655404027700
+
+	net = "46.39.230.51";
+	cout << " Part of the address: 46.39.230.51 == " << net.v4() << endl;
+	// -> Part of the address: 46.39.230.51 == 870721326
+
+	net = "2001:1234:abcd:5678:9877:3322:5541:aabb";
+	net.impose(53, net_t::addr_t::NETW);
+	cout << " Prefix Overlay: 2001:1234:abcd:5678:9877:3322:5541:aabb/53 == " << net << endl;
+	// -> Prefix Overlay: 2001:1234:abcd:5678:9877:3322:5541:aabb/53 == 2001:1234:ABCD:5000::
+
+	net = "2001:1234:abcd:5678:9877:3322:5541:aabb";
+	net.impose("FFFF:FFFF:FFFF:F800::", net_t::addr_t::NETW);
+	cout << " Mask Overlay: 2001:1234:abcd:5678:9877:3322:5541:aabb/FFFF:FFFF:FFFF:F800:: == " << net << endl;
+	// -> Mask Overlay: 2001:1234:abcd:5678:9877:3322:5541:aabb/FFFF:FFFF:FFFF:F800:: == 2001:1234:ABCD:5000::
+
+	net = "192.168.3.192";
+	net.impose(9, net_t::addr_t::NETW);
+	cout << " Prefix Overlay: 192.168.3.192/9 == " << net << endl;
+	// -> Prefix Overlay: 192.168.3.192/9 == 192.128.0.0
+
+	net = "192.168.3.192";
+	net.impose("255.128.0.0", net_t::addr_t::NETW);
+	cout << " Mask Overlay: 192.168.3.192/255.128.0.0 == " << net << endl;
+	// -> Mask Overlay: 192.168.3.192/255.128.0.0 == 192.128.0.0
+
+	net = "192.168.3.192";
+	net.impose("255.255.255.0", net_t::addr_t::NETW);
+	cout << " Mask Overlay: 192.168.3.192/255.255.255.0 == " << net << endl;
+	// -> Mask Overlay: 192.168.3.192/255.255.255.0 == 192.168.3.0
+
+	net = "2001:1234:abcd:5678:9877:3322:5541:aabb";
+	net.impose(53, net_t::addr_t::HOST);
+	cout << " Get the host address: 2001:1234:abcd:5678:9877:3322:5541:aabb/53 == " << net << endl;
+	// -> Get the host address: 2001:1234:abcd:5678:9877:3322:5541:aabb/53 == ::678:9877:3322:5541:AABB
+
+	net = "2001:1234:abcd:5678:9877:3322:5541:aabb";
+	net.impose("FFFF:FFFF:FFFF:F800::", net_t::addr_t::HOST);
+	cout << " Get the host address: 2001:1234:abcd:5678:9877:3322:5541:aabb/FFFF:FFFF:FFFF:F800:: == " << net << endl;
+	// -> Get the host address: 2001:1234:abcd:5678:9877:3322:5541:aabb/FFFF:FFFF:FFFF:F800:: == ::678:9877:3322:5541:AABB
+
+	net = "192.168.3.192";
+	net.impose(9, net_t::addr_t::HOST);
+	cout << " Get the host address: 192.168.3.192/9 == " << net << endl;
+	// -> Get the host address: 192.168.3.192/9 == 0.40.3.192
+
+	net = "192.168.3.192";
+	net.impose("255.128.0.0", net_t::addr_t::HOST);
+	cout << " Get the host address: 192.168.3.192/255.128.0.0 == " << net << endl;
+	// -> Get the host address: 192.168.3.192/255.128.0.0 == 0.40.3.192
+
+	net = "192.168.3.192";
+	net.impose(24, net_t::addr_t::HOST);
+	cout << " Get the host address: 192.168.3.192/24 == " << net << endl;
+	// -> Get the host address: 192.168.3.192/24 == 0.0.0.192
+
+	net = "192.168.3.192";
+	net.impose("255.255.255.0", net_t::addr_t::HOST);
+	cout << " Get the host address: 192.168.3.192/255.255.255.0 == " << net << endl;
+	// -> Get the host address: 192.168.3.192/255.255.255.0 == 0.0.0.192
+
+	net = "192.168.3.192";
+	cout << " Getting the address mask from the network prefix 9 == " << net.prefix2Mask(9) << endl;
+	cout << " Getting the network prefix from the address mask 255.128.0.0 == " << (u_short) net.mask2Prefix("255.128.0.0") << endl;
+	// -> Getting the address mask from the network prefix 9 == 255.128.0.0
+	// -> Getting the network prefix from the address mask 255.128.0.0 == 9
+
+	net = "2001:1234:abcd:5678:9877:3322:5541:aabb";
+	cout << " Getting the address mask from the network prefix 53 == " << net.prefix2Mask(53) << endl;
+	cout << " Getting the network prefix from the address mask FFFF:FFFF:FFFF:F800:: == " << (u_short) net.mask2Prefix("FFFF:FFFF:FFFF:F800::") << endl;
+	// -> Getting the address mask from the network prefix 53 == FFFF:FFFF:FFFF:F800::
+	// -> Getting the network prefix from the address mask FFFF:FFFF:FFFF:F800:: == 53
+
+	net = "192.168.3.192";
+	cout << boolalpha;
+	cout << " Performing an address match check 192.168.3.192 network 192.168.0.0 == " << net.mapping("192.168.0.0") << endl;
+	// -> Performing an address match check 192.168.3.192 network 192.168.0.0 == true
+	
+	net = "2001:1234:abcd:5678:9877:3322:5541:aabb";
+	cout << boolalpha;
+	cout << " Performing an address match check 2001:1234:abcd:5678:9877:3322:5541:aabb network 2001:1234:abcd:5678:: == " << net.mapping("2001:1234:abcd:5678::") << endl;
+	// -> Performing an address match check 2001:1234:abcd:5678:9877:3322:5541:aabb network 2001:1234:abcd:5678:: == true
+	
+	net = "192.168.3.192";
+	cout << boolalpha;
+	cout << " Performing an address match check 192.168.3.192 network 192.128.0.0/9 == " << net.mapping("192.128.0.0", 9, net_t::addr_t::NETW) << endl;
+	// -> Performing an address match check 192.168.3.192 network 192.128.0.0/9 == true
+
+	net = "2001:1234:abcd:5678:9877:3322:5541:aabb";
+	cout << boolalpha;
+	cout << " Performing an address match check 2001:1234:abcd:5678:9877:3322:5541:aabb network 2001:1234:abcd:5000::/53 == " << net.mapping("2001:1234:abcd:5000::", 53, net_t::addr_t::NETW) << endl;
+	// -> Performing an address match check 2001:1234:abcd:5678:9877:3322:5541:aabb network 2001:1234:abcd:5000::/53 == true
+
+	net = "192.168.3.192";
+	cout << boolalpha;
+	cout << " Performing an address match check 192.168.3.192 network 192.128.0.0/255.128.0.0 == " << net.mapping("192.128.0.0", "255.128.0.0", net_t::addr_t::NETW) << endl;
+	// -> Performing an address match check 192.168.3.192 network сети 192.128.0.0/255.128.0.0 == true
+
+	net = "2001:1234:abcd:5678:9877:3322:5541:aabb";
+	cout << boolalpha;
+	cout << " Performing an address match check 2001:1234:abcd:5678:9877:3322:5541:aabb network 2001:1234:abcd:5000::/FFFF:FFFF:FFFF:F800:: == " << net.mapping("2001:1234:abcd:5000::", "FFFF:FFFF:FFFF:F800::", net_t::addr_t::NETW) << endl;
+	// -> Performing an address match check 2001:1234:abcd:5678:9877:3322:5541:aabb network 2001:1234:abcd:5000::/FFFF:FFFF:FFFF:F800:: == true
+
+	net = "192.168.3.192";
+	cout << boolalpha;
+	cout << " Performing an address match check 192.168.3.192 host 9/0.40.3.192 == " << net.mapping("0.40.3.192", 9, net_t::addr_t::HOST) << endl;
+	// -> Performing an address match check 192.168.3.192 host 9/0.40.3.192 == true
+
+	net = "2001:1234:abcd:5678:9877:3322:5541:aabb";
+	cout << boolalpha;
+	cout << " Performing an address match check 2001:1234:abcd:5678:9877:3322:5541:aabb host 53/::678:9877:3322:5541:AABB == " << net.mapping("::678:9877:3322:5541:AABB", 53, net_t::addr_t::HOST) << endl;
+	// -> Performing an address match check 2001:1234:abcd:5678:9877:3322:5541:aabb host 53/::678:9877:3322:5541:AABB == true
+
+	net = "192.168.3.192";
+	cout << boolalpha;
+	cout << " Performing an address match check 192.168.3.192 host 255.128.0.0/0.40.3.192 == " << net.mapping("0.40.3.192", "255.128.0.0", net_t::addr_t::HOST) << endl;
+	// -> Performing an address match check 192.168.3.192 host 255.128.0.0/0.40.3.192 == true
+
+	net = "2001:1234:abcd:5678:9877:3322:5541:aabb";
+	cout << boolalpha;
+	cout << " Performing an address match check 2001:1234:abcd:5678:9877:3322:5541:aabb host FFFF:FFFF:FFFF:F800::/::678:9877:3322:5541:AABB == " << net.mapping("::678:9877:3322:5541:AABB", "FFFF:FFFF:FFFF:F800::", net_t::addr_t::HOST) << endl;
+	// -> Performing an address match check 2001:1234:abcd:5678:9877:3322:5541:aabb host FFFF:FFFF:FFFF:F800::/::678:9877:3322:5541:AABB == true
+
+	net = "192.168.3.192";
+	cout << boolalpha;
+	cout << " Checking if the address is in the range 192.168.3.192 in the range [192.168.3.100 - 192.168.3.200] == " << net.range("192.168.3.100", "192.168.3.200", 24) << endl;
+	// -> Checking if the address is in the range 192.168.3.192 in the range [192.168.3.100 - 192.168.3.200] == true
+
+	net = "2001:1234:abcd:5678:9877:3322:5541:aabb";
+	const auto & dump = net.data <vector <uint16_t>> ();
+	for(auto & item : dump)
+		cout << " IPv6 address chunk data == " << item << endl;
+	// -> IPv6 address chunk data == 8193
+	// -> IPv6 address chunk data == 4660
+	// -> IPv6 address chunk data == 43981
+	// -> IPv6 address chunk data == 22136
+	// -> IPv6 address chunk data == 39031
+	// -> IPv6 address chunk data == 13090
+	// -> IPv6 address chunk data == 21825
+	// -> IPv6 address chunk data == 43707
+
+	net = "46.39.230.51";
+	cout << boolalpha;
+	cout << " Checking if the IP address is global 46.39.230.51 == " << (net.mode() == net_t::mode_t::GLOBAL) << endl;
+	// -> Checking if the IP address is global 46.39.230.51 == true
+
+	net = "192.168.31.12";
+	cout << boolalpha;
+	cout << " Checking if the IP address is local 192.168.31.12 == " << (net.mode() == net_t::mode_t::LOCAL) << endl;
+	// -> Checking if the IP address is local 192.168.31.12 == true
+
+	net = "0.0.0.0";
+	cout << boolalpha;
+	cout << " Checking if the IP address is reserved 0.0.0.0 == " << (net.mode() == net_t::mode_t::RESERV) << endl;
+	// -> Checking if the IP address is reserved 0.0.0.0 == true
+
+	net = "[2a00:1450:4010:c0a::8b]";
+	cout << boolalpha;
+	cout << " Checking if the IP address is global [2a00:1450:4010:c0a::8b] == " << (net.mode() == net_t::mode_t::GLOBAL) << endl;
+	// -> Checking if the IP address is global [2a00:1450:4010:c0a::8b] == true
+
+	net = "::1";
+	cout << boolalpha;
+	cout << " Checking if the IP address is local [::1] == " << (net.mode() == net_t::mode_t::LOCAL) << endl;
+	// -> Checking if the IP address is local [::1] == true
+
+	net = "::";
+	cout << boolalpha;
+	cout << " Checking if the IP address is reserved [::] == " << (net.mode() == net_t::mode_t::RESERV) << endl;
+	// -> Checking if the IP address is reserved [::] == true
+
+	string ip = "2001:0db8:0000:0000:0000:0000:ae21:ad12";
+	cout << " Long address entry == " << ip << endl;
+	// -> Long address entry == 2001:0db8:0000:0000:0000:0000:ae21:ad12
+
+	net = ip;
+	ip = net;
+	cout << " Short address entry == " << ip << endl;
+	// -> Short address entry == 2001:DB8::AE21:AD12
+
+	return 0;
+}
+```

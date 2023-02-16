@@ -1144,15 +1144,25 @@ void awh::DNS::server(const int family, const serv_t & server) noexcept {
 		// Устанавливаем порт сервера
 		result.port = server.port;
 		// Определяем тип передаваемого сервера
-		switch((uint8_t) this->_nwk->parseHost(server.host)){
+		switch((uint8_t) this->_net->host(server.host)){
 			// Если хост является доменом или IPv4 адресом
-			case (uint8_t) network_t::type_t::IPV4: result.host = server.host; break;
+			case (uint8_t) net_t::type_t::IPV4:
+				// Устанавливаем адрес как он есть
+				result.host = server.host;
+			break;
 			// Если хост является IPv6 адресом, переводим ip адрес в полную форму
-			case (uint8_t) network_t::type_t::IPV6: result.host = this->_nwk->setLowIp6(server.host); break;
+			case (uint8_t) net_t::type_t::IPV6: {
+				// Создаём объкт для работы с адресами
+				net_t net(this->_fmk, this->_log);
+				// Выполняем получение адреса хоста
+				net = server.host;
+				// Извлекаем хост в нужном нам виде
+				result.host = net;
+			} break;
 			// Если хост является доменным именем
-			case (uint8_t) network_t::type_t::DOMNAME: {
+			case (uint8_t) net_t::type_t::DOMN: {
 				// Создаём объект DNS
-				unique_ptr <dns_t> dns(new dns_t(this->_fmk, this->_log, this->_nwk, this->_base));
+				unique_ptr <dns_t> dns(new dns_t(this->_fmk, this->_log, this->_net, this->_base));
 				// Устанавливаем доменное имя локального DNS резолвера
 				dns->_domain = server.host;
 				// Устанавливаем хост сервера
@@ -1296,31 +1306,31 @@ size_t awh::DNS::resolve(const string & host, const int family) noexcept {
 				cout << domain << endl;
 			#endif
 			// Определяем тип передаваемого сервера
-			switch((uint8_t) this->_nwk->parseHost(domain)){
+			switch((uint8_t) this->_net->host(domain)){
 				// Если домен является IPv4 адресом
-				case (uint8_t) network_t::type_t::IPV4:
+				case (uint8_t) net_t::type_t::IPV4:
 				// Если домен является IPv6 адресом
-				case (uint8_t) network_t::type_t::IPV6: {
+				case (uint8_t) net_t::type_t::IPV6: {
 					// Если функция обратного вызова установлена
 					if(this->_fn != nullptr)
 						// Выводим полученный IP адрес
 						this->_fn(host, family, result);
 				} break;
 				// Если домен является аппаратным адресом сетевого интерфейса
-				case (uint8_t) network_t::type_t::MAC:
+				case (uint8_t) net_t::type_t::MAC:
 				// Если домен является адресом/Маски сети
-				case (uint8_t) network_t::type_t::NETWORK:
+				case (uint8_t) net_t::type_t::NETW:
 				// Если домен является адресом в файловой системе
-				case (uint8_t) network_t::type_t::ADDRESS:
+				case (uint8_t) net_t::type_t::ADDR:
 				// Если домен является HTTP адресом
-				case (uint8_t) network_t::type_t::HTTPADDRESS: {
+				case (uint8_t) net_t::type_t::HTTP: {
 					// Если функция обратного вызова установлена
 					if(this->_fn != nullptr)
 						// Выводим полученный IP адрес
 						this->_fn("", family, result);
 				} break;
 				// Если домен является доменным именем
-				case (uint8_t) network_t::type_t::DOMNAME: {
+				case (uint8_t) net_t::type_t::DOMN: {
 					// Выполняем поиск IP адреса в кэше DNS
 					const string & ip = this->cache(family, domain);
 					// Если IP адрес получен
@@ -1451,9 +1461,10 @@ size_t awh::DNS::resolve(const string & host, const int family) noexcept {
  * DNS Конструктор
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
- * @param nwk объект методов для работы с сетью
+ * @param net объект методов для работы с сетью
  */
-awh::DNS::DNS(const fmk_t * fmk, const log_t * log, const network_t * nwk) noexcept : _domain(""), _timeout(30), _fn(nullptr), _fmk(fmk), _log(log), _nwk(nwk), _base(nullptr) {
+awh::DNS::DNS(const fmk_t * fmk, const log_t * log, const net_t * net) noexcept :
+ _domain(""), _timeout(30), _fn(nullptr), _fmk(fmk), _log(log), _net(net), _base(nullptr) {
 	// Устанавливаем список серверов IPv4
 	this->replace(AF_INET);
 	// Устанавливаем список серверов IPv6
@@ -1463,10 +1474,11 @@ awh::DNS::DNS(const fmk_t * fmk, const log_t * log, const network_t * nwk) noexc
  * DNS Конструктор
  * @param fmk  объект фреймворка
  * @param log  объект для работы с логами
- * @param nwk  объект методов для работы с сетью
+ * @param net  объект методов для работы с сетью
  * @param base база событий
  */
-awh::DNS::DNS(const fmk_t * fmk, const log_t * log, const network_t * nwk, struct ev_loop * base) noexcept : _domain(""), _timeout(30), _fn(nullptr), _fmk(fmk), _log(log), _nwk(nwk), _base(base) {
+awh::DNS::DNS(const fmk_t * fmk, const log_t * log, const net_t * net, struct ev_loop * base) noexcept :
+_domain(""), _timeout(30), _fn(nullptr), _fmk(fmk), _log(log), _net(net), _base(base) {
 	// Устанавливаем список серверов IPv4
 	this->replace(AF_INET);
 	// Устанавливаем список серверов IPv6

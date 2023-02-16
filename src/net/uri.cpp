@@ -120,18 +120,21 @@ awh::URI::url_t awh::URI::parse(const string & url) const noexcept {
 				// Выполняем извлечение хоста запроса
 				result.host = std::forward <const string> (it->second);
 				// Определяем тип домена
-				switch(this->_nwk->checkNetworkByIp(result.host)){
+				switch((uint8_t) this->_net->host(result.host)){
 					// Если - это доменное имя
-					case 0: result.domain = result.host; break;
-					// Если - это IP адрес сети v4
-					case 4: {
+					case (uint8_t) net_t::type_t::DOMN:
+						// Устанавливаем доменное имя
+						result.domain = result.host;
+					break;
+					// Если - это IP адрес сети IPv4
+					case (uint8_t) net_t::type_t::IPV4: {
 						// Устанавливаем IP адрес
 						result.ip = result.host;
 						// Устанавливаем тип сети
 						result.family = AF_INET;
 					} break;
-					// Если - это IP адрес сети v6
-					case 6: {
+					// Если - это IP адрес сети IPv6
+					case (uint8_t) net_t::type_t::IPV6: {
 						// Устанавливаем IP адрес
 						result.ip = result.host;
 						// Устанавливаем тип сети
@@ -511,13 +514,16 @@ map <awh::URI::flag_t, string> awh::URI::split(const string & uri) const noexcep
 							// Иначе если хост не установлен
 							else if(result.count(flag_t::HOST) < 1) {								
 								// Определяем тип домена
-								switch(this->_nwk->checkNetworkByIp(data)){
+								switch((uint8_t) this->_net->host(data)){
 									// Если - это доменное имя
-									case 0:
-									// Если - это IP адрес сети v4
-									case 4:
-									// Если - это IP адрес сети v6
-									case 6: result.emplace(flag_t::HOST, this->_fmk->toLower(data)); break;
+									case (uint8_t) net_t::type_t::DOMN:
+									// Если - это IP адрес сети IPv4
+									case (uint8_t) net_t::type_t::IPV4:
+									// Если - это IP адрес сети IPv6
+									case (uint8_t) net_t::type_t::IPV6:
+										// Устанавливаем результат хоста
+										result.emplace(flag_t::HOST, this->_fmk->toLower(data));
+									break;
 								}
 							}
 						}
