@@ -1667,6 +1667,7 @@ int main(int argc, char * argv[]){
 
 	net = ip;
 	ip = net;
+	
 	cout << " Short address entry == " << ip << endl;
 	// -> Short address entry == 2001:DB8::AE21:AD12
 
