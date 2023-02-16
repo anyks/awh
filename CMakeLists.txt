@@ -277,6 +277,7 @@ set(SOURCE_FILES
 )
 
 # Задаем именя библиотеки и бинарника
+set(IP_APP_NAME ip)
 set(WSC_APP_NAME wsc)
 set(WSS_APP_NAME wss)
 set(DNS_APP_NAME dns)
@@ -311,6 +312,7 @@ if (ENABLE_CONSOLE_APP)
         SET(CMAKE_RC_COMPILE_OBJECT "<CMAKE_RC_COMPILER> <FLAGS> -O coff <DEFINES> -i <SOURCE> -o <OBJECT>")
     endif(MINGW)
 
+    add_executable(${IP_APP_NAME} sample/ip.cpp ${RES_FILES})
     add_executable(${DNS_APP_NAME} sample/dns.cpp ${RES_FILES})
     add_executable(${WSC_APP_NAME} sample/wsc2.cpp ${RES_FILES})
     add_executable(${WSS_APP_NAME} sample/wss.cpp ${RES_FILES})
@@ -324,7 +326,8 @@ if (ENABLE_CONSOLE_APP)
 
     # Если операционной системой является Windows
     if(${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
-        target_link_libraries(${WSC_APP_NAME}
+        target_link_libraries(
+            ${IP_APP_NAME}
             ${CURRENT_LIB_NAME}
             ${EVENT_LIBRARY}
             ${ZLIB_LIBRARY}
@@ -334,7 +337,8 @@ if (ENABLE_CONSOLE_APP)
             ${AWH_IDN}
         )
 
-        target_link_libraries(${WSS_APP_NAME}
+        target_link_libraries(
+            ${WSC_APP_NAME}
             ${CURRENT_LIB_NAME}
             ${EVENT_LIBRARY}
             ${ZLIB_LIBRARY}
@@ -344,7 +348,8 @@ if (ENABLE_CONSOLE_APP)
             ${AWH_IDN}
         )
 
-        target_link_libraries(${DNS_APP_NAME}
+        target_link_libraries(
+            ${WSS_APP_NAME}
             ${CURRENT_LIB_NAME}
             ${EVENT_LIBRARY}
             ${ZLIB_LIBRARY}
@@ -354,7 +359,8 @@ if (ENABLE_CONSOLE_APP)
             ${AWH_IDN}
         )
 
-        target_link_libraries(${SOCKS5_APP_NAME}
+        target_link_libraries(
+            ${DNS_APP_NAME}
             ${CURRENT_LIB_NAME}
             ${EVENT_LIBRARY}
             ${ZLIB_LIBRARY}
@@ -364,7 +370,8 @@ if (ENABLE_CONSOLE_APP)
             ${AWH_IDN}
         )
 
-        target_link_libraries(${PROXY_APP_NAME}
+        target_link_libraries(
+            ${SOCKS5_APP_NAME}
             ${CURRENT_LIB_NAME}
             ${EVENT_LIBRARY}
             ${ZLIB_LIBRARY}
@@ -374,7 +381,8 @@ if (ENABLE_CONSOLE_APP)
             ${AWH_IDN}
         )
 
-        target_link_libraries(${TIMER_APP_NAME}
+        target_link_libraries(
+            ${PROXY_APP_NAME}
             ${CURRENT_LIB_NAME}
             ${EVENT_LIBRARY}
             ${ZLIB_LIBRARY}
@@ -384,7 +392,8 @@ if (ENABLE_CONSOLE_APP)
             ${AWH_IDN}
         )
 
-        target_link_libraries(${CLIENT_APP_NAME}
+        target_link_libraries(
+            ${TIMER_APP_NAME}
             ${CURRENT_LIB_NAME}
             ${EVENT_LIBRARY}
             ${ZLIB_LIBRARY}
@@ -394,7 +403,8 @@ if (ENABLE_CONSOLE_APP)
             ${AWH_IDN}
         )
 
-        target_link_libraries(${SERVER_APP_NAME}
+        target_link_libraries(
+            ${CLIENT_APP_NAME}
             ${CURRENT_LIB_NAME}
             ${EVENT_LIBRARY}
             ${ZLIB_LIBRARY}
@@ -404,7 +414,8 @@ if (ENABLE_CONSOLE_APP)
             ${AWH_IDN}
         )
 
-        target_link_libraries(${WEB_CLIENT_APP_NAME}
+        target_link_libraries(
+            ${SERVER_APP_NAME}
             ${CURRENT_LIB_NAME}
             ${EVENT_LIBRARY}
             ${ZLIB_LIBRARY}
@@ -414,7 +425,19 @@ if (ENABLE_CONSOLE_APP)
             ${AWH_IDN}
         )
 
-        target_link_libraries(${WEB_SERVER_APP_NAME}
+        target_link_libraries(
+            ${WEB_CLIENT_APP_NAME}
+            ${CURRENT_LIB_NAME}
+            ${EVENT_LIBRARY}
+            ${ZLIB_LIBRARY}
+            ${BROTLI_LIBRARIES}
+            ${OPENSSL_LIBRARIES}
+            ${WINFLAGS}
+            ${AWH_IDN}
+        )
+
+        target_link_libraries(
+            ${WEB_SERVER_APP_NAME}
             ${CURRENT_LIB_NAME}
             ${EVENT_LIBRARY}
             ${ZLIB_LIBRARY}
@@ -426,7 +449,8 @@ if (ENABLE_CONSOLE_APP)
 
      # Сборка примеров с поддержкой модуля AWH_IDN
     elseif(CMAKE_BUILD_IDN)
-        target_link_libraries(${WSC_APP_NAME}
+        target_link_libraries(
+            ${IP_APP_NAME}
             ${CURRENT_LIB_NAME}
             ${EVENT_LIBRARY}
             ${ZLIB_LIBRARY}
@@ -437,7 +461,8 @@ if (ENABLE_CONSOLE_APP)
             ${AWH_IDN}
         )
 
-        target_link_libraries(${WSS_APP_NAME}
+        target_link_libraries(
+            ${WSC_APP_NAME}
             ${CURRENT_LIB_NAME}
             ${EVENT_LIBRARY}
             ${ZLIB_LIBRARY}
@@ -448,7 +473,8 @@ if (ENABLE_CONSOLE_APP)
             ${AWH_IDN}
         )
 
-        target_link_libraries(${DNS_APP_NAME}
+        target_link_libraries(
+            ${WSS_APP_NAME}
             ${CURRENT_LIB_NAME}
             ${EVENT_LIBRARY}
             ${ZLIB_LIBRARY}
@@ -459,7 +485,8 @@ if (ENABLE_CONSOLE_APP)
             ${AWH_IDN}
         )
 
-        target_link_libraries(${SOCKS5_APP_NAME}
+        target_link_libraries(
+            ${DNS_APP_NAME}
             ${CURRENT_LIB_NAME}
             ${EVENT_LIBRARY}
             ${ZLIB_LIBRARY}
@@ -470,7 +497,8 @@ if (ENABLE_CONSOLE_APP)
             ${AWH_IDN}
         )
 
-        target_link_libraries(${PROXY_APP_NAME}
+        target_link_libraries(
+            ${SOCKS5_APP_NAME}
             ${CURRENT_LIB_NAME}
             ${EVENT_LIBRARY}
             ${ZLIB_LIBRARY}
@@ -481,7 +509,8 @@ if (ENABLE_CONSOLE_APP)
             ${AWH_IDN}
         )
 
-        target_link_libraries(${TIMER_APP_NAME}
+        target_link_libraries(
+            ${PROXY_APP_NAME}
             ${CURRENT_LIB_NAME}
             ${EVENT_LIBRARY}
             ${ZLIB_LIBRARY}
@@ -492,7 +521,8 @@ if (ENABLE_CONSOLE_APP)
             ${AWH_IDN}
         )
 
-        target_link_libraries(${CLIENT_APP_NAME}
+        target_link_libraries(
+            ${TIMER_APP_NAME}
             ${CURRENT_LIB_NAME}
             ${EVENT_LIBRARY}
             ${ZLIB_LIBRARY}
@@ -503,7 +533,8 @@ if (ENABLE_CONSOLE_APP)
             ${AWH_IDN}
         )
 
-        target_link_libraries(${SERVER_APP_NAME}
+        target_link_libraries(
+            ${CLIENT_APP_NAME}
             ${CURRENT_LIB_NAME}
             ${EVENT_LIBRARY}
             ${ZLIB_LIBRARY}
@@ -514,7 +545,8 @@ if (ENABLE_CONSOLE_APP)
             ${AWH_IDN}
         )
 
-        target_link_libraries(${WEB_CLIENT_APP_NAME}
+        target_link_libraries(
+            ${SERVER_APP_NAME}
             ${CURRENT_LIB_NAME}
             ${EVENT_LIBRARY}
             ${ZLIB_LIBRARY}
@@ -525,7 +557,20 @@ if (ENABLE_CONSOLE_APP)
             ${AWH_IDN}
         )
 
-        target_link_libraries(${WEB_SERVER_APP_NAME}
+        target_link_libraries(
+            ${WEB_CLIENT_APP_NAME}
+            ${CURRENT_LIB_NAME}
+            ${EVENT_LIBRARY}
+            ${ZLIB_LIBRARY}
+            ${ICONV_LIBRARY}
+            ${IDN2_LIBRARY}
+            ${BROTLI_LIBRARIES}
+            ${OPENSSL_LIBRARIES}
+            ${AWH_IDN}
+        )
+
+        target_link_libraries(
+            ${WEB_SERVER_APP_NAME}
             ${CURRENT_LIB_NAME}
             ${EVENT_LIBRARY}
             ${ZLIB_LIBRARY}
@@ -537,7 +582,8 @@ if (ENABLE_CONSOLE_APP)
         )
     # Сборка примеров в обычном виде
     else()
-        target_link_libraries(${WSC_APP_NAME}
+        target_link_libraries(
+            ${IP_APP_NAME}
             ${CURRENT_LIB_NAME}
             ${EVENT_LIBRARY}
             ${ZLIB_LIBRARY}
@@ -545,7 +591,8 @@ if (ENABLE_CONSOLE_APP)
             ${OPENSSL_LIBRARIES}
         )
 
-        target_link_libraries(${WSS_APP_NAME}
+        target_link_libraries(
+            ${WSC_APP_NAME}
             ${CURRENT_LIB_NAME}
             ${EVENT_LIBRARY}
             ${ZLIB_LIBRARY}
@@ -553,7 +600,8 @@ if (ENABLE_CONSOLE_APP)
             ${OPENSSL_LIBRARIES}
         )
 
-        target_link_libraries(${DNS_APP_NAME}
+        target_link_libraries(
+            ${WSS_APP_NAME}
             ${CURRENT_LIB_NAME}
             ${EVENT_LIBRARY}
             ${ZLIB_LIBRARY}
@@ -561,7 +609,8 @@ if (ENABLE_CONSOLE_APP)
             ${OPENSSL_LIBRARIES}
         )
 
-        target_link_libraries(${SOCKS5_APP_NAME}
+        target_link_libraries(
+            ${DNS_APP_NAME}
             ${CURRENT_LIB_NAME}
             ${EVENT_LIBRARY}
             ${ZLIB_LIBRARY}
@@ -569,7 +618,8 @@ if (ENABLE_CONSOLE_APP)
             ${OPENSSL_LIBRARIES}
         )
 
-        target_link_libraries(${PROXY_APP_NAME}
+        target_link_libraries(
+            ${SOCKS5_APP_NAME}
             ${CURRENT_LIB_NAME}
             ${EVENT_LIBRARY}
             ${ZLIB_LIBRARY}
@@ -577,7 +627,8 @@ if (ENABLE_CONSOLE_APP)
             ${OPENSSL_LIBRARIES}
         )
 
-        target_link_libraries(${TIMER_APP_NAME}
+        target_link_libraries(
+            ${PROXY_APP_NAME}
             ${CURRENT_LIB_NAME}
             ${EVENT_LIBRARY}
             ${ZLIB_LIBRARY}
@@ -585,7 +636,8 @@ if (ENABLE_CONSOLE_APP)
             ${OPENSSL_LIBRARIES}
         )
 
-        target_link_libraries(${CLIENT_APP_NAME}
+        target_link_libraries(
+            ${TIMER_APP_NAME}
             ${CURRENT_LIB_NAME}
             ${EVENT_LIBRARY}
             ${ZLIB_LIBRARY}
@@ -593,7 +645,8 @@ if (ENABLE_CONSOLE_APP)
             ${OPENSSL_LIBRARIES}
         )
 
-        target_link_libraries(${SERVER_APP_NAME}
+        target_link_libraries(
+            ${CLIENT_APP_NAME}
             ${CURRENT_LIB_NAME}
             ${EVENT_LIBRARY}
             ${ZLIB_LIBRARY}
@@ -601,7 +654,8 @@ if (ENABLE_CONSOLE_APP)
             ${OPENSSL_LIBRARIES}
         )
 
-        target_link_libraries(${WEB_CLIENT_APP_NAME}
+        target_link_libraries(
+            ${SERVER_APP_NAME}
             ${CURRENT_LIB_NAME}
             ${EVENT_LIBRARY}
             ${ZLIB_LIBRARY}
@@ -609,7 +663,17 @@ if (ENABLE_CONSOLE_APP)
             ${OPENSSL_LIBRARIES}
         )
 
-        target_link_libraries(${WEB_SERVER_APP_NAME}
+        target_link_libraries(
+            ${WEB_CLIENT_APP_NAME}
+            ${CURRENT_LIB_NAME}
+            ${EVENT_LIBRARY}
+            ${ZLIB_LIBRARY}
+            ${BROTLI_LIBRARIES}
+            ${OPENSSL_LIBRARIES}
+        )
+
+        target_link_libraries(
+            ${WEB_SERVER_APP_NAME}
             ${CURRENT_LIB_NAME}
             ${EVENT_LIBRARY}
             ${ZLIB_LIBRARY}
@@ -629,6 +693,7 @@ install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/include" DESTINATION "${CMAKE_INS
 # Устанавливаем библиотеку
 install(TARGETS ${CURRENT_LIB_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
 # Устанавливаем исполнительные файлы
+install(TARGETS ${IP_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
 install(TARGETS ${WSC_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
 install(TARGETS ${WSS_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
 install(TARGETS ${DNS_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
