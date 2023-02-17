@@ -105,7 +105,8 @@ namespace awh {
 				 * @param log объект для работы с логами
 				 */
 				Local(const fmk_t * fmk, const log_t * log) noexcept :
-				 reserved(false), prefix(0), end(new Net(fmk, log)), begin(new Net(fmk, log)) {}
+				 reserved(false), prefix(static_cast <uint8_t> (0)),
+				 end(new Net(fmk, log)), begin(new Net(fmk, log)) {}
 			} local_t;
 		private:
 			// Тип обрабатываемого адреса
@@ -133,7 +134,7 @@ namespace awh {
 			 * @param size максимальная длина строки
 			 * @return     полученное число строки
 			 */
-			string & zerro(string && num, const uint8_t size = 3) const noexcept;
+			string & zerro(string && num, const uint8_t size = static_cast <uint8_t> (3)) const noexcept;
 		public:
 			/**
 			 * clear Метод очистки данных IP адреса
