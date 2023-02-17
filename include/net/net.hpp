@@ -31,6 +31,8 @@
  * Методы только для OS Windows
  */
 #if defined(_WIN32) || defined(_WIN64)
+	#include <winsock2.h>
+	#include <ws2tcpip.h>
 	#include <stdint.h>
 	#include <getopt.h>
 	// Используем библиотеку ws2_32.lib
