@@ -25,6 +25,7 @@
 #include <string>
 #include <vector>
 #include <iostream>
+#include <sys/types.h>
 
 /**
  * Наши модули
