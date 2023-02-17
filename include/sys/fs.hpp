@@ -22,8 +22,8 @@
 #include <codecvt>
 #include <sstream>
 #include <cstdlib>
-#include <unistd.h>
 #include <functional>
+#include <unistd.h>
 #include <dirent.h>
 #include <sys/file.h>
 #include <sys/stat.h>
@@ -170,26 +170,31 @@ namespace awh {
 			pair <string, string> fileComponents(const string & filename) const noexcept;
 		public:
 			/**
-			 * chmod Метод получения метаданных файла или каталога
-			 * @param path полный путь к файлу или каталогу
-			 * @return     запрашиваемые метаданные
+			 * Выполняем работу для Unix
 			 */
-			mode_t chmod(const string & path) const noexcept;
-			/**
-			 * chmod Метод изменения метаданных файла или каталога
-			 * @param path полный путь к файлу или каталогу
-			 * @param mode метаданные для установки
-			 * @return     результат работы функции
-			 */
-			bool chmod(const string & path, const mode_t mode) const noexcept;
-			/**
-			 * chown Метод установки владельца на каталог
-			 * @param path  путь к файлу или каталогу для установки владельца
-			 * @param user  данные пользователя
-			 * @param group идентификатор группы
-			 * @return      результат работы функции
-			 */
-			bool chown(const string & path, const string & user, const string & group) const noexcept;
+			#if !defined(_WIN32) && !defined(_WIN64)
+				/**
+				 * chmod Метод получения метаданных файла или каталога
+				 * @param path полный путь к файлу или каталогу
+				 * @return     запрашиваемые метаданные
+				 */
+				mode_t chmod(const string & path) const noexcept;
+				/**
+				 * chmod Метод изменения метаданных файла или каталога
+				 * @param path полный путь к файлу или каталогу
+				 * @param mode метаданные для установки
+				 * @return     результат работы функции
+				 */
+				bool chmod(const string & path, const mode_t mode) const noexcept;
+				/**
+				 * chown Метод установки владельца на каталог
+				 * @param path  путь к файлу или каталогу для установки владельца
+				 * @param user  данные пользователя
+				 * @param group идентификатор группы
+				 * @return      результат работы функции
+				 */
+				bool chown(const string & path, const string & user, const string & group) const noexcept;
+			#endif
 		public:
 			/**
 			 * readFile Метод рекурсивного получения всех строк файла

@@ -48,7 +48,7 @@ namespace awh {
 			/**
 			 * Режим дислокации IP адреса
 			 */
-			enum class mode_t : std::uint8_t {
+			enum class mode_t : uint8_t {
 				NONE   = 0x00, // Адрес не установлен
 				LOCAL  = 0x01, // Адрес является локальным
 				GLOBAL = 0x02, // Адрес является глобальным
@@ -57,7 +57,7 @@ namespace awh {
 			/**
 			 * Формат IP адреса
 			 */
-			enum class addr_t : std::uint8_t {
+			enum class addr_t : uint8_t {
 				NONE = 0x00, // Адрес не установлен
 				HOST = 0x01, // Адрес хоста
 				NETW = 0x02  // Адрес сети
@@ -65,7 +65,7 @@ namespace awh {
 			/**
 			 * Формат формирования IP адреса
 			 */
-			enum class format_t : std::uint8_t {
+			enum class format_t : uint8_t {
 				NONE        = 0x00, // Формат IP адреса не указан
 				LONG        = 0x01, // Полный формат IP адреса [0000:0000:0000:0000:0000:0000:ae21:ad12 / 192.168.000.001]
 				SHORT       = 0x02, // Короткий формат IP адреса [::ae21:ad12 / 192.168.0.1]
@@ -80,7 +80,7 @@ namespace awh {
 			/**
 			 * Флаги типа адреса
 			 */
-			enum class type_t : std::uint8_t {
+			enum class type_t : uint8_t {
 				MAC  = 0x01, // Аппаратный адрес сетевого интерфейса
 				NONE = 0x00, // Не определено
 				IPV4 = 0x02, // Адрес подключения IPv4
@@ -96,7 +96,7 @@ namespace awh {
 			 */
 			typedef struct Local {
 				bool reserved;          // Адрес является зарезервированным
-				std::uint8_t prefix;         // Префикс сети
+				uint8_t prefix;         // Префикс сети
 				unique_ptr <Net> end;   // Конечный диапазон адреса
 				unique_ptr <Net> begin; // Начальный IP адрес
 				/**
@@ -112,7 +112,7 @@ namespace awh {
 			type_t _type;
 		private:
 			// Бинарный буфер данных
-			vector <std::uint8_t> _buffer;
+			vector <uint8_t> _buffer;
 		private:
 			// Список локальных адресов
 			multimap <type_t, local_t> _locals;
@@ -133,7 +133,7 @@ namespace awh {
 			 * @param size максимальная длина строки
 			 * @return     полученное число строки
 			 */
-			string & zerro(string && num, const std::uint8_t size = 3) const noexcept;
+			string & zerro(string && num, const uint8_t size = 3) const noexcept;
 		public:
 			/**
 			 * clear Метод очистки данных IP адреса
@@ -207,20 +207,20 @@ namespace awh {
 			 * @param prefix префикс для наложения
 			 * @param addr тип получаемого адреса
 			 */
-			void impose(const std::uint8_t prefix, const addr_t addr) noexcept;
+			void impose(const uint8_t prefix, const addr_t addr) noexcept;
 		public:
 			/**
 			 * mask2Prefix Метод перевода маски сети в префикс адреса
 			 * @param mask маска сети для перевода
 			 * @return     полученный префикс адреса
 			 */
-			std::uint8_t mask2Prefix(const string & mask) const noexcept;
+			uint8_t mask2Prefix(const string & mask) const noexcept;
 			/**
 			 * prefix2Mask Метод преобразования префикса адреса в маску сети
 			 * @param prefix префикс адреса для преобразования
 			 * @return       полученная маска сети
 			 */
-			string prefix2Mask(const std::uint8_t prefix) const noexcept;
+			string prefix2Mask(const uint8_t prefix) const noexcept;
 		public:
 			/**
 			 * broadcastIPv6ToIPv4 Метод проверки соответствия адреса зеркалу IPv6 => IPv4
@@ -243,7 +243,7 @@ namespace awh {
 			 * @param prefix префикс адреса для преобразования
 			 * @return       результат првоерки
 			 */
-			bool range(const Net & begin, const Net & end, const std::uint8_t prefix) const noexcept;
+			bool range(const Net & begin, const Net & end, const uint8_t prefix) const noexcept;
 			/**
 			 * range Метод проверки вхождения IP адреса в диапазон адресов
 			 * @param begin начало диапазона адресов
@@ -259,7 +259,7 @@ namespace awh {
 			 * @param prefix префикс адреса для преобразования
 			 * @return       результат првоерки
 			 */
-			bool range(const string & begin, const string & end, const std::uint8_t prefix) const noexcept;
+			bool range(const string & begin, const string & end, const uint8_t prefix) const noexcept;
 		public:
 			/**
 			 * mapping Метод проверки соотвествия IP адреса указанной сети
@@ -282,7 +282,7 @@ namespace awh {
 			 * @param addr    тип получаемого адреса
 			 * @return        результат проверки
 			 */
-			bool mapping(const string & network, const std::uint8_t prefix, const addr_t addr) const noexcept;
+			bool mapping(const string & network, const uint8_t prefix, const addr_t addr) const noexcept;
 		public:
 			/**
 			 * mode Метод определения режима дислокации IP адреса

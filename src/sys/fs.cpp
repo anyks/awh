@@ -465,17 +465,17 @@ pair <string, string> awh::FS::fileComponents(const string & filename) const noe
 	return result;
 }
 /**
- * chmod Метод получения метаданных файла или каталога
- * @param path полный путь к файлу или каталогу
- * @return     запрашиваемые метаданные
+ * Выполняем работу для Unix
  */
-mode_t awh::FS::chmod(const string & path) const noexcept {
-	// Результат работы функции
-	mode_t result = 0;
+#if !defined(_WIN32) && !defined(_WIN64)
 	/**
-	 * Выполняем работу для Unix
+	 * chmod Метод получения метаданных файла или каталога
+	 * @param path полный путь к файлу или каталогу
+	 * @return     запрашиваемые метаданные
 	 */
-	#if !defined(_WIN32) && !defined(_WIN64)
+	mode_t awh::FS::chmod(const string & path) const noexcept {
+		// Результат работы функции
+		mode_t result = 0;
 		// Если путь к файлу или каталогу передан
 		if(!path.empty() && (this->type(path) != type_t::NONE)){
 			// Создаём объект информационных данных файла или каталога
@@ -487,23 +487,18 @@ mode_t awh::FS::chmod(const string & path) const noexcept {
 			// Если информационные данные считаны удачно
 			else result = info.st_mode;
 		}
-	#endif
-	// Выводим результат
-	return result;
-}
-/**
- * chmod Метод изменения метаданных файла или каталога
- * @param path полный путь к файлу или каталогу
- * @param mode метаданные для установки
- * @return     результат работы функции
- */
-bool awh::FS::chmod(const string & path, const mode_t mode) const noexcept {
-	// Результат работы функции
-	bool result = false;
+		// Выводим результат
+		return result;
+	}
 	/**
-	 * Выполняем работу для Unix
+	 * chmod Метод изменения метаданных файла или каталога
+	 * @param path полный путь к файлу или каталогу
+	 * @param mode метаданные для установки
+	 * @return     результат работы функции
 	 */
-	#if !defined(_WIN32) && !defined(_WIN64)
+	bool awh::FS::chmod(const string & path, const mode_t mode) const noexcept {
+		// Результат работы функции
+		bool result = false;
 		// Если путь к файлу или каталогу передан
 		if(!path.empty() && (this->type(path) != type_t::NONE)){
 			// Выполняем установку метаданных файла
@@ -511,24 +506,19 @@ bool awh::FS::chmod(const string & path, const mode_t mode) const noexcept {
 				// Выводим в лог сообщение
 				this->_log->print("%s", log_t::flag_t::WARNING, strerror(errno));
 		}
-	#endif
-	// Выводим результат
-	return result;
-}
-/**
- * chown Метод установки владельца на каталог
- * @param path  путь к файлу или каталогу для установки владельца
- * @param user  данные пользователя
- * @param group идентификатор группы
- * @return      результат работы функции
- */
-bool awh::FS::chown(const string & path, const string & user, const string & group) const noexcept {
-	// Результат работы функции
-	bool result = false;
+		// Выводим результат
+		return result;
+	}
 	/**
-	 * Выполняем работу для Unix
+	 * chown Метод установки владельца на каталог
+	 * @param path  путь к файлу или каталогу для установки владельца
+	 * @param user  данные пользователя
+	 * @param group идентификатор группы
+	 * @return      результат работы функции
 	 */
-	#if !defined(_WIN32) && !defined(_WIN64)
+	bool awh::FS::chown(const string & path, const string & user, const string & group) const noexcept {
+		// Результат работы функции
+		bool result = false;
 		// Если путь передан
 		if(!path.empty() && !user.empty() && !group.empty() && this->isFile(path)){
 			// Идентификатор пользователя
@@ -543,10 +533,10 @@ bool awh::FS::chown(const string & path, const string & user, const string & gro
 					this->_log->print("%s", log_t::flag_t::WARNING, strerror(errno));
 			}
 		}
-	#endif
-	// Выводим результат
-	return result;
-}
+		// Выводим результат
+		return result;
+	}
+#endif
 /**
  * readFile Метод рекурсивного получения всех строк файла
  * @param filename адрес файла для чтения

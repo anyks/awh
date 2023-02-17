@@ -28,7 +28,6 @@
 	// Заменяем типы данных
 	#define uid_t uint16_t         // unsigned short
 	#define gid_t uint16_t         // unsigned short
-	#define mode_t uint8_t         // unsigned char
 	#define u_int uint32_t         // unsigned int
 	#define u_char unsigned char   // unsigned char
 	#define u_short unsigned short // unsigned short
