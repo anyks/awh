@@ -182,14 +182,14 @@ namespace awh {
 			 * @return     результат работы функции
 			 */
 			bool chmod(const string & path, const mode_t mode) const noexcept;
-		public:
 			/**
 			 * chown Метод установки владельца на каталог
 			 * @param path  путь к файлу или каталогу для установки владельца
 			 * @param user  данные пользователя
 			 * @param group идентификатор группы
+			 * @return      результат работы функции
 			 */
-			void chown(const string & path, const string & user, const string & group) const noexcept;
+			bool chown(const string & path, const string & user, const string & group) const noexcept;
 		public:
 			/**
 			 * readFile Метод рекурсивного получения всех строк файла

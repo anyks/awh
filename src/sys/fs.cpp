@@ -22,20 +22,25 @@
 uid_t awh::FS::uid(const string & name) const noexcept {
 	// Результат работы функции
 	uid_t result = 0;
-	// Если имя пользователя передано
-	if(!name.empty()){
-		// Получаем идентификатор имени пользователя
-		struct passwd * pwd = getpwnam(name.c_str());
-		// Если идентификатор пользователя не найден
-		if(pwd == nullptr){
-			// Выводим сообщение об ошибке
-			this->_log->print("failed to get userId from username [%s]", log_t::flag_t::WARNING, name.c_str());
-			// Сообщаем что ничего не найдено
-			return result;
+	/**
+	 * Выполняем работу для Unix
+	 */
+	#if !defined(_WIN32) && !defined(_WIN64)
+		// Если имя пользователя передано
+		if(!name.empty()){
+			// Получаем идентификатор имени пользователя
+			struct passwd * pwd = getpwnam(name.c_str());
+			// Если идентификатор пользователя не найден
+			if(pwd == nullptr){
+				// Выводим сообщение об ошибке
+				this->_log->print("failed to get userId from username [%s]", log_t::flag_t::WARNING, name.c_str());
+				// Сообщаем что ничего не найдено
+				return result;
+			}
+			// Выводим идентификатор пользователя
+			result = pwd->pw_uid;
 		}
-		// Выводим идентификатор пользователя
-		result = pwd->pw_uid;
-	}
+	#endif
 	// Выводим результат
 	return result;
 }
@@ -47,20 +52,25 @@ uid_t awh::FS::uid(const string & name) const noexcept {
 gid_t awh::FS::gid(const string & name) const noexcept {
 	// Результат работы функции
 	gid_t result = 0;
-	// Если имя пользователя передано
-	if(!name.empty()){
-		// Получаем идентификатор группы пользователя
-		struct group * grp = getgrnam(name.c_str());
-		// Если идентификатор группы не найден
-		if(grp == nullptr){
-			// Выводим сообщение об ошибке
-			this->_log->print("failed to get groupId from groupname [%s]", log_t::flag_t::WARNING, name.c_str());
-			// Сообщаем что ничего не найдено
-			return result;
+	/**
+	 * Выполняем работу для Unix
+	 */
+	#if !defined(_WIN32) && !defined(_WIN64)
+		// Если имя пользователя передано
+		if(!name.empty()){
+			// Получаем идентификатор группы пользователя
+			struct group * grp = getgrnam(name.c_str());
+			// Если идентификатор группы не найден
+			if(grp == nullptr){
+				// Выводим сообщение об ошибке
+				this->_log->print("failed to get groupId from groupname [%s]", log_t::flag_t::WARNING, name.c_str());
+				// Сообщаем что ничего не найдено
+				return result;
+			}
+			// Выводим идентификатор группы пользователя
+			result = grp->gr_gid;
 		}
-		// Выводим идентификатор группы пользователя
-		result = grp->gr_gid;
-	}
+	#endif
 	// Выводим результат
 	return result;
 }
@@ -372,20 +382,38 @@ void awh::FS::makePath(const string & path) const noexcept {
 		if(buffer[length - 1] == sep)
 			// Устанавливаем конец строки
 			buffer[length - 1] = 0;
-		// Переходим по всем символам
-		for(p = buffer + 1; * p; p++){
-			// Если найден сепаратор
-			if(* p == sep){
-				// Сбрасываем указатель
-				* p = 0;
-				// Создаем каталог
-				::mkdir(buffer, S_IRWXU);
-				// Запоминаем сепаратор
-				* p = sep;
+		// Если - это не Windows
+		#if !defined(_WIN32) && !defined(_WIN64)
+			// Переходим по всем символам
+			for(p = buffer + 1; * p; p++){
+				// Если найден сепаратор
+				if(* p == sep){
+					// Сбрасываем указатель
+					* p = 0;
+					// Создаем каталог
+					::mkdir(buffer, S_IRWXU);
+					// Запоминаем сепаратор
+					* p = sep;
+				}
 			}
-		}
-		// Создаем последний каталог
-		::mkdir(buffer, S_IRWXU);
+			// Создаем последний каталог
+			::mkdir(buffer, S_IRWXU);
+		#else
+			// Переходим по всем символам
+			for(p = buffer + 1; * p; p++){
+				// Если найден сепаратор
+				if(* p == sep){
+					// Сбрасываем указатель
+					* p = 0;
+					// Создаем каталог
+					_mkdir(buffer);
+					// Запоминаем сепаратор
+					* p = sep;
+				}
+			}
+			// Создаем последний каталог
+			_mkdir(buffer);
+		#endif
 	}
 }
 /**
@@ -492,17 +520,32 @@ bool awh::FS::chmod(const string & path, const mode_t mode) const noexcept {
  * @param path  путь к файлу или каталогу для установки владельца
  * @param user  данные пользователя
  * @param group идентификатор группы
+ * @return      результат работы функции
  */
-void awh::FS::chown(const string & path, const string & user, const string & group) const noexcept {
-	// Если путь передан
-	if(!path.empty() && !user.empty() && !group.empty() && this->isFile(path)){
-		// Идентификатор пользователя
-		const uid_t uid = this->uid(user);
-		// Идентификатор группы
-		const gid_t gid = this->gid(group);
-		// Устанавливаем права на каталог
-		if(uid && gid) ::chown(path.c_str(), uid, gid);
-	}
+bool awh::FS::chown(const string & path, const string & user, const string & group) const noexcept {
+	// Результат работы функции
+	bool result = false;
+	/**
+	 * Выполняем работу для Unix
+	 */
+	#if !defined(_WIN32) && !defined(_WIN64)
+		// Если путь передан
+		if(!path.empty() && !user.empty() && !group.empty() && this->isFile(path)){
+			// Идентификатор пользователя
+			const uid_t uid = this->uid(user);
+			// Идентификатор группы
+			const gid_t gid = this->gid(group);
+			// Устанавливаем права на каталог
+			if((result = (uid && gid))){
+				// Выполняем установку владельца
+				if(!(result = (::chown(path.c_str(), uid, gid) == 0)) && (errno != 0))
+					// Выводим в лог сообщение
+					this->_log->print("%s", log_t::flag_t::WARNING, strerror(errno));
+			}
+		}
+	#endif
+	// Выводим результат
+	return result;
 }
 /**
  * readFile Метод рекурсивного получения всех строк файла
