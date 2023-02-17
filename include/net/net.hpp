@@ -28,6 +28,16 @@
 #include <sys/types.h>
 
 /**
+ * Методы только для OS Windows
+ */
+#if defined(_WIN32) || defined(_WIN64)
+	#include <stdint.h>
+	#include <getopt.h>
+	// Используем библиотеку ws2_32.lib
+	#pragma comment(lib, "Ws2_32.lib")
+#endif
+
+/**
  * Наши модули
  */
 #include <sys/log.hpp>
@@ -105,8 +115,7 @@ namespace awh {
 				 * @param log объект для работы с логами
 				 */
 				Local(const fmk_t * fmk, const log_t * log) noexcept :
-				 reserved(false), prefix(static_cast <uint8_t> (0)),
-				 end(new Net(fmk, log)), begin(new Net(fmk, log)) {}
+				 reserved(false), prefix(0), end(new Net(fmk, log)), begin(new Net(fmk, log)) {}
 			} local_t;
 		private:
 			// Тип обрабатываемого адреса
@@ -134,7 +143,7 @@ namespace awh {
 			 * @param size максимальная длина строки
 			 * @return     полученное число строки
 			 */
-			string & zerro(string && num, const uint8_t size = static_cast <uint8_t> (3)) const noexcept;
+			string & zerro(string && num, const uint8_t size = 3) const noexcept;
 		public:
 			/**
 			 * clear Метод очистки данных IP адреса
