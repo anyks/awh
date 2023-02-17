@@ -822,6 +822,25 @@ bool awh::Net::mapping(const string & network) const noexcept {
 	return result;
 }
 /**
+ * broadcastIPv6ToIPv4 Метод проверки соответствия адреса зеркалу IPv6 => IPv4
+ * @return результат проверки
+ */
+bool awh::Net::broadcastIPv6ToIPv4() const noexcept {
+	// Результат работы функции
+	bool result = false;
+	// Если бинарный буфер данных существует
+	if(!this->_buffer.empty()){
+		// Создаём временный буфер данных для сравнения
+		vector <uint16_t> buffer(6, 0);
+		// Устанавливаем хексет маски
+		buffer[5] = 65535;
+		// Если буфер данных принадлежит к вещанию IPv6 => IPv4
+		result = (memcmp(buffer.data(), this->_buffer.data(), (buffer.size() * 2)) == 0);
+	}
+	// Выводим результат
+	return result;
+}
+/**
  * range Метод проверки вхождения IP адреса в диапазон адресов
  * @param begin начало диапазона адресов
  * @param end   конец диапазона адресов
@@ -1270,14 +1289,59 @@ string awh::Net::get(const format_t format) const noexcept {
 		switch((uint8_t) this->_type){
 			// Если IP адрес определён как IPv4
 			case (uint8_t) type_t::IPV4: {
-				// Переходим по всему массиву
-				for(uint8_t i = 0; i < static_cast <uint8_t> (this->_buffer.size()); i++){
-					// Если строка уже существует, добавляем разделитель
-					if(!result.empty())
-						// Добавляем разделитель
-						result.append(1, '.');
-					// Добавляем октет в версию
-					result.append(format == format_t::LONG ? this->zerro(to_string(this->_buffer[i])) : to_string(this->_buffer[i]));
+				// Если формат адреса не принадлежит к IPv6
+				if((format != format_t::LONG_IPV6) && (format != format_t::MIDDLE_IPV6) && (format != format_t::SHORT_IPV6)){
+					// Переходим по всему массиву
+					for(uint8_t i = 0; i < static_cast <uint8_t> (this->_buffer.size()); i++){
+						// Если строка уже существует, добавляем разделитель
+						if(!result.empty())
+							// Добавляем разделитель
+							result.append(1, '.');
+						// Добавляем октет в версию
+						result.append(
+							(format == format_t::LONG) || (format == format_t::LONG_IPV4) ?
+							this->zerro(to_string(this->_buffer[i])) :
+							to_string(this->_buffer[i])
+						);
+					}
+				// Если формат адреса принадлежит к IPv6
+				} else {
+					// Значение хексета
+					uint16_t num = 0;
+					// Количество разделителей и количество хексетов в буфере
+					uint8_t separators = 0, count = static_cast <uint8_t> (this->_buffer.size());
+					// Добавляем в результат начальный разделитель
+					result.append(1, ':');
+					// Переходим по всему массиву
+					for(uint8_t i = 0; i < count; i += 2){
+						// Выполняем получение значение числа
+						memcpy(&num, this->_buffer.data() + i, sizeof(num));
+						// Если нужно выводить в кратком виде
+						if(format == format_t::SHORT_IPV6){
+							// Если Число установлено
+							if(num > 0){
+								// Добавляем разделитель
+								if(!result.empty()) result.append(1, ':');
+								// Добавляем хексет в версию
+								result.append(this->_fmk->itoa(static_cast <int64_t> (num), 16));
+							// Заменяем нули разделителем
+							} else if((++separators < 2) || (i == (count - 2)))
+								// Добавляем разделитель
+								result.append(1, ':');
+						// Если форматы вывода указаны полные
+						} else {
+							// Если строка уже существует, добавляем разделитель
+							if(!result.empty())
+								// Добавляем разделитель
+								result.append(1, ':');
+							// Добавляем хексет в версию
+							result.append(
+								format == format_t::LONG_IPV6 ?
+								this->zerro(this->_fmk->itoa(static_cast <int64_t> (num), 16), 4) :
+								this->_fmk->itoa(static_cast <int64_t> (num), 16)
+							);
+						}
+					}
 				}
 			} break;
 			// Если IP адрес определён как IPv6
@@ -1291,9 +1355,13 @@ string awh::Net::get(const format_t format) const noexcept {
 				// Устанавливаем хексет маски
 				buffer[5] = 65535;
 				// Флаг зеркального вещания IPv6 => IPv4
-				bool mirror = false;
+				bool broadcast = false;
 				// Если буфер данных принадлежит к вещанию IPv6 => IPv4
-				if((mirror = (memcmp(buffer.data(), this->_buffer.data(), (buffer.size() * 2)) == 0)))
+				if((broadcast = (memcmp(buffer.data(), this->_buffer.data(), (buffer.size() * 2)) == 0)))
+					// Уменьшаем количество итераций в буфере
+					count -= 4;
+				// Если режим зеркала IPv6 => IPv4 не активен, но установлен формат IPv4, активируем зеркало
+				else if(!broadcast && (broadcast = ((format == format_t::LONG_IPV4) || (format == format_t::MIDDLE_IPV4) || (format == format_t::SHORT_IPV4))))
 					// Уменьшаем количество итераций в буфере
 					count -= 4;
 				// Переходим по всему массиву
@@ -1301,7 +1369,7 @@ string awh::Net::get(const format_t format) const noexcept {
 					// Выполняем получение значение числа
 					memcpy(&num, this->_buffer.data() + i, sizeof(num));
 					// Если нужно выводить в кратком виде
-					if(format == format_t::SHORT){
+					if((format == format_t::SHORT) || (format == format_t::SHORT_IPV4)){
 						// Если Число установлено
 						if(num > 0){
 							// Добавляем разделитель
@@ -1320,16 +1388,18 @@ string awh::Net::get(const format_t format) const noexcept {
 							result.append(1, ':');
 						// Добавляем хексет в версию
 						result.append(
-							format == format_t::LONG ?
+							(format == format_t::LONG) || (format == format_t::LONG_IPV4) ?
 							this->zerro(this->_fmk->itoa(static_cast <int64_t> (num), 16), 4) :
 							this->_fmk->itoa(static_cast <int64_t> (num), 16)
 						);
 					}
 				}
 				// Если активирован флаг зеркального вещания IPv6 => IPv4
-				if(mirror){
-					// Добавляем разделитель
-					result.append(1, ':');
+				if(broadcast){
+					// Если предыдущий символ не является разделителем
+					if(result.back() != ':')
+						// Добавляем разделитель
+						result.append(1, ':');
 					// Переходим по всему массиву
 					for(uint8_t i = 0; i < (static_cast <uint8_t> (this->_buffer.size()) - count); i++){
 						// Если строка уже существует, добавляем разделитель
@@ -1337,7 +1407,11 @@ string awh::Net::get(const format_t format) const noexcept {
 							// Добавляем разделитель
 							result.append(1, '.');
 						// Добавляем октет в версию
-						result.append(format == format_t::LONG ? this->zerro(to_string(this->_buffer[count + i])) : to_string(this->_buffer[count + i]));
+						result.append(
+							(format == format_t::LONG) || (format == format_t::LONG_IPV4) ?
+							this->zerro(to_string(this->_buffer[count + i])) :
+							to_string(this->_buffer[count + i])
+						);
 					}
 				}
 			} break;

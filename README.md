@@ -1453,7 +1453,7 @@ int main(int argc, char * argv[]){
 	// -> 2001:0db8:0000:0000:0000:0000:ae21:ad12 == 2001:DB8::AE21:AD12
 
 	net = "2001:db8::ae21:ad12";
-	cout << " 2001:db8::ae21:ad12 == " << net.get(net_t::format_t::LONG) << " and " << net.get(net_t::format_t::MIDLE) << endl;
+	cout << " 2001:db8::ae21:ad12 == " << net.get(net_t::format_t::LONG) << " and " << net.get(net_t::format_t::MIDDLE) << endl;
 	// -> 2001:db8::ae21:ad12 == 2001:0DB8:0000:0000:0000:0000:AE21:AD12 and 2001:DB8:0:0:0:0:AE21:AD12
 
 	net = "0000:0000:0000:0000:0000:0000:ae21:ad12";
@@ -1461,7 +1461,7 @@ int main(int argc, char * argv[]){
 	// -> 0000:0000:0000:0000:0000:0000:ae21:ad12 == ::AE21:AD12
 
 	net = "::ae21:ad12";
-	cout << " ::ae21:ad12 == " << net.get(net_t::format_t::MIDLE) << endl;
+	cout << " ::ae21:ad12 == " << net.get(net_t::format_t::MIDDLE) << endl;
 	// -> ::ae21:ad12 == 0:0:0:0:0:0:AE21:AD12
 
 	net = "2001:0db8:11a3:09d7:1f34::";

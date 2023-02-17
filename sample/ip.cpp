@@ -33,7 +33,7 @@ int main(int argc, char * argv[]){
 	// Выводим тесты IP адресов
 	net = "[2001:0db8:11a3:09d7:1f34:8a2e:07a0:765d]";
 	// Выводим IP адрес в консоль
-	cout << " [2001:0db8:11a3:09d7:1f34:8a2e:07a0:765d] || " << net << endl;
+	cout << " [2001:0db8:11a3:09d7:1f34:8a2e:07a0:765d] || " << net << " === " << net.get(net_t::format_t::LONG_IPV4) << " === " << net.get(net_t::format_t::MIDDLE_IPV4) << " === " << net.get(net_t::format_t::SHORT_IPV4) << endl;
 
 	// Выводим тесты IP адресов
 	net = "2001:0db8:0000:0000:0000:0000:ae21:ad12";
@@ -43,7 +43,7 @@ int main(int argc, char * argv[]){
 	// Выводим тесты IP адресов
 	net = "2001:db8::ae21:ad12";
 	// Выводим IP адрес в консоль
-	cout << " 2001:db8::ae21:ad12 || " << net.get(net_t::format_t::LONG) << " and " << net.get(net_t::format_t::MIDLE) << endl;
+	cout << " 2001:db8::ae21:ad12 || " << net.get(net_t::format_t::LONG) << " and " << net.get(net_t::format_t::MIDDLE) << endl;
 
 	// Выводим тесты IP адресов
 	net = "0000:0000:0000:0000:0000:0000:ae21:ad12";
@@ -53,7 +53,7 @@ int main(int argc, char * argv[]){
 	// Выводим тесты IP адресов
 	net = "::ae21:ad12";
 	// Выводим IP адрес в консоль
-	cout << " ::ae21:ad12 || " << net.get(net_t::format_t::MIDLE) << endl;
+	cout << " ::ae21:ad12 || " << net.get(net_t::format_t::MIDDLE) << endl;
 
 	// Выводим тесты IP адресов
 	net = "2001:0db8:11a3:09d7:1f34::";
@@ -62,8 +62,10 @@ int main(int argc, char * argv[]){
 
 	// Выводим тесты IP адресов
 	net = "::ffff:192.0.2.1";
+	// Разрешаем вывод булевых переменных
+	cout << boolalpha;
 	// Выводим IP адрес в консоль
-	cout << " ::ffff:192.0.2.1 || " << net << endl;
+	cout << " ::ffff:192.0.2.1 || " << net << " ==== " << net.broadcastIPv6ToIPv4() << endl;
 
 	// Выводим тесты IP адресов
 	net = "::1";
@@ -78,12 +80,12 @@ int main(int argc, char * argv[]){
 	// Выводим тесты IP адресов
 	net = "46.39.230.51";
 	// Выводим IP адрес в консоль
-	cout << " 46.39.230.51 || " << net.get(net_t::format_t::LONG) << endl;
+	cout << " 46.39.230.51 || " << net.get(net_t::format_t::LONG) << " ==== " << net.broadcastIPv6ToIPv4() << endl;
 
 	// Выводим тесты IP адресов
 	net = "192.16.0.1";
 	// Выводим IP адрес в консоль
-	cout << " 192.16.0.1 || " << net.get(net_t::format_t::LONG) << endl;
+	cout << " 192.16.0.1 || " << net.get(net_t::format_t::LONG) << " === " << net.get(net_t::format_t::LONG_IPV6) << " === " << net.get(net_t::format_t::SHORT_IPV6) << " === " << net.get(net_t::format_t::MIDDLE_IPV6) << endl;
 
 	// Выводим тесты IP адресов
 	net = "2001:0db8:11a3:09d7:1f34:8a2e:07a0:765d";
