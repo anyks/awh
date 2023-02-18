@@ -134,7 +134,7 @@ int main(int argc, char * argv[]){
 	 * 1. Устанавливаем ожидание входящих сообщений
 	 */
 	/*
-	web.mode((uint8_t) server::web_t::flag_t::WAITMESS);
+	web.mode((uint8_t) server::web_t::flag_t::WAIT_MESS);
 	*/
 	// Устанавливаем простое чтение базы событий
 	// core.easily(true);

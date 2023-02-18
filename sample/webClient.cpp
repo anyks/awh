@@ -119,11 +119,11 @@ int main(int argc, char * argv[]){
 	 * 3. Устанавливаем валидацию SSL сертификата
 	 */
 	web.mode(
-		// (uint8_t) client::web_t::flag_t::NOINFO |
-		// (uint8_t) client::web_t::flag_t::WAITMESS |
 		// (uint8_t) client::web_t::flag_t::ALIVE |
+		// (uint8_t) client::web_t::flag_t::NOT_INFO |
+		// (uint8_t) client::web_t::flag_t::WAIT_MESS |
 		(uint8_t) client::web_t::flag_t::REDIRECTS |
-		(uint8_t) client::web_t::flag_t::VERIFYSSL
+		(uint8_t) client::web_t::flag_t::VERIFY_SSL
 	);
 	// Устанавливаем простое чтение базы событий
 	// core.easily(true);

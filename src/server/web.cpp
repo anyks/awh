@@ -789,9 +789,9 @@ void awh::server::WEB::authType(const auth_t::type_t type, const auth_t::hash_t 
  */
 void awh::server::WEB::mode(const u_short flag) noexcept {
 	// Устанавливаем флаг ожидания входящих сообщений
-	this->_scheme.wait = (flag & (uint8_t) flag_t::WAITMESS);
+	this->_scheme.wait = (flag & (uint8_t) flag_t::WAIT_MESS);
 	// Устанавливаем флаг запрещающий вывод информационных сообщений
-	const_cast <server::core_t *> (this->_core)->noInfo(flag & (uint8_t) flag_t::NOINFO);
+	const_cast <server::core_t *> (this->_core)->noInfo(flag & (uint8_t) flag_t::NOT_INFO);
 }
 /**
  * total Метод установки максимального количества одновременных подключений

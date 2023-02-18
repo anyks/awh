@@ -228,12 +228,12 @@ int main(int argc, char * argv[]){
 	 * 4. Устанавливаем флаг поддержания активным подключение
 	 */
 	ws.mode(
-		// (uint8_t) client::ws_t::flag_t::NOTSTOP |
+		// (uint8_t) client::ws_t::flag_t::NOT_STOP |
 		(uint8_t) client::ws_t::flag_t::ALIVE |
-		// (uint8_t) client::ws_t::flag_t::WAITMESS |
-		(uint8_t) client::ws_t::flag_t::VERIFYSSL |
-		(uint8_t) client::ws_t::flag_t::TAKEOVERCLI |
-		(uint8_t) client::ws_t::flag_t::TAKEOVERSRV
+		// (uint8_t) client::ws_t::flag_t::WAIT_MESS |
+		(uint8_t) client::ws_t::flag_t::VERIFY_SSL |
+		(uint8_t) client::ws_t::flag_t::TAKEOVER_CLIENT |
+		(uint8_t) client::ws_t::flag_t::TAKEOVER_SERVER
 	);
 	// Разрешаем простое чтение базы событий
 	// core.frequency(0);

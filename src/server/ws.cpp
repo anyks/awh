@@ -1265,13 +1265,13 @@ void awh::server::WebSocket::authType(const auth_t::type_t type, const auth_t::h
  */
 void awh::server::WebSocket::mode(const u_short flag) noexcept {
 	// Устанавливаем флаг ожидания входящих сообщений
-	this->_scheme.wait = (flag & (uint8_t) flag_t::WAITMESS);
+	this->_scheme.wait = (flag & (uint8_t) flag_t::WAIT_MESS);
 	// Устанавливаем флаг перехвата контекста компрессии для клиента
-	this->_takeOverCli = (flag & (uint8_t) flag_t::TAKEOVERCLI);
+	this->_takeOverCli = (flag & (uint8_t) flag_t::TAKEOVER_CLIENT);
 	// Устанавливаем флаг перехвата контекста компрессии для сервера
-	this->_takeOverSrv = (flag & (uint8_t) flag_t::TAKEOVERSRV);
+	this->_takeOverSrv = (flag & (uint8_t) flag_t::TAKEOVER_SERVER);
 	// Устанавливаем флаг запрещающий вывод информационных сообщений
-	const_cast <server::core_t *> (this->_core)->noInfo(flag & (uint8_t) flag_t::NOINFO);
+	const_cast <server::core_t *> (this->_core)->noInfo(flag & (uint8_t) flag_t::NOT_INFO);
 }
 /**
  * total Метод установки максимального количества одновременных подключений

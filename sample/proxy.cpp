@@ -121,8 +121,8 @@ int main(int argc, char * argv[]){
 	 * 1. Устанавливаем ожидание входящих сообщений
 	 */
 	proxy.mode(
-		// (uint8_t) server::proxy_t::flag_t::NOIFNO |
-		(uint8_t) server::proxy_t::flag_t::WAITMESS
+		// (uint8_t) server::proxy_t::flag_t::NOT_IFNO |
+		(uint8_t) server::proxy_t::flag_t::WAIT_MESS
 	);
 	// Устанавливаем адрес сертификата
 	// proxy.ca("./ca/cert.pem");

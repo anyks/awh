@@ -94,7 +94,7 @@ int main(int argc, char * argv[]){
 	/**
 	 * 1. Устанавливаем ожидание входящих сообщений
 	 */
-	// sample.mode((uint8_t) server::sample_t::flag_t::WAITMESS);
+	// sample.mode((uint8_t) server::sample_t::flag_t::WAIT_MESS);
 	// Устанавливаем простое чтение базы событий
 	// core.easily(true);
 	// Устанавливаем адрес сертификата

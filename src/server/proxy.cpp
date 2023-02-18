@@ -1048,11 +1048,11 @@ void awh::server::Proxy::authType(const auth_t::type_t type, const auth_t::hash_
  */
 void awh::server::Proxy::mode(const u_short flag) noexcept {
 	// Устанавливаем флаг запрещающий метод CONNECT
-	this->_noConnect = (flag & (uint8_t) flag_t::NOCONNECT);
+	this->_noConnect = (flag & (uint8_t) flag_t::NOT_CONNECT);
 	// Устанавливаем флаг ожидания входящих сообщений
-	this->_scheme.wait = (flag & (uint8_t) flag_t::WAITMESS);
+	this->_scheme.wait = (flag & (uint8_t) flag_t::WAIT_MESS);
 	// Устанавливаем флаг запрещающий вывод информационных сообщений
-	this->_core.server.noInfo(flag & (uint8_t) flag_t::NOINFO);
+	this->_core.server.noInfo(flag & (uint8_t) flag_t::NOT_INFO);
 }
 /**
  * total Метод установки максимального количества одновременных подключений

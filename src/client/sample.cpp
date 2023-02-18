@@ -351,15 +351,15 @@ void awh::client::Sample::waitTimeDetect(const time_t read, const time_t write, 
  */
 void awh::client::Sample::mode(const u_short flag) noexcept {
 	// Устанавливаем флаг анбиндинга ядра сетевого модуля
-	this->_unbind = !(flag & (uint8_t) flag_t::NOTSTOP);
+	this->_unbind = !(flag & (uint8_t) flag_t::NOT_STOP);
 	// Устанавливаем флаг поддержания автоматического подключения
 	this->_scheme.alive = (flag & (uint8_t) flag_t::ALIVE);
 	// Устанавливаем флаг ожидания входящих сообщений
-	this->_scheme.wait = (flag & (uint8_t) flag_t::WAITMESS);
+	this->_scheme.wait = (flag & (uint8_t) flag_t::WAIT_MESS);
 	// Устанавливаем флаг запрещающий вывод информационных сообщений
-	const_cast <client::core_t *> (this->_core)->noInfo(flag & (uint8_t) flag_t::NOINFO);
+	const_cast <client::core_t *> (this->_core)->noInfo(flag & (uint8_t) flag_t::NOT_INFO);
 	// Выполняем установку флага проверки домена
-	const_cast <client::core_t *> (this->_core)->verifySSL(flag & (uint8_t) flag_t::VERIFYSSL);
+	const_cast <client::core_t *> (this->_core)->verifySSL(flag & (uint8_t) flag_t::VERIFY_SSL);
 }
 /**
  * keepAlive Метод установки жизни подключения

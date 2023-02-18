@@ -1412,21 +1412,21 @@ void awh::client::WebSocket::proxy(const string & uri, const scheme_t::family_t 
  */
 void awh::client::WebSocket::mode(const u_short flag) noexcept {
 	// Устанавливаем флаг запрещающий вывод информационных сообщений
-	this->_noinfo = (flag & (uint8_t) flag_t::NOINFO);
+	this->_noinfo = (flag & (uint8_t) flag_t::NOT_INFO);
 	// Устанавливаем флаг анбиндинга ядра сетевого модуля
-	this->_unbind = !(flag & (uint8_t) flag_t::NOTSTOP);
+	this->_unbind = !(flag & (uint8_t) flag_t::NOT_STOP);
 	// Устанавливаем флаг поддержания автоматического подключения
 	this->_scheme.alive = (flag & (uint8_t) flag_t::ALIVE);
 	// Устанавливаем флаг ожидания входящих сообщений
-	this->_scheme.wait = (flag & (uint8_t) flag_t::WAITMESS);
+	this->_scheme.wait = (flag & (uint8_t) flag_t::WAIT_MESS);
 	// Устанавливаем флаг перехвата контекста компрессии для клиента
-	this->_takeOverCli = (flag & (uint8_t) flag_t::TAKEOVERCLI);
+	this->_takeOverCli = (flag & (uint8_t) flag_t::TAKEOVER_CLIENT);
 	// Устанавливаем флаг перехвата контекста компрессии для сервера
-	this->_takeOverSrv = (flag & (uint8_t) flag_t::TAKEOVERSRV);
+	this->_takeOverSrv = (flag & (uint8_t) flag_t::TAKEOVER_SERVER);
 	// Устанавливаем флаг запрещающий вывод информационных сообщений
-	const_cast <client::core_t *> (this->_core)->noInfo(flag & (uint8_t) flag_t::NOINFO);
+	const_cast <client::core_t *> (this->_core)->noInfo(flag & (uint8_t) flag_t::NOT_INFO);
 	// Выполняем установку флага проверки домена
-	const_cast <client::core_t *> (this->_core)->verifySSL(flag & (uint8_t) flag_t::VERIFYSSL);
+	const_cast <client::core_t *> (this->_core)->verifySSL(flag & (uint8_t) flag_t::VERIFY_SSL);
 }
 /**
  * chunk Метод установки размера чанка

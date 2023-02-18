@@ -158,10 +158,10 @@ int main(int argc, char * argv[]){
 	core.sonet(awh::scheme_t::sonet_t::TCP);
 
 	web.mode(
-		(uint8_t) client::web_t::flag_t::NOINFO |
-		(uint8_t) client::web_t::flag_t::WAITMESS |
+		(uint8_t) client::web_t::flag_t::NOT_INFO |
+		(uint8_t) client::web_t::flag_t::WAIT_MESS |
 		(uint8_t) client::web_t::flag_t::REDIRECTS |
-		(uint8_t) client::web_t::flag_t::VERIFYSSL
+		(uint8_t) client::web_t::flag_t::VERIFY_SSL
 	);
 	// web.proxy("http://user:password@host.com:port");
 	web.proxy("socks5://user:password@host.com:port");
@@ -305,9 +305,9 @@ int main(int argc, char * argv[]){
 
 	ws.mode(
 		(uint8_t) client::ws_t::flag_t::ALIVE |
-		(uint8_t) client::ws_t::flag_t::VERIFYSSL |
-		(uint8_t) client::ws_t::flag_t::TAKEOVERCLI |
-		(uint8_t) client::ws_t::flag_t::TAKEOVERSRV
+		(uint8_t) client::ws_t::flag_t::VERIFY_SSL |
+		(uint8_t) client::ws_t::flag_t::TAKEOVER_CLIENT |
+		(uint8_t) client::ws_t::flag_t::TAKEOVER_SERVER
 	);
 
 	core.verifySSL(false);
@@ -466,8 +466,8 @@ int main(int argc, char * argv[]){
 	log.format("%H:%M:%S %d.%m.%Y");
 
 	proxy.mode(
-		(uint8_t) server::proxy_t::flag_t::NOINFO |
-		(uint8_t) server::proxy_t::flag_t::WAITMESS
+		(uint8_t) server::proxy_t::flag_t::NOT_INFO |
+		(uint8_t) server::proxy_t::flag_t::WAIT_MESS
 	);
 	proxy.clusterSize();
 
@@ -532,8 +532,8 @@ int main(int argc, char * argv[]){
 	log.format("%H:%M:%S %d.%m.%Y");
 
 	proxy.mode(
-		(uint8_t) proxy_socks5_t::flag_t::NOINFO |
-		(uint8_t) proxy_socks5_t::flag_t::WAITMESS
+		(uint8_t) proxy_socks5_t::flag_t::NOT_INFO |
+		(uint8_t) proxy_socks5_t::flag_t::WAIT_MESS
 	);
 	proxy.clusterSize();
 
@@ -683,9 +683,9 @@ int main(int argc, char * argv[]){
 	log.format("%H:%M:%S %d.%m.%Y");
 
 	sample.mode(
-		// (uint8_t) client::sample_t::flag_t::NOINFO |
-		(uint8_t) client::sample_t::flag_t::WAITMESS |
-		(uint8_t) client::sample_t::flag_t::VERIFYSSL
+		// (uint8_t) client::sample_t::flag_t::NOT_INFO |
+		(uint8_t) client::sample_t::flag_t::WAIT_MESS |
+		(uint8_t) client::sample_t::flag_t::VERIFY_SSL
 	);
 	core.sonet(awh::scheme_t::sonet_t::TCP);
 
@@ -793,9 +793,9 @@ int main(int argc, char * argv[]){
 	log.format("%H:%M:%S %d.%m.%Y");
 
 	sample.mode(
-		// (uint8_t) client::sample_t::flag_t::NOINFO |
-		(uint8_t) client::sample_t::flag_t::WAITMESS |
-		(uint8_t) client::sample_t::flag_t::VERIFYSSL
+		// (uint8_t) client::sample_t::flag_t::NOT_INFO |
+		(uint8_t) client::sample_t::flag_t::WAIT_MESS |
+		(uint8_t) client::sample_t::flag_t::VERIFY_SSL
 	);
 	core.verifySSL(false);
 	core.ca("./ca/cert.pem");
@@ -908,9 +908,9 @@ int main(int argc, char * argv[]){
 	log.format("%H:%M:%S %d.%m.%Y");
 
 	sample.mode(
-		// (uint8_t) client::sample_t::flag_t::NOINFO |
-		(uint8_t) client::sample_t::flag_t::WAITMESS |
-		(uint8_t) client::sample_t::flag_t::VERIFYSSL
+		// (uint8_t) client::sample_t::flag_t::NOT_INFO |
+		(uint8_t) client::sample_t::flag_t::WAIT_MESS |
+		(uint8_t) client::sample_t::flag_t::VERIFY_SSL
 	);
 	core.sonet(awh::scheme_t::sonet_t::UDP);
 
@@ -1018,9 +1018,9 @@ int main(int argc, char * argv[]){
 	log.format("%H:%M:%S %d.%m.%Y");
 
 	sample.mode(
-		// (uint8_t) client::sample_t::flag_t::NOINFO |
-		(uint8_t) client::sample_t::flag_t::WAITMESS |
-		(uint8_t) client::sample_t::flag_t::VERIFYSSL
+		// (uint8_t) client::sample_t::flag_t::NOT_INFO |
+		(uint8_t) client::sample_t::flag_t::WAIT_MESS |
+		(uint8_t) client::sample_t::flag_t::VERIFY_SSL
 	);
 	core.verifySSL(false);
 	core.ca("./ca/cert.pem");
@@ -1133,9 +1133,9 @@ int main(int argc, char * argv[]){
 	log.format("%H:%M:%S %d.%m.%Y");
 
 	sample.mode(
-		// (uint8_t) client::sample_t::flag_t::NOINFO |
-		(uint8_t) client::sample_t::flag_t::WAITMESS |
-		(uint8_t) client::sample_t::flag_t::VERIFYSSL
+		// (uint8_t) client::sample_t::flag_t::NOT_INFO |
+		(uint8_t) client::sample_t::flag_t::WAIT_MESS |
+		(uint8_t) client::sample_t::flag_t::VERIFY_SSL
 	);
 	core.verifySSL(false);
 	core.ca("./ca/cert.pem");
@@ -1248,9 +1248,9 @@ int main(int argc, char * argv[]){
 	log.format("%H:%M:%S %d.%m.%Y");
 
 	sample.mode(
-		// (uint8_t) client::sample_t::flag_t::NOINFO |
-		(uint8_t) client::sample_t::flag_t::WAITMESS |
-		(uint8_t) client::sample_t::flag_t::VERIFYSSL
+		// (uint8_t) client::sample_t::flag_t::NOT_INFO |
+		(uint8_t) client::sample_t::flag_t::WAIT_MESS |
+		(uint8_t) client::sample_t::flag_t::VERIFY_SSL
 	);
 	core.sonet(awh::scheme_t::sonet_t::TCP);
 	core.family(awh::scheme_t::family_t::NIX);
@@ -1360,9 +1360,9 @@ int main(int argc, char * argv[]){
 	log.format("%H:%M:%S %d.%m.%Y");
 
 	sample.mode(
-		// (uint8_t) client::sample_t::flag_t::NOINFO |
-		(uint8_t) client::sample_t::flag_t::WAITMESS |
-		(uint8_t) client::sample_t::flag_t::VERIFYSSL
+		// (uint8_t) client::sample_t::flag_t::NOT_INFO |
+		(uint8_t) client::sample_t::flag_t::WAIT_MESS |
+		(uint8_t) client::sample_t::flag_t::VERIFY_SSL
 	);
 	core.sonet(awh::scheme_t::sonet_t::UDP);
 	core.family(awh::scheme_t::family_t::NIX);

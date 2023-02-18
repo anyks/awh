@@ -133,9 +133,9 @@ int main(int argc, char * argv[]){
 	 */
 	/*
 	ws.setMode(
-		(uint8_t) server::ws_t::flag_t::WAITMESS |
-		(uint8_t) server::ws_t::flag_t::TAKEOVERCLI |
-		(uint8_t) server::ws_t::flag_t::TAKEOVERSRV
+		(uint8_t) server::ws_t::flag_t::WAIT_MESS |
+		(uint8_t) server::ws_t::flag_t::TAKEOVER_CLIENT |
+		(uint8_t) server::ws_t::flag_t::TAKEOVER_SERVER
 	);
 	*/
 	// Устанавливаем простое чтение базы событий

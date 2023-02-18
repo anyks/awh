@@ -417,25 +417,30 @@ void awh::FS::makePath(const string & path) const noexcept {
 	}
 }
 /**
- * makeDir Метод создания каталога для хранения логов
- * @param path  адрес для каталога
- * @param user  данные пользователя
- * @param group идентификатор группы
- * @return      результат создания каталога
+ * Выполняем работу для Unix
  */
-bool awh::FS::makeDir(const string & path, const string & user, const string & group) const noexcept {
-	// Результат работы функции
-	bool result = false;
-	// Проверяем существует ли нужный нам каталог
-	if((result = (this->type(path) == type_t::NONE))){
-		// Создаем каталог
-		this->makePath(path);
-		// Устанавливаем права на каталог
-		this->chown(path, user, group);
+#if !defined(_WIN32) && !defined(_WIN64)
+	/**
+	 * makeDir Метод создания каталога для хранения логов
+	 * @param path  адрес для каталога
+	 * @param user  данные пользователя
+	 * @param group идентификатор группы
+	 * @return      результат создания каталога
+	 */
+	bool awh::FS::makeDir(const string & path, const string & user, const string & group) const noexcept {
+		// Результат работы функции
+		bool result = false;
+		// Проверяем существует ли нужный нам каталог
+		if((result = (this->type(path) == type_t::NONE))){
+			// Создаем каталог
+			this->makePath(path);
+			// Устанавливаем права на каталог
+			this->chown(path, user, group);
+		}
+		// Сообщаем что каталог и так существует
+		return result;
 	}
-	// Сообщаем что каталог и так существует
-	return result;
-}
+#endif
 /**
  * fileComponents Метод извлечения названия и расширения файла
  * @param filename адрес файла для извлечения его параметров
