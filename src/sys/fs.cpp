@@ -454,16 +454,23 @@ pair <string, string> awh::FS::fileComponents(const string & filename) const noe
 		size_t pos = 0;
 		// Выполняем поиск разделителя каталога
 		if((pos = filename.rfind(FS_SEPARATOR)) != string::npos){
-			// Извлекаем имя файла
-			const string & name = filename.substr(pos + 1);
-			// Ищем расширение файла
-			if((pos = name.rfind(".")) != string::npos){
-				// Устанавливаем имя файла
-				result.first = name.substr(0, pos);
-				// Устанавливаем расширение файла
-				result.second = name.substr(pos + 1);
-			// Устанавливаем только имя файла
-			} else result.first = std::forward <const string> (name);
+			// Если переданный адрес является каталогом
+			if(this->type(filename) == type_t::DIR)
+				// Выполняем вывод названия каталога
+				result.first = std::forward <const string> (filename.substr(pos + 1));
+			// Если переданный адрес не является каталогом
+			else {
+				// Извлекаем имя файла
+				const string & name = filename.substr(pos + 1);
+				// Ищем расширение файла
+				if((pos = name.rfind(".")) != string::npos){
+					// Устанавливаем имя файла
+					result.first = name.substr(0, pos);
+					// Устанавливаем расширение файла
+					result.second = name.substr(pos + 1);
+				// Устанавливаем только имя файла
+				} else result.first = std::forward <const string> (name);
+			}
 		}
 	}
 	// Выводим результат

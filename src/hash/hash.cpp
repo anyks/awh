@@ -146,9 +146,7 @@ vector <char> awh::Hash::compressBrotli(const char * buffer, const size_t size) 
 		// Инициализируем стейт энкодера Brotli
 		BrotliEncoderState * encoder = BrotliEncoderCreateInstance(nullptr, nullptr, nullptr);
 		// Выполняем сжатие данных
-		while(true){
-			// Если енкодер закончил работу, выходим
-			if(BrotliEncoderIsFinished(encoder)) break;
+		while(!BrotliEncoderIsFinished(encoder)){
 			// Получаем размер буфера закодированных бинарных данных
 			size_t sizeOutput = data.size();
 			// Получаем буфер закодированных бинарных данных
