@@ -547,7 +547,7 @@ pair <string, string> awh::FS::fileComponents(const string & filename) const noe
  * @param filename адрес файла для чтения
  * @param callback функция обратного вызова
  */
-void awh::FS::readFile(const string & filename, function <void (const string &, const uintmax_t)> callback) const noexcept {
+void awh::FS::readFile(const string & filename, function <void (const string &)> callback) const noexcept {
 	/**
 	 * Выполняем работу для Windows
 	 */
@@ -599,7 +599,7 @@ void awh::FS::readFile(const string & filename, function <void (const string &, 
 							// Если это конец файла, корректируем размер последнего байта
 							if(length == 0) length = 1;
 							// Если длина слова получена, выводим полученную строку
-							callback(string((char *) buffer + offset, length), size);
+							callback(string((char *) buffer + offset, length));
 							// Выполняем смещение
 							offset = (i + 1);
 						}
@@ -609,7 +609,7 @@ void awh::FS::readFile(const string & filename, function <void (const string &, 
 					// Если данные не все прочитаны, выводим как есть
 					if((offset == 0) && (size > 0))
 						// Выводим полученную строку
-						callback(string((char *) buffer, size), size);
+						callback(string((char *) buffer, size));
 				}
 			}
 			// Если файл открыт, закрываем его
@@ -623,7 +623,7 @@ void awh::FS::readFile(const string & filename, function <void (const string &, 
  * @param filename адрес файла для чтения
  * @param callback функция обратного вызова
  */
-void awh::FS::readFile2(const string & filename, function <void (const string &, const uintmax_t)> callback) const noexcept {
+void awh::FS::readFile2(const string & filename, function <void (const string &)> callback) const noexcept {
 	// Если адрес файла передан
 	if(!filename.empty() && this->isFile(filename)){
 		// Открываем файл на чтение
@@ -661,7 +661,7 @@ void awh::FS::readFile2(const string & filename, function <void (const string &,
 						// Если это конец файла, корректируем размер последнего байта
 						if(length == 0) length = 1;
 						// Если длина слова получена, выводим полученную строку
-						callback(string(data + offset, length), size);
+						callback(string(data + offset, length));
 						// Выполняем смещение
 						offset = (i + 1);
 					}
@@ -671,7 +671,7 @@ void awh::FS::readFile2(const string & filename, function <void (const string &,
 				// Если данные не все прочитаны, выводим как есть
 				if((offset == 0) && (size > 0))
 					// Выводим полученную строку
-					callback(string(data, size), size);
+					callback(string(data, size));
 				// Очищаем буфер данных
 				buffer.clear();
 				// Освобождаем выделенную память
@@ -690,69 +690,65 @@ void awh::FS::readFile2(const string & filename, function <void (const string &,
  * @param rec      флаг рекурсивного перебора каталогов
  * @param callback функция обратного вызова
  */
-void awh::FS::readDir(const string & path, const string & ext, const bool rec, function <void (const string &, const uintmax_t)> callback) const noexcept {
+void awh::FS::readDir(const string & path, const string & ext, const bool rec, function <void (const string &)> callback) const noexcept {
 	// Если адрес каталога и расширение файлов переданы
 	if(!path.empty() && this->isDir(path)){
-		// Получаем полный размер каталога
-		const uintmax_t size = this->size(path, ext);
-		// Если размер каталога получен
-		if(size > 0){
-			/**
-			 * readFn Прототип функции запроса файлов в каталоге
-			 * @param путь до каталога
-			 * @param расширение файла по которому идет фильтрация
-			 * @param флаг рекурсивного перебора каталогов
-			 */
-			function <void (const string &, const string &, const bool)> readFn;
-			/**
-			 * readFn Функция запроса файлов в каталоге
-			 * @param path путь до каталога
-			 * @param ext  расширение файла по которому идет фильтрация
-			 * @param rec  флаг рекурсивного перебора каталогов
-			 */
-			readFn = [&](const string & path, const string & ext, const bool rec) noexcept -> void {
-				// Открываем указанный каталог
-				DIR * dir = ::opendir(path.c_str());
-				// Если каталог открыт
-				if(dir != nullptr){
-					// Структура проверка статистики
-					struct stat info;
-					// Создаем указатель на содержимое каталога
-					struct dirent * ptr = nullptr;
-					// Выполняем чтение содержимого каталога
-					while((ptr = ::readdir(dir))){
-						// Пропускаем названия текущие "." и внешние "..", так как идет рекурсия
-						if(!strcmp(ptr->d_name, ".") || !strcmp(ptr->d_name, "..")) continue;
-						// Получаем адрес в виде строки
-						const string & address = this->_fmk->format("%s%s%s", path.c_str(), FS_SEPARATOR, ptr->d_name);
-						// Если статистика извлечена
-						if(!stat(address.c_str(), &info)){
-							// Если дочерний элемент является дирректорией
-							if(S_ISDIR(info.st_mode)){
-								// Продолжаем обработку следующих каталогов
-								if(rec) readFn(address, ext, rec);
-							// Если дочерний элемент является файлом и расширение файла указано то выводим его
-							} else if(!ext.empty()) {
-								// Получаем расширение файла
-								const string & extension = this->_fmk->format(".%s", ext.c_str());
-								// Получаем длину адреса
-								const size_t length = extension.length();
-								// Если расширение файла найдено
-								if(address.substr(address.length() - length, length).compare(extension) == 0)
-									// Выводим полный путь файла
-									callback(this->realPath(address), size);
-							// Если дочерний элемент является файлом то выводим его
-							} else callback(this->realPath(address), size);
-						}
+		/**
+		 * readFn Прототип функции запроса файлов в каталоге
+		 * @param путь до каталога
+		 * @param расширение файла по которому идет фильтрация
+		 * @param флаг рекурсивного перебора каталогов
+		 */
+		function <void (const string &, const string &, const bool)> readFn;
+		/**
+		 * readFn Функция запроса файлов в каталоге
+		 * @param path путь до каталога
+		 * @param ext  расширение файла по которому идет фильтрация
+		 * @param rec  флаг рекурсивного перебора каталогов
+		 */
+		readFn = [&](const string & path, const string & ext, const bool rec) noexcept -> void {
+			// Открываем указанный каталог
+			DIR * dir = ::opendir(path.c_str());
+			// Если каталог открыт
+			if(dir != nullptr){
+				// Структура проверка статистики
+				struct stat info;
+				// Создаем указатель на содержимое каталога
+				struct dirent * ptr = nullptr;
+				// Выполняем чтение содержимого каталога
+				while((ptr = ::readdir(dir))){
+					// Пропускаем названия текущие "." и внешние "..", так как идет рекурсия
+					if(!strcmp(ptr->d_name, ".") || !strcmp(ptr->d_name, "..")) continue;
+					// Получаем адрес в виде строки
+					const string & address = this->_fmk->format("%s%s%s", path.c_str(), FS_SEPARATOR, ptr->d_name);
+					// Если статистика извлечена
+					if(!stat(address.c_str(), &info)){
+						// Если дочерний элемент является дирректорией
+						if(S_ISDIR(info.st_mode)){
+							// Продолжаем обработку следующих каталогов
+							if(rec) readFn(address, ext, rec);
+							// Выводим данные каталога как он есть
+							else callback(this->realPath(address));
+						// Если дочерний элемент является файлом и расширение файла указано то выводим его
+						} else if(!ext.empty()) {
+							// Получаем расширение файла
+							const string & extension = this->_fmk->format(".%s", ext.c_str());
+							// Получаем длину адреса
+							const size_t length = extension.length();
+							// Если расширение файла найдено
+							if(address.substr(address.length() - length, length).compare(extension) == 0)
+								// Выводим полный путь файла
+								callback(this->realPath(address));
+						// Если дочерний элемент является файлом то выводим его
+						} else callback(this->realPath(address));
 					}
-					// Закрываем открытый каталог
-					::closedir(dir);
 				}
-			};
-			// Запрашиваем данные первого каталога
-			readFn(path, ext, rec);
-		// Сообщаем что каталог пустой
-		} else callback("", 0);
+				// Закрываем открытый каталог
+				::closedir(dir);
+			}
+		};
+		// Запрашиваем данные первого каталога
+		readFn(path, ext, rec);
 	// Выводим сообщение об ошибке
 	} else this->_log->print("the path name: \"%s\" is not found", log_t::flag_t::WARNING, path.c_str());
 }
@@ -763,17 +759,17 @@ void awh::FS::readDir(const string & path, const string & ext, const bool rec, f
  * @param rec      флаг рекурсивного перебора каталогов
  * @param callback функция обратного вызова
  */
-void awh::FS::readPath(const string & path, const string & ext, const bool rec, function <void (const string &, const string &, const uintmax_t, const uintmax_t)> callback) const noexcept {
+void awh::FS::readPath(const string & path, const string & ext, const bool rec, function <void (const string &, const string &)> callback) const noexcept {
 	// Если адрес каталога и расширение файлов переданы
 	if(!path.empty() && this->isDir(path)){
 		// Переходим по всему списку файлов в каталоге
-		this->readDir(path, ext, rec, [&](const string & filename, const uintmax_t dirSize) noexcept -> void {
+		this->readDir(path, ext, rec, [&](const string & filename) noexcept -> void {
 			// Выполняем считывание всех строк текста
-			this->readFile2(filename, [&](const string & text, const uintmax_t fileSize) noexcept -> void {
+			this->readFile2(filename, [&](const string & text) noexcept -> void {
 				// Если текст получен
 				if(!text.empty())
 					// Выводим функцию обратного вызова
-					callback(text, filename, fileSize, dirSize);
+					callback(text, filename);
 			});
 		});
 	// Выводим сообщение об ошибке

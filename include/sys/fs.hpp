@@ -206,13 +206,13 @@ namespace awh {
 			 * @param filename адрес файла для чтения
 			 * @param callback функция обратного вызова
 			 */
-			void readFile(const string & filename, function <void (const string &, const uintmax_t)> callback) const noexcept;
+			void readFile(const string & filename, function <void (const string &)> callback) const noexcept;
 			/**
 			 * readFile2 Метод рекурсивного получения всех строк файла (стандартным способом)
 			 * @param filename адрес файла для чтения
 			 * @param callback функция обратного вызова
 			 */
-			void readFile2(const string & filename, function <void (const string &, const uintmax_t)> callback) const noexcept;
+			void readFile2(const string & filename, function <void (const string &)> callback) const noexcept;
 		public:
 			/**
 			 * readDir Метод рекурсивного получения файлов во всех подкаталогах
@@ -221,7 +221,7 @@ namespace awh {
 			 * @param rec      флаг рекурсивного перебора каталогов
 			 * @param callback функция обратного вызова
 			 */
-			void readDir(const string & path, const string & ext, const bool rec, function <void (const string &, const uintmax_t)> callback) const noexcept;
+			void readDir(const string & path, const string & ext, const bool rec, function <void (const string &)> callback) const noexcept;
 			/**
 			 * readPath Метод рекурсивного чтения файлов во всех подкаталогах
 			 * @param path     путь до каталога
@@ -229,7 +229,7 @@ namespace awh {
 			 * @param rec      флаг рекурсивного перебора каталогов
 			 * @param callback функция обратного вызова
 			 */
-			void readPath(const string & path, const string & ext, const bool rec, function <void (const string &, const string &, const uintmax_t, const uintmax_t)> callback) const noexcept;
+			void readPath(const string & path, const string & ext, const bool rec, function <void (const string &, const string &)> callback) const noexcept;
 		public:
 			/**
 			 * FS конструктор
