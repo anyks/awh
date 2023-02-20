@@ -13,7 +13,7 @@
  */
 
 // Подключаем заголовочный файл
-#include "hash/base64.hpp"
+#include <hash/base64.hpp>
 
 /**
  * base64 Функция кодирования и декодирования base64
