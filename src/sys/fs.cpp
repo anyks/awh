@@ -497,7 +497,7 @@ pair <string, string> awh::FS::fileComponents(const string & filename) const noe
 				// Выводим в лог сообщение
 				this->_log->print("%s", log_t::flag_t::WARNING, strerror(errno));
 			// Если информационные данные считаны удачно
-			else result = info.st_mode;
+			else result = (info.st_mode & (S_IRWXU | S_IRWXG | S_IRWXO));
 		}
 		// Выводим результат
 		return result;
