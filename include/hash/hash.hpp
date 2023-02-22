@@ -91,6 +91,7 @@ namespace awh {
 			 * Методы компрессии
 			 */
 			enum class method_t : uint8_t {
+				NONE    = 0x00, // Метод сжатия не установлен
 				GZIP    = 0x01, // Метод сжатия GZIP
 				BROTLI  = 0x02, // Метод сжатия BROTLI
 				DEFLATE = 0x03  // Метод сжатия DEFLATE

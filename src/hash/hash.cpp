@@ -592,6 +592,10 @@ vector <char> awh::Hash::compress(const char * buffer, const size_t size, const 
 		case (uint8_t) method_t::DEFLATE:
 			// Выполняем компрессию данных
 			return this->compressDeflate(buffer, size);
+		// Если метод компрессии не установлен
+		case (uint8_t) method_t::NONE:
+			// Выводим переданный буфер данных
+			return vector <char> (buffer, buffer + size);
 	}
 	// Выходим из функции
 	return vector <char> ();
@@ -618,6 +622,10 @@ vector <char> awh::Hash::decompress(const char * buffer, const size_t size, cons
 		case (uint8_t) method_t::DEFLATE:
 			// Выполняем компрессию данных
 			return this->decompressDeflate(buffer, size);
+		// Если метод компрессии не установлен
+		case (uint8_t) method_t::NONE:
+			// Выводим переданный буфер данных
+			return vector <char> (buffer, buffer + size);
 	}
 	// Выходим из функции
 	return vector <char> ();
