@@ -1837,6 +1837,54 @@ string awh::Framework::hmacsha512(const string & key, const string & text) const
 	return result;
 }
 /**
+ * bytes Метод конвертации байт в строку
+ * @param value количество байт
+ * @return      полученная строка
+ */
+string awh::Framework::bytes(const double value) const noexcept {
+	// Результат работы функции
+	string result = "0.0 Bytes";
+	// Если количество байт передано
+	if(value > 0){
+		// Выполняем очистку результата
+		result.clear();
+		// Выделяем память результата
+		result.resize(512, 0);
+		// Шаблон киллобайта
+		const float kb = 1024.0f;
+		// Шаблон мегабайта
+		const float mb = 1048576.0f;
+		// Шаблон гигабайта
+		const float gb = 1073741824.0f;
+		// Шаблон терабайта
+		const float tb = 1099511627776.0f;
+		// Если переданное значение соответствует терабайту
+		if(value >= tb)
+			// Выполняем копирование терабайта
+			sprintf(result.data(), "%.2lf TB", (double) value / tb);
+		// Если переданное значение соответствует гигабайту
+		else if((value >= gb) && (value < tb))
+			// Выполняем копирование гигабайта
+			sprintf(result.data(), "%.2lf GB", (double) value / gb);
+		// Если переданное значение соответствует мегабайту
+		else if((value >= mb) && (value < gb))
+			// Выполняем копирование мегабайта
+			sprintf(result.data(), "%.2lf MB", (double) value / mb);
+		// Если переданное значение соответствует киллобайту
+		else if((value >= kb) && (value < mb))
+			// Выполняем копирование киллобайта
+			sprintf(result.data(), "%.2lf KB", (double) value / kb);
+		// Если переданное значение соответствует байту
+		else if(value < kb)
+			// Выполняем копирование байтов
+			sprintf(result.data(), "%.2lf Bytes", value);
+		// Для всех остальных случаев тоже используем байты
+		else sprintf(result.data(), "%.2lf Bytes", value);
+	}
+	// Выводим результат
+	return result;
+}
+/**
  * bytes Метод получения размера в байтах из строки
  * @param str строка обозначения размерности
  * @return    размер в байтах

@@ -552,11 +552,18 @@ namespace awh {
 			string hmacsha512(const string & key, const string & text) const noexcept;
 		public:
 			/**
+			 * bytes Метод конвертации байт в строку
+			 * @param value количество байт
+			 * @return      полученная строка
+			 */
+			string bytes(const double value) const noexcept;
+			/**
 			 * bytes Метод получения размера в байтах из строки
 			 * @param str строка обозначения размерности
 			 * @return    размер в байтах
 			 */
 			size_t bytes(const string & str) const noexcept;
+		public:
 			/**
 			 * seconds Метод получения размера в секундах из строки
 			 * @param str строка обозначения размерности
