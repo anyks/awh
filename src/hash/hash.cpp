@@ -254,7 +254,7 @@ vector <char> awh::Hash::compressGzip(const char * buffer, const size_t size) co
 		// Заполняем его нулями
 		memset(&zs, 0, sizeof(zs));
 		// Если поток инициализировать не удалось, выходим
-		if(deflateInit2(&zs, this->levelGzip, Z_DEFLATED, MOD_GZIP_ZLIB_WINDOWSIZE + 16, MOD_GZIP_ZLIB_CFACTOR, Z_DEFAULT_STRATEGY) == Z_OK){
+		if(deflateInit2(&zs, this->levelGzip, Z_DEFLATED, this->_wbit | 16, MOD_GZIP_ZLIB_CFACTOR, Z_DEFAULT_STRATEGY) == Z_OK){
 			// Указываем размер входного буфера
 			zs.avail_in = size;
 			// Заполняем входные данные буфера
@@ -301,7 +301,7 @@ vector <char> awh::Hash::decompressGzip(const char * buffer, const size_t size) 
 		// Заполняем его нулями
 		memset(&zs, 0, sizeof(zs));
 		// Если поток инициализировать не удалось, выходим
-		if(inflateInit2(&zs, MOD_GZIP_ZLIB_WINDOWSIZE + 16) == Z_OK){
+		if(inflateInit2(&zs, this->_wbit | 16) == Z_OK){
 			// Указываем размер входного буфера
 			zs.avail_in = size;
 			// Заполняем входные данные буфера
@@ -352,7 +352,7 @@ vector <char> awh::Hash::compressDeflate(const char * buffer, const size_t size)
 		// Буфер выходных данных		
 		vector <u_char> output(size, 0);
 		// Если поток инициализировать не удалось, выходим
-		if(this->_takeOverCompress || (deflateInit2(&zs, Z_DEFAULT_COMPRESSION, Z_DEFLATED, -1 * this->_wbit, DEFAULT_MEM_LEVEL, Z_HUFFMAN_ONLY) == Z_OK)){
+		if(this->_takeOverCompress || (deflateInit2(&zs, this->levelGzip, Z_DEFLATED, -1 * this->_wbit, DEFAULT_MEM_LEVEL, Z_HUFFMAN_ONLY) == Z_OK)){
 			// Результат проверки декомпрессии
 			int ret = Z_OK;
 			// Если поток декомпрессора не создан ранее
