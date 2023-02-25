@@ -463,7 +463,7 @@ pair <string, string> awh::FS::fileComponents(const string & filename) const noe
 				// Извлекаем имя файла
 				const string & name = filename.substr(pos + 1);
 				// Ищем расширение файла
-				if((pos = name.rfind(".")) != string::npos){
+				if((pos = name.find(".")) != string::npos){
 					// Устанавливаем имя файла
 					result.first = name.substr(0, pos);
 					// Устанавливаем расширение файла
