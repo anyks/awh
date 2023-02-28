@@ -108,7 +108,7 @@ void awh::DNS::Worker::response(ev::io & io, int revents) noexcept {
 							// Выполняем парсинг IP адреса
 							for(int j = 0; j < ntohs(rrflags->rdlength); ++j)
 								// Выполняем парсинг IP адреса
-								rdata[i][j] = (u_char) buffer[size + j];
+								rdata[i][j] = static_cast <u_char> (buffer[size + j]);
 							// Устанавливаем тип полученных данных
 							type[i] = ntohs(rrflags->rtype);
 						} break;
@@ -358,7 +358,7 @@ vector <u_char> awh::DNS::Worker::split(const string & domain) const noexcept {
 			// Переходим по всему списку секций
 			for(auto & section : sections){
 				// Добавляем в буфер данных размер записи
-				result.push_back((u_char) section.size());
+				result.push_back(static_cast <u_char> (section.size()));
 				// Получаем строку для добавления в буфер данных
 				const string & data = this->_dns->_fmk->convert(section);
 				// Добавляем в буфер данные секции

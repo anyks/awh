@@ -210,7 +210,7 @@ string awh::URI::encode(const string & str) const noexcept {
 			// Переводим символы в верхний регистр
 			escaped << uppercase;
 			// Записываем в поток, код символа
-			escaped << '%' << setw(2) << int((u_char) c);
+			escaped << '%' << setw(2) << static_cast <u_int> (c);
 			// Убираем верхний регистр
 			escaped << nouppercase;
 		}

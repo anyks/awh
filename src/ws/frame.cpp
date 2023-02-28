@@ -78,13 +78,13 @@ void awh::Frame::frame(vector <char> & payload, const char * buffer, const size_
 			// Устанавливаем смещение в буфере
 			offset = 2;
 			// Устанавливаем размер строки
-			payload.back() = ((char) (mask ? 0x80 : 0x0) | (0x7F & size));
+			payload.back() = (static_cast <char> (mask ? 0x80 : 0x0) | (0x7F & size));
 		// Если строка не помещается во второй байт
 		} else if(size < 0x10000) {
 			// Устанавливаем смещение в буфере
 			offset = 4;
 			// Заполняем второй байт максимальным значением
-			payload.back() = ((char) (mask ? 0x80 : 0x0) | (0x7F & 0x7E));
+			payload.back() = (static_cast <char> (mask ? 0x80 : 0x0) | (0x7F & 0x7E));
 			// Увеличиваем память ещё на два байта
 			payload.resize(offset, 0x0);
 			// Выполняем перерасчёт размера передаваемых данных
@@ -96,7 +96,7 @@ void awh::Frame::frame(vector <char> & payload, const char * buffer, const size_
 			// Устанавливаем смещение в буфере
 			offset = 10;
 			// Заполняем второй байт максимальным значением
-			payload.back() = ((char) (mask ? 0x80 : 0x0) | 0x7F);
+			payload.back() = (static_cast <char> (mask ? 0x80 : 0x0) | 0x7F);
 			// Увеличиваем память ещё на восемь байт
 			payload.resize(offset, 0x0);
 			// Выполняем перерасчёт размера передаваемых данных
@@ -150,7 +150,7 @@ vector <char> awh::Frame::message(const mess_t & mess) const noexcept {
 		// Увеличиваем память на 4 байта
 		result.resize(4, 0x0);
 		// Устанавливаем первый байт
-		result.front() = ((char) 0x80 | (0x0F & (u_char) opcode_t::CLOSE));
+		result.front() = (static_cast <char> (0x80) | (0x0F & static_cast <u_char> (opcode_t::CLOSE)));
 		// Размер смещения в буфере
 		uint16_t offset = 0;
 		// Размер передаваемых данных
@@ -160,7 +160,7 @@ vector <char> awh::Frame::message(const mess_t & mess) const noexcept {
 			// Устанавливаем смещение в буфере
 			offset = 2;
 			// Устанавливаем размер строки
-			result.at(1) = ((char) (0x7F & (size + 2)));
+			result.at(1) = (static_cast <char> (0x7F & (size + 2)));
 		// Если строка не помещается во второй байт
 		} else if(size < 0x10000) {
 			// Устанавливаем смещение в буфере
@@ -168,7 +168,7 @@ vector <char> awh::Frame::message(const mess_t & mess) const noexcept {
 			// Увеличиваем память ещё на два байта
 			result.resize(offset + 2, 0x0);
 			// Заполняем второй байт максимальным значением
-			result.at(1) = ((char) (0x7F & 0x7E));
+			result.at(1) = (static_cast <char> (0x7F & 0x7E));
 			// Выполняем перерасчёт размера передаваемых данных
 			const uint16_t length = htons(static_cast <uint16_t> (size + 2));
 			// Устанавливаем размер строки в следующие 2 байта
@@ -239,7 +239,7 @@ awh::mess_t awh::Frame::message(const vector <char> & buffer) const noexcept {
  */
 vector <char> awh::Frame::ping(const string & mess, const bool mask) const noexcept {
 	// Создаём тело запроса и устанавливаем первый байт PING с пустой полезной нагрузкой
-	vector <char> result = {(char) 0x80 | (0x0F & (char) opcode_t::PING), 0x0};
+	vector <char> result = {static_cast <char> (0x80) | (0x0F & static_cast <char> (opcode_t::PING)), 0x0};
 	// Если сообщение передано
 	if(!mess.empty())
 		// Выполняем формирование фрейма
@@ -255,7 +255,7 @@ vector <char> awh::Frame::ping(const string & mess, const bool mask) const noexc
  */
 vector <char> awh::Frame::pong(const string & mess, const bool mask) const noexcept {
 	// Создаём тело запроса и устанавливаем первый байт PONG с пустой полезной нагрузкой
-	vector <char> result = {(char) 0x80 | (0x0F & (char) opcode_t::PONG), 0x0};
+	vector <char> result = {static_cast <char> (0x80) | (0x0F & static_cast <char> (opcode_t::PONG)), 0x0};
 	// Если сообщение передано
 	if(!mess.empty())
 		// Выполняем формирование фрейма
