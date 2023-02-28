@@ -24,14 +24,14 @@ const bool awh::server::Auth::check(const string & method) noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Определяем тип авторизации
-	switch((uint8_t) this->_type){
+	switch(static_cast <uint8_t> (this->_type)){
 		// Если тип авторизации - Базовая
-		case (uint8_t) type_t::BASIC:
+		case static_cast <uint8_t> (type_t::BASIC):
 			// Выполняем проверку авторизации
 			result = (this->_callback.auth != nullptr ? this->_callback.auth(this->_user, this->_pass) : result);
 		break;
 		// Если тип авторизации - Дайджест
-		case (uint8_t) type_t::DIGEST: {
+		case static_cast <uint8_t> (type_t::DIGEST): {
 			// Если данные пользователя переданы
 			if(!method.empty() && !this->_user.empty() && !this->_userDigest.nc.empty() && !this->_userDigest.uri.empty() && !this->_userDigest.cnonce.empty() && !this->_userDigest.resp.empty()){
 				// Если на сервере счётчик меньше
@@ -245,9 +245,9 @@ const string awh::server::Auth::header(const bool mode) noexcept {
 					if(!this->_digest.nonce.empty()) stale = "TRUE";
 				}
 				// Определяем алгоритм шифрования
-				switch((u_short) this->_digest.hash){
+				switch(static_cast <u_short> (this->_digest.hash)){
 					// Если алгоритм шифрования MD5
-					case (u_short) hash_t::MD5: {
+					case static_cast <u_short> (hash_t::MD5): {
 						// Устанавливаем тип шифрования
 						algorithm = "MD5";
 						// Выполняем создание ключа клиента
@@ -256,7 +256,7 @@ const string awh::server::Auth::header(const bool mode) noexcept {
 						if(this->_digest.opaque.empty()) this->_digest.opaque = this->_fmk->md5(AWH_SITE);
 					} break;
 					// Если алгоритм шифрования SHA1
-					case (u_short) hash_t::SHA1: {
+					case static_cast <u_short> (hash_t::SHA1): {
 						// Устанавливаем тип шифрования
 						algorithm = "SHA1";
 						// Выполняем создание ключа клиента
@@ -265,7 +265,7 @@ const string awh::server::Auth::header(const bool mode) noexcept {
 						if(this->_digest.opaque.empty()) this->_digest.opaque = this->_fmk->sha1(AWH_SITE);
 					} break;
 					// Если алгоритм шифрования SHA256
-					case (u_short) hash_t::SHA256: {
+					case static_cast <u_short> (hash_t::SHA256): {
 						// Устанавливаем тип шифрования
 						algorithm = "SHA256";
 						// Выполняем создание ключа клиента
@@ -274,7 +274,7 @@ const string awh::server::Auth::header(const bool mode) noexcept {
 						if(this->_digest.opaque.empty()) this->_digest.opaque = this->_fmk->sha256(AWH_SITE);
 					} break;
 					// Если алгоритм шифрования SHA512
-					case (u_short) hash_t::SHA512: {
+					case static_cast <u_short> (hash_t::SHA512): {
 						// Устанавливаем тип шифрования
 						algorithm = "SHA512";
 						// Выполняем создание ключа клиента

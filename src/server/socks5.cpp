@@ -124,23 +124,23 @@ void awh::server::ProxySocks5::connectServerCallback(const size_t aid, const siz
 			// Если сервер слушает порт
 			} else {
 				// Определяем тип хоста сервера
-				switch((uint8_t) this->_scheme.net.host(this->_host)){
+				switch(static_cast <uint8_t> (this->_scheme.net.host(this->_host))){
 					// Если хост является адресом IPv4
-					case (uint8_t) net_t::type_t::IPV4: {
+					case static_cast <uint8_t> (net_t::type_t::IPV4): {
 						// Устанавливаем хост сервера
 						adj->scheme.url.ip = this->_host;
 						// Устанавливаем тип сети
 						adj->scheme.url.family = AF_INET;
 					} break;
 					// Если хост является адресом IPv6
-					case (uint8_t) net_t::type_t::IPV6: {
+					case static_cast <uint8_t> (net_t::type_t::IPV6): {
 						// Устанавливаем хост сервера
 						adj->scheme.url.ip = this->_host;
 						// Устанавливаем тип сети
 						adj->scheme.url.family = AF_INET6;
 					} break;
 					// Если хост является доменным именем
-					case (uint8_t) net_t::type_t::DOMN:
+					case static_cast <uint8_t> (net_t::type_t::DOMN):
 						// Устанавливаем хост сервера
 						adj->scheme.url.domain = this->_host;
 					break;
@@ -293,14 +293,14 @@ void awh::server::ProxySocks5::readServerCallback(const char * buffer, const siz
 						// Устанавливаем хост сервера
 						adj->scheme.url.host = server.host;
 						// Определяем тип передаваемого сервера
-						switch((uint8_t) this->_net.host(server.host)){
+						switch(static_cast <uint8_t> (this->_net.host(server.host))){
 							// Если хост является доменом или IPv4 адресом
-							case (uint8_t) net_t::type_t::IPV4:
+							case static_cast <uint8_t> (net_t::type_t::IPV4):
 								// Устанавливаем IP адрес
 								adj->scheme.url.ip = server.host;
 							break;
 							// Если хост является IPv6 адресом, переводим ip адрес в полную форму
-							case (uint8_t) net_t::type_t::IPV6: {
+							case static_cast <uint8_t> (net_t::type_t::IPV6): {
 								// Создаём объкт для работы с адресами
 								net_t net(this->_fmk, this->_log);
 								// Выполняем установку хоста
@@ -309,7 +309,7 @@ void awh::server::ProxySocks5::readServerCallback(const char * buffer, const siz
 								adj->scheme.url.ip = net;
 							} break;
 							// Если хост является доменным именем
-							case (uint8_t) net_t::type_t::DOMN: {
+							case static_cast <uint8_t> (net_t::type_t::DOMN): {
 								// Выполняем очистку IP адреса
 								adj->scheme.url.ip.clear();
 								// Устанавливаем доменное имя
@@ -553,9 +553,9 @@ void awh::server::ProxySocks5::bytesDetect(const scheme_t::mark_t read, const sc
  */
 void awh::server::ProxySocks5::mode(const u_short flag) noexcept {
 	// Устанавливаем флаг ожидания входящих сообщений
-	this->_scheme.wait = (flag & (uint8_t) flag_t::WAIT_MESS);
+	this->_scheme.wait = (flag & static_cast <uint8_t> (flag_t::WAIT_MESS));
 	// Устанавливаем флаг запрещающий вывод информационных сообщений
-	this->_core.server.noInfo(flag & (uint8_t) flag_t::NOT_INFO);
+	this->_core.server.noInfo(flag & static_cast <uint8_t> (flag_t::NOT_INFO));
 }
 /**
  * total Метод установки максимального количества одновременных подключений

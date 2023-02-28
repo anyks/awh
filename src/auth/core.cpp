@@ -41,9 +41,9 @@ const string awh::Authorization::response(const string & method, const string & 
 		 */
 		try {
 			// Определяем алгоритм шифрования
-			switch((u_short) this->_digest.hash){
+			switch(static_cast <u_short> (this->_digest.hash)){
 				// Если алгоритм шифрования MD5
-				case (u_short) hash_t::MD5: {
+				case static_cast <u_short> (hash_t::MD5): {
 					// Создаем первый этап
 					const string & ha1 = this->_fmk->md5(this->_fmk->format("%s:%s:%s", user.c_str(), digest.realm.c_str(), pass.c_str()));
 					// Если первый этап получен
@@ -55,7 +55,7 @@ const string awh::Authorization::response(const string & method, const string & 
 					}
 				} break;
 				// Если алгоритм шифрования SHA1
-				case (u_short) hash_t::SHA1: {
+				case static_cast <u_short> (hash_t::SHA1): {
 					// Создаем первый этап
 					const string & ha1 = this->_fmk->sha1(this->_fmk->format("%s:%s:%s", user.c_str(), digest.realm.c_str(), pass.c_str()));
 					// Если первый этап получен
@@ -67,7 +67,7 @@ const string awh::Authorization::response(const string & method, const string & 
 					}
 				} break;
 				// Если алгоритм шифрования SHA256
-				case (u_short) hash_t::SHA256: {
+				case static_cast <u_short> (hash_t::SHA256): {
 					// Создаем первый этап
 					const string & ha1 = this->_fmk->sha256(this->_fmk->format("%s:%s:%s", user.c_str(), digest.realm.c_str(), pass.c_str()));
 					// Если первый этап получен
@@ -79,7 +79,7 @@ const string awh::Authorization::response(const string & method, const string & 
 					}
 				} break;
 				// Если алгоритм шифрования SHA512
-				case (u_short) hash_t::SHA512: {
+				case static_cast <u_short> (hash_t::SHA512): {
 					// Создаем первый этап
 					const string & ha1 = this->_fmk->sha512(this->_fmk->format("%s:%s:%s", user.c_str(), digest.realm.c_str(), pass.c_str()));
 					// Если первый этап получен

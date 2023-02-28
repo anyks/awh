@@ -299,10 +299,8 @@ string awh::Framework::noexp(const double number, const double step) const noexc
 	if((number > 0.0) && (step > 0.0)){
 		// Создаём поток для конвертации числа
 		stringstream stream;
-		// Получаем размер шага
-		const u_short size = (u_short) abs(log10(step));
 		// Записываем число в поток
-		stream << fixed << setprecision(size) << number;
+		stream << fixed << setprecision(abs(log10(step))) << number;
 		// Получаем из потока строку
 		stream >> result;
 		// Выполняем конвертацию числа
@@ -483,12 +481,9 @@ string awh::Framework::format(const string & format, const vector <string> & ite
 		// Исправляем табуляцию
 		replaceFn(result, "\\t", "\t");
 		// Перебираем весь список аргументов
-		for(auto & item : items){
+		for(auto & item : items)
 			// Выполняем замену индекса аргумента на указанный аргумент
-			replaceFn(result, "$" + to_string(index), item);
-			// Увеличиваем значение индекса аргумента
-			index++;
-		}
+			replaceFn(result, "$" + to_string(index++), item);
 	}
 	// Выводим результат
 	return result;
@@ -1028,10 +1023,8 @@ bool awh::Framework::isUpper(const wchar_t letter) const noexcept {
  * @return       результат проверки
  */
 bool awh::Framework::isSpace(const wchar_t letter) const noexcept {
-	// Получаем код символа
-	const u_short lid = letter;
 	// Выводим результат
-	return ((lid == 32) || (lid == 160) || (lid == 173) || (lid == 9));
+	return ((letter == 32) || (letter == 160) || (letter == 173) || (letter == 9));
 }
 /**
  * isLatian Метод проверки является ли строка латиницей
@@ -1147,9 +1140,9 @@ bool awh::Framework::isNumber(const wstring & word) const noexcept {
 		// Если длина слова больше 1-го символа
 		if(length > 1){
 			// Начальная позиция поиска
-			const u_short pos = ((word.front() == L'-') || (word.front() == L'+') ? 1 : 0);
+			const uint8_t pos = ((word.front() == L'-') || (word.front() == L'+') ? 1 : 0);
 			// Переходим по всем буквам слова
-			for(size_t i = pos, j = (length - 1); j > ((length / 2) - 1); i++, j--){
+			for(size_t i = static_cast <size_t> (pos), j = (length - 1); j > ((length / 2) - 1); i++, j--){
 				// Проверяем является ли слово арабским числом
 				result = !(
 					(i == j) ? (this->numsSymbols.arabs.count(word.at(i)) < 1) :
@@ -1228,11 +1221,11 @@ bool awh::Framework::isDecimal(const wstring & word) const noexcept {
 			// Текущая буква
 			wchar_t letter = 0;
 			// Начальная позиция поиска
-			const u_short pos = ((word.front() == L'-') || (word.front() == L'+') ? 1 : 0);
+			const uint8_t pos = ((word.front() == L'-') || (word.front() == L'+') ? 1 : 0);
 			// Переходим по всем символам слова
-			for(size_t i = pos; i < length; i++){
+			for(size_t i = static_cast <size_t> (pos); i < length; i++){
 				// Если позиция не первая
-				if(i > pos){
+				if(i > static_cast <size_t> (pos)){
 					// Получаем текущую букву
 					letter = word.at(i);
 					// Если плавающая точка найдена
@@ -1643,6 +1636,8 @@ string awh::Framework::md5(const string & text) const noexcept {
 	string result = "";
 	// Если текст передан
 	if(!text.empty()){
+		// Строка MD5
+		char buffer[33];
 		// Массив полученных значений
 		u_char digest[16];
 		// Создаем контекст
@@ -1653,12 +1648,12 @@ string awh::Framework::md5(const string & text) const noexcept {
 		MD5_Update(&ctx, text.c_str(), text.length());
 		// Копируем полученные данные
 		MD5_Final(digest, &ctx);
-		// Строка md5
-		char buffer[33];
 		// Заполняем массив нулями
 		memset(buffer, 0, 33);
-		// Заполняем строку данными md5
-		for(u_short i = 0; i < 16; i++) sprintf(&buffer[i * 2], "%02x", u_int(digest[i]));
+		// Заполняем строку данными MD5
+		for(uint8_t i = 0; i < 16; i++)
+			// Формируем данные MD5-хэша
+			sprintf(&buffer[i * 2], "%02x", u_int(digest[i]));
 		// Выводим результат
 		result = buffer;
 	}
@@ -1675,6 +1670,8 @@ string awh::Framework::sha1(const string & text) const noexcept {
 	string result = "";
 	// Если текст передан
 	if(!text.empty()){
+		// Строка SHA1
+		char buffer[41];
 		// Массив полученных значений
 		u_char digest[20];
 		// Создаем контекст
@@ -1685,12 +1682,12 @@ string awh::Framework::sha1(const string & text) const noexcept {
 		SHA1_Update(&ctx, text.c_str(), text.length());
 		// Копируем полученные данные
 		SHA1_Final(digest, &ctx);
-		// Строка sha1
-		char buffer[41];
 		// Заполняем массив нулями
 		memset(buffer, 0, 41);
-		// Заполняем строку данными sha1
-		for(u_short i = 0; i < 20; i++) sprintf(&buffer[i * 2], "%02x", u_int(digest[i]));
+		// Заполняем строку данными SHA1
+		for(uint8_t i = 0; i < 20; i++)
+			// Формируем данные SHA1-хэша
+			sprintf(&buffer[i * 2], "%02x", u_int(digest[i]));
 		// Выводим результат
 		result = buffer;
 	}
@@ -1707,6 +1704,8 @@ string awh::Framework::sha256(const string & text) const noexcept {
 	string result = "";
 	// Если текст передан
 	if(!text.empty()){
+		// Строка SHA256
+		char buffer[65];
 		// Массив полученных значений
 		u_char digest[32];
 		// Создаем контекст
@@ -1717,12 +1716,12 @@ string awh::Framework::sha256(const string & text) const noexcept {
 		SHA256_Update(&ctx, text.c_str(), text.length());
 		// Копируем полученные данные
 		SHA256_Final(digest, &ctx);
-		// Строка sha256
-		char buffer[65];
 		// Заполняем массив нулями
 		memset(buffer, 0, 65);
-		// Заполняем строку данными sha256
-		for(u_short i = 0; i < 32; i++) sprintf(&buffer[i * 2], "%02x", u_int(digest[i]));
+		// Заполняем строку данными SHA256
+		for(uint8_t i = 0; i < 32; i++)
+			// Формируем данные SHA256-хэша
+			sprintf(&buffer[i * 2], "%02x", u_int(digest[i]));
 		// Выводим результат
 		result = buffer;
 	}
@@ -1739,6 +1738,8 @@ string awh::Framework::sha512(const string & text) const noexcept {
 	string result = "";
 	// Если текст передан
 	if(!text.empty()){
+		// Строка SHA512
+		char buffer[129];
 		// Массив полученных значений
 		u_char digest[64];
 		// Создаем контекст
@@ -1749,12 +1750,12 @@ string awh::Framework::sha512(const string & text) const noexcept {
 		SHA512_Update(&ctx, text.c_str(), text.length());
 		// Копируем полученные данные
 		SHA512_Final(digest, &ctx);
-		// Строка sha512
-		char buffer[129];
 		// Заполняем массив нулями
 		memset(buffer, 0, 129);
-		// Заполняем строку данными sha512
-		for(u_short i = 0; i < 64; i++) sprintf(&buffer[i * 2], "%02x", u_int(digest[i]));
+		// Заполняем строку данными SHA512
+		for(uint8_t i = 0; i < 64; i++)
+			// Формируем данные SHA512-хэша
+			sprintf(&buffer[i * 2], "%02x", u_int(digest[i]));
 		// Выводим результат
 		result = buffer;
 	}
@@ -1772,14 +1773,16 @@ string awh::Framework::hmacsha1(const string & key, const string & text) const n
 	string result = "";
 	// Если текст передан
 	if(!key.empty() && !text.empty()){
-		// Строка sha1
+		// Строка SHA1
 		char buffer[41];
 		// Заполняем массив нулями
 		memset(buffer, 0, 41);
 		// Выполняем получение подписи
 		const u_char * digest = HMAC(EVP_sha1(), key.c_str(), key.size(), (u_char *) text.c_str(), text.size(), nullptr, nullptr);
-		// Заполняем строку данными sha1
-		for(u_short i = 0; i < 20; i++) sprintf(&buffer[i * 2], "%02x", u_int(digest[i]));
+		// Заполняем строку данными SHA1
+		for(uint8_t i = 0; i < 20; i++)
+			// Формируем данные SHA1-хэша
+			sprintf(&buffer[i * 2], "%02x", u_int(digest[i]));
 		// Выводим результат
 		result = buffer;
 	}
@@ -1797,14 +1800,16 @@ string awh::Framework::hmacsha256(const string & key, const string & text) const
 	string result = "";
 	// Если текст передан
 	if(!key.empty() && !text.empty()){
-		// Строка sha256
+		// Строка SHA256
 		char buffer[65];
 		// Заполняем массив нулями
 		memset(buffer, 0, 65);
 		// Выполняем получение подписи
 		const u_char * digest = HMAC(EVP_sha256(), key.c_str(), key.size(), (u_char *) text.c_str(), text.size(), nullptr, nullptr);
-		// Заполняем строку данными sha256
-		for(u_short i = 0; i < 32; i++) sprintf(&buffer[i * 2], "%02x", u_int(digest[i]));
+		// Заполняем строку данными SHA256
+		for(uint8_t i = 0; i < 32; i++)
+			// Формируем данные SHA256-хэша
+			sprintf(&buffer[i * 2], "%02x", u_int(digest[i]));
 		// Выводим результат
 		result = buffer;
 	}
@@ -1822,14 +1827,16 @@ string awh::Framework::hmacsha512(const string & key, const string & text) const
 	string result = "";
 	// Если текст передан
 	if(!key.empty() && !text.empty()){
-		// Строка sha512
+		// Строка SHA512
 		char buffer[129];
 		// Заполняем массив нулями
 		memset(buffer, 0, 129);
 		// Выполняем получение подписи
 		const u_char * digest = HMAC(EVP_sha512(), key.c_str(), key.size(), (u_char *) text.c_str(), text.size(), nullptr, nullptr);
-		// Заполняем строку данными sha512
-		for(u_short i = 0; i < 64; i++) sprintf(&buffer[i * 2], "%02x", u_int(digest[i]));
+		// Заполняем строку данными SHA512
+		for(uint8_t i = 0; i < 64; i++)
+			// Формируем данные SHA512-хэша
+			sprintf(&buffer[i * 2], "%02x", u_int(digest[i]));
 		// Выводим результат
 		result = buffer;
 	}
@@ -1861,19 +1868,19 @@ string awh::Framework::bytes(const double value) const noexcept {
 		// Если переданное значение соответствует терабайту
 		if(value >= tb)
 			// Выполняем копирование терабайта
-			sprintf(result.data(), "%.2lf TB", (double) value / tb);
+			sprintf(result.data(), "%.2lf TB", static_cast <double> (value) / tb);
 		// Если переданное значение соответствует гигабайту
 		else if((value >= gb) && (value < tb))
 			// Выполняем копирование гигабайта
-			sprintf(result.data(), "%.2lf GB", (double) value / gb);
+			sprintf(result.data(), "%.2lf GB", static_cast <double> (value) / gb);
 		// Если переданное значение соответствует мегабайту
 		else if((value >= mb) && (value < gb))
 			// Выполняем копирование мегабайта
-			sprintf(result.data(), "%.2lf MB", (double) value / mb);
+			sprintf(result.data(), "%.2lf MB", static_cast <double> (value) / mb);
 		// Если переданное значение соответствует киллобайту
 		else if((value >= kb) && (value < mb))
 			// Выполняем копирование киллобайта
-			sprintf(result.data(), "%.2lf KB", (double) value / kb);
+			sprintf(result.data(), "%.2lf KB", static_cast <double> (value) / kb);
 		// Если переданное значение соответствует байту
 		else if(value < kb)
 			// Выполняем копирование байтов
@@ -1917,7 +1924,7 @@ size_t awh::Framework::bytes(const string & str) const noexcept {
 		// Если это размерность в гигабитах
 		else if(param.compare("GB") == 0) dimension = (isbite ? 1000000000 : 1073741824);
 		// Размер буфера по умолчанию
-		size = (long) value;
+		size = static_cast <long> (value);
 		// Если размерность установлена тогда расчитываем количество байт
 		if(value > -1) size = (value * dimension);
 	}
@@ -2009,7 +2016,7 @@ long awh::Framework::sizeBuffer(const string & str) const noexcept {
 		// Если это размерность в гигабитах
 		else if(param.compare("Gbps") == 0) dimension = (isbite ? 1000000000 : 1073741824);
 		// Размер буфера по умолчанию
-		size = (long) speed;
+		size = static_cast <long> (speed);
 		// Если скорость установлена тогда расчитываем размер буфера
 		if(speed > -1) size = (2.0f * 0.04f) * ((speed * dimension) / 8.0f);
 	}

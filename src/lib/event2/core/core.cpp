@@ -929,9 +929,9 @@ void awh::Core::enabled(const engine_t::method_t method, const size_t aid) noexc
 				// Получаем объект подключения
 				scheme_t * shm = (scheme_t *) const_cast <awh::scheme_t *> (adj->parent);
 				// Определяем метод события сокета
-				switch((uint8_t) method){
+				switch(static_cast <uint8_t> (method)){
 					// Если событием является чтение
-					case (uint8_t) engine_t::method_t::READ: {
+					case static_cast <uint8_t> (engine_t::method_t::READ): {
 						// Разрешаем чтение данных из сокета
 						adj->bev.locked.read = false;
 						// Устанавливаем размер детектируемых байт на чтение
@@ -959,7 +959,7 @@ void awh::Core::enabled(const engine_t::method_t method, const size_t aid) noexc
 						}
 					} break;
 					// Если событием является запись
-					case (uint8_t) engine_t::method_t::WRITE: {
+					case static_cast <uint8_t> (engine_t::method_t::WRITE): {
 						// Разрешаем запись данных в сокет
 						adj->bev.locked.write = false;
 						// Устанавливаем размер детектируемых байт на запись
@@ -987,7 +987,7 @@ void awh::Core::enabled(const engine_t::method_t method, const size_t aid) noexc
 						}
 					} break;
 					// Если событием является подключение
-					case (uint8_t) engine_t::method_t::CONNECT: {
+					case static_cast <uint8_t> (engine_t::method_t::CONNECT): {
 						// Устанавливаем время ожидания записи данных
 						adj->timeouts.connect = shm->timeouts.connect;
 						// Устанавливаем тип события
@@ -1035,9 +1035,9 @@ void awh::Core::disabled(const engine_t::method_t method, const size_t aid) noex
 			// Если сокет подключения активен
 			if(adj->addr.fd < 65535){
 				// Определяем метод события сокета
-				switch((uint8_t) method){
+				switch(static_cast <uint8_t> (method)){
 					// Если событием является чтение
-					case (uint8_t) engine_t::method_t::READ: {
+					case static_cast <uint8_t> (engine_t::method_t::READ): {
 						// Запрещаем чтение данных из сокета
 						adj->bev.locked.read = true;
 						// Останавливаем работу таймера
@@ -1046,7 +1046,7 @@ void awh::Core::disabled(const engine_t::method_t method, const size_t aid) noex
 						adj->bev.events.read.stop();
 					} break;
 					// Если событием является запись
-					case (uint8_t) engine_t::method_t::WRITE: {
+					case static_cast <uint8_t> (engine_t::method_t::WRITE): {
 						// Запрещаем запись данных в сокет
 						adj->bev.locked.write = true;
 						// Останавливаем работу таймера
@@ -1055,7 +1055,7 @@ void awh::Core::disabled(const engine_t::method_t method, const size_t aid) noex
 						adj->bev.events.write.stop();
 					} break;
 					// Если событием является подключение
-					case (uint8_t) engine_t::method_t::CONNECT: {
+					case static_cast <uint8_t> (engine_t::method_t::CONNECT): {
 						// Останавливаем работу таймера
 						adj->bev.timers.connect.stop();
 						// Останавливаем работу события
@@ -1089,11 +1089,11 @@ void awh::Core::write(const char * buffer, const size_t size, const size_t aid) 
 				// Если запись в сокет заблокирована
 				if(adj->bev.locked.write){
 					// Определяем протокол подключения
-					switch((uint8_t) this->settings.sonet){
+					switch(static_cast <uint8_t> (this->settings.sonet)){
 						// Если протокол подключения UDP
-						case (uint8_t) scheme_t::sonet_t::UDP:
+						case static_cast <uint8_t> (scheme_t::sonet_t::UDP):
 						// Если протокол подключения DTLS
-						case (uint8_t) scheme_t::sonet_t::DTLS: {
+						case static_cast <uint8_t> (scheme_t::sonet_t::DTLS): {
 							// Разрешаем запись данных в сокет
 							adj->bev.locked.write = false;
 							// Выполняем передачу данных
@@ -1124,9 +1124,9 @@ void awh::Core::lockMethod(const engine_t::method_t method, const bool mode, con
 	// Если адъютант получен
 	if(it != this->adjutants.end()){
 		// Определяем метод режима работы
-		switch((uint8_t) method){
+		switch(static_cast <uint8_t> (method)){
 			// Режим работы ЧТЕНИЕ
-			case (uint8_t) engine_t::method_t::READ: {
+			case static_cast <uint8_t> (engine_t::method_t::READ): {
 				// Если нужно заблокировать метод
 				if(mode)
 					// Запрещаем чтение данных из сокета
@@ -1135,7 +1135,7 @@ void awh::Core::lockMethod(const engine_t::method_t method, const bool mode, con
 				else const_cast <scheme_t::adj_t *> (it->second)->bev.locked.read = false;
 			} break;
 			// Режим работы ЗАПИСЬ
-			case (uint8_t) engine_t::method_t::WRITE: {
+			case static_cast <uint8_t> (engine_t::method_t::WRITE): {
 				// Если нужно заблокировать метод
 				if(mode)
 					// Запрещаем запись данных в сокет
@@ -1158,19 +1158,19 @@ void awh::Core::dataTimeout(const engine_t::method_t method, const time_t second
 	// Если адъютант получен
 	if(it != this->adjutants.end()){
 		// Определяем метод режима работы
-		switch((uint8_t) method){
+		switch(static_cast <uint8_t> (method)){
 			// Режим работы ЧТЕНИЕ
-			case (uint8_t) engine_t::method_t::READ:
+			case static_cast <uint8_t> (engine_t::method_t::READ):
 				// Устанавливаем время ожидания на входящие данные
 				const_cast <scheme_t::adj_t *> (it->second)->timeouts.read = seconds;
 			break;
 			// Режим работы ЗАПИСЬ
-			case (uint8_t) engine_t::method_t::WRITE:
+			case static_cast <uint8_t> (engine_t::method_t::WRITE):
 				// Устанавливаем время ожидания на исходящие данные
 				const_cast <scheme_t::adj_t *> (it->second)->timeouts.write = seconds;
 			break;
 			// Режим работы ПОДКЛЮЧЕНИЕ
-			case (uint8_t) engine_t::method_t::CONNECT:
+			case static_cast <uint8_t> (engine_t::method_t::CONNECT):
 				// Устанавливаем время ожидания на исходящие данные
 				const_cast <scheme_t::adj_t *> (it->second)->timeouts.connect = seconds;
 			break;
@@ -1190,9 +1190,9 @@ void awh::Core::marker(const engine_t::method_t method, const size_t min, const 
 	// Если адъютант получен
 	if(it != this->adjutants.end()){
 		// Определяем метод режима работы
-		switch((uint8_t) method){
+		switch(static_cast <uint8_t> (method)){
 			// Режим работы ЧТЕНИЕ
-			case (uint8_t) engine_t::method_t::READ: {
+			case static_cast <uint8_t> (engine_t::method_t::READ): {
 				// Устанавливаем минимальный размер байт
 				const_cast <scheme_t::adj_t *> (it->second)->marker.read.min = min;
 				// Устанавливаем максимальный размер байт
@@ -1203,7 +1203,7 @@ void awh::Core::marker(const engine_t::method_t method, const size_t min, const 
 					const_cast <scheme_t::adj_t *> (it->second)->marker.read.min = BUFFER_READ_MIN;
 			} break;
 			// Режим работы ЗАПИСЬ
-			case (uint8_t) engine_t::method_t::WRITE: {
+			case static_cast <uint8_t> (engine_t::method_t::WRITE): {
 				// Устанавливаем минимальный размер байт
 				const_cast <scheme_t::adj_t *> (it->second)->marker.write.min = min;
 				// Устанавливаем максимальный размер байт
@@ -1405,14 +1405,14 @@ void awh::Core::resolve(const string & domain, const scheme_t::family_t family, 
 		// Иначе просто добавляем функцию обратного вызова в нулевое значение
 		else this->_dids.emplace(did, callback);
 		// Определяем тип протокола подключения
-		switch((uint8_t) family){
+		switch(static_cast <uint8_t> (family)){
 			// Если тип протокола подключения IPv4
-			case (uint8_t) scheme_t::family_t::IPV4:
+			case static_cast <uint8_t> (scheme_t::family_t::IPV4):
 				// Выполняем резолвинг домена
 				did = this->dns.resolve(domain, AF_INET);
 			break;
 			// Если тип протокола подключения IPv6
-			case (uint8_t) scheme_t::family_t::IPV6:
+			case static_cast <uint8_t> (scheme_t::family_t::IPV6):
 				// Выполняем резолвинг домена
 				did = this->dns.resolve(domain, AF_INET6);
 			break;
@@ -1543,14 +1543,14 @@ void awh::Core::family(const scheme_t::family_t family) noexcept {
  */
 void awh::Core::clearBlackListDNS(const scheme_t::family_t family) noexcept {
 	// Определяем тип интернет-протокола
-	switch((uint8_t) family){
+	switch(static_cast <uint8_t> (family)){
 		// Если тип протокола интернета IPv4
-		case (uint8_t) scheme_t::family_t::IPV4:
+		case static_cast <uint8_t> (scheme_t::family_t::IPV4):
 			// Выполняем очистку чёрного списка IP адресов
 			this->dns.clearBlackList(AF_INET);
 		break;
 		// Если тип протокола интернета IPv6
-		case (uint8_t) scheme_t::family_t::IPV6:
+		case static_cast <uint8_t> (scheme_t::family_t::IPV6):
 			// Выполняем очистку чёрного списка IP адресов
 			this->dns.clearBlackList(AF_INET6);
 		break;
@@ -1563,14 +1563,14 @@ void awh::Core::clearBlackListDNS(const scheme_t::family_t family) noexcept {
  */
 void awh::Core::delInBlackListDNS(const scheme_t::family_t family, const string & ip) noexcept {
 	// Определяем тип интернет-протокола
-	switch((uint8_t) family){
+	switch(static_cast <uint8_t> (family)){
 		// Если тип протокола интернета IPv4
-		case (uint8_t) scheme_t::family_t::IPV4:
+		case static_cast <uint8_t> (scheme_t::family_t::IPV4):
 			// Выполняем удаление из чёрного списка IP адреса
 			this->dns.delInBlackList(AF_INET, ip);
 		break;
 		// Если тип протокола интернета IPv6
-		case (uint8_t) scheme_t::family_t::IPV6:
+		case static_cast <uint8_t> (scheme_t::family_t::IPV6):
 			// Выполняем удаление из чёрного списка IP адреса
 			this->dns.delInBlackList(AF_INET6, ip);
 		break;
@@ -1583,14 +1583,14 @@ void awh::Core::delInBlackListDNS(const scheme_t::family_t family, const string 
  */
 void awh::Core::setToBlackListDNS(const scheme_t::family_t family, const string & ip) noexcept {
 	// Определяем тип интернет-протокола
-	switch((uint8_t) family){
+	switch(static_cast <uint8_t> (family)){
 		// Если тип протокола интернета IPv4
-		case (uint8_t) scheme_t::family_t::IPV4:
+		case static_cast <uint8_t> (scheme_t::family_t::IPV4):
 			// Выполняем установку в чёрный список IP адреса
 			this->dns.setToBlackList(AF_INET, ip);
 		break;
 		// Если тип протокола интернета IPv6
-		case (uint8_t) scheme_t::family_t::IPV6:
+		case static_cast <uint8_t> (scheme_t::family_t::IPV6):
 			// Выполняем установку в чёрный список IP адреса
 			this->dns.setToBlackList(AF_INET6, ip);
 		break;
@@ -1678,9 +1678,9 @@ void awh::Core::signalInterception(const signals_t mode) noexcept {
 	// Если флаг активации отличается
 	if(this->_signals != mode){
 		// Определяем флаг активации
-		switch((uint8_t) mode){
+		switch(static_cast <uint8_t> (mode)){
 			// Если передан флаг активации перехвата сигналов
-			case (uint8_t) signals_t::ENABLED: {
+			case static_cast <uint8_t> (signals_t::ENABLED): {
 				// Если тип сокета подключения не является unix-сокетом
 				if(this->settings.family != scheme_t::family_t::NIX){
 					// Устанавливаем функцию обработки сигналов
@@ -1692,7 +1692,7 @@ void awh::Core::signalInterception(const signals_t mode) noexcept {
 				}
 			} break;
 			// Если передан флаг деактивации перехвата сигналов
-			case (uint8_t) signals_t::DISABLED: {
+			case static_cast <uint8_t> (signals_t::DISABLED): {
 				// Выполняем остановку отслеживания сигналов
 				this->_sig.stop();
 				// Устанавливаем флаг деактивации перехвата сигналов
@@ -1765,9 +1765,9 @@ void awh::Core::network(const vector <string> & ip, const vector <string> & ns, 
 		this->removeUnixSocket();
 	}
 	// Определяем тип интернет-протокола
-	switch((uint8_t) this->settings.family){
+	switch(static_cast <uint8_t> (this->settings.family)){
 		// Если - это интернет-протокол IPv4
-		case (uint8_t) scheme_t::family_t::IPV4: {
+		case static_cast <uint8_t> (scheme_t::family_t::IPV4): {
 			// Если IP адреса переданы, устанавливаем их
 			if(!ip.empty()) this->settings.v4.first.assign(ip.cbegin(), ip.cend());
 			// Если сервера имён переданы, устанавливаем их
@@ -1777,7 +1777,7 @@ void awh::Core::network(const vector <string> & ip, const vector <string> & ns, 
 				// Создаём список серверов имён
 				vector <dns_t::serv_t> servers(ns.size());
 				// Переходим по всему списку серверов
-				for(uint8_t i = 0; i < (uint8_t) ns.size(); i++){
+				for(uint8_t i = 0; i < static_cast <uint8_t> (ns.size()); i++){
 					// Выполняем поиск разделителя порта
 					pos = ns[i].rfind(":");
 					// Если позиция разделителя найдена
@@ -1796,7 +1796,7 @@ void awh::Core::network(const vector <string> & ip, const vector <string> & ns, 
 			}
 		} break;
 		// Если - это интернет-протокол IPv6
-		case (uint8_t) scheme_t::family_t::IPV6: {
+		case static_cast <uint8_t> (scheme_t::family_t::IPV6): {
 			// Если IP адреса переданы, устанавливаем их
 			if(!ip.empty()) this->settings.v6.first.assign(ip.cbegin(), ip.cend());
 			// Если сервера имён переданы, устанавливаем их
@@ -1806,7 +1806,7 @@ void awh::Core::network(const vector <string> & ip, const vector <string> & ns, 
 				// Создаём список серверов имён
 				vector <dns_t::serv_t> servers(ns.size());
 				// Переходим по всему списку серверов
-				for(uint8_t i = 0; i < (uint8_t) ns.size(); i++){
+				for(uint8_t i = 0; i < static_cast <uint8_t> (ns.size()); i++){
 					// Если первый символ является разделителем
 					if(ns[i].front() == '['){
 						// Выполняем поиск разделителя порта

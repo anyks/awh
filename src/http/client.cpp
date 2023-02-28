@@ -30,9 +30,9 @@ awh::Http::stath_t awh::client::Http::checkAuth() noexcept {
 		case 401:
 		case 407: {
 			// Определяем тип авторизации
-			switch((uint8_t) this->auth.client.type()){
+			switch(static_cast <uint8_t> (this->auth.client.type())){
 				// Если производится авторизация DIGEST
-				case (uint8_t) awh::auth_t::type_t::DIGEST: {
+				case static_cast <uint8_t> (awh::auth_t::type_t::DIGEST): {
 					// Получаем параметры авторизации
 					const string & auth = this->web.header(query.code == 401 ? "www-authenticate" : "proxy-authenticate");
 					// Если параметры авторизации найдены
@@ -44,7 +44,7 @@ awh::Http::stath_t awh::client::Http::checkAuth() noexcept {
 					}
 				} break;
 				// Если производится авторизация BASIC
-				case (uint8_t) awh::auth_t::type_t::BASIC:
+				case static_cast <uint8_t> (awh::auth_t::type_t::BASIC):
 					// Просим повторить авторизацию ещё раз
 					result = http_t::stath_t::RETRY;
 				break;

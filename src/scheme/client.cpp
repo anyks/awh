@@ -31,11 +31,17 @@ void awh::client::Scheme::clear() noexcept {
  */
 void awh::client::Scheme::switchConnect() noexcept {
 	// Определяем тип подключения
-	switch((uint8_t) this->_connect){
+	switch(static_cast <uint8_t> (this->_connect)){
 		// Если подключение выполняется через прокси-сервер
-		case (uint8_t) connect_t::PROXY: this->_connect = connect_t::SERVER; break;
+		case static_cast <uint8_t> (connect_t::PROXY):
+			// Устанавливаем тип подключения
+			this->_connect = connect_t::SERVER;
+		break;
 		// Если подключение выполняется через сервер
-		case (uint8_t) connect_t::SERVER: this->_connect = connect_t::PROXY; break;
+		case static_cast <uint8_t> (connect_t::SERVER):
+			// Устанавливаем тип подключения
+			this->_connect = connect_t::PROXY;
+		break;
 	}
 }
 /**

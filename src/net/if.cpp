@@ -61,7 +61,7 @@ void awh::IfNet::getIPAddresses(const int family) noexcept {
 		// Выполняем получение сетевого интерфейса
 		struct ifreq * ifr = (struct ifreq *) ptr;
 		// Выполняем смещение указателя в цикле
-		ptr += (sizeof(ifr->ifr_name) + max(sizeof(struct sockaddr), (size_t) ifr->ifr_addr.sa_len));
+		ptr += (sizeof(ifr->ifr_name) + max(sizeof(struct sockaddr), static_cast <size_t> (ifr->ifr_addr.sa_len)));
 		// Если сетевой интерфейс отличается от IPv4 пропускаем
 		if(ifr->ifr_addr.sa_family != family) continue;
 		// Если в имени сетевого интерфейса найден разделитель, пропускаем его
@@ -320,7 +320,7 @@ void awh::IfNet::getHWAddresses(const int family) noexcept {
 			this->_ifs.emplace(ifr->ifr_name, temp);
 		}
 		// Выполняем смещение указателя в цикле
-		cp += (sizeof(ifr->ifr_name) + max(sizeof(ifr->ifr_addr), (size_t) ifr->ifr_addr.sa_len));
+		cp += (sizeof(ifr->ifr_name) + max(sizeof(ifr->ifr_addr), static_cast <size_t> (ifr->ifr_addr.sa_len)));
 	}
 	// Закрываем сетевой сокет
 	this->close(fd);

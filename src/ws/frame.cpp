@@ -88,7 +88,7 @@ void awh::Frame::frame(vector <char> & payload, const char * buffer, const size_
 			// Увеличиваем память ещё на два байта
 			payload.resize(offset, 0x0);
 			// Выполняем перерасчёт размера передаваемых данных
-			const uint16_t length = htons((uint16_t) size);
+			const uint16_t length = htons(static_cast <uint16_t> (size));
 			// Устанавливаем размер строки в следующие 2 байта
 			memcpy(payload.data() + 2, &length, sizeof(length));
 		// Если сообщение очень большого размера
@@ -170,7 +170,7 @@ vector <char> awh::Frame::message(const mess_t & mess) const noexcept {
 			// Заполняем второй байт максимальным значением
 			result.at(1) = ((char) (0x7F & 0x7E));
 			// Выполняем перерасчёт размера передаваемых данных
-			const uint16_t length = htons((uint16_t) (size + 2));
+			const uint16_t length = htons(static_cast <uint16_t> (size + 2));
 			// Устанавливаем размер строки в следующие 2 байта
 			memcpy(result.data() + 2, &length, sizeof(length));
 		}

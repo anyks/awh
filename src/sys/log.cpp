@@ -160,24 +160,24 @@ void awh::Log::print(const string & format, flag_t flag, ...) const noexcept {
 				// Если файл открыт
 				if(file.is_open()){
 					// Определяем тип сообщения
-					switch((uint8_t) flag){
+					switch(static_cast <uint8_t> (flag)){
 						// Выводим сообщение так-как оно есть
-						case (uint8_t) flag_t::NONE:
+						case static_cast <uint8_t> (flag_t::NONE):
 							// Формируем текстовый вид лога
 							logData = this->_fmk->format("%s%s", buffer.data(), (!isEnd ? "\r\n\r\n" : ""));
 						break;
 						// Выводим информационное сообщение
-						case (uint8_t) flag_t::INFO:
+						case static_cast <uint8_t> (flag_t::INFO):
 							// Формируем текстовый вид лога
 							logData = this->_fmk->format("Info %s %s : %s%s", date, this->_name.c_str(), buffer.data(), (!isEnd ? "\r\n\r\n" : ""));
 						break;
 						// Выводим сообщение об ошибке
-						case (uint8_t) flag_t::CRITICAL:
+						case static_cast <uint8_t> (flag_t::CRITICAL):
 							// Формируем текстовый вид лога
 							logData = this->_fmk->format("Error %s %s : %s%s", date, this->_name.c_str(), buffer.data(), (!isEnd ? "\r\n\r\n" : ""));
 						break;
 						// Выводим сообщение предупреждения
-						case (uint8_t) flag_t::WARNING:
+						case static_cast <uint8_t> (flag_t::WARNING):
 							// Формируем текстовый вид лога
 							logData = this->_fmk->format("Warning %s %s : %s%s", date, this->_name.c_str(), buffer.data(), (!isEnd ? "\r\n\r\n" : ""));
 						break;
@@ -191,24 +191,24 @@ void awh::Log::print(const string & format, flag_t flag, ...) const noexcept {
 				}
 			}
 			// Определяем тип сообщения
-			switch((uint8_t) flag){
+			switch(static_cast <uint8_t> (flag)){
 				// Выводим сообщение так-как оно есть
-				case (uint8_t) flag_t::NONE:
+				case static_cast <uint8_t> (flag_t::NONE):
 					// Формируем текстовый вид лога
 					logData = this->_fmk->format("%s%s", buffer.data(), (!isEnd ? "\r\n\r\n" : ""));
 				break;
 				// Выводим информационное сообщение
-				case (uint8_t) flag_t::INFO:
+				case static_cast <uint8_t> (flag_t::INFO):
 					// Формируем текстовый вид лога
 					logData = this->_fmk->format("\x1B[32m\x1B[1mInfo\x1B[0m \x1B[32m%s %s :\x1B[0m %s%s", date, this->_name.c_str(), buffer.data(), (!isEnd ? "\r\n\r\n" : ""));
 				break;
 				// Выводим сообщение об ошибке
-				case (uint8_t) flag_t::CRITICAL:
+				case static_cast <uint8_t> (flag_t::CRITICAL):
 					// Формируем текстовый вид лога
 					logData = this->_fmk->format("\x1B[31m\x1B[1mError\x1B[0m \x1B[31m%s %s :\x1B[0m %s%s", date, this->_name.c_str(), buffer.data(), (!isEnd ? "\r\n\r\n" : ""));
 				break;
 				// Выводим сообщение предупреждения
-				case (uint8_t) flag_t::WARNING:
+				case static_cast <uint8_t> (flag_t::WARNING):
 					// Формируем текстовый вид лога
 					logData = this->_fmk->format("\x1B[33m\x1B[1mWarning\x1B[0m \x1B[33m%s %s :\x1B[0m %s%s", date, this->_name.c_str(), buffer.data(), (!isEnd ? "\r\n\r\n" : ""));
 				break;
@@ -265,24 +265,24 @@ void awh::Log::print(const string & format, flag_t flag, const vector <string> &
 			// Если файл открыт
 			if(file.is_open()){
 				// Определяем тип сообщения
-				switch((uint8_t) flag){
+				switch(static_cast <uint8_t> (flag)){
 					// Выводим сообщение так-как оно есть
-					case (uint8_t) flag_t::NONE:
+					case static_cast <uint8_t> (flag_t::NONE):
 						// Формируем текстовый вид лога
 						logData = this->_fmk->format("%s%s", str.c_str(), (!isEnd ? "\n\n" : ""));
 					break;
 					// Выводим информационное сообщение
-					case (uint8_t) flag_t::INFO:
+					case static_cast <uint8_t> (flag_t::INFO):
 						// Формируем текстовый вид лога
 						logData = this->_fmk->format("Info %s %s : %s%s", date, this->_name.c_str(), str.c_str(), (!isEnd ? "\n\n" : ""));
 					break;
 					// Выводим сообщение об ошибке
-					case (uint8_t) flag_t::CRITICAL:
+					case static_cast <uint8_t> (flag_t::CRITICAL):
 						// Формируем текстовый вид лога
 						logData = this->_fmk->format("Error %s %s : %s%s", date, this->_name.c_str(), str.c_str(), (!isEnd ? "\n\n" : ""));
 					break;
 					// Выводим сообщение предупреждения
-					case (uint8_t) flag_t::WARNING:
+					case static_cast <uint8_t> (flag_t::WARNING):
 						// Формируем текстовый вид лога
 						logData = this->_fmk->format("Warning %s %s : %s%s", date, this->_name.c_str(), str.c_str(), (!isEnd ? "\n\n" : ""));
 					break;
@@ -296,24 +296,24 @@ void awh::Log::print(const string & format, flag_t flag, const vector <string> &
 			}
 		}
 		// Определяем тип сообщения
-		switch((uint8_t) flag){
+		switch(static_cast <uint8_t> (flag)){
 			// Выводим сообщение так-как оно есть
-			case (uint8_t) flag_t::NONE:
+			case static_cast <uint8_t> (flag_t::NONE):
 				// Формируем текстовый вид лога
 				logData = this->_fmk->format("%s%s", str.c_str(), (!isEnd ? "\r\n\r\n" : ""));
 			break;
 			// Выводим информационное сообщение
-			case (uint8_t) flag_t::INFO:
+			case static_cast <uint8_t> (flag_t::INFO):
 				// Формируем текстовый вид лога
 				logData = this->_fmk->format("\x1B[32m\x1B[1mInfo\x1B[0m \x1B[32m%s %s :\x1B[0m %s%s", date, this->_name.c_str(), str.c_str(), (!isEnd ? "\r\n\r\n" : ""));
 			break;
 			// Выводим сообщение об ошибке
-			case (uint8_t) flag_t::CRITICAL:
+			case static_cast <uint8_t> (flag_t::CRITICAL):
 				// Формируем текстовый вид лога
 				logData = this->_fmk->format("\x1B[31m\x1B[1mError\x1B[0m \x1B[31m%s %s :\x1B[0m %s%s", date, this->_name.c_str(), str.c_str(), (!isEnd ? "\r\n\r\n" : ""));
 			break;
 			// Выводим сообщение предупреждения
-			case (uint8_t) flag_t::WARNING:
+			case static_cast <uint8_t> (flag_t::WARNING):
 				// Формируем текстовый вид лога
 				logData = this->_fmk->format("\x1B[33m\x1B[1mWarning\x1B[0m \x1B[33m%s %s :\x1B[0m %s%s", date, this->_name.c_str(), str.c_str(), (!isEnd ? "\r\n\r\n" : ""));
 			break;

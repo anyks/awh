@@ -296,6 +296,13 @@ namespace awh {
 			 * @return   результат работы парсинга
 			 */
 			bool parse(const string & ip) noexcept;
+			/**
+			 * parse Метод парсинга IP адреса
+			 * @param ip   адрес интернет подключения для парсинга
+			 * @param type тип адреса интернет подключения
+			 * @return     результат работы парсинга
+			 */
+			bool parse(const string & ip, const type_t type) noexcept;
 		public:
 			/**
 			 * get Метод извлечения данных IP адреса

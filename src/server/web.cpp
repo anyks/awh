@@ -213,13 +213,13 @@ void awh::server::WEB::handler(const size_t aid) noexcept {
 			// Выполняем обработку всех экшенов
 			while(loop && (adj->action != web_scheme_t::action_t::NONE)){
 				// Определяем обрабатываемый экшен
-				switch((uint8_t) adj->action){
+				switch(static_cast <uint8_t> (adj->action)){
 					// Если необходимо запустить экшен обработки данных поступающих с сервера
-					case (uint8_t) web_scheme_t::action_t::READ: this->actionRead(aid); break;
+					case static_cast <uint8_t> (web_scheme_t::action_t::READ): this->actionRead(aid); break;
 					// Если необходимо запустить экшен обработки подключения к серверу
-					case (uint8_t) web_scheme_t::action_t::CONNECT: this->actionConnect(aid); break;
+					case static_cast <uint8_t> (web_scheme_t::action_t::CONNECT): this->actionConnect(aid); break;
 					// Если необходимо запустить экшен обработки отключения от сервера
-					case (uint8_t) web_scheme_t::action_t::DISCONNECT: this->actionDisconnect(aid); break;
+					case static_cast <uint8_t> (web_scheme_t::action_t::DISCONNECT): this->actionDisconnect(aid); break;
 					// Если сработал неизвестный экшен, выходим
 					default: loop = false;
 				}
@@ -279,9 +279,9 @@ void awh::server::WEB::actionRead(const size_t aid) noexcept {
 					// Получаем объект сетевого ядра
 					core_t * core = const_cast <core_t *> (this->_core);
 					// Выполняем проверку авторизации
-					switch((uint8_t) adj->http.getAuth()){
+					switch(static_cast <uint8_t> (adj->http.getAuth())){
 						// Если запрос выполнен удачно
-						case (uint8_t) http_t::stath_t::GOOD: {
+						case static_cast <uint8_t> (http_t::stath_t::GOOD): {
 							// Получаем флаг шифрованных данных
 							adj->crypt = adj->http.isCrypt();
 							// Получаем поддерживаемый метод компрессии
@@ -298,7 +298,7 @@ void awh::server::WEB::actionRead(const size_t aid) noexcept {
 							goto Next;
 						} break;
 						// Если запрос неудачный
-						case (uint8_t) http_t::stath_t::FAULT: {
+						case static_cast <uint8_t> (http_t::stath_t::FAULT): {
 							// Выполняем сброс состояния HTTP парсера
 							adj->http.clear();
 							// Выполняем сброс состояния HTTP парсера
@@ -378,16 +378,16 @@ void awh::server::WEB::actionConnect(const size_t aid) noexcept {
 			// Устанавливаем параметры шифрования
 			if(this->_crypt) adj->http.crypto(this->_pass, this->_salt, this->_cipher);
 			// Определяем тип авторизации
-			switch((uint8_t) this->_authType){
+			switch(static_cast <uint8_t> (this->_authType)){
 				// Если тип авторизации Basic
-				case (uint8_t) auth_t::type_t::BASIC: {
+				case static_cast <uint8_t> (auth_t::type_t::BASIC): {
 					// Устанавливаем параметры авторизации
 					adj->http.authType(this->_authType);
 					// Устанавливаем функцию проверки авторизации
 					adj->http.authCallback(this->_callback.checkAuth);
 				} break;
 				// Если тип авторизации Digest
-				case (uint8_t) auth_t::type_t::DIGEST: {
+				case static_cast <uint8_t> (auth_t::type_t::DIGEST): {
 					// Устанавливаем название сервера
 					adj->http.realm(this->_realm);
 					// Устанавливаем временный ключ сессии сервера
@@ -789,9 +789,9 @@ void awh::server::WEB::authType(const auth_t::type_t type, const auth_t::hash_t 
  */
 void awh::server::WEB::mode(const u_short flag) noexcept {
 	// Устанавливаем флаг ожидания входящих сообщений
-	this->_scheme.wait = (flag & (uint8_t) flag_t::WAIT_MESS);
+	this->_scheme.wait = (flag & static_cast <uint8_t> (flag_t::WAIT_MESS));
 	// Устанавливаем флаг запрещающий вывод информационных сообщений
-	const_cast <server::core_t *> (this->_core)->noInfo(flag & (uint8_t) flag_t::NOT_INFO);
+	const_cast <server::core_t *> (this->_core)->noInfo(flag & static_cast <uint8_t> (flag_t::NOT_INFO));
 }
 /**
  * total Метод установки максимального количества одновременных подключений

@@ -166,16 +166,16 @@ void awh::server::Proxy::connectServerCallback(const size_t aid, const size_t si
 				adj->srv.crypto(this->_pass, this->_salt, this->_cipher);
 			}
 			// Определяем тип авторизации
-			switch((uint8_t) this->_authType){
+			switch(static_cast <uint8_t> (this->_authType)){
 				// Если тип авторизации Basic
-				case (uint8_t) auth_t::type_t::BASIC: {
+				case static_cast <uint8_t> (auth_t::type_t::BASIC): {
 					// Устанавливаем параметры авторизации
 					adj->srv.authType(this->_authType);
 					// Устанавливаем функцию проверки авторизации
 					adj->srv.authCallback(this->_callback.checkAuth);
 				} break;
 				// Если тип авторизации Digest
-				case (uint8_t) auth_t::type_t::DIGEST: {
+				case static_cast <uint8_t> (auth_t::type_t::DIGEST): {
 					// Устанавливаем название сервера
 					adj->srv.realm(this->_realm);
 					// Устанавливаем временный ключ сессии сервера
@@ -483,9 +483,9 @@ void awh::server::Proxy::prepare(const size_t aid, const size_t sid) noexcept {
 					// Выполняем сброс количества выполненных запросов
 					} else adj->requests = 0;
 					// Выполняем проверку авторизации
-					switch((uint8_t) adj->srv.getAuth()){
+					switch(static_cast <uint8_t> (adj->srv.getAuth())){
 						// Если запрос выполнен удачно
-						case (uint8_t) http_t::stath_t::GOOD: {
+						case static_cast <uint8_t> (http_t::stath_t::GOOD): {
 							// Получаем флаг шифрованных данных
 							adj->crypt = adj->srv.isCrypt();
 							// Получаем поддерживаемый метод компрессии
@@ -567,20 +567,20 @@ void awh::server::Proxy::prepare(const size_t aid, const size_t sid) noexcept {
 									// Название операционной системы
 									const char * os = nullptr;
 									// Определяем название операционной системы
-									switch((uint8_t) this->_fmk->os()){
+									switch(static_cast <uint8_t> (this->_fmk->os())){
 										// Если операционной системой является Unix
-										case (uint8_t) fmk_t::os_t::UNIX: os = "Unix"; break;
+										case static_cast <uint8_t> (fmk_t::os_t::UNIX): os = "Unix"; break;
 										// Если операционной системой является Linux
-										case (uint8_t) fmk_t::os_t::LINUX: os = "Linux"; break;
+										case static_cast <uint8_t> (fmk_t::os_t::LINUX): os = "Linux"; break;
 										// Если операционной системой является неизвестной
-										case (uint8_t) fmk_t::os_t::NONE: os = "Unknown"; break;
+										case static_cast <uint8_t> (fmk_t::os_t::NONE): os = "Unknown"; break;
 										// Если операционной системой является Windows
-										case (uint8_t) fmk_t::os_t::WIND32:
-										case (uint8_t) fmk_t::os_t::WIND64: os = "Windows"; break;
+										case static_cast <uint8_t> (fmk_t::os_t::WIND32):
+										case static_cast <uint8_t> (fmk_t::os_t::WIND64): os = "Windows"; break;
 										// Если операционной системой является MacOS X
-										case (uint8_t) fmk_t::os_t::MACOSX: os = "MacOS X"; break;
+										case static_cast <uint8_t> (fmk_t::os_t::MACOSX): os = "MacOS X"; break;
 										// Если операционной системой является FreeBSD
-										case (uint8_t) fmk_t::os_t::FREEBSD: os = "FreeBSD"; break;
+										case static_cast <uint8_t> (fmk_t::os_t::FREEBSD): os = "FreeBSD"; break;
 									}
 									// Устанавливаем наименование агента
 									adj->srv.header("X-Proxy-Agent", this->_fmk->format("(%s; %s) %s/%s", os, this->_name.c_str(), this->_sid.c_str(), this->_ver.c_str()));
@@ -644,7 +644,7 @@ void awh::server::Proxy::prepare(const size_t aid, const size_t sid) noexcept {
 							goto Next;
 						} break;
 						// Если запрос неудачный
-						case (uint8_t) http_t::stath_t::FAULT: {
+						case static_cast <uint8_t> (http_t::stath_t::FAULT): {
 							// Выполняем сброс состояния HTTP парсера
 							adj->srv.clear();
 							// Выполняем сброс состояния HTTP парсера
@@ -1048,11 +1048,11 @@ void awh::server::Proxy::authType(const auth_t::type_t type, const auth_t::hash_
  */
 void awh::server::Proxy::mode(const u_short flag) noexcept {
 	// Устанавливаем флаг запрещающий метод CONNECT
-	this->_noConnect = (flag & (uint8_t) flag_t::NOT_CONNECT);
+	this->_noConnect = (flag & static_cast <uint8_t> (flag_t::NOT_CONNECT));
 	// Устанавливаем флаг ожидания входящих сообщений
-	this->_scheme.wait = (flag & (uint8_t) flag_t::WAIT_MESS);
+	this->_scheme.wait = (flag & static_cast <uint8_t> (flag_t::WAIT_MESS));
 	// Устанавливаем флаг запрещающий вывод информационных сообщений
-	this->_core.server.noInfo(flag & (uint8_t) flag_t::NOT_INFO);
+	this->_core.server.noInfo(flag & static_cast <uint8_t> (flag_t::NOT_INFO));
 }
 /**
  * total Метод установки максимального количества одновременных подключений

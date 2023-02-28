@@ -189,13 +189,13 @@ void awh::server::Sample::handler(const size_t aid) noexcept {
 			// Выполняем обработку всех экшенов
 			while(loop && (adj->action != sample_scheme_t::action_t::NONE)){
 				// Определяем обрабатываемый экшен
-				switch((uint8_t) adj->action){
+				switch(static_cast <uint8_t> (adj->action)){
 					// Если необходимо запустить экшен обработки данных поступающих с сервера
-					case (uint8_t) sample_scheme_t::action_t::READ: this->actionRead(aid); break;
+					case static_cast <uint8_t> (sample_scheme_t::action_t::READ): this->actionRead(aid); break;
 					// Если необходимо запустить экшен обработки подключения к серверу
-					case (uint8_t) sample_scheme_t::action_t::CONNECT: this->actionConnect(aid); break;
+					case static_cast <uint8_t> (sample_scheme_t::action_t::CONNECT): this->actionConnect(aid); break;
 					// Если необходимо запустить экшен обработки отключения от сервера
-					case (uint8_t) sample_scheme_t::action_t::DISCONNECT: this->actionDisconnect(aid); break;
+					case static_cast <uint8_t> (sample_scheme_t::action_t::DISCONNECT): this->actionDisconnect(aid); break;
 					// Если сработал неизвестный экшен, выходим
 					default: loop = false;
 				}
@@ -474,9 +474,9 @@ void awh::server::Sample::bytesDetect(const scheme_t::mark_t read, const scheme_
  */
 void awh::server::Sample::mode(const u_short flag) noexcept {
 	// Устанавливаем флаг ожидания входящих сообщений
-	this->_scheme.wait = (flag & (uint8_t) flag_t::WAIT_MESS);
+	this->_scheme.wait = (flag & static_cast <uint8_t> (flag_t::WAIT_MESS));
 	// Устанавливаем флаг запрещающий вывод информационных сообщений
-	const_cast <server::core_t *> (this->_core)->noInfo(flag & (uint8_t) flag_t::NOT_INFO);
+	const_cast <server::core_t *> (this->_core)->noInfo(flag & static_cast <uint8_t> (flag_t::NOT_INFO));
 }
 /**
  * total Метод установки максимального количества одновременных подключений

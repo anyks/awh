@@ -98,15 +98,15 @@ void awh::client::Sample::handler() noexcept {
 		// Выполняем обработку всех экшенов
 		while(loop && (this->_action != action_t::NONE)){
 			// Определяем обрабатываемый экшен
-			switch((uint8_t) this->_action){
+			switch(static_cast <uint8_t> (this->_action)){
 				// Если необходимо запустить экшен открытия подключения
-				case (uint8_t) action_t::OPEN: this->actionOpen(); break;
+				case static_cast <uint8_t> (action_t::OPEN): this->actionOpen(); break;
 				// Если необходимо запустить экшен обработки данных поступающих с сервера
-				case (uint8_t) action_t::READ: this->actionRead(); break;
+				case static_cast <uint8_t> (action_t::READ): this->actionRead(); break;
 				// Если необходимо запустить экшен обработки подключения к серверу
-				case (uint8_t) action_t::CONNECT: this->actionConnect(); break;
+				case static_cast <uint8_t> (action_t::CONNECT): this->actionConnect(); break;
 				// Если необходимо запустить экшен обработки отключения от сервера
-				case (uint8_t) action_t::DISCONNECT: this->actionDisconnect(); break;
+				case static_cast <uint8_t> (action_t::DISCONNECT): this->actionDisconnect(); break;
 				// Если сработал неизвестный экшен, выходим
 				default: loop = false;
 			}
@@ -247,14 +247,14 @@ void awh::client::Sample::init(const u_int port, const string & host) noexcept {
 		// Устанавливаем хост сервера
 		this->_scheme.url.host = host;
 		// Определяем тип передаваемого сервера
-		switch((uint8_t) this->_net.host(host)){
+		switch(static_cast <uint8_t> (this->_net.host(host))){
 			// Если хост является доменом или IPv4 адресом
-			case (uint8_t) net_t::type_t::IPV4:
+			case static_cast <uint8_t> (net_t::type_t::IPV4):
 				// Устанавливаем IP адрес
 				this->_scheme.url.ip = host;
 			break;
 			// Если хост является IPv6 адресом, переводим ip адрес в полную форму
-			case (uint8_t) net_t::type_t::IPV6: {
+			case static_cast <uint8_t> (net_t::type_t::IPV6): {
 				// Создаём объкт для работы с адресами
 				net_t net(this->_fmk, this->_log);
 				// Получаем данные хоста
@@ -263,7 +263,7 @@ void awh::client::Sample::init(const u_int port, const string & host) noexcept {
 				this->_scheme.url.ip = net;
 			} break;
 			// Если хост является доменным именем
-			case (uint8_t) net_t::type_t::DOMN:
+			case static_cast <uint8_t> (net_t::type_t::DOMN):
 				// Устанавливаем доменное имя
 				this->_scheme.url.domain = host;
 			break;
@@ -351,15 +351,15 @@ void awh::client::Sample::waitTimeDetect(const time_t read, const time_t write, 
  */
 void awh::client::Sample::mode(const u_short flag) noexcept {
 	// Устанавливаем флаг анбиндинга ядра сетевого модуля
-	this->_unbind = !(flag & (uint8_t) flag_t::NOT_STOP);
+	this->_unbind = !(flag & static_cast <uint8_t> (flag_t::NOT_STOP));
 	// Устанавливаем флаг поддержания автоматического подключения
-	this->_scheme.alive = (flag & (uint8_t) flag_t::ALIVE);
+	this->_scheme.alive = (flag & static_cast <uint8_t> (flag_t::ALIVE));
 	// Устанавливаем флаг ожидания входящих сообщений
-	this->_scheme.wait = (flag & (uint8_t) flag_t::WAIT_MESS);
+	this->_scheme.wait = (flag & static_cast <uint8_t> (flag_t::WAIT_MESS));
 	// Устанавливаем флаг запрещающий вывод информационных сообщений
-	const_cast <client::core_t *> (this->_core)->noInfo(flag & (uint8_t) flag_t::NOT_INFO);
+	const_cast <client::core_t *> (this->_core)->noInfo(flag & static_cast <uint8_t> (flag_t::NOT_INFO));
 	// Выполняем установку флага проверки домена
-	const_cast <client::core_t *> (this->_core)->verifySSL(flag & (uint8_t) flag_t::VERIFY_SSL);
+	const_cast <client::core_t *> (this->_core)->verifySSL(flag & static_cast <uint8_t> (flag_t::VERIFY_SSL));
 }
 /**
  * keepAlive Метод установки жизни подключения

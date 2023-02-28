@@ -318,9 +318,9 @@ string awh::DNS::Worker::join(const vector <u_char> & domain) const noexcept {
 		// Количество символов в слове
 		uint16_t length = 0, offset = 0;
 		// Переходим по всему доменному имени
-		for(uint16_t i = 0; i < (uint16_t) domain.size(); ++i){
+		for(uint16_t i = 0; i < static_cast <uint16_t> (domain.size()); ++i){
 			// Получаем количество символов
-			length = (uint16_t) domain[i];
+			length = static_cast <uint16_t> (domain[i]);
 			// Выполняем перебор всех символов
 			for(uint16_t j = 0; j < length; ++j){
 				// Добавляем поддомен в строку результата
@@ -514,7 +514,7 @@ bool awh::DNS::Worker::request(const string & domain) noexcept {
 					// Получаем объект заголовка
 					head_t * header = reinterpret_cast <head_t *> (&buffer);
 					// Устанавливаем идентификатор заголовка
-					header->id = (u_short) htons(getpid());
+					header->id = static_cast <u_short> (htons(getpid()));
 					// Заполняем оставшуюся структуру пакетов
 					header->z = 0;
 					header->qr = 0;
@@ -527,7 +527,7 @@ bool awh::DNS::Worker::request(const string & domain) noexcept {
 					header->ancount = 0x0000;
 					header->nscount = 0x0000;
 					header->arcount = 0x0000;
-					header->qdcount = htons((u_short) 1);
+					header->qdcount = htons(static_cast <u_short> (1));
 					// Получаем размер запроса
 					size_t size = sizeof(head_t);
 					// Получаем доменное имя в нужном формате
@@ -1148,14 +1148,14 @@ void awh::DNS::server(const int family, const serv_t & server) noexcept {
 		// Устанавливаем порт сервера
 		result.port = server.port;
 		// Определяем тип передаваемого сервера
-		switch((uint8_t) this->_net->host(server.host)){
+		switch(static_cast <uint8_t> (this->_net->host(server.host))){
 			// Если хост является доменом или IPv4 адресом
-			case (uint8_t) net_t::type_t::IPV4:
+			case static_cast <uint8_t> (net_t::type_t::IPV4):
 				// Устанавливаем адрес как он есть
 				result.host = server.host;
 			break;
 			// Если хост является IPv6 адресом, переводим ip адрес в полную форму
-			case (uint8_t) net_t::type_t::IPV6: {
+			case static_cast <uint8_t> (net_t::type_t::IPV6): {
 				// Создаём объкт для работы с адресами
 				net_t net(this->_fmk, this->_log);
 				// Выполняем получение адреса хоста
@@ -1164,7 +1164,7 @@ void awh::DNS::server(const int family, const serv_t & server) noexcept {
 				result.host = net;
 			} break;
 			// Если хост является доменным именем
-			case (uint8_t) net_t::type_t::DOMN: {
+			case static_cast <uint8_t> (net_t::type_t::DOMN): {
 				// Создаём объект DNS
 				unique_ptr <dns_t> dns(new dns_t(this->_fmk, this->_log, this->_net, this->_base));
 				// Устанавливаем доменное имя локального DNS резолвера
@@ -1310,31 +1310,31 @@ size_t awh::DNS::resolve(const string & host, const int family) noexcept {
 				cout << domain << endl;
 			#endif
 			// Определяем тип передаваемого сервера
-			switch((uint8_t) this->_net->host(domain)){
+			switch(static_cast <uint8_t> (this->_net->host(domain))){
 				// Если домен является IPv4 адресом
-				case (uint8_t) net_t::type_t::IPV4:
+				case static_cast <uint8_t> (net_t::type_t::IPV4):
 				// Если домен является IPv6 адресом
-				case (uint8_t) net_t::type_t::IPV6: {
+				case static_cast <uint8_t> (net_t::type_t::IPV6): {
 					// Если функция обратного вызова установлена
 					if(this->_fn != nullptr)
 						// Выводим полученный IP адрес
 						this->_fn(host, family, result);
 				} break;
 				// Если домен является аппаратным адресом сетевого интерфейса
-				case (uint8_t) net_t::type_t::MAC:
+				case static_cast <uint8_t> (net_t::type_t::MAC):
 				// Если домен является адресом/Маски сети
-				case (uint8_t) net_t::type_t::NETW:
+				case static_cast <uint8_t> (net_t::type_t::NETW):
 				// Если домен является адресом в файловой системе
-				case (uint8_t) net_t::type_t::ADDR:
+				case static_cast <uint8_t> (net_t::type_t::ADDR):
 				// Если домен является HTTP адресом
-				case (uint8_t) net_t::type_t::HTTP: {
+				case static_cast <uint8_t> (net_t::type_t::HTTP): {
 					// Если функция обратного вызова установлена
 					if(this->_fn != nullptr)
 						// Выводим полученный IP адрес
 						this->_fn("", family, result);
 				} break;
 				// Если домен является доменным именем
-				case (uint8_t) net_t::type_t::DOMN: {
+				case static_cast <uint8_t> (net_t::type_t::DOMN): {
 					// Выполняем поиск IP адреса в кэше DNS
 					const string & ip = this->cache(family, domain);
 					// Если IP адрес получен

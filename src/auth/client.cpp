@@ -135,9 +135,9 @@ const string awh::client::Auth::header(const string & method, const bool mode) n
 		// Если логин и пароль установлены
 		if(!this->_user.empty() && !this->_pass.empty()){
 			// Определяем тип авторизации
-			switch((uint8_t) this->_type){
+			switch(static_cast <uint8_t> (this->_type)){
 				// Если тип авторизации Digest
-				case (uint8_t) type_t::DIGEST: {
+				case static_cast <uint8_t> (type_t::DIGEST): {
 					// Если данные необходимые для продолжения работы переданы сервером
 					if(!method.empty() && !this->_digest.nonce.empty() && !this->_digest.opaque.empty()){
 						// Параметры проверки дайджест авторизации
@@ -202,7 +202,7 @@ const string awh::client::Auth::header(const string & method, const bool mode) n
 					}
 				} break;
 				// Если тип авторизации Basic
-				case (uint8_t) type_t::BASIC: {
+				case static_cast <uint8_t> (type_t::BASIC): {
 					// Выводим результат
 					result = base64_t().encode(this->_fmk->format("%s:%s", this->_user.c_str(), this->_pass.c_str()));
 					// Если нужно вывести только значение заголовка

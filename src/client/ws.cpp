@@ -202,19 +202,19 @@ void awh::client::WebSocket::handler() noexcept {
 		// Выполняем обработку всех экшенов
 		while(loop && (this->_action != action_t::NONE)){
 			// Определяем обрабатываемый экшен
-			switch((uint8_t) this->_action){
+			switch(static_cast <uint8_t> (this->_action)){
 				// Если необходимо запустить экшен открытия подключения
-				case (uint8_t) action_t::OPEN: this->actionOpen(); break;
+				case static_cast <uint8_t> (action_t::OPEN): this->actionOpen(); break;
 				// Если необходимо запустить экшен обработки данных поступающих с сервера
-				case (uint8_t) action_t::READ: this->actionRead(); break;
+				case static_cast <uint8_t> (action_t::READ): this->actionRead(); break;
 				// Если необходимо запустить экшен обработки подключения к серверу
-				case (uint8_t) action_t::CONNECT: this->actionConnect(); break;
+				case static_cast <uint8_t> (action_t::CONNECT): this->actionConnect(); break;
 				// Если необходимо запустить экшен обработки отключения от сервера
-				case (uint8_t) action_t::DISCONNECT: this->actionDisconnect(); break;
+				case static_cast <uint8_t> (action_t::DISCONNECT): this->actionDisconnect(); break;
 				// Если необходимо запустить экшен обработки данных поступающих с прокси-сервера
-				case (uint8_t) action_t::PROXY_READ: this->actionProxyRead(); break;
+				case static_cast <uint8_t> (action_t::PROXY_READ): this->actionProxyRead(); break;
 				// Если необходимо запустить экшен обработки подключения к прокси-серверу
-				case (uint8_t) action_t::PROXY_CONNECT: this->actionProxyConnect(); break;
+				case static_cast <uint8_t> (action_t::PROXY_CONNECT): this->actionProxyConnect(); break;
 				// Если сработал неизвестный экшен, выходим
 				default: loop = false;
 			}
@@ -269,9 +269,9 @@ void awh::client::WebSocket::actionRead() noexcept {
 				}
 			#endif
 			// Выполняем проверку авторизации
-			switch((uint8_t) this->_http.getAuth()){
+			switch(static_cast <uint8_t> (this->_http.getAuth())){
 				// Если нужно попытаться ещё раз
-				case (uint8_t) http_t::stath_t::RETRY: {
+				case static_cast <uint8_t> (http_t::stath_t::RETRY): {
 					// Если попытка повторить авторизацию ещё не проводилась
 					if(this->_attempt < this->_attempts){
 						// Получаем новый адрес запроса
@@ -307,7 +307,7 @@ void awh::client::WebSocket::actionRead() noexcept {
 					this->error(mess);
 				} break;
 				// Если запрос выполнен удачно
-				case (uint8_t) http_t::stath_t::GOOD: {
+				case static_cast <uint8_t> (http_t::stath_t::GOOD): {
 					// Если рукопожатие выполнено
 					if(this->_http.isHandshake()){
 						// Выполняем сброс количества попыток
@@ -359,7 +359,7 @@ void awh::client::WebSocket::actionRead() noexcept {
 					}
 				} break;
 				// Если запрос неудачный
-				case (uint8_t) http_t::stath_t::FAULT: {
+				case static_cast <uint8_t> (http_t::stath_t::FAULT): {
 					// Получаем параметры запроса
 					const auto & query = this->_http.query();
 					// Устанавливаем флаг принудительной остановки
@@ -412,7 +412,7 @@ void awh::client::WebSocket::actionRead() noexcept {
 				// Если флаг компресси включён а данные пришли не сжатые
 				if(head.rsv[0] && ((this->_compress == http_t::compress_t::NONE) ||
 				  (head.optcode == frame_t::opcode_t::CONTINUATION) ||
-				  (((uint8_t) head.optcode > 0x07) && ((uint8_t) head.optcode < 0x0b)))){
+				  ((static_cast <uint8_t> (head.optcode) > 0x07) && (static_cast <uint8_t> (head.optcode) < 0x0b)))){
 					// Создаём сообщение
 					mess = mess_t(1002, "RSV1 must be clear");
 					// Выводим сообщение
@@ -421,7 +421,7 @@ void awh::client::WebSocket::actionRead() noexcept {
 					goto Reconnect;
 				}
 				// Если опкоды требуют финального фрейма
-				if(!head.fin && ((uint8_t) head.optcode > 0x07) && ((uint8_t) head.optcode < 0x0b)){
+				if(!head.fin && (static_cast <uint8_t> (head.optcode) > 0x07) && (static_cast <uint8_t> (head.optcode) < 0x0b)){
 					// Создаём сообщение
 					mess = mess_t(1002, "FIN must be set");
 					// Выводим сообщение
@@ -430,23 +430,23 @@ void awh::client::WebSocket::actionRead() noexcept {
 					goto Reconnect;
 				}
 				// Определяем тип ответа
-				switch((uint8_t) head.optcode){
+				switch(static_cast <uint8_t> (head.optcode)){
 					// Если ответом является PING
-					case (uint8_t) frame_t::opcode_t::PING:
+					case static_cast <uint8_t> (frame_t::opcode_t::PING):
 						// Отправляем ответ серверу
 						this->pong(string(data.begin(), data.end()));
 					break;
 					// Если ответом является PONG
-					case (uint8_t) frame_t::opcode_t::PONG:
+					case static_cast <uint8_t> (frame_t::opcode_t::PONG):
 						// Если идентификатор адъютанта совпадает
 						if(memcmp(to_string(this->_aid).c_str(), data.data(), data.size()) == 0)
 							// Обновляем контрольную точку
 							this->_checkPoint = this->_fmk->unixTimestamp();
 					break;
 					// Если ответом является TEXT
-					case (uint8_t) frame_t::opcode_t::TEXT:
+					case static_cast <uint8_t> (frame_t::opcode_t::TEXT):
 					// Если ответом является BINARY
-					case (uint8_t) frame_t::opcode_t::BINARY: {
+					case static_cast <uint8_t> (frame_t::opcode_t::BINARY): {
 						// Запоминаем полученный опкод
 						this->_opcode = head.optcode;
 						// Запоминаем, что данные пришли сжатыми
@@ -477,7 +477,7 @@ void awh::client::WebSocket::actionRead() noexcept {
 						else buffer = std::forward <const vector <char>> (data);
 					} break;
 					// Если ответом является CONTINUATION
-					case (uint8_t) frame_t::opcode_t::CONTINUATION: {
+					case static_cast <uint8_t> (frame_t::opcode_t::CONTINUATION): {
 						// Заполняем фрагментированное сообщение
 						this->_buffer.fragmes.insert(this->_buffer.fragmes.end(), data.begin(), data.end());
 						// Если сообщение является последним
@@ -489,7 +489,7 @@ void awh::client::WebSocket::actionRead() noexcept {
 						}
 					} break;
 					// Если ответом является CLOSE
-					case (uint8_t) frame_t::opcode_t::CLOSE: {
+					case static_cast <uint8_t> (frame_t::opcode_t::CLOSE): {
 						// Извлекаем сообщение
 						mess = this->_frame.message(data);
 						// Выводим сообщение
@@ -627,9 +627,9 @@ void awh::client::WebSocket::actionProxyRead() noexcept {
 	// Получаем объект биндинга ядра TCP/IP
 	client::core_t * core = const_cast <client::core_t *> (this->_core);
 	// Определяем тип прокси-сервера
-	switch((uint8_t) this->_scheme.proxy.type){
+	switch(static_cast <uint8_t> (this->_scheme.proxy.type)){
 		// Если прокси-сервер является Socks5
-		case (uint8_t) proxy_t::type_t::SOCKS5: {
+		case static_cast <uint8_t> (proxy_t::type_t::SOCKS5): {
 			// Если данные не получены
 			if(!this->_scheme.proxy.socks5.isEnd()){
 				// Выполняем парсинг входящих данных
@@ -699,7 +699,7 @@ void awh::client::WebSocket::actionProxyRead() noexcept {
 			}
 		} break;
 		// Если прокси-сервер является HTTP
-		case (uint8_t) proxy_t::type_t::HTTP: {
+		case static_cast <uint8_t> (proxy_t::type_t::HTTP): {
 			// Выполняем парсинг полученных данных
 			this->_scheme.proxy.http.parse(this->_buffer.payload.data(), this->_buffer.payload.size());
 			// Если все данные получены
@@ -729,9 +729,9 @@ void awh::client::WebSocket::actionProxyRead() noexcept {
 					}
 				#endif
 				// Выполняем проверку авторизации
-				switch((uint8_t) this->_scheme.proxy.http.getAuth()){
+				switch(static_cast <uint8_t> (this->_scheme.proxy.http.getAuth())){
 					// Если нужно попытаться ещё раз
-					case (uint8_t) http_t::stath_t::RETRY: {
+					case static_cast <uint8_t> (http_t::stath_t::RETRY): {
 						// Если попытка повторить авторизацию ещё не проводилась
 						if(this->_attempt < this->_attempts){
 							// Если адрес запроса получен
@@ -759,7 +759,7 @@ void awh::client::WebSocket::actionProxyRead() noexcept {
 						this->_stopped = true;
 					} break;
 					// Если запрос выполнен удачно
-					case (uint8_t) http_t::stath_t::GOOD: {
+					case static_cast <uint8_t> (http_t::stath_t::GOOD): {
 						// Выполняем сброс количества попыток
 						this->_attempt = 0;
 						// Выполняем переключение на работу с сервером
@@ -772,7 +772,7 @@ void awh::client::WebSocket::actionProxyRead() noexcept {
 						return;
 					} break;
 					// Если запрос неудачный
-					case (uint8_t) http_t::stath_t::FAULT:
+					case static_cast <uint8_t> (http_t::stath_t::FAULT):
 						// Устанавливаем флаг принудительной остановки
 						this->_stopped = true;
 					break;
@@ -809,9 +809,9 @@ void awh::client::WebSocket::actionProxyConnect() noexcept {
 	// Получаем объект биндинга ядра TCP/IP
 	client::core_t * core = const_cast <client::core_t *> (this->_core);
 	// Определяем тип прокси-сервера
-	switch((uint8_t) this->_scheme.proxy.type){
+	switch(static_cast <uint8_t> (this->_scheme.proxy.type)){
 		// Если прокси-сервер является Socks5
-		case (uint8_t) proxy_t::type_t::SOCKS5: {
+		case static_cast <uint8_t> (proxy_t::type_t::SOCKS5): {
 			// Выполняем сброс состояния Socks5 парсера
 			this->_scheme.proxy.socks5.reset();
 			// Устанавливаем URL адрес запроса
@@ -826,7 +826,7 @@ void awh::client::WebSocket::actionProxyConnect() noexcept {
 				core->write(buffer.data(), buffer.size(), this->_aid);
 		} break;
 		// Если прокси-сервер является HTTP
-		case (uint8_t) proxy_t::type_t::HTTP: {
+		case static_cast <uint8_t> (proxy_t::type_t::HTTP): {
 			// Выполняем сброс состояния HTTP парсера
 			this->_scheme.proxy.http.reset();
 			// Выполняем очистку параметров HTTP запроса
@@ -895,9 +895,9 @@ void awh::client::WebSocket::extraction(const vector <char> & buffer, const bool
 			// Декомпрессионные данные
 			vector <char> data;
 			// Определяем метод компрессии
-			switch((uint8_t) this->_compress){
+			switch(static_cast <uint8_t> (this->_compress)){
 				// Если метод компрессии выбран Deflate
-				case (uint8_t) http_t::compress_t::DEFLATE: {
+				case static_cast <uint8_t> (http_t::compress_t::DEFLATE): {
 					// Устанавливаем размер скользящего окна
 					this->_hash.wbit(this->_wbitServer);
 					// Добавляем хвост в полученные данные
@@ -906,12 +906,12 @@ void awh::client::WebSocket::extraction(const vector <char> & buffer, const bool
 					data = this->_hash.decompress(buffer.data(), buffer.size(), hash_t::method_t::DEFLATE);
 				} break;
 				// Если метод компрессии выбран GZip
-				case (uint8_t) http_t::compress_t::GZIP:
+				case static_cast <uint8_t> (http_t::compress_t::GZIP):
 					// Выполняем декомпрессию полученных данных
 					data = this->_hash.decompress(buffer.data(), buffer.size(), hash_t::method_t::GZIP);
 				break;
 				// Если метод компрессии выбран Brotli
-				case (uint8_t) http_t::compress_t::BROTLI:
+				case static_cast <uint8_t> (http_t::compress_t::BROTLI):
 					// Выполняем декомпрессию полученных данных
 					data = this->_hash.decompress(buffer.data(), buffer.size(), hash_t::method_t::BROTLI);
 				break;
@@ -1168,9 +1168,9 @@ void awh::client::WebSocket::send(const char * message, const size_t size, const
 				// Компрессионные данные
 				vector <char> data;
 				// Определяем метод компрессии
-				switch((uint8_t) this->_compress){
+				switch(static_cast <uint8_t> (this->_compress)){
 					// Если метод компрессии выбран Deflate
-					case (uint8_t) http_t::compress_t::DEFLATE: {
+					case static_cast <uint8_t> (http_t::compress_t::DEFLATE): {
 						// Устанавливаем размер скользящего окна
 						this->_hash.wbit(this->_wbitClient);
 						// Выполняем компрессию полученных данных
@@ -1179,12 +1179,12 @@ void awh::client::WebSocket::send(const char * message, const size_t size, const
 						this->_hash.rmTail(data);
 					} break;
 					// Если метод компрессии выбран GZip
-					case (uint8_t) http_t::compress_t::GZIP:
+					case static_cast <uint8_t> (http_t::compress_t::GZIP):
 						// Выполняем компрессию полученных данных
 						data = this->_hash.compress(message, size, hash_t::method_t::GZIP);
 					break;
 					// Если метод компрессии выбран Brotli
-					case (uint8_t) http_t::compress_t::BROTLI:
+					case static_cast <uint8_t> (http_t::compress_t::BROTLI):
 						// Выполняем компрессию полученных данных
 						data = this->_hash.compress(message, size, hash_t::method_t::BROTLI);
 					break;
@@ -1412,21 +1412,21 @@ void awh::client::WebSocket::proxy(const string & uri, const scheme_t::family_t 
  */
 void awh::client::WebSocket::mode(const u_short flag) noexcept {
 	// Устанавливаем флаг запрещающий вывод информационных сообщений
-	this->_noinfo = (flag & (uint8_t) flag_t::NOT_INFO);
+	this->_noinfo = (flag & static_cast <uint8_t> (flag_t::NOT_INFO));
 	// Устанавливаем флаг анбиндинга ядра сетевого модуля
-	this->_unbind = !(flag & (uint8_t) flag_t::NOT_STOP);
+	this->_unbind = !(flag & static_cast <uint8_t> (flag_t::NOT_STOP));
 	// Устанавливаем флаг поддержания автоматического подключения
-	this->_scheme.alive = (flag & (uint8_t) flag_t::ALIVE);
+	this->_scheme.alive = (flag & static_cast <uint8_t> (flag_t::ALIVE));
 	// Устанавливаем флаг ожидания входящих сообщений
-	this->_scheme.wait = (flag & (uint8_t) flag_t::WAIT_MESS);
+	this->_scheme.wait = (flag & static_cast <uint8_t> (flag_t::WAIT_MESS));
 	// Устанавливаем флаг перехвата контекста компрессии для клиента
-	this->_takeOverCli = (flag & (uint8_t) flag_t::TAKEOVER_CLIENT);
+	this->_takeOverCli = (flag & static_cast <uint8_t> (flag_t::TAKEOVER_CLIENT));
 	// Устанавливаем флаг перехвата контекста компрессии для сервера
-	this->_takeOverSrv = (flag & (uint8_t) flag_t::TAKEOVER_SERVER);
+	this->_takeOverSrv = (flag & static_cast <uint8_t> (flag_t::TAKEOVER_SERVER));
 	// Устанавливаем флаг запрещающий вывод информационных сообщений
-	const_cast <client::core_t *> (this->_core)->noInfo(flag & (uint8_t) flag_t::NOT_INFO);
+	const_cast <client::core_t *> (this->_core)->noInfo(flag & static_cast <uint8_t> (flag_t::NOT_INFO));
 	// Выполняем установку флага проверки домена
-	const_cast <client::core_t *> (this->_core)->verifySSL(flag & (uint8_t) flag_t::VERIFY_SSL);
+	const_cast <client::core_t *> (this->_core)->verifySSL(flag & static_cast <uint8_t> (flag_t::VERIFY_SSL));
 }
 /**
  * chunk Метод установки размера чанка

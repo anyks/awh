@@ -73,9 +73,9 @@ size_t awh::Web::readPayload(const char * buffer, const size_t size) noexcept {
 				// Переходим по всему буферу данных
 				for(size_t i = 0; i < size; i++){
 					// Определяем стейт чанка
-					switch((uint8_t) this->_chunk.state){
+					switch(static_cast <uint8_t> (this->_chunk.state)){
 						// Если мы ожидаем получения размера тела чанка
-						case (uint8_t) cstate_t::SIZE: {
+						case static_cast <uint8_t> (cstate_t::SIZE): {
 							// Если мы получили возврат каретки
 							if(buffer[i] == '\r'){
 								// Меняем стейт чанка
@@ -100,7 +100,7 @@ size_t awh::Web::readPayload(const char * buffer, const size_t size) noexcept {
 							}
 						} break;
 						// Если мы ожидаем получение окончания сбора размера тела чанка
-						case (uint8_t) cstate_t::ENDSIZE: {
+						case static_cast <uint8_t> (cstate_t::ENDSIZE): {
 							// Увеличиваем смещение
 							offset = (i + 1);
 							// Запоминаем количество обработанных байт
@@ -148,7 +148,7 @@ size_t awh::Web::readPayload(const char * buffer, const size_t size) noexcept {
 							}
 						} break;
 						// Если мы ожидаем сбора тела чанка
-						case (uint8_t) cstate_t::BODY: {
+						case static_cast <uint8_t> (cstate_t::BODY): {
 							// Определяем количество необходимых байт
 							size_t rem = (this->_chunk.size - this->_chunk.data.size());
 							// Если количества байт достаточно для сбора тела чанка
@@ -174,7 +174,7 @@ size_t awh::Web::readPayload(const char * buffer, const size_t size) noexcept {
 							}
 						} break;
 						// Если мы ожидаем перевод строки после сбора данных тела чанка
-						case (uint8_t) cstate_t::STOPBODY: {
+						case static_cast <uint8_t> (cstate_t::STOPBODY): {
 							// Увеличиваем смещение
 							offset = (i + 1);
 							// Запоминаем количество обработанных байт
@@ -192,7 +192,7 @@ size_t awh::Web::readPayload(const char * buffer, const size_t size) noexcept {
 							}
 						} break;
 						// Если мы ожидаем получение окончания сбора данных тела чанка
-						case (uint8_t) cstate_t::ENDBODY: {
+						case static_cast <uint8_t> (cstate_t::ENDBODY): {
 							// Увеличиваем смещение
 							offset = (i + 1);
 							// Запоминаем количество обработанных байт
@@ -247,11 +247,11 @@ size_t awh::Web::readHeaders(const char * buffer, const size_t size) noexcept {
 		// Если мы собираем заголовки или стартовый запрос
 		if((this->_state == state_t::HEADERS) || (this->_state == state_t::QUERY)){
 			// Определяем статус режима работы
-			switch((uint8_t) this->_state){
+			switch(static_cast <uint8_t> (this->_state)){
 				// Если - это режим ожидания получения запроса
-				case (uint8_t) state_t::QUERY: this->_sep = ' '; break;
+				case static_cast <uint8_t> (state_t::QUERY): this->_sep = ' '; break;
 				// Если - это режим получения заголовков
-				case (uint8_t) state_t::HEADERS: this->_sep = ':'; break;
+				case static_cast <uint8_t> (state_t::HEADERS): this->_sep = ':'; break;
 			}
 			/**
 			 * Выполняем парсинг заголовков запроса
@@ -307,13 +307,13 @@ size_t awh::Web::readHeaders(const char * buffer, const size_t size) noexcept {
 				// Если необходимо  получить оставшиеся данные
 				} else {
 					// Определяем статус режима работы
-					switch((uint8_t) this->_state){
+					switch(static_cast <uint8_t> (this->_state)){
 						// Если - это режим ожидания получения запроса
-						case (uint8_t) state_t::QUERY: {
+						case static_cast <uint8_t> (state_t::QUERY): {
 							// Определяем тип HTTP модуля
-							switch((uint8_t) this->_httpType){
+							switch(static_cast <uint8_t> (this->_httpType)){
 								// Если мы работаем с клиентом
-								case (uint8_t) hid_t::CLIENT: {
+								case static_cast <uint8_t> (hid_t::CLIENT): {
 									// Создаём буфер для проверки
 									char temp[5];
 									// Копируем полученную строку
@@ -345,7 +345,7 @@ size_t awh::Web::readHeaders(const char * buffer, const size_t size) noexcept {
 									}
 								} break;
 								// Если мы работаем с сервером
-								case (uint8_t) hid_t::SERVER: {
+								case static_cast <uint8_t> (hid_t::SERVER): {
 									// Создаём буфер для проверки
 									char temp[5];
 									// Копируем полученную строку
@@ -397,7 +397,7 @@ size_t awh::Web::readHeaders(const char * buffer, const size_t size) noexcept {
 							}
 						} break;
 						// Если - это режим получения заголовков
-						case (uint8_t) state_t::HEADERS: {
+						case static_cast <uint8_t> (state_t::HEADERS): {
 							// Получаем ключ заголовка
 							const string & key = string(buffer, this->_pos[0]);
 							// Получаем значение заголовка
@@ -676,11 +676,11 @@ size_t awh::Web::parse(const char * buffer, const size_t size) noexcept {
 	// Если данные переданы или обработка полностью выполнена
 	if((buffer != nullptr) && (size > 0) && (this->_state != state_t::END)){
 		// Определяем текущий стейт
-		switch((uint8_t) this->_state){
+		switch(static_cast <uint8_t> (this->_state)){
 			// Если установлен стейт чтения параметров запроса/ответа
-			case (uint8_t) state_t::QUERY:
+			case static_cast <uint8_t> (state_t::QUERY):
 			// Если установлен стейт чтения заголовков
-			case (uint8_t) state_t::HEADERS: {
+			case static_cast <uint8_t> (state_t::HEADERS): {
 				// Выполняем чтение заголовков
 				result = this->readHeaders(buffer, size);
 				// Если требуется продолжить извлечение данных тела сообщения
@@ -689,7 +689,7 @@ size_t awh::Web::parse(const char * buffer, const size_t size) noexcept {
 					result += this->readPayload(buffer + result, size - result);
 			} break;
 			// Если установлен стейт чтения полезной нагрузки
-			case (uint8_t) state_t::BODY: result = this->readPayload(buffer, size); break;
+			case static_cast <uint8_t> (state_t::BODY): result = this->readPayload(buffer, size); break;
 		}
 	}
 	// Выводим реузльтат

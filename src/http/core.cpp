@@ -181,9 +181,9 @@ void awh::Http::update() noexcept {
 		// Если метод компрессии сервера совпадает с выбором клиента
 		if(!compress.empty()){
 			// Определяем метод сжатия который поддерживает клиент
-			switch((uint8_t) this->_compress){
+			switch(static_cast <uint8_t> (this->_compress)){
 				// Если клиент поддерживает методот сжатия GZIP, BROTLI
-				case (uint8_t) compress_t::GZIP_BROTLI: {
+				case static_cast <uint8_t> (compress_t::GZIP_BROTLI): {
 					// Если клиент поддерживает метод компрессии BROTLI
 					if(compress.count(compress_t::BROTLI) > 0)
 						// Переключаем метод компрессии на BROTLI
@@ -196,7 +196,7 @@ void awh::Http::update() noexcept {
 					else this->_compress = compress_t::NONE;
 				} break;
 				// Если клиент поддерживает методот сжатия GZIP, DEFLATE
-				case (uint8_t) compress_t::GZIP_DEFLATE: {
+				case static_cast <uint8_t> (compress_t::GZIP_DEFLATE): {
 					// Если клиент поддерживает метод компрессии GZIP
 					if(compress.count(compress_t::GZIP) > 0)
 						// Переключаем метод компрессии на GZIP
@@ -209,7 +209,7 @@ void awh::Http::update() noexcept {
 					else this->_compress = compress_t::NONE;
 				} break;
 				// Если клиент поддерживает методот сжатия DEFLATE, BROTLI
-				case (uint8_t) compress_t::DEFLATE_BROTLI: {
+				case static_cast <uint8_t> (compress_t::DEFLATE_BROTLI): {
 					// Если клиент поддерживает метод компрессии BROTLI
 					if(compress.count(compress_t::BROTLI) > 0)
 						// Переключаем метод компрессии на BROTLI
@@ -222,7 +222,7 @@ void awh::Http::update() noexcept {
 					else this->_compress = compress_t::NONE;
 				} break;
 				// Если клиент поддерживает все методы сжатия
-				case (uint8_t) compress_t::ALL_COMPRESS: {
+				case static_cast <uint8_t> (compress_t::ALL_COMPRESS): {
 					// Если клиент поддерживает метод компрессии BROTLI
 					if(compress.count(compress_t::BROTLI) > 0)
 						// Переключаем метод компрессии на BROTLI
@@ -968,23 +968,23 @@ awh::Http::crypto_t awh::Http::encode(const vector <char> & buffer) const noexce
 		// Если заголовок не запрещён
 		if(!this->isBlack("Content-Encoding")){
 			// Определяем метод компрессии тела сообщения
-			switch((uint8_t) this->_compress){
+			switch(static_cast <uint8_t> (this->_compress)){
 				// Если нужно сжать тело методом BROTLI
-				case (uint8_t) compress_t::BROTLI: {
+				case static_cast <uint8_t> (compress_t::BROTLI): {
 					// Выполняем сжатие тела сообщения
 					const auto & brotli = this->hash.compress(result.data.data(), result.data.size(), hash_t::method_t::BROTLI);
 					// Если данные сжаты, заменяем тело данных
 					if((result.compress = !brotli.empty())) result.data.assign(brotli.begin(), brotli.end());
 				} break;
 				// Если нужно сжать тело методом GZIP
-				case (uint8_t) compress_t::GZIP: {
+				case static_cast <uint8_t> (compress_t::GZIP): {
 					// Выполняем сжатие тела сообщения
 					const auto & gzip = this->hash.compress(result.data.data(), result.data.size(), hash_t::method_t::GZIP);
 					// Если данные сжаты, заменяем тело данных
 					if((result.compress = !gzip.empty())) result.data.assign(gzip.begin(), gzip.end());
 				} break;
 				// Если нужно сжать тело методом DEFLATE
-				case (uint8_t) compress_t::DEFLATE: {
+				case static_cast <uint8_t> (compress_t::DEFLATE): {
 					// Выполняем сжатие тела сообщения
 					auto deflate = this->hash.compress(result.data.data(), result.data.size(), hash_t::method_t::DEFLATE);
 					// Удаляем хвост в полученных данных
@@ -1026,49 +1026,49 @@ vector <char> awh::Http::request(const bool nobody) const noexcept {
 			// Данные REST запроса
 			string request = "";
 			// Определяем метод запроса
-			switch((uint8_t) query.method){
+			switch(static_cast <uint8_t> (query.method)){
 				// Если метод запроса указан как GET
-				case (uint8_t) web_t::method_t::GET:
+				case static_cast <uint8_t> (web_t::method_t::GET):
 					// Формируем GET запрос
 					request = this->fmk->format("GET %s HTTP/%.1f\r\n", query.uri.c_str(), query.ver);
 				break;
 				// Если метод запроса указан как PUT
-				case (uint8_t) web_t::method_t::PUT:
+				case static_cast <uint8_t> (web_t::method_t::PUT):
 					// Формируем PUT запрос
 					request = this->fmk->format("PUT %s HTTP/%.1f\r\n", query.uri.c_str(), query.ver);
 				break;
 				// Если метод запроса указан как POST
-				case (uint8_t) web_t::method_t::POST:
+				case static_cast <uint8_t> (web_t::method_t::POST):
 					// Формируем POST запрос
 					request = this->fmk->format("POST %s HTTP/%.1f\r\n", query.uri.c_str(), query.ver);
 				break;
 				// Если метод запроса указан как HEAD
-				case (uint8_t) web_t::method_t::HEAD:
+				case static_cast <uint8_t> (web_t::method_t::HEAD):
 					// Формируем HEAD запрос
 					request = this->fmk->format("HEAD %s HTTP/%.1f\r\n", query.uri.c_str(), query.ver);
 				break;
 				// Если метод запроса указан как PATCH
-				case (uint8_t) web_t::method_t::PATCH:
+				case static_cast <uint8_t> (web_t::method_t::PATCH):
 					// Формируем PATCH запрос
 					request = this->fmk->format("PATCH %s HTTP/%.1f\r\n", query.uri.c_str(), query.ver);
 				break;
 				// Если метод запроса указан как TRACE
-				case (uint8_t) web_t::method_t::TRACE:
+				case static_cast <uint8_t> (web_t::method_t::TRACE):
 					// Формируем TRACE запрос
 					request = this->fmk->format("TRACE %s HTTP/%.1f\r\n", query.uri.c_str(), query.ver);
 				break;
 				// Если метод запроса указан как DELETE
-				case (uint8_t) web_t::method_t::DEL:
+				case static_cast <uint8_t> (web_t::method_t::DEL):
 					// Формируем DELETE запрос
 					request = this->fmk->format("DELETE %s HTTP/%.1f\r\n", query.uri.c_str(), query.ver);
 				break;
 				// Если метод запроса указан как OPTIONS
-				case (uint8_t) web_t::method_t::OPTIONS:
+				case static_cast <uint8_t> (web_t::method_t::OPTIONS):
 					// Формируем OPTIONS запрос
 					request = this->fmk->format("OPTIONS %s HTTP/%.1f\r\n", query.uri.c_str(), query.ver);
 				break;
 				// Если метод запроса указан как CONNECT
-				case (uint8_t) web_t::method_t::CONNECT:
+				case static_cast <uint8_t> (web_t::method_t::CONNECT):
 					// Формируем CONNECT запрос
 					request = this->fmk->format("CONNECT %s HTTP/%.1f\r\n", query.uri.c_str(), query.ver);
 				break;
@@ -1133,23 +1133,23 @@ vector <char> awh::Http::request(const bool nobody) const noexcept {
 				// Если данные зашифрованы, устанавливаем соответствующие заголовки
 				if(crypto.encrypt)
 					// Устанавливаем X-AWH-Encryption
-					request.append(this->fmk->format("X-AWH-Encryption: %u\r\n", (u_short) this->hash.cipher()));
+					request.append(this->fmk->format("X-AWH-Encryption: %u\r\n", static_cast <u_short> (this->hash.cipher())));
 				// Если данные сжаты, устанавливаем соответствующие заголовки
 				if(crypto.compress){
 					// Определяем метод компрессии тела сообщения
-					switch((uint8_t) this->_compress){
+					switch(static_cast <uint8_t> (this->_compress)){
 						// Если нужно сжать тело методом BROTLI
-						case (uint8_t) compress_t::BROTLI:
+						case static_cast <uint8_t> (compress_t::BROTLI):
 							// Устанавливаем Content-Encoding если не передан
 							request.append(this->fmk->format("Content-Encoding: %s\r\n", "br"));
 						break;
 						// Если нужно сжать тело методом GZIP
-						case (uint8_t) compress_t::GZIP:
+						case static_cast <uint8_t> (compress_t::GZIP):
 							// Устанавливаем Content-Encoding если не передан
 							request.append(this->fmk->format("Content-Encoding: %s\r\n", "gzip"));
 						break;
 						// Если нужно сжать тело методом DEFLATE
-						case (uint8_t) compress_t::DEFLATE:
+						case static_cast <uint8_t> (compress_t::DEFLATE):
 							// Устанавливаем Content-Encoding если не передан
 							request.append(this->fmk->format("Content-Encoding: %s\r\n", "deflate"));
 						break;
@@ -1261,23 +1261,23 @@ vector <char> awh::Http::response(const bool nobody) const noexcept {
 				// Если данные зашифрованы, устанавливаем соответствующие заголовки
 				if(crypto.encrypt)
 					// Устанавливаем X-AWH-Encryption
-					response.append(this->fmk->format("X-AWH-Encryption: %u\r\n", (u_short) this->hash.cipher()));
+					response.append(this->fmk->format("X-AWH-Encryption: %u\r\n", static_cast <u_short> (this->hash.cipher())));
 				// Если данные сжаты, устанавливаем соответствующие заголовки
 				if(crypto.compress){
 					// Определяем метод компрессии тела сообщения
-					switch((uint8_t) this->_compress){
+					switch(static_cast <uint8_t> (this->_compress)){
 						// Если нужно сжать тело методом BROTLI
-						case (uint8_t) compress_t::BROTLI:
+						case static_cast <uint8_t> (compress_t::BROTLI):
 							// Устанавливаем Content-Encoding если не передан
 							response.append(this->fmk->format("Content-Encoding: %s\r\n", "br"));
 						break;
 						// Если нужно сжать тело методом GZIP
-						case (uint8_t) compress_t::GZIP:
+						case static_cast <uint8_t> (compress_t::GZIP):
 							// Устанавливаем Content-Encoding если не передан
 							response.append(this->fmk->format("Content-Encoding: %s\r\n", "gzip"));
 						break;
 						// Если нужно сжать тело методом DEFLATE
-						case (uint8_t) compress_t::DEFLATE:
+						case static_cast <uint8_t> (compress_t::DEFLATE):
 							// Устанавливаем Content-Encoding если не передан
 							response.append(this->fmk->format("Content-Encoding: %s\r\n", "deflate"));
 						break;
@@ -1543,23 +1543,23 @@ vector <char> awh::Http::response(const u_int code, const string & mess) const n
 			// Если данные зашифрованы, устанавливаем соответствующие заголовки
 			if(crypto.encrypt)
 				// Устанавливаем X-AWH-Encryption
-				response.append(this->fmk->format("X-AWH-Encryption: %u\r\n", (u_short) this->hash.cipher()));
+				response.append(this->fmk->format("X-AWH-Encryption: %u\r\n", static_cast <u_short> (this->hash.cipher())));
 			// Если данные сжаты, устанавливаем соответствующие заголовки
 			if(crypto.compress){
 				// Определяем метод компрессии тела сообщения
-				switch((uint8_t) this->_compress){
+				switch(static_cast <uint8_t> (this->_compress)){
 					// Если нужно сжать тело методом BROTLI
-					case (uint8_t) compress_t::BROTLI:
+					case static_cast <uint8_t> (compress_t::BROTLI):
 						// Устанавливаем Content-Encoding если не передан
 						response.append(this->fmk->format("Content-Encoding: %s\r\n", "br"));
 					break;
 					// Если нужно сжать тело методом GZIP
-					case (uint8_t) compress_t::GZIP:
+					case static_cast <uint8_t> (compress_t::GZIP):
 						// Устанавливаем Content-Encoding если не передан
 						response.append(this->fmk->format("Content-Encoding: %s\r\n", "gzip"));
 					break;
 					// Если нужно сжать тело методом DEFLATE
-					case (uint8_t) compress_t::DEFLATE:
+					case static_cast <uint8_t> (compress_t::DEFLATE):
 						// Устанавливаем Content-Encoding если не передан
 						response.append(this->fmk->format("Content-Encoding: %s\r\n", "deflate"));
 					break;
@@ -1630,49 +1630,49 @@ vector <char> awh::Http::request(const uri_t::url_t & url, const web_t::method_t
 				// Формируем HTTP запрос
 				query.uri = this->uri->query(url);
 			// Определяем метод запроса
-			switch((uint8_t) method){
+			switch(static_cast <uint8_t> (method)){
 				// Если метод запроса указан как GET
-				case (uint8_t) web_t::method_t::GET:
+				case static_cast <uint8_t> (web_t::method_t::GET):
 					// Формируем GET запрос
 					request = this->fmk->format("GET %s HTTP/%.1f\r\n", query.uri.c_str(), query.ver);
 				break;
 				// Если метод запроса указан как PUT
-				case (uint8_t) web_t::method_t::PUT:
+				case static_cast <uint8_t> (web_t::method_t::PUT):
 					// Формируем PUT запрос
 					request = this->fmk->format("PUT %s HTTP/%.1f\r\n", query.uri.c_str(), query.ver);
 				break;
 				// Если метод запроса указан как POST
-				case (uint8_t) web_t::method_t::POST:
+				case static_cast <uint8_t> (web_t::method_t::POST):
 					// Формируем POST запрос
 					request = this->fmk->format("POST %s HTTP/%.1f\r\n", query.uri.c_str(), query.ver);
 				break;
 				// Если метод запроса указан как HEAD
-				case (uint8_t) web_t::method_t::HEAD:
+				case static_cast <uint8_t> (web_t::method_t::HEAD):
 					// Формируем HEAD запрос
 					request = this->fmk->format("HEAD %s HTTP/%.1f\r\n", query.uri.c_str(), query.ver);
 				break;
 				// Если метод запроса указан как PATCH
-				case (uint8_t) web_t::method_t::PATCH:
+				case static_cast <uint8_t> (web_t::method_t::PATCH):
 					// Формируем PATCH запрос
 					request = this->fmk->format("PATCH %s HTTP/%.1f\r\n", query.uri.c_str(), query.ver);
 				break;
 				// Если метод запроса указан как TRACE
-				case (uint8_t) web_t::method_t::TRACE:
+				case static_cast <uint8_t> (web_t::method_t::TRACE):
 					// Формируем TRACE запрос
 					request = this->fmk->format("TRACE %s HTTP/%.1f\r\n", query.uri.c_str(), query.ver);
 				break;
 				// Если метод запроса указан как DELETE
-				case (uint8_t) web_t::method_t::DEL:
+				case static_cast <uint8_t> (web_t::method_t::DEL):
 					// Формируем DELETE запрос
 					request = this->fmk->format("DELETE %s HTTP/%.1f\r\n", query.uri.c_str(), query.ver);
 				break;
 				// Если метод запроса указан как OPTIONS
-				case (uint8_t) web_t::method_t::OPTIONS:
+				case static_cast <uint8_t> (web_t::method_t::OPTIONS):
 					// Формируем OPTIONS запрос
 					request = this->fmk->format("OPTIONS %s HTTP/%.1f\r\n", query.uri.c_str(), query.ver);
 				break;
 				// Если метод запроса указан как CONNECT
-				case (uint8_t) web_t::method_t::CONNECT:
+				case static_cast <uint8_t> (web_t::method_t::CONNECT):
 					// Формируем CONNECT запрос
 					request = this->fmk->format("CONNECT %s HTTP/%.1f\r\n", query.uri.c_str(), query.ver);
 				break;
@@ -1748,39 +1748,39 @@ vector <char> awh::Http::request(const uri_t::url_t & url, const web_t::method_t
 			// Если нужно запросить компрессию в удобном нам виде
 			if((this->_compress != compress_t::NONE) && (method != web_t::method_t::CONNECT) && !this->isBlack("Accept-Encoding")){
 				// Определяем метод сжатия который поддерживает клиент
-				switch((uint8_t) this->_compress){
+				switch(static_cast <uint8_t> (this->_compress)){
 					// Если клиент поддерживает методот сжатия BROTLI
-					case (uint8_t) compress_t::BROTLI:
+					case static_cast <uint8_t> (compress_t::BROTLI):
 						// Добавляем заголовок в запрос
 						request.append(this->fmk->format("Accept-Encoding: %s\r\n", "br"));
 					break;
 					// Если клиент поддерживает методот сжатия GZIP
-					case (uint8_t) compress_t::GZIP:
+					case static_cast <uint8_t> (compress_t::GZIP):
 						// Добавляем заголовок в запрос
 						request.append(this->fmk->format("Accept-Encoding: %s\r\n", "gzip"));
 					break;
 					// Если клиент поддерживает методот сжатия DEFLATE
-					case (uint8_t) compress_t::DEFLATE:
+					case static_cast <uint8_t> (compress_t::DEFLATE):
 						// Добавляем заголовок в запрос
 						request.append(this->fmk->format("Accept-Encoding: %s\r\n", "deflate"));
 					break;
 					// Если клиент поддерживает методот сжатия GZIP, BROTLI
-					case (uint8_t) compress_t::GZIP_BROTLI:
+					case static_cast <uint8_t> (compress_t::GZIP_BROTLI):
 						// Добавляем заголовок в запрос
 						request.append(this->fmk->format("Accept-Encoding: %s\r\n", "gzip, br"));
 					break;
 					// Если клиент поддерживает методот сжатия GZIP, DEFLATE
-					case (uint8_t) compress_t::GZIP_DEFLATE:
+					case static_cast <uint8_t> (compress_t::GZIP_DEFLATE):
 						// Добавляем заголовок в запрос
 						request.append(this->fmk->format("Accept-Encoding: %s\r\n", "gzip, deflate"));
 					break;
 					// Если клиент поддерживает методот сжатия DEFLATE, BROTLI
-					case (uint8_t) compress_t::DEFLATE_BROTLI:
+					case static_cast <uint8_t> (compress_t::DEFLATE_BROTLI):
 						// Добавляем заголовок в запрос
 						request.append(this->fmk->format("Accept-Encoding: %s\r\n", "deflate, br"));
 					break;
 					// Если клиент поддерживает все методы сжатия
-					case (uint8_t) compress_t::ALL_COMPRESS:
+					case static_cast <uint8_t> (compress_t::ALL_COMPRESS):
 						// Добавляем заголовок в запрос
 						request.append(this->fmk->format("Accept-Encoding: %s\r\n", "gzip, deflate, br"));
 					break;
@@ -1793,20 +1793,20 @@ vector <char> awh::Http::request(const uri_t::url_t & url, const web_t::method_t
 					// Название операционной системы
 					const char * os = nullptr;
 					// Определяем название операционной системы
-					switch((uint8_t) this->fmk->os()){
+					switch(static_cast <uint8_t> (this->fmk->os())){
 						// Если операционной системой является Unix
-						case (uint8_t) fmk_t::os_t::UNIX: os = "Unix"; break;
+						case static_cast <uint8_t> (fmk_t::os_t::UNIX): os = "Unix"; break;
 						// Если операционной системой является Linux
-						case (uint8_t) fmk_t::os_t::LINUX: os = "Linux"; break;
+						case static_cast <uint8_t> (fmk_t::os_t::LINUX): os = "Linux"; break;
 						// Если операционной системой является неизвестной
-						case (uint8_t) fmk_t::os_t::NONE: os = "Unknown"; break;
+						case static_cast <uint8_t> (fmk_t::os_t::NONE): os = "Unknown"; break;
 						// Если операционной системой является Windows
-						case (uint8_t) fmk_t::os_t::WIND32:
-						case (uint8_t) fmk_t::os_t::WIND64: os = "Windows"; break;
+						case static_cast <uint8_t> (fmk_t::os_t::WIND32):
+						case static_cast <uint8_t> (fmk_t::os_t::WIND64): os = "Windows"; break;
 						// Если операционной системой является MacOS X
-						case (uint8_t) fmk_t::os_t::MACOSX: os = "MacOS X"; break;
+						case static_cast <uint8_t> (fmk_t::os_t::MACOSX): os = "MacOS X"; break;
 						// Если операционной системой является FreeBSD
-						case (uint8_t) fmk_t::os_t::FREEBSD: os = "FreeBSD"; break;
+						case static_cast <uint8_t> (fmk_t::os_t::FREEBSD): os = "FreeBSD"; break;
 					}
 					// Выполняем генерацию Юзер-агента клиента выполняющего HTTP запрос
 					this->_userAgent = this->fmk->format("%s (%s; %s/%s)", this->_servName.c_str(), os, this->_servId.c_str(), this->_servVer.c_str());
@@ -1819,25 +1819,25 @@ vector <char> awh::Http::request(const uri_t::url_t & url, const web_t::method_t
 				// Метод HTTP запроса
 				string httpMethod = "";
 				// Определяем метод запроса
-				switch((uint8_t) method){
+				switch(static_cast <uint8_t> (method)){
 					// Если метод запроса указан как GET
-					case (uint8_t) web_t::method_t::GET: httpMethod = "get"; break;
+					case static_cast <uint8_t> (web_t::method_t::GET): httpMethod = "get"; break;
 					// Если метод запроса указан как PUT
-					case (uint8_t) web_t::method_t::PUT: httpMethod = "put"; break;
+					case static_cast <uint8_t> (web_t::method_t::PUT): httpMethod = "put"; break;
 					// Если метод запроса указан как POST
-					case (uint8_t) web_t::method_t::POST: httpMethod = "post"; break;
+					case static_cast <uint8_t> (web_t::method_t::POST): httpMethod = "post"; break;
 					// Если метод запроса указан как HEAD
-					case (uint8_t) web_t::method_t::HEAD: httpMethod = "head"; break;
+					case static_cast <uint8_t> (web_t::method_t::HEAD): httpMethod = "head"; break;
 					// Если метод запроса указан как PATCH
-					case (uint8_t) web_t::method_t::PATCH: httpMethod = "patch"; break;
+					case static_cast <uint8_t> (web_t::method_t::PATCH): httpMethod = "patch"; break;
 					// Если метод запроса указан как TRACE
-					case (uint8_t) web_t::method_t::TRACE: httpMethod = "trace"; break;
+					case static_cast <uint8_t> (web_t::method_t::TRACE): httpMethod = "trace"; break;
 					// Если метод запроса указан как DELETE
-					case (uint8_t) web_t::method_t::DEL: httpMethod = "delete"; break;
+					case static_cast <uint8_t> (web_t::method_t::DEL): httpMethod = "delete"; break;
 					// Если метод запроса указан как OPTIONS
-					case (uint8_t) web_t::method_t::OPTIONS: httpMethod = "options"; break;
+					case static_cast <uint8_t> (web_t::method_t::OPTIONS): httpMethod = "options"; break;
 					// Если метод запроса указан как CONNECT
-					case (uint8_t) web_t::method_t::CONNECT: httpMethod = "connect"; break;
+					case static_cast <uint8_t> (web_t::method_t::CONNECT): httpMethod = "connect"; break;
 				}
 				// Получаем параметры авторизации
 				const string & auth = this->auth.client.header(httpMethod, false);
@@ -1868,23 +1868,23 @@ vector <char> awh::Http::request(const uri_t::url_t & url, const web_t::method_t
 				// Если данные зашифрованы, устанавливаем соответствующие заголовки
 				if(crypto.encrypt)
 					// Устанавливаем X-AWH-Encryption
-					request.append(this->fmk->format("X-AWH-Encryption: %u\r\n", (u_short) this->hash.cipher()));
+					request.append(this->fmk->format("X-AWH-Encryption: %u\r\n", static_cast <u_short> (this->hash.cipher())));
 				// Если данные сжаты, устанавливаем соответствующие заголовки
 				if(crypto.compress){
 					// Определяем метод компрессии тела сообщения
-					switch((uint8_t) this->_compress){
+					switch(static_cast <uint8_t> (this->_compress)){
 						// Если нужно сжать тело методом BROTLI
-						case (uint8_t) compress_t::BROTLI:
+						case static_cast <uint8_t> (compress_t::BROTLI):
 							// Устанавливаем Content-Encoding если не передан
 							request.append(this->fmk->format("Content-Encoding: %s\r\n", "br"));
 						break;
 						// Если нужно сжать тело методом GZIP
-						case (uint8_t) compress_t::GZIP:
+						case static_cast <uint8_t> (compress_t::GZIP):
 							// Устанавливаем Content-Encoding если не передан
 							request.append(this->fmk->format("Content-Encoding: %s\r\n", "gzip"));
 						break;
 						// Если нужно сжать тело методом DEFLATE
-						case (uint8_t) compress_t::DEFLATE:
+						case static_cast <uint8_t> (compress_t::DEFLATE):
 							// Устанавливаем Content-Encoding если не передан
 							request.append(this->fmk->format("Content-Encoding: %s\r\n", "deflate"));
 						break;

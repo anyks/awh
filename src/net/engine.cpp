@@ -581,16 +581,16 @@ void awh::Engine::Address::init(const string & unixsocket, const type_t type) no
 						// Создаём адрес unix-сокета сервера
 						const string & serverName = this->_fmk->format("%ss_%s", path.c_str(), name.c_str());
 						// Определяем тип приложения
-						switch((uint8_t) type){
+						switch(static_cast <uint8_t> (type)){
 							// Если приложение является клиентом
-							case (uint8_t) type_t::CLIENT: {
+							case static_cast <uint8_t> (type_t::CLIENT): {
 								// Если сокет в файловой системе уже существует, удаляем его
 								if(this->_fs.isSock(clientName))
 									// Удаляем файл сокета
 									::unlink(clientName.c_str());
 							} break;
 							// Если приложение является сервером
-							case (uint8_t) type_t::SERVER: {
+							case static_cast <uint8_t> (type_t::SERVER): {
 								// Если сокет в файловой системе уже существует, удаляем его
 								if(this->_fs.isSock(serverName))
 									// Удаляем файл сокета
@@ -653,9 +653,9 @@ void awh::Engine::Address::init(const string & ip, const u_int port, const int f
 				// Для протокола IPv4
 				case AF_INET: {
 					// Определяем тип приложения
-					switch((uint8_t) type){
+					switch(static_cast <uint8_t> (type)){
 						// Если приложение является клиентом
-						case (uint8_t) type_t::CLIENT: {
+						case static_cast <uint8_t> (type_t::CLIENT): {
 							// Если количество элементов больше 1
 							if(this->network.size() > 1){
 								// рандомизация генератора случайных чисел
@@ -680,7 +680,7 @@ void awh::Engine::Address::init(const string & ip, const u_int port, const int f
 							memcpy(&this->_peer.client, &client, this->_peer.size);
 						} break;
 						// Если приложение является сервером
-						case (uint8_t) type_t::SERVER: {
+						case static_cast <uint8_t> (type_t::SERVER): {
 							// Создаём объект клиента
 							struct sockaddr_in client;
 							// Очищаем всю структуру для клиента
@@ -713,9 +713,9 @@ void awh::Engine::Address::init(const string & ip, const u_int port, const int f
 				// Для протокола IPv6
 				case AF_INET6: {
 					// Определяем тип приложения
-					switch((uint8_t) type){
+					switch(static_cast <uint8_t> (type)){
 						// Если приложение является клиентом
-						case (uint8_t) type_t::CLIENT: {
+						case static_cast <uint8_t> (type_t::CLIENT): {
 							// Если количество элементов больше 1
 							if(this->network.size() > 1){
 								// рандомизация генератора случайных чисел
@@ -747,7 +747,7 @@ void awh::Engine::Address::init(const string & ip, const u_int port, const int f
 							memcpy(&this->_peer.client, &client, this->_peer.size);
 						} break;
 						// Если приложение является сервером
-						case (uint8_t) type_t::SERVER: {
+						case static_cast <uint8_t> (type_t::SERVER): {
 							// Создаём объект клиента
 							struct sockaddr_in6 client;
 							// Очищаем всю структуру для клиента
@@ -870,9 +870,9 @@ void awh::Engine::Address::init(const string & ip, const u_int port, const int f
 			// Устанавливаем разрешение на повторное использование сокета
 			this->_socket.reuseable(this->fd);
 			// Определяем тип запускаемого приложения
-			switch((uint8_t) type){
+			switch(static_cast <uint8_t> (type)){
 				// Если приложение является сервером
-				case (uint8_t) type_t::SERVER: {
+				case static_cast <uint8_t> (type_t::SERVER): {
 					// Получаем настоящий хост сервера
 					host = this->_ifnet.ip(family);
 					// Выполняем бинд на сокет
@@ -881,7 +881,7 @@ void awh::Engine::Address::init(const string & ip, const u_int port, const int f
 						this->_log->print("bind local network [%s]", log_t::flag_t::CRITICAL, host.c_str());
 				} break;
 				// Если приложение является клиентом
-				case (uint8_t) type_t::CLIENT: {
+				case static_cast <uint8_t> (type_t::CLIENT): {
 					// Выполняем бинд на сокет
 					if(::bind(this->fd, (struct sockaddr *) (&this->_peer.client), this->_peer.size) < 0)
 						// Выводим в лог сообщение
@@ -1137,14 +1137,14 @@ int64_t awh::Engine::Context::read(char * buffer, const size_t size) noexcept {
 				// Создаём объект подключения
 				struct sockaddr * addr = nullptr;
 				// Определяем тип подключения
-				switch((uint8_t) this->_addr->status){
+				switch(static_cast <uint8_t> (this->_addr->status)){
 					// Если статус установлен как подключение клиентом
-					case (uint8_t) addr_t::status_t::CONNECTED:
+					case static_cast <uint8_t> (addr_t::status_t::CONNECTED):
 						// Запоминаем полученную структуру
 						addr = (struct sockaddr *) (&this->_addr->_peer.server);
 					break;
 					// Если статус установлен как разрешение подключения к серверу
-					case (uint8_t) addr_t::status_t::ACCEPTED:
+					case static_cast <uint8_t> (addr_t::status_t::ACCEPTED):
 						// Запоминаем полученную структуру
 						addr = (struct sockaddr *) (&this->_addr->_peer.client);
 					break;
@@ -1279,9 +1279,9 @@ int64_t awh::Engine::Context::write(const char * buffer, const size_t size) noex
 				// Создаём объект подключения
 				struct sockaddr * addr = nullptr;
 				// Определяем тип подключения
-				switch((uint8_t) this->_addr->status){
+				switch(static_cast <uint8_t> (this->_addr->status)){
 					// Если статус установлен как подключение клиентом
-					case (uint8_t) addr_t::status_t::CONNECTED: {
+					case static_cast <uint8_t> (addr_t::status_t::CONNECTED): {
 						// Запоминаем полученную структуру
 						addr = (struct sockaddr *) (&this->_addr->_peer.server);
 						/**
@@ -1298,7 +1298,7 @@ int64_t awh::Engine::Context::write(const char * buffer, const size_t size) noex
 						#endif
 					} break;
 					// Если статус установлен как разрешение подключения к серверу
-					case (uint8_t) addr_t::status_t::ACCEPTED: {
+					case static_cast <uint8_t> (addr_t::status_t::ACCEPTED): {
 						// Запоминаем полученную структуру
 						addr = (struct sockaddr *) (&this->_addr->_peer.client);
 						/**
@@ -1359,9 +1359,9 @@ int64_t awh::Engine::Context::write(const char * buffer, const size_t size) noex
 				// Если протокол интернета установлен как SCTP
 				if((this->_addr->_protocol == IPPROTO_SCTP) && (SSL_get_error(this->_ssl, result) == SSL_ERROR_NONE)){
 					// Определяем тип подключения
-					switch((uint8_t) this->_addr->status){
+					switch(static_cast <uint8_t> (this->_addr->status)){
 						// Если статус установлен как подключение клиентом
-						case (uint8_t) addr_t::status_t::CONNECTED: {
+						case static_cast <uint8_t> (addr_t::status_t::CONNECTED): {
 							// Создаём объект получения информационных событий
 							struct bio_dgram_sctp_sndinfo info;
 							// Выполняем зануление объекта информационного события
@@ -1372,7 +1372,7 @@ int64_t awh::Engine::Context::write(const char * buffer, const size_t size) noex
 							this->_log->print("wrote %d bytes, stream: %u, ppid: %u", log_t::flag_t::INFO, (int) result, info.snd_sid, info.snd_ppid);
 						} break;
 						// Если статус установлен как разрешение подключения к серверу
-						case (uint8_t) addr_t::status_t::ACCEPTED: {
+						case static_cast <uint8_t> (addr_t::status_t::ACCEPTED): {
 							// Создаём объект получения информационных событий
 							struct bio_dgram_sctp_rcvinfo info;
 							// Выполняем зануление объекта информационного события
@@ -1446,16 +1446,16 @@ bool awh::Engine::Context::isblock() noexcept {
  */
 int awh::Engine::Context::timeout(const time_t msec, const method_t method) noexcept {
 	// Определяем тип метода
-	switch((uint8_t) method){
+	switch(static_cast <uint8_t> (method)){
 		// Если установлен метод чтения
-		case (uint8_t) method_t::READ:
+		case static_cast <uint8_t> (method_t::READ):
 			// Выполняем установку таймера на чтение данных из сокета
 			return (
 				(this->_addr->fd != INVALID_SOCKET) && (this->_addr->fd < MAX_SOCKETS) ?
 				this->_addr->_socket.readTimeout(this->_addr->fd, msec) : -1
 			);
 		// Если установлен метод записи
-		case (uint8_t) method_t::WRITE:
+		case static_cast <uint8_t> (method_t::WRITE):
 			// Выполняем установку таймера на запись данных в сокет
 			return (
 				(this->_addr->fd != INVALID_SOCKET) && (this->_addr->fd < MAX_SOCKETS) ?
@@ -1474,9 +1474,9 @@ int awh::Engine::Context::buffer(const method_t method) const noexcept {
 	// Результат работы функции
 	int result = 0;
 	// Определяем метод для работы с буфером
-	switch((uint8_t) method){
+	switch(static_cast <uint8_t> (method)){
 		// Если метод чтения
-		case (uint8_t) method_t::READ:
+		case static_cast <uint8_t> (method_t::READ):
 			// Получаем размер буфера для чтения
 			result = (
 				(this->_addr->fd != INVALID_SOCKET) && (this->_addr->fd < MAX_SOCKETS) ?
@@ -1484,7 +1484,7 @@ int awh::Engine::Context::buffer(const method_t method) const noexcept {
 			);
 		break;
 		// Если метод записи
-		case (uint8_t) method_t::WRITE:
+		case static_cast <uint8_t> (method_t::WRITE):
 			// Получаем размер буфера для записи
 			result = (
 				(this->_addr->fd != INVALID_SOCKET) && (this->_addr->fd < MAX_SOCKETS) ?
@@ -1809,13 +1809,13 @@ int awh::Engine::verifyHost(X509_STORE_CTX * x509, void * ctx) noexcept {
 			// Выполняем проверку на соответствие хоста с данными хостов у сертификата
 			validate = verify->engine->validateHostname(verify->host.c_str(), cert);
 			// Определяем полученную ошибку
-			switch((uint8_t) validate){
-				case (uint8_t) engine_t::validate_t::MatchFound:           status = "MatchFound";           break;
-				case (uint8_t) engine_t::validate_t::MatchNotFound:        status = "MatchNotFound";        break;
-				case (uint8_t) engine_t::validate_t::NoSANPresent:         status = "NoSANPresent";         break;
-				case (uint8_t) engine_t::validate_t::MalformedCertificate: status = "MalformedCertificate"; break;
-				case (uint8_t) engine_t::validate_t::Error:                status = "Error";                break;
-				default:                                                   status = "WTF!";
+			switch(static_cast <uint8_t> (validate)){
+				case static_cast <uint8_t> (engine_t::validate_t::MatchFound):           status = "MatchFound";           break;
+				case static_cast <uint8_t> (engine_t::validate_t::MatchNotFound):        status = "MatchNotFound";        break;
+				case static_cast <uint8_t> (engine_t::validate_t::NoSANPresent):         status = "NoSANPresent";         break;
+				case static_cast <uint8_t> (engine_t::validate_t::MalformedCertificate): status = "MalformedCertificate"; break;
+				case static_cast <uint8_t> (engine_t::validate_t::Error):                status = "Error";                break;
+				default:                                                                 status = "WTF!";
 			}
 		}
 		// Запрашиваем имя домена
@@ -2385,14 +2385,14 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const type_t type) noex
 				// Если тип сокета - диграммы
 				case SOCK_DGRAM: {
 					// Определяем тип активного приложения
-					switch((uint8_t) type){
+					switch(static_cast <uint8_t> (type)){
 						// Если приложение является клиентом
-						case (uint8_t) type_t::CLIENT:
+						case static_cast <uint8_t> (type_t::CLIENT):
 							// Получаем контекст OpenSSL
 							target._ctx = SSL_CTX_new(DTLSv1_2_client_method());
 						break;
 						// Если приложение является сервером
-						case (uint8_t) type_t::SERVER:
+						case static_cast <uint8_t> (type_t::SERVER):
 							// Получаем контекст OpenSSL
 							target._ctx = SSL_CTX_new(DTLSv1_2_server_method());
 						break;
@@ -2401,14 +2401,14 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const type_t type) noex
 				// Если тип сокета - потоки
 				case SOCK_STREAM: {
 					// Определяем тип активного приложения
-					switch((uint8_t) type){
+					switch(static_cast <uint8_t> (type)){
 						// Если приложение является клиентом
-						case (uint8_t) type_t::CLIENT:
+						case static_cast <uint8_t> (type_t::CLIENT):
 							// Получаем контекст OpenSSL
 							target._ctx = SSL_CTX_new(TLSv1_2_client_method());
 						break;
 						// Если приложение является сервером
-						case (uint8_t) type_t::SERVER:
+						case static_cast <uint8_t> (type_t::SERVER):
 							// Получаем контекст OpenSSL
 							target._ctx = SSL_CTX_new(TLSv1_2_server_method());
 						break;
@@ -2474,9 +2474,9 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const type_t type) noex
 			// Если цепочка сертификатов установлена
 			if(!this->_chain.empty()){
 				// Определяем тип активного приложения
-				switch((uint8_t) type){
+				switch(static_cast <uint8_t> (type)){
 					// Если приложение является клиентом
-					case (uint8_t) type_t::CLIENT:
+					case static_cast <uint8_t> (type_t::CLIENT):
 						// Если цепочка сертификатов не установлена
 						if(SSL_CTX_use_certificate_file(target._ctx, this->_chain.c_str(), SSL_FILETYPE_PEM) < 1){
 							// Выводим в лог сообщение
@@ -2488,7 +2488,7 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const type_t type) noex
 						}
 					break;
 					// Если приложение является сервером
-					case (uint8_t) type_t::SERVER:
+					case static_cast <uint8_t> (type_t::SERVER):
 						// Если цепочка сертификатов не установлена
 						if(SSL_CTX_use_certificate_chain_file(target._ctx, this->_chain.c_str()) < 1){
 							// Выводим в лог сообщение
@@ -2583,16 +2583,16 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const type_t type) noex
 				// Выполняем установку BIO SSL
 				SSL_set_bio(target._ssl, target._bio, target._bio);
 				// Определяем тип активного приложения
-				switch((uint8_t) type){
+				switch(static_cast <uint8_t> (type)){
 					// Если приложение является клиентом
-					case (uint8_t) type_t::CLIENT: {
+					case static_cast <uint8_t> (type_t::CLIENT): {
 						// Если тип сокета - диграммы
 						if(target._addr->_type == SOCK_DGRAM)
 							// Выполняем установку объекта подключения в BIO
 							BIO_ctrl(target._bio, BIO_CTRL_DGRAM_SET_CONNECTED, 0, (struct sockaddr *) &target._addr->_peer.server);
 					} break;
 					// Если приложение является сервером
-					case (uint8_t) type_t::SERVER: {
+					case static_cast <uint8_t> (type_t::SERVER): {
 						// Устанавливаем неблокирующий режим ввода/вывода для сокета
 						target.noblock();
 						// Включаем обмен куками

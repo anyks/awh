@@ -25,9 +25,9 @@ bool awh::Hash::init() const {
 	// Создаем тип шифрования
 	const EVP_CIPHER * cipher = EVP_enc_null();
 	// Определяем длину шифрования
-	switch((u_short) this->_cipher){
+	switch(static_cast <u_short> (this->_cipher)){
 		// Устанавливаем шифрование в 128
-		case (u_short) cipher_t::AES128: {
+		case static_cast <u_short> (cipher_t::AES128): {
 			// Устанавливаем размер массива IV
 			ivSize = 8;
 			// Устанавливаем размер массива KEY
@@ -36,7 +36,7 @@ bool awh::Hash::init() const {
 			cipher = EVP_aes_128_ecb();
 		} break;
 		// Устанавливаем шифрование в 192
-		case (u_short) cipher_t::AES192: {
+		case static_cast <u_short> (cipher_t::AES192): {
 			// Устанавливаем размер массива IV
 			ivSize = 12;
 			// Устанавливаем размер массива KEY
@@ -45,7 +45,7 @@ bool awh::Hash::init() const {
 			cipher = EVP_aes_192_ecb();
 		} break;
 		// Устанавливаем шифрование в 256
-		case (u_short) cipher_t::AES256: {
+		case static_cast <u_short> (cipher_t::AES256): {
 			// Устанавливаем размер массива IV
 			ivSize = 16;
 			// Устанавливаем размер массива KEY
@@ -579,21 +579,21 @@ vector <char> awh::Hash::decrypt(const char * buffer, const size_t size) const n
  */
 vector <char> awh::Hash::compress(const char * buffer, const size_t size, const method_t method) noexcept {
 	// Определяем метод компрессии данных
-	switch((uint8_t) method){
+	switch(static_cast <uint8_t> (method)){
 		// Если метод компрессии установлен GZIP
-		case (uint8_t) method_t::GZIP:
+		case static_cast <uint8_t> (method_t::GZIP):
 			// Выполняем компрессию данных
 			return this->compressGzip(buffer, size);
 		// Если метод компрессии установлен BROTLI
-		case (uint8_t) method_t::BROTLI:
+		case static_cast <uint8_t> (method_t::BROTLI):
 			// Выполняем компрессию данных
 			return this->compressBrotli(buffer, size);
 		// Если метод компрессии установлен DEFLATE
-		case (uint8_t) method_t::DEFLATE:
+		case static_cast <uint8_t> (method_t::DEFLATE):
 			// Выполняем компрессию данных
 			return this->compressDeflate(buffer, size);
 		// Если метод компрессии не установлен
-		case (uint8_t) method_t::NONE:
+		case static_cast <uint8_t> (method_t::NONE):
 			// Выводим переданный буфер данных
 			return vector <char> (buffer, buffer + size);
 	}
@@ -609,21 +609,21 @@ vector <char> awh::Hash::compress(const char * buffer, const size_t size, const 
  */
 vector <char> awh::Hash::decompress(const char * buffer, const size_t size, const method_t method) noexcept {
 	// Определяем метод декомпрессию данных
-	switch((uint8_t) method){
+	switch(static_cast <uint8_t> (method)){
 		// Если метод декомпрессии установлен GZIP
-		case (uint8_t) method_t::GZIP:
+		case static_cast <uint8_t> (method_t::GZIP):
 			// Выполняем компрессию данных
 			return this->decompressGzip(buffer, size);
 		// Если метод декомпрессии установлен BROTLI
-		case (uint8_t) method_t::BROTLI:
+		case static_cast <uint8_t> (method_t::BROTLI):
 			// Выполняем компрессию данных
 			return this->decompressBrotli(buffer, size);
 		// Если метод декомпрессии установлен DEFLATE
-		case (uint8_t) method_t::DEFLATE:
+		case static_cast <uint8_t> (method_t::DEFLATE):
 			// Выполняем компрессию данных
 			return this->decompressDeflate(buffer, size);
 		// Если метод компрессии не установлен
-		case (uint8_t) method_t::NONE:
+		case static_cast <uint8_t> (method_t::NONE):
 			// Выводим переданный буфер данных
 			return vector <char> (buffer, buffer + size);
 	}

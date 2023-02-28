@@ -380,9 +380,9 @@ vector <char> awh::WS::response() noexcept {
 					// Устанавливаем тип компрессии Brotli
 					extensions = "permessage-br";
 				// Если данные должны быть зашифрованны
-				if(this->crypt) extensions.append(this->fmk->format("; permessage-encrypt=%u", (u_short) this->hash.cipher()));
+				if(this->crypt) extensions.append(this->fmk->format("; permessage-encrypt=%u", static_cast <u_short> (this->hash.cipher())));
 			// Если метод компрессии не указан но указан режим шифрования
-			} else if(this->crypt) extensions = this->fmk->format("permessage-encrypt=%u", (u_short) this->hash.cipher());
+			} else if(this->crypt) extensions = this->fmk->format("permessage-encrypt=%u", static_cast <u_short> (this->hash.cipher()));
 			// Добавляем полученный заголовок
 			this->header("Sec-WebSocket-Extensions", extensions);
 		}
@@ -468,9 +468,9 @@ vector <char> awh::WS::request(const uri_t::url_t & url) noexcept {
 				// Устанавливаем тип компрессии Brotli
 				extensions = "permessage-br";
 			// Если данные должны быть зашифрованны
-			if(this->crypt) extensions.append(this->fmk->format("; permessage-encrypt=%u", (u_short) this->hash.cipher()));
+			if(this->crypt) extensions.append(this->fmk->format("; permessage-encrypt=%u", static_cast <u_short> (this->hash.cipher())));
 		// Если метод компрессии не указан но указан режим шифрования
-		} else if(this->crypt) extensions = this->fmk->format("permessage-encrypt=%u", (u_short) this->hash.cipher());
+		} else if(this->crypt) extensions = this->fmk->format("permessage-encrypt=%u", static_cast <u_short> (this->hash.cipher()));
 		// Добавляем полученный заголовок
 		this->header("Sec-WebSocket-Extensions", extensions);
 	}

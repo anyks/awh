@@ -541,17 +541,17 @@ void awh::Net::impose(const uint8_t prefix, const addr_t addr) noexcept {
 	// Если бинарный буфер данных существует
 	if(!this->_buffer.empty() && (prefix > 0)){
 		// Определяем тип IP адреса
-		switch((uint8_t) this->_type){
+		switch(static_cast <uint8_t> (this->_type)){
 			// Если IP адрес определён как IPv4
-			case (uint8_t) type_t::IPV4: {
+			case static_cast <uint8_t> (type_t::IPV4): {
 				// Если префикс укладывается в диапазон адреса
 				if(prefix <= 32){
 					// Определяем номер октета
 					const uint8_t num = ceil(prefix / 8);
 					// Определяем тип получаемого адреса
-					switch((uint8_t) addr){
+					switch(static_cast <uint8_t> (addr)){
 						// Если мы хотим получить адрес хоста
-						case (uint8_t) addr_t::HOST: {
+						case static_cast <uint8_t> (addr_t::HOST): {
 							// Зануляем все остальные биты
 							memset(this->_buffer.data(), 0, num);
 							// Если префикс не кратен 8
@@ -573,7 +573,7 @@ void awh::Net::impose(const uint8_t prefix, const addr_t addr) noexcept {
 							}
 						} break;
 						// Если мы хотим получить сетевой адрес
-						case (uint8_t) addr_t::NETW: {
+						case static_cast <uint8_t> (addr_t::NETW): {
 							// Если префикс кратен 8
 							if((prefix % 8) == 0)
 								// Зануляем все остальные биты
@@ -602,15 +602,15 @@ void awh::Net::impose(const uint8_t prefix, const addr_t addr) noexcept {
 				}
 			} break;
 			// Если IP адрес определён как IPv6
-			case (uint8_t) type_t::IPV6: {
+			case static_cast <uint8_t> (type_t::IPV6): {
 				// Если префикс укладывается в диапазон адреса
 				if(prefix <= 128){
 					// Определяем номер хексета
 					const uint8_t num = ceil(prefix / 16);
 					// Определяем тип получаемого адреса
-					switch((uint8_t) addr){
+					switch(static_cast <uint8_t> (addr)){
 						// Если мы хотим получить адрес хоста
-						case (uint8_t) addr_t::HOST: {
+						case static_cast <uint8_t> (addr_t::HOST): {
 							// Зануляем все остальные биты
 							memset(this->_buffer.data(), 0, (num * 2));
 							// Если префикс не кратен 16
@@ -632,7 +632,7 @@ void awh::Net::impose(const uint8_t prefix, const addr_t addr) noexcept {
 							}
 						} break;
 						// Если мы хотим получить сетевой адрес
-						case (uint8_t) addr_t::NETW: {
+						case static_cast <uint8_t> (addr_t::NETW): {
 							// Если префикс кратен 16
 							if((prefix % 16) == 0)
 								// Зануляем все остальные биты
@@ -680,9 +680,9 @@ uint8_t awh::Net::mask2Prefix(const string & mask) const noexcept {
 			// Бинарный контейнер
 			bitset <8> bits;
 			// Определяем тип IP адреса
-			switch((uint8_t) this->_type){
+			switch(static_cast <uint8_t> (this->_type)){
 				// Если IP адрес определён как IPv4
-				case (uint8_t) type_t::IPV4: {
+				case static_cast <uint8_t> (type_t::IPV4): {
 					// Получаем значение маски в виде адреса
 					const uint32_t num = net.v4();
 					// Выполняем перебор всего значения буфера
@@ -694,7 +694,7 @@ uint8_t awh::Net::mask2Prefix(const string & mask) const noexcept {
 					}
 				} break;
 				// Если IP адрес определён как IPv6
-				case (uint8_t) type_t::IPV6: {
+				case static_cast <uint8_t> (type_t::IPV6): {
 					// Получаем значение маски в виде адреса
 					const array <uint64_t, 2> num = net.v6();
 					// Выполняем перебор всего значения буфера
@@ -724,9 +724,9 @@ string awh::Net::prefix2Mask(const uint8_t prefix) const noexcept {
 		// Создаём объкт для работы с адресами
 		net_t net(this->_fmk, this->_log);
 		// Определяем тип IP адреса
-		switch((uint8_t) this->_type){
+		switch(static_cast <uint8_t> (this->_type)){
 			// Если IP адрес определён как IPv4
-			case (uint8_t) type_t::IPV4: {
+			case static_cast <uint8_t> (type_t::IPV4): {
 				// Если префикс укладывается в диапазон адреса
 				if(prefix < 32){
 					// Выполняем парсинг маски
@@ -739,7 +739,7 @@ string awh::Net::prefix2Mask(const uint8_t prefix) const noexcept {
 				}
 			} break;
 			// Если IP адрес определён как IPv6
-			case (uint8_t) type_t::IPV6: {
+			case static_cast <uint8_t> (type_t::IPV6): {
 				// Если префикс укладывается в диапазон адреса
 				if(prefix < 128){
 					// Выполняем парсинг маски
@@ -773,9 +773,9 @@ bool awh::Net::mapping(const string & network) const noexcept {
 			// Если сеть и IP адрес принадлежат одной версии сети
 			if((result = (this->_type == net.type()))){
 				// Определяем тип IP адреса
-				switch((uint8_t) this->_type){
+				switch(static_cast <uint8_t> (this->_type)){
 					// Если IP адрес определён как IPv4
-					case (uint8_t) type_t::IPV4: {
+					case static_cast <uint8_t> (type_t::IPV4): {
 						// Буфер данных текущего адреса
 						array <uint8_t, 4> nwk, addr;
 						// Получаем значение адреса сети
@@ -795,7 +795,7 @@ bool awh::Net::mapping(const string & network) const noexcept {
 						}
 					} break;
 					// Если IP адрес определён как IPv6
-					case (uint8_t) type_t::IPV6: {
+					case static_cast <uint8_t> (type_t::IPV6): {
 						// Буфер данных текущего адреса
 						array <uint16_t, 8> nwk, addr;
 						// Получаем значение адреса сети
@@ -879,9 +879,9 @@ bool awh::Net::range(const Net & begin, const Net & end, const uint8_t prefix) c
 		// Создаём данные третьего элемента
 		net_t net3(this->_fmk, this->_log);
 		// Определяем тип IP адреса
-		switch((uint8_t) this->_type){
+		switch(static_cast <uint8_t> (this->_type)){
 			// Если IP адрес определён как IPv4
-			case (uint8_t) type_t::IPV4: {
+			case static_cast <uint8_t> (type_t::IPV4): {
 				// Устанавливаем новое значение адреса для первого элемента
 				net1 = this->v4();
 				// Устанавливаем новое значение адреса для второго элемента
@@ -890,7 +890,7 @@ bool awh::Net::range(const Net & begin, const Net & end, const uint8_t prefix) c
 				net3 = end.v4();
 			} break;
 			// Если IP адрес определён как IPv6
-			case (uint8_t) type_t::IPV6: {
+			case static_cast <uint8_t> (type_t::IPV6): {
 				// Устанавливаем новое значение адреса для первого элемента
 				net1 = this->v6();
 				// Устанавливаем новое значение адреса для второго элемента
@@ -954,14 +954,14 @@ bool awh::Net::range(const string & begin, const string & end, const uint8_t pre
 		// Устанавливаем новое значение адреса для третьего элемента
 		net3 = end;
 		// Определяем тип IP адреса
-		switch((uint8_t) this->_type){
+		switch(static_cast <uint8_t> (this->_type)){
 			// Если IP адрес определён как IPv4
-			case (uint8_t) type_t::IPV4:
+			case static_cast <uint8_t> (type_t::IPV4):
 				// Устанавливаем новое значение адреса для первого элемента
 				net1 = this->v4();
 			break;
 			// Если IP адрес определён как IPv6
-			case (uint8_t) type_t::IPV6:
+			case static_cast <uint8_t> (type_t::IPV6):
 				// Устанавливаем новое значение адреса для первого элемента
 				net1 = this->v6();
 			break;
@@ -1020,9 +1020,9 @@ bool awh::Net::mapping(const string & network, const uint8_t prefix, const addr_
 			// Если сеть и IP адрес принадлежат одной версии сети
 			if((result = (this->_type == net.type()))){
 				// Определяем тип IP адреса
-				switch((uint8_t) this->_type){
+				switch(static_cast <uint8_t> (this->_type)){
 					// Если IP адрес определён как IPv4
-					case (uint8_t) type_t::IPV4: {
+					case static_cast <uint8_t> (type_t::IPV4): {
 						// Копируем текущий IP адрес
 						net = this->v4();
 						// Накладываем префикс сети
@@ -1031,7 +1031,7 @@ bool awh::Net::mapping(const string & network, const uint8_t prefix, const addr_
 						return (net.v4() == (net = network).v4());
 					} break;
 					// Если IP адрес определён как IPv6
-					case (uint8_t) type_t::IPV6: {
+					case static_cast <uint8_t> (type_t::IPV6): {
 						// Копируем текущий IP адрес
 						net = this->v6();
 						// Накладываем префикс сети
@@ -1070,9 +1070,9 @@ awh::Net::mode_t awh::Net::mode() const noexcept {
 		// Перебираем все локальные адреса
 		for(auto it = ret.first; it != ret.second; ++it){
 			// Определяем тип IP адреса
-			switch((uint8_t) this->_type){
+			switch(static_cast <uint8_t> (this->_type)){
 				// Если IP адрес определён как IPv4
-				case (uint8_t) type_t::IPV4: {
+				case static_cast <uint8_t> (type_t::IPV4): {
 					// Устанавливаем IP адрес
 					net = this->v4();
 					// Если получен диапазон IP адресов
@@ -1102,7 +1102,7 @@ awh::Net::mode_t awh::Net::mode() const noexcept {
 					}
 				} break;
 				// Если IP адрес определён как IPv6
-				case (uint8_t) type_t::IPV6: {
+				case static_cast <uint8_t> (type_t::IPV6): {
 					// Устанавливаем IP адрес
 					net = this->v6();
 					// Если получен диапазон IP адресов
@@ -1147,14 +1147,26 @@ awh::Net::mode_t awh::Net::mode() const noexcept {
  * @return   результат работы парсинга
  */
 bool awh::Net::parse(const string & ip) noexcept {
+	// Выполняем парсинг IP адреса
+	return this->parse(ip, this->host(ip));
+}
+/**
+ * parse Метод парсинга IP адреса
+ * @param ip   адрес интернет подключения для парсинга
+ * @param type тип адреса интернет подключения
+ * @return     результат работы парсинга
+ */
+bool awh::Net::parse(const string & ip, const type_t type) noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Если IP адрес передан
-	if((result = !ip.empty())){
+	if((result = !ip.empty() && ((type == type_t::IPV4) || (type == type_t::IPV6)))){
+		// Устанавливаем тип IP адреса
+		this->_type = type;
 		// Определяем тип переданного IP адреса
-		switch((uint8_t) (this->_type = this->host(ip))){
+		switch(static_cast <uint8_t> (type)){
 			// Если IP адрес является адресом IPv4
-			case (uint8_t) type_t::IPV4: {
+			case static_cast <uint8_t> (type_t::IPV4): {
 				// Выполняем очистку буфера данных
 				this->_buffer.clear();
 				// Выполняем инициализацию буфера
@@ -1174,7 +1186,7 @@ bool awh::Net::parse(const string & ip) noexcept {
 				this->_buffer[index] = static_cast <uint8_t> (stoi(ip.substr(start)));
 			} break;
 			// Если IP адрес является адресом IPv6
-			case (uint8_t) type_t::IPV6: {
+			case static_cast <uint8_t> (type_t::IPV6): {
 				// Создаём список всех хексетов
 				vector <wstring> data;
 				// Выполняем очистку буфера данных
@@ -1286,9 +1298,9 @@ string awh::Net::get(const format_t format) const noexcept {
 	// Если бинарный буфер данных существует
 	if(!this->_buffer.empty()){
 		// Определяем тип IP адреса
-		switch((uint8_t) this->_type){
+		switch(static_cast <uint8_t> (this->_type)){
 			// Если IP адрес определён как IPv4
-			case (uint8_t) type_t::IPV4: {
+			case static_cast <uint8_t> (type_t::IPV4): {
 				// Если формат адреса не принадлежит к IPv6
 				if((format != format_t::LONG_IPV6) && (format != format_t::MIDDLE_IPV6) && (format != format_t::SHORT_IPV6)){
 					// Переходим по всему массиву
@@ -1345,7 +1357,7 @@ string awh::Net::get(const format_t format) const noexcept {
 				}
 			} break;
 			// Если IP адрес определён как IPv6
-			case (uint8_t) type_t::IPV6: {
+			case static_cast <uint8_t> (type_t::IPV6): {
 				// Значение хексета
 				uint16_t num = 0;
 				// Количество разделителей и количество хексетов в буфере
@@ -1439,14 +1451,14 @@ bool awh::Net::operator < (const net_t & addr) const noexcept {
 	// Если IP адреса принадлежат одному типу адресов
 	if(this->type() == addr.type()){
 		// Определяем тип IP адреса
-		switch((uint8_t) this->_type){
+		switch(static_cast <uint8_t> (this->_type)){
 			// Если IP адрес определён как IPv4
-			case (uint8_t) type_t::IPV4:
+			case static_cast <uint8_t> (type_t::IPV4):
 				// Выполняем сравнение адресов
 				result = (this->v4() < addr.v4());
 			break;
 			// Если IP адрес определён как IPv6
-			case (uint8_t) type_t::IPV6: {
+			case static_cast <uint8_t> (type_t::IPV6): {
 				// Получаем данные текущего адреса IPv6
 				const auto & first = this->v6();
 				// Получаем данные сравниваемого адреса IPv6
@@ -1470,14 +1482,14 @@ bool awh::Net::operator > (const net_t & addr) const noexcept {
 	// Если IP адреса принадлежат одному типу адресов
 	if(this->type() == addr.type()){
 		// Определяем тип IP адреса
-		switch((uint8_t) this->_type){
+		switch(static_cast <uint8_t> (this->_type)){
 			// Если IP адрес определён как IPv4
-			case (uint8_t) type_t::IPV4:
+			case static_cast <uint8_t> (type_t::IPV4):
 				// Выполняем сравнение адресов
 				result = (this->v4() > addr.v4());
 			break;
 			// Если IP адрес определён как IPv6
-			case (uint8_t) type_t::IPV6: {
+			case static_cast <uint8_t> (type_t::IPV6): {
 				// Получаем данные текущего адреса IPv6
 				const auto & first = this->v6();
 				// Получаем данные сравниваемого адреса IPv6
@@ -1501,14 +1513,14 @@ bool awh::Net::operator <= (const net_t & addr) const noexcept {
 	// Если IP адреса принадлежат одному типу адресов
 	if(this->type() == addr.type()){
 		// Определяем тип IP адреса
-		switch((uint8_t) this->_type){
+		switch(static_cast <uint8_t> (this->_type)){
 			// Если IP адрес определён как IPv4
-			case (uint8_t) type_t::IPV4:
+			case static_cast <uint8_t> (type_t::IPV4):
 				// Выполняем сравнение адресов
 				result = (this->v4() <= addr.v4());
 			break;
 			// Если IP адрес определён как IPv6
-			case (uint8_t) type_t::IPV6: {
+			case static_cast <uint8_t> (type_t::IPV6): {
 				// Получаем данные текущего адреса IPv6
 				const auto & first = this->v6();
 				// Получаем данные сравниваемого адреса IPv6
@@ -1532,14 +1544,14 @@ bool awh::Net::operator >= (const net_t & addr) const noexcept {
 	// Если IP адреса принадлежат одному типу адресов
 	if(this->type() == addr.type()){
 		// Определяем тип IP адреса
-		switch((uint8_t) this->_type){
+		switch(static_cast <uint8_t> (this->_type)){
 			// Если IP адрес определён как IPv4
-			case (uint8_t) type_t::IPV4:
+			case static_cast <uint8_t> (type_t::IPV4):
 				// Выполняем сравнение адресов
 				result = (this->v4() >= addr.v4());
 			break;
 			// Если IP адрес определён как IPv6
-			case (uint8_t) type_t::IPV6: {
+			case static_cast <uint8_t> (type_t::IPV6): {
 				// Получаем данные текущего адреса IPv6
 				const auto & first = this->v6();
 				// Получаем данные сравниваемого адреса IPv6
@@ -1561,14 +1573,14 @@ bool awh::Net::operator != (const net_t & addr) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Определяем тип IP адреса
-	switch((uint8_t) this->_type){
+	switch(static_cast <uint8_t> (this->_type)){
 		// Если IP адрес определён как IPv4
-		case (uint8_t) type_t::IPV4:
+		case static_cast <uint8_t> (type_t::IPV4):
 			// Выполняем сравнение адресов
 			result = (this->v4() != addr.v4());
 		break;
 		// Если IP адрес определён как IPv6
-		case (uint8_t) type_t::IPV6: {
+		case static_cast <uint8_t> (type_t::IPV6): {
 			// Получаем данные текущего адреса IPv6
 			const auto & first = this->v6();
 			// Получаем данные сравниваемого адреса IPv6
@@ -1591,14 +1603,14 @@ bool awh::Net::operator == (const net_t & addr) const noexcept {
 	// Если IP адреса принадлежат одному типу адресов
 	if(this->type() == addr.type()){
 		// Определяем тип IP адреса
-		switch((uint8_t) this->_type){
+		switch(static_cast <uint8_t> (this->_type)){
 			// Если IP адрес определён как IPv4
-			case (uint8_t) type_t::IPV4:
+			case static_cast <uint8_t> (type_t::IPV4):
 				// Выполняем сравнение адресов
 				result = (this->v4() == addr.v4());
 			break;
 			// Если IP адрес определён как IPv6
-			case (uint8_t) type_t::IPV6: {
+			case static_cast <uint8_t> (type_t::IPV6): {
 				// Получаем данные текущего адреса IPv6
 				const auto & first = this->v6();
 				// Получаем данные сравниваемого адреса IPv6
@@ -1618,14 +1630,14 @@ bool awh::Net::operator == (const net_t & addr) const noexcept {
  */
 awh::Net & awh::Net::operator = (const net_t & addr) noexcept {
 	// Определяем тип IP адреса
-	switch((uint8_t) addr.type()){
+	switch(static_cast <uint8_t> (addr.type())){
 		// Если IP адрес определён как IPv4
-		case (uint8_t) type_t::IPV4:
+		case static_cast <uint8_t> (type_t::IPV4):
 			// Устанавливаем IPv4 адрсе
 			this->v4(addr.v4());
 		break;
 		// Если IP адрес определён как IPv6
-		case (uint8_t) type_t::IPV6:
+		case static_cast <uint8_t> (type_t::IPV6):
 			// Устанавливаем IPv6 адрсе
 			this->v6(addr.v6());
 		break;

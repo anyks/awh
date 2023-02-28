@@ -33,25 +33,25 @@ awh::Http::stath_t awh::server::Http::checkAuth() noexcept {
 			// Устанавливаем заголовок HTTP в параметры авторизации
 			this->auth.server.header(auth);
 			// Определяем метод запроса
-			switch((uint8_t) this->web.query().method){
+			switch(static_cast <uint8_t> (this->web.query().method)){
 				// Если метод запроса указан как GET
-				case (uint8_t) web_t::method_t::GET: method = "get"; break;
+				case static_cast <uint8_t> (web_t::method_t::GET): method = "get"; break;
 				// Если метод запроса указан как PUT
-				case (uint8_t) web_t::method_t::PUT: method = "put"; break;
+				case static_cast <uint8_t> (web_t::method_t::PUT): method = "put"; break;
 				// Если метод запроса указан как POST
-				case (uint8_t) web_t::method_t::POST: method = "post"; break;
+				case static_cast <uint8_t> (web_t::method_t::POST): method = "post"; break;
 				// Если метод запроса указан как HEAD
-				case (uint8_t) web_t::method_t::HEAD: method = "head"; break;
-				// Если метод запроса указан как PATCH
-				case (uint8_t) web_t::method_t::PATCH: method = "patch"; break;
-				// Если метод запроса указан как TRACE
-				case (uint8_t) web_t::method_t::TRACE: method = "trace"; break;
+				case static_cast <uint8_t> (web_t::method_t::HEAD): method = "head"; break;
 				// Если метод запроса указан как DELETE
-				case (uint8_t) web_t::method_t::DEL: method = "delete"; break;
+				case static_cast <uint8_t> (web_t::method_t::DEL): method = "delete"; break;
+				// Если метод запроса указан как PATCH
+				case static_cast <uint8_t> (web_t::method_t::PATCH): method = "patch"; break;
+				// Если метод запроса указан как TRACE
+				case static_cast <uint8_t> (web_t::method_t::TRACE): method = "trace"; break;
 				// Если метод запроса указан как OPTIONS
-				case (uint8_t) web_t::method_t::OPTIONS: method = "options"; break;
+				case static_cast <uint8_t> (web_t::method_t::OPTIONS): method = "options"; break;
 				// Если метод запроса указан как CONNECT
-				case (uint8_t) web_t::method_t::CONNECT: method = "connect"; break;
+				case static_cast <uint8_t> (web_t::method_t::CONNECT): method = "connect"; break;
 			}
 			// Выполняем проверку авторизации
 			if(this->auth.server.check(method))

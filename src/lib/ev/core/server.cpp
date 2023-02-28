@@ -149,17 +149,17 @@ void awh::server::Core::cluster(const size_t sid, const pid_t pid, const cluster
 		// Получаем объект подключения
 		scheme_t * shm = (scheme_t *) const_cast <awh::scheme_t *> (it->second);
 		// Выполняем тип возникшего события
-		switch((uint8_t) event){
+		switch(static_cast <uint8_t> (event)){
 			// Если производится запуск процесса
-			case (uint8_t) cluster_t::event_t::START: {
+			case static_cast <uint8_t> (cluster_t::event_t::START): {
 				// Если процесс является дочерним
 				if(this->pid != getpid()){
 					// Запоминаем текущий идентификатор процесса
 					this->_pid = pid;
 					// Определяем тип сокета
-					switch((uint8_t) this->settings.sonet){
+					switch(static_cast <uint8_t> (this->settings.sonet)){
 						// Если тип сокета установлен как UDP
-						case (uint8_t) scheme_t::sonet_t::UDP:
+						case static_cast <uint8_t> (scheme_t::sonet_t::UDP):
 							// Выполняем активацию сервера
 							this->accept(1, it->first);
 						break;
@@ -178,7 +178,7 @@ void awh::server::Core::cluster(const size_t sid, const pid_t pid, const cluster
 				}
 			} break;
 			// Если производится остановка процесса
-			case (uint8_t) cluster_t::event_t::STOP: {
+			case static_cast <uint8_t> (cluster_t::event_t::STOP): {
 				// Если тип сокета не установлен как UDP
 				if(this->settings.sonet != scheme_t::sonet_t::UDP)
 					// Останавливаем чтение данных с клиента
@@ -202,15 +202,15 @@ void awh::server::Core::accept(const int fd, const size_t sid) noexcept {
 			// Получаем объект подключения
 			scheme_t * shm = (scheme_t *) const_cast <awh::scheme_t *> (it->second);
 			// Определяем тип сокета
-			switch((uint8_t) this->settings.sonet){
+			switch(static_cast <uint8_t> (this->settings.sonet)){
 				// Если тип сокета установлен как UDP
-				case (uint8_t) scheme_t::sonet_t::UDP: {
+				case static_cast <uint8_t> (scheme_t::sonet_t::UDP): {
 					// Создаём бъект адъютанта
 					unique_ptr <awh::scheme_t::adj_t> adj(new awh::scheme_t::adj_t(shm, this->fmk, this->log));
 					// Определяем тип протокола подключения
-					switch((uint8_t) this->settings.family){
+					switch(static_cast <uint8_t> (this->settings.family)){
 						// Если тип протокола подключения IPv4
-						case (uint8_t) scheme_t::family_t::IPV4:
+						case static_cast <uint8_t> (scheme_t::family_t::IPV4):
 							// Устанавливаем сеть, для выхода в интернет
 							adj->addr.network.assign(
 								this->settings.v4.first.begin(),
@@ -218,7 +218,7 @@ void awh::server::Core::accept(const int fd, const size_t sid) noexcept {
 							);
 						break;
 						// Если тип протокола подключения IPv6
-						case (uint8_t) scheme_t::family_t::IPV6:
+						case static_cast <uint8_t> (scheme_t::family_t::IPV6):
 							// Устанавливаем сеть, для выхода в интернет
 							adj->addr.network.assign(
 								this->settings.v6.first.begin(),
@@ -273,9 +273,9 @@ void awh::server::Core::accept(const int fd, const size_t sid) noexcept {
 					} else this->log->print("accepting failed, pid = %d", log_t::flag_t::WARNING, getpid());
 				} break;
 				// Если подключение зашифрованно
-				case (uint8_t) scheme_t::sonet_t::DTLS: {
+				case static_cast <uint8_t> (scheme_t::sonet_t::DTLS): {
 					// Если количество подключившихся клиентов, больше максимально-допустимого количества клиентов
-					if(shm->adjutants.size() >= (size_t) shm->total){
+					if(shm->adjutants.size() >= static_cast <size_t> (shm->total)){
 						// Выводим в консоль информацию
 						this->log->print("the number of simultaneous connections, cannot exceed the maximum allowed number of %d", log_t::flag_t::WARNING, shm->total);
 						// Выходим
@@ -311,13 +311,13 @@ void awh::server::Core::accept(const int fd, const size_t sid) noexcept {
 					shm->io.stop();
 				} break;
 				// Если тип сокета установлен как TCP/IP
-				case (uint8_t) scheme_t::sonet_t::TCP:
+				case static_cast <uint8_t> (scheme_t::sonet_t::TCP):
 				// Если тип сокета установлен как TCP/IP TLS
-				case (uint8_t) scheme_t::sonet_t::TLS:
+				case static_cast <uint8_t> (scheme_t::sonet_t::TLS):
 				// Если тип сокета установлен как SCTP
-				case (uint8_t) scheme_t::sonet_t::SCTP: {
+				case static_cast <uint8_t> (scheme_t::sonet_t::SCTP): {
 					// Если количество подключившихся клиентов, больше максимально-допустимого количества клиентов
-					if(shm->adjutants.size() >= (size_t) shm->total){
+					if(shm->adjutants.size() >= static_cast <size_t> (shm->total)){
 						// Выводим в консоль информацию
 						this->log->print("the number of simultaneous connections, cannot exceed the maximum allowed number of %d", log_t::flag_t::WARNING, shm->total);
 						// Выходим
@@ -328,13 +328,13 @@ void awh::server::Core::accept(const int fd, const size_t sid) noexcept {
 					// Устанавливаем время жизни подключения
 					adj->addr.alive = shm->keepAlive;
 					// Определяем тип сокета
-					switch((uint8_t) this->settings.sonet){
+					switch(static_cast <uint8_t> (this->settings.sonet)){
 						/**
 						 * Если операционной системой является Linux или FreeBSD
 						 */
 						#if defined(__linux__) || defined(__FreeBSD__)
 							// Если тип сокета установлен как SCTP
-							case (uint8_t) scheme_t::sonet_t::SCTP:
+							case static_cast <uint8_t> (scheme_t::sonet_t::SCTP):
 								// Устанавливаем параметры сокета
 								adj->addr.sonet(SOCK_STREAM, IPPROTO_SCTP);
 							break;
@@ -603,18 +603,18 @@ void awh::server::Core::run(const size_t sid) noexcept {
 				// Объект для работы с сетевым интерфейсом
 				ifnet_t ifnet(this->fmk, this->log);
 				// Определяем тип протокола подключения
-				switch((uint8_t) this->settings.family){
+				switch(static_cast <uint8_t> (this->settings.family)){
 					// Если тип протокола подключения unix-сокет
-					case (uint8_t) scheme_t::family_t::NIX:
+					case static_cast <uint8_t> (scheme_t::family_t::NIX):
 					// Если тип протокола подключения IPv4
-					case (uint8_t) scheme_t::family_t::IPV4: {
+					case static_cast <uint8_t> (scheme_t::family_t::IPV4): {
 						// Обновляем хост сервера
 						shm->host = ifnet.ip(AF_INET);
 						// Выполняем запуск сервера
 						this->resolving(shm->sid, shm->host, AF_INET, 0);
 					} break;
 					// Если тип протокола подключения IPv6
-					case (uint8_t) scheme_t::family_t::IPV6: {
+					case static_cast <uint8_t> (scheme_t::family_t::IPV6): {
 						// Обновляем хост сервера
 						shm->host = ifnet.ip(AF_INET6);
 						// Выполняем запуск сервера
@@ -626,16 +626,16 @@ void awh::server::Core::run(const size_t sid) noexcept {
 				// Устанавливаем событие на получение данных с DNS сервера
 				this->dns.on(std::bind(&scheme_t::resolving, shm, _1, _2, _3));
 				// Определяем тип протокола подключения
-				switch((uint8_t) this->settings.family){
+				switch(static_cast <uint8_t> (this->settings.family)){
 					// Если тип протокола подключения unix-сокет
-					case (uint8_t) scheme_t::family_t::NIX:
+					case static_cast <uint8_t> (scheme_t::family_t::NIX):
 					// Если тип протокола подключения IPv4
-					case (uint8_t) scheme_t::family_t::IPV4:
+					case static_cast <uint8_t> (scheme_t::family_t::IPV4):
 						// Выполняем резолвинг домена
 						this->dns.resolve(shm->host, AF_INET);
 					break;
 					// Если тип протокола подключения IPv6
-					case (uint8_t) scheme_t::family_t::IPV6:
+					case static_cast <uint8_t> (scheme_t::family_t::IPV6):
 						// Выполняем резолвинг домена
 						this->dns.resolve(shm->host, AF_INET6);
 					break;
@@ -785,16 +785,16 @@ void awh::server::Core::timeout(const size_t aid) noexcept {
 		// Получаем объект схемы сети
 		scheme_t * shm = (scheme_t *) const_cast <awh::scheme_t *> (adj->parent);
 		// Определяем тип протокола подключения
-		switch((uint8_t) this->settings.family){
+		switch(static_cast <uint8_t> (this->settings.family)){
 			// Если тип протокола подключения IPv4
-			case (uint8_t) scheme_t::family_t::IPV4:
+			case static_cast <uint8_t> (scheme_t::family_t::IPV4):
 			// Если тип протокола подключения IPv6
-			case (uint8_t) scheme_t::family_t::IPV6:
+			case static_cast <uint8_t> (scheme_t::family_t::IPV6):
 				// Выводим сообщение в лог, о таймауте подключения
 				this->log->print("timeout host = %s, mac = %s", log_t::flag_t::WARNING, adj->ip.c_str(), adj->mac.c_str());
 			break;
 			// Если тип протокола подключения unix-сокет
-			case (uint8_t) scheme_t::family_t::NIX:
+			case static_cast <uint8_t> (scheme_t::family_t::NIX):
 				// Выводим сообщение в лог, о таймауте подключения
 				this->log->print("timeout host %s", log_t::flag_t::WARNING, this->settings.filename.c_str());
 			break;
@@ -824,9 +824,9 @@ void awh::server::Core::transfer(const engine_t::method_t method, const size_t a
 		// Устанавливаем текущий метод режима работы
 		adj->method = method;
 		// Определяем метод работы
-		switch((uint8_t) adj->method){
+		switch(static_cast <uint8_t> (adj->method)){
 			// Если производится чтение данных
-			case (uint8_t) engine_t::method_t::READ: {
+			case static_cast <uint8_t> (engine_t::method_t::READ): {
 				// Останавливаем чтение данных с клиента
 				adj->bev.event.read.stop();
 				// Получаем максимальный размер буфера
@@ -896,7 +896,7 @@ void awh::server::Core::transfer(const engine_t::method_t method, const size_t a
 				} else this->close(aid);
 			} break;
 			// Если производится запись данных
-			case (uint8_t) engine_t::method_t::WRITE: {
+			case static_cast <uint8_t> (engine_t::method_t::WRITE): {
 				// Останавливаем таймаут ожидания на запись в сокет
 				adj->bev.timer.write.stop();
 				// Выполняем отправку всех данных
@@ -997,9 +997,9 @@ void awh::server::Core::resolving(const size_t sid, const string & ip, const int
 				// Обновляем хост сервера
 				shm->host = ip;
 				// Определяем тип сокета
-				switch((uint8_t) this->settings.sonet){
+				switch(static_cast <uint8_t> (this->settings.sonet)){
 					// Если тип сокета установлен как UDP
-					case (uint8_t) scheme_t::sonet_t::UDP: {
+					case static_cast <uint8_t> (scheme_t::sonet_t::UDP): {
 						// Если разрешено выводить информационные сообщения
 						if(!this->noinfo){
 							// Если unix-сокет используется
@@ -1021,9 +1021,9 @@ void awh::server::Core::resolving(const size_t sid, const string & ip, const int
 					// Для всех остальных типов сокетов
 					default: {
 						// Определяем тип протокола подключения
-						switch((uint8_t) this->settings.family){
+						switch(static_cast <uint8_t> (this->settings.family)){
 							// Если тип протокола подключения IPv4
-							case (uint8_t) scheme_t::family_t::IPV4:
+							case static_cast <uint8_t> (scheme_t::family_t::IPV4):
 								// Устанавливаем сеть, для выхода в интернет
 								shm->addr.network.assign(
 									this->settings.v4.first.begin(),
@@ -1031,7 +1031,7 @@ void awh::server::Core::resolving(const size_t sid, const string & ip, const int
 								);
 							break;
 							// Если тип протокола подключения IPv6
-							case (uint8_t) scheme_t::family_t::IPV6:
+							case static_cast <uint8_t> (scheme_t::family_t::IPV6):
 								// Устанавливаем сеть, для выхода в интернет
 								shm->addr.network.assign(
 									this->settings.v6.first.begin(),
@@ -1040,9 +1040,9 @@ void awh::server::Core::resolving(const size_t sid, const string & ip, const int
 							break;
 						}
 						// Определяем тип сокета
-						switch((uint8_t) this->settings.sonet){
+						switch(static_cast <uint8_t> (this->settings.sonet)){
 							// Если тип сокета установлен как UDP TLS
-							case (uint8_t) scheme_t::sonet_t::DTLS:
+							case static_cast <uint8_t> (scheme_t::sonet_t::DTLS):
 								// Устанавливаем параметры сокета
 								shm->addr.sonet(SOCK_DGRAM, IPPROTO_UDP);
 							break;
@@ -1051,7 +1051,7 @@ void awh::server::Core::resolving(const size_t sid, const string & ip, const int
 							 */
 							#if defined(__linux__) || defined(__FreeBSD__)
 								// Если тип сокета установлен как SCTP
-								case (uint8_t) scheme_t::sonet_t::SCTP:
+								case static_cast <uint8_t> (scheme_t::sonet_t::SCTP):
 									// Устанавливаем параметры сокета
 									shm->addr.sonet(SOCK_STREAM, IPPROTO_SCTP);
 								break;
@@ -1242,16 +1242,16 @@ void awh::server::Core::init(const size_t sid, const u_int port, const string & 
 				// Объект для работы с сетевым интерфейсом
 				ifnet_t ifnet(this->fmk, this->log);
 				// Определяем тип протокола подключения
-				switch((uint8_t) this->settings.family){
+				switch(static_cast <uint8_t> (this->settings.family)){
 					// Если тип протокола подключения unix-сокет
-					case (uint8_t) scheme_t::family_t::NIX:
+					case static_cast <uint8_t> (scheme_t::family_t::NIX):
 					// Если тип протокола подключения IPv4
-					case (uint8_t) scheme_t::family_t::IPV4:
+					case static_cast <uint8_t> (scheme_t::family_t::IPV4):
 						// Обновляем хост сервера
 						shm->host = ifnet.ip(AF_INET);
 					break;
 					// Если тип протокола подключения IPv6
-					case (uint8_t) scheme_t::family_t::IPV6:
+					case static_cast <uint8_t> (scheme_t::family_t::IPV6):
 						// Обновляем хост сервера
 						shm->host = ifnet.ip(AF_INET6);
 					break;

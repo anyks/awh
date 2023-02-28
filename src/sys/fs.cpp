@@ -151,9 +151,9 @@ uintmax_t awh::FS::size(const string & path, const string & ext) const noexcept 
 	// Если путь для подсчёта передан
 	if(!path.empty()){
 		// Определяем тип переданного пути
-		switch((uint8_t) this->type(path)){
+		switch(static_cast <uint8_t> (this->type(path))){
 			// Если полный путь является файлом
-			case (uint8_t) type_t::FILE: {
+			case static_cast <uint8_t> (type_t::FILE): {
 				// Открываем файл на чтение
 				ifstream file(path, ios::in);
 				// Если файл открыт
@@ -169,7 +169,7 @@ uintmax_t awh::FS::size(const string & path, const string & ext) const noexcept 
 				}
 			} break;
 			// Если полный путь является каталогом
-			case (uint8_t) type_t::DIR: {
+			case static_cast <uint8_t> (type_t::DIR): {
 				// Открываем указанный каталог
 				DIR * dir = ::opendir(path.c_str());
 				// Если каталог открыт

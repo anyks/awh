@@ -42,14 +42,14 @@ void awh::client::Core::Timeout::callback(const evutil_socket_t fd, const short 
 		// Если разрешено выполнять дальнейшую операцию
 		if(!disallow){
 			// Определяем режим работы клиента
-			switch((uint8_t) this->mode){
+			switch(static_cast <uint8_t> (this->mode)){
 				// Если режим работы клиента - это подключение
-				case (uint8_t) scheme_t::mode_t::CONNECT:
+				case static_cast <uint8_t> (scheme_t::mode_t::CONNECT):
 					// Выполняем новое подключение
 					this->core->connect(this->sid);
 				break;
 				// Если режим работы клиента - это переподключение
-				case (uint8_t) scheme_t::mode_t::RECONNECT: {
+				case static_cast <uint8_t> (scheme_t::mode_t::RECONNECT): {
 					// Получаем объект схемы сети
 					scheme_t * shm = (scheme_t *) const_cast <awh::scheme_t *> (it->second);
 					// Устанавливаем флаг ожидания статуса
@@ -123,9 +123,9 @@ void awh::client::Core::connect(const size_t sid) noexcept {
 				// Устанавливаем время жизни подключения
 				adj->addr.alive = shm->keepAlive;
 				// Определяем тип протокола подключения
-				switch((uint8_t) family){
+				switch(static_cast <uint8_t> (family)){
 					// Если тип протокола подключения IPv4
-					case (uint8_t) scheme_t::family_t::IPV4:
+					case static_cast <uint8_t> (scheme_t::family_t::IPV4):
 						// Устанавливаем сеть, для выхода в интернет
 						adj->addr.network.assign(
 							this->settings.v4.first.begin(),
@@ -133,7 +133,7 @@ void awh::client::Core::connect(const size_t sid) noexcept {
 						);
 					break;
 					// Если тип протокола подключения IPv6
-					case (uint8_t) scheme_t::family_t::IPV6:
+					case static_cast <uint8_t> (scheme_t::family_t::IPV6):
 						// Устанавливаем сеть, для выхода в интернет
 						adj->addr.network.assign(
 							this->settings.v6.first.begin(),
@@ -142,11 +142,11 @@ void awh::client::Core::connect(const size_t sid) noexcept {
 					break;
 				}
 				// Определяем тип сокета
-				switch((uint8_t) this->settings.sonet){
+				switch(static_cast <uint8_t> (this->settings.sonet)){
 					// Если тип сокета UDP
-					case (uint8_t) scheme_t::sonet_t::UDP:
+					case static_cast <uint8_t> (scheme_t::sonet_t::UDP):
 					// Если тип сокета UDP TLS
-					case (uint8_t) scheme_t::sonet_t::DTLS:
+					case static_cast <uint8_t> (scheme_t::sonet_t::DTLS):
 						// Устанавливаем параметры сокета
 						adj->addr.sonet(SOCK_DGRAM, IPPROTO_UDP);
 					break;
@@ -155,15 +155,15 @@ void awh::client::Core::connect(const size_t sid) noexcept {
 					 */
 					#if defined(__linux__) || defined(__FreeBSD__)
 						// Если тип сокета установлен как SCTP
-						case (uint8_t) scheme_t::sonet_t::SCTP:
+						case static_cast <uint8_t> (scheme_t::sonet_t::SCTP):
 							// Устанавливаем параметры сокета
 							adj->addr.sonet(SOCK_STREAM, IPPROTO_SCTP);
 						break;
 					#endif
 					// Если тип сокета TCP
-					case (uint8_t) scheme_t::sonet_t::TCP:
+					case static_cast <uint8_t> (scheme_t::sonet_t::TCP):
 					// Если тип сокета TCP TLS
-					case (uint8_t) scheme_t::sonet_t::TLS:
+					case static_cast <uint8_t> (scheme_t::sonet_t::TLS):
 						// Устанавливаем параметры сокета
 						adj->addr.sonet(SOCK_STREAM, IPPROTO_TCP);
 					break;
@@ -259,14 +259,14 @@ void awh::client::Core::connect(const size_t sid) noexcept {
 						// Выполняем сброс кэша резолвера
 						this->dns.flush();
 						// Определяем тип подключения
-						switch((uint8_t) family){
+						switch(static_cast <uint8_t> (family)){
 							// Если тип протокола подключения IPv4
-							case (uint8_t) scheme_t::family_t::IPV4:
+							case static_cast <uint8_t> (scheme_t::family_t::IPV4):
 								// Добавляем бракованный IPv4 адрес в список адресов
 								this->dns.setToBlackList(AF_INET, url.ip); 
 							break;
 							// Если тип протокола подключения IPv6
-							case (uint8_t) scheme_t::family_t::IPV6:
+							case static_cast <uint8_t> (scheme_t::family_t::IPV6):
 								// Добавляем бракованный IPv6 адрес в список адресов
 								this->dns.setToBlackList(AF_INET6, url.ip);
 							break;
@@ -336,14 +336,14 @@ void awh::client::Core::connect(const size_t sid) noexcept {
 					// Выполняем сброс кэша резолвера
 					this->dns.flush();
 					// Определяем тип подключения
-					switch((uint8_t) family){
+					switch(static_cast <uint8_t> (family)){
 						// Если тип протокола подключения IPv4
-						case (uint8_t) scheme_t::family_t::IPV4:
+						case static_cast <uint8_t> (scheme_t::family_t::IPV4):
 							// Добавляем бракованный IPv4 адрес в список адресов
 							this->dns.setToBlackList(AF_INET, url.ip); 
 						break;
 						// Если тип протокола подключения IPv6
-						case (uint8_t) scheme_t::family_t::IPV6:
+						case static_cast <uint8_t> (scheme_t::family_t::IPV6):
 							// Добавляем бракованный IPv6 адрес в список адресов
 							this->dns.setToBlackList(AF_INET6, url.ip);
 						break;
@@ -375,11 +375,11 @@ void awh::client::Core::reconnect(const size_t sid) noexcept {
 			// Получаем семейство интернет-протоколов
 			const scheme_t::family_t family = (shm->isProxy() ? shm->proxy.family : this->settings.family);
 			// Определяем тип протокола подключения
-			switch((uint8_t) family){
+			switch(static_cast <uint8_t> (family)){
 				// Если тип протокола подключения IPv4
-				case (uint8_t) scheme_t::family_t::IPV4:
+				case static_cast <uint8_t> (scheme_t::family_t::IPV4):
 				// Если тип протокола подключения IPv6
-				case (uint8_t) scheme_t::family_t::IPV6: {
+				case static_cast <uint8_t> (scheme_t::family_t::IPV6): {
 					// Устанавливаем флаг ожидания статуса
 					shm->status.wait = scheme_t::mode_t::RECONNECT;
 					// Получаем URL параметры запроса
@@ -389,14 +389,14 @@ void awh::client::Core::reconnect(const size_t sid) noexcept {
 						// Устанавливаем событие на получение данных с DNS сервера
 						this->dns.on(std::bind(&scheme_t::resolving, shm, _1, _2, _3));
 						// Определяем тип протокола подключения
-						switch((uint8_t) family){
+						switch(static_cast <uint8_t> (family)){
 							// Если тип протокола подключения IPv4
-							case (uint8_t) scheme_t::family_t::IPV4:
+							case static_cast <uint8_t> (scheme_t::family_t::IPV4):
 								// Выполняем резолвинг домена
 								shm->did = this->dns.resolve(url.domain, AF_INET);
 							break;
 							// Если тип протокола подключения IPv6
-							case (uint8_t) scheme_t::family_t::IPV6:
+							case static_cast <uint8_t> (scheme_t::family_t::IPV6):
 								// Выполняем резолвинг домена
 								shm->did = this->dns.resolve(url.domain, AF_INET6);
 							break;
@@ -404,14 +404,14 @@ void awh::client::Core::reconnect(const size_t sid) noexcept {
 					// Выполняем запуск системы
 					} else if(!url.ip.empty()) {
 						// Определяем тип протокола подключения
-						switch((uint8_t) family){
+						switch(static_cast <uint8_t> (family)){
 							// Если тип протокола подключения IPv4
-							case (uint8_t) scheme_t::family_t::IPV4:
+							case static_cast <uint8_t> (scheme_t::family_t::IPV4):
 								// Выполняем резолвинг домена
 								this->resolving(shm->sid, url.ip, AF_INET, 0);
 							break;
 							// Если тип протокола подключения IPv6
-							case (uint8_t) scheme_t::family_t::IPV6:
+							case static_cast <uint8_t> (scheme_t::family_t::IPV6):
 								// Выполняем резолвинг домена
 								this->resolving(shm->sid, url.ip, AF_INET6, 0);
 							break;
@@ -419,7 +419,7 @@ void awh::client::Core::reconnect(const size_t sid) noexcept {
 					}
 				} break;
 				// Если тип протокола подключения unix-сокет
-				case (uint8_t) scheme_t::family_t::NIX:
+				case static_cast <uint8_t> (scheme_t::family_t::NIX):
 					// Выполняем подключение заново
 					this->connect(shm->sid);
 				break;
@@ -698,11 +698,11 @@ void awh::client::Core::open(const size_t sid) noexcept {
 				// Получаем семейство интернет-протоколов
 				const scheme_t::family_t family = (shm->isProxy() ? shm->proxy.family : this->settings.family);
 				// Определяем тип протокола подключения
-				switch((uint8_t) family){
+				switch(static_cast <uint8_t> (family)){
 					// Если тип протокола подключения IPv4
-					case (uint8_t) scheme_t::family_t::IPV4:
+					case static_cast <uint8_t> (scheme_t::family_t::IPV4):
 					// Если тип протокола подключения IPv6
-					case (uint8_t) scheme_t::family_t::IPV6: {
+					case static_cast <uint8_t> (scheme_t::family_t::IPV6): {
 						// Устанавливаем флаг ожидания статуса
 						shm->status.wait = scheme_t::mode_t::CONNECT;
 						// Получаем URL параметры запроса
@@ -712,14 +712,14 @@ void awh::client::Core::open(const size_t sid) noexcept {
 							// Устанавливаем событие на получение данных с DNS сервера
 							this->dns.on(std::bind(&scheme_t::resolving, shm, _1, _2, _3));
 							// Определяем тип протокола подключения
-							switch((uint8_t) this->settings.family){
+							switch(static_cast <uint8_t> (this->settings.family)){
 								// Если тип протокола подключения IPv4
-								case (uint8_t) scheme_t::family_t::IPV4:
+								case static_cast <uint8_t> (scheme_t::family_t::IPV4):
 									// Выполняем резолвинг домена
 									shm->did = this->dns.resolve(url.domain, AF_INET);
 								break;
 								// Если тип протокола подключения IPv6
-								case (uint8_t) scheme_t::family_t::IPV6:
+								case static_cast <uint8_t> (scheme_t::family_t::IPV6):
 									// Выполняем резолвинг домена
 									shm->did = this->dns.resolve(url.domain, AF_INET6);
 								break;
@@ -727,14 +727,14 @@ void awh::client::Core::open(const size_t sid) noexcept {
 						// Выполняем запуск системы
 						} else if(!url.ip.empty()) {
 							// Определяем тип протокола подключения
-							switch((uint8_t) this->settings.family){
+							switch(static_cast <uint8_t> (this->settings.family)){
 								// Если тип протокола подключения IPv4
-								case (uint8_t) scheme_t::family_t::IPV4:
+								case static_cast <uint8_t> (scheme_t::family_t::IPV4):
 									// Выполняем резолвинг домена
 									this->resolving(shm->sid, url.ip, AF_INET, 0);
 								break;
 								// Если тип протокола подключения IPv6
-								case (uint8_t) scheme_t::family_t::IPV6:
+								case static_cast <uint8_t> (scheme_t::family_t::IPV6):
 									// Выполняем резолвинг домена
 									this->resolving(shm->sid, url.ip, AF_INET6, 0);
 								break;
@@ -742,7 +742,7 @@ void awh::client::Core::open(const size_t sid) noexcept {
 						}
 					} break;
 					// Если тип протокола подключения unix-сокет
-					case (uint8_t) scheme_t::family_t::NIX: {
+					case static_cast <uint8_t> (scheme_t::family_t::NIX): {
 						// Если требуется подключение через прокси-сервер
 						if(shm->isProxy())
 							// Создаём unix-сокет
@@ -891,13 +891,13 @@ void awh::client::Core::close(const size_t aid) noexcept {
  */
 void awh::client::Core::switchProxy(const size_t aid) noexcept {
 	// Определяем тип производимого подключения
-	switch((uint8_t) this->settings.sonet){
+	switch(static_cast <uint8_t> (this->settings.sonet)){
 		// Если подключение производится по протоколу TCP
-		case (uint8_t) scheme_t::sonet_t::TCP:
+		case static_cast <uint8_t> (scheme_t::sonet_t::TCP):
 		// Если подключение производится по протоколу TLS
-		case (uint8_t) scheme_t::sonet_t::TLS:
+		case static_cast <uint8_t> (scheme_t::sonet_t::TLS):
 		// Если подключение производится по протоколу SCTP
-		case (uint8_t) scheme_t::sonet_t::SCTP: break;
+		case static_cast <uint8_t> (scheme_t::sonet_t::SCTP): break;
 		// Если активирован любой другой протокол, выходим из функции
 		default: return;
 	}	
@@ -955,28 +955,34 @@ void awh::client::Core::timeout(const size_t aid) noexcept {
 		// Получаем семейство интернет-протоколов
 		const scheme_t::family_t family = (shm->isProxy() ? shm->proxy.family : this->settings.family);
 		// Определяем тип протокола подключения
-		switch((uint8_t) family){
+		switch(static_cast <uint8_t> (family)){
 			// Если тип протокола подключения IPv4
-			case (uint8_t) scheme_t::family_t::IPV4:
+			case static_cast <uint8_t> (scheme_t::family_t::IPV4):
 			// Если тип протокола подключения IPv6
-			case (uint8_t) scheme_t::family_t::IPV6: {
+			case static_cast <uint8_t> (scheme_t::family_t::IPV6): {
 				// Получаем URL параметры запроса
 				const uri_t::url_t & url = (shm->isProxy() ? shm->proxy.url : shm->url);
 				// Если данные ещё ни разу не получены
 				if(!shm->acquisition && !url.ip.empty()){
 					// Определяем тип протокола подключения
-					switch((uint8_t) family){
+					switch(static_cast <uint8_t> (family)){
 						// Резолвер IPv4, добавляем бракованный IPv4 адрес в список адресов
-						case (uint8_t) scheme_t::family_t::IPV4: this->dns.setToBlackList(AF_INET, url.ip); break;
+						case static_cast <uint8_t> (scheme_t::family_t::IPV4):
+							// Устанавливаем адрес в чёрный список
+							this->dns.setToBlackList(AF_INET, url.ip);
+						break;
 						// Резолвер IPv6, добавляем бракованный IPv6 адрес в список адресов
-						case (uint8_t) scheme_t::family_t::IPV6: this->dns.setToBlackList(AF_INET6, url.ip); break;
+						case static_cast <uint8_t> (scheme_t::family_t::IPV6):
+							// Устанавливаем адрес в чёрный список
+							this->dns.setToBlackList(AF_INET6, url.ip);
+						break;
 					}
 				}			
 				// Выводим сообщение в лог, о таймауте подключения
 				this->log->print("timeout host %s [%s%d]", log_t::flag_t::WARNING, url.domain.c_str(), (!url.ip.empty() ? (url.ip + ":").c_str() : ""), url.port);
 			} break;
 			// Если тип протокола подключения unix-сокет
-			case (uint8_t) scheme_t::family_t::NIX:
+			case static_cast <uint8_t> (scheme_t::family_t::NIX):
 				// Выводим сообщение в лог, о таймауте подключения
 				this->log->print("timeout host %s", log_t::flag_t::WARNING, this->settings.filename.c_str());
 			break;
@@ -1017,11 +1023,11 @@ void awh::client::Core::connected(const size_t aid) noexcept {
 			// Получаем семейство интернет-протоколов
 			const scheme_t::family_t family = (shm->isProxy() ? shm->proxy.family : this->settings.family);
 			// Определяем тип протокола подключения
-			switch((uint8_t) family){
+			switch(static_cast <uint8_t> (family)){
 				// Если тип протокола подключения IPv4
-				case (uint8_t) scheme_t::family_t::IPV4:
+				case static_cast <uint8_t> (scheme_t::family_t::IPV4):
 				// Если тип протокола подключения IPv6
-				case (uint8_t) scheme_t::family_t::IPV6: {
+				case static_cast <uint8_t> (scheme_t::family_t::IPV6): {
 					// Получаем URL параметры запроса
 					const uri_t::url_t & url = (shm->isProxy() ? shm->proxy.url : shm->url);
 					// Получаем хост сервера
@@ -1034,7 +1040,7 @@ void awh::client::Core::connected(const size_t aid) noexcept {
 					if(!this->noinfo) this->log->print("connect client to server [%s:%d]", log_t::flag_t::INFO, host.c_str(), url.port);
 				} break;
 				// Если тип протокола подключения unix-сокет
-				case (uint8_t) scheme_t::family_t::NIX: {
+				case static_cast <uint8_t> (scheme_t::family_t::NIX): {
 					// Запускаем чтение данных
 					this->enabled(engine_t::method_t::READ, it->first);
 					// Выводим в лог сообщение
@@ -1077,9 +1083,9 @@ void awh::client::Core::transfer(const engine_t::method_t method, const size_t a
 			// Устанавливаем текущий метод режима работы
 			adj->method = method;
 			// Определяем метод работы
-			switch((uint8_t) adj->method){
+			switch(static_cast <uint8_t> (adj->method)){
 				// Если производится чтение данных
-				case (uint8_t) engine_t::method_t::READ: {
+				case static_cast <uint8_t> (engine_t::method_t::READ): {
 					// Останавливаем чтение данных с клиента
 					adj->bev.events.read.stop();
 					// Получаем максимальный размер буфера
@@ -1177,7 +1183,7 @@ void awh::client::Core::transfer(const engine_t::method_t method, const size_t a
 					} else this->close(aid);
 				} break;
 				// Если производится запись данных
-				case (uint8_t) engine_t::method_t::WRITE: {
+				case static_cast <uint8_t> (engine_t::method_t::WRITE): {
 					// Останавливаем работу таймера
 					adj->bev.timers.write.stop();
 					// Выполняем отправку всех данных
@@ -1301,14 +1307,14 @@ void awh::client::Core::resolving(const size_t sid, const string & ip, const int
 				// Запоминаем полученный IP адрес
 				else shm->url.ip = ip;
 				// Определяем режим работы клиента
-				switch((uint8_t) shm->status.wait){
+				switch(static_cast <uint8_t> (shm->status.wait)){
 					// Если режим работы клиента - это подключение
-					case (uint8_t) scheme_t::mode_t::CONNECT:
+					case static_cast <uint8_t> (scheme_t::mode_t::CONNECT):
 						// Выполняем новое подключение к серверу
 						this->connect(shm->sid);
 					break;
 					// Если режим работы клиента - это переподключение
-					case (uint8_t) scheme_t::mode_t::RECONNECT:
+					case static_cast <uint8_t> (scheme_t::mode_t::RECONNECT):
 						// Выполняем ещё одну попытку переподключиться к серверу
 						this->createTimeout(shm->sid, scheme_t::mode_t::CONNECT);
 					break;

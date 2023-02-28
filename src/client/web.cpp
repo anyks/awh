@@ -162,19 +162,19 @@ void awh::client::WEB::handler() noexcept {
 		// Выполняем обработку всех экшенов
 		while(loop && (this->_action != action_t::NONE)){
 			// Определяем обрабатываемый экшен
-			switch((uint8_t) this->_action){
+			switch(static_cast <uint8_t> (this->_action)){
 				// Если необходимо запустить экшен открытия подключения
-				case (uint8_t) action_t::OPEN: this->actionOpen(); break;
+				case static_cast <uint8_t> (action_t::OPEN): this->actionOpen(); break;
 				// Если необходимо запустить экшен обработки данных поступающих с сервера
-				case (uint8_t) action_t::READ: this->actionRead(); break;
+				case static_cast <uint8_t> (action_t::READ): this->actionRead(); break;
 				// Если необходимо запустить экшен обработки подключения к серверу
-				case (uint8_t) action_t::CONNECT: this->actionConnect(); break;
+				case static_cast <uint8_t> (action_t::CONNECT): this->actionConnect(); break;
 				// Если необходимо запустить экшен обработки отключения от сервера
-				case (uint8_t) action_t::DISCONNECT: this->actionDisconnect(); break;
+				case static_cast <uint8_t> (action_t::DISCONNECT): this->actionDisconnect(); break;
 				// Если необходимо запустить экшен обработки данных поступающих с прокси-сервера
-				case (uint8_t) action_t::PROXY_READ: this->actionProxyRead(); break;
+				case static_cast <uint8_t> (action_t::PROXY_READ): this->actionProxyRead(); break;
 				// Если необходимо запустить экшен обработки подключения к прокси-серверу
-				case (uint8_t) action_t::PROXY_CONNECT: this->actionProxyConnect(); break;
+				case static_cast <uint8_t> (action_t::PROXY_CONNECT): this->actionProxyConnect(); break;
 				// Если сработал неизвестный экшен, выходим
 				default: loop = false;
 			}
@@ -256,9 +256,9 @@ void awh::client::WEB::actionRead() noexcept {
 						status = awh::http_t::stath_t::GOOD;
 			}
 			// Выполняем анализ результата авторизации
-			switch((uint8_t) status){
+			switch(static_cast <uint8_t> (status)){
 				// Если нужно попытаться ещё раз
-				case (uint8_t) awh::http_t::stath_t::RETRY: {
+				case static_cast <uint8_t> (awh::http_t::stath_t::RETRY): {
 					// Если попытка повторить авторизацию ещё не проводилась
 					if(request.attempt < this->_attempts){
 						// Получаем новый адрес запроса
@@ -291,7 +291,7 @@ void awh::client::WEB::actionRead() noexcept {
 					this->_stopped = true;
 				} break;
 				// Если запрос выполнен удачно
-				case (uint8_t) awh::http_t::stath_t::GOOD: {
+				case static_cast <uint8_t> (awh::http_t::stath_t::GOOD): {
 					// Получаем объект ответа
 					result = response;
 					// Выполняем сброс количества попыток
@@ -332,7 +332,7 @@ void awh::client::WEB::actionRead() noexcept {
 					goto Next;
 				} break;
 				// Если запрос неудачный
-				case (uint8_t) awh::http_t::stath_t::FAULT:
+				case static_cast <uint8_t> (awh::http_t::stath_t::FAULT):
 					// Устанавливаем флаг принудительной остановки
 					this->_stopped = true;
 				break;
@@ -485,9 +485,9 @@ void awh::client::WEB::actionProxyRead() noexcept {
 	// Получаем объект биндинга ядра TCP/IP
 	client::core_t * core = const_cast <client::core_t *> (this->_core);
 	// Определяем тип прокси-сервера
-	switch((uint8_t) this->_scheme.proxy.type){
+	switch(static_cast <uint8_t> (this->_scheme.proxy.type)){
 		// Если прокси-сервер является Socks5
-		case (uint8_t) proxy_t::type_t::SOCKS5: {
+		case static_cast <uint8_t> (proxy_t::type_t::SOCKS5): {
 			// Если данные не получены
 			if(!this->_scheme.proxy.socks5.isEnd()){
 				// Выполняем парсинг входящих данных
@@ -563,7 +563,7 @@ void awh::client::WEB::actionProxyRead() noexcept {
 			}
 		} break;
 		// Если прокси-сервер является HTTP
-		case (uint8_t) proxy_t::type_t::HTTP: {
+		case static_cast <uint8_t> (proxy_t::type_t::HTTP): {
 			// Выполняем парсинг полученных данных
 			this->_scheme.proxy.http.parse(this->_buffer.data(), this->_buffer.size());
 			// Если все данные получены
@@ -612,9 +612,9 @@ void awh::client::WEB::actionProxyRead() noexcept {
 						status = awh::http_t::stath_t::GOOD;
 				}
 				// Выполняем проверку авторизации
-				switch((uint8_t) status){
+				switch(static_cast <uint8_t> (status)){
 					// Если нужно попытаться ещё раз
-					case (uint8_t) awh::http_t::stath_t::RETRY: {
+					case static_cast <uint8_t> (awh::http_t::stath_t::RETRY): {
 						// Если попытка повторить авторизацию ещё не проводилась
 						if(request.attempt < this->_attempts){
 							// Если адрес запроса получен
@@ -642,7 +642,7 @@ void awh::client::WEB::actionProxyRead() noexcept {
 						this->_stopped = true;
 					} break;
 					// Если запрос выполнен удачно
-					case (uint8_t) awh::http_t::stath_t::GOOD: {
+					case static_cast <uint8_t> (awh::http_t::stath_t::GOOD): {
 						// Выполняем сброс количества попыток
 						request.attempt = 0;
 						// Выполняем переключение на работу с сервером
@@ -655,7 +655,7 @@ void awh::client::WEB::actionProxyRead() noexcept {
 						return;
 					} break;
 					// Если запрос неудачный
-					case (uint8_t) awh::http_t::stath_t::FAULT: {
+					case static_cast <uint8_t> (awh::http_t::stath_t::FAULT): {
 						// Устанавливаем флаг принудительной остановки
 						this->_stopped = true;
 						// Получаем тело запроса
@@ -702,9 +702,9 @@ void awh::client::WEB::actionProxyConnect() noexcept {
 	// Получаем объект биндинга ядра TCP/IP
 	client::core_t * core = const_cast <client::core_t *> (this->_core);
 	// Определяем тип прокси-сервера
-	switch((uint8_t) this->_scheme.proxy.type){
+	switch(static_cast <uint8_t> (this->_scheme.proxy.type)){
 		// Если прокси-сервер является Socks5
-		case (uint8_t) proxy_t::type_t::SOCKS5: {
+		case static_cast <uint8_t> (proxy_t::type_t::SOCKS5): {
 			// Выполняем сброс состояния Socks5 парсера
 			this->_scheme.proxy.socks5.reset();
 			// Устанавливаем URL адрес запроса
@@ -719,7 +719,7 @@ void awh::client::WEB::actionProxyConnect() noexcept {
 				core->write(buffer.data(), buffer.size(), this->_aid);
 		} break;
 		// Если прокси-сервер является HTTP
-		case (uint8_t) proxy_t::type_t::HTTP: {
+		case static_cast <uint8_t> (proxy_t::type_t::HTTP): {
 			// Выполняем сброс состояния HTTP парсера
 			this->_scheme.proxy.http.reset();
 			// Выполняем очистку параметров HTTP запроса
@@ -1339,17 +1339,17 @@ void awh::client::WEB::proxy(const string & uri, const scheme_t::family_t family
  */
 void awh::client::WEB::mode(const u_short flag) noexcept {
 	// Устанавливаем флаг анбиндинга ядра сетевого модуля
-	this->_unbind = !(flag & (uint8_t) flag_t::NOT_STOP);
+	this->_unbind = !(flag & static_cast <uint8_t> (flag_t::NOT_STOP));
 	// Устанавливаем флаг поддержания автоматического подключения
-	this->_scheme.alive = (flag & (uint8_t) flag_t::ALIVE);
+	this->_scheme.alive = (flag & static_cast <uint8_t> (flag_t::ALIVE));
 	// Устанавливаем флаг разрешающий выполнять редиректы
-	this->_redirects = (flag & (uint8_t) flag_t::REDIRECTS);
+	this->_redirects = (flag & static_cast <uint8_t> (flag_t::REDIRECTS));
 	// Устанавливаем флаг ожидания входящих сообщений
-	this->_scheme.wait = (flag & (uint8_t) flag_t::WAIT_MESS);
+	this->_scheme.wait = (flag & static_cast <uint8_t> (flag_t::WAIT_MESS));
 	// Устанавливаем флаг запрещающий вывод информационных сообщений
-	const_cast <client::core_t *> (this->_core)->noInfo(flag & (uint8_t) flag_t::NOT_INFO);
+	const_cast <client::core_t *> (this->_core)->noInfo(flag & static_cast <uint8_t> (flag_t::NOT_INFO));
 	// Выполняем установку флага проверки домена
-	const_cast <client::core_t *> (this->_core)->verifySSL(flag & (uint8_t) flag_t::VERIFY_SSL);
+	const_cast <client::core_t *> (this->_core)->verifySSL(flag & static_cast <uint8_t> (flag_t::VERIFY_SSL));
 }
 /**
  * chunk Метод установки размера чанка
