@@ -1024,7 +1024,7 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 			// Заполняем буфер данными текущего адреса IPv6
 			inet_ntop(family, &sin.sin6_addr, target, INET6_ADDRSTRLEN);
 			// Переходим по всему списку подключений
-			for(u_int i = 0; (u_int) i < pipTable->NumEntries; i++){
+			for(u_int i = 0; static_cast <u_int> (i) < pipTable->NumEntries; i++){
 				// Заполняем нуляем наши буферы
 				memset(host, 0, INET6_ADDRSTRLEN);
 				// Запрашиваем данные ip адреса

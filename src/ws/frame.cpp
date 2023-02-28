@@ -276,7 +276,7 @@ vector <char> awh::Frame::get(head_t & head, const char * buffer, const size_t s
 	// Выполняем чтение заголовков
 	this->head(head, buffer, size);
 	// Если данные переданы в достаточном объёме
-	if((buffer != nullptr) && ((size_t) (head.payload + head.size) <= size)){
+	if((buffer != nullptr) && (static_cast <size_t> (head.payload + head.size) <= size)){
 		// Получаем размер смещения
 		head.frame = head.size;
 		// Проверяем являются ли данные Пингом
@@ -338,7 +338,7 @@ vector <char> awh::Frame::set(const head_t & head, const char * buffer, const si
 				(head.rsv[0] ? 0x40 : 0x0) |
 				(head.rsv[1] ? 0x20 : 0x0) |
 				(head.rsv[2] ? 0x10 : 0x0) |
-				(0x0F & (int) head.optcode)
+				(0x0F & static_cast <int> (head.optcode))
 			)
 		), 0x0
 	};

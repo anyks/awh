@@ -462,7 +462,7 @@ bool awh::DNS::Worker::request(const string & domain) noexcept {
 				// Устанавливаем функцию обратного вызова
 				this->_timer.set <worker_t, &worker_t::timeout> (this);
 				// Запускаем работу таймера
-				this->_timer.start((double) this->_dns->_timeout);
+				this->_timer.start(static_cast <double> (this->_dns->_timeout));
 			}
 			// Переходим по всему списку DNS серверов
 			for(auto & server : it->second){

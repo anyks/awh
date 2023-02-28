@@ -107,7 +107,7 @@ void awh::server::Proxy::connectClientCallback(const size_t aid, const size_t si
 				// Если метод подключения CONNECT
 				if(adj->method == web_t::method_t::CONNECT){
 					// Формируем ответ адъютанту
-					const auto & response = adj->srv.response((u_int) 200);
+					const auto & response = adj->srv.response(static_cast <u_int> (200));
 					// Если ответ получен
 					if(!response.empty()){
 						// Тело полезной нагрузки

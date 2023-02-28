@@ -1199,7 +1199,7 @@ int64_t awh::Engine::Context::read(char * buffer, const size_t size) noexcept {
 					// Выполняем извлечение события
 					BIO_ctrl(this->_bio, BIO_CTRL_DGRAM_SCTP_GET_RCVINFO, sizeof(info), &info);
 					// Выводим в лог информационное сообщение
-					this->_log->print("read %d bytes, stream: %u, ssn: %u, ppid: %u, tsn: %u", log_t::flag_t::INFO, (int) result, info.rcv_sid, info.rcv_ssn, info.rcv_ppid, info.rcv_tsn);
+					this->_log->print("read %d bytes, stream: %u, ssn: %u, ppid: %u, tsn: %u", log_t::flag_t::INFO, static_cast <int> (result), info.rcv_sid, info.rcv_ssn, info.rcv_ppid, info.rcv_tsn);
 				}
 			#endif
 		}
@@ -1369,7 +1369,7 @@ int64_t awh::Engine::Context::write(const char * buffer, const size_t size) noex
 							// Выполняем извлечение события
 							BIO_ctrl(this->_bio, BIO_CTRL_DGRAM_SCTP_GET_SNDINFO, sizeof(info), &info);
 							// Выводим в лог информационное сообщение
-							this->_log->print("wrote %d bytes, stream: %u, ppid: %u", log_t::flag_t::INFO, (int) result, info.snd_sid, info.snd_ppid);
+							this->_log->print("wrote %d bytes, stream: %u, ppid: %u", log_t::flag_t::INFO, static_cast <int> (result), info.snd_sid, info.snd_ppid);
 						} break;
 						// Если статус установлен как разрешение подключения к серверу
 						case static_cast <uint8_t> (addr_t::status_t::ACCEPTED): {
@@ -1380,7 +1380,7 @@ int64_t awh::Engine::Context::write(const char * buffer, const size_t size) noex
 							// Выполняем извлечение события
 							BIO_ctrl(this->_bio, BIO_CTRL_DGRAM_SCTP_GET_SNDINFO, sizeof(info), &info);
 							// Выводим в лог информационное сообщение
-							this->_log->print("wrote %d bytes, stream: %u, ssn: %u, ppid: %u, tsn: %u", log_t::flag_t::INFO, (int) result, info.rcv_sid, info.rcv_ssn, info.rcv_ppid, info.rcv_tsn);
+							this->_log->print("wrote %d bytes, stream: %u, ssn: %u, ppid: %u, tsn: %u", log_t::flag_t::INFO, static_cast <int> (result), info.rcv_sid, info.rcv_ssn, info.rcv_ppid, info.rcv_tsn);
 						} break;
 					}
 				}
@@ -2035,7 +2035,7 @@ int awh::Engine::generateStatelessCookie(SSL * ssl, u_char * cookie, size_t * si
  */
 int awh::Engine::verifyStatelessCookie(SSL * ssl, const u_char * cookie, size_t size) noexcept {
 	// Выполняем проверку печенок
-	return verifyCookie(ssl, cookie, (u_int) size);
+	return verifyCookie(ssl, cookie, static_cast <u_int> (size));
 }
 /**
  * matchesCommonName Метод проверки доменного имени по данным из сертификата
