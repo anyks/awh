@@ -1356,7 +1356,7 @@ string awh::Net::get(const format_t format) const noexcept {
 				// Если размера данных достаточно
 				if(this->_buffer.size() >= 6){
 					// Перераспределяем объект результата
-					result.resize(18, 0);
+					result.resize(17, 0);
 					// Выполняем получение MAC адреса
 					sprintf(
 						result.data(),
