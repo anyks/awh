@@ -461,6 +461,35 @@ awh::Net::type_t awh::Net::host(const string & host) const noexcept {
 	return result;
 }
 /**
+ * mac Метод извлечения аппаратного адреса в чистом виде
+ * @return аппаратный адрес в чистом виде
+ */
+uint64_t awh::Net::mac() const noexcept {
+	// Результат работы функции
+	uint64_t result = 0;
+	// Если в буфере данных достаточно
+	if(this->_buffer.size() == 6)
+		// Выполняем перевод бинарного буфера MAC-адреса в число
+		memcpy(&result, this->_buffer.data(), this->_buffer.size());
+	// Выводим результат
+	return result;
+}
+/**
+ * mac Метод установки аппаратного адреса в чистом виде
+ * @param addr аппаратный адрес в чистом виде
+ */
+void awh::Net::mac(const uint64_t addr) noexcept {
+	// Выполняем выделение памяти для MAC адреса
+	this->_buffer.resize(6, 0);
+	// Если MAC адрес передан
+	if(addr > 0){
+		// Устанавливаем тип MAC адреса
+		this->_type = type_t::MAC;
+		// Выполняем копирование данных адреса MAC
+		memcpy(this->_buffer.data(), &addr, this->_buffer.size());
+	}
+}
+/**
  * v4 Извлечения адреса IPv4 в чистом виде
  * @return адрес IPv4 в чистом виде
  */
@@ -1142,29 +1171,52 @@ awh::Net::mode_t awh::Net::mode() const noexcept {
 	return result;
 }
 /**
- * parse Метод парсинга IP адреса
- * @param ip адрес интернет подключения для парсинга
- * @return   результат работы парсинга
- */
-bool awh::Net::parse(const string & ip) noexcept {
-	// Выполняем парсинг IP адреса
-	return this->parse(ip, this->host(ip));
-}
-/**
- * parse Метод парсинга IP адреса
- * @param ip   адрес интернет подключения для парсинга
- * @param type тип адреса интернет подключения
+ * parse Метод парсинга адреса
+ * @param addr адрес аппаратный или интернет подключения для парсинга
  * @return     результат работы парсинга
  */
-bool awh::Net::parse(const string & ip, const type_t type) noexcept {
+bool awh::Net::parse(const string & addr) noexcept {
+	// Выполняем парсинг переданного адреса
+	return this->parse(addr, this->host(addr));
+}
+/**
+ * parse Метод парсинга адреса
+ * @param addr адрес аппаратный или интернет подключения для парсинга
+ * @param type тип адреса аппаратного или интернет подключения для парсинга
+ * @return     результат работы парсинга
+ */
+bool awh::Net::parse(const string & addr, const type_t type) noexcept {
 	// Результат работы функции
 	bool result = false;
-	// Если IP адрес передан
-	if((result = !ip.empty() && ((type == type_t::IPV4) || (type == type_t::IPV6)))){
-		// Устанавливаем тип IP адреса
+	// Если адрес аппаратный или интернет подключения передан
+	if((result = !addr.empty() && ((type == type_t::MAC) || (type == type_t::IPV4) || (type == type_t::IPV6)))){
+		// Устанавливаем тип адреса
 		this->_type = type;
-		// Определяем тип переданного IP адреса
+		// Определяем тип переданного адреса
 		switch(static_cast <uint8_t> (type)){
+			// Если - это не IP-адрес, а MAC-адрес
+			case static_cast <uint8_t> (type_t::MAC): {
+				// Значение последнего символа
+				int last = -1;
+				// Бинарный буфер адреса
+				u_char buffer[6];
+				// Выполняем парсинг MAC адреса
+				const int rc = sscanf(
+					addr.c_str(),
+					"%hhx:%hhx:%hhx:%hhx:%hhx:%hhx%n",
+					buffer + 0, buffer + 1, buffer + 2,
+					buffer + 3, buffer + 4, buffer + 5, &last
+				);
+				// Если MAC адрес удано распарсен
+				if((result = ((rc == 6) && (static_cast <int> (addr.size()) == last)))){
+					// Выполняем очистку буфера данных
+					this->_buffer.clear();
+					// Выполняем инициализацию буфера
+					this->_buffer.resize(6, 0);
+					// Выполняем копирование бинарных данных MAC-адреса в буфер
+					memcpy(this->_buffer.data(), buffer, sizeof(buffer));
+				}
+			} break;
 			// Если IP адрес является адресом IPv4
 			case static_cast <uint8_t> (type_t::IPV4): {
 				// Выполняем очистку буфера данных
@@ -1174,16 +1226,16 @@ bool awh::Net::parse(const string & ip, const type_t type) noexcept {
 				// Позиция разделителя
 				size_t start = 0, stop = 0, index = 0;
 				// Выполняем поиск разделителя
-				while((stop = ip.find('.', start)) != string::npos){
+				while((stop = addr.find('.', start)) != string::npos){
 					// Извлекаем полученное число
-					this->_buffer[index] = static_cast <uint8_t> (stoi(ip.substr(start, stop - start)));
+					this->_buffer[index] = static_cast <uint8_t> (stoi(addr.substr(start, stop - start)));
 					// Выполняем смещение
 					start = (stop + 1);
 					// Увеличиваем смещение индекса
 					index++;
 				}
 				// Выполняем установку последнего октета
-				this->_buffer[index] = static_cast <uint8_t> (stoi(ip.substr(start)));
+				this->_buffer[index] = static_cast <uint8_t> (stoi(addr.substr(start)));
 			} break;
 			// Если IP адрес является адресом IPv6
 			case static_cast <uint8_t> (type_t::IPV6): {
@@ -1194,7 +1246,7 @@ bool awh::Net::parse(const string & ip, const type_t type) noexcept {
 				// Выполняем инициализацию буфера
 				this->_buffer.resize(16, 0);
 				// Выполняем сплит данных IP адреса
-				this->_fmk->split(((ip.front() == '[') && (ip.back() == ']') ? ip.substr(1, ip.length() - 2) : ip), ":", data);
+				this->_fmk->split(((addr.front() == '[') && (addr.back() == ']') ? addr.substr(1, addr.length() - 2) : addr), ":", data);
 				// Если данные IP адреса получены
 				if((result = !data.empty())){
 					// Создаём результирующий буфер данных
@@ -1221,18 +1273,18 @@ bool awh::Net::parse(const string & ip, const type_t type) noexcept {
 							// Позиция разделителя
 							index = 12;
 							// Получаем IP адрес
-							const string & ip = this->_fmk->convert(data.back());
+							const string & addr = this->_fmk->convert(data.back());
 							// Выполняем поиск разделителя
-							while((stop = ip.find('.', start)) != string::npos){
+							while((stop = addr.find('.', start)) != string::npos){
 								// Извлекаем полученное число
-								this->_buffer[index] = static_cast <uint8_t> (stoi(ip.substr(start, stop - start)));
+								this->_buffer[index] = static_cast <uint8_t> (stoi(addr.substr(start, stop - start)));
 								// Выполняем смещение
 								start = (stop + 1);
 								// Увеличиваем смещение индекса
 								index++;
 							}
 							// Выполняем установку последнего октета
-							this->_buffer[index] = static_cast <uint8_t> (stoi(ip.substr(start)));
+							this->_buffer[index] = static_cast <uint8_t> (stoi(addr.substr(start)));
 						// Если IP адрес состоит из нормальных хексетов
 						} else if((result = ((length >= 1) && (length <= 4)))) {
 							// Устанавливаем индекс последнего элемента
@@ -1299,6 +1351,22 @@ string awh::Net::get(const format_t format) const noexcept {
 	if(!this->_buffer.empty()){
 		// Определяем тип IP адреса
 		switch(static_cast <uint8_t> (this->_type)){
+			// Если - это не IP-адрес, а MAC-адрес
+			case static_cast <uint8_t> (type_t::MAC): {
+				// Если размера данных достаточно
+				if(this->_buffer.size() >= 6){
+					// Перераспределяем объект результата
+					result.resize(18, 0);
+					// Выполняем получение MAC адреса
+					sprintf(
+						result.data(),
+						"%02X:%02X:%02X:%02X:%02X:%02X",
+						this->_buffer[0], this->_buffer[1],
+						this->_buffer[2], this->_buffer[3],
+						this->_buffer[4], this->_buffer[5]
+					);
+				}
+			} break;
 			// Если IP адрес определён как IPv4
 			case static_cast <uint8_t> (type_t::IPV4): {
 				// Если формат адреса не принадлежит к IPv6

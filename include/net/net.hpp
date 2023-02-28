@@ -153,6 +153,17 @@ namespace awh {
 			type_t host(const string & host) const noexcept;
 		public:
 			/**
+			 * mac Метод извлечения аппаратного адреса в чистом виде
+			 * @return аппаратный адрес в чистом виде
+			 */
+			uint64_t mac() const noexcept;
+			/**
+			 * mac Метод установки аппаратного адреса в чистом виде
+			 * @param addr аппаратный адрес в чистом виде
+			 */
+			void mac(const uint64_t addr) noexcept;
+		public:
+			/**
 			 * v4 Метод извлечения адреса IPv4 в чистом виде
 			 * @return адрес IPv4 в чистом виде
 			 */
@@ -291,18 +302,18 @@ namespace awh {
 			mode_t mode() const noexcept;
 		public:
 			/**
-			 * parse Метод парсинга IP адреса
-			 * @param ip адрес интернет подключения для парсинга
-			 * @return   результат работы парсинга
-			 */
-			bool parse(const string & ip) noexcept;
-			/**
-			 * parse Метод парсинга IP адреса
-			 * @param ip   адрес интернет подключения для парсинга
-			 * @param type тип адреса интернет подключения
+			 * parse Метод парсинга адреса
+			 * @param addr адрес аппаратный или интернет подключения для парсинга
 			 * @return     результат работы парсинга
 			 */
-			bool parse(const string & ip, const type_t type) noexcept;
+			bool parse(const string & addr) noexcept;
+			/**
+			 * parse Метод парсинга адреса
+			 * @param addr адрес аппаратный или интернет подключения для парсинга
+			 * @param type тип адреса аппаратного или интернет подключения для парсинга
+			 * @return     результат работы парсинга
+			 */
+			bool parse(const string & addr, const type_t type) noexcept;
 		public:
 			/**
 			 * get Метод извлечения данных IP адреса

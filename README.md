@@ -1671,6 +1671,10 @@ int main(int argc, char * argv[]){
 	cout << " Short address entry == " << ip << endl;
 	// -> Short address entry == 2001:DB8::AE21:AD12
 
+	net = "73:0b:04:0d:db:79";
+	cout << " MAC == " << net << endl;
+	// -> MAC == 73:0B:04:0D:DB:79
+
 	return 0;
 }
 ```
