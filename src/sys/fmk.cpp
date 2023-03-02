@@ -184,7 +184,7 @@ T & split(const wstring & str, const wstring & delim, T & container) noexcept {
  */
 bool awh::Framework::Symbols::isRome(const char num) const noexcept {
 	// Выполняем проверку сущестования цифры
-	return (this->_roms.find(toupper(num)) != this->_roms.end());
+	return (this->_romes.find(toupper(num)) != this->_romes.end());
 }
 /**
  * isRome Метод проверки соответствия римской цифре
@@ -193,7 +193,7 @@ bool awh::Framework::Symbols::isRome(const char num) const noexcept {
  */
 bool awh::Framework::Symbols::isRome(const wchar_t num) const noexcept {
 	// Выполняем проверку сущестования цифры
-	return (this->_wroms.find(towupper(num)) != this->_wroms.end());
+	return (this->_wideRomes.find(towupper(num)) != this->_wideRomes.end());
 }
 /**
  * isArabic Метод проверки соответствия арабской цифре
@@ -202,7 +202,7 @@ bool awh::Framework::Symbols::isRome(const wchar_t num) const noexcept {
  */
 bool awh::Framework::Symbols::isArabic(const char num) const noexcept {
 	// Выполняем проверку сущестования цифры
-	return (this->_nums.find(num) != this->_nums.end());
+	return (this->_arabics.find(num) != this->_arabics.end());
 }
 /**
  * isArabic Метод проверки соответствия арабской цифре
@@ -211,7 +211,7 @@ bool awh::Framework::Symbols::isArabic(const char num) const noexcept {
  */
 bool awh::Framework::Symbols::isArabic(const wchar_t num) const noexcept {
 	// Выполняем проверку сущестования цифры
-	return (this->_wnums.find(num) != this->_wnums.end());
+	return (this->_wideArabics.find(num) != this->_wideArabics.end());
 }
 /**
  * isLetter Метод проверки соответствия латинской букве
@@ -220,7 +220,7 @@ bool awh::Framework::Symbols::isArabic(const wchar_t num) const noexcept {
  */
 bool awh::Framework::Symbols::isLetter(const char letter) const noexcept {
 	// Выполняем проверку сущестования латинской буквы
-	return (this->_alphabet.find(tolower(letter)) != this->_alphabet.end());
+	return (this->_letters.find(tolower(letter)) != this->_letters.end());
 }
 /**
  * isLetter Метод проверки соответствия латинской букве
@@ -229,7 +229,7 @@ bool awh::Framework::Symbols::isLetter(const char letter) const noexcept {
  */
 bool awh::Framework::Symbols::isLetter(const wchar_t letter) const noexcept {
 	// Выполняем проверку сущестования латинской буквы
-	return (this->_walphabet.find(towlower(letter)) != this->_walphabet.end());
+	return (this->_wideLetters.find(towlower(letter)) != this->_wideLetters.end());
 }
 /**
  * getRome Метод извлечения римской цифры
@@ -240,9 +240,9 @@ uint16_t awh::Framework::Symbols::getRome(const char num) const noexcept {
 	// Результат работы функции
 	uint16_t result = 0;
 	// Выполняем поиск римского числа
-	auto it = this->_roms.find(toupper(num));
+	auto it = this->_romes.find(toupper(num));
 	// Если римское число найдено
-	if(it != this->_roms.end())
+	if(it != this->_romes.end())
 		// Получаем римское число в чистом виде
 		result = it->second;
 	// Выводим результат
@@ -257,9 +257,9 @@ uint16_t awh::Framework::Symbols::getRome(const wchar_t num) const noexcept {
 	// Результат работы функции
 	uint16_t result = 0;
 	// Выполняем поиск римского числа
-	auto it = this->_wroms.find(towupper(num));
+	auto it = this->_wideRomes.find(towupper(num));
 	// Если римское число найдено
-	if(it != this->_wroms.end())
+	if(it != this->_wideRomes.end())
 		// Получаем римское число в чистом виде
 		result = it->second;
 	// Выводим результат
@@ -274,9 +274,9 @@ uint8_t awh::Framework::Symbols::getArabic(const char num) const noexcept {
 	// Результат работы функции
 	uint8_t result = 0;
 	// Выполняем поиск арабского числа
-	auto it = this->_nums.find(num);
+	auto it = this->_arabics.find(num);
 	// Если арабское число найдено
-	if(it != this->_nums.end())
+	if(it != this->_arabics.end())
 		// Получаем арабское число в чистом виде
 		result = it->second;
 	// Выводим результат
@@ -291,9 +291,9 @@ uint8_t awh::Framework::Symbols::getArabic(const wchar_t num) const noexcept {
 	// Результат работы функции
 	uint8_t result = 0;
 	// Выполняем поиск арабского числа
-	auto it = this->_wnums.find(num);
+	auto it = this->_wideArabics.find(num);
 	// Если арабское число найдено
-	if(it != this->_wnums.end())
+	if(it != this->_wideArabics.end())
 		// Получаем арабское число в чистом виде
 		result = it->second;
 	// Выводим результат
@@ -308,9 +308,9 @@ wchar_t awh::Framework::Symbols::getLetter(const char letter) const noexcept {
 	// Результат работы функции
 	wchar_t result = 0;
 	// Выполняем поиск латинской буквы
-	auto it = this->_alphabet.find(tolower(letter));
+	auto it = this->_letters.find(tolower(letter));
 	// Если латинская буква найдена
-	if(it != this->_alphabet.end())
+	if(it != this->_letters.end())
 		// Получаем латинскую букву в чистом виде
 		result = it->second;
 	// Выводим результат
@@ -325,9 +325,9 @@ char awh::Framework::Symbols::getLetter(const wchar_t letter) const noexcept {
 	// Результат работы функции
 	char result = 0;
 	// Выполняем поиск латинской буквы
-	auto it = this->_walphabet.find(towlower(letter));
+	auto it = this->_wideLetters.find(towlower(letter));
 	// Если латинская буква найдена
-	if(it != this->_walphabet.end())
+	if(it != this->_wideLetters.end())
 		// Получаем латинскую букву в чистом виде
 		result = it->second;
 	// Выводим результат
@@ -338,33 +338,33 @@ char awh::Framework::Symbols::getLetter(const wchar_t letter) const noexcept {
  */
 awh::Framework::Symbols::Symbols() noexcept {
 	// Выполняем заполнение арабских чисел
-	this->_nums = {
+	this->_arabics = {
 		{'0', 0}, {'1', 1}, {'2', 2},
 		{'3', 3}, {'4', 4}, {'5', 5},
 		{'6', 6}, {'7', 7}, {'8', 8},
 		{'9', 9}
 	};
 	// Выполняем заполнение арабских чисел для UTF-8
-	this->_wnums = {
+	this->_wideArabics = {
 		{L'0', 0}, {L'1', 1}, {L'2', 2},
 		{L'3', 3}, {L'4', 4}, {L'5', 5},
 		{L'6', 6}, {L'7', 7}, {L'8', 8},
 		{L'9', 9}
 	};
 	// Выполняем заполнение римских чисел
-	this->_roms = {
+	this->_romes = {
 		{'I', 1}, {'V', 5}, {'X', 10},
 		{'L', 50}, {'C', 100}, {'D', 500},
 		{'M', 1000}
 	};
 	// Выполняем заполнение римских чисел для UTF-8
-	this->_wroms = {
+	this->_wideRomes = {
 		{L'I', 1}, {L'V', 5}, {L'X', 10},
 		{L'L', 50}, {L'C', 100}, {L'D', 500},
 		{L'M', 1000}
 	};
-	// Выполняем заполнение латинского алфавита
-	this->_alphabet = {
+	// Выполняем заполнение латинских символов
+	this->_letters = {
 		{'a', L'a'}, {'b', L'b'}, {'c', L'c'},
 		{'d', L'd'}, {'e', L'e'}, {'f', L'f'},
 		{'g', L'g'}, {'h', L'h'}, {'i', L'i'},
@@ -375,8 +375,8 @@ awh::Framework::Symbols::Symbols() noexcept {
 		{'v', L'v'}, {'w', L'w'}, {'x', L'x'},
 		{'y', L'y'}, {'z', L'z'}
 	};
-	// Выполняем заполнение латинского алфавита для UTF-8
-	this->_walphabet = {
+	// Выполняем заполнение латинских символов для UTF-8
+	this->_wideLetters = {
 		{L'a', 'a'}, {L'b', 'b'}, {L'c', 'c'},
 		{L'd', 'd'}, {L'e', 'e'}, {L'f', 'f'},
 		{L'g', 'g'}, {L'h', 'h'}, {L'i', 'i'},

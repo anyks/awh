@@ -135,20 +135,20 @@ namespace awh {
 			 */
 			typedef class Symbols {
 				private:
-					// Контейнер арабских чисел
-					map <char, uint8_t> _nums;
-					// Контейнер арабских чисел для UTF-8
-					map <wchar_t, uint8_t> _wnums;
-				private:
 					// Контейнер римских чисел
-					map <char, uint16_t> _roms;
-					// Контейнер римских чисел для UTF-8
-					map <wchar_t, uint16_t> _wroms;
+					map <char, uint16_t> _romes;
+					// Контейнер арабских чисел
+					map <char, uint8_t> _arabics;
 				private:
-					// Контейнер латинского алфавита
-					map <char, wchar_t> _alphabet;
-					// Контейнер латинского алфавита для UTF-8
-					map <wchar_t, char> _walphabet;
+					// Контейнер римских чисел для UTF-8
+					map <wchar_t, uint16_t> _wideRomes;
+					// Контейнер арабских чисел для UTF-8
+					map <wchar_t, uint8_t> _wideArabics;
+				private:
+					// Контейнер латинских символов
+					map <char, wchar_t> _letters;
+					// Контейнер латинских символов для UTF-8
+					map <wchar_t, char> _wideLetters;
 				public:
 					/**
 					 * isRome Метод проверки соответствия римской цифре
