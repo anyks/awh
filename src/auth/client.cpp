@@ -61,57 +61,55 @@ void awh::client::Auth::header(const string & header) noexcept {
 			// Если параметры дайджест авторизации получены
 			if(!digest.empty()){
 				// Список параметров
-				vector <wstring> params;
+				vector <string> params;
 				// Выполняем разделение параметров расширений
-				this->_fmk->split(digest, ",", params);
-				// Если список параметров получен
-				if(!params.empty()){
+				if(!this->_fmk->split(digest, ",", params).empty()){
 					// Ключ и значение параметра
-					wstring key = L"", value = L"";
+					string key = "", value = "";
 					// Переходим по всему списку параметров
 					for(auto & param : params){
 						// Ищем разделитель параметров
-						if((pos = param.find(L"=")) != wstring::npos){
+						if((pos = param.find("=")) != wstring::npos){
 							// Получаем ключ параметра
 							key = param.substr(0, pos);
 							// Получаем значение параметра
 							value = param.substr(pos + 1);
 							// Если параметр является идентификатором сайта
-							if(key.compare(L"realm") == 0) {
+							if(key.compare("realm") == 0) {
 								// Удаляем кавычки
 								value.assign(value.begin() + 1, value.end() - 1);
 								// Устанавливаем relam
-								this->_digest.realm = this->_fmk->convert(value);
+								this->_digest.realm = value;
 							// Если параметр является ключём сгенерированным сервером
-							} else if(key.compare(L"nonce") == 0) {
+							} else if(key.compare("nonce") == 0) {
 								// Удаляем кавычки
 								value.assign(value.begin() + 1, value.end() - 1);
 								// Устанавливаем nonce
-								this->_digest.nonce = this->_fmk->convert(value);
+								this->_digest.nonce = value;
 							// Если параметр является ключём сервера
-							} else if(key.compare(L"opaque") == 0) {
+							} else if(key.compare("opaque") == 0) {
 								// Удаляем кавычки
 								value.assign(value.begin() + 1, value.end() - 1);
 								// Устанавливаем opaque
-								this->_digest.opaque = this->_fmk->convert(value);
+								this->_digest.opaque = value;
 							// Если параметр является алгоритмом
-							} else if(key.compare(L"algorithm") == 0) {
+							} else if(key.compare("algorithm") == 0) {
 								// Удаляем кавычки
 								value.assign(value.begin() + 1, value.end() - 1);
 								// Переводим в нижний регистр
-								value = this->_fmk->toLower(value);
+								this->_fmk->transform(value, fmk_t::transform_t::LOWER);
 								// Если алгоритм является MD5
-								if(value.compare(L"md5") == 0) this->_digest.hash = hash_t::MD5;
+								if(value.compare("md5") == 0) this->_digest.hash = hash_t::MD5;
 								// Если алгоритм является SHA1
-								else if(value.compare(L"sha1") == 0) this->_digest.hash = hash_t::SHA1;
+								else if(value.compare("sha1") == 0) this->_digest.hash = hash_t::SHA1;
 								// Если алгоритм является SHA256
-								else if(value.compare(L"sha256") == 0) this->_digest.hash = hash_t::SHA256;
+								else if(value.compare("sha256") == 0) this->_digest.hash = hash_t::SHA256;
 								// Если алгоритм является SHA512
-								else if(value.compare(L"sha512") == 0) this->_digest.hash = hash_t::SHA512;
+								else if(value.compare("sha512") == 0) this->_digest.hash = hash_t::SHA512;
 							// Если параметр является типом авторизации
-							} else if(key.compare(L"qop") == 0)
+							} else if(key.compare("qop") == 0)
 								// Если тип авторизации передан верно
-								if(value.find(L"auth") != wstring::npos) this->_digest.qop = "auth";
+								if(value.find("auth") != wstring::npos) this->_digest.qop = "auth";
 						}
 					}
 				}
@@ -125,7 +123,7 @@ void awh::client::Auth::header(const string & header) noexcept {
  * @param mode   режим вывода только значения заголовка
  * @return       строка авторизации
  */
-const string awh::client::Auth::header(const string & method, const bool mode) noexcept {
+string awh::client::Auth::header(const string & method, const bool mode) noexcept {
 	// Результат работы функции
 	string result = "";
 	/**
@@ -145,7 +143,7 @@ const string awh::client::Auth::header(const string & method, const bool mode) n
 						// Если ключ клиента не создан, создаём его
 						if(this->_digest.cnonce.empty()){
 							// Устанавливаем ключ клиента
-							this->_digest.cnonce = this->_fmk->md5(to_string(time(nullptr)));
+							this->_digest.cnonce = this->_fmk->hash(to_string(time(nullptr)), fmk_t::hash_t::MD5);
 							// Обрезаем лишние символы
 							this->_digest.cnonce.assign(this->_digest.cnonce.begin() + 12, this->_digest.cnonce.end() - 12);
 						}
@@ -165,7 +163,10 @@ const string awh::client::Auth::header(const string & method, const bool mode) n
 						digest.opaque = this->_digest.opaque;
 						digest.cnonce = this->_digest.cnonce;
 						// Формируем ответ серверу
-						const string & response = this->response(this->_fmk->toUpper(method), this->_user, this->_pass, digest);
+						const string & response = this->response(
+							this->_fmk->transform(* const_cast <string *> (&method), fmk_t::transform_t::UPPER),
+							this->_user, this->_pass, digest
+						);
 						// Если ответ получен
 						if(!response.empty()){
 							// Если нужно вывести только значение заголовка

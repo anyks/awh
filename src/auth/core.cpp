@@ -31,7 +31,7 @@ const awh::Authorization::digest_t & awh::Authorization::digest() const noexcept
  * @param pass   пароль пользователя для проверки
  * @return       ответ в 16-м виде
  */
-const string awh::Authorization::response(const string & method, const string & user, const string & pass, const digest_t & digest) const noexcept {
+string awh::Authorization::response(const string & method, const string & user, const string & pass, const digest_t & digest) const noexcept {
 	// Результат работы функции
 	string result = "";
 	// Если данные пользователя переданы
@@ -45,49 +45,49 @@ const string awh::Authorization::response(const string & method, const string & 
 				// Если алгоритм шифрования MD5
 				case static_cast <u_short> (hash_t::MD5): {
 					// Создаем первый этап
-					const string & ha1 = this->_fmk->md5(this->_fmk->format("%s:%s:%s", user.c_str(), digest.realm.c_str(), pass.c_str()));
+					const string & ha1 = this->_fmk->hash(this->_fmk->format("%s:%s:%s", user.c_str(), digest.realm.c_str(), pass.c_str()), fmk_t::hash_t::MD5);
 					// Если первый этап получен
 					if(!ha1.empty()){
 						// Создаём второй этап
-						const string & ha2 = this->_fmk->md5(this->_fmk->format("%s:%s", method.c_str(), digest.uri.c_str()));
+						const string & ha2 = this->_fmk->hash(this->_fmk->format("%s:%s", method.c_str(), digest.uri.c_str()), fmk_t::hash_t::MD5);
 						// Если второй этап создан, создаём результат ответа
-						if(!ha2.empty()) result = this->_fmk->md5(this->_fmk->format("%s:%s:%s:%s:%s:%s", ha1.c_str(), digest.nonce.c_str(), digest.nc.c_str(), digest.cnonce.c_str(), digest.qop.c_str(), ha2.c_str()));
+						if(!ha2.empty()) result = this->_fmk->hash(this->_fmk->format("%s:%s:%s:%s:%s:%s", ha1.c_str(), digest.nonce.c_str(), digest.nc.c_str(), digest.cnonce.c_str(), digest.qop.c_str(), ha2.c_str()), fmk_t::hash_t::MD5);
 					}
 				} break;
 				// Если алгоритм шифрования SHA1
 				case static_cast <u_short> (hash_t::SHA1): {
 					// Создаем первый этап
-					const string & ha1 = this->_fmk->sha1(this->_fmk->format("%s:%s:%s", user.c_str(), digest.realm.c_str(), pass.c_str()));
+					const string & ha1 = this->_fmk->hash(this->_fmk->format("%s:%s:%s", user.c_str(), digest.realm.c_str(), pass.c_str()), fmk_t::hash_t::SHA1);
 					// Если первый этап получен
 					if(!ha1.empty()){
 						// Создаём второй этап
-						const string & ha2 = this->_fmk->sha1(this->_fmk->format("%s:%s", method.c_str(), digest.uri.c_str()));
+						const string & ha2 = this->_fmk->hash(this->_fmk->format("%s:%s", method.c_str(), digest.uri.c_str()), fmk_t::hash_t::SHA1);
 						// Если второй этап создан, создаём результат ответа
-						if(!ha2.empty()) result = this->_fmk->sha1(this->_fmk->format("%s:%s:%s:%s:%s:%s", ha1.c_str(), digest.nonce.c_str(), digest.nc.c_str(), digest.cnonce.c_str(), digest.qop.c_str(), ha2.c_str()));
+						if(!ha2.empty()) result = this->_fmk->hash(this->_fmk->format("%s:%s:%s:%s:%s:%s", ha1.c_str(), digest.nonce.c_str(), digest.nc.c_str(), digest.cnonce.c_str(), digest.qop.c_str(), ha2.c_str()), fmk_t::hash_t::SHA1);
 					}
 				} break;
 				// Если алгоритм шифрования SHA256
 				case static_cast <u_short> (hash_t::SHA256): {
 					// Создаем первый этап
-					const string & ha1 = this->_fmk->sha256(this->_fmk->format("%s:%s:%s", user.c_str(), digest.realm.c_str(), pass.c_str()));
+					const string & ha1 = this->_fmk->hash(this->_fmk->format("%s:%s:%s", user.c_str(), digest.realm.c_str(), pass.c_str()), fmk_t::hash_t::SHA256);
 					// Если первый этап получен
 					if(!ha1.empty()){
 						// Создаём второй этап
-						const string & ha2 = this->_fmk->sha256(this->_fmk->format("%s:%s", method.c_str(), digest.uri.c_str()));
+						const string & ha2 = this->_fmk->hash(this->_fmk->format("%s:%s", method.c_str(), digest.uri.c_str()), fmk_t::hash_t::SHA256);
 						// Если второй этап создан, создаём результат ответа
-						if(!ha2.empty()) result = this->_fmk->sha256(this->_fmk->format("%s:%s:%s:%s:%s:%s", ha1.c_str(), digest.nonce.c_str(), digest.nc.c_str(), digest.cnonce.c_str(), digest.qop.c_str(), ha2.c_str()));
+						if(!ha2.empty()) result = this->_fmk->hash(this->_fmk->format("%s:%s:%s:%s:%s:%s", ha1.c_str(), digest.nonce.c_str(), digest.nc.c_str(), digest.cnonce.c_str(), digest.qop.c_str(), ha2.c_str()), fmk_t::hash_t::SHA256);
 					}
 				} break;
 				// Если алгоритм шифрования SHA512
 				case static_cast <u_short> (hash_t::SHA512): {
 					// Создаем первый этап
-					const string & ha1 = this->_fmk->sha512(this->_fmk->format("%s:%s:%s", user.c_str(), digest.realm.c_str(), pass.c_str()));
+					const string & ha1 = this->_fmk->hash(this->_fmk->format("%s:%s:%s", user.c_str(), digest.realm.c_str(), pass.c_str()), fmk_t::hash_t::SHA512);
 					// Если первый этап получен
 					if(!ha1.empty()){
 						// Создаём второй этап
-						const string & ha2 = this->_fmk->sha512(this->_fmk->format("%s:%s", method.c_str(), digest.uri.c_str()));
+						const string & ha2 = this->_fmk->hash(this->_fmk->format("%s:%s", method.c_str(), digest.uri.c_str()), fmk_t::hash_t::SHA512);
 						// Если второй этап создан, создаём результат ответа
-						if(!ha2.empty()) result = this->_fmk->sha512(this->_fmk->format("%s:%s:%s:%s:%s:%s", ha1.c_str(), digest.nonce.c_str(), digest.nc.c_str(), digest.cnonce.c_str(), digest.qop.c_str(), ha2.c_str()));
+						if(!ha2.empty()) result = this->_fmk->hash(this->_fmk->format("%s:%s:%s:%s:%s:%s", ha1.c_str(), digest.nonce.c_str(), digest.nc.c_str(), digest.cnonce.c_str(), digest.qop.c_str(), ha2.c_str()), fmk_t::hash_t::SHA512);
 					}
 				} break;
 			}
@@ -109,7 +109,7 @@ const string awh::Authorization::response(const string & method, const string & 
  * type Метод получени типа авторизации
  * @return тип авторизации
  */
-const awh::Authorization::type_t awh::Authorization::type() const noexcept {
+awh::Authorization::type_t awh::Authorization::type() const noexcept {
 	// Выводим тип авторизации
 	return this->_type;
 }

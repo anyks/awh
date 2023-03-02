@@ -56,7 +56,7 @@ void awh::server::Proxy::persistCallback(const size_t aid, const size_t sid, awh
 			// Иначе проверяем прошедшее время
 			else {
 				// Получаем текущий штамп времени
-				const time_t stamp = this->_fmk->unixTimestamp();
+				const time_t stamp = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
 				// Если адъютант не ответил на пинг больше двух интервалов, отключаем его
 				if((stamp - adj->checkPoint) >= this->_timeAlive)
 					// Завершаем работу
@@ -479,7 +479,7 @@ void awh::server::Proxy::prepare(const size_t aid, const size_t sid) noexcept {
 							// Устанавливаем флаг закрытия подключения
 							adj->close = true;
 						// Получаем текущий штамп времени
-						else adj->checkPoint = this->_fmk->unixTimestamp();
+						else adj->checkPoint = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
 					// Выполняем сброс количества выполненных запросов
 					} else adj->requests = 0;
 					// Выполняем проверку авторизации

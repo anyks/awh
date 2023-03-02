@@ -69,7 +69,7 @@ namespace awh {
 				 * @param mode   режим вывода только значения заголовка
 				 * @return       строка авторизации
 				 */
-				const string header(const string & method, const bool mode) noexcept;
+				string header(const string & method, const bool mode) noexcept;
 			public:
 				/**
 				 * Auth Конструктор

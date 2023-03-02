@@ -118,7 +118,7 @@ void awh::Http::update() noexcept {
 			// Переходим по всему списку заголовков
 			for(auto & header : this->web.headers()){
 				// Если заголовок найден
-				if(this->fmk->toLower(header.first) == "accept-encoding"){
+				if(this->fmk->compare(header.first, "accept-encoding")){
 					// Если конкретный метод сжатия не запрашивается
 					if(header.second.compare("*") == 0) break;
 					// Если запрашиваются конкретные методы сжатия
@@ -278,7 +278,12 @@ void awh::Http::reset() noexcept {
  */
 void awh::Http::rmBlack(const string & key) noexcept {
 	// Если ключ заголовка передан, удаляем его
-	if(!key.empty()) this->black.erase(this->fmk->toLower(key));
+	if(!key.empty()){
+		// Получаем заголовок
+		string header = key;
+		// Выполняем удаление заголовка из чёрного списка
+		this->black.erase(this->fmk->transform(header, fmk_t::transform_t::LOWER));
+	}
 }
 /**
  * addBlack Метод добавления заголовка в чёрный список
@@ -286,7 +291,12 @@ void awh::Http::rmBlack(const string & key) noexcept {
  */
 void awh::Http::addBlack(const string & key) noexcept {
 	// Если ключ заголовка передан, добавляем в список
-	if(!key.empty()) this->black.emplace(this->fmk->toLower(key));
+	if(!key.empty()){
+		// Получаем заголовок
+		string header = key;
+		// Выполняем добавление заголовка в чёрный список
+		this->black.emplace(this->fmk->transform(header, fmk_t::transform_t::LOWER));
+	}
 }
 /**
  * parse Метод парсинга сырых данных
@@ -495,7 +505,7 @@ awh::Http::compress_t awh::Http::compression() const noexcept {
 			// Переходим по всему списку заголовков
 			for(auto & header : this->web.headers()){
 				// Если заголовок найден
-				if(this->fmk->toLower(header.first) == "accept-encoding"){
+				if(this->fmk->compare(header.first, "accept-encoding")){
 					// Если конкретный метод сжатия не запрашивается
 					if(header.second.compare("*") == 0)
 						// Устанавливаем требование выполнять декомпрессию тела сообщения
@@ -794,7 +804,7 @@ bool awh::Http::isAlive() const noexcept {
 		// Переходим по всему списку заголовков
 		for(auto & header : this->web.headers()){
 			// Если заголовок найден
-			if(this->fmk->toLower(header.first) == "connection"){
+			if(this->fmk->compare(header.first, "connection")){
 				// Выполняем проверку является ли соединение закрытым
 				result = (header.second.compare("close") != 0);
 				// Выходим из цикла
@@ -819,8 +829,17 @@ bool awh::Http::isHandshake() noexcept {
  * @return    результат проверки
  */
 bool awh::Http::isBlack(const string & key) const noexcept {
-	// Выводим результат проверки
-	return (this->black.count(this->fmk->toLower(key)) > 0);
+	// Результат работы функции
+	bool result = false;
+	// Если ключ заголовка передан
+	if(!key.empty()){
+		// Получаем заголовок для проверки
+		string header = key;
+		// Выполняем проверку наличия заголовка в чёрном списке
+		result = (this->black.find(this->fmk->transform(header, fmk_t::transform_t::LOWER)) != this->black.end());
+	}
+	// Выводим результат
+	return result;
 }
 /**
  * isHeader Метод проверки существования заголовка
@@ -1075,24 +1094,22 @@ vector <char> awh::Http::request(const bool nobody) const noexcept {
 			}
 			// Переходим по всему списку заголовков
 			for(auto & header : this->web.headers()){
-				// Получаем анализируемый заголовок
-				const string & head = this->fmk->toLower(header.first);
 				// Флаг разрешающий вывода заголовка
-				bool allow = !this->isBlack(head);
+				bool allow = !this->isBlack(header.first);
 				// Выполняем перебор всех обязательных заголовков
 				for(uint8_t i = 0; i < 4; i++){
 					// Если заголовок уже найден пропускаем его
 					if(available[i]) continue;
 					// Выполняем првоерку заголовка
 					switch(i){
-						case 1: available[i] = (head.compare("content-encoding") == 0);  break;
-						case 2: available[i] = (head.compare("transfer-encoding") == 0); break;
-						case 3: available[i] = (head.compare("x-awh-encryption") == 0);  break;
+						case 1: available[i] = this->fmk->compare(header.first, "content-encoding");  break;
+						case 2: available[i] = this->fmk->compare(header.first, "transfer-encoding"); break;
+						case 3: available[i] = this->fmk->compare(header.first, "x-awh-encryption");  break;
 						case 0: {
 							// Запоминаем, что мы нашли заголовок размера тела
-							available[i] = (head.compare("content-length") == 0);
+							available[i] = this->fmk->compare(header.first, "content-length");
 							// Устанавливаем размер тела сообщения
-							if(available[i]) length = stoull(header.second);
+							if(available[i]) length = ::stoull(header.second);
 						} break;
 					}
 					// Если заголовок разрешён для вывода
@@ -1107,7 +1124,15 @@ vector <char> awh::Http::request(const bool nobody) const noexcept {
 					}
 				}
 				// Если заголовок не является запрещённым, добавляем заголовок в запрос
-				if(allow) request.append(this->fmk->format("%s: %s\r\n", this->fmk->smartUpper(header.first).c_str(), header.second.c_str()));
+				if(allow)
+					// Формируем строку запроса
+					request.append(
+						this->fmk->format(
+							"%s: %s\r\n",
+							this->fmk->transform(* const_cast <string *> (&header.first), fmk_t::transform_t::SMART).c_str(),
+							header.second.c_str()
+						)
+					);
 			}
 			// Получаем данные тела
 			const auto & body = this->web.body();
@@ -1203,24 +1228,22 @@ vector <char> awh::Http::response(const bool nobody) const noexcept {
 			string response = this->fmk->format("HTTP/%.1f %u %s\r\n", query.ver, query.code, query.message.c_str());
 			// Переходим по всему списку заголовков
 			for(auto & header : this->web.headers()){
-				// Получаем анализируемый заголовок
-				const string & head = this->fmk->toLower(header.first);
 				// Флаг разрешающий вывода заголовка
-				bool allow = !this->isBlack(head);
+				bool allow = !this->isBlack(header.first);
 				// Выполняем перебор всех обязательных заголовков
 				for(uint8_t i = 0; i < 4; i++){
 					// Если заголовок уже найден пропускаем его
 					if(available[i]) continue;
 					// Выполняем првоерку заголовка
 					switch(i){
-						case 1: available[i] = (head.compare("content-encoding") == 0);  break;
-						case 2: available[i] = (head.compare("transfer-encoding") == 0); break;
-						case 3: available[i] = (head.compare("x-awh-encryption") == 0);  break;
+						case 1: available[i] = this->fmk->compare(header.first, "content-encoding");  break;
+						case 2: available[i] = this->fmk->compare(header.first, "transfer-encoding"); break;
+						case 3: available[i] = this->fmk->compare(header.first, "x-awh-encryption");  break;
 						case 0: {
 							// Запоминаем, что мы нашли заголовок размера тела
-							available[i] = (head.compare("content-length") == 0);
+							available[i] = this->fmk->compare(header.first, "content-length");
 							// Устанавливаем размер тела сообщения
-							if(available[i]) length = stoull(header.second);
+							if(available[i]) length = ::stoull(header.second);
 						} break;
 					}
 					// Если заголовок разрешён для вывода
@@ -1235,7 +1258,15 @@ vector <char> awh::Http::response(const bool nobody) const noexcept {
 					}
 				}
 				// Если заголовок не является запрещённым, добавляем заголовок в ответ
-				if(allow) response.append(this->fmk->format("%s: %s\r\n", this->fmk->smartUpper(header.first).c_str(), header.second.c_str()));
+				if(allow)
+					// Формируем строку ответа
+					response.append(
+						this->fmk->format(
+							"%s: %s\r\n",
+							this->fmk->transform(* const_cast <string *> (&header.first), fmk_t::transform_t::SMART).c_str(),
+							header.second.c_str()
+						)
+					);
 			}
 			// Получаем данные тела
 			const auto & body = this->web.body();
@@ -1444,28 +1475,26 @@ vector <char> awh::Http::response(const u_int code, const string & mess) const n
 			response.append(this->fmk->format("Date: %s\r\n", this->date().c_str()));
 		// Переходим по всему списку заголовков
 		for(auto & header : this->web.headers()){
-			// Получаем анализируемый заголовок
-			const string & head = this->fmk->toLower(header.first);
 			// Флаг разрешающий вывода заголовка
-			bool allow = !this->isBlack(head);
+			bool allow = !this->isBlack(header.first);
 			// Выполняем перебор всех обязательных заголовков
 			for(uint8_t i = 0; i < 8; i++){
 				// Если заголовок уже найден пропускаем его
 				if(available[i]) continue;
 				// Выполняем првоерку заголовка
 				switch(i){
-					case 0: available[i] = (head.compare("connection") == 0);         break;
-					case 1: available[i] = (head.compare("content-type") == 0);       break;
-					case 3: available[i] = (head.compare("content-encoding") == 0);   break;
-					case 4: available[i] = (head.compare("transfer-encoding") == 0);  break;
-					case 5: available[i] = (head.compare("x-awh-encryption") == 0);   break;
-					case 6: available[i] = (head.compare("www-authenticate") == 0);   break;
-					case 7: available[i] = (head.compare("proxy-authenticate") == 0); break;
+					case 0: available[i] = this->fmk->compare(header.first, "connection");         break;
+					case 1: available[i] = this->fmk->compare(header.first, "content-type");       break;
+					case 3: available[i] = this->fmk->compare(header.first, "content-encoding");   break;
+					case 4: available[i] = this->fmk->compare(header.first, "transfer-encoding");  break;
+					case 5: available[i] = this->fmk->compare(header.first, "x-awh-encryption");   break;
+					case 6: available[i] = this->fmk->compare(header.first, "www-authenticate");   break;
+					case 7: available[i] = this->fmk->compare(header.first, "proxy-authenticate"); break;
 					case 2: {
 						// Запоминаем, что мы нашли заголовок размера тела
-						available[i] = (head.compare("content-length") == 0);
+						available[i] = this->fmk->compare(header.first, "content-length");
 						// Устанавливаем размер тела сообщения
-						if(available[i]) length = stoull(header.second);
+						if(available[i]) length = ::stoull(header.second);
 					} break;
 				}
 				// Если заголовок разрешён для вывода
@@ -1480,7 +1509,15 @@ vector <char> awh::Http::response(const u_int code, const string & mess) const n
 				}
 			}
 			// Если заголовок не является запрещённым, добавляем заголовок в ответ
-			if(allow) response.append(this->fmk->format("%s: %s\r\n", this->fmk->smartUpper(header.first).c_str(), header.second.c_str()));
+			if(allow)
+				// Формируем строку ответа
+				response.append(
+					this->fmk->format(
+						"%s: %s\r\n",
+						this->fmk->transform(* const_cast <string *> (&header.first), fmk_t::transform_t::SMART).c_str(),
+						header.second.c_str()
+					)
+				);
 		}
 		// Устанавливаем Connection если не передан
 		if(!available[0] && !this->isBlack("Connection"))
@@ -1681,33 +1718,31 @@ vector <char> awh::Http::request(const uri_t::url_t & url, const web_t::method_t
 			query.method = method;
 			// Переходим по всему списку заголовков
 			for(auto & header : this->web.headers()){
-				// Получаем анализируемый заголовок
-				const string & head = this->fmk->toLower(header.first);
 				// Флаг разрешающий вывода заголовка
-				bool allow = !this->isBlack(head);
+				bool allow = !this->isBlack(header.first);
 				// Выполняем перебор всех обязательных заголовков
 				for(uint8_t i = 0; i < 12; i++){
 					// Если заголовок уже найден пропускаем его
 					if(available[i]) continue;
 					// Выполняем првоерку заголовка
 					switch(i){
-						case 0:  available[i] = (head.compare("host") == 0);                  break;
-						case 1:  available[i] = (head.compare("accept") == 0);                break;
-						case 2:  available[i] = (head.compare("origin") == 0);                break;
-						case 3:  available[i] = (head.compare("user-agent") == 0);            break;
-						case 4:  available[i] = (head.compare("connection") == 0);            break;
-						case 6:  available[i] = (head.compare("accept-language") == 0);       break;
-						case 7:  available[i] = (head.compare("accept-encoding") == 0);       break;
-						case 8:  available[i] = (head.compare("content-encoding") == 0);      break;
-						case 9:  available[i] = (head.compare("transfer-encoding") == 0);     break;
-						case 10: available[i] = (head.compare("x-awh-encryption") == 0);      break;
-						case 11: available[i] = ((head.compare("authorization") == 0) ||
-							                     (head.compare("proxy-authorization") == 0)); break;
+						case 0:  available[i] = this->fmk->compare(header.first, "host");                  break;
+						case 1:  available[i] = this->fmk->compare(header.first, "accept");                break;
+						case 2:  available[i] = this->fmk->compare(header.first, "origin");                break;
+						case 3:  available[i] = this->fmk->compare(header.first, "user-agent");            break;
+						case 4:  available[i] = this->fmk->compare(header.first, "connection");            break;
+						case 6:  available[i] = this->fmk->compare(header.first, "accept-language");       break;
+						case 7:  available[i] = this->fmk->compare(header.first, "accept-encoding");       break;
+						case 8:  available[i] = this->fmk->compare(header.first, "content-encoding");      break;
+						case 9:  available[i] = this->fmk->compare(header.first, "transfer-encoding");     break;
+						case 10: available[i] = this->fmk->compare(header.first, "x-awh-encryption");      break;
+						case 11: available[i] = (this->fmk->compare(header.first, "authorization") ||
+							                     this->fmk->compare(header.first, "proxy-authorization")); break;
 						case 5: {
 							// Запоминаем, что мы нашли заголовок размера тела
-							available[i] = (head.compare("content-length") == 0);
+							available[i] = (header.first.compare("content-length") == 0);
 							// Устанавливаем размер тела сообщения
-							if(available[i]) length = stoull(header.second);
+							if(available[i]) length = ::stoull(header.second);
 						} break;
 					}
 					// Если заголовок разрешён для вывода
@@ -1723,7 +1758,15 @@ vector <char> awh::Http::request(const uri_t::url_t & url, const web_t::method_t
 					}
 				}
 				// Если заголовок не является запрещённым, добавляем заголовок в запрос
-				if(allow) request.append(this->fmk->format("%s: %s\r\n", this->fmk->smartUpper(header.first).c_str(), header.second.c_str()));
+				if(allow)
+					// Формируем строку запроса
+					request.append(
+						this->fmk->format(
+							"%s: %s\r\n",
+							this->fmk->transform(* const_cast <string *> (&header.first), fmk_t::transform_t::SMART).c_str(),
+							header.second.c_str()
+						)
+					);
 			}
 			// Устанавливаем Host если не передан
 			if(!available[0] && !this->isBlack("Host"))

@@ -311,9 +311,9 @@ bool awh::WS::checkUpgrade() const noexcept {
 	// Если заголовки расширений найдены
 	if(!upgrade.empty() && !connection.empty()){
 		// Переводим значение заголовка Upgrade в нижний регистр
-		upgrade = this->fmk->toLower(upgrade);
+		this->fmk->transform(upgrade, fmk_t::transform_t::LOWER);
 		// Переводим значение заголовка Connection в нижний регистр
-		connection = this->fmk->toLower(connection);
+		this->fmk->transform(connection, fmk_t::transform_t::LOWER);
 		// Если заголовки соответствуют
 		result = ((upgrade.compare("websocket") == 0) && (connection.find("upgrade") != string::npos));
 	}

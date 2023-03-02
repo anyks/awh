@@ -111,13 +111,13 @@ namespace awh {
 			 * @param pass   пароль пользователя для проверки
 			 * @return       ответ в 16-м виде
 			 */
-			const string response(const string & method, const string & user, const string & pass, const digest_t & digest) const noexcept;
+			string response(const string & method, const string & user, const string & pass, const digest_t & digest) const noexcept;
 		public:
 			/**
 			 * type Метод получени типа авторизации
 			 * @return тип авторизации
 			 */
-			const type_t type() const noexcept;
+			type_t type() const noexcept;
 			/**
 			 * type Метод установки типа авторизации
 			 * @param type тип авторизации

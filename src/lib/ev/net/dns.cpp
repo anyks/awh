@@ -350,7 +350,7 @@ vector <u_char> awh::DNS::Worker::split(const string & domain) const noexcept {
 	// Если доменное имя передано
 	if(!domain.empty()){
 		// Секции доменного имени
-		vector <wstring> sections;
+		vector <string> sections;
 		// Выполняем сплит доменного имени
 		this->_dns->_fmk->split(domain, ".", sections);
 		// Если секции доменного имени получены
@@ -359,10 +359,8 @@ vector <u_char> awh::DNS::Worker::split(const string & domain) const noexcept {
 			for(auto & section : sections){
 				// Добавляем в буфер данных размер записи
 				result.push_back(static_cast <u_char> (section.size()));
-				// Получаем строку для добавления в буфер данных
-				const string & data = this->_dns->_fmk->convert(section);
 				// Добавляем в буфер данные секции
-				result.insert(result.end(), data.begin(), data.end());
+				result.insert(result.end(), section.begin(), section.end());
 			}
 		}
 	}
@@ -616,7 +614,7 @@ void awh::DNS::clearZombie() noexcept {
 			// Список зомби-воркеров
 			vector <size_t> zombie;
 			// Получаем текущее значение даты
-			const time_t date = this->_fmk->unixTimestamp();
+			const time_t date = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
 			// Переходим по всем воркерам
 			for(auto & worker : this->_workers){
 				// Если DNS запрос устарел на 3-и минуты, убиваем его
@@ -1347,7 +1345,7 @@ size_t awh::DNS::resolve(const string & host, const int family) noexcept {
 						// Выполняем блокировку потока
 						this->_mtx.worker.lock();
 						// Получаем идентификатор воркера
-						result = this->_fmk->unixTimestamp();
+						result = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
 						// Добавляем воркер резолвинга в список воркеров
 						auto ret = this->_workers.emplace(result, unique_ptr <worker_t> (new worker_t(result, family, this->_base, this)));
 						// Выполняем разблокировку потока
@@ -1374,7 +1372,7 @@ size_t awh::DNS::resolve(const string & host, const int family) noexcept {
 				// Значит скорее всего, садрес является доменным именем
 				default: {
 					// Если доменное имя является локальным
-					if(this->_fmk->isLatian(this->_fmk->convert(host))){
+					if(this->_fmk->is(host, fmk_t::check_t::LATIAN)){
 						// Определяем тип протокола подключения
 						switch(family){
 							// Если тип протокола подключения IPv4

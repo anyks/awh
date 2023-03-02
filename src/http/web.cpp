@@ -363,29 +363,29 @@ size_t awh::Web::readHeaders(const char * buffer, const size_t size) noexcept {
 										// Выполняем смену стейта
 										this->_state = state_t::HEADERS;
 										// Получаем метод запроса
-										const string & method = this->_fmk->toLower(string(buffer, this->_pos[0]));
+										const string & method = string(buffer, this->_pos[0]);
 										// Получаем версию протокол запроса
 										this->_query.ver = stof(string(buffer + (this->_pos[1] + 6), size - (this->_pos[1] + 6)));
 										// Получаем URI запроса
 										this->_query.uri.assign(buffer + (this->_pos[0] + 1), this->_pos[1] - (this->_pos[0] + 1));
 										// Если метод определён как GET
-										if(method.compare("get") == 0) this->_query.method = method_t::GET;
+										if(this->_fmk->compare(method, "get")) this->_query.method = method_t::GET;
 										// Если метод определён как PUT
-										else if(method.compare("put") == 0) this->_query.method = method_t::PUT;
+										else if(this->_fmk->compare(method, "put")) this->_query.method = method_t::PUT;
 										// Если метод определён как POST
-										else if(method.compare("post") == 0) this->_query.method = method_t::POST;
+										else if(this->_fmk->compare(method, "post")) this->_query.method = method_t::POST;
 										// Если метод определён как HEAD
-										else if(method.compare("head") == 0) this->_query.method = method_t::HEAD;
+										else if(this->_fmk->compare(method, "head")) this->_query.method = method_t::HEAD;
 										// Если метод определён как DELETE
-										else if(method.compare("delete") == 0) this->_query.method = method_t::DEL;
+										else if(this->_fmk->compare(method, "delete")) this->_query.method = method_t::DEL;
 										// Если метод определён как PATCH
-										else if(method.compare("patch") == 0) this->_query.method = method_t::PATCH;
+										else if(this->_fmk->compare(method, "patch")) this->_query.method = method_t::PATCH;
 										// Если метод определён как TRACE
-										else if(method.compare("trace") == 0) this->_query.method = method_t::TRACE;
+										else if(this->_fmk->compare(method, "trace")) this->_query.method = method_t::TRACE;
 										// Если метод определён как OPTIONS
-										else if(method.compare("options") == 0) this->_query.method = method_t::OPTIONS;
+										else if(this->_fmk->compare(method, "options")) this->_query.method = method_t::OPTIONS;
 										// Если метод определён как CONNECT
-										else if(method.compare("connect") == 0) this->_query.method = method_t::CONNECT;
+										else if(this->_fmk->compare(method, "connect")) this->_query.method = method_t::CONNECT;
 									// Если данные пришли неправильные
 									} else {
 										// Выполняем очистку всех ранее полученных данных
@@ -399,13 +399,16 @@ size_t awh::Web::readHeaders(const char * buffer, const size_t size) noexcept {
 						// Если - это режим получения заголовков
 						case static_cast <uint8_t> (state_t::HEADERS): {
 							// Получаем ключ заголовка
-							const string & key = string(buffer, this->_pos[0]);
+							string key = string(buffer, this->_pos[0]);
 							// Получаем значение заголовка
-							const string & val = string(buffer + (this->_pos[0] + 1), size - (this->_pos[0] + 1));
+							string val = string(buffer + (this->_pos[0] + 1), size - (this->_pos[0] + 1));
 							// Добавляем заголовок в список заголовков
 							if(!key.empty() && !val.empty())
 								// Добавляем заголовок в список
-								this->_headers.emplace(this->_fmk->toLower(key), this->_fmk->trim(val));
+								this->_headers.emplace(
+									this->_fmk->transform(key, fmk_t::transform_t::LOWER),
+									this->_fmk->transform(val, fmk_t::transform_t::TRIM)
+								);
 						} break;
 					}
 				}
@@ -755,12 +758,10 @@ bool awh::Web::isHeader(const string & key) const noexcept {
 	bool result = false;
 	// Если ключ передан
 	if(!key.empty()){
-		// Получаем название заголовка
-		const string & name = this->_fmk->toLower(key);
 		// Выполняем перебор всех заголовков
 		for(auto & header : this->_headers){
 			// Выполняем проверку существования заголовка
-			result = (this->_fmk->toLower(header.first).compare(name) == 0);
+			result = this->_fmk->compare(header.first, key);
 			// Выходим из цилка если заголовок найден
 			if(result) break;
 		}
@@ -807,12 +808,10 @@ void awh::Web::body(const vector <char> & body) noexcept {
 void awh::Web::rmHeader(const string & key) noexcept {
 	// Если ключ заголовка передан
 	if(!key.empty()){
-		// Получаем название заголовка
-		const string & name = this->_fmk->toLower(key);
 		// Выполняем перебор всех заголовков
 		for(auto it = this->_headers.begin(); it != this->_headers.end();){
 			// Выполняем проверку существования заголовка
-			if(this->_fmk->toLower(it->first).compare(name) == 0)
+			if(this->_fmk->compare(it->first, key))
 				// Выполняем удаление указанного заголовка
 				it = this->_headers.erase(it);
 			// Иначе ищем заголовок дальше
@@ -828,12 +827,10 @@ void awh::Web::rmHeader(const string & key) noexcept {
 const string & awh::Web::header(const string & key) const noexcept {
 	// Если ключ заголовка передан
 	if(!key.empty()){
-		// Получаем название заголовка
-		const string & name = this->_fmk->toLower(key);
 		// Выполняем перебор всех заголовков
 		for(auto & header : this->_headers){
 			// Выполняем проверку существования заголовка
-			if(this->_fmk->toLower(header.first).compare(name) == 0)
+			if(this->_fmk->compare(header.first, key))
 				// Выводим найденный заголовок
 				return header.second;
 		}

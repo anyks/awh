@@ -65,7 +65,7 @@ namespace awh {
 				 * @param method метод HTTP запроса
 				 * @return       результат проверки авторизации
 				 */
-				const bool check(const string & method) noexcept;
+				bool check(const string & method) noexcept;
 			public:
 				/**
 				 * realm Метод установки название сервера
@@ -99,7 +99,7 @@ namespace awh {
 				 * @param mode режим вывода только значения заголовка
 				 * @return     строка авторизации
 				 */
-				const string header(const bool mode = false) noexcept;
+				string header(const bool mode = false) noexcept;
 			public:
 				/**
 				 * Auth Конструктор

@@ -40,7 +40,7 @@ void awh::server::SchemeWebSocket::set(const size_t aid) noexcept {
 		// Устанавливаем метод сжатия
 		ret.first->second->http.compress(this->compress);
 		// Устанавливаем контрольную точку
-		ret.first->second->checkPoint = this->fmk->unixTimestamp();
+		ret.first->second->checkPoint = this->fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
 	}
 }
 /**

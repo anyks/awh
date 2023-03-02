@@ -1240,7 +1240,7 @@ bool awh::Net::parse(const string & addr, const type_t type) noexcept {
 			// Если IP адрес является адресом IPv6
 			case static_cast <uint8_t> (type_t::IPV6): {
 				// Создаём список всех хексетов
-				vector <wstring> data;
+				vector <string> data;
 				// Выполняем очистку буфера данных
 				this->_buffer.clear();
 				// Выполняем инициализацию буфера
@@ -1266,14 +1266,14 @@ bool awh::Net::parse(const string & addr, const type_t type) noexcept {
 								// Если хексет установлен
 								if(!it->empty())
 									// Добавляем хексет в список
-									buffer[--index] = static_cast <uint16_t> (this->_fmk->hexToDec(this->_fmk->convert(* it)));
+									buffer[--index] = static_cast <uint16_t> (this->_fmk->hexToDec(* it));
 								// Выходим из цикла
 								else break;
 							}
 							// Позиция разделителя
 							index = 12;
 							// Получаем IP адрес
-							const string & addr = this->_fmk->convert(data.back());
+							const string & addr = data.back();
 							// Выполняем поиск разделителя
 							while((stop = addr.find('.', start)) != string::npos){
 								// Извлекаем полученное число
@@ -1294,7 +1294,7 @@ bool awh::Net::parse(const string & addr, const type_t type) noexcept {
 								// Если хексет установлен
 								if(!it->empty())
 									// Добавляем хексет в список
-									buffer[--index] = static_cast <uint16_t> (this->_fmk->hexToDec(this->_fmk->convert(* it)));
+									buffer[--index] = static_cast <uint16_t> (this->_fmk->hexToDec(* it));
 								// Выходим из цикла
 								else break;
 							}
@@ -1309,7 +1309,7 @@ bool awh::Net::parse(const string & addr, const type_t type) noexcept {
 							// Если хексет установлен
 							if(!it->empty())
 								// Добавляем хексет в список
-								buffer[index++] = static_cast <uint16_t> (this->_fmk->hexToDec(this->_fmk->convert(* it)));
+								buffer[index++] = static_cast <uint16_t> (this->_fmk->hexToDec(* it));
 							// Выходим из цикла
 							else break;
 						}
@@ -1322,7 +1322,7 @@ bool awh::Net::parse(const string & addr, const type_t type) noexcept {
 								// Если хексет установлен
 								if(!it->empty())
 									// Добавляем хексет в список
-									buffer[--index] = static_cast <uint16_t> (this->_fmk->hexToDec(this->_fmk->convert(* it)));
+									buffer[--index] = static_cast <uint16_t> (this->_fmk->hexToDec(* it));
 								// Выходим из цикла
 								else break;
 							}

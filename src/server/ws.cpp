@@ -43,7 +43,7 @@ void awh::server::WebSocket::persistCallback(const size_t aid, const size_t sid,
 		// Если параметры подключения адъютанта получены
 		if(adj != nullptr){
 			// Получаем текущий штамп времени
-			const time_t stamp = this->_fmk->unixTimestamp();
+			const time_t stamp = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
 			// Если адъютант не ответил на пинг больше двух интервалов, отключаем его
 			if(adj->close || ((stamp - adj->checkPoint) >= (PERSIST_INTERVAL * 5)))
 				// Завершаем работу
@@ -485,7 +485,7 @@ void awh::server::WebSocket::actionRead(const size_t aid) noexcept {
 								// Если идентификатор адъютанта совпадает
 								if(memcmp(to_string(aid).c_str(), data.data(), data.size()) == 0)
 									// Обновляем контрольную точку
-									adj->checkPoint = this->_fmk->unixTimestamp();
+									adj->checkPoint = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
 							} break;
 							// Если ответом является TEXT
 							case static_cast <uint8_t> (frame_t::opcode_t::TEXT):

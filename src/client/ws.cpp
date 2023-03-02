@@ -39,7 +39,7 @@ void awh::client::WebSocket::persistCallback(const size_t aid, const size_t sid,
 	// Если данные существуют
 	if((aid > 0) && (sid > 0) && (core != nullptr)){
 		// Получаем текущий штамп времени
-		const time_t stamp = this->_fmk->unixTimestamp();
+		const time_t stamp = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
 		// Если адъютант не ответил на пинг больше двух интервалов, отключаем его
 		if(this->_close || ((stamp - this->_checkPoint) >= (PERSIST_INTERVAL * 5)))
 			// Завершаем работу
@@ -323,7 +323,7 @@ void awh::client::WebSocket::actionRead() noexcept {
 						// Получаем размер скользящего окна клиента
 						this->_wbitClient = this->_http.wbitClient();
 						// Обновляем контрольную точку времени получения данных
-						this->_checkPoint = this->_fmk->unixTimestamp();
+						this->_checkPoint = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
 						// Разрешаем перехватывать контекст компрессии для клиента
 						this->_hash.takeoverCompress(this->_http.clientTakeover());
 						// Разрешаем перехватывать контекст компрессии для сервера
@@ -441,7 +441,7 @@ void awh::client::WebSocket::actionRead() noexcept {
 						// Если идентификатор адъютанта совпадает
 						if(memcmp(to_string(this->_aid).c_str(), data.data(), data.size()) == 0)
 							// Обновляем контрольную точку
-							this->_checkPoint = this->_fmk->unixTimestamp();
+							this->_checkPoint = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
 					break;
 					// Если ответом является TEXT
 					case static_cast <uint8_t> (frame_t::opcode_t::TEXT):

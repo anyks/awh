@@ -162,7 +162,7 @@ string awh::URI::etag(const string & text) const noexcept {
 	// Если текст передан
 	if(!text.empty()){
 		// Получаем sha1 хэш строки
-		const string & sha1 = this->_fmk->sha1(text);
+		const string & sha1 = this->_fmk->hash(text, fmk_t::hash_t::SHA1);
 		// Если строка получена
 		if(!sha1.empty()){
 			// Извлекаем первую часть хэша
@@ -442,18 +442,20 @@ map <awh::URI::flag_t, string> awh::URI::split(const string & uri) const noexcep
 				for(size_t i = 0; i < match.size(); i++){
 					// Если запись получена
 					if(!match[i].str().empty()){
+						// Получаем значение URI
+						string value = match[i].str();
 						// Определяем тип записи
 						switch(i){
 							// Если типом записи является путём запроса
-							case 5: result.emplace(flag_t::PATH, match[i].str()); break;
+							case 5: result.emplace(flag_t::PATH, value); break;
 							// Если типом записи является параметрами запроса
-							case 7: result.emplace(flag_t::PARAMS, match[i].str()); break;
+							case 7: result.emplace(flag_t::PARAMS, value); break;
 							// Если типом записи является якорем запроса
-							case 9: result.emplace(flag_t::ANCHOR, match[i].str()); break;
+							case 9: result.emplace(flag_t::ANCHOR, value); break;
 							// Если типом записи является доменным именем
-							case 4: result.emplace(flag_t::HOST, this->_fmk->toLower(match[i].str())); break;
+							case 4: result.emplace(flag_t::HOST, this->_fmk->transform(value, fmk_t::transform_t::LOWER)); break;
 							// Если типом записи является протокол
-							case 2: result.emplace(flag_t::SCHEMA, this->_fmk->toLower(match[i].str())); break;
+							case 2: result.emplace(flag_t::SCHEMA, this->_fmk->transform(value, fmk_t::transform_t::LOWER)); break;
 						}
 					}
 				}
@@ -468,7 +470,7 @@ map <awh::URI::flag_t, string> awh::URI::split(const string & uri) const noexcep
 						// Получаем данные порта
 						const string & port = it->second.substr(pos + 1);
 						// Если данные являются портом
-						if(this->_fmk->isNumber(port)){
+						if(this->_fmk->is(port, fmk_t::check_t::NUMBER)){
 							// Устанавливаем данные порта
 							result.emplace(flag_t::PORT, port);
 							// Формируем правильный хост
@@ -482,16 +484,18 @@ map <awh::URI::flag_t, string> awh::URI::split(const string & uri) const noexcep
 				for(size_t i = 0; i < match.size(); i++){
 					// Если запись получена
 					if(!match[i].str().empty()){
+						// Получаем значение URI
+						string value = match[i].str();
 						// Определяем тип записи
 						switch(i){
 							// Если типом записи является путём запроса
-							case 5: result.emplace(flag_t::PATH, match[i].str()); break;
+							case 5: result.emplace(flag_t::PATH, value); break;
 							// Если типом записи является параметрами запроса
-							case 7: result.emplace(flag_t::PARAMS, match[i].str()); break;
+							case 7: result.emplace(flag_t::PARAMS, value); break;
 							// Если типом записи является якорем запроса
-							case 9: result.emplace(flag_t::ANCHOR, match[i].str()); break;
+							case 9: result.emplace(flag_t::ANCHOR, value); break;
 							// Если типом записи является доменным именем
-							case 2: result.emplace(flag_t::HOST, this->_fmk->toLower(match[i].str())); break;
+							case 2: result.emplace(flag_t::HOST, this->_fmk->transform(value, fmk_t::transform_t::LOWER)); break;
 						}
 					}
 				}
@@ -506,23 +510,26 @@ map <awh::URI::flag_t, string> awh::URI::split(const string & uri) const noexcep
 						// Если позиция не нулевая и порт является числом
 						if(pos > 0){
 							// Получаем данные хоста или порта
-							const string & data = it->second.substr(0, pos);
+							string data = it->second.substr(0, pos);
 							// Если данные являются портом
-							if(this->_fmk->isNumber(data))
+							if(this->_fmk->is(data, fmk_t::check_t::NUMBER))
 								// Устанавливаем данные порта
 								result.emplace(flag_t::PORT, data);
 							// Иначе если хост не установлен
 							else if(result.count(flag_t::HOST) < 1) {								
 								// Определяем тип домена
 								switch(static_cast <uint8_t> (this->_net->host(data))){
-									// Если - это доменное имя
-									case static_cast <uint8_t> (net_t::type_t::DOMN):
 									// Если - это IP адрес сети IPv4
 									case static_cast <uint8_t> (net_t::type_t::IPV4):
 									// Если - это IP адрес сети IPv6
 									case static_cast <uint8_t> (net_t::type_t::IPV6):
 										// Устанавливаем результат хоста
-										result.emplace(flag_t::HOST, this->_fmk->toLower(data));
+										result.emplace(flag_t::HOST, data);
+									break;
+									// Если - это доменное имя
+									case static_cast <uint8_t> (net_t::type_t::DOMN):
+										// Устанавливаем результат хоста
+										result.emplace(flag_t::HOST, this->_fmk->transform(data, fmk_t::transform_t::LOWER));
 									break;
 								}
 							}
@@ -657,10 +664,8 @@ vector <pair <string, string>> awh::URI::splitParams(const string & uri) const n
 	if(!uri.empty()){
 		// Параметры URI
 		vector <wstring> params;
-		// Выполняем сплит URI параметров
-		this->_fmk->split(uri, "&", params);
 		// Если параметры получены
-		if(!params.empty()){
+		if(!this->_fmk->split(this->_fmk->convert(uri), L"&", params).empty()){
 			// Данные параметров
 			vector <wstring> data;
 			// Переходим по всему списку параметров
@@ -698,9 +703,7 @@ vector <string> awh::URI::splitPath(const string & path, const string & delim) c
 		// Параметры пути
 		vector <wstring> params;
 		// Выполняем сплит параметров пути
-		this->_fmk->split(path.substr(1), delim, params);
-		// Если параметры получены
-		if(!params.empty()){
+		if(!this->_fmk->split(this->_fmk->convert(path.substr(1)), this->_fmk->convert(delim), params).empty()){
 			// Переходим по всему списку параметров
 			for(auto & param : params)
 				// Добавляем в список наши параметры
@@ -784,16 +787,18 @@ awh::URI::params_t awh::URI::params(const string & uri, const string & schema) c
 		regex_search(uri, match, e);
 		// Если данные найдены
 		if(!match.empty()){
+			// Получаем данные хоста
+			string host = match[3].str();
 			// Получаем пользователя
 			result.user = match[1].str();
 			// Получаем пароль пользователя
 			result.pass = match[2].str();
-			// Получаем хост
-			result.host = this->_fmk->toLower(match[3].str());
-			// Получаем порт
+			// Получаем хост запроса
+			result.host = this->_fmk->transform(host, fmk_t::transform_t::LOWER);
+			// Получаем порт запроса
 			const string & port = match[4].str();
 			// Если порт получен
-			if(!port.empty()) result.port = stoi(port);
+			if(!port.empty()) result.port = ::stoi(port);
 			// Если порт не получен но указана схема
 			else if(!schema.empty()){
 				// Если - это зашифрованный протокол

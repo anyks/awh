@@ -50,7 +50,7 @@
 							// Выходим из приложения
 							exit(SIGINT);
 						// Если время жизни процесса составляет меньше 3-х минут
-						else if((this->cluster->_fmk->unixTimestamp() - jack->date) <= 180000)
+						else if((this->cluster->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS) - jack->date) <= 180000)
 							// Выходим из приложения
 							exit(EXIT_FAILURE);
 						// Выходим из цикла
@@ -146,7 +146,7 @@ void awh::Cluster::fork(const size_t wid, const uint16_t index, const bool stop)
 								// Устанавливаем идентификатор процесса
 								jack->pid = pid;
 								// Устанавливаем время начала жизни процесса
-								jack->date = this->_fmk->unixTimestamp();
+								jack->date = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
 								// Если функция обратного вызова установлена, выводим её
 								if(this->_fn != nullptr)
 									// Выводим функцию обратного вызова
@@ -173,7 +173,7 @@ void awh::Cluster::fork(const size_t wid, const uint16_t index, const bool stop)
 						// Устанавливаем PID процесса
 						jack->pid = pid;
 						// Устанавливаем время начала жизни процесса
-						jack->date = this->_fmk->unixTimestamp();
+						jack->date = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
 						// Если функция обратного вызова установлена, выводим её
 						if(this->_fn != nullptr)
 							// Выводим функцию обратного вызова

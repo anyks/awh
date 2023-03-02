@@ -250,7 +250,7 @@ void awh::server::Core::accept(const int fd, const size_t sid) noexcept {
 						// Получаем порт подключения клиента
 						adj->port = adj->addr.port;
 						// Устанавливаем идентификатор адъютанта
-						adj->aid = this->fmk->nanoTimestamp();
+						adj->aid = this->fmk->timestamp(fmk_t::stamp_t::NANOSECONDS);
 						// Выполняем получение контекста сертификата
 						this->engine.wrapServer(adj->ectx, &adj->addr);
 						// Если подключение не обёрнуто
@@ -293,7 +293,7 @@ void awh::server::Core::accept(const int fd, const size_t sid) noexcept {
 					// Создаём бъект адъютанта
 					unique_ptr <awh::scheme_t::adj_t> adj(new awh::scheme_t::adj_t(shm, this->fmk, this->log));
 					// Устанавливаем идентификатор адъютанта
-					adj->aid = this->fmk->nanoTimestamp();
+					adj->aid = this->fmk->timestamp(fmk_t::stamp_t::NANOSECONDS);
 					// Устанавливаем объект сетевого ядра
 					dtls->core = this;
 					// Устанавливаем идентификатор адъютанта
@@ -401,7 +401,7 @@ void awh::server::Core::accept(const int fd, const size_t sid) noexcept {
 								break;
 							}
 							// Устанавливаем идентификатор адъютанта
-							adj->aid = this->fmk->nanoTimestamp();
+							adj->aid = this->fmk->timestamp(fmk_t::stamp_t::NANOSECONDS);
 							// Выполняем получение контекста сертификата
 							this->engine.wrapServer(adj->ectx, &adj->addr);
 							// Если мы хотим работать в зашифрованном режиме

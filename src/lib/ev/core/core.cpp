@@ -723,7 +723,7 @@ size_t awh::Core::add(const scheme_t * scheme) noexcept {
 		// Получаем объект схемы сети
 		scheme_t * shm = const_cast <scheme_t *> (scheme);
 		// Получаем идентификатор схемы сети
-		result = this->fmk->nanoTimestamp();
+		result = this->fmk->timestamp(fmk_t::stamp_t::NANOSECONDS);
 		// Устанавливаем родительский объект
 		shm->core = this;
 		// Устанавливаем идентификатор схемы сети
@@ -1505,12 +1505,16 @@ bool awh::Core::unixSocket(const string & socket) noexcept {
 	 * Если операционной системой не является Windows
 	 */
 	#if !defined(_WIN32) && !defined(_WIN64)
+		// Адрес файла сокета
+		string filename = "";
 		// Если адрес unix-сокета передан
 		if(!socket.empty())
-			// Выполняем установку unix-сокета
-			this->settings.filename = this->fmk->format("/tmp/%s.sock", this->fmk->toLower(socket).c_str());
+			// Получаем адрес файла
+			filename = socket;
 		// Если адрес unix-сокета не передан
-		else this->settings.filename = this->fmk->format("/tmp/%s.sock", this->fmk->toLower(this->servName.c_str()).c_str());
+		else filename = this->servName;
+		// Устанавливаем адрес файла unix-сокета
+		this->settings.filename = this->fmk->format("/tmp/%s.sock", this->fmk->transform(filename, fmk_t::transform_t::LOWER).c_str());
 	/**
 	 * Если операционной системой является MS Windows
 	 */

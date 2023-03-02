@@ -170,7 +170,7 @@ void awh::client::Core::connect(const size_t sid) noexcept {
 				// Если сокет подключения получен
 				if((adj->addr.fd != INVALID_SOCKET) && (adj->addr.fd < MAX_SOCKETS)){
 					// Устанавливаем идентификатор адъютанта
-					adj->aid = this->fmk->nanoTimestamp();
+					adj->aid = this->fmk->timestamp(fmk_t::stamp_t::NANOSECONDS);
 					// Если подключение выполняется по защищённому каналу DTLS
 					if(this->settings.sonet == scheme_t::sonet_t::DTLS)
 						// Выполняем получение контекста сертификата
