@@ -838,10 +838,10 @@ bool awh::Framework::is(const wstring & text, const check_t flag) const noexcept
  */
 bool awh::Framework::compare(const string & forst, const string & second) const noexcept {
 	// Выполняем перебор обоих строк
-	return std::equal(forst.begin(), forst.end(), second.begin(), second.end(), [](char a, char b) noexcept -> bool {
+	return ((forst.size() == second.size()) ? std::equal(forst.begin(), forst.end(), second.begin(), second.end(), [](char a, char b) noexcept -> bool {
 		// Выполняем сравнение каждого символа
 		return (tolower(a) == tolower(b));
-    });
+    }) : false);
 }
 /**
  * compare Метод сравнения двух строк без учёта регистра
@@ -851,10 +851,10 @@ bool awh::Framework::compare(const string & forst, const string & second) const 
  */
 bool awh::Framework::compare(const wstring & forst, const wstring & second) const noexcept {
 	// Выполняем перебор обоих строк
-	return std::equal(forst.begin(), forst.end(), second.begin(), second.end(), [](wchar_t a, wchar_t b) noexcept -> bool {
+	return ((forst.size() == second.size()) ? std::equal(forst.begin(), forst.end(), second.begin(), second.end(), [](wchar_t a, wchar_t b) noexcept -> bool {
 		// Выполняем сравнение каждого символа
 		return (towlower(a) == towlower(b));
-    });
+    }) : false);
 }
 /**
  * timestamp Метод получения штампа времени в указанных единицах измерения
