@@ -197,7 +197,7 @@ uintmax_t awh::FS::size(const string & path, const string & ext) const noexcept 
 								// Получаем длину адреса
 								const size_t length = extension.length();
 								// Если расширение файла найдено
-								if(address.substr(address.length() - length).compare(extension) == 0)
+								if(this->_fmk->compare(address.substr(address.length() - length), extension))
 									// Получаем размер файла
 									result += this->size(address);
 							// Получаем размер файла
@@ -251,7 +251,7 @@ uintmax_t awh::FS::count(const string & path, const string & ext) const noexcept
 						// Получаем длину адреса
 						const size_t length = extension.length();
 						// Если расширение файла найдено
-						if(address.substr(address.length() - length, length).compare(extension) == 0)
+						if(this->_fmk->compare(address.substr(address.length() - length, length), extension))
 							// Получаем количество файлов в каталоге
 							result++;
 					// Получаем количество файлов в каталоге
@@ -743,7 +743,7 @@ void awh::FS::readDir(const string & path, const string & ext, const bool rec, f
 							// Получаем длину адреса
 							const size_t length = extension.length();
 							// Если расширение файла найдено
-							if(address.substr(address.length() - length, length).compare(extension) == 0)
+							if(this->_fmk->compare(address.substr(address.length() - length, length), extension))
 								// Выводим полный путь файла
 								callback(this->realPath(address));
 						// Если дочерний элемент является файлом то выводим его

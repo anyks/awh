@@ -146,7 +146,7 @@ bool awh::client::WebSocket::enableTLSCallback(const uri_t::url_t & url, const s
 	(void) sid;
 	(void) core;
 	// Выводим результат активации
-	return (!url.empty() && (url.schema.compare("wss") == 0));
+	return (!url.empty() && this->_fmk->compare(url.schema, "wss"));
 }
 /**
  * proxyConnectCallback Метод обратного вызова при подключении к прокси-серверу
@@ -1387,7 +1387,7 @@ void awh::client::WebSocket::proxy(const string & uri, const scheme_t::family_t 
 		// Если данные параметров прокси-сервера получены
 		if(!this->_scheme.proxy.url.empty()){
 			// Если протокол подключения SOCKS5
-			if(this->_scheme.proxy.url.schema.compare("socks5") == 0){
+			if(this->_fmk->compare(this->_scheme.proxy.url.schema, "socks5")){
 				// Устанавливаем тип прокси-сервера
 				this->_scheme.proxy.type = proxy_t::type_t::SOCKS5;
 				// Если требуется авторизация на прокси-сервере
@@ -1395,7 +1395,7 @@ void awh::client::WebSocket::proxy(const string & uri, const scheme_t::family_t 
 					// Устанавливаем данные пользователя
 					this->_scheme.proxy.socks5.user(this->_scheme.proxy.url.user, this->_scheme.proxy.url.pass);
 			// Если протокол подключения HTTP
-			} else if((this->_scheme.proxy.url.schema.compare("http") == 0) || (this->_scheme.proxy.url.schema.compare("https") == 0)) {
+			} else if(this->_fmk->compare(this->_scheme.proxy.url.schema, "http") || this->_fmk->compare(this->_scheme.proxy.url.schema, "https")) {
 				// Устанавливаем тип прокси-сервера
 				this->_scheme.proxy.type = proxy_t::type_t::HTTP;
 				// Если требуется авторизация на прокси-сервере

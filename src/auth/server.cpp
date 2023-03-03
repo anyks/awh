@@ -54,7 +54,7 @@ bool awh::server::Auth::check(const string & method) noexcept {
 						digest.opaque = this->_userDigest.opaque;
 						digest.cnonce = this->_userDigest.cnonce;
 						// Выполняем проверку авторизации
-						result = (this->response(this->_fmk->transform(* const_cast <string *> (&method), fmk_t::transform_t::UPPER), this->_user, pass, digest).compare(this->_userDigest.resp) == 0);
+						result = (this->_fmk->compare(this->response(this->_fmk->transform(method, fmk_t::transform_t::UPPER), this->_user, pass, digest), this->_userDigest.resp));
 					}
 				}
 			}
@@ -154,53 +154,53 @@ void awh::server::Auth::header(const string & header) noexcept {
 								// Получаем значение параметра
 								value = param.substr(pos + 1);
 								// Если параметр является именем пользователя
-								if(key.compare("username") == 0){
+								if(this->_fmk->compare(key, "username")){
 									// Удаляем кавычки
 									value.assign(value.begin() + 1, value.end() - 1);
 									// Получаем логин пользователя
 									this->_user = value;
 								// Если параметр является идентификатором сайта
-								} else if(key.compare("realm") == 0) {
+								} else if(this->_fmk->compare(key, "realm")) {
 									// Удаляем кавычки
 									value.assign(value.begin() + 1, value.end() - 1);
 									// Устанавливаем relam
 									this->_userDigest.realm = value;
 								// Если параметр является ключём сгенерированным сервером
-								} else if(key.compare("nonce") == 0) {
+								} else if(this->_fmk->compare(key, "nonce")) {
 									// Удаляем кавычки
 									value.assign(value.begin() + 1, value.end() - 1);
 									// Устанавливаем nonce
 									this->_userDigest.nonce = value;
 								// Если параметр являеются параметры запроса
-								} else if(key.compare("uri") == 0) {
+								} else if(this->_fmk->compare(key, "uri")) {
 									// Удаляем кавычки
 									value.assign(value.begin() + 1, value.end() - 1);
 									// Устанавливаем uri
 									this->_userDigest.uri = value;
 								// Если параметр является ключём сгенерированным клиентом
-								} else if(key.compare("cnonce") == 0) {
+								} else if(this->_fmk->compare(key, "cnonce")) {
 									// Удаляем кавычки
 									value.assign(value.begin() + 1, value.end() - 1);
 									// Устанавливаем cnonce
 									this->_userDigest.cnonce = value;
 								// Если параметр является ключём ответа клиента
-								} else if(key.compare("response") == 0) {
+								} else if(this->_fmk->compare(key, "response")) {
 									// Удаляем кавычки
 									value.assign(value.begin() + 1, value.end() - 1);
 									// Устанавливаем response
 									this->_userDigest.resp = value;
 								// Если параметр является ключём сервера
-								} else if(key.compare("opaque") == 0) {
+								} else if(this->_fmk->compare(key, "opaque")) {
 									// Удаляем кавычки
 									value.assign(value.begin() + 1, value.end() - 1);
 									// Устанавливаем opaque
 									this->_userDigest.opaque = value;
 								// Если параметр является типом авторизации
-								} else if(key.compare("qop") == 0)
+								} else if(this->_fmk->compare(key, "qop"))
 									// Устанавливаем qop
 									this->_userDigest.qop = value;
 								// Если параметр является счётчиком запросов
-								else if(key.compare("nc") == 0)
+								else if(this->_fmk->compare(key, "nc"))
 									// Устанавливаем nc
 									this->_userDigest.nc = value;
 							}

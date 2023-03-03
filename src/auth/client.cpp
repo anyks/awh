@@ -75,39 +75,39 @@ void awh::client::Auth::header(const string & header) noexcept {
 							// Получаем значение параметра
 							value = param.substr(pos + 1);
 							// Если параметр является идентификатором сайта
-							if(key.compare("realm") == 0) {
+							if(this->_fmk->compare(key, "realm")){
 								// Удаляем кавычки
 								value.assign(value.begin() + 1, value.end() - 1);
 								// Устанавливаем relam
 								this->_digest.realm = value;
 							// Если параметр является ключём сгенерированным сервером
-							} else if(key.compare("nonce") == 0) {
+							} else if(this->_fmk->compare(key, "nonce")) {
 								// Удаляем кавычки
 								value.assign(value.begin() + 1, value.end() - 1);
 								// Устанавливаем nonce
 								this->_digest.nonce = value;
 							// Если параметр является ключём сервера
-							} else if(key.compare("opaque") == 0) {
+							} else if(this->_fmk->compare(key, "opaque")) {
 								// Удаляем кавычки
 								value.assign(value.begin() + 1, value.end() - 1);
 								// Устанавливаем opaque
 								this->_digest.opaque = value;
 							// Если параметр является алгоритмом
-							} else if(key.compare("algorithm") == 0) {
+							} else if(this->_fmk->compare(key, "algorithm")) {
 								// Удаляем кавычки
 								value.assign(value.begin() + 1, value.end() - 1);
 								// Переводим в нижний регистр
 								this->_fmk->transform(value, fmk_t::transform_t::LOWER);
 								// Если алгоритм является MD5
-								if(value.compare("md5") == 0) this->_digest.hash = hash_t::MD5;
+								if(this->_fmk->compare(value, "md5")) this->_digest.hash = hash_t::MD5;
 								// Если алгоритм является SHA1
-								else if(value.compare("sha1") == 0) this->_digest.hash = hash_t::SHA1;
+								else if(this->_fmk->compare(value, "sha1")) this->_digest.hash = hash_t::SHA1;
 								// Если алгоритм является SHA256
-								else if(value.compare("sha256") == 0) this->_digest.hash = hash_t::SHA256;
+								else if(this->_fmk->compare(value, "sha256")) this->_digest.hash = hash_t::SHA256;
 								// Если алгоритм является SHA512
-								else if(value.compare("sha512") == 0) this->_digest.hash = hash_t::SHA512;
+								else if(this->_fmk->compare(value, "sha512")) this->_digest.hash = hash_t::SHA512;
 							// Если параметр является типом авторизации
-							} else if(key.compare("qop") == 0)
+							} else if(this->_fmk->compare(key, "qop"))
 								// Если тип авторизации передан верно
 								if(value.find("auth") != wstring::npos) this->_digest.qop = "auth";
 						}
@@ -164,7 +164,7 @@ string awh::client::Auth::header(const string & method, const bool mode) noexcep
 						digest.cnonce = this->_digest.cnonce;
 						// Формируем ответ серверу
 						const string & response = this->response(
-							this->_fmk->transform(* const_cast <string *> (&method), fmk_t::transform_t::UPPER),
+							this->_fmk->transform(method, fmk_t::transform_t::UPPER),
 							this->_user, this->_pass, digest
 						);
 						// Если ответ получен

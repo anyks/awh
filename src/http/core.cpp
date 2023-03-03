@@ -62,7 +62,7 @@ void awh::Http::update() noexcept {
 		// Если данные пришли сжатые
 		if(!encoding.empty()){
 			// Если данные пришли сжатые методом Brotli
-			if(encoding.compare("br") == 0){
+			if(this->fmk->compare(encoding, "br")){
 				// Устанавливаем требование выполнять декомпрессию тела сообщения
 				this->_compress = compress_t::BROTLI;
 				// Выполняем декомпрессию данных
@@ -75,7 +75,7 @@ void awh::Http::update() noexcept {
 					this->web.body(result);
 				}
 			// Если данные пришли сжатые методом GZip
-			} else if(encoding.compare("gzip") == 0) {
+			} else if(this->fmk->compare(encoding, "gzip")) {
 				// Устанавливаем требование выполнять декомпрессию тела сообщения
 				this->_compress = compress_t::GZIP;
 				// Выполняем декомпрессию данных
@@ -88,7 +88,7 @@ void awh::Http::update() noexcept {
 					this->web.body(result);
 				}
 			// Если данные пришли сжатые методом Deflate
-			} else if(encoding.compare("deflate") == 0) {
+			} else if(this->fmk->compare(encoding, "deflate")) {
 				// Устанавливаем требование выполнять декомпрессию тела сообщения
 				this->_compress = compress_t::DEFLATE;
 				// Получаем данные тела в бинарном виде
@@ -120,7 +120,7 @@ void awh::Http::update() noexcept {
 				// Если заголовок найден
 				if(this->fmk->compare(header.first, "accept-encoding")){
 					// Если конкретный метод сжатия не запрашивается
-					if(header.second.compare("*") == 0) break;
+					if(this->fmk->compare(header.second, "*")) break;
 					// Если запрашиваются конкретные методы сжатия
 					else {
 						// Если найден запрашиваемый метод компрессии BROTLI
@@ -278,12 +278,9 @@ void awh::Http::reset() noexcept {
  */
 void awh::Http::rmBlack(const string & key) noexcept {
 	// Если ключ заголовка передан, удаляем его
-	if(!key.empty()){
-		// Получаем заголовок
-		string header = key;
+	if(!key.empty())
 		// Выполняем удаление заголовка из чёрного списка
-		this->black.erase(this->fmk->transform(header, fmk_t::transform_t::LOWER));
-	}
+		this->black.erase(this->fmk->transform(key, fmk_t::transform_t::LOWER));
 }
 /**
  * addBlack Метод добавления заголовка в чёрный список
@@ -291,12 +288,9 @@ void awh::Http::rmBlack(const string & key) noexcept {
  */
 void awh::Http::addBlack(const string & key) noexcept {
 	// Если ключ заголовка передан, добавляем в список
-	if(!key.empty()){
-		// Получаем заголовок
-		string header = key;
+	if(!key.empty())
 		// Выполняем добавление заголовка в чёрный список
-		this->black.emplace(this->fmk->transform(header, fmk_t::transform_t::LOWER));
-	}
+		this->black.emplace(this->fmk->transform(key, fmk_t::transform_t::LOWER));
 }
 /**
  * parse Метод парсинга сырых данных
@@ -486,15 +480,15 @@ awh::Http::compress_t awh::Http::compression() const noexcept {
 	// Если данные пришли сжатые
 	if(!encoding.empty()){
 		// Если данные пришли сжатые методом Brotli
-		if(encoding.compare("br") == 0)
+		if(this->fmk->compare(encoding, "br"))
 			// Устанавливаем требование выполнять декомпрессию тела сообщения
 			result = compress_t::BROTLI;
 		// Если данные пришли сжатые методом GZip
-		else if(encoding.compare("gzip") == 0)
+		else if(this->fmk->compare(encoding, "gzip"))
 			// Устанавливаем требование выполнять декомпрессию тела сообщения
 			result = compress_t::GZIP;
 		// Если данные пришли сжатые методом Deflate
-		else if(encoding.compare("deflate") == 0)
+		else if(this->fmk->compare(encoding, "deflate"))
 			// Устанавливаем требование выполнять декомпрессию тела сообщения
 			result = compress_t::DEFLATE;
 	}
@@ -507,7 +501,7 @@ awh::Http::compress_t awh::Http::compression() const noexcept {
 				// Если заголовок найден
 				if(this->fmk->compare(header.first, "accept-encoding")){
 					// Если конкретный метод сжатия не запрашивается
-					if(header.second.compare("*") == 0)
+					if(this->fmk->compare(header.second, "*"))
 						// Устанавливаем требование выполнять декомпрессию тела сообщения
 						return compress_t::BROTLI;
 					// Если запрашиваются конкретные методы сжатия
@@ -798,7 +792,7 @@ bool awh::Http::isAlive() const noexcept {
 	// Если заголовок подключения найден
 	if(!header.empty())
 		// Выполняем проверку является ли соединение закрытым
-		result = (header.compare("close") != 0);
+		result = !this->fmk->compare(header, "close");
 	// Если заголовок подключения не найден
 	else {
 		// Переходим по всему списку заголовков
@@ -806,7 +800,7 @@ bool awh::Http::isAlive() const noexcept {
 			// Если заголовок найден
 			if(this->fmk->compare(header.first, "connection")){
 				// Выполняем проверку является ли соединение закрытым
-				result = (header.second.compare("close") != 0);
+				result = !this->fmk->compare(header.second, "close");
 				// Выходим из цикла
 				break;
 			}
@@ -832,12 +826,9 @@ bool awh::Http::isBlack(const string & key) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Если ключ заголовка передан
-	if(!key.empty()){
-		// Получаем заголовок для проверки
-		string header = key;
+	if(!key.empty())
 		// Выполняем проверку наличия заголовка в чёрном списке
-		result = (this->black.find(this->fmk->transform(header, fmk_t::transform_t::LOWER)) != this->black.end());
-	}
+		result = (this->black.find(this->fmk->transform(key, fmk_t::transform_t::LOWER)) != this->black.end());
 	// Выводим результат
 	return result;
 }
@@ -938,19 +929,19 @@ awh::Http::crypto_t awh::Http::decode(const vector <char> & buffer) const noexce
 		// Если данные пришли сжатые
 		if(!encoding.empty()){
 			// Если данные пришли сжатые методом Brotli
-			if(encoding.compare("br") == 0){
+			if(this->fmk->compare(encoding, "br")){
 				// Выполняем декомпрессию данных
 				const auto & res = this->dhash.decompress(result.data.data(), result.data.size(), hash_t::method_t::BROTLI);
 				// Заменяем полученное тело
 				if((result.compress = !res.empty())) result.data.assign(res.begin(), res.end());
 			// Если данные пришли сжатые методом GZip
-			} else if(encoding.compare("gzip") == 0) {
+			} else if(this->fmk->compare(encoding, "gzip")) {
 				// Выполняем декомпрессию данных
 				const auto & res = this->dhash.decompress(result.data.data(), result.data.size(), hash_t::method_t::GZIP);
 				// Заменяем полученное тело
 				if((result.compress = !res.empty())) result.data.assign(res.begin(), res.end());
 			// Если данные пришли сжатые методом Deflate
-			} else if(encoding.compare("deflate") == 0) {
+			} else if(this->fmk->compare(encoding, "deflate")) {
 				// Получаем данные тела в бинарном виде
 				vector <char> buffer(result.data.begin(), result.data.end());
 				// Добавляем хвост в полученные данные
@@ -1129,7 +1120,7 @@ vector <char> awh::Http::request(const bool nobody) const noexcept {
 					request.append(
 						this->fmk->format(
 							"%s: %s\r\n",
-							this->fmk->transform(* const_cast <string *> (&header.first), fmk_t::transform_t::SMART).c_str(),
+							this->fmk->transform(header.first, fmk_t::transform_t::SMART).c_str(),
 							header.second.c_str()
 						)
 					);
@@ -1263,7 +1254,7 @@ vector <char> awh::Http::response(const bool nobody) const noexcept {
 					response.append(
 						this->fmk->format(
 							"%s: %s\r\n",
-							this->fmk->transform(* const_cast <string *> (&header.first), fmk_t::transform_t::SMART).c_str(),
+							this->fmk->transform(header.first, fmk_t::transform_t::SMART).c_str(),
 							header.second.c_str()
 						)
 					);
@@ -1514,7 +1505,7 @@ vector <char> awh::Http::response(const u_int code, const string & mess) const n
 				response.append(
 					this->fmk->format(
 						"%s: %s\r\n",
-						this->fmk->transform(* const_cast <string *> (&header.first), fmk_t::transform_t::SMART).c_str(),
+						this->fmk->transform(header.first, fmk_t::transform_t::SMART).c_str(),
 						header.second.c_str()
 					)
 				);
@@ -1740,7 +1731,7 @@ vector <char> awh::Http::request(const uri_t::url_t & url, const web_t::method_t
 							                     this->fmk->compare(header.first, "proxy-authorization")); break;
 						case 5: {
 							// Запоминаем, что мы нашли заголовок размера тела
-							available[i] = (header.first.compare("content-length") == 0);
+							available[i] = this->fmk->compare(header.first, "content-length");
 							// Устанавливаем размер тела сообщения
 							if(available[i]) length = ::stoull(header.second);
 						} break;
@@ -1763,7 +1754,7 @@ vector <char> awh::Http::request(const uri_t::url_t & url, const web_t::method_t
 					request.append(
 						this->fmk->format(
 							"%s: %s\r\n",
-							this->fmk->transform(* const_cast <string *> (&header.first), fmk_t::transform_t::SMART).c_str(),
+							this->fmk->transform(header.first, fmk_t::transform_t::SMART).c_str(),
 							header.second.c_str()
 						)
 					);
@@ -1832,7 +1823,7 @@ vector <char> awh::Http::request(const uri_t::url_t & url, const web_t::method_t
 			// Устанавливаем User-Agent если не передан
 			if(!available[3] && !this->isBlack("User-Agent")){
 				// Если User-Agent установлен стандартный
-				if(this->_userAgent.compare(HTTP_HEADER_AGENT) == 0){
+				if(this->fmk->compare(this->_userAgent, HTTP_HEADER_AGENT)){
 					// Название операционной системы
 					const char * os = nullptr;
 					// Определяем название операционной системы

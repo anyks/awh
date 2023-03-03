@@ -79,7 +79,7 @@ awh::URI::url_t awh::URI::parse(const string & url) const noexcept {
 				// Выполняем извлечение пути запроса
 				result.path = this->splitPath(it->second);
 				// Если схема протокола принадлежит unix-сокету
-				if(result.schema.compare("unix") == 0)
+				if(this->_fmk->compare(result.schema, "unix"))
 					// Устанавливаем доменное имя
 					result.host = std::forward <const string> (it->second);
 			}
@@ -269,7 +269,7 @@ string awh::URI::url(const url_t & url) const noexcept {
 	// Если данные получены
 	if(!url.schema.empty() && !url.host.empty()){
 		// Если схема протокола является unix
-		if(url.schema.compare("unix") == 0){
+		if(this->_fmk->compare(url.schema, "unix")){
 			// Получаем строку HTTP запроса
 			const string & query = this->query(url);
 			// Формируем адрес строки unix-сокета
@@ -299,9 +299,9 @@ string awh::URI::url(const url_t & url) const noexcept {
 				// Определяем указанный порт
 				switch(url.port){
 					// Если указан 80 порт
-					case 80: port = (url.schema.compare("http") == 0 || url.schema.compare("ws") == 0 ? 0 : url.port); break;
+					case 80: port = (this->_fmk->compare(url.schema, "http") || this->_fmk->compare(url.schema, "ws") ? 0 : url.port); break;
 					// Если указан 443 порт
-					case 443: port = (url.schema.compare("https") == 0 || url.schema.compare("wss") == 0 ? 0 : url.port); break;
+					case 443: port = (this->_fmk->compare(url.schema, "https") || this->_fmk->compare(url.schema, "wss") ? 0 : url.port); break;
 					// Если - это, любой другой порт
 					default: port = url.port;
 				}
@@ -368,9 +368,9 @@ string awh::URI::origin(const url_t & url) const noexcept {
 		// Определяем указанный порт
 		switch(port){
 			// Если указан 80 порт
-			case 80: port = ((url.schema.compare("http") == 0) || (url.schema.compare("ws") == 0) ? 0 : port); break;
+			case 80: port = (this->_fmk->compare(url.schema, "http") || this->_fmk->compare(url.schema, "ws") ? 0 : port); break;
 			// Если указан 443 порт
-			case 443: port = ((url.schema.compare("https") == 0) || (url.schema.compare("wss") == 0) ? 0 : port); break;
+			case 443: port = (this->_fmk->compare(url.schema, "https") || this->_fmk->compare(url.schema, "wss") ? 0 : port); break;
 		}
 		// Выполняем формирование URL адреса
 		if(port > 0) result = this->_fmk->format("%s://%s:%u", url.schema.c_str(), host.c_str(), port);
@@ -399,7 +399,7 @@ void awh::URI::append(url_t & url, const string & params) const noexcept {
 				// Выполняем извлечение пути запроса
 				url.path = this->splitPath(it->second);
 				// Если схема протокола принадлежит unix-сокету
-				if(url.schema.compare("unix") == 0)
+				if(this->_fmk->compare(url.schema, "unix"))
 					// Устанавливаем доменное имя
 					url.host = std::forward <const string> (it->second);
 			}
@@ -442,20 +442,18 @@ map <awh::URI::flag_t, string> awh::URI::split(const string & uri) const noexcep
 				for(size_t i = 0; i < match.size(); i++){
 					// Если запись получена
 					if(!match[i].str().empty()){
-						// Получаем значение URI
-						string value = match[i].str();
 						// Определяем тип записи
 						switch(i){
 							// Если типом записи является путём запроса
-							case 5: result.emplace(flag_t::PATH, value); break;
+							case 5: result.emplace(flag_t::PATH, match[i].str()); break;
 							// Если типом записи является параметрами запроса
-							case 7: result.emplace(flag_t::PARAMS, value); break;
+							case 7: result.emplace(flag_t::PARAMS, match[i].str()); break;
 							// Если типом записи является якорем запроса
-							case 9: result.emplace(flag_t::ANCHOR, value); break;
+							case 9: result.emplace(flag_t::ANCHOR, match[i].str()); break;
 							// Если типом записи является доменным именем
-							case 4: result.emplace(flag_t::HOST, this->_fmk->transform(value, fmk_t::transform_t::LOWER)); break;
+							case 4: result.emplace(flag_t::HOST, this->_fmk->transform(match[i].str(), fmk_t::transform_t::LOWER)); break;
 							// Если типом записи является протокол
-							case 2: result.emplace(flag_t::SCHEMA, this->_fmk->transform(value, fmk_t::transform_t::LOWER)); break;
+							case 2: result.emplace(flag_t::SCHEMA, this->_fmk->transform(match[i].str(), fmk_t::transform_t::LOWER)); break;
 						}
 					}
 				}
@@ -484,18 +482,16 @@ map <awh::URI::flag_t, string> awh::URI::split(const string & uri) const noexcep
 				for(size_t i = 0; i < match.size(); i++){
 					// Если запись получена
 					if(!match[i].str().empty()){
-						// Получаем значение URI
-						string value = match[i].str();
 						// Определяем тип записи
 						switch(i){
 							// Если типом записи является путём запроса
-							case 5: result.emplace(flag_t::PATH, value); break;
+							case 5: result.emplace(flag_t::PATH, match[i].str()); break;
 							// Если типом записи является параметрами запроса
-							case 7: result.emplace(flag_t::PARAMS, value); break;
+							case 7: result.emplace(flag_t::PARAMS, match[i].str()); break;
 							// Если типом записи является якорем запроса
-							case 9: result.emplace(flag_t::ANCHOR, value); break;
+							case 9: result.emplace(flag_t::ANCHOR, match[i].str()); break;
 							// Если типом записи является доменным именем
-							case 2: result.emplace(flag_t::HOST, this->_fmk->transform(value, fmk_t::transform_t::LOWER)); break;
+							case 2: result.emplace(flag_t::HOST, this->_fmk->transform(match[i].str(), fmk_t::transform_t::LOWER)); break;
 						}
 					}
 				}
@@ -510,7 +506,7 @@ map <awh::URI::flag_t, string> awh::URI::split(const string & uri) const noexcep
 						// Если позиция не нулевая и порт является числом
 						if(pos > 0){
 							// Получаем данные хоста или порта
-							string data = it->second.substr(0, pos);
+							const string & data = it->second.substr(0, pos);
 							// Если данные являются портом
 							if(this->_fmk->is(data, fmk_t::check_t::NUMBER))
 								// Устанавливаем данные порта
@@ -556,7 +552,7 @@ map <awh::URI::flag_t, string> awh::URI::split(const string & uri) const noexcep
 				// Выполняем поиск хоста
 				auto it = result.find(flag_t::HOST);
 				// Если хост запроса обнаружен
-				if((it != result.end()) && it->second.compare("unix") == 0){
+				if((it != result.end()) && this->_fmk->compare(it->second, "unix")){
 					// Извлекаем путь запроса
 					const string & path = result.at(flag_t::PATH);
 					// Если в пути найдено расширение
@@ -577,47 +573,47 @@ map <awh::URI::flag_t, string> awh::URI::split(const string & uri) const noexcep
 					// Получаем схему протокола интернета
 					const string & schema = result.at(flag_t::SCHEMA);
 					// Если протокол является HTTPS
-					if(schema.compare("https") == 0)
+					if(this->_fmk->compare(schema, "https"))
 						// Устанавливаем данные порта
 						result.emplace(flag_t::PORT, "443");
 					// Если протокол является HTTP
-					else if(schema.compare("http") == 0)
+					else if(this->_fmk->compare(schema, "http"))
 						// Устанавливаем данные порта
 						result.emplace(flag_t::PORT, "80");
 					// Если протокол является WSS
-					else if(schema.compare("wss") == 0)
+					else if(this->_fmk->compare(schema, "wss"))
 						// Устанавливаем данные порта
 						result.emplace(flag_t::PORT, "443");
 					// Если протокол является WS
-					else if(schema.compare("ws") == 0)
+					else if(this->_fmk->compare(schema, "ws"))
 						// Устанавливаем данные порта
 						result.emplace(flag_t::PORT, "80");
 					// Если протокол является FTP
-					else if(schema.compare("ftp") == 0)
+					else if(this->_fmk->compare(schema, "ftp"))
 						// Устанавливаем данные порта
 						result.emplace(flag_t::PORT, "21");
 					// Если протокол является MQTT
-					else if(schema.compare("mqtt") == 0)
+					else if(this->_fmk->compare(schema, "mqtt"))
 						// Устанавливаем данные порта
 						result.emplace(flag_t::PORT, "1883");
 					// Если протокол является REDIS
-					else if(schema.compare("redis") == 0)
+					else if(this->_fmk->compare(schema, "redis"))
 						// Устанавливаем данные порта
 						result.emplace(flag_t::PORT, "6379");
 					// Если протокол является Socks5
-					else if(schema.compare("socks5") == 0)
+					else if(this->_fmk->compare(schema, "socks5"))
 						// Устанавливаем данные порта
 						result.emplace(flag_t::PORT, "1080");
 					// Если протокол является PostgreSQL
-					else if(schema.compare("postgresql") == 0)
+					else if(this->_fmk->compare(schema, "postgresql"))
 						// Устанавливаем данные порта
 						result.emplace(flag_t::PORT, "5432");
 					// Иначе устанавливаем порт открытого HTTP протокола
 					else result.emplace(flag_t::PORT, "80");
 				// Если порт установлен как 443
-				} else if(it->second.compare("443") == 0) {
+				} else if(this->_fmk->compare(it->second, "443")) {
 					// Если протокол является HTTP
-					if(result.at(flag_t::SCHEMA).compare("http") == 0)
+					if(this->_fmk->compare(result.at(flag_t::SCHEMA), "http"))
 						// Устанавливаем протокол
 						result.at(flag_t::SCHEMA) = "https";
 				}
@@ -787,14 +783,12 @@ awh::URI::params_t awh::URI::params(const string & uri, const string & schema) c
 		regex_search(uri, match, e);
 		// Если данные найдены
 		if(!match.empty()){
-			// Получаем данные хоста
-			string host = match[3].str();
 			// Получаем пользователя
 			result.user = match[1].str();
 			// Получаем пароль пользователя
 			result.pass = match[2].str();
 			// Получаем хост запроса
-			result.host = this->_fmk->transform(host, fmk_t::transform_t::LOWER);
+			result.host = this->_fmk->transform(match[3].str(), fmk_t::transform_t::LOWER);
 			// Получаем порт запроса
 			const string & port = match[4].str();
 			// Если порт получен
@@ -802,23 +796,23 @@ awh::URI::params_t awh::URI::params(const string & uri, const string & schema) c
 			// Если порт не получен но указана схема
 			else if(!schema.empty()){
 				// Если - это зашифрованный протокол
-				if(schema.compare("https") == 0) result.port = 443;
+				if(this->_fmk->compare(schema, "https")) result.port = 443;
 				// Если - это не зашифрованный протокол
-				else if(schema.compare("http") == 0) result.port = 80;
+				else if(this->_fmk->compare(schema, "http")) result.port = 80;
 				// Если - это зашифрованный протокол WebSocket
-				else if(schema.compare("wss") == 0) result.port = 443;
+				else if(this->_fmk->compare(schema, "wss")) result.port = 443;
 				// Если - это не зашифрованный протокол WebSocket
-				else if(schema.compare("ws") == 0) result.port = 80;
+				else if(this->_fmk->compare(schema, "ws")) result.port = 80;
 				// Если - это FTP
-				else if(schema.compare("ftp") == 0) result.port = 21;
+				else if(this->_fmk->compare(schema, "ftp")) result.port = 21;
 				// Если - это MQTT
-				else if(schema.compare("mqtt") == 0) result.port = 1883;
+				else if(this->_fmk->compare(schema, "mqtt")) result.port = 1883;
 				// Если - это Redis
-				else if(schema.compare("redis") == 0) result.port = 6379;
+				else if(this->_fmk->compare(schema, "redis")) result.port = 6379;
 				// Если - это SOCKS5 прокси
-				else if(schema.compare("socks5") == 0) result.port = 1080;
+				else if(this->_fmk->compare(schema, "socks5")) result.port = 1080;
 				// Если - это PostgreSQL
-				else if(schema.compare("postgresql") == 0) result.port = 5432;
+				else if(this->_fmk->compare(schema, "postgresql")) result.port = 5432;
 			// Устанавливаем порт по умолчанию
 			} else result.port = 80;
 			// Если пароль получен а пользователь нет

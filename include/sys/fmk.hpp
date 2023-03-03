@@ -328,14 +328,14 @@ namespace awh {
 			 * @param flag   флаг трансформации
 			 * @return       трансформированный символ
 			 */
-			char & transform(char & letter, const transform_t flag) const noexcept;
+			char transform(char letter, const transform_t flag) const noexcept;
 			/**
 			 * transform Метод трансформации одного символа
 			 * @param letter символ для трансформации
 			 * @param flag   флаг трансформации
 			 * @return       трансформированный символ
 			 */
-			wchar_t & transform(wchar_t & letter, const transform_t flag) const noexcept;
+			wchar_t transform(wchar_t letter, const transform_t flag) const noexcept;
 		public:
 			/**
 			 * transform Метод трансформации строки
@@ -351,6 +351,21 @@ namespace awh {
 			 * @return     трансформированная строка
 			 */
 			wstring & transform(wstring & text, const transform_t flag) const noexcept;
+		public:
+			/**
+			 * transform Метод трансформации строки
+			 * @param text текст для трансформации
+			 * @param flag флаг трансформации
+			 * @return     трансформированная строка
+			 */
+			const string & transform(const string & text, const transform_t flag) const noexcept;
+			/**
+			 * transform Метод трансформации строки
+			 * @param text текст для трансформации
+			 * @param flag флаг трансформации
+			 * @return     трансформированная строка
+			 */
+			const wstring & transform(const wstring & text, const transform_t flag) const noexcept;
 		public:
 			/**
 			 * split Метод разделения строк на токены

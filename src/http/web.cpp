@@ -272,7 +272,7 @@ size_t awh::Web::readHeaders(const char * buffer, const size_t size) noexcept {
 							// Запрашиваем заголовок подключения
 							const string & header = this->header("connection");
 							// Если заголовок подключения найден
-							if(header.empty() || (header.compare("close") != 0)){
+							if(header.empty() || !this->_fmk->compare(header, "close")){
 								// Тело в запросе не передано
 								this->_state = state_t::END;
 								// Выходим из функции
@@ -399,9 +399,9 @@ size_t awh::Web::readHeaders(const char * buffer, const size_t size) noexcept {
 						// Если - это режим получения заголовков
 						case static_cast <uint8_t> (state_t::HEADERS): {
 							// Получаем ключ заголовка
-							string key = string(buffer, this->_pos[0]);
+							const string & key = string(buffer, this->_pos[0]);
 							// Получаем значение заголовка
-							string val = string(buffer + (this->_pos[0] + 1), size - (this->_pos[0] + 1));
+							const string & val = string(buffer + (this->_pos[0] + 1), size - (this->_pos[0] + 1));
 							// Добавляем заголовок в список заголовков
 							if(!key.empty() && !val.empty())
 								// Добавляем заголовок в список

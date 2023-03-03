@@ -658,7 +658,7 @@ void awh::DNS::resolving(const string & ip, const int family, const size_t did) 
 			// Выполняем переход по всем серверам
 			for(auto jt = it->second.begin(); jt != it->second.end(); ++jt){
 				// Если доменное имя совпадает с сервером имён
-				if(domain.compare(jt->host) == 0){
+				if(this->_fmk->compare(domain, jt->host)){
 					// Если IP адрес получен
 					if(!ip.empty())
 						// Заменяем доменное имя на полученный IP адрес

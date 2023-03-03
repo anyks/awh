@@ -1074,7 +1074,7 @@ string awh::Framework::hash(const string & key, const string & text, const hash_
  * @param flag   флаг трансформации
  * @return       трансформированный символ
  */
-char & awh::Framework::transform(char & letter, const transform_t flag) const noexcept {
+char awh::Framework::transform(char letter, const transform_t flag) const noexcept {
 	// Определяем алгоритм трансформации
 	switch(static_cast <uint8_t> (flag)){
 		// Если передан флаг перевода строки в верхний регистр
@@ -1097,7 +1097,7 @@ char & awh::Framework::transform(char & letter, const transform_t flag) const no
  * @param flag   флаг трансформации
  * @return       трансформированный символ
  */
-wchar_t & awh::Framework::transform(wchar_t & letter, const transform_t flag) const noexcept {
+wchar_t awh::Framework::transform(wchar_t letter, const transform_t flag) const noexcept {
 	// Определяем алгоритм трансформации
 	switch(static_cast <uint8_t> (flag)){
 		// Если передан флаг перевода строки в верхний регистр
@@ -1231,6 +1231,26 @@ wstring & awh::Framework::transform(wstring & text, const transform_t flag) cons
 	}
 	// Выводим результат
 	return text;
+}
+/**
+ * transform Метод трансформации строки
+ * @param text текст для трансформации
+ * @param flag флаг трансформации
+ * @return     трансформированная строка
+ */
+const string & awh::Framework::transform(const string & text, const transform_t flag) const noexcept {
+	// Выполняем трансформацию текста
+	return this->transform(* const_cast <string *> (&text), flag);
+}
+/**
+ * transform Метод трансформации строки
+ * @param text текст для трансформации
+ * @param flag флаг трансформации
+ * @return     трансформированная строка
+ */
+const wstring & awh::Framework::transform(const wstring & text, const transform_t flag) const noexcept {
+	// Выполняем трансформацию текста
+	return this->transform(* const_cast <wstring *> (&text), flag);
 }
 /**
  * split Метод разделения строк на токены
@@ -2000,7 +2020,7 @@ string awh::Framework::format(const string & format, const vector <string> & ite
  */
 string & awh::Framework::replace(string & text, const string & word, const string & alt) const noexcept {
 	// Если текст передан и искомое слово не равно слову для замены
-	if(!text.empty() && !word.empty() && (word.compare(alt) != 0)){
+	if(!text.empty() && !word.empty() && this->compare(word, alt)){
 		// Позиция искомого текста
 		size_t pos = 0;
 		// Определяем текст на который нужно произвести замену
@@ -2025,7 +2045,7 @@ string & awh::Framework::replace(string & text, const string & word, const strin
  */
 wstring & awh::Framework::replace(wstring & text, const wstring & word, const wstring & alt) const noexcept {
 	// Если текст передан и искомое слово не равно слову для замены
-	if(!text.empty() && !word.empty() && (word.compare(alt) != 0)){
+	if(!text.empty() && !word.empty() && this->compare(word, alt)){
 		// Позиция искомого текста
 		size_t pos = 0;
 		// Определяем текст на который нужно произвести замену
@@ -2433,15 +2453,15 @@ size_t awh::Framework::bytes(const string & str) const noexcept {
 		// Проверяем являются ли переданные данные байтами (8, 16, 32, 64, 128, 256, 512, 1024 ...)
 		bool isbite = !::fmod(value / 8.0f, 2.0f);
 		// Если это байты
-		if(param.compare("B") == 0) dimension = 1.0f;
+		if(this->compare(param, "B")) dimension = 1.0f;
 		// Если это размерность в киллобитах
-		else if(param.compare("KB") == 0) dimension = (isbite ? 1000.0f : 1024.0f);
+		else if(this->compare(param, "KB")) dimension = (isbite ? 1000.0f : 1024.0f);
 		// Если это размерность в мегабитах
-		else if(param.compare("MB") == 0) dimension = (isbite ? 1000000.0f : 1048576.0f);
+		else if(this->compare(param, "MB")) dimension = (isbite ? 1000000.0f : 1048576.0f);
 		// Если это размерность в гигабитах
-		else if(param.compare("GB") == 0) dimension = (isbite ? 1000000000.0f : 1073741824.0f);
+		else if(this->compare(param, "GB")) dimension = (isbite ? 1000000000.0f : 1073741824.0f);
 		// Если это размерность в терабайтах
-		else if(param.compare("TB") == 0) dimension = (isbite ? 1000000000000.0f : 1099511627776.0f);
+		else if(this->compare(param, "TB")) dimension = (isbite ? 1000000000000.0f : 1099511627776.0f);
 		// Размер буфера по умолчанию
 		size = static_cast <size_t> (value);
 		// Если размерность установлена тогда расчитываем количество байт
@@ -2473,17 +2493,17 @@ time_t awh::Framework::seconds(const string & str) const noexcept {
 		// Запоминаем параметры
 		const string & param = match[2].str();
 		// Если это секунды
-		if(param.compare("s") == 0) dimension = 1.0f;
+		if(this->compare(param, "s")) dimension = 1.0f;
 		// Если это размерность в минутах
-		else if(param.compare("m") == 0) dimension = 60.0f;
+		else if(this->compare(param, "m")) dimension = 60.0f;
 		// Если это размерность в часах
-		else if(param.compare("h") == 0) dimension = 3600.0f;
+		else if(this->compare(param, "h")) dimension = 3600.0f;
 		// Если это размерность в днях
-		else if(param.compare("d") == 0) dimension = 86400.0f;
+		else if(this->compare(param, "d")) dimension = 86400.0f;
 		// Если это размерность в месяцах
-		else if(param.compare("М") == 0) dimension = 2592000.0f;
+		else if(this->compare(param, "М")) dimension = 2592000.0f;
 		// Если это размерность в годах
-		else if(param.compare("y") == 0) dimension = 31104000.0f;
+		else if(this->compare(param, "y")) dimension = 31104000.0f;
 		// Размер буфера по умолчанию
 		seconds = static_cast <time_t> (value);
 		// Если время установлено тогда расчитываем количество секунд
@@ -2527,13 +2547,13 @@ size_t awh::Framework::sizeBuffer(const string & str) const noexcept {
 		// Проверяем являются ли переданные данные байтами (8, 16, 32, 64, 128, 256, 512, 1024 ...)
 		bool isbite = !::fmod(speed / 8.0f, 2.0f);
 		// Если это байты
-		if(param.compare("bps") == 0) dimension = 1.0f;
+		if(this->compare(param, "bps")) dimension = 1.0f;
 		// Если это размерность в киллобитах
-		else if(param.compare("kbps") == 0) dimension = (isbite ? 1000.0f : 1024.0f);
+		else if(this->compare(param, "kbps")) dimension = (isbite ? 1000.0f : 1024.0f);
 		// Если это размерность в мегабитах
-		else if(param.compare("Mbps") == 0) dimension = (isbite ? 1000000.0f : 1048576.0f);
+		else if(this->compare(param, "Mbps")) dimension = (isbite ? 1000000.0f : 1048576.0f);
 		// Если это размерность в гигабитах
-		else if(param.compare("Gbps") == 0) dimension = (isbite ? 1000000000.0f : 1073741824.0f);
+		else if(this->compare(param, "Gbps")) dimension = (isbite ? 1000000000.0f : 1073741824.0f);
 		// Размер буфера по умолчанию
 		size = static_cast <size_t> (speed);
 		// Если скорость установлена тогда расчитываем размер буфера

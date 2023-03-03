@@ -45,25 +45,25 @@ void awh::server::WS::update() noexcept {
 						case 256: this->hash.cipher(hash_t::cipher_t::AES256); break;
 					}
 				// Если клиент просит отключить перехват контекста сжатия для сервера
-				} else if(val.compare("server_no_context_takeover") == 0) {
+				} else if(this->fmk->compare(val, "server_no_context_takeover")) {
 					// Выполняем отключение перехвата контекста
 					this->_noServerTakeover = true;
 					// Выполняем отключение перехвата контекста
 					this->_noClientTakeover = true;
 				// Если клиент просит отключить перехват контекста сжатия для клиента
-				} else if(val.compare("client_no_context_takeover") == 0)
+				} else if(this->fmk->compare(val, "client_no_context_takeover"))
 					// Выполняем отключение перехвата контекста
 					this->_noClientTakeover = true;
 				// Если получены заголовки требующие сжимать передаваемые фреймы методом Deflate
-				else if((val.compare("permessage-deflate") == 0) || (val.compare("perframe-deflate") == 0)) {
+				else if(this->fmk->compare(val, "permessage-deflate") || this->fmk->compare(val, "perframe-deflate")) {
 					// Устанавливаем требование выполнять компрессию полезной нагрузки
 					if((this->_compress != compress_t::DEFLATE) && (this->_compress != compress_t::ALL_COMPRESS)) this->_compress = compress_t::NONE;
 				// Если получены заголовки требующие сжимать передаваемые фреймы методом GZip
-				} else if((val.compare("permessage-gzip") == 0) || (val.compare("perframe-gzip") == 0)) {
+				} else if(this->fmk->compare(val, "permessage-gzip") || this->fmk->compare(val, "perframe-gzip")) {
 					// Устанавливаем требование выполнять компрессию полезной нагрузки
 					if((this->_compress != compress_t::GZIP) && (this->_compress != compress_t::ALL_COMPRESS)) this->_compress = compress_t::NONE;
 				// Если получены заголовки требующие сжимать передаваемые фреймы методом Brotli
-				} else if((val.compare("permessage-br") == 0) || (val.compare("perframe-br") == 0)) {
+				} else if(this->fmk->compare(val, "permessage-br") || this->fmk->compare(val, "perframe-br")) {
 					// Устанавливаем требование выполнять компрессию полезной нагрузки
 					if((this->_compress != compress_t::BROTLI) && (this->_compress != compress_t::ALL_COMPRESS)) this->_compress = compress_t::NONE;
 				// Если размер скользящего окна для клиента получен
@@ -71,7 +71,7 @@ void awh::server::WS::update() noexcept {
 					// Устанавливаем размер скользящего окна
 					if(this->_compress != compress_t::NONE) this->_wbitClient = stoi(val.substr(23));
 				// Если разрешено использовать максимальный размер скользящего окна для клиента
-				} else if(val.compare("client_max_window_bits") == 0) {
+				} else if(this->fmk->compare(val, "client_max_window_bits")) {
 					// Устанавливаем максимальный размер скользящего окна
 					if(this->_compress != compress_t::NONE) this->_wbitClient = GZIP_MAX_WBITS;
 				}
