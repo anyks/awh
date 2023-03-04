@@ -148,7 +148,7 @@ string awh::client::Auth::header(const string & method, const bool mode) noexcep
 							this->_digest.cnonce.assign(this->_digest.cnonce.begin() + 12, this->_digest.cnonce.end() - 12);
 						}
 						// Выполняем инкрементацию счётчика
-						this->_digest.nc = this->_fmk->decToHex((this->_fmk->hexToDec(this->_digest.nc) + 1));
+						this->_digest.nc = this->_fmk->itoa((this->_fmk->atoi(this->_digest.nc, 16) + 1), 16);
 						// Добавляем нули в начало счётчика
 						for(u_short i = 0; i < (8 - this->_digest.nc.size()); i++)
 							// Добавляем ноль в начало счётчика

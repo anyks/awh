@@ -81,10 +81,10 @@ size_t awh::Web::readPayload(const char * buffer, const size_t size) noexcept {
 								// Меняем стейт чанка
 								this->_chunk.state = cstate_t::ENDSIZE;
 								// Получаем размер чанка
-								this->_chunk.size = this->_fmk->hexToDec(string(
+								this->_chunk.size = this->_fmk->atoi(string(
 									this->_chunk.data.begin(),
 									this->_chunk.data.end()
-								));
+								), 16);
 								// Устанавливаем смещение
 								offset = (i + 1);
 								// Запоминаем количество обработанных байт

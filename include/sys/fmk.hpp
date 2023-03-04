@@ -396,19 +396,6 @@ namespace awh {
 			wstring convert(const string & str) const noexcept;
 		public:
 			/**
-			 * decToHex Метод конвертации 10-го числа в 16-е
-			 * @param number число для конвертации
-			 * @return       результат конвертации
-			 */
-			string decToHex(const size_t number) const noexcept;
-			/**
-			 * hexToDec Метод конвертации 16-го числа в 10-е
-			 * @param number число для конвертации
-			 * @return       результат конвертации
-			 */
-			size_t hexToDec(const string & number) const noexcept;
-		public:
-			/**
 			 * itoa Метод конвертации чисел в указанную систему счисления
 			 * @param value число для конвертации
 			 * @param radix система счисления

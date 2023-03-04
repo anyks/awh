@@ -340,7 +340,7 @@ const vector <char> awh::Http::payload() const noexcept {
 			// Если тело сообщения больше размера чанка
 			if(body->size() >= this->_chunk){
 				// Получаем размер чанка
-				chunk = this->fmk->decToHex(this->_chunk);
+				chunk = this->fmk->itoa(this->_chunk, 16);
 				// Добавляем разделитель
 				chunk.append("\r\n");
 				// Формируем тело чанка
@@ -352,7 +352,7 @@ const vector <char> awh::Http::payload() const noexcept {
 			// Если тело сообщения полностью убирается в размер чанка
 			} else {
 				// Получаем размер чанка
-				chunk = this->fmk->decToHex(body->size());
+				chunk = this->fmk->itoa(body->size(), 16);
 				// Добавляем разделитель
 				chunk.append("\r\n");
 				// Формируем тело чанка

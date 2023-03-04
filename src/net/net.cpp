@@ -1266,7 +1266,7 @@ bool awh::Net::parse(const string & addr, const type_t type) noexcept {
 								// Если хексет установлен
 								if(!it->empty())
 									// Добавляем хексет в список
-									buffer[--index] = static_cast <uint16_t> (this->_fmk->hexToDec(* it));
+									buffer[--index] = static_cast <uint16_t> (this->_fmk->atoi(* it, 16));
 								// Выходим из цикла
 								else break;
 							}
@@ -1294,7 +1294,7 @@ bool awh::Net::parse(const string & addr, const type_t type) noexcept {
 								// Если хексет установлен
 								if(!it->empty())
 									// Добавляем хексет в список
-									buffer[--index] = static_cast <uint16_t> (this->_fmk->hexToDec(* it));
+									buffer[--index] = static_cast <uint16_t> (this->_fmk->atoi(* it, 16));
 								// Выходим из цикла
 								else break;
 							}
@@ -1309,7 +1309,7 @@ bool awh::Net::parse(const string & addr, const type_t type) noexcept {
 							// Если хексет установлен
 							if(!it->empty())
 								// Добавляем хексет в список
-								buffer[index++] = static_cast <uint16_t> (this->_fmk->hexToDec(* it));
+								buffer[index++] = static_cast <uint16_t> (this->_fmk->atoi(* it, 16));
 							// Выходим из цикла
 							else break;
 						}
@@ -1322,7 +1322,7 @@ bool awh::Net::parse(const string & addr, const type_t type) noexcept {
 								// Если хексет установлен
 								if(!it->empty())
 									// Добавляем хексет в список
-									buffer[--index] = static_cast <uint16_t> (this->_fmk->hexToDec(* it));
+									buffer[--index] = static_cast <uint16_t> (this->_fmk->atoi(* it, 16));
 								// Выходим из цикла
 								else break;
 							}
