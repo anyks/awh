@@ -1,6 +1,6 @@
 /**
  * @file: fmk.hpp
- * @date: 2021-12-19
+ * @date: 2023-03-04
  * @license: GPL-3.0
  *
  * @telegram: @forman
@@ -9,7 +9,7 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
- * @copyright: Copyright © 2021
+ * @copyright: Copyright © 2023
  */
 
 #ifndef __AWH_FRAMEWORK__
@@ -518,6 +518,23 @@ namespace awh {
 			 * @return     результирующий текст
 			 */
 			wstring & replace(wstring & text, const wstring & word, const wstring & alt = L"") const noexcept;
+		public:
+			/**
+			 * replace Метод замены в тексте слово на другое слово
+			 * @param text текст в котором нужно произвести замену
+			 * @param word слово для поиска
+			 * @param alt  слово на которое нужно произвести замену
+			 * @return     результирующий текст
+			 */
+			const string & replace(const string & text, const string & word, const string & alt = "") const noexcept;
+			/**
+			 * replace Метод замены в тексте слово на другое слово
+			 * @param text текст в котором нужно произвести замену
+			 * @param word слово для поиска
+			 * @param alt  слово на которое нужно произвести замену
+			 * @return     результирующий текст
+			 */
+			const wstring & replace(const wstring & text, const wstring & word, const wstring & alt = L"") const noexcept;
 		public:
 			/**
 			 * domainZone Метод установки пользовательской зоны

@@ -1,6 +1,6 @@
 /**
  * @file: fmk.cpp
- * @date: 2021-12-19
+ * @date: 2023-03-04
  * @license: GPL-3.0
  *
  * @telegram: @forman
@@ -9,7 +9,7 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
- * @copyright: Copyright © 2021
+ * @copyright: Copyright © 2023
  */
 
 // Подключаем заголовочный файл
@@ -2018,6 +2018,28 @@ wstring & awh::Framework::replace(wstring & text, const wstring & word, const ws
 	}
 	// Выводим результат
 	return text;
+}
+/**
+ * replace Метод замены в тексте слово на другое слово
+ * @param text текст в котором нужно произвести замену
+ * @param word слово для поиска
+ * @param alt  слово на которое нужно произвести замену
+ * @return     результирующий текст
+ */
+const string & awh::Framework::replace(const string & text, const string & word, const string & alt) const noexcept {
+	// Выполняем замену в тексте слово на другое слово
+	return this->replace(* const_cast <string *> (&text), word, alt);
+}
+/**
+ * replace Метод замены в тексте слово на другое слово
+ * @param text текст в котором нужно произвести замену
+ * @param word слово для поиска
+ * @param alt  слово на которое нужно произвести замену
+ * @return     результирующий текст
+ */
+const wstring & awh::Framework::replace(const wstring & text, const wstring & word, const wstring & alt) const noexcept {
+	// Выполняем замену в тексте слово на другое слово
+	return this->replace(* const_cast <wstring *> (&text), word, alt);
 }
 /**
  * domainZone Метод установки пользовательской зоны
