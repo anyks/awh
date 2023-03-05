@@ -1389,43 +1389,24 @@ int64_t awh::Framework::atoi(const string & value, const uint8_t radix) const no
 	int64_t result = 0;
 	// Если данные для конвертации переданы
 	if(!value.empty() && (radix > 0) && (radix < 37)){
-		// Устанавливаем числовые обозначения
-		const map <char, uint8_t> digits = {
-			{'0', 0}, {'1', 1},
-			{'2', 2}, {'3', 3},
-			{'4', 4}, {'5', 5},
-			{'6', 6}, {'7', 7},
-			{'8', 8}, {'9', 9},
-			{'A', 10}, {'B', 11},
-			{'C', 12}, {'D', 13},
-			{'E', 14}, {'F', 15},
-			{'G', 16}, {'H', 17},
-			{'I', 18}, {'J', 19},
-			{'K', 20}, {'L', 21},
-			{'M', 22}, {'N', 23},
-			{'O', 24}, {'P', 25},
-			{'Q', 26}, {'R', 27},
-			{'S', 28}, {'T', 29},
-			{'U', 30}, {'V', 31},
-			{'W', 32}, {'X', 33},
-			{'Y', 34}, {'Z', 35}
-		};
+		// Позиция в строке алфавита
+		size_t pos = string::npos;
 		// Запоминаем являлось ли число отрицательным
 		const bool sign = (value.front() == '-');
+		// Устанавливаем числовые обозначения
+		const string digits = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 		// Выполняем перевод в верхний регистр
 		string number = std::forward <const string> (value);
 		// Выполняем перевод число в верхний регистр
 		this->transform(number, transform_t::UPPER);
 		// Начальное и конечное количество перебираемых элементов
-		const uint8_t start = (sign ? 1 : 0), stop = (sign ? number.length() - 1 : number.length());
+		const uint8_t start = (sign ? 1 : 0), stop = (sign ? static_cast <uint8_t> (number.length()) - 1 : static_cast <uint8_t> (number.length()));
 		// Выполняем перебор всех чисел
 		for(uint8_t i = start; i < (sign ? stop + 1 : stop); i++){
-			// Выполняем поиск символа в словаре
-			auto it = digits.find(number.at(i));
 			// Если символ найден
-			if(it != digits.end())
+			if((pos = digits.find(number.at(i))) != string::npos)
 				// Выполняем перевод в 10-ю систему счисления
-				result += (it->second * pow(radix, stop - (sign ? i - 1 : i) - 1));
+				result += (pos * ::pow(radix, stop - (sign ? i - 1 : i) - 1));
 			// Иначе выходим из цикла
 			else return 0;
 		}
