@@ -900,8 +900,6 @@ string awh::Framework::hash(const string & text, const hash_t hash) const noexce
 	string result = "";
 	// Если текст для хэширования передан
 	if(!text.empty()){
-		// Буфер бинарных данных
-		vector <char> buffer;
 		// Буфер промежуточных значений
 		vector <u_char> digest;
 		// Определяем тип хэш-суммы
@@ -912,10 +910,10 @@ string awh::Framework::hash(const string & text, const hash_t hash) const noexce
 				MD5_CTX ctx;
 				// Выполняем инициализацию контекста
 				MD5_Init(&ctx);
-				// Выделяем память для буфера данных
-				buffer.resize(32, 0);
 				// Выделяем память для промежуточных значений
 				digest.resize(16, 0);
+				// Выделяем память для буфера данных
+				result.resize(33, 0);
 				// Выполняем расчет суммы
 				MD5_Update(&ctx, text.c_str(), text.length());
 				// Копируем полученные данные
@@ -923,9 +921,9 @@ string awh::Framework::hash(const string & text, const hash_t hash) const noexce
 				// Заполняем строку данными MD5
 				for(uint8_t i = 0; i < 16; i++)
 					// Формируем данные MD5-хэша
-					sprintf(&buffer[i * 2], "%02x", static_cast <u_int> (digest[i]));
-				// Выводим результат
-				result.assign(buffer.begin(), buffer.end());
+					sprintf(&result[i * 2], "%02x", static_cast <u_int> (digest[i]));
+				// Удаляем последний символ
+				result.pop_back();
 			} break;
 			// Если тип хэш-суммы указан как SHA1
 			case static_cast <uint8_t> (hash_t::SHA1): {
@@ -933,10 +931,10 @@ string awh::Framework::hash(const string & text, const hash_t hash) const noexce
 				SHA_CTX ctx;
 				// Выполняем инициализацию контекста
 				SHA1_Init(&ctx);
-				// Выделяем память для буфера данных
-				buffer.resize(40, 0);
 				// Выделяем память для промежуточных значений
 				digest.resize(20, 0);
+				// Выделяем память для буфера данных
+				result.resize(41, 0);
 				// Выполняем расчет суммы
 				SHA1_Update(&ctx, text.c_str(), text.length());
 				// Копируем полученные данные
@@ -944,9 +942,9 @@ string awh::Framework::hash(const string & text, const hash_t hash) const noexce
 				// Заполняем строку данными SHA1
 				for(uint8_t i = 0; i < 20; i++)
 					// Формируем данные SHA1-хэша
-					sprintf(&buffer[i * 2], "%02x", static_cast <u_int> (digest[i]));
-				// Выводим результат
-				result.assign(buffer.begin(), buffer.end());
+					sprintf(&result[i * 2], "%02x", static_cast <u_int> (digest[i]));
+				// Удаляем последний символ
+				result.pop_back();
 			} break;
 			// Если тип хэш-суммы указан как SHA256
 			case static_cast <uint8_t> (hash_t::SHA256): {
@@ -954,10 +952,10 @@ string awh::Framework::hash(const string & text, const hash_t hash) const noexce
 				SHA256_CTX ctx;
 				// Выполняем инициализацию контекста
 				SHA256_Init(&ctx);
-				// Выделяем память для буфера данных
-				buffer.resize(64, 0);
 				// Выделяем память для промежуточных значений
 				digest.resize(32, 0);
+				// Выделяем память для буфера данных
+				result.resize(65, 0);
 				// Выполняем расчет суммы
 				SHA256_Update(&ctx, text.c_str(), text.length());
 				// Копируем полученные данные
@@ -965,9 +963,9 @@ string awh::Framework::hash(const string & text, const hash_t hash) const noexce
 				// Заполняем строку данными SHA256
 				for(uint8_t i = 0; i < 32; i++)
 					// Формируем данные SHA256-хэша
-					sprintf(&buffer[i * 2], "%02x", static_cast <u_int> (digest[i]));
-				// Выводим результат
-				result.assign(buffer.begin(), buffer.end());
+					sprintf(&result[i * 2], "%02x", static_cast <u_int> (digest[i]));
+				// Удаляем последний символ
+				result.pop_back();
 			} break;
 			// Если тип хэш-суммы указан как SHA512
 			case static_cast <uint8_t> (hash_t::SHA512): {
@@ -975,10 +973,10 @@ string awh::Framework::hash(const string & text, const hash_t hash) const noexce
 				SHA512_CTX ctx;
 				// Выполняем инициализацию контекста
 				SHA512_Init(&ctx);
-				// Выделяем память для буфера данных
-				buffer.resize(128, 0);
 				// Выделяем память для промежуточных значений
 				digest.resize(64, 0);
+				// Выделяем память для буфера данных
+				result.resize(129, 0);
 				// Выполняем расчет суммы
 				SHA512_Update(&ctx, text.c_str(), text.length());
 				// Копируем полученные данные
@@ -986,9 +984,9 @@ string awh::Framework::hash(const string & text, const hash_t hash) const noexce
 				// Заполняем строку данными SHA512
 				for(uint8_t i = 0; i < 64; i++)
 					// Формируем данные SHA512-хэша
-					sprintf(&buffer[i * 2], "%02x", static_cast <u_int> (digest[i]));
-				// Выводим результат
-				result.assign(buffer.begin(), buffer.end());
+					sprintf(&result[i * 2], "%02x", static_cast <u_int> (digest[i]));
+				// Удаляем последний символ
+				result.pop_back();
 			} break;
 		}
 	}
@@ -1007,61 +1005,59 @@ string awh::Framework::hash(const string & key, const string & text, const hash_
 	string result = "";
 	// Если текст для хэширования передан
 	if(!text.empty()){
-		// Буфер бинарных данных
-		vector <char> buffer;
 		// Определяем тип хэш-суммы
 		switch(static_cast <uint8_t> (hash)){
 			// Если тип хэш-суммы указан как HMAC_MD5
 			case static_cast <uint8_t> (hash_t::HMAC_MD5): {
 				// Выделяем память для буфера данных
-				buffer.resize(32, 0);
+				result.resize(33, 0);
 				// Выполняем получение подписи
 				const u_char * digest = HMAC(EVP_md5(), key.data(), key.size(), reinterpret_cast <const u_char *> (text.data()), text.size(), nullptr, nullptr);
 				// Заполняем строку данными MD5
 				for(uint8_t i = 0; i < 16; i++)
 					// Формируем данные MD5-хэша
-					sprintf(&buffer[i * 2], "%02x", static_cast <u_int> (digest[i]));
-				// Выводим результат
-				result.assign(buffer.begin(), buffer.end());
+					sprintf(&result[i * 2], "%02x", static_cast <u_int> (digest[i]));
+				// Удаляем последний символ
+				result.pop_back();
 			} break;
 			// Если тип хэш-суммы указан как HMAC_SHA1
 			case static_cast <uint8_t> (hash_t::HMAC_SHA1): {
 				// Выделяем память для буфера данных
-				buffer.resize(40, 0);
+				result.resize(41, 0);
 				// Выполняем получение подписи
 				const u_char * digest = HMAC(EVP_sha1(), key.data(), key.size(), reinterpret_cast <const u_char *> (text.data()), text.size(), nullptr, nullptr);
 				// Заполняем строку данными SHA1
 				for(uint8_t i = 0; i < 20; i++)
 					// Формируем данные SHA1-хэша
-					sprintf(&buffer[i * 2], "%02x", static_cast <u_int> (digest[i]));
-				// Выводим результат
-				result.assign(buffer.begin(), buffer.end());
+					sprintf(&result[i * 2], "%02x", static_cast <u_int> (digest[i]));
+				// Удаляем последний символ
+				result.pop_back();
 			} break;
 			// Если тип хэш-суммы указан как HMAC_SHA256
 			case static_cast <uint8_t> (hash_t::HMAC_SHA256): {
 				// Выделяем память для буфера данных
-				buffer.resize(64, 0);
+				result.resize(65, 0);
 				// Выполняем получение подписи
 				const u_char * digest = HMAC(EVP_sha256(), key.data(), key.size(), reinterpret_cast <const u_char *> (text.data()), text.size(), nullptr, nullptr);
 				// Заполняем строку данными SHA256
 				for(uint8_t i = 0; i < 32; i++)
 					// Формируем данные SHA256-хэша
-					sprintf(&buffer[i * 2], "%02x", static_cast <u_int> (digest[i]));
-				// Выводим результат
-				result.assign(buffer.begin(), buffer.end());
+					sprintf(&result[i * 2], "%02x", static_cast <u_int> (digest[i]));
+				// Удаляем последний символ
+				result.pop_back();
 			} break;
 			// Если тип хэш-суммы указан как HMAC_SHA512
 			case static_cast <uint8_t> (hash_t::HMAC_SHA512): {
 				// Выделяем память для буфера данных
-				buffer.resize(128, 0);
+				result.resize(129, 0);
 				// Выполняем получение подписи
 				const u_char * digest = HMAC(EVP_sha512(), key.data(), key.size(), reinterpret_cast <const u_char *> (text.data()), text.size(), nullptr, nullptr);
 				// Заполняем строку данными SHA512
 				for(uint8_t i = 0; i < 64; i++)
 					// Формируем данные SHA512-хэша
-					sprintf(&buffer[i * 2], "%02x", static_cast <u_int> (digest[i]));
-				// Выводим результат
-				result.assign(buffer.begin(), buffer.end());
+					sprintf(&result[i * 2], "%02x", static_cast <u_int> (digest[i]));
+				// Удаляем последний символ
+				result.pop_back();
 			} break;
 		}
 	}
