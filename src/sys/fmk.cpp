@@ -913,7 +913,7 @@ string awh::Framework::hash(const string & text, const hash_t hash) const noexce
 				// Выполняем инициализацию контекста
 				MD5_Init(&ctx);
 				// Выделяем память для буфера данных
-				buffer.resize(33, 0);
+				buffer.resize(32, 0);
 				// Выделяем память для промежуточных значений
 				digest.resize(16, 0);
 				// Выполняем расчет суммы
@@ -934,7 +934,7 @@ string awh::Framework::hash(const string & text, const hash_t hash) const noexce
 				// Выполняем инициализацию контекста
 				SHA1_Init(&ctx);
 				// Выделяем память для буфера данных
-				buffer.resize(41, 0);
+				buffer.resize(40, 0);
 				// Выделяем память для промежуточных значений
 				digest.resize(20, 0);
 				// Выполняем расчет суммы
@@ -955,7 +955,7 @@ string awh::Framework::hash(const string & text, const hash_t hash) const noexce
 				// Выполняем инициализацию контекста
 				SHA256_Init(&ctx);
 				// Выделяем память для буфера данных
-				buffer.resize(65, 0);
+				buffer.resize(64, 0);
 				// Выделяем память для промежуточных значений
 				digest.resize(32, 0);
 				// Выполняем расчет суммы
@@ -976,7 +976,7 @@ string awh::Framework::hash(const string & text, const hash_t hash) const noexce
 				// Выполняем инициализацию контекста
 				SHA512_Init(&ctx);
 				// Выделяем память для буфера данных
-				buffer.resize(129, 0);
+				buffer.resize(128, 0);
 				// Выделяем память для промежуточных значений
 				digest.resize(64, 0);
 				// Выполняем расчет суммы
@@ -1014,7 +1014,7 @@ string awh::Framework::hash(const string & key, const string & text, const hash_
 			// Если тип хэш-суммы указан как HMAC_MD5
 			case static_cast <uint8_t> (hash_t::HMAC_MD5): {
 				// Выделяем память для буфера данных
-				buffer.resize(33, 0);
+				buffer.resize(32, 0);
 				// Выполняем получение подписи
 				const u_char * digest = HMAC(EVP_md5(), key.data(), key.size(), reinterpret_cast <const u_char *> (text.data()), text.size(), nullptr, nullptr);
 				// Заполняем строку данными MD5
@@ -1027,7 +1027,7 @@ string awh::Framework::hash(const string & key, const string & text, const hash_
 			// Если тип хэш-суммы указан как HMAC_SHA1
 			case static_cast <uint8_t> (hash_t::HMAC_SHA1): {
 				// Выделяем память для буфера данных
-				buffer.resize(41, 0);
+				buffer.resize(40, 0);
 				// Выполняем получение подписи
 				const u_char * digest = HMAC(EVP_sha1(), key.data(), key.size(), reinterpret_cast <const u_char *> (text.data()), text.size(), nullptr, nullptr);
 				// Заполняем строку данными SHA1
@@ -1040,7 +1040,7 @@ string awh::Framework::hash(const string & key, const string & text, const hash_
 			// Если тип хэш-суммы указан как HMAC_SHA256
 			case static_cast <uint8_t> (hash_t::HMAC_SHA256): {
 				// Выделяем память для буфера данных
-				buffer.resize(65, 0);
+				buffer.resize(64, 0);
 				// Выполняем получение подписи
 				const u_char * digest = HMAC(EVP_sha256(), key.data(), key.size(), reinterpret_cast <const u_char *> (text.data()), text.size(), nullptr, nullptr);
 				// Заполняем строку данными SHA256
@@ -1053,7 +1053,7 @@ string awh::Framework::hash(const string & key, const string & text, const hash_
 			// Если тип хэш-суммы указан как HMAC_SHA512
 			case static_cast <uint8_t> (hash_t::HMAC_SHA512): {
 				// Выделяем память для буфера данных
-				buffer.resize(129, 0);
+				buffer.resize(128, 0);
 				// Выполняем получение подписи
 				const u_char * digest = HMAC(EVP_sha512(), key.data(), key.size(), reinterpret_cast <const u_char *> (text.data()), text.size(), nullptr, nullptr);
 				// Заполняем строку данными SHA512
