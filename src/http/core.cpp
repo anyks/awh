@@ -744,7 +744,7 @@ void awh::Http::dump(const vector <char> & data) noexcept {
 			// Если заголовок чёрного списка получен
 			if(!header.empty())
 				// Выполняем добавление заголовка чёрного списка
-				this->black.emplace(move(header));
+				this->black.emplace(std::move(header));
 		}
 		// Выполняем получение размера дампа WEB данных
 		memcpy((void *) &length, data.data() + offset, sizeof(length));
@@ -757,7 +757,7 @@ void awh::Http::dump(const vector <char> & data) noexcept {
 		// Выполняем смещение в буфере
 		offset += length;
 		// Если дамп WEB данных получен, устанавливаем его
-		if(!buffer.empty()) this->web.dump(move(buffer));
+		if(!buffer.empty()) this->web.dump(std::move(buffer));
 	}
 }
 /**

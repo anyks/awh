@@ -206,7 +206,7 @@ void awh::DNS::Worker::response(ev::io & io, int revents) noexcept {
 							// Если IP адрес не найден в списке
 							if(dns->_using.count(addr) < 1){
 								// Выполняем установку IP адреса
-								ip = ::move(addr);
+								ip = std::move(addr);
 								// Выходим из цикла
 								break;
 							}
@@ -215,7 +215,7 @@ void awh::DNS::Worker::response(ev::io & io, int revents) noexcept {
 					// Если IP адрес не установлен
 					if(ip.empty()){
 						// Выполняем установку IP адреса
-						ip = ::move(ips.front());
+						ip = std::move(ips.front());
 						// Если количество IP адресов в списке больше 1-го
 						if(ips.size() > 1){
 							// Получаем текущее значение адреса

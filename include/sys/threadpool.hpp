@@ -75,7 +75,7 @@ namespace awh {
 						// Если это остановка приложения и список задач пустой, выходим
 						if(this->stop && this->tasks.empty()) return;
 						// Получаем текущее задание
-						task = move(this->tasks.front());
+						task = std::move(this->tasks.front());
 						// Удаляем текущее задание
 						this->tasks.pop();
 					}
@@ -184,7 +184,7 @@ namespace awh {
 				// Устанавливаем тип возвращаемого значения
 				using return_type = typename result_of <Func(Args...)>::type;
 				// Добавляем задачу в очередь для последующего исполнения
-				auto task = make_shared <packaged_task <return_type()>> (bind(forward <Func>(func), forward <Args> (args)...));
+				auto task = make_shared <packaged_task <return_type()>> (std::bind(std::forward <Func>(func), std::forward <Args> (args)...));
 				// Создаем шаблон асинхронных операций
 				future <return_type> res = task->get_future();
 				{

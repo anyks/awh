@@ -80,7 +80,7 @@
 						// Удаляем процесс из списка процессов
 						cluster->_pids.erase(pid);
 						// Устанавливаем дочерний процесс
-						worker.second.at(index) = move(jack);
+						worker.second.at(index) = std::move(jack);
 						// Замораживаем поток на период в 5 секунд
 						this_thread::sleep_for(5s);
 						// Выполняем создание нового процесса
@@ -131,7 +131,7 @@ void awh::Cluster::fork(const size_t wid, const uint16_t index, const bool stop)
 						// Создаём объект работника
 						unique_ptr <jack_t> jack(new jack_t);
 						// Выполняем добавление работника в список работников
-						jt->second.push_back(move(jack));
+						jt->second.push_back(std::move(jack));
 					}
 					// Получаем объект текущего работника
 					jack_t * jack = jt->second.at(index).get();

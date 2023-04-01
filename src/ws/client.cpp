@@ -183,17 +183,17 @@ awh::Http::stath_t awh::client::WS::checkAuth() noexcept {
 				}
 				*/
 				// Меняем IP адрес сервера
-				const_cast <uri_t::url_t *> (&this->url)->ip = move(tmp.ip);
+				const_cast <uri_t::url_t *> (&this->url)->ip = std::move(tmp.ip);
 				// Меняем порт сервера
-				const_cast <uri_t::url_t *> (&this->url)->port = move(tmp.port);
+				const_cast <uri_t::url_t *> (&this->url)->port = std::move(tmp.port);
 				// Меняем на путь сервере
-				const_cast <uri_t::url_t *> (&this->url)->path = move(tmp.path);
+				const_cast <uri_t::url_t *> (&this->url)->path = std::move(tmp.path);
 				// Меняем доменное имя сервера
-				const_cast <uri_t::url_t *> (&this->url)->domain = move(tmp.domain);
+				const_cast <uri_t::url_t *> (&this->url)->domain = std::move(tmp.domain);
 				// Меняем протокол запроса сервера
-				const_cast <uri_t::url_t *> (&this->url)->schema = move(tmp.schema);
+				const_cast <uri_t::url_t *> (&this->url)->schema = std::move(tmp.schema);
 				// Устанавливаем новый список параметров
-				// const_cast <uri_t::url_t *> (&this->url)->params = move(tmp.params);
+				// const_cast <uri_t::url_t *> (&this->url)->params = std::move(tmp.params);
 				// Просим повторить авторизацию ещё раз
 				result = http_t::stath_t::RETRY;
 			}

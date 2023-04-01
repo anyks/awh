@@ -217,7 +217,7 @@ void awh::WS::dump(const vector <char> & data) noexcept {
 			// Выполняем смещение в буфере
 			offset += length;
 			// Если сабпротокол получен, добавляем его в список
-			if(!sub.empty()) this->_subs.emplace(move(sub));
+			if(!sub.empty()) this->_subs.emplace(std::move(sub));
 		}
 	}
 }

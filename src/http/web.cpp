@@ -663,7 +663,7 @@ void awh::Web::dump(const vector <char> & data) noexcept {
 			// Если и ключ и значение заголовка получены
 			if(!key.empty() && !value.empty())
 				// Добавляем заголовок в список заголовков
-				this->_headers.emplace(move(key), move(value));
+				this->_headers.emplace(std::move(key), std::move(value));
 		}
 	}
 }

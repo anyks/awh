@@ -685,7 +685,7 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 				// Выполняем получение MAC адреса
 				sprintf(hardware, "%02X:%02X:%02X:%02X:%02X:%02X", cp[0], cp[1], cp[2], cp[3], cp[4], cp[5]);
 				// Получаем результат MAC адреса
-				result = move(hardware);
+				result = std::move(hardware);
 				// Выходим из цикла
 				break;
 			}
@@ -752,7 +752,7 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 				// Выполняем получение MAC адреса
 				sprintf(hardware, "%02X:%02X:%02X:%02X:%02X:%02X", cp[0], cp[1], cp[2], cp[3], cp[4], cp[5]);
 				// Получаем результат MAC адреса
-				result = move(hardware);
+				result = std::move(hardware);
 				// Выходим из цикла
 				break;
 			}
@@ -840,7 +840,7 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 					// Выполняем получение MAC адреса
 					sprintf(hardware, "%02X:%02X:%02X:%02X:%02X:%02X", cp[0], cp[1], cp[2], cp[3], cp[4], cp[5]);
 					// Получаем результат MAC адреса
-					result = move(hardware);
+					result = std::move(hardware);
 				// Если извлечь MAC адрес не вышло, извлекаем его напрямую
 				} else {
 					// Создаём буфер для MAC адреса
@@ -855,7 +855,7 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 					// Выполняем получение MAC адреса
 					sprintf(hardware, "%02X:%02X:%02X:%02X:%02X:%02X", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
 					// Получаем результат MAC адреса
-					result = move(hardware);
+					result = std::move(hardware);
 				}
 				// Выходим из цикла
 				break;
@@ -978,7 +978,7 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 			// Выполняем получение MAC адреса
 			sprintf(hardware, "%02X:%02X:%02X:%02X:%02X:%02X", cp[0], cp[1], cp[2], cp[3], cp[4], cp[5]);
 			// Получаем результат MAC адреса
-			result = move(hardware);
+			result = std::move(hardware);
 		}
 		// Закрываем сетевой сокет
 		this->close(fd);
@@ -1042,7 +1042,7 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 						// Выполняем получение MAC адреса
 						sprintf(hardware, "%02X:%02X:%02X:%02X:%02X:%02X", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
 						// Получаем результат MAC адреса
-						result = move(hardware);
+						result = std::move(hardware);
 					}
 					// Выходим из цикла
 					break;
@@ -1072,7 +1072,7 @@ const string awh::IfNet::mac(const string & ip, const int family) const noexcept
 			// Выполняем получение MAC адреса
 			sprintf(hardware, "%02X:%02X:%02X:%02X:%02X:%02X", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
 			// Получаем результат MAC адреса
-			result = move(hardware);
+			result = std::move(hardware);
 		}
 	}
 #endif
@@ -1165,7 +1165,7 @@ const string awh::IfNet::mac(struct sockaddr * sin, const int family) const noex
 				// Выполняем получение MAC адреса
 				sprintf(hardware, "%02X:%02X:%02X:%02X:%02X:%02X", cp[0], cp[1], cp[2], cp[3], cp[4], cp[5]);
 				// Выводим данные мак адреса
-				result = move(hardware);
+				result = std::move(hardware);
 			} break;
 			// Если это IPv6
 			case AF_INET6: {
@@ -1181,7 +1181,7 @@ const string awh::IfNet::mac(struct sockaddr * sin, const int family) const noex
 				// Выполняем получение MAC адреса
 				sprintf(hardware, "%02X:%02X:%02X:%02X:%02X:%02X", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
 				// Получаем результат MAC адреса
-				result = move(hardware);
+				result = std::move(hardware);
 			} break;
 		}
 	}
@@ -1234,7 +1234,7 @@ const string awh::IfNet::ip(const int family) const noexcept {
 						// Запрашиваем данные ip адреса
 						inet_ntop(family, &name.sin_addr, buffer, sizeof(buffer));
 						// Выводим результат
-						result = move(buffer);
+						result = std::move(buffer);
 					}
 				}
 			} break;
@@ -1271,7 +1271,7 @@ const string awh::IfNet::ip(const int family) const noexcept {
 						// Запрашиваем данные ip адреса
 						inet_ntop(family, &name.sin6_addr, buffer, sizeof(buffer));
 						// Выводим результат
-						result = move(buffer);
+						result = std::move(buffer);
 					}
 				}
 			} break;

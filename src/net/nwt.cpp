@@ -206,13 +206,15 @@ const awh::NWT::data_t awh::NWT::parse(const wstring & text) noexcept {
 				// Выполняем поиск ip адресов
 				data_t ip = ipFn(text);
 				// Если результат получен
-				if(ip.type != types_t::NONE) result = move(ip);
+				if(ip.type != types_t::NONE)
+					// Устанавливаем IP адрес
+					result = std::move(ip);
 				// Если же ip адре не получен то возвращаем данные домена
-				else result = move(domain);
+				else result = std::move(domain);
 			// Иначе запоминаем результат
-			} else result = move(domain);
+			} else result = std::move(domain);
 		// Иначе запоминаем результат
-		} else result = move(email);
+		} else result = std::move(email);
 	}
 	// Выводим результат
 	return result;
