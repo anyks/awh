@@ -52,7 +52,7 @@ void awh::Log::rotate() const noexcept {
 				// Прочитанная строка из файла
 				string filedata = "";
 				// Открываем файл на сжатие
-				gzFile gz = gzopen(this->_fmk->format("%s.gz", this->_filename.c_str()).c_str(), "wb9h");
+				gzFile gz = gzopen(this->_fmk->format("%s%s.gz", this->_filename.c_str(), date).c_str(), "wb9h");
 				// Считываем до тех пор пока все удачно
 				while(file.good()){
 					// Считываем строку из файла
