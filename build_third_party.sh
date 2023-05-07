@@ -149,6 +149,8 @@ if [ ! -f "$src/.stamp_done" ]; then
 	git reset --hard origin/master
 	# Переключаемся на master
 	git checkout master
+	# Выполняем обновление данных
+	git pull origin master
 	# Удаляем старую ветку
 	git branch -D v3.1-branch
 	# Выполняем переключение на указанную версию
