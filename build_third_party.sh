@@ -141,17 +141,18 @@ if [ ! -f "$src/.stamp_done" ]; then
 	printf "\n****** OpenSSL ******\n"
 	cd "$src" || exit 1
 
-	# Версия OpenSSL
-	ver="p"
-
-	# Переключаемся на master
-	git checkout master
+	# Закачиваем все изменения
+	git fetch --all
 	# Закачиваем все теги
 	git fetch --all --tags
+	# Выполняем жесткое переключение на master
+	git reset --hard origin/master
+	# Переключаемся на master
+	git checkout master
 	# Удаляем старую ветку
-	git branch -D v1.1.1${ver}-branch
+	git branch -D v3.1-branch
 	# Выполняем переключение на указанную версию
-	git checkout tags/OpenSSL_1_1_1${ver} -b v1.1.1${ver}-branch
+	git checkout origin/openssl-3.1 -b v3.1-branch
 
 	# Выполняем конфигурацию проекта под Linux или FreeBSD
 	if [[ $OS = "Linux" ]] || [[ $OS = "FreeBSD" ]]; then
