@@ -28,16 +28,23 @@
 #include <sys/file.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-// Если это clang v10 или выше
+
+/**
+ * Если это clang v10 или выше
+ */
 #if defined(__DANUBE_EXPERIMENTAL__)
 	#include <filesystem>
 #endif
 
-// Если - это Windows
+/**
+ * Если мы работаем в ОС Windows
+ */
 #if defined(_WIN32) || defined(_WIN64)
 	#include <conio.h>
 	#include <direct.h>
-// Если - это Unix
+/**
+ * Если мы работаем в ОС Unix
+ */
 #else
 	#include <grp.h>
 	#include <pwd.h>
