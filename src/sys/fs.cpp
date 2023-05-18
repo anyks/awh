@@ -90,7 +90,7 @@ bool awh::FS::isDir(const string & name) const noexcept {
  */
 bool awh::FS::isFile(const string & name) const noexcept {
 	// Выводим результат
-		return (this->type(name) == type_t::FILE);
+	return (this->type(name) == type_t::FILE);
 }
 /**
  * isSock Метод проверки существования сокета
