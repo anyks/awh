@@ -358,34 +358,34 @@ if [[ $LIBEVENT2 = "yes" ]]; then
 		# Выполняем конфигурацию проекта
 		if [[ $OS = "Windows" ]]; then
 			cmake \
-			-DCMAKE_C_COMPILER="gcc" \
-			-DCMAKE_BUILD_TYPE="Release" \
-			-DCMAKE_SYSTEM_NAME="Windows" \
-			-DEVENT__LIBRARY_TYPE="STATIC" \
-			-DEVENT__DISABLE_DEBUG_MODE="ON" \
-			-DEVENT__DISABLE_BENCHMARK="ON" \
-			-DEVENT__DISABLE_SAMPLES="ON" \
-			-DEVENT__DISABLE_TESTS="ON" \
-			-DEVENT__DISABLE_THREAD_SUPPORT="ON" \
-			-DCMAKE_INSTALL_PREFIX="$PREFIX" \
-			-DOPENSSL_ROOT_DIR="$PREFIX" \
-			-DOPENSSL_LIBRARIES="$PREFIX/lib" \
-			-DOPENSSL_INCLUDE_DIR="$PREFIX/include" \
-			-G "MinGW Makefiles" \
-			.. || exit 1
+			 -DCMAKE_C_COMPILER="gcc" \
+			 -DCMAKE_BUILD_TYPE="Release" \
+			 -DCMAKE_SYSTEM_NAME="Windows" \
+			 -DEVENT__LIBRARY_TYPE="STATIC" \
+			 -DEVENT__DISABLE_DEBUG_MODE="ON" \
+			 -DEVENT__DISABLE_BENCHMARK="ON" \
+			 -DEVENT__DISABLE_SAMPLES="ON" \
+			 -DEVENT__DISABLE_TESTS="ON" \
+			 -DEVENT__DISABLE_THREAD_SUPPORT="ON" \
+			 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
+			 -DOPENSSL_ROOT_DIR="$PREFIX" \
+			 -DOPENSSL_LIBRARIES="$PREFIX/lib" \
+			 -DOPENSSL_INCLUDE_DIR="$PREFIX/include" \
+			 -G "MinGW Makefiles" \
+			 .. || exit 1
 		else
 			cmake \
-			-DEVENT__LIBRARY_TYPE="STATIC" \
-			-DEVENT__DISABLE_DEBUG_MODE="ON" \
-			-DEVENT__DISABLE_BENCHMARK="ON" \
-			-DEVENT__DISABLE_SAMPLES="ON" \
-			-DEVENT__DISABLE_TESTS="ON" \
-			-DEVENT__DISABLE_THREAD_SUPPORT="ON" \
-			-DCMAKE_INSTALL_PREFIX="$PREFIX" \
-			-DOPENSSL_ROOT_DIR="$PREFIX" \
-			-DOPENSSL_LIBRARIES="$PREFIX/lib" \
-			-DOPENSSL_INCLUDE_DIR="$PREFIX/include" \
-			.. || exit 1
+			 -DEVENT__LIBRARY_TYPE="STATIC" \
+			 -DEVENT__DISABLE_DEBUG_MODE="ON" \
+			 -DEVENT__DISABLE_BENCHMARK="ON" \
+			 -DEVENT__DISABLE_SAMPLES="ON" \
+			 -DEVENT__DISABLE_TESTS="ON" \
+			 -DEVENT__DISABLE_THREAD_SUPPORT="ON" \
+			 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
+			 -DOPENSSL_ROOT_DIR="$PREFIX" \
+			 -DOPENSSL_LIBRARIES="$PREFIX/lib" \
+			 -DOPENSSL_INCLUDE_DIR="$PREFIX/include" \
+			 .. || exit 1
 		fi
 
 		# Выполняем сборку на всех логических ядрах
@@ -417,10 +417,10 @@ else
 
 			# Выполняем конфигурацию проекта
 			cmake \
-			-DCMAKE_BUILD_TYPE="Release" \
-			-DCMAKE_SYSTEM_NAME="Windows" \
-			-G "MinGW Makefiles" \
-			.. || exit 1
+			 -DCMAKE_BUILD_TYPE="Release" \
+			 -DCMAKE_SYSTEM_NAME="Windows" \
+			 -G "MinGW Makefiles" \
+			 .. || exit 1
 
 			# Выполняем сборку на всех логических ядрах
 			$BUILD -j"$numproc" || exit 1
@@ -453,12 +453,12 @@ else
 
 			# Выполняем конфигурирование сборки
 			./configure \
-			--with-pic=use \
-			--enable-static=yes \
-			--enable-shared=no \
-			--prefix=$PREFIX \
-			--includedir="$PREFIX/include/libev" \
-			--libdir="$PREFIX/lib"
+			 --with-pic=use \
+			 --enable-static=yes \
+			 --enable-shared=no \
+			 --prefix=$PREFIX \
+			 --includedir="$PREFIX/include/libev" \
+			 --libdir="$PREFIX/lib"
 
 			# Применяем патч
 			apply_patch "libev" "libev.patch"

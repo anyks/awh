@@ -5,9 +5,9 @@ if (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
 endif()
 
 # Поиск пути к заголовочным файлам
-find_path(LIBEV_INCLUDE_DIR libev/ev.h PATHS ${CMAKE_SOURCE_DIR}/third_party/include NO_DEFAULT_PATH)
-find_path(LIBEV_INCLUDE_DIR libev/ev++.h PATHS ${CMAKE_SOURCE_DIR}/third_party/include NO_DEFAULT_PATH)
-find_path(LIBEV_INCLUDE_DIR libev/event.h PATHS ${CMAKE_SOURCE_DIR}/third_party/include NO_DEFAULT_PATH)
+find_path(LIBEV_INCLUDE_DIR NAMES libev/ev.h PATHS ${CMAKE_SOURCE_DIR}/third_party/include NO_DEFAULT_PATH)
+find_path(LIBEV_INCLUDE_DIR NAMES libev/ev++.h PATHS ${CMAKE_SOURCE_DIR}/third_party/include NO_DEFAULT_PATH)
+find_path(LIBEV_INCLUDE_DIR NAMES libev/event.h PATHS ${CMAKE_SOURCE_DIR}/third_party/include NO_DEFAULT_PATH)
 
 # Поиск библиотеки LibEv
 find_library(LIBEV_LIBRARY NAMES ev PATHS ${CMAKE_SOURCE_DIR}/third_party/lib NO_DEFAULT_PATH)

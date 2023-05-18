@@ -5,7 +5,7 @@ if (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
 endif()
 
 # Поиск пути к заголовочным файлам
-find_path(OPENSSL_INCLUDE_DIR openssl/opensslconf.h PATHS ${CMAKE_SOURCE_DIR}/third_party/include NO_DEFAULT_PATH)
+find_path(OPENSSL_INCLUDE_DIR NAMES openssl/opensslconf.h PATHS ${CMAKE_SOURCE_DIR}/third_party/include NO_DEFAULT_PATH)
 # Поиск библиотек OpenSSL
 find_library(OPENSSL_SSL_LIBRARY NAMES ssl PATHS ${CMAKE_SOURCE_DIR}/third_party/lib NO_DEFAULT_PATH)
 find_library(OPENSSL_CRYPTO_LIBRARY NAMES crypto PATHS ${CMAKE_SOURCE_DIR}/third_party/lib NO_DEFAULT_PATH)

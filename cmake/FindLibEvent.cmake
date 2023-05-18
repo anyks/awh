@@ -5,7 +5,7 @@ if (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
 endif()
 
 # Поиск пути к заголовочным файлам
-find_path(LIBEVENT_INCLUDE_DIR event2/event.h PATHS ${CMAKE_SOURCE_DIR}/third_party/include NO_DEFAULT_PATH)
+find_path(LIBEVENT_INCLUDE_DIR NAMES event2/event.h PATHS ${CMAKE_SOURCE_DIR}/third_party/include NO_DEFAULT_PATH)
 # Поиск библиотеки LibEvent2
 find_library(LIBEVENT_LIBRARY NAMES event PATHS ${CMAKE_SOURCE_DIR}/third_party/lib NO_DEFAULT_PATH)
 find_library(LIBEVENT_CORE NAMES event_core PATHS ${CMAKE_SOURCE_DIR}/third_party/lib NO_DEFAULT_PATH)
