@@ -496,9 +496,9 @@ namespace awh {
 			string format(const char * format, ...) const noexcept;
 			/**
 			 * format Метод реализации функции формирования форматированной строки
-			 * @param  format формат строки вывода
-			 * @param  items  список аргументов строки
-			 * @return        сформированная строка
+			 * @param format формат строки вывода
+			 * @param items  список аргументов строки
+			 * @return       сформированная строка
 			 */
 			string format(const string & format, const vector <string> & items) const noexcept;
 		public:
