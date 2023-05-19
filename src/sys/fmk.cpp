@@ -2410,15 +2410,15 @@ size_t awh::Framework::bytes(const string & str) const noexcept {
 		// Проверяем являются ли переданные данные байтами (8, 16, 32, 64, 128, 256, 512, 1024 ...)
 		bool isbite = !::fmod(value / 8.0f, 2.0f);
 		// Если это байты
-		if(this->compare(param, "B")) dimension = 1.0f;
+		if(param.compare("B") == 0) dimension = 1.0f;
 		// Если это размерность в киллобитах
-		else if(this->compare(param, "KB")) dimension = (isbite ? 1000.0f : 1024.0f);
+		else if(param.compare("KB") == 0) dimension = (isbite ? 1000.0f : 1024.0f);
 		// Если это размерность в мегабитах
-		else if(this->compare(param, "MB")) dimension = (isbite ? 1000000.0f : 1048576.0f);
+		else if(param.compare("MB") == 0) dimension = (isbite ? 1000000.0f : 1048576.0f);
 		// Если это размерность в гигабитах
-		else if(this->compare(param, "GB")) dimension = (isbite ? 1000000000.0f : 1073741824.0f);
+		else if(param.compare("GB") == 0) dimension = (isbite ? 1000000000.0f : 1073741824.0f);
 		// Если это размерность в терабайтах
-		else if(this->compare(param, "TB")) dimension = (isbite ? 1000000000000.0f : 1099511627776.0f);
+		else if(param.compare("TB") == 0) dimension = (isbite ? 1000000000000.0f : 1099511627776.0f);
 		// Размер буфера по умолчанию
 		size = static_cast <size_t> (value);
 		// Если размерность установлена тогда расчитываем количество байт
@@ -2450,17 +2450,17 @@ time_t awh::Framework::seconds(const string & str) const noexcept {
 		// Запоминаем параметры
 		const string & param = match[2].str();
 		// Если это секунды
-		if(this->compare(param, "s")) dimension = 1.0f;
+		if(param.compare("s") == 0) dimension = 1.0f;
 		// Если это размерность в минутах
-		else if(this->compare(param, "m")) dimension = 60.0f;
+		else if(param.compare("m") == 0) dimension = 60.0f;
 		// Если это размерность в часах
-		else if(this->compare(param, "h")) dimension = 3600.0f;
+		else if(param.compare("h") == 0) dimension = 3600.0f;
 		// Если это размерность в днях
-		else if(this->compare(param, "d")) dimension = 86400.0f;
+		else if(param.compare("d") == 0) dimension = 86400.0f;
 		// Если это размерность в месяцах
-		else if(this->compare(param, "М")) dimension = 2592000.0f;
+		else if(param.compare("М") == 0) dimension = 2592000.0f;
 		// Если это размерность в годах
-		else if(this->compare(param, "y")) dimension = 31104000.0f;
+		else if(param.compare("y") == 0) dimension = 31104000.0f;
 		// Размер буфера по умолчанию
 		seconds = static_cast <time_t> (value);
 		// Если время установлено тогда расчитываем количество секунд
@@ -2504,13 +2504,13 @@ size_t awh::Framework::sizeBuffer(const string & str) const noexcept {
 		// Проверяем являются ли переданные данные байтами (8, 16, 32, 64, 128, 256, 512, 1024 ...)
 		bool isbite = !::fmod(speed / 8.0f, 2.0f);
 		// Если это байты
-		if(this->compare(param, "bps")) dimension = 1.0f;
+		if(param.compare("bps") == 0) dimension = 1.0f;
 		// Если это размерность в киллобитах
-		else if(this->compare(param, "kbps")) dimension = (isbite ? 1000.0f : 1024.0f);
+		else if(param.compare("kbps") == 0) dimension = (isbite ? 1000.0f : 1024.0f);
 		// Если это размерность в мегабитах
-		else if(this->compare(param, "Mbps")) dimension = (isbite ? 1000000.0f : 1048576.0f);
+		else if(param.compare("Mbps") == 0) dimension = (isbite ? 1000000.0f : 1048576.0f);
 		// Если это размерность в гигабитах
-		else if(this->compare(param, "Gbps")) dimension = (isbite ? 1000000000.0f : 1073741824.0f);
+		else if(param.compare("Gbps") == 0) dimension = (isbite ? 1000000000.0f : 1073741824.0f);
 		// Размер буфера по умолчанию
 		size = static_cast <size_t> (speed);
 		// Если скорость установлена тогда расчитываем размер буфера
