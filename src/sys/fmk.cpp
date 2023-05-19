@@ -2450,17 +2450,17 @@ time_t awh::Framework::seconds(const string & str) const noexcept {
 		// Запоминаем параметры
 		const string & param = match[2].str();
 		// Если это секунды
-		if(param.compare("s") == 0) dimension = 1.0f;
+		if(param.front() == 's') dimension = 1.0f;
 		// Если это размерность в минутах
-		else if(param.compare("m") == 0) dimension = 60.0f;
+		else if(param.front() == 'm') dimension = 60.0f;
 		// Если это размерность в часах
-		else if(param.compare("h") == 0) dimension = 3600.0f;
+		else if(param.front() == 'h') dimension = 3600.0f;
 		// Если это размерность в днях
-		else if(param.compare("d") == 0) dimension = 86400.0f;
+		else if(param.front() == 'd') dimension = 86400.0f;
 		// Если это размерность в месяцах
-		else if(param.compare("М") == 0) dimension = 2592000.0f;
+		else if(param.front() == 'M') dimension = 2592000.0f;
 		// Если это размерность в годах
-		else if(param.compare("y") == 0) dimension = 31104000.0f;
+		else if(param.front() == 'y') dimension = 31104000.0f;
 		// Размер буфера по умолчанию
 		seconds = static_cast <time_t> (value);
 		// Если время установлено тогда расчитываем количество секунд
