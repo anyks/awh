@@ -1955,7 +1955,7 @@ string awh::Framework::format(const string & format, const vector <string> & ite
  */
 string & awh::Framework::replace(string & text, const string & word, const string & alt) const noexcept {
 	// Если текст передан и искомое слово не равно слову для замены
-	if(!text.empty() && !word.empty() && this->compare(word, alt)){
+	if(!text.empty() && !word.empty() && !this->compare(word, alt)){
 		// Позиция искомого текста
 		size_t pos = 0;
 		// Определяем текст на который нужно произвести замену
@@ -1980,7 +1980,7 @@ string & awh::Framework::replace(string & text, const string & word, const strin
  */
 wstring & awh::Framework::replace(wstring & text, const wstring & word, const wstring & alt) const noexcept {
 	// Если текст передан и искомое слово не равно слову для замены
-	if(!text.empty() && !word.empty() && this->compare(word, alt)){
+	if(!text.empty() && !word.empty() && !this->compare(word, alt)){
 		// Позиция искомого текста
 		size_t pos = 0;
 		// Определяем текст на который нужно произвести замену
