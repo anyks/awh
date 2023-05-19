@@ -2429,7 +2429,7 @@ size_t awh::Framework::bytes(const string & str) const noexcept {
 }
 /**
  * seconds Метод получения размера в секундах из строки
- * @param str строка обозначения размерности
+ * @param str строка обозначения размерности (s, m, h, d, M, y)
  * @return    размер в секундах
  */
 time_t awh::Framework::seconds(const string & str) const noexcept {

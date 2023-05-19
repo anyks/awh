@@ -632,7 +632,7 @@ namespace awh {
 		public:
 			/**
 			 * seconds Метод получения размера в секундах из строки
-			 * @param str строка обозначения размерности
+			 * @param str строка обозначения размерности (s, m, h, d, M, y)
 			 * @return    размер в секундах
 			 */
 			time_t seconds(const string & str) const noexcept;
