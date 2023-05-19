@@ -605,6 +605,10 @@ void awh::FS::readFile(const string & filename, function <void (const string &)>
 							length = ((old == '\r' ? i - 1 : i) - offset);
 							// Если это конец файла, корректируем размер последнего байта
 							if(length == 0) length = 1;
+							// Если мы получили последний символ и он не является переносом строки
+							if((i == (size - 1)) && (letter != '\n'))
+								// Выполняем компенсацию размера строки
+								length++;
 							// Если длина слова получена, выводим полученную строку
 							callback(string((char *) buffer + offset, length));
 							// Выполняем смещение
@@ -667,6 +671,10 @@ void awh::FS::readFile2(const string & filename, function <void (const string &)
 						length = ((old == '\r' ? i - 1 : i) - offset);
 						// Если это конец файла, корректируем размер последнего байта
 						if(length == 0) length = 1;
+						// Если мы получили последний символ и он не является переносом строки
+						if((i == (size - 1)) && (letter != '\n'))
+							// Выполняем компенсацию размера строки
+							length++;
 						// Если длина слова получена, выводим полученную строку
 						callback(string(data + offset, length));
 						// Выполняем смещение
