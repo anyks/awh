@@ -2438,7 +2438,7 @@ time_t awh::Framework::seconds(const string & str) const noexcept {
 	// Количество секунд
 	time_t seconds = 0;
 	// Устанавливаем правило регулярного выражения
-	regex e("([\\d\\.\\,]+)(s|m|h|d|M|y)", regex::ECMAScript);
+	regex e("([\\d\\.\\,]+)\\s*(s|m|h|d|M|y)", regex::ECMAScript);
 	// Выполняем поиск времени
 	regex_search(str, match, e);
 	// Если данные найдены
@@ -2490,7 +2490,7 @@ size_t awh::Framework::sizeBuffer(const string & str) const noexcept {
 	// Размер буфера в байтах
 	size_t size = 0;
 	// Устанавливаем правило регулярного выражения
-	regex e("([\\d\\.\\,]+)(bps|kbps|Mbps|Gbps)", regex::ECMAScript);
+	regex e("([\\d\\.\\,]+)\\s*(bps|kbps|Mbps|Gbps)", regex::ECMAScript);
 	// Выполняем поиск скорости
 	regex_search(str, match, e);
 	// Если данные найдены
