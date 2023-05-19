@@ -2396,7 +2396,7 @@ size_t awh::Framework::bytes(const string & str) const noexcept {
 	// Размер количество байт
 	size_t size = 0;
 	// Устанавливаем правило регулярного выражения
-	regex e("([\\d\\.\\,]+)(B|KB|MB|GB|TB)", regex::ECMAScript);
+	regex e("([\\d\\.\\,]+)\\s*(B|KB|MB|GB|TB)", regex::ECMAScript);
 	// Выполняем размерности данных
 	regex_search(str, match, e);
 	// Если данные найдены
