@@ -441,36 +441,36 @@ namespace awh {
 			double floor(const double x, const uint8_t n) const noexcept;
 		public:
 			/**
-			 * rome2Arabic Метод перевода римских цифр в арабские
+			 * rome2arabic Метод перевода римских цифр в арабские
 			 * @param word римское число
 			 * @return     арабское число
 			 */
-			u_short rome2Arabic(const string & word) const noexcept;
+			u_short rome2arabic(const string & word) const noexcept;
 			/**
-			 * rome2Arabic Метод перевода римских цифр в арабские
+			 * rome2arabic Метод перевода римских цифр в арабские
 			 * @param word римское число
 			 * @return     арабское число
 			 */
-			u_short rome2Arabic(const wstring & word) const noexcept;
+			u_short rome2arabic(const wstring & word) const noexcept;
 		public:
 			/**
-			 * arabic2Rome Метод перевода арабских чисел в римские
+			 * arabic2rome Метод перевода арабских чисел в римские
 			 * @param number арабское число от 1 до 4999
 			 * @return       римское число
 			 */
-			wstring arabic2Rome(const u_int number) const noexcept;
+			wstring arabic2rome(const u_int number) const noexcept;
 			/**
-			 * arabic2Rome Метод перевода арабских чисел в римские
+			 * arabic2rome Метод перевода арабских чисел в римские
 			 * @param word арабское число от 1 до 4999
 			 * @return     римское число
 			 */
-			string arabic2Rome(const string & word) const noexcept;
+			string arabic2rome(const string & word) const noexcept;
 			/**
-			 * arabic2Rome Метод перевода арабских чисел в римские
+			 * arabic2rome Метод перевода арабских чисел в римские
 			 * @param word арабское число от 1 до 4999
 			 * @return     римское число
 			 */
-			wstring arabic2Rome(const wstring & word) const noexcept;
+			wstring arabic2rome(const wstring & word) const noexcept;
 		public:
 			/**
 			 * setCase Метод запоминания регистра слова
@@ -576,11 +576,11 @@ namespace awh {
 			std::map <size_t, size_t> urls(const wstring & text) const noexcept;
 		public:
 			/**
-			 * timeToAbbr Метод перевода времени в аббревиатуру
+			 * time2abbr Метод перевода времени в аббревиатуру
 			 * @param date дата в UnixTimestamp
 			 * @return     строка содержащая аббревиатуру даты
 			 */
-			string timeToAbbr(const time_t date) const noexcept;
+			string time2abbr(const time_t date) const noexcept;
 			/**
 			 * strpTime Функция получения Unix TimeStamp из строки
 			 * @param str    строка с датой
@@ -591,19 +591,19 @@ namespace awh {
 			string strpTime(const string & str, const string & format, struct tm * tm) const noexcept;
 		public:
 			/**
-			 * timeToStr Метод преобразования UnixTimestamp в строку
+			 * time2str Метод преобразования UnixTimestamp в строку
 			 * @param date   дата в UnixTimestamp
 			 * @param format формат даты
 			 * @return       строка содержащая дату
 			 */
-			string timeToStr(const time_t date, const string & format = "%a, %d %b %Y %H:%M:%S %Z") const noexcept;
+			string time2str(const time_t date, const string & format = "%a, %d %b %Y %H:%M:%S %Z") const noexcept;
 			/**
-			 * strToTime Метод перевода строки в UnixTimestamp
+			 * str2time Метод перевода строки в UnixTimestamp
 			 * @param date   строка даты
 			 * @param format формат даты
 			 * @return       дата в UnixTimestamp
 			 */
-			time_t strToTime(const string & date, const string & format = "%a, %d %b %Y %H:%M:%S %Z") const noexcept;
+			time_t str2time(const string & date, const string & format = "%a, %d %b %Y %H:%M:%S %Z") const noexcept;
 		public:
 			/**
 			 * os Метод определения операционной системы

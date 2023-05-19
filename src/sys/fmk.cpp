@@ -1516,11 +1516,11 @@ double awh::Framework::floor(const double x, const uint8_t n) const noexcept {
 	return (::floor(x * mult) / mult);
 }
 /**
- * rome2Arabic Метод перевода римских цифр в арабские
+ * rome2arabic Метод перевода римских цифр в арабские
  * @param word римское число
  * @return     арабское число
  */
-u_short awh::Framework::rome2Arabic(const string & word) const noexcept {
+u_short awh::Framework::rome2arabic(const string & word) const noexcept {
 	// Результат работы функции
 	u_short result = 0;
 	// Если слово передано
@@ -1626,11 +1626,11 @@ u_short awh::Framework::rome2Arabic(const string & word) const noexcept {
 	return result;
 }
 /**
- * rome2Arabic Метод перевода римских цифр в арабские
+ * rome2arabic Метод перевода римских цифр в арабские
  * @param word римское число
  * @return     арабское число
  */
-u_short awh::Framework::rome2Arabic(const wstring & word) const noexcept {
+u_short awh::Framework::rome2arabic(const wstring & word) const noexcept {
 	// Результат работы функции
 	u_short result = 0;
 	// Если слово передано
@@ -1736,11 +1736,11 @@ u_short awh::Framework::rome2Arabic(const wstring & word) const noexcept {
 	return result;
 }
 /**
- * arabic2Rome Метод перевода арабских чисел в римские
+ * arabic2rome Метод перевода арабских чисел в римские
  * @param number арабское число от 1 до 4999
  * @return       римское число
  */
-wstring awh::Framework::arabic2Rome(const u_int number) const noexcept {
+wstring awh::Framework::arabic2rome(const u_int number) const noexcept {
 	// Результат работы функции
 	wstring result = L"";
 	// Если число передано верное
@@ -1766,11 +1766,11 @@ wstring awh::Framework::arabic2Rome(const u_int number) const noexcept {
 	return result;
 }
 /**
- * arabic2Rome Метод перевода арабских чисел в римские
+ * arabic2rome Метод перевода арабских чисел в римские
  * @param word арабское число от 1 до 4999
  * @return     римское число
  */
-string awh::Framework::arabic2Rome(const string & word) const noexcept {
+string awh::Framework::arabic2rome(const string & word) const noexcept {
 	// Результат работы функции
 	string result = "";
 	// Если слово передано
@@ -1778,17 +1778,17 @@ string awh::Framework::arabic2Rome(const string & word) const noexcept {
 		// Преобразуем слово в число
 		const u_int number = ::stoi(word);
 		// Выполняем расчет
-		result = this->convert(this->arabic2Rome(number));
+		result = this->convert(this->arabic2rome(number));
 	}
 	// Выводим результат
 	return result;
 }
 /**
- * arabic2Rome Метод перевода арабских чисел в римские
+ * arabic2rome Метод перевода арабских чисел в римские
  * @param word арабское число от 1 до 4999
  * @return     римское число
  */
-wstring awh::Framework::arabic2Rome(const wstring & word) const noexcept {
+wstring awh::Framework::arabic2rome(const wstring & word) const noexcept {
 	// Результат работы функции
 	wstring result = L"";
 	// Если слово передано
@@ -1796,7 +1796,7 @@ wstring awh::Framework::arabic2Rome(const wstring & word) const noexcept {
 		// Преобразуем слово в число
 		const u_int number = ::stoi(word);
 		// Выполняем расчет
-		result = this->arabic2Rome(number);
+		result = this->arabic2rome(number);
 	}
 	// Выводим результат
 	return result;
@@ -2141,11 +2141,11 @@ std::map <size_t, size_t> awh::Framework::urls(const wstring & text) const noexc
 	return result;
 }
 /**
- * timeToAbbr Метод перевода времени в аббревиатуру
+ * time2abbr Метод перевода времени в аббревиатуру
  * @param  date дата в UnixTimestamp
  * @return      строка содержащая аббревиатуру даты
  */
-string awh::Framework::timeToAbbr(const time_t date) const noexcept {
+string awh::Framework::time2abbr(const time_t date) const noexcept {
 	// Результат работы функции
 	string result = "0 msec.";
 	// Если число передано
@@ -2207,12 +2207,12 @@ string awh::Framework::strpTime(const string & str, const string & format, struc
 	return result;
 }
 /**
- * timeToStr Метод преобразования UnixTimestamp в строку
+ * time2str Метод преобразования UnixTimestamp в строку
  * @param date   дата в UnixTimestamp
  * @param format формат даты
  * @return       строка содержащая дату
  */
-string awh::Framework::timeToStr(const time_t date, const string & format) const noexcept {
+string awh::Framework::time2str(const time_t date, const string & format) const noexcept {
 	// Буфер с данными
 	char buffer[255];
 	// Создаем структуру времени
@@ -2225,12 +2225,12 @@ string awh::Framework::timeToStr(const time_t date, const string & format) const
 	return string(buffer);
 }
 /**
- * strToTime Метод перевода строки в UnixTimestamp
+ * str2time Метод перевода строки в UnixTimestamp
  * @param date   строка даты
  * @param format формат даты
  * @return       дата в UnixTimestamp
  */
-time_t awh::Framework::strToTime(const string & date, const string & format) const noexcept {
+time_t awh::Framework::str2time(const string & date, const string & format) const noexcept {
 	// Результат работы функции
 	time_t result = 0;
 	// Если данные переданы
