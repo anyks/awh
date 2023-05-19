@@ -2525,6 +2525,8 @@ size_t awh::Framework::sizeBuffer(const string & str) const noexcept {
 awh::Framework::Framework() noexcept : _locale(AWH_LOCALE) {
 	// Устанавливаем локализацию системы
 	this->setLocale();
+	// Устанавливаем алфавит допустимых символов
+	this->_nwt.letters(L"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZабвгдеёжзийклмнопрстуфхцчшщъыьэюяАБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ");
 }
 /**
  * Framework Конструктор
@@ -2533,4 +2535,6 @@ awh::Framework::Framework() noexcept : _locale(AWH_LOCALE) {
 awh::Framework::Framework(const string & locale) noexcept {
 	// Устанавливаем локализацию системы
 	this->setLocale(locale);
+	// Устанавливаем алфавит допустимых символов
+	this->_nwt.letters(L"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZабвгдеёжзийклмнопрстуфхцчшщъыьэюяАБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ");
 }
