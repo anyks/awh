@@ -1548,13 +1548,13 @@ u_short awh::Framework::rome2Arabic(const string & word) const noexcept {
 			}
 		}
 		// Преобразовываем цифру M
-		if(word.front() == 'm'){
-			for(n = 0; word[i] == 'm'; n++) i++;
+		if(tolower(word.front()) == 'm'){
+			for(n = 0; tolower(word[i]) == 'm'; n++) i++;
 			if(n > 4) return 0;
 			v += n * 1000;
 		}
 		// Запоминаем найденный символ
-		o = word[i];
+		o = tolower(word[i]);
 		// Преобразовываем букву D и C
 		if((o == 'd') || (o == 'c')){
 			if((c = o) == 'd'){
@@ -1562,7 +1562,7 @@ u_short awh::Framework::rome2Arabic(const string & word) const noexcept {
 				v += 500;
 			}
 			// Запоминаем найденный символ
-			o = word[i + 1];
+			o = tolower(word[i + 1]);
 			if((c == 'c') && (o == 'm')){
 				i += 2;
 				v += 900;
@@ -1570,13 +1570,13 @@ u_short awh::Framework::rome2Arabic(const string & word) const noexcept {
 				i += 2;
 				v += 400;
 			} else {
-				for(n = 0; word[i] == 'c'; n++) i++;
+				for(n = 0; tolower(word[i]) == 'c'; n++) i++;
 				if(n > 4) return 0;
 				v += n * 100;
 			}
 		}
 		// Запоминаем найденный символ
-		o = word[i];
+		o = tolower(word[i]);
 		// Преобразовываем букву L и X
 		if((o == 'l') || (o == 'x')){
 			if((c = o) == 'l'){
@@ -1584,7 +1584,7 @@ u_short awh::Framework::rome2Arabic(const string & word) const noexcept {
 				v += 50;
 			}
 			// Запоминаем найденный символ
-			o = word[i + 1];
+			o = tolower(word[i + 1]);
 			if((c == 'x') && (o == 'c')){
 				i += 2;
 				v += 90;
@@ -1592,13 +1592,13 @@ u_short awh::Framework::rome2Arabic(const string & word) const noexcept {
 				i += 2;
 				v += 40;
 			} else {
-				for(n = 0; word[i] == 'x'; n++) i++;
+				for(n = 0; tolower(word[i]) == 'x'; n++) i++;
 				if(n > 4) return 0;
 				v += n * 10;
 			}
 		}
 		// Запоминаем найденный символ
-		o = word[i];
+		o = tolower(word[i]);
 		// Преобразовываем букву V и I
 		if((o == 'v') || (o == 'i')){
 			if((c = o) == 'v'){
@@ -1606,7 +1606,7 @@ u_short awh::Framework::rome2Arabic(const string & word) const noexcept {
 				v += 5;
 			}
 			// Запоминаем найденный символ
-			o = word[i + 1];
+			o = tolower(word[i + 1]);
 			if((c == 'i') && (o == 'x')){
 				i += 2;
 				v += 9;
@@ -1614,7 +1614,7 @@ u_short awh::Framework::rome2Arabic(const string & word) const noexcept {
 				i += 2;
 				v += 4;
 			} else {
-				for(n = 0; word[i] == 'i'; n++) i++;
+				for(n = 0; tolower(word[i]) == 'i'; n++) i++;
 				if(n > 4) return 0;
 				v += n;
 			}
@@ -1658,13 +1658,13 @@ u_short awh::Framework::rome2Arabic(const wstring & word) const noexcept {
 			}
 		}
 		// Преобразовываем цифру M
-		if(word.front() == L'm'){
-			for(n = 0; word[i] == L'm'; n++) i++;
+		if(towlower(word.front()) == L'm'){
+			for(n = 0; towlower(word[i]) == L'm'; n++) i++;
 			if(n > 4) return 0;
 			v += n * 1000;
 		}
 		// Запоминаем найденный символ
-		o = word[i];
+		o = towlower(word[i]);
 		// Преобразовываем букву D и C
 		if((o == L'd') || (o == L'c')){
 			if((c = o) == L'd'){
@@ -1672,7 +1672,7 @@ u_short awh::Framework::rome2Arabic(const wstring & word) const noexcept {
 				v += 500;
 			}
 			// Запоминаем найденный символ
-			o = word[i + 1];
+			o = towlower(word[i + 1]);
 			if((c == L'c') && (o == L'm')){
 				i += 2;
 				v += 900;
@@ -1680,13 +1680,13 @@ u_short awh::Framework::rome2Arabic(const wstring & word) const noexcept {
 				i += 2;
 				v += 400;
 			} else {
-				for(n = 0; word[i] == L'c'; n++) i++;
+				for(n = 0; towlower(word[i]) == L'c'; n++) i++;
 				if(n > 4) return 0;
 				v += n * 100;
 			}
 		}
 		// Запоминаем найденный символ
-		o = word[i];
+		o = towlower(word[i]);
 		// Преобразовываем букву L и X
 		if((o == L'l') || (o == L'x')){
 			if((c = o) == L'l'){
@@ -1694,7 +1694,7 @@ u_short awh::Framework::rome2Arabic(const wstring & word) const noexcept {
 				v += 50;
 			}
 			// Запоминаем найденный символ
-			o = word[i + 1];
+			o = towlower(word[i + 1]);
 			if((c == L'x') && (o == L'c')){
 				i += 2;
 				v += 90;
@@ -1702,13 +1702,13 @@ u_short awh::Framework::rome2Arabic(const wstring & word) const noexcept {
 				i += 2;
 				v += 40;
 			} else {
-				for(n = 0; word[i] == L'x'; n++) i++;
+				for(n = 0; towlower(word[i]) == L'x'; n++) i++;
 				if(n > 4) return 0;
 				v += n * 10;
 			}
 		}
 		// Запоминаем найденный символ
-		o = word[i];
+		o = towlower(word[i]);
 		// Преобразовываем букву V и I
 		if((o == L'v') || (o == L'i')){
 			if((c = o) == L'v'){
@@ -1716,7 +1716,7 @@ u_short awh::Framework::rome2Arabic(const wstring & word) const noexcept {
 				v += 5;
 			}
 			// Запоминаем найденный символ
-			o = word[i + 1];
+			o = towlower(word[i + 1]);
 			if((c == L'i') && (o == L'x')){
 				i += 2;
 				v += 9;
@@ -1724,7 +1724,7 @@ u_short awh::Framework::rome2Arabic(const wstring & word) const noexcept {
 				i += 2;
 				v += 4;
 			} else {
-				for(n = 0; word[i] == L'i'; n++) i++;
+				for(n = 0; towlower(word[i]) == L'i'; n++) i++;
 				if(n > 4) return 0;
 				v += n;
 			}
