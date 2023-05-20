@@ -806,23 +806,25 @@ awh::URI::params_t awh::URI::params(const string & uri, const string & schema) c
 			if(!port.empty()) result.port = ::stoi(port);
 			// Если порт не получен но указана схема
 			else if(!schema.empty()){
-				// Если - это зашифрованный протокол
+				// Если схема принадлежит зашифрованному HTTP серверу
 				if(this->_fmk->compare(schema, "https")) result.port = 443;
-				// Если - это не зашифрованный протокол
+				// Если схема принадлежит не зашифрованному HTTP серверу
 				else if(this->_fmk->compare(schema, "http")) result.port = 80;
-				// Если - это зашифрованный протокол WebSocket
+				// Если схема принадлежит зашифрованному WebSocket серверу
 				else if(this->_fmk->compare(schema, "wss")) result.port = 443;
-				// Если - это не зашифрованный протокол WebSocket
+				// Если схема принадлежит не зашифрованному WebSocket серверу
 				else if(this->_fmk->compare(schema, "ws")) result.port = 80;
-				// Если - это FTP
+				// Если схема принадлежит FTP серверу
 				else if(this->_fmk->compare(schema, "ftp")) result.port = 21;
-				// Если - это MQTT
+				// Если схема принадлежит MQTT брокеру сообщений
 				else if(this->_fmk->compare(schema, "mqtt")) result.port = 1883;
-				// Если - это Redis
+				// Если схема принадлежит адресу электронной почты
+				else if(this->_fmk->compare(schema, "mailto")) result.port = 25;
+				// Если схема принадлежит Redis базе данных
 				else if(this->_fmk->compare(schema, "redis")) result.port = 6379;
-				// Если - это SOCKS5 прокси
+				// Если схема принадлежит SOCKS5 прокси серверу
 				else if(this->_fmk->compare(schema, "socks5")) result.port = 1080;
-				// Если - это PostgreSQL
+				// Если схема принадлежит PostgreSQL базе данных
 				else if(this->_fmk->compare(schema, "postgresql")) result.port = 5432;
 			// Устанавливаем порт по умолчанию
 			} else result.port = 80;
