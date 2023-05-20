@@ -276,8 +276,6 @@ string awh::URI::url(const url_t & url) const noexcept {
 			result = this->_fmk->format("%s:%s", url.schema.c_str(), query.c_str());
 		// Иначе формируем URI адрес в обычном виде
 		} else {
-			// Порт сервера для URL запроса
-			u_int port = 0;
 			// Хост URL запроса и параметры авторизации
 			string host = url.domain, auth = "";
 			// Если хост не существует
@@ -294,28 +292,25 @@ string awh::URI::url(const url_t & url) const noexcept {
 			if(!url.pass.empty() || !url.user.empty())
 				// Формируем параметры авторизации
 				auth = (!url.pass.empty() ? this->_fmk->format("%s:%s@", url.user.c_str(), url.pass.c_str()) : this->_fmk->format("%s@", url.user.c_str()));
-			// Если порт был указан
-			if(url.port > 0){
-				// Определяем указанный порт
-				switch(url.port){
-					// Если указан 25 порт
-					case 25:
-					// Если указан 587 порт
-					case 587:
-					// Если указан 465 порт
-					case 465: {
-						// Если схема принадлежит E-Mail
-						if(this->_fmk->compare(url.schema, "mailto"))
-							// Формируем URI адрес по умолчанию
-							return this->_fmk->format("%s%s", auth.c_str(), host.c_str());
-					} break;
-					// Если указан 80 порт
-					case 80: port = (this->_fmk->compare(url.schema, "http") || this->_fmk->compare(url.schema, "ws") ? 0 : url.port); break;
-					// Если указан 443 порт
-					case 443: port = (this->_fmk->compare(url.schema, "https") || this->_fmk->compare(url.schema, "wss") ? 0 : url.port); break;
-					// Если - это, любой другой порт
-					default: port = url.port;
-				}
+			// Порт сервера для URL запроса
+			u_int port = url.port;
+			// Определяем указанный порт
+			switch(port){
+				// Если указан 25 порт
+				case 25:
+				// Если указан 587 порт
+				case 587:
+				// Если указан 465 порт
+				case 465: {
+					// Если схема принадлежит E-Mail
+					if(this->_fmk->compare(url.schema, "mailto"))
+						// Формируем URI адрес по умолчанию
+						return this->_fmk->format("%s%s", auth.c_str(), host.c_str());
+				} break;
+				// Если указан 80 порт
+				case 80: port = (this->_fmk->compare(url.schema, "http") || this->_fmk->compare(url.schema, "ws") ? 0 : url.port); break;
+				// Если указан 443 порт
+				case 443: port = (this->_fmk->compare(url.schema, "https") || this->_fmk->compare(url.schema, "wss") ? 0 : url.port); break;
 			}
 			// Получаем строку HTTP запроса
 			const string & query = this->query(url);
@@ -378,6 +373,17 @@ string awh::URI::origin(const url_t & url) const noexcept {
 		u_int port = url.port;
 		// Определяем указанный порт
 		switch(port){
+			// Если указан 25 порт
+			case 25:
+			// Если указан 587 порт
+			case 587:
+			// Если указан 465 порт
+			case 465: {
+				// Если пользователь установлен и схема принадлежит E-Mail
+				if(!url.user.empty() && this->_fmk->compare(url.schema, "mailto"))
+					// Формируем URI адрес по умолчанию
+					return this->_fmk->format("%s@%s", url.user.c_str(), host.c_str());
+			} break;
 			// Если указан 80 порт
 			case 80: port = (this->_fmk->compare(url.schema, "http") || this->_fmk->compare(url.schema, "ws") ? 0 : port); break;
 			// Если указан 443 порт
