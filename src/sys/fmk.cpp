@@ -480,7 +480,7 @@ bool awh::Framework::is(const string & text, const check_t flag) const noexcept 
 			// Если установлен флаг роверки на URL адреса
 			case static_cast <uint8_t> (check_t::URL): {
 				// Выполняем парсинг nwt адреса
-				const auto & url = this->_nwt.parse(this->convert(text));
+				const auto & url = this->_nwt.parse(text);
 				// Если ссылка найдена
 				result = ((url.type != nwt_t::types_t::NONE) && (url.type != nwt_t::types_t::WRONG));
 			} break;
@@ -663,7 +663,7 @@ bool awh::Framework::is(const wstring & text, const check_t flag) const noexcept
 			// Если установлен флаг роверки на URL адреса
 			case static_cast <uint8_t> (check_t::URL): {
 				// Выполняем парсинг nwt адреса
-				const auto & url = this->_nwt.parse(text);
+				const auto & url = this->_nwt.parse(this->convert(text));
 				// Если ссылка найдена
 				result = ((url.type != nwt_t::types_t::NONE) && (url.type != nwt_t::types_t::WRONG));
 			} break;
@@ -2024,14 +2024,6 @@ const wstring & awh::Framework::replace(const wstring & text, const wstring & wo
  */
 void awh::Framework::domainZone(const string & zone) noexcept {
 	// Если зона передана, устанавливаем её
-	if(!zone.empty()) this->_nwt.zone(this->convert(zone));
-}
-/**
- * domainZone Метод установки пользовательской зоны
- * @param zone пользовательская зона
- */
-void awh::Framework::domainZone(const wstring & zone) noexcept {
-	// Если зона передана, устанавливаем её
 	if(!zone.empty()) this->_nwt.zone(zone);
 }
 /**
@@ -2040,23 +2032,13 @@ void awh::Framework::domainZone(const wstring & zone) noexcept {
  */
 void awh::Framework::domainZones(const std::set <string> & zones) noexcept {
 	// Устанавливаем список доменных зон
-	if(!zones.empty())
-		// Переходим по всему списку доменных зон
-		for(auto & zone : zones) this->domainZone(zone);
-}
-/**
- * domainZones Метод установки списка пользовательских зон
- * @param zones список доменных зон интернета
- */
-void awh::Framework::domainZones(const std::set <wstring> & zones) noexcept {
-	// Устанавливаем список доменных зон
 	if(!zones.empty()) this->_nwt.zones(zones);
 }
 /**
  * domainZones Метод извлечения списка пользовательских зон интернета
  * @return список доменных зон
  */
-const std::set <wstring> & awh::Framework::domainZones() const noexcept {
+const std::set <string> & awh::Framework::domainZones() const noexcept {
 	// Выводим список доменных зон интернета
 	return this->_nwt.zones();
 }
@@ -2103,7 +2085,7 @@ void awh::Framework::setLocale(const string & locale) noexcept {
  * @param text текст для извлечения url адресов
  * @return     список координат с url адресами
  */
-std::map <size_t, size_t> awh::Framework::urls(const wstring & text) const noexcept {
+std::map <size_t, size_t> awh::Framework::urls(const string & text) const noexcept {
 	// Результат работы функции
 	map <size_t, size_t> result;
 	// Если текст передан
@@ -2117,13 +2099,13 @@ std::map <size_t, size_t> awh::Framework::urls(const wstring & text) const noexc
 			// Если ссылка найдена
 			if(resUri.type != nwt_t::types_t::NONE){
 				// Получаем данные слова
-				const wstring & word = resUri.uri;
+				const string & word = resUri.uri;
 				// Если это не предупреждение
 				if(resUri.type != nwt_t::types_t::WRONG){
 					// Если позиция найдена
-					if((pos = text.find(word, pos)) != wstring::npos){
+					if((pos = text.find(word, pos)) != string::npos){
 						// Если в списке результатов найдены пустные значения, очищаем список
-						if(result.count(wstring::npos) > 0)
+						if(result.count(string::npos) > 0)
 							// Выполняем очистку результата
 							result.clear();
 						// Добавляем в список нашу ссылку
@@ -2391,34 +2373,28 @@ string awh::Framework::bytes(const double value) const noexcept {
  * @return    размер в байтах
  */
 size_t awh::Framework::bytes(const string & str) const noexcept {
-	// Результат работы регулярного выражения
-	smatch match;
 	// Размер количество байт
 	size_t size = 0;
-	// Устанавливаем правило регулярного выражения
-	regex e("([\\d\\.\\,]+)\\s*(B|KB|MB|GB|TB)", regex::ECMAScript);
-	// Выполняем размерности данных
-	regex_search(str, match, e);
+	// Выполняем проверку входящей строки
+	const auto & match = this->_regexp.exec(str, this->_bytes);
 	// Если данные найдены
 	if(!match.empty()){
 		// Размерность скорости
 		float dimension = 1.0f;
 		// Получаем значение размерности
-		float value = ::stof(match[1].str());
-		// Запоминаем параметры
-		const string & param = match[2].str();
+		float value = ::stof(match[1]);
 		// Проверяем являются ли переданные данные байтами (8, 16, 32, 64, 128, 256, 512, 1024 ...)
 		bool isbite = !::fmod(value / 8.0f, 2.0f);
 		// Если это байты
-		if(param.compare("B") == 0) dimension = 1.0f;
+		if(match[2].compare("B") == 0) dimension = 1.0f;
 		// Если это размерность в киллобитах
-		else if(param.compare("KB") == 0) dimension = (isbite ? 1000.0f : 1024.0f);
+		else if(match[2].compare("KB") == 0) dimension = (isbite ? 1000.0f : 1024.0f);
 		// Если это размерность в мегабитах
-		else if(param.compare("MB") == 0) dimension = (isbite ? 1000000.0f : 1048576.0f);
+		else if(match[2].compare("MB") == 0) dimension = (isbite ? 1000000.0f : 1048576.0f);
 		// Если это размерность в гигабитах
-		else if(param.compare("GB") == 0) dimension = (isbite ? 1000000000.0f : 1073741824.0f);
+		else if(match[2].compare("GB") == 0) dimension = (isbite ? 1000000000.0f : 1073741824.0f);
 		// Если это размерность в терабайтах
-		else if(param.compare("TB") == 0) dimension = (isbite ? 1000000000000.0f : 1099511627776.0f);
+		else if(match[2].compare("TB") == 0) dimension = (isbite ? 1000000000000.0f : 1099511627776.0f);
 		// Размер буфера по умолчанию
 		size = static_cast <size_t> (value);
 		// Если размерность установлена тогда расчитываем количество байт
@@ -2433,34 +2409,28 @@ size_t awh::Framework::bytes(const string & str) const noexcept {
  * @return    размер в секундах
  */
 time_t awh::Framework::seconds(const string & str) const noexcept {
-	// Результат работы регулярного выражения
-	smatch match;
 	// Количество секунд
 	time_t seconds = 0;
-	// Устанавливаем правило регулярного выражения
-	regex e("([\\d\\.\\,]+)\\s*(s|m|h|d|M|y)", regex::ECMAScript);
-	// Выполняем поиск времени
-	regex_search(str, match, e);
+	// Выполняем проверку входящей строки
+	const auto & match = this->_regexp.exec(str, this->_seconds);
 	// Если данные найдены
 	if(!match.empty()){
 		// Размерность времени
 		float dimension = 1.0f;
 		// Получаем значение размерности
-		float value = ::stof(match[1].str());
-		// Запоминаем параметры
-		const string & param = match[2].str();
+		float value = ::stof(match[1]);
 		// Если это секунды
-		if(param.front() == 's') dimension = 1.0f;
+		if(match[2].front() == 's') dimension = 1.0f;
 		// Если это размерность в минутах
-		else if(param.front() == 'm') dimension = 60.0f;
+		else if(match[2].front() == 'm') dimension = 60.0f;
 		// Если это размерность в часах
-		else if(param.front() == 'h') dimension = 3600.0f;
+		else if(match[2].front() == 'h') dimension = 3600.0f;
 		// Если это размерность в днях
-		else if(param.front() == 'd') dimension = 86400.0f;
+		else if(match[2].front() == 'd') dimension = 86400.0f;
 		// Если это размерность в месяцах
-		else if(param.front() == 'M') dimension = 2592000.0f;
+		else if(match[2].front() == 'M') dimension = 2592000.0f;
 		// Если это размерность в годах
-		else if(param.front() == 'y') dimension = 31104000.0f;
+		else if(match[2].front() == 'y') dimension = 31536000.0f;
 		// Размер буфера по умолчанию
 		seconds = static_cast <time_t> (value);
 		// Если время установлено тогда расчитываем количество секунд
@@ -2485,32 +2455,26 @@ size_t awh::Framework::sizeBuffer(const string & str) const noexcept {
 	* (2 * 0.04) * ((100 * 1024000) / 8)  = 1000 байт
 	*
 	*/
-	// Результат работы регулярного выражения
-	smatch match;
-	// Размер буфера в байтах
+	// Размер количество байт
 	size_t size = 0;
-	// Устанавливаем правило регулярного выражения
-	regex e("([\\d\\.\\,]+)\\s*(bps|kbps|Mbps|Gbps)", regex::ECMAScript);
-	// Выполняем поиск скорости
-	regex_search(str, match, e);
+	// Выполняем проверку входящей строки
+	const auto & match = this->_regexp.exec(str, this->_buffers);
 	// Если данные найдены
 	if(!match.empty()){
-		// Запоминаем параметры
-		string param = match[2].str();
 		// Размерность скорости
 		float dimension = 1.0f;
 		// Получаем значение скорости
-		float speed = ::stof(match[1].str());
+		float speed = ::stof(match[1]);
 		// Проверяем являются ли переданные данные байтами (8, 16, 32, 64, 128, 256, 512, 1024 ...)
 		bool isbite = !::fmod(speed / 8.0f, 2.0f);
 		// Если это байты
-		if(param.compare("bps") == 0) dimension = 1.0f;
+		if(match[2].compare("bps") == 0) dimension = 1.0f;
 		// Если это размерность в киллобитах
-		else if(param.compare("kbps") == 0) dimension = (isbite ? 1000.0f : 1024.0f);
+		else if(match[2].compare("kbps") == 0) dimension = (isbite ? 1000.0f : 1024.0f);
 		// Если это размерность в мегабитах
-		else if(param.compare("Mbps") == 0) dimension = (isbite ? 1000000.0f : 1048576.0f);
+		else if(match[2].compare("Mbps") == 0) dimension = (isbite ? 1000000.0f : 1048576.0f);
 		// Если это размерность в гигабитах
-		else if(param.compare("Gbps") == 0) dimension = (isbite ? 1000000000.0f : 1073741824.0f);
+		else if(match[2].compare("Gbps") == 0) dimension = (isbite ? 1000000000.0f : 1073741824.0f);
 		// Размер буфера по умолчанию
 		size = static_cast <size_t> (speed);
 		// Если скорость установлена тогда расчитываем размер буфера
@@ -2522,19 +2486,68 @@ size_t awh::Framework::sizeBuffer(const string & str) const noexcept {
 /**
  * Framework Конструктор
  */
-awh::Framework::Framework() noexcept : _locale(AWH_LOCALE) {
+awh::Framework::Framework() noexcept : _locale(AWH_LOCALE), _nwt("абвгдеёжзийклмнопрстуфхцчшщъыьэюя") {
 	// Устанавливаем локализацию системы
 	this->setLocale();
-	// Устанавливаем алфавит допустимых символов
-	this->_nwt.letters(L"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZабвгдеёжзийклмнопрстуфхцчшщъыьэюяАБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ");
+	// Устанавливаем регулярное выражение для парсинга байт
+	this->_bytes = this->_regexp.build(
+		"([\\d\\.\\,]+)\\s*(B|KB|MB|GB|TB)", {
+			regexp_t::option_t::UTF8,
+			regexp_t::option_t::NO_UTF8_CHECK
+		}
+	);
+	// Устанавливаем регулярное выражение для парсинга времени
+	this->_seconds = this->_regexp.build(
+		"([\\d\\.\\,]+)\\s*(s|m|h|d|M|y)", {
+			regexp_t::option_t::UTF8,
+			regexp_t::option_t::NO_UTF8_CHECK
+		}
+	);
+	// Устанавливаем регулярное выражение для парсинга буферов данных
+	this->_buffers = this->_regexp.build(
+		"([\\d\\.\\,]+)\\s*(bps|kbps|Mbps|Gbps)", {
+			regexp_t::option_t::UTF8,
+			regexp_t::option_t::NO_UTF8_CHECK
+		}
+	);
 }
 /**
  * Framework Конструктор
  * @param locale локализация приложения
  */
-awh::Framework::Framework(const string & locale) noexcept {
+awh::Framework::Framework(const string & locale) noexcept : _nwt("абвгдеёжзийклмнопрстуфхцчшщъыьэюя") {
 	// Устанавливаем локализацию системы
 	this->setLocale(locale);
-	// Устанавливаем алфавит допустимых символов
-	this->_nwt.letters(L"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZабвгдеёжзийклмнопрстуфхцчшщъыьэюяАБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ");
+	// Устанавливаем регулярное выражение для парсинга байт
+	this->_bytes = this->_regexp.build(
+		"([\\d\\.\\,]+)\\s*(B|KB|MB|GB|TB)", {
+			regexp_t::option_t::UTF8,
+			regexp_t::option_t::NO_UTF8_CHECK
+		}
+	);
+	// Устанавливаем регулярное выражение для парсинга секунд
+	this->_seconds = this->_regexp.build(
+		"([\\d\\.\\,]+)\\s*(s|m|h|d|M|y)", {
+			regexp_t::option_t::UTF8,
+			regexp_t::option_t::NO_UTF8_CHECK
+		}
+	);
+	// Устанавливаем регулярное выражение для парсинга буферов данных
+	this->_buffers = this->_regexp.build(
+		"([\\d\\.\\,]+)\\s*(bps|kbps|Mbps|Gbps)", {
+			regexp_t::option_t::UTF8,
+			regexp_t::option_t::NO_UTF8_CHECK
+		}
+	);
+}
+/**
+ * ~Framework Деструктор
+ */
+awh::Framework::~Framework() noexcept {
+	// Выполняем очистку регулярного выражения для парсинга байт
+	this->_regexp.free(this->_bytes);
+	// Выполняем очистку регулярного выражения для парсинга секунд
+	this->_regexp.free(this->_seconds);
+	// Выполняем очистку регулярного выражения для парсинга буферов данных
+	this->_regexp.free(this->_buffers);
 }

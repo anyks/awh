@@ -13,6 +13,7 @@
 ## Requirements
 
 - [Zlib](http://www.zlib.net)
+- [PCRE](https://github.com/luvit/pcre)
 - [Brotli](https://github.com/google/brotli)
 - [OpenSSL](https://www.openssl.org)
 - [LibEv](http://software.schmorp.de/pkg/libev.html)

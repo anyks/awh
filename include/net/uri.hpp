@@ -19,7 +19,6 @@
  * Стандартная библиотека
  */
 #include <map>
-#include <regex>
 #include <string>
 #include <vector>
 #include <cctype>
@@ -40,6 +39,7 @@
 /**
  * Наши модули
  */
+#include <sys/re.hpp>
 #include <sys/fmk.hpp>
 #include <net/net.hpp>
 
@@ -130,6 +130,16 @@ namespace awh {
 					 user(""), pass(""), domain(""), schema(""),
 					 anchor(""), fn(nullptr) {}
 			} url_t;
+		private:
+			// Объект регулярного выражения
+			regexp_t _regexp;
+		private:
+			// Регулярное выражение для парсинга URI
+			regexp_t::exp_t _uri;
+			// Регулярное выражение для парсинга E-Mail
+			regexp_t::exp_t _email;
+			// Регулярное выражение для парсинга параметров
+			regexp_t::exp_t _params;
 		private:
 			// Создаём объект фреймворка
 			const fmk_t * _fmk;
@@ -235,11 +245,11 @@ namespace awh {
 			 * @param fmk объект фреймворка
 			 * @param net объект методов для работы с сетью
 			 */
-			URI(const fmk_t * fmk, const net_t * net) noexcept : _fmk(fmk), _net(net) {}
+			URI(const fmk_t * fmk, const net_t * net) noexcept;
 			/**
 			 * ~URI Деструктор
 			 */
-			~URI() noexcept {}
+			~URI() noexcept;
 	} uri_t;
 };
 

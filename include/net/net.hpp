@@ -19,7 +19,6 @@
  * Стандартная библиотека
  */
 #include <array>
-#include <regex>
 #include <cmath>
 #include <bitset>
 #include <string>
@@ -30,6 +29,7 @@
 /**
  * Наши модули
  */
+#include <sys/re.hpp>
 #include <sys/log.hpp>
 #include <sys/fmk.hpp>
 
@@ -110,6 +110,12 @@ namespace awh {
 		private:
 			// Тип обрабатываемого адреса
 			type_t _type;
+		private:
+			// Объект регулярного выражения
+			regexp_t _regexp;
+		private:
+			// Регулярное выражение для проверки адреса
+			regexp_t::exp_t _exp;
 		private:
 			// Бинарный буфер данных
 			vector <uint8_t> _buffer;
@@ -395,11 +401,11 @@ namespace awh {
 			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
 			 */
-			Net(const fmk_t * fmk, const log_t * log) noexcept : _type(type_t::NONE), _fmk(fmk), _log(log) {}
+			Net(const fmk_t * fmk, const log_t * log) noexcept;
 			/**
 			 * ~Net деструктор
 			 */
-			~Net() noexcept {}
+			~Net() noexcept;
 	} net_t;
 	/**
 	 * Оператор [>>] чтения из потока IP адреса

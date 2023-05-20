@@ -247,6 +247,16 @@ namespace awh {
 			// Устанавливаем локаль по умолчанию
 			locale _locale;
 		private:
+			// Объект регулярного выражения
+			regexp_t _regexp;
+		private:
+			// Регулярное выражение для парсинга байт
+			regexp_t::exp_t _bytes;
+			// Регулярное выражение для парсинга секунд
+			regexp_t::exp_t _seconds;
+			// Регулярное выражение для парсинга буферов данных
+			regexp_t::exp_t _buffers;
+		private:
 			// Объект парсинга nwt адреса
 			mutable nwt_t _nwt;
 			// Числовые параметры
@@ -542,25 +552,15 @@ namespace awh {
 			 */
 			void domainZone(const string & zone) noexcept;
 			/**
-			 * domainZone Метод установки пользовательской зоны
-			 * @param zone пользовательская зона
-			 */
-			void domainZone(const wstring & zone) noexcept;
-			/**
 			 * domainZones Метод установки списка пользовательских зон
 			 * @param zones список доменных зон интернета
 			 */
 			void domainZones(const std::set <string> & zones) noexcept;
 			/**
-			 * domainZones Метод установки списка пользовательских зон
-			 * @param zones список доменных зон интернета
-			 */
-			void domainZones(const std::set <wstring> & zones) noexcept;
-			/**
 			 * domainZones Метод извлечения списка пользовательских зон интернета
 			 * @return список доменных зон
 			 */
-			const std::set <wstring> & domainZones() const noexcept;
+			const std::set <string> & domainZones() const noexcept;
 		public:
 			/**
 			 * setLocale Метод установки локали
@@ -573,7 +573,7 @@ namespace awh {
 			 * @param text текст для извлечения url адресов
 			 * @return     список координат с url адресами
 			 */
-			std::map <size_t, size_t> urls(const wstring & text) const noexcept;
+			std::map <size_t, size_t> urls(const string & text) const noexcept;
 		public:
 			/**
 			 * time2abbr Метод перевода времени в аббревиатуру
@@ -655,7 +655,7 @@ namespace awh {
 			/**
 			 * ~Framework Деструктор
 			 */
-			~Framework() noexcept {}
+			~Framework() noexcept;
 	} fmk_t;
 };
 

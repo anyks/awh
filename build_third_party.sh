@@ -33,6 +33,7 @@ if [ -n "$1" ]; then
 
 		# Очищаем подпроекты
 		clean_submodule "zlib"
+		clean_submodule "pcre"
 		clean_submodule "libev"
 		clean_submodule "libev-win"
 		clean_submodule "brotli"
@@ -579,6 +580,65 @@ if [[ $IDN = "yes" ]] && [[ ! $OS = "Windows" ]]; then
 			echo "DOWNLOAD libidn2 sources failed"
 		fi
 	fi
+fi
+
+# Сборка PCRE
+src="$ROOT/submodules/pcre"
+if [ ! -f "$src/.stamp_done" ]; then
+	printf "\n****** PCRE ******\n"
+	cd "$src" || exit 1
+
+	# Создаём каталог сборки
+	mkdir -p "build" || exit 1
+	# Переходим в каталог
+	cd "build" || exit 1
+
+	# Удаляем старый файл кэша
+	rm -rf "$src/build/CMakeCache.txt"
+
+	# Выполняем конфигурацию проекта
+	if [[ $OS = "Windows" ]]; then
+		cmake \
+		 -DCMAKE_SYSTEM_NAME=Windows \
+		 -DCMAKE_BUILD_TYPE=Release \
+		 -DPCRE_BUILD_TESTS=NO \
+		 -DPCRE_BUILD_PCRECPP=YES \
+		 -DPCRE_BUILD_PCRE32=YES \
+		 -DPCRE_BUILD_PCRE8=NO \
+		 -DPCRE_SUPPORT_UTF=YES \
+		 -DPCRE_SUPPORT_JIT=NO \
+		 -DPCRE_SUPPORT_LIBZ=NO \
+		 -DPCRE_SUPPORT_LIBBZ2=NO \
+		 -DPCRE_SUPPORT_LIBEDIT=NO \
+		 -DPCRE_SUPPORT_LIBREADLINE=NO \
+		 -DPCRE_SUPPORT_UNICODE_PROPERTIES=YES \
+		 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
+		 -G "MinGW Makefiles" \
+		.. || exit 1
+	else
+		cmake \
+		 -DCMAKE_BUILD_TYPE=Release \
+		 -DPCRE_BUILD_TESTS=NO \
+		 -DPCRE_BUILD_PCRECPP=YES \
+		 -DPCRE_SUPPORT_UTF=YES \
+		 -DPCRE_SUPPORT_JIT=NO \
+		 -DPCRE_SUPPORT_LIBZ=NO \
+		 -DPCRE_SUPPORT_LIBBZ2=NO \
+		 -DPCRE_SUPPORT_LIBEDIT=NO \
+		 -DPCRE_SUPPORT_LIBREADLINE=NO \
+		 -DPCRE_SUPPORT_UNICODE_PROPERTIES=YES \
+		 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
+		.. || exit 1
+	fi
+
+	# Выполняем сборку на всех логических ядрах
+	$BUILD -j"$numproc" || exit 1
+	# Выполняем установку проекта
+	$BUILD install || exit 1
+
+	# Помечаем флагом, что сборка и установка произведена
+	touch "$src/.stamp_done"
+	cd "$ROOT" || exit 1
 fi
 
 # Переименовываем расширение библиотек для Windows

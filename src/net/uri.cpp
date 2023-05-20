@@ -198,7 +198,7 @@ string awh::URI::encode(const string & str) const noexcept {
 			string::value_type c = (* i);
 			// Не трогаем буквенно-цифровые и другие допустимые символы.
 			if(isalnum(c) || (c == '-') || (c == '_') || (c == '.') || (c == '~') || (c == '@') ||
-			((c >= '0') && (c <= '9')) || ((c >= 'A') && (c <= 'Z')) || ((c >= 'a') && (c <= 'z'))){
+			  ((c >= '0') && (c <= '9')) || ((c >= 'A') && (c <= 'Z')) || ((c >= 'a') && (c <= 'z'))){
 				// Записываем в поток символ, как он есть
 				escaped << c;
 				// Пропускаем итерацию
@@ -298,6 +298,17 @@ string awh::URI::url(const url_t & url) const noexcept {
 			if(url.port > 0){
 				// Определяем указанный порт
 				switch(url.port){
+					// Если указан 25 порт
+					case 25:
+					// Если указан 587 порт
+					case 587:
+					// Если указан 465 порт
+					case 465: {
+						// Если схема принадлежит E-Mail
+						if(this->_fmk->compare(url.schema, "mailto"))
+							// Формируем URI адрес по умолчанию
+							return this->_fmk->format("%s%s", auth.c_str(), host.c_str());
+					} break;
 					// Если указан 80 порт
 					case 80: port = (this->_fmk->compare(url.schema, "http") || this->_fmk->compare(url.schema, "ws") ? 0 : url.port); break;
 					// Если указан 443 порт
@@ -428,32 +439,28 @@ map <awh::URI::flag_t, string> awh::URI::split(const string & uri) const noexcep
 	map <flag_t, string> result;
 	// Если URI передан
 	if(!uri.empty()){
-		// Результат работы регулярного выражения
-		smatch match;
-		// Устанавливаем правило регулярного выражения
-		regex e("^(([^:/?#]+):)?(\\/\\/([^/?#]*))?([^?#]*)(\\?([^#]*))?(#(.*))?", regex::ECMAScript | regex::icase);
-		// Выполняем поиск ip адреса и префикса сети
-		regex_search(uri, match, e);
-		// Если данные найдены
+		// Выполняем проверку электронной почты
+		const auto & match = this->_regexp.exec(uri, this->_uri);
+		// Если результат получен
 		if(!match.empty()){
 			// Если данные пришли в правильном формате
-			if(!match[4].str().empty()){
+			if(!match[4].empty()){
 				// Переходим по всему списку полученных данных
 				for(size_t i = 0; i < match.size(); i++){
 					// Если запись получена
-					if(!match[i].str().empty()){
+					if(!match[i].empty()){
 						// Определяем тип записи
 						switch(i){
 							// Если типом записи является путём запроса
-							case 5: result.emplace(flag_t::PATH, match[i].str()); break;
+							case 5: result.emplace(flag_t::PATH, match[i]); break;
 							// Если типом записи является параметрами запроса
-							case 7: result.emplace(flag_t::PARAMS, match[i].str()); break;
+							case 7: result.emplace(flag_t::PARAMS, match[i]); break;
 							// Если типом записи является якорем запроса
-							case 9: result.emplace(flag_t::ANCHOR, match[i].str()); break;
+							case 9: result.emplace(flag_t::ANCHOR, match[i]); break;
 							// Если типом записи является доменным именем
-							case 4: result.emplace(flag_t::HOST, this->_fmk->transform(match[i].str(), fmk_t::transform_t::LOWER)); break;
+							case 4: result.emplace(flag_t::HOST, this->_fmk->transform(match[i], fmk_t::transform_t::LOWER)); break;
 							// Если типом записи является протокол
-							case 2: result.emplace(flag_t::SCHEMA, this->_fmk->transform(match[i].str(), fmk_t::transform_t::LOWER)); break;
+							case 2: result.emplace(flag_t::SCHEMA, this->_fmk->transform(match[i], fmk_t::transform_t::LOWER)); break;
 						}
 					}
 				}
@@ -481,17 +488,28 @@ map <awh::URI::flag_t, string> awh::URI::split(const string & uri) const noexcep
 				// Переходим по всему списку полученных данных
 				for(size_t i = 0; i < match.size(); i++){
 					// Если запись получена
-					if(!match[i].str().empty()){
+					if(!match[i].empty()){
+						// Если мы получили URL адрес
+						if((i == 5) && this->_regexp.test(match[i], this->_email)){
+							// Устанавливаем порт по умолчанию
+							result.emplace(flag_t::PORT, "25");
+							// Устанавливаем схему протокола
+							result.emplace(flag_t::SCHEMA, "mailto");
+							// Устанавливаем тип хоста
+							result.emplace(flag_t::HOST, this->_fmk->transform(match[i], fmk_t::transform_t::LOWER));
+							// Выходим из цикла
+							break;
+						}
 						// Определяем тип записи
 						switch(i){
 							// Если типом записи является путём запроса
-							case 5: result.emplace(flag_t::PATH, match[i].str()); break;
+							case 5: result.emplace(flag_t::PATH, match[i]); break;
 							// Если типом записи является параметрами запроса
-							case 7: result.emplace(flag_t::PARAMS, match[i].str()); break;
+							case 7: result.emplace(flag_t::PARAMS, match[i]); break;
 							// Если типом записи является якорем запроса
-							case 9: result.emplace(flag_t::ANCHOR, match[i].str()); break;
+							case 9: result.emplace(flag_t::ANCHOR, match[i]); break;
 							// Если типом записи является доменным именем
-							case 2: result.emplace(flag_t::HOST, this->_fmk->transform(match[i].str(), fmk_t::transform_t::LOWER)); break;
+							case 2: result.emplace(flag_t::HOST, this->_fmk->transform(match[i], fmk_t::transform_t::LOWER)); break;
 						}
 					}
 				}
@@ -772,25 +790,18 @@ awh::URI::params_t awh::URI::params(const string & uri, const string & schema) c
 	params_t result;
 	// Если URI передан
 	if(!uri.empty()){
-		// Результат работы регулярного выражения
-		smatch match;
-		// Устанавливаем правило регулярного выражения
-		regex e(
-			"^(?:(?:(.+)\\:)?(?:(.+)\\@))?((?:[^\\:]+|(?:\\[?(?:\\:\\:ffff\\:\\d{1,3}(?:\\.\\d{1,3}){3}|(?:[a-f\\d]{1,4}(?:(?:\\:[a-f\\d]{1,4})|\\:){1,6}\\:[a-f\\d]{1,4})|(?:[a-f\\d]{1,4}(?:(?:\\:[a-f\\d]{1,4}){7}|(?:\\:[a-f\\d]{1,4}){1,6}\\:\\:|\\:\\:)|\\:\\:))\\]?)))(?:\\:(\\d+))?$",
-			regex::ECMAScript | regex::icase
-		);
-		// Выполняем поиск ip адреса и префикса сети
-		regex_search(uri, match, e);
-		// Если данные найдены
+		// Выполняем проверку электронной почты
+		const auto & match = this->_regexp.exec(uri, this->_params);
+		// Если результат получен
 		if(!match.empty()){
 			// Получаем пользователя
-			result.user = match[1].str();
+			result.user = match[1];
 			// Получаем пароль пользователя
-			result.pass = match[2].str();
+			result.pass = match[2];
 			// Получаем хост запроса
-			result.host = this->_fmk->transform(match[3].str(), fmk_t::transform_t::LOWER);
+			result.host = this->_fmk->transform(match[3], fmk_t::transform_t::LOWER);
 			// Получаем порт запроса
-			const string & port = match[4].str();
+			const string & port = match[4];
 			// Если порт получен
 			if(!port.empty()) result.port = ::stoi(port);
 			// Если порт не получен но указана схема
@@ -826,4 +837,48 @@ awh::URI::params_t awh::URI::params(const string & uri, const string & schema) c
 	}
 	// Выводим результат
 	return result;
+}
+/**
+ * URI Конструктор
+ * @param fmk объект фреймворка
+ * @param net объект методов для работы с сетью
+ */
+awh::URI::URI(const fmk_t * fmk, const net_t * net) noexcept : _fmk(fmk), _net(net) {
+	// Устанавливаем регулярное выражение для парсинга URI
+	this->_uri = this->_regexp.build(
+		"^(([^:/?#]+):)?(\\/\\/([^/?#]*))?([^?#]*)(\\?([^#]*))?(#(.*))?", {
+			regexp_t::option_t::UTF8,
+			regexp_t::option_t::CASELESS,
+			regexp_t::option_t::NO_UTF8_CHECK
+		}
+	);
+	// Устанавливаем регулярное выражение для парсинга E-Mail
+	this->_email = this->_regexp.build(
+		"((?:([\\w\\-абвгдеёжзийклмнопрстуфхцчшщъыьэюя"
+		"]+)\\@)(\\[(?:\\:\\:ffff\\:\\d{1,3}(?:\\.\\d{1,3}){3}|(?:[a-f\\d]{1,4}(?:(?:\\:[a-f\\d]{1,4})|\\:){1,6}\\:[a-f\\d]{1,4})|(?:[a-f\\d]{1,4}(?:(?:\\:[a-f\\d]{1,4}){7}|(?:\\:[a-f\\d]{1,4}){1,6}\\:\\:|\\:\\:)|\\:\\:))\\]|(?:\\d{1,3}(?:\\.\\d{1,3}){3})|(?:(?:xn\\-\\-[\\w\\d]+\\.){0,100}(?:xn\\-\\-[\\w\\d]+)|(?:[\\w\\-"
+		"абвгдеёжзийклмнопрстуфхцчшщъыьэюя]+\\.){0,100}[\\w\\-абвгдеёжзийклмнопрстуфхцчшщъыьэюя]+)\\.(xn\\-\\-[\\w\\d]+|[a-zабвгдеёжзийклмнопрстуфхцчшщъыьэюя]+)))", {
+			regexp_t::option_t::UTF8,
+			regexp_t::option_t::CASELESS,
+			regexp_t::option_t::NO_UTF8_CHECK
+		}
+	);
+	// Устанавливаем регулярное выражение для парсинга параметров
+	this->_params = this->_regexp.build(
+		"^(?:(?:(.+)\\:)?(?:(.+)\\@))?((?:[^\\:]+|(?:\\[?(?:\\:\\:ffff\\:\\d{1,3}(?:\\.\\d{1,3}){3}|(?:[a-f\\d]{1,4}(?:(?:\\:[a-f\\d]{1,4})|\\:){1,6}\\:[a-f\\d]{1,4})|(?:[a-f\\d]{1,4}(?:(?:\\:[a-f\\d]{1,4}){7}|(?:\\:[a-f\\d]{1,4}){1,6}\\:\\:|\\:\\:)|\\:\\:))\\]?)))(?:\\:(\\d+))?$", {
+			regexp_t::option_t::UTF8,
+			regexp_t::option_t::CASELESS,
+			regexp_t::option_t::NO_UTF8_CHECK
+		}
+	);
+}
+/**
+ * ~URI Деструктор
+ */
+awh::URI::~URI() noexcept {
+	// Выполняем очистку регулярного выражения для парсинга URI
+	this->_regexp.free(this->_uri);
+	// Выполняем очистку регулярного выражения для парсинга E-Mail
+	this->_regexp.free(this->_email);
+	// Выполняем очистку регулярного выражения для парсинга параметров
+	this->_regexp.free(this->_params);
 }
