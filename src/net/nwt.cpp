@@ -214,6 +214,12 @@ void awh::NWT::letters(const string & letters) noexcept {
 	if(!letters.empty())
 		// Устанавливаем буквы алфавита
 		this->_letters = letters;
+	// Выполняем очистку регулярного выражения для проверки IP адресов
+	this->_regexp.free(this->_ip);
+	// Выполняем очистку регулярного выражения для проверки URL адресов
+	this->_regexp.free(this->_url);
+	// Выполняем очистку регулярного выражения для проверки электронной почты
+	this->_regexp.free(this->_email);
 	// Устанавливаем регулярное выражение для проверки электронной почты
 	this->_email = this->_regexp.build(
 		"((?:([\\w\\-"

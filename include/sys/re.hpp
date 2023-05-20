@@ -48,10 +48,6 @@ namespace awh {
 				 * Expression Конструктор
 				 */
 				Expression() noexcept : offset(0), ctx(nullptr), error(nullptr) {}
-				/**
-				 * ~Expression Деструктор
-				 */
-				~Expression() noexcept {}
 			} exp_t;
 		public:
 			/**
