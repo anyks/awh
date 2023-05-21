@@ -856,7 +856,7 @@ bool awh::Net::broadcastIPv6ToIPv4() const noexcept {
  * @param mask  маска сети для перевода
  * @return      результат првоерки
  */
-bool awh::Net::range(const Net & begin, const Net & end, string & mask) const noexcept {
+bool awh::Net::range(const Net & begin, const Net & end, const string & mask) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Если бинарный буфер данных существует и маска передана
@@ -927,7 +927,7 @@ bool awh::Net::range(const Net & begin, const Net & end, const uint8_t prefix) c
  * @param mask  маска сети для перевода
  * @return      результат првоерки
  */
-bool awh::Net::range(const string & begin, const string & end, string & mask) const noexcept {
+bool awh::Net::range(const string & begin, const string & end, const string & mask) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Если бинарный буфер данных существует и маска передана

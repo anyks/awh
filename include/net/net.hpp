@@ -252,7 +252,7 @@ namespace awh {
 			 * @param mask  маска сети для перевода
 			 * @return      результат првоерки
 			 */
-			bool range(const Net & begin, const Net & end, string & mask) const noexcept;
+			bool range(const Net & begin, const Net & end, const string & mask) const noexcept;
 			/**
 			 * range Метод проверки вхождения IP адреса в диапазон адресов
 			 * @param begin  начало диапазона адресов
@@ -268,7 +268,7 @@ namespace awh {
 			 * @param mask  маска сети для перевода
 			 * @return      результат првоерки
 			 */
-			bool range(const string & begin, const string & end, string & mask) const noexcept;
+			bool range(const string & begin, const string & end, const string & mask) const noexcept;
 			/**
 			 * range Метод проверки вхождения IP адреса в диапазон адресов
 			 * @param begin  начало диапазона адресов
