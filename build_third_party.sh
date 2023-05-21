@@ -307,20 +307,20 @@ if [ ! -f "$src/.stamp_done" ]; then
 	$BUILD -j"$numproc" || exit 1
 
 	# Производим установку библиотеки по нужному пути
-	echo "Install \"$ROOT/submodules/brotli/${build}/libbrotlicommon-static.a\" to \"$PREFIX/lib/libbrotlicommon-static.a\""
-	${INSTALL_CMD} "$ROOT/submodules/brotli/${build}/libbrotlicommon-static.a" "$PREFIX/lib/libbrotlicommon-static.a" || exit 1
+	echo "Install \"$src/${build}/libbrotlicommon-static.a\" to \"$PREFIX/lib/libbrotlicommon-static.a\""
+	${INSTALL_CMD} "$src/${build}/libbrotlicommon-static.a" "$PREFIX/lib/libbrotlicommon-static.a" || exit 1
 
-	echo "Install \"$ROOT/submodules/brotli/${build}/libbrotlidec-static.a\" to \"$PREFIX/lib/libbrotlidec-static.a\""
-	${INSTALL_CMD} "$ROOT/submodules/brotli/${build}/libbrotlidec-static.a" "$PREFIX/lib/libbrotlidec-static.a" || exit 1
+	echo "Install \"$src/${build}/libbrotlidec-static.a\" to \"$PREFIX/lib/libbrotlidec-static.a\""
+	${INSTALL_CMD} "$src/${build}/libbrotlidec-static.a" "$PREFIX/lib/libbrotlidec-static.a" || exit 1
 
-	echo "Install \"$ROOT/submodules/brotli/${build}/libbrotlienc-static.a\" to \"$PREFIX/lib/libbrotlienc-static.a\""
-	${INSTALL_CMD} "$ROOT/submodules/brotli/${build}/libbrotlienc-static.a" "$PREFIX/lib/libbrotlienc-static.a" || exit 1
+	echo "Install \"$src/${build}/libbrotlienc-static.a\" to \"$PREFIX/lib/libbrotlienc-static.a\""
+	${INSTALL_CMD} "$src/${build}/libbrotlienc-static.a" "$PREFIX/lib/libbrotlienc-static.a" || exit 1
 
 	# Производим установку заголовочных файлов по нужному пути
-	for i in $(ls "$ROOT/submodules/brotli/c/include/brotli" | grep \\.h$);
+	for i in $(ls "$src/c/include/brotli" | grep \\.h$);
 	do
-		echo "Install \"$ROOT/submodules/brotli/c/include/brotli/$i\" to \"$PREFIX/include/brotli/$i\""
-		${INSTALL_CMD} "$ROOT/submodules/brotli/c/include/brotli/$i" "$PREFIX/include/brotli/$i" || exit 1
+		echo "Install \"$src/c/include/brotli/$i\" to \"$PREFIX/include/brotli/$i\""
+		${INSTALL_CMD} "$src/c/include/brotli/$i" "$PREFIX/include/brotli/$i" || exit 1
 	done
 
 	# Помечаем флагом, что сборка и установка произведена
@@ -430,14 +430,14 @@ else
 			apply_patch "libev" "libev.patch"
 
 			# Производим установку библиотеки по нужному пути
-			echo "Install \"$ROOT/submodules/libev-win/build/liblibev_static.a\" to \"$PREFIX/lib/libev.a\""
-			${INSTALL_CMD} "$ROOT/submodules/libev-win/build/liblibev_static.a" "$PREFIX/lib/libev.a" || exit 1
+			echo "Install \"$src/build/liblibev_static.a\" to \"$PREFIX/lib/libev.a\""
+			${INSTALL_CMD} "$src/build/liblibev_static.a" "$PREFIX/lib/libev.a" || exit 1
 
 			# Производим установку заголовочных файлов по нужному пути
-			for i in $(ls "$ROOT/submodules/libev-win" | grep \\.h$);
+			for i in $(ls "$src" | grep \\.h$);
 			do
-				echo "Install \"$ROOT/submodules/libev-win/$i\" to \"$PREFIX/include/libev/$i\""
-				${INSTALL_CMD} "$ROOT/submodules/libev-win/$i" "$PREFIX/include/libev/$i" || exit 1
+				echo "Install \"$src/$i\" to \"$PREFIX/include/libev/$i\""
+				${INSTALL_CMD} "$src/$i" "$PREFIX/include/libev/$i" || exit 1
 			done
 
 			# Помечаем флагом, что сборка и установка произведена
@@ -635,6 +635,16 @@ if [ ! -f "$src/.stamp_done" ]; then
 	$BUILD -j"$numproc" || exit 1
 	# Выполняем установку проекта
 	$BUILD install || exit 1
+
+	# Создаём каталог PCRE
+	mkdir "$PREFIX/include/pcre"
+
+	# Производим установку заголовочных файлов по нужному пути
+	for i in $(ls "$PREFIX/include" | grep "pcre.*\.h$");
+	do
+		echo "Move \"$PREFIX/include/$i\" to \"$PREFIX/include/pcre/$i\""
+		mv "$PREFIX/include/$i" "$PREFIX/include/pcre/$i" || exit 1
+	done
 
 	# Помечаем флагом, что сборка и установка произведена
 	touch "$src/.stamp_done"

@@ -20,7 +20,7 @@
  */
 #include <string>
 #include <vector>
-#include <pcre.h>
+#include <pcre/pcre.h>
 
 // Подписываемся на стандартное пространство имён
 using namespace std;

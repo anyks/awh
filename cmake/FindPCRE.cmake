@@ -5,7 +5,7 @@ if (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
 endif()
 
 # Поиск пути к заголовочным файлам
-find_path(PCRE_INCLUDE_DIR NAMES pcre.h PATHS ${CMAKE_SOURCE_DIR}/third_party/include NO_DEFAULT_PATH)
+find_path(PCRE_INCLUDE_DIR NAMES pcre.h PATHS ${CMAKE_SOURCE_DIR}/third_party/include/pcre NO_DEFAULT_PATH)
 # Поиск библиотеки PCRE
 find_library(PCRE_LIBRARY NAMES pcre PATHS ${CMAKE_SOURCE_DIR}/third_party/lib NO_DEFAULT_PATH)
 
