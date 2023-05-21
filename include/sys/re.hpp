@@ -101,7 +101,7 @@ namespace awh {
 			 * @param options    список опций для сборки регулярного выражения
 			 * @return           результат собранного регулярного выражения
 			 */
-			exp_t build(const string & expression, const vector <option_t> & options = {}) noexcept;
+			exp_t build(const string & expression, const vector <option_t> & options = {}) const noexcept;
 		public:
 			/**
 			 * RegExp Конструктор

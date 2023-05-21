@@ -83,7 +83,7 @@ vector <string> awh::RegExp::exec(const string & text, const exp_t & exp) const 
  * @param options    список опций для сборки регулярного выражения
  * @return           результат собранного регулярного выражения
  */
-awh::RegExp::exp_t awh::RegExp::build(const string & expression, const vector <option_t> & options) noexcept {
+awh::RegExp::exp_t awh::RegExp::build(const string & expression, const vector <option_t> & options) const noexcept {
 	// Результат работы функции
 	exp_t result;
 	// Если регулярное выражение передано
