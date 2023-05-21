@@ -160,8 +160,18 @@ if [ ! -f "$src/.stamp_done" ]; then
 	# Выполняем конфигурацию проекта под Linux или FreeBSD
 	if [[ $OS = "Linux" ]] || [[ $OS = "FreeBSD" ]]; then
 		# Выполняем конфигурацию проекта
-		./config \
+		./Configure \
 		 sctp \
+		 no-async \
+		 no-shared \
+		 --prefix="$PREFIX" \
+		 --openssldir="$PREFIX" \
+		 -Wl,-rpath,"$PREFIX/lib" || exit 1
+	# Выполняем конфигурацию проекта под Windows
+	elif [ $OS = "Windows" ]; then
+		# Выполняем конфигурацию проекта
+		./Configure \
+		 mingw64 \
 		 no-async \
 		 no-shared \
 		 --prefix="$PREFIX" \
@@ -170,7 +180,7 @@ if [ ! -f "$src/.stamp_done" ]; then
 	# Выполняем конфигурацию проекта под все остальные операционные системы
 	else
 		# Выполняем конфигурацию проекта
-		./config \
+		./Configure \
 		 no-async \
 		 no-shared \
 		 --prefix="$PREFIX" \
