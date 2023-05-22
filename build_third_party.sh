@@ -418,6 +418,9 @@ else
 			printf "\n****** LibEv ******\n"
 			cd "$src" || exit 1
 
+			# Применяем патч
+			apply_patch "libev-win" "libev.patch"
+
 			# Создаём каталог сборки
 			mkdir -p "build" || exit 1
 			# Переходим в каталог
@@ -432,9 +435,6 @@ else
 			 -DCMAKE_SYSTEM_NAME="Windows" \
 			 -G "MinGW Makefiles" \
 			 .. || exit 1
-
-			# Применяем патч
-			apply_patch "libev-win" "libev.patch"
 
 			# Выполняем сборку на всех логических ядрах
 			$BUILD -j"$numproc" || exit 1
