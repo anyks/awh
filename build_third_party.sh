@@ -433,11 +433,11 @@ else
 			 -G "MinGW Makefiles" \
 			 .. || exit 1
 
+			# Применяем патч
+			apply_patch "libev-win" "libev.patch"
+
 			# Выполняем сборку на всех логических ядрах
 			$BUILD -j"$numproc" || exit 1
-
-			# Применяем патч
-			apply_patch "libev" "libev.patch"
 
 			# Производим установку библиотеки по нужному пути
 			echo "Install \"$src/build/liblibev_static.a\" to \"$PREFIX/lib/libev.a\""
@@ -475,7 +475,7 @@ else
 			apply_patch "libev" "libev.patch"
 			
 			# Выполняем сборку проекта
-			$BUILD || exit 1
+			$BUILD -j"$numproc" || exit 1
 			# Выполняем установку проекта
 			$BUILD install || exit 1
 
@@ -531,7 +531,7 @@ if [[ $IDN = "yes" ]] && [[ ! $OS = "Windows" ]]; then
 			fi
 
 			# Выполняем сборку проекта
-			$BUILD || exit 1
+			$BUILD -j"$numproc" || exit 1
 			# Выполняем установку проекта
 			$BUILD install || exit 1
 
@@ -577,7 +577,7 @@ if [[ $IDN = "yes" ]] && [[ ! $OS = "Windows" ]]; then
 			 --libdir="$PREFIX/lib"
 
 			# Выполняем сборку проекта
-			$BUILD || exit 1
+			$BUILD -j"$numproc" || exit 1
 			# Выполняем установку проекта
 			$BUILD install || exit 1
 
