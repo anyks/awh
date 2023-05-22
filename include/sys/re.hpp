@@ -20,7 +20,13 @@
  */
 #include <string>
 #include <vector>
-#include <pcre/pcre.h>
+
+/**
+ * Подключаем PCRE Си
+ */
+extern "C" {
+	#include <pcre/pcre.h>
+}
 
 // Подписываемся на стандартное пространство имён
 using namespace std;

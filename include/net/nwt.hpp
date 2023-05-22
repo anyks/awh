@@ -19,7 +19,6 @@
  * Стандартная библиотека
  */
 #include <set>
-#include <sys/re.hpp>
 #include <sys/types.h>
 
 /**
@@ -27,6 +26,7 @@
  */
 #include <sys/win.hpp>
 #include <sys/lib.hpp>
+#include <sys/re.hpp>
 
 // Устанавливаем область видимости
 using namespace std;

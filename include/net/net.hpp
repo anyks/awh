@@ -20,6 +20,7 @@
  */
 #include <array>
 #include <cmath>
+#include <memory>
 #include <bitset>
 #include <string>
 #include <vector>
@@ -29,7 +30,6 @@
 /**
  * Наши модули
  */
-#include <sys/re.hpp>
 #include <sys/log.hpp>
 #include <sys/fmk.hpp>
 

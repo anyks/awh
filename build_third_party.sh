@@ -613,8 +613,6 @@ if [ ! -f "$src/.stamp_done" ]; then
 		 -DCMAKE_BUILD_TYPE=Release \
 		 -DPCRE_BUILD_TESTS=NO \
 		 -DPCRE_BUILD_PCRECPP=YES \
-		 -DPCRE_BUILD_PCRE32=YES \
-		 -DPCRE_BUILD_PCRE8=NO \
 		 -DPCRE_SUPPORT_UTF=YES \
 		 -DPCRE_SUPPORT_JIT=NO \
 		 -DPCRE_SUPPORT_LIBZ=NO \
@@ -663,9 +661,15 @@ fi
 
 # Переименовываем расширение библиотек для Windows
 if [ $OS = "Windows" ]; then # Windows
+	# Выполняем исправление библиотек для x32
 	for i in $(ls "$PREFIX/lib" | grep .a$);
 	do
 		mv "$PREFIX/lib/$i" "$PREFIX/lib/$(basename "$i" .a).lib"
+	done
+	# Выполняем исправление библиотек для x64
+	for i in $(ls "$PREFIX/lib64" | grep .a$);
+	do
+		mv "$PREFIX/lib64/$i" "$PREFIX/lib64/$(basename "$i" .a).lib"
 	done
 fi
 

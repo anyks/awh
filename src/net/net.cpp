@@ -1180,6 +1180,10 @@ bool awh::Net::parse(const string & addr, const type_t type) noexcept {
 				int last = -1;
 				// Бинарный буфер адреса
 				u_char buffer[6];
+				// Выполняем очистку буфера данных
+				this->_buffer.clear();
+				// Выполняем инициализацию буфера
+				this->_buffer.resize(6, 0);
 				// Выполняем парсинг MAC адреса
 				const int rc = sscanf(
 					addr.c_str(),
@@ -1188,14 +1192,9 @@ bool awh::Net::parse(const string & addr, const type_t type) noexcept {
 					buffer + 3, buffer + 4, buffer + 5, &last
 				);
 				// Если MAC адрес удано распарсен
-				if((result = ((rc == 6) && (static_cast <int> (addr.size()) == last)))){
-					// Выполняем очистку буфера данных
-					this->_buffer.clear();
-					// Выполняем инициализацию буфера
-					this->_buffer.resize(6, 0);
+				if((result = ((rc == 6) && (static_cast <int> (addr.size()) == last))))
 					// Выполняем копирование бинарных данных MAC-адреса в буфер
 					memcpy(this->_buffer.data(), buffer, sizeof(buffer));
-				}
 			} break;
 			// Если IP адрес является адресом IPv4
 			case static_cast <uint8_t> (type_t::IPV4): {
