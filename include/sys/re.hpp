@@ -70,12 +70,16 @@ namespace awh {
 				 * Expression Структура регулярного выражения
 				 */
 				typedef struct Expression {
+					// Флаг работы с UTF-8
+					bool utf8;
 					// Объект регулярного выражения
-					wregex regex;
+					regex reg;
+					// Объект регулярного выражения для UTF-8
+					wregex wreg;
 					/**
 					 * Expression Конструктор
 					 */
-					Expression() noexcept {}
+					Expression() noexcept : utf8(false) {}
 				} exp_t;
 			/**
 			 * Для всех остальных операционных систем

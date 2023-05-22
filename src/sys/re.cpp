@@ -131,12 +131,21 @@ bool awh::RegExp::test(const string & text, const exp_t & exp) const noexcept {
 			 * Выполняем обработку ошибки
 			 */
 			try {
-				// Результат работы регулярного выражения
-				wsmatch match;
-				// Выполняем конвертирования текста
-				const wstring & enter = this->convert(text);
-				// Выполняем разбор регулярного выражения
-				result = regex_match(enter, match, exp.regex, regex_constants::match_default);
+				// Если мы выполняем работу с UTF-8
+				if(exp.utf8){
+					// Результат работы регулярного выражения
+					wsmatch match;
+					// Выполняем конвертирования текста
+					const wstring & enter = this->convert(text);
+					// Выполняем разбор регулярного выражения
+					result = regex_match(enter, match, exp.wreg, regex_constants::match_default);
+				// Если мы выполняем работу без поддержки UTF-8
+				} else {
+					// Результат работы регулярного выражения
+					smatch match;
+					// Выполняем разбор регулярного выражения
+					result = regex_match(text, match, exp.reg, regex_constants::match_default);
+				}
 			/**
 			 * Если возникает ошибка
 			 */
@@ -176,16 +185,30 @@ vector <string> awh::RegExp::exec(const string & text, const exp_t & exp) const 
 			 * Выполняем обработку ошибки
 			 */
 			try {
-				// Результат работы регулярного выражения
-				wsmatch match;
-				// Выполняем конвертирования текста
-				const wstring & enter = this->convert(text);
-				// Выполняем поиск в тексте по регулярному выражению
-				if(regex_match(enter, match, exp.regex, regex_constants::match_default)){
-					// Выполняем перебор всех полученных результатов
-					for(auto & item : match)
-						// Добавляем полученный результат в список результатов
-						result.push_back(this->convert(item));
+				// Если мы выполняем работу с UTF-8
+				if(exp.utf8){
+					// Результат работы регулярного выражения
+					wsmatch match;
+					// Выполняем конвертирования текста
+					const wstring & enter = this->convert(text);
+					// Выполняем поиск в тексте по регулярному выражению
+					if(regex_match(enter, match, exp.wreg, regex_constants::match_default)){
+						// Выполняем перебор всех полученных результатов
+						for(auto & item : match)
+							// Добавляем полученный результат в список результатов
+							result.push_back(this->convert(item));
+					}
+				// Если мы выполняем работу без поддержки UTF-8
+				} else {
+					// Результат работы регулярного выражения
+					smatch match;
+					// Выполняем поиск в тексте по регулярному выражению
+					if(regex_match(text, match, exp.reg, regex_constants::match_default)){
+						// Выполняем перебор всех полученных результатов
+						for(auto & item : match)
+							// Добавляем полученный результат в список результатов
+							result.push_back(item);
+					}
 				}
 			/**
 			 * Если возникает ошибка
@@ -241,6 +264,11 @@ awh::RegExp::exp_t awh::RegExp::build(const string & expression, const vector <o
 				for(auto & item : options){
 					// Определяем тип переданной опции
 					switch(static_cast <uint8_t> (item)){
+						// Если передан флаг запуска в режиме UTF-8
+						case static_cast <uint8_t> (option_t::UTF8):
+							// Выполняем установку флага работы с UTF-8
+							result.utf8 = true;
+						break;
 						// Если передан флаг дополнительных функций
 						case static_cast <uint8_t> (option_t::EXTRA):
 							// Устанавливаем флаг
@@ -266,8 +294,12 @@ awh::RegExp::exp_t awh::RegExp::build(const string & expression, const vector <o
 			}
 			// Устанавливаем флаг
 			option |= wregex::ECMAScript;
-			// Выполняем сборку регулярного выражения
-			result.regex = wregex(this->convert(expression), option);
+			// Если мы выполняем работу с UTF-8
+			if(result.utf8)
+				// Выполняем сборку регулярного выражения
+				result.wreg = wregex(this->convert(expression), option);
+			// Иначе выполняем сборку регулярных выражений без поддержки UTF-8
+			else result.reg = regex(expression, option);
 		/**
 		 * Для всех остальных операционных систем
 		 */
