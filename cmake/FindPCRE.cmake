@@ -7,11 +7,7 @@ endif()
 # Поиск пути к заголовочным файлам
 find_path(PCRE_INCLUDE_DIR NAMES pcre.h PATHS ${CMAKE_SOURCE_DIR}/third_party/include/pcre NO_DEFAULT_PATH)
 # Поиск библиотеки PCRE
-if (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
-    find_library(PCRE_LIBRARY NAMES pcre32 PATHS ${CMAKE_SOURCE_DIR}/third_party/lib NO_DEFAULT_PATH)
-else()
-    find_library(PCRE_LIBRARY NAMES pcre PATHS ${CMAKE_SOURCE_DIR}/third_party/lib NO_DEFAULT_PATH)
-endif()
+find_library(PCRE_LIBRARY NAMES pcre PATHS ${CMAKE_SOURCE_DIR}/third_party/lib NO_DEFAULT_PATH)
 
 # Подключаем 'FindPackageHandle' для использования модуля поиска (find_package(<PackageName>))
 include(FindPackageHandleStandardArgs)
