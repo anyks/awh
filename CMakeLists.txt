@@ -103,12 +103,18 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
 # Выполняем поиск нужных библиотек
 find_package(Zlib REQUIRED)
-find_package(PCRE REQUIRED)
 find_package(Brotli REQUIRED)
 find_package(OpenSSL REQUIRED)
 
+# Если операционной системой не является Windows
+if(NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
+    # Выполняем поиск нужных библиотек
+    find_package(PCRE REQUIRED)
+endif()
+
 # Сборка модуля AWH_IDN, если операционной системой не является Windows
 if(CMAKE_BUILD_IDN AND (NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Windows"))
+    # Выполняем поиск нужных библиотек
     find_package(Iconv REQUIRED)
     find_package(Idn2 REQUIRED)
 endif()
@@ -129,14 +135,6 @@ else()
     message(FATAL_ERROR "ZLib not found")
 endif()
 
-# Провекра PCRE
-if (PCRE_FOUND)
-    message(STATUS "PCRE lib found: " ${PCRE_LIBRARY})
-    message(STATUS "PCRE include dir found: " ${PCRE_INCLUDE_DIR})
-else()
-    message(FATAL_ERROR "PCRE not found")
-endif()
-
 # Провекра Brotli
 if (Brotli_FOUND)
     message(STATUS "Brotli lib found: " ${BROTLI_LIBRARIES})
@@ -151,6 +149,17 @@ if (OpenSSL_FOUND)
     message(STATUS "OpenSSL include dir found: " ${OPENSSL_INCLUDE_DIR})
 else()
     message(FATAL_ERROR "OpenSSL not found")
+endif()
+
+# Если операционной системой не является Windows
+if(NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
+    # Провекра PCRE
+    if (PCRE_FOUND)
+        message(STATUS "PCRE lib found: " ${PCRE_LIBRARY})
+        message(STATUS "PCRE include dir found: " ${PCRE_INCLUDE_DIR})
+    else()
+        message(FATAL_ERROR "PCRE not found")
+    endif()
 endif()
 
 # Сборка модуля AWH_IDN, если операционной системой не является Windows
@@ -195,11 +204,16 @@ endif()
 
 # Выполняем подключение хидеров
 include_directories(${ZLIB_INCLUDE_DIR})
-include_directories(${PCRE_INCLUDE_DIR})
 include_directories(${BROTLI_INCLUDE_DIRS})
 include_directories(${OPENSSL_INCLUDE_DIR})
 include_directories(${CMAKE_SOURCE_DIR}/include)
 include_directories(${CMAKE_SOURCE_DIR}/contrib/include)
+
+# Если операционной системой не является Windows
+if(NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
+    # Выполняем подключение хидеров
+    include_directories(${PCRE_INCLUDE_DIR})
+endif()
 
 # Сборка модуля AWH_IDN, если операционной системой не является Windows
 if(CMAKE_BUILD_IDN AND (NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Windows"))
@@ -343,7 +357,6 @@ if (ENABLE_CONSOLE_APP)
             ${CURRENT_LIB_NAME}
             ${EVENT_LIBRARY}
             ${ZLIB_LIBRARY}
-            ${PCRE_LIBRARY}
             ${BROTLI_LIBRARIES}
             ${OPENSSL_LIBRARIES}
             ${WINFLAGS}
@@ -355,7 +368,6 @@ if (ENABLE_CONSOLE_APP)
             ${CURRENT_LIB_NAME}
             ${EVENT_LIBRARY}
             ${ZLIB_LIBRARY}
-            ${PCRE_LIBRARY}
             ${BROTLI_LIBRARIES}
             ${OPENSSL_LIBRARIES}
             ${WINFLAGS}
@@ -367,7 +379,6 @@ if (ENABLE_CONSOLE_APP)
             ${CURRENT_LIB_NAME}
             ${EVENT_LIBRARY}
             ${ZLIB_LIBRARY}
-            ${PCRE_LIBRARY}
             ${BROTLI_LIBRARIES}
             ${OPENSSL_LIBRARIES}
             ${WINFLAGS}
@@ -379,7 +390,6 @@ if (ENABLE_CONSOLE_APP)
             ${CURRENT_LIB_NAME}
             ${EVENT_LIBRARY}
             ${ZLIB_LIBRARY}
-            ${PCRE_LIBRARY}
             ${BROTLI_LIBRARIES}
             ${OPENSSL_LIBRARIES}
             ${WINFLAGS}
@@ -391,7 +401,6 @@ if (ENABLE_CONSOLE_APP)
             ${CURRENT_LIB_NAME}
             ${EVENT_LIBRARY}
             ${ZLIB_LIBRARY}
-            ${PCRE_LIBRARY}
             ${BROTLI_LIBRARIES}
             ${OPENSSL_LIBRARIES}
             ${WINFLAGS}
@@ -403,7 +412,6 @@ if (ENABLE_CONSOLE_APP)
             ${CURRENT_LIB_NAME}
             ${EVENT_LIBRARY}
             ${ZLIB_LIBRARY}
-            ${PCRE_LIBRARY}
             ${BROTLI_LIBRARIES}
             ${OPENSSL_LIBRARIES}
             ${WINFLAGS}
@@ -415,7 +423,6 @@ if (ENABLE_CONSOLE_APP)
             ${CURRENT_LIB_NAME}
             ${EVENT_LIBRARY}
             ${ZLIB_LIBRARY}
-            ${PCRE_LIBRARY}
             ${BROTLI_LIBRARIES}
             ${OPENSSL_LIBRARIES}
             ${WINFLAGS}
@@ -427,7 +434,6 @@ if (ENABLE_CONSOLE_APP)
             ${CURRENT_LIB_NAME}
             ${EVENT_LIBRARY}
             ${ZLIB_LIBRARY}
-            ${PCRE_LIBRARY}
             ${BROTLI_LIBRARIES}
             ${OPENSSL_LIBRARIES}
             ${WINFLAGS}
@@ -439,7 +445,6 @@ if (ENABLE_CONSOLE_APP)
             ${CURRENT_LIB_NAME}
             ${EVENT_LIBRARY}
             ${ZLIB_LIBRARY}
-            ${PCRE_LIBRARY}
             ${BROTLI_LIBRARIES}
             ${OPENSSL_LIBRARIES}
             ${WINFLAGS}
@@ -451,7 +456,6 @@ if (ENABLE_CONSOLE_APP)
             ${CURRENT_LIB_NAME}
             ${EVENT_LIBRARY}
             ${ZLIB_LIBRARY}
-            ${PCRE_LIBRARY}
             ${BROTLI_LIBRARIES}
             ${OPENSSL_LIBRARIES}
             ${WINFLAGS}
@@ -463,7 +467,6 @@ if (ENABLE_CONSOLE_APP)
             ${CURRENT_LIB_NAME}
             ${EVENT_LIBRARY}
             ${ZLIB_LIBRARY}
-            ${PCRE_LIBRARY}
             ${BROTLI_LIBRARIES}
             ${OPENSSL_LIBRARIES}
             ${WINFLAGS}
@@ -752,9 +755,14 @@ install(TARGETS ${WEB_SERVER_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/
 
 # Устанавливаем хидеры сторонних библиотек
 install(DIRECTORY "${ZLIB_INCLUDE_DIR}" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h")
-install(DIRECTORY "${PCRE_INCLUDE_DIR}" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h")
 install(DIRECTORY "${BROTLI_INCLUDE_ENCODE_DIR}" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h")
 install(DIRECTORY "${OPENSSL_INCLUDE_DIR}/openssl" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h")
+
+# Если операционной системой не является Windows
+if(NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
+    # Устанавливаем хидеры сторонних библиотек
+    install(DIRECTORY "${PCRE_INCLUDE_DIR}" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h")
+endif()
 
 # Сборка модуля AWH_EVENT2
 if(CMAKE_BUILD_EVENT2)
@@ -772,9 +780,14 @@ endif()
 
 # Устанавливаем стороние библиотеки
 install(FILES ${ZLIB_LIBRARY} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
-install(FILES ${PCRE_LIBRARY} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
 install(FILES ${BROTLI_LIBRARIES} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
 install(FILES ${OPENSSL_LIBRARIES} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
+
+# Если операционной системой не является Windows
+if(NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
+    # Устанавливаем стороние библиотеки
+    install(FILES ${PCRE_LIBRARY} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
+endif()
 
 # Сборка модуля AWH_EVENT2
 if(CMAKE_BUILD_EVENT2)

@@ -22,11 +22,25 @@
 #include <vector>
 
 /**
- * Подключаем PCRE Си
+ * Методы только для OS Windows
  */
-extern "C" {
-	#include <pcre/pcre.h>
-}
+#if defined(_WIN32) || defined(_WIN64)
+	/**
+	 * Стандартная библиотека
+	 */
+	#include <regex>
+	#include <locale>
+/**
+ * Для всех остальных операционных систем
+ */
+#else
+	/**
+	 * Подключаем PCRE Си
+	 */
+	extern "C" {
+		#include <pcre/pcre.h>
+	}
+#endif
 
 // Подписываемся на стандартное пространство имён
 using namespace std;
@@ -41,20 +55,40 @@ namespace awh {
 	typedef class RegExp {
 		public:
 			/**
-			 * Expression Структура регулярного выражения
+			 * Методы только для OS Windows
 			 */
-			typedef struct Expression {
-				// Смещение в тексте позиции ошибки
-				int offset;
-				// Объект контекста регулярного выражения
-				pcre * ctx;
-				// Текст сообщения ошибки
-				const char * error;
+			#if defined(_WIN32) || defined(_WIN64)
 				/**
-				 * Expression Конструктор
+				 * Expression Структура регулярного выражения
 				 */
-				Expression() noexcept : offset(0), ctx(nullptr), error(nullptr) {}
-			} exp_t;
+				typedef struct Expression {
+					// Объект регулярного выражения
+					wregex regex;
+					/**
+					 * Expression Конструктор
+					 */
+					Expression() noexcept {}
+				} exp_t;
+			/**
+			 * Для всех остальных операционных систем
+			 */
+			#else
+				/**
+				 * Expression Структура регулярного выражения
+				 */
+				typedef struct Expression {
+					// Смещение в тексте позиции ошибки
+					int offset;
+					// Объект контекста регулярного выражения
+					pcre * ctx;
+					// Текст сообщения ошибки
+					const char * error;
+					/**
+					 * Expression Конструктор
+					 */
+					Expression() noexcept : offset(0), ctx(nullptr), error(nullptr) {}
+				} exp_t;
+			#endif
 		public:
 			/**
 			 * option_t Опции работы с регулярными выражениями
@@ -78,6 +112,24 @@ namespace awh {
 				NO_UTF8_CHECK   = 0x0F, // Не проверять шаблон на допустимость UTF-8 (актуально, только если установлен UTF8)
 				NO_AUTO_CAPTURE = 0x10  // Отключить пронумерованные скобки захвата (доступны именованные)
 			};
+		private:
+			/**
+			 * Методы только для OS Windows
+			 */
+			#if defined(_WIN32) || defined(_WIN64)
+				/**
+				 * convert Метод конвертирования строки utf-8 в строку
+				 * @param str строка utf-8 для конвертирования
+				 * @return    обычная строка
+				 */
+				string convert(const wstring & str) const noexcept;
+				/**
+				 * convert Метод конвертирования строки в строку utf-8
+				 * @param str строка для конвертирования
+				 * @return    строка в utf-8
+				 */
+				wstring convert(const string & str) const noexcept;
+			#endif
 		public:
 			/**
 			 * free Метод очистки объекта регулярного выражения
