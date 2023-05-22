@@ -30,6 +30,14 @@
 	 */
 	#include <regex>
 	#include <locale>
+
+	// Если используется BOOST
+	#ifdef USE_BOOST_CONVERT
+		#include <boost/locale/encoding_utf.hpp>
+	// Если нужно использовать стандартную библиотеку
+	#else
+		#include <codecvt>
+	#endif
 /**
  * Для всех остальных операционных систем
  */

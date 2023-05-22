@@ -133,8 +133,10 @@ bool awh::RegExp::test(const string & text, const exp_t & exp) const noexcept {
 			try {
 				// Результат работы регулярного выражения
 				wsmatch match;
+				// Выполняем конвертирования текста
+				const wstring & enter = this->convert(text);
 				// Выполняем разбор регулярного выражения
-				result = regex_match(this->convert(text), match, exp.regex, regex_constants::match_default));
+				result = regex_match(enter, match, exp.regex, regex_constants::match_default);
 			/**
 			 * Если возникает ошибка
 			 */
@@ -176,8 +178,10 @@ vector <string> awh::RegExp::exec(const string & text, const exp_t & exp) const 
 			try {
 				// Результат работы регулярного выражения
 				wsmatch match;
+				// Выполняем конвертирования текста
+				const wstring & enter = this->convert(text);
 				// Выполняем поиск в тексте по регулярному выражению
-				if(regex_match(this->convert(text), match, exp.regex, regex_constants::match_default)){
+				if(regex_match(enter, match, exp.regex, regex_constants::match_default)){
 					// Выполняем перебор всех полученных результатов
 					for(auto & item : match)
 						// Добавляем полученный результат в список результатов
