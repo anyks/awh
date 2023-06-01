@@ -145,7 +145,7 @@ endif()
 
 # Провекра OpenSSL
 if (OpenSSL_FOUND)
-    message(STATUS "OpenSSL libs found: " ${OPENSSL_SSL_LIBRARY} ${OPENSSL_CRYPTO_LIBRARY})
+    message(STATUS "OpenSSL libs found: " ${OPENSSL_SSL_LIBRARY} " " ${OPENSSL_CRYPTO_LIBRARY})
     message(STATUS "OpenSSL include dir found: " ${OPENSSL_INCLUDE_DIR})
 else()
     message(FATAL_ERROR "OpenSSL not found")
