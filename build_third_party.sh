@@ -16,6 +16,13 @@ if [[ $OS =~ "MINGW64" ]]; then
 	OS="Windows"
 fi
 
+# Устанавливаем систему сборки
+if [[ $OS = "Windows" ]]; then
+	export BUILD="mingw32-make"
+else
+	export BUILD="make"
+fi
+
 if [ -n "$1" ]; then
 	if [ $1 = "--clean" ]; then
 		# Очистка подпроекта
@@ -70,13 +77,6 @@ if [ -n "$1" ]; then
 
 		exit 1
 	fi
-fi
-
-# Устанавливаем систему сборки
-if [[ $OS = "Windows" ]]; then
-	export BUILD="mingw32-make"
-else
-	export BUILD="make"
 fi
 
 # Каталог для установки собранных библиотек
