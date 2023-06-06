@@ -253,10 +253,6 @@ void awh::client::Core::connect(const size_t sid) noexcept {
 							this->log->print("connecting to socket = %s", log_t::flag_t::CRITICAL, this->settings.filename.c_str());
 						// Выводим ионформацию об обрыве подключении по хосту и порту
 						else this->log->print("connecting to host = %s, port = %u", log_t::flag_t::CRITICAL, url.ip.c_str(), url.port);
-						// Если доменный адрес установлен
-						if(!url.domain.empty())
-							// Выполняем очистку IP адреса
-							(shm->isProxy() ? shm->proxy.url.ip.clear() : shm->url.ip.clear());
 						// Выполняем сброс кэша резолвера
 						this->dns.flush();
 						// Определяем тип подключения
@@ -272,6 +268,10 @@ void awh::client::Core::connect(const size_t sid) noexcept {
 								this->dns.setToBlackList(AF_INET6, url.ip);
 							break;
 						}
+						// Если доменный адрес установлен
+						if(!url.domain.empty())
+							// Выполняем очистку IP адреса
+							(shm->isProxy() ? shm->proxy.url.ip.clear() : shm->url.ip.clear());
 						// Выполняем отключение от сервера
 						this->close(ret.first->first);
 						// Выходим из функции

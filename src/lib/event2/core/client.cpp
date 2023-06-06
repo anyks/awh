@@ -271,6 +271,10 @@ void awh::client::Core::connect(const size_t sid) noexcept {
 								this->dns.setToBlackList(AF_INET6, url.ip);
 							break;
 						}
+						// Если доменный адрес установлен
+						if(!url.domain.empty())
+							// Выполняем очистку IP адреса
+							(shm->isProxy() ? shm->proxy.url.ip.clear() : shm->url.ip.clear());
 						// Выполняем отключение от сервера
 						this->close(ret.first->first);
 						// Выходим из функции
