@@ -51,7 +51,7 @@ void awh::client::Core::Timeout::callback(const evutil_socket_t fd, const short 
 				// Если режим работы клиента - это переподключение
 				case static_cast <uint8_t> (scheme_t::mode_t::RECONNECT): {
 					// Получаем объект схемы сети
-					scheme_t * shm = (scheme_t *) const_cast <awh::scheme_t *> (it->second);
+					scheme_t * shm = dynamic_cast <scheme_t *> (const_cast <awh::scheme_t *> (it->second));
 					// Устанавливаем флаг ожидания статуса
 					shm->status.wait = scheme_t::mode_t::DISCONNECT;
 					// Выполняем новую попытку подключиться
@@ -80,7 +80,7 @@ void awh::client::Core::connect(const size_t sid) noexcept {
 		// Если идентификатор схемы сети найден
 		if(it != this->schemes.end()){
 			// Получаем объект схемы сети
-			scheme_t * shm = (scheme_t *) const_cast <awh::scheme_t *> (it->second);
+			scheme_t * shm = dynamic_cast <scheme_t *> (const_cast <awh::scheme_t *> (it->second));
 			// Если подключение ещё не выполнено и выполнение работ разрешено
 			if((shm->status.real == scheme_t::mode_t::DISCONNECT) && (shm->status.work == scheme_t::work_t::ALLOW)){
 				// Запрещаем выполнение работы
@@ -369,7 +369,7 @@ void awh::client::Core::reconnect(const size_t sid) noexcept {
 	// Если идентификатор схемы сети найден
 	if(it != this->schemes.end()){
 		// Получаем объект схемы сети
-		scheme_t * shm = (scheme_t *) const_cast <awh::scheme_t *> (it->second);
+		scheme_t * shm = dynamic_cast <scheme_t *> (const_cast <awh::scheme_t *> (it->second));
 		// Если параметры URL запроса переданы и выполнение работы разрешено
 		if(!shm->url.empty() && (shm->status.wait == scheme_t::mode_t::DISCONNECT) && (shm->status.work == scheme_t::work_t::ALLOW)){
 			// Получаем семейство интернет-протоколов
@@ -488,7 +488,7 @@ void awh::client::Core::sendTimeout(const size_t aid) noexcept {
 			// Переходим по всему списку схем сети
 			for(auto & item : this->schemes){
 				// Получаем объект схемы сети
-				scheme_t * shm = (scheme_t *) const_cast <awh::scheme_t *> (item.second);
+				scheme_t * shm = dynamic_cast <scheme_t *> (const_cast <awh::scheme_t *> (item.second));
 				// Если выполнение работ разрешено
 				if(shm->status.work == scheme_t::work_t::ALLOW)
 					// Запрещаем выполнение работы
@@ -503,7 +503,7 @@ void awh::client::Core::sendTimeout(const size_t aid) noexcept {
 			// Переходим по всему списку схем сети
 			for(auto & item : this->schemes){
 				// Получаем объект схемы сети
-				scheme_t * shm = (scheme_t *) const_cast <awh::scheme_t *> (item.second);
+				scheme_t * shm = dynamic_cast <scheme_t *> (const_cast <awh::scheme_t *> (item.second));
 				// Устанавливаем статус подключения
 				shm->status.real = scheme_t::mode_t::DISCONNECT;
 				// Устанавливаем флаг ожидания статуса
@@ -512,7 +512,7 @@ void awh::client::Core::sendTimeout(const size_t aid) noexcept {
 			// Переходим по всему списку схем сети
 			for(auto & item : this->schemes){
 				// Получаем объект схемы сети
-				scheme_t * shm = (scheme_t *) const_cast <awh::scheme_t *> (item.second);
+				scheme_t * shm = dynamic_cast <scheme_t *> (const_cast <awh::scheme_t *> (item.second));
 				// Если выполнение работ запрещено
 				if(shm->status.work == scheme_t::work_t::DISALLOW)
 					// Разрешаем выполнение работы
@@ -565,7 +565,7 @@ void awh::client::Core::close() noexcept {
 			// Если в схеме сети есть подключённые клиенты
 			if(!item.second->adjutants.empty()){
 				// Получаем объект схемы сети
-				scheme_t * shm = (scheme_t *) const_cast <awh::scheme_t *> (item.second);
+				scheme_t * shm = dynamic_cast <scheme_t *> (const_cast <awh::scheme_t *> (item.second));
 				// Устанавливаем флаг ожидания статуса
 				shm->status.wait = scheme_t::mode_t::DISCONNECT;
 				// Устанавливаем статус сетевого ядра
@@ -630,7 +630,7 @@ void awh::client::Core::remove() noexcept {
 		// Переходим по всему списку схем сети
 		for(auto it = this->schemes.begin(); it != this->schemes.end();){
 			// Получаем объект схемы сети
-			scheme_t * shm = (scheme_t *) const_cast <awh::scheme_t *> (it->second);
+			scheme_t * shm = dynamic_cast <scheme_t *> (const_cast <awh::scheme_t *> (it->second));
 			// Устанавливаем флаг ожидания статуса
 			shm->status.wait = scheme_t::mode_t::DISCONNECT;
 			// Устанавливаем статус сетевого ядра
@@ -692,7 +692,7 @@ void awh::client::Core::open(const size_t sid) noexcept {
 		// Если идентификатор схемы сети найден
 		if(it != this->schemes.end()){
 			// Получаем объект схемы сети
-			scheme_t * shm = (scheme_t *) const_cast <awh::scheme_t *> (it->second);
+			scheme_t * shm = dynamic_cast <scheme_t *> (const_cast <awh::scheme_t *> (it->second));
 			// Если параметры URL запроса переданы и выполнение работы разрешено
 			if(!shm->url.empty() && (shm->status.wait == scheme_t::mode_t::DISCONNECT) && (shm->status.work == scheme_t::work_t::ALLOW)){
 				// Получаем семейство интернет-протоколов
@@ -771,7 +771,7 @@ void awh::client::Core::remove(const size_t sid) noexcept {
 			// Объект работы с функциями обратного вызова
 			fn_t callback(this->log);
 			// Получаем объект схемы сети
-			scheme_t * shm = (scheme_t *) const_cast <awh::scheme_t *> (it->second);
+			scheme_t * shm = dynamic_cast <scheme_t *> (const_cast <awh::scheme_t *> (it->second));
 			// Устанавливаем флаг ожидания статуса
 			shm->status.wait = scheme_t::mode_t::DISCONNECT;
 			// Устанавливаем статус сетевого ядра
@@ -842,7 +842,7 @@ void awh::client::Core::close(const size_t aid) noexcept {
 			// Получаем объект адъютанта
 			awh::scheme_t::adj_t * adj = const_cast <awh::scheme_t::adj_t *> (it->second);
 			// Получаем объект схемы сети
-			scheme_t * shm = (scheme_t *) const_cast <awh::scheme_t *> (adj->parent);
+			scheme_t * shm = dynamic_cast <scheme_t *> (const_cast <awh::scheme_t *> (adj->parent));
 			// Получаем объект ядра клиента
 			const core_t * core = reinterpret_cast <const core_t *> (shm->core);
 			// Выполняем очистку буфера событий
@@ -910,7 +910,7 @@ void awh::client::Core::switchProxy(const size_t aid) noexcept {
 		// Получаем объект адъютанта
 		awh::scheme_t::adj_t * adj = const_cast <awh::scheme_t::adj_t *> (it->second);
 		// Получаем объект схемы сети
-		scheme_t * shm = (scheme_t *) const_cast <awh::scheme_t *> (adj->parent);
+		scheme_t * shm = dynamic_cast <scheme_t *> (const_cast <awh::scheme_t *> (adj->parent));
 		// Если прокси-сервер активирован но ещё не переключён на работу с сервером
 		if((shm->proxy.type != proxy_t::type_t::NONE) && shm->isProxy()){
 			// Выполняем переключение на работу с сервером
@@ -951,7 +951,7 @@ void awh::client::Core::timeout(const size_t aid) noexcept {
 		// Получаем объект адъютанта
 		awh::scheme_t::adj_t * adj = const_cast <awh::scheme_t::adj_t *> (it->second);
 		// Получаем объект подключения
-		scheme_t * shm = (scheme_t *) const_cast <awh::scheme_t *> (adj->parent);
+		scheme_t * shm = dynamic_cast <scheme_t *> (const_cast <awh::scheme_t *> (adj->parent));
 		// Получаем семейство интернет-протоколов
 		const scheme_t::family_t family = (shm->isProxy() ? shm->proxy.family : this->settings.family);
 		// Определяем тип протокола подключения
@@ -1007,7 +1007,7 @@ void awh::client::Core::connected(const size_t aid) noexcept {
 		// Получаем объект адъютанта
 		awh::scheme_t::adj_t * adj = const_cast <awh::scheme_t::adj_t *> (it->second);
 		// Получаем объект подключения
-		scheme_t * shm = (scheme_t *) const_cast <awh::scheme_t *> (adj->parent);
+		scheme_t * shm = dynamic_cast <scheme_t *> (const_cast <awh::scheme_t *> (adj->parent));
 		// Если подключение удачное и работа разрешена
 		if(shm->status.work == scheme_t::work_t::ALLOW){
 			// Снимаем флаг получения данных
@@ -1077,7 +1077,7 @@ void awh::client::Core::transfer(const engine_t::method_t method, const size_t a
 		// Получаем объект адъютанта
 		awh::scheme_t::adj_t * adj = const_cast <awh::scheme_t::adj_t *> (it->second);
 		// Получаем объект подключения
-		scheme_t * shm = (scheme_t *) const_cast <awh::scheme_t *> (adj->parent);
+		scheme_t * shm = dynamic_cast <scheme_t *> (const_cast <awh::scheme_t *> (adj->parent));
 		// Если подключение установлено
 		if((shm->acquisition = (shm->status.real == scheme_t::mode_t::CONNECT))){
 			// Устанавливаем текущий метод режима работы
@@ -1297,7 +1297,7 @@ void awh::client::Core::resolving(const size_t sid, const string & ip, const int
 		// Если идентификатор схемы сети найден
 		if(it != this->schemes.end()){
 			// Получаем объект схемы сети
-			scheme_t * shm = (scheme_t *) const_cast <awh::scheme_t *> (it->second);
+			scheme_t * shm = dynamic_cast <scheme_t *> (const_cast <awh::scheme_t *> (it->second));
 			// Если IP адрес получен
 			if(!ip.empty()){
 				// Если прокси-сервер активен

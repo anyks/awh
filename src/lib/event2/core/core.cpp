@@ -927,7 +927,7 @@ void awh::Core::enabled(const engine_t::method_t method, const size_t aid) noexc
 			// Если сокет подключения активен
 			if((adj->addr.fd != INVALID_SOCKET) && (adj->addr.fd < MAX_SOCKETS)){
 				// Получаем объект подключения
-				scheme_t * shm = (scheme_t *) const_cast <awh::scheme_t *> (adj->parent);
+				scheme_t * shm = dynamic_cast <scheme_t *> (const_cast <awh::scheme_t *> (adj->parent));
 				// Определяем метод события сокета
 				switch(static_cast <uint8_t> (method)){
 					// Если событием является чтение

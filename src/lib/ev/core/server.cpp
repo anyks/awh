@@ -22,7 +22,7 @@
  */
 void awh::server::scheme_t::accept(ev::io & watcher, int revents) noexcept {
 	// Получаем объект подключения
-	core_t * core = (core_t *) const_cast <awh::core_t *> (this->core);
+	core_t * core = dynamic_cast <core_t *> (const_cast <awh::core_t *> (this->core));
 	// Выполняем подключение клиента
 	core->accept(watcher.fd, this->sid);
 }
@@ -41,7 +41,7 @@ void awh::server::Core::DTLS::callback(ev::timer & timer, int revents) noexcept 
 		// Получаем объект адъютанта
 		awh::scheme_t::adj_t * adj = const_cast <awh::scheme_t::adj_t *> (it->second);
 		// Получаем объект схемы сети
-		scheme_t * shm = (scheme_t *) const_cast <awh::scheme_t *> (adj->parent);
+		scheme_t * shm = dynamic_cast <scheme_t *> (const_cast <awh::scheme_t *> (adj->parent));
 		// Выполняем ожидание входящих подключений
 		if(this->core->engine.wait(adj->ectx)){
 			// Устанавливаем параметры сокета
@@ -147,7 +147,7 @@ void awh::server::Core::cluster(const size_t sid, const pid_t pid, const cluster
 	// Если идентификатор схемы сети найден, устанавливаем максимальное количество одновременных подключений
 	if(it != this->schemes.end()){
 		// Получаем объект подключения
-		scheme_t * shm = (scheme_t *) const_cast <awh::scheme_t *> (it->second);
+		scheme_t * shm = dynamic_cast <scheme_t *> (const_cast <awh::scheme_t *> (it->second));
 		// Выполняем тип возникшего события
 		switch(static_cast <uint8_t> (event)){
 			// Если производится запуск процесса
@@ -200,7 +200,7 @@ void awh::server::Core::accept(const int fd, const size_t sid) noexcept {
 		// Если идентификатор схемы сети найден, устанавливаем максимальное количество одновременных подключений
 		if(it != this->schemes.end()){
 			// Получаем объект подключения
-			scheme_t * shm = (scheme_t *) const_cast <awh::scheme_t *> (it->second);
+			scheme_t * shm = dynamic_cast <scheme_t *> (const_cast <awh::scheme_t *> (it->second));
 			// Определяем тип сокета
 			switch(static_cast <uint8_t> (this->settings.sonet)){
 				// Если тип сокета установлен как UDP
@@ -476,7 +476,7 @@ void awh::server::Core::close() noexcept {
 		// Переходим по всему списку схем сети
 		for(auto & item : this->schemes){
 			// Получаем объект схемы сети
-			scheme_t * shm = (scheme_t *) const_cast <awh::scheme_t *> (item.second);
+			scheme_t * shm = dynamic_cast <scheme_t *> (const_cast <awh::scheme_t *> (item.second));
 			// Если в схеме сети есть подключённые клиенты
 			if(!shm->adjutants.empty()){
 				// Переходим по всему списку адъютанта
@@ -533,7 +533,7 @@ void awh::server::Core::remove() noexcept {
 		// Переходим по всему списку схем сети
 		for(auto it = this->schemes.begin(); it != this->schemes.end();){
 			// Получаем объект схемы сети
-			scheme_t * shm = (scheme_t *) const_cast <awh::scheme_t *> (it->second);
+			scheme_t * shm = dynamic_cast <scheme_t *> (const_cast <awh::scheme_t *> (it->second));
 			// Если в схеме сети есть подключённые клиенты
 			if(!shm->adjutants.empty()){
 				// Переходим по всему списку адъютанта
@@ -597,7 +597,7 @@ void awh::server::Core::run(const size_t sid) noexcept {
 			// Устанавливаем флаг автоматического перезапуска упавших процессов
 			this->_cluster.restart(it->first, this->_clusterAutoRestart);
 			// Получаем объект схемы сети
-			scheme_t * shm = (scheme_t *) const_cast <awh::scheme_t *> (it->second);
+			scheme_t * shm = dynamic_cast <scheme_t *> (const_cast <awh::scheme_t *> (it->second));
 			// Если хост сервера не указан
 			if(shm->host.empty()){
 				// Объект для работы с сетевым интерфейсом
@@ -660,7 +660,7 @@ void awh::server::Core::remove(const size_t sid) noexcept {
 			// Объект работы с функциями обратного вызова
 			fn_t callback(this->log);
 			// Получаем объект схемы сети
-			scheme_t * shm = (scheme_t *) const_cast <awh::scheme_t *> (it->second);
+			scheme_t * shm = dynamic_cast <scheme_t *> (const_cast <awh::scheme_t *> (it->second));
 			// Если в схеме сети есть подключённые клиенты
 			if(!shm->adjutants.empty()){
 				// Переходим по всему списку адъютанта
@@ -726,7 +726,7 @@ void awh::server::Core::close(const size_t aid) noexcept {
 				// Получаем объект адъютанта
 				awh::scheme_t::adj_t * adj = const_cast <awh::scheme_t::adj_t *> (it->second);
 				// Получаем объект схемы сети
-				scheme_t * shm = (scheme_t *) const_cast <awh::scheme_t *> (adj->parent);
+				scheme_t * shm = dynamic_cast <scheme_t *> (const_cast <awh::scheme_t *> (adj->parent));
 				// Получаем объект ядра клиента
 				const core_t * core = reinterpret_cast <const core_t *> (shm->core);
 				// Выполняем очистку буфера событий
@@ -783,7 +783,7 @@ void awh::server::Core::timeout(const size_t aid) noexcept {
 		// Получаем объект адъютанта
 		awh::scheme_t::adj_t * adj = const_cast <awh::scheme_t::adj_t *> (it->second);
 		// Получаем объект схемы сети
-		scheme_t * shm = (scheme_t *) const_cast <awh::scheme_t *> (adj->parent);
+		scheme_t * shm = dynamic_cast <scheme_t *> (const_cast <awh::scheme_t *> (adj->parent));
 		// Определяем тип протокола подключения
 		switch(static_cast <uint8_t> (this->settings.family)){
 			// Если тип протокола подключения IPv4
@@ -820,7 +820,7 @@ void awh::server::Core::transfer(const engine_t::method_t method, const size_t a
 		// Получаем объект адъютанта
 		awh::scheme_t::adj_t * adj = const_cast <awh::scheme_t::adj_t *> (it->second);
 		// Получаем объект схемы сети
-		scheme_t * shm = (scheme_t *) const_cast <awh::scheme_t *> (adj->parent);
+		scheme_t * shm = dynamic_cast <scheme_t *> (const_cast <awh::scheme_t *> (adj->parent));
 		// Устанавливаем текущий метод режима работы
 		adj->method = method;
 		// Определяем метод работы
@@ -990,7 +990,7 @@ void awh::server::Core::resolving(const size_t sid, const string & ip, const int
 		// Если идентификатор схемы сети найден, устанавливаем максимальное количество одновременных подключений
 		if(it != this->schemes.end()){
 			// Получаем объект схемы сети
-			scheme_t * shm = (scheme_t *) const_cast <awh::scheme_t *> (it->second);
+			scheme_t * shm = dynamic_cast <scheme_t *> (const_cast <awh::scheme_t *> (it->second));
 			// Если IP адрес получен
 			if(!ip.empty()){
 				// sudo lsof -i -P | grep 1080
@@ -1213,7 +1213,7 @@ void awh::server::Core::total(const size_t sid, const u_short total) noexcept {
 		// Если идентификатор схемы сети найден, устанавливаем максимальное количество одновременных подключений
 		if(it != this->schemes.end())
 			// Устанавливаем максимальное количество одновременных подключений
-			((scheme_t *) const_cast <awh::scheme_t *> (it->second))->total = total;
+			(dynamic_cast <scheme_t *> (const_cast <awh::scheme_t *> (it->second)))->total = total;
 	}
 }
 /**
@@ -1232,11 +1232,15 @@ void awh::server::Core::init(const size_t sid, const u_int port, const string & 
 			// Выполняем блокировку потока
 			const lock_guard <recursive_mutex> lock(this->_mtx.main);
 			// Получаем объект схемы сети
-			scheme_t * shm = (scheme_t *) const_cast <awh::scheme_t *> (it->second);
+			scheme_t * shm = dynamic_cast <scheme_t *> (const_cast <awh::scheme_t *> (it->second));
 			// Если порт передан, устанавливаем
-			if(port > 0) shm->port = port;
+			if(port > 0)
+				// Устанавливаем порт
+				shm->port = port;
 			// Если хост передан, устанавливаем
-			if(!host.empty()) shm->host = host;
+			if(!host.empty())
+				// Устанавливаем хост
+				shm->host = host;
 			// Иначе получаем IP адрес сервера автоматически
 			else {
 				// Объект для работы с сетевым интерфейсом
