@@ -137,10 +137,9 @@ namespace awh {
 				// Ели количество потоков передано
 				if(this->threads > 0){
 					// Добавляем в список воркеров, новую задачу
-					for(size_t i = 0; i < this->threads; ++i){
+					for(size_t i = 0; i < this->threads; ++i)
 						// Добавляем новую задачу
 						this->workers.emplace_back(bind(&ThreadPool::work, this));
-					}
 				}
 			}
 		public:
