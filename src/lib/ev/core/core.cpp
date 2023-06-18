@@ -125,16 +125,24 @@ void awh::scheme_t::resolving(const string & ip, const int family, const size_t 
 void awh::Core::Timer::callback(ev::timer & timer, int revents) noexcept {
 	// Выполняем остановку таймера
 	timer.stop();
-	// Если функция обратного вызова установлена
-	if(this->fn != nullptr) this->fn(this->id, this->core);
+	// Получаем функцияю обратного вызова
+	auto callback = this->fn;
+	// Получаем объект сетевого ядра
+	core_t * core = this->core;
+	// Получаем идентификатор таймера
+	const u_short id = this->id;
 	// Если персистентная работа не установлена, удаляем таймер
 	if(!this->persist){
 		// Если родительский объект установлен
-		if(this->core != nullptr)
+		if(core != nullptr)
 			// Удаляем объект таймера
-			this->core->_timers.erase(this->id);
+			core->_timers.erase(id);
 	// Если нужно продолжить работу таймера
 	} else timer.start(this->delay);
+	// Если функция обратного вызова установлена
+	if(callback != nullptr)
+		// Если функция обратного вызова установлена
+		callback(id, core);
 }
 /**
  * kick Метод отправки пинка
