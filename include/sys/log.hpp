@@ -33,9 +33,11 @@
  * Наши модули
  */
 #include <sys/fmk.hpp>
+#include <sys/threadpool.hpp>
 
 // Подписываемся на стандартное пространство имён
 using namespace std;
+using namespace std::placeholders;
 
 /**
  * awh пространство имён
@@ -55,6 +57,19 @@ namespace awh {
 				WARNING  = 0x02, // Предупреждающее сообщение
 				CRITICAL = 0x03  // Критическое сообщение
 			};
+			/**
+			 * level_t Уровни логирования
+			 */
+			enum class level_t : uint8_t {
+				NONE             = 0x00, // Логирование отключено
+				ALL              = 0x01, // Разрешено выводить все виды логов
+				INFO             = 0x02, // Разрешено выводить только информационные логи
+				WARNING          = 0x03, // Разрешено выводить только логи предупреждения
+				CRITICAL         = 0x04, // Разрешено выводить только критические логи
+				INFO_WARNING     = 0x05, // Разрешено выводить логи информационные и предупреждения
+				INFO_CRITICAL    = 0x06, // Разрешено выводить логи информационные и критические
+				WARNING_CRITICAL = 0x07  // Разрешено выводить логи предупреждения и критические
+			};
 		private:
 			// Флаг разрешения вывода логов в файл
 			bool _fileMode;
@@ -62,7 +77,16 @@ namespace awh {
 			bool _consoleMode;
 		private:
 			// Максимальный размер файла лога
-			size_t _maxFileSize;
+			size_t _maxSize;
+		private:
+			// Уровень логирования
+			level_t _level;
+		private:
+			// Пул потоков для записи в файловую систему
+			mutable thr_t _thr;
+		private:
+			// Мютекс для блокировки потоков
+			mutable mutex _mtx;
 		private:
 			// Название сервиса для вывода лога
 			string _name;
@@ -81,6 +105,21 @@ namespace awh {
 			 * rotate Метод выполнения ротации логов
 			 */
 			void rotate() const noexcept;
+		private:
+			/**
+			 * _print1 Метод вывода текстовой информации в консоль или файл
+			 * @param format формат строки вывода
+			 * @param flag   флаг типа логирования
+			 * @param buffer буфер данных для логирования
+			 */
+			void _print1(const string format, flag_t flag, const vector <char> buffer) const noexcept;
+			/**
+			 * _print2 Метод вывода текстовой информации в консоль или файл
+			 * @param format формат строки вывода
+			 * @param flag   флаг типа логирования
+			 * @param items  список аргументов для замены
+			 */
+			void _print2(const string format, flag_t flag, const vector <string> items) const noexcept;
 		public:
 			/**
 			 * print Метод вывода текстовой информации в консоль или файл
@@ -113,10 +152,15 @@ namespace awh {
 			 */
 			void name(const string & name) noexcept;
 			/**
-			 * maxFileSize Метод установки максимального размера файла логов
+			 * maxSize Метод установки максимального размера файла логов
 			 * @param size максимальный размер файла логов
 			 */
-			void maxFileSize(const float size) noexcept;
+			void maxSize(const float size) noexcept;
+			/**
+			 * level Метод установки уровня логирования
+			 * @param level уровень логирования для установки
+			 */
+			void level(const level_t level) noexcept;
 			/**
 			 * format Метод установки формата даты и времени для вывода лога
 			 * @param format формат даты и времени для вывода лога
@@ -139,15 +183,11 @@ namespace awh {
 			 * @param fmk      объект фреймворка
 			 * @param filename адрес файла для сохранения логов
 			 */
-			Log(const fmk_t * fmk, const string & filename = "") noexcept :
-			 _fileMode(true), _consoleMode(true),
-			 _maxFileSize(MAX_SIZE_LOGFILE),
-			 _name(AWH_SHORT_NAME), _format(DATE_FORMAT),
-			 _filename(filename), _fn(nullptr), _fmk(fmk) {}
+			Log(const fmk_t * fmk, const string & filename = "") noexcept;
 			/**
 			 * ~Log Деструктор
 			 */
-			~Log() noexcept {}
+			~Log() noexcept;
 	} log_t;
 };
 

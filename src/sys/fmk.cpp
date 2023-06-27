@@ -406,6 +406,11 @@ bool awh::Framework::is(const char letter, const check_t flag) const noexcept {
 				// Выполняем проверку совпадают ли символы
 				result = (static_cast <int> (letter) == toupper(letter));
 			break;
+			// Если установлен флаг проверки на нижний регистр
+			case static_cast <uint8_t> (check_t::LOWER):
+				// Выполняем проверку совпадают ли символы
+				result = (static_cast <int> (letter) == tolower(letter));
+			break;
 			// Если установлен флаг проверки на пробел
 			case static_cast <uint8_t> (check_t::SPACE):
 				// Выполняем проверку, является ли символ пробелом
@@ -443,6 +448,11 @@ bool awh::Framework::is(const wchar_t letter, const check_t flag) const noexcept
 			case static_cast <uint8_t> (check_t::UPPER):
 				// Выполняем проверку совпадают ли символы
 				result = (static_cast <wint_t> (letter) == towupper(letter));
+			break;
+			// Если установлен флаг проверки на нижний регистр
+			case static_cast <uint8_t> (check_t::LOWER):
+				// Выполняем проверку совпадают ли символы
+				result = (static_cast <wint_t> (letter) == towlower(letter));
 			break;
 			// Если установлен флаг проверки на пробел
 			case static_cast <uint8_t> (check_t::SPACE):
@@ -490,6 +500,16 @@ bool awh::Framework::is(const string & text, const check_t flag) const noexcept 
 				for(auto & letter : text){
 					// Выполняем проверку совпадают ли символы
 					result = (static_cast <int> (letter) == toupper(letter));
+					// Если символы не совпадают, выходим из цикла
+					if(!result) break;
+				}
+			} break;
+			// Если установлен флаг проверки на нижний регистр
+			case static_cast <uint8_t> (check_t::LOWER): {
+				// Выполняем перебор всего слова
+				for(auto & letter : text){
+					// Выполняем проверку совпадают ли символы
+					result = (static_cast <int> (letter) == tolower(letter));
 					// Если символы не совпадают, выходим из цикла
 					if(!result) break;
 				}
@@ -673,6 +693,16 @@ bool awh::Framework::is(const wstring & text, const check_t flag) const noexcept
 				for(auto & letter : text){
 					// Выполняем проверку совпадают ли символы
 					result = (static_cast <wint_t> (letter) == towupper(letter));
+					// Если символы не совпадают, выходим из цикла
+					if(!result) break;
+				}
+			} break;
+			// Если установлен флаг проверки на нижний регистр
+			case static_cast <uint8_t> (check_t::LOWER): {
+				// Выполняем перебор всего слова
+				for(auto & letter : text){
+					// Выполняем проверку совпадают ли символы
+					result = (static_cast <wint_t> (letter) == towlower(letter));
 					// Если символы не совпадают, выходим из цикла
 					if(!result) break;
 				}

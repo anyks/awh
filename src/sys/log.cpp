@@ -32,7 +32,7 @@ void awh::Log::rotate() const noexcept {
 		// Закрываем файл
 		file.close();
 		// Если размер файла лога, превышает максимально-установленный
-		if(size >= this->_maxFileSize){
+		if(size >= this->_maxSize){
 			// Создаем буфер для хранения даты
 			char date[80];
 			// Заполняем буфер нулями
@@ -73,6 +73,223 @@ void awh::Log::rotate() const noexcept {
 	}
 }
 /**
+ * _print1 Метод вывода текстовой информации в консоль или файл
+ * @param format формат строки вывода
+ * @param flag   флаг типа логирования
+ * @param buffer буфер данных для логирования
+ */
+void awh::Log::_print1(const string format, flag_t flag, const vector <char> buffer) const noexcept {
+	// Если формат строки вывода и буфер данных для логирования переданы
+	if(!format.empty() && !buffer.empty()){
+		// Создаем буфер для хранения даты
+		char date[80];
+		// Флаг конца строки
+		bool isEnd = false;
+		// Данные для записи
+		string logData = "";
+		// Заполняем буфер нулями
+		memset(date, 0, sizeof(date));
+		// Определяем количество секунд
+		const time_t seconds = time(nullptr);
+		// Получаем структуру локального времени
+		struct tm * timeinfo = localtime(&seconds);
+		// Копируем в буфер полученную дату и время
+		strftime(date, sizeof(date), this->_format.c_str(), timeinfo);
+		// Если размер буфера меньше 3-х байт
+		if(buffer.size() < 3){
+			// Создаём строку для проверки
+			const string str = buffer.data();
+			// Проверяем является ли это переводом строки
+			isEnd = ((str.compare("\r\n") == 0) || (str.compare("\n") == 0));
+		}
+		// Если файл для вывода лога указан
+		if(this->_fileMode && !this->_filename.empty()){
+			// Выполняем блокировку потока
+			const lock_guard <mutex> lock(this->_mtx);
+			// Открываем файл на запись
+			ofstream file(this->_filename, ios::out | ios::app);
+			// Если файл открыт
+			if(file.is_open()){
+				// Определяем тип сообщения
+				switch(static_cast <uint8_t> (flag)){
+					// Выводим сообщение так-как оно есть
+					case static_cast <uint8_t> (flag_t::NONE):
+						// Формируем текстовый вид лога
+						logData = this->_fmk->format("%s%s", buffer.data(), (!isEnd ? "\r\n\r\n" : ""));
+					break;
+					// Выводим информационное сообщение
+					case static_cast <uint8_t> (flag_t::INFO):
+						// Формируем текстовый вид лога
+						logData = this->_fmk->format("Info %s %s : %s%s", date, this->_name.c_str(), buffer.data(), (!isEnd ? "\r\n\r\n" : ""));
+					break;
+					// Выводим сообщение об ошибке
+					case static_cast <uint8_t> (flag_t::CRITICAL):
+						// Формируем текстовый вид лога
+						logData = this->_fmk->format("Error %s %s : %s%s", date, this->_name.c_str(), buffer.data(), (!isEnd ? "\r\n\r\n" : ""));
+					break;
+					// Выводим сообщение предупреждения
+					case static_cast <uint8_t> (flag_t::WARNING):
+						// Формируем текстовый вид лога
+						logData = this->_fmk->format("Warning %s %s : %s%s", date, this->_name.c_str(), buffer.data(), (!isEnd ? "\r\n\r\n" : ""));
+					break;
+				}
+				// Выполняем запись в файл
+				file.write(logData.data(), logData.size());
+				// Закрываем файл
+				file.close();
+				// Выполняем ротацию логов
+				this->rotate();
+			}
+		}
+		// Выполняем блокировку потока
+		const lock_guard <mutex> lock(this->_mtx);
+		// Определяем тип сообщения
+		switch(static_cast <uint8_t> (flag)){
+			// Выводим сообщение так-как оно есть
+			case static_cast <uint8_t> (flag_t::NONE):
+				// Формируем текстовый вид лога
+				logData = this->_fmk->format("%s%s", buffer.data(), (!isEnd ? "\r\n\r\n" : ""));
+			break;
+			// Выводим информационное сообщение
+			case static_cast <uint8_t> (flag_t::INFO):
+				// Формируем текстовый вид лога
+				logData = this->_fmk->format("\x1B[32m\x1B[1mInfo\x1B[0m \x1B[32m%s %s :\x1B[0m %s%s", date, this->_name.c_str(), buffer.data(), (!isEnd ? "\r\n\r\n" : ""));
+			break;
+			// Выводим сообщение об ошибке
+			case static_cast <uint8_t> (flag_t::CRITICAL):
+				// Формируем текстовый вид лога
+				logData = this->_fmk->format("\x1B[31m\x1B[1mError\x1B[0m \x1B[31m%s %s :\x1B[0m %s%s", date, this->_name.c_str(), buffer.data(), (!isEnd ? "\r\n\r\n" : ""));
+			break;
+			// Выводим сообщение предупреждения
+			case static_cast <uint8_t> (flag_t::WARNING):
+				// Формируем текстовый вид лога
+				logData = this->_fmk->format("\x1B[33m\x1B[1mWarning\x1B[0m \x1B[33m%s %s :\x1B[0m %s%s", date, this->_name.c_str(), buffer.data(), (!isEnd ? "\r\n\r\n" : ""));
+			break;
+		}
+		// Если вывод сообщения в консоль разрешён
+		if(this->_consoleMode){
+			// Если тип сообщение не является пустым
+			if(flag != flag_t::NONE) cout << "*************** START ***************" << endl << endl;
+			// Выводим сообщение в консоль
+			cout << logData;
+			// Если тип сообщение не является пустым
+			if(flag != flag_t::NONE) cout << "---------------- END ----------------" << endl << endl;
+		}
+		// Если функция подписки на логи установлена, выводим результат
+		if(this->_fn != nullptr)
+			// Выводим сообщение лога всем подписавшимся
+			this->_fn(flag, string(buffer.begin(), buffer.end()));
+	}
+}
+/**
+ * _print2 Метод вывода текстовой информации в консоль или файл
+ * @param format формат строки вывода
+ * @param flag   флаг типа логирования
+ * @param items  список аргументов для замены
+ */
+void awh::Log::_print2(const string format, flag_t flag, const vector <string> items) const noexcept {
+	// Выполняем блокировку потока
+	const lock_guard <mutex> lock(this->_mtx);
+	// Если формат передан
+	if(!format.empty() && !items.empty()){
+		// Создаем буфер для хранения даты
+		char date[80];
+		// Флаг конца строки
+		bool isEnd = false;
+		// Данные для записи
+		string logData = "";
+		// Заполняем буфер нулями
+		memset(date, 0, sizeof(date));
+		// Определяем количество секунд
+		const time_t seconds = time(nullptr);
+		// Получаем структуру локального времени
+		struct tm * timeinfo = localtime(&seconds);
+		// Копируем в буфер полученную дату и время
+		strftime(date, sizeof(date), this->_format.c_str(), timeinfo);
+		// Создаём строку для проверки
+		const string & str = this->_fmk->format(format, items);
+		// Если размер буфера меньше 3-х байт
+		if(items.size() < 3)
+			// Проверяем является ли это переводом строки
+			isEnd = ((str.compare("\r\n") == 0) || (str.compare("\n") == 0));
+		// Если файл для вывода лога указан
+		if(this->_fileMode && !this->_filename.empty()){
+			// Выполняем блокировку потока
+			const lock_guard <mutex> lock(this->_mtx);
+			// Открываем файл на запись
+			ofstream file(this->_filename, ios::out | ios::app);
+			// Если файл открыт
+			if(file.is_open()){
+				// Определяем тип сообщения
+				switch(static_cast <uint8_t> (flag)){
+					// Выводим сообщение так-как оно есть
+					case static_cast <uint8_t> (flag_t::NONE):
+						// Формируем текстовый вид лога
+						logData = this->_fmk->format("%s%s", str.c_str(), (!isEnd ? "\n\n" : ""));
+					break;
+					// Выводим информационное сообщение
+					case static_cast <uint8_t> (flag_t::INFO):
+						// Формируем текстовый вид лога
+						logData = this->_fmk->format("Info %s %s : %s%s", date, this->_name.c_str(), str.c_str(), (!isEnd ? "\n\n" : ""));
+					break;
+					// Выводим сообщение об ошибке
+					case static_cast <uint8_t> (flag_t::CRITICAL):
+						// Формируем текстовый вид лога
+						logData = this->_fmk->format("Error %s %s : %s%s", date, this->_name.c_str(), str.c_str(), (!isEnd ? "\n\n" : ""));
+					break;
+					// Выводим сообщение предупреждения
+					case static_cast <uint8_t> (flag_t::WARNING):
+						// Формируем текстовый вид лога
+						logData = this->_fmk->format("Warning %s %s : %s%s", date, this->_name.c_str(), str.c_str(), (!isEnd ? "\n\n" : ""));
+					break;
+				}
+				// Выполняем запись в файл
+				file.write(logData.data(), logData.size());
+				// Закрываем файл
+				file.close();
+				// Выполняем ротацию логов
+				this->rotate();
+			}
+		}
+		// Выполняем блокировку потока
+		const lock_guard <mutex> lock(this->_mtx);
+		// Определяем тип сообщения
+		switch(static_cast <uint8_t> (flag)){
+			// Выводим сообщение так-как оно есть
+			case static_cast <uint8_t> (flag_t::NONE):
+				// Формируем текстовый вид лога
+				logData = this->_fmk->format("%s%s", str.c_str(), (!isEnd ? "\r\n\r\n" : ""));
+			break;
+			// Выводим информационное сообщение
+			case static_cast <uint8_t> (flag_t::INFO):
+				// Формируем текстовый вид лога
+				logData = this->_fmk->format("\x1B[32m\x1B[1mInfo\x1B[0m \x1B[32m%s %s :\x1B[0m %s%s", date, this->_name.c_str(), str.c_str(), (!isEnd ? "\r\n\r\n" : ""));
+			break;
+			// Выводим сообщение об ошибке
+			case static_cast <uint8_t> (flag_t::CRITICAL):
+				// Формируем текстовый вид лога
+				logData = this->_fmk->format("\x1B[31m\x1B[1mError\x1B[0m \x1B[31m%s %s :\x1B[0m %s%s", date, this->_name.c_str(), str.c_str(), (!isEnd ? "\r\n\r\n" : ""));
+			break;
+			// Выводим сообщение предупреждения
+			case static_cast <uint8_t> (flag_t::WARNING):
+				// Формируем текстовый вид лога
+				logData = this->_fmk->format("\x1B[33m\x1B[1mWarning\x1B[0m \x1B[33m%s %s :\x1B[0m %s%s", date, this->_name.c_str(), str.c_str(), (!isEnd ? "\r\n\r\n" : ""));
+			break;
+		}
+		// Если вывод сообщения в консоль разрешён
+		if(this->_consoleMode){
+			// Если тип сообщение не является пустым
+			if(flag != flag_t::NONE) cout << "*************** START ***************" << endl << endl;
+			// Выводим сообщение в консоль
+			cout << logData;
+			// Если тип сообщение не является пустым
+			if(flag != flag_t::NONE) cout << "---------------- END ----------------" << endl << endl;
+		}
+		// Если функция подписки на логи установлена, выводим результат
+		if(this->_fn != nullptr) this->_fn(flag, str);
+	}
+}
+/**
  * print Метод вывода текстовой информации в консоль или файл
  * @param format формат строки вывода
  * @param flag   флаг типа логирования
@@ -80,15 +297,20 @@ void awh::Log::rotate() const noexcept {
 void awh::Log::print(const string & format, flag_t flag, ...) const noexcept {
 	// Если формат передан
 	if(!format.empty()){
-		// Создаем буфер
-		vector <char> buffer;
-		{
+		// Если уровень логирования соответствует
+		if((this->_level == level_t::ALL) ||
+		  ((this->_level == level_t::INFO) && (flag == flag_t::INFO)) ||
+		  ((this->_level == level_t::WARNING) && (flag == flag_t::WARNING)) ||
+		  ((this->_level == level_t::CRITICAL) && (flag == flag_t::CRITICAL)) ||
+		  ((this->_level == level_t::INFO_WARNING) && ((flag == flag_t::INFO) || (flag == flag_t::WARNING))) ||
+		  ((this->_level == level_t::INFO_CRITICAL) && ((flag == flag_t::INFO) || (flag == flag_t::CRITICAL))) ||
+		  ((this->_level == level_t::WARNING_CRITICAL) && ((flag == flag_t::WARNING) || (flag == flag_t::CRITICAL)))){
 			// Создаем список аргументов
 			va_list args;
 			// Запускаем инициализацию списка аргументов
 			va_start(args, flag);
-			// Создаем буфер данных
-			buffer.resize(1024);
+			// Буфер данных для логирования
+			vector <char> buffer(1024);
 			// Выполняем перебор всех аргументов
 			while(true){
 				// Создаем список аргументов
@@ -129,103 +351,10 @@ void awh::Log::print(const string & format, flag_t flag, ...) const noexcept {
 			}
 			// Завершаем список аргументов
 			va_end(args);
-		}
-		// Если строка получена
-		if(!buffer.empty()){
-			// Создаем буфер для хранения даты
-			char date[80];
-			// Флаг конца строки
-			bool isEnd = false;
-			// Данные для записи
-			string logData = "";
-			// Заполняем буфер нулями
-			memset(date, 0, sizeof(date));
-			// Определяем количество секунд
-			const time_t seconds = time(nullptr);
-			// Получаем структуру локального времени
-			struct tm * timeinfo = localtime(&seconds);
-			// Копируем в буфер полученную дату и время
-			strftime(date, sizeof(date), this->_format.c_str(), timeinfo);
-			// Если размер буфера меньше 3-х байт
-			if(buffer.size() < 3){
-				// Создаём строку для проверки
-				const string str = buffer.data();
-				// Проверяем является ли это переводом строки
-				isEnd = ((str.compare("\r\n") == 0) || (str.compare("\n") == 0));
-			}
-			// Если файл для вывода лога указан
-			if(this->_fileMode && !this->_filename.empty()){
-				// Открываем файл на запись
-				ofstream file(this->_filename, ios::out | ios::app);
-				// Если файл открыт
-				if(file.is_open()){
-					// Определяем тип сообщения
-					switch(static_cast <uint8_t> (flag)){
-						// Выводим сообщение так-как оно есть
-						case static_cast <uint8_t> (flag_t::NONE):
-							// Формируем текстовый вид лога
-							logData = this->_fmk->format("%s%s", buffer.data(), (!isEnd ? "\r\n\r\n" : ""));
-						break;
-						// Выводим информационное сообщение
-						case static_cast <uint8_t> (flag_t::INFO):
-							// Формируем текстовый вид лога
-							logData = this->_fmk->format("Info %s %s : %s%s", date, this->_name.c_str(), buffer.data(), (!isEnd ? "\r\n\r\n" : ""));
-						break;
-						// Выводим сообщение об ошибке
-						case static_cast <uint8_t> (flag_t::CRITICAL):
-							// Формируем текстовый вид лога
-							logData = this->_fmk->format("Error %s %s : %s%s", date, this->_name.c_str(), buffer.data(), (!isEnd ? "\r\n\r\n" : ""));
-						break;
-						// Выводим сообщение предупреждения
-						case static_cast <uint8_t> (flag_t::WARNING):
-							// Формируем текстовый вид лога
-							logData = this->_fmk->format("Warning %s %s : %s%s", date, this->_name.c_str(), buffer.data(), (!isEnd ? "\r\n\r\n" : ""));
-						break;
-					}
-					// Выполняем запись в файл
-					file.write(logData.data(), logData.size());
-					// Закрываем файл
-					file.close();
-					// Выполняем ротацию логов
-					this->rotate();
-				}
-			}
-			// Определяем тип сообщения
-			switch(static_cast <uint8_t> (flag)){
-				// Выводим сообщение так-как оно есть
-				case static_cast <uint8_t> (flag_t::NONE):
-					// Формируем текстовый вид лога
-					logData = this->_fmk->format("%s%s", buffer.data(), (!isEnd ? "\r\n\r\n" : ""));
-				break;
-				// Выводим информационное сообщение
-				case static_cast <uint8_t> (flag_t::INFO):
-					// Формируем текстовый вид лога
-					logData = this->_fmk->format("\x1B[32m\x1B[1mInfo\x1B[0m \x1B[32m%s %s :\x1B[0m %s%s", date, this->_name.c_str(), buffer.data(), (!isEnd ? "\r\n\r\n" : ""));
-				break;
-				// Выводим сообщение об ошибке
-				case static_cast <uint8_t> (flag_t::CRITICAL):
-					// Формируем текстовый вид лога
-					logData = this->_fmk->format("\x1B[31m\x1B[1mError\x1B[0m \x1B[31m%s %s :\x1B[0m %s%s", date, this->_name.c_str(), buffer.data(), (!isEnd ? "\r\n\r\n" : ""));
-				break;
-				// Выводим сообщение предупреждения
-				case static_cast <uint8_t> (flag_t::WARNING):
-					// Формируем текстовый вид лога
-					logData = this->_fmk->format("\x1B[33m\x1B[1mWarning\x1B[0m \x1B[33m%s %s :\x1B[0m %s%s", date, this->_name.c_str(), buffer.data(), (!isEnd ? "\r\n\r\n" : ""));
-				break;
-			}
-			// Если вывод сообщения в консоль разрешён
-			if(this->_consoleMode){
-				// Если тип сообщение не является пустым
-				if(flag != flag_t::NONE) cout << "*************** START ***************" << endl << endl;
-				// Выводим сообщение в консоль
-				cout << logData;
-				// Если тип сообщение не является пустым
-				if(flag != flag_t::NONE) cout << "---------------- END ----------------" << endl << endl;
-			}
-			// Если функция подписки на логи установлена, выводим результат
-			if(this->_fn != nullptr)
-				// Выводим сообщение лога всем подписавшимся
-				this->_fn(flag, string(buffer.begin(), buffer.end()));
+			// Если буфер данных для логирования сформирован
+			if(!buffer.empty())
+				// Выполняем добавление записи в пул потоков
+				this->_thr.push(std::bind(&log_t::_print1, this, _1, _2, _3), format, flag, std::move(buffer));
 		}
 	}
 }
@@ -238,97 +367,16 @@ void awh::Log::print(const string & format, flag_t flag, ...) const noexcept {
 void awh::Log::print(const string & format, flag_t flag, const vector <string> & items) const noexcept {
 	// Если формат передан
 	if(!format.empty() && !items.empty()){
-		// Создаем буфер для хранения даты
-		char date[80];
-		// Флаг конца строки
-		bool isEnd = false;
-		// Данные для записи
-		string logData = "";
-		// Заполняем буфер нулями
-		memset(date, 0, sizeof(date));
-		// Определяем количество секунд
-		const time_t seconds = time(nullptr);
-		// Получаем структуру локального времени
-		struct tm * timeinfo = localtime(&seconds);
-		// Копируем в буфер полученную дату и время
-		strftime(date, sizeof(date), this->_format.c_str(), timeinfo);
-		// Создаём строку для проверки
-		const string & str = this->_fmk->format(format, items);
-		// Если размер буфера меньше 3-х байт
-		if(items.size() < 3)
-			// Проверяем является ли это переводом строки
-			isEnd = ((str.compare("\r\n") == 0) || (str.compare("\n") == 0));
-		// Если файл для вывода лога указан
-		if(this->_fileMode && !this->_filename.empty()){
-			// Открываем файл на запись
-			ofstream file(this->_filename, ios::out | ios::app);
-			// Если файл открыт
-			if(file.is_open()){
-				// Определяем тип сообщения
-				switch(static_cast <uint8_t> (flag)){
-					// Выводим сообщение так-как оно есть
-					case static_cast <uint8_t> (flag_t::NONE):
-						// Формируем текстовый вид лога
-						logData = this->_fmk->format("%s%s", str.c_str(), (!isEnd ? "\n\n" : ""));
-					break;
-					// Выводим информационное сообщение
-					case static_cast <uint8_t> (flag_t::INFO):
-						// Формируем текстовый вид лога
-						logData = this->_fmk->format("Info %s %s : %s%s", date, this->_name.c_str(), str.c_str(), (!isEnd ? "\n\n" : ""));
-					break;
-					// Выводим сообщение об ошибке
-					case static_cast <uint8_t> (flag_t::CRITICAL):
-						// Формируем текстовый вид лога
-						logData = this->_fmk->format("Error %s %s : %s%s", date, this->_name.c_str(), str.c_str(), (!isEnd ? "\n\n" : ""));
-					break;
-					// Выводим сообщение предупреждения
-					case static_cast <uint8_t> (flag_t::WARNING):
-						// Формируем текстовый вид лога
-						logData = this->_fmk->format("Warning %s %s : %s%s", date, this->_name.c_str(), str.c_str(), (!isEnd ? "\n\n" : ""));
-					break;
-				}
-				// Выполняем запись в файл
-				file.write(logData.data(), logData.size());
-				// Закрываем файл
-				file.close();
-				// Выполняем ротацию логов
-				this->rotate();
-			}
-		}
-		// Определяем тип сообщения
-		switch(static_cast <uint8_t> (flag)){
-			// Выводим сообщение так-как оно есть
-			case static_cast <uint8_t> (flag_t::NONE):
-				// Формируем текстовый вид лога
-				logData = this->_fmk->format("%s%s", str.c_str(), (!isEnd ? "\r\n\r\n" : ""));
-			break;
-			// Выводим информационное сообщение
-			case static_cast <uint8_t> (flag_t::INFO):
-				// Формируем текстовый вид лога
-				logData = this->_fmk->format("\x1B[32m\x1B[1mInfo\x1B[0m \x1B[32m%s %s :\x1B[0m %s%s", date, this->_name.c_str(), str.c_str(), (!isEnd ? "\r\n\r\n" : ""));
-			break;
-			// Выводим сообщение об ошибке
-			case static_cast <uint8_t> (flag_t::CRITICAL):
-				// Формируем текстовый вид лога
-				logData = this->_fmk->format("\x1B[31m\x1B[1mError\x1B[0m \x1B[31m%s %s :\x1B[0m %s%s", date, this->_name.c_str(), str.c_str(), (!isEnd ? "\r\n\r\n" : ""));
-			break;
-			// Выводим сообщение предупреждения
-			case static_cast <uint8_t> (flag_t::WARNING):
-				// Формируем текстовый вид лога
-				logData = this->_fmk->format("\x1B[33m\x1B[1mWarning\x1B[0m \x1B[33m%s %s :\x1B[0m %s%s", date, this->_name.c_str(), str.c_str(), (!isEnd ? "\r\n\r\n" : ""));
-			break;
-		}
-		// Если вывод сообщения в консоль разрешён
-		if(this->_consoleMode){
-			// Если тип сообщение не является пустым
-			if(flag != flag_t::NONE) cout << "*************** START ***************" << endl << endl;
-			// Выводим сообщение в консоль
-			cout << logData;
-			// Если тип сообщение не является пустым
-			if(flag != flag_t::NONE) cout << "---------------- END ----------------" << endl << endl;
-		}
-		// Если функция подписки на логи установлена, выводим результат
-		if(this->_fn != nullptr) this->_fn(flag, str);
+		// Если уровень логирования соответствует
+		if((this->_level == level_t::ALL) ||
+		  ((this->_level == level_t::INFO) && (flag == flag_t::INFO)) ||
+		  ((this->_level == level_t::WARNING) && (flag == flag_t::WARNING)) ||
+		  ((this->_level == level_t::CRITICAL) && (flag == flag_t::CRITICAL)) ||
+		  ((this->_level == level_t::INFO_WARNING) && ((flag == flag_t::INFO) || (flag == flag_t::WARNING))) ||
+		  ((this->_level == level_t::INFO_CRITICAL) && ((flag == flag_t::INFO) || (flag == flag_t::CRITICAL))) ||
+		  ((this->_level == level_t::WARNING_CRITICAL) && ((flag == flag_t::WARNING) || (flag == flag_t::CRITICAL))))
+			// Выполняем добавление записи в пул потоков
+			this->_thr.push(std::bind(&log_t::_print2, this, _1, _2, _3), format, flag, items);
 	}
 }
 /**
@@ -356,12 +404,20 @@ void awh::Log::name(const string & name) noexcept {
 	this->_name = name;
 }
 /**
- * maxFileSize Метод установки максимального размера файла логов
+ * maxSize Метод установки максимального размера файла логов
  * @param size максимальный размер файла логов
  */
-void awh::Log::maxFileSize(const float size) noexcept {
+void awh::Log::maxSize(const float size) noexcept {
 	// Устанавливаем максимальный размер файла логов
-	this->_maxFileSize = size;
+	this->_maxSize = size;
+}
+/**
+ * level Метод установки уровня логирования
+ * @param level уровень логирования для установки
+ */
+void awh::Log::level(const level_t level) noexcept {
+	// Выполняем установку уровень логирования
+	this->_level = level;
 }
 /**
  * format Метод установки формата даты и времени для вывода лога
@@ -386,4 +442,24 @@ void awh::Log::filename(const string & filename) noexcept {
 void awh::Log::subscribe(function <void (const flag_t, const string &)> callback) noexcept {
 	// Устанавливаем функцию подписки на получение лога
 	this->_fn = callback;
+}
+/**
+ * Log Конструктор
+ * @param fmk      объект фреймворка
+ * @param filename адрес файла для сохранения логов
+ */
+awh::Log::Log(const fmk_t * fmk, const string & filename) noexcept :
+ _fileMode(true), _consoleMode(true),
+ _maxSize(MAX_SIZE_LOGFILE), _level(level_t::ALL),
+ _thr(2), _name(AWH_SHORT_NAME), _format(DATE_FORMAT),
+ _filename(filename), _fn(nullptr), _fmk(fmk) {
+	// Выполняем инициализацию работы пула потоков
+	this->_thr.init();
+}
+/**
+ * ~Log Деструктор
+ */
+awh::Log::~Log() noexcept {
+	// Выполняем ожидание завершения работы потоков
+	this->_thr.wait();
 }
