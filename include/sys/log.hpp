@@ -26,8 +26,14 @@
 #include <cstring>
 #include <cstdarg>
 #include <functional>
-#include <sys/types.h>
 #include <zlib.h>
+
+/**
+ * Если операционной системой не является Windows
+ */
+#if !defined(_WIN32) && !defined(_WIN64)
+	#include <unistd.h>
+#endif
 
 /**
  * Наши модули
@@ -83,10 +89,7 @@ namespace awh {
 			level_t _level;
 		private:
 			// Пул потоков для записи в файловую систему
-			mutable thr_t _thr;
-		private:
-			// Мютекс для блокировки потоков
-			mutable mutex _mtx;
+			mutable map <pid_t, unique_ptr <thr_t>> _thr;
 		private:
 			// Название сервиса для вывода лога
 			string _name;
@@ -183,7 +186,11 @@ namespace awh {
 			 * @param fmk      объект фреймворка
 			 * @param filename адрес файла для сохранения логов
 			 */
-			Log(const fmk_t * fmk, const string & filename = "") noexcept;
+			Log(const fmk_t * fmk, const string & filename = "") noexcept :
+			 _fileMode(true), _consoleMode(true),
+			 _maxSize(MAX_SIZE_LOGFILE), _level(level_t::ALL),
+			 _name(AWH_SHORT_NAME), _format(DATE_FORMAT),
+			 _filename(filename), _fn(nullptr), _fmk(fmk) {}
 			/**
 			 * ~Log Деструктор
 			 */

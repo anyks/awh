@@ -104,8 +104,6 @@ void awh::Log::_print1(const string format, flag_t flag, const vector <char> buf
 		}
 		// Если файл для вывода лога указан
 		if(this->_fileMode && !this->_filename.empty()){
-			// Выполняем блокировку потока
-			const lock_guard <mutex> lock(this->_mtx);
 			// Открываем файл на запись
 			ofstream file(this->_filename, ios::out | ios::app);
 			// Если файл открыт
@@ -141,8 +139,6 @@ void awh::Log::_print1(const string format, flag_t flag, const vector <char> buf
 				this->rotate();
 			}
 		}
-		// Выполняем блокировку потока
-		const lock_guard <mutex> lock(this->_mtx);
 		// Определяем тип сообщения
 		switch(static_cast <uint8_t> (flag)){
 			// Выводим сообщение так-как оно есть
@@ -188,8 +184,6 @@ void awh::Log::_print1(const string format, flag_t flag, const vector <char> buf
  * @param items  список аргументов для замены
  */
 void awh::Log::_print2(const string format, flag_t flag, const vector <string> items) const noexcept {
-	// Выполняем блокировку потока
-	const lock_guard <mutex> lock(this->_mtx);
 	// Если формат передан
 	if(!format.empty() && !items.empty()){
 		// Создаем буфер для хранения даты
@@ -214,8 +208,6 @@ void awh::Log::_print2(const string format, flag_t flag, const vector <string> i
 			isEnd = ((str.compare("\r\n") == 0) || (str.compare("\n") == 0));
 		// Если файл для вывода лога указан
 		if(this->_fileMode && !this->_filename.empty()){
-			// Выполняем блокировку потока
-			const lock_guard <mutex> lock(this->_mtx);
 			// Открываем файл на запись
 			ofstream file(this->_filename, ios::out | ios::app);
 			// Если файл открыт
@@ -251,8 +243,6 @@ void awh::Log::_print2(const string format, flag_t flag, const vector <string> i
 				this->rotate();
 			}
 		}
-		// Выполняем блокировку потока
-		const lock_guard <mutex> lock(this->_mtx);
 		// Определяем тип сообщения
 		switch(static_cast <uint8_t> (flag)){
 			// Выводим сообщение так-как оно есть
@@ -352,9 +342,23 @@ void awh::Log::print(const string & format, flag_t flag, ...) const noexcept {
 			// Завершаем список аргументов
 			va_end(args);
 			// Если буфер данных для логирования сформирован
-			if(!buffer.empty())
-				// Выполняем добавление записи в пул потоков
-				this->_thr.push(std::bind(&log_t::_print1, this, _1, _2, _3), format, flag, std::move(buffer));
+			if(!buffer.empty()){
+				// Выполняем поиск пула потоков принадлежащего процессу
+				auto it = this->_thr.find(getpid());
+				// Если пул потоков был найден
+				if(it != this->_thr.end())
+					// Выполняем добавление записи в пул потоков
+					it->second->push(std::bind(&log_t::_print1, this, _1, _2, _3), format, flag, std::move(buffer));
+				// Если пул потоков не найден
+				else {
+					// Выполняем создание пула потоков
+					auto ret = this->_thr.emplace(getpid(), unique_ptr <thr_t> (new thr_t(2)));
+					// Выполняем инициализацию пула потоков
+					ret.first->second->init();
+					// Выполняем добавление записи в пул потоков
+					ret.first->second->push(std::bind(&log_t::_print1, this, _1, _2, _3), format, flag, std::move(buffer));
+				}	
+			}
 		}
 	}
 }
@@ -374,9 +378,23 @@ void awh::Log::print(const string & format, flag_t flag, const vector <string> &
 		  ((this->_level == level_t::CRITICAL) && (flag == flag_t::CRITICAL)) ||
 		  ((this->_level == level_t::INFO_WARNING) && ((flag == flag_t::INFO) || (flag == flag_t::WARNING))) ||
 		  ((this->_level == level_t::INFO_CRITICAL) && ((flag == flag_t::INFO) || (flag == flag_t::CRITICAL))) ||
-		  ((this->_level == level_t::WARNING_CRITICAL) && ((flag == flag_t::WARNING) || (flag == flag_t::CRITICAL))))
-			// Выполняем добавление записи в пул потоков
-			this->_thr.push(std::bind(&log_t::_print2, this, _1, _2, _3), format, flag, items);
+		  ((this->_level == level_t::WARNING_CRITICAL) && ((flag == flag_t::WARNING) || (flag == flag_t::CRITICAL)))){
+		  	// Выполняем поиск пула потоков принадлежащего процессу
+			auto it = this->_thr.find(getpid());
+			// Если пул потоков был найден
+			if(it != this->_thr.end())
+				// Выполняем добавление записи в пул потоков
+				it->second->push(std::bind(&log_t::_print2, this, _1, _2, _3), format, flag, items);
+			// Если пул потоков не найден
+			else {
+				// Выполняем создание пула потоков
+				auto ret = this->_thr.emplace(getpid(), unique_ptr <thr_t> (new thr_t(2)));
+				// Выполняем инициализацию пула потоков
+				ret.first->second->init();
+				// Выполняем добавление записи в пул потоков
+				ret.first->second->push(std::bind(&log_t::_print2, this, _1, _2, _3), format, flag, items);
+			}	
+		}
 	}
 }
 /**
@@ -444,22 +462,13 @@ void awh::Log::subscribe(function <void (const flag_t, const string &)> callback
 	this->_fn = callback;
 }
 /**
- * Log Конструктор
- * @param fmk      объект фреймворка
- * @param filename адрес файла для сохранения логов
- */
-awh::Log::Log(const fmk_t * fmk, const string & filename) noexcept :
- _fileMode(true), _consoleMode(true),
- _maxSize(MAX_SIZE_LOGFILE), _level(level_t::ALL),
- _thr(2), _name(AWH_SHORT_NAME), _format(DATE_FORMAT),
- _filename(filename), _fn(nullptr), _fmk(fmk) {
-	// Выполняем инициализацию работы пула потоков
-	this->_thr.init();
-}
-/**
  * ~Log Деструктор
  */
 awh::Log::~Log() noexcept {
-	// Выполняем ожидание завершения работы потоков
-	this->_thr.wait();
+	// Выполняем поиск пула потоков принадлежащего процессу
+	auto it = this->_thr.find(getpid());
+	// Если пул потоков был найден
+	if(it != this->_thr.end())
+		// Выполняем ожидание завершения работы потоков
+		it->second->wait();
 }
