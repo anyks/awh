@@ -88,6 +88,9 @@ namespace awh {
 			// Уровень логирования
 			level_t _level;
 		private:
+			// Мютекс для блокировки потока
+			mutable mutex _mtx;
+		private:
 			// Пул потоков для записи в файловую систему
 			mutable map <pid_t, unique_ptr <thr_t>> _thr;
 		private:

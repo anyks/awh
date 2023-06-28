@@ -102,6 +102,8 @@ void awh::Log::_print1(const string format, flag_t flag, const vector <char> buf
 			// Проверяем является ли это переводом строки
 			isEnd = ((str.compare("\r\n") == 0) || (str.compare("\n") == 0));
 		}
+		// Выполняем блокировку потока
+		const lock_guard <mutex> lock(this->_mtx);
 		// Если файл для вывода лога указан
 		if(this->_fileMode && !this->_filename.empty()){
 			// Открываем файл на запись
@@ -206,6 +208,8 @@ void awh::Log::_print2(const string format, flag_t flag, const vector <string> i
 		if(items.size() < 3)
 			// Проверяем является ли это переводом строки
 			isEnd = ((str.compare("\r\n") == 0) || (str.compare("\n") == 0));
+		// Выполняем блокировку потока
+		const lock_guard <mutex> lock(this->_mtx);
 		// Если файл для вывода лога указан
 		if(this->_fileMode && !this->_filename.empty()){
 			// Открываем файл на запись
