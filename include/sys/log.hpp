@@ -93,6 +93,8 @@ namespace awh {
 			// Идентификатор родительского процесса
 			pid_t _pid;
 		private:
+			// Флаг асинхронного режима работы
+			bool _async;
 			// Флаг разрешения вывода логов в файл
 			bool _fileMode;
 			// Флаг разрешения вывода логов в консоль
@@ -159,6 +161,11 @@ namespace awh {
 			 */
 			void allowConsole(const bool mode) noexcept;
 		public:
+			/**
+			 * async Метод установки флага асинхронного режима работы
+			 * @param mode флаг асинхронного режима работы
+			 */
+			void async(const bool mode) noexcept;
 			/**
 			 * name Метод установки название сервиса для вывода лога
 			 * @param name название сервиса для вывода лога

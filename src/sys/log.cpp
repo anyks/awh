@@ -237,31 +237,35 @@ void awh::Log::print(const string & format, flag_t flag, ...) const noexcept {
 				payload.flag = flag;
 				// Устанавливаем даныне сообщения
 				payload.data.assign(buffer.begin(), buffer.end());
-				// Получаем идентификатор текущего процесса
-				const pid_t pid = getpid();
-				// Если идентификатор процесса является дочерним
-				if(pid != this->_pid){
-					// Если процесс ещё не инициализирован и дочерний поток уже создан
-					if((this->_chld != nullptr) && (this->_initialized.count(pid) < 1)){
-						// Выполняем удаление оюъекта дочернего потока
-						delete this->_chld;
-						// Выполняем зануление дочернего потока
-						this->_chld = nullptr;
-						// Выполняем очистку списка инициализированных процессов
-						this->_initialized.clear();
+				// Если асинхронный режим работы активирован
+				if(this->_async){
+					// Получаем идентификатор текущего процесса
+					const pid_t pid = getpid();
+					// Если идентификатор процесса является дочерним
+					if(pid != this->_pid){
+						// Если процесс ещё не инициализирован и дочерний поток уже создан
+						if((this->_chld != nullptr) && (this->_initialized.count(pid) < 1)){
+							// Выполняем удаление оюъекта дочернего потока
+							delete this->_chld;
+							// Выполняем зануление дочернего потока
+							this->_chld = nullptr;
+							// Выполняем очистку списка инициализированных процессов
+							this->_initialized.clear();
+						}
 					}
-				}
-				// Если дочерний поток не создан
-				if(this->_chld == nullptr){
-					// Выполняем создание дочернего потока
-					this->_chld = new children <payload_t> ();
-					// Выполняем установку функцию обратного вызова
-					this->_chld->on(std::bind(&log_t::receiving, this, _1));
-					// Выполняем инициализацию текущего процесса
-					this->_initialized.emplace(pid);
-				}
-				// Выполняем отправку сообщения дочернему потоку
-				this->_chld->send(std::move(payload));
+					// Если дочерний поток не создан
+					if(this->_chld == nullptr){
+						// Выполняем создание дочернего потока
+						this->_chld = new children <payload_t> ();
+						// Выполняем установку функцию обратного вызова
+						this->_chld->on(std::bind(&log_t::receiving, this, _1));
+						// Выполняем инициализацию текущего процесса
+						this->_initialized.emplace(pid);
+					}
+					// Выполняем отправку сообщения дочернему потоку
+					this->_chld->send(std::move(payload));
+				// Выполняем вывод полученного лога
+				} else this->receiving(std::move(payload));
 			}
 		}
 	}
@@ -289,31 +293,35 @@ void awh::Log::print(const string & format, flag_t flag, const vector <string> &
 			payload.flag = flag;
 			// Устанавливаем даныне сообщения
 			payload.data = this->_fmk->format(format, items);
-			// Получаем идентификатор текущего процесса
-			const pid_t pid = getpid();
-			// Если идентификатор процесса является дочерним
-			if(pid != this->_pid){
-				// Если процесс ещё не инициализирован и дочерний поток уже создан
-				if((this->_chld != nullptr) && (this->_initialized.count(pid) < 1)){
-					// Выполняем удаление оюъекта дочернего потока
-					delete this->_chld;
-					// Выполняем зануление дочернего потока
-					this->_chld = nullptr;
-					// Выполняем очистку списка инициализированных процессов
-					this->_initialized.clear();
+			// Если асинхронный режим работы активирован
+			if(this->_async){
+				// Получаем идентификатор текущего процесса
+				const pid_t pid = getpid();
+				// Если идентификатор процесса является дочерним
+				if(pid != this->_pid){
+					// Если процесс ещё не инициализирован и дочерний поток уже создан
+					if((this->_chld != nullptr) && (this->_initialized.count(pid) < 1)){
+						// Выполняем удаление оюъекта дочернего потока
+						delete this->_chld;
+						// Выполняем зануление дочернего потока
+						this->_chld = nullptr;
+						// Выполняем очистку списка инициализированных процессов
+						this->_initialized.clear();
+					}
 				}
-			}
-			// Если дочерний поток не создан
-			if(this->_chld == nullptr){
-				// Выполняем создание дочернего потока
-				this->_chld = new children <payload_t> ();
-				// Выполняем установку функцию обратного вызова
-				this->_chld->on(std::bind(&log_t::receiving, this, _1));
-				// Выполняем инициализацию текущего процесса
-				this->_initialized.emplace(pid);
-			}
-			// Выполняем отправку сообщения дочернему потоку
-			this->_chld->send(std::move(payload));
+				// Если дочерний поток не создан
+				if(this->_chld == nullptr){
+					// Выполняем создание дочернего потока
+					this->_chld = new children <payload_t> ();
+					// Выполняем установку функцию обратного вызова
+					this->_chld->on(std::bind(&log_t::receiving, this, _1));
+					// Выполняем инициализацию текущего процесса
+					this->_initialized.emplace(pid);
+				}
+				// Выполняем отправку сообщения дочернему потоку
+				this->_chld->send(std::move(payload));
+			// Выполняем вывод полученного лога
+			} else this->receiving(std::move(payload));
 		}
 	}
 }
@@ -332,6 +340,14 @@ void awh::Log::allowFile(const bool mode) noexcept {
 void awh::Log::allowConsole(const bool mode) noexcept {
 	// Устанавливаем разрешение на вывод лога в консоль
 	this->_consoleMode = mode;
+}
+/**
+ * async Метод установки флага асинхронного режима работы
+ * @param mode флаг асинхронного режима работы
+ */
+void awh::Log::async(const bool mode) noexcept {
+	// Устанавливаем флаг асинхронного режима работы
+	this->_async = mode;
 }
 /**
  * name Метод установки название сервиса для вывода лога
@@ -387,10 +403,10 @@ void awh::Log::subscribe(function <void (const flag_t, const string &)> callback
  * @param filename адрес файла для сохранения логов
  */
 awh::Log::Log(const fmk_t * fmk, const string & filename) noexcept :
- _pid(0), _fileMode(true), _consoleMode(true),
+ _pid(0), _async(false), _fileMode(true), _consoleMode(true),
  _maxSize(MAX_SIZE_LOGFILE), _level(level_t::ALL),
  _name(AWH_SHORT_NAME), _format(DATE_FORMAT),
- _filename(filename), _fn(nullptr), _fmk(fmk) {
+ _filename(filename), _chld(nullptr), _fn(nullptr), _fmk(fmk) {
 	// Запоминаем идентификатор родительского объекта
 	this->_pid = getpid();
 }
