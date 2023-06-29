@@ -19,6 +19,9 @@
  * Стандартная библиотека
  */
 #include <ctime>
+#include <queue>
+#include <thread>
+#include <atomic>
 #include <string>
 #include <vector>
 #include <sstream>
@@ -26,6 +29,7 @@
 #include <cstring>
 #include <cstdarg>
 #include <functional>
+#include <condition_variable>
 #include <zlib.h>
 
 /**
@@ -39,7 +43,6 @@
  * Наши модули
  */
 #include <sys/fmk.hpp>
-#include <sys/threadpool.hpp>
 
 // Подписываемся на стандартное пространство имён
 using namespace std;
@@ -77,6 +80,20 @@ namespace awh {
 				WARNING_CRITICAL = 0x06  // Разрешено выводить логи предупреждения и критические
 			};
 		private:
+			/**
+			 * Payload Структура полезной нагрузки
+			 */
+			typedef struct Payload {
+				flag_t flag; // Флаг полезной нагрузки
+				string data; // Данные полезной нагрузки
+				/**
+				 * Payload Конструктор
+				 */
+				Payload() noexcept : flag(flag_t::NONE), data("") {}
+			} payload_t;
+		private:
+			// Флаг остановки работы дочернего потока
+			bool _stop;
 			// Флаг разрешения вывода логов в файл
 			bool _fileMode;
 			// Флаг разрешения вывода логов в консоль
@@ -88,11 +105,14 @@ namespace awh {
 			// Уровень логирования
 			level_t _level;
 		private:
+			// Объект дочернего потока
+			std::thread _thr;
 			// Мютекс для блокировки потока
-			mutable mutex _mtx;
-		private:
-			// Пул потоков для записи в файловую систему
-			mutable map <pid_t, unique_ptr <thr_t>> _thr;
+			mutable mutex _mtx1, _mtx2;
+			// Условная переменная, ожидания поступления данных
+			mutable condition_variable _cv;
+			// Очередь полезной нагрузки
+			mutable queue <payload_t> _payload;
 		private:
 			// Название сервиса для вывода лога
 			string _name;
@@ -108,24 +128,20 @@ namespace awh {
 			const fmk_t * _fmk;
 		private:
 			/**
+			 * receiving Метод получения данных
+			 */
+			void receiving() noexcept;
+		private:
+			/**
 			 * rotate Метод выполнения ротации логов
 			 */
 			void rotate() const noexcept;
 		private:
 			/**
-			 * _print1 Метод вывода текстовой информации в консоль или файл
-			 * @param format формат строки вывода
-			 * @param flag   флаг типа логирования
-			 * @param buffer буфер данных для логирования
+			 * checkInputData Метод проверки на существование данных
+			 * @return результат проверки
 			 */
-			void _print1(const string format, flag_t flag, const vector <char> buffer) const noexcept;
-			/**
-			 * _print2 Метод вывода текстовой информации в консоль или файл
-			 * @param format формат строки вывода
-			 * @param flag   флаг типа логирования
-			 * @param items  список аргументов для замены
-			 */
-			void _print2(const string format, flag_t flag, const vector <string> items) const noexcept;
+			bool checkInputData() const noexcept;
 		public:
 			/**
 			 * print Метод вывода текстовой информации в консоль или файл
@@ -189,11 +205,7 @@ namespace awh {
 			 * @param fmk      объект фреймворка
 			 * @param filename адрес файла для сохранения логов
 			 */
-			Log(const fmk_t * fmk, const string & filename = "") noexcept :
-			 _fileMode(true), _consoleMode(true),
-			 _maxSize(MAX_SIZE_LOGFILE), _level(level_t::ALL),
-			 _name(AWH_SHORT_NAME), _format(DATE_FORMAT),
-			 _filename(filename), _fn(nullptr), _fmk(fmk) {}
+			Log(const fmk_t * fmk, const string & filename = "") noexcept;
 			/**
 			 * ~Log Деструктор
 			 */
