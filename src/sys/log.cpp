@@ -18,7 +18,7 @@
 /**
  * receiving Метод получения данных
  */
-void awh::Log::receiving() noexcept {
+void awh::Log::receiving() const noexcept {
 	// Запускаем бесконечный цикл
 	while(!this->_stop){
 		// Выполняем блокировку уникальным мютексом
@@ -272,6 +272,24 @@ void awh::Log::print(const string & format, flag_t flag, ...) const noexcept {
 				this->_payload.push(std::move(payload));
 				// Выполняем разблокировку потока
 				this->_mtx2.unlock();
+				// Получаем идентификатор текущего потока
+				const pid_t pid = getpid();
+				// Если поток для текущего процесса не создан
+				if(this->_thr.find(pid) == this->_thr.end()){
+					// Если текущий процесс является дочерним
+					if(pid != this->_pid){
+						// Выполняем остановку работы дочернего потока
+						this->_stop = !this->_stop;
+						// Отправляем сообщение, что данные записаны
+						this->_cv.notify_one();
+						// Выполняем сброс флага остановки
+						this->_stop = !this->_stop;
+					}
+					// Выполняем создание дочернего потока
+					auto ret = this->_thr.emplace(pid, std::thread(&log_t::receiving, this));
+					// Отсоединяемся от потока
+					ret.first->second.detach();
+				}
 				// Отправляем сообщение, что данные записаны
 				this->_cv.notify_one();
 			}
@@ -307,6 +325,24 @@ void awh::Log::print(const string & format, flag_t flag, const vector <string> &
 			this->_payload.push(std::move(payload));
 			// Выполняем разблокировку потока
 			this->_mtx2.unlock();
+			// Получаем идентификатор текущего потока
+			const pid_t pid = getpid();
+			// Если поток для текущего процесса не создан
+			if(this->_thr.find(pid) == this->_thr.end()){
+				// Если текущий процесс является дочерним
+				if(pid != this->_pid){
+					// Выполняем остановку работы дочернего потока
+					this->_stop = !this->_stop;
+					// Отправляем сообщение, что данные записаны
+					this->_cv.notify_one();
+					// Выполняем сброс флага остановки
+					this->_stop = !this->_stop;
+				}
+				// Выполняем создание дочернего потока
+				auto ret = this->_thr.emplace(pid, std::thread(&log_t::receiving, this));
+				// Отсоединяемся от потока
+				ret.first->second.detach();
+			}
 			// Отправляем сообщение, что данные записаны
 			this->_cv.notify_one();
 		}
@@ -382,14 +418,12 @@ void awh::Log::subscribe(function <void (const flag_t, const string &)> callback
  * @param filename адрес файла для сохранения логов
  */
 awh::Log::Log(const fmk_t * fmk, const string & filename) noexcept :
- _stop(false), _fileMode(true), _consoleMode(true),
+ _pid(0), _stop(false), _fileMode(true), _consoleMode(true),
  _maxSize(MAX_SIZE_LOGFILE), _level(level_t::ALL),
  _name(AWH_SHORT_NAME), _format(DATE_FORMAT),
  _filename(filename), _fn(nullptr), _fmk(fmk) {
-	// Создаём дочерний поток для формирования лога
-	this->_thr = std::thread(&log_t::receiving, this);
-	// Отсоединяемся от потока
-	this->_thr.detach();
+	// Выполняем установку идентификатора текущего процесса
+	this->_pid = getpid();
 }
 /**
  * ~Log Деструктор
@@ -397,4 +431,6 @@ awh::Log::Log(const fmk_t * fmk, const string & filename) noexcept :
 awh::Log::~Log() noexcept {
 	// Выполняем остановку работы дочернего потока
 	this->_stop = true;
+	// Отправляем сообщение, что данные записаны
+	this->_cv.notify_one();
 }

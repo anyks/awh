@@ -92,8 +92,11 @@ namespace awh {
 				Payload() noexcept : flag(flag_t::NONE), data("") {}
 			} payload_t;
 		private:
+			// Идентификатор процесса
+			pid_t _pid;
+		private:
 			// Флаг остановки работы дочернего потока
-			bool _stop;
+			mutable bool _stop;
 			// Флаг разрешения вывода логов в файл
 			bool _fileMode;
 			// Флаг разрешения вывода логов в консоль
@@ -105,14 +108,15 @@ namespace awh {
 			// Уровень логирования
 			level_t _level;
 		private:
-			// Объект дочернего потока
-			std::thread _thr;
 			// Мютекс для блокировки потока
 			mutable mutex _mtx1, _mtx2;
 			// Условная переменная, ожидания поступления данных
 			mutable condition_variable _cv;
 			// Очередь полезной нагрузки
 			mutable queue <payload_t> _payload;
+		private:
+			// Пул рабочих дочерних потоков
+			mutable map <pid_t, std::thread> _thr;
 		private:
 			// Название сервиса для вывода лога
 			string _name;
@@ -130,7 +134,7 @@ namespace awh {
 			/**
 			 * receiving Метод получения данных
 			 */
-			void receiving() noexcept;
+			void receiving() const noexcept;
 		private:
 			/**
 			 * rotate Метод выполнения ротации логов
