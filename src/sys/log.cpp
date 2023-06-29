@@ -16,118 +16,6 @@
 #include <sys/log.hpp>
 
 /**
- * receiving Метод получения данных
- */
-void awh::Log::receiving() const noexcept {
-	// Запускаем бесконечный цикл
-	while(!this->_stop){
-		// Выполняем блокировку уникальным мютексом
-		unique_lock <mutex> lock(this->_mtx1);
-		// Выполняем ожидание на поступление новых заданий
-		this->_cv.wait(lock, std::bind(&log_t::checkInputData, this));
-		// Если произведена остановка выходим
-		if(this->_stop) break;
-		// Если данные в очереди существуют
-		if(!this->_payload.empty()){
-			// Создаем буфер для хранения даты
-			char date[80];
-			// Флаг конца строки
-			bool isEnd = false;
-			// Заполняем буфер нулями
-			memset(date, 0, sizeof(date));
-			// Определяем количество секунд
-			const time_t seconds = time(nullptr);
-			// Получаем структуру локального времени
-			struct tm * timeinfo = localtime(&seconds);
-			// Копируем в буфер полученную дату и время
-			strftime(date, sizeof(date), this->_format.c_str(), timeinfo);
-			// Извлекаем данные полезной нагрузки
-			const auto & payload = this->_payload.front();
-			// Если размер буфера меньше 3-х байт
-			if(payload.data.length() < 3)
-				// Проверяем является ли это переводом строки
-				isEnd = ((payload.data.compare("\r\n") == 0) || (payload.data.compare("\n") == 0));
-			// Если файл для вывода лога указан
-			if(this->_fileMode && !this->_filename.empty()){
-				// Открываем файл на запись
-				ofstream file(this->_filename, ios::out | ios::app);
-				// Если файл открыт
-				if(file.is_open()){
-					// Определяем тип сообщения
-					switch(static_cast <uint8_t> (payload.flag)){
-						// Выводим сообщение так-как оно есть
-						case static_cast <uint8_t> (flag_t::NONE):
-							// Формируем текстовый вид лога
-							file << this->_fmk->format("%s%s", payload.data.c_str(), (!isEnd ? "\r\n\r\n" : ""));
-						break;
-						// Выводим информационное сообщение
-						case static_cast <uint8_t> (flag_t::INFO):
-							// Формируем текстовый вид лога
-							file << this->_fmk->format("Info %s %s : %s%s", date, this->_name.c_str(), payload.data.c_str(), (!isEnd ? "\r\n\r\n" : ""));
-						break;
-						// Выводим сообщение об ошибке
-						case static_cast <uint8_t> (flag_t::CRITICAL):
-							// Формируем текстовый вид лога
-							file << this->_fmk->format("Error %s %s : %s%s", date, this->_name.c_str(), payload.data.c_str(), (!isEnd ? "\r\n\r\n" : ""));
-						break;
-						// Выводим сообщение предупреждения
-						case static_cast <uint8_t> (flag_t::WARNING):
-							// Формируем текстовый вид лога
-							file << this->_fmk->format("Warning %s %s : %s%s", date, this->_name.c_str(), payload.data.c_str(), (!isEnd ? "\r\n\r\n" : ""));
-						break;
-					}
-					// Закрываем файл
-					file.close();
-					// Выполняем ротацию логов
-					this->rotate();
-				}
-			}
-			// Если вывод сообщения в консоль разрешён
-			if(this->_consoleMode){
-				// Если тип сообщение не является пустым
-				if(payload.flag != flag_t::NONE)
-					// Выводим обозначение начала вывода лога
-					cout << "*************** START ***************" << endl << endl;
-				// Определяем тип сообщения
-				switch(static_cast <uint8_t> (payload.flag)){
-					// Выводим сообщение так-как оно есть
-					case static_cast <uint8_t> (flag_t::NONE):
-						// Формируем текстовый вид лога
-						cout << this->_fmk->format("%s%s", payload.data.c_str(), (!isEnd ? "\r\n\r\n" : ""));
-					break;
-					// Выводим информационное сообщение
-					case static_cast <uint8_t> (flag_t::INFO):
-						// Формируем текстовый вид лога
-						cout << this->_fmk->format("\x1B[32m\x1B[1mInfo\x1B[0m \x1B[32m%s %s :\x1B[0m %s%s", date, this->_name.c_str(), payload.data.c_str(), (!isEnd ? "\r\n\r\n" : ""));
-					break;
-					// Выводим сообщение об ошибке
-					case static_cast <uint8_t> (flag_t::CRITICAL):
-						// Формируем текстовый вид лога
-						cout << this->_fmk->format("\x1B[31m\x1B[1mError\x1B[0m \x1B[31m%s %s :\x1B[0m %s%s", date, this->_name.c_str(), payload.data.c_str(), (!isEnd ? "\r\n\r\n" : ""));
-					break;
-					// Выводим сообщение предупреждения
-					case static_cast <uint8_t> (flag_t::WARNING):
-						// Формируем текстовый вид лога
-						cout << this->_fmk->format("\x1B[33m\x1B[1mWarning\x1B[0m \x1B[33m%s %s :\x1B[0m %s%s", date, this->_name.c_str(), payload.data.c_str(), (!isEnd ? "\r\n\r\n" : ""));
-					break;
-				}
-				// Если тип сообщение не является пустым
-				if(payload.flag != flag_t::NONE)
-					// Выводим обозначение конца вывода лога
-					cout << "---------------- END ----------------" << endl << endl;
-			}
-			// Если функция подписки на логи установлена, выводим результат
-			if(this->_fn != nullptr)
-				// Выводим сообщение лога всем подписавшимся
-				this->_fn(payload.flag, payload.data);
-			// Выполняем блокировку потока
-			const lock_guard <mutex> lock(this->_mtx2);
-			// Удаляем текущее задание
-			this->_payload.pop();
-		}
-	}
-}
-/**
  * rotate Метод выполнения ротации логов
  */
 void awh::Log::rotate() const noexcept {
@@ -185,16 +73,99 @@ void awh::Log::rotate() const noexcept {
 	}
 }
 /**
- * checkInputData Метод проверки на существование данных
- * @return результат проверки
+ * receiving Метод получения данных
+ * @param payload объект полезной нагрузки
  */
-bool awh::Log::checkInputData() const noexcept {
-	// Если произведена остановка выходим
-	if(this->_stop)
-		// Выходим из функции
-		return true;
-	// Выполняем проверку на наличие полезной нагрузки
-	return !this->_payload.empty();
+void awh::Log::receiving(const payload_t & payload) const noexcept {
+	// Создаем буфер для хранения даты
+	char date[80];
+	// Флаг конца строки
+	bool isEnd = false;
+	// Заполняем буфер нулями
+	memset(date, 0, sizeof(date));
+	// Определяем количество секунд
+	const time_t seconds = time(nullptr);
+	// Получаем структуру локального времени
+	struct tm * timeinfo = localtime(&seconds);
+	// Копируем в буфер полученную дату и время
+	strftime(date, sizeof(date), this->_format.c_str(), timeinfo);
+	// Если размер буфера меньше 3-х байт
+	if(payload.data.length() < 3)
+		// Проверяем является ли это переводом строки
+		isEnd = ((payload.data.compare("\r\n") == 0) || (payload.data.compare("\n") == 0));
+	// Если файл для вывода лога указан
+	if(this->_fileMode && !this->_filename.empty()){
+		// Открываем файл на запись
+		ofstream file(this->_filename, ios::out | ios::app);
+		// Если файл открыт
+		if(file.is_open()){
+			// Определяем тип сообщения
+			switch(static_cast <uint8_t> (payload.flag)){
+				// Выводим сообщение так-как оно есть
+				case static_cast <uint8_t> (flag_t::NONE):
+					// Формируем текстовый вид лога
+					file << this->_fmk->format("%s%s", payload.data.c_str(), (!isEnd ? "\r\n\r\n" : ""));
+				break;
+				// Выводим информационное сообщение
+				case static_cast <uint8_t> (flag_t::INFO):
+					// Формируем текстовый вид лога
+					file << this->_fmk->format("Info %s %s : %s%s", date, this->_name.c_str(), payload.data.c_str(), (!isEnd ? "\r\n\r\n" : ""));
+				break;
+				// Выводим сообщение об ошибке
+				case static_cast <uint8_t> (flag_t::CRITICAL):
+					// Формируем текстовый вид лога
+					file << this->_fmk->format("Error %s %s : %s%s", date, this->_name.c_str(), payload.data.c_str(), (!isEnd ? "\r\n\r\n" : ""));
+				break;
+				// Выводим сообщение предупреждения
+				case static_cast <uint8_t> (flag_t::WARNING):
+					// Формируем текстовый вид лога
+					file << this->_fmk->format("Warning %s %s : %s%s", date, this->_name.c_str(), payload.data.c_str(), (!isEnd ? "\r\n\r\n" : ""));
+				break;
+			}
+			// Закрываем файл
+			file.close();
+			// Выполняем ротацию логов
+			this->rotate();
+		}
+	}
+	// Если вывод сообщения в консоль разрешён
+	if(this->_consoleMode){
+		// Если тип сообщение не является пустым
+		if(payload.flag != flag_t::NONE)
+			// Выводим обозначение начала вывода лога
+			cout << "*************** START ***************" << endl << endl;
+		// Определяем тип сообщения
+		switch(static_cast <uint8_t> (payload.flag)){
+			// Выводим сообщение так-как оно есть
+			case static_cast <uint8_t> (flag_t::NONE):
+				// Формируем текстовый вид лога
+				cout << this->_fmk->format("%s%s", payload.data.c_str(), (!isEnd ? "\r\n\r\n" : ""));
+			break;
+			// Выводим информационное сообщение
+			case static_cast <uint8_t> (flag_t::INFO):
+				// Формируем текстовый вид лога
+				cout << this->_fmk->format("\x1B[32m\x1B[1mInfo\x1B[0m \x1B[32m%s %s :\x1B[0m %s%s", date, this->_name.c_str(), payload.data.c_str(), (!isEnd ? "\r\n\r\n" : ""));
+			break;
+			// Выводим сообщение об ошибке
+			case static_cast <uint8_t> (flag_t::CRITICAL):
+				// Формируем текстовый вид лога
+				cout << this->_fmk->format("\x1B[31m\x1B[1mError\x1B[0m \x1B[31m%s %s :\x1B[0m %s%s", date, this->_name.c_str(), payload.data.c_str(), (!isEnd ? "\r\n\r\n" : ""));
+			break;
+			// Выводим сообщение предупреждения
+			case static_cast <uint8_t> (flag_t::WARNING):
+				// Формируем текстовый вид лога
+				cout << this->_fmk->format("\x1B[33m\x1B[1mWarning\x1B[0m \x1B[33m%s %s :\x1B[0m %s%s", date, this->_name.c_str(), payload.data.c_str(), (!isEnd ? "\r\n\r\n" : ""));
+			break;
+		}
+		// Если тип сообщение не является пустым
+		if(payload.flag != flag_t::NONE)
+			// Выводим обозначение конца вывода лога
+			cout << "---------------- END ----------------" << endl << endl;
+	}
+	// Если функция подписки на логи установлена, выводим результат
+	if(this->_fn != nullptr)
+		// Выводим сообщение лога всем подписавшимся
+		this->_fn(payload.flag, payload.data);
 }
 /**
  * print Метод вывода текстовой информации в консоль или файл
@@ -266,14 +237,31 @@ void awh::Log::print(const string & format, flag_t flag, ...) const noexcept {
 				payload.flag = flag;
 				// Устанавливаем даныне сообщения
 				payload.data.assign(buffer.begin(), buffer.end());
-				// Выполняем блокировку потока
-				this->_mtx2.lock();
-				// Выполняем добавление данных в очередь
-				this->_payload.push(std::move(payload));
-				// Выполняем разблокировку потока
-				this->_mtx2.unlock();
-				// Отправляем сообщение, что данные записаны
-				this->_cv.notify_one();
+				// Получаем идентификатор текущего процесса
+				const pid_t pid = getpid();
+				// Если идентификатор процесса является дочерним
+				if(pid != this->_pid){
+					// Если процесс ещё не инициализирован и дочерний поток уже создан
+					if((this->_chld != nullptr) && (this->_initialized.count(pid) < 1)){
+						// Выполняем удаление оюъекта дочернего потока
+						delete this->_chld;
+						// Выполняем зануление дочернего потока
+						this->_chld = nullptr;
+						// Выполняем очистку списка инициализированных процессов
+						this->_initialized.clear();
+					}
+				}
+				// Если дочерний поток не создан
+				if(this->_chld == nullptr){
+					// Выполняем создание дочернего потока
+					this->_chld = new children <payload_t> ();
+					// Выполняем установку функцию обратного вызова
+					this->_chld->on(std::bind(&log_t::receiving, this, _1));
+					// Выполняем инициализацию текущего процесса
+					this->_initialized.emplace(pid);
+				}
+				// Выполняем отправку сообщения дочернему потоку
+				this->_chld->send(std::move(payload));
 			}
 		}
 	}
@@ -301,14 +289,31 @@ void awh::Log::print(const string & format, flag_t flag, const vector <string> &
 			payload.flag = flag;
 			// Устанавливаем даныне сообщения
 			payload.data = this->_fmk->format(format, items);
-			// Выполняем блокировку потока
-			this->_mtx2.lock();
-			// Выполняем добавление данных в очередь
-			this->_payload.push(std::move(payload));
-			// Выполняем разблокировку потока
-			this->_mtx2.unlock();
-			// Отправляем сообщение, что данные записаны
-			this->_cv.notify_one();
+			// Получаем идентификатор текущего процесса
+			const pid_t pid = getpid();
+			// Если идентификатор процесса является дочерним
+			if(pid != this->_pid){
+				// Если процесс ещё не инициализирован и дочерний поток уже создан
+				if((this->_chld != nullptr) && (this->_initialized.count(pid) < 1)){
+					// Выполняем удаление оюъекта дочернего потока
+					delete this->_chld;
+					// Выполняем зануление дочернего потока
+					this->_chld = nullptr;
+					// Выполняем очистку списка инициализированных процессов
+					this->_initialized.clear();
+				}
+			}
+			// Если дочерний поток не создан
+			if(this->_chld == nullptr){
+				// Выполняем создание дочернего потока
+				this->_chld = new children <payload_t> ();
+				// Выполняем установку функцию обратного вызова
+				this->_chld->on(std::bind(&log_t::receiving, this, _1));
+				// Выполняем инициализацию текущего процесса
+				this->_initialized.emplace(pid);
+			}
+			// Выполняем отправку сообщения дочернему потоку
+			this->_chld->send(std::move(payload));
 		}
 	}
 }
@@ -382,21 +387,19 @@ void awh::Log::subscribe(function <void (const flag_t, const string &)> callback
  * @param filename адрес файла для сохранения логов
  */
 awh::Log::Log(const fmk_t * fmk, const string & filename) noexcept :
- _stop(false), _fileMode(true), _consoleMode(true),
+ _pid(0), _fileMode(true), _consoleMode(true),
  _maxSize(MAX_SIZE_LOGFILE), _level(level_t::ALL),
  _name(AWH_SHORT_NAME), _format(DATE_FORMAT),
  _filename(filename), _fn(nullptr), _fmk(fmk) {
-	// Создаём дочерний поток для формирования лога
-	this->_thr = std::thread(&log_t::receiving, this);
-	// Отсоединяемся от потока
-	this->_thr.detach();
+	// Запоминаем идентификатор родительского объекта
+	this->_pid = getpid();
 }
 /**
  * ~Log Деструктор
  */
 awh::Log::~Log() noexcept {
-	// Выполняем остановку работы дочернего потока
-	this->_stop = true;
-	// Отправляем сообщение, что данные записаны
-	this->_cv.notify_one();
+	// Если объект работы с дочерним потоком создан, удаляем
+	if(this->_chld != nullptr)
+		// Удаляем объект работы с дочерним потоком
+		delete this->_chld;
 }

@@ -18,10 +18,8 @@
 /**
  * Стандартная библиотека
  */
+#include <set>
 #include <ctime>
-#include <queue>
-#include <thread>
-#include <atomic>
 #include <string>
 #include <vector>
 #include <sstream>
@@ -29,7 +27,6 @@
 #include <cstring>
 #include <cstdarg>
 #include <functional>
-#include <condition_variable>
 #include <zlib.h>
 
 /**
@@ -43,6 +40,7 @@
  * Наши модули
  */
 #include <sys/fmk.hpp>
+#include <sys/chld.hpp>
 
 // Подписываемся на стандартное пространство имён
 using namespace std;
@@ -92,8 +90,9 @@ namespace awh {
 				Payload() noexcept : flag(flag_t::NONE), data("") {}
 			} payload_t;
 		private:
-			// Флаг остановки работы дочернего потока
-			bool _stop;
+			// Идентификатор родительского процесса
+			pid_t _pid;
+		private:
 			// Флаг разрешения вывода логов в файл
 			bool _fileMode;
 			// Флаг разрешения вывода логов в консоль
@@ -105,15 +104,6 @@ namespace awh {
 			// Уровень логирования
 			level_t _level;
 		private:
-			// Объект дочернего потока
-			std::thread _thr;
-			// Мютекс для блокировки потока
-			mutable mutex _mtx1, _mtx2;
-			// Условная переменная, ожидания поступления данных
-			mutable condition_variable _cv;
-			// Очередь полезной нагрузки
-			mutable queue <payload_t> _payload;
-		private:
 			// Название сервиса для вывода лога
 			string _name;
 			// Формат даты и времени для вывода лога
@@ -121,16 +111,17 @@ namespace awh {
 			// Адрес файла для сохранения логов
 			string _filename;
 		private:
-			// Функция обратного вызова которая срабатывает, при появлении лога
+			// Список проинициализированных процессов
+			mutable set <pid_t> _initialized;
+		private:
+			// Объект работы с дочерними потоками
+			mutable children <payload_t> * _chld;
+		private:
+			// Функция обратного вызова которая срабатывает при появлении лога
 			function <void (const flag_t, const string &)> _fn;
 		private:
 			// Создаём объект фреймворка
 			const fmk_t * _fmk;
-		private:
-			/**
-			 * receiving Метод получения данных
-			 */
-			void receiving() const noexcept;
 		private:
 			/**
 			 * rotate Метод выполнения ротации логов
@@ -138,10 +129,10 @@ namespace awh {
 			void rotate() const noexcept;
 		private:
 			/**
-			 * checkInputData Метод проверки на существование данных
-			 * @return результат проверки
+			 * receiving Метод получения данных
+			 * @param payload объект полезной нагрузки
 			 */
-			bool checkInputData() const noexcept;
+			void receiving(const payload_t & payload) const noexcept;
 		public:
 			/**
 			 * print Метод вывода текстовой информации в консоль или файл
