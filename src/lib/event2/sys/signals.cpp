@@ -37,97 +37,67 @@ void awh::Signals::callback(const int sig) noexcept {
 	 * intCallback Функция обработки информационных сигналов SIGINT
 	 * @param fd    файловый дескриптор (сокет)
 	 * @param event возникшее событие
-	 * @param ctx   объект сервера
 	 */
-	void awh::Signals::intCallback(evutil_socket_t fd, short event, void * ctx) noexcept {
+	void awh::Signals::intCallback(evutil_socket_t fd, short event) noexcept {
 		// Выполняем игнорирование сигнала
 		::signal(SIGINT, SIG_IGN);
-		// Получаем объект сигнала
-		sig_t * sig = reinterpret_cast <sig_t *> (ctx);
-		// Выполняем очистку памяти сигнала
-		sig->clear(&sig->_ev.sint);
 		// Выполняем функцию обратного вызова
-		std::thread(&sig_t::callback, sig, SIGINT).detach();
+		std::thread(&sig_t::callback, this, SIGINT).detach();
 	}
 	/**
 	 * fpeCallback Функция обработки информационных сигналов SIGFPE
 	 * @param fd    файловый дескриптор (сокет)
 	 * @param event возникшее событие
-	 * @param ctx   объект сервера
 	 */
-	void awh::Signals::fpeCallback(evutil_socket_t fd, short event, void * ctx) noexcept {
+	void awh::Signals::fpeCallback(evutil_socket_t fd, short event) noexcept {
 		// Выполняем игнорирование сигнала
 		::signal(SIGFPE, SIG_IGN);
-		// Получаем объект сигнала
-		sig_t * sig = reinterpret_cast <sig_t *> (ctx);
-		// Выполняем очистку памяти сигнала
-		sig->clear(&sig->_ev.sfpe);
 		// Выполняем функцию обратного вызова
-		std::thread(&sig_t::callback, sig, SIGFPE).detach();
+		std::thread(&sig_t::callback, this, SIGFPE).detach();
 	}
 	/**
 	 * illCallback Функция обработки информационных сигналов SIGILL
 	 * @param fd    файловый дескриптор (сокет)
 	 * @param event возникшее событие
-	 * @param ctx   объект сервера
 	 */
-	void awh::Signals::illCallback(evutil_socket_t fd, short event, void * ctx) noexcept {
+	void awh::Signals::illCallback(evutil_socket_t fd, short event) noexcept {
 		// Выполняем игнорирование сигнала
 		::signal(SIGILL, SIG_IGN);
-		// Получаем объект сигнала
-		sig_t * sig = reinterpret_cast <sig_t *> (ctx);
-		// Выполняем очистку памяти сигнала
-		sig->clear(&sig->_ev.sill);
 		// Выполняем функцию обратного вызова
-		std::thread(&sig_t::callback, sig, SIGILL).detach();
+		std::thread(&sig_t::callback, this, SIGILL).detach();
 	}
 	/**
 	 * termCallback Функция обработки информационных сигналов SIGTERM
 	 * @param fd    файловый дескриптор (сокет)
 	 * @param event возникшее событие
-	 * @param ctx   объект сервера
 	 */
-	void awh::Signals::termCallback(evutil_socket_t fd, short event, void * ctx) noexcept {
+	void awh::Signals::termCallback(evutil_socket_t fd, short event) noexcept {
 		// Выполняем игнорирование сигнала
 		::signal(SIGTERM, SIG_IGN);
-		// Получаем объект сигнала
-		sig_t * sig = reinterpret_cast <sig_t *> (ctx);
-		// Выполняем очистку памяти сигнала
-		sig->clear(&sig->_ev.sterm);
 		// Выполняем функцию обратного вызова
-		std::thread(&sig_t::callback, sig, SIGTERM).detach();
+		std::thread(&sig_t::callback, this, SIGTERM).detach();
 	}
 	/**
 	 * abrtCallback Функция обработки информационных сигналов SIGABRT
 	 * @param fd    файловый дескриптор (сокет)
 	 * @param event возникшее событие
-	 * @param ctx   объект сервера
 	 */
-	void awh::Signals::abrtCallback(evutil_socket_t fd, short event, void * ctx) noexcept {
+	void awh::Signals::abrtCallback(evutil_socket_t fd, short event) noexcept {
 		// Выполняем игнорирование сигнала
 		::signal(SIGABRT, SIG_IGN);
-		// Получаем объект сигнала
-		sig_t * sig = reinterpret_cast <sig_t *> (ctx);
-		// Выполняем очистку памяти сигнала
-		sig->clear(&sig->_ev.sabrt);
 		// Выполняем функцию обратного вызова
-		std::thread(&sig_t::callback, sig, SIGABRT).detach();
+		std::thread(&sig_t::callback, this, SIGABRT).detach();
 	}
 	/**
 	 * segvCallback Функция обработки информационных сигналов SIGSEGV
 	 * @param fd    файловый дескриптор (сокет)
 	 * @param event возникшее событие
-	 * @param ctx   объект сервера
 	 */
-	void awh::Signals::segvCallback(evutil_socket_t fd, short event, void * ctx) noexcept {
+	void awh::Signals::segvCallback(evutil_socket_t fd, short event) noexcept {
 		// Выполняем игнорирование сигнала
 		::signal(SIGSEGV, SIG_IGN);
-		// Получаем объект сигнала
-		sig_t * sig = reinterpret_cast <sig_t *> (ctx);
-		// Выполняем очистку памяти сигнала
-		sig->clear(&sig->_ev.ssegv);
 		// Выполняем функцию обратного вызова
-		std::thread(&sig_t::callback, sig, SIGSEGV).detach();
+		std::thread(&sig_t::callback, this, SIGSEGV).detach();
 	}
 /**
  * Если операционной системой является MS Windows
@@ -148,26 +118,6 @@ void awh::Signals::callback(const int sig) noexcept {
 	}
 #endif
 /**
- * Если операционной системой не является Windows
- */
-#if !defined(_WIN32) && !defined(_WIN64)
-	/**
-	 * clear Метод очистки сигнала
-	 * @param signal сигнал для очистки
-	 */
-	void awh::Signals::clear(struct event ** signal) noexcept {
-		// Если сигнал передан
-		if((signal != nullptr) && (* signal != nullptr)){
-			// Выполняем остановку отслеживания сигнала
-			evsignal_del(* signal);
-			// Выполняем очистку памяти сигнала
-			event_free(* signal);
-			// Зануляем объект сигнала
-			(* signal) = nullptr;
-		}
-	}
-#endif
-/**
  * stop Метод остановки обработки сигналов
  */
 void awh::Signals::stop() noexcept {
@@ -180,12 +130,12 @@ void awh::Signals::stop() noexcept {
 		 */
 		#if !defined(_WIN32) && !defined(_WIN64)
 			// Выполняем очистку памяти сигналов
-			this->clear(&this->_ev.sint);
-			this->clear(&this->_ev.sfpe);
-			this->clear(&this->_ev.sill);
-			this->clear(&this->_ev.sterm);
-			this->clear(&this->_ev.sabrt);
-			this->clear(&this->_ev.ssegv);
+			this->_ev.sigInt.stop();
+			this->_ev.sigFpe.stop();
+			this->_ev.sigIll.stop();
+			this->_ev.sigTerm.stop();
+			this->_ev.sigAbrt.stop();
+			this->_ev.sigSegv.stop();
 		/**
 		 * Если операционной системой является MS Windows
 		 */
@@ -219,20 +169,34 @@ void awh::Signals::start() noexcept {
 		#if !defined(_WIN32) && !defined(_WIN64)
 			// Выполняем игнорирование сигналов SIGPIPE и SIGABRT
 			::signal(SIGPIPE, SIG_IGN);
-			// Устанавливаем базу событий для сигналов
-			this->_ev.sint = evsignal_new(this->_base, SIGINT, &sig_t::intCallback, this);
-			this->_ev.sfpe = evsignal_new(this->_base, SIGFPE, &sig_t::fpeCallback, this);
-			this->_ev.sill = evsignal_new(this->_base, SIGILL, &sig_t::illCallback, this);
-			this->_ev.sterm = evsignal_new(this->_base, SIGTERM, &sig_t::termCallback, this);
-			this->_ev.sabrt = evsignal_new(this->_base, SIGABRT, &sig_t::abrtCallback, this);
-			this->_ev.ssegv = evsignal_new(this->_base, SIGSEGV, &sig_t::segvCallback, this);
-			// Выполняем отслеживание возникающего сигнала
-			evsignal_add(this->_ev.sint, nullptr);
-			evsignal_add(this->_ev.sfpe, nullptr);
-			evsignal_add(this->_ev.sill, nullptr);
-			evsignal_add(this->_ev.sterm, nullptr);
-			evsignal_add(this->_ev.sabrt, nullptr);
-			evsignal_add(this->_ev.ssegv, nullptr);
+			// Устанавливаем базу событий для перехвата сигналов
+			this->_ev.sigInt.set(this->_base);
+			this->_ev.sigFpe.set(this->_base);
+			this->_ev.sigIll.set(this->_base);
+			this->_ev.sigTerm.set(this->_base);
+			this->_ev.sigAbrt.set(this->_base);
+			this->_ev.sigSegv.set(this->_base);
+			// Устанавливаем тип отслеживаемого сигнала
+			this->_ev.sigInt.set(-1, SIGINT);
+			this->_ev.sigFpe.set(-1, SIGFPE);
+			this->_ev.sigIll.set(-1, SIGILL);
+			this->_ev.sigTerm.set(-1, SIGTERM);
+			this->_ev.sigAbrt.set(-1, SIGABRT);
+			this->_ev.sigSegv.set(-1, SIGSEGV);
+			// Устанавливаем событие на получение сигналов
+			this->_ev.sigInt.set(std::bind(&sig_t::intCallback, this, _1, _2));
+			this->_ev.sigFpe.set(std::bind(&sig_t::fpeCallback, this, _1, _2));
+			this->_ev.sigIll.set(std::bind(&sig_t::illCallback, this, _1, _2));
+			this->_ev.sigTerm.set(std::bind(&sig_t::termCallback, this, _1, _2));
+			this->_ev.sigAbrt.set(std::bind(&sig_t::abrtCallback, this, _1, _2));
+			this->_ev.sigSegv.set(std::bind(&sig_t::segvCallback, this, _1, _2));
+			// Выполняем запуск отслеживания сигналов
+			this->_ev.sigInt.start();
+			this->_ev.sigFpe.start();
+			this->_ev.sigIll.start();
+			this->_ev.sigTerm.start();
+			this->_ev.sigAbrt.start();
+			this->_ev.sigSegv.start();
 			// Отправка сигнала для теста
 			// raise(SIGABRT);
 		/**

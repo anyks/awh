@@ -19,11 +19,14 @@
  * Стандартные библиотеки
  */
 #include <map>
+#include <ctime>
+#include <mutex>
 #include <vector>
 #include <thread>
 #include <string>
+#include <cstring>
 #include <csignal>
-#include <unistd.h>
+#include <functional>
 #include <sys/types.h>
 #include <libev/ev++.h>
 
@@ -59,28 +62,49 @@ namespace awh {
 			 */
 			typedef class Worker {
 				public:
+					mutex mtx;         // Мютекс для блокировки потока
 					size_t wid;        // Идентификатор воркера
 					bool working;      // Флаг запуска работы
 					bool restart;      // Флаг автоматического перезапуска
 					uint16_t count;    // Количество рабочих процессов
 					Cluster * cluster; // Родительский объект кластера
+				private:
+					// Общий буфер входящих данных
+					vector <char> _buffer;
+				private:
+					// Объект для работы с логами
+					const log_t * _log;
 				public:
 					/**
 					 * Если операционной системой не является Windows
 					 */
 					#if !defined(_WIN32) && !defined(_WIN64)
 						/**
+						 * message Функция обратного вызова получении сообщений
+						 * @param watcher объект события чтения
+						 * @param revents идентификатор события
+						 */
+						void message(ev::io & watcher, int revents) noexcept;
+						/**
 						 * child Функция обратного вызова при завершении работы процесса
 						 * @param watcher объект события дочернего процесса
 						 * @param revents идентификатор события
 						 */
 						void child(ev::child & watcher, int revents) noexcept;
+						/**
+						 * process Метод перезапуска упавшего процесса
+						 * @param pid    идентификатор упавшего процесса
+						 * @param status статус остановившегося процесса
+						 */
+						void process(const pid_t pid, const int status) noexcept;
 					#endif
 				public:
 					/**
 					 * Worker Конструктор
+					 * @param log объект для работы с логами
 					 */
-					Worker() noexcept : wid(0), working(false), restart(false), count(1), cluster(nullptr) {}
+					Worker(const log_t * log) noexcept :
+					 wid(0), working(false), restart(false), count(1), cluster(nullptr), _log(log) {}
 			} worker_t;
 			/**
 			 * Если операционной системой не является Windows
@@ -90,14 +114,32 @@ namespace awh {
 				 * Jack Структура работника
 				 */
 				typedef struct Jack {
+					bool end;     // Флаг завершения работы процессом
 					pid_t pid;    // Пид активного процесса
+					int mfds[2];  // Список файловых дескрипторов родительского процесса
+					int cfds[2];  // Список файловых дескрипторов дочернего процесса
 					time_t date;  // Время начала жизни процесса
+					ev::io mess;  // Объект события на получения сообщений
 					ev::child cw; // Объект работы с дочерними процессами
 					/**
 					 * Jack Конструктор
 					 */
-					Jack() noexcept : pid(0), date(0) {}
+					Jack() noexcept : end(false), pid(0), date(0) {}
 				} jack_t;
+				/**
+				 * Message Структура межпроцессного сообщения
+				 */
+				typedef struct Message {
+					bool end;             // Флаг получения последнего чанка
+					bool quit;            // Флаг остановки работы процесса
+					pid_t pid;            // Пид активного процесса
+					size_t size;          // Размер передаваемых данных
+					u_char payload[4083]; // Буфер полезной нагрузки
+					/**
+					 * Message Конструктор
+					 */
+					Message() noexcept : end(false), quit(false), pid(0), size(0) {}
+				} __attribute__((packed)) mess_t;
 			/**
 			 * Если операционной системой является Windows
 			 */
@@ -121,12 +163,14 @@ namespace awh {
 			// Список активных дочерних процессов
 			map <pid_t, uint16_t> _pids;
 			// Список активных воркеров
-			map <size_t, worker_t> _workers;
+			map <size_t, unique_ptr <worker_t>> _workers;
 			// Список дочерних работников
 			map <size_t, vector <unique_ptr <jack_t>>> _jacks;
 		private:
 			// Функция обратного вызова при ЗАПУСКЕ/ОСТАНОВКИ процесса
-			function <void (const size_t, const pid_t, const event_t)> _fn;
+			function <void (const size_t, const pid_t, const event_t)> _processFn;
+			// Функция обратного вызова при получении сообщения
+			function <void (const size_t, const pid_t, const char *, const size_t)> _messageFn;
 		private:
 			// Объект работы с базой событий
 			struct ev_loop * _base;
@@ -150,6 +194,30 @@ namespace awh {
 			 * @return    результат работы проверки
 			 */
 			bool working(const size_t wid) const noexcept;
+		public:
+			/**
+			 * send Метод отправки сообщения родительскому процессу
+			 * @param wid    идентификатор воркера
+			 * @param buffer бинарный буфер для отправки сообщения
+			 * @param size   размер бинарного буфера для отправки сообщения
+			 */
+			void send(const size_t wid, const char * buffer, const size_t size) noexcept;
+			/**
+			 * send Метод отправки сообщения дочернему процессу
+			 * @param wid    идентификатор воркера
+			 * @param pid    идентификатор процесса для получения сообщения
+			 * @param buffer бинарный буфер для отправки сообщения
+			 * @param size   размер бинарного буфера для отправки сообщения
+			 */
+			void send(const size_t wid, const pid_t pid, const char * buffer, const size_t size) noexcept;
+		public:
+			/**
+			 * broadcast Метод отправки сообщения всем дочерним процессам
+			 * @param wid    идентификатор воркера
+			 * @param buffer бинарный буфер для отправки сообщения
+			 * @param size   размер бинарного буфера для отправки сообщения
+			 */
+			void broadcast(const size_t wid, const char * buffer, const size_t size) noexcept;
 		public:
 			/**
 			 * clear Метод очистки всех выделенных ресурсов
@@ -205,20 +273,27 @@ namespace awh {
 			 * @param callback функция обратного вызова
 			 */
 			void on(function <void (const size_t, const pid_t, const event_t)> callback) noexcept;
+			/**
+			 * on Метод установки функции обратного вызова при получении сообщения
+			 * @param callback функция обратного вызова
+			 */
+			void on(function <void (const size_t, const pid_t, const char *, const size_t)> callback) noexcept;
 		public:
 			/**
 			 * Cluster Конструктор
 			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
 			 */
-			Cluster(const fmk_t * fmk, const log_t * log) noexcept : _pid(getpid()), _fmk(fmk), _log(log) {}
+			Cluster(const fmk_t * fmk, const log_t * log) noexcept :
+			 _pid(getpid()), _processFn(nullptr), _messageFn(nullptr), _base(nullptr), _fmk(fmk), _log(log) {}
 			/**
 			 * Cluster Конструктор
 			 * @param base база событий
 			 * @param fmk  объект фреймворка
 			 * @param log  объект для работы с логами
 			 */
-			Cluster(struct ev_loop * base, const fmk_t * fmk, const log_t * log) noexcept : _pid(getpid()), _fn(nullptr), _base(base), _fmk(fmk), _log(log) {}
+			Cluster(struct ev_loop * base, const fmk_t * fmk, const log_t * log) noexcept :
+			 _pid(getpid()), _processFn(nullptr), _messageFn(nullptr), _base(base), _fmk(fmk), _log(log) {}
 	} cluster_t;
 };
 

@@ -112,6 +112,14 @@ namespace awh {
 				event_t read;    // Событие таймера таймаута на чтение из сокета
 				event_t write;   // Событие таймера таймаута на запись в сокет
 				event_t connect; // Событие таймера таймаута на подключение к серверу
+				/**
+				 * Timers Конструктор
+				 * @param log объект для работы с логами
+				 */
+				Timers(const log_t * log) noexcept :
+				 read(event_t::type_t::TIMER, log),
+				 write(event_t::type_t::TIMER, log),
+				 connect(event_t::type_t::TIMER, log) {}
 			} timers_t;
 			/**
 			 * Events Структура событий
@@ -120,6 +128,14 @@ namespace awh {
 				event_t read;    // Событие на чтение
 				event_t write;   // Событие на запись
 				event_t connect; // Событие на подключение
+				/**
+				 * Events Конструктор
+				 * @param log объект для работы с логами
+				 */
+				Events(const log_t * log) noexcept :
+				 read(event_t::type_t::EVENT, log),
+				 write(event_t::type_t::EVENT, log),
+				 connect(event_t::type_t::EVENT, log) {}
 			} events_t;
 			/**
 			 * Timeouts Структура таймаутов
@@ -153,8 +169,9 @@ namespace awh {
 				locked_t locked; // Блокиратор чтения/записи
 				/**
 				 * BufferEvent Конструктор
+				 * @param log объект для работы с логами
 				 */
-				BufferEvent() noexcept {}
+				BufferEvent(const log_t * log) noexcept : events(log), timers(log) {}
 			} bev_t;
 			/**
 			 * Mark Структура маркера на размер детектируемых байт
@@ -272,7 +289,7 @@ namespace awh {
 					 * @param log    объект для работы с логами
 					 */
 					Adjutant(const Scheme * parent, const fmk_t * fmk, const log_t * log) noexcept :
-					 aid(0), ip(""), mac(""), port(0), ectx(fmk, log), addr(fmk, log),
+					 aid(0), ip(""), mac(""), port(0), bev(log), ectx(fmk, log), addr(fmk, log),
 					 method(engine_t::method_t::DISCONNECT), fmk(fmk), log(log), parent(parent) {}
 					/**
 					 * ~Adjutant Деструктор

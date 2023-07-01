@@ -77,8 +77,9 @@ namespace awh {
 					public:
 						/**
 						 * DTLS Конструктор
+						 * @param log объект для работы с логами
 						 */
-						DTLS() noexcept : aid(0), core(nullptr) {}
+						DTLS(const log_t * log) noexcept : aid(0), core(nullptr), event(event_t::type_t::EVENT, log) {}
 						/**
 						 * ~DTLS Деструктор
 						 */

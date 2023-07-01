@@ -51,8 +51,9 @@ namespace awh {
 				 * Режим работы клиента
 				 */
 				enum class mode_t : uint8_t {
-					SYNC  = 0x00, // Синхронный режим работы
-					ASYNC = 0x01  // Асинхронный режим работы
+					NONE  = 0x00, // Режим работы не установлен
+					SYNC  = 0x01, // Синхронный режим работы
+					ASYNC = 0x02  // Асинхронный режим работы
 				};
 			private:
 				/**
@@ -85,8 +86,12 @@ namespace awh {
 					public:
 						/**
 						 * Timeout Конструктор
+						 * @param log объект для работы с логами
 						 */
-						Timeout() noexcept : sid(0), core(nullptr), mode(scheme_t::mode_t::DISCONNECT) {}
+						Timeout(const log_t * log) noexcept :
+						sid(0), core(nullptr),
+						event(event_t::type_t::TIMER, log),
+						mode(scheme_t::mode_t::DISCONNECT) {}
 						/**
 						 * ~Timeout Деструктор
 						 */

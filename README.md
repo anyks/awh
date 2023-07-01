@@ -1422,11 +1422,97 @@ int main(int argc, char * argv[]){
 	core.family(awh::scheme_t::family_t::NIX);
 
 	sample.init("anyks");
+
 	sample.on((function <void (const size_t, const vector <char> &, server::sample_t *)>) bind(&Server::message, &executor, _1, _2, _3));
 	sample.on((function <void (const size_t, const server::sample_t::mode_t, server::sample_t *)>) bind(&Server::active, &executor, _1, _2, _3));
 	sample.on((function <bool (const string &, const string &, const u_int, server::sample_t *)>) bind(&Server::accept, &executor, _1, _2, _3, _4));
 
 	sample.start();
+
+	return 0;
+}
+```
+
+### Example Cluster
+
+```c++
+#include <cluster/core.hpp>
+
+using namespace std;
+using namespace awh;
+
+class Executor {
+	private:
+		log_t * _log;
+	private:
+		cluster::core_t * _core;
+	public:
+		void events(const cluster::core_t::worker_t worker, const pid_t pid, const cluster_t::event_t event){
+			
+			if(event == cluster_t::event_t::START){
+				
+				switch(static_cast <uint8_t> (worker)){
+					case static_cast <uint8_t> (cluster::core_t::worker_t::MASTER): {
+						const char * message = "Hi!";
+						this->_core->broadcast(message, strlen(message));
+					} break;
+					case static_cast <uint8_t> (cluster::core_t::worker_t::CHILDREN): {
+						const char * message = "Hello";
+						this->_core->send(message, strlen(message));
+					} break;
+				}
+
+			}
+
+		}
+		void message(const cluster::core_t::worker_t worker, const pid_t pid, const char * buffer, const size_t size){
+			
+			switch(static_cast <uint8_t> (worker)){
+				case static_cast <uint8_t> (cluster::core_t::worker_t::MASTER):
+					this->_log->print("Message from children [%u]: %s", log_t::flag_t::INFO, pid, string(buffer, size).c_str());
+				break;
+				case static_cast <uint8_t> (cluster::core_t::worker_t::CHILDREN):
+					this->_log->print("Message from master: %s [%u]", log_t::flag_t::INFO, string(buffer, size).c_str(), getpid());
+				break;
+			}
+			
+		}
+		void run(const bool mode, core_t * core){
+
+			if(mode){
+				this->_core = dynamic_cast <cluster::core_t *> (core);
+				this->_core->run();
+				this->_log->print("%s", log_t::flag_t::INFO, "Start cluster");
+			} else {
+				this->_core->end();
+				this->_log->print("%s", log_t::flag_t::INFO, "Stop cluster");
+			}
+
+		}
+	public:
+		Executor(log_t * log) : _log(log), _core(nullptr) {}
+};
+
+int main(int argc, char * argv[]){
+	fmk_t fmk;
+	log_t log(&fmk);
+
+	Executor executor(&log);
+
+	cluster::core_t core(&fmk, &log);
+
+	log.name("Cluster");
+	log.format("%H:%M:%S %d.%m.%Y");
+
+	core.clusterSize();
+	core.clusterAutoRestart(true);
+
+	core.callback((function <void (const bool, core_t *)>) bind(&Executor::run, &executor, _1, _2));
+
+	core.on((function <void (const cluster::core_t::worker_t, const pid_t, const cluster_t::event_t)>) bind(&Executor::events, &executor, _1, _2, _3));
+	core.on((function <void (const cluster::core_t::worker_t, const pid_t, const char *, const size_t)>) bind(&Executor::message, &executor, _1, _2, _3, _4));
+
+	core.start();
 
 	return 0;
 }

@@ -1,0 +1,189 @@
+/**
+ * @file: core.cpp
+ * @date: 2023-07-01
+ * @license: GPL-3.0
+ *
+ * @telegram: @forman
+ * @author: Yuriy Lobarev
+ * @phone: +7 (910) 983-95-90
+ * @email: forman@anyks.com
+ * @site: https://anyks.com
+ *
+ * @copyright: Copyright © 2023
+ */
+
+// Подключаем заголовочный файл
+#include <cluster/core.hpp>
+
+/**
+ * cluster Метод информирования о статусе кластера
+ * @param wid   идентификатор воркера
+ * @param pid   идентификатор процесса
+ * @param event идентификатор события
+ */
+void awh::cluster::Core::cluster(const size_t wid, const pid_t pid, const cluster_t::event_t event) const noexcept {
+	// Если функция обратного вызова установлена
+	if(this->_eventsFn != nullptr){
+		// Определяем производится ли инициализация кластера
+		if(this->_pid == getpid())
+			// Выполняем функцию обратного вызова
+			this->_eventsFn(worker_t::MASTER, pid, event);
+		// Если производится запуск воркера, выполняем функцию обратного вызова
+		else this->_eventsFn(worker_t::CHILDREN, pid, event);
+	}
+}
+/**
+ * message Метод получения сообщения
+ * @param wid    идентификатор воркера
+ * @param pid    идентификатор процесса
+ * @param buffer буфер бинарных данных
+ * @param size   размер буфера бинарных данных
+ */
+void awh::cluster::Core::message(const size_t wid, const pid_t pid, const char * buffer, const size_t size) const noexcept {
+	// Если функция обратного вызова установлена
+	if(this->_messageFn != nullptr){
+		// Определяем производится ли инициализация кластера
+		if(this->_pid == getpid())
+			// Выполняем функцию обратного вызова
+			this->_messageFn(worker_t::MASTER, pid, buffer, size);
+		// Если производится запуск воркера, если функция обратного вызова установлена
+		else this->_messageFn(worker_t::CHILDREN, pid, buffer, size);
+	}
+}
+/**
+ * isMaster Метод проверки является ли процесс дочерним
+ * @return результат проверки
+ */
+bool awh::cluster::Core::isMaster() const noexcept {
+	// Выводим результат проверки
+	return (this->_pid == getpid());
+}
+/**
+ * send Метод отправки сообщение родительскому процессу
+ * @param buffer буфер бинарных данных
+ * @param size   размер буфера бинарных данных
+ */
+void awh::cluster::Core::send(const char * buffer, const size_t size) const noexcept {
+	// Выполняем отправку сообщения родительскому процессу
+	const_cast <cluster_t *> (&this->_cluster)->send(0, buffer, size);
+}
+/**
+ * send Метод отправки сообщение процессу
+ * @param pid    идентификатор процесса для отправки
+ * @param buffer буфер бинарных данных
+ * @param size   размер буфера бинарных данных
+ */
+void awh::cluster::Core::send(const pid_t pid, const char * buffer, const size_t size) const noexcept {
+	// Выполняем отправку сообщения указанному процессу
+	const_cast <cluster_t *> (&this->_cluster)->send(0, pid, buffer, size);
+}
+/**
+ * broadcast Метод отправки сообщения всем дочерним процессам
+ * @param buffer бинарный буфер для отправки сообщения
+ * @param size   размер бинарного буфера для отправки сообщения
+ */
+void awh::cluster::Core::broadcast(const char * buffer, const size_t size) const noexcept {
+	// Выполняем отправку сообщения всем процессам
+	const_cast <cluster_t *> (&this->_cluster)->broadcast(0, buffer, size);
+}
+/**
+ * on Метод установки функции обратного вызова при получении события
+ * @param callback функция обратного вызова для установки
+ */
+void awh::cluster::Core::on(function <void (const worker_t, const pid_t, const cluster_t::event_t)> callback) noexcept {
+	// Выполняем установку функции обратного вызова
+	this->_eventsFn = callback;
+}
+/**
+ * on Метод установки функции обратного вызова при получении сообщения
+ * @param callback функция обратного вызова для установки
+ */
+void awh::cluster::Core::on(function <void (const worker_t, const pid_t, const char *, const size_t)> callback) noexcept {
+	// Выполняем установку функции обратного вызова
+	this->_messageFn = callback;
+}
+/**
+ * end Метод остановки кластера
+ */
+void awh::cluster::Core::end() noexcept {
+	// Выполняем остановку кластера
+	this->_cluster.stop(0);
+}
+/**
+ * run Метод запуска кластера
+ */
+void awh::cluster::Core::run() noexcept {
+	// Выполняем запуск кластера
+	this->_cluster.start(0);
+}
+/**
+ * clusterSize Метод установки количества процессов кластера
+ * @param size количество рабочих процессов
+ */
+void awh::cluster::Core::clusterSize(const size_t size) noexcept {
+	/**
+	 * Если операционной системой не является Windows
+	 */
+	#if !defined(_WIN32) && !defined(_WIN64)
+		// Устанавливаем количество рабочих процессов кластера
+		this->_clusterSize = size;
+		// Выполняем инициализацию кластера
+		this->_cluster.init(0, this->_clusterSize);
+	/**
+	 * Если операционной системой является Windows
+	 */
+	#else
+		// Выводим предупредительное сообщение в лог
+		this->_log->print("MS Windows OS, does not support cluster mode", log_t::flag_t::WARNING);
+	#endif
+}
+/**
+ * clusterAutoRestart Метод установки флага перезапуска процессов
+ * @param mode флаг перезапуска процессов
+ */
+void awh::cluster::Core::clusterAutoRestart(const bool mode) noexcept {
+	/**
+	 * Если операционной системой не является Windows
+	 */
+	#if !defined(_WIN32) && !defined(_WIN64)
+		// Разрешаем автоматический перезапуск упавших процессов
+		this->_clusterAutoRestart = mode;
+		// Выполняем установку флага автоматического перезапуска убитых дочерних процессов
+		this->_cluster.restart(0, this->_clusterAutoRestart);
+	/**
+	 * Если операционной системой является Windows
+	 */
+	#else
+		// Выводим предупредительное сообщение в лог
+		this->_log->print("MS Windows OS, does not support cluster mode", log_t::flag_t::WARNING);
+	#endif
+}
+/**
+ * Core Конструктор
+ * @param fmk    объект фреймворка
+ * @param log    объект для работы с логами
+ * @param family тип протокола интернета (IPV4 / IPV6 / NIX)
+ * @param sonet  тип сокета подключения (TCP / UDP)
+ */
+awh::cluster::Core::Core(const fmk_t * fmk, const log_t * log, const scheme_t::family_t family, const scheme_t::sonet_t sonet) noexcept :
+ awh::core_t(fmk, log, family, sonet), _pid(0), _cluster(fmk, log), _clusterSize(1), _clusterAutoRestart(false), _log(log), _eventsFn(nullptr), _messageFn(nullptr) {
+	// Устанавливаем идентификатор процесса
+	this->_pid = getpid();
+	// Устанавливаем тип запускаемого ядра
+	this->type = engine_t::type_t::SERVER;
+	// Выполняем установку базы данных
+	this->_cluster.base(this->dispatch.base);
+	// Выполняем инициализацию кластера
+	this->_cluster.init(0, this->_clusterSize);
+	// Устанавливаем функцию получения статуса кластера
+	this->_cluster.on(std::bind(&core_t::cluster, this, _1, _2, _3));
+	// Устанавливаем функцию получения входящих сообщений
+	this->_cluster.on(std::bind(&core_t::message, this, _1, _2, _3, _4));
+}
+/**
+ * ~Core Деструктор
+ */
+awh::cluster::Core::~Core() noexcept {
+	// Выполняем остановку сервера
+	this->stop();
+}

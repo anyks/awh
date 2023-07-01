@@ -289,7 +289,7 @@ void awh::server::Core::accept(const int fd, const size_t sid) noexcept {
 						break;
 					}
 					// Создаём объект для работы с DTLS
-					unique_ptr <dtls_t> dtls(new dtls_t());
+					unique_ptr <dtls_t> dtls(new dtls_t(this->log));
 					// Создаём бъект адъютанта
 					unique_ptr <awh::scheme_t::adj_t> adj(new awh::scheme_t::adj_t(shm, this->fmk, this->log));
 					// Устанавливаем идентификатор адъютанта

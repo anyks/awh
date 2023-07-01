@@ -28,19 +28,13 @@
 #include <cstdarg>
 #include <functional>
 #include <zlib.h>
-
-/**
- * Если операционной системой не является Windows
- */
-#if !defined(_WIN32) && !defined(_WIN64)
-	#include <unistd.h>
-#endif
+#include <unistd.h>
 
 /**
  * Наши модули
  */
 #include <sys/fmk.hpp>
-#include <sys/chld.hpp>
+#include <sys/child.hpp>
 
 // Подписываемся на стандартное пространство имён
 using namespace std;
@@ -117,7 +111,7 @@ namespace awh {
 			mutable set <pid_t> _initialized;
 		private:
 			// Объект работы с дочерними потоками
-			mutable children <payload_t> * _chld;
+			mutable child_t <payload_t> * _child;
 		private:
 			// Функция обратного вызова которая срабатывает при появлении лога
 			function <void (const flag_t, const string &)> _fn;

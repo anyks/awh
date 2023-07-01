@@ -1275,7 +1275,7 @@ u_short awh::Core::setTimeout(const time_t delay, function <void (const u_short,
 		// Выполняем блокировку потока
 		this->_mtx.timer.lock();
 		// Создаём объект таймера
-		auto ret = this->_timers.emplace(this->_timers.size() + 1, unique_ptr <timer_t> (new timer_t));
+		auto ret = this->_timers.emplace(this->_timers.size() + 1, unique_ptr <timer_t> (new timer_t(this->log)));
 		// Выполняем разблокировку потока
 		this->_mtx.timer.unlock();
 		// Получаем идентификатор таймера
@@ -1314,7 +1314,7 @@ u_short awh::Core::setInterval(const time_t delay, function <void (const u_short
 		// Выполняем блокировку потока
 		this->_mtx.timer.lock();
 		// Создаём объект таймера
-		auto ret = this->_timers.emplace(this->_timers.size() + 1, unique_ptr <timer_t> (new timer_t));
+		auto ret = this->_timers.emplace(this->_timers.size() + 1, unique_ptr <timer_t> (new timer_t(this->log)));
 		// Выполняем разблокировку потока
 		this->_mtx.timer.unlock();
 		// Получаем идентификатор таймера
@@ -1853,7 +1853,7 @@ void awh::Core::network(const vector <string> & ip, const vector <string> & ns, 
  */
 awh::Core::Core(const fmk_t * fmk, const log_t * log, const scheme_t::family_t family, const scheme_t::sonet_t sonet) noexcept :
  pid(getpid()), net(fmk, log), uri(fmk, &net), engine(fmk, log, &uri),
- dns(fmk, log, &net), dispatch(this), _fs(fmk, log), _sig(dispatch.base),
+ dns(fmk, log, &net), dispatch(this), _fs(fmk, log), _sig(dispatch.base, log), _timer(log),
  status(status_t::STOP), type(engine_t::type_t::CLIENT), _signals(signals_t::DISABLED),
  mode(false), noinfo(false), persist(false), cores(0), servName(AWH_SHORT_NAME),
  _persIntvl(PERSIST_INTERVAL), fmk(fmk), log(log), _crash(nullptr), _active(nullptr) {

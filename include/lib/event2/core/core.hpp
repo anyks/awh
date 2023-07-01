@@ -120,8 +120,12 @@ namespace awh {
 				public:
 					/**
 					 * Timer Конструктор
+					 * @param log объект для работы с логами
 					 */
-					Timer() noexcept : id(0), persist(false), delay(0), core(nullptr), fn(nullptr) {}
+					Timer(const log_t * log) noexcept :
+					 id(0), persist(false), delay(0),
+					 event(event_t::type_t::TIMER, log),
+					 core(nullptr), fn(nullptr) {}
 					/**
 					 * ~Timer Деструктор
 					 */

@@ -25,6 +25,11 @@
 #include <event2/event.h>
 #include <event2/event_struct.h>
 
+/**
+ * Наши модули
+ */
+#include <sys/log.hpp>
+
 // Подписываемся на стандартное пространство имён
 using namespace std;
 using namespace std::placeholders;
@@ -36,10 +41,23 @@ namespace awh {
 	/**
 	 * Event Структура события LibEvent2
 	 */
-	typedef struct Event {
+	typedef class Event {
+		public:
+			/**
+			 * type_t Тип события
+			 */
+			enum class type_t : uint8_t {
+				NONE   = 0x00, // Событие не установлено
+				TIMER  = 0x01, // Событие является таймером
+				EVENT  = 0x02, // Событие является сокетом
+				SIGNAL = 0x03  // Событие является форком процесса
+			};
 		private:
 			// Режим активации события
 			bool _mode;
+		private:
+			// Тип события
+			type_t _type;
 		private:
 			// Объект события
 			struct event _ev;
@@ -59,6 +77,9 @@ namespace awh {
 		private:
 			// База данных событий
 			struct event_base * _base;
+		private:
+			// Объект для работы с логами
+			const log_t * _log;
 		private:
 			/**
 			 * callback Функция обратного вызова при срабатывании события
@@ -102,8 +123,12 @@ namespace awh {
 		public:
 			/**
 			 * Event Конструктор
+			 * @param type тип события
+			 * @param log  объект для работы с логами
 			 */
-			Event() noexcept : _mode(false), _delay(0), _events(0), _fd(0), _fn(nullptr), _base(nullptr) {}
+			Event(const type_t type, const log_t * log) noexcept :
+			 _mode(false), _type(type), _delay(0),
+			 _events(0), _fd(0), _fn(nullptr), _base(nullptr), _log(log) {}
 			/**
 			 * ~Event Деструктор
 			 */

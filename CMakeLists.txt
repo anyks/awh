@@ -281,6 +281,7 @@ set(SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/src/auth/core.cpp"
     "${CMAKE_SOURCE_DIR}/src/auth/client.cpp"
     "${CMAKE_SOURCE_DIR}/src/auth/server.cpp"
+    "${CMAKE_SOURCE_DIR}/src/cluster/core.cpp"
     "${CMAKE_SOURCE_DIR}/src/client/ws.cpp"
     "${CMAKE_SOURCE_DIR}/src/client/web.cpp"
     "${CMAKE_SOURCE_DIR}/src/client/sample.cpp"
@@ -312,6 +313,7 @@ set(PROXY_APP_NAME proxy)
 set(SOCKS5_APP_NAME socks5)
 set(CLIENT_APP_NAME client)
 set(SERVER_APP_NAME server)
+set(CLUSTER_APP_NAME cluster)
 set(WEB_CLIENT_APP_NAME webClient)
 set(WEB_SERVER_APP_NAME webServer)
 set(CURRENT_LIB_NAME ${PROJECT_NAME})
@@ -347,6 +349,7 @@ if (ENABLE_CONSOLE_APP)
     add_executable(${SOCKS5_APP_NAME} sample/socks5.cpp ${RES_FILES})
     add_executable(${CLIENT_APP_NAME} sample/client.cpp ${RES_FILES})
     add_executable(${SERVER_APP_NAME} sample/server.cpp ${RES_FILES})
+    add_executable(${CLUSTER_APP_NAME} sample/cluster.cpp ${RES_FILES})
     add_executable(${WEB_SERVER_APP_NAME} sample/webServer.cpp ${RES_FILES})
     add_executable(${WEB_CLIENT_APP_NAME} sample/webClient.cpp ${RES_FILES})
 
@@ -593,6 +596,19 @@ if (ENABLE_CONSOLE_APP)
         )
 
         target_link_libraries(
+            ${CLUSTER_APP_NAME}
+            ${CURRENT_LIB_NAME}
+            ${EVENT_LIBRARY}
+            ${ZLIB_LIBRARY}
+            ${PCRE_LIBRARY}
+            ${ICONV_LIBRARY}
+            ${IDN2_LIBRARY}
+            ${BROTLI_LIBRARIES}
+            ${OPENSSL_LIBRARIES}
+            ${AWH_IDN}
+        )
+
+        target_link_libraries(
             ${WEB_CLIENT_APP_NAME}
             ${CURRENT_LIB_NAME}
             ${EVENT_LIBRARY}
@@ -710,6 +726,16 @@ if (ENABLE_CONSOLE_APP)
         )
 
         target_link_libraries(
+            ${CLUSTER_APP_NAME}
+            ${CURRENT_LIB_NAME}
+            ${EVENT_LIBRARY}
+            ${ZLIB_LIBRARY}
+            ${PCRE_LIBRARY}
+            ${BROTLI_LIBRARIES}
+            ${OPENSSL_LIBRARIES}
+        )
+
+        target_link_libraries(
             ${WEB_CLIENT_APP_NAME}
             ${CURRENT_LIB_NAME}
             ${EVENT_LIBRARY}
@@ -750,6 +776,7 @@ install(TARGETS ${PROXY_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMA
 install(TARGETS ${SOCKS5_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
 install(TARGETS ${CLIENT_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
 install(TARGETS ${SERVER_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
+install(TARGETS ${CLUSTER_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
 install(TARGETS ${WEB_CLIENT_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
 install(TARGETS ${WEB_SERVER_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
 

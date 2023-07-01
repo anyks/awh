@@ -454,7 +454,7 @@ void awh::client::Core::createTimeout(const size_t sid, const scheme_t::mode_t m
 			// Выполняем блокировку потока
 			this->_mtx.timeout.lock();
 			// Получаем объект таймаута
-			timeout = this->_timeouts.emplace(sid, unique_ptr <timeout_t> (new timeout_t)).first->second.get();
+			timeout = this->_timeouts.emplace(sid, unique_ptr <timeout_t> (new timeout_t(this->log))).first->second.get();
 			// Выполняем разблокировку потока
 			this->_mtx.timeout.unlock();
 		}

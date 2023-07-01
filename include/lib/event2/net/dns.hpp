@@ -307,8 +307,8 @@ namespace awh {
 					 * @param dns    объект DNS резолвера
 					 */
 					Worker(const size_t did, const int family, struct event_base * base, const DNS * dns) noexcept :
-					 _did(did), _mode(false), _fd(INVALID_SOCKET), _family(family), _domain(""),
-					 _socket(dns->_log), _socklen(0), _dns(dns), _base(base) {}
+					 _did(did), _mode(false), _fd(INVALID_SOCKET), _family(family), _domain(""), _socket(dns->_log), _socklen(0),
+					 _dns(dns), _timer(event_t::type_t::TIMER, dns->_log), _event(event_t::type_t::EVENT, dns->_log), _base(base) {}
 					/**
 					 * ~Worker Деструктор
 					 */

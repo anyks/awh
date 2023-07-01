@@ -32,15 +32,11 @@
 #endif
 
 /**
- * Стандартная библиотека
- */
-#include <event2/event.h>
-
-/**
  * Наши модули
  */
 #include <sys/fmk.hpp>
 #include <sys/log.hpp>
+#include <lib/event2/sys/events.hpp>
 
 // Подписываемся на стандартное пространство имён
 using namespace std;
@@ -63,16 +59,20 @@ namespace awh {
 				 * Event Структура событий сигналов
 				 */
 				typedef struct Events {
-					struct event * sint;  // Перехватчик сигнала SIGINT
-					struct event * sfpe;  // Перехватчик сигнала SIGFPE
-					struct event * sill;  // Перехватчик сигнала SIGILL
-					struct event * sterm; // Перехватчик сигнала SIGTERM
-					struct event * sabrt; // Перехватчик сигнала SIGABRT
-					struct event * ssegv; // Перехватчик сигнала SIGSEGV
+					event_t sigInt;  // Перехватчик сигнала SIGINT
+					event_t sigFpe;  // Перехватчик сигнала SIGFPE
+					event_t sigIll;  // Перехватчик сигнала SIGILL
+					event_t sigTerm; // Перехватчик сигнала SIGTERM
+					event_t sigAbrt; // Перехватчик сигнала SIGABRT
+					event_t sigSegv; // Перехватчик сигнала SIGSEGV
 					/**
 					 * Events Конструктор
+					 * @param log объект для работы с логами
 					 */
-					Events() noexcept : sint(nullptr), sfpe(nullptr), sill(nullptr), sterm(nullptr), sabrt(nullptr), ssegv(nullptr) {}
+					Events(const log_t * log) noexcept :
+					 sigInt(event_t::type_t::SIGNAL, log), sigFpe(event_t::type_t::SIGNAL, log),
+					 sigIll(event_t::type_t::SIGNAL, log), sigTerm(event_t::type_t::SIGNAL, log),
+					 sigAbrt(event_t::type_t::SIGNAL, log), sigSegv(event_t::type_t::SIGNAL, log) {}
 				} ev_t;
 			/**
 			 * Если операционной системой является MS Windows
@@ -90,6 +90,11 @@ namespace awh {
 					SignalHandlerPointer sabrt; // Перехватчик сигнала SIGABRT
 					SignalHandlerPointer sterm; // Перехватчик сигнала SIGTERM
 					SignalHandlerPointer ssegv; // Перехватчик сигнала SIGSEGV
+					/**
+					 * Events Конструктор
+					 * @param log объект для работы с логами
+					 */
+					Events(const log_t * log) noexcept {}
 				} ev_t;
 			#endif
 		private:
@@ -119,55 +124,38 @@ namespace awh {
 				 * intCallback Функция обработки информационных сигналов SIGINT
 				 * @param fd    файловый дескриптор (сокет)
 				 * @param event возникшее событие
-				 * @param ctx   объект сервера
 				 */
-				static void intCallback(evutil_socket_t fd, short event, void * ctx) noexcept;
+				void intCallback(evutil_socket_t fd, short event) noexcept;
 				/**
 				 * fpeCallback Функция обработки информационных сигналов SIGFPE
 				 * @param fd    файловый дескриптор (сокет)
 				 * @param event возникшее событие
-				 * @param ctx   объект сервера
 				 */
-				static void fpeCallback(evutil_socket_t fd, short event, void * ctx) noexcept;
+				void fpeCallback(evutil_socket_t fd, short event) noexcept;
 				/**
 				 * illCallback Функция обработки информационных сигналов SIGILL
 				 * @param fd    файловый дескриптор (сокет)
 				 * @param event возникшее событие
-				 * @param ctx   объект сервера
 				 */
-				static void illCallback(evutil_socket_t fd, short event, void * ctx) noexcept;
+				void illCallback(evutil_socket_t fd, short event) noexcept;
 				/**
 				 * termCallback Функция обработки информационных сигналов SIGTERM
 				 * @param fd    файловый дескриптор (сокет)
 				 * @param event возникшее событие
-				 * @param ctx   объект сервера
 				 */
-				static void termCallback(evutil_socket_t fd, short event, void * ctx) noexcept;
+				void termCallback(evutil_socket_t fd, short event) noexcept;
 				/**
 				 * abrtCallback Функция обработки информационных сигналов SIGABRT
 				 * @param fd    файловый дескриптор (сокет)
 				 * @param event возникшее событие
-				 * @param ctx   объект сервера
 				 */
-				static void abrtCallback(evutil_socket_t fd, short event, void * ctx) noexcept;
+				void abrtCallback(evutil_socket_t fd, short event) noexcept;
 				/**
 				 * segvCallback Функция обработки информационных сигналов SIGSEGV
 				 * @param fd    файловый дескриптор (сокет)
 				 * @param event возникшее событие
-				 * @param ctx   объект сервера
 				 */
-				static void segvCallback(evutil_socket_t fd, short event, void * ctx) noexcept;
-			#endif
-		private:
-			/**
-			 * Если операционной системой не является Windows
-			 */
-			#if !defined(_WIN32) && !defined(_WIN64)
-				/**
-				 * clear Метод очистки сигнала
-				 * @param signal сигнал для очистки
-				 */
-				void clear(struct event ** signal) noexcept;
+				void segvCallback(evutil_socket_t fd, short event) noexcept;
 			#endif
 		public:
 			/**
@@ -194,8 +182,9 @@ namespace awh {
 			/**
 			 * Signals Конструктор
 			 * @param base база событий
+			 * @param log  объект для работы с логами
 			 */
-			Signals(struct event_base * base) noexcept : _mode(false), _fn(nullptr), _base(base) {}
+			Signals(struct event_base * base, const log_t * log) noexcept : _mode(false), _ev(log), _fn(nullptr), _base(base) {}
 			/**
 			 * ~Signals Деструктор
 			 */

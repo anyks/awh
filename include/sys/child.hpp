@@ -1,5 +1,5 @@
 /**
- * @file: chld.hpp
+ * @file: child.hpp
  * @date: 2023-06-29
  * @license: GPL-3.0
  *
@@ -12,12 +12,9 @@
  * @copyright: Copyright © 2023
  */
 
-#ifndef __AWH_CHLD__
-#define __AWH_CHLD__
+#ifndef __AWH_CHLDREN__
+#define __AWH_CHLDREN__
 
-/**
- * Стандартная библиотека
- */
 #include <queue>
 #include <mutex>
 #include <thread>
@@ -34,14 +31,14 @@ using namespace std;
  */
 namespace awh {
 	/**
-	 * Шаблон метода получения функции обратного вызова
-	 * @tparam A сигнатура функции
+	 * Шаблон формата данных передаваемого между потоками
+	 * @tparam T данные передаваемые между потоками
 	 */
-	template <typename A>
+	template <typename T>
 	/**
-	 * children Класс для работы с дочерним потоком
+	 * Child Класс для работы с дочерним потоком
 	 */
-	class children {
+	class Child {
 		private:
 			// Флаг остановки работы дочернего потока
 			bool _stop;
@@ -51,12 +48,12 @@ namespace awh {
 			// Мютекс для блокировки потока
 			mutable mutex _mtx1, _mtx2;
 			// Очередь полезной нагрузки
-			mutable queue <A> _payload;
+			mutable queue <T> _payload;
 			// Условная переменная, ожидания поступления данных
 			mutable condition_variable _cv;
 		private:
 			// Функция обратного вызова которая срабатывает при передачи данных в дочерний поток
-			function <void (const A &)> _fn;
+			function <void (const T &)> _fn;
 		private:
 			/**
 			 * receiving Метод получения данных
@@ -71,7 +68,7 @@ namespace awh {
 						// Выполняем блокировку уникальным мютексом
 						unique_lock <mutex> lock(this->_mtx1);
 						// Выполняем ожидание на поступление новых заданий
-						this->_cv.wait(lock, std::bind(&children::checkInputData, this));
+						this->_cv.wait(lock, std::bind(&Child::checkInputData, this));
 						// Если произведена остановка выходим
 						if(this->_stop) break;
 						// Если данные в очереди существуют
@@ -114,7 +111,7 @@ namespace awh {
 			 * on Метод установки функции обратного вызова
 			 * @param callback функция обратного вызова для установки
 			 */
-			void on(function <void (const A &)> callback) noexcept {
+			void on(function <void (const T &)> callback) noexcept {
 				// Устанавливаем функцию обратного вызова
 				this->_fn = callback;
 			}
@@ -123,7 +120,7 @@ namespace awh {
 			 * send Метод отправки сообщения в дочерний поток
 			 * @param data данные отправляемого сообщения
 			 */
-			void send(const A & data) noexcept {
+			void send(const T & data) noexcept {
 				// Выполняем блокировку потока
 				this->_mtx2.lock();
 				// Выполняем добавление данных в очередь
@@ -135,18 +132,18 @@ namespace awh {
 			}
 		public:
 			/**
-			 * children Конструктор
+			 * Child Конструктор
 			 */
-			children() noexcept : _stop(false) {
+			Child() noexcept : _stop(false) {
 				// Создаём дочерний поток для формирования лога
-				this->_thr = std::thread(&children::receiving, this);
+				this->_thr = std::thread(&Child::receiving, this);
 				// Отсоединяемся от потока
 				this->_thr.detach();
 			}
 			/**
-			 * ~children Деструктор
+			 * ~Child Деструктор
 			 */
-			~children() noexcept {
+			~Child() noexcept {
 				/**
 				 * Выполняем отлов ошибок
 				 */
@@ -163,6 +160,13 @@ namespace awh {
 				} catch(const exception & error) {}
 			}
 	};
+	/**
+	 * Шаблон формата данных передаваемого между потоками
+	 * @tclass T данные передаваемые между потоками
+	 */
+	template <class T>
+	// Создаём тип данных работы с дочерними потоками
+	using child_t = Child <T>;
 };
 
-#endif // __AWH_CHLD__
+#endif // __AWH_CHLDREN__

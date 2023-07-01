@@ -244,26 +244,26 @@ void awh::Log::print(const string & format, flag_t flag, ...) const noexcept {
 					// Если идентификатор процесса является дочерним
 					if(pid != this->_pid){
 						// Если процесс ещё не инициализирован и дочерний поток уже создан
-						if((this->_chld != nullptr) && (this->_initialized.count(pid) < 1)){
+						if((this->_child != nullptr) && (this->_initialized.count(pid) < 1)){
 							// Выполняем удаление оюъекта дочернего потока
-							delete this->_chld;
+							delete this->_child;
 							// Выполняем зануление дочернего потока
-							this->_chld = nullptr;
+							this->_child = nullptr;
 							// Выполняем очистку списка инициализированных процессов
 							this->_initialized.clear();
 						}
 					}
 					// Если дочерний поток не создан
-					if(this->_chld == nullptr){
+					if(this->_child == nullptr){
 						// Выполняем создание дочернего потока
-						this->_chld = new children <payload_t> ();
+						this->_child = new child_t <payload_t> ();
 						// Выполняем установку функцию обратного вызова
-						this->_chld->on(std::bind(&log_t::receiving, this, _1));
+						this->_child->on(std::bind(&log_t::receiving, this, _1));
 						// Выполняем инициализацию текущего процесса
 						this->_initialized.emplace(pid);
 					}
 					// Выполняем отправку сообщения дочернему потоку
-					this->_chld->send(std::move(payload));
+					this->_child->send(std::move(payload));
 				// Выполняем вывод полученного лога
 				} else this->receiving(std::move(payload));
 			}
@@ -300,26 +300,26 @@ void awh::Log::print(const string & format, flag_t flag, const vector <string> &
 				// Если идентификатор процесса является дочерним
 				if(pid != this->_pid){
 					// Если процесс ещё не инициализирован и дочерний поток уже создан
-					if((this->_chld != nullptr) && (this->_initialized.count(pid) < 1)){
+					if((this->_child != nullptr) && (this->_initialized.count(pid) < 1)){
 						// Выполняем удаление оюъекта дочернего потока
-						delete this->_chld;
+						delete this->_child;
 						// Выполняем зануление дочернего потока
-						this->_chld = nullptr;
+						this->_child = nullptr;
 						// Выполняем очистку списка инициализированных процессов
 						this->_initialized.clear();
 					}
 				}
 				// Если дочерний поток не создан
-				if(this->_chld == nullptr){
+				if(this->_child == nullptr){
 					// Выполняем создание дочернего потока
-					this->_chld = new children <payload_t> ();
+					this->_child = new child_t <payload_t> ();
 					// Выполняем установку функцию обратного вызова
-					this->_chld->on(std::bind(&log_t::receiving, this, _1));
+					this->_child->on(std::bind(&log_t::receiving, this, _1));
 					// Выполняем инициализацию текущего процесса
 					this->_initialized.emplace(pid);
 				}
 				// Выполняем отправку сообщения дочернему потоку
-				this->_chld->send(std::move(payload));
+				this->_child->send(std::move(payload));
 			// Выполняем вывод полученного лога
 			} else this->receiving(std::move(payload));
 		}
@@ -406,7 +406,7 @@ awh::Log::Log(const fmk_t * fmk, const string & filename) noexcept :
  _pid(0), _async(false), _fileMode(true), _consoleMode(true),
  _maxSize(MAX_SIZE_LOGFILE), _level(level_t::ALL),
  _name(AWH_SHORT_NAME), _format(DATE_FORMAT),
- _filename(filename), _chld(nullptr), _fn(nullptr), _fmk(fmk) {
+ _filename(filename), _child(nullptr), _fn(nullptr), _fmk(fmk) {
 	// Запоминаем идентификатор родительского объекта
 	this->_pid = getpid();
 }
@@ -415,7 +415,7 @@ awh::Log::Log(const fmk_t * fmk, const string & filename) noexcept :
  */
 awh::Log::~Log() noexcept {
 	// Если объект работы с дочерним потоком создан, удаляем
-	if(this->_chld != nullptr)
+	if(this->_child != nullptr)
 		// Удаляем объект работы с дочерним потоком
-		delete this->_chld;
+		delete this->_child;
 }

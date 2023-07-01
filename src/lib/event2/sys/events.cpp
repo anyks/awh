@@ -95,33 +95,62 @@ void awh::Event::start(const time_t delay) noexcept {
 	if(!this->_mode && (this->_base != nullptr)){
 		// Устанавливаем флаг запущенной работы
 		this->_mode = !this->_mode;
-		// Если событие является таймаутом
-		if(this->_events & EV_TIMEOUT){
-			// Если задержка времени передана
-			if(this->_delay > 0){
-				// Устанавливаем время в секундах
-				this->_tv.tv_sec = (this->_delay / 1000);
-				// Устанавливаем время счётчика (микросекунды)
-				this->_tv.tv_usec = ((this->_delay % 1000) * 1000);
+		// Определяем тип выполняемого события
+		switch(static_cast <uint8_t> (this->_type)){
+			// Если событие является сигналом
+			case static_cast <uint8_t> (type_t::SIGNAL): {
 				// Создаём событие на активацию базы событий
-				evtimer_assign(&this->_ev, this->_base, &callback, this);
-				// Создаём событие таймаута на активацию базы событий
-				evtimer_add(&this->_ev, &this->_tv);
-			}
-		// Если событие является стандартным
-		} else if(this->_fd > 0) {
-			// Создаём событие на активацию базы событий
-			event_assign(&this->_ev, this->_base, this->_fd, this->_events, &callback, this);
-			// Если таймаут установлен
-			if(this->_delay > 0){
-				// Устанавливаем время в секундах
-				this->_tv.tv_sec = (this->_delay / 1000);
-				// Устанавливаем время счётчика (микросекунды)
-				this->_tv.tv_usec = ((this->_delay % 1000) * 1000);
-				// Выполняем активацию события
-				event_add(&this->_ev, &this->_tv);
-			// Выполняем активацию события
-			} else event_add(&this->_ev, nullptr);
+				evsignal_assign(&this->_ev, this->_base, this->_events, &callback, this);
+				// Если таймаут установлен
+				if(this->_delay > 0){
+					// Устанавливаем время в секундах
+					this->_tv.tv_sec = (this->_delay / 1000);
+					// Устанавливаем время счётчика (микросекунды)
+					this->_tv.tv_usec = ((this->_delay % 1000) * 1000);
+					// Выполняем отслеживание возникающего сигнала
+					evsignal_add(&this->_ev, &this->_tv);
+				// Выполняем отслеживание возникающего сигнала
+				} else evsignal_add(&this->_ev, nullptr);
+			} break;
+			// Если событие является таймером
+			case static_cast <uint8_t> (type_t::TIMER): {
+				// Если событие является таймаутом
+				if(this->_events & EV_TIMEOUT){
+					// Если задержка времени передана
+					if(this->_delay > 0){
+						// Устанавливаем время в секундах
+						this->_tv.tv_sec = (this->_delay / 1000);
+						// Устанавливаем время счётчика (микросекунды)
+						this->_tv.tv_usec = ((this->_delay % 1000) * 1000);
+						// Создаём событие на активацию базы событий
+						evtimer_assign(&this->_ev, this->_base, &callback, this);
+						// Создаём событие таймаута на активацию базы событий
+						evtimer_add(&this->_ev, &this->_tv);
+					}
+				// Выводим сообщение об ошибке
+				} else this->_log->print("the signal type for the timer is formed incorrectly", log_t::flag_t::WARNING);
+			} break;
+			// Если событие является сокетом
+			case static_cast <uint8_t> (type_t::EVENT): {
+				// Если событие является стандартным
+				if(this->_fd > 0){
+					// Создаём событие на активацию базы событий
+					event_assign(&this->_ev, this->_base, this->_fd, this->_events, &callback, this);
+					// Если таймаут установлен
+					if(this->_delay > 0){
+						// Устанавливаем время в секундах
+						this->_tv.tv_sec = (this->_delay / 1000);
+						// Устанавливаем время счётчика (микросекунды)
+						this->_tv.tv_usec = ((this->_delay % 1000) * 1000);
+						// Выполняем активацию события
+						event_add(&this->_ev, &this->_tv);
+					// Выполняем активацию события
+					} else event_add(&this->_ev, nullptr);
+				// Выводим сообщение об ошибке
+				} else this->_log->print("file descriptor is not set", log_t::flag_t::WARNING);
+			} break;
+			// Если событие не установлено
+			default: this->_log->print("event type is not set", log_t::flag_t::CRITICAL);
 		}
 	}
 }
