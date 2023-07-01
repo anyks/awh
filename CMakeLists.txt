@@ -313,11 +313,15 @@ set(PROXY_APP_NAME proxy)
 set(SOCKS5_APP_NAME socks5)
 set(CLIENT_APP_NAME client)
 set(SERVER_APP_NAME server)
-set(CLUSTER_APP_NAME cluster)
 set(WEB_CLIENT_APP_NAME webClient)
 set(WEB_SERVER_APP_NAME webServer)
 set(CURRENT_LIB_NAME ${PROJECT_NAME})
 set(CURRENT_APP_NAME ${PROJECT_NAME}_bin)
+
+# Если операционной системой не является Windows
+if(NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
+    set(CLUSTER_APP_NAME cluster)
+endif()
 
 # Делаем либу
 add_library(${CURRENT_LIB_NAME} STATIC ${SOURCE_FILES})
@@ -349,9 +353,13 @@ if (ENABLE_CONSOLE_APP)
     add_executable(${SOCKS5_APP_NAME} sample/socks5.cpp ${RES_FILES})
     add_executable(${CLIENT_APP_NAME} sample/client.cpp ${RES_FILES})
     add_executable(${SERVER_APP_NAME} sample/server.cpp ${RES_FILES})
-    add_executable(${CLUSTER_APP_NAME} sample/cluster.cpp ${RES_FILES})
     add_executable(${WEB_SERVER_APP_NAME} sample/webServer.cpp ${RES_FILES})
     add_executable(${WEB_CLIENT_APP_NAME} sample/webClient.cpp ${RES_FILES})
+
+    # Если операционной системой не является Windows
+    if(NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
+        add_executable(${CLUSTER_APP_NAME} sample/cluster.cpp ${RES_FILES})
+    endif()
 
     # Если операционной системой является Windows
     if(${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
@@ -776,9 +784,13 @@ install(TARGETS ${PROXY_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMA
 install(TARGETS ${SOCKS5_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
 install(TARGETS ${CLIENT_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
 install(TARGETS ${SERVER_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
-install(TARGETS ${CLUSTER_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
 install(TARGETS ${WEB_CLIENT_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
 install(TARGETS ${WEB_SERVER_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
+
+# Если операционной системой не является Windows
+if(NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
+    install(TARGETS ${CLUSTER_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
+endif()
 
 # Устанавливаем хидеры сторонних библиотек
 install(DIRECTORY "${ZLIB_INCLUDE_DIR}" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h")
