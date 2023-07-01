@@ -133,9 +133,7 @@
 		// Останавливаем сигнал
 		watcher.stop();
 		// Выполняем создание дочернего потока
-		std::thread thr(&worker_t::process, this, watcher.rpid, watcher.rstatus);
-		// Выполняем отключение от потока
-		thr.detach();
+		std::thread(&worker_t::process, this, watcher.rpid, watcher.rstatus).detach();
 	}
 	/**
 	 * process Метод перезапуска упавшего процесса

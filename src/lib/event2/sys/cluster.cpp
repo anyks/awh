@@ -34,9 +34,7 @@
 			// Если работа процесса завершена
 			if(status > 0){
 				// Выполняем создание дочернего потока
-				std::thread thr(&worker_t::process, this, pid, status);
-				// Выполняем отключение от потока
-				thr.detach();
+				std::thread(&worker_t::process, this, pid, status).detach();
 				// Выходим из цикла
 				break;
 			// Если нужно выполнить нормальное завершение работы
