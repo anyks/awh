@@ -77,6 +77,7 @@ namespace awh {
 				public:
 					mutex mtx;         // Мютекс для блокировки потока
 					size_t wid;        // Идентификатор воркера
+					bool async;        // Флаг асинхронного режима работы
 					bool working;      // Флаг запуска работы
 					bool restart;      // Флаг автоматического перезапуска
 					uint16_t count;    // Количество рабочих процессов
@@ -135,8 +136,8 @@ namespace awh {
 					 * @param log объект для работы с логами
 					 */
 					Worker(const log_t * log) noexcept :
-					 wid(0), working(false), restart(false), count(1),
-					 cluster(nullptr), _child(nullptr), _log(log) {}
+					 wid(0), async(false), working(false), restart(false),
+					 count(1), cluster(nullptr), _child(nullptr), _log(log) {}
 					/**
 					 * ~Worker Деструктор
 					 */
@@ -283,6 +284,13 @@ namespace awh {
 			 * @param base база событий для установки
 			 */
 			void base(struct ev_loop * base) noexcept;
+		public:
+			/**
+			 * async Метод установки флага асинхронного режима работы
+			 * @param wid  идентификатор воркера
+			 * @param mode флаг асинхронного режима работы
+			 */
+			void async(const size_t wid, const bool mode) noexcept;
 		public:
 			/**
 			 * count Метод получения максимального количества процессов

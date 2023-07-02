@@ -88,8 +88,12 @@
 						data.buffer.assign(this->_buffer.begin(), this->_buffer.end());
 						// Выполняем очистку буфера сообщений
 						this->_buffer.clear();
-						// Выполняем отправку полученных данных
-						this->_child->send(std::move(data));
+						// Если асинхронный режим работы активирован
+						if(this->async)
+							// Выполняем отправку полученных данных
+							this->_child->send(std::move(data));
+						// Выполняем отправку полученных данных напрямую
+						else this->callback(std::move(data));
 					}
 				// Выводим сообщение что данные пришли битые
 				} else this->_log->print("data from child process arrives corrupted", log_t::flag_t::CRITICAL);
@@ -167,8 +171,12 @@
 							data.buffer.assign(this->_buffer.begin(), this->_buffer.end());
 							// Выполняем очистку буфера сообщений
 							this->_buffer.clear();
-							// Выполняем отправку полученных данных
-							this->_child->send(std::move(data));
+							// Если асинхронный режим работы активирован
+							if(this->async)
+								// Выполняем отправку полученных данных
+								this->_child->send(std::move(data));
+							// Выполняем отправку полученных данных напрямую
+							else this->callback(std::move(data));
 						}
 					// Если данные пришли пустыми
 					} else {
@@ -428,8 +436,10 @@ void awh::Cluster::fork(const size_t wid, const uint16_t index, const bool stop)
 								jack->mess.set(jack->cfds[0], ev::READ);
 								// Запускаем чтение данных с основного процесса
 								jack->mess.start();
-								// Выполняем запуск дочерних потоков по переброски сообщений
-								it->second->init();
+								// Если асинхронный режим работы активирован
+								if(it->second->async)
+									// Выполняем запуск дочерних потоков по переброски сообщений
+									it->second->init();
 								// Если функция обратного вызова установлена, выводим её
 								if(this->_processFn != nullptr)
 									// Выводим функцию обратного вызова
@@ -479,8 +489,10 @@ void awh::Cluster::fork(const size_t wid, const uint16_t index, const bool stop)
 				}
 			// Если все процессы удачно созданы
 			} else if((it->second->working = !stop)) {
-				// Выполняем запуск дочерних потоков по переброски сообщений
-				it->second->init();
+				// Если асинхронный режим работы активирован
+				if(it->second->async)
+					// Выполняем запуск дочерних потоков по переброски сообщений
+					it->second->init();
 				// Если функция обратного вызова установлена, выводим её
 				if(this->_processFn != nullptr)
 					// Выводим функцию обратного вызова
@@ -829,6 +841,19 @@ void awh::Cluster::base(struct ev_loop * base) noexcept {
 		this->stop(worker.first);
 	// Выполняем установку базы событий
 	this->_base = base;
+}
+/**
+ * async Метод установки флага асинхронного режима работы
+ * @param wid  идентификатор воркера
+ * @param mode флаг асинхронного режима работы
+ */
+void awh::Cluster::async(const size_t wid, const bool mode) noexcept {
+	// Выполняем поиск идентификатора воркера
+	auto it = this->_workers.find(wid);
+	// Если вокер найден
+	if(it != this->_workers.end())
+		// Устанавливаем флаг асинхронного режима работы
+		it->second->async = mode;
 }
 /**
  * count Метод получения максимального количества процессов
