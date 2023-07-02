@@ -75,7 +75,7 @@
 				// Выполняем извлечение входящих данных
 				memcpy(&message, buffer, bytes);
 				// Если размер данных соответствует
-				if(message.size > 0){
+				if((message.size > 0) && (message.size <= sizeof(message.payload))){
 					// Выполняем добавление полученных данных в общий буфер
 					this->_buffer.insert(this->_buffer.end(), message.payload, message.payload + message.size);
 					// Если передана последняя порция
@@ -135,7 +135,7 @@
 					// Выполняем извлечение входящих данных
 					memcpy(&message, buffer, bytes);
 					// Если размер данных соответствует
-					if(message.size > 0){
+					if((message.size > 0) && (message.size <= sizeof(message.payload))){
 						// Выполняем добавление полученных данных в общий буфер
 						this->_buffer.insert(this->_buffer.end(), message.payload, message.payload + message.size);
 						// Если нужно завершить работу процесса
