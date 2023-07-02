@@ -151,31 +151,35 @@
 					return;
 				}
 			}
-			// Создаём объект сообщения
-			mess_t message;
-			// Выполняем зануление буфера данных полезной нагрузки
-			memset(message.payload, 0, sizeof(message.payload));
 			// Выполняем чтение полученного сообщения
 			const int bytes = ::read(fd, buffer, sizeof(buffer));
 			// Если данные прочитаны правильно
 			if(bytes > 0){
+				// Создаём объект сообщения
+				mess_t message;
+				// Выполняем зануление буфера данных полезной нагрузки
+				memset(message.payload, 0, sizeof(message.payload));
 				// Выполняем извлечение входящих данных
 				memcpy(&message, buffer, bytes);
-				// Выполняем добавление полученных данных в общий буфер
-				this->_buffer.insert(this->_buffer.end(), message.payload, message.payload + message.size);
-				// Если передана последняя порция
-				if(message.end){
-					// Создаём объект передаваемых данных
-					data_t data;
-					// Устанавливаем идентификатор процесса
-					data.pid = message.pid;
-					// Устанавливаем буфер передаваемых данных
-					data.buffer.assign(this->_buffer.begin(), this->_buffer.end());
-					// Выполняем очистку буфера сообщений
-					this->_buffer.clear();
-					// Выполняем отправку полученных данных
-					this->_child->send(std::move(data));
-				}
+				// Если размер данных соответствует
+				if(message.size > 0){
+					// Выполняем добавление полученных данных в общий буфер
+					this->_buffer.insert(this->_buffer.end(), message.payload, message.payload + message.size);
+					// Если передана последняя порция
+					if(message.end){
+						// Создаём объект передаваемых данных
+						data_t data;
+						// Устанавливаем идентификатор процесса
+						data.pid = message.pid;
+						// Устанавливаем буфер передаваемых данных
+						data.buffer.assign(this->_buffer.begin(), this->_buffer.end());
+						// Выполняем очистку буфера сообщений
+						this->_buffer.clear();
+						// Выполняем отправку полученных данных
+						this->_child->send(std::move(data));
+					}
+				// Выводим сообщение что данные пришли битые
+				} else this->_log->print("data from child process arrives corrupted", log_t::flag_t::CRITICAL);
 			// Если данные не прочитаны
 			} else this->_log->print("data from child process could not be received", log_t::flag_t::CRITICAL);
 		// Если процесс является дочерним
@@ -207,22 +211,41 @@
 					// Выходим из функции
 					return;
 				}
-				// Создаём объект сообщения
-				mess_t message;
-				// Выполняем зануление буфера данных полезной нагрузки
-				memset(message.payload, 0, sizeof(message.payload));
 				// Выполняем чтение полученного сообщения
 				const int bytes = ::read(fd, buffer, sizeof(buffer));
 				// Если данные прочитаны правильно
 				if(bytes > 0){
+					// Создаём объект сообщения
+					mess_t message;
+					// Выполняем зануление буфера данных полезной нагрузки
+					memset(message.payload, 0, sizeof(message.payload));
 					// Выполняем извлечение входящих данных
 					memcpy(&message, buffer, bytes);
-					// Выполняем добавление полученных данных в общий буфер
-					this->_buffer.insert(this->_buffer.end(), message.payload, message.payload + message.size);
-					// Если нужно завершить работу процесса
-					if(message.quit){
+					// Если размер данных соответствует
+					if(message.size > 0){
+						// Выполняем добавление полученных данных в общий буфер
+						this->_buffer.insert(this->_buffer.end(), message.payload, message.payload + message.size);
+						// Если нужно завершить работу процесса
+						if(message.quit){
+							// Если передана последняя порция
+							if(message.end){
+								// Создаём объект передаваемых данных
+								data_t data;
+								// Устанавливаем идентификатор процесса
+								data.pid = message.pid;
+								// Устанавливаем буфер передаваемых данных
+								data.buffer.assign(this->_buffer.begin(), this->_buffer.end());
+								// Выполняем очистку буфера сообщений
+								this->_buffer.clear();
+								// Выполняем отправку полученных данных
+								this->callback(std::move(data));
+							}
+							// Останавливаем чтение данных с родительского процесса
+							this->cluster->stop(this->wid);
+							// Выходим из приложения
+							exit(SIGCHLD);
 						// Если передана последняя порция
-						if(message.end){
+						} else if(message.end) {
 							// Создаём объект передаваемых данных
 							data_t data;
 							// Устанавливаем идентификатор процесса
@@ -232,24 +255,18 @@
 							// Выполняем очистку буфера сообщений
 							this->_buffer.clear();
 							// Выполняем отправку полученных данных
-							this->callback(std::move(data));
+							this->_child->send(std::move(data));
 						}
-						// Останавливаем чтение данных с родительского процесса
-						this->cluster->stop(this->wid);
-						// Выходим из приложения
-						exit(SIGCHLD);
-					// Если передана последняя порция
-					} else if(message.end) {
-						// Создаём объект передаваемых данных
-						data_t data;
-						// Устанавливаем идентификатор процесса
-						data.pid = message.pid;
-						// Устанавливаем буфер передаваемых данных
-						data.buffer.assign(this->_buffer.begin(), this->_buffer.end());
-						// Выполняем очистку буфера сообщений
-						this->_buffer.clear();
-						// Выполняем отправку полученных данных
-						this->_child->send(std::move(data));
+					// Если данные пришли пустыми
+					} else {
+						// Если нужно завершить работу процесса
+						if(message.quit){
+							// Останавливаем чтение данных с родительского процесса
+							this->cluster->stop(this->wid);
+							// Выходим из приложения
+							exit(SIGCHLD);
+						// Выводим сообщение что данные пришли битые
+						} else this->_log->print("data from main process arrives corrupted", log_t::flag_t::CRITICAL);
 					}
 				// Если данные не прочитаны
 				} else this->_log->print("data from main process could not be received", log_t::flag_t::CRITICAL);
