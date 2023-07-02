@@ -141,6 +141,12 @@ namespace awh {
 				void run() noexcept;
 			public:
 				/**
+				 * clusterAsync Метод установки флага асинхронного режима работы
+				 * @param wid  идентификатор воркера
+				 * @param mode флаг асинхронного режима работы
+				 */
+				void clusterAsync(const bool mode) noexcept;
+				/**
 				 * clusterSize Метод установки количества процессов кластера
 				 * @param size количество рабочих процессов
 				 */

@@ -117,6 +117,26 @@ void awh::cluster::Core::run() noexcept {
 	this->_cluster.start(0);
 }
 /**
+ * clusterAsync Метод установки флага асинхронного режима работы
+ * @param wid  идентификатор воркера
+ * @param mode флаг асинхронного режима работы
+ */
+void awh::cluster::Core::clusterAsync(const bool mode) noexcept {
+	/**
+	 * Если операционной системой не является Windows
+	 */
+	#if !defined(_WIN32) && !defined(_WIN64)
+		// Выполняем перевод кластера в асинхронный режим работы
+		this->_cluster.async(0, mode);
+	/**
+	 * Если операционной системой является Windows
+	 */
+	#else
+		// Выводим предупредительное сообщение в лог
+		this->_log->print("MS Windows OS, does not support cluster mode", log_t::flag_t::WARNING);
+	#endif
+}
+/**
  * clusterSize Метод установки количества процессов кластера
  * @param size количество рабочих процессов
  */
