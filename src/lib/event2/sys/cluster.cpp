@@ -20,6 +20,16 @@
  */
 #if !defined(_WIN32) && !defined(_WIN64)
 	/**
+	 * callback Метод вывода функции обратного вызова
+	 * @param data данные передаваемые процессом
+	 */
+	void awh::Cluster::Worker::callback(const data_t & data) noexcept {
+		// Если функция обратного вызова установлена, выводим её
+		if(this->cluster->_messageFn != nullptr)
+			// Выводим функцию обратного вызова
+			this->cluster->_messageFn(this->wid, data.pid, data.buffer.data(), data.buffer.size());
+	}
+	/**
 	 * child Функция обратного вызова при завершении работы процесса
 	 * @param fd    файловый дескриптор (сокет)
 	 * @param event возникшее событие
@@ -120,6 +130,27 @@
 		memset(buffer, 0, sizeof(buffer));
 		// Если процесс является родительским
 		if(this->cluster->_pid == static_cast <pid_t> (getpid())){
+			// Выполняем поиск текущего работника
+			auto jt = this->cluster->_jacks.find(this->wid);
+			// Если текущий работник найден
+			if(jt != this->cluster->_jacks.end()){
+				// Флаг найденного файлового дескриптора
+				bool found = false;
+				// Переходим по всему списку работников
+				for(auto & jack : jt->second){
+					// Выполняем поиск файлового дескриптора
+					found = (static_cast <evutil_socket_t> (jack->mfds[0]) == fd);
+					// Если файловый дескриптор соответствует, выходим
+					if(found) break;
+				}
+				// Если файловый дескриптор не найден
+				if(!found){
+					// Выполняем закрытие файлового дескриптора
+					::close(fd);
+					// Выходим из функции
+					return;
+				}
+			}
 			// Создаём объект сообщения
 			mess_t message;
 			// Выполняем зануление буфера данных полезной нагрузки
@@ -134,12 +165,16 @@
 				this->_buffer.insert(this->_buffer.end(), message.payload, message.payload + message.size);
 				// Если передана последняя порция
 				if(message.end){
-					// Если функция обратного вызова установлена, выводим её
-					if(this->cluster->_messageFn != nullptr)
-						// Выводим функцию обратного вызова
-						this->cluster->_messageFn(this->wid, message.pid, this->_buffer.data(), this->_buffer.size());
+					// Создаём объект передаваемых данных
+					data_t data;
+					// Устанавливаем идентификатор процесса
+					data.pid = message.pid;
+					// Устанавливаем буфер передаваемых данных
+					data.buffer.assign(this->_buffer.begin(), this->_buffer.end());
 					// Выполняем очистку буфера сообщений
 					this->_buffer.clear();
+					// Выполняем отправку полученных данных
+					this->_child->send(std::move(data));
 				}
 			// Если данные не прочитаны
 			} else this->_log->print("data from child process could not be received", log_t::flag_t::CRITICAL);
@@ -184,21 +219,37 @@
 					memcpy(&message, buffer, bytes);
 					// Выполняем добавление полученных данных в общий буфер
 					this->_buffer.insert(this->_buffer.end(), message.payload, message.payload + message.size);
-					// Если передана последняя порция
-					if(message.end){
-						// Если функция обратного вызова установлена, выводим её
-						if(this->cluster->_messageFn != nullptr)
-							// Выводим функцию обратного вызова
-							this->cluster->_messageFn(this->wid, message.pid, this->_buffer.data(), this->_buffer.size());
-						// Выполняем очистку буфера сообщений
-						this->_buffer.clear();
-					}
 					// Если нужно завершить работу процесса
 					if(message.quit){
+						// Если передана последняя порция
+						if(message.end){
+							// Создаём объект передаваемых данных
+							data_t data;
+							// Устанавливаем идентификатор процесса
+							data.pid = message.pid;
+							// Устанавливаем буфер передаваемых данных
+							data.buffer.assign(this->_buffer.begin(), this->_buffer.end());
+							// Выполняем очистку буфера сообщений
+							this->_buffer.clear();
+							// Выполняем отправку полученных данных
+							this->callback(std::move(data));
+						}
 						// Останавливаем чтение данных с родительского процесса
 						this->cluster->stop(this->wid);
 						// Выходим из приложения
 						exit(SIGCHLD);
+					// Если передана последняя порция
+					} else if(message.end) {
+						// Создаём объект передаваемых данных
+						data_t data;
+						// Устанавливаем идентификатор процесса
+						data.pid = message.pid;
+						// Устанавливаем буфер передаваемых данных
+						data.buffer.assign(this->_buffer.begin(), this->_buffer.end());
+						// Выполняем очистку буфера сообщений
+						this->_buffer.clear();
+						// Выполняем отправку полученных данных
+						this->_child->send(std::move(data));
 					}
 				// Если данные не прочитаны
 				} else this->_log->print("data from main process could not be received", log_t::flag_t::CRITICAL);
@@ -214,6 +265,29 @@
 		}
 	}
 #endif
+/**
+ * Если операционной системой не является Windows
+ */
+#if !defined(_WIN32) && !defined(_WIN64)
+	/**
+	 * init Метод инициализации процесса переброски сообщений
+	 */
+	void awh::Cluster::Worker::init() noexcept {
+		// Выполняем создание объекта дочернего потока
+		this->_child = new child_t <data_t> ();
+		// Выполняем установку функции обратного вызова при получении сообщения
+		this->_child->on(std::bind(&worker_t::callback, this, _1));
+	}
+#endif
+/**
+ * ~Worker Деструктор
+ */
+awh::Cluster::Worker::~Worker() noexcept {
+	// Если объект дочерних потоков создан
+	if(this->_child != nullptr)
+		// Удаляем его
+		delete this->_child;
+}
 /**
  * fork Метод отделения от основного процесса (создание дочерних процессов)
  * @param wid   идентификатор воркера
@@ -351,6 +425,8 @@ void awh::Cluster::fork(const size_t wid, const uint16_t index, const bool stop)
 								jack->mess.set(std::bind(&worker_t::message, it->second.get(), _1, _2));
 								// Запускаем чтение данных с основного процесса
 								jack->mess.start();
+								// Выполняем запуск дочерних потоков по переброски сообщений
+								it->second->init();
 								// Если функция обратного вызова установлена, выводим её
 								if(this->_processFn != nullptr)
 									// Выводим функцию обратного вызова
@@ -400,6 +476,8 @@ void awh::Cluster::fork(const size_t wid, const uint16_t index, const bool stop)
 				auto jt = this->_jacks.find(it->first);
 				// Если идентификатор воркера получен
 				if(jt != this->_jacks.end()){
+					// Выполняем запуск дочерних потоков по переброски сообщений
+					it->second->init();
 					// Устанавливаем базу событий для перехвата сигналов дочерних процессов
 					this->_event.set(this->_base);
 					// Устанавливаем тип отслеживаемого сигнала

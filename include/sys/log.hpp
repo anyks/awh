@@ -107,6 +107,9 @@ namespace awh {
 			// Адрес файла для сохранения логов
 			string _filename;
 		private:
+			// Мютекс для блокировки потока
+			mutable mutex _mtx;
+		private:
 			// Список проинициализированных процессов
 			mutable set <pid_t> _initialized;
 		private:

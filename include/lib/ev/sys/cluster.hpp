@@ -35,6 +35,7 @@
  */
 #include <sys/fmk.hpp>
 #include <sys/log.hpp>
+#include <sys/child.hpp>
 
 // Подписываемся на стандартное пространство имён
 using namespace std;
@@ -61,6 +62,18 @@ namespace awh {
 			 * Worker Класс воркера
 			 */
 			typedef class Worker {
+				private:
+					/**
+					 * Data Структура выводимых данных
+					 */
+					typedef struct Data {
+						pid_t pid;            // Идентификатор процесса приславший данные
+						vector <char> buffer; // Буфер передаваемых данных
+						/**
+						 * Data Конструктор
+						 */
+						Data() noexcept : pid(0) {}
+					} data_t;
 				public:
 					mutex mtx;         // Мютекс для блокировки потока
 					size_t wid;        // Идентификатор воркера
@@ -72,6 +85,9 @@ namespace awh {
 					// Общий буфер входящих данных
 					vector <char> _buffer;
 				private:
+					// Объект для работы с дочерним потоком
+					child_t <data_t> * _child;
+				private:
 					// Объект для работы с логами
 					const log_t * _log;
 				public:
@@ -79,6 +95,11 @@ namespace awh {
 					 * Если операционной системой не является Windows
 					 */
 					#if !defined(_WIN32) && !defined(_WIN64)
+						/**
+						 * callback Метод вывода функции обратного вызова
+						 * @param data данные передаваемые процессом
+						 */
+						void callback(const data_t & data) noexcept;
 						/**
 						 * message Функция обратного вызова получении сообщений
 						 * @param watcher объект события чтения
@@ -100,11 +121,26 @@ namespace awh {
 					#endif
 				public:
 					/**
+					 * Если операционной системой не является Windows
+					 */
+					#if !defined(_WIN32) && !defined(_WIN64)
+						/**
+						 * init Метод инициализации процесса переброски сообщений
+						 */
+						void init() noexcept;
+					#endif
+				public:
+					/**
 					 * Worker Конструктор
 					 * @param log объект для работы с логами
 					 */
 					Worker(const log_t * log) noexcept :
-					 wid(0), working(false), restart(false), count(1), cluster(nullptr), _log(log) {}
+					 wid(0), working(false), restart(false), count(1),
+					 cluster(nullptr), _child(nullptr), _log(log) {}
+					/**
+					 * ~Worker Деструктор
+					 */
+					~Worker() noexcept;
 			} worker_t;
 			/**
 			 * Если операционной системой не является Windows

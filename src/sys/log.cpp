@@ -93,6 +93,8 @@ void awh::Log::receiving(const payload_t & payload) const noexcept {
 	if(payload.data.length() < 3)
 		// Проверяем является ли это переводом строки
 		isEnd = ((payload.data.compare("\r\n") == 0) || (payload.data.compare("\n") == 0));
+	// Выполняем блокировку потока
+	const lock_guard <mutex> lock(this->_mtx);
 	// Если файл для вывода лога указан
 	if(this->_fileMode && !this->_filename.empty()){
 		// Открываем файл на запись
