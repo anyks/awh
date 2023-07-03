@@ -130,6 +130,8 @@
 		memset(buffer, 0, sizeof(buffer));
 		// Если процесс является родительским
 		if(this->cluster->_pid == static_cast <pid_t> (getpid())){
+			// Идентификатор процесса приславший сообщение
+			pid_t pid = 0;
 			// Выполняем поиск текущего работника
 			auto jt = this->cluster->_jacks.find(this->wid);
 			// Если текущий работник найден
@@ -140,8 +142,13 @@
 				for(auto & jack : jt->second){
 					// Выполняем поиск файлового дескриптора
 					found = (static_cast <evutil_socket_t> (jack->mfds[0]) == fd);
-					// Если файловый дескриптор соответствует, выходим
-					if(found) break;
+					// Если файловый дескриптор соответствует
+					if(found){
+						// Получаем идентификатор процесса приславшего сообщение
+						pid = jack->pid;
+						// Выходим из цикла
+						break;
+					}
 				}
 				// Если файловый дескриптор не найден
 				if(!found){
@@ -183,9 +190,9 @@
 						else this->callback(std::move(data));
 					}
 				// Выводим сообщение что данные пришли битые
-				} else this->_log->print("data from child process arrives corrupted", log_t::flag_t::CRITICAL);
+				} else this->_log->print("[%u] data from child process [%u] arrives corrupted", log_t::flag_t::CRITICAL, this->cluster->_pid, pid);
 			// Если данные не прочитаны
-			} else this->_log->print("data from child process could not be received", log_t::flag_t::CRITICAL);
+			} else this->_log->print("[%u] data from child process [%u] could not be received", log_t::flag_t::CRITICAL, this->cluster->_pid, pid);
 		// Если процесс является дочерним
 		} else if(this->cluster->_pid == static_cast <pid_t> (getppid())) {
 			// Выполняем поиск текущего работника
@@ -274,10 +281,10 @@
 							// Выходим из приложения
 							exit(SIGCHLD);
 						// Выводим сообщение что данные пришли битые
-						} else this->_log->print("data from main process arrives corrupted", log_t::flag_t::CRITICAL);
+						} else this->_log->print("[%u] data from main process arrives corrupted", log_t::flag_t::CRITICAL, getpid());
 					}
 				// Если данные не прочитаны
-				} else this->_log->print("data from main process could not be received", log_t::flag_t::CRITICAL);
+				} else this->_log->print("[%u] data from main process could not be received", log_t::flag_t::CRITICAL, getpid());
 			}
 		// Если процесс превратился в зомби
 		} else {
