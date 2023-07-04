@@ -27,11 +27,14 @@ endif()
 # Сборка модуля AWH_EVENT2
 if(CMAKE_BUILD_EVENT2)
     add_compile_definitions(AWH_EVENT2)
-    message(STATUS "Build AWH LIBEVENT2: ${CMAKE_BUILD_EVENT2}\n")
+    message(STATUS "Build AWH LIBEV: NO\n")
+    message(STATUS "Build AWH LIBEVENT2: YES\n")
+# Сборка модуля AWH_EV
 else()
-    set(CMAKE_BUILD_EV "yes")
+    set(CMAKE_BUILD_EV "YES")
     add_compile_definitions(AWH_EV)
-    message(STATUS "Build AWH LIBEV: ${CMAKE_BUILD_EV}\n")
+    message(STATUS "Build AWH LIBEV: YES\n")
+    message(STATUS "Build AWH LIBEVENT2: NO\n")
 endif()
 
 # Получаем архитектуру
