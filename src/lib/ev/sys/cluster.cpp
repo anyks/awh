@@ -112,7 +112,12 @@
 				// Выводим сообщение что данные пришли битые
 				} else this->_log->print("[%u] data from child process [%u] arrives corrupted", log_t::flag_t::CRITICAL, this->cluster->_pid, pid);
 			// Если данные не прочитаны
-			} else this->_log->print("[%u] data from child process [%u] could not be received", log_t::flag_t::CRITICAL, this->cluster->_pid, pid);
+			} else {
+				// Выводим сообщение об ошибке в лог
+				this->_log->print("[%u] data from child process [%u] could not be received", log_t::flag_t::CRITICAL, this->cluster->_pid, pid);
+				// Выходим из приложения
+				exit(EXIT_FAILURE);
+			}
 		// Если процесс является дочерним
 		} else if(this->cluster->_pid == static_cast <pid_t> (getppid())) {
 			// Выполняем поиск текущего работника
@@ -211,7 +216,12 @@
 						} else this->_log->print("[%u] data from main process arrives corrupted", log_t::flag_t::CRITICAL, getpid());
 					}
 				// Если данные не прочитаны
-				} else this->_log->print("[%u] data from main process could not be received", log_t::flag_t::CRITICAL, getpid());
+				} else {
+					// Выводим сообщение об ошибке в лог
+					this->_log->print("[%u] data from main process could not be received", log_t::flag_t::CRITICAL, getpid());
+					// Выходим из приложения
+					exit(EXIT_FAILURE);
+				}
 			}
 		// Если процесс превратился в зомби
 		} else {
@@ -559,6 +569,8 @@ void awh::Cluster::send(const size_t wid, const char * buffer, const size_t size
 		if((this->_pid != pid) && (this->_pid != static_cast <pid_t> (getppid()))){
 			// Процесс превратился в зомби, самоликвидируем его
 			this->_log->print("the process [%u] has turned into a zombie, we perform self-destruction", log_t::flag_t::CRITICAL, pid);
+			// Выполняем остановку работы
+			this->stop(wid);
 			// Выходим из приложения
 			exit(EXIT_FAILURE);
 		// Если процесс не является родительским
@@ -648,6 +660,8 @@ void awh::Cluster::send(const size_t wid, const pid_t pid, const char * buffer, 
 			} else this->_log->print("transfer data size is %zu bytes, buffer size is %zu bytes", log_t::flag_t::CRITICAL, size, sizeof(mess_t::payload));
 		// Если процесс превратился в зомби
 		} else if((this->_pid != static_cast <pid_t> (getpid())) && (this->_pid != static_cast <pid_t> (getppid()))) {
+			// Выполняем остановку работы
+			this->stop(wid);
 			// Процесс превратился в зомби, самоликвидируем его
 			this->_log->print("the process [%u] has turned into a zombie, we perform self-destruction", log_t::flag_t::CRITICAL, getpid());
 			// Выходим из приложения
@@ -711,6 +725,8 @@ void awh::Cluster::broadcast(const size_t wid, const char * buffer, const size_t
 			} else this->_log->print("transfer data size is %zu bytes, buffer size is %zu bytes", log_t::flag_t::CRITICAL, size, sizeof(mess_t::payload));
 		// Если процесс превратился в зомби
 		} else if((this->_pid != getpid()) && (this->_pid != static_cast <pid_t> (getppid()))) {
+			// Выполняем остановку работы
+			this->stop(wid);
 			// Процесс превратился в зомби, самоликвидируем его
 			this->_log->print("the process [%u] has turned into a zombie, we perform self-destruction", log_t::flag_t::CRITICAL, getpid());
 			// Выходим из приложения
@@ -818,6 +834,23 @@ void awh::Cluster::stop(const size_t wid) noexcept {
 			jt->second.clear();
 		// Если процесс превратился в зомби
 		} else {
+			/**
+			 * Если операционной системой не является Windows
+			 */
+			#if !defined(_WIN32) && !defined(_WIN64)
+				// Переходим по всему списку работников
+				for(auto & jack : jt->second){
+					// Останавливаем обработку получения статуса процессов
+					jack->cw.stop();
+					// Останавливаем чтение данных с дочернего процесса
+					jack->mess.stop();
+					// Выполняем закрытие файловых дескрипторов
+					::close(jack->cfds[0]);
+					::close(jack->mfds[1]);
+				}
+			#endif
+			// Очищаем список работников
+			jt->second.clear();
 			// Процесс превратился в зомби, самоликвидируем его
 			this->_log->print("the process [%u] has turned into a zombie, we perform self-destruction", log_t::flag_t::CRITICAL, getpid());
 			// Выходим из приложения
