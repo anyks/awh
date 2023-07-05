@@ -126,9 +126,13 @@ namespace awh {
 					 */
 					#if !defined(_WIN32) && !defined(_WIN64)
 						/**
-						 * init Метод инициализации процесса переброски сообщений
+						 * stopChild Метод остановки работы дочернего процесса
 						 */
-						void init() noexcept;
+						void stopChild() noexcept;
+						/**
+						 * startChild Метод запуска работы дочернего процесса
+						 */
+						void startChild() noexcept;
 					#endif
 				public:
 					/**

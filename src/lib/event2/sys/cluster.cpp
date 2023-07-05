@@ -183,11 +183,18 @@
 						// Выполняем очистку буфера сообщений
 						this->_buffer.clear();
 						// Если асинхронный режим работы активирован
-						if(this->async)
+						if(this->async){
+							// Выполняем запуск работы дочернего процесса
+							this->startChild();
 							// Выполняем отправку полученных данных
 							this->_child->send(std::move(data));
-						// Выполняем отправку полученных данных напрямую
-						else this->callback(std::move(data));
+						// Если асинхронный режим работы деактивирован
+						} else {
+							// Выполняем остановку работы дочернего процесса
+							this->stopChild();
+							// Выполняем отправку полученных данных напрямую
+							this->callback(std::move(data));
+						}
 					}
 				// Выводим сообщение что данные пришли битые
 				} else this->_log->print("[%u] data from child process [%u] arrives corrupted", log_t::flag_t::CRITICAL, this->cluster->_pid, pid);
@@ -266,11 +273,18 @@
 							// Выполняем очистку буфера сообщений
 							this->_buffer.clear();
 							// Если асинхронный режим работы активирован
-							if(this->async)
+							if(this->async){
+								// Выполняем запуск работы дочернего процесса
+								this->startChild();
 								// Выполняем отправку полученных данных
 								this->_child->send(std::move(data));
-							// Выполняем отправку полученных данных напрямую
-							else this->callback(std::move(data));
+							// Если асинхронный режим работы деактивирован
+							} else {
+								// Выполняем остановку работы дочернего процесса
+								this->stopChild();
+								// Выполняем отправку полученных данных напрямую
+								this->callback(std::move(data));
+							}
 						}
 					// Если данные пришли пустыми
 					} else {
@@ -302,23 +316,36 @@
  */
 #if !defined(_WIN32) && !defined(_WIN64)
 	/**
-	 * init Метод инициализации процесса переброски сообщений
+	 * stopChild Метод остановки работы дочернего процесса
 	 */
-	void awh::Cluster::Worker::init() noexcept {
-		// Выполняем создание объекта дочернего потока
-		this->_child = new child_t <data_t> ();
-		// Выполняем установку функции обратного вызова при получении сообщения
-		this->_child->on(std::bind(&worker_t::callback, this, _1));
+	void awh::Cluster::Worker::stopChild() noexcept {
+		// Если объект дочерних потоков создан
+		if(this->_child != nullptr){
+			// Удаляем его
+			delete this->_child;
+			// Выполняем зануление объекта дочернего потока
+			this->_child = nullptr;
+		}
+	}
+	/**
+	 * startChild Метод запуска работы дочернего процесса
+	 */
+	void awh::Cluster::Worker::startChild() noexcept {
+		// Если объект дочерних потоков ещё не создан
+		if(this->_child == nullptr){
+			// Выполняем создание объекта дочернего потока
+			this->_child = new child_t <data_t> ();
+			// Выполняем установку функции обратного вызова при получении сообщения
+			this->_child->on(std::bind(&worker_t::callback, this, _1));
+		}
 	}
 #endif
 /**
  * ~Worker Деструктор
  */
 awh::Cluster::Worker::~Worker() noexcept {
-	// Если объект дочерних потоков создан
-	if(this->_child != nullptr)
-		// Удаляем его
-		delete this->_child;
+	// Выполняем остановку работы дочернего процесса
+	this->stopChild();
 }
 /**
  * fork Метод отделения от основного процесса (создание дочерних процессов)
@@ -457,10 +484,6 @@ void awh::Cluster::fork(const size_t wid, const uint16_t index, const bool stop)
 								jack->mess.set(std::bind(&worker_t::message, it->second.get(), _1, _2));
 								// Запускаем чтение данных с основного процесса
 								jack->mess.start();
-								// Если асинхронный режим работы активирован
-								if(it->second->async)
-									// Выполняем запуск дочерних потоков по переброски сообщений
-									it->second->init();
 								// Если функция обратного вызова установлена, выводим её
 								if(this->_processFn != nullptr)
 									// Выводим функцию обратного вызова
@@ -510,10 +533,6 @@ void awh::Cluster::fork(const size_t wid, const uint16_t index, const bool stop)
 				auto jt = this->_jacks.find(it->first);
 				// Если идентификатор воркера получен
 				if(jt != this->_jacks.end()){
-					// Если асинхронный режим работы активирован
-					if(it->second->async)
-						// Выполняем запуск дочерних потоков по переброски сообщений
-						it->second->init();
 					// Устанавливаем базу событий для перехвата сигналов дочерних процессов
 					this->_event.set(this->_base);
 					// Устанавливаем тип отслеживаемого сигнала
