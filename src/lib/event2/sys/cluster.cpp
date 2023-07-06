@@ -602,36 +602,32 @@ void awh::Cluster::send(const size_t wid, const char * buffer, const size_t size
 			exit(EXIT_FAILURE);
 		// Если процесс не является родительским
 		} else if((this->_pid != pid) && (size > 0)) {
-			// Если отправляемый размер данных умещается в наш буфер сообщения
-			if(size <= sizeof(mess_t::payload)){
-				// Выполняем поиск работников
-				auto jt = this->_jacks.find(wid);
-				// Если работник найден
-				if((jt != this->_jacks.end()) && (this->_pids.count(pid) > 0)){
-					// Создаём объект сообщения
-					mess_t message;
-					// Смещение в буфере
-					size_t offset = 0;
-					// Устанавливаем пид процесса отправившего сообщение
-					message.pid = pid;
-					// Выполняем отправку всего сообщения частами
-					do {
-						// Выполняем определение размера отправляемого сообщения
-						message.size = ((size - offset) >= sizeof(message.payload) ? sizeof(message.payload) : (size - offset));
-						// Выполняем установку флага конца чанка
-						message.end = ((offset + message.size) == size);
-						// Выполняем зануление буфера полезной нагрузки
-						memset(message.payload, 0, sizeof(message.payload));
-						// Выполняем копирование данные полезной нагрузки
-						memcpy(message.payload, buffer + offset, message.size);
-						// Выполняем отправку сообщения дочернему процессу
-						::write(jt->second.at(this->_pids.at(pid))->mfds[1], &message, sizeof(message));
-						// Выполняем увеличение смещения в буфере
-						offset += message.size;
-					} while(offset < size);
-				}
-			// Выводим в лог сообщение
-			} else this->_log->print("transfer data size is %zu bytes, buffer size is %zu bytes", log_t::flag_t::CRITICAL, size, sizeof(mess_t::payload));
+			// Выполняем поиск работников
+			auto jt = this->_jacks.find(wid);
+			// Если работник найден
+			if((jt != this->_jacks.end()) && (this->_pids.count(pid) > 0)){
+				// Создаём объект сообщения
+				mess_t message;
+				// Смещение в буфере
+				size_t offset = 0;
+				// Устанавливаем пид процесса отправившего сообщение
+				message.pid = pid;
+				// Выполняем отправку всего сообщения частами
+				do {
+					// Выполняем определение размера отправляемого сообщения
+					message.size = ((size - offset) >= sizeof(message.payload) ? sizeof(message.payload) : (size - offset));
+					// Выполняем установку флага конца чанка
+					message.end = ((offset + message.size) == size);
+					// Выполняем зануление буфера полезной нагрузки
+					memset(message.payload, 0, sizeof(message.payload));
+					// Выполняем копирование данные полезной нагрузки
+					memcpy(message.payload, buffer + offset, message.size);
+					// Выполняем отправку сообщения дочернему процессу
+					::write(jt->second.at(this->_pids.at(pid))->mfds[1], &message, sizeof(message));
+					// Выполняем увеличение смещения в буфере
+					offset += message.size;
+				} while(offset < size);
+			}
 		}
 	/**
 	 * Если операционной системой является Windows
@@ -655,36 +651,32 @@ void awh::Cluster::send(const size_t wid, const pid_t pid, const char * buffer, 
 	#if !defined(_WIN32) && !defined(_WIN64)
 		// Если процесс является родительским
 		if((this->_pid == static_cast <pid_t> (getpid())) && (size > 0)){
-			// Если отправляемый размер данных умещается в наш буфер сообщения
-			if(size <= sizeof(mess_t::payload)){
-				// Выполняем поиск работников
-				auto jt = this->_jacks.find(wid);
-				// Если работник найден
-				if((jt != this->_jacks.end()) && (this->_pids.count(pid) > 0)){
-					// Создаём объект сообщения
-					mess_t message;
-					// Смещение в буфере
-					size_t offset = 0;
-					// Устанавливаем пид процесса отправившего сообщение
-					message.pid = this->_pid;
-					// Выполняем отправку всего сообщения частами
-					do {
-						// Выполняем определение размера отправляемого сообщения
-						message.size = ((size - offset) >= sizeof(message.payload) ? sizeof(message.payload) : (size - offset));
-						// Выполняем установку флага конца чанка
-						message.end = ((offset + message.size) == size);
-						// Выполняем зануление буфера полезной нагрузки
-						memset(message.payload, 0, sizeof(message.payload));
-						// Выполняем копирование данные полезной нагрузки
-						memcpy(message.payload, buffer + offset, message.size);
-						// Выполняем отправку сообщения дочернему процессу
-						::write(jt->second.at(this->_pids.at(pid))->cfds[1], &message, sizeof(message));
-						// Выполняем увеличение смещения в буфере
-						offset += message.size;
-					} while(offset < size);
-				}
-			// Выводим в лог сообщение
-			} else this->_log->print("transfer data size is %zu bytes, buffer size is %zu bytes", log_t::flag_t::CRITICAL, size, sizeof(mess_t::payload));
+			// Выполняем поиск работников
+			auto jt = this->_jacks.find(wid);
+			// Если работник найден
+			if((jt != this->_jacks.end()) && (this->_pids.count(pid) > 0)){
+				// Создаём объект сообщения
+				mess_t message;
+				// Смещение в буфере
+				size_t offset = 0;
+				// Устанавливаем пид процесса отправившего сообщение
+				message.pid = this->_pid;
+				// Выполняем отправку всего сообщения частами
+				do {
+					// Выполняем определение размера отправляемого сообщения
+					message.size = ((size - offset) >= sizeof(message.payload) ? sizeof(message.payload) : (size - offset));
+					// Выполняем установку флага конца чанка
+					message.end = ((offset + message.size) == size);
+					// Выполняем зануление буфера полезной нагрузки
+					memset(message.payload, 0, sizeof(message.payload));
+					// Выполняем копирование данные полезной нагрузки
+					memcpy(message.payload, buffer + offset, message.size);
+					// Выполняем отправку сообщения дочернему процессу
+					::write(jt->second.at(this->_pids.at(pid))->cfds[1], &message, sizeof(message));
+					// Выполняем увеличение смещения в буфере
+					offset += message.size;
+				} while(offset < size);
+			}
 		// Если процесс превратился в зомби
 		} else if((this->_pid != static_cast <pid_t> (getpid())) && (this->_pid != static_cast <pid_t> (getppid()))) {
 			// Выполняем остановку работы
@@ -715,41 +707,37 @@ void awh::Cluster::broadcast(const size_t wid, const char * buffer, const size_t
 	#if !defined(_WIN32) && !defined(_WIN64)
 		// Если процесс является родительским
 		if((this->_pid == static_cast <pid_t> (getpid())) && (size > 0)){
-			// Если отправляемый размер данных умещается в наш буфер сообщения
-			if(size <= sizeof(mess_t::payload)){
-				// Выполняем поиск работников
-				auto jt = this->_jacks.find(wid);
-				// Если работник найден
-				if((jt != this->_jacks.end()) && !jt->second.empty()){
-					// Создаём объект сообщения
-					mess_t message;
-					// Смещение в буфере
-					size_t offset = 0;
-					// Устанавливаем пид процесса отправившего сообщение
-					message.pid = this->_pid;
-					// Выполняем отправку всего сообщения частами
-					do {
-						// Выполняем определение размера отправляемого сообщения
-						message.size = ((size - offset) >= sizeof(message.payload) ? sizeof(message.payload) : (size - offset));
-						// Выполняем установку флага конца чанка
-						message.end = ((offset + message.size) == size);
-						// Выполняем зануление буфера полезной нагрузки
-						memset(message.payload, 0, sizeof(message.payload));
-						// Выполняем копирование данные полезной нагрузки
-						memcpy(message.payload, buffer + offset, message.size);
-						// Переходим по всем дочерним процессам
-						for(auto & jack : jt->second){
-							// Если идентификатор процесса не нулевой
-							if(jack->pid > 0)
-								// Выполняем отправку сообщения дочернему процессу
-								::write(jack->cfds[1], &message, sizeof(message));
-						}
-						// Выполняем увеличение смещения в буфере
-						offset += message.size;
-					} while(offset < size);
-				}
-			// Выводим в лог сообщение
-			} else this->_log->print("transfer data size is %zu bytes, buffer size is %zu bytes", log_t::flag_t::CRITICAL, size, sizeof(mess_t::payload));
+			// Выполняем поиск работников
+			auto jt = this->_jacks.find(wid);
+			// Если работник найден
+			if((jt != this->_jacks.end()) && !jt->second.empty()){
+				// Создаём объект сообщения
+				mess_t message;
+				// Смещение в буфере
+				size_t offset = 0;
+				// Устанавливаем пид процесса отправившего сообщение
+				message.pid = this->_pid;
+				// Выполняем отправку всего сообщения частами
+				do {
+					// Выполняем определение размера отправляемого сообщения
+					message.size = ((size - offset) >= sizeof(message.payload) ? sizeof(message.payload) : (size - offset));
+					// Выполняем установку флага конца чанка
+					message.end = ((offset + message.size) == size);
+					// Выполняем зануление буфера полезной нагрузки
+					memset(message.payload, 0, sizeof(message.payload));
+					// Выполняем копирование данные полезной нагрузки
+					memcpy(message.payload, buffer + offset, message.size);
+					// Переходим по всем дочерним процессам
+					for(auto & jack : jt->second){
+						// Если идентификатор процесса не нулевой
+						if(jack->pid > 0)
+							// Выполняем отправку сообщения дочернему процессу
+							::write(jack->cfds[1], &message, sizeof(message));
+					}
+					// Выполняем увеличение смещения в буфере
+					offset += message.size;
+				} while(offset < size);
+			}
 		// Если процесс превратился в зомби
 		} else if((this->_pid != getpid()) && (this->_pid != static_cast <pid_t> (getppid()))) {
 			// Выполняем остановку работы
