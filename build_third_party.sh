@@ -143,7 +143,7 @@ if [ ! -f "$src/.stamp_done" ]; then
 	cd "$src" || exit 1
 
 	# Версия OpenSSL
-	readonly VER="3.1.1"
+	VER="3.1.1"
 
 	# Закачиваем все изменения
 	git fetch --all
@@ -215,7 +215,7 @@ if [ ! -f "$src/.stamp_done" ]; then
 	cd "$src" || exit 1
 
 	# Версия Zlib
-	readonly VER="1.2.11"
+	VER="1.2.11"
 
 	# Переключаемся на master
 	git checkout master
@@ -269,7 +269,7 @@ if [ ! -f "$src/.stamp_done" ]; then
 	cd "$src" || exit 1
 
 	# Версия Brotli
-	readonly VER="1.0.9"
+	VER="1.0.9"
 
 	# Переключаемся на master
 	git checkout master
@@ -350,7 +350,7 @@ if [[ $LIBEVENT2 = "yes" ]]; then
 		cd "$src" || exit 1
 
 		# Версия LibEvent2
-		readonly VER="2.1.12"
+		VER="2.1.12"
 
 		# Переключаемся на master
 		git checkout master
