@@ -68,12 +68,12 @@ T & split(const string & str, const string & delim, T & container) noexcept {
 		// Выполняем удаление пробелов в начале текста
 		text.erase(text.begin(), find_if_not(text.begin(), text.end(), [](char c) -> bool {
 			// Выполняем проверку символа на наличие пробела
-			return (isspace(c) || (c == 32) || (c == 9));
+			return (isspace(c) || (c == 32) || (c == 9) || (c == ' ') || (c == '\t') || (c == '\n') || (c == '\r') || (c == '\f') || (c == '\v'));
 		}));
 		// Выполняем удаление пробелов в конце текста
 		text.erase(find_if_not(text.rbegin(), text.rend(), [](char c) -> bool {
 			// Выполняем проверку символа на наличие пробела
-			return (isspace(c) || (c == 32) || (c == 9));
+			return (isspace(c) || (c == 32) || (c == 9) || (c == ' ') || (c == '\t') || (c == '\n') || (c == '\r') || (c == '\f') || (c == '\v'));
 		}).base(), text.end());
 		// Выводим результат
 		return text;
@@ -133,12 +133,12 @@ T & split(const wstring & str, const wstring & delim, T & container) noexcept {
 		// Выполняем удаление пробелов в начале текста
 		text.erase(text.begin(), find_if_not(text.begin(), text.end(), [](wchar_t c) -> bool {
 			// Выполняем проверку символа на наличие пробела
-			return (iswspace(c) || (c == 32) || (c == 160) || (c == 173) || (c == 9));
+			return (iswspace(c) || (c == 32) || (c == 160) || (c == 173) || (c == 9) || (c == L' ') || (c == L'\t') || (c == L'\n') || (c == L'\r') || (c == L'\f') || (c == L'\v'));
 		}));
 		// Выполняем удаление пробелов в конце текста
 		text.erase(find_if_not(text.rbegin(), text.rend(), [](wchar_t c) -> bool {
 			// Выполняем проверку символа на наличие пробела
-			return (iswspace(c) || (c == 32) || (c == 160) || (c == 173) || (c == 9));
+			return (iswspace(c) || (c == 32) || (c == 160) || (c == 173) || (c == 9) || (c == L' ') || (c == L'\t') || (c == L'\n') || (c == L'\r') || (c == L'\f') || (c == L'\v'));
 		}).base(), text.end());
 		// Выводим результат
 		return text;
@@ -1156,12 +1156,12 @@ string & awh::Framework::transform(string & text, const transform_t flag) const 
 				// Выполняем удаление пробелов в начале текста
 				text.erase(text.begin(), find_if_not(text.begin(), text.end(), [](char c) -> bool {
 					// Выполняем проверку символа на наличие пробела
-					return (isspace(c) || (c == 32) || (c == 9));
+					return (isspace(c) || (c == 32) || (c == 9) || (c == ' ') || (c == '\t') || (c == '\n') || (c == '\r') || (c == '\f') || (c == '\v'));
 				}));
 				// Выполняем удаление пробелов в конце текста
 				text.erase(find_if_not(text.rbegin(), text.rend(), [](char c) -> bool {
 					// Выполняем проверку символа на наличие пробела
-					return (isspace(c) || (c == 32) || (c == 9));
+					return (isspace(c) || (c == 32) || (c == 9) || (c == ' ') || (c == '\t') || (c == '\n') || (c == '\r') || (c == '\f') || (c == '\v'));
 				}).base(), text.end());
 			} break;
 			// Если передан флаг перевода строки в верхний регистр
@@ -1213,12 +1213,12 @@ wstring & awh::Framework::transform(wstring & text, const transform_t flag) cons
 				// Выполняем удаление пробелов в начале текста
 				text.erase(text.begin(), find_if_not(text.begin(), text.end(), [](wchar_t c) -> bool {
 					// Выполняем проверку символа на наличие пробела
-					return (iswspace(c) || (c == 32) || (c == 160) || (c == 173) || (c == 9));
+					return (iswspace(c) || (c == 32) || (c == 160) || (c == 173) || (c == 9) || (c == L' ') || (c == L'\t') || (c == L'\n') || (c == L'\r') || (c == L'\f') || (c == L'\v'));
 				}));
 				// Выполняем удаление пробелов в конце текста
 				text.erase(find_if_not(text.rbegin(), text.rend(), [](wchar_t c) -> bool {
 					// Выполняем проверку символа на наличие пробела
-					return (iswspace(c) || (c == 32) || (c == 160) || (c == 173) || (c == 9));
+					return (iswspace(c) || (c == 32) || (c == 160) || (c == 173) || (c == 9) || (c == L' ') || (c == L'\t') || (c == L'\n') || (c == L'\r') || (c == L'\f') || (c == L'\v'));
 				}).base(), text.end());
 			} break;
 			// Если передан флаг перевода строки в верхний регистр
