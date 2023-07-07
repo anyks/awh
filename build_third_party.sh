@@ -142,6 +142,9 @@ if [ ! -f "$src/.stamp_done" ]; then
 	printf "\n****** OpenSSL ******\n"
 	cd "$src" || exit 1
 
+	# Версия OpenSSL
+	readonly VER="3.1.1"
+
 	# Закачиваем все изменения
 	git fetch --all
 	# Закачиваем все теги
@@ -153,9 +156,9 @@ if [ ! -f "$src/.stamp_done" ]; then
 	# Выполняем обновление данных
 	git pull origin master
 	# Удаляем старую ветку
-	git branch -D v3.1-branch
+	git branch -D v${VER}-branch
 	# Выполняем переключение на указанную версию
-	git checkout origin/openssl-3.1 -b v3.1-branch
+	git checkout -b v${VER}-branch openssl-${VER}
 
 	# Выполняем конфигурацию проекта под Linux или FreeBSD
 	if [[ $OS = "Linux" ]] || [[ $OS = "FreeBSD" ]]; then
@@ -212,16 +215,16 @@ if [ ! -f "$src/.stamp_done" ]; then
 	cd "$src" || exit 1
 
 	# Версия Zlib
-	ver="1.2.11"
+	readonly VER="1.2.11"
 
 	# Переключаемся на master
 	git checkout master
 	# Закачиваем все теги
 	git fetch --all --tags
 	# Удаляем старую ветку
-	git branch -D v${ver}-branch
+	git branch -D v${VER}-branch
 	# Выполняем переключение на указанную версию
-	git checkout tags/v${ver} -b v${ver}-branch
+	git checkout -b v${VER}-branch v${VER}
 
 	# Выполняем конфигурацию проекта
 	if [[ $OS = "Windows" ]]; then
@@ -266,16 +269,16 @@ if [ ! -f "$src/.stamp_done" ]; then
 	cd "$src" || exit 1
 
 	# Версия Brotli
-	ver="1.0.9"
+	readonly VER="1.0.9"
 
 	# Переключаемся на master
 	git checkout master
 	# Закачиваем все теги
 	git fetch --all --tags
 	# Удаляем старую ветку
-	git branch -D v${ver}-branch
+	git branch -D v${VER}-branch
 	# Выполняем переключение на указанную версию
-	git checkout tags/v${ver} -b v${ver}-branch
+	git checkout -b v${VER}-branch v${VER}
 
 	# Каталог для сборки
 	build="out"
@@ -347,16 +350,16 @@ if [[ $LIBEVENT2 = "yes" ]]; then
 		cd "$src" || exit 1
 
 		# Версия LibEvent2
-		ver="2.1.12"
+		readonly VER="2.1.12"
 
 		# Переключаемся на master
 		git checkout master
 		# Закачиваем все теги
 		git fetch --all --tags
 		# Удаляем старую ветку
-		git branch -D v${ver}-branch
+		git branch -D v${VER}-branch
 		# Выполняем переключение на указанную версию
-		git checkout tags/release-${ver}-stable -b v${ver}-branch
+		git checkout -b v${VER}-branch release-${VER}-stable
 
 		# Создаём каталог сборки
 		mkdir -p "build" || exit 1
