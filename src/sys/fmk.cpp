@@ -483,6 +483,8 @@ bool awh::Framework::is(const wchar_t letter, const check_t flag) const noexcept
 bool awh::Framework::is(const string & text, const check_t flag) const noexcept {
 	// Результат работы функции
 	bool result = false;
+	// Выполняем удаление пробелов вокруг текста
+	this->transform(text, transform_t::TRIM);
 	// Если текст передан
 	if(!text.empty()){
 		// Выполняем определение флага проверки
@@ -546,7 +548,7 @@ bool awh::Framework::is(const string & text, const check_t flag) const noexcept 
 							// Получаем следующую букву
 							const char second = text.at(index + 1);
 							// Если проверка не пройдена, проверяем на апостроф
-							if(!(result = ((letter == '-') && (first != '-') && (second != '-')))){
+							if(!(result = (((letter == '-') && (first != '-') && (second != '-')) || isspace(letter)))){
 								// Выполняем проверку на апостроф
 								result = (
 									(letter == '\'') && (((first != '\'') && (second != '\'')) ||
@@ -560,8 +562,10 @@ bool awh::Framework::is(const string & text, const check_t flag) const noexcept 
 						// Выводим результат
 						return result;
 					};
+					// Определяем конец текста
+					const uint8_t end = ((text.back() == '!') || (text.back() == '?') ? 2 : 1);
 					// Переходим по всем буквам слова
-					for(size_t i = 0, j = (text.length() - 1); j > ((text.length() / 2) - 1); i++, j--){
+					for(size_t i = 0, j = (text.length() - end); j > ((text.length() / 2) - end); i++, j--){
 						// Проверяем является ли слово латинским
 						result = (i == j ? checkFn(text, i) : checkFn(text, i) && checkFn(text, j));
 						// Если слово не соответствует тогда выходим
@@ -676,6 +680,8 @@ bool awh::Framework::is(const string & text, const check_t flag) const noexcept 
 bool awh::Framework::is(const wstring & text, const check_t flag) const noexcept {
 	// Результат работы функции
 	bool result = false;
+	// Выполняем удаление пробелов вокруг текста
+	this->transform(text, transform_t::TRIM);
 	// Если текст передан
 	if(!text.empty()){
 		// Выполняем определение флага проверки
@@ -739,7 +745,7 @@ bool awh::Framework::is(const wstring & text, const check_t flag) const noexcept
 							// Получаем следующую букву
 							const char second = text.at(index + 1);
 							// Если проверка не пройдена, проверяем на апостроф
-							if(!(result = ((letter == L'-') && (first != L'-') && (second != L'-')))){
+							if(!(result = (((letter == L'-') && (first != L'-') && (second != L'-')) || iswspace(letter)))){
 								// Выполняем проверку на апостроф
 								result = (
 									(letter == L'\'') && (((first != L'\'') && (second != L'\'')) ||
@@ -753,8 +759,10 @@ bool awh::Framework::is(const wstring & text, const check_t flag) const noexcept
 						// Выводим результат
 						return result;
 					};
+					// Определяем конец текста
+					const uint8_t end = ((text.back() == L'!') || (text.back() == L'?') ? 2 : 1);
 					// Переходим по всем буквам слова
-					for(size_t i = 0, j = (text.length() - 1); j > ((text.length() / 2) - 1); i++, j--){
+					for(size_t i = 0, j = (text.length() - end); j > ((text.length() / 2) - end); i++, j--){
 						// Проверяем является ли слово латинским
 						result = (i == j ? checkFn(text, i) : checkFn(text, i) && checkFn(text, j));
 						// Если слово не соответствует тогда выходим
