@@ -976,6 +976,27 @@ string awh::Framework::hash(const string & text, const hash_t hash) const noexce
 				// Удаляем последний символ
 				result.pop_back();
 			} break;
+			// Если тип хэш-суммы указан как SHA224
+			case static_cast <uint8_t> (hash_t::SHA224): {
+				// Создаем контекст
+				SHA256_CTX ctx;
+				// Выполняем инициализацию контекста
+				SHA224_Init(&ctx);
+				// Выделяем память для промежуточных значений
+				digest.resize(28, 0);
+				// Выделяем память для буфера данных
+				result.resize(57, 0);
+				// Выполняем расчет суммы
+				SHA224_Update(&ctx, text.c_str(), text.length());
+				// Копируем полученные данные
+				SHA224_Final(digest.data(), &ctx);
+				// Заполняем строку данными SHA224
+				for(uint8_t i = 0; i < 28; i++)
+					// Формируем данные SHA224-хэша
+					sprintf(&result[i * 2], "%02x", static_cast <u_int> (digest[i]));
+				// Удаляем последний символ
+				result.pop_back();
+			} break;
 			// Если тип хэш-суммы указан как SHA256
 			case static_cast <uint8_t> (hash_t::SHA256): {
 				// Создаем контекст
@@ -993,6 +1014,27 @@ string awh::Framework::hash(const string & text, const hash_t hash) const noexce
 				// Заполняем строку данными SHA256
 				for(uint8_t i = 0; i < 32; i++)
 					// Формируем данные SHA256-хэша
+					sprintf(&result[i * 2], "%02x", static_cast <u_int> (digest[i]));
+				// Удаляем последний символ
+				result.pop_back();
+			} break;
+			// Если тип хэш-суммы указан как SHA384
+			case static_cast <uint8_t> (hash_t::SHA384): {
+				// Создаем контекст
+				SHA512_CTX ctx;
+				// Выполняем инициализацию контекста
+				SHA384_Init(&ctx);
+				// Выделяем память для промежуточных значений
+				digest.resize(48, 0);
+				// Выделяем память для буфера данных
+				result.resize(97, 0);
+				// Выполняем расчет суммы
+				SHA384_Update(&ctx, text.c_str(), text.length());
+				// Копируем полученные данные
+				SHA384_Final(digest.data(), &ctx);
+				// Заполняем строку данными SHA384
+				for(uint8_t i = 0; i < 48; i++)
+					// Формируем данные SHA384-хэша
 					sprintf(&result[i * 2], "%02x", static_cast <u_int> (digest[i]));
 				// Удаляем последний символ
 				result.pop_back();
@@ -1063,6 +1105,19 @@ string awh::Framework::hash(const string & key, const string & text, const hash_
 				// Удаляем последний символ
 				result.pop_back();
 			} break;
+			// Если тип хэш-суммы указан как HMAC_SHA224
+			case static_cast <uint8_t> (hash_t::HMAC_SHA224): {
+				// Выделяем память для буфера данных
+				result.resize(57, 0);
+				// Выполняем получение подписи
+				const u_char * digest = HMAC(EVP_sha224(), key.data(), key.size(), reinterpret_cast <const u_char *> (text.data()), text.size(), nullptr, nullptr);
+				// Заполняем строку данными SHA224
+				for(uint8_t i = 0; i < 28; i++)
+					// Формируем данные SHA224-хэша
+					sprintf(&result[i * 2], "%02x", static_cast <u_int> (digest[i]));
+				// Удаляем последний символ
+				result.pop_back();
+			} break;
 			// Если тип хэш-суммы указан как HMAC_SHA256
 			case static_cast <uint8_t> (hash_t::HMAC_SHA256): {
 				// Выделяем память для буфера данных
@@ -1072,6 +1127,19 @@ string awh::Framework::hash(const string & key, const string & text, const hash_
 				// Заполняем строку данными SHA256
 				for(uint8_t i = 0; i < 32; i++)
 					// Формируем данные SHA256-хэша
+					sprintf(&result[i * 2], "%02x", static_cast <u_int> (digest[i]));
+				// Удаляем последний символ
+				result.pop_back();
+			} break;
+			// Если тип хэш-суммы указан как HMAC_SHA384
+			case static_cast <uint8_t> (hash_t::HMAC_SHA384): {
+				// Выделяем память для буфера данных
+				result.resize(97, 0);
+				// Выполняем получение подписи
+				const u_char * digest = HMAC(EVP_sha384(), key.data(), key.size(), reinterpret_cast <const u_char *> (text.data()), text.size(), nullptr, nullptr);
+				// Заполняем строку данными SHA384
+				for(uint8_t i = 0; i < 48; i++)
+					// Формируем данные SHA384-хэша
 					sprintf(&result[i * 2], "%02x", static_cast <u_int> (digest[i]));
 				// Удаляем последний символ
 				result.pop_back();
@@ -2351,7 +2419,7 @@ string awh::Framework::icon(const bool end) const noexcept {
 }
 /**
  * bytes Метод конвертации байт в строку
- * @param value количество байт
+ * @param value количество байт (KB, MB, GB, TB)
  * @return      полученная строка
  */
 string awh::Framework::bytes(const double value) const noexcept {
@@ -2480,9 +2548,8 @@ size_t awh::Framework::sizeBuffer(const string & str) const noexcept {
 	*
 	* 0.04 - Пропускная способность сети 40 милисекунд
 	* 100 - Скорость в мегабитах (Мб) на пользователя
-	* 8 - Количество бит в байте
-	* 1024000 - количество байт в мегабайте
-	* (2 * 0.04) * ((100 * 1024000) / 8)  = 1000 байт
+	* 125000 - количество байт в мегабите
+	* (2 * 0.04) * (100 * 125000) = 1 МБ
 	*
 	*/
 	// Размер количество байт
@@ -2497,18 +2564,18 @@ size_t awh::Framework::sizeBuffer(const string & str) const noexcept {
 		float speed = ::stof(match[1]);
 		// Проверяем являются ли переданные данные байтами (8, 16, 32, 64, 128, 256, 512, 1024 ...)
 		bool isbite = !::fmod(speed / 8.0f, 2.0f);
-		// Если это байты
-		if(match[2].compare("bps") == 0) dimension = 1.0f;
+		// Если это биты
+		if(match[2].compare("bps") == 0) dimension = 0.125f;
 		// Если это размерность в киллобитах
-		else if(match[2].compare("kbps") == 0) dimension = (isbite ? 1000.0f : 1024.0f);
+		else if(match[2].compare("kbps") == 0) dimension = (isbite ? 100.0f : 125.0f);
 		// Если это размерность в мегабитах
-		else if(match[2].compare("Mbps") == 0) dimension = (isbite ? 1000000.0f : 1048576.0f);
+		else if(match[2].compare("Mbps") == 0) dimension = (isbite ? 100000.0f : 125000.0f);
 		// Если это размерность в гигабитах
-		else if(match[2].compare("Gbps") == 0) dimension = (isbite ? 1000000000.0f : 1073741824.0f);
+		else if(match[2].compare("Gbps") == 0) dimension = (isbite ? 1000000000.0f : 2500000000.0f);
 		// Размер буфера по умолчанию
 		size = static_cast <size_t> (speed);
 		// Если скорость установлена тогда расчитываем размер буфера
-		if(speed > -1.0f) size = (2.0f * 0.04f) * ((speed * dimension) / 8.0f);
+		if(speed > -1.0f) size = ((2.0f * .04f) * (speed * dimension));
 	}
 	// Выводим результат
 	return size;

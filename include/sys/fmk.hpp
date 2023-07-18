@@ -86,12 +86,16 @@ namespace awh {
 				NONE        = 0x00, // Не установлено
 				MD5         = 0x01, // Хэш MD5
 				SHA1        = 0x02, // Хэш SHA1
-				SHA256      = 0x03, // Хэш SHA256
-				SHA512      = 0x04, // Хэш SHA512
-				HMAC_MD5    = 0x05, // Хэш HMAC MD5
-				HMAC_SHA1   = 0x06, // Хэш HMAC SHA1
-				HMAC_SHA256 = 0x07, // Хэш HMAC SHA256
-				HMAC_SHA512 = 0x08  // Хэш HMAC SHA512
+				SHA224      = 0x03, // Хэш SHA224
+				SHA256      = 0x04, // Хэш SHA256
+				SHA384      = 0x05, // Хэш SHA384
+				SHA512      = 0x06, // Хэш SHA512
+				HMAC_MD5    = 0x07, // Хэш HMAC MD5
+				HMAC_SHA1   = 0x08, // Хэш HMAC SHA1
+				HMAC_SHA224 = 0x09, // Хэш HMAC SHA224
+				HMAC_SHA256 = 0x0A, // Хэш HMAC SHA256
+				HMAC_SHA384 = 0x0B, // Хэш HMAC SHA384
+				HMAC_SHA512 = 0x0C  // Хэш HMAC SHA512
 			};
 			/**
 			 * os_t Названия поддерживаемых операционных систем
@@ -626,7 +630,7 @@ namespace awh {
 			string bytes(const double value) const noexcept;
 			/**
 			 * bytes Метод получения размера в байтах из строки
-			 * @param str строка обозначения размерности
+			 * @param str строка обозначения размерности (KB, MB, GB, TB)
 			 * @return    размер в байтах
 			 */
 			size_t bytes(const string & str) const noexcept;
