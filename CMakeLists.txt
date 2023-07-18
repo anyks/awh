@@ -21,7 +21,10 @@ message(STATUS "Build Type: ${CMAKE_BUILD_TYPE}\n")
 # Сборка модуля AWH_IDN
 if(CMAKE_BUILD_IDN)
     add_compile_definitions(AWH_IDN)
-    message(STATUS "Build AWH IDN: ${CMAKE_BUILD_IDN}\n")
+    message(STATUS "Build AWH IDN: YES\n")
+# Сборка модуля AWH_IDN не требуется
+else()
+    message(STATUS "Build AWH IDN: NO\n")
 endif()
 
 # Сборка модуля AWH_EVENT2
