@@ -537,7 +537,7 @@ if [[ $IDN = "yes" ]] && [[ ! $OS = "Windows" ]]; then
 			fi
 
 			# Выполняем сборку проекта
-			$BUILD -j"$numproc" || exit 1
+			$BUILD || exit 1
 			# Выполняем установку проекта
 			$BUILD install || exit 1
 
@@ -583,7 +583,7 @@ if [[ $IDN = "yes" ]] && [[ ! $OS = "Windows" ]]; then
 			 --libdir="$PREFIX/lib"
 
 			# Выполняем сборку проекта
-			$BUILD -j"$numproc" || exit 1
+			$BUILD || exit 1
 			# Выполняем установку проекта
 			$BUILD install || exit 1
 
