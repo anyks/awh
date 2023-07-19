@@ -426,12 +426,12 @@ void awh::server::WEB::actionDisconnect(const size_t aid) noexcept {
 			if(adj->action == web_scheme_t::action_t::DISCONNECT)
 				// Выполняем сброс экшена
 				adj->action = web_scheme_t::action_t::NONE;
-			// Выполняем удаление параметров адъютанта
-			this->_scheme.rm(aid);
 			// Если функция обратного вызова установлена, выполняем
 			if(this->_callback.active != nullptr)
 				// Выполняем функцию обратного вызова
 				this->_callback.active(aid, mode_t::DISCONNECT, this);
+			// Выполняем удаление параметров адъютанта
+			this->_scheme.rm(aid);
 		}
 	}
 }
