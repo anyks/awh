@@ -967,23 +967,26 @@ void awh::server::Proxy::start() noexcept {
  * @param aid идентификатор адъютанта
  */
 void awh::server::Proxy::close(const size_t aid) noexcept {
-	// Получаем параметры подключения адъютанта
-	proxy_scheme_t::coffer_t * adj = const_cast <proxy_scheme_t::coffer_t *> (this->_scheme.get(aid));
-	// Если параметры подключения адъютанта получены, устанавливаем флаг закрытия подключения
-	if(adj != nullptr){
-		// Выполняем отключение всех дочерних адъютантов
-		this->_core.client.close(adj->scheme.getAid());
-		// Удаляем схему сети из сетевого ядра
-		this->_core.client.remove(adj->scheme.sid);
+	// Если идентификатор адъютанта существует
+	if(aid > 0){
+		// Если функция обратного вызова установлена
+		if(this->_callback.active != nullptr)
+			// Выполняем функцию обратного вызова
+			this->_callback.active(aid, mode_t::DISCONNECT, this);
+		// Получаем параметры подключения адъютанта
+		proxy_scheme_t::coffer_t * adj = const_cast <proxy_scheme_t::coffer_t *> (this->_scheme.get(aid));
+		// Если параметры подключения адъютанта получены, устанавливаем флаг закрытия подключения
+		if(adj != nullptr){
+			// Выполняем отключение всех дочерних адъютантов
+			this->_core.client.close(adj->scheme.getAid());
+			// Удаляем схему сети из сетевого ядра
+			this->_core.client.remove(adj->scheme.sid);
+		}
+		// Отключаем адъютанта от сервера
+		this->_core.server.close(aid);
+		// Выполняем удаление параметров адъютанта
+		if(adj != nullptr) this->_scheme.rm(aid);
 	}
-	// Отключаем адъютанта от сервера
-	this->_core.server.close(aid);
-	// Выполняем удаление параметров адъютанта
-	if(adj != nullptr) this->_scheme.rm(aid);
-	// Если функция обратного вызова установлена
-	if(this->_callback.active != nullptr)
-		// Выполняем функцию обратного вызова
-		this->_callback.active(aid, mode_t::DISCONNECT, this);
 }
 /**
  * waitTimeDetect Метод детекции сообщений по количеству секунд

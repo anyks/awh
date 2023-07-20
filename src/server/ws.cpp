@@ -655,8 +655,12 @@ void awh::server::WebSocket::actionConnect(const size_t aid) noexcept {
  * @param aid идентификатор адъютанта
  */
 void awh::server::WebSocket::actionDisconnect(const size_t aid) noexcept {
-	// Если данные существуют
+	// Если идентификатор адъютанта существует
 	if(aid > 0){
+		// Если функция обратного вызова установлена, выполняем
+		if(this->_callback.active != nullptr)
+			// Выполняем функцию обратного вызова
+			this->_callback.active(aid, mode_t::DISCONNECT, this);
 		// Получаем параметры подключения адъютанта
 		ws_scheme_t::coffer_t * adj = const_cast <ws_scheme_t::coffer_t *> (this->_scheme.get(aid));
 		// Если параметры подключения адъютанта получены
@@ -667,10 +671,6 @@ void awh::server::WebSocket::actionDisconnect(const size_t aid) noexcept {
 				adj->action = ws_scheme_t::action_t::NONE;
 			// Выполняем удаление параметров адъютанта
 			this->_scheme.rm(aid);
-			// Если функция обратного вызова установлена, выполняем
-			if(this->_callback.active != nullptr)
-				// Выполняем функцию обратного вызова
-				this->_callback.active(aid, mode_t::DISCONNECT, this);
 		}
 	}
 }

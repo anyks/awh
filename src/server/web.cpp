@@ -414,8 +414,12 @@ void awh::server::WEB::actionConnect(const size_t aid) noexcept {
  * @param aid идентификатор адъютанта
  */
 void awh::server::WEB::actionDisconnect(const size_t aid) noexcept {
-	// Если данные существуют
+	// Если идентификатор адъютанта существует
 	if(aid > 0){
+		// Если функция обратного вызова установлена, выполняем
+		if(this->_callback.active != nullptr)
+			// Выполняем функцию обратного вызова
+			this->_callback.active(aid, mode_t::DISCONNECT, this);
 		// Получаем параметры подключения адъютанта
 		web_scheme_t::coffer_t * adj = const_cast <web_scheme_t::coffer_t *> (this->_scheme.get(aid));
 		// Если параметры подключения адъютанта получены
@@ -426,10 +430,6 @@ void awh::server::WEB::actionDisconnect(const size_t aid) noexcept {
 			if(adj->action == web_scheme_t::action_t::DISCONNECT)
 				// Выполняем сброс экшена
 				adj->action = web_scheme_t::action_t::NONE;
-			// Если функция обратного вызова установлена, выполняем
-			if(this->_callback.active != nullptr)
-				// Выполняем функцию обратного вызова
-				this->_callback.active(aid, mode_t::DISCONNECT, this);
 			// Выполняем удаление параметров адъютанта
 			this->_scheme.rm(aid);
 		}
