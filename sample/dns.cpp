@@ -33,15 +33,21 @@ int main(int argc, char * argv[]){
 	log.name("DNS");
 	// Устанавливаем формат времени
 	log.format("%H:%M:%S %d.%m.%Y");
+	// Флаг получения данных
+	bool success = false;
 	// Выполняем резолвинг для доменного имени
-	core.resolve("google.com", scheme_t::family_t::IPV4, [&log](const string & ip, const scheme_t::family_t family, core_t * core){
+	core.resolve("google.com", scheme_t::family_t::IPV4, [&log, &success](const string & ip, const scheme_t::family_t family, core_t * core){
+		// Запоминаем, что результат получен
+		success = true;
 		// Выводим результат получения IP адреса
 		log.print("IP: %s", log_t::flag_t::INFO, ip.c_str());
 		// Завершаем работу
 		core->stop();
 	});
-	// Выполняем запуск таймера
-	core.start();
+	// Если результат ещё не получен
+	if(!success)
+		// Выполняем запуск таймера
+		core.start();
 	// Выводим результат
 	return 0;
 }
