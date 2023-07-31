@@ -1601,6 +1601,22 @@ void awh::Core::family(const scheme_t::family_t family) noexcept {
 	}
 }
 /**
+ * clearDNS Метод сброса кэша резолвера
+ * @return результат работы функции
+ */
+bool awh::Core::clearDNS() noexcept {
+	// Выполняем сброс кэша резолвера
+	return this->dns.clear();
+}
+/**
+ * flushDNS Метод сброса кэша DNS резолвера
+ * @return результат работы функции
+ */
+bool awh::Core::flushDNS() noexcept {
+	// Выполняем очистку кэша DNS резолвера
+	return this->dns.flush();
+}
+/**
  * clearBlackListDNS Метод очистки чёрного списка
  * @param family тип протокола интернета (IPV4 / IPV6)
  */

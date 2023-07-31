@@ -600,6 +600,16 @@ namespace awh {
 			void family(const scheme_t::family_t family = scheme_t::family_t::IPV4) noexcept;
 		public:
 			/**
+			 * clearDNS Метод сброса кэша резолвера
+			 * @return результат работы функции
+			 */
+			bool clearDNS() noexcept;
+			/**
+			 * flushDNS Метод сброса кэша DNS резолвера
+			 * @return результат работы функции
+			 */
+			bool flushDNS() noexcept;
+			/**
 			 * clearBlackListDNS Метод очистки чёрного списка
 			 * @param family тип протокола интернета (IPV4 / IPV6)
 			 */

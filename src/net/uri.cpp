@@ -446,7 +446,7 @@ map <awh::URI::flag_t, string> awh::URI::split(const string & uri) const noexcep
 	// Если URI передан
 	if(!uri.empty()){
 		// Выполняем проверку электронной почты
-		const auto & match = this->_regexp.exec(uri, this->_uri);
+		const auto & match = this->_regexp.exec(this->_fmk->replace(uri, " ", "%20"), this->_uri);
 		// Если результат получен
 		if(!match.empty()){
 			// Если данные пришли в правильном формате
