@@ -65,19 +65,28 @@ namespace awh {
 				// Запускаем бесконечный цикл
 				for(;;){
 					// Создаём текущее задание
-					function <void()> task;
+					function <void (void)> task;
 					// Ожидаем своей задачи в очереди потоков
 					{
 						// Выполняем блокировку уникальным мютексом
 						unique_lock <mutex> lock(this->queueMutex);
 						// Если это не остановка приложения и список задач пустой, ожидаем добавления нового задания
-						this->condition.wait(lock, [this]{return this->stop || !this->tasks.empty();});
+						this->condition.wait_for(lock, 100ms, [this]() noexcept -> bool {
+							// Если данные получены или произошла остановка
+							return (this->stop || !this->tasks.empty());
+						});
 						// Если это остановка приложения и список задач пустой, выходим
-						if(this->stop && this->tasks.empty()) return;
-						// Получаем текущее задание
-						task = std::move(this->tasks.front());
-						// Удаляем текущее задание
-						this->tasks.pop();
+						if(this->stop && this->tasks.empty())
+							// Выходим из функции
+							return;
+						// Если данные в очереди существуют
+						if(!this->tasks.empty()){
+							// Получаем текущее задание
+							task = std::move(this->tasks.front());
+							// Удаляем текущее задание
+							this->tasks.pop();
+						// Иначе выполняем пропуск
+						} else continue;
 					}
 					// Задача появилась, исполняем ее и сообщаем о том, что задача выбрана из очереди
 					task();

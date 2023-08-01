@@ -68,7 +68,7 @@ namespace awh {
 						// Выполняем блокировку уникальным мютексом
 						unique_lock <mutex> lock(this->_mtx1);
 						// Выполняем ожидание на поступление новых заданий
-						this->_cv.wait(lock, std::bind(&Child::checkInputData, this));
+						this->_cv.wait_for(lock, 100ms, std::bind(&Child::checkInputData, this));
 						// Если произведена остановка выходим
 						if(this->_stop) break;
 						// Если данные в очереди существуют
