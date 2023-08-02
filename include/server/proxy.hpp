@@ -158,18 +158,18 @@ namespace awh {
 				const log_t * _log;
 			private:
 				/**
-				 * runCallback Функция обратного вызова при активации ядра сервера
-				 * @param mode флаг запуска/остановки
-				 * @param core объект сетевого ядра
-				 */
-				void runCallback(const bool mode, awh::core_t * core) noexcept;
-			private:
-				/**
 				 * chunking Метод обработки получения чанков
 				 * @param chunk бинарный буфер чанка
 				 * @param http  объект модуля HTTP
 				 */
 				void chunking(const vector <char> & chunk, const awh::http_t * http) noexcept;
+			private:
+				/**
+				 * runCallback Функция обратного вызова при активации ядра сервера
+				 * @param status флаг запуска/остановки
+				 * @param core   объект сетевого ядра
+				 */
+				void runCallback(const awh::core_t::status_t status, awh::core_t * core) noexcept;
 			private:
 				/**
 				 * persistServerCallback Функция персистентного вызова

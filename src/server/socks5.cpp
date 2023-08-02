@@ -17,16 +17,25 @@
 
 /**
  * runCallback Функция обратного вызова при активации ядра сервера
- * @param mode флаг запуска/остановки
- * @param core объект сетевого ядра
+ * @param status флаг запуска/остановки
+ * @param core   объект сетевого ядра
  */
-void awh::server::ProxySocks5::runCallback(const bool mode, awh::core_t * core) noexcept {
+void awh::server::ProxySocks5::runCallback(const awh::core_t::status_t status, awh::core_t * core) noexcept {
 	// Если данные существуют
 	if(core != nullptr){
-		// Выполняем биндинг базы событий для клиента
-		if(mode) this->_core.server.bind(reinterpret_cast <awh::core_t *> (&this->_core.client));
-		// Выполняем анбиндинг базы событий клиента
-		else this->_core.server.unbind(reinterpret_cast <awh::core_t *> (&this->_core.client));
+		// Определяем статус активности сетевого ядра
+		switch(static_cast <uint8_t> (status)){
+			// Если система запущена
+			case static_cast <uint8_t> (awh::core_t::status_t::START):
+				// Выполняем биндинг базы событий для клиента
+				this->_core.server.bind(reinterpret_cast <awh::core_t *> (&this->_core.client));
+			break;
+			// Если система остановлена
+			case static_cast <uint8_t> (awh::core_t::status_t::STOP):
+				// Выполняем анбиндинг базы событий клиента
+				this->_core.server.unbind(reinterpret_cast <awh::core_t *> (&this->_core.client));
+			break;
+		}
 	}
 }
 /**

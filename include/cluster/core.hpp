@@ -68,6 +68,9 @@ namespace awh {
 				// Флаг автоматического перезапуска упавших процессов
 				bool _clusterAutoRestart;
 			private:
+				// Функция обратного вызова при запуске/остановке модуля
+				function <void (const status_t, awh::core_t *)> _activeClusterFn;
+			private:
 				// Объект для работы с логами
 				const log_t * _log;
 			private:
@@ -75,6 +78,13 @@ namespace awh {
 				function <void (const worker_t, const pid_t, const cluster_t::event_t)> _eventsFn;
 				// Функция обратного вызова при получении сообщения
 				function <void (const worker_t, const pid_t, const char *, const size_t)> _messageFn;
+			private:
+				/**
+				 * active Метод вывода статуса работы сетевого ядра
+				 * @param status флаг запуска сетевого ядра
+				 * @param core   объект сетевого ядра
+				 */
+				void active(const status_t status, awh::core_t * core) noexcept;
 			private:
 				/**
 				 * cluster Метод информирования о статусе кластера
@@ -121,6 +131,15 @@ namespace awh {
 				void broadcast(const char * buffer, const size_t size) const noexcept;
 			public:
 				/**
+				 * stop Метод остановки клиента
+				 */
+				void stop() noexcept;
+				/**
+				 * start Метод запуска клиента
+				 */
+				void start() noexcept;
+			public:
+				/**
 				 * on Метод установки функции обратного вызова при получении события
 				 * @param callback функция обратного вызова для установки
 				 */
@@ -130,15 +149,6 @@ namespace awh {
 				 * @param callback функция обратного вызова для установки
 				 */
 				void on(function <void (const worker_t, const pid_t, const char *, const size_t)> callback) noexcept;
-			public:
-				/**
-				 * end Метод остановки кластера
-				 */
-				void end() noexcept;
-				/**
-				 * run Метод запуска кластера
-				 */
-				void run() noexcept;
 			public:
 				/**
 				 * clusterAsync Метод установки флага асинхронного режима работы

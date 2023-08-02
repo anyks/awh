@@ -114,10 +114,10 @@ namespace awh {
 			private:
 				/**
 				 * runCallback Функция обратного вызова при активации ядра сервера
-				 * @param mode флаг запуска/остановки
-				 * @param core объект сетевого ядра
+				 * @param status флаг запуска/остановки
+				 * @param core   объект сетевого ядра
 				 */
-				void runCallback(const bool mode, awh::core_t * core) noexcept;
+				void runCallback(const awh::core_t::status_t status, awh::core_t * core) noexcept;
 			private:
 				/**
 				 * openServerCallback Функция обратного вызова при запуске работы

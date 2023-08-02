@@ -411,10 +411,15 @@ void awh::Core::launching() noexcept {
 		// Выполняем все функции обратного вызова
 		callback.bind <const size_t, core_t *> ();
 	}
-	// Если функция обратного вызова установлена, выполняем
-	if(this->_active != nullptr)
+	// Если функция обратного вызова установлена
+	if(this->_activeFn != nullptr){
+		// Если нужно запустить функцию в основном потоке
+		if(!this->activeOnTrhead)
+			// Выполняем запуск функции в основном потоке
+			this->_activeFn(status_t::START, this);
 		// Выводим результат в отдельном потоке
-		std::thread(this->_active, true, this).detach();
+		else std::thread(this->_activeFn, status_t::START, this).detach();
+	}
 	// Выводим в консоль информацию
 	if(!this->noinfo) this->log->print("[+] start service: pid = %u", log_t::flag_t::INFO, getpid());
 	// Если таймер периодического запуска коллбека активирован, запускаем персистентную работу
@@ -445,10 +450,15 @@ void awh::Core::closedown() noexcept {
 		this->_timer.io.stop();
 	// Выполняем отключение всех адъютантов
 	this->close();
-	// Если функция обратного вызова установлена, выполняем
-	if(this->_active != nullptr)
+	// Если функция обратного вызова установлена
+	if(this->_activeFn != nullptr){
+		// Если нужно запустить функцию в основном потоке
+		if(!this->activeOnTrhead)
+			// Выполняем запуск функции в основном потоке
+			this->_activeFn(status_t::STOP, this);
 		// Выводим результат в отдельном потоке
-		std::thread(this->_active, false, this).detach();
+		else std::thread(this->_activeFn, status_t::STOP, this).detach();
+	}
 	// Выводим в консоль информацию
 	if(!this->noinfo) this->log->print("[-] stop service: pid = %u", log_t::flag_t::INFO, getpid());
 }
@@ -533,9 +543,9 @@ void awh::Core::signal(const int signal) noexcept {
 	// Если процесс является родительским
 	} else {
 		// Если функция обратного вызова установлена
-		if(this->_crash != nullptr)
+		if(this->_crashFn != nullptr)
 			// Выполняем функцию обратного вызова
-			this->_crash(signal);
+			this->_crashFn(signal);
 		// Выходим из приложения
 		else exit(signal);
 	}
@@ -651,17 +661,17 @@ void awh::Core::crash(function <void (const int)> callback) noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->_mtx.main);
 	// Устанавливаем функцию обратного вызова
-	this->_crash = callback;
+	this->_crashFn = callback;
 }
 /**
  * callback Метод установки функции обратного вызова при запуске/остановки работы модуля
  * @param callback функция обратного вызова для установки
  */
-void awh::Core::callback(function <void (const bool, Core *)> callback) noexcept {
+void awh::Core::callback(function <void (const status_t, Core *)> callback) noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->_mtx.main);
 	// Устанавливаем функцию обратного вызова
-	this->_active = callback;
+	this->_activeFn = callback;
 }
 /**
  * stop Метод остановки клиента
@@ -1926,8 +1936,9 @@ awh::Core::Core(const fmk_t * fmk, const log_t * log, const scheme_t::family_t f
  pid(getpid()), net(fmk, log), uri(fmk, &net), engine(fmk, log, &uri),
  dns(fmk, log, &net), dispatch(this), _fs(fmk, log), _sig(dispatch.base),
  status(status_t::STOP), type(engine_t::type_t::CLIENT), _signals(signals_t::DISABLED),
- mode(false), noinfo(false), persist(false), cores(0), servName(AWH_SHORT_NAME),
- _persIntvl(PERSIST_INTERVAL), fmk(fmk), log(log), _crash(nullptr), _active(nullptr) {
+ mode(false), noinfo(false), persist(false), activeOnTrhead(true),
+ cores(0), servName(AWH_SHORT_NAME), _persIntvl(PERSIST_INTERVAL),
+ fmk(fmk), log(log), _crashFn(nullptr), _activeFn(nullptr) {
 	// Устанавливаем тип сокета
 	this->settings.sonet = sonet;
 	// Устанавливаем тип активного интернет-подключения

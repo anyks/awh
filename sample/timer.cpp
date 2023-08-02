@@ -64,24 +64,31 @@ class Timer {
 		}
 		/**
 		 * run Метод запуска сетевого ядра
-		 * @param mode флаг запуска сетевого ядра
-		 * @param core объект сетевого ядра
+		 * @param status флаг запуска сетевого ядра
+		 * @param core   объект сетевого ядра
 		 */
-		void run(const bool mode, Core * core){
-			// Если система запущена
-			if(mode){
-				// Замеряем время начала работы для таймера
-				this->ts = chrono::system_clock::now();
-				// Замеряем время начала работы для интервала времени
-				this->is = chrono::system_clock::now();
-				// Выводим информацию в лог
-				this->_log->print("%s", log_t::flag_t::INFO, "Start timer");
-				// Устанавливаем задержку времени на 10 секунд
-				core->setTimeout(10000, (function <void (const u_short, core_t *)>) bind(&Timer::timeout, this, _1, _2));
-				// Устанавливаем интервал времени времени на 5 секунд
-				core->setInterval(5000, (function <void (const u_short, core_t *)>) bind(&Timer::interval, this, _1, _2));
-			// Выводим информацию в лог
-			} else this->_log->print("%s", log_t::flag_t::INFO, "Stop timer");
+		void run(const awh::core_t::status_t status, Core * core){
+			// Определяем статус активности сетевого ядра
+			switch(static_cast <uint8_t> (status)){
+				// Если система запущена
+				case static_cast <uint8_t> (awh::core_t::status_t::START): {
+					// Замеряем время начала работы для таймера
+					this->ts = chrono::system_clock::now();
+					// Замеряем время начала работы для интервала времени
+					this->is = chrono::system_clock::now();
+					// Выводим информацию в лог
+					this->_log->print("%s", log_t::flag_t::INFO, "Start timer");
+					// Устанавливаем задержку времени на 10 секунд
+					core->setTimeout(10000, (function <void (const u_short, core_t *)>) bind(&Timer::timeout, this, _1, _2));
+					// Устанавливаем интервал времени времени на 5 секунд
+					core->setInterval(5000, (function <void (const u_short, core_t *)>) bind(&Timer::interval, this, _1, _2));
+				} break;
+				// Если система остановлена
+				case static_cast <uint8_t> (awh::core_t::status_t::STOP):
+					// Выводим информацию в лог
+					this->_log->print("%s", log_t::flag_t::INFO, "Stop timer");
+				break;
+			}
 		}
 	public:
 		/**
@@ -111,7 +118,7 @@ int main(int argc, char * argv[]){
 	// Устанавливаем формат времени
 	log.format("%H:%M:%S %d.%m.%Y");
 	// Устанавливаем функцию обратного вызова на запуск системы
-	core.callback((function <void (const bool, core_t *)>) bind(&Timer::run, &executor, _1, _2));
+	core.callback((function <void (const awh::core_t::status_t, core_t *)>) bind(&Timer::run, &executor, _1, _2));
 	// Выполняем запуск таймера
 	core.start();
 	// Выводим результат

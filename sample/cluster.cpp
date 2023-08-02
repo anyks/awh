@@ -79,24 +79,24 @@ class Executor {
 		}
 		/**
 		 * run Метод запуска сетевого ядра
-		 * @param mode флаг запуска сетевого ядра
-		 * @param core объект сетевого ядра
+		 * @param status флаг запуска сетевого ядра
+		 * @param core   объект сетевого ядра
 		 */
-		void run(const bool mode, core_t * core){
-			// Если система запущена
-			if(mode){
-				// Выполняем установку сетевого ядра
-				this->_core = dynamic_cast <cluster::core_t *> (core);
-				// Выполняем запуск кластера
-				this->_core->run();
-				// Выводим информацию в лог
-				this->_log->print("%s", log_t::flag_t::INFO, "Start cluster");
-			// Если система остановлена
-			} else {
-				// Выполняем остановку кластера
-				this->_core->end();
-				// Выводим информацию в лог
-				this->_log->print("%s", log_t::flag_t::INFO, "Stop cluster");
+		void run(const awh::core_t::status_t status, core_t * core){
+			// Определяем статус активности сетевого ядра
+			switch(static_cast <uint8_t> (status)){
+				// Если система запущена
+				case static_cast <uint8_t> (awh::core_t::status_t::START): {
+					// Выполняем установку сетевого ядра
+					this->_core = dynamic_cast <cluster::core_t *> (core);
+					// Выводим информацию в лог
+					this->_log->print("%s", log_t::flag_t::INFO, "Start cluster");
+				} break;
+				// Если система остановлена
+				case static_cast <uint8_t> (awh::core_t::status_t::STOP):
+					// Выводим информацию в лог
+					this->_log->print("%s", log_t::flag_t::INFO, "Stop cluster");
+				break;
 			}
 		}
 	public:
@@ -131,7 +131,7 @@ int main(int argc, char * argv[]){
 	// Разрешаем выполнять автоматический перезапуск упавшего процесса
 	core.clusterAutoRestart(true);
 	// Устанавливаем функцию обратного вызова на запуск системы
-	core.callback((function <void (const bool, core_t *)>) bind(&Executor::run, &executor, _1, _2));
+	core.callback((function <void (const awh::core_t::status_t, core_t *)>) bind(&Executor::run, &executor, _1, _2));
 	// Устанавливаем функцию обратного вызова при получении событий
 	core.on((function <void (const cluster::core_t::worker_t, const pid_t, const cluster_t::event_t)>) bind(&Executor::events, &executor, _1, _2, _3));
 	// Устанавливаем функцию обработки входящих сообщений

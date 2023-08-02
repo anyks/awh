@@ -16,20 +16,6 @@
 #include <server/proxy.hpp>
 
 /**
- * runCallback Функция обратного вызова при активации ядра сервера
- * @param mode флаг запуска/остановки
- * @param core объект сетевого ядра
- */
-void awh::server::Proxy::runCallback(const bool mode, awh::core_t * core) noexcept {
-	// Если данные существуют
-	if(core != nullptr){
-		// Выполняем биндинг базы событий для клиента
-		if(mode) this->_core.server.bind(reinterpret_cast <awh::core_t *> (&this->_core.client));
-		// Выполняем анбиндинг базы событий клиента
-		else this->_core.server.unbind(reinterpret_cast <awh::core_t *> (&this->_core.client));
-	}
-}
-/**
  * chunking Метод обработки получения чанков
  * @param chunk бинарный буфер чанка
  * @param http  объект модуля HTTP
@@ -37,6 +23,29 @@ void awh::server::Proxy::runCallback(const bool mode, awh::core_t * core) noexce
 void awh::server::Proxy::chunking(const vector <char> & chunk, const awh::http_t * http) noexcept {
 	// Если данные получены, формируем тело сообщения
 	if(!chunk.empty()) const_cast <awh::http_t *> (http)->body(chunk);
+}
+/**
+ * runCallback Функция обратного вызова при активации ядра сервера
+ * @param status флаг запуска/остановки
+ * @param core   объект сетевого ядра
+ */
+void awh::server::Proxy::runCallback(const awh::core_t::status_t status, awh::core_t * core) noexcept {
+	// Если данные существуют
+	if(core != nullptr){
+		// Определяем статус активности сетевого ядра
+		switch(static_cast <uint8_t> (status)){
+			// Если система запущена
+			case static_cast <uint8_t> (awh::core_t::status_t::START):
+				// Выполняем биндинг базы событий для клиента
+				this->_core.server.bind(reinterpret_cast <awh::core_t *> (&this->_core.client));
+			break;
+			// Если система остановлена
+			case static_cast <uint8_t> (awh::core_t::status_t::STOP):
+				// Выполняем анбиндинг базы событий клиента
+				this->_core.server.unbind(reinterpret_cast <awh::core_t *> (&this->_core.client));
+			break;
+		}
+	}
 }
 /**
  * persistServerCallback Функция персистентного вызова

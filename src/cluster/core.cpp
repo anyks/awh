@@ -16,6 +16,34 @@
 #include <cluster/core.hpp>
 
 /**
+ * active Метод вывода статуса работы сетевого ядра
+ * @param status флаг запуска сетевого ядра
+ * @param core   объект сетевого ядра
+ */
+void awh::cluster::Core::active(const status_t status, awh::core_t * core) noexcept {
+	// Определяем статус активности сетевого ядра
+	switch(static_cast <uint8_t> (status)){
+		// Если система запущена
+		case static_cast <uint8_t> (status_t::START): {
+			// Если функция обратного вызова установлена
+			if(this->_activeClusterFn != nullptr)
+				// Выводим результат в отдельном потоке
+				std::thread(this->_activeClusterFn, status_t::START, this).detach();
+			// Выполняем запуск кластера
+			this->_cluster.start(0);
+		} break;
+		// Если система остановлена
+		case static_cast <uint8_t> (status_t::STOP): {
+			// Если функция обратного вызова установлена
+			if(this->_activeClusterFn != nullptr)
+				// Выводим результат в отдельном потоке
+				std::thread(this->_activeClusterFn, status_t::STOP, this).detach();
+			// Выполняем остановку кластера
+			this->_cluster.stop(0);
+		} break;
+	}
+}
+/**
  * cluster Метод информирования о статусе кластера
  * @param wid   идентификатор воркера
  * @param pid   идентификатор процесса
@@ -87,6 +115,77 @@ void awh::cluster::Core::broadcast(const char * buffer, const size_t size) const
 	const_cast <cluster_t *> (&this->_cluster)->broadcast(0, buffer, size);
 }
 /**
+ * stop Метод остановки клиента
+ */
+void awh::cluster::Core::stop() noexcept {
+	// Выполняем блокировку потока
+	this->_mtx.status.lock();
+	// Если система уже запущена
+	if(this->mode){
+		// Запрещаем работу WebSocket
+		this->mode = !this->mode;
+		// Выполняем разблокировку потока
+		this->_mtx.status.unlock();
+		/**
+		 * Если запрещено использовать простое чтение базы событий
+		 * Выполняем остановку всех таймеров
+		 */
+		this->clearTimers();
+		// Выполняем блокировку потока
+		this->_mtx.status.lock();
+		// Если таймер периодического запуска коллбека активирован
+		if(this->persist){
+			/**
+			 * Если используется модуль LibEvent2
+			 */
+			#if defined(AWH_EVENT2)
+				// Останавливаем работу таймера
+				this->_timer.event.stop();
+			/**
+			 * Если используется модуль LibEv
+			 */
+			#elif defined(AWH_EV)
+				// Останавливаем работу персистентного таймера
+				this->_timer.io.stop();
+			#endif
+		}
+		// Выполняем разблокировку потока
+		this->_mtx.status.unlock();
+		// Выполняем отключение всех клиентов
+		this->close();
+		// Выполняем остановку чтения базы событий
+		this->dispatch.stop();
+		// Выполняем получение функции обратного вызова
+		this->_activeFn = this->_activeClusterFn;
+		// Выполняем отключение запуска функции обратного вызова в отдельном потоке
+		this->activeOnTrhead = !this->activeOnTrhead;
+	// Выполняем разблокировку потока
+	} else this->_mtx.status.unlock();
+}
+/**
+ * start Метод запуска клиента
+ */
+void awh::cluster::Core::start() noexcept {
+	// Выполняем блокировку потока
+	this->_mtx.status.lock();
+	// Если система ещё не запущена
+	if(!this->mode){
+		// Разрешаем работу WebSocket
+		this->mode = !this->mode;
+		// Выполняем разблокировку потока
+		this->_mtx.status.unlock();
+		// Выполняем получение функции обратного вызова
+		this->_activeClusterFn = this->_activeFn;
+		// Выполняем отключение запуска функции обратного вызова в отдельном потоке
+		this->activeOnTrhead = !this->activeOnTrhead;
+		// Устанавливаем функцию обратного вызова на запуск системы
+		this->_activeFn = std::bind(&cluster::core_t::active, this, _1, _2);
+		// Выполняем запуск чтения базы событий
+		this->dispatch.start();
+	// Выполняем разблокировку потока
+	} else this->_mtx.status.unlock();
+}
+/**
  * on Метод установки функции обратного вызова при получении события
  * @param callback функция обратного вызова для установки
  */
@@ -101,20 +200,6 @@ void awh::cluster::Core::on(function <void (const worker_t, const pid_t, const c
 void awh::cluster::Core::on(function <void (const worker_t, const pid_t, const char *, const size_t)> callback) noexcept {
 	// Выполняем установку функции обратного вызова
 	this->_messageFn = callback;
-}
-/**
- * end Метод остановки кластера
- */
-void awh::cluster::Core::end() noexcept {
-	// Выполняем остановку кластера
-	this->_cluster.stop(0);
-}
-/**
- * run Метод запуска кластера
- */
-void awh::cluster::Core::run() noexcept {
-	// Выполняем запуск кластера
-	this->_cluster.start(0);
 }
 /**
  * clusterAsync Метод установки флага асинхронного режима работы

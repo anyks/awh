@@ -71,7 +71,7 @@ namespace awh {
 			 * Scheme Устанавливаем дружбу с схемой сети
 			 */
 			friend class Scheme;
-		protected:
+		public:
 			/**
 			 * Статус работы сетевого ядра
 			 */
@@ -79,7 +79,6 @@ namespace awh {
 				STOP  = 0x02, // Статус остановки
 				START = 0x01  // Статус запуска
 			};
-		public:
 			/**
 			 * Флаги перехвата сигналов
 			 */
@@ -278,14 +277,14 @@ namespace awh {
 			settings_t settings;
 			// Объект для работы с чтением базы событий
 			dispatch_t dispatch;
-		private:
+		protected:
 			// Объект работы с файловой системой
 			fs_t _fs;
 			// Объект работы с сигналами
 			sig_t _sig;
 			// Объект события таймера
 			timer_t _timer;
-		private:
+		protected:
 			// Мютекс для блокировки основного потока
 			mutable mtx_t _mtx;
 		protected:
@@ -313,6 +312,8 @@ namespace awh {
 			bool noinfo;
 			// Флаг персистентного запуска каллбека
 			bool persist;
+			// Флаг вывода запуска функции активности в отдельном потоке
+			bool activeOnTrhead;
 		protected:
 			// Количество подключённых внешних ядер
 			u_int cores;
@@ -327,11 +328,11 @@ namespace awh {
 			const fmk_t * fmk;
 			// Создаём объект работы с логами
 			const log_t * log;
-		private:
+		protected:
 			// Функция обратного вызова при краше приложения
-			function <void (const int)> _crash;
+			function <void (const int)> _crashFn;
 			// Функция обратного вызова при запуске/остановке модуля
-			function <void (const bool, Core *)> _active;
+			function <void (const status_t, Core *)> _activeFn;
 		private:
 			/**
 			 * launching Метод вызова при активации базы событий
@@ -380,7 +381,7 @@ namespace awh {
 			 * callback Метод установки функции обратного вызова при запуске/остановки работы модуля
 			 * @param callback функция обратного вызова для установки
 			 */
-			void callback(function <void (const bool, Core *)> callback) noexcept;
+			void callback(function <void (const status_t, Core *)> callback) noexcept;
 		public:
 			/**
 			 * stop Метод остановки клиента
