@@ -75,9 +75,9 @@ namespace awh {
 				const log_t * _log;
 			private:
 				// Функция обратного вызова при получении события
-				function <void (const worker_t, const pid_t, const cluster_t::event_t)> _eventsFn;
+				function <void (const worker_t, const pid_t, const cluster_t::event_t, Core *)> _eventsFn;
 				// Функция обратного вызова при получении сообщения
-				function <void (const worker_t, const pid_t, const char *, const size_t)> _messageFn;
+				function <void (const worker_t, const pid_t, const char *, const size_t, Core *)> _messageFn;
 			private:
 				/**
 				 * active Метод вывода статуса работы сетевого ядра
@@ -143,12 +143,12 @@ namespace awh {
 				 * on Метод установки функции обратного вызова при получении события
 				 * @param callback функция обратного вызова для установки
 				 */
-				void on(function <void (const worker_t, const pid_t, const cluster_t::event_t)> callback) noexcept;
+				void on(function <void (const worker_t, const pid_t, const cluster_t::event_t, Core *)> callback) noexcept;
 				/**
 				 * on Метод установки функции обратного вызова при получении сообщения
 				 * @param callback функция обратного вызова для установки
 				 */
-				void on(function <void (const worker_t, const pid_t, const char *, const size_t)> callback) noexcept;
+				void on(function <void (const worker_t, const pid_t, const char *, const size_t, Core *)> callback) noexcept;
 			public:
 				/**
 				 * clusterAsync Метод установки флага асинхронного режима работы

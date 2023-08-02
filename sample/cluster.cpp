@@ -23,17 +23,15 @@ class Executor {
 	private:
 		// Объект логирования
 		log_t * _log;
-	private:
-		// Сетевое ядро
-		cluster::core_t * _core;
 	public:
 		/**
 		 * events Метод вывода события активации процесса
 		 * @param worker тип активного процесса
 		 * @param pid    идентификатор процесса
 		 * @param event  событие процесса
+		 * @param core   объект сетевого ядра
 		 */
-		void events(const cluster::core_t::worker_t worker, const pid_t pid, const cluster_t::event_t event){
+		void events(const cluster::core_t::worker_t worker, const pid_t pid, const cluster_t::event_t event, cluster::core_t * core){
 			// Если производится запуск сервиса
 			if(event == cluster_t::event_t::START){
 				// Определяем тип воркера
@@ -43,14 +41,14 @@ class Executor {
 						// Формируем сообщение приветствия
 						const char * message = "Hi!";
 						// Отправляем проиветствие всем дочерним процессам
-						this->_core->broadcast(message, strlen(message));
+						core->broadcast(message, strlen(message));
 					} break;
 					// Если событие пришло от дочернего процесса
 					case static_cast <uint8_t> (cluster::core_t::worker_t::CHILDREN): {
 						// Формируем сообщение приветствия
 						const char * message = "Hello";
 						// Отправляем проиветствие родительскому процессу
-						this->_core->send(message, strlen(message));
+						core->send(message, strlen(message));
 					} break;
 				}
 			}
@@ -61,8 +59,9 @@ class Executor {
 		 * @param pid    идентификатор процесса
 		 * @param buffer буфер данных сообщения
 		 * @param size   размер полученных данных
+		 * @param core   объект сетевого ядра
 		 */
-		void message(const cluster::core_t::worker_t worker, const pid_t pid, const char * buffer, const size_t size){
+		void message(const cluster::core_t::worker_t worker, const pid_t pid, const char * buffer, const size_t size, cluster::core_t * core){
 			// Определяем тип воркера
 			switch(static_cast <uint8_t> (worker)){
 				// Если событие пришло от родительского процесса
@@ -86,12 +85,10 @@ class Executor {
 			// Определяем статус активности сетевого ядра
 			switch(static_cast <uint8_t> (status)){
 				// Если система запущена
-				case static_cast <uint8_t> (awh::core_t::status_t::START): {
-					// Выполняем установку сетевого ядра
-					this->_core = dynamic_cast <cluster::core_t *> (core);
+				case static_cast <uint8_t> (awh::core_t::status_t::START):
 					// Выводим информацию в лог
 					this->_log->print("%s", log_t::flag_t::INFO, "Start cluster");
-				} break;
+				break;
 				// Если система остановлена
 				case static_cast <uint8_t> (awh::core_t::status_t::STOP):
 					// Выводим информацию в лог
@@ -104,7 +101,7 @@ class Executor {
 		 * Executor Конструктор
 		 * @param log объект логирования
 		 */
-		Executor(log_t * log) : _log(log), _core(nullptr) {}
+		Executor(log_t * log) : _log(log) {}
 };
 
 /**
@@ -133,9 +130,9 @@ int main(int argc, char * argv[]){
 	// Устанавливаем функцию обратного вызова на запуск системы
 	core.callback((function <void (const awh::core_t::status_t, core_t *)>) bind(&Executor::run, &executor, _1, _2));
 	// Устанавливаем функцию обратного вызова при получении событий
-	core.on((function <void (const cluster::core_t::worker_t, const pid_t, const cluster_t::event_t)>) bind(&Executor::events, &executor, _1, _2, _3));
+	core.on((function <void (const cluster::core_t::worker_t, const pid_t, const cluster_t::event_t, cluster::core_t *)>) bind(&Executor::events, &executor, _1, _2, _3, _4));
 	// Устанавливаем функцию обработки входящих сообщений
-	core.on((function <void (const cluster::core_t::worker_t, const pid_t, const char *, const size_t)>) bind(&Executor::message, &executor, _1, _2, _3, _4));
+	core.on((function <void (const cluster::core_t::worker_t, const pid_t, const char *, const size_t, cluster::core_t *)>) bind(&Executor::message, &executor, _1, _2, _3, _4, _5));
 	// Выполняем запуск таймера
 	core.start();
 	// Выводим результат

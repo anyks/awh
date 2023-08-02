@@ -24,14 +24,10 @@ void awh::cluster::Core::active(const status_t status, awh::core_t * core) noexc
 	// Определяем статус активности сетевого ядра
 	switch(static_cast <uint8_t> (status)){
 		// Если система запущена
-		case static_cast <uint8_t> (status_t::START): {
-			// Если функция обратного вызова установлена
-			if(this->_activeClusterFn != nullptr)
-				// Выводим результат в отдельном потоке
-				std::thread(this->_activeClusterFn, status_t::START, this).detach();
+		case static_cast <uint8_t> (status_t::START):
 			// Выполняем запуск кластера
 			this->_cluster.start(0);
-		} break;
+		break;
 		// Если система остановлена
 		case static_cast <uint8_t> (status_t::STOP): {
 			// Если функция обратного вызова установлена
@@ -53,11 +49,15 @@ void awh::cluster::Core::cluster(const size_t wid, const pid_t pid, const cluste
 	// Если функция обратного вызова установлена
 	if(this->_eventsFn != nullptr){
 		// Определяем производится ли инициализация кластера
-		if(this->_pid == getpid())
+		if(this->_pid == getpid()){
+			// Если функция обратного вызова установлена
+			if(this->_activeClusterFn != nullptr)
+				// Выводим результат в отдельном потоке
+				std::thread(this->_activeClusterFn, status_t::START, const_cast <core_t *> (this)).detach();
 			// Выполняем функцию обратного вызова
-			this->_eventsFn(worker_t::MASTER, pid, event);
+			this->_eventsFn(worker_t::MASTER, pid, event, const_cast <core_t *> (this));
 		// Если производится запуск воркера, выполняем функцию обратного вызова
-		else this->_eventsFn(worker_t::CHILDREN, pid, event);
+		} else this->_eventsFn(worker_t::CHILDREN, pid, event, const_cast <core_t *> (this));
 	}
 }
 /**
@@ -73,9 +73,9 @@ void awh::cluster::Core::message(const size_t wid, const pid_t pid, const char *
 		// Определяем производится ли инициализация кластера
 		if(this->_pid == getpid())
 			// Выполняем функцию обратного вызова
-			this->_messageFn(worker_t::MASTER, pid, buffer, size);
+			this->_messageFn(worker_t::MASTER, pid, buffer, size, const_cast <core_t *> (this));
 		// Если производится запуск воркера, если функция обратного вызова установлена
-		else this->_messageFn(worker_t::CHILDREN, pid, buffer, size);
+		else this->_messageFn(worker_t::CHILDREN, pid, buffer, size, const_cast <core_t *> (this));
 	}
 }
 /**
@@ -189,7 +189,7 @@ void awh::cluster::Core::start() noexcept {
  * on Метод установки функции обратного вызова при получении события
  * @param callback функция обратного вызова для установки
  */
-void awh::cluster::Core::on(function <void (const worker_t, const pid_t, const cluster_t::event_t)> callback) noexcept {
+void awh::cluster::Core::on(function <void (const worker_t, const pid_t, const cluster_t::event_t, core_t *)> callback) noexcept {
 	// Выполняем установку функции обратного вызова
 	this->_eventsFn = callback;
 }
@@ -197,7 +197,7 @@ void awh::cluster::Core::on(function <void (const worker_t, const pid_t, const c
  * on Метод установки функции обратного вызова при получении сообщения
  * @param callback функция обратного вызова для установки
  */
-void awh::cluster::Core::on(function <void (const worker_t, const pid_t, const char *, const size_t)> callback) noexcept {
+void awh::cluster::Core::on(function <void (const worker_t, const pid_t, const char *, const size_t, core_t *)> callback) noexcept {
 	// Выполняем установку функции обратного вызова
 	this->_messageFn = callback;
 }
