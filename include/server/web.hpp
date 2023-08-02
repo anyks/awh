@@ -20,7 +20,6 @@
  */
 #include <scheme/web.hpp>
 #include <core/server.hpp>
-#include <sys/threadpool.hpp>
 
 // Подписываемся на стандартное пространство имён
 using namespace std;
@@ -88,8 +87,6 @@ namespace awh {
 				// Объект работы с URI ссылками
 				uri_t _uri;
 			private:
-				// Объект тредпула для работы с потоками
-				thr_t _thr;
 				// Объявляем функции обратного вызова
 				fn_t _callback;
 				// Объект рабочего
@@ -130,11 +127,6 @@ namespace awh {
 				size_t _timeAlive;
 				// Максимальное количество запросов
 				size_t _maxRequests;
-			private:
-				// Количество активных потоков
-				size_t _threadsCount;
-				// Флаг активации работы тредпула
-				bool _threadsEnabled;
 			private:
 				// Создаём объект фреймворка
 				const fmk_t * _fmk;
@@ -345,13 +337,6 @@ namespace awh {
 				void close(const size_t aid) noexcept;
 			public:
 				/**
-				 * multiThreads Метод активации многопоточности
-				 * @param threads количество потоков для активации
-				 * @param mode    флаг активации/деактивации мультипоточности
-				 */
-				void multiThreads(const size_t threads = 0, const bool mode = true) noexcept;
-			public:
-				/**
 				 * waitTimeDetect Метод детекции сообщений по количеству секунд
 				 * @param read  количество секунд для детекции по чтению
 				 * @param write количество секунд для детекции по записи
@@ -441,10 +426,6 @@ namespace awh {
 				 * @param log  объект для работы с логами
 				 */
 				WEB(const server::core_t * core, const fmk_t * fmk, const log_t * log) noexcept;
-				/**
-				 * ~WEB Деструктор
-				 */
-				~WEB() noexcept;
 		} web_t;
 	};
 };

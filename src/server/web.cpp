@@ -80,10 +80,6 @@ void awh::server::WEB::connectCallback(const size_t aid, const size_t sid, awh::
 		web_scheme_t::coffer_t * adj = const_cast <web_scheme_t::coffer_t *> (this->_scheme.get(aid));
 		// Если параметры подключения адъютанта получены
 		if(adj != nullptr){
-			// Если нужно активировать многопоточность и она не активирована
-			if(this->_threadsEnabled && !this->_thr.is())
-				// Выполняем активацию тредпула
-				this->_thr.init(this->_threadsCount);
 			// Устанавливаем экшен выполнения
 			adj->action = web_scheme_t::action_t::CONNECT;
 			// Выполняем запуск обработчика событий
@@ -710,23 +706,6 @@ void awh::server::WEB::close(const size_t aid) noexcept {
 	}
 }
 /**
- * multiThreads Метод активации многопоточности
- * @param threads количество потоков для активации
- * @param mode    флаг активации/деактивации мультипоточности
- */
-void awh::server::WEB::multiThreads(const size_t threads, const bool mode) noexcept {
-	// Выполняем активацию тредпула
-	this->_threadsEnabled = mode;
-	// Устанавливаем количество активных потоков
-	this->_threadsCount = threads;
-	// Если нужно активировать многопоточность
-	if(this->_threadsEnabled)
-		// Устанавливаем простое чтение базы событий
-		const_cast <server::core_t *> (this->_core)->easily(true);
-	// Выполняем завершение всех потоков
-	else this->_thr.wait();
-}
-/**
  * waitTimeDetect Метод детекции сообщений по количеству секунд
  * @param read  количество секунд для детекции по чтению
  * @param write количество секунд для детекции по записи
@@ -890,8 +869,7 @@ awh::server::WEB::WEB(const server::core_t * core, const fmk_t * fmk, const log_
  _realm(""), _opaque(""), _pass(""), _salt(""), _cipher(hash_t::cipher_t::AES128),
  _authHash(auth_t::hash_t::MD5), _authType(auth_t::type_t::NONE), _crypt(false),
  _alive(false), _chunkSize(BUFFER_CHUNK), _timeAlive(KEEPALIVE_TIMEOUT),
- _maxRequests(SERVER_MAX_REQUESTS), _threadsCount(0), _threadsEnabled(false),
- _fmk(fmk), _log(log), _core(core) {
+ _maxRequests(SERVER_MAX_REQUESTS), _fmk(fmk), _log(log), _core(core) {
 	// Устанавливаем событие на запуск системы
 	this->_scheme.callback.set <void (const size_t, awh::core_t *)> ("open", std::bind(&web_t::openCallback, this, _1, _2));
 	// Устанавливаем функцию персистентного вызова
@@ -910,13 +888,4 @@ awh::server::WEB::WEB(const server::core_t * core, const fmk_t * fmk, const log_
 	const_cast <server::core_t *> (this->_core)->persistEnable(true);
 	// Добавляем схему сети в сетевое ядро
 	const_cast <server::core_t *> (this->_core)->add(&this->_scheme);
-}
-/**
- * ~WEB Деструктор
- */
-awh::server::WEB::~WEB() noexcept {
-	// Если многопоточность активированна
-	if(this->_threadsEnabled && this->_thr.is())
-		// Выполняем завершение всех потоков
-		this->_thr.wait();
 }

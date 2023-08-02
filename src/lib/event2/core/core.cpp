@@ -382,7 +382,9 @@ void awh::Core::launching() noexcept {
 		callback.bind <const size_t, core_t *> ();
 	}
 	// Если функция обратного вызова установлена, выполняем
-	if(this->_active != nullptr) this->_active(true, this);
+	if(this->_active != nullptr)
+		// Выводим результат в отдельном потоке
+		std::thread(this->_active, true, this).detach();
 	// Выводим в консоль информацию
 	if(!this->noinfo) this->log->print("[+] start service: pid = %u", log_t::flag_t::INFO, getpid());
 	// Если таймер периодического запуска коллбека активирован, запускаем персистентную работу
@@ -416,7 +418,9 @@ void awh::Core::closedown() noexcept {
 	// Выполняем отключение всех адъютантов
 	this->close();
 	// Если функция обратного вызова установлена, выполняем
-	if(this->_active != nullptr) this->_active(false, this);
+	if(this->_active != nullptr)
+		// Выводим результат в отдельном потоке
+		std::thread(this->_active, false, this).detach();
 	// Выводим в консоль информацию
 	if(!this->noinfo) this->log->print("[-] stop service: pid = %u", log_t::flag_t::INFO, getpid());
 }
