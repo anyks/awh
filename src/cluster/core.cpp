@@ -194,6 +194,13 @@ void awh::cluster::Core::start() noexcept {
 	} else this->_log->print("It is not possible to start a cluster from a child process", log_t::flag_t::WARNING);
 }
 /**
+ * close Метод закрытия всех подключений
+ */
+void awh::cluster::Core::close() noexcept {
+	// Выполняем закрытие подключение передачи данных между процессами
+	this->_cluster.close(0);
+}
+/**
  * on Метод установки функции обратного вызова при получении события
  * @param callback функция обратного вызова для установки
  */

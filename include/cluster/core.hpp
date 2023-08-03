@@ -138,6 +138,10 @@ namespace awh {
 				 * start Метод запуска клиента
 				 */
 				void start() noexcept;
+				/**
+				 * close Метод закрытия всех подключений
+				 */
+				void close() noexcept;
 			public:
 				/**
 				 * on Метод установки функции обратного вызова при получении события

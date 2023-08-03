@@ -778,6 +778,58 @@ void awh::Cluster::clear() noexcept {
 	map <size_t, unique_ptr <worker_t>> ().swap(this->_workers);
 }
 /**
+ * close Метод закрытия всех подключений
+ */
+void awh::Cluster::close() noexcept {
+	// Если список работников не пустой
+	if(!this->_jacks.empty()){
+		// Переходим по всем работникам
+		for(auto & item : this->_jacks){
+			/**
+			 * Если операционной системой не является Windows
+			 */
+			#if !defined(_WIN32) && !defined(_WIN64)
+				// Переходим по всему списку работников
+				for(auto & jack : item.second){
+					// Выполняем остановку чтение сообщений
+					jack->mess.stop();
+					// Выполняем закрытие файловых дескрипторов
+					::close(jack->cfds[0]);
+					::close(jack->mfds[1]);
+				}
+			#endif
+			// Очищаем список работников
+			item.second.clear();
+		}
+	}
+}
+/**
+ * close Метод закрытия всех подключений
+ * @param wid идентификатор воркера
+ */
+void awh::Cluster::close(const size_t wid) noexcept {
+	// Выполняем поиск работников
+	auto jt = this->_jacks.find(wid);
+	// Если работник найден
+	if((jt != this->_jacks.end()) && !jt->second.empty()){
+		/**
+		 * Если операционной системой не является Windows
+		 */
+		#if !defined(_WIN32) && !defined(_WIN64)
+			// Переходим по всему списку работников
+			for(auto & jack : jt->second){
+				// Выполняем остановку чтение сообщений
+				jack->mess.stop();
+				// Выполняем закрытие файловых дескрипторов
+				::close(jack->cfds[0]);
+				::close(jack->mfds[1]);
+			}
+		#endif
+		// Очищаем список работников
+		jt->second.clear();
+	}
+}
+/**
  * stop Метод остановки кластера
  * @param wid идентификатор воркера
  */
@@ -811,15 +863,11 @@ void awh::Cluster::stop(const size_t wid) noexcept {
 				// Устанавливаем пид процесса отправившего сообщение
 				message.pid = this->_pid;
 				// Переходим по всему списку работников
-				for(auto & jack : jt->second){
+				for(auto & jack : jt->second)
 					// Выполняем отправку сообщения дочернему процессу
 					::write(jack->cfds[1], &message, sizeof(message));
-					// Выполняем остановку чтение сообщений
-					jack->mess.stop();
-					// Выполняем закрытие файловых дескрипторов
-					::close(jack->mfds[0]);
-					::close(jack->cfds[1]);
-				}
+				// Выполняем закрытие подключения передачи сообщений
+				this->close(wid);
 				// Выполняем остановку отслеживания сигналов дочерних процессов
 				this->_event.stop();
 			#endif
@@ -827,42 +875,14 @@ void awh::Cluster::stop(const size_t wid) noexcept {
 			if(it != this->_workers.end())
 				// Возвращаем значение флага автоматического перезапуска процесса
 				it->second->restart = restart;
-			// Очищаем список работников
-			jt->second.clear();
 		// Если процесс является дочерним
-		} else if(this->_pid == static_cast <pid_t> (getppid())) {
-			/**
-			 * Если операционной системой не является Windows
-			 */
-			#if !defined(_WIN32) && !defined(_WIN64)
-				// Переходим по всему списку работников
-				for(auto & jack : jt->second){
-					// Выполняем остановку чтение сообщений
-					jack->mess.stop();
-					// Выполняем закрытие файловых дескрипторов
-					::close(jack->cfds[0]);
-					::close(jack->mfds[1]);
-				}
-			#endif
-			// Очищаем список работников
-			jt->second.clear();
+		} else if(this->_pid == static_cast <pid_t> (getppid()))
+			// Выполняем закрытие подключения передачи сообщений
+			this->close(wid);
 		// Если процесс превратился в зомби
-		} else {
-			/**
-			 * Если операционной системой не является Windows
-			 */
-			#if !defined(_WIN32) && !defined(_WIN64)
-				// Переходим по всему списку работников
-				for(auto & jack : jt->second){
-					// Выполняем остановку чтение сообщений
-					jack->mess.stop();
-					// Выполняем закрытие файловых дескрипторов
-					::close(jack->cfds[0]);
-					::close(jack->mfds[1]);
-				}
-			#endif
-			// Очищаем список работников
-			jt->second.clear();
+		else {
+			// Выполняем закрытие подключения передачи сообщений
+			this->close(wid);
 			// Процесс превратился в зомби, самоликвидируем его
 			this->_log->print("the process [%u] has turned into a zombie, we perform self-destruction", log_t::flag_t::CRITICAL, getpid());
 			// Выходим из приложения

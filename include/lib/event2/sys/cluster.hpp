@@ -284,6 +284,16 @@ namespace awh {
 			void clear() noexcept;
 		public:
 			/**
+			 * close Метод закрытия всех подключений
+			 */
+			void close() noexcept;
+			/**
+			 * close Метод закрытия всех подключений
+			 * @param wid идентификатор воркера
+			 */
+			void close(const size_t wid) noexcept;
+		public:
+			/**
 			 * stop Метод остановки кластера
 			 * @param wid идентификатор воркера
 			 */
