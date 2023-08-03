@@ -118,72 +118,80 @@ void awh::cluster::Core::broadcast(const char * buffer, const size_t size) const
  * stop Метод остановки клиента
  */
 void awh::cluster::Core::stop() noexcept {
-	// Выполняем блокировку потока
-	this->_mtx.status.lock();
-	// Если система уже запущена
-	if(this->mode){
-		// Запрещаем работу WebSocket
-		this->mode = !this->mode;
-		// Выполняем разблокировку потока
-		this->_mtx.status.unlock();
-		/**
-		 * Если запрещено использовать простое чтение базы событий
-		 * Выполняем остановку всех таймеров
-		 */
-		this->clearTimers();
+	// Если процесс является родительским
+	if(this->_pid == getpid()){
 		// Выполняем блокировку потока
 		this->_mtx.status.lock();
-		// Если таймер периодического запуска коллбека активирован
-		if(this->persist){
+		// Если система уже запущена
+		if(this->mode){
+			// Запрещаем работу WebSocket
+			this->mode = !this->mode;
+			// Выполняем разблокировку потока
+			this->_mtx.status.unlock();
 			/**
-			 * Если используется модуль LibEvent2
+			 * Если запрещено использовать простое чтение базы событий
+			 * Выполняем остановку всех таймеров
 			 */
-			#if defined(AWH_EVENT2)
-				// Останавливаем работу таймера
-				this->_timer.event.stop();
-			/**
-			 * Если используется модуль LibEv
-			 */
-			#elif defined(AWH_EV)
-				// Останавливаем работу персистентного таймера
-				this->_timer.io.stop();
-			#endif
-		}
+			this->clearTimers();
+			// Выполняем блокировку потока
+			this->_mtx.status.lock();
+			// Если таймер периодического запуска коллбека активирован
+			if(this->persist){
+				/**
+				 * Если используется модуль LibEvent2
+				 */
+				#if defined(AWH_EVENT2)
+					// Останавливаем работу таймера
+					this->_timer.event.stop();
+				/**
+				 * Если используется модуль LibEv
+				 */
+				#elif defined(AWH_EV)
+					// Останавливаем работу персистентного таймера
+					this->_timer.io.stop();
+				#endif
+			}
+			// Выполняем разблокировку потока
+			this->_mtx.status.unlock();
+			// Выполняем отключение всех клиентов
+			this->close();
+			// Выполняем остановку чтения базы событий
+			this->dispatch.stop();
+			// Выполняем получение функции обратного вызова
+			this->_activeFn = this->_activeClusterFn;
+			// Выполняем отключение запуска функции обратного вызова в отдельном потоке
+			this->activeOnTrhead = !this->activeOnTrhead;
 		// Выполняем разблокировку потока
-		this->_mtx.status.unlock();
-		// Выполняем отключение всех клиентов
-		this->close();
-		// Выполняем остановку чтения базы событий
-		this->dispatch.stop();
-		// Выполняем получение функции обратного вызова
-		this->_activeFn = this->_activeClusterFn;
-		// Выполняем отключение запуска функции обратного вызова в отдельном потоке
-		this->activeOnTrhead = !this->activeOnTrhead;
-	// Выполняем разблокировку потока
-	} else this->_mtx.status.unlock();
+		} else this->_mtx.status.unlock();
+	// Если процесс является дочерним, выполняем остановку процесса
+	} else this->_cluster.stop(0);
 }
 /**
  * start Метод запуска клиента
  */
 void awh::cluster::Core::start() noexcept {
-	// Выполняем блокировку потока
-	this->_mtx.status.lock();
-	// Если система ещё не запущена
-	if(!this->mode){
-		// Разрешаем работу WebSocket
-		this->mode = !this->mode;
+	// Если процесс является родительским
+	if(this->_pid == getpid()){
+		// Выполняем блокировку потока
+		this->_mtx.status.lock();
+		// Если система ещё не запущена
+		if(!this->mode){
+			// Разрешаем работу WebSocket
+			this->mode = !this->mode;
+			// Выполняем разблокировку потока
+			this->_mtx.status.unlock();
+			// Выполняем получение функции обратного вызова
+			this->_activeClusterFn = this->_activeFn;
+			// Выполняем отключение запуска функции обратного вызова в отдельном потоке
+			this->activeOnTrhead = !this->activeOnTrhead;
+			// Устанавливаем функцию обратного вызова на запуск системы
+			this->_activeFn = std::bind(&cluster::core_t::active, this, _1, _2);
+			// Выполняем запуск чтения базы событий
+			this->dispatch.start();
 		// Выполняем разблокировку потока
-		this->_mtx.status.unlock();
-		// Выполняем получение функции обратного вызова
-		this->_activeClusterFn = this->_activeFn;
-		// Выполняем отключение запуска функции обратного вызова в отдельном потоке
-		this->activeOnTrhead = !this->activeOnTrhead;
-		// Устанавливаем функцию обратного вызова на запуск системы
-		this->_activeFn = std::bind(&cluster::core_t::active, this, _1, _2);
-		// Выполняем запуск чтения базы событий
-		this->dispatch.start();
-	// Выполняем разблокировку потока
-	} else this->_mtx.status.unlock();
+		} else this->_mtx.status.unlock();
+	// Если процесс является дочерним, выводим сообщение об ошибке
+	} else this->_log->print("It is not possible to start a cluster from a child process", log_t::flag_t::WARNING);
 }
 /**
  * on Метод установки функции обратного вызова при получении события
