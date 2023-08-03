@@ -1476,7 +1476,7 @@ awh::DNS::DNS(const fmk_t * fmk, const log_t * log, const net_t * net) noexcept 
  * @param base база событий
  */
 awh::DNS::DNS(const fmk_t * fmk, const log_t * log, const net_t * net, struct ev_loop * base) noexcept :
-_domain(""), _timeout(30), _fn(nullptr), _fmk(fmk), _log(log), _net(net), _base(base) {
+ _domain(""), _timeout(30), _fn(nullptr), _fmk(fmk), _log(log), _net(net), _base(base) {
 	// Устанавливаем список серверов IPv4
 	this->replace(AF_INET);
 	// Устанавливаем список серверов IPv6

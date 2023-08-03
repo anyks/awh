@@ -457,12 +457,12 @@ namespace awh {
 				void bandWidth(const size_t aid, const string & read, const string & write) noexcept;
 				/**
 				 * network Метод установки параметров сети
-				 * @param ip     список IP адресов компьютера с которых разрешено выходить в интернет
+				 * @param ips    список IP адресов компьютера с которых разрешено выходить в интернет
 				 * @param ns     список серверов имён, через которые необходимо производить резолвинг доменов
 				 * @param family тип протокола интернета (IPV4 / IPV6 / NIX)
 				 * @param sonet  тип сокета подключения (TCP / UDP)
 				 */
-				void network(const vector <string> & ip = {}, const vector <string> & ns = {}, const scheme_t::family_t family = scheme_t::family_t::IPV4, const scheme_t::sonet_t sonet = scheme_t::sonet_t::TCP) noexcept;
+				void network(const vector <string> & ips = {}, const vector <string> & ns = {}, const scheme_t::family_t family = scheme_t::family_t::IPV4, const scheme_t::sonet_t sonet = scheme_t::sonet_t::TCP) noexcept;
 			public:
 				/**
 				 * verifySSL Метод разрешающий или запрещающий, выполнять проверку соответствия, сертификата домену

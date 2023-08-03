@@ -635,16 +635,20 @@ void awh::server::ProxySocks5::bandWidth(const size_t aid, const string & read, 
 }
 /**
  * network Метод установки параметров сети
- * @param ip     список IP адресов компьютера с которых разрешено выходить в интернет
+ * @param ips    список IP адресов компьютера с которых разрешено выходить в интернет
  * @param ns     список серверов имён, через которые необходимо производить резолвинг доменов
  * @param family тип протокола интернета (IPV4 / IPV6 / NIX)
  * @param sonet  тип сокета подключения (TCP / UDP)
  */
-void awh::server::ProxySocks5::network(const vector <string> & ip, const vector <string> & ns, const scheme_t::family_t family, const scheme_t::sonet_t sonet) noexcept {
+void awh::server::ProxySocks5::network(const vector <string> & ips, const vector <string> & ns, const scheme_t::family_t family, const scheme_t::sonet_t sonet) noexcept {
+	// Устанавливаем DNS адреса клиента
+	this->_core.client.ns(ns, family);
+	// Устанавливаем DNS адреса сервера
+	this->_core.server.ns(ns, family);
 	// Устанавливаем параметры сети клиента
-	this->_core.client.network(ip, ns);
+	this->_core.client.network(ips);
 	// Устанавливаем параметры сети сервера
-	this->_core.server.network(ip, ns, family, sonet);
+	this->_core.server.network(ips, family, sonet);
 }
 /**
  * verifySSL Метод разрешающий или запрещающий, выполнять проверку соответствия, сертификата домену

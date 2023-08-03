@@ -1827,13 +1827,81 @@ void awh::Core::certificate(const string & chain, const string & key) noexcept {
 	this->engine.certificate(chain, key);
 }
 /**
+ * ns Метод установки серверов имён DNS
+ * @param ns     список серверов имён
+ * @param family тип протокола интернета (IPV4 / IPV6)
+ */
+void awh::Core::ns(const vector <string> & ns, const scheme_t::family_t family) noexcept {
+	// Если сервера имён переданы, устанавливаем их
+	if(!ns.empty()){
+		// Выполняем блокировку потока
+		const lock_guard <recursive_mutex> lock(this->_mtx.main);
+		// Определяем тип интернет-протокола
+		switch(static_cast <uint8_t> (family)){
+			// Если мы получили адреса интернет-протокола IPv4
+			case static_cast <uint8_t> (scheme_t::family_t::IPV4): {
+				// Позиция разделителя порта в строке
+				size_t pos = string::npos;
+				// Создаём список серверов имён
+				vector <dns_t::serv_t> servers(ns.size());
+				// Переходим по всему списку серверов
+				for(uint8_t i = 0; i < static_cast <uint8_t> (ns.size()); i++){
+					// Выполняем поиск разделителя порта
+					pos = ns[i].rfind(":");
+					// Если позиция разделителя найдена
+					if(pos != string::npos){
+						// Запоминаем полученный сервер
+						servers[i].host = ns[i].substr(0, pos);
+						// Запоминаем полученный порт
+						servers[i].port = static_cast <u_int> (::stoi(ns[i].substr(pos + 1)));
+					// Заполняем полученный сервер
+					} else servers[i].host = ns[i];
+				}
+				// Устанавливаем полученный список серверов имён
+				this->settings.v4.second.assign(servers.cbegin(), servers.cend());
+				// Выполняем установку нейм-серверов для DNS резолвера IPv4
+				this->dns.replace(AF_INET, this->settings.v4.second);
+			} break;
+			// Если мы получили адреса интернет-протокола IPv6
+			case static_cast <uint8_t> (scheme_t::family_t::IPV6): {
+				// Позиция разделителя порта в строке
+				size_t pos = string::npos;
+				// Создаём список серверов имён
+				vector <dns_t::serv_t> servers(ns.size());
+				// Переходим по всему списку серверов
+				for(uint8_t i = 0; i < static_cast <uint8_t> (ns.size()); i++){
+					// Если первый символ является разделителем
+					if(ns[i].front() == '['){
+						// Выполняем поиск разделителя порта
+						pos = ns[i].rfind("]:");
+						// Если позиция разделителя найдена
+						if(pos != string::npos){
+							// Запоминаем полученный сервер
+							servers[i].host = ns[i].substr(1, pos - 1);
+							// Запоминаем полученный порт
+							servers[i].port = static_cast <u_int> (::stoi(ns[i].substr(pos + 2)));
+						// Заполняем полученный сервер
+						} else if(ns[i].back() == ']')
+							// Добавляем адрес сервера, как он есть
+							servers[i].host = ns[i].substr(1, ns[i].size() - 2);
+					// Заполняем полученный сервер
+					} else if(ns[i].back() != ']') servers[i].host = ns[i];
+				}
+				// Устанавливаем полученный список серверов имён
+				this->settings.v6.second.assign(servers.cbegin(), servers.cend());
+				// Выполняем установку нейм-серверов для DNS резолвера IPv6
+				this->dns.replace(AF_INET6, this->settings.v6.second);
+			} break;
+		}
+	}
+}
+/**
  * network Метод установки параметров сети
- * @param ip     список IP адресов компьютера с которых разрешено выходить в интернет
- * @param ns     список серверов имён, через которые необходимо производить резолвинг доменов
+ * @param ips    список IP адресов компьютера с которых разрешено выходить в интернет
  * @param family тип протокола интернета (IPV4 / IPV6 / NIX)
  * @param sonet  тип сокета подключения (TCP / UDP)
  */
-void awh::Core::network(const vector <string> & ip, const vector <string> & ns, const scheme_t::family_t family, const scheme_t::sonet_t sonet) noexcept {
+void awh::Core::network(const vector <string> & ips, const scheme_t::family_t family, const scheme_t::sonet_t sonet) noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->_mtx.main);
 	// Устанавливаем тип сокета
@@ -1857,72 +1925,21 @@ void awh::Core::network(const vector <string> & ip, const vector <string> & ns, 
 		// Выполняем очистку адреса файла unix-сокета
 		this->removeUnixSocket();
 	}
-	// Определяем тип интернет-протокола
-	switch(static_cast <uint8_t> (this->settings.family)){
-		// Если - это интернет-протокол IPv4
-		case static_cast <uint8_t> (scheme_t::family_t::IPV4): {
-			// Если IP адреса переданы, устанавливаем их
-			if(!ip.empty()) this->settings.v4.first.assign(ip.cbegin(), ip.cend());
-			// Если сервера имён переданы, устанавливаем их
-			if(!ns.empty()){
-				// Позиция разделителя порта в строке
-				size_t pos = string::npos;
-				// Создаём список серверов имён
-				vector <dns_t::serv_t> servers(ns.size());
-				// Переходим по всему списку серверов
-				for(uint8_t i = 0; i < static_cast <uint8_t> (ns.size()); i++){
-					// Выполняем поиск разделителя порта
-					pos = ns[i].rfind(":");
-					// Если позиция разделителя найдена
-					if(pos != string::npos){
-						// Запоминаем полученный сервер
-						servers[i].host = ns[i].substr(0, pos);
-						// Запоминаем полученный порт
-						servers[i].port = stoi(ns[i].substr(pos + 1));
-					// Заполняем полученный сервер
-					} else servers[i].host = ns[i];
-				}
-				// Устанавливаем полученный список серверов имён
-				this->settings.v4.second.assign(servers.cbegin(), servers.cend());
-				// Выполняем установку нейм-серверов для DNS резолвера IPv4
-				this->dns.replace(AF_INET, this->settings.v4.second);
-			}
-		} break;
-		// Если - это интернет-протокол IPv6
-		case static_cast <uint8_t> (scheme_t::family_t::IPV6): {
-			// Если IP адреса переданы, устанавливаем их
-			if(!ip.empty()) this->settings.v6.first.assign(ip.cbegin(), ip.cend());
-			// Если сервера имён переданы, устанавливаем их
-			if(!ns.empty()){
-				// Позиция разделителя порта в строке
-				size_t pos = string::npos;
-				// Создаём список серверов имён
-				vector <dns_t::serv_t> servers(ns.size());
-				// Переходим по всему списку серверов
-				for(uint8_t i = 0; i < static_cast <uint8_t> (ns.size()); i++){
-					// Если первый символ является разделителем
-					if(ns[i].front() == '['){
-						// Выполняем поиск разделителя порта
-						pos = ns[i].rfind("]:");
-						// Если позиция разделителя найдена
-						if(pos != string::npos){
-							// Запоминаем полученный сервер
-							servers[i].host = ns[i].substr(1, pos - 1);
-							// Запоминаем полученный порт
-							servers[i].port = stoi(ns[i].substr(pos + 2));
-						// Заполняем полученный сервер
-						} else if(ns[i].back() == ']')
-							// Добавляем адрес сервера, как он есть
-							servers[i].host = ns[i].substr(1, ns[i].size() - 2);
-					// Заполняем полученный сервер
-					} else if(ns[i].back() != ']') servers[i].host = ns[i];
-				}
-				// Устанавливаем полученный список серверов имён
-				this->settings.v6.second.assign(servers.cbegin(), servers.cend());
-				// Выполняем установку нейм-серверов для DNS резолвера IPv6
-				this->dns.replace(AF_INET6, this->settings.v6.second);
-			}
-		} break;
+	// Если IP-адреса переданы
+	if(!ips.empty()){
+		// Определяем тип интернет-протокола
+		switch(static_cast <uint8_t> (this->settings.family)){
+			// Если мы получили адреса интернет-протокола IPv4
+			case static_cast <uint8_t> (scheme_t::family_t::IPV4):
+				// Устанавливаем полученные IP адреса
+				this->settings.v4.first.assign(ips.cbegin(), ips.cend());
+			break;
+			// Если мы получили адреса интернет-протокола IPv6
+			case static_cast <uint8_t> (scheme_t::family_t::IPV6):
+				// Устанавливаем полученные IP адреса
+				this->settings.v6.first.assign(ips.cbegin(), ips.cend());
+			break;
+		}
 	}
 }
 /**
