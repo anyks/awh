@@ -250,8 +250,6 @@
 	 * @param status статус остановившегося процесса
 	 */
 	void awh::Cluster::Worker::process(const pid_t pid, const int status) noexcept {
-		// Замораживаем поток на период в 5 секунд
-		this_thread::sleep_for(5s);
 		// Выполняем блокировку потока
 		const lock_guard <mutex> lock(this->mtx);
 		// Выполняем поиск работника
@@ -262,13 +260,11 @@
 			for(auto & jack : jt->second){
 				// Если процесс найден
 				if((jack->end = (jack->pid == pid))){
-					// Останавливаем чтение
+					// Останавливаем чтение данных с дочернего процесса
 					jack->mess.stop();
 					// Выполняем закрытие файловых дескрипторов
-					::close(jack->mfds[0]);
-					::close(jack->mfds[1]);
 					::close(jack->cfds[0]);
-					::close(jack->cfds[1]);
+					::close(jack->mfds[1]);
 					// Выводим сообщение об ошибке, о невозможности отправкить сообщение
 					this->_log->print("child process stopped, pid = %s, status = %u", log_t::flag_t::CRITICAL, jack->pid, status);
 					// Если был завершён активный процесс и функция обратного вызова установлена
@@ -517,12 +513,15 @@ void awh::Cluster::fork(const size_t wid, const uint16_t index, const bool stop)
 						jack->mess.set(jack->mfds[0], ev::READ);
 						// Запускаем чтение данных с дочернего процесса
 						jack->mess.start();
-						// Устанавливаем базу событий
-						jack->cw.set(this->_base);
-						// Устанавливаем событие на выход дочернего процесса
-						jack->cw.set <worker_t, &worker_t::child> (it->second.get());
-						// Выполняем отслеживание статуса дочернего процесса
-						jack->cw.start(pid);
+						// Если нужно отслеживать падение дочернего процесса
+						if(this->_trackCrash){
+							// Устанавливаем базу событий
+							jack->cw.set(this->_base);
+							// Устанавливаем событие на выход дочернего процесса
+							jack->cw.set <worker_t, &worker_t::child> (it->second.get());
+							// Выполняем отслеживание статуса дочернего процесса
+							jack->cw.start(pid);
+						}
 						// Продолжаем дальше
 						if(!stop) this->fork(it->first, index + 1, stop);
 					}
@@ -906,6 +905,14 @@ void awh::Cluster::base(struct ev_loop * base) noexcept {
 		this->stop(worker.first);
 	// Выполняем установку базы событий
 	this->_base = base;
+}
+/**
+ * trackCrash Метод отключения отслеживания падения дочерних процессов
+ * @param mode флаг отслеживания падения дочерних процессов
+ */
+void awh::Cluster::trackCrash(const bool mode) noexcept {
+	// Выполняем установку флага отслеживания падения дочерних процессов
+	this->_trackCrash = mode;
 }
 /**
  * async Метод установки флага асинхронного режима работы

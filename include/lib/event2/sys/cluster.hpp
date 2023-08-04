@@ -216,6 +216,9 @@ namespace awh {
 			// Идентификатор родительского процесса
 			pid_t _pid;
 		private:
+			// Флаг отслеживания падения дочерних процессов
+			bool _trackCrash;
+		private:
 			// Объект работы с дочерними процессами
 			awh::event_t _event;
 		private:
@@ -318,6 +321,12 @@ namespace awh {
 			void base(struct event_base * base) noexcept;
 		public:
 			/**
+			 * trackCrash Метод отключения отслеживания падения дочерних процессов
+			 * @param mode флаг отслеживания падения дочерних процессов
+			 */
+			void trackCrash(const bool mode) noexcept;
+		public:
+			/**
 			 * async Метод установки флага асинхронного режима работы
 			 * @param wid  идентификатор воркера
 			 * @param mode флаг асинхронного режима работы
@@ -361,7 +370,7 @@ namespace awh {
 			 * @param log объект для работы с логами
 			 */
 			Cluster(const fmk_t * fmk, const log_t * log) noexcept :
-			 _pid(getpid()), _event(awh::event_t::type_t::SIGNAL, log),
+			 _pid(getpid()), _trackCrash(true), _event(awh::event_t::type_t::SIGNAL, log),
 			 _base(nullptr), _processFn(nullptr), _messageFn(nullptr), _fmk(fmk), _log(log) {}
 			/**
 			 * Cluster Конструктор
@@ -370,7 +379,7 @@ namespace awh {
 			 * @param log  объект для работы с логами
 			 */
 			Cluster(struct event_base * base, const fmk_t * fmk, const log_t * log) noexcept :
-			 _pid(getpid()), _event(awh::event_t::type_t::SIGNAL, log),
+			 _pid(getpid()), _trackCrash(true), _event(awh::event_t::type_t::SIGNAL, log),
 			 _base(base), _processFn(nullptr), _messageFn(nullptr), _fmk(fmk), _log(log) {}
 			/**
 			 * ~Cluster Деструктор

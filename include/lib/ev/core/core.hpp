@@ -278,7 +278,7 @@ namespace awh {
 			status_t status;
 			// Тип запускаемого ядра
 			engine_t::type_t type;
-		private:
+		protected:
 			// Флаг обработки сигналов
 			signals_t _signals;
 		private:

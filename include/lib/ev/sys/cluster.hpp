@@ -201,6 +201,9 @@ namespace awh {
 			// Идентификатор родительского процесса
 			pid_t _pid;
 		private:
+			// Флаг отслеживания падения дочерних процессов
+			bool _trackCrash;
+		private:
 			// Список активных дочерних процессов
 			map <pid_t, uint16_t> _pids;
 			// Список активных воркеров
@@ -300,6 +303,12 @@ namespace awh {
 			void base(struct ev_loop * base) noexcept;
 		public:
 			/**
+			 * trackCrash Метод отключения отслеживания падения дочерних процессов
+			 * @param mode флаг отслеживания падения дочерних процессов
+			 */
+			void trackCrash(const bool mode) noexcept;
+		public:
+			/**
 			 * async Метод установки флага асинхронного режима работы
 			 * @param wid  идентификатор воркера
 			 * @param mode флаг асинхронного режима работы
@@ -343,7 +352,8 @@ namespace awh {
 			 * @param log объект для работы с логами
 			 */
 			Cluster(const fmk_t * fmk, const log_t * log) noexcept :
-			 _pid(getpid()), _processFn(nullptr), _messageFn(nullptr), _base(nullptr), _fmk(fmk), _log(log) {}
+			 _pid(getpid()), _trackCrash(true), _processFn(nullptr),
+			 _messageFn(nullptr), _base(nullptr), _fmk(fmk), _log(log) {}
 			/**
 			 * Cluster Конструктор
 			 * @param base база событий
@@ -351,7 +361,8 @@ namespace awh {
 			 * @param log  объект для работы с логами
 			 */
 			Cluster(struct ev_loop * base, const fmk_t * fmk, const log_t * log) noexcept :
-			 _pid(getpid()), _processFn(nullptr), _messageFn(nullptr), _base(base), _fmk(fmk), _log(log) {}
+			 _pid(getpid()), _trackCrash(true), _processFn(nullptr),
+			 _messageFn(nullptr), _base(base), _fmk(fmk), _log(log) {}
 	} cluster_t;
 };
 

@@ -24,10 +24,12 @@ void awh::cluster::Core::active(const status_t status, awh::core_t * core) noexc
 	// Определяем статус активности сетевого ядра
 	switch(static_cast <uint8_t> (status)){
 		// Если система запущена
-		case static_cast <uint8_t> (status_t::START):
+		case static_cast <uint8_t> (status_t::START): {
+			// Устанавливаем перехват сигналов падения процессов
+			this->_cluster.trackCrash(this->_signals == signals_t::ENABLED);
 			// Выполняем запуск кластера
 			this->_cluster.start(0);
-		break;
+		} break;
 		// Если система остановлена
 		case static_cast <uint8_t> (status_t::STOP): {
 			// Если функция обратного вызова установлена
