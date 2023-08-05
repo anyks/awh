@@ -196,9 +196,8 @@ namespace awh {
 				 * @param sid    идентификатор схемы сети
 				 * @param ip     адрес интернет-подключения
 				 * @param family тип интернет-протокола AF_INET, AF_INET6
-				 * @param did    идентификатор DNS запроса
 				 */
-				void resolving(const size_t sid, const string & ip, const int family, const size_t did) noexcept;
+				void resolving(const size_t sid, const string & ip, const int family) noexcept;
 			public:
 				/**
 				 * bandWidth Метод установки пропускной способности сети

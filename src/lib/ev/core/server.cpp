@@ -610,35 +610,37 @@ void awh::server::Core::run(const size_t sid) noexcept {
 					case static_cast <uint8_t> (scheme_t::family_t::IPV4): {
 						// Обновляем хост сервера
 						shm->host = ifnet.ip(AF_INET);
-						// Выполняем запуск сервера
-						this->resolving(shm->sid, shm->host, AF_INET, 0);
+						// Выполняем подключения к полученному IP-адресу
+						this->resolving(shm->sid, shm->host, AF_INET);
 					} break;
 					// Если тип протокола подключения IPv6
 					case static_cast <uint8_t> (scheme_t::family_t::IPV6): {
 						// Обновляем хост сервера
 						shm->host = ifnet.ip(AF_INET6);
-						// Выполняем запуск сервера
-						this->resolving(shm->sid, shm->host, AF_INET6, 0);
+						// Выполняем подключения к полученному IP-адресу
+						this->resolving(shm->sid, shm->host, AF_INET6);
 					} break;
 				}
 			// Если хост сервера является доменным именем
 			} else {			
-				// Устанавливаем событие на получение данных с DNS сервера
-				this->dns.on(std::bind(&scheme_t::resolving, shm, _1, _2, _3));
 				// Определяем тип протокола подключения
 				switch(static_cast <uint8_t> (this->settings.family)){
 					// Если тип протокола подключения unix-сокет
 					case static_cast <uint8_t> (scheme_t::family_t::NIX):
 					// Если тип протокола подключения IPv4
-					case static_cast <uint8_t> (scheme_t::family_t::IPV4):
+					case static_cast <uint8_t> (scheme_t::family_t::IPV4): {
 						// Выполняем резолвинг домена
-						this->dns.resolve(shm->host, AF_INET);
-					break;
+						const string & ip = this->dns.resolve(shm->host, AF_INET);
+						// Выполняем подключения к полученному IP-адресу
+						this->resolving(shm->sid, ip, AF_INET);
+					} break;
 					// Если тип протокола подключения IPv6
-					case static_cast <uint8_t> (scheme_t::family_t::IPV6):
+					case static_cast <uint8_t> (scheme_t::family_t::IPV6): {
 						// Выполняем резолвинг домена
-						this->dns.resolve(shm->host, AF_INET6);
-					break;
+						const string & ip = this->dns.resolve(shm->host, AF_INET6);
+						// Выполняем подключения к полученному IP-адресу
+						this->resolving(shm->sid, ip, AF_INET6);
+					} break;
 				}
 			}
 		}
@@ -980,9 +982,8 @@ void awh::server::Core::transfer(const engine_t::method_t method, const size_t a
  * @param sid    идентификатор схемы сети
  * @param ip     адрес интернет-подключения
  * @param family тип интернет-протокола AF_INET, AF_INET6
- * @param did    идентификатор DNS запроса
  */
-void awh::server::Core::resolving(const size_t sid, const string & ip, const int family, const size_t did) noexcept {
+void awh::server::Core::resolving(const size_t sid, const string & ip, const int family) noexcept {
 	// Если идентификатор схемы сети передан
 	if(sid > 0){
 		// Выполняем поиск идентификатора схемы сети

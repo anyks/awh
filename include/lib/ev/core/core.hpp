@@ -255,7 +255,7 @@ namespace awh {
 		protected:
 			// Создаём объект работы с URI
 			uri_t uri;
-			// Создаём объект DNS резолвера
+			// Создаём объект DNS-резолвера
 			dns_t dns;
 			// Создаём объект для работы с актуатором
 			engine_t engine;
@@ -284,8 +284,6 @@ namespace awh {
 		private:
 			// Список активных таймеров
 			map <u_short, unique_ptr <timer_t>> _timers;
-			// Список функций обратного вызова при выполнении резолвинга
-			map <size_t, function <void (const string &, const scheme_t::family_t, Core *)>> _dids;
 		protected:
 			// Список активных схем сети
 			map <size_t, const scheme_t *> schemes;
@@ -427,14 +425,6 @@ namespace awh {
 			 * @param aid    идентификатор адъютанта
 			 */
 			virtual void transfer(const engine_t::method_t method, const size_t aid) noexcept;
-			/**
-			 * resolving Метод получения IP адреса доменного имени
-			 * @param sid    идентификатор схемы сети
-			 * @param ip     адрес интернет-подключения
-			 * @param family тип интернет-протокола AF_INET, AF_INET6
-			 * @param did    идентификатор DNS запроса
-			 */
-			virtual void resolving(const size_t sid, const string & ip, const int family, const size_t did) noexcept;
 		public:
 			/**
 			 * bandWidth Метод установки пропускной способности сети
@@ -535,22 +525,6 @@ namespace awh {
 			 * @param mode флаг активации заморозки чтения данных
 			 */
 			void freeze(const bool mode) noexcept;
-		private:
-			/**
-			 * resolving2 Метод получения IP адреса доменного имени
-			 * @param ip     адрес интернет-подключения
-			 * @param family тип интернет-протокола AF_INET, AF_INET6
-			 * @param did    идентификатор DNS запроса
-			 */
-			void resolving2(const string & ip, const int family, const size_t did) noexcept;
-		public:
-			/**
-			 * resolve Метод выполнения резолвинга доменного имени
-			 * @param domain   доменное имя для резолвинга
-			 * @param family   тип протокола интернета (IPV4 / IPV6)
-			 * @param callback функция обратного вызова
-			 */
-			void resolve(const string & domain, const scheme_t::family_t family, function <void (const string &, const scheme_t::family_t, Core *)> callback) noexcept;
 		public:
 			/**
 			 * removeUnixSocket Метод удаления unix-сокета
@@ -592,23 +566,29 @@ namespace awh {
 			 */
 			bool clearDNS() noexcept;
 			/**
-			 * flushDNS Метод сброса кэша DNS резолвера
+			 * flushDNS Метод сброса кэша DNS-резолвера
 			 * @return результат работы функции
 			 */
 			bool flushDNS() noexcept;
+		public:
+			/**
+			 * timeoutDNS Метод установки времени ожидания выполнения DNS запроса
+			 * @param sec интервал времени ожидания в секундах
+			 */
+			void timeoutDNS(const uint8_t sec) noexcept;
 			/**
 			 * clearBlackListDNS Метод очистки чёрного списка
 			 * @param family тип протокола интернета (IPV4 / IPV6)
 			 */
 			void clearBlackListDNS(const scheme_t::family_t family) noexcept;
 			/**
-			 * delInBlackListDNS Метод удаления IP адреса из чёрного списока
+			 * delInBlackListDNS Метод удаления IP-адреса из чёрного списока
 			 * @param family тип протокола интернета (IPV4 / IPV6)
 			 * @param ip     адрес для удаления из чёрного списка
 			 */
 			void delInBlackListDNS(const scheme_t::family_t family, const string & ip) noexcept;
 			/**
-			 * setToBlackListDNS Метод добавления IP адреса в чёрный список
+			 * setToBlackListDNS Метод добавления IP-адреса в чёрный список
 			 * @param family тип протокола интернета (IPV4 / IPV6)
 			 * @param ip     адрес для добавления в чёрный список
 			 */
@@ -624,11 +604,6 @@ namespace awh {
 			 * @param mode флаг состояния разрешения проверки
 			 */
 			void verifySSL(const bool mode) noexcept;
-			/**
-			 * timeoutDNS Метод установки времени ожидания выполнения DNS запроса
-			 * @param sec интервал времени ожидания в секундах
-			 */
-			void timeoutDNS(const uint8_t sec) noexcept;
 			/**
 			 * persistEnable Метод установки персистентного флага
 			 * @param mode флаг персистентного запуска каллбека
@@ -680,7 +655,7 @@ namespace awh {
 			void ns(const vector <string> & ns, const scheme_t::family_t family = scheme_t::family_t::IPV4) noexcept;
 			/**
 			 * network Метод установки параметров сети
-			 * @param ips    список IP адресов компьютера с которых разрешено выходить в интернет
+			 * @param ips    список IP-адресов компьютера с которых разрешено выходить в интернет
 			 * @param family тип протокола интернета (IPV4 / IPV6 / NIX)
 			 * @param sonet  тип сокета подключения (TCP / UDP)
 			 */

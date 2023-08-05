@@ -133,9 +133,6 @@ namespace awh {
 					Status() noexcept : real(mode_t::DISCONNECT), wait(mode_t::DISCONNECT), work(work_t::ALLOW) {}
 				} status_t;
 			public:
-				// Идентификатор DNS запроса
-				size_t did;
-			public:
 				// Флаг получения данных
 				bool acquisition;
 			public:
@@ -175,7 +172,7 @@ namespace awh {
 				 * @param log объект для работы с логами
 				 */
 				Scheme(const fmk_t * fmk, const log_t * log) noexcept :
-				 awh::scheme_t(fmk, log), did(0), acquisition(false),
+				 awh::scheme_t(fmk, log), acquisition(false),
 				 proxy(fmk, log), _connect(connect_t::SERVER) {}
 				/**
 				 * ~Scheme Деструктор

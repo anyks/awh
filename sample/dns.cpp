@@ -10,7 +10,7 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include <core/core.hpp>
+#include <net/dns.hpp>
 
 // Подключаем пространство имён
 using namespace std;
@@ -27,27 +27,28 @@ int main(int argc, char * argv[]){
 	fmk_t fmk;
 	// Создаём объект для работы с логами
 	log_t log(&fmk);
+	// Создаём объект работы с IP-адресами
+	net_t net(&fmk, &log);
 	// Создаём биндинг
-	core_t core(&fmk, &log);
+	dns_t dns(&fmk, &log, &net);
 	// Устанавливаем название сервиса
 	log.name("DNS");
 	// Устанавливаем формат времени
 	log.format("%H:%M:%S %d.%m.%Y");
-	// Флаг получения данных
-	bool success = false;
-	// Выполняем резолвинг для доменного имени
-	core.resolve("google.com", scheme_t::family_t::IPV4, [&log, &success](const string & ip, const scheme_t::family_t family, core_t * core){
-		// Запоминаем, что результат получен
-		success = true;
-		// Выводим результат получения IP адреса
-		log.print("IP: %s", log_t::flag_t::INFO, ip.c_str());
-		// Завершаем работу
-		core->stop();
-	});
-	// Если результат ещё не получен
-	if(!success)
-		// Выполняем запуск таймера
-		core.start();
+	// Создаём объекты нейм-сервера
+	dns_t::serv_t serv1, serv2;
+	// Устанавливаем хост первого нейм-сервера
+	serv1.host = "77.88.8.88";
+	// Устанавливаем хост второго нейм-сервера
+	serv2.host = "77.88.8.2";
+	// Выполняем установку серверов имён
+	dns.servers(AF_INET, {std::move(serv1), std::move(serv2)});
+	// Выполняем запрос на получение первого IP-адресов
+	log.print("IP1: %s", log_t::flag_t::INFO, dns.resolve("localhost", AF_INET).c_str());
+	// Выполняем запрос на получение второго IP-адресов
+	log.print("IP2: %s", log_t::flag_t::INFO, dns.resolve("yandex.ru", AF_INET).c_str());
+	// Выполняем запрос на получение третьего IP-адресов
+	log.print("IP3: %s", log_t::flag_t::INFO, dns.resolve("google.com", AF_INET).c_str());
 	// Выводим результат
 	return 0;
 }

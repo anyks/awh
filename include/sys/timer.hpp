@@ -15,9 +15,13 @@
 #ifndef __AWH_TIMER__
 #define __AWH_TIMER__
 
+#include <map>
+#include <mutex>
 #include <thread>
 #include <chrono>
-#include <future>
+#include <iostream>
+#include <functional>
+#include <condition_variable>
 
 // Устанавливаем пространство имён
 using namespace std;
@@ -31,74 +35,224 @@ namespace awh {
 	 */
 	typedef class Timer {
 		private:
-			// Токен работы таймера
-			atomic_bool token;
+			/**
+			 * Worker Класс воркера
+			 */
+			typedef struct Worker {
+				// Флаг остановки работы таймера
+				bool stop;
+				// Мютекс для блокировки потока
+				mutex mtx;
+				// Задержка времени таймера
+				size_t delay;
+				// Условная переменная, ожидания получения сигналов
+				condition_variable cv;
+				// Функция обратного вызова
+				function <void (void)> callback;
+				/**
+				 * Worker Конструктор
+				 */
+				Worker() noexcept : stop(false), delay(0), callback(nullptr) {}
+			} wrk_t;
+		private:
+			// Мютекс для блокировки потока
+			mutex _mtx;
+		private:
+			// Список активных воркеров таймера
+			map <size_t, unique_ptr <wrk_t>> _timers;
+		private:
+			/**
+			 * checkInputData Метод проверки на существование данных
+			 * @param tid идентификатор таймера
+			 * @return    результат проверки
+			 */
+			bool checkInputData(const size_t tid) const noexcept {
+				// Результат работы функции
+				bool result = true;
+				// Выполняем поиск идентификатор таймера
+				auto it = this->_timers.find(tid);
+				// Если идентификатор таймера в списке существует
+				if(it != this->_timers.end())
+					// Выполняем установку флага остановки таймера
+					result = it->second->stop;
+				// Выводим результат
+				return result;
+			}
 		public:
 			/**
-			 * Шаблон функции
-			 */
-			template <typename Function>
-			/**
 			 * setTimeout Метод установки таймаута
-			 * @param function функция для вызова
+			 * @param callback функция обратного вызова
 			 * @param delay    интервал задержки времени
+			 * @return         идентификатор таймаута
 			 */
-			void setTimeout(Function function, size_t delay) noexcept {
-				// Создаём новый поток
-				std::thread t([=]{
-					// Устанавливаем флаг разрешающий работу
-					this->token.store(true);
-					// Создаём бесконечный цикл
-					while(this->token.load()){
-						// Усыпляем поток на указанное количество милисекунд
-						this_thread::sleep_for(chrono::milliseconds(delay));
-						// Выполняем функцию обратного вызова
-						if(this->token.load()) function();
-						// Останавливаем работу таймера
-						this->token.store(false);
+			size_t setTimeout(function <void (void)> callback, const size_t delay) noexcept {
+				// Выполняем получение идентификатора таймаута
+				const size_t tid = (this->_timers.size() + 1);
+				// Выполняем блокировку потока
+				this->_mtx.lock();
+				// Выполняем добавление идентификатора таймера в список
+				auto ret = this->_timers.emplace(tid, unique_ptr <wrk_t> (new wrk_t));
+				// Выполняем разблокировку потока
+				this->_mtx.unlock();
+				// Выполняем установку задержки времени
+				ret.first->second->delay = delay;
+				// Выполняем установку функции обратного вызова
+				ret.first->second->callback = callback;
+				// Выполняем создание нового активного потока
+				std::thread([=]{
+					/**
+					 * Выполняем отлов ошибок
+					 */
+					try {
+						// Выполняем поиск нашего таймера
+						auto it = this->_timers.find(tid);
+						// Если таймер найден
+						if(it != this->_timers.end()){
+							// Выполняем блокировку уникальным мютексом
+							unique_lock <mutex> lock(it->second->mtx);
+							// Выполняем ожидание на поступление новых заданий
+							it->second->cv.wait_for(lock, chrono::milliseconds(it->second->delay), std::bind(&Timer::checkInputData, this, tid));
+						}{
+							// Выполняем поиск нашего таймера
+							auto it = this->_timers.find(tid);
+							// Если идентификатор таймера в списке существует и остановка не подтверждена
+							if((it != this->_timers.end()) && !it->second->stop){
+								// Выполняем функцию обратного вызова
+								it->second->callback();
+								// Выполняем блокировку потока
+								const lock_guard <mutex> lock(this->_mtx);
+								// Выполняем удаление идентификатора таймера
+								this->_timers.erase(it);
+							// Если была выполнена остановка
+							} else if(it != this->_timers.end()) {
+								// Выполняем блокировку потока
+								const lock_guard <mutex> lock(this->_mtx);
+								// Выполняем удаление идентификатора таймера
+								this->_timers.erase(it);
+							}
+						}
+					/**
+					 * Если возникает ошибка
+					 */
+					} catch(const exception & error) {
+						// Выполняем блокировку потока
+						const lock_guard <mutex> lock(this->_mtx);
+						// Выполняем поиск идентификатор таймера
+						auto it = this->_timers.find(tid);
+						// Если идентификатор таймера в списке существует
+						if(it != this->_timers.end())
+							// Выполняем удаление идентификатора таймера
+							this->_timers.erase(it);
 					}
-				});
-				// Выполняем ожидание завершения работы потока
-				t.detach();
+				}).detach();
+				// Выводим результат
+				return tid;
 			}
 			/**
-			 * Шаблон функции
-			 */
-			template <typename Function>
-			/**
 			 * setInterval Метод установки таймаута
-			 * @param function функция для вызова
+			 * @param callback функция для вызова
 			 * @param interval интервал времени выполнения функции
+			 * @return         идентификатор таймаута
 			 */
-			void setInterval(Function function, size_t interval) noexcept {
-				// Устанавливаем флаг разрешающий работу
-				this->token.store(true);
-				// Создаём новый поток
-				std::thread t([=]{
-					// Создаём бесконечный цикл
-					while(this->token.load()){
-						// Усыпляем поток на указанное количество милисекунд
-						this_thread::sleep_for(chrono::milliseconds(interval));
-						// Выполняем функцию обратного вызова
-						if(this->token.load()) function();
+			size_t setInterval(function <void (void)> callback, const size_t interval) noexcept {
+				// Выполняем получение идентификатора таймаута
+				const size_t tid = (this->_timers.size() + 1);
+				// Выполняем блокировку потока
+				this->_mtx.lock();
+				// Выполняем добавление идентификатора таймера в список
+				auto ret = this->_timers.emplace(tid, unique_ptr <wrk_t> (new wrk_t));
+				// Выполняем разблокировку потока
+				this->_mtx.unlock();
+				// Выполняем установку задержки времени
+				ret.first->second->delay = interval;
+				// Выполняем установку функции обратного вызова
+				ret.first->second->callback = callback;
+				// Выполняем создание нового активного потока
+				std::thread([=]{
+					/**
+					 * Выполняем отлов ошибок
+					 */
+					try {
+						// Создаём бесконечный цикл
+						for(;;){
+							// Выполняем поиск нашего таймера
+							auto it = this->_timers.find(tid);
+							// Если таймер найден
+							if(it != this->_timers.end()){
+								// Выполняем блокировку уникальным мютексом
+								unique_lock <mutex> lock(it->second->mtx);
+								// Выполняем ожидание на поступление новых заданий
+								it->second->cv.wait_for(lock, chrono::milliseconds(it->second->delay), std::bind(&Timer::checkInputData, this, tid));
+							}{
+								// Выполняем поиск идентификатор таймера
+								auto it = this->_timers.find(tid);
+								// Если идентификатор таймера в списке существует и остановка не подтверждена
+								if((it != this->_timers.end()) && !it->second->stop)
+									// Выполняем функцию обратного вызова
+									it->second->callback();
+								// Если была выполнена остановка
+								else if(it != this->_timers.end()) {
+									// Выполняем блокировку потока
+									const lock_guard <mutex> lock(this->_mtx);
+									// Выполняем удаление идентификатора таймера
+									this->_timers.erase(it);
+									// Выходим из цикла
+									break;
+								}
+							}
+						}
+					/**
+					 * Если возникает ошибка
+					 */
+					} catch(const exception & error) {
+						// Выполняем блокировку потока
+						const lock_guard <mutex> lock(this->_mtx);
+						// Выполняем поиск идентификатор таймера
+						auto it = this->_timers.find(tid);
+						// Если идентификатор таймера в списке существует
+						if(it != this->_timers.end())
+							// Выполняем удаление идентификатора таймера
+							this->_timers.erase(it);
 					}
-				});
-				// Выполняем ожидание завершения работы потока
-				t.detach();
+				}).detach();
+				// Выводим результат
+				return tid;
 			}
 			/**
 			 * stop Метод остановки работы таймера
+			 * @param tid идентификатор таймера
 			 */
-			void stop() noexcept {
-				// Останавливаем работу таймера
-				this->token.store(false);
+			void stop(const size_t tid) noexcept {
+				// Выполняем блокировку потока
+				const lock_guard <mutex> lock(this->_mtx);
+				// Выполняем поиск идентификатор таймера
+				auto it = this->_timers.find(tid);
+				// Если идентификатор таймера в списке существует
+				if(it != this->_timers.end()){
+					// Выполняем установку флага остановки таймера
+					it->second->stop = true;
+					// Отправляем сообщение, что данные записаны
+					it->second->cv.notify_one();
+				}
 			}
+			/**
+			 * Timer Конструктор
+			 */
+			Timer() noexcept {}
 			/**
 			 * ~Timer Деструктор
 			 */
 			~Timer() noexcept {
-				// Останавливаем работу таймера
-				this->stop();
+				// Если список активных таймеров не пустой
+				if(!this->_timers.empty()){
+					// Выполняем перебор всех активных таймеров
+					for(auto & timer : this->_timers){
+						// Выполняем установку флага остановки таймера
+						timer.second->stop = true;
+						// Отправляем сообщение, что данные записаны
+						timer.second->cv.notify_one();
+					}
+				}
 			}
 	} timer_t;
 };

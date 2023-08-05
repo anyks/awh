@@ -312,9 +312,8 @@ namespace awh {
 			 * resolving Метод получения IP адреса доменного имени
 			 * @param ip     адрес интернет-подключения
 			 * @param family тип интернет-протокола AF_INET, AF_INET6
-			 * @param did    идентификатор DNS запроса
 			 */
-			void resolving(const string & ip, const int family, const size_t did) noexcept;
+			void resolving(const string & ip, const int family) noexcept;
 		public:
 			/**
 			 * clear Метод очистки

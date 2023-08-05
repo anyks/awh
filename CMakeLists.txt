@@ -242,7 +242,6 @@ if(CMAKE_BUILD_EVENT2)
         "${CMAKE_SOURCE_DIR}/src/lib/event2/sys/events.cpp"
         "${CMAKE_SOURCE_DIR}/src/lib/event2/sys/signals.cpp"
         "${CMAKE_SOURCE_DIR}/src/lib/event2/sys/cluster.cpp"
-        "${CMAKE_SOURCE_DIR}/src/lib/event2/net/dns.cpp"
         "${CMAKE_SOURCE_DIR}/src/lib/event2/core/core.cpp"
         "${CMAKE_SOURCE_DIR}/src/lib/event2/core/client.cpp"
         "${CMAKE_SOURCE_DIR}/src/lib/event2/core/server.cpp"
@@ -253,7 +252,6 @@ else()
     set(SOURCE_FILES
         "${CMAKE_SOURCE_DIR}/src/lib/ev/sys/signals.cpp"
         "${CMAKE_SOURCE_DIR}/src/lib/ev/sys/cluster.cpp"
-        "${CMAKE_SOURCE_DIR}/src/lib/ev/net/dns.cpp"
         "${CMAKE_SOURCE_DIR}/src/lib/ev/core/core.cpp"
         "${CMAKE_SOURCE_DIR}/src/lib/ev/core/client.cpp"
         "${CMAKE_SOURCE_DIR}/src/lib/ev/core/server.cpp"
@@ -275,6 +273,7 @@ set(SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/src/net/net.cpp"
     "${CMAKE_SOURCE_DIR}/src/net/nwt.cpp"
     "${CMAKE_SOURCE_DIR}/src/net/uri.cpp"
+    "${CMAKE_SOURCE_DIR}/src/net/dns.cpp"
     "${CMAKE_SOURCE_DIR}/src/net/engine.cpp"
     "${CMAKE_SOURCE_DIR}/src/net/socket.cpp"
     "${CMAKE_SOURCE_DIR}/src/hash/hash.cpp"
@@ -768,6 +767,99 @@ if (ENABLE_CONSOLE_APP)
             ${BROTLI_LIBRARIES}
             ${OPENSSL_LIBRARIES}
         )
+    endif()
+endif()
+
+# Активация формирования дампа ядра в реже отладки под MacOS X
+if(CMAKE_BUILD_TYPE MATCHES Debug)
+    if(${CMAKE_SYSTEM_NAME} STREQUAL "Darwin")
+        set(entitlements_file "${CMAKE_SOURCE_DIR}/segv.entitlements")
+        execute_process(COMMAND /usr/libexec/PlistBuddy -c "Add :com.apple.security.get-task-allow bool true" "${entitlements_file}")
+        
+        add_custom_command(TARGET "${IP_APP_NAME}" POST_BUILD
+            COMMAND codesign -s - -f --entitlements "${entitlements_file}" "$<TARGET_FILE:${IP_APP_NAME}>"
+            COMMAND ulimit -c unlimited
+            COMMENT "sign target \"${IP_APP_NAME}\" to enable core dump on MacOS X"
+            VERBATIM
+        )
+
+        add_custom_command(TARGET "${WSC_APP_NAME}" POST_BUILD
+            COMMAND codesign -s - -f --entitlements "${entitlements_file}" "$<TARGET_FILE:${WSC_APP_NAME}>"
+            COMMAND ulimit -c unlimited
+            COMMENT "sign target \"${WSC_APP_NAME}\" to enable core dump on MacOS X"
+            VERBATIM
+        )
+
+        add_custom_command(TARGET "${WSS_APP_NAME}" POST_BUILD
+            COMMAND codesign -s - -f --entitlements "${entitlements_file}" "$<TARGET_FILE:${WSS_APP_NAME}>"
+            COMMAND ulimit -c unlimited
+            COMMENT "sign target \"${WSS_APP_NAME}\" to enable core dump on MacOS X"
+            VERBATIM
+        )
+
+        add_custom_command(TARGET "${DNS_APP_NAME}" POST_BUILD
+            COMMAND codesign -s - -f --entitlements "${entitlements_file}" "$<TARGET_FILE:${DNS_APP_NAME}>"
+            COMMAND ulimit -c unlimited
+            COMMENT "sign target \"${DNS_APP_NAME}\" to enable core dump on MacOS X"
+            VERBATIM
+        )
+
+        add_custom_command(TARGET "${TIMER_APP_NAME}" POST_BUILD
+            COMMAND codesign -s - -f --entitlements "${entitlements_file}" "$<TARGET_FILE:${TIMER_APP_NAME}>"
+            COMMAND ulimit -c unlimited
+            COMMENT "sign target \"${TIMER_APP_NAME}\" to enable core dump on MacOS X"
+            VERBATIM
+        )
+
+        add_custom_command(TARGET "${PROXY_APP_NAME}" POST_BUILD
+            COMMAND codesign -s - -f --entitlements "${entitlements_file}" "$<TARGET_FILE:${PROXY_APP_NAME}>"
+            COMMAND ulimit -c unlimited
+            COMMENT "sign target \"${PROXY_APP_NAME}\" to enable core dump on MacOS X"
+            VERBATIM
+        )
+        
+        add_custom_command(TARGET "${SOCKS5_APP_NAME}" POST_BUILD
+            COMMAND codesign -s - -f --entitlements "${entitlements_file}" "$<TARGET_FILE:${SOCKS5_APP_NAME}>"
+            COMMAND ulimit -c unlimited
+            COMMENT "sign target \"${SOCKS5_APP_NAME}\" to enable core dump on MacOS X"
+            VERBATIM
+        )
+        
+        add_custom_command(TARGET "${CLIENT_APP_NAME}" POST_BUILD
+            COMMAND codesign -s - -f --entitlements "${entitlements_file}" "$<TARGET_FILE:${CLIENT_APP_NAME}>"
+            COMMAND ulimit -c unlimited
+            COMMENT "sign target \"${CLIENT_APP_NAME}\" to enable core dump on MacOS X"
+            VERBATIM
+        )
+            
+        add_custom_command(TARGET "${SERVER_APP_NAME}" POST_BUILD
+            COMMAND codesign -s - -f --entitlements "${entitlements_file}" "$<TARGET_FILE:${SERVER_APP_NAME}>"
+            COMMAND ulimit -c unlimited
+            COMMENT "sign target \"${SERVER_APP_NAME}\" to enable core dump on MacOS X"
+            VERBATIM
+        )
+
+        add_custom_command(TARGET "${WEB_CLIENT_APP_NAME}" POST_BUILD
+            COMMAND codesign -s - -f --entitlements "${entitlements_file}" "$<TARGET_FILE:${WEB_CLIENT_APP_NAME}>"
+            COMMAND ulimit -c unlimited
+            COMMENT "sign target \"${WEB_CLIENT_APP_NAME}\" to enable core dump on MacOS X"
+            VERBATIM
+        )
+        
+        add_custom_command(TARGET "${WEB_SERVER_APP_NAME}" POST_BUILD
+            COMMAND codesign -s - -f --entitlements "${entitlements_file}" "$<TARGET_FILE:${WEB_SERVER_APP_NAME}>"
+            COMMAND ulimit -c unlimited
+            COMMENT "sign target \"${WEB_SERVER_APP_NAME}\" to enable core dump on MacOS X"
+            VERBATIM
+        )
+        
+        add_custom_command(TARGET "${CLUSTER_APP_NAME}" POST_BUILD
+            COMMAND codesign -s - -f --entitlements "${entitlements_file}" "$<TARGET_FILE:${CLUSTER_APP_NAME}>"
+            COMMAND ulimit -c unlimited
+            COMMENT "sign target \"${CLUSTER_APP_NAME}\" to enable core dump on MacOS X"
+            VERBATIM
+        )
+
     endif()
 endif()
 

@@ -618,7 +618,7 @@ int main(int argc, char * argv[]){
 ### Example DNS Resolver
 
 ```c++
-#include <core/core.hpp>
+#include <net/dns.hpp>
 
 using namespace std;
 using namespace awh;
@@ -626,21 +626,25 @@ using namespace awh;
 int main(int argc, char * argv[]){
 	fmk_t fmk;
 	log_t log(&fmk);
-	core_t core(&fmk, &log);
+	net_t net(&fmk, &log);
+	dns_t dns(&fmk, &log, &net);
 
 	log.name("DNS");
 	log.format("%H:%M:%S %d.%m.%Y");
 
-	core.resolve("google.com", scheme_t::family_t::IPV4, [&log](const string & ip, const scheme_t::family_t family, core_t * core){
-		log.print("IP: %s", log_t::flag_t::INFO, ip.c_str());
-		core->stop();
-	});
+	dns_t::serv_t serv1, serv2;
 
-	core.start();
+	serv1.host = "77.88.8.88";
+	serv2.host = "77.88.8.2";
+
+	dns.servers(AF_INET, {std::move(serv1), std::move(serv2)});
+
+	log.print("IP1: %s", log_t::flag_t::INFO, dns.resolve("localhost", AF_INET).c_str());
+	log.print("IP2: %s", log_t::flag_t::INFO, dns.resolve("yandex.ru", AF_INET).c_str());
+	log.print("IP3: %s", log_t::flag_t::INFO, dns.resolve("google.com", AF_INET).c_str());
 
 	return 0;
 }
-
 ```
 
 ### Example TCP Client

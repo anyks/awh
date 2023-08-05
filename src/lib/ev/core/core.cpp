@@ -108,16 +108,6 @@ void awh::scheme_t::adj_t::timeout(ev::timer & timer, int revents) noexcept {
 	core->timeout(this->aid);
 }
 /**
- * resolving Метод получения IP адреса доменного имени
- * @param ip     адрес интернет-подключения
- * @param family тип интернет-протокола AF_INET, AF_INET6
- * @param did    идентификатор DNS запроса
- */
-void awh::scheme_t::resolving(const string & ip, const int family, const size_t did) noexcept {
-	// Выполняем передачу данных резолвинга
-	const_cast <core_t *> (this->core)->resolving(this->sid, ip, family, did);
-}
-/**
  * callback Метод обратного вызова
  * @param timer   объект события таймера
  * @param revents идентификатор события
@@ -594,11 +584,9 @@ void awh::Core::bind(Core * core) noexcept {
 			this->cores++;
 			// Устанавливаем флаг запуска
 			core->mode = true;
-			// Добавляем базу событий для DNS резолвера
-			core->dns.base(core->dispatch.base);
-			// Выполняем установку нейм-серверов для DNS резолвера IPv4
+			// Выполняем установку нейм-серверов для DNS-резолвера IPv4
 			core->dns.replace(AF_INET, core->settings.v4.second);
-			// Выполняем установку нейм-серверов для DNS резолвера IPv6
+			// Выполняем установку нейм-серверов для DNS-резолвера IPv6
 			core->dns.replace(AF_INET6, core->settings.v6.second);
 			// Выполняем разблокировку потока
 			core->_mtx.status.unlock();
@@ -647,7 +635,7 @@ void awh::Core::unbind(Core * core) noexcept {
 			core->_timer.io.stop();
 		// Выполняем разблокировку потока
 		core->_mtx.status.unlock();
-		// Выполняем удаление модуля DNS резолвера
+		// Выполняем удаление модуля DNS-резолвера
 		core->dns.clear();
 		// Запускаем метод деактивации базы событий
 		core->closedown();
@@ -818,20 +806,6 @@ void awh::Core::transfer(const engine_t::method_t method, const size_t aid) noex
 	(void) method;
 }
 /**
- * resolving Метод получения IP адреса доменного имени
- * @param sid    идентификатор схемы сети
- * @param ip     адрес интернет-подключения
- * @param family тип интернет-протокола AF_INET, AF_INET6
- * @param did    идентификатор DNS запроса
- */
-void awh::Core::resolving(const size_t sid, const string & ip, const int family, const size_t did) noexcept {
-	// Экранируем ошибку неиспользуемой переменной
-	(void) sid;
-	(void) ip;
-	(void) family;
-	(void) did;
-}
-/**
  * bandWidth Метод установки пропускной способности сети
  * @param aid   идентификатор адъютанта
  * @param read  пропускная способность на чтение (bps, kbps, Mbps, Gbps)
@@ -905,11 +879,9 @@ void awh::Core::rebase() noexcept {
 			// Выполняем запуск отслеживания сигналов
 			this->_sig.start();
 		}
-		// Добавляем базу событий для DNS резолвера
-		this->dns.base(this->dispatch.base);
-		// Выполняем установку нейм-серверов для DNS резолвера IPv4
+		// Выполняем установку нейм-серверов для DNS-резолвера IPv4
 		this->dns.replace(AF_INET, this->settings.v4.second);
-		// Выполняем установку нейм-серверов для DNS резолвера IPv6
+		// Выполняем установку нейм-серверов для DNS-резолвера IPv6
 		this->dns.replace(AF_INET6, this->settings.v6.second);
 		// Если список таймеров получен
 		if(!mainTimers.empty()){
@@ -1429,72 +1401,6 @@ void awh::Core::freeze(const bool mode) noexcept {
 	this->dispatch.freeze(mode);
 }
 /**
- * resolving2 Метод получения IP адреса доменного имени
- * @param ip     адрес интернет-подключения
- * @param family тип интернет-протокола AF_INET, AF_INET6
- * @param did    идентификатор DNS запроса
- */
-void awh::Core::resolving2(const string & ip, const int family, const size_t did) noexcept {
-	// Выполняем поиск идентификатора запроса
-	auto it = this->_dids.find(did);
-	// Если идентификатор запроса получен
-	if(it != this->_dids.end()){
-		// Определяем тип протокола подключения
-		switch(family){
-			// Если тип протокола подключения IPv4
-			case AF_INET:
-				// Выполняем функцию обратного вызова
-				it->second(ip, scheme_t::family_t::IPV4, this);
-			break;
-			// Если тип протокола подключения IPv6
-			case AF_INET6:
-				// Выполняем функцию обратного вызова
-				it->second(ip, scheme_t::family_t::IPV6, this);
-			break;
-		}
-		// Выполняем удаление объекта запроса
-		this->_dids.erase(it);
-	}
-}
-/**
- * resolve Метод выполнения резолвинга доменного имени
- * @param domain   доменное имя для резолвинга
- * @param family   тип протокола интернета (IPV4 / IPV6)
- * @param callback функция обратного вызова
- */
-void awh::Core::resolve(const string & domain, const scheme_t::family_t family, function <void (const string &, const scheme_t::family_t, Core *)> callback) noexcept {
-	// Если доменное имя передано
-	if(!domain.empty() && (callback != nullptr)){
-		// Идентификатор DNS запроса
-		size_t did = 0;
-		// Устанавливаем событие на получение данных с DNS сервера
-		this->dns.on(std::bind(&core_t::resolving2, this, _1, _2, _3));
-		// Выполняем поиск нулевой позиции (при мгновенном получении результата)
-		auto it = this->_dids.find(did);
-		// Если нулевой идентификатор получен
-		if(it != this->_dids.end())
-			// Устанавливаем функцию обратного вызова
-			it->second = callback;
-		// Иначе просто добавляем функцию обратного вызова в нулевое значение
-		else this->_dids.emplace(did, callback);
-		// Определяем тип протокола подключения
-		switch(static_cast <uint8_t> (family)){
-			// Если тип протокола подключения IPv4
-			case static_cast <uint8_t> (scheme_t::family_t::IPV4):
-				// Выполняем резолвинг домена
-				did = this->dns.resolve(domain, AF_INET);
-			break;
-			// Если тип протокола подключения IPv6
-			case static_cast <uint8_t> (scheme_t::family_t::IPV6):
-				// Выполняем резолвинг домена
-				did = this->dns.resolve(domain, AF_INET6);
-			break;
-		}
-		// Выполняем резолвинг домена
-		if(did > 0) this->_dids.emplace(did, callback);
-	}
-}
-/**
  * removeUnixSocket Метод удаления unix-сокета
  * @return результат выполнения операции
  */
@@ -1623,12 +1529,20 @@ bool awh::Core::clearDNS() noexcept {
 	return this->dns.clear();
 }
 /**
- * flushDNS Метод сброса кэша DNS резолвера
+ * flushDNS Метод сброса кэша DNS-резолвера
  * @return результат работы функции
  */
 bool awh::Core::flushDNS() noexcept {
-	// Выполняем очистку кэша DNS резолвера
+	// Выполняем очистку кэша DNS-резолвера
 	return this->dns.flush();
+}
+/**
+ * timeoutDNS Метод установки времени ожидания выполнения DNS запроса
+ * @param sec интервал времени ожидания в секундах
+ */
+void awh::Core::timeoutDNS(const uint8_t sec) noexcept {
+	// Выполняем установку времени ожидания выполнения запроса
+	this->dns.timeout(sec);
 }
 /**
  * clearBlackListDNS Метод очистки чёрного списка
@@ -1639,18 +1553,18 @@ void awh::Core::clearBlackListDNS(const scheme_t::family_t family) noexcept {
 	switch(static_cast <uint8_t> (family)){
 		// Если тип протокола интернета IPv4
 		case static_cast <uint8_t> (scheme_t::family_t::IPV4):
-			// Выполняем очистку чёрного списка IP адресов
+			// Выполняем очистку чёрного списка IP-адресов
 			this->dns.clearBlackList(AF_INET);
 		break;
 		// Если тип протокола интернета IPv6
 		case static_cast <uint8_t> (scheme_t::family_t::IPV6):
-			// Выполняем очистку чёрного списка IP адресов
+			// Выполняем очистку чёрного списка IP-адресов
 			this->dns.clearBlackList(AF_INET6);
 		break;
 	}
 }
 /**
- * delInBlackListDNS Метод удаления IP адреса из чёрного списока
+ * delInBlackListDNS Метод удаления IP-адреса из чёрного списока
  * @param family тип протокола интернета (IPV4 / IPV6)
  * @param ip     адрес для удаления из чёрного списка
  */
@@ -1659,18 +1573,18 @@ void awh::Core::delInBlackListDNS(const scheme_t::family_t family, const string 
 	switch(static_cast <uint8_t> (family)){
 		// Если тип протокола интернета IPv4
 		case static_cast <uint8_t> (scheme_t::family_t::IPV4):
-			// Выполняем удаление из чёрного списка IP адреса
+			// Выполняем удаление из чёрного списка IP-адреса
 			this->dns.delInBlackList(AF_INET, ip);
 		break;
 		// Если тип протокола интернета IPv6
 		case static_cast <uint8_t> (scheme_t::family_t::IPV6):
-			// Выполняем удаление из чёрного списка IP адреса
+			// Выполняем удаление из чёрного списка IP-адреса
 			this->dns.delInBlackList(AF_INET6, ip);
 		break;
 	}
 }
 /**
- * setToBlackListDNS Метод добавления IP адреса в чёрный список
+ * setToBlackListDNS Метод добавления IP-адреса в чёрный список
  * @param family тип протокола интернета (IPV4 / IPV6)
  * @param ip     адрес для добавления в чёрный список
  */
@@ -1679,12 +1593,12 @@ void awh::Core::setToBlackListDNS(const scheme_t::family_t family, const string 
 	switch(static_cast <uint8_t> (family)){
 		// Если тип протокола интернета IPv4
 		case static_cast <uint8_t> (scheme_t::family_t::IPV4):
-			// Выполняем установку в чёрный список IP адреса
+			// Выполняем установку в чёрный список IP-адреса
 			this->dns.setToBlackList(AF_INET, ip);
 		break;
 		// Если тип протокола интернета IPv6
 		case static_cast <uint8_t> (scheme_t::family_t::IPV6):
-			// Выполняем установку в чёрный список IP адреса
+			// Выполняем установку в чёрный список IP-адреса
 			this->dns.setToBlackList(AF_INET6, ip);
 		break;
 	}
@@ -1708,16 +1622,6 @@ void awh::Core::verifySSL(const bool mode) noexcept {
 	const lock_guard <recursive_mutex> lock(this->_mtx.main);
 	// Выполняем установку флага проверки домена
 	this->engine.verifyEnable(mode);
-}
-/**
- * timeoutDNS Метод установки времени ожидания выполнения DNS запроса
- * @param sec интервал времени ожидания в секундах
- */
-void awh::Core::timeoutDNS(const uint8_t sec) noexcept {
-	// Выполняем блокировку потока
-	const lock_guard <recursive_mutex> lock(this->_mtx.main);
-	// Выполняем установку времени ожидания выполнения запроса
-	this->dns.timeout(sec);
 }
 /**
  * persistEnable Метод установки персистентного флага
@@ -1859,7 +1763,7 @@ void awh::Core::ns(const vector <string> & ns, const scheme_t::family_t family) 
 				}
 				// Устанавливаем полученный список серверов имён
 				this->settings.v4.second.assign(servers.cbegin(), servers.cend());
-				// Выполняем установку нейм-серверов для DNS резолвера IPv4
+				// Выполняем установку нейм-серверов для DNS-резолвера IPv4
 				this->dns.replace(AF_INET, this->settings.v4.second);
 			} break;
 			// Если мы получили адреса интернет-протокола IPv6
@@ -1889,7 +1793,7 @@ void awh::Core::ns(const vector <string> & ns, const scheme_t::family_t family) 
 				}
 				// Устанавливаем полученный список серверов имён
 				this->settings.v6.second.assign(servers.cbegin(), servers.cend());
-				// Выполняем установку нейм-серверов для DNS резолвера IPv6
+				// Выполняем установку нейм-серверов для DNS-резолвера IPv6
 				this->dns.replace(AF_INET6, this->settings.v6.second);
 			} break;
 		}
@@ -1897,7 +1801,7 @@ void awh::Core::ns(const vector <string> & ns, const scheme_t::family_t family) 
 }
 /**
  * network Метод установки параметров сети
- * @param ips    список IP адресов компьютера с которых разрешено выходить в интернет
+ * @param ips    список IP-адресов компьютера с которых разрешено выходить в интернет
  * @param family тип протокола интернета (IPV4 / IPV6 / NIX)
  * @param sonet  тип сокета подключения (TCP / UDP)
  */
@@ -1931,12 +1835,12 @@ void awh::Core::network(const vector <string> & ips, const scheme_t::family_t fa
 		switch(static_cast <uint8_t> (this->settings.family)){
 			// Если мы получили адреса интернет-протокола IPv4
 			case static_cast <uint8_t> (scheme_t::family_t::IPV4):
-				// Устанавливаем полученные IP адреса
+				// Устанавливаем полученные IP-адреса
 				this->settings.v4.first.assign(ips.cbegin(), ips.cend());
 			break;
 			// Если мы получили адреса интернет-протокола IPv6
 			case static_cast <uint8_t> (scheme_t::family_t::IPV6):
-				// Устанавливаем полученные IP адреса
+				// Устанавливаем полученные IP-адреса
 				this->settings.v6.first.assign(ips.cbegin(), ips.cend());
 			break;
 		}
@@ -1964,8 +1868,6 @@ awh::Core::Core(const fmk_t * fmk, const log_t * log, const scheme_t::family_t f
 	if(this->settings.family == scheme_t::family_t::NIX)
 		// Выполняем активацию адреса файла сокета
 		this->unixSocket();
-	// Устанавливаем базу событий для DNS резолвера
-	this->dns.base(this->dispatch.base);
 }
 /**
  * ~Core Деструктор
@@ -1973,7 +1875,7 @@ awh::Core::Core(const fmk_t * fmk, const log_t * log, const scheme_t::family_t f
 awh::Core::~Core() noexcept {
 	// Выполняем остановку сервиса
 	this->stop();
-	// Выполняем удаление модуля DNS резолвера
+	// Выполняем удаление модуля DNS-резолвера
 	this->dns.clear();
 	// Выполняем блокировку потока
 	this->_mtx.status.lock();

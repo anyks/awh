@@ -18,9 +18,9 @@ using namespace std;
 using namespace awh;
 
 /**
- * Timer Класс объекта исполнителя
+ * Executor Класс объекта исполнителя
  */
-class Timer {
+class Executor {
 	private:
 		// Замеряем время начала работы для таймера
 		chrono::time_point <chrono::system_clock> ts;
@@ -79,9 +79,9 @@ class Timer {
 					// Выводим информацию в лог
 					this->_log->print("%s", log_t::flag_t::INFO, "Start timer");
 					// Устанавливаем задержку времени на 10 секунд
-					core->setTimeout(10000, (function <void (const u_short, core_t *)>) bind(&Timer::timeout, this, _1, _2));
+					core->setTimeout(10000, (function <void (const u_short, core_t *)>) bind(&Executor::timeout, this, _1, _2));
 					// Устанавливаем интервал времени времени на 5 секунд
-					core->setInterval(5000, (function <void (const u_short, core_t *)>) bind(&Timer::interval, this, _1, _2));
+					core->setInterval(5000, (function <void (const u_short, core_t *)>) bind(&Executor::interval, this, _1, _2));
 				} break;
 				// Если система остановлена
 				case static_cast <uint8_t> (awh::core_t::status_t::STOP):
@@ -92,10 +92,10 @@ class Timer {
 		}
 	public:
 		/**
-		 * Timer Конструктор
+		 * Executor Конструктор
 		 * @param log объект логирования
 		 */
-		Timer(log_t * log) : ts(chrono::system_clock::now()), is(chrono::system_clock::now()), count(0), _log(log) {}
+		Executor(log_t * log) : ts(chrono::system_clock::now()), is(chrono::system_clock::now()), count(0), _log(log) {}
 };
 
 /**
@@ -110,7 +110,7 @@ int main(int argc, char * argv[]){
 	// Создаём объект для работы с логами
 	log_t log(&fmk);
 	// Создаём объект исполнителя
-	Timer executor(&log);
+	Executor executor(&log);
 	// Создаём биндинг
 	core_t core(&fmk, &log);
 	// Устанавливаем название сервиса
@@ -118,7 +118,7 @@ int main(int argc, char * argv[]){
 	// Устанавливаем формат времени
 	log.format("%H:%M:%S %d.%m.%Y");
 	// Устанавливаем функцию обратного вызова на запуск системы
-	core.callback((function <void (const awh::core_t::status_t, core_t *)>) bind(&Timer::run, &executor, _1, _2));
+	core.callback((function <void (const awh::core_t::status_t, core_t *)>) bind(&Executor::run, &executor, _1, _2));
 	// Выполняем запуск таймера
 	core.start();
 	// Выводим результат
