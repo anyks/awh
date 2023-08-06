@@ -1010,7 +1010,7 @@ void awh::DNS::server(const int family, const serv_t & server) noexcept {
 		// Устанавливаем порт сервера
 		result.port = server.port;
 		// Определяем тип передаваемого сервера
-		switch(static_cast <uint8_t> (this->_net->host(server.host))){
+		switch(static_cast <uint8_t> (this->_net.host(server.host))){
 			// Если домен является аппаратным адресом сетевого интерфейса
 			case static_cast <uint8_t> (net_t::type_t::MAC):
 			// Если домен является адресом/Маски сети
@@ -1036,7 +1036,7 @@ void awh::DNS::server(const int family, const serv_t & server) noexcept {
 			// Если хост является доменным именем
 			case static_cast <uint8_t> (net_t::type_t::DOMN): {
 				// Создаём объект DNS-резолвера
-				dns_t dns(this->_fmk, this->_log, this->_net);
+				dns_t dns(this->_fmk, this->_log);
 				// Выполняем получение IP адрес хоста доменного имени
 				result.host = dns.getHostByName(server.host, family);
 				// Если хост мы не получили, выполняем запрос с сервера
@@ -1047,7 +1047,7 @@ void awh::DNS::server(const int family, const serv_t & server) noexcept {
 			// Значит скорее всего, садрес является доменным именем
 			default: {
 				// Создаём объект DNS-резолвера
-				dns_t dns(this->_fmk, this->_log, this->_net);
+				dns_t dns(this->_fmk, this->_log);
 				// Выполняем получение IP адрес хоста доменного имени
 				result.host = dns.getHostByName(server.host, family);
 			}
@@ -1172,7 +1172,7 @@ string awh::DNS::resolve(const string & host, const int family) noexcept {
 				const string & domain = host;
 			#endif
 			// Определяем тип передаваемого сервера
-			switch(static_cast <uint8_t> (this->_net->host(domain))){
+			switch(static_cast <uint8_t> (this->_net.host(domain))){
 				// Если домен является IPv4 адресом
 				case static_cast <uint8_t> (net_t::type_t::IPV4):
 				// Если домен является IPv6 адресом
@@ -1242,7 +1242,7 @@ string awh::DNS::resolve(const string & host, const int family) noexcept {
 						// Выполняем запрос адреса на локальном резолвере операционной системы
 						else {
 							// Создаём объект DNS-резолвера
-							dns_t dns(this->_fmk, this->_log, this->_net);
+							dns_t dns(this->_fmk, this->_log);
 							// Выполняем получение IP адрес хоста доменного имени
 							return dns.getHostByName(host, family);
 						}
@@ -1251,7 +1251,7 @@ string awh::DNS::resolve(const string & host, const int family) noexcept {
 				// Значит скорее всего, садрес является доменным именем
 				default: {
 					// Создаём объект DNS-резолвера
-					dns_t dns(this->_fmk, this->_log, this->_net);
+					dns_t dns(this->_fmk, this->_log);
 					// Выполняем получение IP адрес хоста доменного имени
 					return dns.getHostByName(host, family);
 				}
@@ -1349,10 +1349,10 @@ string awh::DNS::getHostByName(const string & host, const int family) noexcept {
  * DNS Конструктор
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
- * @param net объект методов для работы с сетью
  */
-awh::DNS::DNS(const fmk_t * fmk, const log_t * log, const net_t * net) noexcept :
- _timeout(30), _workerIPv4(nullptr), _workerIPv6(nullptr), _fmk(fmk), _log(log), _net(net) {
+awh::DNS::DNS(const fmk_t * fmk, const log_t * log) noexcept :
+ _timeout(30), _net(fmk, log), _workerIPv4(nullptr),
+ _workerIPv6(nullptr), _fmk(fmk), _log(log) {
 	// Устанавливаем список серверов IPv4
 	this->replace(AF_INET);
 	// Устанавливаем список серверов IPv6

@@ -626,8 +626,7 @@ using namespace awh;
 int main(int argc, char * argv[]){
 	fmk_t fmk;
 	log_t log(&fmk);
-	net_t net(&fmk, &log);
-	dns_t dns(&fmk, &log, &net);
+	dns_t dns(&fmk, &log);
 
 	log.name("DNS");
 	log.format("%H:%M:%S %d.%m.%Y");

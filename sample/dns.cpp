@@ -27,10 +27,8 @@ int main(int argc, char * argv[]){
 	fmk_t fmk;
 	// Создаём объект для работы с логами
 	log_t log(&fmk);
-	// Создаём объект работы с IP-адресами
-	net_t net(&fmk, &log);
 	// Создаём биндинг
-	dns_t dns(&fmk, &log, &net);
+	dns_t dns(&fmk, &log);
 	// Устанавливаем название сервиса
 	log.name("DNS");
 	// Устанавливаем формат времени

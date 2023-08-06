@@ -619,11 +619,6 @@ namespace awh {
 			 */
 			void verifySSL(const bool mode) noexcept;
 			/**
-			 * timeoutDNS Метод установки времени ожидания выполнения DNS запроса
-			 * @param sec интервал времени ожидания в секундах
-			 */
-			void timeoutDNS(const uint8_t sec) noexcept;
-			/**
 			 * persistEnable Метод установки персистентного флага
 			 * @param mode флаг персистентного запуска каллбека
 			 */

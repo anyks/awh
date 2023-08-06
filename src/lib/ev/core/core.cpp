@@ -1855,7 +1855,7 @@ void awh::Core::network(const vector <string> & ips, const scheme_t::family_t fa
  */
 awh::Core::Core(const fmk_t * fmk, const log_t * log, const scheme_t::family_t family, const scheme_t::sonet_t sonet) noexcept :
  pid(getpid()), net(fmk, log), uri(fmk, &net), engine(fmk, log, &uri),
- dns(fmk, log, &net), dispatch(this), _fs(fmk, log), _sig(dispatch.base),
+ dns(fmk, log), dispatch(this), _fs(fmk, log), _sig(dispatch.base),
  status(status_t::STOP), type(engine_t::type_t::CLIENT), _signals(signals_t::DISABLED),
  mode(false), noinfo(false), persist(false), activeOnTrhead(true),
  cores(0), servName(AWH_SHORT_NAME), _persIntvl(PERSIST_INTERVAL),

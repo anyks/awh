@@ -307,6 +307,9 @@ namespace awh {
 			// Таймаут ожидания выполнения запроса (в секундах)
 			uint8_t _timeout;
 		private:
+			// Объект для работы с IP-адресами
+			net_t _net;
+		private:
 			// Мютекс для блокировки основного потока
 			mtx_t _mtx;
 			// Статус работы DNS резолвера
@@ -331,8 +334,6 @@ namespace awh {
 			const fmk_t * _fmk;
 			// Создаём объект работы с логами
 			const log_t * _log;
-			// Создаем объект сети
-			const net_t * _net;
 		public:
 			/**
 			 * Если используется модуль IDN
@@ -479,9 +480,8 @@ namespace awh {
 			 * DNS Конструктор
 			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
-			 * @param net объект методов для работы с сетью
 			 */
-			DNS(const fmk_t * fmk, const log_t * log, const net_t * net) noexcept;
+			DNS(const fmk_t * fmk, const log_t * log) noexcept;
 			/**
 			 * ~DNS Деструктор
 			 */
