@@ -77,12 +77,6 @@
 					// Выполняем закрытие файловых дескрипторов
 					::close(jack->cfds[0]);
 					::close(jack->mfds[1]);
-					// Выводим сообщение об ошибке, о невозможности отправкить сообщение
-					this->_log->print("child process stopped, pid = %d, status = %x", log_t::flag_t::CRITICAL, jack->pid, status);
-					// Если был завершён активный процесс и функция обратного вызова установлена
-					if(this->cluster->_processFn != nullptr)
-						// Выводим функцию обратного вызова
-						this->cluster->_processFn(jt->first, pid, event_t::STOP);
 					// Если статус сигнала, ручной остановкой процесса
 					if(status == SIGINT){
 						// Выполняем остановку работы
@@ -96,6 +90,12 @@
 						// Выходим из приложения
 						exit(EXIT_FAILURE);
 					}
+					// Выводим сообщение об ошибке, о невозможности отправкить сообщение
+					this->_log->print("child process stopped, pid = %d, status = %x", log_t::flag_t::CRITICAL, jack->pid, status);
+					// Если был завершён активный процесс и функция обратного вызова установлена
+					if(this->cluster->_processFn != nullptr)
+						// Выводим функцию обратного вызова
+						this->cluster->_processFn(jt->first, pid, event_t::STOP);
 					// Выполняем поиск воркера
 					auto it = this->cluster->_workers.find(jt->first);
 					// Если запрашиваемый воркер найден и флаг автоматического перезапуска активен

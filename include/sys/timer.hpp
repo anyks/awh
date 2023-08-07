@@ -119,10 +119,16 @@ namespace awh {
 							if((it != this->_timers.end()) && !it->second->stop){
 								// Выполняем функцию обратного вызова
 								it->second->callback();
-								// Выполняем блокировку потока
-								const lock_guard <mutex> lock(this->_mtx);
-								// Выполняем удаление идентификатора таймера
-								this->_timers.erase(it);
+								{
+									// Выполняем блокировку потока
+									const lock_guard <mutex> lock(this->_mtx);
+									// Выполняем поиск нашего таймера
+									auto it = this->_timers.find(tid);
+									// Если идентификатор таймера в списке существует и остановка не подтверждена
+									if(it != this->_timers.end())
+										// Выполняем удаление идентификатора таймера
+										this->_timers.erase(it);
+								}
 							// Если была выполнена остановка
 							} else if(it != this->_timers.end()) {
 								// Выполняем блокировку потока

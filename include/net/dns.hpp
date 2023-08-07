@@ -87,7 +87,7 @@ using namespace std::placeholders;
  */
 namespace awh {
 	/**
-	 * Прототип класса DNS резолвера
+	 * Прототип класса DNS-резолвера
 	 */
 	class DNS;
 	/**
@@ -108,7 +108,7 @@ namespace awh {
 			} serv_t;
 		private:
 			/**
-			 * Статус работы DNS резолвера
+			 * Статус работы DNS-резолвера
 			 */
 			enum class status_t : uint8_t {
 				NONE    = 0x00, // Событие не установлено
@@ -185,7 +185,7 @@ namespace awh {
 					// Флаг холдирования
 					bool _flag;
 				private:
-					// Объект статуса работы DNS резолвера
+					// Объект статуса работы DNS-резолвера
 					stack <status_t> * _status;
 				public:
 					/**
@@ -199,7 +199,7 @@ namespace awh {
 				public:
 					/**
 					 * Holder Конструктор
-					 * @param status объект статуса работы DNS резолвера
+					 * @param status объект статуса работы DNS-резолвера
 					 */
 					Holder(stack <status_t> * status) noexcept : _flag(false), _status(status) {}
 					/**
@@ -213,7 +213,7 @@ namespace awh {
 			typedef class Worker {
 				private:
 					/**
-					 * DNS Устанавливаем дружбу с классом DNS резолвера
+					 * DNS Устанавливаем дружбу с классом DNS-резолвера
 					 */
 					friend class DNS;
 				private:
@@ -244,7 +244,7 @@ namespace awh {
 					// Параметры подключения сервера
 					struct sockaddr_storage _addr;
 				private:
-					// Объект DNS резолвера
+					// Объект DNS-резолвера
 					const DNS * _self;
 				private:
 					/**
@@ -293,7 +293,7 @@ namespace awh {
 					/**
 					 * Worker Конструктор
 					 * @param family тип протокола интернета AF_INET или AF_INET6
-					 * @param self   объект DNS резолвера
+					 * @param self   объект DNS-резолвера
 					 */
 					Worker(const int family, const DNS * self) noexcept :
 					 _fd(INVALID_SOCKET), _mode(false), _family(family),
@@ -312,7 +312,7 @@ namespace awh {
 		private:
 			// Мютекс для блокировки основного потока
 			mtx_t _mtx;
-			// Статус работы DNS резолвера
+			// Статус работы DNS-резолвера
 			stack <status_t> _status;
 		private:
 			// Создаём воркер для IPv4
@@ -354,12 +354,12 @@ namespace awh {
 			#endif
 		public:
 			/**
-			 * clear Метод сброса кэша резолвера
+			 * clear Метод очистки данных DNS-резолвера
 			 * @return результат работы функции
 			 */
 			bool clear() noexcept;
 			/**
-			 * flush Метод сброса кэша DNS резолвера
+			 * flush Метод сброса кэша DNS-резолвера
 			 * @return результат работы функции
 			 */
 			bool flush() noexcept;

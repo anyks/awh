@@ -675,7 +675,7 @@ awh::DNS::Worker::~Worker() noexcept {
 	}
 #endif
 /**
- * clear Метод сброса кэша резолвера
+ * clear Метод очистки данных DNS-резолвера
  * @return результат работы функции
  */
 bool awh::DNS::clear() noexcept {
@@ -685,9 +685,9 @@ bool awh::DNS::clear() noexcept {
 	const lock_guard <recursive_mutex> lock(this->_mtx.hold);
 	// Создаём объект холдирования
 	hold_t hold(&this->_status);
-	// Если статус работы DNS резолвера соответствует
+	// Если статус работы DNS-резолвера соответствует
 	if((result = hold.access({}, status_t::CLEAR))){
-		// Выполняем сброс кэша DNS резолвера
+		// Выполняем сброс кэша DNS-резолвера
 		this->flush();
 		// Выполняем отмену выполненных запросов IPv4
 		this->cancel(AF_INET);
@@ -702,7 +702,7 @@ bool awh::DNS::clear() noexcept {
 	return result;
 }
 /**
- * flush Метод сброса кэша DNS резолвера
+ * flush Метод сброса кэша DNS-резолвера
  * @return результат работы функции
  */
 bool awh::DNS::flush() noexcept {
@@ -712,7 +712,7 @@ bool awh::DNS::flush() noexcept {
 	const lock_guard <recursive_mutex> lock(this->_mtx.hold);
 	// Создаём объект холдирования
 	hold_t hold(&this->_status);
-	// Если статус работы DNS резолвера соответствует
+	// Если статус работы DNS-резолвера соответствует
 	if((result = hold.access({status_t::CLEAR}, status_t::FLUSH))){
 		// Выполняем блокировку потока
 		const lock_guard <recursive_mutex> lock(this->_mtx.cache);
@@ -1003,7 +1003,7 @@ void awh::DNS::server(const int family, const serv_t & server) noexcept {
 	const lock_guard <recursive_mutex> lock(this->_mtx.hold);
 	// Создаём объект холдирования
 	hold_t hold(&this->_status);
-	// Если статус работы DNS резолвера соответствует
+	// Если статус работы DNS-резолвера соответствует
 	if(hold.access({status_t::NSS_SET}, status_t::NS_SET)){
 		// Результат работы
 		serv_t result;
@@ -1081,7 +1081,7 @@ void awh::DNS::servers(const int family, const vector <serv_t> & servers) noexce
 	const lock_guard <recursive_mutex> lock(this->_mtx.hold);
 	// Создаём объект холдирования
 	hold_t hold(&this->_status);
-	// Если статус работы DNS резолвера соответствует
+	// Если статус работы DNS-резолвера соответствует
 	if(hold.access({status_t::NSS_REP}, status_t::NSS_SET)){
 		// Переходим по всем нейм серверам и добавляем их
 		for(auto & server : servers)
@@ -1099,7 +1099,7 @@ void awh::DNS::replace(const int family, const vector <serv_t> & servers) noexce
 	const lock_guard <recursive_mutex> lock(this->_mtx.hold);
 	// Создаём объект холдирования
 	hold_t hold(&this->_status);
-	// Если статус работы DNS резолвера соответствует
+	// Если статус работы DNS-резолвера соответствует
 	if(hold.access({}, status_t::NSS_REP)){
 		// Выполняем поиск интернет-протокола
 		auto it = this->_servers.find(family);
@@ -1154,7 +1154,7 @@ string awh::DNS::resolve(const string & host, const int family) noexcept {
 	const lock_guard <recursive_mutex> lock(this->_mtx.hold);
 	// Создаём объект холдирования
 	hold_t hold(&this->_status);
-	// Если статус работы DNS резолвера соответствует
+	// Если статус работы DNS-резолвера соответствует
 	if(hold.access({}, status_t::RESOLVE)){
 		// Если домен передан
 		if(!host.empty()){
@@ -1274,7 +1274,7 @@ string awh::DNS::getHostByName(const string & host, const int family) noexcept {
 	const lock_guard <recursive_mutex> lock(this->_mtx.hold);
 	// Создаём объект холдирования
 	hold_t hold(&this->_status);
-	// Если статус работы DNS резолвера соответствует
+	// Если статус работы DNS-резолвера соответствует
 	if(hold.access({}, status_t::RESOLVE)){
 		// Если домен передан
 		if(!host.empty()){
@@ -1366,6 +1366,6 @@ awh::DNS::DNS(const fmk_t * fmk, const log_t * log) noexcept :
  * ~DNS Деструктор
  */
 awh::DNS::~DNS() noexcept {
-	// Выполняем очистку модуля DNS резолвера
+	// Выполняем очистку модуля DNS-резолвера
 	this->clear();
 }
