@@ -113,14 +113,6 @@ namespace awh {
 			};
 		private:
 			/**
-			 * Mutex Объект основных мютексов
-			 */
-			typedef struct Mutex {
-				recursive_mutex hold;  // Для работы со стеком событий
-				recursive_mutex cache; // Для работы с кэшем DNS-серверов 
-			} mtx_t;
-		private:
-			/**
 			 * Шаблон формата данных DNS-сервера
 			 * @tparam T размерность буфера DNS-сервера
 			 */
@@ -365,11 +357,9 @@ namespace awh {
 			// Таймаут ожидания выполнения запроса (в секундах)
 			uint8_t _timeout;
 		private:
-			// Адрес файла hosts с описаниями локальных доменов
-			string _hostsFilename;
+			// Мютекс для блокировки потока
+			recursive_mutex _mtx;
 		private:
-			// Мютекс для блокировки основного потока
-			mtx_t _mtx;
 			// Статус работы DNS-резолвера
 			stack <status_t> _status;
 		private:
@@ -533,10 +523,10 @@ namespace awh {
 			void replace(const int family, const vector <string> & servers = {}) noexcept;
 		public:
 			/**
-			 * hosts Метод загрузки файла со списком хостов
+			 * readHosts Метод загрузки файла со списком хостов
 			 * @param filename адрес файла для загрузки
 			 */
-			void hosts(const string & filename) noexcept;
+			void readHosts(const string & filename) noexcept;
 		public:
 			/**
 			 * host Метод определение локального IP-адреса по имени домена
