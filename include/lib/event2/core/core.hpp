@@ -152,9 +152,9 @@ namespace awh {
 				// Тип протокола интернета (IPV4 / IPV6 / NIX)
 				scheme_t::family_t family;
 				// Параметры для сети IPv4
-				pair <vector <string>, vector <dns_t::serv_t>> v4;
+				pair <vector <string>, vector <string>> v4;
 				// Параметры для сети IPv6
-				pair <vector <string>, vector <dns_t::serv_t>> v6;
+				pair <vector <string>, vector <string>> v6;
 				/**
 				 * Settings Конструктор
 				 */
@@ -593,20 +593,23 @@ namespace awh {
 			/**
 			 * clearBlackListDNS Метод очистки чёрного списка
 			 * @param family тип протокола интернета (IPV4 / IPV6)
+			 * @param domain доменное имя соответствующее IP-адресу
 			 */
-			void clearBlackListDNS(const scheme_t::family_t family) noexcept;
+			void clearBlackListDNS(const scheme_t::family_t family, const string & domain) noexcept;
 			/**
 			 * delInBlackListDNS Метод удаления IP-адреса из чёрного списока
 			 * @param family тип протокола интернета (IPV4 / IPV6)
+			 * @param domain доменное имя соответствующее IP-адресу
 			 * @param ip     адрес для удаления из чёрного списка
 			 */
-			void delInBlackListDNS(const scheme_t::family_t family, const string & ip) noexcept;
+			void delInBlackListDNS(const scheme_t::family_t family, const string & domain, const string & ip) noexcept;
 			/**
 			 * setToBlackListDNS Метод добавления IP-адреса в чёрный список
 			 * @param family тип протокола интернета (IPV4 / IPV6)
+			 * @param domain доменное имя соответствующее IP-адресу
 			 * @param ip     адрес для добавления в чёрный список
 			 */
-			void setToBlackListDNS(const scheme_t::family_t family, const string & ip) noexcept;
+			void setToBlackListDNS(const scheme_t::family_t family, const string & domain, const string & ip) noexcept;
 		public:
 			/**
 			 * noInfo Метод установки флага запрета вывода информационных сообщений

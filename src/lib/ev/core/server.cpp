@@ -630,14 +630,14 @@ void awh::server::Core::run(const size_t sid) noexcept {
 					// Если тип протокола подключения IPv4
 					case static_cast <uint8_t> (scheme_t::family_t::IPV4): {
 						// Выполняем резолвинг домена
-						const string & ip = this->dns.resolve(shm->host, AF_INET);
+						const string & ip = this->dns.resolve(AF_INET, shm->host);
 						// Выполняем подключения к полученному IP-адресу
 						this->resolving(shm->sid, ip, AF_INET);
 					} break;
 					// Если тип протокола подключения IPv6
 					case static_cast <uint8_t> (scheme_t::family_t::IPV6): {
 						// Выполняем резолвинг домена
-						const string & ip = this->dns.resolve(shm->host, AF_INET6);
+						const string & ip = this->dns.resolve(AF_INET6, shm->host);
 						// Выполняем подключения к полученному IP-адресу
 						this->resolving(shm->sid, ip, AF_INET6);
 					} break;

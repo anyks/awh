@@ -186,6 +186,337 @@ void awh::DNS::Worker::cancel() noexcept {
 	this->close();
 }
 /**
+ * Метод отправки запроса на удалённый сервер DNS
+ * @param server адрес DNS-сервера
+ * @return       полученный IP-адрес
+ */
+string awh::DNS::Worker::send(const string & server) noexcept {
+	// Результат работы функции
+	string result = "";
+	// Если доменное имя установлено
+	if(!this->_domain.empty()){
+		// Буфер пакета данных
+		u_char buffer[65536];
+		// Выполняем зануление буфера данных
+		memset(buffer, 0, sizeof(buffer));
+		// Получаем объект заголовка
+		head_t * header = reinterpret_cast <head_t *> (&buffer);
+		// Устанавливаем идентификатор заголовка
+		header->id = static_cast <u_short> (htons(getpid()));
+		// Заполняем оставшуюся структуру пакетов
+		header->z = 0;
+		header->qr = 0;
+		header->aa = 0;
+		header->tc = 0;
+		header->rd = 1;
+		header->ra = 0;
+		header->rcode = 0;
+		header->opcode = 0;
+		header->ancount = 0x0000;
+		header->nscount = 0x0000;
+		header->arcount = 0x0000;
+		header->qdcount = htons(static_cast <u_short> (1));
+		// Получаем размер запроса
+		size_t size = sizeof(head_t);
+		// Получаем доменное имя в нужном формате
+		const auto & domain = this->split(this->_domain);
+		// Выполняем копирование домена
+		memcpy(&buffer[size], domain.data(), domain.size());
+		// Увеличиваем размер запроса
+		size += (domain.size() + 1);
+		// Создаём части флагов вопроса пакета запроса
+		qflags_t * qflags = reinterpret_cast <qflags_t *> (&buffer[size]);
+		// Определяем тип подключения
+		switch(this->_family){
+			// Для протокола IPv4
+			case AF_INET:
+				// Устанавливаем тип флага запроса
+				qflags->qtype = htons(0x0001);
+			break;
+			// Для протокола IPv6
+			case AF_INET6:
+				// Устанавливаем тип флага запроса
+				qflags->qtype = htons(0x1C);
+			break;
+		}
+		// Устанавливаем класс флага запроса
+		qflags->qclass = htons(0x0001);
+		// Увеличиваем размер запроса
+		size += sizeof(qflags_t);
+		// Создаём сокет подключения
+		this->_fd = ::socket(this->_family, SOCK_DGRAM, IPPROTO_UDP);
+		// Если сокет не создан создан и работа резолвера не остановлена
+		if(this->_mode && (this->_fd == INVALID_SOCKET)){
+			// Выводим в лог сообщение
+			this->_self->_log->print("file descriptor needed for the DNS request could not be allocated", log_t::flag_t::WARNING);
+			// Выходим из приложения
+			return result;
+		// Если сокет создан удачно и работа резолвера не остановлена
+		} else if(this->_mode) {
+			// Устанавливаем разрешение на повторное использование сокета
+			this->_socket.reuseable(this->_fd);
+			// Устанавливаем разрешение на закрытие сокета при неиспользовании
+			this->_socket.closeonexec(this->_fd);
+			// Устанавливаем размер буфера передачи данных
+			this->_socket.bufferSize(this->_fd, sizeof(buffer), sizeof(buffer), 1);
+			// Если запрос на сервер DNS успешно отправлен
+			if(::sendto(this->_fd, (const char *) buffer, size, 0, (struct sockaddr *) &this->_addr, this->_socklen) > 0){
+				// Буфер пакета данных
+				u_char buffer[65536];
+				// Получаем объект DNS-сервера
+				dns_t * self = const_cast <dns_t *> (this->_self);
+				// Выполняем зануление буфера данных
+				memset(buffer, 0, sizeof(buffer));
+				// Выполняем чтение ответа сервера
+				const int64_t bytes = ::recvfrom(this->_fd, (char *) buffer, sizeof(buffer), 0, (struct sockaddr *) &this->_addr, &this->_socklen);
+				// Если данные прочитать не удалось
+				if(bytes <= 0){
+					// Если сокет находится в блокирующем режиме
+					if(bytes < 0){
+						// Определяем тип ошибки
+						switch(errno){
+							// Если ошибка не обнаружена, выходим
+							case 0: break;
+							// Если произведена неудачная запись в PIPE
+							case EPIPE:
+								// Выводим в лог сообщение
+								self->_log->print("EPIPE", log_t::flag_t::WARNING);
+							break;
+							// Если произведён сброс подключения
+							case ECONNRESET:
+								// Выводим в лог сообщение
+								self->_log->print("ECONNRESET", log_t::flag_t::WARNING);
+							break;
+							// Для остальных ошибок
+							default:
+								// Выводим в лог сообщение
+								self->_log->print("%s", log_t::flag_t::CRITICAL, strerror(errno));
+						}
+					}
+					// Если работа резолвера ещё не остановлена
+					if(this->_mode){
+						// Выполняем закрытие подключения
+						this->close();
+						// Замораживаем поток на период времени в 10ms
+						this_thread::sleep_for(10ms);
+					}
+					// Выполняем попытку получить IP-адрес с другого сервера
+					return result;
+				// Если данные получены удачно
+				} else {
+					// Получаем объект заголовка
+					head_t * header = reinterpret_cast <head_t *> (&buffer);
+					// Определяем код выполнения операции
+					switch(header->rcode){
+						// Если операция выполнена удачно
+						case 0: {
+							// Получаем размер ответа
+							size_t size = sizeof(head_t);
+							// Получаем название доменного имени
+							const string & qname = this->join(vector <u_char> (buffer + size, buffer + (size + 255)));
+							// Увеличиваем размер буфера полученных данных
+							size += (qname.size() + 2);
+							// Создаём части флагов вопроса пакета ответа
+							rr_flags_t * rrflags = nullptr;
+							// Создаём части флагов вопроса пакета ответа
+							qflags_t * qflags = reinterpret_cast <qflags_t *> (&buffer[size]);
+							// Увеличиваем размер ответа
+							size += sizeof(qflags_t);
+							// Получаем количество записей
+							const u_short count = ntohs(header->ancount);
+							// Создаём список полученных типов записей
+							vector <u_int> type(count, 0);
+							// Получаем список названий записей
+							vector <string> name(count, "");
+							// Получаем список значений записей
+							vector <string> rdata(count, "");
+							// Выполняем перебор всех полученных записей
+							for(u_short i = 0; i < count; ++i){
+								// Выполняем извлечение названия записи
+								name[i] = this->join(this->extract(buffer, size));
+								// Увеличиваем размер полученных данных
+								size += 2;
+								// Создаём части флагов вопроса пакета ответа
+								rrflags = reinterpret_cast <rr_flags_t *> (&buffer[size]);
+								// Увеличиваем размер ответа
+								size = ((size + sizeof(rr_flags_t)) - 2);
+								// Определяем тип записи
+								switch(ntohs(rrflags->rtype)){
+									// Если запись является интернет-протоколом IPv4
+									case 1:
+									// Если запись является интернет-протоколом IPv6
+									case 28: {
+										// Изменяем размер извлекаемых данных
+										rdata[i].resize(ntohs(rrflags->rdlength), 0);
+										// Выполняем парсинг IP-адреса
+										for(int j = 0; j < ntohs(rrflags->rdlength); ++j)
+											// Выполняем парсинг IP-адреса
+											rdata[i][j] = static_cast <u_char> (buffer[size + j]);
+										// Устанавливаем тип полученных данных
+										type[i] = ntohs(rrflags->rtype);
+									} break;
+									// Если запись является каноническим именем
+									case 5: {
+										// Выполняем извлечение значение записи
+										rdata[i] = this->join(this->extract(buffer, size));
+										// Устанавливаем тип полученных данных
+										type[i] = ntohs(rrflags->rtype);
+									} break;
+								}
+								// Увеличиваем размер полученных данных
+								size += ntohs(rrflags->rdlength);
+							}
+							// Список IP-адресов
+							vector <string> ips;
+							/**
+							 * Если включён режим отладки
+							 */
+							#if defined(DEBUG_MODE)
+								// Выводим начальный разделитель
+								printf ("------------------------------------------------------------\n\n");
+								// Выводим заголовок
+								printf("DNS server response:\n");
+								// Выводим название доменного имени
+								printf("QNAME: %s\n", qname.c_str());
+								// Переходим по всему списку записей
+								for(int i = 0; i < count; ++i){
+									// Выводим название записи
+									printf("\nNAME: %s\n", name[i].c_str());
+									// Определяем тип записи
+									switch(type[i]){
+										// Если тип полученной записи CNAME
+										case 5: printf("CNAME: %s\n", rdata[i].c_str()); break;
+										// Если тип полученной записи IPv4
+										case 1:
+										// Если тип полученной записи IPv6
+										case 28: {
+											// Создаём буфер данных
+											char buffer[INET6_ADDRSTRLEN];
+											// Зануляем буфер данных
+											memset(buffer, 0, sizeof(buffer));
+											// Получаем IP-адрес принадлежащий доменному имени
+											const string ip = inet_ntop(this->_family, rdata[i].c_str(), buffer, sizeof(buffer));
+											// Если IP-адрес получен
+											if(!ip.empty()){
+												// Если чёрный список IP-адресов получен
+												if(!self->isInBlackList(this->_family, this->_domain, ip)){
+													// Добавляем IP-адрес в список адресов
+													ips.push_back(ip);
+													// Записываем данные в кэш
+													self->setToCache(this->_family, this->_domain, ip);
+												}
+												// Выводим информацию об IP-адресе
+												printf("IPv4: %s\n", ip.c_str());
+											}
+										} break;
+									}
+								}
+								// Выводим конечный разделитель
+								printf ("\n------------------------------------------------------------\n\n");
+							/**
+							 * Если режим отладки отключён
+							 */
+							#else
+								// Создаём буфер данных
+								char buffer[INET6_ADDRSTRLEN];
+								// Переходим по всему списку записей
+								for(int i = 0; i < count; ++i){
+									// Если тип полученной записи IPv4 или IPv6
+									if((type[i] == 1) || (type[i] == 28)){
+										// Зануляем буфер данных
+										memset(buffer, 0, sizeof(buffer));
+										// Получаем IP-адрес принадлежащий доменному имени
+										const string ip = inet_ntop(this->_family, rdata[i].c_str(), buffer, sizeof(buffer));
+										// Если IP-адрес получен
+										if(!ip.empty()){
+											// Если чёрный список IP-адресов получен
+											if(!self->isInBlackList(this->_family, this->_domain, ip)){
+												// Добавляем IP-адрес в список адресов
+												ips.push_back(ip);
+												// Записываем данные в кэш
+												self->setToCache(this->_family, this->_domain, ip);
+											}
+										}
+									}
+								}
+							#endif
+							// Если список IP-адресов получен
+							if(!ips.empty()){
+								// Выполняем остановку работы таймера ожидания полученя данных
+								this->_timer.stop(this->_tid);
+								// Если количество IP-адресов в списке больше 1-го
+								if(ips.size() > 1){
+									// Переходим по всему списку полученных адресов
+									for(auto & addr : ips){
+										// Если IP-адрес не найден в списке
+										if(self->_using.count(addr) < 1){
+											// Выполняем установку IP-адреса
+											result = std::move(addr);
+											// Выходим из цикла
+											break;
+										}
+									}
+								}
+								// Если IP-адрес не установлен
+								if(result.empty()){
+									// Выполняем установку IP-адреса
+									result = std::move(ips.front());
+									// Если количество IP-адресов в списке больше 1-го
+									if(ips.size() > 1){
+										// Получаем текущее значение адреса
+										auto it = ips.begin();
+										// Выполняем смещение итератора
+										std::advance(it, 1);
+										// Переходим по всему списку полученных адресов
+										for(; it != ips.end(); ++it)
+											// Очищаем список используемых IP-адресов
+											self->_using.erase(* it);
+									}
+								// Если IP-адрес получен, то запоминаем полученный адрес
+								} else self->_using.emplace(result);
+							}
+						} break;
+						// Если сервер DNS не смог интерпретировать запрос
+						case 1:
+							// Выводим в лог сообщение
+							self->_log->print("DNS query format error [%s] for name server [%s]", log_t::flag_t::WARNING, this->_domain.c_str(), server.c_str());
+						break;
+						// Если проблемы возникли на DNS-сервера
+						case 2:
+							// Выводим в лог сообщение
+							self->_log->print("DNS server failure [%s] for name server [%s]", log_t::flag_t::WARNING, this->_domain.c_str(), server.c_str());
+						break;
+						// Если доменное имя указанное в запросе не существует
+						case 3:
+							// Выводим в лог сообщение
+							self->_log->print("the domain name referenced in the query for name server [%s] does not exist [%s]", log_t::flag_t::WARNING, server.c_str(), this->_domain.c_str());
+						break;
+						// Если DNS-сервер не поддерживает подобный тип запросов
+						case 4:
+							// Выводим в лог сообщение
+							self->_log->print("DNS server is not implemented [%s] for name server [%s]", log_t::flag_t::WARNING, this->_domain.c_str(), server.c_str());
+						break;
+						// Если DNS-сервер отказался выполнять наш запрос (например по политическим причинам)
+						case 5:
+							// Выводим в лог сообщение
+							self->_log->print("DNS request is refused [%s] for name server [%s]", log_t::flag_t::WARNING, this->_domain.c_str(), server.c_str());
+						break;
+					}
+				}
+				// Если мы получили результат
+				if(!result.empty())
+					// Выводим результат
+					return result;
+			// Выводим сообщение, что у нас проблема с подключением к сети
+			} else this->_self->_log->print("no network connection", log_t::flag_t::WARNING);
+			// Выполняем закрытие подключения
+			this->close();
+		}
+	}
+	// Выводим результат
+	return result;
+}
+/**
  * request Метод выполнения запроса
  * @param domain название искомого домена
  * @return       полученный IP-адрес
@@ -195,24 +526,20 @@ string awh::DNS::Worker::request(const string & domain) noexcept {
 	string result = "";
 	// Если доменное имя передано
 	if(!domain.empty()){
-		// Запоминаем запрашиваемое доменное имя
-		this->_domain = domain;
 		// Выполняем пересортировку серверов DNS
 		const_cast <dns_t *> (this->_self)->shuffle(this->_family);
-		// Выполняем поиск интернет-протокола для получения DNS сервера
-		auto it = const_cast <dns_t *> (this->_self)->_servers.find(this->_family);
-		// Если интернет протокол сервера получен
-		if((this->_mode = (it != this->_self->_servers.end()))){
-			// Выполняем установку таймера
-			this->_tid = this->_timer.setTimeout(std::bind(&worker_t::timeout, this), this->_self->_timeout * 1000);
-			// Переходим по всему списку DNS серверов
-			for(auto & server : it->second){
-				// Очищаем всю структуру клиента
-				memset(&this->_addr, 0, sizeof(this->_addr));
-				// Определяем тип подключения
-				switch(this->_family){
-					// Для протокола IPv4
-					case AF_INET: {
+		// Определяем тип подключения
+		switch(this->_family){
+			// Для протокола IPv4
+			case AF_INET: {
+				// Если список серверов существует
+				if((this->_mode = !this->_self->_serversIPv4.empty())){
+					// Запоминаем запрашиваемое доменное имя
+					this->_domain = domain;
+					// Выполняем установку таймера
+					this->_tid = this->_timer.setTimeout(std::bind(&worker_t::timeout, this), this->_self->_timeout * 1000);
+					// Переходим по всему списку DNS-серверов
+					for(auto & server : this->_self->_serversIPv4){
 						// Создаём объект клиента
 						struct sockaddr_in client;
 						// Очищаем всю структуру для клиента
@@ -221,15 +548,37 @@ string awh::DNS::Worker::request(const string & domain) noexcept {
 						client.sin_family = this->_family;
 						// Устанавливаем произвольный порт
 						client.sin_port = htons(server.port);
-						// Устанавливаем адрес для локальго подключения
-						client.sin_addr.s_addr = inet_addr(server.host.c_str());
+						// Устанавливаем адрес для подключения
+						memcpy(&client.sin_addr.s_addr, server.ip, sizeof(server.ip));
 						// Запоминаем размер структуры
 						this->_socklen = sizeof(client);
+						// Очищаем всю структуру клиента
+						memset(&this->_addr, 0, sizeof(this->_addr));
 						// Выполняем копирование объекта подключения клиента
 						memcpy(&this->_addr, &client, this->_socklen);
-					} break;
-					// Для протокола IPv6
-					case AF_INET6: {
+						{
+							// Временный буфер данных для преобразования IP-адреса
+							char buffer[INET_ADDRSTRLEN];
+							// Выполняем запрос на удалённый DNS-сервер
+							result = this->send(inet_ntop(this->_family, &server.ip, buffer, sizeof(buffer)));
+							// Если результат получен или получение данных закрыто, тогда выходим из цикла
+							if(!result.empty() || !this->_mode)
+								// Выходим из цикла
+								break;
+						}
+					}
+				}
+			} break;
+			// Для протокола IPv6
+			case AF_INET6: {
+				// Если список серверов существует
+				if((this->_mode = !this->_self->_serversIPv6.empty())){
+					// Запоминаем запрашиваемое доменное имя
+					this->_domain = domain;
+					// Выполняем установку таймера
+					this->_tid = this->_timer.setTimeout(std::bind(&worker_t::timeout, this), this->_self->_timeout * 1000);
+					// Переходим по всему списку DNS-серверов
+					for(auto & server : this->_self->_serversIPv6){
 						// Создаём объект клиента
 						struct sockaddr_in6 client;
 						// Очищаем всю структуру для клиента
@@ -238,337 +587,27 @@ string awh::DNS::Worker::request(const string & domain) noexcept {
 						client.sin6_family = this->_family;
 						// Устанавливаем произвольный порт для
 						client.sin6_port = htons(server.port);
-						// Указываем адрес IPv6 для клиента
-						inet_pton(this->_family, server.host.c_str(), &client.sin6_addr);
+						// Устанавливаем адрес для подключения
+						memcpy(&client.sin6_addr, server.ip, sizeof(server.ip));
 						// Запоминаем размер структуры
 						this->_socklen = sizeof(client);
+						// Очищаем всю структуру клиента
+						memset(&this->_addr, 0, sizeof(this->_addr));
 						// Выполняем копирование объекта подключения клиента
 						memcpy(&this->_addr, &client, this->_socklen);
-					} break;
-				}{
-					// Буфер пакета данных
-					u_char buffer[65536];
-					// Выполняем зануление буфера данных
-					memset(buffer, 0, sizeof(buffer));
-					// Получаем объект заголовка
-					head_t * header = reinterpret_cast <head_t *> (&buffer);
-					// Устанавливаем идентификатор заголовка
-					header->id = static_cast <u_short> (htons(getpid()));
-					// Заполняем оставшуюся структуру пакетов
-					header->z = 0;
-					header->qr = 0;
-					header->aa = 0;
-					header->tc = 0;
-					header->rd = 1;
-					header->ra = 0;
-					header->rcode = 0;
-					header->opcode = 0;
-					header->ancount = 0x0000;
-					header->nscount = 0x0000;
-					header->arcount = 0x0000;
-					header->qdcount = htons(static_cast <u_short> (1));
-					// Получаем размер запроса
-					size_t size = sizeof(head_t);
-					// Получаем доменное имя в нужном формате
-					const auto & domain = this->split(this->_domain);
-					// Выполняем копирование домена
-					memcpy(&buffer[size], domain.data(), domain.size());
-					// Увеличиваем размер запроса
-					size += (domain.size() + 1);
-					// Создаём части флагов вопроса пакета запроса
-					qflags_t * qflags = reinterpret_cast <qflags_t *> (&buffer[size]);
-					// Определяем тип подключения
-					switch(this->_family){
-						// Для протокола IPv4
-						case AF_INET:
-							// Устанавливаем тип флага запроса
-							qflags->qtype = htons(0x0001);
-						break;
-						// Для протокола IPv6
-						case AF_INET6:
-							// Устанавливаем тип флага запроса
-							qflags->qtype = htons(0x1C);
-						break;
-					}
-					// Устанавливаем класс флага запроса
-					qflags->qclass = htons(0x0001);
-					// Увеличиваем размер запроса
-					size += sizeof(qflags_t);
-					// Создаём сокет подключения
-					this->_fd = ::socket(this->_family, SOCK_DGRAM, IPPROTO_UDP);
-					// Если сокет не создан создан и работа резолвера не остановлена
-					if(this->_mode && (this->_fd == INVALID_SOCKET)){
-						// Выводим в лог сообщение
-						this->_self->_log->print("file descriptor needed for the DNS request could not be allocated", log_t::flag_t::WARNING);
-						// Выходим из приложения
-						continue;
-					// Если сокет создан удачно и работа резолвера не остановлена
-					} else if(this->_mode) {
-						// Устанавливаем разрешение на повторное использование сокета
-						this->_socket.reuseable(this->_fd);
-						// Устанавливаем разрешение на закрытие сокета при неиспользовании
-						this->_socket.closeonexec(this->_fd);
-						// Устанавливаем размер буфера передачи данных
-						this->_socket.bufferSize(this->_fd, sizeof(buffer), sizeof(buffer), 1);
-						// Если запрос на сервер DNS успешно отправлен
-						if(::sendto(this->_fd, (const char *) buffer, size, 0, (struct sockaddr *) &this->_addr, this->_socklen) > 0){
-							// Буфер пакета данных
-							u_char buffer[65536];
-							// Получаем объект DNS сервера
-							dns_t * self = const_cast <dns_t *> (this->_self);
-							// Выполняем зануление буфера данных
-							memset(buffer, 0, sizeof(buffer));
-							// Выполняем чтение ответа сервера
-							const int64_t bytes = ::recvfrom(this->_fd, (char *) buffer, sizeof(buffer), 0, (struct sockaddr *) &this->_addr, &this->_socklen);
-							// Если данные прочитать не удалось
-							if(bytes <= 0){
-								// Если сокет находится в блокирующем режиме
-								if(bytes < 0){
-									// Определяем тип ошибки
-									switch(errno){
-										// Если ошибка не обнаружена, выходим
-										case 0: break;
-										// Если произведена неудачная запись в PIPE
-										case EPIPE:
-											// Выводим в лог сообщение
-											self->_log->print("EPIPE", log_t::flag_t::WARNING);
-										break;
-										// Если произведён сброс подключения
-										case ECONNRESET:
-											// Выводим в лог сообщение
-											self->_log->print("ECONNRESET", log_t::flag_t::WARNING);
-										break;
-										// Для остальных ошибок
-										default:
-											// Выводим в лог сообщение
-											self->_log->print("%s", log_t::flag_t::CRITICAL, strerror(errno));
-									}
-								}
-								// Если работа резолвера ещё не остановлена
-								if(this->_mode){
-									// Выполняем закрытие подключения
-									this->close();
-									// Замораживаем поток на период времени в 10ms
-									this_thread::sleep_for(10ms);
-									// Выполняем попытку получить IP-адрес с другого сервера
-									continue;
-								// Выходим из цикла
-								} else break;
-							// Если данные получены удачно
-							} else {
-								// Получаем объект заголовка
-								head_t * header = reinterpret_cast <head_t *> (&buffer);
-								// Определяем код выполнения операции
-								switch(header->rcode){
-									// Если операция выполнена удачно
-									case 0: {
-										// Получаем размер ответа
-										size_t size = sizeof(head_t);
-										// Получаем название доменного имени
-										const string & qname = this->join(vector <u_char> (buffer + size, buffer + (size + 255)));
-										// Увеличиваем размер буфера полученных данных
-										size += (qname.size() + 2);
-										// Создаём части флагов вопроса пакета ответа
-										rr_flags_t * rrflags = nullptr;
-										// Создаём части флагов вопроса пакета ответа
-										qflags_t * qflags = reinterpret_cast <qflags_t *> (&buffer[size]);
-										// Увеличиваем размер ответа
-										size += sizeof(qflags_t);
-										// Получаем количество записей
-										const u_short count = ntohs(header->ancount);
-										// Создаём список полученных типов записей
-										vector <u_int> type(count, 0);
-										// Получаем список названий записей
-										vector <string> name(count, "");
-										// Получаем список значений записей
-										vector <string> rdata(count, "");
-										// Выполняем перебор всех полученных записей
-										for(u_short i = 0; i < count; ++i){
-											// Выполняем извлечение названия записи
-											name[i] = this->join(this->extract(buffer, size));
-											// Увеличиваем размер полученных данных
-											size += 2;
-											// Создаём части флагов вопроса пакета ответа
-											rrflags = reinterpret_cast <rr_flags_t *> (&buffer[size]);
-											// Увеличиваем размер ответа
-											size = ((size + sizeof(rr_flags_t)) - 2);
-											// Определяем тип записи
-											switch(ntohs(rrflags->rtype)){
-												// Если запись является интернет-протоколом IPv4
-												case 1:
-												// Если запись является интернет-протоколом IPv6
-												case 28: {
-													// Изменяем размер извлекаемых данных
-													rdata[i].resize(ntohs(rrflags->rdlength), 0);
-													// Выполняем парсинг IP-адреса
-													for(int j = 0; j < ntohs(rrflags->rdlength); ++j)
-														// Выполняем парсинг IP-адреса
-														rdata[i][j] = static_cast <u_char> (buffer[size + j]);
-													// Устанавливаем тип полученных данных
-													type[i] = ntohs(rrflags->rtype);
-												} break;
-												// Если запись является каноническим именем
-												case 5: {
-													// Выполняем извлечение значение записи
-													rdata[i] = this->join(this->extract(buffer, size));
-													// Устанавливаем тип полученных данных
-													type[i] = ntohs(rrflags->rtype);
-												} break;
-											}
-											// Увеличиваем размер полученных данных
-											size += ntohs(rrflags->rdlength);
-										}
-										// Список IP-адресов
-										vector <string> ips;
-										/**
-										 * Если включён режим отладки
-										 */
-										#if defined(DEBUG_MODE)
-											// Выводим начальный разделитель
-											printf ("------------------------------------------------------------\n\n");
-											// Выводим заголовок
-											printf("DNS server response:\n");
-											// Выводим название доменного имени
-											printf("QNAME: %s\n", qname.c_str());
-											// Переходим по всему списку записей
-											for(int i = 0; i < count; ++i){
-												// Выводим название записи
-												printf("\nNAME: %s\n", name[i].c_str());
-												// Определяем тип записи
-												switch(type[i]){
-													// Если тип полученной записи CNAME
-													case 5: printf("CNAME: %s\n", rdata[i].c_str()); break;
-													// Если тип полученной записи IPv4
-													case 1:
-													// Если тип полученной записи IPv6
-													case 28: {
-														// Создаём буфер данных
-														char buffer[INET6_ADDRSTRLEN];
-														// Зануляем буфер данных
-														memset(buffer, 0, sizeof(buffer));
-														// Получаем IP-адрес принадлежащий доменному имени
-														const string ip = inet_ntop(this->_family, rdata[i].c_str(), buffer, sizeof(buffer));
-														// Если IP-адрес получен
-														if(!ip.empty()){
-															// Если чёрный список IP-адресов получен
-															if(!self->isInBlackList(this->_family, ip)){
-																// Добавляем IP-адрес в список адресов
-																ips.push_back(ip);
-																// Записываем данные в кэш
-																self->setToCache(this->_family, this->_domain, ip);
-															}
-															// Выводим информацию об IP-адресе
-															printf("IPv4: %s\n", ip.c_str());
-														}
-													} break;
-												}
-											}
-											// Выводим конечный разделитель
-											printf ("\n------------------------------------------------------------\n\n");
-										/**
-										 * Если режим отладки отключён
-										 */
-										#else
-											// Создаём буфер данных
-											char buffer[INET6_ADDRSTRLEN];
-											// Переходим по всему списку записей
-											for(int i = 0; i < count; ++i){
-												// Если тип полученной записи IPv4 или IPv6
-												if((type[i] == 1) || (type[i] == 28)){
-													// Зануляем буфер данных
-													memset(buffer, 0, sizeof(buffer));
-													// Получаем IP-адрес принадлежащий доменному имени
-													const string ip = inet_ntop(this->_family, rdata[i].c_str(), buffer, sizeof(buffer));
-													// Если IP-адрес получен
-													if(!ip.empty()){
-														// Если чёрный список IP-адресов получен
-														if(!self->isInBlackList(this->_family, ip)){
-															// Добавляем IP-адрес в список адресов
-															ips.push_back(ip);
-															// Записываем данные в кэш
-															self->setToCache(this->_family, this->_domain, ip);
-														}
-													}
-												}
-											}
-										#endif
-										// Если список IP-адресов получен
-										if(!ips.empty()){
-											// Выполняем остановку работы таймера ожидания полученя данных
-											this->_timer.stop(this->_tid);
-											// Если количество IP-адресов в списке больше 1-го
-											if(ips.size() > 1){
-												// Переходим по всему списку полученных адресов
-												for(auto & addr : ips){
-													// Если IP-адрес не найден в списке
-													if(self->_using.count(addr) < 1){
-														// Выполняем установку IP-адреса
-														result = std::move(addr);
-														// Выходим из цикла
-														break;
-													}
-												}
-											}
-											// Если IP-адрес не установлен
-											if(result.empty()){
-												// Выполняем установку IP-адреса
-												result = std::move(ips.front());
-												// Если количество IP-адресов в списке больше 1-го
-												if(ips.size() > 1){
-													// Получаем текущее значение адреса
-													auto it = ips.begin();
-													// Выполняем смещение итератора
-													std::advance(it, 1);
-													// Переходим по всему списку полученных адресов
-													for(; it != ips.end(); ++it)
-														// Очищаем список используемых IP-адресов
-														self->_using.erase(* it);
-												}
-											// Если IP-адрес получен, то запоминаем полученный адрес
-											} else self->_using.emplace(result);
-										// Если чёрный список доменных имён не пустой
-										} else if(!self->emptyBlackList(this->_family))
-											// Выполняем очистку чёрного списка
-											self->clearBlackList(this->_family);
-									} break;
-									// Если сервер DNS не смог интерпретировать запрос
-									case 1:
-										// Выводим в лог сообщение
-										self->_log->print("DNS query format error [%s] for name server [%s]", log_t::flag_t::WARNING, this->_domain.c_str(), server.host.c_str());
-									break;
-									// Если проблемы возникли на DNS сервера
-									case 2:
-										// Выводим в лог сообщение
-										self->_log->print("DNS server failure [%s] for name server [%s]", log_t::flag_t::WARNING, this->_domain.c_str(), server.host.c_str());
-									break;
-									// Если доменное имя указанное в запросе не существует
-									case 3:
-										// Выводим в лог сообщение
-										self->_log->print("the domain name referenced in the query for name server [%s] does not exist [%s]", log_t::flag_t::WARNING, server.host.c_str(), this->_domain.c_str());
-									break;
-									// Если DNS сервер не поддерживает подобный тип запросов
-									case 4:
-										// Выводим в лог сообщение
-										self->_log->print("DNS server is not implemented [%s] for name server [%s]", log_t::flag_t::WARNING, this->_domain.c_str(), server.host.c_str());
-									break;
-									// Если DNS сервер отказался выполнять наш запрос (например по политическим причинам)
-									case 5:
-										// Выводим в лог сообщение
-										self->_log->print("DNS request is refused [%s] for name server [%s]", log_t::flag_t::WARNING, this->_domain.c_str(), server.host.c_str());
-									break;
-								}
-							}
-							// Если мы получили результат
-							if(!result.empty())
+						{
+							// Временный буфер данных для преобразования IP-адреса
+							char buffer[INET6_ADDRSTRLEN];
+							// Выполняем запрос на удалённый DNS-сервер
+							result = this->send(inet_ntop(this->_family, &server.ip, buffer, sizeof(buffer)));
+							// Если результат получен или получение данных закрыто, тогда выходим из цикла
+							if(!result.empty() || !this->_mode)
 								// Выходим из цикла
 								break;
-						// Выводим сообщение, что у нас проблема с подключением к сети
-						} else this->_self->_log->print("no network connection", log_t::flag_t::WARNING);
-						// Выполняем закрытие подключения
-						this->close();
+						}
 					}
 				}
-			}
+			} break;
 		}
 	}
 	// Выводим результат
@@ -716,11 +755,23 @@ bool awh::DNS::flush() noexcept {
 	if((result = hold.access({status_t::CLEAR}, status_t::FLUSH))){
 		// Выполняем блокировку потока
 		const lock_guard <recursive_mutex> lock(this->_mtx.cache);
-		// Выполняем сброс кэша полученных IP-адресов
-		this->_cache.clear();
+		// Выполняем сброс кэша полученных IPv4-адресов
+		this->_cacheIPv4.clear();
+		// Выполняем сброс кэша полученных IPv6-адресов
+		this->_cacheIPv6.clear();
 	}
 	// Выводим результат
 	return result;
+}
+/**
+ * ttl Метод установки времени жизни DNS-кэша
+ * @param ttl время жизни DNS-кэша в миллисекундах
+ */
+void awh::DNS::ttl(const time_t ttl) noexcept {
+	// Выполняем блокировку потока
+	const lock_guard <recursive_mutex> lock(this->_mtx.hold);
+	// Выполняем установку DNS-кэша
+	this->_ttl = ttl;
 }
 /**
  * cancel Метод отмены выполнения запроса
@@ -732,12 +783,12 @@ void awh::DNS::cancel(const int family) noexcept {
 	// Определяем тип протокола подключения
 	switch(family){
 		// Если тип протокола подключения IPv4
-		case AF_INET:
+		case static_cast <int> (AF_INET):
 			// Выполняем отмену резолвинга домена
 			this->_workerIPv4->cancel();
 		break;
 		// Если тип протокола подключения IPv6
-		case AF_INET6:
+		case static_cast <int> (AF_INET6):
 			// Выполняем отмену резолвинга домена
 			this->_workerIPv6->cancel();
 		break;
@@ -750,16 +801,22 @@ void awh::DNS::cancel(const int family) noexcept {
 void awh::DNS::shuffle(const int family) noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->_mtx.hold);
-	// Выполняем поиск интернет-протокола для получения DNS сервера
-	auto it = this->_servers.find(family);
-	// Если интернет протокол сервера получен
-	if(it != this->_servers.end()){
-		// Создаём объект рандомайзера
-		random_device rd;
-		// Выбираем стаднарт рандомайзера
-		mt19937 generator(rd());
-		// Выполняем рандомную сортировку списка DNS серверов
-		::shuffle(it->second.begin(), it->second.end(), generator);
+	// Создаём объект рандомайзера
+	random_device rd;
+	// Выбираем стаднарт рандомайзера
+	mt19937 generator(rd());
+	// Определяем тип протокола подключения
+	switch(family){
+		// Если тип протокола подключения IPv4
+		case static_cast <int> (AF_INET):
+			// Выполняем рандомную сортировку списка DNS-серверов
+			::shuffle(this->_serversIPv4.begin(), this->_serversIPv4.end(), generator);
+		break;
+		// Если тип протокола подключения IPv6
+		case static_cast <int> (AF_INET6):
+			// Выполняем рандомную сортировку списка DNS-серверов
+			::shuffle(this->_serversIPv6.begin(), this->_serversIPv6.end(), generator);
+		break;
 	}
 }
 /**
@@ -781,50 +838,83 @@ void awh::DNS::timeout(const uint8_t sec) noexcept {
 string awh::DNS::cache(const int family, const string & domain) noexcept {
 	// Результат работы функции
 	string result = "";
-	// Если доменное имя передано и кэш доменных имён проинициализирован
-	if(!domain.empty() && !this->_cache.empty()){
-		// Выполняем получение семейства протоколов
-		auto it = this->_cache.find(family);
-		// Если семейство протоколов получено
-		if(it != this->_cache.end()){
-			// Получаем количество IP-адресов в кэше
-			const size_t count = it->second.count(domain);
-			// Если количество адресов всего 1
-			if(count == 1){
-				// Выполняем проверку запрашиваемого хоста в кэше
-				auto jt = it->second.find(domain);
-				// Если хост найден, выводим его
-				if(jt != it->second.end()){
-					// Если чёрный список IP-адресов получен
-					if(!this->isInBlackList(family, jt->second))
-						// Выполняем получение результата
-						result = jt->second;
+	// Если доменное имя передано
+	if(!domain.empty()){
+		// Список полученных IP-адресов
+		vector <string> ips;
+		// Определяем тип протокола подключения
+		switch(family){
+			// Если тип протокола подключения IPv4
+			case static_cast <int> (AF_INET): {
+				// Если кэш доменных имён проинициализирован
+				if(!this->_cacheIPv4.empty()){
+					// Временный буфер данных для преобразования IP-адреса
+					char buffer[INET_ADDRSTRLEN];
+					// Получаем диапазон IP-адресов в кэше
+					auto ret = this->_cacheIPv4.equal_range(domain);
+					// Переходим по всему списку IP-адресов
+					for(auto it = ret.first; it != ret.second;){
+						// Если IP-адрес не находится в чёрном списке
+						if(!it->second.forbidden && !it->second.localhost){
+							// Если время жизни кэша ещё не вышло
+							if((it->second.create == 0) || ((this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS) - it->second.create) <= this->_ttl)){
+								// Выполняем формирование списка полученных IP-адресов
+								ips.push_back(inet_ntop(family, &it->second.ip, buffer, sizeof(buffer)));
+								// Выполняем смещение итератора
+								++it;
+							// Если время жизни кэша уже вышло
+							} else {
+								// Выполняем блокировку потока
+								const lock_guard <recursive_mutex> lock(this->_mtx.cache);
+								// Выполняем удаление записи из кэша
+								it = this->_cacheIPv4.erase(it);
+							}
+						// Выполняем смещение итератора
+						} else ++it;
+					}
 				}
-			// Если доменных имён в кэше больше 1-го
-			} else if(count > 1) {
-				// Список полученных IP-адресов
-				vector <string> ips;
-				// Получаем диапазон IP-адресов в кэше
-				auto ret = it->second.equal_range(domain);
-				// Переходим по всему списку IP-адресов
-				for(auto it = ret.first; it != ret.second; ++it){
-					// Если чёрный список IP-адресов получен
-					if(!this->isInBlackList(family, it->second))
-						// Добавляем IP-адрес в список адресов пригодных для работы
-						ips.push_back(it->second);
+			} break;
+			// Если тип протокола подключения IPv6
+			case static_cast <int> (AF_INET6): {
+				// Если кэш доменных имён проинициализирован
+				if(!this->_cacheIPv6.empty()){
+					// Временный буфер данных для преобразования IP-адреса
+					char buffer[INET6_ADDRSTRLEN];
+					// Получаем диапазон IP-адресов в кэше
+					auto ret = this->_cacheIPv6.equal_range(domain);
+					// Переходим по всему списку IP-адресов
+					for(auto it = ret.first; it != ret.second;){
+						// Если IP-адрес не находится в чёрном списке
+						if(!it->second.forbidden && !it->second.localhost){
+							// Если время жизни кэша ещё не вышло
+							if((it->second.create == 0) || ((this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS) - it->second.create) <= this->_ttl)){
+								// Выполняем формирование списка полученных IP-адресов
+								ips.push_back(inet_ntop(family, &it->second.ip, buffer, sizeof(buffer)));
+								// Выполняем смещение итератора
+								++it;
+							// Если время жизни кэша уже вышло
+							} else {
+								// Выполняем блокировку потока
+								const lock_guard <recursive_mutex> lock(this->_mtx.cache);
+								// Выполняем удаление записи из кэша
+								it = this->_cacheIPv6.erase(it);
+							}
+						// Выполняем смещение итератора
+						} else ++it;
+					}
 				}
-				// Если список IP-адресов получен
-				if(!ips.empty()){
-					// Выполняем инициализацию генератора
-					random_device dev;
-					// Подключаем устройство генератора
-					mt19937 rng(dev());
-					// Выполняем генерирование случайного числа
-					uniform_int_distribution <mt19937::result_type> dist6(0, ips.size() - 1);
-					// Выполняем получение результата
-					result = std::forward <string> (ips.at(dist6(rng)));
-				}
-			}
+			} break;
+		}
+		// Если список IP-адресов получен
+		if(!ips.empty()){
+			// Выполняем инициализацию генератора
+			random_device dev;
+			// Подключаем устройство генератора
+			mt19937 rng(dev());
+			// Выполняем генерирование случайного числа
+			uniform_int_distribution <mt19937::result_type> dist6(0, ips.size() - 1);
+			// Выполняем получение результата
+			result = std::forward <string> (ips.at(dist6(rng)));
 		}
 	}
 	// Выводим результат
@@ -833,135 +923,397 @@ string awh::DNS::cache(const int family, const string & domain) noexcept {
 /**
  * clearCache Метод очистки кэша
  * @param family тип интернет-протокола AF_INET, AF_INET6
+ * @param domain доменное имя соответствующее IP-адресу
  */
-void awh::DNS::clearCache(const int family) noexcept {
-	// Если кэш не пустой
-	if(!this->_cache.empty()){
+void awh::DNS::clearCache(const int family, const string & domain) noexcept {
+	// Если доменное имя передано
+	if(!domain.empty()){
 		// Выполняем блокировку потока
 		const lock_guard <recursive_mutex> lock(this->_mtx.cache);
-		// Выполняем поиск интернет-протокола
-		auto it = this->_cache.find(family);
-		// Если интернет-протокол найден
-		if(it != this->_cache.end())
-			// Выполняем очистку кэша
-			it->second.clear();
+		// Определяем тип протокола подключения
+		switch(family){
+			// Если тип протокола подключения IPv4
+			case static_cast <int> (AF_INET): {
+				// Получаем диапазон IP-адресов в кэше
+				auto ret = this->_cacheIPv4.equal_range(domain);
+				// Переходим по всему списку IP-адресов
+				for(auto it = ret.first; it != ret.second;){
+					// Если мы IP-адрес не запрещён
+					if(!it->second.forbidden)
+						// Выполняем удаление IP-адреса
+						it = this->_cacheIPv4.erase(it);
+					// Иначе продолжаем перебор дальше
+					else ++it;
+				}
+			} break;
+			// Если тип протокола подключения IPv6
+			case static_cast <int> (AF_INET6): {
+				// Получаем диапазон IP-адресов в кэше
+				auto ret = this->_cacheIPv6.equal_range(domain);
+				// Переходим по всему списку IP-адресов
+				for(auto it = ret.first; it != ret.second;){
+					// Если мы IP-адрес не запрещён
+					if(!it->second.forbidden)
+						// Выполняем удаление IP-адреса
+						it = this->_cacheIPv6.erase(it);
+					// Иначе продолжаем перебор дальше
+					else ++it;
+				}
+			} break;
+		}
+	}
+}
+/**
+ * clearCache Метод очистки кэша
+ * @param family    тип интернет-протокола AF_INET, AF_INET6
+ * @param localhost флаг обозначающий добавление локального адреса
+ */
+void awh::DNS::clearCache(const int family, const bool localhost) noexcept {
+	// Выполняем блокировку потока
+	const lock_guard <recursive_mutex> lock(this->_mtx.cache);
+	// Определяем тип протокола подключения
+	switch(family){
+		// Если тип протокола подключения IPv4
+		case static_cast <int> (AF_INET): {
+			// Переходим по всему списку IP-адресов
+			for(auto it = this->_cacheIPv4.begin(); it != this->_cacheIPv4.end();){
+				// Если мы нашли нужный тип IP-адреса
+				if(!it->second.forbidden && (it->second.localhost == localhost))
+					// Выполняем удаление IP-адреса
+					it = this->_cacheIPv4.erase(it);
+				// Иначе продолжаем перебор дальше
+				else ++it;
+			}
+		} break;
+		// Если тип протокола подключения IPv6
+		case static_cast <int> (AF_INET6): {
+			// Переходим по всему списку IP-адресов
+			for(auto it = this->_cacheIPv6.begin(); it != this->_cacheIPv6.end();){
+				// Если мы нашли нужный тип IP-адреса
+				if(!it->second.forbidden && (it->second.localhost == localhost))
+					// Выполняем удаление IP-адреса
+					it = this->_cacheIPv6.erase(it);
+				// Иначе продолжаем перебор дальше
+				else ++it;
+			}
+		} break;
 	}
 }
 /**
  * setToCache Метод добавления IP-адреса в кэш
- * @param family тип интернет-протокола AF_INET, AF_INET6
- * @param domain доменное имя соответствующее IP-адресу
- * @param ip     адрес для добавления к кэш
+ * @param family    тип интернет-протокола AF_INET, AF_INET6
+ * @param domain    доменное имя соответствующее IP-адресу
+ * @param ip        адрес для добавления к кэш
+ * @param localhost флаг обозначающий добавление локального адреса
  */
-void awh::DNS::setToCache(const int family, const string & domain, const string & ip) noexcept {
+void awh::DNS::setToCache(const int family, const string & domain, const string & ip, const bool localhost) noexcept {
 	// Если доменное имя и IP-адрес переданы
 	if(!domain.empty() && !ip.empty()){
 		// Выполняем блокировку потока
 		const lock_guard <recursive_mutex> lock(this->_mtx.cache);
-		// Выполняем поиск интернет-протокола
-		auto it = this->_cache.find(family);
-		// Если интернет-протокол найден
-		if(it != this->_cache.end())
-			// Записываем данные в кэш
-			it->second.emplace(domain, ip);
-		// Если интернет-протокол не найден
-		else {
-			// Выполняем формирование интернет-протокола
-			auto ret = this->_cache.emplace(family, unordered_multimap <string, string> ());
-			// Устанавливаем запрещённый IP-адрес
-			ret.first->second.emplace(domain, ip);
+		// Результат проверки наличия IP-адреса в кэше
+		bool result = false;
+		// Определяем тип протокола подключения
+		switch(family){
+			// Если тип протокола подключения IPv4
+			case static_cast <int> (AF_INET): {
+				// Получаем диапазон IP-адресов в кэше
+				auto ret = this->_cacheIPv4.equal_range(domain);
+				// Переходим по всему списку IP-адресов
+				for(auto it = ret.first; it != ret.second; ++it){
+					// Создаём буфер бинарных данных IP-адреса
+					uint32_t buffer[1];
+					// Выполняем копирование полученных данных в переданный буфер
+					inet_pton(family, ip.c_str(), &buffer);
+					// Выполняем проверку соответствует ли IP-адрес в кэше добавляемому сейчас
+					result = (memcmp(it->second.ip, buffer, sizeof(buffer)) == 0);
+					// Если IP-адрес соответствует переданному адресу, выходим
+					if(result) break;
+				}
+				// Если IP-адрес в кэше не найден
+				if(!result){
+					// Создаём объект кэша
+					cache_t <1> cache;
+					// Устанавливаем флаг локального хоста
+					cache.localhost = localhost;
+					// Устанавливаем время создания кэша
+					cache.create = (this->_ttl > 0 ? this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS) : this->_ttl);
+					// Выполняем копирование полученных данных в переданный буфер
+					inet_pton(family, ip.c_str(), &cache.ip);
+					// Выполняем установку полученного IP-адреса в кэш DNS-резолвера
+					this->_cacheIPv4.emplace(domain, std::move(cache));
+				}
+			} break;
+			// Если тип протокола подключения IPv6
+			case static_cast <int> (AF_INET6): {
+				// Получаем диапазон IP-адресов в кэше
+				auto ret = this->_cacheIPv6.equal_range(domain);
+				// Переходим по всему списку IP-адресов
+				for(auto it = ret.first; it != ret.second; ++it){
+					// Создаём буфер бинарных данных IP-адреса
+					uint32_t buffer[4];
+					// Выполняем копирование полученных данных в переданный буфер
+					inet_pton(family, ip.c_str(), &buffer);
+					// Выполняем проверку соответствует ли IP-адрес в кэше добавляемому сейчас
+					result = (memcmp(it->second.ip, buffer, sizeof(buffer)) == 0);
+					// Если IP-адрес соответствует переданному адресу, выходим
+					if(result) break;
+				}
+				// Если IP-адрес в кэше не найден
+				if(!result){
+					// Создаём объект кэша
+					cache_t <4> cache;
+					// Устанавливаем флаг локального хоста
+					cache.localhost = localhost;
+					// Устанавливаем время жизни кэша
+					cache.create = (this->_ttl > 0 ? this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS) : this->_ttl);
+					// Выполняем копирование полученных данных в переданный буфер
+					inet_pton(family, ip.c_str(), &cache.ip);
+					// Выполняем установку полученного IP-адреса в кэш DNS-резолвера
+					this->_cacheIPv6.emplace(domain, std::move(cache));
+				}
+			} break;
 		}
 	}
 }
 /**
  * clearBlackList Метод очистки чёрного списка
  * @param family тип интернет-протокола AF_INET, AF_INET6
+ * @param domain доменное имя соответствующее IP-адресу
  */
-void awh::DNS::clearBlackList(const int family) noexcept {
-	// Если чёрный список не пустой
-	if(!this->_blacklist.empty()){
+void awh::DNS::clearBlackList(const int family, const string & domain) noexcept {
+	// Если доменное имя передано
+	if(!domain.empty()){
 		// Выполняем блокировку потока
-		const lock_guard <recursive_mutex> lock(this->_mtx.black);
-		// Выполняем поиск интернет-протокола
-		auto it = this->_blacklist.find(family);
-		// Если интернет-протокол найден
-		if(it != this->_blacklist.end())
-			// Выполняем очистку чёрного списка
-			it->second.clear();
+		const lock_guard <recursive_mutex> lock(this->_mtx.cache);
+		// Определяем тип протокола подключения
+		switch(family){
+			// Если тип протокола подключения IPv4
+			case static_cast <int> (AF_INET): {
+				// Получаем диапазон IP-адресов в кэше
+				auto ret = this->_cacheIPv4.equal_range(domain);
+				// Переходим по всему списку IP-адресов
+				for(auto it = ret.first; it != ret.second; ++it){
+					// Если мы нашли запрещённую запись
+					if(it->second.forbidden)
+						// Снимаем флаг запрещённого IP-адреса
+						it->second.forbidden = !it->second.forbidden;
+				}
+			} break;
+			// Если тип протокола подключения IPv6
+			case static_cast <int> (AF_INET6): {
+				// Получаем диапазон IP-адресов в кэше
+				auto ret = this->_cacheIPv6.equal_range(domain);
+				// Переходим по всему списку IP-адресов
+				for(auto it = ret.first; it != ret.second; ++it){
+					// Если мы нашли запрещённую запись
+					if(it->second.forbidden)
+						// Снимаем флаг запрещённого IP-адреса
+						it->second.forbidden = !it->second.forbidden;
+				}
+			} break;
+		}
 	}
 }
 /**
  * delInBlackList Метод удаления IP-адреса из чёрного списока
  * @param family тип интернет-протокола AF_INET, AF_INET6
+ * @param domain доменное имя соответствующее IP-адресу
  * @param ip     адрес для удаления из чёрного списка
  */
-void awh::DNS::delInBlackList(const int family, const string & ip) noexcept {
-	// Если IP-адрес передан
-	if(!ip.empty()){
+void awh::DNS::delInBlackList(const int family, const string & domain, const string & ip) noexcept {
+	// Если доменное имя и IP-адрес переданы
+	if(!domain.empty() && !ip.empty()){
 		// Выполняем блокировку потока
-		const lock_guard <recursive_mutex> lock(this->_mtx.black);
-		// Выполняем поиск интернет-протокола
-		auto it = this->_blacklist.find(family);
-		// Если интернет-протокол найден
-		if(it != this->_blacklist.end()){
-			// Выполняем поиск IP-адреса в чёрном списке
-			auto jt = it->second.find(ip);
-			// Если IP-адрес найден в чёрном списке, удаляем его
-			if(jt != it->second.end()) it->second.erase(jt);
+		const lock_guard <recursive_mutex> lock(this->_mtx.cache);
+		// Определяем тип протокола подключения
+		switch(family){
+			// Если тип протокола подключения IPv4
+			case static_cast <int> (AF_INET): {
+				// Получаем диапазон IP-адресов в кэше
+				auto ret = this->_cacheIPv4.equal_range(domain);
+				// Переходим по всему списку IP-адресов
+				for(auto it = ret.first; it != ret.second; ++it){
+					// Если мы нашли запрещённую запись
+					if(it->second.forbidden){
+						// Создаём буфер бинарных данных IP-адреса
+						uint32_t buffer[1];
+						// Выполняем копирование полученных данных в переданный буфер
+						inet_pton(family, ip.c_str(), &buffer);
+						// Если IP-адрес соответствует переданному адресу
+						if(memcmp(it->second.ip, buffer, sizeof(buffer)) == 0)
+							// Снимаем флаг запрещённого IP-адреса
+							it->second.forbidden = !it->second.forbidden;
+					}
+				}
+			} break;
+			// Если тип протокола подключения IPv6
+			case static_cast <int> (AF_INET6): {
+				// Получаем диапазон IP-адресов в кэше
+				auto ret = this->_cacheIPv6.equal_range(domain);
+				// Переходим по всему списку IP-адресов
+				for(auto it = ret.first; it != ret.second; ++it){
+					// Если мы нашли запрещённую запись
+					if(it->second.forbidden){
+						// Создаём буфер бинарных данных IP-адреса
+						uint32_t buffer[4];
+						// Выполняем копирование полученных данных в переданный буфер
+						inet_pton(family, ip.c_str(), &buffer);
+						// Если IP-адрес соответствует переданному адресу
+						if(memcmp(it->second.ip, buffer, sizeof(buffer)) == 0)
+							// Снимаем флаг запрещённого IP-адреса
+							it->second.forbidden = !it->second.forbidden;
+					}
+				}
+			} break;
 		}
 	}
 }
 /**
  * setToBlackList Метод добавления IP-адреса в чёрный список
  * @param family тип интернет-протокола AF_INET, AF_INET6
+ * @param domain доменное имя соответствующее IP-адресу
  * @param ip     адрес для добавления в чёрный список
  */
-void awh::DNS::setToBlackList(const int family, const string & ip) noexcept {
-	// Если IP-адрес передан, добавляем IP-адрес в чёрный список
-	if(!ip.empty()){
+void awh::DNS::setToBlackList(const int family, const string & domain, const string & ip) noexcept {
+	// Если доменное имя и IP-адрес переданы
+	if(!domain.empty() && !ip.empty()){
 		// Выполняем блокировку потока
-		const lock_guard <recursive_mutex> lock(this->_mtx.black);
-		// Выполняем поиск интернет-протокола
-		auto it = this->_blacklist.find(family);
-		// Если интернет-протокол найден
-		if(it != this->_blacklist.end())
-			// Добавляем IP-адрес в список запрещённых адресов
-			it->second.emplace(ip);
-		// Если интернет-протокол не найден
-		else {
-			// Формируем интернет-протокол, чёрного списка
-			auto ret = this->_blacklist.emplace(family, set <string> ());
-			// Устанавливаем запрещённый IP-адрес
-			ret.first->second.emplace(ip);
+		const lock_guard <recursive_mutex> lock(this->_mtx.cache);
+		// Определяем тип протокола подключения
+		switch(family){
+			// Если тип протокола подключения IPv4
+			case static_cast <int> (AF_INET): {
+				// Создаём объект кэша
+				cache_t <1> cache;
+				// Устанавливаем флаг запрещённого домена
+				cache.forbidden = true;
+				// Выполняем копирование полученных данных в переданный буфер
+				inet_pton(family, ip.c_str(), &cache.ip);
+				// Если список кэша является пустым
+				if(this->_cacheIPv4.empty())
+					// Выполняем установку полученного IP-адреса в кэш DNS-резолвера
+					this->_cacheIPv4.emplace(domain, std::move(cache));
+				// Если данные в кэше уже есть
+				else {
+					// Результат поиска IP-адреса
+					bool result = false;
+					// Получаем диапазон IP-адресов в кэше
+					auto ret = this->_cacheIPv4.equal_range(domain);
+					// Переходим по всему списку IP-адресов
+					for(auto it = ret.first; it != ret.second; ++it){
+						// Создаём буфер бинарных данных IP-адреса
+						uint32_t buffer[1];
+						// Выполняем копирование полученных данных в переданный буфер
+						inet_pton(family, ip.c_str(), &buffer);
+						// Если IP-адрес соответствует переданному адресу
+						if((result = (memcmp(it->second.ip, buffer, sizeof(buffer)) == 0))){
+							// Выполняем блокировку IP-адреса
+							it->second.forbidden = result;
+							// Выходим из цикла
+							break;
+						}
+					}
+					// Если адрес не найден
+					if(!result)
+						// Выполняем установку полученного IP-адреса в кэш DNS-резолвера
+						this->_cacheIPv4.emplace(domain, std::move(cache));
+				}
+			} break;
+			// Если тип протокола подключения IPv6
+			case static_cast <int> (AF_INET6): {
+				// Создаём объект кэша
+				cache_t <4> cache;
+				// Устанавливаем флаг запрещённого домена
+				cache.forbidden = true;
+				// Выполняем копирование полученных данных в переданный буфер
+				inet_pton(family, ip.c_str(), &cache.ip);
+				// Если список кэша является пустым
+				if(this->_cacheIPv6.empty())
+					// Выполняем установку полученного IP-адреса в кэш DNS-резолвера
+					this->_cacheIPv6.emplace(domain, std::move(cache));
+				// Если данные в кэше уже есть
+				else {
+					// Результат поиска IP-адреса
+					bool result = false;
+					// Получаем диапазон IP-адресов в кэше
+					auto ret = this->_cacheIPv6.equal_range(domain);
+					// Переходим по всему списку IP-адресов
+					for(auto it = ret.first; it != ret.second; ++it){
+						// Создаём буфер бинарных данных IP-адреса
+						uint32_t buffer[4];
+						// Выполняем копирование полученных данных в переданный буфер
+						inet_pton(family, ip.c_str(), &buffer);
+						// Если IP-адрес соответствует переданному адресу
+						if((result = (memcmp(it->second.ip, buffer, sizeof(buffer)) == 0))){
+							// Выполняем блокировку IP-адреса
+							it->second.forbidden = result;
+							// Выходим из цикла
+							break;
+						}
+					}
+					// Если адрес не найден
+					if(!result)
+						// Выполняем установку полученного IP-адреса в кэш DNS-резолвера
+						this->_cacheIPv6.emplace(domain, std::move(cache));
+				}
+			} break;
 		}
 	}
 }
 /**
- * emptyBlackList Метод проверки заполненности чёрного списка
- * @param family тип интернет-протокола AF_INET, AF_INET6
- * @return       результат проверки чёрного списка
- */
-bool awh::DNS::emptyBlackList(const int family) const noexcept {
-	// Выполняем поиск семейства протоколов чёрного списка
-	auto it = this->_blacklist.find(family);
-	// Выводим результат проверки
-	return (it == this->_blacklist.end());
-}
-/**
  * isInBlackList Метод проверки наличия IP-адреса в чёрном списке
  * @param family тип интернет-протокола AF_INET, AF_INET6
+ * @param domain доменное имя соответствующее IP-адресу
  * @param ip     адрес для проверки наличия в чёрном списке
  * @return       результат проверки наличия IP-адреса в чёрном списке
  */
-bool awh::DNS::isInBlackList(const int family, const string & ip) const noexcept {
+bool awh::DNS::isInBlackList(const int family, const string & domain, const string & ip) const noexcept {
 	// Результат работы функции
 	bool result = false;
-	// Если IP-адрес для проверки передан
-	if(!ip.empty()){
-		// Выполняем поиск семейства протоколов чёрного списка
-		auto it = this->_blacklist.find(family);
-		// Выполняем проверку наличия IP-адреса в чёрном списке
-		result = ((it != this->_blacklist.end()) && !it->second.empty() && (it->second.count(ip) > 0));
+	// Если доменное имя и IP-адрес переданы
+	if(!domain.empty() && !ip.empty()){
+		// Определяем тип протокола подключения
+		switch(family){
+			// Если тип протокола подключения IPv4
+			case static_cast <int> (AF_INET): {
+				// Получаем диапазон IP-адресов в кэше
+				auto ret = this->_cacheIPv4.equal_range(domain);
+				// Переходим по всему списку IP-адресов
+				for(auto it = ret.first; it != ret.second; ++it){
+					// Если мы нашли запрещённую запись
+					if(it->second.forbidden){
+						// Создаём буфер бинарных данных IP-адреса
+						uint32_t buffer[1];
+						// Выполняем копирование полученных данных в переданный буфер
+						inet_pton(family, ip.c_str(), &buffer);
+						// Если IP-адрес соответствует переданному адресу
+						if((result = (memcmp(it->second.ip, buffer, sizeof(buffer)) == 0)))
+							// Выводим результат проверки
+							return result;
+					}
+				}
+			}
+			// Если тип протокола подключения IPv6
+			case static_cast <int> (AF_INET6): {
+				// Получаем диапазон IP-адресов в кэше
+				auto ret = this->_cacheIPv6.equal_range(domain);
+				// Переходим по всему списку IP-адресов
+				for(auto it = ret.first; it != ret.second; ++it){
+					// Если мы нашли запрещённую запись
+					if(it->second.forbidden){
+						// Создаём буфер бинарных данных IP-адреса
+						uint32_t buffer[4];
+						// Выполняем копирование полученных данных в переданный буфер
+						inet_pton(family, ip.c_str(), &buffer);
+						// Если IP-адрес соответствует переданному адресу
+						if((result = (memcmp(it->second.ip, buffer, sizeof(buffer)) == 0)))
+							// Выводим результат проверки
+							return result;
+					}
+				}
+			}
+		}
 	}
 	// Выводим результат
 	return result;
@@ -971,112 +1323,204 @@ bool awh::DNS::isInBlackList(const int family, const string & ip) const noexcept
  * @param family тип интернет-протокола AF_INET, AF_INET6
  * @return       запрошенный сервер имён
  */
-const awh::DNS::serv_t & awh::DNS::server(const int family) noexcept {
+string awh::DNS::server(const int family) noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->_mtx.hold);
+	// Результат работы функции
+	string result = "";
 	// Выполняем инициализацию генератора
 	random_device dev;
 	// Подключаем устройство генератора
 	mt19937 rng(dev());
-	// Если список серверов пустой
-	if(this->_servers.empty())
-		// Устанавливаем новый список имён
-		this->replace(family);
-	// Выполняем поиск семейство протоколов
-	const auto & servers = this->_servers.at(family);
-	// Получаем первое значение итератора
-	auto it = servers.begin();
-	// Выполняем генерирование случайного числа
-	uniform_int_distribution <mt19937::result_type> dist6(0, servers.size() - 1);
-	// Выполняем выбор нужного сервера в списке, в произвольном виде
-	advance(it, dist6(rng));
+	// Определяем тип протокола подключения
+	switch(family){
+		// Если тип протокола подключения IPv4
+		case static_cast <int> (AF_INET): {
+			// Временный буфер данных для преобразования IP-адреса
+			char buffer[INET_ADDRSTRLEN];
+			// Если список серверов пустой
+			if(this->_serversIPv4.empty())
+				// Устанавливаем новый список имён
+				this->replace(family);
+			// Получаем первое значение итератора
+			auto it = this->_serversIPv4.begin();
+			// Выполняем генерирование случайного числа
+			uniform_int_distribution <mt19937::result_type> dist6(0, this->_serversIPv4.size() - 1);
+			// Выполняем выбор нужного сервера в списке, в произвольном виде
+			advance(it, dist6(rng));
+			// Выполняем получение данных IP-адреса
+			result = inet_ntop(family, &it->ip, buffer, sizeof(buffer));
+		} break;
+		// Если тип протокола подключения IPv6
+		case static_cast <int> (AF_INET6): {
+			// Временный буфер данных для преобразования IP-адреса
+			char buffer[INET6_ADDRSTRLEN];
+			// Если список серверов пустой
+			if(this->_serversIPv6.empty())
+				// Устанавливаем новый список имён
+				this->replace(family);
+			// Получаем первое значение итератора
+			auto it = this->_serversIPv6.begin();
+			// Выполняем генерирование случайного числа
+			uniform_int_distribution <mt19937::result_type> dist6(0, this->_serversIPv6.size() - 1);
+			// Выполняем выбор нужного сервера в списке, в произвольном виде
+			advance(it, dist6(rng));
+			// Выполняем получение данных IP-адреса
+			result = inet_ntop(family, &it->ip, buffer, sizeof(buffer));
+		} break;
+	}
 	// Выводим результат
-	return (* it);
+	return result;
 }
 /**
  * server Метод добавления сервера DNS
  * @param family тип интернет-протокола AF_INET, AF_INET6
- * @param server параметры DNS сервера
+ * @param server параметры DNS-сервера
  */
-void awh::DNS::server(const int family, const serv_t & server) noexcept {
+void awh::DNS::server(const int family, const string & server) noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->_mtx.hold);
 	// Создаём объект холдирования
 	hold_t hold(&this->_status);
 	// Если статус работы DNS-резолвера соответствует
 	if(hold.access({status_t::NSS_SET}, status_t::NS_SET)){
-		// Результат работы
-		serv_t result;
-		// Устанавливаем порт сервера
-		result.port = server.port;
-		// Определяем тип передаваемого сервера
-		switch(static_cast <uint8_t> (this->_net.host(server.host))){
-			// Если домен является аппаратным адресом сетевого интерфейса
-			case static_cast <uint8_t> (net_t::type_t::MAC):
-			// Если домен является адресом/Маски сети
-			case static_cast <uint8_t> (net_t::type_t::NETW):
-			// Если домен является адресом в файловой системе
-			case static_cast <uint8_t> (net_t::type_t::ADDR):
-			// Если домен является HTTP адресом
-			case static_cast <uint8_t> (net_t::type_t::HTTP): break;
-			// Если хост является доменом или IPv4 адресом
-			case static_cast <uint8_t> (net_t::type_t::IPV4):
-				// Устанавливаем адрес как он есть
-				result.host = server.host;
-			break;
-			// Если хост является IPv6 адресом, переводим ip адрес в полную форму
-			case static_cast <uint8_t> (net_t::type_t::IPV6): {
-				// Создаём объкт для работы с адресами
-				net_t net(this->_fmk, this->_log);
-				// Выполняем получение адреса хоста
-				net = server.host;
-				// Извлекаем хост в нужном нам виде
-				result.host = net;
-			} break;
-			// Если хост является доменным именем
-			case static_cast <uint8_t> (net_t::type_t::DOMN): {
-				// Создаём объект DNS-резолвера
-				dns_t dns(this->_fmk, this->_log);
-				// Выполняем получение IP адрес хоста доменного имени
-				result.host = dns.getHostByName(server.host, family);
-				// Если хост мы не получили, выполняем запрос с сервера
-				if(result.host.empty())
-					// Выполняем запрос IP-адреса с удалённого сервера
-					result.host = dns.resolve(server.host, family);
-			} break;
-			// Значит скорее всего, садрес является доменным именем
-			default: {
-				// Создаём объект DNS-резолвера
-				dns_t dns(this->_fmk, this->_log);
-				// Выполняем получение IP адрес хоста доменного имени
-				result.host = dns.getHostByName(server.host, family);
+		// Если адрес сервера передан
+		if(!server.empty()){
+			// Порт переданного сервера
+			u_int port = 53;
+			// Хост переданного сервера
+			string host = "";
+			// Определяем тип протокола подключения
+			switch(family){
+				// Если тип протокола подключения IPv4
+				case static_cast <int> (AF_INET): {
+					// Выполняем поиск разделителя порта
+					const size_t pos = server.rfind(":");
+					// Если позиция разделителя найдена
+					if(pos != string::npos){
+						// Извлекаем хост сервера имён
+						host = server.substr(0, pos);
+						// Извлекаем порт сервера имён
+						port = static_cast <u_int> (::stoi(server.substr(pos + 1)));
+					// Извлекаем хост сервера имён
+					} else host = server;
+				} break;
+				// Если тип протокола подключения IPv6
+				case static_cast <int> (AF_INET6): {
+					// Если первый символ является разделителем
+					if(server.front() == '['){
+						// Выполняем поиск разделителя порта
+						const size_t pos = server.rfind("]:");
+						// Если позиция разделителя найдена
+						if(pos != string::npos){
+							// Извлекаем хост сервера имён
+							host = server.substr(1, pos - 1);
+							// Запоминаем полученный порт
+							port = static_cast <u_int> (::stoi(server.substr(pos + 2)));
+						// Заполняем полученный сервер
+						} else if(server.back() == ']')
+							// Извлекаем хост сервера имён
+							host = server.substr(1, server.size() - 2);
+					// Заполняем полученный сервер
+					} else if(server.back() != ']')
+						// Извлекаем хост сервера имён
+						host = server;
+				} break;
 			}
+			// Определяем тип передаваемого сервера
+			switch(static_cast <uint8_t> (this->_net.host(host))){
+				// Если домен является аппаратным адресом сетевого интерфейса
+				case static_cast <uint8_t> (net_t::type_t::MAC):
+				// Если домен является адресом/Маски сети
+				case static_cast <uint8_t> (net_t::type_t::NETW):
+				// Если домен является адресом в файловой системе
+				case static_cast <uint8_t> (net_t::type_t::ADDR):
+				// Если домен является HTTP адресом
+				case static_cast <uint8_t> (net_t::type_t::HTTP):
+					// Выполняем удаление хоста
+					host.clear();
+				break;
+				// Если хост является доменом или IPv4 адресом
+				case static_cast <uint8_t> (net_t::type_t::IPV4):
+				// Если хост является IPv6 адресом, переводим ip адрес в полную форму
+				case static_cast <uint8_t> (net_t::type_t::IPV6): break;
+				// Если хост является доменным именем
+				case static_cast <uint8_t> (net_t::type_t::DOMN): {
+					// Создаём объект DNS-резолвера
+					dns_t dns(this->_fmk, this->_log);
+					// Выполняем получение IP адрес хоста доменного имени
+					string ip = dns.host(family, host);
+					// Если IP-адрес мы не получили, выполняем запрос на сервер
+					if(ip.empty())
+						// Выполняем запрос IP-адреса с удалённого сервера
+						host = dns.resolve(family, host);
+					// Выполняем установку IP-адреса
+					else host = std::move(ip);
+				} break;
+				// Значит скорее всего, садрес является доменным именем
+				default: {
+					// Создаём объект DNS-резолвера
+					dns_t dns(this->_fmk, this->_log);
+					// Выполняем получение IP адрес хоста доменного имени
+					host = dns.host(family, host);
+				}
+			}
+			// Если DNS-сервер имён получен
+			if(!host.empty()){
+				// Определяем тип протокола подключения
+				switch(family){
+					// Если тип протокола подключения IPv4
+					case static_cast <int> (AF_INET): {
+						// Создаём объект сервера имени DNS
+						server_t <1> server;
+						// Запоминаем полученный порт
+						server.port = port;
+						// Запоминаем полученный сервер
+						inet_pton(family, host.c_str(), &server.ip);
+						// Выполняем добавление полученный сервер в список DNS-серверов имён
+						this->_serversIPv4.push_back(std::move(server));
+						/**
+						 * Если включён режим отладки
+						 */
+						#if defined(DEBUG_MODE)
+							// Выводим заголовок запроса
+							cout << "\x1B[33m\x1B[1m^^^^^^^^^ ADD NAME SERVER ^^^^^^^^^\x1B[0m" << endl;
+							// Выводим параметры запроса
+							cout << host << ":" << port << endl;
+						#endif
+					} break;
+					// Если тип протокола подключения IPv6
+					case static_cast <int> (AF_INET6): {
+						// Создаём объект сервера имени DNS
+						server_t <4> server;
+						// Запоминаем полученный порт
+						server.port = port;
+						// Запоминаем полученный сервер
+						inet_pton(family, host.c_str(), &server.ip);
+						// Выполняем добавление полученный сервер в список DNS-серверов имён
+						this->_serversIPv6.push_back(std::move(server));
+						/**
+						 * Если включён режим отладки
+						 */
+						#if defined(DEBUG_MODE)
+							// Выводим заголовок запроса
+							cout << "\x1B[33m\x1B[1m^^^^^^^^^ ADD NAME SERVER ^^^^^^^^^\x1B[0m" << endl;
+							// Выводим параметры запроса
+							cout << "[" << host << "]:" << port << endl;
+						#endif
+					} break;
+				}
+			// Если имя сервера не получено, выводим в лог сообщение
+			} else this->_log->print("name server [%s:%u] does not add", log_t::flag_t::WARNING, server.c_str(), port);
 		}
-		// Если сервер имён получен
-		if(!result.host.empty()){
-			/**
-			 * Если включён режим отладки
-			 */
-			#if defined(DEBUG_MODE)
-				// Выводим заголовок запроса
-				cout << "\x1B[33m\x1B[1m^^^^^^^^^ ADD NAME SERVER ^^^^^^^^^\x1B[0m" << endl;
-				// Выводим параметры запроса
-				cout << result.host << ":" << result.port << endl;
-			#endif
-			// Выполняем инициализацию списка серверов
-			auto ret = this->_servers.emplace(family, vector <serv_t> ());
-			// Устанавливаем сервера имён
-			ret.first->second.push_back(std::forward <serv_t> (result));
-		// Если имя сервера не получено, выводим в лог сообщение
-		} else this->_log->print("name server [%s:%u] does not add", log_t::flag_t::WARNING, server.host.c_str(), server.port);
 	}
 }
 /**
  * servers Метод добавления серверов DNS
  * @param family  тип интернет-протокола AF_INET, AF_INET6
- * @param servers параметры DNS серверов
+ * @param servers параметры DNS-серверов
  */
-void awh::DNS::servers(const int family, const vector <serv_t> & servers) noexcept {
+void awh::DNS::servers(const int family, const vector <string> & servers) noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->_mtx.hold);
 	// Создаём объект холдирования
@@ -1092,62 +1536,219 @@ void awh::DNS::servers(const int family, const vector <serv_t> & servers) noexce
 /**
  * replace Метод замены существующих серверов DNS
  * @param family  тип интернет-протокола AF_INET, AF_INET6
- * @param servers параметры DNS серверов
+ * @param servers параметры DNS-серверов
  */
-void awh::DNS::replace(const int family, const vector <serv_t> & servers) noexcept {
+void awh::DNS::replace(const int family, const vector <string> & servers) noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->_mtx.hold);
 	// Создаём объект холдирования
 	hold_t hold(&this->_status);
 	// Если статус работы DNS-резолвера соответствует
-	if(hold.access({}, status_t::NSS_REP)){
-		// Выполняем поиск интернет-протокола
-		auto it = this->_servers.find(family);
-		// Если интернет-протокол найден
-		if(it != this->_servers.end())
-			// Выполняем очистку серверов имён
-			it->second.clear();
+	if(hold.access({status_t::RESOLVE}, status_t::NSS_REP)){
+		// Определяем тип подключения
+		switch(family){
+			// Для протокола IPv4
+			case static_cast <int> (AF_INET):
+				// Выполняем очистку списка DNS-серверов
+				this->_serversIPv4.clear();
+			break;
+			// Для протокола IPv6
+			case static_cast <int> (AF_INET6):
+				// Выполняем очистку списка DNS-серверов
+				this->_serversIPv6.clear();
+			break;
+		}
 		// Если нейм сервера переданы, удаляем все настроенные серверы имён и приостанавливаем все ожидающие решения
 		if(!servers.empty())
 			// Устанавливаем новый список серверов
 			this->servers(family, servers);
 		// Если список серверов не передан
 		else {
-			// Результат работы
-			vector <serv_t> result;
 			// Список серверов
 			vector <string> servers;
 			// Определяем тип подключения
 			switch(family){
 				// Для протокола IPv4
-				case AF_INET:
+				case static_cast <int> (AF_INET):
 					// Устанавливаем список серверов
 					servers = IPV4_RESOLVER;
 				break;
 				// Для протокола IPv6
-				case AF_INET6:
+				case static_cast <int> (AF_INET6):
 					// Устанавливаем список серверов
 					servers = IPV6_RESOLVER;
 				break;
 			}
-			// Изменяем размер данных
-			result.resize(servers.size());
-			// Переходим по всему списку серверов
-			for(size_t i = 0; i < servers.size(); i++)
-				// Устанавливаем хост сервера
-				result.at(i).host = servers.at(i);
 			// Устанавливаем новый список серверов
-			this->servers(family, result);
+			this->servers(family, std::move(servers));
 		}
 	}
 }
 /**
- * resolve Метод ресолвинга домена
- * @param host   хост сервера
+ * hosts Метод загрузки файла со списком хостов
+ * @param filename адрес файла для загрузки
+ */
+void awh::DNS::hosts(const string & filename) noexcept {
+	// Если адрес файла получен
+	if(!filename.empty()){
+		// Выполняем блокировку потока
+		const lock_guard <recursive_mutex> lock(this->_mtx.cache);
+		// Создаём объект для работы с файловой системой
+		fs_t fs(this->_fmk, this->_log);
+		// Выполняем установку адреса файла hosts
+		this->_hostsFilename = fs.realPath(filename);
+		// Если файл существует в файловой системе
+		if(fs.isFile(this->_hostsFilename)){
+			// Выполняем очистку списка локальных IPv4 адресов из кэша
+			this->clearCache(AF_INET, true);
+			// Выполняем очистку списка локальных IPv6 адресов из кэша
+			this->clearCache(AF_INET6, true);
+			// Выполняем чтение содержимого файла
+			fs.readFile(this->_hostsFilename, [this](const string & entry) noexcept -> void {
+				// Если запись не является комментарием
+				if(!entry.empty() && (entry.size() > 1) && (entry.front() != '#')){
+					// Хост который будем собирать
+					string host = "";
+					// Список полученных хостов
+					vector <string> hosts;
+					// Выполняем перебор всех полученных символов
+					for(size_t i = 0; i < entry.size(); i++){
+						// Выполняем получение текущего символа
+						const u_char c = entry.at(i);
+						// Если символ является пробелом
+						if(isspace(c) || (c == 32) || (c == ' ') || (c == '\t') || (c == '\n') || (c == '\r') || (c == '\f') || (c == '\v')){
+							// Если хост уже собран
+							if(!host.empty()){
+								// Выполняем добавление хоста в список хостов
+								hosts.push_back(host);
+								// Выполняем очистку хоста
+								host.clear();
+							}
+						// Выполняем сборку хоста
+						} else host.append(1, c);
+					}
+					// Если хост уже собран
+					if(!host.empty())
+						// Выполняем добавление хоста в список хостов
+						hosts.push_back(std::move(host));
+					// Если количество хостов в списке больше одного
+					if(hosts.size() > 1){
+						// Тип интернет-протокола AF_INET, AF_INET6
+						int family = 0;
+						// Определяем тип передаваемого сервера
+						switch(static_cast <uint8_t> (this->_net.host(hosts.front()))){
+							// Если хост является доменом или IPv4 адресом
+							case static_cast <uint8_t> (net_t::type_t::IPV4): family = AF_INET; break;
+							// Если хост является IPv6 адресом, переводим ip адрес в полную форму
+							case static_cast <uint8_t> (net_t::type_t::IPV6): family = AF_INET6; break;
+						}
+						// Если мы удачно определили тип интернет-протокола
+						if(family > 0){
+							// Выполняем перебор всего списка хостов
+							for(size_t i = 1; i < hosts.size(); i++)
+								// Выполняем добавление в кэш новый IP-адрес
+								this->setToCache(family, hosts.at(i), hosts.front(), true);
+						// Сообщаем, что определить IP-адрес не удалось
+						} else this->_log->print("the entry provided [%s] is not an IP address", log_t::flag_t::WARNING, hosts.front().c_str());
+					// Выводим сообщение, что текст передан неверный
+					} else this->_log->print("hosts in entry %s not found", log_t::flag_t::WARNING, entry.c_str());
+				}
+			});
+		}
+	// Если имя сервера не получено, выводим в лог сообщение
+	} else this->_log->print("hosts file address is not passed", log_t::flag_t::WARNING);
+}
+/**
+ * host Метод определение локального IP-адреса по имени домена
  * @param family тип интернет-протокола AF_INET, AF_INET6
+ * @param name   название сервера
  * @return       полученный IP-адрес
  */
-string awh::DNS::resolve(const string & host, const int family) noexcept {
+string awh::DNS::host(const int family, const string & name) noexcept {
+	// Результат работы функции
+	string result = "";
+	// Выполняем блокировку потока
+	const lock_guard <recursive_mutex> lock(this->_mtx.hold);
+	// Создаём объект холдирования
+	hold_t hold(&this->_status);
+	// Если статус работы DNS-резолвера соответствует
+	if(hold.access({}, status_t::RESOLVE)){
+		// Если домен передан
+		if(!name.empty()){
+			// Если доменное имя является локальным
+			if(this->_fmk->is(name, fmk_t::check_t::LATIAN)){
+				// Определяем тип протокола подключения
+				switch(family){
+					// Если тип протокола подключения IPv4
+					case static_cast <int> (AF_INET): {
+						/**
+						 * Методы только для OS Windows
+						 */
+						#if defined(_WIN32) || defined(_WIN64)
+							// Выполняем резолвинг доменного имени
+							struct hostent * domain = ::gethostbyname(name.c_str());
+						/**
+						 * Если операционной системой является Nix-подобная
+						 */
+						#else
+							// Выполняем резолвинг доменного имени
+							struct hostent * domain = ::gethostbyname2(name.c_str(), AF_INET);
+						#endif
+						// Создаём объект сервера
+						struct sockaddr_in server;
+						// Очищаем всю структуру для сервера
+						memset(&server, 0, sizeof(server));
+						// Создаем буфер для получения ip адреса
+						result.resize(INET_ADDRSTRLEN, 0);
+						// Устанавливаем протокол интернета
+						server.sin_family = AF_INET;
+						// Выполняем копирование данных типа подключения
+						memcpy(&server.sin_addr.s_addr, domain->h_addr, domain->h_length);
+						// Копируем полученные данные
+						inet_ntop(AF_INET, &server.sin_addr, result.data(), result.size());
+					} break;
+					// Если тип протокола подключения IPv6
+					case static_cast <int> (AF_INET6): {
+						/**
+						 * Методы только для OS Windows
+						 */
+						#if defined(_WIN32) || defined(_WIN64)
+							// Выполняем резолвинг доменного имени
+							struct hostent * domain = ::gethostbyname(name.c_str());
+						/**
+						 * Если операционной системой является Nix-подобная
+						 */
+						#else
+							// Выполняем резолвинг доменного имени
+							struct hostent * domain = ::gethostbyname2(name.c_str(), AF_INET6);
+						#endif
+						// Создаём объект сервера
+						struct sockaddr_in6 server;
+						// Очищаем всю структуру для сервера
+						memset(&server, 0, sizeof(server));
+						// Создаем буфер для получения ip адреса
+						result.resize(INET6_ADDRSTRLEN, 0);
+						// Устанавливаем протокол интернета
+						server.sin6_family = AF_INET6;
+						// Выполняем копирование данных типа подключения
+						memcpy(&server.sin6_addr.s6_addr, domain->h_addr, domain->h_length);
+						// Копируем полученные данные
+						inet_ntop(AF_INET6, &server.sin6_addr, result.data(), result.size());
+					} break;
+				}
+			}
+		}
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * resolve Метод ресолвинга домена
+ * @param family тип интернет-протокола AF_INET, AF_INET6
+ * @param host   хост сервера
+ * @return       полученный IP-адрес
+ */
+string awh::DNS::resolve(const int family, const string & host) noexcept {
 	// Результат работы функции
 	string result = "";
 	// Выполняем блокировку потока
@@ -1208,12 +1809,12 @@ string awh::DNS::resolve(const string & host, const int family) noexcept {
 							// Определяем тип протокола подключения
 							switch(family){
 								// Если тип протокола подключения IPv4
-								case AF_INET:
+								case static_cast <int> (AF_INET):
 									// Выводим информацию об IP-адресе
 									cout << "IPv4: " << result << endl;
 								break;
 								// Если тип протокола подключения IPv6
-								case AF_INET6:
+								case static_cast <int> (AF_INET6):
 									// Выводим информацию об IP-адресе
 									cout << "IPv6: " << result << endl;
 								break;
@@ -1225,15 +1826,23 @@ string awh::DNS::resolve(const string & host, const int family) noexcept {
 						// Определяем тип протокола подключения
 						switch(family){
 							// Если тип протокола подключения IPv4
-							case AF_INET:
+							case static_cast <int> (AF_INET): {
+								// Если список DNS-серверов пустой
+								if(this->_serversIPv4.empty())
+									// Устанавливаем список серверов IPv4
+									this->replace(AF_INET);
 								// Выполняем получение IP-адреса
 								result = this->_workerIPv4->request(domain);
-							break;
+							} break;
 							// Если тип протокола подключения IPv6
-							case AF_INET6:
+							case static_cast <int> (AF_INET6): {
+								// Если список DNS-серверов пустой
+								if(this->_serversIPv6.empty())
+									// Устанавливаем список серверов IPv6
+									this->replace(AF_INET6);
 								// Выполняем получение IP-адреса
 								result = this->_workerIPv6->request(domain);
-							break;
+							} break;
 						}
 						// Если IP-адрес получен
 						if(!result.empty())
@@ -1244,7 +1853,7 @@ string awh::DNS::resolve(const string & host, const int family) noexcept {
 							// Создаём объект DNS-резолвера
 							dns_t dns(this->_fmk, this->_log);
 							// Выполняем получение IP адрес хоста доменного имени
-							return dns.getHostByName(host, family);
+							return dns.host(family, host);
 						}
 					}
 				} break;
@@ -1253,7 +1862,7 @@ string awh::DNS::resolve(const string & host, const int family) noexcept {
 					// Создаём объект DNS-резолвера
 					dns_t dns(this->_fmk, this->_log);
 					// Выполняем получение IP адрес хоста доменного имени
-					return dns.getHostByName(host, family);
+					return dns.host(family, host);
 				}
 			}
 		}
@@ -1262,82 +1871,44 @@ string awh::DNS::resolve(const string & host, const int family) noexcept {
 	return result;
 }
 /**
- * getHostByName Метод определение локального IP-адреса по имени домена
- * @param host   хост сервера
+ * search Метод поиска доменного имени соответствующего IP-адресу
  * @param family тип интернет-протокола AF_INET, AF_INET6
- * @return       полученный IP-адрес
+ * @param ip     адрес для поиска доменного имени
+ * @return       список найденных доменных имён
  */
-string awh::DNS::getHostByName(const string & host, const int family) noexcept {
+vector <string> awh::DNS::search(const int family, const string & ip) noexcept {
 	// Результат работы функции
-	string result = "";
-	// Выполняем блокировку потока
-	const lock_guard <recursive_mutex> lock(this->_mtx.hold);
-	// Создаём объект холдирования
-	hold_t hold(&this->_status);
-	// Если статус работы DNS-резолвера соответствует
-	if(hold.access({}, status_t::RESOLVE)){
-		// Если домен передан
-		if(!host.empty()){
-			// Если доменное имя является локальным
-			if(this->_fmk->is(host, fmk_t::check_t::LATIAN)){
-				// Определяем тип протокола подключения
-				switch(family){
-					// Если тип протокола подключения IPv4
-					case AF_INET: {
-						/**
-						 * Методы только для OS Windows
-						 */
-						#if defined(_WIN32) || defined(_WIN64)
-							// Выполняем резолвинг доменного имени
-							struct hostent * domain = gethostbyname(host.c_str());
-						/**
-						 * Если операционной системой является Nix-подобная
-						 */
-						#else
-							// Выполняем резолвинг доменного имени
-							struct hostent * domain = gethostbyname2(host.c_str(), AF_INET);
-						#endif
-						// Создаём объект сервера
-						struct sockaddr_in server;
-						// Очищаем всю структуру для сервера
-						memset(&server, 0, sizeof(server));
-						// Создаем буфер для получения ip адреса
-						result.resize(INET_ADDRSTRLEN, 0);
-						// Устанавливаем протокол интернета
-						server.sin_family = AF_INET;
-						// Выполняем копирование данных типа подключения
-						memcpy(&server.sin_addr.s_addr, domain->h_addr, domain->h_length);
-						// Копируем полученные данные
-						inet_ntop(AF_INET, &server.sin_addr, result.data(), result.size());
-					} break;
-					// Если тип протокола подключения IPv6
-					case AF_INET6: {
-						/**
-						 * Методы только для OS Windows
-						 */
-						#if defined(_WIN32) || defined(_WIN64)
-							// Выполняем резолвинг доменного имени
-							struct hostent * domain = gethostbyname(host.c_str());
-						/**
-						 * Если операционной системой является Nix-подобная
-						 */
-						#else
-							// Выполняем резолвинг доменного имени
-							struct hostent * domain = gethostbyname2(host.c_str(), AF_INET6);
-						#endif
-						// Создаём объект сервера
-						struct sockaddr_in6 server;
-						// Очищаем всю структуру для сервера
-						memset(&server, 0, sizeof(server));
-						// Создаем буфер для получения ip адреса
-						result.resize(INET6_ADDRSTRLEN, 0);
-						// Устанавливаем протокол интернета
-						server.sin6_family = AF_INET6;
-						// Выполняем копирование данных типа подключения
-						memcpy(&server.sin6_addr.s6_addr, domain->h_addr, domain->h_length);
-						// Копируем полученные данные
-						inet_ntop(AF_INET6, &server.sin6_addr, result.data(), result.size());
-					} break;
+	vector <string> result;
+	// Если IP-адрес передан
+	if(!ip.empty()){
+		// Определяем тип протокола подключения
+		switch(family){
+			// Если тип протокола подключения IPv4
+			case static_cast <int> (AF_INET): {
+				// Переходим по всему списку IP-адресов
+				for(auto it = this->_cacheIPv4.begin(); it != this->_cacheIPv4.end(); ++it){
+					// Создаём буфер бинарных данных IP-адреса
+					uint32_t buffer[1];
+					// Выполняем копирование полученных данных в переданный буфер
+					inet_pton(family, ip.c_str(), &buffer);
+					// Если IP-адрес соответствует переданному адресу
+					if(memcmp(it->second.ip, buffer, sizeof(buffer)) == 0)
+						// Выполняем добавление доменное имя в список
+						result.push_back(it->first);
+				}
+			}
+			// Если тип протокола подключения IPv6
+			case static_cast <int> (AF_INET6): {
+				// Переходим по всему списку IP-адресов
+				for(auto it = this->_cacheIPv6.begin(); it != this->_cacheIPv6.end(); ++it){
+					// Создаём буфер бинарных данных IP-адреса
+					uint32_t buffer[4];
+					// Выполняем копирование полученных данных в переданный буфер
+					inet_pton(family, ip.c_str(), &buffer);
+					// Если IP-адрес соответствует переданному адресу
+					if(memcmp(it->second.ip, buffer, sizeof(buffer)) == 0)
+						// Выполняем добавление доменное имя в список
+						result.push_back(it->first);
 				}
 			}
 		}
@@ -1351,12 +1922,8 @@ string awh::DNS::getHostByName(const string & host, const int family) noexcept {
  * @param log объект для работы с логами
  */
 awh::DNS::DNS(const fmk_t * fmk, const log_t * log) noexcept :
- _timeout(30), _net(fmk, log), _workerIPv4(nullptr),
- _workerIPv6(nullptr), _fmk(fmk), _log(log) {
-	// Устанавливаем список серверов IPv4
-	this->replace(AF_INET);
-	// Устанавливаем список серверов IPv6
-	this->replace(AF_INET6);
+ _net(fmk, log), _ttl(0), _timeout(30),
+ _workerIPv4(nullptr), _workerIPv6(nullptr), _fmk(fmk), _log(log) {
 	// Выполняем создание воркера для IPv4
 	this->_workerIPv4 = unique_ptr <worker_t> (new worker_t(AF_INET, this));
 	// Выполняем создание воркера для IPv6

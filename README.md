@@ -631,16 +631,11 @@ int main(int argc, char * argv[]){
 	log.name("DNS");
 	log.format("%H:%M:%S %d.%m.%Y");
 
-	dns_t::serv_t serv1, serv2;
+	dns.servers(AF_INET, {"77.88.8.88", "77.88.8.2"});
 
-	serv1.host = "77.88.8.88";
-	serv2.host = "77.88.8.2";
-
-	dns.servers(AF_INET, {std::move(serv1), std::move(serv2)});
-
-	log.print("IP1: %s", log_t::flag_t::INFO, dns.resolve("localhost", AF_INET).c_str());
-	log.print("IP2: %s", log_t::flag_t::INFO, dns.resolve("yandex.ru", AF_INET).c_str());
-	log.print("IP3: %s", log_t::flag_t::INFO, dns.resolve("google.com", AF_INET).c_str());
+	log.print("IP1: %s", log_t::flag_t::INFO, dns.resolve(AF_INET, "localhost").c_str());
+	log.print("IP2: %s", log_t::flag_t::INFO, dns.resolve(AF_INET, "yandex.ru").c_str());
+	log.print("IP3: %s", log_t::flag_t::INFO, dns.resolve(AF_INET, "google.com").c_str());
 
 	return 0;
 }

@@ -260,12 +260,12 @@ void awh::client::Core::connect(const size_t sid) noexcept {
 							// Если тип протокола подключения IPv4
 							case static_cast <uint8_t> (scheme_t::family_t::IPV4):
 								// Добавляем бракованный IPv4 адрес в список адресов
-								this->dns.setToBlackList(AF_INET, url.ip); 
+								this->dns.setToBlackList(AF_INET, url.domain, url.ip); 
 							break;
 							// Если тип протокола подключения IPv6
 							case static_cast <uint8_t> (scheme_t::family_t::IPV6):
 								// Добавляем бракованный IPv6 адрес в список адресов
-								this->dns.setToBlackList(AF_INET6, url.ip);
+								this->dns.setToBlackList(AF_INET6, url.domain, url.ip);
 							break;
 						}
 						// Если доменный адрес установлен
@@ -343,12 +343,12 @@ void awh::client::Core::connect(const size_t sid) noexcept {
 						// Если тип протокола подключения IPv4
 						case static_cast <uint8_t> (scheme_t::family_t::IPV4):
 							// Добавляем бракованный IPv4 адрес в список адресов
-							this->dns.setToBlackList(AF_INET, url.ip); 
+							this->dns.setToBlackList(AF_INET, url.domain, url.ip); 
 						break;
 						// Если тип протокола подключения IPv6
 						case static_cast <uint8_t> (scheme_t::family_t::IPV6):
 							// Добавляем бракованный IPv6 адрес в список адресов
-							this->dns.setToBlackList(AF_INET6, url.ip);
+							this->dns.setToBlackList(AF_INET6, url.domain, url.ip);
 						break;
 					}
 					// Выводим сообщение об ошибке
@@ -394,14 +394,14 @@ void awh::client::Core::reconnect(const size_t sid) noexcept {
 							// Если тип протокола подключения IPv4
 							case static_cast <uint8_t> (scheme_t::family_t::IPV4): {
 								// Выполняем резолвинг домена
-								const string & ip = this->dns.resolve(url.domain, AF_INET);
+								const string & ip = this->dns.resolve(AF_INET, url.domain);
 								// Выполняем подключения к полученному IP-адресу
 								this->resolving(shm->sid, ip, AF_INET);
 							} break;
 							// Если тип протокола подключения IPv6
 							case static_cast <uint8_t> (scheme_t::family_t::IPV6): {
 								// Выполняем резолвинг домена
-								const string & ip = this->dns.resolve(url.domain, AF_INET6);
+								const string & ip = this->dns.resolve(AF_INET6, url.domain);
 								// Выполняем подключения к полученному IP-адресу
 								this->resolving(shm->sid, ip, AF_INET);
 							} break;
@@ -719,14 +719,14 @@ void awh::client::Core::open(const size_t sid) noexcept {
 								// Если тип протокола подключения IPv4
 								case static_cast <uint8_t> (scheme_t::family_t::IPV4): {
 									// Выполняем резолвинг домена
-									const string & ip = this->dns.resolve(url.domain, AF_INET);
+									const string & ip = this->dns.resolve(AF_INET, url.domain);
 									// Выполняем подключения к полученному IP-адресу
 									this->resolving(shm->sid, ip, AF_INET);
 								} break;
 								// Если тип протокола подключения IPv6
 								case static_cast <uint8_t> (scheme_t::family_t::IPV6): {
 									// Выполняем резолвинг домена
-									const string & ip = this->dns.resolve(url.domain, AF_INET6);
+									const string & ip = this->dns.resolve(AF_INET6, url.domain);
 									// Выполняем подключения к полученному IP-адресу
 									this->resolving(shm->sid, ip, AF_INET);
 								} break;
@@ -978,12 +978,12 @@ void awh::client::Core::timeout(const size_t aid) noexcept {
 						// Резолвер IPv4, добавляем бракованный IPv4 адрес в список адресов
 						case static_cast <uint8_t> (scheme_t::family_t::IPV4):
 							// Добавляем адрес в чёрный список
-							this->dns.setToBlackList(AF_INET, url.ip);
+							this->dns.setToBlackList(AF_INET, url.domain, url.ip);
 						break;
 						// Резолвер IPv6, добавляем бракованный IPv6 адрес в список адресов
 						case static_cast <uint8_t> (scheme_t::family_t::IPV6):
 							// Добавляем адрес в чёрный список
-							this->dns.setToBlackList(AF_INET6, url.ip);
+							this->dns.setToBlackList(AF_INET6, url.domain, url.ip);
 						break;
 					}
 				}			

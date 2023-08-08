@@ -581,10 +581,23 @@ void awh::FS::readFile(const string & filename, function <void (const string &)>
 				this->_log->print("the file name: \"%s\" is unknown size", log_t::flag_t::WARNING, filename.c_str());
 			// Иначе продолжаем
 			else {
-				// Буфер входящих данных
-				void * buffer = nullptr;
+				// Создаём смещение в тексте
+				off_t offset = 0;
+				// Инициализируем смещение в памяти
+				off_t paOffset = (offset & ~(sysconf(_SC_PAGE_SIZE) - 1));
+				// Если смещение в файше превышает размер файла
+				if(offset >= info.st_size){
+					// Выводим сообщение об ошибке
+					this->_log->print("file offset position of %zu bytes cannot exceed the file size of %zu bytes", log_t::flag_t::CRITICAL, offset, info.st_size);
+					// Выходим из функции
+					return;
+				}
+				// Получаем размер данных в файле
+				const size_t length = (info.st_size - offset);
 				// Выполняем отображение файла в памяти
-				if((buffer = ::mmap(0, info.st_size, PROT_READ, MAP_SHARED, fd, 0)) == MAP_FAILED)
+				void * buffer = ::mmap(0, (length + offset - paOffset), PROT_READ, MAP_PRIVATE, fd, paOffset);
+				// Если произошла ошибка чтения данных файла
+				if(buffer == MAP_FAILED)
 					// Выводим сообщение что прочитать файл не удалось
 					this->_log->print("the file name: \"%s\" is not read", log_t::flag_t::WARNING, filename.c_str());
 				// Если файл прочитан удачно
@@ -622,6 +635,8 @@ void awh::FS::readFile(const string & filename, function <void (const string &)>
 						// Выводим полученную строку
 						callback(string((char *) buffer, size));
 				}
+				// Выполняем удаление сопоставления для указанного диапазона адресов
+				::munmap(buffer, (length + offset - paOffset));
 			}
 			// Если файл открыт, закрываем его
 			if(fd > -1) ::close(fd);

@@ -1547,59 +1547,62 @@ void awh::Core::timeoutDNS(const uint8_t sec) noexcept {
 /**
  * clearBlackListDNS Метод очистки чёрного списка
  * @param family тип протокола интернета (IPV4 / IPV6)
+ * @param domain доменное имя соответствующее IP-адресу
  */
-void awh::Core::clearBlackListDNS(const scheme_t::family_t family) noexcept {
+void awh::Core::clearBlackListDNS(const scheme_t::family_t family, const string & domain) noexcept {
 	// Определяем тип интернет-протокола
 	switch(static_cast <uint8_t> (family)){
 		// Если тип протокола интернета IPv4
 		case static_cast <uint8_t> (scheme_t::family_t::IPV4):
 			// Выполняем очистку чёрного списка IP-адресов
-			this->dns.clearBlackList(AF_INET);
+			this->dns.clearBlackList(AF_INET, domain);
 		break;
 		// Если тип протокола интернета IPv6
 		case static_cast <uint8_t> (scheme_t::family_t::IPV6):
 			// Выполняем очистку чёрного списка IP-адресов
-			this->dns.clearBlackList(AF_INET6);
+			this->dns.clearBlackList(AF_INET6, domain);
 		break;
 	}
 }
 /**
  * delInBlackListDNS Метод удаления IP-адреса из чёрного списока
  * @param family тип протокола интернета (IPV4 / IPV6)
+ * @param domain доменное имя соответствующее IP-адресу
  * @param ip     адрес для удаления из чёрного списка
  */
-void awh::Core::delInBlackListDNS(const scheme_t::family_t family, const string & ip) noexcept {
+void awh::Core::delInBlackListDNS(const scheme_t::family_t family, const string & domain, const string & ip) noexcept {
 	// Определяем тип интернет-протокола
 	switch(static_cast <uint8_t> (family)){
 		// Если тип протокола интернета IPv4
 		case static_cast <uint8_t> (scheme_t::family_t::IPV4):
 			// Выполняем удаление из чёрного списка IP-адреса
-			this->dns.delInBlackList(AF_INET, ip);
+			this->dns.delInBlackList(AF_INET, domain, ip);
 		break;
 		// Если тип протокола интернета IPv6
 		case static_cast <uint8_t> (scheme_t::family_t::IPV6):
 			// Выполняем удаление из чёрного списка IP-адреса
-			this->dns.delInBlackList(AF_INET6, ip);
+			this->dns.delInBlackList(AF_INET6, domain, ip);
 		break;
 	}
 }
 /**
  * setToBlackListDNS Метод добавления IP-адреса в чёрный список
  * @param family тип протокола интернета (IPV4 / IPV6)
+ * @param domain доменное имя соответствующее IP-адресу
  * @param ip     адрес для добавления в чёрный список
  */
-void awh::Core::setToBlackListDNS(const scheme_t::family_t family, const string & ip) noexcept {
+void awh::Core::setToBlackListDNS(const scheme_t::family_t family, const string & domain, const string & ip) noexcept {
 	// Определяем тип интернет-протокола
 	switch(static_cast <uint8_t> (family)){
 		// Если тип протокола интернета IPv4
 		case static_cast <uint8_t> (scheme_t::family_t::IPV4):
 			// Выполняем установку в чёрный список IP-адреса
-			this->dns.setToBlackList(AF_INET, ip);
+			this->dns.setToBlackList(AF_INET, domain, ip);
 		break;
 		// Если тип протокола интернета IPv6
 		case static_cast <uint8_t> (scheme_t::family_t::IPV6):
 			// Выполняем установку в чёрный список IP-адреса
-			this->dns.setToBlackList(AF_INET6, ip);
+			this->dns.setToBlackList(AF_INET6, domain, ip);
 		break;
 	}
 }
@@ -1744,55 +1747,15 @@ void awh::Core::ns(const vector <string> & ns, const scheme_t::family_t family) 
 		switch(static_cast <uint8_t> (family)){
 			// Если мы получили адреса интернет-протокола IPv4
 			case static_cast <uint8_t> (scheme_t::family_t::IPV4): {
-				// Позиция разделителя порта в строке
-				size_t pos = string::npos;
-				// Создаём список серверов имён
-				vector <dns_t::serv_t> servers(ns.size());
-				// Переходим по всему списку серверов
-				for(uint8_t i = 0; i < static_cast <uint8_t> (ns.size()); i++){
-					// Выполняем поиск разделителя порта
-					pos = ns[i].rfind(":");
-					// Если позиция разделителя найдена
-					if(pos != string::npos){
-						// Запоминаем полученный сервер
-						servers[i].host = ns[i].substr(0, pos);
-						// Запоминаем полученный порт
-						servers[i].port = static_cast <u_int> (::stoi(ns[i].substr(pos + 1)));
-					// Заполняем полученный сервер
-					} else servers[i].host = ns[i];
-				}
 				// Устанавливаем полученный список серверов имён
-				this->settings.v4.second.assign(servers.cbegin(), servers.cend());
+				this->settings.v4.second.assign(ns.cbegin(), ns.cend());
 				// Выполняем установку нейм-серверов для DNS-резолвера IPv4
 				this->dns.replace(AF_INET, this->settings.v4.second);
 			} break;
 			// Если мы получили адреса интернет-протокола IPv6
 			case static_cast <uint8_t> (scheme_t::family_t::IPV6): {
-				// Позиция разделителя порта в строке
-				size_t pos = string::npos;
-				// Создаём список серверов имён
-				vector <dns_t::serv_t> servers(ns.size());
-				// Переходим по всему списку серверов
-				for(uint8_t i = 0; i < static_cast <uint8_t> (ns.size()); i++){
-					// Если первый символ является разделителем
-					if(ns[i].front() == '['){
-						// Выполняем поиск разделителя порта
-						pos = ns[i].rfind("]:");
-						// Если позиция разделителя найдена
-						if(pos != string::npos){
-							// Запоминаем полученный сервер
-							servers[i].host = ns[i].substr(1, pos - 1);
-							// Запоминаем полученный порт
-							servers[i].port = static_cast <u_int> (::stoi(ns[i].substr(pos + 2)));
-						// Заполняем полученный сервер
-						} else if(ns[i].back() == ']')
-							// Добавляем адрес сервера, как он есть
-							servers[i].host = ns[i].substr(1, ns[i].size() - 2);
-					// Заполняем полученный сервер
-					} else if(ns[i].back() != ']') servers[i].host = ns[i];
-				}
 				// Устанавливаем полученный список серверов имён
-				this->settings.v6.second.assign(servers.cbegin(), servers.cend());
+				this->settings.v6.second.assign(ns.cbegin(), ns.cend());
 				// Выполняем установку нейм-серверов для DNS-резолвера IPv6
 				this->dns.replace(AF_INET6, this->settings.v6.second);
 			} break;
