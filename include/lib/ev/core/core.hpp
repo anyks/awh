@@ -680,7 +680,7 @@ namespace awh {
 			 * @param ns     список серверов имён
 			 * @param family тип протокола интернета (IPV4 / IPV6)
 			 */
-			void ns(const vector <string> & ns, const scheme_t::family_t family = scheme_t::family_t::IPV4) noexcept;
+			void ns(const vector <string> & ns, const scheme_t::family_t family) noexcept;
 		public:
 			/**
 			 * network Метод установки параметров сети
