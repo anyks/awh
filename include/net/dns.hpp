@@ -449,16 +449,35 @@ namespace awh {
 		public:
 			/**
 			 * clearCache Метод очистки кэша
+			 * @param domain доменное имя соответствующее IP-адресу
+			 */
+			void clearCache(const string & domain) noexcept;
+			/**
+			 * clearCache Метод очистки кэша
 			 * @param family тип интернет-протокола AF_INET, AF_INET6
 			 * @param domain доменное имя соответствующее IP-адресу
 			 */
 			void clearCache(const int family, const string & domain) noexcept;
+		public:
+			/**
+			 * clearCache Метод очистки кэша
+			 * @param localhost флаг обозначающий добавление локального адреса
+			 */
+			void clearCache(const bool localhost = false) noexcept;
 			/**
 			 * clearCache Метод очистки кэша
 			 * @param family    тип интернет-протокола AF_INET, AF_INET6
 			 * @param localhost флаг обозначающий добавление локального адреса
 			 */
 			void clearCache(const int family, const bool localhost = false) noexcept;
+		public:
+			/**
+			 * setToCache Метод добавления IP-адреса в кэш
+			 * @param domain    доменное имя соответствующее IP-адресу
+			 * @param ip        адрес для добавления к кэш
+			 * @param localhost флаг обозначающий добавление локального адреса
+			 */
+			void setToCache(const string & domain, const string & ip, const bool localhost = false) noexcept;
 			/**
 			 * setToCache Метод добавления IP-адреса в кэш
 			 * @param family    тип интернет-протокола AF_INET, AF_INET6
@@ -470,10 +489,22 @@ namespace awh {
 		public:
 			/**
 			 * clearBlackList Метод очистки чёрного списка
+			 * @param domain доменное имя соответствующее IP-адресу
+			 */
+			void clearBlackList(const string & domain) noexcept;
+			/**
+			 * clearBlackList Метод очистки чёрного списка
 			 * @param family тип интернет-протокола AF_INET, AF_INET6
 			 * @param domain доменное имя соответствующее IP-адресу
 			 */
 			void clearBlackList(const int family, const string & domain) noexcept;
+		public:
+			/**
+			 * delInBlackList Метод удаления IP-адреса из чёрного списока
+			 * @param domain доменное имя соответствующее IP-адресу
+			 * @param ip     адрес для удаления из чёрного списка
+			 */
+			void delInBlackList(const string & domain, const string & ip) noexcept;
 			/**
 			 * delInBlackList Метод удаления IP-адреса из чёрного списока
 			 * @param family тип интернет-протокола AF_INET, AF_INET6
@@ -481,6 +512,13 @@ namespace awh {
 			 * @param ip     адрес для удаления из чёрного списка
 			 */
 			void delInBlackList(const int family, const string & domain, const string & ip) noexcept;
+		public:
+			/**
+			 * setToBlackList Метод добавления IP-адреса в чёрный список
+			 * @param domain доменное имя соответствующее IP-адресу
+			 * @param ip     адрес для добавления в чёрный список
+			 */
+			void setToBlackList(const string & domain, const string & ip) noexcept;
 			/**
 			 * setToBlackList Метод добавления IP-адреса в чёрный список
 			 * @param family тип интернет-протокола AF_INET, AF_INET6
@@ -488,6 +526,14 @@ namespace awh {
 			 * @param ip     адрес для добавления в чёрный список
 			 */
 			void setToBlackList(const int family, const string & domain, const string & ip) noexcept;
+		public:
+			/**
+			 * isInBlackList Метод проверки наличия IP-адреса в чёрном списке
+			 * @param domain доменное имя соответствующее IP-адресу
+			 * @param ip     адрес для проверки наличия в чёрном списке
+			 * @return       результат проверки наличия IP-адреса в чёрном списке
+			 */
+			bool isInBlackList(const string & domain, const string & ip) const noexcept;
 			/**
 			 * isInBlackList Метод проверки наличия IP-адреса в чёрном списке
 			 * @param family тип интернет-протокола AF_INET, AF_INET6
@@ -503,18 +549,36 @@ namespace awh {
 			 * @return       запрошенный сервер имён
 			 */
 			string server(const int family) noexcept;
+		public:
+			/**
+			 * server Метод добавления сервера DNS
+			 * @param server параметры DNS-сервера
+			 */
+			void server(const string & server) noexcept;
 			/**
 			 * server Метод добавления сервера DNS
 			 * @param family тип интернет-протокола AF_INET, AF_INET6
 			 * @param server параметры DNS-сервера
 			 */
 			void server(const int family, const string & server) noexcept;
+		public:
+			/**
+			 * servers Метод добавления серверов DNS
+			 * @param servers параметры DNS-серверов
+			 */
+			void servers(const vector <string> & servers) noexcept;
 			/**
 			 * servers Метод добавления серверов DNS
 			 * @param family  тип интернет-протокола AF_INET, AF_INET6
 			 * @param servers параметры DNS-серверов
 			 */
 			void servers(const int family, const vector <string> & servers) noexcept;
+		public:
+			/**
+			 * replace Метод замены существующих серверов DNS
+			 * @param servers параметры DNS-серверов
+			 */
+			void replace(const vector <string> & servers = {}) noexcept;
 			/**
 			 * replace Метод замены существующих серверов DNS
 			 * @param family  тип интернет-протокола AF_INET, AF_INET6
@@ -530,6 +594,12 @@ namespace awh {
 		public:
 			/**
 			 * host Метод определение локального IP-адреса по имени домена
+			 * @param name название сервера
+			 * @return     полученный IP-адрес
+			 */
+			string host(const string & name) noexcept;
+			/**
+			 * host Метод определение локального IP-адреса по имени домена
 			 * @param family тип интернет-протокола AF_INET, AF_INET6
 			 * @param name   название сервера
 			 * @return       полученный IP-адрес
@@ -538,12 +608,24 @@ namespace awh {
 		public:
 			/**
 			 * resolve Метод ресолвинга домена
+			 * @param host хост сервера
+			 * @return     полученный IP-адрес
+			 */
+			string resolve(const string & host) noexcept;
+			/**
+			 * resolve Метод ресолвинга домена
 			 * @param family тип интернет-протокола AF_INET, AF_INET6
 			 * @param host   хост сервера
 			 * @return       полученный IP-адрес
 			 */
 			string resolve(const int family, const string & host) noexcept;
 		public:
+			/**
+			 * search Метод поиска доменного имени соответствующего IP-адресу
+			 * @param ip адрес для поиска доменного имени
+			 * @return   список найденных доменных имён
+			 */
+			vector <string> search(const string & ip) noexcept;
 			/**
 			 * search Метод поиска доменного имени соответствующего IP-адресу
 			 * @param family тип интернет-протокола AF_INET, AF_INET6

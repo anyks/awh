@@ -576,12 +576,25 @@ namespace awh {
 			 * @param sec интервал времени ожидания в секундах
 			 */
 			void timeoutDNS(const uint8_t sec) noexcept;
+		public:
+			/**
+			 * clearBlackListDNS Метод очистки чёрного списка
+			 * @param domain доменное имя соответствующее IP-адресу
+			 */
+			void clearBlackListDNS(const string & domain) noexcept;
 			/**
 			 * clearBlackListDNS Метод очистки чёрного списка
 			 * @param family тип протокола интернета (IPV4 / IPV6)
 			 * @param domain доменное имя соответствующее IP-адресу
 			 */
 			void clearBlackListDNS(const scheme_t::family_t family, const string & domain) noexcept;
+		public:
+			/**
+			 * delInBlackListDNS Метод удаления IP-адреса из чёрного списока
+			 * @param domain доменное имя соответствующее IP-адресу
+			 * @param ip     адрес для удаления из чёрного списка
+			 */
+			void delInBlackListDNS(const string & domain, const string & ip) noexcept;
 			/**
 			 * delInBlackListDNS Метод удаления IP-адреса из чёрного списока
 			 * @param family тип протокола интернета (IPV4 / IPV6)
@@ -589,6 +602,13 @@ namespace awh {
 			 * @param ip     адрес для удаления из чёрного списка
 			 */
 			void delInBlackListDNS(const scheme_t::family_t family, const string & domain, const string & ip) noexcept;
+		public:
+			/**
+			 * setToBlackListDNS Метод добавления IP-адреса в чёрный список
+			 * @param domain доменное имя соответствующее IP-адресу
+			 * @param ip     адрес для добавления в чёрный список
+			 */
+			void setToBlackListDNS(const string & domain, const string & ip) noexcept;
 			/**
 			 * setToBlackListDNS Метод добавления IP-адреса в чёрный список
 			 * @param family тип протокола интернета (IPV4 / IPV6)
@@ -652,10 +672,16 @@ namespace awh {
 		public:
 			/**
 			 * ns Метод установки серверов имён DNS
+			 * @param ns список серверов имён
+			 */
+			void ns(const vector <string> & ns) noexcept;
+			/**
+			 * ns Метод установки серверов имён DNS
 			 * @param ns     список серверов имён
 			 * @param family тип протокола интернета (IPV4 / IPV6)
 			 */
 			void ns(const vector <string> & ns, const scheme_t::family_t family = scheme_t::family_t::IPV4) noexcept;
+		public:
 			/**
 			 * network Метод установки параметров сети
 			 * @param ips    список IP-адресов компьютера с которых разрешено выходить в интернет

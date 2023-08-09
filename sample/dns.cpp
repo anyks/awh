@@ -34,13 +34,13 @@ int main(int argc, char * argv[]){
 	// Устанавливаем формат времени
 	log.format("%H:%M:%S %d.%m.%Y");
 	// Выполняем установку серверов имён
-	dns.servers(AF_INET, {"77.88.8.88", "77.88.8.2"});
+	dns.servers({"77.88.8.88", "77.88.8.2"});
 	// Выполняем запрос на получение первого IP-адресов
-	log.print("IP1: %s", log_t::flag_t::INFO, dns.resolve(AF_INET, "localhost").c_str());
+	log.print("IP1: %s", log_t::flag_t::INFO, dns.resolve("localhost").c_str());
 	// Выполняем запрос на получение второго IP-адресов
-	log.print("IP2: %s", log_t::flag_t::INFO, dns.resolve(AF_INET, "yandex.ru").c_str());
+	log.print("IP2: %s", log_t::flag_t::INFO, dns.resolve("yandex.ru").c_str());
 	// Выполняем запрос на получение третьего IP-адресов
-	log.print("IP3: %s", log_t::flag_t::INFO, dns.resolve(AF_INET, "google.com").c_str());
+	log.print("IP3: %s", log_t::flag_t::INFO, dns.resolve("google.com").c_str());
 	// Выводим результат
 	return 0;
 }

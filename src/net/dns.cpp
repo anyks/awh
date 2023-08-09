@@ -920,6 +920,19 @@ string awh::DNS::cache(const int family, const string & domain) noexcept {
 }
 /**
  * clearCache Метод очистки кэша
+ * @param domain доменное имя соответствующее IP-адресу
+ */
+void awh::DNS::clearCache(const string & domain) noexcept {
+	// Если доменное имя передано
+	if(!domain.empty()){
+		// Выполняем очистку кэша доменного имени для IPv4
+		this->clearCache(AF_INET, domain);
+		// Выполняем очистку кэша доменного имени для IPv6
+		this->clearCache(AF_INET6, domain);
+	}
+}
+/**
+ * clearCache Метод очистки кэша
  * @param family тип интернет-протокола AF_INET, AF_INET6
  * @param domain доменное имя соответствующее IP-адресу
  */
@@ -963,6 +976,16 @@ void awh::DNS::clearCache(const int family, const string & domain) noexcept {
 }
 /**
  * clearCache Метод очистки кэша
+ * @param localhost флаг обозначающий добавление локального адреса
+ */
+void awh::DNS::clearCache(const bool localhost) noexcept {
+	// Выполняем очистку кэша доменного имени для IPv4
+	this->clearCache(AF_INET, localhost);
+	// Выполняем очистку кэша доменного имени для IPv6
+	this->clearCache(AF_INET6, localhost);
+}
+/**
+ * clearCache Метод очистки кэша
  * @param family    тип интернет-протокола AF_INET, AF_INET6
  * @param localhost флаг обозначающий добавление локального адреса
  */
@@ -995,6 +1018,32 @@ void awh::DNS::clearCache(const int family, const bool localhost) noexcept {
 				else ++it;
 			}
 		} break;
+	}
+}
+/**
+ * setToCache Метод добавления IP-адреса в кэш
+ * @param domain    доменное имя соответствующее IP-адресу
+ * @param ip        адрес для добавления к кэш
+ * @param localhost флаг обозначающий добавление локального адреса
+ */
+void awh::DNS::setToCache(const string & domain, const string & ip, const bool localhost) noexcept {
+	// Если доменное имя и IP-адрес переданы
+	if(!domain.empty() && !ip.empty()){
+		// Выполняем блокировку потока
+		const lock_guard <recursive_mutex> lock(this->_mtx);
+		// Определяем тип передаваемого IP-адреса
+		switch(static_cast <uint8_t> (this->_net.host(ip))){
+			// Если IP-адрес является IPv4 адресом
+			case static_cast <uint8_t> (net_t::type_t::IPV4):
+				// Выполняем добавление IP-адреса в кэш
+				this->setToCache(AF_INET, domain, ip, localhost);
+			break;
+			// Если IP-адрес является IPv6 адресом
+			case static_cast <uint8_t> (net_t::type_t::IPV6):
+				// Выполняем добавление IP-адреса в кэш
+				this->setToCache(AF_INET6, domain, ip, localhost);
+			break;
+		}
 	}
 }
 /**
@@ -1076,6 +1125,19 @@ void awh::DNS::setToCache(const int family, const string & domain, const string 
 }
 /**
  * clearBlackList Метод очистки чёрного списка
+ * @param domain доменное имя соответствующее IP-адресу
+ */
+void awh::DNS::clearBlackList(const string & domain) noexcept {
+	// Если доменное имя передано
+	if(!domain.empty()){
+		// Выполняем очистку чёрного списка домена, для IPv4 адреса
+		this->clearBlackList(AF_INET, domain);
+		// Выполняем очистку чёрного списка домена, для IPv6 адреса
+		this->clearBlackList(AF_INET6, domain);
+	}
+}
+/**
+ * clearBlackList Метод очистки чёрного списка
  * @param family тип интернет-протокола AF_INET, AF_INET6
  * @param domain доменное имя соответствующее IP-адресу
  */
@@ -1110,6 +1172,31 @@ void awh::DNS::clearBlackList(const int family, const string & domain) noexcept 
 						it->second.forbidden = !it->second.forbidden;
 				}
 			} break;
+		}
+	}
+}
+/**
+ * delInBlackList Метод удаления IP-адреса из чёрного списока
+ * @param domain доменное имя соответствующее IP-адресу
+ * @param ip     адрес для удаления из чёрного списка
+ */
+void awh::DNS::delInBlackList(const string & domain, const string & ip) noexcept {
+	// Если доменное имя и IP-адрес переданы
+	if(!domain.empty() && !ip.empty()){
+		// Выполняем блокировку потока
+		const lock_guard <recursive_mutex> lock(this->_mtx);
+		// Определяем тип передаваемого IP-адреса
+		switch(static_cast <uint8_t> (this->_net.host(ip))){
+			// Если IP-адрес является IPv4 адресом
+			case static_cast <uint8_t> (net_t::type_t::IPV4):
+				// Выполняем удаление IPv4 адреса из чёрного списка
+				this->delInBlackList(AF_INET, domain, ip);
+			break;
+			// Если IP-адрес является IPv6 адресом
+			case static_cast <uint8_t> (net_t::type_t::IPV6):
+				// Выполняем удаление IPv6 адреса из чёрного списка
+				this->delInBlackList(AF_INET6, domain, ip);
+			break;
 		}
 	}
 }
@@ -1164,6 +1251,31 @@ void awh::DNS::delInBlackList(const int family, const string & domain, const str
 					}
 				}
 			} break;
+		}
+	}
+}
+/**
+ * setToBlackList Метод добавления IP-адреса в чёрный список
+ * @param domain доменное имя соответствующее IP-адресу
+ * @param ip     адрес для добавления в чёрный список
+ */
+void awh::DNS::setToBlackList(const string & domain, const string & ip) noexcept {
+	// Если доменное имя и IP-адрес переданы
+	if(!domain.empty() && !ip.empty()){
+		// Выполняем блокировку потока
+		const lock_guard <recursive_mutex> lock(this->_mtx);
+		// Определяем тип передаваемого IP-адреса
+		switch(static_cast <uint8_t> (this->_net.host(ip))){
+			// Если IP-адрес является IPv4 адресом
+			case static_cast <uint8_t> (net_t::type_t::IPV4):
+				// Выполняем добавление IPv4 адреса в чёрный список
+				this->setToBlackList(AF_INET, domain, ip);
+			break;
+			// Если IP-адрес является IPv6 адресом
+			case static_cast <uint8_t> (net_t::type_t::IPV6):
+				// Выполняем добавление IPv6 адреса в чёрный список
+				this->setToBlackList(AF_INET6, domain, ip);
+			break;
 		}
 	}
 }
@@ -1258,6 +1370,32 @@ void awh::DNS::setToBlackList(const int family, const string & domain, const str
 			} break;
 		}
 	}
+}
+/**
+ * isInBlackList Метод проверки наличия IP-адреса в чёрном списке
+ * @param domain доменное имя соответствующее IP-адресу
+ * @param ip     адрес для проверки наличия в чёрном списке
+ * @return       результат проверки наличия IP-адреса в чёрном списке
+ */
+bool awh::DNS::isInBlackList(const string & domain, const string & ip) const noexcept {
+	// Результат работы функции
+	bool result = false;
+	// Если доменное имя и IP-адрес переданы
+	if(!domain.empty() && !ip.empty()){
+		// Определяем тип передаваемого IP-адреса
+		switch(static_cast <uint8_t> (this->_net.host(ip))){
+			// Если IP-адрес является IPv4 адресом
+			case static_cast <uint8_t> (net_t::type_t::IPV4):
+				// Выполняем проверку наличия IPv4 адреса в чёрном списоке
+				return this->isInBlackList(AF_INET, domain, ip);
+			// Если IP-адрес является IPv6 адресом
+			case static_cast <uint8_t> (net_t::type_t::IPV6):
+				// Выполняем проверку наличия IPv6 адреса в чёрном списоке
+				return this->isInBlackList(AF_INET6, domain, ip);
+		}
+	}
+	// Выводим результат
+	return result;
 }
 /**
  * isInBlackList Метод проверки наличия IP-адреса в чёрном списке
@@ -1372,6 +1510,30 @@ string awh::DNS::server(const int family) noexcept {
 }
 /**
  * server Метод добавления сервера DNS
+ * @param server параметры DNS-сервера
+ */
+void awh::DNS::server(const string & server) noexcept {
+	// Если адрес сервера передан
+	if(!server.empty()){
+		// Выполняем блокировку потока
+		const lock_guard <recursive_mutex> lock(this->_mtx);
+		// Определяем тип передаваемого IP-адреса
+		switch(static_cast <uint8_t> (this->_net.host(server))){
+			// Если IP-адрес является IPv4 адресом
+			case static_cast <uint8_t> (net_t::type_t::IPV4):
+				// Выполняем добавление IPv4 адреса в список серверов
+				this->server(AF_INET, server);
+			break;
+			// Если IP-адрес является IPv6 адресом
+			case static_cast <uint8_t> (net_t::type_t::IPV6):
+				// Выполняем добавление IPv6 адреса в список серверов
+				this->server(AF_INET6, server);
+			break;
+		}
+	}
+}
+/**
+ * server Метод добавления сервера DNS
  * @param family тип интернет-протокола AF_INET, AF_INET6
  * @param server параметры DNS-сервера
  */
@@ -1438,9 +1600,9 @@ void awh::DNS::server(const int family, const string & server) noexcept {
 					// Выполняем удаление хоста
 					host.clear();
 				break;
-				// Если хост является доменом или IPv4 адресом
+				// Если хост является IPv4 адресом
 				case static_cast <uint8_t> (net_t::type_t::IPV4):
-				// Если хост является IPv6 адресом, переводим ip адрес в полную форму
+				// Если хост является IPv6 адресом
 				case static_cast <uint8_t> (net_t::type_t::IPV6): break;
 				// Если хост является доменным именем
 				case static_cast <uint8_t> (net_t::type_t::DOMN): {
@@ -1515,20 +1677,104 @@ void awh::DNS::server(const int family, const string & server) noexcept {
 }
 /**
  * servers Метод добавления серверов DNS
+ * @param servers параметры DNS-серверов
+ */
+void awh::DNS::servers(const vector <string> & servers) noexcept {
+	// Если список серверов передан
+	if(!servers.empty()){
+		// Выполняем блокировку потока
+		const lock_guard <recursive_mutex> lock(this->_mtx);
+		// Создаём объект холдирования
+		hold_t hold(&this->_status);
+		// Если статус работы DNS-резолвера соответствует
+		if(hold.access({status_t::NSS_REP}, status_t::NSS_SET)){
+			// Переходим по всем нейм серверам и добавляем их
+			for(auto & server : servers){
+				// Определяем тип передаваемого IP-адреса
+				switch(static_cast <uint8_t> (this->_net.host(server))){
+					// Если IP-адрес является IPv4 адресом
+					case static_cast <uint8_t> (net_t::type_t::IPV4):
+						// Выполняем добавление IPv4 адреса в список серверов
+						this->server(AF_INET, server);
+					break;
+					// Если IP-адрес является IPv6 адресом
+					case static_cast <uint8_t> (net_t::type_t::IPV6):
+						// Выполняем добавление IPv6 адреса в список серверов
+						this->server(AF_INET6, server);
+					break;
+					// Для всех остальных адресов
+					default: {
+						// Выполняем добавление IPv4 адреса в список серверов
+						this->server(AF_INET, server);
+						// Выполняем добавление IPv6 адреса в список серверов
+						this->server(AF_INET6, server);
+					}
+				}
+			}
+		}
+	}
+}
+/**
+ * servers Метод добавления серверов DNS
  * @param family  тип интернет-протокола AF_INET, AF_INET6
  * @param servers параметры DNS-серверов
  */
 void awh::DNS::servers(const int family, const vector <string> & servers) noexcept {
+	// Если список серверов передан
+	if(!servers.empty()){
+		// Выполняем блокировку потока
+		const lock_guard <recursive_mutex> lock(this->_mtx);
+		// Создаём объект холдирования
+		hold_t hold(&this->_status);
+		// Если статус работы DNS-резолвера соответствует
+		if(hold.access({status_t::NSS_REP}, status_t::NSS_SET)){
+			// Переходим по всем нейм серверам и добавляем их
+			for(auto & server : servers)
+				// Выполняем добавление нового сервера
+				this->server(family, server);
+		}
+	}
+}
+/**
+ * replace Метод замены существующих серверов DNS
+ * @param servers параметры DNS-серверов
+ */
+void awh::DNS::replace(const vector <string> & servers) noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->_mtx);
 	// Создаём объект холдирования
 	hold_t hold(&this->_status);
 	// Если статус работы DNS-резолвера соответствует
-	if(hold.access({status_t::NSS_REP}, status_t::NSS_SET)){
+	if(hold.access({status_t::RESOLVE}, status_t::NSS_REP)){
+		// Список серверов IPv4
+		vector <string> ipv4, ipv6;
 		// Переходим по всем нейм серверам и добавляем их
-		for(auto & server : servers)
-			// Выполняем добавление нового сервера
-			this->server(family, server);
+		for(auto & server : servers){
+			// Определяем тип передаваемого IP-адреса
+			switch(static_cast <uint8_t> (this->_net.host(server))){
+				// Если IP-адрес является IPv4 адресом
+				case static_cast <uint8_t> (net_t::type_t::IPV4):
+					// Выполняем добавление IPv4 адреса в список серверов
+					ipv4.push_back(server);
+				break;
+				// Если IP-адрес является IPv6 адресом
+				case static_cast <uint8_t> (net_t::type_t::IPV6):
+					// Выполняем добавление IPv6 адреса в список серверов
+					ipv6.push_back(server);
+				break;
+				// Для всех остальных адресов
+				default: {
+					// Выполняем добавление IPv4 адреса в список серверов
+					ipv4.push_back(server);
+					// Выполняем добавление IPv6 адреса в список серверов
+					ipv6.push_back(server);
+				}
+			}
+		}
+		// Выполняем замену списка серверов
+		this->replace(AF_INET, ipv4);
+		// Выполняем замену списка серверов
+		this->replace(AF_INET6, ipv6);
 	}
 }
 /**
@@ -1658,6 +1904,23 @@ void awh::DNS::readHosts(const string & filename) noexcept {
 }
 /**
  * host Метод определение локального IP-адреса по имени домена
+ * @param name название сервера
+ * @return     полученный IP-адрес
+ */
+string awh::DNS::host(const string & name) noexcept {
+	// Выполняем блокировку потока
+	const lock_guard <recursive_mutex> lock(this->_mtx);
+	// Выполняем получение IP-адреса для IPv6
+	const string & result = this->host(AF_INET6, name);
+	// Если результат не получен, выполняем запрос для IPv4
+	if(result.empty())
+		// Выполняем получение IP-адреса для IPv4
+		return this->host(AF_INET, name);
+	// Выводим результат
+	return result;
+}
+/**
+ * host Метод определение локального IP-адреса по имени домена
  * @param family тип интернет-протокола AF_INET, AF_INET6
  * @param name   название сервера
  * @return       полученный IP-адрес
@@ -1737,6 +2000,23 @@ string awh::DNS::host(const int family, const string & name) noexcept {
 			}
 		}
 	}
+	// Выводим результат
+	return result;
+}
+/**
+ * resolve Метод ресолвинга домена
+ * @param host хост сервера
+ * @return     полученный IP-адрес
+ */
+string awh::DNS::resolve(const string & host) noexcept {
+	// Выполняем блокировку потока
+	const lock_guard <recursive_mutex> lock(this->_mtx);
+	// Выполняем получение IP-адреса для IPv6
+	const string & result = this->resolve(AF_INET6, host);
+	// Если результат не получен, выполняем запрос для IPv4
+	if(result.empty())
+		// Выполняем получение IP-адреса для IPv4
+		return this->resolve(AF_INET, host);
 	// Выводим результат
 	return result;
 }
@@ -1867,6 +2147,29 @@ string awh::DNS::resolve(const int family, const string & host) noexcept {
 	}
 	// Выводим результат
 	return result;
+}
+/**
+ * search Метод поиска доменного имени соответствующего IP-адресу
+ * @param ip адрес для поиска доменного имени
+ * @return   список найденных доменных имён
+ */
+vector <string> awh::DNS::search(const string & ip) noexcept {
+	// Если IP-адрес передан
+	if(!ip.empty()){
+		// Определяем тип передаваемого IP-адреса
+		switch(static_cast <uint8_t> (this->_net.host(ip))){
+			// Если IP-адрес является IPv4 адресом
+			case static_cast <uint8_t> (net_t::type_t::IPV4):
+				// Выполняем поиск доменных имён по IP-адресу
+				return this->search(AF_INET, ip);
+			// Если IP-адрес является IPv6 адресом
+			case static_cast <uint8_t> (net_t::type_t::IPV6):
+				// Выполняем поиск доменных имён по IP-адресу
+				return this->search(AF_INET6, ip);
+		}
+	}
+	// Выводим результат
+	return vector <string> ();
 }
 /**
  * search Метод поиска доменного имени соответствующего IP-адресу
