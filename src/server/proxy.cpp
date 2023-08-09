@@ -1139,9 +1139,9 @@ void awh::server::Proxy::bandWidth(const size_t aid, const string & read, const 
  */
 void awh::server::Proxy::network(const vector <string> & ips, const vector <string> & ns, const scheme_t::family_t family, const scheme_t::sonet_t sonet) noexcept {
 	// Устанавливаем DNS адреса клиента
-	this->_core.client.ns(ns, family);
+	this->_core.client.serverDNS(ns);
 	// Устанавливаем DNS адреса сервера
-	this->_core.server.ns(ns, family);
+	this->_core.server.serverDNS(ns);
 	// Устанавливаем параметры сети клиента
 	this->_core.client.network(ips);
 	// Устанавливаем параметры сети сервера

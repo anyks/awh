@@ -592,6 +592,24 @@ namespace awh {
 			void timeoutDNS(const uint8_t sec) noexcept;
 		public:
 			/**
+			 * cashTimeToLiveDNS Время жизни кэша DNS
+			 * @param msec время жизни в миллисекундах
+			 */
+			void cashTimeToLiveDNS(const time_t msec) noexcept;
+		public:
+			/**
+			 * serverDNS Метод установки серверов имён DNS
+			 * @param ns список серверов имён
+			 */
+			void serverDNS(const vector <string> & ns) noexcept;
+			/**
+			 * serverDNS Метод установки серверов имён DNS
+			 * @param ns     список серверов имён
+			 * @param family тип протокола интернета (IPV4 / IPV6)
+			 */
+			void serverDNS(const vector <string> & ns, const scheme_t::family_t family) noexcept;
+		public:
+			/**
 			 * clearBlackListDNS Метод очистки чёрного списка
 			 * @param domain доменное имя соответствующее IP-адресу
 			 */
@@ -683,18 +701,6 @@ namespace awh {
 			 * @param key   приватный ключ сертификата
 			 */
 			void certificate(const string & chain, const string & key) noexcept;
-		public:
-			/**
-			 * ns Метод установки серверов имён DNS
-			 * @param ns список серверов имён
-			 */
-			void ns(const vector <string> & ns) noexcept;
-			/**
-			 * ns Метод установки серверов имён DNS
-			 * @param ns     список серверов имён
-			 * @param family тип протокола интернета (IPV4 / IPV6)
-			 */
-			void ns(const vector <string> & ns, const scheme_t::family_t family) noexcept;
 		public:
 			/**
 			 * network Метод установки параметров сети

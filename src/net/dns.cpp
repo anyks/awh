@@ -762,16 +762,6 @@ bool awh::DNS::flush() noexcept {
 	return result;
 }
 /**
- * ttl Метод установки времени жизни DNS-кэша
- * @param ttl время жизни DNS-кэша в миллисекундах
- */
-void awh::DNS::ttl(const time_t ttl) noexcept {
-	// Выполняем блокировку потока
-	const lock_guard <recursive_mutex> lock(this->_mtx);
-	// Выполняем установку DNS-кэша
-	this->_ttl = ttl;
-}
-/**
  * cancel Метод отмены выполнения запроса
  * @param family тип интернет-протокола AF_INET, AF_INET6
  */
@@ -826,6 +816,16 @@ void awh::DNS::timeout(const uint8_t sec) noexcept {
 	const lock_guard <recursive_mutex> lock(this->_mtx);
 	// Выполняем установку таймаута ожидания выполнения запроса
 	this->_timeout = sec;
+}
+/**
+ * timeToLive Метод установки времени жизни DNS-кэша
+ * @param ttl время жизни DNS-кэша в миллисекундах
+ */
+void awh::DNS::timeToLive(const time_t ttl) noexcept {
+	// Выполняем блокировку потока
+	const lock_guard <recursive_mutex> lock(this->_mtx);
+	// Выполняем установку DNS-кэша
+	this->_ttl = ttl;
 }
 /**
  * cache Метод получения IP-адреса из кэша

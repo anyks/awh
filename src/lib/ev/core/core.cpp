@@ -1545,6 +1545,81 @@ void awh::Core::timeoutDNS(const uint8_t sec) noexcept {
 	this->dns.timeout(sec);
 }
 /**
+ * cashTimeToLiveDNS Время жизни кэша DNS
+ * @param msec время жизни в миллисекундах
+ */
+void awh::Core::cashTimeToLiveDNS(const time_t msec) noexcept {
+	// Выполняем установку времени жизни кэша
+	this->dns.timeToLive(msec);
+}
+/**
+ * serverDNS Метод установки серверов имён DNS
+ * @param ns список серверов имён
+ */
+void awh::Core::serverDNS(const vector <string> & ns) noexcept {
+	// Если сервера имён переданы, устанавливаем их
+	if(!ns.empty()){
+		// Выполняем блокировку потока
+		const lock_guard <recursive_mutex> lock(this->_mtx.main);
+		// Переходим по всем нейм серверам и добавляем их
+		for(auto & server : ns){
+			// Определяем тип передаваемого IP-адреса
+			switch(static_cast <uint8_t> (this->net.host(server))){
+				// Если IP-адрес является IPv4 адресом
+				case static_cast <uint8_t> (net_t::type_t::IPV4):
+					// Выполняем добавление IPv4 адреса в список серверов
+					this->settings.v4.second.push_back(server);
+				break;
+				// Если IP-адрес является IPv6 адресом
+				case static_cast <uint8_t> (net_t::type_t::IPV6):
+					// Выполняем добавление IPv6 адреса в список серверов
+					this->settings.v6.second.push_back(server);
+				break;
+				// Для всех остальных адресов
+				default: {
+					// Выполняем добавление IPv4 адреса в список серверов
+					this->settings.v4.second.push_back(server);
+					// Выполняем добавление IPv6 адреса в список серверов
+					this->settings.v6.second.push_back(server);
+				}
+			}
+		}
+		// Выполняем установку нейм-серверов для DNS-резолвера IPv4
+		this->dns.replace(AF_INET, this->settings.v4.second);
+		// Выполняем установку нейм-серверов для DNS-резолвера IPv6
+		this->dns.replace(AF_INET6, this->settings.v6.second);
+	}
+}
+/**
+ * serverDNS Метод установки серверов имён DNS
+ * @param ns     список серверов имён
+ * @param family тип протокола интернета (IPV4 / IPV6)
+ */
+void awh::Core::serverDNS(const vector <string> & ns, const scheme_t::family_t family) noexcept {
+	// Если сервера имён переданы, устанавливаем их
+	if(!ns.empty()){
+		// Выполняем блокировку потока
+		const lock_guard <recursive_mutex> lock(this->_mtx.main);
+		// Определяем тип интернет-протокола
+		switch(static_cast <uint8_t> (family)){
+			// Если мы получили адреса интернет-протокола IPv4
+			case static_cast <uint8_t> (scheme_t::family_t::IPV4): {
+				// Устанавливаем полученный список серверов имён
+				this->settings.v4.second.assign(ns.cbegin(), ns.cend());
+				// Выполняем установку нейм-серверов для DNS-резолвера IPv4
+				this->dns.replace(AF_INET, this->settings.v4.second);
+			} break;
+			// Если мы получили адреса интернет-протокола IPv6
+			case static_cast <uint8_t> (scheme_t::family_t::IPV6): {
+				// Устанавливаем полученный список серверов имён
+				this->settings.v6.second.assign(ns.cbegin(), ns.cend());
+				// Выполняем установку нейм-серверов для DNS-резолвера IPv6
+				this->dns.replace(AF_INET6, this->settings.v6.second);
+			} break;
+		}
+	}
+}
+/**
  * clearBlackListDNS Метод очистки чёрного списка
  * @param domain доменное имя соответствующее IP-адресу
  */
@@ -1758,73 +1833,6 @@ void awh::Core::certificate(const string & chain, const string & key) noexcept {
 	const lock_guard <recursive_mutex> lock(this->_mtx.main);
 	// Устанавливаем файлы сертификата
 	this->engine.certificate(chain, key);
-}
-/**
- * ns Метод установки серверов имён DNS
- * @param ns список серверов имён
- */
-void awh::Core::ns(const vector <string> & ns) noexcept {
-	// Если сервера имён переданы, устанавливаем их
-	if(!ns.empty()){
-		// Выполняем блокировку потока
-		const lock_guard <recursive_mutex> lock(this->_mtx.main);
-		// Переходим по всем нейм серверам и добавляем их
-		for(auto & server : ns){
-			// Определяем тип передаваемого IP-адреса
-			switch(static_cast <uint8_t> (this->net.host(server))){
-				// Если IP-адрес является IPv4 адресом
-				case static_cast <uint8_t> (net_t::type_t::IPV4):
-					// Выполняем добавление IPv4 адреса в список серверов
-					this->settings.v4.second.push_back(server);
-				break;
-				// Если IP-адрес является IPv6 адресом
-				case static_cast <uint8_t> (net_t::type_t::IPV6):
-					// Выполняем добавление IPv6 адреса в список серверов
-					this->settings.v6.second.push_back(server);
-				break;
-				// Для всех остальных адресов
-				default: {
-					// Выполняем добавление IPv4 адреса в список серверов
-					this->settings.v4.second.push_back(server);
-					// Выполняем добавление IPv6 адреса в список серверов
-					this->settings.v6.second.push_back(server);
-				}
-			}
-		}
-		// Выполняем установку нейм-серверов для DNS-резолвера IPv4
-		this->dns.replace(AF_INET, this->settings.v4.second);
-		// Выполняем установку нейм-серверов для DNS-резолвера IPv6
-		this->dns.replace(AF_INET6, this->settings.v6.second);
-	}
-}
-/**
- * ns Метод установки серверов имён DNS
- * @param ns     список серверов имён
- * @param family тип протокола интернета (IPV4 / IPV6)
- */
-void awh::Core::ns(const vector <string> & ns, const scheme_t::family_t family) noexcept {
-	// Если сервера имён переданы, устанавливаем их
-	if(!ns.empty()){
-		// Выполняем блокировку потока
-		const lock_guard <recursive_mutex> lock(this->_mtx.main);
-		// Определяем тип интернет-протокола
-		switch(static_cast <uint8_t> (family)){
-			// Если мы получили адреса интернет-протокола IPv4
-			case static_cast <uint8_t> (scheme_t::family_t::IPV4): {
-				// Устанавливаем полученный список серверов имён
-				this->settings.v4.second.assign(ns.cbegin(), ns.cend());
-				// Выполняем установку нейм-серверов для DNS-резолвера IPv4
-				this->dns.replace(AF_INET, this->settings.v4.second);
-			} break;
-			// Если мы получили адреса интернет-протокола IPv6
-			case static_cast <uint8_t> (scheme_t::family_t::IPV6): {
-				// Устанавливаем полученный список серверов имён
-				this->settings.v6.second.assign(ns.cbegin(), ns.cend());
-				// Выполняем установку нейм-серверов для DNS-резолвера IPv6
-				this->dns.replace(AF_INET6, this->settings.v6.second);
-			} break;
-		}
-	}
 }
 /**
  * network Метод установки параметров сети

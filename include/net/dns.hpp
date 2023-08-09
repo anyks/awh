@@ -416,12 +416,6 @@ namespace awh {
 			bool flush() noexcept;
 		public:
 			/**
-			 * ttl Метод установки времени жизни DNS-кэша
-			 * @param ttl время жизни DNS-кэша в миллисекундах
-			 */
-			void ttl(const time_t ttl) noexcept;
-		public:
-			/**
 			 * cancel Метод отмены выполнения запроса
 			 * @param family тип интернет-протокола AF_INET, AF_INET6
 			 */
@@ -438,6 +432,12 @@ namespace awh {
 			 * @param sec интервал времени выполнения запроса в секундах
 			 */
 			void timeout(const uint8_t sec) noexcept;
+		public:
+			/**
+			 * timeToLive Метод установки времени жизни DNS-кэша
+			 * @param ttl время жизни DNS-кэша в миллисекундах
+			 */
+			void timeToLive(const time_t ttl) noexcept;
 		public:
 			/**
 			 * cache Метод получения IP-адреса из кэша
