@@ -1561,6 +1561,16 @@ void awh::Core::cashTimeToLiveDNS(const time_t msec) noexcept {
 	this->dns.timeToLive(msec);
 }
 /**
+ * readHostsDNS Метод загрузки файла со списком хостов
+ * @param filename адрес файла для загрузки
+ */
+void awh::Core::readHostsDNS(const string & filename) noexcept {
+	// Если адрес файла хостов в файловой системе передан
+	if(!filename.empty())
+		// Выполняем установку адрес файла хостов в файловой системе
+		this->dns.readHosts(filename);
+}
+/**
  * serversDNS Метод установки серверов имён DNS
  * @param ns список серверов имён
  */

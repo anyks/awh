@@ -604,6 +604,12 @@ namespace awh {
 			void cashTimeToLiveDNS(const time_t msec) noexcept;
 		public:
 			/**
+			 * readHostsDNS Метод загрузки файла со списком хостов
+			 * @param filename адрес файла для загрузки
+			 */
+			void readHostsDNS(const string & filename) noexcept;
+		public:
+			/**
 			 * serversDNS Метод установки серверов имён DNS
 			 * @param ns список серверов имён
 			 */
