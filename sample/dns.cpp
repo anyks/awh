@@ -33,21 +33,42 @@ int main(int argc, char * argv[]){
 	log.name("DNS");
 	// Устанавливаем формат времени
 	log.format("%H:%M:%S %d.%m.%Y");
+
+	cout << " #################1 " << endl;
+
 	// Устанавливаем префикс переменной окружения
 	dns.setPrefix("AWH");
+
+	cout << " #################2 " << endl;
+
 	// Выполняем установку серверов имён
 	dns.servers({"77.88.8.88", "77.88.8.2"});
+
+	cout << " #################3 " << endl;
+
 	// Выполняем запрос на получение первого IP-адреса
 	log.print("IP1: %s", log_t::flag_t::INFO, dns.resolve(AF_INET, "localhost").c_str());
+
+	cout << " #################4 " << endl;
+
 	// Выполняем запрос на получение второго IP-адреса
 	log.print("IP2: %s", log_t::flag_t::INFO, dns.resolve(AF_INET, "yandex.ru").c_str());
+
+	cout << " #################5 " << endl;
+
 	// Выполняем запрос на получение третьего IP-адреса
 	log.print("IP3: %s", log_t::flag_t::INFO, dns.resolve(AF_INET, "google.com").c_str());
+
+	cout << " #################6 " << endl;
+
 	/**
 	 * Выполняем запрос на получение четвертого IP-адреса
 	 * Пример переменной окружения: $ export AWH_DNS_IPV4_STALIN_INFO=255.255.255.222
 	 */
 	log.print("IP4: %s", log_t::flag_t::INFO, dns.resolve(AF_INET, "stalin.info").c_str());
+
+	cout << " #################7 " << endl;
+
 	// Выполняем кодирование кирилического доменного имени
 	log.print("Encode domain \"ремпрофи.рф\" == \"%s\"", log_t::flag_t::INFO, dns.encode("ремпрофи.рф").c_str());
 	// Выполняем декодирование кирилического доменного имени
