@@ -1983,14 +1983,26 @@ string awh::DNS::host(const int family, const string & name) noexcept {
 	hold_t hold(&this->_status);
 	// Если статус работы DNS-резолвера соответствует
 	if(hold.access({}, status_t::RESOLVE)){
+		
+		cout << " ++++++++++++++++1 " << endl;
+		
 		// Если домен передан
 		if(!name.empty()){
+			
+			cout << " ++++++++++++++++2 " << endl;
+			
 			// Если доменное имя является локальным
 			if(this->_fmk->is(name, fmk_t::check_t::LATIAN)){
+				
+				cout << " ++++++++++++++++3 " << endl;
+				
 				// Определяем тип протокола подключения
 				switch(family){
 					// Если тип протокола подключения IPv4
 					case static_cast <int> (AF_INET): {
+						
+						cout << " ++++++++++++++++4 " << endl;
+						
 						/**
 						 * Методы только для OS Windows
 						 */
@@ -2004,18 +2016,39 @@ string awh::DNS::host(const int family, const string & name) noexcept {
 							// Выполняем резолвинг доменного имени
 							struct hostent * domain = ::gethostbyname2(name.c_str(), AF_INET);
 						#endif
+						
+						cout << " ++++++++++++++++5 " << endl;
+						
 						// Создаём объект сервера
 						struct sockaddr_in server;
+						
+						cout << " ++++++++++++++++6 " << endl;
+						
 						// Очищаем всю структуру для сервера
 						memset(&server, 0, sizeof(server));
+						
+						cout << " ++++++++++++++++7 " << endl;
+						
 						// Создаем буфер для получения ip адреса
 						result.resize(INET_ADDRSTRLEN, 0);
+						
+						cout << " ++++++++++++++++8 " << endl;
+						
 						// Устанавливаем протокол интернета
 						server.sin_family = AF_INET;
+						
+						cout << " ++++++++++++++++9 " << endl;
+						
 						// Выполняем копирование данных типа подключения
 						memcpy(&server.sin_addr.s_addr, domain->h_addr, domain->h_length);
+						
+						cout << " ++++++++++++++++10 " << endl;
+						
 						// Копируем полученные данные
 						inet_ntop(AF_INET, &server.sin_addr, result.data(), result.size());
+
+						cout << " ++++++++++++++++11 " << endl;
+
 					} break;
 					// Если тип протокола подключения IPv6
 					case static_cast <int> (AF_INET6): {
@@ -2099,9 +2132,6 @@ string awh::DNS::resolve(const int family, const string & host) noexcept {
 				// Получаем доменное имя как оно есть
 				const string & domain = host;
 			#endif
-
-			cout << " !!!!!!!!!!!!!!!!!1 " << domain << endl;
-
 			// Определяем тип передаваемого сервера
 			switch(static_cast <uint8_t> (this->_net.host(domain))){
 				// Если домен является IPv4 адресом
@@ -2124,14 +2154,8 @@ string awh::DNS::resolve(const int family, const string & host) noexcept {
 				break;
 				// Если домен является доменным именем
 				case static_cast <uint8_t> (net_t::type_t::DOMN): {
-					
-					cout << " !!!!!!!!!!!!!!!!!2 " << domain << endl;
-					
 					// Выполняем поиск IP-адреса в кэше DNS
 					result = this->cache(family, domain);
-					
-					cout << " !!!!!!!!!!!!!!!!!3 " << domain << endl;
-					
 					// Если IP-адрес получен
 					if(!result.empty()){
 						/**
@@ -2159,9 +2183,6 @@ string awh::DNS::resolve(const int family, const string & host) noexcept {
 						// Выводим полученный результат
 						return result;
 					}{
-						
-						cout << " !!!!!!!!!!!!!!!!!4 " << domain << endl;
-
 						// Определяем тип протокола подключения
 						switch(family){
 							// Если тип протокола подключения IPv4
@@ -2183,23 +2204,14 @@ string awh::DNS::resolve(const int family, const string & host) noexcept {
 								result = this->_workerIPv6->request(domain);
 							} break;
 						}
-
-						cout << " !!!!!!!!!!!!!!!!!5 " << domain << endl;
-
 						// Если IP-адрес получен
 						if(!result.empty())
 							// Выводим полученный результат
 							return result;
 						// Выполняем запрос адреса на локальном резолвере операционной системы
 						else {
-							
-							cout << " !!!!!!!!!!!!!!!!!6 " << domain << endl;
-							
 							// Создаём объект DNS-резолвера
 							dns_t dns(this->_fmk, this->_log);
-
-							cout << " !!!!!!!!!!!!!!!!!7 " << domain << endl;
-
 							// Выполняем получение IP адрес хоста доменного имени
 							return dns.host(family, host);
 						}
@@ -2207,14 +2219,8 @@ string awh::DNS::resolve(const int family, const string & host) noexcept {
 				} break;
 				// Значит скорее всего, садрес является доменным именем
 				default: {
-					
-					cout << " !!!!!!!!!!!!!!!!!8 " << domain << endl;
-					
 					// Создаём объект DNS-резолвера
 					dns_t dns(this->_fmk, this->_log);
-
-					cout << " !!!!!!!!!!!!!!!!!9 " << domain << endl;
-
 					// Выполняем получение IP адрес хоста доменного имени
 					return dns.host(family, host);
 				}
