@@ -1545,6 +1545,14 @@ void awh::Core::timeoutDNS(const uint8_t sec) noexcept {
 	this->dns.timeout(sec);
 }
 /**
+ * prefixDNS Метод установки префикса переменной окружения
+ * @param prefix префикс переменной окружения для установки
+ */
+void awh::Core::prefixDNS(const string & prefix) noexcept {
+	// Выполняем установку префикса переменной окружения
+	this->dns.setPrefix(prefix);
+}
+/**
  * cashTimeToLiveDNS Время жизни кэша DNS
  * @param msec время жизни в миллисекундах
  */

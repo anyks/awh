@@ -592,6 +592,12 @@ namespace awh {
 			void timeoutDNS(const uint8_t sec) noexcept;
 		public:
 			/**
+			 * prefixDNS Метод установки префикса переменной окружения
+			 * @param prefix префикс переменной окружения для установки
+			 */
+			void prefixDNS(const string & prefix) noexcept;
+		public:
+			/**
 			 * cashTimeToLiveDNS Время жизни кэша DNS
 			 * @param msec время жизни в миллисекундах
 			 */
