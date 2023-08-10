@@ -11,6 +11,7 @@
  * Подключаем заголовочные файлы проекта
  */
 #include <net/dns.hpp>
+#include <core/core.hpp>
 
 // Подключаем пространство имён
 using namespace std;
@@ -29,6 +30,8 @@ int main(int argc, char * argv[]){
 	log_t log(&fmk);
 	// Создаём биндинг
 	dns_t dns(&fmk, &log);
+	// Создаём объект сетевого ядра
+	core_t core(&fmk, &log);
 	// Устанавливаем название сервиса
 	log.name("DNS");
 	// Устанавливаем формат времени
