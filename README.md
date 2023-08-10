@@ -637,6 +637,10 @@ int main(int argc, char * argv[]){
 	log.print("IP2: %s", log_t::flag_t::INFO, dns.resolve("yandex.ru").c_str());
 	log.print("IP3: %s", log_t::flag_t::INFO, dns.resolve("google.com").c_str());
 
+	log.print("Encode domain \"ремпрофи.рф\" == \"%s\"", log_t::flag_t::INFO, dns.encode("ремпрофи.рф").c_str());
+
+	log.print("Decode domain \"xn--e1agliedd7a.xn--p1ai\" == \"%s\"", log_t::flag_t::INFO, dns.decode("xn--e1agliedd7a.xn--p1ai").c_str());
+
 	return 0;
 }
 ```

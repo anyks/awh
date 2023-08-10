@@ -629,11 +629,11 @@ awh::DNS::Worker::~Worker() noexcept {
 	this->close();
 }
 /**
- * idnEncode Метод кодирования интернационального доменного имени
+ * encode Метод кодирования интернационального доменного имени
  * @param domain доменное имя для кодирования
  * @return       результат работы кодирования
  */
-string awh::DNS::idnEncode(const string & domain) const noexcept {
+string awh::DNS::encode(const string & domain) const noexcept {
 	// Результат работы функции
 	string result = "";
 	/**
@@ -677,11 +677,11 @@ string awh::DNS::idnEncode(const string & domain) const noexcept {
 	return result;
 }
 /**
- * idnDecode Метод декодирования интернационального доменного имени
+ * decode Метод декодирования интернационального доменного имени
  * @param domain доменное имя для декодирования
  * @return       результат работы декодирования
  */
-string awh::DNS::idnDecode(const string & domain) const noexcept {
+string awh::DNS::decode(const string & domain) const noexcept {
 	// Результат работы функции
 	string result = "";
 	/**
@@ -960,8 +960,8 @@ string awh::DNS::cache(const int family, const string & domain) noexcept {
 	return result;
 }
 /**
- * clearCache Метод очистки кэша
- * @param domain доменное имя соответствующее IP-адресу
+ * clearCache Метод очистки кэша для указанного доменного имени
+ * @param domain доменное имя для которого выполняется очистка кэша
  */
 void awh::DNS::clearCache(const string & domain) noexcept {
 	// Если доменное имя передано
@@ -973,9 +973,9 @@ void awh::DNS::clearCache(const string & domain) noexcept {
 	}
 }
 /**
- * clearCache Метод очистки кэша
+ * clearCache Метод очистки кэша для указанного доменного имени
  * @param family тип интернет-протокола AF_INET, AF_INET6
- * @param domain доменное имя соответствующее IP-адресу
+ * @param domain доменное имя для которого выполняется очистка кэша
  */
 void awh::DNS::clearCache(const int family, const string & domain) noexcept {
 	// Если доменное имя передано
@@ -1166,7 +1166,7 @@ void awh::DNS::setToCache(const int family, const string & domain, const string 
 }
 /**
  * clearBlackList Метод очистки чёрного списка
- * @param domain доменное имя соответствующее IP-адресу
+ * @param domain доменное имя для которого очищается чёрный список
  */
 void awh::DNS::clearBlackList(const string & domain) noexcept {
 	// Если доменное имя передано
@@ -1180,7 +1180,7 @@ void awh::DNS::clearBlackList(const string & domain) noexcept {
 /**
  * clearBlackList Метод очистки чёрного списка
  * @param family тип интернет-протокола AF_INET, AF_INET6
- * @param domain доменное имя соответствующее IP-адресу
+ * @param domain доменное имя для которого очищается чёрный список
  */
 void awh::DNS::clearBlackList(const int family, const string & domain) noexcept {
 	// Если доменное имя передано
@@ -2091,7 +2091,7 @@ string awh::DNS::resolve(const int family, const string & host) noexcept {
 			 */
 			#if AWH_IDN
 				// Получаем доменное имя в интернациональном виде
-				const string & domain = this->idnEncode(host);
+				const string & domain = this->encode(host);
 			/**
 			 * Если модуль IDN не используется
 			 */

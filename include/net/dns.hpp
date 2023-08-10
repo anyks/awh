@@ -390,17 +390,17 @@ namespace awh {
 			const log_t * _log;
 		public:
 			/**
-			 * idnEncode Метод кодирования интернационального доменного имени
+			 * encode Метод кодирования интернационального доменного имени
 			 * @param domain доменное имя для кодирования
 			 * @return       результат работы кодирования
 			 */
-			string idnEncode(const string & domain) const noexcept;
+			string encode(const string & domain) const noexcept;
 			/**
-			 * idnDecode Метод декодирования интернационального доменного имени
+			 * decode Метод декодирования интернационального доменного имени
 			 * @param domain доменное имя для декодирования
 			 * @return       результат работы декодирования
 			 */
-			string idnDecode(const string & domain) const noexcept;
+			string decode(const string & domain) const noexcept;
 		public:
 			/**
 			 * clear Метод очистки данных DNS-резолвера
@@ -446,14 +446,14 @@ namespace awh {
 			string cache(const int family, const string & domain) noexcept;
 		public:
 			/**
-			 * clearCache Метод очистки кэша
-			 * @param domain доменное имя соответствующее IP-адресу
+			 * clearCache Метод очистки кэша для указанного доменного имени
+			 * @param domain доменное имя для которого выполняется очистка кэша
 			 */
 			void clearCache(const string & domain) noexcept;
 			/**
-			 * clearCache Метод очистки кэша
+			 * clearCache Метод очистки кэша для указанного доменного имени
 			 * @param family тип интернет-протокола AF_INET, AF_INET6
-			 * @param domain доменное имя соответствующее IP-адресу
+			 * @param domain доменное имя для которого выполняется очистка кэша
 			 */
 			void clearCache(const int family, const string & domain) noexcept;
 		public:
@@ -487,13 +487,13 @@ namespace awh {
 		public:
 			/**
 			 * clearBlackList Метод очистки чёрного списка
-			 * @param domain доменное имя соответствующее IP-адресу
+			 * @param domain доменное имя для которого очищается чёрный список
 			 */
 			void clearBlackList(const string & domain) noexcept;
 			/**
 			 * clearBlackList Метод очистки чёрного списка
 			 * @param family тип интернет-протокола AF_INET, AF_INET6
-			 * @param domain доменное имя соответствующее IP-адресу
+			 * @param domain доменное имя для которого очищается чёрный список
 			 */
 			void clearBlackList(const int family, const string & domain) noexcept;
 		public:

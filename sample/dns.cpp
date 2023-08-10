@@ -48,6 +48,10 @@ int main(int argc, char * argv[]){
 	 * Пример переменной окружения: $ export AWH_DNS_IPV4_STALIN_INFO=255.255.255.222
 	 */
 	log.print("IP4: %s", log_t::flag_t::INFO, dns.resolve("stalin.info").c_str());
+	// Выполняем кодирование кирилического доменного имени
+	log.print("Encode domain \"ремпрофи.рф\" == \"%s\"", log_t::flag_t::INFO, dns.encode("ремпрофи.рф").c_str());
+	// Выполняем декодирование кирилического доменного имени
+	log.print("Decode domain \"xn--e1agliedd7a.xn--p1ai\" == \"%s\"", log_t::flag_t::INFO, dns.decode("xn--e1agliedd7a.xn--p1ai").c_str());
 	// Выводим результат
 	return 0;
 }
