@@ -1983,101 +1983,127 @@ string awh::DNS::host(const int family, const string & name) noexcept {
 	hold_t hold(&this->_status);
 	// Если статус работы DNS-резолвера соответствует
 	if(hold.access({}, status_t::RESOLVE)){
-		
-		cout << " ++++++++++++++++1 " << endl;
-		
 		// Если домен передан
 		if(!name.empty()){
-			
-			cout << " ++++++++++++++++2 " << endl;
-			
 			// Если доменное имя является локальным
 			if(this->_fmk->is(name, fmk_t::check_t::LATIAN)){
-				
-				cout << " ++++++++++++++++3 " << endl;
-				
+				/**
+				 * Методы только для OS Windows
+				 */
+				#if defined(_WIN32) || defined(_WIN64)
+					// Выполняем резолвинг доменного имени
+					struct hostent * domain = ::gethostbyname(name.c_str());
+					// Если хост мы не получили
+					if(domain == nullptr){
+						// Выполняем извлечение текста ошибки
+						DWORD error = WSAGetLastError();
+						// Если текст ошибки мы получили
+						if(error != 0){
+							// Если хост мы не нашли
+							if(error == WSAHOST_NOT_FOUND)
+								// Выводим сообщение об ошибке
+								this->_log->print("hosts %s not found", log_t::flag_t::WARNING, name.c_str());
+							// Если в записи записи хоста в DNS-сервере обнаружено
+							else if(error == WSANO_DATA)
+								// Выводим сообщение об ошибке
+								this->_log->print("no data record found for %s", log_t::flag_t::WARNING, name.c_str());
+							// Выводим сообщение об ошибке
+							else this->_log->print("an error occured while verifying %s", log_t::flag_t::CRITICAL, name.c_str());
+						}
+						// Выходим из функции
+						return result;
+					}
+				/**
+				 * Если операционной системой является Nix-подобная
+				 */
+				#else
+					// Переменная получения ошибки
+					h_errno = 0;
+					// Выполняем резолвинг доменного имени
+					struct hostent * domain = ::gethostbyname2(name.c_str(), family);
+					// Если хост мы не получили
+					if(domain == nullptr){
+						// Определяем тип ошибки
+						switch(h_errno){
+							// Если DNS-сервер в данный момент не доступен
+							case TRY_AGAIN:
+								// Выводим сообщение об ошибке
+								this->_log->print("unable to obtain an answer from a DNS-server for %s", log_t::flag_t::WARNING, name.c_str());
+							break;
+							// Если адрес не найден
+							case NO_ADDRESS:
+								// Выводим сообщение об ошибке
+								this->_log->print("%s is valid, but lacks a corresponding IP-address", log_t::flag_t::WARNING, name.c_str());
+							break;
+							// Если доменное имя не найдено
+							case HOST_NOT_FOUND:
+								// Выводим сообщение об ошибке
+								this->_log->print("hosts %s not found", log_t::flag_t::WARNING, name.c_str());
+							break;
+							// Выводим сообщение по умолчанию
+							default: this->_log->print("an error occured while verifying %s", log_t::flag_t::CRITICAL, name.c_str());
+						}
+						// Выходим из функции
+						return result;
+					}
+				#endif
+				// Индекс полученного IP-адреса
+				size_t index = 0;
+				// Список полученных IP-адресов
+				vector <string> ips;
 				// Определяем тип протокола подключения
 				switch(family){
 					// Если тип протокола подключения IPv4
 					case static_cast <int> (AF_INET): {
-						
-						cout << " ++++++++++++++++4 " << endl;
-						
-						/**
-						 * Методы только для OS Windows
-						 */
-						#if defined(_WIN32) || defined(_WIN64)
-							// Выполняем резолвинг доменного имени
-							struct hostent * domain = ::gethostbyname(name.c_str());
-						/**
-						 * Если операционной системой является Nix-подобная
-						 */
-						#else
-							// Выполняем резолвинг доменного имени
-							struct hostent * domain = ::gethostbyname2(name.c_str(), AF_INET);
-						#endif
-						
-						cout << " ++++++++++++++++5 " << endl;
-						
 						// Создаём объект сервера
 						struct sockaddr_in server;
-						
-						cout << " ++++++++++++++++6 " << endl;
-						
-						// Очищаем всю структуру для сервера
-						memset(&server, 0, sizeof(server));
-						
-						cout << " ++++++++++++++++7 " << endl;
-						
-						// Создаем буфер для получения ip адреса
-						result.resize(INET_ADDRSTRLEN, 0);
-						
-						cout << " ++++++++++++++++8 " << endl;
-						
-						// Устанавливаем протокол интернета
-						server.sin_family = AF_INET;
-						
-						cout << " ++++++++++++++++9 " << endl;
-						
-						// Выполняем копирование данных типа подключения
-						memcpy(&server.sin_addr.s_addr, domain->h_addr, domain->h_length);
-						
-						cout << " ++++++++++++++++10 " << endl;
-						
-						// Копируем полученные данные
-						inet_ntop(AF_INET, &server.sin_addr, result.data(), result.size());
-
-						cout << " ++++++++++++++++11 " << endl;
-
+						// Создаём буфер данных для получения результата
+						char buffer[INET_ADDRSTRLEN];
+						// Выполняем перебор всего списка полученных IP-адресов
+						while(domain->h_addr_list[index] != 0){
+							// Выполняем зануление буфера данных
+							memset(buffer, 0, sizeof(buffer));
+							// Очищаем всю структуру для сервера
+							memset(&server, 0, sizeof(server));
+							// Устанавливаем протокол интернета
+							server.sin_family = family;
+							// Выполняем копирование данных типа подключения
+							memcpy(&server.sin_addr.s_addr, domain->h_addr_list[index++], domain->h_length);
+							// Копируем полученные данные IP-адреса
+							ips.push_back(inet_ntop(family, &server.sin_addr, buffer, sizeof(buffer)));
+						}
 					} break;
 					// Если тип протокола подключения IPv6
 					case static_cast <int> (AF_INET6): {
-						/**
-						 * Методы только для OS Windows
-						 */
-						#if defined(_WIN32) || defined(_WIN64)
-							// Выполняем резолвинг доменного имени
-							struct hostent * domain = ::gethostbyname(name.c_str());
-						/**
-						 * Если операционной системой является Nix-подобная
-						 */
-						#else
-							// Выполняем резолвинг доменного имени
-							struct hostent * domain = ::gethostbyname2(name.c_str(), AF_INET6);
-						#endif
 						// Создаём объект сервера
 						struct sockaddr_in6 server;
-						// Очищаем всю структуру для сервера
-						memset(&server, 0, sizeof(server));
-						// Создаем буфер для получения ip адреса
-						result.resize(INET6_ADDRSTRLEN, 0);
-						// Устанавливаем протокол интернета
-						server.sin6_family = AF_INET6;
-						// Выполняем копирование данных типа подключения
-						memcpy(&server.sin6_addr.s6_addr, domain->h_addr, domain->h_length);
-						// Копируем полученные данные
-						inet_ntop(AF_INET6, &server.sin6_addr, result.data(), result.size());
+						// Создаём буфер данных для получения результата
+						char buffer[INET6_ADDRSTRLEN];
+						// Выполняем перебор всего списка полученных IP-адресов
+						while(domain->h_addr_list[index] != 0){
+							// Выполняем зануление буфера данных
+							memset(buffer, 0, sizeof(buffer));
+							// Очищаем всю структуру для сервера
+							memset(&server, 0, sizeof(server));
+							// Устанавливаем протокол интернета
+							server.sin6_family = family;
+							// Выполняем копирование данных типа подключения
+							memcpy(&server.sin6_addr.s6_addr, domain->h_addr_list[index++], domain->h_length);
+							// Копируем полученные данные IP-адреса
+							ips.push_back(inet_ntop(family, &server.sin6_addr, buffer, sizeof(buffer)));
+						}
 					} break;
+				}
+				// Если список IP-адресов получен
+				if(!ips.empty()){
+					// Выполняем инициализацию генератора
+					random_device dev;
+					// Подключаем устройство генератора
+					mt19937 rng(dev());
+					// Выполняем генерирование случайного числа
+					uniform_int_distribution <mt19937::result_type> dist6(0, ips.size() - 1);
+					// Выполняем получение результата
+					result = std::forward <string> (ips.at(dist6(rng)));
 				}
 			}
 		}
