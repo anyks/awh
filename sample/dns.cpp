@@ -38,16 +38,16 @@ int main(int argc, char * argv[]){
 	// Выполняем установку серверов имён
 	dns.servers({"77.88.8.88", "77.88.8.2"});
 	// Выполняем запрос на получение первого IP-адреса
-	log.print("IP1: %s", log_t::flag_t::INFO, dns.resolve(AF_INET, "localhost").c_str());
+	log.print("IP1: %s", log_t::flag_t::INFO, dns.resolve("localhost").c_str());
 	// Выполняем запрос на получение второго IP-адреса
-	log.print("IP2: %s", log_t::flag_t::INFO, dns.resolve(AF_INET, "yandex.ru").c_str());
+	log.print("IP2: %s", log_t::flag_t::INFO, dns.resolve("yandex.ru").c_str());
 	// Выполняем запрос на получение третьего IP-адреса
-	log.print("IP3: %s", log_t::flag_t::INFO, dns.resolve(AF_INET, "google.com").c_str());
+	log.print("IP3: %s", log_t::flag_t::INFO, dns.resolve("google.com").c_str());
 	/**
 	 * Выполняем запрос на получение четвертого IP-адреса
 	 * Пример переменной окружения: $ export AWH_DNS_IPV4_STALIN_INFO=255.255.255.222
 	 */
-	log.print("IP4: %s", log_t::flag_t::INFO, dns.resolve(AF_INET, "stalin.info").c_str());
+	log.print("IP4: %s", log_t::flag_t::INFO, dns.resolve("stalin.info").c_str());
 	// Выполняем кодирование кирилического доменного имени
 	log.print("Encode domain \"ремпрофи.рф\" == \"%s\"", log_t::flag_t::INFO, dns.encode("ремпрофи.рф").c_str());
 	// Выполняем декодирование кирилического доменного имени
