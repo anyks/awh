@@ -642,9 +642,9 @@ void awh::server::ProxySocks5::bandWidth(const size_t aid, const string & read, 
  */
 void awh::server::ProxySocks5::network(const vector <string> & ips, const vector <string> & ns, const scheme_t::family_t family, const scheme_t::sonet_t sonet) noexcept {
 	// Устанавливаем DNS адреса клиента
-	this->_core.client.serverDNS(ns);
+	this->_core.client.serversDNS(ns);
 	// Устанавливаем DNS адреса сервера
-	this->_core.server.serverDNS(ns);
+	this->_core.server.serversDNS(ns);
 	// Устанавливаем параметры сети клиента
 	this->_core.client.network(ips);
 	// Устанавливаем параметры сети сервера

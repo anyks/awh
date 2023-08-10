@@ -1561,10 +1561,10 @@ void awh::Core::cashTimeToLiveDNS(const time_t msec) noexcept {
 	this->dns.timeToLive(msec);
 }
 /**
- * serverDNS Метод установки серверов имён DNS
+ * serversDNS Метод установки серверов имён DNS
  * @param ns список серверов имён
  */
-void awh::Core::serverDNS(const vector <string> & ns) noexcept {
+void awh::Core::serversDNS(const vector <string> & ns) noexcept {
 	// Если сервера имён переданы, устанавливаем их
 	if(!ns.empty()){
 		// Выполняем блокировку потока
@@ -1599,11 +1599,11 @@ void awh::Core::serverDNS(const vector <string> & ns) noexcept {
 	}
 }
 /**
- * serverDNS Метод установки серверов имён DNS
+ * serversDNS Метод установки серверов имён DNS
  * @param ns     список серверов имён
  * @param family тип протокола интернета (IPV4 / IPV6)
  */
-void awh::Core::serverDNS(const vector <string> & ns, const scheme_t::family_t family) noexcept {
+void awh::Core::serversDNS(const vector <string> & ns, const scheme_t::family_t family) noexcept {
 	// Если сервера имён переданы, устанавливаем их
 	if(!ns.empty()){
 		// Выполняем блокировку потока
