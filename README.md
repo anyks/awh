@@ -619,6 +619,7 @@ int main(int argc, char * argv[]){
 
 ```c++
 #include <net/dns.hpp>
+#include <core/core.hpp>
 
 using namespace std;
 using namespace awh;
@@ -627,6 +628,7 @@ int main(int argc, char * argv[]){
 	fmk_t fmk;
 	log_t log(&fmk);
 	dns_t dns(&fmk, &log);
+	core_t core(&fmk, &log);
 
 	log.name("DNS");
 	log.format("%H:%M:%S %d.%m.%Y");
