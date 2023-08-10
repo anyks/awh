@@ -331,14 +331,19 @@
 			this->_child->on(std::bind(&worker_t::callback, this, _1));
 		}
 	}
+#endif
+/**
+ * ~Worker Деструктор
+ */
+awh::Cluster::Worker::~Worker() noexcept {
 	/**
-	 * ~Worker Деструктор
+	 * Если операционной системой не является Windows
 	 */
-	awh::Cluster::Worker::~Worker() noexcept {
+	#if !defined(_WIN32) && !defined(_WIN64)
 		// Выполняем остановку работы дочернего процесса
 		this->stopChild();
-	}
-#endif
+	#endif
+}
 /**
  * fork Метод отделения от основного процесса (создание дочерних процессов)
  * @param wid   идентификатор воркера
