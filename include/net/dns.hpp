@@ -357,6 +357,9 @@ namespace awh {
 			// Таймаут ожидания выполнения запроса (в секундах)
 			uint8_t _timeout;
 		private:
+			// Префикс переменной окружения
+			string _prefix;
+		private:
 			// Мютекс для блокировки потока
 			recursive_mutex _mtx;
 		private:
@@ -387,22 +390,17 @@ namespace awh {
 			const log_t * _log;
 		public:
 			/**
-			 * Если используется модуль IDN
+			 * idnEncode Метод кодирования интернационального доменного имени
+			 * @param domain доменное имя для кодирования
+			 * @return       результат работы кодирования
 			 */
-			#if defined(AWH_IDN)
-				/**
-				 * idnEncode Метод кодирования интернационального доменного имени
-				 * @param domain доменное имя для кодирования
-				 * @return       результат работы кодирования
-				 */
-				string idnEncode(const string & domain) const noexcept;
-				/**
-				 * idnDecode Метод декодирования интернационального доменного имени
-				 * @param domain доменное имя для декодирования
-				 * @return       результат работы декодирования
-				 */
-				string idnDecode(const string & domain) const noexcept;
-			#endif
+			string idnEncode(const string & domain) const noexcept;
+			/**
+			 * idnDecode Метод декодирования интернационального доменного имени
+			 * @param domain доменное имя для декодирования
+			 * @return       результат работы декодирования
+			 */
+			string idnDecode(const string & domain) const noexcept;
 		public:
 			/**
 			 * clear Метод очистки данных DNS-резолвера
@@ -585,6 +583,12 @@ namespace awh {
 			 * @param servers параметры DNS-серверов
 			 */
 			void replace(const int family, const vector <string> & servers = {}) noexcept;
+		public:
+			/**
+			 * setPrefix Метод установки префикса переменной окружения
+			 * @param prefix префикс переменной окружения для установки
+			 */
+			void setPrefix(const string & prefix) noexcept;
 		public:
 			/**
 			 * readHosts Метод загрузки файла со списком хостов

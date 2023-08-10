@@ -33,14 +33,21 @@ int main(int argc, char * argv[]){
 	log.name("DNS");
 	// Устанавливаем формат времени
 	log.format("%H:%M:%S %d.%m.%Y");
+	// Устанавливаем префикс переменной окружения
+	dns.setPrefix("AWH");
 	// Выполняем установку серверов имён
 	dns.servers({"77.88.8.88", "77.88.8.2"});
-	// Выполняем запрос на получение первого IP-адресов
+	// Выполняем запрос на получение первого IP-адреса
 	log.print("IP1: %s", log_t::flag_t::INFO, dns.resolve("localhost").c_str());
-	// Выполняем запрос на получение второго IP-адресов
+	// Выполняем запрос на получение второго IP-адреса
 	log.print("IP2: %s", log_t::flag_t::INFO, dns.resolve("yandex.ru").c_str());
-	// Выполняем запрос на получение третьего IP-адресов
+	// Выполняем запрос на получение третьего IP-адреса
 	log.print("IP3: %s", log_t::flag_t::INFO, dns.resolve("google.com").c_str());
+	/**
+	 * Выполняем запрос на получение четвертого IP-адреса
+	 * Пример переменной окружения: $ export AWH_DNS_IPV4_STALIN_INFO=255.255.255.222
+	 */
+	log.print("IP4: %s", log_t::flag_t::INFO, dns.resolve("stalin.info").c_str());
 	// Выводим результат
 	return 0;
 }

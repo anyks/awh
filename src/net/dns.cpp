@@ -48,7 +48,7 @@ void awh::DNS::Worker::timeout() noexcept {
 	// Выполняем отмену ожидания полученя данных
 	this->cancel();
 	// Если возникла ошибка, выводим в лог сообщение
-	this->_self->_log->print("%s request failed", log_t::flag_t::WARNING, this->_domain.c_str());
+	this->_self->_log->print("DNS request is failed for %s domain", log_t::flag_t::WARNING, this->_domain.c_str());
 }
 /**
  * join Метод восстановления доменного имени
@@ -479,27 +479,27 @@ string awh::DNS::Worker::send(const string & server) noexcept {
 						// Если сервер DNS не смог интерпретировать запрос
 						case 1:
 							// Выводим в лог сообщение
-							self->_log->print("DNS query format error [%s] for name server [%s]", log_t::flag_t::WARNING, this->_domain.c_str(), server.c_str());
+							self->_log->print("DNS query format error to nameserver %s for %s domain", log_t::flag_t::WARNING, server.c_str(), this->_domain.c_str());
 						break;
 						// Если проблемы возникли на DNS-сервера
 						case 2:
 							// Выводим в лог сообщение
-							self->_log->print("DNS server failure [%s] for name server [%s]", log_t::flag_t::WARNING, this->_domain.c_str(), server.c_str());
+							self->_log->print("DNS server failure %s for %s domain", log_t::flag_t::WARNING, server.c_str(), this->_domain.c_str());
 						break;
 						// Если доменное имя указанное в запросе не существует
 						case 3:
 							// Выводим в лог сообщение
-							self->_log->print("the domain name referenced in the query for name server [%s] does not exist [%s]", log_t::flag_t::WARNING, server.c_str(), this->_domain.c_str());
+							self->_log->print("the domain name %s referenced in the query for nameserver %s does not exist", log_t::flag_t::WARNING, this->_domain.c_str(), server.c_str());
 						break;
 						// Если DNS-сервер не поддерживает подобный тип запросов
 						case 4:
 							// Выводим в лог сообщение
-							self->_log->print("DNS server is not implemented [%s] for name server [%s]", log_t::flag_t::WARNING, this->_domain.c_str(), server.c_str());
+							self->_log->print("DNS server is not implemented at %s for %s domain", log_t::flag_t::WARNING, server.c_str(), this->_domain.c_str());
 						break;
 						// Если DNS-сервер отказался выполнять наш запрос (например по политическим причинам)
 						case 5:
 							// Выводим в лог сообщение
-							self->_log->print("DNS request is refused [%s] for name server [%s]", log_t::flag_t::WARNING, this->_domain.c_str(), server.c_str());
+							self->_log->print("DNS request is refused to nameserver %s for %s domain", log_t::flag_t::WARNING, server.c_str(), this->_domain.c_str());
 						break;
 					}
 				}
@@ -508,7 +508,7 @@ string awh::DNS::Worker::send(const string & server) noexcept {
 					// Выводим результат
 					return result;
 			// Выводим сообщение, что у нас проблема с подключением к сети
-			} else this->_self->_log->print("no network connection", log_t::flag_t::WARNING);
+			} else this->_self->_log->print("no network connection to nameserver %s for %s domain", log_t::flag_t::WARNING, server.c_str(), this->_domain.c_str());
 			// Выполняем закрытие подключения
 			this->close();
 		}
@@ -526,6 +526,8 @@ string awh::DNS::Worker::request(const string & domain) noexcept {
 	string result = "";
 	// Если доменное имя передано
 	if(!domain.empty()){
+		// Выполняем остановку работы таймера
+		this->_timer.stop(this->_tid);
 		// Выполняем пересортировку серверов DNS
 		const_cast <dns_t *> (this->_self)->shuffle(this->_family);
 		// Определяем тип подключения
@@ -561,6 +563,8 @@ string awh::DNS::Worker::request(const string & domain) noexcept {
 							char buffer[INET_ADDRSTRLEN];
 							// Выполняем запрос на удалённый DNS-сервер
 							result = this->send(inet_ntop(this->_family, &server.ip, buffer, sizeof(buffer)));
+							// Выполняем остановку работы таймера
+							this->_timer.stop(this->_tid);
 							// Если результат получен или получение данных закрыто, тогда выходим из цикла
 							if(!result.empty() || !this->_mode)
 								// Выходим из цикла
@@ -600,6 +604,8 @@ string awh::DNS::Worker::request(const string & domain) noexcept {
 							char buffer[INET6_ADDRSTRLEN];
 							// Выполняем запрос на удалённый DNS-сервер
 							result = this->send(inet_ntop(this->_family, &server.ip, buffer, sizeof(buffer)));
+							// Выполняем остановку работы таймера
+							this->_timer.stop(this->_tid);
 							// Если результат получен или получение данных закрыто, тогда выходим из цикла
 							if(!result.empty() || !this->_mode)
 								// Выходим из цикла
@@ -623,17 +629,17 @@ awh::DNS::Worker::~Worker() noexcept {
 	this->close();
 }
 /**
- * Если используется модуль IDN
+ * idnEncode Метод кодирования интернационального доменного имени
+ * @param domain доменное имя для кодирования
+ * @return       результат работы кодирования
  */
-#if defined(AWH_IDN)
+string awh::DNS::idnEncode(const string & domain) const noexcept {
+	// Результат работы функции
+	string result = "";
 	/**
-	 * idnEncode Метод кодирования интернационального доменного имени
-	 * @param domain доменное имя для кодирования
-	 * @return       результат работы кодирования
+	 * Если используется модуль IDN
 	 */
-	string awh::DNS::idnEncode(const string & domain) const noexcept {
-		// Результат работы функции
-		string result = "";
+	#if defined(AWH_IDN)
 		// Если доменное имя передано
 		if(!domain.empty()){
 			/**
@@ -666,17 +672,22 @@ awh::DNS::Worker::~Worker() noexcept {
 				delete [] buffer;
 			#endif
 		}
-		// Выводим результат
-		return result;
-	}
+	#endif
+	// Выводим результат
+	return result;
+}
+/**
+ * idnDecode Метод декодирования интернационального доменного имени
+ * @param domain доменное имя для декодирования
+ * @return       результат работы декодирования
+ */
+string awh::DNS::idnDecode(const string & domain) const noexcept {
+	// Результат работы функции
+	string result = "";
 	/**
-	 * idnDecode Метод декодирования интернационального доменного имени
-	 * @param domain доменное имя для декодирования
-	 * @return       результат работы декодирования
+	 * Если используется модуль IDN
 	 */
-	string awh::DNS::idnDecode(const string & domain) const noexcept {
-		// Результат работы функции
-		string result = "";
+	#if defined(AWH_IDN)
 		// Если доменное имя передано
 		if(!domain.empty()){
 			/**
@@ -709,10 +720,10 @@ awh::DNS::Worker::~Worker() noexcept {
 				delete [] buffer;
 			#endif
 		}
-		// Выводим результат
-		return result;
-	}
-#endif
+	#endif
+	// Выводим результат
+	return result;
+}
 /**
  * clear Метод очистки данных DNS-резолвера
  * @return результат работы функции
@@ -844,6 +855,21 @@ string awh::DNS::cache(const int family, const string & domain) noexcept {
 		switch(family){
 			// Если тип протокола подключения IPv4
 			case static_cast <int> (AF_INET): {
+				// Если префикс переменной окружения установлен
+				if(!this->_prefix.empty()){
+					// Получаем название доменного имени
+					string postfix = domain;
+					// Выполняем замену точек в названии доменного имени
+					this->_fmk->replace(postfix, ".", "_");
+					// Переводим постфикс в верхний регистр
+					this->_fmk->transform(postfix, fmk_t::transform_t::UPPER);
+					// Получаем значение переменной
+					const char * env = ::getenv(this->_fmk->format("%s_DNS_IPV4_%s", this->_prefix.c_str(), postfix.c_str()).c_str());
+					// Если IP-адрес из переменной окружения получен
+					if(env != nullptr)
+						// Выводим полученный результат
+						return env;
+				}
 				// Если кэш доменных имён проинициализирован
 				if(!this->_cacheIPv4.empty()){
 					// Временный буфер данных для преобразования IP-адреса
@@ -874,6 +900,21 @@ string awh::DNS::cache(const int family, const string & domain) noexcept {
 			} break;
 			// Если тип протокола подключения IPv6
 			case static_cast <int> (AF_INET6): {
+				// Если префикс переменной окружения установлен
+				if(!this->_prefix.empty()){
+					// Получаем название доменного имени
+					string postfix = domain;
+					// Выполняем замену точек в названии доменного имени
+					this->_fmk->replace(postfix, ".", "_");
+					// Переводим постфикс в верхний регистр
+					this->_fmk->transform(postfix, fmk_t::transform_t::UPPER);
+					// Получаем значение переменной
+					const char * env = ::getenv(this->_fmk->format("%s_DNS_IPV6_%s", this->_prefix.c_str(), postfix.c_str()).c_str());
+					// Если IP-адрес из переменной окружения получен
+					if(env != nullptr)
+						// Выводим полученный результат
+						return env;
+				}
 				// Если кэш доменных имён проинициализирован
 				if(!this->_cacheIPv6.empty()){
 					// Временный буфер данных для преобразования IP-адреса
@@ -1829,6 +1870,14 @@ void awh::DNS::replace(const int family, const vector <string> & servers) noexce
 	}
 }
 /**
+ * setPrefix Метод установки префикса переменной окружения
+ * @param prefix префикс переменной окружения для установки
+ */
+void awh::DNS::setPrefix(const string & prefix) noexcept {
+	// Выполняем установку префикса переменной окружения
+	this->_prefix = prefix;
+}
+/**
  * readHosts Метод загрузки файла со списком хостов
  * @param filename адрес файла для загрузки
  */
@@ -2223,7 +2272,7 @@ vector <string> awh::DNS::search(const int family, const string & ip) noexcept {
  * @param log объект для работы с логами
  */
 awh::DNS::DNS(const fmk_t * fmk, const log_t * log) noexcept :
- _net(fmk, log), _ttl(0), _timeout(30),
+ _net(fmk, log), _ttl(0), _timeout(5), _prefix(AWH_SHORT_NAME),
  _workerIPv4(nullptr), _workerIPv6(nullptr), _fmk(fmk), _log(log) {
 	// Выполняем создание воркера для IPv4
 	this->_workerIPv4 = unique_ptr <worker_t> (new worker_t(AF_INET, this));
