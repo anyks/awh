@@ -226,7 +226,7 @@ double awh::Ping::ping(const int family, const string & ip, const uint16_t count
 			// Создаём сокет подключения
 			this->_fd = ::socket(family, SOCK_DGRAM, IPPROTO_ICMP);
 		// Создаём сокет подключения
-		else this->_fd = ::socket(AF_INET, SOCK_RAW, IPPROTO_ICMP);
+		else this->_fd = ::socket(family, SOCK_RAW, IPPROTO_ICMP);
 		// Если сокет не создан создан и работа резолвера не остановлена
 		if(this->_mode && (this->_fd == INVALID_SOCKET)){
 			// Если разрешено выводить информацию в лог
