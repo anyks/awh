@@ -251,8 +251,6 @@ double awh::Ping::ping(const int family, const string & ip, const uint16_t count
 			this->_socket.timeout(this->_fd, this->_timeoutRead, socket_t::mode_t::READ);
 			// Устанавливаем таймаут на запись данных в сокет
 			this->_socket.timeout(this->_fd, this->_timeoutWrite, socket_t::mode_t::WRITE);
-			// Устанавливаем время жизни сокета
-			this->_socket.timeToLive(family, this->_fd, (this->_timeoutRead + this->_timeoutWrite) / 1000);
 			// Выполняем генерирование случайного числа
 			uniform_int_distribution <mt19937::result_type> dist6(0, std::numeric_limits <uint32_t>::max() - 1);
 			// Выполняем отправку указанного количества запросов
@@ -312,7 +310,7 @@ double awh::Ping::ping(const int family, const string & ip, const uint16_t count
 						// Если разрешено выводить информацию в лог
 						if(!this->_noInfo)
 							// Формируем сообщение для вывода в лог
-							this->_log->print("%zu bytes from %s: icmp_seq=%u ttl=%zu time=%s", log_t::flag_t::INFO, bytes, ip.c_str(), i, ((this->_timeoutRead + this->_timeoutWrite) / 1000), this->_fmk->time2abbr(timeShifting).c_str());
+							this->_log->print("%zu bytes from %s: icmp_seq=%u ttl=%u time=%s", log_t::flag_t::INFO, bytes, ip.c_str(), i, i + (this->_shifting / 1000), this->_fmk->time2abbr(timeShifting).c_str());
 						// Увеличиваем общее количество времени
 						result += static_cast <double> (timeShifting);
 					}
@@ -346,9 +344,12 @@ double awh::Ping::ping(const int family, const string & ip, const uint16_t count
 					}
 				}
 				// Если работа резолвера ещё не остановлена
-				if(this->_mode)
+				if(this->_mode){
+					// Устанавливаем время жизни сокета
+					this->_socket.timeToLive(family, this->_fd, i + (this->_shifting / 1000));
 					// Замораживаем поток на период времени в ${_shifting}
 					this_thread::sleep_for(chrono::milliseconds(this->_shifting));
+				}
 			}
 			// Выполняем закрытие подключения
 			this->close();
