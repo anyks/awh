@@ -1149,8 +1149,14 @@ int64_t awh::Engine::Context::read(char * buffer, const size_t size) noexcept {
 						addr = (struct sockaddr *) (&this->_addr->_peer.client);
 					break;
 				}
+				// Метка повторного получения данных
+				Read:
 				// Выполняем чтение данных из сокета
 				result = ::recvfrom(this->_addr->fd, buffer, size, 0, addr, &this->_addr->_peer.size);
+				// Если нужно попытаться ещё раз получить сообщение
+				if((result <= 0) && (errno == EAGAIN))
+					// Повторяем попытку получить ещё раз
+					goto Read;
 			}
 		}
 		// Если данные прочитать не удалось
@@ -1315,8 +1321,14 @@ int64_t awh::Engine::Context::write(const char * buffer, const size_t size) noex
 						#endif
 					} break;
 				}
+				// Метка отправки данных
+				Send:
 				// Выполняем запись данных в сокет
 				result = ::sendto(this->_addr->fd, buffer, size, 0, addr, this->_addr->_peer.size);
+				// Если нужно попытаться ещё раз отправить сообщение
+				if((result <= 0) && (errno == EAGAIN))
+					// Повторяем попытку отправить ещё раз
+					goto Send;
 			}
 		}
 		// Если данные записать не удалось
