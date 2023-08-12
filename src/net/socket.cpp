@@ -423,10 +423,12 @@ bool awh::Socket::timeout(const SOCKET fd, const time_t msec, const mode_t mode)
 bool awh::Socket::timeToLive(const int family, const SOCKET fd, const int ttl) const noexcept {
 	// Результат работы функции
 	bool result = false;
+	/*
 	// Определяем тип протокола интернета
 	switch(family){
 		// Если тип протокола подключения IPv4
 		case static_cast <int> (AF_INET): {
+	*/
 			/**
 			 * Если мы работаем в MacOS X
 			 */
@@ -444,7 +446,7 @@ bool awh::Socket::timeToLive(const int family, const SOCKET fd, const int ttl) c
 				// Выполняем получение размер TTL по умолчанию
 				const int mode = (ttl <= 0 ? 128 : ttl);
 				// Выполняем установку параметров времени жизни файлового дескриптора (сокета)
-				if(!(result = !static_cast <bool> (::setsockopt(fd, IPPROTO_IP, IP_TTL, &mode, sizeof(mode)))))
+				if(!(result = !static_cast <bool> (::setsockopt(fd, IPPROTO_IP, IP_TTL, (char *) &mode, sizeof(mode)))))
 					// Выводим в лог информацию
 					this->_log->print("cannot set IPPROTO_IP option on socket %d", log_t::flag_t::WARNING, fd);
 			/**
@@ -454,10 +456,11 @@ bool awh::Socket::timeToLive(const int family, const SOCKET fd, const int ttl) c
 				// Выполняем получение размер TTL по умолчанию
 				const socklen_t mode = (ttl <= 0 ? 128 : static_cast <socklen_t> (ttl));
 				// Выполняем установку параметров времени жизни файлового дескриптора (сокета)
-				if(!(result = !static_cast <bool> (::setsockopt(fd, IPPROTO_IP, IP_TTL, (char *) &ttl, sizeof(ttl)))))
+				if(!(result = !static_cast <bool> (::setsockopt(fd, IPPROTO_IP, IP_TTL, &ttl, sizeof(ttl)))))
 					// Выводим в лог информацию
 					this->_log->print("cannot set IPPROTO_IP option on socket %d", log_t::flag_t::WARNING, fd);
 			#endif
+		/*
 		} break;
 		// Если тип протокола подключения IPv6
 		case static_cast <int> (AF_INET6): {
@@ -467,6 +470,7 @@ bool awh::Socket::timeToLive(const int family, const SOCKET fd, const int ttl) c
 				this->_log->print("cannot set IPPROTO_IPV6 option on socket %d", log_t::flag_t::WARNING, fd);
 		} break;
 	}
+	*/
 	// Выводим результат
 	return result;
 }
