@@ -194,8 +194,8 @@ double awh::Ping::ping(const int family, const string & ip, const uint16_t count
 				client.sin_family = family;
 				// Устанавливаем произвольный порт
 				client.sin_port = htons(0);
-				// Устанавливаем адрес для подключения
-				client.sin_addr.s_addr = inet_addr(ip.c_str());
+				// Устанавливаем IP-адрес для подключения
+				inet_pton(family, ip.c_str(), &client.sin_addr.s_addr);
 				// Выполняем копирование объекта подключения клиента
 				memcpy(&this->_addr, &client, this->_socklen);
 			} break;
@@ -209,7 +209,7 @@ double awh::Ping::ping(const int family, const string & ip, const uint16_t count
 				client.sin6_family = family;
 				// Устанавливаем произвольный порт для
 				client.sin6_port = htons(0);
-				// Выполняем копирование полученных данных в переданный буфер
+				// Устанавливаем IP-адрес для подключения
 				inet_pton(family, ip.c_str(), &client.sin6_addr);
 				// Выполняем копирование объекта подключения клиента
 				memcpy(&this->_addr, &client, this->_socklen);
@@ -221,8 +221,12 @@ double awh::Ping::ping(const int family, const string & ip, const uint16_t count
 		mt19937 rng(dev());
 		// Выполняем генерирование случайного числа
 		uniform_int_distribution <mt19937::result_type> dist6(0, std::numeric_limits <uint32_t>::max() - 1);
+		// Если пользователь является привилигированным
+		if(getuid())
+			// Создаём сокет подключения
+			this->_fd = ::socket(family, SOCK_DGRAM, IPPROTO_ICMP);
 		// Создаём сокет подключения
-		this->_fd = ::socket(family, SOCK_DGRAM, IPPROTO_ICMP);
+		else this->_fd = ::socket(AF_INET, SOCK_RAW, IPPROTO_ICMP);
 		// Если сокет не создан создан и работа резолвера не остановлена
 		if(this->_mode && (this->_fd == INVALID_SOCKET)){
 			// Если разрешено выводить информацию в лог
