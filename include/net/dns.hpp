@@ -20,7 +20,6 @@
  */
 #include <set>
 #include <map>
-#include <array>
 #include <ctime>
 #include <stack>
 #include <mutex>
@@ -76,7 +75,6 @@
 #include <sys/fs.hpp>
 #include <sys/fmk.hpp>
 #include <sys/log.hpp>
-#include <sys/timer.hpp>
 #include <net/net.hpp>
 #include <net/socket.hpp>
 
@@ -253,17 +251,11 @@ namespace awh {
 					// Флаг запуска резолвера
 					bool _mode;
 				private:
-					// Идентификатор активного таймера
-					size_t _tid;
-				private:
 					// Тип протокола интернета AF_INET или AF_INET6
 					int _family;
 				private:
 					// Название искомого домена
 					string _domain;
-				private:
-					// Объект таймера
-					timer_t _timer;
 				private:
 					// Объект для работы с сокетами
 					socket_t _socket;
@@ -276,11 +268,6 @@ namespace awh {
 				private:
 					// Объект DNS-резолвера
 					const DNS * _self;
-				private:
-					/**
-					 * timeout Метод таймаута ожидания получения данных
-					 */
-					void timeout() noexcept;
 				private:
 					/**
 					 * join Метод восстановления доменного имени
@@ -333,7 +320,7 @@ namespace awh {
 					 * @param self   объект DNS-резолвера
 					 */
 					Worker(const int family, const DNS * self) noexcept :
-					 _fd(INVALID_SOCKET), _mode(false), _tid(0), _family(family),
+					 _fd(INVALID_SOCKET), _mode(false), _family(family),
 					 _domain(""), _socket(self->_log), _socklen(0), _self(self) {}
 					/**
 					 * ~Worker Деструктор

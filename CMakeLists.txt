@@ -263,6 +263,7 @@ set(SOURCE_FILES
     "${SOURCE_FILES}"
     "${CMAKE_SOURCE_DIR}/src/sys/fs.cpp"
     "${CMAKE_SOURCE_DIR}/src/sys/re.cpp"
+    "${CMAKE_SOURCE_DIR}/src/sys/idw.cpp"
     "${CMAKE_SOURCE_DIR}/src/sys/fmk.cpp"
     "${CMAKE_SOURCE_DIR}/src/sys/log.cpp"
     "${CMAKE_SOURCE_DIR}/src/ws/ws.cpp"
@@ -274,6 +275,7 @@ set(SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/src/net/nwt.cpp"
     "${CMAKE_SOURCE_DIR}/src/net/uri.cpp"
     "${CMAKE_SOURCE_DIR}/src/net/dns.cpp"
+    "${CMAKE_SOURCE_DIR}/src/net/ping.cpp"
     "${CMAKE_SOURCE_DIR}/src/net/engine.cpp"
     "${CMAKE_SOURCE_DIR}/src/net/socket.cpp"
     "${CMAKE_SOURCE_DIR}/src/hash/hash.cpp"
@@ -306,6 +308,11 @@ set(SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/src/scheme/client.cpp"
     "${CMAKE_SOURCE_DIR}/src/scheme/server.cpp"
     "${CMAKE_SOURCE_DIR}/src/scheme/sample.cpp"
+    "${CMAKE_SOURCE_DIR}/contrib/src/bigint/BigInteger.cc"
+    "${CMAKE_SOURCE_DIR}/contrib/src/bigint/BigUnsigned.cc"
+    "${CMAKE_SOURCE_DIR}/contrib/src/bigint/BigIntegerUtils.cc"
+    "${CMAKE_SOURCE_DIR}/contrib/src/bigint/BigUnsignedInABase.cc"
+    "${CMAKE_SOURCE_DIR}/contrib/src/bigint/BigIntegerAlgorithms.cc"
 )
 
 # Задаем именя библиотеки и бинарника
@@ -313,6 +320,7 @@ set(IP_APP_NAME ip)
 set(WSC_APP_NAME wsc)
 set(WSS_APP_NAME wss)
 set(DNS_APP_NAME dns)
+set(PING_APP_NAME ping)
 set(TIMER_APP_NAME timer)
 set(PROXY_APP_NAME proxy)
 set(SOCKS5_APP_NAME socks5)
@@ -351,8 +359,9 @@ if (ENABLE_CONSOLE_APP)
 
     add_executable(${IP_APP_NAME} sample/ip.cpp ${RES_FILES})
     add_executable(${DNS_APP_NAME} sample/dns.cpp ${RES_FILES})
-    add_executable(${WSC_APP_NAME} sample/wsc2.cpp ${RES_FILES})
     add_executable(${WSS_APP_NAME} sample/wss.cpp ${RES_FILES})
+    add_executable(${WSC_APP_NAME} sample/wsc2.cpp ${RES_FILES})
+    add_executable(${PING_APP_NAME} sample/ping.cpp ${RES_FILES})
     add_executable(${TIMER_APP_NAME} sample/timer.cpp ${RES_FILES})
     add_executable(${PROXY_APP_NAME} sample/proxy.cpp ${RES_FILES})
     add_executable(${SOCKS5_APP_NAME} sample/socks5.cpp ${RES_FILES})
@@ -425,6 +434,17 @@ if (ENABLE_CONSOLE_APP)
 
         target_link_libraries(
             ${PROXY_APP_NAME}
+            ${CURRENT_LIB_NAME}
+            ${EVENT_LIBRARY}
+            ${ZLIB_LIBRARY}
+            ${BROTLI_LIBRARIES}
+            ${OPENSSL_LIBRARIES}
+            ${WINFLAGS}
+            ${AWH_IDN}
+        )
+
+        target_link_libraries(
+            ${PING_APP_NAME}
             ${CURRENT_LIB_NAME}
             ${EVENT_LIBRARY}
             ${ZLIB_LIBRARY}
@@ -558,6 +578,19 @@ if (ENABLE_CONSOLE_APP)
 
         target_link_libraries(
             ${PROXY_APP_NAME}
+            ${CURRENT_LIB_NAME}
+            ${EVENT_LIBRARY}
+            ${ZLIB_LIBRARY}
+            ${PCRE_LIBRARY}
+            ${ICONV_LIBRARY}
+            ${IDN2_LIBRARY}
+            ${BROTLI_LIBRARIES}
+            ${OPENSSL_LIBRARIES}
+            ${AWH_IDN}
+        )
+
+        target_link_libraries(
+            ${PING_APP_NAME}
             ${CURRENT_LIB_NAME}
             ${EVENT_LIBRARY}
             ${ZLIB_LIBRARY}
@@ -709,6 +742,16 @@ if (ENABLE_CONSOLE_APP)
         )
 
         target_link_libraries(
+            ${PING_APP_NAME}
+            ${CURRENT_LIB_NAME}
+            ${EVENT_LIBRARY}
+            ${ZLIB_LIBRARY}
+            ${PCRE_LIBRARY}
+            ${BROTLI_LIBRARIES}
+            ${OPENSSL_LIBRARIES}
+        )
+
+        target_link_libraries(
             ${TIMER_APP_NAME}
             ${CURRENT_LIB_NAME}
             ${EVENT_LIBRARY}
@@ -804,6 +847,13 @@ if(CMAKE_BUILD_TYPE MATCHES Debug)
             VERBATIM
         )
 
+        add_custom_command(TARGET "${PING_APP_NAME}" POST_BUILD
+            COMMAND codesign -s - -f --entitlements "${entitlements_file}" "$<TARGET_FILE:${PING_APP_NAME}>"
+            COMMAND ulimit -c unlimited
+            COMMENT "sign target \"${PING_APP_NAME}\" to enable core dump on MacOS X"
+            VERBATIM
+        )
+
         add_custom_command(TARGET "${TIMER_APP_NAME}" POST_BUILD
             COMMAND codesign -s - -f --entitlements "${entitlements_file}" "$<TARGET_FILE:${TIMER_APP_NAME}>"
             COMMAND ulimit -c unlimited
@@ -877,6 +927,7 @@ install(TARGETS ${IP_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_
 install(TARGETS ${WSC_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
 install(TARGETS ${WSS_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
 install(TARGETS ${DNS_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
+install(TARGETS ${PING_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
 install(TARGETS ${TIMER_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
 install(TARGETS ${PROXY_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
 install(TARGETS ${SOCKS5_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")

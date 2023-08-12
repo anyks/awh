@@ -561,7 +561,7 @@ namespace awh {
 			 * sonet Метод установки типа сокета подключения
 			 * @param sonet тип сокета подключения (TCP / UDP / SCTP)
 			 */
-			void sonet(const scheme_t::sonet_t sonet = scheme_t::sonet_t::TCP) noexcept;
+			void sonet(const scheme_t::sonet_t sonet) noexcept;
 		public:
 			/**
 			 * family Метод извлечения типа протокола интернета

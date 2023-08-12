@@ -42,15 +42,6 @@ awh::DNS::Holder::~Holder() noexcept {
 	if(this->_flag) this->_status->pop();
 }
 /**
- * timeout Метод таймаута ожидания получения данных
- */
-void awh::DNS::Worker::timeout() noexcept {
-	// Выполняем отмену ожидания полученя данных
-	this->cancel();
-	// Если возникла ошибка, выводим в лог сообщение
-	this->_self->_log->print("DNS request is failed for %s domain", log_t::flag_t::WARNING, this->_domain.c_str());
-}
-/**
  * join Метод восстановления доменного имени
  * @param domain доменное имя для восстановления
  * @return       восстановленное доменное имя
@@ -257,8 +248,12 @@ string awh::DNS::Worker::send(const string & server) noexcept {
 			this->_socket.reuseable(this->_fd);
 			// Устанавливаем разрешение на закрытие сокета при неиспользовании
 			this->_socket.closeonexec(this->_fd);
+			// Устанавливаем таймаут на получение данных из сокета
+			this->_socket.readTimeout(this->_fd, this->_self->_timeout * 1000);
+			// Устанавливаем таймаут на запись данных в сокет
+			this->_socket.writeTimeout(this->_fd, this->_self->_timeout * 1000);
 			// Устанавливаем размер буфера передачи данных
-			this->_socket.bufferSize(this->_fd, sizeof(buffer), sizeof(buffer), 1);
+			// this->_socket.bufferSize(this->_fd, sizeof(buffer), sizeof(buffer), 1);
 			// Если запрос на сервер DNS успешно отправлен
 			if(::sendto(this->_fd, (const char *) buffer, size, 0, (struct sockaddr *) &this->_addr, this->_socklen) > 0){
 				// Буфер пакета данных
@@ -442,8 +437,6 @@ string awh::DNS::Worker::send(const string & server) noexcept {
 							#endif
 							// Если список IP-адресов получен
 							if(!ips.empty()){
-								// Выполняем остановку работы таймера ожидания полученя данных
-								this->_timer.stop(this->_tid);
 								// Если количество IP-адресов в списке больше 1-го
 								if(ips.size() > 1){
 									// Переходим по всему списку полученных адресов
@@ -526,8 +519,6 @@ string awh::DNS::Worker::request(const string & domain) noexcept {
 	string result = "";
 	// Если доменное имя передано
 	if(!domain.empty()){
-		// Выполняем остановку работы таймера
-		this->_timer.stop(this->_tid);
 		// Выполняем пересортировку серверов DNS
 		const_cast <dns_t *> (this->_self)->shuffle(this->_family);
 		// Определяем тип подключения
@@ -538,8 +529,6 @@ string awh::DNS::Worker::request(const string & domain) noexcept {
 				if((this->_mode = !this->_self->_serversIPv4.empty())){
 					// Запоминаем запрашиваемое доменное имя
 					this->_domain = domain;
-					// Выполняем установку таймера
-					this->_tid = this->_timer.setTimeout(std::bind(&worker_t::timeout, this), this->_self->_timeout * 1000);
 					// Переходим по всему списку DNS-серверов
 					for(auto & server : this->_self->_serversIPv4){
 						// Создаём объект клиента
@@ -563,8 +552,6 @@ string awh::DNS::Worker::request(const string & domain) noexcept {
 							char buffer[INET_ADDRSTRLEN];
 							// Выполняем запрос на удалённый DNS-сервер
 							result = this->send(inet_ntop(this->_family, &server.ip, buffer, sizeof(buffer)));
-							// Выполняем остановку работы таймера
-							this->_timer.stop(this->_tid);
 							// Если результат получен или получение данных закрыто, тогда выходим из цикла
 							if(!result.empty() || !this->_mode)
 								// Выходим из цикла
@@ -579,8 +566,6 @@ string awh::DNS::Worker::request(const string & domain) noexcept {
 				if((this->_mode = !this->_self->_serversIPv6.empty())){
 					// Запоминаем запрашиваемое доменное имя
 					this->_domain = domain;
-					// Выполняем установку таймера
-					this->_tid = this->_timer.setTimeout(std::bind(&worker_t::timeout, this), this->_self->_timeout * 1000);
 					// Переходим по всему списку DNS-серверов
 					for(auto & server : this->_self->_serversIPv6){
 						// Создаём объект клиента
@@ -604,8 +589,6 @@ string awh::DNS::Worker::request(const string & domain) noexcept {
 							char buffer[INET6_ADDRSTRLEN];
 							// Выполняем запрос на удалённый DNS-сервер
 							result = this->send(inet_ntop(this->_family, &server.ip, buffer, sizeof(buffer)));
-							// Выполняем остановку работы таймера
-							this->_timer.stop(this->_tid);
 							// Если результат получен или получение данных закрыто, тогда выходим из цикла
 							if(!result.empty() || !this->_mode)
 								// Выходим из цикла
@@ -623,8 +606,6 @@ string awh::DNS::Worker::request(const string & domain) noexcept {
  * ~Worker Деструктор
  */
 awh::DNS::Worker::~Worker() noexcept {
-	// Выполняем остановку таймера
-	this->_timer.stop(this->_tid);
 	// Выполняем закрытие файлового дерскриптора (сокета)
 	this->close();
 }

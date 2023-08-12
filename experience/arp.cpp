@@ -1,4 +1,4 @@
-// gcc --std=c++11 mac8.cpp -o ./mac8 -lws2_32 -lIphlpapi -lstdc++
+// g++ --std=c++11 arp.cpp -o ./arp -lws2_32 -lIphlpapi -lstdc++
 
 #include <Winsock2.h>
 #include <iphlpapi.h>

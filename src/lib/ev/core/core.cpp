@@ -396,7 +396,7 @@ void awh::Core::launching() noexcept {
 			// Если функция обратного вызова установлена
 			if(scheme.second->callback.is("open"))
 				// Устанавливаем полученную функцию обратного вызова
-				callback.set <void (const size_t, core_t *)> (to_string(scheme.first), scheme.second->callback.get <void (const size_t, core_t *)> ("open"), scheme.first, this);
+				callback.set <void (const size_t, core_t *)> (scheme.first, scheme.second->callback.get <void (const size_t, core_t *)> ("open"), scheme.first, this);
 		}
 		// Выполняем все функции обратного вызова
 		callback.bind <const size_t, core_t *> ();
@@ -475,7 +475,7 @@ void awh::Core::persistent(ev::timer & timer, int revents) noexcept {
 					// Переходим по всему списку адъютантов и формируем список их идентификаторов
 					for(auto & adj : shm->adjutants)
 						// Устанавливаем полученную функцию обратного вызова
-						callback.set <void (const size_t, const size_t, core_t *)> (to_string(adj.first), shm->callback.get <void (const size_t, const size_t, core_t *)> ("persist"), adj.first, item.first, this);
+						callback.set <void (const size_t, const size_t, core_t *)> (adj.first, shm->callback.get <void (const size_t, const size_t, core_t *)> ("persist"), adj.first, item.first, this);
 				}
 			}
 			// Выполняем все функции обратного вызова
@@ -973,7 +973,7 @@ void awh::Core::enabled(const engine_t::method_t method, const size_t aid) noexc
 						// Запускаем чтение данных
 						adj->bev.event.read.start();
 						// Если флаг ожидания входящих сообщений, активирован
-						if(adj->timeouts.read > 0){
+						if((adj->timeouts.read > 0) && (this->settings.sonet != scheme_t::sonet_t::UDP)){
 							// Устанавливаем приоритет выполнения для таймаута на чтение
 							ev_set_priority(&adj->bev.timer.read, 0);
 							// Устанавливаем базу событий
@@ -1005,7 +1005,7 @@ void awh::Core::enabled(const engine_t::method_t method, const size_t aid) noexc
 						// Запускаем запись данных
 						adj->bev.event.write.start();
 						// Если флаг ожидания исходящих сообщений, активирован
-						if(adj->timeouts.write > 0){
+						if((adj->timeouts.write > 0) && (this->settings.sonet != scheme_t::sonet_t::UDP)){
 							// Устанавливаем приоритет выполнения для таймаута на запись
 							ev_set_priority(&adj->bev.timer.write, 0);
 							// Устанавливаем базу событий

@@ -126,8 +126,6 @@ int main(int argc, char * argv[]){
 	);
 	// Устанавливаем адрес сертификата
 	// proxy.ca("./ca/cert.pem");
-	// Устанавливаем название сервера
-	// proxy.nameServer("anyks");
 	// Устанавливаем тип сокета unix-сокет
 	// proxy.family(awh::scheme_t::family_t::NIX);
 	// Устанавливаем тип сокета UDP TLS

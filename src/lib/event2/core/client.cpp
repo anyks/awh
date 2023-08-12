@@ -597,7 +597,7 @@ void awh::client::Core::close() noexcept {
 						// Если функция обратного вызова установлена
 						if(shm->callback.is("disconnect"))
 							// Устанавливаем полученную функцию обратного вызова
-							callback.set <void (const size_t, const size_t, awh::core_t *)> (to_string(it->first), shm->callback.get <void (const size_t, const size_t, awh::core_t *)> ("disconnect"), it->first, item.first, this);
+							callback.set <void (const size_t, const size_t, awh::core_t *)> (it->first, shm->callback.get <void (const size_t, const size_t, awh::core_t *)> ("disconnect"), it->first, item.first, this);
 						// Удаляем блокировку адъютанта
 						this->_locking.erase(it->first);
 						// Удаляем адъютанта из списка
@@ -660,7 +660,7 @@ void awh::client::Core::remove() noexcept {
 						// Если функция обратного вызова установлена
 						if(shm->callback.is("disconnect"))
 							// Устанавливаем полученную функцию обратного вызова
-							callback.set <void (const size_t, const size_t, awh::core_t *)> (to_string(jt->first), shm->callback.get <void (const size_t, const size_t, awh::core_t *)> ("disconnect"), jt->first, it->first, this);
+							callback.set <void (const size_t, const size_t, awh::core_t *)> (jt->first, shm->callback.get <void (const size_t, const size_t, awh::core_t *)> ("disconnect"), jt->first, it->first, this);
 						// Удаляем блокировку адъютанта
 						this->_locking.erase(jt->first);
 						// Удаляем адъютанта из списка
@@ -803,7 +803,7 @@ void awh::client::Core::remove(const size_t sid) noexcept {
 						// Если функция обратного вызова установлена
 						if(shm->callback.is("disconnect"))
 							// Устанавливаем полученную функцию обратного вызова
-							callback.set <void (const size_t, const size_t, awh::core_t *)> (to_string(jt->first), shm->callback.get <void (const size_t, const size_t, awh::core_t *)> ("disconnect"), jt->first, it->first, this);
+							callback.set <void (const size_t, const size_t, awh::core_t *)> (jt->first, shm->callback.get <void (const size_t, const size_t, awh::core_t *)> ("disconnect"), jt->first, it->first, this);
 						// Удаляем блокировку адъютанта
 						this->_locking.erase(jt->first);
 						// Удаляем адъютанта из списка
@@ -1219,6 +1219,17 @@ void awh::client::Core::transfer(const engine_t::method_t method, const size_t a
 							max = ((max > 0) && (adj->marker.write.max > max) ? max : adj->marker.write.max);
 							// Получаем буфер отправляемых данных
 							const vector <char> buffer = std::forward <vector <char>> (adj->buffer);
+							// Если тип сокета установлен как UDP или DTLS
+							if((this->settings.sonet == scheme_t::sonet_t::UDP) || (this->settings.sonet == scheme_t::sonet_t::DTLS)){
+								// Если флаг ожидания входящих сообщений, активирован
+								if(adj->timeouts.read > 0)
+									// Выполняем установку таймаута ожидания
+									adj->ectx.timeout(adj->timeouts.read, engine_t::method_t::READ);
+								// Если флаг ожидания исходящих сообщений, активирован
+								if(adj->timeouts.write > 0)
+									// Выполняем установку таймаута ожидания
+									adj->ectx.timeout(adj->timeouts.write, engine_t::method_t::WRITE);
+							}
 							// Выполняем отправку данных пока всё не отправим
 							while(!adj->bev.locked.write && ((buffer.size() - offset) > 0)){
 								// Получаем общий размер буфера данных

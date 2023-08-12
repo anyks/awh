@@ -643,7 +643,7 @@ void awh::Engine::Address::init(const string & unixsocket, const type_t type) no
  */
 void awh::Engine::Address::init(const string & ip, const u_int port, const int family, const type_t type, const bool onlyV6) noexcept {
 	// Если IP адрес передан
-	if(!ip.empty() && (port > 0) && (port <= 65535) && !this->network.empty()){
+	if(!ip.empty() && (port <= 65535) && !this->network.empty()){
 		// Если список сетевых интерфейсов установлен
 		if((family == AF_INET) || (family == AF_INET6)){
 			// Адрес сервера для биндинга
@@ -935,7 +935,7 @@ void awh::Engine::Context::error(const int status) const noexcept {
 				// Если данные записаны неверно
 				} else if((status == -1) && (errno != 0))
 					// Выводим в лог сообщение
-					this->_log->print("%s", log_t::flag_t::CRITICAL, strerror(errno));
+					this->_log->print("%s", log_t::flag_t::WARNING, strerror(errno));
 			} break;
 			// Для всех остальных ошибок
 			default: {
@@ -1089,8 +1089,8 @@ int64_t awh::Engine::Context::read(char * buffer, const size_t size) noexcept {
 	// Результат работы функции
 	int64_t result = 0;
 	// Если буфер данных передан
-	if((buffer != nullptr) && (size > 0) && (this->_type != type_t::NONE) &&
-	   (this->_addr->fd != INVALID_SOCKET) && (this->_addr->fd < MAX_SOCKETS)){
+	if((buffer != nullptr) && (this->_addr != nullptr) && (size > 0) &&
+	   (this->_type != type_t::NONE) && (this->_addr->fd != INVALID_SOCKET) && (this->_addr->fd < MAX_SOCKETS)){
 		// Если защищённый режим работы разрешён
 		if(this->_tls && (this->_ssl != nullptr)){
 			// Выполняем очистку ошибок OpenSSL
@@ -1217,8 +1217,8 @@ int64_t awh::Engine::Context::write(const char * buffer, const size_t size) noex
 	// Результат работы функции
 	int64_t result = 0;
 	// Если буфер данных передан
-	if((buffer != nullptr) && (size > 0) && (this->_type != type_t::NONE) &&
-	   (this->_addr->fd != INVALID_SOCKET) && (this->_addr->fd < MAX_SOCKETS)){
+	if((buffer != nullptr) && (this->_addr != nullptr) && (size > 0) &&
+	   (this->_type != type_t::NONE) && (this->_addr->fd != INVALID_SOCKET) && (this->_addr->fd < MAX_SOCKETS)){
 		// Если защищённый режим работы разрешён
 		if(this->_tls && (this->_ssl != nullptr)){
 			// Выполняем очистку ошибок OpenSSL
@@ -1395,48 +1395,62 @@ int64_t awh::Engine::Context::write(const char * buffer, const size_t size) noex
  * @return результат работы функции
  */
 bool awh::Engine::Context::block() noexcept {
-	// Если защищённый режим работы разрешён
-	if((this->_addr->fd != INVALID_SOCKET) && (this->_addr->fd < MAX_SOCKETS)){
-		// Переводим сокет в блокирующий режим
-		this->_addr->_async = (this->_addr->_socket.blocking(this->_addr->fd) != 0);
-		// Если шифрование включено
-		if(this->_tls && (this->_ssl != nullptr)){
-			// Устанавливаем блокирующий режим ввода/вывода для сокета
-			BIO_set_nbio(this->_bio, 0);
-			// Флаг необходимо установить только для неблокирующего сокета
-			SSL_clear_mode(this->_ssl, SSL_MODE_ENABLE_PARTIAL_WRITE);
+	// Если адрес присвоен
+	if(this->_addr != nullptr){
+		// Если защищённый режим работы разрешён
+		if((this->_addr->fd != INVALID_SOCKET) && (this->_addr->fd < MAX_SOCKETS)){
+			// Переводим сокет в блокирующий режим
+			this->_addr->_async = (this->_addr->_socket.blocking(this->_addr->fd) != 0);
+			// Если шифрование включено
+			if(this->_tls && (this->_ssl != nullptr)){
+				// Устанавливаем блокирующий режим ввода/вывода для сокета
+				BIO_set_nbio(this->_bio, 0);
+				// Флаг необходимо установить только для неблокирующего сокета
+				SSL_clear_mode(this->_ssl, SSL_MODE_ENABLE_PARTIAL_WRITE);
+			}
 		}
+		// Выводим результат
+		return !this->_addr->_async;
 	}
-	// Выводим результат
-	return !this->_addr->_async;
+	// Сообщаем что сокет в блокирующем режиме
+	return true;
 }
 /**
  * noblock Метод установки неблокирующего сокета
  * @return результат работы функции
  */
 bool awh::Engine::Context::noblock() noexcept {
-	// Если файловый дескриптор активен
-	if((this->_addr->fd != INVALID_SOCKET) && (this->_addr->fd < MAX_SOCKETS)){
-		// Переводим сокет в не блокирующий режим
-		this->_addr->_async = (this->_addr->_socket.nonBlocking(this->_addr->fd) == 0);
-		// Если шифрование включено
-		if(this->_tls && (this->_ssl != nullptr)){
-			// Устанавливаем неблокирующий режим ввода/вывода для сокета
-			BIO_set_nbio(this->_bio, 1);
-			// Флаг необходимо установить только для неблокирующего сокета
-			SSL_set_mode(this->_ssl, SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER);
+	// Если адрес присвоен
+	if(this->_addr != nullptr){
+		// Если файловый дескриптор активен
+		if((this->_addr->fd != INVALID_SOCKET) && (this->_addr->fd < MAX_SOCKETS)){
+			// Переводим сокет в не блокирующий режим
+			this->_addr->_async = (this->_addr->_socket.nonBlocking(this->_addr->fd) == 0);
+			// Если шифрование включено
+			if(this->_tls && (this->_ssl != nullptr)){
+				// Устанавливаем неблокирующий режим ввода/вывода для сокета
+				BIO_set_nbio(this->_bio, 1);
+				// Флаг необходимо установить только для неблокирующего сокета
+				SSL_set_mode(this->_ssl, SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER);
+			}
 		}
+		// Выводим результат
+		return this->_addr->_async;
 	}
-	// Выводим результат
-	return this->_addr->_async;
+	// Сообщаем что сокет в блокирующем режиме
+	return false;
 }
 /**
  * isblock Метод проверки на то, является ли сокет заблокированным
  * @return результат работы функции
  */
 bool awh::Engine::Context::isblock() noexcept {
-	// Выводим результат проверки
-	return !this->_addr->_async;
+	// Если адрес присвоен
+	if(this->_addr != nullptr)
+		// Выводим результат проверки
+		return !this->_addr->_async;
+	// Сообщаем что сокет в блокирующем режиме
+	return true;
 }
 /**
  * timeout Метод установки таймаута
@@ -1445,22 +1459,25 @@ bool awh::Engine::Context::isblock() noexcept {
  * @return       результат установки таймаута
  */
 int awh::Engine::Context::timeout(const time_t msec, const method_t method) noexcept {
-	// Определяем тип метода
-	switch(static_cast <uint8_t> (method)){
-		// Если установлен метод чтения
-		case static_cast <uint8_t> (method_t::READ):
-			// Выполняем установку таймера на чтение данных из сокета
-			return (
-				(this->_addr->fd != INVALID_SOCKET) && (this->_addr->fd < MAX_SOCKETS) ?
-				this->_addr->_socket.readTimeout(this->_addr->fd, msec) : -1
-			);
-		// Если установлен метод записи
-		case static_cast <uint8_t> (method_t::WRITE):
-			// Выполняем установку таймера на запись данных в сокет
-			return (
-				(this->_addr->fd != INVALID_SOCKET) && (this->_addr->fd < MAX_SOCKETS) ?
-				this->_addr->_socket.writeTimeout(this->_addr->fd, msec) : -1
-			);
+	// Если адрес присвоен
+	if(this->_addr != nullptr){
+		// Определяем тип метода
+		switch(static_cast <uint8_t> (method)){
+			// Если установлен метод чтения
+			case static_cast <uint8_t> (method_t::READ):
+				// Выполняем установку таймера на чтение данных из сокета
+				return (
+					(this->_addr->fd != INVALID_SOCKET) && (this->_addr->fd < MAX_SOCKETS) ?
+					this->_addr->_socket.readTimeout(this->_addr->fd, msec) : -1
+				);
+			// Если установлен метод записи
+			case static_cast <uint8_t> (method_t::WRITE):
+				// Выполняем установку таймера на запись данных в сокет
+				return (
+					(this->_addr->fd != INVALID_SOCKET) && (this->_addr->fd < MAX_SOCKETS) ?
+					this->_addr->_socket.writeTimeout(this->_addr->fd, msec) : -1
+				);
+		}
 	}
 	// Сообщаем, что операция не выполнена
 	return -1;
@@ -1473,24 +1490,27 @@ int awh::Engine::Context::timeout(const time_t msec, const method_t method) noex
 int awh::Engine::Context::buffer(const method_t method) const noexcept {
 	// Результат работы функции
 	int result = 0;
-	// Определяем метод для работы с буфером
-	switch(static_cast <uint8_t> (method)){
-		// Если метод чтения
-		case static_cast <uint8_t> (method_t::READ):
-			// Получаем размер буфера для чтения
-			result = (
-				(this->_addr->fd != INVALID_SOCKET) && (this->_addr->fd < MAX_SOCKETS) ?
-				this->_addr->_socket.bufferSizeRead(this->_addr->fd) : 0
-			);
-		break;
-		// Если метод записи
-		case static_cast <uint8_t> (method_t::WRITE):
-			// Получаем размер буфера для записи
-			result = (
-				(this->_addr->fd != INVALID_SOCKET) && (this->_addr->fd < MAX_SOCKETS) ?
-				this->_addr->_socket.bufferSizeWrite(this->_addr->fd) : 0
-			);
-		break;
+	// Если адрес присвоен
+	if(this->_addr != nullptr){
+		// Определяем метод для работы с буфером
+		switch(static_cast <uint8_t> (method)){
+			// Если метод чтения
+			case static_cast <uint8_t> (method_t::READ):
+				// Получаем размер буфера для чтения
+				result = (
+					(this->_addr->fd != INVALID_SOCKET) && (this->_addr->fd < MAX_SOCKETS) ?
+					this->_addr->_socket.bufferSizeRead(this->_addr->fd) : 0
+				);
+			break;
+			// Если метод записи
+			case static_cast <uint8_t> (method_t::WRITE):
+				// Получаем размер буфера для записи
+				result = (
+					(this->_addr->fd != INVALID_SOCKET) && (this->_addr->fd < MAX_SOCKETS) ?
+					this->_addr->_socket.bufferSizeWrite(this->_addr->fd) : 0
+				);
+			break;
+		}
 	}
 	// Выводим результат
 	return result;
@@ -1503,11 +1523,15 @@ int awh::Engine::Context::buffer(const method_t method) const noexcept {
  * @return      результат работы функции
  */
 int awh::Engine::Context::buffer(const int read, const int write, const u_int total) noexcept {
-	// Если подключение выполнено
-	return (
-		(this->_addr->fd != INVALID_SOCKET) && (this->_addr->fd < MAX_SOCKETS) ?
-		this->_addr->_socket.bufferSize(this->_addr->fd, read, write, total) : -1
-	);
+	// Если адрес присвоен
+	if(this->_addr != nullptr)
+		// Если подключение выполнено
+		return (
+			(this->_addr->fd != INVALID_SOCKET) && (this->_addr->fd < MAX_SOCKETS) ?
+			this->_addr->_socket.bufferSize(this->_addr->fd, read, write, total) : -1
+		);
+	// Иначе возвращаем неустановленный размер буфера
+	return -1;
 }
  /**
  * ~Context Деструктор

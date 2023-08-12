@@ -1,4 +1,4 @@
-// gcc --std=c++11 mac7.cpp -o ./mac7 -lws2_32 -lIphlpapi -lstdc++
+// g++ --std=c++11 mac.cpp -o ./mac -lws2_32 -lIphlpapi -lstdc++
 
 #include <winsock2.h>
 #include <iphlpapi.h>

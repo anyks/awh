@@ -366,7 +366,7 @@ void awh::Core::launching() noexcept {
 			// Если функция обратного вызова установлена
 			if(scheme.second->callback.is("open"))
 				// Устанавливаем полученную функцию обратного вызова
-				callback.set <void (const size_t, core_t *)> (to_string(scheme.first), scheme.second->callback.get <void (const size_t, core_t *)> ("open"), scheme.first, this);
+				callback.set <void (const size_t, core_t *)> (scheme.first, scheme.second->callback.get <void (const size_t, core_t *)> ("open"), scheme.first, this);
 		}
 		// Выполняем все функции обратного вызова
 		callback.bind <const size_t, core_t *> ();
@@ -447,7 +447,7 @@ void awh::Core::persistent(const evutil_socket_t fd, const short event) noexcept
 					// Переходим по всему списку адъютантов и формируем список их идентификаторов
 					for(auto & adj : this->adjutants)
 						// Получаем функцию обратного вызова
-						callback.set <void (const size_t, const size_t, core_t *)> (to_string(adj.first), shm->callback.get <void (const size_t, const size_t, core_t *)> ("persist"), adj.first, item.first, this);
+						callback.set <void (const size_t, const size_t, core_t *)> (adj.first, shm->callback.get <void (const size_t, const size_t, core_t *)> ("persist"), adj.first, item.first, this);
 				}
 			}
 			// Выполняем все функции обратного вызова
@@ -941,7 +941,7 @@ void awh::Core::enabled(const engine_t::method_t method, const size_t aid) noexc
 						// Выполняем запуск работы события
 						adj->bev.events.read.start();
 						// Если флаг ожидания входящих сообщений, активирован
-						if(adj->timeouts.read > 0){
+						if((adj->timeouts.read > 0) && (this->settings.sonet != scheme_t::sonet_t::UDP)){
 							// Устанавливаем тип таймера
 							adj->bev.timers.read.set(-1, EV_TIMEOUT);
 							// Устанавливаем базу данных событий
@@ -969,7 +969,7 @@ void awh::Core::enabled(const engine_t::method_t method, const size_t aid) noexc
 						// Выполняем запуск работы события
 						adj->bev.events.write.start();
 						// Если флаг ожидания исходящих сообщений, активирован
-						if(adj->timeouts.write > 0){
+						if((adj->timeouts.write > 0) && (this->settings.sonet != scheme_t::sonet_t::UDP)){
 							// Устанавливаем тип таймера
 							adj->bev.timers.write.set(-1, EV_TIMEOUT);
 							// Устанавливаем базу данных событий

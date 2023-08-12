@@ -98,9 +98,7 @@ int main(int argc, char * argv[]){
 	// Устанавливаем простое чтение базы событий
 	// core.easily(true);
 	// Устанавливаем адрес сертификата
-	// core.ca("./ca/cert.pem");
-	// Устанавливаем название сервера
-	// core.nameServer("anyks");
+	core.ca("./ca/cert.pem");
 	// Устанавливаем тип сокета unix-сокет
 	// core.family(awh::scheme_t::family_t::NIX);
 	// Устанавливаем тип сокета UDP TLS

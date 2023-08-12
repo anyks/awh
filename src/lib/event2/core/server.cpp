@@ -505,7 +505,7 @@ void awh::server::Core::close() noexcept {
 						// Если функция обратного вызова установлена
 						if(shm->callback.is("disconnect"))
 							// Устанавливаем полученную функцию обратного вызова
-							callback.set <void (const size_t, const size_t, awh::core_t *)> (to_string(it->first), shm->callback.get <void (const size_t, const size_t, awh::core_t *)> ("disconnect"), it->first, item.first, this);
+							callback.set <void (const size_t, const size_t, awh::core_t *)> (it->first, shm->callback.get <void (const size_t, const size_t, awh::core_t *)> ("disconnect"), it->first, item.first, this);
 						// Если список объектов DTLS не пустой
 						if(!this->_dtls.empty())
 							// Удаляем объект для работы DTLS из списка
@@ -562,7 +562,7 @@ void awh::server::Core::remove() noexcept {
 						// Если функция обратного вызова установлена
 						if(shm->callback.is("disconnect"))
 							// Устанавливаем полученную функцию обратного вызова
-							callback.set <void (const size_t, const size_t, awh::core_t *)> (to_string(jt->first), shm->callback.get <void (const size_t, const size_t, awh::core_t *)> ("disconnect"), jt->first, it->first, this);
+							callback.set <void (const size_t, const size_t, awh::core_t *)> (jt->first, shm->callback.get <void (const size_t, const size_t, awh::core_t *)> ("disconnect"), jt->first, it->first, this);
 						// Если список объектов DTLS не пустой
 						if(!this->_dtls.empty())
 							// Удаляем объект для работы DTLS из списка
@@ -689,7 +689,7 @@ void awh::server::Core::remove(const size_t sid) noexcept {
 						// Если функция обратного вызова установлена
 						if(shm->callback.is("disconnect"))
 							// Устанавливаем полученную функцию обратного вызова
-							callback.set <void (const size_t, const size_t, awh::core_t *)> (to_string(jt->first), shm->callback.get <void (const size_t, const size_t, awh::core_t *)> ("disconnect"), jt->first, it->first, this);
+							callback.set <void (const size_t, const size_t, awh::core_t *)> (jt->first, shm->callback.get <void (const size_t, const size_t, awh::core_t *)> ("disconnect"), jt->first, it->first, this);
 						// Удаляем адъютанта из списка подключений
 						this->adjutants.erase(jt->first);
 						// Если список объектов DTLS не пустой
@@ -753,15 +753,15 @@ void awh::server::Core::close(const size_t aid) noexcept {
 				// Если функция обратного вызова установлена
 				if(shm->callback.is("disconnect"))
 					// Устанавливаем полученную функцию обратного вызова
-					callback.set <void (const size_t, const size_t, awh::core_t *)> (to_string(aid), shm->callback.get <void (const size_t, const size_t, awh::core_t *)> ("disconnect"), aid, shm->sid, this);
+					callback.set <void (const size_t, const size_t, awh::core_t *)> (aid, shm->callback.get <void (const size_t, const size_t, awh::core_t *)> ("disconnect"), aid, shm->sid, this);
 				// Если тип сокета установлен как DTLS, запускаем ожидание новых подключений
 				if(this->settings.sonet == scheme_t::sonet_t::DTLS){
 					// Если функция обратного вызова установлена
-					if(callback.is(to_string(aid))){
+					if(callback.is(aid)){
 						// Выполняем все функции обратного вызова
-						callback.bind <const size_t, const size_t, awh::core_t *> (to_string(aid));
+						callback.bind <const size_t, const size_t, awh::core_t *> (aid);
 						// Очищаем список функций обратного вызова
-						callback.rm(to_string(aid));
+						callback.rm(aid);
 					}
 					// Выполняем закрытие подключение сервера
 					shm->addr.clear();
@@ -776,9 +776,9 @@ void awh::server::Core::close(const size_t aid) noexcept {
 			// Удаляем блокировку адъютанта
 			this->_locking.erase(aid);
 			// Если функция обратного вызова установлена
-			if(callback.is(to_string(aid)))
+			if(callback.is(aid))
 				// Выполняем все функции обратного вызова
-				callback.bind <const size_t, const size_t, awh::core_t *> (to_string(aid));
+				callback.bind <const size_t, const size_t, awh::core_t *> (aid);
 		}
 	}
 }
@@ -852,6 +852,17 @@ void awh::server::Core::transfer(const engine_t::method_t method, const size_t a
 					do {
 						// Если подключение выполнено и чтение данных разрешено
 						if(!adj->bev.locked.read){
+							// Если тип сокета установлен как UDP или DTLS
+							if((this->settings.sonet == scheme_t::sonet_t::UDP) || (this->settings.sonet == scheme_t::sonet_t::DTLS)){
+								// Если флаг ожидания входящих сообщений, активирован
+								if(adj->timeouts.read > 0)
+									// Выполняем установку таймаута ожидания
+									adj->ectx.timeout(adj->timeouts.read, engine_t::method_t::READ);
+								// Если флаг ожидания исходящих сообщений, активирован
+								if(adj->timeouts.write > 0)
+									// Выполняем установку таймаута ожидания
+									adj->ectx.timeout(adj->timeouts.write, engine_t::method_t::WRITE);
+							}
 							// Выполняем обнуление буфера данных
 							memset(buffer.get(), 0, size);
 							// Выполняем получение сообщения от клиента

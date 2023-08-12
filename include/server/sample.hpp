@@ -16,6 +16,11 @@
 #define __AWH_SAMPLE_SERVER__
 
 /**
+ * Стандартные модули
+ */
+#include <queue>
+
+/**
  * Наши модули
  */
 #include <core/server.hpp>
@@ -91,6 +96,9 @@ namespace awh {
 			private:
 				// Флаг долгоживущего подключения
 				bool _alive;
+			private:
+				// Список отключившихся адъютантов
+				queue <size_t> _closed;
 			private:
 				// Создаём объект фреймворка
 				const fmk_t * _fmk;
@@ -176,6 +184,13 @@ namespace awh {
 				 * @param aid идентификатор адъютанта
 				 */
 				void actionDisconnect(const size_t aid) noexcept;
+			private:
+				/**
+				 * remove Метод удаления отключившихся адъютантов
+				 * @param tid  идентификатор таймера
+				 * @param core объект сетевого ядра
+				 */
+				void remove(const u_short tid, awh::core_t * core) noexcept;
 			public:
 				/**
 				 * init Метод инициализации Rest адъютанта

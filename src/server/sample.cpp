@@ -41,9 +41,12 @@ void awh::server::Sample::persistCallback(const size_t aid, const size_t sid, aw
 		// Получаем параметры подключения адъютанта
 		sample_scheme_t::coffer_t * adj = const_cast <sample_scheme_t::coffer_t *> (this->_scheme.get(aid));
 		// Если параметры подключения адъютанта получены
-		if((adj != nullptr) && ((!adj->alive && !this->_alive) || adj->close))
+		if((adj != nullptr) && ((!adj->alive && !this->_alive) || adj->close)){
 			// Если адъютант давно должен был быть отключён, отключаем его
-			if(adj->close) reinterpret_cast <server::core_t *> (core)->close(aid);
+			if(adj->close)
+				// Выполняем закрытие подключение адъютанта
+				reinterpret_cast <server::core_t *> (core)->close(aid);
+		}
 	}
 }
 /**
@@ -142,7 +145,7 @@ void awh::server::Sample::writeCallback(const char * buffer, const size_t size, 
 				// Устанавливаем флаг закрытия подключения
 				adj->close = !adj->close;
 				// Принудительно выполняем отключение лкиента
-				const_cast <server::core_t *> (this->_core)->close(aid);
+				core->close(aid);
 			}
 		}
 	}
@@ -256,6 +259,28 @@ void awh::server::Sample::actionConnect(const size_t aid) noexcept {
 void awh::server::Sample::actionDisconnect(const size_t aid) noexcept {
 	// Если идентификатор адъютанта существует
 	if(aid > 0){
+		// Получаем параметры подключения адъютанта
+		sample_scheme_t::coffer_t * adj = const_cast <sample_scheme_t::coffer_t *> (this->_scheme.get(aid));
+		// Если экшен соответствует, выполняем его сброс
+		if(adj->action == sample_scheme_t::action_t::DISCONNECT)
+			// Выполняем сброс экшена
+			adj->action = sample_scheme_t::action_t::NONE;
+		// Добавляем в очередь список отключившихся адъютантов
+		this->_closed.push(aid);
+		// Устанавливаем таймер на удаление данных адъютанта через 5 секунд
+		const_cast <server::core_t *> (this->_core)->setTimeout(5000, (function <void (const u_short, awh::core_t *)>) std::bind(&sample_t::remove, this, _1, _2));
+	}
+}
+/**
+ * remove Метод удаления отключившихся адъютантов
+ * @param tid  идентификатор таймера
+ * @param core объект сетевого ядра
+ */
+void awh::server::Sample::remove(const u_short tid, awh::core_t * core) noexcept {
+	// Получаем идентификатор даъютанта
+	const size_t aid = this->_closed.front();
+	// Если идентификатор адъютанта существует
+	if(aid > 0){
 		// Если функция обратного вызова установлена, выполняем
 		if(this->_callback.active != nullptr)
 			// Выполняем функцию обратного вызова
@@ -268,14 +293,12 @@ void awh::server::Sample::actionDisconnect(const size_t aid) noexcept {
 			adj->close = true;
 			// Выполняем очистку оставшихся данных
 			adj->buffer.clear();
-			// Если экшен соответствует, выполняем его сброс
-			if(adj->action == sample_scheme_t::action_t::DISCONNECT)
-				// Выполняем сброс экшена
-				adj->action = sample_scheme_t::action_t::NONE;
 			// Выполняем удаление параметров адъютанта
 			this->_scheme.rm(aid);
 		}
 	}
+	// Удаляем адъютанта из списка отключённых
+	this->_closed.pop();
 }
 /**
  * init Метод инициализации Rest адъютанта

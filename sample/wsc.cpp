@@ -239,8 +239,6 @@ int main(int argc, char * argv[]){
 	// core.frequency(0);
 	// Устанавливаем простое чтение базы событий
 	// core.easily(true);
-	// Устанавливаем название сервера
-	// core.nameServer("anyks");
 	// Устанавливаем адрес сертификата
 	core.ca("./ca/cert.pem");
 	// Устанавливаем тип сокета unix-сокет

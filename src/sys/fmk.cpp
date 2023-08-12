@@ -2230,8 +2230,8 @@ std::map <size_t, size_t> awh::Framework::urls(const string & text) const noexce
 }
 /**
  * time2abbr Метод перевода времени в аббревиатуру
- * @param  date дата в UnixTimestamp
- * @return      строка содержащая аббревиатуру даты
+ * @param date дата в UnixTimestamp
+ * @return     строка содержащая аббревиатуру даты
  */
 string awh::Framework::time2abbr(const time_t date) const noexcept {
 	// Результат работы функции
