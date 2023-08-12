@@ -138,7 +138,7 @@ bool awh::Engine::Address::list() noexcept {
 				// Если протокол интернета установлен как SCTP
 				if(this->_protocol == IPPROTO_SCTP){
 					// Выполняем инициализацию SCTP протокола
-					this->_socket.sctpEvents(this->fd);
+					this->_socket.eventsSCTP(this->fd);
 					/**
 					 * Создаём BIO, чтобы установить все необходимые параметры для
 					 * следующего соединения, например. SCTP-АУТЕНТИФИКАЦИЯ.
@@ -226,7 +226,7 @@ bool awh::Engine::Address::connect() noexcept {
 			// Если протокол интернета установлен как SCTP
 			if(this->_protocol == IPPROTO_SCTP)
 				// Выполняем инициализацию SCTP протокола
-				this->_socket.sctpEvents(this->fd);
+				this->_socket.eventsSCTP(this->fd);
 		#endif
 		// Если подключение не выполненно то сообщаем об этом, выполняем подключение к удаленному серверу
 		if((this->_peer.size > 0) && (::connect(this->fd, (struct sockaddr *) (&this->_peer.server), this->_peer.size) == 0))
@@ -400,11 +400,11 @@ bool awh::Engine::Address::accept(const SOCKET fd, const int family) noexcept {
 			 */
 			#if !defined(_WIN32) && !defined(_WIN64)
 				// Выполняем игнорирование сигнала неверной инструкции процессора
-				this->_socket.noSigill();
+				this->_socket.noSigILL();
 				// Если сокет установлен TCP/IP
 				if(this->_type == SOCK_STREAM){
 					// Отключаем сигнал записи в оборванное подключение
-					this->_socket.noSigpipe(this->fd);
+					this->_socket.noSigPIPE(this->fd);
 					/**
 					 * Если операционной системой является Linux или FreeBSD
 					 */
@@ -435,7 +435,7 @@ bool awh::Engine::Address::accept(const SOCKET fd, const int family) noexcept {
 				// Устанавливаем разрешение на повторное использование сокета
 				this->_socket.reuseable(this->fd);
 				// Переводим сокет в не блокирующий режим
-				this->_socket.nonBlocking(this->fd);
+				this->_socket.setBlocking(this->fd, socket_t::mode_t::NOBLOCK);
 				/**
 				 * Если операционной системой является Linux или FreeBSD
 				 */
@@ -443,7 +443,7 @@ bool awh::Engine::Address::accept(const SOCKET fd, const int family) noexcept {
 					// Если протокол интернета установлен как SCTP
 					if(this->_protocol != IPPROTO_SCTP){
 						// Отключаем алгоритм Нейгла для сервера и клиента
-						this->_socket.tcpNodelay(this->fd);
+						this->_socket.nodelayTCP(this->fd);
 						// Отключаем алгоритм Нейгла
 						BIO_set_tcp_ndelay(this->fd, 1);
 					}
@@ -452,7 +452,7 @@ bool awh::Engine::Address::accept(const SOCKET fd, const int family) noexcept {
 				 */
 				#else
 					// Отключаем алгоритм Нейгла для сервера и клиента
-					this->_socket.tcpNodelay(this->fd);
+					this->_socket.nodelayTCP(this->fd);
 					// Отключаем алгоритм Нейгла
 					BIO_set_tcp_ndelay(this->fd, 1);
 				#endif
@@ -465,15 +465,15 @@ bool awh::Engine::Address::accept(const SOCKET fd, const int family) noexcept {
 			// Для протокола unix-сокета
 			case AF_UNIX: {
 				// Выполняем игнорирование сигнала неверной инструкции процессора
-				this->_socket.noSigill();
+				this->_socket.noSigILL();
 				// Если сокет установлен TCP/IP
 				if(this->_type == SOCK_STREAM){
 					// Отключаем сигнал записи в оборванное подключение
-					this->_socket.noSigpipe(this->fd);
+					this->_socket.noSigPIPE(this->fd);
 					// Устанавливаем разрешение на повторное использование сокета
 					this->_socket.reuseable(this->fd);
 					// Переводим сокет в не блокирующий режим
-					this->_socket.nonBlocking(this->fd);
+					this->_socket.setBlocking(this->fd, socket_t::mode_t::NOBLOCK);
 				}
 			} break;
 		#endif
@@ -525,15 +525,15 @@ void awh::Engine::Address::init(const string & unixsocket, const type_t type) no
 				return;
 			}
 			// Выполняем игнорирование сигнала неверной инструкции процессора
-			this->_socket.noSigill();
+			this->_socket.noSigILL();
 			// Устанавливаем разрешение на повторное использование сокета
 			this->_socket.reuseable(this->fd);
 			// Если сокет установлен TCP/IP
 			if(this->_type == SOCK_STREAM){
 				// Отключаем сигнал записи в оборванное подключение
-				this->_socket.noSigpipe(this->fd);
+				this->_socket.noSigPIPE(this->fd);
 				// Переводим сокет в не блокирующий режим
-				this->_socket.nonBlocking(this->fd);
+				this->_socket.setBlocking(this->fd, socket_t::mode_t::NOBLOCK);
 			}
 			// Создаём объект подключения для клиента
 			struct sockaddr_un client;
@@ -798,15 +798,15 @@ void awh::Engine::Address::init(const string & ip, const u_int port, const int f
 			 */
 			#if !defined(_WIN32) && !defined(_WIN64)
 				// Выполняем игнорирование сигнала неверной инструкции процессора
-				this->_socket.noSigill();
+				this->_socket.noSigILL();
 				// Если сокет установлен TCP/IP
 				if(this->_type == SOCK_STREAM)
 					// Отключаем сигнал записи в оборванное подключение
-					this->_socket.noSigpipe(this->fd);
+					this->_socket.noSigPIPE(this->fd);
 				// Если приложение является сервером
 				if(type == type_t::SERVER){
 					// Включаем отображение сети IPv4 в IPv6
-					if(family == AF_INET6) this->_socket.ipV6only(this->fd, onlyV6);
+					if(family == AF_INET6) this->_socket.onlyIPv6(this->fd, onlyV6);
 				// Если приложение является клиентом и сокет установлен TCP/IP
 				} else if(this->_type == SOCK_STREAM) {
 					/**
@@ -832,7 +832,7 @@ void awh::Engine::Address::init(const string & ip, const u_int port, const int f
 				// Если приложение является сервером
 				if(type == type_t::SERVER){
 					// Включаем отображение сети IPv4 в IPv6
-					if(family == AF_INET6) this->_socket.ipV6only(this->fd, onlyV6);
+					if(family == AF_INET6) this->_socket.onlyIPv6(this->fd, onlyV6);
 				// Если приложение является клиентом и сокет установлен TCP/IP
 				} else if(this->_type == SOCK_STREAM)
 					// Активируем KeepAlive
@@ -843,7 +843,7 @@ void awh::Engine::Address::init(const string & ip, const u_int port, const int f
 				// Если приложение является сервером
 				if(type == type_t::SERVER)
 					// Переводим сокет в не блокирующий режим
-					this->_socket.nonBlocking(this->fd);
+					this->_socket.setBlocking(this->fd, socket_t::mode_t::NOBLOCK);
 				/**
 				 * Если операционной системой является Linux или FreeBSD
 				 */
@@ -851,7 +851,7 @@ void awh::Engine::Address::init(const string & ip, const u_int port, const int f
 					// Если протокол интернета установлен как SCTP
 					if(this->_protocol != IPPROTO_SCTP){
 						// Отключаем алгоритм Нейгла для сервера и клиента
-						this->_socket.tcpNodelay(this->fd);
+						this->_socket.nodelayTCP(this->fd);
 						// Отключаем алгоритм Нейгла
 						BIO_set_tcp_ndelay(this->fd, 1);
 					}
@@ -860,7 +860,7 @@ void awh::Engine::Address::init(const string & ip, const u_int port, const int f
 				 */
 				#else
 					// Отключаем алгоритм Нейгла для сервера и клиента
-					this->_socket.tcpNodelay(this->fd);
+					this->_socket.nodelayTCP(this->fd);
 					// Отключаем алгоритм Нейгла
 					BIO_set_tcp_ndelay(this->fd, 1);
 				#endif
@@ -1400,7 +1400,7 @@ bool awh::Engine::Context::block() noexcept {
 		// Если защищённый режим работы разрешён
 		if((this->_addr->fd != INVALID_SOCKET) && (this->_addr->fd < MAX_SOCKETS)){
 			// Переводим сокет в блокирующий режим
-			this->_addr->_async = (this->_addr->_socket.blocking(this->_addr->fd) != 0);
+			this->_addr->_async = !this->_addr->_socket.setBlocking(this->_addr->fd, socket_t::mode_t::BLOCK);
 			// Если шифрование включено
 			if(this->_tls && (this->_ssl != nullptr)){
 				// Устанавливаем блокирующий режим ввода/вывода для сокета
@@ -1425,7 +1425,7 @@ bool awh::Engine::Context::noblock() noexcept {
 		// Если файловый дескриптор активен
 		if((this->_addr->fd != INVALID_SOCKET) && (this->_addr->fd < MAX_SOCKETS)){
 			// Переводим сокет в не блокирующий режим
-			this->_addr->_async = (this->_addr->_socket.nonBlocking(this->_addr->fd) == 0);
+			this->_addr->_async = this->_addr->_socket.setBlocking(this->_addr->fd, socket_t::mode_t::NOBLOCK);
 			// Если шифрование включено
 			if(this->_tls && (this->_ssl != nullptr)){
 				// Устанавливаем неблокирующий режим ввода/вывода для сокета
@@ -1458,7 +1458,7 @@ bool awh::Engine::Context::isblock() noexcept {
  * @param method метод для установки таймаута
  * @return       результат установки таймаута
  */
-int awh::Engine::Context::timeout(const time_t msec, const method_t method) noexcept {
+bool awh::Engine::Context::timeout(const time_t msec, const method_t method) noexcept {
 	// Если адрес присвоен
 	if(this->_addr != nullptr){
 		// Определяем тип метода
@@ -1468,19 +1468,19 @@ int awh::Engine::Context::timeout(const time_t msec, const method_t method) noex
 				// Выполняем установку таймера на чтение данных из сокета
 				return (
 					(this->_addr->fd != INVALID_SOCKET) && (this->_addr->fd < MAX_SOCKETS) ?
-					this->_addr->_socket.readTimeout(this->_addr->fd, msec) : -1
+					this->_addr->_socket.timeout(this->_addr->fd, msec, socket_t::mode_t::READ) : false
 				);
 			// Если установлен метод записи
 			case static_cast <uint8_t> (method_t::WRITE):
 				// Выполняем установку таймера на запись данных в сокет
 				return (
 					(this->_addr->fd != INVALID_SOCKET) && (this->_addr->fd < MAX_SOCKETS) ?
-					this->_addr->_socket.writeTimeout(this->_addr->fd, msec) : -1
+					this->_addr->_socket.timeout(this->_addr->fd, msec, socket_t::mode_t::WRITE) : false
 				);
 		}
 	}
 	// Сообщаем, что операция не выполнена
-	return -1;
+	return false;
 }
 /**
  * buffer Метод получения размеров буфера
@@ -1499,7 +1499,7 @@ int awh::Engine::Context::buffer(const method_t method) const noexcept {
 				// Получаем размер буфера для чтения
 				result = (
 					(this->_addr->fd != INVALID_SOCKET) && (this->_addr->fd < MAX_SOCKETS) ?
-					this->_addr->_socket.bufferSizeRead(this->_addr->fd) : 0
+					this->_addr->_socket.bufferSize(this->_addr->fd, socket_t::mode_t::READ) : 0
 				);
 			break;
 			// Если метод записи
@@ -1507,7 +1507,7 @@ int awh::Engine::Context::buffer(const method_t method) const noexcept {
 				// Получаем размер буфера для записи
 				result = (
 					(this->_addr->fd != INVALID_SOCKET) && (this->_addr->fd < MAX_SOCKETS) ?
-					this->_addr->_socket.bufferSizeWrite(this->_addr->fd) : 0
+					this->_addr->_socket.bufferSize(this->_addr->fd, socket_t::mode_t::WRITE) : 0
 				);
 			break;
 		}
@@ -1522,16 +1522,17 @@ int awh::Engine::Context::buffer(const method_t method) const noexcept {
  * @param total максимальное количество подключений
  * @return      результат работы функции
  */
-int awh::Engine::Context::buffer(const int read, const int write, const u_int total) noexcept {
+bool awh::Engine::Context::buffer(const int read, const int write, const u_int total) noexcept {
 	// Если адрес присвоен
 	if(this->_addr != nullptr)
 		// Если подключение выполнено
 		return (
 			(this->_addr->fd != INVALID_SOCKET) && (this->_addr->fd < MAX_SOCKETS) ?
-			this->_addr->_socket.bufferSize(this->_addr->fd, read, write, total) : -1
+			this->_addr->_socket.bufferSize(this->_addr->fd, read, total, socket_t::mode_t::READ) &&
+			this->_addr->_socket.bufferSize(this->_addr->fd, write, total, socket_t::mode_t::WRITE) : false
 		);
 	// Иначе возвращаем неустановленный размер буфера
-	return -1;
+	return false;
 }
  /**
  * ~Context Деструктор

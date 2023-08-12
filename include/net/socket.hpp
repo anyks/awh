@@ -94,90 +94,105 @@ namespace awh {
 	 * Socket Класс работы с сетевыми сокетами
 	 */
 	typedef class Socket {
+		public:
+			/**
+			 * mode_t Флаги для работы с сокетами
+			 */
+			enum class mode_t : uint8_t {
+				NONE    = 0x00, // Флаг сокета не установлен
+				READ    = 0x01, // Параметры сокета на на чтение
+				WRITE   = 0x02, // Параметры сокета на на запись
+				BLOCK   = 0x03, // Сокет должен быть блокирующим
+				NOBLOCK = 0x04  // Сокет должен быть не блокирующим
+			};
 		private:
 			// Создаём объект работы с логами
 			const log_t * _log;
 		public:
 			/**
-			 * noSigill Метод блокировки сигнала SIGILL
+			 * noSigILL Метод блокировки сигнала SIGILL
 			 * @return результат работы функции
 			 */
-			int noSigill() const noexcept;
+			bool noSigILL() const noexcept;
+		public:
 			/**
-			 * tcpCork Метод активации tcp_cork
+			 * corkTCP Метод активации tcp_cork
 			 * @param fd файловый дескриптор (сокет)
 			 * @return   результат работы функции
 			 */
-			int tcpCork(const SOCKET fd) const noexcept;
-			/**
-			 * blocking Метод установки блокирующего сокета
-			 * @param fd файловый дескриптор (сокет)
-			 * @return   результат работы функции
-			 */
-			int blocking(const SOCKET fd) const noexcept;
-			/**
-			 * noSigpipe Метод игнорирования отключения сигнала записи в убитый сокет
-			 * @param fd файловый дескриптор (сокет)
-			 * @return   результат работы функции
-			 */
-			int noSigpipe(const SOCKET fd) const noexcept;
-			/**
-			 * reuseable Метод разрешающая повторно использовать сокет после его удаления
-			 * @param fd файловый дескриптор (сокет)
-			 * @return   результат работы функции
-			 */
-			int reuseable(const SOCKET fd) const noexcept;
-			/**
-			 * tcpNodelay Метод отключения алгоритма Нейгла
-			 * @param fd файловый дескриптор (сокет)
-			 * @return   результат работы функции
-			 */
-			int tcpNodelay(const SOCKET fd) const noexcept;
+			bool corkTCP(const SOCKET fd) const noexcept;
+		public:
 			/**
 			 * isBlocking Метод проверки сокета блокирующий режим
 			 * @param fd файловый дескриптор (сокет)
 			 * @return   результат работы функции
 			 */
-			int isBlocking(const SOCKET fd) const noexcept;
+			bool isBlocking(const SOCKET fd) const noexcept;
 			/**
-			 * sctpEvents Метод активации получения событий SCTP для сокета
-			 * @param fd файловый дескриптор (сокет)
-			 * @return   результат работы функции
-			 */
-			int sctpEvents(const SOCKET fd) const noexcept;
-			/**
-			 * closeonexec Метод разрешения закрывать сокет, после запуска
-			 * @param fd файловый дескриптор (сокет)
-			 * @return   результат работы функции
-			 */
-			int closeonexec(const SOCKET fd) const noexcept;
-			/**
-			 * nonBlocking Метод установки неблокирующего сокета
-			 * @param fd файловый дескриптор (сокет)
-			 * @return   результат работы функции
-			 */
-			int nonBlocking(const SOCKET fd) const noexcept;
-			/**
-			 * readTimeout Метод установки таймаута на чтение из сокета
+			 * setBlocking Метод установки блокирующего сокета
 			 * @param fd   файловый дескриптор (сокет)
-			 * @param msec время таймаута в миллисекундах
+			 * @param mode флаг установки типа сокета
 			 * @return     результат работы функции
 			 */
-			int readTimeout(const SOCKET fd, const time_t msec) const noexcept;
+			bool setBlocking(const SOCKET fd, const mode_t mode) const noexcept;
+		public:
 			/**
-			 * writeTimeout Метод установки таймаута на запись в сокет
-			 * @param fd   файловый дескриптор (сокет)
-			 * @param msec время таймаута в миллисекундах
-			 * @return     результат работы функции
+			 * noSigPIPE Метод игнорирования отключения сигнала записи в убитый сокет
+			 * @param fd файловый дескриптор (сокет)
+			 * @return   результат работы функции
 			 */
-			int writeTimeout(const SOCKET fd, const time_t msec) const noexcept;
+			bool noSigPIPE(const SOCKET fd) const noexcept;
 			/**
-			 * ipV6only Метод включающая или отключающая режим отображения IPv4 на IPv6
+			 * reuseable Метод разрешающая повторно использовать сокет после его удаления
+			 * @param fd файловый дескриптор (сокет)
+			 * @return   результат работы функции
+			 */
+			bool reuseable(const SOCKET fd) const noexcept;
+			/**
+			 * nodelayTCP Метод отключения алгоритма Нейгла
+			 * @param fd файловый дескриптор (сокет)
+			 * @return   результат работы функции
+			 */
+			bool nodelayTCP(const SOCKET fd) const noexcept;
+			/**
+			 * eventsSCTP Метод активации получения событий SCTP для сокета
+			 * @param fd файловый дескриптор (сокет)
+			 * @return   результат работы функции
+			 */
+			bool eventsSCTP(const SOCKET fd) const noexcept;
+			/**
+			 * closeOnExec Метод разрешения закрывать сокет, после запуска
+			 * @param fd файловый дескриптор (сокет)
+			 * @return   результат работы функции
+			 */
+			bool closeOnExec(const SOCKET fd) const noexcept;
+		public:
+			/**
+			 * onlyIPv6 Метод включающая или отключающая режим отображения IPv4 на IPv6
 			 * @param fd   файловый дескриптор (сокет)
 			 * @param mode активация или деактивация режима
 			 * @return     результат работы функции
 			 */
-			int ipV6only(const SOCKET fd, const bool mode = false) const noexcept;
+			bool onlyIPv6(const SOCKET fd, const bool mode = false) const noexcept;
+		public:
+			/**
+			 * timeout Метод установки таймаута на чтение из сокета
+			 * @param fd   файловый дескриптор (сокет)
+			 * @param msec время таймаута в миллисекундах
+			 * @param mode флаг установки типа сокета
+			 * @return     результат работы функции
+			 */
+			bool timeout(const SOCKET fd, const time_t msec, const mode_t mode) const noexcept;
+		public:
+			/**
+			 * timeToLive Метод установки времени жизни сокета
+			 * @param family тип протокола интернета AF_INET или AF_INET6
+			 * @param fd     файловый дескриптор (сокет)
+			 * @param ttl    время жизни файлового дескриптора в секундах (сокета)
+			 * @return       результат установки времени жизни
+			 */
+			bool timeToLive(const int family, const SOCKET fd, const int ttl) const noexcept;
+		public:
 			/**
 			 * keepAlive Метод устанавливает постоянное подключение на сокет
 			 * @param fd    файловый дескриптор (сокет)
@@ -186,29 +201,24 @@ namespace awh {
 			 * @param intvl время между попытками
 			 * @return      результат работы функции
 			 */
-			int keepAlive(const SOCKET fd, const int cnt = 0, const int idle = 0, const int intvl = 0) const noexcept;
+			bool keepAlive(const SOCKET fd, const int cnt = 0, const int idle = 0, const int intvl = 0) const noexcept;
 		public:
 			/**
-			 * bufferSizeRead Метод получения размера буфера для чтения
-			 * @param fd файловый дескриптор (сокет)
-			 * @return   размер буфера для чтения
+			 * bufferSize Метод получения размера буфера
+			 * @param fd   файловый дескриптор (сокет)
+			 * @param mode флаг установки типа сокета
+			 * @return     запрашиваемый размер буфера
 			 */
-			int bufferSizeRead(const SOCKET fd) const noexcept;
-			/**
-			 * bufferSizeWrite Метод получения размера буфера для записи
-			 * @param fd файловый дескриптор (сокет)
-			 * @return   размер буфера для записи
-			 */
-			int bufferSizeWrite(const SOCKET fd) const noexcept;
+			int bufferSize(const SOCKET fd, const mode_t mode) const noexcept;
 			/**
 			 * bufferSize Метод установки размеров буфера
 			 * @param fd    файловый дескриптор (сокет)
-			 * @param read  размер буфера на чтение
-			 * @param write размер буфера на запись
+			 * @param size  устанавливаемый размер буфера
 			 * @param total максимальное количество подключений
+			 * @param mode  флаг установки типа сокета
 			 * @return      результат работы функции
 			 */
-			int bufferSize(const SOCKET fd, const int read = 0, const int write = 0, const u_int total = 0) const noexcept;
+			bool bufferSize(const SOCKET fd, const int size, const u_int total, const mode_t mode) const noexcept;
 		public:
 			/**
 			 * Socket Конструктор

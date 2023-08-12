@@ -380,7 +380,7 @@ namespace awh {
 					 * @param method метод для установки таймаута
 					 * @return       результат установки таймаута
 					 */
-					int timeout(const time_t msec, const method_t method) noexcept;
+					bool timeout(const time_t msec, const method_t method) noexcept;
 				public:
 					/**
 					 * buffer Метод получения размеров буфера
@@ -395,7 +395,7 @@ namespace awh {
 					 * @param total максимальное количество подключений
 					 * @return      результат работы функции
 					 */
-					int buffer(const int read, const int write, const u_int total) noexcept;
+					bool buffer(const int read, const int write, const u_int total) noexcept;
 				public:
 					/**
 					 * Context Конструктор

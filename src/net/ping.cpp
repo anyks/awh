@@ -242,13 +242,17 @@ double awh::Ping::ping(const int family, const string & ip, const uint16_t count
 			// Устанавливаем разрешение на повторное использование сокета
 			this->_socket.reuseable(this->_fd);
 			// Устанавливаем разрешение на закрытие сокета при неиспользовании
-			this->_socket.closeonexec(this->_fd);
+			this->_socket.closeOnExec(this->_fd);
+			// Устанавливаем размер буфера передачи данных на чтение
+			this->_socket.bufferSize(this->_fd, 1024, 1, socket_t::mode_t::READ);
+			// Устанавливаем размер буфера передачи данных на запись
+			this->_socket.bufferSize(this->_fd, 1024, 1, socket_t::mode_t::WRITE);
 			// Устанавливаем таймаут на получение данных из сокета
-			this->_socket.readTimeout(this->_fd, this->_timeoutRead);
+			this->_socket.timeout(this->_fd, this->_timeoutRead, socket_t::mode_t::READ);
 			// Устанавливаем таймаут на запись данных в сокет
-			this->_socket.writeTimeout(this->_fd, this->_timeoutWrite);
-			// Устанавливаем размер буфера передачи данных
-			// this->_socket.bufferSize(this->_fd, sizeof(icmp), sizeof(icmp), 1);
+			this->_socket.timeout(this->_fd, this->_timeoutWrite, socket_t::mode_t::WRITE);
+			// Устанавливаем время жизни сокета
+			this->_socket.timeToLive(family, this->_fd, (this->_timeoutRead + this->_timeoutWrite) / 1000);
 			// Выполняем генерирование случайного числа
 			uniform_int_distribution <mt19937::result_type> dist6(0, std::numeric_limits <uint32_t>::max() - 1);
 			// Выполняем отправку указанного количества запросов
