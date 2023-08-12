@@ -255,6 +255,8 @@ double awh::Ping::ping(const int family, const string & ip, const uint16_t count
 			uniform_int_distribution <mt19937::result_type> dist6(0, std::numeric_limits <uint32_t>::max() - 1);
 			// Выполняем отправку указанного количества запросов
 			for(uint16_t i = 0; i < count; i++){
+				// Метка отправки данных
+				Send:
 				// Создаём объект заголовков
 				struct IcmpHeader icmp{};
 				// Определяем тип подключения
@@ -286,6 +288,8 @@ double awh::Ping::ping(const int family, const string & ip, const uint16_t count
 				mseconds = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
 				// Если запрос на сервер DNS успешно отправлен
 				if((bytes = ::sendto(this->_fd, &icmp, sizeof(icmp), 0, (struct sockaddr *) &this->_addr, this->_socklen)) > 0){
+					// Метка повторного получения данных
+					Read:
 					// Буфер для получения данных
 					char buffer[1024];
 					// Результат полученных данных
@@ -294,15 +298,17 @@ double awh::Ping::ping(const int family, const string & ip, const uint16_t count
 					bytes = ::recvfrom(this->_fd, icmpResponseHeader, sizeof(buffer), 0, (struct sockaddr *) &this->_addr, &this->_socklen);
 					// Если данные прочитать не удалось
 					if(bytes <= 0){
-						
-						cout << " ------------1 " << errno << endl;
-						
 						// Если сокет находится в блокирующем режиме
 						if(bytes < 0){
 							// Определяем тип ошибки
 							switch(errno){
 								// Если ошибка не обнаружена, выходим
 								case 0: break;
+								// Если нужно повторить получение данных
+								case EAGAIN:
+									// Снова пробуем получить данные
+									goto Read;
+								break;
 								// Если произведена неудачная запись в PIPE
 								case EPIPE:
 									// Выводим в лог сообщение
@@ -341,13 +347,15 @@ double awh::Ping::ping(const int family, const string & ip, const uint16_t count
 				} else if(bytes <= 0) {
 					// Если сокет находится в блокирующем режиме
 					if(bytes < 0){
-						
-						cout << " ------------2 " << errno << endl;
-						
 						// Определяем тип ошибки
 						switch(errno){
 							// Если ошибка не обнаружена, выходим
 							case 0: break;
+							// Если нужно повторить получение данных
+							case EAGAIN:
+								// Снова пробуем отправить данные
+								goto Send;
+							break;
 							// Если произведена неудачная запись в PIPE
 							case EPIPE:
 								// Выводим в лог сообщение
