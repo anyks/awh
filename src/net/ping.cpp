@@ -183,7 +183,7 @@ void awh::Ping::work(const int family, const string & ip) noexcept {
 				 */
 				#if defined(_WIN32) || defined(_WIN64)
 					// Создаём сокет подключения
-					this->_fd = ::socket(family, SOCK_DGRAM, IPPROTO_ICMP);
+					this->_fd = ::socket(family, SOCK_RAW, IPPROTO_ICMP);
 				/**
 				 * Методы только для *Nix-подобных операционных систем
 				 */
@@ -215,7 +215,7 @@ void awh::Ping::work(const int family, const string & ip) noexcept {
 				 */
 				#if defined(_WIN32) || defined(_WIN64)
 					// Создаём сокет подключения // IPPROTO_ICMP6
-					this->_fd = ::socket(family, SOCK_DGRAM, IPPROTO_ICMPV6);
+					this->_fd = ::socket(family, SOCK_RAW, IPPROTO_ICMPV6);
 				/**
 				 * Методы только для *Nix-подобных операционных систем
 				 */
@@ -503,7 +503,7 @@ double awh::Ping::ping(const int family, const string & ip, const uint16_t count
 				 */
 				#if defined(_WIN32) || defined(_WIN64)
 					// Создаём сокет подключения
-					this->_fd = ::socket(family, SOCK_DGRAM, IPPROTO_ICMP);
+					this->_fd = ::socket(family, SOCK_RAW, IPPROTO_ICMP);
 				/**
 				 * Методы только для *Nix-подобных операционных систем
 				 */
@@ -535,7 +535,7 @@ double awh::Ping::ping(const int family, const string & ip, const uint16_t count
 				 */
 				#if defined(_WIN32) || defined(_WIN64)
 					// Создаём сокет подключения // IPPROTO_ICMP6
-					this->_fd = ::socket(family, SOCK_DGRAM, IPPROTO_ICMPV6);
+					this->_fd = ::socket(family, SOCK_RAW, IPPROTO_ICMPV6);
 				/**
 				 * Методы только для *Nix-подобных операционных систем
 				 */
