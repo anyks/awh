@@ -336,7 +336,7 @@ double awh::Ping::ping(const int family, const string & ip, const uint16_t count
 						// Если разрешено выводить информацию в лог
 						if(!this->_noInfo)
 							// Формируем сообщение для вывода в лог
-							this->_log->print("%zu bytes from %s: icmp_seq=%u ttl=%u time=%s", log_t::flag_t::INFO, bytes, ip.c_str(), i, i + (this->_shifting / 1000), this->_fmk->time2abbr(timeShifting).c_str());
+							this->_log->print("%zu bytes from %s: icmp_seq=%u ttl=%u time=%s", log_t::flag_t::INFO, bytes, ip.c_str(), i, i + ((this->_shifting / 1000) * 2), this->_fmk->time2abbr(timeShifting).c_str());
 						// Увеличиваем общее количество времени
 						result += static_cast <double> (timeShifting);
 					}
