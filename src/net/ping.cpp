@@ -257,14 +257,31 @@ double awh::Ping::ping(const int family, const string & ip, const uint16_t count
 			for(uint16_t i = 0; i < count; i++){
 				// Создаём объект заголовков
 				struct IcmpHeader icmp{};
-				// Выполняем заполнение пакета ICMP
-				icmp.type                 = 8;
-				icmp.code                 = 0;
-				icmp.checksum             = 0;
-				icmp.meta.echo.sequence   = i;
+				// Определяем тип подключения
+				switch(family){
+					// Для протокола IPv4
+					case AF_INET:
+						// Выполняем установку типа запроса
+						icmp.type = 8;
+					break;
+					// Для протокола IPv6
+					case AF_INET6:
+						// Выполняем установку типа запроса
+						icmp.type = 128;
+					break;
+				}
+				// Устанавливаем код запроса
+				icmp.code = 0;
+				// Устанавливаем контрольную сумму
+				icmp.checksum = 0;
+				// Устанавливаем номер последовательности
+				icmp.meta.echo.sequence = i;
+				// Устанавливаем идентификатор запроса
 				icmp.meta.echo.identifier = getpid();
-				icmp.meta.echo.payload    = static_cast <uint64_t> (dist6(rng));
-				icmp.checksum             = this->checksum(&icmp, sizeof(icmp));
+				// Устанавливаем данные полезной нагрузки
+				icmp.meta.echo.payload = static_cast <uint64_t> (dist6(rng));
+				// Выполняем подсчёт контрольной суммы
+				icmp.checksum = this->checksum(&icmp, sizeof(icmp));
 				// Запоминаем текущее значение времени в миллисекундах
 				mseconds = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
 				// Если запрос на сервер DNS успешно отправлен

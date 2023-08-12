@@ -248,8 +248,6 @@ string awh::DNS::Worker::send(const string & server) noexcept {
 			this->_socket.reuseable(this->_fd);
 			// Устанавливаем разрешение на закрытие сокета при неиспользовании
 			this->_socket.closeOnExec(this->_fd);
-			// Устанавливаем время жизни сокета
-			// this->_socket.timeToLive(this->_family, this->_fd, this->_self->_timeout);
 			// Устанавливаем размер буфера передачи данных на чтение
 			this->_socket.bufferSize(this->_fd, sizeof(buffer), 1, socket_t::mode_t::READ);
 			// Устанавливаем размер буфера передачи данных на запись

@@ -114,6 +114,13 @@ namespace awh {
 						// Адрес ответа IPv4
 						uint32_t gatewayAddress = 0;
 					} redirect;
+					/**
+					 * redirect Структура адреса ответа
+					 */
+					struct ICMP6_PACKET_REDIRECT_HEADER {
+						// Адрес ответа IPv6
+						uint32_t gatewayAddress[4] = {0,0,0,0};
+					} redirect6;
 				} meta;
 			} __attribute__((packed));
 		private:
