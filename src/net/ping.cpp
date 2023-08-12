@@ -237,6 +237,8 @@ double awh::Ping::ping(const int family, const string & ip, const uint16_t count
 			return result;
 		// Если сокет создан удачно и работа резолвера не остановлена
 		} else if(this->_mode) {
+			// Количество передаваемых байтов
+			int64_t bytes = 0;
 			// Начальное значение времени
 			time_t mseconds = 0;
 			// Устанавливаем разрешение на повторное использование сокета
@@ -268,13 +270,13 @@ double awh::Ping::ping(const int family, const string & ip, const uint16_t count
 						// Запоминаем текущее значение времени в миллисекундах
 						mseconds = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
 						// Если запрос на сервер DNS успешно отправлен
-						if(::sendto(this->_fd, &icmp, sizeof(icmp), 0, (struct sockaddr *) &this->_addr, this->_socklen) > 0){
+						if((bytes = ::sendto(this->_fd, &icmp, sizeof(icmp), 0, (struct sockaddr *) &this->_addr, this->_socklen)) > 0){
 							// Буфер для получения данных
 							char buffer[1024];
 							// Результат полученных данных
 							auto * icmpResponseHeader = (struct IcmpHeaderIPv4 *) buffer;
 							// Выполняем чтение ответа сервера
-							const int64_t bytes = ::recvfrom(this->_fd, icmpResponseHeader, sizeof(buffer), 0, (struct sockaddr *) &this->_addr, &this->_socklen);
+							bytes = ::recvfrom(this->_fd, icmpResponseHeader, sizeof(buffer), 0, (struct sockaddr *) &this->_addr, &this->_socklen);
 							// Если данные прочитать не удалось
 							if(bytes <= 0){
 								// Если сокет находится в блокирующем режиме
@@ -314,6 +316,34 @@ double awh::Ping::ping(const int family, const string & ip, const uint16_t count
 								// Увеличиваем общее количество времени
 								result += static_cast <double> (timeShifting);
 							}
+						// Если сообщение отправить не удалось
+						} else if(bytes <= 0) {
+							// Если сокет находится в блокирующем режиме
+							if(bytes < 0){
+								// Определяем тип ошибки
+								switch(errno){
+									// Если ошибка не обнаружена, выходим
+									case 0: break;
+									// Если произведена неудачная запись в PIPE
+									case EPIPE:
+										// Выводим в лог сообщение
+										this->_log->print("EPIPE", log_t::flag_t::WARNING);
+									break;
+									// Если произведён сброс подключения
+									case ECONNRESET:
+										// Выводим в лог сообщение
+										this->_log->print("ECONNRESET", log_t::flag_t::WARNING);
+									break;
+									// Для остальных ошибок
+									default:
+										// Выводим в лог сообщение
+										this->_log->print("%s", log_t::flag_t::CRITICAL, strerror(errno));
+								}
+								// Выполняем закрытие подключения
+								this->close();
+								// Выводим результат
+								return result;
+							}
 						}
 						// Если работа резолвера ещё не остановлена
 						if(this->_mode)
@@ -338,13 +368,13 @@ double awh::Ping::ping(const int family, const string & ip, const uint16_t count
 						// Запоминаем текущее значение времени в миллисекундах
 						mseconds = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
 						// Если запрос на сервер DNS успешно отправлен
-						if(::sendto(this->_fd, &icmp, sizeof(icmp), 0, (struct sockaddr *) &this->_addr, this->_socklen) > 0){
+						if((bytes = ::sendto(this->_fd, &icmp, sizeof(icmp), 0, (struct sockaddr *) &this->_addr, this->_socklen)) > 0){
 							// Буфер для получения данных
 							char buffer[1024];
 							// Результат полученных данных
 							auto * icmpResponseHeader = (struct IcmpHeaderIPv6 *) buffer;
 							// Выполняем чтение ответа сервера
-							const int64_t bytes = ::recvfrom(this->_fd, icmpResponseHeader, sizeof(buffer), 0, (struct sockaddr *) &this->_addr, &this->_socklen);
+							bytes = ::recvfrom(this->_fd, icmpResponseHeader, sizeof(buffer), 0, (struct sockaddr *) &this->_addr, &this->_socklen);
 							// Если данные прочитать не удалось
 							if(bytes <= 0){
 								// Если сокет находится в блокирующем режиме
@@ -383,6 +413,34 @@ double awh::Ping::ping(const int family, const string & ip, const uint16_t count
 									this->_log->print("%zu bytes from %s: icmp_seq=%u ttl=%zu time=%s", log_t::flag_t::INFO, bytes, ip.c_str(), i, ((this->_timeoutRead + this->_timeoutWrite) / 1000), this->_fmk->time2abbr(timeShifting).c_str());
 								// Увеличиваем общее количество времени
 								result += static_cast <double> (timeShifting);
+							}
+						// Если сообщение отправить не удалось
+						} else if(bytes <= 0) {
+							// Если сокет находится в блокирующем режиме
+							if(bytes < 0){
+								// Определяем тип ошибки
+								switch(errno){
+									// Если ошибка не обнаружена, выходим
+									case 0: break;
+									// Если произведена неудачная запись в PIPE
+									case EPIPE:
+										// Выводим в лог сообщение
+										this->_log->print("EPIPE", log_t::flag_t::WARNING);
+									break;
+									// Если произведён сброс подключения
+									case ECONNRESET:
+										// Выводим в лог сообщение
+										this->_log->print("ECONNRESET", log_t::flag_t::WARNING);
+									break;
+									// Для остальных ошибок
+									default:
+										// Выводим в лог сообщение
+										this->_log->print("%s", log_t::flag_t::CRITICAL, strerror(errno));
+								}
+								// Выполняем закрытие подключения
+								this->close();
+								// Выводим результат
+								return result;
 							}
 						}
 						// Если работа резолвера ещё не остановлена
