@@ -377,7 +377,7 @@ double awh::Ping::ping(const int family, const string & ip, const uint16_t count
 				// Если работа резолвера ещё не остановлена
 				if(this->_mode){
 					// Устанавливаем время жизни сокета
-					this->_socket.timeToLive(family, this->_fd, (i + 1) + (this->_shifting / 1000));
+					// this->_socket.timeToLive(family, this->_fd, (i + 1) + (this->_shifting / 1000));
 					// Замораживаем поток на период времени в ${_shifting}
 					this_thread::sleep_for(chrono::milliseconds(this->_shifting));
 				}
