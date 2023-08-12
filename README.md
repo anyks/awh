@@ -647,6 +647,32 @@ int main(int argc, char * argv[]){
 }
 ```
 
+### Example PING
+
+```c++
+#include <net/ping.hpp>
+#include <core/core.hpp>
+
+using namespace std;
+using namespace awh;
+
+int main(int argc, char * argv[]){
+	fmk_t fmk;
+	log_t log(&fmk);
+	core_t core(&fmk, &log);
+	ping_t ping(&fmk, &log);
+
+	log.name("PING");
+	log.format("%H:%M:%S %d.%m.%Y");
+
+	const double result = ping.ping("api.telegram.org", 10);
+
+	log.print("PING result=%f", log_t::flag_t::INFO, result);
+
+	return 0;
+}
+```
+
 ### Example TCP Client
 
 ```c++

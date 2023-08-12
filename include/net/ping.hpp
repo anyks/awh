@@ -163,7 +163,7 @@ namespace awh {
 			const log_t * _log;
 		private:
 			// Функция обратного вызова для работы в асинхронном режиме
-			function <void (const double, const string &)> _callback;
+			function <void (const time_t, const string &, Ping *)> _callback;
 		private:
 			/**
 			 * checksum Метод подсчёта контрольной суммы
@@ -184,16 +184,23 @@ namespace awh {
 			void cancel() noexcept;
 		public:
 			/**
+			 * working Метод проверки запуска работы модуля
+			 * @return результат работы
+			 */
+			bool working() const noexcept;
+		public:
+			/**
 			 * ping Метод запуска пинга IP-адреса в асинхронном режиме
 			 * @param host хост для выполнения пинга
 			 */
 			void ping(const string & host) noexcept;
+		private:
 			/**
-			 * ping Метод запуска пинга IP-адреса в асинхронном режиме
+			 * work Метод запуска пинга IP-адреса в асинхронном режиме
 			 * @param family тип интернет-протокола AF_INET, AF_INET6
 			 * @param ip     адрес для выполнения пинга
 			 */
-			void ping(const int family, const string & ip) noexcept;
+			void work(const int family, const string & ip) noexcept;
 		public:
 			/**
 			 * ping Метод запуска пинга IP-адреса в синхронном режиме
@@ -238,7 +245,7 @@ namespace awh {
 			 * on Метод установки функции обратного вызова, для работы в асинхронном режиме
 			 * @param callback функция обратного вызова
 			 */
-			void on(function <void (const double, const string &)> callback) noexcept;
+			void on(function <void (const time_t, const string &, Ping *)> callback) noexcept;
 		public:
 			/**
 			 * Ping Конструктор
