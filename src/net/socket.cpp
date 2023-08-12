@@ -227,7 +227,7 @@ bool awh::Socket::reuseable(const SOCKET fd) const noexcept {
 		// Устанавливаем параметр
 		const int on = 1;
 		// Разрешаем повторно использовать тот же host:port после отключения
-		if(!(result = !static_cast <bool> (::setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, (const char *) &on, sizeof(on)))))
+		if(!(result = !static_cast <bool> (::setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, reinterpret_cast <const char *> (&on), sizeof(on)))))
 			// Выводим в лог информацию
 			this->_log->print("cannot set SO_REUSEADDR option on socket %d", log_t::flag_t::WARNING, fd);
 	/**
@@ -237,7 +237,7 @@ bool awh::Socket::reuseable(const SOCKET fd) const noexcept {
 		// Устанавливаем параметр
 		const int on = 1;
 		// Разрешаем повторно использовать тот же host:port после отключения
-		if(!(result = !static_cast <bool> (::setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, (const void *) &on, sizeof(on))))){
+		if(!(result = !static_cast <bool> (::setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, reinterpret_cast <const char *> (&on), sizeof(on))))){
 			// Выводим в лог информацию
 			this->_log->print("cannot set SO_REUSEADDR option on socket %d", log_t::flag_t::WARNING, fd);
 			// Выходим из функции
@@ -248,7 +248,7 @@ bool awh::Socket::reuseable(const SOCKET fd) const noexcept {
 		 */
 		#if !defined(__linux__)
 			// Разрешаем повторно использовать тот же host:port после отключения
-			if(!(result = !static_cast <bool> (::setsockopt(fd, SOL_SOCKET, SO_REUSEPORT, (const void *) &on, sizeof(on)))))
+			if(!(result = !static_cast <bool> (::setsockopt(fd, SOL_SOCKET, SO_REUSEPORT, reinterpret_cast <const char *> (&on), sizeof(on)))))
 				// Выводим в лог информацию
 				this->_log->print("cannot set SO_REUSEPORT option on socket %d", log_t::flag_t::WARNING, fd);
 		#endif
@@ -267,7 +267,7 @@ bool awh::Socket::nodelayTCP(const SOCKET fd) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Устанавливаем TCP_NODELAY
-	if(!(result = !static_cast <bool> (::setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, (char *) &on, sizeof(on)))))
+	if(!(result = !static_cast <bool> (::setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, reinterpret_cast <const char *> (&on), sizeof(on)))))
 		// Выводим в лог информацию
 		this->_log->print("cannot set TCP_NODELAY option on socket %d", log_t::flag_t::WARNING, fd);
 	// Выводим результат
@@ -343,7 +343,7 @@ bool awh::Socket::onlyIPv6(const SOCKET fd, const bool mode) const noexcept {
 	// Устанавливаем параметр
 	const u_int on = (mode ? 1 : 0);
 	// Разрешаем повторно использовать тот же host:port после отключения
-	if(!(result = !static_cast <bool> (::setsockopt(fd, IPPROTO_IPV6, IPV6_V6ONLY, (char *) &on, sizeof(on)))))
+	if(!(result = !static_cast <bool> (::setsockopt(fd, IPPROTO_IPV6, IPV6_V6ONLY, reinterpret_cast <const char *> (&on), sizeof(on)))))
 		// Выводим в лог информацию
 		this->_log->print("cannot set IPV6_V6ONLY option on socket %d", log_t::flag_t::WARNING, fd);
 	// Выводим результат
@@ -370,14 +370,14 @@ bool awh::Socket::timeout(const SOCKET fd, const time_t msec, const mode_t mode)
 			// Если необходимо установить таймаут на чтение
 			case static_cast <uint8_t> (mode_t::READ): {
 				// Выполняем установку таймаута на чтение данных из сокета
-				if(!(result = !static_cast <bool> (::setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, (const char *) &timeout, sizeof(timeout)))))
+				if(!(result = !static_cast <bool> (::setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, reinterpret_cast <const char *> (&timeout), sizeof(timeout)))))
 					// Выводим в лог информацию
 					this->_log->print("cannot set SO_RCVTIMEO option on socket %d", log_t::flag_t::WARNING, fd);
 			} break;
 			// Если необходимо установить таймаут на запись
 			case static_cast <uint8_t> (mode_t::WRITE): {
 				// Выполняем установку таймаута на чтение данных из сокета
-				if(!(result = !static_cast <bool> (::setsockopt(fd, SOL_SOCKET, SO_SNDTIMEO, (const char *) &timeout, sizeof(timeout)))))
+				if(!(result = !static_cast <bool> (::setsockopt(fd, SOL_SOCKET, SO_SNDTIMEO, reinterpret_cast <const char *> (&timeout), sizeof(timeout)))))
 					// Выводим в лог информацию
 					this->_log->print("cannot set SO_SNDTIMEO option on socket %d", log_t::flag_t::WARNING, fd);
 			} break;
@@ -397,14 +397,14 @@ bool awh::Socket::timeout(const SOCKET fd, const time_t msec, const mode_t mode)
 			// Если необходимо установить таймаут на чтение
 			case static_cast <uint8_t> (mode_t::READ): {
 				// Выполняем установку таймаута на чтение данных из сокета
-				if(!(result = !static_cast <bool> (::setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, (char *) &timeout, sizeof(timeout)))))
+				if(!(result = !static_cast <bool> (::setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, reinterpret_cast <char *> (&timeout), sizeof(timeout)))))
 					// Выводим в лог информацию
 					this->_log->print("cannot set SO_RCVTIMEO option on socket %d", log_t::flag_t::WARNING, fd);
 			} break;
 			// Если необходимо установить таймаут на запись
 			case static_cast <uint8_t> (mode_t::WRITE): {
 				// Выполняем установку таймаута на запись данных в сокет
-				if(!(result = !static_cast <bool> (::setsockopt(fd, SOL_SOCKET, SO_SNDTIMEO, (char *) &timeout, sizeof(timeout)))))
+				if(!(result = !static_cast <bool> (::setsockopt(fd, SOL_SOCKET, SO_SNDTIMEO, reinterpret_cast <char *> (&timeout), sizeof(timeout)))))
 					// Выводим в лог информацию
 					this->_log->print("cannot set SO_SNDTIMEO option on socket %d", log_t::flag_t::WARNING, fd);
 			} break;
@@ -444,7 +444,7 @@ bool awh::Socket::timeToLive(const int family, const SOCKET fd, const int ttl) c
 				// Выполняем получение размер TTL по умолчанию
 				const int mode = (ttl <= 0 ? 128 : ttl);
 				// Выполняем установку параметров времени жизни файлового дескриптора (сокета)
-				if(!(result = !static_cast <bool> (::setsockopt(fd, IPPROTO_IP, IP_TTL, (char *) &mode, sizeof(mode)))))
+				if(!(result = !static_cast <bool> (::setsockopt(fd, IPPROTO_IP, IP_TTL, reinterpret_cast <const char *> (&mode), sizeof(mode)))))
 					// Выводим в лог информацию
 					this->_log->print("cannot set IP_TTL option on socket %d", log_t::flag_t::WARNING, fd);
 			/**
@@ -454,7 +454,7 @@ bool awh::Socket::timeToLive(const int family, const SOCKET fd, const int ttl) c
 				// Выполняем получение размер TTL по умолчанию
 				const socklen_t mode = (ttl <= 0 ? 128 : static_cast <socklen_t> (ttl));
 				// Выполняем установку параметров времени жизни файлового дескриптора (сокета)
-				if(!(result = !static_cast <bool> (::setsockopt(fd, IPPROTO_IP, IP_TTL, &mode, sizeof(mode)))))
+				if(!(result = !static_cast <bool> (::setsockopt(fd, IPPROTO_IP, IP_TTL, reinterpret_cast <const char *> (&mode), sizeof(mode)))))
 					// Выводим в лог информацию
 					this->_log->print("cannot set IP_TTL option on socket %d", log_t::flag_t::WARNING, fd);
 			#endif
@@ -478,7 +478,7 @@ bool awh::Socket::timeToLive(const int family, const SOCKET fd, const int ttl) c
 				// Выполняем получение размер TTL по умолчанию
 				const int mode = (ttl <= 0 ? 128 : ttl);
 				// Выполняем установку параметров времени жизни файлового дескриптора (сокета)
-				if(!(result = !static_cast <bool> (::setsockopt(fd, IPPROTO_IPV6, IPV6_UNICAST_HOPS, (char *) &mode, sizeof(mode)))))
+				if(!(result = !static_cast <bool> (::setsockopt(fd, IPPROTO_IPV6, IPV6_UNICAST_HOPS, reinterpret_cast <const char *> (&mode), sizeof(mode)))))
 					// Выводим в лог информацию
 					this->_log->print("cannot set IPV6_UNICAST_HOPS option on socket %d", log_t::flag_t::WARNING, fd);
 			/**
@@ -488,7 +488,7 @@ bool awh::Socket::timeToLive(const int family, const SOCKET fd, const int ttl) c
 				// Выполняем получение размер TTL по умолчанию
 				const socklen_t mode = (ttl <= 0 ? 128 : static_cast <socklen_t> (ttl));
 				// Выполняем установку параметров времени жизни файлового дескриптора (сокета)
-				if(!(result = !static_cast <bool> (::setsockopt(fd, IPPROTO_IPV6, IPV6_UNICAST_HOPS, &mode, sizeof(mode)))))
+				if(!(result = !static_cast <bool> (::setsockopt(fd, IPPROTO_IPV6, IPV6_UNICAST_HOPS, reinterpret_cast <const char *> (&mode), sizeof(mode)))))
 					// Выводим в лог информацию
 					this->_log->print("cannot set IPV6_UNICAST_HOPS option on socket %d", log_t::flag_t::WARNING, fd);
 			#endif
@@ -516,7 +516,7 @@ bool awh::Socket::keepAlive(const SOCKET fd, const int cnt, const int idle, cons
 			// Флаг устанавливаемой опции KeepAlive
 			bool option = false;
 			// Если мы получили ошибку, выходим сообщение
-			if(!(result = !static_cast <bool> (::setsockopt(fd, SOL_SOCKET, SO_KEEPALIVE, (char *) &option, sizeof(option))))){
+			if(!(result = !static_cast <bool> (::setsockopt(fd, SOL_SOCKET, SO_KEEPALIVE, reinterpret_cast <char *> (&option), sizeof(option))))){
 				// Выводим в лог информацию
 				this->_log->print("setsockopt for SO_KEEPALIVE failed with error: %u", log_t::flag_t::WARNING, WSAGetLastError());
 				// Выходим из функции
@@ -528,7 +528,7 @@ bool awh::Socket::keepAlive(const SOCKET fd, const int cnt, const int idle, cons
 			// Устанавливаем размер опции для чтения
 			int size = sizeof(option);
 			// Если мы получили ошибку, выходим сообщение
-			if(!(result = !static_cast <bool> (::getsockopt(fd, SOL_SOCKET, SO_KEEPALIVE, (char *) &option, &size)))){
+			if(!(result = !static_cast <bool> (::getsockopt(fd, SOL_SOCKET, SO_KEEPALIVE, reinterpret_cast <char *> (&option), &size)))){
 				// Выводим в лог информацию
 				this->_log->print("getsockopt for SO_KEEPALIVE failed with error: %u", log_t::flag_t::WARNING, WSAGetLastError());
 				// Выходим из функции
@@ -611,14 +611,14 @@ int awh::Socket::bufferSize(const SOCKET fd, const mode_t mode) const noexcept {
 		// Если необходимо получить размер буфера на чтение
 		case static_cast <uint8_t> (mode_t::READ): {
 			// Считываем установленный размер буфера
-			if(static_cast <bool> (::getsockopt(fd, SOL_SOCKET, SO_RCVBUF, (char *) &result, &size)))
+			if(static_cast <bool> (::getsockopt(fd, SOL_SOCKET, SO_RCVBUF, reinterpret_cast <char *> (&result), &size)))
 				// Выводим в лог информацию
 				this->_log->print("get buffer read size wrong on socket %d", log_t::flag_t::WARNING, fd);
 		} break;
 		// Если необходимо получить размер буфера на запись
 		case static_cast <uint8_t> (mode_t::WRITE): {
 			// Считываем установленный размер буфера
-			if(static_cast <bool> (::getsockopt(fd, SOL_SOCKET, SO_SNDBUF, (char *) &result, &size)))
+			if(static_cast <bool> (::getsockopt(fd, SOL_SOCKET, SO_SNDBUF, reinterpret_cast <char *> (&result), &size)))
 				// Выводим в лог информацию
 				this->_log->print("get buffer write size wrong on socket %d", log_t::flag_t::WARNING, fd);
 		} break;
@@ -650,14 +650,14 @@ bool awh::Socket::bufferSize(const SOCKET fd, const int size, const u_int total,
 				// Выполняем перерасчет размера буфера
 				bytes = (bytes / total);
 				// Время между попытками
-				if(!(result = !static_cast <bool> (::setsockopt(fd, SOL_SOCKET, SO_RCVBUF, &bytes, sizeof(bytes))))){
+				if(!(result = !static_cast <bool> (::setsockopt(fd, SOL_SOCKET, SO_RCVBUF, reinterpret_cast <char *> (&bytes), sizeof(bytes))))){
 					// Выводим в лог информацию
 					this->_log->print("cannot set SO_RCVBUF option on socket %d", log_t::flag_t::WARNING, fd);
 					// Выводим результат
 					return result;
 				}
 				// Считываем установленный размер буфера
-				if(!(result = !static_cast <bool> (::getsockopt(fd, SOL_SOCKET, SO_RCVBUF, (char *) &bytes, &length))))
+				if(!(result = !static_cast <bool> (::getsockopt(fd, SOL_SOCKET, SO_RCVBUF, reinterpret_cast <char *> (&bytes), &length))))
 					// Выводим в лог информацию
 					this->_log->print("get buffer wrong on socket %d", log_t::flag_t::WARNING, fd);
 			}
@@ -671,14 +671,14 @@ bool awh::Socket::bufferSize(const SOCKET fd, const int size, const u_int total,
 				// Выполняем перерасчет размера буфера
 				bytes = (bytes / total);
 				// Время между попытками
-				if(!(result = !static_cast <bool> (::setsockopt(fd, SOL_SOCKET, SO_SNDBUF, &bytes, sizeof(bytes))))){
+				if(!(result = !static_cast <bool> (::setsockopt(fd, SOL_SOCKET, SO_SNDBUF, reinterpret_cast <char *> (&bytes), sizeof(bytes))))){
 					// Выводим в лог информацию
 					this->_log->print("cannot set SO_SNDBUF option on socket %d", log_t::flag_t::WARNING, fd);
 					// Выводим результат
 					return result;
 				}
 				// Считываем установленный размер буфера
-				if(!(result = !static_cast <bool> (::getsockopt(fd, SOL_SOCKET, SO_SNDBUF, (char *) &bytes, &length))))
+				if(!(result = !static_cast <bool> (::getsockopt(fd, SOL_SOCKET, SO_SNDBUF, reinterpret_cast <char *> (&bytes), &length))))
 					// Выводим в лог информацию
 					this->_log->print("get buffer wrong on socket %d", log_t::flag_t::WARNING, fd);
 			}
