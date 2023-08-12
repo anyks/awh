@@ -253,7 +253,7 @@ string awh::DNS::Worker::send(const string & server) noexcept {
 			// Устанавливаем размер буфера передачи данных на запись
 			this->_socket.bufferSize(this->_fd, sizeof(buffer), 1, socket_t::mode_t::WRITE);
 			// Устанавливаем время жизни сокета
-			// this->_socket.timeToLive(this->_family, this->_fd, (this->_self->_timeout * 2) / 1000);
+			this->_socket.timeToLive(this->_family, this->_fd, (this->_self->_timeout * 2) / 1000);
 			// Устанавливаем таймаут на получение данных из сокета
 			this->_socket.timeout(this->_fd, this->_self->_timeout * 1000, socket_t::mode_t::READ);
 			// Устанавливаем таймаут на запись данных в сокет
