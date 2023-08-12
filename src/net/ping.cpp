@@ -275,7 +275,7 @@ void awh::Ping::work(const int family, const string & ip) noexcept {
 				// Запоминаем текущее значение времени в миллисекундах
 				mseconds = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
 				// Если запрос на сервер DNS успешно отправлен
-				if((bytes = ::sendto(this->_fd, &icmp, sizeof(icmp), 0, (struct sockaddr *) &this->_addr, this->_socklen)) > 0){
+				if((bytes = ::sendto(this->_fd, reinterpret_cast <char *> (&icmp), sizeof(icmp), 0, (struct sockaddr *) &this->_addr, this->_socklen)) > 0){
 					// Метка повторного получения данных
 					Read:
 					// Буфер для получения данных
@@ -283,7 +283,7 @@ void awh::Ping::work(const int family, const string & ip) noexcept {
 					// Результат полученных данных
 					auto * icmpResponseHeader = (struct IcmpHeader *) buffer;
 					// Выполняем чтение ответа сервера
-					bytes = ::recvfrom(this->_fd, icmpResponseHeader, sizeof(buffer), 0, (struct sockaddr *) &this->_addr, &this->_socklen);
+					bytes = ::recvfrom(this->_fd, reinterpret_cast <char *> (icmpResponseHeader), sizeof(buffer), 0, (struct sockaddr *) &this->_addr, &this->_socklen);
 					// Если данные прочитать не удалось
 					if(bytes <= 0){
 						// Если сокет находится в блокирующем режиме
@@ -476,12 +476,23 @@ double awh::Ping::ping(const int family, const string & ip, const uint16_t count
 				inet_pton(family, ip.c_str(), &client.sin_addr.s_addr);
 				// Выполняем копирование объекта подключения клиента
 				memcpy(&this->_addr, &client, this->_socklen);
-				// Если пользователь является привилигированным
-				if(getuid())
+				/**
+				 * Методы только для OS Windows
+				 */
+				#if defined(_WIN32) || defined(_WIN64)
 					// Создаём сокет подключения
 					this->_fd = ::socket(family, SOCK_DGRAM, IPPROTO_ICMP);
-				// Создаём сокет подключения
-				else this->_fd = ::socket(family, SOCK_RAW, IPPROTO_ICMP);
+				/**
+				 * Методы только для *Nix-подобных операционных систем
+				 */
+				#else
+					// Если пользователь является привилигированным
+					if(getuid())
+						// Создаём сокет подключения
+						this->_fd = ::socket(family, SOCK_DGRAM, IPPROTO_ICMP);
+					// Создаём сокет подключения
+					else this->_fd = ::socket(family, SOCK_RAW, IPPROTO_ICMP);
+				#endif
 			} break;
 			// Для протокола IPv6
 			case AF_INET6: {
@@ -497,12 +508,23 @@ double awh::Ping::ping(const int family, const string & ip, const uint16_t count
 				inet_pton(family, ip.c_str(), &client.sin6_addr);
 				// Выполняем копирование объекта подключения клиента
 				memcpy(&this->_addr, &client, this->_socklen);
-				// Если пользователь является привилигированным
-				if(getuid())
+				/**
+				 * Методы только для OS Windows
+				 */
+				#if defined(_WIN32) || defined(_WIN64)
 					// Создаём сокет подключения // IPPROTO_ICMP6
 					this->_fd = ::socket(family, SOCK_DGRAM, IPPROTO_ICMPV6);
-				// Создаём сокет подключения // IPPROTO_ICMP6
-				else this->_fd = ::socket(family, SOCK_RAW, IPPROTO_ICMPV6);
+				/**
+				 * Методы только для *Nix-подобных операционных систем
+				 */
+				#else
+					// Если пользователь является привилигированным
+					if(getuid())
+						// Создаём сокет подключения // IPPROTO_ICMP6
+						this->_fd = ::socket(family, SOCK_DGRAM, IPPROTO_ICMPV6);
+					// Создаём сокет подключения // IPPROTO_ICMP6
+					else this->_fd = ::socket(family, SOCK_RAW, IPPROTO_ICMPV6);
+				#endif
 			} break;
 		}
 		// Если сокет не создан создан и работа резолвера не остановлена
@@ -571,7 +593,7 @@ double awh::Ping::ping(const int family, const string & ip, const uint16_t count
 				// Запоминаем текущее значение времени в миллисекундах
 				mseconds = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
 				// Если запрос на сервер DNS успешно отправлен
-				if((bytes = ::sendto(this->_fd, &icmp, sizeof(icmp), 0, (struct sockaddr *) &this->_addr, this->_socklen)) > 0){
+				if((bytes = ::sendto(this->_fd, reinterpret_cast <char *> (&icmp), sizeof(icmp), 0, (struct sockaddr *) &this->_addr, this->_socklen)) > 0){
 					// Метка повторного получения данных
 					Read:
 					// Буфер для получения данных
@@ -579,7 +601,7 @@ double awh::Ping::ping(const int family, const string & ip, const uint16_t count
 					// Результат полученных данных
 					auto * icmpResponseHeader = (struct IcmpHeader *) buffer;
 					// Выполняем чтение ответа сервера
-					bytes = ::recvfrom(this->_fd, icmpResponseHeader, sizeof(buffer), 0, (struct sockaddr *) &this->_addr, &this->_socklen);
+					bytes = ::recvfrom(this->_fd, reinterpret_cast <char *> (icmpResponseHeader), sizeof(buffer), 0, (struct sockaddr *) &this->_addr, &this->_socklen);
 					// Если данные прочитать не удалось
 					if(bytes <= 0){
 						// Если сокет находится в блокирующем режиме

@@ -122,7 +122,7 @@ namespace awh {
 						uint32_t gatewayAddress[4] = {0,0,0,0};
 					} redirect6;
 				} meta;
-			} __attribute__((packed));
+			};
 		private:
 			// Файловый дескриптор (сокет)
 			SOCKET _fd;
