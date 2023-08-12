@@ -82,9 +82,9 @@ namespace awh {
 	typedef class Ping {
 		private:
 			/**
-			 * IcmpHeaderIPv4 Структура заголовков ICMP для IPv4
+			 * IcmpHeader Структура заголовков ICMP
 			 */
-			struct IcmpHeaderIPv4 {
+			struct IcmpHeader {
 				uint8_t type;      // Тип запроса
 				uint8_t code;      // Код запроса
 				uint16_t checksum; // Контрольная сумма
@@ -113,41 +113,6 @@ namespace awh {
 					struct ICMP_PACKET_REDIRECT_HEADER {
 						// Адрес ответа IPv4
 						uint32_t gatewayAddress = 0;
-					} redirect;
-				} meta;
-			} __attribute__((packed));
-			/**
-			 * IcmpHeaderIPv6 Структура заголовков ICMP для IPv6
-			 */
-			struct IcmpHeaderIPv6 {
-				uint8_t type;      // Тип запроса
-				uint8_t code;      // Код запроса
-				uint16_t checksum; // Контрольная сумма
-				/**
-				 * Объединение структур запроса
-				 */
-				union {
-					/**
-					 * echo Структура отправляемого запроса
-					 */
-					struct {
-						uint16_t identifier = 0; // Идентификатор запроса
-						uint16_t sequence   = 0; // Номер последовательности
-						uint64_t payload    = 0; // Тело полезной нагрузки
-					} echo;
-					/**
-					 * pointer Структура указателя запроса
-					 */
-					struct ICMP_PACKET_POINTER_HEADER {
-						// Указатель пакета
-						uint8_t pointer = 0;
-					} pointer;
-					/**
-					 * redirect Структура адреса ответа
-					 */
-					struct ICMP_PACKET_REDIRECT_HEADER {
-						// Адрес ответа IPv4
-						uint64_t gatewayAddress[2] = {0,0};
 					} redirect;
 				} meta;
 			} __attribute__((packed));
