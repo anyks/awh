@@ -24,6 +24,7 @@
 /**
  * Наши модули
  */
+#include <sys/win.hpp>
 #include <bigint/BigIntegerLibrary.hh>
 
 // Объявляем пространство имен
