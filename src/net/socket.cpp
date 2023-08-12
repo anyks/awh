@@ -423,12 +423,10 @@ bool awh::Socket::timeout(const SOCKET fd, const time_t msec, const mode_t mode)
 bool awh::Socket::timeToLive(const int family, const SOCKET fd, const int ttl) const noexcept {
 	// Результат работы функции
 	bool result = false;
-	/*
 	// Определяем тип протокола интернета
 	switch(family){
 		// Если тип протокола подключения IPv4
 		case static_cast <int> (AF_INET): {
-	*/
 			/**
 			 * Если мы работаем в MacOS X
 			 */
@@ -438,7 +436,7 @@ bool awh::Socket::timeToLive(const int family, const SOCKET fd, const int ttl) c
 				// Выполняем установку параметров времени жизни файлового дескриптора (сокета)
 				if(!(result = !static_cast <bool> (::setsockopt(fd, IPPROTO_IP, IP_TTL, &mode, sizeof(&mode)))))
 					// Выводим в лог информацию
-					this->_log->print("cannot set IPPROTO_IP option on socket %d", log_t::flag_t::WARNING, fd);
+					this->_log->print("cannot set IP_TTL option on socket %d", log_t::flag_t::WARNING, fd);
 			/**
 			 * Методы только для OS Windows
 			 */
@@ -448,7 +446,7 @@ bool awh::Socket::timeToLive(const int family, const SOCKET fd, const int ttl) c
 				// Выполняем установку параметров времени жизни файлового дескриптора (сокета)
 				if(!(result = !static_cast <bool> (::setsockopt(fd, IPPROTO_IP, IP_TTL, (char *) &mode, sizeof(mode)))))
 					// Выводим в лог информацию
-					this->_log->print("cannot set IPPROTO_IP option on socket %d", log_t::flag_t::WARNING, fd);
+					this->_log->print("cannot set IP_TTL option on socket %d", log_t::flag_t::WARNING, fd);
 			/**
 			 * Для всех остальных операционных систем
 			 */
@@ -458,19 +456,44 @@ bool awh::Socket::timeToLive(const int family, const SOCKET fd, const int ttl) c
 				// Выполняем установку параметров времени жизни файлового дескриптора (сокета)
 				if(!(result = !static_cast <bool> (::setsockopt(fd, IPPROTO_IP, IP_TTL, &ttl, sizeof(ttl)))))
 					// Выводим в лог информацию
-					this->_log->print("cannot set IPPROTO_IP option on socket %d", log_t::flag_t::WARNING, fd);
+					this->_log->print("cannot set IP_TTL option on socket %d", log_t::flag_t::WARNING, fd);
 			#endif
-		/*
 		} break;
 		// Если тип протокола подключения IPv6
 		case static_cast <int> (AF_INET6): {
-			// Выполняем установку параметров времени жизни файлового дескриптора (сокета)
-			if(!(result = !static_cast <bool> (::setsockopt(fd, IPPROTO_IPV6, IPV6_UNICAST_HOPS, (char *) &ttl, sizeof(ttl)))))
-				// Выводим в лог информацию
-				this->_log->print("cannot set IPPROTO_IPV6 option on socket %d", log_t::flag_t::WARNING, fd);
+			/**
+			 * Если мы работаем в MacOS X
+			 */
+			#ifdef __APPLE__
+				// Выполняем получение размер TTL по умолчанию
+				const socklen_t mode = (ttl <= 0 ? 128 : static_cast <socklen_t> (ttl));
+				// Выполняем установку параметров времени жизни файлового дескриптора (сокета)
+				if(!(result = !static_cast <bool> (::setsockopt(fd, IPPROTO_IPV6, IPV6_UNICAST_HOPS, &mode, sizeof(&mode)))))
+					// Выводим в лог информацию
+					this->_log->print("cannot set IPV6_UNICAST_HOPS option on socket %d", log_t::flag_t::WARNING, fd);
+			/**
+			 * Методы только для OS Windows
+			 */
+			#elif defined(_WIN32) || defined(_WIN64)
+				// Выполняем получение размер TTL по умолчанию
+				const int mode = (ttl <= 0 ? 128 : ttl);
+				// Выполняем установку параметров времени жизни файлового дескриптора (сокета)
+				if(!(result = !static_cast <bool> (::setsockopt(fd, IPPROTO_IPV6, IPV6_UNICAST_HOPS, (char *) &mode, sizeof(mode)))))
+					// Выводим в лог информацию
+					this->_log->print("cannot set IPV6_UNICAST_HOPS option on socket %d", log_t::flag_t::WARNING, fd);
+			/**
+			 * Для всех остальных операционных систем
+			 */
+			#else
+				// Выполняем получение размер TTL по умолчанию
+				const socklen_t mode = (ttl <= 0 ? 128 : static_cast <socklen_t> (ttl));
+				// Выполняем установку параметров времени жизни файлового дескриптора (сокета)
+				if(!(result = !static_cast <bool> (::setsockopt(fd, IPPROTO_IPV6, IPV6_UNICAST_HOPS, &ttl, sizeof(ttl)))))
+					// Выводим в лог информацию
+					this->_log->print("cannot set IPV6_UNICAST_HOPS option on socket %d", log_t::flag_t::WARNING, fd);
+			#endif
 		} break;
 	}
-	*/
 	// Выводим результат
 	return result;
 }
