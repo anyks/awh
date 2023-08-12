@@ -178,12 +178,23 @@ void awh::Ping::work(const int family, const string & ip) noexcept {
 				inet_pton(family, ip.c_str(), &client.sin_addr.s_addr);
 				// Выполняем копирование объекта подключения клиента
 				memcpy(&this->_addr, &client, this->_socklen);
-				// Если пользователь является привилигированным
-				if(getuid())
+				/**
+				 * Методы только для OS Windows
+				 */
+				#if defined(_WIN32) || defined(_WIN64)
 					// Создаём сокет подключения
 					this->_fd = ::socket(family, SOCK_DGRAM, IPPROTO_ICMP);
-				// Создаём сокет подключения
-				else this->_fd = ::socket(family, SOCK_RAW, IPPROTO_ICMP);
+				/**
+				 * Методы только для *Nix-подобных операционных систем
+				 */
+				#else
+					// Если пользователь является привилигированным
+					if(getuid())
+						// Создаём сокет подключения
+						this->_fd = ::socket(family, SOCK_DGRAM, IPPROTO_ICMP);
+					// Создаём сокет подключения
+					else this->_fd = ::socket(family, SOCK_RAW, IPPROTO_ICMP);
+				#endif
 			} break;
 			// Для протокола IPv6
 			case AF_INET6: {
@@ -199,12 +210,23 @@ void awh::Ping::work(const int family, const string & ip) noexcept {
 				inet_pton(family, ip.c_str(), &client.sin6_addr);
 				// Выполняем копирование объекта подключения клиента
 				memcpy(&this->_addr, &client, this->_socklen);
-				// Если пользователь является привилигированным
-				if(getuid())
+				/**
+				 * Методы только для OS Windows
+				 */
+				#if defined(_WIN32) || defined(_WIN64)
 					// Создаём сокет подключения // IPPROTO_ICMP6
 					this->_fd = ::socket(family, SOCK_DGRAM, IPPROTO_ICMPV6);
-				// Создаём сокет подключения // IPPROTO_ICMP6
-				else this->_fd = ::socket(family, SOCK_RAW, IPPROTO_ICMPV6);
+				/**
+				 * Методы только для *Nix-подобных операционных систем
+				 */
+				#else
+					// Если пользователь является привилигированным
+					if(getuid())
+						// Создаём сокет подключения // IPPROTO_ICMP6
+						this->_fd = ::socket(family, SOCK_DGRAM, IPPROTO_ICMPV6);
+					// Создаём сокет подключения // IPPROTO_ICMP6
+					else this->_fd = ::socket(family, SOCK_RAW, IPPROTO_ICMPV6);
+				#endif
 			} break;
 		}
 		// Если сокет не создан создан и работа резолвера не остановлена
