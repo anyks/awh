@@ -294,6 +294,9 @@ double awh::Ping::ping(const int family, const string & ip, const uint16_t count
 					bytes = ::recvfrom(this->_fd, icmpResponseHeader, sizeof(buffer), 0, (struct sockaddr *) &this->_addr, &this->_socklen);
 					// Если данные прочитать не удалось
 					if(bytes <= 0){
+						
+						cout << " ------------1 " << errno << endl;
+						
 						// Если сокет находится в блокирующем режиме
 						if(bytes < 0){
 							// Определяем тип ошибки
@@ -335,6 +338,9 @@ double awh::Ping::ping(const int family, const string & ip, const uint16_t count
 				} else if(bytes <= 0) {
 					// Если сокет находится в блокирующем режиме
 					if(bytes < 0){
+						
+						cout << " ------------2 " << errno << endl;
+						
 						// Определяем тип ошибки
 						switch(errno){
 							// Если ошибка не обнаружена, выходим
