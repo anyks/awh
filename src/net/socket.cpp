@@ -454,7 +454,7 @@ bool awh::Socket::timeToLive(const int family, const SOCKET fd, const int ttl) c
 				// Выполняем получение размер TTL по умолчанию
 				const socklen_t mode = (ttl <= 0 ? 128 : static_cast <socklen_t> (ttl));
 				// Выполняем установку параметров времени жизни файлового дескриптора (сокета)
-				if(!(result = !static_cast <bool> (::setsockopt(fd, IPPROTO_IP, IP_TTL, &ttl, sizeof(ttl)))))
+				if(!(result = !static_cast <bool> (::setsockopt(fd, IPPROTO_IP, IP_TTL, &mode, sizeof(mode)))))
 					// Выводим в лог информацию
 					this->_log->print("cannot set IP_TTL option on socket %d", log_t::flag_t::WARNING, fd);
 			#endif
@@ -468,7 +468,7 @@ bool awh::Socket::timeToLive(const int family, const SOCKET fd, const int ttl) c
 				// Выполняем получение размер TTL по умолчанию
 				const socklen_t mode = (ttl <= 0 ? 128 : static_cast <socklen_t> (ttl));
 				// Выполняем установку параметров времени жизни файлового дескриптора (сокета)
-				if(!(result = !static_cast <bool> (::setsockopt(fd, IPPROTO_IPV6, IPV6_UNICAST_HOPS, &mode, sizeof(&mode)))))
+				if(!(result = !static_cast <bool> (::setsockopt(fd, IPPROTO_IPV6, IPV6_UNICAST_HOPS, &mode, sizeof(mode)))))
 					// Выводим в лог информацию
 					this->_log->print("cannot set IPV6_UNICAST_HOPS option on socket %d", log_t::flag_t::WARNING, fd);
 			/**
@@ -488,7 +488,7 @@ bool awh::Socket::timeToLive(const int family, const SOCKET fd, const int ttl) c
 				// Выполняем получение размер TTL по умолчанию
 				const socklen_t mode = (ttl <= 0 ? 128 : static_cast <socklen_t> (ttl));
 				// Выполняем установку параметров времени жизни файлового дескриптора (сокета)
-				if(!(result = !static_cast <bool> (::setsockopt(fd, IPPROTO_IPV6, IPV6_UNICAST_HOPS, &ttl, sizeof(ttl)))))
+				if(!(result = !static_cast <bool> (::setsockopt(fd, IPPROTO_IPV6, IPV6_UNICAST_HOPS, &mode, sizeof(mode)))))
 					// Выводим в лог информацию
 					this->_log->print("cannot set IPV6_UNICAST_HOPS option on socket %d", log_t::flag_t::WARNING, fd);
 			#endif

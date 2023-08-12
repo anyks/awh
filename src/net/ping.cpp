@@ -215,9 +215,9 @@ double awh::Ping::ping(const int family, const string & ip, const uint16_t count
 				memcpy(&this->_addr, &client, this->_socklen);
 				// Если пользователь является привилигированным
 				if(getuid())
-					// Создаём сокет подключения
+					// Создаём сокет подключения // IPPROTO_ICMP6
 					this->_fd = ::socket(family, SOCK_DGRAM, IPPROTO_ICMPV6);
-				// Создаём сокет подключения
+				// Создаём сокет подключения // IPPROTO_ICMP6
 				else this->_fd = ::socket(family, SOCK_RAW, IPPROTO_ICMPV6);
 			} break;
 		}
@@ -346,7 +346,7 @@ double awh::Ping::ping(const int family, const string & ip, const uint16_t count
 				// Если работа резолвера ещё не остановлена
 				if(this->_mode){
 					// Устанавливаем время жизни сокета
-					// this->_socket.timeToLive(family, this->_fd, i + (this->_shifting / 1000));
+					this->_socket.timeToLive(family, this->_fd, i + (this->_shifting / 1000));
 					// Замораживаем поток на период времени в ${_shifting}
 					this_thread::sleep_for(chrono::milliseconds(this->_shifting));
 				}
