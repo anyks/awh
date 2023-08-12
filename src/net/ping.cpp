@@ -214,7 +214,7 @@ void awh::Ping::work(const int family, const string & ip) noexcept {
 				 * Методы только для OS Windows
 				 */
 				#if defined(_WIN32) || defined(_WIN64)
-					// Создаём сокет подключения // IPPROTO_ICMP6
+					// Создаём сокет подключения  (IPPROTO_ICMP6)
 					this->_fd = ::socket(family, SOCK_RAW, IPPROTO_ICMPV6);
 				/**
 				 * Методы только для *Nix-подобных операционных систем
@@ -222,9 +222,9 @@ void awh::Ping::work(const int family, const string & ip) noexcept {
 				#else
 					// Если пользователь является привилигированным
 					if(getuid())
-						// Создаём сокет подключения // IPPROTO_ICMP6
+						// Создаём сокет подключения
 						this->_fd = ::socket(family, SOCK_DGRAM, IPPROTO_ICMPV6);
-					// Создаём сокет подключения // IPPROTO_ICMP6
+					// Создаём сокет подключения
 					else this->_fd = ::socket(family, SOCK_RAW, IPPROTO_ICMPV6);
 				#endif
 			} break;
@@ -534,7 +534,7 @@ double awh::Ping::ping(const int family, const string & ip, const uint16_t count
 				 * Методы только для OS Windows
 				 */
 				#if defined(_WIN32) || defined(_WIN64)
-					// Создаём сокет подключения // IPPROTO_ICMP6
+					// Создаём сокет подключения (IPPROTO_ICMP6)
 					this->_fd = ::socket(family, SOCK_RAW, IPPROTO_ICMPV6);
 				/**
 				 * Методы только для *Nix-подобных операционных систем
@@ -542,9 +542,9 @@ double awh::Ping::ping(const int family, const string & ip, const uint16_t count
 				#else
 					// Если пользователь является привилигированным
 					if(getuid())
-						// Создаём сокет подключения // IPPROTO_ICMP6
+						// Создаём сокет подключения
 						this->_fd = ::socket(family, SOCK_DGRAM, IPPROTO_ICMPV6);
-					// Создаём сокет подключения // IPPROTO_ICMP6
+					// Создаём сокет подключения
 					else this->_fd = ::socket(family, SOCK_RAW, IPPROTO_ICMPV6);
 				#endif
 			} break;
