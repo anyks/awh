@@ -244,20 +244,26 @@ string awh::DNS::Worker::send(const string & server) noexcept {
 			return result;
 		// Если сокет создан удачно и работа резолвера не остановлена
 		} else if(this->_mode) {
+			// Количество отправленных или полученных байт
+			int64_t bytes = 0;
 			// Устанавливаем разрешение на повторное использование сокета
 			this->_socket.reuseable(this->_fd);
 			// Устанавливаем разрешение на закрытие сокета при неиспользовании
 			this->_socket.closeOnExec(this->_fd);
 			// Устанавливаем размер буфера передачи данных на чтение
-			this->_socket.bufferSize(this->_fd, sizeof(buffer), 1, socket_t::mode_t::READ);
+			// this->_socket.bufferSize(this->_fd, sizeof(buffer), 1, socket_t::mode_t::READ);
 			// Устанавливаем размер буфера передачи данных на запись
-			this->_socket.bufferSize(this->_fd, sizeof(buffer), 1, socket_t::mode_t::WRITE);
+			// this->_socket.bufferSize(this->_fd, sizeof(buffer), 1, socket_t::mode_t::WRITE);
 			// Устанавливаем таймаут на получение данных из сокета
 			this->_socket.timeout(this->_fd, this->_self->_timeout * 1000, socket_t::mode_t::READ);
 			// Устанавливаем таймаут на запись данных в сокет
 			this->_socket.timeout(this->_fd, this->_self->_timeout * 1000, socket_t::mode_t::WRITE);
+			// Метка отправки данных
+			Send:
 			// Если запрос на сервер DNS успешно отправлен
-			if(::sendto(this->_fd, (const char *) buffer, size, 0, (struct sockaddr *) &this->_addr, this->_socklen) > 0){
+			if((bytes = ::sendto(this->_fd, (const char *) buffer, size, 0, (struct sockaddr *) &this->_addr, this->_socklen)) > 0){
+				// Метка повторного получения данных
+				Read:
 				// Буфер пакета данных
 				u_char buffer[65536];
 				// Получаем объект DNS-сервера
@@ -274,20 +280,25 @@ string awh::DNS::Worker::send(const string & server) noexcept {
 						switch(errno){
 							// Если ошибка не обнаружена, выходим
 							case 0: break;
+							// Если нужно повторить получение данных
+							case EAGAIN:
+								// Снова пробуем получить данные
+								goto Read;
+							break;
 							// Если произведена неудачная запись в PIPE
 							case EPIPE:
 								// Выводим в лог сообщение
-								self->_log->print("EPIPE", log_t::flag_t::WARNING);
+								self->_log->print("EPIPE: nameserver %s for %s domain", log_t::flag_t::WARNING, server.c_str(), this->_domain.c_str());
 							break;
 							// Если произведён сброс подключения
 							case ECONNRESET:
 								// Выводим в лог сообщение
-								self->_log->print("ECONNRESET", log_t::flag_t::WARNING);
+								self->_log->print("ECONNRESET: nameserver %s for %s domain", log_t::flag_t::WARNING, server.c_str(), this->_domain.c_str());
 							break;
 							// Для остальных ошибок
 							default:
 								// Выводим в лог сообщение
-								self->_log->print("%s", log_t::flag_t::CRITICAL, strerror(errno));
+								self->_log->print("%s: nameserver %s for %s domain", log_t::flag_t::WARNING, strerror(errno), server.c_str(), this->_domain.c_str());
 						}
 					}
 					// Если работа резолвера ещё не остановлена
@@ -502,8 +513,36 @@ string awh::DNS::Worker::send(const string & server) noexcept {
 				if(!result.empty())
 					// Выводим результат
 					return result;
-			// Выводим сообщение, что у нас проблема с подключением к сети
-			} else this->_self->_log->print("no network connection to nameserver %s for %s domain", log_t::flag_t::WARNING, server.c_str(), this->_domain.c_str());
+			// Если сообщение отправить не удалось
+			} else if(bytes <= 0) {
+				// Если сокет находится в блокирующем режиме
+				if(bytes < 0){
+					// Определяем тип ошибки
+					switch(errno){
+						// Если ошибка не обнаружена, выходим
+						case 0: break;
+						// Если нужно повторить получение данных
+						case EAGAIN:
+							// Снова пробуем отправить данные
+							goto Send;
+						break;
+						// Если произведена неудачная запись в PIPE
+						case EPIPE:
+							// Выводим в лог сообщение
+							this->_self->_log->print("EPIPE: nameserver %s for %s domain", log_t::flag_t::WARNING, server.c_str(), this->_domain.c_str());
+						break;
+						// Если произведён сброс подключения
+						case ECONNRESET:
+							// Выводим в лог сообщение
+							this->_self->_log->print("ECONNRESET: nameserver %s for %s domain", log_t::flag_t::WARNING, server.c_str(), this->_domain.c_str());
+						break;
+						// Для остальных ошибок
+						default:
+							// Выводим в лог сообщение
+							this->_self->_log->print("%s: nameserver %s for %s domain", log_t::flag_t::WARNING, strerror(errno), server.c_str(), this->_domain.c_str());
+					}
+				}
+			}
 			// Выполняем закрытие подключения
 			this->close();
 		}

@@ -172,6 +172,14 @@ namespace awh {
 			 * @return       подсчитанная контрольная сумма
 			 */
 			uint16_t checksum(const void * buffer, const size_t size) noexcept;
+		private:
+			/**
+			 * send Метод отправки запроса на сервер
+			 * @param family тип интернет-протокола AF_INET, AF_INET6
+			 * @param index  индекс последовательности
+			 * @return       количество прочитанных байт
+			 */
+			int64_t send(const int family, const size_t index) noexcept;
 		public:
 			/**
 			 * close Метод закрытия подключения

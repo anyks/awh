@@ -54,6 +54,145 @@ uint16_t awh::Ping::checksum(const void * buffer, const size_t size) noexcept {
 	return result;
 }
 /**
+ * send Метод отправки запроса на сервер
+ * @param family тип интернет-протокола AF_INET, AF_INET6
+ * @param index  индекс последовательности
+ * @return       количество прочитанных байт
+ */
+int64_t awh::Ping::send(const int family, const size_t index) noexcept {
+	// Результат работы функции
+	int64_t result = 0;
+	// Выполняем инициализацию генератора
+	random_device dev;
+	// Подключаем устройство генератора
+	mt19937 rng(dev());
+	// Выполняем генерирование случайного числа
+	uniform_int_distribution <mt19937::result_type> dist6(0, std::numeric_limits <uint32_t>::max() - 1);
+	// Метка отправки данных
+	Send:
+	// Создаём объект заголовков
+	struct IcmpHeader icmp{};
+	// Определяем тип подключения
+	switch(family){
+		// Для протокола IPv4
+		case AF_INET:
+			// Выполняем установку типа запроса
+			icmp.type = 8;
+		break;
+		// Для протокола IPv6
+		case AF_INET6:
+			// Выполняем установку типа запроса
+			icmp.type = 128;
+		break;
+	}
+	// Устанавливаем код запроса
+	icmp.code = 0;
+	// Устанавливаем контрольную сумму
+	icmp.checksum = 0;
+	// Устанавливаем номер последовательности
+	icmp.meta.echo.sequence = index;
+	// Устанавливаем идентификатор запроса
+	icmp.meta.echo.identifier = getpid();
+	// Устанавливаем данные полезной нагрузки
+	icmp.meta.echo.payload = static_cast <uint64_t> (dist6(rng));
+	// Выполняем подсчёт контрольной суммы
+	icmp.checksum = this->checksum(&icmp, sizeof(icmp));
+	// Если запрос на сервер успешно отправлен
+	if((result = ::sendto(this->_fd, reinterpret_cast <char *> (&icmp), sizeof(icmp), 0, (struct sockaddr *) &this->_addr, this->_socklen)) > 0){
+		// Метка повторного получения данных
+		Read:
+		// Буфер для получения данных
+		char buffer[1024];
+		// Результат полученных данных
+		auto * icmpResponseHeader = (struct IcmpHeader *) buffer;
+		// Выполняем чтение ответа сервера
+		result = ::recvfrom(this->_fd, reinterpret_cast <char *> (icmpResponseHeader), sizeof(buffer), 0, (struct sockaddr *) &this->_addr, &this->_socklen);
+		// Если данные прочитать не удалось
+		if(result <= 0){
+			// Если сокет находится в блокирующем режиме
+			if(result < 0){
+				// Определяем тип ошибки
+				switch(errno){
+					// Если ошибка не обнаружена, выходим
+					case 0: break;
+					// Если нужно повторить получение данных
+					case EAGAIN:
+						// Снова пробуем получить данные
+						goto Read;
+					break;
+					// Если произведена неудачная запись в PIPE
+					case EPIPE: {
+						// Если разрешено выводить информацию в лог
+						if(!this->_noInfo)
+							// Выводим в лог сообщение
+							this->_log->print("EPIPE", log_t::flag_t::WARNING);
+					} break;
+					// Если произведён сброс подключения
+					case ECONNRESET: {
+						// Если разрешено выводить информацию в лог
+						if(!this->_noInfo)
+							// Выводим в лог сообщение
+							this->_log->print("ECONNRESET", log_t::flag_t::WARNING);
+					} break;
+					// Для остальных ошибок
+					default: {
+						// Если разрешено выводить информацию в лог
+						if(!this->_noInfo)
+							// Выводим в лог сообщение
+							this->_log->print("%s", log_t::flag_t::WARNING, strerror(errno));
+					}
+				}
+				// Выполняем закрытие подключения
+				this->close();
+				// Выводим результат
+				return result;
+			}
+		}
+	// Если сообщение отправить не удалось
+	} else if(result <= 0) {
+		// Если сокет находится в блокирующем режиме
+		if(result < 0){
+			// Определяем тип ошибки
+			switch(errno){
+				// Если ошибка не обнаружена, выходим
+				case 0: break;
+				// Если нужно повторить получение данных
+				case EAGAIN:
+					// Снова пробуем отправить данные
+					goto Send;
+				break;
+				// Если произведена неудачная запись в PIPE
+				case EPIPE: {
+					// Если разрешено выводить информацию в лог
+					if(!this->_noInfo)
+						// Выводим в лог сообщение
+						this->_log->print("EPIPE", log_t::flag_t::WARNING);
+				} break;
+				// Если произведён сброс подключения
+				case ECONNRESET: {
+					// Если разрешено выводить информацию в лог
+					if(!this->_noInfo)
+						// Выводим в лог сообщение
+						this->_log->print("ECONNRESET", log_t::flag_t::WARNING);
+				} break;
+				// Для остальных ошибок
+				default: {
+					// Если разрешено выводить информацию в лог
+					if(!this->_noInfo)
+						// Выводим в лог сообщение
+						this->_log->print("%s", log_t::flag_t::WARNING, strerror(errno));
+				}
+			}
+			// Выполняем закрытие подключения
+			this->close();
+			// Выводим результат
+			return result;
+		}
+	}
+	// Выводим результат
+	return result;
+}
+/**
  * close Метод закрытия подключения
  */
 void awh::Ping::close() noexcept {
@@ -239,16 +378,8 @@ void awh::Ping::work(const int family, const string & ip) noexcept {
 			return;
 		// Если сокет создан удачно и работа резолвера не остановлена
 		} else if(this->_mode) {
-			// Выполняем инициализацию генератора
-			random_device dev;
-			// Подключаем устройство генератора
-			mt19937 rng(dev());
-			// Количество передаваемых байтов
-			int64_t bytes = 0;
 			// Индекс текущей итерации
 			uint64_t index = 0;
-			// Начальное значение времени
-			time_t mseconds = 0;
 			// Устанавливаем разрешение на повторное использование сокета
 			this->_socket.reuseable(this->_fd);
 			// Устанавливаем разрешение на закрытие сокета при неиспользовании
@@ -261,134 +392,29 @@ void awh::Ping::work(const int family, const string & ip) noexcept {
 			this->_socket.timeout(this->_fd, this->_timeoutRead, socket_t::mode_t::READ);
 			// Устанавливаем таймаут на запись данных в сокет
 			this->_socket.timeout(this->_fd, this->_timeoutWrite, socket_t::mode_t::WRITE);
-			// Выполняем генерирование случайного числа
-			uniform_int_distribution <mt19937::result_type> dist6(0, std::numeric_limits <uint32_t>::max() - 1);
 			// Выполняем отправку отправку запросов до тех пор пока не остановят
 			while(this->_mode){
-				// Метка отправки данных
-				Send:
-				// Создаём объект заголовков
-				struct IcmpHeader icmp{};
-				// Определяем тип подключения
-				switch(family){
-					// Для протокола IPv4
-					case AF_INET:
-						// Выполняем установку типа запроса
-						icmp.type = 8;
-					break;
-					// Для протокола IPv6
-					case AF_INET6:
-						// Выполняем установку типа запроса
-						icmp.type = 128;
-					break;
-				}
-				// Устанавливаем код запроса
-				icmp.code = 0;
-				// Устанавливаем контрольную сумму
-				icmp.checksum = 0;
-				// Устанавливаем номер последовательности
-				icmp.meta.echo.sequence = index;
-				// Устанавливаем идентификатор запроса
-				icmp.meta.echo.identifier = getpid();
-				// Устанавливаем данные полезной нагрузки
-				icmp.meta.echo.payload = static_cast <uint64_t> (dist6(rng));
-				// Выполняем подсчёт контрольной суммы
-				icmp.checksum = this->checksum(&icmp, sizeof(icmp));
 				// Запоминаем текущее значение времени в миллисекундах
-				mseconds = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
-				// Если запрос на сервер DNS успешно отправлен
-				if((bytes = ::sendto(this->_fd, reinterpret_cast <char *> (&icmp), sizeof(icmp), 0, (struct sockaddr *) &this->_addr, this->_socklen)) > 0){
-					// Метка повторного получения данных
-					Read:
-					// Буфер для получения данных
-					char buffer[1024];
-					// Результат полученных данных
-					auto * icmpResponseHeader = (struct IcmpHeader *) buffer;
-					// Выполняем чтение ответа сервера
-					bytes = ::recvfrom(this->_fd, reinterpret_cast <char *> (icmpResponseHeader), sizeof(buffer), 0, (struct sockaddr *) &this->_addr, &this->_socklen);
-					// Если данные прочитать не удалось
-					if(bytes <= 0){
-						// Если сокет находится в блокирующем режиме
-						if(bytes < 0){
-							// Определяем тип ошибки
-							switch(errno){
-								// Если ошибка не обнаружена, выходим
-								case 0: break;
-								// Если нужно повторить получение данных
-								case EAGAIN:
-									// Снова пробуем получить данные
-									goto Read;
-								break;
-								// Если произведена неудачная запись в PIPE
-								case EPIPE:
-									// Выводим в лог сообщение
-									this->_log->print("EPIPE", log_t::flag_t::WARNING);
-								break;
-								// Если произведён сброс подключения
-								case ECONNRESET:
-									// Выводим в лог сообщение
-									this->_log->print("ECONNRESET", log_t::flag_t::WARNING);
-								break;
-								// Для остальных ошибок
-								default:
-									// Выводим в лог сообщение
-									this->_log->print("%s", log_t::flag_t::CRITICAL, strerror(errno));
-							}
-							// Выполняем закрытие подключения
-							this->close();
-							// Выводим результат
-							return;
-						}
-					// Если данные получены удачно
-					} else {
-						// Выполняем подсчёт количество прошедшего времени
-						const time_t timeShifting = (this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS) - mseconds);
-						// Если разрешено выводить информацию в лог
-						if(!this->_noInfo)
-							// Формируем сообщение для вывода в лог
-							// this->_log->print("%zu bytes from %s icmp_seq=%zu ttl=%u time=%s", log_t::flag_t::INFO, bytes, ip.c_str(), index, index + ((this->_shifting / 1000) * 2), this->_fmk->time2abbr(timeShifting).c_str());
-							this->_log->print("%zu bytes from %s icmp_seq=%zu ttl=%u time=%s", log_t::flag_t::INFO, bytes, ip.c_str(), index, (this->_timeoutRead + this->_timeoutWrite) / 1000, this->_fmk->time2abbr(timeShifting).c_str());
-						// Если функция обратного вызова установлена
-						if(this->_callback != nullptr){
-							// Выполняем блокировку потока
-							const lock_guard <recursive_mutex> lock(this->_mtx);
-							// Выполняем функцию обратного вызова
-							this->_callback(timeShifting, ip, this);
-						}
-					}
-				// Если сообщение отправить не удалось
-				} else if(bytes <= 0) {
-					// Если сокет находится в блокирующем режиме
-					if(bytes < 0){
-						// Определяем тип ошибки
-						switch(errno){
-							// Если ошибка не обнаружена, выходим
-							case 0: break;
-							// Если нужно повторить получение данных
-							case EAGAIN:
-								// Снова пробуем отправить данные
-								goto Send;
-							break;
-							// Если произведена неудачная запись в PIPE
-							case EPIPE:
-								// Выводим в лог сообщение
-								this->_log->print("EPIPE", log_t::flag_t::WARNING);
-							break;
-							// Если произведён сброс подключения
-							case ECONNRESET:
-								// Выводим в лог сообщение
-								this->_log->print("ECONNRESET", log_t::flag_t::WARNING);
-							break;
-							// Для остальных ошибок
-							default:
-								// Выводим в лог сообщение
-								this->_log->print("%s", log_t::flag_t::CRITICAL, strerror(errno));
-						}
-						// Выполняем закрытие подключения
-						this->close();
-						// Выводим результат
-						return;
-					}
+				const time_t mseconds = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
+				// Выполняем запрос на сервер
+				const int64_t bytes = this->send(family, index);
+				// Если данные прочитать не удалось
+				if(bytes <= 0)
+					// Выводим результат
+					return;
+				// Выполняем подсчёт количество прошедшего времени
+				const time_t timeShifting = (this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS) - mseconds);
+				// Если разрешено выводить информацию в лог
+				if(!this->_noInfo)
+					// Формируем сообщение для вывода в лог
+					// this->_log->print("%zu bytes from %s icmp_seq=%u ttl=%u time=%s", log_t::flag_t::INFO, bytes, ip.c_str(), index, index + ((this->_shifting / 1000) * 2), this->_fmk->time2abbr(timeShifting).c_str());
+					this->_log->print("%zu bytes from %s icmp_seq=%u ttl=%u time=%s", log_t::flag_t::INFO, bytes, ip.c_str(), index, (this->_timeoutRead + this->_timeoutWrite) / 1000, this->_fmk->time2abbr(timeShifting).c_str());
+				// Если функция обратного вызова установлена
+				if(this->_callback != nullptr){
+					// Выполняем блокировку потока
+					const lock_guard <recursive_mutex> lock(this->_mtx);
+					// Выполняем функцию обратного вызова
+					this->_callback(timeShifting, ip, this);
 				}
 				// Если работа резолвера ещё не остановлена
 				if(this->_mode){
@@ -559,14 +585,6 @@ double awh::Ping::ping(const int family, const string & ip, const uint16_t count
 			return result;
 		// Если сокет создан удачно и работа резолвера не остановлена
 		} else if(this->_mode) {
-			// Выполняем инициализацию генератора
-			random_device dev;
-			// Подключаем устройство генератора
-			mt19937 rng(dev());
-			// Количество передаваемых байтов
-			int64_t bytes = 0;
-			// Начальное значение времени
-			time_t mseconds = 0;
 			// Устанавливаем разрешение на повторное использование сокета
 			this->_socket.reuseable(this->_fd);
 			// Устанавливаем разрешение на закрытие сокета при неиспользовании
@@ -579,130 +597,25 @@ double awh::Ping::ping(const int family, const string & ip, const uint16_t count
 			this->_socket.timeout(this->_fd, this->_timeoutRead, socket_t::mode_t::READ);
 			// Устанавливаем таймаут на запись данных в сокет
 			this->_socket.timeout(this->_fd, this->_timeoutWrite, socket_t::mode_t::WRITE);
-			// Выполняем генерирование случайного числа
-			uniform_int_distribution <mt19937::result_type> dist6(0, std::numeric_limits <uint32_t>::max() - 1);
 			// Выполняем отправку указанного количества запросов
 			for(uint16_t i = 0; i < count; i++){
-				// Метка отправки данных
-				Send:
-				// Создаём объект заголовков
-				struct IcmpHeader icmp{};
-				// Определяем тип подключения
-				switch(family){
-					// Для протокола IPv4
-					case AF_INET:
-						// Выполняем установку типа запроса
-						icmp.type = 8;
-					break;
-					// Для протокола IPv6
-					case AF_INET6:
-						// Выполняем установку типа запроса
-						icmp.type = 128;
-					break;
-				}
-				// Устанавливаем код запроса
-				icmp.code = 0;
-				// Устанавливаем контрольную сумму
-				icmp.checksum = 0;
-				// Устанавливаем номер последовательности
-				icmp.meta.echo.sequence = i;
-				// Устанавливаем идентификатор запроса
-				icmp.meta.echo.identifier = getpid();
-				// Устанавливаем данные полезной нагрузки
-				icmp.meta.echo.payload = static_cast <uint64_t> (dist6(rng));
-				// Выполняем подсчёт контрольной суммы
-				icmp.checksum = this->checksum(&icmp, sizeof(icmp));
 				// Запоминаем текущее значение времени в миллисекундах
-				mseconds = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
-				// Если запрос на сервер DNS успешно отправлен
-				if((bytes = ::sendto(this->_fd, reinterpret_cast <char *> (&icmp), sizeof(icmp), 0, (struct sockaddr *) &this->_addr, this->_socklen)) > 0){
-					// Метка повторного получения данных
-					Read:
-					// Буфер для получения данных
-					char buffer[1024];
-					// Результат полученных данных
-					auto * icmpResponseHeader = (struct IcmpHeader *) buffer;
-					// Выполняем чтение ответа сервера
-					bytes = ::recvfrom(this->_fd, reinterpret_cast <char *> (icmpResponseHeader), sizeof(buffer), 0, (struct sockaddr *) &this->_addr, &this->_socklen);
-					// Если данные прочитать не удалось
-					if(bytes <= 0){
-						// Если сокет находится в блокирующем режиме
-						if(bytes < 0){
-							// Определяем тип ошибки
-							switch(errno){
-								// Если ошибка не обнаружена, выходим
-								case 0: break;
-								// Если нужно повторить получение данных
-								case EAGAIN:
-									// Снова пробуем получить данные
-									goto Read;
-								break;
-								// Если произведена неудачная запись в PIPE
-								case EPIPE:
-									// Выводим в лог сообщение
-									this->_log->print("EPIPE", log_t::flag_t::WARNING);
-								break;
-								// Если произведён сброс подключения
-								case ECONNRESET:
-									// Выводим в лог сообщение
-									this->_log->print("ECONNRESET", log_t::flag_t::WARNING);
-								break;
-								// Для остальных ошибок
-								default:
-									// Выводим в лог сообщение
-									this->_log->print("%s", log_t::flag_t::CRITICAL, strerror(errno));
-							}
-							// Выполняем закрытие подключения
-							this->close();
-							// Выводим результат
-							return result;
-						}
-					// Если данные получены удачно
-					} else {
-						// Выполняем подсчёт количество прошедшего времени
-						const time_t timeShifting = (this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS) - mseconds);
-						// Если разрешено выводить информацию в лог
-						if(!this->_noInfo)
-							// Формируем сообщение для вывода в лог
-							// this->_log->print("%zu bytes from %s icmp_seq=%u ttl=%u time=%s", log_t::flag_t::INFO, bytes, ip.c_str(), i, i + ((this->_shifting / 1000) * 2), this->_fmk->time2abbr(timeShifting).c_str());
-							this->_log->print("%zu bytes from %s icmp_seq=%u ttl=%u time=%s", log_t::flag_t::INFO, bytes, ip.c_str(), i, (this->_timeoutRead + this->_timeoutWrite) / 1000, this->_fmk->time2abbr(timeShifting).c_str());
-						// Увеличиваем общее количество времени
-						result += static_cast <double> (timeShifting);
-					}
-				// Если сообщение отправить не удалось
-				} else if(bytes <= 0) {
-					// Если сокет находится в блокирующем режиме
-					if(bytes < 0){
-						// Определяем тип ошибки
-						switch(errno){
-							// Если ошибка не обнаружена, выходим
-							case 0: break;
-							// Если нужно повторить получение данных
-							case EAGAIN:
-								// Снова пробуем отправить данные
-								goto Send;
-							break;
-							// Если произведена неудачная запись в PIPE
-							case EPIPE:
-								// Выводим в лог сообщение
-								this->_log->print("EPIPE", log_t::flag_t::WARNING);
-							break;
-							// Если произведён сброс подключения
-							case ECONNRESET:
-								// Выводим в лог сообщение
-								this->_log->print("ECONNRESET", log_t::flag_t::WARNING);
-							break;
-							// Для остальных ошибок
-							default:
-								// Выводим в лог сообщение
-								this->_log->print("%s", log_t::flag_t::CRITICAL, strerror(errno));
-						}
-						// Выполняем закрытие подключения
-						this->close();
-						// Выводим результат
-						return result;
-					}
-				}
+				const time_t mseconds = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
+				// Выполняем запрос на сервер
+				const int64_t bytes = this->send(family, i);
+				// Если данные прочитать не удалось
+				if(bytes <= 0)
+					// Выводим результат
+					return result;
+				// Выполняем подсчёт количество прошедшего времени
+				const time_t timeShifting = (this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS) - mseconds);
+				// Если разрешено выводить информацию в лог
+				if(!this->_noInfo)
+					// Формируем сообщение для вывода в лог
+					// this->_log->print("%zu bytes from %s icmp_seq=%u ttl=%u time=%s", log_t::flag_t::INFO, bytes, ip.c_str(), i, i + ((this->_shifting / 1000) * 2), this->_fmk->time2abbr(timeShifting).c_str());
+					this->_log->print("%zu bytes from %s icmp_seq=%u ttl=%u time=%s", log_t::flag_t::INFO, bytes, ip.c_str(), i, (this->_timeoutRead + this->_timeoutWrite) / 1000, this->_fmk->time2abbr(timeShifting).c_str());
+				// Увеличиваем общее количество времени
+				result += static_cast <double> (timeShifting);
 				// Если работа резолвера ещё не остановлена
 				if(this->_mode){
 					// Устанавливаем время жизни сокета
