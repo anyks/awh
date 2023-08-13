@@ -89,9 +89,9 @@ bool awh::Socket::isBlocking(const SOCKET fd) const noexcept {
 		// Флаги файлового дескриптора
 		int flags = 0;
 		// Получаем флаги файлового дескриптора
-		if(!(result = !static_cast <bool> ((flags = ::fcntl(fd, F_GETFL, nullptr)))))
+		if(!(result = ((flags = ::fcntl(fd, F_GETFL, nullptr)) >= 0)))
 			// Выводим в лог информацию
-			this->_log->print("cannot set BLOCK option on socket %d", log_t::flag_t::WARNING, fd);
+			this->_log->print("cannot get BLOCK option on socket %d", log_t::flag_t::WARNING, fd);
 		// Определяем в каком статусе установлен флаг сокета
 		result = !static_cast <bool> (flags & O_NONBLOCK);
 	#endif
@@ -137,11 +137,11 @@ bool awh::Socket::setBlocking(const SOCKET fd, const mode_t mode) const noexcept
 	 */
 	#else
 		// Флаги файлового дескриптора
-		int flags = 0;
+		int flags = 0;		
 		// Получаем флаги файлового дескриптора
-		if(!(result = !static_cast <bool> ((flags = ::fcntl(fd, F_GETFL, nullptr))))){
+		if(!(result = ((flags = ::fcntl(fd, F_GETFL, nullptr)) >= 0))){
 			// Выводим в лог информацию
-			this->_log->print("cannot set BLOCK option on socket %d", log_t::flag_t::WARNING, fd);
+			this->_log->print("cannot get BLOCK option on socket %d", log_t::flag_t::WARNING, fd);
 			// Выходим из функции
 			return result;
 		}
@@ -152,9 +152,9 @@ bool awh::Socket::setBlocking(const SOCKET fd, const mode_t mode) const noexcept
 				// Если флаг уже установлен
 				if(flags & O_NONBLOCK){
 					// Устанавливаем неблокирующий режим
-					if(!(result = !static_cast <bool> (::fcntl(fd, F_SETFL, flags ^ O_NONBLOCK))))
+					if(!(result = (::fcntl(fd, F_SETFL, flags ^ O_NONBLOCK) >= 0)))
 						// Выводим в лог информацию
-						this->_log->print("cannot set NON_BLOCK option on socket %d", log_t::flag_t::WARNING, fd);
+						this->_log->print("cannot set BLOCK option on socket %d", log_t::flag_t::WARNING, fd);
 				}
 			} break;
 			// Если необходимо перевести сокет в неблокирующий режим
@@ -162,7 +162,7 @@ bool awh::Socket::setBlocking(const SOCKET fd, const mode_t mode) const noexcept
 				// Если флаг ещё не установлен
 				if(!(flags & O_NONBLOCK)){
 					// Устанавливаем неблокирующий режим
-					if(!(result = !static_cast <bool> (::fcntl(fd, F_SETFL, flags | O_NONBLOCK))))
+					if(!(result = (::fcntl(fd, F_SETFL, flags | O_NONBLOCK) >= 0)))
 						// Выводим в лог информацию
 						this->_log->print("cannot set NON_BLOCK option on socket %d", log_t::flag_t::WARNING, fd);
 				}
@@ -314,7 +314,7 @@ bool awh::Socket::closeOnExec(const SOCKET fd) const noexcept {
 		// Флаги файлового дескриптора
 		int flags = 0;
 		// Получаем флаги файлового дескриптора 
-		if(!(result = !static_cast <bool> (flags = ::fcntl(fd, F_GETFD, nullptr)))){
+		if(!(result = ((flags = ::fcntl(fd, F_GETFD, nullptr)) >= 0))){
 			// Выводим в лог информацию
 			this->_log->print("cannot set CLOSE_ON_EXEC option on socket %d", log_t::flag_t::WARNING, fd);
 			// Выходим из функции
@@ -323,7 +323,7 @@ bool awh::Socket::closeOnExec(const SOCKET fd) const noexcept {
 		// Если флаг ещё не установлен
 		if(!(flags & FD_CLOEXEC)){
 			// Устанавливаем флаги для файлового дескриптора
-			if(!(result = !static_cast <bool> (::fcntl(fd, F_SETFD, flags | FD_CLOEXEC))))
+			if(!(result = ((flags = ::fcntl(fd, F_SETFD, flags | FD_CLOEXEC)) >= 0)))
 				// Выводим в лог информацию
 				this->_log->print("cannot set CLOSE_ON_EXEC option on socket %d", log_t::flag_t::WARNING, fd);
 		}
