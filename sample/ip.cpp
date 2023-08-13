@@ -23,12 +23,8 @@ using namespace awh;
  * @return     код выхода из приложения
  */
 int main(int argc, char * argv[]){
-	// Создаём объект фреймворка
-	fmk_t fmk;
-	// Создаём объект для работы с логами
-	log_t log(&fmk);
 	// Выполняем создание объекта IP адреса
-	net_t net(&fmk, &log);
+	net_t net{};
 
 	// Выводим тесты IP адресов
 	net = "[2001:0db8:11a3:09d7:1f34:8a2e:07a0:765d]";

@@ -18,23 +18,25 @@
 /**
  * Стандартная библиотека
  */
+#include <map>
 #include <array>
 #include <cmath>
 #include <memory>
 #include <bitset>
 #include <string>
 #include <vector>
+#include <cstring>
+#include <sstream>
 #include <iostream>
 #include <sys/types.h>
 
-/**
- * Наши модули
- */
-#include <sys/log.hpp>
-#include <sys/fmk.hpp>
-
 // Устанавливаем область видимости
 using namespace std;
+
+/**
+ * Наши модуля
+ */
+#include <sys/re.hpp>
 
 /**
  * awh пространство имён
@@ -92,21 +94,18 @@ namespace awh {
 			};
 		private:
 			/**
-			 * Local Структура локального адреса
+			 * LocalNet Структура локального адреса
 			 */
-			typedef struct Local {
+			typedef struct LocalNet {
 				bool reserved;          // Адрес является зарезервированным
 				uint8_t prefix;         // Префикс сети
 				unique_ptr <Net> end;   // Конечный диапазон адреса
 				unique_ptr <Net> begin; // Начальный IP адрес
 				/**
-				 * Local Конструктор
-				 * @param fmk объект фреймворка
-				 * @param log объект для работы с логами
+				 * LocalNet Конструктор
 				 */
-				Local(const fmk_t * fmk, const log_t * log) noexcept :
-				 reserved(false), prefix(0), end(new Net(fmk, log)), begin(new Net(fmk, log)) {}
-			} local_t;
+				LocalNet() noexcept : reserved(false), prefix(0), end(new Net), begin(new Net) {}
+			} localNet_t;
 		private:
 			// Тип обрабатываемого адреса
 			type_t _type;
@@ -121,17 +120,26 @@ namespace awh {
 			vector <uint8_t> _buffer;
 		private:
 			// Список локальных адресов
-			multimap <type_t, local_t> _locals;
-		private:
-			// Создаём объект фреймворка
-			const fmk_t * _fmk;
-			// Создаём объект работы с логами
-			const log_t * _log;
+			multimap <type_t, localNet_t> _localsNet;
 		private:
 			/**
 			 * initLocalNet Метод инициализации списка локальных адресов
 			 */
 			void initLocalNet() noexcept;
+		private:
+			/**
+			 * atoi Метод конвертации строковых чисел в десятичную систему счисления
+			 * @param value число для конвертации
+			 * @return      полученная строка в системе счисления
+			 */
+			int64_t atoi(const string & value) const noexcept;
+			/**
+			 * itoa Метод конвертации чисел в указанную систему счисления
+			 * @param value число для конвертации
+			 * @param radix система счисления
+			 * @return      полученная строка в системе счисления
+			 */
+			string itoa(const int64_t value, const uint8_t radix) const noexcept;
 		private:
 			/**
 			 * zerro Метод заполнения недостающих элементов нулями
@@ -140,6 +148,15 @@ namespace awh {
 			 * @return     полученное число строки
 			 */
 			string & zerro(string && num, const uint8_t size = 3) const noexcept;
+		private:
+			/**
+			 * split Метод разделения строк на составляющие
+			 * @param str    строка для поиска
+			 * @param delim  разделитель
+			 * @param result результирующий вектор
+			 * @return       результирующий вектор
+			 */
+			vector <string> & split(const string & str, const string & delim, vector <string> & result) const noexcept;
 		public:
 			/**
 			 * clear Метод очистки данных IP адреса
@@ -398,10 +415,8 @@ namespace awh {
 		public:
 			/**
 			 * Net конструктор
-			 * @param fmk объект фреймворка
-			 * @param log объект для работы с логами
 			 */
-			Net(const fmk_t * fmk, const log_t * log) noexcept;
+			Net() noexcept;
 			/**
 			 * ~Net деструктор
 			 */

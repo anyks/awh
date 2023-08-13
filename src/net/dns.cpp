@@ -873,25 +873,12 @@ string awh::DNS::cache(const int family, const string & domain) noexcept {
 	if(!domain.empty()){
 		// Список полученных IP-адресов
 		vector <string> ips;
+		// Переводим доменное имя в нижний регистр
+		this->_fmk->transform(domain, fmk_t::transform_t::LOWER);
 		// Определяем тип протокола подключения
 		switch(family){
 			// Если тип протокола подключения IPv4
 			case static_cast <int> (AF_INET): {
-				// Если префикс переменной окружения установлен
-				if(!this->_prefix.empty()){
-					// Получаем название доменного имени
-					string postfix = domain;
-					// Выполняем замену точек в названии доменного имени
-					this->_fmk->replace(postfix, ".", "_");
-					// Переводим постфикс в верхний регистр
-					this->_fmk->transform(postfix, fmk_t::transform_t::UPPER);
-					// Получаем значение переменной
-					const char * env = ::getenv(this->_fmk->format("%s_DNS_IPV4_%s", this->_prefix.c_str(), postfix.c_str()).c_str());
-					// Если IP-адрес из переменной окружения получен
-					if(env != nullptr)
-						// Выводим полученный результат
-						return env;
-				}
 				// Если кэш доменных имён проинициализирован
 				if(!this->_cacheIPv4.empty()){
 					// Временный буфер данных для преобразования IP-адреса
@@ -922,21 +909,6 @@ string awh::DNS::cache(const int family, const string & domain) noexcept {
 			} break;
 			// Если тип протокола подключения IPv6
 			case static_cast <int> (AF_INET6): {
-				// Если префикс переменной окружения установлен
-				if(!this->_prefix.empty()){
-					// Получаем название доменного имени
-					string postfix = domain;
-					// Выполняем замену точек в названии доменного имени
-					this->_fmk->replace(postfix, ".", "_");
-					// Переводим постфикс в верхний регистр
-					this->_fmk->transform(postfix, fmk_t::transform_t::UPPER);
-					// Получаем значение переменной
-					const char * env = ::getenv(this->_fmk->format("%s_DNS_IPV6_%s", this->_prefix.c_str(), postfix.c_str()).c_str());
-					// Если IP-адрес из переменной окружения получен
-					if(env != nullptr)
-						// Выводим полученный результат
-						return env;
-				}
 				// Если кэш доменных имён проинициализирован
 				if(!this->_cacheIPv6.empty()){
 					// Временный буфер данных для преобразования IP-адреса
@@ -1000,10 +972,12 @@ void awh::DNS::clearCache(const string & domain) noexcept {
  * @param domain доменное имя для которого выполняется очистка кэша
  */
 void awh::DNS::clearCache(const int family, const string & domain) noexcept {
+	// Выполняем блокировку потока
+	const lock_guard <recursive_mutex> lock(this->_mtx);
 	// Если доменное имя передано
 	if(!domain.empty()){
-		// Выполняем блокировку потока
-		const lock_guard <recursive_mutex> lock(this->_mtx);
+		// Переводим доменное имя в нижний регистр
+		this->_fmk->transform(domain, fmk_t::transform_t::LOWER);
 		// Определяем тип протокола подключения
 		switch(family){
 			// Если тип протокола подключения IPv4
@@ -1090,10 +1064,10 @@ void awh::DNS::clearCache(const int family, const bool localhost) noexcept {
  * @param localhost флаг обозначающий добавление локального адреса
  */
 void awh::DNS::setToCache(const string & domain, const string & ip, const bool localhost) noexcept {
+	// Выполняем блокировку потока
+	const lock_guard <recursive_mutex> lock(this->_mtx);
 	// Если доменное имя и IP-адрес переданы
 	if(!domain.empty() && !ip.empty()){
-		// Выполняем блокировку потока
-		const lock_guard <recursive_mutex> lock(this->_mtx);
 		// Определяем тип передаваемого IP-адреса
 		switch(static_cast <uint8_t> (this->_net.host(ip))){
 			// Если IP-адрес является IPv4 адресом
@@ -1117,12 +1091,14 @@ void awh::DNS::setToCache(const string & domain, const string & ip, const bool l
  * @param localhost флаг обозначающий добавление локального адреса
  */
 void awh::DNS::setToCache(const int family, const string & domain, const string & ip, const bool localhost) noexcept {
+	// Выполняем блокировку потока
+	const lock_guard <recursive_mutex> lock(this->_mtx);
 	// Если доменное имя и IP-адрес переданы
 	if(!domain.empty() && !ip.empty()){
-		// Выполняем блокировку потока
-		const lock_guard <recursive_mutex> lock(this->_mtx);
 		// Результат проверки наличия IP-адреса в кэше
 		bool result = false;
+		// Переводим доменное имя в нижний регистр
+		this->_fmk->transform(domain, fmk_t::transform_t::LOWER);
 		// Определяем тип протокола подключения
 		switch(family){
 			// Если тип протокола подключения IPv4
@@ -1205,10 +1181,12 @@ void awh::DNS::clearBlackList(const string & domain) noexcept {
  * @param domain доменное имя для которого очищается чёрный список
  */
 void awh::DNS::clearBlackList(const int family, const string & domain) noexcept {
+	// Выполняем блокировку потока
+	const lock_guard <recursive_mutex> lock(this->_mtx);
 	// Если доменное имя передано
 	if(!domain.empty()){
-		// Выполняем блокировку потока
-		const lock_guard <recursive_mutex> lock(this->_mtx);
+		// Переводим доменное имя в нижний регистр
+		this->_fmk->transform(domain, fmk_t::transform_t::LOWER);
 		// Определяем тип протокола подключения
 		switch(family){
 			// Если тип протокола подключения IPv4
@@ -1244,10 +1222,10 @@ void awh::DNS::clearBlackList(const int family, const string & domain) noexcept 
  * @param ip     адрес для удаления из чёрного списка
  */
 void awh::DNS::delInBlackList(const string & domain, const string & ip) noexcept {
+	// Выполняем блокировку потока
+	const lock_guard <recursive_mutex> lock(this->_mtx);
 	// Если доменное имя и IP-адрес переданы
 	if(!domain.empty() && !ip.empty()){
-		// Выполняем блокировку потока
-		const lock_guard <recursive_mutex> lock(this->_mtx);
 		// Определяем тип передаваемого IP-адреса
 		switch(static_cast <uint8_t> (this->_net.host(ip))){
 			// Если IP-адрес является IPv4 адресом
@@ -1270,10 +1248,12 @@ void awh::DNS::delInBlackList(const string & domain, const string & ip) noexcept
  * @param ip     адрес для удаления из чёрного списка
  */
 void awh::DNS::delInBlackList(const int family, const string & domain, const string & ip) noexcept {
+	// Выполняем блокировку потока
+	const lock_guard <recursive_mutex> lock(this->_mtx);
 	// Если доменное имя и IP-адрес переданы
-	if(!domain.empty() && !ip.empty()){
-		// Выполняем блокировку потока
-		const lock_guard <recursive_mutex> lock(this->_mtx);
+	if(!domain.empty() && !ip.empty()){	
+		// Переводим доменное имя в нижний регистр
+		this->_fmk->transform(domain, fmk_t::transform_t::LOWER);
 		// Определяем тип протокола подключения
 		switch(family){
 			// Если тип протокола подключения IPv4
@@ -1323,10 +1303,10 @@ void awh::DNS::delInBlackList(const int family, const string & domain, const str
  * @param ip     адрес для добавления в чёрный список
  */
 void awh::DNS::setToBlackList(const string & domain, const string & ip) noexcept {
+	// Выполняем блокировку потока
+	const lock_guard <recursive_mutex> lock(this->_mtx);
 	// Если доменное имя и IP-адрес переданы
-	if(!domain.empty() && !ip.empty()){
-		// Выполняем блокировку потока
-		const lock_guard <recursive_mutex> lock(this->_mtx);
+	if(!domain.empty() && !ip.empty()){	
 		// Определяем тип передаваемого IP-адреса
 		switch(static_cast <uint8_t> (this->_net.host(ip))){
 			// Если IP-адрес является IPv4 адресом
@@ -1349,10 +1329,12 @@ void awh::DNS::setToBlackList(const string & domain, const string & ip) noexcept
  * @param ip     адрес для добавления в чёрный список
  */
 void awh::DNS::setToBlackList(const int family, const string & domain, const string & ip) noexcept {
+	// Выполняем блокировку потока
+	const lock_guard <recursive_mutex> lock(this->_mtx);
 	// Если доменное имя и IP-адрес переданы
 	if(!domain.empty() && !ip.empty()){
-		// Выполняем блокировку потока
-		const lock_guard <recursive_mutex> lock(this->_mtx);
+		// Переводим доменное имя в нижний регистр
+		this->_fmk->transform(domain, fmk_t::transform_t::LOWER);
 		// Определяем тип протокола подключения
 		switch(family){
 			// Если тип протокола подключения IPv4
@@ -1472,6 +1454,8 @@ bool awh::DNS::isInBlackList(const int family, const string & domain, const stri
 	bool result = false;
 	// Если доменное имя и IP-адрес переданы
 	if(!domain.empty() && !ip.empty()){
+		// Переводим доменное имя в нижний регистр
+		this->_fmk->transform(domain, fmk_t::transform_t::LOWER);
 		// Определяем тип протокола подключения
 		switch(family){
 			// Если тип протокола подключения IPv4
@@ -1576,10 +1560,10 @@ string awh::DNS::server(const int family) noexcept {
  * @param server параметры DNS-сервера
  */
 void awh::DNS::server(const string & server) noexcept {
+	// Выполняем блокировку потока
+	const lock_guard <recursive_mutex> lock(this->_mtx);
 	// Если адрес сервера передан
 	if(!server.empty()){
-		// Выполняем блокировку потока
-		const lock_guard <recursive_mutex> lock(this->_mtx);
 		// Определяем тип передаваемого IP-адреса
 		switch(static_cast <uint8_t> (this->_net.host(server))){
 			// Если IP-адрес является IPv4 адресом
@@ -1743,10 +1727,10 @@ void awh::DNS::server(const int family, const string & server) noexcept {
  * @param servers параметры DNS-серверов
  */
 void awh::DNS::servers(const vector <string> & servers) noexcept {
+	// Выполняем блокировку потока
+	const lock_guard <recursive_mutex> lock(this->_mtx);
 	// Если список серверов передан
 	if(!servers.empty()){
-		// Выполняем блокировку потока
-		const lock_guard <recursive_mutex> lock(this->_mtx);
 		// Создаём объект холдирования
 		hold_t hold(&this->_status);
 		// Если статус работы DNS-резолвера соответствует
@@ -1783,10 +1767,10 @@ void awh::DNS::servers(const vector <string> & servers) noexcept {
  * @param servers параметры DNS-серверов
  */
 void awh::DNS::servers(const int family, const vector <string> & servers) noexcept {
+	// Выполняем блокировку потока
+	const lock_guard <recursive_mutex> lock(this->_mtx);
 	// Если список серверов передан
-	if(!servers.empty()){
-		// Выполняем блокировку потока
-		const lock_guard <recursive_mutex> lock(this->_mtx);
+	if(!servers.empty()){	
 		// Создаём объект холдирования
 		hold_t hold(&this->_status);
 		// Если статус работы DNS-резолвера соответствует
@@ -1904,10 +1888,10 @@ void awh::DNS::setPrefix(const string & prefix) noexcept {
  * @param filename адрес файла для загрузки
  */
 void awh::DNS::readHosts(const string & filename) noexcept {
+	// Выполняем блокировку потока
+	const lock_guard <recursive_mutex> lock(this->_mtx);
 	// Если адрес файла получен
 	if(!filename.empty()){
-		// Выполняем блокировку потока
-		const lock_guard <recursive_mutex> lock(this->_mtx);
 		// Создаём объект для работы с файловой системой
 		fs_t fs(this->_fmk, this->_log);
 		// Выполняем установку адреса файла hosts
@@ -2009,6 +1993,8 @@ string awh::DNS::host(const int family, const string & name) noexcept {
 		if(!name.empty()){
 			// Если доменное имя является локальным
 			if(this->_fmk->is(name, fmk_t::check_t::LATIAN)){
+				// Переводим доменное имя в нижний регистр
+				this->_fmk->transform(name, fmk_t::transform_t::LOWER);
 				/**
 				 * Методы только для OS Windows
 				 */
@@ -2231,6 +2217,38 @@ string awh::DNS::resolve(const int family, const string & host) noexcept {
 						// Выводим полученный результат
 						return result;
 					}{
+						// Если префикс переменной окружения установлен
+						if(!this->_prefix.empty()){
+							// Получаем название доменного имени
+							string postfix = domain;
+							// Выполняем замену точек в названии доменного имени
+							this->_fmk->replace(postfix, ".", "_");
+							// Переводим постфикс в верхний регистр
+							this->_fmk->transform(postfix, fmk_t::transform_t::UPPER);
+							// Определяем тип протокола подключения
+							switch(family){
+								// Если тип протокола подключения IPv4
+								case static_cast <int> (AF_INET): {
+									// Получаем значение переменной
+									const char * env = ::getenv(this->_fmk->format("%s_DNS_IPV4_%s", this->_prefix.c_str(), postfix.c_str()).c_str());
+									// Если IP-адрес из переменной окружения получен
+									if(env != nullptr)
+										// Выводим полученный результат
+										return env;
+								} break;
+								// Если тип протокола подключения IPv6
+								case static_cast <int> (AF_INET6): {
+									// Получаем значение переменной
+									const char * env = ::getenv(this->_fmk->format("%s_DNS_IPV6_%s", this->_prefix.c_str(), postfix.c_str()).c_str());
+									// Если IP-адрес из переменной окружения получен
+									if(env != nullptr)
+										// Выводим полученный результат
+										return env;
+								} break;
+							}
+						}
+						// Переводим доменное имя в нижний регистр
+						this->_fmk->transform(domain, fmk_t::transform_t::LOWER);
 						// Определяем тип протокола подключения
 						switch(family){
 							// Если тип протокола подключения IPv4
@@ -2353,7 +2371,7 @@ vector <string> awh::DNS::search(const int family, const string & ip) noexcept {
  * @param log объект для работы с логами
  */
 awh::DNS::DNS(const fmk_t * fmk, const log_t * log) noexcept :
- _net(fmk, log), _ttl(0), _timeout(5), _prefix(AWH_SHORT_NAME),
+ _ttl(0), _timeout(5), _prefix(AWH_SHORT_NAME),
  _workerIPv4(nullptr), _workerIPv6(nullptr), _fmk(fmk), _log(log) {
 	// Выполняем создание воркера для IPv4
 	this->_workerIPv4 = unique_ptr <worker_t> (new worker_t(AF_INET, this));

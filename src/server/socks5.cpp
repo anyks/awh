@@ -311,7 +311,7 @@ void awh::server::ProxySocks5::readServerCallback(const char * buffer, const siz
 							// Если хост является IPv6 адресом, переводим ip адрес в полную форму
 							case static_cast <uint8_t> (net_t::type_t::IPV6): {
 								// Создаём объкт для работы с адресами
-								net_t net(this->_fmk, this->_log);
+								net_t net{};
 								// Выполняем установку хоста
 								net = server.host;
 								// Устанавливаем IP адрес
@@ -707,7 +707,8 @@ void awh::server::ProxySocks5::signalInterception(const awh::core_t::signals_t m
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
  */
-awh::server::ProxySocks5::ProxySocks5(const fmk_t * fmk, const log_t * log) noexcept : _port(SERVER_PORT), _host(""), _usock(""), _net(fmk, log), _core(fmk, log), _scheme(fmk, log), _fmk(fmk), _log(log) {
+awh::server::ProxySocks5::ProxySocks5(const fmk_t * fmk, const log_t * log) noexcept :
+ _port(SERVER_PORT), _host(""), _usock(""), _core(fmk, log), _scheme(fmk, log), _fmk(fmk), _log(log) {
 	// Устанавливаем флаг запрещающий вывод информационных сообщений для клиента
 	this->_core.client.noInfo(true);
 	// Устанавливаем протокол интернет-подключения

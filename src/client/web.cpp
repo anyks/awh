@@ -1460,7 +1460,7 @@ void awh::client::WEB::authTypeProxy(const auth_t::type_t type, const auth_t::ha
  * @param log  объект для работы с логами
  */
 awh::client::WEB::WEB(const client::core_t * core, const fmk_t * fmk, const log_t * log) noexcept :
- _net(fmk, log), _uri(fmk, &_net), _http(fmk, log, &_uri), _scheme(fmk, log), _action(action_t::NONE),
+ _uri(fmk), _http(fmk, log, &_uri), _scheme(fmk, log), _action(action_t::NONE),
  _compress(awh::http_t::compress_t::NONE), _aid(0), _unbind(true), _active(false),
  _stopped(false), _redirects(false), _attempts(10), _fmk(fmk), _log(log), _core(core) {
 	// Устанавливаем событие на запуск системы

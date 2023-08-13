@@ -1553,7 +1553,7 @@ void awh::client::WebSocket::authTypeProxy(const auth_t::type_t type, const auth
  * @param log  объект для работы с логами
  */
 awh::client::WebSocket::WebSocket(const client::core_t * core, const fmk_t * fmk, const log_t * log) noexcept :
- _net(fmk, log), _hash(log), _uri(fmk, &_net), _http(fmk, log, &_uri), _frame(fmk, log), _scheme(fmk, log),
+ _hash(log), _uri(fmk), _http(fmk, log, &_uri), _frame(fmk, log), _scheme(fmk, log),
  _action(action_t::NONE), _opcode(frame_t::opcode_t::TEXT), _compress(http_t::compress_t::NONE), _crypt(false),
  _close(false), _unbind(true), _freeze(false), _noinfo(false), _stopped(false), _compressed(false), _takeOverCli(false),
  _takeOverSrv(false), _attempt(0), _attempts(10), _wbitClient(0), _wbitServer(0), _aid(0), _code(0),

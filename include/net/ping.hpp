@@ -262,7 +262,7 @@ namespace awh {
 			 */
 			Ping(const fmk_t * fmk, const log_t * log) noexcept :
 			 _fd(INVALID_SOCKET), _mode(false), _noInfo(false),
-			 _net(fmk, log), _dns(fmk, log), _socket(log), _socklen(0),
+			 _dns(fmk, log), _socket(log), _socklen(0),
 			 _shifting(3000), _timeoutRead(5000), _timeoutWrite(15000),
 			 _fmk(fmk), _log(log), _callback(nullptr) {}
 			/**

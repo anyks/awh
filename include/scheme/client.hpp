@@ -75,8 +75,8 @@ namespace awh {
 				 * @param log объект для работы с логами
 				 */
 				Proxy(const fmk_t * fmk, const log_t * log) noexcept :
-				 family(scheme_t::family_t::IPV4), type(type_t::NONE), net(fmk, log),
-				 uri(fmk, &net), socks5(log), http(fmk, log, &uri), fmk(fmk), log(log) {}
+				 family(scheme_t::family_t::IPV4), type(type_t::NONE),
+				 uri(fmk), socks5(log), http(fmk, log, &uri), fmk(fmk), log(log) {}
 				/**
 				 * ~Proxy Деструктор
 				 */

@@ -20,349 +20,403 @@
  */
 void awh::Net::initLocalNet() noexcept {
 	// Если список локальных адресов пустой
-	if(this->_locals.empty()){
+	if(this->_localsNet.empty()){
 		{
 			// Создаём объект локального адреса
-			local_t local(this->_fmk, this->_log);
+			localNet_t localNet{};
 			// Устанавливаем префикс сети
-			local.prefix = 128;
+			localNet.prefix = 128;
 			// Устанавливаем зарезервированный флаг
-			local.reserved = true;
+			localNet.reserved = true;
 			// Устанавливаем IP адрес
-			local.begin->parse("::");
+			localNet.begin->parse("::");
 			// Добавляем адрес в список локальных адресов
-			this->_locals.emplace(type_t::IPV6, std::move(local));
+			this->_localsNet.emplace(type_t::IPV6, std::move(localNet));
 		}{
 			// Создаём объект локального адреса
-			local_t local(this->_fmk, this->_log);
+			localNet_t localNet{};
 			// Устанавливаем префикс сети
-			local.prefix = 128;
+			localNet.prefix = 128;
 			// Устанавливаем IP адрес
-			local.begin->parse("::1");
+			localNet.begin->parse("::1");
 			// Добавляем адрес в список локальных адресов
-			this->_locals.emplace(type_t::IPV6, std::move(local));
+			this->_localsNet.emplace(type_t::IPV6, std::move(localNet));
 		}{
 			// Создаём объект локального адреса
-			local_t local(this->_fmk, this->_log);
+			localNet_t localNet{};
 			// Устанавливаем префикс сети
-			local.prefix = 32;
+			localNet.prefix = 32;
 			// Устанавливаем зарезервированный флаг
-			local.reserved = true;
+			localNet.reserved = true;
 			// Устанавливаем IP адрес
-			local.begin->parse("2001::");
+			localNet.begin->parse("2001::");
 			// Добавляем адрес в список локальных адресов
-			this->_locals.emplace(type_t::IPV6, std::move(local));
+			this->_localsNet.emplace(type_t::IPV6, std::move(localNet));
 		}{
 			// Создаём объект локального адреса
-			local_t local(this->_fmk, this->_log);
+			localNet_t localNet{};
 			// Устанавливаем префикс сети
-			local.prefix = 32;
+			localNet.prefix = 32;
 			// Устанавливаем IP адрес
-			local.begin->parse("2001:db8::");
+			localNet.begin->parse("2001:db8::");
 			// Добавляем адрес в список локальных адресов
-			this->_locals.emplace(type_t::IPV6, std::move(local));
+			this->_localsNet.emplace(type_t::IPV6, std::move(localNet));
 		}{
 			// Создаём объект локального адреса
-			local_t local(this->_fmk, this->_log);
+			localNet_t localNet{};
 			// Устанавливаем префикс сети
-			local.prefix = 96;
+			localNet.prefix = 96;
 			// Устанавливаем зарезервированный флаг
-			local.reserved = true;
+			localNet.reserved = true;
 			// Устанавливаем IP адрес
-			local.begin->parse("64:ff9b::");
+			localNet.begin->parse("64:ff9b::");
 			// Добавляем адрес в список локальных адресов
-			this->_locals.emplace(type_t::IPV6, std::move(local));
+			this->_localsNet.emplace(type_t::IPV6, std::move(localNet));
 		}{
 			// Создаём объект локального адреса
-			local_t local(this->_fmk, this->_log);
+			localNet_t localNet{};
 			// Устанавливаем префикс сети
-			local.prefix = 16;
+			localNet.prefix = 16;
 			// Устанавливаем зарезервированный флаг
-			local.reserved = true;
+			localNet.reserved = true;
 			// Устанавливаем IP адрес
-			local.begin->parse("2002::");
+			localNet.begin->parse("2002::");
 			// Добавляем адрес в список локальных адресов
-			this->_locals.emplace(type_t::IPV6, std::move(local));
+			this->_localsNet.emplace(type_t::IPV6, std::move(localNet));
 		}{
 			// Создаём объект локального адреса
-			local_t local(this->_fmk, this->_log);
+			localNet_t localNet{};
 			// Устанавливаем префикс сети
-			local.prefix = 10;
+			localNet.prefix = 10;
 			// Устанавливаем IP адрес начала диапазона
-			local.begin->parse("fe80::");
+			localNet.begin->parse("fe80::");
 			// Устанавливаем IP адрес конца диапазона
-			local.end->parse("febf::");
+			localNet.end->parse("febf::");
 			// Добавляем адрес в список локальных адресов
-			this->_locals.emplace(type_t::IPV6, std::move(local));
+			this->_localsNet.emplace(type_t::IPV6, std::move(localNet));
 		}{
 			// Создаём объект локального адреса
-			local_t local(this->_fmk, this->_log);
+			localNet_t localNet{};
 			// Устанавливаем префикс сети
-			local.prefix = 10;
+			localNet.prefix = 10;
 			// Устанавливаем IP адрес начала диапазона
-			local.begin->parse("fec0::");
+			localNet.begin->parse("fec0::");
 			// Устанавливаем IP адрес конца диапазона
-			local.end->parse("feff::");
+			localNet.end->parse("feff::");
 			// Добавляем адрес в список локальных адресов
-			this->_locals.emplace(type_t::IPV6, std::move(local));
+			this->_localsNet.emplace(type_t::IPV6, std::move(localNet));
 		}{
 			// Создаём объект локального адреса
-			local_t local(this->_fmk, this->_log);
+			localNet_t localNet{};
 			// Устанавливаем префикс сети
-			local.prefix = 7;
+			localNet.prefix = 7;
 			// Устанавливаем IP адрес
-			local.begin->parse("fc00::");
+			localNet.begin->parse("fc00::");
 			// Добавляем адрес в список локальных адресов
-			this->_locals.emplace(type_t::IPV6, std::move(local));
+			this->_localsNet.emplace(type_t::IPV6, std::move(localNet));
 		}{
 			// Создаём объект локального адреса
-			local_t local(this->_fmk, this->_log);
+			localNet_t localNet{};
 			// Устанавливаем префикс сети
-			local.prefix = 8;
+			localNet.prefix = 8;
 			// Устанавливаем зарезервированный флаг
-			local.reserved = true;
+			localNet.reserved = true;
 			// Устанавливаем IP адрес
-			local.begin->parse("ff00::");
+			localNet.begin->parse("ff00::");
 			// Добавляем адрес в список локальных адресов
-			this->_locals.emplace(type_t::IPV6, std::move(local));
+			this->_localsNet.emplace(type_t::IPV6, std::move(localNet));
 		}{
 			// Создаём объект локального адреса
-			local_t local(this->_fmk, this->_log);
+			localNet_t localNet{};
 			// Устанавливаем префикс сети
-			local.prefix = 8;
+			localNet.prefix = 8;
 			// Устанавливаем зарезервированный флаг
-			local.reserved = true;
+			localNet.reserved = true;
 			// Устанавливаем IP адрес
-			local.begin->parse("0.0.0.0");
+			localNet.begin->parse("0.0.0.0");
 			// Добавляем адрес в список локальных адресов
-			this->_locals.emplace(type_t::IPV4, std::move(local));
+			this->_localsNet.emplace(type_t::IPV4, std::move(localNet));
 		}{
 			// Создаём объект локального адреса
-			local_t local(this->_fmk, this->_log);
+			localNet_t localNet{};
 			// Устанавливаем префикс сети
-			local.prefix = 32;
+			localNet.prefix = 32;
 			// Устанавливаем зарезервированный флаг
-			local.reserved = true;
+			localNet.reserved = true;
 			// Устанавливаем IP адрес
-			local.begin->parse("0.0.0.0");
+			localNet.begin->parse("0.0.0.0");
 			// Добавляем адрес в список локальных адресов
-			this->_locals.emplace(type_t::IPV4, std::move(local));
+			this->_localsNet.emplace(type_t::IPV4, std::move(localNet));
 		}{
 			// Создаём объект локального адреса
-			local_t local(this->_fmk, this->_log);
+			localNet_t localNet{};
 			// Устанавливаем префикс сети
-			local.prefix = 10;
+			localNet.prefix = 10;
 			// Устанавливаем зарезервированный флаг
-			local.reserved = true;
+			localNet.reserved = true;
 			// Устанавливаем IP адрес
-			local.begin->parse("100.64.0.0");
+			localNet.begin->parse("100.64.0.0");
 			// Добавляем адрес в список локальных адресов
-			this->_locals.emplace(type_t::IPV4, std::move(local));
+			this->_localsNet.emplace(type_t::IPV4, std::move(localNet));
 		}{
 			// Создаём объект локального адреса
-			local_t local(this->_fmk, this->_log);
+			localNet_t localNet{};
 			// Устанавливаем префикс сети
-			local.prefix = 16;
+			localNet.prefix = 16;
 			// Устанавливаем зарезервированный флаг
-			local.reserved = true;
+			localNet.reserved = true;
 			// Устанавливаем IP адрес
-			local.begin->parse("169.254.0.0");
+			localNet.begin->parse("169.254.0.0");
 			// Добавляем адрес в список локальных адресов
-			this->_locals.emplace(type_t::IPV4, std::move(local));
+			this->_localsNet.emplace(type_t::IPV4, std::move(localNet));
 		}{
 			// Создаём объект локального адреса
-			local_t local(this->_fmk, this->_log);
+			localNet_t localNet{};
 			// Устанавливаем префикс сети
-			local.prefix = 4;
+			localNet.prefix = 4;
 			// Устанавливаем зарезервированный флаг
-			local.reserved = true;
+			localNet.reserved = true;
 			// Устанавливаем IP адрес
-			local.begin->parse("224.0.0.0");
+			localNet.begin->parse("224.0.0.0");
 			// Добавляем адрес в список локальных адресов
-			this->_locals.emplace(type_t::IPV4, std::move(local));
+			this->_localsNet.emplace(type_t::IPV4, std::move(localNet));
 		}{
 			// Создаём объект локального адреса
-			local_t local(this->_fmk, this->_log);
+			localNet_t localNet{};
 			// Устанавливаем префикс сети
-			local.prefix = 24;
+			localNet.prefix = 24;
 			// Устанавливаем зарезервированный флаг
-			local.reserved = true;
+			localNet.reserved = true;
 			// Устанавливаем IP адрес
-			local.begin->parse("224.0.0.0");
+			localNet.begin->parse("224.0.0.0");
 			// Добавляем адрес в список локальных адресов
-			this->_locals.emplace(type_t::IPV4, std::move(local));
+			this->_localsNet.emplace(type_t::IPV4, std::move(localNet));
 		}{
 			// Создаём объект локального адреса
-			local_t local(this->_fmk, this->_log);
+			localNet_t localNet{};
 			// Устанавливаем префикс сети
-			local.prefix = 8;
+			localNet.prefix = 8;
 			// Устанавливаем зарезервированный флаг
-			local.reserved = true;
+			localNet.reserved = true;
 			// Устанавливаем IP адрес
-			local.begin->parse("224.0.0.0");
+			localNet.begin->parse("224.0.0.0");
 			// Добавляем адрес в список локальных адресов
-			this->_locals.emplace(type_t::IPV4, std::move(local));
+			this->_localsNet.emplace(type_t::IPV4, std::move(localNet));
 		}{
 			// Создаём объект локального адреса
-			local_t local(this->_fmk, this->_log);
+			localNet_t localNet{};
 			// Устанавливаем префикс сети
-			local.prefix = 8;
+			localNet.prefix = 8;
 			// Устанавливаем зарезервированный флаг
-			local.reserved = true;
+			localNet.reserved = true;
 			// Устанавливаем IP адрес
-			local.begin->parse("239.0.0.0");
+			localNet.begin->parse("239.0.0.0");
 			// Добавляем адрес в список локальных адресов
-			this->_locals.emplace(type_t::IPV4, std::move(local));
+			this->_localsNet.emplace(type_t::IPV4, std::move(localNet));
 		}{
 			// Создаём объект локального адреса
-			local_t local(this->_fmk, this->_log);
+			localNet_t localNet{};
 			// Устанавливаем префикс сети
-			local.prefix = 4;
+			localNet.prefix = 4;
 			// Устанавливаем зарезервированный флаг
-			local.reserved = true;
+			localNet.reserved = true;
 			// Устанавливаем IP адрес
-			local.begin->parse("240.0.0.0");
+			localNet.begin->parse("240.0.0.0");
 			// Добавляем адрес в список локальных адресов
-			this->_locals.emplace(type_t::IPV4, std::move(local));
+			this->_localsNet.emplace(type_t::IPV4, std::move(localNet));
 		}{
 			// Создаём объект локального адреса
-			local_t local(this->_fmk, this->_log);
+			localNet_t localNet{};
 			// Устанавливаем префикс сети
-			local.prefix = 32;
+			localNet.prefix = 32;
 			// Устанавливаем зарезервированный флаг
-			local.reserved = true;
+			localNet.reserved = true;
 			// Устанавливаем IP адрес
-			local.begin->parse("255.255.255.255");
+			localNet.begin->parse("255.255.255.255");
 			// Добавляем адрес в список локальных адресов
-			this->_locals.emplace(type_t::IPV4, std::move(local));
+			this->_localsNet.emplace(type_t::IPV4, std::move(localNet));
 		}{
 			// Создаём объект локального адреса
-			local_t local(this->_fmk, this->_log);
+			localNet_t localNet{};
 			// Устанавливаем префикс сети
-			local.prefix = 8;
+			localNet.prefix = 8;
 			// Устанавливаем IP адрес
-			local.begin->parse("10.0.0.0");
+			localNet.begin->parse("10.0.0.0");
 			// Добавляем адрес в список локальных адресов
-			this->_locals.emplace(type_t::IPV4, std::move(local));
+			this->_localsNet.emplace(type_t::IPV4, std::move(localNet));
 		}{
 			// Создаём объект локального адреса
-			local_t local(this->_fmk, this->_log);
+			localNet_t localNet{};
 			// Устанавливаем префикс сети
-			local.prefix = 8;
+			localNet.prefix = 8;
 			// Устанавливаем IP адрес
-			local.begin->parse("127.0.0.0");
+			localNet.begin->parse("127.0.0.0");
 			// Добавляем адрес в список локальных адресов
-			this->_locals.emplace(type_t::IPV4, std::move(local));
+			this->_localsNet.emplace(type_t::IPV4, std::move(localNet));
 		}{
 			// Создаём объект локального адреса
-			local_t local(this->_fmk, this->_log);
+			localNet_t localNet{};
 			// Устанавливаем префикс сети
-			local.prefix = 12;
+			localNet.prefix = 12;
 			// Устанавливаем IP адрес
-			local.begin->parse("172.16.0.0");
+			localNet.begin->parse("172.16.0.0");
 			// Добавляем адрес в список локальных адресов
-			this->_locals.emplace(type_t::IPV4, std::move(local));
+			this->_localsNet.emplace(type_t::IPV4, std::move(localNet));
 		}{
 			// Создаём объект локального адреса
-			local_t local(this->_fmk, this->_log);
+			localNet_t localNet{};
 			// Устанавливаем префикс сети
-			local.prefix = 24;
+			localNet.prefix = 24;
 			// Устанавливаем IP адрес
-			local.begin->parse("192.0.0.0");
+			localNet.begin->parse("192.0.0.0");
 			// Добавляем адрес в список локальных адресов
-			this->_locals.emplace(type_t::IPV4, std::move(local));
+			this->_localsNet.emplace(type_t::IPV4, std::move(localNet));
 		}{
 			// Создаём объект локального адреса
-			local_t local(this->_fmk, this->_log);
+			localNet_t localNet{};
 			// Устанавливаем префикс сети
-			local.prefix = 29;
+			localNet.prefix = 29;
 			// Устанавливаем IP адрес
-			local.begin->parse("192.0.0.0");
+			localNet.begin->parse("192.0.0.0");
 			// Добавляем адрес в список локальных адресов
-			this->_locals.emplace(type_t::IPV4, std::move(local));
+			this->_localsNet.emplace(type_t::IPV4, std::move(localNet));
 		}{
 			// Создаём объект локального адреса
-			local_t local(this->_fmk, this->_log);
+			localNet_t localNet{};
 			// Устанавливаем префикс сети
-			local.prefix = 32;
+			localNet.prefix = 32;
 			// Устанавливаем IP адрес
-			local.begin->parse("192.0.0.170");
+			localNet.begin->parse("192.0.0.170");
 			// Добавляем адрес в список локальных адресов
-			this->_locals.emplace(type_t::IPV4, std::move(local));
+			this->_localsNet.emplace(type_t::IPV4, std::move(localNet));
 		}{
 			// Создаём объект локального адреса
-			local_t local(this->_fmk, this->_log);
+			localNet_t localNet{};
 			// Устанавливаем префикс сети
-			local.prefix = 32;
+			localNet.prefix = 32;
 			// Устанавливаем IP адрес
-			local.begin->parse("192.0.0.171");
+			localNet.begin->parse("192.0.0.171");
 			// Добавляем адрес в список локальных адресов
-			this->_locals.emplace(type_t::IPV4, std::move(local));
+			this->_localsNet.emplace(type_t::IPV4, std::move(localNet));
 		}{
 			// Создаём объект локального адреса
-			local_t local(this->_fmk, this->_log);
+			localNet_t localNet{};
 			// Устанавливаем префикс сети
-			local.prefix = 24;
+			localNet.prefix = 24;
 			// Устанавливаем IP адрес
-			local.begin->parse("192.0.2.0");
+			localNet.begin->parse("192.0.2.0");
 			// Добавляем адрес в список локальных адресов
-			this->_locals.emplace(type_t::IPV4, std::move(local));
+			this->_localsNet.emplace(type_t::IPV4, std::move(localNet));
 		}{
 			// Создаём объект локального адреса
-			local_t local(this->_fmk, this->_log);
+			localNet_t localNet{};
 			// Устанавливаем префикс сети
-			local.prefix = 24;
+			localNet.prefix = 24;
 			// Устанавливаем IP адрес
-			local.begin->parse("192.88.99.0");
+			localNet.begin->parse("192.88.99.0");
 			// Добавляем адрес в список локальных адресов
-			this->_locals.emplace(type_t::IPV4, std::move(local));
+			this->_localsNet.emplace(type_t::IPV4, std::move(localNet));
 		}{
 			// Создаём объект локального адреса
-			local_t local(this->_fmk, this->_log);
+			localNet_t localNet{};
 			// Устанавливаем префикс сети
-			local.prefix = 32;
+			localNet.prefix = 32;
 			// Устанавливаем IP адрес
-			local.begin->parse("192.88.99.1");
+			localNet.begin->parse("192.88.99.1");
 			// Добавляем адрес в список локальных адресов
-			this->_locals.emplace(type_t::IPV4, std::move(local));
+			this->_localsNet.emplace(type_t::IPV4, std::move(localNet));
 		}{
 			// Создаём объект локального адреса
-			local_t local(this->_fmk, this->_log);
+			localNet_t localNet{};
 			// Устанавливаем префикс сети
-			local.prefix = 16;
+			localNet.prefix = 16;
 			// Устанавливаем IP адрес
-			local.begin->parse("192.168.0.0");
+			localNet.begin->parse("192.168.0.0");
 			// Добавляем адрес в список локальных адресов
-			this->_locals.emplace(type_t::IPV4, std::move(local));
+			this->_localsNet.emplace(type_t::IPV4, std::move(localNet));
 		}{
 			// Создаём объект локального адреса
-			local_t local(this->_fmk, this->_log);
+			localNet_t localNet;
 			// Устанавливаем префикс сети
-			local.prefix = 24;
+			localNet.prefix = 24;
 			// Устанавливаем IP адрес
-			local.begin->parse("198.51.100.0");
+			localNet.begin->parse("198.51.100.0");
 			// Добавляем адрес в список локальных адресов
-			this->_locals.emplace(type_t::IPV4, std::move(local));
+			this->_localsNet.emplace(type_t::IPV4, std::move(localNet));
 		}{
 			// Создаём объект локального адреса
-			local_t local(this->_fmk, this->_log);
+			localNet_t localNet{};
 			// Устанавливаем префикс сети
-			local.prefix = 15;
+			localNet.prefix = 15;
 			// Устанавливаем IP адрес
-			local.begin->parse("198.18.0.0");
+			localNet.begin->parse("198.18.0.0");
 			// Добавляем адрес в список локальных адресов
-			this->_locals.emplace(type_t::IPV4, std::move(local));
+			this->_localsNet.emplace(type_t::IPV4, std::move(localNet));
 		}{
 			// Создаём объект локального адреса
-			local_t local(this->_fmk, this->_log);
+			localNet_t localNet{};
 			// Устанавливаем префикс сети
-			local.prefix = 24;
+			localNet.prefix = 24;
 			// Устанавливаем IP адрес
-			local.begin->parse("203.0.113.0");
+			localNet.begin->parse("203.0.113.0");
 			// Добавляем адрес в список локальных адресов
-			this->_locals.emplace(type_t::IPV4, std::move(local));
+			this->_localsNet.emplace(type_t::IPV4, std::move(localNet));
 		}
 	}
+}
+/**
+ * atoi Метод конвертации строковых чисел в десятичную систему счисления
+ * @param value число для конвертации
+ * @return      полученная строка в системе счисления
+ */
+int64_t awh::Net::atoi(const string & value) const noexcept {
+	// Результат работы функции
+	int64_t result = 0;
+	// Если 16-е число передано
+	if(!value.empty()){
+		// Создаём поток для конвертации
+		stringstream stream;
+		// Записываем число в поток
+		stream << hex << value;
+		// Получаем результат
+		stream >> result;
+		// Выполняем конвертацию числа
+		// result = stoull(value, nullptr, 16);
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * itoa Метод конвертации чисел в указанную систему счисления
+ * @param value число для конвертации
+ * @param radix система счисления
+ * @return      полученная строка в системе счисления
+ */
+string awh::Net::itoa(const int64_t value, const uint8_t radix) const noexcept {
+	// Результат работы функции
+	string result = "";
+	// Если данные переданы
+	if((radix > 0) && (radix < 37)){
+		// Убираем отрицательное значение
+		int64_t num = abs(value);
+		// Запоминаем являлось ли число отрицательным
+		const bool sign = (value < 0);
+		// Устанавливаем числовые обозначения
+		const string digits = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+		// Особый случай: нулю соответствует не пустая строка, а "0"
+		if(num == 0) result.insert(result.begin(), digits[0]);
+		// Раскладываем число на цифры (младшими разрядами вперёд)
+		while(num != 0){
+			// Добавляем идентификатор числа
+			result.insert(result.begin(), digits[num % radix]);
+			// Выполняем финальное деление
+			num /= radix;
+		}
+		// Дописываем после старшего разряда знак
+		if(sign) result.insert(result.begin(), '-');
+	}
+	// Выводим результат
+	return result;
 }
 /**
  * zerro Метод заполнения недостающих элементов нулями
@@ -380,6 +434,59 @@ string & awh::Net::zerro(string && num, const uint8_t size) const noexcept {
 	}
 	// Выводим результат
 	return num;
+}
+/**
+ * split Метод разделения строк на составляющие
+ * @param str    строка для поиска
+ * @param delim  разделитель
+ * @param result результирующий вектор
+ * @return       результирующий вектор
+ */
+vector <string> & awh::Net::split(const string & str, const string & delim, vector <string> & result) const noexcept {
+	/**
+	 * trimFn Метод удаления пробелов вначале и конце текста
+	 * @param text текст для удаления пробелов
+	 * @return     результат работы функции
+	 */
+	auto trimFn = [](const string & text) noexcept -> string {
+		// Результат работы функции
+		string result = text;
+		// Выполняем удаление пробелов в начале текста
+		result.erase(result.begin(), find_if_not(result.begin(),result.end(), [](char c) -> bool {
+			// Выполняем проверку символа на наличие пробела
+			return isspace(c);
+		}));
+		// Выполняем удаление пробелов в конце текста
+		result.erase(find_if_not(result.rbegin(), result.rend(), [](char c) -> bool {
+			// Выполняем проверку символа на наличие пробела
+			return isspace(c);
+		}).base(), result.end());
+		// Выводим результат
+		return result;
+	};
+	// Очищаем словарь
+	result.clear();
+	// Получаем счётчики перебора
+	size_t i = 0, j = str.find(delim);
+	// Выполняем разбиение строк
+	while(j != string::npos){
+		// Вставляем полученный результат в контейнер
+		result.insert(result.end(), trimFn(str.substr(i, j - i)));
+		// Выполняем смещение в тексте
+		i = ++j + (delim.length() - 1);
+		// Выполняем поиск разделителя в тексте
+		j = str.find(delim, j);
+		// Если мы дошли до конца текста
+		if(j == string::npos)
+			// Вставляем полученный результат в контейнер
+			result.insert(result.end(), trimFn(str.substr(i, str.length())));
+	}
+	// Если слово передано а вектор пустой, тогда создаем вектори из 1-го элемента
+	if(!str.empty() && result.empty())
+		// Вставляем полученный результат в контейнер
+		result.insert(result.end(), trimFn(str));
+	// Выводим результат
+	return result;
 }
 /**
  * clear Метод очистки данных IP адреса
@@ -683,7 +790,7 @@ uint8_t awh::Net::mask2Prefix(const string & mask) const noexcept {
 	// Если маска сети передана
 	if(!mask.empty()){
 		// Создаём объкт для работы с адресами
-		net_t net(this->_fmk, this->_log);
+		net_t net{};
 		// Выполняем парсинг маски
 		if(net.parse(mask) && (this->_type == net.type())){
 			// Бинарный контейнер
@@ -731,7 +838,7 @@ string awh::Net::prefix2Mask(const uint8_t prefix) const noexcept {
 	// Если маска сети передана
 	if(prefix > 0){
 		// Создаём объкт для работы с адресами
-		net_t net(this->_fmk, this->_log);
+		net_t net{};
 		// Определяем тип IP адреса
 		switch(static_cast <uint8_t> (this->_type)){
 			// Если IP адрес определён как IPv4
@@ -776,7 +883,7 @@ bool awh::Net::mapping(const string & network) const noexcept {
 	// Если адрес сети передан
 	if((result = !network.empty())){
 		// Создаём объкт для работы с адресами
-		net_t net(this->_fmk, this->_log);
+		net_t net{};
 		// Если парсинг адреса сети выполнен
 		if((result = net.parse(network))){
 			// Если сеть и IP адрес принадлежат одной версии сети
@@ -881,12 +988,8 @@ bool awh::Net::range(const Net & begin, const Net & end, const uint8_t prefix) c
 	bool result = false;
 	// Если типы адресов совпадают
 	if((this->type() == begin.type()) && (this->type() == end.type())){
-		// Создаём данные первого элемента
-		net_t net1(this->_fmk, this->_log);
-		// Создаём данные второго элемента
-		net_t net2(this->_fmk, this->_log);
-		// Создаём данные третьего элемента
-		net_t net3(this->_fmk, this->_log);
+		// Создаём объекты сетевых модулей
+		net_t net1{}, net2{}, net3{};
 		// Определяем тип IP адреса
 		switch(static_cast <uint8_t> (this->_type)){
 			// Если IP адрес определён как IPv4
@@ -952,16 +1055,10 @@ bool awh::Net::range(const string & begin, const string & end, const uint8_t pre
 	bool result = false;
 	// Если бинарный буфер данных существует
 	if(!this->_buffer.empty() && !begin.empty() && !end.empty()){
-		// Создаём данные первого элемента
-		net_t net1(this->_fmk, this->_log);
-		// Создаём данные второго элемента
-		net_t net2(this->_fmk, this->_log);
-		// Создаём данные третьего элемента
-		net_t net3(this->_fmk, this->_log);
-		// Устанавливаем новое значение адреса для второго элемента
-		net2 = begin;
-		// Устанавливаем новое значение адреса для третьего элемента
-		net3 = end;
+		// Создаём объекты сетевых модулей
+		net_t net1{}, net2{}, net3{};
+		// Устанавливаем новое значение адреса для начала и конца диапазона адресов
+		net2 = begin; net3 = end;
 		// Определяем тип IP адреса
 		switch(static_cast <uint8_t> (this->_type)){
 			// Если IP адрес определён как IPv4
@@ -1023,7 +1120,7 @@ bool awh::Net::mapping(const string & network, const uint8_t prefix, const addr_
 	// Если адрес сети передан
 	if((result = (!network.empty() && (prefix > 0)))){
 		// Создаём объкт для работы с адресами
-		net_t net(this->_fmk, this->_log);
+		net_t net{};
 		// Если парсинг адреса сети выполнен
 		if((result = net.parse(network))){
 			// Если сеть и IP адрес принадлежат одной версии сети
@@ -1071,11 +1168,11 @@ awh::Net::mode_t awh::Net::mode() const noexcept {
 	// Если бинарный буфер данных существует
 	if(!this->_buffer.empty()){
 		// Создаём объкт для работы с адресами
-		net_t net(this->_fmk, this->_log);
+		net_t net{};
 		// Выполняем инициализацию списка локальных адресов
 		const_cast <net_t *> (this)->initLocalNet();
 		// Выполняем группировку нужного нам вида адресов
-		auto ret = this->_locals.equal_range(this->_type);
+		auto ret = this->_localsNet.equal_range(this->_type);
 		// Перебираем все локальные адреса
 		for(auto it = ret.first; it != ret.second; ++it){
 			// Определяем тип IP адреса
@@ -1225,7 +1322,7 @@ bool awh::Net::parse(const string & addr, const type_t type) noexcept {
 				// Выполняем инициализацию буфера
 				this->_buffer.resize(16, 0);
 				// Выполняем сплит данных IP адреса
-				this->_fmk->split(((addr.front() == '[') && (addr.back() == ']') ? addr.substr(1, addr.length() - 2) : addr), ":", data);
+				this->split(((addr.front() == '[') && (addr.back() == ']') ? addr.substr(1, addr.length() - 2) : addr), ":", data);
 				// Если данные IP адреса получены
 				if((result = !data.empty())){
 					// Создаём результирующий буфер данных
@@ -1245,7 +1342,7 @@ bool awh::Net::parse(const string & addr, const type_t type) noexcept {
 								// Если хексет установлен
 								if(!it->empty())
 									// Добавляем хексет в список
-									buffer[--index] = static_cast <uint16_t> (this->_fmk->atoi(* it, 16));
+									buffer[--index] = static_cast <uint16_t> (this->atoi(* it));
 								// Выходим из цикла
 								else break;
 							}
@@ -1273,7 +1370,7 @@ bool awh::Net::parse(const string & addr, const type_t type) noexcept {
 								// Если хексет установлен
 								if(!it->empty())
 									// Добавляем хексет в список
-									buffer[--index] = static_cast <uint16_t> (this->_fmk->atoi(* it, 16));
+									buffer[--index] = static_cast <uint16_t> (this->atoi(* it));
 								// Выходим из цикла
 								else break;
 							}
@@ -1288,7 +1385,7 @@ bool awh::Net::parse(const string & addr, const type_t type) noexcept {
 							// Если хексет установлен
 							if(!it->empty())
 								// Добавляем хексет в список
-								buffer[index++] = static_cast <uint16_t> (this->_fmk->atoi(* it, 16));
+								buffer[index++] = static_cast <uint16_t> (this->atoi(* it));
 							// Выходим из цикла
 							else break;
 						}
@@ -1301,7 +1398,7 @@ bool awh::Net::parse(const string & addr, const type_t type) noexcept {
 								// Если хексет установлен
 								if(!it->empty())
 									// Добавляем хексет в список
-									buffer[--index] = static_cast <uint16_t> (this->_fmk->atoi(* it, 16));
+									buffer[--index] = static_cast <uint16_t> (this->atoi(* it));
 								// Выходим из цикла
 								else break;
 							}
@@ -1382,7 +1479,7 @@ string awh::Net::get(const format_t format) const noexcept {
 								// Добавляем разделитель
 								if(!result.empty()) result.append(1, ':');
 								// Добавляем хексет в версию
-								result.append(this->_fmk->itoa(static_cast <int64_t> (num), 16));
+								result.append(this->itoa(static_cast <int64_t> (num), 16));
 							// Заменяем нули разделителем
 							} else if((++separators < 2) || (i == (count - 2)))
 								// Добавляем разделитель
@@ -1396,8 +1493,8 @@ string awh::Net::get(const format_t format) const noexcept {
 							// Добавляем хексет в версию
 							result.append(
 								format == format_t::LONG_IPV6 ?
-								this->zerro(this->_fmk->itoa(static_cast <int64_t> (num), 16), 4) :
-								this->_fmk->itoa(static_cast <int64_t> (num), 16)
+								this->zerro(this->itoa(static_cast <int64_t> (num), 16), 4) :
+								this->itoa(static_cast <int64_t> (num), 16)
 							);
 						}
 					}
@@ -1434,7 +1531,7 @@ string awh::Net::get(const format_t format) const noexcept {
 							// Добавляем разделитель
 							if(!result.empty()) result.append(1, ':');
 							// Добавляем хексет в версию
-							result.append(this->_fmk->itoa(static_cast <int64_t> (num), 16));
+							result.append(this->itoa(static_cast <int64_t> (num), 16));
 						// Заменяем нули разделителем
 						} else if((++separators < 2) || (i == (count - 2)))
 							// Добавляем разделитель
@@ -1448,8 +1545,8 @@ string awh::Net::get(const format_t format) const noexcept {
 						// Добавляем хексет в версию
 						result.append(
 							(format == format_t::LONG) || (format == format_t::LONG_IPV4) ?
-							this->zerro(this->_fmk->itoa(static_cast <int64_t> (num), 16), 4) :
-							this->_fmk->itoa(static_cast <int64_t> (num), 16)
+							this->zerro(this->itoa(static_cast <int64_t> (num), 16), 4) :
+							this->itoa(static_cast <int64_t> (num), 16)
 						);
 					}
 				}
@@ -1727,10 +1824,8 @@ awh::Net & awh::Net::operator = (const array <uint64_t, 2> & addr) noexcept {
 }
 /**
  * Net конструктор
- * @param fmk объект фреймворка
- * @param log объект для работы с логами
  */
-awh::Net::Net(const fmk_t * fmk, const log_t * log) noexcept : _type(type_t::NONE), _fmk(fmk), _log(log) {
+awh::Net::Net() noexcept : _type(type_t::NONE) {
 	// Устанавливаем регулярное выражение для проверки адреса
 	this->_exp = this->_regexp.build(
 		// Определение MAC адреса

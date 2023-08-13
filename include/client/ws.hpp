@@ -118,9 +118,6 @@ namespace awh {
 					Callback() noexcept : active(nullptr), error(nullptr), message(nullptr) {}
 				} fn_t;
 			private:
-				// Создаем объект для работы с сетью
-				net_t _net;
-			private:
 				// Объект для компрессии-декомпрессии данных
 				mutable hash_t _hash;
 			private:

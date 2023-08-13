@@ -136,7 +136,8 @@ namespace awh {
 				 * @param fmk объект фреймворка
 				 * @param log объект для работы с логами
 				 */
-				SchemeSocks5(const fmk_t * fmk, const log_t * log) noexcept : scheme_t(fmk, log), net(fmk, log), uri(fmk, &net), _fmk(fmk), _log(log) {}
+				SchemeSocks5(const fmk_t * fmk, const log_t * log) noexcept :
+				 scheme_t(fmk, log), uri(fmk), _fmk(fmk), _log(log) {}
 				/**
 				 * ~SchemeSocks5 Деструктор
 				 */

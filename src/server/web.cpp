@@ -864,7 +864,7 @@ void awh::server::WEB::crypto(const string & pass, const string & salt, const ha
  * @param log  объект для работы с логами
  */
 awh::server::WEB::WEB(const server::core_t * core, const fmk_t * fmk, const log_t * log) noexcept :
- _pid(getpid()), _port(SERVER_PORT), _host(""), _net(fmk, log), _uri(fmk, &_net),
+ _pid(getpid()), _port(SERVER_PORT), _host(""), _uri(fmk),
  _scheme(fmk, log), _sid(AWH_SHORT_NAME), _ver(AWH_VERSION), _name(AWH_NAME),
  _realm(""), _opaque(""), _pass(""), _salt(""), _cipher(hash_t::cipher_t::AES128),
  _authHash(auth_t::hash_t::MD5), _authType(auth_t::type_t::NONE), _crypt(false),

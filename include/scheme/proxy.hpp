@@ -154,8 +154,9 @@ namespace awh {
 				 * @param log объект для работы с логами
 				 */
 				SchemeProxy(const fmk_t * fmk, const log_t * log) noexcept :
-				 scheme_t(fmk, log), net(fmk, log), uri(fmk, &net),
-				 compress(awh::http_t::compress_t::NONE), _fmk(fmk), _log(log) {}
+				 scheme_t(fmk, log), uri(fmk),
+				 compress(awh::http_t::compress_t::NONE),
+				 _fmk(fmk), _log(log) {}
 				/**
 				 * ~SchemeProxy Деструктор
 				 */

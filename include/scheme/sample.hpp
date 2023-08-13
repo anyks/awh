@@ -142,7 +142,7 @@ namespace awh {
 				 * @param log объект для работы с логами
 				 */
 				SchemeSample(const fmk_t * fmk, const log_t * log) noexcept :
-				 scheme_t(fmk, log), net(fmk, log), uri(fmk, &net), _fmk(fmk), _log(log) {}
+				 scheme_t(fmk, log), uri(fmk), _fmk(fmk), _log(log) {}
 				/**
 				 * ~SchemeSample Деструктор
 				 */

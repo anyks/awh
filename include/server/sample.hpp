@@ -81,8 +81,6 @@ namespace awh {
 				// Хости сервера
 				string _host;
 			private:
-				// Объект для работы с сетью
-				net_t _net;
 				// Объект работы с URI ссылками
 				uri_t _uri;
 			private:

@@ -96,13 +96,11 @@ class WebClient {
  */
 int main(int argc, char * argv[]){
 	// Создаём объект фреймворка
-	fmk_t fmk;
+	fmk_t fmk{};
 	// Создаём объект для работы с логами
 	log_t log(&fmk);
-	// Создаём объект сети
-	net_t net(&fmk, &log);
 	// Создаём объект URI
-	uri_t uri(&fmk, &net);
+	uri_t uri(&fmk);
 	// Создаём объект исполнителя
 	WebClient executor(&log);
 	// Создаём биндинг

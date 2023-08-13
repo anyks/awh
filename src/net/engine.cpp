@@ -725,7 +725,7 @@ void awh::Engine::Address::init(const string & ip, const u_int port, const int f
 							// Выводим только первый элемент
 							} else host = this->network.front();
 							// Получаем хост адреса
-							net_t net(this->_fmk, this->_log);
+							net_t net{};
 							// Выполняем получение IP адреса
 							net = host;
 							// Переводим ip адрес в полноценный вид

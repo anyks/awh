@@ -222,7 +222,7 @@ void awh::client::Sample::init(const string & socket) noexcept {
 	// Если unix-сокет передан
 	if(!socket.empty()){
 		// Создаём объект работы с URI ссылками
-		uri_t uri(this->_fmk, &this->_net);
+		uri_t uri(this->_fmk);
 		// Устанавливаем URL адрес запроса (как заглушка)
 		this->_scheme.url = uri.parse("http://unixsocket");
 		/**
@@ -256,7 +256,7 @@ void awh::client::Sample::init(const u_int port, const string & host) noexcept {
 			// Если хост является IPv6 адресом, переводим ip адрес в полную форму
 			case static_cast <uint8_t> (net_t::type_t::IPV6): {
 				// Создаём объкт для работы с адресами
-				net_t net(this->_fmk, this->_log);
+				net_t net{};
 				// Получаем данные хоста
 				net = host;
 				// Устанавливаем IP адрес
@@ -382,7 +382,7 @@ void awh::client::Sample::keepAlive(const int cnt, const int idle, const int int
  * @param log  объект для работы с логами
  */
 awh::client::Sample::Sample(const client::core_t * core, const fmk_t * fmk, const log_t * log) noexcept :
- _net(fmk, log), _scheme(fmk, log), _action(action_t::NONE),
+ _scheme(fmk, log), _action(action_t::NONE),
  _aid(0), _unbind(true), _fmk(fmk), _log(log), _core(core) {
 	// Устанавливаем событие на запуск системы
 	this->_scheme.callback.set <void (const size_t, awh::core_t *)> ("open", std::bind(&Sample::openCallback, this, _1, _2));

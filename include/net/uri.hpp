@@ -25,6 +25,7 @@
 #include <iomanip>
 #include <sstream>
 #include <cstdlib>
+#include <iostream>
 
 // Если - это Windows
 #if defined(_WIN32) || defined(_WIN64)
@@ -93,7 +94,7 @@ namespace awh {
 					// Тип протокола интернета AF_INET или AF_INET6
 					int family;
 				public:
-					string ip;   // IP адрес сервера
+					string ip;   // IP-адрес сервера
 					string host; // Хост сервера
 				public:
 					string user; // Пользователь
@@ -101,11 +102,11 @@ namespace awh {
 				public:
 					string domain; // Доменное имя
 					string schema; // Протокол передачи данных
-					string anchor; // Якорь URL запроса
+					string anchor; // Якорь URL-запроса
 				public:
-					// Путь URL запроса
+					// Путь URL-запроса
 					vector <string> path;
-					// Параметры URL запроса
+					// Параметры URL-запроса
 					vector <pair <string, string>> params;
 				public:
 					// Функция выполняемая при генерации URL адреса
@@ -131,6 +132,9 @@ namespace awh {
 					 anchor(""), fn(nullptr) {}
 			} url_t;
 		private:
+			// Объект работы с IP-адресами
+			net_t _net;
+		private:
 			// Объект регулярного выражения
 			regexp_t _regexp;
 		private:
@@ -143,13 +147,11 @@ namespace awh {
 		private:
 			// Создаём объект фреймворка
 			const fmk_t * _fmk;
-			// Создаем объект сети
-			const net_t * _net;
 		public:
 			/**
-			 * parse Метод получения параметров URL запроса
-			 * @param url строка URL запроса для получения параметров
-			 * @return    параметры URL запроса
+			 * parse Метод получения параметров URL-запроса
+			 * @param url строка URL-запроса для получения параметров
+			 * @return    параметры URL-запроса
 			 */
 			url_t parse(const string & url) const noexcept;
 		public:
@@ -160,40 +162,40 @@ namespace awh {
 			 */
 			string etag(const string & text) const noexcept;
 			/**
-			 * encode Метод кодирования строки в url адресе
+			 * encode Метод кодирования строки в URL-адресе
 			 * @param str строка для кодирования
 			 * @return    результат кодирования
 			 */
 			string encode(const string & str) const noexcept;
 			/**
-			 * decode Метод декодирования строки в url адресе
+			 * decode Метод декодирования строки в URL-адресе
 			 * @param str строка для декодирования
 			 * @return    результат декодирования
 			 */
 			string decode(const string & str) const noexcept;
 		public:
 			/**
-			 * url Метод создания строки URL запросы из параметров
-			 * @param url параметры URL запроса
-			 * @return    URL запрос в виде строки
+			 * url Метод создания строки URL-запросы из параметров
+			 * @param url параметры URL-запроса
+			 * @return    URL-запрос в виде строки
 			 */
 			string url(const url_t & url) const noexcept;
 			/**
 			 * query Метод создания строки запроса из параметров
-			 * @param url параметры URL запроса
-			 * @return    URL запрос в виде строки
+			 * @param url параметры URL-запроса
+			 * @return    URL-запрос в виде строки
 			 */
 			string query(const url_t & url) const noexcept;
 			/**
 			 * origin Метод создания заголовка [origin], для HTTP запроса
-			 * @param url параметры URL запроса
+			 * @param url параметры URL-запроса
 			 * @return    заголовок [origin]
 			 */
 			string origin(const url_t & url) const noexcept;
 		public:
 			/**
 			 * append Метод добавления к URL адресу параметров запроса
-			 * @param url    параметры URL запроса
+			 * @param url    параметры URL-запроса
 			 * @param params параметры для добавления
 			 */
 			void append(url_t & url, const string & params) const noexcept;
@@ -241,16 +243,34 @@ namespace awh {
 			params_t params(const string & uri, const string & schema = "") const noexcept;
 		public:
 			/**
+			 * Оператор [=] получения параметров URL-запроса
+			 * @param url строка URL-запроса для получения параметров
+			 * @return    параметры URL-запроса
+			 */
+			url_t operator = (const string & url) const noexcept;
+			/**
+			 * Оператор [=] создания строки URL-запросы из параметров
+			 * @param url параметры URL-запроса
+			 * @return    URL-запрос в виде строки
+			 */
+			string operator = (const url_t & url) const noexcept;
+		public:
+			/**
 			 * URI Конструктор
 			 * @param fmk объект фреймворка
-			 * @param net объект методов для работы с сетью
 			 */
-			URI(const fmk_t * fmk, const net_t * net) noexcept;
+			URI(const fmk_t * fmk) noexcept;
 			/**
 			 * ~URI Деструктор
 			 */
 			~URI() noexcept;
 	} uri_t;
+	/**
+	 * Оператор [<<] вывода в поток IP адреса
+	 * @param os  поток куда нужно вывести данные
+	 * @param url параметры URL-запроса
+	 */
+	ostream & operator << (ostream & os, const uri_t::url_t & url) noexcept;
 };
 
 #endif // __AWH_URI__

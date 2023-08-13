@@ -36,8 +36,6 @@ class WebSocket {
 		// Количество полученных курсов
 		uint16_t _count;
 	private:
-		// Создаём объект сети
-		net_t _net;
 		// Создаём объект URI
 		uri_t _uri;
 		// Создаём биндинг
@@ -293,7 +291,7 @@ class WebSocket {
 		 * @param core объект основного ядра
 		 */
 		WebSocket(fmk_t * fmk, log_t * log, client::core_t * core) noexcept :
-		 _fmk(fmk), _log(log), _main(core), _count(0), _net(fmk, log), _uri(fmk, &_net),
+		 _fmk(fmk), _log(log), _main(core), _count(0), _uri(fmk),
 		 _core(fmk, log), _web(nullptr), _webMode(client::web_t::mode_t::DISCONNECT) {
 			// Выделяем память для Web-клиента
 			this->_web = new client::web_t(&this->_core, fmk, log);
