@@ -38,6 +38,7 @@ using namespace std;
  * Наши модуля
  */
 #include <sys/re.hpp>
+#include <sys/win.hpp>
 
 /**
  * awh пространство имён
