@@ -12,9 +12,82 @@
  * @copyright: Copyright © 2023
  */
 
+/**
+ * Чтобы пинг работал от непривилигированного пользователя
+ * Linux:
+ * # (где 0 и 0 - это UID и GID в операционной системе)
+ * $ sysctl -w net.ipv4.ping_group_range="0 0"
+ * 
+ * FreeBSD:
+ * # Нужно сменить владельца приложения на root и разрешить запуск остальным пользователям, где ./app/ping - ваше приложение
+ * $ sudo chown root:wheel ./app/ping
+ * $ sudo chmod 710 ./app/ping
+ * $ sudo chmod ug+s ./app/ping
+ */
+
 // Подключаем заголовочный файл
 #include <net/ping.hpp>
 
+/**
+ * host Метод извлечения хоста компьютера
+ * @param family семейство сокета (AF_INET / AF_INET6)
+ * @return       хост компьютера с которого производится запрос
+ */
+string awh::Ping::host(const int family) const noexcept {
+	// Результат работы функции
+	string result = "";
+	// Список адресов сетевых карт
+	const vector <string> * network = nullptr;
+	// Определяем тип подключения
+	switch(family){
+		// Для протокола IPv4
+		case AF_INET:
+			// Получаем список адресов для IPv4
+			network = &this->_networkIPv4;
+		break;
+		// Для протокола IPv6
+		case AF_INET6:
+			// Получаем список адресов для IPv6
+			network = &this->_networkIPv6;
+		break;
+	}
+	// Если список сетей установлен
+	if((network != nullptr) && !network->empty()){
+		// Если количество элементов больше 1
+		if(network->size() > 1){
+			// Подключаем устройство генератора
+			mt19937 generator(const_cast <ping_t *> (this)->_randev());
+			// Выполняем генерирование случайного числа
+			uniform_int_distribution <mt19937::result_type> dist6(0, network->size() - 1);
+			// Получаем ip адрес
+			result = network->at(dist6(generator));
+		}
+		// Выводим только первый элемент
+		result = network->front();
+	}
+	// Определяем тип подключения
+	switch(family){
+		// Для протокола IPv4
+		case AF_INET: {
+			// Если IP-адрес установлен как общий или не установлен
+			if(result.empty() || (result.compare("0.0.0.0") == 0))
+				// Получаем IP адрес локального сервера
+				return this->_ifnet.ip(family);
+		} break;
+		// Для протокола IPv6
+		case AF_INET6: {
+			// Если IP-адрес установлен как общий или не установлен
+			if(result.empty() || (result.compare("::") == 0)){
+				// Получаем хост адреса
+				net_t net{};
+				// Получаем IP адрес локального сервера в упрощенном виде
+				return (net = this->_ifnet.ip(family));
+			}
+		} break;
+	}
+	// Выводим результат
+	return result;
+}
 /**
  * checksum Метод подсчёта контрольной суммы
  * @param buffer буфер данных для подсчёта
@@ -62,10 +135,8 @@ uint16_t awh::Ping::checksum(const void * buffer, const size_t size) noexcept {
 int64_t awh::Ping::send(const int family, const size_t index) noexcept {
 	// Результат работы функции
 	int64_t result = 0;
-	// Выполняем инициализацию генератора
-	random_device dev;
 	// Подключаем устройство генератора
-	mt19937 rng(dev());
+	mt19937 generator(this->_randev());
 	// Выполняем генерирование случайного числа
 	uniform_int_distribution <mt19937::result_type> dist6(0, std::numeric_limits <uint32_t>::max() - 1);
 	// Метка отправки данных
@@ -94,11 +165,11 @@ int64_t awh::Ping::send(const int family, const size_t index) noexcept {
 	// Устанавливаем идентификатор запроса
 	icmp.meta.echo.identifier = getpid();
 	// Устанавливаем данные полезной нагрузки
-	icmp.meta.echo.payload = static_cast <uint64_t> (dist6(rng));
+	icmp.meta.echo.payload = static_cast <uint64_t> (dist6(generator));
 	// Выполняем подсчёт контрольной суммы
 	icmp.checksum = this->checksum(&icmp, sizeof(icmp));
 	// Если запрос на сервер успешно отправлен
-	if((result = ::sendto(this->_fd, reinterpret_cast <char *> (&icmp), sizeof(icmp), 0, (struct sockaddr *) &this->_addr, this->_socklen)) > 0){
+	if((result = ::sendto(this->_fd, reinterpret_cast <char *> (&icmp), sizeof(icmp), 0, (struct sockaddr *) &this->_peer.server, this->_peer.size)) > 0){
 		// Метка повторного получения данных
 		Read:
 		// Буфер для получения данных
@@ -106,7 +177,7 @@ int64_t awh::Ping::send(const int family, const size_t index) noexcept {
 		// Результат полученных данных
 		auto * icmpResponseHeader = (struct IcmpHeader *) buffer;
 		// Выполняем чтение ответа сервера
-		result = ::recvfrom(this->_fd, reinterpret_cast <char *> (icmpResponseHeader), sizeof(buffer), 0, (struct sockaddr *) &this->_addr, &this->_socklen);
+		result = ::recvfrom(this->_fd, reinterpret_cast <char *> (icmpResponseHeader), sizeof(buffer), 0, (struct sockaddr *) &this->_peer.server, &this->_peer.size);
 		// Если данные прочитать не удалось
 		if(result <= 0){
 			// Если сокет находится в блокирующем режиме
@@ -196,6 +267,8 @@ int64_t awh::Ping::send(const int family, const size_t index) noexcept {
  * close Метод закрытия подключения
  */
 void awh::Ping::close() noexcept {
+	// Выполняем блокировку потока
+	const lock_guard <recursive_mutex> lock(this->_mtx);
 	// Если файловый дескриптор не закрыт
 	if(this->_fd != INVALID_SOCKET){
 		/**
@@ -219,6 +292,8 @@ void awh::Ping::close() noexcept {
  * cancel Метод остановки запущенной работы
  */
 void awh::Ping::cancel() noexcept {
+	// Выполняем блокировку потока
+	const lock_guard <recursive_mutex> lock(this->_mtx);
 	// Если режим работы пинга активирован
 	if(this->_mode){
 		// Выполняем остановку работы резолвера
@@ -236,7 +311,7 @@ bool awh::Ping::working() const noexcept {
 	return this->_mode;
 }
 /**
- * ping Метод запуска пинга IP-адреса в асинхронном режиме
+ * ping Метод запуска пинга хоста в асинхронном режиме
  * @param host хост для выполнения пинга
  */
 void awh::Ping::ping(const string & host) noexcept {
@@ -299,24 +374,40 @@ void awh::Ping::work(const int family, const string & ip) noexcept {
 	if(!ip.empty() && !this->_mode){
 		// Выполняем активирование режима работы
 		this->_mode = !this->_mode;
-		// Очищаем всю структуру клиента
-		memset(&this->_addr, 0, sizeof(this->_addr));
+		// Получаем хост текущего компьютера
+		const string & host = this->host(family);
 		// Определяем тип подключения
 		switch(family){
 			// Для протокола IPv4
 			case AF_INET: {
 				// Создаём объект клиента
 				struct sockaddr_in client;
+				// Создаём объект сервера
+				struct sockaddr_in server;
 				// Запоминаем размер структуры
-				this->_socklen = sizeof(client);
+				this->_peer.size = sizeof(client);
+				// Очищаем всю структуру для клиента
+				memset(&client, 0, sizeof(client));
+				// Очищаем всю структуру для сервера
+				memset(&server, 0, sizeof(server));
 				// Устанавливаем протокол интернета
 				client.sin_family = family;
-				// Устанавливаем произвольный порт
+				// Устанавливаем протокол интернета
+				server.sin_family = family;
+				// Устанавливаем произвольный порт для локального подключения
 				client.sin_port = htons(0);
+				// Устанавливаем порт для локального подключения
+				server.sin_port = htons(0);
 				// Устанавливаем IP-адрес для подключения
-				inet_pton(family, ip.c_str(), &client.sin_addr.s_addr);
+				inet_pton(family, ip.c_str(), &server.sin_addr.s_addr);
+				// Устанавливаем адрес для локальго подключения
+				inet_pton(family, host.c_str(), &client.sin_addr.s_addr);
 				// Выполняем копирование объекта подключения клиента
-				memcpy(&this->_addr, &client, this->_socklen);
+				memcpy(&this->_peer.client, &client, this->_peer.size);
+				// Выполняем копирование объекта подключения сервера
+				memcpy(&this->_peer.server, &server, this->_peer.size);
+				// Обнуляем серверную структуру
+				memset(&((struct sockaddr_in *) (&this->_peer.server))->sin_zero, 0, sizeof(server.sin_zero));
 				/**
 				 * Методы только для OS Windows
 				 */
@@ -339,16 +430,30 @@ void awh::Ping::work(const int family, const string & ip) noexcept {
 			case AF_INET6: {
 				// Создаём объект клиента
 				struct sockaddr_in6 client;
+				// Создаём объект сервера
+				struct sockaddr_in6 server;
 				// Запоминаем размер структуры
-				this->_socklen = sizeof(client);
+				this->_peer.size = sizeof(client);
+				// Очищаем всю структуру для клиента
+				memset(&client, 0, sizeof(client));
+				// Очищаем всю структуру для сервера
+				memset(&server, 0, sizeof(server));
 				// Устанавливаем протокол интернета
 				client.sin6_family = family;
-				// Устанавливаем произвольный порт для
+				// Устанавливаем протокол интернета
+				server.sin6_family = family;
+				// Устанавливаем произвольный порт для локального подключения
 				client.sin6_port = htons(0);
+				// Устанавливаем порт для локального подключения
+				server.sin6_port = htons(0);
 				// Устанавливаем IP-адрес для подключения
-				inet_pton(family, ip.c_str(), &client.sin6_addr);
+				inet_pton(family, ip.c_str(), &server.sin6_addr);
+				// Устанавливаем адрес для локальго подключения
+				inet_pton(family, host.c_str(), &client.sin6_addr);
 				// Выполняем копирование объекта подключения клиента
-				memcpy(&this->_addr, &client, this->_socklen);
+				memcpy(&this->_peer.client, &client, this->_peer.size);
+				// Выполняем копирование объекта подключения сервера
+				memcpy(&this->_peer.server, &server, this->_peer.size);
 				/**
 				 * Методы только для OS Windows
 				 */
@@ -392,6 +497,10 @@ void awh::Ping::work(const int family, const string & ip) noexcept {
 			this->_socket.timeout(this->_fd, this->_timeoutRead, socket_t::mode_t::READ);
 			// Устанавливаем таймаут на запись данных в сокет
 			this->_socket.timeout(this->_fd, this->_timeoutWrite, socket_t::mode_t::WRITE);
+			// Выполняем бинд на сокет
+			if(::bind(this->_fd, (struct sockaddr *) (&this->_peer.client), this->_peer.size) < 0)
+				// Выводим в лог сообщение
+				this->_log->print("bind local network [%s]", log_t::flag_t::CRITICAL, host.c_str());
 			// Выполняем отправку отправку запросов до тех пор пока не остановят
 			while(this->_mode){
 				// Запоминаем текущее значение времени в миллисекундах
@@ -433,7 +542,7 @@ void awh::Ping::work(const int family, const string & ip) noexcept {
 	}
 }
 /**
- * ping Метод запуска пинга IP-адреса в синхронном режиме
+ * ping Метод запуска пинга хоста в синхронном режиме
  * @param host  хост для выполнения пинга
  * @param count количество итераций
  */
@@ -507,24 +616,40 @@ double awh::Ping::ping(const int family, const string & ip, const uint16_t count
 	if(!ip.empty() && !this->_mode){
 		// Выполняем активирование режима работы
 		this->_mode = !this->_mode;
-		// Очищаем всю структуру клиента
-		memset(&this->_addr, 0, sizeof(this->_addr));
+		// Получаем хост текущего компьютера
+		const string & host = this->host(family);
 		// Определяем тип подключения
 		switch(family){
 			// Для протокола IPv4
 			case AF_INET: {
 				// Создаём объект клиента
 				struct sockaddr_in client;
+				// Создаём объект сервера
+				struct sockaddr_in server;
 				// Запоминаем размер структуры
-				this->_socklen = sizeof(client);
+				this->_peer.size = sizeof(client);
+				// Очищаем всю структуру для клиента
+				memset(&client, 0, sizeof(client));
+				// Очищаем всю структуру для сервера
+				memset(&server, 0, sizeof(server));
 				// Устанавливаем протокол интернета
 				client.sin_family = family;
-				// Устанавливаем произвольный порт
+				// Устанавливаем протокол интернета
+				server.sin_family = family;
+				// Устанавливаем произвольный порт для локального подключения
 				client.sin_port = htons(0);
+				// Устанавливаем порт для локального подключения
+				server.sin_port = htons(0);
 				// Устанавливаем IP-адрес для подключения
-				inet_pton(family, ip.c_str(), &client.sin_addr.s_addr);
+				inet_pton(family, ip.c_str(), &server.sin_addr.s_addr);
+				// Устанавливаем адрес для локальго подключения
+				inet_pton(family, host.c_str(), &client.sin_addr.s_addr);
 				// Выполняем копирование объекта подключения клиента
-				memcpy(&this->_addr, &client, this->_socklen);
+				memcpy(&this->_peer.client, &client, this->_peer.size);
+				// Выполняем копирование объекта подключения сервера
+				memcpy(&this->_peer.server, &server, this->_peer.size);
+				// Обнуляем серверную структуру
+				memset(&((struct sockaddr_in *) (&this->_peer.server))->sin_zero, 0, sizeof(server.sin_zero));
 				/**
 				 * Методы только для OS Windows
 				 */
@@ -547,16 +672,30 @@ double awh::Ping::ping(const int family, const string & ip, const uint16_t count
 			case AF_INET6: {
 				// Создаём объект клиента
 				struct sockaddr_in6 client;
+				// Создаём объект сервера
+				struct sockaddr_in6 server;
 				// Запоминаем размер структуры
-				this->_socklen = sizeof(client);
+				this->_peer.size = sizeof(client);
+				// Очищаем всю структуру для клиента
+				memset(&client, 0, sizeof(client));
+				// Очищаем всю структуру для сервера
+				memset(&server, 0, sizeof(server));
 				// Устанавливаем протокол интернета
 				client.sin6_family = family;
-				// Устанавливаем произвольный порт для
+				// Устанавливаем протокол интернета
+				server.sin6_family = family;
+				// Устанавливаем произвольный порт для локального подключения
 				client.sin6_port = htons(0);
+				// Устанавливаем порт для локального подключения
+				server.sin6_port = htons(0);
 				// Устанавливаем IP-адрес для подключения
-				inet_pton(family, ip.c_str(), &client.sin6_addr);
+				inet_pton(family, ip.c_str(), &server.sin6_addr);
+				// Устанавливаем адрес для локальго подключения
+				inet_pton(family, host.c_str(), &client.sin6_addr);
 				// Выполняем копирование объекта подключения клиента
-				memcpy(&this->_addr, &client, this->_socklen);
+				memcpy(&this->_peer.client, &client, this->_peer.size);
+				// Выполняем копирование объекта подключения сервера
+				memcpy(&this->_peer.server, &server, this->_peer.size);
 				/**
 				 * Методы только для OS Windows
 				 */
@@ -598,6 +737,10 @@ double awh::Ping::ping(const int family, const string & ip, const uint16_t count
 			this->_socket.timeout(this->_fd, this->_timeoutRead, socket_t::mode_t::READ);
 			// Устанавливаем таймаут на запись данных в сокет
 			this->_socket.timeout(this->_fd, this->_timeoutWrite, socket_t::mode_t::WRITE);
+			// Выполняем бинд на сокет
+			if(::bind(this->_fd, (struct sockaddr *) (&this->_peer.client), this->_peer.size) < 0)
+				// Выводим в лог сообщение
+				this->_log->print("bind local network [%s]", log_t::flag_t::CRITICAL, host.c_str());
 			// Выполняем отправку указанного количества запросов
 			for(uint16_t i = 0; i < count; i++){
 				// Запоминаем текущее значение времени в миллисекундах
@@ -650,6 +793,8 @@ double awh::Ping::ping(const int family, const string & ip, const uint16_t count
  * @param mode флаг для установки
  */
 void awh::Ping::noInfo(const bool mode) noexcept {
+	// Выполняем блокировку потока
+	const lock_guard <recursive_mutex> lock(this->_mtx);
 	// Выполняем установку флага запрещающего выводить информацию пинга в лог
 	this->_noInfo = mode;
 }
@@ -658,6 +803,8 @@ void awh::Ping::noInfo(const bool mode) noexcept {
  * @param msec сдвиг по времени в миллисекундах
  */
 void awh::Ping::shifting(const time_t msec) noexcept {
+	// Выполняем блокировку потока
+	const lock_guard <recursive_mutex> lock(this->_mtx);
 	// Выполняем установку сдвига по времени выполнения пинга
 	this->_shifting = msec;
 }
@@ -672,6 +819,55 @@ void awh::Ping::ns(const vector <string> & servers) noexcept {
 	if(!servers.empty())
 		// Выполняем установку полученных DNS-серверов
 		this->_dns.servers(servers);
+}
+/**
+ * network Метод установки адреса сетевых плат, с которых нужно выполнять запросы
+ * @param network IP-адреса сетевых плат
+ */
+void awh::Ping::network(const vector <string> & network) noexcept {
+	// Выполняем блокировку потока
+	const lock_guard <recursive_mutex> lock(this->_mtx);
+	// Если список адресов сетевых плат передан
+	if(!network.empty()){
+		// Переходим по всему списку полученных адресов
+		for(auto & host : network){
+			// Определяем к какому адресу относится полученный хост
+			switch(static_cast <uint8_t> (this->_net.host(host))){
+				// Если IP-адрес является IPv4 адресом
+				case static_cast <uint8_t> (net_t::type_t::IPV4):
+					// Выполняем добавление полученного хоста в список
+					this->_networkIPv4.push_back(host);
+				break;
+				// Если IP-адрес является IPv6 адресом
+				case static_cast <uint8_t> (net_t::type_t::IPV6):
+					// Выполняем добавление полученного хоста в список
+					this->_networkIPv6.push_back(host);
+				break;
+				// Для всех остальных адресов
+				default: {
+					// Выполняем получение IP-адреса для IPv6
+					string ip = this->_dns.host(AF_INET6, host);
+					// Если результат получен, выполняем пинг
+					if(!ip.empty())
+						// Выполняем добавление полученного хоста в список
+						this->_networkIPv6.push_back(ip);
+					// Если результат не получен, выполняем получение IPv4 адреса
+					else {
+						// Выполняем получение IP-адреса для IPv4
+						ip = this->_dns.host(AF_INET, host);
+						// Если IP-адрес успешно получен
+						if(!ip.empty())
+							// Выполняем добавление полученного хоста в список
+							this->_networkIPv4.push_back(ip);
+						// Если IP-адрес не получен и разрешено выводить информацию в лог
+						else if(!this->_noInfo)
+							// Выводим сообщение об ошибке
+							this->_log->print("passed %s address is not legitimate", log_t::flag_t::WARNING, host.c_str());
+					}
+				}
+			}
+		}
+	}
 }
 /**
  * timeout Метод установки таймаутов в миллисекундах

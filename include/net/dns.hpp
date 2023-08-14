@@ -75,6 +75,7 @@
 #include <sys/fs.hpp>
 #include <sys/fmk.hpp>
 #include <sys/log.hpp>
+#include <net/if.hpp>
 #include <net/net.hpp>
 #include <net/socket.hpp>
 
@@ -159,6 +160,19 @@ namespace awh {
 			// Создаём тип данных работы с DNS-кэшем
 			using server_t = Server <T>;
 		private:
+			private:
+			/**
+			 * Peer Структура подключения
+			 */
+			typedef struct Peer {
+				socklen_t size;                 // Размер объекта подключения
+				struct sockaddr_storage client; // Параметры подключения клиента
+				struct sockaddr_storage server; // Параметры подключения сервера
+				/**
+				 * Peer Конструктор
+				 */
+				Peer() noexcept : size(0) {}
+			} peer_t;
 			/**
 			 * Header Структура заголовка DNS
 			 */
@@ -257,17 +271,24 @@ namespace awh {
 					// Название искомого домена
 					string _domain;
 				private:
+					// Объект для работы с подключениями
+					peer_t _peer;
+					// Объект для работы с сетевым интерфейсом
+					ifnet_t _ifnet;
 					// Объект для работы с сокетами
 					socket_t _socket;
 				private:
-					// Размер объекта подключения
-					socklen_t _socklen;
-				private:
-					// Параметры подключения сервера
-					struct sockaddr_storage _addr;
+					// Список сетевых интерфейсов
+					vector <string> _network;
 				private:
 					// Объект DNS-резолвера
 					const DNS * _self;
+				private:
+					/**
+					 * host Метод извлечения хоста компьютера
+					 * @return хост компьютера с которого производится запрос
+					 */
+					string host() const noexcept;
 				private:
 					/**
 					 * join Метод восстановления доменного имени
@@ -299,13 +320,6 @@ namespace awh {
 					 * cancel Метод отмены выполнения запроса
 					 */
 					void cancel() noexcept;
-				private:
-					/**
-					 * Метод отправки запроса на удалённый сервер DNS
-					 * @param server адрес DNS-сервера
-					 * @return       полученный IP-адрес
-					 */
-					string send(const string & server) noexcept;
 				public:
 					/**
 					 * request Метод выполнения запроса
@@ -313,6 +327,14 @@ namespace awh {
 					 * @return       полученный IP-адрес
 					 */
 					string request(const string & domain) noexcept;
+				private:
+					/**
+					 * Метод отправки запроса на удалённый сервер DNS
+					 * @param from адрес компьютера с которого выполняется запрос
+					 * @param to   адрес DNS-сервера на который выполняется запрос
+					 * @return     полученный IP-адрес
+					 */
+					string send(const string & from, const string & to) noexcept;
 				public:
 					/**
 					 * Worker Конструктор
@@ -320,8 +342,8 @@ namespace awh {
 					 * @param self   объект DNS-резолвера
 					 */
 					Worker(const int family, const DNS * self) noexcept :
-					 _fd(INVALID_SOCKET), _mode(false), _family(family),
-					 _domain(""), _socket(self->_log), _socklen(0), _self(self) {}
+					 _fd(INVALID_SOCKET), _mode(false), _family(family), _domain(""),
+					 _ifnet(self->_fmk, self->_log), _socket(self->_log), _self(self) {}
 					/**
 					 * ~Worker Деструктор
 					 */
@@ -342,6 +364,9 @@ namespace awh {
 		private:
 			// Мютекс для блокировки потока
 			recursive_mutex _mtx;
+		private:
+			// Выполняем инициализацию генератора
+			random_device _randev;
 		private:
 			// Статус работы DNS-резолвера
 			stack <status_t> _status;
@@ -551,6 +576,12 @@ namespace awh {
 			 * @param servers параметры DNS-серверов
 			 */
 			void servers(const int family, const vector <string> & servers) noexcept;
+		public:
+			/**
+			 * network Метод установки адреса сетевых плат, с которых нужно выполнять запросы
+			 * @param network IP-адреса сетевых плат
+			 */
+			void network(const vector <string> & network) noexcept;
 		public:
 			/**
 			 * replace Метод замены существующих серверов DNS

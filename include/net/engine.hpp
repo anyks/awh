@@ -44,6 +44,7 @@
  * Стандартная библиотека
  */
 #include <set>
+#include <random>
 #include <thread>
 #include <cstdio>
 #include <string>
@@ -51,6 +52,7 @@
 #include <cerrno>
 #include <cstdlib>
 #include <iostream>
+#include <algorithm>
 #include <sys/types.h>
 
 /**
@@ -186,6 +188,9 @@ namespace awh {
 					ifnet_t _ifnet;
 					// Объект для работы с сокетами
 					socket_t _socket;
+				private:
+					// Выполняем инициализацию генератора
+					random_device _randev;
 				public:
 					// Список сетевых интерфейсов
 					vector <string> network;
@@ -223,6 +228,13 @@ namespace awh {
 					 * @return результат выполнения операции
 					 */
 					bool connect() noexcept;
+				private:
+					/**
+					 * host Метод извлечения хоста компьютера
+					 * @param family семейство сокета (AF_INET / AF_INET6)
+					 * @return       хост компьютера с которого производится запрос
+					 */
+					string host(const int family) const noexcept;
 				public:
 					/**
 					 * attach Метод прикрепления клиента к серверу

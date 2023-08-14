@@ -18,8 +18,6 @@
 /**
  * Стандартная библиотека
  */
-#include <set>
-#include <map>
 #include <mutex>
 #include <ctime>
 #include <chrono>
@@ -65,6 +63,7 @@
 #include <sys/fs.hpp>
 #include <sys/fmk.hpp>
 #include <sys/log.hpp>
+#include <net/if.hpp>
 #include <net/net.hpp>
 #include <net/dns.hpp>
 #include <net/socket.hpp>
@@ -77,9 +76,22 @@ using namespace std;
  */
 namespace awh {
 	/**
-	 * Ping Класс работы с примером клиента
+	 * Ping Класс пинга
 	 */
 	typedef class Ping {
+		private:
+			/**
+			 * Peer Структура подключения
+			 */
+			typedef struct Peer {
+				socklen_t size;                 // Размер объекта подключения
+				struct sockaddr_storage client; // Параметры подключения клиента
+				struct sockaddr_storage server; // Параметры подключения сервера
+				/**
+				 * Peer Конструктор
+				 */
+				Peer() noexcept : size(0) {}
+			} peer_t;
 		private:
 			/**
 			 * IcmpHeader Структура заголовков ICMP
@@ -137,17 +149,18 @@ namespace awh {
 			net_t _net;
 			// Объект для работы с DNS-резолвером
 			dns_t _dns;
+			// Объект для работы с подключениями
+			peer_t _peer;
+			// Объект для работы с сетевым интерфейсом
+			ifnet_t _ifnet;
 			// Объект для работы с сокетами
 			socket_t _socket;
 		private:
 			// Мютекс для блокировки потока
 			recursive_mutex _mtx;
 		private:
-			// Размер объекта подключения
-			socklen_t _socklen;
-		private:
-			// Параметры подключения сервера
-			struct sockaddr_storage _addr;
+			// Выполняем инициализацию генератора
+			random_device _randev;
 		private:
 			// Сдвиг по времени для выполнения пинга
 			time_t _shifting;
@@ -157,6 +170,11 @@ namespace awh {
 			// Таймаут на запись
 			time_t _timeoutWrite;
 		private:
+			// Список сетевых интерфейсов для IPv4
+			vector <string> _networkIPv4;
+			// Список сетевых интерфейсов для IPv6
+			vector <string> _networkIPv6;
+		private:
 			// Создаём объект фреймворка
 			const fmk_t * _fmk;
 			// Создаём объект работы с логами
@@ -164,6 +182,13 @@ namespace awh {
 		private:
 			// Функция обратного вызова для работы в асинхронном режиме
 			function <void (const time_t, const string &, Ping *)> _callback;
+		private:
+			/**
+			 * host Метод извлечения хоста компьютера
+			 * @param family семейство сокета (AF_INET / AF_INET6)
+			 * @return       хост компьютера с которого производится запрос
+			 */
+			string host(const int family) const noexcept;
 		private:
 			/**
 			 * checksum Метод подсчёта контрольной суммы
@@ -198,7 +223,7 @@ namespace awh {
 			bool working() const noexcept;
 		public:
 			/**
-			 * ping Метод запуска пинга IP-адреса в асинхронном режиме
+			 * ping Метод запуска пинга хоста в асинхронном режиме
 			 * @param host хост для выполнения пинга
 			 */
 			void ping(const string & host) noexcept;
@@ -211,7 +236,7 @@ namespace awh {
 			void work(const int family, const string & ip) noexcept;
 		public:
 			/**
-			 * ping Метод запуска пинга IP-адреса в синхронном режиме
+			 * ping Метод запуска пинга хоста в синхронном режиме
 			 * @param host  хост для выполнения пинга
 			 * @param count количество итераций
 			 */
@@ -243,6 +268,12 @@ namespace awh {
 			void ns(const vector <string> & servers) noexcept;
 		public:
 			/**
+			 * network Метод установки адреса сетевых плат, с которых нужно выполнять запросы
+			 * @param network IP-адреса сетевых плат
+			 */
+			void network(const vector <string> & network) noexcept;
+		public:
+			/**
 			 * timeout Метод установки таймаутов в миллисекундах
 			 * @param read  таймаут на чтение
 			 * @param write таймаут на запись
@@ -261,10 +292,8 @@ namespace awh {
 			 * @param log объект для работы с логами
 			 */
 			Ping(const fmk_t * fmk, const log_t * log) noexcept :
-			 _fd(INVALID_SOCKET), _mode(false), _noInfo(false),
-			 _dns(fmk, log), _socket(log), _socklen(0),
-			 _shifting(3000), _timeoutRead(5000), _timeoutWrite(15000),
-			 _fmk(fmk), _log(log), _callback(nullptr) {}
+			 _fd(INVALID_SOCKET), _mode(false), _noInfo(false), _dns(fmk, log), _ifnet(fmk, log), _socket(log),
+			 _shifting(3000), _timeoutRead(5000), _timeoutWrite(15000), _fmk(fmk), _log(log), _callback(nullptr) {}
 			/**
 			 * ~Ping Деструктор
 			 */

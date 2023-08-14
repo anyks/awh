@@ -264,6 +264,51 @@ bool awh::Engine::Address::connect() noexcept {
 	return (this->status == status_t::CONNECTED);
 }
 /**
+ * host Метод извлечения хоста компьютера
+ * @param family семейство сокета (AF_INET / AF_INET6)
+ * @return       хост компьютера с которого производится запрос
+ */
+string awh::Engine::Address::host(const int family) const noexcept {
+	// Результат работы функции
+	string result = "";
+	// Если список сетей установлен
+	if(!this->network.empty()){
+		// Если количество элементов больше 1
+		if(this->network.size() > 1){
+			// Подключаем устройство генератора
+			mt19937 random(const_cast <addr_t *> (this)->_randev());
+			// Выполняем генерирование случайного числа
+			uniform_int_distribution <mt19937::result_type> dist6(0, this->network.size() - 1);
+			// Получаем ip адрес
+			result = this->network.at(dist6(random));
+		}
+		// Выводим только первый элемент
+		result = this->network.front();
+	}
+	// Определяем тип подключения
+	switch(family){
+		// Для протокола IPv4
+		case AF_INET: {
+			// Если IP-адрес установлен как общий или не установлен
+			if(result.empty() || (result.compare("0.0.0.0") == 0))
+				// Получаем IP адрес локального сервера
+				return this->_ifnet.ip(family);
+		} break;
+		// Для протокола IPv6
+		case AF_INET6: {
+			// Если IP-адрес установлен как общий или не установлен
+			if(result.empty() || (result.compare("::") == 0)){
+				// Получаем хост адреса
+				net_t net{};
+				// Получаем IP адрес локального сервера в упрощенном виде
+				return (net = this->_ifnet.ip(family));
+			}
+		} break;
+	}
+	// Выводим результат
+	return result;
+}
+/**
  * attach Метод прикрепления клиента к серверу
  * @param addr объект подключения сервера
  */
@@ -646,8 +691,8 @@ void awh::Engine::Address::init(const string & ip, const u_int port, const int f
 	if(!ip.empty() && (port <= 65535) && !this->network.empty()){
 		// Если список сетевых интерфейсов установлен
 		if((family == AF_INET) || (family == AF_INET6)){
-			// Адрес сервера для биндинга
-			string host = "";
+			// Получаем хост текущего компьютера
+			const string & host = this->host(family);
 			// Определяем тип подключения
 			switch(family){
 				// Для протокола IPv4
@@ -656,14 +701,6 @@ void awh::Engine::Address::init(const string & ip, const u_int port, const int f
 					switch(static_cast <uint8_t> (type)){
 						// Если приложение является клиентом
 						case static_cast <uint8_t> (type_t::CLIENT): {
-							// Если количество элементов больше 1
-							if(this->network.size() > 1){
-								// рандомизация генератора случайных чисел
-								srand(time(0));
-								// Получаем ip адрес
-								host = this->network.at(rand() % this->network.size());
-							// Выводим только первый элемент
-							} else host = this->network.front();
 							// Создаём объект клиента
 							struct sockaddr_in client;
 							// Очищаем всю структуру для клиента
@@ -716,20 +753,6 @@ void awh::Engine::Address::init(const string & ip, const u_int port, const int f
 					switch(static_cast <uint8_t> (type)){
 						// Если приложение является клиентом
 						case static_cast <uint8_t> (type_t::CLIENT): {
-							// Если количество элементов больше 1
-							if(this->network.size() > 1){
-								// рандомизация генератора случайных чисел
-								srand(time(0));
-								// Получаем ip адрес
-								host = this->network.at(rand() % this->network.size());
-							// Выводим только первый элемент
-							} else host = this->network.front();
-							// Получаем хост адреса
-							net_t net{};
-							// Выполняем получение IP адреса
-							net = host;
-							// Переводим ip адрес в полноценный вид
-							host = net;
 							// Создаём объект клиента
 							struct sockaddr_in6 client;
 							// Очищаем всю структуру для клиента
@@ -873,8 +896,6 @@ void awh::Engine::Address::init(const string & ip, const u_int port, const int f
 			switch(static_cast <uint8_t> (type)){
 				// Если приложение является сервером
 				case static_cast <uint8_t> (type_t::SERVER): {
-					// Получаем настоящий хост сервера
-					host = this->_ifnet.ip(family);
 					// Выполняем бинд на сокет
 					if(::bind(this->fd, (struct sockaddr *) (&this->_peer.server), this->_peer.size) < 0)
 						// Выводим в лог сообщение
