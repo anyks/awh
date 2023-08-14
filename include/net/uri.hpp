@@ -41,7 +41,6 @@
 /**
  * Наши модули
  */
-#include <sys/re.hpp>
 #include <sys/fmk.hpp>
 #include <net/net.hpp>
 

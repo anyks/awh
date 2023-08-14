@@ -31,14 +31,15 @@
 #include <algorithm>
 #include <sys/types.h>
 
-// Устанавливаем область видимости
-using namespace std;
-
 /**
  * Наши модуля
  */
-#include <sys/re.hpp>
 #include <sys/win.hpp>
+#include <sys/reg.hpp>
+
+
+// Устанавливаем область видимости
+using namespace std;
 
 /**
  * awh пространство имён

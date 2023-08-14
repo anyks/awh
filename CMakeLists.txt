@@ -262,10 +262,10 @@ endif()
 set(SOURCE_FILES
     "${SOURCE_FILES}"
     "${CMAKE_SOURCE_DIR}/src/sys/fs.cpp"
-    "${CMAKE_SOURCE_DIR}/src/sys/re.cpp"
-    "${CMAKE_SOURCE_DIR}/src/sys/idw.cpp"
     "${CMAKE_SOURCE_DIR}/src/sys/fmk.cpp"
     "${CMAKE_SOURCE_DIR}/src/sys/log.cpp"
+    "${CMAKE_SOURCE_DIR}/src/sys/reg.cpp"
+    "${CMAKE_SOURCE_DIR}/src/sys/idw.cpp"
     "${CMAKE_SOURCE_DIR}/src/ws/ws.cpp"
     "${CMAKE_SOURCE_DIR}/src/ws/frame.cpp"
     "${CMAKE_SOURCE_DIR}/src/ws/client.cpp"

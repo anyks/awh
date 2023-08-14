@@ -13,7 +13,7 @@
  */
 
 // Подключаем заголовочный файл
-#include <sys/re.hpp>
+#include <sys/reg.hpp>
 
 /**
  * Методы только для OS Windows

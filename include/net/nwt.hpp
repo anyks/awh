@@ -26,7 +26,7 @@
  */
 #include <sys/win.hpp>
 #include <sys/lib.hpp>
-#include <sys/re.hpp>
+#include <sys/reg.hpp>
 
 // Устанавливаем область видимости
 using namespace std;
