@@ -26,6 +26,7 @@
 #include <sstream>
 #include <cstdlib>
 #include <iostream>
+#include <functional>
 
 // Если - это Windows
 #if defined(_WIN32) || defined(_WIN64)
