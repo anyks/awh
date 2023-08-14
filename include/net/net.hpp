@@ -28,6 +28,7 @@
 #include <cstring>
 #include <sstream>
 #include <iostream>
+#include <algorithm>
 #include <sys/types.h>
 
 // Устанавливаем область видимости
