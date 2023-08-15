@@ -289,17 +289,10 @@ string awh::Engine::Address::host(const int family) const noexcept {
 	if(result.empty()){
 		// Определяем тип подключения
 		switch(family){
-			// Для протокола IPv4
-			case AF_INET:
-				// Получаем IP адрес локального сервера
-				return this->_ifnet.ip(family);
 			// Для протокола IPv6
-			case AF_INET6: {
-				// Получаем хост адреса
-				net_t net{};
-				// Получаем IP адрес локального сервера в упрощенном виде
-				return (net = this->_ifnet.ip(family));
-			}
+			case AF_INET6: return "::";
+			// Для протокола IPv4
+			case AF_INET: return "0.0.0.0";
 		}
 	}
 	// Выводим результат

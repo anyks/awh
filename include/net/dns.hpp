@@ -75,7 +75,6 @@
 #include <sys/fs.hpp>
 #include <sys/fmk.hpp>
 #include <sys/log.hpp>
-#include <net/if.hpp>
 #include <net/net.hpp>
 #include <net/socket.hpp>
 
@@ -274,8 +273,6 @@ namespace awh {
 				private:
 					// Объект для работы с подключениями
 					peer_t _peer;
-					// Объект для работы с сетевым интерфейсом
-					ifnet_t _ifnet;
 					// Объект для работы с сокетами
 					socket_t _socket;
 				private:
@@ -343,8 +340,8 @@ namespace awh {
 					 * @param self   объект DNS-резолвера
 					 */
 					Worker(const int family, const DNS * self) noexcept :
-					 _fd(INVALID_SOCKET), _mode(false), _family(family), _domain(""),
-					 _ifnet(self->_fmk, self->_log), _socket(self->_log), _self(self) {}
+					 _fd(INVALID_SOCKET), _mode(false), _family(family),
+					 _domain(""), _socket(self->_log), _self(self) {}
 					/**
 					 * ~Worker Деструктор
 					 */

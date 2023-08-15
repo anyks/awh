@@ -66,17 +66,10 @@ string awh::DNS::Worker::host() const noexcept {
 	if(result.empty()){
 		// Определяем тип подключения
 		switch(this->_family){
-			// Для протокола IPv4
-			case AF_INET:
-				// Получаем IP адрес локального сервера
-				return this->_ifnet.ip(this->_family);
 			// Для протокола IPv6
-			case AF_INET6: {
-				// Получаем хост адреса
-				net_t net{};
-				// Получаем IP адрес локального сервера в упрощенном виде
-				return (net = this->_ifnet.ip(this->_family));
-			}
+			case AF_INET6: return "::";
+			// Для протокола IPv4
+			case AF_INET: return "0.0.0.0";
 		}
 	}
 	// Выводим результат
