@@ -317,12 +317,12 @@ void awh::Ping::ping(const string & host) noexcept {
 			// Если IP-адрес является IPv4 адресом
 			case static_cast <uint8_t> (net_t::type_t::IPV4):
 				// Выполняем пинг указанного адреса
-				std::thread(&ping_t::work, this, AF_INET, host).detach();
+				std::thread(&ping_t::_work, this, AF_INET, host).detach();
 			break;
 			// Если IP-адрес является IPv6 адресом
 			case static_cast <uint8_t> (net_t::type_t::IPV6):
 				// Выполняем пинг указанного адреса
-				std::thread(&ping_t::work, this, AF_INET6, host).detach();
+				std::thread(&ping_t::_work, this, AF_INET6, host).detach();
 			break;
 			// Для всех остальных адресов
 			default: {
@@ -331,7 +331,7 @@ void awh::Ping::ping(const string & host) noexcept {
 				// Если результат получен, выполняем пинг
 				if(!ip.empty())
 					// Выполняем пинг указанного адреса
-					std::thread(&ping_t::work, this, AF_INET6, ip).detach();
+					std::thread(&ping_t::_work, this, AF_INET6, ip).detach();
 				// Если результат не получен, выполняем получение IPv4 адреса
 				else {
 					// Выполняем получение IP-адреса для IPv4
@@ -339,7 +339,7 @@ void awh::Ping::ping(const string & host) noexcept {
 					// Если IP-адрес успешно получен
 					if(!ip.empty())
 						// Выполняем пинг указанного адреса
-						std::thread(&ping_t::work, this, AF_INET, ip).detach();
+						std::thread(&ping_t::_work, this, AF_INET, ip).detach();
 					// Если IP-адрес не получен
 					else {
 						// Если разрешено выводить информацию в лог
@@ -355,11 +355,52 @@ void awh::Ping::ping(const string & host) noexcept {
 	}
 }
 /**
- * work Метод запуска пинга IP-адреса в асинхронном режиме
+ * ping Метод запуска пинга хоста в синхронном режиме
+ * @param family тип интернет-протокола AF_INET, AF_INET6
+ * @param host   хост для выполнения пинга
+ */
+void awh::Ping::ping(const int family, const string & host) noexcept {
+	// Выполняем блокировку потока
+	const lock_guard <recursive_mutex> lock(this->_mtx);
+	// Если хост передан и пинг ещё не активирован
+	if(!host.empty() && !this->_mode){
+		// Если разрешено выводить информацию в лог
+		if(!this->_noInfo)
+			// Формируем сообщение для вывода в лог
+			this->_log->print("PING %s: %u data bytes", log_t::flag_t::INFO, host.c_str(), sizeof(IcmpHeader));
+		switch(static_cast <uint8_t> (this->_net.host(host))){
+			// Если IP-адрес является IPv4 адресом
+			case static_cast <uint8_t> (net_t::type_t::IPV4):
+				// Выполняем пинг указанного адреса
+				std::thread(&ping_t::_work, this, AF_INET, host).detach();
+			break;
+			// Если IP-адрес является IPv6 адресом
+			case static_cast <uint8_t> (net_t::type_t::IPV6):
+				// Выполняем пинг указанного адреса
+				std::thread(&ping_t::_work, this, AF_INET6, host).detach();
+			break;
+			// Для всех остальных адресов
+			default: {
+				// Выполняем получение IP-адреса
+				const string & ip = this->_dns.resolve(family, host);
+				// Если результат получен, выполняем пинг
+				if(!ip.empty())
+					// Выполняем пинг указанного адреса
+					std::thread(&ping_t::_work, this, family, ip).detach();
+				// Если результат не получен и разрешено выводить информацию в лог
+				else if(!this->_noInfo)
+					// Выводим сообщение об ошибке
+					this->_log->print("passed %s address is not legitimate", log_t::flag_t::CRITICAL, host.c_str());
+			}
+		}
+	}
+}
+/**
+ * _work Метод запуска пинга IP-адреса в асинхронном режиме
  * @param family тип интернет-протокола AF_INET, AF_INET6
  * @param ip     адрес для выполнения пинга
  */
-void awh::Ping::work(const int family, const string & ip) noexcept {
+void awh::Ping::_work(const int family, const string & ip) noexcept {
 	// Если IP-адрес передан и пинг ещё не активирован
 	if(!ip.empty() && !this->_mode){
 		// Выполняем активирование режима работы
@@ -552,12 +593,12 @@ double awh::Ping::ping(const string & host, const uint16_t count) noexcept {
 			// Если IP-адрес является IPv4 адресом
 			case static_cast <uint8_t> (net_t::type_t::IPV4):
 				// Выполняем пинг указанного адреса
-				result = this->ping(AF_INET, host, count);
+				result = this->_ping(AF_INET, host, count);
 			break;
 			// Если IP-адрес является IPv6 адресом
 			case static_cast <uint8_t> (net_t::type_t::IPV6):
 				// Выполняем пинг указанного адреса
-				result = this->ping(AF_INET6, host, count);
+				result = this->_ping(AF_INET6, host, count);
 			break;
 			// Для всех остальных адресов
 			default: {
@@ -566,7 +607,7 @@ double awh::Ping::ping(const string & host, const uint16_t count) noexcept {
 				// Если результат получен, выполняем пинг
 				if(!ip.empty())
 					// Выполняем пинг указанного адреса
-					result = this->ping(AF_INET6, ip, count);
+					result = this->_ping(AF_INET6, ip, count);
 				// Если результат не получен, выполняем получение IPv4 адреса
 				else {
 					// Выполняем получение IP-адреса для IPv4
@@ -574,7 +615,7 @@ double awh::Ping::ping(const string & host, const uint16_t count) noexcept {
 					// Если IP-адрес успешно получен
 					if(!ip.empty())
 						// Выполняем пинг указанного адреса
-						result = this->ping(AF_INET, ip, count);
+						result = this->_ping(AF_INET, ip, count);
 					// Если IP-адрес не получен
 					else {
 						// Если разрешено выводить информацию в лог
@@ -592,12 +633,59 @@ double awh::Ping::ping(const string & host, const uint16_t count) noexcept {
 	return result;
 }
 /**
- * ping Метод запуска пинга IP-адреса в синхронном режиме
+ * ping Метод запуска пинга хоста в синхронном режиме
+ * @param family тип интернет-протокола AF_INET, AF_INET6
+ * @param host   хост для выполнения пинга
+ * @param count  количество итераций
+ */
+double awh::Ping::ping(const int family, const string & host, const uint16_t count) noexcept {
+	// Результат работы функции
+	double result = 0.0;
+	// Выполняем блокировку потока
+	const lock_guard <recursive_mutex> lock(this->_mtx);
+	// Если хост передан и пинг ещё не активирован
+	if(!host.empty() && !this->_mode){
+		// Если разрешено выводить информацию в лог
+		if(!this->_noInfo)
+			// Формируем сообщение для вывода в лог
+			this->_log->print("PING %s: %u data bytes", log_t::flag_t::INFO, host.c_str(), sizeof(IcmpHeader));
+		// Определяем тип передаваемого IP-адреса
+		switch(static_cast <uint8_t> (this->_net.host(host))){
+			// Если IP-адрес является IPv4 адресом
+			case static_cast <uint8_t> (net_t::type_t::IPV4):
+				// Выполняем пинг указанного адреса
+				result = this->_ping(AF_INET, host, count);
+			break;
+			// Если IP-адрес является IPv6 адресом
+			case static_cast <uint8_t> (net_t::type_t::IPV6):
+				// Выполняем пинг указанного адреса
+				result = this->_ping(AF_INET6, host, count);
+			break;
+			// Для всех остальных адресов
+			default: {
+				// Выполняем получение IP-адреса
+				const string & ip = this->_dns.resolve(family, host);
+				// Если результат получен, выполняем пинг
+				if(!ip.empty())
+					// Выполняем пинг указанного адреса
+					result = this->_ping(family, ip, count);
+				// Если результат не получен и разрешено выводить информацию в лог
+				else if(!this->_noInfo)
+					// Выводим сообщение об ошибке
+					this->_log->print("passed %s address is not legitimate", log_t::flag_t::CRITICAL, host.c_str());
+			}
+		}
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * _ping Метод запуска пинга IP-адреса в синхронном режиме
  * @param family тип интернет-протокола AF_INET, AF_INET6
  * @param ip     адрес для выполнения пинга
  * @param count  количество итераций
  */
-double awh::Ping::ping(const int family, const string & ip, const uint16_t count) noexcept {
+double awh::Ping::_ping(const int family, const string & ip, const uint16_t count) noexcept {
 	// Результат работы функции
 	double result = 0.0;
 	// Выполняем блокировку потока

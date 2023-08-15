@@ -224,13 +224,19 @@ namespace awh {
 			 * @param host хост для выполнения пинга
 			 */
 			void ping(const string & host) noexcept;
+			/**
+			 * ping Метод запуска пинга хоста в синхронном режиме
+			 * @param family тип интернет-протокола AF_INET, AF_INET6
+			 * @param host   хост для выполнения пинга
+			 */
+			void ping(const int family, const string & host) noexcept;
 		private:
 			/**
-			 * work Метод запуска пинга IP-адреса в асинхронном режиме
+			 * _work Метод запуска пинга IP-адреса в асинхронном режиме
 			 * @param family тип интернет-протокола AF_INET, AF_INET6
 			 * @param ip     адрес для выполнения пинга
 			 */
-			void work(const int family, const string & ip) noexcept;
+			void _work(const int family, const string & ip) noexcept;
 		public:
 			/**
 			 * ping Метод запуска пинга хоста в синхронном режиме
@@ -239,12 +245,20 @@ namespace awh {
 			 */
 			double ping(const string & host, const uint16_t count) noexcept;
 			/**
-			 * ping Метод запуска пинга IP-адреса в синхронном режиме
+			 * ping Метод запуска пинга хоста в синхронном режиме
+			 * @param family тип интернет-протокола AF_INET, AF_INET6
+			 * @param host   хост для выполнения пинга
+			 * @param count  количество итераций
+			 */
+			double ping(const int family, const string & host, const uint16_t count) noexcept;
+		private:
+			/**
+			 * _ping Метод запуска пинга IP-адреса в синхронном режиме
 			 * @param family тип интернет-протокола AF_INET, AF_INET6
 			 * @param ip     адрес для выполнения пинга
 			 * @param count  количество итераций
 			 */
-			double ping(const int family, const string & ip, const uint16_t count) noexcept;
+			double _ping(const int family, const string & ip, const uint16_t count) noexcept;
 		public:
 			/**
 			 * noInfo Метод запрещающий выводить информацию пинга в лог
