@@ -506,6 +506,8 @@ void awh::Ping::_work(const int family, const string & ip) noexcept {
 		}
 		// Если сокет не создан создан и работа резолвера не остановлена
 		if(this->_mode && (this->_fd == INVALID_SOCKET)){
+			// Выполняем деактивацию режима работы
+			this->_mode = !this->_mode;
 			// Если разрешено выводить информацию в лог
 			if(!this->_noInfo)
 				// Выводим в лог сообщение
@@ -539,9 +541,12 @@ void awh::Ping::_work(const int family, const string & ip) noexcept {
 				// Выполняем запрос на сервер
 				const int64_t bytes = this->send(family, index);
 				// Если данные прочитать не удалось
-				if(bytes <= 0)
+				if(bytes <= 0){
+					// Выполняем деактивацию режима работы
+					this->_mode = false;
 					// Выводим результат
 					return;
+				}
 				// Выполняем подсчёт количество прошедшего времени
 				const time_t timeShifting = (this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS) - mseconds);
 				// Если разрешено выводить информацию в лог
@@ -569,6 +574,8 @@ void awh::Ping::_work(const int family, const string & ip) noexcept {
 			}
 			// Выполняем закрытие подключения
 			this->close();
+			// Выполняем деактивацию режима работы
+			this->_mode = false;
 		}
 	}
 }
@@ -798,6 +805,8 @@ double awh::Ping::_ping(const int family, const string & ip, const uint16_t coun
 		}
 		// Если сокет не создан создан и работа резолвера не остановлена
 		if(this->_mode && (this->_fd == INVALID_SOCKET)){
+			// Выполняем деактивацию режима работы
+			this->_mode = !this->_mode;
 			// Если разрешено выводить информацию в лог
 			if(!this->_noInfo)
 				// Выводим в лог сообщение
@@ -829,9 +838,12 @@ double awh::Ping::_ping(const int family, const string & ip, const uint16_t coun
 				// Выполняем запрос на сервер
 				const int64_t bytes = this->send(family, i);
 				// Если данные прочитать не удалось
-				if(bytes <= 0)
+				if(bytes <= 0){
+					// Выполняем деактивацию режима работы
+					this->_mode = false;
 					// Выводим результат
 					return result;
+				}
 				// Выполняем подсчёт количество прошедшего времени
 				const time_t timeShifting = (this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS) - mseconds);
 				// Если разрешено выводить информацию в лог
@@ -864,6 +876,8 @@ double awh::Ping::_ping(const int family, const string & ip, const uint16_t coun
 				// Выводим сообщение как есть
 				else this->_log->print("Bad connection. Avg ping %s", log_t::flag_t::WARNING, this->_fmk->time2abbr(result).c_str());
 			}
+			// Выполняем деактивацию режима работы
+			this->_mode = false;
 		}
 	}
 	// Выводим результат
