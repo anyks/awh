@@ -151,18 +151,14 @@ namespace awh {
 				scheme_t::sonet_t sonet;
 				// Тип протокола интернета (IPV4 / IPV6 / NIX)
 				scheme_t::family_t family;
-				// Параметры для сети IPv4
-				pair <vector <string>, vector <string>> v4;
-				// Параметры для сети IPv6
-				pair <vector <string>, vector <string>> v6;
+				// Параметры для сети и DNS-резолвера
+				pair <vector <string>, vector <string>> net;
 				/**
 				 * Settings Конструктор
 				 */
 				Settings() noexcept :
-				 filename(""),
-				 sonet(scheme_t::sonet_t::TCP),
-				 family(scheme_t::family_t::IPV4),
-				 v4({{"0.0.0.0"}, {}}), v6({{"[::0]"}, {}}) {}
+				 filename(""), sonet(scheme_t::sonet_t::TCP),
+				 family(scheme_t::family_t::IPV4), net({{"0.0.0.0","[::]"},{}}) {}
 			} settings_t;
 		private:
 			/**

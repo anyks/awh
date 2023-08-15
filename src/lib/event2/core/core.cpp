@@ -554,10 +554,8 @@ void awh::Core::bind(Core * core) noexcept {
 			this->cores++;
 			// Устанавливаем флаг запуска
 			core->mode = true;
-			// Выполняем установку нейм-серверов для DNS-резолвера IPv4
-			core->dns.replace(AF_INET, core->settings.v4.second);
-			// Выполняем установку нейм-серверов для DNS-резолвера IPv6
-			core->dns.replace(AF_INET6, core->settings.v6.second);
+			// Выполняем установку нейм-серверов для DNS-резолвера
+			core->dns.replace(core->settings.net.second);
 			// Выполняем разблокировку потока
 			core->_mtx.status.unlock();
 		// Если базы событий совпадают
@@ -849,10 +847,8 @@ void awh::Core::rebase() noexcept {
 			// Выполняем запуск отслеживания сигналов
 			this->_sig.start();
 		}
-		// Выполняем установку нейм-серверов для DNS-резолвера IPv4
-		this->dns.replace(AF_INET, this->settings.v4.second);
-		// Выполняем установку нейм-серверов для DNS-резолвера IPv6
-		this->dns.replace(AF_INET6, this->settings.v6.second);
+		// Выполняем установку нейм-серверов для DNS-резолвера
+		this->dns.replace(this->settings.net.second);
 		// Если список таймеров получен
 		if(!mainTimers.empty()){
 			// Переходим по всему списку таймеров
@@ -1528,33 +1524,10 @@ void awh::Core::serversDNS(const vector <string> & ns) noexcept {
 	if(!ns.empty()){
 		// Выполняем блокировку потока
 		const lock_guard <recursive_mutex> lock(this->_mtx.main);
-		// Переходим по всем нейм серверам и добавляем их
-		for(auto & server : ns){
-			// Определяем тип передаваемого IP-адреса
-			switch(static_cast <uint8_t> (this->net.host(server))){
-				// Если IP-адрес является IPv4 адресом
-				case static_cast <uint8_t> (net_t::type_t::IPV4):
-					// Выполняем добавление IPv4 адреса в список серверов
-					this->settings.v4.second.push_back(server);
-				break;
-				// Если IP-адрес является IPv6 адресом
-				case static_cast <uint8_t> (net_t::type_t::IPV6):
-					// Выполняем добавление IPv6 адреса в список серверов
-					this->settings.v6.second.push_back(server);
-				break;
-				// Для всех остальных адресов
-				default: {
-					// Выполняем добавление IPv4 адреса в список серверов
-					this->settings.v4.second.push_back(server);
-					// Выполняем добавление IPv6 адреса в список серверов
-					this->settings.v6.second.push_back(server);
-				}
-			}
-		}
-		// Выполняем установку нейм-серверов для DNS-резолвера IPv4
-		this->dns.replace(AF_INET, this->settings.v4.second);
-		// Выполняем установку нейм-серверов для DNS-резолвера IPv6
-		this->dns.replace(AF_INET6, this->settings.v6.second);
+		// Выполняем установку нейм-серверов для DNS-резолвера
+		this->dns.replace(ns);
+		// Выполняем установку DNS-резолвера
+		this->settings.net.second.assign(ns.begin(), ns.end());
 	}
 }
 /**
@@ -1567,22 +1540,20 @@ void awh::Core::serversDNS(const vector <string> & ns, const scheme_t::family_t 
 	if(!ns.empty()){
 		// Выполняем блокировку потока
 		const lock_guard <recursive_mutex> lock(this->_mtx.main);
+		// Устанавливаем полученный список серверов имён
+		this->settings.net.second.assign(ns.cbegin(), ns.cend());
 		// Определяем тип интернет-протокола
 		switch(static_cast <uint8_t> (family)){
-			// Если мы получили адреса интернет-протокола IPv4
-			case static_cast <uint8_t> (scheme_t::family_t::IPV4): {
-				// Устанавливаем полученный список серверов имён
-				this->settings.v4.second.assign(ns.cbegin(), ns.cend());
-				// Выполняем установку нейм-серверов для DNS-резолвера IPv4
-				this->dns.replace(AF_INET, this->settings.v4.second);
-			} break;
-			// Если мы получили адреса интернет-протокола IPv6
-			case static_cast <uint8_t> (scheme_t::family_t::IPV6): {
-				// Устанавливаем полученный список серверов имён
-				this->settings.v6.second.assign(ns.cbegin(), ns.cend());
-				// Выполняем установку нейм-серверов для DNS-резолвера IPv6
-				this->dns.replace(AF_INET6, this->settings.v6.second);
-			} break;
+			// Если тип протокола интернета IPv4
+			case static_cast <uint8_t> (scheme_t::family_t::IPV4):
+				// Выполняем установку нейм-серверов для DNS-резолвера
+				this->dns.replace(AF_INET, ns);
+			break;
+			// Если тип протокола интернета IPv6
+			case static_cast <uint8_t> (scheme_t::family_t::IPV6):
+				// Выполняем установку нейм-серверов для DNS-резолвера
+				this->dns.replace(AF_INET6, ns);
+			break;
 		}
 	}
 }
@@ -1833,18 +1804,44 @@ void awh::Core::network(const vector <string> & ips, const scheme_t::family_t fa
 	}
 	// Если IP-адреса переданы
 	if(!ips.empty()){
-		// Определяем тип интернет-протокола
-		switch(static_cast <uint8_t> (this->settings.family)){
-			// Если мы получили адреса интернет-протокола IPv4
-			case static_cast <uint8_t> (scheme_t::family_t::IPV4):
-				// Устанавливаем полученные IP-адреса
-				this->settings.v4.first.assign(ips.cbegin(), ips.cend());
-			break;
-			// Если мы получили адреса интернет-протокола IPv6
-			case static_cast <uint8_t> (scheme_t::family_t::IPV6):
-				// Устанавливаем полученные IP-адреса
-				this->settings.v6.first.assign(ips.cbegin(), ips.cend());
-			break;
+		// Выполняем установку параметров сети для DNS-резолвера
+		this->dns.network(ips);
+		// Переходим по всему списку полученных адресов
+		for(auto & host : ips){
+			// Определяем к какому адресу относится полученный хост
+			switch(static_cast <uint8_t> (this->net.host(host))){
+				// Если IP-адрес является IPv4 адресом
+				case static_cast <uint8_t> (net_t::type_t::IPV4):
+				// Если IP-адрес является IPv6 адресом
+				case static_cast <uint8_t> (net_t::type_t::IPV6):
+					// Устанавливаем полученные IP-адреса
+					this->settings.net.first.push_back(host);
+				break;
+				// Для всех остальных адресов
+				default: {
+					// Определяем тип интернет-протокола
+					switch(static_cast <uint8_t> (family)){
+						// Если тип протокола интернета IPv4
+						case static_cast <uint8_t> (scheme_t::family_t::IPV4): {
+							// Выполняем получение IP-адреса для IPv4
+							const string & ip = this->dns.host(AF_INET, host);
+							// Если IP-адрес успешно получен
+							if(!ip.empty())
+								// Выполняем добавление полученного хоста в список
+								this->settings.net.first.push_back(ip);
+						} break;
+						// Если тип протокола интернета IPv6
+						case static_cast <uint8_t> (scheme_t::family_t::IPV6): {
+							// Выполняем получение IP-адреса для IPv6
+							const string & ip = this->dns.host(AF_INET6, host);
+							// Если результат получен, выполняем пинг
+							if(!ip.empty())
+								// Выполняем добавление полученного хоста в список
+								this->settings.net.first.push_back(ip);
+						} break;
+					}
+				}
+			}
 		}
 	}
 }

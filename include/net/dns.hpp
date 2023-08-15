@@ -108,7 +108,8 @@ namespace awh {
 				RESOLVE = 0x05, // Событие резолвинга домена
 				NS_SET  = 0x06, // Событие установки DNS-сервера
 				NSS_SET = 0x07, // Событие установки DNS-серверов
-				NSS_REP = 0x08  // Событие замены DNS-серверов
+				NSS_REP = 0x08, // Событие замены DNS-серверов
+				NET_SET = 0x09  // Событие установки параметров сети
 			};
 		private:
 			/**
@@ -582,6 +583,12 @@ namespace awh {
 			 * @param network IP-адреса сетевых плат
 			 */
 			void network(const vector <string> & network) noexcept;
+			/**
+			 * network Метод установки адреса сетевых плат, с которых нужно выполнять запросы
+			 * @param family  тип интернет-протокола AF_INET, AF_INET6
+			 * @param network IP-адреса сетевых плат
+			 */
+			void network(const int family, const vector <string> & network) noexcept;
 		public:
 			/**
 			 * replace Метод замены существующих серверов DNS

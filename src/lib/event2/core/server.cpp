@@ -217,21 +217,25 @@ void awh::server::Core::accept(const int fd, const size_t sid) noexcept {
 					// Определяем тип протокола подключения
 					switch(static_cast <uint8_t> (this->settings.family)){
 						// Если тип протокола подключения IPv4
-						case static_cast <uint8_t> (scheme_t::family_t::IPV4):
-							// Устанавливаем сеть, для выхода в интернет
-							adj->addr.network.assign(
-								this->settings.v4.first.begin(),
-								this->settings.v4.first.end()
-							);
-						break;
+						case static_cast <uint8_t> (scheme_t::family_t::IPV4): {
+							// Выполняем перебор всего списка адресов
+							for(auto & host : this->settings.net.first){
+								// Если хост соответствует адресу IPv4
+								if(this->net.host(host) == net_t::type_t::IPV4)
+									// Выполняем установку полученного хоста
+									adj->addr.network.push_back(host);
+							}
+						} break;
 						// Если тип протокола подключения IPv6
-						case static_cast <uint8_t> (scheme_t::family_t::IPV6):
-							// Устанавливаем сеть, для выхода в интернет
-							adj->addr.network.assign(
-								this->settings.v6.first.begin(),
-								this->settings.v6.first.end()
-							);
-						break;
+						case static_cast <uint8_t> (scheme_t::family_t::IPV6): {
+							// Выполняем перебор всего списка адресов
+							for(auto & host : this->settings.net.first){
+								// Если хост соответствует адресу IPv4
+								if(this->net.host(host) == net_t::type_t::IPV6)
+									// Выполняем установку полученного хоста
+									adj->addr.network.push_back(host);
+							}
+						} break;
 					}
 					// Устанавливаем параметры сокета
 					adj->addr.sonet(SOCK_DGRAM, IPPROTO_UDP);
@@ -1040,21 +1044,25 @@ void awh::server::Core::resolving(const size_t sid, const string & ip, const int
 						// Определяем тип протокола подключения
 						switch(static_cast <uint8_t> (this->settings.family)){
 							// Если тип протокола подключения IPv4
-							case static_cast <uint8_t> (scheme_t::family_t::IPV4):
-								// Устанавливаем сеть, для выхода в интернет
-								shm->addr.network.assign(
-									this->settings.v4.first.begin(),
-									this->settings.v4.first.end()
-								);
-							break;
+							case static_cast <uint8_t> (scheme_t::family_t::IPV4): {
+								// Выполняем перебор всего списка адресов
+								for(auto & host : this->settings.net.first){
+									// Если хост соответствует адресу IPv4
+									if(this->net.host(host) == net_t::type_t::IPV4)
+										// Выполняем установку полученного хоста
+										shm->addr.network.push_back(host);
+								}
+							} break;
 							// Если тип протокола подключения IPv6
-							case static_cast <uint8_t> (scheme_t::family_t::IPV6):
-								// Устанавливаем сеть, для выхода в интернет
-								shm->addr.network.assign(
-									this->settings.v6.first.begin(),
-									this->settings.v6.first.end()
-								);
-							break;
+							case static_cast <uint8_t> (scheme_t::family_t::IPV6): {
+								// Выполняем перебор всего списка адресов
+								for(auto & host : this->settings.net.first){
+									// Если хост соответствует адресу IPv4
+									if(this->net.host(host) == net_t::type_t::IPV6)
+										// Выполняем установку полученного хоста
+										shm->addr.network.push_back(host);
+								}
+							} break;
 						}
 						// Определяем тип сокета
 						switch(static_cast <uint8_t> (this->settings.sonet)){

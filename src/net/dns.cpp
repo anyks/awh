@@ -1859,41 +1859,79 @@ void awh::DNS::servers(const int family, const vector <string> & servers) noexce
 void awh::DNS::network(const vector <string> & network) noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->_mtx);
-	// Если список адресов сетевых плат передан
-	if(!network.empty()){
-		// Переходим по всему списку полученных адресов
-		for(auto & host : network){
-			// Определяем к какому адресу относится полученный хост
-			switch(static_cast <uint8_t> (this->_net.host(host))){
-				// Если IP-адрес является IPv4 адресом
-				case static_cast <uint8_t> (net_t::type_t::IPV4):
-					// Выполняем добавление полученного хоста в список
-					this->_workerIPv4->_network.push_back(host);
-				break;
-				// Если IP-адрес является IPv6 адресом
-				case static_cast <uint8_t> (net_t::type_t::IPV6):
-					// Выполняем добавление полученного хоста в список
-					this->_workerIPv6->_network.push_back(host);
-				break;
-				// Для всех остальных адресов
-				default: {
-					// Выполняем получение IP-адреса для IPv6
-					string ip = this->host(AF_INET6, host);
-					// Если результат получен, выполняем пинг
-					if(!ip.empty())
+	// Создаём объект холдирования
+	hold_t hold(&this->_status);
+	// Если статус работы установки параметров сети соответствует
+	if(hold.access({}, status_t::NET_SET)){
+		// Если список адресов сетевых плат передан
+		if(!network.empty()){
+			// Переходим по всему списку полученных адресов
+			for(auto & host : network){
+				// Определяем к какому адресу относится полученный хост
+				switch(static_cast <uint8_t> (this->_net.host(host))){
+					// Если IP-адрес является IPv4 адресом
+					case static_cast <uint8_t> (net_t::type_t::IPV4):
 						// Выполняем добавление полученного хоста в список
-						this->_workerIPv6->_network.push_back(ip);
-					// Если результат не получен, выполняем получение IPv4 адреса
-					else {
-						// Выполняем получение IP-адреса для IPv4
-						ip = this->host(AF_INET, host);
-						// Если IP-адрес успешно получен
+						this->_workerIPv4->_network.push_back(host);
+					break;
+					// Если IP-адрес является IPv6 адресом
+					case static_cast <uint8_t> (net_t::type_t::IPV6):
+						// Выполняем добавление полученного хоста в список
+						this->_workerIPv6->_network.push_back(host);
+					break;
+					// Для всех остальных адресов
+					default: {
+						// Выполняем получение IP-адреса для IPv6
+						string ip = this->host(AF_INET6, host);
+						// Если результат получен, выполняем пинг
 						if(!ip.empty())
 							// Выполняем добавление полученного хоста в список
-							this->_workerIPv4->_network.push_back(ip);
-						// Выводим сообщение об ошибке
-						else this->_log->print("passed %s address is not legitimate", log_t::flag_t::WARNING, host.c_str());
+							this->_workerIPv6->_network.push_back(ip);
+						// Если результат не получен, выполняем получение IPv4 адреса
+						else {
+							// Выполняем получение IP-адреса для IPv4
+							ip = this->host(AF_INET, host);
+							// Если IP-адрес успешно получен
+							if(!ip.empty())
+								// Выполняем добавление полученного хоста в список
+								this->_workerIPv4->_network.push_back(ip);
+							// Выводим сообщение об ошибке
+							else this->_log->print("passed %s address is not legitimate", log_t::flag_t::WARNING, host.c_str());
+						}
 					}
+				}
+			}
+		}
+	}
+}
+/**
+ * network Метод установки адреса сетевых плат, с которых нужно выполнять запросы
+ * @param family  тип интернет-протокола AF_INET, AF_INET6
+ * @param network IP-адреса сетевых плат
+ */
+void awh::DNS::network(const int family, const vector <string> & network) noexcept {
+	// Выполняем блокировку потока
+	const lock_guard <recursive_mutex> lock(this->_mtx);
+	// Создаём объект холдирования
+	hold_t hold(&this->_status);
+	// Если статус работы установки параметров сети соответствует
+	if(hold.access({}, status_t::NET_SET)){
+		// Если список адресов сетевых плат передан
+		if(!network.empty()){
+			// Переходим по всему списку полученных адресов
+			for(auto & host : network){
+				// Определяем тип передаваемого IP-адреса
+				switch(static_cast <uint8_t> (family)){
+					// Если IP-адрес является IPv4 адресом
+					case static_cast <uint8_t> (net_t::type_t::IPV4):
+						// Выполняем добавление полученного хоста в список
+						this->_workerIPv4->_network.push_back(host);
+					break;
+					// Если IP-адрес является IPv6 адресом
+					case static_cast <uint8_t> (net_t::type_t::IPV6):
+						// Выполняем добавление полученного хоста в список
+						this->_workerIPv6->_network.push_back(host);
+					break;
 				}
 			}
 		}
