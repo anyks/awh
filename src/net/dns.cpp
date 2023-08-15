@@ -62,25 +62,22 @@ string awh::DNS::Worker::host() const noexcept {
 		// Выводим только первый элемент
 		result = this->_network.front();
 	}
-	// Определяем тип подключения
-	switch(this->_family){
-		// Для протокола IPv4
-		case AF_INET: {
-			// Если IP-адрес установлен как общий или не установлен
-			if(result.empty() || (result.compare("0.0.0.0") == 0))
+	// Если IP-адрес не установлен
+	if(result.empty()){
+		// Определяем тип подключения
+		switch(this->_family){
+			// Для протокола IPv4
+			case AF_INET:
 				// Получаем IP адрес локального сервера
 				return this->_ifnet.ip(this->_family);
-		} break;
-		// Для протокола IPv6
-		case AF_INET6: {
-			// Если IP-адрес установлен как общий или не установлен
-			if(result.empty() || (result.compare("::") == 0)){
+			// Для протокола IPv6
+			case AF_INET6: {
 				// Получаем хост адреса
 				net_t net{};
 				// Получаем IP адрес локального сервера в упрощенном виде
 				return (net = this->_ifnet.ip(this->_family));
 			}
-		} break;
+		}
 	}
 	// Выводим результат
 	return result;
