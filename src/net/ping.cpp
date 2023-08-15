@@ -576,6 +576,7 @@ void awh::Ping::_work(const int family, const string & ip) noexcept {
  * ping Метод запуска пинга хоста в синхронном режиме
  * @param host  хост для выполнения пинга
  * @param count количество итераций
+ * @return      количество миллисекунд ответа хоста
  */
 double awh::Ping::ping(const string & host, const uint16_t count) noexcept {
 	// Результат работы функции
@@ -637,6 +638,7 @@ double awh::Ping::ping(const string & host, const uint16_t count) noexcept {
  * @param family тип интернет-протокола AF_INET, AF_INET6
  * @param host   хост для выполнения пинга
  * @param count  количество итераций
+ * @return       количество миллисекунд ответа хоста
  */
 double awh::Ping::ping(const int family, const string & host, const uint16_t count) noexcept {
 	// Результат работы функции
@@ -684,6 +686,7 @@ double awh::Ping::ping(const int family, const string & host, const uint16_t cou
  * @param family тип интернет-протокола AF_INET, AF_INET6
  * @param ip     адрес для выполнения пинга
  * @param count  количество итераций
+ * @return       количество миллисекунд ответа хоста
  */
 double awh::Ping::_ping(const int family, const string & ip, const uint16_t count) noexcept {
 	// Результат работы функции

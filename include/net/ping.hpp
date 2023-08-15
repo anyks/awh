@@ -242,6 +242,7 @@ namespace awh {
 			 * ping Метод запуска пинга хоста в синхронном режиме
 			 * @param host  хост для выполнения пинга
 			 * @param count количество итераций
+			 * @return      количество миллисекунд ответа хоста
 			 */
 			double ping(const string & host, const uint16_t count) noexcept;
 			/**
@@ -249,6 +250,7 @@ namespace awh {
 			 * @param family тип интернет-протокола AF_INET, AF_INET6
 			 * @param host   хост для выполнения пинга
 			 * @param count  количество итераций
+			 * @return       количество миллисекунд ответа хоста
 			 */
 			double ping(const int family, const string & host, const uint16_t count) noexcept;
 		private:
@@ -257,6 +259,7 @@ namespace awh {
 			 * @param family тип интернет-протокола AF_INET, AF_INET6
 			 * @param ip     адрес для выполнения пинга
 			 * @param count  количество итераций
+			 * @return       количество миллисекунд ответа хоста
 			 */
 			double _ping(const int family, const string & ip, const uint16_t count) noexcept;
 		public:
