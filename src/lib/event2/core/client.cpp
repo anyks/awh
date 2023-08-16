@@ -1228,11 +1228,11 @@ void awh::client::Core::transfer(const engine_t::method_t method, const size_t a
 								// Если флаг ожидания входящих сообщений, активирован
 								if(adj->timeouts.read > 0)
 									// Выполняем установку таймаута ожидания
-									adj->ectx.timeout(adj->timeouts.read, engine_t::method_t::READ);
+									adj->ectx.timeout(adj->timeouts.read * 1000, engine_t::method_t::READ);
 								// Если флаг ожидания исходящих сообщений, активирован
 								if(adj->timeouts.write > 0)
 									// Выполняем установку таймаута ожидания
-									adj->ectx.timeout(adj->timeouts.write, engine_t::method_t::WRITE);
+									adj->ectx.timeout(adj->timeouts.write * 1000, engine_t::method_t::WRITE);
 							}
 							// Выполняем отправку данных пока всё не отправим
 							while(!adj->bev.locked.write && ((buffer.size() - offset) > 0)){
