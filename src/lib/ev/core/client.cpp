@@ -181,14 +181,41 @@ void awh::client::Core::connect(const size_t sid) noexcept {
 						this->engine.wrap(adj->ectx, &adj->addr, engine_t::type_t::CLIENT);
 					// Если подключение выполняется не по защищённому каналу DTLS
 					else {
-						// Получаем хост сервера
-						const string & host = (!url.domain.empty() ? url.domain : (!url.ip.empty() ? url.ip : ""));
-						// Если функция обратного вызова активации шифрованного TLS канала установлена
-						if((shm->callback.is("tls")))
-							// Выполняем активацию шифрованного TLS канала
-							this->engine.tls(shm->callback.apply <bool, const uri_t::url_t &, const size_t, const size_t, awh::core_t *> ("tls", url, adj->aid, shm->sid, this), adj->ectx);
-						// Выполняем активацию контекста подключения
-						this->engine.wrapClient(adj->ectx, &adj->addr, host);
+						// Хост сервера для подклчюения
+						const char * host = nullptr;
+						// Если unix-сокет используется
+						if(family == scheme_t::family_t::NIX)
+							// Выполняем получение хост сервера
+							host = url.host.c_str();
+						// Если подключение производится по хосту и порту
+						else host = (!url.domain.empty() ? url.domain.c_str() : (!url.ip.empty() ? url.ip.c_str() : nullptr));
+						// Если хост сервера получен правильно
+						if(host != nullptr){
+							// Если функция обратного вызова активации шифрованного TLS канала установлена
+							if((shm->callback.is("tls")))
+								// Выполняем активацию шифрованного TLS канала
+								this->engine.tls(shm->callback.apply <bool, const uri_t::url_t &, const size_t, const size_t, awh::core_t *> ("tls", url, adj->aid, shm->sid, this), adj->ectx);
+							// Выполняем активацию контекста подключения
+							this->engine.wrapClient(adj->ectx, &adj->addr, host);
+						// Если хост сервера не получен
+						} else {
+							// Разрешаем выполнение работы
+							shm->status.work = scheme_t::work_t::ALLOW;
+							// Устанавливаем статус подключения
+							shm->status.real = scheme_t::mode_t::DISCONNECT;
+							// Устанавливаем флаг ожидания статуса
+							shm->status.wait = scheme_t::mode_t::DISCONNECT;
+							// Выводим сообщение об ошибке
+							this->log->print("connection server host is not set", log_t::flag_t::CRITICAL);
+							// Выводим сообщение об ошибке
+							if(!this->noinfo) this->log->print("%s", log_t::flag_t::INFO, "disconnected from the server");
+							// Если функция обратного вызова установлена
+							if(shm->callback.is("disconnect"))
+								// Выполняем функцию обратного вызова
+								shm->callback.call <const size_t, const size_t, awh::core_t *> ("disconnect", 0, sid, this);
+							// Выходим из функции
+							return;
+						}
 					}
 					// Если мы хотим работать в зашифрованном режиме
 					if(!shm->isProxy() && (this->settings.sonet == scheme_t::sonet_t::TLS)){
@@ -928,18 +955,33 @@ void awh::client::Core::switchProxy(const size_t aid) noexcept {
 		if((shm->proxy.type != proxy_t::type_t::NONE) && shm->isProxy()){
 			// Выполняем переключение на работу с сервером
 			shm->switchConnect();
-			// Получаем хост сервера
-			const string & host = (!shm->url.domain.empty() ? shm->url.domain : (!shm->url.ip.empty() ? shm->url.ip : ""));
-			// Если функция обратного вызова активации шифрованного TLS канала установлена
-			if((shm->callback.is("tls")))
-				// Выполняем активацию шифрованного TLS канала
-				this->engine.tls(shm->callback.apply <bool, const uri_t::url_t &, const size_t, const size_t, awh::core_t *> ("tls", shm->url, aid, shm->sid, this), adj->ectx);
-			// Выполняем получение контекста сертификата
-			this->engine.wrapClient(adj->ectx, adj->ectx, host);
-			// Если подключение не обёрнуто
-			if((adj->addr.fd == INVALID_SOCKET) || (adj->addr.fd >= MAX_SOCKETS)){
+			// Хост сервера для подклчюения
+			const char * host = nullptr;
+			// Если unix-сокет используется
+			if(shm->proxy.family == scheme_t::family_t::NIX)
+				// Выполняем получение хост сервера
+				host = shm->url.host.c_str();
+			// Если подключение производится по хосту и порту
+			else host = (!shm->url.domain.empty() ? shm->url.domain.c_str() : (!shm->url.ip.empty() ? shm->url.ip.c_str() : nullptr));
+			// Если хост сервера получен правильно
+			if(host != nullptr){
+				// Если функция обратного вызова активации шифрованного TLS канала установлена
+				if((shm->callback.is("tls")))
+					// Выполняем активацию шифрованного TLS канала
+					this->engine.tls(shm->callback.apply <bool, const uri_t::url_t &, const size_t, const size_t, awh::core_t *> ("tls", shm->url, aid, shm->sid, this), adj->ectx);
+				// Выполняем получение контекста сертификата
+				this->engine.wrapClient(adj->ectx, adj->ectx, host);
+				// Если подключение не обёрнуто
+				if((adj->addr.fd == INVALID_SOCKET) || (adj->addr.fd >= MAX_SOCKETS)){
+					// Выводим сообщение об ошибке
+					this->log->print("wrap engine context is failed", log_t::flag_t::CRITICAL);
+					// Выходим из функции
+					return;
+				}
+			// Если хост сервера не получен
+			} else {
 				// Выводим сообщение об ошибке
-				this->log->print("wrap engine context is failed", log_t::flag_t::CRITICAL);
+				this->log->print("connection server host is not set", log_t::flag_t::CRITICAL);
 				// Выходим из функции
 				return;
 			}
