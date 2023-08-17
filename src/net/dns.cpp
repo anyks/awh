@@ -16,32 +16,6 @@
 #include <net/dns.hpp>
 
 /**
- * access Метод проверки на разрешение выполнения операции
- * @param comp  статус сравнения
- * @param hold  статус установки
- * @param equal флаг эквивалентности
- * @return      результат проверки
- */
-bool awh::DNS::Holder::access(const set <status_t> & comp, const status_t hold, const bool equal) noexcept {
-	// Определяем есть ли фиксированные статусы
-	this->_flag = this->_status->empty();
-	// Если результат не получен
-	if(!this->_flag && !comp.empty())
-		// Получаем результат сравнения
-		this->_flag = (equal ? (comp.count(this->_status->top()) > 0) : (comp.count(this->_status->top()) < 1));
-	// Если результат получен, выполняем холд
-	if(this->_flag) this->_status->push(hold);
-	// Выводим результат
-	return this->_flag;
-}
-/**
- * ~Holder Деструктор
- */
-awh::DNS::Holder::~Holder() noexcept {
-	// Если холдирование выполнено
-	if(this->_flag) this->_status->pop();
-}
-/**
  * host Метод извлечения хоста компьютера
  * @return хост компьютера с которого производится запрос
  */
@@ -205,10 +179,13 @@ void awh::DNS::Worker::close() noexcept {
  * cancel Метод отмены выполнения запроса
  */
 void awh::DNS::Worker::cancel() noexcept {
-	// Выполняем остановку работы резолвера
-	this->_mode = !this->_mode;
-	// Выполняем закрытие подключения
-	this->close();
+	// Если работа DNS-резолвера запущена
+	if(this->_mode){
+		// Выполняем остановку работы резолвера
+		this->_mode = !this->_mode;
+		// Выполняем закрытие подключения
+		this->close();
+	}
 }
 /**
  * request Метод выполнения запроса
@@ -337,7 +314,7 @@ string awh::DNS::Worker::send(const string & from, const string & to) noexcept {
 	// Результат работы функции
 	string result = "";
 	// Если доменное имя установлено
-	if(!this->_domain.empty() && !from.empty() && !to.empty()){
+	if(this->_mode && !this->_domain.empty() && !from.empty() && !to.empty()){
 		// Буфер пакета данных
 		u_char buffer[65536];
 		// Выполняем зануление буфера данных
@@ -822,7 +799,7 @@ bool awh::DNS::clear() noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->_mtx);
 	// Создаём объект холдирования
-	hold_t hold(&this->_status);
+	hold_t <status_t> hold(this->_status);
 	// Если статус работы DNS-резолвера соответствует
 	if((result = hold.access({}, status_t::CLEAR))){
 		// Выполняем сброс кэша DNS-резолвера
@@ -849,7 +826,7 @@ bool awh::DNS::flush() noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->_mtx);
 	// Создаём объект холдирования
-	hold_t hold(&this->_status);
+	hold_t <status_t> hold(this->_status);
 	// Если статус работы DNS-резолвера соответствует
 	if((result = hold.access({status_t::CLEAR}, status_t::FLUSH))){
 		// Выполняем сброс кэша полученных IPv4-адресов
@@ -1617,7 +1594,7 @@ string awh::DNS::server(const int family) noexcept {
 }
 /**
  * server Метод добавления сервера DNS
- * @param server параметры DNS-сервера
+ * @param server адрес DNS-сервера
  */
 void awh::DNS::server(const string & server) noexcept {
 	// Выполняем блокировку потока
@@ -1642,13 +1619,13 @@ void awh::DNS::server(const string & server) noexcept {
 /**
  * server Метод добавления сервера DNS
  * @param family тип интернет-протокола AF_INET, AF_INET6
- * @param server параметры DNS-сервера
+ * @param server адрес DNS-сервера
  */
 void awh::DNS::server(const int family, const string & server) noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->_mtx);
 	// Создаём объект холдирования
-	hold_t hold(&this->_status);
+	hold_t <status_t> hold(this->_status);
 	// Если статус работы DNS-резолвера соответствует
 	if(hold.access({status_t::NSS_SET}, status_t::NS_SET)){
 		// Если адрес сервера передан
@@ -1784,7 +1761,7 @@ void awh::DNS::server(const int family, const string & server) noexcept {
 }
 /**
  * servers Метод добавления серверов DNS
- * @param servers параметры DNS-серверов
+ * @param servers адреса DNS-серверов
  */
 void awh::DNS::servers(const vector <string> & servers) noexcept {
 	// Выполняем блокировку потока
@@ -1792,7 +1769,7 @@ void awh::DNS::servers(const vector <string> & servers) noexcept {
 	// Если список серверов передан
 	if(!servers.empty()){
 		// Создаём объект холдирования
-		hold_t hold(&this->_status);
+		hold_t <status_t> hold(this->_status);
 		// Если статус работы DNS-резолвера соответствует
 		if(hold.access({status_t::NSS_REP}, status_t::NSS_SET)){
 			// Переходим по всем нейм серверам и добавляем их
@@ -1824,7 +1801,7 @@ void awh::DNS::servers(const vector <string> & servers) noexcept {
 /**
  * servers Метод добавления серверов DNS
  * @param family  тип интернет-протокола AF_INET, AF_INET6
- * @param servers параметры DNS-серверов
+ * @param servers адреса DNS-серверов
  */
 void awh::DNS::servers(const int family, const vector <string> & servers) noexcept {
 	// Выполняем блокировку потока
@@ -1832,13 +1809,106 @@ void awh::DNS::servers(const int family, const vector <string> & servers) noexce
 	// Если список серверов передан
 	if(!servers.empty()){	
 		// Создаём объект холдирования
-		hold_t hold(&this->_status);
+		hold_t <status_t> hold(this->_status);
 		// Если статус работы DNS-резолвера соответствует
 		if(hold.access({status_t::NSS_REP}, status_t::NSS_SET)){
 			// Переходим по всем нейм серверам и добавляем их
 			for(auto & server : servers)
 				// Выполняем добавление нового сервера
 				this->server(family, server);
+		}
+	}
+}
+/**
+ * replace Метод замены существующих серверов DNS
+ * @param servers адреса DNS-серверов
+ */
+void awh::DNS::replace(const vector <string> & servers) noexcept {
+	// Выполняем блокировку потока
+	const lock_guard <recursive_mutex> lock(this->_mtx);
+	// Создаём объект холдирования
+	hold_t <status_t> hold(this->_status);
+	// Если статус работы DNS-резолвера соответствует
+	if(hold.access({status_t::RESOLVE}, status_t::NSS_REP)){
+		// Список серверов IPv4
+		vector <string> ipv4, ipv6;
+		// Переходим по всем нейм серверам и добавляем их
+		for(auto & server : servers){
+			// Определяем тип передаваемого IP-адреса
+			switch(static_cast <uint8_t> (this->_net.host(server))){
+				// Если IP-адрес является IPv4 адресом
+				case static_cast <uint8_t> (net_t::type_t::IPV4):
+					// Выполняем добавление IPv4 адреса в список серверов
+					ipv4.push_back(server);
+				break;
+				// Если IP-адрес является IPv6 адресом
+				case static_cast <uint8_t> (net_t::type_t::IPV6):
+					// Выполняем добавление IPv6 адреса в список серверов
+					ipv6.push_back(server);
+				break;
+				// Для всех остальных адресов
+				default: {
+					// Выполняем добавление IPv4 адреса в список серверов
+					ipv4.push_back(server);
+					// Выполняем добавление IPv6 адреса в список серверов
+					ipv6.push_back(server);
+				}
+			}
+		}
+		// Выполняем замену списка серверов
+		this->replace(AF_INET, ipv4);
+		// Выполняем замену списка серверов
+		this->replace(AF_INET6, ipv6);
+	}
+}
+/**
+ * replace Метод замены существующих серверов DNS
+ * @param family  тип интернет-протокола AF_INET, AF_INET6
+ * @param servers адреса DNS-серверов
+ */
+void awh::DNS::replace(const int family, const vector <string> & servers) noexcept {
+	// Выполняем блокировку потока
+	const lock_guard <recursive_mutex> lock(this->_mtx);
+	// Создаём объект холдирования
+	hold_t <status_t> hold(this->_status);
+	// Если статус работы DNS-резолвера соответствует
+	if(hold.access({status_t::RESOLVE}, status_t::NSS_REP)){
+		// Определяем тип подключения
+		switch(family){
+			// Для протокола IPv4
+			case static_cast <int> (AF_INET):
+				// Выполняем очистку списка DNS-серверов
+				this->_serversIPv4.clear();
+			break;
+			// Для протокола IPv6
+			case static_cast <int> (AF_INET6):
+				// Выполняем очистку списка DNS-серверов
+				this->_serversIPv6.clear();
+			break;
+		}
+		// Если нейм сервера переданы, удаляем все настроенные серверы имён и приостанавливаем все ожидающие решения
+		if(!servers.empty())
+			// Устанавливаем новый список серверов
+			this->servers(family, servers);
+		// Если список серверов не передан
+		else {
+			// Список серверов
+			vector <string> servers;
+			// Определяем тип подключения
+			switch(family){
+				// Для протокола IPv4
+				case static_cast <int> (AF_INET):
+					// Устанавливаем список серверов
+					servers = IPV4_RESOLVER;
+				break;
+				// Для протокола IPv6
+				case static_cast <int> (AF_INET6):
+					// Устанавливаем список серверов
+					servers = IPV6_RESOLVER;
+				break;
+			}
+			// Устанавливаем новый список серверов
+			this->servers(family, std::move(servers));
 		}
 	}
 }
@@ -1850,7 +1920,7 @@ void awh::DNS::network(const vector <string> & network) noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->_mtx);
 	// Создаём объект холдирования
-	hold_t hold(&this->_status);
+	hold_t <status_t> hold(this->_status);
 	// Если статус работы установки параметров сети соответствует
 	if(hold.access({}, status_t::NET_SET)){
 		// Если список адресов сетевых плат передан
@@ -1903,7 +1973,7 @@ void awh::DNS::network(const int family, const vector <string> & network) noexce
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->_mtx);
 	// Создаём объект холдирования
-	hold_t hold(&this->_status);
+	hold_t <status_t> hold(this->_status);
 	// Если статус работы установки параметров сети соответствует
 	if(hold.access({}, status_t::NET_SET)){
 		// Если список адресов сетевых плат передан
@@ -1924,99 +1994,6 @@ void awh::DNS::network(const int family, const vector <string> & network) noexce
 					break;
 				}
 			}
-		}
-	}
-}
-/**
- * replace Метод замены существующих серверов DNS
- * @param servers параметры DNS-серверов
- */
-void awh::DNS::replace(const vector <string> & servers) noexcept {
-	// Выполняем блокировку потока
-	const lock_guard <recursive_mutex> lock(this->_mtx);
-	// Создаём объект холдирования
-	hold_t hold(&this->_status);
-	// Если статус работы DNS-резолвера соответствует
-	if(hold.access({status_t::RESOLVE}, status_t::NSS_REP)){
-		// Список серверов IPv4
-		vector <string> ipv4, ipv6;
-		// Переходим по всем нейм серверам и добавляем их
-		for(auto & server : servers){
-			// Определяем тип передаваемого IP-адреса
-			switch(static_cast <uint8_t> (this->_net.host(server))){
-				// Если IP-адрес является IPv4 адресом
-				case static_cast <uint8_t> (net_t::type_t::IPV4):
-					// Выполняем добавление IPv4 адреса в список серверов
-					ipv4.push_back(server);
-				break;
-				// Если IP-адрес является IPv6 адресом
-				case static_cast <uint8_t> (net_t::type_t::IPV6):
-					// Выполняем добавление IPv6 адреса в список серверов
-					ipv6.push_back(server);
-				break;
-				// Для всех остальных адресов
-				default: {
-					// Выполняем добавление IPv4 адреса в список серверов
-					ipv4.push_back(server);
-					// Выполняем добавление IPv6 адреса в список серверов
-					ipv6.push_back(server);
-				}
-			}
-		}
-		// Выполняем замену списка серверов
-		this->replace(AF_INET, ipv4);
-		// Выполняем замену списка серверов
-		this->replace(AF_INET6, ipv6);
-	}
-}
-/**
- * replace Метод замены существующих серверов DNS
- * @param family  тип интернет-протокола AF_INET, AF_INET6
- * @param servers параметры DNS-серверов
- */
-void awh::DNS::replace(const int family, const vector <string> & servers) noexcept {
-	// Выполняем блокировку потока
-	const lock_guard <recursive_mutex> lock(this->_mtx);
-	// Создаём объект холдирования
-	hold_t hold(&this->_status);
-	// Если статус работы DNS-резолвера соответствует
-	if(hold.access({status_t::RESOLVE}, status_t::NSS_REP)){
-		// Определяем тип подключения
-		switch(family){
-			// Для протокола IPv4
-			case static_cast <int> (AF_INET):
-				// Выполняем очистку списка DNS-серверов
-				this->_serversIPv4.clear();
-			break;
-			// Для протокола IPv6
-			case static_cast <int> (AF_INET6):
-				// Выполняем очистку списка DNS-серверов
-				this->_serversIPv6.clear();
-			break;
-		}
-		// Если нейм сервера переданы, удаляем все настроенные серверы имён и приостанавливаем все ожидающие решения
-		if(!servers.empty())
-			// Устанавливаем новый список серверов
-			this->servers(family, servers);
-		// Если список серверов не передан
-		else {
-			// Список серверов
-			vector <string> servers;
-			// Определяем тип подключения
-			switch(family){
-				// Для протокола IPv4
-				case static_cast <int> (AF_INET):
-					// Устанавливаем список серверов
-					servers = IPV4_RESOLVER;
-				break;
-				// Для протокола IPv6
-				case static_cast <int> (AF_INET6):
-					// Устанавливаем список серверов
-					servers = IPV6_RESOLVER;
-				break;
-			}
-			// Устанавливаем новый список серверов
-			this->servers(family, std::move(servers));
 		}
 	}
 }
@@ -2131,7 +2108,7 @@ string awh::DNS::host(const int family, const string & name) noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->_mtx);
 	// Создаём объект холдирования
-	hold_t hold(&this->_status);
+	hold_t <status_t> hold(this->_status);
 	// Если статус работы DNS-резолвера соответствует
 	if(hold.access({}, status_t::RESOLVE)){
 		// Если домен передан
@@ -2291,7 +2268,7 @@ string awh::DNS::resolve(const int family, const string & host) noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->_mtx);
 	// Создаём объект холдирования
-	hold_t hold(&this->_status);
+	hold_t <status_t> hold(this->_status);
 	// Если статус работы DNS-резолвера соответствует
 	if(hold.access({}, status_t::RESOLVE)){
 		// Если домен передан

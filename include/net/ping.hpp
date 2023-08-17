@@ -63,6 +63,7 @@
 #include <sys/fs.hpp>
 #include <sys/fmk.hpp>
 #include <sys/log.hpp>
+#include <sys/hold.hpp>
 #include <net/net.hpp>
 #include <net/dns.hpp>
 #include <net/socket.hpp>
@@ -78,6 +79,15 @@ namespace awh {
 	 * Ping Класс пинга
 	 */
 	typedef class Ping {
+		private:
+			/**
+			 * Статус работы NTP-резолвера
+			 */
+			enum class status_t : uint8_t {
+				NONE    = 0x00, // Событие не установлено
+				PING    = 0x01, // Событие запуска запроса к серверу
+				NET_SET = 0x02  // Событие установки параметров сети
+			};
 		private:
 			/**
 			 * Peer Структура подключения
@@ -158,6 +168,9 @@ namespace awh {
 		private:
 			// Выполняем инициализацию генератора
 			random_device _randev;
+		private:
+			// Статус работы PING-клиента
+			stack <status_t> _status;
 		private:
 			// Сдвиг по времени для выполнения пинга
 			time_t _shifting;

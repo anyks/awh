@@ -18,10 +18,7 @@
 /**
  * Стандартная библиотека
  */
-#include <set>
-#include <map>
 #include <ctime>
-#include <stack>
 #include <mutex>
 #include <thread>
 #include <cstdio>
@@ -75,6 +72,7 @@
 #include <sys/fs.hpp>
 #include <sys/fmk.hpp>
 #include <sys/log.hpp>
+#include <sys/hold.hpp>
 #include <net/net.hpp>
 #include <net/socket.hpp>
 
@@ -102,13 +100,11 @@ namespace awh {
 				NONE    = 0x00, // Событие не установлено
 				CLEAR   = 0x01, // Событие отчистки параметров резолвера
 				FLUSH   = 0x02, // Событие сброса кэша DNS-серверов
-				ZOMBIE  = 0x03, // Событие очистки зависших процессов
-				CANCEL  = 0x04, // Событие отмены резолвинга домена
-				RESOLVE = 0x05, // Событие резолвинга домена
-				NS_SET  = 0x06, // Событие установки DNS-сервера
-				NSS_SET = 0x07, // Событие установки DNS-серверов
-				NSS_REP = 0x08, // Событие замены DNS-серверов
-				NET_SET = 0x09  // Событие установки параметров сети
+				RESOLVE = 0x03, // Событие резолвинга домена
+				NS_SET  = 0x04, // Событие установки DNS-сервера
+				NSS_SET = 0x05, // Событие установки DNS-серверов
+				NSS_REP = 0x06, // Событие замены DNS-серверов
+				NET_SET = 0x07  // Событие установки параметров сети
 			};
 		private:
 			/**
@@ -157,7 +153,7 @@ namespace awh {
 			 * @tparam T размерность буфера DNS-сервера
 			 */
 			template <uint8_t T>
-			// Создаём тип данных работы с DNS-кэшем
+			// Создаём тип данных работы с DNS-серверами
 			using server_t = Server <T>;
 		private:
 			private:
@@ -219,36 +215,6 @@ namespace awh {
 				 */
 				RRFlags() noexcept : rtype(0), rclass(0), ttl(0), rdlength(0) {}
 			} rr_flags_t;
-			/**
-			 * Holder Класс холдера
-			 */
-			typedef class Holder {
-				private:
-					// Флаг холдирования
-					bool _flag;
-				private:
-					// Объект статуса работы DNS-резолвера
-					stack <status_t> * _status;
-				public:
-					/**
-					 * access Метод проверки на разрешение выполнения операции
-					 * @param comp  статус сравнения
-					 * @param hold  статус установки
-					 * @param equal флаг эквивалентности
-					 * @return      результат проверки
-					 */
-					bool access(const set <status_t> & comp, const status_t hold, const bool equal = true) noexcept;
-				public:
-					/**
-					 * Holder Конструктор
-					 * @param status объект статуса работы DNS-резолвера
-					 */
-					Holder(stack <status_t> * status) noexcept : _flag(false), _status(status) {}
-					/**
-					 * ~Holder Деструктор
-					 */
-					~Holder() noexcept;
-			} hold_t;
 			/**
 			 * Worker Класс воркера резолвинга
 			 */
@@ -553,27 +519,39 @@ namespace awh {
 		public:
 			/**
 			 * server Метод добавления сервера DNS
-			 * @param server параметры DNS-сервера
+			 * @param server адрес DNS-сервера
 			 */
 			void server(const string & server) noexcept;
 			/**
 			 * server Метод добавления сервера DNS
 			 * @param family тип интернет-протокола AF_INET, AF_INET6
-			 * @param server параметры DNS-сервера
+			 * @param server адрес DNS-сервера
 			 */
 			void server(const int family, const string & server) noexcept;
 		public:
 			/**
 			 * servers Метод добавления серверов DNS
-			 * @param servers параметры DNS-серверов
+			 * @param servers адреса DNS-серверов
 			 */
 			void servers(const vector <string> & servers) noexcept;
 			/**
 			 * servers Метод добавления серверов DNS
 			 * @param family  тип интернет-протокола AF_INET, AF_INET6
-			 * @param servers параметры DNS-серверов
+			 * @param servers адреса DNS-серверов
 			 */
 			void servers(const int family, const vector <string> & servers) noexcept;
+		public:
+			/**
+			 * replace Метод замены существующих серверов DNS
+			 * @param servers адреса DNS-серверов
+			 */
+			void replace(const vector <string> & servers = {}) noexcept;
+			/**
+			 * replace Метод замены существующих серверов DNS
+			 * @param family  тип интернет-протокола AF_INET, AF_INET6
+			 * @param servers адреса DNS-серверов
+			 */
+			void replace(const int family, const vector <string> & servers = {}) noexcept;
 		public:
 			/**
 			 * network Метод установки адреса сетевых плат, с которых нужно выполнять запросы
@@ -586,18 +564,6 @@ namespace awh {
 			 * @param network IP-адреса сетевых плат
 			 */
 			void network(const int family, const vector <string> & network) noexcept;
-		public:
-			/**
-			 * replace Метод замены существующих серверов DNS
-			 * @param servers параметры DNS-серверов
-			 */
-			void replace(const vector <string> & servers = {}) noexcept;
-			/**
-			 * replace Метод замены существующих серверов DNS
-			 * @param family  тип интернет-протокола AF_INET, AF_INET6
-			 * @param servers параметры DNS-серверов
-			 */
-			void replace(const int family, const vector <string> & servers = {}) noexcept;
 		public:
 			/**
 			 * setPrefix Метод установки префикса переменной окружения

@@ -647,6 +647,35 @@ int main(int argc, char * argv[]){
 }
 ```
 
+### Example NTP Client
+
+```c++
+#include <net/ntp.hpp>
+#include <core/core.hpp>
+
+using namespace std;
+using namespace awh;
+
+int main(int argc, char * argv[]){
+	fmk_t fmk;
+	log_t log(&fmk);
+	ntp_t ntp(&fmk, &log);
+	core_t core(&fmk, &log);
+
+	log.name("NTP");
+	log.format("%H:%M:%S %d.%m.%Y");
+
+	ntp.ns({"77.88.8.88", "77.88.8.2"});
+	ntp.servers({"0.ru.pool.ntp.org", "1.ru.pool.ntp.org", "2.ru.pool.ntp.org", "3.ru.pool.ntp.org"});
+
+	const time_t timestamp = (ntp.request() / 1000);
+
+	log.print("Time: %s", log_t::flag_t::INFO, ctime(&timestamp));
+
+	return 0;
+}
+```
+
 ### Example PING
 
 ```c++

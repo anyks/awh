@@ -16,7 +16,7 @@
 #define __AWH_CONFIG__
 
 // Версия приложения
-#define AWH_VERSION "2.11.2"
+#define AWH_VERSION "2.11.3"
 // Короткое название библиотеки
 #define AWH_SHORT_NAME "AWH"
 // Название библиотеки
@@ -101,9 +101,41 @@
 /** ПАРАМЕТРЫ СЕТИ **/
 // Версия HTTP протокола
 #define HTTP_VERSION 1.1
-// Адреса серверов DNS резолвера
+// Адреса серверов IPv4 DNS-резолвера
 #define IPV4_RESOLVER {"8.8.8.8", "8.8.4.4"}
+// Адреса серверов IPv6 DNS-резолвера
 #define IPV6_RESOLVER {"[2001:4860:4860::8888]", "[2001:4860:4860::8844]"}
+
+/** ПАРАМЕТРЫ NTP СЕРВЕРОВ **/
+// Адреса серверов IPv4 NTP-клиента
+#define IPV4_NTP { \
+	"ntp0.ntp-servers.net", \
+	"ntp1.ntp-servers.net", \
+	"ntp2.ntp-servers.net", \
+	"ntp3.ntp-servers.net", \
+	"ntp4.ntp-servers.net", \
+	"ntp5.ntp-servers.net", \
+	"ntp6.ntp-servers.net", \
+	"ntp7.ntp-servers.net", \
+	"pool.ntp.org", \
+	"0.pool.ntp.org", \
+	"1.pool.ntp.org", \
+	"2.pool.ntp.org", \
+	"3.pool.ntp.org" \
+}
+// Адреса серверов IPv6 NTP-клиента
+#define IPV6_NTP { \
+	"ntp0.ntp-servers.net", \
+	"ntp2.ntp-servers.net", \
+	"ntp3.ntp-servers.net", \
+	"ntp4.ntp-servers.net", \
+	"ntp6.ntp-servers.net", \
+	"pool.ntp.org", \
+	"0.pool.ntp.org", \
+	"1.pool.ntp.org", \
+	"2.pool.ntp.org", \
+	"3.pool.ntp.org" \
+}
 
 /** ПАРАМЕТРЫ СЕРВЕРА */
 // Порт сервера по умолчанию

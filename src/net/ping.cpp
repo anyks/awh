@@ -401,181 +401,179 @@ void awh::Ping::ping(const int family, const string & host) noexcept {
  * @param ip     адрес для выполнения пинга
  */
 void awh::Ping::_work(const int family, const string & ip) noexcept {
-	// Если IP-адрес передан и пинг ещё не активирован
-	if(!ip.empty() && !this->_mode){
-		// Выполняем активирование режима работы
-		this->_mode = !this->_mode;
-		// Получаем хост текущего компьютера
-		const string & host = this->host(family);
-		// Определяем тип подключения
-		switch(family){
-			// Для протокола IPv4
-			case AF_INET: {
-				// Создаём объект клиента
-				struct sockaddr_in client;
-				// Создаём объект сервера
-				struct sockaddr_in server;
-				// Запоминаем размер структуры
-				this->_peer.size = sizeof(client);
-				// Очищаем всю структуру для клиента
-				memset(&client, 0, sizeof(client));
-				// Очищаем всю структуру для сервера
-				memset(&server, 0, sizeof(server));
-				// Устанавливаем протокол интернета
-				client.sin_family = family;
-				// Устанавливаем протокол интернета
-				server.sin_family = family;
-				// Устанавливаем произвольный порт для локального подключения
-				client.sin_port = htons(0);
-				// Устанавливаем порт для локального подключения
-				server.sin_port = htons(0);
-				// Устанавливаем IP-адрес для подключения
-				inet_pton(family, ip.c_str(), &server.sin_addr.s_addr);
-				// Устанавливаем адрес для локальго подключения
-				inet_pton(family, host.c_str(), &client.sin_addr.s_addr);
-				// Выполняем копирование объекта подключения клиента
-				memcpy(&this->_peer.client, &client, this->_peer.size);
-				// Выполняем копирование объекта подключения сервера
-				memcpy(&this->_peer.server, &server, this->_peer.size);
-				// Обнуляем серверную структуру
-				memset(&((struct sockaddr_in *) (&this->_peer.server))->sin_zero, 0, sizeof(server.sin_zero));
-				/**
-				 * Методы только для OS Windows
-				 */
-				#if defined(_WIN32) || defined(_WIN64)
-					// Создаём сокет подключения
-					this->_fd = ::socket(family, SOCK_RAW, IPPROTO_ICMP);
-				/**
-				 * Методы только для *Nix-подобных операционных систем
-				 */
-				#else
-					// Если пользователь является привилигированным
-					if(getuid())
+	// Выполняем блокировку потока
+	const lock_guard <recursive_mutex> lock(this->_mtx);
+	// Создаём объект холдирования
+	hold_t <status_t> hold(this->_status);
+	// Если статус работы PING-клиента соответствует
+	if(hold.access({}, status_t::PING)){
+		// Если IP-адрес передан и пинг ещё не активирован
+		if((this->_mode = !ip.empty())){
+			// Получаем хост текущего компьютера
+			const string & host = this->host(family);
+			// Определяем тип подключения
+			switch(family){
+				// Для протокола IPv4
+				case AF_INET: {
+					// Создаём объект клиента
+					struct sockaddr_in client;
+					// Создаём объект сервера
+					struct sockaddr_in server;
+					// Запоминаем размер структуры
+					this->_peer.size = sizeof(client);
+					// Очищаем всю структуру для клиента
+					memset(&client, 0, sizeof(client));
+					// Очищаем всю структуру для сервера
+					memset(&server, 0, sizeof(server));
+					// Устанавливаем протокол интернета
+					client.sin_family = family;
+					// Устанавливаем протокол интернета
+					server.sin_family = family;
+					// Устанавливаем произвольный порт для локального подключения
+					client.sin_port = htons(0);
+					// Устанавливаем порт для локального подключения
+					server.sin_port = htons(0);
+					// Устанавливаем IP-адрес для подключения
+					inet_pton(family, ip.c_str(), &server.sin_addr.s_addr);
+					// Устанавливаем адрес для локальго подключения
+					inet_pton(family, host.c_str(), &client.sin_addr.s_addr);
+					// Выполняем копирование объекта подключения клиента
+					memcpy(&this->_peer.client, &client, this->_peer.size);
+					// Выполняем копирование объекта подключения сервера
+					memcpy(&this->_peer.server, &server, this->_peer.size);
+					// Обнуляем серверную структуру
+					memset(&((struct sockaddr_in *) (&this->_peer.server))->sin_zero, 0, sizeof(server.sin_zero));
+					/**
+					 * Методы только для OS Windows
+					 */
+					#if defined(_WIN32) || defined(_WIN64)
 						// Создаём сокет подключения
-						this->_fd = ::socket(family, SOCK_DGRAM, IPPROTO_ICMP);
-					// Создаём сокет подключения
-					else this->_fd = ::socket(family, SOCK_RAW, IPPROTO_ICMP);
-				#endif
-			} break;
-			// Для протокола IPv6
-			case AF_INET6: {
-				// Создаём объект клиента
-				struct sockaddr_in6 client;
-				// Создаём объект сервера
-				struct sockaddr_in6 server;
-				// Запоминаем размер структуры
-				this->_peer.size = sizeof(client);
-				// Очищаем всю структуру для клиента
-				memset(&client, 0, sizeof(client));
-				// Очищаем всю структуру для сервера
-				memset(&server, 0, sizeof(server));
-				// Устанавливаем протокол интернета
-				client.sin6_family = family;
-				// Устанавливаем протокол интернета
-				server.sin6_family = family;
-				// Устанавливаем произвольный порт для локального подключения
-				client.sin6_port = htons(0);
-				// Устанавливаем порт для локального подключения
-				server.sin6_port = htons(0);
-				// Устанавливаем IP-адрес для подключения
-				inet_pton(family, ip.c_str(), &server.sin6_addr);
-				// Устанавливаем адрес для локальго подключения
-				inet_pton(family, host.c_str(), &client.sin6_addr);
-				// Выполняем копирование объекта подключения клиента
-				memcpy(&this->_peer.client, &client, this->_peer.size);
-				// Выполняем копирование объекта подключения сервера
-				memcpy(&this->_peer.server, &server, this->_peer.size);
-				/**
-				 * Методы только для OS Windows
-				 */
-				#if defined(_WIN32) || defined(_WIN64)
-					// Создаём сокет подключения  (IPPROTO_ICMP6)
-					this->_fd = ::socket(family, SOCK_RAW, IPPROTO_ICMPV6);
-				/**
-				 * Методы только для *Nix-подобных операционных систем
-				 */
-				#else
-					// Если пользователь является привилигированным
-					if(getuid())
+						this->_fd = ::socket(family, SOCK_RAW, IPPROTO_ICMP);
+					/**
+					 * Методы только для *Nix-подобных операционных систем
+					 */
+					#else
+						// Если пользователь является привилигированным
+						if(getuid())
+							// Создаём сокет подключения
+							this->_fd = ::socket(family, SOCK_DGRAM, IPPROTO_ICMP);
 						// Создаём сокет подключения
-						this->_fd = ::socket(family, SOCK_DGRAM, IPPROTO_ICMPV6);
-					// Создаём сокет подключения
-					else this->_fd = ::socket(family, SOCK_RAW, IPPROTO_ICMPV6);
-				#endif
-			} break;
-		}
-		// Если сокет не создан создан и работа резолвера не остановлена
-		if(this->_mode && (this->_fd == INVALID_SOCKET)){
-			// Выполняем деактивацию режима работы
-			this->_mode = !this->_mode;
-			// Если разрешено выводить информацию в лог
-			if(!this->_noInfo)
-				// Выводим в лог сообщение
-				this->_log->print("file descriptor needed for the ICMP request could not be allocated", log_t::flag_t::WARNING);
-			// Выходим из приложения
-			return;
-		// Если сокет создан удачно и работа резолвера не остановлена
-		} else if(this->_mode) {
-			// Индекс текущей итерации
-			uint64_t index = 0;
-			// Устанавливаем разрешение на повторное использование сокета
-			this->_socket.reuseable(this->_fd);
-			// Устанавливаем разрешение на закрытие сокета при неиспользовании
-			this->_socket.closeOnExec(this->_fd);
-			// Устанавливаем размер буфера передачи данных на чтение
-			this->_socket.bufferSize(this->_fd, 1024, 1, socket_t::mode_t::READ);
-			// Устанавливаем размер буфера передачи данных на запись
-			this->_socket.bufferSize(this->_fd, 1024, 1, socket_t::mode_t::WRITE);
-			// Устанавливаем таймаут на получение данных из сокета
-			this->_socket.timeout(this->_fd, this->_timeoutRead, socket_t::mode_t::READ);
-			// Устанавливаем таймаут на запись данных в сокет
-			this->_socket.timeout(this->_fd, this->_timeoutWrite, socket_t::mode_t::WRITE);
-			// Выполняем бинд на сокет
-			if(::bind(this->_fd, (struct sockaddr *) (&this->_peer.client), this->_peer.size) < 0)
-				// Выводим в лог сообщение
-				this->_log->print("bind local network [%s]", log_t::flag_t::CRITICAL, host.c_str());
-			// Выполняем отправку отправку запросов до тех пор пока не остановят
-			while(this->_mode){
-				// Запоминаем текущее значение времени в миллисекундах
-				const time_t mseconds = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
-				// Выполняем запрос на сервер
-				const int64_t bytes = this->send(family, index);
-				// Если данные прочитать не удалось
-				if(bytes <= 0){
-					// Выполняем деактивацию режима работы
-					this->_mode = false;
-					// Выводим результат
-					return;
-				}
-				// Выполняем подсчёт количество прошедшего времени
-				const time_t timeShifting = (this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS) - mseconds);
+						else this->_fd = ::socket(family, SOCK_RAW, IPPROTO_ICMP);
+					#endif
+				} break;
+				// Для протокола IPv6
+				case AF_INET6: {
+					// Создаём объект клиента
+					struct sockaddr_in6 client;
+					// Создаём объект сервера
+					struct sockaddr_in6 server;
+					// Запоминаем размер структуры
+					this->_peer.size = sizeof(client);
+					// Очищаем всю структуру для клиента
+					memset(&client, 0, sizeof(client));
+					// Очищаем всю структуру для сервера
+					memset(&server, 0, sizeof(server));
+					// Устанавливаем протокол интернета
+					client.sin6_family = family;
+					// Устанавливаем протокол интернета
+					server.sin6_family = family;
+					// Устанавливаем произвольный порт для локального подключения
+					client.sin6_port = htons(0);
+					// Устанавливаем порт для локального подключения
+					server.sin6_port = htons(0);
+					// Устанавливаем IP-адрес для подключения
+					inet_pton(family, ip.c_str(), &server.sin6_addr);
+					// Устанавливаем адрес для локальго подключения
+					inet_pton(family, host.c_str(), &client.sin6_addr);
+					// Выполняем копирование объекта подключения клиента
+					memcpy(&this->_peer.client, &client, this->_peer.size);
+					// Выполняем копирование объекта подключения сервера
+					memcpy(&this->_peer.server, &server, this->_peer.size);
+					/**
+					 * Методы только для OS Windows
+					 */
+					#if defined(_WIN32) || defined(_WIN64)
+						// Создаём сокет подключения  (IPPROTO_ICMP6)
+						this->_fd = ::socket(family, SOCK_RAW, IPPROTO_ICMPV6);
+					/**
+					 * Методы только для *Nix-подобных операционных систем
+					 */
+					#else
+						// Если пользователь является привилигированным
+						if(getuid())
+							// Создаём сокет подключения
+							this->_fd = ::socket(family, SOCK_DGRAM, IPPROTO_ICMPV6);
+						// Создаём сокет подключения
+						else this->_fd = ::socket(family, SOCK_RAW, IPPROTO_ICMPV6);
+					#endif
+				} break;
+			}
+			// Если сокет не создан создан и работа резолвера не остановлена
+			if(this->_mode && (this->_fd == INVALID_SOCKET)){
 				// Если разрешено выводить информацию в лог
 				if(!this->_noInfo)
-					// Формируем сообщение для вывода в лог
-					// this->_log->print("%zu bytes from %s icmp_seq=%u ttl=%u time=%s", log_t::flag_t::INFO, bytes, ip.c_str(), index, index + ((this->_shifting / 1000) * 2), this->_fmk->time2abbr(timeShifting).c_str());
-					this->_log->print("%zu bytes from %s icmp_seq=%u ttl=%u time=%s", log_t::flag_t::INFO, bytes, ip.c_str(), index, (this->_timeoutRead + this->_timeoutWrite) / 1000, this->_fmk->time2abbr(timeShifting).c_str());
-				{
-					// Выполняем блокировку потока
-					const lock_guard <recursive_mutex> lock(this->_mtx);
-					// Если функция обратного вызова установлена
-					if(this->_callback != nullptr)
-						// Выполняем функцию обратного вызова
-						this->_callback(timeShifting, ip, this);
+					// Выводим в лог сообщение
+					this->_log->print("file descriptor needed for the ICMP request could not be allocated", log_t::flag_t::WARNING);
+				// Выходим из приложения
+				return;
+			// Если сокет создан удачно и работа резолвера не остановлена
+			} else if(this->_mode) {
+				// Индекс текущей итерации
+				uint64_t index = 0;
+				// Устанавливаем разрешение на повторное использование сокета
+				this->_socket.reuseable(this->_fd);
+				// Устанавливаем разрешение на закрытие сокета при неиспользовании
+				this->_socket.closeOnExec(this->_fd);
+				// Устанавливаем размер буфера передачи данных на чтение
+				this->_socket.bufferSize(this->_fd, 1024, 1, socket_t::mode_t::READ);
+				// Устанавливаем размер буфера передачи данных на запись
+				this->_socket.bufferSize(this->_fd, 1024, 1, socket_t::mode_t::WRITE);
+				// Устанавливаем таймаут на получение данных из сокета
+				this->_socket.timeout(this->_fd, this->_timeoutRead, socket_t::mode_t::READ);
+				// Устанавливаем таймаут на запись данных в сокет
+				this->_socket.timeout(this->_fd, this->_timeoutWrite, socket_t::mode_t::WRITE);
+				// Выполняем бинд на сокет
+				if(::bind(this->_fd, (struct sockaddr *) (&this->_peer.client), this->_peer.size) < 0)
+					// Выводим в лог сообщение
+					this->_log->print("bind local network [%s]", log_t::flag_t::CRITICAL, host.c_str());
+				// Выполняем отправку отправку запросов до тех пор пока не остановят
+				while(this->_mode){
+					// Запоминаем текущее значение времени в миллисекундах
+					const time_t mseconds = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
+					// Выполняем запрос на сервер
+					const int64_t bytes = this->send(family, index);
+					// Если данные прочитать не удалось
+					if(bytes <= 0)
+						// Выводим результат
+						return;
+					// Выполняем подсчёт количество прошедшего времени
+					const time_t timeShifting = (this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS) - mseconds);
+					// Если разрешено выводить информацию в лог
+					if(!this->_noInfo)
+						// Формируем сообщение для вывода в лог
+						// this->_log->print("%zu bytes from %s icmp_seq=%u ttl=%u time=%s", log_t::flag_t::INFO, bytes, ip.c_str(), index, index + ((this->_shifting / 1000) * 2), this->_fmk->time2abbr(timeShifting).c_str());
+						this->_log->print("%zu bytes from %s icmp_seq=%u ttl=%u time=%s", log_t::flag_t::INFO, bytes, ip.c_str(), index, (this->_timeoutRead + this->_timeoutWrite) / 1000, this->_fmk->time2abbr(timeShifting).c_str());
+					{
+						// Выполняем блокировку потока
+						const lock_guard <recursive_mutex> lock(this->_mtx);
+						// Если функция обратного вызова установлена
+						if(this->_callback != nullptr)
+							// Выполняем функцию обратного вызова
+							this->_callback(timeShifting, ip, this);
+					}
+					// Если работа резолвера ещё не остановлена
+					if(this->_mode){
+						// Устанавливаем время жизни сокета
+						// this->_socket.timeToLive(family, this->_fd, i + ((this->_shifting / 1000) * 2));
+						// Замораживаем поток на период времени в ${_shifting}
+						this_thread::sleep_for(chrono::milliseconds(this->_shifting));
+						// Выполняем смещение индекса последовательности
+						index++;
+					}
 				}
-				// Если работа резолвера ещё не остановлена
-				if(this->_mode){
-					// Устанавливаем время жизни сокета
-					// this->_socket.timeToLive(family, this->_fd, i + ((this->_shifting / 1000) * 2));
-					// Замораживаем поток на период времени в ${_shifting}
-					this_thread::sleep_for(chrono::milliseconds(this->_shifting));
-					// Выполняем смещение индекса последовательности
-					index++;
-				}
+				// Выполняем закрытие подключения
+				this->close();
 			}
-			// Выполняем закрытие подключения
-			this->close();
-			// Выполняем деактивацию режима работы
-			this->_mode = false;
 		}
 	}
 }
@@ -700,184 +698,180 @@ double awh::Ping::_ping(const int family, const string & ip, const uint16_t coun
 	double result = 0.0;
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->_mtx);
-	// Если IP-адрес передан и пинг ещё не активирован
-	if(!ip.empty() && !this->_mode){
-		// Выполняем активирование режима работы
-		this->_mode = !this->_mode;
-		// Получаем хост текущего компьютера
-		const string & host = this->host(family);
-		// Определяем тип подключения
-		switch(family){
-			// Для протокола IPv4
-			case AF_INET: {
-				// Создаём объект клиента
-				struct sockaddr_in client;
-				// Создаём объект сервера
-				struct sockaddr_in server;
-				// Запоминаем размер структуры
-				this->_peer.size = sizeof(client);
-				// Очищаем всю структуру для клиента
-				memset(&client, 0, sizeof(client));
-				// Очищаем всю структуру для сервера
-				memset(&server, 0, sizeof(server));
-				// Устанавливаем протокол интернета
-				client.sin_family = family;
-				// Устанавливаем протокол интернета
-				server.sin_family = family;
-				// Устанавливаем произвольный порт для локального подключения
-				client.sin_port = htons(0);
-				// Устанавливаем порт для локального подключения
-				server.sin_port = htons(0);
-				// Устанавливаем IP-адрес для подключения
-				inet_pton(family, ip.c_str(), &server.sin_addr.s_addr);
-				// Устанавливаем адрес для локальго подключения
-				inet_pton(family, host.c_str(), &client.sin_addr.s_addr);
-				// Выполняем копирование объекта подключения клиента
-				memcpy(&this->_peer.client, &client, this->_peer.size);
-				// Выполняем копирование объекта подключения сервера
-				memcpy(&this->_peer.server, &server, this->_peer.size);
-				// Обнуляем серверную структуру
-				memset(&((struct sockaddr_in *) (&this->_peer.server))->sin_zero, 0, sizeof(server.sin_zero));
-				/**
-				 * Методы только для OS Windows
-				 */
-				#if defined(_WIN32) || defined(_WIN64)
-					// Создаём сокет подключения
-					this->_fd = ::socket(family, SOCK_RAW, IPPROTO_ICMP);
-				/**
-				 * Методы только для *Nix-подобных операционных систем
-				 */
-				#else
-					// Если пользователь является привилигированным
-					if(getuid())
+	// Создаём объект холдирования
+	hold_t <status_t> hold(this->_status);
+	// Если статус работы PING-клиента соответствует
+	if(hold.access({}, status_t::PING)){
+		// Если IP-адрес передан и пинг ещё не активирован
+		if((this->_mode = !ip.empty())){
+			// Получаем хост текущего компьютера
+			const string & host = this->host(family);
+			// Определяем тип подключения
+			switch(family){
+				// Для протокола IPv4
+				case AF_INET: {
+					// Создаём объект клиента
+					struct sockaddr_in client;
+					// Создаём объект сервера
+					struct sockaddr_in server;
+					// Запоминаем размер структуры
+					this->_peer.size = sizeof(client);
+					// Очищаем всю структуру для клиента
+					memset(&client, 0, sizeof(client));
+					// Очищаем всю структуру для сервера
+					memset(&server, 0, sizeof(server));
+					// Устанавливаем протокол интернета
+					client.sin_family = family;
+					// Устанавливаем протокол интернета
+					server.sin_family = family;
+					// Устанавливаем произвольный порт для локального подключения
+					client.sin_port = htons(0);
+					// Устанавливаем порт для локального подключения
+					server.sin_port = htons(0);
+					// Устанавливаем IP-адрес для подключения
+					inet_pton(family, ip.c_str(), &server.sin_addr.s_addr);
+					// Устанавливаем адрес для локальго подключения
+					inet_pton(family, host.c_str(), &client.sin_addr.s_addr);
+					// Выполняем копирование объекта подключения клиента
+					memcpy(&this->_peer.client, &client, this->_peer.size);
+					// Выполняем копирование объекта подключения сервера
+					memcpy(&this->_peer.server, &server, this->_peer.size);
+					// Обнуляем серверную структуру
+					memset(&((struct sockaddr_in *) (&this->_peer.server))->sin_zero, 0, sizeof(server.sin_zero));
+					/**
+					 * Методы только для OS Windows
+					 */
+					#if defined(_WIN32) || defined(_WIN64)
 						// Создаём сокет подключения
-						this->_fd = ::socket(family, SOCK_DGRAM, IPPROTO_ICMP);
-					// Создаём сокет подключения
-					else this->_fd = ::socket(family, SOCK_RAW, IPPROTO_ICMP);
-				#endif
-			} break;
-			// Для протокола IPv6
-			case AF_INET6: {
-				// Создаём объект клиента
-				struct sockaddr_in6 client;
-				// Создаём объект сервера
-				struct sockaddr_in6 server;
-				// Запоминаем размер структуры
-				this->_peer.size = sizeof(client);
-				// Очищаем всю структуру для клиента
-				memset(&client, 0, sizeof(client));
-				// Очищаем всю структуру для сервера
-				memset(&server, 0, sizeof(server));
-				// Устанавливаем протокол интернета
-				client.sin6_family = family;
-				// Устанавливаем протокол интернета
-				server.sin6_family = family;
-				// Устанавливаем произвольный порт для локального подключения
-				client.sin6_port = htons(0);
-				// Устанавливаем порт для локального подключения
-				server.sin6_port = htons(0);
-				// Устанавливаем IP-адрес для подключения
-				inet_pton(family, ip.c_str(), &server.sin6_addr);
-				// Устанавливаем адрес для локальго подключения
-				inet_pton(family, host.c_str(), &client.sin6_addr);
-				// Выполняем копирование объекта подключения клиента
-				memcpy(&this->_peer.client, &client, this->_peer.size);
-				// Выполняем копирование объекта подключения сервера
-				memcpy(&this->_peer.server, &server, this->_peer.size);
-				/**
-				 * Методы только для OS Windows
-				 */
-				#if defined(_WIN32) || defined(_WIN64)
-					// Создаём сокет подключения (IPPROTO_ICMP6)
-					this->_fd = ::socket(family, SOCK_RAW, IPPROTO_ICMPV6);
-				/**
-				 * Методы только для *Nix-подобных операционных систем
-				 */
-				#else
-					// Если пользователь является привилигированным
-					if(getuid())
+						this->_fd = ::socket(family, SOCK_RAW, IPPROTO_ICMP);
+					/**
+					 * Методы только для *Nix-подобных операционных систем
+					 */
+					#else
+						// Если пользователь является привилигированным
+						if(getuid())
+							// Создаём сокет подключения
+							this->_fd = ::socket(family, SOCK_DGRAM, IPPROTO_ICMP);
 						// Создаём сокет подключения
-						this->_fd = ::socket(family, SOCK_DGRAM, IPPROTO_ICMPV6);
-					// Создаём сокет подключения
-					else this->_fd = ::socket(family, SOCK_RAW, IPPROTO_ICMPV6);
-				#endif
-			} break;
-		}
-		// Если сокет не создан создан и работа резолвера не остановлена
-		if(this->_mode && (this->_fd == INVALID_SOCKET)){
-			// Выполняем деактивацию режима работы
-			this->_mode = !this->_mode;
-			// Если разрешено выводить информацию в лог
-			if(!this->_noInfo)
-				// Выводим в лог сообщение
-				this->_log->print("file descriptor needed for the ICMP request could not be allocated", log_t::flag_t::WARNING);
-			// Выходим из приложения
-			return result;
-		// Если сокет создан удачно и работа резолвера не остановлена
-		} else if(this->_mode) {
-			// Устанавливаем разрешение на повторное использование сокета
-			this->_socket.reuseable(this->_fd);
-			// Устанавливаем разрешение на закрытие сокета при неиспользовании
-			this->_socket.closeOnExec(this->_fd);
-			// Устанавливаем размер буфера передачи данных на чтение
-			this->_socket.bufferSize(this->_fd, 1024, 1, socket_t::mode_t::READ);
-			// Устанавливаем размер буфера передачи данных на запись
-			this->_socket.bufferSize(this->_fd, 1024, 1, socket_t::mode_t::WRITE);
-			// Устанавливаем таймаут на получение данных из сокета
-			this->_socket.timeout(this->_fd, this->_timeoutRead, socket_t::mode_t::READ);
-			// Устанавливаем таймаут на запись данных в сокет
-			this->_socket.timeout(this->_fd, this->_timeoutWrite, socket_t::mode_t::WRITE);
-			// Выполняем бинд на сокет
-			if(::bind(this->_fd, (struct sockaddr *) (&this->_peer.client), this->_peer.size) < 0)
-				// Выводим в лог сообщение
-				this->_log->print("bind local network [%s]", log_t::flag_t::CRITICAL, host.c_str());
-			// Выполняем отправку указанного количества запросов
-			for(uint16_t i = 0; i < count; i++){
-				// Запоминаем текущее значение времени в миллисекундах
-				const time_t mseconds = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
-				// Выполняем запрос на сервер
-				const int64_t bytes = this->send(family, i);
-				// Если данные прочитать не удалось
-				if(bytes <= 0){
-					// Выполняем деактивацию режима работы
-					this->_mode = false;
-					// Выводим результат
-					return result;
-				}
-				// Выполняем подсчёт количество прошедшего времени
-				const time_t timeShifting = (this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS) - mseconds);
+						else this->_fd = ::socket(family, SOCK_RAW, IPPROTO_ICMP);
+					#endif
+				} break;
+				// Для протокола IPv6
+				case AF_INET6: {
+					// Создаём объект клиента
+					struct sockaddr_in6 client;
+					// Создаём объект сервера
+					struct sockaddr_in6 server;
+					// Запоминаем размер структуры
+					this->_peer.size = sizeof(client);
+					// Очищаем всю структуру для клиента
+					memset(&client, 0, sizeof(client));
+					// Очищаем всю структуру для сервера
+					memset(&server, 0, sizeof(server));
+					// Устанавливаем протокол интернета
+					client.sin6_family = family;
+					// Устанавливаем протокол интернета
+					server.sin6_family = family;
+					// Устанавливаем произвольный порт для локального подключения
+					client.sin6_port = htons(0);
+					// Устанавливаем порт для локального подключения
+					server.sin6_port = htons(0);
+					// Устанавливаем IP-адрес для подключения
+					inet_pton(family, ip.c_str(), &server.sin6_addr);
+					// Устанавливаем адрес для локальго подключения
+					inet_pton(family, host.c_str(), &client.sin6_addr);
+					// Выполняем копирование объекта подключения клиента
+					memcpy(&this->_peer.client, &client, this->_peer.size);
+					// Выполняем копирование объекта подключения сервера
+					memcpy(&this->_peer.server, &server, this->_peer.size);
+					/**
+					 * Методы только для OS Windows
+					 */
+					#if defined(_WIN32) || defined(_WIN64)
+						// Создаём сокет подключения (IPPROTO_ICMP6)
+						this->_fd = ::socket(family, SOCK_RAW, IPPROTO_ICMPV6);
+					/**
+					 * Методы только для *Nix-подобных операционных систем
+					 */
+					#else
+						// Если пользователь является привилигированным
+						if(getuid())
+							// Создаём сокет подключения
+							this->_fd = ::socket(family, SOCK_DGRAM, IPPROTO_ICMPV6);
+						// Создаём сокет подключения
+						else this->_fd = ::socket(family, SOCK_RAW, IPPROTO_ICMPV6);
+					#endif
+				} break;
+			}
+			// Если сокет не создан создан и работа резолвера не остановлена
+			if(this->_mode && (this->_fd == INVALID_SOCKET)){
 				// Если разрешено выводить информацию в лог
 				if(!this->_noInfo)
-					// Формируем сообщение для вывода в лог
-					// this->_log->print("%zu bytes from %s icmp_seq=%u ttl=%u time=%s", log_t::flag_t::INFO, bytes, ip.c_str(), i, i + ((this->_shifting / 1000) * 2), this->_fmk->time2abbr(timeShifting).c_str());
-					this->_log->print("%zu bytes from %s icmp_seq=%u ttl=%u time=%s", log_t::flag_t::INFO, bytes, ip.c_str(), i, (this->_timeoutRead + this->_timeoutWrite) / 1000, this->_fmk->time2abbr(timeShifting).c_str());
-				// Увеличиваем общее количество времени
-				result += static_cast <double> (timeShifting);
-				// Если работа резолвера ещё не остановлена
-				if(this->_mode){
-					// Устанавливаем время жизни сокета
-					// this->_socket.timeToLive(family, this->_fd, i + ((this->_shifting / 1000) * 2));
-					// Замораживаем поток на период времени в ${_shifting}
-					this_thread::sleep_for(chrono::milliseconds(this->_shifting));
+					// Выводим в лог сообщение
+					this->_log->print("file descriptor needed for the ICMP request could not be allocated", log_t::flag_t::WARNING);
+				// Выходим из приложения
+				return result;
+			// Если сокет создан удачно и работа резолвера не остановлена
+			} else if(this->_mode) {
+				// Устанавливаем разрешение на повторное использование сокета
+				this->_socket.reuseable(this->_fd);
+				// Устанавливаем разрешение на закрытие сокета при неиспользовании
+				this->_socket.closeOnExec(this->_fd);
+				// Устанавливаем размер буфера передачи данных на чтение
+				this->_socket.bufferSize(this->_fd, 1024, 1, socket_t::mode_t::READ);
+				// Устанавливаем размер буфера передачи данных на запись
+				this->_socket.bufferSize(this->_fd, 1024, 1, socket_t::mode_t::WRITE);
+				// Устанавливаем таймаут на получение данных из сокета
+				this->_socket.timeout(this->_fd, this->_timeoutRead, socket_t::mode_t::READ);
+				// Устанавливаем таймаут на запись данных в сокет
+				this->_socket.timeout(this->_fd, this->_timeoutWrite, socket_t::mode_t::WRITE);
+				// Выполняем бинд на сокет
+				if(::bind(this->_fd, (struct sockaddr *) (&this->_peer.client), this->_peer.size) < 0)
+					// Выводим в лог сообщение
+					this->_log->print("bind local network [%s]", log_t::flag_t::CRITICAL, host.c_str());
+				// Выполняем отправку указанного количества запросов
+				for(uint16_t i = 0; i < count; i++){
+					// Запоминаем текущее значение времени в миллисекундах
+					const time_t mseconds = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
+					// Выполняем запрос на сервер
+					const int64_t bytes = this->send(family, i);
+					// Если данные прочитать не удалось
+					if(bytes <= 0)
+						// Выводим результат
+						return result;
+					// Выполняем подсчёт количество прошедшего времени
+					const time_t timeShifting = (this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS) - mseconds);
+					// Если разрешено выводить информацию в лог
+					if(!this->_noInfo)
+						// Формируем сообщение для вывода в лог
+						// this->_log->print("%zu bytes from %s icmp_seq=%u ttl=%u time=%s", log_t::flag_t::INFO, bytes, ip.c_str(), i, i + ((this->_shifting / 1000) * 2), this->_fmk->time2abbr(timeShifting).c_str());
+						this->_log->print("%zu bytes from %s icmp_seq=%u ttl=%u time=%s", log_t::flag_t::INFO, bytes, ip.c_str(), i, (this->_timeoutRead + this->_timeoutWrite) / 1000, this->_fmk->time2abbr(timeShifting).c_str());
+					// Увеличиваем общее количество времени
+					result += static_cast <double> (timeShifting);
+					// Если работа резолвера ещё не остановлена
+					if(this->_mode){
+						// Устанавливаем время жизни сокета
+						// this->_socket.timeToLive(family, this->_fd, i + ((this->_shifting / 1000) * 2));
+						// Замораживаем поток на период времени в ${_shifting}
+						this_thread::sleep_for(chrono::milliseconds(this->_shifting));
+					}
+				}
+				// Выполняем закрытие подключения
+				this->close();
+				// Выполняем расчет среднего затраченного времени
+				result /= static_cast <double> (count);
+				// Выполняем приведение число до 3-х знаков после запятой
+				result = this->_fmk->floor(result, 3);
+				// Если разрешено выводить информацию в лог
+				if(!this->_noInfo){
+					// Если времени затрачено меньше 5-ти секунд
+					if(result < 5.0)
+						// Выводим сообщение результата в лог
+						this->_log->print("Your connection is good. Avg ping %s", log_t::flag_t::INFO, this->_fmk->time2abbr(result).c_str());
+					// Выводим сообщение как есть
+					else this->_log->print("Bad connection. Avg ping %s", log_t::flag_t::WARNING, this->_fmk->time2abbr(result).c_str());
 				}
 			}
-			// Выполняем закрытие подключения
-			this->close();
-			// Выполняем расчет среднего затраченного времени
-			result /= static_cast <double> (count);
-			// Выполняем приведение число до 3-х знаков после запятой
-			result = this->_fmk->floor(result, 3);
-			// Если разрешено выводить информацию в лог
-			if(!this->_noInfo){
-				// Если времени затрачено меньше 5-ти секунд
-				if(result < 5.0)
-					// Выводим сообщение результата в лог
-					this->_log->print("Your connection is good. Avg ping %s", log_t::flag_t::INFO, this->_fmk->time2abbr(result).c_str());
-				// Выводим сообщение как есть
-				else this->_log->print("Bad connection. Avg ping %s", log_t::flag_t::WARNING, this->_fmk->time2abbr(result).c_str());
-			}
-			// Выполняем деактивацию режима работы
-			this->_mode = false;
 		}
 	}
 	// Выводим результат
@@ -922,42 +916,47 @@ void awh::Ping::ns(const vector <string> & servers) noexcept {
 void awh::Ping::network(const vector <string> & network) noexcept {
 	// Выполняем блокировку потока
 	const lock_guard <recursive_mutex> lock(this->_mtx);
-	// Если список адресов сетевых плат передан
-	if(!network.empty()){
-		// Переходим по всему списку полученных адресов
-		for(auto & host : network){
-			// Определяем к какому адресу относится полученный хост
-			switch(static_cast <uint8_t> (this->_net.host(host))){
-				// Если IP-адрес является IPv4 адресом
-				case static_cast <uint8_t> (net_t::type_t::IPV4):
-					// Выполняем добавление полученного хоста в список
-					this->_networkIPv4.push_back(host);
-				break;
-				// Если IP-адрес является IPv6 адресом
-				case static_cast <uint8_t> (net_t::type_t::IPV6):
-					// Выполняем добавление полученного хоста в список
-					this->_networkIPv6.push_back(host);
-				break;
-				// Для всех остальных адресов
-				default: {
-					// Выполняем получение IP-адреса для IPv6
-					string ip = this->_dns.host(AF_INET6, host);
-					// Если результат получен, выполняем пинг
-					if(!ip.empty())
+	// Создаём объект холдирования
+	hold_t <status_t> hold(this->_status);
+	// Если статус работы установки параметров сети соответствует
+	if(hold.access({}, status_t::NET_SET)){
+		// Если список адресов сетевых плат передан
+		if(!network.empty()){
+			// Переходим по всему списку полученных адресов
+			for(auto & host : network){
+				// Определяем к какому адресу относится полученный хост
+				switch(static_cast <uint8_t> (this->_net.host(host))){
+					// Если IP-адрес является IPv4 адресом
+					case static_cast <uint8_t> (net_t::type_t::IPV4):
 						// Выполняем добавление полученного хоста в список
-						this->_networkIPv6.push_back(ip);
-					// Если результат не получен, выполняем получение IPv4 адреса
-					else {
-						// Выполняем получение IP-адреса для IPv4
-						ip = this->_dns.host(AF_INET, host);
-						// Если IP-адрес успешно получен
+						this->_networkIPv4.push_back(host);
+					break;
+					// Если IP-адрес является IPv6 адресом
+					case static_cast <uint8_t> (net_t::type_t::IPV6):
+						// Выполняем добавление полученного хоста в список
+						this->_networkIPv6.push_back(host);
+					break;
+					// Для всех остальных адресов
+					default: {
+						// Выполняем получение IP-адреса для IPv6
+						string ip = this->_dns.host(AF_INET6, host);
+						// Если результат получен, выполняем пинг
 						if(!ip.empty())
 							// Выполняем добавление полученного хоста в список
-							this->_networkIPv4.push_back(ip);
-						// Если IP-адрес не получен и разрешено выводить информацию в лог
-						else if(!this->_noInfo)
-							// Выводим сообщение об ошибке
-							this->_log->print("passed %s address is not legitimate", log_t::flag_t::WARNING, host.c_str());
+							this->_networkIPv6.push_back(ip);
+						// Если результат не получен, выполняем получение IPv4 адреса
+						else {
+							// Выполняем получение IP-адреса для IPv4
+							ip = this->_dns.host(AF_INET, host);
+							// Если IP-адрес успешно получен
+							if(!ip.empty())
+								// Выполняем добавление полученного хоста в список
+								this->_networkIPv4.push_back(ip);
+							// Если IP-адрес не получен и разрешено выводить информацию в лог
+							else if(!this->_noInfo)
+								// Выводим сообщение об ошибке
+								this->_log->print("passed %s address is not legitimate", log_t::flag_t::WARNING, host.c_str());
+						}
 					}
 				}
 			}
