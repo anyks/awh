@@ -304,11 +304,7 @@ time_t awh::NTP::Worker::send(const string & from, const string & to) noexcept {
 					 * (1900)---------(1970)**********(Время когд пакет покинул сервер)
 					 */
 					// Получаем количество секунд с UNIX-эпохи
-					const uint32_t txTm = (packet.transmitedTimeStampSec - NTP_TIMESTAMP_DELTA);
-					// Выполняем конвертацию в миллисекунды
-					const double milliseconds = static_cast <double> (txTm * 1000l);
-					// Выводим количество полученных миллисекунд
-					return static_cast <time_t> (milliseconds);
+					return (static_cast <time_t> (packet.transmitedTimeStampSec - NTP_TIMESTAMP_DELTA) * 1000l);
 				}
 				// Если мы получили результат
 				if(result > 0)
