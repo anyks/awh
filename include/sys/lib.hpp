@@ -130,11 +130,7 @@
 	"ntp3.ntp-servers.net", \
 	"ntp4.ntp-servers.net", \
 	"ntp6.ntp-servers.net", \
-	"pool.ntp.org", \
-	"0.pool.ntp.org", \
-	"1.pool.ntp.org", \
-	"2.pool.ntp.org", \
-	"3.pool.ntp.org" \
+	"2.pool.ntp.org" \
 }
 
 /** ПАРАМЕТРЫ СЕРВЕРА */
