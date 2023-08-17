@@ -668,9 +668,7 @@ int main(int argc, char * argv[]){
 	ntp.ns({"77.88.8.88", "77.88.8.2"});
 	ntp.servers({"0.ru.pool.ntp.org", "1.ru.pool.ntp.org", "2.ru.pool.ntp.org", "3.ru.pool.ntp.org"});
 
-	const time_t timestamp = (ntp.request() / 1000);
-
-	log.print("Time: %s", log_t::flag_t::INFO, ctime(&timestamp));
+	log.print("Time: %s", log_t::flag_t::INFO, fmk.time2str((ntp.request() / 1000), "%H:%M:%S %d.%m.%Y").c_str());
 
 	return 0;
 }
