@@ -88,6 +88,8 @@ namespace awh {
 			private:
 				// Объект тредпула для работы с потоками
 				thr_t _thr;
+				// Ядро локальных таймеров
+				core_t _timer;
 				// Создаём объект для работы с фреймом WebSocket
 				frame_t _frame;
 				// Объявляем функции обратного вызова
@@ -136,6 +138,9 @@ namespace awh {
 			private:
 				// Поддерживаемые сабпротоколы
 				vector <string> _subs;
+			private:
+				// Список мусорных адъютантов
+				map <time_t, size_t> _garbage;
 			private:
 				// Создаём объект фреймворка
 				const fmk_t * _fmk;
@@ -221,6 +226,13 @@ namespace awh {
 				 * @param aid идентификатор адъютанта
 				 */
 				void actionDisconnect(const size_t aid) noexcept;
+			private:
+				/**
+				 * garbage Метод удаления мусорных адъютантов
+				 * @param tid  идентификатор таймера
+				 * @param core объект сетевого ядра
+				 */
+				void garbage(const u_short tid, awh::core_t * core) noexcept;
 			private:
 				/**
 				 * error Метод вывода сообщений об ошибках работы адъютанта

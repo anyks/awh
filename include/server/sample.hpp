@@ -84,6 +84,9 @@ namespace awh {
 				// Объект работы с URI ссылками
 				uri_t _uri;
 			private:
+				// Ядро локальных таймеров
+				core_t _timer;
+			private:
 				// Объявляем функции обратного вызова
 				fn_t _callback;
 				// Объект рабочего
@@ -95,8 +98,8 @@ namespace awh {
 				// Флаг долгоживущего подключения
 				bool _alive;
 			private:
-				// Список отключившихся адъютантов
-				queue <size_t> _closed;
+				// Список мусорных адъютантов
+				map <time_t, size_t> _garbage;
 			private:
 				// Создаём объект фреймворка
 				const fmk_t * _fmk;
@@ -184,11 +187,11 @@ namespace awh {
 				void actionDisconnect(const size_t aid) noexcept;
 			private:
 				/**
-				 * remove Метод удаления отключившихся адъютантов
+				 * garbage Метод удаления мусорных адъютантов
 				 * @param tid  идентификатор таймера
 				 * @param core объект сетевого ядра
 				 */
-				void remove(const u_short tid, awh::core_t * core) noexcept;
+				void garbage(const u_short tid, awh::core_t * core) noexcept;
 			public:
 				/**
 				 * init Метод инициализации Rest адъютанта

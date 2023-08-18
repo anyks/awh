@@ -65,6 +65,7 @@ namespace awh {
 				 * Core Объект биндинга TCP/IP
 				 */
 				typedef struct Core {
+					core_t         timer;  // Объект биндинга TCP/IP для таймера
 					client::core_t client; // Объект биндинга TCP/IP для клиента
 					server::core_t server; // Объект биндинга TCP/IP для сервера
 					/**
@@ -72,7 +73,8 @@ namespace awh {
 					 * @param fmk объект фреймворка
 					 * @param log объект для работы с логами
 					 */
-					Core(const fmk_t * fmk, const log_t * log) noexcept : client(fmk, log), server(fmk, log) {}
+					Core(const fmk_t * fmk, const log_t * log) noexcept :
+					 timer(fmk, log), client(fmk, log), server(fmk, log) {}
 				} core_t;
 				/**
 				 * Callback Структура функций обратного вызова
@@ -151,6 +153,9 @@ namespace awh {
 				size_t _timeAlive;
 				// Максимальное количество запросов
 				size_t _maxRequests;
+			private:
+				// Список мусорных адъютантов
+				map <time_t, size_t> _garbage;
 			private:
 				// Создаём объект фреймворка
 				const fmk_t * _fmk;
@@ -257,6 +262,13 @@ namespace awh {
 				 * @param sid идентификатор схемы сети
 				 */
 				void prepare(const size_t aid, const size_t sid) noexcept;
+			private:
+				/**
+				 * garbage Метод удаления мусорных адъютантов
+				 * @param tid  идентификатор таймера
+				 * @param core объект сетевого ядра
+				 */
+				void garbage(const u_short tid, awh::core_t * core) noexcept;
 			public:
 				/**
 				 * init Метод инициализации WebSocket адъютанта

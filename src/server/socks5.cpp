@@ -26,15 +26,21 @@ void awh::server::ProxySocks5::runCallback(const awh::core_t::status_t status, a
 		// Определяем статус активности сетевого ядра
 		switch(static_cast <uint8_t> (status)){
 			// Если система запущена
-			case static_cast <uint8_t> (awh::core_t::status_t::START):
+			case static_cast <uint8_t> (awh::core_t::status_t::START): {
+				// Выполняем биндинг базы событий для таймера
+				this->_core.server.bind(reinterpret_cast <awh::core_t *> (&this->_core.timer));
 				// Выполняем биндинг базы событий для клиента
 				this->_core.server.bind(reinterpret_cast <awh::core_t *> (&this->_core.client));
-			break;
+				// Устанавливаем таймаут времени на удаление мусорных адъютантов раз в 10 секунд
+				this->_core.timer.setTimeout(10000, (function <void (const u_short, awh::core_t *)>) std::bind(&proxy_socks5_t::garbage, this, _1, _2));
+			} break;
 			// Если система остановлена
-			case static_cast <uint8_t> (awh::core_t::status_t::STOP):
+			case static_cast <uint8_t> (awh::core_t::status_t::STOP): {
+				// Выполняем анбиндинг базы событий таймера
+				this->_core.server.unbind(reinterpret_cast <awh::core_t *> (&this->_core.timer));
 				// Выполняем анбиндинг базы событий клиента
 				this->_core.server.unbind(reinterpret_cast <awh::core_t *> (&this->_core.client));
-			break;
+			} break;
 		}
 	}
 }
@@ -382,6 +388,31 @@ void awh::server::ProxySocks5::writeServerCallback(const char * buffer, const si
 	}
 }
 /**
+ * garbage Метод удаления мусорных адъютантов
+ * @param tid  идентификатор таймера
+ * @param core объект сетевого ядра
+ */
+void awh::server::ProxySocks5::garbage(const u_short tid, awh::core_t * core) noexcept {
+	// Если список мусорных адъютантов не пустой
+	if(!this->_garbage.empty()){
+		// Получаем текущее значение времени
+		const time_t date = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
+		// Выполняем переход по всему списку мусорных адъютантов
+		for(auto it = this->_garbage.begin(); it != this->_garbage.end();){
+			// Если адъютант уже давно удалился
+			if((date - it->second) >= 10000){
+				// Выполняем удаление параметров адъютанта
+				this->_scheme.rm(it->first);
+				// Выполняем удаление объекта адъютантов из списка мусора
+				it = this->_garbage.erase(it);
+			// Выполняем пропуск адъютанта
+			} else ++it;
+		}
+	}
+	// Устанавливаем таймаут времени на удаление мусорных адъютантов раз в 10 секунд
+	this->_core.timer.setTimeout(10000, (function <void (const u_short, awh::core_t *)>) std::bind(&proxy_socks5_t::garbage, this, _1, _2));
+}
+/**
  * init Метод инициализации WebSocket адъютанта
  * @param socket unix-сокет для биндинга
  */
@@ -510,10 +541,6 @@ void awh::server::ProxySocks5::start() noexcept {
 void awh::server::ProxySocks5::close(const size_t aid) noexcept {
 	// Если идентификатор адъютанта существует
 	if(aid > 0){
-		// Если функция обратного вызова установлена
-		if(this->_callback.active != nullptr)
-			// Выполняем функцию обратного вызова
-			this->_callback.active(aid, mode_t::DISCONNECT, this);
 		// Получаем параметры подключения адъютанта
 		socks5_scheme_t::coffer_t * adj = const_cast <socks5_scheme_t::coffer_t *> (this->_scheme.get(aid));
 		// Если параметры подключения адъютанта получены, устанавливаем флаг закрытия подключения
@@ -525,8 +552,12 @@ void awh::server::ProxySocks5::close(const size_t aid) noexcept {
 		}
 		// Отключаем клиента от сервера
 		this->_core.server.close(aid);
-		// Выполняем удаление параметров адъютанта
-		if(adj != nullptr) this->_scheme.rm(aid);
+		// Добавляем в очередь список мусорных адъютантов
+		this->_garbage.emplace(aid, this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS));
+		// Если функция обратного вызова установлена
+		if(this->_callback.active != nullptr)
+			// Выполняем функцию обратного вызова
+			this->_callback.active(aid, mode_t::DISCONNECT, this);
 	}
 }
 /**

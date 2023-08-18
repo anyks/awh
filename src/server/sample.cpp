@@ -265,40 +265,47 @@ void awh::server::Sample::actionDisconnect(const size_t aid) noexcept {
 		if(adj->action == sample_scheme_t::action_t::DISCONNECT)
 			// Выполняем сброс экшена
 			adj->action = sample_scheme_t::action_t::NONE;
-		// Добавляем в очередь список отключившихся адъютантов
-		this->_closed.push(aid);
-		// Устанавливаем таймер на удаление данных адъютанта через 5 секунд
-		const_cast <server::core_t *> (this->_core)->setTimeout(5000, (function <void (const u_short, awh::core_t *)>) std::bind(&sample_t::remove, this, _1, _2));
-	}
-}
-/**
- * remove Метод удаления отключившихся адъютантов
- * @param tid  идентификатор таймера
- * @param core объект сетевого ядра
- */
-void awh::server::Sample::remove(const u_short tid, awh::core_t * core) noexcept {
-	// Получаем идентификатор даъютанта
-	const size_t aid = this->_closed.front();
-	// Если идентификатор адъютанта существует
-	if(aid > 0){
+		// Добавляем в очередь список мусорных адъютантов
+		this->_garbage.emplace(aid, this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS));
 		// Если функция обратного вызова установлена, выполняем
 		if(this->_callback.active != nullptr)
 			// Выполняем функцию обратного вызова
 			this->_callback.active(aid, mode_t::DISCONNECT, this);
-		// Получаем параметры подключения адъютанта
-		sample_scheme_t::coffer_t * adj = const_cast <sample_scheme_t::coffer_t *> (this->_scheme.get(aid));
-		// Если параметры подключения адъютанта получены
-		if(adj != nullptr){
-			// Устанавливаем флаг отключения
-			adj->close = true;
-			// Выполняем очистку оставшихся данных
-			adj->buffer.clear();
-			// Выполняем удаление параметров адъютанта
-			this->_scheme.rm(aid);
+	}
+}
+/**
+ * garbage Метод удаления мусорных адъютантов
+ * @param tid  идентификатор таймера
+ * @param core объект сетевого ядра
+ */
+void awh::server::Sample::garbage(const u_short tid, awh::core_t * core) noexcept {
+	// Если список мусорных адъютантов не пустой
+	if(!this->_garbage.empty()){
+		// Получаем текущее значение времени
+		const time_t date = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
+		// Выполняем переход по всему списку мусорных адъютантов
+		for(auto it = this->_garbage.begin(); it != this->_garbage.end();){
+			// Если адъютант уже давно удалился
+			if((date - it->second) >= 10000){
+				// Получаем параметры подключения адъютанта
+				sample_scheme_t::coffer_t * adj = const_cast <sample_scheme_t::coffer_t *> (this->_scheme.get(it->first));
+				// Если параметры подключения адъютанта получены
+				if(adj != nullptr){
+					// Устанавливаем флаг отключения
+					adj->close = true;
+					// Выполняем очистку оставшихся данных
+					adj->buffer.clear();
+				}
+				// Выполняем удаление параметров адъютанта
+				this->_scheme.rm(it->first);
+				// Выполняем удаление объекта адъютантов из списка мусора
+				it = this->_garbage.erase(it);
+			// Выполняем пропуск адъютанта
+			} else ++it;
 		}
 	}
-	// Удаляем адъютанта из списка отключённых
-	this->_closed.pop();
+	// Устанавливаем таймаут времени на удаление мусорных адъютантов раз в 10 секунд
+	this->_timer.setTimeout(10000, (function <void (const u_short, awh::core_t *)>) std::bind(&sample_t::garbage, this, _1, _2));
 }
 /**
  * init Метод инициализации Rest адъютанта
@@ -538,8 +545,8 @@ void awh::server::Sample::keepAlive(const int cnt, const int idle, const int int
  * @param log  объект для работы с логами
  */
 awh::server::Sample::Sample(const server::core_t * core, const fmk_t * fmk, const log_t * log) noexcept :
- _pid(getpid()), _port(SERVER_PORT), _host(""), _uri(fmk), _scheme(fmk, log),
- _cipher(hash_t::cipher_t::AES128), _alive(false), _fmk(fmk), _log(log), _core(core) {
+ _pid(getpid()), _port(SERVER_PORT), _host(""), _uri(fmk), _timer(fmk, log),
+ _scheme(fmk, log), _cipher(hash_t::cipher_t::AES128), _alive(false), _fmk(fmk), _log(log), _core(core) {
 	// Устанавливаем событие на запуск системы
 	this->_scheme.callback.set <void (const size_t, awh::core_t *)> ("open", std::bind(&Sample::openCallback, this, _1, _2));
 	// Устанавливаем функцию персистентного вызова
@@ -554,8 +561,12 @@ awh::server::Sample::Sample(const server::core_t * core, const fmk_t * fmk, cons
 	this->_scheme.callback.set <void (const char *, const size_t, const size_t, const size_t, awh::core_t *)> ("write", std::bind(&Sample::writeCallback, this, _1, _2, _3, _4, _5));
 	// Добавляем событие аццепта адъютанта
 	this->_scheme.callback.set <bool (const string &, const string &, const u_int, const size_t, awh::core_t *)> ("accept", std::bind(&Sample::acceptCallback, this, _1, _2, _3, _4, _5));
+	// Выполняем биндинг ядра локальных таймеров
+	const_cast <server::core_t *> (this->_core)->bind(&this->_timer);
 	// Активируем персистентный запуск для работы пингов
 	const_cast <server::core_t *> (this->_core)->persistEnable(true);
 	// Добавляем схему сети в сетевое ядро
 	const_cast <server::core_t *> (this->_core)->add(&this->_scheme);
+	// Устанавливаем таймаут времени на удаление мусорных адъютантов раз в 10 секунд
+	this->_timer.setTimeout(10000, (function <void (const u_short, awh::core_t *)>) std::bind(&Sample::garbage, this, _1, _2));
 }

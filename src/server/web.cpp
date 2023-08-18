@@ -412,24 +412,56 @@ void awh::server::WEB::actionConnect(const size_t aid) noexcept {
 void awh::server::WEB::actionDisconnect(const size_t aid) noexcept {
 	// Если идентификатор адъютанта существует
 	if(aid > 0){
-		// Если функция обратного вызова установлена, выполняем
-		if(this->_callback.active != nullptr)
-			// Выполняем функцию обратного вызова
-			this->_callback.active(aid, mode_t::DISCONNECT, this);
 		// Получаем параметры подключения адъютанта
 		web_scheme_t::coffer_t * adj = const_cast <web_scheme_t::coffer_t *> (this->_scheme.get(aid));
 		// Если параметры подключения адъютанта получены
 		if(adj != nullptr){
-			// Устанавливаем флаг отключения
-			adj->close = true;
 			// Если экшен соответствует, выполняем его сброс
 			if(adj->action == web_scheme_t::action_t::DISCONNECT)
 				// Выполняем сброс экшена
 				adj->action = web_scheme_t::action_t::NONE;
-			// Выполняем удаление параметров адъютанта
-			this->_scheme.rm(aid);
+		}
+		// Добавляем в очередь список мусорных адъютантов
+		this->_garbage.emplace(aid, this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS));
+		// Если функция обратного вызова установлена, выполняем
+		if(this->_callback.active != nullptr)
+			// Выполняем функцию обратного вызова
+			this->_callback.active(aid, mode_t::DISCONNECT, this);
+	}
+}
+/**
+ * garbage Метод удаления мусорных адъютантов
+ * @param tid  идентификатор таймера
+ * @param core объект сетевого ядра
+ */
+void awh::server::WEB::garbage(const u_short tid, awh::core_t * core) noexcept {
+	// Если список мусорных адъютантов не пустой
+	if(!this->_garbage.empty()){
+		// Получаем текущее значение времени
+		const time_t date = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
+		// Выполняем переход по всему списку мусорных адъютантов
+		for(auto it = this->_garbage.begin(); it != this->_garbage.end();){
+			// Если адъютант уже давно удалился
+			if((date - it->second) >= 10000){
+				// Получаем параметры подключения адъютанта
+				web_scheme_t::coffer_t * adj = const_cast <web_scheme_t::coffer_t *> (this->_scheme.get(it->first));
+				// Если параметры подключения адъютанта получены
+				if(adj != nullptr){
+					// Устанавливаем флаг отключения
+					adj->close = true;
+					// Выполняем очистку оставшихся данных
+					adj->buffer.clear();
+				}
+				// Выполняем удаление параметров адъютанта
+				this->_scheme.rm(it->first);
+				// Выполняем удаление объекта адъютантов из списка мусора
+				it = this->_garbage.erase(it);
+			// Выполняем пропуск адъютанта
+			} else ++it;
 		}
 	}
+	// Устанавливаем таймаут времени на удаление мусорных адъютантов раз в 10 секунд
+	this->_timer.setTimeout(10000, (function <void (const u_short, awh::core_t *)>) std::bind(&web_t::garbage, this, _1, _2));
 }
 /**
  * init Метод инициализации WEB адъютанта
@@ -864,7 +896,7 @@ void awh::server::WEB::crypto(const string & pass, const string & salt, const ha
  * @param log  объект для работы с логами
  */
 awh::server::WEB::WEB(const server::core_t * core, const fmk_t * fmk, const log_t * log) noexcept :
- _pid(getpid()), _port(SERVER_PORT), _host(""), _uri(fmk),
+ _pid(getpid()), _port(SERVER_PORT), _host(""), _uri(fmk), _timer(fmk, log),
  _scheme(fmk, log), _sid(AWH_SHORT_NAME), _ver(AWH_VERSION), _name(AWH_NAME),
  _realm(""), _opaque(""), _pass(""), _salt(""), _cipher(hash_t::cipher_t::AES128),
  _authHash(auth_t::hash_t::MD5), _authType(auth_t::type_t::NONE), _crypt(false),
@@ -884,8 +916,12 @@ awh::server::WEB::WEB(const server::core_t * core, const fmk_t * fmk, const log_
 	this->_scheme.callback.set <void (const char *, const size_t, const size_t, const size_t, awh::core_t *)> ("write", std::bind(&web_t::writeCallback, this, _1, _2, _3, _4, _5));
 	// Добавляем событие аццепта адъютанта
 	this->_scheme.callback.set <bool (const string &, const string &, const u_int, const size_t, awh::core_t *)> ("accept", std::bind(&web_t::acceptCallback, this, _1, _2, _3, _4, _5));
+	// Выполняем биндинг ядра локальных таймеров
+	const_cast <server::core_t *> (this->_core)->bind(&this->_timer);
 	// Активируем персистентный запуск для работы пингов
 	const_cast <server::core_t *> (this->_core)->persistEnable(true);
 	// Добавляем схему сети в сетевое ядро
 	const_cast <server::core_t *> (this->_core)->add(&this->_scheme);
+	// Устанавливаем таймаут времени на удаление мусорных адъютантов раз в 10 секунд
+	this->_timer.setTimeout(10000, (function <void (const u_short, awh::core_t *)>) std::bind(&web_t::garbage, this, _1, _2));
 }
