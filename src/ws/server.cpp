@@ -80,18 +80,17 @@ void awh::server::WS::update() noexcept {
 	}
 	// Если протоколы установлены и система является сервером
 	if(!this->_subs.empty()){
-		// Получаем список доступных заголовков
-		const auto & headers = this->web.headers();
-		// Получаем список подпротоколов
-		auto ret = headers.equal_range("sec-websocket-protocol");
-		// Перебираем все варианты желаемой версии
-		for(auto it = ret.first; it != ret.second; ++it){
-			// Проверяем, соответствует ли желаемый подпротокол нашему
-			if((this->_subs.count(it->second) > 0)){
-				// Устанавливаем выбранный подпротокол
-				this->_sub = it->second;
-				// Выходим из цикла
-				break;
+		// Переходим по всему списку заголовков
+		for(auto & header : this->web.headers()){
+			// Если заголовок найден
+			if(this->fmk->compare(header.first, "sec-websocket-protocol")){
+				// Проверяем, соответствует ли желаемый подпротокол нашему
+				if((this->_subs.count(header.second) > 0)){
+					// Устанавливаем выбранный подпротокол
+					this->_sub = header.second;
+					// Выходим из цикла
+					break;
+				}
 			}
 		}
 	}
@@ -119,16 +118,15 @@ bool awh::server::WS::checkKey() noexcept {
 bool awh::server::WS::checkVer() noexcept {
 	// Результат работы функции
 	bool result = false;
-	// Получаем список доступных заголовков
-	const auto & headers = this->web.headers();
-	// Получаем список версий протоколов
-	auto ret = headers.equal_range("sec-websocket-version");
-	// Перебираем все варианты желаемой версии
-	for(auto it = ret.first; it != ret.second; ++it){
-		// Проверяем, совпадает ли желаемая версия протокола
-		result = (stoi(it->second) == int(WS_VERSION));
-		// Если версия протокола совпадает, выходим
-		if(result) break;
+	// Переходим по всему списку заголовков
+	for(auto & header : this->web.headers()){
+		// Если заголовок найден
+		if(this->fmk->compare(header.first, "sec-websocket-version")){
+			// Проверяем, совпадает ли желаемая версия протокола
+			result = (::stoi(header.second) == static_cast <int> (WS_VERSION));
+			// Если версия протокола совпадает, выходим
+			if(result) break;
+		}
 	}
 	// Выводим результат
 	return result;
