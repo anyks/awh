@@ -907,7 +907,14 @@ void awh::server::Core::transfer(const engine_t::method_t method, const size_t a
 								// Если запись не выполнена, входим
 								else break;
 							// Если запись не выполнена, входим
-							} else break;
+							} else {
+								// Если произошёл дисконнект
+								if((bytes == 0) && (this->settings.sonet != scheme_t::sonet_t::DTLS))
+									// Выполняем отключение клиента
+									this->close(aid);
+								// Выходим из цикла
+								break;
+							}
 						// Выходим из цикла
 						} else break;
 					// Выполняем чтение до тех пор, пока всё не прочитаем
