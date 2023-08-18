@@ -314,6 +314,14 @@ void awh::Ping::ping(const string & host) noexcept {
 			// Формируем сообщение для вывода в лог
 			this->_log->print("PING %s: %u data bytes", log_t::flag_t::INFO, host.c_str(), sizeof(IcmpHeader));
 		switch(static_cast <uint8_t> (this->_net.host(host))){
+			// Если домен является аппаратным адресом сетевого интерфейса
+			case static_cast <uint8_t> (net_t::type_t::MAC):
+			// Если домен является адресом/Маски сети
+			case static_cast <uint8_t> (net_t::type_t::NETW):
+			// Если домен является адресом в файловой системе
+			case static_cast <uint8_t> (net_t::type_t::ADDR):
+			// Если домен является HTTP адресом
+			case static_cast <uint8_t> (net_t::type_t::HTTP): break;
 			// Если IP-адрес является IPv4 адресом
 			case static_cast <uint8_t> (net_t::type_t::IPV4):
 				// Выполняем пинг указанного адреса
@@ -369,6 +377,14 @@ void awh::Ping::ping(const int family, const string & host) noexcept {
 			// Формируем сообщение для вывода в лог
 			this->_log->print("PING %s: %u data bytes", log_t::flag_t::INFO, host.c_str(), sizeof(IcmpHeader));
 		switch(static_cast <uint8_t> (this->_net.host(host))){
+			// Если домен является аппаратным адресом сетевого интерфейса
+			case static_cast <uint8_t> (net_t::type_t::MAC):
+			// Если домен является адресом/Маски сети
+			case static_cast <uint8_t> (net_t::type_t::NETW):
+			// Если домен является адресом в файловой системе
+			case static_cast <uint8_t> (net_t::type_t::ADDR):
+			// Если домен является HTTP адресом
+			case static_cast <uint8_t> (net_t::type_t::HTTP): break;
 			// Если IP-адрес является IPv4 адресом
 			case static_cast <uint8_t> (net_t::type_t::IPV4):
 				// Выполняем пинг указанного адреса
@@ -525,9 +541,9 @@ void awh::Ping::_work(const int family, const string & ip) noexcept {
 				// Устанавливаем разрешение на закрытие сокета при неиспользовании
 				this->_socket.closeOnExec(this->_fd);
 				// Устанавливаем размер буфера передачи данных на чтение
-				this->_socket.bufferSize(this->_fd, 1024, 1, socket_t::mode_t::READ);
+				// this->_socket.bufferSize(this->_fd, 1024, 1, socket_t::mode_t::READ);
 				// Устанавливаем размер буфера передачи данных на запись
-				this->_socket.bufferSize(this->_fd, 1024, 1, socket_t::mode_t::WRITE);
+				// this->_socket.bufferSize(this->_fd, 1024, 1, socket_t::mode_t::WRITE);
 				// Устанавливаем таймаут на получение данных из сокета
 				this->_socket.timeout(this->_fd, this->_timeoutRead, socket_t::mode_t::READ);
 				// Устанавливаем таймаут на запись данных в сокет
@@ -596,6 +612,14 @@ double awh::Ping::ping(const string & host, const uint16_t count) noexcept {
 			this->_log->print("PING %s: %u data bytes", log_t::flag_t::INFO, host.c_str(), sizeof(IcmpHeader));
 		// Определяем тип передаваемого IP-адреса
 		switch(static_cast <uint8_t> (this->_net.host(host))){
+			// Если домен является аппаратным адресом сетевого интерфейса
+			case static_cast <uint8_t> (net_t::type_t::MAC):
+			// Если домен является адресом/Маски сети
+			case static_cast <uint8_t> (net_t::type_t::NETW):
+			// Если домен является адресом в файловой системе
+			case static_cast <uint8_t> (net_t::type_t::ADDR):
+			// Если домен является HTTP адресом
+			case static_cast <uint8_t> (net_t::type_t::HTTP): break;
 			// Если IP-адрес является IPv4 адресом
 			case static_cast <uint8_t> (net_t::type_t::IPV4):
 				// Выполняем пинг указанного адреса
@@ -658,6 +682,14 @@ double awh::Ping::ping(const int family, const string & host, const uint16_t cou
 			this->_log->print("PING %s: %u data bytes", log_t::flag_t::INFO, host.c_str(), sizeof(IcmpHeader));
 		// Определяем тип передаваемого IP-адреса
 		switch(static_cast <uint8_t> (this->_net.host(host))){
+			// Если домен является аппаратным адресом сетевого интерфейса
+			case static_cast <uint8_t> (net_t::type_t::MAC):
+			// Если домен является адресом/Маски сети
+			case static_cast <uint8_t> (net_t::type_t::NETW):
+			// Если домен является адресом в файловой системе
+			case static_cast <uint8_t> (net_t::type_t::ADDR):
+			// Если домен является HTTP адресом
+			case static_cast <uint8_t> (net_t::type_t::HTTP): break;
 			// Если IP-адрес является IPv4 адресом
 			case static_cast <uint8_t> (net_t::type_t::IPV4):
 				// Выполняем пинг указанного адреса
@@ -818,9 +850,9 @@ double awh::Ping::_ping(const int family, const string & ip, const uint16_t coun
 				// Устанавливаем разрешение на закрытие сокета при неиспользовании
 				this->_socket.closeOnExec(this->_fd);
 				// Устанавливаем размер буфера передачи данных на чтение
-				this->_socket.bufferSize(this->_fd, 1024, 1, socket_t::mode_t::READ);
+				// this->_socket.bufferSize(this->_fd, 1024, 1, socket_t::mode_t::READ);
 				// Устанавливаем размер буфера передачи данных на запись
-				this->_socket.bufferSize(this->_fd, 1024, 1, socket_t::mode_t::WRITE);
+				// this->_socket.bufferSize(this->_fd, 1024, 1, socket_t::mode_t::WRITE);
 				// Устанавливаем таймаут на получение данных из сокета
 				this->_socket.timeout(this->_fd, this->_timeoutRead, socket_t::mode_t::READ);
 				// Устанавливаем таймаут на запись данных в сокет
@@ -926,6 +958,14 @@ void awh::Ping::network(const vector <string> & network) noexcept {
 			for(auto & host : network){
 				// Определяем к какому адресу относится полученный хост
 				switch(static_cast <uint8_t> (this->_net.host(host))){
+					// Если домен является аппаратным адресом сетевого интерфейса
+					case static_cast <uint8_t> (net_t::type_t::MAC):
+					// Если домен является адресом/Маски сети
+					case static_cast <uint8_t> (net_t::type_t::NETW):
+					// Если домен является адресом в файловой системе
+					case static_cast <uint8_t> (net_t::type_t::ADDR):
+					// Если домен является HTTP адресом
+					case static_cast <uint8_t> (net_t::type_t::HTTP): break;
 					// Если IP-адрес является IPv4 адресом
 					case static_cast <uint8_t> (net_t::type_t::IPV4):
 						// Выполняем добавление полученного хоста в список
@@ -958,6 +998,39 @@ void awh::Ping::network(const vector <string> & network) noexcept {
 								this->_log->print("passed %s address is not legitimate", log_t::flag_t::WARNING, host.c_str());
 						}
 					}
+				}
+			}
+		}
+	}
+}
+/**
+ * network Метод установки адреса сетевых плат, с которых нужно выполнять запросы
+ * @param family  тип интернет-протокола AF_INET, AF_INET6
+ * @param network IP-адреса сетевых плат
+ */
+void awh::Ping::network(const int family, const vector <string> & network) noexcept {
+	// Выполняем блокировку потока
+	const lock_guard <recursive_mutex> lock(this->_mtx);
+	// Создаём объект холдирования
+	hold_t <status_t> hold(this->_status);
+	// Если статус работы установки параметров сети соответствует
+	if(hold.access({}, status_t::NET_SET)){
+		// Если список адресов сетевых плат передан
+		if(!network.empty()){
+			// Переходим по всему списку полученных адресов
+			for(auto & host : network){
+				// Определяем тип передаваемого IP-адреса
+				switch(family){
+					// Если IP-адрес является IPv4 адресом
+					case static_cast <int> (AF_INET):
+						// Выполняем добавление полученного хоста в список
+						this->_networkIPv4.push_back(host);
+					break;
+					// Если IP-адрес является IPv6 адресом
+					case static_cast <int> (AF_INET6):
+						// Выполняем добавление полученного хоста в список
+						this->_networkIPv6.push_back(host);
+					break;
 				}
 			}
 		}

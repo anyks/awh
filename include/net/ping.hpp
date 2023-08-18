@@ -299,6 +299,12 @@ namespace awh {
 			 * @param network IP-адреса сетевых плат
 			 */
 			void network(const vector <string> & network) noexcept;
+			/**
+			 * network Метод установки адреса сетевых плат, с которых нужно выполнять запросы
+			 * @param family  тип интернет-протокола AF_INET, AF_INET6
+			 * @param network IP-адреса сетевых плат
+			 */
+			void network(const int family, const vector <string> & network) noexcept;
 		public:
 			/**
 			 * timeout Метод установки таймаутов в миллисекундах

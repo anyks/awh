@@ -239,12 +239,8 @@ time_t awh::NTP::Worker::send(const string & from, const string & to) noexcept {
 				// Выходим из функции
 				return result;
 			}
-			// Метка отправки данных
-			Send:
 			// Если запрос на NTP-сервер успешно отправлен
 			if((bytes = ::sendto(this->_fd, (const char *) &packet, sizeof(packet), 0, (struct sockaddr *) &this->_peer.server, this->_peer.size)) > 0){
-				// Метка повторного получения данных
-				Read:
 				// Получаем объект NTP-клиента
 				ntp_t * self = const_cast <ntp_t *> (this->_self);
 				// Выполняем чтение ответа сервера
@@ -257,25 +253,20 @@ time_t awh::NTP::Worker::send(const string & from, const string & to) noexcept {
 						switch(errno){
 							// Если ошибка не обнаружена, выходим
 							case 0: break;
-							// Если нужно повторить получение данных
-							case EAGAIN:
-								// Снова пробуем получить данные
-								goto Read;
-							break;
 							// Если произведена неудачная запись в PIPE
 							case EPIPE:
 								// Выводим в лог сообщение
-								self->_log->print("EPIPE: nameserver %s", log_t::flag_t::WARNING, to.c_str());
+								self->_log->print("EPIPE [server = %s]", log_t::flag_t::WARNING, to.c_str());
 							break;
 							// Если произведён сброс подключения
 							case ECONNRESET:
 								// Выводим в лог сообщение
-								self->_log->print("ECONNRESET: nameserver %s", log_t::flag_t::WARNING, to.c_str());
+								self->_log->print("ECONNRESET [server = %s]", log_t::flag_t::WARNING, to.c_str());
 							break;
 							// Для остальных ошибок
 							default:
 								// Выводим в лог сообщение
-								self->_log->print("%s: nameserver %s", log_t::flag_t::WARNING, strerror(errno), to.c_str());
+								self->_log->print("%s [server = %s]", log_t::flag_t::WARNING, strerror(errno), to.c_str());
 						}
 					}
 					// Если работа резолвера ещё не остановлена
@@ -318,25 +309,20 @@ time_t awh::NTP::Worker::send(const string & from, const string & to) noexcept {
 					switch(errno){
 						// Если ошибка не обнаружена, выходим
 						case 0: break;
-						// Если нужно повторить получение данных
-						case EAGAIN:
-							// Снова пробуем отправить данные
-							goto Send;
-						break;
 						// Если произведена неудачная запись в PIPE
 						case EPIPE:
 							// Выводим в лог сообщение
-							this->_self->_log->print("EPIPE: nameserver %s", log_t::flag_t::WARNING, to.c_str());
+							this->_self->_log->print("EPIPE [server = %s]", log_t::flag_t::WARNING, to.c_str());
 						break;
 						// Если произведён сброс подключения
 						case ECONNRESET:
 							// Выводим в лог сообщение
-							this->_self->_log->print("ECONNRESET: nameserver %s", log_t::flag_t::WARNING, to.c_str());
+							this->_self->_log->print("ECONNRESET [server = %s]", log_t::flag_t::WARNING, to.c_str());
 						break;
 						// Для остальных ошибок
 						default:
 							// Выводим в лог сообщение
-							this->_self->_log->print("%s: nameserver %s", log_t::flag_t::WARNING, strerror(errno), to.c_str());
+							this->_self->_log->print("%s [server = %s]", log_t::flag_t::WARNING, strerror(errno), to.c_str());
 					}
 				}
 			}
@@ -539,10 +525,18 @@ void awh::NTP::server(const int family, const string & server) noexcept {
 			u_int port = 123;
 			// Хост переданного сервера
 			string host = "";
-			// Определяем тип протокола подключения
-			switch(family){
-				// Если тип протокола подключения IPv4
-				case static_cast <int> (AF_INET): {
+			// Определяем тип передаваемого сервера
+			switch(static_cast <uint8_t> (this->_net.host(server))){
+				// Если домен является аппаратным адресом сетевого интерфейса
+				case static_cast <uint8_t> (net_t::type_t::MAC):
+				// Если домен является адресом/Маски сети
+				case static_cast <uint8_t> (net_t::type_t::NETW):
+				// Если домен является адресом в файловой системе
+				case static_cast <uint8_t> (net_t::type_t::ADDR):
+				// Если домен является HTTP адресом
+				case static_cast <uint8_t> (net_t::type_t::HTTP): break;
+				// Если хост является IPv4 адресом
+				case static_cast <uint8_t> (net_t::type_t::IPV4): {
 					// Выполняем поиск разделителя порта
 					const size_t pos = server.rfind(":");
 					// Если позиция разделителя найдена
@@ -554,8 +548,8 @@ void awh::NTP::server(const int family, const string & server) noexcept {
 					// Извлекаем хост сервера имён
 					} else host = server;
 				} break;
-				// Если тип протокола подключения IPv6
-				case static_cast <int> (AF_INET6): {
+				// Если хост является IPv6 адресом
+				case static_cast <uint8_t> (net_t::type_t::IPV6): {
 					// Если первый символ является разделителем
 					if(server.front() == '['){
 						// Выполняем поиск разделителя порта
@@ -575,26 +569,18 @@ void awh::NTP::server(const int family, const string & server) noexcept {
 						// Извлекаем хост сервера имён
 						host = server;
 				} break;
-			}
-			// Определяем тип передаваемого сервера
-			switch(static_cast <uint8_t> (this->_net.host(host))){
-				// Если домен является аппаратным адресом сетевого интерфейса
-				case static_cast <uint8_t> (net_t::type_t::MAC):
-				// Если домен является адресом/Маски сети
-				case static_cast <uint8_t> (net_t::type_t::NETW):
-				// Если домен является адресом в файловой системе
-				case static_cast <uint8_t> (net_t::type_t::ADDR):
-				// Если домен является HTTP адресом
-				case static_cast <uint8_t> (net_t::type_t::HTTP):
-					// Выполняем удаление хоста
-					host.clear();
-				break;
-				// Если хост является IPv4 адресом
-				case static_cast <uint8_t> (net_t::type_t::IPV4):
-				// Если хост является IPv6 адресом
-				case static_cast <uint8_t> (net_t::type_t::IPV6): break;
 				// Если хост является доменным именем
 				case static_cast <uint8_t> (net_t::type_t::DOMN): {
+					// Выполняем поиск разделителя порта
+					const size_t pos = server.rfind(":");
+					// Если позиция разделителя найдена
+					if(pos != string::npos){
+						// Извлекаем хост сервера имён
+						host = server.substr(0, pos);
+						// Извлекаем порт сервера имён
+						port = static_cast <u_int> (::stoi(server.substr(pos + 1)));
+					// Извлекаем хост сервера имён
+					} else host = server;
 					// Выполняем получение IP адрес хоста доменного имени
 					string ip = this->_dns.host(family, host);
 					// Если IP-адрес мы не получили, выполняем запрос на сервер
@@ -605,7 +591,18 @@ void awh::NTP::server(const int family, const string & server) noexcept {
 					else host = std::move(ip);
 				} break;
 				// Значит скорее всего, садрес является доменным именем
-				default: host = this->_dns.host(family, host);
+				default: {
+					// Выполняем поиск разделителя порта
+					const size_t pos = server.rfind(":");
+					// Если позиция разделителя найдена
+					if(pos != string::npos){
+						// Извлекаем хост сервера имён
+						host = this->_dns.host(family, server.substr(0, pos));
+						// Извлекаем порт сервера имён
+						port = static_cast <u_int> (::stoi(server.substr(pos + 1)));
+					// Извлекаем хост сервера имён
+					} else host = this->_dns.host(family, server);
+				}
 			}
 			// Если NTP-сервер имён получен
 			if(!host.empty()){
@@ -619,17 +616,23 @@ void awh::NTP::server(const int family, const string & server) noexcept {
 						server.port = port;
 						// Запоминаем полученный сервер
 						inet_pton(family, host.c_str(), &server.ip);
-						// Выполняем добавление полученный сервер в список NTP-серверов
-						this->_serversIPv4.push_back(std::move(server));
-						/**
-						 * Если включён режим отладки
-						 */
-						#if defined(DEBUG_MODE)
-							// Выводим заголовок запроса
-							cout << "\x1B[33m\x1B[1m^^^^^^^^^ ADD NTP SERVER ^^^^^^^^^\x1B[0m" << endl;
-							// Выводим параметры запроса
-							cout << host << ":" << port << endl;
-						#endif
+						// Если добавляемый хост сервера ещё не существует в списке серверов
+						if(std::find_if(this->_serversIPv4.begin(), this->_serversIPv4.end(), [&server](const server_t <1> & item) noexcept -> bool {
+							// Выполняем сравнение двух IP-адресов
+							return (::memcmp(&server.ip, &item.ip, sizeof(item.ip)) == 0);
+						}) == this->_serversIPv4.end()){
+							// Выполняем добавление полученный сервер в список NTP-серверов
+							this->_serversIPv4.push_back(std::move(server));
+							/**
+							 * Если включён режим отладки
+							 */
+							#if defined(DEBUG_MODE)
+								// Выводим заголовок запроса
+								cout << "\x1B[33m\x1B[1m^^^^^^^^^ ADD NTP SERVER ^^^^^^^^^\x1B[0m" << endl;
+								// Выводим параметры запроса
+								cout << host << ":" << port << endl;
+							#endif
+						}
 					} break;
 					// Если тип протокола подключения IPv6
 					case static_cast <int> (AF_INET6): {
@@ -639,21 +642,27 @@ void awh::NTP::server(const int family, const string & server) noexcept {
 						server.port = port;
 						// Запоминаем полученный сервер
 						inet_pton(family, host.c_str(), &server.ip);
-						// Выполняем добавление полученный сервер в список NTP-серверов
-						this->_serversIPv6.push_back(std::move(server));
-						/**
-						 * Если включён режим отладки
-						 */
-						#if defined(DEBUG_MODE)
-							// Выводим заголовок запроса
-							cout << "\x1B[33m\x1B[1m^^^^^^^^^ ADD NTP SERVER ^^^^^^^^^\x1B[0m" << endl;
-							// Выводим параметры запроса
-							cout << "[" << host << "]:" << port << endl;
-						#endif
+						// Если добавляемый хост сервера ещё не существует в списке серверов
+						if(std::find_if(this->_serversIPv6.begin(), this->_serversIPv6.end(), [&server](const server_t <4> & item) noexcept -> bool {
+							// Выполняем сравнение двух IP-адресов
+							return (::memcmp(&server.ip, &item.ip, sizeof(item.ip)) == 0);
+						}) == this->_serversIPv6.end()){
+							// Выполняем добавление полученный сервер в список NTP-серверов
+							this->_serversIPv6.push_back(std::move(server));
+							/**
+							 * Если включён режим отладки
+							 */
+							#if defined(DEBUG_MODE)
+								// Выводим заголовок запроса
+								cout << "\x1B[33m\x1B[1m^^^^^^^^^ ADD NTP SERVER ^^^^^^^^^\x1B[0m" << endl;
+								// Выводим параметры запроса
+								cout << "[" << host << "]:" << port << endl;
+							#endif
+						}
 					} break;
 				}
 			// Если имя сервера не получено, выводим в лог сообщение
-			} else this->_log->print("NTP server [%s:%u] does not add", log_t::flag_t::WARNING, server.c_str(), port);
+			} else this->_log->print("NTP IPv%u server %s does not add", log_t::flag_t::WARNING, (family == AF_INET6 ? 6 : 4), server.c_str());
 		}
 	}
 }
@@ -674,6 +683,14 @@ void awh::NTP::servers(const vector <string> & servers) noexcept {
 			for(auto & server : servers){
 				// Определяем тип передаваемого IP-адреса
 				switch(static_cast <uint8_t> (this->_net.host(server))){
+					// Если домен является аппаратным адресом сетевого интерфейса
+					case static_cast <uint8_t> (net_t::type_t::MAC):
+					// Если домен является адресом/Маски сети
+					case static_cast <uint8_t> (net_t::type_t::NETW):
+					// Если домен является адресом в файловой системе
+					case static_cast <uint8_t> (net_t::type_t::ADDR):
+					// Если домен является HTTP адресом
+					case static_cast <uint8_t> (net_t::type_t::HTTP): break;
 					// Если IP-адрес является IPv4 адресом
 					case static_cast <uint8_t> (net_t::type_t::IPV4):
 						// Выполняем добавление IPv4 адреса в список серверов
@@ -734,6 +751,14 @@ void awh::NTP::replace(const vector <string> & servers) noexcept {
 		for(auto & server : servers){
 			// Определяем тип передаваемого IP-адреса
 			switch(static_cast <uint8_t> (this->_net.host(server))){
+				// Если домен является аппаратным адресом сетевого интерфейса
+				case static_cast <uint8_t> (net_t::type_t::MAC):
+				// Если домен является адресом/Маски сети
+				case static_cast <uint8_t> (net_t::type_t::NETW):
+				// Если домен является адресом в файловой системе
+				case static_cast <uint8_t> (net_t::type_t::ADDR):
+				// Если домен является HTTP адресом
+				case static_cast <uint8_t> (net_t::type_t::HTTP): break;
 				// Если IP-адрес является IPv4 адресом
 				case static_cast <uint8_t> (net_t::type_t::IPV4):
 					// Выполняем добавление IPv4 адреса в список серверов
@@ -829,6 +854,14 @@ void awh::NTP::network(const vector <string> & network) noexcept {
 			for(auto & host : network){
 				// Определяем к какому адресу относится полученный хост
 				switch(static_cast <uint8_t> (this->_net.host(host))){
+					// Если домен является аппаратным адресом сетевого интерфейса
+					case static_cast <uint8_t> (net_t::type_t::MAC):
+					// Если домен является адресом/Маски сети
+					case static_cast <uint8_t> (net_t::type_t::NETW):
+					// Если домен является адресом в файловой системе
+					case static_cast <uint8_t> (net_t::type_t::ADDR):
+					// Если домен является HTTP адресом
+					case static_cast <uint8_t> (net_t::type_t::HTTP): break;
 					// Если IP-адрес является IPv4 адресом
 					case static_cast <uint8_t> (net_t::type_t::IPV4):
 						// Выполняем добавление полученного хоста в список
@@ -883,14 +916,14 @@ void awh::NTP::network(const int family, const vector <string> & network) noexce
 			// Переходим по всему списку полученных адресов
 			for(auto & host : network){
 				// Определяем тип передаваемого IP-адреса
-				switch(static_cast <uint8_t> (family)){
+				switch(family){
 					// Если IP-адрес является IPv4 адресом
-					case static_cast <uint8_t> (net_t::type_t::IPV4):
+					case static_cast <int> (AF_INET):
 						// Выполняем добавление полученного хоста в список
 						this->_workerIPv4->_network.push_back(host);
 					break;
 					// Если IP-адрес является IPv6 адресом
-					case static_cast <uint8_t> (net_t::type_t::IPV6):
+					case static_cast <int> (AF_INET6):
 						// Выполняем добавление полученного хоста в список
 						this->_workerIPv6->_network.push_back(host);
 					break;
