@@ -76,12 +76,18 @@ awh::URI::url_t awh::URI::parse(const string & url) const noexcept {
 			it = uri.find(flag_t::PATH);
 			// Если путь запроса получен
 			if(it != uri.end()){
-				// Выполняем извлечение пути запроса
-				result.path = this->splitPath(it->second);
 				// Если схема протокола принадлежит unix-сокету
-				if(this->_fmk->compare(result.schema, "unix"))
+				if(this->_fmk->compare(result.schema, "unix")){
+					// Если пусть не получен
+					if(it->second.empty() || (it->second.compare("/") == 0) && (uri.count(flag_t::HOST) > 0))
+						// Выполняем установку пути
+						(* const_cast <string *> (&it->second)) = uri.at(flag_t::HOST);
+					// Выполняем извлечение пути запроса
+					result.path = this->splitPath(it->second);
 					// Устанавливаем доменное имя
 					result.host = std::forward <const string> (it->second);
+				// Выполняем извлечение пути запроса
+				} else result.path = this->splitPath(it->second);
 			}
 			// Выполняем поиск параметров запроса
 			it = uri.find(flag_t::PARAMS);
@@ -121,6 +127,14 @@ awh::URI::url_t awh::URI::parse(const string & url) const noexcept {
 				result.host = std::forward <const string> (it->second);
 				// Определяем тип домена
 				switch(static_cast <uint8_t> (this->_net.host(result.host))){
+					// Если домен является аппаратным адресом сетевого интерфейса
+					case static_cast <uint8_t> (net_t::type_t::MAC):
+					// Если домен является адресом/Маски сети
+					case static_cast <uint8_t> (net_t::type_t::NETW):
+					// Если домен является адресом в файловой системе
+					case static_cast <uint8_t> (net_t::type_t::ADDR):
+					// Если домен является HTTP адресом
+					case static_cast <uint8_t> (net_t::type_t::HTTP): break;
 					// Если - это доменное имя
 					case static_cast <uint8_t> (net_t::type_t::DOMN):
 						// Устанавливаем доменное имя
@@ -144,6 +158,8 @@ awh::URI::url_t awh::URI::parse(const string & url) const noexcept {
 							// Удаляем скобки вокруг IP-адреса
 							result.ip = result.ip.substr(1, result.ip.length() - 2);
 					} break;
+					// Если хост не распознан, устанавливаем его как есть
+					default: result.domain = result.host;
 				}
 			}
 		}
@@ -338,7 +354,7 @@ string awh::URI::query(const url_t & url) const noexcept {
 		// Выполняем сборку параметров запроса
 		const string & params = this->joinParams(url.params);
 		// Выполняем сборку якоря запроса
-		const string & anchor = (!url.anchor.empty() ? this->_fmk->format("#%s", url.anchor.c_str()) : "");
+		const string anchor = (!url.anchor.empty() ? this->_fmk->format("#%s", url.anchor.c_str()) : "");
 		// Выполняем генерацию URL адреса
 		const string uri = ((url.fn != nullptr) ? this->_fmk->format("&%s", url.fn(&url, this).c_str()) : "");
 		// Иначе порт не устанавливаем
@@ -723,7 +739,7 @@ vector <string> awh::URI::splitPath(const string & path, const string & delim) c
 		// Параметры пути
 		vector <wstring> params;
 		// Выполняем сплит параметров пути
-		if(!this->_fmk->split(this->_fmk->convert(path.substr(1)), this->_fmk->convert(delim), params).empty()){
+		if(!this->_fmk->split(this->_fmk->convert(path.front() == '/' ? path.substr(1) : path), this->_fmk->convert(delim), params).empty()){
 			// Переходим по всему списку параметров
 			for(auto & param : params)
 				// Добавляем в список наши параметры

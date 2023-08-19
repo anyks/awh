@@ -1016,7 +1016,7 @@ void awh::client::WebSocket::init(const string & url, const http_t::compress_t c
 		// Устанавливаем метод компрессии сообщений
 		this->_compress = compress;
 		// Устанавливаем URL адрес запроса (как заглушка)
-		this->_scheme.url = this->_uri.parse("ws://unixsocket.local");
+		this->_scheme.url = this->_uri.parse(this->_fmk->format("unix:%s.sock", url.c_str()));
 		/**
 		 * Если операционной системой не является Windows
 		 */
