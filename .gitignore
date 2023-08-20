@@ -41,3 +41,5 @@
 submodules/libiconv/
 submodules/libidn2/
 
+cmake/raw.githubusercontent.com_viva64_pvs-studio-cmake-module_master_PVS-Studio.cmake.txt
+

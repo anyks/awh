@@ -6,9 +6,6 @@ project(awh LANGUAGES CXX)
 set(PROJECT_VENDOR_LONG "ANYKS - WEB")
 
 # Опции сборки
-# Сборка тестового ПО
-option(ENABLE_CONSOLE_APP "Build test app" TRUE)
-
 set(PROJECT_COPYRIGHT "Copyright (c) ${CURRENT_YEAR} ${PROJECT_VENDOR_LONG}")
 
 # Тип сборки
@@ -39,6 +36,9 @@ else()
     message(STATUS "Build AWH LIBEV: YES\n")
     message(STATUS "Build AWH LIBEVENT2: NO\n")
 endif()
+
+# Выводим информацию каталога где выполняется сброка
+message(STATUS "Build dir: ${CMAKE_CURRENT_BINARY_DIR}\n")
 
 # Получаем архитектуру
 EXECUTE_PROCESS( COMMAND uname -m COMMAND tr -d '\n' OUTPUT_VARIABLE ARCHITECTURE )
@@ -209,11 +209,12 @@ else()
 endif()
 
 # Выполняем подключение хидеров
-include_directories(${ZLIB_INCLUDE_DIR})
-include_directories(${BROTLI_INCLUDE_DIRS})
-include_directories(${OPENSSL_INCLUDE_DIR})
-include_directories(${CMAKE_SOURCE_DIR}/include)
-include_directories(${CMAKE_SOURCE_DIR}/contrib/include)
+include_directories(SYSTEM ${ZLIB_INCLUDE_DIR})
+include_directories(SYSTEM ${BROTLI_INCLUDE_DIRS})
+include_directories(SYSTEM ${OPENSSL_INCLUDE_DIR})
+include_directories(SYSTEM ${CMAKE_SOURCE_DIR}/include)
+include_directories(SYSTEM ${CMAKE_SOURCE_DIR}/contrib/include)
+include_directories(SYSTEM ${CMAKE_CXX_IMPLICIT_INCLUDE_DIRECTORIES})
 
 # Если операционной системой не является Windows
 if(NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
@@ -341,513 +342,509 @@ endif()
 # Делаем либу
 add_library(${CURRENT_LIB_NAME} STATIC ${SOURCE_FILES})
 
-## Если установлен флаг ENABLE_CONSOLE_APP собираем консольное приложение
-if (ENABLE_CONSOLE_APP)
+if (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
+    set(WINFLAGS -lws2_32 -lgdi32 -lcrypt32 -lIphlpapi -lbcrypt)
+else()
+    set(WINFLAGS "")
+endif()
 
-    if (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
-        set(WINFLAGS -lws2_32 -lgdi32 -lcrypt32 -lIphlpapi -lbcrypt)
-    else()
-        set(WINFLAGS "")
-    endif()
+# Устанавливаем иконку для windows под MinGW.
+set(RES_FILES "")
+if(MINGW)
+    set(RES_FILES "awh.rc")
+    set(CMAKE_RC_COMPILER_INIT windres)
+    ENABLE_LANGUAGE(RC)
+    SET(CMAKE_RC_COMPILE_OBJECT "<CMAKE_RC_COMPILER> <FLAGS> -O coff <DEFINES> -i <SOURCE> -o <OBJECT>")
+endif(MINGW)
 
-    # Устанавливаем иконку для windows под MinGW.
-    set(RES_FILES "")
-    if(MINGW)
-        set(RES_FILES "awh.rc")
-        set(CMAKE_RC_COMPILER_INIT windres)
-        ENABLE_LANGUAGE(RC)
-        SET(CMAKE_RC_COMPILE_OBJECT "<CMAKE_RC_COMPILER> <FLAGS> -O coff <DEFINES> -i <SOURCE> -o <OBJECT>")
-    endif(MINGW)
+add_executable(${IP_APP_NAME} sample/ip.cpp ${RES_FILES})
+add_executable(${DNS_APP_NAME} sample/dns.cpp ${RES_FILES})
+add_executable(${NTP_APP_NAME} sample/ntp.cpp ${RES_FILES})
+add_executable(${WSS_APP_NAME} sample/wss.cpp ${RES_FILES})
+add_executable(${WSC_APP_NAME} sample/wsc2.cpp ${RES_FILES})
+add_executable(${PING_APP_NAME} sample/ping.cpp ${RES_FILES})
+add_executable(${TIMER_APP_NAME} sample/timer.cpp ${RES_FILES})
+add_executable(${PROXY_APP_NAME} sample/proxy.cpp ${RES_FILES})
+add_executable(${SOCKS5_APP_NAME} sample/socks5.cpp ${RES_FILES})
+add_executable(${CLIENT_APP_NAME} sample/client.cpp ${RES_FILES})
+add_executable(${SERVER_APP_NAME} sample/server.cpp ${RES_FILES})
+add_executable(${WEB_SERVER_APP_NAME} sample/webServer.cpp ${RES_FILES})
+add_executable(${WEB_CLIENT_APP_NAME} sample/webClient.cpp ${RES_FILES})
 
-    add_executable(${IP_APP_NAME} sample/ip.cpp ${RES_FILES})
-    add_executable(${DNS_APP_NAME} sample/dns.cpp ${RES_FILES})
-    add_executable(${NTP_APP_NAME} sample/ntp.cpp ${RES_FILES})
-    add_executable(${WSS_APP_NAME} sample/wss.cpp ${RES_FILES})
-    add_executable(${WSC_APP_NAME} sample/wsc2.cpp ${RES_FILES})
-    add_executable(${PING_APP_NAME} sample/ping.cpp ${RES_FILES})
-    add_executable(${TIMER_APP_NAME} sample/timer.cpp ${RES_FILES})
-    add_executable(${PROXY_APP_NAME} sample/proxy.cpp ${RES_FILES})
-    add_executable(${SOCKS5_APP_NAME} sample/socks5.cpp ${RES_FILES})
-    add_executable(${CLIENT_APP_NAME} sample/client.cpp ${RES_FILES})
-    add_executable(${SERVER_APP_NAME} sample/server.cpp ${RES_FILES})
-    add_executable(${WEB_SERVER_APP_NAME} sample/webServer.cpp ${RES_FILES})
-    add_executable(${WEB_CLIENT_APP_NAME} sample/webClient.cpp ${RES_FILES})
+# Если операционной системой не является Windows
+if(NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
+    add_executable(${CLUSTER_APP_NAME} sample/cluster.cpp ${RES_FILES})
+endif()
 
-    # Если операционной системой не является Windows
-    if(NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
-        add_executable(${CLUSTER_APP_NAME} sample/cluster.cpp ${RES_FILES})
-    endif()
+# Если операционной системой является Windows
+if(${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
+    target_link_libraries(
+        ${IP_APP_NAME}
+        ${CURRENT_LIB_NAME}
+        ${EVENT_LIBRARY}
+        ${ZLIB_LIBRARY}
+        ${BROTLI_LIBRARIES}
+        ${OPENSSL_LIBRARIES}
+        ${WINFLAGS}
+        ${AWH_IDN}
+    )
 
-    # Если операционной системой является Windows
-    if(${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
-        target_link_libraries(
-            ${IP_APP_NAME}
-            ${CURRENT_LIB_NAME}
-            ${EVENT_LIBRARY}
-            ${ZLIB_LIBRARY}
-            ${BROTLI_LIBRARIES}
-            ${OPENSSL_LIBRARIES}
-            ${WINFLAGS}
-            ${AWH_IDN}
-        )
+    target_link_libraries(
+        ${WSC_APP_NAME}
+        ${CURRENT_LIB_NAME}
+        ${EVENT_LIBRARY}
+        ${ZLIB_LIBRARY}
+        ${BROTLI_LIBRARIES}
+        ${OPENSSL_LIBRARIES}
+        ${WINFLAGS}
+        ${AWH_IDN}
+    )
 
-        target_link_libraries(
-            ${WSC_APP_NAME}
-            ${CURRENT_LIB_NAME}
-            ${EVENT_LIBRARY}
-            ${ZLIB_LIBRARY}
-            ${BROTLI_LIBRARIES}
-            ${OPENSSL_LIBRARIES}
-            ${WINFLAGS}
-            ${AWH_IDN}
-        )
+    target_link_libraries(
+        ${WSS_APP_NAME}
+        ${CURRENT_LIB_NAME}
+        ${EVENT_LIBRARY}
+        ${ZLIB_LIBRARY}
+        ${BROTLI_LIBRARIES}
+        ${OPENSSL_LIBRARIES}
+        ${WINFLAGS}
+        ${AWH_IDN}
+    )
 
-        target_link_libraries(
-            ${WSS_APP_NAME}
-            ${CURRENT_LIB_NAME}
-            ${EVENT_LIBRARY}
-            ${ZLIB_LIBRARY}
-            ${BROTLI_LIBRARIES}
-            ${OPENSSL_LIBRARIES}
-            ${WINFLAGS}
-            ${AWH_IDN}
-        )
+    target_link_libraries(
+        ${DNS_APP_NAME}
+        ${CURRENT_LIB_NAME}
+        ${EVENT_LIBRARY}
+        ${ZLIB_LIBRARY}
+        ${BROTLI_LIBRARIES}
+        ${OPENSSL_LIBRARIES}
+        ${WINFLAGS}
+        ${AWH_IDN}
+    )
 
-        target_link_libraries(
-            ${DNS_APP_NAME}
-            ${CURRENT_LIB_NAME}
-            ${EVENT_LIBRARY}
-            ${ZLIB_LIBRARY}
-            ${BROTLI_LIBRARIES}
-            ${OPENSSL_LIBRARIES}
-            ${WINFLAGS}
-            ${AWH_IDN}
-        )
+    target_link_libraries(
+        ${NTP_APP_NAME}
+        ${CURRENT_LIB_NAME}
+        ${EVENT_LIBRARY}
+        ${ZLIB_LIBRARY}
+        ${BROTLI_LIBRARIES}
+        ${OPENSSL_LIBRARIES}
+        ${WINFLAGS}
+        ${AWH_IDN}
+    )
 
-        target_link_libraries(
-            ${NTP_APP_NAME}
-            ${CURRENT_LIB_NAME}
-            ${EVENT_LIBRARY}
-            ${ZLIB_LIBRARY}
-            ${BROTLI_LIBRARIES}
-            ${OPENSSL_LIBRARIES}
-            ${WINFLAGS}
-            ${AWH_IDN}
-        )
+    target_link_libraries(
+        ${SOCKS5_APP_NAME}
+        ${CURRENT_LIB_NAME}
+        ${EVENT_LIBRARY}
+        ${ZLIB_LIBRARY}
+        ${BROTLI_LIBRARIES}
+        ${OPENSSL_LIBRARIES}
+        ${WINFLAGS}
+        ${AWH_IDN}
+    )
 
-        target_link_libraries(
-            ${SOCKS5_APP_NAME}
-            ${CURRENT_LIB_NAME}
-            ${EVENT_LIBRARY}
-            ${ZLIB_LIBRARY}
-            ${BROTLI_LIBRARIES}
-            ${OPENSSL_LIBRARIES}
-            ${WINFLAGS}
-            ${AWH_IDN}
-        )
+    target_link_libraries(
+        ${PROXY_APP_NAME}
+        ${CURRENT_LIB_NAME}
+        ${EVENT_LIBRARY}
+        ${ZLIB_LIBRARY}
+        ${BROTLI_LIBRARIES}
+        ${OPENSSL_LIBRARIES}
+        ${WINFLAGS}
+        ${AWH_IDN}
+    )
 
-        target_link_libraries(
-            ${PROXY_APP_NAME}
-            ${CURRENT_LIB_NAME}
-            ${EVENT_LIBRARY}
-            ${ZLIB_LIBRARY}
-            ${BROTLI_LIBRARIES}
-            ${OPENSSL_LIBRARIES}
-            ${WINFLAGS}
-            ${AWH_IDN}
-        )
+    target_link_libraries(
+        ${PING_APP_NAME}
+        ${CURRENT_LIB_NAME}
+        ${EVENT_LIBRARY}
+        ${ZLIB_LIBRARY}
+        ${BROTLI_LIBRARIES}
+        ${OPENSSL_LIBRARIES}
+        ${WINFLAGS}
+        ${AWH_IDN}
+    )
 
-        target_link_libraries(
-            ${PING_APP_NAME}
-            ${CURRENT_LIB_NAME}
-            ${EVENT_LIBRARY}
-            ${ZLIB_LIBRARY}
-            ${BROTLI_LIBRARIES}
-            ${OPENSSL_LIBRARIES}
-            ${WINFLAGS}
-            ${AWH_IDN}
-        )
+    target_link_libraries(
+        ${TIMER_APP_NAME}
+        ${CURRENT_LIB_NAME}
+        ${EVENT_LIBRARY}
+        ${ZLIB_LIBRARY}
+        ${BROTLI_LIBRARIES}
+        ${OPENSSL_LIBRARIES}
+        ${WINFLAGS}
+        ${AWH_IDN}
+    )
 
-        target_link_libraries(
-            ${TIMER_APP_NAME}
-            ${CURRENT_LIB_NAME}
-            ${EVENT_LIBRARY}
-            ${ZLIB_LIBRARY}
-            ${BROTLI_LIBRARIES}
-            ${OPENSSL_LIBRARIES}
-            ${WINFLAGS}
-            ${AWH_IDN}
-        )
+    target_link_libraries(
+        ${CLIENT_APP_NAME}
+        ${CURRENT_LIB_NAME}
+        ${EVENT_LIBRARY}
+        ${ZLIB_LIBRARY}
+        ${BROTLI_LIBRARIES}
+        ${OPENSSL_LIBRARIES}
+        ${WINFLAGS}
+        ${AWH_IDN}
+    )
 
-        target_link_libraries(
-            ${CLIENT_APP_NAME}
-            ${CURRENT_LIB_NAME}
-            ${EVENT_LIBRARY}
-            ${ZLIB_LIBRARY}
-            ${BROTLI_LIBRARIES}
-            ${OPENSSL_LIBRARIES}
-            ${WINFLAGS}
-            ${AWH_IDN}
-        )
+    target_link_libraries(
+        ${SERVER_APP_NAME}
+        ${CURRENT_LIB_NAME}
+        ${EVENT_LIBRARY}
+        ${ZLIB_LIBRARY}
+        ${BROTLI_LIBRARIES}
+        ${OPENSSL_LIBRARIES}
+        ${WINFLAGS}
+        ${AWH_IDN}
+    )
 
-        target_link_libraries(
-            ${SERVER_APP_NAME}
-            ${CURRENT_LIB_NAME}
-            ${EVENT_LIBRARY}
-            ${ZLIB_LIBRARY}
-            ${BROTLI_LIBRARIES}
-            ${OPENSSL_LIBRARIES}
-            ${WINFLAGS}
-            ${AWH_IDN}
-        )
+    target_link_libraries(
+        ${WEB_CLIENT_APP_NAME}
+        ${CURRENT_LIB_NAME}
+        ${EVENT_LIBRARY}
+        ${ZLIB_LIBRARY}
+        ${BROTLI_LIBRARIES}
+        ${OPENSSL_LIBRARIES}
+        ${WINFLAGS}
+        ${AWH_IDN}
+    )
 
-        target_link_libraries(
-            ${WEB_CLIENT_APP_NAME}
-            ${CURRENT_LIB_NAME}
-            ${EVENT_LIBRARY}
-            ${ZLIB_LIBRARY}
-            ${BROTLI_LIBRARIES}
-            ${OPENSSL_LIBRARIES}
-            ${WINFLAGS}
-            ${AWH_IDN}
-        )
+    target_link_libraries(
+        ${WEB_SERVER_APP_NAME}
+        ${CURRENT_LIB_NAME}
+        ${EVENT_LIBRARY}
+        ${ZLIB_LIBRARY}
+        ${BROTLI_LIBRARIES}
+        ${OPENSSL_LIBRARIES}
+        ${WINFLAGS}
+        ${AWH_IDN}
+    )
 
-        target_link_libraries(
-            ${WEB_SERVER_APP_NAME}
-            ${CURRENT_LIB_NAME}
-            ${EVENT_LIBRARY}
-            ${ZLIB_LIBRARY}
-            ${BROTLI_LIBRARIES}
-            ${OPENSSL_LIBRARIES}
-            ${WINFLAGS}
-            ${AWH_IDN}
-        )
+    # Сборка примеров с поддержкой модуля AWH_IDN
+elseif(CMAKE_BUILD_IDN)
+    target_link_libraries(
+        ${IP_APP_NAME}
+        ${CURRENT_LIB_NAME}
+        ${EVENT_LIBRARY}
+        ${ZLIB_LIBRARY}
+        ${PCRE_LIBRARY}
+        ${ICONV_LIBRARY}
+        ${IDN2_LIBRARY}
+        ${BROTLI_LIBRARIES}
+        ${OPENSSL_LIBRARIES}
+        ${AWH_IDN}
+    )
 
-     # Сборка примеров с поддержкой модуля AWH_IDN
-    elseif(CMAKE_BUILD_IDN)
-        target_link_libraries(
-            ${IP_APP_NAME}
-            ${CURRENT_LIB_NAME}
-            ${EVENT_LIBRARY}
-            ${ZLIB_LIBRARY}
-            ${PCRE_LIBRARY}
-            ${ICONV_LIBRARY}
-            ${IDN2_LIBRARY}
-            ${BROTLI_LIBRARIES}
-            ${OPENSSL_LIBRARIES}
-            ${AWH_IDN}
-        )
+    target_link_libraries(
+        ${WSC_APP_NAME}
+        ${CURRENT_LIB_NAME}
+        ${EVENT_LIBRARY}
+        ${ZLIB_LIBRARY}
+        ${PCRE_LIBRARY}
+        ${ICONV_LIBRARY}
+        ${IDN2_LIBRARY}
+        ${BROTLI_LIBRARIES}
+        ${OPENSSL_LIBRARIES}
+        ${AWH_IDN}
+    )
 
-        target_link_libraries(
-            ${WSC_APP_NAME}
-            ${CURRENT_LIB_NAME}
-            ${EVENT_LIBRARY}
-            ${ZLIB_LIBRARY}
-            ${PCRE_LIBRARY}
-            ${ICONV_LIBRARY}
-            ${IDN2_LIBRARY}
-            ${BROTLI_LIBRARIES}
-            ${OPENSSL_LIBRARIES}
-            ${AWH_IDN}
-        )
+    target_link_libraries(
+        ${WSS_APP_NAME}
+        ${CURRENT_LIB_NAME}
+        ${EVENT_LIBRARY}
+        ${ZLIB_LIBRARY}
+        ${PCRE_LIBRARY}
+        ${ICONV_LIBRARY}
+        ${IDN2_LIBRARY}
+        ${BROTLI_LIBRARIES}
+        ${OPENSSL_LIBRARIES}
+        ${AWH_IDN}
+    )
 
-        target_link_libraries(
-            ${WSS_APP_NAME}
-            ${CURRENT_LIB_NAME}
-            ${EVENT_LIBRARY}
-            ${ZLIB_LIBRARY}
-            ${PCRE_LIBRARY}
-            ${ICONV_LIBRARY}
-            ${IDN2_LIBRARY}
-            ${BROTLI_LIBRARIES}
-            ${OPENSSL_LIBRARIES}
-            ${AWH_IDN}
-        )
+    target_link_libraries(
+        ${DNS_APP_NAME}
+        ${CURRENT_LIB_NAME}
+        ${EVENT_LIBRARY}
+        ${ZLIB_LIBRARY}
+        ${PCRE_LIBRARY}
+        ${ICONV_LIBRARY}
+        ${IDN2_LIBRARY}
+        ${BROTLI_LIBRARIES}
+        ${OPENSSL_LIBRARIES}
+        ${AWH_IDN}
+    )
 
-        target_link_libraries(
-            ${DNS_APP_NAME}
-            ${CURRENT_LIB_NAME}
-            ${EVENT_LIBRARY}
-            ${ZLIB_LIBRARY}
-            ${PCRE_LIBRARY}
-            ${ICONV_LIBRARY}
-            ${IDN2_LIBRARY}
-            ${BROTLI_LIBRARIES}
-            ${OPENSSL_LIBRARIES}
-            ${AWH_IDN}
-        )
+    target_link_libraries(
+        ${NTP_APP_NAME}
+        ${CURRENT_LIB_NAME}
+        ${EVENT_LIBRARY}
+        ${ZLIB_LIBRARY}
+        ${PCRE_LIBRARY}
+        ${ICONV_LIBRARY}
+        ${IDN2_LIBRARY}
+        ${BROTLI_LIBRARIES}
+        ${OPENSSL_LIBRARIES}
+        ${AWH_IDN}
+    )
 
-        target_link_libraries(
-            ${NTP_APP_NAME}
-            ${CURRENT_LIB_NAME}
-            ${EVENT_LIBRARY}
-            ${ZLIB_LIBRARY}
-            ${PCRE_LIBRARY}
-            ${ICONV_LIBRARY}
-            ${IDN2_LIBRARY}
-            ${BROTLI_LIBRARIES}
-            ${OPENSSL_LIBRARIES}
-            ${AWH_IDN}
-        )
+    target_link_libraries(
+        ${SOCKS5_APP_NAME}
+        ${CURRENT_LIB_NAME}
+        ${EVENT_LIBRARY}
+        ${ZLIB_LIBRARY}
+        ${PCRE_LIBRARY}
+        ${ICONV_LIBRARY}
+        ${IDN2_LIBRARY}
+        ${BROTLI_LIBRARIES}
+        ${OPENSSL_LIBRARIES}
+        ${AWH_IDN}
+    )
 
-        target_link_libraries(
-            ${SOCKS5_APP_NAME}
-            ${CURRENT_LIB_NAME}
-            ${EVENT_LIBRARY}
-            ${ZLIB_LIBRARY}
-            ${PCRE_LIBRARY}
-            ${ICONV_LIBRARY}
-            ${IDN2_LIBRARY}
-            ${BROTLI_LIBRARIES}
-            ${OPENSSL_LIBRARIES}
-            ${AWH_IDN}
-        )
+    target_link_libraries(
+        ${PROXY_APP_NAME}
+        ${CURRENT_LIB_NAME}
+        ${EVENT_LIBRARY}
+        ${ZLIB_LIBRARY}
+        ${PCRE_LIBRARY}
+        ${ICONV_LIBRARY}
+        ${IDN2_LIBRARY}
+        ${BROTLI_LIBRARIES}
+        ${OPENSSL_LIBRARIES}
+        ${AWH_IDN}
+    )
 
-        target_link_libraries(
-            ${PROXY_APP_NAME}
-            ${CURRENT_LIB_NAME}
-            ${EVENT_LIBRARY}
-            ${ZLIB_LIBRARY}
-            ${PCRE_LIBRARY}
-            ${ICONV_LIBRARY}
-            ${IDN2_LIBRARY}
-            ${BROTLI_LIBRARIES}
-            ${OPENSSL_LIBRARIES}
-            ${AWH_IDN}
-        )
+    target_link_libraries(
+        ${PING_APP_NAME}
+        ${CURRENT_LIB_NAME}
+        ${EVENT_LIBRARY}
+        ${ZLIB_LIBRARY}
+        ${PCRE_LIBRARY}
+        ${ICONV_LIBRARY}
+        ${IDN2_LIBRARY}
+        ${BROTLI_LIBRARIES}
+        ${OPENSSL_LIBRARIES}
+        ${AWH_IDN}
+    )
 
-        target_link_libraries(
-            ${PING_APP_NAME}
-            ${CURRENT_LIB_NAME}
-            ${EVENT_LIBRARY}
-            ${ZLIB_LIBRARY}
-            ${PCRE_LIBRARY}
-            ${ICONV_LIBRARY}
-            ${IDN2_LIBRARY}
-            ${BROTLI_LIBRARIES}
-            ${OPENSSL_LIBRARIES}
-            ${AWH_IDN}
-        )
+    target_link_libraries(
+        ${TIMER_APP_NAME}
+        ${CURRENT_LIB_NAME}
+        ${EVENT_LIBRARY}
+        ${ZLIB_LIBRARY}
+        ${PCRE_LIBRARY}
+        ${ICONV_LIBRARY}
+        ${IDN2_LIBRARY}
+        ${BROTLI_LIBRARIES}
+        ${OPENSSL_LIBRARIES}
+        ${AWH_IDN}
+    )
 
-        target_link_libraries(
-            ${TIMER_APP_NAME}
-            ${CURRENT_LIB_NAME}
-            ${EVENT_LIBRARY}
-            ${ZLIB_LIBRARY}
-            ${PCRE_LIBRARY}
-            ${ICONV_LIBRARY}
-            ${IDN2_LIBRARY}
-            ${BROTLI_LIBRARIES}
-            ${OPENSSL_LIBRARIES}
-            ${AWH_IDN}
-        )
+    target_link_libraries(
+        ${CLIENT_APP_NAME}
+        ${CURRENT_LIB_NAME}
+        ${EVENT_LIBRARY}
+        ${ZLIB_LIBRARY}
+        ${PCRE_LIBRARY}
+        ${ICONV_LIBRARY}
+        ${IDN2_LIBRARY}
+        ${BROTLI_LIBRARIES}
+        ${OPENSSL_LIBRARIES}
+        ${AWH_IDN}
+    )
 
-        target_link_libraries(
-            ${CLIENT_APP_NAME}
-            ${CURRENT_LIB_NAME}
-            ${EVENT_LIBRARY}
-            ${ZLIB_LIBRARY}
-            ${PCRE_LIBRARY}
-            ${ICONV_LIBRARY}
-            ${IDN2_LIBRARY}
-            ${BROTLI_LIBRARIES}
-            ${OPENSSL_LIBRARIES}
-            ${AWH_IDN}
-        )
+    target_link_libraries(
+        ${SERVER_APP_NAME}
+        ${CURRENT_LIB_NAME}
+        ${EVENT_LIBRARY}
+        ${ZLIB_LIBRARY}
+        ${PCRE_LIBRARY}
+        ${ICONV_LIBRARY}
+        ${IDN2_LIBRARY}
+        ${BROTLI_LIBRARIES}
+        ${OPENSSL_LIBRARIES}
+        ${AWH_IDN}
+    )
 
-        target_link_libraries(
-            ${SERVER_APP_NAME}
-            ${CURRENT_LIB_NAME}
-            ${EVENT_LIBRARY}
-            ${ZLIB_LIBRARY}
-            ${PCRE_LIBRARY}
-            ${ICONV_LIBRARY}
-            ${IDN2_LIBRARY}
-            ${BROTLI_LIBRARIES}
-            ${OPENSSL_LIBRARIES}
-            ${AWH_IDN}
-        )
+    target_link_libraries(
+        ${CLUSTER_APP_NAME}
+        ${CURRENT_LIB_NAME}
+        ${EVENT_LIBRARY}
+        ${ZLIB_LIBRARY}
+        ${PCRE_LIBRARY}
+        ${ICONV_LIBRARY}
+        ${IDN2_LIBRARY}
+        ${BROTLI_LIBRARIES}
+        ${OPENSSL_LIBRARIES}
+        ${AWH_IDN}
+    )
 
-        target_link_libraries(
-            ${CLUSTER_APP_NAME}
-            ${CURRENT_LIB_NAME}
-            ${EVENT_LIBRARY}
-            ${ZLIB_LIBRARY}
-            ${PCRE_LIBRARY}
-            ${ICONV_LIBRARY}
-            ${IDN2_LIBRARY}
-            ${BROTLI_LIBRARIES}
-            ${OPENSSL_LIBRARIES}
-            ${AWH_IDN}
-        )
+    target_link_libraries(
+        ${WEB_CLIENT_APP_NAME}
+        ${CURRENT_LIB_NAME}
+        ${EVENT_LIBRARY}
+        ${ZLIB_LIBRARY}
+        ${PCRE_LIBRARY}
+        ${ICONV_LIBRARY}
+        ${IDN2_LIBRARY}
+        ${BROTLI_LIBRARIES}
+        ${OPENSSL_LIBRARIES}
+        ${AWH_IDN}
+    )
 
-        target_link_libraries(
-            ${WEB_CLIENT_APP_NAME}
-            ${CURRENT_LIB_NAME}
-            ${EVENT_LIBRARY}
-            ${ZLIB_LIBRARY}
-            ${PCRE_LIBRARY}
-            ${ICONV_LIBRARY}
-            ${IDN2_LIBRARY}
-            ${BROTLI_LIBRARIES}
-            ${OPENSSL_LIBRARIES}
-            ${AWH_IDN}
-        )
+    target_link_libraries(
+        ${WEB_SERVER_APP_NAME}
+        ${CURRENT_LIB_NAME}
+        ${EVENT_LIBRARY}
+        ${ZLIB_LIBRARY}
+        ${PCRE_LIBRARY}
+        ${ICONV_LIBRARY}
+        ${IDN2_LIBRARY}
+        ${BROTLI_LIBRARIES}
+        ${OPENSSL_LIBRARIES}
+        ${AWH_IDN}
+    )
+# Сборка примеров в обычном виде
+else()
+    target_link_libraries(
+        ${IP_APP_NAME}
+        ${CURRENT_LIB_NAME}
+        ${EVENT_LIBRARY}
+        ${ZLIB_LIBRARY}
+        ${PCRE_LIBRARY}
+        ${BROTLI_LIBRARIES}
+        ${OPENSSL_LIBRARIES}
+    )
 
-        target_link_libraries(
-            ${WEB_SERVER_APP_NAME}
-            ${CURRENT_LIB_NAME}
-            ${EVENT_LIBRARY}
-            ${ZLIB_LIBRARY}
-            ${PCRE_LIBRARY}
-            ${ICONV_LIBRARY}
-            ${IDN2_LIBRARY}
-            ${BROTLI_LIBRARIES}
-            ${OPENSSL_LIBRARIES}
-            ${AWH_IDN}
-        )
-    # Сборка примеров в обычном виде
-    else()
-        target_link_libraries(
-            ${IP_APP_NAME}
-            ${CURRENT_LIB_NAME}
-            ${EVENT_LIBRARY}
-            ${ZLIB_LIBRARY}
-            ${PCRE_LIBRARY}
-            ${BROTLI_LIBRARIES}
-            ${OPENSSL_LIBRARIES}
-        )
+    target_link_libraries(
+        ${WSC_APP_NAME}
+        ${CURRENT_LIB_NAME}
+        ${EVENT_LIBRARY}
+        ${ZLIB_LIBRARY}
+        ${PCRE_LIBRARY}
+        ${BROTLI_LIBRARIES}
+        ${OPENSSL_LIBRARIES}
+    )
 
-        target_link_libraries(
-            ${WSC_APP_NAME}
-            ${CURRENT_LIB_NAME}
-            ${EVENT_LIBRARY}
-            ${ZLIB_LIBRARY}
-            ${PCRE_LIBRARY}
-            ${BROTLI_LIBRARIES}
-            ${OPENSSL_LIBRARIES}
-        )
+    target_link_libraries(
+        ${WSS_APP_NAME}
+        ${CURRENT_LIB_NAME}
+        ${EVENT_LIBRARY}
+        ${ZLIB_LIBRARY}
+        ${PCRE_LIBRARY}
+        ${BROTLI_LIBRARIES}
+        ${OPENSSL_LIBRARIES}
+    )
 
-        target_link_libraries(
-            ${WSS_APP_NAME}
-            ${CURRENT_LIB_NAME}
-            ${EVENT_LIBRARY}
-            ${ZLIB_LIBRARY}
-            ${PCRE_LIBRARY}
-            ${BROTLI_LIBRARIES}
-            ${OPENSSL_LIBRARIES}
-        )
+    target_link_libraries(
+        ${DNS_APP_NAME}
+        ${CURRENT_LIB_NAME}
+        ${EVENT_LIBRARY}
+        ${ZLIB_LIBRARY}
+        ${PCRE_LIBRARY}
+        ${BROTLI_LIBRARIES}
+        ${OPENSSL_LIBRARIES}
+    )
 
-        target_link_libraries(
-            ${DNS_APP_NAME}
-            ${CURRENT_LIB_NAME}
-            ${EVENT_LIBRARY}
-            ${ZLIB_LIBRARY}
-            ${PCRE_LIBRARY}
-            ${BROTLI_LIBRARIES}
-            ${OPENSSL_LIBRARIES}
-        )
+    target_link_libraries(
+        ${NTP_APP_NAME}
+        ${CURRENT_LIB_NAME}
+        ${EVENT_LIBRARY}
+        ${ZLIB_LIBRARY}
+        ${PCRE_LIBRARY}
+        ${BROTLI_LIBRARIES}
+        ${OPENSSL_LIBRARIES}
+    )
 
-        target_link_libraries(
-            ${NTP_APP_NAME}
-            ${CURRENT_LIB_NAME}
-            ${EVENT_LIBRARY}
-            ${ZLIB_LIBRARY}
-            ${PCRE_LIBRARY}
-            ${BROTLI_LIBRARIES}
-            ${OPENSSL_LIBRARIES}
-        )
+    target_link_libraries(
+        ${SOCKS5_APP_NAME}
+        ${CURRENT_LIB_NAME}
+        ${EVENT_LIBRARY}
+        ${ZLIB_LIBRARY}
+        ${PCRE_LIBRARY}
+        ${BROTLI_LIBRARIES}
+        ${OPENSSL_LIBRARIES}
+    )
 
-        target_link_libraries(
-            ${SOCKS5_APP_NAME}
-            ${CURRENT_LIB_NAME}
-            ${EVENT_LIBRARY}
-            ${ZLIB_LIBRARY}
-            ${PCRE_LIBRARY}
-            ${BROTLI_LIBRARIES}
-            ${OPENSSL_LIBRARIES}
-        )
+    target_link_libraries(
+        ${PROXY_APP_NAME}
+        ${CURRENT_LIB_NAME}
+        ${EVENT_LIBRARY}
+        ${ZLIB_LIBRARY}
+        ${PCRE_LIBRARY}
+        ${BROTLI_LIBRARIES}
+        ${OPENSSL_LIBRARIES}
+    )
 
-        target_link_libraries(
-            ${PROXY_APP_NAME}
-            ${CURRENT_LIB_NAME}
-            ${EVENT_LIBRARY}
-            ${ZLIB_LIBRARY}
-            ${PCRE_LIBRARY}
-            ${BROTLI_LIBRARIES}
-            ${OPENSSL_LIBRARIES}
-        )
+    target_link_libraries(
+        ${PING_APP_NAME}
+        ${CURRENT_LIB_NAME}
+        ${EVENT_LIBRARY}
+        ${ZLIB_LIBRARY}
+        ${PCRE_LIBRARY}
+        ${BROTLI_LIBRARIES}
+        ${OPENSSL_LIBRARIES}
+    )
 
-        target_link_libraries(
-            ${PING_APP_NAME}
-            ${CURRENT_LIB_NAME}
-            ${EVENT_LIBRARY}
-            ${ZLIB_LIBRARY}
-            ${PCRE_LIBRARY}
-            ${BROTLI_LIBRARIES}
-            ${OPENSSL_LIBRARIES}
-        )
+    target_link_libraries(
+        ${TIMER_APP_NAME}
+        ${CURRENT_LIB_NAME}
+        ${EVENT_LIBRARY}
+        ${ZLIB_LIBRARY}
+        ${PCRE_LIBRARY}
+        ${BROTLI_LIBRARIES}
+        ${OPENSSL_LIBRARIES}
+    )
 
-        target_link_libraries(
-            ${TIMER_APP_NAME}
-            ${CURRENT_LIB_NAME}
-            ${EVENT_LIBRARY}
-            ${ZLIB_LIBRARY}
-            ${PCRE_LIBRARY}
-            ${BROTLI_LIBRARIES}
-            ${OPENSSL_LIBRARIES}
-        )
+    target_link_libraries(
+        ${CLIENT_APP_NAME}
+        ${CURRENT_LIB_NAME}
+        ${EVENT_LIBRARY}
+        ${ZLIB_LIBRARY}
+        ${PCRE_LIBRARY}
+        ${BROTLI_LIBRARIES}
+        ${OPENSSL_LIBRARIES}
+    )
 
-        target_link_libraries(
-            ${CLIENT_APP_NAME}
-            ${CURRENT_LIB_NAME}
-            ${EVENT_LIBRARY}
-            ${ZLIB_LIBRARY}
-            ${PCRE_LIBRARY}
-            ${BROTLI_LIBRARIES}
-            ${OPENSSL_LIBRARIES}
-        )
+    target_link_libraries(
+        ${SERVER_APP_NAME}
+        ${CURRENT_LIB_NAME}
+        ${EVENT_LIBRARY}
+        ${ZLIB_LIBRARY}
+        ${PCRE_LIBRARY}
+        ${BROTLI_LIBRARIES}
+        ${OPENSSL_LIBRARIES}
+    )
 
-        target_link_libraries(
-            ${SERVER_APP_NAME}
-            ${CURRENT_LIB_NAME}
-            ${EVENT_LIBRARY}
-            ${ZLIB_LIBRARY}
-            ${PCRE_LIBRARY}
-            ${BROTLI_LIBRARIES}
-            ${OPENSSL_LIBRARIES}
-        )
+    target_link_libraries(
+        ${CLUSTER_APP_NAME}
+        ${CURRENT_LIB_NAME}
+        ${EVENT_LIBRARY}
+        ${ZLIB_LIBRARY}
+        ${PCRE_LIBRARY}
+        ${BROTLI_LIBRARIES}
+        ${OPENSSL_LIBRARIES}
+    )
 
-        target_link_libraries(
-            ${CLUSTER_APP_NAME}
-            ${CURRENT_LIB_NAME}
-            ${EVENT_LIBRARY}
-            ${ZLIB_LIBRARY}
-            ${PCRE_LIBRARY}
-            ${BROTLI_LIBRARIES}
-            ${OPENSSL_LIBRARIES}
-        )
+    target_link_libraries(
+        ${WEB_CLIENT_APP_NAME}
+        ${CURRENT_LIB_NAME}
+        ${EVENT_LIBRARY}
+        ${ZLIB_LIBRARY}
+        ${PCRE_LIBRARY}
+        ${BROTLI_LIBRARIES}
+        ${OPENSSL_LIBRARIES}
+    )
 
-        target_link_libraries(
-            ${WEB_CLIENT_APP_NAME}
-            ${CURRENT_LIB_NAME}
-            ${EVENT_LIBRARY}
-            ${ZLIB_LIBRARY}
-            ${PCRE_LIBRARY}
-            ${BROTLI_LIBRARIES}
-            ${OPENSSL_LIBRARIES}
-        )
-
-        target_link_libraries(
-            ${WEB_SERVER_APP_NAME}
-            ${CURRENT_LIB_NAME}
-            ${EVENT_LIBRARY}
-            ${ZLIB_LIBRARY}
-            ${PCRE_LIBRARY}
-            ${BROTLI_LIBRARIES}
-            ${OPENSSL_LIBRARIES}
-        )
-    endif()
+    target_link_libraries(
+        ${WEB_SERVER_APP_NAME}
+        ${CURRENT_LIB_NAME}
+        ${EVENT_LIBRARY}
+        ${ZLIB_LIBRARY}
+        ${PCRE_LIBRARY}
+        ${BROTLI_LIBRARIES}
+        ${OPENSSL_LIBRARIES}
+    )
 endif()
 
 # Активация формирования дампа ядра в реже отладки под MacOS X
@@ -954,6 +951,32 @@ if(CMAKE_BUILD_TYPE MATCHES Debug)
             VERBATIM
         )
 
+    endif()
+    # Сборка модуля CMAKE_ENABLED_PVS
+    if(CMAKE_ENABLED_PVS)
+        include(FetchContent)
+        FetchContent_Declare(
+            PVS_CMakeModule
+            GIT_REPOSITORY "https://github.com/viva64/pvs-studio-cmake-module.git"
+            GIT_TAG        "master" 
+        )
+        FetchContent_MakeAvailable(PVS_CMakeModule)
+        include("${pvs_cmakemodule_SOURCE_DIR}/PVS-Studio.cmake")
+        # Выполняем анализ собранных приложений
+        pvs_studio_add_target(TARGET ${IP_APP_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${IP_APP_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
+        pvs_studio_add_target(TARGET ${WSC_APP_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${WSC_APP_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
+        pvs_studio_add_target(TARGET ${WSS_APP_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${WSS_APP_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
+        pvs_studio_add_target(TARGET ${DNS_APP_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${DNS_APP_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
+        pvs_studio_add_target(TARGET ${NTP_APP_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${NTP_APP_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
+        pvs_studio_add_target(TARGET ${PING_APP_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${PING_APP_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
+        pvs_studio_add_target(TARGET ${TIMER_APP_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${TIMER_APP_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
+        pvs_studio_add_target(TARGET ${PROXY_APP_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${PROXY_APP_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
+        pvs_studio_add_target(TARGET ${SOCKS5_APP_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${SOCKS5_APP_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
+        pvs_studio_add_target(TARGET ${CLIENT_APP_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${CLIENT_APP_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
+        pvs_studio_add_target(TARGET ${SERVER_APP_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${SERVER_APP_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
+        pvs_studio_add_target(TARGET ${WEB_CLIENT_APP_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${WEB_CLIENT_APP_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
+        pvs_studio_add_target(TARGET ${WEB_SERVER_APP_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${WEB_SERVER_APP_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
+        pvs_studio_add_target(TARGET ${CLUSTER_APP_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${CLUSTER_APP_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
     endif()
 endif()
 

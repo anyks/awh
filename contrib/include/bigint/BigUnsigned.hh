@@ -359,6 +359,8 @@ void BigUnsigned::initFromPrimitive(X x) {
 		; // NumberlikeArray already initialized us to zero.
 	else {
 		// Create a single block.  blk is NULL; no need to delete it.
+		if(blk != NULL)
+			delete [] blk;
 		cap = 1;
 		blk = new Blk[1];
 		len = 1;

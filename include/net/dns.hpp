@@ -121,7 +121,7 @@ namespace awh {
 				/**
 				 * Server Конструктор
 				 */
-				Server() noexcept : port(53) {}
+				Server() noexcept : port(53), ip({0}) {}
 			};
 			/**
 			 * Шаблон формата данных DNS-кэша
@@ -139,7 +139,7 @@ namespace awh {
 				/**
 				 * Cache Конструктор
 				 */
-				Cache() noexcept : create(0), localhost(false), forbidden(false) {}
+				Cache() noexcept : create(0), localhost(false), forbidden(false), ip({0}) {}
 			};
 			/**
 			 * Шаблон формата данных DNS-кэша
@@ -167,7 +167,7 @@ namespace awh {
 				/**
 				 * Peer Конструктор
 				 */
-				Peer() noexcept : size(0) {}
+				Peer() noexcept : size(0), client({}), server({}) {}
 			} peer_t;
 			/**
 			 * Header Структура заголовка DNS

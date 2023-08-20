@@ -165,7 +165,7 @@ namespace awh {
 					/**
 					 * Jack Конструктор
 					 */
-					Jack() noexcept : end(false), pid(0), date(0) {}
+					Jack() noexcept : end(false), pid(0), mfds({0,0}), cfds({0,0}), date(0) {}
 				} jack_t;
 				/**
 				 * Message Структура межпроцессного сообщения
@@ -179,7 +179,7 @@ namespace awh {
 					/**
 					 * Message Конструктор
 					 */
-					Message() noexcept : end(false), quit(false), pid(0), size(0) {}
+					Message() noexcept : end(false), quit(false), pid(0), size(0), payload({0}) {}
 				} __attribute__((packed)) mess_t;
 			/**
 			 * Если операционной системой является Windows

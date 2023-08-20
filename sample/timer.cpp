@@ -75,7 +75,7 @@ class Executor {
 					// Замеряем время начала работы для таймера
 					this->ts = chrono::system_clock::now();
 					// Замеряем время начала работы для интервала времени
-					this->is = chrono::system_clock::now();
+					this->is = this->ts;
 					// Выводим информацию в лог
 					this->_log->print("%s", log_t::flag_t::INFO, "Start timer");
 					// Устанавливаем задержку времени на 10 секунд

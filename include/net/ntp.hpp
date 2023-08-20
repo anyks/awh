@@ -123,7 +123,7 @@ namespace awh {
 				/**
 				 * Server Конструктор
 				 */
-				Server() noexcept : port(123) {}
+				Server() noexcept : port(123), ip({0}) {}
 			};
 			/**
 			 * Шаблон формата данных NTP-сервера
@@ -144,7 +144,7 @@ namespace awh {
 				/**
 				 * Peer Конструктор
 				 */
-				Peer() noexcept : size(0) {}
+				Peer() noexcept : size(0), client({}), server({}) {}
 			} peer_t;
 			/**
 			 * Packet Структура пакетов NTP-запроса

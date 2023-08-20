@@ -127,7 +127,7 @@ namespace awh {
 			 * @param log  объект для работы с логами
 			 */
 			Event(const type_t type, const log_t * log) noexcept :
-			 _mode(false), _type(type), _delay(0),
+			 _mode(false), _type(type), _ev({0}), _tv({0}), _delay(0),
 			 _events(0), _fd(0), _fn(nullptr), _base(nullptr), _log(log) {}
 			/**
 			 * ~Event Деструктор

@@ -186,16 +186,27 @@ namespace awh {
 			void set(const string & name, std::function <A> fn) noexcept {
 				// Если данные переданы
 				if(!name.empty() && (fn != nullptr)){
-					// Получаем идентификатор обратного вызова
-					const uint64_t idw = this->_idw.id(name);
-					// Выполняем поиск существующей функции обратного вызова
-					auto it = this->_callbacks.find(idw);
-					// Если функция такая уже существует
-					if(it != this->_callbacks.end())
-						// Устанавливаем новую функцию обратного вызова
-						it->second = std::unique_ptr <Function> (new BasicFunction <A> (fn));
-					// Если функция ещё не существует, создаём новую функцию
-					else this->_callbacks.emplace(idw, std::unique_ptr <Function> (new BasicFunction <A> (fn)));
+					/**
+					 * Выполняем отлов ошибок
+					 */
+					try {
+						// Получаем идентификатор обратного вызова
+						const uint64_t idw = this->_idw.id(name);
+						// Выполняем поиск существующей функции обратного вызова
+						auto it = this->_callbacks.find(idw);
+						// Если функция такая уже существует
+						if(it != this->_callbacks.end())
+							// Устанавливаем новую функцию обратного вызова
+							it->second = std::unique_ptr <Function> (new BasicFunction <A> (fn));
+						// Если функция ещё не существует, создаём новую функцию
+						else this->_callbacks.emplace(idw, std::unique_ptr <Function> (new BasicFunction <A> (fn)));
+					/**
+					 * Если возникает ошибка
+					 */
+					} catch(const bad_alloc & error) {
+						// Выводим сообщение об ошибке
+						this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+					}
 				}
 			}
 			/**
@@ -211,14 +222,25 @@ namespace awh {
 			void set(const uint64_t idw, std::function <A> fn) noexcept {
 				// Если данные переданы
 				if((idw > 0) && (fn != nullptr)){
-					// Выполняем поиск существующей функции обратного вызова
-					auto it = this->_callbacks.find(idw);
-					// Если функция такая уже существует
-					if(it != this->_callbacks.end())
-						// Устанавливаем новую функцию обратного вызова
-						it->second = std::unique_ptr <Function> (new BasicFunction <A> (fn));
-					// Если функция ещё не существует, создаём новую функцию
-					else this->_callbacks.emplace(idw, std::unique_ptr <Function> (new BasicFunction <A> (fn)));
+					/**
+					 * Выполняем отлов ошибок
+					 */
+					try {
+						// Выполняем поиск существующей функции обратного вызова
+						auto it = this->_callbacks.find(idw);
+						// Если функция такая уже существует
+						if(it != this->_callbacks.end())
+							// Устанавливаем новую функцию обратного вызова
+							it->second = std::unique_ptr <Function> (new BasicFunction <A> (fn));
+						// Если функция ещё не существует, создаём новую функцию
+						else this->_callbacks.emplace(idw, std::unique_ptr <Function> (new BasicFunction <A> (fn)));
+					/**
+					 * Если возникает ошибка
+					 */
+					} catch(const bad_alloc & error) {
+						// Выводим сообщение об ошибке
+						this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+					}
 				}
 			}
 			/**
@@ -236,26 +258,37 @@ namespace awh {
 			void set(const string & name, std::function <A> fn, Args... args) noexcept {
 				// Если данные переданы
 				if(!name.empty() && (fn != nullptr)){
-					// Получаем идентификатор обратного вызова
-					const uint64_t idw = this->_idw.id(name);
-					// Создаём объект параметров функции
-					std::tuple <Args...> pm = std::make_tuple(args...);
-					// Выполняем поиск существующей функции обратного вызова
-					auto it = this->_callbacks.find(idw);
-					// Если функция такая уже существует
-					if(it != this->_callbacks.end())
-						// Устанавливаем новую функцию обратного вызова
-						it->second = std::unique_ptr <Function> (new BasicFunction <A> (fn));
-					// Если функция ещё не существует, создаём новую функцию
-					else this->_callbacks.emplace(idw, std::unique_ptr <Function> (new BasicFunction <A> (fn)));
-					// Выполняем поиск существующих параметров функции обратного вызова
-					auto jt = this->_params.find(idw);
-					// Если параметры уже существуют
-					if(jt != this->_params.end())
-						// Устанавливаем новый список параметров
-						jt->second = std::unique_ptr <Parameters> (new BasicParameters <Args...> (std::forward <std::tuple <Args...>> (pm)));
-					// Если параметры ещё не существуют, создаём новую функцию
-					else this->_params.emplace(idw, std::unique_ptr <Parameters> (new BasicParameters <Args...> (std::forward <std::tuple <Args...>> (pm))));
+					/**
+					 * Выполняем отлов ошибок
+					 */
+					try {
+						// Получаем идентификатор обратного вызова
+						const uint64_t idw = this->_idw.id(name);
+						// Создаём объект параметров функции
+						std::tuple <Args...> pm = std::make_tuple(args...);
+						// Выполняем поиск существующей функции обратного вызова
+						auto it = this->_callbacks.find(idw);
+						// Если функция такая уже существует
+						if(it != this->_callbacks.end())
+							// Устанавливаем новую функцию обратного вызова
+							it->second = std::unique_ptr <Function> (new BasicFunction <A> (fn));
+						// Если функция ещё не существует, создаём новую функцию
+						else this->_callbacks.emplace(idw, std::unique_ptr <Function> (new BasicFunction <A> (fn)));
+						// Выполняем поиск существующих параметров функции обратного вызова
+						auto jt = this->_params.find(idw);
+						// Если параметры уже существуют
+						if(jt != this->_params.end())
+							// Устанавливаем новый список параметров
+							jt->second = std::unique_ptr <Parameters> (new BasicParameters <Args...> (std::forward <std::tuple <Args...>> (pm)));
+						// Если параметры ещё не существуют, создаём новую функцию
+						else this->_params.emplace(idw, std::unique_ptr <Parameters> (new BasicParameters <Args...> (std::forward <std::tuple <Args...>> (pm))));
+					/**
+					 * Если возникает ошибка
+					 */
+					} catch(const bad_alloc & error) {
+						// Выводим сообщение об ошибке
+						this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+					}
 				}
 			}
 			/**
@@ -273,24 +306,35 @@ namespace awh {
 			void set(const uint64_t idw, std::function <A> fn, Args... args) noexcept {
 				// Если данные переданы
 				if((idw > 0) && (fn != nullptr)){
-					// Создаём объект параметров функции
-					std::tuple <Args...> pm = std::make_tuple(args...);
-					// Выполняем поиск существующей функции обратного вызова
-					auto it = this->_callbacks.find(idw);
-					// Если функция такая уже существует
-					if(it != this->_callbacks.end())
-						// Устанавливаем новую функцию обратного вызова
-						it->second = std::unique_ptr <Function> (new BasicFunction <A> (fn));
-					// Если функция ещё не существует, создаём новую функцию
-					else this->_callbacks.emplace(idw, std::unique_ptr <Function> (new BasicFunction <A> (fn)));
-					// Выполняем поиск существующих параметров функции обратного вызова
-					auto jt = this->_params.find(idw);
-					// Если параметры уже существуют
-					if(jt != this->_params.end())
-						// Устанавливаем новый список параметров
-						jt->second = std::unique_ptr <Parameters> (new BasicParameters <Args...> (std::forward <std::tuple <Args...>> (pm)));
-					// Если параметры ещё не существуют, создаём новую функцию
-					else this->_params.emplace(idw, std::unique_ptr <Parameters> (new BasicParameters <Args...> (std::forward <std::tuple <Args...>> (pm))));
+					/**
+					 * Выполняем отлов ошибок
+					 */
+					try {
+						// Создаём объект параметров функции
+						std::tuple <Args...> pm = std::make_tuple(args...);
+						// Выполняем поиск существующей функции обратного вызова
+						auto it = this->_callbacks.find(idw);
+						// Если функция такая уже существует
+						if(it != this->_callbacks.end())
+							// Устанавливаем новую функцию обратного вызова
+							it->second = std::unique_ptr <Function> (new BasicFunction <A> (fn));
+						// Если функция ещё не существует, создаём новую функцию
+						else this->_callbacks.emplace(idw, std::unique_ptr <Function> (new BasicFunction <A> (fn)));
+						// Выполняем поиск существующих параметров функции обратного вызова
+						auto jt = this->_params.find(idw);
+						// Если параметры уже существуют
+						if(jt != this->_params.end())
+							// Устанавливаем новый список параметров
+							jt->second = std::unique_ptr <Parameters> (new BasicParameters <Args...> (std::forward <std::tuple <Args...>> (pm)));
+						// Если параметры ещё не существуют, создаём новую функцию
+						else this->_params.emplace(idw, std::unique_ptr <Parameters> (new BasicParameters <Args...> (std::forward <std::tuple <Args...>> (pm))));
+					/**
+					 * Если возникает ошибка
+					 */
+					} catch(const bad_alloc & error) {
+						// Выводим сообщение об ошибке
+						this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+					}
 				}
 			}
 		public:

@@ -293,30 +293,41 @@ class WebSocket {
 		WebSocket(fmk_t * fmk, log_t * log, client::core_t * core) noexcept :
 		 _fmk(fmk), _log(log), _main(core), _count(0), _uri(fmk),
 		 _core(fmk, log), _web(nullptr), _webMode(client::web_t::mode_t::DISCONNECT) {
-			// Выделяем память для Web-клиента
-			this->_web = new client::web_t(&this->_core, fmk, log);
 			/**
-			 * 1. Устанавливаем отложенные вызовы
-			 * 2. Устанавливаем ожидание входящих сообщений
-			 * 3. Устанавливаем валидацию SSL сертификата
+			 * Выполняем отлов ошибок
 			 */
-			this->_web->mode(
-				(uint8_t) client::web_t::flag_t::ALIVE |
-				(uint8_t) client::web_t::flag_t::REDIRECTS |
-				(uint8_t) client::web_t::flag_t::VERIFY_SSL
-			);
-			// Устанавливаем адрес сертификата
-			this->_core.ca("./ca/cert.pem");
-			// Переводим клиента в асинхронный режим работы
-			this->_core.mode(client::core_t::mode_t::ASYNC);
-			// Выполняем инициализацию подключения
-			this->_web->init("https://api2.binance.com");
-			// Устанавливаем метод получения результата
-			this->_web->on(std::bind(&WebSocket::web, this, _1, _2));
-			// Устанавливаем метод активации подключения
-			this->_web->on(std::bind(&WebSocket::webActive, this, _1, _2));
-			// Выполняем подключение ядра
-			this->_main->bind(&this->_core);
+			try {
+				// Выделяем память для Web-клиента
+				this->_web = new client::web_t(&this->_core, fmk, log);
+				/**
+				 * 1. Устанавливаем отложенные вызовы
+				 * 2. Устанавливаем ожидание входящих сообщений
+				 * 3. Устанавливаем валидацию SSL сертификата
+				 */
+				this->_web->mode(
+					(uint8_t) client::web_t::flag_t::ALIVE |
+					(uint8_t) client::web_t::flag_t::REDIRECTS |
+					(uint8_t) client::web_t::flag_t::VERIFY_SSL
+				);
+				// Устанавливаем адрес сертификата
+				this->_core.ca("./ca/cert.pem");
+				// Переводим клиента в асинхронный режим работы
+				this->_core.mode(client::core_t::mode_t::ASYNC);
+				// Выполняем инициализацию подключения
+				this->_web->init("https://api2.binance.com");
+				// Устанавливаем метод получения результата
+				this->_web->on(std::bind(&WebSocket::web, this, _1, _2));
+				// Устанавливаем метод активации подключения
+				this->_web->on(std::bind(&WebSocket::webActive, this, _1, _2));
+				// Выполняем подключение ядра
+				this->_main->bind(&this->_core);
+			/**
+			 * Если возникает ошибка
+			 */
+			} catch(const bad_alloc & error) {
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			}
 		}
 		/**
 		 * ~WebSocket Деструктор
