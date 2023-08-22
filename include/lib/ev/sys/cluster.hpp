@@ -165,7 +165,7 @@ namespace awh {
 					/**
 					 * Jack Конструктор
 					 */
-					Jack() noexcept : end(false), pid(0), mfds({0,0}), cfds({0,0}), date(0) {}
+					Jack() noexcept : end(false), pid(0), mfds{0,0}, cfds{0,0}, date(0) {}
 				} jack_t;
 				/**
 				 * Message Структура межпроцессного сообщения

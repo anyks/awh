@@ -149,7 +149,7 @@ namespace awh {
 				 */
 				Settings() noexcept :
 				 filename(""), sonet(scheme_t::sonet_t::TCP),
-				 family(scheme_t::family_t::IPV4), net({{"0.0.0.0","[::]"},{}}) {}
+				 family(scheme_t::family_t::IPV4), net{{"0.0.0.0","[::]"},{}} {}
 			} settings_t;
 		private:
 			/**

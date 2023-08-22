@@ -73,7 +73,7 @@ namespace awh {
 				/**
 				 * State Конструктор
 				 */
-				State() : num(0), ivec({0}) {}
+				State() : num(0), ivec{0} {}
 			} _state;
 		public:
 			// Уровень сжатия
@@ -280,7 +280,7 @@ namespace awh {
 			Hash(const log_t * log) noexcept :
 			 _wbit(MAX_WBITS), _rounds(5), _salt(""), _pass(""),
 			 _takeOverCompress(false), _takeOverDecompress(false),
-			 _cipher(cipher_t::AES128), _key({}), _zinf({0}), _zdef({0}), _log(log) {}
+			 _cipher(cipher_t::AES128), _key{}, _zinf{0}, _zdef{0}, _log(log) {}
 			/**
 			 * ~Hash Деструктор
 			 */

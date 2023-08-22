@@ -99,7 +99,7 @@ namespace awh {
 				/**
 				 * Peer Конструктор
 				 */
-				Peer() noexcept : size(0), client({}), server({}) {}
+				Peer() noexcept : size(0), client{}, server{} {}
 			} peer_t;
 		private:
 			/**

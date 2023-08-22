@@ -176,7 +176,7 @@ namespace awh {
 					 * @param log объект для работы с логами
 					 */
 					Jack(const log_t * log) noexcept :
-					 end(false), pid(0), mfds({0,0}), cfds({0,0}),
+					 end(false), pid(0), mfds{0,0}, cfds{0,0},
 					 date(0), mess(awh::event_t::type_t::EVENT, log) {}
 					/**
 					 * ~Jack Деструктор
@@ -195,7 +195,7 @@ namespace awh {
 					/**
 					 * Message Конструктор
 					 */
-					Message() noexcept : end(false), quit(false), pid(0), size(0), payload({0}) {}
+					Message() noexcept : end(false), quit(false), pid(0), size(0), payload{0} {}
 				} __attribute__((packed)) mess_t;
 			/**
 			 * Если операционной системой является Windows
