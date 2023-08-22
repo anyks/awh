@@ -1,5 +1,5 @@
 /**
- * @file: ws.hpp
+ * @file: core.hpp
  * @date: 2021-12-19
  * @license: GPL-3.0
  *
@@ -12,8 +12,8 @@
  * @copyright: Copyright © 2021
  */
 
-#ifndef __AWH_WS_HTTP__
-#define __AWH_WS_HTTP__
+#ifndef __AWH_WS_CORE__
+#define __AWH_WS_CORE__
 
 /**
  * Стандартная библиотека
@@ -38,9 +38,9 @@ using namespace std;
  */
 namespace awh {
 	/**
-	 * WS Класс для работы с WebSocket
+	 * WSCore Класс для работы с WebSocket
 	 */
-	typedef class WS : public http_t {
+	typedef class WSCore : public http_t {
 		protected:
 			// Версия протокола WebSocket
 			static constexpr u_short WS_VERSION = 13;
@@ -200,20 +200,20 @@ namespace awh {
 			void serverTakeover(const bool flag) noexcept;
 		public:
 			/**
-			 * WS Конструктор
+			 * WSCore Конструктор
 			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
 			 * @param uri объект работы с URI
 			 */
-			WS(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcept :
+			WSCore(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcept :
 			 http_t(fmk, log, uri), _wbitClient(GZIP_MAX_WBITS),
 			 _wbitServer(GZIP_MAX_WBITS), _compress(compress_t::DEFLATE),
 			 _sub(""), _key(""), _noClientTakeover(true), _noServerTakeover(true) {}
 			/**
-			 * ~WS Деструктор
+			 * ~WSCore Деструктор
 			 */
-			virtual ~WS() noexcept {}
-	} ws_t;
+			virtual ~WSCore() noexcept {}
+	} ws_core_t;
 };
 
-#endif // __AWH_WS_HTTP__
+#endif // __AWH_WS_CORE__

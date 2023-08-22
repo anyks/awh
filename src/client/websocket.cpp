@@ -1,5 +1,5 @@
 /**
- * @file: ws.cpp
+ * @file: websocket.cpp
  * @date: 2022-09-03
  * @license: GPL-3.0
  *
@@ -13,7 +13,7 @@
  */
 
 // Подключаем заголовочный файл
-#include <client/ws.hpp>
+#include <client/websocket.hpp>
 
 /**
  * openCallback Метод обратного вызова при запуске работы
@@ -243,17 +243,17 @@ void awh::client::WebSocket::actionRead() noexcept {
 	// Получаем объект биндинга ядра TCP/IP
 	client::core_t * core = const_cast <client::core_t *> (this->_core);
 	// Если рукопожатие не выполнено
-	if(!reinterpret_cast <http_t *> (&this->_http)->isHandshake()){
+	if(!reinterpret_cast <http_t *> (&this->_ws)->isHandshake()){
 		// Выполняем парсинг полученных данных
-		const size_t bytes = this->_http.parse(this->_buffer.payload.data(), this->_buffer.payload.size());
+		const size_t bytes = this->_ws.parse(this->_buffer.payload.data(), this->_buffer.payload.size());
 		// Если все данные получены
-		if(this->_http.isEnd()){
+		if(this->_ws.isEnd()){
 			/**
 			 * Если включён режим отладки
 			 */
 			#if defined(DEBUG_MODE)
 				// Получаем данные ответа
-				const auto & response = reinterpret_cast <http_t *> (&this->_http)->response(true);
+				const auto & response = reinterpret_cast <http_t *> (&this->_ws)->response(true);
 				// Если параметры ответа получены
 				if(!response.empty()){
 					// Выводим заголовок ответа
@@ -261,21 +261,21 @@ void awh::client::WebSocket::actionRead() noexcept {
 					// Выводим параметры ответа
 					cout << string(response.begin(), response.end()) << endl;
 					// Если тело ответа существует
-					if(!this->_http.body().empty())
+					if(!this->_ws.body().empty())
 						// Выводим сообщение о выводе чанка тела
-						cout << this->_fmk->format("<body %u>", this->_http.body().size()) << endl << endl;
+						cout << this->_fmk->format("<body %u>", this->_ws.body().size()) << endl << endl;
 					// Иначе устанавливаем перенос строки
 					else cout << endl;
 				}
 			#endif
 			// Выполняем проверку авторизации
-			switch(static_cast <uint8_t> (this->_http.getAuth())){
+			switch(static_cast <uint8_t> (this->_ws.getAuth())){
 				// Если нужно попытаться ещё раз
 				case static_cast <uint8_t> (http_t::stath_t::RETRY): {
 					// Если попытка повторить авторизацию ещё не проводилась
 					if(this->_attempt < this->_attempts){
 						// Получаем новый адрес запроса
-						this->_scheme.url = this->_http.getUrl();
+						this->_scheme.url = this->_ws.getUrl();
 						// Если адрес запроса получен
 						if(!this->_scheme.url.empty()){
 							// Увеличиваем количество попыток
@@ -283,7 +283,7 @@ void awh::client::WebSocket::actionRead() noexcept {
 							// Выполняем очистку оставшихся данных
 							this->_buffer.payload.clear();
 							// Если соединение является постоянным
-							if(this->_http.isAlive())
+							if(this->_ws.isAlive())
 								// Устанавливаем новый экшен выполнения
 								this->_action = action_t::CONNECT;
 							// Завершаем работу
@@ -302,32 +302,32 @@ void awh::client::WebSocket::actionRead() noexcept {
 					// Устанавливаем флаг принудительной остановки
 					this->_stopped = true;
 					// Создаём сообщение
-					mess = mess_t(this->_code, this->_http.message(this->_code));
+					mess = mess_t(this->_code, this->_ws.message(this->_code));
 					// Выводим сообщение
 					this->error(mess);
 				} break;
 				// Если запрос выполнен удачно
 				case static_cast <uint8_t> (http_t::stath_t::GOOD): {
 					// Если рукопожатие выполнено
-					if(this->_http.isHandshake()){
+					if(this->_ws.isHandshake()){
 						// Выполняем сброс количества попыток
 						this->_attempt = 0;
 						// Очищаем список фрагментированных сообщений
 						this->_buffer.fragmes.clear();
 						// Получаем флаг шифрованных данных
-						this->_crypt = this->_http.isCrypt();
+						this->_crypt = this->_ws.isCrypt();
 						// Получаем поддерживаемый метод компрессии
-						this->_compress = this->_http.compress();
+						this->_compress = this->_ws.compress();
 						// Получаем размер скользящего окна сервера
-						this->_wbitServer = this->_http.wbitServer();
+						this->_wbitServer = this->_ws.wbitServer();
 						// Получаем размер скользящего окна клиента
-						this->_wbitClient = this->_http.wbitClient();
+						this->_wbitClient = this->_ws.wbitClient();
 						// Обновляем контрольную точку времени получения данных
 						this->_checkPoint = this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
 						// Разрешаем перехватывать контекст компрессии для клиента
-						this->_hash.takeoverCompress(this->_http.clientTakeover());
+						this->_hash.takeoverCompress(this->_ws.clientTakeover());
 						// Разрешаем перехватывать контекст компрессии для сервера
-						this->_hash.takeoverDecompress(this->_http.serverTakeover());
+						this->_hash.takeoverDecompress(this->_ws.serverTakeover());
 						// Выводим в лог сообщение
 						if(!this->_noinfo) this->_log->print("authorization on the WebSocket server was successful", log_t::flag_t::INFO);
 						// Если функция обратного вызова установлена, выполняем
@@ -353,7 +353,7 @@ void awh::client::WebSocket::actionRead() noexcept {
 						// Устанавливаем код ответа
 						this->_code = 404;
 						// Создаём сообщение
-						mess = mess_t(this->_code, this->_http.message(this->_code));
+						mess = mess_t(this->_code, this->_ws.message(this->_code));
 						// Выводим сообщение
 						this->error(mess);
 					}
@@ -361,7 +361,7 @@ void awh::client::WebSocket::actionRead() noexcept {
 				// Если запрос неудачный
 				case static_cast <uint8_t> (http_t::stath_t::FAULT): {
 					// Получаем параметры запроса
-					const auto & query = this->_http.query();
+					const auto & query = this->_ws.query();
 					// Устанавливаем флаг принудительной остановки
 					this->_stopped = true;
 					// Устанавливаем код ответа
@@ -512,7 +512,7 @@ void awh::client::WebSocket::actionRead() noexcept {
 				// Если тредпул активирован
 				if(this->_thr.is())
 					// Добавляем в тредпул новую задачу на извлечение полученных сообщений
-					this->_thr.push(std::bind(&ws_t::extraction, this, buffer, (this->_opcode == frame_t::opcode_t::TEXT)));
+					this->_thr.push(std::bind(&websocket_t::extraction, this, buffer, (this->_opcode == frame_t::opcode_t::TEXT)));
 				// Если тредпул не активирован, выполняем извлечение полученных сообщений
 				else this->extraction(buffer, (this->_opcode == frame_t::opcode_t::TEXT));
 				// Очищаем буфер полученного сообщения
@@ -544,21 +544,21 @@ void awh::client::WebSocket::actionConnect() noexcept {
 	// Выполняем сброс параметров запроса
 	this->flush();
 	// Выполняем сброс состояния HTTP парсера
-	this->_http.reset();
+	this->_ws.reset();
 	// Выполняем очистку параметров HTTP запроса
-	this->_http.clear();
+	this->_ws.clear();
 	// Устанавливаем метод сжатия
-	this->_http.compress(this->_compress);
+	this->_ws.compress(this->_compress);
 	// Разрешаем перехватывать контекст для клиента
-	this->_http.clientTakeover(this->_takeOverCli);
+	this->_ws.clientTakeover(this->_takeOverCli);
 	// Разрешаем перехватывать контекст для сервера
-	this->_http.serverTakeover(this->_takeOverSrv);
+	this->_ws.serverTakeover(this->_takeOverSrv);
 	// Разрешаем перехватывать контекст компрессии
 	this->_hash.takeoverCompress(this->_takeOverCli);
 	// Разрешаем перехватывать контекст декомпрессии
 	this->_hash.takeoverDecompress(this->_takeOverSrv);
 	// Получаем бинарные данные REST запроса
-	const auto & buffer = this->_http.request(this->_scheme.url);
+	const auto & buffer = this->_ws.request(this->_scheme.url);
 	// Если бинарные данные запроса получены
 	if(!buffer.empty()){
 		/**
@@ -585,7 +585,7 @@ void awh::client::WebSocket::actionDisconnect() noexcept {
 	// Если нужно произвести запрос заново
 	if(!this->_stopped && ((this->_code == 301) || (this->_code == 308) || (this->_code == 401) || (this->_code == 407))){
 		// Если статус ответа требует произвести авторизацию или заголовок перенаправления указан
-		if((this->_code == 401) || (this->_code == 407) || this->_http.isHeader("location")){
+		if((this->_code == 401) || (this->_code == 407) || this->_ws.isHeader("location")){
 			// Выполняем установку следующего экшена на открытие подключения
 			this->_action = action_t::OPEN;
 			// Выходим из функции
@@ -862,9 +862,9 @@ void awh::client::WebSocket::actionProxyConnect() noexcept {
  */
 void awh::client::WebSocket::error(const mess_t & message) const noexcept {
 	// Очищаем список буффер бинарных данных
-	const_cast <ws_t *> (this)->_buffer.payload.clear();
+	const_cast <websocket_t *> (this)->_buffer.payload.clear();
 	// Очищаем список фрагментированных сообщений
-	const_cast <ws_t *> (this)->_buffer.fragmes.clear();
+	const_cast <websocket_t *> (this)->_buffer.fragmes.clear();
 	// Если код ошибки указан
 	if(message.code > 0){
 		// Если сообщение об ошибке пришло
@@ -975,7 +975,7 @@ void awh::client::WebSocket::pong(const string & message) noexcept {
 	// Если подключение выполнено
 	if(this->_core->working() && this->_allow.send){
 		// Если рукопожатие выполнено
-		if(this->_http.isHandshake() && (this->_aid > 0)){
+		if(this->_ws.isHandshake() && (this->_aid > 0)){
 			// Создаём буфер для отправки
 			const auto & buffer = this->_frame.pong(message, true);
 			// Если бинарный буфер получен
@@ -993,7 +993,7 @@ void awh::client::WebSocket::ping(const string & message) noexcept {
 	// Если подключение выполнено
 	if(this->_core->working() && this->_allow.send){
 		// Если рукопожатие выполнено
-		if(this->_http.isHandshake() && (this->_aid > 0)){
+		if(this->_ws.isHandshake() && (this->_aid > 0)){
 			// Создаём буфер для отправки
 			const auto & buffer = this->_frame.ping(message, true);
 			// Если бинарный буфер получен
@@ -1129,7 +1129,7 @@ void awh::client::WebSocket::send(const char * message, const size_t size, const
 		// Выполняем блокировку отправки сообщения
 		this->_allow.send = !this->_allow.send;
 		// Если рукопожатие выполнено
-		if((message != nullptr) && (size > 0) && this->_http.isHandshake() && (this->_aid > 0)){
+		if((message != nullptr) && (size > 0) && this->_ws.isHandshake() && (this->_aid > 0)){
 			/**
 			 * Если включён режим отладки
 			 */
@@ -1299,7 +1299,7 @@ void awh::client::WebSocket::pause() noexcept {
  */
 const string & awh::client::WebSocket::sub() const noexcept {
 	// Выводим выбранный сабпротокол
-	return this->_http.sub();
+	return this->_ws.sub();
 }
 /**
  * sub Метод установки подпротокола поддерживаемого сервером
@@ -1307,7 +1307,7 @@ const string & awh::client::WebSocket::sub() const noexcept {
  */
 void awh::client::WebSocket::sub(const string & sub) noexcept {
 	// Устанавливаем подпротокол
-	if(!sub.empty()) this->_http.sub(sub);
+	if(!sub.empty()) this->_ws.sub(sub);
 }
 /**
  * subs Метод установки списка подпротоколов поддерживаемых сервером
@@ -1315,7 +1315,7 @@ void awh::client::WebSocket::sub(const string & sub) noexcept {
  */
 void awh::client::WebSocket::subs(const vector <string> & subs) noexcept {
 	// Если список подпротоколов получен
-	if(!subs.empty()) this->_http.subs(subs);
+	if(!subs.empty()) this->_ws.subs(subs);
 }
 /**
  * bytesDetect Метод детекции сообщений по количеству байт
@@ -1434,7 +1434,7 @@ void awh::client::WebSocket::mode(const u_short flag) noexcept {
  */
 void awh::client::WebSocket::chunk(const size_t size) noexcept {
 	// Устанавливаем размер чанка
-	this->_http.chunk(size);
+	this->_ws.chunk(size);
 }
 /**
  * segmentSize Метод установки размеров сегментов фрейма
@@ -1460,7 +1460,7 @@ void awh::client::WebSocket::userAgent(const string & userAgent) noexcept {
 	// Устанавливаем UserAgent
 	if(!userAgent.empty()){
 		// Устанавливаем пользовательского агента
-		this->_http.userAgent(userAgent);
+		this->_ws.userAgent(userAgent);
 		// Устанавливаем пользовательского агента для прокси-сервера
 		this->_scheme.proxy.http.userAgent(userAgent);
 	}
@@ -1482,7 +1482,7 @@ void awh::client::WebSocket::user(const string & login, const string & password)
 	// Если пользователь и пароль переданы
 	if(!login.empty() && !password.empty())
 		// Устанавливаем логин и пароль пользователя
-		this->_http.user(login, password);
+		this->_ws.user(login, password);
 }
 /**
  * keepAlive Метод установки жизни подключения
@@ -1506,7 +1506,7 @@ void awh::client::WebSocket::keepAlive(const int cnt, const int idle, const int 
  */
 void awh::client::WebSocket::serv(const string & id, const string & name, const string & ver) noexcept {
 	// Устанавливаем данные сервиса
-	this->_http.serv(id, name, ver);
+	this->_ws.serv(id, name, ver);
 	// Устанавливаем данные сервиса для прокси-сервера
 	this->_scheme.proxy.http.serv(id, name, ver);
 }
@@ -1526,7 +1526,7 @@ void awh::client::WebSocket::crypto(const string & pass, const string & salt, co
 	// Устанавливаем размер шифрования
 	this->_hash.cipher(cipher);
 	// Устанавливаем параметры шифрования
-	if(this->_crypt) this->_http.crypto(pass, salt, cipher);
+	if(this->_crypt) this->_ws.crypto(pass, salt, cipher);
 }
 /**
  * authType Метод установки типа авторизации
@@ -1535,7 +1535,7 @@ void awh::client::WebSocket::crypto(const string & pass, const string & salt, co
  */
 void awh::client::WebSocket::authType(const auth_t::type_t type, const auth_t::hash_t hash) noexcept {
 	// Если объект авторизации создан
-	this->_http.authType(type, hash);
+	this->_ws.authType(type, hash);
 }
 /**
  * authTypeProxy Метод установки типа авторизации прокси-сервера
@@ -1553,7 +1553,7 @@ void awh::client::WebSocket::authTypeProxy(const auth_t::type_t type, const auth
  * @param log  объект для работы с логами
  */
 awh::client::WebSocket::WebSocket(const client::core_t * core, const fmk_t * fmk, const log_t * log) noexcept :
- _hash(log), _uri(fmk), _http(fmk, log, &_uri), _frame(fmk, log), _scheme(fmk, log),
+ _hash(log), _ws(fmk, log, &_uri), _uri(fmk), _frame(fmk, log), _scheme(fmk, log),
  _action(action_t::NONE), _opcode(frame_t::opcode_t::TEXT), _compress(http_t::compress_t::NONE), _crypt(false),
  _close(false), _unbind(true), _freeze(false), _noinfo(false), _stopped(false), _compressed(false), _takeOverCli(false),
  _takeOverSrv(false), _attempt(0), _attempts(10), _wbitClient(0), _wbitServer(0), _aid(0), _code(0),

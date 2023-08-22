@@ -13,13 +13,13 @@
  */
 
 // Подключаем заголовочный файл
-#include <ws/ws.hpp>
+#include <ws/core.hpp>
 
 /**
  * key Метод генерации ключа
  * @return сгенерированный ключ
  */
-const string awh::WS::key() const noexcept {
+const string awh::WSCore::key() const noexcept {
 	// Результат работы функции
 	string result = "";
 	/**
@@ -57,7 +57,7 @@ const string awh::WS::key() const noexcept {
  * sha1 Метод генерации хэша SHA1 ключа
  * @return сгенерированный хэш ключа клиента
  */
-const string awh::WS::sha1() const noexcept {
+const string awh::WSCore::sha1() const noexcept {
 	// Результат работы функции
 	string result = "";
 	// Если ключ клиента передан
@@ -84,14 +84,14 @@ const string awh::WS::sha1() const noexcept {
  * dump Метод получения бинарного дампа
  * @return бинарный дамп данных
  */
-vector <char> awh::WS::dump() const noexcept {
+vector <char> awh::WSCore::dump() const noexcept {
 	// Результат работы функции
 	vector <char> result;
 	{
 		// Длина строки, количество элементов
 		size_t length = 0, count = 0;
 		// Выполняем получение дампа основного класса
-		const auto & dump = reinterpret_cast <http_t *> (const_cast <ws_t *> (this))->dump();
+		const auto & dump = reinterpret_cast <http_t *> (const_cast <ws_core_t *> (this))->dump();
 		// Получаем размер дамп бинарных данных модуля
 		length = dump.size();
 		// Устанавливаем размер дампа бинарных данных модуля
@@ -141,7 +141,7 @@ vector <char> awh::WS::dump() const noexcept {
  * dump Метод установки бинарного дампа
  * @param data бинарный дамп данных
  */
-void awh::WS::dump(const vector <char> & data) noexcept {
+void awh::WSCore::dump(const vector <char> & data) noexcept {
 	// Если данные бинарного дампа переданы
 	if(!data.empty()){
 		// Длина строки, количество элементов и смещение в буфере
@@ -157,7 +157,7 @@ void awh::WS::dump(const vector <char> & data) noexcept {
 		// Выполняем смещение в буфере
 		offset += length;
 		// Выполняем установку бинарного буфера данных
-		reinterpret_cast <http_t *> (const_cast <ws_t *> (this))->dump(dump);
+		reinterpret_cast <http_t *> (const_cast <ws_core_t *> (this))->dump(dump);
 		// Выполняем получение размера скользящего окна клиента
 		memcpy((void *) &this->_wbitClient, data.data() + offset, sizeof(this->_wbitClient));
 		// Выполняем смещение в буфере
@@ -224,7 +224,7 @@ void awh::WS::dump(const vector <char> & data) noexcept {
 /**
  * clean Метод очистки собранных данных
  */
-void awh::WS::clean() noexcept {
+void awh::WSCore::clean() noexcept {
 	// Выполняем очистку родительских данных
 	http_t::clear();
 	// Выполняем сброс ключа клиента
@@ -242,7 +242,7 @@ void awh::WS::clean() noexcept {
  * compress Метод получения метода компрессии
  * @return метод компрессии сообщений
  */
-awh::Http::compress_t awh::WS::compress() const noexcept {
+awh::Http::compress_t awh::WSCore::compress() const noexcept {
 	// Выводим метод компрессии сообщений
 	return this->_compress;
 }
@@ -250,7 +250,7 @@ awh::Http::compress_t awh::WS::compress() const noexcept {
  * compress Метод установки метода компрессии
  * @param compress метод компрессии сообщений
  */
-void awh::WS::compress(const compress_t compress) noexcept {
+void awh::WSCore::compress(const compress_t compress) noexcept {
 	// Устанавливаем метод компрессии сообщений
 	this->_compress = compress;
 }
@@ -258,7 +258,7 @@ void awh::WS::compress(const compress_t compress) noexcept {
  * isHandshake Метод получения флага рукопожатия
  * @return флаг получения рукопожатия
  */
-bool awh::WS::isHandshake() noexcept {
+bool awh::WSCore::isHandshake() noexcept {
 	// Результат работы функции
 	bool result = (this->state == state_t::HANDSHAKE);
 	// Если рукопожатие не выполнено
@@ -301,7 +301,7 @@ bool awh::WS::isHandshake() noexcept {
  * checkUpgrade Метод получения флага переключения протокола
  * @return флага переключения протокола
  */
-bool awh::WS::checkUpgrade() const noexcept {
+bool awh::WSCore::checkUpgrade() const noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Получаем значение заголовка Upgrade
@@ -324,7 +324,7 @@ bool awh::WS::checkUpgrade() const noexcept {
  * wbitClient Метод получения размер скользящего окна для клиента
  * @return размер скользящего окна
  */
-short awh::WS::wbitClient() const noexcept {
+short awh::WSCore::wbitClient() const noexcept {
 	// Выводим размер скользящего окна
 	return this->_wbitClient;
 }
@@ -332,7 +332,7 @@ short awh::WS::wbitClient() const noexcept {
  * wbitServer Метод получения размер скользящего окна для сервера
  * @return размер скользящего окна
  */
-short awh::WS::wbitServer() const noexcept {
+short awh::WSCore::wbitServer() const noexcept {
 	// Выводим размер скользящего окна
 	return this->_wbitServer;
 }
@@ -340,7 +340,7 @@ short awh::WS::wbitServer() const noexcept {
  * response Метод создания ответа
  * @return буфер данных запроса в бинарном виде
  */
-vector <char> awh::WS::response() noexcept {
+vector <char> awh::WSCore::response() noexcept {
 	// Результат работы функции
 	vector <char> result;
 	// Выполняем генерацию хеша ключа
@@ -409,7 +409,7 @@ vector <char> awh::WS::response() noexcept {
  * @param url объект параметров REST запроса
  * @return    буфер данных запроса в бинарном виде
  */
-vector <char> awh::WS::request(const uri_t::url_t & url) noexcept {
+vector <char> awh::WSCore::request(const uri_t::url_t & url) noexcept {
 	// Если подпротоколы существуют
 	if(!this->_subs.empty()){
 		// Если количество подпротоколов больше 5-ти
@@ -505,7 +505,7 @@ vector <char> awh::WS::request(const uri_t::url_t & url) noexcept {
  * sub Метод получения выбранного сабпротокола
  * @return выбранный сабпротокол
  */
-const string & awh::WS::sub() const noexcept {
+const string & awh::WSCore::sub() const noexcept {
 	// Выводим выбранный сабпротокол
 	return this->_sub;
 }
@@ -513,7 +513,7 @@ const string & awh::WS::sub() const noexcept {
  * setSub Метод установки подпротокола поддерживаемого сервером
  * @param sub подпротокол для установки
  */
-void awh::WS::sub(const string & sub) noexcept {
+void awh::WSCore::sub(const string & sub) noexcept {
 	// Устанавливаем подпротокол
 	if(!sub.empty()) this->_subs.emplace(sub);
 }
@@ -521,7 +521,7 @@ void awh::WS::sub(const string & sub) noexcept {
  * subs Метод установки списка подпротоколов поддерживаемых сервером
  * @param subs подпротоколы для установки
  */
-void awh::WS::subs(const vector <string> & subs) noexcept {
+void awh::WSCore::subs(const vector <string> & subs) noexcept {
 	// Если список подпротоколов получен
 	if(!subs.empty()){
 		// Переходим по всем подпротоколам
@@ -534,7 +534,7 @@ void awh::WS::subs(const vector <string> & subs) noexcept {
  * clientTakeover Метод получения флага переиспользования контекста компрессии для клиента
  * @return флаг запрета переиспользования контекста компрессии для клиента
  */
-bool awh::WS::clientTakeover() const noexcept {
+bool awh::WSCore::clientTakeover() const noexcept {
 	// Выводим результат проверки
 	return !this->_noClientTakeover;
 }
@@ -542,7 +542,7 @@ bool awh::WS::clientTakeover() const noexcept {
  * clientTakeover Метод установки флага переиспользования контекста компрессии для клиента
  * @param flag флаг запрета переиспользования контекста компрессии для клиента
  */
-void awh::WS::clientTakeover(const bool flag) noexcept {
+void awh::WSCore::clientTakeover(const bool flag) noexcept {
 	// Устанавливаем флаг запрета переиспользования контекста компрессии для клиента
 	this->_noClientTakeover = !flag;
 }
@@ -550,7 +550,7 @@ void awh::WS::clientTakeover(const bool flag) noexcept {
  * serverTakeover Метод получения флага переиспользования контекста компрессии для сервера
  * @return флаг запрета переиспользования контекста компрессии для сервера
  */
-bool awh::WS::serverTakeover() const noexcept {
+bool awh::WSCore::serverTakeover() const noexcept {
 	// Выводим результат проверки
 	return !this->_noServerTakeover;
 }
@@ -558,7 +558,7 @@ bool awh::WS::serverTakeover() const noexcept {
  * serverTakeover Метод установки флага переиспользования контекста компрессии для сервера
  * @param flag флаг запрета переиспользования контекста компрессии для сервера
  */
-void awh::WS::serverTakeover(const bool flag) noexcept {
+void awh::WSCore::serverTakeover(const bool flag) noexcept {
 	// Устанавливаем флаг запрета переиспользования контекста компрессии для сервера
 	this->_noServerTakeover = !flag;
 }

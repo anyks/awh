@@ -1,5 +1,5 @@
 /**
- * @file: ws.hpp
+ * @file: websocket.hpp
  * @date: 2022-09-03
  * @license: GPL-3.0
  *
@@ -18,8 +18,8 @@
 /**
  * Наши модули
  */
-#include <scheme/ws.hpp>
 #include <core/server.hpp>
+#include <scheme/websocket.hpp>
 #include <sys/threadpool.hpp>
 
 // Подписываемся на стандартное пространство имён
@@ -95,7 +95,7 @@ namespace awh {
 				// Объявляем функции обратного вызова
 				fn_t _callback;
 				// Объект рабочего
-				ws_scheme_t _scheme;
+				websocket_scheme_t _scheme;
 			private:
 				// Идентификатор сервера
 				string _sid;
@@ -465,7 +465,7 @@ namespace awh {
 				 * ~WebSocket Деструктор
 				 */
 				~WebSocket() noexcept;
-		} ws_t;
+		} websocket_t;
 	};
 };
 

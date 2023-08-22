@@ -35,20 +35,19 @@ public:
 
 	// Constructs a ``zero'' NumberlikeArray with the given capacity.
 	NumberlikeArray(Index c) : cap(c), len(0), blk(NULL) { 
-		blk = (cap > 0) ? (new Blk[cap]) : NULL;
+		blk = ((cap > 0) ? (new Blk[cap]) : NULL);
 	}
 
 	/* Constructs a zero NumberlikeArray without allocating a backing array.
 	 * A subclass that doesn't know the needed capacity at initialization
 	 * time can use this constructor and then overwrite blk without first
 	 * deleting it. */
-	NumberlikeArray() : cap(0), len(0) {
-		blk = NULL;
-	}
+	NumberlikeArray() : cap(0), len(0), blk(NULL) {}
 
 	// Destructor.  Note that `delete NULL' is a no-op.
 	~NumberlikeArray() {
-		delete [] blk;
+		if(blk != NULL)
+			delete [] blk;
 	}
 
 	/* Ensures that the array has at least the requested capacity; may
@@ -95,7 +94,8 @@ void NumberlikeArray<Blk>::allocate(Index c) {
 	// If the requested capacity is more than the current capacity...
 	if (c > cap) {
 		// Delete the old number array
-		delete [] blk;
+		if(blk != NULL)
+			delete [] blk;
 		// Allocate the new array
 		cap = c;
 		blk = new Blk[cap];
@@ -105,7 +105,7 @@ void NumberlikeArray<Blk>::allocate(Index c) {
 template <class Blk>
 void NumberlikeArray<Blk>::allocateAndCopy(Index c) {
 	// If the requested capacity is more than the current capacity...
-	if (c > cap) {
+	if (c > cap && blk != NULL) {
 		Blk *oldBlk = blk;
 		// Allocate the new number array
 		cap = c;
@@ -121,7 +121,7 @@ void NumberlikeArray<Blk>::allocateAndCopy(Index c) {
 
 template <class Blk>
 NumberlikeArray<Blk>::NumberlikeArray(const NumberlikeArray<Blk> &x)
-		: len(x.len) {
+		: len(x.len), blk(NULL) {
 	// Create array
 	cap = len;
 	blk = new Blk[cap];
@@ -149,7 +149,7 @@ void NumberlikeArray<Blk>::operator=(const NumberlikeArray<Blk> &x) {
 
 template <class Blk>
 NumberlikeArray<Blk>::NumberlikeArray(const Blk *b, Index blen)
-		: cap(blen), len(blen) {
+		: cap(blen), len(blen), blk(NULL) {
 	// Create array
 	blk = new Blk[cap];
 	// Copy blocks

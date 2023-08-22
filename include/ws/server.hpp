@@ -12,13 +12,13 @@
  * @copyright: Copyright © 2021
  */
 
-#ifndef __AWH_WS_SERVER_HTTP__
-#define __AWH_WS_SERVER_HTTP__
+#ifndef __AWH_WS_CORE_SERVER__
+#define __AWH_WS_CORE_SERVER__
 
 /**
  * Наши модули
  */
-#include <ws/ws.hpp>
+#include <ws/core.hpp>
 #include <auth/server.hpp>
 
 // Подписываемся на стандартное пространство имён
@@ -35,7 +35,7 @@ namespace awh {
 		/**
 		 * WS Класс для работы с сервером WebSocket
 		 */
-		typedef class WS : public ws_t {
+		typedef class WS : public ws_core_t {
 			private:
 				/**
 				 * update Метод обновления входящих данных
@@ -93,18 +93,18 @@ namespace awh {
 				 * @param log объект для работы с логами
 				 * @param uri объект работы с URI
 				 */
-				WS(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcept : ws_t(fmk, log, uri) {
+				WS(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcept : ws_core_t(fmk, log, uri) {
 					// Устанавливаем тип HTTP модуля (Сервер)
-					this->web.init(web_t::hid_t::SERVER);
+					this->web.init(awh::web_t::hid_t::SERVER);
 					// Устанавливаем тип модуля (Сервер)
-					this->httpType = web_t::hid_t::SERVER;
+					this->httpType = awh::web_t::hid_t::SERVER;
 				}
 				/**
 				 * ~WS Деструктор
 				 */
 				~WS() noexcept {}
-		} wss_t;
+		} ws_t;
 	};
 };
 
-#endif // __AWH_WS_SERVER_HTTP__
+#endif // __AWH_WS_CORE_SERVER__

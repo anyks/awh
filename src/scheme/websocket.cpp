@@ -1,5 +1,5 @@
 /**
- * @file: ws.cpp
+ * @file: websocket.cpp
  * @date: 2022-09-03
  * @license: GPL-3.0
  *
@@ -13,7 +13,7 @@
  */
 
 // Подключаем заголовочный файл
-#include <scheme/ws.hpp>
+#include <scheme/websocket.hpp>
 
 /**
  * clear Метод очистки
@@ -38,7 +38,7 @@ void awh::server::SchemeWebSocket::set(const size_t aid) noexcept {
 		// Добавляем адъютанта в список адъютантов
 		auto ret = this->_coffers.emplace(aid, unique_ptr <coffer_t> (new coffer_t(this->_fmk, this->_log, &this->uri)));
 		// Устанавливаем метод сжатия
-		ret.first->second->http.compress(this->compress);
+		ret.first->second->ws.compress(this->compress);
 		// Устанавливаем контрольную точку
 		ret.first->second->checkPoint = this->fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
 	}

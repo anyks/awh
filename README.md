@@ -264,51 +264,52 @@ int main(int argc, char * argv[]){
 ### Example WebSocket Client
 
 ```c++
-#include <client/ws.hpp>
+#include <client/websocket.hpp>
 
 using namespace std;
 using namespace awh;
+using namespace awh::client;
 
-class WebSocket {
+class Executor {
 	private:
 		log_t * _log;
 	public:
-		void active(const client::ws_t::mode_t mode, client::ws_t * ws){
-			this->_log->print("%s server", log_t::flag_t::INFO, (mode == client::ws_t::mode_t::CONNECT ? "Start" : "Stop"));
+		void active(const websocket_t::mode_t mode, websocket_t * ws){
+			this->_log->print("%s server", log_t::flag_t::INFO, (mode == websocket_t::mode_t::CONNECT ? "Start" : "Stop"));
 
-			if(mode == client::ws_t::mode_t::CONNECT){
+			if(mode == websocket_t::mode_t::CONNECT){
 				const string query = "{\"text\":\"Hello World!\"}";
 				ws->send(query.data(), query.size());
 			}
 		}
-		void error(const u_int code, const string & mess, client::ws_t * ws){
+		void error(const u_int code, const string & mess, websocket_t * ws){
 			this->_log->print("%s [%u]", log_t::flag_t::CRITICAL, mess.c_str(), code);
 		}
-		void message(const vector <char> & buffer, const bool utf8, client::ws_t * ws){
+		void message(const vector <char> & buffer, const bool utf8, websocket_t * ws){
 			if(utf8 && !buffer.empty())
 				this->_log->print("message: %s [%s]", log_t::flag_t::INFO, string(buffer.begin(), buffer.end()).c_str(), ws->sub().c_str());
 		}
 	public:
-		WebSocket(log_t * log) : _log(log) {}
+		Executor(log_t * log) : _log(log) {}
 };
 
 int main(int argc, char * argv[]){
 	fmk_t fmk;
 	log_t log(&fmk);
 
-	WebSocket executor(&log);
+	Executor executor(&log);
 
 	client::core_t core(&fmk, &log);
-	client::ws_t ws(&core, &fmk, &log);
+	websocket_t ws(&core, &fmk, &log);
 
 	log.name("WebSocket Client");
 	log.format("%H:%M:%S %d.%m.%Y");
 
 	ws.mode(
-		(uint8_t) client::ws_t::flag_t::ALIVE |
-		(uint8_t) client::ws_t::flag_t::VERIFY_SSL |
-		(uint8_t) client::ws_t::flag_t::TAKEOVER_CLIENT |
-		(uint8_t) client::ws_t::flag_t::TAKEOVER_SERVER
+		(uint8_t) websocket_t::flag_t::ALIVE |
+		(uint8_t) websocket_t::flag_t::VERIFY_SSL |
+		(uint8_t) websocket_t::flag_t::TAKEOVER_CLIENT |
+		(uint8_t) websocket_t::flag_t::TAKEOVER_SERVER
 	);
 
 	core.verifySSL(false);
@@ -318,19 +319,19 @@ int main(int argc, char * argv[]){
 
 	// ws.proxy("http://user:password@host.com:port");
 	// ws.proxy("socks5://user:password@host.com:port");
-	// ws.authTypeProxy(auth_t::type_t::BASIC);
-	// ws.authTypeProxy(auth_t::type_t::DIGEST, auth_t::hash_t::MD5);
+	// ws.authTypeProxy(awh::auth_t::type_t::BASIC);
+	// ws.authTypeProxy(awh::auth_t::type_t::DIGEST, awh::auth_t::hash_t::MD5);
 
 	ws.user("user", "password");
-	// ws.authType(auth_t::type_t::BASIC);
-	ws.authType(auth_t::type_t::DIGEST, auth_t::hash_t::MD5);
+	// ws.authType(awh::auth_t::type_t::BASIC);
+	ws.authType(awh::auth_t::type_t::DIGEST, awh::auth_t::hash_t::MD5);
 
 	ws.subs({"test2", "test8", "test9"});
-	ws.init("wss://127.0.0.1:2222", http_t::compress_t::DEFLATE);
+	ws.init("wss://127.0.0.1:2222", awh::http_t::compress_t::DEFLATE);
 
-	ws.on(bind(&WebSocket::active, &executor, _1, _2));
-	ws.on(bind(&WebSocket::error, &executor, _1, _2, _3));
-	ws.on(bind(&WebSocket::message, &executor, _1, _2, _3));
+	ws.on(bind(&Executor::active, &executor, _1, _2));
+	ws.on(bind(&Executor::error, &executor, _1, _2, _3));
+	ws.on(bind(&Executor::message, &executor, _1, _2, _3));
 
 	ws.start();	
 
@@ -341,12 +342,13 @@ int main(int argc, char * argv[]){
 ### Example WebSocket Server
 
 ```c++
-#include <server/ws.hpp>
+#include <server/websocket.hpp>
 
 using namespace std;
 using namespace awh;
+using namespace awh::server;
 
-class WebSocket {
+class Executor {
 	private:
 		log_t * _log;
 	public:
@@ -359,34 +361,34 @@ class WebSocket {
 			return true;
 		}
 	public:
-		bool accept(const string & ip, const string & mac, const u_int port, server::ws_t * ws){
+		bool accept(const string & ip, const string & mac, const u_int port, websocket_t * ws){
 			this->_log->print("ACCEPT: ip = %s, mac = %s, port = %d", log_t::flag_t::INFO, ip.c_str(), mac.c_str(), port);
 			return true;
 		}
-		void active(const size_t aid, const server::ws_t::mode_t mode, server::ws_t * ws){
-			this->_log->print("%s client", log_t::flag_t::INFO, (mode == server::ws_t::mode_t::CONNECT ? "Connect" : "Disconnect"));
+		void active(const size_t aid, const websocket_t::mode_t mode, websocket_t * ws){
+			this->_log->print("%s client", log_t::flag_t::INFO, (mode == websocket_t::mode_t::CONNECT ? "Connect" : "Disconnect"));
 		}
-		void error(const size_t aid, const u_int code, const string & mess, server::ws_t * ws){
+		void error(const size_t aid, const u_int code, const string & mess, websocket_t * ws){
 			this->_log->print("%s [%u]", log_t::flag_t::CRITICAL, mess.c_str(), code);
 		}
-		void message(const size_t aid, const vector <char> & buffer, const bool utf8, server::ws_t * ws){
+		void message(const size_t aid, const vector <char> & buffer, const bool utf8, websocket_t * ws){
 			if(!buffer.empty()){
 				this->_log->print("message: %s [%s]", log_t::flag_t::INFO, string(buffer.begin(), buffer.end()).c_str(), ws->sub(aid).c_str());
 				ws->send(aid, buffer.data(), buffer.size(), utf8);
 			}
 		}
 	public:
-		WebSocket(log_t * log) : _log(log) {}
+		Executor(log_t * log) : _log(log) {}
 };
 
 int main(int argc, char * argv[]){
 	fmk_t fmk;
 	log_t log(&fmk);
 
-	WebSocket executor(&log);
+	Executor executor(&log);
 
 	server::core_t core(&fmk, &log);
-	server::ws_t ws(&core, &fmk, &log);
+	websocket_t ws(&core, &fmk, &log);
 
 	log.name("WebSocket Server");
 	log.format("%H:%M:%S %d.%m.%Y");
@@ -400,16 +402,16 @@ int main(int argc, char * argv[]){
 	ws.opaque("keySession");
 	ws.subs({"test1", "test2", "test3"});
 
-	// ws.authType(auth_t::type_t::BASIC);
-	ws.authType(auth_t::type_t::DIGEST, auth_t::hash_t::MD5);
+	// ws.authType(awh::auth_t::type_t::BASIC);
+	ws.authType(awh::auth_t::type_t::DIGEST, awh::auth_t::hash_t::MD5);
 	ws.init(2222, "127.0.0.1", http_t::compress_t::DEFLATE);
 
-	ws.on((function <string (const string &)>) bind(&WebSocket::password, &executor, _1));
-	// ws.on((function <bool (const string &, const string &)>) bind(&WebSocket::auth, &executor, _1, _2));
-	ws.on((function <void (const size_t, const server::ws_t::mode_t, server::ws_t *)>) bind(&WebSocket::active, &executor, _1, _2, _3));
-	ws.on((function <void (const size_t, const u_int, const string &, server::ws_t *)>) bind(&WebSocket::error, &executor, _1, _2, _3, _4));
-	ws.on((function <bool (const string &, const string &, const u_int, server::ws_t *)>) bind(&WebSocket::accept, &executor, _1, _2, _3, _4));
-	ws.on((function <void (const size_t, const vector <char> &, const bool, server::ws_t *)>) bind(&WebSocket::message, &executor, _1, _2, _3, _4));
+	ws.on((function <string (const string &)>) bind(&Executor::password, &executor, _1));
+	// ws.on((function <bool (const string &, const string &)>) bind(&Executor::auth, &executor, _1, _2));
+	ws.on((function <void (const size_t, const websocket_t::mode_t, websocket_t *)>) bind(&Executor::active, &executor, _1, _2, _3));
+	ws.on((function <void (const size_t, const u_int, const string &, websocket_t *)>) bind(&Executor::error, &executor, _1, _2, _3, _4));
+	ws.on((function <bool (const string &, const string &, const u_int, websocket_t *)>) bind(&Executor::accept, &executor, _1, _2, _3, _4));
+	ws.on((function <void (const size_t, const vector <char> &, const bool, websocket_t *)>) bind(&Executor::message, &executor, _1, _2, _3, _4));
 
 	ws.start();
 

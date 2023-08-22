@@ -1,5 +1,5 @@
 /**
- * @file: ws.hpp
+ * @file: websocket.hpp
  * @date: 2022-09-03
  * @license: GPL-3.0
  *
@@ -124,12 +124,12 @@ namespace awh {
 				// Мютекс для блокировки потока
 				recursive_mutex _mtx;
 			private:
+				// Объект для работы с HTTP
+				ws_t _ws;
 				// Объект тредпула для работы с потоками
 				thr_t _thr;
 				// Объект работы с URI ссылками
 				uri_t _uri;
-				// Объект для работы с HTTP
-				wss_t _http;
 				// Объявляем функции обратного вызова
 				fn_t _callback;
 				// Объект для работы с фреймом WebSocket
@@ -507,7 +507,7 @@ namespace awh {
 				 * ~WebSocket Деструктор
 				 */
 				~WebSocket() noexcept {}
-		} ws_t;
+		} websocket_t;
 	};
 };
 

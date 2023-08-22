@@ -10,20 +10,21 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include <client/ws.hpp>
 #include <nlohmann/json.hpp>
+#include <client/websocket.hpp>
 
 // Подключаем пространство имён
 using namespace std;
 using namespace awh;
+using namespace awh::client;
 
 // Активируем json в качестве объекта пространства имён
 using json = nlohmann::json;
 
 /**
- * WebSocket Класс объекта исполнителя
+ * Executor Класс объекта исполнителя
  */
-class WebSocket {
+class Executor {
 	private:
 		// Объект логирования
 		log_t * _log;
@@ -43,11 +44,11 @@ class WebSocket {
 		 * @param mode режим события подключения
 		 * @param ws   объект WebSocket клиента
 		 */
-		void active(const client::ws_t::mode_t mode, client::ws_t * ws){
+		void active(const websocket_t::mode_t mode, websocket_t * ws){
 			// Выводим информацию в лог
-			this->_log->print("%s server", log_t::flag_t::INFO, (mode == client::ws_t::mode_t::CONNECT ? "Start" : "Stop"));
+			this->_log->print("%s server", log_t::flag_t::INFO, (mode == websocket_t::mode_t::CONNECT ? "Start" : "Stop"));
 			// Если подключение произошло удачно
-			if(mode == client::ws_t::mode_t::CONNECT){
+			if(mode == websocket_t::mode_t::CONNECT){
 				// Создаём объект JSON
 				json data = json::object();
 				// Формируем идентификатор объекта
@@ -169,7 +170,7 @@ class WebSocket {
 		 * @param mess сообщение ошибки
 		 * @param ws   объект WebSocket клиента
 		 */
-		void error(const u_int code, const string & mess, client::ws_t * ws){
+		void error(const u_int code, const string & mess, websocket_t * ws){
 			// Выводим информацию в лог
 			this->_log->print("%s [%u]", log_t::flag_t::CRITICAL, mess.c_str(), code);
 		}
@@ -179,7 +180,7 @@ class WebSocket {
 		 * @param utf8   тип буфера сообщения
 		 * @param ws     объект WebSocket клиента
 		 */
-		void message(const vector <char> & buffer, const bool utf8, client::ws_t * ws){
+		void message(const vector <char> & buffer, const bool utf8, websocket_t * ws){
 			// Если данные пришли в виде текста, выводим
 			if(utf8){
 				try {
@@ -194,10 +195,10 @@ class WebSocket {
 		}
 	public:
 		/**
-		 * WebSocket Конструктор
+		 * Executor Конструктор
 		 * @param log объект логирования
 		 */
-		WebSocket(log_t * log) : _log(log) {}
+		Executor(log_t * log) : _log(log) {}
 };
 
 /**
@@ -212,11 +213,11 @@ int main(int argc, char * argv[]){
 	// Создаём объект для работы с логами
 	log_t log(&fmk);
 	// Создаём объект исполнителя
-	WebSocket executor(&log);
+	Executor executor(&log);
 	// Создаём биндинг сетевого ядра
 	client::core_t core(&fmk, &log);
 	// Создаём объект WebSocket клиента
-	client::ws_t ws(&core, &fmk, &log);
+	websocket_t ws(&core, &fmk, &log);
 	// Устанавливаем название сервиса
 	log.name("WebSocket Client");
 	// Устанавливаем формат времени
@@ -228,12 +229,12 @@ int main(int argc, char * argv[]){
 	 * 4. Устанавливаем флаг поддержания активным подключение
 	 */
 	ws.mode(
-		// (uint8_t) client::ws_t::flag_t::NOT_STOP |
-		(uint8_t) client::ws_t::flag_t::ALIVE |
-		// (uint8_t) client::ws_t::flag_t::WAIT_MESS |
-		(uint8_t) client::ws_t::flag_t::VERIFY_SSL |
-		(uint8_t) client::ws_t::flag_t::TAKEOVER_CLIENT |
-		(uint8_t) client::ws_t::flag_t::TAKEOVER_SERVER
+		// (uint8_t) websocket_t::flag_t::NOT_STOP |
+		(uint8_t) websocket_t::flag_t::ALIVE |
+		// (uint8_t) websocket_t::flag_t::WAIT_MESS |
+		(uint8_t) websocket_t::flag_t::VERIFY_SSL |
+		(uint8_t) websocket_t::flag_t::TAKEOVER_CLIENT |
+		(uint8_t) websocket_t::flag_t::TAKEOVER_SERVER
 	);
 	// Разрешаем простое чтение базы событий
 	// core.frequency(0);
@@ -267,14 +268,14 @@ int main(int argc, char * argv[]){
 	// ws.proxy("socks5://unix:anyks", awh::scheme_t::family_t::NIX);
 	// ws.proxy("http://unix:anyks", awh::scheme_t::family_t::NIX);
 	// Выполняем инициализацию типа авторизации
-	// ws.authType(auth_t::type_t::BASIC);
-	// ws.authType(auth_t::type_t::DIGEST, auth_t::hash_t::SHA256);
+	// ws.authType(awh::auth_t::type_t::BASIC);
+	// ws.authType(awh::auth_t::type_t::DIGEST, awh::auth_t::hash_t::SHA256);
 	// Устанавливаем тип авторизации прокси-сервера
 	// ws.authTypeProxy();
 	// Устанавливаем тип авторизации прокси-сервера
-	// ws.authTypeProxy(auth_t::type_t::DIGEST, auth_t::hash_t::MD5);
+	// ws.authTypeProxy(awh::auth_t::type_t::DIGEST, awh::auth_t::hash_t::MD5);
 	// Выполняем инициализацию WebSocket клиента
-	ws.init("wss://stream.binance.com:9443/stream", http_t::compress_t::DEFLATE);
+	ws.init("wss://stream.binance.com:9443/stream", awh::http_t::compress_t::DEFLATE);
 	// ws.init("ws://127.0.0.1:2222", http_t::compress_t::DEFLATE);
 	// ws.init("wss://mimi.anyks.net:2222", http_t::compress_t::DEFLATE);
 	// ws.init("wss://92.63.110.56:2222", http_t::compress_t::DEFLATE);
@@ -286,13 +287,13 @@ int main(int argc, char * argv[]){
 	// Устанавливаем сабпротоколы
 	ws.subs({"test2", "test8", "test9"});
 	// Выполняем подписку на получение логов
-	log.subscribe(bind(&WebSocket::subscribe, &executor, _1, _2));
+	log.subscribe(bind(&Executor::subscribe, &executor, _1, _2));
 	// Подписываемся на событие запуска и остановки сервера
-	ws.on(bind(&WebSocket::active, &executor, _1, _2));
+	ws.on(bind(&Executor::active, &executor, _1, _2));
 	// Подписываемся на событие получения ошибки работы клиента
-	ws.on(bind(&WebSocket::error, &executor, _1, _2, _3));
+	ws.on(bind(&Executor::error, &executor, _1, _2, _3));
 	// Подписываемся на событие получения сообщения с сервера
-	ws.on(bind(&WebSocket::message, &executor, _1, _2, _3));
+	ws.on(bind(&Executor::message, &executor, _1, _2, _3));
 	// Выполняем запуск WebSocket клиента
 	ws.start();	
 	// Выводим результат

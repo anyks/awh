@@ -1,5 +1,5 @@
 /**
- * @file: ws.cpp
+ * @file: websocket.cpp
  * @date: 2022-09-03
  * @license: GPL-3.0
  *
@@ -13,7 +13,7 @@
  */
 
 // Подключаем заголовочный файл
-#include <server/ws.hpp>
+#include <server/websocket.hpp>
 
 /**
  * openCallback Функция обратного вызова при запуске работы
@@ -39,7 +39,7 @@ void awh::server::WebSocket::persistCallback(const size_t aid, const size_t sid,
 	// Если данные существуют
 	if((aid > 0) && (sid > 0) && (core != nullptr)){
 		// Получаем параметры подключения адъютанта
-		ws_scheme_t::coffer_t * adj = const_cast <ws_scheme_t::coffer_t *> (this->_scheme.get(aid));
+		websocket_scheme_t::coffer_t * adj = const_cast <websocket_scheme_t::coffer_t *> (this->_scheme.get(aid));
 		// Если параметры подключения адъютанта получены
 		if(adj != nullptr){
 			// Получаем текущий штамп времени
@@ -65,7 +65,7 @@ void awh::server::WebSocket::connectCallback(const size_t aid, const size_t sid,
 		// Создаём адъютанта
 		this->_scheme.set(aid);
 		// Получаем параметры подключения адъютанта
-		ws_scheme_t::coffer_t * adj = const_cast <ws_scheme_t::coffer_t *> (this->_scheme.get(aid));
+		websocket_scheme_t::coffer_t * adj = const_cast <websocket_scheme_t::coffer_t *> (this->_scheme.get(aid));
 		// Если параметры подключения адъютанта получены
 		if(adj != nullptr){
 			// Если нужно активировать многопоточность и она не активирована
@@ -73,7 +73,7 @@ void awh::server::WebSocket::connectCallback(const size_t aid, const size_t sid,
 				// Выполняем активацию тредпула
 				this->_thr.init(this->_threadsCount);
 			// Устанавливаем экшен выполнения
-			adj->action = ws_scheme_t::action_t::CONNECT;
+			adj->action = websocket_scheme_t::action_t::CONNECT;
 			// Выполняем запуск обработчика событий
 			this->handler(aid);
 		}
@@ -89,11 +89,11 @@ void awh::server::WebSocket::disconnectCallback(const size_t aid, const size_t s
 	// Если данные переданы верные
 	if((aid > 0) && (sid > 0) && (core != nullptr)){
 		// Получаем параметры подключения адъютанта
-		ws_scheme_t::coffer_t * adj = const_cast <ws_scheme_t::coffer_t *> (this->_scheme.get(aid));
+		websocket_scheme_t::coffer_t * adj = const_cast <websocket_scheme_t::coffer_t *> (this->_scheme.get(aid));
 		// Если параметры подключения адъютанта получены
 		if(adj != nullptr){
 			// Устанавливаем экшен выполнения
-			adj->action = ws_scheme_t::action_t::DISCONNECT;
+			adj->action = websocket_scheme_t::action_t::DISCONNECT;
 			// Выполняем запуск обработчика событий
 			this->handler(aid);
 		}
@@ -111,11 +111,11 @@ void awh::server::WebSocket::readCallback(const char * buffer, const size_t size
 	// Если данные существуют
 	if((buffer != nullptr) && (size > 0) && (aid > 0) && (sid > 0)){
 		// Получаем параметры подключения адъютанта
-		ws_scheme_t::coffer_t * adj = const_cast <ws_scheme_t::coffer_t *> (this->_scheme.get(aid));
+		websocket_scheme_t::coffer_t * adj = const_cast <websocket_scheme_t::coffer_t *> (this->_scheme.get(aid));
 		// Если параметры подключения адъютанта получены
 		if(adj != nullptr){
 			// Если дисконнекта ещё не произошло
-			if((adj->action == ws_scheme_t::action_t::NONE) || (adj->action == ws_scheme_t::action_t::READ)){
+			if((adj->action == websocket_scheme_t::action_t::NONE) || (adj->action == websocket_scheme_t::action_t::READ)){
 				// Если подключение закрыто
 				if(adj->close){
 					// Принудительно выполняем отключение лкиента
@@ -126,7 +126,7 @@ void awh::server::WebSocket::readCallback(const char * buffer, const size_t size
 				// Если разрешено получение данных
 				if(adj->allow.receive){
 					// Устанавливаем экшен выполнения
-					adj->action = ws_scheme_t::action_t::READ;
+					adj->action = websocket_scheme_t::action_t::READ;
 					// Добавляем полученные данные в буфер
 					adj->buffer.payload.insert(adj->buffer.payload.end(), buffer, buffer + size);
 					// Выполняем запуск обработчика событий
@@ -148,7 +148,7 @@ void awh::server::WebSocket::writeCallback(const char * buffer, const size_t siz
 	// Если данные существуют
 	if((aid > 0) && (sid > 0) && (core != nullptr)){
 		// Получаем параметры подключения адъютанта
-		ws_scheme_t::coffer_t * adj = const_cast <ws_scheme_t::coffer_t *> (this->_scheme.get(aid));
+		websocket_scheme_t::coffer_t * adj = const_cast <websocket_scheme_t::coffer_t *> (this->_scheme.get(aid));
 		// Если параметры подключения адъютанта получены
 		if(adj != nullptr){
 			// Если необходимо выполнить закрыть подключение
@@ -187,7 +187,7 @@ bool awh::server::WebSocket::acceptCallback(const string & ip, const string & ma
  */
 void awh::server::WebSocket::handler(const size_t aid) noexcept {
 	// Получаем параметры подключения адъютанта
-	ws_scheme_t::coffer_t * adj = const_cast <ws_scheme_t::coffer_t *> (this->_scheme.get(aid));
+	websocket_scheme_t::coffer_t * adj = const_cast <websocket_scheme_t::coffer_t *> (this->_scheme.get(aid));
 	// Если параметры подключения адъютанта получены
 	if(adj != nullptr){
 		// Если управляющий блокировщик не заблокирован
@@ -199,15 +199,15 @@ void awh::server::WebSocket::handler(const size_t aid) noexcept {
 			// Выполняем блокировку обработчика
 			adj->locker.mode = true;
 			// Выполняем обработку всех экшенов
-			while(loop && (adj->action != ws_scheme_t::action_t::NONE)){
+			while(loop && (adj->action != websocket_scheme_t::action_t::NONE)){
 				// Определяем обрабатываемый экшен
 				switch(static_cast <uint8_t> (adj->action)){
 					// Если необходимо запустить экшен обработки данных поступающих с сервера
-					case static_cast <uint8_t> (ws_scheme_t::action_t::READ): this->actionRead(aid); break;
+					case static_cast <uint8_t> (websocket_scheme_t::action_t::READ): this->actionRead(aid); break;
 					// Если необходимо запустить экшен обработки подключения к серверу
-					case static_cast <uint8_t> (ws_scheme_t::action_t::CONNECT): this->actionConnect(aid); break;
+					case static_cast <uint8_t> (websocket_scheme_t::action_t::CONNECT): this->actionConnect(aid); break;
 					// Если необходимо запустить экшен обработки отключения от сервера
-					case static_cast <uint8_t> (ws_scheme_t::action_t::DISCONNECT): this->actionDisconnect(aid); break;
+					case static_cast <uint8_t> (websocket_scheme_t::action_t::DISCONNECT): this->actionDisconnect(aid); break;
 					// Если сработал неизвестный экшен, выходим
 					default: loop = false;
 				}
@@ -225,7 +225,7 @@ void awh::server::WebSocket::actionRead(const size_t aid) noexcept {
 	// Если данные существуют
 	if(aid > 0){
 		// Получаем параметры подключения адъютанта
-		ws_scheme_t::coffer_t * adj = const_cast <ws_scheme_t::coffer_t *> (this->_scheme.get(aid));
+		websocket_scheme_t::coffer_t * adj = const_cast <websocket_scheme_t::coffer_t *> (this->_scheme.get(aid));
 		// Если параметры подключения адъютанта получены
 		if(adj != nullptr){
 			// Объект сообщения
@@ -233,11 +233,11 @@ void awh::server::WebSocket::actionRead(const size_t aid) noexcept {
 			// Получаем объект биндинга ядра TCP/IP
 			server::core_t * core = const_cast <server::core_t *> (this->_core);
 			// Если рукопожатие не выполнено
-			if(!reinterpret_cast <http_t *> (&adj->http)->isHandshake()){
+			if(!reinterpret_cast <http_t *> (&adj->ws)->isHandshake()){
 				// Выполняем парсинг полученных данных
-				const size_t bytes = adj->http.parse(adj->buffer.payload.data(), adj->buffer.payload.size());
+				const size_t bytes = adj->ws.parse(adj->buffer.payload.data(), adj->buffer.payload.size());
 				// Если все данные получены
-				if(adj->http.isEnd()){
+				if(adj->ws.isEnd()){
 					// Буфер данных для записи в сокет
 					vector <char> buffer;
 					// Метод компрессии данных
@@ -247,7 +247,7 @@ void awh::server::WebSocket::actionRead(const size_t aid) noexcept {
 					 */
 					#if defined(DEBUG_MODE)
 						// Получаем данные запроса
-						const auto & request = reinterpret_cast <http_t *> (&adj->http)->request(true);
+						const auto & request = reinterpret_cast <http_t *> (&adj->ws)->request(true);
 						// Если параметры запроса получены
 						if(!request.empty()){
 							// Выводим заголовок запроса
@@ -255,65 +255,65 @@ void awh::server::WebSocket::actionRead(const size_t aid) noexcept {
 							// Выводим параметры запроса
 							cout << string(request.begin(), request.end()) << endl;
 							// Если тело запроса существует
-							if(!adj->http.body().empty())
+							if(!adj->ws.body().empty())
 								// Выводим сообщение о выводе чанка тела
-								cout << this->_fmk->format("<body %u>", adj->http.body().size()) << endl << endl;
+								cout << this->_fmk->format("<body %u>", adj->ws.body().size()) << endl << endl;
 							// Иначе устанавливаем перенос строки
 							else cout << endl;
 						}
 					#endif
 					// Выполняем проверку авторизации
-					switch(static_cast <uint8_t> (adj->http.getAuth())){
+					switch(static_cast <uint8_t> (adj->ws.getAuth())){
 						// Если запрос выполнен удачно
 						case static_cast <uint8_t> (http_t::stath_t::GOOD): {
 							// Если рукопожатие выполнено
-							if(adj->http.isHandshake()){
+							if(adj->ws.isHandshake()){
 								// Получаем метод компрессии HTML данных
-								compress = adj->http.compression();
+								compress = adj->ws.compression();
 								// Устанавливаем параметры шифрования
-								if(this->_crypt) adj->http.crypto(this->_pass, this->_salt, this->_cipher);
+								if(this->_crypt) adj->ws.crypto(this->_pass, this->_salt, this->_cipher);
 								// Проверяем версию протокола
-								if(!adj->http.checkVer()){
+								if(!adj->ws.checkVer()){
 									// Выполняем сброс состояния HTTP парсера
-									adj->http.clear();
+									adj->ws.clear();
 									// Получаем бинарные данные REST запроса
-									buffer = adj->http.reject(400, "Unsupported protocol version");
+									buffer = adj->ws.reject(400, "Unsupported protocol version");
 									// Если бинарные данные запроса получены, отправляем на сервер
 									adj->stopped = !buffer.empty();
 									// Завершаем работу
 									break;
 								}
 								// Проверяем ключ адъютанта
-								if(!adj->http.checkKey()){
+								if(!adj->ws.checkKey()){
 									// Выполняем сброс состояния HTTP парсера
-									adj->http.clear();
+									adj->ws.clear();
 									// Получаем бинарные данные REST запроса
-									buffer = adj->http.reject(400, "Wrong client key");
+									buffer = adj->ws.reject(400, "Wrong client key");
 									// Если бинарные данные запроса получены, отправляем на сервер
 									adj->stopped = !buffer.empty();
 									// Завершаем работу
 									break;
 								}
 								// Выполняем сброс состояния HTTP парсера
-								adj->http.clear();
+								adj->ws.clear();
 								// Получаем флаг шифрованных данных
-								adj->crypt = adj->http.isCrypt();
+								adj->crypt = adj->ws.isCrypt();
 								// Получаем поддерживаемый метод компрессии
-								adj->compress = adj->http.compress();
+								adj->compress = adj->ws.compress();
 								// Получаем размер скользящего окна сервера
-								adj->wbitServer = adj->http.wbitServer();
+								adj->wbitServer = adj->ws.wbitServer();
 								// Получаем размер скользящего окна клиента
-								adj->wbitClient = adj->http.wbitClient();
+								adj->wbitClient = adj->ws.wbitClient();
 								// Если разрешено выполнять перехват контекста компрессии для сервера
-								if(adj->http.serverTakeover())
+								if(adj->ws.serverTakeover())
 									// Разрешаем перехватывать контекст компрессии для клиента
 									adj->hash.takeoverCompress(true);
 								// Если разрешено выполнять перехват контекста компрессии для клиента
-								if(adj->http.clientTakeover())
+								if(adj->ws.clientTakeover())
 									// Разрешаем перехватывать контекст компрессии для сервера
 									adj->hash.takeoverDecompress(true);
 								// Получаем бинарные данные REST запроса
-								buffer = adj->http.response();
+								buffer = adj->ws.response();
 								// Если бинарные данные ответа получены
 								if(!buffer.empty()){
 									/**
@@ -339,35 +339,35 @@ void awh::server::WebSocket::actionRead(const size_t aid) noexcept {
 										// Очищаем буфер собранных данных
 										adj->buffer.payload.clear();
 										// Если экшен соответствует, выполняем его сброс
-										if(adj->action == ws_scheme_t::action_t::READ)
+										if(adj->action == websocket_scheme_t::action_t::READ)
 											// Выполняем сброс экшена
-											adj->action = ws_scheme_t::action_t::NONE;
+											adj->action = websocket_scheme_t::action_t::NONE;
 									}
 									// Завершаем работу
 									return;
 								// Выполняем реджект
 								} else {
 									// Выполняем сброс состояния HTTP парсера
-									adj->http.clear();
+									adj->ws.clear();
 									// Выполняем сброс состояния HTTP парсера
-									adj->http.reset();
+									adj->ws.reset();
 									// Выполняем очистку буфера данных
 									adj->buffer.payload.clear();
 									// Формируем ответ, что страница не доступна
-									buffer = adj->http.reject(500);
+									buffer = adj->ws.reject(500);
 									// Если бинарные данные запроса получены, отправляем на сервер
 									adj->stopped = !buffer.empty();
 								}
 							// Сообщаем, что рукопожатие не выполнено
 							} else {
 								// Выполняем сброс состояния HTTP парсера
-								adj->http.clear();
+								adj->ws.clear();
 								// Выполняем сброс состояния HTTP парсера
-								adj->http.reset();
+								adj->ws.reset();
 								// Выполняем очистку буфера данных
 								adj->buffer.payload.clear();
 								// Формируем ответ, что страница не доступна
-								buffer = adj->http.reject(403);
+								buffer = adj->ws.reject(403);
 								// Если бинарные данные запроса получены, отправляем на сервер
 								adj->stopped = !buffer.empty();
 							}
@@ -375,13 +375,13 @@ void awh::server::WebSocket::actionRead(const size_t aid) noexcept {
 						// Если запрос неудачный
 						case static_cast <uint8_t> (http_t::stath_t::FAULT): {
 							// Выполняем сброс состояния HTTP парсера
-							adj->http.clear();
+							adj->ws.clear();
 							// Выполняем сброс состояния HTTP парсера
-							adj->http.reset();
+							adj->ws.reset();
 							// Выполняем очистку буфера данных
 							adj->buffer.payload.clear();
 							// Формируем запрос авторизации
-							buffer = adj->http.reject(401);
+							buffer = adj->ws.reject(401);
 						} break;
 					}
 					// Если бинарные данные запроса получены, отправляем на сервер
@@ -398,11 +398,11 @@ void awh::server::WebSocket::actionRead(const size_t aid) noexcept {
 							cout << string(buffer.begin(), buffer.end()) << endl << endl;
 						#endif
 						// Устанавливаем метод компрессии данных ответа
-						adj->http.compress(compress);
+						adj->ws.compress(compress);
 						// Выполняем отправку заголовков сообщения
 						core->write(buffer.data(), buffer.size(), aid);
 						// Получаем данные тела запроса
-						while(!(payload = adj->http.payload()).empty()){
+						while(!(payload = adj->ws.payload()).empty()){
 							/**
 							 * Если включён режим отладки
 							 */
@@ -418,22 +418,22 @@ void awh::server::WebSocket::actionRead(const size_t aid) noexcept {
 							// Выполняем запрет на получение входящих данных
 							core->disabled(engine_t::method_t::READ, aid);
 						// Если экшен соответствует, выполняем его сброс
-						if(adj->action == ws_scheme_t::action_t::READ)
+						if(adj->action == websocket_scheme_t::action_t::READ)
 							// Выполняем сброс экшена
-							adj->action = ws_scheme_t::action_t::NONE;
+							adj->action = websocket_scheme_t::action_t::NONE;
 						// Завершаем работу
 						return;
 					}
 					// Если экшен соответствует, выполняем его сброс
-					if(adj->action == ws_scheme_t::action_t::READ)
+					if(adj->action == websocket_scheme_t::action_t::READ)
 						// Выполняем сброс экшена
-						adj->action = ws_scheme_t::action_t::NONE;
+						adj->action = websocket_scheme_t::action_t::NONE;
 					// Завершаем работу
 					core->close(aid);
 				// Если экшен соответствует, выполняем его сброс
-				} else if(adj->action == ws_scheme_t::action_t::READ)
+				} else if(adj->action == websocket_scheme_t::action_t::READ)
 					// Выполняем сброс экшена
-					adj->action = ws_scheme_t::action_t::NONE;
+					adj->action = websocket_scheme_t::action_t::NONE;
 				// Завершаем работу
 				return;
 			// Если рукопожатие выполнено
@@ -535,9 +535,9 @@ void awh::server::WebSocket::actionRead(const size_t aid) noexcept {
 								// Выводим сообщение об ошибке
 								this->error(aid, mess);
 								// Если экшен соответствует, выполняем его сброс
-								if(adj->action == ws_scheme_t::action_t::READ)
+								if(adj->action == websocket_scheme_t::action_t::READ)
 									// Выполняем сброс экшена
-									adj->action = ws_scheme_t::action_t::NONE;
+									adj->action = websocket_scheme_t::action_t::NONE;
 								// Завершаем работу
 								core->close(aid);
 								// Выходим из функции
@@ -558,7 +558,7 @@ void awh::server::WebSocket::actionRead(const size_t aid) noexcept {
 						// Если тредпул активирован
 						if(this->_thr.is())
 							// Добавляем в тредпул новую задачу на извлечение полученных сообщений
-							this->_thr.push(std::bind(&ws_t::extraction, this, aid, buffer, (adj->opcode == frame_t::opcode_t::TEXT)));
+							this->_thr.push(std::bind(&websocket_t::extraction, this, aid, buffer, (adj->opcode == frame_t::opcode_t::TEXT)));
 						// Если тредпул не активирован, выполняем извлечение полученных сообщений
 						else this->extraction(aid, buffer, (adj->opcode == frame_t::opcode_t::TEXT));
 						// Очищаем буфер полученного сообщения
@@ -568,9 +568,9 @@ void awh::server::WebSocket::actionRead(const size_t aid) noexcept {
 					if(!receive || adj->buffer.payload.empty()) break;
 				}
 				// Если экшен соответствует, выполняем его сброс
-				if(adj->action == ws_scheme_t::action_t::READ)
+				if(adj->action == websocket_scheme_t::action_t::READ)
 					// Выполняем сброс экшена
-					adj->action = ws_scheme_t::action_t::NONE;
+					adj->action = websocket_scheme_t::action_t::NONE;
 				// Выходим из функции
 				return;
 			}
@@ -579,9 +579,9 @@ void awh::server::WebSocket::actionRead(const size_t aid) noexcept {
 			// Отправляем серверу сообщение
 			this->sendError(aid, mess);
 			// Если экшен соответствует, выполняем его сброс
-			if(adj->action == ws_scheme_t::action_t::READ)
+			if(adj->action == websocket_scheme_t::action_t::READ)
 				// Выполняем сброс экшена
-				adj->action = ws_scheme_t::action_t::NONE;
+				adj->action = websocket_scheme_t::action_t::NONE;
 		}
 	}
 }
@@ -593,7 +593,7 @@ void awh::server::WebSocket::actionConnect(const size_t aid) noexcept {
 	// Если данные существуют
 	if(aid > 0){
 		// Получаем параметры подключения адъютанта
-		ws_scheme_t::coffer_t * adj = const_cast <ws_scheme_t::coffer_t *> (this->_scheme.get(aid));
+		websocket_scheme_t::coffer_t * adj = const_cast <websocket_scheme_t::coffer_t *> (this->_scheme.get(aid));
 		// Если параметры подключения адъютанта получены
 		if(adj != nullptr){
 			// Если данные необходимо зашифровать
@@ -606,19 +606,19 @@ void awh::server::WebSocket::actionConnect(const size_t aid) noexcept {
 				adj->hash.cipher(this->_cipher);
 			}
 			// Разрешаем перехватывать контекст для клиента
-			adj->http.clientTakeover(this->_takeOverCli);
+			adj->ws.clientTakeover(this->_takeOverCli);
 			// Разрешаем перехватывать контекст для сервера
-			adj->http.serverTakeover(this->_takeOverSrv);
+			adj->ws.serverTakeover(this->_takeOverSrv);
 			// Разрешаем перехватывать контекст компрессии
 			adj->hash.takeoverCompress(this->_takeOverSrv);
 			// Разрешаем перехватывать контекст декомпрессии
 			adj->hash.takeoverDecompress(this->_takeOverCli);
 			// Устанавливаем данные сервиса
-			adj->http.serv(this->_sid, this->_name, this->_ver);
+			adj->ws.serv(this->_sid, this->_name, this->_ver);
 			// Устанавливаем поддерживаемые сабпротоколы
-			if(!this->_subs.empty()) adj->http.subs(this->_subs);
+			if(!this->_subs.empty()) adj->ws.subs(this->_subs);
 			// Устанавливаем метод компрессии поддерживаемый сервером
-			adj->http.compress(this->_scheme.compress);
+			adj->ws.compress(this->_scheme.compress);
 			// Если сервер требует авторизацию
 			if(this->_authType != auth_t::type_t::NONE){
 				// Определяем тип авторизации
@@ -626,27 +626,27 @@ void awh::server::WebSocket::actionConnect(const size_t aid) noexcept {
 					// Если тип авторизации Basic
 					case static_cast <uint8_t> (auth_t::type_t::BASIC): {
 						// Устанавливаем параметры авторизации
-						adj->http.authType(this->_authType);
+						adj->ws.authType(this->_authType);
 						// Устанавливаем функцию проверки авторизации
-						adj->http.authCallback(this->_callback.checkAuth);
+						adj->ws.authCallback(this->_callback.checkAuth);
 					} break;
 					// Если тип авторизации Digest
 					case static_cast <uint8_t> (auth_t::type_t::DIGEST): {
 						// Устанавливаем название сервера
-						adj->http.realm(this->_realm);
+						adj->ws.realm(this->_realm);
 						// Устанавливаем временный ключ сессии сервера
-						adj->http.opaque(this->_opaque);
+						adj->ws.opaque(this->_opaque);
 						// Устанавливаем параметры авторизации
-						adj->http.authType(this->_authType, this->_authHash);
+						adj->ws.authType(this->_authType, this->_authHash);
 						// Устанавливаем функцию извлечения пароля
-						adj->http.extractPassCallback(this->_callback.extractPass);
+						adj->ws.extractPassCallback(this->_callback.extractPass);
 					} break;
 				}
 			}
 			// Если экшен соответствует, выполняем его сброс
-			if(adj->action == ws_scheme_t::action_t::CONNECT)
+			if(adj->action == websocket_scheme_t::action_t::CONNECT)
 				// Выполняем сброс экшена
-				adj->action = ws_scheme_t::action_t::NONE;
+				adj->action = websocket_scheme_t::action_t::NONE;
 		}
 	}
 }
@@ -658,13 +658,13 @@ void awh::server::WebSocket::actionDisconnect(const size_t aid) noexcept {
 	// Если идентификатор адъютанта существует
 	if(aid > 0){
 		// Получаем параметры подключения адъютанта
-		ws_scheme_t::coffer_t * adj = const_cast <ws_scheme_t::coffer_t *> (this->_scheme.get(aid));
+		websocket_scheme_t::coffer_t * adj = const_cast <websocket_scheme_t::coffer_t *> (this->_scheme.get(aid));
 		// Если параметры подключения адъютанта получены
 		if(adj != nullptr){
 			// Если экшен соответствует, выполняем его сброс
-			if(adj->action == ws_scheme_t::action_t::DISCONNECT)
+			if(adj->action == websocket_scheme_t::action_t::DISCONNECT)
 				// Выполняем сброс экшена
-				adj->action = ws_scheme_t::action_t::NONE;
+				adj->action = websocket_scheme_t::action_t::NONE;
 		}
 		// Добавляем в очередь список мусорных адъютантов
 		this->_garbage.emplace(aid, this->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS));
@@ -689,7 +689,7 @@ void awh::server::WebSocket::garbage(const u_short tid, awh::core_t * core) noex
 			// Если адъютант уже давно удалился
 			if((date - it->second) >= 10000){
 				// Получаем параметры подключения адъютанта
-				ws_scheme_t::coffer_t * adj = const_cast <ws_scheme_t::coffer_t *> (this->_scheme.get(it->first));
+				websocket_scheme_t::coffer_t * adj = const_cast <websocket_scheme_t::coffer_t *> (this->_scheme.get(it->first));
 				// Если параметры подключения адъютанта получены
 				if(adj != nullptr)
 					// Устанавливаем флаг отключения
@@ -703,7 +703,7 @@ void awh::server::WebSocket::garbage(const u_short tid, awh::core_t * core) noex
 		}
 	}
 	// Устанавливаем таймаут времени на удаление мусорных адъютантов раз в 10 секунд
-	this->_timer.setTimeout(10000, (function <void (const u_short, awh::core_t *)>) std::bind(&ws_t::garbage, this, _1, _2));
+	this->_timer.setTimeout(10000, (function <void (const u_short, awh::core_t *)>) std::bind(&websocket_t::garbage, this, _1, _2));
 }
 /**
  * error Метод вывода сообщений об ошибках работы адъютанта
@@ -712,7 +712,7 @@ void awh::server::WebSocket::garbage(const u_short tid, awh::core_t * core) noex
  */
 void awh::server::WebSocket::error(const size_t aid, const mess_t & message) const noexcept {
 	// Получаем параметры подключения адъютанта
-	ws_scheme_t::coffer_t * adj = const_cast <ws_scheme_t::coffer_t *> (this->_scheme.get(aid));
+	websocket_scheme_t::coffer_t * adj = const_cast <websocket_scheme_t::coffer_t *> (this->_scheme.get(aid));
 	// Если параметры подключения адъютанта получены
 	if(adj != nullptr){
 		// Очищаем список буффер бинарных данных
@@ -745,7 +745,7 @@ void awh::server::WebSocket::extraction(const size_t aid, const vector <char> & 
 	// Если буфер данных передан
 	if((aid > 0) && !buffer.empty() && (this->_callback.message != nullptr)){
 		// Получаем параметры подключения адъютанта
-		ws_scheme_t::coffer_t * adj = const_cast <ws_scheme_t::coffer_t *> (this->_scheme.get(aid));
+		websocket_scheme_t::coffer_t * adj = const_cast <websocket_scheme_t::coffer_t *> (this->_scheme.get(aid));
 		// Если параметры подключения адъютанта получены
 		if(adj != nullptr){
 			// Выполняем блокировку потока	
@@ -837,7 +837,7 @@ void awh::server::WebSocket::pong(const size_t aid, awh::core_t * core, const st
 	// Если необходимые данные переданы
 	if((aid > 0) && (core != nullptr)){
 		// Получаем параметры подключения адъютанта
-		ws_scheme_t::coffer_t * adj = const_cast <ws_scheme_t::coffer_t *> (this->_scheme.get(aid));
+		websocket_scheme_t::coffer_t * adj = const_cast <websocket_scheme_t::coffer_t *> (this->_scheme.get(aid));
 		// Если отправка сообщений разблокированна
 		if((adj != nullptr) && adj->allow.send){
 			// Создаём буфер для отправки
@@ -859,7 +859,7 @@ void awh::server::WebSocket::ping(const size_t aid, awh::core_t * core, const st
 	// Если необходимые данные переданы
 	if((aid > 0) && (core != nullptr) && core->working()){
 		// Получаем параметры подключения адъютанта
-		ws_scheme_t::coffer_t * adj = const_cast <ws_scheme_t::coffer_t *> (this->_scheme.get(aid));
+		websocket_scheme_t::coffer_t * adj = const_cast <websocket_scheme_t::coffer_t *> (this->_scheme.get(aid));
 		// Если отправка сообщений разблокированна
 		if((adj != nullptr) && adj->allow.send){
 			// Создаём буфер для отправки
@@ -967,7 +967,7 @@ void awh::server::WebSocket::sendError(const size_t aid, const mess_t & mess) co
 		// Если код ошибки относится к WebSocket
 		if(mess.code >= 1000){
 			// Получаем параметры подключения адъютанта
-			ws_scheme_t::coffer_t * adj = const_cast <ws_scheme_t::coffer_t *> (this->_scheme.get(aid));
+			websocket_scheme_t::coffer_t * adj = const_cast <websocket_scheme_t::coffer_t *> (this->_scheme.get(aid));
 			// Получаем объект биндинга ядра TCP/IP
 			server::core_t * core = const_cast <server::core_t *> (this->_core);
 			// Если параметры подключения адъютанта получены
@@ -1014,13 +1014,13 @@ void awh::server::WebSocket::send(const size_t aid, const char * message, const 
 	// Если подключение выполнено
 	if(this->_core->working() && (aid > 0) && (size > 0) && (message != nullptr)){
 		// Получаем параметры подключения адъютанта
-		ws_scheme_t::coffer_t * adj = const_cast <ws_scheme_t::coffer_t *> (this->_scheme.get(aid));
+		websocket_scheme_t::coffer_t * adj = const_cast <websocket_scheme_t::coffer_t *> (this->_scheme.get(aid));
 		// Если отправка сообщений разблокированна
 		if((adj != nullptr) && adj->allow.send){
 			// Выполняем блокировку отправки сообщения
 			adj->allow.send = !adj->allow.send;
 			// Если рукопожатие выполнено
-			if(adj->http.isHandshake()){
+			if(adj->ws.isHandshake()){
 				/**
 				 * Если включён режим отладки
 				 */
@@ -1226,9 +1226,9 @@ const string awh::server::WebSocket::sub(const size_t aid) const noexcept {
 	// Если идентификатор адъютанта передан
 	if(aid > 0){
 		// Получаем параметры подключения адъютанта
-		ws_scheme_t::coffer_t * adj = const_cast <ws_scheme_t::coffer_t *> (this->_scheme.get(aid));
+		websocket_scheme_t::coffer_t * adj = const_cast <websocket_scheme_t::coffer_t *> (this->_scheme.get(aid));
 		// Если параметры подключения адъютанта получены
-		if(adj != nullptr) result = adj->http.sub();
+		if(adj != nullptr) result = adj->ws.sub();
 	}
 	// Выводим результат
 	return result;

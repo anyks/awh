@@ -1,5 +1,5 @@
 /**
- * @file: ws.hpp
+ * @file: websocket.hpp
  * @date: 2022-09-03
  * @license: GPL-3.0
  *
@@ -12,8 +12,8 @@
  * @copyright: Copyright © 2022
  */
 
-#ifndef __AWH_SCHEME_WSS_SERVER__
-#define __AWH_SCHEME_WSS_SERVER__
+#ifndef __AWH_SCHEME_WEBSOCKET_SERVER__
+#define __AWH_SCHEME_WEBSOCKET_SERVER__
 
 /**
  * Стандартная библиотека
@@ -101,7 +101,7 @@ namespace awh {
 					allow_t allow;               // Объект разрешения обмена данными
 					locker_t locker;             // Объект блокировщика
 					buffer_t buffer;             // Объект буфера данных
-					server::wss_t http;          // Создаём объект для работы с HTTP
+					server::ws_t ws;             // Создаём объект для работы с HTTP
 					recursive_mutex mtx;         // Мютекс для блокировки потока
 					frame_t::opcode_t opcode;    // Полученный опкод сообщения
 					http_t::compress_t compress; // Метод компрессии данных
@@ -113,7 +113,7 @@ namespace awh {
 					 stopped(false), compressed(false),
 					 wbitClient(-1), wbitServer(-1),
 					 action(action_t::NONE), checkPoint(0),
-					 hash(log), http(fmk, log, uri),
+					 hash(log), ws(fmk, log, uri),
 					 opcode(frame_t::opcode_t::TEXT),
 					 compress(http_t::compress_t::NONE) {}
 					/**
@@ -173,8 +173,8 @@ namespace awh {
 				 * ~SchemeWebSocket Деструктор
 				 */
 				~SchemeWebSocket() noexcept {}
-		} ws_scheme_t;
+		} websocket_scheme_t;
 	};
 };
 
-#endif // __AWH_SCHEME_WSS_SERVER__
+#endif // __AWH_SCHEME_WEBSOCKET_SERVER__

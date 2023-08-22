@@ -303,7 +303,7 @@ namespace awh {
 			/**
 			 * ~Socks5 Деструктор
 			 */
-			~Socks5() noexcept {}
+			virtual ~Socks5() noexcept {}
 	} socks5_t;
 };
 
