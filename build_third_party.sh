@@ -43,8 +43,15 @@ if [ -n "$1" ]; then
 		clean_submodule "pcre"
 		clean_submodule "libev"
 		clean_submodule "libev-win"
+		clean_submodule "ngtcp2"
+		clean_submodule "c-ares"
 		clean_submodule "brotli"
+		clean_submodule "libxml2"
 		clean_submodule "openssl"
+		clean_submodule "nghttp3"
+		clean_submodule "nghttp2"
+		clean_submodule "jansson"
+		clean_submodule "jemalloc"
 		clean_submodule "libevent"
 
 		# Если операционная система не является Windows
@@ -143,7 +150,7 @@ if [ ! -f "$src/.stamp_done" ]; then
 	cd "$src" || exit 1
 
 	# Версия OpenSSL
-	VER="3.1.1"
+	VER="3.1.2"
 
 	# Выполняем удаление все неподходящие зависимости
 	rm -rf "$src/fuzz/corpora"/*
@@ -299,23 +306,23 @@ if [ ! -f "$src/.stamp_done" ]; then
 		cmake \
 		 -DCMAKE_BUILD_TYPE="Release" \
 		 -DCMAKE_SYSTEM_NAME="Windows" \
-		 -DBROTLI_EMSCRIPTEN="YES" \
-		 -DBROTLI_DISABLE_TESTS="YES" \
+		 -DBROTLI_EMSCRIPTEN="ON" \
+		 -DBROTLI_DISABLE_TESTS="ON" \
 		 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
 		 -DBROTLI_LIBRARIES="$PREFIX/lib" \
 		 -DBROTLI_INCLUDE_DIRS="$PREFIX/include" \
-		 -DBUILD_SHARED_LIBS="NO" \
+		 -DBUILD_SHARED_LIBS="OFF" \
 		 -G "MinGW Makefiles" \
 		 .. || exit 1
 	else
 		cmake \
 		 -DCMAKE_BUILD_TYPE="Release" \
-		 -DBROTLI_EMSCRIPTEN="YES" \
-		 -DBROTLI_DISABLE_TESTS="YES" \
+		 -DBROTLI_EMSCRIPTEN="ON" \
+		 -DBROTLI_DISABLE_TESTS="ON" \
 		 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
 		 -DBROTLI_LIBRARIES="$PREFIX/lib" \
 		 -DBROTLI_INCLUDE_DIRS="$PREFIX/include" \
-		 -DBUILD_SHARED_LIBS="NO" \
+		 -DBUILD_SHARED_LIBS="OFF" \
 		 .. || exit 1
 	fi
 
@@ -471,8 +478,8 @@ else
 			# Выполняем конфигурирование сборки
 			./configure \
 			 --with-pic=use \
-			 --enable-static=yes \
-			 --enable-shared=no \
+			 --enable-static="ON" \
+			 --enable-shared="OFF" \
 			 --prefix=$PREFIX \
 			 --includedir="$PREFIX/include/libev" \
 			 --libdir="$PREFIX/lib"
@@ -518,8 +525,8 @@ if [[ $IDN = "yes" ]] && [[ ! $OS = "Windows" ]]; then
 			if [ $OS = "Windows" ]; then # Windows
 				# Выполняем конфигурацию модуля
 				./configure \
-				 --enable-static=yes \
-				 --enable-shared=no \
+				 --enable-static="ON" \
+				 --enable-shared="OFF" \
 				 --host=x86_64-w64-mingw32 \
 				 --prefix=$PREFIX \
 				 --includedir="$PREFIX/include/iconv" \
@@ -530,8 +537,8 @@ if [[ $IDN = "yes" ]] && [[ ! $OS = "Windows" ]]; then
 			else
 				# Выполняем конфигурацию модуля
 				./configure \
-				 --enable-static=yes \
-				 --enable-shared=no \
+				 --enable-static="ON" \
+				 --enable-shared="OFF" \
 				 --prefix=$PREFIX \
 				 --includedir="$PREFIX/include/iconv"
 			fi
@@ -573,10 +580,10 @@ if [[ $IDN = "yes" ]] && [[ ! $OS = "Windows" ]]; then
 			# Выполняем конфигурацию модуля
 			./configure \
 			 --prefix=$PREFIX \
-			 --enable-shared=no \
-			 --enable-gtk-doc=no \
-			 --enable-gtk-doc-html=no \
-			 --enable-gtk-doc-pdf=no \
+			 --enable-shared="OFF" \
+			 --enable-gtk-doc="OFF" \
+			 --enable-gtk-doc-html="OFF" \
+			 --enable-gtk-doc-pdf="OFF" \
 			 --disable-doc \
 			 --includedir="$PREFIX/include/idn2" \
 			 --oldincludedir="$PREFIX/include/iconv" \
@@ -619,30 +626,30 @@ if [[ ! $OS = "Windows" ]]; then
 			cmake \
 			-DCMAKE_SYSTEM_NAME=Windows \
 			-DCMAKE_BUILD_TYPE=Release \
-			-DPCRE_BUILD_TESTS=NO \
-			-DPCRE_BUILD_PCRECPP=YES \
-			-DPCRE_SUPPORT_UTF=YES \
-			-DPCRE_SUPPORT_JIT=NO \
-			-DPCRE_SUPPORT_LIBZ=NO \
-			-DPCRE_SUPPORT_LIBBZ2=NO \
-			-DPCRE_SUPPORT_LIBEDIT=NO \
-			-DPCRE_SUPPORT_LIBREADLINE=NO \
-			-DPCRE_SUPPORT_UNICODE_PROPERTIES=YES \
+			-DPCRE_BUILD_TESTS="OFF" \
+			-DPCRE_BUILD_PCRECPP="ON" \
+			-DPCRE_SUPPORT_UTF="ON" \
+			-DPCRE_SUPPORT_JIT="OFF" \
+			-DPCRE_SUPPORT_LIBZ="OFF" \
+			-DPCRE_SUPPORT_LIBBZ2="OFF" \
+			-DPCRE_SUPPORT_LIBEDIT="OFF" \
+			-DPCRE_SUPPORT_LIBREADLINE="OFF" \
+			-DPCRE_SUPPORT_UNICODE_PROPERTIES="ON" \
 			-DCMAKE_INSTALL_PREFIX="$PREFIX" \
 			-G "MinGW Makefiles" \
 			.. || exit 1
 		else
 			cmake \
 			-DCMAKE_BUILD_TYPE=Release \
-			-DPCRE_BUILD_TESTS=NO \
-			-DPCRE_BUILD_PCRECPP=YES \
-			-DPCRE_SUPPORT_UTF=YES \
-			-DPCRE_SUPPORT_JIT=NO \
-			-DPCRE_SUPPORT_LIBZ=NO \
-			-DPCRE_SUPPORT_LIBBZ2=NO \
-			-DPCRE_SUPPORT_LIBEDIT=NO \
-			-DPCRE_SUPPORT_LIBREADLINE=NO \
-			-DPCRE_SUPPORT_UNICODE_PROPERTIES=YES \
+			-DPCRE_BUILD_TESTS="OFF" \
+			-DPCRE_BUILD_PCRECPP="ON" \
+			-DPCRE_SUPPORT_UTF="ON" \
+			-DPCRE_SUPPORT_JIT="OFF" \
+			-DPCRE_SUPPORT_LIBZ="OFF" \
+			-DPCRE_SUPPORT_LIBBZ2="OFF" \
+			-DPCRE_SUPPORT_LIBEDIT="OFF" \
+			-DPCRE_SUPPORT_LIBREADLINE="OFF" \
+			-DPCRE_SUPPORT_UNICODE_PROPERTIES="ON" \
 			-DCMAKE_INSTALL_PREFIX="$PREFIX" \
 			.. || exit 1
 		fi
@@ -666,6 +673,582 @@ if [[ ! $OS = "Windows" ]]; then
 		touch "$src/.stamp_done"
 		cd "$ROOT" || exit 1
 	fi
+fi
+
+# Сборка LibXML2
+src="$ROOT/submodules/libxml2"
+if [ ! -f "$src/.stamp_done" ]; then
+	printf "\n****** AWH LibXML2 ******\n"
+	cd "$src" || exit 1
+
+	# Версия LibXML2
+	VER="2.11.4"
+
+	# Закачиваем все изменения
+	git fetch --all
+	# Закачиваем все теги
+	git fetch --all --tags
+	# Выполняем жесткое переключение на master
+	git reset --hard origin/master
+	# Переключаемся на master
+	git checkout master
+	# Выполняем обновление данных
+	git pull origin master
+	# Удаляем старую ветку
+	git branch -D v${VER}-branch
+	# Выполняем переключение на указанную версию
+	git checkout -b v${VER}-branch v${VER}
+
+	# Создаём каталог сборки
+	mkdir -p "build" || exit 1
+	# Переходим в каталог
+	cd "build" || exit 1
+
+	# Удаляем старый файл кэша
+	rm -rf "$src/build/CMakeCache.txt"
+
+	# Выполняем конфигурацию проекта
+	if [[ $OS = "Windows" ]]; then
+		cmake \
+		 -DBUILD_SHARED_LIBS="OFF" \
+		 -DLIBXML2_WITH_LZMA="OFF" \
+		 -DLIBXML2_WITH_ZLIB="OFF" \
+		 -DLIBXML2_WITH_ICONV="OFF" \
+		 -DLIBXML2_WITH_PYTHON="OFF" \
+		 -DCMAKE_BUILD_TYPE=Release \
+		 -DCMAKE_SYSTEM_NAME=Windows \
+		 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
+		 -G "MinGW Makefiles" \
+		 .. || exit 1
+	else
+		cmake \
+		 -DBUILD_SHARED_LIBS="OFF" \
+		 -DLIBXML2_WITH_LZMA="OFF" \
+		 -DLIBXML2_WITH_ZLIB="OFF" \
+		 -DLIBXML2_WITH_ICONV="OFF" \
+		 -DLIBXML2_WITH_PYTHON="OFF" \
+		 -DCMAKE_BUILD_TYPE=Release \
+		 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
+		 .. || exit 1
+	fi
+
+	# Выполняем сборку на всех логических ядрах
+	$BUILD -j"$numproc" || exit 1
+	# Выполняем установку проекта
+	$BUILD install || exit 1
+
+	# Помечаем флагом, что сборка и установка произведена
+	touch "$src/.stamp_done"
+	cd "$ROOT" || exit 1
+fi
+
+# Сборка JeMalloc
+src="$ROOT/submodules/jemalloc"
+if [ ! -f "$src/.stamp_done" ]; then
+	printf "\n****** AWH JeMalloc ******\n"
+	cd "$src" || exit 1
+
+	# Версия JeMalloc
+	VER="5.3.0"
+
+	# Закачиваем все изменения
+	git fetch --all
+	# Закачиваем все теги
+	git fetch --all --tags
+	# Выполняем жесткое переключение на master
+	git reset --hard origin/master
+	# Переключаемся на master
+	git checkout master
+	# Выполняем обновление данных
+	git pull origin master
+	# Удаляем старую ветку
+	git branch -D v${VER}-branch
+	# Выполняем переключение на указанную версию
+	git checkout -b v${VER}-branch ${VER}
+
+	# Подготавливаем сборочные данные
+	./autogen.sh || exit 1
+	# Выполняем конфигурацию исходников
+	./configure \
+	 --prefix="$PREFIX" \
+	 --enable-doc=no \
+	 --enable-shared=no \
+	 --enable-static=yes
+
+	# Выполняем сборку на всех логических ядрах
+	$BUILD -j"$numproc" || exit 1
+	# Выполняем установку проекта
+	$BUILD install || exit 1
+
+	# Помечаем флагом, что сборка и установка произведена
+	touch "$src/.stamp_done"
+	cd "$ROOT" || exit 1
+fi
+
+# Сборка C-Ares
+src="$ROOT/submodules/c-ares"
+if [ ! -f "$src/.stamp_done" ]; then
+	printf "\n****** AWH C-Ares ******\n"
+	cd "$src" || exit 1
+
+	# Версия C-Ares
+	VER="1_19_1"
+
+	# Закачиваем все изменения
+	git fetch --all
+	# Закачиваем все теги
+	git fetch --all --tags
+	# Выполняем жесткое переключение на main
+	git reset --hard origin/main
+	# Переключаемся на main
+	git checkout main
+	# Выполняем обновление данных
+	git pull origin main
+	# Удаляем старую ветку
+	git branch -D v${VER}-branch
+	# Выполняем переключение на указанную версию
+	git checkout -b v${VER}-branch cares-${VER}
+
+	# Создаём каталог сборки
+	mkdir -p "build" || exit 1
+	# Переходим в каталог
+	cd "build" || exit 1
+
+	# Удаляем старый файл кэша
+	rm -rf "$src/build/CMakeCache.txt"
+
+	# Выполняем конфигурацию проекта
+	if [[ $OS = "Windows" ]]; then
+		cmake \
+		 -DCARES_STATIC="ON" \
+		 -DCARES_SHARED="OFF" \
+		 -DCARES_STATIC_PIC="ON" \
+		 -DCARES_BUILD_TESTS="OFF" \
+		 -DCARES_BUILD_TOOLS="OFF" \
+		 -DCARES_BUILD_CONTAINER_TESTS="OFF" \
+		 -DCMAKE_BUILD_TYPE=Release \
+		 -DCMAKE_SYSTEM_NAME=Windows \
+		 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
+		 -G "MinGW Makefiles" \
+		 .. || exit 1
+	else
+		cmake \
+		 -DCARES_STATIC="ON" \
+		 -DCARES_SHARED="OFF" \
+		 -DCARES_STATIC_PIC="ON" \
+		 -DCARES_BUILD_TESTS="OFF" \
+		 -DCARES_BUILD_TOOLS="OFF" \
+		 -DCARES_BUILD_CONTAINER_TESTS="OFF" \
+		 -DCMAKE_BUILD_TYPE=Release \
+		 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
+		 .. || exit 1
+	fi
+
+	# Выполняем сборку на всех логических ядрах
+	$BUILD -j"$numproc" || exit 1
+	# Выполняем установку проекта
+	$BUILD install || exit 1
+
+	# Создаём каталог C-Ares
+	mkdir "$PREFIX/include/c-ares"
+
+	# Производим установку заголовочных файлов по нужному пути
+	for i in $(ls "$PREFIX/include" | grep "ares.*\.h$");
+	do
+		echo "Move \"$PREFIX/include/$i\" to \"$PREFIX/include/c-ares/$i\""
+		mv "$PREFIX/include/$i" "$PREFIX/include/c-ares/$i" || exit 1
+	done
+
+	# Помечаем флагом, что сборка и установка произведена
+	touch "$src/.stamp_done"
+	cd "$ROOT" || exit 1
+fi
+
+# Сборка Jansson
+src="$ROOT/submodules/jansson"
+if [ ! -f "$src/.stamp_done" ]; then
+	printf "\n****** AWH Jansson ******\n"
+	cd "$src" || exit 1
+
+	# Версия Jansson
+	VER="2.14"
+
+	# Закачиваем все изменения
+	git fetch --all
+	# Закачиваем все теги
+	git fetch --all --tags
+	# Выполняем жесткое переключение на master
+	git reset --hard origin/master
+	# Переключаемся на master
+	git checkout master
+	# Выполняем обновление данных
+	git pull origin master
+	# Удаляем старую ветку
+	git branch -D v${VER}-branch
+	# Выполняем переключение на указанную версию
+	git checkout -b v${VER}-branch v${VER}
+
+	# Создаём каталог сборки
+	mkdir -p "build" || exit 1
+	# Переходим в каталог
+	cd "build" || exit 1
+
+	# Удаляем старый файл кэша
+	rm -rf "$src/build/CMakeCache.txt"
+
+	# Выполняем конфигурацию проекта
+	if [[ $OS = "Windows" ]]; then
+		cmake \
+		 -DJANSSON_EXAMPLES="OFF" \
+		 -DJANSSON_STATIC_CRT="ON" \
+		 -DJANSSON_BUILD_DOCS="OFF" \
+		 -DJANSSON_BUILD_SHARED_LIBS="OFF" \
+		 -DCMAKE_BUILD_TYPE=Release \
+		 -DCMAKE_SYSTEM_NAME=Windows \
+		 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
+		 -G "MinGW Makefiles" \
+		 .. || exit 1
+	else
+		cmake \
+		 -DJANSSON_EXAMPLES="OFF" \
+		 -DJANSSON_BUILD_DOCS="OFF" \
+		 -DJANSSON_BUILD_SHARED_LIBS="OFF" \
+		 -DCMAKE_BUILD_TYPE=Release \
+		 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
+		 .. || exit 1
+	fi
+
+	# Выполняем сборку на всех логических ядрах
+	$BUILD -j"$numproc" || exit 1
+	# Выполняем установку проекта
+	$BUILD install || exit 1
+
+	# Создаём каталог Jansson
+	mkdir "$PREFIX/include/jansson"
+
+	# Производим установку заголовочных файлов по нужному пути
+	for i in $(ls "$PREFIX/include" | grep "jansson.*\.h$");
+	do
+		echo "Move \"$PREFIX/include/$i\" to \"$PREFIX/include/jansson/$i\""
+		mv "$PREFIX/include/$i" "$PREFIX/include/jansson/$i" || exit 1
+	done
+
+	# Помечаем флагом, что сборка и установка произведена
+	touch "$src/.stamp_done"
+	cd "$ROOT" || exit 1
+fi
+
+# Сборка NgHttp3
+src="$ROOT/submodules/nghttp3"
+if [ ! -f "$src/.stamp_done" ]; then
+	printf "\n****** NgHttp3 ******\n"
+	cd "$src" || exit 1
+
+	# Версия NgHttp3
+	VER="0.14.0"
+
+	# Переключаемся на main
+	git checkout main
+	# Закачиваем все теги
+	git fetch --all --tags
+	# Удаляем старую ветку
+	git branch -D v${VER}-branch
+	# Выполняем переключение на указанную версию
+	git checkout -b v${VER}-branch v${VER}
+
+	# Каталог для сборки
+	build="out"
+
+	# Создаём каталог сборки
+	mkdir -p ${build} || exit 1
+	# Переходим в каталог
+	cd ${build} || exit 1
+
+	# Удаляем старый файл кэша
+	rm -rf ./CMakeCache.txt
+
+	# Выполняем конфигурацию проекта
+	if [[ $OS = "Windows" ]]; then
+		cmake \
+		 -DCMAKE_BUILD_TYPE="Release" \
+		 -DCMAKE_SYSTEM_NAME="Windows" \
+		 -DENABLE_STATIC_CRT="ON" \
+		 -DENABLE_EXAMPLES="OFF" \
+		 -DENABLE_LIB_ONLY="ON" \
+		 -DENABLE_STATIC_LIB="ON" \
+		 -DENABLE_SHARED_LIB="OFF" \
+		 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
+		 -G "MinGW Makefiles" \
+		 .. || exit 1
+	else
+		cmake \
+		 -DCMAKE_BUILD_TYPE="Release" \
+		 -DENABLE_EXAMPLES="OFF" \
+		 -DENABLE_LIB_ONLY="ON" \
+		 -DENABLE_STATIC_LIB="ON" \
+		 -DENABLE_SHARED_LIB="OFF" \
+		 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
+		 .. || exit 1
+	fi
+
+	# Выполняем сборку на всех логических ядрах
+	$BUILD -j"$numproc" || exit 1
+	# Выполняем установку проекта
+	$BUILD install || exit 1
+
+	# Помечаем флагом, что сборка и установка произведена
+	touch "$src/.stamp_done"
+	cd "$ROOT" || exit 1
+fi
+
+# Сборка NgTCP
+src="$ROOT/submodules/ngtcp2"
+if [ ! -f "$src/.stamp_done" ]; then
+	printf "\n****** NgTCP ******\n"
+	cd "$src" || exit 1
+
+	# Версия NgTCP
+	VER="0.18.0"
+
+	# Переключаемся на main
+	git checkout main
+	# Закачиваем все теги
+	git fetch --all --tags
+	# Удаляем старую ветку
+	git branch -D v${VER}-branch
+	# Выполняем переключение на указанную версию
+	git checkout -b v${VER}-branch v${VER}
+
+	# Каталог для сборки
+	build="out"
+
+	# Создаём каталог сборки
+	mkdir -p ${build} || exit 1
+	# Переходим в каталог
+	cd ${build} || exit 1
+
+	# Удаляем старый файл кэша
+	rm -rf ./CMakeCache.txt
+
+	# Выполняем конфигурацию проекта
+	if [[ $OS = "Windows" ]]; then
+		cmake \
+		 -DCMAKE_BUILD_TYPE="Release" \
+		 -DCMAKE_SYSTEM_NAME="Windows" \
+		 -DENABLE_STATIC_LIB="ON" \
+		 -DENABLE_SHARED_LIB="OFF" \
+		 -DENABLE_JEMALLOC="ON" \
+		 -DENABLE_OPENSSL="ON" \
+		 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
+		 -DLIBNGHTTP3_LIBRARY="$PREFIX/lib" \
+		 -DLIBNGHTTP3_INCLUDE_DIR="$PREFIX/include" \
+		 -G "MinGW Makefiles" \
+		 .. || exit 1
+	else
+		cmake \
+		 -DCMAKE_BUILD_TYPE="Release" \
+		 -DENABLE_STATIC_LIB="ON" \
+		 -DENABLE_SHARED_LIB="OFF" \
+		 -DENABLE_JEMALLOC="ON" \
+		 -DENABLE_OPENSSL="ON" \
+		 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
+		 -DLIBNGHTTP3_LIBRARY="$PREFIX/lib" \
+		 -DLIBNGHTTP3_INCLUDE_DIR="$PREFIX/include" \
+		 -DLIBEV_LIBRARY="$PREFIX/lib" \
+		 -DLIBEV_INCLUDE_DIR="$PREFIX/include/libev" \
+		 .. || exit 1
+	fi
+
+	# Выполняем сборку на всех логических ядрах
+	$BUILD -j"$numproc" || exit 1
+	# Выполняем установку проекта
+	$BUILD install || exit 1
+
+	# Помечаем флагом, что сборка и установка произведена
+	touch "$src/.stamp_done"
+	cd "$ROOT" || exit 1
+fi
+
+# Сборка NgHttp2
+src="$ROOT/submodules/nghttp2"
+if [ ! -f "$src/.stamp_done" ]; then
+	printf "\n****** NgHttp2 ******\n"
+	cd "$src" || exit 1
+
+	# Версия NgHttp2
+	VER="1.55.1"
+
+	# Переключаемся на master
+	git checkout master
+	# Закачиваем все теги
+	git fetch --all --tags
+	# Удаляем старую ветку
+	git branch -D v${VER}-branch
+	# Выполняем переключение на указанную версию
+	git checkout -b v${VER}-branch v${VER}
+
+	# Каталог для сборки
+	build="out"
+
+	# Создаём каталог сборки
+	mkdir -p ${build} || exit 1
+	# Переходим в каталог
+	cd ${build} || exit 1
+
+	# Удаляем старый файл кэша
+	rm -rf ./CMakeCache.txt
+
+	# Выполняем конфигурацию проекта
+	if [[ $OS = "Windows" ]]; then
+		# Если нужно собрать модуль LibEvent2
+		if [[ $LIBEVENT2 = "yes" ]]; then
+			cmake \
+			 -DCMAKE_BUILD_TYPE="Release" \
+			 -DCMAKE_SYSTEM_NAME="Windows" \
+			 -DENABLE_STATIC_CRT="ON" \
+			 -DENABLE_APP="OFF" \
+			 -DENABLE_HPACK_TOOLS="OFF" \
+			 -DENABLE_EXAMPLES="OFF" \
+			 -DENABLE_LIB_ONLY="ON" \
+			 -DENABLE_STATIC_LIB="ON" \
+			 -DENABLE_SHARED_LIB="OFF" \
+			 -DENABLE_HTTP3="OFF" \
+			 -DENABLE_DOC="OFF" \
+			 -DWITH_LIBXML2="ON" \
+			 -DWITH_MRUBY="OFF" \
+			 -DWITH_NEVERBLEED="OFF" \
+			 -DWITH_LIBBPF="OFF" \
+			 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
+			 -DLIBNGTCP2_LIBRARY="$PREFIX/lib" \
+			 -DLIBNGTCP2_INCLUDE_DIR="$PREFIX/include" \
+			 -DJEMALLOC_LIBRARY="$PREFIX/lib" \
+			 -DJEMALLOC_INCLUDE_DIR="$PREFIX/include" \
+			 -DLIBNGHTTP3_LIBRARY="$PREFIX/lib" \
+			 -DLIBNGHTTP3_INCLUDE_DIR="$PREFIX/include" \
+			 -DLIBXML2_LIBRARIES="$PREFIX/lib" \
+			 -DLIBXML2_INCLUDE_DIR="$PREFIX/include/libxml2" \
+			 -DLIBCARES_LIBRARIES="$PREFIX/lib" \
+			 -DLIBCARES_INCLUDE_DIR="$PREFIX/include/c-ares" \
+			 -DZLIB_LIBRARY="$PREFIX/lib" \
+			 -DZLIB_INCLUDE_DIR="$PREFIX/include/zlib" \
+			 -DLIBEVENT_LIBRARIES="$PREFIX/lib" \
+			 -DLIBEVENT_INCLUDE_DIR="$PREFIX/include" \
+			 -G "MinGW Makefiles" \
+			 .. || exit 1
+		# Если нужно собрать модуль LibEv
+		else
+			cmake \
+			 -DCMAKE_BUILD_TYPE="Release" \
+			 -DCMAKE_SYSTEM_NAME="Windows" \
+			 -DENABLE_STATIC_CRT="ON" \
+			 -DENABLE_APP="OFF" \
+			 -DENABLE_HPACK_TOOLS="OFF" \
+			 -DENABLE_EXAMPLES="OFF" \
+			 -DENABLE_LIB_ONLY="ON" \
+			 -DENABLE_STATIC_LIB="ON" \
+			 -DENABLE_SHARED_LIB="OFF" \
+			 -DENABLE_HTTP3="OFF" \
+			 -DENABLE_DOC="OFF" \
+			 -DWITH_LIBXML2="ON" \
+			 -DWITH_MRUBY="OFF" \
+			 -DWITH_NEVERBLEED="OFF" \
+			 -DWITH_LIBBPF="OFF" \
+			 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
+			 -DLIBNGTCP2_LIBRARY="$PREFIX/lib" \
+			 -DLIBNGTCP2_INCLUDE_DIR="$PREFIX/include" \
+			 -DJEMALLOC_LIBRARY="$PREFIX/lib" \
+			 -DJEMALLOC_INCLUDE_DIR="$PREFIX/include" \
+			 -DLIBNGHTTP3_LIBRARY="$PREFIX/lib" \
+			 -DLIBNGHTTP3_INCLUDE_DIR="$PREFIX/include" \
+			 -DLIBXML2_LIBRARIES="$PREFIX/lib" \
+			 -DLIBXML2_INCLUDE_DIR="$PREFIX/include/libxml2" \
+			 -DLIBCARES_LIBRARIES="$PREFIX/lib" \
+			 -DLIBCARES_INCLUDE_DIR="$PREFIX/include/c-ares" \
+			 -DZLIB_LIBRARY="$PREFIX/lib" \
+			 -DZLIB_INCLUDE_DIR="$PREFIX/include/zlib" \
+			 -DLIBEV_LIBRARY="$PREFIX/lib" \
+			 -DLIBEV_INCLUDE_DIR="$PREFIX/include/libev" \
+			 -G "MinGW Makefiles" \
+			 .. || exit 1
+		fi
+	else
+		# Если нужно собрать модуль LibEvent2
+		if [[ $LIBEVENT2 = "yes" ]]; then
+			cmake \
+			 -DCMAKE_BUILD_TYPE="Release" \
+			 -DENABLE_APP="OFF" \
+			 -DENABLE_HPACK_TOOLS="OFF" \
+			 -DENABLE_EXAMPLES="OFF" \
+			 -DENABLE_LIB_ONLY="ON" \
+			 -DENABLE_STATIC_LIB="ON" \
+			 -DENABLE_SHARED_LIB="OFF" \
+			 -DENABLE_HTTP3="OFF" \
+			 -DENABLE_DOC="OFF" \
+			 -DWITH_LIBXML2="ON" \
+			 -DWITH_MRUBY="OFF" \
+			 -DWITH_NEVERBLEED="OFF" \
+			 -DWITH_LIBBPF="OFF" \
+			 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
+			 -DLIBNGTCP2_LIBRARY="$PREFIX/lib" \
+			 -DLIBNGTCP2_INCLUDE_DIR="$PREFIX/include" \
+			 -DJEMALLOC_LIBRARY="$PREFIX/lib" \
+			 -DJEMALLOC_INCLUDE_DIR="$PREFIX/include" \
+			 -DLIBNGHTTP3_LIBRARY="$PREFIX/lib" \
+			 -DLIBNGHTTP3_INCLUDE_DIR="$PREFIX/include" \
+			 -DLIBXML2_LIBRARIES="$PREFIX/lib" \
+			 -DLIBXML2_INCLUDE_DIR="$PREFIX/include/libxml2" \
+			 -DLIBCARES_LIBRARIES="$PREFIX/lib" \
+			 -DLIBCARES_INCLUDE_DIR="$PREFIX/include/c-ares" \
+			 -DZLIB_LIBRARY="$PREFIX/lib" \
+			 -DZLIB_INCLUDE_DIR="$PREFIX/include/zlib" \
+			 -DLIBEVENT_LIBRARIES="$PREFIX/lib" \
+			 -DLIBEVENT_INCLUDE_DIR="$PREFIX/include" \
+			 .. || exit 1
+		# Если нужно собрать модуль LibEv
+		else
+			cmake \
+			 -DCMAKE_BUILD_TYPE="Release" \
+			 -DENABLE_APP="OFF" \
+			 -DENABLE_HPACK_TOOLS="OFF" \
+			 -DENABLE_EXAMPLES="OFF" \
+			 -DENABLE_LIB_ONLY="ON" \
+			 -DENABLE_STATIC_LIB="ON" \
+			 -DENABLE_SHARED_LIB="OFF" \
+			 -DENABLE_HTTP3="OFF" \
+			 -DENABLE_DOC="OFF" \
+			 -DWITH_LIBXML2="ON" \
+			 -DWITH_MRUBY="OFF" \
+			 -DWITH_NEVERBLEED="OFF" \
+			 -DWITH_LIBBPF="OFF" \
+			 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
+			 -DLIBNGTCP2_LIBRARY="$PREFIX/lib" \
+			 -DLIBNGTCP2_INCLUDE_DIR="$PREFIX/include" \
+			 -DJEMALLOC_LIBRARY="$PREFIX/lib" \
+			 -DJEMALLOC_INCLUDE_DIR="$PREFIX/include" \
+			 -DLIBNGHTTP3_LIBRARY="$PREFIX/lib" \
+			 -DLIBNGHTTP3_INCLUDE_DIR="$PREFIX/include" \
+			 -DLIBXML2_LIBRARIES="$PREFIX/lib" \
+			 -DLIBXML2_INCLUDE_DIR="$PREFIX/include/libxml2" \
+			 -DLIBCARES_LIBRARIES="$PREFIX/lib" \
+			 -DLIBCARES_INCLUDE_DIR="$PREFIX/include/c-ares" \
+			 -DJANSSON_LIBRARIES="$PREFIX/lib" \
+			 -DJANSSON_INCLUDE_DIR="$PREFIX/include/jansson" \
+			 -DZLIB_LIBRARY="$PREFIX/lib" \
+			 -DZLIB_INCLUDE_DIR="$PREFIX/include/zlib" \
+			 -DLIBEV_LIBRARY="$PREFIX/lib" \
+			 -DLIBEV_INCLUDE_DIR="$PREFIX/include/libev" \
+			 .. || exit 1
+		fi
+	fi
+
+	# Выполняем сборку на всех логических ядрах
+	$BUILD -j"$numproc" || exit 1
+	# Выполняем установку проекта
+	$BUILD install || exit 1
+
+	# Помечаем флагом, что сборка и установка произведена
+	touch "$src/.stamp_done"
+	cd "$ROOT" || exit 1
 fi
 
 # Переименовываем расширение библиотек для Windows
