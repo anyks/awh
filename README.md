@@ -19,6 +19,11 @@
 - [LibEv](http://software.schmorp.de/pkg/libev.html)
 - [LibIconv](https://www.gnu.org/software/libiconv)
 - [LibIdn2](https://www.gnu.org/software/libidn)
+- [LibXML2](https://github.com/GNOME/libxml2)
+- [JeMalloc](https://jemalloc.net)
+- [NgHttp2](https://nghttp2.org/documentation/)
+- [NgHttp3](https://nghttp2.org/nghttp3/programmers-guide.html)
+- [NgTCP2](https://nghttp2.org/ngtcp2/programmers-guide.html)
 - [Libev-Win](https://github.com/disenone/libev-win)
 - [LibEvent2](https://github.com/libevent/libevent)
 - [NLohmann::json](https://github.com/nlohmann/json)
@@ -95,6 +100,7 @@ $ pacman -S gdb
 $ pacman -S bash
 $ pacman -S clang
 $ pacman -S git
+$ pacman -S autoconf
 $ pacman -S --needed base-devel mingw-w64-x86_64-toolchain
 $ pacman -S mingw-w64-x86_64-dlfcn
 ```

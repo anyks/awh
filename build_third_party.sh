@@ -44,13 +44,13 @@ if [ -n "$1" ]; then
 		clean_submodule "libev"
 		clean_submodule "libev-win"
 		clean_submodule "ngtcp2"
-		clean_submodule "c-ares"
+		# clean_submodule "c-ares"
 		clean_submodule "brotli"
 		clean_submodule "libxml2"
 		clean_submodule "openssl"
 		clean_submodule "nghttp3"
 		clean_submodule "nghttp2"
-		clean_submodule "jansson"
+		# clean_submodule "jansson"
 		clean_submodule "jemalloc"
 		clean_submodule "libevent"
 
@@ -785,158 +785,158 @@ if [ ! -f "$src/.stamp_done" ]; then
 	cd "$ROOT" || exit 1
 fi
 
-# Сборка C-Ares
-src="$ROOT/submodules/c-ares"
-if [ ! -f "$src/.stamp_done" ]; then
-	printf "\n****** AWH C-Ares ******\n"
-	cd "$src" || exit 1
+## Сборка C-Ares
+#src="$ROOT/submodules/c-ares"
+#if [ ! -f "$src/.stamp_done" ]; then
+#	printf "\n****** AWH C-Ares ******\n"
+#	cd "$src" || exit 1
+#
+#	# Версия C-Ares
+#	VER="1_19_1"
+#
+#	# Закачиваем все изменения
+#	git fetch --all
+#	# Закачиваем все теги
+#	git fetch --all --tags
+#	# Выполняем жесткое переключение на main
+#	git reset --hard origin/main
+#	# Переключаемся на main
+#	git checkout main
+#	# Выполняем обновление данных
+#	git pull origin main
+#	# Удаляем старую ветку
+#	git branch -D v${VER}-branch
+#	# Выполняем переключение на указанную версию
+#	git checkout -b v${VER}-branch cares-${VER}
+#
+#	# Создаём каталог сборки
+#	mkdir -p "build" || exit 1
+#	# Переходим в каталог
+#	cd "build" || exit 1
+#
+#	# Удаляем старый файл кэша
+#	rm -rf "$src/build/CMakeCache.txt"
+#
+#	# Выполняем конфигурацию проекта
+#	if [[ $OS = "Windows" ]]; then
+#		cmake \
+#		 -DCARES_STATIC="ON" \
+#		 -DCARES_SHARED="OFF" \
+#		 -DCARES_STATIC_PIC="ON" \
+#		 -DCARES_BUILD_TESTS="OFF" \
+#		 -DCARES_BUILD_TOOLS="OFF" \
+#		 -DCARES_BUILD_CONTAINER_TESTS="OFF" \
+#		 -DCMAKE_BUILD_TYPE=Release \
+#		 -DCMAKE_SYSTEM_NAME=Windows \
+#		 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
+#		 -G "MinGW Makefiles" \
+#		 .. || exit 1
+#	else
+#		cmake \
+#		 -DCARES_STATIC="ON" \
+#		 -DCARES_SHARED="OFF" \
+#		 -DCARES_STATIC_PIC="ON" \
+#		 -DCARES_BUILD_TESTS="OFF" \
+#		 -DCARES_BUILD_TOOLS="OFF" \
+#		 -DCARES_BUILD_CONTAINER_TESTS="OFF" \
+#		 -DCMAKE_BUILD_TYPE=Release \
+#		 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
+#		 .. || exit 1
+#	fi
+#
+#	# Выполняем сборку на всех логических ядрах
+#	$BUILD -j"$numproc" || exit 1
+#	# Выполняем установку проекта
+#	$BUILD install || exit 1
+#
+#	# Создаём каталог C-Ares
+#	mkdir "$PREFIX/include/c-ares"
+#
+#	# Производим установку заголовочных файлов по нужному пути
+#	for i in $(ls "$PREFIX/include" | grep "ares.*\.h$");
+#	do
+#		echo "Move \"$PREFIX/include/$i\" to \"$PREFIX/include/c-ares/$i\""
+#		mv "$PREFIX/include/$i" "$PREFIX/include/c-ares/$i" || exit 1
+#	done
+#
+#	# Помечаем флагом, что сборка и установка произведена
+#	touch "$src/.stamp_done"
+#	cd "$ROOT" || exit 1
+#fi
 
-	# Версия C-Ares
-	VER="1_19_1"
-
-	# Закачиваем все изменения
-	git fetch --all
-	# Закачиваем все теги
-	git fetch --all --tags
-	# Выполняем жесткое переключение на main
-	git reset --hard origin/main
-	# Переключаемся на main
-	git checkout main
-	# Выполняем обновление данных
-	git pull origin main
-	# Удаляем старую ветку
-	git branch -D v${VER}-branch
-	# Выполняем переключение на указанную версию
-	git checkout -b v${VER}-branch cares-${VER}
-
-	# Создаём каталог сборки
-	mkdir -p "build" || exit 1
-	# Переходим в каталог
-	cd "build" || exit 1
-
-	# Удаляем старый файл кэша
-	rm -rf "$src/build/CMakeCache.txt"
-
-	# Выполняем конфигурацию проекта
-	if [[ $OS = "Windows" ]]; then
-		cmake \
-		 -DCARES_STATIC="ON" \
-		 -DCARES_SHARED="OFF" \
-		 -DCARES_STATIC_PIC="ON" \
-		 -DCARES_BUILD_TESTS="OFF" \
-		 -DCARES_BUILD_TOOLS="OFF" \
-		 -DCARES_BUILD_CONTAINER_TESTS="OFF" \
-		 -DCMAKE_BUILD_TYPE=Release \
-		 -DCMAKE_SYSTEM_NAME=Windows \
-		 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
-		 -G "MinGW Makefiles" \
-		 .. || exit 1
-	else
-		cmake \
-		 -DCARES_STATIC="ON" \
-		 -DCARES_SHARED="OFF" \
-		 -DCARES_STATIC_PIC="ON" \
-		 -DCARES_BUILD_TESTS="OFF" \
-		 -DCARES_BUILD_TOOLS="OFF" \
-		 -DCARES_BUILD_CONTAINER_TESTS="OFF" \
-		 -DCMAKE_BUILD_TYPE=Release \
-		 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
-		 .. || exit 1
-	fi
-
-	# Выполняем сборку на всех логических ядрах
-	$BUILD -j"$numproc" || exit 1
-	# Выполняем установку проекта
-	$BUILD install || exit 1
-
-	# Создаём каталог C-Ares
-	mkdir "$PREFIX/include/c-ares"
-
-	# Производим установку заголовочных файлов по нужному пути
-	for i in $(ls "$PREFIX/include" | grep "ares.*\.h$");
-	do
-		echo "Move \"$PREFIX/include/$i\" to \"$PREFIX/include/c-ares/$i\""
-		mv "$PREFIX/include/$i" "$PREFIX/include/c-ares/$i" || exit 1
-	done
-
-	# Помечаем флагом, что сборка и установка произведена
-	touch "$src/.stamp_done"
-	cd "$ROOT" || exit 1
-fi
-
-# Сборка Jansson
-src="$ROOT/submodules/jansson"
-if [ ! -f "$src/.stamp_done" ]; then
-	printf "\n****** AWH Jansson ******\n"
-	cd "$src" || exit 1
-
-	# Версия Jansson
-	VER="2.14"
-
-	# Закачиваем все изменения
-	git fetch --all
-	# Закачиваем все теги
-	git fetch --all --tags
-	# Выполняем жесткое переключение на master
-	git reset --hard origin/master
-	# Переключаемся на master
-	git checkout master
-	# Выполняем обновление данных
-	git pull origin master
-	# Удаляем старую ветку
-	git branch -D v${VER}-branch
-	# Выполняем переключение на указанную версию
-	git checkout -b v${VER}-branch v${VER}
-
-	# Создаём каталог сборки
-	mkdir -p "build" || exit 1
-	# Переходим в каталог
-	cd "build" || exit 1
-
-	# Удаляем старый файл кэша
-	rm -rf "$src/build/CMakeCache.txt"
-
-	# Выполняем конфигурацию проекта
-	if [[ $OS = "Windows" ]]; then
-		cmake \
-		 -DJANSSON_EXAMPLES="OFF" \
-		 -DJANSSON_STATIC_CRT="ON" \
-		 -DJANSSON_BUILD_DOCS="OFF" \
-		 -DJANSSON_BUILD_SHARED_LIBS="OFF" \
-		 -DCMAKE_BUILD_TYPE=Release \
-		 -DCMAKE_SYSTEM_NAME=Windows \
-		 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
-		 -G "MinGW Makefiles" \
-		 .. || exit 1
-	else
-		cmake \
-		 -DJANSSON_EXAMPLES="OFF" \
-		 -DJANSSON_BUILD_DOCS="OFF" \
-		 -DJANSSON_BUILD_SHARED_LIBS="OFF" \
-		 -DCMAKE_BUILD_TYPE=Release \
-		 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
-		 .. || exit 1
-	fi
-
-	# Выполняем сборку на всех логических ядрах
-	$BUILD -j"$numproc" || exit 1
-	# Выполняем установку проекта
-	$BUILD install || exit 1
-
-	# Создаём каталог Jansson
-	mkdir "$PREFIX/include/jansson"
-
-	# Производим установку заголовочных файлов по нужному пути
-	for i in $(ls "$PREFIX/include" | grep "jansson.*\.h$");
-	do
-		echo "Move \"$PREFIX/include/$i\" to \"$PREFIX/include/jansson/$i\""
-		mv "$PREFIX/include/$i" "$PREFIX/include/jansson/$i" || exit 1
-	done
-
-	# Помечаем флагом, что сборка и установка произведена
-	touch "$src/.stamp_done"
-	cd "$ROOT" || exit 1
-fi
+## Сборка Jansson
+#src="$ROOT/submodules/jansson"
+#if [ ! -f "$src/.stamp_done" ]; then
+#	printf "\n****** AWH Jansson ******\n"
+#	cd "$src" || exit 1
+#
+#	# Версия Jansson
+#	VER="2.14"
+#
+#	# Закачиваем все изменения
+#	git fetch --all
+#	# Закачиваем все теги
+#	git fetch --all --tags
+#	# Выполняем жесткое переключение на master
+#	git reset --hard origin/master
+#	# Переключаемся на master
+#	git checkout master
+#	# Выполняем обновление данных
+#	git pull origin master
+#	# Удаляем старую ветку
+#	git branch -D v${VER}-branch
+#	# Выполняем переключение на указанную версию
+#	git checkout -b v${VER}-branch v${VER}
+#
+#	# Создаём каталог сборки
+#	mkdir -p "build" || exit 1
+#	# Переходим в каталог
+#	cd "build" || exit 1
+#
+#	# Удаляем старый файл кэша
+#	rm -rf "$src/build/CMakeCache.txt"
+#
+#	# Выполняем конфигурацию проекта
+#	if [[ $OS = "Windows" ]]; then
+#		cmake \
+#		 -DJANSSON_EXAMPLES="OFF" \
+#		 -DJANSSON_STATIC_CRT="ON" \
+#		 -DJANSSON_BUILD_DOCS="OFF" \
+#		 -DJANSSON_BUILD_SHARED_LIBS="OFF" \
+#		 -DCMAKE_BUILD_TYPE=Release \
+#		 -DCMAKE_SYSTEM_NAME=Windows \
+#		 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
+#		 -G "MinGW Makefiles" \
+#		 .. || exit 1
+#	else
+#		cmake \
+#		 -DJANSSON_EXAMPLES="OFF" \
+#		 -DJANSSON_BUILD_DOCS="OFF" \
+#		 -DJANSSON_BUILD_SHARED_LIBS="OFF" \
+#		 -DCMAKE_BUILD_TYPE=Release \
+#		 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
+#		 .. || exit 1
+#	fi
+#
+#	# Выполняем сборку на всех логических ядрах
+#	$BUILD -j"$numproc" || exit 1
+#	# Выполняем установку проекта
+#	$BUILD install || exit 1
+#
+#	# Создаём каталог Jansson
+#	mkdir "$PREFIX/include/jansson"
+#
+#	# Производим установку заголовочных файлов по нужному пути
+#	for i in $(ls "$PREFIX/include" | grep "jansson.*\.h$");
+#	do
+#		echo "Move \"$PREFIX/include/$i\" to \"$PREFIX/include/jansson/$i\""
+#		mv "$PREFIX/include/$i" "$PREFIX/include/jansson/$i" || exit 1
+#	done
+#
+#	# Помечаем флагом, что сборка и установка произведена
+#	touch "$src/.stamp_done"
+#	cd "$ROOT" || exit 1
+#fi
 
 # Сборка NgHttp3
 src="$ROOT/submodules/nghttp3"
@@ -1098,6 +1098,12 @@ if [ ! -f "$src/.stamp_done" ]; then
 	# Удаляем старый файл кэша
 	rm -rf ./CMakeCache.txt
 
+	### Зависимости которые нежелательны в связи с дублированием функционала
+	# -DLIBCARES_LIBRARIES="$PREFIX/lib" \
+	# -DLIBCARES_INCLUDE_DIR="$PREFIX/include/c-ares" \
+	# -DJANSSON_LIBRARIES="$PREFIX/lib" \
+	# -DJANSSON_INCLUDE_DIR="$PREFIX/include/jansson" \
+
 	# Выполняем конфигурацию проекта
 	if [[ $OS = "Windows" ]]; then
 		# Если нужно собрать модуль LibEvent2
@@ -1127,8 +1133,6 @@ if [ ! -f "$src/.stamp_done" ]; then
 			 -DLIBNGHTTP3_INCLUDE_DIR="$PREFIX/include" \
 			 -DLIBXML2_LIBRARIES="$PREFIX/lib" \
 			 -DLIBXML2_INCLUDE_DIR="$PREFIX/include/libxml2" \
-			 -DLIBCARES_LIBRARIES="$PREFIX/lib" \
-			 -DLIBCARES_INCLUDE_DIR="$PREFIX/include/c-ares" \
 			 -DZLIB_LIBRARY="$PREFIX/lib" \
 			 -DZLIB_INCLUDE_DIR="$PREFIX/include/zlib" \
 			 -DLIBEVENT_LIBRARIES="$PREFIX/lib" \
@@ -1162,8 +1166,6 @@ if [ ! -f "$src/.stamp_done" ]; then
 			 -DLIBNGHTTP3_INCLUDE_DIR="$PREFIX/include" \
 			 -DLIBXML2_LIBRARIES="$PREFIX/lib" \
 			 -DLIBXML2_INCLUDE_DIR="$PREFIX/include/libxml2" \
-			 -DLIBCARES_LIBRARIES="$PREFIX/lib" \
-			 -DLIBCARES_INCLUDE_DIR="$PREFIX/include/c-ares" \
 			 -DZLIB_LIBRARY="$PREFIX/lib" \
 			 -DZLIB_INCLUDE_DIR="$PREFIX/include/zlib" \
 			 -DLIBEV_LIBRARY="$PREFIX/lib" \
@@ -1197,8 +1199,6 @@ if [ ! -f "$src/.stamp_done" ]; then
 			 -DLIBNGHTTP3_INCLUDE_DIR="$PREFIX/include" \
 			 -DLIBXML2_LIBRARIES="$PREFIX/lib" \
 			 -DLIBXML2_INCLUDE_DIR="$PREFIX/include/libxml2" \
-			 -DLIBCARES_LIBRARIES="$PREFIX/lib" \
-			 -DLIBCARES_INCLUDE_DIR="$PREFIX/include/c-ares" \
 			 -DZLIB_LIBRARY="$PREFIX/lib" \
 			 -DZLIB_INCLUDE_DIR="$PREFIX/include/zlib" \
 			 -DLIBEVENT_LIBRARIES="$PREFIX/lib" \
@@ -1229,10 +1229,6 @@ if [ ! -f "$src/.stamp_done" ]; then
 			 -DLIBNGHTTP3_INCLUDE_DIR="$PREFIX/include" \
 			 -DLIBXML2_LIBRARIES="$PREFIX/lib" \
 			 -DLIBXML2_INCLUDE_DIR="$PREFIX/include/libxml2" \
-			 -DLIBCARES_LIBRARIES="$PREFIX/lib" \
-			 -DLIBCARES_INCLUDE_DIR="$PREFIX/include/c-ares" \
-			 -DJANSSON_LIBRARIES="$PREFIX/lib" \
-			 -DJANSSON_INCLUDE_DIR="$PREFIX/include/jansson" \
 			 -DZLIB_LIBRARY="$PREFIX/lib" \
 			 -DZLIB_INCLUDE_DIR="$PREFIX/include/zlib" \
 			 -DLIBEV_LIBRARY="$PREFIX/lib" \
