@@ -108,9 +108,14 @@ endif()
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
 # Выполняем поиск нужных библиотек
+find_package(XML REQUIRED)
 find_package(Zlib REQUIRED)
 find_package(Brotli REQUIRED)
 find_package(OpenSSL REQUIRED)
+find_package(NgTCP2 REQUIRED)
+find_package(NgHttp2 REQUIRED)
+find_package(NgHttp3 REQUIRED)
+find_package(JeMalloc REQUIRED)
 
 # Если операционной системой не является Windows
 if(NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
@@ -131,6 +136,14 @@ if(CMAKE_BUILD_EVENT2)
 # Сборка модуля AWH_EV
 else()
     find_package(LibEv REQUIRED)
+endif()
+
+# Провекра XML
+if (XML_FOUND)
+    message(STATUS "XML lib found: " ${XML_LIBRARY})
+    message(STATUS "XML include dir found: " ${XML_INCLUDE_DIR})
+else()
+    message(FATAL_ERROR "XML not found")
 endif()
 
 # Провекра ZLib
@@ -155,6 +168,38 @@ if (OpenSSL_FOUND)
     message(STATUS "OpenSSL include dir found: " ${OPENSSL_INCLUDE_DIR})
 else()
     message(FATAL_ERROR "OpenSSL not found")
+endif()
+
+# Провекра NgTCP2
+if (NgTCP2_FOUND)
+    message(STATUS "NgTCP2 lib found: " ${NGTCP2_LIBRARY})
+    message(STATUS "NgTCP2 include dir found: " ${NGTCP2_INCLUDE_DIR})
+else()
+    message(FATAL_ERROR "NgTCP2 not found")
+endif()
+
+# Провекра NgHttp2
+if (NgHttp2_FOUND)
+    message(STATUS "NgHttp2 lib found: " ${NGHTTP2_LIBRARY})
+    message(STATUS "NgHttp2 include dir found: " ${NGHTTP2_INCLUDE_DIR})
+else()
+    message(FATAL_ERROR "NgHttp2 not found")
+endif()
+
+# Провекра NgHttp3
+if (NgHttp3_FOUND)
+    message(STATUS "NgHttp3 lib found: " ${NGHTTP3_LIBRARY})
+    message(STATUS "NgHttp3 include dir found: " ${NGHTTP3_INCLUDE_DIR})
+else()
+    message(FATAL_ERROR "NgHttp3 not found")
+endif()
+
+# Провекра JeMalloc
+if (JeMalloc_FOUND)
+    message(STATUS "JeMalloc lib found: " ${JEMALLOC_LIBRARY})
+    message(STATUS "JeMalloc include dir found: " ${JEMALLOC_INCLUDE_DIR})
+else()
+    message(FATAL_ERROR "JeMalloc not found")
 endif()
 
 # Если операционной системой не является Windows
@@ -209,9 +254,14 @@ else()
 endif()
 
 # Выполняем подключение хидеров
+include_directories(SYSTEM ${XML_INCLUDE_DIR})
 include_directories(SYSTEM ${ZLIB_INCLUDE_DIR})
+include_directories(SYSTEM ${NGTCP2_INCLUDE_DIR})
+include_directories(SYSTEM ${NGHTTP2_INCLUDE_DIR})
+include_directories(SYSTEM ${NGHTTP3_INCLUDE_DIR})
 include_directories(SYSTEM ${BROTLI_INCLUDE_DIRS})
 include_directories(SYSTEM ${OPENSSL_INCLUDE_DIR})
+include_directories(SYSTEM ${JEMALLOC_INCLUDE_DIR})
 include_directories(SYSTEM ${CMAKE_SOURCE_DIR}/include)
 include_directories(SYSTEM ${CMAKE_SOURCE_DIR}/contrib/include)
 include_directories(SYSTEM ${CMAKE_CXX_IMPLICIT_INCLUDE_DIRECTORIES})
@@ -292,6 +342,7 @@ set(SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/src/auth/server.cpp"
     "${CMAKE_SOURCE_DIR}/src/cluster/core.cpp"
     "${CMAKE_SOURCE_DIR}/src/client/web.cpp"
+    "${CMAKE_SOURCE_DIR}/src/client/http2.cpp"
     "${CMAKE_SOURCE_DIR}/src/client/sample.cpp"
     "${CMAKE_SOURCE_DIR}/src/client/websocket.cpp"
     "${CMAKE_SOURCE_DIR}/src/server/web.cpp"
@@ -324,6 +375,7 @@ set(WSS_APP_NAME wss)
 set(DNS_APP_NAME dns)
 set(NTP_APP_NAME ntp)
 set(PING_APP_NAME ping)
+set(HTTP2_APP_NAME http2)
 set(TIMER_APP_NAME timer)
 set(PROXY_APP_NAME proxy)
 set(SOCKS5_APP_NAME socks5)
@@ -363,6 +415,7 @@ add_executable(${NTP_APP_NAME} sample/ntp.cpp ${RES_FILES})
 add_executable(${WSS_APP_NAME} sample/wss.cpp ${RES_FILES})
 add_executable(${WSC_APP_NAME} sample/wsc2.cpp ${RES_FILES})
 add_executable(${PING_APP_NAME} sample/ping.cpp ${RES_FILES})
+add_executable(${HTTP2_APP_NAME} sample/http2.cpp ${RES_FILES})
 add_executable(${TIMER_APP_NAME} sample/timer.cpp ${RES_FILES})
 add_executable(${PROXY_APP_NAME} sample/proxy.cpp ${RES_FILES})
 add_executable(${SOCKS5_APP_NAME} sample/socks5.cpp ${RES_FILES})
@@ -382,7 +435,12 @@ if(${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
         ${IP_APP_NAME}
         ${CURRENT_LIB_NAME}
         ${EVENT_LIBRARY}
+        ${XML_LIBRARY}
         ${ZLIB_LIBRARY}
+        ${NGTCP2_LIBRARY}
+        ${NGHTTP2_LIBRARY}
+        ${NGHTTP3_LIBRARY}
+        ${JEMALLOC_LIBRARY}
         ${BROTLI_LIBRARIES}
         ${OPENSSL_LIBRARIES}
         ${WINFLAGS}
@@ -393,7 +451,12 @@ if(${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
         ${WSC_APP_NAME}
         ${CURRENT_LIB_NAME}
         ${EVENT_LIBRARY}
+        ${XML_LIBRARY}
         ${ZLIB_LIBRARY}
+        ${NGTCP2_LIBRARY}
+        ${NGHTTP2_LIBRARY}
+        ${NGHTTP3_LIBRARY}
+        ${JEMALLOC_LIBRARY}
         ${BROTLI_LIBRARIES}
         ${OPENSSL_LIBRARIES}
         ${WINFLAGS}
@@ -404,7 +467,12 @@ if(${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
         ${WSS_APP_NAME}
         ${CURRENT_LIB_NAME}
         ${EVENT_LIBRARY}
+        ${XML_LIBRARY}
         ${ZLIB_LIBRARY}
+        ${NGTCP2_LIBRARY}
+        ${NGHTTP2_LIBRARY}
+        ${NGHTTP3_LIBRARY}
+        ${JEMALLOC_LIBRARY}
         ${BROTLI_LIBRARIES}
         ${OPENSSL_LIBRARIES}
         ${WINFLAGS}
@@ -415,7 +483,12 @@ if(${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
         ${DNS_APP_NAME}
         ${CURRENT_LIB_NAME}
         ${EVENT_LIBRARY}
+        ${XML_LIBRARY}
         ${ZLIB_LIBRARY}
+        ${NGTCP2_LIBRARY}
+        ${NGHTTP2_LIBRARY}
+        ${NGHTTP3_LIBRARY}
+        ${JEMALLOC_LIBRARY}
         ${BROTLI_LIBRARIES}
         ${OPENSSL_LIBRARIES}
         ${WINFLAGS}
@@ -426,7 +499,12 @@ if(${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
         ${NTP_APP_NAME}
         ${CURRENT_LIB_NAME}
         ${EVENT_LIBRARY}
+        ${XML_LIBRARY}
         ${ZLIB_LIBRARY}
+        ${NGTCP2_LIBRARY}
+        ${NGHTTP2_LIBRARY}
+        ${NGHTTP3_LIBRARY}
+        ${JEMALLOC_LIBRARY}
         ${BROTLI_LIBRARIES}
         ${OPENSSL_LIBRARIES}
         ${WINFLAGS}
@@ -437,7 +515,12 @@ if(${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
         ${SOCKS5_APP_NAME}
         ${CURRENT_LIB_NAME}
         ${EVENT_LIBRARY}
+        ${XML_LIBRARY}
         ${ZLIB_LIBRARY}
+        ${NGTCP2_LIBRARY}
+        ${NGHTTP2_LIBRARY}
+        ${NGHTTP3_LIBRARY}
+        ${JEMALLOC_LIBRARY}
         ${BROTLI_LIBRARIES}
         ${OPENSSL_LIBRARIES}
         ${WINFLAGS}
@@ -448,7 +531,12 @@ if(${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
         ${PROXY_APP_NAME}
         ${CURRENT_LIB_NAME}
         ${EVENT_LIBRARY}
+        ${XML_LIBRARY}
         ${ZLIB_LIBRARY}
+        ${NGTCP2_LIBRARY}
+        ${NGHTTP2_LIBRARY}
+        ${NGHTTP3_LIBRARY}
+        ${JEMALLOC_LIBRARY}
         ${BROTLI_LIBRARIES}
         ${OPENSSL_LIBRARIES}
         ${WINFLAGS}
@@ -459,7 +547,28 @@ if(${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
         ${PING_APP_NAME}
         ${CURRENT_LIB_NAME}
         ${EVENT_LIBRARY}
+        ${XML_LIBRARY}
         ${ZLIB_LIBRARY}
+        ${NGTCP2_LIBRARY}
+        ${NGHTTP2_LIBRARY}
+        ${NGHTTP3_LIBRARY}
+        ${JEMALLOC_LIBRARY}
+        ${BROTLI_LIBRARIES}
+        ${OPENSSL_LIBRARIES}
+        ${WINFLAGS}
+        ${AWH_IDN}
+    )
+
+    target_link_libraries(
+        ${HTTP2_APP_NAME}
+        ${CURRENT_LIB_NAME}
+        ${EVENT_LIBRARY}
+        ${XML_LIBRARY}
+        ${ZLIB_LIBRARY}
+        ${NGTCP2_LIBRARY}
+        ${NGHTTP2_LIBRARY}
+        ${NGHTTP3_LIBRARY}
+        ${JEMALLOC_LIBRARY}
         ${BROTLI_LIBRARIES}
         ${OPENSSL_LIBRARIES}
         ${WINFLAGS}
@@ -470,7 +579,12 @@ if(${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
         ${TIMER_APP_NAME}
         ${CURRENT_LIB_NAME}
         ${EVENT_LIBRARY}
+        ${XML_LIBRARY}
         ${ZLIB_LIBRARY}
+        ${NGTCP2_LIBRARY}
+        ${NGHTTP2_LIBRARY}
+        ${NGHTTP3_LIBRARY}
+        ${JEMALLOC_LIBRARY}
         ${BROTLI_LIBRARIES}
         ${OPENSSL_LIBRARIES}
         ${WINFLAGS}
@@ -481,7 +595,12 @@ if(${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
         ${CLIENT_APP_NAME}
         ${CURRENT_LIB_NAME}
         ${EVENT_LIBRARY}
+        ${XML_LIBRARY}
         ${ZLIB_LIBRARY}
+        ${NGTCP2_LIBRARY}
+        ${NGHTTP2_LIBRARY}
+        ${NGHTTP3_LIBRARY}
+        ${JEMALLOC_LIBRARY}
         ${BROTLI_LIBRARIES}
         ${OPENSSL_LIBRARIES}
         ${WINFLAGS}
@@ -492,7 +611,12 @@ if(${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
         ${SERVER_APP_NAME}
         ${CURRENT_LIB_NAME}
         ${EVENT_LIBRARY}
+        ${XML_LIBRARY}
         ${ZLIB_LIBRARY}
+        ${NGTCP2_LIBRARY}
+        ${NGHTTP2_LIBRARY}
+        ${NGHTTP3_LIBRARY}
+        ${JEMALLOC_LIBRARY}
         ${BROTLI_LIBRARIES}
         ${OPENSSL_LIBRARIES}
         ${WINFLAGS}
@@ -503,7 +627,12 @@ if(${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
         ${WEB_CLIENT_APP_NAME}
         ${CURRENT_LIB_NAME}
         ${EVENT_LIBRARY}
+        ${XML_LIBRARY}
         ${ZLIB_LIBRARY}
+        ${NGTCP2_LIBRARY}
+        ${NGHTTP2_LIBRARY}
+        ${NGHTTP3_LIBRARY}
+        ${JEMALLOC_LIBRARY}
         ${BROTLI_LIBRARIES}
         ${OPENSSL_LIBRARIES}
         ${WINFLAGS}
@@ -514,7 +643,12 @@ if(${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
         ${WEB_SERVER_APP_NAME}
         ${CURRENT_LIB_NAME}
         ${EVENT_LIBRARY}
+        ${XML_LIBRARY}
         ${ZLIB_LIBRARY}
+        ${NGTCP2_LIBRARY}
+        ${NGHTTP2_LIBRARY}
+        ${NGHTTP3_LIBRARY}
+        ${JEMALLOC_LIBRARY}
         ${BROTLI_LIBRARIES}
         ${OPENSSL_LIBRARIES}
         ${WINFLAGS}
@@ -527,10 +661,15 @@ elseif(CMAKE_BUILD_IDN)
         ${IP_APP_NAME}
         ${CURRENT_LIB_NAME}
         ${EVENT_LIBRARY}
+        ${XML_LIBRARY}
         ${ZLIB_LIBRARY}
         ${PCRE_LIBRARY}
         ${ICONV_LIBRARY}
         ${IDN2_LIBRARY}
+        ${NGTCP2_LIBRARY}
+        ${NGHTTP2_LIBRARY}
+        ${NGHTTP3_LIBRARY}
+        ${JEMALLOC_LIBRARY}
         ${BROTLI_LIBRARIES}
         ${OPENSSL_LIBRARIES}
         ${AWH_IDN}
@@ -540,10 +679,15 @@ elseif(CMAKE_BUILD_IDN)
         ${WSC_APP_NAME}
         ${CURRENT_LIB_NAME}
         ${EVENT_LIBRARY}
+        ${XML_LIBRARY}
         ${ZLIB_LIBRARY}
         ${PCRE_LIBRARY}
         ${ICONV_LIBRARY}
         ${IDN2_LIBRARY}
+        ${NGTCP2_LIBRARY}
+        ${NGHTTP2_LIBRARY}
+        ${NGHTTP3_LIBRARY}
+        ${JEMALLOC_LIBRARY}
         ${BROTLI_LIBRARIES}
         ${OPENSSL_LIBRARIES}
         ${AWH_IDN}
@@ -553,10 +697,15 @@ elseif(CMAKE_BUILD_IDN)
         ${WSS_APP_NAME}
         ${CURRENT_LIB_NAME}
         ${EVENT_LIBRARY}
+        ${XML_LIBRARY}
         ${ZLIB_LIBRARY}
         ${PCRE_LIBRARY}
         ${ICONV_LIBRARY}
         ${IDN2_LIBRARY}
+        ${NGTCP2_LIBRARY}
+        ${NGHTTP2_LIBRARY}
+        ${NGHTTP3_LIBRARY}
+        ${JEMALLOC_LIBRARY}
         ${BROTLI_LIBRARIES}
         ${OPENSSL_LIBRARIES}
         ${AWH_IDN}
@@ -566,10 +715,15 @@ elseif(CMAKE_BUILD_IDN)
         ${DNS_APP_NAME}
         ${CURRENT_LIB_NAME}
         ${EVENT_LIBRARY}
+        ${XML_LIBRARY}
         ${ZLIB_LIBRARY}
         ${PCRE_LIBRARY}
         ${ICONV_LIBRARY}
         ${IDN2_LIBRARY}
+        ${NGTCP2_LIBRARY}
+        ${NGHTTP2_LIBRARY}
+        ${NGHTTP3_LIBRARY}
+        ${JEMALLOC_LIBRARY}
         ${BROTLI_LIBRARIES}
         ${OPENSSL_LIBRARIES}
         ${AWH_IDN}
@@ -579,10 +733,15 @@ elseif(CMAKE_BUILD_IDN)
         ${NTP_APP_NAME}
         ${CURRENT_LIB_NAME}
         ${EVENT_LIBRARY}
+        ${XML_LIBRARY}
         ${ZLIB_LIBRARY}
         ${PCRE_LIBRARY}
         ${ICONV_LIBRARY}
         ${IDN2_LIBRARY}
+        ${NGTCP2_LIBRARY}
+        ${NGHTTP2_LIBRARY}
+        ${NGHTTP3_LIBRARY}
+        ${JEMALLOC_LIBRARY}
         ${BROTLI_LIBRARIES}
         ${OPENSSL_LIBRARIES}
         ${AWH_IDN}
@@ -592,10 +751,15 @@ elseif(CMAKE_BUILD_IDN)
         ${SOCKS5_APP_NAME}
         ${CURRENT_LIB_NAME}
         ${EVENT_LIBRARY}
+        ${XML_LIBRARY}
         ${ZLIB_LIBRARY}
         ${PCRE_LIBRARY}
         ${ICONV_LIBRARY}
         ${IDN2_LIBRARY}
+        ${NGTCP2_LIBRARY}
+        ${NGHTTP2_LIBRARY}
+        ${NGHTTP3_LIBRARY}
+        ${JEMALLOC_LIBRARY}
         ${BROTLI_LIBRARIES}
         ${OPENSSL_LIBRARIES}
         ${AWH_IDN}
@@ -605,10 +769,15 @@ elseif(CMAKE_BUILD_IDN)
         ${PROXY_APP_NAME}
         ${CURRENT_LIB_NAME}
         ${EVENT_LIBRARY}
+        ${XML_LIBRARY}
         ${ZLIB_LIBRARY}
         ${PCRE_LIBRARY}
         ${ICONV_LIBRARY}
         ${IDN2_LIBRARY}
+        ${NGTCP2_LIBRARY}
+        ${NGHTTP2_LIBRARY}
+        ${NGHTTP3_LIBRARY}
+        ${JEMALLOC_LIBRARY}
         ${BROTLI_LIBRARIES}
         ${OPENSSL_LIBRARIES}
         ${AWH_IDN}
@@ -618,10 +787,33 @@ elseif(CMAKE_BUILD_IDN)
         ${PING_APP_NAME}
         ${CURRENT_LIB_NAME}
         ${EVENT_LIBRARY}
+        ${XML_LIBRARY}
         ${ZLIB_LIBRARY}
         ${PCRE_LIBRARY}
         ${ICONV_LIBRARY}
         ${IDN2_LIBRARY}
+        ${NGTCP2_LIBRARY}
+        ${NGHTTP2_LIBRARY}
+        ${NGHTTP3_LIBRARY}
+        ${JEMALLOC_LIBRARY}
+        ${BROTLI_LIBRARIES}
+        ${OPENSSL_LIBRARIES}
+        ${AWH_IDN}
+    )
+
+    target_link_libraries(
+        ${HTTP2_APP_NAME}
+        ${CURRENT_LIB_NAME}
+        ${EVENT_LIBRARY}
+        ${XML_LIBRARY}
+        ${ZLIB_LIBRARY}
+        ${PCRE_LIBRARY}
+        ${ICONV_LIBRARY}
+        ${IDN2_LIBRARY}
+        ${NGTCP2_LIBRARY}
+        ${NGHTTP2_LIBRARY}
+        ${NGHTTP3_LIBRARY}
+        ${JEMALLOC_LIBRARY}
         ${BROTLI_LIBRARIES}
         ${OPENSSL_LIBRARIES}
         ${AWH_IDN}
@@ -631,10 +823,15 @@ elseif(CMAKE_BUILD_IDN)
         ${TIMER_APP_NAME}
         ${CURRENT_LIB_NAME}
         ${EVENT_LIBRARY}
+        ${XML_LIBRARY}
         ${ZLIB_LIBRARY}
         ${PCRE_LIBRARY}
         ${ICONV_LIBRARY}
         ${IDN2_LIBRARY}
+        ${NGTCP2_LIBRARY}
+        ${NGHTTP2_LIBRARY}
+        ${NGHTTP3_LIBRARY}
+        ${JEMALLOC_LIBRARY}
         ${BROTLI_LIBRARIES}
         ${OPENSSL_LIBRARIES}
         ${AWH_IDN}
@@ -644,10 +841,15 @@ elseif(CMAKE_BUILD_IDN)
         ${CLIENT_APP_NAME}
         ${CURRENT_LIB_NAME}
         ${EVENT_LIBRARY}
+        ${XML_LIBRARY}
         ${ZLIB_LIBRARY}
         ${PCRE_LIBRARY}
         ${ICONV_LIBRARY}
         ${IDN2_LIBRARY}
+        ${NGTCP2_LIBRARY}
+        ${NGHTTP2_LIBRARY}
+        ${NGHTTP3_LIBRARY}
+        ${JEMALLOC_LIBRARY}
         ${BROTLI_LIBRARIES}
         ${OPENSSL_LIBRARIES}
         ${AWH_IDN}
@@ -657,10 +859,15 @@ elseif(CMAKE_BUILD_IDN)
         ${SERVER_APP_NAME}
         ${CURRENT_LIB_NAME}
         ${EVENT_LIBRARY}
+        ${XML_LIBRARY}
         ${ZLIB_LIBRARY}
         ${PCRE_LIBRARY}
         ${ICONV_LIBRARY}
         ${IDN2_LIBRARY}
+        ${NGTCP2_LIBRARY}
+        ${NGHTTP2_LIBRARY}
+        ${NGHTTP3_LIBRARY}
+        ${JEMALLOC_LIBRARY}
         ${BROTLI_LIBRARIES}
         ${OPENSSL_LIBRARIES}
         ${AWH_IDN}
@@ -670,10 +877,15 @@ elseif(CMAKE_BUILD_IDN)
         ${CLUSTER_APP_NAME}
         ${CURRENT_LIB_NAME}
         ${EVENT_LIBRARY}
+        ${XML_LIBRARY}
         ${ZLIB_LIBRARY}
         ${PCRE_LIBRARY}
         ${ICONV_LIBRARY}
         ${IDN2_LIBRARY}
+        ${NGTCP2_LIBRARY}
+        ${NGHTTP2_LIBRARY}
+        ${NGHTTP3_LIBRARY}
+        ${JEMALLOC_LIBRARY}
         ${BROTLI_LIBRARIES}
         ${OPENSSL_LIBRARIES}
         ${AWH_IDN}
@@ -683,10 +895,15 @@ elseif(CMAKE_BUILD_IDN)
         ${WEB_CLIENT_APP_NAME}
         ${CURRENT_LIB_NAME}
         ${EVENT_LIBRARY}
+        ${XML_LIBRARY}
         ${ZLIB_LIBRARY}
         ${PCRE_LIBRARY}
         ${ICONV_LIBRARY}
         ${IDN2_LIBRARY}
+        ${NGTCP2_LIBRARY}
+        ${NGHTTP2_LIBRARY}
+        ${NGHTTP3_LIBRARY}
+        ${JEMALLOC_LIBRARY}
         ${BROTLI_LIBRARIES}
         ${OPENSSL_LIBRARIES}
         ${AWH_IDN}
@@ -696,10 +913,15 @@ elseif(CMAKE_BUILD_IDN)
         ${WEB_SERVER_APP_NAME}
         ${CURRENT_LIB_NAME}
         ${EVENT_LIBRARY}
+        ${XML_LIBRARY}
         ${ZLIB_LIBRARY}
         ${PCRE_LIBRARY}
         ${ICONV_LIBRARY}
         ${IDN2_LIBRARY}
+        ${NGTCP2_LIBRARY}
+        ${NGHTTP2_LIBRARY}
+        ${NGHTTP3_LIBRARY}
+        ${JEMALLOC_LIBRARY}
         ${BROTLI_LIBRARIES}
         ${OPENSSL_LIBRARIES}
         ${AWH_IDN}
@@ -710,8 +932,13 @@ else()
         ${IP_APP_NAME}
         ${CURRENT_LIB_NAME}
         ${EVENT_LIBRARY}
+        ${XML_LIBRARY}
         ${ZLIB_LIBRARY}
         ${PCRE_LIBRARY}
+        ${NGTCP2_LIBRARY}
+        ${NGHTTP2_LIBRARY}
+        ${NGHTTP3_LIBRARY}
+        ${JEMALLOC_LIBRARY}
         ${BROTLI_LIBRARIES}
         ${OPENSSL_LIBRARIES}
     )
@@ -720,8 +947,13 @@ else()
         ${WSC_APP_NAME}
         ${CURRENT_LIB_NAME}
         ${EVENT_LIBRARY}
+        ${XML_LIBRARY}
         ${ZLIB_LIBRARY}
         ${PCRE_LIBRARY}
+        ${NGTCP2_LIBRARY}
+        ${NGHTTP2_LIBRARY}
+        ${NGHTTP3_LIBRARY}
+        ${JEMALLOC_LIBRARY}
         ${BROTLI_LIBRARIES}
         ${OPENSSL_LIBRARIES}
     )
@@ -730,8 +962,13 @@ else()
         ${WSS_APP_NAME}
         ${CURRENT_LIB_NAME}
         ${EVENT_LIBRARY}
+        ${XML_LIBRARY}
         ${ZLIB_LIBRARY}
         ${PCRE_LIBRARY}
+        ${NGTCP2_LIBRARY}
+        ${NGHTTP2_LIBRARY}
+        ${NGHTTP3_LIBRARY}
+        ${JEMALLOC_LIBRARY}
         ${BROTLI_LIBRARIES}
         ${OPENSSL_LIBRARIES}
     )
@@ -740,8 +977,13 @@ else()
         ${DNS_APP_NAME}
         ${CURRENT_LIB_NAME}
         ${EVENT_LIBRARY}
+        ${XML_LIBRARY}
         ${ZLIB_LIBRARY}
         ${PCRE_LIBRARY}
+        ${NGTCP2_LIBRARY}
+        ${NGHTTP2_LIBRARY}
+        ${NGHTTP3_LIBRARY}
+        ${JEMALLOC_LIBRARY}
         ${BROTLI_LIBRARIES}
         ${OPENSSL_LIBRARIES}
     )
@@ -750,8 +992,13 @@ else()
         ${NTP_APP_NAME}
         ${CURRENT_LIB_NAME}
         ${EVENT_LIBRARY}
+        ${XML_LIBRARY}
         ${ZLIB_LIBRARY}
         ${PCRE_LIBRARY}
+        ${NGTCP2_LIBRARY}
+        ${NGHTTP2_LIBRARY}
+        ${NGHTTP3_LIBRARY}
+        ${JEMALLOC_LIBRARY}
         ${BROTLI_LIBRARIES}
         ${OPENSSL_LIBRARIES}
     )
@@ -760,8 +1007,13 @@ else()
         ${SOCKS5_APP_NAME}
         ${CURRENT_LIB_NAME}
         ${EVENT_LIBRARY}
+        ${XML_LIBRARY}
         ${ZLIB_LIBRARY}
         ${PCRE_LIBRARY}
+        ${NGTCP2_LIBRARY}
+        ${NGHTTP2_LIBRARY}
+        ${NGHTTP3_LIBRARY}
+        ${JEMALLOC_LIBRARY}
         ${BROTLI_LIBRARIES}
         ${OPENSSL_LIBRARIES}
     )
@@ -770,8 +1022,13 @@ else()
         ${PROXY_APP_NAME}
         ${CURRENT_LIB_NAME}
         ${EVENT_LIBRARY}
+        ${XML_LIBRARY}
         ${ZLIB_LIBRARY}
         ${PCRE_LIBRARY}
+        ${NGTCP2_LIBRARY}
+        ${NGHTTP2_LIBRARY}
+        ${NGHTTP3_LIBRARY}
+        ${JEMALLOC_LIBRARY}
         ${BROTLI_LIBRARIES}
         ${OPENSSL_LIBRARIES}
     )
@@ -780,8 +1037,28 @@ else()
         ${PING_APP_NAME}
         ${CURRENT_LIB_NAME}
         ${EVENT_LIBRARY}
+        ${XML_LIBRARY}
         ${ZLIB_LIBRARY}
         ${PCRE_LIBRARY}
+        ${NGTCP2_LIBRARY}
+        ${NGHTTP2_LIBRARY}
+        ${NGHTTP3_LIBRARY}
+        ${JEMALLOC_LIBRARY}
+        ${BROTLI_LIBRARIES}
+        ${OPENSSL_LIBRARIES}
+    )
+
+    target_link_libraries(
+        ${HTTP2_APP_NAME}
+        ${CURRENT_LIB_NAME}
+        ${EVENT_LIBRARY}
+        ${XML_LIBRARY}
+        ${ZLIB_LIBRARY}
+        ${PCRE_LIBRARY}
+        ${NGTCP2_LIBRARY}
+        ${NGHTTP2_LIBRARY}
+        ${NGHTTP3_LIBRARY}
+        ${JEMALLOC_LIBRARY}
         ${BROTLI_LIBRARIES}
         ${OPENSSL_LIBRARIES}
     )
@@ -790,8 +1067,13 @@ else()
         ${TIMER_APP_NAME}
         ${CURRENT_LIB_NAME}
         ${EVENT_LIBRARY}
+        ${XML_LIBRARY}
         ${ZLIB_LIBRARY}
         ${PCRE_LIBRARY}
+        ${NGTCP2_LIBRARY}
+        ${NGHTTP2_LIBRARY}
+        ${NGHTTP3_LIBRARY}
+        ${JEMALLOC_LIBRARY}
         ${BROTLI_LIBRARIES}
         ${OPENSSL_LIBRARIES}
     )
@@ -800,8 +1082,13 @@ else()
         ${CLIENT_APP_NAME}
         ${CURRENT_LIB_NAME}
         ${EVENT_LIBRARY}
+        ${XML_LIBRARY}
         ${ZLIB_LIBRARY}
         ${PCRE_LIBRARY}
+        ${NGTCP2_LIBRARY}
+        ${NGHTTP2_LIBRARY}
+        ${NGHTTP3_LIBRARY}
+        ${JEMALLOC_LIBRARY}
         ${BROTLI_LIBRARIES}
         ${OPENSSL_LIBRARIES}
     )
@@ -810,8 +1097,13 @@ else()
         ${SERVER_APP_NAME}
         ${CURRENT_LIB_NAME}
         ${EVENT_LIBRARY}
+        ${XML_LIBRARY}
         ${ZLIB_LIBRARY}
         ${PCRE_LIBRARY}
+        ${NGTCP2_LIBRARY}
+        ${NGHTTP2_LIBRARY}
+        ${NGHTTP3_LIBRARY}
+        ${JEMALLOC_LIBRARY}
         ${BROTLI_LIBRARIES}
         ${OPENSSL_LIBRARIES}
     )
@@ -820,8 +1112,13 @@ else()
         ${CLUSTER_APP_NAME}
         ${CURRENT_LIB_NAME}
         ${EVENT_LIBRARY}
+        ${XML_LIBRARY}
         ${ZLIB_LIBRARY}
         ${PCRE_LIBRARY}
+        ${NGTCP2_LIBRARY}
+        ${NGHTTP2_LIBRARY}
+        ${NGHTTP3_LIBRARY}
+        ${JEMALLOC_LIBRARY}
         ${BROTLI_LIBRARIES}
         ${OPENSSL_LIBRARIES}
     )
@@ -830,8 +1127,13 @@ else()
         ${WEB_CLIENT_APP_NAME}
         ${CURRENT_LIB_NAME}
         ${EVENT_LIBRARY}
+        ${XML_LIBRARY}
         ${ZLIB_LIBRARY}
         ${PCRE_LIBRARY}
+        ${NGTCP2_LIBRARY}
+        ${NGHTTP2_LIBRARY}
+        ${NGHTTP3_LIBRARY}
+        ${JEMALLOC_LIBRARY}
         ${BROTLI_LIBRARIES}
         ${OPENSSL_LIBRARIES}
     )
@@ -840,8 +1142,13 @@ else()
         ${WEB_SERVER_APP_NAME}
         ${CURRENT_LIB_NAME}
         ${EVENT_LIBRARY}
+        ${XML_LIBRARY}
         ${ZLIB_LIBRARY}
         ${PCRE_LIBRARY}
+        ${NGTCP2_LIBRARY}
+        ${NGHTTP2_LIBRARY}
+        ${NGHTTP3_LIBRARY}
+        ${JEMALLOC_LIBRARY}
         ${BROTLI_LIBRARIES}
         ${OPENSSL_LIBRARIES}
     )
@@ -892,6 +1199,13 @@ if(CMAKE_BUILD_TYPE MATCHES Debug)
             COMMAND codesign -s - -f --entitlements "${entitlements_file}" "$<TARGET_FILE:${PING_APP_NAME}>"
             COMMAND ulimit -c unlimited
             COMMENT "sign target \"${PING_APP_NAME}\" to enable core dump on MacOS X"
+            VERBATIM
+        )
+
+        add_custom_command(TARGET "${HTTP2_APP_NAME}" POST_BUILD
+            COMMAND codesign -s - -f --entitlements "${entitlements_file}" "$<TARGET_FILE:${HTTP2_APP_NAME}>"
+            COMMAND ulimit -c unlimited
+            COMMENT "sign target \"${HTTP2_APP_NAME}\" to enable core dump on MacOS X"
             VERBATIM
         )
 
@@ -969,6 +1283,7 @@ if(CMAKE_BUILD_TYPE MATCHES Debug)
         pvs_studio_add_target(TARGET ${DNS_APP_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${DNS_APP_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
         pvs_studio_add_target(TARGET ${NTP_APP_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${NTP_APP_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
         pvs_studio_add_target(TARGET ${PING_APP_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${PING_APP_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
+        pvs_studio_add_target(TARGET ${HTTP2_APP_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${HTTP2_APP_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
         pvs_studio_add_target(TARGET ${TIMER_APP_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${TIMER_APP_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
         pvs_studio_add_target(TARGET ${PROXY_APP_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${PROXY_APP_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
         pvs_studio_add_target(TARGET ${SOCKS5_APP_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${SOCKS5_APP_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
@@ -996,6 +1311,7 @@ install(TARGETS ${WSS_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE
 install(TARGETS ${DNS_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
 install(TARGETS ${NTP_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
 install(TARGETS ${PING_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
+install(TARGETS ${HTTP2_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
 install(TARGETS ${TIMER_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
 install(TARGETS ${PROXY_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
 install(TARGETS ${SOCKS5_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
@@ -1010,7 +1326,12 @@ if(NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
 endif()
 
 # Устанавливаем хидеры сторонних библиотек
+install(DIRECTORY "${XML_INCLUDE_DIR}" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h")
 install(DIRECTORY "${ZLIB_INCLUDE_DIR}" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h")
+install(DIRECTORY "${NGTCP2_INCLUDE_DIR}" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h")
+install(DIRECTORY "${NGHTTP2_INCLUDE_DIR}" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h")
+install(DIRECTORY "${NGHTTP3_INCLUDE_DIR}" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h")
+install(DIRECTORY "${JEMALLOC_INCLUDE_DIR}" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h")
 install(DIRECTORY "${BROTLI_INCLUDE_ENCODE_DIR}" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h")
 install(DIRECTORY "${OPENSSL_INCLUDE_DIR}/openssl" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h")
 
@@ -1035,7 +1356,12 @@ if(CMAKE_BUILD_IDN AND (NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Windows"))
 endif()
 
 # Устанавливаем стороние библиотеки
+install(FILES ${XML_LIBRARY} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
 install(FILES ${ZLIB_LIBRARY} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
+install(FILES ${NGTCP2_LIBRARY} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
+install(FILES ${NGHTTP2_LIBRARY} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
+install(FILES ${NGHTTP3_LIBRARY} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
+install(FILES ${JEMALLOC_LIBRARY} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
 install(FILES ${BROTLI_LIBRARIES} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
 install(FILES ${OPENSSL_LIBRARIES} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
 

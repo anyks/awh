@@ -1001,13 +1001,13 @@ if [ ! -f "$src/.stamp_done" ]; then
 	cd "$ROOT" || exit 1
 fi
 
-# Сборка NgTCP
+# Сборка NgTCP2
 src="$ROOT/submodules/ngtcp2"
 if [ ! -f "$src/.stamp_done" ]; then
-	printf "\n****** NgTCP ******\n"
+	printf "\n****** NgTCP2 ******\n"
 	cd "$src" || exit 1
 
-	# Версия NgTCP
+	# Версия NgTCP2
 	VER="0.18.0"
 
 	# Переключаемся на main
