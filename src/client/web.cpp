@@ -405,8 +405,8 @@ void awh::client::WEB::actionDisconnect() noexcept {
 		const res_t & response = this->_responses.front();
 		// Если нужно произвести запрос заново
 		if(!this->_stopped && ((response.code == 201) || (response.code == 301) ||
-		(response.code == 302) || (response.code == 303) || (response.code == 307) ||
-		(response.code == 308) || (response.code == 401) || (response.code == 407))){
+		   (response.code == 302) || (response.code == 303) || (response.code == 307) ||
+		   (response.code == 308) || (response.code == 401) || (response.code == 407))){
 			// Если статус ответа требует произвести авторизацию или заголовок перенаправления указан
 			if((response.code == 401) || (response.code == 407) || this->_http.isHeader("location")){
 				// Получаем новый адрес запроса

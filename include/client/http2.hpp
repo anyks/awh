@@ -12,13 +12,14 @@
  * @copyright: Copyright © 2023
  */
 
-#ifndef __AWH_SAMPLE_CLIENT__
-#define __AWH_SAMPLE_CLIENT__
+#ifndef __AWH_HTTP2_CLIENT__
+#define __AWH_HTTP2_CLIENT__
 
 /**
  * Стандартная библиотека
  */
 #include <functional>
+#include <nghttp2/nghttp2.h>
 
 /**
  * Наши модули
@@ -38,9 +39,9 @@ namespace awh {
 	 */
 	namespace client {
 		/**
-		 * Sample Класс работы с примером клиента
+		 * Http2 Класс работы с примером клиента
 		 */
-		typedef class Sample {
+		typedef class Http2 {
 			private:
 				/**
 				 * Основные экшены
@@ -72,6 +73,17 @@ namespace awh {
 				};
 			private:
 				/**
+				 * Session Объект сессии HTTP/2
+				 */
+				typedef struct Session {
+					int32_t id;            // Идентификатор сессии
+					nghttp2_session * ctx; // Контекст сессии
+					/**
+					 * Session Конструктор
+					 */
+					Session() noexcept : id(-1), ctx(nullptr) {}
+				} session_t;
+				/**
 				 * Locker Структура локера
 				 */
 				typedef struct Locker {
@@ -87,9 +99,9 @@ namespace awh {
 				 */
 				typedef struct Callback {
 					// Функция обратного вызова при подключении/отключении
-					function <void (const mode_t, Sample *)> active;
+					function <void (const mode_t, Http2 *)> active;
 					// Функция обратного вызова, вывода сообщения при его получении
-					function <void (const vector <char> &, Sample *)> message;
+					function <void (const vector <char> &, Http2 *)> message;
 					/**
 					 * Callback Конструктор
 					 */
@@ -98,14 +110,17 @@ namespace awh {
 			private:
 				// Объект для работы с сетью
 				net_t _net;
-				// Объявляем функции обратного вызова
-				fn_t _callback;
 				// Объект сетевой схемы
 				scheme_t _scheme;
 				// Объект блокировщика
 				locker_t _locker;
 				// Экшен события
 				action_t _action;
+			public:
+				// Объявляем функции обратного вызова
+				fn_t _callback;
+				// Объект сессии HTTP/2
+				session_t _session;
 			private:
 				// Буфер бинарных данных
 				vector <char> _buffer;
@@ -152,6 +167,15 @@ namespace awh {
 				 * @param core   объект сетевого ядра
 				 */
 				void readCallback(const char * buffer, const size_t size, const size_t aid, const size_t sid, awh::core_t * core) noexcept;
+				/**
+				 * enableTLSCallback Метод активации зашифрованного канала TLS
+				 * @param url  адрес сервера для которого выполняется активация зашифрованного канала TLS
+				 * @param aid  идентификатор адъютанта
+				 * @param sid  идентификатор схемы сети
+				 * @param core объект сетевого ядра
+				 * @return     результат активации зашифрованного канала TLS
+				 */
+				bool enableTLSCallback(const uri_t::url_t & url, const size_t aid, const size_t sid, awh::core_t * core) noexcept;
 			private:
 				/**
 				 * handler Метод управления входящими методами
@@ -190,27 +214,15 @@ namespace awh {
 				void close() noexcept;
 			public:
 				/**
-				 * init Метод инициализации Rest адъютанта
-				 * @param socket unix-сокет для биндинга
-				 */
-				void init(const string & socket) noexcept;
-				/**
-				 * init Метод инициализации Rest адъютанта
-				 * @param port порт сервера
-				 * @param host хост сервера
-				 */
-				void init(const u_int port, const string & host) noexcept;
-			public:
-				/**
 				 * on Метод установки функции обратного вызова при подключении/отключении
 				 * @param callback функция обратного вызова
 				 */
-				void on(function <void (const mode_t, Sample *)> callback) noexcept;
+				void on(function <void (const mode_t, Http2 *)> callback) noexcept;
 				/**
 				 * setMessageCallback Метод установки функции обратного вызова при получении сообщения
 				 * @param callback функция обратного вызова
 				 */
-				void on(function <void (const vector <char> &, Sample *)> callback) noexcept;
+				void on(function <void (const vector <char> &, Http2 *)> callback) noexcept;
 			public:
 				/**
 				 * response Метод отправки сообщения адъютанту
@@ -247,18 +259,18 @@ namespace awh {
 				void keepAlive(const int cnt, const int idle, const int intvl) noexcept;
 			public:
 				/**
-				 * Sample Конструктор
+				 * Http2 Конструктор
 				 * @param core объект сетевого ядра
 				 * @param fmk  объект фреймворка
 				 * @param log  объект для работы с логами
 				 */
-				Sample(const client::core_t * core, const fmk_t * fmk, const log_t * log) noexcept;
+				Http2(const client::core_t * core, const fmk_t * fmk, const log_t * log) noexcept;
 				/**
-				 * ~Sample Деструктор
+				 * ~Http2 Деструктор
 				 */
-				~Sample() noexcept {}
-		} sample_t;
+				~Http2() noexcept {}
+		} http2_t;
 	};
 };
 
-#endif // __AWH_SAMPLE_CLIENT__
+#endif // __AWH_HTTP2_CLIENT__

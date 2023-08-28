@@ -2200,7 +2200,7 @@ bool awh::Engine::storeCA(SSL_CTX * ctx) const noexcept {
 			// Выполняем проверку
 			if(SSL_CTX_load_verify_locations(ctx, this->_ca.c_str(), path) != 1){
 				// Выводим в лог сообщение
-				this->_log->print("ssl verify locations is not allow", log_t::flag_t::CRITICAL);
+				this->_log->print("SSL verify locations is not allow", log_t::flag_t::CRITICAL);
 				// Выходим
 				return result;
 			}
@@ -2466,7 +2466,7 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const type_t type) noex
 			// Если контекст не создан
 			if(target._ctx == nullptr){
 				// Выводим в лог сообщение
-				this->_log->print("context ssl is not initialization", log_t::flag_t::CRITICAL);
+				this->_log->print("context SSL is not initialization: %s", log_t::flag_t::CRITICAL, ERR_error_string(ERR_get_error(), nullptr));
 				// Выходим
 				return;
 			}
@@ -2483,7 +2483,7 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const type_t type) noex
 					// Очищаем созданный контекст
 					target.clear();
 					// Выводим в лог сообщение
-					this->_log->print("set ssl ciphers", log_t::flag_t::CRITICAL);
+					this->_log->print("set SSL ciphers: %s", log_t::flag_t::CRITICAL, ERR_error_string(ERR_get_error(), nullptr));
 					// Выходим
 					return;
 				}
@@ -2511,7 +2511,7 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const type_t type) noex
 				// Очищаем созданный контекст
 				target.clear();
 				// Выводим в лог сообщение
-				this->_log->print("set ssl ecdh", log_t::flag_t::CRITICAL);
+				this->_log->print("set SSL ecdh: %s", log_t::flag_t::CRITICAL, ERR_error_string(ERR_get_error(), nullptr));
 				// Выходим
 				return;
 			}
@@ -2607,7 +2607,7 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const type_t type) noex
 				// Очищаем созданный контекст
 				target.clear();
 				// Выводим в лог сообщение
-				this->_log->print("ssl initialization is not allow", log_t::flag_t::CRITICAL);
+				this->_log->print("Could not create SSL/TLS session object: %s", log_t::flag_t::CRITICAL, ERR_error_string(ERR_get_error(), nullptr));
 				// Выходим
 				return;
 			}
@@ -2727,7 +2727,7 @@ void awh::Engine::wrapServer(ctx_t & target, addr_t * address) noexcept {
 			// Если контекст не создан
 			if(target._ctx == nullptr){
 				// Выводим в лог сообщение
-				this->_log->print("context ssl is not initialization", log_t::flag_t::CRITICAL);
+				this->_log->print("context SSL is not initialization: %s", log_t::flag_t::CRITICAL, ERR_error_string(ERR_get_error(), nullptr));
 				// Выходим
 				return;
 			}
@@ -2744,7 +2744,7 @@ void awh::Engine::wrapServer(ctx_t & target, addr_t * address) noexcept {
 					// Очищаем созданный контекст
 					target.clear();
 					// Выводим в лог сообщение
-					this->_log->print("set ssl ciphers", log_t::flag_t::CRITICAL);
+					this->_log->print("set SSL ciphers: %s", log_t::flag_t::CRITICAL, ERR_error_string(ERR_get_error(), nullptr));
 					// Выходим
 					return;
 				}
@@ -2767,7 +2767,7 @@ void awh::Engine::wrapServer(ctx_t & target, addr_t * address) noexcept {
 				// Очищаем созданный контекст
 				target.clear();
 				// Выводим в лог сообщение
-				this->_log->print("set ssl ecdh", log_t::flag_t::CRITICAL);
+				this->_log->print("set SSL ecdh: %s", log_t::flag_t::CRITICAL, ERR_error_string(ERR_get_error(), nullptr));
 				// Выходим
 				return;
 			}
@@ -2841,7 +2841,7 @@ void awh::Engine::wrapServer(ctx_t & target, addr_t * address) noexcept {
 				// Очищаем созданный контекст
 				target.clear();
 				// Выводим в лог сообщение
-				this->_log->print("ssl initialization is not allow", log_t::flag_t::CRITICAL);
+				this->_log->print("Could not create SSL/TLS session object: %s", log_t::flag_t::CRITICAL, ERR_error_string(ERR_get_error(), nullptr));
 				// Выходим
 				return;
 			}
@@ -2917,6 +2917,28 @@ void awh::Engine::wrapServer(ctx_t & target, addr_t * address) noexcept {
 		}
 	}
 }
+
+#include <nghttp2/nghttp2.h>
+
+#ifndef OPENSSL_NO_NEXTPROTONEG
+/* NPN TLS extension client callback. We check that server advertised
+   the HTTP/2 protocol the nghttp2 library supports. If not, exit
+   the program. */
+static int select_next_proto_cb(SSL *ssl, unsigned char **out,
+                                unsigned char *outlen, const unsigned char *in,
+                                unsigned int inlen, void *arg) {
+  (void)ssl;
+  (void)arg;
+
+  if (nghttp2_select_next_protocol(out, outlen, in, inlen) <= 0) {
+    cerr << "Server did not advertise " << NGHTTP2_PROTO_VERSION_ID << endl;
+	exit(1);
+  }
+  return SSL_TLSEXT_ERR_OK;
+}
+#endif /* !OPENSSL_NO_NEXTPROTONEG */
+
+
 /**
  * wrapClient Метод обертывания файлового дескриптора для клиента
  * @param target контекст назначения
@@ -2976,12 +2998,27 @@ void awh::Engine::wrapClient(ctx_t & target, addr_t * address, const string & ho
 			// Если контекст не создан
 			if(target._ctx == nullptr){
 				// Выводим в лог сообщение
-				this->_log->print("context ssl is not initialization", log_t::flag_t::CRITICAL);
+				this->_log->print("context SSL is not initialization: %s", log_t::flag_t::CRITICAL, ERR_error_string(ERR_get_error(), nullptr));
 				// Выходим
 				return;
 			}
 			// Устанавливаем опции запроса
-			SSL_CTX_set_options(target._ctx, SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3);
+			// SSL_CTX_set_options(target._ctx, SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3);
+
+			SSL_CTX_set_options(target._ctx, SSL_OP_ALL | SSL_OP_NO_SSLv2 | SSL_OP_NO_COMPRESSION | SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION);
+
+			SSL_CTX_set_mode(target._ctx, SSL_MODE_AUTO_RETRY);
+			SSL_CTX_set_mode(target._ctx, SSL_MODE_RELEASE_BUFFERS);
+
+
+			#ifndef OPENSSL_NO_NEXTPROTONEG
+				SSL_CTX_set_next_proto_select_cb(target._ctx, select_next_proto_cb, NULL);
+			#endif /* !OPENSSL_NO_NEXTPROTONEG */
+
+			#if OPENSSL_VERSION_NUMBER >= 0x10002000L
+				SSL_CTX_set_alpn_protos(target._ctx, (const unsigned char *)"\x02h2", 3);
+			#endif /* OPENSSL_VERSION_NUMBER >= 0x10002000L */
+
 			// Выполняем инициализацию доверенного сертификата
 			if(!this->storeCA(target._ctx)){
 				// Очищаем созданный контекст
@@ -2996,7 +3033,7 @@ void awh::Engine::wrapClient(ctx_t & target, addr_t * address, const string & ho
 					// Очищаем созданный контекст
 					target.clear();
 					// Выводим в лог сообщение
-					this->_log->print("set ssl ciphers", log_t::flag_t::CRITICAL);
+					this->_log->print("set SSL ciphers: %s", log_t::flag_t::CRITICAL, ERR_error_string(ERR_get_error(), nullptr));
 					// Выходим
 					return;
 				}
@@ -3057,7 +3094,7 @@ void awh::Engine::wrapClient(ctx_t & target, addr_t * address, const string & ho
 				// Очищаем созданный контекст
 				target.clear();
 				// Выводим в лог сообщение
-				this->_log->print("ssl initialization is not allow", log_t::flag_t::CRITICAL);
+				this->_log->print("Could not create SSL/TLS session object: %s", log_t::flag_t::CRITICAL, ERR_error_string(ERR_get_error(), nullptr));
 				// Выходим
 				return;
 			}
@@ -3073,7 +3110,7 @@ void awh::Engine::wrapClient(ctx_t & target, addr_t * address, const string & ho
 				// Очищаем созданный контекст
 				target.clear();
 				// Выводим в лог сообщение
-				this->_log->print("host ssl verification failed", log_t::flag_t::CRITICAL);
+				this->_log->print("host SSL verification failed", log_t::flag_t::CRITICAL);
 				// Выходим
 				return;
 			}
@@ -3144,6 +3181,24 @@ void awh::Engine::wrapClient(ctx_t & target, addr_t * address, const string & ho
 				// Выходим из функции
 				return;
 			}
+
+			const unsigned char * alpn = NULL;
+			unsigned int alpnlen = 0;
+
+			#ifndef OPENSSL_NO_NEXTPROTONEG
+				SSL_get0_next_proto_negotiated(target._ssl, &alpn, &alpnlen);
+			#endif /* !OPENSSL_NO_NEXTPROTONEG */
+			#if OPENSSL_VERSION_NUMBER >= 0x10002000L
+				if (alpn == NULL) {
+					SSL_get0_alpn_selected(target._ssl, &alpn, &alpnlen);
+				}
+			#endif /* OPENSSL_VERSION_NUMBER >= 0x10002000L */
+
+			if (alpn == NULL || alpnlen != 2 || memcmp("h2", alpn, 2) != 0) {
+				fprintf(stderr, "h2 is not negotiated\n");
+			}
+
+			
 		}
 	}
 }

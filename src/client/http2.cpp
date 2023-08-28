@@ -20,7 +20,7 @@
  * @param sid  идентификатор схемы сети
  * @param core объект сетевого ядра
  */
-void awh::client::Sample::openCallback(const size_t sid, awh::core_t * core) noexcept {
+void awh::client::Http2::openCallback(const size_t sid, awh::core_t * core) noexcept {
 	// Если дисконнекта ещё не произошло
 	if(this->_action == action_t::NONE){
 		// Устанавливаем экшен выполнения
@@ -35,7 +35,7 @@ void awh::client::Sample::openCallback(const size_t sid, awh::core_t * core) noe
  * @param sid  идентификатор схемы сети
  * @param core объект сетевого ядра
  */
-void awh::client::Sample::connectCallback(const size_t aid, const size_t sid, awh::core_t * core) noexcept {
+void awh::client::Http2::connectCallback(const size_t aid, const size_t sid, awh::core_t * core) noexcept {
 	// Если данные переданы верные
 	if((aid > 0) && (sid > 0) && (core != nullptr)){
 		// Запоминаем идентификатор адъютанта
@@ -52,7 +52,7 @@ void awh::client::Sample::connectCallback(const size_t aid, const size_t sid, aw
  * @param sid  идентификатор схемы сети
  * @param core объект сетевого ядра
  */
-void awh::client::Sample::disconnectCallback(const size_t aid, const size_t sid, awh::core_t * core) noexcept {
+void awh::client::Http2::disconnectCallback(const size_t aid, const size_t sid, awh::core_t * core) noexcept {
 	// Если данные переданы верные
 	if((sid > 0) && (core != nullptr)){
 		// Устанавливаем экшен выполнения
@@ -69,7 +69,7 @@ void awh::client::Sample::disconnectCallback(const size_t aid, const size_t sid,
  * @param sid    идентификатор схемы сети
  * @param core   объект сетевого ядра
  */
-void awh::client::Sample::readCallback(const char * buffer, const size_t size, const size_t aid, const size_t sid, awh::core_t * core) noexcept {
+void awh::client::Http2::readCallback(const char * buffer, const size_t size, const size_t aid, const size_t sid, awh::core_t * core) noexcept {
 	// Если данные существуют
 	if((buffer != nullptr) && (size > 0) && (aid > 0) && (sid > 0)){
 		// Если дисконнекта ещё не произошло
@@ -84,9 +84,25 @@ void awh::client::Sample::readCallback(const char * buffer, const size_t size, c
 	}
 }
 /**
+ * enableTLSCallback Метод активации зашифрованного канала TLS
+ * @param url  адрес сервера для которого выполняется активация зашифрованного канала TLS
+ * @param aid  идентификатор адъютанта
+ * @param sid  идентификатор схемы сети
+ * @param core объект сетевого ядра
+ * @return     результат активации зашифрованного канала TLS
+ */
+bool awh::client::Http2::enableTLSCallback(const uri_t::url_t & url, const size_t aid, const size_t sid, awh::core_t * core) noexcept {
+	// Блокируем переменные которые не используем
+	(void) aid;
+	(void) sid;
+	(void) core;
+	// Выводим результат активации
+	return (!url.empty() && this->_fmk->compare(url.schema, "https"));
+}
+/**
  * handler Метод управления входящими методами
  */
-void awh::client::Sample::handler() noexcept {
+void awh::client::Http2::handler() noexcept {
 	// Если управляющий блокировщик не заблокирован
 	if(!this->_locker.mode){
 		// Выполняем блокировку потока
@@ -118,7 +134,7 @@ void awh::client::Sample::handler() noexcept {
 /**
  * actionOpen Метод обработки экшена открытия подключения
  */
-void awh::client::Sample::actionOpen() noexcept {
+void awh::client::Http2::actionOpen() noexcept {
 	// Выполняем подключение
 	const_cast <client::core_t *> (this->_core)->open(this->_scheme.sid);
 	// Если экшен соответствует, выполняем его сброс
@@ -129,26 +145,213 @@ void awh::client::Sample::actionOpen() noexcept {
 /**
  * actionRead Метод обработки экшена чтения с сервера
  */
-void awh::client::Sample::actionRead() noexcept {
+void awh::client::Http2::actionRead() noexcept {
 	// Если экшен соответствует, выполняем его сброс
 	if(this->_action == action_t::READ)
 		// Выполняем сброс экшена
 		this->_action = action_t::NONE;
-	// Если функция обратного вызова установлена, выводим сообщение
-	if(this->_callback.message != nullptr)
-		// Выполняем функцию обратного вызова
-		this->_callback.message(this->_buffer, this);
+	
+
+	ssize_t readlen = nghttp2_session_mem_recv(this->_session.ctx, (const uint8_t *) this->_buffer.data(), this->_buffer.size());
+	if (readlen < 0) {
+
+		this->_log->print("Fatal error: %s", log_t::flag_t::CRITICAL, nghttp2_strerror((int) readlen));
+		
+		return;
+	}
+
+	this->_buffer.clear();
+
+	
+	int rv = nghttp2_session_send(this->_session.ctx);
+	if (rv != 0) {
+		this->_log->print("Fatal error: %s", log_t::flag_t::CRITICAL, nghttp2_strerror(rv));
+		exit(1);
+	}
 }
+
+static void print_header(FILE * f, const uint8_t * name, size_t namelen, const uint8_t * value, size_t valuelen){
+  fwrite(name, 1, namelen, f);
+  fprintf(f, ": ");
+  fwrite(value, 1, valuelen, f);
+  fprintf(f, "\n");
+}
+
+static void print_headers(FILE *f, nghttp2_nv *nva, size_t nvlen){
+  size_t i;
+  for (i = 0; i < nvlen; ++i) {
+    print_header(f, nva[i].name, nva[i].namelen, nva[i].value, nva[i].valuelen);
+  }
+  fprintf(f, "\n");
+}
+
+static ssize_t send_callback(nghttp2_session * session, const uint8_t * data, size_t length, int flags, void * ctx){
+  
+  (void) session;
+  (void) flags;
+
+  reinterpret_cast <awh::client::http2_t *> (ctx)->send((const char *) data, length);
+  
+  return (ssize_t) length;
+}
+
+static int on_frame_recv_callback(nghttp2_session * session, const nghttp2_frame *frame, void * ctx){
+  (void) session;
+
+  switch (frame->hd.type){
+  	case NGHTTP2_HEADERS: {
+		if((frame->headers.cat == NGHTTP2_HCAT_RESPONSE) && (reinterpret_cast <awh::client::http2_t *> (ctx)->_session.id == frame->hd.stream_id))
+			fprintf(stderr, "All headers received\n");
+    } break;
+  }
+  return 0;
+}
+
+static int on_data_chunk_recv_callback(nghttp2_session * session, uint8_t flags,  int32_t stream_id, const uint8_t * data, size_t len, void * ctx){
+  (void)session;
+  (void)flags;
+
+  if(reinterpret_cast <awh::client::http2_t *> (ctx)->_session.id == stream_id){
+	// Если функция обратного вызова установлена, выводим сообщение
+	if(reinterpret_cast <awh::client::http2_t *> (ctx)->_callback.message != nullptr)
+		// Выполняем функцию обратного вызова
+		reinterpret_cast <awh::client::http2_t *> (ctx)->_callback.message(vector <char> (data, data + len), reinterpret_cast <awh::client::http2_t *> (ctx));
+  }
+
+  return 0;
+}
+
+static int on_stream_close_callback(nghttp2_session * session, int32_t stream_id, uint32_t error_code, void * ctx){
+  int rv;
+
+  if(reinterpret_cast <awh::client::http2_t *> (ctx)->_session.id == stream_id) {
+    fprintf(stderr, "Stream %d closed with error_code=%u\n", stream_id,
+            error_code);
+    rv = nghttp2_session_terminate_session(session, NGHTTP2_NO_ERROR);
+    if (rv != 0) {
+      return NGHTTP2_ERR_CALLBACK_FAILURE;
+    }
+  }
+  return 0;
+}
+
+static int on_header_callback(nghttp2_session * session, const nghttp2_frame * frame, const uint8_t * name, size_t namelen, const uint8_t * value, size_t valuelen, uint8_t flags, void * ctx){
+  (void) session;
+  (void) flags;
+
+  switch (frame->hd.type) {
+  	case NGHTTP2_HEADERS: {
+		if((frame->headers.cat == NGHTTP2_HCAT_RESPONSE) && (reinterpret_cast <awh::client::http2_t *> (ctx)->_session.id == frame->hd.stream_id)){
+			/* Print response headers for the initiated request. */
+			print_header(stderr, name, namelen, value, valuelen);
+			break;
+		}
+	} break;
+  }
+  return 0;
+}
+
+static int on_begin_headers_callback(nghttp2_session * session, const nghttp2_frame * frame, void * ctx){
+  (void) session;
+
+  switch (frame->hd.type) {
+  	case NGHTTP2_HEADERS: {
+    	if((frame->headers.cat == NGHTTP2_HCAT_RESPONSE) && (reinterpret_cast <awh::client::http2_t *> (ctx)->_session.id == frame->hd.stream_id)){
+      		fprintf(stderr, "Response headers for stream ID=%d:\n", frame->hd.stream_id);
+    	}
+    } break;
+  }
+  return 0;
+}
+
+#define ARRLEN(x) (sizeof(x) / sizeof(x[0]))
+
+#define MAKE_NV(NAME, VALUE)                                                   \
+  {                                                                            \
+    (uint8_t *)NAME, (uint8_t *)VALUE, sizeof(NAME) - 1, sizeof(VALUE) - 1,    \
+        NGHTTP2_NV_FLAG_NONE                                                   \
+  }
+
+#define MAKE_NV_CS(NAME, VALUE)                                                \
+  {                                                                            \
+    (uint8_t *)NAME, (uint8_t *)VALUE, sizeof(NAME) - 1, strlen(VALUE),        \
+        NGHTTP2_NV_FLAG_NONE                                                   \
+  }
+
 /**
  * actionConnect Метод обработки экшена подключения к серверу
  */
-void awh::client::Sample::actionConnect() noexcept {
+void awh::client::Http2::actionConnect() noexcept {
 	// Выполняем очистку оставшихся данных
 	this->_buffer.clear();
 	// Если экшен соответствует, выполняем его сброс
 	if(this->_action == action_t::CONNECT)
 		// Выполняем сброс экшена
 		this->_action = action_t::NONE;
+	
+	nghttp2_session_callbacks * callbacks;
+
+	nghttp2_session_callbacks_new(&callbacks);
+
+	nghttp2_session_callbacks_set_send_callback(callbacks, send_callback);
+
+	nghttp2_session_callbacks_set_on_frame_recv_callback(callbacks, on_frame_recv_callback);
+
+	nghttp2_session_callbacks_set_on_data_chunk_recv_callback(callbacks, on_data_chunk_recv_callback);
+
+	nghttp2_session_callbacks_set_on_stream_close_callback(callbacks, on_stream_close_callback);
+
+	nghttp2_session_callbacks_set_on_header_callback(callbacks, on_header_callback);
+
+	nghttp2_session_callbacks_set_on_begin_headers_callback(callbacks, on_begin_headers_callback);
+
+	nghttp2_session_client_new(&this->_session.ctx, callbacks, this);
+
+	nghttp2_session_callbacks_del(callbacks);
+
+
+
+	nghttp2_settings_entry iv[1] = {{NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS, 100}};
+
+	/* client 24 bytes magic string will be sent by nghttp2 library */
+	int rv = nghttp2_submit_settings(this->_session.ctx, NGHTTP2_FLAG_NONE, iv, ARRLEN(iv));
+	if (rv != 0) {
+		this->_log->print("Could not submit SETTINGS: %s", log_t::flag_t::CRITICAL, nghttp2_strerror(rv));
+		exit(1);
+	}
+
+	nghttp2_nv nva[] = {
+		MAKE_NV(":method", "GET"),
+        MAKE_NV_CS(":path", "/"),
+        MAKE_NV(":scheme", "https"),
+        MAKE_NV_CS(":authority", "anyks.com"),
+        MAKE_NV("accept", "*/*"),
+        MAKE_NV("user-agent", "nghttp2/" NGHTTP2_VERSION)
+	};
+
+	fprintf(stderr, "Request headers:\n");
+	
+	print_headers(stderr, nva, ARRLEN(nva));
+	
+	int32_t stream_id = nghttp2_submit_request(this->_session.ctx, nullptr, nva, ARRLEN(nva), nullptr, this);
+	
+	if(stream_id < 0){
+		this->_log->print("Could not submit HTTP request: %s", log_t::flag_t::CRITICAL, nghttp2_strerror(stream_id));
+		exit(1);
+	}
+
+	this->_session.id = stream_id;
+
+	{
+
+		int rv = nghttp2_session_send(this->_session.ctx);
+		if (rv != 0) {
+			this->_log->print("Fatal error: %s", log_t::flag_t::CRITICAL, nghttp2_strerror(rv));
+			exit(1);
+		}
+	}
+
+
 	// Если функция обратного вызова существует
 	if(this->_callback.active != nullptr)
 		// Выполняем функцию обратного вызова
@@ -157,7 +360,7 @@ void awh::client::Sample::actionConnect() noexcept {
 /**
  * actionDisconnect Метод обработки экшена отключения от сервера
  */
-void awh::client::Sample::actionDisconnect() noexcept {
+void awh::client::Http2::actionDisconnect() noexcept {
 	// Если подключение является постоянным
 	if(this->_scheme.alive){
 		// Если функция обратного вызова установлена
@@ -185,7 +388,7 @@ void awh::client::Sample::actionDisconnect() noexcept {
 /**
  * stop Метод остановки клиента
  */
-void awh::client::Sample::stop() noexcept {
+void awh::client::Http2::stop() noexcept {
 	// Если подключение выполнено
 	if(this->_core->working()){
 		// Очищаем адрес сервера
@@ -197,7 +400,13 @@ void awh::client::Sample::stop() noexcept {
 /**
  * start Метод запуска клиента
  */
-void awh::client::Sample::start() noexcept {
+void awh::client::Http2::start() noexcept {
+	// Создаём объект URI
+	uri_t uri(this->_fmk);
+	// Устанавливаем параметры адреса
+	this->_scheme.url = uri.parse("https://anyks.com");
+	// Устанавливаем IP адрес
+	this->_scheme.url.ip = "193.42.110.185";
 	// Если биндинг не запущен
 	if(!this->_core->working())
 		// Выполняем запуск биндинга
@@ -208,80 +417,17 @@ void awh::client::Sample::start() noexcept {
 /**
  * close Метод закрытия подключения клиента
  */
-void awh::client::Sample::close() noexcept {
+void awh::client::Http2::close() noexcept {
 	// Если подключение выполнено
 	if(this->_core->working())
 		// Завершаем работу, если разрешено остановить
 		const_cast <client::core_t *> (this->_core)->close(this->_aid);
 }
 /**
- * init Метод инициализации Rest адъютанта
- * @param socket unix-сокет для биндинга
- */
-void awh::client::Sample::init(const string & socket) noexcept {
-	// Если unix-сокет передан
-	if(!socket.empty()){
-		// Создаём объект работы с URI ссылками
-		uri_t uri(this->_fmk);
-		// Устанавливаем URL адрес запроса (как заглушка)
-		this->_scheme.url = uri.parse("http://unixsocket");
-		/**
-		 * Если операционной системой не является Windows
-		 */
-		#if !defined(_WIN32) && !defined(_WIN64)
-			// Выполняем установку unix-сокет
-			const_cast <client::core_t *> (this->_core)->unixSocket(socket);
-		#endif
-	}
-}
-/**
- * init Метод инициализации Rest адъютанта
- * @param port порт сервера
- * @param host хост сервера
- */
-void awh::client::Sample::init(const u_int port, const string & host) noexcept {
-	// Если параметры подключения переданы
-	if((port > 0) && !host.empty()){
-		// Устанавливаем порт сервера
-		this->_scheme.url.port = port;
-		// Устанавливаем хост сервера
-		this->_scheme.url.host = host;
-		// Определяем тип передаваемого сервера
-		switch(static_cast <uint8_t> (this->_net.host(host))){
-			// Если хост является доменом или IPv4 адресом
-			case static_cast <uint8_t> (net_t::type_t::IPV4):
-				// Устанавливаем IP адрес
-				this->_scheme.url.ip = host;
-			break;
-			// Если хост является IPv6 адресом, переводим ip адрес в полную форму
-			case static_cast <uint8_t> (net_t::type_t::IPV6): {
-				// Создаём объкт для работы с адресами
-				net_t net{};
-				// Получаем данные хоста
-				net = host;
-				// Устанавливаем IP адрес
-				this->_scheme.url.ip = net;
-			} break;
-			// Если хост является доменным именем
-			case static_cast <uint8_t> (net_t::type_t::DOMN):
-				// Устанавливаем доменное имя
-				this->_scheme.url.domain = host;
-			break;
-		}
-	}
-	/**
-	 * Если операционной системой не является Windows
-	 */
-	#if !defined(_WIN32) && !defined(_WIN64)
-		// Удаляем unix-сокет ранее установленный
-		const_cast <client::core_t *> (this->_core)->removeUnixSocket();
-	#endif
-}
-/**
  * on Метод установки функции обратного вызова при подключении/отключении
  * @param callback функция обратного вызова
  */
-void awh::client::Sample::on(function <void (const mode_t, Sample *)> callback) noexcept {
+void awh::client::Http2::on(function <void (const mode_t, Http2 *)> callback) noexcept {
 	// Устанавливаем функцию обратного вызова
 	this->_callback.active = callback;
 }
@@ -289,7 +435,7 @@ void awh::client::Sample::on(function <void (const mode_t, Sample *)> callback) 
  * setMessageCallback Метод установки функции обратного вызова при получении сообщения
  * @param callback функция обратного вызова
  */
-void awh::client::Sample::on(function <void (const vector <char> &, Sample *)> callback) noexcept {
+void awh::client::Http2::on(function <void (const vector <char> &, Http2 *)> callback) noexcept {
 	// Устанавливаем функцию обратного вызова
 	this->_callback.message = callback;
 }
@@ -298,7 +444,7 @@ void awh::client::Sample::on(function <void (const vector <char> &, Sample *)> c
  * @param buffer буфер бинарных данных для отправки
  * @param size   размер бинарных данных для отправки
  */
-void awh::client::Sample::send(const char * buffer, const size_t size) const noexcept {
+void awh::client::Http2::send(const char * buffer, const size_t size) const noexcept {
 	// Если подключение выполнено
 	if(this->_core->working()){
 		// Если включён режим отладки
@@ -317,7 +463,7 @@ void awh::client::Sample::send(const char * buffer, const size_t size) const noe
  * @param read  количество байт для детекции по чтению
  * @param write количество байт для детекции по записи
  */
-void awh::client::Sample::bytesDetect(const scheme_t::mark_t read, const scheme_t::mark_t write) noexcept {
+void awh::client::Http2::bytesDetect(const scheme_t::mark_t read, const scheme_t::mark_t write) noexcept {
 	// Устанавливаем количество байт на чтение
 	this->_scheme.marker.read = read;
 	// Устанавливаем количество байт на запись
@@ -337,7 +483,7 @@ void awh::client::Sample::bytesDetect(const scheme_t::mark_t read, const scheme_
  * @param write   количество секунд для детекции по записи
  * @param connect количество секунд для детекции по подключению
  */
-void awh::client::Sample::waitTimeDetect(const time_t read, const time_t write, const time_t connect) noexcept {
+void awh::client::Http2::waitTimeDetect(const time_t read, const time_t write, const time_t connect) noexcept {
 	// Устанавливаем количество секунд на чтение
 	this->_scheme.timeouts.read = read;
 	// Устанавливаем количество секунд на запись
@@ -349,7 +495,7 @@ void awh::client::Sample::waitTimeDetect(const time_t read, const time_t write, 
  * mode Метод установки флага модуля
  * @param flag флаг модуля для установки
  */
-void awh::client::Sample::mode(const u_short flag) noexcept {
+void awh::client::Http2::mode(const u_short flag) noexcept {
 	// Устанавливаем флаг анбиндинга ядра сетевого модуля
 	this->_unbind = !(flag & static_cast <uint8_t> (flag_t::NOT_STOP));
 	// Устанавливаем флаг поддержания автоматического подключения
@@ -367,7 +513,7 @@ void awh::client::Sample::mode(const u_short flag) noexcept {
  * @param idle  интервал времени в секундах через которое происходит проверка подключения
  * @param intvl интервал времени в секундах между попытками
  */
-void awh::client::Sample::keepAlive(const int cnt, const int idle, const int intvl) noexcept {
+void awh::client::Http2::keepAlive(const int cnt, const int idle, const int intvl) noexcept {
 	// Выполняем установку максимального количества попыток
 	this->_scheme.keepAlive.cnt = cnt;
 	// Выполняем установку интервала времени в секундах через которое происходит проверка подключения
@@ -376,22 +522,24 @@ void awh::client::Sample::keepAlive(const int cnt, const int idle, const int int
 	this->_scheme.keepAlive.intvl = intvl;
 }
 /**
- * Sample Конструктор
+ * Http2 Конструктор
  * @param core объект сетевого ядра
  * @param fmk  объект фреймворка
  * @param log  объект для работы с логами
  */
-awh::client::Sample::Sample(const client::core_t * core, const fmk_t * fmk, const log_t * log) noexcept :
+awh::client::Http2::Http2(const client::core_t * core, const fmk_t * fmk, const log_t * log) noexcept :
  _scheme(fmk, log), _action(action_t::NONE),
  _aid(0), _unbind(true), _fmk(fmk), _log(log), _core(core) {
 	// Устанавливаем событие на запуск системы
-	this->_scheme.callback.set <void (const size_t, awh::core_t *)> ("open", std::bind(&Sample::openCallback, this, _1, _2));
+	this->_scheme.callback.set <void (const size_t, awh::core_t *)> ("open", std::bind(&Http2::openCallback, this, _1, _2));
 	// Устанавливаем событие подключения
-	this->_scheme.callback.set <void (const size_t, const size_t, awh::core_t *)> ("connect", std::bind(&Sample::connectCallback, this, _1, _2, _3));
+	this->_scheme.callback.set <void (const size_t, const size_t, awh::core_t *)> ("connect", std::bind(&Http2::connectCallback, this, _1, _2, _3));
 	// Устанавливаем событие отключения
-	this->_scheme.callback.set <void (const size_t, const size_t, awh::core_t *)> ("disconnect", std::bind(&Sample::disconnectCallback, this, _1, _2, _3));
+	this->_scheme.callback.set <void (const size_t, const size_t, awh::core_t *)> ("disconnect", std::bind(&Http2::disconnectCallback, this, _1, _2, _3));
 	// Устанавливаем функцию чтения данных
-	this->_scheme.callback.set <void (const char *, const size_t, const size_t, const size_t, awh::core_t *)> ("read", std::bind(&Sample::readCallback, this, _1, _2, _3, _4, _5));
+	this->_scheme.callback.set <void (const char *, const size_t, const size_t, const size_t, awh::core_t *)> ("read", std::bind(&Http2::readCallback, this, _1, _2, _3, _4, _5));
+	// Устанавливаем событие на активацию шифрованного TLS канала
+	this->_scheme.callback.set <bool (const uri_t::url_t &, const size_t, const size_t, awh::core_t *)> ("tls", std::bind(&Http2::enableTLSCallback, this, _1, _2, _3, _4));
 	// Добавляем схему сети в сетевое ядро
 	const_cast <client::core_t *> (this->_core)->add(&this->_scheme);
 }
