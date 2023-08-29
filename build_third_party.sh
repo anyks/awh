@@ -783,7 +783,7 @@ if [ ! -f "$src/.stamp_done" ]; then
 	# Выполняем конфигурацию проекта
 	if [[ $OS = "Windows" ]]; then
 		# Производим корректировку названий библиотек
-		for i in $(ls "$PREFIX/lib" | grep "jemalloc.*\.a$");
+		for i in $(ls "$PREFIX/lib" | grep "jemalloc.*\.lib$");
 		do
 			echo "Move \"$PREFIX/lib/$i\" to \"$PREFIX/lib/lib$i\""
 			mv "$PREFIX/lib/$i" "$PREFIX/lib/lib$i" || exit 1
@@ -1051,9 +1051,9 @@ if [ ! -f "$src/.stamp_done" ]; then
 			 -DENABLE_SHARED_LIB="OFF" \
 			 -DENABLE_JEMALLOC="ON" \
 			 -DENABLE_OPENSSL="ON" \
+			 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
 			 -DOPENSSL_LIBRARIES="$PREFIX/lib" \
 			 -DOPENSSL_INCLUDE_DIR="$PREFIX/include" \
-			 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
 			 -DLIBNGHTTP3_LIBRARY="$PREFIX/lib" \
 			 -DLIBNGHTTP3_INCLUDE_DIR="$PREFIX/include" \
 			 -G "MinGW Makefiles" \
@@ -1068,6 +1068,8 @@ if [ ! -f "$src/.stamp_done" ]; then
 			 -DENABLE_JEMALLOC="ON" \
 			 -DENABLE_OPENSSL="ON" \
 			 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
+			 -DOPENSSL_LIBRARIES="$PREFIX/lib" \
+			 -DOPENSSL_INCLUDE_DIR="$PREFIX/include" \
 			 -DLIBNGHTTP3_LIBRARY="$PREFIX/lib" \
 			 -DLIBNGHTTP3_INCLUDE_DIR="$PREFIX/include" \
 			 -DLIBEV_LIBRARY="$PREFIX/lib" \
@@ -1171,6 +1173,8 @@ if [ ! -f "$src/.stamp_done" ]; then
 			 -DWITH_NEVERBLEED="OFF" \
 			 -DWITH_LIBBPF="OFF" \
 			 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
+			 -DOPENSSL_LIBRARIES="$PREFIX/lib" \
+			 -DOPENSSL_INCLUDE_DIR="$PREFIX/include" \
 			 -DLIBNGTCP2_LIBRARY="$PREFIX/lib" \
 			 -DLIBNGTCP2_INCLUDE_DIR="$PREFIX/include" \
 			 -DJEMALLOC_LIBRARY="$PREFIX/lib" \
@@ -1204,6 +1208,8 @@ if [ ! -f "$src/.stamp_done" ]; then
 			 -DWITH_NEVERBLEED="OFF" \
 			 -DWITH_LIBBPF="OFF" \
 			 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
+			 -DOPENSSL_LIBRARIES="$PREFIX/lib" \
+			 -DOPENSSL_INCLUDE_DIR="$PREFIX/include" \
 			 -DLIBNGTCP2_LIBRARY="$PREFIX/lib" \
 			 -DLIBNGTCP2_INCLUDE_DIR="$PREFIX/include" \
 			 -DJEMALLOC_LIBRARY="$PREFIX/lib" \
