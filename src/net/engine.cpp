@@ -1054,7 +1054,7 @@ void awh::Engine::Context::info() const noexcept {
 		}
 	// Если всё хорошо, выводим версию OpenSSL
 	} else this->_log->print("Using %s", log_t::flag_t::INFO, OpenSSL_version(OPENSSL_VERSION));
-	// Если версия OpenSSL ниже установленной минимальной
+	// Если версия OpenSSL ниже версии 1.1.1b
 	if(OPENSSL_VERSION_NUMBER < 0x1010102fL){
 		// Выводим в лог сообщение
 		this->_log->print("%s is unsupported, use OpenSSL Version 1.1.1a or higher", log_t::flag_t::CRITICAL, OpenSSL_version(OPENSSL_VERSION));
@@ -1557,6 +1557,20 @@ bool awh::Engine::Context::buffer(const int read, const int write, const u_int t
 	// Иначе возвращаем неустановленный размер буфера
 	return false;
 }
+/**
+ * Context Конструктор
+ * @param fmk объект фреймворка
+ * @param log объект для работы с логами
+ */
+awh::Engine::Context::Context(const fmk_t * fmk, const log_t * log) noexcept :
+ _tls(false), _verb(false), _http2(false), _type(type_t::NONE),
+ _proto{0}, _bio(nullptr), _ssl(nullptr), _ctx(nullptr),
+ _addr(nullptr), _verify(nullptr), _fmk(fmk), _log(log) {
+	// Устанавливаем размер названия протокола
+	this->_proto[0] = NGHTTP2_PROTO_VERSION_ID_LEN;
+	// Выполняем копирование в буфер название следующего протокола
+	::memcpy(&this->_proto[1], NGHTTP2_PROTO_VERSION_ID, NGHTTP2_PROTO_VERSION_ID_LEN);
+}
  /**
  * ~Context Деструктор
  */
@@ -1887,6 +1901,96 @@ int awh::Engine::verifyHost(X509_STORE_CTX * x509, void * ctx) noexcept {
 	// Выводим сообщение, что проверка не пройдена
 	return 0;
 }
+/**
+ * OpenSSL собран без следующих переговорщиков по протоколам
+ */
+#ifndef OPENSSL_NO_NEXTPROTONEG
+	/**
+	 * nextProto Функция обратного вызова сервера для переключения на следующий протокол
+	 * @param ssl  объект SSL
+	 * @param data данные буфера данных протокола
+	 * @param len  размер буфера данных протокола
+	 * @param ctx  передаваемый контекст
+	 * @return     результат переключения протокола
+	 */
+	int awh::Engine::nextProto(SSL * ssl, const u_char ** data, u_int * len, void * ctx) noexcept {
+		// Если объекты переданы верно
+		if((ssl != nullptr) && (ctx != nullptr)){
+			// Блокируем неиспользуемую переменную
+			(void) ssl;
+			// Выполняем установку буфера данных
+			(* data) = reinterpret_cast <ctx_t *> (ctx)->_proto;
+			// Выполняем установку размер буфера данных протокола
+			(* len) = static_cast <u_int> (1 + NGHTTP2_PROTO_VERSION_ID_LEN);
+			// Выводим результат
+			return SSL_TLSEXT_ERR_OK;
+		}
+		// Выводим результат
+		return SSL_TLSEXT_ERR_NOACK;
+	}
+#endif // !OPENSSL_NO_NEXTPROTONEG
+/**
+ * OpenSSL собран без следующих переговорщиков по протоколам
+ */
+#ifndef OPENSSL_NO_NEXTPROTONEG
+	/**
+	 * selectNextProtoClient Функция обратного вызова клиента для расширения NPN TLS. Выполняется проверка, что сервер объявил протокол HTTP/2, который поддерживает библиотека nghttp2.
+	 * @param ssl     объект SSL
+	 * @param out     буфер исходящего протокола
+	 * @param outSize размер буфера исходящего протокола
+	 * @param in      буфер входящего протокола
+	 * @param inSize  размер буфера входящего протокола
+	 * @param ctx     передаваемый контекст
+	 * @return        результат выбора протокола
+	 */
+	int awh::Engine::selectNextProtoClient(SSL * ssl, u_char ** out, u_char * outSize, const u_char * in, u_int inSize, void * ctx) noexcept {
+		// Если объекты переданы верно
+		if((ssl != nullptr) && (ctx != nullptr)){
+			// Блокируем неиспользуемую переменную
+			(void) ssl;
+			// Выполняем выбор активного протокола
+			if(nghttp2_select_next_protocol(out, outSize, in, inSize) == 1){
+				// Выполняем активацию выбора протокола http2
+				reinterpret_cast <ctx_t *> (ctx)->_http2 = true;
+				// Выводим результат
+				return SSL_TLSEXT_ERR_OK;
+			}
+		}
+		// Выводим результат
+		return SSL_TLSEXT_ERR_NOACK;
+	}
+#endif // !OPENSSL_NO_NEXTPROTONEG
+/**
+ * Если версия OpenSSL соответствует или выше версии 1.0.2
+ */
+#if OPENSSL_VERSION_NUMBER >= 0x10002000L
+	/**
+	 * selectNextProtoServer Функция обратного вызова сервера для расширения NPN TLS. Выполняется проверка, что сервер объявил протокол HTTP/2, который поддерживает библиотека nghttp2.
+	 * @param ssl     объект SSL
+	 * @param out     буфер исходящего протокола
+	 * @param outSize размер буфера исходящего протокола
+	 * @param in      буфер входящего протокола
+	 * @param inSize  размер буфера входящего протокола
+	 * @param ctx     передаваемый контекст
+	 * @return        результат выбора протокола
+	 */
+	int awh::Engine::selectNextProtoServer(SSL * ssl, const u_char ** out, u_char * outSize, const u_char * in, u_int inSize, void * ctx) noexcept {
+		// Если объекты переданы верно
+		if((ssl != nullptr) && (ctx != nullptr)){
+			// Блокируем неиспользуемую переменную
+			(void) ssl;
+			// Выполняем выбор активного протокола
+			if(nghttp2_select_next_protocol((u_char **) out, outSize, in, inSize) == 1){
+				// Выполняем активацию выбора протокола http2
+				reinterpret_cast <ctx_t *> (ctx)->_http2 = true;
+				// Выводим результат
+				return SSL_TLSEXT_ERR_OK;
+			}
+		}
+		// Выводим результат
+		return SSL_TLSEXT_ERR_NOACK;
+	}
+#endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
 /**
  * generateCookie Функция обратного вызова для генерации куков
  * @param ssl    объект SSL
@@ -2389,6 +2493,91 @@ bool awh::Engine::wait(ctx_t & target) noexcept {
 	return false;
 }
 /**
+ * isHttp2 Метод проверки активации протокола HTTP/2
+ * @param target контекст назначения
+ * @return       результат проверки
+ */
+bool awh::Engine::isHttp2(ctx_t & target) const noexcept {
+	// Результат работы функции
+	bool result = false;
+	// Если подключение выполнено
+	if((result = ((target._type == type_t::SERVER) ? SSL_accept(target._ssl) : SSL_connect(target._ssl))) > 0){
+		// Размер строки протокола
+		u_int size = 0;
+		// Строка протокола для сравнения
+		const u_char * alpn = nullptr;
+		/**
+		 * OpenSSL собран без следующих переговорщиков по протоколам
+		 */
+		#ifndef OPENSSL_NO_NEXTPROTONEG
+			// Выполняем извлечение следующего протокола
+			SSL_get0_next_proto_negotiated(target._ssl, &alpn, &size);
+		#endif // !OPENSSL_NO_NEXTPROTONEG
+		/**
+		 * Если версия OpenSSL соответствует или выше версии 1.0.2
+		 */
+		#if OPENSSL_VERSION_NUMBER >= 0x10002000L
+			// Если протокол не был извлечён
+			if(alpn == nullptr)
+				// Выполняем извлечение выбранного протокола
+				SSL_get0_alpn_selected(target._ssl, &alpn, &size);
+		#endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
+		// Выполняем проверку выполнено ли переключение протокола на HTTP/2
+		result = ((alpn != nullptr) && (size == 2) && (::memcmp("h2", alpn, 2) == 0));
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * enableHttp2 Метод активации HTTP/2
+ * @param target контекст назначения
+ */
+void awh::Engine::enableHttp2(ctx_t & target) const noexcept {
+	// Определяем тип приложения
+	switch(static_cast <uint8_t> (target._type)){
+		// Если приложение является клиентом
+		case static_cast <uint8_t> (type_t::CLIENT): {
+			/**
+			 * OpenSSL собран без следующих переговорщиков по протоколам
+			 */
+			#ifndef OPENSSL_NO_NEXTPROTONEG
+				// Устанавливаем функцию обратного вызова для переключения протокола на HTTP/2
+				SSL_CTX_set_next_proto_select_cb(target._ctx, &engine_t::selectNextProtoClient, &target);
+			#endif // !OPENSSL_NO_NEXTPROTONEG
+			/**
+			 * Если версия OpenSSL соответствует или выше версии 1.0.2
+			 */
+			#if OPENSSL_VERSION_NUMBER >= 0x10002000L
+				// Создаём список поддерживаемых протоколов
+				const u_char protocols[19] = {
+					2, 'h', '2',
+					6, 's', 'p', 'd', 'y', '/', '1',
+					8, 'h', 't', 't', 'p', '/', '1', '.', '1'
+				};
+				// Выполняем установку доступных протоколов передачи данных
+				SSL_CTX_set_alpn_protos(target._ctx, protocols, static_cast <u_int> (sizeof(protocols)));
+			#endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
+		} break;
+		// Если приложение является сервером
+		case static_cast <uint8_t> (type_t::SERVER): {
+			/**
+			 * OpenSSL собран без следующих переговорщиков по протоколам
+			 */
+			#ifndef OPENSSL_NO_NEXTPROTONEG
+				// Выполняем установку функцию обратного вызова при выборе следующего протокола
+				SSL_CTX_set_next_protos_advertised_cb(target._ctx, &engine_t::nextProto, &target);
+			#endif // !OPENSSL_NO_NEXTPROTONEG
+			/**
+			 * Если версия OpenSSL соответствует или выше версии 1.0.2
+			 */
+			#if OPENSSL_VERSION_NUMBER >= 0x10002000L
+				// Устанавливаем функцию обратного вызова для переключения протокола на HTTP/2
+				SSL_CTX_set_alpn_select_cb(target._ctx, &engine_t::selectNextProtoServer, &target);
+			#endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
+		} break;
+	}
+}
+/**
  * attach Метод прикрепления контекста клиента к контексту сервера
  * @param target  контекст назначения
  * @param address объект подключения
@@ -2471,7 +2660,7 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const type_t type) noex
 				return;
 			}
 			// Устанавливаем опции запроса
-			SSL_CTX_set_options(target._ctx, SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3);
+			SSL_CTX_set_options(target._ctx, SSL_OP_ALL | SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3 | SSL_OP_NO_TLSv1 | SSL_OP_NO_TLSv1_1 | SSL_OP_NO_COMPRESSION);
 			// Устанавливаем минимально-возможную версию TLS
 			SSL_CTX_set_min_proto_version(target._ctx, 0);
 			// Устанавливаем максимально-возможную версию TLS
@@ -2490,8 +2679,43 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const type_t type) noex
 				// Если приложение является сервером
 				if(type == type_t::SERVER)
 					// Заставляем серверные алгоритмы шифрования использовать в приоритете
-					SSL_CTX_set_options(target._ctx, SSL_OP_CIPHER_SERVER_PREFERENCE);
+					SSL_CTX_set_options(target._ctx, SSL_OP_ALL | SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3 | SSL_OP_NO_TLSv1 | SSL_OP_NO_TLSv1_1 | SSL_OP_NO_COMPRESSION | SSL_OP_CIPHER_SERVER_PREFERENCE | SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION);
 			}
+			// Устанавливаем флаг режима автоматического повтора получения следующих данных
+			SSL_CTX_set_mode(target._ctx, SSL_MODE_AUTO_RETRY);
+			// Устанавливаем флаг очистки буферов на чтение и запись когда они не требуются
+			SSL_CTX_set_mode(target._ctx, SSL_MODE_RELEASE_BUFFERS);
+			/**
+			 * Если версия OpenSSL соответствует или выше версии 3.0.0
+			 */
+			#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+				// Выполняем установку кривых P-256, доступны также (P-384 и P-521)
+				if(SSL_CTX_set1_curves_list(target._ctx, "P-256") != 1){
+					// Выводим в лог сообщение
+					this->_log->print("set SSL curves list failed: %s", log_t::flag_t::CRITICAL, ERR_error_string(ERR_get_error(), nullptr));
+					// Выходим
+					return;
+				}
+			/**
+			 * Если версия OpenSSL ниже версии 3.0.0
+			 */
+			#else 
+				{
+					// Выполняем создание объекта кривой P-256, доступны также (P-384 и P-521)
+					EC_KEY * ecdh = EC_KEY_new_by_curve_name(NID_X9_62_prime256v1);
+					// Если кривые не получилось установить
+					if(ecdh == nullptr){
+						// Выводим в лог сообщение
+						this->_log->print("set new SSL curv name failed: %s", log_t::flag_t::CRITICAL, ERR_error_string(ERR_get_error(), nullptr));
+						// Выходим
+						return;
+					}
+					// Выполняем установку кривых P-256
+					SSL_CTX_set_tmp_ecdh(target._ctx, ecdh);
+					// Выполняем очистку объекта кривой
+					EC_KEY_free(ecdh);
+				}
+			#endif
 			// Если приложение является сервером
 			if(type == type_t::SERVER){
 				// Получаем идентификатор процесса
@@ -2732,7 +2956,7 @@ void awh::Engine::wrapServer(ctx_t & target, addr_t * address) noexcept {
 				return;
 			}
 			// Устанавливаем опции запроса
-			SSL_CTX_set_options(target._ctx, SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3);
+			SSL_CTX_set_options(target._ctx, SSL_OP_ALL | SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3 | SSL_OP_NO_TLSv1 | SSL_OP_NO_TLSv1_1 | SSL_OP_NO_COMPRESSION | SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION);
 			// Устанавливаем минимально-возможную версию TLS
 			SSL_CTX_set_min_proto_version(target._ctx, 0);
 			// Устанавливаем максимально-возможную версию TLS
@@ -2749,10 +2973,45 @@ void awh::Engine::wrapServer(ctx_t & target, addr_t * address) noexcept {
 					return;
 				}
 				// Заставляем серверные алгоритмы шифрования использовать в приоритете
-				SSL_CTX_set_options(target._ctx, SSL_OP_CIPHER_SERVER_PREFERENCE);
+				SSL_CTX_set_options(target._ctx, SSL_OP_ALL | SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3 | SSL_OP_NO_TLSv1 | SSL_OP_NO_TLSv1_1 | SSL_OP_NO_COMPRESSION | SSL_OP_CIPHER_SERVER_PREFERENCE | SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION);
 			}
 			// Получаем идентификатор процесса
 			const pid_t pid = getpid();
+			// Устанавливаем флаг режима автоматического повтора получения следующих данных
+			SSL_CTX_set_mode(target._ctx, SSL_MODE_AUTO_RETRY);
+			// Устанавливаем флаг очистки буферов на чтение и запись когда они не требуются
+			SSL_CTX_set_mode(target._ctx, SSL_MODE_RELEASE_BUFFERS);
+			/**
+			 * Если версия OpenSSL соответствует или выше версии 3.0.0
+			 */
+			#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+				// Выполняем установку кривых P-256, доступны также (P-384 и P-521)
+				if(SSL_CTX_set1_curves_list(target._ctx, "P-256") != 1){
+					// Выводим в лог сообщение
+					this->_log->print("set SSL curves list failed: %s", log_t::flag_t::CRITICAL, ERR_error_string(ERR_get_error(), nullptr));
+					// Выходим
+					return;
+				}
+			/**
+			 * Если версия OpenSSL ниже версии 3.0.0
+			 */
+			#else 
+				{
+					// Выполняем создание объекта кривой P-256, доступны также (P-384 и P-521)
+					EC_KEY * ecdh = EC_KEY_new_by_curve_name(NID_X9_62_prime256v1);
+					// Если кривые не получилось установить
+					if(ecdh == nullptr){
+						// Выводим в лог сообщение
+						this->_log->print("set new SSL curv name failed: %s", log_t::flag_t::CRITICAL, ERR_error_string(ERR_get_error(), nullptr));
+						// Выходим
+						return;
+					}
+					// Выполняем установку кривых P-256
+					SSL_CTX_set_tmp_ecdh(target._ctx, ecdh);
+					// Выполняем очистку объекта кривой
+					EC_KEY_free(ecdh);
+				}
+			#endif
 			// Выполняем установку идентификатора сессии
 			if(SSL_CTX_set_session_id_context(target._ctx, (const u_char *) &pid, sizeof(pid)) < 1){
 				// Очищаем созданный контекст
@@ -2917,28 +3176,6 @@ void awh::Engine::wrapServer(ctx_t & target, addr_t * address) noexcept {
 		}
 	}
 }
-
-#include <nghttp2/nghttp2.h>
-
-#ifndef OPENSSL_NO_NEXTPROTONEG
-/* NPN TLS extension client callback. We check that server advertised
-   the HTTP/2 protocol the nghttp2 library supports. If not, exit
-   the program. */
-static int select_next_proto_cb(SSL *ssl, unsigned char **out,
-                                unsigned char *outlen, const unsigned char *in,
-                                unsigned int inlen, void *arg) {
-  (void)ssl;
-  (void)arg;
-
-  if (nghttp2_select_next_protocol(out, outlen, in, inlen) <= 0) {
-    cerr << "Server did not advertise " << NGHTTP2_PROTO_VERSION_ID << endl;
-	exit(1);
-  }
-  return SSL_TLSEXT_ERR_OK;
-}
-#endif /* !OPENSSL_NO_NEXTPROTONEG */
-
-
 /**
  * wrapClient Метод обертывания файлового дескриптора для клиента
  * @param target контекст назначения
@@ -3003,22 +3240,42 @@ void awh::Engine::wrapClient(ctx_t & target, addr_t * address, const string & ho
 				return;
 			}
 			// Устанавливаем опции запроса
-			// SSL_CTX_set_options(target._ctx, SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3);
-
-			SSL_CTX_set_options(target._ctx, SSL_OP_ALL | SSL_OP_NO_SSLv2 | SSL_OP_NO_COMPRESSION | SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION);
-
+			SSL_CTX_set_options(target._ctx, SSL_OP_ALL | SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3 | SSL_OP_NO_TLSv1 | SSL_OP_NO_TLSv1_1 | SSL_OP_NO_COMPRESSION);
+			// Устанавливаем флаг режима автоматического повтора получения следующих данных
 			SSL_CTX_set_mode(target._ctx, SSL_MODE_AUTO_RETRY);
+			// Устанавливаем флаг очистки буферов на чтение и запись когда они не требуются
 			SSL_CTX_set_mode(target._ctx, SSL_MODE_RELEASE_BUFFERS);
-
-
-			#ifndef OPENSSL_NO_NEXTPROTONEG
-				SSL_CTX_set_next_proto_select_cb(target._ctx, select_next_proto_cb, NULL);
-			#endif /* !OPENSSL_NO_NEXTPROTONEG */
-
-			#if OPENSSL_VERSION_NUMBER >= 0x10002000L
-				SSL_CTX_set_alpn_protos(target._ctx, (const unsigned char *)"\x02h2", 3);
-			#endif /* OPENSSL_VERSION_NUMBER >= 0x10002000L */
-
+			/**
+			 * Если версия OpenSSL соответствует или выше версии 3.0.0
+			 */
+			#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+				// Выполняем установку кривых P-256, доступны также (P-384 и P-521)
+				if(SSL_CTX_set1_curves_list(target._ctx, "P-256") != 1){
+					// Выводим в лог сообщение
+					this->_log->print("set SSL curves list failed: %s", log_t::flag_t::CRITICAL, ERR_error_string(ERR_get_error(), nullptr));
+					// Выходим
+					return;
+				}
+			/**
+			 * Если версия OpenSSL ниже версии 3.0.0
+			 */
+			#else 
+				{
+					// Выполняем создание объекта кривой P-256, доступны также (P-384 и P-521)
+					EC_KEY * ecdh = EC_KEY_new_by_curve_name(NID_X9_62_prime256v1);
+					// Если кривые не получилось установить
+					if(ecdh == nullptr){
+						// Выводим в лог сообщение
+						this->_log->print("set new SSL curv name failed: %s", log_t::flag_t::CRITICAL, ERR_error_string(ERR_get_error(), nullptr));
+						// Выходим
+						return;
+					}
+					// Выполняем установку кривых P-256
+					SSL_CTX_set_tmp_ecdh(target._ctx, ecdh);
+					// Выполняем очистку объекта кривой
+					EC_KEY_free(ecdh);
+				}
+			#endif
 			// Выполняем инициализацию доверенного сертификата
 			if(!this->storeCA(target._ctx)){
 				// Очищаем созданный контекст
@@ -3087,6 +3344,11 @@ void awh::Engine::wrapClient(ctx_t & target, addr_t * address, const string & ho
 			} else SSL_CTX_set_verify(target._ctx, SSL_VERIFY_NONE, nullptr);
 			// Устанавливаем, что мы должны читать как можно больше входных байтов
 			SSL_CTX_set_read_ahead(target._ctx, 1);
+			
+			
+			this->enableHttp2(target);
+			
+			
 			// Создаем SSL объект
 			target._ssl = SSL_new(target._ctx);
 			// Если объект не создан
@@ -3181,24 +3443,6 @@ void awh::Engine::wrapClient(ctx_t & target, addr_t * address, const string & ho
 				// Выходим из функции
 				return;
 			}
-
-			const unsigned char * alpn = NULL;
-			unsigned int alpnlen = 0;
-
-			#ifndef OPENSSL_NO_NEXTPROTONEG
-				SSL_get0_next_proto_negotiated(target._ssl, &alpn, &alpnlen);
-			#endif /* !OPENSSL_NO_NEXTPROTONEG */
-			#if OPENSSL_VERSION_NUMBER >= 0x10002000L
-				if (alpn == NULL) {
-					SSL_get0_alpn_selected(target._ssl, &alpn, &alpnlen);
-				}
-			#endif /* OPENSSL_VERSION_NUMBER >= 0x10002000L */
-
-			if (alpn == NULL || alpnlen != 2 || memcmp("h2", alpn, 2) != 0) {
-				fprintf(stderr, "h2 is not negotiated\n");
-			}
-
-			
 		}
 	}
 }
@@ -3270,6 +3514,8 @@ awh::Engine::Engine(const fmk_t * fmk, const log_t * log, const uri_t * uri) noe
 	this->_ca = this->_fs.realPath(this->_ca);
 	// Выполняем установку алгоритмов шифрования
 	this->ciphers({
+		"ECDHE+AESGCM",
+		"ECDHE+CHACHA20",
 		"ECDHE-RSA-AES128-GCM-SHA256",
 		"ECDHE-ECDSA-AES128-GCM-SHA256",
 		"ECDHE-RSA-AES256-GCM-SHA384",
@@ -3291,6 +3537,8 @@ awh::Engine::Engine(const fmk_t * fmk, const log_t * log, const uri_t * uri) noe
 		"DHE-RSA-AES256-SHA256",
 		"DHE-DSS-AES256-SHA",
 		"DHE-RSA-AES256-SHA",
+		"DHE+AESGCM",
+		"DHE+CHACHA20",
 		"AES128-GCM-SHA256",
 		"AES256-GCM-SHA384",
 		"AES128-SHA256",
@@ -3313,14 +3561,13 @@ awh::Engine::Engine(const fmk_t * fmk, const log_t * log, const uri_t * uri) noe
 		"!KRB5-DES-CBC3-SHA"
 	});
 	/**
-	 * Если версия OPENSSL старая
+	 * Если версия OPENSSL ниже версии 1.1.0
 	 */
-	#if (OPENSSL_VERSION_NUMBER < 0x10100000L) || (defined(LIBRESSL_VERSION_NUMBER) && LIBRESSL_VERSION_NUMBER < 0x20700000L)
+	#if (OPENSSL_VERSION_NUMBER < 0x10100000L) || (defined(LIBRESSL_VERSION_NUMBER) && (LIBRESSL_VERSION_NUMBER < 0x20700000L))
+		// Выполняем конфигурацию OpenSSL
+		OPENSSL_config(nullptr);
 		// Выполняем инициализацию OpenSSL
 		SSL_library_init();
-		ERR_load_crypto_strings();
-		SSL_load_error_strings();
-		OpenSSL_add_all_algorithms();
 	/**
 	 * Для более свежей версии
 	 */
@@ -3328,6 +3575,12 @@ awh::Engine::Engine(const fmk_t * fmk, const log_t * log, const uri_t * uri) noe
 		// Выполняем инициализацию OpenSSL
 		OPENSSL_init_ssl(OPENSSL_INIT_SSL_DEFAULT, nullptr);
 	#endif
+	// Выполняем загрузки описаний ошибок шифрования
+	ERR_load_crypto_strings();
+	// Выполняем загрузки описаний ошибок OpenSSL
+	SSL_load_error_strings();
+	// Добавляем все алгоритмы шифрования
+	OpenSSL_add_all_algorithms();
 	// Активируем рандомный генератор
 	if(RAND_poll() < 1){
 		// Выводим в лог сообщение
@@ -3341,14 +3594,14 @@ awh::Engine::Engine(const fmk_t * fmk, const log_t * log, const uri_t * uri) noe
  */
 awh::Engine::~Engine() noexcept {
 	/**
-	 * Если версия OpenSSL старая
+	 * Если версия OPENSSL ниже версии 1.1.0
 	 */
 	#if (OPENSSL_VERSION_NUMBER < 0x10100000L) || (defined(LIBRESSL_VERSION_NUMBER) && LIBRESSL_VERSION_NUMBER < 0x20700000L)
 		// Выполняем освобождение памяти
 		EVP_cleanup();
 		ERR_free_strings();
 		/**
-		 * Если версия OpenSSL старая
+		 * Если версия OPENSSL ниже версии 1.0.0
 		 */
 		#if OPENSSL_VERSION_NUMBER < 0x10000000L
 			// Освобождаем стейт
@@ -3362,6 +3615,7 @@ awh::Engine::~Engine() noexcept {
 		#endif
 		// Освобождаем оставшиеся данные
 		CRYPTO_cleanup_all_ex_data();
+		// Выполняем освобождение памяти для методов компрессии
 		sk_SSL_COMP_free(SSL_COMP_get_compression_methods());
 	#endif
 }

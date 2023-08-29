@@ -197,6 +197,11 @@ void awh::client::Core::connect(const size_t sid) noexcept {
 								this->engine.tls(shm->callback.apply <bool, const uri_t::url_t &, const size_t, const size_t, awh::core_t *> ("tls", url, adj->aid, shm->sid, this), adj->ectx);
 							// Выполняем активацию контекста подключения
 							this->engine.wrapClient(adj->ectx, &adj->addr, host);
+
+
+							// Активируем протокол HTTP/2 // ++++++++++++++++++++++++++++++++++
+							// this->engine.enableHttp2(adj->ectx);
+
 						// Если хост сервера не получен
 						} else {
 							// Разрешаем выполнение работы
@@ -1113,6 +1118,11 @@ void awh::client::Core::connected(const size_t aid) noexcept {
 					if(!this->noinfo) this->log->print("connect client to server [%s]", log_t::flag_t::INFO, this->settings.filename.c_str());
 				} break;
 			}
+			
+			// +++++++++++++++++++++++++++++++++++++++++++
+			cout << " ±±±±±±±±±±±±±±±±±±±±± IS HTTP/2 " << this->engine.isHttp2(adj->ectx) << endl;
+			
+			
 			// Если подключение производится через, прокси-сервер
 			if(shm->isProxy()){
 				// Если функция обратного вызова для прокси-сервера

@@ -81,6 +81,11 @@
 #include <openssl/rand.h>
 #include <openssl/x509v3.h>
 
+/**
+ * Подключаем NgHttp2
+ */
+#include <nghttp2/nghttp2.h>
+
 // Устанавливаем область видимости
 using namespace std;
 
@@ -324,9 +329,14 @@ namespace awh {
 					bool _tls;
 					// Флаг вывода информации об OpenSSL
 					bool _verb;
+					// Флаг выбора протокола HTTP/2
+					bool _http2;
 				private:
 					// Тип активного приложения
 					type_t _type;
+				private:
+					// Буфер данных следующего протокола
+					u_char _proto[256];
 				private:
 					BIO * _bio;         // Объект BIO
 					SSL * _ssl;         // Объект SSL
@@ -414,10 +424,7 @@ namespace awh {
 					 * @param fmk объект фреймворка
 					 * @param log объект для работы с логами
 					 */
-					Context(const fmk_t * fmk, const log_t * log) noexcept :
-					 _tls(false), _verb(false), _type(type_t::NONE),
-					 _bio(nullptr), _ssl(nullptr), _ctx(nullptr),
-					 _addr(nullptr), _verify(nullptr), _fmk(fmk), _log(log) {}
+					Context(const fmk_t * fmk, const log_t * log) noexcept;
 					/**
 					 * ~Context Деструктор
 					 */
@@ -526,6 +533,53 @@ namespace awh {
 			static int verifyHost(X509_STORE_CTX * x509, void * ctx = nullptr) noexcept;
 		private:
 			/**
+			 * OpenSSL собран без следующих переговорщиков по протоколам
+			 */
+			#ifndef OPENSSL_NO_NEXTPROTONEG
+				/**
+				 * nextProto Функция обратного вызова сервера для переключения на следующий протокол
+				 * @param ssl  объект SSL
+				 * @param data данные буфера данных протокола
+				 * @param len  размер буфера данных протокола
+				 * @param ctx  передаваемый контекст
+				 * @return     результат переключения протокола
+				 */
+				static int nextProto(SSL * ssl, const u_char ** data, u_int * len, void * ctx = nullptr) noexcept;
+			#endif // !OPENSSL_NO_NEXTPROTONEG
+			/**
+			 * OpenSSL собран без следующих переговорщиков по протоколам
+			 */
+			#ifndef OPENSSL_NO_NEXTPROTONEG
+				/**
+				 * selectNextProtoClient Функция обратного вызова клиента для расширения NPN TLS. Выполняется проверка, что сервер объявил протокол HTTP/2, который поддерживает библиотека nghttp2.
+				 * @param ssl     объект SSL
+				 * @param out     буфер исходящего протокола
+				 * @param outSize размер буфера исходящего протокола
+				 * @param in      буфер входящего протокола
+				 * @param inSize  размер буфера входящего протокола
+				 * @param ctx     передаваемый контекст
+				 * @return        результат выбора протокола
+				 */
+				static int selectNextProtoClient(SSL * ssl, u_char ** out, u_char * outSize, const u_char * in, u_int inSize, void * ctx = nullptr) noexcept;
+			#endif // !OPENSSL_NO_NEXTPROTONEG
+			/**
+			 * Если версия OpenSSL соответствует или выше версии 1.0.2
+			 */
+			#if OPENSSL_VERSION_NUMBER >= 0x10002000L
+				/**
+				 * selectNextProtoServer Функция обратного вызова сервера для расширения NPN TLS. Выполняется проверка, что сервер объявил протокол HTTP/2, который поддерживает библиотека nghttp2.
+				 * @param ssl     объект SSL
+				 * @param out     буфер исходящего протокола
+				 * @param outSize размер буфера исходящего протокола
+				 * @param in      буфер входящего протокола
+				 * @param inSize  размер буфера входящего протокола
+				 * @param ctx     передаваемый контекст
+				 * @return        результат выбора протокола
+				 */
+				static int selectNextProtoServer(SSL * ssl, const u_char ** out, u_char * outSize, const u_char * in, u_int inSize, void * ctx = nullptr) noexcept;
+			#endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
+		private:
+			/**
 			 * generateCookie Функция обратного вызова для генерации куков
 			 * @param ssl    объект SSL
 			 * @param cookie данные куков
@@ -607,6 +661,19 @@ namespace awh {
 			 * @return       результат проверки
 			 */
 			bool wait(ctx_t & target) noexcept;
+		public:
+			/**
+			 * isHttp2 Метод проверки активации протокола HTTP/2
+			 * @param target контекст назначения
+			 * @return       результат проверки
+			 */
+			bool isHttp2(ctx_t & target) const noexcept;
+		public:
+			/**
+			 * enableHttp2 Метод активации HTTP/2
+			 * @param target контекст назначения
+			 */
+			void enableHttp2(ctx_t & target) const noexcept;
 		public:
 			/**
 			 * attach Метод прикрепления контекста клиента к контексту сервера
