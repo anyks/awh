@@ -358,6 +358,10 @@ namespace awh {
 			 */
 			const string & getMac(const size_t aid) const noexcept;
 		public:
+
+			SOCKET getFd(const size_t aid) const noexcept;
+
+		public:
 			/**
 			 * Scheme Конструктор
 			 * @param fmk объект фреймворка

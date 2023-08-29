@@ -225,8 +225,7 @@ static int on_stream_close_callback(nghttp2_session * session, int32_t stream_id
   int rv;
 
   if(reinterpret_cast <awh::client::http2_t *> (ctx)->_session.id == stream_id) {
-    fprintf(stderr, "Stream %d closed with error_code=%u\n", stream_id,
-            error_code);
+    fprintf(stderr, "Stream %d closed with error_code=%u\n", stream_id, error_code);
     rv = nghttp2_session_terminate_session(session, NGHTTP2_NO_ERROR);
     if (rv != 0) {
       return NGHTTP2_ERR_CALLBACK_FAILURE;
@@ -262,6 +261,55 @@ static int on_begin_headers_callback(nghttp2_session * session, const nghttp2_fr
     } break;
   }
   return 0;
+}
+
+static ssize_t file_read_callback(nghttp2_session * session, int32_t stream_id, uint8_t * buf, size_t length, uint32_t * data_flags, nghttp2_data_source * source, void * ctx){
+	
+
+	// cout << " ----------!!!!±±±± " << nghttp2_session_get_stream_user_data(session, stream_id) << " === " << ctx << " === " << length << endl;
+
+	// reinterpret_cast <awh::client::http2_t *> (ctx)->send((const char *) buf, length);
+
+	// return ::write(source->fd, buf, length);
+
+	/*
+	static const char ERROR_HTML[] = "<html><head><title>404</title></head>"
+                                 "<body><h1>404 Not Found</h1></body></html>";
+
+
+	reinterpret_cast <awh::client::http2_t *> (ctx)->send((const char *) ERROR_HTML, strlen(ERROR_HTML));
+	*/
+
+	int fd = source->fd;
+	ssize_t r;
+	(void)session;
+	(void)stream_id;
+	(void)ctx;
+
+	/**
+	 * Методы только для OS Windows
+	 */
+	#if defined(_WIN32) || defined(_WIN64)
+		while ((r = _read(fd, buf, length)) == -1 && errno == EINTR)
+		;
+	/**
+	 * Для всех остальных операционных систем
+	 */
+	#else
+		while ((r = ::read(fd, buf, length)) == -1 && errno == EINTR)
+		;
+	#endif
+
+
+	
+	if (r == -1) {
+		return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
+	}
+	if (r == 0) {
+		*data_flags |= NGHTTP2_DATA_FLAG_EOF;
+	}
+	return r;
+
 }
 
 #define ARRLEN(x) (sizeof(x) / sizeof(x[0]))
@@ -319,22 +367,119 @@ void awh::client::Http2::actionConnect() noexcept {
 		this->_log->print("Could not submit SETTINGS: %s", log_t::flag_t::CRITICAL, nghttp2_strerror(rv));
 		exit(1);
 	}
+	
+	int32_t stream_id = 0;
+	
+	/*
+	// GET
+	{
+		nghttp2_nv nva[] = {
+			MAKE_NV(":method", "GET"),
+			MAKE_NV_CS(":path", "/"),
+			MAKE_NV(":scheme", "https"),
+			MAKE_NV_CS(":authority", "anyks.com"),
+			MAKE_NV("accept", "*//*"),
+			MAKE_NV("user-agent", "nghttp2/" NGHTTP2_VERSION)
+		};
 
-	nghttp2_nv nva[] = {
-		MAKE_NV(":method", "GET"),
-        MAKE_NV_CS(":path", "/"),
-        MAKE_NV(":scheme", "https"),
-        MAKE_NV_CS(":authority", "anyks.com"),
-        MAKE_NV("accept", "*/*"),
-        MAKE_NV("user-agent", "nghttp2/" NGHTTP2_VERSION)
-	};
+		fprintf(stderr, "Request headers:\n");
+		
+		print_headers(stderr, nva, ARRLEN(nva));
 
-	fprintf(stderr, "Request headers:\n");
+		stream_id = nghttp2_submit_request(this->_session.ctx, nullptr, nva, ARRLEN(nva), nullptr, this);
+	}
+	*/
+
 	
-	print_headers(stderr, nva, ARRLEN(nva));
+	// POST
+	{
+		
+		int pipefd[2];
+
+		enum PIPES { READ, WRITE };
+
+		/**
+		 * Методы только для OS Windows
+		 */
+		#if defined(_WIN32) || defined(_WIN64)
+			int rv = _pipe(pipefd, 4096, O_BINARY);
+		/**
+		 * Для всех остальных операционных систем
+		 */
+		#else
+			int rv = pipe(pipefd);
+		#endif
+
+		
+
+		static const char ERROR_HTML[] = "<html><head><title>404</title></head>"
+                                 "<body><h1>Hello World!!!</h1></body></html>";
+
+		const string contentLength = to_string(strlen(ERROR_HTML));
+
+		nghttp2_nv nva[] = {
+			MAKE_NV(":method", "POST"),
+			MAKE_NV_CS(":path", "/test.php"),
+			MAKE_NV(":scheme", "https"),
+			MAKE_NV_CS(":authority", "anyks.com"),
+			MAKE_NV("accept", "*//*"),
+			MAKE_NV_CS("content-type", "application/x-www-form-urlencoded"),
+			MAKE_NV_CS("content-length", contentLength.c_str()),
+			MAKE_NV("user-agent", "nghttp2/" NGHTTP2_VERSION)
+		};
+
+		fprintf(stderr, "Request headers:\n");
+		
+		print_headers(stderr, nva, ARRLEN(nva));
+		
+		
+		/**
+		 * Методы только для OS Windows
+		 */
+		#if defined(_WIN32) || defined(_WIN64)
+			ssize_t writelen = _write(pipefd[WRITE], ERROR_HTML, sizeof(ERROR_HTML) - 1);
+
+			_close(pipefd[WRITE]);
+		/**
+		 * Для всех остальных операционных систем
+		 */
+		#else
+			
+			ssize_t writelen = ::write(pipefd[WRITE], ERROR_HTML, sizeof(ERROR_HTML) - 1);
+			
+			::close(pipefd[WRITE]);
+		#endif
+
+		if (writelen != sizeof(ERROR_HTML) - 1) {
+			/**
+			 * Методы только для OS Windows
+			 */
+			#if defined(_WIN32) || defined(_WIN64)
+				_close(pipefd[READ]);
+			/**
+			 * Для всех остальных операционных систем
+			 */
+			#else
+				::close(pipefd[READ]);
+			#endif
+			return;
+		}
+
+		nghttp2_data_provider data_prd;
+		data_prd.source.ptr = nullptr;
+		data_prd.source.fd = pipefd[0];
+		data_prd.read_callback = file_read_callback;
+
+		stream_id = nghttp2_submit_request(this->_session.ctx, nullptr, nva, ARRLEN(nva), &data_prd, this);
+
+		// ::close(pipefd[READ]);
+
+	}
 	
-	int32_t stream_id = nghttp2_submit_request(this->_session.ctx, nullptr, nva, ARRLEN(nva), nullptr, this);
+
 	
+
+
 	if(stream_id < 0){
 		this->_log->print("Could not submit HTTP request: %s", log_t::flag_t::CRITICAL, nghttp2_strerror(stream_id));
 		exit(1);
@@ -447,6 +592,7 @@ void awh::client::Http2::on(function <void (const vector <char> &, Http2 *)> cal
 void awh::client::Http2::send(const char * buffer, const size_t size) const noexcept {
 	// Если подключение выполнено
 	if(this->_core->working()){
+		/*
 		// Если включён режим отладки
 		#if defined(DEBUG_MODE)
 			// Выводим заголовок ответа
@@ -454,6 +600,7 @@ void awh::client::Http2::send(const char * buffer, const size_t size) const noex
 			// Выводим параметры ответа
 			cout << string(buffer, size) << endl;
 		#endif
+		*/
 		// Отправляем тело на сервер
 		((awh::core_t *) const_cast <client::core_t *> (this->_core))->write(buffer, size, this->_aid);
 	}
