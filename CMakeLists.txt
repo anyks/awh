@@ -206,7 +206,7 @@ endif()
 if(NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
     # Провекра PCRE
     if (PCRE_FOUND)
-        message(STATUS "PCRE lib found: " ${PCRE_LIBRARY})
+        message(STATUS "PCRE lib found: " ${PCRE_LIBRARY} " " ${PCRE_CPP_LIBRARY} " " ${PCRE_POSIX_LIBRARY})
         message(STATUS "PCRE include dir found: " ${PCRE_INCLUDE_DIR})
     else()
         message(FATAL_ERROR "PCRE not found")
@@ -217,7 +217,7 @@ endif()
 if(CMAKE_BUILD_IDN AND (NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Windows"))
     # Провекра ICONV
     if (Iconv_FOUND)
-        message(STATUS "ICONV libs found: " ${ICONV_LIBRARY})
+        message(STATUS "ICONV libs found: " ${ICONV_LIBRARY} " " ${ICONV_CHARSET_LIBRARY})
         message(STATUS "ICONV include dir found: " ${ICONV_INCLUDE_DIR})
     else()
         message(FATAL_ERROR "ICONV not found")
@@ -482,13 +482,13 @@ if(${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
     target_link_libraries(
         ${DNS_APP_NAME}
         ${CURRENT_LIB_NAME}
-        ${NGHTTP2_LIBRARY}
-        ${NGHTTP3_LIBRARY}
-        ${NGTCP2_LIBRARY}
         ${EVENT_LIBRARY}
-        ${JEMALLOC_LIBRARY}
         ${XML_LIBRARY}
         ${ZLIB_LIBRARY}
+        ${NGTCP2_LIBRARY}
+        ${NGHTTP2_LIBRARY}
+        ${NGHTTP3_LIBRARY}
+        ${JEMALLOC_LIBRARY}
         ${BROTLI_LIBRARIES}
         ${OPENSSL_LIBRARIES}
         ${WINFLAGS}
@@ -663,9 +663,9 @@ elseif(CMAKE_BUILD_IDN)
         ${EVENT_LIBRARY}
         ${XML_LIBRARY}
         ${ZLIB_LIBRARY}
-        ${PCRE_LIBRARY}
-        ${ICONV_LIBRARY}
         ${IDN2_LIBRARY}
+        ${ICONV_LIBRARIES}
+        ${PCRE_LIBRARIES}
         ${NGTCP2_LIBRARY}
         ${NGHTTP2_LIBRARY}
         ${NGHTTP3_LIBRARY}
@@ -681,9 +681,9 @@ elseif(CMAKE_BUILD_IDN)
         ${EVENT_LIBRARY}
         ${XML_LIBRARY}
         ${ZLIB_LIBRARY}
-        ${PCRE_LIBRARY}
-        ${ICONV_LIBRARY}
         ${IDN2_LIBRARY}
+        ${ICONV_LIBRARIES}
+        ${PCRE_LIBRARIES}
         ${NGTCP2_LIBRARY}
         ${NGHTTP2_LIBRARY}
         ${NGHTTP3_LIBRARY}
@@ -699,9 +699,9 @@ elseif(CMAKE_BUILD_IDN)
         ${EVENT_LIBRARY}
         ${XML_LIBRARY}
         ${ZLIB_LIBRARY}
-        ${PCRE_LIBRARY}
-        ${ICONV_LIBRARY}
         ${IDN2_LIBRARY}
+        ${ICONV_LIBRARIES}
+        ${PCRE_LIBRARIES}
         ${NGTCP2_LIBRARY}
         ${NGHTTP2_LIBRARY}
         ${NGHTTP3_LIBRARY}
@@ -717,9 +717,9 @@ elseif(CMAKE_BUILD_IDN)
         ${EVENT_LIBRARY}
         ${XML_LIBRARY}
         ${ZLIB_LIBRARY}
-        ${PCRE_LIBRARY}
-        ${ICONV_LIBRARY}
         ${IDN2_LIBRARY}
+        ${ICONV_LIBRARIES}
+        ${PCRE_LIBRARIES}
         ${NGTCP2_LIBRARY}
         ${NGHTTP2_LIBRARY}
         ${NGHTTP3_LIBRARY}
@@ -735,9 +735,9 @@ elseif(CMAKE_BUILD_IDN)
         ${EVENT_LIBRARY}
         ${XML_LIBRARY}
         ${ZLIB_LIBRARY}
-        ${PCRE_LIBRARY}
-        ${ICONV_LIBRARY}
         ${IDN2_LIBRARY}
+        ${ICONV_LIBRARIES}
+        ${PCRE_LIBRARIES}
         ${NGTCP2_LIBRARY}
         ${NGHTTP2_LIBRARY}
         ${NGHTTP3_LIBRARY}
@@ -753,9 +753,9 @@ elseif(CMAKE_BUILD_IDN)
         ${EVENT_LIBRARY}
         ${XML_LIBRARY}
         ${ZLIB_LIBRARY}
-        ${PCRE_LIBRARY}
-        ${ICONV_LIBRARY}
         ${IDN2_LIBRARY}
+        ${ICONV_LIBRARIES}
+        ${PCRE_LIBRARIES}
         ${NGTCP2_LIBRARY}
         ${NGHTTP2_LIBRARY}
         ${NGHTTP3_LIBRARY}
@@ -771,9 +771,9 @@ elseif(CMAKE_BUILD_IDN)
         ${EVENT_LIBRARY}
         ${XML_LIBRARY}
         ${ZLIB_LIBRARY}
-        ${PCRE_LIBRARY}
-        ${ICONV_LIBRARY}
         ${IDN2_LIBRARY}
+        ${ICONV_LIBRARIES}
+        ${PCRE_LIBRARIES}
         ${NGTCP2_LIBRARY}
         ${NGHTTP2_LIBRARY}
         ${NGHTTP3_LIBRARY}
@@ -789,9 +789,9 @@ elseif(CMAKE_BUILD_IDN)
         ${EVENT_LIBRARY}
         ${XML_LIBRARY}
         ${ZLIB_LIBRARY}
-        ${PCRE_LIBRARY}
-        ${ICONV_LIBRARY}
         ${IDN2_LIBRARY}
+        ${ICONV_LIBRARIES}
+        ${PCRE_LIBRARIES}
         ${NGTCP2_LIBRARY}
         ${NGHTTP2_LIBRARY}
         ${NGHTTP3_LIBRARY}
@@ -807,9 +807,9 @@ elseif(CMAKE_BUILD_IDN)
         ${EVENT_LIBRARY}
         ${XML_LIBRARY}
         ${ZLIB_LIBRARY}
-        ${PCRE_LIBRARY}
-        ${ICONV_LIBRARY}
         ${IDN2_LIBRARY}
+        ${ICONV_LIBRARIES}
+        ${PCRE_LIBRARIES}
         ${NGTCP2_LIBRARY}
         ${NGHTTP2_LIBRARY}
         ${NGHTTP3_LIBRARY}
@@ -825,9 +825,9 @@ elseif(CMAKE_BUILD_IDN)
         ${EVENT_LIBRARY}
         ${XML_LIBRARY}
         ${ZLIB_LIBRARY}
-        ${PCRE_LIBRARY}
-        ${ICONV_LIBRARY}
         ${IDN2_LIBRARY}
+        ${ICONV_LIBRARIES}
+        ${PCRE_LIBRARIES}
         ${NGTCP2_LIBRARY}
         ${NGHTTP2_LIBRARY}
         ${NGHTTP3_LIBRARY}
@@ -843,9 +843,9 @@ elseif(CMAKE_BUILD_IDN)
         ${EVENT_LIBRARY}
         ${XML_LIBRARY}
         ${ZLIB_LIBRARY}
-        ${PCRE_LIBRARY}
-        ${ICONV_LIBRARY}
         ${IDN2_LIBRARY}
+        ${ICONV_LIBRARIES}
+        ${PCRE_LIBRARIES}
         ${NGTCP2_LIBRARY}
         ${NGHTTP2_LIBRARY}
         ${NGHTTP3_LIBRARY}
@@ -861,9 +861,9 @@ elseif(CMAKE_BUILD_IDN)
         ${EVENT_LIBRARY}
         ${XML_LIBRARY}
         ${ZLIB_LIBRARY}
-        ${PCRE_LIBRARY}
-        ${ICONV_LIBRARY}
         ${IDN2_LIBRARY}
+        ${ICONV_LIBRARIES}
+        ${PCRE_LIBRARIES}
         ${NGTCP2_LIBRARY}
         ${NGHTTP2_LIBRARY}
         ${NGHTTP3_LIBRARY}
@@ -879,9 +879,9 @@ elseif(CMAKE_BUILD_IDN)
         ${EVENT_LIBRARY}
         ${XML_LIBRARY}
         ${ZLIB_LIBRARY}
-        ${PCRE_LIBRARY}
-        ${ICONV_LIBRARY}
         ${IDN2_LIBRARY}
+        ${ICONV_LIBRARIES}
+        ${PCRE_LIBRARIES}
         ${NGTCP2_LIBRARY}
         ${NGHTTP2_LIBRARY}
         ${NGHTTP3_LIBRARY}
@@ -897,9 +897,9 @@ elseif(CMAKE_BUILD_IDN)
         ${EVENT_LIBRARY}
         ${XML_LIBRARY}
         ${ZLIB_LIBRARY}
-        ${PCRE_LIBRARY}
-        ${ICONV_LIBRARY}
         ${IDN2_LIBRARY}
+        ${ICONV_LIBRARIES}
+        ${PCRE_LIBRARIES}
         ${NGTCP2_LIBRARY}
         ${NGHTTP2_LIBRARY}
         ${NGHTTP3_LIBRARY}
@@ -915,9 +915,9 @@ elseif(CMAKE_BUILD_IDN)
         ${EVENT_LIBRARY}
         ${XML_LIBRARY}
         ${ZLIB_LIBRARY}
-        ${PCRE_LIBRARY}
-        ${ICONV_LIBRARY}
         ${IDN2_LIBRARY}
+        ${ICONV_LIBRARIES}
+        ${PCRE_LIBRARIES}
         ${NGTCP2_LIBRARY}
         ${NGHTTP2_LIBRARY}
         ${NGHTTP3_LIBRARY}
@@ -934,7 +934,7 @@ else()
         ${EVENT_LIBRARY}
         ${XML_LIBRARY}
         ${ZLIB_LIBRARY}
-        ${PCRE_LIBRARY}
+        ${PCRE_LIBRARIES}
         ${NGTCP2_LIBRARY}
         ${NGHTTP2_LIBRARY}
         ${NGHTTP3_LIBRARY}
@@ -949,7 +949,7 @@ else()
         ${EVENT_LIBRARY}
         ${XML_LIBRARY}
         ${ZLIB_LIBRARY}
-        ${PCRE_LIBRARY}
+        ${PCRE_LIBRARIES}
         ${NGTCP2_LIBRARY}
         ${NGHTTP2_LIBRARY}
         ${NGHTTP3_LIBRARY}
@@ -964,7 +964,7 @@ else()
         ${EVENT_LIBRARY}
         ${XML_LIBRARY}
         ${ZLIB_LIBRARY}
-        ${PCRE_LIBRARY}
+        ${PCRE_LIBRARIES}
         ${NGTCP2_LIBRARY}
         ${NGHTTP2_LIBRARY}
         ${NGHTTP3_LIBRARY}
@@ -979,7 +979,7 @@ else()
         ${EVENT_LIBRARY}
         ${XML_LIBRARY}
         ${ZLIB_LIBRARY}
-        ${PCRE_LIBRARY}
+        ${PCRE_LIBRARIES}
         ${NGTCP2_LIBRARY}
         ${NGHTTP2_LIBRARY}
         ${NGHTTP3_LIBRARY}
@@ -994,7 +994,7 @@ else()
         ${EVENT_LIBRARY}
         ${XML_LIBRARY}
         ${ZLIB_LIBRARY}
-        ${PCRE_LIBRARY}
+        ${PCRE_LIBRARIES}
         ${NGTCP2_LIBRARY}
         ${NGHTTP2_LIBRARY}
         ${NGHTTP3_LIBRARY}
@@ -1009,7 +1009,7 @@ else()
         ${EVENT_LIBRARY}
         ${XML_LIBRARY}
         ${ZLIB_LIBRARY}
-        ${PCRE_LIBRARY}
+        ${PCRE_LIBRARIES}
         ${NGTCP2_LIBRARY}
         ${NGHTTP2_LIBRARY}
         ${NGHTTP3_LIBRARY}
@@ -1024,7 +1024,7 @@ else()
         ${EVENT_LIBRARY}
         ${XML_LIBRARY}
         ${ZLIB_LIBRARY}
-        ${PCRE_LIBRARY}
+        ${PCRE_LIBRARIES}
         ${NGTCP2_LIBRARY}
         ${NGHTTP2_LIBRARY}
         ${NGHTTP3_LIBRARY}
@@ -1039,7 +1039,7 @@ else()
         ${EVENT_LIBRARY}
         ${XML_LIBRARY}
         ${ZLIB_LIBRARY}
-        ${PCRE_LIBRARY}
+        ${PCRE_LIBRARIES}
         ${NGTCP2_LIBRARY}
         ${NGHTTP2_LIBRARY}
         ${NGHTTP3_LIBRARY}
@@ -1054,7 +1054,7 @@ else()
         ${EVENT_LIBRARY}
         ${XML_LIBRARY}
         ${ZLIB_LIBRARY}
-        ${PCRE_LIBRARY}
+        ${PCRE_LIBRARIES}
         ${NGTCP2_LIBRARY}
         ${NGHTTP2_LIBRARY}
         ${NGHTTP3_LIBRARY}
@@ -1069,7 +1069,7 @@ else()
         ${EVENT_LIBRARY}
         ${XML_LIBRARY}
         ${ZLIB_LIBRARY}
-        ${PCRE_LIBRARY}
+        ${PCRE_LIBRARIES}
         ${NGTCP2_LIBRARY}
         ${NGHTTP2_LIBRARY}
         ${NGHTTP3_LIBRARY}
@@ -1084,7 +1084,7 @@ else()
         ${EVENT_LIBRARY}
         ${XML_LIBRARY}
         ${ZLIB_LIBRARY}
-        ${PCRE_LIBRARY}
+        ${PCRE_LIBRARIES}
         ${NGTCP2_LIBRARY}
         ${NGHTTP2_LIBRARY}
         ${NGHTTP3_LIBRARY}
@@ -1099,7 +1099,7 @@ else()
         ${EVENT_LIBRARY}
         ${XML_LIBRARY}
         ${ZLIB_LIBRARY}
-        ${PCRE_LIBRARY}
+        ${PCRE_LIBRARIES}
         ${NGTCP2_LIBRARY}
         ${NGHTTP2_LIBRARY}
         ${NGHTTP3_LIBRARY}
@@ -1114,7 +1114,7 @@ else()
         ${EVENT_LIBRARY}
         ${XML_LIBRARY}
         ${ZLIB_LIBRARY}
-        ${PCRE_LIBRARY}
+        ${PCRE_LIBRARIES}
         ${NGTCP2_LIBRARY}
         ${NGHTTP2_LIBRARY}
         ${NGHTTP3_LIBRARY}
@@ -1129,7 +1129,7 @@ else()
         ${EVENT_LIBRARY}
         ${XML_LIBRARY}
         ${ZLIB_LIBRARY}
-        ${PCRE_LIBRARY}
+        ${PCRE_LIBRARIES}
         ${NGTCP2_LIBRARY}
         ${NGHTTP2_LIBRARY}
         ${NGHTTP3_LIBRARY}
@@ -1144,7 +1144,7 @@ else()
         ${EVENT_LIBRARY}
         ${XML_LIBRARY}
         ${ZLIB_LIBRARY}
-        ${PCRE_LIBRARY}
+        ${PCRE_LIBRARIES}
         ${NGTCP2_LIBRARY}
         ${NGHTTP2_LIBRARY}
         ${NGHTTP3_LIBRARY}
@@ -1368,7 +1368,7 @@ install(FILES ${OPENSSL_LIBRARIES} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
 # Если операционной системой не является Windows
 if(NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
     # Устанавливаем стороние библиотеки
-    install(FILES ${PCRE_LIBRARY} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
+    install(FILES ${PCRE_LIBRARIES} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
 endif()
 
 # Сборка модуля AWH_EVENT2
@@ -1381,6 +1381,6 @@ endif()
 
 # Сборка модуля AWH_IDN, если операционной системой не является Windows
 if(CMAKE_BUILD_IDN AND (NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Windows"))
-    install(FILES ${ICONV_LIBRARY} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
     install(FILES ${IDN2_LIBRARY} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
+    install(FILES ${ICONV_LIBRARIES} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
 endif()

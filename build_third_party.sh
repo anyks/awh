@@ -1051,6 +1051,8 @@ if [ ! -f "$src/.stamp_done" ]; then
 			 -DENABLE_SHARED_LIB="OFF" \
 			 -DENABLE_JEMALLOC="ON" \
 			 -DENABLE_OPENSSL="ON" \
+			 -DOPENSSL_LIBRARIES="$PREFIX/lib" \
+			 -DOPENSSL_INCLUDE_DIR="$PREFIX/include" \
 			 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
 			 -DLIBNGHTTP3_LIBRARY="$PREFIX/lib" \
 			 -DLIBNGHTTP3_INCLUDE_DIR="$PREFIX/include" \
