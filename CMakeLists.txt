@@ -482,13 +482,13 @@ if(${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
     target_link_libraries(
         ${DNS_APP_NAME}
         ${CURRENT_LIB_NAME}
-        ${EVENT_LIBRARY}
-        ${XML_LIBRARY}
-        ${ZLIB_LIBRARY}
-        ${NGTCP2_LIBRARY}
         ${NGHTTP2_LIBRARY}
         ${NGHTTP3_LIBRARY}
+        ${NGTCP2_LIBRARY}
+        ${EVENT_LIBRARY}
         ${JEMALLOC_LIBRARY}
+        ${XML_LIBRARY}
+        ${ZLIB_LIBRARY}
         ${BROTLI_LIBRARIES}
         ${OPENSSL_LIBRARIES}
         ${WINFLAGS}
