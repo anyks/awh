@@ -180,6 +180,8 @@ void awh::client::Core::connect(const size_t sid) noexcept {
 				else adj->addr.init(url.ip, url.port, (family == scheme_t::family_t::IPV6 ? AF_INET6 : AF_INET), engine_t::type_t::CLIENT);
 				// Если сокет подключения получен
 				if((adj->addr.fd != INVALID_SOCKET) && (adj->addr.fd < MAX_SOCKETS)){
+					// Выполняем установку желаемого протокола подключения
+					adj->ectx.proto(this->settings.proto);
 					// Устанавливаем идентификатор адъютанта
 					adj->aid = this->fmk->timestamp(fmk_t::stamp_t::NANOSECONDS);
 					// Если подключение выполняется по защищённому каналу DTLS
@@ -962,6 +964,8 @@ void awh::client::Core::switchProxy(const size_t aid) noexcept {
 			else host = (!shm->url.domain.empty() ? shm->url.domain.c_str() : (!shm->url.ip.empty() ? shm->url.ip.c_str() : nullptr));
 			// Если хост сервера получен правильно
 			if(host != nullptr){
+				// Выполняем установку желаемого протокола подключения
+				adj->ectx.proto(this->settings.proto);
 				// Если функция обратного вызова активации шифрованного TLS канала установлена
 				if((shm->callback.is("tls")))
 					// Выполняем активацию шифрованного TLS канала

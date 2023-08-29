@@ -720,7 +720,7 @@ string awh::DNS::encode(const string & domain) const noexcept {
 				// Получаем результат кодирования
 				else result = buffer;
 				// Очищаем буфер данных
-				delete [] buffer;
+				free(buffer);
 			#endif
 		}
 	#endif
@@ -768,7 +768,7 @@ string awh::DNS::decode(const string & domain) const noexcept {
 				// Получаем результат декодирования
 				else result = buffer;
 				// Очищаем буфер данных
-				delete [] buffer;
+				free(buffer);
 			#endif
 		}
 	#endif

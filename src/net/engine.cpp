@@ -1476,6 +1476,22 @@ bool awh::Engine::Context::isblock() noexcept {
 	return true;
 }
 /**
+ * proto Метод извлечения поддерживаемого протокола
+ * @return поддерживаемый протокол подключения
+ */
+awh::Engine::proto_t awh::Engine::Context::proto() const noexcept {
+	// Извлекаем поддерживаемый протокол
+	return this->_proto;
+}
+/**
+ * proto Метод установки поддерживаемого протокола
+ * @param proto устанавливаемый протокол
+ */
+void awh::Engine::Context::proto(const proto_t proto) noexcept {
+	// Выполняем установку поддерживаемого протокола
+	this->_proto = proto;
+}
+/**
  * timeout Метод установки таймаута
  * @param msec   количество миллисекунд
  * @param method метод для установки таймаута
@@ -1563,13 +1579,12 @@ bool awh::Engine::Context::buffer(const int read, const int write, const u_int t
  * @param log объект для работы с логами
  */
 awh::Engine::Context::Context(const fmk_t * fmk, const log_t * log) noexcept :
- _tls(false), _verb(false), _http2(false), _type(type_t::NONE),
- _proto{0}, _bio(nullptr), _ssl(nullptr), _ctx(nullptr),
- _addr(nullptr), _verify(nullptr), _fmk(fmk), _log(log) {
+ _tls(false), _verb(false), _type(type_t::NONE), _proto(proto_t::RAW), _protoList{0},
+ _bio(nullptr), _ssl(nullptr), _ctx(nullptr), _addr(nullptr), _verify(nullptr), _fmk(fmk), _log(log) {
 	// Устанавливаем размер названия протокола
-	this->_proto[0] = NGHTTP2_PROTO_VERSION_ID_LEN;
+	this->_protoList[0] = NGHTTP2_PROTO_VERSION_ID_LEN;
 	// Выполняем копирование в буфер название следующего протокола
-	::memcpy(&this->_proto[1], NGHTTP2_PROTO_VERSION_ID, NGHTTP2_PROTO_VERSION_ID_LEN);
+	::memcpy(&this->_protoList[1], NGHTTP2_PROTO_VERSION_ID, NGHTTP2_PROTO_VERSION_ID_LEN);
 }
  /**
  * ~Context Деструктор
@@ -1919,7 +1934,7 @@ int awh::Engine::verifyHost(X509_STORE_CTX * x509, void * ctx) noexcept {
 			// Блокируем неиспользуемую переменную
 			(void) ssl;
 			// Выполняем установку буфера данных
-			(* data) = reinterpret_cast <ctx_t *> (ctx)->_proto;
+			(* data) = reinterpret_cast <ctx_t *> (ctx)->_protoList;
 			// Выполняем установку размер буфера данных протокола
 			(* len) = static_cast <u_int> (1 + NGHTTP2_PROTO_VERSION_ID_LEN);
 			// Выводим результат
@@ -1949,12 +1964,11 @@ int awh::Engine::verifyHost(X509_STORE_CTX * x509, void * ctx) noexcept {
 			// Блокируем неиспользуемую переменную
 			(void) ssl;
 			// Выполняем выбор активного протокола
-			if(nghttp2_select_next_protocol(out, outSize, in, inSize) == 1){
-				// Выполняем активацию выбора протокола http2
-				reinterpret_cast <ctx_t *> (ctx)->_http2 = true;
+			if(nghttp2_select_next_protocol(out, outSize, in, inSize) == 1)
 				// Выводим результат
 				return SSL_TLSEXT_ERR_OK;
-			}
+			// Выполняем переключение протокола на HTTP/1.1
+			reinterpret_cast <ctx_t *> (ctx)->_proto = proto_t::HTTP1_1;
 		}
 		// Выводим результат
 		return SSL_TLSEXT_ERR_NOACK;
@@ -1980,12 +1994,11 @@ int awh::Engine::verifyHost(X509_STORE_CTX * x509, void * ctx) noexcept {
 			// Блокируем неиспользуемую переменную
 			(void) ssl;
 			// Выполняем выбор активного протокола
-			if(nghttp2_select_next_protocol((u_char **) out, outSize, in, inSize) == 1){
-				// Выполняем активацию выбора протокола http2
-				reinterpret_cast <ctx_t *> (ctx)->_http2 = true;
+			if(nghttp2_select_next_protocol((u_char **) out, outSize, in, inSize) == 1)
 				// Выводим результат
 				return SSL_TLSEXT_ERR_OK;
-			}
+			// Выполняем переключение протокола на HTTP/1.1
+			reinterpret_cast <ctx_t *> (ctx)->_proto = proto_t::HTTP1_1;
 		}
 		// Выводим результат
 		return SSL_TLSEXT_ERR_NOACK;
@@ -2493,46 +2506,82 @@ bool awh::Engine::wait(ctx_t & target) noexcept {
 	return false;
 }
 /**
- * isHttp2 Метод проверки активации протокола HTTP/2
+ * proto Метод извлечения активного протокола
  * @param target контекст назначения
- * @return       результат проверки
+ * @return       метод активного протокола
  */
-bool awh::Engine::isHttp2(ctx_t & target) const noexcept {
+awh::Engine::proto_t awh::Engine::proto(ctx_t & target) const noexcept {
 	// Результат работы функции
-	bool result = false;
+	proto_t result = proto_t::NONE;
 	// Если подключение выполнено
-	if((result = ((target._type == type_t::SERVER) ? SSL_accept(target._ssl) : SSL_connect(target._ssl))) > 0){
-		// Размер строки протокола
-		u_int size = 0;
-		// Строка протокола для сравнения
-		const u_char * alpn = nullptr;
-		/**
-		 * OpenSSL собран без следующих переговорщиков по протоколам
-		 */
-		#ifndef OPENSSL_NO_NEXTPROTONEG
-			// Выполняем извлечение следующего протокола
-			SSL_get0_next_proto_negotiated(target._ssl, &alpn, &size);
-		#endif // !OPENSSL_NO_NEXTPROTONEG
-		/**
-		 * Если версия OpenSSL соответствует или выше версии 1.0.2
-		 */
-		#if OPENSSL_VERSION_NUMBER >= 0x10002000L
-			// Если протокол не был извлечён
-			if(alpn == nullptr)
-				// Выполняем извлечение выбранного протокола
-				SSL_get0_alpn_selected(target._ssl, &alpn, &size);
-		#endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
-		// Выполняем проверку выполнено ли переключение протокола на HTTP/2
-		result = ((alpn != nullptr) && (size == 2) && (::memcmp("h2", alpn, 2) == 0));
+	if(target._type == type_t::SERVER ? SSL_accept(target._ssl) : SSL_connect(target._ssl)){
+		// Определяет желаемый активный протокол
+		switch(static_cast <uint8_t> (target._proto)){
+			// Если протокол соответствует сырому
+			case static_cast <uint8_t> (proto_t::RAW):
+			// Если протокол соответствует HTTP/1
+			case static_cast <uint8_t> (proto_t::HTTP1):
+			// Если протокол соответствует HTTP/1.1
+			case static_cast <uint8_t> (proto_t::HTTP1_1):
+				// Устанавливаем активный протокол
+				result = target._proto;
+			break;
+			// Если протокол соответствует HTTP/2
+			case static_cast <uint8_t> (proto_t::HTTP2):
+			// Если протокол соответствует HTTP/3
+			case static_cast <uint8_t> (proto_t::HTTP3): {
+				// Размер строки протокола
+				u_int size = 0;
+				// Строка протокола для сравнения
+				const u_char * alpn = nullptr;
+				/**
+				 * OpenSSL собран без следующих переговорщиков по протоколам
+				 */
+				#ifndef OPENSSL_NO_NEXTPROTONEG
+					// Выполняем извлечение следующего протокола
+					SSL_get0_next_proto_negotiated(target._ssl, &alpn, &size);
+				#endif // !OPENSSL_NO_NEXTPROTONEG
+				/**
+				 * Если версия OpenSSL соответствует или выше версии 1.0.2
+				 */
+				#if OPENSSL_VERSION_NUMBER >= 0x10002000L
+					// Если протокол не был извлечён
+					if(alpn == nullptr)
+						// Выполняем извлечение выбранного протокола
+						SSL_get0_alpn_selected(target._ssl, &alpn, &size);
+				#endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
+				// Определяет желаемый активный протокол
+				switch(static_cast <uint8_t> (target._proto)){
+					// Если протокол соответствует HTTP/2
+					case static_cast <uint8_t> (proto_t::HTTP2): {
+						// Если активный протокол не соответствует протоколу HTTP/2
+						if((alpn == nullptr) || (size != 2) || (::memcmp("h2", alpn, 2) != 0))
+							// Устанавливаем активный протокол
+							result = proto_t::HTTP1_1;
+						// Устанавливаем протокол как есть
+						else result = target._proto;
+					} break;
+					// Если протокол соответствует HTTP/3
+					case static_cast <uint8_t> (proto_t::HTTP3):
+						// Если активный протокол не соответствует протоколу HTTP/3
+						if((alpn == nullptr) || (size != 2) || (::memcmp("h3", alpn, 2) != 0))
+							// Устанавливаем активный протокол
+							result = proto_t::HTTP1_1;
+						// Устанавливаем протокол как есть
+						else result = target._proto;
+					break;
+				}
+			} break;
+		}
 	}
 	// Выводим результат
 	return result;
 }
 /**
- * enableHttp2 Метод активации HTTP/2
+ * httpUpgrade Метод активации протокола HTTP
  * @param target контекст назначения
  */
-void awh::Engine::enableHttp2(ctx_t & target) const noexcept {
+void awh::Engine::httpUpgrade(ctx_t & target) const noexcept {
 	// Определяем тип приложения
 	switch(static_cast <uint8_t> (target._type)){
 		// Если приложение является клиентом
@@ -2541,7 +2590,7 @@ void awh::Engine::enableHttp2(ctx_t & target) const noexcept {
 			 * OpenSSL собран без следующих переговорщиков по протоколам
 			 */
 			#ifndef OPENSSL_NO_NEXTPROTONEG
-				// Устанавливаем функцию обратного вызова для переключения протокола на HTTP/2
+				// Устанавливаем функцию обратного вызова для переключения протокола на HTTP
 				SSL_CTX_set_next_proto_select_cb(target._ctx, &engine_t::selectNextProtoClient, &target);
 			#endif // !OPENSSL_NO_NEXTPROTONEG
 			/**
@@ -2549,13 +2598,82 @@ void awh::Engine::enableHttp2(ctx_t & target) const noexcept {
 			 */
 			#if OPENSSL_VERSION_NUMBER >= 0x10002000L
 				// Создаём список поддерживаемых протоколов
-				const u_char protocols[19] = {
-					2, 'h', '2',
-					6, 's', 'p', 'd', 'y', '/', '1',
-					8, 'h', 't', 't', 'p', '/', '1', '.', '1'
-				};
+				vector <u_char> protocols;
+				// Создаём идентификатор протокола HTTP/2
+				const string http2 = "h2";
+				// Создаём идентификатор протокола HTTP/3
+				const string http3 = "h3";
+				// Создаём идентификатор протокола SPDY/1
+				const string spdy1 = "spdy/1";
+				// Создаём идентификатор протокола HTTP/1
+				const string http1 = "http/1";
+				// Создаём идентификатор протокола HTTP/1.1
+				const string http1_1 = "http/1.1";
+				// Если протоколом является HTTP, выполняем переключение на него
+				switch(static_cast <uint8_t> (target._proto)){
+					// Если протокол соответствует HTTP/1
+					case static_cast <uint8_t> (proto_t::HTTP1): {
+						// Устанавливаем количество символов для протокола HTTP/1
+						protocols.push_back(static_cast <u_char> (http1.size()));
+						// Устанавливаем идентификатор протокола HTTP/1
+						protocols.insert(protocols.end(), http1.begin(), http1.end());
+					} break;
+					// Если протокол соответствует HTTP/2
+					case static_cast <uint8_t> (proto_t::HTTP2): {
+						// Устанавливаем количество символов для протокола HTTP/2
+						protocols.push_back(static_cast <u_char> (http2.size()));
+						// Устанавливаем идентификатор протокола HTTP/2
+						protocols.insert(protocols.end(), http2.begin(), http2.end());
+						// Устанавливаем количество символов для протокола SPDY/1
+						protocols.push_back(static_cast <u_char> (spdy1.size()));
+						// Устанавливаем идентификатор протокола SPDY/1
+						protocols.insert(protocols.end(), spdy1.begin(), spdy1.end());
+						// Устанавливаем количество символов для протокола HTTP/1
+						protocols.push_back(static_cast <u_char> (http1.size()));
+						// Устанавливаем идентификатор протокола HTTP/1
+						protocols.insert(protocols.end(), http1.begin(), http1.end());
+						// Устанавливаем количество символов для протокола HTTP/1.1
+						protocols.push_back(static_cast <u_char> (http1_1.size()));
+						// Устанавливаем идентификатор протокола HTTP/1.1
+						protocols.insert(protocols.end(), http1_1.begin(), http1_1.end());
+					} break;
+					// Если протокол соответствует HTTP/3
+					case static_cast <uint8_t> (proto_t::HTTP3): {
+						// Устанавливаем количество символов для протокола HTTP/2
+						protocols.push_back(static_cast <u_char> (http2.size()));
+						// Устанавливаем идентификатор протокола HTTP/2
+						protocols.insert(protocols.end(), http2.begin(), http2.end());
+						// Устанавливаем количество символов для протокола HTTP/3
+						protocols.push_back(static_cast <u_char> (http3.size()));
+						// Устанавливаем идентификатор протокола HTTP/3
+						protocols.insert(protocols.end(), http3.begin(), http3.end());
+						// Устанавливаем количество символов для протокола SPDY/1
+						protocols.push_back(static_cast <u_char> (spdy1.size()));
+						// Устанавливаем идентификатор протокола SPDY/1
+						protocols.insert(protocols.end(), spdy1.begin(), spdy1.end());
+						// Устанавливаем количество символов для протокола HTTP/1
+						protocols.push_back(static_cast <u_char> (http1.size()));
+						// Устанавливаем идентификатор протокола HTTP/1
+						protocols.insert(protocols.end(), http1.begin(), http1.end());
+						// Устанавливаем количество символов для протокола HTTP/1.1
+						protocols.push_back(static_cast <u_char> (http1_1.size()));
+						// Устанавливаем идентификатор протокола HTTP/1.1
+						protocols.insert(protocols.end(), http1_1.begin(), http1_1.end());
+					} break;
+					// Если протокол соответствует HTTP/1.1
+					case static_cast <uint8_t> (proto_t::HTTP1_1): {
+						// Устанавливаем количество символов для протокола HTTP/1
+						protocols.push_back(static_cast <u_char> (http1.size()));
+						// Устанавливаем идентификатор протокола HTTP/1
+						protocols.insert(protocols.end(), http1.begin(), http1.end());
+						// Устанавливаем количество символов для протокола HTTP/1.1
+						protocols.push_back(static_cast <u_char> (http1_1.size()));
+						// Устанавливаем идентификатор протокола HTTP/1.1
+						protocols.insert(protocols.end(), http1_1.begin(), http1_1.end());
+					} break;
+				}
 				// Выполняем установку доступных протоколов передачи данных
-				SSL_CTX_set_alpn_protos(target._ctx, protocols, static_cast <u_int> (sizeof(protocols)));
+				SSL_CTX_set_alpn_protos(target._ctx, protocols.data(), static_cast <u_int> (protocols.size()));
 			#endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
 		} break;
 		// Если приложение является сервером
@@ -2720,6 +2838,16 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const type_t type) noex
 			if(type == type_t::SERVER){
 				// Получаем идентификатор процесса
 				const pid_t pid = getpid();
+				// Если протоколом является HTTP, выполняем переключение на него
+				switch(static_cast <uint8_t> (target._proto)){
+					// Если протокол соответствует HTTP/2
+					case static_cast <uint8_t> (proto_t::HTTP2):
+					// Если протокол соответствует HTTP/3
+					case static_cast <uint8_t> (proto_t::HTTP3):
+						// Выполняем переключение протокола подключения
+						this->httpUpgrade(target);
+					break;
+				}
 				// Выполняем установку идентификатора сессии
 				if(SSL_CTX_set_session_id_context(target._ctx, (const u_char *) &pid, sizeof(pid)) < 1){
 					// Очищаем созданный контекст
@@ -2728,6 +2856,22 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const type_t type) noex
 					this->_log->print("failed to set session ID", log_t::flag_t::CRITICAL);
 					// Выходим
 					return;
+				}
+			// Если приложение является клиентом
+			} else {
+				// Если протоколом является HTTP, выполняем переключение на него
+				switch(static_cast <uint8_t> (target._proto)){
+					// Если протокол соответствует HTTP/1
+					case static_cast <uint8_t> (proto_t::HTTP1):
+					// Если протокол соответствует HTTP/2
+					case static_cast <uint8_t> (proto_t::HTTP2):
+					// Если протокол соответствует HTTP/3
+					case static_cast <uint8_t> (proto_t::HTTP3):
+					// Если протокол соответствует HTTP/1.1
+					case static_cast <uint8_t> (proto_t::HTTP1_1):
+						// Выполняем переключение протокола подключения
+						this->httpUpgrade(target);
+					break;
 				}
 			}
 			// Устанавливаем поддерживаемые кривые
@@ -3012,6 +3156,16 @@ void awh::Engine::wrapServer(ctx_t & target, addr_t * address) noexcept {
 					EC_KEY_free(ecdh);
 				}
 			#endif
+			// Если протоколом является HTTP, выполняем переключение на него
+			switch(static_cast <uint8_t> (target._proto)){
+				// Если протокол соответствует HTTP/2
+				case static_cast <uint8_t> (proto_t::HTTP2):
+				// Если протокол соответствует HTTP/3
+				case static_cast <uint8_t> (proto_t::HTTP3):
+					// Выполняем переключение протокола подключения
+					this->httpUpgrade(target);
+				break;
+			}
 			// Выполняем установку идентификатора сессии
 			if(SSL_CTX_set_session_id_context(target._ctx, (const u_char *) &pid, sizeof(pid)) < 1){
 				// Очищаем созданный контекст
@@ -3276,6 +3430,20 @@ void awh::Engine::wrapClient(ctx_t & target, addr_t * address, const string & ho
 					EC_KEY_free(ecdh);
 				}
 			#endif
+			// Если протоколом является HTTP, выполняем переключение на него
+			switch(static_cast <uint8_t> (target._proto)){
+				// Если протокол соответствует HTTP/1
+				case static_cast <uint8_t> (proto_t::HTTP1):
+				// Если протокол соответствует HTTP/2
+				case static_cast <uint8_t> (proto_t::HTTP2):
+				// Если протокол соответствует HTTP/3
+				case static_cast <uint8_t> (proto_t::HTTP3):
+				// Если протокол соответствует HTTP/1.1
+				case static_cast <uint8_t> (proto_t::HTTP1_1):
+					// Выполняем переключение протокола подключения
+					this->httpUpgrade(target);
+				break;
+			}
 			// Выполняем инициализацию доверенного сертификата
 			if(!this->storeCA(target._ctx)){
 				// Очищаем созданный контекст
@@ -3344,11 +3512,6 @@ void awh::Engine::wrapClient(ctx_t & target, addr_t * address, const string & ho
 			} else SSL_CTX_set_verify(target._ctx, SSL_VERIFY_NONE, nullptr);
 			// Устанавливаем, что мы должны читать как можно больше входных байтов
 			SSL_CTX_set_read_ahead(target._ctx, 1);
-			
-			
-			this->enableHttp2(target);
-			
-			
 			// Создаем SSL объект
 			target._ssl = SSL_new(target._ctx);
 			// Если объект не создан

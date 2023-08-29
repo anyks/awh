@@ -246,6 +246,8 @@ void awh::server::Core::accept(const int fd, const size_t sid) noexcept {
 						adj->mac = adj->addr.mac;
 						// Получаем порт подключения клиента
 						adj->port = adj->addr.port;
+						// Выполняем установку желаемого протокола подключения
+						adj->ectx.proto(this->settings.proto);
 						// Устанавливаем идентификатор адъютанта
 						adj->aid = this->fmk->timestamp(fmk_t::stamp_t::NANOSECONDS);
 						// Выполняем получение контекста сертификата
@@ -295,6 +297,8 @@ void awh::server::Core::accept(const int fd, const size_t sid) noexcept {
 					dtls->core = this;
 					// Устанавливаем идентификатор адъютанта
 					dtls->aid = adj->aid;
+					// Выполняем установку желаемого протокола подключения
+					adj->ectx.proto(this->settings.proto);
 					// Выполняем получение контекста сертификата
 					this->engine.wrap(adj->ectx, &shm->addr, engine_t::type_t::SERVER);
 					// Устанавливаем базу событий
@@ -395,6 +399,8 @@ void awh::server::Core::accept(const int fd, const size_t sid) noexcept {
 								// Выходим
 								break;
 							}
+							// Выполняем установку желаемого протокола подключения
+							adj->ectx.proto(this->settings.proto);
 							// Устанавливаем идентификатор адъютанта
 							adj->aid = this->fmk->timestamp(fmk_t::stamp_t::NANOSECONDS);
 							// Выполняем получение контекста сертификата

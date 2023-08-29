@@ -1032,31 +1032,65 @@ if [ ! -f "$src/.stamp_done" ]; then
 
 	# Выполняем конфигурацию проекта
 	if [[ $OS = "Windows" ]]; then
-		cmake \
-		 -DCMAKE_BUILD_TYPE="Release" \
-		 -DCMAKE_SYSTEM_NAME="Windows" \
-		 -DENABLE_STATIC_LIB="ON" \
-		 -DENABLE_SHARED_LIB="OFF" \
-		 -DENABLE_JEMALLOC="ON" \
-		 -DENABLE_OPENSSL="ON" \
-		 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
-		 -DLIBNGHTTP3_LIBRARY="$PREFIX/lib" \
-		 -DLIBNGHTTP3_INCLUDE_DIR="$PREFIX/include" \
-		 -G "MinGW Makefiles" \
-		 .. || exit 1
+		# Если нужно собрать модуль LibEvent2
+		if [[ $LIBEVENT2 = "yes" ]]; then
+			cmake \
+			 -DCMAKE_BUILD_TYPE="Release" \
+			 -DCMAKE_SYSTEM_NAME="Windows" \
+			 -DENABLE_STATIC_LIB="ON" \
+			 -DENABLE_SHARED_LIB="OFF" \
+			 -DENABLE_JEMALLOC="ON" \
+			 -DENABLE_OPENSSL="ON" \
+			 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
+			 -DLIBNGHTTP3_LIBRARY="$PREFIX/lib" \
+			 -DLIBNGHTTP3_INCLUDE_DIR="$PREFIX/include" \
+			 -G "MinGW Makefiles" \
+			 .. || exit 1
+		# Если нужно собрать модуль LibEv
+		else
+			cmake \
+			 -DCMAKE_BUILD_TYPE="Release" \
+			 -DCMAKE_SYSTEM_NAME="Windows" \
+			 -DENABLE_STATIC_LIB="ON" \
+			 -DENABLE_SHARED_LIB="OFF" \
+			 -DENABLE_JEMALLOC="ON" \
+			 -DENABLE_OPENSSL="ON" \
+			 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
+			 -DLIBNGHTTP3_LIBRARY="$PREFIX/lib" \
+			 -DLIBNGHTTP3_INCLUDE_DIR="$PREFIX/include" \
+			 -DLIBEV_LIBRARY="$PREFIX/lib" \
+		 	 -DLIBEV_INCLUDE_DIR="$PREFIX/include/libev" \
+			 -G "MinGW Makefiles" \
+			 .. || exit 1
+		fi
 	else
-		cmake \
-		 -DCMAKE_BUILD_TYPE="Release" \
-		 -DENABLE_STATIC_LIB="ON" \
-		 -DENABLE_SHARED_LIB="OFF" \
-		 -DENABLE_JEMALLOC="ON" \
-		 -DENABLE_OPENSSL="ON" \
-		 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
-		 -DLIBNGHTTP3_LIBRARY="$PREFIX/lib" \
-		 -DLIBNGHTTP3_INCLUDE_DIR="$PREFIX/include" \
-		 -DLIBEV_LIBRARY="$PREFIX/lib" \
-		 -DLIBEV_INCLUDE_DIR="$PREFIX/include/libev" \
-		 .. || exit 1
+		# Если нужно собрать модуль LibEvent2
+		if [[ $LIBEVENT2 = "yes" ]]; then
+			cmake \
+			 -DCMAKE_BUILD_TYPE="Release" \
+			 -DENABLE_STATIC_LIB="ON" \
+			 -DENABLE_SHARED_LIB="OFF" \
+			 -DENABLE_JEMALLOC="ON" \
+			 -DENABLE_OPENSSL="ON" \
+			 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
+			 -DLIBNGHTTP3_LIBRARY="$PREFIX/lib" \
+			 -DLIBNGHTTP3_INCLUDE_DIR="$PREFIX/include" \
+			 .. || exit 1
+		# Если нужно собрать модуль LibEv
+		else
+			cmake \
+			 -DCMAKE_BUILD_TYPE="Release" \
+			 -DENABLE_STATIC_LIB="ON" \
+			 -DENABLE_SHARED_LIB="OFF" \
+			 -DENABLE_JEMALLOC="ON" \
+			 -DENABLE_OPENSSL="ON" \
+			 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
+			 -DLIBNGHTTP3_LIBRARY="$PREFIX/lib" \
+			 -DLIBNGHTTP3_INCLUDE_DIR="$PREFIX/include" \
+			 -DLIBEV_LIBRARY="$PREFIX/lib" \
+			 -DLIBEV_INCLUDE_DIR="$PREFIX/include/libev" \
+			 .. || exit 1
+		fi
 	fi
 
 	# Выполняем сборку на всех логических ядрах

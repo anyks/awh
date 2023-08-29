@@ -147,6 +147,8 @@ namespace awh {
 			typedef struct Settings {
 				// Адрес файла unix-сокета
 				string filename;
+				// Протокол активного подключения (RAW, HTTP1, HTTP1_1, HTTP2, HTTP3)
+				engine_t::proto_t proto;
 				// Тип сокета подключения (TCP / UDP)
 				scheme_t::sonet_t sonet;
 				// Тип протокола интернета (IPV4 / IPV6 / NIX)
@@ -157,8 +159,11 @@ namespace awh {
 				 * Settings Конструктор
 				 */
 				Settings() noexcept :
-				 filename(""), sonet(scheme_t::sonet_t::TCP),
-				 family(scheme_t::family_t::IPV4), net{{"0.0.0.0","[::]"},{}} {}
+				 filename(""),
+				 proto(engine_t::proto_t::RAW),
+				 sonet(scheme_t::sonet_t::TCP),
+				 family(scheme_t::family_t::IPV4),
+				 net{{"0.0.0.0","[::]"},{}} {}
 			} settings_t;
 		private:
 			/**
@@ -547,6 +552,23 @@ namespace awh {
 			 * @return       результат установки unix-сокета
 			 */
 			bool unixSocket(const string & socket = "") noexcept;
+		public:
+			/**
+			 * proto Метод извлечения поддерживаемого протокола подключения
+			 * @return поддерживаемый протокол подключения (RAW, HTTP1, HTTP1_1, HTTP2, HTTP3)
+			 */
+			engine_t::proto_t proto() const noexcept;
+			/**
+			 * proto Метод извлечения активного протокола подключения
+			 * @param aid идентификатор адъютанта
+			 * @return активный протокол подключения (RAW, HTTP1, HTTP1_1, HTTP2, HTTP3)
+			 */
+			engine_t::proto_t proto(const size_t aid) const noexcept;
+			/**
+			 * proto Метод установки поддерживаемого протокола подключения
+			 * @param proto устанавливаемый протокол (RAW, HTTP1, HTTP1_1, HTTP2, HTTP3)
+			 */
+			void proto(const engine_t::proto_t proto) noexcept;
 		public:
 			/**
 			 * sonet Метод извлечения типа сокета подключения

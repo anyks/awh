@@ -107,6 +107,8 @@ int main(int argc, char * argv[]){
 	client::core_t core(&fmk, &log);
 	// Создаём объект WEB запроса
 	client::web_t web(&core, &fmk, &log);
+	// Устанавливаем активный протокол подключения
+	core.proto(awh::engine_t::proto_t::HTTP1_1);
 	// Устанавливаем название сервиса
 	log.name("WEB Client");
 	// Устанавливаем формат времени

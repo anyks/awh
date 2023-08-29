@@ -173,6 +173,8 @@ void awh::client::Core::connect(const size_t sid) noexcept {
 				else adj->addr.init(url.ip, url.port, (family == scheme_t::family_t::IPV6 ? AF_INET6 : AF_INET), engine_t::type_t::CLIENT);
 				// Если сокет подключения получен
 				if((adj->addr.fd != INVALID_SOCKET) && (adj->addr.fd < MAX_SOCKETS)){
+					// Выполняем установку желаемого протокола подключения
+					adj->ectx.proto(this->settings.proto);
 					// Устанавливаем идентификатор адъютанта
 					adj->aid = this->fmk->timestamp(fmk_t::stamp_t::NANOSECONDS);
 					// Если подключение выполняется по защищённому каналу DTLS
@@ -197,11 +199,6 @@ void awh::client::Core::connect(const size_t sid) noexcept {
 								this->engine.tls(shm->callback.apply <bool, const uri_t::url_t &, const size_t, const size_t, awh::core_t *> ("tls", url, adj->aid, shm->sid, this), adj->ectx);
 							// Выполняем активацию контекста подключения
 							this->engine.wrapClient(adj->ectx, &adj->addr, host);
-
-
-							// Активируем протокол HTTP/2 // ++++++++++++++++++++++++++++++++++
-							// this->engine.enableHttp2(adj->ectx);
-
 						// Если хост сервера не получен
 						} else {
 							// Разрешаем выполнение работы
@@ -970,6 +967,8 @@ void awh::client::Core::switchProxy(const size_t aid) noexcept {
 			else host = (!shm->url.domain.empty() ? shm->url.domain.c_str() : (!shm->url.ip.empty() ? shm->url.ip.c_str() : nullptr));
 			// Если хост сервера получен правильно
 			if(host != nullptr){
+				// Выполняем установку желаемого протокола подключения
+				adj->ectx.proto(this->settings.proto);
 				// Если функция обратного вызова активации шифрованного TLS канала установлена
 				if((shm->callback.is("tls")))
 					// Выполняем активацию шифрованного TLS канала
@@ -1118,11 +1117,6 @@ void awh::client::Core::connected(const size_t aid) noexcept {
 					if(!this->noinfo) this->log->print("connect client to server [%s]", log_t::flag_t::INFO, this->settings.filename.c_str());
 				} break;
 			}
-			
-			// +++++++++++++++++++++++++++++++++++++++++++
-			cout << " ±±±±±±±±±±±±±±±±±±±±± IS HTTP/2 " << this->engine.isHttp2(adj->ectx) << endl;
-			
-			
 			// Если подключение производится через, прокси-сервер
 			if(shm->isProxy()){
 				// Если функция обратного вызова для прокси-сервера

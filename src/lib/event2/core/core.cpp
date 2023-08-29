@@ -1401,6 +1401,42 @@ bool awh::Core::unixSocket(const string & socket) noexcept {
 	return !this->settings.filename.empty();
 }
 /**
+ * proto Метод извлечения поддерживаемого протокола подключения
+ * @return поддерживаемый протокол подключения (RAW, HTTP1, HTTP1_1, HTTP2, HTTP3)
+ */
+awh::engine_t::proto_t awh::Core::proto() const noexcept {
+	// Выполняем вывод поддерживаемого протокола подключения
+	return this->settings.proto;
+}
+/**
+ * proto Метод извлечения активного протокола подключения
+ * @param aid идентификатор адъютанта
+ * @return активный протокол подключения (RAW, HTTP1, HTTP1_1, HTTP2, HTTP3)
+ */
+awh::engine_t::proto_t awh::Core::proto(const size_t aid) const noexcept {
+	// Результат работы функции
+	engine_t::proto_t result = engine_t::proto_t::NONE;
+	// Если данные переданы верные
+	if(this->working() && (aid > 0)){
+		// Выполняем извлечение адъютанта
+		auto it = this->adjutants.find(aid);
+		// Если адъютант получен
+		if(it != this->adjutants.end())
+			// Выполняем извлечение активного протокола подключения
+			result = this->engine.proto(const_cast <awh::scheme_t::adj_t *> (it->second)->ectx);
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * proto Метод установки поддерживаемого протокола подключения
+ * @param proto устанавливаемый протокол (RAW, HTTP1, HTTP1_1, HTTP2, HTTP3)
+ */
+void awh::Core::proto(const engine_t::proto_t proto) noexcept {
+	// Выполняем установку поддерживаемого протокола подключения
+	this->settings.proto = proto;
+}
+/**
  * sonet Метод извлечения типа сокета подключения
  * @return тип сокета подключения (TCP / UDP / SCTP)
  */

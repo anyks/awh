@@ -100,7 +100,9 @@ int main(int argc, char * argv[]){
 	core.ca("./ca/cert.pem");
 	// Устанавливаем тип сокета UDP TLS
 	// core.sonet(awh::scheme_t::sonet_t::DTLS);
-	core.sonet(awh::scheme_t::sonet_t::TLS);
+	// core.sonet(awh::scheme_t::sonet_t::TLS);
+	// Устанавливаем активный протокол подключения
+	core.proto(awh::engine_t::proto_t::HTTP2);
 	// core.sonet(awh::scheme_t::sonet_t::UDP);
 	// core.sonet(awh::scheme_t::sonet_t::TCP);
 	// core.sonet(awh::scheme_t::sonet_t::SCTP);

@@ -99,6 +99,17 @@ namespace awh {
 	typedef class Engine {
 		public:
 			/**
+			 * Основные поддерживаемые протоколы
+			 */
+			enum class proto_t : uint8_t {
+				NONE    = 0x00, // Протокол не установлен
+				RAW     = 0x01, // Протокол является бинарным
+				HTTP1   = 0x02, // Протокол соответствует HTTP/1
+				HTTP1_1 = 0x03, // Протокол соответствует HTTP/1.1
+				HTTP2   = 0x04, // Протокол соответствует HTTP/2
+				HTTP3   = 0x05  // Протокол соответствует HTTP/3
+			};
+			/**
 			 * Основные методы режимов работы
 			 */
 			enum class method_t : uint8_t {
@@ -329,14 +340,15 @@ namespace awh {
 					bool _tls;
 					// Флаг вывода информации об OpenSSL
 					bool _verb;
-					// Флаг выбора протокола HTTP/2
-					bool _http2;
 				private:
 					// Тип активного приложения
 					type_t _type;
 				private:
+					// Протокол подключения
+					proto_t _proto;
+				private:
 					// Буфер данных следующего протокола
-					u_char _proto[256];
+					u_char _protoList[256];
 				private:
 					BIO * _bio;         // Объект BIO
 					SSL * _ssl;         // Объект SSL
@@ -395,6 +407,17 @@ namespace awh {
 					 * @return результат работы функции
 					 */
 					bool isblock() noexcept;
+				public:
+					/**
+					 * proto Метод извлечения поддерживаемого протокола
+					 * @return поддерживаемый протокол подключения
+					 */
+					proto_t proto() const noexcept;
+					/**
+					 * proto Метод установки поддерживаемого протокола
+					 * @param proto устанавливаемый протокол
+					 */
+					void proto(const proto_t proto) noexcept;
 				public:
 					/**
 					 * timeout Метод установки таймаута
@@ -663,17 +686,17 @@ namespace awh {
 			bool wait(ctx_t & target) noexcept;
 		public:
 			/**
-			 * isHttp2 Метод проверки активации протокола HTTP/2
+			 * proto Метод извлечения активного протокола
 			 * @param target контекст назначения
-			 * @return       результат проверки
+			 * @return       метод активного протокола
 			 */
-			bool isHttp2(ctx_t & target) const noexcept;
-		public:
+			proto_t proto(ctx_t & target) const noexcept;
+		private:
 			/**
-			 * enableHttp2 Метод активации HTTP/2
+			 * httpUpgrade Метод активации протокола HTTP
 			 * @param target контекст назначения
 			 */
-			void enableHttp2(ctx_t & target) const noexcept;
+			void httpUpgrade(ctx_t & target) const noexcept;
 		public:
 			/**
 			 * attach Метод прикрепления контекста клиента к контексту сервера

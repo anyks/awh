@@ -253,6 +253,8 @@ void awh::server::Core::accept(const int fd, const size_t sid) noexcept {
 						adj->mac = adj->addr.mac;
 						// Получаем порт подключения клиента
 						adj->port = adj->addr.port;
+						// Выполняем установку желаемого протокола подключения
+						adj->ectx.proto(this->settings.proto);
 						// Устанавливаем идентификатор адъютанта
 						adj->aid = this->fmk->timestamp(fmk_t::stamp_t::NANOSECONDS);
 						// Выполняем получение контекста сертификата
@@ -308,6 +310,8 @@ void awh::server::Core::accept(const int fd, const size_t sid) noexcept {
 					dtls->event.set(this->dispatch.base);
 					// Устанавливаем функцию обратного вызова
 					dtls->event.set(std::bind(&dtls_t::callback, dtls.get(), _1, _2));
+					// Выполняем установку желаемого протокола подключения
+					adj->ectx.proto(this->settings.proto);
 					// Выполняем получение контекста сертификата
 					this->engine.wrap(adj->ectx, &shm->addr, engine_t::type_t::SERVER);
 					// Выполняем блокировку потока
@@ -404,6 +408,8 @@ void awh::server::Core::accept(const int fd, const size_t sid) noexcept {
 								// Выходим
 								break;
 							}
+							// Выполняем установку желаемого протокола подключения
+							adj->ectx.proto(this->settings.proto);
 							// Устанавливаем идентификатор адъютанта
 							adj->aid = this->fmk->timestamp(fmk_t::stamp_t::NANOSECONDS);
 							// Выполняем получение контекста сертификата
