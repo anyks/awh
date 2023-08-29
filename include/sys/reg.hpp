@@ -20,6 +20,8 @@
  */
 #include <string>
 #include <vector>
+#include <cstdint>
+#include <sys/types.h>
 
 /**
  * Методы только для OS Windows
