@@ -321,6 +321,13 @@ namespace awh {
 			virtual void clear() noexcept;
 		public:
 			/**
+			 * getSocket Метод извлечения сокета адъютанта
+			 * @param aid идентификатор адъютанта
+			 * @return    активный сокет адъютанта
+			 */
+			SOCKET getSocket(const size_t aid) const noexcept;
+		public:
+			/**
 			 * getPort Метод получения порта подключения адъютанта
 			 * @param aid идентификатор адъютанта
 			 * @return   порт подключения адъютанта

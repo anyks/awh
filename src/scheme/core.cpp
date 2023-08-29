@@ -23,6 +23,24 @@ void awh::Scheme::clear() noexcept {
 	this->adjutants.clear();
 }
 /**
+ * getSocket Метод извлечения сокета адъютанта
+ * @param aid идентификатор адъютанта
+ * @return    активный сокет адъютанта
+ */
+SOCKET awh::Scheme::getSocket(const size_t aid) const noexcept {
+	// Результат работы функции
+	SOCKET result = -1;
+	// Если идентификатор адъютанта передан
+	if(aid > 0){
+		// Выполняем поиск адъютанта
+		auto it = this->adjutants.find(aid);
+		// Если адъютант найден, выводим MAC адрес
+		if(it != this->adjutants.end()) return it->second->addr.fd;
+	}
+	// Выводим результат
+	return result;
+}
+/**
  * getPort Метод получения порта подключения адъютанта
  * @param aid идентификатор адъютанта
  * @return   порт подключения адъютанта
@@ -72,20 +90,6 @@ const string & awh::Scheme::getMac(const size_t aid) const noexcept {
 		auto it = this->adjutants.find(aid);
 		// Если адъютант найден, выводим MAC адрес
 		if(it != this->adjutants.end()) return it->second->mac;
-	}
-	// Выводим результат
-	return result;
-}
-
-SOCKET awh::Scheme::getFd(const size_t aid) const noexcept {
-	// Результат работы функции
-	SOCKET result = -1;
-	// Если идентификатор адъютанта передан
-	if(aid > 0){
-		// Выполняем поиск адъютанта
-		auto it = this->adjutants.find(aid);
-		// Если адъютант найден, выводим MAC адрес
-		if(it != this->adjutants.end()) return it->second->addr.fd;
 	}
 	// Выводим результат
 	return result;
