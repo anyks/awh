@@ -780,6 +780,16 @@ if [ ! -f "$src/.stamp_done" ]; then
 	# Выполняем установку проекта
 	$BUILD install || exit 1
 
+	# Выполняем конфигурацию проекта
+	if [[ $OS = "Windows" ]]; then
+		# Производим корректировку названий библиотек
+		for i in $(ls "$PREFIX/lib" | grep "jemalloc.*\.a$");
+		do
+			echo "Move \"$PREFIX/lib/$i\" to \"$PREFIX/lib/lib$i\""
+			mv "$PREFIX/lib/$i" "$PREFIX/lib/lib$i" || exit 1
+		done
+	fi
+
 	# Помечаем флагом, что сборка и установка произведена
 	touch "$src/.stamp_done"
 	cd "$ROOT" || exit 1
