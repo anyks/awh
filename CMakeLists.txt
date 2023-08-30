@@ -48,12 +48,6 @@ message(STATUS "Build dir: ${CMAKE_CURRENT_BINARY_DIR}\n")
 EXECUTE_PROCESS( COMMAND uname -m COMMAND tr -d '\n' OUTPUT_VARIABLE ARCHITECTURE )
 message(STATUS "Architecture: ${ARCHITECTURE}")
 
-# Если нужно собрать и динамическую библиотеку
-if (NOT CMAKE_SHARED_BUILD_LIB)
-    # Активируем сборку статической библиотеки
-    add_compile_definitions(AWH_STATICLIB)
-endif(NOT CMAKE_SHARED_BUILD_LIB)
-
 # Проверка версии OS
 string(REGEX MATCH "Linux" PROJECT_OS_LINUX ${CMAKE_SYSTEM_NAME})
 if (${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
@@ -409,6 +403,8 @@ if (CMAKE_SHARED_BUILD_LIB)
     target_compile_definitions(${CURRENT_LIB_NAME_SHARED} PRIVATE AWH_SHARED_LIBRARY_EXPORT)
 # Если нужно собрать и статическую библиотеку
 else(CMAKE_SHARED_BUILD_LIB)
+    # Активируем сборку статической библиотеки
+    add_compile_definitions(AWH_STATICLIB)
     # Добавляем статическу библиотеку
     add_library(${CURRENT_LIB_NAME_STATIC} STATIC ${SOURCE_FILES})
 endif(CMAKE_SHARED_BUILD_LIB)
