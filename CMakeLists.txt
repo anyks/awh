@@ -3,6 +3,7 @@ cmake_minimum_required(VERSION 3.15)
 # TODO: вписать рабочее название проекта
 project(awh LANGUAGES CXX)
 
+# Устанавливаем название приложения
 set(PROJECT_VENDOR_LONG "ANYKS - WEB")
 
 # Опции сборки
@@ -11,8 +12,9 @@ set(PROJECT_COPYRIGHT "Copyright (c) ${CURRENT_YEAR} ${PROJECT_VENDOR_LONG}")
 # Тип сборки
 # cmake -DCMAKE_BUILD_TYPE=YES ..
 if(NOT CMAKE_BUILD_TYPE)
+    # Активируем режим отладки
     set(CMAKE_BUILD_TYPE Debug)
-endif()
+endif(NOT CMAKE_BUILD_TYPE)
 
 # Выводим сообщение о типе сборки
 message(STATUS "Build Type: ${CMAKE_BUILD_TYPE}\n")
@@ -22,9 +24,9 @@ if(CMAKE_BUILD_IDN)
     add_compile_definitions(AWH_IDN)
     message(STATUS "Build AWH IDN: YES\n")
 # Сборка модуля AWH_IDN не требуется
-else()
+else(CMAKE_BUILD_IDN)
     message(STATUS "Build AWH IDN: NO\n")
-endif()
+endif(CMAKE_BUILD_IDN)
 
 # Сборка модуля AWH_EVENT2
 if(CMAKE_BUILD_EVENT2)
@@ -32,22 +34,25 @@ if(CMAKE_BUILD_EVENT2)
     message(STATUS "Build AWH LIBEV: NO\n")
     message(STATUS "Build AWH LIBEVENT2: YES\n")
 # Сборка модуля AWH_EV
-else()
+else(CMAKE_BUILD_EVENT2)
     set(CMAKE_BUILD_EV "YES")
     add_compile_definitions(AWH_EV)
     message(STATUS "Build AWH LIBEV: YES\n")
     message(STATUS "Build AWH LIBEVENT2: NO\n")
-endif()
+endif(CMAKE_BUILD_EVENT2)
 
 # Выводим информацию каталога где выполняется сброка
 message(STATUS "Build dir: ${CMAKE_CURRENT_BINARY_DIR}\n")
 
 # Получаем архитектуру
 EXECUTE_PROCESS( COMMAND uname -m COMMAND tr -d '\n' OUTPUT_VARIABLE ARCHITECTURE )
-message( STATUS "Architecture: ${ARCHITECTURE}" )
+message(STATUS "Architecture: ${ARCHITECTURE}")
 
-# Активируем сборку статической библиотеки
-add_compile_definitions(AWH_STATICLIB)
+# Если нужно собрать и динамическую библиотеку
+if (NOT CMAKE_SHARED_BUILD_LIB)
+    # Активируем сборку статической библиотеки
+    add_compile_definitions(AWH_STATICLIB)
+endif(NOT CMAKE_SHARED_BUILD_LIB)
 
 # Проверка версии OS
 string(REGEX MATCH "Linux" PROJECT_OS_LINUX ${CMAKE_SYSTEM_NAME})
@@ -139,73 +144,73 @@ endif()
 if(CMAKE_BUILD_EVENT2)
     find_package(LibEvent REQUIRED)
 # Сборка модуля AWH_EV
-else()
+else(CMAKE_BUILD_EVENT2)
     find_package(LibEv REQUIRED)
-endif()
+endif(CMAKE_BUILD_EVENT2)
 
 # Провекра XML
 if (XML_FOUND)
     message(STATUS "XML lib found: " ${XML_LIBRARY})
     message(STATUS "XML include dir found: " ${XML_INCLUDE_DIR})
-else()
+else(XML_FOUND)
     message(FATAL_ERROR "XML not found")
-endif()
+endif(XML_FOUND)
 
 # Провекра ZLib
 if (Zlib_FOUND)
     message(STATUS "ZLib lib found: " ${ZLIB_LIBRARY})
     message(STATUS "ZLib include dir found: " ${ZLIB_INCLUDE_DIR})
-else()
+else(Zlib_FOUND)
     message(FATAL_ERROR "ZLib not found")
-endif()
+endif(Zlib_FOUND)
 
 # Провекра Brotli
 if (Brotli_FOUND)
     message(STATUS "Brotli lib found: " ${BROTLI_ENCODE_LIBRARY} " " ${BROTLI_DECODE_LIBRARY} " " ${BROTLI_COMMON_LIBRARY})
     message(STATUS "Brotli include dir found: " ${BROTLI_INCLUDE_ENCODE_DIR} " " ${BROTLI_INCLUDE_DECODE_DIR})
-else()
+else(Brotli_FOUND)
     message(FATAL_ERROR "Brotli not found")
-endif()
+endif(Brotli_FOUND)
 
 # Провекра OpenSSL
 if (OpenSSL_FOUND)
     message(STATUS "OpenSSL libs found: " ${OPENSSL_SSL_LIBRARY} " " ${OPENSSL_CRYPTO_LIBRARY})
     message(STATUS "OpenSSL include dir found: " ${OPENSSL_INCLUDE_DIR})
-else()
+else(OpenSSL_FOUND)
     message(FATAL_ERROR "OpenSSL not found")
-endif()
+endif(OpenSSL_FOUND)
 
 # Провекра NgTCP2
 if (NgTCP2_FOUND)
     message(STATUS "NgTCP2 lib found: " ${NGTCP2_LIBRARY})
     message(STATUS "NgTCP2 include dir found: " ${NGTCP2_INCLUDE_DIR})
-else()
+else(NgTCP2_FOUND)
     message(FATAL_ERROR "NgTCP2 not found")
-endif()
+endif(NgTCP2_FOUND)
 
 # Провекра NgHttp2
 if (NgHttp2_FOUND)
     message(STATUS "NgHttp2 lib found: " ${NGHTTP2_LIBRARY})
     message(STATUS "NgHttp2 include dir found: " ${NGHTTP2_INCLUDE_DIR})
-else()
+else(NgHttp2_FOUND)
     message(FATAL_ERROR "NgHttp2 not found")
-endif()
+endif(NgHttp2_FOUND)
 
 # Провекра NgHttp3
 if (NgHttp3_FOUND)
     message(STATUS "NgHttp3 lib found: " ${NGHTTP3_LIBRARY})
     message(STATUS "NgHttp3 include dir found: " ${NGHTTP3_INCLUDE_DIR})
-else()
+else(NgHttp3_FOUND)
     message(FATAL_ERROR "NgHttp3 not found")
-endif()
+endif(NgHttp3_FOUND)
 
 # Провекра JeMalloc
 if (JeMalloc_FOUND)
     message(STATUS "JeMalloc lib found: " ${JEMALLOC_LIBRARY})
     message(STATUS "JeMalloc include dir found: " ${JEMALLOC_INCLUDE_DIR})
-else()
+else(JeMalloc_FOUND)
     message(FATAL_ERROR "JeMalloc not found")
-endif()
+endif(JeMalloc_FOUND)
 
 # Если операционной системой не является Windows
 if(NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
@@ -213,9 +218,9 @@ if(NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
     if (PCRE_FOUND)
         message(STATUS "PCRE lib found: " ${PCRE_LIBRARY} " " ${PCRE_CPP_LIBRARY} " " ${PCRE_POSIX_LIBRARY})
         message(STATUS "PCRE include dir found: " ${PCRE_INCLUDE_DIR})
-    else()
+    else(PCRE_FOUND)
         message(FATAL_ERROR "PCRE not found")
-    endif()
+    endif(PCRE_FOUND)
 endif()
 
 # Сборка модуля AWH_IDN, если операционной системой не является Windows
@@ -224,16 +229,16 @@ if(CMAKE_BUILD_IDN AND (NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Windows"))
     if (Iconv_FOUND)
         message(STATUS "ICONV libs found: " ${ICONV_LIBRARY} " " ${ICONV_CHARSET_LIBRARY})
         message(STATUS "ICONV include dir found: " ${ICONV_INCLUDE_DIR})
-    else()
+    else(Iconv_FOUND)
         message(FATAL_ERROR "ICONV not found")
-    endif()
+    endif(Iconv_FOUND)
     # Провекра IDN2
     if (Idn2_FOUND)
         message(STATUS "IDN2 libs found: " ${IDN2_LIBRARY})
         message(STATUS "IDN2 include dir found: " ${IDN2_INCLUDE_DIR})
-    else()
+    else(Idn2_FOUND)
         message(FATAL_ERROR "IDN2 not found")
-    endif()
+    endif(Idn2_FOUND)
 endif()
 
 # Сборка модуля AWH_EVENT2
@@ -243,9 +248,9 @@ if(CMAKE_BUILD_EVENT2)
         set(EVENT_LIBRARY ${LIBEVENT_LIBRARIES})
         message(STATUS "LibEvent2 libs found: " ${LIBEVENT_LIBRARY} " " ${LIBEVENT_CORE} " " ${LIBEVENT_EXTRA} " " ${LIBEVENT_SSL})
         message(STATUS "LibEvent2 include dir found: " ${LIBEVENT_INCLUDE_DIR})
-    else()
+    else(LibEvent_FOUND)
         message(FATAL_ERROR "LibEvent2 not found")
-    endif()
+    endif(LibEvent_FOUND)
 # Сборка модуля AWH_EV
 else()
     # Провекра LibEv
@@ -253,9 +258,9 @@ else()
         set(EVENT_LIBRARY ${LIBEV_LIBRARY})
         message(STATUS "LibEv libs found: " ${LIBEV_LIBRARY})
         message(STATUS "LibEv include dir found: " ${LIBEV_INCLUDE_DIR})
-    else()
+    else(LibEv_FOUND)
         message(FATAL_ERROR "LibEv not found")
-    endif()
+    endif(LibEv_FOUND)
 endif()
 
 # Выполняем подключение хидеров
@@ -287,9 +292,9 @@ endif()
 if(CMAKE_BUILD_EVENT2)
     include_directories(${LIBEVENT_INCLUDE_DIR})
 # Сборка модуля AWH_EV
-else()
+else(CMAKE_BUILD_EVENT2)
     include_directories(${LIBEV_INCLUDE_DIR})
-endif()
+endif(CMAKE_BUILD_EVENT2)
 
 # Сборка модуля AWH_EVENT2
 if(CMAKE_BUILD_EVENT2)
@@ -303,7 +308,7 @@ if(CMAKE_BUILD_EVENT2)
         "${CMAKE_SOURCE_DIR}/src/lib/event2/core/server.cpp"
     )
 # Сборка модуля AWH_EV
-else()
+else(CMAKE_BUILD_EVENT2)
     # Выполняем подключение исходников для LibEv
     set(SOURCE_FILES
         "${CMAKE_SOURCE_DIR}/src/lib/ev/sys/signals.cpp"
@@ -312,7 +317,7 @@ else()
         "${CMAKE_SOURCE_DIR}/src/lib/ev/core/client.cpp"
         "${CMAKE_SOURCE_DIR}/src/lib/ev/core/server.cpp"
     )
-endif()
+endif(CMAKE_BUILD_EVENT2)
 
 # Выполняем подключение исходников
 set(SOURCE_FILES
@@ -388,7 +393,8 @@ set(CLIENT_APP_NAME client)
 set(SERVER_APP_NAME server)
 set(WEB_CLIENT_APP_NAME webClient)
 set(WEB_SERVER_APP_NAME webServer)
-set(CURRENT_LIB_NAME ${PROJECT_NAME})
+set(CURRENT_LIB_NAME_STATIC ${PROJECT_NAME})
+set(CURRENT_LIB_NAME_SHARED ${PROJECT_NAME})
 set(CURRENT_APP_NAME ${PROJECT_NAME}_bin)
 
 # Если операционной системой не является Windows
@@ -396,768 +402,1213 @@ if(NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
     set(CLUSTER_APP_NAME cluster)
 endif()
 
-# Делаем либу
-add_library(${CURRENT_LIB_NAME} STATIC ${SOURCE_FILES})
+# Если нужно собрать и динамическую библиотеку
+if (CMAKE_SHARED_BUILD_LIB)
+    # Добавляем динамическую библиотеку
+    add_library(${CURRENT_LIB_NAME_SHARED} SHARED ${SOURCE_FILES})
+    target_compile_definitions(${CURRENT_LIB_NAME_SHARED} PRIVATE AWH_SHARED_LIBRARY_EXPORT)
+# Если нужно собрать и статическую библиотеку
+else(CMAKE_SHARED_BUILD_LIB)
+    # Добавляем статическу библиотеку
+    add_library(${CURRENT_LIB_NAME_STATIC} STATIC ${SOURCE_FILES})
+endif(CMAKE_SHARED_BUILD_LIB)
 
-if (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
+ # Если операционной системой является Windows
+ if(${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
+    # Устанавливаем необходимые зависимости для MS Windows
     set(WINFLAGS -lws2_32 -lgdi32 -lcrypt32 -lIphlpapi -lbcrypt)
-else()
-    set(WINFLAGS "")
-endif()
 
-# Устанавливаем иконку для windows под MinGW.
-set(RES_FILES "")
-if(MINGW)
+    # Устанавливаем иконку для windows под MinGW.
     set(RES_FILES "awh.rc")
     set(CMAKE_RC_COMPILER_INIT windres)
     ENABLE_LANGUAGE(RC)
     SET(CMAKE_RC_COMPILE_OBJECT "<CMAKE_RC_COMPILER> <FLAGS> -O coff <DEFINES> -i <SOURCE> -o <OBJECT>")
-endif(MINGW)
 
-add_executable(${IP_APP_NAME} sample/ip.cpp ${RES_FILES})
-add_executable(${DNS_APP_NAME} sample/dns.cpp ${RES_FILES})
-add_executable(${NTP_APP_NAME} sample/ntp.cpp ${RES_FILES})
-add_executable(${WSS_APP_NAME} sample/wss.cpp ${RES_FILES})
-add_executable(${WSC_APP_NAME} sample/wsc2.cpp ${RES_FILES})
-add_executable(${PING_APP_NAME} sample/ping.cpp ${RES_FILES})
-add_executable(${HTTP2_APP_NAME} sample/http2.cpp ${RES_FILES})
-add_executable(${TIMER_APP_NAME} sample/timer.cpp ${RES_FILES})
-add_executable(${PROXY_APP_NAME} sample/proxy.cpp ${RES_FILES})
-add_executable(${SOCKS5_APP_NAME} sample/socks5.cpp ${RES_FILES})
-add_executable(${CLIENT_APP_NAME} sample/client.cpp ${RES_FILES})
-add_executable(${SERVER_APP_NAME} sample/server.cpp ${RES_FILES})
-add_executable(${WEB_SERVER_APP_NAME} sample/webServer.cpp ${RES_FILES})
-add_executable(${WEB_CLIENT_APP_NAME} sample/webClient.cpp ${RES_FILES})
+    # Выполняем создание демонстрационных приложений
+    add_executable(${IP_APP_NAME} sample/ip.cpp ${RES_FILES})
+    add_executable(${DNS_APP_NAME} sample/dns.cpp ${RES_FILES})
+    add_executable(${NTP_APP_NAME} sample/ntp.cpp ${RES_FILES})
+    add_executable(${WSS_APP_NAME} sample/wss.cpp ${RES_FILES})
+    add_executable(${WSC_APP_NAME} sample/wsc2.cpp ${RES_FILES})
+    add_executable(${PING_APP_NAME} sample/ping.cpp ${RES_FILES})
+    add_executable(${HTTP2_APP_NAME} sample/http2.cpp ${RES_FILES})
+    add_executable(${TIMER_APP_NAME} sample/timer.cpp ${RES_FILES})
+    add_executable(${PROXY_APP_NAME} sample/proxy.cpp ${RES_FILES})
+    add_executable(${SOCKS5_APP_NAME} sample/socks5.cpp ${RES_FILES})
+    add_executable(${CLIENT_APP_NAME} sample/client.cpp ${RES_FILES})
+    add_executable(${SERVER_APP_NAME} sample/server.cpp ${RES_FILES})
+    add_executable(${WEB_SERVER_APP_NAME} sample/webServer.cpp ${RES_FILES})
+    add_executable(${WEB_CLIENT_APP_NAME} sample/webClient.cpp ${RES_FILES})
 
-# Если операционной системой не является Windows
-if(NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
-    add_executable(${CLUSTER_APP_NAME} sample/cluster.cpp ${RES_FILES})
-endif()
-
-# Если операционной системой является Windows
-if(${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
-    target_link_libraries(
-        ${IP_APP_NAME}
-        ${CURRENT_LIB_NAME}
-        ${EVENT_LIBRARY}
-        ${XML_LIBRARY}
-        ${ZLIB_LIBRARY}
-        ${NGTCP2_LIBRARY}
-        ${NGHTTP2_LIBRARY}
-        ${NGHTTP3_LIBRARY}
-        ${JEMALLOC_LIBRARY}
-        ${BROTLI_LIBRARIES}
-        ${OPENSSL_LIBRARIES}
-        ${WINFLAGS}
-        ${AWH_IDN}
-    )
-
-    target_link_libraries(
-        ${WSC_APP_NAME}
-        ${CURRENT_LIB_NAME}
-        ${EVENT_LIBRARY}
-        ${XML_LIBRARY}
-        ${ZLIB_LIBRARY}
-        ${NGTCP2_LIBRARY}
-        ${NGHTTP2_LIBRARY}
-        ${NGHTTP3_LIBRARY}
-        ${JEMALLOC_LIBRARY}
-        ${BROTLI_LIBRARIES}
-        ${OPENSSL_LIBRARIES}
-        ${WINFLAGS}
-        ${AWH_IDN}
-    )
-
-    target_link_libraries(
-        ${WSS_APP_NAME}
-        ${CURRENT_LIB_NAME}
-        ${EVENT_LIBRARY}
-        ${XML_LIBRARY}
-        ${ZLIB_LIBRARY}
-        ${NGTCP2_LIBRARY}
-        ${NGHTTP2_LIBRARY}
-        ${NGHTTP3_LIBRARY}
-        ${JEMALLOC_LIBRARY}
-        ${BROTLI_LIBRARIES}
-        ${OPENSSL_LIBRARIES}
-        ${WINFLAGS}
-        ${AWH_IDN}
-    )
-
-    target_link_libraries(
-        ${DNS_APP_NAME}
-        ${CURRENT_LIB_NAME}
-        ${EVENT_LIBRARY}
-        ${XML_LIBRARY}
-        ${ZLIB_LIBRARY}
-        ${NGTCP2_LIBRARY}
-        ${NGHTTP2_LIBRARY}
-        ${NGHTTP3_LIBRARY}
-        ${JEMALLOC_LIBRARY}
-        ${BROTLI_LIBRARIES}
-        ${OPENSSL_LIBRARIES}
-        ${WINFLAGS}
-        ${AWH_IDN}
-    )
-
-    target_link_libraries(
-        ${NTP_APP_NAME}
-        ${CURRENT_LIB_NAME}
-        ${EVENT_LIBRARY}
-        ${XML_LIBRARY}
-        ${ZLIB_LIBRARY}
-        ${NGTCP2_LIBRARY}
-        ${NGHTTP2_LIBRARY}
-        ${NGHTTP3_LIBRARY}
-        ${JEMALLOC_LIBRARY}
-        ${BROTLI_LIBRARIES}
-        ${OPENSSL_LIBRARIES}
-        ${WINFLAGS}
-        ${AWH_IDN}
-    )
-
-    target_link_libraries(
-        ${SOCKS5_APP_NAME}
-        ${CURRENT_LIB_NAME}
-        ${EVENT_LIBRARY}
-        ${XML_LIBRARY}
-        ${ZLIB_LIBRARY}
-        ${NGTCP2_LIBRARY}
-        ${NGHTTP2_LIBRARY}
-        ${NGHTTP3_LIBRARY}
-        ${JEMALLOC_LIBRARY}
-        ${BROTLI_LIBRARIES}
-        ${OPENSSL_LIBRARIES}
-        ${WINFLAGS}
-        ${AWH_IDN}
-    )
-
-    target_link_libraries(
-        ${PROXY_APP_NAME}
-        ${CURRENT_LIB_NAME}
-        ${EVENT_LIBRARY}
-        ${XML_LIBRARY}
-        ${ZLIB_LIBRARY}
-        ${NGTCP2_LIBRARY}
-        ${NGHTTP2_LIBRARY}
-        ${NGHTTP3_LIBRARY}
-        ${JEMALLOC_LIBRARY}
-        ${BROTLI_LIBRARIES}
-        ${OPENSSL_LIBRARIES}
-        ${WINFLAGS}
-        ${AWH_IDN}
-    )
-
-    target_link_libraries(
-        ${PING_APP_NAME}
-        ${CURRENT_LIB_NAME}
-        ${EVENT_LIBRARY}
-        ${XML_LIBRARY}
-        ${ZLIB_LIBRARY}
-        ${NGTCP2_LIBRARY}
-        ${NGHTTP2_LIBRARY}
-        ${NGHTTP3_LIBRARY}
-        ${JEMALLOC_LIBRARY}
-        ${BROTLI_LIBRARIES}
-        ${OPENSSL_LIBRARIES}
-        ${WINFLAGS}
-        ${AWH_IDN}
-    )
-
-    target_link_libraries(
-        ${HTTP2_APP_NAME}
-        ${CURRENT_LIB_NAME}
-        ${EVENT_LIBRARY}
-        ${XML_LIBRARY}
-        ${ZLIB_LIBRARY}
-        ${NGTCP2_LIBRARY}
-        ${NGHTTP2_LIBRARY}
-        ${NGHTTP3_LIBRARY}
-        ${JEMALLOC_LIBRARY}
-        ${BROTLI_LIBRARIES}
-        ${OPENSSL_LIBRARIES}
-        ${WINFLAGS}
-        ${AWH_IDN}
-    )
-
-    target_link_libraries(
-        ${TIMER_APP_NAME}
-        ${CURRENT_LIB_NAME}
-        ${EVENT_LIBRARY}
-        ${XML_LIBRARY}
-        ${ZLIB_LIBRARY}
-        ${NGTCP2_LIBRARY}
-        ${NGHTTP2_LIBRARY}
-        ${NGHTTP3_LIBRARY}
-        ${JEMALLOC_LIBRARY}
-        ${BROTLI_LIBRARIES}
-        ${OPENSSL_LIBRARIES}
-        ${WINFLAGS}
-        ${AWH_IDN}
-    )
-
-    target_link_libraries(
-        ${CLIENT_APP_NAME}
-        ${CURRENT_LIB_NAME}
-        ${EVENT_LIBRARY}
-        ${XML_LIBRARY}
-        ${ZLIB_LIBRARY}
-        ${NGTCP2_LIBRARY}
-        ${NGHTTP2_LIBRARY}
-        ${NGHTTP3_LIBRARY}
-        ${JEMALLOC_LIBRARY}
-        ${BROTLI_LIBRARIES}
-        ${OPENSSL_LIBRARIES}
-        ${WINFLAGS}
-        ${AWH_IDN}
-    )
-
-    target_link_libraries(
-        ${SERVER_APP_NAME}
-        ${CURRENT_LIB_NAME}
-        ${EVENT_LIBRARY}
-        ${XML_LIBRARY}
-        ${ZLIB_LIBRARY}
-        ${NGTCP2_LIBRARY}
-        ${NGHTTP2_LIBRARY}
-        ${NGHTTP3_LIBRARY}
-        ${JEMALLOC_LIBRARY}
-        ${BROTLI_LIBRARIES}
-        ${OPENSSL_LIBRARIES}
-        ${WINFLAGS}
-        ${AWH_IDN}
-    )
-
-    target_link_libraries(
-        ${WEB_CLIENT_APP_NAME}
-        ${CURRENT_LIB_NAME}
-        ${EVENT_LIBRARY}
-        ${XML_LIBRARY}
-        ${ZLIB_LIBRARY}
-        ${NGTCP2_LIBRARY}
-        ${NGHTTP2_LIBRARY}
-        ${NGHTTP3_LIBRARY}
-        ${JEMALLOC_LIBRARY}
-        ${BROTLI_LIBRARIES}
-        ${OPENSSL_LIBRARIES}
-        ${WINFLAGS}
-        ${AWH_IDN}
-    )
-
-    target_link_libraries(
-        ${WEB_SERVER_APP_NAME}
-        ${CURRENT_LIB_NAME}
-        ${EVENT_LIBRARY}
-        ${XML_LIBRARY}
-        ${ZLIB_LIBRARY}
-        ${NGTCP2_LIBRARY}
-        ${NGHTTP2_LIBRARY}
-        ${NGHTTP3_LIBRARY}
-        ${JEMALLOC_LIBRARY}
-        ${BROTLI_LIBRARIES}
-        ${OPENSSL_LIBRARIES}
-        ${WINFLAGS}
-        ${AWH_IDN}
-    )
-
-# Сборка примеров с поддержкой модуля AWH_IDN
-elseif(CMAKE_BUILD_IDN)
-    target_link_libraries(
-        ${IP_APP_NAME}
-        ${CURRENT_LIB_NAME}
-        ${EVENT_LIBRARY}
-        ${XML_LIBRARY}
-        ${ZLIB_LIBRARY}
-        ${IDN2_LIBRARY}
-        ${ICONV_LIBRARIES}
-        ${PCRE_LIBRARIES}
-        ${NGTCP2_LIBRARY}
-        ${NGHTTP2_LIBRARY}
-        ${NGHTTP3_LIBRARY}
-        ${JEMALLOC_LIBRARY}
-        ${BROTLI_LIBRARIES}
-        ${OPENSSL_LIBRARIES}
-        ${AWH_IDN}
-    )
-
-    target_link_libraries(
-        ${WSC_APP_NAME}
-        ${CURRENT_LIB_NAME}
-        ${EVENT_LIBRARY}
-        ${XML_LIBRARY}
-        ${ZLIB_LIBRARY}
-        ${IDN2_LIBRARY}
-        ${ICONV_LIBRARIES}
-        ${PCRE_LIBRARIES}
-        ${NGTCP2_LIBRARY}
-        ${NGHTTP2_LIBRARY}
-        ${NGHTTP3_LIBRARY}
-        ${JEMALLOC_LIBRARY}
-        ${BROTLI_LIBRARIES}
-        ${OPENSSL_LIBRARIES}
-        ${AWH_IDN}
-    )
-
-    target_link_libraries(
-        ${WSS_APP_NAME}
-        ${CURRENT_LIB_NAME}
-        ${EVENT_LIBRARY}
-        ${XML_LIBRARY}
-        ${ZLIB_LIBRARY}
-        ${IDN2_LIBRARY}
-        ${ICONV_LIBRARIES}
-        ${PCRE_LIBRARIES}
-        ${NGTCP2_LIBRARY}
-        ${NGHTTP2_LIBRARY}
-        ${NGHTTP3_LIBRARY}
-        ${JEMALLOC_LIBRARY}
-        ${BROTLI_LIBRARIES}
-        ${OPENSSL_LIBRARIES}
-        ${AWH_IDN}
-    )
-
-    target_link_libraries(
-        ${DNS_APP_NAME}
-        ${CURRENT_LIB_NAME}
-        ${EVENT_LIBRARY}
-        ${XML_LIBRARY}
-        ${ZLIB_LIBRARY}
-        ${IDN2_LIBRARY}
-        ${ICONV_LIBRARIES}
-        ${PCRE_LIBRARIES}
-        ${NGTCP2_LIBRARY}
-        ${NGHTTP2_LIBRARY}
-        ${NGHTTP3_LIBRARY}
-        ${JEMALLOC_LIBRARY}
-        ${BROTLI_LIBRARIES}
-        ${OPENSSL_LIBRARIES}
-        ${AWH_IDN}
-    )
-
-    target_link_libraries(
-        ${NTP_APP_NAME}
-        ${CURRENT_LIB_NAME}
-        ${EVENT_LIBRARY}
-        ${XML_LIBRARY}
-        ${ZLIB_LIBRARY}
-        ${IDN2_LIBRARY}
-        ${ICONV_LIBRARIES}
-        ${PCRE_LIBRARIES}
-        ${NGTCP2_LIBRARY}
-        ${NGHTTP2_LIBRARY}
-        ${NGHTTP3_LIBRARY}
-        ${JEMALLOC_LIBRARY}
-        ${BROTLI_LIBRARIES}
-        ${OPENSSL_LIBRARIES}
-        ${AWH_IDN}
-    )
-
-    target_link_libraries(
-        ${SOCKS5_APP_NAME}
-        ${CURRENT_LIB_NAME}
-        ${EVENT_LIBRARY}
-        ${XML_LIBRARY}
-        ${ZLIB_LIBRARY}
-        ${IDN2_LIBRARY}
-        ${ICONV_LIBRARIES}
-        ${PCRE_LIBRARIES}
-        ${NGTCP2_LIBRARY}
-        ${NGHTTP2_LIBRARY}
-        ${NGHTTP3_LIBRARY}
-        ${JEMALLOC_LIBRARY}
-        ${BROTLI_LIBRARIES}
-        ${OPENSSL_LIBRARIES}
-        ${AWH_IDN}
-    )
-
-    target_link_libraries(
-        ${PROXY_APP_NAME}
-        ${CURRENT_LIB_NAME}
-        ${EVENT_LIBRARY}
-        ${XML_LIBRARY}
-        ${ZLIB_LIBRARY}
-        ${IDN2_LIBRARY}
-        ${ICONV_LIBRARIES}
-        ${PCRE_LIBRARIES}
-        ${NGTCP2_LIBRARY}
-        ${NGHTTP2_LIBRARY}
-        ${NGHTTP3_LIBRARY}
-        ${JEMALLOC_LIBRARY}
-        ${BROTLI_LIBRARIES}
-        ${OPENSSL_LIBRARIES}
-        ${AWH_IDN}
-    )
-
-    target_link_libraries(
-        ${PING_APP_NAME}
-        ${CURRENT_LIB_NAME}
-        ${EVENT_LIBRARY}
-        ${XML_LIBRARY}
-        ${ZLIB_LIBRARY}
-        ${IDN2_LIBRARY}
-        ${ICONV_LIBRARIES}
-        ${PCRE_LIBRARIES}
-        ${NGTCP2_LIBRARY}
-        ${NGHTTP2_LIBRARY}
-        ${NGHTTP3_LIBRARY}
-        ${JEMALLOC_LIBRARY}
-        ${BROTLI_LIBRARIES}
-        ${OPENSSL_LIBRARIES}
-        ${AWH_IDN}
-    )
-
-    target_link_libraries(
-        ${HTTP2_APP_NAME}
-        ${CURRENT_LIB_NAME}
-        ${EVENT_LIBRARY}
-        ${XML_LIBRARY}
-        ${ZLIB_LIBRARY}
-        ${IDN2_LIBRARY}
-        ${ICONV_LIBRARIES}
-        ${PCRE_LIBRARIES}
-        ${NGTCP2_LIBRARY}
-        ${NGHTTP2_LIBRARY}
-        ${NGHTTP3_LIBRARY}
-        ${JEMALLOC_LIBRARY}
-        ${BROTLI_LIBRARIES}
-        ${OPENSSL_LIBRARIES}
-        ${AWH_IDN}
-    )
-
-    target_link_libraries(
-        ${TIMER_APP_NAME}
-        ${CURRENT_LIB_NAME}
-        ${EVENT_LIBRARY}
-        ${XML_LIBRARY}
-        ${ZLIB_LIBRARY}
-        ${IDN2_LIBRARY}
-        ${ICONV_LIBRARIES}
-        ${PCRE_LIBRARIES}
-        ${NGTCP2_LIBRARY}
-        ${NGHTTP2_LIBRARY}
-        ${NGHTTP3_LIBRARY}
-        ${JEMALLOC_LIBRARY}
-        ${BROTLI_LIBRARIES}
-        ${OPENSSL_LIBRARIES}
-        ${AWH_IDN}
-    )
-
-    target_link_libraries(
-        ${CLIENT_APP_NAME}
-        ${CURRENT_LIB_NAME}
-        ${EVENT_LIBRARY}
-        ${XML_LIBRARY}
-        ${ZLIB_LIBRARY}
-        ${IDN2_LIBRARY}
-        ${ICONV_LIBRARIES}
-        ${PCRE_LIBRARIES}
-        ${NGTCP2_LIBRARY}
-        ${NGHTTP2_LIBRARY}
-        ${NGHTTP3_LIBRARY}
-        ${JEMALLOC_LIBRARY}
-        ${BROTLI_LIBRARIES}
-        ${OPENSSL_LIBRARIES}
-        ${AWH_IDN}
-    )
-
-    target_link_libraries(
-        ${SERVER_APP_NAME}
-        ${CURRENT_LIB_NAME}
-        ${EVENT_LIBRARY}
-        ${XML_LIBRARY}
-        ${ZLIB_LIBRARY}
-        ${IDN2_LIBRARY}
-        ${ICONV_LIBRARIES}
-        ${PCRE_LIBRARIES}
-        ${NGTCP2_LIBRARY}
-        ${NGHTTP2_LIBRARY}
-        ${NGHTTP3_LIBRARY}
-        ${JEMALLOC_LIBRARY}
-        ${BROTLI_LIBRARIES}
-        ${OPENSSL_LIBRARIES}
-        ${AWH_IDN}
-    )
-
-    target_link_libraries(
-        ${CLUSTER_APP_NAME}
-        ${CURRENT_LIB_NAME}
-        ${EVENT_LIBRARY}
-        ${XML_LIBRARY}
-        ${ZLIB_LIBRARY}
-        ${IDN2_LIBRARY}
-        ${ICONV_LIBRARIES}
-        ${PCRE_LIBRARIES}
-        ${NGTCP2_LIBRARY}
-        ${NGHTTP2_LIBRARY}
-        ${NGHTTP3_LIBRARY}
-        ${JEMALLOC_LIBRARY}
-        ${BROTLI_LIBRARIES}
-        ${OPENSSL_LIBRARIES}
-        ${AWH_IDN}
-    )
-
-    target_link_libraries(
-        ${WEB_CLIENT_APP_NAME}
-        ${CURRENT_LIB_NAME}
-        ${EVENT_LIBRARY}
-        ${XML_LIBRARY}
-        ${ZLIB_LIBRARY}
-        ${IDN2_LIBRARY}
-        ${ICONV_LIBRARIES}
-        ${PCRE_LIBRARIES}
-        ${NGTCP2_LIBRARY}
-        ${NGHTTP2_LIBRARY}
-        ${NGHTTP3_LIBRARY}
-        ${JEMALLOC_LIBRARY}
-        ${BROTLI_LIBRARIES}
-        ${OPENSSL_LIBRARIES}
-        ${AWH_IDN}
-    )
-
-    target_link_libraries(
-        ${WEB_SERVER_APP_NAME}
-        ${CURRENT_LIB_NAME}
-        ${EVENT_LIBRARY}
-        ${XML_LIBRARY}
-        ${ZLIB_LIBRARY}
-        ${IDN2_LIBRARY}
-        ${ICONV_LIBRARIES}
-        ${PCRE_LIBRARIES}
-        ${NGTCP2_LIBRARY}
-        ${NGHTTP2_LIBRARY}
-        ${NGHTTP3_LIBRARY}
-        ${JEMALLOC_LIBRARY}
-        ${BROTLI_LIBRARIES}
-        ${OPENSSL_LIBRARIES}
-        ${AWH_IDN}
-    )
-# Сборка примеров в обычном виде
+# Если операционной системой является Linux, FreeBSD, MacOS X
 else()
-    target_link_libraries(
-        ${IP_APP_NAME}
-        ${CURRENT_LIB_NAME}
-        ${EVENT_LIBRARY}
-        ${XML_LIBRARY}
-        ${ZLIB_LIBRARY}
-        ${PCRE_LIBRARIES}
-        ${NGTCP2_LIBRARY}
-        ${NGHTTP2_LIBRARY}
-        ${NGHTTP3_LIBRARY}
-        ${JEMALLOC_LIBRARY}
-        ${BROTLI_LIBRARIES}
-        ${OPENSSL_LIBRARIES}
-    )
 
-    target_link_libraries(
-        ${WSC_APP_NAME}
-        ${CURRENT_LIB_NAME}
-        ${EVENT_LIBRARY}
-        ${XML_LIBRARY}
-        ${ZLIB_LIBRARY}
-        ${PCRE_LIBRARIES}
-        ${NGTCP2_LIBRARY}
-        ${NGHTTP2_LIBRARY}
-        ${NGHTTP3_LIBRARY}
-        ${JEMALLOC_LIBRARY}
-        ${BROTLI_LIBRARIES}
-        ${OPENSSL_LIBRARIES}
-    )
+    # Выполняем создание демонстрационных приложений
+    add_executable(${IP_APP_NAME} sample/ip.cpp)
+    add_executable(${DNS_APP_NAME} sample/dns.cpp)
+    add_executable(${NTP_APP_NAME} sample/ntp.cpp)
+    add_executable(${WSS_APP_NAME} sample/wss.cpp)
+    add_executable(${WSC_APP_NAME} sample/wsc2.cpp)
+    add_executable(${PING_APP_NAME} sample/ping.cpp)
+    add_executable(${HTTP2_APP_NAME} sample/http2.cpp)
+    add_executable(${TIMER_APP_NAME} sample/timer.cpp)
+    add_executable(${PROXY_APP_NAME} sample/proxy.cpp)
+    add_executable(${SOCKS5_APP_NAME} sample/socks5.cpp)
+    add_executable(${CLIENT_APP_NAME} sample/client.cpp)
+    add_executable(${SERVER_APP_NAME} sample/server.cpp)
+    add_executable(${CLUSTER_APP_NAME} sample/cluster.cpp)
+    add_executable(${WEB_SERVER_APP_NAME} sample/webServer.cpp)
+    add_executable(${WEB_CLIENT_APP_NAME} sample/webClient.cpp)
 
-    target_link_libraries(
-        ${WSS_APP_NAME}
-        ${CURRENT_LIB_NAME}
-        ${EVENT_LIBRARY}
-        ${XML_LIBRARY}
-        ${ZLIB_LIBRARY}
-        ${PCRE_LIBRARIES}
-        ${NGTCP2_LIBRARY}
-        ${NGHTTP2_LIBRARY}
-        ${NGHTTP3_LIBRARY}
-        ${JEMALLOC_LIBRARY}
-        ${BROTLI_LIBRARIES}
-        ${OPENSSL_LIBRARIES}
-    )
-
-    target_link_libraries(
-        ${DNS_APP_NAME}
-        ${CURRENT_LIB_NAME}
-        ${EVENT_LIBRARY}
-        ${XML_LIBRARY}
-        ${ZLIB_LIBRARY}
-        ${PCRE_LIBRARIES}
-        ${NGTCP2_LIBRARY}
-        ${NGHTTP2_LIBRARY}
-        ${NGHTTP3_LIBRARY}
-        ${JEMALLOC_LIBRARY}
-        ${BROTLI_LIBRARIES}
-        ${OPENSSL_LIBRARIES}
-    )
-
-    target_link_libraries(
-        ${NTP_APP_NAME}
-        ${CURRENT_LIB_NAME}
-        ${EVENT_LIBRARY}
-        ${XML_LIBRARY}
-        ${ZLIB_LIBRARY}
-        ${PCRE_LIBRARIES}
-        ${NGTCP2_LIBRARY}
-        ${NGHTTP2_LIBRARY}
-        ${NGHTTP3_LIBRARY}
-        ${JEMALLOC_LIBRARY}
-        ${BROTLI_LIBRARIES}
-        ${OPENSSL_LIBRARIES}
-    )
-
-    target_link_libraries(
-        ${SOCKS5_APP_NAME}
-        ${CURRENT_LIB_NAME}
-        ${EVENT_LIBRARY}
-        ${XML_LIBRARY}
-        ${ZLIB_LIBRARY}
-        ${PCRE_LIBRARIES}
-        ${NGTCP2_LIBRARY}
-        ${NGHTTP2_LIBRARY}
-        ${NGHTTP3_LIBRARY}
-        ${JEMALLOC_LIBRARY}
-        ${BROTLI_LIBRARIES}
-        ${OPENSSL_LIBRARIES}
-    )
-
-    target_link_libraries(
-        ${PROXY_APP_NAME}
-        ${CURRENT_LIB_NAME}
-        ${EVENT_LIBRARY}
-        ${XML_LIBRARY}
-        ${ZLIB_LIBRARY}
-        ${PCRE_LIBRARIES}
-        ${NGTCP2_LIBRARY}
-        ${NGHTTP2_LIBRARY}
-        ${NGHTTP3_LIBRARY}
-        ${JEMALLOC_LIBRARY}
-        ${BROTLI_LIBRARIES}
-        ${OPENSSL_LIBRARIES}
-    )
-
-    target_link_libraries(
-        ${PING_APP_NAME}
-        ${CURRENT_LIB_NAME}
-        ${EVENT_LIBRARY}
-        ${XML_LIBRARY}
-        ${ZLIB_LIBRARY}
-        ${PCRE_LIBRARIES}
-        ${NGTCP2_LIBRARY}
-        ${NGHTTP2_LIBRARY}
-        ${NGHTTP3_LIBRARY}
-        ${JEMALLOC_LIBRARY}
-        ${BROTLI_LIBRARIES}
-        ${OPENSSL_LIBRARIES}
-    )
-
-    target_link_libraries(
-        ${HTTP2_APP_NAME}
-        ${CURRENT_LIB_NAME}
-        ${EVENT_LIBRARY}
-        ${XML_LIBRARY}
-        ${ZLIB_LIBRARY}
-        ${PCRE_LIBRARIES}
-        ${NGTCP2_LIBRARY}
-        ${NGHTTP2_LIBRARY}
-        ${NGHTTP3_LIBRARY}
-        ${JEMALLOC_LIBRARY}
-        ${BROTLI_LIBRARIES}
-        ${OPENSSL_LIBRARIES}
-    )
-
-    target_link_libraries(
-        ${TIMER_APP_NAME}
-        ${CURRENT_LIB_NAME}
-        ${EVENT_LIBRARY}
-        ${XML_LIBRARY}
-        ${ZLIB_LIBRARY}
-        ${PCRE_LIBRARIES}
-        ${NGTCP2_LIBRARY}
-        ${NGHTTP2_LIBRARY}
-        ${NGHTTP3_LIBRARY}
-        ${JEMALLOC_LIBRARY}
-        ${BROTLI_LIBRARIES}
-        ${OPENSSL_LIBRARIES}
-    )
-
-    target_link_libraries(
-        ${CLIENT_APP_NAME}
-        ${CURRENT_LIB_NAME}
-        ${EVENT_LIBRARY}
-        ${XML_LIBRARY}
-        ${ZLIB_LIBRARY}
-        ${PCRE_LIBRARIES}
-        ${NGTCP2_LIBRARY}
-        ${NGHTTP2_LIBRARY}
-        ${NGHTTP3_LIBRARY}
-        ${JEMALLOC_LIBRARY}
-        ${BROTLI_LIBRARIES}
-        ${OPENSSL_LIBRARIES}
-    )
-
-    target_link_libraries(
-        ${SERVER_APP_NAME}
-        ${CURRENT_LIB_NAME}
-        ${EVENT_LIBRARY}
-        ${XML_LIBRARY}
-        ${ZLIB_LIBRARY}
-        ${PCRE_LIBRARIES}
-        ${NGTCP2_LIBRARY}
-        ${NGHTTP2_LIBRARY}
-        ${NGHTTP3_LIBRARY}
-        ${JEMALLOC_LIBRARY}
-        ${BROTLI_LIBRARIES}
-        ${OPENSSL_LIBRARIES}
-    )
-
-    target_link_libraries(
-        ${CLUSTER_APP_NAME}
-        ${CURRENT_LIB_NAME}
-        ${EVENT_LIBRARY}
-        ${XML_LIBRARY}
-        ${ZLIB_LIBRARY}
-        ${PCRE_LIBRARIES}
-        ${NGTCP2_LIBRARY}
-        ${NGHTTP2_LIBRARY}
-        ${NGHTTP3_LIBRARY}
-        ${JEMALLOC_LIBRARY}
-        ${BROTLI_LIBRARIES}
-        ${OPENSSL_LIBRARIES}
-    )
-
-    target_link_libraries(
-        ${WEB_CLIENT_APP_NAME}
-        ${CURRENT_LIB_NAME}
-        ${EVENT_LIBRARY}
-        ${XML_LIBRARY}
-        ${ZLIB_LIBRARY}
-        ${PCRE_LIBRARIES}
-        ${NGTCP2_LIBRARY}
-        ${NGHTTP2_LIBRARY}
-        ${NGHTTP3_LIBRARY}
-        ${JEMALLOC_LIBRARY}
-        ${BROTLI_LIBRARIES}
-        ${OPENSSL_LIBRARIES}
-    )
-
-    target_link_libraries(
-        ${WEB_SERVER_APP_NAME}
-        ${CURRENT_LIB_NAME}
-        ${EVENT_LIBRARY}
-        ${XML_LIBRARY}
-        ${ZLIB_LIBRARY}
-        ${PCRE_LIBRARIES}
-        ${NGTCP2_LIBRARY}
-        ${NGHTTP2_LIBRARY}
-        ${NGHTTP3_LIBRARY}
-        ${JEMALLOC_LIBRARY}
-        ${BROTLI_LIBRARIES}
-        ${OPENSSL_LIBRARIES}
-    )
 endif()
+
+# Если нужно собрать и динамическую библиотеку
+if (CMAKE_SHARED_BUILD_LIB)
+    # Если операционной системой является Windows
+    if(${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
+
+        # Выполняем сборку динамической библиотеки
+        target_link_libraries(
+            ${CURRENT_LIB_NAME_SHARED}
+            PRIVATE
+            ${EVENT_LIBRARY}
+            ${XML_LIBRARY}
+            ${ZLIB_LIBRARY}
+            ${NGTCP2_LIBRARY}
+            ${NGHTTP2_LIBRARY}
+            ${NGHTTP3_LIBRARY}
+            ${JEMALLOC_LIBRARY}
+            ${BROTLI_LIBRARIES}
+            ${OPENSSL_LIBRARIES}
+            ${WINFLAGS}
+            ${AWH_IDN}
+        )
+
+        # Выполняем сборку приложения работы с IP-адресами
+        target_link_libraries(
+            ${IP_APP_NAME}
+            ${CURRENT_LIB_NAME_SHARED}
+            ${WINFLAGS}
+            ${AWH_IDN}
+        )
+
+        # Выполняем сборку приложения WebSocket-клиент
+        target_link_libraries(
+            ${WSC_APP_NAME}
+            ${CURRENT_LIB_NAME_SHARED}
+            ${WINFLAGS}
+            ${AWH_IDN}
+        )
+
+        # Выполняем сборку приложения WebSocket-сервер
+        target_link_libraries(
+            ${WSS_APP_NAME}
+            ${CURRENT_LIB_NAME_SHARED}
+            ${WINFLAGS}
+            ${AWH_IDN}
+        )
+
+        # Выполняем сборку приложения DNS-резолвер
+        target_link_libraries(
+            ${DNS_APP_NAME}
+            ${CURRENT_LIB_NAME_SHARED}
+            ${WINFLAGS}
+            ${AWH_IDN}
+        )
+
+        # Выполняем сборку приложения NTP-клиента
+        target_link_libraries(
+            ${NTP_APP_NAME}
+            ${CURRENT_LIB_NAME_SHARED}
+            ${WINFLAGS}
+            ${AWH_IDN}
+        )
+
+        # Выполняем сборку приложения Socks5-сервера
+        target_link_libraries(
+            ${SOCKS5_APP_NAME}
+            ${CURRENT_LIB_NAME_SHARED}
+            ${WINFLAGS}
+            ${AWH_IDN}
+        )
+
+        # Выполняем сборку приложения Proxy-сервера
+        target_link_libraries(
+            ${PROXY_APP_NAME}
+            ${CURRENT_LIB_NAME_SHARED}
+            ${WINFLAGS}
+            ${AWH_IDN}
+        )
+
+        # Выполняем сборку приложения Ping-клиента
+        target_link_libraries(
+            ${PING_APP_NAME}
+            ${CURRENT_LIB_NAME_SHARED}
+            ${WINFLAGS}
+            ${AWH_IDN}
+        )
+
+        # Выполняем сборку приложения HTTP2-клиента
+        target_link_libraries(
+            ${HTTP2_APP_NAME}
+            ${CURRENT_LIB_NAME_SHARED}
+            ${WINFLAGS}
+            ${AWH_IDN}
+        )
+
+        # Выполняем сборку приложения таймера
+        target_link_libraries(
+            ${TIMER_APP_NAME}
+            ${CURRENT_LIB_NAME_SHARED}
+            ${WINFLAGS}
+            ${AWH_IDN}
+        )
+
+        # Выполняем сборку приложения клиента
+        target_link_libraries(
+            ${CLIENT_APP_NAME}
+            ${CURRENT_LIB_NAME_SHARED}
+            ${WINFLAGS}
+            ${AWH_IDN}
+        )
+
+        # Выполняем сборку приложения сервера
+        target_link_libraries(
+            ${SERVER_APP_NAME}
+            ${CURRENT_LIB_NAME_SHARED}
+            ${WINFLAGS}
+            ${AWH_IDN}
+        )
+
+        # Выполняем сборку приложения HTTP-клиента
+        target_link_libraries(
+            ${WEB_CLIENT_APP_NAME}
+            ${CURRENT_LIB_NAME_SHARED}
+            ${WINFLAGS}
+            ${AWH_IDN}
+        )
+
+        # Выполняем сборку приложения HTTP-сервера
+        target_link_libraries(
+            ${WEB_SERVER_APP_NAME}
+            ${CURRENT_LIB_NAME_SHARED}
+            ${WINFLAGS}
+            ${AWH_IDN}
+        )
+
+    # Сборка примеров с поддержкой модуля AWH_IDN для Linux, FreeBSD, MacOS X
+    elseif(CMAKE_BUILD_IDN)
+
+        # Выполняем сборку динамической библиотеки
+        target_link_libraries(
+            ${CURRENT_LIB_NAME_SHARED}
+            PRIVATE
+            ${EVENT_LIBRARY}
+            ${XML_LIBRARY}
+            ${ZLIB_LIBRARY}
+            ${IDN2_LIBRARY}
+            ${ICONV_LIBRARIES}
+            ${PCRE_LIBRARIES}
+            ${NGTCP2_LIBRARY}
+            ${NGHTTP2_LIBRARY}
+            ${NGHTTP3_LIBRARY}
+            ${JEMALLOC_LIBRARY}
+            ${BROTLI_LIBRARIES}
+            ${OPENSSL_LIBRARIES}
+            ${AWH_IDN}
+        )
+        
+        # Выполняем сборку приложения работы с IP-адресами
+        target_link_libraries(
+            ${IP_APP_NAME}
+            ${CURRENT_LIB_NAME_SHARED}
+            ${AWH_IDN}
+        )
+
+        # Выполняем сборку приложения WebSocket-клиент
+        target_link_libraries(
+            ${WSC_APP_NAME}
+            ${CURRENT_LIB_NAME_SHARED}
+            ${AWH_IDN}
+        )
+
+        # Выполняем сборку приложения WebSocket-сервер
+        target_link_libraries(
+            ${WSS_APP_NAME}
+            ${CURRENT_LIB_NAME_SHARED}
+            ${AWH_IDN}
+        )
+
+        # Выполняем сборку приложения DNS-резолвер
+        target_link_libraries(
+            ${DNS_APP_NAME}
+            ${CURRENT_LIB_NAME_SHARED}
+            ${AWH_IDN}
+        )
+
+        # Выполняем сборку приложения NTP-клиента
+        target_link_libraries(
+            ${NTP_APP_NAME}
+            ${CURRENT_LIB_NAME_SHARED}
+            ${AWH_IDN}
+        )
+
+        # Выполняем сборку приложения Socks5-сервера
+        target_link_libraries(
+            ${SOCKS5_APP_NAME}
+            ${CURRENT_LIB_NAME_SHARED}
+            ${AWH_IDN}
+        )
+
+        # Выполняем сборку приложения Proxy-сервера
+        target_link_libraries(
+            ${PROXY_APP_NAME}
+            ${CURRENT_LIB_NAME_SHARED}
+            ${AWH_IDN}
+        )
+
+        # Выполняем сборку приложения Ping-клиента
+        target_link_libraries(
+            ${PING_APP_NAME}
+            ${CURRENT_LIB_NAME_SHARED}
+            ${AWH_IDN}
+        )
+
+        # Выполняем сборку приложения HTTP2-клиента
+        target_link_libraries(
+            ${HTTP2_APP_NAME}
+            ${CURRENT_LIB_NAME_SHARED}
+            ${AWH_IDN}
+        )
+
+        # Выполняем сборку приложения таймера
+        target_link_libraries(
+            ${TIMER_APP_NAME}
+            ${CURRENT_LIB_NAME_SHARED}
+            ${AWH_IDN}
+        )
+
+        # Выполняем сборку приложения клиента
+        target_link_libraries(
+            ${CLIENT_APP_NAME}
+            ${CURRENT_LIB_NAME_SHARED}
+            ${AWH_IDN}
+        )
+
+        # Выполняем сборку приложения сервера
+        target_link_libraries(
+            ${SERVER_APP_NAME}
+            ${CURRENT_LIB_NAME_SHARED}
+            ${AWH_IDN}
+        )
+
+        # Выполняем сборку приложения кластера
+        target_link_libraries(
+            ${CLUSTER_APP_NAME}
+            ${CURRENT_LIB_NAME_SHARED}
+            ${AWH_IDN}
+        )
+
+        # Выполняем сборку приложения HTTP-клиента
+        target_link_libraries(
+            ${WEB_CLIENT_APP_NAME}
+            ${CURRENT_LIB_NAME_SHARED}
+            ${AWH_IDN}
+        )
+
+        # Выполняем сборку приложения HTTP-сервера
+        target_link_libraries(
+            ${WEB_SERVER_APP_NAME}
+            ${CURRENT_LIB_NAME_SHARED}
+            ${AWH_IDN}
+        )
+
+    # Если операционной системой является Linux, FreeBSD, MacOS X
+    else()
+
+        # Выполняем сборку динамической библиотеки
+        target_link_libraries(
+            ${CURRENT_LIB_NAME_SHARED}
+            PRIVATE
+            ${EVENT_LIBRARY}
+            ${XML_LIBRARY}
+            ${ZLIB_LIBRARY}
+            ${PCRE_LIBRARIES}
+            ${NGTCP2_LIBRARY}
+            ${NGHTTP2_LIBRARY}
+            ${NGHTTP3_LIBRARY}
+            ${JEMALLOC_LIBRARY}
+            ${BROTLI_LIBRARIES}
+            ${OPENSSL_LIBRARIES}
+        )
+        
+        # Выполняем сборку приложения работы с IP-адресами
+        target_link_libraries(
+            ${IP_APP_NAME}
+            ${CURRENT_LIB_NAME_SHARED}
+        )
+
+        # Выполняем сборку приложения WebSocket-клиент
+        target_link_libraries(
+            ${WSC_APP_NAME}
+            ${CURRENT_LIB_NAME_SHARED}
+        )
+
+        # Выполняем сборку приложения WebSocket-сервер
+        target_link_libraries(
+            ${WSS_APP_NAME}
+            ${CURRENT_LIB_NAME_SHARED}
+        )
+
+        # Выполняем сборку приложения DNS-резолвер
+        target_link_libraries(
+            ${DNS_APP_NAME}
+            ${CURRENT_LIB_NAME_SHARED}
+        )
+
+        # Выполняем сборку приложения NTP-клиента
+        target_link_libraries(
+            ${NTP_APP_NAME}
+            ${CURRENT_LIB_NAME_SHARED}
+        )
+
+        # Выполняем сборку приложения Socks5-сервера
+        target_link_libraries(
+            ${SOCKS5_APP_NAME}
+            ${CURRENT_LIB_NAME_SHARED}
+        )
+
+        # Выполняем сборку приложения Proxy-сервера
+        target_link_libraries(
+            ${PROXY_APP_NAME}
+            ${CURRENT_LIB_NAME_SHARED}
+        )
+
+        # Выполняем сборку приложения Ping-клиента
+        target_link_libraries(
+            ${PING_APP_NAME}
+            ${CURRENT_LIB_NAME_SHARED}
+        )
+
+        # Выполняем сборку приложения HTTP2-клиента
+        target_link_libraries(
+            ${HTTP2_APP_NAME}
+            ${CURRENT_LIB_NAME_SHARED}
+        )
+
+        # Выполняем сборку приложения таймера
+        target_link_libraries(
+            ${TIMER_APP_NAME}
+            ${CURRENT_LIB_NAME_SHARED}
+        )
+
+        # Выполняем сборку приложения клиента
+        target_link_libraries(
+            ${CLIENT_APP_NAME}
+            ${CURRENT_LIB_NAME_SHARED}
+        )
+
+        # Выполняем сборку приложения сервера
+        target_link_libraries(
+            ${SERVER_APP_NAME}
+            ${CURRENT_LIB_NAME_SHARED}
+        )
+
+        # Выполняем сборку приложения кластера
+        target_link_libraries(
+            ${CLUSTER_APP_NAME}
+            ${CURRENT_LIB_NAME_SHARED}
+        )
+
+        # Выполняем сборку приложения HTTP-клиента
+        target_link_libraries(
+            ${WEB_CLIENT_APP_NAME}
+            ${CURRENT_LIB_NAME_SHARED}
+        )
+
+        # Выполняем сборку приложения HTTP-сервера
+        target_link_libraries(
+            ${WEB_SERVER_APP_NAME}
+            ${CURRENT_LIB_NAME_SHARED}
+        )
+
+    endif()
+# Если нужно собрать и статическую библиотеку
+else(CMAKE_SHARED_BUILD_LIB)
+    # Если операционной системой является Windows
+    if(${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
+
+        # Выполняем сборку приложения работы с IP-адресами
+        target_link_libraries(
+            ${IP_APP_NAME}
+            ${CURRENT_LIB_NAME_STATIC}
+            ${EVENT_LIBRARY}
+            ${XML_LIBRARY}
+            ${ZLIB_LIBRARY}
+            ${NGTCP2_LIBRARY}
+            ${NGHTTP2_LIBRARY}
+            ${NGHTTP3_LIBRARY}
+            ${JEMALLOC_LIBRARY}
+            ${BROTLI_LIBRARIES}
+            ${OPENSSL_LIBRARIES}
+            ${WINFLAGS}
+            ${AWH_IDN}
+        )
+
+        # Выполняем сборку приложения WebSocket-клиент
+        target_link_libraries(
+            ${WSC_APP_NAME}
+            ${CURRENT_LIB_NAME_STATIC}
+            ${EVENT_LIBRARY}
+            ${XML_LIBRARY}
+            ${ZLIB_LIBRARY}
+            ${NGTCP2_LIBRARY}
+            ${NGHTTP2_LIBRARY}
+            ${NGHTTP3_LIBRARY}
+            ${JEMALLOC_LIBRARY}
+            ${BROTLI_LIBRARIES}
+            ${OPENSSL_LIBRARIES}
+            ${WINFLAGS}
+            ${AWH_IDN}
+        )
+
+        # Выполняем сборку приложения WebSocket-сервер
+        target_link_libraries(
+            ${WSS_APP_NAME}
+            ${CURRENT_LIB_NAME_STATIC}
+            ${EVENT_LIBRARY}
+            ${XML_LIBRARY}
+            ${ZLIB_LIBRARY}
+            ${NGTCP2_LIBRARY}
+            ${NGHTTP2_LIBRARY}
+            ${NGHTTP3_LIBRARY}
+            ${JEMALLOC_LIBRARY}
+            ${BROTLI_LIBRARIES}
+            ${OPENSSL_LIBRARIES}
+            ${WINFLAGS}
+            ${AWH_IDN}
+        )
+
+        # Выполняем сборку приложения DNS-резолвер
+        target_link_libraries(
+            ${DNS_APP_NAME}
+            ${CURRENT_LIB_NAME_STATIC}
+            ${EVENT_LIBRARY}
+            ${XML_LIBRARY}
+            ${ZLIB_LIBRARY}
+            ${NGTCP2_LIBRARY}
+            ${NGHTTP2_LIBRARY}
+            ${NGHTTP3_LIBRARY}
+            ${JEMALLOC_LIBRARY}
+            ${BROTLI_LIBRARIES}
+            ${OPENSSL_LIBRARIES}
+            ${WINFLAGS}
+            ${AWH_IDN}
+        )
+
+        # Выполняем сборку приложения NTP-клиента
+        target_link_libraries(
+            ${NTP_APP_NAME}
+            ${CURRENT_LIB_NAME_STATIC}
+            ${EVENT_LIBRARY}
+            ${XML_LIBRARY}
+            ${ZLIB_LIBRARY}
+            ${NGTCP2_LIBRARY}
+            ${NGHTTP2_LIBRARY}
+            ${NGHTTP3_LIBRARY}
+            ${JEMALLOC_LIBRARY}
+            ${BROTLI_LIBRARIES}
+            ${OPENSSL_LIBRARIES}
+            ${WINFLAGS}
+            ${AWH_IDN}
+        )
+
+        # Выполняем сборку приложения Socks5-сервера
+        target_link_libraries(
+            ${SOCKS5_APP_NAME}
+            ${CURRENT_LIB_NAME_STATIC}
+            ${EVENT_LIBRARY}
+            ${XML_LIBRARY}
+            ${ZLIB_LIBRARY}
+            ${NGTCP2_LIBRARY}
+            ${NGHTTP2_LIBRARY}
+            ${NGHTTP3_LIBRARY}
+            ${JEMALLOC_LIBRARY}
+            ${BROTLI_LIBRARIES}
+            ${OPENSSL_LIBRARIES}
+            ${WINFLAGS}
+            ${AWH_IDN}
+        )
+
+        # Выполняем сборку приложения Proxy-сервера
+        target_link_libraries(
+            ${PROXY_APP_NAME}
+            ${CURRENT_LIB_NAME_STATIC}
+            ${EVENT_LIBRARY}
+            ${XML_LIBRARY}
+            ${ZLIB_LIBRARY}
+            ${NGTCP2_LIBRARY}
+            ${NGHTTP2_LIBRARY}
+            ${NGHTTP3_LIBRARY}
+            ${JEMALLOC_LIBRARY}
+            ${BROTLI_LIBRARIES}
+            ${OPENSSL_LIBRARIES}
+            ${WINFLAGS}
+            ${AWH_IDN}
+        )
+
+        # Выполняем сборку приложения Ping-клиента
+        target_link_libraries(
+            ${PING_APP_NAME}
+            ${CURRENT_LIB_NAME_STATIC}
+            ${EVENT_LIBRARY}
+            ${XML_LIBRARY}
+            ${ZLIB_LIBRARY}
+            ${NGTCP2_LIBRARY}
+            ${NGHTTP2_LIBRARY}
+            ${NGHTTP3_LIBRARY}
+            ${JEMALLOC_LIBRARY}
+            ${BROTLI_LIBRARIES}
+            ${OPENSSL_LIBRARIES}
+            ${WINFLAGS}
+            ${AWH_IDN}
+        )
+
+        # Выполняем сборку приложения HTTP2-клиента
+        target_link_libraries(
+            ${HTTP2_APP_NAME}
+            ${CURRENT_LIB_NAME_STATIC}
+            ${EVENT_LIBRARY}
+            ${XML_LIBRARY}
+            ${ZLIB_LIBRARY}
+            ${NGTCP2_LIBRARY}
+            ${NGHTTP2_LIBRARY}
+            ${NGHTTP3_LIBRARY}
+            ${JEMALLOC_LIBRARY}
+            ${BROTLI_LIBRARIES}
+            ${OPENSSL_LIBRARIES}
+            ${WINFLAGS}
+            ${AWH_IDN}
+        )
+
+        # Выполняем сборку приложения таймера
+        target_link_libraries(
+            ${TIMER_APP_NAME}
+            ${CURRENT_LIB_NAME_STATIC}
+            ${EVENT_LIBRARY}
+            ${XML_LIBRARY}
+            ${ZLIB_LIBRARY}
+            ${NGTCP2_LIBRARY}
+            ${NGHTTP2_LIBRARY}
+            ${NGHTTP3_LIBRARY}
+            ${JEMALLOC_LIBRARY}
+            ${BROTLI_LIBRARIES}
+            ${OPENSSL_LIBRARIES}
+            ${WINFLAGS}
+            ${AWH_IDN}
+        )
+
+        # Выполняем сборку приложения клиента
+        target_link_libraries(
+            ${CLIENT_APP_NAME}
+            ${CURRENT_LIB_NAME_STATIC}
+            ${EVENT_LIBRARY}
+            ${XML_LIBRARY}
+            ${ZLIB_LIBRARY}
+            ${NGTCP2_LIBRARY}
+            ${NGHTTP2_LIBRARY}
+            ${NGHTTP3_LIBRARY}
+            ${JEMALLOC_LIBRARY}
+            ${BROTLI_LIBRARIES}
+            ${OPENSSL_LIBRARIES}
+            ${WINFLAGS}
+            ${AWH_IDN}
+        )
+
+        # Выполняем сборку приложения сервера
+        target_link_libraries(
+            ${SERVER_APP_NAME}
+            ${CURRENT_LIB_NAME_STATIC}
+            ${EVENT_LIBRARY}
+            ${XML_LIBRARY}
+            ${ZLIB_LIBRARY}
+            ${NGTCP2_LIBRARY}
+            ${NGHTTP2_LIBRARY}
+            ${NGHTTP3_LIBRARY}
+            ${JEMALLOC_LIBRARY}
+            ${BROTLI_LIBRARIES}
+            ${OPENSSL_LIBRARIES}
+            ${WINFLAGS}
+            ${AWH_IDN}
+        )
+
+        # Выполняем сборку приложения HTTP-клиента
+        target_link_libraries(
+            ${WEB_CLIENT_APP_NAME}
+            ${CURRENT_LIB_NAME_STATIC}
+            ${EVENT_LIBRARY}
+            ${XML_LIBRARY}
+            ${ZLIB_LIBRARY}
+            ${NGTCP2_LIBRARY}
+            ${NGHTTP2_LIBRARY}
+            ${NGHTTP3_LIBRARY}
+            ${JEMALLOC_LIBRARY}
+            ${BROTLI_LIBRARIES}
+            ${OPENSSL_LIBRARIES}
+            ${WINFLAGS}
+            ${AWH_IDN}
+        )
+
+        # Выполняем сборку приложения HTTP-сервера
+        target_link_libraries(
+            ${WEB_SERVER_APP_NAME}
+            ${CURRENT_LIB_NAME_STATIC}
+            ${EVENT_LIBRARY}
+            ${XML_LIBRARY}
+            ${ZLIB_LIBRARY}
+            ${NGTCP2_LIBRARY}
+            ${NGHTTP2_LIBRARY}
+            ${NGHTTP3_LIBRARY}
+            ${JEMALLOC_LIBRARY}
+            ${BROTLI_LIBRARIES}
+            ${OPENSSL_LIBRARIES}
+            ${WINFLAGS}
+            ${AWH_IDN}
+        )
+
+    # Сборка примеров с поддержкой модуля AWH_IDN для Linux, FreeBSD, MacOS X
+    elseif(CMAKE_BUILD_IDN)
+
+        # Выполняем сборку приложения работы с IP-адресами
+        target_link_libraries(
+            ${IP_APP_NAME}
+            ${CURRENT_LIB_NAME_STATIC}
+            ${EVENT_LIBRARY}
+            ${XML_LIBRARY}
+            ${ZLIB_LIBRARY}
+            ${IDN2_LIBRARY}
+            ${ICONV_LIBRARIES}
+            ${PCRE_LIBRARIES}
+            ${NGTCP2_LIBRARY}
+            ${NGHTTP2_LIBRARY}
+            ${NGHTTP3_LIBRARY}
+            ${JEMALLOC_LIBRARY}
+            ${BROTLI_LIBRARIES}
+            ${OPENSSL_LIBRARIES}
+            ${AWH_IDN}
+        )
+
+        # Выполняем сборку приложения WebSocket-клиент
+        target_link_libraries(
+            ${WSC_APP_NAME}
+            ${CURRENT_LIB_NAME_STATIC}
+            ${EVENT_LIBRARY}
+            ${XML_LIBRARY}
+            ${ZLIB_LIBRARY}
+            ${IDN2_LIBRARY}
+            ${ICONV_LIBRARIES}
+            ${PCRE_LIBRARIES}
+            ${NGTCP2_LIBRARY}
+            ${NGHTTP2_LIBRARY}
+            ${NGHTTP3_LIBRARY}
+            ${JEMALLOC_LIBRARY}
+            ${BROTLI_LIBRARIES}
+            ${OPENSSL_LIBRARIES}
+            ${AWH_IDN}
+        )
+
+        # Выполняем сборку приложения WebSocket-сервер
+        target_link_libraries(
+            ${WSS_APP_NAME}
+            ${CURRENT_LIB_NAME_STATIC}
+            ${EVENT_LIBRARY}
+            ${XML_LIBRARY}
+            ${ZLIB_LIBRARY}
+            ${IDN2_LIBRARY}
+            ${ICONV_LIBRARIES}
+            ${PCRE_LIBRARIES}
+            ${NGTCP2_LIBRARY}
+            ${NGHTTP2_LIBRARY}
+            ${NGHTTP3_LIBRARY}
+            ${JEMALLOC_LIBRARY}
+            ${BROTLI_LIBRARIES}
+            ${OPENSSL_LIBRARIES}
+            ${AWH_IDN}
+        )
+
+        # Выполняем сборку приложения DNS-резолвер
+        target_link_libraries(
+            ${DNS_APP_NAME}
+            ${CURRENT_LIB_NAME_STATIC}
+            ${EVENT_LIBRARY}
+            ${XML_LIBRARY}
+            ${ZLIB_LIBRARY}
+            ${IDN2_LIBRARY}
+            ${ICONV_LIBRARIES}
+            ${PCRE_LIBRARIES}
+            ${NGTCP2_LIBRARY}
+            ${NGHTTP2_LIBRARY}
+            ${NGHTTP3_LIBRARY}
+            ${JEMALLOC_LIBRARY}
+            ${BROTLI_LIBRARIES}
+            ${OPENSSL_LIBRARIES}
+            ${AWH_IDN}
+        )
+
+        # Выполняем сборку приложения NTP-клиента
+        target_link_libraries(
+            ${NTP_APP_NAME}
+            ${CURRENT_LIB_NAME_STATIC}
+            ${EVENT_LIBRARY}
+            ${XML_LIBRARY}
+            ${ZLIB_LIBRARY}
+            ${IDN2_LIBRARY}
+            ${ICONV_LIBRARIES}
+            ${PCRE_LIBRARIES}
+            ${NGTCP2_LIBRARY}
+            ${NGHTTP2_LIBRARY}
+            ${NGHTTP3_LIBRARY}
+            ${JEMALLOC_LIBRARY}
+            ${BROTLI_LIBRARIES}
+            ${OPENSSL_LIBRARIES}
+            ${AWH_IDN}
+        )
+
+        # Выполняем сборку приложения Socks5-сервера
+        target_link_libraries(
+            ${SOCKS5_APP_NAME}
+            ${CURRENT_LIB_NAME_STATIC}
+            ${EVENT_LIBRARY}
+            ${XML_LIBRARY}
+            ${ZLIB_LIBRARY}
+            ${IDN2_LIBRARY}
+            ${ICONV_LIBRARIES}
+            ${PCRE_LIBRARIES}
+            ${NGTCP2_LIBRARY}
+            ${NGHTTP2_LIBRARY}
+            ${NGHTTP3_LIBRARY}
+            ${JEMALLOC_LIBRARY}
+            ${BROTLI_LIBRARIES}
+            ${OPENSSL_LIBRARIES}
+            ${AWH_IDN}
+        )
+
+        # Выполняем сборку приложения Proxy-сервера
+        target_link_libraries(
+            ${PROXY_APP_NAME}
+            ${CURRENT_LIB_NAME_STATIC}
+            ${EVENT_LIBRARY}
+            ${XML_LIBRARY}
+            ${ZLIB_LIBRARY}
+            ${IDN2_LIBRARY}
+            ${ICONV_LIBRARIES}
+            ${PCRE_LIBRARIES}
+            ${NGTCP2_LIBRARY}
+            ${NGHTTP2_LIBRARY}
+            ${NGHTTP3_LIBRARY}
+            ${JEMALLOC_LIBRARY}
+            ${BROTLI_LIBRARIES}
+            ${OPENSSL_LIBRARIES}
+            ${AWH_IDN}
+        )
+
+        # Выполняем сборку приложения Ping-клиента
+        target_link_libraries(
+            ${PING_APP_NAME}
+            ${CURRENT_LIB_NAME_STATIC}
+            ${EVENT_LIBRARY}
+            ${XML_LIBRARY}
+            ${ZLIB_LIBRARY}
+            ${IDN2_LIBRARY}
+            ${ICONV_LIBRARIES}
+            ${PCRE_LIBRARIES}
+            ${NGTCP2_LIBRARY}
+            ${NGHTTP2_LIBRARY}
+            ${NGHTTP3_LIBRARY}
+            ${JEMALLOC_LIBRARY}
+            ${BROTLI_LIBRARIES}
+            ${OPENSSL_LIBRARIES}
+            ${AWH_IDN}
+        )
+
+        # Выполняем сборку приложения HTTP2-клиента
+        target_link_libraries(
+            ${HTTP2_APP_NAME}
+            ${CURRENT_LIB_NAME_STATIC}
+            ${EVENT_LIBRARY}
+            ${XML_LIBRARY}
+            ${ZLIB_LIBRARY}
+            ${IDN2_LIBRARY}
+            ${ICONV_LIBRARIES}
+            ${PCRE_LIBRARIES}
+            ${NGTCP2_LIBRARY}
+            ${NGHTTP2_LIBRARY}
+            ${NGHTTP3_LIBRARY}
+            ${JEMALLOC_LIBRARY}
+            ${BROTLI_LIBRARIES}
+            ${OPENSSL_LIBRARIES}
+            ${AWH_IDN}
+        )
+
+        # Выполняем сборку приложения таймера
+        target_link_libraries(
+            ${TIMER_APP_NAME}
+            ${CURRENT_LIB_NAME_STATIC}
+            ${EVENT_LIBRARY}
+            ${XML_LIBRARY}
+            ${ZLIB_LIBRARY}
+            ${IDN2_LIBRARY}
+            ${ICONV_LIBRARIES}
+            ${PCRE_LIBRARIES}
+            ${NGTCP2_LIBRARY}
+            ${NGHTTP2_LIBRARY}
+            ${NGHTTP3_LIBRARY}
+            ${JEMALLOC_LIBRARY}
+            ${BROTLI_LIBRARIES}
+            ${OPENSSL_LIBRARIES}
+            ${AWH_IDN}
+        )
+
+        # Выполняем сборку приложения клиента
+        target_link_libraries(
+            ${CLIENT_APP_NAME}
+            ${CURRENT_LIB_NAME_STATIC}
+            ${EVENT_LIBRARY}
+            ${XML_LIBRARY}
+            ${ZLIB_LIBRARY}
+            ${IDN2_LIBRARY}
+            ${ICONV_LIBRARIES}
+            ${PCRE_LIBRARIES}
+            ${NGTCP2_LIBRARY}
+            ${NGHTTP2_LIBRARY}
+            ${NGHTTP3_LIBRARY}
+            ${JEMALLOC_LIBRARY}
+            ${BROTLI_LIBRARIES}
+            ${OPENSSL_LIBRARIES}
+            ${AWH_IDN}
+        )
+
+        # Выполняем сборку приложения сервера
+        target_link_libraries(
+            ${SERVER_APP_NAME}
+            ${CURRENT_LIB_NAME_STATIC}
+            ${EVENT_LIBRARY}
+            ${XML_LIBRARY}
+            ${ZLIB_LIBRARY}
+            ${IDN2_LIBRARY}
+            ${ICONV_LIBRARIES}
+            ${PCRE_LIBRARIES}
+            ${NGTCP2_LIBRARY}
+            ${NGHTTP2_LIBRARY}
+            ${NGHTTP3_LIBRARY}
+            ${JEMALLOC_LIBRARY}
+            ${BROTLI_LIBRARIES}
+            ${OPENSSL_LIBRARIES}
+            ${AWH_IDN}
+        )
+
+        # Выполняем сборку приложения кластера
+        target_link_libraries(
+            ${CLUSTER_APP_NAME}
+            ${CURRENT_LIB_NAME_STATIC}
+            ${EVENT_LIBRARY}
+            ${XML_LIBRARY}
+            ${ZLIB_LIBRARY}
+            ${IDN2_LIBRARY}
+            ${ICONV_LIBRARIES}
+            ${PCRE_LIBRARIES}
+            ${NGTCP2_LIBRARY}
+            ${NGHTTP2_LIBRARY}
+            ${NGHTTP3_LIBRARY}
+            ${JEMALLOC_LIBRARY}
+            ${BROTLI_LIBRARIES}
+            ${OPENSSL_LIBRARIES}
+            ${AWH_IDN}
+        )
+
+        # Выполняем сборку приложения HTTP-клиента
+        target_link_libraries(
+            ${WEB_CLIENT_APP_NAME}
+            ${CURRENT_LIB_NAME_STATIC}
+            ${EVENT_LIBRARY}
+            ${XML_LIBRARY}
+            ${ZLIB_LIBRARY}
+            ${IDN2_LIBRARY}
+            ${ICONV_LIBRARIES}
+            ${PCRE_LIBRARIES}
+            ${NGTCP2_LIBRARY}
+            ${NGHTTP2_LIBRARY}
+            ${NGHTTP3_LIBRARY}
+            ${JEMALLOC_LIBRARY}
+            ${BROTLI_LIBRARIES}
+            ${OPENSSL_LIBRARIES}
+            ${AWH_IDN}
+        )
+
+        # Выполняем сборку приложения HTTP-сервера
+        target_link_libraries(
+            ${WEB_SERVER_APP_NAME}
+            ${CURRENT_LIB_NAME_STATIC}
+            ${EVENT_LIBRARY}
+            ${XML_LIBRARY}
+            ${ZLIB_LIBRARY}
+            ${IDN2_LIBRARY}
+            ${ICONV_LIBRARIES}
+            ${PCRE_LIBRARIES}
+            ${NGTCP2_LIBRARY}
+            ${NGHTTP2_LIBRARY}
+            ${NGHTTP3_LIBRARY}
+            ${JEMALLOC_LIBRARY}
+            ${BROTLI_LIBRARIES}
+            ${OPENSSL_LIBRARIES}
+            ${AWH_IDN}
+        )
+
+    # Если операционной системой является Linux, FreeBSD, MacOS X
+    else()
+
+        # Выполняем сборку приложения работы с IP-адресами
+        target_link_libraries(
+            ${IP_APP_NAME}
+            ${CURRENT_LIB_NAME_STATIC}
+            ${EVENT_LIBRARY}
+            ${XML_LIBRARY}
+            ${ZLIB_LIBRARY}
+            ${PCRE_LIBRARIES}
+            ${NGTCP2_LIBRARY}
+            ${NGHTTP2_LIBRARY}
+            ${NGHTTP3_LIBRARY}
+            ${JEMALLOC_LIBRARY}
+            ${BROTLI_LIBRARIES}
+            ${OPENSSL_LIBRARIES}
+        )
+
+        # Выполняем сборку приложения WebSocket-клиент
+        target_link_libraries(
+            ${WSC_APP_NAME}
+            ${CURRENT_LIB_NAME_STATIC}
+            ${EVENT_LIBRARY}
+            ${XML_LIBRARY}
+            ${ZLIB_LIBRARY}
+            ${PCRE_LIBRARIES}
+            ${NGTCP2_LIBRARY}
+            ${NGHTTP2_LIBRARY}
+            ${NGHTTP3_LIBRARY}
+            ${JEMALLOC_LIBRARY}
+            ${BROTLI_LIBRARIES}
+            ${OPENSSL_LIBRARIES}
+        )
+
+        # Выполняем сборку приложения WebSocket-сервер
+        target_link_libraries(
+            ${WSS_APP_NAME}
+            ${CURRENT_LIB_NAME_STATIC}
+            ${EVENT_LIBRARY}
+            ${XML_LIBRARY}
+            ${ZLIB_LIBRARY}
+            ${PCRE_LIBRARIES}
+            ${NGTCP2_LIBRARY}
+            ${NGHTTP2_LIBRARY}
+            ${NGHTTP3_LIBRARY}
+            ${JEMALLOC_LIBRARY}
+            ${BROTLI_LIBRARIES}
+            ${OPENSSL_LIBRARIES}
+        )
+
+        # Выполняем сборку приложения DNS-резолвер
+        target_link_libraries(
+            ${DNS_APP_NAME}
+            ${CURRENT_LIB_NAME_STATIC}
+            ${EVENT_LIBRARY}
+            ${XML_LIBRARY}
+            ${ZLIB_LIBRARY}
+            ${PCRE_LIBRARIES}
+            ${NGTCP2_LIBRARY}
+            ${NGHTTP2_LIBRARY}
+            ${NGHTTP3_LIBRARY}
+            ${JEMALLOC_LIBRARY}
+            ${BROTLI_LIBRARIES}
+            ${OPENSSL_LIBRARIES}
+        )
+
+        # Выполняем сборку приложения NTP-клиента
+        target_link_libraries(
+            ${NTP_APP_NAME}
+            ${CURRENT_LIB_NAME_STATIC}
+            ${EVENT_LIBRARY}
+            ${XML_LIBRARY}
+            ${ZLIB_LIBRARY}
+            ${PCRE_LIBRARIES}
+            ${NGTCP2_LIBRARY}
+            ${NGHTTP2_LIBRARY}
+            ${NGHTTP3_LIBRARY}
+            ${JEMALLOC_LIBRARY}
+            ${BROTLI_LIBRARIES}
+            ${OPENSSL_LIBRARIES}
+        )
+
+        # Выполняем сборку приложения Socks5-сервера
+        target_link_libraries(
+            ${SOCKS5_APP_NAME}
+            ${CURRENT_LIB_NAME_STATIC}
+            ${EVENT_LIBRARY}
+            ${XML_LIBRARY}
+            ${ZLIB_LIBRARY}
+            ${PCRE_LIBRARIES}
+            ${NGTCP2_LIBRARY}
+            ${NGHTTP2_LIBRARY}
+            ${NGHTTP3_LIBRARY}
+            ${JEMALLOC_LIBRARY}
+            ${BROTLI_LIBRARIES}
+            ${OPENSSL_LIBRARIES}
+        )
+
+        # Выполняем сборку приложения Proxy-сервера
+        target_link_libraries(
+            ${PROXY_APP_NAME}
+            ${CURRENT_LIB_NAME_STATIC}
+            ${EVENT_LIBRARY}
+            ${XML_LIBRARY}
+            ${ZLIB_LIBRARY}
+            ${PCRE_LIBRARIES}
+            ${NGTCP2_LIBRARY}
+            ${NGHTTP2_LIBRARY}
+            ${NGHTTP3_LIBRARY}
+            ${JEMALLOC_LIBRARY}
+            ${BROTLI_LIBRARIES}
+            ${OPENSSL_LIBRARIES}
+        )
+
+        # Выполняем сборку приложения Ping-клиента
+        target_link_libraries(
+            ${PING_APP_NAME}
+            ${CURRENT_LIB_NAME_STATIC}
+            ${EVENT_LIBRARY}
+            ${XML_LIBRARY}
+            ${ZLIB_LIBRARY}
+            ${PCRE_LIBRARIES}
+            ${NGTCP2_LIBRARY}
+            ${NGHTTP2_LIBRARY}
+            ${NGHTTP3_LIBRARY}
+            ${JEMALLOC_LIBRARY}
+            ${BROTLI_LIBRARIES}
+            ${OPENSSL_LIBRARIES}
+        )
+
+        # Выполняем сборку приложения HTTP2-клиента
+        target_link_libraries(
+            ${HTTP2_APP_NAME}
+            ${CURRENT_LIB_NAME_STATIC}
+            ${EVENT_LIBRARY}
+            ${XML_LIBRARY}
+            ${ZLIB_LIBRARY}
+            ${PCRE_LIBRARIES}
+            ${NGTCP2_LIBRARY}
+            ${NGHTTP2_LIBRARY}
+            ${NGHTTP3_LIBRARY}
+            ${JEMALLOC_LIBRARY}
+            ${BROTLI_LIBRARIES}
+            ${OPENSSL_LIBRARIES}
+        )
+
+        # Выполняем сборку приложения таймера
+        target_link_libraries(
+            ${TIMER_APP_NAME}
+            ${CURRENT_LIB_NAME_STATIC}
+            ${EVENT_LIBRARY}
+            ${XML_LIBRARY}
+            ${ZLIB_LIBRARY}
+            ${PCRE_LIBRARIES}
+            ${NGTCP2_LIBRARY}
+            ${NGHTTP2_LIBRARY}
+            ${NGHTTP3_LIBRARY}
+            ${JEMALLOC_LIBRARY}
+            ${BROTLI_LIBRARIES}
+            ${OPENSSL_LIBRARIES}
+        )
+
+        # Выполняем сборку приложения клиента
+        target_link_libraries(
+            ${CLIENT_APP_NAME}
+            ${CURRENT_LIB_NAME_STATIC}
+            ${EVENT_LIBRARY}
+            ${XML_LIBRARY}
+            ${ZLIB_LIBRARY}
+            ${PCRE_LIBRARIES}
+            ${NGTCP2_LIBRARY}
+            ${NGHTTP2_LIBRARY}
+            ${NGHTTP3_LIBRARY}
+            ${JEMALLOC_LIBRARY}
+            ${BROTLI_LIBRARIES}
+            ${OPENSSL_LIBRARIES}
+        )
+
+        # Выполняем сборку приложения сервера
+        target_link_libraries(
+            ${SERVER_APP_NAME}
+            ${CURRENT_LIB_NAME_STATIC}
+            ${EVENT_LIBRARY}
+            ${XML_LIBRARY}
+            ${ZLIB_LIBRARY}
+            ${PCRE_LIBRARIES}
+            ${NGTCP2_LIBRARY}
+            ${NGHTTP2_LIBRARY}
+            ${NGHTTP3_LIBRARY}
+            ${JEMALLOC_LIBRARY}
+            ${BROTLI_LIBRARIES}
+            ${OPENSSL_LIBRARIES}
+        )
+
+        # Выполняем сборку приложения кластера
+        target_link_libraries(
+            ${CLUSTER_APP_NAME}
+            ${CURRENT_LIB_NAME_STATIC}
+            ${EVENT_LIBRARY}
+            ${XML_LIBRARY}
+            ${ZLIB_LIBRARY}
+            ${PCRE_LIBRARIES}
+            ${NGTCP2_LIBRARY}
+            ${NGHTTP2_LIBRARY}
+            ${NGHTTP3_LIBRARY}
+            ${JEMALLOC_LIBRARY}
+            ${BROTLI_LIBRARIES}
+            ${OPENSSL_LIBRARIES}
+        )
+
+        # Выполняем сборку приложения HTTP-клиента
+        target_link_libraries(
+            ${WEB_CLIENT_APP_NAME}
+            ${CURRENT_LIB_NAME_STATIC}
+            ${EVENT_LIBRARY}
+            ${XML_LIBRARY}
+            ${ZLIB_LIBRARY}
+            ${PCRE_LIBRARIES}
+            ${NGTCP2_LIBRARY}
+            ${NGHTTP2_LIBRARY}
+            ${NGHTTP3_LIBRARY}
+            ${JEMALLOC_LIBRARY}
+            ${BROTLI_LIBRARIES}
+            ${OPENSSL_LIBRARIES}
+        )
+
+        # Выполняем сборку приложения HTTP-сервера
+        target_link_libraries(
+            ${WEB_SERVER_APP_NAME}
+            ${CURRENT_LIB_NAME_STATIC}
+            ${EVENT_LIBRARY}
+            ${XML_LIBRARY}
+            ${ZLIB_LIBRARY}
+            ${PCRE_LIBRARIES}
+            ${NGTCP2_LIBRARY}
+            ${NGHTTP2_LIBRARY}
+            ${NGHTTP3_LIBRARY}
+            ${JEMALLOC_LIBRARY}
+            ${BROTLI_LIBRARIES}
+            ${OPENSSL_LIBRARIES}
+        )
+
+    endif()
+endif(CMAKE_SHARED_BUILD_LIB)
 
 # Активация формирования дампа ядра в реже отладки под MacOS X
 if(CMAKE_BUILD_TYPE MATCHES Debug)
@@ -1297,7 +1748,7 @@ if(CMAKE_BUILD_TYPE MATCHES Debug)
         pvs_studio_add_target(TARGET ${WEB_CLIENT_APP_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${WEB_CLIENT_APP_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
         pvs_studio_add_target(TARGET ${WEB_SERVER_APP_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${WEB_SERVER_APP_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
         pvs_studio_add_target(TARGET ${CLUSTER_APP_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${CLUSTER_APP_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
-    endif()
+    endif(CMAKE_ENABLED_PVS)
 endif()
 
 # Устанавливаем адрес установки, запрет установки в /usr/local
@@ -1307,8 +1758,16 @@ endif()
 
 # Устанавливаем хидеры
 install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/include" DESTINATION "${CMAKE_INSTALL_PREFIX}/include/${CMAKE_PROJECT_NAME}" FILES_MATCHING PATTERN "*.hpp")
+
 # Устанавливаем библиотеку
-install(TARGETS ${CURRENT_LIB_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
+if(CMAKE_SHARED_BUILD_LIB)
+    # Устанавливаем динамическую библиотеку
+    install(TARGETS ${CURRENT_LIB_NAME_SHARED} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
+else(CMAKE_SHARED_BUILD_LIB)
+    # Устанавливаем статическую библиотеку
+    install(TARGETS ${CURRENT_LIB_NAME_STATIC} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
+endif(CMAKE_SHARED_BUILD_LIB)
+
 # Устанавливаем исполнительные файлы
 install(TARGETS ${IP_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
 install(TARGETS ${WSC_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
@@ -1350,42 +1809,45 @@ endif()
 if(CMAKE_BUILD_EVENT2)
     install(DIRECTORY "${LIBEVENT_INCLUDE_DIR}/event2" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h")
 # Сборка модуля AWH_EV
-else()
+else(CMAKE_BUILD_EVENT2)
     install(DIRECTORY "${LIBEV_INCLUDE_DIR}/libev" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h")
-endif()
+endif(CMAKE_BUILD_EVENT2)
 
 # Сборка модуля AWH_IDN, если операционной системой не является Windows
 if(CMAKE_BUILD_IDN AND (NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Windows"))
-    install(DIRECTORY "${ICONV_INCLUDE_DIR}" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h")
     install(DIRECTORY "${IDN2_INCLUDE_DIR}" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h")
+    install(DIRECTORY "${ICONV_INCLUDE_DIR}" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h")
 endif()
 
-# Устанавливаем стороние библиотеки
-install(FILES ${XML_LIBRARY} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
-install(FILES ${ZLIB_LIBRARY} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
-install(FILES ${NGTCP2_LIBRARY} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
-install(FILES ${NGHTTP2_LIBRARY} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
-install(FILES ${NGHTTP3_LIBRARY} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
-install(FILES ${JEMALLOC_LIBRARY} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
-install(FILES ${BROTLI_LIBRARIES} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
-install(FILES ${OPENSSL_LIBRARIES} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
-
-# Если операционной системой не является Windows
-if(NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
+# Устанавливаем статические библиотеки
+if(NOT CMAKE_SHARED_BUILD_LIB)
     # Устанавливаем стороние библиотеки
-    install(FILES ${PCRE_LIBRARIES} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
-endif()
+    install(FILES ${XML_LIBRARY} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
+    install(FILES ${ZLIB_LIBRARY} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
+    install(FILES ${NGTCP2_LIBRARY} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
+    install(FILES ${NGHTTP2_LIBRARY} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
+    install(FILES ${NGHTTP3_LIBRARY} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
+    install(FILES ${JEMALLOC_LIBRARY} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
+    install(FILES ${BROTLI_LIBRARIES} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
+    install(FILES ${OPENSSL_LIBRARIES} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
 
-# Сборка модуля AWH_EVENT2
-if(CMAKE_BUILD_EVENT2)
-    install(FILES ${LIBEVENT_LIBRARIES} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
-# Сборка модуля AWH_EV
-else()
-    install(FILES ${LIBEV_LIBRARY} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
-endif()
+    # Если операционной системой не является Windows
+    if(NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
+        # Устанавливаем стороние библиотеки
+        install(FILES ${PCRE_LIBRARIES} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
+    endif()
 
-# Сборка модуля AWH_IDN, если операционной системой не является Windows
-if(CMAKE_BUILD_IDN AND (NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Windows"))
-    install(FILES ${IDN2_LIBRARY} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
-    install(FILES ${ICONV_LIBRARIES} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
-endif()
+    # Сборка модуля AWH_EVENT2
+    if(CMAKE_BUILD_EVENT2)
+        install(FILES ${LIBEVENT_LIBRARIES} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
+    # Сборка модуля AWH_EV
+    else(CMAKE_BUILD_EVENT2)
+        install(FILES ${LIBEV_LIBRARY} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
+    endif(CMAKE_BUILD_EVENT2)
+
+    # Сборка модуля AWH_IDN, если операционной системой не является Windows
+    if(CMAKE_BUILD_IDN AND (NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Windows"))
+        install(FILES ${IDN2_LIBRARY} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
+        install(FILES ${ICONV_LIBRARIES} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
+    endif()
+endif(NOT CMAKE_SHARED_BUILD_LIB)
