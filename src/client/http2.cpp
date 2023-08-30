@@ -422,7 +422,7 @@ void awh::client::Http2::actionConnect() noexcept {
 			MAKE_NV_CS(":path", "/test.php"),
 			MAKE_NV(":scheme", "https"),
 			MAKE_NV_CS(":authority", "anyks.com"),
-			MAKE_NV("accept", "*//*"),
+			MAKE_NV("accept", "*/*"),
 			MAKE_NV_CS("content-type", "application/x-www-form-urlencoded"),
 			MAKE_NV_CS("content-length", contentLength.c_str()),
 			MAKE_NV("user-agent", "nghttp2/" NGHTTP2_VERSION)
