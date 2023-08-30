@@ -117,9 +117,9 @@ $ mkdir ./build
 $ cd ./build
 
 $ cmake \
- -G "MinGW Makefiles" \
- -DCMAKE_BUILD_IDN=yes \
- -DCMAKE_BUILD_EVENT2=yes \
+ -G "MSYS Makefiles" \
+ -DCMAKE_BUILD_IDN=YES \
+ -DCMAKE_BUILD_EVENT2=YES \
  -DCMAKE_BUILD_TYPE=Release \
  -DCMAKE_SYSTEM_NAME=Windows \
  ..

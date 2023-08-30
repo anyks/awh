@@ -655,7 +655,7 @@ if(${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
         ${AWH_IDN}
     )
 
-    # Сборка примеров с поддержкой модуля AWH_IDN
+# Сборка примеров с поддержкой модуля AWH_IDN
 elseif(CMAKE_BUILD_IDN)
     target_link_libraries(
         ${IP_APP_NAME}

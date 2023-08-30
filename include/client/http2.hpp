@@ -19,7 +19,6 @@
  * Стандартная библиотека
  */
 #include <functional>
-#include <nghttp2/nghttp2.h>
 
 /**
  * Наши модули

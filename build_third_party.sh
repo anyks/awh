@@ -252,7 +252,7 @@ if [ ! -f "$src/.stamp_done" ]; then
 		 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
 		 -DINSTALL_INC_DIR="$PREFIX/include/zlib" \
 		 -DBUILD_SHARED_LIBS="NO" \
-		 -G "MinGW Makefiles" \
+		 -G "MSYS Makefiles" \
 		 .. || exit 1
 	else
 		./configure \
@@ -312,7 +312,7 @@ if [ ! -f "$src/.stamp_done" ]; then
 		 -DBROTLI_LIBRARIES="$PREFIX/lib" \
 		 -DBROTLI_INCLUDE_DIRS="$PREFIX/include" \
 		 -DBUILD_SHARED_LIBS="OFF" \
-		 -G "MinGW Makefiles" \
+		 -G "MSYS Makefiles" \
 		 .. || exit 1
 	else
 		cmake \
@@ -395,7 +395,7 @@ if [[ $LIBEVENT2 = "yes" ]]; then
 			 -DOPENSSL_ROOT_DIR="$PREFIX" \
 			 -DOPENSSL_LIBRARIES="$PREFIX/lib" \
 			 -DOPENSSL_INCLUDE_DIR="$PREFIX/include" \
-			 -G "MinGW Makefiles" \
+			 -G "MSYS Makefiles" \
 			 .. || exit 1
 		else
 			cmake \
@@ -446,7 +446,7 @@ else
 			cmake \
 			 -DCMAKE_BUILD_TYPE="Release" \
 			 -DCMAKE_SYSTEM_NAME="Windows" \
-			 -G "MinGW Makefiles" \
+			 -G "MSYS Makefiles" \
 			 .. || exit 1
 
 			# Выполняем сборку на всех логических ядрах
@@ -636,7 +636,7 @@ if [[ ! $OS = "Windows" ]]; then
 			-DPCRE_SUPPORT_LIBREADLINE="OFF" \
 			-DPCRE_SUPPORT_UNICODE_PROPERTIES="ON" \
 			-DCMAKE_INSTALL_PREFIX="$PREFIX" \
-			-G "MinGW Makefiles" \
+			-G "MSYS Makefiles" \
 			.. || exit 1
 		else
 			cmake \
@@ -718,7 +718,7 @@ if [ ! -f "$src/.stamp_done" ]; then
 		 -DCMAKE_BUILD_TYPE=Release \
 		 -DCMAKE_SYSTEM_NAME=Windows \
 		 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
-		 -G "MinGW Makefiles" \
+		 -G "MSYS Makefiles" \
 		 .. || exit 1
 	else
 		cmake \
@@ -839,7 +839,7 @@ fi
 #		 -DCMAKE_BUILD_TYPE=Release \
 #		 -DCMAKE_SYSTEM_NAME=Windows \
 #		 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
-#		 -G "MinGW Makefiles" \
+#		 -G "MSYS Makefiles" \
 #		 .. || exit 1
 #	else
 #		cmake \
@@ -916,7 +916,7 @@ fi
 #		 -DCMAKE_BUILD_TYPE=Release \
 #		 -DCMAKE_SYSTEM_NAME=Windows \
 #		 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
-#		 -G "MinGW Makefiles" \
+#		 -G "MSYS Makefiles" \
 #		 .. || exit 1
 #	else
 #		cmake \
@@ -988,7 +988,7 @@ if [ ! -f "$src/.stamp_done" ]; then
 		 -DENABLE_STATIC_LIB="ON" \
 		 -DENABLE_SHARED_LIB="OFF" \
 		 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
-		 -G "MinGW Makefiles" \
+		 -G "MSYS Makefiles" \
 		 .. || exit 1
 	else
 		cmake \
@@ -1056,7 +1056,7 @@ if [ ! -f "$src/.stamp_done" ]; then
 			 -DOPENSSL_INCLUDE_DIR="$PREFIX/include" \
 			 -DLIBNGHTTP3_LIBRARY="$PREFIX/lib" \
 			 -DLIBNGHTTP3_INCLUDE_DIR="$PREFIX/include" \
-			 -G "MinGW Makefiles" \
+			 -G "MSYS Makefiles" \
 			 .. || exit 1
 		# Если нужно собрать модуль LibEv
 		else
@@ -1074,7 +1074,7 @@ if [ ! -f "$src/.stamp_done" ]; then
 			 -DLIBNGHTTP3_INCLUDE_DIR="$PREFIX/include" \
 			 -DLIBEV_LIBRARY="$PREFIX/lib" \
 		 	 -DLIBEV_INCLUDE_DIR="$PREFIX/include/libev" \
-			 -G "MinGW Makefiles" \
+			 -G "MSYS Makefiles" \
 			 .. || exit 1
 		fi
 	else
@@ -1187,7 +1187,7 @@ if [ ! -f "$src/.stamp_done" ]; then
 			 -DZLIB_INCLUDE_DIR="$PREFIX/include/zlib" \
 			 -DLIBEVENT_LIBRARIES="$PREFIX/lib" \
 			 -DLIBEVENT_INCLUDE_DIR="$PREFIX/include" \
-			 -G "MinGW Makefiles" \
+			 -G "MSYS Makefiles" \
 			 .. || exit 1
 		# Если нужно собрать модуль LibEv
 		else
@@ -1222,7 +1222,7 @@ if [ ! -f "$src/.stamp_done" ]; then
 			 -DZLIB_INCLUDE_DIR="$PREFIX/include/zlib" \
 			 -DLIBEV_LIBRARY="$PREFIX/lib" \
 			 -DLIBEV_INCLUDE_DIR="$PREFIX/include/libev" \
-			 -G "MinGW Makefiles" \
+			 -G "MSYS Makefiles" \
 			 .. || exit 1
 		fi
 	else
