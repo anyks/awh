@@ -13,6 +13,8 @@ set(PROJECT_COPYRIGHT "Copyright (c) ${CURRENT_YEAR} ${PROJECT_VENDOR_LONG}")
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Debug)
 endif()
+
+# Выводим сообщение о типе сборки
 message(STATUS "Build Type: ${CMAKE_BUILD_TYPE}\n")
 
 # Сборка модуля AWH_IDN
@@ -43,6 +45,9 @@ message(STATUS "Build dir: ${CMAKE_CURRENT_BINARY_DIR}\n")
 # Получаем архитектуру
 EXECUTE_PROCESS( COMMAND uname -m COMMAND tr -d '\n' OUTPUT_VARIABLE ARCHITECTURE )
 message( STATUS "Architecture: ${ARCHITECTURE}" )
+
+# Активируем сборку статической библиотеки
+add_compile_definitions(AWH_STATICLIB)
 
 # Проверка версии OS
 string(REGEX MATCH "Linux" PROJECT_OS_LINUX ${CMAKE_SYSTEM_NAME})

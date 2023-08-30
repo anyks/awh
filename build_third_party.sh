@@ -718,7 +718,7 @@ if [ ! -f "$src/.stamp_done" ]; then
 		 -DCMAKE_BUILD_TYPE=Release \
 		 -DCMAKE_SYSTEM_NAME=Windows \
 		 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
-		 -G "MSYS Makefiles" \
+		 -G "MinGW Makefiles" \
 		 .. || exit 1
 	else
 		cmake \
