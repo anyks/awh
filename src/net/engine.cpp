@@ -2526,6 +2526,8 @@ awh::Engine::proto_t awh::Engine::proto(ctx_t & target) const noexcept {
 				// Устанавливаем активный протокол
 				result = target._proto;
 			break;
+			// Если протокол соответствует SPDY/1
+			case static_cast <uint8_t> (proto_t::SPDY1):
 			// Если протокол соответствует HTTP/2
 			case static_cast <uint8_t> (proto_t::HTTP2):
 			// Если протокол соответствует HTTP/3
@@ -2552,6 +2554,15 @@ awh::Engine::proto_t awh::Engine::proto(ctx_t & target) const noexcept {
 				#endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
 				// Определяет желаемый активный протокол
 				switch(static_cast <uint8_t> (target._proto)){
+					// Если протокол соответствует SPDY/1
+					case static_cast <uint8_t> (proto_t::SPDY1): {
+						// Если активный протокол не соответствует протоколу SPDY/1
+						if((alpn == nullptr) || (size != 6) || (::memcmp("spdy/1", alpn, 6) != 0))
+							// Устанавливаем активный протокол
+							result = proto_t::HTTP1_1;
+						// Устанавливаем протокол как есть
+						else result = target._proto;
+					} break;
 					// Если протокол соответствует HTTP/2
 					case static_cast <uint8_t> (proto_t::HTTP2): {
 						// Если активный протокол не соответствует протоколу HTTP/2
@@ -2611,6 +2622,21 @@ void awh::Engine::httpUpgrade(ctx_t & target) const noexcept {
 				const string http1_1 = "http/1.1";
 				// Если протоколом является HTTP, выполняем переключение на него
 				switch(static_cast <uint8_t> (target._proto)){
+					// Если протокол соответствует SPDY/1
+					case static_cast <uint8_t> (proto_t::SPDY1): {
+						// Устанавливаем количество символов для протокола SPDY/1
+						protocols.push_back(static_cast <u_char> (spdy1.size()));
+						// Устанавливаем идентификатор протокола SPDY/1
+						protocols.insert(protocols.end(), spdy1.begin(), spdy1.end());
+						// Устанавливаем количество символов для протокола HTTP/1
+						protocols.push_back(static_cast <u_char> (http1.size()));
+						// Устанавливаем идентификатор протокола HTTP/1
+						protocols.insert(protocols.end(), http1.begin(), http1.end());
+						// Устанавливаем количество символов для протокола HTTP/1.1
+						protocols.push_back(static_cast <u_char> (http1_1.size()));
+						// Устанавливаем идентификатор протокола HTTP/1.1
+						protocols.insert(protocols.end(), http1_1.begin(), http1_1.end());
+					} break;
 					// Если протокол соответствует HTTP/1
 					case static_cast <uint8_t> (proto_t::HTTP1): {
 						// Устанавливаем количество символов для протокола HTTP/1
@@ -2840,6 +2866,8 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const type_t type) noex
 				const pid_t pid = getpid();
 				// Если протоколом является HTTP, выполняем переключение на него
 				switch(static_cast <uint8_t> (target._proto)){
+					// Если протокол соответствует SPDY/1
+					case static_cast <uint8_t> (proto_t::SPDY1):
 					// Если протокол соответствует HTTP/2
 					case static_cast <uint8_t> (proto_t::HTTP2):
 					// Если протокол соответствует HTTP/3
@@ -2861,6 +2889,8 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const type_t type) noex
 			} else {
 				// Если протоколом является HTTP, выполняем переключение на него
 				switch(static_cast <uint8_t> (target._proto)){
+					// Если протокол соответствует SPDY/1
+					case static_cast <uint8_t> (proto_t::SPDY1):
 					// Если протокол соответствует HTTP/1
 					case static_cast <uint8_t> (proto_t::HTTP1):
 					// Если протокол соответствует HTTP/2
@@ -3158,6 +3188,8 @@ void awh::Engine::wrapServer(ctx_t & target, addr_t * address) noexcept {
 			#endif
 			// Если протоколом является HTTP, выполняем переключение на него
 			switch(static_cast <uint8_t> (target._proto)){
+				// Если протокол соответствует SPDY/1
+				case static_cast <uint8_t> (proto_t::SPDY1):
 				// Если протокол соответствует HTTP/2
 				case static_cast <uint8_t> (proto_t::HTTP2):
 				// Если протокол соответствует HTTP/3
@@ -3432,6 +3464,8 @@ void awh::Engine::wrapClient(ctx_t & target, addr_t * address, const string & ho
 			#endif
 			// Если протоколом является HTTP, выполняем переключение на него
 			switch(static_cast <uint8_t> (target._proto)){
+				// Если протокол соответствует SPDY/1
+				case static_cast <uint8_t> (proto_t::SPDY1):
 				// Если протокол соответствует HTTP/1
 				case static_cast <uint8_t> (proto_t::HTTP1):
 				// Если протокол соответствует HTTP/2
