@@ -30,6 +30,20 @@ void awh::client::Sample::openCallback(const size_t sid, awh::core_t * core) noe
 	}
 }
 /**
+ * eventsCallback Функция обратного вызова при активации ядра сервера
+ * @param status флаг запуска/остановки
+ * @param core   объект сетевого ядра
+ */
+void awh::client::Sample::eventsCallback(const awh::core_t::status_t status, awh::core_t * core) noexcept {
+	// Если данные существуют
+	if(core != nullptr){
+		// Если функция обратного вызова установлена
+		if(this->_callback.events != nullptr)
+			// Выполняем функцию обратного вызова
+			this->_callback.events(status, core);
+	}
+}
+/**
  * connectCallback Метод обратного вызова при подключении к серверу
  * @param aid  идентификатор адъютанта
  * @param sid  идентификатор схемы сети
@@ -294,6 +308,14 @@ void awh::client::Sample::on(function <void (const vector <char> &, Sample *)> c
 	this->_callback.message = callback;
 }
 /**
+ * on Метод установки функции обратного вызова получения событий запуска и остановки сетевого ядра
+ * @param callback функция обратного вызова
+ */
+void awh::client::Sample::on(function <void (const awh::core_t::status_t status, awh::core_t * core)> callback) noexcept {
+	// Устанавливаем функцию обратного вызова
+	this->_callback.events = callback;
+}
+/**
  * response Метод отправки сообщения адъютанту
  * @param buffer буфер бинарных данных для отправки
  * @param size   размер бинарных данных для отправки
@@ -385,13 +407,15 @@ awh::client::Sample::Sample(const client::core_t * core, const fmk_t * fmk, cons
  _scheme(fmk, log), _action(action_t::NONE),
  _aid(0), _unbind(true), _fmk(fmk), _log(log), _core(core) {
 	// Устанавливаем событие на запуск системы
-	this->_scheme.callback.set <void (const size_t, awh::core_t *)> ("open", std::bind(&Sample::openCallback, this, _1, _2));
+	this->_scheme.callback.set <void (const size_t, awh::core_t *)> ("open", std::bind(&sample_t::openCallback, this, _1, _2));
 	// Устанавливаем событие подключения
-	this->_scheme.callback.set <void (const size_t, const size_t, awh::core_t *)> ("connect", std::bind(&Sample::connectCallback, this, _1, _2, _3));
+	this->_scheme.callback.set <void (const size_t, const size_t, awh::core_t *)> ("connect", std::bind(&sample_t::connectCallback, this, _1, _2, _3));
 	// Устанавливаем событие отключения
-	this->_scheme.callback.set <void (const size_t, const size_t, awh::core_t *)> ("disconnect", std::bind(&Sample::disconnectCallback, this, _1, _2, _3));
+	this->_scheme.callback.set <void (const size_t, const size_t, awh::core_t *)> ("disconnect", std::bind(&sample_t::disconnectCallback, this, _1, _2, _3));
 	// Устанавливаем функцию чтения данных
-	this->_scheme.callback.set <void (const char *, const size_t, const size_t, const size_t, awh::core_t *)> ("read", std::bind(&Sample::readCallback, this, _1, _2, _3, _4, _5));
+	this->_scheme.callback.set <void (const char *, const size_t, const size_t, const size_t, awh::core_t *)> ("read", std::bind(&sample_t::readCallback, this, _1, _2, _3, _4, _5));
 	// Добавляем схему сети в сетевое ядро
 	const_cast <client::core_t *> (this->_core)->add(&this->_scheme);
+	// Устанавливаем функцию активации ядра клиента
+	const_cast <client::core_t *> (this->_core)->callback(std::bind(&sample_t::eventsCallback, this, _1, _2));
 }

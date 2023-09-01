@@ -90,10 +90,12 @@ namespace awh {
 					function <void (const mode_t, Sample *)> active;
 					// Функция обратного вызова, вывода сообщения при его получении
 					function <void (const vector <char> &, Sample *)> message;
+					// Функция получения событий запуска и остановки сетевого ядра
+					function <void (const awh::core_t::status_t status, awh::core_t * core)> events;
 					/**
 					 * Callback Конструктор
 					 */
-					Callback() noexcept : active(nullptr), message(nullptr) {}
+					Callback() noexcept : active(nullptr), message(nullptr), events(nullptr) {}
 				} fn_t;
 			private:
 				// Объект для работы с сетью
@@ -129,6 +131,12 @@ namespace awh {
 				 * @param core объект сетевого ядра
 				 */
 				void openCallback(const size_t sid, awh::core_t * core) noexcept;
+				/**
+				 * eventsCallback Функция обратного вызова при активации ядра сервера
+				 * @param status флаг запуска/остановки
+				 * @param core   объект сетевого ядра
+				 */
+				void eventsCallback(const awh::core_t::status_t status, awh::core_t * core) noexcept;
 				/**
 				 * connectCallback Метод обратного вызова при подключении к серверу
 				 * @param aid  идентификатор адъютанта
@@ -211,6 +219,11 @@ namespace awh {
 				 * @param callback функция обратного вызова
 				 */
 				void on(function <void (const vector <char> &, Sample *)> callback) noexcept;
+				/**
+				 * on Метод установки функции обратного вызова получения событий запуска и остановки сетевого ядра
+				 * @param callback функция обратного вызова
+				 */
+				void on(function <void (const awh::core_t::status_t status, awh::core_t * core)> callback) noexcept;
 			public:
 				/**
 				 * response Метод отправки сообщения адъютанту

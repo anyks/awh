@@ -68,10 +68,14 @@ namespace awh {
 					function <void (const vector <char> &, const awh::http_t *)> chunking;
 					// Функция разрешения подключения адъютанта на сервере
 					function <bool (const string &, const string &, const u_int, WEB *)> accept;
+					// Функция получения событий запуска и остановки сетевого ядра
+					function <void (const awh::core_t::status_t status, awh::core_t * core)> events;
 					/**
 					 * Callback Конструктор
 					 */
-					Callback() noexcept : extractPass(nullptr), checkAuth(nullptr), active(nullptr), message(nullptr), chunking(nullptr), accept(nullptr) {}
+					Callback() noexcept :
+					 extractPass(nullptr), checkAuth(nullptr), active(nullptr),
+					 message(nullptr), chunking(nullptr), accept(nullptr), events(nullptr) {}
 				} fn_t;
 			private:
 				// Идентификатор основного процесса
@@ -152,6 +156,12 @@ namespace awh {
 				 * @param core объект сетевого ядра
 				 */
 				void openCallback(const size_t sid, awh::core_t * core) noexcept;
+				/**
+				 * eventsCallback Функция обратного вызова при активации ядра сервера
+				 * @param status флаг запуска/остановки
+				 * @param core   объект сетевого ядра
+				 */
+				void eventsCallback(const awh::core_t::status_t status, awh::core_t * core) noexcept;
 				/**
 				 * persistCallback Функция персистентного вызова
 				 * @param aid  идентификатор адъютанта
@@ -276,6 +286,11 @@ namespace awh {
 				 * @param callback функция обратного вызова
 				 */
 				void on(function <bool (const string &, const string &, const u_int, WEB *)> callback) noexcept;
+				/**
+				 * on Метод установки функции обратного вызова получения событий запуска и остановки сетевого ядра
+				 * @param callback функция обратного вызова
+				 */
+				void on(function <void (const awh::core_t::status_t status, awh::core_t * core)> callback) noexcept;
 			public:
 				/**
 				 * reject Метод отправки сообщения об ошибке

@@ -68,6 +68,8 @@ namespace awh {
 					function <void (const size_t, const mode_t, WebSocket *)> active;
 					// Функция обратного вызова, при получении ошибки работы адъютанта
 					function <void (const size_t, const u_int, const string &, WebSocket *)> error;
+					// Функция получения событий запуска и остановки сетевого ядра
+					function <void (const awh::core_t::status_t status, awh::core_t * core)> events;
 					// Функция разрешения подключения адъютанта на сервере
 					function <bool (const string &, const string &, const u_int, WebSocket *)> accept;
 					// Функция обратного вызова, при получении сообщения с сервера
@@ -75,7 +77,9 @@ namespace awh {
 					/**
 					 * Callback Конструктор
 					 */
-					Callback() noexcept : extractPass(nullptr), checkAuth(nullptr), active(nullptr), error(nullptr), accept(nullptr), message(nullptr) {}
+					Callback() noexcept :
+					 extractPass(nullptr), checkAuth(nullptr), active(nullptr),
+					 error(nullptr), events(nullptr), accept(nullptr), message(nullptr) {}
 				} fn_t;
 			private:
 				// Идентификатор основного процесса
@@ -155,6 +159,12 @@ namespace awh {
 				 * @param core объект сетевого ядра
 				 */
 				void openCallback(const size_t sid, awh::core_t * core) noexcept;
+				/**
+				 * eventsCallback Функция обратного вызова при активации ядра сервера
+				 * @param status флаг запуска/остановки
+				 * @param core   объект сетевого ядра
+				 */
+				void eventsCallback(const awh::core_t::status_t status, awh::core_t * core) noexcept;
 				/**
 				 * persistCallback Функция персистентного вызова
 				 * @param aid  идентификатор адъютанта
@@ -282,6 +292,11 @@ namespace awh {
 				 * @param callback функция обратного вызова
 				 */
 				void on(function <void (const size_t, const mode_t, WebSocket *)> callback) noexcept;
+				/**
+				 * on Метод установки функции обратного вызова получения событий запуска и остановки сетевого ядра
+				 * @param callback функция обратного вызова
+				 */
+				void on(function <void (const awh::core_t::status_t status, awh::core_t * core)> callback) noexcept;
 				/**
 				 * on Метод установки функции обратного вызова на событие получения ошибок
 				 * @param callback функция обратного вызова

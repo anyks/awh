@@ -25,11 +25,11 @@ void awh::server::Proxy::chunking(const vector <char> & chunk, const awh::http_t
 	if(!chunk.empty()) const_cast <awh::http_t *> (http)->body(chunk);
 }
 /**
- * runCallback Функция обратного вызова при активации ядра сервера
+ * eventsCallback Функция обратного вызова при активации ядра сервера
  * @param status флаг запуска/остановки
  * @param core   объект сетевого ядра
  */
-void awh::server::Proxy::runCallback(const awh::core_t::status_t status, awh::core_t * core) noexcept {
+void awh::server::Proxy::eventsCallback(const awh::core_t::status_t status, awh::core_t * core) noexcept {
 	// Если данные существуют
 	if(core != nullptr){
 		// Определяем статус активности сетевого ядра
@@ -51,6 +51,10 @@ void awh::server::Proxy::runCallback(const awh::core_t::status_t status, awh::co
 				this->_core.server.unbind(reinterpret_cast <awh::core_t *> (&this->_core.client));
 			} break;
 		}
+		// Если функция обратного вызова установлена
+		if(this->_callback.events != nullptr)
+			// Выполняем функцию обратного вызова
+			this->_callback.events(status, core);
 	}
 }
 /**
@@ -167,9 +171,9 @@ void awh::server::Proxy::connectServerCallback(const size_t aid, const size_t si
 				// Устанавливаем функцию обработки вызова для получения чанков
 				adj->cli.chunking(this->_callback.chunking);
 			// Устанавливаем функцию обработки вызова для получения чанков
-			else adj->cli.chunking(std::bind(&Proxy::chunking, this, _1, _2));
+			else adj->cli.chunking(std::bind(&proxy_t::chunking, this, _1, _2));
 			// Устанавливаем функцию обработки вызова для получения чанков
-			adj->srv.chunking(std::bind(&Proxy::chunking, this, _1, _2));
+			adj->srv.chunking(std::bind(&proxy_t::chunking, this, _1, _2));
 			// Устанавливаем метод компрессии поддерживаемый клиентом
 			adj->cli.compress(this->_scheme.compress);
 			// Устанавливаем метод компрессии поддерживаемый сервером
@@ -214,11 +218,11 @@ void awh::server::Proxy::connectServerCallback(const size_t aid, const size_t si
 			// Выполняем установку интервала времени в секундах между попытками
 			adj->scheme.keepAlive.intvl = this->_scheme.keepAlive.intvl;
 			// Устанавливаем событие подключения
-			adj->scheme.callback.set <void (const size_t, const size_t, awh::core_t *)> ("connect", std::bind(&Proxy::connectClientCallback, this, _1, _2, _3));
+			adj->scheme.callback.set <void (const size_t, const size_t, awh::core_t *)> ("connect", std::bind(&proxy_t::connectClientCallback, this, _1, _2, _3));
 			// Устанавливаем событие отключения
-			adj->scheme.callback.set <void (const size_t, const size_t, awh::core_t *)> ("disconnect", std::bind(&Proxy::disconnectClientCallback, this, _1, _2, _3));
+			adj->scheme.callback.set <void (const size_t, const size_t, awh::core_t *)> ("disconnect", std::bind(&proxy_t::disconnectClientCallback, this, _1, _2, _3));
 			// Устанавливаем функцию чтения данных
-			adj->scheme.callback.set <void (const char *, const size_t, const size_t, const size_t, awh::core_t *)> ("read", std::bind(&Proxy::readClientCallback, this, _1, _2, _3, _4, _5));
+			adj->scheme.callback.set <void (const char *, const size_t, const size_t, const size_t, awh::core_t *)> ("read", std::bind(&proxy_t::readClientCallback, this, _1, _2, _3, _4, _5));
 			// Добавляем схему сети в сетевое ядро
 			this->_core.client.add(&adj->scheme);
 			// Активируем асинхронный режим работы
@@ -777,7 +781,7 @@ void awh::server::Proxy::init(const u_int port, const string & host, const http_
  * @param callback функция обратного вызова
  */
 void awh::server::Proxy::on(function <void (const size_t, const mode_t, Proxy *)> callback) noexcept {
-	// Устанавливаем функцию запуска и остановки
+	// Устанавливаем функцию обратного вызова
 	this->_callback.active = callback;
 }
 /**
@@ -785,15 +789,23 @@ void awh::server::Proxy::on(function <void (const size_t, const mode_t, Proxy *)
  * @param callback функция обратного вызова
  */
 void awh::server::Proxy::on(function <bool (const size_t, const event_t, http_t *, Proxy *)> callback) noexcept {
-	// Устанавливаем функцию запуска и остановки
+	// Устанавливаем функцию обратного вызова
 	this->_callback.message = callback;
+}
+/**
+ * on Метод установки функции обратного вызова получения событий запуска и остановки сетевого ядра
+ * @param callback функция обратного вызова
+ */
+void awh::server::Proxy::on(function <void (const awh::core_t::status_t status, awh::core_t * core)> callback) noexcept {
+	// Устанавливаем функцию обратного вызова
+	this->_callback.events = callback;
 }
 /**
  * on Метод установки функции обратного вызова на событие получения сообщений в бинарном виде
  * @param callback функция обратного вызова
  */
 void awh::server::Proxy::on(function <bool (const size_t, const event_t, const char *, const size_t, Proxy *)> callback) noexcept {
-	// Устанавливаем функцию запуска и остановки
+	// Устанавливаем функцию обратного вызова
 	this->_callback.binary = callback;
 }
 /**
@@ -801,7 +813,7 @@ void awh::server::Proxy::on(function <bool (const size_t, const event_t, const c
  * @param callback функция обратного вызова для извлечения пароля
  */
 void awh::server::Proxy::on(function <string (const string &)> callback) noexcept {
-	// Устанавливаем функцию обратного вызова для извлечения пароля
+	// Устанавливаем функцию обратного вызова
 	this->_callback.extractPass = callback;
 }
 /**
@@ -809,7 +821,7 @@ void awh::server::Proxy::on(function <string (const string &)> callback) noexcep
  * @param callback функция обратного вызова для обработки авторизации
  */
 void awh::server::Proxy::on(function <bool (const string &, const string &)> callback) noexcept {
-	// Устанавливаем функцию обратного вызова для обработки авторизации
+	// Устанавливаем функцию обратного вызова
 	this->_callback.checkAuth = callback;
 }
 /**
@@ -817,7 +829,7 @@ void awh::server::Proxy::on(function <bool (const string &, const string &)> cal
  * @param callback функция обратного вызова
  */
 void awh::server::Proxy::on(function <void (const vector <char> &, const http_t *)> callback) noexcept {
-	// Устанавливаем функцию обратного вызова для получения чанков
+	// Устанавливаем функцию обратного вызова
 	this->_callback.chunking = callback;
 }
 /**
@@ -825,7 +837,7 @@ void awh::server::Proxy::on(function <void (const vector <char> &, const http_t 
  * @param callback функция обратного вызова
  */
 void awh::server::Proxy::on(function <bool (const string &, const string &, const u_int, Proxy *)> callback) noexcept {
-	// Устанавливаем функцию запуска и остановки
+	// Устанавливаем функцию обратного вызова
 	this->_callback.accept = callback;
 }
 /**
@@ -1304,24 +1316,26 @@ awh::server::Proxy::Proxy(const fmk_t * fmk, const log_t * log) noexcept :
  _pass(""), _salt(""), _cipher(hash_t::cipher_t::AES128), _authHash(auth_t::hash_t::MD5),
  _authType(auth_t::type_t::NONE), _crypt(false), _alive(false), _noConnect(false),
  _chunkSize(BUFFER_CHUNK), _timeAlive(KEEPALIVE_TIMEOUT), _maxRequests(SERVER_MAX_REQUESTS), _fmk(fmk), _log(log) {
-	// Устанавливаем флаг запрещающий вывод информационных сообщений для адъютанта
+	// Выполняем отключение информационных сообщений сетевого ядра таймера
+	this->_core.timer.noInfo(true);
+	// Выполняем отключение информационных сообщений сетевого ядра адъютанта
 	this->_core.client.noInfo(true);
 	// Устанавливаем протокол интернет-подключения
 	this->_core.server.sonet(scheme_t::sonet_t::TCP);
 	// Устанавливаем событие на запуск системы
-	this->_scheme.callback.set <void (const size_t, awh::core_t *)> ("open", std::bind(&Proxy::openServerCallback, this, _1, _2));
+	this->_scheme.callback.set <void (const size_t, awh::core_t *)> ("open", std::bind(&proxy_t::openServerCallback, this, _1, _2));
 	// Устанавливаем функцию персистентного вызова
-	this->_scheme.callback.set <void (const size_t, const size_t, awh::core_t *)> ("persist", std::bind(&Proxy::persistCallback, this, _1, _2, _3));
+	this->_scheme.callback.set <void (const size_t, const size_t, awh::core_t *)> ("persist", std::bind(&proxy_t::persistCallback, this, _1, _2, _3));
 	// Устанавливаем событие подключения
-	this->_scheme.callback.set <void (const size_t, const size_t, awh::core_t *)> ("connect", std::bind(&Proxy::connectServerCallback, this, _1, _2, _3));
+	this->_scheme.callback.set <void (const size_t, const size_t, awh::core_t *)> ("connect", std::bind(&proxy_t::connectServerCallback, this, _1, _2, _3));
 	// Устанавливаем событие отключения
-	this->_scheme.callback.set <void (const size_t, const size_t, awh::core_t *)> ("disconnect", std::bind(&Proxy::disconnectServerCallback, this, _1, _2, _3));
+	this->_scheme.callback.set <void (const size_t, const size_t, awh::core_t *)> ("disconnect", std::bind(&proxy_t::disconnectServerCallback, this, _1, _2, _3));
 	// Устанавливаем функцию чтения данных
-	this->_scheme.callback.set <void (const char *, const size_t, const size_t, const size_t, awh::core_t *)> ("read", std::bind(&Proxy::readServerCallback, this, _1, _2, _3, _4, _5));
+	this->_scheme.callback.set <void (const char *, const size_t, const size_t, const size_t, awh::core_t *)> ("read", std::bind(&proxy_t::readServerCallback, this, _1, _2, _3, _4, _5));
 	// Устанавливаем функцию записи данных
-	this->_scheme.callback.set <void (const char *, const size_t, const size_t, const size_t, awh::core_t *)> ("write", std::bind(&Proxy::writeServerCallback, this, _1, _2, _3, _4, _5));
+	this->_scheme.callback.set <void (const char *, const size_t, const size_t, const size_t, awh::core_t *)> ("write", std::bind(&proxy_t::writeServerCallback, this, _1, _2, _3, _4, _5));
 	// Добавляем событие аццепта адъютанта
-	this->_scheme.callback.set <bool (const string &, const string &, const u_int, const size_t, awh::Core *)> ("accept", std::bind(&Proxy::acceptServerCallback, this, _1, _2, _3, _4, _5));
+	this->_scheme.callback.set <bool (const string &, const string &, const u_int, const size_t, awh::Core *)> ("accept", std::bind(&proxy_t::acceptServerCallback, this, _1, _2, _3, _4, _5));
 	// Активируем персистентный запуск для работы пингов
 	this->_core.server.persistEnable(true);
 	// Добавляем схему сети в сетевое ядро
@@ -1329,5 +1343,5 @@ awh::server::Proxy::Proxy(const fmk_t * fmk, const log_t * log) noexcept :
 	// Разрешаем автоматический перезапуск упавших процессов
 	this->_core.server.clusterAutoRestart(this->_scheme.sid, true);
 	// Устанавливаем функцию активации ядра сервера
-	this->_core.server.callback(std::bind(&Proxy::runCallback, this, _1, _2));
+	this->_core.server.callback(std::bind(&proxy_t::eventsCallback, this, _1, _2));
 }

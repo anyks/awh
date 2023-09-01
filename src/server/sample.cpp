@@ -30,6 +30,35 @@ void awh::server::Sample::openCallback(const size_t sid, awh::core_t * core) noe
 	}
 }
 /**
+ * eventsCallback Функция обратного вызова при активации ядра сервера
+ * @param status флаг запуска/остановки
+ * @param core   объект сетевого ядра
+ */
+void awh::server::Sample::eventsCallback(const awh::core_t::status_t status, awh::core_t * core) noexcept {
+	// Если данные существуют
+	if(core != nullptr){
+		// Определяем статус активности сетевого ядра
+		switch(static_cast <uint8_t> (status)){
+			// Если система запущена
+			case static_cast <uint8_t> (awh::core_t::status_t::START): {
+				// Выполняем биндинг ядра локального таймера
+				core->bind(&this->_timer);
+				// Устанавливаем таймаут времени на удаление мусорных адъютантов раз в 10 секунд
+				this->_timer.setTimeout(10000, (function <void (const u_short, awh::core_t *)>) std::bind(&sample_t::garbage, this, _1, _2));
+			} break;
+			// Если система остановлена
+			case static_cast <uint8_t> (awh::core_t::status_t::STOP):
+				// Выполняем анбиндинг ядра локального таймера
+				core->unbind(&this->_timer);
+			break;
+		}
+		// Если функция обратного вызова установлена
+		if(this->_callback.events != nullptr)
+			// Выполняем функцию обратного вызова
+			this->_callback.events(status, core);
+	}
+}
+/**
  * persistCallback Функция персистентного вызова
  * @param aid  идентификатор адъютанта
  * @param sid  идентификатор схемы сети
@@ -343,7 +372,7 @@ void awh::server::Sample::init(const u_int port, const string & host) noexcept {
  * @param callback функция обратного вызова
  */
 void awh::server::Sample::on(function <void (const size_t, const mode_t, Sample *)> callback) noexcept {
-	// Устанавливаем функцию запуска и остановки
+	// Устанавливаем функцию обратного вызова
 	this->_callback.active = callback;
 }
 /**
@@ -351,15 +380,23 @@ void awh::server::Sample::on(function <void (const size_t, const mode_t, Sample 
  * @param callback функция обратного вызова
  */
 void awh::server::Sample::on(function <void (const size_t, const vector <char> &, Sample *)> callback) noexcept {
-	// Устанавливаем функцию получения сообщений с сервера
+	// Устанавливаем функцию обратного вызова
 	this->_callback.message = callback;
+}
+/**
+ * on Метод установки функции обратного вызова получения событий запуска и остановки сетевого ядра
+ * @param callback функция обратного вызова
+ */
+void awh::server::Sample::on(function <void (const awh::core_t::status_t status, awh::core_t * core)> callback) noexcept {
+	// Устанавливаем функцию обратного вызова
+	this->_callback.events = callback;
 }
 /**
  * on Метод установки функции обратного вызова на событие активации адъютанта на сервере
  * @param callback функция обратного вызова
  */
 void awh::server::Sample::on(function <bool (const string &, const string &, const u_int, Sample *)> callback) noexcept {
-	// Устанавливаем функцию запуска и остановки
+	// Устанавливаем функцию обратного вызова
 	this->_callback.accept = callback;
 }
 /**
@@ -547,26 +584,26 @@ void awh::server::Sample::keepAlive(const int cnt, const int idle, const int int
 awh::server::Sample::Sample(const server::core_t * core, const fmk_t * fmk, const log_t * log) noexcept :
  _pid(getpid()), _port(SERVER_PORT), _host(""), _uri(fmk), _timer(fmk, log),
  _scheme(fmk, log), _cipher(hash_t::cipher_t::AES128), _alive(false), _fmk(fmk), _log(log), _core(core) {
+	// Выполняем отключение информационных сообщений сетевого ядра таймера
+	this->_timer.noInfo(true);
 	// Устанавливаем событие на запуск системы
-	this->_scheme.callback.set <void (const size_t, awh::core_t *)> ("open", std::bind(&Sample::openCallback, this, _1, _2));
+	this->_scheme.callback.set <void (const size_t, awh::core_t *)> ("open", std::bind(&sample_t::openCallback, this, _1, _2));
 	// Устанавливаем функцию персистентного вызова
-	this->_scheme.callback.set <void (const size_t, const size_t, awh::core_t *)> ("persist", std::bind(&Sample::persistCallback, this, _1, _2, _3));
+	this->_scheme.callback.set <void (const size_t, const size_t, awh::core_t *)> ("persist", std::bind(&sample_t::persistCallback, this, _1, _2, _3));
 	// Устанавливаем событие подключения
-	this->_scheme.callback.set <void (const size_t, const size_t, awh::core_t *)> ("connect", std::bind(&Sample::connectCallback, this, _1, _2, _3));
+	this->_scheme.callback.set <void (const size_t, const size_t, awh::core_t *)> ("connect", std::bind(&sample_t::connectCallback, this, _1, _2, _3));
 	// Устанавливаем событие отключения
-	this->_scheme.callback.set <void (const size_t, const size_t, awh::core_t *)> ("disconnect", std::bind(&Sample::disconnectCallback, this, _1, _2, _3));
+	this->_scheme.callback.set <void (const size_t, const size_t, awh::core_t *)> ("disconnect", std::bind(&sample_t::disconnectCallback, this, _1, _2, _3));
 	// Устанавливаем функцию чтения данных
-	this->_scheme.callback.set <void (const char *, const size_t, const size_t, const size_t, awh::core_t *)> ("read", std::bind(&Sample::readCallback, this, _1, _2, _3, _4, _5));
+	this->_scheme.callback.set <void (const char *, const size_t, const size_t, const size_t, awh::core_t *)> ("read", std::bind(&sample_t::readCallback, this, _1, _2, _3, _4, _5));
 	// Устанавливаем функцию записи данных
-	this->_scheme.callback.set <void (const char *, const size_t, const size_t, const size_t, awh::core_t *)> ("write", std::bind(&Sample::writeCallback, this, _1, _2, _3, _4, _5));
+	this->_scheme.callback.set <void (const char *, const size_t, const size_t, const size_t, awh::core_t *)> ("write", std::bind(&sample_t::writeCallback, this, _1, _2, _3, _4, _5));
 	// Добавляем событие аццепта адъютанта
-	this->_scheme.callback.set <bool (const string &, const string &, const u_int, const size_t, awh::core_t *)> ("accept", std::bind(&Sample::acceptCallback, this, _1, _2, _3, _4, _5));
-	// Выполняем биндинг ядра локальных таймеров
-	const_cast <server::core_t *> (this->_core)->bind(&this->_timer);
+	this->_scheme.callback.set <bool (const string &, const string &, const u_int, const size_t, awh::core_t *)> ("accept", std::bind(&sample_t::acceptCallback, this, _1, _2, _3, _4, _5));
 	// Активируем персистентный запуск для работы пингов
 	const_cast <server::core_t *> (this->_core)->persistEnable(true);
 	// Добавляем схему сети в сетевое ядро
 	const_cast <server::core_t *> (this->_core)->add(&this->_scheme);
-	// Устанавливаем таймаут времени на удаление мусорных адъютантов раз в 10 секунд
-	this->_timer.setTimeout(10000, (function <void (const u_short, awh::core_t *)>) std::bind(&Sample::garbage, this, _1, _2));
+	// Устанавливаем функцию активации ядра сервера
+	const_cast <server::core_t *> (this->_core)->callback(std::bind(&sample_t::eventsCallback, this, _1, _2));
 }

@@ -92,6 +92,8 @@ namespace awh {
 					function <bool (const size_t, const event_t, http_t *, Proxy *)> message;
 					// Функция разрешения подключения адъютанта на сервере
 					function <bool (const string &, const string &, const u_int, Proxy *)> accept;
+					// Функция получения событий запуска и остановки сетевого ядра
+					function <void (const awh::core_t::status_t status, awh::core_t * core)> events;
 					// Функция обратного вызова, при получении сообщения с сервера
 					function <bool (const size_t, const event_t, const char *, const size_t, Proxy *)> binary;
 					/**
@@ -99,7 +101,7 @@ namespace awh {
 					 */
 					Callback() noexcept :
 					 extractPass(nullptr), checkAuth(nullptr), active(nullptr),
-					 chunking(nullptr), message(nullptr), accept(nullptr), binary(nullptr) {}
+					 chunking(nullptr), message(nullptr), accept(nullptr), events(nullptr), binary(nullptr) {}
 				} fn_t;
 			private:
 				// Порт сервера
@@ -170,11 +172,11 @@ namespace awh {
 				void chunking(const vector <char> & chunk, const awh::http_t * http) noexcept;
 			private:
 				/**
-				 * runCallback Функция обратного вызова при активации ядра сервера
+				 * eventsCallback Функция обратного вызова при активации ядра сервера
 				 * @param status флаг запуска/остановки
 				 * @param core   объект сетевого ядра
 				 */
-				void runCallback(const awh::core_t::status_t status, awh::core_t * core) noexcept;
+				void eventsCallback(const awh::core_t::status_t status, awh::core_t * core) noexcept;
 			private:
 				/**
 				 * persistServerCallback Функция персистентного вызова
@@ -294,6 +296,11 @@ namespace awh {
 				 * @param callback функция обратного вызова
 				 */
 				void on(function <bool (const size_t, const event_t, http_t *, Proxy *)> callback) noexcept;
+				/**
+				 * on Метод установки функции обратного вызова получения событий запуска и остановки сетевого ядра
+				 * @param callback функция обратного вызова
+				 */
+				void on(function <void (const awh::core_t::status_t status, awh::core_t * core)> callback) noexcept;
 				/**
 				 * on Метод установки функции обратного вызова на событие получения сообщений в бинарном виде
 				 * @param callback функция обратного вызова

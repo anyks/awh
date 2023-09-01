@@ -30,6 +30,20 @@ void awh::client::WebSocket::openCallback(const size_t sid, awh::core_t * core) 
 	}
 }
 /**
+ * eventsCallback Функция обратного вызова при активации ядра сервера
+ * @param status флаг запуска/остановки
+ * @param core   объект сетевого ядра
+ */
+void awh::client::WebSocket::eventsCallback(const awh::core_t::status_t status, awh::core_t * core) noexcept {
+	// Если данные существуют
+	if(core != nullptr){
+		// Если функция обратного вызова установлена
+		if(this->_callback.events != nullptr)
+			// Выполняем функцию обратного вызова
+			this->_callback.events(status, core);
+	}
+}
+/**
  * persistCallback Метод персистентного вызова
  * @param aid  идентификатор адъютанта
  * @param sid  идентификатор схемы сети
@@ -1049,7 +1063,7 @@ void awh::client::WebSocket::init(const string & url, const http_t::compress_t c
  * @param callback функция обратного вызова
  */
 void awh::client::WebSocket::on(function <void (const mode_t, WebSocket *)> callback) noexcept {
-	// Устанавливаем функцию запуска и остановки
+	// Устанавливаем функцию обратного вызова
 	this->_callback.active = callback;
 }
 /**
@@ -1057,7 +1071,7 @@ void awh::client::WebSocket::on(function <void (const mode_t, WebSocket *)> call
  * @param callback функция обратного вызова
  */
 void awh::client::WebSocket::on(function <void (const u_int, const string &, WebSocket *)> callback) noexcept {
-	// Устанавливаем функцию получения ошибок
+	// Устанавливаем функцию обратного вызова
 	this->_callback.error = callback;
 }
 /**
@@ -1065,8 +1079,16 @@ void awh::client::WebSocket::on(function <void (const u_int, const string &, Web
  * @param callback функция обратного вызова
  */
 void awh::client::WebSocket::on(function <void (const vector <char> &, const bool, WebSocket *)> callback) noexcept {
-	// Устанавливаем функцию получения сообщений с сервера
+	// Устанавливаем функцию обратного вызова
 	this->_callback.message = callback;
+}
+/**
+ * on Метод установки функции обратного вызова получения событий запуска и остановки сетевого ядра
+ * @param callback функция обратного вызова
+ */
+void awh::client::WebSocket::on(function <void (const awh::core_t::status_t status, awh::core_t * core)> callback) noexcept {
+	// Устанавливаем функцию обратного вызова
+	this->_callback.events = callback;
 }
 /**
  * sendTimeout Метод отправки сигнала таймаута
@@ -1559,27 +1581,29 @@ awh::client::WebSocket::WebSocket(const client::core_t * core, const fmk_t * fmk
  _takeOverSrv(false), _attempt(0), _attempts(10), _wbitClient(0), _wbitServer(0), _aid(0), _code(0),
  _checkPoint(0), _frameSize(0xFA000), _fmk(fmk), _log(log), _core(core) {
 	// Устанавливаем событие на запуск системы
-	this->_scheme.callback.set <void (const size_t, awh::core_t *)> ("open", std::bind(&WebSocket::openCallback, this, _1, _2));
+	this->_scheme.callback.set <void (const size_t, awh::core_t *)> ("open", std::bind(&websocket_t::openCallback, this, _1, _2));
 	// Устанавливаем функцию персистентного вызова
-	this->_scheme.callback.set <void (const size_t, const size_t, awh::core_t *)> ("persist", std::bind(&WebSocket::persistCallback, this, _1, _2, _3));
+	this->_scheme.callback.set <void (const size_t, const size_t, awh::core_t *)> ("persist", std::bind(&websocket_t::persistCallback, this, _1, _2, _3));
 	// Устанавливаем событие подключения
-	this->_scheme.callback.set <void (const size_t, const size_t, awh::core_t *)> ("connect", std::bind(&WebSocket::connectCallback, this, _1, _2, _3));
+	this->_scheme.callback.set <void (const size_t, const size_t, awh::core_t *)> ("connect", std::bind(&websocket_t::connectCallback, this, _1, _2, _3));
 	// Устанавливаем событие отключения
-	this->_scheme.callback.set <void (const size_t, const size_t, awh::core_t *)> ("disconnect", std::bind(&WebSocket::disconnectCallback, this, _1, _2, _3));
+	this->_scheme.callback.set <void (const size_t, const size_t, awh::core_t *)> ("disconnect", std::bind(&websocket_t::disconnectCallback, this, _1, _2, _3));
 	// Устанавливаем событие на подключение к прокси-серверу
-	this->_scheme.callback.set <void (const size_t, const size_t, awh::core_t *)> ("connectProxy", std::bind(&WebSocket::proxyConnectCallback, this, _1, _2, _3));
+	this->_scheme.callback.set <void (const size_t, const size_t, awh::core_t *)> ("connectProxy", std::bind(&websocket_t::proxyConnectCallback, this, _1, _2, _3));
 	// Устанавливаем функцию чтения данных
-	this->_scheme.callback.set <void (const char *, const size_t, const size_t, const size_t, awh::core_t *)> ("read", std::bind(&WebSocket::readCallback, this, _1, _2, _3, _4, _5));
+	this->_scheme.callback.set <void (const char *, const size_t, const size_t, const size_t, awh::core_t *)> ("read", std::bind(&websocket_t::readCallback, this, _1, _2, _3, _4, _5));
 	// Устанавливаем функцию записи данных
-	this->_scheme.callback.set <void (const char *, const size_t, const size_t, const size_t, awh::core_t *)> ("write", std::bind(&WebSocket::writeCallback, this, _1, _2, _3, _4, _5));
+	this->_scheme.callback.set <void (const char *, const size_t, const size_t, const size_t, awh::core_t *)> ("write", std::bind(&websocket_t::writeCallback, this, _1, _2, _3, _4, _5));
 	// Устанавливаем событие на чтение данных с прокси-сервера
-	this->_scheme.callback.set <void (const char *, const size_t, const size_t, const size_t, awh::core_t *)> ("readProxy", std::bind(&WebSocket::proxyReadCallback, this, _1, _2, _3, _4, _5));
+	this->_scheme.callback.set <void (const char *, const size_t, const size_t, const size_t, awh::core_t *)> ("readProxy", std::bind(&websocket_t::proxyReadCallback, this, _1, _2, _3, _4, _5));
 	// Устанавливаем событие на активацию шифрованного TLS канала
-	this->_scheme.callback.set <bool (const uri_t::url_t &, const size_t, const size_t, awh::core_t *)> ("tls", std::bind(&WebSocket::enableTLSCallback, this, _1, _2, _3, _4));
+	this->_scheme.callback.set <bool (const uri_t::url_t &, const size_t, const size_t, awh::core_t *)> ("tls", std::bind(&websocket_t::enableTLSCallback, this, _1, _2, _3, _4));
 	// Активируем персистентный запуск для работы пингов
 	const_cast <client::core_t *> (this->_core)->persistEnable(true);
 	// Добавляем схему сети в сетевое ядро
 	const_cast <client::core_t *> (this->_core)->add(&this->_scheme);
 	// Активируем асинхронный режим работы
 	const_cast <client::core_t *> (this->_core)->mode(client::core_t::mode_t::ASYNC);
+	// Устанавливаем функцию активации ядра клиента
+	const_cast <client::core_t *> (this->_core)->callback(std::bind(&websocket_t::eventsCallback, this, _1, _2));
 }

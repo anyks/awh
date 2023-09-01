@@ -83,6 +83,8 @@ namespace awh {
 					function <bool (const string &, const string &)> checkAuth;
 					// Функция обратного вызова, при запуске или остановки подключения к серверу
 					function <void (const size_t, const mode_t, ProxySocks5 *)> active;
+					// Функция получения событий запуска и остановки сетевого ядра
+					function <void (const awh::core_t::status_t status, awh::core_t * core)> events;
 					// Функция разрешения подключения адъютанта на сервере
 					function <bool (const string &, const string &, const u_int, ProxySocks5 *)> accept;
 					// Функция обратного вызова, при получении сообщения с сервера
@@ -90,7 +92,7 @@ namespace awh {
 					/**
 					 * Callback Конструктор
 					 */
-					Callback() noexcept : checkAuth(nullptr), active(nullptr), accept(nullptr), message(nullptr) {}
+					Callback() noexcept : checkAuth(nullptr), active(nullptr), events(nullptr), accept(nullptr), message(nullptr) {}
 				} fn_t;
 			private:
 				// Порт сервера
@@ -118,18 +120,17 @@ namespace awh {
 				const log_t * _log;
 			private:
 				/**
-				 * runCallback Функция обратного вызова при активации ядра сервера
-				 * @param status флаг запуска/остановки
-				 * @param core   объект сетевого ядра
-				 */
-				void runCallback(const awh::core_t::status_t status, awh::core_t * core) noexcept;
-			private:
-				/**
 				 * openServerCallback Функция обратного вызова при запуске работы
 				 * @param sid  идентификатор схемы сети
 				 * @param core объект сетевого ядра
 				 */
 				void openServerCallback(const size_t sid, awh::core_t * core) noexcept;
+				/**
+				 * eventsCallback Функция обратного вызова при активации ядра сервера
+				 * @param status флаг запуска/остановки
+				 * @param core   объект сетевого ядра
+				 */
+				void eventsCallback(const awh::core_t::status_t status, awh::core_t * core) noexcept;
 				/**
 				 * connectClientCallback Функция обратного вызова при подключении к серверу
 				 * @param aid  идентификатор адъютанта
@@ -220,6 +221,11 @@ namespace awh {
 				 * @param callback функция обратного вызова
 				 */
 				void on(function <void (const size_t, const mode_t, ProxySocks5 *)> callback) noexcept;
+				/**
+				 * on Метод установки функции обратного вызова получения событий запуска и остановки сетевого ядра
+				 * @param callback функция обратного вызова
+				 */
+				void on(function <void (const awh::core_t::status_t status, awh::core_t * core)> callback) noexcept;
 				/**
 				 * on Метод установки функции обратного вызова на событие получения сообщений в бинарном виде
 				 * @param callback функция обратного вызова

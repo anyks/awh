@@ -39,6 +39,35 @@ void awh::server::WEB::openCallback(const size_t sid, awh::core_t * core) noexce
 	}
 }
 /**
+ * eventsCallback Функция обратного вызова при активации ядра сервера
+ * @param status флаг запуска/остановки
+ * @param core   объект сетевого ядра
+ */
+void awh::server::WEB::eventsCallback(const awh::core_t::status_t status, awh::core_t * core) noexcept {
+	// Если данные существуют
+	if(core != nullptr){
+		// Определяем статус активности сетевого ядра
+		switch(static_cast <uint8_t> (status)){
+			// Если система запущена
+			case static_cast <uint8_t> (awh::core_t::status_t::START): {
+				// Выполняем биндинг ядра локального таймера
+				core->bind(&this->_timer);
+				// Устанавливаем таймаут времени на удаление мусорных адъютантов раз в 10 секунд
+				this->_timer.setTimeout(10000, (function <void (const u_short, awh::core_t *)>) std::bind(&web_t::garbage, this, _1, _2));
+			} break;
+			// Если система остановлена
+			case static_cast <uint8_t> (awh::core_t::status_t::STOP):
+				// Выполняем анбиндинг ядра локального таймера
+				core->unbind(&this->_timer);
+			break;
+		}
+		// Если функция обратного вызова установлена
+		if(this->_callback.events != nullptr)
+			// Выполняем функцию обратного вызова
+			this->_callback.events(status, core);
+	}
+}
+/**
  * persistCallback Функция персистентного вызова
  * @param aid  идентификатор адъютанта
  * @param sid  идентификатор схемы сети
@@ -505,7 +534,7 @@ void awh::server::WEB::init(const u_int port, const string & host, const http_t:
  * @param callback функция обратного вызова
  */
 void awh::server::WEB::on(function <void (const size_t, const mode_t, web_t *)> callback) noexcept {
-	// Устанавливаем функцию запуска и остановки
+	// Устанавливаем функцию обратного вызова
 	this->_callback.active = callback;
 }
 /**
@@ -513,7 +542,7 @@ void awh::server::WEB::on(function <void (const size_t, const mode_t, web_t *)> 
  * @param callback функция обратного вызова
  */
 void awh::server::WEB::on(function <void (const size_t, const awh::http_t *, web_t *)> callback) noexcept {
-	// Устанавливаем функцию получения сообщений с сервера
+	// Устанавливаем функцию обратного вызова
 	this->_callback.message = callback;
 }
 /**
@@ -521,7 +550,7 @@ void awh::server::WEB::on(function <void (const size_t, const awh::http_t *, web
  * @param callback функция обратного вызова для извлечения пароля
  */
 void awh::server::WEB::on(function <string (const string &)> callback) noexcept {
-	// Устанавливаем функцию обратного вызова для извлечения пароля
+	// Устанавливаем функцию обратного вызова
 	this->_callback.extractPass = callback;
 }
 /**
@@ -529,7 +558,7 @@ void awh::server::WEB::on(function <string (const string &)> callback) noexcept 
  * @param callback функция обратного вызова для обработки авторизации
  */
 void awh::server::WEB::on(function <bool (const string &, const string &)> callback) noexcept {
-	// Устанавливаем функцию обратного вызова для обработки авторизации
+	// Устанавливаем функцию обратного вызова
 	this->_callback.checkAuth = callback;
 }
 /**
@@ -537,7 +566,7 @@ void awh::server::WEB::on(function <bool (const string &, const string &)> callb
  * @param callback функция обратного вызова
  */
 void awh::server::WEB::on(function <void (const vector <char> &, const awh::http_t *)> callback) noexcept {
-	// Устанавливаем функцию обратного вызова для получения чанков
+	// Устанавливаем функцию обратного вызова
 	this->_callback.chunking = callback;
 }
 /**
@@ -545,8 +574,16 @@ void awh::server::WEB::on(function <void (const vector <char> &, const awh::http
  * @param callback функция обратного вызова
  */
 void awh::server::WEB::on(function <bool (const string &, const string &, const u_int, web_t *)> callback) noexcept {
-	// Устанавливаем функцию запуска и остановки
+	// Устанавливаем функцию обратного вызова
 	this->_callback.accept = callback;
+}
+/**
+ * on Метод установки функции обратного вызова получения событий запуска и остановки сетевого ядра
+ * @param callback функция обратного вызова
+ */
+void awh::server::WEB::on(function <void (const awh::core_t::status_t status, awh::core_t * core)> callback) noexcept {
+	// Устанавливаем функцию обратного вызова
+	this->_callback.events = callback;
 }
 /**
  * reject Метод отправки сообщения об ошибке
@@ -902,6 +939,8 @@ awh::server::WEB::WEB(const server::core_t * core, const fmk_t * fmk, const log_
  _authHash(auth_t::hash_t::MD5), _authType(auth_t::type_t::NONE), _crypt(false),
  _alive(false), _chunkSize(BUFFER_CHUNK), _timeAlive(KEEPALIVE_TIMEOUT),
  _maxRequests(SERVER_MAX_REQUESTS), _fmk(fmk), _log(log), _core(core) {
+	// Выполняем отключение информационных сообщений сетевого ядра таймера
+	this->_timer.noInfo(true);
 	// Устанавливаем событие на запуск системы
 	this->_scheme.callback.set <void (const size_t, awh::core_t *)> ("open", std::bind(&web_t::openCallback, this, _1, _2));
 	// Устанавливаем функцию персистентного вызова
@@ -916,12 +955,10 @@ awh::server::WEB::WEB(const server::core_t * core, const fmk_t * fmk, const log_
 	this->_scheme.callback.set <void (const char *, const size_t, const size_t, const size_t, awh::core_t *)> ("write", std::bind(&web_t::writeCallback, this, _1, _2, _3, _4, _5));
 	// Добавляем событие аццепта адъютанта
 	this->_scheme.callback.set <bool (const string &, const string &, const u_int, const size_t, awh::core_t *)> ("accept", std::bind(&web_t::acceptCallback, this, _1, _2, _3, _4, _5));
-	// Выполняем биндинг ядра локальных таймеров
-	const_cast <server::core_t *> (this->_core)->bind(&this->_timer);
 	// Активируем персистентный запуск для работы пингов
 	const_cast <server::core_t *> (this->_core)->persistEnable(true);
 	// Добавляем схему сети в сетевое ядро
 	const_cast <server::core_t *> (this->_core)->add(&this->_scheme);
-	// Устанавливаем таймаут времени на удаление мусорных адъютантов раз в 10 секунд
-	this->_timer.setTimeout(10000, (function <void (const u_short, awh::core_t *)>) std::bind(&web_t::garbage, this, _1, _2));
+	// Устанавливаем функцию активации ядра сервера
+	const_cast <server::core_t *> (this->_core)->callback(std::bind(&web_t::eventsCallback, this, _1, _2));
 }

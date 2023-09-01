@@ -39,6 +39,20 @@ void awh::client::WEB::openCallback(const size_t sid, awh::core_t * core) noexce
 	}
 }
 /**
+ * eventsCallback Функция обратного вызова при активации ядра сервера
+ * @param status флаг запуска/остановки
+ * @param core   объект сетевого ядра
+ */
+void awh::client::WEB::eventsCallback(const awh::core_t::status_t status, awh::core_t * core) noexcept {
+	// Если данные существуют
+	if(core != nullptr){
+		// Если функция обратного вызова установлена
+		if(this->_callback.events != nullptr)
+			// Выполняем функцию обратного вызова
+			this->_callback.events(status, core);
+	}
+}
+/**
  * connectCallback Метод обратного вызова при подключении к серверу
  * @param aid  идентификатор адъютанта
  * @param sid  идентификатор схемы сети
@@ -1138,8 +1152,16 @@ void awh::client::WEB::on(function <void (const res_t &, web_t *)> callback) noe
  * @param callback функция обратного вызова
  */
 void awh::client::WEB::on(function <void (const vector <char> &, const awh::http_t *)> callback) noexcept {
-	// Устанавливаем функцию обработки вызова для получения чанков
+	// Устанавливаем функцию обратного вызова
 	this->_http.chunking(callback);
+}
+/**
+ * on Метод установки функции обратного вызова получения событий запуска и остановки сетевого ядра
+ * @param callback функция обратного вызова
+ */
+void awh::client::WEB::on(function <void (const awh::core_t::status_t status, awh::core_t * core)> callback) noexcept {
+	// Устанавливаем функцию обратного вызова
+	this->_callback.events = callback;
 }
 /**
  * sendTimeout Метод отправки сигнала таймаута
@@ -1481,4 +1503,6 @@ awh::client::WEB::WEB(const client::core_t * core, const fmk_t * fmk, const log_
 	this->_http.chunking(std::bind(&web_t::chunking, this, _1, _2));
 	// Добавляем схемы сети в сетевое ядро
 	const_cast <client::core_t *> (this->_core)->add(&this->_scheme);
+	// Устанавливаем функцию активации ядра клиента
+	const_cast <client::core_t *> (this->_core)->callback(std::bind(&web_t::eventsCallback, this, _1, _2));
 }

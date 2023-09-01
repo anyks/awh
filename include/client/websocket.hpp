@@ -112,10 +112,12 @@ namespace awh {
 					function <void (const u_int, const string &, WebSocket *)> error;
 					// Функция обратного вызова, при получении сообщения с сервера
 					function <void (const vector <char> &, const bool, WebSocket *)> message;
+					// Функция получения событий запуска и остановки сетевого ядра
+					function <void (const awh::core_t::status_t status, awh::core_t * core)> events;
 					/**
 					 * Callback Конструктор
 					 */
-					Callback() noexcept : active(nullptr), error(nullptr), message(nullptr) {}
+					Callback() noexcept : active(nullptr), error(nullptr), message(nullptr), events(nullptr) {}
 				} fn_t;
 			private:
 				// Объект для компрессии-декомпрессии данных
@@ -202,6 +204,12 @@ namespace awh {
 				 * @param core объект сетевого ядра
 				 */
 				void openCallback(const size_t sid, awh::core_t * core) noexcept;
+				/**
+				 * eventsCallback Функция обратного вызова при активации ядра сервера
+				 * @param status флаг запуска/остановки
+				 * @param core   объект сетевого ядра
+				 */
+				void eventsCallback(const awh::core_t::status_t status, awh::core_t * core) noexcept;
 				/**
 				 * persistCallback Метод персистентного вызова
 				 * @param aid  идентификатор адъютанта
@@ -350,6 +358,11 @@ namespace awh {
 				 * @param callback функция обратного вызова
 				 */
 				void on(function <void (const vector <char> &, const bool, WebSocket *)> callback) noexcept;
+				/**
+				 * on Метод установки функции обратного вызова получения событий запуска и остановки сетевого ядра
+				 * @param callback функция обратного вызова
+				 */
+				void on(function <void (const awh::core_t::status_t status, awh::core_t * core)> callback) noexcept;
 			public:
 				/**
 				 * sendTimeout Метод отправки сигнала таймаута
