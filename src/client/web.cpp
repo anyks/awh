@@ -456,7 +456,7 @@ void awh::client::WEB::submit(const req_t & request) noexcept {
 			// Если тело запроса существует
 			if(!request.entity.empty()){
 				// Список файловых дескрипторов
-				SOCKET fds[2];
+				int fds[2];
 				// Тело WEB сообщения
 				vector <char> entity;
 				/**
