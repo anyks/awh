@@ -46,8 +46,6 @@ int awh::client::WEB::onFrameHttp2(nghttp2_session * session, const nghttp2_fram
 						const auto & response = web->_http.response(true);
 						// Если параметры ответа получены
 						if(!response.empty()){
-							// Выводим заголовок ответа
-							cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
 							// Выводим параметры ответа
 							cout << string(response.begin(), response.end()) << endl;
 							// Если тело ответа существует

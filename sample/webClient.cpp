@@ -108,7 +108,8 @@ int main(int argc, char * argv[]){
 	// Создаём объект WEB запроса
 	client::web_t web(&core, &fmk, &log);
 	// Устанавливаем активный протокол подключения
-	core.proto(awh::engine_t::proto_t::HTTP1_1);
+	core.proto(awh::engine_t::proto_t::HTTP2);
+	// core.proto(awh::engine_t::proto_t::HTTP1_1);
 	// Устанавливаем название сервиса
 	log.name("WEB Client");
 	// Устанавливаем формат времени
@@ -180,9 +181,9 @@ int main(int argc, char * argv[]){
 	// 5. Протестировать работу своего прокси-сервера и прокси-клиента
 	// 6. Протестировать авторизацию
 	// 7. Сделать методы остановки для Danube и протестить с названиями архивов с точками
-	
-	// Активируем работу клиента HTTP/2
-	core.proto(awh::engine_t::proto_t::HTTP2);
+	// 8. В Windows происходит Crash при запросе https://apple.com/ru/mac
+	// 9. С LibEvent есть затыки в получении данных, база событий отказывается работать
+
 	// Замеряем время начала работы
 	auto timeShifting = chrono::system_clock::now();
 	// Формируем GET запрос
