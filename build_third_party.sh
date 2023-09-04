@@ -775,10 +775,18 @@ if [ ! -f "$src/.stamp_done" ]; then
 	 --enable-shared=no \
 	 --enable-static=yes
 
-	# Выполняем сборку на всех логических ядрах
-	$BUILD -j"$numproc" || exit 1
-	# Выполняем установку проекта
-	$BUILD install || exit 1
+	# Устанавливаем систему сборки
+	if [[ $OS = "Linux" ]]; then
+		# Выполняем сборку на всех логических ядрах
+		gmake -j"$numproc" || exit 1
+		# Выполняем установку проекта
+		gmake install || exit 1
+	else
+		# Выполняем сборку на всех логических ядрах
+		$BUILD -j"$numproc" || exit 1
+		# Выполняем установку проекта
+		$BUILD install || exit 1
+	fi
 
 	# Выполняем конфигурацию проекта
 	if [[ $OS = "Windows" ]]; then

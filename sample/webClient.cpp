@@ -132,6 +132,8 @@ int main(int argc, char * argv[]){
 	core.ca("./ca/cert.pem");
 	// Устанавливаем логин и пароль пользователя
 	web.user("user", "password");
+	// Устанавливаем длительное подключение
+	web.keepAlive(2, 3, 1);
 	// Устанавливаем данные прокси-сервера
 	// web.proxy("http://qKseEr:t5QrcW@212.102.146.33:8000");
 	// web.proxy("socks5://3JMFxD:CWv6MP@45.130.126.236:8000");
