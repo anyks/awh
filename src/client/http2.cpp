@@ -308,6 +308,8 @@ static ssize_t file_read_callback(nghttp2_session * session, int32_t stream_id, 
 	}
 	if (r == 0) {
 		*data_flags |= NGHTTP2_DATA_FLAG_EOF;
+
+		::close(fd);
 	}
 	return r;
 
@@ -378,26 +380,15 @@ void awh::client::Http2::actionConnect() noexcept {
 	
 	int32_t stream_id = 0;
 	
-	
+	/*
 	// GET
 	{
-		/*
 		vector <nghttp2_nv> nva = {
 			make_nv(":method", "GET"),
 			make_nv(":path", "/"),
 			make_nv(":scheme", "https"),
 			make_nv(":authority", "anyks.com"),
 			make_nv("accept", "*//*"),
-			make_nv("user-agent", "nghttp2/" NGHTTP2_VERSION)
-		};
-		*/
-
-		vector <nghttp2_nv> nva = {
-			make_nv(":method", "GET"),
-			make_nv(":path", "/wiki/HTTP"),
-			make_nv(":scheme", "https"),
-			make_nv(":authority", "ru.wikipedia.org"),
-			make_nv("accept", "*/*"),
 			make_nv("user-agent", "nghttp2/" NGHTTP2_VERSION)
 		};
 
@@ -407,7 +398,7 @@ void awh::client::Http2::actionConnect() noexcept {
 
 		stream_id = nghttp2_submit_request(this->_session.ctx, nullptr, nva.data(), nva.size(), nullptr, this);
 	}
-	/*
+	*/
 
 	
 	// POST
@@ -437,7 +428,7 @@ void awh::client::Http2::actionConnect() noexcept {
 			make_nv(":path", "/test.php"),
 			make_nv(":scheme", "https"),
 			make_nv(":authority", "anyks.com"),
-			make_nv("accept", "*//*"),
+			make_nv("accept", "*/*"),
 			make_nv("content-type", "application/x-www-form-urlencoded"),
 			make_nv("content-length", contentLength.c_str()),
 			make_nv("user-agent", "nghttp2/" NGHTTP2_VERSION)
@@ -482,7 +473,7 @@ void awh::client::Http2::actionConnect() noexcept {
 		// ::close(pipefd[READ]);
 
 	}
-	*/
+
 
 	
 
@@ -555,19 +546,10 @@ void awh::client::Http2::stop() noexcept {
 void awh::client::Http2::start() noexcept {
 	// Создаём объект URI
 	uri_t uri(this->_fmk);
-
-	/*
 	// Устанавливаем параметры адреса
 	this->_scheme.url = uri.parse("https://anyks.com");
 	// Устанавливаем IP адрес
 	this->_scheme.url.ip = "193.42.110.185";
-	*/
-
-	// Устанавливаем параметры адреса
-	this->_scheme.url = uri.parse("https://ru.wikipedia.org/wiki/HTTP");
-	// Устанавливаем IP адрес
-	this->_scheme.url.ip = "185.15.59.224";
-
 	// Если биндинг не запущен
 	if(!this->_core->working())
 		// Выполняем запуск биндинга

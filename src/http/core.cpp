@@ -27,9 +27,17 @@ void awh::Http::chunkingCallback(const vector <char> & buffer, const web_t * web
 		this->_fn(buffer, this);
 }
 /**
- * update Метод обновления входящих данных
+ * commit Метод применения полученных результатов
  */
-void awh::Http::update() noexcept {
+void awh::Http::commit() noexcept {
+	// Выполняем проверку авторизации
+	this->stath = this->checkAuth();
+	// Если ключ соответствует
+	if(this->stath == stath_t::GOOD)
+		// Устанавливаем стейт рукопожатия
+		this->state = state_t::GOOD;
+	// Поменяем данные как бракованные
+	else this->state = state_t::BROKEN;
 	// Получаем данные тела
 	const auto & body = this->web.body();
 	// Если тело сообщения получено
@@ -308,18 +316,9 @@ size_t awh::Http::parse(const char * buffer, const size_t size) noexcept {
 		// Выполняем парсинг сырых данных
 		result = this->web.parse(buffer, size);
 		// Если парсинг выполнен
-		if(this->web.isEnd()){
-			// Выполняем проверку авторизации
-			this->stath = this->checkAuth();
-			// Если ключ соответствует
-			if(this->stath == stath_t::GOOD)
-				// Устанавливаем стейт рукопожатия
-				this->state = state_t::GOOD;
-			// Поменяем данные как бракованные
-			else this->state = state_t::BROKEN;
-			// Выполняем обновление входящих параметров
-			this->update();
-		}
+		if(this->web.isEnd())
+			// Выполняем коммит полученного результата
+			this->commit();
 	}
 	// Выводим реузльтат
 	return result;
@@ -335,39 +334,63 @@ const vector <char> awh::Http::payload() const noexcept {
 	vector <char> * body = const_cast <vector <char> *> (&this->web.body());
 	// Если данные тела ещё существуют
 	if(!body->empty()){
+		// Получаем объект параметров запроса
+		const web_t::query_t & query = this->web.query();
 		// Если нужно тело выводить в виде чанков
-		if(this->_chunking){
-			// Тело чанка запроса
-			string chunk = "";
-			// Если тело сообщения больше размера чанка
-			if(body->size() >= this->_chunk){
-				// Получаем размер чанка
-				chunk = this->fmk->itoa(this->_chunk, 16);
-				// Добавляем разделитель
-				chunk.append("\r\n");
-				// Формируем тело чанка
-				chunk.insert(chunk.end(), body->begin(), body->begin() + this->_chunk);
-				// Добавляем конец запроса
-				chunk.append("\r\n");
-				// Удаляем полученные данные в теле сообщения
-				body->erase(body->begin(), body->begin() + this->_chunk);
-			// Если тело сообщения полностью убирается в размер чанка
+		if((query.ver > 1.0f) && this->_chunking){
+			// Если версия протокола интернета выше 1.1
+			if(query.ver > 1.1f){
+				// Если тело сообщения больше размера чанка
+				if(body->size() >= this->_chunk){
+					// Формируем результат
+					result.assign(body->begin(), body->begin() + this->_chunk);
+					// Удаляем полученные данные в теле сообщения
+					body->erase(body->begin(), body->begin() + this->_chunk);
+				// Если тело сообщения полностью убирается в размер чанка
+				} else {
+					// Формируем результат
+					result.assign(body->begin(), body->end());
+					// Очищаем объект тела запроса
+					body->clear();
+					// Освобождаем память
+					vector <char> ().swap(* body);
+				}
+			// Выполняем сборку чанков для протокола HTTP/1.1
 			} else {
-				// Получаем размер чанка
-				chunk = this->fmk->itoa(body->size(), 16);
-				// Добавляем разделитель
-				chunk.append("\r\n");
-				// Формируем тело чанка
-				chunk.insert(chunk.end(), body->begin(), body->end());
-				// Добавляем конец запроса
-				chunk.append("\r\n0\r\n\r\n");
-				// Очищаем данные тела
-				body->clear();
+				// Тело чанка запроса
+				string chunk = "";
+				// Если тело сообщения больше размера чанка
+				if(body->size() >= this->_chunk){
+					// Получаем размер чанка
+					chunk = this->fmk->itoa(this->_chunk, 16);
+					// Добавляем разделитель
+					chunk.append("\r\n");
+					// Формируем тело чанка
+					chunk.insert(chunk.end(), body->begin(), body->begin() + this->_chunk);
+					// Добавляем конец запроса
+					chunk.append("\r\n");
+					// Удаляем полученные данные в теле сообщения
+					body->erase(body->begin(), body->begin() + this->_chunk);
+				// Если тело сообщения полностью убирается в размер чанка
+				} else {
+					// Получаем размер чанка
+					chunk = this->fmk->itoa(body->size(), 16);
+					// Добавляем разделитель
+					chunk.append("\r\n");
+					// Формируем тело чанка
+					chunk.insert(chunk.end(), body->begin(), body->end());
+					// Добавляем конец запроса
+					chunk.append("\r\n0\r\n\r\n");
+					// Очищаем данные тела
+					body->clear();
+					// Освобождаем память
+					vector <char> ().swap(* body);
+				}
+				// Формируем результат
+				result.assign(chunk.begin(), chunk.end());
+				// Освобождаем память
+				string().swap(chunk);
 			}
-			// Формируем результат
-			result.assign(chunk.begin(), chunk.end());
-			// Освобождаем память
-			string().swap(chunk);
 		// Выводим данные тела как есть
 		} else {
 			// Если тело сообщения больше размера чанка

@@ -16,136 +16,6 @@
 #include <client/web.hpp>
 
 /**
- * init Метод инициализации объекта
- */
-void awh::client::WEB::Http2::init() noexcept {
-	// Если объект уже инициализирован
-	if(this->ctx != nullptr)
-		// Выполняем очистку объекта
-		this->free();
-	/**
-	 * Методы только для OS Windows
-	 */
-	#if defined(_WIN32) || defined(_WIN64)
-		// Выполняем инициализацию файловых дескрипторов для обмена сообщениями
-		const int rv = _pipe(this->fds, 4096, O_BINARY);
-	/**
-	 * Для всех остальных операционных систем
-	 */
-	#else
-		// Выполняем инициализацию файловых дескрипторов для обмена сообщениями
-		const int rv = ::pipe(this->fds);
-	#endif
-	// Выполняем подписку на основной канал передачи данных
-	if(rv != 0){
-		// Выводим в лог сообщение
-		this->_log->print("%s", log_t::flag_t::CRITICAL, strerror(errno));
-		// Выходим принудительно из приложения
-		exit(EXIT_FAILURE);
-	}
-}
-/**
- * Метод очистки объекта
- */
-void awh::client::WEB::Http2::free() noexcept {
-	/**
-	 * Методы только для OS Windows
-	 */
-	#if defined(_WIN32) || defined(_WIN64)
-		// Если файловый дескриптор на чтение открыт
-		if(this->fds[0] > -1)
-			// Выполняем закрытие файлового дескриптора на чтение
-			_close(this->fds[0]);
-		// Если файловый дескриптор на запись открыт
-		if(this->fds[1] > -1)
-			// Выполняем закрытие файлового дескриптора на запись
-			_close(this->fds[1]);
-	/**
-	 * Для всех остальных операционных систем
-	 */
-	#else
-		// Если файловый дескриптор на чтение открыт
-		if(this->fds[0] > -1)
-			// Выполняем закрытие файлового дескриптора на чтение
-			::close(this->fds[0]);
-		// Если файловый дескриптор на запись открыт
-		if(this->fds[1] > -1)
-			// Выполняем закрытие файлового дескриптора на запись
-			::close(this->fds[1]);
-	#endif
-	// Сбрасываем файловый дескриптор на чтение
-	this->fds[0] = -1;
-	// Сбрасываем файловый дескриптор на запись
-	this->fds[1] = -1;
-	// Если объект уже инициализирован
-	if(this->ctx != nullptr){
-		// Выполняем удаление сессии
-		nghttp2_session_del(this->ctx);
-		// Выполняем зануление сессии
-		// this->ctx = nullptr;
-	}
-	// Выполняем сброс идентификатора сессии
-	this->id = -1;
-	// Сбрасываем флаг активации HTTP/2
-	this->mode = false;
-}
-/**
- * read Метод чтения в буфер данных из файлового дескриптора
- * @param buffer буфер данных для чтения
- * @param size   размер буфера данных для чтения
- * @return       размер прочитанных данных
- */
-int awh::client::WEB::Http2::read(uint8_t * buffer, const size_t size) const noexcept {
-	// Результат работы функции
-	int result = -1;
-	// Если файловый дескриптор активен
-	if(this->fds[0] > -1){
-		/**
-		 * Методы только для OS Windows
-		 */
-		#if defined(_WIN32) || defined(_WIN64)
-			// Выполняем чтение данных из сокета в буфер данных
-			while(((result = _read(this->fds[0], buffer, size)) == -1) && (errno == EINTR));
-		/**
-		 * Для всех остальных операционных систем
-		 */
-		#else
-			// Выполняем чтение данных из сокета в буфер данных
-			while(((result = ::read(this->fds[0], buffer, size)) == -1) && (errno == EINTR));
-		#endif
-	}
-	// Выводим результат
-	return result;
-}
-/**
- * write Метод записи из буфера данных в файловый дескриптор
- * @param buffer буфер данных для записи
- * @param size   размер буфера данных для записи
- * @return       размер записанных данных
- */
-int awh::client::WEB::Http2::write(const uint8_t * buffer, const size_t size) const noexcept {
-	// Результат работы функции
-	int result = -1;
-	// Если файловый дескриптор активен
-	if(this->fds[1] > -1){
-		/**
-		 * Методы только для OS Windows
-		 */
-		#if defined(_WIN32) || defined(_WIN64)
-			// Выполняем запись в сокет буфера данных
-			result = _write(this->fds[1], buffer, size);
-		/**
-		 * Для всех остальных операционных систем
-		 */
-		#else
-			// Выполняем запись в сокет буфера данных
-			result = ::write(this->fds[1], buffer, size);
-		#endif
-	}
-	// Выводим результат
-	return result;
-}
-/**
  * onFrameHttp2 Функция обратного вызова при получении фрейма заголовков HTTP/2 с сервера
  * @param session объект сессии HTTP/2
  * @param frame   объект фрейма заголовков HTTP/2
@@ -165,8 +35,8 @@ int awh::client::WEB::onFrameHttp2(nghttp2_session * session, const nghttp2_fram
 		case NGHTTP2_HEADERS: {
 			// Если сессия клиента совпадает с сессией полученных даных
 			if((frame->hd.flags & NGHTTP2_FLAG_END_STREAM) && (web->_http2.id == frame->hd.stream_id)){
-				// Выполняем обновление полученного тела
-				web->_http.update();
+				// Выполняем коммит полученного результата
+				web->_http.commit();
 				/**
 				 * Если включён режим отладки
 				 */
@@ -279,8 +149,8 @@ int awh::client::WEB::onFrameHttp2(nghttp2_session * session, const nghttp2_fram
 						if(!web->_responses.empty())
 							// Выполняем удаление объекта ответа
 							web->_responses.erase(web->_responses.begin());
-						// Завершаем обработку
-						return 0;
+						// Выполняем завершение работы
+						goto Stop;
 					} break;
 					// Если запрос неудачный
 					case static_cast <uint8_t> (awh::http_t::stath_t::FAULT):
@@ -467,18 +337,45 @@ ssize_t awh::client::WEB::sendHttp2(nghttp2_session * session, const uint8_t * b
 ssize_t awh::client::WEB::readHttp2(nghttp2_session * session, const int32_t sid, uint8_t * buffer, const size_t size, uint32_t * flags, nghttp2_data_source * source, void * ctx) noexcept {
 	// Выполняем блокировку неиспользуемой переменных
 	(void) sid;
-	(void) source;
+	(void) ctx;
 	(void) session;
 	// Результат работы функции
-	const ssize_t result = reinterpret_cast <web_t *> (ctx)->_http2.read(buffer, size);
+	ssize_t result = -1;
+	/**
+	 * Методы только для OS Windows
+	 */
+	#if defined(_WIN32) || defined(_WIN64)
+		// Выполняем чтение данных из сокета в буфер данных
+		while(((result = _read(source->fd, buffer, size)) == -1) && (errno == EINTR));
+	/**
+	 * Для всех остальных операционных систем
+	 */
+	#else
+		// Выполняем чтение данных из сокета в буфер данных
+		while(((result = ::read(source->fd, buffer, size)) == -1) && (errno == EINTR));
+	#endif
 	// Если данные не прочитанны из сокета
-	if(result <= 0)
+	if(result < 0)
 		// Выводим сообщение об ошибке
 		return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
 	// Если все данные прочитаны полностью
-	else if(result == 0)
+	else if(result == 0) {
+		/**
+		 * Методы только для OS Windows
+		 */
+		#if defined(_WIN32) || defined(_WIN64)
+			// Выполняем закрытие подключения
+			_close(source->fd);
+		/**
+		 * Для всех остальных операционных систем
+		 */
+		#else
+			// Выполняем закрытие подключения
+			::close(source->fd);
+		#endif
 		// Устанавливаем флаг, завершения чтения данных
 		(* flags) |= NGHTTP2_DATA_FLAG_EOF;
+	}
 	// Выводим количество прочитанных байт
 	return result;
 }
@@ -910,8 +807,6 @@ void awh::client::WEB::actionConnect() noexcept {
 		this->_action = action_t::NONE;
 	// Если протокол подключения является HTTP/2
 	if((this->_http2.mode = (this->_core->proto(this->_aid) == engine_t::proto_t::HTTP2))){
-		// Выполняем инициализацию объекта HTTP/2
-		this->_http2.init();
 		// Создаём объект функций обратного вызова
 		nghttp2_session_callbacks * callbacks;
 		// Выполняем инициализацию сессию функций обратного вызова
@@ -940,8 +835,10 @@ void awh::client::WEB::actionConnect() noexcept {
 		if(rv != 0){
 			// Выводим сообщение об ошибке
 			this->_log->print("Could not submit SETTINGS: %s", log_t::flag_t::CRITICAL, nghttp2_strerror(rv));
-			// Выходим принудительно из приложения
-			exit(EXIT_FAILURE);
+			// Выполняем закрытие подключения
+			const_cast <client::core_t *> (this->_core)->close(this->_aid);
+			// Выходим из функции
+			return;
 		}
 	}
 	// Если функция обратного вызова существует
@@ -955,8 +852,8 @@ void awh::client::WEB::actionConnect() noexcept {
 void awh::client::WEB::actionDisconnect() noexcept {
 	// Если активен протокол HTTP/2
 	if(this->_http2.mode)
-		// Выполняем закрытие подключения
-		this->_http2.free();
+		// Выполняем удаление сессии
+		nghttp2_session_del(this->_http2.ctx);
 	// Если список ответов получен
 	if(!this->_responses.empty() && !this->_requests.empty()){
 		// Получаем объект ответа
@@ -1775,8 +1672,32 @@ void awh::client::WEB::send(const vector <req_t> & reqs) noexcept {
 					nva.push_back(this->nv(header.first, header.second));
 				// Если тело запроса существует
 				if(!req.entity.empty()){
+					// Список файловых дескрипторов
+					SOCKET fds[2];
 					// Тело WEB сообщения
 					vector <char> entity;
+					/**
+					 * Методы только для OS Windows
+					 */
+					#if defined(_WIN32) || defined(_WIN64)
+						// Выполняем инициализацию файловых дескрипторов для обмена сообщениями
+						const int rv = _pipe(fds, 4096, O_BINARY);
+					/**
+					 * Для всех остальных операционных систем
+					 */
+					#else
+						// Выполняем инициализацию файловых дескрипторов для обмена сообщениями
+						const int rv = ::pipe(fds);
+					#endif
+					// Выполняем подписку на основной канал передачи данных
+					if(rv != 0){
+						// Выводим в лог сообщение
+						this->_log->print("%s", log_t::flag_t::CRITICAL, strerror(errno));
+						// Выполняем закрытие подключения
+						const_cast <client::core_t *> (this->_core)->close(this->_aid);
+						// Выходим из функции
+						return;
+					}
 					// Получаем данные тела запроса
 					while(!(entity = this->_http.payload()).empty()){
 						/**
@@ -1786,22 +1707,76 @@ void awh::client::WEB::send(const vector <req_t> & reqs) noexcept {
 							// Выводим сообщение о выводе чанка тела
 							cout << this->_fmk->format("<chunk %u>", entity.size()) << endl;
 						#endif
-						// Выполняем отправку данных полезной нагрузки на сервер
-						this->_http2.write((const uint8_t *) entity.data(), entity.size());
+						/**
+						 * Методы только для OS Windows
+						 */
+						#if defined(_WIN32) || defined(_WIN64)
+							// Если данные небыли записаны в сокет
+							if(static_cast <int> (_write(fds[1], entity.data(), entity.size())) != static_cast <int> (entity.size())){
+								// Выполняем закрытие сокета для чтения
+								_close(fds[0]);
+								// Выполняем закрытие сокета для записи
+								_close(fds[1]);
+								// Выводим в лог сообщение
+								this->_log->print("%s", log_t::flag_t::CRITICAL, strerror(errno));
+								// Выполняем закрытие подключения
+								const_cast <client::core_t *> (this->_core)->close(this->_aid);
+								// Выходим из функции
+								return;
+							}
+						/**
+						 * Для всех остальных операционных систем
+						 */
+						#else
+							// Если данные небыли записаны в сокет
+							if(static_cast <int> (::write(fds[1], entity.data(), entity.size())) != static_cast <int> (entity.size())){
+								// Выполняем закрытие сокета для чтения
+								::close(fds[0]);
+								// Выполняем закрытие сокета для записи
+								::close(fds[1]);
+								// Выводим в лог сообщение
+								this->_log->print("%s", log_t::flag_t::CRITICAL, strerror(errno));
+								// Выполняем закрытие подключения
+								const_cast <client::core_t *> (this->_core)->close(this->_aid);
+								// Выходим из функции
+								return;
+							}
+						#endif
 					}
+					/**
+					 * Методы только для OS Windows
+					 */
+					#if defined(_WIN32) || defined(_WIN64)
+						// Выполняем закрытие подключения
+						_close(fds[1]);
+					/**
+					 * Для всех остальных операционных систем
+					 */
+					#else
+						// Выполняем закрытие подключения
+						::close(fds[1]);
+					#endif
 					// Создаём объект передачи данных тела полезной нагрузки
 					nghttp2_data_provider data;
 					// Зануляем передаваемый контекст
 					data.source.ptr = nullptr;
 					// Устанавливаем файловый дескриптор
-					data.source.fd = this->_http2.fds[0];
+					data.source.fd = fds[0];
 					// Устанавливаем функцию обратного вызова
 					data.read_callback = &web_t::readHttp2;
 					// Выполняем запрос на удалённый сервер
 					this->_http2.id = nghttp2_submit_request(this->_http2.ctx, nullptr, nva.data(), nva.size(), &data, this);
 				// Если тело запроса не существует, выполняем установленный запрос
 				} else this->_http2.id = nghttp2_submit_request(this->_http2.ctx, nullptr, nva.data(), nva.size(), nullptr, this);
-				{
+				// Если запрос не получилось отправить
+				if(this->_http2.id < 0){
+					// Выводим в лог сообщение
+					this->_log->print("%s", log_t::flag_t::CRITICAL, nghttp2_strerror(this->_http2.id));
+					// Выполняем закрытие подключения
+					const_cast <client::core_t *> (this->_core)->close(this->_aid);
+					// Выходим из функции
+					return;
+				}{
 					// Результат фиксации сессии
 					int rv = -1;
 					// Фиксируем отправленный результат
@@ -2091,7 +2066,7 @@ void awh::client::WEB::authTypeProxy(const auth_t::type_t type, const auth_t::ha
  * @param log  объект для работы с логами
  */
 awh::client::WEB::WEB(const client::core_t * core, const fmk_t * fmk, const log_t * log) noexcept :
- _uri(fmk), _http(fmk, log, &_uri), _http2(log), _scheme(fmk, log), _action(action_t::NONE),
+ _uri(fmk), _http(fmk, log, &_uri), _scheme(fmk, log), _action(action_t::NONE),
  _compress(awh::http_t::compress_t::NONE), _aid(0), _unbind(true), _active(false),
  _stopped(false), _redirects(false), _attempts(10), _fmk(fmk), _log(log), _core(core) {
 	// Устанавливаем событие на запуск системы

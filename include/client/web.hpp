@@ -110,45 +110,14 @@ namespace awh {
 				/**
 				 * Http2 Структура работы с клиентом HTTP/2
 				 */
-				typedef class Http2 {
-					public:
-						bool mode;             // Флаг активации модуля HTTP/2
-						int32_t id;            // Идентификатор сессии
-						SOCKET fds[2];         // Список файловых дескрипторов
-						nghttp2_session * ctx; // Контекст сессии
-					private:
-						// Создаём объект работы с логами
-						const log_t * _log;
-					public:
-						/**
-						 * init Метод инициализации объекта
-						 */
-						void init() noexcept;
-						/**
-						 * Метод очистки объекта
-						 */
-						void free() noexcept;
-					public:
-						/**
-						 * read Метод чтения в буфер данных из файлового дескриптора
-						 * @param buffer буфер данных для чтения
-						 * @param size   размер буфера данных для чтения
-						 * @return       размер прочитанных данных
-						 */
-						int read(uint8_t * buffer, const size_t size) const noexcept;
-						/**
-						 * write Метод записи из буфера данных в файловый дескриптор
-						 * @param buffer буфер данных для записи
-						 * @param size   размер буфера данных для записи
-						 * @return       размер записанных данных
-						 */
-						int write(const uint8_t * buffer, const size_t size) const noexcept;
-					public:
+				typedef struct Http2 {
+					bool mode;             // Флаг активации модуля HTTP/2
+					int32_t id;            // Идентификатор сессии
+					nghttp2_session * ctx; // Контекст сессии
 					/**
 					 * Http2 Конструктор
-					 * @param log объект для работы с логами
 					 */
-					Http2(const log_t * log) noexcept : mode(false), id(-1), fds{-1,-1}, ctx(nullptr), _log(log) {}
+					Http2() noexcept : mode(false), id(-1), ctx(nullptr) {}
 				} http2_t;
 				/**
 				 * Locker Структура локера

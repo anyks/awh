@@ -38,9 +38,9 @@ namespace awh {
 		typedef class WS : public ws_core_t {
 			private:
 				/**
-				 * update Метод обновления входящих данных
+				 * commit Метод применения полученных результатов
 				 */
-				void update() noexcept;
+				void commit() noexcept;
 			public:
 				/**
 				 * checkKey Метод проверки ключа сервера

@@ -16,13 +16,21 @@
 #include <ws/server.hpp>
 
 /**
- * update Метод обновления входящих данных
+ * commit Метод применения полученных результатов
  */
-void awh::server::WS::update() noexcept {
+void awh::server::WS::commit() noexcept {
 	// Сбрасываем флаг шифрования
 	this->crypt = false;
 	// Список доступных расширений
 	vector <string> extensions;
+	// Выполняем проверку авторизации
+	this->stath = this->checkAuth();
+	// Если ключ соответствует
+	if(this->stath == stath_t::GOOD)
+		// Устанавливаем стейт рукопожатия
+		this->state = state_t::GOOD;
+	// Поменяем данные как бракованные
+	else this->state = state_t::BROKEN;
 	// Получаем значение заголовка Sec-Websocket-Extensions
 	const string & ext = this->web.header("sec-websocket-extensions");
 	// Если заголовки расширений найдены
@@ -57,23 +65,33 @@ void awh::server::WS::update() noexcept {
 				// Если получены заголовки требующие сжимать передаваемые фреймы методом Deflate
 				else if(this->fmk->compare(val, "permessage-deflate") || this->fmk->compare(val, "perframe-deflate")) {
 					// Устанавливаем требование выполнять компрессию полезной нагрузки
-					if((this->_compress != compress_t::DEFLATE) && (this->_compress != compress_t::ALL_COMPRESS)) this->_compress = compress_t::NONE;
+					if((this->_compress != compress_t::DEFLATE) && (this->_compress != compress_t::ALL_COMPRESS))
+						// Выполняем сброс типа компрессии
+						this->_compress = compress_t::NONE;
 				// Если получены заголовки требующие сжимать передаваемые фреймы методом GZip
 				} else if(this->fmk->compare(val, "permessage-gzip") || this->fmk->compare(val, "perframe-gzip")) {
 					// Устанавливаем требование выполнять компрессию полезной нагрузки
-					if((this->_compress != compress_t::GZIP) && (this->_compress != compress_t::ALL_COMPRESS)) this->_compress = compress_t::NONE;
+					if((this->_compress != compress_t::GZIP) && (this->_compress != compress_t::ALL_COMPRESS))
+						// Выполняем сброс типа компрессии
+						this->_compress = compress_t::NONE;
 				// Если получены заголовки требующие сжимать передаваемые фреймы методом Brotli
 				} else if(this->fmk->compare(val, "permessage-br") || this->fmk->compare(val, "perframe-br")) {
 					// Устанавливаем требование выполнять компрессию полезной нагрузки
-					if((this->_compress != compress_t::BROTLI) && (this->_compress != compress_t::ALL_COMPRESS)) this->_compress = compress_t::NONE;
+					if((this->_compress != compress_t::BROTLI) && (this->_compress != compress_t::ALL_COMPRESS))
+						// Выполняем сброс типа компрессии
+						this->_compress = compress_t::NONE;
 				// Если размер скользящего окна для клиента получен
 				} else if(val.find("client_max_window_bits=") != wstring::npos) {
 					// Устанавливаем размер скользящего окна
-					if(this->_compress != compress_t::NONE) this->_wbitClient = stoi(val.substr(23));
+					if(this->_compress != compress_t::NONE)
+						// Устанавливаем размер скользящего окна
+						this->_wbitClient = ::stoi(val.substr(23));
 				// Если разрешено использовать максимальный размер скользящего окна для клиента
 				} else if(this->fmk->compare(val, "client_max_window_bits")) {
 					// Устанавливаем максимальный размер скользящего окна
-					if(this->_compress != compress_t::NONE) this->_wbitClient = GZIP_MAX_WBITS;
+					if(this->_compress != compress_t::NONE)
+						// Устанавливаем максимальный размер скользящего окна
+						this->_wbitClient = GZIP_MAX_WBITS;
 				}
 			}
 		}

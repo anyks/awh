@@ -16,13 +16,21 @@
 #include <ws/client.hpp>
 
 /**
- * update Метод обновления входящих данных
+ * commit Метод применения полученных результатов
  */
-void awh::client::WS::update() noexcept {
+void awh::client::WS::commit() noexcept {
 	// Сбрасываем флаг шифрования
 	this->crypt = false;
 	// Список доступных расширений
 	vector <string> extensions;
+	// Выполняем проверку авторизации
+	this->stath = this->checkAuth();
+	// Если ключ соответствует
+	if(this->stath == stath_t::GOOD)
+		// Устанавливаем стейт рукопожатия
+		this->state = state_t::GOOD;
+	// Поменяем данные как бракованные
+	else this->state = state_t::BROKEN;
 	// Отключаем сжатие ответа с сервера
 	this->_compress = compress_t::NONE;
 	// Получаем значение заголовка Sec-Websocket-Extensions
@@ -69,7 +77,7 @@ void awh::client::WS::update() noexcept {
 				// Если размер скользящего окна для клиента получен
 				else if(val.find("client_max_window_bits=") != wstring::npos)
 					// Устанавливаем размер скользящего окна
-					this->_wbitClient = stoi(val.substr(23));
+					this->_wbitClient = ::stoi(val.substr(23));
 				// Если разрешено использовать максимальный размер скользящего окна для клиента
 				else if(this->fmk->compare(val, "client_max_window_bits"))
 					// Устанавливаем максимальный размер скользящего окна
@@ -77,7 +85,7 @@ void awh::client::WS::update() noexcept {
 				// Если размер скользящего окна для сервера получен
 				else if(val.find("server_max_window_bits=") != wstring::npos)
 					// Устанавливаем размер скользящего окна
-					this->_wbitServer = stoi(val.substr(23));
+					this->_wbitServer = ::stoi(val.substr(23));
 				// Если разрешено использовать максимальный размер скользящего окна для сервера
 				else if(this->fmk->compare(val, "server_max_window_bits"))
 					// Устанавливаем максимальный размер скользящего окна

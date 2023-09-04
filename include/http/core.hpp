@@ -52,23 +52,23 @@ namespace awh {
 			 * Статусы проверки авторизации
 			 */
 			enum class stath_t : uint8_t {
-				NONE,  // Проверка авторизации не проводилась
-				GOOD,  // Авторизация прошла успешно
-				RETRY, // Требуется повторить попытку
-				FAULT  // Авторизация не удалась
+				NONE  = 0x00, // Проверка авторизации не проводилась
+				GOOD  = 0x01, // Авторизация прошла успешно
+				RETRY = 0x02, // Требуется повторить попытку
+				FAULT = 0x03  // Авторизация не удалась
 			};
 			/**
 			 * Формат сжатия тела запроса
 			 */
 			enum class compress_t : uint8_t {
-				NONE,          // -
-				GZIP,          // gzip
-				BROTLI,        // br
-				DEFLATE,       // deflate
-				GZIP_BROTLI,   // gzip, br
-				GZIP_DEFLATE,  // gzip, deflate
-				ALL_COMPRESS,  // gzip, deflate, br
-				DEFLATE_BROTLI // deflate, br
+				NONE           = 0x00, // -
+				GZIP           = 0x01, // gzip
+				BROTLI         = 0x02, // br
+				DEFLATE        = 0x03, // deflate
+				GZIP_BROTLI    = 0x04, // gzip, br
+				GZIP_DEFLATE   = 0x05, // gzip, deflate
+				ALL_COMPRESS   = 0x06, // gzip, deflate, br
+				DEFLATE_BROTLI = 0x07  // deflate, br
 			};
 		public:
 			/**
@@ -221,9 +221,9 @@ namespace awh {
 			void chunkingCallback(const vector <char> & buffer, const web_t * web) noexcept;
 		public:
 			/**
-			 * update Метод обновления входящих данных
+			 * commit Метод применения полученных результатов
 			 */
-			virtual void update() noexcept;
+			virtual void commit() noexcept;
 		protected:
 			/**
 			 * checkAuth Метод проверки авторизации

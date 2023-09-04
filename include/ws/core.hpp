@@ -80,9 +80,9 @@ namespace awh {
 			const string sha1() const noexcept;
 		protected:
 			/**
-			 * update Метод обновления входящих данных
+			 * commit Метод применения полученных результатов
 			 */
-			virtual void update() noexcept = 0;
+			virtual void commit() noexcept = 0;
 		public:
 			/**
 			 * checkKey Метод проверки ключа сервера
