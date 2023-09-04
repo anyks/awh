@@ -210,7 +210,7 @@ int awh::client::WEB::onCloseHttp2(nghttp2_session * session, const int32_t sid,
 				// Выводим информацию об ошибке
 				cout << web->_fmk->format("Stream %d closed with error code=%u", sid, nghttp2_http2_strerror(error)) << endl << endl;
 			}
-		#endif		
+		#endif
 		// Если сессия HTTP/2 закрыта не удачно
 		if(nghttp2_session_terminate_session(session, NGHTTP2_NO_ERROR) != 0)
 			// Выводим сообщение об ошибке
