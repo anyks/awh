@@ -776,7 +776,7 @@ if [ ! -f "$src/.stamp_done" ]; then
 	 --enable-static=yes
 
 	# Устанавливаем систему сборки
-	if [[ $OS = "Linux" ]]; then
+	if [[ $OS = "FreeBSD" ]]; then
 		# Выполняем сборку на всех логических ядрах
 		gmake -j"$numproc" || exit 1
 		# Выполняем установку проекта
