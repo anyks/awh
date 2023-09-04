@@ -283,6 +283,17 @@ namespace awh {
 				 */
 				void chunking(const vector <char> & chunk, const awh::http_t * http) noexcept;
 			private:
+				/** 
+				 * submit Метод выполнения удалённого запроса на сервер
+				 * @param request объект запроса на удалённый сервер
+				 */
+				void submit(const req_t & request) noexcept;
+				/**
+				 * receive Метод получения результата запроса
+				 * @param response объект ответа полученного с удалённого сервера
+				 */
+				void receive(const res_t & response) noexcept;
+			private:
 				/**
 				 * openCallback Метод обратного вызова при запуске работы
 				 * @param sid  идентификатор схемы сети

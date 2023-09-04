@@ -179,7 +179,7 @@ int awh::client::WEB::onFrameHttp2(nghttp2_session * session, const nghttp2_fram
 				// Если функция обратного вызова установлена, выводим сообщение
 				if(web->_callback.message != nullptr)
 					// Выполняем функцию обратного вызова
-					web->_callback.message(result, web);
+					web->receive(std::move(result));
 			}
 		} break;
 	}
@@ -203,10 +203,13 @@ int awh::client::WEB::onCloseHttp2(nghttp2_session * session, const int32_t sid,
 		 * Если включён режим отладки
 		 */
 		#if defined(DEBUG_MODE)
-			// Выводим заголовок ответа
-			cout << "\x1B[33m\x1B[1m^^^^^^^^^ CLOSE SESSION HTTP2 ^^^^^^^^^\x1B[0m" << endl;
-			// Выводим информацию об ошибке
-			cout << web->_fmk->format("Stream %d closed with error code=%u", sid, nghttp2_http2_strerror(error)) << endl << endl;
+			// Если ошибка получена
+			if(error > 0){
+				// Выводим заголовок ответа
+				cout << "\x1B[33m\x1B[1m^^^^^^^^^ CLOSE SESSION HTTP2 ^^^^^^^^^\x1B[0m" << endl;
+				// Выводим информацию об ошибке
+				cout << web->_fmk->format("Stream %d closed with error code=%u", sid, nghttp2_http2_strerror(error)) << endl << endl;
+			}
 		#endif		
 		// Если сессия HTTP/2 закрыта не удачно
 		if(nghttp2_session_terminate_session(session, NGHTTP2_NO_ERROR) != 0)
@@ -403,6 +406,220 @@ nghttp2_nv awh::client::WEB::nv(const string & name, const string & value) const
 void awh::client::WEB::chunking(const vector <char> & chunk, const awh::http_t * http) noexcept {
 	// Если данные получены, формируем тело сообщения
 	if(!chunk.empty()) const_cast <awh::http_t *> (http)->body(chunk);
+}
+/** 
+ * submit Метод выполнения удалённого запроса на сервер
+ * @param request объект запроса на удалённый сервер
+ */
+void awh::client::WEB::submit(const req_t & request) noexcept {
+	// Если подключение выполнено
+	if(this->_aid > 0){
+		// Выполняем сброс состояния HTTP парсера
+		this->_http.reset();
+		// Выполняем очистку параметров HTTP запроса
+		this->_http.clear();
+		// Устанавливаем метод компрессии
+		this->_http.compress(this->_compress);
+		// Если список заголовков получен
+		if(!request.headers.empty())
+			// Устанавливаем заголовоки запроса
+			this->_http.headers(request.headers);
+		// Если тело запроса существует
+		if(!request.entity.empty())
+			// Устанавливаем тело запроса
+			this->_http.body(request.entity);
+		// Получаем объект биндинга ядра TCP/IP
+		client::core_t * core = const_cast <client::core_t *> (this->_core);
+		// Если активирован режим работы с HTTP/2 протоколом
+		if(this->_http2.mode){
+			// Список заголовков для запроса
+			vector <nghttp2_nv> nva;
+			// Получаем URL ссылку для выполнения запроса
+			this->_uri.append(this->_scheme.url, request.query);
+			// Выполняем установку параметры ответа сервера
+			this->_http.query(awh::web_t::query_t(2.0f, request.method));
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим заголовок запроса
+				cout << "\x1B[33m\x1B[1m^^^^^^^^^ REQUEST ^^^^^^^^^\x1B[0m" << endl;
+				// Получаем бинарные данные WEB запроса
+				const auto & buffer = this->_http.request(this->_scheme.url, request.method);
+				// Выводим параметры запроса
+				cout << string(buffer.begin(), buffer.end()) << endl;
+			#endif
+			// Выполняем перебор всех заголовков HTTP/2 запроса
+			for(auto & header : this->_http.request2(this->_scheme.url, request.method))
+				// Выполняем добавление метода запроса
+				nva.push_back(this->nv(header.first, header.second));
+			// Если тело запроса существует
+			if(!request.entity.empty()){
+				// Список файловых дескрипторов
+				SOCKET fds[2];
+				// Тело WEB сообщения
+				vector <char> entity;
+				/**
+				 * Методы только для OS Windows
+				 */
+				#if defined(_WIN32) || defined(_WIN64)
+					// Выполняем инициализацию файловых дескрипторов для обмена сообщениями
+					const int rv = _pipe(fds, 4096, O_BINARY);
+				/**
+				 * Для всех остальных операционных систем
+				 */
+				#else
+					// Выполняем инициализацию файловых дескрипторов для обмена сообщениями
+					const int rv = ::pipe(fds);
+				#endif
+				// Выполняем подписку на основной канал передачи данных
+				if(rv != 0){
+					// Выводим в лог сообщение
+					this->_log->print("%s", log_t::flag_t::CRITICAL, strerror(errno));
+					// Выполняем закрытие подключения
+					core->close(this->_aid);
+					// Выходим из функции
+					return;
+				}
+				// Получаем данные тела запроса
+				while(!(entity = this->_http.payload()).empty()){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Выводим сообщение о выводе чанка тела
+						cout << this->_fmk->format("<chunk %u>", entity.size()) << endl << endl;
+					#endif
+					/**
+					 * Методы только для OS Windows
+					 */
+					#if defined(_WIN32) || defined(_WIN64)
+						// Если данные небыли записаны в сокет
+						if(static_cast <int> (_write(fds[1], entity.data(), entity.size())) != static_cast <int> (entity.size())){
+							// Выполняем закрытие сокета для чтения
+							_close(fds[0]);
+							// Выполняем закрытие сокета для записи
+							_close(fds[1]);
+							// Выводим в лог сообщение
+							this->_log->print("%s", log_t::flag_t::CRITICAL, strerror(errno));
+							// Выполняем закрытие подключения
+							core->close(this->_aid);
+							// Выходим из функции
+							return;
+						}
+					/**
+					 * Для всех остальных операционных систем
+					 */
+					#else
+						// Если данные небыли записаны в сокет
+						if(static_cast <int> (::write(fds[1], entity.data(), entity.size())) != static_cast <int> (entity.size())){
+							// Выполняем закрытие сокета для чтения
+							::close(fds[0]);
+							// Выполняем закрытие сокета для записи
+							::close(fds[1]);
+							// Выводим в лог сообщение
+							this->_log->print("%s", log_t::flag_t::CRITICAL, strerror(errno));
+							// Выполняем закрытие подключения
+							core->close(this->_aid);
+							// Выходим из функции
+							return;
+						}
+					#endif
+				}
+				/**
+				 * Методы только для OS Windows
+				 */
+				#if defined(_WIN32) || defined(_WIN64)
+					// Выполняем закрытие подключения
+					_close(fds[1]);
+				/**
+				 * Для всех остальных операционных систем
+				 */
+				#else
+					// Выполняем закрытие подключения
+					::close(fds[1]);
+				#endif
+				// Создаём объект передачи данных тела полезной нагрузки
+				nghttp2_data_provider data;
+				// Зануляем передаваемый контекст
+				data.source.ptr = nullptr;
+				// Устанавливаем файловый дескриптор
+				data.source.fd = fds[0];
+				// Устанавливаем функцию обратного вызова
+				data.read_callback = &web_t::readHttp2;
+				// Выполняем запрос на удалённый сервер
+				this->_http2.id = nghttp2_submit_request(this->_http2.ctx, nullptr, nva.data(), nva.size(), &data, this);
+			// Если тело запроса не существует, выполняем установленный запрос
+			} else this->_http2.id = nghttp2_submit_request(this->_http2.ctx, nullptr, nva.data(), nva.size(), nullptr, this);
+			// Если запрос не получилось отправить
+			if(this->_http2.id < 0){
+				// Выводим в лог сообщение
+				this->_log->print("%s", log_t::flag_t::CRITICAL, nghttp2_strerror(this->_http2.id));
+				// Выполняем закрытие подключения
+				core->close(this->_aid);
+				// Выходим из функции
+				return;
+			}{
+				// Результат фиксации сессии
+				int rv = -1;
+				// Фиксируем отправленный результат
+				if((rv = nghttp2_session_send(this->_http2.ctx)) != 0){
+					// Выводим сообщение об полученной ошибке
+					this->_log->print("%s", log_t::flag_t::CRITICAL, nghttp2_strerror(rv));
+					// Выходим из функции
+					return;
+				}
+			}
+		// Если активирован режим работы с HTTP/1.1 протоколом
+		} else {
+			// Получаем URL ссылку для выполнения запроса
+			this->_uri.append(this->_scheme.url, request.query);
+			// Получаем бинарные данные WEB запроса
+			const auto & buffer = this->_http.request(this->_scheme.url, request.method);
+			// Если бинарные данные запроса получены
+			if(!buffer.empty()){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Выводим заголовок запроса
+					cout << "\x1B[33m\x1B[1m^^^^^^^^^ REQUEST ^^^^^^^^^\x1B[0m" << endl;
+					// Выводим параметры запроса
+					cout << string(buffer.begin(), buffer.end()) << endl << endl;
+				#endif
+				// Тело WEB сообщения
+				vector <char> entity;
+				// Выполняем отправку заголовков запроса на сервер
+				core->write(buffer.data(), buffer.size(), this->_aid);
+				// Получаем данные тела запроса
+				while(!(entity = this->_http.payload()).empty()){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if defined(DEBUG_MODE)
+						// Выводим сообщение о выводе чанка тела
+						cout << this->_fmk->format("<chunk %u>", entity.size()) << endl;
+					#endif
+					// Выполняем отправку тела запроса на сервер
+					core->write(entity.data(), entity.size(), this->_aid);
+				}
+			}	
+		}
+	}
+}
+/**
+ * receive Метод получения результата запроса
+ * @param response объект ответа полученного с удалённого сервера
+ */
+void awh::client::WEB::receive(const res_t & response) noexcept {
+	// Если функция обратного вызова установлена, выводим сообщение
+	if(this->_callback.message != nullptr)
+		// Выполняем функцию обратного вызова
+		this->_callback.message(response, this);
+	// Если подключение выполнено и список запросов не пустой
+	if((this->_aid > 0) && !this->_requests.empty())
+		// Выполняем запрос на удалённый сервер
+		this->submit(this->_requests.front());
 }
 /**
  * openCallback Метод обратного вызова при запуске работы
@@ -795,7 +1012,7 @@ void awh::client::WEB::actionRead() noexcept {
 	// Если функция обратного вызова установлена, выводим сообщение
 	if(completed && (this->_callback.message != nullptr))
 		// Выполняем функцию обратного вызова
-		this->_callback.message(result, this);
+		this->receive(std::move(result));
 }
 /**
  * actionConnect Метод обработки экшена подключения к серверу
@@ -925,7 +1142,7 @@ void awh::client::WEB::actionDisconnect() noexcept {
 			// Устанавливаем код ответа сервера
 			response.code = 500;
 			// Выполняем функцию обратного вызова
-			this->_callback.message(response, this);
+			this->receive(std::move(response));
 		}
 		// Если функция обратного вызова существует
 		if(this->_callback.active != nullptr)
@@ -1008,7 +1225,7 @@ void awh::client::WEB::actionProxyRead() noexcept {
 							// Завершаем работу
 							core->close(this->_aid);
 							// Выполняем функцию обратного вызова
-							this->_callback.message(result, this);
+							this->receive(std::move(result));
 						// Завершаем работу
 						} else core->close(this->_aid);
 						// Завершаем работу
@@ -1132,7 +1349,7 @@ void awh::client::WEB::actionProxyRead() noexcept {
 					// Завершаем работу
 					core->close(this->_aid);
 					// Выполняем функцию обратного вызова
-					this->_callback.message(result, this);
+					this->receive(std::move(result));
 				// Завершаем работу
 				} else core->close(this->_aid);
 				// Завершаем работу
@@ -1629,200 +1846,8 @@ void awh::client::WEB::send(const vector <req_t> & reqs) noexcept {
 			// Выполняем получение списка запросов
 			this->_requests = std::forward <const vector <req_t>> (reqs);
 		}
-		// Получаем объект биндинга ядра TCP/IP
-		client::core_t * core = const_cast <client::core_t *> (this->_core);
-		// Выполняем перебор всех подключений
-		for(auto & req : this->_requests){
-			// Выполняем сброс состояния HTTP парсера
-			this->_http.reset();
-			// Выполняем очистку параметров HTTP запроса
-			this->_http.clear();
-			// Устанавливаем метод компрессии
-			this->_http.compress(this->_compress);
-			// Если список заголовков получен
-			if(!req.headers.empty())
-				// Устанавливаем заголовоки запроса
-				this->_http.headers(req.headers);
-			// Если тело запроса существует
-			if(!req.entity.empty())
-				// Устанавливаем тело запроса
-				this->_http.body(req.entity);
-			// Если активирован режим работы с HTTP/2 протоколом
-			if(this->_http2.mode){
-				// Список заголовков для запроса
-				vector <nghttp2_nv> nva;
-				// Получаем URL ссылку для выполнения запроса
-				this->_uri.append(this->_scheme.url, req.query);
-				// Выполняем установку параметры ответа сервера
-				this->_http.query(awh::web_t::query_t(2.0f, req.method));
-				/**
-				 * Если включён режим отладки
-				 */
-				#if defined(DEBUG_MODE)
-					// Выводим заголовок запроса
-					cout << "\x1B[33m\x1B[1m^^^^^^^^^ REQUEST ^^^^^^^^^\x1B[0m" << endl;
-					// Получаем бинарные данные WEB запроса
-					const auto & buffer = this->_http.request(this->_scheme.url, req.method);
-					// Выводим параметры запроса
-					cout << string(buffer.begin(), buffer.end()) << endl << endl;
-				#endif
-				// Выполняем перебор всех заголовков HTTP/2 запроса
-				for(auto & header : this->_http.request2(this->_scheme.url, req.method))
-					// Выполняем добавление метода запроса
-					nva.push_back(this->nv(header.first, header.second));
-				// Если тело запроса существует
-				if(!req.entity.empty()){
-					// Список файловых дескрипторов
-					SOCKET fds[2];
-					// Тело WEB сообщения
-					vector <char> entity;
-					/**
-					 * Методы только для OS Windows
-					 */
-					#if defined(_WIN32) || defined(_WIN64)
-						// Выполняем инициализацию файловых дескрипторов для обмена сообщениями
-						const int rv = _pipe(fds, 4096, O_BINARY);
-					/**
-					 * Для всех остальных операционных систем
-					 */
-					#else
-						// Выполняем инициализацию файловых дескрипторов для обмена сообщениями
-						const int rv = ::pipe(fds);
-					#endif
-					// Выполняем подписку на основной канал передачи данных
-					if(rv != 0){
-						// Выводим в лог сообщение
-						this->_log->print("%s", log_t::flag_t::CRITICAL, strerror(errno));
-						// Выполняем закрытие подключения
-						const_cast <client::core_t *> (this->_core)->close(this->_aid);
-						// Выходим из функции
-						return;
-					}
-					// Получаем данные тела запроса
-					while(!(entity = this->_http.payload()).empty()){
-						/**
-						 * Если включён режим отладки
-						 */
-						#if defined(DEBUG_MODE)
-							// Выводим сообщение о выводе чанка тела
-							cout << this->_fmk->format("<chunk %u>", entity.size()) << endl;
-						#endif
-						/**
-						 * Методы только для OS Windows
-						 */
-						#if defined(_WIN32) || defined(_WIN64)
-							// Если данные небыли записаны в сокет
-							if(static_cast <int> (_write(fds[1], entity.data(), entity.size())) != static_cast <int> (entity.size())){
-								// Выполняем закрытие сокета для чтения
-								_close(fds[0]);
-								// Выполняем закрытие сокета для записи
-								_close(fds[1]);
-								// Выводим в лог сообщение
-								this->_log->print("%s", log_t::flag_t::CRITICAL, strerror(errno));
-								// Выполняем закрытие подключения
-								const_cast <client::core_t *> (this->_core)->close(this->_aid);
-								// Выходим из функции
-								return;
-							}
-						/**
-						 * Для всех остальных операционных систем
-						 */
-						#else
-							// Если данные небыли записаны в сокет
-							if(static_cast <int> (::write(fds[1], entity.data(), entity.size())) != static_cast <int> (entity.size())){
-								// Выполняем закрытие сокета для чтения
-								::close(fds[0]);
-								// Выполняем закрытие сокета для записи
-								::close(fds[1]);
-								// Выводим в лог сообщение
-								this->_log->print("%s", log_t::flag_t::CRITICAL, strerror(errno));
-								// Выполняем закрытие подключения
-								const_cast <client::core_t *> (this->_core)->close(this->_aid);
-								// Выходим из функции
-								return;
-							}
-						#endif
-					}
-					/**
-					 * Методы только для OS Windows
-					 */
-					#if defined(_WIN32) || defined(_WIN64)
-						// Выполняем закрытие подключения
-						_close(fds[1]);
-					/**
-					 * Для всех остальных операционных систем
-					 */
-					#else
-						// Выполняем закрытие подключения
-						::close(fds[1]);
-					#endif
-					// Создаём объект передачи данных тела полезной нагрузки
-					nghttp2_data_provider data;
-					// Зануляем передаваемый контекст
-					data.source.ptr = nullptr;
-					// Устанавливаем файловый дескриптор
-					data.source.fd = fds[0];
-					// Устанавливаем функцию обратного вызова
-					data.read_callback = &web_t::readHttp2;
-					// Выполняем запрос на удалённый сервер
-					this->_http2.id = nghttp2_submit_request(this->_http2.ctx, nullptr, nva.data(), nva.size(), &data, this);
-				// Если тело запроса не существует, выполняем установленный запрос
-				} else this->_http2.id = nghttp2_submit_request(this->_http2.ctx, nullptr, nva.data(), nva.size(), nullptr, this);
-				// Если запрос не получилось отправить
-				if(this->_http2.id < 0){
-					// Выводим в лог сообщение
-					this->_log->print("%s", log_t::flag_t::CRITICAL, nghttp2_strerror(this->_http2.id));
-					// Выполняем закрытие подключения
-					const_cast <client::core_t *> (this->_core)->close(this->_aid);
-					// Выходим из функции
-					return;
-				}{
-					// Результат фиксации сессии
-					int rv = -1;
-					// Фиксируем отправленный результат
-					if((rv = nghttp2_session_send(this->_http2.ctx)) != 0){
-						// Выводим сообщение об полученной ошибке
-						this->_log->print("%s", log_t::flag_t::CRITICAL, nghttp2_strerror(rv));
-						// Выходим из функции
-						return;
-					}
-				}
-			// Если активирован режим работы с HTTP/1.1 протоколом
-			} else {
-				// Получаем URL ссылку для выполнения запроса
-				this->_uri.append(this->_scheme.url, req.query);
-				// Получаем бинарные данные WEB запроса
-				const auto & buffer = this->_http.request(this->_scheme.url, req.method);
-				// Если бинарные данные запроса получены
-				if(!buffer.empty()){
-					/**
-					 * Если включён режим отладки
-					 */
-					#if defined(DEBUG_MODE)
-						// Выводим заголовок запроса
-						cout << "\x1B[33m\x1B[1m^^^^^^^^^ REQUEST ^^^^^^^^^\x1B[0m" << endl;
-						// Выводим параметры запроса
-						cout << string(buffer.begin(), buffer.end()) << endl << endl;
-					#endif
-					// Тело WEB сообщения
-					vector <char> entity;
-					// Выполняем отправку заголовков запроса на сервер
-					core->write(buffer.data(), buffer.size(), this->_aid);
-					// Получаем данные тела запроса
-					while(!(entity = this->_http.payload()).empty()){
-						/**
-						 * Если включён режим отладки
-						 */
-						#if defined(DEBUG_MODE)
-							// Выводим сообщение о выводе чанка тела
-							cout << this->_fmk->format("<chunk %u>", entity.size()) << endl;
-						#endif
-						// Выполняем отправку тела запроса на сервер
-						core->write(entity.data(), entity.size(), this->_aid);
-					}
-				}	
-			}
-		}
+		// Выполняем запрос на удалённый сервер
+		this->submit(this->_requests.front());
 	}
 }
 /**
