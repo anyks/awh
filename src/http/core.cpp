@@ -1195,7 +1195,7 @@ vector <char> awh::Http::request(const bool nobody) const noexcept {
 							// Запоминаем, что мы нашли заголовок размера тела
 							available[i] = this->fmk->compare(header.first, "content-length");
 							// Устанавливаем размер тела сообщения
-							if(available[i]) length = ::stoull(header.second);
+							if(available[i]) length = static_cast <size_t> (::stoull(header.second));
 						} break;
 					}
 					// Если заголовок разрешён для вывода
@@ -1333,7 +1333,7 @@ vector <char> awh::Http::response(const bool nobody) const noexcept {
 							// Запоминаем, что мы нашли заголовок размера тела
 							available[i] = this->fmk->compare(header.first, "content-length");
 							// Устанавливаем размер тела сообщения
-							if(available[i]) length = ::stoull(header.second);
+							if(available[i]) length = static_cast <size_t> (::stoull(header.second));
 						} break;
 					}
 					// Если заголовок разрешён для вывода
@@ -1584,7 +1584,7 @@ vector <char> awh::Http::response(const u_int code, const string & mess) const n
 						// Запоминаем, что мы нашли заголовок размера тела
 						available[i] = this->fmk->compare(header.first, "content-length");
 						// Устанавливаем размер тела сообщения
-						if(available[i]) length = ::stoull(header.second);
+						if(available[i]) length = static_cast <size_t> (::stoull(header.second));
 					} break;
 				}
 				// Если заголовок разрешён для вывода
@@ -1832,7 +1832,7 @@ vector <char> awh::Http::request(const uri_t::url_t & url, const web_t::method_t
 							// Запоминаем, что мы нашли заголовок размера тела
 							available[i] = this->fmk->compare(header.first, "content-length");
 							// Устанавливаем размер тела сообщения
-							if(available[i]) length = ::stoull(header.second);
+							if(available[i]) length = static_cast <size_t> (::stoull(header.second));
 						} break;
 					}
 					// Если заголовок разрешён для вывода
@@ -2192,13 +2192,14 @@ vector <pair<string, string>> awh::Http::response2(const u_int code) const noexc
 					// Запоминаем, что мы нашли заголовок размера тела
 					available[i] = this->fmk->compare(header.first, "content-length");
 					// Устанавливаем размер тела сообщения
-					if(available[i]) length = ::stoull(header.second);
+					if(available[i]) length = static_cast <size_t> (::stoull(header.second));
 				} break;
 			}
 			// Если заголовок разрешён для вывода
 			if(allow){
 				// Выполняем првоерку заголовка
 				switch(i){
+					case 0:
 					case 2:
 					case 3:
 					case 4:
@@ -2211,12 +2212,6 @@ vector <pair<string, string>> awh::Http::response2(const u_int code) const noexc
 			// Формируем строку ответа
 			result.push_back(make_pair(this->fmk->transform(header.first, fmk_t::transform_t::SMART), header.second));
 	}
-	/*
-	// Устанавливаем Connection если не передан
-	if(!available[0] && !this->isBlack("Connection"))
-		// Добавляем заголовок в ответ
-		result.push_back(make_pair("Connection", HTTP_HEADER_CONNECTION));
-	*/
 	// Устанавливаем Content-Type если не передан
 	if(!available[1] && !this->isBlack("Content-Type"))
 		// Добавляем заголовок в ответ
@@ -2435,13 +2430,15 @@ vector <pair<string, string>> awh::Http::request2(const uri_t::url_t & url, cons
 							// Запоминаем, что мы нашли заголовок размера тела
 							available[i] = this->fmk->compare(header.first, "content-length");
 							// Устанавливаем размер тела сообщения
-							if(available[i]) length = ::stoull(header.second);
+							if(available[i]) length = static_cast <size_t> (::stoull(header.second));
 						} break;
 					}
 					// Если заголовок разрешён для вывода
 					if(allow){
 						// Выполняем првоерку заголовка
 						switch(i){
+							case 0:
+							case 4:
 							case 5:
 							case 7:
 							case 8:
@@ -2463,12 +2460,6 @@ vector <pair<string, string>> awh::Http::request2(const uri_t::url_t & url, cons
 			if(!available[2] && !this->isBlack("Origin"))
 				// Добавляем заголовок в запрос
 				result.push_back(make_pair("Origin", this->uri->origin(url)));
-			/*
-			// Устанавливаем Connection если не передан
-			if(!available[4] && !this->isBlack("Connection"))
-				// Добавляем заголовок в запрос
-				result.push_back(make_pair("Connection", HTTP_HEADER_CONNECTION));
-			*/
 			// Устанавливаем Accept-Language если не передан
 			if(!available[6] && (method != web_t::method_t::CONNECT) && !this->isBlack("Accept-Language"))
 				// Добавляем заголовок в запрос
