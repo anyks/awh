@@ -52,6 +52,15 @@ namespace awh {
 				SERVER = 0x02  // HTTP модуль является сервером
 			};
 			/**
+			 * Стейты работы модуля
+			 */
+			enum class state_t : uint8_t {
+				END     = 0x01, // Режим завершения сбора данных
+				BODY    = 0x02, // Режим чтения тела сообщения
+				QUERY   = 0x03, // Режим ожидания получения запроса
+				HEADERS = 0x04  // Режим чтения заголовков
+			};
+			/**
 			 * Методы HTTP запроса
 			 */
 			enum class method_t : uint8_t {
@@ -79,6 +88,18 @@ namespace awh {
 				 * Query Конструктор
 				 */
 				Query() noexcept : code(0), ver(HTTP_VERSION), method(method_t::NONE), uri(""), message("") {}
+				/**
+				 * Query Конструктор
+				 * @param ver    версия протокола
+				 * @param method метод запроса
+				 */
+				Query(const float ver, const method_t method) noexcept : code(0), ver(ver), method(method), uri(""), message("") {}
+				/**
+				 * Query Конструктор
+				 * @param ver  версия протокола
+				 * @param code код ответа сервера
+				 */
+				Query(const float ver, const u_int code) noexcept : code(code), ver(ver), method(method_t::NONE), uri(""), message("") {}
 			} query_t;
 		private:
 			/**
@@ -90,15 +111,6 @@ namespace awh {
 				ENDSIZE  = 0x03, // Ожидание получения перевода строки после получения размера чанка
 				ENDBODY  = 0x04, // Ожидание получения перевода строки после получения тела чанка
 				STOPBODY = 0x05  // Ожидание получения возврата каретки после получения тела чанка
-			};
-			/**
-			 * Стейты работы модуля
-			 */
-			enum class state_t : uint8_t {
-				END     = 0x01, // Режим завершения сбора данных
-				BODY    = 0x02, // Режим чтения тела сообщения
-				QUERY   = 0x03, // Режим ожидания получения запроса
-				HEADERS = 0x04  // Режим чтения заголовков
 			};
 			/**
 			 * Chunk Структура собираемого чанка
@@ -287,6 +299,12 @@ namespace awh {
 			 * @param hid тип используемого HTTP модуля
 			 */
 			void init(const hid_t hid) noexcept;
+		public:
+			/** 
+			 * state Метод установки стейта ожидания данных
+			 * @param state стейт ожидания данных для установки
+			 */
+			void state(const state_t state) noexcept;
 		public:
 			/**
 			 * chunking Метод установки функции обратного вызова для получения чанков

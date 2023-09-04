@@ -219,11 +219,12 @@ namespace awh {
 			 * @param web    объект HTTP парсера
 			 */
 			void chunkingCallback(const vector <char> & buffer, const web_t * web) noexcept;
-		protected:
+		public:
 			/**
 			 * update Метод обновления входящих данных
 			 */
 			virtual void update() noexcept;
+		protected:
 			/**
 			 * checkAuth Метод проверки авторизации
 			 * @return результат проверки авторизации
@@ -312,6 +313,18 @@ namespace awh {
 			 * @param headers список заголовков для установки
 			 */
 			void headers(const unordered_multimap <string, string> & headers) noexcept;
+		public:
+			/**
+			 * header2 Метод добавления заголовка в формате HTTP/2
+			 * @param key ключ заголовка
+			 * @param val значение заголовка
+			 */
+			void header2(const string & key, const string & val) noexcept;
+			/**
+			 * headers2 Метод установки списка заголовков в формате HTTP/2
+			 * @param headers список заголовков для установки
+			 */
+			void headers2(const vector <pair<string, string>> & headers) noexcept;
 		public:
 			/**
 			 * getAuth Метод проверки статуса авторизации
@@ -462,6 +475,34 @@ namespace awh {
 			 * @return       буфер данных запроса в бинарном виде
 			 */
 			vector <char> request(const uri_t::url_t & url, const web_t::method_t method) const noexcept;
+		public:
+			/**
+			 * proxy2 Метод создания запроса для авторизации на прокси-сервере (протокол HTTP/2)
+			 * @param url объект параметров REST запроса
+			 * @return    буфер данных запроса в бинарном виде
+			 */
+			vector <pair<string, string>> proxy2(const uri_t::url_t & url) noexcept;
+			/**
+			 * reject2 Метод создания отрицательного ответа (протокол HTTP/2)
+			 * @param code код ответа
+			 * @param mess сообщение ответа
+			 * @return     буфер данных запроса в бинарном виде
+			 */
+			vector <pair<string, string>> reject2(const u_int code, const string & mess = "") const noexcept;
+		public:
+			/**
+			 * response2 Метод создания ответа (протокол HTTP/2)
+			 * @param code код ответа
+			 * @return     буфер данных запроса в бинарном виде
+			 */
+			vector <pair<string, string>> response2(const u_int code) const noexcept;
+			/**
+			 * request2 Метод создания запроса (протокол HTTP/2)
+			 * @param url    объект параметров REST запроса
+			 * @param method метод REST запроса
+			 * @return       буфер данных запроса в бинарном виде
+			 */
+			vector <pair<string, string>> request2(const uri_t::url_t & url, const web_t::method_t method) const noexcept;
 		public:
 			/**
 			 * chunking Метод установки функции обратного вызова для получения чанков

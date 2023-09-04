@@ -2825,10 +2825,6 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const type_t type) noex
 					// Заставляем серверные алгоритмы шифрования использовать в приоритете
 					SSL_CTX_set_options(target._ctx, SSL_OP_ALL | SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3 | SSL_OP_NO_TLSv1 | SSL_OP_NO_TLSv1_1 | SSL_OP_NO_COMPRESSION | SSL_OP_CIPHER_SERVER_PREFERENCE | SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION);
 			}
-			// Устанавливаем флаг режима автоматического повтора получения следующих данных
-			SSL_CTX_set_mode(target._ctx, SSL_MODE_AUTO_RETRY);
-			// Устанавливаем флаг очистки буферов на чтение и запись когда они не требуются
-			SSL_CTX_set_mode(target._ctx, SSL_MODE_RELEASE_BUFFERS);
 			/**
 			 * Если версия OpenSSL соответствует или выше версии 3.0.0
 			 */
@@ -2913,6 +2909,10 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address, const type_t type) noex
 				// Выходим
 				return;
 			}
+			// Устанавливаем флаг режима автоматического повтора получения следующих данных
+			SSL_CTX_set_mode(target._ctx, SSL_MODE_AUTO_RETRY);
+			// Устанавливаем флаг очистки буферов на чтение и запись когда они не требуются
+			SSL_CTX_set_mode(target._ctx, SSL_MODE_RELEASE_BUFFERS);
 			// Если приложение является сервером
 			if(type == type_t::SERVER)
 				// Выполняем отключение SSL кеша
@@ -3151,10 +3151,6 @@ void awh::Engine::wrapServer(ctx_t & target, addr_t * address) noexcept {
 			}
 			// Получаем идентификатор процесса
 			const pid_t pid = getpid();
-			// Устанавливаем флаг режима автоматического повтора получения следующих данных
-			SSL_CTX_set_mode(target._ctx, SSL_MODE_AUTO_RETRY);
-			// Устанавливаем флаг очистки буферов на чтение и запись когда они не требуются
-			SSL_CTX_set_mode(target._ctx, SSL_MODE_RELEASE_BUFFERS);
 			/**
 			 * Если версия OpenSSL соответствует или выше версии 3.0.0
 			 */
@@ -3225,6 +3221,10 @@ void awh::Engine::wrapServer(ctx_t & target, addr_t * address) noexcept {
 			}
 			// Устанавливаем флаг quiet shutdown
 			// SSL_CTX_set_quiet_shutdown(target._ctx, 1);
+			// Заставляем OpenSSL автоматические повторные попытки после событий сеанса TLS
+			SSL_CTX_set_mode(target._ctx, SSL_MODE_AUTO_RETRY);
+			// Устанавливаем флаг очистки буферов на чтение и запись когда они не требуются
+			SSL_CTX_set_mode(target._ctx, SSL_MODE_RELEASE_BUFFERS);
 			// Запускаем кэширование
 			SSL_CTX_set_session_cache_mode(target._ctx, SSL_SESS_CACHE_SERVER | SSL_SESS_CACHE_NO_INTERNAL);
 			// Если цепочка сертификатов установлена
@@ -3269,8 +3269,6 @@ void awh::Engine::wrapServer(ctx_t & target, addr_t * address) noexcept {
 				// Выходим
 				return;
 			}
-			// Заставляем OpenSSL автоматические повторные попытки после событий сеанса TLS
-			SSL_CTX_set_mode(target._ctx, SSL_MODE_AUTO_RETRY);
 			// Если нужно произвести проверку
 			if(this->_verify){
 				// Устанавливаем глубину проверки
@@ -3427,10 +3425,6 @@ void awh::Engine::wrapClient(ctx_t & target, addr_t * address, const string & ho
 			}
 			// Устанавливаем опции запроса
 			SSL_CTX_set_options(target._ctx, SSL_OP_ALL | SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3 | SSL_OP_NO_TLSv1 | SSL_OP_NO_TLSv1_1 | SSL_OP_NO_COMPRESSION);
-			// Устанавливаем флаг режима автоматического повтора получения следующих данных
-			SSL_CTX_set_mode(target._ctx, SSL_MODE_AUTO_RETRY);
-			// Устанавливаем флаг очистки буферов на чтение и запись когда они не требуются
-			SSL_CTX_set_mode(target._ctx, SSL_MODE_RELEASE_BUFFERS);
 			/**
 			 * Если версия OpenSSL соответствует или выше версии 3.0.0
 			 */
@@ -3499,6 +3493,8 @@ void awh::Engine::wrapClient(ctx_t & target, addr_t * address, const string & ho
 			}
 			// Заставляем OpenSSL автоматические повторные попытки после событий сеанса TLS
 			SSL_CTX_set_mode(target._ctx, SSL_MODE_AUTO_RETRY);
+			// Устанавливаем флаг очистки буферов на чтение и запись когда они не требуются
+			SSL_CTX_set_mode(target._ctx, SSL_MODE_RELEASE_BUFFERS);
 			// Если цепочка сертификатов установлена
 			if(!this->_chain.empty()){
 				// Если цепочка сертификатов не установлена

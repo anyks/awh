@@ -190,6 +190,8 @@ static ssize_t send_callback(nghttp2_session * session, const uint8_t * data, si
   (void) session;
   (void) flags;
 
+  cout << " +++++++++++++++++++ SEND DATA " << length << endl;
+
   reinterpret_cast <awh::client::http2_t *> (ctx)->send((const char *) data, length);
   
   return (ssize_t) length;
@@ -199,17 +201,28 @@ static int on_frame_recv_callback(nghttp2_session * session, const nghttp2_frame
   (void) session;
 
   switch (frame->hd.type){
+	case NGHTTP2_DATA: {
+		cout << " +++++++++++++++++++ ALL DATA " << (frame->hd.flags & NGHTTP2_FLAG_END_STREAM) << endl;
+
+		nghttp2_session_del(reinterpret_cast <awh::client::http2_t *> (ctx)->_session.ctx);
+	} break;
   	case NGHTTP2_HEADERS: {
 		if((frame->headers.cat == NGHTTP2_HCAT_RESPONSE) && (reinterpret_cast <awh::client::http2_t *> (ctx)->_session.id == frame->hd.stream_id))
-			fprintf(stderr, "All headers received\n");
+			cout << " +++++++++++++++++++ All headers received " << (frame->hd.flags & NGHTTP2_FLAG_END_STREAM) << endl;
     } break;
   }
+
+  if(frame->hd.flags & NGHTTP2_FLAG_END_STREAM)
+	cout << " +++++++++++++++++++ STOP " << endl;
+
   return 0;
 }
 
 static int on_data_chunk_recv_callback(nghttp2_session * session, uint8_t flags,  int32_t stream_id, const uint8_t * data, size_t len, void * ctx){
   (void)session;
   (void)flags;
+
+  cout << " +++++++++++++++++++ GET CHUNCK " << len << endl;
 
   if(reinterpret_cast <awh::client::http2_t *> (ctx)->_session.id == stream_id){
 	// Если функция обратного вызова установлена, выводим сообщение
@@ -241,6 +254,9 @@ static int on_header_callback(nghttp2_session * session, const nghttp2_frame * f
   switch (frame->hd.type) {
   	case NGHTTP2_HEADERS: {
 		if((frame->headers.cat == NGHTTP2_HCAT_RESPONSE) && (reinterpret_cast <awh::client::http2_t *> (ctx)->_session.id == frame->hd.stream_id)){
+			
+			cout << " @@@@@@@@@@@@ HEADER " << endl;
+
 			/* Print response headers for the initiated request. */
 			print_header(stderr, name, namelen, value, valuelen);
 			break;
@@ -264,21 +280,6 @@ static int on_begin_headers_callback(nghttp2_session * session, const nghttp2_fr
 }
 
 static ssize_t file_read_callback(nghttp2_session * session, int32_t stream_id, uint8_t * buf, size_t length, uint32_t * data_flags, nghttp2_data_source * source, void * ctx){
-	
-
-	// cout << " ----------!!!!±±±± " << nghttp2_session_get_stream_user_data(session, stream_id) << " === " << ctx << " === " << length << endl;
-
-	// reinterpret_cast <awh::client::http2_t *> (ctx)->send((const char *) buf, length);
-
-	// return ::write(source->fd, buf, length);
-
-	/*
-	static const char ERROR_HTML[] = "<html><head><title>404</title></head>"
-                                 "<body><h1>404 Not Found</h1></body></html>";
-
-
-	reinterpret_cast <awh::client::http2_t *> (ctx)->send((const char *) ERROR_HTML, strlen(ERROR_HTML));
-	*/
 
 	int fd = source->fd;
 	ssize_t r;
@@ -312,19 +313,26 @@ static ssize_t file_read_callback(nghttp2_session * session, int32_t stream_id, 
 
 }
 
-#define ARRLEN(x) (sizeof(x) / sizeof(x[0]))
+nghttp2_nv make_nv_internal(const string &name, const string &value, bool no_index, uint8_t nv_flags){
 
-#define MAKE_NV(NAME, VALUE)                                                   \
-  {                                                                            \
-    (uint8_t *)NAME, (uint8_t *)VALUE, sizeof(NAME) - 1, sizeof(VALUE) - 1,    \
-        NGHTTP2_NV_FLAG_NONE                                                   \
-  }
+	uint8_t flags = (nv_flags | (no_index ? NGHTTP2_NV_FLAG_NO_INDEX : NGHTTP2_NV_FLAG_NONE));
 
-#define MAKE_NV_CS(NAME, VALUE)                                                \
-  {                                                                            \
-    (uint8_t *)NAME, (uint8_t *)VALUE, sizeof(NAME) - 1, strlen(VALUE),        \
-        NGHTTP2_NV_FLAG_NONE                                                   \
-  }
+	return {
+		(uint8_t *) name.c_str(),
+		(uint8_t *) value.c_str(),
+		name.size(),
+		value.size(),
+		flags
+	};
+}
+
+nghttp2_nv make_nv(const std::string & name, const std::string & value, bool no_index = false){
+  return make_nv_internal(name, value, no_index, NGHTTP2_NV_FLAG_NONE);
+}
+
+nghttp2_nv make_nv_nocopy(const std::string & name, const std::string & value, bool no_index = false){
+	return make_nv_internal(name, value, no_index, NGHTTP2_NV_FLAG_NO_COPY_NAME |  NGHTTP2_NV_FLAG_NO_COPY_VALUE);
+}
 
 /**
  * actionConnect Метод обработки экшена подключения к серверу
@@ -359,10 +367,10 @@ void awh::client::Http2::actionConnect() noexcept {
 
 
 
-	nghttp2_settings_entry iv[1] = {{NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS, 100}};
+	vector <nghttp2_settings_entry> iv = {{NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS, 100}};
 
 	/* client 24 bytes magic string will be sent by nghttp2 library */
-	int rv = nghttp2_submit_settings(this->_session.ctx, NGHTTP2_FLAG_NONE, iv, ARRLEN(iv));
+	int rv = nghttp2_submit_settings(this->_session.ctx, NGHTTP2_FLAG_NONE, iv.data(), iv.size());
 	if (rv != 0) {
 		this->_log->print("Could not submit SETTINGS: %s", log_t::flag_t::CRITICAL, nghttp2_strerror(rv));
 		exit(1);
@@ -370,25 +378,36 @@ void awh::client::Http2::actionConnect() noexcept {
 	
 	int32_t stream_id = 0;
 	
-	/*
+	
 	// GET
 	{
-		nghttp2_nv nva[] = {
-			MAKE_NV(":method", "GET"),
-			MAKE_NV_CS(":path", "/"),
-			MAKE_NV(":scheme", "https"),
-			MAKE_NV_CS(":authority", "anyks.com"),
-			MAKE_NV("accept", "*//*"),
-			MAKE_NV("user-agent", "nghttp2/" NGHTTP2_VERSION)
+		/*
+		vector <nghttp2_nv> nva = {
+			make_nv(":method", "GET"),
+			make_nv(":path", "/"),
+			make_nv(":scheme", "https"),
+			make_nv(":authority", "anyks.com"),
+			make_nv("accept", "*//*"),
+			make_nv("user-agent", "nghttp2/" NGHTTP2_VERSION)
+		};
+		*/
+
+		vector <nghttp2_nv> nva = {
+			make_nv(":method", "GET"),
+			make_nv(":path", "/wiki/HTTP"),
+			make_nv(":scheme", "https"),
+			make_nv(":authority", "ru.wikipedia.org"),
+			make_nv("accept", "*/*"),
+			make_nv("user-agent", "nghttp2/" NGHTTP2_VERSION)
 		};
 
 		fprintf(stderr, "Request headers:\n");
 		
-		print_headers(stderr, nva, ARRLEN(nva));
+		print_headers(stderr, nva.data(), nva.size());
 
-		stream_id = nghttp2_submit_request(this->_session.ctx, nullptr, nva, ARRLEN(nva), nullptr, this);
+		stream_id = nghttp2_submit_request(this->_session.ctx, nullptr, nva.data(), nva.size(), nullptr, this);
 	}
-	*/
+	/*
 
 	
 	// POST
@@ -398,14 +417,10 @@ void awh::client::Http2::actionConnect() noexcept {
 
 		enum PIPES { READ, WRITE };
 
-		/**
-		 * Методы только для OS Windows
-		 */
+		// Методы только для OS Windows
 		#if defined(_WIN32) || defined(_WIN64)
 			int rv = _pipe(pipefd, 4096, O_BINARY);
-		/**
-		 * Для всех остальных операционных систем
-		 */
+		// Для всех остальных операционных систем
 		#else
 			int rv = pipe(pipefd);
 		#endif
@@ -417,32 +432,28 @@ void awh::client::Http2::actionConnect() noexcept {
 
 		const string contentLength = to_string(strlen(ERROR_HTML));
 
-		nghttp2_nv nva[] = {
-			MAKE_NV(":method", "POST"),
-			MAKE_NV_CS(":path", "/test.php"),
-			MAKE_NV(":scheme", "https"),
-			MAKE_NV_CS(":authority", "anyks.com"),
-			MAKE_NV("accept", "*/*"),
-			MAKE_NV_CS("content-type", "application/x-www-form-urlencoded"),
-			MAKE_NV_CS("content-length", contentLength.c_str()),
-			MAKE_NV("user-agent", "nghttp2/" NGHTTP2_VERSION)
+		vector <nghttp2_nv> nva = {
+			make_nv(":method", "POST"),
+			make_nv(":path", "/test.php"),
+			make_nv(":scheme", "https"),
+			make_nv(":authority", "anyks.com"),
+			make_nv("accept", "*//*"),
+			make_nv("content-type", "application/x-www-form-urlencoded"),
+			make_nv("content-length", contentLength.c_str()),
+			make_nv("user-agent", "nghttp2/" NGHTTP2_VERSION)
 		};
 
 		fprintf(stderr, "Request headers:\n");
 		
-		print_headers(stderr, nva, ARRLEN(nva));
+		print_headers(stderr, nva.data(), nva.size());
 		
 		
-		/**
-		 * Методы только для OS Windows
-		 */
+		// Методы только для OS Windows
 		#if defined(_WIN32) || defined(_WIN64)
 			ssize_t writelen = _write(pipefd[WRITE], ERROR_HTML, sizeof(ERROR_HTML) - 1);
 
 			_close(pipefd[WRITE]);
-		/**
-		 * Для всех остальных операционных систем
-		 */
+		// Для всех остальных операционных систем
 		#else
 			
 			ssize_t writelen = ::write(pipefd[WRITE], ERROR_HTML, sizeof(ERROR_HTML) - 1);
@@ -451,14 +462,10 @@ void awh::client::Http2::actionConnect() noexcept {
 		#endif
 
 		if (writelen != sizeof(ERROR_HTML) - 1) {
-			/**
-			 * Методы только для OS Windows
-			 */
+			// Методы только для OS Windows
 			#if defined(_WIN32) || defined(_WIN64)
 				_close(pipefd[READ]);
-			/**
-			 * Для всех остальных операционных систем
-			 */
+			// Для всех остальных операционных систем
 			#else
 				::close(pipefd[READ]);
 			#endif
@@ -470,12 +477,12 @@ void awh::client::Http2::actionConnect() noexcept {
 		data_prd.source.fd = pipefd[0];
 		data_prd.read_callback = file_read_callback;
 
-		stream_id = nghttp2_submit_request(this->_session.ctx, nullptr, nva, ARRLEN(nva), &data_prd, this);
+		stream_id = nghttp2_submit_request(this->_session.ctx, nullptr, nva.data(), nva.size(), &data_prd, this);
 
 		// ::close(pipefd[READ]);
 
 	}
-	
+	*/
 
 	
 
@@ -548,10 +555,19 @@ void awh::client::Http2::stop() noexcept {
 void awh::client::Http2::start() noexcept {
 	// Создаём объект URI
 	uri_t uri(this->_fmk);
+
+	/*
 	// Устанавливаем параметры адреса
 	this->_scheme.url = uri.parse("https://anyks.com");
 	// Устанавливаем IP адрес
 	this->_scheme.url.ip = "193.42.110.185";
+	*/
+
+	// Устанавливаем параметры адреса
+	this->_scheme.url = uri.parse("https://ru.wikipedia.org/wiki/HTTP");
+	// Устанавливаем IP адрес
+	this->_scheme.url.ip = "185.15.59.224";
+
 	// Если биндинг не запущен
 	if(!this->_core->working())
 		// Выполняем запуск биндинга

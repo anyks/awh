@@ -108,6 +108,49 @@ namespace awh {
 				} res_t;
 			private:
 				/**
+				 * Http2 Структура работы с клиентом HTTP/2
+				 */
+				typedef class Http2 {
+					public:
+						bool mode;             // Флаг активации модуля HTTP/2
+						int32_t id;            // Идентификатор сессии
+						SOCKET fds[2];         // Список файловых дескрипторов
+						nghttp2_session * ctx; // Контекст сессии
+					private:
+						// Создаём объект работы с логами
+						const log_t * _log;
+					public:
+						/**
+						 * init Метод инициализации объекта
+						 */
+						void init() noexcept;
+						/**
+						 * Метод очистки объекта
+						 */
+						void free() noexcept;
+					public:
+						/**
+						 * read Метод чтения в буфер данных из файлового дескриптора
+						 * @param buffer буфер данных для чтения
+						 * @param size   размер буфера данных для чтения
+						 * @return       размер прочитанных данных
+						 */
+						int read(uint8_t * buffer, const size_t size) const noexcept;
+						/**
+						 * write Метод записи из буфера данных в файловый дескриптор
+						 * @param buffer буфер данных для записи
+						 * @param size   размер буфера данных для записи
+						 * @return       размер записанных данных
+						 */
+						int write(const uint8_t * buffer, const size_t size) const noexcept;
+					public:
+					/**
+					 * Http2 Конструктор
+					 * @param log объект для работы с логами
+					 */
+					Http2(const log_t * log) noexcept : mode(false), id(-1), fds{-1,-1}, ctx(nullptr), _log(log) {}
+				} http2_t;
+				/**
 				 * Locker Структура локера
 				 */
 				typedef struct Locker {
@@ -138,6 +181,8 @@ namespace awh {
 				uri_t _uri;
 				// Объект для работы с HTTP
 				http_t _http;
+				// Объект для работы с HTTP/2
+				http2_t _http2;
 				// Объявляем функции обратного вызова
 				fn_t _callback;
 				// Объект рабочего
@@ -179,6 +224,88 @@ namespace awh {
 				const log_t * _log;
 				// Создаём объект сетевого ядра
 				const client::core_t * _core;
+			private:
+				/**
+				 * onFrameHttp2 Функция обратного вызова при получении фрейма заголовков HTTP/2 с сервера
+				 * @param session объект сессии HTTP/2
+				 * @param frame   объект фрейма заголовков HTTP/2
+				 * @param ctx     передаваемый промежуточный контекст
+				 * @return        статус полученных данных
+				 */
+				static int onFrameHttp2(nghttp2_session * session, const nghttp2_frame * frame, void * ctx) noexcept;
+				/**
+				 * onCloseHttp2 Метод закрытия подключения с сервером HTTP/2
+				 * @param session объект сессии HTTP/2
+				 * @param sid     идентификатор сессии HTTP/2
+				 * @param error   флаг ошибки HTTP/2 если присутствует
+				 * @param ctx     передаваемый промежуточный контекст
+				 * @return        статус полученного события
+				 */
+				static int onCloseHttp2(nghttp2_session * session, const int32_t sid, const uint32_t error, void * ctx) noexcept;
+				/**
+				 * onChunkHttp2 Функция обратного вызова при получении чанка с сервера HTTP/2
+				 * @param session объект сессии HTTP/2
+				 * @param flags   флаги события для сессии HTTP/2
+				 * @param sid     идентификатор сессии HTTP/2
+				 * @param buffer  буфер данных который содержит полученный чанк
+				 * @param size    размер полученного буфера данных чанка
+				 * @param ctx     передаваемый промежуточный контекст
+				 * @return        статус полученных данных
+				 */
+				static int onChunkHttp2(nghttp2_session * session, const uint8_t flags, const int32_t sid, const uint8_t * buffer, const size_t size, void * ctx) noexcept;
+			private:
+				/**
+				 * onBeginHeadersHttp2 Функция начала получения фрейма заголовков HTTP/2
+				 * @param session объект сессии HTTP/2
+				 * @param frame   объект фрейма заголовков HTTP/2
+				 * @param ctx     передаваемый промежуточный контекст
+				 * @return        статус полученных данных
+				 */
+				static int onBeginHeadersHttp2(nghttp2_session * session, const nghttp2_frame * frame, void * ctx) noexcept;
+				/**
+				 * onHeaderHttp2 Функция обратного вызова при получении заголовка HTTP/2
+				 * @param session объект сессии HTTP/2
+				 * @param frame   объект фрейма заголовков HTTP/2
+				 * @param key     данные ключа заголовка
+				 * @param keySize размер ключа заголовка
+				 * @param val     данные значения заголовка
+				 * @param valSize размер значения заголовка
+				 * @param flags   флаги события для сессии HTTP/2
+				 * @param ctx     передаваемый промежуточный контекст
+				 * @return        статус полученных данных
+				 */
+				static int onHeaderHttp2(nghttp2_session * session, const nghttp2_frame * frame, const uint8_t * key, const size_t keySize, const uint8_t * val, const size_t valSize, const uint8_t flags, void * ctx) noexcept;
+			private:
+				/**
+				 * sendHttp2 Функция обратного вызова при подготовки данных для отправки на сервер
+				 * @param session объект сессии HTTP/2
+				 * @param buffer  буфер данных которые следует отправить
+				 * @param size    размер буфера данных для отправки
+				 * @param flags   флаги события для сессии HTTP/2
+				 * @param ctx     передаваемый промежуточный контекст
+				 * @return        количество отправленных байт
+				 */
+				static ssize_t sendHttp2(nghttp2_session * session, const uint8_t * buffer, const size_t size, const int flags, void * ctx) noexcept;
+				/**
+				 * readHttp2 Функция чтения подготовленных данных для формирования буфера данных который необходимо отправить на HTTP/2 сервер
+				 * @param session объект сессии HTTP/2
+				 * @param sid     идентификатор сессии HTTP/2
+				 * @param buffer  буфер данных которые следует отправить
+				 * @param size    размер буфера данных для отправки
+				 * @param flags   флаги события для сессии HTTP/2
+				 * @param source  объект промежуточных данных локального подключения
+				 * @param ctx     передаваемый промежуточный контекст
+				 * @return        количество отправленных байт
+				 */
+				static ssize_t readHttp2(nghttp2_session * session, const int32_t sid, uint8_t * buffer, const size_t size, uint32_t * flags, nghttp2_data_source * source, void * ctx) noexcept;
+			private:
+				/**
+				 * nv Метод создания объекта заголовка HTTP/2 запроса
+				 * @param name  название заголовка
+				 * @param value значение заголовка
+				 * @return      полученный объект заголовка
+				 */
+				nghttp2_nv nv(const string & name, const string & value) const noexcept;
 			private:
 				/**
 				 * chunking Метод обработки получения чанков

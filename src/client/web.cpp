@@ -16,6 +16,489 @@
 #include <client/web.hpp>
 
 /**
+ * init Метод инициализации объекта
+ */
+void awh::client::WEB::Http2::init() noexcept {
+	// Если объект уже инициализирован
+	if(this->ctx != nullptr)
+		// Выполняем очистку объекта
+		this->free();
+	/**
+	 * Методы только для OS Windows
+	 */
+	#if defined(_WIN32) || defined(_WIN64)
+		// Выполняем инициализацию файловых дескрипторов для обмена сообщениями
+		const int rv = _pipe(this->fds, 4096, O_BINARY);
+	/**
+	 * Для всех остальных операционных систем
+	 */
+	#else
+		// Выполняем инициализацию файловых дескрипторов для обмена сообщениями
+		const int rv = ::pipe(this->fds);
+	#endif
+	// Выполняем подписку на основной канал передачи данных
+	if(rv != 0){
+		// Выводим в лог сообщение
+		this->_log->print("%s", log_t::flag_t::CRITICAL, strerror(errno));
+		// Выходим принудительно из приложения
+		exit(EXIT_FAILURE);
+	}
+}
+/**
+ * Метод очистки объекта
+ */
+void awh::client::WEB::Http2::free() noexcept {
+	/**
+	 * Методы только для OS Windows
+	 */
+	#if defined(_WIN32) || defined(_WIN64)
+		// Если файловый дескриптор на чтение открыт
+		if(this->fds[0] > -1)
+			// Выполняем закрытие файлового дескриптора на чтение
+			_close(this->fds[0]);
+		// Если файловый дескриптор на запись открыт
+		if(this->fds[1] > -1)
+			// Выполняем закрытие файлового дескриптора на запись
+			_close(this->fds[1]);
+	/**
+	 * Для всех остальных операционных систем
+	 */
+	#else
+		// Если файловый дескриптор на чтение открыт
+		if(this->fds[0] > -1)
+			// Выполняем закрытие файлового дескриптора на чтение
+			::close(this->fds[0]);
+		// Если файловый дескриптор на запись открыт
+		if(this->fds[1] > -1)
+			// Выполняем закрытие файлового дескриптора на запись
+			::close(this->fds[1]);
+	#endif
+	// Сбрасываем файловый дескриптор на чтение
+	this->fds[0] = -1;
+	// Сбрасываем файловый дескриптор на запись
+	this->fds[1] = -1;
+	// Если объект уже инициализирован
+	if(this->ctx != nullptr){
+		// Выполняем удаление сессии
+		nghttp2_session_del(this->ctx);
+		// Выполняем зануление сессии
+		// this->ctx = nullptr;
+	}
+	// Выполняем сброс идентификатора сессии
+	this->id = -1;
+	// Сбрасываем флаг активации HTTP/2
+	this->mode = false;
+}
+/**
+ * read Метод чтения в буфер данных из файлового дескриптора
+ * @param buffer буфер данных для чтения
+ * @param size   размер буфера данных для чтения
+ * @return       размер прочитанных данных
+ */
+int awh::client::WEB::Http2::read(uint8_t * buffer, const size_t size) const noexcept {
+	// Результат работы функции
+	int result = -1;
+	// Если файловый дескриптор активен
+	if(this->fds[0] > -1){
+		/**
+		 * Методы только для OS Windows
+		 */
+		#if defined(_WIN32) || defined(_WIN64)
+			// Выполняем чтение данных из сокета в буфер данных
+			while(((result = _read(this->fds[0], buffer, size)) == -1) && (errno == EINTR));
+		/**
+		 * Для всех остальных операционных систем
+		 */
+		#else
+			// Выполняем чтение данных из сокета в буфер данных
+			while(((result = ::read(this->fds[0], buffer, size)) == -1) && (errno == EINTR));
+		#endif
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * write Метод записи из буфера данных в файловый дескриптор
+ * @param buffer буфер данных для записи
+ * @param size   размер буфера данных для записи
+ * @return       размер записанных данных
+ */
+int awh::client::WEB::Http2::write(const uint8_t * buffer, const size_t size) const noexcept {
+	// Результат работы функции
+	int result = -1;
+	// Если файловый дескриптор активен
+	if(this->fds[1] > -1){
+		/**
+		 * Методы только для OS Windows
+		 */
+		#if defined(_WIN32) || defined(_WIN64)
+			// Выполняем запись в сокет буфера данных
+			result = _write(this->fds[1], buffer, size);
+		/**
+		 * Для всех остальных операционных систем
+		 */
+		#else
+			// Выполняем запись в сокет буфера данных
+			result = ::write(this->fds[1], buffer, size);
+		#endif
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * onFrameHttp2 Функция обратного вызова при получении фрейма заголовков HTTP/2 с сервера
+ * @param session объект сессии HTTP/2
+ * @param frame   объект фрейма заголовков HTTP/2
+ * @param ctx     передаваемый промежуточный контекст
+ * @return        статус полученных данных
+ */
+int awh::client::WEB::onFrameHttp2(nghttp2_session * session, const nghttp2_frame * frame, void * ctx) noexcept {
+	// Выполняем блокировку неиспользуемой переменной
+	(void) session;
+	// Получаем объект HTTP-клиента
+	web_t * web = reinterpret_cast <web_t *> (ctx);
+	// Выполняем определение типа фрейма
+	switch(frame->hd.type){
+		// Если мы получили входящие данные тела ответа
+		case NGHTTP2_DATA:
+		// Если мы получили входящие данные заголовков ответа
+		case NGHTTP2_HEADERS: {
+			// Если сессия клиента совпадает с сессией полученных даных
+			if((frame->hd.flags & NGHTTP2_FLAG_END_STREAM) && (web->_http2.id == frame->hd.stream_id)){
+				// Выполняем обновление полученного тела
+				web->_http.update();
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					{
+						// Получаем данные ответа
+						const auto & response = web->_http.response(true);
+						// Если параметры ответа получены
+						if(!response.empty()){
+							// Выводим заголовок ответа
+							cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
+							// Выводим параметры ответа
+							cout << string(response.begin(), response.end()) << endl;
+							// Если тело ответа существует
+							if(!web->_http.body().empty())
+								// Выводим сообщение о выводе чанка тела
+								cout << web->_fmk->format("<body %u>", web->_http.body().size()) << endl << endl;
+							// Иначе устанавливаем перенос строки
+							else cout << endl;
+						}
+					}
+				#endif
+				// Результат работы функции
+				res_t result;
+				// Получаем параметры запроса
+				auto query = web->_http.query();
+				// Получаем объект запроса
+				req_t & request = web->_requests.front();
+				// Получаем объект ответа
+				res_t & response = web->_responses.front();
+				// Устанавливаем код ответа
+				response.code = query.code;
+				// Устанавливаем сообщение ответа
+				response.message = query.message;
+				// Получаем статус ответа
+				awh::http_t::stath_t status = web->_http.getAuth();
+				// Если выполнять редиректы запрещено
+				if(!web->_redirects && (status == awh::http_t::stath_t::RETRY)){
+					// Если нужно произвести запрос заново
+					if((response.code == 201) || (response.code == 301) ||
+					   (response.code == 302) || (response.code == 303) ||
+					   (response.code == 307) || (response.code == 308))
+							// Запрещаем выполнять редирект
+							status = awh::http_t::stath_t::GOOD;
+				}
+				// Выполняем анализ результата авторизации
+				switch(static_cast <uint8_t> (status)){
+					// Если нужно попытаться ещё раз
+					case static_cast <uint8_t> (awh::http_t::stath_t::RETRY): {
+						// Если попытка повторить авторизацию ещё не проводилась
+						if(request.attempt < web->_attempts){
+							// Получаем новый адрес запроса
+							const uri_t::url_t & url = web->_http.getUrl();
+							// Если адрес запроса получен
+							if(!url.empty()){
+								// Увеличиваем количество попыток
+								request.attempt++;
+								// Устанавливаем новый адрес запроса
+								web->_scheme.url = std::forward <const uri_t::url_t> (url);
+								// Получаем параметры адреса запроса
+								request.query = web->_uri.query(web->_scheme.url);
+								// Если соединение является постоянным
+								if(web->_http.isAlive())
+									// Отправляем повторный запрос
+									web->send();
+								// Если нам необходимо отключиться
+								else const_cast <client::core_t *> (web->_core)->close(web->_aid);
+								// Завершаем работу
+								return 0;
+							}
+						}
+						// Устанавливаем флаг принудительной остановки
+						web->_stopped = true;
+					} break;
+					// Если запрос выполнен удачно
+					case static_cast <uint8_t> (awh::http_t::stath_t::GOOD): {
+						// Получаем объект ответа
+						result = response;
+						// Выполняем сброс количества попыток
+						request.attempt = 0;
+						// Если функция обратного вызова установлена, выводим сообщение
+						if(web->_callback.message != nullptr){
+							// Получаем тело запроса
+							const auto & entity = web->_http.body();
+							// Получаем заголовки ответа
+							const auto & headers = web->_http.headers();
+							// Устанавливаем тело ответа
+							result.entity.assign(entity.begin(), entity.end());
+							// Устанавливаем заголовки ответа
+							result.headers = std::forward <const unordered_multimap <string, string>> (headers);
+						}
+						// Устанавливаем размер стопбайт
+						if(!web->_http.isAlive()){
+							// Выполняем очистку оставшихся данных
+							web->_buffer.clear();
+							// Завершаем работу
+							const_cast <client::core_t *> (web->_core)->close(web->_aid);
+							// Выполняем завершение работы
+							goto Stop;
+						}
+						// Выполняем сброс состояния HTTP парсера
+						web->_http.reset();
+						// Выполняем очистку параметров HTTP запроса
+						web->_http.clear();
+						// Если объект ещё не удалён
+						if(!web->_requests.empty())
+							// Выполняем удаление объекта запроса
+							web->_requests.erase(web->_requests.begin());
+						// Если объект ещё не удалён
+						if(!web->_responses.empty())
+							// Выполняем удаление объекта ответа
+							web->_responses.erase(web->_responses.begin());
+						// Завершаем обработку
+						return 0;
+					} break;
+					// Если запрос неудачный
+					case static_cast <uint8_t> (awh::http_t::stath_t::FAULT):
+						// Устанавливаем флаг принудительной остановки
+						web->_stopped = true;
+					break;
+				}
+				// Если функция обратного вызова установлена, выводим сообщение
+				if(web->_callback.message != nullptr){
+					// Получаем объект ответа
+					result = response;
+					// Получаем тело запроса
+					const auto & entity = web->_http.body();
+					// Получаем заголовки ответа
+					const auto & headers = web->_http.headers();
+					// Устанавливаем тело ответа
+					result.entity.assign(entity.begin(), entity.end());
+					// Устанавливаем заголовки ответа
+					result.headers = std::forward <const unordered_multimap <string, string>> (headers);
+					// Завершаем работу
+					const_cast <client::core_t *> (web->_core)->close(web->_aid);
+				// Завершаем работу
+				} else const_cast <client::core_t *> (web->_core)->close(web->_aid);
+				// Устанавливаем метку завершения работы
+				Stop:
+				// Если функция обратного вызова установлена, выводим сообщение
+				if(web->_callback.message != nullptr)
+					// Выполняем функцию обратного вызова
+					web->_callback.message(result, web);
+			}
+		} break;
+	}
+	// Выводим результат
+	return 0;
+}
+/**
+ * onCloseHttp2 Метод закрытия подключения с сервером HTTP/2
+ * @param session объект сессии HTTP/2
+ * @param sid     идентификатор сессии HTTP/2
+ * @param error   флаг ошибки HTTP/2 если присутствует
+ * @param ctx     передаваемый промежуточный контекст
+ * @return        статус полученного события
+ */
+int awh::client::WEB::onCloseHttp2(nghttp2_session * session, const int32_t sid, const uint32_t error, void * ctx) noexcept {
+	// Получаем объект HTTP-клиента
+	web_t * web = reinterpret_cast <web_t *> (ctx);
+	// Если идентификатор сессии клиента совпадает
+	if(web->_http2.id == sid){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Выводим заголовок ответа
+			cout << "\x1B[33m\x1B[1m^^^^^^^^^ CLOSE SESSION HTTP2 ^^^^^^^^^\x1B[0m" << endl;
+			// Выводим информацию об ошибке
+			cout << web->_fmk->format("Stream %d closed with error code=%u", sid, nghttp2_http2_strerror(error)) << endl << endl;
+		#endif		
+		// Если сессия HTTP/2 закрыта не удачно
+		if(nghttp2_session_terminate_session(session, NGHTTP2_NO_ERROR) != 0)
+			// Выводим сообщение об ошибке
+			return NGHTTP2_ERR_CALLBACK_FAILURE;
+	}
+	// Выводим результат
+	return 0;
+}
+/**
+ * onChunkHttp2 Функция обратного вызова при получении чанка с сервера HTTP/2
+ * @param session объект сессии HTTP/2
+ * @param flags   флаги события для сессии HTTP/2
+ * @param sid     идентификатор сессии HTTP/2
+ * @param buffer  буфер данных который содержит полученный чанк
+ * @param size    размер полученного буфера данных чанка
+ * @param ctx     передаваемый промежуточный контекст
+ * @return        статус полученных данных
+ */
+int awh::client::WEB::onChunkHttp2(nghttp2_session * session, const uint8_t flags, const int32_t sid, const uint8_t * buffer, const size_t size, void * ctx) noexcept {
+	// Выполняем блокировку неиспользуемой переменных
+	(void) flags;
+	(void) session;
+	// Получаем объект HTTP-клиента
+	web_t * web = reinterpret_cast <web_t *> (ctx);
+	// Если идентификатор сессии клиента совпадает
+	if(web->_http2.id == sid)
+		// Добавляем полученный чанк в тело данных
+		web->_http.body(vector <char> (buffer, buffer + size));
+	// Выводим результат
+	return 0;
+}
+/**
+ * onBeginHeadersHttp2 Функция начала получения фрейма заголовков HTTP/2
+ * @param session объект сессии HTTP/2
+ * @param frame   объект фрейма заголовков HTTP/2
+ * @param ctx     передаваемый промежуточный контекст
+ * @return        статус полученных данных
+ */
+int awh::client::WEB::onBeginHeadersHttp2(nghttp2_session * session, const nghttp2_frame * frame, void * ctx) noexcept {
+	// Выполняем блокировку неиспользуемой переменной
+	(void) session;
+	// Получаем объект HTTP-клиента
+	web_t * web = reinterpret_cast <web_t *> (ctx);
+	// Выполняем определение типа фрейма
+	switch(frame->hd.type){
+		// Если мы получили входящие данные заголовков ответа
+		case NGHTTP2_HEADERS:{
+			// Если сессия клиента совпадает с сессией полученных даных
+			if((frame->headers.cat == NGHTTP2_HCAT_RESPONSE) && (web->_http2.id == frame->hd.stream_id)){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Выводим заголовок ответа
+					cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
+					// Выводим информацию об ошибке
+					cout << web->_fmk->format("Stream ID=%d", frame->hd.stream_id) << endl << endl;
+				#endif
+			}
+		} break;
+	}
+	// Выводим результат
+	return 0;
+}
+/**
+ * onHeaderHttp2 Функция обратного вызова при получении заголовка HTTP/2
+ * @param session объект сессии HTTP/2
+ * @param frame   объект фрейма заголовков HTTP/2
+ * @param key     данные ключа заголовка
+ * @param keySize размер ключа заголовка
+ * @param val     данные значения заголовка
+ * @param valSize размер значения заголовка
+ * @param flags   флаги события для сессии HTTP/2
+ * @param ctx     передаваемый промежуточный контекст
+ * @return        статус полученных данных
+ */
+int awh::client::WEB::onHeaderHttp2(nghttp2_session * session, const nghttp2_frame * frame, const uint8_t * key, const size_t keySize, const uint8_t * val, const size_t valSize, const uint8_t flags, void * ctx) noexcept {
+	// Выполняем блокировку неиспользуемой переменных
+	(void) flags;
+	(void) session;
+	// Получаем объект HTTP-клиента
+	web_t * web = reinterpret_cast <web_t *> (ctx);
+	// Выполняем определение типа фрейма
+	switch(frame->hd.type){
+		// Если мы получили входящие данные заголовков ответа
+		case NGHTTP2_HEADERS:{
+			// Если сессия клиента совпадает с сессией полученных даных
+			if((frame->headers.cat == NGHTTP2_HCAT_RESPONSE) && (web->_http2.id == frame->hd.stream_id))
+				// Устанавливаем полученные заголовки
+				web->_http.header2(string((const char *) key, keySize), string((const char *) val, valSize));
+		} break;
+	}
+	// Выводим результат
+	return 0;
+}
+/**
+ * sendHttp2 Функция обратного вызова при подготовки данных для отправки на сервер
+ * @param session объект сессии HTTP/2
+ * @param buffer  буфер данных которые следует отправить
+ * @param size    размер буфера данных для отправки
+ * @param flags   флаги события для сессии HTTP/2
+ * @param ctx     передаваемый промежуточный контекст
+ * @return        количество отправленных байт
+ */
+ssize_t awh::client::WEB::sendHttp2(nghttp2_session * session, const uint8_t * buffer, const size_t size, const int flags, void * ctx) noexcept {
+	// Выполняем блокировку неиспользуемой переменных
+	(void) flags;
+	(void) session;
+	// Получаем объект HTTP-клиента
+	web_t * web = reinterpret_cast <web_t *> (ctx);
+	// Выполняем отправку заголовков запроса на сервер
+	const_cast <client::core_t *> (web->_core)->write((const char *) buffer, size, web->_aid);
+	// Возвращаем количество отправленных байт
+	return static_cast <ssize_t> (size);
+}
+/**
+ * readHttp2 Функция чтения подготовленных данных для формирования буфера данных который необходимо отправить на HTTP/2 сервер
+ * @param session объект сессии HTTP/2
+ * @param sid     идентификатор сессии HTTP/2
+ * @param buffer  буфер данных которые следует отправить
+ * @param size    размер буфера данных для отправки
+ * @param flags   флаги события для сессии HTTP/2
+ * @param source  объект промежуточных данных локального подключения
+ * @param ctx     передаваемый промежуточный контекст
+ * @return        количество отправленных байт
+ */
+ssize_t awh::client::WEB::readHttp2(nghttp2_session * session, const int32_t sid, uint8_t * buffer, const size_t size, uint32_t * flags, nghttp2_data_source * source, void * ctx) noexcept {
+	// Выполняем блокировку неиспользуемой переменных
+	(void) sid;
+	(void) source;
+	(void) session;
+	// Результат работы функции
+	const ssize_t result = reinterpret_cast <web_t *> (ctx)->_http2.read(buffer, size);
+	// Если данные не прочитанны из сокета
+	if(result <= 0)
+		// Выводим сообщение об ошибке
+		return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
+	// Если все данные прочитаны полностью
+	else if(result == 0)
+		// Устанавливаем флаг, завершения чтения данных
+		(* flags) |= NGHTTP2_DATA_FLAG_EOF;
+	// Выводим количество прочитанных байт
+	return result;
+}
+/**
+ * nv Метод создания объекта заголовка HTTP/2 запроса
+ * @param name  название заголовка
+ * @param value значение заголовка
+ * @return      полученный объект заголовка
+ */
+nghttp2_nv awh::client::WEB::nv(const string & name, const string & value) const noexcept {
+	// Формируем создание объекта заголовка
+	return {
+		(uint8_t *) name.c_str(),
+		(uint8_t *) value.c_str(),
+		name.size(),
+		value.size(),
+		NGHTTP2_NV_FLAG_NONE
+	};
+}
+/**
  * chunking Метод обработки получения чанков
  * @param chunk бинарный буфер чанка
  * @param http  объект модуля HTTP
@@ -95,14 +578,35 @@ void awh::client::WEB::disconnectCallback(const size_t aid, const size_t sid, aw
 void awh::client::WEB::readCallback(const char * buffer, const size_t size, const size_t aid, const size_t sid, awh::core_t * core) noexcept {
 	// Если данные существуют
 	if((buffer != nullptr) && (size > 0) && (aid > 0) && (sid > 0)){
-		// Если дисконнекта ещё не произошло
-		if((this->_action == action_t::NONE) || (this->_action == action_t::READ)){
-			// Устанавливаем экшен выполнения
-			this->_action = action_t::READ;
-			// Добавляем полученные данные в буфер
-			this->_buffer.insert(this->_buffer.end(), buffer, buffer + size);
-			// Выполняем запуск обработчика событий
-			this->handler();
+		// Если активирован режим работы с HTTP/2 протоколом
+		if(this->_http2.mode){
+			// Выполняем извлечение полученного чанка данных из сокета
+			ssize_t bytes = nghttp2_session_mem_recv(this->_http2.ctx, (const uint8_t *) buffer, size);
+			// Если данные не прочитаны, выводим ошибку и выходим
+			if(bytes < 0){
+				// Выводим сообщение об полученной ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, nghttp2_strerror(static_cast <int> (bytes)));
+				// Выходим из функции
+				return;
+			}
+			// Фиксируем полученный результат
+			if((bytes = nghttp2_session_send(this->_http2.ctx)) != 0){
+				// Выводим сообщение об полученной ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, nghttp2_strerror(static_cast <int> (bytes)));
+				// Выходим из функции
+				return;
+			}
+		// Если активирован режим работы с HTTP/1.1 протоколом
+		} else {
+			// Если дисконнекта ещё не произошло
+			if((this->_action == action_t::NONE) || (this->_action == action_t::READ)){
+				// Устанавливаем экшен выполнения
+				this->_action = action_t::READ;
+				// Добавляем полученные данные в буфер
+				this->_buffer.insert(this->_buffer.end(), buffer, buffer + size);
+				// Выполняем запуск обработчика событий
+				this->handler();
+			}
 		}
 	}
 }
@@ -404,6 +908,42 @@ void awh::client::WEB::actionConnect() noexcept {
 	if(this->_action == action_t::CONNECT)
 		// Выполняем сброс экшена
 		this->_action = action_t::NONE;
+	// Если протокол подключения является HTTP/2
+	if((this->_http2.mode = (this->_core->proto(this->_aid) == engine_t::proto_t::HTTP2))){
+		// Выполняем инициализацию объекта HTTP/2
+		this->_http2.init();
+		// Создаём объект функций обратного вызова
+		nghttp2_session_callbacks * callbacks;
+		// Выполняем инициализацию сессию функций обратного вызова
+		nghttp2_session_callbacks_new(&callbacks);
+		// Выполняем установку функции обратного вызова при подготовки данных для отправки на сервер
+		nghttp2_session_callbacks_set_send_callback(callbacks, &web_t::sendHttp2);
+		// Выполняем установку функции обратного вызова при получении заголовка HTTP/2
+		nghttp2_session_callbacks_set_on_header_callback(callbacks, &web_t::onHeaderHttp2);
+		// Выполняем установку функции обратного вызова при получении фрейма заголовков HTTP/2 с сервера
+		nghttp2_session_callbacks_set_on_frame_recv_callback(callbacks, &web_t::onFrameHttp2);
+		// Выполняем установку функции обратного вызова закрытия подключения с сервером HTTP/2
+		nghttp2_session_callbacks_set_on_stream_close_callback(callbacks, &web_t::onCloseHttp2);
+		// Выполняем установку функции обратного вызова при получении чанка с сервера HTTP/2
+		nghttp2_session_callbacks_set_on_data_chunk_recv_callback(callbacks, &web_t::onChunkHttp2);
+		// Выполняем установку функции обратного вызова начала получения фрейма заголовков HTTP/2
+		nghttp2_session_callbacks_set_on_begin_headers_callback(callbacks, &web_t::onBeginHeadersHttp2);
+		// Выполняем подключение котнекста сессии HTTP/2
+		nghttp2_session_client_new(&this->_http2.ctx, callbacks, this);
+		// Выполняем удаление объекта функций обратного вызова
+		nghttp2_session_callbacks_del(callbacks);
+		// Создаём параметры сессии подключения с HTTP/2 сервером
+		const vector <nghttp2_settings_entry> iv = {{NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS, 100}};
+		// Клиентская 24-байтовая магическая строка будет отправлена библиотекой nghttp2
+		const int rv = nghttp2_submit_settings(this->_http2.ctx, NGHTTP2_FLAG_NONE, iv.data(), iv.size());
+		// Если настройки для сессии установить не удалось
+		if(rv != 0){
+			// Выводим сообщение об ошибке
+			this->_log->print("Could not submit SETTINGS: %s", log_t::flag_t::CRITICAL, nghttp2_strerror(rv));
+			// Выходим принудительно из приложения
+			exit(EXIT_FAILURE);
+		}
+	}
 	// Если функция обратного вызова существует
 	if(this->_callback.active != nullptr)
 		// Выполняем функцию обратного вызова
@@ -413,6 +953,10 @@ void awh::client::WEB::actionConnect() noexcept {
  * actionDisconnect Метод обработки экшена отключения от сервера
  */
 void awh::client::WEB::actionDisconnect() noexcept {
+	// Если активен протокол HTTP/2
+	if(this->_http2.mode)
+		// Выполняем закрытие подключения
+		this->_http2.free();
 	// Если список ответов получен
 	if(!this->_responses.empty() && !this->_requests.empty()){
 		// Получаем объект ответа
@@ -1205,38 +1749,103 @@ void awh::client::WEB::send(const vector <req_t> & reqs) noexcept {
 			// Если тело запроса существует
 			if(!req.entity.empty())
 				// Устанавливаем тело запроса
-				this->_http.body(req.entity);			
-			// Получаем URL ссылку для выполнения запроса
-			this->_uri.append(this->_scheme.url, req.query);
-			// Получаем бинарные данные WEB запроса
-			const auto & buffer = this->_http.request(this->_scheme.url, req.method);
-			// Если бинарные данные запроса получены
-			if(!buffer.empty()){
+				this->_http.body(req.entity);
+			// Если активирован режим работы с HTTP/2 протоколом
+			if(this->_http2.mode){
+				// Список заголовков для запроса
+				vector <nghttp2_nv> nva;
+				// Получаем URL ссылку для выполнения запроса
+				this->_uri.append(this->_scheme.url, req.query);
+				// Выполняем установку параметры ответа сервера
+				this->_http.query(awh::web_t::query_t(2.0f, req.method));
 				/**
 				 * Если включён режим отладки
 				 */
 				#if defined(DEBUG_MODE)
 					// Выводим заголовок запроса
 					cout << "\x1B[33m\x1B[1m^^^^^^^^^ REQUEST ^^^^^^^^^\x1B[0m" << endl;
+					// Получаем бинарные данные WEB запроса
+					const auto & buffer = this->_http.request(this->_scheme.url, req.method);
 					// Выводим параметры запроса
 					cout << string(buffer.begin(), buffer.end()) << endl << endl;
 				#endif
-				// Тело WEB сообщения
-				vector <char> entity;
-				// Выполняем отправку заголовков запроса на сервер
-				core->write(buffer.data(), buffer.size(), this->_aid);
-				// Получаем данные тела запроса
-				while(!(entity = this->_http.payload()).empty()){
+				// Выполняем перебор всех заголовков HTTP/2 запроса
+				for(auto & header : this->_http.request2(this->_scheme.url, req.method))
+					// Выполняем добавление метода запроса
+					nva.push_back(this->nv(header.first, header.second));
+				// Если тело запроса существует
+				if(!req.entity.empty()){
+					// Тело WEB сообщения
+					vector <char> entity;
+					// Получаем данные тела запроса
+					while(!(entity = this->_http.payload()).empty()){
+						/**
+						 * Если включён режим отладки
+						 */
+						#if defined(DEBUG_MODE)
+							// Выводим сообщение о выводе чанка тела
+							cout << this->_fmk->format("<chunk %u>", entity.size()) << endl;
+						#endif
+						// Выполняем отправку данных полезной нагрузки на сервер
+						this->_http2.write((const uint8_t *) entity.data(), entity.size());
+					}
+					// Создаём объект передачи данных тела полезной нагрузки
+					nghttp2_data_provider data;
+					// Зануляем передаваемый контекст
+					data.source.ptr = nullptr;
+					// Устанавливаем файловый дескриптор
+					data.source.fd = this->_http2.fds[0];
+					// Устанавливаем функцию обратного вызова
+					data.read_callback = &web_t::readHttp2;
+					// Выполняем запрос на удалённый сервер
+					this->_http2.id = nghttp2_submit_request(this->_http2.ctx, nullptr, nva.data(), nva.size(), &data, this);
+				// Если тело запроса не существует, выполняем установленный запрос
+				} else this->_http2.id = nghttp2_submit_request(this->_http2.ctx, nullptr, nva.data(), nva.size(), nullptr, this);
+				{
+					// Результат фиксации сессии
+					int rv = -1;
+					// Фиксируем отправленный результат
+					if((rv = nghttp2_session_send(this->_http2.ctx)) != 0){
+						// Выводим сообщение об полученной ошибке
+						this->_log->print("%s", log_t::flag_t::CRITICAL, nghttp2_strerror(rv));
+						// Выходим из функции
+						return;
+					}
+				}
+			// Если активирован режим работы с HTTP/1.1 протоколом
+			} else {
+				// Получаем URL ссылку для выполнения запроса
+				this->_uri.append(this->_scheme.url, req.query);
+				// Получаем бинарные данные WEB запроса
+				const auto & buffer = this->_http.request(this->_scheme.url, req.method);
+				// Если бинарные данные запроса получены
+				if(!buffer.empty()){
 					/**
 					 * Если включён режим отладки
 					 */
 					#if defined(DEBUG_MODE)
-						// Выводим сообщение о выводе чанка тела
-						cout << this->_fmk->format("<chunk %u>", entity.size()) << endl;
+						// Выводим заголовок запроса
+						cout << "\x1B[33m\x1B[1m^^^^^^^^^ REQUEST ^^^^^^^^^\x1B[0m" << endl;
+						// Выводим параметры запроса
+						cout << string(buffer.begin(), buffer.end()) << endl << endl;
 					#endif
-					// Выполняем отправку тела запроса на сервер
-					core->write(entity.data(), entity.size(), this->_aid);
-				}
+					// Тело WEB сообщения
+					vector <char> entity;
+					// Выполняем отправку заголовков запроса на сервер
+					core->write(buffer.data(), buffer.size(), this->_aid);
+					// Получаем данные тела запроса
+					while(!(entity = this->_http.payload()).empty()){
+						/**
+						 * Если включён режим отладки
+						 */
+						#if defined(DEBUG_MODE)
+							// Выводим сообщение о выводе чанка тела
+							cout << this->_fmk->format("<chunk %u>", entity.size()) << endl;
+						#endif
+						// Выполняем отправку тела запроса на сервер
+						core->write(entity.data(), entity.size(), this->_aid);
+					}
+				}	
 			}
 		}
 	}
@@ -1482,7 +2091,7 @@ void awh::client::WEB::authTypeProxy(const auth_t::type_t type, const auth_t::ha
  * @param log  объект для работы с логами
  */
 awh::client::WEB::WEB(const client::core_t * core, const fmk_t * fmk, const log_t * log) noexcept :
- _uri(fmk), _http(fmk, log, &_uri), _scheme(fmk, log), _action(action_t::NONE),
+ _uri(fmk), _http(fmk, log, &_uri), _http2(log), _scheme(fmk, log), _action(action_t::NONE),
  _compress(awh::http_t::compress_t::NONE), _aid(0), _unbind(true), _active(false),
  _stopped(false), _redirects(false), _attempts(10), _fmk(fmk), _log(log), _core(core) {
 	// Устанавливаем событие на запуск системы

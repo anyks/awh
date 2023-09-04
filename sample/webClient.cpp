@@ -154,13 +154,14 @@ int main(int argc, char * argv[]){
 	// uri_t::url_t url = uri.parse("https://2ip.ru");
 	// uri_t::url_t url = uri.parse("https://ipv6.google.com");
 	// uri_t::url_t url = uri.parse("http://localhost/test");
+	// uri_t::url_t url = uri.parse("https://anyks.com");
 	// uri_t::url_t url = uri.parse("https://www.anyks.com");
-	uri_t::url_t url = uri.parse("https://apple.com/ru/mac");
+	// uri_t::url_t url = uri.parse("https://apple.com/ru/mac");
 	// uri_t::url_t url = uri.parse("https://ru.wikipedia.org/wiki/HTTP");
 	// uri_t::url_t url = uri.parse("https://api.binance.com/api/v3/exchangeInfo?symbol=BTCUSDT");
 	// uri_t::url_t url = uri.parse("https://testnet.binance.vision/api/v3/exchangeInfo");
 	// uri_t::url_t url = uri.parse("https://api.coingecko.com/api/v3/coins/list?include_platform=true");
-	// uri_t::url_t url = uri.parse("https://api.coingecko.com/api/v3/simple/price?ids=tron&vs_currencies=usd");
+	uri_t::url_t url = uri.parse("https://api.coingecko.com/api/v3/simple/price?ids=tron&vs_currencies=usd");
 	/*
 	// Подписываемся на событие коннекта и дисконнекта клиента
 	web.on(bind(&WebClient::active, &executor, _1, _2));
@@ -171,12 +172,26 @@ int main(int argc, char * argv[]){
 	// Выполняем запуск работы
 	web.start();
 	*/
+
+
+	// 1. Не работает редирект без отключения
+	// 2. Протестировать POST запросы
+	// 3. Реализация Прокси-клиента
+	// 4. Реализация WebSocket-клиента
+	// 5. Реализация Web-сервера
+	// 6. Реализация HTTP-прокси-сервера
+	// 7. Протестировать работу своего прокси-сервера и прокси-клиента
+	// 9. Протестировать авторизацию
+	
+
+	core.proto(awh::engine_t::proto_t::HTTP2);
+
 	// Замеряем время начала работы
 	auto timeShifting = chrono::system_clock::now();
 	// Формируем GET запрос
-	// const auto & body = web.GET(url);
+	const auto & body = web.GET(url);
 	// const auto & body = web.GET(url, {{"Connection", "close"}});
-	const auto & body = web.GET(url, {{"User-Agent", "curl/7.64.1"}});
+	// const auto & body = web.GET(url, {{"User-Agent", "curl/7.64.1"}});
 	// Выводим время запроса // 3862 || 3869 == 3893
 	cout << " ++++++++++ Time Shifting " << chrono::duration_cast <chrono::milliseconds> (chrono::system_clock::now() - timeShifting).count() << endl;
 	// Если данные получены

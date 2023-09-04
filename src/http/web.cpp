@@ -873,6 +873,14 @@ void awh::Web::init(const hid_t hid) noexcept {
 	// Устанавливаем тип используемого HTTP мдуля
 	this->_httpType = hid;
 }
+/** 
+ * state Метод установки стейта ожидания данных
+ * @param state стейт ожидания данных для установки
+ */
+void awh::Web::state(const state_t state) noexcept {
+	// Выполняем установку стейта
+	this->_state = state;
+}
 /**
  * chunking Метод установки функции обратного вызова для получения чанков
  * @param callback функция обратного вызова
