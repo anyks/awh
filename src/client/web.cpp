@@ -450,10 +450,26 @@ void awh::client::WEB::submit(const req_t & request) noexcept {
 				// Выводим параметры запроса
 				cout << string(buffer.begin(), buffer.end()) << endl;
 			#endif
+
+			/*
+				vector <nghttp2_nv> nva = {
+					make_nv(":method", "GET"),
+					make_nv(":path", "/"),
+					make_nv(":scheme", "https"),
+					make_nv(":authority", "anyks.com"),
+					make_nv("accept", "*//*"),
+					make_nv("user-agent", "nghttp2/" NGHTTP2_VERSION)
+				};
+			*/
+
 			// Выполняем перебор всех заголовков HTTP/2 запроса
-			for(auto & header : this->_http.request2(this->_scheme.url, request.method))
+			for(auto & header : this->_http.request2(this->_scheme.url, request.method)){
+
+				cout << " ------------ " << header.first << " == " << header.second << endl;
+
 				// Выполняем добавление метода запроса
 				nva.push_back(this->nv(header.first, header.second));
+			}
 			// Если тело запроса существует
 			if(!request.entity.empty()){
 				// Список файловых дескрипторов
