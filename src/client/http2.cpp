@@ -204,7 +204,10 @@ static int on_frame_recv_callback(nghttp2_session * session, const nghttp2_frame
 	case NGHTTP2_DATA: {
 		cout << " +++++++++++++++++++ ALL DATA " << (frame->hd.flags & NGHTTP2_FLAG_END_STREAM) << endl;
 
-		nghttp2_session_del(reinterpret_cast <awh::client::http2_t *> (ctx)->_session.ctx);
+		if(frame->hd.flags & NGHTTP2_FLAG_END_STREAM){
+			cout << " +++++++++++++++++++ STOP " << endl;
+			nghttp2_session_del(reinterpret_cast <awh::client::http2_t *> (ctx)->_session.ctx);
+		}
 	} break;
   	case NGHTTP2_HEADERS: {
 		if((frame->headers.cat == NGHTTP2_HCAT_RESPONSE) && (reinterpret_cast <awh::client::http2_t *> (ctx)->_session.id == frame->hd.stream_id))
@@ -212,8 +215,7 @@ static int on_frame_recv_callback(nghttp2_session * session, const nghttp2_frame
     } break;
   }
 
-  if(frame->hd.flags & NGHTTP2_FLAG_END_STREAM)
-	cout << " +++++++++++++++++++ STOP " << endl;
+  
 
   return 0;
 }
@@ -222,7 +224,7 @@ static int on_data_chunk_recv_callback(nghttp2_session * session, uint8_t flags,
   (void)session;
   (void)flags;
 
-  // cout << " +++++++++++++++++++ GET CHUNCK " << len << endl;
+  cout << " +++++++++++++++++++ GET CHUNCK " << len << endl;
 
   if(reinterpret_cast <awh::client::http2_t *> (ctx)->_session.id == stream_id){
 	// Если функция обратного вызова установлена, выводим сообщение
@@ -382,7 +384,7 @@ void awh::client::Http2::actionConnect() noexcept {
 
 	// :content-length
 	
-	/*
+	
 	// GET
 	{
 		vector <nghttp2_nv> nva = {
@@ -390,7 +392,8 @@ void awh::client::Http2::actionConnect() noexcept {
 			make_nv(":path", "/"),
 			make_nv(":scheme", "https"),
 			make_nv(":authority", "anyks.com"),
-			make_nv("accept", "*//*"),
+			make_nv("accept", "*/*"),
+			make_nv("origin", "https://anyks.com"),
 			make_nv("user-agent", "nghttp2/" NGHTTP2_VERSION)
 		};
 
@@ -400,9 +403,9 @@ void awh::client::Http2::actionConnect() noexcept {
 
 		stream_id = nghttp2_submit_request(this->_session.ctx, nullptr, nva.data(), nva.size(), nullptr, this);
 	}
-	*/
-
 	
+
+	/*
 	// POST
 	{
 		
@@ -430,7 +433,7 @@ void awh::client::Http2::actionConnect() noexcept {
 			make_nv(":path", "/test.php"),
 			make_nv(":scheme", "https"),
 			make_nv(":authority", "anyks.com"),
-			make_nv("accept", "*/*"),
+			make_nv("accept", "*//*"),
 			make_nv("origin", "https://anyks.com"),
 			make_nv("connection", "keep-alive"),
 			make_nv("content-type", "application/x-www-form-urlencoded"),
@@ -478,7 +481,7 @@ void awh::client::Http2::actionConnect() noexcept {
 
 	}
 
-
+	*/
 	
 
 
