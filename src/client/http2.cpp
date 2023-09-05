@@ -431,6 +431,8 @@ void awh::client::Http2::actionConnect() noexcept {
 			make_nv(":scheme", "https"),
 			make_nv(":authority", "anyks.com"),
 			make_nv("accept", "*/*"),
+			make_nv("origin", "https://anyks.com"),
+			make_nv("connection", "keep-alive"),
 			make_nv("content-type", "application/x-www-form-urlencoded"),
 			make_nv("content-length", contentLength.c_str()),
 			make_nv("user-agent", "nghttp2/" NGHTTP2_VERSION)

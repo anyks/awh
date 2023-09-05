@@ -1134,7 +1134,7 @@ void awh::client::WEB::actionConnect() noexcept {
 		// Выполняем удаление объекта функций обратного вызова
 		nghttp2_session_callbacks_del(callbacks);
 		// Создаём параметры сессии подключения с HTTP/2 сервером
-		const vector <nghttp2_settings_entry> iv = {{NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS, 100}};
+		const vector <nghttp2_settings_entry> iv = {{NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS, 128}};
 		// Клиентская 24-байтовая магическая строка будет отправлена библиотекой nghttp2
 		const int rv = nghttp2_submit_settings(this->_http2.ctx, NGHTTP2_FLAG_NONE, iv.data(), iv.size());
 		// Если настройки для сессии установить не удалось
