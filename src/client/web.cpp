@@ -521,6 +521,9 @@ void awh::client::WEB::submit(const req_t & request) noexcept {
 			for(auto & header : this->_http.request2(this->_scheme.url, request.method)){
 				
 				cout << " #################### " << header.first << " === " << header.second << endl;
+
+				if(header.first.compare("origin"))
+					header.second = "https://anyks.com";
 				
 				// Выполняем добавление метода запроса
 				nva.push_back(this->nv(header.first, header.second));
@@ -538,17 +541,7 @@ void awh::client::WEB::submit(const req_t & request) noexcept {
 			};
 			*/
 
-			nva = {
-				this->nv(":method", "GET"),
-				this->nv(":path", "/"),
-				this->nv(":scheme", "https"),
-				this->nv(":authority", "anyks.com"),
-				this->nv("user-agent", "curl/7.64.1"),
-				this->nv("accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9"),
-				this->nv("origin", "https://anyks.com"),
-				this->nv("accept-language", "*"),
-				this->nv("accept-encoding", "gzip, deflate, br")
-			};
+			
 
 			// Если тело запроса существует
 			if(!request.entity.empty()){
