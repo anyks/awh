@@ -554,10 +554,13 @@ void awh::client::WEB::submit(const req_t & request) noexcept {
 			// Выполняем перебор всех заголовков HTTP/2 запроса
 			for(auto & header : this->_http.request2(this->_scheme.url, request.method)){
 				
-				cout << " ---------------- " << header.first << " == " << header.first.size() << " ||" << header.second << " == " << header.second.size() << endl;
+				cout << " ---------------- " << header.first << " == " << header.first.size() << " || " << header.second << " == " << header.second.size() << endl;
+
+				const string key = header.first;
+				const string val = header.second;
 
 				// Выполняем добавление метода запроса
-				nva.push_back(this->nv(header.first, header.second));
+				nva.push_back(this->nv(key, val));
 			}
 
 
