@@ -520,13 +520,16 @@ void awh::client::WEB::submit(const req_t & request) noexcept {
 			// Выполняем перебор всех заголовков HTTP/2 запроса
 			for(auto & header : this->_http.request2(this->_scheme.url, request.method)){
 				
-				cout << " #################### " << header.first << " === " << header.second << endl;
+				
 
-				if(header.first.compare("origin") == 0)
+				if(header.first.compare("origin") == 0){
+					
+					cout << " #################### " << header.first << " === " << header.second << endl;
+					
 					nva.push_back(this->nv("origin", "https://anyks.com"));
 				
 				// Выполняем добавление метода запроса
-				else nva.push_back(this->nv(header.first, header.second));
+				} else nva.push_back(this->nv(header.first, header.second));
 			}
 
 			/*
