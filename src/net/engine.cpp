@@ -1086,7 +1086,7 @@ void awh::Engine::Context::info() const noexcept {
 			// Выводим конечный разделитель
 			printf ("\n------------------------------------------------------------\n\n");
 			// Очищаем объект сертификата
-			X509_free(cert);
+			// X509_free(cert);
 		}
 	}
 }
@@ -1853,7 +1853,7 @@ int awh::Engine::verifyCert(const int ok, X509_STORE_CTX * x509) noexcept {
 		// Выводим конечный разделитель
 		printf ("\n------------------------------------------------------------\n\n");
 		// Очищаем объект сертификата
-		X509_free(cert);
+		// X509_free(cert);
 	}
 	// Выводим результат
 	return ok;
@@ -1898,7 +1898,7 @@ int awh::Engine::verifyHost(X509_STORE_CTX * x509, void * ctx) noexcept {
 		// Запрашиваем имя домена
 		X509_NAME_oneline(X509_get_subject_name(cert), buffer, sizeof(buffer));
 		// Очищаем выделенную память
-		X509_free(cert);
+		// X509_free(cert);
 		// Если домен найден в записях сертификата (т.е. сертификат соответствует данному домену)
 		if(validate == engine_t::validate_t::MatchFound){
 			/**
@@ -2427,22 +2427,22 @@ bool awh::Engine::storeCA(SSL_CTX * ctx) const noexcept {
 						}
 						// Перебираем все сертификаты в системном сторе
 						while((ctx = CertEnumCertificatesInStore(sys, ctx))){
-							// Получаем сертификат
-							X509 * cert = d2i_X509(nullptr, (const u_char **) &ctx->pbCertEncoded, ctx->cbCertEncoded);
-							// Если сертификат получен
+							// Выполняем создание сертификата
+							X509 * cert = X509_new();
+							// Если сертификат не создан
 							if(cert != nullptr){
-								// Добавляем сертификат в стор
-								X509_STORE_add_cert(store, cert);
-								// Очищаем выделенную память
-								X509_free(cert);
-							// Если сертификат не получен
-							} else {
 								// Формируем результат ответа
 								result = -1;
 								// Выводим в лог сообщение
 								this->_log->print("%s failed", log_t::flag_t::CRITICAL, "d2i_X509");
 								// Выходим из цикла
 								break;
+							// Если сертификат создан
+							} else if(cert != nullptr) {
+								// Добавляем сертификат в стор
+								X509_STORE_add_cert(store, d2i_X509(&cert, (const u_char **) &ctx->pbCertEncoded, ctx->cbCertEncoded));
+								// Очищаем выделенную память
+								X509_free(cert);
 							}
 						}
 						// Закрываем системный стор

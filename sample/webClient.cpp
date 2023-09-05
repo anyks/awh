@@ -187,7 +187,6 @@ int main(int argc, char * argv[]){
 	// 7. Сделать методы остановки для Danube и протестить с названиями архивов с точками
 	// 8. В Windows происходит Crash при запросе https://apple.com/ru/mac
 	// 9. С LibEvent есть затыки в получении данных, база событий отказывается работать
-	// 10. С LibEvent полностью не работает в FreeBSD
 
 	// Замеряем время начала работы
 	auto timeShifting = chrono::system_clock::now();

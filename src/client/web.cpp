@@ -201,20 +201,88 @@ int awh::client::WEB::onCloseHttp2(nghttp2_session * session, const int32_t sid,
 		 * Если включён режим отладки
 		 */
 		#if defined(DEBUG_MODE)
-			// Если ошибка получена
-			if(error > 0){
-				// Выводим заголовок ответа
-				cout << "\x1B[33m\x1B[1m^^^^^^^^^ CLOSE SESSION HTTP2 ^^^^^^^^^\x1B[0m" << endl;
-				// Выводим информацию об ошибке
-				cout << web->_fmk->format("Stream %d closed with error code=%u", sid, nghttp2_http2_strerror(error)) << endl << endl;
+			// Выводим заголовок ответа
+			cout << "\x1B[33m\x1B[1m^^^^^^^^^ CLOSE SESSION HTTP2 ^^^^^^^^^\x1B[0m" << endl;
+			// Определяем тип получаемой ошибки
+			switch(error){
+				// Если ошибка не получена
+				case 0x0:
+					// Выводим информацию о закрытии сессии
+					cout << web->_fmk->format("Stream %d closed", sid) << endl << endl;
+				break;
+				// Если получена ошибка протокола
+				case 0x1:
+					// Выводим информацию о закрытии сессии с ошибкой
+					cout << web->_fmk->format("Stream %d closed with error=%s", sid, "PROTOCOL_ERROR") << endl << endl;
+				break;
+				// Если получена ошибка реализации
+				case 0x2:
+					// Выводим информацию о закрытии сессии с ошибкой
+					cout << web->_fmk->format("Stream %d closed with error=%s", sid, "INTERNAL_ERROR") << endl << endl;
+				break;
+				// Если получена ошибка превышения предела управления потоком
+				case 0x3:
+					// Выводим информацию о закрытии сессии с ошибкой
+					cout << web->_fmk->format("Stream %d closed with error=%s", sid, "FLOW_CONTROL_ERROR") << endl << endl;
+				break;
+				// Если установка не подтверждённа
+				case 0x4:
+					// Выводим информацию о закрытии сессии с ошибкой
+					cout << web->_fmk->format("Stream %d closed with error=%s", sid, "SETTINGS_TIMEOUT") << endl << endl;
+				break;
+				// Если получен кадр для завершения потока
+				case 0x5:
+					// Выводим информацию о закрытии сессии с ошибкой
+					cout << web->_fmk->format("Stream %d closed with error=%s", sid, "STREAM_CLOSED") << endl << endl;
+				break;
+				// Если размер кадра некорректен
+				case 0x6:
+					// Выводим информацию о закрытии сессии с ошибкой
+					cout << web->_fmk->format("Stream %d closed with error=%s", sid, "FRAME_SIZE_ERROR") << endl << endl;
+				break;
+				// Если поток не обработан
+				case 0x7:
+					// Выводим информацию о закрытии сессии с ошибкой
+					cout << web->_fmk->format("Stream %d closed with error=%s", sid, "REFUSED_STREAM") << endl << endl;
+				break;
+				// Если поток аннулирован
+				case 0x8:
+					// Выводим информацию о закрытии сессии с ошибкой
+					cout << web->_fmk->format("Stream %d closed with error=%s", sid, "CANCEL") << endl << endl;
+				break;
+				// Если состояние компрессии не обновлено
+				case 0x9:
+					// Выводим информацию о закрытии сессии с ошибкой
+					cout << web->_fmk->format("Stream %d closed with error=%s", sid, "COMPRESSION_ERROR") << endl << endl;
+				break;
+				// Если получена ошибка TCP-соединения для метода CONNECT
+				case 0xa:
+					// Выводим информацию о закрытии сессии с ошибкой
+					cout << web->_fmk->format("Stream %d closed with error=%s", sid, "CONNECT_ERROR") << endl << endl;
+				break;
+				// Если превышена емкость для обработки
+				case 0xb:
+					// Выводим информацию о закрытии сессии с ошибкой
+					cout << web->_fmk->format("Stream %d closed with error=%s", sid, "ENHANCE_YOUR_CALM") << endl << endl;
+				break;
+				// Если согласованные параметры TLS не приемлемы
+				case 0xc:
+					// Выводим информацию о закрытии сессии с ошибкой
+					cout << web->_fmk->format("Stream %d closed with error=%s", sid, "INADEQUATE_SECURITY") << endl << endl;
+				break;
+				// Если для запроса используется HTTP/1.1
+				case 0xd:
+					// Выводим информацию о закрытии сессии с ошибкой
+					cout << web->_fmk->format("Stream %d closed with error=%s", sid, "HTTP_1_1_REQUIRED") << endl << endl;
+				break;
 			}
 		#endif
+		// Отключаем флаг HTTP/2 так-как сессия уже закрыта
+		web->_http2.mode = false;
 		// Если сессия HTTP/2 закрыта не удачно
 		if(nghttp2_session_terminate_session(session, NGHTTP2_NO_ERROR) != 0)
 			// Выводим сообщение об ошибке
 			return NGHTTP2_ERR_CALLBACK_FAILURE;
-		// Отключаем флаг HTTP/2 так-как сессия уже закрыта
-		web->_http2.mode = false;
 	}
 	// Выводим результат
 	return 0;
@@ -643,6 +711,27 @@ void awh::client::WEB::openCallback(const size_t sid, awh::core_t * core) noexce
 void awh::client::WEB::eventsCallback(const awh::core_t::status_t status, awh::core_t * core) noexcept {
 	// Если данные существуют
 	if(core != nullptr){
+		// Определяем статус активности сетевого ядра
+		switch(static_cast <uint8_t> (status)){
+			// Если система запущена
+			case static_cast <uint8_t> (awh::core_t::status_t::START): {
+				// Выполняем биндинг ядра локального таймера
+				// core->bind(&this->_timer);
+				// Устанавливаем таймаут времени на удаление мусорных адъютантов раз в 10 секунд
+				// this->_timer.setTimeout(10000, (function <void (const u_short, awh::core_t *)>) std::bind(&web_t::garbage, this, _1, _2));
+			} break;
+			// Если система остановлена
+			case static_cast <uint8_t> (awh::core_t::status_t::STOP): {
+				// Выполняем анбиндинг ядра локального таймера
+				// core->unbind(&this->_timer);
+				// Если контекст сессии HTTP/2 создан
+				if(this->_http2.ctx != nullptr)
+					// Выполняем удаление сессии
+					nghttp2_session_del(this->_http2.ctx);
+				// Деактивируем флаг работы с протоколом HTTP/2
+				this->_http2.mode = false;
+			} break;
+		}
 		// Если функция обратного вызова установлена
 		if(this->_callback.events != nullptr)
 			// Выполняем функцию обратного вызова
@@ -1023,7 +1112,7 @@ void awh::client::WEB::actionConnect() noexcept {
 		// Выполняем сброс экшена
 		this->_action = action_t::NONE;
 	// Если протокол подключения является HTTP/2
-	if((this->_http2.mode = (this->_core->proto(this->_aid) == engine_t::proto_t::HTTP2))){
+	if(!this->_http2.mode && (this->_core->proto(this->_aid) == engine_t::proto_t::HTTP2)){
 		// Создаём объект функций обратного вызова
 		nghttp2_session_callbacks * callbacks;
 		// Выполняем инициализацию сессию функций обратного вызова
@@ -1057,6 +1146,8 @@ void awh::client::WEB::actionConnect() noexcept {
 			// Выходим из функции
 			return;
 		}
+		// Выполняем активацию работы с протоколом HTTP/2
+		this->_http2.mode = !this->_http2.mode;
 	}
 	// Если функция обратного вызова существует
 	if(this->_callback.active != nullptr)
@@ -1105,10 +1196,6 @@ void awh::client::WEB::actionDisconnect() noexcept {
 		if(this->_action == action_t::DISCONNECT)
 			// Выполняем сброс экшена
 			this->_action = action_t::NONE;
-		// Если активен протокол HTTP/2
-		if(this->_http2.mode)
-			// Выполняем удаление сессии
-			nghttp2_session_del(this->_http2.ctx);
 		// Если функция обратного вызова установлена
 		if(this->_callback.active != nullptr)
 			// Выполняем функцию обратного вызова
@@ -1137,10 +1224,6 @@ void awh::client::WEB::actionDisconnect() noexcept {
 		if(this->_action == action_t::DISCONNECT)
 			// Выполняем сброс экшена
 			this->_action = action_t::NONE;
-		// Если активен протокол HTTP/2
-		if(this->_http2.mode)
-			// Выполняем удаление сессии
-			nghttp2_session_del(this->_http2.ctx);
 		// Если функция обратного вызова установлена, выводим сообщение
 		if((response.code == 0) && (this->_callback.message != nullptr)){
 			// Устанавливаем код ответа сервера
