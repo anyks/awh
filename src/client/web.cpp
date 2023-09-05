@@ -451,22 +451,6 @@ ssize_t awh::client::WEB::readHttp2(nghttp2_session * session, const int32_t sid
 	return result;
 }
 /**
- * nv Метод создания объекта заголовка HTTP/2 запроса
- * @param name  название заголовка
- * @param value значение заголовка
- * @return      полученный объект заголовка
- */
-nghttp2_nv awh::client::WEB::nv(const string & name, const string & value) const noexcept {
-	// Формируем создание объекта заголовка
-	return {
-		(uint8_t *) name.c_str(),
-		(uint8_t *) value.c_str(),
-		name.size(),
-		value.size(),
-		NGHTTP2_NV_FLAG_NONE
-	};
-}
-/**
  * chunking Метод обработки получения чанков
  * @param chunk бинарный буфер чанка
  * @param http  объект модуля HTTP
@@ -517,48 +501,10 @@ void awh::client::WEB::submit(const req_t & request) noexcept {
 				// Выводим параметры запроса
 				cout << string(buffer.begin(), buffer.end()) << endl;
 			#endif
-			
-
-			for(size_t i = 0; i < 9; i++){
-				switch(i){
-					case 0:
-						cout << " ++++++++++++ " << ":method" << " == " << strlen(":method") << " || " << "GET" << " == " << strlen("GET") << endl;
-					break;
-					case 1:
-						cout << " ++++++++++++ " << ":path" << " == " << strlen(":path") << " || " << "/" << " == " << strlen("/") << endl;
-					break;
-					case 2:
-						cout << " ++++++++++++ " << ":scheme" << " == " << strlen(":scheme") << " || " << "https" << " == " << strlen("https") << endl;
-					break;
-					case 3:
-						cout << " ++++++++++++ " << ":authority" << " == " << strlen(":authority") << " || " << "anyks.com" << " == " << strlen("anyks.com") << endl;
-					break;
-					case 4:
-						cout << " ++++++++++++ " << "user-agent" << " == " << strlen("user-agent") << " || " << "curl/7.64.1" << " == " << strlen("curl/7.64.1") << endl;
-					break;
-					case 5:
-						cout << " ++++++++++++ " << "accept" << " == " << strlen("accept") << " || " << "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9" << " == " << strlen("text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9") << endl;
-					break;
-					case 6:
-						cout << " ++++++++++++ " << "origin" << " == " << strlen("origin") << " || " << "https://anyks.com" << " == " << strlen("https://anyks.com") << endl;
-					break;
-					case 7:
-						cout << " ++++++++++++ " << "accept-language" << " == " << strlen("accept-language") << " || " << "*" << " == " << strlen("*") << endl;
-					break;
-					case 8:
-						cout << " ++++++++++++ " << "accept-encoding" << " == " << strlen("accept-encoding") << " || " << "gzip, deflate, br" << " == " << strlen("gzip, deflate, br") << endl;
-					break;
-				}
-			}
-
 			// Выполняем запрос на получение заголовков
 			const auto & headers = this->_http.request2(this->_scheme.url, request.method);
-
 			// Выполняем перебор всех заголовков HTTP/2 запроса
 			for(auto & header : headers){
-
-				cout << " ---------------- " << header.first << " == " << header.first.size() << " || " << header.second << " == " << header.second.size() << endl;
-
 				// Выполняем добавление метода запроса
 				nva.push_back({
 					(uint8_t *) header.first.c_str(),
@@ -568,32 +514,6 @@ void awh::client::WEB::submit(const req_t & request) noexcept {
 					NGHTTP2_NV_FLAG_NONE
 				});
 			}
-
-			
-
-
-			/*
-			// Выполняем перебор всех заголовков HTTP/2 запроса
-			for(auto & header : this->_http.request2(this->_scheme.url, request.method))
-				// Выполняем добавление метода запроса
-				nva.push_back(this->nv(header.first, header.second));
-			*/
-			
-
-			/*
-			nva = {
-				this->nv(":method", "GET"),
-				this->nv(":path", "/"),
-				this->nv(":scheme", "https"),
-				this->nv(":authority", "anyks.com"),
-				this->nv("accept", "*//*"),
-				this->nv("origin", "https://anyks.com"),
-				this->nv("user-agent", "nghttp2/" NGHTTP2_VERSION)
-			};
-			*/
-
-			
-
 			// Если тело запроса существует
 			if(!request.entity.empty()){
 				// Список файловых дескрипторов

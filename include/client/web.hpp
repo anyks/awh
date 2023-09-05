@@ -269,14 +269,6 @@ namespace awh {
 				static ssize_t readHttp2(nghttp2_session * session, const int32_t sid, uint8_t * buffer, const size_t size, uint32_t * flags, nghttp2_data_source * source, void * ctx) noexcept;
 			private:
 				/**
-				 * nv Метод создания объекта заголовка HTTP/2 запроса
-				 * @param name  название заголовка
-				 * @param value значение заголовка
-				 * @return      полученный объект заголовка
-				 */
-				nghttp2_nv nv(const string & name, const string & value) const noexcept;
-			private:
-				/**
 				 * chunking Метод обработки получения чанков
 				 * @param chunk бинарный буфер чанка
 				 * @param http  объект модуля HTTP

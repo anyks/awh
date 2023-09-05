@@ -1889,10 +1889,12 @@ vector <char> awh::Http::request(const uri_t::url_t & url, const web_t::method_t
 			if(!available[1] && (method != web_t::method_t::CONNECT) && !this->isBlack("Accept"))
 				// Добавляем заголовок в запрос
 				request.append(this->fmk->format("Accept: %s\r\n", HTTP_HEADER_ACCEPT));
+			/*
 			// Устанавливаем Origin если не передан
 			if(!available[2] && !this->isBlack("Origin"))
 				// Добавляем заголовок в запрос
 				request.append(this->fmk->format("Origin: %s\r\n", this->uri->origin(url).c_str()));
+			*/
 			// Устанавливаем Connection если не передан
 			if(!available[4] && !this->isBlack("Connection"))
 				// Добавляем заголовок в запрос
@@ -2222,7 +2224,6 @@ vector <pair<string, string>> awh::Http::response2(const u_int code) const noexc
 			if(allow){
 				// Выполняем првоерку заголовка
 				switch(i){
-					case 0:
 					case 2:
 					case 3:
 					case 4:
@@ -2235,6 +2236,10 @@ vector <pair<string, string>> awh::Http::response2(const u_int code) const noexc
 			// Формируем строку ответа
 			result.push_back(make_pair(this->fmk->transform(header.first, fmk_t::transform_t::LOWER), header.second));
 	}
+	// Устанавливаем Connection если не передан
+	if(!available[0] && !this->isBlack("connection"))
+		// Добавляем заголовок в ответ
+		result.push_back(make_pair("connection", HTTP_HEADER_CONNECTION));
 	// Устанавливаем Content-Type если не передан
 	if(!available[1] && !this->isBlack("content-type"))
 		// Добавляем заголовок в ответ
@@ -2461,12 +2466,17 @@ vector <pair<string, string>> awh::Http::request2(const uri_t::url_t & url, cons
 						// Выполняем првоерку заголовка
 						switch(i){
 							case 0:
-							case 4:
 							case 5:
 							case 7:
 							case 8:
 							case 9:
 							case 10: allow = !available[i]; break;
+							case 4: {
+								// Если заголовок Connection определён
+								if(available[i])
+									// Выполняем определение разрешено ли выводить заголовок
+									allow = !this->fmk->compare(header.second, "keep-alive");
+							} break;
 						}
 					}
 				}
@@ -2479,12 +2489,12 @@ vector <pair<string, string>> awh::Http::request2(const uri_t::url_t & url, cons
 			if(!available[1] && (method != web_t::method_t::CONNECT) && !this->isBlack("accept"))
 				// Добавляем заголовок в запрос
 				result.push_back(make_pair("accept", HTTP_HEADER_ACCEPT));
-
+			/*
 			// Устанавливаем Origin если не передан
 			if(!available[2] && !this->isBlack("origin"))
 				// Добавляем заголовок в запрос
 				result.push_back(make_pair("origin", this->uri->origin(url)));
-
+			*/
 			// Устанавливаем Accept-Language если не передан
 			if(!available[6] && (method != web_t::method_t::CONNECT) && !this->isBlack("accept-language"))
 				// Добавляем заголовок в запрос
