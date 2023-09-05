@@ -725,7 +725,7 @@ void awh::client::WEB::eventsCallback(const awh::core_t::status_t status, awh::c
 				// Выполняем анбиндинг ядра локального таймера
 				// core->unbind(&this->_timer);
 				// Если контекст сессии HTTP/2 создан
-				if(this->_http2.ctx != nullptr)
+				if(this->_http2.mode && (this->_http2.ctx != nullptr))
 					// Выполняем удаление сессии
 					nghttp2_session_del(this->_http2.ctx);
 				// Деактивируем флаг работы с протоколом HTTP/2
@@ -1143,6 +1143,10 @@ void awh::client::WEB::actionConnect() noexcept {
 			this->_log->print("Could not submit SETTINGS: %s", log_t::flag_t::CRITICAL, nghttp2_strerror(rv));
 			// Выполняем закрытие подключения
 			const_cast <client::core_t *> (this->_core)->close(this->_aid);
+			// Если сессия HTTP/2 создана удачно
+			if(this->_http2.ctx != nullptr)
+				// Выполняем удаление сессии
+				nghttp2_session_del(this->_http2.ctx);
 			// Выходим из функции
 			return;
 		}

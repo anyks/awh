@@ -2479,12 +2479,12 @@ vector <pair<string, string>> awh::Http::request2(const uri_t::url_t & url, cons
 			if(!available[1] && (method != web_t::method_t::CONNECT) && !this->isBlack("accept"))
 				// Добавляем заголовок в запрос
 				result.push_back(make_pair("accept", HTTP_HEADER_ACCEPT));
-			/*
+
 			// Устанавливаем Origin если не передан
 			if(!available[2] && !this->isBlack("origin"))
 				// Добавляем заголовок в запрос
 				result.push_back(make_pair("origin", this->uri->origin(url)));
-			*/
+
 			// Устанавливаем Accept-Language если не передан
 			if(!available[6] && (method != web_t::method_t::CONNECT) && !this->isBlack("accept-language"))
 				// Добавляем заголовок в запрос
