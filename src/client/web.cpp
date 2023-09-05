@@ -195,6 +195,9 @@ int awh::client::WEB::onFrameHttp2(nghttp2_session * session, const nghttp2_fram
 int awh::client::WEB::onCloseHttp2(nghttp2_session * session, const int32_t sid, const uint32_t error, void * ctx) noexcept {
 	// Получаем объект HTTP-клиента
 	web_t * web = reinterpret_cast <web_t *> (ctx);
+	
+	cout << " ----------------- ON CLOSE Error=" << error << endl;
+	
 	// Если идентификатор сессии клиента совпадает
 	if(web->_http2.id == sid){
 		/**
@@ -447,10 +450,23 @@ void awh::client::WEB::submit(const req_t & request) noexcept {
 				// Выводим параметры запроса
 				cout << string(buffer.begin(), buffer.end()) << endl;
 			#endif
+
+			/*
 			// Выполняем перебор всех заголовков HTTP/2 запроса
 			for(auto & header : this->_http.request2(this->_scheme.url, request.method))
 				// Выполняем добавление метода запроса
 				nva.push_back(this->nv(header.first, header.second));
+			*/
+			
+			nva = {
+				this->nv(":method", "GET"),
+				this->nv(":path", "/"),
+				this->nv(":scheme", "https"),
+				this->nv(":authority", "anyks.com"),
+				this->nv("accept", "*/*"),
+				this->nv("user-agent", "nghttp2/" NGHTTP2_VERSION)
+			};
+			
 			// Если тело запроса существует
 			if(!request.entity.empty()){
 				// Список файловых дескрипторов
@@ -1066,9 +1082,11 @@ void awh::client::WEB::actionConnect() noexcept {
  */
 void awh::client::WEB::actionDisconnect() noexcept {
 	// Если активен протокол HTTP/2
-	if(this->_http2.mode)
+	if(this->_http2.mode){
+		// nghttp2_session_terminate_session(this->_http2.ctx, NGHTTP2_NO_ERROR);
 		// Выполняем удаление сессии
 		nghttp2_session_del(this->_http2.ctx);
+	}
 	// Если список ответов получен
 	if(!this->_responses.empty() && !this->_requests.empty()){
 		// Получаем объект ответа

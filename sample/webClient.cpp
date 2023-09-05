@@ -157,9 +157,11 @@ int main(int argc, char * argv[]){
 	// uri_t::url_t url = uri.parse("https://2ip.ru");
 	// uri_t::url_t url = uri.parse("https://ipv6.google.com");
 	// uri_t::url_t url = uri.parse("http://localhost/test");
+	uri_t::url_t url = uri.parse("https://anyks.com");
+	// uri_t::url_t url = uri.parse("https://www.anyks.com");
 	// uri_t::url_t url = uri.parse("https://anyks.com/test.php");
 	// uri_t::url_t url = uri.parse("https://www.anyks.com/test.php");
-	uri_t::url_t url = uri.parse("https://apple.com/ru/mac");
+	// uri_t::url_t url = uri.parse("https://apple.com/ru/mac");
 	// uri_t::url_t url = uri.parse("https://ru.wikipedia.org/wiki/HTTP");
 	// uri_t::url_t url = uri.parse("https://api.binance.com/api/v3/exchangeInfo?symbol=BTCUSDT");
 	// uri_t::url_t url = uri.parse("https://testnet.binance.vision/api/v3/exchangeInfo");
@@ -185,6 +187,7 @@ int main(int argc, char * argv[]){
 	// 7. Сделать методы остановки для Danube и протестить с названиями архивов с точками
 	// 8. В Windows происходит Crash при запросе https://apple.com/ru/mac
 	// 9. С LibEvent есть затыки в получении данных, база событий отказывается работать
+	// 10. С LibEvent полностью не работает в FreeBSD
 
 	// Замеряем время начала работы
 	auto timeShifting = chrono::system_clock::now();

@@ -190,7 +190,7 @@ static ssize_t send_callback(nghttp2_session * session, const uint8_t * data, si
   (void) session;
   (void) flags;
 
-  cout << " +++++++++++++++++++ SEND DATA " << length << endl;
+  // cout << " +++++++++++++++++++ SEND DATA " << length << endl;
 
   reinterpret_cast <awh::client::http2_t *> (ctx)->send((const char *) data, length);
   
@@ -222,7 +222,7 @@ static int on_data_chunk_recv_callback(nghttp2_session * session, uint8_t flags,
   (void)session;
   (void)flags;
 
-  cout << " +++++++++++++++++++ GET CHUNCK " << len << endl;
+  // cout << " +++++++++++++++++++ GET CHUNCK " << len << endl;
 
   if(reinterpret_cast <awh::client::http2_t *> (ctx)->_session.id == stream_id){
 	// Если функция обратного вызова установлена, выводим сообщение
@@ -255,7 +255,7 @@ static int on_header_callback(nghttp2_session * session, const nghttp2_frame * f
   	case NGHTTP2_HEADERS: {
 		if((frame->headers.cat == NGHTTP2_HCAT_RESPONSE) && (reinterpret_cast <awh::client::http2_t *> (ctx)->_session.id == frame->hd.stream_id)){
 			
-			cout << " @@@@@@@@@@@@ HEADER " << endl;
+			// cout << " @@@@@@@@@@@@ HEADER " << endl;
 
 			/* Print response headers for the initiated request. */
 			print_header(stderr, name, namelen, value, valuelen);
