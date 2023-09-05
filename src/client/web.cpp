@@ -523,10 +523,10 @@ void awh::client::WEB::submit(const req_t & request) noexcept {
 				cout << " #################### " << header.first << " === " << header.second << endl;
 
 				if(header.first.compare("origin"))
-					header.second = "https://anyks.com";
+					nva.push_back(this->nv("origin", "anyks.com"));
 				
 				// Выполняем добавление метода запроса
-				nva.push_back(this->nv(header.first, header.second));
+				else nva.push_back(this->nv(header.first, header.second));
 			}
 
 			/*
