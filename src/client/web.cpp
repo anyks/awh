@@ -195,9 +195,6 @@ int awh::client::WEB::onFrameHttp2(nghttp2_session * session, const nghttp2_fram
 int awh::client::WEB::onCloseHttp2(nghttp2_session * session, const int32_t sid, const uint32_t error, void * ctx) noexcept {
 	// Получаем объект HTTP-клиента
 	web_t * web = reinterpret_cast <web_t *> (ctx);
-	
-	cout << " ----------------- ON CLOSE Error=" << error << endl;
-	
 	// Если идентификатор сессии клиента совпадает
 	if(web->_http2.id == sid){
 		/**
@@ -216,6 +213,8 @@ int awh::client::WEB::onCloseHttp2(nghttp2_session * session, const int32_t sid,
 		if(nghttp2_session_terminate_session(session, NGHTTP2_NO_ERROR) != 0)
 			// Выводим сообщение об ошибке
 			return NGHTTP2_ERR_CALLBACK_FAILURE;
+		// Отключаем флаг HTTP/2 так-как сессия уже закрыта
+		web->_http2.mode = false;
 	}
 	// Выводим результат
 	return 0;
@@ -450,26 +449,10 @@ void awh::client::WEB::submit(const req_t & request) noexcept {
 				// Выводим параметры запроса
 				cout << string(buffer.begin(), buffer.end()) << endl;
 			#endif
-
-			/*
-				vector <nghttp2_nv> nva = {
-					make_nv(":method", "GET"),
-					make_nv(":path", "/"),
-					make_nv(":scheme", "https"),
-					make_nv(":authority", "anyks.com"),
-					make_nv("accept", "*//*"),
-					make_nv("user-agent", "nghttp2/" NGHTTP2_VERSION)
-				};
-			*/
-
 			// Выполняем перебор всех заголовков HTTP/2 запроса
-			for(auto & header : this->_http.request2(this->_scheme.url, request.method)){
-
-				cout << " ------------ " << header.first << " == " << header.second << endl;
-
+			for(auto & header : this->_http.request2(this->_scheme.url, request.method))
 				// Выполняем добавление метода запроса
 				nva.push_back(this->nv(header.first, header.second));
-			}
 			// Если тело запроса существует
 			if(!request.entity.empty()){
 				// Список файловых дескрипторов
@@ -1084,12 +1067,6 @@ void awh::client::WEB::actionConnect() noexcept {
  * actionDisconnect Метод обработки экшена отключения от сервера
  */
 void awh::client::WEB::actionDisconnect() noexcept {
-	// Если активен протокол HTTP/2
-	if(this->_http2.mode){
-		// nghttp2_session_terminate_session(this->_http2.ctx, NGHTTP2_NO_ERROR);
-		// Выполняем удаление сессии
-		nghttp2_session_del(this->_http2.ctx);
-	}
 	// Если список ответов получен
 	if(!this->_responses.empty() && !this->_requests.empty()){
 		// Получаем объект ответа
@@ -1128,6 +1105,10 @@ void awh::client::WEB::actionDisconnect() noexcept {
 		if(this->_action == action_t::DISCONNECT)
 			// Выполняем сброс экшена
 			this->_action = action_t::NONE;
+		// Если активен протокол HTTP/2
+		if(this->_http2.mode)
+			// Выполняем удаление сессии
+			nghttp2_session_del(this->_http2.ctx);
 		// Если функция обратного вызова установлена
 		if(this->_callback.active != nullptr)
 			// Выполняем функцию обратного вызова
@@ -1156,6 +1137,10 @@ void awh::client::WEB::actionDisconnect() noexcept {
 		if(this->_action == action_t::DISCONNECT)
 			// Выполняем сброс экшена
 			this->_action = action_t::NONE;
+		// Если активен протокол HTTP/2
+		if(this->_http2.mode)
+			// Выполняем удаление сессии
+			nghttp2_session_del(this->_http2.ctx);
 		// Если функция обратного вызова установлена, выводим сообщение
 		if((response.code == 0) && (this->_callback.message != nullptr)){
 			// Устанавливаем код ответа сервера
