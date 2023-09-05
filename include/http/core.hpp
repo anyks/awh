@@ -35,6 +35,11 @@
 #include <auth/client.hpp>
 #include <auth/server.hpp>
 
+/**
+ * Подключаем NgHttp2
+ */
+#include <nghttp2/nghttp2.h>
+
 // Подписываемся на стандартное пространство имён
 using namespace std;
 using namespace std::placeholders;

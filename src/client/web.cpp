@@ -551,17 +551,25 @@ void awh::client::WEB::submit(const req_t & request) noexcept {
 				}
 			}
 
+			// Выполняем запрос на получение заголовков
+			const auto & headers = this->_http.request2(this->_scheme.url, request.method);
+
 			// Выполняем перебор всех заголовков HTTP/2 запроса
-			for(auto & header : this->_http.request2(this->_scheme.url, request.method)){
-				
+			for(auto & header : headers){
+
 				cout << " ---------------- " << header.first << " == " << header.first.size() << " || " << header.second << " == " << header.second.size() << endl;
 
-				const string key = header.first;
-				const string val = header.second;
-
 				// Выполняем добавление метода запроса
-				nva.push_back(this->nv(key, val));
+				nva.push_back({
+					(uint8_t *) header.first.c_str(),
+					(uint8_t *) header.second.c_str(),
+					header.first.size(),
+					header.second.size(),
+					NGHTTP2_NV_FLAG_NONE
+				});
 			}
+
+			
 
 
 			/*
