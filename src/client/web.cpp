@@ -518,21 +518,12 @@ void awh::client::WEB::submit(const req_t & request) noexcept {
 				cout << string(buffer.begin(), buffer.end()) << endl;
 			#endif
 			
-			
 
-			for(size_t i = 0; i < 9; i++){
-				switch(i){
-					case 0: nva.push_back(this->nv(":method", "GET")); break;
-					case 1: nva.push_back(this->nv(":path", "/")); break;
-					case 2: nva.push_back(this->nv(":scheme", "https")); break;
-					case 3: nva.push_back(this->nv(":authority", "anyks.com")); break;
-					case 4: nva.push_back(this->nv("user-agent", "curl/7.64.1")); break;
-					case 5: nva.push_back(this->nv("accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9")); break;
-					case 6: nva.push_back(this->nv("origin", "https://anyks.com")); break;
-					case 7: nva.push_back(this->nv("accept-language", "*")); break;
-					case 8: nva.push_back(this->nv("accept-encoding", "gzip, deflate, br")); break;
-				}
-			}
+			// Выполняем перебор всех заголовков HTTP/2 запроса
+			for(auto & header : this->_http.request2(this->_scheme.url, request.method))
+				// Выполняем добавление метода запроса
+				nva.push_back(this->nv(header.first.c_str(), header.second.c_str()));
+
 
 			/*
 			// Выполняем перебор всех заголовков HTTP/2 запроса
