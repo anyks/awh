@@ -310,12 +310,10 @@ bool awh::WSCore::checkUpgrade() const noexcept {
 	const string & connection = this->web.header("connection");
 	// Если заголовки расширений найдены
 	if(!upgrade.empty() && !connection.empty()){
-		// Переводим значение заголовка Upgrade в нижний регистр
-		this->fmk->transform(upgrade, fmk_t::transform_t::LOWER);
 		// Переводим значение заголовка Connection в нижний регистр
 		this->fmk->transform(connection, fmk_t::transform_t::LOWER);
 		// Если заголовки соответствуют
-		result = (this->fmk->compare(upgrade, "websocket") && (connection.find("upgrade") != string::npos));
+		result = (this->fmk->compare(upgrade, "websocket") && this->fmk->exists("upgrade", connection));
 	}
 	// Выводим результат
 	return result;

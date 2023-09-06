@@ -40,9 +40,7 @@ void awh::server::WS::commit() noexcept {
 			// Ищем поддерживаемые заголовки
 			for(auto & val : extensions){
 				// Если нужно производить шифрование данных
-				if(val.find("permessage-encrypt=") != wstring::npos){
-					// Устанавливаем флаг шифрования данных
-					this->crypt = true;
+				if((this->crypt = this->fmk->exists("permessage-encrypt=", val))){
 					// Определяем размер шифрования
 					switch(stoi(val.substr(19))){
 						// Если шифрование произведено 128 битным ключём
@@ -81,7 +79,7 @@ void awh::server::WS::commit() noexcept {
 						// Выполняем сброс типа компрессии
 						this->_compress = compress_t::NONE;
 				// Если размер скользящего окна для клиента получен
-				} else if(val.find("client_max_window_bits=") != wstring::npos) {
+				} else if(this->fmk->exists("client_max_window_bits=", val)) {
 					// Устанавливаем размер скользящего окна
 					if(this->_compress != compress_t::NONE)
 						// Устанавливаем размер скользящего окна

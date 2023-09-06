@@ -132,7 +132,7 @@ void awh::Http::commit() noexcept {
 					// Если запрашиваются конкретные методы сжатия
 					else {
 						// Если найден запрашиваемый метод компрессии BROTLI
-						if(header.second.find("br") != string::npos){
+						if(this->fmk->exists("br", header.second)){
 							// Запоминаем запрашиваемый метод компрессии BROTLI
 							compress.emplace(compress_t::BROTLI);
 							// Если уже в списке существует метод компрессии GZIP
@@ -149,7 +149,7 @@ void awh::Http::commit() noexcept {
 								compress.emplace(compress_t::DEFLATE_BROTLI);
 						}
 						// Если найден запрашиваемый метод компрессии GZip
-						if(header.second.find("gzip") != string::npos){
+						if(this->fmk->exists("gzip", header.second)){
 							// Запоминаем запрашиваемый метод компрессии GZip
 							compress.emplace(compress_t::GZIP);
 							// Если уже в списке существует метод компрессии BROTLI
@@ -166,7 +166,7 @@ void awh::Http::commit() noexcept {
 								compress.emplace(compress_t::GZIP_DEFLATE);
 						}
 						// Если найден запрашиваемый метод компрессии Deflate
-						if(header.second.find("deflate") != string::npos){
+						if(this->fmk->exists("deflate", header.second)){
 							// Запоминаем запрашиваемый метод компрессии Deflate
 							compress.emplace(compress_t::DEFLATE);
 							// Если уже в списке существует метод компрессии BROTLI
@@ -625,15 +625,15 @@ awh::Http::compress_t awh::Http::compression() const noexcept {
 					// Если запрашиваются конкретные методы сжатия
 					else {
 						// Если найден запрашиваемый метод компрессии BROTLI
-						if(header.second.find("br") != string::npos)
+						if(this->fmk->exists("br", header.second))
 							// Устанавливаем требование выполнять декомпрессию тела сообщения
 							return compress_t::BROTLI;
 						// Если найден запрашиваемый метод компрессии GZip
-						else if(header.second.find("gzip") != string::npos)
+						else if(this->fmk->exists("gzip", header.second))
 							// Устанавливаем требование выполнять декомпрессию тела сообщения
 							result = compress_t::GZIP;
 						// Если найден запрашиваемый метод компрессии Deflate
-						else if(header.second.find("deflate") != string::npos){
+						else if(this->fmk->exists("deflate", header.second)){
 							// Если не указаны другие методы компрессии
 							if(result == compress_t::NONE)
 								// Устанавливаем требование выполнять декомпрессию тела сообщения

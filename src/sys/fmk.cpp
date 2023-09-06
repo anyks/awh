@@ -2053,6 +2053,62 @@ string awh::Framework::format(const string & format, const vector <string> & ite
 	return result;
 }
 /**
+ * exists Метод проверки существования слова в тексте
+ * @param word слово для проверки
+ * @param text текст в котором выполнения проверка
+ * @return     результат выполнения проверки
+ */
+bool awh::Framework::exists(const string & word, const string & text) const noexcept {
+	// Если данные переданы верные
+	if(!word.empty() && !text.empty()){
+		// Индекс позиции символа в тексте
+		size_t index = 0;
+		// Выполняем поиск слова в тексте
+		(void) find_if_not(text.begin(), text.end(), [&index, &word](char c) noexcept -> bool {
+			// Если символы в слове совпадают
+			if(tolower(c) == tolower(word.at(index)))
+				// Увеличиваем значение индекса
+				index++;
+			// Если символы не совпадают, выполняем сброс индекса
+			else index = 0;
+			// Если слово полностью было найдено
+			return (index != word.size());
+		});
+		// Выводим результат проверки
+		return (index == word.size());
+	}
+	// Выводим результат проверки по умолчанию
+	return false;
+}
+/**
+ * exists Метод проверки существования слова в тексте
+ * @param word слово для проверки
+ * @param text текст в котором выполнения проверка
+ * @return     результат выполнения проверки
+ */
+bool awh::Framework::exists(const wstring & word, const wstring & text) const noexcept {
+	// Если данные переданы верные
+	if(!word.empty() && !text.empty()){
+		// Индекс позиции символа в тексте
+		size_t index = 0;
+		// Выполняем поиск слова в тексте
+		(void) find_if_not(text.begin(), text.end(), [&index, &word](wchar_t c) noexcept -> bool {
+			// Если символы в слове совпадают
+			if(towlower(c) == towlower(word.at(index)))
+				// Увеличиваем значение индекса
+				index++;
+			// Если символы не совпадают, выполняем сброс индекса
+			else index = 0;
+			// Если слово полностью было найдено
+			return (index != word.size());
+		});
+		// Выводим результат проверки
+		return (index == word.size());
+	}
+	// Выводим результат проверки по умолчанию
+	return false;
+}
+/**
  * replace Метод замены в тексте слово на другое слово
  * @param text текст в котором нужно произвести замену
  * @param word слово для поиска

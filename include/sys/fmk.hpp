@@ -270,6 +270,113 @@ namespace awh {
 			const symbols_t _symbols;
 		public:
 			/**
+			 * findInMap Шаблон метода поиска в контейнере std::map указанного значения
+			 * @tparam A тип контейнера
+			 * @tparam B тип искомого значения
+			 */
+			template <class A, typename B>
+			/**
+			 * findInMap Метод поиска в контейнере std::map указанного значения
+			 * @param val значение которое необходимо найти
+			 * @param map контейнер в котором нужно произвести поиск
+			 * @return    итератор найденного элемента в контейнере
+			 */
+			A::const_iterator findInMap(const B & val, const A & map) const noexcept {
+				// Если нам необходимо выполнить поиск по значению строке
+				if(std::is_same<B, std::string>::value || std::is_same<B, std::wstring>::value){
+					/**
+					 * Структура для проверки данных
+					 */
+					struct Check {
+						private:
+							// Строка с которой нужно сравнить
+							B _value;
+						private:
+							// Объект фреймворка
+							const Framework * _fmk;
+						private:
+							/**
+							 * compare Метод выполнения сравнения чисел
+							 * @param a первое число для сравнения
+							 * @param b второе число для сравнения
+							 * @return  результат выполненной проверки
+							 */
+							bool compare(const int a, const int b) const noexcept {
+								// Выполняем сравнение
+								return (a != b);
+							}
+							/**
+							 * compare Метод выполнения сравнения строк
+							 * @param a первое число для сравнения
+							 * @param b второе число для сравнения
+							 * @return  результат выполненной проверки
+							 */
+							bool compare(const string & a, const string & b) const noexcept {
+								// Выполняем сравнение
+								return !this->_fmk->compare(a, b);
+							}
+							/**
+							 * compare Метод выполнения сравнения строк
+							 * @param a первое число для сравнения
+							 * @param b второе число для сравнения
+							 * @return  результат выполненной проверки
+							 */
+							bool compare(const wstring & a, const wstring & b) const noexcept {
+								// Выполняем сравнение
+								return !this->_fmk->compare(a, b);
+							}
+						public:
+							/**
+							 * Оператор [()] выполнения сравнения полученных данных
+							 * @param item текущее проверяемое значение
+							 * @return     результат проверки
+							 */
+							bool operator () (const A::value_type & item) const noexcept {
+								// Выполняем сравнение текущего полученного значения
+								return this->compare(this->_value, item.second); 
+							}
+						public:
+							/**
+							 * Check Конструктор
+							 * @param value эталонное значение для стравнения
+							 * @param fmk   объект фреймворка
+							 */
+							Check(const B & value, const Framework * fmk) noexcept : _value(value), _fmk(fmk) {}
+					} callback(val, this);
+					// Выполняем поиск искомого значения в контейнере std::map
+					return std::find_if_not(map.cbegin(), map.cend(), std::move(callback));
+				// Если нам необходимо выполнить поиск по статическому типу данных
+				} else {
+					/**
+					 * Структура для проверки данных
+					 */
+					struct Check {
+						private:
+							// Строка с которой нужно сравнить
+							B _value;
+						public:
+							/**
+							 * Оператор [()] выполнения сравнения полученных данных
+							 * @param item текущее проверяемое значение
+							 * @return     результат проверки
+							 */
+							bool operator () (const A::value_type & item) const noexcept {
+								// Выполняем сравнение текущего полученного значения
+								return (item.second != this->_value); 
+							}
+						public:
+							/**
+							 * Check Конструктор
+							 * @param value эталонное значение для стравнения
+							 */
+							Check(const B & value) noexcept : _value(value) {}
+					};
+					// Выполняем поиск искомого значения в контейнере std::map
+					return std::find_if_not(map.cbegin(), map.cend(), Check(val));
+				}
+			}
+		public:
+			/**
 			 * is Метод проверки текста на соответствие флагу
 			 * @param text текст для проверки
 			 * @param flag флаг проверки
@@ -516,6 +623,21 @@ namespace awh {
 			 * @return       сформированная строка
 			 */
 			string format(const string & format, const vector <string> & items) const noexcept;
+		public:
+			/**
+			 * exists Метод проверки существования слова в тексте
+			 * @param word слово для проверки
+			 * @param text текст в котором выполнения проверка
+			 * @return     результат выполнения проверки
+			 */
+			bool exists(const string & word, const string & text) const noexcept;
+			/**
+			 * exists Метод проверки существования слова в тексте
+			 * @param word слово для проверки
+			 * @param text текст в котором выполнения проверка
+			 * @return     результат выполнения проверки
+			 */
+			bool exists(const wstring & word, const wstring & text) const noexcept;
 		public:
 			/**
 			 * replace Метод замены в тексте слово на другое слово

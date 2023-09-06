@@ -42,11 +42,9 @@ void awh::client::WS::commit() noexcept {
 			// Ищем поддерживаемые заголовки
 			for(auto & val : extensions){
 				// Если нужно производить шифрование данных
-				if(val.find("permessage-encrypt=") != wstring::npos){
-					// Устанавливаем флаг шифрования данных
-					this->crypt = true;
+				if((this->crypt = this->fmk->exists("permessage-encrypt=", val))){
 					// Определяем размер шифрования
-					switch(stoi(val.substr(19))){
+					switch(::stoi(val.substr(19))){
 						// Если шифрование произведено 128 битным ключём
 						case 128: this->hash.cipher(hash_t::cipher_t::AES128); break;
 						// Если шифрование произведено 192 битным ключём
@@ -75,7 +73,7 @@ void awh::client::WS::commit() noexcept {
 					// Устанавливаем требование выполнять декомпрессию полезной нагрузки
 					this->_compress = compress_t::BROTLI;
 				// Если размер скользящего окна для клиента получен
-				else if(val.find("client_max_window_bits=") != wstring::npos)
+				else if(this->fmk->exists("client_max_window_bits=", val))
 					// Устанавливаем размер скользящего окна
 					this->_wbitClient = ::stoi(val.substr(23));
 				// Если разрешено использовать максимальный размер скользящего окна для клиента
@@ -83,7 +81,7 @@ void awh::client::WS::commit() noexcept {
 					// Устанавливаем максимальный размер скользящего окна
 					this->_wbitClient = GZIP_MAX_WBITS;
 				// Если размер скользящего окна для сервера получен
-				else if(val.find("server_max_window_bits=") != wstring::npos)
+				else if(this->fmk->exists("server_max_window_bits=", val))
 					// Устанавливаем размер скользящего окна
 					this->_wbitServer = ::stoi(val.substr(23));
 				// Если разрешено использовать максимальный размер скользящего окна для сервера
