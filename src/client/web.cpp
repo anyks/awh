@@ -459,6 +459,35 @@ void awh::client::WEB::chunking(const vector <char> & chunk, const awh::http_t *
 	// Если данные получены, формируем тело сообщения
 	if(!chunk.empty()) const_cast <awh::http_t *> (http)->body(chunk);
 }
+/**
+ * ping Метод выполнения пинга сервера
+ * @return результат работы пинга
+ */
+bool awh::client::WEB::ping() noexcept {
+	// Если протокол подключения установлен как HTTP/2
+	if(this->_http2.mode && (this->_http2.ctx != nullptr)){
+		// Результат выполнения поерации
+		int rv = -1;
+		// Выполняем пинг удалённого сервера
+		if((rv = nghttp2_submit_ping(this->_http2.ctx, 0, nullptr)) != 0){
+			// Выводим сообщение об полученной ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, nghttp2_strerror(rv));
+			// Выходим из функции
+			return false;
+		}
+		// Фиксируем отправленный результат
+		if((rv = nghttp2_session_send(this->_http2.ctx)) != 0){
+			// Выводим сообщение об полученной ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, nghttp2_strerror(rv));
+			// Выходим из функции
+			return false;
+		}
+		// Выводим результат
+		return true;
+	}
+	// Выводим результат
+	return false;
+}
 /** 
  * submit Метод выполнения удалённого запроса на сервер
  * @param request объект запроса на удалённый сервер
@@ -704,31 +733,34 @@ void awh::client::WEB::openCallback(const size_t sid, awh::core_t * core) noexce
 void awh::client::WEB::eventsCallback(const awh::core_t::status_t status, awh::core_t * core) noexcept {
 	// Если данные существуют
 	if(core != nullptr){
-		// Определяем статус активности сетевого ядра
-		switch(static_cast <uint8_t> (status)){
-			// Если система запущена
-			case static_cast <uint8_t> (awh::core_t::status_t::START): {
-				// Выполняем биндинг ядра локального таймера
-				// core->bind(&this->_timer);
-				// Устанавливаем таймаут времени на удаление мусорных адъютантов раз в 10 секунд
-				// this->_timer.setTimeout(10000, (function <void (const u_short, awh::core_t *)>) std::bind(&web_t::garbage, this, _1, _2));
-			} break;
-			// Если система остановлена
-			case static_cast <uint8_t> (awh::core_t::status_t::STOP): {
-				// Выполняем анбиндинг ядра локального таймера
-				// core->unbind(&this->_timer);
-				// Если контекст сессии HTTP/2 создан
-				if(this->_http2.mode && (this->_http2.ctx != nullptr))
-					// Выполняем удаление сессии
-					nghttp2_session_del(this->_http2.ctx);
-				// Деактивируем флаг работы с протоколом HTTP/2
-				this->_http2.mode = false;
-			} break;
+		// Если система была остановлена
+		if(status == awh::core_t::status_t::STOP){
+			// Если контекст сессии HTTP/2 создан
+			if(this->_http2.mode && (this->_http2.ctx != nullptr))
+				// Выполняем удаление сессии
+				nghttp2_session_del(this->_http2.ctx);
+			// Деактивируем флаг работы с протоколом HTTP/2
+			this->_http2.mode = false;
 		}
 		// Если функция обратного вызова установлена
 		if(this->_callback.events != nullptr)
 			// Выполняем функцию обратного вызова
 			this->_callback.events(status, core);
+	}
+}
+/**
+ * persistCallback Функция персистентного вызова
+ * @param aid  идентификатор адъютанта
+ * @param sid  идентификатор схемы сети
+ * @param core объект сетевого ядра
+ */
+void awh::client::WEB::persistCallback(const size_t aid, const size_t sid, awh::core_t * core) noexcept {
+	// Если данные существуют
+	if((aid > 0) && (sid > 0) && (core != nullptr)){
+		// Если сервер уже отключился
+		if(!this->ping())
+			// Завершаем работу
+			reinterpret_cast <client::core_t *> (core)->close(aid);
 	}
 }
 /**
@@ -774,8 +806,8 @@ void awh::client::WEB::disconnectCallback(const size_t aid, const size_t sid, aw
 void awh::client::WEB::readCallback(const char * buffer, const size_t size, const size_t aid, const size_t sid, awh::core_t * core) noexcept {
 	// Если данные существуют
 	if((buffer != nullptr) && (size > 0) && (aid > 0) && (sid > 0)){
-		// Если активирован режим работы с HTTP/2 протоколом
-		if(this->_http2.mode){
+		// Если протокол подключения является HTTP/2
+		if(core->proto(aid) == engine_t::proto_t::HTTP2){
 			// Выполняем извлечение полученного чанка данных из сокета
 			ssize_t bytes = nghttp2_session_mem_recv(this->_http2.ctx, (const uint8_t *) buffer, size);
 			// Если данные не прочитаны, выводим ошибку и выходим
@@ -902,7 +934,7 @@ void awh::client::WEB::handler() noexcept {
  */
 void awh::client::WEB::actionOpen() noexcept {
 	// Выполняем подключение
-	const_cast <client::core_t *> (this->_core)->open(this->_scheme.sid);
+	this->open();
 	// Если экшен соответствует, выполняем его сброс
 	if(this->_action == action_t::OPEN)
 		// Выполняем сброс экшена
@@ -1143,6 +1175,10 @@ void awh::client::WEB::actionConnect() noexcept {
 			// Выходим из функции
 			return;
 		}
+		// Если список источников установлен
+		if(!this->_origins.empty())
+			// Выполняем отправку списка источников
+			this->sendOrigin(this->_origins);
 		// Выполняем активацию работы с протоколом HTTP/2
 		this->_http2.mode = !this->_http2.mode;
 	}
@@ -1935,6 +1971,63 @@ void awh::client::WEB::send(const vector <req_t> & reqs) noexcept {
 	}
 }
 /**
+ * setOrigin Метод установки списка разрешенных источников для HTTP/2
+ * @param origins список разрешённых источников
+ */
+void awh::client::WEB::setOrigin(const vector <string> & origins) noexcept {
+	// Выполняем установку списка источников
+	this->_origins = origins;
+}
+/**
+ * sendOrigin Метод отправки списка разрешенных источников для HTTP/2
+ * @param origins список разрешённых источников
+ */
+void awh::client::WEB::sendOrigin(const vector <string> & origins) noexcept {
+	// Если сессия HTTP/2 активна
+	if(this->_http2.mode && (this->_http2.ctx != nullptr)){
+		// Список источников для установки на сервере
+		vector <nghttp2_origin_entry> ov;
+		// Если список источников передан
+		if(!origins.empty()){
+			// Выполняем перебор списка источников
+			for(auto & origin : origins)
+				// Выполняем добавление источника в списку
+				ov.push_back({(uint8_t *) origin.c_str(), origin.size()});
+		}
+		// Результат выполнения поерации
+		int rv = -1;
+		// Выполняем установку фрейма полученных источников
+		if((rv = nghttp2_submit_origin(this->_http2.ctx, NGHTTP2_FLAG_NONE, (!ov.empty() ? ov.data() : nullptr), ov.size())) != 0){
+			// Выводим сообщение об полученной ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, nghttp2_strerror(rv));
+			// Выходим из функции
+			return;
+		}
+		// Фиксируем отправленный результат
+		if((rv = nghttp2_session_send(this->_http2.ctx)) != 0){
+			// Выводим сообщение об полученной ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, nghttp2_strerror(rv));
+			// Выходим из функции
+			return;
+		}
+	}
+}
+/**
+ * open Метод открытия подключения
+ */
+void awh::client::WEB::open() noexcept {
+	// Если подключение уже выполнено
+	if(this->_scheme.status.real == scheme_t::mode_t::CONNECT){
+		// Если подключение производится через, прокси-сервер
+		if(this->_scheme.isProxy())
+			// Выполняем запуск функции подключения для прокси-сервера
+			this->actionProxyConnect();
+		// Выполняем запуск функции подключения
+		else this->actionConnect();
+	// Если биндинг уже запущен, выполняем запрос на сервер
+	} else const_cast <client::core_t *> (this->_core)->open(this->_scheme.sid);
+}
+/**
  * stop Метод остановки клиента
  */
 void awh::client::WEB::stop() noexcept {
@@ -1978,7 +2071,7 @@ void awh::client::WEB::start() noexcept {
 			// Выполняем запуск биндинга
 			const_cast <client::core_t *> (this->_core)->start();
 		// Если биндинг уже запущен, выполняем запрос на сервер
-		else const_cast <client::core_t *> (this->_core)->open(this->_scheme.sid);
+		else this->open();
 	}
 }
 /**
@@ -2065,6 +2158,10 @@ void awh::client::WEB::mode(const u_short flag) noexcept {
 	const_cast <client::core_t *> (this->_core)->noInfo(flag & static_cast <uint8_t> (flag_t::NOT_INFO));
 	// Выполняем установку флага проверки домена
 	const_cast <client::core_t *> (this->_core)->verifySSL(flag & static_cast <uint8_t> (flag_t::VERIFY_SSL));
+	// Если протокол подключения желательно установить HTTP/2
+	if(this->_core->proto() == engine_t::proto_t::HTTP2)
+		// Активируем персистентный запуск для работы пингов
+		const_cast <client::core_t *> (this->_core)->persistEnable(this->_scheme.alive);
 }
 /**
  * chunk Метод установки размера чанка
@@ -2180,6 +2277,8 @@ awh::client::WEB::WEB(const client::core_t * core, const fmk_t * fmk, const log_
  _stopped(false), _redirects(false), _attempts(10), _fmk(fmk), _log(log), _core(core) {
 	// Устанавливаем событие на запуск системы
 	this->_scheme.callback.set <void (const size_t, awh::core_t *)> ("open", std::bind(&web_t::openCallback, this, _1, _2));
+	// Устанавливаем функцию персистентного вызова
+	this->_scheme.callback.set <void (const size_t, const size_t, awh::core_t *)> ("persist", std::bind(&web_t::persistCallback, this, _1, _2, _3));
 	// Устанавливаем событие подключения
 	this->_scheme.callback.set <void (const size_t, const size_t, awh::core_t *)> ("connect", std::bind(&web_t::connectCallback, this, _1, _2, _3));
 	// Устанавливаем событие отключения

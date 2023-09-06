@@ -167,6 +167,9 @@ namespace awh {
 				// Буфер бинарных данных
 				vector <char> _buffer;
 			private:
+				// Список доступных источников
+				vector <string> _origins;
+			private:
 				// Список запросов
 				vector <req_t> _requests;
 				// Список ответов
@@ -275,6 +278,12 @@ namespace awh {
 				 */
 				void chunking(const vector <char> & chunk, const awh::http_t * http) noexcept;
 			private:
+				/**
+				 * ping Метод выполнения пинга сервера
+				 * @return результат работы пинга
+				 */
+				bool ping() noexcept;
+			private:
 				/** 
 				 * submit Метод выполнения удалённого запроса на сервер
 				 * @param request объект запроса на удалённый сервер
@@ -298,6 +307,13 @@ namespace awh {
 				 * @param core   объект сетевого ядра
 				 */
 				void eventsCallback(const awh::core_t::status_t status, awh::core_t * core) noexcept;
+				/**
+				 * persistCallback Функция персистентного вызова
+				 * @param aid  идентификатор адъютанта
+				 * @param sid  идентификатор схемы сети
+				 * @param core объект сетевого ядра
+				 */
+				void persistCallback(const size_t aid, const size_t sid, awh::core_t * core) noexcept;
 				/**
 				 * connectCallback Метод обратного вызова при подключении к серверу
 				 * @param aid  идентификатор адъютанта
@@ -545,6 +561,21 @@ namespace awh {
 				 */
 				void send(const vector <req_t> & reqs = {}) noexcept;
 			public:
+				/**
+				 * setOrigin Метод установки списка разрешенных источников для HTTP/2
+				 * @param origins список разрешённых источников
+				 */
+				void setOrigin(const vector <string> & origins) noexcept;
+				/**
+				 * sendOrigin Метод отправки списка разрешенных источников для HTTP/2
+				 * @param origins список разрешённых источников
+				 */
+				void sendOrigin(const vector <string> & origins) noexcept;
+			public:
+				/**
+				 * open Метод открытия подключения
+				 */
+				void open() noexcept;
 				/**
 				 * stop Метод остановки клиента
 				 */
