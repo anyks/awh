@@ -228,20 +228,22 @@ int main(int argc, char * argv[]){
 	 * 3. Устанавливаем валидацию SSL сертификата
 	 * 4. Устанавливаем флаг поддержания активным подключение
 	 */
-	ws.mode(
-		// (uint8_t) websocket_t::flag_t::NOT_STOP |
-		(uint8_t) websocket_t::flag_t::ALIVE |
-		// (uint8_t) websocket_t::flag_t::WAIT_MESS |
-		(uint8_t) websocket_t::flag_t::VERIFY_SSL |
-		(uint8_t) websocket_t::flag_t::TAKEOVER_CLIENT |
-		(uint8_t) websocket_t::flag_t::TAKEOVER_SERVER
-	);
+	ws.mode({
+		// websocket_t::flag_t::NOT_STOP,
+		websocket_t::flag_t::ALIVE,
+		// websocket_t::flag_t::WAIT_MESS,
+		websocket_t::flag_t::VERIFY_SSL,
+		websocket_t::flag_t::TAKEOVER_CLIENT,
+		websocket_t::flag_t::TAKEOVER_SERVER
+	});
 	// Разрешаем простое чтение базы событий
 	// core.frequency(0);
 	// Устанавливаем простое чтение базы событий
 	// core.easily(true);
 	// Устанавливаем адрес сертификата
 	core.ca("./ca/cert.pem");
+	// Устанавливаем активный протокол подключения
+	core.proto(awh::engine_t::proto_t::HTTP2);
 	// Устанавливаем тип сокета unix-сокет
 	// core.family(awh::scheme_t::family_t::NIX);
 	// Устанавливаем тип сокета UDP TLS

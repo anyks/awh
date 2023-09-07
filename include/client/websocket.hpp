@@ -66,13 +66,25 @@ namespace awh {
 				enum class flag_t : uint8_t {
 					ALIVE           = 0x01, // Флаг автоматического поддержания подключения
 					NOT_INFO        = 0x02, // Флаг запрещающий вывод информационных сообщений
-					NOT_STOP        = 0x04, // Флаг запрета остановки биндинга
-					WAIT_MESS       = 0x08, // Флаг ожидания входящих сообщений
-					VERIFY_SSL      = 0x10, // Флаг выполнения проверки сертификата SSL
-					TAKEOVER_CLIENT = 0x20, // Флаг ожидания входящих сообщений для клиента
-					TAKEOVER_SERVER = 0x40  // Флаг ожидания входящих сообщений для сервера
+					NOT_STOP        = 0x03, // Флаг запрета остановки биндинга
+					WAIT_MESS       = 0x04, // Флаг ожидания входящих сообщений
+					VERIFY_SSL      = 0x05, // Флаг выполнения проверки сертификата SSL
+					TAKEOVER_CLIENT = 0x06, // Флаг ожидания входящих сообщений для клиента
+					TAKEOVER_SERVER = 0x07  // Флаг ожидания входящих сообщений для сервера
 				};
 			private:
+				/**
+				 * Http2 Структура работы с клиентом HTTP/2
+				 */
+				typedef struct Http2 {
+					bool mode;             // Флаг активации модуля HTTP/2
+					int32_t id;            // Идентификатор сессии
+					nghttp2_session * ctx; // Контекст сессии
+					/**
+					 * Http2 Конструктор
+					 */
+					Http2() noexcept : mode(false), id(-1), ctx(nullptr) {}
+				} http2_t;
 				/**
 				 * Locker Структура локера
 				 */
@@ -132,6 +144,8 @@ namespace awh {
 				thr_t _thr;
 				// Объект работы с URI ссылками
 				uri_t _uri;
+				// Объект для работы с HTTP/2
+				http2_t _http2;
 				// Объявляем функции обратного вызова
 				fn_t _callback;
 				// Объект для работы с фреймом WebSocket
@@ -191,12 +205,77 @@ namespace awh {
 				// Минимальный размер сегмента
 				size_t _frameSize;
 			private:
+				// Список доступных источников
+				vector <string> _origins;
+			private:
 				// Создаём объект фреймворка
 				const fmk_t * _fmk;
 				// Создаём объект работы с логами
 				const log_t * _log;
 				// Создаём объект сетевого ядра
 				const client::core_t * _core;
+			private:
+				/**
+				 * onFrameHttp2 Функция обратного вызова при получении фрейма заголовков HTTP/2 с сервера
+				 * @param session объект сессии HTTP/2
+				 * @param frame   объект фрейма заголовков HTTP/2
+				 * @param ctx     передаваемый промежуточный контекст
+				 * @return        статус полученных данных
+				 */
+				static int onFrameHttp2(nghttp2_session * session, const nghttp2_frame * frame, void * ctx) noexcept;
+				/**
+				 * onCloseHttp2 Метод закрытия подключения с сервером HTTP/2
+				 * @param session объект сессии HTTP/2
+				 * @param sid     идентификатор сессии HTTP/2
+				 * @param error   флаг ошибки HTTP/2 если присутствует
+				 * @param ctx     передаваемый промежуточный контекст
+				 * @return        статус полученного события
+				 */
+				static int onCloseHttp2(nghttp2_session * session, const int32_t sid, const uint32_t error, void * ctx) noexcept;
+				/**
+				 * onChunkHttp2 Функция обратного вызова при получении чанка с сервера HTTP/2
+				 * @param session объект сессии HTTP/2
+				 * @param flags   флаги события для сессии HTTP/2
+				 * @param sid     идентификатор сессии HTTP/2
+				 * @param buffer  буфер данных который содержит полученный чанк
+				 * @param size    размер полученного буфера данных чанка
+				 * @param ctx     передаваемый промежуточный контекст
+				 * @return        статус полученных данных
+				 */
+				static int onChunkHttp2(nghttp2_session * session, const uint8_t flags, const int32_t sid, const uint8_t * buffer, const size_t size, void * ctx) noexcept;
+			private:
+				/**
+				 * onBeginHeadersHttp2 Функция начала получения фрейма заголовков HTTP/2
+				 * @param session объект сессии HTTP/2
+				 * @param frame   объект фрейма заголовков HTTP/2
+				 * @param ctx     передаваемый промежуточный контекст
+				 * @return        статус полученных данных
+				 */
+				static int onBeginHeadersHttp2(nghttp2_session * session, const nghttp2_frame * frame, void * ctx) noexcept;
+				/**
+				 * onHeaderHttp2 Функция обратного вызова при получении заголовка HTTP/2
+				 * @param session объект сессии HTTP/2
+				 * @param frame   объект фрейма заголовков HTTP/2
+				 * @param key     данные ключа заголовка
+				 * @param keySize размер ключа заголовка
+				 * @param val     данные значения заголовка
+				 * @param valSize размер значения заголовка
+				 * @param flags   флаги события для сессии HTTP/2
+				 * @param ctx     передаваемый промежуточный контекст
+				 * @return        статус полученных данных
+				 */
+				static int onHeaderHttp2(nghttp2_session * session, const nghttp2_frame * frame, const uint8_t * key, const size_t keySize, const uint8_t * val, const size_t valSize, const uint8_t flags, void * ctx) noexcept;
+			private:
+				/**
+				 * sendHttp2 Функция обратного вызова при подготовки данных для отправки на сервер
+				 * @param session объект сессии HTTP/2
+				 * @param buffer  буфер данных которые следует отправить
+				 * @param size    размер буфера данных для отправки
+				 * @param flags   флаги события для сессии HTTP/2
+				 * @param ctx     передаваемый промежуточный контекст
+				 * @return        количество отправленных байт
+				 */
+				static ssize_t sendHttp2(nghttp2_session * session, const uint8_t * buffer, const size_t size, const int flags, void * ctx) noexcept;
 			private:
 				/**
 				 * openCallback Метод обратного вызова при запуске работы
@@ -382,6 +461,21 @@ namespace awh {
 				void send(const char * message, const size_t size, const bool utf8 = true) noexcept;
 			public:
 				/**
+				 * setOrigin Метод установки списка разрешенных источников для HTTP/2
+				 * @param origins список разрешённых источников
+				 */
+				void setOrigin(const vector <string> & origins) noexcept;
+				/**
+				 * sendOrigin Метод отправки списка разрешенных источников для HTTP/2
+				 * @param origins список разрешённых источников
+				 */
+				void sendOrigin(const vector <string> & origins) noexcept;
+			public:
+				/**
+				 * open Метод открытия подключения
+				 */
+				void open() noexcept;
+				/**
 				 * stop Метод остановки клиента
 				 */
 				void stop() noexcept;
@@ -439,11 +533,6 @@ namespace awh {
 				void proxy(const string & uri, const scheme_t::family_t family = scheme_t::family_t::IPV4) noexcept;
 			public:
 				/**
-				 * mode Метод установки флага модуля
-				 * @param flag флаг модуля для установки
-				 */
-				void mode(const u_short flag) noexcept;
-				/**
 				 * chunk Метод установки размера чанка
 				 * @param size размер чанка для установки
 				 */
@@ -458,6 +547,11 @@ namespace awh {
 				 * @param attempts общее количество попыток
 				 */
 				void attempts(const uint8_t attempts) noexcept;
+				/**
+				 * mode Метод установки флагов настроек модуля
+				 * @param flags список флагов настроек модуля для установки
+				 */
+				void mode(const set <flag_t> & flags) noexcept;
 				/**
 				 * userAgent Метод установки User-Agent для HTTP запроса
 				 * @param userAgent агент пользователя для HTTP запроса

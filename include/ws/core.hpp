@@ -38,9 +38,9 @@ using namespace std;
  */
 namespace awh {
 	/**
-	 * WSCore Класс для работы с WebSocket
+	 * WCore Класс для работы с WebSocket
 	 */
-	typedef class WSCore : public http_t {
+	typedef class WCore : public http_t {
 		protected:
 			// Версия протокола WebSocket
 			static constexpr u_short WS_VERSION = 13;
@@ -67,6 +67,15 @@ namespace awh {
 		protected:
 			// Поддерживаемые сабпротоколы
 			set <string> _subs;
+		private:
+			/**
+			 * initRequest Метод инициализации формата запроса
+			 */
+			void initRequest() noexcept;
+			/**
+			 * initResponse Метод инициализации формата ответа
+			 */
+			void initResponse() noexcept;
 		protected:
 			/**
 			 * key Метод генерации ключа
@@ -162,6 +171,18 @@ namespace awh {
 			vector <char> request(const uri_t::url_t & url) noexcept;
 		public:
 			/**
+			 * response2 Метод создания ответа (протокол HTTP/2)
+			 * @return буфер данных запроса в бинарном виде
+			 */
+			vector <pair<string, string>> response2() noexcept;
+			/**
+			 * request2 Метод создания запроса (протокол HTTP/2)
+			 * @param url объект параметров REST запроса
+			 * @return    буфер данных запроса в бинарном виде
+			 */
+			vector <pair<string, string>> request2(const uri_t::url_t & url) noexcept;
+		public:
+			/**
 			 * sub Метод получения выбранного сабпротокола
 			 * @return выбранный сабпротокол
 			 */
@@ -200,19 +221,19 @@ namespace awh {
 			void serverTakeover(const bool flag) noexcept;
 		public:
 			/**
-			 * WSCore Конструктор
+			 * WCore Конструктор
 			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
 			 * @param uri объект работы с URI
 			 */
-			WSCore(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcept :
+			WCore(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcept :
 			 http_t(fmk, log, uri), _wbitClient(GZIP_MAX_WBITS),
 			 _wbitServer(GZIP_MAX_WBITS), _compress(compress_t::DEFLATE),
 			 _sub(""), _key(""), _noClientTakeover(true), _noServerTakeover(true) {}
 			/**
-			 * ~WSCore Деструктор
+			 * ~WCore Деструктор
 			 */
-			virtual ~WSCore() noexcept {}
+			virtual ~WCore() noexcept {}
 	} ws_core_t;
 };
 

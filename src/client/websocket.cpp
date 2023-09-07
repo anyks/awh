@@ -16,6 +16,368 @@
 #include <client/websocket.hpp>
 
 /**
+ * onFrameHttp2 Функция обратного вызова при получении фрейма заголовков HTTP/2 с сервера
+ * @param session объект сессии HTTP/2
+ * @param frame   объект фрейма заголовков HTTP/2
+ * @param ctx     передаваемый промежуточный контекст
+ * @return        статус полученных данных
+ */
+int awh::client::WebSocket::onFrameHttp2(nghttp2_session * session, const nghttp2_frame * frame, void * ctx) noexcept {
+	// Выполняем блокировку неиспользуемой переменной
+	(void) session;
+	// Получаем объект HTTP-клиента
+	websocket_t * ws = reinterpret_cast <websocket_t *> (ctx);
+	// Выполняем определение типа фрейма
+	switch(frame->hd.type){
+		// Если мы получили входящие данные тела ответа
+		case NGHTTP2_DATA:
+		// Если мы получили входящие данные заголовков ответа
+		case NGHTTP2_HEADERS: {
+			
+			if(frame->hd.type == NGHTTP2_DATA)
+				cout << " !!!!!!!!!!!! " << endl;
+			
+			// Если сессия клиента совпадает с сессией полученных даных
+			if((frame->hd.flags & NGHTTP2_FLAG_END_STREAM) && (ws->_http2.id == frame->hd.stream_id)){
+				// Объект сообщения
+				mess_t mess;
+				// Выполняем коммит полученного результата
+				reinterpret_cast <http_t *> (&ws->_ws)->commit();
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					{
+						// Получаем данные ответа
+						const auto & response = reinterpret_cast <http_t *> (&ws->_ws)->response(true);
+						// Если параметры ответа получены
+						if(!response.empty()){
+							// Выводим параметры ответа
+							cout << string(response.begin(), response.end()) << endl;
+							// Если тело ответа существует
+							if(!ws->_ws.body().empty())
+								// Выводим сообщение о выводе чанка тела
+								cout << ws->_fmk->format("<body %u>", ws->_ws.body().size()) << endl << endl;
+							// Иначе устанавливаем перенос строки
+							else cout << endl;
+						}
+					}
+				#endif
+				// Выполняем проверку авторизации
+				switch(static_cast <uint8_t> (ws->_ws.getAuth())){
+					// Если нужно попытаться ещё раз
+					case static_cast <uint8_t> (http_t::stath_t::RETRY): {
+						// Если попытка повторить авторизацию ещё не проводилась
+						if(ws->_attempt < ws->_attempts){
+							// Получаем новый адрес запроса
+							ws->_scheme.url = ws->_ws.getUrl();
+							// Если адрес запроса получен
+							if(!ws->_scheme.url.empty()){
+								// Увеличиваем количество попыток
+								ws->_attempt++;
+								// Выполняем очистку оставшихся данных
+								ws->_buffer.payload.clear();
+								// Если соединение является постоянным
+								if(ws->_ws.isAlive())
+									// Выполняем открытие текущего подключения
+									ws->actionConnect();
+								// Если нам необходимо отключиться
+								else const_cast <client::core_t *> (ws->_core)->close(ws->_aid);
+								// Завершаем работу
+								return 0;
+							}
+						}
+						// Устанавливаем флаг принудительной остановки
+						ws->_stopped = true;
+						// Создаём сообщение
+						mess = mess_t(ws->_code, ws->_ws.message(ws->_code));
+						// Выводим сообщение
+						ws->error(mess);
+					} break;
+					// Если запрос выполнен удачно
+					case static_cast <uint8_t> (http_t::stath_t::GOOD): {
+						// Если рукопожатие выполнено
+						if(ws->_ws.isHandshake()){
+							// Выполняем сброс количества попыток
+							ws->_attempt = 0;
+							// Очищаем список фрагментированных сообщений
+							ws->_buffer.fragmes.clear();
+							// Получаем флаг шифрованных данных
+							ws->_crypt = ws->_ws.isCrypt();
+							// Получаем поддерживаемый метод компрессии
+							ws->_compress = ws->_ws.compress();
+							// Получаем размер скользящего окна сервера
+							ws->_wbitServer = ws->_ws.wbitServer();
+							// Получаем размер скользящего окна клиента
+							ws->_wbitClient = ws->_ws.wbitClient();
+							// Обновляем контрольную точку времени получения данных
+							ws->_checkPoint = ws->_fmk->timestamp(fmk_t::stamp_t::MILLISECONDS);
+							// Разрешаем перехватывать контекст компрессии для клиента
+							ws->_hash.takeoverCompress(ws->_ws.clientTakeover());
+							// Разрешаем перехватывать контекст компрессии для сервера
+							ws->_hash.takeoverDecompress(ws->_ws.serverTakeover());
+							// Выводим в лог сообщение
+							if(!ws->_noinfo) ws->_log->print("authorization on the WebSocket server was successful", log_t::flag_t::INFO);
+							// Если функция обратного вызова установлена, выполняем
+							if(ws->_callback.active != nullptr)
+								// Выполняем функцию обратного вызова
+								ws->_callback.active(mode_t::CONNECT, ws);
+							// Очищаем буфер собранных данных
+							ws->_buffer.payload.clear();
+							// Завершаем работу
+							return 0;
+						// Сообщаем, что рукопожатие не выполнено
+						} else {
+							// Устанавливаем код ответа
+							ws->_code = 404;
+							// Создаём сообщение
+							mess = mess_t(ws->_code, ws->_ws.message(ws->_code));
+							// Выводим сообщение
+							ws->error(mess);
+						}
+					} break;
+					// Если запрос неудачный
+					case static_cast <uint8_t> (http_t::stath_t::FAULT): {
+						// Получаем параметры запроса
+						const auto & query = ws->_ws.query();
+						// Устанавливаем флаг принудительной остановки
+						ws->_stopped = true;
+						// Устанавливаем код ответа
+						ws->_code = query.code;
+						// Создаём сообщение
+						mess = mess_t(ws->_code, query.message);
+						// Выводим сообщение
+						ws->error(mess);
+					} break;
+				}
+				// Выполняем сброс количества попыток
+				ws->_attempt = 0;
+				// Завершаем работу
+				const_cast <client::core_t *> (ws->_core)->close(ws->_aid);
+			}
+		} break;
+	}
+	// Выводим результат
+	return 0;
+}
+/**
+ * onCloseHttp2 Метод закрытия подключения с сервером HTTP/2
+ * @param session объект сессии HTTP/2
+ * @param sid     идентификатор сессии HTTP/2
+ * @param error   флаг ошибки HTTP/2 если присутствует
+ * @param ctx     передаваемый промежуточный контекст
+ * @return        статус полученного события
+ */
+int awh::client::WebSocket::onCloseHttp2(nghttp2_session * session, const int32_t sid, const uint32_t error, void * ctx) noexcept {
+	// Получаем объект HTTP-клиента
+	websocket_t * ws = reinterpret_cast <websocket_t *> (ctx);
+	// Если идентификатор сессии клиента совпадает
+	if(ws->_http2.id == sid){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Выводим заголовок ответа
+			cout << "\x1B[33m\x1B[1m^^^^^^^^^ CLOSE SESSION HTTP2 ^^^^^^^^^\x1B[0m" << endl;
+			// Определяем тип получаемой ошибки
+			switch(error){
+				// Если ошибка не получена
+				case 0x0:
+					// Выводим информацию о закрытии сессии
+					cout << ws->_fmk->format("Stream %d closed", sid) << endl << endl;
+				break;
+				// Если получена ошибка протокола
+				case 0x1:
+					// Выводим информацию о закрытии сессии с ошибкой
+					cout << ws->_fmk->format("Stream %d closed with error=%s", sid, "PROTOCOL_ERROR") << endl << endl;
+				break;
+				// Если получена ошибка реализации
+				case 0x2:
+					// Выводим информацию о закрытии сессии с ошибкой
+					cout << ws->_fmk->format("Stream %d closed with error=%s", sid, "INTERNAL_ERROR") << endl << endl;
+				break;
+				// Если получена ошибка превышения предела управления потоком
+				case 0x3:
+					// Выводим информацию о закрытии сессии с ошибкой
+					cout << ws->_fmk->format("Stream %d closed with error=%s", sid, "FLOW_CONTROL_ERROR") << endl << endl;
+				break;
+				// Если установка не подтверждённа
+				case 0x4:
+					// Выводим информацию о закрытии сессии с ошибкой
+					cout << ws->_fmk->format("Stream %d closed with error=%s", sid, "SETTINGS_TIMEOUT") << endl << endl;
+				break;
+				// Если получен кадр для завершения потока
+				case 0x5:
+					// Выводим информацию о закрытии сессии с ошибкой
+					cout << ws->_fmk->format("Stream %d closed with error=%s", sid, "STREAM_CLOSED") << endl << endl;
+				break;
+				// Если размер кадра некорректен
+				case 0x6:
+					// Выводим информацию о закрытии сессии с ошибкой
+					cout << ws->_fmk->format("Stream %d closed with error=%s", sid, "FRAME_SIZE_ERROR") << endl << endl;
+				break;
+				// Если поток не обработан
+				case 0x7:
+					// Выводим информацию о закрытии сессии с ошибкой
+					cout << ws->_fmk->format("Stream %d closed with error=%s", sid, "REFUSED_STREAM") << endl << endl;
+				break;
+				// Если поток аннулирован
+				case 0x8:
+					// Выводим информацию о закрытии сессии с ошибкой
+					cout << ws->_fmk->format("Stream %d closed with error=%s", sid, "CANCEL") << endl << endl;
+				break;
+				// Если состояние компрессии не обновлено
+				case 0x9:
+					// Выводим информацию о закрытии сессии с ошибкой
+					cout << ws->_fmk->format("Stream %d closed with error=%s", sid, "COMPRESSION_ERROR") << endl << endl;
+				break;
+				// Если получена ошибка TCP-соединения для метода CONNECT
+				case 0xa:
+					// Выводим информацию о закрытии сессии с ошибкой
+					cout << ws->_fmk->format("Stream %d closed with error=%s", sid, "CONNECT_ERROR") << endl << endl;
+				break;
+				// Если превышена емкость для обработки
+				case 0xb:
+					// Выводим информацию о закрытии сессии с ошибкой
+					cout << ws->_fmk->format("Stream %d closed with error=%s", sid, "ENHANCE_YOUR_CALM") << endl << endl;
+				break;
+				// Если согласованные параметры TLS не приемлемы
+				case 0xc:
+					// Выводим информацию о закрытии сессии с ошибкой
+					cout << ws->_fmk->format("Stream %d closed with error=%s", sid, "INADEQUATE_SECURITY") << endl << endl;
+				break;
+				// Если для запроса используется HTTP/1.1
+				case 0xd:
+					// Выводим информацию о закрытии сессии с ошибкой
+					cout << ws->_fmk->format("Stream %d closed with error=%s", sid, "HTTP_1_1_REQUIRED") << endl << endl;
+				break;
+			}
+		#endif
+		// Отключаем флаг HTTP/2 так-как сессия уже закрыта
+		ws->_http2.mode = false;
+		// Если сессия HTTP/2 закрыта не удачно
+		if(nghttp2_session_terminate_session(session, NGHTTP2_NO_ERROR) != 0)
+			// Выводим сообщение об ошибке
+			return NGHTTP2_ERR_CALLBACK_FAILURE;
+	}
+	// Выводим результат
+	return 0;
+}
+/**
+ * onChunkHttp2 Функция обратного вызова при получении чанка с сервера HTTP/2
+ * @param session объект сессии HTTP/2
+ * @param flags   флаги события для сессии HTTP/2
+ * @param sid     идентификатор сессии HTTP/2
+ * @param buffer  буфер данных который содержит полученный чанк
+ * @param size    размер полученного буфера данных чанка
+ * @param ctx     передаваемый промежуточный контекст
+ * @return        статус полученных данных
+ */
+int awh::client::WebSocket::onChunkHttp2(nghttp2_session * session, const uint8_t flags, const int32_t sid, const uint8_t * buffer, const size_t size, void * ctx) noexcept {
+	// Выполняем блокировку неиспользуемой переменных
+	(void) flags;
+	(void) session;
+	// Получаем объект HTTP-клиента
+	websocket_t * ws = reinterpret_cast <websocket_t *> (ctx);
+	
+	cout << " ================= onChunkHttp2 " << size << endl;
+	
+	// Если идентификатор сессии клиента совпадает
+	if(ws->_http2.id == sid)
+		// Добавляем полученный чанк в тело данных
+		ws->_ws.body(vector <char> (buffer, buffer + size));
+	// Выводим результат
+	return 0;
+}
+/**
+ * onBeginHeadersHttp2 Функция начала получения фрейма заголовков HTTP/2
+ * @param session объект сессии HTTP/2
+ * @param frame   объект фрейма заголовков HTTP/2
+ * @param ctx     передаваемый промежуточный контекст
+ * @return        статус полученных данных
+ */
+int awh::client::WebSocket::onBeginHeadersHttp2(nghttp2_session * session, const nghttp2_frame * frame, void * ctx) noexcept {
+	// Выполняем блокировку неиспользуемой переменной
+	(void) session;
+	// Получаем объект HTTP-клиента
+	websocket_t * ws = reinterpret_cast <websocket_t *> (ctx);
+	// Выполняем определение типа фрейма
+	switch(frame->hd.type){
+		// Если мы получили входящие данные заголовков ответа
+		case NGHTTP2_HEADERS:{
+			// Если сессия клиента совпадает с сессией полученных даных
+			if((frame->headers.cat == NGHTTP2_HCAT_RESPONSE) && (ws->_http2.id == frame->hd.stream_id)){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					// Выводим заголовок ответа
+					cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE ^^^^^^^^^\x1B[0m" << endl;
+					// Выводим информацию об ошибке
+					cout << ws->_fmk->format("Stream ID=%d", frame->hd.stream_id) << endl << endl;
+				#endif
+			}
+		} break;
+	}
+	// Выводим результат
+	return 0;
+}
+/**
+ * onHeaderHttp2 Функция обратного вызова при получении заголовка HTTP/2
+ * @param session объект сессии HTTP/2
+ * @param frame   объект фрейма заголовков HTTP/2
+ * @param key     данные ключа заголовка
+ * @param keySize размер ключа заголовка
+ * @param val     данные значения заголовка
+ * @param valSize размер значения заголовка
+ * @param flags   флаги события для сессии HTTP/2
+ * @param ctx     передаваемый промежуточный контекст
+ * @return        статус полученных данных
+ */
+int awh::client::WebSocket::onHeaderHttp2(nghttp2_session * session, const nghttp2_frame * frame, const uint8_t * key, const size_t keySize, const uint8_t * val, const size_t valSize, const uint8_t flags, void * ctx) noexcept {
+	// Выполняем блокировку неиспользуемой переменных
+	(void) flags;
+	(void) session;
+	// Получаем объект HTTP-клиента
+	websocket_t * ws = reinterpret_cast <websocket_t *> (ctx);
+	// Выполняем определение типа фрейма
+	switch(frame->hd.type){
+		// Если мы получили входящие данные заголовков ответа
+		case NGHTTP2_HEADERS:{
+			// Если сессия клиента совпадает с сессией полученных даных
+			if((frame->headers.cat == NGHTTP2_HCAT_RESPONSE) && (ws->_http2.id == frame->hd.stream_id)){
+				
+				cout << " ******************** onHeaderHttp2 " << string((const char *) key, keySize) << " == " << string((const char *) val, valSize) << endl;
+				
+				// Устанавливаем полученные заголовки
+				ws->_ws.header2(string((const char *) key, keySize), string((const char *) val, valSize));
+			}
+		} break;
+	}
+	// Выводим результат
+	return 0;
+}
+/**
+ * sendHttp2 Функция обратного вызова при подготовки данных для отправки на сервер
+ * @param session объект сессии HTTP/2
+ * @param buffer  буфер данных которые следует отправить
+ * @param size    размер буфера данных для отправки
+ * @param flags   флаги события для сессии HTTP/2
+ * @param ctx     передаваемый промежуточный контекст
+ * @return        количество отправленных байт
+ */
+ssize_t awh::client::WebSocket::sendHttp2(nghttp2_session * session, const uint8_t * buffer, const size_t size, const int flags, void * ctx) noexcept {
+	// Выполняем блокировку неиспользуемой переменных
+	(void) flags;
+	(void) session;
+	// Получаем объект HTTP-клиента
+	websocket_t * ws = reinterpret_cast <websocket_t *> (ctx);
+	// Выполняем отправку заголовков запроса на сервер
+	const_cast <client::core_t *> (ws->_core)->write((const char *) buffer, size, ws->_aid);
+	// Возвращаем количество отправленных байт
+	return static_cast <ssize_t> (size);
+}
+/**
  * openCallback Метод обратного вызова при запуске работы
  * @param sid  идентификатор схемы сети
  * @param core объект сетевого ядра
@@ -37,6 +399,15 @@ void awh::client::WebSocket::openCallback(const size_t sid, awh::core_t * core) 
 void awh::client::WebSocket::eventsCallback(const awh::core_t::status_t status, awh::core_t * core) noexcept {
 	// Если данные существуют
 	if(core != nullptr){
+		// Если система была остановлена
+		if(status == awh::core_t::status_t::STOP){
+			// Если контекст сессии HTTP/2 создан
+			if(this->_http2.mode && (this->_http2.ctx != nullptr))
+				// Выполняем удаление сессии
+				nghttp2_session_del(this->_http2.ctx);
+			// Деактивируем флаг работы с протоколом HTTP/2
+			this->_http2.mode = false;
+		}
 		// Если функция обратного вызова установлена
 		if(this->_callback.events != nullptr)
 			// Выполняем функцию обратного вызова
@@ -107,6 +478,27 @@ void awh::client::WebSocket::readCallback(const char * buffer, const size_t size
 	if((buffer != nullptr) && (size > 0) && (aid > 0) && (sid > 0)){
 		// Если дисконнекта ещё не произошло
 		if((this->_action == action_t::NONE) || (this->_action == action_t::READ)){
+			// Если протокол подключения является HTTP/2 и рукопожатие не выполнено
+			if(!reinterpret_cast <http_t *> (&this->_ws)->isHandshake() && (core->proto(aid) == engine_t::proto_t::HTTP2)){
+				// Выполняем извлечение полученного чанка данных из сокета
+				ssize_t bytes = nghttp2_session_mem_recv(this->_http2.ctx, (const uint8_t *) buffer, size);
+				// Если данные не прочитаны, выводим ошибку и выходим
+				if(bytes < 0){
+					// Выводим сообщение об полученной ошибке
+					this->_log->print("%s", log_t::flag_t::CRITICAL, nghttp2_strerror(static_cast <int> (bytes)));
+					// Выходим из функции
+					return;
+				}
+				// Фиксируем полученный результат
+				if((bytes = nghttp2_session_send(this->_http2.ctx)) != 0){
+					// Выводим сообщение об полученной ошибке
+					this->_log->print("%s", log_t::flag_t::CRITICAL, nghttp2_strerror(static_cast <int> (bytes)));
+					// Выходим из функции
+					return;
+				}
+				// Выходим из функции
+				return;
+			}
 			// Если подключение закрыто
 			if(this->_close){
 				// Принудительно выполняем отключение лкиента
@@ -242,7 +634,7 @@ void awh::client::WebSocket::handler() noexcept {
  */
 void awh::client::WebSocket::actionOpen() noexcept {
 	// Выполняем подключение
-	const_cast <client::core_t *> (this->_core)->open(this->_scheme.sid);
+	this->open();
 	// Если экшен соответствует, выполняем его сброс
 	if(this->_action == action_t::OPEN)
 		// Выполняем сброс экшена
@@ -551,6 +943,24 @@ void awh::client::WebSocket::actionRead() noexcept {
 		// Выполняем сброс экшена
 		this->_action = action_t::NONE;
 }
+
+nghttp2_nv make_nv_internal(const string &name, const string &value, bool no_index, uint8_t nv_flags){
+
+	uint8_t flags = (nv_flags | (no_index ? NGHTTP2_NV_FLAG_NO_INDEX : NGHTTP2_NV_FLAG_NONE));
+
+	return {
+		(uint8_t *) name.c_str(),
+		(uint8_t *) value.c_str(),
+		name.size(),
+		value.size(),
+		flags
+	};
+}
+
+nghttp2_nv make_nv(const std::string & name, const std::string & value, bool no_index = false){
+  return make_nv_internal(name, value, no_index, NGHTTP2_NV_FLAG_NONE);
+}
+
 /**
  * actionConnect Метод обработки экшена подключения к серверу
  */
@@ -571,21 +981,158 @@ void awh::client::WebSocket::actionConnect() noexcept {
 	this->_hash.takeoverCompress(this->_takeOverCli);
 	// Разрешаем перехватывать контекст декомпрессии
 	this->_hash.takeoverDecompress(this->_takeOverSrv);
-	// Получаем бинарные данные REST запроса
-	const auto & buffer = this->_ws.request(this->_scheme.url);
-	// Если бинарные данные запроса получены
-	if(!buffer.empty()){
+	// Получаем объект биндинга ядра TCP/IP
+	client::core_t * core = const_cast <client::core_t *> (this->_core);
+	// Если протокол подключения является HTTP/2
+	if(!this->_http2.mode && (core->proto(this->_aid) == engine_t::proto_t::HTTP2)){
+		// Создаём объект функций обратного вызова
+		nghttp2_session_callbacks * callbacks;
+		// Выполняем инициализацию сессию функций обратного вызова
+		nghttp2_session_callbacks_new(&callbacks);
+		// Выполняем установку функции обратного вызова при подготовки данных для отправки на сервер
+		nghttp2_session_callbacks_set_send_callback(callbacks, &websocket_t::sendHttp2);
+		// Выполняем установку функции обратного вызова при получении заголовка HTTP/2
+		nghttp2_session_callbacks_set_on_header_callback(callbacks, &websocket_t::onHeaderHttp2);
+		// Выполняем установку функции обратного вызова при получении фрейма заголовков HTTP/2 с сервера
+		nghttp2_session_callbacks_set_on_frame_recv_callback(callbacks, &websocket_t::onFrameHttp2);
+		// Выполняем установку функции обратного вызова закрытия подключения с сервером HTTP/2
+		nghttp2_session_callbacks_set_on_stream_close_callback(callbacks, &websocket_t::onCloseHttp2);
+		// Выполняем установку функции обратного вызова при получении чанка с сервера HTTP/2
+		nghttp2_session_callbacks_set_on_data_chunk_recv_callback(callbacks, &websocket_t::onChunkHttp2);
+		// Выполняем установку функции обратного вызова начала получения фрейма заголовков HTTP/2
+		nghttp2_session_callbacks_set_on_begin_headers_callback(callbacks, &websocket_t::onBeginHeadersHttp2);
+		// Выполняем подключение котнекста сессии HTTP/2
+		nghttp2_session_client_new(&this->_http2.ctx, callbacks, this);
+		// Выполняем удаление объекта функций обратного вызова
+		nghttp2_session_callbacks_del(callbacks);
+		// Создаём параметры сессии подключения с HTTP/2 сервером
+		const vector <nghttp2_settings_entry> iv = {{NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS, 128}};
+		// Клиентская 24-байтовая магическая строка будет отправлена библиотекой nghttp2
+		const int rv = nghttp2_submit_settings(this->_http2.ctx, NGHTTP2_FLAG_NONE, iv.data(), iv.size());
+		// Если настройки для сессии установить не удалось
+		if(rv != 0){
+			// Выполняем закрытие подключения
+			core->close(this->_aid);
+			// Выводим сообщение об ошибке
+			this->_log->print("Could not submit SETTINGS: %s", log_t::flag_t::CRITICAL, nghttp2_strerror(rv));
+			// Если сессия HTTP/2 создана удачно
+			if(this->_http2.ctx != nullptr)
+				// Выполняем удаление сессии
+				nghttp2_session_del(this->_http2.ctx);
+			// Выходим из функции
+			return;
+		}
+		// Если список источников установлен
+		if(!this->_origins.empty())
+			// Выполняем отправку списка источников
+			this->sendOrigin(this->_origins);
+		// Выполняем активацию работы с протоколом HTTP/2
+		this->_http2.mode = !this->_http2.mode;
+	}
+	// Если активирован режим работы с HTTP/2 протоколом
+	if(this->_http2.mode){
+		// Список заголовков для запроса
+		vector <nghttp2_nv> nva;
+		// Выполняем получение параметров запроса
+		awh::web_t::query_t query = this->_ws.query();
+		// Выполняем установки версии протокола
+		query.ver = 2.0f;
+		// Выполняем установку параметры ответа сервера
+		this->_ws.query(std::move(query));
 		/**
 		 * Если включён режим отладки
 		 */
 		#if defined(DEBUG_MODE)
 			// Выводим заголовок запроса
 			cout << "\x1B[33m\x1B[1m^^^^^^^^^ REQUEST ^^^^^^^^^\x1B[0m" << endl;
-			// Выводим параметры запроса
-			cout << string(buffer.begin(), buffer.end()) << endl << endl;
+			// Получаем бинарные данные REST запроса
+			const auto & buffer = this->_ws.request(this->_scheme.url);
+			// Если бинарные данные запроса получены
+			if(!buffer.empty())
+				// Выводим параметры запроса
+				cout << string(buffer.begin(), buffer.end()) << endl << endl;
 		#endif
-		// Выполняем отправку сообщения на сервер
-		const_cast <client::core_t *> (this->_core)->write(buffer.data(), buffer.size(), this->_aid);
+		// Выполняем запрос на получение заголовков
+		const auto & headers = this->_ws.request2(this->_scheme.url);
+		
+
+		nva = {
+			make_nv(":method", "CONNECT"),
+			make_nv(":protocol", "websocket"),
+			make_nv(":scheme", "https"),
+			make_nv(":path", "/stream"),
+			make_nv(":authority", "stream.binance.com:9443"),
+			make_nv("sec-websocket-protocol", "test2, test8, test9"),
+			make_nv("sec-websocket-extensions", "permessage-deflate"),
+			// make_nv("sec-websocket-extensions", "permessage-deflate; client_max_window_bits"),
+			make_nv("sec-websocket-version", "13"),
+			// make_nv("origin", "http://www.anyks.com"),
+			make_nv("user-agent", "nghttp2/" NGHTTP2_VERSION)
+		};
+
+
+		// 1. Реализовать правельный вывод полей
+		// 2. Добавить поддержку расширений
+
+		
+		
+		// Выполняем перебор всех заголовков HTTP/2 запроса
+		for(auto & header : headers){
+			
+			cout << " ++++++++++++++++++ " << header.first << " == " << header.second << endl;
+			
+			/*
+			// Выполняем добавление метода запроса
+			nva.push_back({
+				(uint8_t *) header.first.c_str(),
+				(uint8_t *) header.second.c_str(),
+				header.first.size(),
+				header.second.size(),
+				NGHTTP2_NV_FLAG_NONE
+			});
+			*/
+		}
+		
+
+		// Выполняем запрос на удалённый сервер
+		this->_http2.id = nghttp2_submit_request(this->_http2.ctx, nullptr, nva.data(), nva.size(), nullptr, this);
+		// Если запрос не получилось отправить
+		if(this->_http2.id < 0){
+			// Выводим в лог сообщение
+			this->_log->print("%s", log_t::flag_t::CRITICAL, nghttp2_strerror(this->_http2.id));
+			// Выполняем закрытие подключения
+			core->close(this->_aid);
+			// Выходим из функции
+			return;
+		}{
+			// Результат фиксации сессии
+			int rv = -1;
+			// Фиксируем отправленный результат
+			if((rv = nghttp2_session_send(this->_http2.ctx)) != 0){
+				// Выводим сообщение об полученной ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, nghttp2_strerror(rv));
+				// Выходим из функции
+				return;
+			}
+		}
+	// Если активирован режим работы с HTTP/1.1 протоколом
+	} else {
+		// Получаем бинарные данные REST запроса
+		const auto & buffer = this->_ws.request(this->_scheme.url);
+		// Если бинарные данные запроса получены
+		if(!buffer.empty()){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if defined(DEBUG_MODE)
+				// Выводим заголовок запроса
+				cout << "\x1B[33m\x1B[1m^^^^^^^^^ REQUEST ^^^^^^^^^\x1B[0m" << endl;
+				// Выводим параметры запроса
+				cout << string(buffer.begin(), buffer.end()) << endl << endl;
+			#endif
+			// Выполняем отправку сообщения на сервер
+			core->write(buffer.data(), buffer.size(), this->_aid);
+		}
 	}
 	// Если экшен соответствует, выполняем его сброс
 	if(this->_action == action_t::CONNECT)
@@ -1266,6 +1813,63 @@ void awh::client::WebSocket::send(const char * message, const size_t size, const
 	}
 }
 /**
+ * setOrigin Метод установки списка разрешенных источников для HTTP/2
+ * @param origins список разрешённых источников
+ */
+void awh::client::WebSocket::setOrigin(const vector <string> & origins) noexcept {
+	// Выполняем установку списка источников
+	this->_origins = origins;
+}
+/**
+ * sendOrigin Метод отправки списка разрешенных источников для HTTP/2
+ * @param origins список разрешённых источников
+ */
+void awh::client::WebSocket::sendOrigin(const vector <string> & origins) noexcept {
+	// Если сессия HTTP/2 активна
+	if(this->_http2.mode && (this->_http2.ctx != nullptr)){
+		// Список источников для установки на сервере
+		vector <nghttp2_origin_entry> ov;
+		// Если список источников передан
+		if(!origins.empty()){
+			// Выполняем перебор списка источников
+			for(auto & origin : origins)
+				// Выполняем добавление источника в списку
+				ov.push_back({(uint8_t *) origin.c_str(), origin.size()});
+		}
+		// Результат выполнения поерации
+		int rv = -1;
+		// Выполняем установку фрейма полученных источников
+		if((rv = nghttp2_submit_origin(this->_http2.ctx, NGHTTP2_FLAG_NONE, (!ov.empty() ? ov.data() : nullptr), ov.size())) != 0){
+			// Выводим сообщение об полученной ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, nghttp2_strerror(rv));
+			// Выходим из функции
+			return;
+		}
+		// Фиксируем отправленный результат
+		if((rv = nghttp2_session_send(this->_http2.ctx)) != 0){
+			// Выводим сообщение об полученной ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, nghttp2_strerror(rv));
+			// Выходим из функции
+			return;
+		}
+	}
+}
+/**
+ * open Метод открытия подключения
+ */
+void awh::client::WebSocket::open() noexcept {
+	// Если подключение уже выполнено
+	if(this->_scheme.status.real == scheme_t::mode_t::CONNECT){
+		// Если подключение производится через, прокси-сервер
+		if(this->_scheme.isProxy())
+			// Выполняем запуск функции подключения для прокси-сервера
+			this->actionProxyConnect();
+		// Выполняем запуск функции подключения
+		else this->actionConnect();
+	// Если биндинг уже запущен, выполняем запрос на сервер
+	} else const_cast <client::core_t *> (this->_core)->open(this->_scheme.sid);
+}
+/**
  * stop Метод остановки клиента
  */
 void awh::client::WebSocket::stop() noexcept {
@@ -1303,7 +1907,7 @@ void awh::client::WebSocket::start() noexcept {
 			// Выполняем запуск биндинга
 			const_cast <client::core_t *> (this->_core)->start();
 		// Выполняем запрос на сервер
-		else const_cast <client::core_t *> (this->_core)->open(this->_scheme.sid);
+		else this->open();
 	}
 	// Снимаем с паузы клиент
 	this->_freeze = false;
@@ -1429,28 +2033,6 @@ void awh::client::WebSocket::proxy(const string & uri, const scheme_t::family_t 
 	}
 }
 /**
- * mode Метод установки флага модуля
- * @param flag флаг модуля для установки
- */
-void awh::client::WebSocket::mode(const u_short flag) noexcept {
-	// Устанавливаем флаг запрещающий вывод информационных сообщений
-	this->_noinfo = (flag & static_cast <uint8_t> (flag_t::NOT_INFO));
-	// Устанавливаем флаг анбиндинга ядра сетевого модуля
-	this->_unbind = !(flag & static_cast <uint8_t> (flag_t::NOT_STOP));
-	// Устанавливаем флаг поддержания автоматического подключения
-	this->_scheme.alive = (flag & static_cast <uint8_t> (flag_t::ALIVE));
-	// Устанавливаем флаг ожидания входящих сообщений
-	this->_scheme.wait = (flag & static_cast <uint8_t> (flag_t::WAIT_MESS));
-	// Устанавливаем флаг перехвата контекста компрессии для клиента
-	this->_takeOverCli = (flag & static_cast <uint8_t> (flag_t::TAKEOVER_CLIENT));
-	// Устанавливаем флаг перехвата контекста компрессии для сервера
-	this->_takeOverSrv = (flag & static_cast <uint8_t> (flag_t::TAKEOVER_SERVER));
-	// Устанавливаем флаг запрещающий вывод информационных сообщений
-	const_cast <client::core_t *> (this->_core)->noInfo(flag & static_cast <uint8_t> (flag_t::NOT_INFO));
-	// Выполняем установку флага проверки домена
-	const_cast <client::core_t *> (this->_core)->verifySSL(flag & static_cast <uint8_t> (flag_t::VERIFY_SSL));
-}
-/**
  * chunk Метод установки размера чанка
  * @param size размер чанка для установки
  */
@@ -1473,6 +2055,28 @@ void awh::client::WebSocket::segmentSize(const size_t size) noexcept {
 void awh::client::WebSocket::attempts(const uint8_t attempts) noexcept {
 	// Если количество попыток передано, устанавливаем его
 	if(attempts > 0) this->_attempts = attempts;
+}
+/**
+ * mode Метод установки флагов настроек модуля
+ * @param flags список флагов настроек модуля для установки
+ */
+void awh::client::WebSocket::mode(const set <flag_t> & flags) noexcept {
+	// Устанавливаем флаг запрещающий вывод информационных сообщений
+	this->_noinfo = (flags.count(flag_t::NOT_INFO) > 0);
+	// Устанавливаем флаг анбиндинга ядра сетевого модуля
+	this->_unbind = (flags.count(flag_t::NOT_STOP) == 0);
+	// Устанавливаем флаг поддержания автоматического подключения
+	this->_scheme.alive = (flags.count(flag_t::ALIVE) > 0);
+	// Устанавливаем флаг ожидания входящих сообщений
+	this->_scheme.wait = (flags.count(flag_t::WAIT_MESS) > 0);
+	// Устанавливаем флаг перехвата контекста компрессии для клиента
+	this->_takeOverCli = (flags.count(flag_t::TAKEOVER_CLIENT) > 0);
+	// Устанавливаем флаг перехвата контекста компрессии для сервера
+	this->_takeOverSrv = (flags.count(flag_t::TAKEOVER_SERVER) > 0);
+	// Устанавливаем флаг запрещающий вывод информационных сообщений
+	const_cast <client::core_t *> (this->_core)->noInfo(flags.count(flag_t::NOT_INFO) > 0);
+	// Выполняем установку флага проверки домена
+	const_cast <client::core_t *> (this->_core)->verifySSL(flags.count(flag_t::VERIFY_SSL) > 0);
 }
 /**
  * userAgent Метод установки User-Agent для HTTP запроса

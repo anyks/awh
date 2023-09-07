@@ -73,10 +73,10 @@ namespace awh {
 				enum class flag_t : uint8_t {
 					ALIVE      = 0x01, // Флаг автоматического поддержания подключения
 					NOT_INFO   = 0x02, // Флаг запрещающий вывод информационных сообщений
-					NOT_STOP   = 0x04, // Флаг запрета остановки биндинга
-					WAIT_MESS  = 0x08, // Флаг ожидания входящих сообщений
-					VERIFY_SSL = 0x10, // Флаг выполнения проверки сертификата SSL
-					REDIRECTS  = 0x20  // Флаг разрешающий автоматическое перенаправление запросов
+					NOT_STOP   = 0x03, // Флаг запрета остановки биндинга
+					WAIT_MESS  = 0x04, // Флаг ожидания входящих сообщений
+					VERIFY_SSL = 0x05, // Флаг выполнения проверки сертификата SSL
+					REDIRECTS  = 0x06  // Флаг разрешающий автоматическое перенаправление запросов
 				};
 				/**
 				 * Request Структура запроса клиента
@@ -607,11 +607,6 @@ namespace awh {
 				void proxy(const string & uri, const scheme_t::family_t family = scheme_t::family_t::IPV4) noexcept;
 			public:
 				/**
-				 * mode Метод установки флага модуля
-				 * @param flag флаг модуля для установки
-				 */
-				void mode(const u_short flag) noexcept;
-				/**
 				 * chunk Метод установки размера чанка
 				 * @param size размер чанка для установки
 				 */
@@ -621,6 +616,11 @@ namespace awh {
 				 * @param attempts общее количество попыток
 				 */
 				void attempts(const uint8_t attempts) noexcept;
+				/**
+				 * mode Метод установки флагов настроек модуля
+				 * @param flags список флагов настроек модуля для установки
+				 */
+				void mode(const set <flag_t> & flags) noexcept;
 				/**
 				 * userAgent Метод установки User-Agent для HTTP запроса
 				 * @param userAgent агент пользователя для HTTP запроса

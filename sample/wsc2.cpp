@@ -305,11 +305,11 @@ class Executor {
 				 * 2. Устанавливаем ожидание входящих сообщений
 				 * 3. Устанавливаем валидацию SSL сертификата
 				 */
-				this->_web->mode(
-					(uint8_t) client::web_t::flag_t::ALIVE |
-					(uint8_t) client::web_t::flag_t::REDIRECTS |
-					(uint8_t) client::web_t::flag_t::VERIFY_SSL
-				);
+				this->_web->mode({
+					client::web_t::flag_t::ALIVE,
+					client::web_t::flag_t::REDIRECTS,
+					client::web_t::flag_t::VERIFY_SSL
+				});
 				// Устанавливаем адрес сертификата
 				this->_core.ca("./ca/cert.pem");
 				// Переводим клиента в асинхронный режим работы
@@ -368,20 +368,22 @@ int main(int argc, char * argv[]){
 	 * 3. Устанавливаем валидацию SSL сертификата
 	 * 4. Устанавливаем флаг поддержания активным подключение
 	 */
-	ws.mode(
-		(uint8_t) websocket_t::flag_t::ALIVE |
-		// (uint8_t) websocket_t::flag_t::NOT_STOP |
-		// (uint8_t) websocket_t::flag_t::WAIT_MESS |
-		(uint8_t) websocket_t::flag_t::TAKEOVER_CLIENT |
-		(uint8_t) websocket_t::flag_t::TAKEOVER_SERVER |
-		(uint8_t) websocket_t::flag_t::VERIFY_SSL
-	);
+	ws.mode({
+		websocket_t::flag_t::ALIVE,
+		// websocket_t::flag_t::NOT_STOP,
+		// websocket_t::flag_t::WAIT_MESS,
+		websocket_t::flag_t::TAKEOVER_CLIENT,
+		websocket_t::flag_t::TAKEOVER_SERVER,
+		websocket_t::flag_t::VERIFY_SSL
+	});
 	// Разрешаем простое чтение базы событий
 	// core.frequency(0);
 	// Устанавливаем простое чтение базы событий
 	// core.easily(true);
 	// Устанавливаем адрес сертификата
 	core.ca("./ca/cert.pem");
+	// Устанавливаем активный протокол подключения
+	core.proto(awh::engine_t::proto_t::HTTP2);
 	// Устанавливаем тип сокета unix-сокет
 	// core.family(awh::scheme_t::family_t::NIX);
 	// Устанавливаем тип сокета UDP TLS
@@ -415,7 +417,10 @@ int main(int argc, char * argv[]){
 	// Устанавливаем тип авторизации прокси-сервера
 	// ws.authTypeProxy(auth_t::type_t::DIGEST, auth_t::hash_t::MD5);
 	// Выполняем инициализацию WebSocket клиента
+	
 	ws.init("wss://stream.binance.com:9443/stream", awh::http_t::compress_t::DEFLATE);
+	// ws.init("wss://javascript.info/article/websocket/demo/hello", awh::http_t::compress_t::DEFLATE);
+
 	// ws.init("ws://127.0.0.1:2222", awh::http_t::compress_t::DEFLATE);
 	// ws.init("wss://mimi.anyks.net:2222", awh::http_t::compress_t::DEFLATE);
 	// ws.init("wss://92.63.110.56:2222", awh::http_t::compress_t::DEFLATE);

@@ -509,14 +509,14 @@ void awh::client::WEB::submit(const req_t & request) noexcept {
 		if(!request.entity.empty())
 			// Устанавливаем тело запроса
 			this->_http.body(request.entity);
+		// Получаем URL ссылку для выполнения запроса
+		this->_uri.append(this->_scheme.url, request.query);
 		// Получаем объект биндинга ядра TCP/IP
 		client::core_t * core = const_cast <client::core_t *> (this->_core);
 		// Если активирован режим работы с HTTP/2 протоколом
 		if(this->_http2.mode){
 			// Список заголовков для запроса
 			vector <nghttp2_nv> nva;
-			// Получаем URL ссылку для выполнения запроса
-			this->_uri.append(this->_scheme.url, request.query);
 			// Выполняем установку параметры ответа сервера
 			this->_http.query(awh::web_t::query_t(2.0f, request.method));
 			/**
@@ -662,8 +662,6 @@ void awh::client::WEB::submit(const req_t & request) noexcept {
 			}
 		// Если активирован режим работы с HTTP/1.1 протоколом
 		} else {
-			// Получаем URL ссылку для выполнения запроса
-			this->_uri.append(this->_scheme.url, request.query);
 			// Получаем бинарные данные WEB запроса
 			const auto & buffer = this->_http.request(this->_scheme.url, request.method);
 			// Если бинарные данные запроса получены
@@ -2142,28 +2140,6 @@ void awh::client::WEB::proxy(const string & uri, const scheme_t::family_t family
 	}
 }
 /**
- * mode Метод установки флага модуля
- * @param flag флаг модуля для установки
- */
-void awh::client::WEB::mode(const u_short flag) noexcept {
-	// Устанавливаем флаг анбиндинга ядра сетевого модуля
-	this->_unbind = !(flag & static_cast <uint8_t> (flag_t::NOT_STOP));
-	// Устанавливаем флаг поддержания автоматического подключения
-	this->_scheme.alive = (flag & static_cast <uint8_t> (flag_t::ALIVE));
-	// Устанавливаем флаг разрешающий выполнять редиректы
-	this->_redirects = (flag & static_cast <uint8_t> (flag_t::REDIRECTS));
-	// Устанавливаем флаг ожидания входящих сообщений
-	this->_scheme.wait = (flag & static_cast <uint8_t> (flag_t::WAIT_MESS));
-	// Устанавливаем флаг запрещающий вывод информационных сообщений
-	const_cast <client::core_t *> (this->_core)->noInfo(flag & static_cast <uint8_t> (flag_t::NOT_INFO));
-	// Выполняем установку флага проверки домена
-	const_cast <client::core_t *> (this->_core)->verifySSL(flag & static_cast <uint8_t> (flag_t::VERIFY_SSL));
-	// Если протокол подключения желательно установить HTTP/2
-	if(this->_core->proto() == engine_t::proto_t::HTTP2)
-		// Активируем персистентный запуск для работы пингов
-		const_cast <client::core_t *> (this->_core)->persistEnable(this->_scheme.alive);
-}
-/**
  * chunk Метод установки размера чанка
  * @param size размер чанка для установки
  */
@@ -2178,6 +2154,28 @@ void awh::client::WEB::chunk(const size_t size) noexcept {
 void awh::client::WEB::attempts(const uint8_t attempts) noexcept {
 	// Если количество попыток передано, устанавливаем его
 	if(attempts > 0) this->_attempts = attempts;
+}
+/**
+ * mode Метод установки флагов настроек модуля
+ * @param flags список флагов настроек модуля для установки
+ */
+void awh::client::WEB::mode(const set <flag_t> & flags) noexcept {
+	// Устанавливаем флаг анбиндинга ядра сетевого модуля
+	this->_unbind = (flags.count(flag_t::NOT_STOP) == 0);
+	// Устанавливаем флаг поддержания автоматического подключения
+	this->_scheme.alive = (flags.count(flag_t::ALIVE) > 0);
+	// Устанавливаем флаг разрешающий выполнять редиректы
+	this->_redirects = (flags.count(flag_t::REDIRECTS) > 0);
+	// Устанавливаем флаг ожидания входящих сообщений
+	this->_scheme.wait = (flags.count(flag_t::WAIT_MESS) > 0);
+	// Устанавливаем флаг запрещающий вывод информационных сообщений
+	const_cast <client::core_t *> (this->_core)->noInfo(flags.count(flag_t::NOT_INFO) > 0);
+	// Выполняем установку флага проверки домена
+	const_cast <client::core_t *> (this->_core)->verifySSL(flags.count(flag_t::VERIFY_SSL) > 0);
+	// Если протокол подключения желательно установить HTTP/2
+	if(this->_core->proto() == engine_t::proto_t::HTTP2)
+		// Активируем персистентный запуск для работы пингов
+		const_cast <client::core_t *> (this->_core)->persistEnable(this->_scheme.alive);
 }
 /**
  * userAgent Метод установки User-Agent для HTTP запроса
