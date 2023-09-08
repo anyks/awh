@@ -2666,15 +2666,55 @@ vector <pair<string, string>> awh::Http::request2(const uri_t::url_t & url, cons
 	// Выводим результат
 	return result;
 }
-/**
- * chunking Метод установки функции обратного вызова для получения чанков
+/** 
+ * on Метод установки функции вывода ответа сервера на ранее выполненный запрос
  * @param callback функция обратного вызова
  */
-void awh::Http::chunking(function <void (const vector <char> &, const Http *)> callback) noexcept {
+void awh::Http::on(function <void (const u_int, const string &)> callback) noexcept {
+	// Устанавливаем функции обратного вызова
+	this->web.on(callback);
+}
+/** 
+ * on Метод установки функции вывода полученного заголовка с сервера
+ * @param callback функция обратного вызова
+ */
+void awh::Http::on(function <void (const string &, const string &)> callback) noexcept {
+	// Устанавливаем функции обратного вызова
+	this->web.on(callback);
+}
+/**
+ * on Метод установки функции обратного вызова для получения чанков
+ * @param callback функция обратного вызова
+ */
+void awh::Http::on(function <void (const vector <char> &, const Http *)> callback) noexcept {
 	// Устанавливаем функцию обратного вызова
 	this->_fn = callback;
 	// Устанавливаем функцию обратного вызова для получения чанков
-	this->web.chunking(std::bind(&awh::Http::chunkingCallback, this, _1, _2));
+	this->web.on(std::bind(&awh::Http::chunkingCallback, this, _1, _2));
+}
+/** 
+ * on Метод установки функции вывода запроса клиента на выполненный запрос к серверу
+ * @param callback функция обратного вызова
+ */
+void awh::Http::on(function <void (const web_t::method_t, const string &)> callback) noexcept {
+	// Устанавливаем функции обратного вызова
+	this->web.on(callback);
+}
+/** 
+ * on Метод установки функции вывода полученного тела данных с сервера
+ * @param callback функция обратного вызова
+ */
+void awh::Http::on(function <void (const u_int, const string &, const vector <char> &)> callback) noexcept {
+	// Устанавливаем функции обратного вызова
+	this->web.on(callback);
+}
+/** 
+ * on Метод установки функции вывода полученных заголовков с сервера
+ * @param callback функция обратного вызова
+ */
+void awh::Http::on(function <void (const u_int, const string &, const unordered_multimap <string, string> &)> callback) noexcept {
+	// Устанавливаем функции обратного вызова
+	this->web.on(callback);
 }
 /**
  * chunk Метод установки размера чанка
@@ -2743,5 +2783,5 @@ awh::Http::Http(const fmk_t * fmk, const log_t * log, const uri_t * uri) noexcep
  _userAgent(HTTP_HEADER_AGENT), stath(stath_t::NONE), state(state_t::NONE),
  _compress(compress_t::NONE), httpType(web_t::hid_t::NONE), _fn(nullptr), fmk(fmk), log(log), uri(uri) {
 	// Устанавливаем функцию обратного вызова для получения чанков
-	this->web.chunking(std::bind(&awh::Http::chunkingCallback, this, _1, _2));
+	this->web.on(std::bind(&awh::Http::chunkingCallback, this, _1, _2));
 }

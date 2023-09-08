@@ -16,6 +16,55 @@
 #include <client/web.hpp>
 
 /**
+ * debugHttp2 Функция обратного вызова при получении отладочной информации
+ * @param format формат вывода отладочной информации
+ * @param args   список аргументов отладочной информации
+ */
+void awh::client::WEB::debugHttp2(const char * format, va_list args) noexcept {
+	// Буфер данных для логирования
+	string buffer(1024, '\0');
+	// Выполняем перебор всех аргументов
+	while(true){
+		// Создаем список аргументов
+		va_list args2;
+		// Копируем список аргументов
+		va_copy(args2, args);
+		// Выполняем запись в буфер данных
+		size_t res = vsnprintf(buffer.data(), buffer.size(), format, args2);
+		// Если результат получен
+		if((res >= 0) && (res < buffer.size())){
+			// Завершаем список аргументов
+			va_end(args);
+			// Завершаем список локальных аргументов
+			va_end(args2);
+			// Если результат не получен
+			if(res == 0)
+				// Выполняем сброс результата
+				buffer.clear();
+			// Выводим результат
+			else buffer.assign(buffer.begin(), buffer.begin() + res);
+			// Выходим из цикла
+			break;
+		}
+		// Размер буфера данных
+		size_t size = 0;
+		// Если данные не получены, увеличиваем буфер в два раза
+		if(res < 0)
+			// Увеличиваем размер буфера в два раза
+			size = (buffer.size() * 2);
+		// Увеличиваем размер буфера на один байт
+		else size = (res + 1);
+		// Очищаем буфер данных
+		buffer.clear();
+		// Выделяем память для буфера
+		buffer.resize(size);
+		// Завершаем список локальных аргументов
+		va_end(args2);
+	}
+	// Выводим отладочную информацию
+	cout << " \x1B[36m\x1B[1mDebug:\x1B[0m " << buffer << endl;
+}
+/**
  * onFrameHttp2 Функция обратного вызова при получении фрейма заголовков HTTP/2 с сервера
  * @param session объект сессии HTTP/2
  * @param frame   объект фрейма заголовков HTTP/2
@@ -30,10 +79,8 @@ int awh::client::WEB::onFrameHttp2(nghttp2_session * session, const nghttp2_fram
 	// Выполняем определение типа фрейма
 	switch(frame->hd.type){
 		// Если мы получили входящие данные тела ответа
-		case NGHTTP2_DATA:
-		// Если мы получили входящие данные заголовков ответа
-		case NGHTTP2_HEADERS: {
-			// Если сессия клиента совпадает с сессией полученных даных
+		case NGHTTP2_DATA: {
+			// Если сессия клиента совпадает с сессией полученных даных и передача данных завершена
 			if((frame->hd.flags & NGHTTP2_FLAG_END_STREAM) && (web->_http2.id == frame->hd.stream_id)){
 				// Выполняем коммит полученного результата
 				web->_http.commit();
@@ -42,44 +89,33 @@ int awh::client::WEB::onFrameHttp2(nghttp2_session * session, const nghttp2_fram
 				 */
 				#if defined(DEBUG_MODE)
 					{
-						// Получаем данные ответа
-						const auto & response = web->_http.response(true);
-						// Если параметры ответа получены
-						if(!response.empty()){
-							// Выводим параметры ответа
-							cout << string(response.begin(), response.end()) << endl;
-							// Если тело ответа существует
-							if(!web->_http.body().empty())
-								// Выводим сообщение о выводе чанка тела
-								cout << web->_fmk->format("<body %u>", web->_http.body().size()) << endl << endl;
-							// Иначе устанавливаем перенос строки
-							else cout << endl;
-						}
+						// Если тело ответа существует
+						if(!web->_http.body().empty())
+							// Выводим сообщение о выводе чанка тела
+							cout << web->_fmk->format("<body %u>", web->_http.body().size()) << endl << endl;
+						// Иначе устанавливаем перенос строки
+						else cout << endl;
 					}
 				#endif
-				// Результат работы функции
-				res_t result;
+				// Объект работы с функциями обратного вызова
+				fn_t callback(web->_log);
 				// Получаем параметры запроса
-				auto query = web->_http.query();
+				const auto & query = web->_http.query();
 				// Получаем объект запроса
 				req_t & request = web->_requests.front();
-				// Получаем объект ответа
-				res_t & response = web->_responses.front();
-				// Устанавливаем код ответа
-				response.code = query.code;
-				// Устанавливаем сообщение ответа
-				response.message = query.message;
 				// Получаем статус ответа
 				awh::http_t::stath_t status = web->_http.getAuth();
 				// Если выполнять редиректы запрещено
 				if(!web->_redirects && (status == awh::http_t::stath_t::RETRY)){
 					// Если нужно произвести запрос заново
-					if((response.code == 201) || (response.code == 301) ||
-					   (response.code == 302) || (response.code == 303) ||
-					   (response.code == 307) || (response.code == 308))
+					if((query.code == 201) || (query.code == 301) ||
+					   (query.code == 302) || (query.code == 303) ||
+					   (query.code == 307) || (query.code == 308))
 							// Запрещаем выполнять редирект
 							status = awh::http_t::stath_t::GOOD;
 				}
+				// Получаем объект биндинга ядра TCP/IP
+				client::core_t * core = const_cast <client::core_t *> (web->_core);
 				// Выполняем анализ результата авторизации
 				switch(static_cast <uint8_t> (status)){
 					// Если нужно попытаться ещё раз
@@ -92,16 +128,18 @@ int awh::client::WEB::onFrameHttp2(nghttp2_session * session, const nghttp2_fram
 							if(!url.empty()){
 								// Увеличиваем количество попыток
 								request.attempt++;
+								// Выполняем проверку соответствие протоколов
+								const bool schema = (web->_fmk->compare(url.schema, web->_scheme.url.schema));
 								// Устанавливаем новый адрес запроса
 								web->_scheme.url = std::forward <const uri_t::url_t> (url);
 								// Получаем параметры адреса запроса
 								request.query = web->_uri.query(web->_scheme.url);
 								// Если соединение является постоянным
-								if(web->_http.isAlive())
+								if(schema && web->_http.isAlive())
 									// Отправляем повторный запрос
 									web->send();
 								// Если нам необходимо отключиться
-								else const_cast <client::core_t *> (web->_core)->close(web->_aid);
+								else core->close(web->_aid);
 								// Завершаем работу
 								return 0;
 							}
@@ -111,73 +149,90 @@ int awh::client::WEB::onFrameHttp2(nghttp2_session * session, const nghttp2_fram
 					} break;
 					// Если запрос выполнен удачно
 					case static_cast <uint8_t> (awh::http_t::stath_t::GOOD): {
-						// Получаем объект ответа
-						result = response;
 						// Выполняем сброс количества попыток
 						request.attempt = 0;
-						// Если функция обратного вызова установлена, выводим сообщение
-						if(web->_callback.message != nullptr){
-							// Получаем тело запроса
-							const auto & entity = web->_http.body();
-							// Получаем заголовки ответа
-							const auto & headers = web->_http.headers();
-							// Устанавливаем тело ответа
-							result.entity.assign(entity.begin(), entity.end());
-							// Устанавливаем заголовки ответа
-							result.headers = std::forward <const unordered_multimap <string, string>> (headers);
-						}
+						// Если функция обратного вызова на вывод полученного тела сообщения с сервера установлена
+						if(web->_callback.is("entity"))
+							// Устанавливаем полученную функцию обратного вызова
+							callback.set <void (const u_int, const string, const vector <char>)> ("entity", web->_callback.get <void (const u_int, const string, const vector <char>)> ("entity"), query.code, query.message, web->_http.body());
 						// Устанавливаем размер стопбайт
 						if(!web->_http.isAlive()){
-							// Выполняем очистку оставшихся данных
-							web->_buffer.clear();
 							// Завершаем работу
-							const_cast <client::core_t *> (web->_core)->close(web->_aid);
+							core->close(web->_aid);
 							// Выполняем завершение работы
 							goto Stop;
 						}
-						// Выполняем сброс состояния HTTP парсера
-						web->_http.reset();
-						// Выполняем очистку параметров HTTP запроса
-						web->_http.clear();
 						// Если объект ещё не удалён
 						if(!web->_requests.empty())
 							// Выполняем удаление объекта запроса
 							web->_requests.erase(web->_requests.begin());
-						// Если объект ещё не удалён
-						if(!web->_responses.empty())
-							// Выполняем удаление объекта ответа
-							web->_responses.erase(web->_responses.begin());
 						// Выполняем завершение работы
 						goto Stop;
 					} break;
 					// Если запрос неудачный
-					case static_cast <uint8_t> (awh::http_t::stath_t::FAULT):
+					case static_cast <uint8_t> (awh::http_t::stath_t::FAULT): {
 						// Устанавливаем флаг принудительной остановки
 						web->_stopped = true;
-					break;
+						// Если возникла ошибка выполнения запроса
+						if((query.code >= 400) && (query.code < 500)){
+							// Если функция обратного вызова на вывод полученного тела сообщения с сервера установлена
+							if(web->_callback.is("entity"))
+								// Устанавливаем полученную функцию обратного вызова
+								callback.set <void (const u_int, const string, const vector <char>)> ("entity", web->_callback.get <void (const u_int, const string, const vector <char>)> ("entity"), query.code, query.message, web->_http.body());
+							// Если объект ещё не удалён
+							if(!web->_requests.empty())
+								// Выполняем удаление объекта запроса
+								web->_requests.erase(web->_requests.begin());
+							// Выполняем завершение работы
+							goto Stop;
+						}
+					} break;
 				}
-				// Если функция обратного вызова установлена, выводим сообщение
-				if(web->_callback.message != nullptr){
-					// Получаем объект ответа
-					result = response;
-					// Получаем тело запроса
-					const auto & entity = web->_http.body();
-					// Получаем заголовки ответа
-					const auto & headers = web->_http.headers();
-					// Устанавливаем тело ответа
-					result.entity.assign(entity.begin(), entity.end());
-					// Устанавливаем заголовки ответа
-					result.headers = std::forward <const unordered_multimap <string, string>> (headers);
-					// Завершаем работу
-					const_cast <client::core_t *> (web->_core)->close(web->_aid);
+				// Если функция обратного вызова на вывод полученного тела сообщения с сервера установлена
+				if(web->_callback.is("entity"))
+					// Устанавливаем полученную функцию обратного вызова
+					callback.set <void (const u_int, const string, const vector <char>)> ("entity", web->_callback.get <void (const u_int, const string, const vector <char>)> ("entity"), query.code, query.message, web->_http.body());
 				// Завершаем работу
-				} else const_cast <client::core_t *> (web->_core)->close(web->_aid);
+				core->close(web->_aid);
 				// Устанавливаем метку завершения работы
 				Stop:
 				// Если функция обратного вызова установлена, выводим сообщение
-				if(web->_callback.message != nullptr)
-					// Выполняем функцию обратного вызова
-					web->receive(std::move(result));
+				if(callback.is("entity"))
+					// Выполняем функцию обратного вызова дисконнекта
+					callback.bind <const u_int, const string, const vector <char>> ("entity");
+				// Если подключение выполнено и список запросов не пустой
+				if((web->_aid > 0) && !web->_requests.empty())
+					// Выполняем запрос на удалённый сервер
+					web->submit(web->_requests.front());
+			}
+		} break;
+		// Если мы получили входящие данные заголовков ответа
+		case NGHTTP2_HEADERS: {
+			// Если сессия клиента совпадает с сессией полученных даных и передача заголовков завершена
+			if((frame->hd.flags & NGHTTP2_FLAG_END_HEADERS) && (web->_http2.id == frame->hd.stream_id)){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if defined(DEBUG_MODE)
+					{
+						// Получаем данные ответа
+						const auto & response = web->_http.response(true);
+						// Если параметры ответа получены
+						if(!response.empty())
+							// Выводим параметры ответа
+							cout << string(response.begin(), response.end()) << endl;
+					}
+				#endif
+				// Получаем параметры запроса
+				const auto & query = web->_http.query();
+				// Если функция обратного вызова на вывод ответа сервера на ранее выполненный запрос установлена
+				if(web->_callback.is("response"))
+					// Выводим функцию обратного вызова
+					web->_callback.call <const u_int, const string &> ("response", query.code, query.message);
+				// Если функция обратного вызова на вывод полученных заголовков с сервера установлена
+				if(web->_callback.is("headers"))
+					// Выводим функцию обратного вызова
+					web->_callback.call <const u_int, const string &, const unordered_multimap <string, string> &> ("headers", query.code, query.message, web->_http.headers());
 			}
 		} break;
 	}
@@ -304,9 +359,14 @@ int awh::client::WEB::onChunkHttp2(nghttp2_session * session, const uint8_t flag
 	// Получаем объект HTTP-клиента
 	web_t * web = reinterpret_cast <web_t *> (ctx);
 	// Если идентификатор сессии клиента совпадает
-	if(web->_http2.id == sid)
+	if(web->_http2.id == sid){
+		// Если функция обратного вызова на перехват входящих чанков установлена
+		if(web->_callback.is("chunking"))
+			// Выводим функцию обратного вызова
+			web->_callback.call <const vector <char> &, const awh::http_t *> ("chunking", vector <char> (buffer, buffer + size), &web->_http);
 		// Добавляем полученный чанк в тело данных
-		web->_http.body(vector <char> (buffer, buffer + size));
+		else web->_http.body(vector <char> (buffer, buffer + size));
+	}
 	// Выводим результат
 	return 0;
 }
@@ -328,6 +388,8 @@ int awh::client::WEB::onBeginHeadersHttp2(nghttp2_session * session, const nghtt
 		case NGHTTP2_HEADERS:{
 			// Если сессия клиента совпадает с сессией полученных даных
 			if((frame->headers.cat == NGHTTP2_HCAT_RESPONSE) && (web->_http2.id == frame->hd.stream_id)){
+				// Выполняем очистку параметров HTTP запроса
+				web->_http.clear();
 				/**
 				 * Если включён режим отладки
 				 */
@@ -366,9 +428,18 @@ int awh::client::WEB::onHeaderHttp2(nghttp2_session * session, const nghttp2_fra
 		// Если мы получили входящие данные заголовков ответа
 		case NGHTTP2_HEADERS:{
 			// Если сессия клиента совпадает с сессией полученных даных
-			if((frame->headers.cat == NGHTTP2_HCAT_RESPONSE) && (web->_http2.id == frame->hd.stream_id))
+			if((frame->headers.cat == NGHTTP2_HCAT_RESPONSE) && (web->_http2.id == frame->hd.stream_id)){
+				// Полкючаем ключ заголовка
+				const string keyHeader((const char *) key, keySize);
+				// Получаем значение заголовка
+				const string valHeader((const char *) val, valSize);
 				// Устанавливаем полученные заголовки
-				web->_http.header2(string((const char *) key, keySize), string((const char *) val, valSize));
+				web->_http.header2(keyHeader, valHeader);
+				// Если функция обратного вызова на полученного заголовка с сервера установлена
+				if(web->_callback.is("header"))
+					// Выводим функцию обратного вызова
+					web->_callback.call <const string &, const string &> ("header", keyHeader, valHeader);
+			}
 		} break;
 	}
 	// Выводим результат
@@ -457,7 +528,14 @@ ssize_t awh::client::WEB::readHttp2(nghttp2_session * session, const int32_t sid
  */
 void awh::client::WEB::chunking(const vector <char> & chunk, const awh::http_t * http) noexcept {
 	// Если данные получены, формируем тело сообщения
-	if(!chunk.empty()) const_cast <awh::http_t *> (http)->body(chunk);
+	if(!chunk.empty()){
+		// Выполняем добавление полученного чанка в тело ответа
+		const_cast <awh::http_t *> (http)->body(chunk);
+		// Если функция обратного вызова на вывода полученного чанка бинарных данных с сервера установлена
+		if(this->_callback.is("chunks"))
+			// Выводим функцию обратного вызова
+			this->_callback.call <const vector <char> &> ("chunks", chunk);
+	}
 }
 /**
  * ping Метод выполнения пинга сервера
@@ -696,20 +774,6 @@ void awh::client::WEB::submit(const req_t & request) noexcept {
 	}
 }
 /**
- * receive Метод получения результата запроса
- * @param response объект ответа полученного с удалённого сервера
- */
-void awh::client::WEB::receive(const res_t & response) noexcept {
-	// Если функция обратного вызова установлена, выводим сообщение
-	if(this->_callback.message != nullptr)
-		// Выполняем функцию обратного вызова
-		this->_callback.message(response, this);
-	// Если подключение выполнено и список запросов не пустой
-	if((this->_aid > 0) && !this->_requests.empty())
-		// Выполняем запрос на удалённый сервер
-		this->submit(this->_requests.front());
-}
-/**
  * openCallback Метод обратного вызова при запуске работы
  * @param sid  идентификатор схемы сети
  * @param core объект сетевого ядра
@@ -740,10 +804,10 @@ void awh::client::WEB::eventsCallback(const awh::core_t::status_t status, awh::c
 			// Деактивируем флаг работы с протоколом HTTP/2
 			this->_http2.mode = false;
 		}
-		// Если функция обратного вызова установлена
-		if(this->_callback.events != nullptr)
-			// Выполняем функцию обратного вызова
-			this->_callback.events(status, core);
+		// Если функция получения событий запуска и остановки сетевого ядра установлена
+		if(this->_callback.is("events"))
+			// Выводим функцию обратного вызова
+			this->_callback.call <const awh::core_t::status_t, awh::core_t *> ("events", status, core);
 	}
 }
 /**
@@ -942,30 +1006,24 @@ void awh::client::WEB::actionOpen() noexcept {
  * actionRead Метод обработки экшена чтения с сервера
  */
 void awh::client::WEB::actionRead() noexcept {
-	// Результат работы функции
-	res_t result;
 	// Флаг удачного получения данных
 	bool receive = false;
 	// Флаг завершения работы
 	bool completed = false;
+	// Объект работы с функциями обратного вызова
+	fn_t callback(this->_log);
+	// Получаем объект запроса
+	req_t & request = this->_requests.front();
 	// Получаем объект биндинга ядра TCP/IP
 	client::core_t * core = const_cast <client::core_t *> (this->_core);
 	// Выполняем обработку полученных данных
 	while(!this->_active){
-		// Получаем объект запроса
-		req_t & request = this->_requests.front();
-		// Получаем объект ответа
-		res_t & response = this->_responses.front();
 		// Выполняем парсинг полученных данных
 		size_t bytes = this->_http.parse(this->_buffer.data(), this->_buffer.size());
 		// Если все данные получены
-		if((response.ok = completed = this->_http.isEnd())){
+		if((completed = this->_http.isEnd())){
 			// Получаем параметры запроса
-			auto query = this->_http.query();
-			// Устанавливаем код ответа
-			response.code = query.code;
-			// Устанавливаем сообщение ответа
-			response.message = query.message;
+			const auto & query = this->_http.query();
 			/**
 			 * Если включён режим отладки
 			 */
@@ -993,9 +1051,9 @@ void awh::client::WEB::actionRead() noexcept {
 			// Если выполнять редиректы запрещено
 			if(!this->_redirects && (status == awh::http_t::stath_t::RETRY)){
 				// Если нужно произвести запрос заново
-				if((response.code == 201) || (response.code == 301) ||
-				   (response.code == 302) || (response.code == 303) ||
-				   (response.code == 307) || (response.code == 308))
+				if((query.code == 201) || (query.code == 301) ||
+				   (query.code == 302) || (query.code == 303) ||
+				   (query.code == 307) || (query.code == 308))
 						// Запрещаем выполнять редирект
 						status = awh::http_t::stath_t::GOOD;
 			}
@@ -1011,6 +1069,8 @@ void awh::client::WEB::actionRead() noexcept {
 						if(!url.empty()){
 							// Увеличиваем количество попыток
 							request.attempt++;
+							// Выполняем проверку соответствие протоколов
+							const bool schema = (this->_fmk->compare(url.schema, this->_scheme.url.schema));
 							// Устанавливаем новый адрес запроса
 							this->_scheme.url = std::forward <const uri_t::url_t> (url);
 							// Получаем параметры адреса запроса
@@ -1022,7 +1082,7 @@ void awh::client::WEB::actionRead() noexcept {
 								// Выполняем сброс экшена
 								this->_action = action_t::NONE;
 							// Если соединение является постоянным
-							if(this->_http.isAlive())
+							if(schema && this->_http.isAlive())
 								// Отправляем повторный запрос
 								this->send();
 							// Если нам необходимо отключиться
@@ -1036,21 +1096,12 @@ void awh::client::WEB::actionRead() noexcept {
 				} break;
 				// Если запрос выполнен удачно
 				case static_cast <uint8_t> (awh::http_t::stath_t::GOOD): {
-					// Получаем объект ответа
-					result = response;
 					// Выполняем сброс количества попыток
 					request.attempt = 0;
-					// Если функция обратного вызова установлена, выводим сообщение
-					if(this->_callback.message != nullptr){
-						// Получаем тело запроса
-						const auto & entity = this->_http.body();
-						// Получаем заголовки ответа
-						const auto & headers = this->_http.headers();
-						// Устанавливаем тело ответа
-						result.entity.assign(entity.begin(), entity.end());
-						// Устанавливаем заголовки ответа
-						result.headers = std::forward <const unordered_multimap <string, string>> (headers);
-					}
+					// Если функция обратного вызова на вывод полученного тела сообщения с сервера установлена
+					if(this->_callback.is("entity"))
+						// Устанавливаем полученную функцию обратного вызова
+						callback.set <void (const u_int, const string, const vector <char>)> ("entity", this->_callback.get <void (const u_int, const string, const vector <char>)> ("entity"), query.code, query.message, this->_http.body());
 					// Устанавливаем размер стопбайт
 					if(!this->_http.isAlive()){
 						// Выполняем очистку оставшихся данных
@@ -1060,45 +1111,40 @@ void awh::client::WEB::actionRead() noexcept {
 						// Выполняем завершение работы
 						goto Stop;
 					}
-					// Выполняем сброс состояния HTTP парсера
-					this->_http.reset();
-					// Выполняем очистку параметров HTTP запроса
-					this->_http.clear();
 					// Если объект ещё не удалён
 					if(!this->_requests.empty())
 						// Выполняем удаление объекта запроса
 						this->_requests.erase(this->_requests.begin());
-					// Если объект ещё не удалён
-					if(!this->_responses.empty())
-						// Выполняем удаление объекта ответа
-						this->_responses.erase(this->_responses.begin());
 					// Завершаем обработку
 					goto Next;
 				} break;
 				// Если запрос неудачный
-				case static_cast <uint8_t> (awh::http_t::stath_t::FAULT):
+				case static_cast <uint8_t> (awh::http_t::stath_t::FAULT): {
 					// Устанавливаем флаг принудительной остановки
 					this->_stopped = true;
-				break;
+					// Если возникла ошибка выполнения запроса
+					if((query.code >= 400) && (query.code < 500)){
+						// Если функция обратного вызова на вывод полученного тела сообщения с сервера установлена
+						if(this->_callback.is("entity"))
+							// Устанавливаем полученную функцию обратного вызова
+							callback.set <void (const u_int, const string, const vector <char>)> ("entity", this->_callback.get <void (const u_int, const string, const vector <char>)> ("entity"), query.code, query.message, this->_http.body());
+						// Если объект ещё не удалён
+						if(!this->_requests.empty())
+							// Выполняем удаление объекта запроса
+							this->_requests.erase(this->_requests.begin());
+						// Завершаем обработку
+						goto Next;
+					}
+				} break;
 			}
 			// Выполняем очистку оставшихся данных
 			this->_buffer.clear();
-			// Если функция обратного вызова установлена, выводим сообщение
-			if(this->_callback.message != nullptr){
-				// Получаем объект ответа
-				result = response;
-				// Получаем тело запроса
-				const auto & entity = this->_http.body();
-				// Получаем заголовки ответа
-				const auto & headers = this->_http.headers();
-				// Устанавливаем тело ответа
-				result.entity.assign(entity.begin(), entity.end());
-				// Устанавливаем заголовки ответа
-				result.headers = std::forward <const unordered_multimap <string, string>> (headers);
-				// Завершаем работу
-				core->close(this->_aid);
+			// Если функция обратного вызова на вывод полученного тела сообщения с сервера установлена
+			if(this->_callback.is("entity"))
+				// Устанавливаем полученную функцию обратного вызова
+				callback.set <void (const u_int, const string, const vector <char>)> ("entity", this->_callback.get <void (const u_int, const string, const vector <char>)> ("entity"), query.code, query.message, this->_http.body());
 			// Завершаем работу
-			} else core->close(this->_aid);
+			core->close(this->_aid);
 			// Выполняем завершение работы
 			goto Stop;
 		}
@@ -1121,10 +1167,17 @@ void awh::client::WEB::actionRead() noexcept {
 	if(this->_action == action_t::READ)
 		// Выполняем сброс экшена
 		this->_action = action_t::NONE;
-	// Если функция обратного вызова установлена, выводим сообщение
-	if(completed && (this->_callback.message != nullptr))
-		// Выполняем функцию обратного вызова
-		this->receive(std::move(result));
+	// Если получение данных выполнено
+	if(completed){
+		// Если функция обратного вызова установлена, выводим сообщение
+		if(callback.is("entity"))
+			// Выполняем функцию обратного вызова дисконнекта
+			callback.bind <const u_int, const string, const vector <char>> ("entity");
+		// Если подключение выполнено и список запросов не пустой
+		if((this->_aid > 0) && !this->_requests.empty())
+			// Выполняем запрос на удалённый сервер
+			this->submit(this->_requests.front());
+	}
 }
 /**
  * actionConnect Метод обработки экшена подключения к серверу
@@ -1136,6 +1189,13 @@ void awh::client::WEB::actionConnect() noexcept {
 		this->_action = action_t::NONE;
 	// Если протокол подключения является HTTP/2
 	if(!this->_http2.mode && (this->_core->proto(this->_aid) == engine_t::proto_t::HTTP2)){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if defined(DEBUG_MODE)
+			// Выполняем установку функции для вывода отладочной информации
+			nghttp2_set_debug_vprintf_callback(&web_t::debugHttp2);
+		#endif
 		// Создаём объект функций обратного вызова
 		nghttp2_session_callbacks * callbacks;
 		// Выполняем инициализацию сессию функций обратного вызова
@@ -1180,25 +1240,25 @@ void awh::client::WEB::actionConnect() noexcept {
 		// Выполняем активацию работы с протоколом HTTP/2
 		this->_http2.mode = !this->_http2.mode;
 	}
-	// Если функция обратного вызова существует
-	if(this->_callback.active != nullptr)
-		// Выполняем функцию обратного вызова
-		this->_callback.active(mode_t::CONNECT, this);
+	// Если функция обратного вызова при подключении/отключении установлена
+	if(this->_callback.is("active"))
+		// Выводим функцию обратного вызова
+		this->_callback.call <const mode_t, web_t *> ("active", mode_t::CONNECT, this);
 }
 /**
  * actionDisconnect Метод обработки экшена отключения от сервера
  */
 void awh::client::WEB::actionDisconnect() noexcept {
 	// Если список ответов получен
-	if(!this->_responses.empty() && !this->_requests.empty()){
-		// Получаем объект ответа
-		const res_t & response = this->_responses.front();
+	if(!this->_requests.empty()){
+		// Получаем параметры запроса
+		const auto & query = this->_http.query();
 		// Если нужно произвести запрос заново
-		if(!this->_stopped && ((response.code == 201) || (response.code == 301) ||
-		   (response.code == 302) || (response.code == 303) || (response.code == 307) ||
-		   (response.code == 308) || (response.code == 401) || (response.code == 407))){
+		if(!this->_stopped && ((query.code == 201) || (query.code == 301) ||
+		   (query.code == 302) || (query.code == 303) || (query.code == 307) ||
+		   (query.code == 308) || (query.code == 401) || (query.code == 407))){
 			// Если статус ответа требует произвести авторизацию или заголовок перенаправления указан
-			if((response.code == 401) || (response.code == 407) || this->_http.isHeader("location")){
+			if((query.code == 401) || (query.code == 407) || this->_http.isHeader("location")){
 				// Получаем новый адрес запроса
 				const uri_t::url_t & url = this->_http.getUrl();
 				// Если адрес запроса получен
@@ -1223,26 +1283,22 @@ void awh::client::WEB::actionDisconnect() noexcept {
 	}
 	// Если подключение является постоянным
 	if(this->_scheme.alive){
+		// Выполняем очистку оставшихся данных
+		this->_buffer.clear();
 		// Если экшен соответствует, выполняем его сброс
 		if(this->_action == action_t::DISCONNECT)
 			// Выполняем сброс экшена
 			this->_action = action_t::NONE;
-		// Если функция обратного вызова установлена
-		if(this->_callback.active != nullptr)
-			// Выполняем функцию обратного вызова
-			this->_callback.active(mode_t::DISCONNECT, this);
+		// Если функция обратного вызова при подключении/отключении установлена
+		if(this->_callback.is("active"))
+			// Выводим функцию обратного вызова
+			this->_callback.call <const mode_t, web_t *> ("active", mode_t::DISCONNECT, this);
 	// Если подключение не является постоянным
 	} else {
-		// Получаем объект ответа
-		res_t response = (!this->_responses.empty() ? std::forward <res_t> (this->_responses.front()) : res_t());
-		// Если список ответов не получен, значит он был выведен ранее
-		if(this->_responses.empty())
-			// Устанавливаем код сообщения по умолчанию
-			response.code = 1;
+		// Выполняем очистку оставшихся данных
+		this->_buffer.clear();
 		// Выполняем очистку списка запросов
 		this->_requests.clear();
-		// Выполняем очистку списка ответов
-		this->_responses.clear();
 		// Очищаем адрес сервера
 		this->_scheme.url.clear();
 		// Выполняем сброс параметров запроса
@@ -1255,17 +1311,10 @@ void awh::client::WEB::actionDisconnect() noexcept {
 		if(this->_action == action_t::DISCONNECT)
 			// Выполняем сброс экшена
 			this->_action = action_t::NONE;
-		// Если функция обратного вызова установлена, выводим сообщение
-		if((response.code == 0) && (this->_callback.message != nullptr)){
-			// Устанавливаем код ответа сервера
-			response.code = 500;
-			// Выполняем функцию обратного вызова
-			this->receive(std::move(response));
-		}
-		// Если функция обратного вызова существует
-		if(this->_callback.active != nullptr)
-			// Выполняем функцию обратного вызова
-			this->_callback.active(mode_t::DISCONNECT, this);
+		// Если функция обратного вызова при подключении/отключении установлена
+		if(this->_callback.is("active"))
+			// Выводим функцию обратного вызова
+			this->_callback.call <const mode_t, web_t *> ("active", mode_t::DISCONNECT, this);
 	}
 }
 /**
@@ -1312,40 +1361,34 @@ void awh::client::WEB::actionProxyRead() noexcept {
 						return;
 					// Если рукопожатие не выполнено
 					} else {
-						// Получаем объект ответа
-						res_t & response = this->_responses.front();
 						// Устанавливаем код ответа
-						response.code = this->_scheme.proxy.socks5.code();
+						const u_int code = this->_scheme.proxy.socks5.code();
 						// Устанавливаем сообщение ответа
-						response.message = this->_scheme.proxy.socks5.message(response.code);
+						const string & message = this->_scheme.proxy.socks5.message(code);
 						/**
 						 * Если включён режим отладки
 						 */
 						#if defined(DEBUG_MODE)
 							// Если заголовки получены
-							if(!response.message.empty()){
+							if(!message.empty()){
 								// Данные WEB ответа
-								const string & message = this->_fmk->format("SOCKS5 %u %s\r\n", response.code, response.message.c_str());
+								const string & answer = this->_fmk->format("SOCKS5 %u %s\r\n", code, message.c_str());
 								// Выводим заголовок ответа
 								cout << "\x1B[33m\x1B[1m^^^^^^^^^ RESPONSE PROXY ^^^^^^^^^\x1B[0m" << endl;
 								// Выводим параметры ответа
-								cout << string(message.begin(), message.end()) << endl;
+								cout << string(answer.begin(), answer.end()) << endl;
 							}
 						#endif
 						// Если экшен соответствует, выполняем его сброс
 						if(this->_action == action_t::PROXY_READ)
 							// Выполняем сброс экшена
 							this->_action = action_t::NONE;
-						// Если функция обратного вызова установлена, выводим сообщение
-						if(this->_callback.message != nullptr){
-							// Получаем результат ответа
-							res_t result = response;
-							// Завершаем работу
-							core->close(this->_aid);
-							// Выполняем функцию обратного вызова
-							this->receive(std::move(result));
+						// Если функция обратного вызова на вывод ответа сервера на ранее выполненный запрос установлена
+						if(this->_callback.is("response"))
+							// Выводим функцию обратного вызова
+							this->_callback.call <const u_int, const string &> ("response", code, message);
 						// Завершаем работу
-						} else core->close(this->_aid);
+						core->close(this->_aid);
 						// Завершаем работу
 						return;
 					}
@@ -1360,16 +1403,6 @@ void awh::client::WEB::actionProxyRead() noexcept {
 			if(this->_scheme.proxy.http.isEnd()){
 				// Выполняем очистку буфера данных
 				this->_buffer.clear();
-				// Получаем параметры запроса
-				const auto & query = this->_scheme.proxy.http.query();
-				// Получаем объект запроса
-				req_t & request = this->_requests.front();
-				// Получаем объект ответа
-				res_t & response = this->_responses.front();
-				// Устанавливаем код ответа
-				response.code = query.code;
-				// Устанавливаем сообщение ответа
-				response.message = query.message;
 				/**
 				 * Если включён режим отладки
 				 */
@@ -1390,14 +1423,20 @@ void awh::client::WEB::actionProxyRead() noexcept {
 						}
 					}
 				#endif
+				// Объект работы с функциями обратного вызова
+				fn_t callback(this->_log);
+				// Получаем объект запроса
+				req_t & request = this->_requests.front();
+				// Получаем параметры запроса
+				const auto & query = this->_scheme.proxy.http.query();
 				// Получаем статус ответа
 				awh::http_t::stath_t status = this->_scheme.proxy.http.getAuth();
 				// Если выполнять редиректы запрещено
 				if(!this->_redirects && (status == awh::http_t::stath_t::RETRY)){
 					// Если нужно произвести запрос заново
-					if((response.code == 201) || (response.code == 301) ||
-					   (response.code == 302) || (response.code == 303) ||
-					   (response.code == 307) || (response.code == 308))
+					if((query.code == 201) || (query.code == 301) ||
+					   (query.code == 302) || (query.code == 303) ||
+					   (query.code == 307) || (query.code == 308))
 						// Запрещаем выполнять редирект
 						status = awh::http_t::stath_t::GOOD;
 				}
@@ -1448,28 +1487,30 @@ void awh::client::WEB::actionProxyRead() noexcept {
 					case static_cast <uint8_t> (awh::http_t::stath_t::FAULT): {
 						// Устанавливаем флаг принудительной остановки
 						this->_stopped = true;
-						// Получаем тело запроса
-						const auto & entity = this->_scheme.proxy.http.body();
-						// Устанавливаем заголовки ответа
-						response.headers = this->_scheme.proxy.http.headers();
-						// Устанавливаем тело ответа
-						response.entity.assign(entity.begin(), entity.end());
+						// Если функция обратного вызова на вывод полученного тела сообщения с сервера установлена
+						if(this->_callback.is("entity"))
+							// Устанавливаем полученную функцию обратного вызова
+							callback.set <void (const u_int, const string, const vector <char>)> ("entity", this->_callback.get <void (const u_int, const string, const vector <char>)> ("entity"), query.code, query.message, this->_scheme.proxy.http.body());
+						// Если функция обратного вызова на вывод полученных заголовков с сервера установлена
+						if(this->_callback.is("headers"))
+							// Выводим функцию обратного вызова
+							callback.set <void (const u_int, const string, const unordered_multimap <string, string>)> ("headers", this->_callback.get <void (const u_int, const string, const unordered_multimap <string, string>)> ("headers"), query.code, query.message, this->_scheme.proxy.http.headers());
 					} break;
 				}
 				// Если экшен соответствует, выполняем его сброс
 				if(this->_action == action_t::PROXY_READ)
 					// Выполняем сброс экшена
 					this->_action = action_t::NONE;
-				// Если функция обратного вызова установлена, выводим сообщение
-				if(this->_callback.message != nullptr){
-					// Получаем результат ответа
-					res_t result = response;
-					// Завершаем работу
-					core->close(this->_aid);
-					// Выполняем функцию обратного вызова
-					this->receive(std::move(result));
+				// Если функция обратного вызова на вывод полученных заголовков установлена, выводим сообщение
+				if(callback.is("headers"))
+					// Выполняем функцию обратного вызова дисконнекта
+					callback.bind <const u_int, const string, const unordered_multimap <string, string>> ("headers");
+				// Если функция обратного вызова на вывод полученного тела установлена, выводим сообщение
+				if(callback.is("entity"))
+					// Выполняем функцию обратного вызова дисконнекта
+					callback.bind <const u_int, const string, const vector <char>> ("entity");
 				// Завершаем работу
-				} else core->close(this->_aid);
+				core->close(this->_aid);
 				// Завершаем работу
 				return;
 			}
@@ -1817,8 +1858,15 @@ unordered_multimap <string, string> awh::client::WEB::OPTIONS(const uri_t::url_t
 void awh::client::WEB::REQUEST(const awh::web_t::method_t method, const uri_t::url_t & url, vector <char> & entity, unordered_multimap <string, string> & headers) noexcept {
 	// Если данные запроса переданы
 	if(!url.empty()){
+		// Подписываемся на получение сообщения сервера
+		this->on([this](const u_int code, const string & message) noexcept -> void {
+			// Если возникла ошибка, выводим сообщение
+			if(code >= 300)
+				// Выводим сообщение о неудачном запросе
+				this->_log->print("request failed: %u %s", log_t::flag_t::WARNING, code, message.c_str());
+		});
 		// Подписываемся на событие коннекта и дисконнекта клиента
-		this->on([method, &url, &entity, &headers](const web_t::mode_t mode, web_t * web) noexcept {
+		this->on([method, &url, &entity, &headers](const web_t::mode_t mode, web_t * web) noexcept -> void {
 			// Если подключение выполнено
 			if(mode == client::web_t::mode_t::CONNECT){
 				// Создаём объект запроса
@@ -1832,25 +1880,27 @@ void awh::client::WEB::REQUEST(const awh::web_t::method_t method, const uri_t::u
 				// Запоминаем переданные заголовки
 				req.headers = std::forward <const unordered_multimap <string, string>> (headers);
 				// Выполняем запрос на сервер
-				web->send({std::forward <req_t> (req)});
+				web->send({req, req});
 			// Выполняем остановку работы модуля
 			} else web->stop();
 		});
-		// Подписываемся на событие получения сообщения
-		this->on([&entity, &headers](const res_t & res, web_t * web) noexcept {
-			// Проверяем на наличие ошибок
-			if(res.code >= 300)
-				// Выводим сообщение о неудачном запросе
-				web->_log->print("request failed: %u %s", log_t::flag_t::WARNING, res.code, res.message.c_str());
+		// Подписываемся на событие получения тела ответа
+		this->on([&entity, this](const u_int code, const string & message, const vector <char> & data) noexcept -> void {
 			// Если тело ответа получено
-			if(!res.entity.empty()){
+			if(!data.empty())
 				// Формируем результат ответа
-				entity = std::forward <const vector <char>> (res.entity);
-				// Формируем список заголовков
-				headers = std::forward <const unordered_multimap <string, string>> (res.headers);
-			}
+				entity.assign(data.begin(), data.end());
+			// Выполняем очистку тела запроса
+			else entity.clear();
 			// Выполняем остановку
-			web->stop();
+			this->stop();
+		});
+		// Подписываем на событие получения заголовков ответа
+		this->on([&headers, this](const u_int code, const string & message, const unordered_multimap <string, string> & data) noexcept -> void {
+			// Если заголовки ответа получены
+			if(!data.empty())
+				// Извлекаем полученный список заголовков
+				headers = std::forward <const unordered_multimap <string, string>> (data);
 		});
 		// Выполняем инициализацию подключения
 		this->init(this->_uri.origin(url));
@@ -1913,31 +1963,71 @@ void awh::client::WEB::init(const string & url, const http_t::compress_t compres
  */
 void awh::client::WEB::on(function <void (const mode_t, web_t *)> callback) noexcept {
 	// Устанавливаем функцию обратного вызова
-	this->_callback.active = callback;
+	this->_callback.set <void (const mode_t, web_t *)> ("active", callback);
 }
-/**
- * on Метод установки функции обратного вызова на событие получения сообщений
+/** 
+ * on Метод установки функции вывода полученного чанка бинарных данных с сервера
  * @param callback функция обратного вызова
  */
-void awh::client::WEB::on(function <void (const res_t &, web_t *)> callback) noexcept {
+void awh::client::WEB::on(function <void (const vector <char> &)> callback) noexcept {
 	// Устанавливаем функцию обратного вызова
-	this->_callback.message = callback;
+	this->_callback.set <void (const vector <char> &)> ("chunks", callback);
+}
+/** 
+ * on Метод установки функции вывода ответа сервера на ранее выполненный запрос
+ * @param callback функция обратного вызова
+ */
+void awh::client::WEB::on(function <void (const u_int, const string &)> callback) noexcept {
+	// Устанавливаем функцию обратного вызова для HTTP/1.1
+	this->_http.on(callback);
+	// Устанавливаем функцию обратного вызова для HTTP/2
+	this->_callback.set <void (const u_int, const string &)> ("response", callback);
+}
+/** 
+ * on Метод установки функции вывода полученного заголовка с сервера
+ * @param callback функция обратного вызова
+ */
+void awh::client::WEB::on(function <void (const string &, const string &)> callback) noexcept {
+	// Устанавливаем функцию обратного вызова для HTTP/1.1
+	this->_http.on(callback);
+	// Устанавливаем функцию обратного вызова для HTTP/2
+	this->_callback.set <void (const string &, const string &)> ("header", callback);
+}
+/** 
+ * on Метод установки функции вывода полученного тела данных с сервера
+ * @param callback функция обратного вызова
+ */
+void awh::client::WEB::on(function <void (const u_int, const string &, const vector <char> &)> callback) noexcept {
+	// Устанавливаем функцию обратного вызова
+	this->_callback.set <void (const u_int, const string &, const vector <char> &)> ("entity", callback);
+}
+/** 
+ * on Метод установки функции вывода полученных заголовков с сервера
+ * @param callback функция обратного вызова
+ */
+void awh::client::WEB::on(function <void (const u_int, const string &, const unordered_multimap <string, string> &)> callback) noexcept {
+	// Устанавливаем функцию обратного вызова для HTTP/1.1
+	this->_http.on(callback);
+	// Устанавливаем функцию обратного вызова для HTTP/2
+	this->_callback.set <void (const u_int, const string &, const unordered_multimap <string, string> &)> ("headers", callback);
 }
 /**
- * on Метод установки функции обратного вызова для получения чанков
+ * on Метод установки функции обратного вызова для перехвата полученных чанков
  * @param callback функция обратного вызова
  */
 void awh::client::WEB::on(function <void (const vector <char> &, const awh::http_t *)> callback) noexcept {
-	// Устанавливаем функцию обратного вызова
-	this->_http.chunking(callback);
+	// Устанавливаем функцию обратного вызова для HTTP/1.1
+	this->_http.on(callback);
+	// Устанавливаем функцию обратного вызова для HTTP/2
+	this->_callback.set <void (const vector <char> &, const awh::http_t *)> ("chunking", callback);
 }
 /**
  * on Метод установки функции обратного вызова получения событий запуска и остановки сетевого ядра
  * @param callback функция обратного вызова
  */
-void awh::client::WEB::on(function <void (const awh::core_t::status_t status, awh::core_t * core)> callback) noexcept {
+void awh::client::WEB::on(function <void (const awh::core_t::status_t, awh::core_t *)> callback) noexcept {
 	// Устанавливаем функцию обратного вызова
-	this->_callback.events = callback;
+	this->_callback.set <void (const awh::core_t::status_t status, awh::core_t * core)> ("events", callback);
 }
 /**
  * sendTimeout Метод отправки сигнала таймаута
@@ -1958,12 +2048,9 @@ void awh::client::WEB::send(const vector <req_t> & reqs) noexcept {
 		// Выполняем сброс параметров запроса
 		this->flush();
 		// Если объект списка запросов не существует
-		if(this->_requests.empty()){
-			// Добавляем объект ответа в список ответов
-			this->_responses.assign(reqs.size(), res_t());
+		if(this->_requests.empty())
 			// Выполняем получение списка запросов
 			this->_requests = std::forward <const vector <req_t>> (reqs);
-		}
 		// Выполняем запрос на удалённый сервер
 		this->submit(this->_requests.front());
 	}
@@ -2035,8 +2122,6 @@ void awh::client::WEB::stop() noexcept {
 	if(this->_core->working()){
 		// Выполняем очистку списка запросов
 		this->_requests.clear();
-		// Выполняем очистку списка ответов
-		this->_responses.clear();
 		// Очищаем адрес сервера
 		this->_scheme.url.clear();
 		// Завершаем работу, если разрешено остановить
@@ -2270,9 +2355,10 @@ void awh::client::WEB::authTypeProxy(const auth_t::type_t type, const auth_t::ha
  * @param log  объект для работы с логами
  */
 awh::client::WEB::WEB(const client::core_t * core, const fmk_t * fmk, const log_t * log) noexcept :
- _uri(fmk), _http(fmk, log, &_uri), _scheme(fmk, log), _action(action_t::NONE),
- _compress(awh::http_t::compress_t::NONE), _aid(0), _unbind(true), _active(false),
- _stopped(false), _redirects(false), _attempts(10), _fmk(fmk), _log(log), _core(core) {
+ _uri(fmk), _http(fmk, log, &_uri), _callback(log), _scheme(fmk, log),
+ _action(action_t::NONE), _compress(awh::http_t::compress_t::NONE), _aid(0),
+ _unbind(true), _active(false), _stopped(false), _redirects(false),
+ _attempts(10), _fmk(fmk), _log(log), _core(core) {
 	// Устанавливаем событие на запуск системы
 	this->_scheme.callback.set <void (const size_t, awh::core_t *)> ("open", std::bind(&web_t::openCallback, this, _1, _2));
 	// Устанавливаем функцию персистентного вызова
@@ -2290,7 +2376,7 @@ awh::client::WEB::WEB(const client::core_t * core, const fmk_t * fmk, const log_
 	// Устанавливаем событие на активацию шифрованного TLS канала
 	this->_scheme.callback.set <bool (const uri_t::url_t &, const size_t, const size_t, awh::core_t *)> ("tls", std::bind(&web_t::enableTLSCallback, this, _1, _2, _3, _4));
 	// Устанавливаем функцию обработки вызова для получения чанков
-	this->_http.chunking(std::bind(&web_t::chunking, this, _1, _2));
+	this->_http.on(std::bind(&web_t::chunking, this, _1, _2));
 	// Добавляем схемы сети в сетевое ядро
 	const_cast <client::core_t *> (this->_core)->add(&this->_scheme);
 	// Устанавливаем функцию активации ядра клиента

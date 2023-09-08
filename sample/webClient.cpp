@@ -23,13 +23,29 @@ class WebClient {
 	private:
 		// Объект логирования
 		log_t * _log;
+	private:
+		// Объект веб-клиента
+		client::web_t * _web;
 	public:
+		/**
+		 * message Метод получения статуса результата запроса
+		 * @param code    код ответа сервера
+		 * @param message сообщение ответа сервера
+		 */
+		void message(const u_int code, const string & message){
+			// Проверяем на наличие ошибок
+			if(code >= 300)
+				// Выводим сообщение о неудачном запросе
+				this->_log->print("request failed: %u %s", log_t::flag_t::WARNING, code, message.c_str());
+		}
 		/**
 		 * active Метод идентификации активности на Web-клиенте
 		 * @param mode режим события подключения
 		 * @param web  объект WebClient-а
 		 */
 		void active(const client::web_t::mode_t mode, client::web_t * web){
+			// Выполняем установку веб-клиента
+			this->_web = web;
 			// Выводим информацию в лог
 			this->_log->print("%s client", log_t::flag_t::INFO, (mode == client::web_t::mode_t::CONNECT ? "Connect" : "Disconnect"));
 			// Если подключение выполнено
@@ -45,26 +61,22 @@ class WebClient {
 				// Устанавливаем параметры запроса
 				req2.query = "/api/v3/exchangeInfo";
 				// Выполняем запрос на сервер
-				web->send({req1, req2});
+				this->_web->send({req1, req2});
 			}
 		}
 		/**
-		 * message Метод получения сообщений
-		 * @param res объект ответа с сервера
-		 * @param web объект WebClient-а
+		 * entity Метод получения тела ответа сервера
+		 * @param code    код ответа сервера
+		 * @param message сообщение ответа сервера
+		 * @param entity  тело ответа сервера
 		 */
-		void message(const client::web_t::res_t & res, client::web_t * web){
+		void entity(const u_int code, const string & message, const vector <char> & entity){
 			/**
 			 * Выполняем обработку ошибки
 			 */
 			try {
-				// Переходим по всем заголовкам
-				for(auto & header : res.headers){
-					// Выводим информацию в лог
-					this->_log->print("%s : %s", log_t::flag_t::INFO, header.first.c_str(), header.second.c_str());
-				}
 				// Получаем результат
-				const string result(res.entity.begin(), res.entity.end());
+				const string result(entity.begin(), entity.end());
 				// Создаём объект JSON
 				json data = json::parse(result);
 				// Выводим полученный результат
@@ -74,18 +86,30 @@ class WebClient {
 			 */
 			} catch(const exception & error) {
 				// Выводим полученный результат
-				cout << " =========== " << string(res.entity.begin(), res.entity.end()) << endl;
+				cout << " =========== " << string(entity.begin(), entity.end()) << endl;
 			}
 			// cout << " =========== " << result << " == " << res.code << " == " << res.ok << endl;
 			// Выполняем остановку
-			web->stop();
+			this->_web->stop();
+		}
+		/**
+		 * headers Метод получения заголовков ответа сервера
+		 * @param code    код ответа сервера
+		 * @param message сообщение ответа сервера
+		 * @param headers заголовки ответа сервера
+		 */
+		void headers(const u_int code, const string & message, const unordered_multimap <string, string> & headers){
+			// Переходим по всем заголовкам
+			for(auto & header : headers)
+				// Выводим информацию в лог
+				this->_log->print("%s : %s", log_t::flag_t::INFO, header.first.c_str(), header.second.c_str());
 		}
 	public:
 		/**
 		 * WebClient Конструктор
 		 * @param log объект логирования
 		 */
-		WebClient(log_t * log) : _log(log) {}
+		WebClient(log_t * log) : _log(log), _web(nullptr) {}
 };
 
 /**
@@ -161,6 +185,9 @@ int main(int argc, char * argv[]){
 	// uri_t::url_t url = uri.parse("https://2ip.ru");
 	// uri_t::url_t url = uri.parse("https://ipv6.google.com");
 	// uri_t::url_t url = uri.parse("http://localhost/test");
+	// uri_t::url_t url = uri.parse("http://stalin.info");
+	// uri_t::url_t url = uri.parse("http://anyks.com");
+	// uri_t::url_t url = uri.parse("http://www.anyks.com");
 	// uri_t::url_t url = uri.parse("https://anyks.com");
 	// uri_t::url_t url = uri.parse("https://www.anyks.com");
 	// uri_t::url_t url = uri.parse("https://anyks.com/test.php");
@@ -172,10 +199,14 @@ int main(int argc, char * argv[]){
 	// uri_t::url_t url = uri.parse("https://api.coingecko.com/api/v3/coins/list?include_platform=true");
 	// uri_t::url_t url = uri.parse("https://api.coingecko.com/api/v3/simple/price?ids=tron&vs_currencies=usd");
 	/*
-	// Подписываемся на событие коннекта и дисконнекта клиента
-	web.on(bind(&WebClient::active, &executor, _1, _2));
-	// Подписываемся на событие получения сообщения
-	web.on(bind(&WebClient::message, &executor, _1, _2));
+	// Устанавливаем метод получения сообщения сервера
+	web.on((function <void (const u_int, const string &)>) std::bind(&WebClient::message, &executor, _1, _2));
+	// Устанавливаем метод активации подключения
+	web.on((function <void (const client::web_t::mode_t, client::web_t *)>) std::bind(&WebClient::active, &executor, _1, _2));
+	// Устанавливаем метод получения тела ответа
+	web.on((function <void (const u_int, const string &, const vector <char> &)>) std::bind(&WebClient::entity, &executor, _1, _2, _3));
+	// Устанавливаем метод получения заголовков
+	web.on((function <void (const u_int, const string &, const unordered_multimap <string, string> &)>) std::bind(&WebClient::headers, &executor, _1, _2, _3));
 	// Выполняем инициализацию подключения
 	web.init("https://api.binance.com");
 	// Выполняем запуск работы
@@ -187,7 +218,10 @@ int main(int argc, char * argv[]){
 	// 3. Протестировать авторизацию
 	// 4. С LibEvent есть затыки в получении данных, база событий отказывается работать
 
-	// 5. Сделать методы остановки для Danube и протестить с названиями архивов с точками
+	// 1. Отладить формирование запроса на WebSocket/http2
+	// 2. Разобраться в принципе передачи данных по WebSocket/http2
+
+	// 1. Сделать методы остановки для Danube и протестить с названиями архивов с точками
 
 	// Замеряем время начала работы
 	auto timeShifting = chrono::system_clock::now();

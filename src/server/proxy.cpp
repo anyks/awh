@@ -169,11 +169,11 @@ void awh::server::Proxy::connectServerCallback(const size_t aid, const size_t si
 			// Если функция обратного вызова для обработки чанков установлена
 			if(this->_callback.chunking != nullptr)
 				// Устанавливаем функцию обработки вызова для получения чанков
-				adj->cli.chunking(this->_callback.chunking);
+				adj->cli.on(this->_callback.chunking);
 			// Устанавливаем функцию обработки вызова для получения чанков
-			else adj->cli.chunking(std::bind(&proxy_t::chunking, this, _1, _2));
+			else adj->cli.on(std::bind(&proxy_t::chunking, this, _1, _2));
 			// Устанавливаем функцию обработки вызова для получения чанков
-			adj->srv.chunking(std::bind(&proxy_t::chunking, this, _1, _2));
+			adj->srv.on(std::bind(&proxy_t::chunking, this, _1, _2));
 			// Устанавливаем метод компрессии поддерживаемый клиентом
 			adj->cli.compress(this->_scheme.compress);
 			// Устанавливаем метод компрессии поддерживаемый сервером

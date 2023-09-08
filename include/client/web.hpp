@@ -92,20 +92,6 @@ namespace awh {
 					 */
 					Request() noexcept : attempt(0), method(web_t::method_t::NONE), query("") {}
 				} req_t;
-				/**
-				 * Response Структура ответа сервера
-				 */
-				typedef struct Response {
-					bool ok;                                     // Флаг удачного ответа
-					u_int code;                                  // Код ответа сервера
-					string message;                              // Сообщение ответа сервера
-					vector <char> entity;                        // Тело ответа сервера
-					unordered_multimap <string, string> headers; // Заголовки сервера
-					/**
-					 * Response Конструктор
-					 */
-					Response() noexcept : ok(false), code(0), message("") {}
-				} res_t;
 			private:
 				/**
 				 * Http2 Структура работы с клиентом HTTP/2
@@ -130,21 +116,6 @@ namespace awh {
 					 */
 					Locker() noexcept : mode(false) {}
 				} locker_t;
-				/**
-				 * Callback Структура функций обратного вызова
-				 */
-				typedef struct Callback {
-					// Функция обратного вызова при подключении/отключении
-					function <void (const mode_t, WEB *)> active;
-					// Функция обратного вызова, вывода сообщения при его получении
-					function <void (const res_t &, WEB *)> message;
-					// Функция получения событий запуска и остановки сетевого ядра
-					function <void (const awh::core_t::status_t status, awh::core_t * core)> events;
-					/**
-					 * Callback Конструктор
-					 */
-					Callback() noexcept : active(nullptr), message(nullptr), events(nullptr) {}
-				} fn_t;
 			private:
 				// Объект работы с URI ссылками
 				uri_t _uri;
@@ -169,11 +140,8 @@ namespace awh {
 			private:
 				// Список доступных источников
 				vector <string> _origins;
-			private:
-				// Список запросов
+				// Список активых запросов
 				vector <req_t> _requests;
-				// Список ответов
-				vector <res_t> _responses;
 			private:
 				// Идентификатор подключения
 				size_t _aid;
@@ -196,6 +164,13 @@ namespace awh {
 				const log_t * _log;
 				// Создаём объект сетевого ядра
 				const client::core_t * _core;
+			private:
+				/**
+				 * debugHttp2 Функция обратного вызова при получении отладочной информации
+				 * @param format формат вывода отладочной информации
+				 * @param args   список аргументов отладочной информации
+				 */
+				static void debugHttp2(const char * format, va_list args) noexcept;
 			private:
 				/**
 				 * onFrameHttp2 Функция обратного вызова при получении фрейма заголовков HTTP/2 с сервера
@@ -289,11 +264,6 @@ namespace awh {
 				 * @param request объект запроса на удалённый сервер
 				 */
 				void submit(const req_t & request) noexcept;
-				/**
-				 * receive Метод получения результата запроса
-				 * @param response объект ответа полученного с удалённого сервера
-				 */
-				void receive(const res_t & response) noexcept;
 			private:
 				/**
 				 * openCallback Метод обратного вызова при запуске работы
@@ -534,14 +504,34 @@ namespace awh {
 				 * @param callback функция обратного вызова
 				 */
 				void on(function <void (const mode_t, WEB *)> callback) noexcept;
-				/**
-				 * on Метод установки функции обратного вызова на событие получения сообщений
+				/** 
+				 * on Метод установки функции вывода полученного чанка бинарных данных с сервера
 				 * @param callback функция обратного вызова
 				 */
-				void on(function <void (const res_t &, WEB *)> callback) noexcept;
+				void on(function <void (const vector <char> &)> callback) noexcept;
+				/** 
+				 * on Метод установки функции вывода ответа сервера на ранее выполненный запрос
+				 * @param callback функция обратного вызова
+				 */
+				void on(function <void (const u_int, const string &)> callback) noexcept;
+				/** 
+				 * on Метод установки функции вывода полученного заголовка с сервера
+				 * @param callback функция обратного вызова
+				 */
+				void on(function <void (const string &, const string &)> callback) noexcept;
+				/** 
+				 * on Метод установки функции вывода полученного тела данных с сервера
+				 * @param callback функция обратного вызова
+				 */
+				void on(function <void (const u_int, const string &, const vector <char> &)> callback) noexcept;
+				/** 
+				 * on Метод установки функции вывода полученных заголовков с сервера
+				 * @param callback функция обратного вызова
+				 */
+				void on(function <void (const u_int, const string &, const unordered_multimap <string, string> &)> callback) noexcept;
 			public:
 				/**
-				 * on Метод установки функции обратного вызова для получения чанков
+				 * on Метод установки функции обратного вызова для перехвата полученных чанков
 				 * @param callback функция обратного вызова
 				 */
 				void on(function <void (const vector <char> &, const awh::http_t *)> callback) noexcept;
@@ -549,7 +539,7 @@ namespace awh {
 				 * on Метод установки функции обратного вызова получения событий запуска и остановки сетевого ядра
 				 * @param callback функция обратного вызова
 				 */
-				void on(function <void (const awh::core_t::status_t status, awh::core_t * core)> callback) noexcept;
+				void on(function <void (const awh::core_t::status_t, awh::core_t *)> callback) noexcept;
 			public:
 				/**
 				 * sendTimeout Метод отправки сигнала таймаута

@@ -28,6 +28,7 @@
 /**
  * Наши модули
  */
+#include <sys/fn.hpp>
 #include <sys/fmk.hpp>
 #include <sys/log.hpp>
 
@@ -146,6 +147,8 @@ namespace awh {
 			// Массив позиций в буфере сепаратора
 			int64_t _pos[2] = {-1, -1};
 		private:
+			// Объявляем функции обратного вызова
+			fn_t _callback;
 			// Объект параметров запроса
 			query_t _query;
 			// Объект собираемого чанка
@@ -162,9 +165,6 @@ namespace awh {
 			vector <char> _body;
 			// Полученные HTTP заголовки
 			unordered_multimap <string, string> _headers;
-		private:
-			// Функция вызова при получении чанка
-			function <void (const vector <char> &, const Web *)> _fn;
 		private:
 			// Создаём объект фреймворка
 			const fmk_t * _fmk;
@@ -306,11 +306,36 @@ namespace awh {
 			 */
 			void state(const state_t state) noexcept;
 		public:
-			/**
-			 * chunking Метод установки функции обратного вызова для получения чанков
+			/** 
+			 * on Метод установки функции вывода ответа сервера на ранее выполненный запрос
 			 * @param callback функция обратного вызова
 			 */
-			void chunking(function <void (const vector <char> &, const Web *)> callback) noexcept;
+			void on(function <void (const u_int, const string &)> callback) noexcept;
+			/** 
+			 * on Метод установки функции вывода запроса клиента на выполненный запрос к серверу
+			 * @param callback функция обратного вызова
+			 */
+			void on(function <void (const method_t, const string &)> callback) noexcept;
+			/** 
+			 * on Метод установки функции вывода полученного заголовка с сервера
+			 * @param callback функция обратного вызова
+			 */
+			void on(function <void (const string &, const string &)> callback) noexcept;
+			/**
+			 * on Метод установки функции обратного вызова для получения чанков
+			 * @param callback функция обратного вызова
+			 */
+			void on(function <void (const vector <char> &, const Web *)> callback) noexcept;
+			/** 
+			 * on Метод установки функции вывода полученного тела данных с сервера
+			 * @param callback функция обратного вызова
+			 */
+			void on(function <void (const u_int, const string &, const vector <char> &)> callback) noexcept;
+			/** 
+			 * on Метод установки функции вывода полученных заголовков с сервера
+			 * @param callback функция обратного вызова
+			 */
+			void on(function <void (const u_int, const string &, const unordered_multimap <string, string> &)> callback) noexcept;
 		public:
 			/**
 			 * Web Конструктор
@@ -318,8 +343,8 @@ namespace awh {
 			 * @param log объект для работы с логами
 			 */
 			Web(const fmk_t * fmk, const log_t * log) noexcept :
-			 _sep('\0'), _bodySize(-1), _state(state_t::QUERY),
-			 _httpType(hid_t::NONE), _header(""), _fn(nullptr), _fmk(fmk), _log(log) {}
+			 _sep('\0'), _bodySize(-1), _callback(log), _state(state_t::QUERY),
+			 _httpType(hid_t::NONE), _header(""), _fmk(fmk), _log(log) {}
 			/**
 			 * ~Web Деструктор
 			 */

@@ -504,11 +504,36 @@ namespace awh {
 			 */
 			vector <pair<string, string>> request2(const uri_t::url_t & url, const web_t::method_t method) const noexcept;
 		public:
-			/**
-			 * chunking Метод установки функции обратного вызова для получения чанков
+			/** 
+			 * on Метод установки функции вывода ответа сервера на ранее выполненный запрос
 			 * @param callback функция обратного вызова
 			 */
-			void chunking(function <void (const vector <char> &, const Http *)> callback) noexcept;
+			void on(function <void (const u_int, const string &)> callback) noexcept;
+			/** 
+			 * on Метод установки функции вывода полученного заголовка с сервера
+			 * @param callback функция обратного вызова
+			 */
+			void on(function <void (const string &, const string &)> callback) noexcept;
+			/**
+			 * on Метод установки функции обратного вызова для получения чанков
+			 * @param callback функция обратного вызова
+			 */
+			void on(function <void (const vector <char> &, const Http *)> callback) noexcept;
+			/** 
+			 * on Метод установки функции вывода запроса клиента на выполненный запрос к серверу
+			 * @param callback функция обратного вызова
+			 */
+			void on(function <void (const web_t::method_t, const string &)> callback) noexcept;
+			/** 
+			 * on Метод установки функции вывода полученного тела данных с сервера
+			 * @param callback функция обратного вызова
+			 */
+			void on(function <void (const u_int, const string &, const vector <char> &)> callback) noexcept;
+			/** 
+			 * on Метод установки функции вывода полученных заголовков с сервера
+			 * @param callback функция обратного вызова
+			 */
+			void on(function <void (const u_int, const string &, const unordered_multimap <string, string> &)> callback) noexcept;
 		public:
 			/**
 			 * chunk Метод установки размера чанка

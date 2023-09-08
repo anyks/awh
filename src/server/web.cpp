@@ -395,9 +395,9 @@ void awh::server::WEB::actionConnect(const size_t aid) noexcept {
 			// Если функция обратного вызова для обработки чанков установлена
 			if(this->_callback.chunking != nullptr)
 				// Устанавливаем функцию обработки вызова для получения чанков
-				adj->http.chunking(this->_callback.chunking);
+				adj->http.on(this->_callback.chunking);
 			// Устанавливаем функцию обработки вызова для получения чанков
-			else adj->http.chunking(std::bind(&web_t::chunking, this, _1, _2));
+			else adj->http.on(std::bind(&web_t::chunking, this, _1, _2));
 			// Устанавливаем метод компрессии поддерживаемый сервером
 			adj->http.compress(this->_scheme.compress);
 			// Устанавливаем параметры шифрования

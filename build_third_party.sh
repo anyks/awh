@@ -9,6 +9,9 @@ OS=$(uname -a | awk '{print $1}')
 # Флаг активации модуля IDN
 IDN="no"
 
+# Флаг активации режима отладки
+DEBUG="no"
+
 # Флаг активации сборки LibEvent2
 LIBEVENT2="no"
 
@@ -25,6 +28,7 @@ fi
 
 if [ -n "$1" ]; then
 	if [ $1 = "--clean" ]; then
+
 		# Очистка подпроекта
 		clean_submodule(){
 			cd "$ROOT/submodules/$1" || exit 1
@@ -71,13 +75,60 @@ if [ -n "$1" ]; then
 		printf "\n\n\n"
 
 		exit 0
-	elif [ $1 = "--idn" ]; then
-		IDN="yes"
+
+	elif [ $1 = "--debug" ]; then
+
+		DEBUG="yes"
+
+		if [[ -n "$2" ]] && [[ $2 = "--idn" ]]; then
+			IDN="yes"
+		fi
+		if [[ -n "$3" ]] && [[ $3 = "--idn" ]]; then
+			IDN="yes"
+		fi
+
 		if [[ -n "$2" ]] && [[ $2 = "--event2" ]]; then
 			LIBEVENT2="yes"
 		fi
+		if [[ -n "$3" ]] && [[ $3 = "--event2" ]]; then
+			LIBEVENT2="yes"
+		fi
+
+	elif [ $1 = "--idn" ]; then
+
+		IDN="yes"
+
+		if [[ -n "$2" ]] && [[ $2 = "--debug" ]]; then
+			DEBUG="yes"
+		fi
+		if [[ -n "$3" ]] && [[ $3 = "--debug" ]]; then
+			DEBUG="yes"
+		fi
+		if [[ -n "$2" ]] && [[ $2 = "--event2" ]]; then
+			LIBEVENT2="yes"
+		fi
+		if [[ -n "$3" ]] && [[ $3 = "--event2" ]]; then
+			LIBEVENT2="yes"
+		fi
+
 	elif [ $1 = "--event2" ]; then
+
 		LIBEVENT2="yes"
+		
+		if [[ -n "$2" ]] && [[ $2 = "--idn" ]]; then
+			IDN="yes"
+		fi
+		if [[ -n "$3" ]] && [[ $3 = "--idn" ]]; then
+			IDN="yes"
+		fi
+
+		if [[ -n "$2" ]] && [[ $2 = "--debug" ]]; then
+			DEBUG="yes"
+		fi
+		if [[ -n "$3" ]] && [[ $3 = "--debug" ]]; then
+			DEBUG="yes"
+		fi
+
 	else
 		printf "Usage: config [options]\n"
 		printf " --clean - Cleaning all submodules and build directory\n"
@@ -985,26 +1036,41 @@ if [ ! -f "$src/.stamp_done" ]; then
 	# Удаляем старый файл кэша
 	rm -rf ./CMakeCache.txt
 
+	# Деактивируем режим отладки
+	ENABLE_DEBUG="OFF"
+	# Деактивируем сборку отладочной информации
+	BUILD_TYPE="Release"
+
+	# Если режим отладки активирован
+	if [[ $DEBUG = "yes" ]]; then
+		# Активируем режим отладки
+		ENABLE_DEBUG="ON"
+		# Активируем сборку отладочной информации
+		BUILD_TYPE="Debug"
+	fi
+
 	# Выполняем конфигурацию проекта
 	if [[ $OS = "Windows" ]]; then
 		cmake \
-		 -DCMAKE_BUILD_TYPE="Release" \
 		 -DCMAKE_SYSTEM_NAME="Windows" \
 		 -DENABLE_STATIC_CRT="ON" \
 		 -DENABLE_EXAMPLES="OFF" \
 		 -DENABLE_LIB_ONLY="ON" \
 		 -DENABLE_STATIC_LIB="ON" \
 		 -DENABLE_SHARED_LIB="OFF" \
+		 -DENABLE_DEBUG="$ENABLE_DEBUG" \
+		 -DCMAKE_BUILD_TYPE="$BUILD_TYPE" \
 		 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
 		 -G "MSYS Makefiles" \
 		 .. || exit 1
 	else
 		cmake \
-		 -DCMAKE_BUILD_TYPE="Release" \
 		 -DENABLE_EXAMPLES="OFF" \
 		 -DENABLE_LIB_ONLY="ON" \
 		 -DENABLE_STATIC_LIB="ON" \
 		 -DENABLE_SHARED_LIB="OFF" \
+		 -DENABLE_DEBUG="$ENABLE_DEBUG" \
+		 -DCMAKE_BUILD_TYPE="$BUILD_TYPE" \
 		 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
 		 .. || exit 1
 	fi
@@ -1048,17 +1114,31 @@ if [ ! -f "$src/.stamp_done" ]; then
 	# Удаляем старый файл кэша
 	rm -rf ./CMakeCache.txt
 
+	# Деактивируем режим отладки
+	ENABLE_DEBUG="OFF"
+	# Деактивируем сборку отладочной информации
+	BUILD_TYPE="Release"
+
+	# Если режим отладки активирован
+	if [[ $DEBUG = "yes" ]]; then
+		# Активируем режим отладки
+		ENABLE_DEBUG="ON"
+		# Активируем сборку отладочной информации
+		BUILD_TYPE="Debug"
+	fi
+
 	# Выполняем конфигурацию проекта
 	if [[ $OS = "Windows" ]]; then
 		# Если нужно собрать модуль LibEvent2
 		if [[ $LIBEVENT2 = "yes" ]]; then
 			cmake \
-			 -DCMAKE_BUILD_TYPE="Release" \
 			 -DCMAKE_SYSTEM_NAME="Windows" \
 			 -DENABLE_STATIC_LIB="ON" \
 			 -DENABLE_SHARED_LIB="OFF" \
 			 -DENABLE_JEMALLOC="ON" \
 			 -DENABLE_OPENSSL="ON" \
+			 -DENABLE_DEBUG="$ENABLE_DEBUG" \
+			 -DCMAKE_BUILD_TYPE="$BUILD_TYPE" \
 			 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
 			 -DOPENSSL_LIBRARIES="$PREFIX/lib" \
 			 -DOPENSSL_INCLUDE_DIR="$PREFIX/include" \
@@ -1069,12 +1149,13 @@ if [ ! -f "$src/.stamp_done" ]; then
 		# Если нужно собрать модуль LibEv
 		else
 			cmake \
-			 -DCMAKE_BUILD_TYPE="Release" \
 			 -DCMAKE_SYSTEM_NAME="Windows" \
 			 -DENABLE_STATIC_LIB="ON" \
 			 -DENABLE_SHARED_LIB="OFF" \
 			 -DENABLE_JEMALLOC="ON" \
 			 -DENABLE_OPENSSL="ON" \
+			 -DENABLE_DEBUG="$ENABLE_DEBUG" \
+			 -DCMAKE_BUILD_TYPE="$BUILD_TYPE" \
 			 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
 			 -DOPENSSL_LIBRARIES="$PREFIX/lib" \
 			 -DOPENSSL_INCLUDE_DIR="$PREFIX/include" \
@@ -1089,11 +1170,12 @@ if [ ! -f "$src/.stamp_done" ]; then
 		# Если нужно собрать модуль LibEvent2
 		if [[ $LIBEVENT2 = "yes" ]]; then
 			cmake \
-			 -DCMAKE_BUILD_TYPE="Release" \
 			 -DENABLE_STATIC_LIB="ON" \
 			 -DENABLE_SHARED_LIB="OFF" \
 			 -DENABLE_JEMALLOC="ON" \
 			 -DENABLE_OPENSSL="ON" \
+			 -DENABLE_DEBUG="$ENABLE_DEBUG" \
+			 -DCMAKE_BUILD_TYPE="$BUILD_TYPE" \
 			 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
 			 -DLIBNGHTTP3_LIBRARY="$PREFIX/lib" \
 			 -DLIBNGHTTP3_INCLUDE_DIR="$PREFIX/include" \
@@ -1101,11 +1183,12 @@ if [ ! -f "$src/.stamp_done" ]; then
 		# Если нужно собрать модуль LibEv
 		else
 			cmake \
-			 -DCMAKE_BUILD_TYPE="Release" \
 			 -DENABLE_STATIC_LIB="ON" \
 			 -DENABLE_SHARED_LIB="OFF" \
 			 -DENABLE_JEMALLOC="ON" \
 			 -DENABLE_OPENSSL="ON" \
+			 -DENABLE_DEBUG="$ENABLE_DEBUG" \
+			 -DCMAKE_BUILD_TYPE="$BUILD_TYPE" \
 			 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
 			 -DLIBNGHTTP3_LIBRARY="$PREFIX/lib" \
 			 -DLIBNGHTTP3_INCLUDE_DIR="$PREFIX/include" \
@@ -1154,6 +1237,19 @@ if [ ! -f "$src/.stamp_done" ]; then
 	# Удаляем старый файл кэша
 	rm -rf ./CMakeCache.txt
 
+	# Деактивируем режим отладки
+	ENABLE_DEBUG="OFF"
+	# Деактивируем сборку отладочной информации
+	BUILD_TYPE="Release"
+
+	# Если режим отладки активирован
+	if [[ $DEBUG = "yes" ]]; then
+		# Активируем режим отладки
+		ENABLE_DEBUG="ON"
+		# Активируем сборку отладочной информации
+		BUILD_TYPE="Debug"
+	fi
+
 	### Зависимости которые нежелательны в связи с дублированием функционала
 	# -DLIBCARES_LIBRARIES="$PREFIX/lib" \
 	# -DLIBCARES_INCLUDE_DIR="$PREFIX/include/c-ares" \
@@ -1165,7 +1261,6 @@ if [ ! -f "$src/.stamp_done" ]; then
 		# Если нужно собрать модуль LibEvent2
 		if [[ $LIBEVENT2 = "yes" ]]; then
 			cmake \
-			 -DCMAKE_BUILD_TYPE="Release" \
 			 -DCMAKE_SYSTEM_NAME="Windows" \
 			 -DENABLE_STATIC_CRT="ON" \
 			 -DENABLE_APP="OFF" \
@@ -1180,6 +1275,8 @@ if [ ! -f "$src/.stamp_done" ]; then
 			 -DWITH_MRUBY="OFF" \
 			 -DWITH_NEVERBLEED="OFF" \
 			 -DWITH_LIBBPF="OFF" \
+			 -DENABLE_DEBUG="$ENABLE_DEBUG" \
+			 -DCMAKE_BUILD_TYPE="$BUILD_TYPE" \
 			 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
 			 -DOPENSSL_LIBRARIES="$PREFIX/lib" \
 			 -DOPENSSL_INCLUDE_DIR="$PREFIX/include" \
@@ -1200,7 +1297,6 @@ if [ ! -f "$src/.stamp_done" ]; then
 		# Если нужно собрать модуль LibEv
 		else
 			cmake \
-			 -DCMAKE_BUILD_TYPE="Release" \
 			 -DCMAKE_SYSTEM_NAME="Windows" \
 			 -DENABLE_STATIC_CRT="ON" \
 			 -DENABLE_APP="OFF" \
@@ -1215,6 +1311,8 @@ if [ ! -f "$src/.stamp_done" ]; then
 			 -DWITH_MRUBY="OFF" \
 			 -DWITH_NEVERBLEED="OFF" \
 			 -DWITH_LIBBPF="OFF" \
+			 -DENABLE_DEBUG="$ENABLE_DEBUG" \
+			 -DCMAKE_BUILD_TYPE="$BUILD_TYPE" \
 			 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
 			 -DOPENSSL_LIBRARIES="$PREFIX/lib" \
 			 -DOPENSSL_INCLUDE_DIR="$PREFIX/include" \
@@ -1237,7 +1335,6 @@ if [ ! -f "$src/.stamp_done" ]; then
 		# Если нужно собрать модуль LibEvent2
 		if [[ $LIBEVENT2 = "yes" ]]; then
 			cmake \
-			 -DCMAKE_BUILD_TYPE="Release" \
 			 -DENABLE_APP="OFF" \
 			 -DENABLE_HPACK_TOOLS="OFF" \
 			 -DENABLE_EXAMPLES="OFF" \
@@ -1250,6 +1347,8 @@ if [ ! -f "$src/.stamp_done" ]; then
 			 -DWITH_MRUBY="OFF" \
 			 -DWITH_NEVERBLEED="OFF" \
 			 -DWITH_LIBBPF="OFF" \
+			 -DENABLE_DEBUG="$ENABLE_DEBUG" \
+			 -DCMAKE_BUILD_TYPE="$BUILD_TYPE" \
 			 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
 			 -DLIBNGTCP2_LIBRARY="$PREFIX/lib" \
 			 -DLIBNGTCP2_INCLUDE_DIR="$PREFIX/include" \
@@ -1267,7 +1366,6 @@ if [ ! -f "$src/.stamp_done" ]; then
 		# Если нужно собрать модуль LibEv
 		else
 			cmake \
-			 -DCMAKE_BUILD_TYPE="Release" \
 			 -DENABLE_APP="OFF" \
 			 -DENABLE_HPACK_TOOLS="OFF" \
 			 -DENABLE_EXAMPLES="OFF" \
@@ -1280,6 +1378,8 @@ if [ ! -f "$src/.stamp_done" ]; then
 			 -DWITH_MRUBY="OFF" \
 			 -DWITH_NEVERBLEED="OFF" \
 			 -DWITH_LIBBPF="OFF" \
+			 -DENABLE_DEBUG="$ENABLE_DEBUG" \
+			 -DCMAKE_BUILD_TYPE="$BUILD_TYPE" \
 			 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
 			 -DLIBNGTCP2_LIBRARY="$PREFIX/lib" \
 			 -DLIBNGTCP2_INCLUDE_DIR="$PREFIX/include" \

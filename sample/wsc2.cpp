@@ -194,34 +194,39 @@ class Executor {
 			this->_log->print("%s [%u]", log_t::flag_t::CRITICAL, mess.c_str(), code);
 		}
 		/**
-		 * web Метод получения данных HTTP запроса
-		 * @param res объект ответа
-		 * @param web объект веб-клиента
+		 * webMessage Метод получения статуса результата запроса
+		 * @param code    код ответа сервера
+		 * @param message сообщение ответа сервера
 		 */
-		void web(const client::web_t::res_t & res, client::web_t * web){			
+		void webMessage(const u_int code, const string & message){
 			// Проверяем на наличие ошибок
-			if(res.code >= 300)
+			if(code >= 300)
 				// Выводим сообщение о неудачном запросе
-				this->_log->print("request failed: %u %s", log_t::flag_t::WARNING, res.code, res.message.c_str());
-			// Если тело ответа получено
-			if(!res.entity.empty()){
-				/**
-				 * Выполняем обработку ошибки
-				 */
-				try {
-					// Получаем результат
-					const string result(res.entity.begin(), res.entity.end());
-					// Создаём объект JSON
-					json data = json::parse(result);
-					// Выводим полученный результат
-					cout << " =========== " << data.dump(4) << endl;
-				/**
-				 * Если возникает ошибка
-				 */
-				} catch(const exception & error) {
-					// Выводим полученный результат
-					cout << " =========== " << string(res.entity.begin(), res.entity.end()) << endl;
-				}
+				this->_log->print("request failed: %u %s", log_t::flag_t::WARNING, code, message.c_str());
+		}
+		/**
+		 * webEntity Метод получения тела ответа сервера
+		 * @param code    код ответа сервера
+		 * @param message сообщение ответа сервера
+		 * @param entity  тело ответа сервера
+		 */
+		void webEntity(const u_int code, const string & message, const vector <char> & entity){
+			/**
+			 * Выполняем обработку ошибки
+			 */
+			try {
+				// Получаем результат
+				const string result(entity.begin(), entity.end());
+				// Создаём объект JSON
+				json data = json::parse(result);
+				// Выводим полученный результат
+				cout << " =========== " << data.dump(4) << endl;
+			/**
+			 * Если возникает ошибка
+			 */
+			} catch(const exception & error) {
+				// Выводим полученный результат
+				cout << " =========== " << string(entity.begin(), entity.end()) << endl;
 			}
 		}
 		/**
@@ -316,10 +321,12 @@ class Executor {
 				this->_core.mode(client::core_t::mode_t::ASYNC);
 				// Выполняем инициализацию подключения
 				this->_web->init("https://api2.binance.com");
-				// Устанавливаем метод получения результата
-				this->_web->on(std::bind(&Executor::web, this, _1, _2));
+				// Устанавливаем метод получения сообщения сервера
+				this->_web->on((function <void (const u_int, const string &)>) std::bind(&Executor::webMessage, this, _1, _2));
 				// Устанавливаем метод активации подключения
-				this->_web->on(std::bind(&Executor::webActive, this, _1, _2));
+				this->_web->on((function <void (const client::web_t::mode_t, client::web_t *)>) std::bind(&Executor::webActive, this, _1, _2));
+				// Устанавливаем метод получения тела ответа
+				this->_web->on((function <void (const u_int, const string &, const vector <char> &)>) std::bind(&Executor::webEntity, this, _1, _2, _3));
 				// Выполняем подключение ядра
 				this->_main->bind(&this->_core);
 			/**

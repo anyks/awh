@@ -25,6 +25,9 @@
 int awh::client::WebSocket::onFrameHttp2(nghttp2_session * session, const nghttp2_frame * frame, void * ctx) noexcept {
 	// Выполняем блокировку неиспользуемой переменной
 	(void) session;
+	
+	cout << " !!!!!!!!!!!! " << (frame->hd.type == NGHTTP2_HEADERS) << " == " << (frame->hd.type == NGHTTP2_DATA) << " || " << (frame->hd.flags & NGHTTP2_FLAG_END_HEADERS) << " == " << (frame->hd.flags & NGHTTP2_FLAG_END_STREAM) << endl;
+	
 	// Получаем объект HTTP-клиента
 	websocket_t * ws = reinterpret_cast <websocket_t *> (ctx);
 	// Выполняем определение типа фрейма
@@ -32,11 +35,7 @@ int awh::client::WebSocket::onFrameHttp2(nghttp2_session * session, const nghttp
 		// Если мы получили входящие данные тела ответа
 		case NGHTTP2_DATA:
 		// Если мы получили входящие данные заголовков ответа
-		case NGHTTP2_HEADERS: {
-			
-			if(frame->hd.type == NGHTTP2_DATA)
-				cout << " !!!!!!!!!!!! " << endl;
-			
+		case NGHTTP2_HEADERS: {	
 			// Если сессия клиента совпадает с сессией полученных даных
 			if((frame->hd.flags & NGHTTP2_FLAG_END_STREAM) && (ws->_http2.id == frame->hd.stream_id)){
 				// Объект сообщения
@@ -173,6 +172,9 @@ int awh::client::WebSocket::onCloseHttp2(nghttp2_session * session, const int32_
 	websocket_t * ws = reinterpret_cast <websocket_t *> (ctx);
 	// Если идентификатор сессии клиента совпадает
 	if(ws->_http2.id == sid){
+		
+		cout << " ========= BODY " << ws->_ws.body().size() << endl;
+		
 		/**
 		 * Если включён режим отладки
 		 */
